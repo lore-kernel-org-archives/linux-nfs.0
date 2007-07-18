@@ -1,230 +1,54 @@
-From: "Ruthie Fountain" <dismiss@nationalreview.com>
-Subject: Bis zu 2500 Euro Nebenverdienst
-Date: Wed, 18 Jul 2007 20:01:48 -0100
-Message-ID: <01c7c976$7985e350$0fc3105b@dismiss>
-Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============0228510473=="
-To: <nfs@lists.sourceforge.net>
-Return-path: <nfs-bounces@lists.sourceforge.net>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: [PATCH 1/5] nfsd: fix possible read-ahead cache and export table corruption
+Date: Wed, 18 Jul 2007 18:57:26 -0400
+Message-ID: <11847994502502-git-send-email-bfields@fieldses.org>
+References: <20070713114228.3c171a90.akpm@linux-foundation.org>
+ <11847994502579-git-send-email-bfields@fieldses.org>
+Cc: NeilBrown <neilb@suse.de>, nfs@lists.sourceforge.net,
+	linux-kernel@vger.kernel.org, andros@citi.umich.edu,
+	"J. Bruce Fields" <bfields@citi.umich.edu>, stable@kernel.org,
+	Greg Banks <gnb@melbourne.sgi.com>
+To: Andrew Morton <akpm@linux-foundation.org>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S933182AbXGRW5s@vger.kernel.org>
+In-Reply-To: <11847994502579-git-send-email-bfields@fieldses.org>
+Message-Id: <2ac9f179334dc7894bb58b1c2fb62837a07fbbdf.1184798679.git.bfields@citi.umich.edu>
+Sender: linux-kernel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-This is a multi-part message in MIME format.
+From: J. Bruce Fields <bfields@citi.umich.edu>
 
---===============0228510473==
-Content-Type: multipart/alternative;
-	boundary="----=_NextPart_000_000E_01C7C987.3D0EB350"
+The value of nperbucket calculated here is too small--we should be
+rounding up instead of down--with the result that the index j in the
+following loop can overflow the raparm_hash array.  At least in my case,
+the next thing in memory turns out to be export_table, so the symptoms I
+see are crashes caused by the appearance of four zeroed-out export
+entries in the first bucket of the hash table of exports (which were
+actually entries in the readahead cache, a pointer to which had been
+written to the export table in this initialization code).
 
-This is a multi-part message in MIME format.
+It looks like the bug was probably introduced with commit
+fce1456a19f5c08b688c29f00ef90fdfa074c79b ("knfsd: make the readahead
+params cache SMP-friendly").
 
-------=_NextPart_000_000E_01C7C987.3D0EB350
-Content-Type: text/plain;
-	charset="Windows-1252"
-Content-Transfer-Encoding: 7bit
+Cc: stable@kernel.org
+Cc: Greg Banks <gnb@melbourne.sgi.com>
+Signed-off-by: "J. Bruce Fields" <bfields@citi.umich.edu>
+---
+ fs/nfsd/vfs.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-
-
-
-------=_NextPart_000_000E_01C7C987.3D0EB350
-Content-Type: text/html;
-	charset="Windows-1252"
-Content-Transfer-Encoding: quoted-printable
-
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD><TITLE></TITLE>
-<META content=3D"text/html; charset=3DWindows-1252" http-equiv=3DContent-Type>
-<META content=3D"MSHTML 5.00.2919.6700" name=3DGENERATOR></HEAD>
-<BODY>
-<html>
-<head>
-<meta http-equiv=3D"Content-Type" content=3D"text/html; charset=3Diso-8859-=
-1">
-</head>
-<body>
-<div id=3D"mb_0">
-  <div style=3D"direction: ltr;">
-    <p><strong>Sehr geehte Damen und Herren, </strong></p>
-    <p>heute geh&ouml;rt die Solar-International Ltd. mit ihren hochwertige=
-n Produkten zu den europaweit f&#252;hrenden Unternehmen der Solartechnik.<=
-br>
-      Das Produktspektrum umfa&#223;t Solarstrommodule, Wechselrichter, Bef=
-estigungssysteme und weitere Komponenten sowie komplette<br>
-      Solarstromanlagen f&#252;r netzgebundene und netzferne Anwendungen. D=
-ie au&#223;erordentlich hohen Energieertr&#228;ge der Solar-Fabrik-Anlagen =
-sind eine Folge der konsequenten Qualit&#228;tspolitik.<br>
-      <br>
-      Der Vertrieb erfolgt in Deutschland und ganz Europa &#252;ber Fachins=
-tallationsbetriebe, OEM-Kunden, Betreibergesellschaften, den Gro&#223;hande=
-l sowie Energieversorgungsunternehmen.<br>
-      <br>
-      <strong>Kundenorientierung</strong><br>
-      Die hohe Qualit&#228;t unserer Produkte und Dienstleistungen ist ents=
-cheidend f&#252;r unseren Erfolg am Markt.<br>
-      <br>
-      Wir f&#252;hlen uns dem Erfolg unserer Kunden verpflichtet und unters=
-t&#252;tzen sie deshalb bei ihren Aktivit&#228;ten.<br>
-    Wir setzen auf eine vertrauensvolle Zusammenarbeit und partnerschaftlic=
-he, dauerhafte Beziehungen mit unseren Kunden, Lieferanten und anderen Gesc=
-h&#228;ftspartnern.<br>
-    <br>
-    Wir sehen in einem kontinuierlichen Verbesserungsproze&#223; (KVP) die =
-Voraussetzung, um die Ergebnisse unserer Arbeit f&#252;r den Kunden optimal=
-<br>
-      zu gestalten. Die Beurteilung unserer Leistungen durch die Kunden ste=
-llt f&#252;r uns ein wichtiges Instrument zur st&#228;ndigen Verbesserung d=
-ar.<br>
-      <strong><br>
-      Mitarbeiterorientierung</strong><br>
-      Im internen Umgang sind Vertrauen, Fairness, Wertsch&#228;tzung und O=
-ffenheit Grundlage unseres Handelns.<br>
-      Kontinuierlicher Informationsaustausch, Teamarbeit sowie Eigeninitiat=
-ive und verantwortliches Handeln jeder/s Einzelnen<br>
-      kennzeichnen unsere Arbeitsatmosph&#228;re.<br>
-      <br>
-      Wir benennen Konflikte offen und verpflichten uns, Spannungen unterei=
-nander aktiv und unmittelbar zu l&#246;sen. Probleme sehen wir als<br>
-      Lernchancen. Wir legen Wert auf sichere und attraktive Arbeitspl&#228=
-;tze und gute Arbeitsbedingungen zur Erhaltung von Motivation und Gesundhei=
-t.<br>
-      Wir schaffen ein Umfeld, in dem Leistung Spass macht. Wir sind Magnet=
- f&#252;r die Besten.<br>
-      <br>
-      <strong>Kontinuierliche Verbesserung</strong><br>
-      Wir arbeiten konsequent an der Verbesserung der Qualit&#228;t unserer=
- Produkte und Dienstleistungen. Ein Ziel dabei ist, die Belastung unserer U=
-mwelt nachhaltig zu verringern. Wir wollen unsere Effizienz in allen Bereic=
-hen des Unternehmens kontinuierlich steigern.<br>
-      Wir streben stets nach den besten verf&#252;gbaren Technologien und M=
-ethoden. Dabei achten wir konsequent auf die st&#228;ndige Verbesserung uns=
-eres Managementsystems. Wir definieren die Unternehmensprozesse und Ziele k=
-lar und transparent, &#252;berwachen und analysieren diese regelm&#228;&#22=
-3;ig und reagieren schnell auf Abweichungen.<br>
-      <strong><br>
-      Karriere</strong><br>
-      Die Solar-International Ltd. wurde Anfang 2004 in der Ukraine gegr&#2=
-52;ndet und geh&#246;rt mit ihren hochwertigen Produkten heute zu den europ=
-aweit f&#252;hrenden Unternehmen der Solartechnik.<br>
-      Das Produktspektrum umfa&#223;t Solarstrommodule, Wechselrichter, Bef=
-estigungssysteme und weitere Komponenten sowie komplette Solarstromanlagen =
-f&#252;r netzgebundene und netzferne Anwendungen. Unsere Kunden sind Instal=
-lationsbetriebe, Betreibergesellschaften, OEM-Kunden und der Gro&#223;hande=
-l. Generalimporteure im Ausland sorgen f&#252;r steigende Export-Zahlen.<br=
->
-      <br>
-      Ein dezidiertes Qualit&#228;tssicherungskonzept und die Produktion in=
- der mehrfach ausgezeichneten "Nullemissionsfabrik"sichern der Solar-Fabrik=
- hohe Qualit&#228;tsstandards und &#246;kologische Glaubw&#252;rdigkeit.<br=
->
-      <br>
-    Aufgrund des kontinuierlichen Wachstums auf dem europ&#228;ischen und d=
-en internationalen M&#228;rkten sowie den stetig steigenden Produktionskapa=
-zit&#228;ten sind wir immer auf der Suche nach qualifizierten und hoch moti=
-vierten Arbeitskr&#228;ften.</p>
-    <p><br>
-      <strong>Mehr dazu unter unseren aktuellen Stellenangeboten:</strong><=
-br>
-      <br>
-      Wir suche zur Zeit:<br>
-      - Mitarbeiter/- in in Teilzeit, Vertrieb Innendienst (First Level Sup=
-port)<br>
-      <br>
-      <strong>Ihre Aufgaben:</strong><br>
-      - Verwaltung und Weiterleitung der Kundengelder<br>
-      - Weiterleitung von Privatkunden-Gelder an unsere Vertriebspartner<br=
->
-      - Auftragsannahme<br>
-      <br>
-      Unser Service Center bietet den ersten Kontakt mit unserem Unternehme=
-n und &#252;bertr&#228;gt den =84Spirit" der Marke Solar-International Ltd.=
- auf unsere Kunden.<br>
-      Sie gestalten den Kontakt &#228;u&#223;erst positiv, indem Sie kompet=
-ent, verbindlich und freundlich gegen&#252;ber unseren Kunden auftreten.<br=
->
-      <br>
-      <strong>Ihr Profil:</strong><br>
-      Sie sind kommunikativ und trauen sich zu, die vertriebsorientierten A=
-ufgaben in unserem Service Team zu bew&#228;ltigen.<br>
-      Die Besch&#228;ftigung erfolgt im Rahmen eines Job-Sharing Systems. I=
-hre Arbeitszeiten betragen 2 bis 8 Stunden in der Woche.<br>
-      Internet, E-Mail, Grundkenntnisse der Hauptzahlungssysteme. Es w&#228=
-;re w&#252;nschenswert, wenn Sie ein eigenes Konto in einem deutschen<br>
-      Geldinstitut mit Online Banking h&#228;tten.<br>
-      Genauigkeit, P&#252;nktlichkeit, Zuverl&#228;ssigkeit und nat&#252;rl=
-ich eine gesunde Arbeitseinstellung.<br>
-      <br>
-      <strong>Ihr Vorteile und Ihr Verdienst:</strong><br>
-      - Sie werden zun&#228;chst unser Vertreter und Mittelsmann zwischen u=
-ns und unseren Kunden in Ihrem Land.<br>
-    - Sie zahlen keine Geb&#252;hren und m&#252;ssen nichts investieren.<br=
->
-    - Sie haben eine flexible , interessante Arbeit , mit unterschiedlichen=
- T&#228;tigkeitsschwerpunkten und hohen Bef&#246;rderungsm&#246;glichkeiten=
-<br>
-      - Sie verdienen zuerst zwischen 500 und 1000 Euro pro Woche.<br>
-      - Sie k&#246;nnen selbst Ihren Verdienst bestimmen. - da Sie auf eine=
-m Prozentsatz arbeiten - h&#228;ngt Ihr Verdienst nur von Ihrer Arbeitsbere=
-itschaft ab.<br>
-      <br>
-      Wenn Sie sich f&#252;r eine innovative Energietechnik engagieren woll=
-en und ein attraktives T&#228;tigkeitsfeld im Wachstumsmarkt Solarenergie s=
-uchen, freuen wir uns auf Ihre Bewerbung mit einem Foto.<br>
-      Falls Sie f&#252;r unser Angebot Interesse haben und bereit sind, ein=
-e gut bezahlte, aber auch verantwortungsvolle Arbeit auszuf&#252;hren, so s=
-chreiben Sie uns bitte an:      <strong>support_s2@mail.ru</strong><br>
-      <br>
-      Nach der Bearbeitung Ihrer Bewerbung, wird Ihnen im Falle einer Zusag=
-e Ihre T&#228;tigkeit genauestens erl&#228;utert, Sie werden mit unserer Ge=
-sellschaft bekannt gemacht und es folgt in k&#252;rze der Arbeitsvertrag<br=
->
-      <br>
-      Wir hoffen auf eine gute und erfolgreiche Zusammenarbeit<br>
-      <strong><br>
-      Mit freundlichen Gr&#252;ssen</strong><br>
-      Solar-International  Ltd.<br>
-      <br>
-      <em>Diese Email wurde von einem unserer Email Roboter erstellt. Antwo=
-rten Sie bitte nicht an folgende Email mit der Option "an Absender antworte=
-n", senden Sie keine Emails an die Absenderadresse, da Ihre Email automatis=
-ch gel&#246;scht wird. Unsere Email ist weiter oben angegeben. </em><br>
-    </p>
-  </div>
-</div>
-</body>
-</html>
-</BODY></HTML>
-
-------=_NextPart_000_000E_01C7C987.3D0EB350--
-
-
-
---===============0228510473==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by DB2 Express
-Download DB2 Express C - the FREE version of DB2 express and take
-control of your XML. No limits. Just data. Click to get it now.
-http://sourceforge.net/powerbar/db2/
---===============0228510473==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============0228510473==--
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index e90f4a8..b8da5dd 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -1916,7 +1916,7 @@ nfsd_racache_init(int cache_size)
+ 		raparm_hash[i].pb_head = NULL;
+ 		spin_lock_init(&raparm_hash[i].pb_lock);
+ 	}
+-	nperbucket = cache_size >> RAPARM_HASH_BITS;
++	nperbucket = DIV_ROUND_UP(cache_size, RAPARM_HASH_SIZE);
+ 	for (i = 0; i < cache_size - 1; i++) {
+ 		if (i % nperbucket == 0)
+ 			raparm_hash[j++].pb_head = raparml + i;
+-- 
+1.5.3.rc2
