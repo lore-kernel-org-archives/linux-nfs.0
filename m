@@ -1,25 +1,31 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 000 of 20] knfsd: Support 'secinfo' exports with
-	related cleanups
-Date: Wed, 18 Jul 2007 18:57:25 -0400
-Message-ID: <11847994502579-git-send-email-bfields@fieldses.org>
+Subject: [PATCH 2/5] nfsd: return errors, not NULL,
+	from export functions
+Date: Wed, 18 Jul 2007 18:57:27 -0400
+Message-ID: <11847994503243-git-send-email-bfields@fieldses.org>
 References: <20070713114228.3c171a90.akpm@linux-foundation.org>
+	<11847994502579-git-send-email-bfields@fieldses.org>
+	<11847994502502-git-send-email-bfields@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: NeilBrown <neilb@suse.de>, andros@citi.umich.edu,
+	"J. Bruce Fields" <bfields@citi.umich.edu>,
 	nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
 To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IBISb-0002vg-Nk
+	id 1IBISc-0002vh-Bj
 	for nfs@lists.sourceforge.net; Wed, 18 Jul 2007 15:57:41 -0700
 Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IBISf-0007TS-6H
-	for nfs@lists.sourceforge.net; Wed, 18 Jul 2007 15:57:37 -0700
-In-Reply-To: <20070713114228.3c171a90.akpm@linux-foundation.org>
+	(Exim 4.44) id 1IBISf-0007TU-Td
+	for nfs@lists.sourceforge.net; Wed, 18 Jul 2007 15:57:38 -0700
+In-Reply-To: <11847994502502-git-send-email-bfields@fieldses.org>
+Message-Id: <278646972e4b7eaf86d648d8ee2ae879f8b6b680.1184798679.git.bfields@citi.umich.edu>
+In-Reply-To: <2ac9f179334dc7894bb58b1c2fb62837a07fbbdf.1184798679.git.bfields@citi.umich.edu>
+References: <2ac9f179334dc7894bb58b1c2fb62837a07fbbdf.1184798679.git.bfields@citi.umich.edu>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,37 +38,63 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+From: J. Bruce Fields <bfields@citi.umich.edu>
 
-On Fri, 13 Jul 2007 11:42:28 -0700 Andrew Morton <akpm@linux-foundation.org> wrote:
-> On Fri, 13 Jul 2007 14:10:25 -0400 "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > On Fri, Jul 13, 2007 at 12:33:10AM -0700, Andrew Morton wrote:
-> > > Please consider feeding knfsd patches through checkpatch in the
-> > > future.  It did find several glitches in these patches which you
-> > > might have chosen to address.
-> >
-> > OK.  I guess I'll wait till the next -mm is out, take a look, and
-> > address your comments then.
->
-> I probably won't get another -mm out until after the 2.6.23 merge window
-> closes.  One reason for this is all the extra time which I need to
-> devote to code-review, hint.
-> 
-> But I don't think there was anything which I identified in this nfsd
-> batch which needs attention prior to a 2.6.23-rc1 merge.  The checkpatch
-> stuff is more a "please do this next time" thing.
+I converted the various export-returning functions to return -ENOENT
+instead of NULL, but missed a few cases.
 
-OK, so the following address the review comments.
+This particular case could cause actual bugs in the case of a krb5
+client that doesn't match any ip-based client and that is trying to
+access a filesystem not exported to krb5 clients.
 
-The first two should really be applied before -rc1 if at all possible:
+Signed-off-by: "J. Bruce Fields" <bfields@citi.umich.edu>
+---
+ fs/nfsd/export.c |    8 ++++----
+ 1 files changed, 4 insertions(+), 4 deletions(-)
 
-	- the first is a preexisting bug stumbled on while doing this
-	  work, also suitable for stable.
-	- the second is a fix for a regression introduced by my patches.
-	  (Apologies!)
+diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+index c7bbf46..6ab8de4 100644
+--- a/fs/nfsd/export.c
++++ b/fs/nfsd/export.c
+@@ -1265,7 +1265,7 @@ struct svc_export *
+ rqst_exp_get_by_name(struct svc_rqst *rqstp, struct vfsmount *mnt,
+ 		struct dentry *dentry)
+ {
+-	struct svc_export *gssexp, *exp = NULL;
++	struct svc_export *gssexp, *exp = ERR_PTR(-ENOENT);
+ 
+ 	if (rqstp->rq_client == NULL)
+ 		goto gss;
+@@ -1288,7 +1288,7 @@ gss:
+ 						&rqstp->rq_chandle);
+ 	if (PTR_ERR(gssexp) == -ENOENT)
+ 		return exp;
+-	if (exp && !IS_ERR(exp))
++	if (!IS_ERR(exp))
+ 		exp_put(exp);
+ 	return gssexp;
+ }
+@@ -1296,7 +1296,7 @@ gss:
+ struct svc_export *
+ rqst_exp_find(struct svc_rqst *rqstp, int fsid_type, u32 *fsidv)
+ {
+-	struct svc_export *gssexp, *exp = NULL;
++	struct svc_export *gssexp, *exp = ERR_PTR(-ENOENT);
+ 
+ 	if (rqstp->rq_client == NULL)
+ 		goto gss;
+@@ -1318,7 +1318,7 @@ gss:
+ 						&rqstp->rq_chandle);
+ 	if (PTR_ERR(gssexp) == -ENOENT)
+ 		return exp;
+-	if (exp && !IS_ERR(exp))
++	if (!IS_ERR(exp))
+ 		exp_put(exp);
+ 	return gssexp;
+ }
+-- 
+1.5.3.rc2
 
-(The other three patches, as you say, can wait till after rc1.)
-
---b.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
