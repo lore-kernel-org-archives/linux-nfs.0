@@ -1,28 +1,28 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH 013 of 20] knfsd: nfsd: factor out code
-	from	show_expflags
-Date: Thu, 19 Jul 2007 10:16:14 +1000
-Message-ID: <18078.44366.961344.428533@notabene.brown>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [PATCH 013 of 20] knfsd: nfsd: factor out code from
+ show_expflags
+Date: Wed, 18 Jul 2007 17:18:59 -0700
+Message-ID: <20070718171859.8d1276fd.akpm@linux-foundation.org>
 References: <20070710121949.12548.patches@notabene>
 	<1070710022737.13509@suse.de>
 	<20070713002933.f15724a7.akpm@linux-foundation.org>
 	<20070718230555.GN7111@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+Cc: NeilBrown <neilb@suse.de>, nfs@lists.sourceforge.net,
+	linux-kernel@vger.kernel.org
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IBJgx-0002cz-CL
-	for nfs@lists.sourceforge.net; Wed, 18 Jul 2007 17:16:27 -0700
-Received: from cantor.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	id 1IBJkK-0002vk-UX
+	for nfs@lists.sourceforge.net; Wed, 18 Jul 2007 17:19:57 -0700
+Received: from smtp2.linux-foundation.org ([207.189.120.14])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IBJh0-0005Hc-QD
-	for nfs@lists.sourceforge.net; Wed, 18 Jul 2007 17:16:31 -0700
-In-Reply-To: message from J. Bruce Fields on Wednesday July 18
+	(Exim 4.44) id 1IBJkO-0000ZK-H2
+	for nfs@lists.sourceforge.net; Wed, 18 Jul 2007 17:20:00 -0700
+In-Reply-To: <20070718230555.GN7111@fieldses.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,7 +35,9 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wednesday July 18, bfields@fieldses.org wrote:
+On Wed, 18 Jul 2007 19:05:55 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
+
 > On Fri, Jul 13, 2007 at 12:29:33AM -0700, Andrew Morton wrote:
 > > On Tue, 10 Jul 2007 12:27:37 +1000 NeilBrown <neilb@suse.de> wrote:
 > > 
@@ -56,15 +58,13 @@ On Wednesday July 18, bfields@fieldses.org wrote:
 > > But in general: be cautious when feeding opaque types to printk.
 > 
 > OK, here I'm still confused--what should we be doing instead?
+> 
 
-Cast the variable to a type that printf knows about.
-       seq_printf(m, ",anonuid=%d", (int)anonu);
+Nothing? I was just having a little self-muse.
 
-Or maybe cast it to (long) and use %ld, just in case...
+If one was really anal, one could typecast it to an unsigned long long in
+the printk, then feel smug when we switch to 64-bit uid's.
 
-Note the stray 's' in the current patch, after the comma!
-
-NeilBrown
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by DB2 Express
