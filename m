@@ -1,59 +1,55 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] nfsd: fix horrible indentation in nfsd_setattr
-Date: Fri, 20 Jul 2007 15:19:30 -0400
-Message-ID: <20070720191930.GJ6514@fieldses.org>
-References: <20070307152625.GA29633@infradead.org>
-	<20070513204407.GC13563@infradead.org>
-	<20070720184923.GA24937@infradead.org>
+Subject: [PATCH] knfsd: Fix typo in export display, print uid and gid as
+	unsigned
+Date: Fri, 20 Jul 2007 18:18:15 -0400
+Message-ID: <20070720221815.GP6514@fieldses.org>
+References: <20070710121949.12548.patches@notabene> <1070710022737.13509@suse.de> <20070713002933.f15724a7.akpm@linux-foundation.org> <20070718230555.GN7111@fieldses.org> <18078.44366.961344.428533@notabene.brown> <20070719153536.GB23093@fieldses.org> <18080.7196.844577.295882@notabene.brown>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IBy0i-0002VA-Dn
-	for nfs@lists.sourceforge.net; Fri, 20 Jul 2007 12:19:32 -0700
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IBy0l-00030q-0P
-	for nfs@lists.sourceforge.net; Fri, 20 Jul 2007 12:19:36 -0700
-In-Reply-To: <20070720184923.GA24937@infradead.org>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+To: Neil Brown <neilb@suse.de>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S935627AbXGTWS2@vger.kernel.org>
+In-Reply-To: <18080.7196.844577.295882@notabene.brown>
+Sender: linux-kernel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-On Fri, Jul 20, 2007 at 07:49:23PM +0100, Christoph Hellwig wrote:
-> On Sun, May 13, 2007 at 09:44:07PM +0100, Christoph Hellwig wrote:
-> > On Wed, Mar 07, 2007 at 03:26:25PM +0000, Christoph Hellwig wrote:
-> > > 
-> > > Signed-off-by: Christoph Hellwig <hch@lst.de>
-> > 
-> > ping?
+From: J. Bruce Fields <bfields@citi.umich.edu>
+
+For display purposes, treat uid's and gid's as unsigned ints for now.
+Also fix a typo.
+
+Signed-off-by: "J. Bruce Fields" <bfields@citi.umich.edu>
+---
+ fs/nfsd/export.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
+
+On Fri, Jul 20, 2007 at 12:21:16PM +1000, Neil Brown wrote:
+> On Thursday July 19, bfields@fieldses.org wrote:
+> > Sharp eyes, thanks!  I'll make a patch.  Uh, any objection if I print
+> > all those uid's as unsigned while I'm at it?
 > 
-> ping^2
+> I wondered about that too.  I think we have completely removed the
+> fiction that 'nobody' is '-2' rather than '65534' so it should be both
+> safe and sensible to make them unsigned.
 
-Git is whining because the indention for the first line of multi-line
-comments has spaces in between two tabs.
+OK!  Here's what I've got.--b.
 
-Other than that seems fine, thanks.  I've added it to my tree and will
-submit it eventually if nobody else picks it up....
-
---b.
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Microsoft
-Defy all challenges. Microsoft(R) Visual Studio 2005.
-http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+index 6ab8de4..2d295dd 100644
+--- a/fs/nfsd/export.c
++++ b/fs/nfsd/export.c
+@@ -1503,9 +1503,9 @@ static void exp_flags(struct seq_file *m, int flag, int fsid,
+ 	if (flag & NFSEXP_FSID)
+ 		seq_printf(m, ",fsid=%d", fsid);
+ 	if (anonu != (uid_t)-2 && anonu != (0x10000-2))
+-		seq_printf(m, ",sanonuid=%d", anonu);
++		seq_printf(m, ",anonuid=%u", anonu);
+ 	if (anong != (gid_t)-2 && anong != (0x10000-2))
+-		seq_printf(m, ",sanongid=%d", anong);
++		seq_printf(m, ",anongid=%u", anong);
+ 	if (fsloc && fsloc->locations_count > 0) {
+ 		char *loctype = (fsloc->migrated) ? "refer" : "replicas";
+ 		int i;
+-- 
+1.5.3.rc2
