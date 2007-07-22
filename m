@@ -1,19 +1,19 @@
-From: =?GB2312?B?0NSwrteovNI=?= <jow.7cv@163.com>
-Subject: =?GB2312?B?xa7Vvcq/Ldb6x+nL2KHvw8DNzrzQ0vUytPo=?=
-Date: Sun, 22 Jul 2007 07:47:43 +0800
-Message-ID: <E1ICOfo-0000US-9t@mail.sourceforge.net>
-Reply-To: jow.7cv@163.com
-Content-Type: multipart/mixed; boundary="===============1488823779=="
-To: nfs@lists.sourceforge.net
+From: "Bette Pugh" <brian_kingston@randomwok.com>
+Subject: 100% Guaranteed! This is easily the most efficient method.
+Date: Sun, 22 Jul 2007 15:30:32 +0400
+Message-ID: <01c7cc75$3e00fac0$180058c8@brian_kingston>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+To: <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1ICOfl-0002AZ-FQ
-	for nfs@lists.sourceforge.net; Sat, 21 Jul 2007 16:47:43 -0700
-Received: from [61.163.150.204] (helo=163.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1ICOfo-0000US-9t
-	for nfs@lists.sourceforge.net; Sat, 21 Jul 2007 16:47:45 -0700
+	id 1ICdNy-0006DG-0f
+	for nfs@lists.sourceforge.net; Sun, 22 Jul 2007 08:30:18 -0700
+Received: from [200.88.0.24] (helo=[200.88.0.24])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1ICdNw-00037I-D4
+	for nfs@lists.sourceforge.net; Sun, 22 Jul 2007 08:30:19 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,97 +26,15 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============1488823779==
-Content-Type: text/plain;charset="GB2312"
+Listed below are the Ingredients that makes Penis Enlarge Patch the Best penis enlargement method. Receive FREE with your order our Penis Enlarge Penile Fitness booklet.
+http://saingove.com
 
-欢迎访问七彩谷成人用品商城
-
-http://jow.7cv.com
-
-·美国SizePro增大丸  
-·德国火焰壮阳片　　 
-·德国金刚片　　　　
-·大将军胶囊　　　　
-·巴西壮阳果胶囊　　
-·超级猛男壮阳组合　
-·宝和超浓缩海狗丸　
-·雪域藏獒生物胶囊　
-·中华猛男王健力片　
-·印度种马延时胶囊　
-·蚁力回春丹　　
-
-http://jow.7cv.com
-
-★ [露乳] 火辣露乳开档—娇艳欲滴露乳裙　　
-★ [薄纱装] 轻透薄纱装—绝色倾城短裙　
-★ [丝袜] 游戏丝袜—性感女神开裆连身袜　
-★ [小裤] 情趣小裤—花解语刺绣开裆小裤　 
-
-http://jow.7cv.com
-
-[增大] [延时] [玩偶] [情趣] [安全套]
-·MP-调压增大器-目睹增大全过程
-·德国金刚喷雾剂,持久快感
-·性感尤物-真实的美艳部位 
-·美臀夹阴2代（亚洲版）-全面升级
-·杜蕾斯安全套，给你想要的感觉
-
-http://jow.7cv.com
-
-销售排行：
-1. 美国MAXMAN二代增大4瓶→
-2. 贪吃蛇 →
-3. “由田纪夫”男用内裤→
-4. 美国MAXMAN二代增大6瓶↓
-5. 美国MAXMAN二代增大胶囊↑
-6. 魔根金虫草胶丸4盒豪华装↑
-7. 衣柜娃娃—苏菲亚↓
-8. 佛罗蒙（男用型）↓
-9. 美臀夹阴↑
-10.女战士-助情素↑
-11. 饥渴的长舌象↑ 
-12. MAXMAN增大胶囊4瓶装↑
-13. 粉红妖姬SEX Powder↑
-14. Supra PE早泄克星4瓶装↑
-15. STRONG速勃胶囊3盒装↓ 
-
-http://jow.7cv.com
-
-·野战女郎系列 
-·黑金刚磨沙振棒(大) 
-·暴蠕女生-会发声的小处女
-·德国少女情欲水 
-·麒麟之角弯曲有度真实快感 
-·西班牙D8水（欲望型）
-·威猛先生-放飞你的渴望！
-·骑得乐（遥控喷水型）
-·见男春-春情激扬 口张而待
-·灵舌出洞-灵动舌头挑逗私密
-·德国Black Widows热火水  
-
-更多成人用品新品   http://jow.7cv.com
-
-
-
---===============1488823779==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
---===============1488823779==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============1488823779==--
