@@ -1,27 +1,29 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [RFC:PATCH] How best to handle implicit clearing of
- setuid/setgid bits on NFS?
-Date: Mon, 23 Jul 2007 15:05:48 -0400
-Message-ID: <20070723150548.8f951bf6.jlayton@redhat.com>
-References: <20070529124705.a1e70735.jlayton@redhat.com>
-	<1182982555.5311.67.camel@heimdal.trondhjem.org>
-	<20070627221354.02233c58.jlayton@redhat.com>
-	<1183037902.6163.29.camel@heimdal.trondhjem.org>
+From: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
+Subject: Re: bug : sm-notify path is hardcoded into statd
+Date: Mon, 23 Jul 2007 22:27:38 +0200
+Message-ID: <20070723202738.GA5235@uio.no>
+References: <46A4D420.1040801@oxeva.fr>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: linux-fsdevel@vger.kernel.org, aviro@redhat.com,
-	nfs@lists.sourceforge.net, nhorman@tuxdriver.com
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1ID3EF-0003ab-Pk
-	for nfs@lists.sourceforge.net; Mon, 23 Jul 2007 12:06:00 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1ID3EI-000582-0d
-	for nfs@lists.sourceforge.net; Mon, 23 Jul 2007 12:06:03 -0700
-In-Reply-To: <1183037902.6163.29.camel@heimdal.trondhjem.org>
+	id 1ID4VJ-0003th-W5
+	for nfs@lists.sourceforge.net; Mon, 23 Jul 2007 13:27:42 -0700
+Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1ID4VM-0007nQ-Hh
+	for nfs@lists.sourceforge.net; Mon, 23 Jul 2007 13:27:45 -0700
+Received: from trofast.ipv6.sesse.net ([2001:700:300:1803:20e:cff:fe36:a766]
+	helo=trofast.sesse.net)
+	by cassarossa.samfundet.no with esmtp (Exim 4.50) id 1ID4VG-0000yK-CN
+	for nfs@lists.sourceforge.net; Mon, 23 Jul 2007 22:27:38 +0200
+Received: from sesse by trofast.sesse.net with local (Exim 3.36 #1 (Debian))
+	id 1ID4VG-0001My-00
+	for <nfs@lists.sourceforge.net>; Mon, 23 Jul 2007 22:27:38 +0200
+In-Reply-To: <46A4D420.1040801@oxeva.fr>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,71 +36,22 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, 28 Jun 2007 09:38:22 -0400
-Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+On Mon, Jul 23, 2007 at 06:15:28PM +0200, Gabriel Barazer wrote:
+> Just found another which happens when nfs utilities are not installed in 
+> /usr/sbin (e.g. because it's installed in /sbin for a diskless setup), 
+> statd can't properly call sm-notify because the path to sm-notify is 
+> hardcoded at utils/statd/statd.c:226 (nfs-utils-1.1.0). To preserve 
+> consistency with configure switch, we must instead replace it with the 
+> sbindir variable. (I can't reliably do a patch because I don't know 
+> enough how to deal with the autotools).
 
-> On Wed, 2007-06-27 at 22:13 -0400, Jeff Layton wrote:
-> > Ok. This is a bit more complex now since we remove suid bits on
-> > truncate, but don't set ATTR_FORCE.
-> > 
-> > Here's a patch that should do this. I know there's a general
-> > aversion to adding new flags to vfs structures, but I couldn't think of
-> > a way to cleanly do this without adding one.
-> > 
-> > Note that I've not tested this patch at all so this is just a RFC.
-> > 
-> > CC'ing Al here since he's expressed interest in this problem as well.
-> > 
-> > Thoughts?
-> 
-> We don't really need to do this with extra VFS flags. Here is my
-> preferred approach for dealing with this problem.
-> 
->         http://article.gmane.org/gmane.linux.nfs/8511/match=attr%5fkill%5fsuid
-> 
-> As you can see, that still allows the filesystem to determine how it
-> should deal with the ATTR_KILL_SUID/ATTR_KILL_SGID flags. The default
-> behaviour is provided by inode_setattr(), and is the same as today. Only
-> filesystems that don't use inode_setattr() will need to be audited for
-> whether or not they need a fix.
-> 
-> Cheers,
->   Trond
+FWIW, in Debian we simply change it to /sbin. A proper patch upstream would
+probably be preferable, though -- smaller delta from upstream to
+distributions is always good.
 
-
-I had a look at this today, and I have some reservations about this
-approach. Quite a few filesystems define a .setattr inode op, but don't
-call inode_setattr. As a first pass through the current git tree, the
-following setattr ops never seem to call inode_setattr:
-
-adfs_notify_change
-afs_setattr
-coda_setattr
-ecryptfs_setattr
-fuse_setattr
-jffs2_setattr
-nfs_setattr (expected)
-ntfs_setattr
-smb_notify_change
-xfs_vn_setattr
-
-...some of these won't matter, but some will need to be fixed. There
-may be other situations we'll need to fix as well.
-
-My concern here is that we'll be moving from a "default safe" model for
-filesystems that define a .setattr op to one where those filesystems
-are expected to make sure that they clear setuid/gid bits. They can do
-this with a simple call to inode_setattr, or on their own, but they
-must do it. Is this really the right thing to do here?
-
-It seems like an "opt-out" approach when clearing these bits might be
-safer. i.e., make it so that filesystems have to explicitly disable
-clearing of setuid/setgid bits.
-
-Thoughts?
-
+/* Steinar */
 -- 
-Jeff Layton <jlayton@redhat.com>
+Homepage: http://www.sesse.net/
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
