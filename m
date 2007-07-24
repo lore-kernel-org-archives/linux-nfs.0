@@ -1,20 +1,20 @@
-From: Bella <vdkac@suncocarriers.com>
+From: Dennis <itg@skynet.be>
 Subject: (no subject)
-Date: Tue, 24 Jul 2007 10:41:53 -0400
-Message-ID: <46A60FB1.1030701@suncocarriers.com>
+Date: Tue, 24 Jul 2007 10:42:27 -0400
+Message-ID: <46A60FD3.4060604@skynet.be>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------070204080203080002070304"
+Content-Type: multipart/mixed; boundary="------------010100030206000508010104"
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IDLaE-0001vC-F4
-	for nfs@lists.sourceforge.net; Tue, 24 Jul 2007 07:41:54 -0700
+	id 1IDLak-00023r-R2
+	for nfs@lists.sourceforge.net; Tue, 24 Jul 2007 07:42:26 -0700
 Received: from [74.93.195.229]
 	(helo=74-93-195-229-WashingtonDC.hfc.comcastbusiness.net)
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1IDLaF-0002u8-Nt
-	for nfs@lists.sourceforge.net; Tue, 24 Jul 2007 07:41:58 -0700
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1IDLao-0001GC-8r
+	for nfs@lists.sourceforge.net; Tue, 24 Jul 2007 07:42:30 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,13 +27,13 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---------------070204080203080002070304
+--------------010100030206000508010104
 Content-Type: text/plain; charset=windows-1252; format=flowed
 Content-Transfer-Encoding: 7bit
 
 
 
---------------070204080203080002070304
+--------------010100030206000508010104
 Content-Type: application/pdf;
  name="message.pdf"
 Content-Transfer-Encoding: base64
@@ -184,7 +184,7 @@ MDAwMDc1NzQgMDAwMDAgbiAKdHJhaWxlcgoKPDwKL0VuY3J5cHQgMTEgMCBSCi9JbmZvIDEyIDAg
 UgovUm9vdCAxIDAgUgovU2l6ZSAxMwovSUQgWzw5ZWQxODRhNzQyMjE0NjVjYmYzYTU0NmQ4MWI1
 MTM5Nz48ZTEzYmIwZDY1NzAxZTQzZDdhOGU3Y2I3YWQyODExMmI+XQo+PgpzdGFydHhyZWYKNzcy
 OAolJUVPRgo=
---------------070204080203080002070304
+--------------010100030206000508010104
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -195,7 +195,7 @@ This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
---------------070204080203080002070304
+--------------010100030206000508010104
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -205,4 +205,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---------------070204080203080002070304--
+--------------010100030206000508010104--
