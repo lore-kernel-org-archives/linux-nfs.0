@@ -1,27 +1,30 @@
 From: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
-Subject: /usr on NFS
-Date: Wed, 25 Jul 2007 01:37:24 +0200
-Message-ID: <20070724233724.GA17465@uio.no>
+Subject: Re: Status of mount.nfs
+Date: Wed, 25 Jul 2007 01:41:19 +0200
+Message-ID: <20070724234119.GA17540@uio.no>
+References: <20070708191640.GA13962@uio.no>
+	<18065.43199.104020.412029@notabene.brown>
+	<20070715083114.GB4158@uio.no>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IDTwV-0003nL-NA
-	for nfs@lists.sourceforge.net; Tue, 24 Jul 2007 16:37:27 -0700
+	id 1IDU0H-00049g-HX
+	for nfs@lists.sourceforge.net; Tue, 24 Jul 2007 16:41:21 -0700
 Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IDTwY-00064F-Ah
-	for nfs@lists.sourceforge.net; Tue, 24 Jul 2007 16:37:31 -0700
-Received: from trofast.ipv6.sesse.net ([2001:700:300:1803:20e:cff:fe36:a766]
-	helo=trofast.sesse.net)
-	by cassarossa.samfundet.no with esmtp (Exim 4.50) id 1IDTwS-0004QV-HT
-	for nfs@lists.sourceforge.net; Wed, 25 Jul 2007 01:37:24 +0200
+	(Exim 4.44) id 1IDU0K-0003v6-4H
+	for nfs@lists.sourceforge.net; Tue, 24 Jul 2007 16:41:25 -0700
+Received: from trofast.sesse.net ([129.241.93.32])
+	by cassarossa.samfundet.no with esmtp (Exim 4.50) id 1IDU0G-0004mi-IA
+	for nfs@lists.sourceforge.net; Wed, 25 Jul 2007 01:41:20 +0200
 Received: from sesse by trofast.sesse.net with local (Exim 3.36 #1 (Debian))
-	id 1IDTwS-0004YH-00
-	for <nfs@lists.sourceforge.net>; Wed, 25 Jul 2007 01:37:24 +0200
+	id 1IDU0G-0004Zt-00
+	for <nfs@lists.sourceforge.net>; Wed, 25 Jul 2007 01:41:20 +0200
+In-Reply-To: <20070715083114.GB4158@uio.no>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,12 +37,15 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi,
+On Sun, Jul 15, 2007 at 10:31:14AM +0200, Steinar H. Gunderson wrote:
+> Just a few experiences with this after a week or so with the new default in
+> Debian:
 
-This has come up a few times lately from users, so I thought I should pass on
-the question. What's the official policy for supporting /usr on NFS? What
-about /usr on NFSv4 (where idmapd would be needed)? What about NFSv4 +
-Kerberos?
+Here's a new one: mount doesn't pass -s (--sloppy) on to mount.nfs. This
+causes odd behavior when people give all sorts of weird options, especially
+(it seems) to automount. I've asked the util-linux maintainer in Debian to
+fix the bug (and probably send the patch upstream), but I guess you should be
+aware of the issue until it's fixed.
 
 /* Steinar */
 -- 
