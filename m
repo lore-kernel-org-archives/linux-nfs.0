@@ -1,23 +1,30 @@
-From: "Weiss wrack" <sharpshoot@bluecanyonclub.com>
-Subject: directory of american MD's
-Date: Mon, 23 Jul 2007 22:17:09 -0100
-Message-ID: <8A017EE3.7684.7615C2D5@localhost>
+From: Simon Gao <gao@schrodinger.com>
+Subject: Autofs failed auto umounting NFS shares exported by Solaris 10
+Date: Mon, 23 Jul 2007 21:15:54 -0700
+Message-ID: <46A57CFA.2010507@schrodinger.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1996984978=="
-To: rxmpo@mail.com, info@genetimedic.com,
-	kelly@gaierconstruction.com, jadngp@yahoo.com,
-	nfs@lists.sourceforge.net, xmpm@qvsaf.it, circinfo@hpl.lib.tx.us,
-	tim@mail2litigator.com, wmwhiteh@umich.edu
+Content-Type: text/plain; charset="us-ascii"
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1ID6My-00007r-Iw
-	for nfs@lists.sourceforge.net; Mon, 23 Jul 2007 15:27:13 -0700
-Received: from mail.cutuk.com ([80.65.69.71])
-	by mail.sourceforge.net with esmtps (SSLv3:AES256-SHA:256)
-	(Exim 4.44) id 1ID6N0-0001mL-Rd
-	for nfs@lists.sourceforge.net; Mon, 23 Jul 2007 15:27:16 -0700
+	id 1IDBog-0001AJ-0G
+	for nfs@lists.sourceforge.net; Mon, 23 Jul 2007 21:16:11 -0700
+Received: from thermidore.schrodinger.com ([192.156.98.99]
+	helo=schrodinger.com) by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1IDBoi-0008NL-Ll
+	for nfs@lists.sourceforge.net; Mon, 23 Jul 2007 21:16:13 -0700
+Received: from toni.schrodinger.com (toni.schrodinger.com [192.156.98.56])
+	by schrodinger.com (8.13.4/8.13.4) with ESMTP id l6O4G0XF032146
+	for <nfs@lists.sourceforge.net>; Mon, 23 Jul 2007 21:16:00 -0700 (PDT)
+	(envelope-from gao@schrodinger.com)
+Received: from [10.10.18.38] (sub22-20.member.dsl-only.net [63.105.22.20])
+	(authenticated bits=0)
+	by toni.schrodinger.com (8.13.3/8.13.3) with ESMTP id l6O4FxkZ012167
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <nfs@lists.sourceforge.net>; Mon, 23 Jul 2007 21:16:00 -0700 (PDT)
+	(envelope-from gao@schrodinger.com)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,72 +37,47 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============1996984978==
-Content-type: text/plain; charset=US-ASCII
+Hi,
+
+I am seeing RHEL/CentOS 5.0 machine failed to un-mount NFS share 
+exported by Solaris 10 after time out period:
+
+Here are errors logged:
 
 
+Jul 23 20:14:45 client1 automount[1801]: umount_multi: could not stat fs 
+of /nfs/zfs
+Jul 23 20:19:48 client1 automount[1801]: umount_multi: could not stat fs 
+of /nfs/zfs
+Jul 23 20:24:51 client1 automount[1801]: umount_multi: could not stat fs 
+of /nfs/zfs
+Jul 23 20:29:54 client1 automount[1801]: umount_multi: could not stat fs 
+of /nfs/zfs
+Jul 23 20:34:57 client1 automount[1801]: umount_multi: could not stat fs 
+of /nfs/zfs
+Jul 23 20:40:00 client1 automount[1801]: umount_multi: could not stat fs 
+of /nfs/zfs
+Jul 23 20:45:03 client1 automount[1801]: umount_multi: could not stat fs 
+of /nfs/zfs
+Jul 23 20:50:06 client1 automount[1801]: umount_multi: could not stat fs 
+of /nfs/zfs
+Jul 23 20:55:09 client1 automount[1801]: umount_multi: could not stat fs 
+of /nfs/zfs
+Jul 23 21:00:12 client1 automount[1801]: umount_multi: could not stat fs 
+of /nfs/zfs
 
 
-Only until July 27 - Order the Physician Listing and get hospitals, dentists, chiropractors and PT/OT without charge
+The autofs version is autofs-5.0.1-0.rc2.43.0.2.
 
+Anyone has seen similar problem?
 
-Licensed Physicians in the USA 
-
-788,389 in total – 17,400 emails
-
-34 primary and secondary specialties
-
-Fields: First name, Last name, Title, Specialty, Address (city, state, zip, county),
-Medical School Attended, Location of Residency Training, Phone, Fax, Email, Website,
-Primary Specialty, Secondary Specialty, Graduation Year, Major Activity, Hospital,
-Group  Practice Abms Certification
-
-Special Price: $397
-
------------------------------------------------------------------------
-Recieve the 4 medical Directorys below completely free! when you buy the Physician Contact List above -
------------------------------------------------------------------------
-
-Hospitals in the USA 
-23,000 Admins in more than 7,000 hospitals (value: $399)
-
-Dentists in the USA
-597,000 dentists and dental services  (value: $299)
-
-American Chiropractor Directory
-100,000 chiropractor’s offices in the USA   (value: $249)
-
-Physical Therapists in the USA
-125,000 listings for PT, OT RT and Speech Therapy  (value: $249)
-
-
-send email to: themedbiz@hotmail.com or by phone: 206-600-6530
-
-
-
-
-by sending us an email with "exit" in the subject we will know not to contact you again
-
-
---===============1996984978==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+Simon
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
---===============1996984978==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============1996984978==--
