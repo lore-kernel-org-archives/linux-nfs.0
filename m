@@ -1,114 +1,51 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH] NFS: have string-based mount options default to "intr"
-	mounts
-Date: Wed, 25 Jul 2007 15:48:24 -0400
-Message-ID: <46A7A908.3080906@oracle.com>
-References: <20070725145614.e17ca721.jlayton@redhat.com>	<46A7A632.2050900@oracle.com>
-	<20070725154107.063c3b9a.jlayton@redhat.com>
-Reply-To: chuck.lever@oracle.com
+From: Rick Macklem <rick@snowhite.cis.uoguelph.ca>
+Subject: Re: [PATCH] NFS: have string-based mount options default to
+	intr mounts
+Date: Wed, 25 Jul 2007 16:05:50 -0400 (EDT)
+Message-ID: <200707252005.QAA25492@snowhite.cis.uoguelph.ca>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------090404040502010406090008"
-Cc: nfsv4@linux-nfs.org, nfs@lists.sourceforge.net
-To: Jeff Layton <jlayton@redhat.com>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <20070725154107.063c3b9a.jlayton@redhat.com>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfsv4@linux-nfs.org, nfs@lists.sourceforge.net,
+	jlayton@redhat.com
+To: chuck.lever@oracle.com
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1IDn6E-0008Ir-74
+	for nfs@lists.sourceforge.net; Wed, 25 Jul 2007 13:04:47 -0700
+Received: from gigi.cs.uoguelph.ca ([131.104.94.210])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IDn6G-0000sz-SD
+	for nfs@lists.sourceforge.net; Wed, 25 Jul 2007 13:04:49 -0700
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
---------------090404040502010406090008
-Content-Type: text/plain; charset=US-ASCII; format=flowed
-Content-Transfer-Encoding: 7bit
-
-Jeff Layton wrote:
-> On Wed, 25 Jul 2007 15:36:18 -0400
 > Chuck Lever <chuck.lever@oracle.com> wrote:
 > 
->> I thought "nointr" was the default because it is safest.
->>
-> 
-> I could see maybe with soft mounts, but in conjunction with a hard
-> mount (which is the default) is there danger of corruption?
+> > I thought "nointr" was the default because it is safest.
+> > 
 
-If you hit ^C during a multi-segment write, I believe there is the 
-possibility of data corruption.
+I was actually impressed that "intr" mounts work for NFSv4. I would have
+thought interrupting an RPC that has state related (Open, Lock,...) op(s)
+in it would cause grief later. (NFSERR_BADSEQID or similar)
 
->> Jeff Layton wrote:
->>> The current string-based mount options default to "nointr" mounts. This
->>> is consistent with the current behavior of the struct-based mount
->>> options for NFSv2/3, but inconsistent with v4.
->>>
->>> I've just sent a nfs-utils patch to make the default be "intr" for all
->>> NFS flavors. This patch makes the default the same when using
->>> string-based mount options.
->>>
->>> Signed-off-by: Jeff Layton <jlayton@redhat.com>
->>>
->>> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
->>> index b2a851c..55f9b8b 100644
->>> --- a/fs/nfs/super.c
->>> +++ b/fs/nfs/super.c
->>> @@ -1122,7 +1122,9 @@ static int nfs_validate_mount_data(struct nfs_mount_data **options,
->>>  		char *c;
->>>  		int status;
->>>  		struct nfs_parsed_mount_data args = {
->>> -			.flags		= (NFS_MOUNT_VER3 | NFS_MOUNT_TCP),
->>> +			.flags		= (NFS_MOUNT_INTR |
->>> +					   NFS_MOUNT_VER3 |
->>> +					   NFS_MOUNT_TCP),
->>>  			.rsize		= NFS_MAX_FILE_IO_SIZE,
->>>  			.wsize		= NFS_MAX_FILE_IO_SIZE,
->>>  			.timeo		= 600,
->>> @@ -1608,6 +1610,7 @@ static int nfs4_validate_mount_data(struct nfs4_mount_data **options,
->>>  	default: {
->>>  		unsigned int len;
->>>  		struct nfs_parsed_mount_data args = {
->>> +			.flags		= NFS4_MOUNT_INTR,
->>>  			.rsize		= NFS_MAX_FILE_IO_SIZE,
->>>  			.wsize		= NFS_MAX_FILE_IO_SIZE,
->>>  			.timeo		= 600,
->>> _______________________________________________
->>> NFSv4 mailing list
->>> NFSv4@linux-nfs.org
->>> http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
-> 
-> 
+Do you spin off kernel threads to babysit those outstanding RPCs? rick
 
---------------090404040502010406090008
-Content-Type: text/x-vcard; charset=utf-8;
- name="chuck.lever.vcf"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="chuck.lever.vcf"
-
-begin:vcard
-fn:Chuck Lever
-n:Lever;Chuck
-org:Oracle Corporation;Corporate Architecture: Linux Projects Group
-adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
-title:Principal Member of Staff
-tel;work:+1 248 614 5091
-x-mozilla-html:FALSE
-version:2.1
-end:vcard
-
-
---------------090404040502010406090008
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Splunk Inc.
+Still grepping through log files to find problems?  Stop.
+Now Search log events and configuration files using AJAX and a browser.
+Download your FREE copy of Splunk now >>  http://get.splunk.com/
 _______________________________________________
-NFSv4 mailing list
-NFSv4@linux-nfs.org
-http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
---------------090404040502010406090008--
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
