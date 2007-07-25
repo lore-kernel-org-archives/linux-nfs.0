@@ -1,66 +1,66 @@
-From: "Steinar H. Gunderson" <sesse@debian.org>
-Subject: [PATCH] gssd(8) manpage typo
-Date: Wed, 25 Jul 2007 20:54:43 +0200
-Message-ID: <20070725185443.GA24265@uio.no>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH] nfs-utils: have mount.nfs default to "intr" mounts for v2
+	and v3
+Date: Wed, 25 Jul 2007 14:56:11 -0400
+Message-ID: <20070725145611.946d0a96.jlayton@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IDm0S-0000vs-9n
-	for nfs@lists.sourceforge.net; Wed, 25 Jul 2007 11:54:44 -0700
-Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IDm0U-0003O8-TM
-	for nfs@lists.sourceforge.net; Wed, 25 Jul 2007 11:54:48 -0700
-Received: from trofast.sesse.net ([129.241.93.32])
-	by cassarossa.samfundet.no with esmtp (Exim 4.50) id 1IDm0R-0000wk-6W
-	for nfs@lists.sourceforge.net; Wed, 25 Jul 2007 20:54:43 +0200
-Received: from sesse by trofast.sesse.net with local (Exim 3.36 #1 (Debian))
-	id 1IDm0R-0006Jk-00
-	for <nfs@lists.sourceforge.net>; Wed, 25 Jul 2007 20:54:43 +0200
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+To: nfs@lists.sourceforge.net, nfsv4@linux-nfs.org
+Return-path: <nfsv4-bounces@linux-nfs.org>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
+List-ID: <nfs.lists.sourceforge.net>
 
-Hi,
+Currently NFSv4 defaults to "intr" mounts, and NFSv2 and 3 default to
+"nointr". The manpage, however, just says that the default is "nointr"
+with no mention of NFSv4's actual default. We could just fix the doc,
+but it seems like having "intr" as the default across the board would
+make the most sense. The following patch does this and updates the nfs
+manpage accordingly.
 
-This patch came in from a user; it's a trivial typo fix in the gssd man page.
-I doubt a Signed-off-by line is required for it. :-)
+I'll also send a follow-on patch that brings the string-based mount
+options into line with this default.
 
-Index: nfs-utils-1.1.0/utils/gssd/gssd.man
-===================================================================
---- nfs-utils-1.1.0.orig/utils/gssd/gssd.man
-+++ nfs-utils-1.1.0/utils/gssd/gssd.man
-@@ -35,7 +35,7 @@ With the \-n option, "machine credential
- for accesses by UID 0.  Instead, credentials must be obtained
- manually like all other users.  Use of this option means that
- "root" must manually obtain Kerberos credentials before
--attemtpting to mount an nfs filesystem requiring Kerberos
-+attempting to mount an nfs filesystem requiring Kerberos
- authentication.
- .TP
- .B -k keytab
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 
-/* Steinar */
--- 
-Homepage: http://www.sesse.net/
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Splunk Inc.
-Still grepping through log files to find problems?  Stop.
-Now Search log events and configuration files using AJAX and a browser.
-Download your FREE copy of Splunk now >>  http://get.splunk.com/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
+index e66daba..9f238ba 100644
+--- a/utils/mount/nfs.man
++++ b/utils/mount/nfs.man
+@@ -234,11 +234,12 @@ If an NFS file operation has a major timeout then report
+ "server not responding" on the console and continue retrying indefinitely.
+ This is the default.
+ .TP 1.5i
+-.I intr
++.I nointr
+ If an NFS file operation has a major timeout and it is hard mounted,
+-then allow signals to interupt the file operation and cause it to
+-return EINTR to the calling program.  The default is to not
+-allow file operations to be interrupted.
++then a signal will allow the operation to be interrupted and EINTR 
++returned to the calling program. This option disables this, causing
++signals to be ignored in this situation. The default is to allow file
++operations to be interrupted by signals.
+ .TP 1.5i
+ .I posix
+ Mount the NFS filesystem using POSIX semantics.  This allows
+diff --git a/utils/mount/nfsmount.c b/utils/mount/nfsmount.c
+index 6949b50..09c5209 100644
+--- a/utils/mount/nfsmount.c
++++ b/utils/mount/nfsmount.c
+@@ -167,7 +167,7 @@ parse_options(char *old_opts, struct nfs_mount_data *data,
+ 	char cbuf[128];
+ 	int open_quote = 0;
+ 
+-	data->flags = 0;
++	data->flags = NFS_MOUNT_INTR;
+ 	*bg = 0;
+ 
+ 	len = strlen(new_opts);
