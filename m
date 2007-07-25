@@ -1,42 +1,26 @@
-From: Fabio Olive Leite <fleite@redhat.com>
-Subject: Re: [PATCH] Attribute timeout handling and wrapping u32
-	jiffies
-Date: Wed, 25 Jul 2007 11:54:01 -0300
-Message-ID: <20070725145401.GB24321@sleipnir.redhat.com>
-References: <20070725030809.GB27619@sleipnir.redhat.com>
-	<1185372013.6585.73.camel@localhost>
-	<20070725142824.GA24321@sleipnir.redhat.com>
-	<1185373979.6585.81.camel@localhost>
+From: "Steinar H. Gunderson" <sesse@debian.org>
+Subject: [PATCH] gssd(8) manpage typo
+Date: Wed, 25 Jul 2007 20:54:43 +0200
+Message-ID: <20070725185443.GA24265@uio.no>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-To: linux-nfs <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IDiFG-00067C-Mu
-	for nfs@lists.sourceforge.net; Wed, 25 Jul 2007 07:53:46 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IDiFJ-0006ip-Bp
-	for nfs@lists.sourceforge.net; Wed, 25 Jul 2007 07:53:50 -0700
-Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com
-	[172.16.52.254])
-	by mx1.redhat.com (8.13.1/8.13.1) with ESMTP id l6PErl0H013667
-	for <nfs@lists.sourceforge.net>; Wed, 25 Jul 2007 10:53:47 -0400
-Received: from pobox-2.corp.redhat.com (pobox-2.corp.redhat.com [10.11.255.15])
-	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l6PErl25013411
-	for <nfs@lists.sourceforge.net>; Wed, 25 Jul 2007 10:53:47 -0400
-Received: from sleipnir.redhat.com (vpn-14-148.rdu.redhat.com [10.11.14.148])
-	by pobox-2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id
-	l6PErjK0008699
-	for <nfs@lists.sourceforge.net>; Wed, 25 Jul 2007 10:53:46 -0400
-Received: from sleipnir.redhat.com (localhost.localdomain [127.0.0.1])
-	by sleipnir.redhat.com (8.13.8/8.13.7) with ESMTP id l6PEs2fr025856
-	for <nfs@lists.sourceforge.net>; Wed, 25 Jul 2007 11:54:04 -0300
-Received: (from fleite@localhost)
-	by sleipnir.redhat.com (8.13.8/8.13.8/Submit) id l6PEs122025855
-	for nfs@lists.sourceforge.net; Wed, 25 Jul 2007 11:54:01 -0300
-In-Reply-To: <1185373979.6585.81.camel@localhost>
+	id 1IDm0S-0000vs-9n
+	for nfs@lists.sourceforge.net; Wed, 25 Jul 2007 11:54:44 -0700
+Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IDm0U-0003O8-TM
+	for nfs@lists.sourceforge.net; Wed, 25 Jul 2007 11:54:48 -0700
+Received: from trofast.sesse.net ([129.241.93.32])
+	by cassarossa.samfundet.no with esmtp (Exim 4.50) id 1IDm0R-0000wk-6W
+	for nfs@lists.sourceforge.net; Wed, 25 Jul 2007 20:54:43 +0200
+Received: from sesse by trofast.sesse.net with local (Exim 3.36 #1 (Debian))
+	id 1IDm0R-0006Jk-00
+	for <nfs@lists.sourceforge.net>; Wed, 25 Jul 2007 20:54:43 +0200
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -49,43 +33,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, Jul 25, 2007 at 10:32:59AM -0400, Trond Myklebust wrote:
-> > =
+Hi,
 
-> > I think that in the second check you mean this:
-> > =
+This patch came in from a user; it's a trivial typo fix in the gssd man page.
+I doubt a Signed-off-by line is required for it. :-)
 
-> > #define time_in_range(a,b,c) \
-> > 	(time_after_eq(a,b) && \
-> > 	 time_before_eq(a,b+c))
-> =
+Index: nfs-utils-1.1.0/utils/gssd/gssd.man
+===================================================================
+--- nfs-utils-1.1.0.orig/utils/gssd/gssd.man
++++ nfs-utils-1.1.0/utils/gssd/gssd.man
+@@ -35,7 +35,7 @@ With the \-n option, "machine credential
+ for accesses by UID 0.  Instead, credentials must be obtained
+ manually like all other users.  Use of this option means that
+ "root" must manually obtain Kerberos credentials before
+-attemtpting to mount an nfs filesystem requiring Kerberos
++attempting to mount an nfs filesystem requiring Kerberos
+ authentication.
+ .TP
+ .B -k keytab
 
-> No. IMO [b;c] should be the range for the generic function, and it
-> should be up to the NFS code to do the 'stored jiffies + constant
-> timeout' calculation.
-
-OK. That makes sense, since we then only care about jiffy values and
-can assume typing.
-
-> You will note that time_in_range() does in any
-> case return true if you are inside the valid time range, so you will
-> usually want to do
-> =
-
-> if (!time_in_range())...
-> =
-
-> in order to do the timeout_or_wrap() test.
-
-Indeed, and the code also looks more readable.
-
-Let's see how it behaves.
-
-Regards,
-F=E1bio
--- =
-
-ex sed lex awk yacc, e pluribus unix, amem
+/* Steinar */
+-- 
+Homepage: http://www.sesse.net/
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
