@@ -1,31 +1,36 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: rpcbind behavior on Fedora 7
-Date: Tue, 24 Jul 2007 22:08:40 -0400
-Message-ID: <46A6B0A8.40700@oracle.com>
-References: <20070708191640.GA13962@uio.no>
-	<18065.43199.104020.412029@notabene.brown>
-	<20070715083114.GB4158@uio.no>
-	<18074.50730.591965.39211@notabene.brown>
-	<20070716092047.GA10353@uio.no>
-	<18075.17719.855332.259470@notabene.brown>
-	<20070722191733.GA31501@uio.no> <46A52816.6050500@oracle.com>
-	<20070724172451.GA14026@uio.no>
-Reply-To: chuck.lever@oracle.com
+From: Fabio Olive Leite <fleite@redhat.com>
+Subject: [PATCH] Attribute timeout handling and wrapping u32 jiffies
+Date: Wed, 25 Jul 2007 00:08:09 -0300
+Message-ID: <20070725030809.GB27619@sleipnir.redhat.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------030108040902010901060804"
-Cc: nfs@lists.sourceforge.net
-To: Steve Dickson <SteveD@redhat.com>
+Content-Type: text/plain; charset="iso-8859-1"
+To: linux-nfs <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IDWKH-00027x-Mg
-	for nfs@lists.sourceforge.net; Tue, 24 Jul 2007 19:10:10 -0700
-Received: from agminet01.oracle.com ([141.146.126.228])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IDWKL-0001t5-0a
-	for nfs@lists.sourceforge.net; Tue, 24 Jul 2007 19:10:13 -0700
-In-Reply-To: <20070724172451.GA14026@uio.no>
+	id 1IDXEE-0007j0-4n
+	for nfs@lists.sourceforge.net; Tue, 24 Jul 2007 20:07:58 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IDXEH-00086U-CU
+	for nfs@lists.sourceforge.net; Tue, 24 Jul 2007 20:08:02 -0700
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com
+	[172.16.52.254])
+	by mx1.redhat.com (8.13.1/8.13.1) with ESMTP id l6P37taL030011
+	for <nfs@lists.sourceforge.net>; Tue, 24 Jul 2007 23:07:55 -0400
+Received: from pobox-2.corp.redhat.com (pobox-2.corp.redhat.com [10.11.255.15])
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l6P37sG9000865
+	for <nfs@lists.sourceforge.net>; Tue, 24 Jul 2007 23:07:54 -0400
+Received: from sleipnir.redhat.com (vpn-14-148.rdu.redhat.com [10.11.14.148])
+	by pobox-2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id
+	l6P37qqV012633
+	for <nfs@lists.sourceforge.net>; Tue, 24 Jul 2007 23:07:53 -0400
+Received: from sleipnir.redhat.com (localhost.localdomain [127.0.0.1])
+	by sleipnir.redhat.com (8.13.8/8.13.7) with ESMTP id l6P38Cbr007924
+	for <nfs@lists.sourceforge.net>; Wed, 25 Jul 2007 00:08:14 -0300
+Received: (from fleite@localhost)
+	by sleipnir.redhat.com (8.13.8/8.13.8/Submit) id l6P38BpB007921
+	for nfs@lists.sourceforge.net; Wed, 25 Jul 2007 00:08:11 -0300
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -38,125 +43,152 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
---------------030108040902010901060804
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+Hi all,
 
-Hi Steve-
+I would like to discuss the idea that the current checks for attribute
+timeout using time_after are inadequate for 32bit architectures, since
+time_after works correctly only when the two timestamps being compared
+are within 2^31 jiffies of each other. The signed overflow caused by
+comparing values more than 2^31 jiffies apart will flip the result,
+causing incorrect assumptions of validity.
 
-I was trying out the mount.nfs test case for another bug (see below). 
-The test case didn't work against a Fedora 7 server.  Trying to mount 
-with UDP against a specific port just hangs.  So I tried an rpcinfo 
-against it to see what the current rocbind configuration was.
+2^31 jiffies is a fairly large period of time (~25 days) when compared
+to the lifetime of most kernel data structures, but for long lived NFS
+mounts that can sit idle for months (think that for some reason autofs
+cannot be used), it is easy to compare inode attribute timestamps with
+very disparate or even bogus values (as in when jiffies have wrapped
+many times, where the comparison doesn't even make sense).
 
- > [root@picasso ~]# rpcinfo ingres
- >    program version netid     address                service    owner
- >     100000    4    tcp6      ::.0.111               portmapper superuser
- >     100000    3    tcp6      ::.0.111               portmapper superuser
- >     100000    2    tcp6      ::.0.111               portmapper superuser
- >     100000    4    udp6      ::.0.111               portmapper superuser
- >     100000    3    udp6      ::.0.111               portmapper superuser
- >     100000    2    udp6      ::.0.111               portmapper superuser
- >     100000    4    local     /v                     portmapper superuser
- >     100000    3    local     /v                     portmapper superuser
- >     100000    2    local     /v                     portmapper superuser
- >     100024    1    udp6      ::.2.222               status     unknown
- >     100024    1    tcp6      ::.2.225               status     unknown
- >     100021    1    tcp6      ::.170.233             nlockmgr   unknown
- >     100021    3    tcp6      ::.170.233             nlockmgr   unknown
- >     100021    4    tcp6      ::.170.233             nlockmgr   unknown
- >     100011    1    udp6      ::.3.158               rquotad    unknown
- >     100011    2    udp6      ::.3.158               rquotad    unknown
- >     100011    1    tcp6      ::.3.161               rquotad    unknown
- >     100011    2    tcp6      ::.3.161               rquotad    unknown
- >     100021    1    udp6      ::.128.0               nlockmgr   unknown
- >     100021    3    udp6      ::.128.0               nlockmgr   unknown
- >     100021    4    udp6      ::.128.0               nlockmgr   unknown
- >     100003    2    udp6      ::.8.1                 nfs        unknown
- >     100003    3    udp6      ::.8.1                 nfs        unknown
- >     100003    4    udp6      ::.8.1                 nfs        unknown
- >     100003    2    tcp6      ::.8.1                 nfs        unknown
- >     100003    3    tcp6      ::.8.1                 nfs        unknown
- >     100003    4    tcp6      ::.8.1                 nfs        unknown
- >     100005    1    udp6      ::.2.135               mountd     unknown
- >     100005    1    tcp6      ::.2.138               mountd     unknown
- >     100005    2    udp6      ::.2.135               mountd     unknown
- >     100005    2    tcp6      ::.2.138               mountd     unknown
- >     100005    3    udp6      ::.2.135               mountd     unknown
- >     100005    3    tcp6      ::.2.138               mountd     unknown
- > [root@picasso ~]#
+Currently the code tests for attribute timeout by simply adding the
+desired amount of jiffies to the stored timestamp and comparing that
+with the current timestamp of obtained attribute data with time_after.
+This is incorrect, as it returns true for the desired timeout period
+and another full 2^31 range of jiffies.
 
-Um.  Ok, where are the IPv4 entries?
+I would like to propose a different way for testing for timeouts: we
+first make sure the timestamps are comparable, meaning the "current"
+timestamp is checked for being after the "stored" timestamp (if it is
+before we assume it has wrapped), and after that we check if the
+difference between them is greater than the desired timeout/validity
+period.
 
-I've now completely shut off IPv6 initialization and autoconfiguration 
-on the only network interface on the system and rebooted several times 
-(I wasn't using the IPv6 networking stuff yet anyway).  I still get *no* 
-udp4 or tcp4 entries in the rpcbind database.  The NFS service on this 
-system is all IPv4 (it's a Linux NFS server).
+This test does not cast the values to signed, and instead of comparing
+two possibly unrelated points in time, it actually tests if the
+timestamp wrapped, and if the period of time between the two
+timestamps is greater than the period represented by the timeout
+value. It seems to make more sense this way.
 
-How are these getting registered?
+In testing with artificial jumps (several small jumps, not one big
+crank) of the jiffies I was able to reproduce a problem found in a
+server with very long lived NFS mounts, where attributes would not be
+refreshed even after touching files and directories in the server:
 
-Steinar H. Gunderson wrote:
-> On Mon, Jul 23, 2007 at 06:13:42PM -0400, Chuck Lever wrote:
->> It would help if we could take a look at a clean network trace of the bad 
->> and the good mount operations.
-> 
-> It was quite simple to test this myself. I started the kernel server on a
-> machine, then shut down portmap. First I did:
-> 
->   fugl:~> sudo mount -t nfs -o port=2049,mountport=901,nfsvers=3 192.168.0.101:/ /mnt
->   mount: mount to NFS server '192.168.0.101' failed: System Error: Connection refused.
-> 
-> The dump is attached as "default.dump". Then I did
-> 
->   fugl:~> sudo mount -t nfs -o port=2049,mountport=901,nfsvers=3,udp 192.168.0.101:/ /mnt 
-> 
-> which is attached as "udp.dump".
-> 
-> Note that in default.dump, UDP is simply never tried at all. I believe that
-> to be a bug.
-> 
-> /* Steinar */
+Initial uptime:
+03:42:01 up 6 min, 0 users, load average: 0.01, 0.12, 0.07
 
---------------030108040902010901060804
-Content-Type: text/x-vcard; charset=utf-8;
- name="chuck.lever.vcf"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="chuck.lever.vcf"
+NFS volume is mounted and time is advanced:
+03:38:09 up 25 days, 2 min, 0 users, load average: 1.22, 1.05, 1.08
 
-begin:vcard
-fn:Chuck Lever
-n:Lever;Chuck
-org:Oracle Corporation;Corporate Architecture: Linux Projects Group
-adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
-title:Principal Member of Staff
-tel;work:+1 248 614 5091
-x-mozilla-html:FALSE
-version:2.1
-end:vcard
+# ls -l /local/A/foo/bar /nfs/A/foo/bar
+-rw-r--r--  1 root root 0 Dec 17 03:38 /local/A/foo/bar
+-rw-r--r--  1 root root 0 Nov 22 00:36 /nfs/A/foo/bar
 
+# touch /local/A/foo/bar
 
---------------030108040902010901060804
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+# ls -l /local/A/foo/bar /nfs/A/foo/bar
+-rw-r--r--  1 root root 0 Dec 17 03:47 /local/A/foo/bar
+-rw-r--r--  1 root root 0 Nov 22 00:36 /nfs/A/foo/bar
+
+We can see the local mtime is updated, but the NFS mount still shows
+the old value. The patch below makes it work:
+
+Initial setup...
+07:11:02 up 25 days, 1 min,  0 users,  load average: 0.15, 0.03, 0.04
+
+# ls -l /local/A/foo/bar /nfs/A/foo/bar
+-rw-r--r--  1 root root 0 Jan 11 07:11 /local/A/foo/bar
+-rw-r--r--  1 root root 0 Jan 11 07:11 /nfs/A/foo/bar
+
+# touch /local/A/foo/bar
+
+# ls -l /local/A/foo/bar /nfs/A/foo/bar
+-rw-r--r--  1 root root 0 Jan 11 07:14 /local/A/foo/bar
+-rw-r--r--  1 root root 0 Jan 11 07:14 /nfs/A/foo/bar
+
+I'd love to hear comments and criticism. Even if this is not the
+correct way to fix it, I'm fairly sure we can agree that there's the
+need for a fix and a proper fix can be found.
+
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index ea97408..8e85710 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -1852,7 +1852,7 @@ int nfs_access_get_cached(struct inode *inode, struct=
+ rpc_cred *cred, struct nfs
+ 	cache =3D nfs_access_search_rbtree(inode, cred);
+ 	if (cache =3D=3D NULL)
+ 		goto out;
+-	if (time_after(jiffies, cache->jiffies + NFS_ATTRTIMEO(inode)))
++	if (timeout_or_wrap(jiffies, cache->jiffies, NFS_ATTRTIMEO(inode)))
+ 		goto out_stale;
+ 	res->jiffies =3D cache->jiffies;
+ 	res->cred =3D cache->cred;
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index bca6cdc..f611f95 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -662,7 +662,7 @@ int nfs_attribute_timeout(struct inode *inode)
+ =
+
+ 	if (nfs_have_delegation(inode, FMODE_READ))
+ 		return 0;
+-	return time_after(jiffies, nfsi->read_cache_jiffies+nfsi->attrtimeo);
++	return timeout_or_wrap(jiffies, nfsi->read_cache_jiffies, nfsi->attrtimeo=
+);
+ }
+ =
+
+ /**
+@@ -1061,7 +1061,7 @@ static int nfs_update_inode(struct inode *inode, stru=
+ct nfs_fattr *fattr)
+ 		nfs_inc_stats(inode, NFSIOS_ATTRINVALIDATE);
+ 		nfsi->attrtimeo =3D NFS_MINATTRTIMEO(inode);
+ 		nfsi->attrtimeo_timestamp =3D now;
+-	} else if (time_after(now, nfsi->attrtimeo_timestamp+nfsi->attrtimeo)) {
++	} else if (timeout_or_wrap(now, nfsi->attrtimeo_timestamp, nfsi->attrtime=
+o)) {
+ 		if ((nfsi->attrtimeo <<=3D 1) > NFS_MAXATTRTIMEO(inode))
+ 			nfsi->attrtimeo =3D NFS_MAXATTRTIMEO(inode);
+ 		nfsi->attrtimeo_timestamp =3D now;
+diff --git a/include/linux/jiffies.h b/include/linux/jiffies.h
+index c080f61..ffda7cb 100644
+--- a/include/linux/jiffies.h
++++ b/include/linux/jiffies.h
+@@ -115,6 +115,11 @@ static inline u64 get_jiffies_64(void)
+ 	 ((long)(a) - (long)(b) >=3D 0))
+ #define time_before_eq(a,b)	time_after_eq(b,a)
+ =
+
++#define timeout_or_wrap(a,b,c)	\
++	(typecheck(unsigned long, a) && \
++	 typecheck(unsigned long, b) && \
++	 ((a) < (b) || (a) - (b) > (c)))
++
+ /* Same as above, but does so with platform independent 64bit types.
+  * These must be used when utilizing jiffies_64 (i.e. return value of
+  * get_jiffies_64() */
+
+Cheers!
+F=E1bio
+-- =
+
+ex sed lex awk yacc, e pluribus unix, amem
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
---------------030108040902010901060804
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---------------030108040902010901060804--
