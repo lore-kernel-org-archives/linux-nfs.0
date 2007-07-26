@@ -1,20 +1,36 @@
-From: "Morris Gallegos" <dewayne.dadisman@aandjceramics.freeserve.co.uk>
-Subject: Life is beautiful!
-Date: Thu, 26 Jul 2007 06:59:46 -0300
-Message-ID: <01c7cf52$8cd621e0$ee991555@dewayne.dadisman>
+From: Prasad P <pvp@us.ibm.com>
+Subject: Re: Status of NFS over IPv6
+Date: Thu, 26 Jul 2007 02:43:58 -0500
+Message-ID: <OFA53D1F49.7F74DE71-ON87257324.00289C05-86257324.002A7AAE@us.ibm.com>
+References: <46A49E93.2070306@bull.net>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
-	boundary="----=_NextPart_000_0006_01C7CF74.13E7C1E0"
-To: <nfs@lists.sourceforge.net>
+Content-Type: multipart/mixed; boundary="===============0676421891=="
+Cc: NFSv4 ML <nfsv4@linux-nfs.org>, nfs@lists.sourceforge.net,
+	nfsv4-bounces@linux-nfs.org
+To: Le Rouzic <aime.le-rouzic@bull.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IDxJz-0007Rk-M8
-	for nfs@lists.sourceforge.net; Wed, 25 Jul 2007 23:59:39 -0700
-Received: from [85.21.153.238] (helo=[85.21.153.238])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IDxK2-0000I2-9P
-	for nfs@lists.sourceforge.net; Wed, 25 Jul 2007 23:59:43 -0700
+	id 1IDy14-00049B-0O
+	for nfs@lists.sourceforge.net; Thu, 26 Jul 2007 00:44:10 -0700
+Received: from e36.co.us.ibm.com ([32.97.110.154])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IDy15-00015k-9h
+	for nfs@lists.sourceforge.net; Thu, 26 Jul 2007 00:44:14 -0700
+Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com
+	[9.17.195.227])
+	by e36.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id l6Q7i10B004133
+	for <nfs@lists.sourceforge.net>; Thu, 26 Jul 2007 03:44:01 -0400
+Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
+	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v8.4) with ESMTP id
+	l6Q7i1IB263466
+	for <nfs@lists.sourceforge.net>; Thu, 26 Jul 2007 01:44:01 -0600
+Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av03.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id
+	l6Q7i1Bq021048
+	for <nfs@lists.sourceforge.net>; Thu, 26 Jul 2007 01:44:01 -0600
+In-Reply-To: <46A49E93.2070306@bull.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,173 +43,303 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
+This is a multipart message in MIME format.
+--===============0676421891==
+Content-Type: multipart/alternative;
+	boundary="=_alternative 002A7A9286257324_="
 
-------=_NextPart_000_0006_01C7CF74.13E7C1E0
-Content-Type: text/plain;
-	charset="windows-1250"
-Content-Transfer-Encoding: 7bit
+This is a multipart message in MIME format.
+--=_alternative 002A7A9286257324_=
+Content-Type: text/plain; charset="ISO-8859-1"
+Content-Transfer-Encoding: quoted-printable
+
+Le Rouzic wrote:
+
+>Chuck Lever a =E9crit :
+>
+>> Le Rouzic wrote:
+>
+>>>>> While there is some interest in IPv6 among some of Linux's=20
+>>>>> corporate sponsors, there really isn't an overwhelming "killer"=20
+>>>>> requirement for IPv6, so there isn't much motivation to get all=20
+>>>>> this completed.  I have to admit I'm pretty burned out on all this=20
+>>>>> because of how complicated it has all become.  I'd be happy if=20
+>>>>> someone stepped forward and volunteered to help or take over the=20
+>>>>> integration.
+>>>>>=20
+>>>>
+>>> Some basic tests have been also done on the submitted Aur=E9lien's=20
+patchs
+>>> and we will be running the robustness tests we are regularly doing=20
+>>> for ipv4.
+>>> See also at http://nfsv4.bullopensource.org/doc/rpc=5Ftestsuite.php
+>>> for this list of tests (cthon04, ffsb, fsx...)
+>>>
+>>>>
+>>>> We hope the interest of community about IPv6 will grow.
+>>>> Feel free to send comments on the code.
+>>>>=20
+>>>>
+>>> Some customers are already asking it but  were waiting of its=20
+>>> availibity.
+>>> There are also products based on NFSV4 features which are interested=20
+in.
+>>
+>>
+>> Yeah, it's kind of unfortunate that we can't be completely specific=20
+>> about the requests/requirements/use cases.
+>
+>
+>    Hi,
+>    I think you are right but nevertheless customers often require to be=20
+compliant IPV6
+>    in their system even they don't use IPV6. Soon, IPV6 deployed, NFS=20
+will be
+>    one of the first applications used. Some others UNIX systems also=20
+have it,
+>    so interoperabity it would be good Linux have it.
+>    But that is true it will be interested to know when and who on the=20
+nfs lists is interested in
+>    to use it.
+>
+>> But here's what I know:
+>>
+>> 1.  Apparently there is a bureaucratic (ie non-technical) requirement=20
+>> from the US Federal government for IPv6 support in new computer=20
+>> software deployments.  I forget when this requirement kicks in, or=20
+>> what exactly "IPv6 support" really entails.
+
+Hi,
+
+Back in 2005, the US Office of Management and Budget (OMB) issued a=20
+mandate calling on all Federal Agencies to have an operational IPv6=20
+backbone network by June, 2008.  As the date approaches, USG customers are =
+
+increasingly asking whether individual products/applications are "IPv6=20
+compliant".
+
+The DoD has also indicated that it is developing an Approved Products List =
+
+(APL) on which certified IPv6 compliant products will be listed.  The=20
+intention is that any product purchased by the DoD must first be certified =
+
+and added to the list.
+
+We have some nongovernment customers (names cannot be disclosed)=20
+requesting for IPv6 support in NFS, and few of them are willing to=20
+participate in pilot program.  In addition to the customers, we have some=20
+requests from different product owners for this support, so that their=20
+products can be made "IPv6 complaint".
+
+>>
+>> 2.  The APAC market wants IPv6 because of an explosion of individual=20
+>> IP network accessors, although arguably that can be addressed for a=20
+>> little while with judicious application of NAT routers.
+>>
+>> Otherwise, the companies I've worked for recently have had no real=20
+>> customer requests for IPv6 support in NFS.
+>>
+>> NFS community resources are focused largely on NFSv4.1 and pNFS design=20
+>> and implementation.  However, here's some of what I think we need to=20
+>> get IPv6 done:
+>>
+>> +  A coherent design for handling IPv6 address caching and export rules =
+
+on the server side
+>
+>     After a first rejected solution and some new discussion on the NFSV4 =
+
+mailing list,
+>     Bull (Aur=E9lien) supplied a new document described the current=20
+>     implementation. This little design document is still here:=20
+>     http://nfsv4.bullopensource.org/doc/nfs=5Fipv6.php
+>
+>     Any new remarks are welcome.
+>
+>>
+>> +  Help from the netdev folks with reviewing our proposed IPv6 changes
+>
+>     What would be the mailing lists to call them to review?
+>
+>>
+>> +  A cunning plan to stage the integration of all the various pieces
+>>
+>> +  Beta testers (ie real environments that can deploy NFS over IPv6 in=20
+real conditions)
+>
+>     May be some on this nfs mailing list have this kind of=20
+environmments.
+>     What  Bull can do is to run the robustness tests we are doing for=20
+IPV4 on IPV6.
+>
+>>
+>> +  A whiff of project planning to help us know what the real deadlines=20
+are
+>
+
+Thanks.
+
+Regards,
+Prasad Potluri
+email: pvp at-sign us dot ibm dot com
+--=_alternative 002A7A9286257324_=
+Content-Type: text/html; charset="ISO-8859-1"
+Content-Transfer-Encoding: quoted-printable
 
 
+<br><font size=3D2 face=3D"sans-serif">Le Rouzic wrote:</font>
+<br>
+<br><tt><font size=3D2>&gt;Chuck Lever a =E9crit :<br>
+&gt;<br>
+&gt;&gt; Le Rouzic wrote:<br>
+&gt;<br>
+&gt;&gt;&gt;&gt;&gt; While there is some interest in IPv6 among some of
+Linux's <br>
+&gt;&gt;&gt;&gt;&gt; corporate sponsors, there really isn't an overwhelming
+&quot;killer&quot; <br>
+&gt;&gt;&gt;&gt;&gt; requirement for IPv6, so there isn't much motivation
+to get all <br>
+&gt;&gt;&gt;&gt;&gt; this completed. &nbsp;I have to admit I'm pretty burned
+out on all this <br>
+&gt;&gt;&gt;&gt;&gt; because of how complicated it has all become. &nbsp;I'd
+be happy if <br>
+&gt;&gt;&gt;&gt;&gt; someone stepped forward and volunteered to help or
+take over the <br>
+&gt;&gt;&gt;&gt;&gt; integration.<br>
+&gt;&gt;&gt;&gt;&gt; &nbsp; <br>
+&gt;&gt;&gt;&gt;<br>
+&gt;&gt;&gt; Some basic tests have been also done on the submitted Aur=E9li=
+en's
+patchs<br>
+&gt;&gt;&gt; and we will be running the robustness tests we are regularly
+doing <br>
+&gt;&gt;&gt; for ipv4.<br>
+&gt;&gt;&gt; See also at http://nfsv4.bullopensource.org/doc/rpc=5Ftestsuit=
+e.php<br>
+&gt;&gt;&gt; for this list of tests (cthon04, ffsb, fsx...)<br>
+&gt;&gt;&gt;<br>
+&gt;&gt;&gt;&gt;<br>
+&gt;&gt;&gt;&gt; We hope the interest of community about IPv6 will grow.<br>
+&gt;&gt;&gt;&gt; Feel free to send comments on the code.<br>
+&gt;&gt;&gt;&gt; &nbsp;<br>
+&gt;&gt;&gt;&gt;<br>
+&gt;&gt;&gt; Some customers are already asking it but &nbsp;were waiting
+of its <br>
+&gt;&gt;&gt; availibity.<br>
+&gt;&gt;&gt; There are also products based on NFSV4 features which are
+interested in.<br>
+&gt;&gt;<br>
+&gt;&gt;<br>
+&gt;&gt; Yeah, it's kind of unfortunate that we can't be completely specific
+<br>
+&gt;&gt; about the requests/requirements/use cases.<br>
+&gt;<br>
+&gt;<br>
+&gt; &nbsp; &nbsp;Hi,<br>
+&gt; &nbsp; &nbsp;I think you are right but nevertheless customers often
+require to be compliant IPV6<br>
+&gt; &nbsp; &nbsp;in their system even they don't use IPV6. Soon, IPV6
+deployed, NFS will be<br>
+&gt; &nbsp; &nbsp;one of the first applications used. Some others UNIX
+systems also have it,<br>
+&gt; &nbsp; &nbsp;so interoperabity it would be good Linux have it.<br>
+&gt; &nbsp; &nbsp;But that is true it will be interested to know when and
+who on the nfs lists is interested in<br>
+&gt; &nbsp; &nbsp;to use it.<br>
+&gt;<br>
+&gt;&gt; But here's what I know:<br>
+&gt;&gt;<br>
+&gt;&gt; 1. &nbsp;Apparently there is a bureaucratic (ie non-technical)
+requirement <br>
+&gt;&gt; from the US Federal government for IPv6 support in new computer
+<br>
+&gt;&gt; software deployments. &nbsp;I forget when this requirement kicks
+in, or <br>
+&gt;&gt; what exactly &quot;IPv6 support&quot; really entails.</font></tt>
+<br>
+<br><tt><font size=3D2>Hi,</font></tt>
+<br><tt><font size=3D2><br>
+Back in 2005, the US Office of Management and Budget (OMB) issued a mandate
+calling on all Federal Agencies to have an operational IPv6 backbone network
+by June, 2008. &nbsp;As the date approaches, USG customers are increasingly
+asking whether individual products/applications are &quot;IPv6 compliant&qu=
+ot;.</font></tt>
+<br>
+<br><tt><font size=3D2>The DoD has also indicated that it is developing an
+Approved Products List (APL) on which certified IPv6 compliant products
+will be listed. &nbsp;The intention is that any product purchased by the
+DoD must first be certified and added to the list.</font></tt>
+<br>
+<br><tt><font size=3D2>We have some nongovernment customers (names cannot
+be disclosed) requesting for IPv6 support in NFS, and few of them are willi=
+ng
+to participate in pilot program. &nbsp;In addition to the customers, we
+have some requests from different product owners for this support, so that
+their products can be made &quot;IPv6 complaint&quot;.</font></tt>
+<br>
+<br><tt><font size=3D2>&gt;&gt;<br>
+&gt;&gt; 2. &nbsp;The APAC market wants IPv6 because of an explosion of
+individual <br>
+&gt;&gt; IP network accessors, although arguably that can be addressed
+for a <br>
+&gt;&gt; little while with judicious application of NAT routers.<br>
+&gt;&gt;<br>
+&gt;&gt; Otherwise, the companies I've worked for recently have had no
+real <br>
+&gt;&gt; customer requests for IPv6 support in NFS.<br>
+&gt;&gt;<br>
+&gt;&gt; NFS community resources are focused largely on NFSv4.1 and pNFS
+design <br>
+&gt;&gt; and implementation. &nbsp;However, here's some of what I think
+we need to <br>
+&gt;&gt; get IPv6 done:<br>
+&gt;&gt;<br>
+&gt;&gt; + &nbsp;A coherent design for handling IPv6 address caching and
+export rules on the server side<br>
+&gt;<br>
+&gt; &nbsp; &nbsp; After a first rejected solution and some new discussion
+on the NFSV4 mailing list,<br>
+&gt; &nbsp; &nbsp; Bull (Aur=E9lien) supplied a new document described the
+current <br>
+&gt; &nbsp; &nbsp; implementation. This little design document is still
+here: <br>
+&gt; &nbsp; &nbsp; http://nfsv4.bullopensource.org/doc/nfs=5Fipv6.php<br>
+&gt;<br>
+&gt; &nbsp; &nbsp; Any new remarks are welcome.<br>
+&gt;<br>
+&gt;&gt;<br>
+&gt;&gt; + &nbsp;Help from the netdev folks with reviewing our proposed
+IPv6 changes<br>
+&gt;<br>
+&gt; &nbsp; &nbsp; What would be the mailing lists to call them to review?<=
+br>
+&gt;<br>
+&gt;&gt;<br>
+&gt;&gt; + &nbsp;A cunning plan to stage the integration of all the various
+pieces<br>
+&gt;&gt;<br>
+&gt;&gt; + &nbsp;Beta testers (ie real environments that can deploy NFS
+over IPv6 in real conditions)<br>
+&gt;<br>
+&gt; &nbsp; &nbsp; May be some on this nfs mailing list have this kind
+of environmments.<br>
+&gt; &nbsp; &nbsp; What &nbsp;Bull can do is to run the robustness tests
+we are doing for IPV4 on IPV6.<br>
+&gt;<br>
+&gt;&gt;<br>
+&gt;&gt; + &nbsp;A whiff of project planning to help us know what the real
+deadlines are<br>
+&gt;</font></tt>
+<br>
+<br><font size=3D2 face=3D"sans-serif">Thanks.<br>
+<br>
+Regards,<br>
+Prasad Potluri<br>
+email: pvp at-sign us dot ibm dot com</font>
+--=_alternative 002A7A9286257324_=--
 
-------=_NextPart_000_0006_01C7CF74.13E7C1E0
-Content-Type: image/gif;
-	name="havok01.gif"
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment;
-	filename="havok01.gif"
 
-R0lGODlhxgDuAPcAAAAAAIAAAACAAICAAAAAgIAAgACAgICAgMDAwP8AAAD/AP//AAAA//8A/wD/
-/////wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMwAAZgAAmQAAzAAA/wAzAAAzMwAzZgAzmQAzzAAz/wBm
-AABmMwBmZgBmmQBmzABm/wCZAACZMwCZZgCZmQCZzACZ/wDMAADMMwDMZgDMmQDMzADM/wD/AAD/
-MwD/ZgD/mQD/zAD//zMAADMAMzMAZjMAmTMAzDMA/zMzADMzMzMzZjMzmTMzzDMz/zNmADNmMzNm
-ZjNmmTNmzDNm/zOZADOZMzOZZjOZmTOZzDOZ/zPMADPMMzPMZjPMmTPMzDPM/zP/ADP/MzP/ZjP/
-mTP/zDP//2YAAGYAM2YAZmYAmWYAzGYA/2YzAGYzM2YzZmYzmWYzzGYz/2ZmAGZmM2ZmZmZmmWZm
-zGZm/2aZAGaZM2aZZmaZmWaZzGaZ/2bMAGbMM2bMZmbMmWbMzGbM/2b/AGb/M2b/Zmb/mWb/zGb/
-/5kAAJkAM5kAZpkAmZkAzJkA/5kzAJkzM5kzZpkzmZkzzJkz/5lmAJlmM5lmZplmmZlmzJlm/5mZ
-AJmZM5mZZpmZmZmZzJmZ/5nMAJnMM5nMZpnMmZnMzJnM/5n/AJn/M5n/Zpn/mZn/zJn//8wAAMwA
-M8wAZswAmcwAzMwA/8wzAMwzM8wzZswzmcwzzMwz/8xmAMxmM8xmZsxmmcxmzMxm/8yZAMyZM8yZ
-ZsyZmcyZzMyZ/8zMAMzMM8zMZszMmczMzMzM/8z/AMz/M8z/Zsz/mcz/zMz///8AAP8AM/8AZv8A
-mf8AzP8A//8zAP8zM/8zZv8zmf8zzP8z//9mAP9mM/9mZv9mmf9mzP9m//+ZAP+ZM/+ZZv+Zmf+Z
-zP+Z///MAP/MM//MZv/Mmf/MzP/M////AP//M///Zv//mf//zP///yH5BAEAABAALAAAAADGAO4A
-AAj/AP8JHEiwoMGDCBMqXMhQobRWDSMSpNYwWz+JCvE1vIixo8ePIEOKDNls5LaO0kaqHMhspcuX
-LjXClPhqmkRYr/7FGimv5D97H3vO7DiJ0dCjSA/uTMq0qdOnUKNKdSrJJcWpBw91wcqVENOqXK96
-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
-eM53y/BY+rygsjBVLAUEADs= 
-
-------=_NextPart_000_0006_01C7CF74.13E7C1E0
+--===============0676421891==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -204,7 +350,7 @@ This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
-------=_NextPart_000_0006_01C7CF74.13E7C1E0
+--===============0676421891==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -214,4 +360,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
-------=_NextPart_000_0006_01C7CF74.13E7C1E0--
+--===============0676421891==--
