@@ -1,24 +1,23 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: Status of mount.nfs
-Date: Thu, 26 Jul 2007 08:47:09 -0400
-Message-ID: <46A897CD.50201@RedHat.com>
-References: <20070708191640.GA13962@uio.no>	<18065.43199.104020.412029@notabene.brown>	<20070715083114.GB4158@uio.no>	<18074.50730.591965.39211@notabene.brown>	<20070716092047.GA10353@uio.no>	<18075.17719.855332.259470@notabene.brown>	<20070722191733.GA31501@uio.no>
-	<46A52816.6050500@oracle.com>	<20070724172451.GA14026@uio.no>
-	<46A7A5F8.4040204@oracle.com>
+From: Ian Kent <raven@themaw.net>
+Subject: Re: Autofs failed auto umounting NFS shares exported by
+ Solaris 10
+Date: Thu, 26 Jul 2007 21:38:23 +0800 (WST)
+Message-ID: <Pine.LNX.4.64.0707262135460.22065@raven.themaw.net>
+References: <46A57CFA.2010507@schrodinger.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: chuck.lever@oracle.com
+To: Simon Gao <gao@schrodinger.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IE2kO-0005WO-JU
-	for nfs@lists.sourceforge.net; Thu, 26 Jul 2007 05:47:16 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IE2kR-0004XH-Kb
-	for nfs@lists.sourceforge.net; Thu, 26 Jul 2007 05:47:19 -0700
-In-Reply-To: <46A7A5F8.4040204@oracle.com>
+	id 1IE3Xx-0002zl-FY
+	for nfs@lists.sourceforge.net; Thu, 26 Jul 2007 06:38:38 -0700
+Received: from out2.smtp.messagingengine.com ([66.111.4.26])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IE3Y0-0004zY-6N
+	for nfs@lists.sourceforge.net; Thu, 26 Jul 2007 06:38:33 -0700
+In-Reply-To: <46A57CFA.2010507@schrodinger.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,52 +30,21 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+On Mon, 23 Jul 2007, Simon Gao wrote:
 
+> Hi,
+> 
+> I am seeing RHEL/CentOS 5.0 machine failed to un-mount NFS share 
+> exported by Solaris 10 after time out period:
 
-Chuck Lever wrote:
-> 
-> I'm looking at probe_nfsport() and probe_mntport() and I see that the 
-> portmapper call is avoided iff the protocol version, transport protocol, 
-> and the port number are all specified in advance.
-> 
-> So if you specify:
-> 
->    -o mountport=650,port=2049
-> 
-> mount will still contact the server's portmapper to determine which 
-> transport protocols are available (and this breaks through a firewall 
-> that doesn't pass portmapper requests).  Only if you specify:
-> 
->    -o tcp,mountport=650,port=2049
-> 
-> or
-> 
->    -o udp,mountport=650,port=2049
-> 
-> then the portmapper calls are avoided entirely.  For some reason 
-> probe_bothports() sets the default NFS version to 3 but does not set a 
-> default transport protocol.
-The protocol is set by probe_port().
+How about providing a debug log?
+See http://people.redhat.com/jmoyer for what we need.
+What is the kernel version?
 
-> 
-> The transport protocols are probed differently for NFS and MNT: for MNT, 
-> UDP is probed first then TCP; for NFS, the opposite is true.  The mount 
-> command is supposed to try both transport protocol types both for NFS 
-> and MNT, but it appears that it is failing to try the other type if the 
-> first fails... I see this is also problematic for umount.nfs.
-The I idea here was to using UDP to probing for both rpc.mountd and the
-NFS server so as not to put (tcp) ports in TIMEWAIT, basically making
-them unavailable for the actual mount. The allowed many more tcp
-mounts to happen during autofs mount storms.
+btw, the autofs list is probably a better place for this to be discussed.
+It can be found at http://linux.kernel.org/mailman/listinfo/autofs.
 
-Note: if the protocol was explicitly specified (i.e. proto=tcp) only
-that protocol was used during the probing and mounting. I have
-been asked to change that as well. Meaning if when proto=tcp is
-specified, they still want the udp probing to occur.
-
-steved.
-
-
+Ian
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
