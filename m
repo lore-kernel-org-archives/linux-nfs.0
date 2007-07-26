@@ -1,60 +1,48 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: stdio and nfs-utils
-Date: Wed, 25 Jul 2007 20:07:00 -0400
-Message-ID: <20070726000700.GK7943@fieldses.org>
-References: <20070725223723.GH7943@fieldses.org>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH] NFS: have string-based mount options default to "intr"
+	mounts
+Date: Wed, 25 Jul 2007 22:44:00 -0400
+Message-ID: <1185417840.6585.143.camel@localhost>
+References: <20070725145614.e17ca721.jlayton@redhat.com>
+	<46A7A632.2050900@oracle.com>	<20070725154107.063c3b9a.jlayton@redhat.com>
+	<1185394617.6585.135.camel@localhost>  <46A7B450.3060304@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Neil Brown <neilb@suse.de>
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IDqsd-0007nE-Uy
-	for nfs@lists.sourceforge.net; Wed, 25 Jul 2007 17:07:00 -0700
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IDqsh-0006S2-Hm
-	for nfs@lists.sourceforge.net; Wed, 25 Jul 2007 17:07:03 -0700
-In-Reply-To: <20070725223723.GH7943@fieldses.org>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Cc: nfsv4@linux-nfs.org, nfs@lists.sourceforge.net,
+	Jeff Layton <jlayton@redhat.com>
+To: Peter Staubach <staubach@redhat.com>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <46A7B450.3060304@redhat.com>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
+List-ID: <nfs.lists.sourceforge.net>
 
-On Wed, Jul 25, 2007 at 06:37:23PM -0400, J. Bruce Fields wrote:
-> I assume what's happening is that the stdio code is taking the error
-> returns as a sign that it should leave the data in its buffer and just
-> try again next time another fwrite adds more.  Does that make sense?
-> I don't really understand how stdio is supposed to handle errors.
+On Wed, 2007-07-25 at 16:36 -0400, Peter Staubach wrote:
 
-So I tried a test program that just does
+> It sounds like the sync to disk on close() needs to be done in a
+> separate context and have the process in close() wait on it?  That
+> way, the process which received the signal could abort and return
+> without waiting on all of the data to get flushed, but the data
+> would still get flushed in a timely fashion?
 
-	while (1) {
-		fprintf(f, "%d\n", i++)
-		fflush(f);
-	}
+We could do that, but what kind of extra guarantees would that provide?
+The whole question is what you mean by "timely fashion" here. Normally,
+I'd expect that to mean "before any locks are freed", in which case I
+don't see how a separate flush context will help here...
 
-and pointed it at one of those proc files, which will always return an
-error on such a write.  On my fedora rawhide system, each write only
-writes the new data.  On my debian sid system, each write writes all the
-data accumulated so far.  Huh.
+> I suspect that as soon as you throw in a close() which returns
+> EINTR, then all assumptions about close-to-open become null and
+> void.
 
---b.
+Exactly. Byte range locks will be automatically freed as part of the
+POSIX close() process, and the application itself may still survive for
+long enough to release other locks (dotlocks etc...) that it may hold.
 
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Splunk Inc.
-Still grepping through log files to find problems?  Stop.
-Now Search log events and configuration files using AJAX and a browser.
-Download your FREE copy of Splunk now >>  http://get.splunk.com/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+Trond
