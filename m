@@ -1,19 +1,24 @@
-From: "Wim Colgate" <Wim.Colgate@xensource.com>
-Subject: question on the inner workings of NFS soft mount
-Date: Thu, 26 Jul 2007 15:29:19 -0700
-Message-ID: <A9AD3C3BCF83FD4182B7D4D99E37FAD82FA06F@exchrdm.ad.xensource.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: question on the inner workings of NFS soft mount
+Date: Thu, 26 Jul 2007 18:39:01 -0400
+Message-ID: <1185489541.6585.267.camel@localhost>
+References: <A9AD3C3BCF83FD4182B7D4D99E37FAD82FA06F@exchrdm.ad.xensource.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1281110349=="
-To: <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset="utf-8"
+Cc: nfs@lists.sourceforge.net
+To: Wim Colgate <Wim.Colgate@xensource.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IEBrD-0005tB-Ho
-	for nfs@lists.sourceforge.net; Thu, 26 Jul 2007 15:30:55 -0700
-Received: from webmailrdm.xensource.com ([66.228.214.202])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IEBrG-0002Pi-Sy
-	for nfs@lists.sourceforge.net; Thu, 26 Jul 2007 15:30:59 -0700
+	id 1IEBzA-0006jq-1A
+	for nfs@lists.sourceforge.net; Thu, 26 Jul 2007 15:39:08 -0700
+Received: from pat.uio.no ([129.240.10.15]
+	ident=[U2FsdGVkX1/vk0dLdfH5zhN2YJ2B0MsTTnDmT5Y6Y1M=])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IEBz9-0005Kj-WE
+	for nfs@lists.sourceforge.net; Thu, 26 Jul 2007 15:39:10 -0700
+In-Reply-To: <A9AD3C3BCF83FD4182B7D4D99E37FAD82FA06F@exchrdm.ad.xensource.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,929 +31,99 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
-
---===============1281110349==
-Content-class: urn:content-classes:message
-Content-Type: multipart/alternative;
-	boundary="----_=_NextPart_001_01C7CFD4.A2BA91FE"
-
-This is a multi-part message in MIME format.
-
-------_=_NextPart_001_01C7CFD4.A2BA91FE
-Content-Type: text/plain;
-	charset="us-ascii"
-Content-Transfer-Encoding: quoted-printable
-
-I was wondering if anyone could help me interpret the results of the
-following experiment with regards to NFS softmount.
-
-=20
-
-First a very brief description of my setup and test program:
-
-=20
-
-I have a simple program that does a small, 512 byte, write to a file,
-and print the success/failure of the IO plus the time the write took to
-return, sleep one second, then loop back and write another - repeat
-until ^C. The file it is writing to is on an NFS filer. During its
-execution, I will disable the NFS service on the filer. The printfs of
-success/failure are below.
-
-=20
-
-The mount is SOFT:=20
-
-=20
-
-172.24.0.90:/vhd1 on /mnt/snp1 type nfs
-(rw,soft,timeo=3D1,retrans=3D1,addr=3D172.24.0.90)
-
-=20
-
-When I run one instance of the program here is the output:
-
-=20
-
-# ./netwrite /mnt/snp1/foo2
-
-write block 0 (succeeded): 0.006674 secs
-
-write block 1 (succeeded): 0.001639 secs
-
-write block 2 (succeeded): 0.001793 secs
-
-write block 3 (succeeded): 0.001784 secs
-
-write block 4 (succeeded): 0.004258 secs
-
-write block 5 (succeeded): 0.002426 secs
-
-write block 6 (succeeded): 0.001494 secs
-
-write block 7 (succeeded): 0.001477 secs
-
-write block 8 (succeeded): 0.001271 secs
-
-write block 9 (failed): 3.00014 secs
-
-write block 10 (failed): 3.00015 secs
-
-write block 11 (failed): 6.00012 secs
-
-write block 12 (failed): 12.0001 secs
-
-write block 13 (failed): 24 secs
-
-write block 14 (failed): 47.9999 secs
-
-write block 15 (failed): 59.9996 secs
-
-write block 16 (failed): 35 secs
-
-write block 17 (failed): 59.9997 secs
-
-write block 18 (failed): 59.9997 secs
-
-write block 19 (failed): 59.9997 secs
-
-write block 20 (failed): 9.00012 secs
-
-=20
-
-=20
-
-I'm curious as to why the write failure times are all over the place.
-Note the timeo and retrans are both set to 1. If I run two simultaneous
-instances (to different files on the same filer), the times are also all
-over the place - and go as high as two minutes (curiously twice the max
-as one...).
-
-=20
-
-I'm using the following version of linux:
-
-=20
-
-Linux wims 2.6.18-8.1.8.el5.xs4.0.0b2.102.154xen #1 SMP Tue Jul 24
-16:57:36 EDT 2007 i686 i686 i386 GNU/Linux
-
-=20
-
-The program is pretty simple:
-
-=20
-
-#define O_DIRECT        040000
-
-=20
-
-#include <stdio.h>
-
-#include <sys/types.h>
-
-#include <sys/stat.h>
-
-#include <fcntl.h>
-
-#include <unistd.h>
-
-#include <sys/select.h>
-
-#include <errno.h>
-
-#include <string.h>
-
-#include <stdlib.h>
-
-=20
-
-#include <sys/time.h>
-
-=20
-
-#define ALIGN 512
-
-#define SIZE 512
-
-#define SEC_WAIT 1
-
-=20
-
-main(int argc, char *argv[])
-
-{
-
-    int fd;
-
-=20
-
-    int data=3D0;
-
-    char *bufptr =3D 0;
-
-    int result;
-
-    struct timeval tim;
-
-    struct timeval start;
-
-    struct timeval end;
-
-=20
-
-    if (argc !=3D 2) {
-
-        printf("usage: %s <filename>\n", argv[0]);
-
-        goto done;
-
-    }
-
-=20
-
-    posix_memalign((void **)&bufptr, ALIGN, SIZE);
-
-    if (!bufptr) {
-
-        printf("failed to allocate %d bytes", SIZE);
-
-        goto done;
-
-    }
-
-=20
-
-    fd =3D open(argv[1], O_RDWR | O_CREAT | O_DIRECT, 0777);
-
-=20
-
-    if (!fd) {
-
-        printf("failed to open %s for write, errno=3D%d\n", argv[1],
-errno);
-
-        goto done;
-
-    }
-
-=20
-
-    while (1) {
-
-        ftime(&start);
-
-        tim.tv_sec =3D SEC_WAIT;
-
-        tim.tv_usec =3D 0;
-
-        memset(bufptr, data, SIZE);
-
-        gettimeofday(&start, 0);
-
-        result =3D write(fd, bufptr, SIZE);
-
-        data =3D (data+1) & 255;
-
-        gettimeofday(&end, 0);
-
-        printf("write block %d (%s): %g secs\n",
-
-                                     data-1,
-
-                                     result < 0 ? "failed" :
-"succeeded",
-
-                                     ((end.tv_sec*1000000 + end.tv_usec)
--
-
-                                      (start.tv_sec*1000000 +
-start.tv_usec))
-
-                                      /1000000.0);
-
-        select(0, 0, 0, 0, &tim);
-
-    }
-
-=20
-
-done:
-
-    return 0;
-
-}
-
-=20
-
-Thanks,
-
-=20
-
-Wim
-
-
-------_=_NextPart_001_01C7CFD4.A2BA91FE
-Content-Type: text/html;
-	charset="us-ascii"
-Content-Transfer-Encoding: quoted-printable
-
-<html xmlns:o=3D"urn:schemas-microsoft-com:office:office" =
-xmlns:w=3D"urn:schemas-microsoft-com:office:word" =
-xmlns=3D"http://www.w3.org/TR/REC-html40">
-
-<head>
-<meta http-equiv=3DContent-Type content=3D"text/html; =
-charset=3Dus-ascii">
-<meta name=3DGenerator content=3D"Microsoft Word 11 (filtered medium)">
-<style>
-<!--
- /* Style Definitions */
- p.MsoNormal, li.MsoNormal, div.MsoNormal
-	{margin:0in;
-	margin-bottom:.0001pt;
-	font-size:12.0pt;
-	font-family:"Times New Roman";}
-a:link, span.MsoHyperlink
-	{color:blue;
-	text-decoration:underline;}
-a:visited, span.MsoHyperlinkFollowed
-	{color:purple;
-	text-decoration:underline;}
-span.EmailStyle17
-	{mso-style-type:personal-compose;
-	font-family:Arial;
-	color:windowtext;}
-@page Section1
-	{size:8.5in 11.0in;
-	margin:1.0in 1.25in 1.0in 1.25in;}
-div.Section1
-	{page:Section1;}
--->
-</style>
-
-</head>
-
-<body lang=3DEN-US link=3Dblue vlink=3Dpurple>
-
-<div class=3DSection1>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>I was wondering if anyone could help me interpret the
-results of the following experiment with regards to NFS =
-softmount.<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>First a very brief description of my setup and test =
-program:<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>I have a simple program that does a small, 512 byte, =
-write
-to a file, and print the success/failure of the IO plus the time the =
-write took
-to return, sleep one second, then loop back and write another &#8211; =
-repeat until
-^C. The file it is writing to is on an NFS filer. During its execution, =
-I will
-disable the NFS service on the filer. The printfs of success/failure are =
-below.<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>The mount is SOFT: <o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>172.24.0.90:/vhd1 on /mnt/snp1 type nfs
-(rw,soft,timeo=3D1,retrans=3D1,addr=3D172.24.0.90)<o:p></o:p></span></fon=
-t></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>When I run one instance of the program here is the =
-output:<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'># ./netwrite =
-/mnt/snp1/foo2<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>write block 0 (succeeded): 0.006674 =
-secs<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>write block 1 (succeeded): 0.001639 =
-secs<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>write block 2 (succeeded): 0.001793 =
-secs<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>write block 3 (succeeded): 0.001784 =
-secs<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>write block 4 (succeeded): 0.004258 =
-secs<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>write block 5 (succeeded): 0.002426 =
-secs<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>write block 6 (succeeded): 0.001494 =
-secs<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>write block 7 (succeeded): 0.001477 =
-secs<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>write block 8 (succeeded): 0.001271 =
-secs<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>write block 9 (failed): 3.00014 =
-secs<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>write block 10 (failed): 3.00015 =
-secs<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>write block 11 (failed): 6.00012 =
-secs<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>write block 12 (failed): 12.0001 =
-secs<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>write block 13 (failed): 24 =
-secs<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>write block 14 (failed): 47.9999 =
-secs<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>write block 15 (failed): 59.9996 =
-secs<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>write block 16 (failed): 35 =
-secs<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>write block 17 (failed): 59.9997 =
-secs<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>write block 18 (failed): 59.9997 =
-secs<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>write block 19 (failed): 59.9997 =
-secs<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>write block 20 (failed): 9.00012 =
-secs<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>I&#8217;m curious as to why the write failure times =
-are all
-over the place. Note the timeo and retrans are both set to 1. If I run =
-two
-simultaneous instances (to different files on the same filer), the times =
-are
-also all over the place &#8211; and go as high as two minutes (curiously =
-twice
-the max as one&#8230;).<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>I&#8217;m using the following version of =
-linux:<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>Linux wims 2.6.18-8.1.8.el5.xs4.0.0b2.102.154xen #1 =
-SMP Tue
-Jul 24 16:57:36 EDT 2007 i686 i686 i386 =
-GNU/Linux<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>The program is pretty =
-simple:<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>#define =
-O_DIRECT&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-040000<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>#include &lt;stdio.h&gt;<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>#include =
-&lt;sys/types.h&gt;<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>#include =
-&lt;sys/stat.h&gt;<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>#include &lt;fcntl.h&gt;<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>#include =
-&lt;unistd.h&gt;<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>#include =
-&lt;sys/select.h&gt;<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>#include &lt;errno.h&gt;<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>#include =
-&lt;string.h&gt;<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>#include =
-&lt;stdlib.h&gt;<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>#include =
-&lt;sys/time.h&gt;<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>#define ALIGN 512<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>#define SIZE 512<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>#define SEC_WAIT 1<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>main(int argc, char =
-*argv[])<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>{<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp; int =
-fd;<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp; int =
-data=3D0;<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp; char *bufptr =3D =
-0;<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp; int =
-result;<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp; struct timeval =
-tim;<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp; struct timeval =
-start;<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp; struct timeval =
-end;<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp; if (argc !=3D 2) =
-{<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-printf(&quot;usage: %s &lt;filename&gt;\n&quot;, =
-argv[0]);<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; goto =
-done;<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp; }<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp; posix_memalign((void =
-**)&amp;bufptr,
-ALIGN, SIZE);<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp; if (!bufptr) =
-{<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-printf(&quot;failed to allocate %d bytes&quot;, =
-SIZE);<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; goto =
-done;<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp; }<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp; fd =3D open(argv[1], O_RDWR | =
-O_CREAT |
-O_DIRECT, 0777);<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp; if (!fd) =
-{<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-printf(&quot;failed to open %s for write, errno=3D%d\n&quot;, argv[1], =
-errno);<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; goto =
-done;<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp; }<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp; while (1) =
-{<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-ftime(&amp;start);<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; tim.tv_sec =
-=3D
-SEC_WAIT;<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; =
-tim.tv_usec =3D 0;<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; =
-memset(bufptr,
-data, SIZE);<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-gettimeofday(&amp;start, 0);<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; result =3D =
-write(fd,
-bufptr, SIZE);<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; data =3D =
-(data+1)
-&amp; 255;<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-gettimeofday(&amp;end, 0);<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp; =
-&nbsp;&nbsp;&nbsp;&nbsp;printf(&quot;write
-block %d (%s): %g secs\n&quot;,<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&=
-nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&n=
-bsp;&nbsp;&nbsp;
-data-1,<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&=
-nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&n=
-bsp;&nbsp;&nbsp;
-result &lt; 0 ? &quot;failed&quot; : =
-&quot;succeeded&quot;,<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&=
-nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&n=
-bsp;&nbsp;&nbsp;
-((end.tv_sec*1000000 + end.tv_usec) -<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&=
-nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(start.tv_sec*100000=
-0
-+ start.tv_usec))<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&=
-nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&n=
-bsp;&nbsp;&nbsp;&nbsp;
-/1000000.0);<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; select(0, =
-0, 0,
-0, &amp;tim);<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp; }<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>done:<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>&nbsp;&nbsp;&nbsp; return =
-0;<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>}<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>Thanks,<o:p></o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
-
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>Wim<o:p></o:p></span></font></p>
-
-</div>
-
-</body>
-
-</html>
-
-------_=_NextPart_001_01C7CFD4.A2BA91FE--
-
-
---===============1281110349==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Splunk Inc.
-Still grepping through log files to find problems?  Stop.
-Now Search log events and configuration files using AJAX and a browser.
-Download your FREE copy of Splunk now >>  http://get.splunk.com/
---===============1281110349==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============1281110349==--
+WW91IGFyZSBwcm9iYWJseSBzZWVpbmcgYSBzaWRlIGVmZmVjdCBvZiB0aGUgVENQIHJlLWNvbm5l
+Y3Rpb24gYmFja29mZgphbGdvcml0aG0uIEknbGwgYmV0IHlvdSB0aGF0IHRoZSBudW1iZXJzIGNo
+YW5nZSBpZiB5b3UgdHJ5IFVEUC4KClRyb25kCgpPbiBUaHUsIDIwMDctMDctMjYgYXQgMTU6Mjkg
+LTA3MDAsIFdpbSBDb2xnYXRlIHdyb3RlOgo+IEkgd2FzIHdvbmRlcmluZyBpZiBhbnlvbmUgY291
+bGQgaGVscCBtZSBpbnRlcnByZXQgdGhlIHJlc3VsdHMgb2YgdGhlCj4gZm9sbG93aW5nIGV4cGVy
+aW1lbnQgd2l0aCByZWdhcmRzIHRvIE5GUyBzb2Z0bW91bnQuCj4gCj4gIAo+IAo+IEZpcnN0IGEg
+dmVyeSBicmllZiBkZXNjcmlwdGlvbiBvZiBteSBzZXR1cCBhbmQgdGVzdCBwcm9ncmFtOgo+IAo+
+ICAKPiAKPiBJIGhhdmUgYSBzaW1wbGUgcHJvZ3JhbSB0aGF0IGRvZXMgYSBzbWFsbCwgNTEyIGJ5
+dGUsIHdyaXRlIHRvIGEgZmlsZSwKPiBhbmQgcHJpbnQgdGhlIHN1Y2Nlc3MvZmFpbHVyZSBvZiB0
+aGUgSU8gcGx1cyB0aGUgdGltZSB0aGUgd3JpdGUgdG9vawo+IHRvIHJldHVybiwgc2xlZXAgb25l
+IHNlY29uZCwgdGhlbiBsb29wIGJhY2sgYW5kIHdyaXRlIGFub3RoZXIg4oCTIHJlcGVhdAo+IHVu
+dGlsIF5DLiBUaGUgZmlsZSBpdCBpcyB3cml0aW5nIHRvIGlzIG9uIGFuIE5GUyBmaWxlci4gRHVy
+aW5nIGl0cwo+IGV4ZWN1dGlvbiwgSSB3aWxsIGRpc2FibGUgdGhlIE5GUyBzZXJ2aWNlIG9uIHRo
+ZSBmaWxlci4gVGhlIHByaW50ZnMgb2YKPiBzdWNjZXNzL2ZhaWx1cmUgYXJlIGJlbG93Lgo+IAo+
+ICAKPiAKPiBUaGUgbW91bnQgaXMgU09GVDogCj4gCj4gIAo+IAo+IDE3Mi4yNC4wLjkwOi92aGQx
+IG9uIC9tbnQvc25wMSB0eXBlIG5mcwo+IChydyxzb2Z0LHRpbWVvPTEscmV0cmFucz0xLGFkZHI9
+MTcyLjI0LjAuOTApCj4gCj4gIAo+IAo+IFdoZW4gSSBydW4gb25lIGluc3RhbmNlIG9mIHRoZSBw
+cm9ncmFtIGhlcmUgaXMgdGhlIG91dHB1dDoKPiAKPiAgCj4gCj4gIyAuL25ldHdyaXRlIC9tbnQv
+c25wMS9mb28yCj4gCj4gd3JpdGUgYmxvY2sgMCAoc3VjY2VlZGVkKTogMC4wMDY2NzQgc2Vjcwo+
+IAo+IHdyaXRlIGJsb2NrIDEgKHN1Y2NlZWRlZCk6IDAuMDAxNjM5IHNlY3MKPiAKPiB3cml0ZSBi
+bG9jayAyIChzdWNjZWVkZWQpOiAwLjAwMTc5MyBzZWNzCj4gCj4gd3JpdGUgYmxvY2sgMyAoc3Vj
+Y2VlZGVkKTogMC4wMDE3ODQgc2Vjcwo+IAo+IHdyaXRlIGJsb2NrIDQgKHN1Y2NlZWRlZCk6IDAu
+MDA0MjU4IHNlY3MKPiAKPiB3cml0ZSBibG9jayA1IChzdWNjZWVkZWQpOiAwLjAwMjQyNiBzZWNz
+Cj4gCj4gd3JpdGUgYmxvY2sgNiAoc3VjY2VlZGVkKTogMC4wMDE0OTQgc2Vjcwo+IAo+IHdyaXRl
+IGJsb2NrIDcgKHN1Y2NlZWRlZCk6IDAuMDAxNDc3IHNlY3MKPiAKPiB3cml0ZSBibG9jayA4IChz
+dWNjZWVkZWQpOiAwLjAwMTI3MSBzZWNzCj4gCj4gd3JpdGUgYmxvY2sgOSAoZmFpbGVkKTogMy4w
+MDAxNCBzZWNzCj4gCj4gd3JpdGUgYmxvY2sgMTAgKGZhaWxlZCk6IDMuMDAwMTUgc2Vjcwo+IAo+
+IHdyaXRlIGJsb2NrIDExIChmYWlsZWQpOiA2LjAwMDEyIHNlY3MKPiAKPiB3cml0ZSBibG9jayAx
+MiAoZmFpbGVkKTogMTIuMDAwMSBzZWNzCj4gCj4gd3JpdGUgYmxvY2sgMTMgKGZhaWxlZCk6IDI0
+IHNlY3MKPiAKPiB3cml0ZSBibG9jayAxNCAoZmFpbGVkKTogNDcuOTk5OSBzZWNzCj4gCj4gd3Jp
+dGUgYmxvY2sgMTUgKGZhaWxlZCk6IDU5Ljk5OTYgc2Vjcwo+IAo+IHdyaXRlIGJsb2NrIDE2IChm
+YWlsZWQpOiAzNSBzZWNzCj4gCj4gd3JpdGUgYmxvY2sgMTcgKGZhaWxlZCk6IDU5Ljk5OTcgc2Vj
+cwo+IAo+IHdyaXRlIGJsb2NrIDE4IChmYWlsZWQpOiA1OS45OTk3IHNlY3MKPiAKPiB3cml0ZSBi
+bG9jayAxOSAoZmFpbGVkKTogNTkuOTk5NyBzZWNzCj4gCj4gd3JpdGUgYmxvY2sgMjAgKGZhaWxl
+ZCk6IDkuMDAwMTIgc2Vjcwo+IAo+ICAKPiAKPiAgCj4gCj4gSeKAmW0gY3VyaW91cyBhcyB0byB3
+aHkgdGhlIHdyaXRlIGZhaWx1cmUgdGltZXMgYXJlIGFsbCBvdmVyIHRoZSBwbGFjZS4KPiBOb3Rl
+IHRoZSB0aW1lbyBhbmQgcmV0cmFucyBhcmUgYm90aCBzZXQgdG8gMS4gSWYgSSBydW4gdHdvCj4g
+c2ltdWx0YW5lb3VzIGluc3RhbmNlcyAodG8gZGlmZmVyZW50IGZpbGVzIG9uIHRoZSBzYW1lIGZp
+bGVyKSwgdGhlCj4gdGltZXMgYXJlIGFsc28gYWxsIG92ZXIgdGhlIHBsYWNlIOKAkyBhbmQgZ28g
+YXMgaGlnaCBhcyB0d28gbWludXRlcwo+IChjdXJpb3VzbHkgdHdpY2UgdGhlIG1heCBhcyBvbmXi
+gKYpLgo+IAo+ICAKPiAKPiBJ4oCZbSB1c2luZyB0aGUgZm9sbG93aW5nIHZlcnNpb24gb2YgbGlu
+dXg6Cj4gCj4gIAo+IAo+IExpbnV4IHdpbXMgMi42LjE4LTguMS44LmVsNS54czQuMC4wYjIuMTAy
+LjE1NHhlbiAjMSBTTVAgVHVlIEp1bCAyNAo+IDE2OjU3OjM2IEVEVCAyMDA3IGk2ODYgaTY4NiBp
+Mzg2IEdOVS9MaW51eAo+IAo+ICAKPiAKPiBUaGUgcHJvZ3JhbSBpcyBwcmV0dHkgc2ltcGxlOgo+
+IAo+ICAKPiAKPiAjZGVmaW5lIE9fRElSRUNUICAgICAgICAwNDAwMDAKPiAKPiAgCj4gCj4gI2lu
+Y2x1ZGUgPHN0ZGlvLmg+Cj4gCj4gI2luY2x1ZGUgPHN5cy90eXBlcy5oPgo+IAo+ICNpbmNsdWRl
+IDxzeXMvc3RhdC5oPgo+IAo+ICNpbmNsdWRlIDxmY250bC5oPgo+IAo+ICNpbmNsdWRlIDx1bmlz
+dGQuaD4KPiAKPiAjaW5jbHVkZSA8c3lzL3NlbGVjdC5oPgo+IAo+ICNpbmNsdWRlIDxlcnJuby5o
+Pgo+IAo+ICNpbmNsdWRlIDxzdHJpbmcuaD4KPiAKPiAjaW5jbHVkZSA8c3RkbGliLmg+Cj4gCj4g
+IAo+IAo+ICNpbmNsdWRlIDxzeXMvdGltZS5oPgo+IAo+ICAKPiAKPiAjZGVmaW5lIEFMSUdOIDUx
+Mgo+IAo+ICNkZWZpbmUgU0laRSA1MTIKPiAKPiAjZGVmaW5lIFNFQ19XQUlUIDEKPiAKPiAgCj4g
+Cj4gbWFpbihpbnQgYXJnYywgY2hhciAqYXJndltdKQo+IAo+IHsKPiAKPiAgICAgaW50IGZkOwo+
+IAo+ICAKPiAKPiAgICAgaW50IGRhdGE9MDsKPiAKPiAgICAgY2hhciAqYnVmcHRyID0gMDsKPiAK
+PiAgICAgaW50IHJlc3VsdDsKPiAKPiAgICAgc3RydWN0IHRpbWV2YWwgdGltOwo+IAo+ICAgICBz
+dHJ1Y3QgdGltZXZhbCBzdGFydDsKPiAKPiAgICAgc3RydWN0IHRpbWV2YWwgZW5kOwo+IAo+ICAK
+PiAKPiAgICAgaWYgKGFyZ2MgIT0gMikgewo+IAo+ICAgICAgICAgcHJpbnRmKCJ1c2FnZTogJXMg
+PGZpbGVuYW1lPlxuIiwgYXJndlswXSk7Cj4gCj4gICAgICAgICBnb3RvIGRvbmU7Cj4gCj4gICAg
+IH0KPiAKPiAgCj4gCj4gICAgIHBvc2l4X21lbWFsaWduKCh2b2lkICoqKSZidWZwdHIsIEFMSUdO
+LCBTSVpFKTsKPiAKPiAgICAgaWYgKCFidWZwdHIpIHsKPiAKPiAgICAgICAgIHByaW50ZigiZmFp
+bGVkIHRvIGFsbG9jYXRlICVkIGJ5dGVzIiwgU0laRSk7Cj4gCj4gICAgICAgICBnb3RvIGRvbmU7
+Cj4gCj4gICAgIH0KPiAKPiAgCj4gCj4gICAgIGZkID0gb3Blbihhcmd2WzFdLCBPX1JEV1IgfCBP
+X0NSRUFUIHwgT19ESVJFQ1QsIDA3NzcpOwo+IAo+ICAKPiAKPiAgICAgaWYgKCFmZCkgewo+IAo+
+ICAgICAgICAgcHJpbnRmKCJmYWlsZWQgdG8gb3BlbiAlcyBmb3Igd3JpdGUsIGVycm5vPSVkXG4i
+LCBhcmd2WzFdLAo+IGVycm5vKTsKPiAKPiAgICAgICAgIGdvdG8gZG9uZTsKPiAKPiAgICAgfQo+
+IAo+ICAKPiAKPiAgICAgd2hpbGUgKDEpIHsKPiAKPiAgICAgICAgIGZ0aW1lKCZzdGFydCk7Cj4g
+Cj4gICAgICAgICB0aW0udHZfc2VjID0gU0VDX1dBSVQ7Cj4gCj4gICAgICAgICB0aW0udHZfdXNl
+YyA9IDA7Cj4gCj4gICAgICAgICBtZW1zZXQoYnVmcHRyLCBkYXRhLCBTSVpFKTsKPiAKPiAgICAg
+ICAgIGdldHRpbWVvZmRheSgmc3RhcnQsIDApOwo+IAo+ICAgICAgICAgcmVzdWx0ID0gd3JpdGUo
+ZmQsIGJ1ZnB0ciwgU0laRSk7Cj4gCj4gICAgICAgICBkYXRhID0gKGRhdGErMSkgJiAyNTU7Cj4g
+Cj4gICAgICAgICBnZXR0aW1lb2ZkYXkoJmVuZCwgMCk7Cj4gCj4gICAgICAgICBwcmludGYoIndy
+aXRlIGJsb2NrICVkICglcyk6ICVnIHNlY3NcbiIsCj4gCj4gICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgIGRhdGEtMSwKPiAKPiAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgcmVzdWx0IDwgMCA/ICJmYWlsZWQiIDoKPiAic3VjY2VlZGVkIiwKPiAKPiAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgKChlbmQudHZfc2VjKjEwMDAwMDAgKwo+
+IGVuZC50dl91c2VjKSAtCj4gCj4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAoc3RhcnQudHZfc2VjKjEwMDAwMDAgKwo+IHN0YXJ0LnR2X3VzZWMpKQo+IAo+ICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgLzEwMDAwMDAuMCk7Cj4gCj4gICAgICAgICBz
+ZWxlY3QoMCwgMCwgMCwgMCwgJnRpbSk7Cj4gCj4gICAgIH0KPiAKPiAgCj4gCj4gZG9uZToKPiAK
+PiAgICAgcmV0dXJuIDA7Cj4gCj4gfQo+IAo+ICAKPiAKPiBUaGFua3MsCj4gCj4gIAo+IAo+IFdp
+bQo+IAo+IAo+IC0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0KPiBUaGlzIFNGLm5ldCBlbWFpbCBpcyBzcG9uc29y
+ZWQgYnk6IFNwbHVuayBJbmMuCj4gU3RpbGwgZ3JlcHBpbmcgdGhyb3VnaCBsb2cgZmlsZXMgdG8g
+ZmluZCBwcm9ibGVtcz8gIFN0b3AuCj4gTm93IFNlYXJjaCBsb2cgZXZlbnRzIGFuZCBjb25maWd1
+cmF0aW9uIGZpbGVzIHVzaW5nIEFKQVggYW5kIGEgYnJvd3Nlci4KPiBEb3dubG9hZCB5b3VyIEZS
+RUUgY29weSBvZiBTcGx1bmsgbm93ID4+ICBodHRwOi8vZ2V0LnNwbHVuay5jb20vCj4gX19fX19f
+X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX18gTkZTIG1haWxsaXN0IC0g
+TkZTQGxpc3RzLnNvdXJjZWZvcmdlLm5ldCBodHRwczovL2xpc3RzLnNvdXJjZWZvcmdlLm5ldC9s
+aXN0cy9saXN0aW5mby9uZnMKCgotLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tClRoaXMgU0YubmV0IGVtYWlsIGlz
+IHNwb25zb3JlZCBieTogU3BsdW5rIEluYy4KU3RpbGwgZ3JlcHBpbmcgdGhyb3VnaCBsb2cgZmls
+ZXMgdG8gZmluZCBwcm9ibGVtcz8gIFN0b3AuCk5vdyBTZWFyY2ggbG9nIGV2ZW50cyBhbmQgY29u
+ZmlndXJhdGlvbiBmaWxlcyB1c2luZyBBSkFYIGFuZCBhIGJyb3dzZXIuCkRvd25sb2FkIHlvdXIg
+RlJFRSBjb3B5IG9mIFNwbHVuayBub3cgPj4gIGh0dHA6Ly9nZXQuc3BsdW5rLmNvbS8KX19fX19f
+X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX18KTkZTIG1haWxsaXN0ICAt
+ICBORlNAbGlzdHMuc291cmNlZm9yZ2UubmV0Cmh0dHBzOi8vbGlzdHMuc291cmNlZm9yZ2UubmV0
+L2xpc3RzL2xpc3RpbmZvL25mcwo=
