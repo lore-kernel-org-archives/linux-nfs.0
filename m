@@ -1,30 +1,28 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: Exportfs not showing exported file systems (was RE:	stdio
-	and nfs-utils)
-Date: Thu, 26 Jul 2007 16:04:31 -0400
-Message-ID: <20070726200431.GE8125@fieldses.org>
+Subject: [PATCH] Use __fpurge to ensure single-line writes to cache
+	files
+Date: Thu, 26 Jul 2007 16:30:46 -0400
+Message-ID: <20070726203046.GG8125@fieldses.org>
 References: <20070725223723.GH7943@fieldses.org>
 	<20070726000700.GK7943@fieldses.org>
 	<18088.3581.647761.879253@notabene.brown>
 	<20070726031755.GB19901@fieldses.org>
-	<01AE8AF878612047A442668306EAEB05D02161@SACEXMV01.hq.netapp.com>
-	<20070726154806.ed0afdfd.jlayton@redhat.com>
+	<18088.7847.592861.408080@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net,
-	"Muntz,  Daniel" <Dan.Muntz@netapp.com>
-To: Jeff Layton <jlayton@redhat.com>
+Cc: nfs@lists.sourceforge.net
+To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IE9ZZ-00077X-Ng
-	for nfs@lists.sourceforge.net; Thu, 26 Jul 2007 13:04:33 -0700
+	id 1IE9yu-0001Rn-TG
+	for nfs@lists.sourceforge.net; Thu, 26 Jul 2007 13:30:48 -0700
 Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IE9Zd-0002nE-Aw
-	for nfs@lists.sourceforge.net; Thu, 26 Jul 2007 13:04:37 -0700
-In-Reply-To: <20070726154806.ed0afdfd.jlayton@redhat.com>
+	(Exim 4.44) id 1IE9yy-0004Rd-7c
+	for nfs@lists.sourceforge.net; Thu, 26 Jul 2007 13:30:48 -0700
+In-Reply-To: <18088.7847.592861.408080@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,16 +35,80 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, Jul 26, 2007 at 03:48:06PM -0400, Jeff Layton wrote:
-> I saw a very similar problem with RHEL5 prior to its release. It turned
-> out to be a selinux policy issue. I believe the latest selinux-policy
-> packages in Fedora and RHEL have fixed it if it's the same problem.
+From: J. Bruce Fields <bfields@citi.umich.edu>
 
-That makes sense.  I don't remember for sure where I saw this, but it
-may well have been on my Fedora (rawhide) desktop, and I haven't seen it
-recently.
+On a recent Debian/Sid machine, I saw libc retrying stdio writes that
+returned write errors.  The result is that if an export downcall returns
+an error (which it can in normal operation, since it currently
+(incorrectly) returns -ENOENT on any negative downcall), then subsequent
+downcalls will write multiple lines (including the original line that
+received the error).
+
+The result is that the server fails to respond to any rpc call that
+refers to an unexported mount point (such as a readdir of a directory
+containing such a mountpoint), so client commands hang.
+
+I don't know whether this libc behavior is correct or expected, but it
+seems safest to add the __fpurge() (suggested by Neil) to ensure data is
+thrown away.
+
+Signed-off-by: "J. Bruce Fields" <bfields@citi.umich.edu>
+---
+ support/nfs/cacheio.c |   12 ++++++++++++
+ 1 files changed, 12 insertions(+), 0 deletions(-)
+
+On Thu, Jul 26, 2007 at 02:10:15PM +1000, Neil Brown wrote:
+> 	__fpurge(f)
+> 
+> seems to do the trick.
+
+Yep, thanks!
+
+> But we want to build a line up from multiple words, and so we need
+> buffering for that.  If we toss stdio, we will need to allocate a
+> buffer, keep track of the end point, and append to the buffer in
+> various places.  It feels like reinventing the wheel.
+
+Reinventing a rather simple part of the wheel, I'd say.  Oh well,
+another day.
 
 --b.
+
+
+diff --git a/support/nfs/cacheio.c b/support/nfs/cacheio.c
+index a76915b..9d271cd 100644
+--- a/support/nfs/cacheio.c
++++ b/support/nfs/cacheio.c
+@@ -17,6 +17,7 @@
+ 
+ #include <nfslib.h>
+ #include <stdio.h>
++#include <stdio_ext.h>
+ #include <ctype.h>
+ #include <unistd.h>
+ #include <sys/types.h>
+@@ -111,7 +112,18 @@ void qword_printint(FILE *f, int num)
+ 
+ int qword_eol(FILE *f)
+ {
++	int err;
++
+ 	fprintf(f,"\n");
++	err = fflush(f);
++	/*
++	 * We must send one line (and one line only) in a single write
++	 * call.  In case of a write error, libc may accumulate the
++	 * unwritten data and try to write it again later, resulting in a
++	 * multi-line write.  So we must explicitly ask it to throw away
++	 * any such cached data:
++	 */
++	__fpurge(f);
+ 	return fflush(f);
+ }
+ 
+-- 
+1.5.3.rc2
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
