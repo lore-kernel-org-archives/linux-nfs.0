@@ -1,24 +1,27 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
+From: Jeff Layton <jlayton@redhat.com>
 Subject: Re: Exportfs not showing exported file systems (was RE: stdio
-	and nfs-utils)
-Date: Thu, 26 Jul 2007 15:36:38 -0400
-Message-ID: <20070726193638.GC8125@fieldses.org>
-References: <20070726031755.GB19901@fieldses.org>
+ and nfs-utils)
+Date: Thu, 26 Jul 2007 15:48:06 -0400
+Message-ID: <20070726154806.ed0afdfd.jlayton@redhat.com>
+References: <20070725223723.GH7943@fieldses.org>
+	<20070726000700.GK7943@fieldses.org>
+	<18088.3581.647761.879253@notabene.brown>
+	<20070726031755.GB19901@fieldses.org>
 	<01AE8AF878612047A442668306EAEB05D02161@SACEXMV01.hq.netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net
 To: "Muntz, Daniel" <Dan.Muntz@netapp.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IE98Z-0003cX-8G
-	for nfs@lists.sourceforge.net; Thu, 26 Jul 2007 12:36:39 -0700
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IE98c-0003a5-0u
-	for nfs@lists.sourceforge.net; Thu, 26 Jul 2007 12:36:43 -0700
+	id 1IE9Jk-0005Gc-PY
+	for nfs@lists.sourceforge.net; Thu, 26 Jul 2007 12:48:12 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IE9Jo-0008II-Ij
+	for nfs@lists.sourceforge.net; Thu, 26 Jul 2007 12:48:16 -0700
 In-Reply-To: <01AE8AF878612047A442668306EAEB05D02161@SACEXMV01.hq.netapp.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -32,21 +35,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, Jul 26, 2007 at 11:43:10AM -0700, Muntz, Daniel wrote:
+On Thu, 26 Jul 2007 11:43:10 -0700
+"Muntz, Daniel" <Dan.Muntz@netapp.com> wrote:
+
 > Could all this be related to a problem that we've been seeing while
 > working on v4/4.1 at netapp, where exportfs doesn't show any output even
 > when there are exported file systems?  Ricardo recently observed that if
 > you redirect the output of 'exportfs' then you actually do get the
-> correct output (e.g., exportfs > afile, or exportfs | more).
+> correct output (e.g., exportfs > afile, or exportfs | more).  This lead
+> to some experiments with strace that show exportfs behaving differently
+> when its output is going to a tty.  We've seen this behavior across a
+> variety of kernels (2.6.18-2.6.20) and a variety of nfs-utils
+> (prepackaged with FC6, RHEL4/5, and built from a local copy of 1.0.12).
+> 
 
-I wouldn't expect that to be related to the problem with i/o to these
-proc files.
+I saw a very similar problem with RHEL5 prior to its release. It turned
+out to be a selinux policy issue. I believe the latest selinux-policy
+packages in Fedora and RHEL have fixed it if it's the same problem.
 
-But, yes, I've seen the same problem with exportfs output.  (Shame on me
-for not reporting it at at the time.... And thanks for looking into it!)
-But I don't know what the problem is.
-
---b.
+-- 
+Jeff Layton <jlayton@redhat.com>
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
