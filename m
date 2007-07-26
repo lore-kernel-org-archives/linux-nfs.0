@@ -1,25 +1,30 @@
-From: "Muntz, Daniel" <Dan.Muntz@netapp.com>
+From: Jeff Layton <jlayton@redhat.com>
 Subject: Re: Exportfs not showing exported file systems (was RE: stdio
-	and nfs-utils)
-Date: Thu, 26 Jul 2007 13:42:08 -0700
-Message-ID: <01AE8AF878612047A442668306EAEB05D0219C@SACEXMV01.hq.netapp.com>
-References: <20070725223723.GH7943@fieldses.org><20070726000700.GK7943@fieldses.org><18088.3581.647761.879253@notabene.brown><20070726031755.GB19901@fieldses.org><01AE8AF878612047A442668306EAEB05D02161@SACEXMV01.hq.netapp.com>
+ and nfs-utils)
+Date: Thu, 26 Jul 2007 17:12:09 -0400
+Message-ID: <20070726171209.6fbccdd3.jlayton@redhat.com>
+References: <20070725223723.GH7943@fieldses.org>
+	<20070726000700.GK7943@fieldses.org>
+	<18088.3581.647761.879253@notabene.brown>
+	<20070726031755.GB19901@fieldses.org>
+	<01AE8AF878612047A442668306EAEB05D02161@SACEXMV01.hq.netapp.com>
 	<20070726154806.ed0afdfd.jlayton@redhat.com>
+	<01AE8AF878612047A442668306EAEB05D0219C@SACEXMV01.hq.netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: "J. Bruce Fields" <bfields@fieldses.org>,
 	Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net
-To: "Jeff Layton" <jlayton@redhat.com>
+To: "Muntz, Daniel" <Dan.Muntz@netapp.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IEAA4-0002r2-3M
-	for nfs@lists.sourceforge.net; Thu, 26 Jul 2007 13:42:16 -0700
-Received: from mx2.netapp.com ([216.240.18.37])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IEAA7-0001OO-PX
-	for nfs@lists.sourceforge.net; Thu, 26 Jul 2007 13:42:20 -0700
-In-Reply-To: <20070726154806.ed0afdfd.jlayton@redhat.com>
+	id 1IEAcy-0006K4-M0
+	for nfs@lists.sourceforge.net; Thu, 26 Jul 2007 14:12:09 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IEAd2-00073k-A4
+	for nfs@lists.sourceforge.net; Thu, 26 Jul 2007 14:12:12 -0700
+In-Reply-To: <01AE8AF878612047A442668306EAEB05D0219C@SACEXMV01.hq.netapp.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,46 +37,40 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Any idea what one would need to change to verify if it's the same
-problem?  Our base installs are almost all FC6 and RHEL 4/5 (begging the
-question of whether it was fixed in RHEL 5 prior to release).  Someone
-here can probably test on an FC7 system, but it would be really handy to
-know how to fix the many existing installations, assuming it's the same
-problem.
-
-  Thanks,
-  Dan
-
------Original Message-----
-From: Jeff Layton [mailto:jlayton@redhat.com] 
-Sent: Thursday, July 26, 2007 12:48 PM
-To: Muntz, Daniel
-Cc: J. Bruce Fields; Neil Brown; nfs@lists.sourceforge.net
-Subject: Re: [NFS] Exportfs not showing exported file systems (was RE:
-stdio and nfs-utils)
-
-On Thu, 26 Jul 2007 11:43:10 -0700
+On Thu, 26 Jul 2007 13:42:08 -0700
 "Muntz, Daniel" <Dan.Muntz@netapp.com> wrote:
 
-> Could all this be related to a problem that we've been seeing while 
-> working on v4/4.1 at netapp, where exportfs doesn't show any output 
-> even when there are exported file systems?  Ricardo recently observed 
-> that if you redirect the output of 'exportfs' then you actually do get
-
-> the correct output (e.g., exportfs > afile, or exportfs | more).  This
-
-> lead to some experiments with strace that show exportfs behaving 
-> differently when its output is going to a tty.  We've seen this 
-> behavior across a variety of kernels (2.6.18-2.6.20) and a variety of 
-> nfs-utils (prepackaged with FC6, RHEL4/5, and built from a local copy
-of 1.0.12).
+> Any idea what one would need to change to verify if it's the same
+> problem?  Our base installs are almost all FC6 and RHEL 4/5 (begging the
+> question of whether it was fixed in RHEL 5 prior to release).  Someone
+> here can probably test on an FC7 system, but it would be really handy to
+> know how to fix the many existing installations, assuming it's the same
+> problem.
+> 
+>   Thanks,
+>   Dan
 > 
 
-I saw a very similar problem with RHEL5 prior to its release. It turned
-out to be a selinux policy issue. I believe the latest selinux-policy
-packages in Fedora and RHEL have fixed it if it's the same problem.
+While it's discouraged for us to suggest, you could do what I did and
+temporarily put selinux in permissive mode: ;-)
 
---
+# setenforce 0
+
+...and then see if exportfs still has the issue. To turn it back to
+enforcing do:
+
+# setenforce 1
+
+I've not been able to reproduce the problem since it was reportedly
+fixed. The BZ I opened on it is here:
+
+https://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=221181
+
+...if you find that selinux is at fault then you may want to reopen it.
+It might also be worthwhile to do the same with Bruce's original
+problem and see if it behaves any differently.
+
+-- 
 Jeff Layton <jlayton@redhat.com>
 
 -------------------------------------------------------------------------
