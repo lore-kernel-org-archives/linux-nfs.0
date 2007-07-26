@@ -1,8 +1,8 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: Exportfs not showing exported file systems (was RE: stdio
- and nfs-utils)
-Date: Thu, 26 Jul 2007 17:12:09 -0400
-Message-ID: <20070726171209.6fbccdd3.jlayton@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: Exportfs not showing exported file systems (was RE:	stdio
+	and nfs-utils)
+Date: Thu, 26 Jul 2007 17:16:40 -0400
+Message-ID: <20070726211640.GK8125@fieldses.org>
 References: <20070725223723.GH7943@fieldses.org>
 	<20070726000700.GK7943@fieldses.org>
 	<18088.3581.647761.879253@notabene.brown>
@@ -10,21 +10,23 @@ References: <20070725223723.GH7943@fieldses.org>
 	<01AE8AF878612047A442668306EAEB05D02161@SACEXMV01.hq.netapp.com>
 	<20070726154806.ed0afdfd.jlayton@redhat.com>
 	<01AE8AF878612047A442668306EAEB05D0219C@SACEXMV01.hq.netapp.com>
+	<20070726171209.6fbccdd3.jlayton@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net
-To: "Muntz, Daniel" <Dan.Muntz@netapp.com>
+Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net,
+	"Muntz,  Daniel" <Dan.Muntz@netapp.com>
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IEAcy-0006K4-M0
-	for nfs@lists.sourceforge.net; Thu, 26 Jul 2007 14:12:09 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IEAd2-00073k-A4
-	for nfs@lists.sourceforge.net; Thu, 26 Jul 2007 14:12:12 -0700
-In-Reply-To: <01AE8AF878612047A442668306EAEB05D0219C@SACEXMV01.hq.netapp.com>
+	id 1IEAhO-0006lM-3p
+	for nfs@lists.sourceforge.net; Thu, 26 Jul 2007 14:16:42 -0700
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IEAhQ-0008Mu-NX
+	for nfs@lists.sourceforge.net; Thu, 26 Jul 2007 14:16:46 -0700
+In-Reply-To: <20070726171209.6fbccdd3.jlayton@redhat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,41 +39,15 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, 26 Jul 2007 13:42:08 -0700
-"Muntz, Daniel" <Dan.Muntz@netapp.com> wrote:
+On Thu, Jul 26, 2007 at 05:12:09PM -0400, Jeff Layton wrote:
+> ...if you find that selinux is at fault then you may want to reopen it.
+> It might also be worthwhile to do the same with Bruce's original
+> problem and see if it behaves any differently.
 
-> Any idea what one would need to change to verify if it's the same
-> problem?  Our base installs are almost all FC6 and RHEL 4/5 (begging the
-> question of whether it was fixed in RHEL 5 prior to release).  Someone
-> here can probably test on an FC7 system, but it would be really handy to
-> know how to fix the many existing installations, assuming it's the same
-> problem.
-> 
->   Thanks,
->   Dan
-> 
+The system where I was seeing the problem was a debian system without
+selinux.
 
-While it's discouraged for us to suggest, you could do what I did and
-temporarily put selinux in permissive mode: ;-)
-
-# setenforce 0
-
-...and then see if exportfs still has the issue. To turn it back to
-enforcing do:
-
-# setenforce 1
-
-I've not been able to reproduce the problem since it was reportedly
-fixed. The BZ I opened on it is here:
-
-https://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=221181
-
-...if you find that selinux is at fault then you may want to reopen it.
-It might also be worthwhile to do the same with Bruce's original
-problem and see if it behaves any differently.
-
--- 
-Jeff Layton <jlayton@redhat.com>
+--b.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
