@@ -1,24 +1,20 @@
-From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Subject: Re: Question: When NFS client check dir's permission,
- it does not check the cache data
-Date: Thu, 26 Jul 2007 13:12:13 +0800
-Message-ID: <46A82D2D.5040405@cn.fujitsu.com>
-References: <467F8247.9060607@cn.fujitsu.com>		<1182802099.6163.33.camel@heimdal.trondhjem.org>		<4681BC44.6000605@cn.fujitsu.com>		<1182913754.12836.61.camel@heimdal.trondhjem.org>		<4681F3FB.7040609@cn.fujitsu.com>	<1182954331.5311.14.camel@heimdal.trondhjem.org>
-	<468325A6.9060607@cn.fujitsu.com>
+From: "Morris Gallegos" <dewayne.dadisman@aandjceramics.freeserve.co.uk>
+Subject: Life is beautiful!
+Date: Thu, 26 Jul 2007 06:59:46 -0300
+Message-ID: <01c7cf52$8cd621e0$ee991555@dewayne.dadisman>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1125503190=="
-Cc: nfs@lists.sourceforge.net
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: multipart/mixed;
+	boundary="----=_NextPart_000_0006_01C7CF74.13E7C1E0"
+To: <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IDvfQ-00054Z-Rd
-	for nfs@lists.sourceforge.net; Wed, 25 Jul 2007 22:13:41 -0700
-Received: from [222.73.24.84] (helo=song.cn.fujitsu.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IDvfS-00020B-Bg
-	for nfs@lists.sourceforge.net; Wed, 25 Jul 2007 22:13:44 -0700
-In-Reply-To: <468325A6.9060607@cn.fujitsu.com>
+	id 1IDxJz-0007Rk-M8
+	for nfs@lists.sourceforge.net; Wed, 25 Jul 2007 23:59:39 -0700
+Received: from [85.21.153.238] (helo=[85.21.153.238])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IDxK2-0000I2-9P
+	for nfs@lists.sourceforge.net; Wed, 25 Jul 2007 23:59:43 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,117 +27,173 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============1125503190==
-Content-Type: text/plain; charset=GB2312
+This is a multi-part message in MIME format.
+
+------=_NextPart_000_0006_01C7CF74.13E7C1E0
+Content-Type: text/plain;
+	charset="windows-1250"
 Content-Transfer-Encoding: 7bit
 
-Sorry to trouble again, it is this a real problem of NFS?
->>> I mean that read a dir, such as lookup a dir.
->>> If I reply a getattr as that dir has no lookup permission, and then do a
->>> "cat /nfsroot/dir/file" at client, client will not send lookup procedure to
->>> server, because client used the cache data of the dir. It like this:
->>> client server
->>> #ls /nfsroot
->>> readdirplus ------------------>
->>> <------------- readdirplus reply
->>> (attribute of dir has no lookup permission)
->>> # cat /nfsroot/dir/file
->>> (send nothing, used cache data)
->>> -------no package is send-------
->>>
->>> If no cache data exists, it would like this:
->>> client server
->>> #ls /nfsroot
->>> readdirplus ------------------>
->>> <------------- readdirplus reply
->>> (attribute of dir has no lookup permission)
->>> # cat /nfsroot/dir/file
->>> access(dir) ------------------->
->>> <------------- access reply(dir)
->>> (has no lookup permission)
->>>
->>> And if has permission to lookup dir, it would like this:
->>> client server
->>> #ls /nfsroot
->>> readdirplus ------------------>
->>> <------------- readdirplus reply
->>> (attribute of dir has no lookup permission)
->>> # cat /nfsroot/dir/file
->>> access(dir) -------------------> (*1)
->>> <------------- access reply(dir)
->>> lookup(file) ------------------->
->>> <------------- lookup reply(file)
->>> read(file) ------------------->
->>> <------------- read reply(file)
->>>
->>> While you optimize all write operations to omit access procedure, can
->>> this access (*1) be omitted? Then lookup(file) will return NOPERM.
->>>     
->>>       
->> So what if I change the permissions on the directory? What should the
->> rules be for caching these attributes?
->>
->> ...and you still haven't replied to my question about what
->> application/workload actually _cares_ about optimising for this
->> particular case.
->>   
->>     
-> No application cares this ^_^, just for test.
-> I test the read op of dir, it maybe has tiny bug in it. As you said, if
-> I chmod of dir, client will be a little later to know this.
-> Test step ad following:
->
-> [root@REHL ~]# mount -t nfs 192.168.0.19:/nfsroot /mnt
-> [root@REHL ~]# ll /mnt
-> total 4
-> dr-xr-xr-x 2 root root 4096 Jun 23  2007 dir
-> [root@REHL ~]# ll /mnt/dir
-> total 4
-> -rw-r--r-- 1 root root 5 Jun 24  2007 file
-> [root@REHL ~]# su weiyj
-> [weiyj@REHL root]$ ll /mnt
-> total 4
-> dr-xr-xr-x 2 root root 4096 Jun 23  2007 dir
-> [weiyj@REHL root]$ ll /mnt/dir
-> total 4
-> -rw-r--r-- 1 root root 5 Jun 24  2007 file
-> [weiyj@REHL root]$ cat /mnt/dir/file
-> test
-> [weiyj@REHL root]$ ssh 192.168.0.19 -l root chmod a-x /nfsroot/dir
-> [weiyj@REHL root]$ cat /mnt/dir/file
-> test
-> [weiyj@REHL root]$ cat /mnt/dir/file
-> test
-> [weiyj@REHL root]$ ll /mnt/dir
-> total 0
-> ?--------- ? ? ? ?            ? /mnt/dir/file
-> [weiyj@REHL root]$ ll /mnt
-> total 4
-> dr--r--r-- 2 root root 4096 Jun 23  2007 dir
-> [weiyj@REHL root]$ cat /mnt/dir/file
-> cat: /mnt/dir/file: Permission denied
->   
 
 
--- 
+------=_NextPart_000_0006_01C7CF74.13E7C1E0
+Content-Type: image/gif;
+	name="havok01.gif"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment;
+	filename="havok01.gif"
 
-A new email address of FJWAN is launched from Apr.1 2007.
-The updated address is: yjwei@cn.fujitsu.com 
---------------------------------------------------
-Wei Yongjun
-Development Dept.I
-Nanjing Fujitsu Nanda Software Tech. Co., Ltd.(FNST)
-8/F., Civil Defense Building, No.189 Guangzhou Road,
-Nanjing, 210029, China
-TEL: +86+25-86630523-858
-COINS: 79955-858
-FAX: +86+25-83317685
-MAIL: yjwei@cn.fujitsu.com
---------------------------------------------------
+R0lGODlhxgDuAPcAAAAAAIAAAACAAICAAAAAgIAAgACAgICAgMDAwP8AAAD/AP//AAAA//8A/wD/
+/////wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMwAAZgAAmQAAzAAA/wAzAAAzMwAzZgAzmQAzzAAz/wBm
+AABmMwBmZgBmmQBmzABm/wCZAACZMwCZZgCZmQCZzACZ/wDMAADMMwDMZgDMmQDMzADM/wD/AAD/
+MwD/ZgD/mQD/zAD//zMAADMAMzMAZjMAmTMAzDMA/zMzADMzMzMzZjMzmTMzzDMz/zNmADNmMzNm
+ZjNmmTNmzDNm/zOZADOZMzOZZjOZmTOZzDOZ/zPMADPMMzPMZjPMmTPMzDPM/zP/ADP/MzP/ZjP/
+mTP/zDP//2YAAGYAM2YAZmYAmWYAzGYA/2YzAGYzM2YzZmYzmWYzzGYz/2ZmAGZmM2ZmZmZmmWZm
+zGZm/2aZAGaZM2aZZmaZmWaZzGaZ/2bMAGbMM2bMZmbMmWbMzGbM/2b/AGb/M2b/Zmb/mWb/zGb/
+/5kAAJkAM5kAZpkAmZkAzJkA/5kzAJkzM5kzZpkzmZkzzJkz/5lmAJlmM5lmZplmmZlmzJlm/5mZ
+AJmZM5mZZpmZmZmZzJmZ/5nMAJnMM5nMZpnMmZnMzJnM/5n/AJn/M5n/Zpn/mZn/zJn//8wAAMwA
+M8wAZswAmcwAzMwA/8wzAMwzM8wzZswzmcwzzMwz/8xmAMxmM8xmZsxmmcxmzMxm/8yZAMyZM8yZ
+ZsyZmcyZzMyZ/8zMAMzMM8zMZszMmczMzMzM/8z/AMz/M8z/Zsz/mcz/zMz///8AAP8AM/8AZv8A
+mf8AzP8A//8zAP8zM/8zZv8zmf8zzP8z//9mAP9mM/9mZv9mmf9mzP9m//+ZAP+ZM/+ZZv+Zmf+Z
+zP+Z///MAP/MM//MZv/Mmf/MzP/M////AP//M///Zv//mf//zP///yH5BAEAABAALAAAAADGAO4A
+AAj/AP8JHEiwoMGDCBMqXMhQobRWDSMSpNYwWz+JCvE1vIixo8ePIEOKDNls5LaO0kaqHMhspcuX
+LjXClPhqmkRYr/7FGimv5D97H3vO7DiJ0dCjSA/uTMq0qdOnUKNKdSrJJcWpBw91wcqVENOqXK96
+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
+eM53y/BY+rygsjBVLAUEADs= 
 
-
-
---===============1125503190==
+------=_NextPart_000_0006_01C7CF74.13E7C1E0
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -152,7 +204,7 @@ This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
---===============1125503190==
+------=_NextPart_000_0006_01C7CF74.13E7C1E0
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -162,4 +214,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---===============1125503190==--
+------=_NextPart_000_0006_01C7CF74.13E7C1E0--
