@@ -1,8 +1,8 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: [PATCH] Use __fpurge to ensure single-line writes to cache
-	files
-Date: Thu, 26 Jul 2007 16:30:46 -0400
-Message-ID: <20070726203046.GG8125@fieldses.org>
+Subject: [PATCH] knfsd: eliminate unnecessary -ENOENT returns on
+	export	downcalls
+Date: Thu, 26 Jul 2007 16:31:38 -0400
+Message-ID: <20070726203138.GH8125@fieldses.org>
 References: <20070725223723.GH7943@fieldses.org>
 	<20070726000700.GK7943@fieldses.org>
 	<18088.3581.647761.879253@notabene.brown>
@@ -13,15 +13,15 @@ Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IE9yu-0001Rn-TG
-	for nfs@lists.sourceforge.net; Thu, 26 Jul 2007 13:30:48 -0700
+	id 1IE9zl-0001ZB-H2
+	for nfs@lists.sourceforge.net; Thu, 26 Jul 2007 13:31:38 -0700
 Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IE9yy-0004Rd-7c
-	for nfs@lists.sourceforge.net; Thu, 26 Jul 2007 13:30:48 -0700
+	(Exim 4.44) id 1IE9zo-00009q-3H
+	for nfs@lists.sourceforge.net; Thu, 26 Jul 2007 13:31:41 -0700
 In-Reply-To: <18088.7847.592861.408080@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -37,75 +37,41 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 From: J. Bruce Fields <bfields@citi.umich.edu>
 
-On a recent Debian/Sid machine, I saw libc retrying stdio writes that
-returned write errors.  The result is that if an export downcall returns
-an error (which it can in normal operation, since it currently
-(incorrectly) returns -ENOENT on any negative downcall), then subsequent
-downcalls will write multiple lines (including the original line that
-received the error).
+A succesful downcall with a negative result (which indicates that the
+given filesystem is not exported to the given user) should not return an
+error.
 
-The result is that the server fails to respond to any rpc call that
-refers to an unexported mount point (such as a readdir of a directory
-containing such a mountpoint), so client commands hang.
-
-I don't know whether this libc behavior is correct or expected, but it
-seems safest to add the __fpurge() (suggested by Neil) to ensure data is
-thrown away.
+Currently mountd is depending on stdio to write these downcalls.  With
+some versions of libc this appears to cause subsequent writes to attempt
+to write all accumulated data (for which writes previously failed) along
+with any new data.  This can prevent the kernel from seeing responses to
+later downcalls.  Symptoms will be that nfsd fails to respond to certain
+requests.
 
 Signed-off-by: "J. Bruce Fields" <bfields@citi.umich.edu>
 ---
- support/nfs/cacheio.c |   12 ++++++++++++
- 1 files changed, 12 insertions(+), 0 deletions(-)
+ fs/nfsd/export.c |    5 +++--
+ 1 files changed, 3 insertions(+), 2 deletions(-)
 
-On Thu, Jul 26, 2007 at 02:10:15PM +1000, Neil Brown wrote:
-> 	__fpurge(f)
-> 
-> seems to do the trick.
+And here's the kernel fix.--b.
 
-Yep, thanks!
-
-> But we want to build a line up from multiple words, and so we need
-> buffering for that.  If we toss stdio, we will need to allocate a
-> buffer, keep track of the end point, and append to the buffer in
-> various places.  It feels like reinventing the wheel.
-
-Reinventing a rather simple part of the wheel, I'd say.  Oh well,
-another day.
-
---b.
-
-
-diff --git a/support/nfs/cacheio.c b/support/nfs/cacheio.c
-index a76915b..9d271cd 100644
---- a/support/nfs/cacheio.c
-+++ b/support/nfs/cacheio.c
-@@ -17,6 +17,7 @@
+diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+index 2d295dd..cba899a 100644
+--- a/fs/nfsd/export.c
++++ b/fs/nfsd/export.c
+@@ -564,9 +564,10 @@ static int svc_export_parse(struct cache_detail *cd, char *mesg, int mlen)
  
- #include <nfslib.h>
- #include <stdio.h>
-+#include <stdio_ext.h>
- #include <ctype.h>
- #include <unistd.h>
- #include <sys/types.h>
-@@ -111,7 +112,18 @@ void qword_printint(FILE *f, int num)
- 
- int qword_eol(FILE *f)
- {
-+	int err;
-+
- 	fprintf(f,"\n");
-+	err = fflush(f);
-+	/*
-+	 * We must send one line (and one line only) in a single write
-+	 * call.  In case of a write error, libc may accumulate the
-+	 * unwritten data and try to write it again later, resulting in a
-+	 * multi-line write.  So we must explicitly ask it to throw away
-+	 * any such cached data:
-+	 */
-+	__fpurge(f);
- 	return fflush(f);
- }
- 
+ 	/* flags */
+ 	err = get_int(&mesg, &an_int);
+-	if (err == -ENOENT)
++	if (err == -ENOENT) {
++		err = 0;
+ 		set_bit(CACHE_NEGATIVE, &exp.h.flags);
+-	else {
++	} else {
+ 		if (err || an_int < 0) goto out;	
+ 		exp.ex_flags= an_int;
+ 	
 -- 
 1.5.3.rc2
 
