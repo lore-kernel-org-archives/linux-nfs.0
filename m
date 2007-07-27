@@ -1,21 +1,25 @@
-From: "Pearlie Good" <melisande.dadisman@asianover18.com>
-Subject: Good summer, dude
-Date: Fri, 27 Jul 2007 14:52:56 -0100
-Message-ID: <808965501.17737760930502@asianover18.com>
-Reply-To: melisande.dadisman@asianover18.com
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: Status of mount.nfs
+Date: Fri, 27 Jul 2007 11:00:46 -0400
+Message-ID: <46AA089E.50503@RedHat.com>
+References: <20070708191640.GA13962@uio.no>	<18065.43199.104020.412029@notabene.brown>	<20070715083114.GB4158@uio.no>	<18074.50730.591965.39211@notabene.brown>	<20070716092047.GA10353@uio.no>	<18075.17719.855332.259470@notabene.brown>	<20070722191733.GA31501@uio.no>
+	<46A52816.6050500@oracle.com>	<20070724172451.GA14026@uio.no>
+	<46A7A5F8.4040204@oracle.com> <46A897CD.50201@RedHat.com>
+	<46A96032.7080503@oracle.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
-  boundary="----------258401D3A7C4092C"
-To: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
+To: chuck.lever@oracle.com
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IERFc-0002Y8-2C
-	for nfs@lists.sourceforge.net; Fri, 27 Jul 2007 07:57:11 -0700
-Received: from p54934bc2.dip.t-dialin.net ([84.147.75.194])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IERB6-000195-Cc
-	for nfs@lists.sourceforge.net; Fri, 27 Jul 2007 07:52:33 -0700
+	id 1IERJJ-0003nt-KG
+	for nfs@lists.sourceforge.net; Fri, 27 Jul 2007 08:00:58 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IERJN-0000pF-12
+	for nfs@lists.sourceforge.net; Fri, 27 Jul 2007 08:01:01 -0700
+In-Reply-To: <46A96032.7080503@oracle.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,194 +32,68 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-------------258401D3A7C4092C
-Content-Type: text/plain; charset=iso-8859-2
-Content-Transfer-Encoding: 7bit
+Chuck Lever wrote:
+> 
+> And umount.nfs always uses TCP for the mountd request.  I have a patch 
+> that fixes that to behave more like mount.nfs does, which I will forward 
+> in the next day or two.
+thats a bug... umount should use the protocol the mount did...
+I thought I had fixed that... :-\
 
+> 
+> I notice some problems if a share is mounted with TCP, but the server 
+> later disables TCP -- umount.nfs hiccups on that when it tries to umount 
+> using the same protocol as listed in /etc/mtab.  Perhaps relying on 
+> /etc/mtab for setting the umount protocol is unnecessary.
+I think I was using /proc/mounts...
 
+> 
+> We have three requests that need to be made:
+> 
+> 1.  GETPORT -- I think this should UDP all the time unless proto=tcp is 
+> explicitly specified;
+Some people have asked that we first try UDP all the time... which
+I have resisted but it might make sense...
 
-------------258401D3A7C4092C
-Content-Type: image/gif; name="tamtam.gif"
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment; filename="tamtam.gif"
+> 
+> 2.  MNT -- likewise, UDP unless proto=tcp is specified or GETPORT says 
+> UDP is not supported;
+> 
+> 3.  NFS -- this should be TCP all the time unless proto=udp is specified 
+> or GETPORT says TCP is not supported.
+What about rollbacks... meaning if tcp is not supported do we try udp?
+if v4 is not supported to we try v3 and the v2 or just fail the mount?
 
-R0lGODlhxgAQAfcAAAAAAIAAAACAAICAAAAAgIAAgACAgICAgMDAwP8AAAD/AP//AAAA//8A/wD/
-/////wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMwAAZgAAmQAAzAAA/wAzAAAzMwAzZgAzmQAzzAAz/wBm
-AABmMwBmZgBmmQBmzABm/wCZAACZMwCZZgCZmQCZzACZ/wDMAADMMwDMZgDMmQDMzADM/wD/AAD/
-MwD/ZgD/mQD/zAD//zMAADMAMzMAZjMAmTMAzDMA/zMzADMzMzMzZjMzmTMzzDMz/zNmADNmMzNm
-ZjNmmTNmzDNm/zOZADOZMzOZZjOZmTOZzDOZ/zPMADPMMzPMZjPMmTPMzDPM/zP/ADP/MzP/ZjP/
-mTP/zDP//2YAAGYAM2YAZmYAmWYAzGYA/2YzAGYzM2YzZmYzmWYzzGYz/2ZmAGZmM2ZmZmZmmWZm
-zGZm/2aZAGaZM2aZZmaZmWaZzGaZ/2bMAGbMM2bMZmbMmWbMzGbM/2b/AGb/M2b/Zmb/mWb/zGb/
-/5kAAJkAM5kAZpkAmZkAzJkA/5kzAJkzM5kzZpkzmZkzzJkz/5lmAJlmM5lmZplmmZlmzJlm/5mZ
-AJmZM5mZZpmZmZmZzJmZ/5nMAJnMM5nMZpnMmZnMzJnM/5n/AJn/M5n/Zpn/mZn/zJn//8wAAMwA
-M8wAZswAmcwAzMwA/8wzAMwzM8wzZswzmcwzzMwz/8xmAMxmM8xmZsxmmcxmzMxm/8yZAMyZM8yZ
-ZsyZmcyZzMyZ/8zMAMzMM8zMZszMmczMzMzM/8z/AMz/M8z/Zsz/mcz/zMz///8AAP8AM/8AZv8A
-mf8AzP8A//8zAP8zM/8zZv8zmf8zzP8z//9mAP9mM/9mZv9mmf9mzP9m//+ZAP+ZM/+ZZv+Zmf+Z
-zP+Z///MAP/MM//MZv/Mmf/MzP/M////AP//M///Zv//mf//zP///yH5BAEAABAALAAAAADGABAB
-AAj/AP8JHEiwoMGDCBMqXMiwIUJCDiMuxCexosWLGDNq3Fhoo0VqHge+CUmypEmDZ06qJDly5b8t
-LmMyBJMRlsybJ2HixOnP47adQIMKHerQZkOKRJMKRMEUBUGmT53+a0o1qtSlVK9mhYq1adesBbcO
-5IpV4E+vIKdmnTKWbFerBqu2japUbNm5asG2vZpX7lapNcT+5dvXq1q6e/+l+urXcF+4Vh27dRvU
-sGW+XMlqo0u2s1TKArNoxUwY7+HTdw97Riz3cVnPn1ejHjq5rTS8oF+Pxn3V3r3UcUunzkx6ruy7
-ULWiTr57bFjHA/MBzZ2XT2O9qkfr/cuYMHXuhSU7/4Xdmnl2480Rth5Ybbrw8MS3N7cLfy/079gH
-D4+93rz55bEtRJ17T5l2Wm7gIfgeYsAx6GB8jb0lzIFTIWdXbQQ1c8eCO10WoEDVEHdQgsIpaJo2
-+I1YXH0A/mPOgSKy6OFzStl3HCwQekXZf8/Jh91siFXzE3A86pYYjAG6RU2OpQ2I0CuvnNTfitzt
-OF6J9DUVinfCGQIDlpxxiQ9TbL3VGXoFvaAdmAb5k02NcBpkT5x9MPTKZhYNGeeeDtnA50567oTn
-nxWFUVA7hCZ60aCKXsROo5BGKumkQDGaUR55UEppD3Bm6al8Nu63G4k+MqUCc/ldBxZ4BRUz2Y+F
-2f/YQ5FMfmghrDJSNUWtt8ax4ZVHZldqVVmlgKqqOlZJ31NbRibesMmydmF6rJoWoz8oupBaexby
-9haMKj64Io1EjmsUjcfFF+xsrzbYrYHhvjuNWlGaCKSR/9lbroPwijsQnpyEaa2t+xoYI7pcCjgt
-CruSd1l3aDK1Cq8sGrwwdOyKdYzA3RGcsbMNO5PrlLh+iseroEJ8HlSndtxVGKChXN6PMmMsm6fk
-liuWKqRmXDKb4sVLrn/A3nuaGDYk3G9w/iZEotAFF6zvceqx2SLTV+cV7NR+Np1zu0vbeDBkWlss
-rdDHVZMWv3dh42GEFT+7V8O23kdaVjY1lUgiYLv/LBA1UiSMH6x9Iwn3rSic3CSbrWj9NGNkP3t4
-2T5TZQvk4oKVlpVG/9PIz00/jrgTTmqqhR98WlpRI5o6tHbrKw0Ce0KFnDs7pafcrvvuiorsED7S
-7ZkF73zCY0xDvic0fKLLEx/RKJ1Auk3zGqluUU/OZ++S9RW9zhD3JoGv/UDJbyR+5xiLrR1BoqXq
-VC3rpj8l2fRTbn+swRFeM1kUvX2dRW4ZBy6+tQj4/SMYcdsfhP7hCtd8S2wWwxJ56Fetjt3NWXbj
-j48AeJVRoIkgjzIR1Rb4lQ+W7WFG+gf2HDizrMXsdVBpII/6xomi7at0WBNIwM7jPRGmB1zKWQ3D
-/5aHoRaRZXPjcY4QfzgipCwFDwJxxQzHlbiPmdAhPlQRCk41qjUFjWgmdAu3jLi4lXURggPJHXw2
-lsKKncdsOKQRDJnYF2PtR2X4KtrNCIPEOwosX9T6Ue70czX6UGNXA0tkRGK2LHc9TjJ3kEeFPiS6
-CiHOZp+xJMVyZrZcPZBVDhvQGPtVwXuJbo+UXNi3NnmrS8aoFYIoI29SBqBUqU8ig1EavDgHm1a+
-cZZf1CWSUngbYa3HgkCqYi85By62OY2QuxTmP1xgQ8cpp42iKo4fhAmVZjjjjFE0nAQnN5VM1Wxo
-HovjTqIEp1GO753wjKc8/+a9kLhTIaIwSUfmGf/PeyYknwtZxCIcAhF+GvSgCikmNepZEmqobXZr
-U8VAptGPf2iDoXuqpzgGWJFi1qgZLkGUR2KREX8elBpOVMgzSMEQkCbEEKvAyITgZLtILSYitFiJ
-Ew2FUJyY9CaKWMnaeNrThdS0IkctakSOUb7bJfV7JMFonM5XEYkqFSH98GhEpCoTVVg1JFo1yAw8
-EjylTGNeCukHWjfC1YQsNKULBclCC4IPhi4UHvAAiVHeOteCxFUggwqrQFQhgyvIQBVtXUhZi5pY
-g8AjHeggCGTzCtmywgMdkC3IYzGLWXhwi7OTLQhk05EW8K3iCv8wxD9m0IW/dYG1M1gsQahx2tf/
-FkQVr+2CKmR7VYPkQxzoSMtlI4sPdAR3IMA1LkGGiw48GBcd8BAIOsSB1+lGVyDFtS5DZhBTiXZB
-Bv+gxnfD+92vDoQaV4jtP9Ib09SOV7wySCk/Gxvaf3Q2vJn922ihO5DQehCvA7nvY6/7j83mVyG5
-5W5a8sFagbBWtQV5bXvFO9Z/SFgghrBtTxkqCoCGFx2+WCiIseuL4xaYusyYrkDgAdy01LWv1qWG
-dj8c4hYvBL0y+O4VIEwQw5pXIIUFBHYLawh8yOAVaSEsaluXDpVcTrrpqO51qXFgzILEygWu8mij
-C1osFxizX24yQ1YxA2mw1nvcPciFyTtWCr/p/x+4rbCktLBigvwYI4Maro0/fFwZU/ey1P0HPmzs
-jOqe4srABS5BgIvX4SrEyK1VBTP2EN9/2AK9Cj6IIXb8tzP/I8dC/scqCms6gzxDJfs9b373m2oq
-W7k9o71cZy87ZVbfFyEUTm1q9zCQyzG4C6qlcPA8/WCBkLm1v27spJZBkhQHmsTHLTE8XgxcZny5
-xMCVtnSp62eKsDi4dy3xQSTxNyXLYK12JvWnr+BiQPgYEIE4b2EPq2y2ysTaBAlURcCsanTkAx7v
-iGx/0fEb/IKWwALObDqi3G/ekpsgqn3zadsb54NYKt66Q0ajBEtXlFoEDAN1yJIxDGzykpqN8//U
-eG81kmHYriItKv8dQlKy8pozRL4D4YHNd26QRCCC51elqluBTvSiJyXkCckHzhvCY6PzLhIraS1G
-VoFbp0skegapq0q0LpEME3npbmWvSVCnVA8OxMD8re8/8nHrFfM3wAwPM78ZkmFR51rUsF3zbF+7
-2JYnWOoR8TCf5CFJmVwW2/yt9tmnK3C3E9i+voguPKQN4IZcQciqVbe7c0xkgxD2x9SYt2G7EGqr
-H8TV8ZCrQCAbj4GzfvGPT/jjG5L3pr98IQ/OLTWaoYr2YtglBR3ftw3C6BUz+u1fjn2ghzvtiEC6
-sGnWtULgK9FRX0EU+VgbNe5MEjq/c8AGqe//fb1Ma4Lc19XpKEZeI5LhlgsE2Lr3bYPfH/2BAN70
-B5l845GLDmvLOMT/d10pBlMBFnln91gGeGOGpWvuBhKAABJKlhb7tF6Vtm6lF15Nlz3Z5xKuNnuh
-dVm2JhD3gHz2FXdwN3sH8WuihncGQWYxdVr7VHEV12P4txDMVX7Fx2iNZlwgcVn3cA/NZ1yShw51
-JYRH4XWcZhAZhnkl9zfp1YTn5Xs7sQokNXT1JhBlghNoF12T5WqSxV8gOH4Mt4UVIYXtR39S2BD3
-JxD4pjvetxN4hRQe91azNVdxxXVct2LNVxHgNRCfB2RJ+DsXWGdOF3OS0gwuRRDHxlrcpxBy/3YS
-+fBTs2OIxCMNDdQoV0gpa1iDj0ZX8WQFnOgQTTUQj7Jy2KASlEgoaRgRpegRb6YpHLcRqfhSYKcS
-g0gUOVVU+cBbZZiJGPFUSVENvOgSlfc3jcYMd/V41ABgqDBty9ho68cM0Jh1xch0OlaBMQGMiVKL
-AxEIGEcQUHJ6ByZ3DOdlJchl0hgPXcaFXbZYnDWMntdaL0dmZUVmBJEPdXd6x7Zbg/V39YcR+iZU
-J4EPxtAMawNoMPZsgLZtefVv06V1QjhoyAdoJKgQo5Za+Mhu6zZ/8JVep/dddTVeojZvOvY6KyQR
-QpcormZZJLhZq/d2t6Z2HziR0GVlk4AGC//hdwR4XhpmbDOQgT7ZXsWWgRmYiTfVKMF3env2D84G
-D8goEL5QDMyADyWWFjN2WW1Ieb4ACmpEDYo2YzcmeuomaIW1NpsmA0fVeXB2WHAGcUiBbhUxgYoi
-l341jiM4Wmlxly4JZdflgwPRCZ2wZWc3huN4Y7q1Znfnk5toYdGHW0UphXDZU79lYsnnV4yHfFeJ
-mTXpbwGmg0uZECAZbEmID56GYR6phCBpYWNpbL44Phq3krD3D6NkYOYXd+X3kngVd2xnaygoVl1A
-W7QlZzOomPYXfS23ChlmXvioEhVlEceAQBWBD9yYEK+ZbSpGkb6Act/WhvalkMinbdqWYtf/ZQqC
-MGI3hoRFBmTXiFij13kNWBCbl1IPqBKRGSnPGGWSV12pt1yzh1fCVYzxUHnQRQ3qaFE/8W/72RC3
-FxJ6F16rGIqKYgjwuFWE9Zt25lBC0ZpKUU8TOjvHiWbhVRAFJxNKpxHZ8IoyUU+jqBIpGRTNaRLQ
-GRI0dxIBWXOSGBMx6hEzyhCMEBFPVaPyJAlV6HzOs6NGB5QacZLiAKE1IgiJYHkygQsPpT0DFqBN
-Bo2kpVkBahABSmB41Xr8maDhlZv+6Vdh+HhlWgo5mVtIejtItxIUaVxLGqck+FzKKKf8x5l5SmAS
-KacT+Q7EwHg21m0CoaYIsWm0tV4Vhg/o//lSGolp12ihKlEMCfGmcDp35QeCtWmO6CdXeDmYnNVw
-Yeap0AUP/zZaUJZYJTdWM2BV81dskpVgA5F3sKoSvQkUhzcQ4smUKuZ2KdYKXoptXJZtCEddVfk3
-e6Z/kLd/hydiIcYQ86YKhoBYAmFYIOFjohVeZfkPi2Be83kRKNcomiqCmCUNMsls8NAKjTdgkHWX
-bQdm9eWFK5ZZbceXu5lYv3YFDSoQqOAK3Hd3r0BUiYoRiSiuyuV2lPALy+ClwDUNEmmVpfpcywhd
-t1F+fiYQkylcymWE5jegxtWhPLlpM+BE+XBYbWpkI0dzXqWh9mZ4mFqTJthl4leOmbVZFf9la1kK
-m+eYZZFVcCB4ZVk6fbalWriVFshpUW7FdwVRDW0qfOaZfFTZZ4wnjdlGY1dmgMqqf3jVlOFVbRP7
-rFFLXQureAHocbhGaqh1kTg2elagkdu6lhp5XoUwnXDiCo2DEeNamep4pXNXgtSwmyv2DqS6s/Ma
-WegXqpsqmFCGuP+AogOhk7Pqj2wmHX/3VQNrUM94XpUXh2V6gHlVjPDQnAAWh/zZg43GUNCIptMo
-EI6riCWxoDVYeLPziBqxnAixVid5VbJrczLQVwcRiwUBC7fApMSLELtLKXsAisVLEiu6vEERrs57
-VfgAvUkBpNqTi9F7ENYbFG2lbD36D3f/uxC3mL1AwbIFMQkRsZi0x6bO26wFpm1/A2JoCmJrA5b/
-gG3LpW1+dqsEsXmXV28RaIHzJHgkEar1GobL9a4maGDUQHZh9g93SXfymJhxplsHMYMuSHL6Wpq7
-U7AkUVzpkFwE0ac0eWtg+VyBBkXbJrEMwWmq1WCk2VoxfIvWl3nsZomqwFrQR7c1F4aLtVm3SY5A
-i3BRVpjox78EkXf8SH9oeBCLKKmrVbx+tn/dWYTigBS09m3766v/UHyLRr9HQZJsWRBqOVvTCggV
-Gmp31gzHS3T7xacLx2W2KQpDuLfXxXrLGApahXYR4Zg9uXbcxX2wemwOdmxNWxItWjxC//iQbpdo
-jLdioxBdMiankpdcgiqH1uXFCKENr7CATJhk42t/Y+xuFbZkpHwT7NQ6ICh5q1aqucmZt3nEWQaN
-5zeTQZsQDbYKpWCPFFYKeQcSnuZ+jLmKtVp0Xtl/0IZX4sZ/1oaVuhpjYKmsINZ4j/xo/qsHQ2ZY
-2lxpl+c7Z7ljVoXNA4GtSXGUxsvDURWisxWi3rNg2hdewWNX6uxXDvGgUwcFQmnBJmGpCmHOlKKM
-uAYUfRgS24ppBEEINOERSRkShqCNA0HAB5G7EgHQk0KtCsFOftd7u5OFBwHRBdG6RLfQiUJUDsHR
-JiEMs0i+JbEIIM0nToRkKt0QaoUQLf8NT/NgEE0gEe5kz/JEDRItT22c0wxxGz820PW2tmNMvKq3
-ztHBoe18Xvf41LP1DOUzosa2wbDLEMJGYTwtED+9cmCZXS4mwmenaAEGhr3axW83XAumyRccWy8s
-dbQFfQ9qfSCxaRDGqCU5UZHy1Sexl4TLs7cM2P9gywPXl/UFxP8iVjHVWiWXa1yNmmmmtKtloRyc
-ziZhvhJBtvLbmdNc1vunbQspEF4MYsWwpFPsC1CNbtoMU6W3rWUMcduMFGdpbEldEvU5FL6oqXnr
-twdG2IaNm4urfmEoZgPxomyWW3e2r0EZZy9onH9cETrxTi/3sZqMg2utaJDwpEY42mr/LclCSF0t
-9rF+eBBGlsNQjF47GWGj7JG1bQjUMH8YMd3jswpd9oU7KGbAjdbGbdiCaY6DmMssiGE8/WsQRsiV
-TQ2wIMwS0QhiYFBhG6yMh23eFpUEob/apcVf1syd3dlZh2PVAF7uRpbbbFgUYeJwC4ihhrKHtZqQ
-ggpC8an2OsQ8C4TsKMnEEIKVCbiBPcIO2gWI6W5/d62Semz6ylDJqSn+LBEsNdHIN8lONHzfZoQc
-q9YRSdpr3ZcVqWkF4cEYIbLO0ww83IjcC7IGkcpqBoktZ+YxLRHA+w90GRMsjhRq8AghwSjOwOYE
-0Qci3VNvrhFoXiOJnBFPmhS+2MZB/5HbH/1OhZ4Ug/LgDAGmQbG9NN3mAvEKlgrpKzFTznOjJsGd
-MkG9QiFSN+HprWPVNyHqMXFnhxwSXQ0prqDoxNhomrW6BGEMBPZvs6frCnGL6vsRCfbqDeW0whq/
-iHespJ0Oqs2GjPzMz7YQyYAKrY3Oh/pd13pYeq4RXu4Qsq4R+IDqC/F6BLZlr9zfMdl2h9sQqpAM
-dteTwYkQi7igCJ7klKLZISGRaLqUWywMljBd6vBl0Qxdn4kQJWfDa0eSTsyW1icQpBxTKB69bzyv
-s5dw7+gKtKDAUrZd7Atx0U1yqsXgfqde2buMiHdi/Rlox4BiUzt8NNbyYbnNX6VkC/8h8+GlCmh8
-lmReKbrjkoS9s8dAs5H1WK3wJqusuGs6nBk2cghRtE3sXqjlD359E4MuWWJG6SHRfA9r5fDQB9m1
-pN1ZycTVYpPppweLa+P18XGL3gmB3q+dhGr/TpshvEI1WQqMDqHAuLUsyZUF2PKKECr43I8bCBWW
-bAWx5ngndcWsEaYeE/bOEIdHgviQYmfACOs3pnt4+cFF6547fd8MYaF3BVxgWDElBjeAc0Fm2+9m
-Eou/ElM/O80r7Eks18zNELRQ03/CydlDqQyxogOthn1o10GnO++QEbAfhbVXcxtYVE1L7YmSClHC
-/EFh3JZOVo0i/dN//TbH6QbFDq3/qD3LoEY4of2EEvW7Uw1GUfyh2BM+FxGpW43QmFKdy5/xX2DQ
-qOu2nhC9H7w3AePztO36tY4A8e8ftXToCh4U+K8gvIQDDxo0mPBhOngT0eVrmHHVjC4zVlHLKNBW
-w1irQp5EefJVSpYtXb5Mue1lM5bU8FFDJw4dSJy+0MGDxywnw386mSXEaRQoOl9EfcK7ORDeU3wp
-VcnAB+ifjCsJsxqzKkNVQkB/roCEmZalv2xq3b51a5AoPINo/1VEJ7DgvYR009nFi3FhQ4J5WXr8
-1yWxoYEduxQ7qcox2i5XOsLFnFmzy6ow0eVMqJNo6J9FSwv8PBp16c/igArE99nu/8kuXA2tYpxQ
-FceUVxALzMd19mbixY2HxDt6cMPByxWellh6osDCGftlpOaY41iBhi6j5Ji78QyMx82f13yGqWGB
-dH01hKcTpOiEQsXB9wnyaUN8+TNOCwkfsWToAq2rukKpNruoIRA9B92SRx7z4AGDIvjkksogMNhy
-Lh4MqfHLMOccugilVTZSzKSNEvJuhpS2g+2e717q5JgHbzROp9ZAu2tHncQJQ6AfcwIpvpyOLNE0
-1fCRL6XsZNjqH0AQ/OeqAgWqrTNqfDNJoFWEw5ElCcMsDih4mvnpNeDwsrCvioAC7CDV1ESKTpSo
-QfG37DgK7x+OQGrRscT47EK8tP/eKG5MMo0bblG1tHI0JSUiXXSSSJ1xUDFKN72xrZQYufSkkTjF
-TJqT8KGJ1JYaTYgWVWFa6dW3sCETMoGcwVTWhK6wIi1nWK1J14yqiXQUlyArpSVQhd1sETCQYlYb
-Um18qUuUQKX2xlyZxUxauIDlVNG0jMVxW27VWiXWzPx51dvyOjs3XmhZglItcJld9p8pzoXHVTfR
-ygeee+CUSmDVAnaTYPjKo85OE/n8KK17NXOGXLi8lUSgfZmlKxF4avznyPY+Q2cLhoxsba7S6NqR
-PbpUI/neL/FhjKvufKuNu4xoru0K8fDk6jfqFp1Y1RBHLghpQO8qKOCkezy5rpD/23y5L4hUCwkx
-xQpt7JDxGE7oTz+53nM8a+Xd1L2d/vGpSffg02kgt1dmCrb9hBqNLvtYuoJAQFQRr8GtroC0ob5B
-+hJBMG1D2zhi05qosKf9MpPpNCenOx2rGfKQqOowvFM7rjPq6OyQvNM5odIzOqNxMuU7Uhwm6f7x
-5CHFQatqljeHuj3X7oq7Jo/ATCi41E/yDewtbzspSIGkOWUzXsIRyFaXbsnXwTAKIaxpNp+LWvO+
-CgoFOt0j0otuoq6GCOzieVORPOpKNzSj8M5mPtLH/1mmcWri/h86jqK3Hr2nL/Kxg+xGNsC6hcwn
-AsHbQI7UNgGeZEtQgpIhqJQQ/65A6nAZOdA/BNQ3EmLFOOIilfPegpf0Ia1HcrJcDHvElxAdJHel
-uYf50BcSPEHsJKsghKbE1pAW5SM7liGUeVDoKH/9QwxwqZxU2vMaEKWJIfhQU+UqhxMzzQkoWFxb
-w+DhvowY6kvcmdIgsOObRCRiN1dynUsm1sSXHANecWyJprrThbHsSY9h65JkXITHTQWDkG/xDlfE
-0qir9KAHCjLPvWTSElSo65CXZNYdE0KIf0wSk6/y5CfdQizuXVILMBBWKDOzDtcVbVGWFOVmsqWq
-SZ0OJeYiE4BS8gxZ7S+WMEFUGVOiSVnx8lXUmEdCfIkSnbnyl67jS6QUtUwTzf9LXtd5JktMlU1m
-sYub0vxmOF23RPPIQZznjFcn0LnOkzjjeBnxw0mksc1O4CFMpWRnNuP5jz/oCpbhXMSo/uFNeYGr
-D4vyllr6KbE4YrMltlgEpQgqylSohZoZgYVKdNWMVJEJBR8F6RQKl5YpoMCZ+vroQFCwMRCigAnA
-wgcK3kmcd570nH5AQTxX8dGZsqSkLGVpSlJKjZWixKVkpI5M0cWq+jnIkK9aBSnSYoiiVimlbplC
-l6YQ1FNdlSUftSlLdqrJfCiVTOq8JE43Ro2SquinGNkpCqiKgvJkVWMg1chHp4CRlOrVS379R0pL
-ioKz+XWugS0qWz96m5AmJK7/KwUpbkw62J+y6KOmy8xFX0VVlqIgC/sqaklBolfO7kwVVdXNSqkK
-CKKiwKr7Oq1I5YpYkEzheLEVCFhjm42t/sMQDPmoJkvaR7D61h+tVQUgiqpcQ5y2aNRAahxxuk+i
-ZkGy+6LqWIqb09Oh9q6zGWpoTdoQwZ6ktIhF6b6mcQedFbchJc3NTnWaW9fSFqcq7ek3lbuxmKIA
-Hm1FqUk+6orzNgS37yVs8cC6ihrsa7jkhSwjq6rbqt5hwigQrllbGzGizqEqwR0sYC85UpZMVyCn
-dW1pT8sYsLqCuy3lKnwh7FswONis9I1rSA6c0gP7tqjuTYiM77qxsqJAnWDF/ylmD5nfjAxWpWYV
-72hNWtoeNGSnUzAjWLOCXtyimBrUYLFJY8rVK9/1v6HVSm+DO9KfQmqn3NkwUfe134Ew+Zkgbaxj
-nfyPuIZYFa1DSpLhuViU5jSy/8CpUgfrh7nWtztV7fNl4SHfE3tXpUH1A1qaoVfUDlbJoiSmqrJQ
-nB4fh6Wi8Go+5XXQzBB1xcehqiEYVuSiRVfVbsGlW7SR0Ib8M71hZUmpQ8ySRDxChC6ZpSgJtUGW
-VKYLevhjcXjNzT/YExnZDFq0mx007GjJLYO8daSWYBztBIicSURJqF+k7XDjKJjEUSSz+Uagem1G
-kS+paHGOwYm3GLPdquNTWv/QTTq1DPwk+8voq/zdOJzdW3WKrE1G8tEzjkA8I32jeEMy/vCG269n
-gqs4xrN970JsoeIc7Di9UU5veV+c5eBOzMgNF/KY+0YgIm/5eQQ1toS4AhVCnNGgvlNugQR8UFzY
-Qth2LvSizyjg6DY41Jc+NkLxhupYsjpteDN1owdddFX/OrvN4/AoCYTsZ+/byqlEQrOz/eZor5fb
-4f72tO9q7nZne93lXveQuP0fe6833Nfu8BKGiehKz/rOOWIZgFcG8VifERKBzvirMx1LlI/60rk+
-daEPkvOPb7rqKC90BB0e3ZIP08jXfvK288Y3fM82bWKPJW7/PeS3HxzMNV7/e9rbPAyLYP3Ng990
-1Wd99whKuPAj3nqg20z59do4S2wNE0IRQhFND09Gy80nKh0e+6ZX/Octn7XNJ974Bu/8S4y+jW0N
-nOjgtzr6hwUcexe+5oHv2d9lkIfAk9Bi92Y5u1s++8uIAOw7stM/2OO7+ytAv5u3BaS7/nO+eOO4
-uFO5mCAOoHs6zYu/LsgDPSo3G+k6o6M6DWQ370O8P3K/8+M8FAS4FNQ6EBxBpws/43MQCVS6/psB
-UlCnCxwcwak55uM4cDPAv2O+wOu9emNA21u+5/M4shskkUtCEDS7JoTC/HPCmtO94vAlGmw8PrMC
-DryMqktBsPu+xiPD7yPBvc6TwbBrCPkDuw40P9FBQ8irwzMswdQjISvgApcrIWb7w3izQL0DwD/E
-OwT8QQcURLXDIMBzwLajwAg0nEg8RL8LxEQUxEckFW1Tly1stbBpNrcQu7QYReQJxZe4tsbpqbAi
-p3+zprdIRXmpBmq4qFZECVuMF1V6C09IiGjqpOPInsaJB1FihOQTCCrgoW8RCF5MCF06D0ATiGpY
-OFd0FC1AiWmjxmwUiBfglG3SxmeygW78xnHkFELwtc0ICAA7 
+> 
+> Even better would be to use RPCB_DUMP instead of RPCB_GETPORT.  That way 
+> we only need a single rpcbind call for both protocols, and can get 
+> transport protocol information as well, and make an "informed" choice.
+Good point... but note, a while back I got a request to use GETPORT
+instead of DUMP because some Cisco router actually use the GETPORTs
+to punch wholes in their firewalls.
+> 
+> Also, can we get rid of the clnt_ping()?  If not, can we document why it 
+> is there?  It adds two extra round trips to the whole process.  If error 
+> reporting is the problem, maybe we can try the pings only if the kernel 
+> part of the mount process fails?
+How do we avoid hang down deep in RPC land (governed by
+uncontrollable timeout) when either mountd or nfsd  are not up?
 
-------------258401D3A7C4092C
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+That was the main reason for the ping. Since neither portmapper or
+rpcbind ping their services before they hand out the ports, there
+is really no way of telling where the server is up? So to avoid
+the hang, we ping them... Sure its costly network wise, but
+hanging during a boot because a server is not responding is
+a bit more costly... imho...
+
+steved.
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
-------------258401D3A7C4092C
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
-------------258401D3A7C4092C--
