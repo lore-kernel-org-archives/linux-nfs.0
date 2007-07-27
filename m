@@ -1,26 +1,20 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: wonky autotools question
-Date: Sat, 28 Jul 2007 08:31:57 +1000
-Message-ID: <18090.29277.10351.295141@notabene.brown>
-References: <46AA4BF6.6090002@oracle.com> <20070727200856.GI13965@fieldses.org>
-	<46AA52C0.8060209@oracle.com> <f606ea2d46f0.46a9f33f@usc.edu>
-	<46AA66A7.1050304@oracle.com>
+From: =?iso-8859-1?q?JOHN=20GUY?= <john.guy1111@btinternet.com>
+Subject: 27 07 07
+Date: Fri, 27 Jul 2007 23:16:04 +0000 (GMT)
+Message-ID: <91482.66791.qm@web86307.mail.ukl.yahoo.com>
+Reply-To: jbgy@usa.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Garrick Staples <garrick@usc.edu>, nfs@lists.sourceforge.net
-To: chuck.lever@oracle.com
+Content-Type: multipart/mixed; boundary="===============0966520974=="
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IEYLs-0005IU-QH
-	for nfs@lists.sourceforge.net; Fri, 27 Jul 2007 15:32:05 -0700
-Received: from mail.suse.de ([195.135.220.2] helo=mx1.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IEYLt-0005V8-QJ
-	for nfs@lists.sourceforge.net; Fri, 27 Jul 2007 15:32:08 -0700
-In-Reply-To: message from Chuck Lever on Friday July 27
+	id 1IEZ2Y-0001Es-0i
+	for nfs@lists.sourceforge.net; Fri, 27 Jul 2007 16:16:10 -0700
+Received: from web86307.mail.ukl.yahoo.com ([217.12.12.66])
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1IEZ2Y-0000hr-1w
+	for nfs@lists.sourceforge.net; Fri, 27 Jul 2007 16:16:10 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,27 +27,95 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Friday July 27, chuck.lever@oracle.com wrote:
-> 
-> Though really, it does make sense to set -Wall for the whole package. 
-> Would anyone mind if I sent a patch that did that?
+--===============0966520974==
+Content-Type: multipart/alternative; boundary="0-837750654-1185578164=:66791"
+Content-Transfer-Encoding: 7bit
 
-I'd be keen on
-   -Wall -Werror -Wstrict-prototypes
+--0-837750654-1185578164=:66791
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: quoted-printable
 
-though I suspect we need a lot of cleanup before all of those can
-pass, and we -Werror would have to be conditional on using the
-internal rpcgen as the libc one generates code that produced warning.
-I guess I really should try pushing those rpcgen fixes upstream to
-glibc...
+I have a new email address!You can now email me at: john.guy1111@btintern=
+et.com
 
-NeilBrown
+
+
+- Dear Friend,My name is John B. Guy I am an American soldier,I am servin=
+g in themilitary of the 3rd Armored Cavalry Regimient,Patrols Tal Afar, i=
+n Iraq.I ampresently in Kuwait for the mean time.I am searching for a pro=
+fitable investment business, we can both go into a joint partnership inve=
+stment business if you so wish. You can send me a proposal for a viable l=
+ong-term investment either a regular income-producing investment or a lon=
+g-term investment. We have in our possession the sum of  (Seventeen Milli=
+on US Dollars), which belongs to Saddam Hussein.These funds have been mov=
+ed and is presently with a british Envoy who actually is not very aware t=
+hat the consignment we have withhim contains funds.It is the only way we =
+can move the funds out of IRAQ.HE WILL CONCLUDE WITH YOU ON HOW BEST TO R=
+ECEIVE THE CONSIGNMENT Basically since we are working for the American Go=
+vernment, we cannot keep these funds, but we want to transfer and move th=
+e funds to you for investment purpose I willprovide the sponsorship for t=
+he investment business in your country with the fund.Therefore, if you ar=
+e interested, please reply immediately via email ,with your Full Name, Cu=
+rrent Mailing Address and your confidential Telephone and Fax numbers for=
+ easy communication. Upon your response, I shall then provide you with mo=
+re details that  will help you understand the transaction.I would be glad=
+ if you can assist me in any way possible. Regards JOHN GUY           =20
+
+
+--0-837750654-1185578164=:66791
+Content-Type: text/html; charset=iso-8859-1
+Content-Transfer-Encoding: quoted-printable
+
+<div style=3D"border: solid 1px #cccccc; width:448px; background-color:wh=
+ite; margin:10px 0px;";><table border=3D0 cellspacing=3D0 cellpadding=3D0=
+ width=3D"448"><tr><td class=3Dtablot background=3D"http://us.i1.yimg.com=
+/us.yimg.com/i/us/pim/gr/gr_announce_1.gif" valign=3Dcenter height=3D57><=
+big style=3D"padding:10px;">I have a new email address!</big></td></tr></=
+table><div style=3D"padding:10px;">You can now email me at: <b>john.guy11=
+11@btinternet.com</b><br><br><span style=3D"color:green;"></span><br><br>=
+- <span style=3D"color:green;">Dear Friend,My name is John B. Guy I am an=
+ American soldier,I am serving in themilitary of the 3rd Armored Cavalry =
+Regimient,Patrols Tal Afar, in Iraq.I ampresently in Kuwait for the mean =
+time.I am searching for a profitable investment business, we can both go =
+into a joint partnership investment business if you so wish. You can send=
+ me a proposal for a viable long-term investment either a regular income-=
+producing investment or a long-term investment. We have in our possession=
+ the sum of  (Seventeen Million US Dollars), which belongs to Saddam Huss=
+ein.These funds have been moved and is presently with a british Envoy who=
+ actually is not very aware that the consignment we have withhim contains=
+ funds.It is the only way we can move the funds out of IRAQ.HE WILL CONCL=
+UDE WITH YOU ON HOW BEST TO RECEIVE THE CONSIGNMENT Basically since we ar=
+e working for the American Government, we cannot keep these funds, but we=
+ want to transfer and move the funds to you for investment purpose I will=
+provide the sponsorship for the investment business in your country with =
+the fund.Therefore, if you are interested, please reply immediately via e=
+mail ,with your Full Name, Current Mailing Address and your confidential =
+Telephone and Fax numbers for easy communication. Upon your response, I s=
+hall then provide you with more details that  will help you understand th=
+e transaction.I would be glad if you can assist me in any way possible. R=
+egards JOHN GUY            </span></div></div>
+--0-837750654-1185578164=:66791--
+
+
+--===============0966520974==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
+--===============0966520974==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============0966520974==--
