@@ -1,28 +1,26 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: Status of mount.nfs
-Date: Fri, 27 Jul 2007 17:38:45 -0400
-Message-ID: <46AA65E5.4070003@oracle.com>
-References: <20070708191640.GA13962@uio.no>	<18065.43199.104020.412029@notabene.brown>	<20070715083114.GB4158@uio.no>	<18074.50730.591965.39211@notabene.brown>	<20070716092047.GA10353@uio.no>	<18075.17719.855332.259470@notabene.brown>	<20070722191733.GA31501@uio.no>	<46A52816.6050500@oracle.com>	<20070724172451.GA14026@uio.no>	<46A7A5F8.4040204@oracle.com>
-	<46A897CD.50201@RedHat.com>	<46A96032.7080503@oracle.com>
-	<46AA089E.50503@RedHat.com>	<1185551769.6586.28.camel@localhost>
-	<46AA1A70.5010705@RedHat.com>	<1185553679.6586.34.camel@localhost>
-	<46AA2642.60505@RedHat.com> <1185556406.6586.45.camel@localhost>
+Subject: Re: wonky autotools question
+Date: Fri, 27 Jul 2007 17:41:59 -0400
+Message-ID: <46AA66A7.1050304@oracle.com>
+References: <46AA4BF6.6090002@oracle.com> <20070727200856.GI13965@fieldses.org>
+	<46AA52C0.8060209@oracle.com> <f606ea2d46f0.46a9f33f@usc.edu>
 Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------080407000602080900070600"
-Cc: nfs@lists.sourceforge.net, Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: multipart/mixed; boundary="------------010901050005010306020001"
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	nfs@lists.sourceforge.net
+To: Garrick Staples <garrick@usc.edu>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IEXWz-0008RK-Gr
-	for nfs@lists.sourceforge.net; Fri, 27 Jul 2007 14:39:29 -0700
-Received: from agminet01.oracle.com ([141.146.126.228])
+	id 1IEXav-0000PT-93
+	for nfs@lists.sourceforge.net; Fri, 27 Jul 2007 14:43:33 -0700
+Received: from rgminet01.oracle.com ([148.87.113.118])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IEXX1-0003Es-Tk
-	for nfs@lists.sourceforge.net; Fri, 27 Jul 2007 14:39:33 -0700
-In-Reply-To: <1185556406.6586.45.camel@localhost>
+	(Exim 4.44) id 1IEXay-0004Qd-Vj
+	for nfs@lists.sourceforge.net; Fri, 27 Jul 2007 14:43:37 -0700
+In-Reply-To: <f606ea2d46f0.46a9f33f@usc.edu>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,27 +34,67 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 This is a multi-part message in MIME format.
---------------080407000602080900070600
+--------------010901050005010306020001
 Content-Type: text/plain; charset=us-ascii; format=flowed
 Content-Transfer-Encoding: 7bit
 
-Trond Myklebust wrote:
-> On Fri, 2007-07-27 at 13:07 -0400, Steve Dickson wrote:
+Garrick Staples wrote:
+> ----- Original Message -----
+> From: Chuck Lever <chuck.lever@oracle.com>
+> Date: Friday, July 27, 2007 1:19 pm
+> Subject: Re: [NFS] wonky autotools question
+> To: "J. Bruce Fields" <bfields@fieldses.org>
+> Cc: nfs@lists.sourceforge.net
 > 
->> After how long of a wait? If all the timeouts are controllable then
->> I agrees, but if we have to wait undefined-able amount of time for
->> every RPC retransmit, then I think we should do a ping...
+>> J. Bruce Fields wrote:
+>>> On Fri, Jul 27, 2007 at 03:48:06PM -0400, Chuck Lever wrote:
+>>>> Hi all-
+>>>>
+>>>> It would be nice to enable more static code checking in nfs-
+>> utils (I'm 
+>>>> especially interested in utils/mount/).  Is there a clean way to 
+>> add 
+>>>> additional CFLAGS, like -Wall, to utils/mount/Makefile using the 
+>> autotools 
+>>>> set up?  How about a lint or sparse target?
+>>> I don't know, sounds like a good idea.
+>> So far, "CFLAGS=-Wall -O2 -g ./configure" enables full warnings 
+>> everywhere in the tree, but I haven't found anything on how to 
+>> specify 
+>> additional CFLAGS in one subdir, and have it happen automatically.
+>>
+>>> Last I checked, though, I thought there were still a fair number of
+>>> warnings just with the current defaults.  Maybe we should fix 
+>> those up
+>>> first?
+>> I'm focusing on utils/mount at the moment, and that seems pretty 
+>> clean 
+>> with the present C flags.  I have noticed warnings in other parts 
+>> of the 
+>> tree, but haven't had time to poke at them.
 > 
-> You should be able to set the timeout either on a per-RPC call basis by
-> using clnt_call(), or by changing the default timeout on the CLIENT
-> object using clnt_control() (man 3 rpc).
+> In configure.ac, add something like this:
+>      GCC_WARNING_FLAGS="" 
+>      if test "x$GCC" = "xyes" ;then
+>         GCC_WARNING_FLAGS="-Wall -O2 -g"
+>      fi
+>      AC_SUBST(GCC_WARNING_FLAGS)
+> 
+> And then in utils/mount/Makefile.am, add something like this:
+>    mount_CFLAGS = $(GCC_WARNING_FLAGS)
+>   
+> 
+> This is a pretty generic answer because I haven't actually looked at
+> the source tree to know if these are correct for your autotools stuff.
+ > If you like, I can grab it and send you a patch.
 
-The mount command uses a "standard" timeout structure to set a 25 second 
-timeout for both UDP and TCP, but I've noticed that TCP connections for 
-most RPC requests from the mount command to unavailable servers appear 
-to hang indefinitely.  I'll take a look at this.
+This is pretty straightforward, plus gives us a generic tool that can be 
+added to each subdirectory as we please.
 
---------------080407000602080900070600
+Though really, it does make sense to set -Wall for the whole package. 
+Would anyone mind if I sent a patch that did that?
+
+--------------010901050005010306020001
 Content-Type: text/x-vcard; charset=utf-8;
  name="chuck.lever.vcf"
 Content-Transfer-Encoding: 7bit
@@ -75,7 +113,7 @@ version:2.1
 end:vcard
 
 
---------------080407000602080900070600
+--------------010901050005010306020001
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -86,7 +124,7 @@ This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
---------------080407000602080900070600
+--------------010901050005010306020001
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -96,4 +134,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---------------080407000602080900070600--
+--------------010901050005010306020001--
