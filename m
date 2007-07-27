@@ -1,29 +1,27 @@
 From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH] knfsd: eliminate unnecessary -ENOENT returns on
-	export downcalls
-Date: Fri, 27 Jul 2007 17:18:00 -0400
-Message-ID: <36177.0493597307$1185571104@news.gmane.org>
-References: <11855710801310-git-send-email-> <1185571080322-git-send-email->
-	<11855710802313-git-send-email->
+Subject: [PATCH] knfsd: set the response bitmask for
+	NFS4_CREATE_EXCLUSIVE
+Date: Fri, 27 Jul 2007 17:17:58 -0400
+Message-ID: <45932.1735929281$1185571105@news.gmane.org>
+References: <11855710801310-git-send-email->
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Neil Brown <neilb@suse.de>,
-	"J. Bruce Fields" <bfields@citi.umich.edu>, nfs@lists.sourceforge.net
+	"J. Bruce Fields" <bfields@citi.umich.edu>,
+	nfs@lists.sourceforge.net, Jeff Layton <jlayton@redhat.com>
 To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IEXCD-0006BT-Lg
+	id 1IEXCD-0006BS-LZ
 	for nfs@lists.sourceforge.net; Fri, 27 Jul 2007 14:18:06 -0700
 Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IEXCF-0004j5-2A
+	(Exim 4.44) id 1IEXCF-0004jC-22
 	for nfs@lists.sourceforge.net; Fri, 27 Jul 2007 14:18:05 -0700
-In-Reply-To: <11855710802313-git-send-email->
-Message-Id: <b4559368b4cfd7e85751e7ada974d73e5f529a4f.1185570967.git.bfields@citi.umich.edu>
-In-Reply-To: <3870106f1229e5c62ef479ec85cc9ca21b81d090.1185570967.git.bfields@citi.umich.edu>
-References: <3870106f1229e5c62ef479ec85cc9ca21b81d090.1185570967.git.bfields@citi.umich.edu>
+In-Reply-To: <11855710801310-git-send-email->
+Message-Id: <3870106f1229e5c62ef479ec85cc9ca21b81d090.1185570967.git.bfields@citi.umich.edu>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,41 +34,63 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-From: J. Bruce Fields <bfields@citi.umich.edu>
+From: Jeff Layton <jlayton@redhat.com>
 
-A succesful downcall with a negative result (which indicates that the
-given filesystem is not exported to the given user) should not return an
-error.
+RFC 3530 says:
 
-Currently mountd is depending on stdio to write these downcalls.  With
-some versions of libc this appears to cause subsequent writes to attempt
-to write all accumulated data (for which writes previously failed) along
-with any new data.  This can prevent the kernel from seeing responses to
-later downcalls.  Symptoms will be that nfsd fails to respond to certain
-requests.
+ If the server uses an attribute to store the exclusive
+ create verifier, it will signify which attribute by setting the
+ appropriate bit in the attribute mask that is returned in the
+ results.
 
-Signed-off-by: "J. Bruce Fields" <bfields@citi.umich.edu>
+Linux uses the atime and mtime to store the verifier, but sends a zeroed
+out bitmask back to the client. This patch makes sure that we set the
+correct bits in the bitmask in this situation.
+
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
- fs/nfsd/export.c |    5 +++--
- 1 files changed, 3 insertions(+), 2 deletions(-)
+ fs/nfsd/nfs4proc.c |   10 +++++++++-
+ fs/nfsd/vfs.c      |    5 ++++-
+ 2 files changed, 13 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-index 2d295dd..cba899a 100644
---- a/fs/nfsd/export.c
-+++ b/fs/nfsd/export.c
-@@ -564,9 +564,10 @@ static int svc_export_parse(struct cache_detail *cd, char *mesg, int mlen)
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 3c62712..29b7e63 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -100,7 +100,15 @@ do_open_lookup(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nfsd4_o
+ 		status = nfsd_create_v3(rqstp, current_fh, open->op_fname.data,
+ 					open->op_fname.len, &open->op_iattr,
+ 					&resfh, open->op_createmode,
+-					(u32 *)open->op_verf.data, &open->op_truncate, &created);
++					(u32 *)open->op_verf.data,
++					&open->op_truncate, &created);
++
++		/* If we ever decide to use different attrs to store the
++		 * verifier in nfsd_create_v3, then we'll need to change this
++		 */
++		if (open->op_createmode == NFS4_CREATE_EXCLUSIVE && status == 0)
++			open->op_bmval[1] |= (FATTR4_WORD1_TIME_ACCESS |
++						FATTR4_WORD1_TIME_MODIFY);
+ 	} else {
+ 		status = nfsd_lookup(rqstp, current_fh,
+ 				     open->op_fname.data, open->op_fname.len, &resfh);
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index ee96a89..a0c2b25 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -1309,7 +1309,10 @@ nfsd_create_v3(struct svc_rqst *rqstp, struct svc_fh *fhp,
  
- 	/* flags */
- 	err = get_int(&mesg, &an_int);
--	if (err == -ENOENT)
-+	if (err == -ENOENT) {
-+		err = 0;
- 		set_bit(CACHE_NEGATIVE, &exp.h.flags);
--	else {
-+	} else {
- 		if (err || an_int < 0) goto out;	
- 		exp.ex_flags= an_int;
- 	
+ 	if (createmode == NFS3_CREATE_EXCLUSIVE) {
+ 		/* solaris7 gets confused (bugid 4218508) if these have
+-		 * the high bit set, so just clear the high bits.
++		 * the high bit set, so just clear the high bits. If this is
++		 * ever changed to use different attrs for storing the
++		 * verifier, then do_open_lookup() will also need to be fixed
++		 * accordingly.
+ 		 */
+ 		v_mtime = verifier[0]&0x7fffffff;
+ 		v_atime = verifier[1]&0x7fffffff;
 -- 
 1.5.3.rc2
 
