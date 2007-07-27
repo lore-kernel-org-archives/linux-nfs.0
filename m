@@ -1,32 +1,28 @@
-From: Garrick Staples <garrick@usc.edu>
-Subject: Re: wonky autotools question
-Date: Fri, 27 Jul 2007 13:29:35 -0700
-Message-ID: <f606ea2d46f0.46a9f33f@usc.edu>
-References: <46AA4BF6.6090002@oracle.com> <20070727200856.GI13965@fieldses.org>
-	<46AA52C0.8060209@oracle.com>
+From: "J. Bruce Fields" <bfields@citi.umich.edu>
+Subject: [PATCH] nfsd4: idmap upcalls should use unsigned uid and gid
+Date: Fri, 27 Jul 2007 17:17:59 -0400
+Message-ID: <10743.150735698$1185571101@news.gmane.org>
+References: <11855710801310-git-send-email->
+ <1185571080322-git-send-email->
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	nfs@lists.sourceforge.net
-To: chuck.lever@oracle.com
+Cc: Neil Brown <neilb@suse.de>,
+	"J. Bruce Fields" <bfields@citi.umich.edu>, nfs@lists.sourceforge.net
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IEWRK-0000rm-RE
-	for nfs@lists.sourceforge.net; Fri, 27 Jul 2007 13:29:37 -0700
-Received: from msg-mx5.usc.edu ([128.125.137.10] ident=sjes)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IEWRM-0004ls-J3
-	for nfs@lists.sourceforge.net; Fri, 27 Jul 2007 13:29:38 -0700
-Received: from msg-store0.usc.edu ([128.125.137.11])
-	by msg-mx5.usc.edu (Sun Java System Messaging Server 6.2-7.05 (built
-	Sep 5 2006)) with ESMTP id <0JLU006JMU9BXUD0@msg-mx5.usc.edu> for
-	nfs@lists.sourceforge.net; Fri, 27 Jul 2007 13:29:35 -0700 (PDT)
-Received: from usc.edu (localhost.usc.edu [127.0.0.1])
-	by msg-store0.usc.edu (Sun Java System Messaging Server 6.2-7.05 (built
-	Sep 5 2006)) with ESMTP id <0JLU00A2HU9B9F50@msg-store0.usc.edu> for
-	nfs@lists.sourceforge.net; Fri, 27 Jul 2007 13:29:35 -0700 (PDT)
-In-reply-to: <46AA52C0.8060209@oracle.com>
+	id 1IEXCD-0006BV-NT
+	for nfs@lists.sourceforge.net; Fri, 27 Jul 2007 14:18:06 -0700
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IEXCF-0004j9-26
+	for nfs@lists.sourceforge.net; Fri, 27 Jul 2007 14:18:05 -0700
+In-Reply-To: <1185571080322-git-send-email->
+Message-Id: <8986f34ba2666fa587255d2fe3778d38b5f7dfe3.1185570967.git.bfields@citi.umich.edu>
+In-Reply-To: <3870106f1229e5c62ef479ec85cc9ca21b81d090.1185570967.git.bfields@citi.umich.edu>
+References: <3870106f1229e5c62ef479ec85cc9ca21b81d090.1185570967.git.bfields@citi.umich.edu>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -39,57 +35,49 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+From: J. Bruce Fields <bfields@citi.umich.edu>
 
+We shouldn't be using negative uid's and gid's in the idmap upcalls.
 
------ Original Message -----
-From: Chuck Lever <chuck.lever@oracle.com>
-Date: Friday, July 27, 2007 1:19 pm
-Subject: Re: [NFS] wonky autotools question
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: nfs@lists.sourceforge.net
+Signed-off-by: "J. Bruce Fields" <bfields@citi.umich.edu>
+---
+ fs/nfsd/nfs4idmap.c |    6 +++---
+ 1 files changed, 3 insertions(+), 3 deletions(-)
 
-> J. Bruce Fields wrote:
-> > On Fri, Jul 27, 2007 at 03:48:06PM -0400, Chuck Lever wrote:
-> >> Hi all-
-> >>
-> >> It would be nice to enable more static code checking in nfs-
-> utils (I'm 
-> >> especially interested in utils/mount/).  Is there a clean way to 
-> add 
-> >> additional CFLAGS, like -Wall, to utils/mount/Makefile using the 
-> autotools 
-> >> set up?  How about a lint or sparse target?
-> > 
-> > I don't know, sounds like a good idea.
-> 
-> So far, "CFLAGS=-Wall -O2 -g ./configure" enables full warnings 
-> everywhere in the tree, but I haven't found anything on how to 
-> specify 
-> additional CFLAGS in one subdir, and have it happen automatically.
-> 
-> > Last I checked, though, I thought there were still a fair number of
-> > warnings just with the current defaults.  Maybe we should fix 
-> those up
-> > first?
-> 
-> I'm focusing on utils/mount at the moment, and that seems pretty 
-> clean 
-> with the present C flags.  I have noticed warnings in other parts 
-> of the 
-> tree, but haven't had time to poke at them.
+diff --git a/fs/nfsd/nfs4idmap.c b/fs/nfsd/nfs4idmap.c
+index 2cf9a9a..2ccffde 100644
+--- a/fs/nfsd/nfs4idmap.c
++++ b/fs/nfsd/nfs4idmap.c
+@@ -138,7 +138,7 @@ idtoname_request(struct cache_detail *cd, struct cache_head *ch, char **bpp,
+ 	char idstr[11];
+ 
+ 	qword_add(bpp, blen, ent->authname);
+-	snprintf(idstr, sizeof(idstr), "%d", ent->id);
++	snprintf(idstr, sizeof(idstr), "%u", ent->id);
+ 	qword_add(bpp, blen, ent->type == IDMAP_TYPE_GROUP ? "group" : "user");
+ 	qword_add(bpp, blen, idstr);
+ 
+@@ -165,7 +165,7 @@ idtoname_show(struct seq_file *m, struct cache_detail *cd, struct cache_head *h)
+ 		return 0;
+ 	}
+ 	ent = container_of(h, struct ent, h);
+-	seq_printf(m, "%s %s %d", ent->authname,
++	seq_printf(m, "%s %s %u", ent->authname,
+ 			ent->type == IDMAP_TYPE_GROUP ? "group" : "user",
+ 			ent->id);
+ 	if (test_bit(CACHE_VALID, &h->flags))
+@@ -349,7 +349,7 @@ nametoid_show(struct seq_file *m, struct cache_detail *cd, struct cache_head *h)
+ 			ent->type == IDMAP_TYPE_GROUP ? "group" : "user",
+ 			ent->name);
+ 	if (test_bit(CACHE_VALID, &h->flags))
+-		seq_printf(m, " %d", ent->id);
++		seq_printf(m, " %u", ent->id);
+ 	seq_printf(m, "\n");
+ 	return 0;
+ }
+-- 
+1.5.3.rc2
 
-In configure.ac, add something like this:
-     GCC_WARNING_FLAGS="" 
-     if test "x$GCC" = "xyes" ;then
-        GCC_WARNING_FLAGS="-Wall -O2 -g"
-     fi
-     AC_SUBST(GCC_WARNING_FLAGS)
-
-And then in utils/mount/Makefile.am, add something like this:
-   mount_CFLAGS = $(GCC_WARNING_FLAGS)
-  
-
-This is a pretty generic answer because I haven't actually looked at the source tree to know if these are correct for your autotools stuff.  If you like, I can grab it and send you a patch.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
