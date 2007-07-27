@@ -1,9 +1,10 @@
 From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH] nfsd4: idmap upcalls should use unsigned uid and gid
-Date: Fri, 27 Jul 2007 17:17:59 -0400
-Message-ID: <10743.150735698$1185571101@news.gmane.org>
-References: <11855710801310-git-send-email->
- <1185571080322-git-send-email->
+Subject: [PATCH] knfsd: eliminate unnecessary -ENOENT returns on
+	export downcalls
+Date: Fri, 27 Jul 2007 17:18:00 -0400
+Message-ID: <36177.0493597307$1185571104@news.gmane.org>
+References: <11855710801310-git-send-email-> <1185571080322-git-send-email->
+	<11855710802313-git-send-email->
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Neil Brown <neilb@suse.de>,
@@ -13,14 +14,14 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IEXCD-0006BV-NT
+	id 1IEXCD-0006BT-Lg
 	for nfs@lists.sourceforge.net; Fri, 27 Jul 2007 14:18:06 -0700
 Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IEXCF-0004j9-26
+	(Exim 4.44) id 1IEXCF-0004j5-2A
 	for nfs@lists.sourceforge.net; Fri, 27 Jul 2007 14:18:05 -0700
-In-Reply-To: <1185571080322-git-send-email->
-Message-Id: <8986f34ba2666fa587255d2fe3778d38b5f7dfe3.1185570967.git.bfields@citi.umich.edu>
+In-Reply-To: <11855710802313-git-send-email->
+Message-Id: <b4559368b4cfd7e85751e7ada974d73e5f529a4f.1185570967.git.bfields@citi.umich.edu>
 In-Reply-To: <3870106f1229e5c62ef479ec85cc9ca21b81d090.1185570967.git.bfields@citi.umich.edu>
 References: <3870106f1229e5c62ef479ec85cc9ca21b81d090.1185570967.git.bfields@citi.umich.edu>
 List-Id: "Discussion of NFS under Linux development, interoperability,
@@ -37,44 +38,39 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 From: J. Bruce Fields <bfields@citi.umich.edu>
 
-We shouldn't be using negative uid's and gid's in the idmap upcalls.
+A succesful downcall with a negative result (which indicates that the
+given filesystem is not exported to the given user) should not return an
+error.
+
+Currently mountd is depending on stdio to write these downcalls.  With
+some versions of libc this appears to cause subsequent writes to attempt
+to write all accumulated data (for which writes previously failed) along
+with any new data.  This can prevent the kernel from seeing responses to
+later downcalls.  Symptoms will be that nfsd fails to respond to certain
+requests.
 
 Signed-off-by: "J. Bruce Fields" <bfields@citi.umich.edu>
 ---
- fs/nfsd/nfs4idmap.c |    6 +++---
- 1 files changed, 3 insertions(+), 3 deletions(-)
+ fs/nfsd/export.c |    5 +++--
+ 1 files changed, 3 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfsd/nfs4idmap.c b/fs/nfsd/nfs4idmap.c
-index 2cf9a9a..2ccffde 100644
---- a/fs/nfsd/nfs4idmap.c
-+++ b/fs/nfsd/nfs4idmap.c
-@@ -138,7 +138,7 @@ idtoname_request(struct cache_detail *cd, struct cache_head *ch, char **bpp,
- 	char idstr[11];
+diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+index 2d295dd..cba899a 100644
+--- a/fs/nfsd/export.c
++++ b/fs/nfsd/export.c
+@@ -564,9 +564,10 @@ static int svc_export_parse(struct cache_detail *cd, char *mesg, int mlen)
  
- 	qword_add(bpp, blen, ent->authname);
--	snprintf(idstr, sizeof(idstr), "%d", ent->id);
-+	snprintf(idstr, sizeof(idstr), "%u", ent->id);
- 	qword_add(bpp, blen, ent->type == IDMAP_TYPE_GROUP ? "group" : "user");
- 	qword_add(bpp, blen, idstr);
- 
-@@ -165,7 +165,7 @@ idtoname_show(struct seq_file *m, struct cache_detail *cd, struct cache_head *h)
- 		return 0;
- 	}
- 	ent = container_of(h, struct ent, h);
--	seq_printf(m, "%s %s %d", ent->authname,
-+	seq_printf(m, "%s %s %u", ent->authname,
- 			ent->type == IDMAP_TYPE_GROUP ? "group" : "user",
- 			ent->id);
- 	if (test_bit(CACHE_VALID, &h->flags))
-@@ -349,7 +349,7 @@ nametoid_show(struct seq_file *m, struct cache_detail *cd, struct cache_head *h)
- 			ent->type == IDMAP_TYPE_GROUP ? "group" : "user",
- 			ent->name);
- 	if (test_bit(CACHE_VALID, &h->flags))
--		seq_printf(m, " %d", ent->id);
-+		seq_printf(m, " %u", ent->id);
- 	seq_printf(m, "\n");
- 	return 0;
- }
+ 	/* flags */
+ 	err = get_int(&mesg, &an_int);
+-	if (err == -ENOENT)
++	if (err == -ENOENT) {
++		err = 0;
+ 		set_bit(CACHE_NEGATIVE, &exp.h.flags);
+-	else {
++	} else {
+ 		if (err || an_int < 0) goto out;	
+ 		exp.ex_flags= an_int;
+ 	
 -- 
 1.5.3.rc2
 
