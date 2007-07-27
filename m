@@ -1,29 +1,23 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: wonky autotools question
-Date: Fri, 27 Jul 2007 15:48:06 -0400
-Message-ID: <46AA4BF6.6090002@oracle.com>
-Reply-To: chuck.lever@oracle.com
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: wonky autotools question
+Date: Fri, 27 Jul 2007 16:08:56 -0400
+Message-ID: <20070727200856.GI13965@fieldses.org>
+References: <46AA4BF6.6090002@oracle.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------030408090606070909040904"
-To: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IEW4O-0006b8-6w
-	for nfs@lists.sourceforge.net; Fri, 27 Jul 2007 13:05:52 -0700
-Received: from agminet01.oracle.com ([141.146.126.228])
+	id 1IEW7M-0006wb-AP
+	for nfs@lists.sourceforge.net; Fri, 27 Jul 2007 13:08:58 -0700
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IEW4Q-0004JP-SB
-	for nfs@lists.sourceforge.net; Fri, 27 Jul 2007 13:05:56 -0700
-Received: from agmgw2.us.oracle.com (agmgw2.us.oracle.com [152.68.180.213])
-	by agminet01.oracle.com (Switch-3.2.4/Switch-3.1.7) with ESMTP id
-	l6RK5kt6026389
-	for <nfs@lists.sourceforge.net>; Fri, 27 Jul 2007 15:05:47 -0500
-Received: from acsmt351.oracle.com (acsmt351.oracle.com [141.146.40.151])
-	by agmgw2.us.oracle.com (Switch-3.2.0/Switch-3.2.0) with ESMTP id
-	l6RJxbRV005561
-	for <nfs@lists.sourceforge.net>; Fri, 27 Jul 2007 14:05:46 -0600
+	(Exim 4.44) id 1IEW7P-0002Mn-0I
+	for nfs@lists.sourceforge.net; Fri, 27 Jul 2007 13:09:00 -0700
+In-Reply-To: <46AA4BF6.6090002@oracle.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,59 +30,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
---------------030408090606070909040904
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+On Fri, Jul 27, 2007 at 03:48:06PM -0400, Chuck Lever wrote:
+> Hi all-
+>
+> It would be nice to enable more static code checking in nfs-utils (I'm 
+> especially interested in utils/mount/).  Is there a clean way to add 
+> additional CFLAGS, like -Wall, to utils/mount/Makefile using the autotools 
+> set up?  How about a lint or sparse target?
 
-Hi all-
+I don't know, sounds like a good idea.
 
-It would be nice to enable more static code checking in nfs-utils (I'm 
-especially interested in utils/mount/).  Is there a clean way to add 
-additional CFLAGS, like -Wall, to utils/mount/Makefile using the 
-autotools set up?  How about a lint or sparse target?
+Last I checked, though, I thought there were still a fair number of
+warnings just with the current defaults.  Maybe we should fix those up
+first?
 
-I'm not just interested in autotools foo, but also in knowing how the 
-nfs-utils maintainers prefer this sort of thing to be done.  Thanks!
-
---------------030408090606070909040904
-Content-Type: text/x-vcard; charset=utf-8;
- name="chuck.lever.vcf"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="chuck.lever.vcf"
-
-begin:vcard
-fn:Chuck Lever
-n:Lever;Chuck
-org:Oracle Corporation;Corporate Architecture: Linux Projects Group
-adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
-title:Principal Member of Staff
-tel;work:+1 248 614 5091
-x-mozilla-html:FALSE
-version:2.1
-end:vcard
-
-
---------------030408090606070909040904
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+--b.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
---------------030408090606070909040904
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---------------030408090606070909040904--
