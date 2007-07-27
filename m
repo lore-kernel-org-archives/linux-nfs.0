@@ -1,22 +1,42 @@
-From: "Wim Colgate" <Wim.Colgate@xensource.com>
-Subject: Re: question on the inner workings of NFS soft mount
-Date: Thu, 26 Jul 2007 15:41:25 -0700
-Message-ID: <A9AD3C3BCF83FD4182B7D4D99E37FAD82FA071@exchrdm.ad.xensource.com>
-References: <1185489541.6585.267.camel@localhost>
+From: Fabio Olive Leite <fleite@redhat.com>
+Subject: Re: [PATCH] Attribute timeout handling and wrapping u32
+	jiffies
+Date: Thu, 26 Jul 2007 22:59:00 -0300
+Message-ID: <20070727015900.GA3000@sleipnir.redhat.com>
+References: <20070725030809.GB27619@sleipnir.redhat.com>
+	<1185372013.6585.73.camel@localhost>
+	<20070725142824.GA24321@sleipnir.redhat.com>
+	<1185373979.6585.81.camel@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: "Trond Myklebust" <trond.myklebust@fys.uio.no>
+Content-Type: text/plain; charset="iso-8859-1"
+To: linux-nfs <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IEC31-0007A0-64
-	for nfs@lists.sourceforge.net; Thu, 26 Jul 2007 15:43:07 -0700
-Received: from webmailrdm.xensource.com ([66.228.214.202])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IEC34-0003Mi-Oe
-	for nfs@lists.sourceforge.net; Thu, 26 Jul 2007 15:43:11 -0700
-In-Reply-To: <1185489541.6585.267.camel@localhost>
+	id 1IEF6Q-0001U7-W9
+	for nfs@lists.sourceforge.net; Thu, 26 Jul 2007 18:58:51 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IEF6U-0000pf-Jp
+	for nfs@lists.sourceforge.net; Thu, 26 Jul 2007 18:58:55 -0700
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com
+	[172.16.52.254])
+	by mx1.redhat.com (8.13.1/8.13.1) with ESMTP id l6R1wlx2010223
+	for <nfs@lists.sourceforge.net>; Thu, 26 Jul 2007 21:58:47 -0400
+Received: from pobox-2.corp.redhat.com (pobox-2.corp.redhat.com [10.11.255.15])
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l6R1wlPa031994
+	for <nfs@lists.sourceforge.net>; Thu, 26 Jul 2007 21:58:47 -0400
+Received: from sleipnir.redhat.com (vpn-14-147.rdu.redhat.com [10.11.14.147])
+	by pobox-2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id
+	l6R1wi2F008478
+	for <nfs@lists.sourceforge.net>; Thu, 26 Jul 2007 21:58:46 -0400
+Received: from sleipnir.redhat.com (localhost.localdomain [127.0.0.1])
+	by sleipnir.redhat.com (8.13.8/8.13.7) with ESMTP id l6R1x39S004925
+	for <nfs@lists.sourceforge.net>; Thu, 26 Jul 2007 22:59:04 -0300
+Received: (from fleite@localhost)
+	by sleipnir.redhat.com (8.13.8/8.13.8/Submit) id l6R1x1WI004922
+	for nfs@lists.sourceforge.net; Thu, 26 Jul 2007 22:59:01 -0300
+In-Reply-To: <1185373979.6585.81.camel@localhost>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,282 +49,89 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Bingo. UDP is consistent.
+On Wed, Jul 25, 2007 at 10:32:59AM -0400, Trond Myklebust wrote:
+> =
 
------Original Message-----
-From: Trond Myklebust [mailto:trond.myklebust@fys.uio.no] 
-Sent: Thursday, July 26, 2007 3:39 PM
-To: Wim Colgate
-Cc: nfs@lists.sourceforge.net
-Subject: Re: [NFS] question on the inner workings of NFS soft mount
+> No. IMO [b;c] should be the range for the generic function, and it
+> should be up to the NFS code to do the 'stored jiffies + constant
+> timeout' calculation. You will note that time_in_range() does in any
+> case return true if you are inside the valid time range, so you will
+> usually want to do
+> =
 
-You are probably seeing a side effect of the TCP re-connection backoff
-algorithm. I'll bet you that the numbers change if you try UDP.
+> if (!time_in_range())...
+> =
 
-Trond
+> in order to do the timeout_or_wrap() test.
 
-On Thu, 2007-07-26 at 15:29 -0700, Wim Colgate wrote:
-> I was wondering if anyone could help me interpret the results of the
-> following experiment with regards to NFS softmount.
-> 
->  
-> 
-> First a very brief description of my setup and test program:
-> 
->  
-> 
-> I have a simple program that does a small, 512 byte, write to a file,
-> and print the success/failure of the IO plus the time the write took
-> to return, sleep one second, then loop back and write another - repeat
-> until ^C. The file it is writing to is on an NFS filer. During its
-> execution, I will disable the NFS service on the filer. The printfs of
-> success/failure are below.
-> 
->  
-> 
-> The mount is SOFT: 
-> 
->  
-> 
-> 172.24.0.90:/vhd1 on /mnt/snp1 type nfs
-> (rw,soft,timeo=1,retrans=1,addr=172.24.0.90)
-> 
->  
-> 
-> When I run one instance of the program here is the output:
-> 
->  
-> 
-> # ./netwrite /mnt/snp1/foo2
-> 
-> write block 0 (succeeded): 0.006674 secs
-> 
-> write block 1 (succeeded): 0.001639 secs
-> 
-> write block 2 (succeeded): 0.001793 secs
-> 
-> write block 3 (succeeded): 0.001784 secs
-> 
-> write block 4 (succeeded): 0.004258 secs
-> 
-> write block 5 (succeeded): 0.002426 secs
-> 
-> write block 6 (succeeded): 0.001494 secs
-> 
-> write block 7 (succeeded): 0.001477 secs
-> 
-> write block 8 (succeeded): 0.001271 secs
-> 
-> write block 9 (failed): 3.00014 secs
-> 
-> write block 10 (failed): 3.00015 secs
-> 
-> write block 11 (failed): 6.00012 secs
-> 
-> write block 12 (failed): 12.0001 secs
-> 
-> write block 13 (failed): 24 secs
-> 
-> write block 14 (failed): 47.9999 secs
-> 
-> write block 15 (failed): 59.9996 secs
-> 
-> write block 16 (failed): 35 secs
-> 
-> write block 17 (failed): 59.9997 secs
-> 
-> write block 18 (failed): 59.9997 secs
-> 
-> write block 19 (failed): 59.9997 secs
-> 
-> write block 20 (failed): 9.00012 secs
-> 
->  
-> 
->  
-> 
-> I'm curious as to why the write failure times are all over the place.
-> Note the timeo and retrans are both set to 1. If I run two
-> simultaneous instances (to different files on the same filer), the
-> times are also all over the place - and go as high as two minutes
-> (curiously twice the max as one...).
-> 
->  
-> 
-> I'm using the following version of linux:
-> 
->  
-> 
-> Linux wims 2.6.18-8.1.8.el5.xs4.0.0b2.102.154xen #1 SMP Tue Jul 24
-> 16:57:36 EDT 2007 i686 i686 i386 GNU/Linux
-> 
->  
-> 
-> The program is pretty simple:
-> 
->  
-> 
-> #define O_DIRECT        040000
-> 
->  
-> 
-> #include <stdio.h>
-> 
-> #include <sys/types.h>
-> 
-> #include <sys/stat.h>
-> 
-> #include <fcntl.h>
-> 
-> #include <unistd.h>
-> 
-> #include <sys/select.h>
-> 
-> #include <errno.h>
-> 
-> #include <string.h>
-> 
-> #include <stdlib.h>
-> 
->  
-> 
-> #include <sys/time.h>
-> 
->  
-> 
-> #define ALIGN 512
-> 
-> #define SIZE 512
-> 
-> #define SEC_WAIT 1
-> 
->  
-> 
-> main(int argc, char *argv[])
-> 
-> {
-> 
->     int fd;
-> 
->  
-> 
->     int data=0;
-> 
->     char *bufptr = 0;
-> 
->     int result;
-> 
->     struct timeval tim;
-> 
->     struct timeval start;
-> 
->     struct timeval end;
-> 
->  
-> 
->     if (argc != 2) {
-> 
->         printf("usage: %s <filename>\n", argv[0]);
-> 
->         goto done;
-> 
->     }
-> 
->  
-> 
->     posix_memalign((void **)&bufptr, ALIGN, SIZE);
-> 
->     if (!bufptr) {
-> 
->         printf("failed to allocate %d bytes", SIZE);
-> 
->         goto done;
-> 
->     }
-> 
->  
-> 
->     fd = open(argv[1], O_RDWR | O_CREAT | O_DIRECT, 0777);
-> 
->  
-> 
->     if (!fd) {
-> 
->         printf("failed to open %s for write, errno=%d\n", argv[1],
-> errno);
-> 
->         goto done;
-> 
->     }
-> 
->  
-> 
->     while (1) {
-> 
->         ftime(&start);
-> 
->         tim.tv_sec = SEC_WAIT;
-> 
->         tim.tv_usec = 0;
-> 
->         memset(bufptr, data, SIZE);
-> 
->         gettimeofday(&start, 0);
-> 
->         result = write(fd, bufptr, SIZE);
-> 
->         data = (data+1) & 255;
-> 
->         gettimeofday(&end, 0);
-> 
->         printf("write block %d (%s): %g secs\n",
-> 
->                                      data-1,
-> 
->                                      result < 0 ? "failed" :
-> "succeeded",
-> 
->                                      ((end.tv_sec*1000000 +
-> end.tv_usec) -
-> 
->                                       (start.tv_sec*1000000 +
-> start.tv_usec))
-> 
->                                       /1000000.0);
-> 
->         select(0, 0, 0, 0, &tim);
-> 
->     }
-> 
->  
-> 
-> done:
-> 
->     return 0;
-> 
-> }
-> 
->  
-> 
-> Thanks,
-> 
->  
-> 
-> Wim
-> 
-> 
->
-------------------------------------------------------------------------
--
-> This SF.net email is sponsored by: Splunk Inc.
-> Still grepping through log files to find problems?  Stop.
-> Now Search log events and configuration files using AJAX and a
-browser.
-> Download your FREE copy of Splunk now >>  http://get.splunk.com/
-> _______________________________________________ NFS maillist -
-NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+Tried it out and it behaves correctly. Thanks for your suggestions.
+The patch below is the final version, and fixes the attribute timeout
+issue with wrapping jiffies.
 
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index ea97408..54d3926 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -1852,7 +1852,7 @@ int nfs_access_get_cached(struct inode *inode, struct=
+ rpc_cred *cred, struct nfs
+ 	cache =3D nfs_access_search_rbtree(inode, cred);
+ 	if (cache =3D=3D NULL)
+ 		goto out;
+-	if (time_after(jiffies, cache->jiffies + NFS_ATTRTIMEO(inode)))
++	if (!time_in_range(jiffies, cache->jiffies, cache->jiffies + NFS_ATTRTIME=
+O(inode)))
+ 		goto out_stale;
+ 	res->jiffies =3D cache->jiffies;
+ 	res->cred =3D cache->cred;
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index bca6cdc..89c3e91 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -662,7 +662,7 @@ int nfs_attribute_timeout(struct inode *inode)
+ =
+
+ 	if (nfs_have_delegation(inode, FMODE_READ))
+ 		return 0;
+-	return time_after(jiffies, nfsi->read_cache_jiffies+nfsi->attrtimeo);
++	return !time_in_range(jiffies, nfsi->read_cache_jiffies, nfsi->read_cache=
+_jiffies + nfsi->attrtimeo);
+ }
+ =
+
+ /**
+@@ -1061,7 +1061,7 @@ static int nfs_update_inode(struct inode *inode, stru=
+ct nfs_fattr *fattr)
+ 		nfs_inc_stats(inode, NFSIOS_ATTRINVALIDATE);
+ 		nfsi->attrtimeo =3D NFS_MINATTRTIMEO(inode);
+ 		nfsi->attrtimeo_timestamp =3D now;
+-	} else if (time_after(now, nfsi->attrtimeo_timestamp+nfsi->attrtimeo)) {
++	} else if (!time_in_range(now, nfsi->attrtimeo_timestamp, nfsi->attrtimeo=
+_timestamp + nfsi->attrtimeo)) {
+ 		if ((nfsi->attrtimeo <<=3D 1) > NFS_MAXATTRTIMEO(inode))
+ 			nfsi->attrtimeo =3D NFS_MAXATTRTIMEO(inode);
+ 		nfsi->attrtimeo_timestamp =3D now;
+diff --git a/include/linux/jiffies.h b/include/linux/jiffies.h
+index c080f61..f1c87ad 100644
+--- a/include/linux/jiffies.h
++++ b/include/linux/jiffies.h
+@@ -115,6 +115,10 @@ static inline u64 get_jiffies_64(void)
+ 	 ((long)(a) - (long)(b) >=3D 0))
+ #define time_before_eq(a,b)	time_after_eq(b,a)
+ =
+
++#define time_in_range(a,b,c) \
++	(time_after_eq(a,b) && \
++	 time_before_eq(a,c))
++
+ /* Same as above, but does so with platform independent 64bit types.
+  * These must be used when utilizing jiffies_64 (i.e. return value of
+  * get_jiffies_64() */
+
+Cheers!
+F=E1bio
+-- =
+
+ex sed lex awk yacc, e pluribus unix, amem
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
