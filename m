@@ -1,21 +1,21 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 13/23] umount.nfs: eliminate a nearly empty header
-	file.
-Date: Sat, 28 Jul 2007 17:50:14 -0400
-Message-ID: <20070728215014.21871.95420.stgit@localhost.localdomain>
+Subject: [PATCH 16/23] libnfs.a: move mnt_{open,
+	close}clnt calls to utils/mount/network.c
+Date: Sat, 28 Jul 2007 17:50:30 -0400
+Message-ID: <20070728215030.21871.35838.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 To: neilb@suse.de
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IFGOm-0003eF-Mt
-	for nfs@lists.sourceforge.net; Sun, 29 Jul 2007 14:34:00 -0700
+	id 1IFGOr-0003iN-14
+	for nfs@lists.sourceforge.net; Sun, 29 Jul 2007 14:34:07 -0700
 Received: from flpi101.sbcis.sbc.com ([207.115.20.70] helo=flpi101.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IFGOq-0005bg-D1
-	for nfs@lists.sourceforge.net; Sun, 29 Jul 2007 14:34:04 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IFGOu-0003vl-QH
+	for nfs@lists.sourceforge.net; Sun, 29 Jul 2007 14:34:09 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,96 +28,180 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Clean-up: move nfsumount() global declaration to nfs_mount.h, and remove
-nfsumount.h.
+It turns out that get_socket() accesses a global variable, "verbose," that
+is only available in the mount command; yet it's in libnfs.a.  This creates
+an undocumented API dependency that will bite someone someday.  This
+mount-specific functionality doesn't really belong in libnfs.a anyway.
+
+The simplest way to resolve this is to move all of the functions in
+support/nfs/conn.c into utils/mount.  network.c seems like the logical
+place to put these.  An added benefit is we eventually get to make
+get_socket() static.
+
+Let's start with the mnt_{open,close}clnt functions.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/mount/mount.c     |    1 -
- utils/mount/network.c   |    1 -
- utils/mount/nfs_mount.h |    3 ++-
- utils/mount/nfsmount.c  |    1 -
- utils/mount/nfsumount.c |    1 -
- utils/mount/nfsumount.h |    9 ---------
- 6 files changed, 2 insertions(+), 14 deletions(-)
+ support/include/conn.h |    5 -----
+ support/nfs/conn.c     |   48 ------------------------------------------------
+ utils/mount/network.c  |   47 +++++++++++++++++++++++++++++++++++++++++++++++
+ utils/mount/network.h  |    6 ++++++
+ 4 files changed, 53 insertions(+), 53 deletions(-)
 
-diff --git a/utils/mount/mount.c b/utils/mount/mount.c
-index d80e5d7..b918b27 100644
---- a/utils/mount/mount.c
-+++ b/utils/mount/mount.c
-@@ -39,7 +39,6 @@
+diff --git a/support/include/conn.h b/support/include/conn.h
+index 11f16ab..f21c10e 100644
+--- a/support/include/conn.h
++++ b/support/include/conn.h
+@@ -18,9 +18,6 @@
+ #include <rpc/pmap_prot.h>
+ #include <rpc/clnt.h>
  
- #include "nfs_mount.h"
- #include "nfs4_mount.h"
--#include "nfsumount.h"
- #include "mount.h"
- #include "error.h"
- #include "network.h"
+-#define MNT_SENDBUFSIZE ((u_int)2048)
+-#define MNT_RECVBUFSIZE ((u_int)1024)
+-
+ typedef struct {
+ 	char **hostname;
+ 	struct sockaddr_in saddr;
+@@ -36,8 +33,6 @@ int clnt_ping(struct sockaddr_in *, const u_long, const u_long, const u_int,
+ u_long nfsvers_to_mnt(const u_long);
+ u_long mntvers_to_nfs(const u_long);
+ int get_socket(struct sockaddr_in *, u_int, int, int);
+-CLIENT * mnt_openclnt(clnt_addr_t *, int *);
+-void mnt_closeclnt(CLIENT *, int);
+ 
+ #endif /* _CONN_H */
+ 
+diff --git a/support/nfs/conn.c b/support/nfs/conn.c
+index 9b98682..cf080c2 100644
+--- a/support/nfs/conn.c
++++ b/support/nfs/conn.c
+@@ -190,51 +190,3 @@ clnt_ping(struct sockaddr_in *saddr, const u_long prog, const u_long vers,
+ 	else
+ 		return 0;
+ }
+-
+-CLIENT *mnt_openclnt(clnt_addr_t *mnt_server, int *msock)
+-{
+-	struct sockaddr_in *mnt_saddr = &mnt_server->saddr;
+-	struct pmap *mnt_pmap = &mnt_server->pmap;
+-	CLIENT *clnt = NULL;
+-
+-	/* contact the mount daemon via TCP */
+-	mnt_saddr->sin_port = htons((u_short)mnt_pmap->pm_port);
+-	*msock = get_socket(mnt_saddr, mnt_pmap->pm_prot, TRUE, FALSE);
+-	if (*msock == RPC_ANYSOCK) {
+-		if (rpc_createerr.cf_error.re_errno == EADDRINUSE)
+-			/* Probably in-use by a TIME_WAIT connection,
+-			 * It is worth waiting a while and trying again.
+-			 */
+-			rpc_createerr.cf_stat = RPC_TIMEDOUT;
+-		return NULL;
+-	}
+-
+-	switch (mnt_pmap->pm_prot) {
+-	case IPPROTO_UDP:
+-		clnt = clntudp_bufcreate(mnt_saddr,
+-					 mnt_pmap->pm_prog, mnt_pmap->pm_vers,
+-					 RETRY_TIMEOUT, msock,
+-					 MNT_SENDBUFSIZE, MNT_RECVBUFSIZE);
+-		break;
+-	case IPPROTO_TCP:
+-		clnt = clnttcp_create(mnt_saddr,
+-				      mnt_pmap->pm_prog, mnt_pmap->pm_vers,
+-				      msock,
+-				      MNT_SENDBUFSIZE, MNT_RECVBUFSIZE);
+-		break;
+-	}
+-	if (clnt) {
+-		/* try to mount hostname:dirname */
+-		clnt->cl_auth = authunix_create_default();
+-		return clnt;
+-	}
+-	return NULL;
+-}
+-
+-void mnt_closeclnt(CLIENT *clnt, int msock)
+-{
+-	auth_destroy(clnt->cl_auth);
+-	clnt_destroy(clnt);
+-	close(msock);
+-}
+-
 diff --git a/utils/mount/network.c b/utils/mount/network.c
-index 12fc762..21cf4ef 100644
+index c997c4c..08b1f99 100644
 --- a/utils/mount/network.c
 +++ b/utils/mount/network.c
-@@ -38,7 +38,6 @@
- #include "xcommon.h"
- #include "mount.h"
- #include "nls.h"
--#include "nfsumount.h"
- #include "nfs_mount.h"
- #include "mount_constants.h"
- #include "network.h"
-diff --git a/utils/mount/nfs_mount.h b/utils/mount/nfs_mount.h
-index 279ff36..dcce370 100644
---- a/utils/mount/nfs_mount.h
-+++ b/utils/mount/nfs_mount.h
-@@ -80,6 +80,7 @@ struct nfs_mount_data {
- #define AUTH_GSS_SPKMP		390011
- #endif
- 
--int nfsmount(const char *, const char *, int , char **, int);
-+int	nfsmount(const char *, const char *, int , char **, int);
-+int	nfsumount(int, char **);
- 
- #endif /* _NFS_MOUNT_H */
-diff --git a/utils/mount/nfsmount.c b/utils/mount/nfsmount.c
-index 20509c7..f1d3885 100644
---- a/utils/mount/nfsmount.c
-+++ b/utils/mount/nfsmount.c
-@@ -59,7 +59,6 @@
+@@ -429,3 +429,50 @@ int nfs_call_umount(clnt_addr_t *mnt_server, dirpath *argp)
+ 		return 1;
+ 	return 0;
+ }
++
++CLIENT *mnt_openclnt(clnt_addr_t *mnt_server, int *msock)
++{
++	struct sockaddr_in *mnt_saddr = &mnt_server->saddr;
++	struct pmap *mnt_pmap = &mnt_server->pmap;
++	CLIENT *clnt = NULL;
++
++	mnt_saddr->sin_port = htons((u_short)mnt_pmap->pm_port);
++	*msock = get_socket(mnt_saddr, mnt_pmap->pm_prot, TRUE, FALSE);
++	if (*msock == RPC_ANYSOCK) {
++		if (rpc_createerr.cf_error.re_errno == EADDRINUSE)
++			/*
++			 * Probably in-use by a TIME_WAIT connection,
++			 * It is worth waiting a while and trying again.
++			 */
++			rpc_createerr.cf_stat = RPC_TIMEDOUT;
++		return NULL;
++	}
++
++	switch (mnt_pmap->pm_prot) {
++	case IPPROTO_UDP:
++		clnt = clntudp_bufcreate(mnt_saddr,
++					 mnt_pmap->pm_prog, mnt_pmap->pm_vers,
++					 RETRY_TIMEOUT, msock,
++					 MNT_SENDBUFSIZE, MNT_RECVBUFSIZE);
++		break;
++	case IPPROTO_TCP:
++		clnt = clnttcp_create(mnt_saddr,
++				      mnt_pmap->pm_prog, mnt_pmap->pm_vers,
++				      msock,
++				      MNT_SENDBUFSIZE, MNT_RECVBUFSIZE);
++		break;
++	}
++	if (clnt) {
++		/* try to mount hostname:dirname */
++		clnt->cl_auth = authunix_create_default();
++		return clnt;
++	}
++	return NULL;
++}
++
++void mnt_closeclnt(CLIENT *clnt, int msock)
++{
++	auth_destroy(clnt->cl_auth);
++	clnt_destroy(clnt);
++	close(msock);
++}
+diff --git a/utils/mount/network.h b/utils/mount/network.h
+index 83375f0..81a59da 100644
+--- a/utils/mount/network.h
++++ b/utils/mount/network.h
+@@ -24,8 +24,14 @@
  #include "conn.h"
- #include "xcommon.h"
  #include "mount.h"
--#include "nfsumount.h"
- #include "nfs_mount.h"
- #include "mount_constants.h"
- #include "nls.h"
-diff --git a/utils/mount/nfsumount.c b/utils/mount/nfsumount.c
-index 8e4207f..e67a204 100644
---- a/utils/mount/nfsumount.c
-+++ b/utils/mount/nfsumount.c
-@@ -33,7 +33,6 @@
  
- #include "mount_constants.h"
- #include "mount.h"
--#include "nfsumount.h"
- #include "error.h"
- #include "network.h"
++#define MNT_SENDBUFSIZE (2048U)
++#define MNT_RECVBUFSIZE (1024U)
++
+ int probe_bothports(clnt_addr_t *, clnt_addr_t *);
+ int nfs_gethostbyname(const char *, struct sockaddr_in *);
+ int nfs_call_umount(clnt_addr_t *, dirpath *);
  
-diff --git a/utils/mount/nfsumount.h b/utils/mount/nfsumount.h
-deleted file mode 100644
-index 0d67d27..0000000
---- a/utils/mount/nfsumount.h
-+++ /dev/null
-@@ -1,9 +0,0 @@
--#ifndef _NFS_UMOUNT_H
--#define _NFS_UMOUNT_H
--
--#include "conn.h"
--#include "mount.h"
--
--int nfsumount(int, char **);
--
--#endif
+ int start_statd(void);
++
++CLIENT *mnt_openclnt(clnt_addr_t *, int *);
++void mnt_closeclnt(CLIENT *, int);
 
 
 -------------------------------------------------------------------------
