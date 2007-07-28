@@ -1,19 +1,19 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 07/23] umount.nfs: move nfs_call_umount to network.c
-Date: Sat, 28 Jul 2007 17:49:43 -0400
-Message-ID: <20070728214943.21871.63781.stgit@localhost.localdomain>
+Subject: [PATCH 00/23]
+Date: Sat, 28 Jul 2007 17:49:06 -0400
+Message-ID: <20070728213611.21871.4021.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 To: neilb@suse.de
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IEuAU-0007QV-J4
+	id 1IEuAU-0007Qa-Qg
 	for nfs@lists.sourceforge.net; Sat, 28 Jul 2007 14:49:46 -0700
 Received: from flpi102.sbcis.sbc.com ([207.115.20.71] helo=flpi102.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IEuAY-00037e-C5
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IEuAY-0003Yj-NV
 	for nfs@lists.sourceforge.net; Sat, 28 Jul 2007 14:49:50 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -27,155 +27,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-nfs_call_umount() is shared by nfsmount.c and nfsumount.c, and manages a
-network function (building the RPC umount call to the server's MNT daemon).
-So move it to network.c with other network-related functions.
+Hi Neil-
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+During my continuing effort to familiarize myself with the current mount.nfs
+code base, I've run across some minor issues for which I've created a set of
+patches.  These refactor, clarify, and modernize some areas of mount and
+umount operation.
 
- utils/mount/network.c   |   35 +++++++++++++++++++++++++++++++++--
- utils/mount/network.h   |    7 +++----
- utils/mount/nfsumount.c |   37 -------------------------------------
- utils/mount/nfsumount.h |    1 -
- 4 files changed, 36 insertions(+), 44 deletions(-)
+As always, constructive comments are welcome from all.
 
-diff --git a/utils/mount/network.c b/utils/mount/network.c
-index ab8cfb7..b04491c 100644
---- a/utils/mount/network.c
-+++ b/utils/mount/network.c
-@@ -245,7 +245,7 @@ out_ok:
- 	return 1;
- }
- 
--int probe_nfsport(clnt_addr_t *nfs_server)
-+static int probe_nfsport(clnt_addr_t *nfs_server)
- {
- 	struct pmap *pmap = &nfs_server->pmap;
- 
-@@ -258,7 +258,7 @@ int probe_nfsport(clnt_addr_t *nfs_server)
- 		return probe_port(nfs_server, probe_nfs2_only, probe_udp_only);
- }
- 
--int probe_mntport(clnt_addr_t *mnt_server)
-+static int probe_mntport(clnt_addr_t *mnt_server)
- {
- 	struct pmap *pmap = &mnt_server->pmap;
- 
-@@ -362,3 +362,34 @@ int start_statd(void)
- 
- 	return 0;
- }
-+
-+int nfs_call_umount(clnt_addr_t *mnt_server, dirpath *argp)
-+{
-+	CLIENT *clnt;
-+	enum clnt_stat res = 0;
-+	int msock;
-+
-+	switch (mnt_server->pmap.pm_vers) {
-+	case 3:
-+	case 2:
-+	case 1:
-+		if (!probe_mntport(mnt_server))
-+			goto out_bad;
-+		clnt = mnt_openclnt(mnt_server, &msock);
-+		if (!clnt)
-+			goto out_bad;
-+		res = clnt_call(clnt, MOUNTPROC_UMNT,
-+				(xdrproc_t) xdr_dirpath, (caddr_t)argp,
-+				(xdrproc_t) xdr_void, NULL,
-+				TIMEOUT);
-+		mnt_closeclnt(clnt, msock);
-+		if (res == RPC_SUCCESS)
-+			return 1;
-+		break;
-+	default:
-+		res = 1;
-+		break;
-+	}
-+ out_bad:
-+	return res;
-+}
-diff --git a/utils/mount/network.h b/utils/mount/network.h
-index bb5b4da..83375f0 100644
---- a/utils/mount/network.h
-+++ b/utils/mount/network.h
-@@ -22,11 +22,10 @@
-  */
- 
- #include "conn.h"
-+#include "mount.h"
- 
--int nfs_gethostbyname(const char *, struct sockaddr_in *);
--
--int probe_mntport(clnt_addr_t *);
--int probe_nfsport(clnt_addr_t *);
- int probe_bothports(clnt_addr_t *, clnt_addr_t *);
-+int nfs_gethostbyname(const char *, struct sockaddr_in *);
-+int nfs_call_umount(clnt_addr_t *, dirpath *);
- 
- int start_statd(void);
-diff --git a/utils/mount/nfsumount.c b/utils/mount/nfsumount.c
-index 477f262..2d68e7e 100644
---- a/utils/mount/nfsumount.c
-+++ b/utils/mount/nfsumount.c
-@@ -53,43 +53,6 @@ int force;
- int lazy;
- int remount;
- 
--static inline enum clnt_stat
--nfs_umount(dirpath *argp, CLIENT *clnt)
--{
--	return clnt_call(clnt, MOUNTPROC_UMNT,
--			 (xdrproc_t) xdr_dirpath, (caddr_t)argp,
--			 (xdrproc_t) xdr_void, NULL,
--			 TIMEOUT);
--}
--
--int nfs_call_umount(clnt_addr_t *mnt_server, dirpath *argp)
--{
--	CLIENT *clnt;
--	enum clnt_stat res = 0;
--	int msock;
--
--	switch (mnt_server->pmap.pm_vers) {
--	case 3:
--	case 2:
--	case 1:
--		if (!probe_mntport(mnt_server))
--			goto out_bad;
--		clnt = mnt_openclnt(mnt_server, &msock);
--		if (!clnt)
--			goto out_bad;
--		res = nfs_umount(argp, clnt);
--		mnt_closeclnt(clnt, msock);
--		if (res == RPC_SUCCESS)
--			return 1;
--		break;
--	default:
--		res = 1;
--		break;
--	}
-- out_bad:
--	return res;
--}
--
- int del_mtab(const char *spec, const char *node)
- {
- 	int umnt_err, res;
-diff --git a/utils/mount/nfsumount.h b/utils/mount/nfsumount.h
-index 191118d..0d67d27 100644
---- a/utils/mount/nfsumount.h
-+++ b/utils/mount/nfsumount.h
-@@ -5,6 +5,5 @@
- #include "mount.h"
- 
- int nfsumount(int, char **);
--int nfs_call_umount(clnt_addr_t *, dirpath *);
- 
- #endif
+I'm continuing to look at fg/bg and at building string-ified mounting.  I am
+focusing on these clean-ups and bug fixes because it is clear that mount.nfs
+is what distributions will use now instead of the old util-linux mount.  Thus
+mount.nfs must work as well as or better than the old mount command before we
+move forward with string-ified mount option handling.
 
+-- 
+corporate:    <chuck dot lever at oracle dot com>
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
