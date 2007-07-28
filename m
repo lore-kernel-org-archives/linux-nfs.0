@@ -1,8 +1,8 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 17/23] libnfs.a: move more mount-only functions out of
-	libnfs.a
-Date: Sat, 28 Jul 2007 17:50:35 -0400
-Message-ID: <20070728215035.21871.17023.stgit@localhost.localdomain>
+Subject: [PATCH 20/23] mount.nfs: use nfs_error instead of fprintf
+	in	get_socket()
+Date: Sat, 28 Jul 2007 17:50:50 -0400
+Message-ID: <20070728215050.21871.64557.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
@@ -11,11 +11,11 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IFGOm-0003e3-Ff
-	for nfs@lists.sourceforge.net; Sun, 29 Jul 2007 14:34:00 -0700
+	id 1IFGOp-0003gF-5v
+	for nfs@lists.sourceforge.net; Sun, 29 Jul 2007 14:34:03 -0700
 Received: from flpi101.sbcis.sbc.com ([207.115.20.70] helo=flpi101.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IFGOq-0003r7-3V
-	for nfs@lists.sourceforge.net; Sun, 29 Jul 2007 14:34:04 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IFGOs-0003sP-VG
+	for nfs@lists.sourceforge.net; Sun, 29 Jul 2007 14:34:07 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,116 +28,138 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Continue clean-up with nfsvers_to_mnt() and mntvers_to_nfs().
+Use nfs_error() where appropriate.  I used "goto" here to reduce string
+splitting and indenting past the point of readability.  Gee, it would be
+nice if C had proper exception handling...
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- support/include/conn.h |    2 --
- support/nfs/conn.c     |   18 ------------------
- utils/mount/network.c  |   34 ++++++++++++++++++++++++++++++++++
- utils/mount/network.h  |    2 ++
- 4 files changed, 36 insertions(+), 20 deletions(-)
+ utils/mount/network.c |  100 ++++++++++++++++++++++++++-----------------------
+ 1 files changed, 53 insertions(+), 47 deletions(-)
 
-diff --git a/support/include/conn.h b/support/include/conn.h
-index f21c10e..48f5a1c 100644
---- a/support/include/conn.h
-+++ b/support/include/conn.h
-@@ -30,8 +30,6 @@ static const struct timeval RETRY_TIMEOUT = { 3, 0 };
- 
- int clnt_ping(struct sockaddr_in *, const u_long, const u_long, const u_int,
- 	      struct sockaddr_in *);
--u_long nfsvers_to_mnt(const u_long);
--u_long mntvers_to_nfs(const u_long);
- int get_socket(struct sockaddr_in *, u_int, int, int);
- 
- #endif /* _CONN_H */
-diff --git a/support/nfs/conn.c b/support/nfs/conn.c
-index cf080c2..970abfe 100644
---- a/support/nfs/conn.c
-+++ b/support/nfs/conn.c
-@@ -25,24 +25,6 @@
- 
- extern int verbose;
- 
--/* Map an NFS version into the corresponding Mountd version */
--u_long nfsvers_to_mnt(const u_long vers)
--{
--	static const u_long nfs_to_mnt[] = { 0, 0, 1, 3 };
--	if (vers <= 3)
--		return nfs_to_mnt[vers];
--	return 0;
--}
--
--/* Map a Mountd version into the corresponding NFS version */
--u_long mntvers_to_nfs(const u_long vers)
--{
--	static const u_long mnt_to_nfs[] = { 0, 2, 2, 3 };
--	if (vers <= 3)
--		return mnt_to_nfs[vers];
--	return 0;
--}
--
- /*
-  * Create a socket that is locally bound to a 
-  * reserve or non-reserve port. For any failures,
 diff --git a/utils/mount/network.c b/utils/mount/network.c
-index 08b1f99..c092571 100644
+index 4831990..af37ef6 100644
 --- a/utils/mount/network.c
 +++ b/utils/mount/network.c
-@@ -57,6 +57,40 @@ extern int nfs_mount_data_version;
- extern char *progname;
- extern int verbose;
+@@ -171,64 +171,70 @@ static int get_socket(struct sockaddr_in *saddr, unsigned int p_prot,
+ 	socklen_t namelen = sizeof(laddr);
  
-+static const unsigned long nfs_to_mnt[] = {
-+	0,
-+	0,
-+	1,
-+	3,
-+};
+ 	type = (p_prot == IPPROTO_UDP ? SOCK_DGRAM : SOCK_STREAM);
+-	if ((so = socket (AF_INET, type, p_prot)) < 0) {
+-		rpc_createerr.cf_stat = RPC_SYSTEMERROR;
+-		rpc_createerr.cf_error.re_errno = errno;
+-		if (verbose) {
+-			fprintf(stderr, 
+-				"mount: Unable to create %s socket: errno %d (%s)\n",
+-				p_prot == IPPROTO_UDP ? "UDP" : "TCP", 
+-				errno, strerror(errno));
+-		}
+-		return RPC_ANYSOCK;
+-	}
++	if ((so = socket (AF_INET, type, p_prot)) < 0)
++		goto err_socket;
 +
-+static const unsigned long mnt_to_nfs[] = {
-+	0,
-+	2,
-+	2,
-+	3,
-+};
+ 	laddr.sin_family = AF_INET;
+ 	laddr.sin_port = 0;
+ 	laddr.sin_addr.s_addr = htonl(INADDR_ANY);
+ 	if (resvp) {
+-		if (bindresvport(so, &laddr) < 0) {
+-			rpc_createerr.cf_stat = RPC_SYSTEMERROR;
+-			rpc_createerr.cf_error.re_errno = errno;
+-			if (verbose) {
+-				fprintf(stderr, 
+-					"mount: Unable to bindresvport %s socket: errno %d (%s)\n",
+-					p_prot == IPPROTO_UDP ? "UDP" : "TCP", 
+-					errno, strerror(errno));
+-			}
+-			close(so);
+-			return RPC_ANYSOCK;
+-		}
++		if (bindresvport(so, &laddr) < 0)
++			goto err_bindresvport;
+ 	} else {
+ 		cc = bind(so, (struct sockaddr *)&laddr, namelen);
+-		if (cc < 0) {
+-			rpc_createerr.cf_stat = RPC_SYSTEMERROR;
+-			rpc_createerr.cf_error.re_errno = errno;
+-			if (verbose) {
+-				fprintf(stderr, 
+-					"mount: Unable to bind to %s socket: errno %d (%s)\n",
+-					p_prot == IPPROTO_UDP ? "UDP" : "TCP", 
+-					errno, strerror(errno));
+-			}
+-			close(so);
+-			return RPC_ANYSOCK;
+-		}
++		if (cc < 0)
++			goto err_bind;
+ 	}
+ 	if (type == SOCK_STREAM || (conn && type == SOCK_DGRAM)) {
+ 		cc = connect(so, (struct sockaddr *)saddr, namelen);
+-		if (cc < 0) {
+-			rpc_createerr.cf_stat = RPC_SYSTEMERROR;
+-			rpc_createerr.cf_error.re_errno = errno;
+-			if (verbose) {
+-				fprintf(stderr, 
+-					"mount: Unable to connect to %s:%d, errno %d (%s)\n",
+-					inet_ntoa(saddr->sin_addr), ntohs(saddr->sin_port),
+-					errno, strerror(errno));
+-			}
+-			close(so);
+-			return RPC_ANYSOCK;
+-		}
++		if (cc < 0)
++			goto err_connect;
+ 	}
+ 	return so;
 +
-+/*
-+ * Map an NFS version into the corresponding Mountd version
-+ */
-+unsigned long nfsvers_to_mnt(const unsigned long vers)
-+{
-+	if (vers <= 3)
-+		return nfs_to_mnt[vers];
-+	return 0;
-+}
++err_socket:
++	rpc_createerr.cf_stat = RPC_SYSTEMERROR;
++	rpc_createerr.cf_error.re_errno = errno;
++	if (verbose) {
++		nfs_error(_("%s: Unable to create %s socket: errno %d (%s)\n"),
++			progname, p_prot == IPPROTO_UDP ? _("UDP") : _("TCP"),
++			errno, strerror(errno));
++	}
++	return RPC_ANYSOCK;
 +
-+/*
-+ * Map a Mountd version into the corresponding NFS version
-+ */
-+static unsigned long mntvers_to_nfs(const unsigned long vers)
-+{
-+	if (vers <= 3)
-+		return mnt_to_nfs[vers];
-+	return 0;
-+}
++err_bindresvport:
++	rpc_createerr.cf_stat = RPC_SYSTEMERROR;
++	rpc_createerr.cf_error.re_errno = errno;
++	if (verbose) {
++		nfs_error(_("%s: Unable to bindresvport %s socket: errno %d"
++				" (%s)\n"),
++			progname, p_prot == IPPROTO_UDP ? _("UDP") : _("TCP"),
++			errno, strerror(errno));
++	}
++	close(so);
++	return RPC_ANYSOCK;
 +
- static const unsigned int probe_udp_only[] = {
- 	IPPROTO_UDP,
- 	0,
-diff --git a/utils/mount/network.h b/utils/mount/network.h
-index 81a59da..b3a5525 100644
---- a/utils/mount/network.h
-+++ b/utils/mount/network.h
-@@ -33,5 +33,7 @@ int nfs_call_umount(clnt_addr_t *, dirpath *);
++err_bind:
++	rpc_createerr.cf_stat = RPC_SYSTEMERROR;
++	rpc_createerr.cf_error.re_errno = errno;
++	if (verbose) {
++		nfs_error(_("%s: Unable to bind to %s socket: errno %d (%s)\n"),
++			progname, p_prot == IPPROTO_UDP ? _("UDP") : _("TCP"),
++			errno, strerror(errno));
++	}
++	close(so);
++	return RPC_ANYSOCK;
++
++err_connect:
++	rpc_createerr.cf_stat = RPC_SYSTEMERROR;
++	rpc_createerr.cf_error.re_errno = errno;
++	if (verbose) {
++		nfs_error(_("%s: Unable to connect to %s:%d, errno %d (%s)\n"),
++			progname, inet_ntoa(saddr->sin_addr),
++			ntohs(saddr->sin_port), errno, strerror(errno));
++	}
++	close(so);
++	return RPC_ANYSOCK;
+ }
  
- int start_statd(void);
- 
-+unsigned long nfsvers_to_mnt(const unsigned long);
-+
- CLIENT *mnt_openclnt(clnt_addr_t *, int *);
- void mnt_closeclnt(CLIENT *, int);
+ /*
 
 
 -------------------------------------------------------------------------
