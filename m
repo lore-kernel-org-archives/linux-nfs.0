@@ -1,20 +1,31 @@
-From: =?iso-8859-1?q?JOHN=20GUY?= <john.guy1111@btinternet.com>
-Subject: 27 07 07
-Date: Fri, 27 Jul 2007 23:16:04 +0000 (GMT)
-Message-ID: <91482.66791.qm@web86307.mail.ukl.yahoo.com>
-Reply-To: jbgy@usa.com
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: Status of mount.nfs
+Date: Sat, 28 Jul 2007 08:51:53 -0400
+Message-ID: <46AB3BE9.1060903@RedHat.com>
+References: <20070708191640.GA13962@uio.no>	
+	<18065.43199.104020.412029@notabene.brown>	<20070715083114.GB4158@uio.no>	
+	<18074.50730.591965.39211@notabene.brown>	<20070716092047.GA10353@uio.no>	
+	<18075.17719.855332.259470@notabene.brown>	<20070722191733.GA31501@uio.no>	
+	<46A52816.6050500@oracle.com>	<20070724172451.GA14026@uio.no>	
+	<46A7A5F8.4040204@oracle.com> <46A897CD.50201@RedHat.com>	
+	<46A96032.7080503@oracle.com> <46AA089E.50503@RedHat.com>	
+	<1185551769.6586.28.camel@localhost> <46AA1A70.5010705@RedHat.com>	
+	<1185553679.6586.34.camel@localhost> <46AA2642.60505@RedHat.com>
+	<1185556406.6586.45.camel@localhost>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============0966520974=="
-To: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IEZ2Y-0001Es-0i
-	for nfs@lists.sourceforge.net; Fri, 27 Jul 2007 16:16:10 -0700
-Received: from web86307.mail.ukl.yahoo.com ([217.12.12.66])
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1IEZ2Y-0000hr-1w
-	for nfs@lists.sourceforge.net; Fri, 27 Jul 2007 16:16:10 -0700
+	id 1IElnC-00033B-5j
+	for nfs@lists.sourceforge.net; Sat, 28 Jul 2007 05:53:14 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IElnF-0001aX-Rz
+	for nfs@lists.sourceforge.net; Sat, 28 Jul 2007 05:53:14 -0700
+In-Reply-To: <1185556406.6586.45.camel@localhost>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,95 +38,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============0966520974==
-Content-Type: multipart/alternative; boundary="0-837750654-1185578164=:66791"
-Content-Transfer-Encoding: 7bit
+Trond Myklebust wrote:
+> On Fri, 2007-07-27 at 13:07 -0400, Steve Dickson wrote:
+> 
+>> After how long of a wait? If all the timeouts are controllable then
+>> I agrees, but if we have to wait undefined-able amount of time for
+>> every RPC retransmit, then I think we should do a ping...
+> 
+> You should be able to set the timeout either on a per-RPC call basis by
+> using clnt_call(), or by changing the default timeout on the CLIENT
+> object using clnt_control() (man 3 rpc).
+True... but I was thinking of when clnt_cnt() call pmap_getport()
+which does not take a timeout value...  In that case you are
+stuck with a 60 sec hard coded timeout, regardless of the time out
+you pass in...
 
---0-837750654-1185578164=:66791
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: quoted-printable
-
-I have a new email address!You can now email me at: john.guy1111@btintern=
-et.com
-
-
-
-- Dear Friend,My name is John B. Guy I am an American soldier,I am servin=
-g in themilitary of the 3rd Armored Cavalry Regimient,Patrols Tal Afar, i=
-n Iraq.I ampresently in Kuwait for the mean time.I am searching for a pro=
-fitable investment business, we can both go into a joint partnership inve=
-stment business if you so wish. You can send me a proposal for a viable l=
-ong-term investment either a regular income-producing investment or a lon=
-g-term investment. We have in our possession the sum of  (Seventeen Milli=
-on US Dollars), which belongs to Saddam Hussein.These funds have been mov=
-ed and is presently with a british Envoy who actually is not very aware t=
-hat the consignment we have withhim contains funds.It is the only way we =
-can move the funds out of IRAQ.HE WILL CONCLUDE WITH YOU ON HOW BEST TO R=
-ECEIVE THE CONSIGNMENT Basically since we are working for the American Go=
-vernment, we cannot keep these funds, but we want to transfer and move th=
-e funds to you for investment purpose I willprovide the sponsorship for t=
-he investment business in your country with the fund.Therefore, if you ar=
-e interested, please reply immediately via email ,with your Full Name, Cu=
-rrent Mailing Address and your confidential Telephone and Fax numbers for=
- easy communication. Upon your response, I shall then provide you with mo=
-re details that  will help you understand the transaction.I would be glad=
- if you can assist me in any way possible. Regards JOHN GUY           =20
-
-
---0-837750654-1185578164=:66791
-Content-Type: text/html; charset=iso-8859-1
-Content-Transfer-Encoding: quoted-printable
-
-<div style=3D"border: solid 1px #cccccc; width:448px; background-color:wh=
-ite; margin:10px 0px;";><table border=3D0 cellspacing=3D0 cellpadding=3D0=
- width=3D"448"><tr><td class=3Dtablot background=3D"http://us.i1.yimg.com=
-/us.yimg.com/i/us/pim/gr/gr_announce_1.gif" valign=3Dcenter height=3D57><=
-big style=3D"padding:10px;">I have a new email address!</big></td></tr></=
-table><div style=3D"padding:10px;">You can now email me at: <b>john.guy11=
-11@btinternet.com</b><br><br><span style=3D"color:green;"></span><br><br>=
-- <span style=3D"color:green;">Dear Friend,My name is John B. Guy I am an=
- American soldier,I am serving in themilitary of the 3rd Armored Cavalry =
-Regimient,Patrols Tal Afar, in Iraq.I ampresently in Kuwait for the mean =
-time.I am searching for a profitable investment business, we can both go =
-into a joint partnership investment business if you so wish. You can send=
- me a proposal for a viable long-term investment either a regular income-=
-producing investment or a long-term investment. We have in our possession=
- the sum of  (Seventeen Million US Dollars), which belongs to Saddam Huss=
-ein.These funds have been moved and is presently with a british Envoy who=
- actually is not very aware that the consignment we have withhim contains=
- funds.It is the only way we can move the funds out of IRAQ.HE WILL CONCL=
-UDE WITH YOU ON HOW BEST TO RECEIVE THE CONSIGNMENT Basically since we ar=
-e working for the American Government, we cannot keep these funds, but we=
- want to transfer and move the funds to you for investment purpose I will=
-provide the sponsorship for the investment business in your country with =
-the fund.Therefore, if you are interested, please reply immediately via e=
-mail ,with your Full Name, Current Mailing Address and your confidential =
-Telephone and Fax numbers for easy communication. Upon your response, I s=
-hall then provide you with more details that  will help you understand th=
-e transaction.I would be glad if you can assist me in any way possible. R=
-egards JOHN GUY            </span></div></div>
---0-837750654-1185578164=:66791--
-
-
---===============0966520974==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+steved.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
---===============0966520974==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============0966520974==--
