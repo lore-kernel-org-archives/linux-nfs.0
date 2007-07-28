@@ -1,26 +1,21 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 01/23] mount.nfs: Support double-wide characters
- in printed strings
-Date: Sun, 29 Jul 2007 16:05:06 -0400
-Message-ID: <46ACF2F2.80602@oracle.com>
-References: <20070728214913.21871.41624.stgit@localhost.localdomain>
-	<18092.17434.520955.494157@notabene.brown>
-Reply-To: chuck.lever@oracle.com
+Subject: [PATCH 14/23] mount.nfs: fix hang when getport() uses TCP
+	against	unavailable servers
+Date: Sat, 28 Jul 2007 17:50:19 -0400
+Message-ID: <20070728215019.21871.74142.stgit@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------060409000300040207040906"
+Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: Neil Brown <neilb@suse.de>
+To: neilb@suse.de
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IFF2L-0003UP-Oz
-	for nfs@lists.sourceforge.net; Sun, 29 Jul 2007 13:06:45 -0700
-Received: from rgminet01.oracle.com ([148.87.113.118])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IFF2O-0004fD-Dd
-	for nfs@lists.sourceforge.net; Sun, 29 Jul 2007 13:06:49 -0700
-In-Reply-To: <18092.17434.520955.494157@notabene.brown>
+	id 1IFGOl-0003dx-Nj
+	for nfs@lists.sourceforge.net; Sun, 29 Jul 2007 14:33:59 -0700
+Received: from flpi101.sbcis.sbc.com ([207.115.20.70] helo=flpi101.prodigy.net)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IFGOp-0003me-GV
+	for nfs@lists.sourceforge.net; Sun, 29 Jul 2007 14:34:03 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,68 +28,53 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
---------------060409000300040207040906
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Transfer-Encoding: 7bit
+If get_socket() can't get us an open TCP socket, we know the server is
+down, so make  getport() exit early instead of hanging.  This logic is
+copied from clnt_ping().
 
-> So please either show me the error of my thinking, or stick to adding
-> _() to translatable strings.
-> 
-> Much of this patch is good and wanted, I'm not sure about the whole.
-> Similarly for patch 2.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-Yeah, the options stuff was a mistake which I thought I had avoided. 
-Will fix all this up and post a fresh patch set.
+ utils/mount/network.c |   19 +++++++++++++++++--
+ 1 files changed, 17 insertions(+), 2 deletions(-)
 
-But my impression was a double-byte "." is not the same as a single-byte 
-".".  I'm not an expert, and would be happy if someone (like a 
-distributor) had an internationalization expert they could loan us.
+diff --git a/utils/mount/network.c b/utils/mount/network.c
+index 21cf4ef..5653302 100644
+--- a/utils/mount/network.c
++++ b/utils/mount/network.c
+@@ -135,8 +135,23 @@ unsigned short getport(struct sockaddr_in *saddr, unsigned long prog,
+ 	struct pmap parms;
+ 	enum clnt_stat stat;
+ 
+-	saddr->sin_port = htons (PMAPPORT);
+-	socket = get_socket(saddr, prot, FALSE, FALSE);
++	saddr->sin_port = htons(PMAPPORT);
++
++	/*
++	 * Try to get a socket with a non-privileged port.
++	 * clnt*create() will create one anyway if this
++	 * fails.
++	 */
++	socket = get_socket(saddr, proto, FALSE, FALSE);
++	if (socket == RPC_ANYSOCK) {
++		if (proto == IPPROTO_TCP && errno == ETIMEDOUT) {
++			/*
++			 * TCP SYN timed out, so exit now.
++			 */
++			rpc_createerr.cf_stat = RPC_TIMEDOUT;
++		}
++		return 0;
++	}
+ 
+ 	switch (prot) {
+ 	case IPPROTO_UDP:
 
-> I only got 12 of the 23 patches??
-
-The list didn't see half of these either.  Will investigate.  I probably 
-shut down my laptop before it was done relaying the patches.
-
---------------060409000300040207040906
-Content-Type: text/x-vcard; charset=utf-8;
- name="chuck.lever.vcf"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="chuck.lever.vcf"
-
-begin:vcard
-fn:Chuck Lever
-n:Lever;Chuck
-org:Oracle Corporation;Corporate Architecture: Linux Projects Group
-adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
-title:Principal Member of Staff
-tel;work:+1 248 614 5091
-x-mozilla-html:FALSE
-url:http://oss.oracle.com/~cel
-version:2.1
-end:vcard
-
-
---------------060409000300040207040906
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
---------------060409000300040207040906
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---------------060409000300040207040906--
