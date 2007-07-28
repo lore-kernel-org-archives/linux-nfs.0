@@ -1,7 +1,8 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 15/23] mount.nfs: clean up getport() function
-Date: Sat, 28 Jul 2007 17:50:24 -0400
-Message-ID: <20070728215024.21871.54208.stgit@localhost.localdomain>
+Subject: [PATCH 13/23] umount.nfs: eliminate a nearly empty header
+	file.
+Date: Sat, 28 Jul 2007 17:50:14 -0400
+Message-ID: <20070728215014.21871.95420.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
@@ -10,11 +11,11 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IFGOn-0003ea-DJ
-	for nfs@lists.sourceforge.net; Sun, 29 Jul 2007 14:34:01 -0700
+	id 1IFGOm-0003eF-Mt
+	for nfs@lists.sourceforge.net; Sun, 29 Jul 2007 14:34:00 -0700
 Received: from flpi101.sbcis.sbc.com ([207.115.20.70] helo=flpi101.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IFGOr-0005cB-3z
-	for nfs@lists.sourceforge.net; Sun, 29 Jul 2007 14:34:05 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IFGOq-0005bg-D1
+	for nfs@lists.sourceforge.net; Sun, 29 Jul 2007 14:34:04 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,92 +28,96 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Mostly comment clarification.  Also replace some naked undocumented
-integers with macros, and make getport() static.
+Clean-up: move nfsumount() global declaration to nfs_mount.h, and remove
+nfsumount.h.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/mount/network.c |   47 ++++++++++++++++++++++++++++-------------------
- 1 files changed, 28 insertions(+), 19 deletions(-)
+ utils/mount/mount.c     |    1 -
+ utils/mount/network.c   |    1 -
+ utils/mount/nfs_mount.h |    3 ++-
+ utils/mount/nfsmount.c  |    1 -
+ utils/mount/nfsumount.c |    1 -
+ utils/mount/nfsumount.h |    9 ---------
+ 6 files changed, 2 insertions(+), 14 deletions(-)
 
+diff --git a/utils/mount/mount.c b/utils/mount/mount.c
+index d80e5d7..b918b27 100644
+--- a/utils/mount/mount.c
++++ b/utils/mount/mount.c
+@@ -39,7 +39,6 @@
+ 
+ #include "nfs_mount.h"
+ #include "nfs4_mount.h"
+-#include "nfsumount.h"
+ #include "mount.h"
+ #include "error.h"
+ #include "network.h"
 diff --git a/utils/mount/network.c b/utils/mount/network.c
-index 5653302..c997c4c 100644
+index 12fc762..21cf4ef 100644
 --- a/utils/mount/network.c
 +++ b/utils/mount/network.c
-@@ -121,18 +121,22 @@ int nfs_gethostbyname(const char *hostname, struct sockaddr_in *saddr)
- }
+@@ -38,7 +38,6 @@
+ #include "xcommon.h"
+ #include "mount.h"
+ #include "nls.h"
+-#include "nfsumount.h"
+ #include "nfs_mount.h"
+ #include "mount_constants.h"
+ #include "network.h"
+diff --git a/utils/mount/nfs_mount.h b/utils/mount/nfs_mount.h
+index 279ff36..dcce370 100644
+--- a/utils/mount/nfs_mount.h
++++ b/utils/mount/nfs_mount.h
+@@ -80,6 +80,7 @@ struct nfs_mount_data {
+ #define AUTH_GSS_SPKMP		390011
+ #endif
  
- /*
-- * getport() is very similar to pmap_getport() with
-- * the exception this version uses a non-reserve ports
-- * instead of reserve ports since reserve ports
-- * are not needed for pmap requests.
-+ * getport() is very similar to pmap_getport() with the exception that
-+ * this version tries to use an ephemeral port, since reserved ports are
-+ * not needed for GETPORT queries.  This conserves the very limited
-+ * reserved port space, which helps reduce failed socket binds
-+ * during mount storms.
-+ *
-+ * A side effect of calling this function is that rpccreateerr is set.
-  */
--unsigned short getport(struct sockaddr_in *saddr, unsigned long prog,
--			unsigned long vers, unsigned int prot)
-+static unsigned short getport(struct sockaddr_in *saddr,
-+				unsigned long program,
-+				unsigned long version,
-+				unsigned int proto)
- {
- 	unsigned short port = 0;
- 	int socket;
- 	CLIENT *clnt = NULL;
--	struct pmap parms;
- 	enum clnt_stat stat;
+-int nfsmount(const char *, const char *, int , char **, int);
++int	nfsmount(const char *, const char *, int , char **, int);
++int	nfsumount(int, char **);
  
- 	saddr->sin_port = htons(PMAPPORT);
-@@ -153,25 +157,30 @@ unsigned short getport(struct sockaddr_in *saddr, unsigned long prog,
- 		return 0;
- 	}
+ #endif /* _NFS_MOUNT_H */
+diff --git a/utils/mount/nfsmount.c b/utils/mount/nfsmount.c
+index 20509c7..f1d3885 100644
+--- a/utils/mount/nfsmount.c
++++ b/utils/mount/nfsmount.c
+@@ -59,7 +59,6 @@
+ #include "conn.h"
+ #include "xcommon.h"
+ #include "mount.h"
+-#include "nfsumount.h"
+ #include "nfs_mount.h"
+ #include "mount_constants.h"
+ #include "nls.h"
+diff --git a/utils/mount/nfsumount.c b/utils/mount/nfsumount.c
+index 8e4207f..e67a204 100644
+--- a/utils/mount/nfsumount.c
++++ b/utils/mount/nfsumount.c
+@@ -33,7 +33,6 @@
  
--	switch (prot) {
-+	switch (proto) {
- 	case IPPROTO_UDP:
- 		clnt = clntudp_bufcreate(saddr,
--					 PMAPPROG, PMAPVERS, TIMEOUT, &socket,
--					 UDPMSGSIZE, UDPMSGSIZE);
-+					 PMAPPROG, PMAPVERS,
-+					 RETRY_TIMEOUT, &socket,
-+					 RPCSMALLMSGSIZE,
-+					 RPCSMALLMSGSIZE);
- 		break;
- 	case IPPROTO_TCP:
--		clnt = clnttcp_create(saddr,
--			PMAPPROG, PMAPVERS, &socket, 50, 500);
-+		clnt = clnttcp_create(saddr, PMAPPROG, PMAPVERS, &socket,
-+				      RPCSMALLMSGSIZE, RPCSMALLMSGSIZE);
- 		break;
- 	}
- 	if (clnt != NULL) {
--		parms.pm_prog = prog;
--		parms.pm_vers = vers;
--		parms.pm_prot = prot;
--		parms.pm_port = 0;    /* not needed or used */
+ #include "mount_constants.h"
+ #include "mount.h"
+-#include "nfsumount.h"
+ #include "error.h"
+ #include "network.h"
+ 
+diff --git a/utils/mount/nfsumount.h b/utils/mount/nfsumount.h
+deleted file mode 100644
+index 0d67d27..0000000
+--- a/utils/mount/nfsumount.h
++++ /dev/null
+@@ -1,9 +0,0 @@
+-#ifndef _NFS_UMOUNT_H
+-#define _NFS_UMOUNT_H
 -
--		stat = clnt_call(clnt, PMAPPROC_GETPORT, (xdrproc_t)xdr_pmap,
--			(caddr_t)&parms, (xdrproc_t)xdr_u_short, (caddr_t)&port, TIMEOUT);
-+		struct pmap parms = {
-+			.pm_prog	= program,
-+			.pm_vers	= version,
-+			.pm_prot	= proto,
-+		};
-+
-+		stat = clnt_call(clnt, PMAPPROC_GETPORT,
-+				 (xdrproc_t)xdr_pmap, (caddr_t)&parms,
-+				 (xdrproc_t)xdr_u_short, (caddr_t)&port,
-+				 TIMEOUT);
- 		if (stat) {
- 			clnt_geterr(clnt, &rpc_createerr.cf_error);
- 			rpc_createerr.cf_stat = stat;
+-#include "conn.h"
+-#include "mount.h"
+-
+-int nfsumount(int, char **);
+-
+-#endif
 
 
 -------------------------------------------------------------------------
