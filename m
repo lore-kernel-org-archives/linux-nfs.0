@@ -1,21 +1,23 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 23/23] mount.nfs: clean up a couple of printfs in
-	fstab.c
-Date: Sat, 28 Jul 2007 17:51:06 -0400
-Message-ID: <20070728215105.21871.39156.stgit@localhost.localdomain>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 15/23] mount.nfs: clean up getport() function
+Date: Sun, 29 Jul 2007 19:43:33 -0400
+Message-ID: <20070729234333.GA18686@fieldses.org>
+References: <20070728215024.21871.54208.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: neilb@suse.de
+Cc: neilb@suse.de, nfs@lists.sourceforge.net
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IFGPU-0003oV-Qu
-	for nfs@lists.sourceforge.net; Sun, 29 Jul 2007 14:34:44 -0700
-Received: from flpi101.sbcis.sbc.com ([207.115.20.70] helo=flpi101.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IFGPY-0003ml-MT
-	for nfs@lists.sourceforge.net; Sun, 29 Jul 2007 14:34:48 -0700
+	id 1IFIQC-00089a-FZ
+	for nfs@lists.sourceforge.net; Sun, 29 Jul 2007 16:43:36 -0700
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IFIQF-0001lk-8Y
+	for nfs@lists.sourceforge.net; Sun, 29 Jul 2007 16:43:40 -0700
+In-Reply-To: <20070728215024.21871.54208.stgit@localhost.localdomain>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,75 +30,34 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Clean up for consistent use.
+On Sat, Jul 28, 2007 at 05:50:24PM -0400, Chuck Lever wrote:
+> Mostly comment clarification.  Also replace some naked undocumented
+> integers with macros, and make getport() static.
+> @@ -153,25 +157,30 @@ unsigned short getport(struct sockaddr_in *saddr, unsigned long prog,
+>  		return 0;
+>  	}
+>  
+> -	switch (prot) {
+> +	switch (proto) {
+>  	case IPPROTO_UDP:
+>  		clnt = clntudp_bufcreate(saddr,
+> -					 PMAPPROG, PMAPVERS, TIMEOUT, &socket,
+> -					 UDPMSGSIZE, UDPMSGSIZE);
+> +					 PMAPPROG, PMAPVERS,
+> +					 RETRY_TIMEOUT, &socket,
+> +					 RPCSMALLMSGSIZE,
+> +					 RPCSMALLMSGSIZE);
+>  		break;
+>  	case IPPROTO_TCP:
+> -		clnt = clnttcp_create(saddr,
+> -			PMAPPROG, PMAPVERS, &socket, 50, 500);
+> +		clnt = clnttcp_create(saddr, PMAPPROG, PMAPVERS, &socket,
+> +				      RPCSMALLMSGSIZE, RPCSMALLMSGSIZE);
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+Did you mean to change those final two arguments?  (They were different
+before, then they're the same after.)
 
- utils/mount/fstab.c |   21 ++++++++++++---------
- 1 files changed, 12 insertions(+), 9 deletions(-)
-
-diff --git a/utils/mount/fstab.c b/utils/mount/fstab.c
-index aee8e53..449d4a5 100644
---- a/utils/mount/fstab.c
-+++ b/utils/mount/fstab.c
-@@ -25,6 +25,7 @@
- #define streq(s, t)	(strcmp ((s), (t)) == 0)
- #define PROC_MOUNTS		"/proc/mounts"
- 
-+extern char *progname;
- extern int verbose;
- 
- /* Information about mtab. ------------------------------------*/
-@@ -173,9 +174,8 @@ read_mounttable() {
-                         return;
-                 }
-                 if (verbose)
--                        printf (_("mount: could not open %s - "
--                                  "using %s instead\n"),
--                                MOUNTED, PROC_MOUNTS);
-+                        printf(_("%s: could not open %s; using %s instead\n"),
-+				progname, MOUNTED, PROC_MOUNTS);
-         }
-         read_mntentchn(mfp, fnam, mc);
- }
-@@ -399,8 +399,10 @@ lock_mtab (void) {
- 			if (fcntl (lockfile_fd, F_SETLK, &flock) == -1) {
- 				if (verbose) {
- 				    int errsv = errno;
--				    printf(_("Can't lock lock file %s: %s\n"),
--					   MOUNTED_LOCK, strerror (errsv));
-+				    nfs_error(_("%s: Can't lock lock file "
-+						"%s: %s"), progname,
-+					   	MOUNTED_LOCK,
-+						strerror (errsv));
- 				}
- 				/* proceed anyway */
- 			}
-@@ -527,8 +529,8 @@ update_mtab (const char *dir, struct mntent *instead)
- 	if (fchmod (fileno (mftmp->mntent_fp),
- 		    S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH) < 0) {
- 		int errsv = errno;
--		fprintf(stderr, _("error changing mode of %s: %s\n"),
--			MOUNTED_TEMP, strerror (errsv));
-+		nfs_error(_("%s: error changing mode of %s: %s"),
-+				progname, MOUNTED_TEMP, strerror (errsv));
- 	}
- 	nfs_endmntent (mftmp);
- 
-@@ -545,8 +547,9 @@ update_mtab (const char *dir, struct mntent *instead)
- 	/* rename mtemp to mtab */
- 	if (rename (MOUNTED_TEMP, MOUNTED) < 0) {
- 		int errsv = errno;
--		fprintf(stderr, _("can't rename %s to %s: %s\n"),
--			MOUNTED_TEMP, MOUNTED, strerror(errsv));
-+		nfs_error(_("%s: can't rename %s to %s: %s\n"),
-+				progname, MOUNTED_TEMP, MOUNTED,
-+				strerror(errsv));
- 	}
- 
-  leave:
-
+--b.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
