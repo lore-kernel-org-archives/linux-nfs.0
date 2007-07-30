@@ -1,26 +1,21 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 02/23] mount.nfs: fix printf's normally
- hidden	behind NFS_MOUNT_DEBUG
-Date: Mon, 30 Jul 2007 10:58:36 -0400
-Message-ID: <46ADFC9C.8050503@oracle.com>
-References: <20070728214918.21871.38740.stgit@localhost.localdomain>
-	<46ADD039.9070405@RedHat.com>
-Reply-To: chuck.lever@oracle.com
+From: "Tabitha Gipson" <TamihedgehogBenitez@familydoctor.org>
+Subject: Re: Thank you,
+	we are ready to lend you money regardless of Credit
+Date: Mon, 30 Jul 2007 11:46:31 +0500
+Message-ID: <23a701c7d2c0$e04ffa00$6c03a8c0@toshibauser>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------060106050305050009090704"
-Cc: nfs@lists.sourceforge.net
-To: Steve Dickson <SteveD@redhat.com>
+Content-Type: multipart/mixed; boundary="===============0203027737=="
+To: <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IFWj2-0006d2-7H
-	for nfs@lists.sourceforge.net; Mon, 30 Jul 2007 08:00:00 -0700
-Received: from agminet01.oracle.com ([141.146.126.228])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IFWj4-0006RQ-RL
-	for nfs@lists.sourceforge.net; Mon, 30 Jul 2007 08:00:04 -0700
-In-Reply-To: <46ADD039.9070405@RedHat.com>
+	id 1IFXSd-0004rd-F6
+	for nfs@lists.sourceforge.net; Mon, 30 Jul 2007 08:47:08 -0700
+Received: from ip-216-46-67-51.nyc.megapath.net ([216.46.67.51]
+	helo=toshiba-user.megapathdsl.net)
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1IFXSg-0005pV-Ey
+	for nfs@lists.sourceforge.net; Mon, 30 Jul 2007 08:47:10 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,65 +29,77 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 This is a multi-part message in MIME format.
---------------060106050305050009090704
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
 
-Steve Dickson wrote:
-> Chuck Lever wrote:
->> After I enabled NFS_MOUNT_DEBUG the compiler started spitting out 
->> warnings.
->> Fix up commas, output formatting, and double-wide character support.
-> Aren't these debugging statements basically useless because one has to
-> recompile to turn them on... Wouldn't it make more sense to add
-> '-o mntdebug' flag so these could be turned on at will?
+--===============0203027737==
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_000_23A3_01C7D2C0.E04FFA00"
 
-Useless for folks who don't want to or can't compile nfs-utils 
-themselves, yes.  But I think the usefulness of these is for anyone who 
-is developing mount.  They aren't for debugging problems mounting 
-shares, but for debugging changes to mount itself.
+This is a multi-part message in MIME format.
 
-I'm not opposed to making these debugging messages available dynamically 
-(if we really believe they will be useful for everyday system 
-administrators).... but....
+------=_NextPart_000_23A3_01C7D2C0.E04FFA00
+Content-Type: text/plain;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 
-Miklos has illuminated an important distinction between mount options 
-that affect the behavior of the mounted file system, and mount options 
-that control who can mount and how the mount takes place.  NFS is one of 
-the worst offenders in mixing the two.
+Your credit does not matter to us!
 
-A "mntdebug" option would be of the latter type, and I'm beginning to 
-think twice about the value of adding more of these.  I'm thinking about 
-a way of specifying those types of options in some other way; for 
-example, by using a separate NFS mount policy file like nsswitch.conf to 
-set these up.  Just a random thought.
+If you have your own business and need IMMEDIATE money to spend ANY way =
+you like or need Extra money to give your business a boost or wish A low =
+interest loan - NO STRINGS ATTACHED, here is the deal we can offer you =
+TONIGHT (hurry, this deal will expire TONIGHT):
 
-Or, rather, instead of "-o mntdebug" we might consider --mntdebug 
-instead; that is, use a command line option instead of a mount option.
+$50,000+ loan
 
-It's a nit, I know.
+Hurry, when best deal is gone, it is gone. Simply Call Us...
 
---------------060106050305050009090704
-Content-Type: text/x-vcard; charset=utf-8;
- name="chuck.lever.vcf"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="chuck.lever.vcf"
+Don't worry about approval, your credit history will not disqualify you!
 
-begin:vcard
-fn:Chuck Lever
-n:Lever;Chuck
-org:Oracle Corporation;Corporate Architecture: Linux Projects Group
-adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
-title:Principal Member of Staff
-tel;work:+1 248 614 5091
-x-mozilla-html:FALSE
-url:http://oss.oracle.com/~cel
-version:2.1
-end:vcard
+Call Us Free on 877-542-1884
+------=_NextPart_000_23A3_01C7D2C0.E04FFA00
+Content-Type: text/html;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD>
+<META http-equiv=3DContent-Type content=3D"text/html; =
+charset=3Diso-8859-1">
+<META content=3D"MSHTML 6.00.2900.2180" name=3DGENERATOR>
+<STYLE></STYLE>
+</HEAD>=20
+<BODY bgColor=3D#ffffff>
+<DIV><FONT face=3DVerdana size=3D2><B>Your credit does not matter to=20
+us!</B></FONT></DIV>  =20
+<DIV><FONT face=3DVerdana size=3D2>&nbsp;</FONT></DIV>
+<DIV><FONT face=3DVerdana size=3D2>If you have your own business and =
+need IMMEDIATE=20
+money to spend ANY way you like or need Extra money to give your =
+business a=20
+boost or  wish A low interest loan - NO STRINGS ATTACHED, here is the =
+deal we=20
+can offer you TONIGHT (hurry, this deal will expire =
+TONIGHT):</FONT></DIV> =20
+<DIV><FONT face=3DVerdana size=3D2>&nbsp;</FONT></DIV>
+<DIV><FONT face=3DVerdana size=3D2><B>$50,000+ loan</B></FONT></DIV>
+<DIV><FONT face=3DVerdana size=3D2>&nbsp;</FONT></DIV>
+<DIV><FONT face=3DVerdana size=3D2><B>Hurry, when best deal is gone, it =
+is gone.=20
+Simply Call Us... </B></FONT></DIV>    =20
+<DIV><FONT face=3DVerdana size=3D2>&nbsp;</FONT></DIV>
+<DIV><FONT face=3DVerdana size=3D2>Don't worry about approval, your =
+credit history=20
+will not disqualify you!</FONT></DIV> =20
+<DIV><FONT face=3DVerdana size=3D2>&nbsp;</FONT></DIV>
+<DIV><FONT face=3DVerdana size=3D2><B>Call Us Free on =
+877-542-1884</B></FONT></DIV>
+</BODY></HTML>
 
 
---------------060106050305050009090704
+------=_NextPart_000_23A3_01C7D2C0.E04FFA00--
+
+
+
+--===============0203027737==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -103,7 +110,7 @@ This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
---------------060106050305050009090704
+--===============0203027737==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -113,4 +120,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---------------060106050305050009090704--
+--===============0203027737==--
