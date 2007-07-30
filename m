@@ -1,19 +1,23 @@
-From: "Robert Simpson" <allan@healthyfoodsdirect.com>
-Subject: acrobat V8.0 Professional
-Date: Mon, 30 Jul 2007 08:13:57 -0900
-Message-ID: <01c7d281$93d87880$a72887de@allan>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH 02/23] mount.nfs: fix printf's normally
+ hidden	behind NFS_MOUNT_DEBUG
+Date: Mon, 30 Jul 2007 07:49:13 -0400
+Message-ID: <46ADD039.9070405@RedHat.com>
+References: <20070728214918.21871.38740.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: <nfs@lists.sourceforge.net>
+Cc: nfs@lists.sourceforge.net
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IFQNu-0003Ax-JQ
-	for nfs@lists.sourceforge.net; Mon, 30 Jul 2007 01:13:47 -0700
-Received: from [222.135.40.167] (helo=[222.135.40.167])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IFQNx-0002uM-01
-	for nfs@lists.sourceforge.net; Mon, 30 Jul 2007 01:13:50 -0700
+	id 1IFTll-0002rb-DW
+	for nfs@lists.sourceforge.net; Mon, 30 Jul 2007 04:50:37 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IFTlp-0005Ku-3I
+	for nfs@lists.sourceforge.net; Mon, 30 Jul 2007 04:50:41 -0700
+In-Reply-To: <20070728214918.21871.38740.stgit@localhost.localdomain>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,8 +30,14 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Autodesk Autocad $129.95 save: US $ 6590.05
-http://topkaoem.com
+Chuck Lever wrote:
+> After I enabled NFS_MOUNT_DEBUG the compiler started spitting out warnings.
+> Fix up commas, output formatting, and double-wide character support.
+Aren't these debugging statements basically useless because one has to
+recompile to turn them on... Wouldn't it make more sense to add
+'-o mntdebug' flag so these could be turned on at will?
+
+steved.
 
 
 -------------------------------------------------------------------------
