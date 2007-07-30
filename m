@@ -1,29 +1,26 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: Status of mount.nfs
-Date: Mon, 30 Jul 2007 00:14:28 -0400
-Message-ID: <46AD65A4.5040403@oracle.com>
-References: <20070708191640.GA13962@uio.no>	<18065.43199.104020.412029@notabene.brown>	<20070715083114.GB4158@uio.no>	<18074.50730.591965.39211@notabene.brown>	<20070716092047.GA10353@uio.no>	<18075.17719.855332.259470@notabene.brown>	<20070722191733.GA31501@uio.no>
-	<46A52816.6050500@oracle.com>	<20070724172451.GA14026@uio.no>
-	<46A7A5F8.4040204@oracle.com> <46A897CD.50201@RedHat.com>
-	<46A96032.7080503@oracle.com> <46AA089E.50503@RedHat.com>
-	<46AA4989.8040003@oracle.com> <46AB4290.4090408@RedHat.com>
-	<46ABAE5F.1000208@oracle.com> <46ACE951.60806@RedHat.com>
-Reply-To: chuck.lever@oracle.com
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH 01/23] mount.nfs: Support double-wide characters
+ in printed strings
+Date: Mon, 30 Jul 2007 15:30:37 +1000
+Message-ID: <18093.30589.679002.53663@notabene.brown>
+References: <20070728214913.21871.41624.stgit@localhost.localdomain>
+	<18092.17434.520955.494157@notabene.brown>
+	<46ACF2F2.80602@oracle.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------030701050208010504000505"
+Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: Steve Dickson <SteveD@redhat.com>
+To: chuck.lever@oracle.com
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IFMfn-0002PY-9w
-	for nfs@lists.sourceforge.net; Sun, 29 Jul 2007 21:15:59 -0700
-Received: from agminet01.oracle.com ([141.146.126.228])
+	id 1IFNqB-0001aF-UT
+	for nfs@lists.sourceforge.net; Sun, 29 Jul 2007 22:30:48 -0700
+Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IFMfp-0001VM-RL
-	for nfs@lists.sourceforge.net; Sun, 29 Jul 2007 21:16:03 -0700
-In-Reply-To: <46ACE951.60806@RedHat.com>
+	(Exim 4.44) id 1IFNqF-00009s-7N
+	for nfs@lists.sourceforge.net; Sun, 29 Jul 2007 22:30:52 -0700
+In-Reply-To: message from Chuck Lever on Sunday July 29
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,83 +33,76 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
---------------030701050208010504000505
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+On Sunday July 29, chuck.lever@oracle.com wrote:
+> > So please either show me the error of my thinking, or stick to adding
+> > _() to translatable strings.
+> > 
+> > Much of this patch is good and wanted, I'm not sure about the whole.
+> > Similarly for patch 2.
+> 
+> Yeah, the options stuff was a mistake which I thought I had avoided. 
+> Will fix all this up and post a fresh patch set.
+> 
+> But my impression was a double-byte "." is not the same as a single-byte 
+> ".".  I'm not an expert, and would be happy if someone (like a 
+> distributor) had an internationalization expert they could loan us.
 
-Steve Dickson wrote:
->>>> I can't see why we need to refer back to either file to determine 
->>>> the transport protocol for a umount request.  Whatever transport 
->>>> mountd is advertising at the moment is what should be used, right?
->>> Well for firewall reasons you generally want to use the protocol
->>> that the mount used...
->>
->> That could have been a very long time ago, even months, and the server 
->> settings may have changed.  Thus sending what mount used seems 
->> inherently unreliable.  The race window is enormous!
+I think you are confusing two things (that are easily confused).
+With some loss of generality, I will call them unicode and utf, the
+Unicode Transport Format(??)
 
-> hmm... I must be missing something... Why is umount-ing with the
-> same network protocol that mount used unreliable and racy?
+Unicode uses wide characters, 16bits each. 'wchar'.  The unicode '.'
+is different from the ASCII '.' simply because they have different
+numbers of bits (though I think the low order bits are the same, and
+the high order bits in unicode are all zero).
 
-Well, I exaggerated a bit, but technically speaking it is a race window 
-because the client is caching information about the server.  When a 
-mount succeeds, the client remembers the transport protocol it used for 
-the mount in /etc/mtab.
+Code which wants to process international character sets a character
+at a time needs handle the text as wchars, typically arrays of wchars.
+They are two bytes each.
 
-A long time later, it uses that cached information to set the transport 
-protocol for the umount request.
+However code that just wants to work with known strings and doesn't
+really care about the content can use UTF instead.  UTF encodes a
+Unicode string using 1, 2 or 3 bytes for each character.  All 7-bit
+ASCII symbols have their standard 1byte encoding.  Other symbols are 2
+or 3 bytes.
 
-During the time the share is mounted (ie the window), some system 
-administrator can change the server's settings -- for example, by 
-disabling the TCP mountd service, or by changing the iptables on the 
-server.  At that point, the information in the client's /etc/mtab 
-becomes stale, and, in fact, useless as a hint.
+So if you just want to print a message, you can use an array of
+'char' and store any international text in there.  No need to
+explicitly use wchar.
 
-I'm simply arguing that /etc/mtab should be ignored by umount entirely 
-when it comes to determining what transport protocol to use because that 
-cached information in not reliable.  Just do a fresh GETPORT before the 
-umount, and you will be all set.
+If you want to use a string value that can be localised, you use
+   _("string")
+and the NLS tools will allow that to be swapped for a localised
+version, possibly using UTF to represent unicode characters, at
+runtime.
 
---------------030701050208010504000505
-Content-Type: text/x-vcard; charset=utf-8;
- name="chuck.lever.vcf"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="chuck.lever.vcf"
+So you only need _(xxx) for translatable strings.  Things like " " (a
+space), "\n" definitely don't need translation.  Things like ":" could
+conceivably benefit from translation, but I doubt that it really makes
+sense to translate them in isolation.  Places where punctuation has a
+strong meaning like in dates, times, currency etc have separate
+functionality for doing localisation (strftime, strfmon) so for normal
+usage, I don't think it is appropriate to translate individual
+punctuation characters.
 
-begin:vcard
-fn:Chuck Lever
-n:Lever;Chuck
-org:Oracle Corporation;Corporate Architecture: Linux Projects Group
-adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
-email;internet:chuck dot lever at nospam oracle dot com
-title:Principal Member of Staff
-tel;work:+1 248 614 5091
-x-mozilla-html:FALSE
-version:2.1
-end:vcard
+Does that make sense?
 
+> 
+> > I only got 12 of the 23 patches??
+> 
+> The list didn't see half of these either.  Will investigate.  I probably 
+> shut down my laptop before it was done relaying the patches.
 
---------------030701050208010504000505
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+Grin...
+I seem to have them now.  Thanks.
+
+NeilBrown
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
---------------030701050208010504000505
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---------------030701050208010504000505--
