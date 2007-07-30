@@ -1,23 +1,21 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH 02/23] mount.nfs: fix printf's normally
- hidden	behind NFS_MOUNT_DEBUG
-Date: Mon, 30 Jul 2007 07:49:13 -0400
-Message-ID: <46ADD039.9070405@RedHat.com>
-References: <20070728214918.21871.38740.stgit@localhost.localdomain>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH] NFS: show addr=ipaddr in /proc/mounts rather than
+	hostname
+Date: Mon, 30 Jul 2007 08:47:38 -0400
+Message-ID: <20070730084738.d8fad088.jlayton@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Chuck Lever <chuck.lever@oracle.com>
+Cc: nfsv4@linux-nfs.org
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IFTll-0002rb-DW
-	for nfs@lists.sourceforge.net; Mon, 30 Jul 2007 04:50:37 -0700
+	id 1IFUf2-0000bS-Ti
+	for nfs@lists.sourceforge.net; Mon, 30 Jul 2007 05:47:44 -0700
 Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IFTlp-0005Ku-3I
-	for nfs@lists.sourceforge.net; Mon, 30 Jul 2007 04:50:41 -0700
-In-Reply-To: <20070728214918.21871.38740.stgit@localhost.localdomain>
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IFUf5-0003j3-LM
+	for nfs@lists.sourceforge.net; Mon, 30 Jul 2007 05:47:49 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,15 +28,35 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Chuck Lever wrote:
-> After I enabled NFS_MOUNT_DEBUG the compiler started spitting out warnings.
-> Fix up commas, output formatting, and double-wide character support.
-Aren't these debugging statements basically useless because one has to
-recompile to turn them on... Wouldn't it make more sense to add
-'-o mntdebug' flag so these could be turned on at will?
+A minor thing, but useful when working with a server with multiple
+addrs. This looks like it might also be necessary if Miklos' effort
+to eliminate /etc/mtab ever comes to fruition.
 
-steved.
+When displaying mount options in /proc/mounts, the kernel prints
+"addr=hostname". This info is redundant since we already have the
+hostname displayed as part of the "device" section of the mount. This
+patch changes it to display the IP address to which the socket is
+connected.
 
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 6228a16..7854a35 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -509,8 +509,8 @@ static int nfs_show_options(struct seq_file *m, struct vfsmount *mnt)
+ 
+ 	nfs_show_mount_options(m, nfss, 0);
+ 
+-	seq_puts(m, ",addr=");
+-	seq_escape(m, nfss->nfs_client->cl_hostname, " \t\n\\");
++	seq_printf(m, ",addr="NIPQUAD_FMT,
++		NIPQUAD(nfss->nfs_client->cl_addr.sin_addr));
+ 
+ 	return 0;
+ }
+-- 
+1.5.2.2
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
