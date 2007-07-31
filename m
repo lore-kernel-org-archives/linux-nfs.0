@@ -1,30 +1,29 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH] Attribute timeout handling and wrapping
-	u32	jiffies
-Date: Tue, 31 Jul 2007 15:47:33 -0400
-Message-ID: <1185911253.6700.52.camel@localhost>
-References: <20070725030809.GB27619@sleipnir.redhat.com>
-	<1185372013.6585.73.camel@localhost>
-	<20070725142824.GA24321@sleipnir.redhat.com>
-	<1185373979.6585.81.camel@localhost>
-	<20070727015900.GA3000@sleipnir.redhat.com>
-	<20070731162503.GC2964@sleipnir.redhat.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: Status of mount.nfs
+Date: Tue, 31 Jul 2007 17:28:46 -0400
+Message-ID: <46AFA98E.1070904@oracle.com>
+References: <20070708191640.GA13962@uio.no>	<18065.43199.104020.412029@notabene.brown>	<20070715083114.GB4158@uio.no>	<18074.50730.591965.39211@notabene.brown>	<20070716092047.GA10353@uio.no>	<18075.17719.855332.259470@notabene.brown>	<20070722191733.GA31501@uio.no>	<46A52816.6050500@oracle.com>	<20070724172451.GA14026@uio.no>	<46A7A5F8.4040204@oracle.com>
+	<46A897CD.50201@RedHat.com>	<46A96032.7080503@oracle.com>
+	<46AA089E.50503@RedHat.com>	<1185551769.6586.28.camel@localhost>
+	<46AA1A70.5010705@RedHat.com>	<1185553679.6586.34.camel@localhost>
+	<46AA2642.60505@RedHat.com>	<1185556406.6586.45.camel@localhost>
+	<46AB3BE9.1060903@RedHat.com> <1185906627.6700.30.camel@localhost>
+Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs <nfs@lists.sourceforge.net>
-To: Fabio Olive Leite <fleite@redhat.com>
+Content-Type: multipart/mixed; boundary="------------080908020907090105080001"
+Cc: nfs@lists.sourceforge.net, Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IFxgz-0006pu-Lh
-	for nfs@lists.sourceforge.net; Tue, 31 Jul 2007 12:47:41 -0700
-Received: from pat.uio.no ([129.240.10.15]
-	ident=[U2FsdGVkX18EaRRi3z/9ZgmwB3nHs64T2M3jZrtcFL0=])
+	id 1IFzJa-0000Z4-3z
+	for nfs@lists.sourceforge.net; Tue, 31 Jul 2007 14:31:38 -0700
+Received: from agminet01.oracle.com ([141.146.126.228])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IFxh1-0004qQ-4a
-	for nfs@lists.sourceforge.net; Tue, 31 Jul 2007 12:47:45 -0700
-In-Reply-To: <20070731162503.GC2964@sleipnir.redhat.com>
+	(Exim 4.44) id 1IFzJc-0004XT-MZ
+	for nfs@lists.sourceforge.net; Tue, 31 Jul 2007 14:31:42 -0700
+In-Reply-To: <1185906627.6700.30.camel@localhost>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,33 +36,79 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, 2007-07-31 at 13:25 -0300, Fabio Olive Leite wrote:
-> Hi Trond,
+This is a multi-part message in MIME format.
+--------------080908020907090105080001
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Transfer-Encoding: 7bit
+
+Trond Myklebust wrote:
+> On Sat, 2007-07-28 at 08:51 -0400, Steve Dickson wrote:
+>> Trond Myklebust wrote:
+>>> On Fri, 2007-07-27 at 13:07 -0400, Steve Dickson wrote:
+>>>
+>>>> After how long of a wait? If all the timeouts are controllable then
+>>>> I agrees, but if we have to wait undefined-able amount of time for
+>>>> every RPC retransmit, then I think we should do a ping...
+>>> You should be able to set the timeout either on a per-RPC call basis by
+>>> using clnt_call(), or by changing the default timeout on the CLIENT
+>>> object using clnt_control() (man 3 rpc).
+>> True... but I was thinking of when clnt_cnt() call pmap_getport()
+>> which does not take a timeout value...  In that case you are
+>> stuck with a 60 sec hard coded timeout, regardless of the time out
+>> you pass in...
 > 
-> On Thu, Jul 26, 2007 at 10:59:00PM -0300, Fabio Olive Leite wrote:
-> > 
-> > Tried it out and it behaves correctly. Thanks for your suggestions.
-> > The patch below is the final version, and fixes the attribute
-> > timeout issue with wrapping jiffies.
-> > 
-> > ...
-> 
-> Have you had a chance to review/commit this patch? Should I do any
-> more testing on it?
+> In the version of mount.nfs from the linux-nfs.org git tree, we call our
+> own private implementation of pmap_getport() instead of the one from
+> glibc.
 
-It looked good when I laster reviewed it, but I haven't yet tested it
-myself. Please send me a reminder if you don't see it appear in the next
-NFS_ALL release (which should be within a week).
+I was looking at this yesterday.  The stock timeout for TCP connects on 
+Linux is 75 seconds.  The version of getport() used in the mount command 
+might control the TCP connect timeout by using a non-blocking connect() 
+with a select().  The select() then times out if the connection doesn't 
+complete.
 
-Cheers
-  Trond
+But I'm wondering if we really want to continue using TCP for GETPORT 
+calls.  Solaris mount appears to use only UDP for GETPORT, for example.
 
+--------------080908020907090105080001
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck.lever.vcf"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="chuck.lever.vcf"
+
+begin:vcard
+fn:Chuck Lever
+n:Lever;Chuck
+org:Oracle Corporation;Corporate Architecture: Linux Projects Group
+adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
+title:Principal Member of Staff
+tel;work:+1 248 614 5091
+x-mozilla-html:FALSE
+url:http://oss.oracle.com/~cel
+version:2.1
+end:vcard
+
+
+--------------080908020907090105080001
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
+--------------080908020907090105080001
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--------------080908020907090105080001--
