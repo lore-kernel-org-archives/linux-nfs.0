@@ -1,23 +1,22 @@
 From: "david m. richter" <richterd@citi.umich.edu>
-Subject: [PATCH 5/7] nfsstat: use macros to declare struct statinfo
-	arrays
-Date: Tue, 31 Jul 2007 17:39:30 -0400 (EDT)
-Message-ID: <Pine.BSO.4.64.0707311715550.13370@citi.umich.edu>
+Subject: [PATCH 6/7] nfsstat: just declare -D/--diff-stat's variables
+Date: Tue, 31 Jul 2007 17:39:42 -0400 (EDT)
+Message-ID: <Pine.BSO.4.64.0707311717320.13370@citi.umich.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Andrew Richardson <chardson@umich.edu>,
 	nfs@lists.sourceforge.net, Alex Soule <soule@umich.edu>
 To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IFzRA-0001Tj-JK
-	for nfs@lists.sourceforge.net; Tue, 31 Jul 2007 14:39:29 -0700
+	id 1IFzRL-0001US-Hw
+	for nfs@lists.sourceforge.net; Tue, 31 Jul 2007 14:39:40 -0700
 Received: from citi.umich.edu ([141.211.133.111])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IFzRE-0001m1-E1
-	for nfs@lists.sourceforge.net; Tue, 31 Jul 2007 14:39:32 -0700
+	(Exim 4.44) id 1IFzRP-0007bu-3r
+	for nfs@lists.sourceforge.net; Tue, 31 Jul 2007 14:39:43 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,68 +29,131 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-	Use macros to build the arrays of struct statinfos.  This will 
-make adding the extra set of temporary variables needed by -D/--diff-stat 
-much easier.
+	Add the temp vars -D/--diff-stat will use.  (just using a separate 
+patch to make the next one easier to read)
 
-Signed-off-by: David M. Richter <richterd@citi.umich.edu>
+Signed-off-by: David M. Richter <richterd@citi.umich.edu> 
 
 ---
- utils/nfsstat/nfsstat.c |   44 ++++++++++++++++++++++----------------------
- 1 files changed, 22 insertions(+), 22 deletions(-)
+ utils/nfsstat/nfsstat.c |  100 ++++++++++++++++++++++++-----------------------
+ 1 files changed, 51 insertions(+), 49 deletions(-)
 
 diff --git a/utils/nfsstat/nfsstat.c b/utils/nfsstat/nfsstat.c
-index 0186fa5..8ec32e2 100644
+index 8ec32e2..ab6bce7 100644
 --- a/utils/nfsstat/nfsstat.c
 +++ b/utils/nfsstat/nfsstat.c
-@@ -116,28 +116,28 @@ typedef struct statinfo {
- 	unsigned int *	valptr;
- } statinfo;
+@@ -23,55 +23,55 @@
  
--#define STRUCTSIZE(x)   sizeof(x)/sizeof(*x)
+ #define MAXNRVALS	32
+ 
+-static unsigned int	srvproc2info[20];	/* NFSv2 call counts ([0] == 18) */
+-static unsigned int	cltproc2info[20];	/* NFSv2 call counts ([0] == 18) */
+-static unsigned int	srvproc3info[24];	/* NFSv3 call counts ([0] == 22) */
+-static unsigned int	cltproc3info[24];	/* NFSv3 call counts ([0] == 22) */
+-static unsigned int	srvproc4info[4];	/* NFSv4 call counts ([0] == 2) */
+-static unsigned int	cltproc4info[34];	/* NFSv4 call counts ([0] == 32) */
+-static unsigned int	srvproc4opsinfo[42];/* NFSv4 call counts ([0] == 40) */
+-static unsigned int	srvnetinfo[5];	/* 0  # of received packets
+-					 * 1  UDP packets
+-					 * 2  TCP packets
+-					 * 3  TCP connections
+-					 */
+-static unsigned int	cltnetinfo[5];	/* 0  # of received packets
+-					 * 1  UDP packets
+-					 * 2  TCP packets
+-					 * 3  TCP connections
+-					 */
 -
--static statinfo		srvinfo[] = {
--	{ "net",        STRUCTSIZE(srvnetinfo), srvnetinfo },
--	{ "rpc",        STRUCTSIZE(srvrpcinfo), srvrpcinfo },
--	{ "rc",         STRUCTSIZE(srvrcinfo),  srvrcinfo  },
--	{ "fh",         STRUCTSIZE(srvfhinfo),  srvfhinfo  },
--	{ "proc2",      STRUCTSIZE(srvproc2info),  srvproc2info  },
--	{ "proc3",      STRUCTSIZE(srvproc3info),  srvproc3info  },
--	{ "proc4",      STRUCTSIZE(srvproc4info),  srvproc4info  },
--	{ "proc4ops",   STRUCTSIZE(srvproc4opsinfo),srvproc4opsinfo},
--	{ NULL,         0,                      NULL       }
--};
+-static unsigned int	srvrpcinfo[6];	/* 0  total # of RPC calls
+-					 * 1  total # of bad calls
+-					 * 2  bad format
+-					 * 3  authentication failed
+-					 * 4  unknown client
+-					 */
+-static unsigned int	cltrpcinfo[4];	/* 0  total # of RPC calls
+-					 * 1  retransmitted calls
+-					 * 2  cred refreshs
+-					 */
 -
--static statinfo		cltinfo[] = {
--	{ "net",        STRUCTSIZE(cltnetinfo), cltnetinfo },
--	{ "rpc",        STRUCTSIZE(cltrpcinfo), cltrpcinfo },
--	{ "proc2",      STRUCTSIZE(cltproc2info),  cltproc2info  },
--	{ "proc3",      STRUCTSIZE(cltproc3info),  cltproc3info  },
--	{ "proc4",      STRUCTSIZE(cltproc4info),  cltproc4info  },
--	{ NULL,         0,                      NULL       }
--};
-+/* 
-+ * We now build the arrays of statinfos using macros, which will make it easier
-+ * to add new variables for --diff-stat.
-+ * e.g., SRV(net) expands into the struct statinfo:  { "net", 5, srvnetinfo }
-+ */
-+#define ARRAYSIZE(x)		sizeof(x)/sizeof(*x)
-+#define STATINFO(k, t, s...)	{ #t, ARRAYSIZE(k##t##info##s), k##t##info##s }
-+#define SRV(t, s...)		STATINFO(srv, t, s)
-+#define CLT(t, s...)		STATINFO(clt, t, s)
-+#define DECLARE_SRV(n, s...)	static statinfo n##s[] = { \
-+					SRV(net,s), SRV(rpc,s),   SRV(rc,s),\
-+					SRV(fh,s),  SRV(proc2,s), SRV(proc3,s),\
-+					SRV(proc4,s), SRV(proc4ops,s),\
-+					{ NULL, 0, NULL }\
-+				}
-+#define DECLARE_CLT(n, s...)  	static statinfo n##s[] = { \
-+					CLT(net,s),   CLT(rpc,s), CLT(proc2,s),\
-+					CLT(proc3,s), CLT(proc4,s),\
-+					{ NULL, 0, NULL }\
-+				}
-+DECLARE_SRV(srvinfo);
-+DECLARE_CLT(cltinfo);
+-static unsigned int	srvrcinfo[9];	/* 0  repcache hits
+-					 * 1  repcache hits
+-					 * 2  uncached reqs
+-					 * (for pre-2.4 kernels:)
+-					 * 3  FH lookups
+-					 * 4  'anon' FHs
+-					 * 5  noncached non-directories
+-					 * 6  noncached directories
+-					 * 7  stale
+-					 */
+-
+-static unsigned int	srvfhinfo[7];	/* (for kernels >= 2.4.0)
+-					 * 0  stale
+-					 * 1  FH lookups
+-					 * 2  'anon' FHs
+-					 * 3  noncached directories
+-					 * 4  noncached non-directories
+-					 * leave hole to relocate stale for order
+-					 *    compatability.
+-					 */
++static unsigned int	srvproc2info[20], srvproc2info_tmp[20];	/* NFSv2 call counts ([0] == 18) */
++static unsigned int	cltproc2info[20], cltproc2info_tmp[20];	/* NFSv2 call counts ([0] == 18) */
++static unsigned int	srvproc3info[24], srvproc3info_tmp[24];	/* NFSv3 call counts ([0] == 22) */
++static unsigned int	cltproc3info[24], cltproc3info_tmp[24];	/* NFSv3 call counts ([0] == 22) */
++static unsigned int	srvproc4info[4], srvproc4info_tmp[4];	/* NFSv4 call counts ([0] == 2) */
++static unsigned int	cltproc4info[34], cltproc4info_tmp[34];	/* NFSv4 call counts ([0] == 32) */
++static unsigned int	srvproc4opsinfo[42], srvproc4opsinfo_tmp[42];	/* NFSv4 call counts ([0] == 40) */
++static unsigned int	srvnetinfo[5], srvnetinfo_tmp[5];	/* 0  # of received packets
++					 			 * 1  UDP packets
++					 			 * 2  TCP packets
++					 			 * 3  TCP connections
++					 			 */
++static unsigned int	cltnetinfo[5], cltnetinfo_tmp[5];	/* 0  # of received packets
++								 * 1  UDP packets
++								 * 2  TCP packets
++								 * 3  TCP connections
++								 */
++
++static unsigned int	srvrpcinfo[6], srvrpcinfo_tmp[6];	/* 0  total # of RPC calls
++								 * 1  total # of bad calls
++								 * 2  bad format
++								 * 3  authentication failed
++								 * 4  unknown client
++								 */
++static unsigned int	cltrpcinfo[4], cltrpcinfo_tmp[4];	/* 0  total # of RPC calls
++								 * 1  retransmitted calls
++								 * 2  cred refreshs
++								 */
++
++static unsigned int	srvrcinfo[9], srvrcinfo_tmp[9];		/* 0  repcache hits
++								 * 1  repcache hits
++								 * 2  uncached reqs
++								 * (for pre-2.4 kernels:)
++								 * 3  FH lookups
++								 * 4  'anon' FHs
++								 * 5  noncached non-directories
++								 * 6  noncached directories
++								 * 7  stale
++								 */
++
++static unsigned int	srvfhinfo[7], srvfhinfo_tmp[7];		/* (for kernels >= 2.4.0)
++								 * 0  stale
++								 * 1  FH lookups
++								 * 2  'anon' FHs
++								 * 3  noncached directories
++								 * 4  noncached non-directories
++								 * leave hole to relocate stale for order
++								 *    compatability.
++								 */
+ 
+ static const char *	nfsv2name[18] = {
+ 	"null", "getattr", "setattr", "root",   "lookup",  "readlink",
+@@ -137,7 +137,9 @@ typedef struct statinfo {
+ 					{ NULL, 0, NULL }\
+ 				}
+ DECLARE_SRV(srvinfo);
++DECLARE_SRV(srvinfo, _tmp);
+ DECLARE_CLT(cltinfo);
++DECLARE_CLT(cltinfo, _tmp);
  
  static void		print_numbers(const char *, unsigned int *,
  					unsigned int);
