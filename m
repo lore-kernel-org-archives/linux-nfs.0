@@ -1,7 +1,7 @@
 From: "david m. richter" <richterd@citi.umich.edu>
-Subject: [PATCH 1/7] nfsstat: add has_stats()
-Date: Tue, 31 Jul 2007 17:39:02 -0400 (EDT)
-Message-ID: <Pine.BSO.4.64.0707311707400.13370@citi.umich.edu>
+Subject: [PATCH 2/7] nfsstat: add get_stats()
+Date: Tue, 31 Jul 2007 17:39:11 -0400 (EDT)
+Message-ID: <Pine.BSO.4.64.0707311711210.13370@citi.umich.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Andrew Richardson <chardson@umich.edu>,
@@ -11,12 +11,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IFzQk-0001Mu-BO
-	for nfs@lists.sourceforge.net; Tue, 31 Jul 2007 14:39:05 -0700
+	id 1IFzQs-0001S9-AT
+	for nfs@lists.sourceforge.net; Tue, 31 Jul 2007 14:39:10 -0700
 Received: from citi.umich.edu ([141.211.133.111])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IFzQl-0007Nv-01
-	for nfs@lists.sourceforge.net; Tue, 31 Jul 2007 14:39:06 -0700
+	(Exim 4.44) id 1IFzQt-0007Qx-TN
+	for nfs@lists.sourceforge.net; Tue, 31 Jul 2007 14:39:14 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,80 +29,85 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-	To help readability, add has_stats() and use it when deciding 
-whether to print.
+	Share some of the existing statistics-gathering code by folding it 
+into a function, get_stats().
 
 Signed-off-by: David M. Richter <richterd@citi.umich.edu>
 
 ---
- utils/nfsstat/nfsstat.c |   20 ++++++++++++++------
- 1 files changed, 14 insertions(+), 6 deletions(-)
+ utils/nfsstat/nfsstat.c |   38 +++++++++++++++++---------------------
+ 1 files changed, 17 insertions(+), 21 deletions(-)
 
 diff --git a/utils/nfsstat/nfsstat.c b/utils/nfsstat/nfsstat.c
-index 436d407..7e822a7 100644
+index 7e822a7..619ce8b 100644
 --- a/utils/nfsstat/nfsstat.c
 +++ b/utils/nfsstat/nfsstat.c
-@@ -149,6 +149,8 @@ static statinfo		*get_stat_info(const ch
+@@ -149,6 +149,7 @@ static statinfo		*get_stat_info(const ch
  
  static int             mounts(const char *);
  
-+static int		has_stats(const unsigned int *);
-+
++static void		get_stats(const char *, statinfo *, int *, int, const char *);
+ static int		has_stats(const unsigned int *);
+ 
  #define PRNT_CALLS	0x0001
- #define PRNT_RPC	0x0002
- #define PRNT_NET	0x0004
-@@ -383,17 +385,17 @@ main(int argc, char **argv)
- 			printf("\n");
- 		}
- 		if (opt_prt & PRNT_CALLS) {
--			if ((opt_prt & PRNT_V2) || ((opt_prt & PRNT_AUTO) && svcv2info[0] && svcv2info[svcv2info[0]+1] != svcv2info[0]))
-+			if ((opt_prt & PRNT_V2) || ((opt_prt & PRNT_AUTO) && has_stats(svcv2info)))
- 				print_callstats(
- 				"Server nfs v2:\n",
- 				    nfsv2name, svcv2info + 1, sizeof(nfsv2name)/sizeof(char *)
- 				);
--			if ((opt_prt & PRNT_V3) || ((opt_prt & PRNT_AUTO) && svcv3info[0] && svcv3info[svcv3info[0]+1] != svcv3info[0]))
-+			if ((opt_prt & PRNT_V3) || ((opt_prt & PRNT_AUTO) && has_stats(svcv3info)))
- 				print_callstats(
- 				"Server nfs v3:\n",
- 				nfsv3name, svcv3info + 1, sizeof(nfsv3name)/sizeof(char *)
- 				);
--			if ((opt_prt & PRNT_V4) || ((opt_prt & PRNT_AUTO) && svcv4info[0] && svcv4info[svcv4info[0]+1] != svcv4info[0])) {
-+			if ((opt_prt & PRNT_V4) || ((opt_prt & PRNT_AUTO) && has_stats(svcv4info))) {
- 				print_callstats(
- 				"Server nfs v4:\n",
- 				nfssvrv4name, svcv4info + 1, sizeof(nfssvrv4name)/sizeof(char *)
-@@ -424,17 +426,17 @@ main(int argc, char **argv)
- 			printf("\n");
- 		}
- 		if (opt_prt & PRNT_CALLS) {
--			if ((opt_prt & PRNT_V2) || ((opt_prt & PRNT_AUTO) && cltv2info[0] && cltv2info[cltv2info[0]+1] != cltv2info[0]))
-+			if ((opt_prt & PRNT_V2) || ((opt_prt & PRNT_AUTO) && has_stats(cltv2info)))
- 				print_callstats(
- 				"Client nfs v2:\n",
- 				nfsv2name, cltv2info + 1,  sizeof(nfsv2name)/sizeof(char *)
- 				);
--			if ((opt_prt & PRNT_V3) || ((opt_prt & PRNT_AUTO) && cltv3info[0] && cltv3info[cltv3info[0]+1] != cltv3info[0]))
-+			if ((opt_prt & PRNT_V3) || ((opt_prt & PRNT_AUTO) && has_stats(cltv3info)))
- 				print_callstats(
- 				"Client nfs v3:\n",
- 				nfsv3name, cltv3info + 1, sizeof(nfsv3name)/sizeof(char *)
- 				);
--			if ((opt_prt & PRNT_V4) || ((opt_prt & PRNT_AUTO) && cltv4info[0] && cltv4info[cltv4info[0]+1] != cltv4info[0]))
-+			if ((opt_prt & PRNT_V4) || ((opt_prt & PRNT_AUTO) && has_stats(cltv4info)))
- 				print_callstats(
- 				"Client nfs v4:\n",
- 				nfscltv4name, cltv4info + 1,  sizeof(nfscltv4name)/sizeof(char *)
-@@ -587,3 +589,9 @@ mounts(const char *name)
- 	fclose(fp);
+@@ -217,8 +218,6 @@ main(int argc, char **argv)
+ 	int		opt_all = 0,
+ 			opt_srv = 0,
+ 			opt_clt = 0,
+-			srv_info = 0,
+-			clt_info = 0,
+ 			opt_prt = 0;
+ 	int		c;
+ 	char           *progname;
+@@ -313,25 +312,10 @@ main(int argc, char **argv)
+ 			"server.\n");
+ 	}
+ 
+-	if (opt_srv) {
+-		srv_info = parse_statfile(NFSSVCSTAT, svcinfo);
+-		if (srv_info == 0 && opt_clt == 0) {
+-			fprintf(stderr, "Warning: No Server Stats (%s: %m).\n", NFSSVCSTAT);
+-			return 2;
+-		}
+-		if (srv_info == 0)
+-			opt_srv = 0;
+-	}
+-
+-	if (opt_clt) {
+-		clt_info = parse_statfile(NFSCLTSTAT, cltinfo);
+-		if (opt_srv == 0 && clt_info == 0) {
+-			fprintf(stderr, "Warning: No Client Stats (%s: %m).\n", NFSCLTSTAT);
+-			return 2;
+-		}
+-		if (clt_info == 0)
+-			opt_clt = 0;
+-	}
++	if (opt_srv)
++		get_stats(NFSSVCSTAT, svcinfo, &opt_srv, opt_clt, "Server");
++	if (opt_clt)
++		get_stats(NFSCLTSTAT, cltinfo, &opt_clt, opt_srv, "Client");
+ 
+ 	if (opt_srv) {
+ 		if (opt_prt & PRNT_NET) {
+@@ -590,6 +574,18 @@ mounts(const char *name)
  	return 1;
  }
-+
-+static int
-+has_stats(const unsigned int *info)
+ 
++static void
++get_stats(const char *file, statinfo *info, int *opt, int other_opt, const char *label)
 +{
-+	return (info[0] && info[info[0] + 1] != info[0]);
++	if (!parse_statfile(file, info)) {
++		if (!other_opt) {
++			fprintf(stderr, "Warning: No %s Stats (%s: %m). \n", label, file);
++			exit(2);
++		}
++		*opt = 0;
++	}
 +}
++
+ static int
+ has_stats(const unsigned int *info)
+ {
 -- 
 1.4.4
 
