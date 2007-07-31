@@ -1,19 +1,19 @@
-From: Baoquoc <Pengraiqu@vertebrax.net>
-Subject: investor_news-9135022240
+From: Greky <McCartneyxepwb@vertebrax.net>
+Subject: new account-9408485582
 Date: Mon, 30 Jul 2007 23:06:06 -0400
-Message-ID: <E1E7F1EE.A6BDD74@vertebrax.net>
+Message-ID: <A7FF67AA.F43A96F@vertebrax.net>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------030000010008020508000606"
+Content-Type: multipart/mixed; boundary="------------000808040708070505070102"
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IFi3j-0001Js-Io
-	for nfs@lists.sourceforge.net; Mon, 30 Jul 2007 20:06:07 -0700
+	id 1IFi3k-0001K7-7N
+	for nfs@lists.sourceforge.net; Mon, 30 Jul 2007 20:06:08 -0700
 Received: from user-1087o30.cable.mindspring.com ([64.131.224.96])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IFi3m-0005pi-7e
-	for nfs@lists.sourceforge.net; Mon, 30 Jul 2007 20:06:11 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IFi3m-0004za-Ii
+	for nfs@lists.sourceforge.net; Mon, 30 Jul 2007 20:06:12 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,18 +26,18 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---------------030000010008020508000606
+--------------000808040708070505070102
 Content-Type: text/plain; charset=iso-8859-2; format=flowed
 Content-Transfer-Encoding: 7bit
 
 
 
---------------030000010008020508000606
-Content-Type: application/pdf;
- name="investor_news-9135022240.pdf"
+--------------000808040708070505070102
+Content-Type: application/octet-stream;
+ name="new account-9408485582.pdf"
 Content-Transfer-Encoding: base64
 Content-Disposition: inline;
- filename="investor_news-9135022240.pdf"
+ filename="new account-9408485582.pdf"
 
 JVBERi0xLjUNJeLjz9MNCjQgMCBvYmo8PC9IWzQzNiAxMTldL0xpbmVhcml6ZWQgMS9FIDIzNDUv
 TCA2MjM1L04gMS9PIDgvVCA2MDk1Pj4NZW5kb2JqDSAgICAgICAgICAgICAgICAgICAgICAgICAg
@@ -149,7 +149,7 @@ KCkvUHJvZHVjZXIokmdilBW8CO8wF/00eqYvlQje4UUpPj4NZW5kb2JqDXhyZWYNCjAgNA0KMDAw
 MDAwMDAwMCA2NTUzNSBmDQowMDAwMDAyMzQ1IDAwMDAwIG4NCjAwMDAwMDIzOTUgMDAwMDAgbg0K
 MDAwMDAwNTg4OSAwMDAwMCBuDQp0cmFpbGVyDQo8PC9TaXplIDQvRW5jcnlwdCA1IDAgUj4+DQpz
 dGFydHhyZWYNCjExNg0KJSVFT0YNCg==
---------------030000010008020508000606
+--------------000808040708070505070102
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -160,7 +160,7 @@ This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
---------------030000010008020508000606
+--------------000808040708070505070102
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -170,4 +170,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---------------030000010008020508000606--
+--------------000808040708070505070102--
