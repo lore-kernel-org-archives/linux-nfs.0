@@ -1,9 +1,9 @@
 From: "david m. richter" <richterd@citi.umich.edu>
-Subject: Re: [PATCH 0/7] nfsstat: adding -D/--diff-stat to nfsstat
-Date: Tue, 31 Jul 2007 19:29:28 -0400 (EDT)
-Message-ID: <Pine.BSO.4.64.0707311928380.5541@citi.umich.edu>
-References: <Pine.BSO.4.64.0707311651120.13370@citi.umich.edu>
-	<18095.45961.578381.351608@notabene.brown>
+Subject: Re: [PATCH 1/7] nfsstat: add has_stats()
+Date: Tue, 31 Jul 2007 19:30:50 -0400 (EDT)
+Message-ID: <Pine.BSO.4.64.0707311930090.5541@citi.umich.edu>
+References: <Pine.BSO.4.64.0707311707400.13370@citi.umich.edu>
+	<18095.46044.158241.412513@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Andrew Richardson <chardson@umich.edu>,
@@ -13,13 +13,13 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IG19a-0003pm-NH
-	for nfs@lists.sourceforge.net; Tue, 31 Jul 2007 16:29:26 -0700
+	id 1IG1At-0003wp-4G
+	for nfs@lists.sourceforge.net; Tue, 31 Jul 2007 16:30:47 -0700
 Received: from citi.umich.edu ([141.211.133.111])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IG19d-0000YH-GR
-	for nfs@lists.sourceforge.net; Tue, 31 Jul 2007 16:29:30 -0700
-In-Reply-To: <18095.45961.578381.351608@notabene.brown>
+	(Exim 4.44) id 1IG1Aw-0000tY-Ul
+	for nfs@lists.sourceforge.net; Tue, 31 Jul 2007 16:30:51 -0700
+In-Reply-To: <18095.46044.158241.412513@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,22 +32,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-> Sounds useful, though I think it would be even more useful if you
-> could specify a number of seconds rather than needing to interrupt.
-> That way you could use it in a script.
-> Maybe even get it to repeat every n seconds?
+> On Tuesday July 31, richterd@citi.umich.edu wrote:
+> > 	To help readability, add has_stats() and use it when deciding 
+> > whether to print.
+> .....
+> > +
+> > +static int
+> > +has_stats(const unsigned int *info)
+> > +{
+> > +	return (info[0] && info[info[0] + 1] != info[0]);
+> > +}
 > 
-> Thanks. I'll look through the patches.
+> To help readability even more, could you provide a comment explaining
+> what this function is really testing.  I can almost see it, but a
+> comment would help a lot!
 > 
+> Thanks,
 > NeilBrown
 
-	roger -- i'll look at adding an optional timeout w/ optional 
-repeat.  good idea. 
+	will-do.  yeah, it took a bit of head-scratching for us to grok 
+quite how it was working.  :)
 
 	thanks,
 
 	d
-	.
+	. 
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
