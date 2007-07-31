@@ -1,20 +1,24 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 16/20] SUNRPC: Rename IPv4 connect workers
-Date: Mon, 06 Aug 2007 11:57:43 -0400
-Message-ID: <20070806155743.31233.26108.stgit@manray.1015granger.net>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH 0/7] nfsstat: adding -D/--diff-stat to nfsstat
+Date: Wed, 1 Aug 2007 08:11:21 +1000
+Message-ID: <18095.45961.578381.351608@notabene.brown>
+References: <Pine.BSO.4.64.0707311651120.13370@citi.umich.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: trond.myklebust@fys.uio.no
+Cc: Andrew Richardson <chardson@umich.edu>,
+	nfs@lists.sourceforge.net, Alex Soule <soule@umich.edu>
+To: "david m. richter" <richterd@citi.umich.edu>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1II4xs-00012w-7f
-	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 08:57:52 -0700
-Received: from flpi101.sbcis.sbc.com ([207.115.20.70] helo=flpi101.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1II4xw-0002Ml-8o
-	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 08:57:56 -0700
+	id 1IFzwF-0004Wb-Lp
+	for nfs@lists.sourceforge.net; Tue, 31 Jul 2007 15:11:35 -0700
+Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IFzwI-0003Rz-BZ
+	for nfs@lists.sourceforge.net; Tue, 31 Jul 2007 15:11:39 -0700
+In-Reply-To: message from david m. richter on Tuesday July 31
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,67 +31,24 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Prepare for introduction of IPv6 versions of same.
+On Tuesday July 31, richterd@citi.umich.edu wrote:
+> 	Hello, Neil,
+> 
+> 	This set of patches adds -D/--diff-stat to nfsstat.  When this 
+> flag is used, instead of printing out the current total statistics and 
+> exiting, nfsstat takes a snapshot of the current statistics and pauses 
+> until the user types ^C, at which point a second snapshot is taken and 
+> only the difference between the two is printed; i.e., only the statistics 
+> gathered during the pause.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+Sounds useful, though I think it would be even more useful if you
+could specify a number of seconds rather than needing to interrupt.
+That way you could use it in a script.
+Maybe even get it to repeat every n seconds?
 
- net/sunrpc/xprtsock.c |   12 ++++++------
- 1 files changed, 6 insertions(+), 6 deletions(-)
+Thanks. I'll look through the patches.
 
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 3bd80e1..34ab136 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -1363,12 +1363,12 @@ static void xs_udp_finish_connecting(struct rpc_xprt *xprt, struct socket *sock)
- }
- 
- /**
-- * xs_udp_connect_worker - set up a UDP socket
-+ * xs_udp_connect_worker4 - set up a UDP socket
-  * @work: RPC transport to connect
-  *
-  * Invoked by a work queue tasklet.
-  */
--static void xs_udp_connect_worker(struct work_struct *work)
-+static void xs_udp_connect_worker4(struct work_struct *work)
- {
- 	struct sock_xprt *transport =
- 		container_of(work, struct sock_xprt, connect_worker.work);
-@@ -1468,12 +1468,12 @@ static int xs_tcp_finish_connecting(struct rpc_xprt *xprt, struct socket *sock)
- }
- 
- /**
-- * xs_tcp_connect_worker - connect a TCP socket to a remote endpoint
-+ * xs_tcp_connect_worker4 - connect a TCP socket to a remote endpoint
-  * @work: RPC transport to connect
-  *
-  * Invoked by a work queue tasklet.
-  */
--static void xs_tcp_connect_worker(struct work_struct *work)
-+static void xs_tcp_connect_worker4(struct work_struct *work)
- {
- 	struct sock_xprt *transport =
- 		container_of(work, struct sock_xprt, connect_worker.work);
-@@ -1705,7 +1705,7 @@ struct rpc_xprt *xs_setup_udp(struct rpc_xprtsock_create *args)
- 	/* XXX: header size can vary due to auth type, IPv6, etc. */
- 	xprt->max_payload = (1U << 16) - (MAX_HEADER << 3);
- 
--	INIT_DELAYED_WORK(&transport->connect_worker, xs_udp_connect_worker);
-+	INIT_DELAYED_WORK(&transport->connect_worker, xs_udp_connect_worker4);
- 	xprt->bind_timeout = XS_BIND_TO;
- 	xprt->connect_timeout = XS_UDP_CONN_TO;
- 	xprt->reestablish_timeout = XS_UDP_REEST_TO;
-@@ -1747,7 +1747,7 @@ struct rpc_xprt *xs_setup_tcp(struct rpc_xprtsock_create *args)
- 	xprt->tsh_size = sizeof(rpc_fraghdr) / sizeof(u32);
- 	xprt->max_payload = RPC_MAX_FRAGMENT_SIZE;
- 
--	INIT_DELAYED_WORK(&transport->connect_worker, xs_tcp_connect_worker);
-+	INIT_DELAYED_WORK(&transport->connect_worker, xs_tcp_connect_worker4);
- 	xprt->bind_timeout = XS_BIND_TO;
- 	xprt->connect_timeout = XS_TCP_CONN_TO;
- 	xprt->reestablish_timeout = XS_TCP_INIT_REEST_TO;
-
+NeilBrown
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
