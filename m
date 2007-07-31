@@ -1,24 +1,25 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH 1/7] nfsstat: add has_stats()
-Date: Wed, 1 Aug 2007 08:12:44 +1000
-Message-ID: <18095.46044.158241.412513@notabene.brown>
-References: <Pine.BSO.4.64.0707311707400.13370@citi.umich.edu>
+From: "david m. richter" <richterd@citi.umich.edu>
+Subject: Re: [PATCH 0/7] nfsstat: adding -D/--diff-stat to nfsstat
+Date: Tue, 31 Jul 2007 19:29:28 -0400 (EDT)
+Message-ID: <Pine.BSO.4.64.0707311928380.5541@citi.umich.edu>
+References: <Pine.BSO.4.64.0707311651120.13370@citi.umich.edu>
+	<18095.45961.578381.351608@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Andrew Richardson <chardson@umich.edu>,
 	nfs@lists.sourceforge.net, Alex Soule <soule@umich.edu>
-To: "david m. richter" <richterd@citi.umich.edu>
+To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IFzxV-0004ez-9B
-	for nfs@lists.sourceforge.net; Tue, 31 Jul 2007 15:12:53 -0700
-Received: from mx2.suse.de ([195.135.220.15])
+	id 1IG19a-0003pm-NH
+	for nfs@lists.sourceforge.net; Tue, 31 Jul 2007 16:29:26 -0700
+Received: from citi.umich.edu ([141.211.133.111])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IFzxY-0001Cz-01
-	for nfs@lists.sourceforge.net; Tue, 31 Jul 2007 15:12:57 -0700
-In-Reply-To: message from david m. richter on Tuesday July 31
+	(Exim 4.44) id 1IG19d-0000YH-GR
+	for nfs@lists.sourceforge.net; Tue, 31 Jul 2007 16:29:30 -0700
+In-Reply-To: <18095.45961.578381.351608@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,23 +32,22 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tuesday July 31, richterd@citi.umich.edu wrote:
-> 	To help readability, add has_stats() and use it when deciding 
-> whether to print.
-.....
-> +
-> +static int
-> +has_stats(const unsigned int *info)
-> +{
-> +	return (info[0] && info[info[0] + 1] != info[0]);
-> +}
+> Sounds useful, though I think it would be even more useful if you
+> could specify a number of seconds rather than needing to interrupt.
+> That way you could use it in a script.
+> Maybe even get it to repeat every n seconds?
+> 
+> Thanks. I'll look through the patches.
+> 
+> NeilBrown
 
-To help readability even more, could you provide a comment explaining
-what this function is really testing.  I can almost see it, but a
-comment would help a lot!
+	roger -- i'll look at adding an optional timeout w/ optional 
+repeat.  good idea. 
 
-Thanks,
-NeilBrown
+	thanks,
+
+	d
+	.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
