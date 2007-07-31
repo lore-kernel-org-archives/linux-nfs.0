@@ -1,29 +1,22 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: Status of mount.nfs
-Date: Tue, 31 Jul 2007 17:28:46 -0400
-Message-ID: <46AFA98E.1070904@oracle.com>
-References: <20070708191640.GA13962@uio.no>	<18065.43199.104020.412029@notabene.brown>	<20070715083114.GB4158@uio.no>	<18074.50730.591965.39211@notabene.brown>	<20070716092047.GA10353@uio.no>	<18075.17719.855332.259470@notabene.brown>	<20070722191733.GA31501@uio.no>	<46A52816.6050500@oracle.com>	<20070724172451.GA14026@uio.no>	<46A7A5F8.4040204@oracle.com>
-	<46A897CD.50201@RedHat.com>	<46A96032.7080503@oracle.com>
-	<46AA089E.50503@RedHat.com>	<1185551769.6586.28.camel@localhost>
-	<46AA1A70.5010705@RedHat.com>	<1185553679.6586.34.camel@localhost>
-	<46AA2642.60505@RedHat.com>	<1185556406.6586.45.camel@localhost>
-	<46AB3BE9.1060903@RedHat.com> <1185906627.6700.30.camel@localhost>
-Reply-To: chuck.lever@oracle.com
+From: "david m. richter" <richterd@citi.umich.edu>
+Subject: [PATCH 0/7] nfsstat: adding -D/--diff-stat to nfsstat
+Date: Tue, 31 Jul 2007 17:38:50 -0400 (EDT)
+Message-ID: <Pine.BSO.4.64.0707311651120.13370@citi.umich.edu>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------080908020907090105080001"
-Cc: nfs@lists.sourceforge.net, Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: text/plain; charset="us-ascii"
+Cc: Andrew Richardson <chardson@umich.edu>,
+	nfs@lists.sourceforge.net, Alex Soule <soule@umich.edu>
+To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IFzJa-0000Z4-3z
-	for nfs@lists.sourceforge.net; Tue, 31 Jul 2007 14:31:38 -0700
-Received: from agminet01.oracle.com ([141.146.126.228])
+	id 1IFzQX-0001Mg-RJ
+	for nfs@lists.sourceforge.net; Tue, 31 Jul 2007 14:38:50 -0700
+Received: from citi.umich.edu ([141.211.133.111])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IFzJc-0004XT-MZ
-	for nfs@lists.sourceforge.net; Tue, 31 Jul 2007 14:31:42 -0700
-In-Reply-To: <1185906627.6700.30.camel@localhost>
+	(Exim 4.44) id 1IFzQa-0007He-M3
+	for nfs@lists.sourceforge.net; Tue, 31 Jul 2007 14:38:53 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,79 +29,52 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
---------------080908020907090105080001
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Transfer-Encoding: 7bit
+	Hello, Neil,
 
-Trond Myklebust wrote:
-> On Sat, 2007-07-28 at 08:51 -0400, Steve Dickson wrote:
->> Trond Myklebust wrote:
->>> On Fri, 2007-07-27 at 13:07 -0400, Steve Dickson wrote:
->>>
->>>> After how long of a wait? If all the timeouts are controllable then
->>>> I agrees, but if we have to wait undefined-able amount of time for
->>>> every RPC retransmit, then I think we should do a ping...
->>> You should be able to set the timeout either on a per-RPC call basis by
->>> using clnt_call(), or by changing the default timeout on the CLIENT
->>> object using clnt_control() (man 3 rpc).
->> True... but I was thinking of when clnt_cnt() call pmap_getport()
->> which does not take a timeout value...  In that case you are
->> stuck with a 60 sec hard coded timeout, regardless of the time out
->> you pass in...
-> 
-> In the version of mount.nfs from the linux-nfs.org git tree, we call our
-> own private implementation of pmap_getport() instead of the one from
-> glibc.
+	This set of patches adds -D/--diff-stat to nfsstat.  When this 
+flag is used, instead of printing out the current total statistics and 
+exiting, nfsstat takes a snapshot of the current statistics and pauses 
+until the user types ^C, at which point a second snapshot is taken and 
+only the difference between the two is printed; i.e., only the statistics 
+gathered during the pause.
 
-I was looking at this yesterday.  The stock timeout for TCP connects on 
-Linux is 75 seconds.  The version of getport() used in the mount command 
-might control the TCP connect timeout by using a non-blocking connect() 
-with a select().  The select() then times out if the connection doesn't 
-complete.
+- patches 1 and 2 just pull out existing shared code into separate 
+functions.
 
-But I'm wondering if we really want to continue using TCP for GETPORT 
-calls.  Solaris mount appears to use only UDP for GETPORT, for example.
+- patches 3 and 4 standardize existing variable names to make it easier to 
+declare and use --diff-stat's set of temporary variables.
 
---------------080908020907090105080001
-Content-Type: text/x-vcard; charset=utf-8;
- name="chuck.lever.vcf"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="chuck.lever.vcf"
+- patch 5 changes the existing declarations of the struct statinfos by 
+using macros (again, to make adding --diff-stat's vars easier).
 
-begin:vcard
-fn:Chuck Lever
-n:Lever;Chuck
-org:Oracle Corporation;Corporate Architecture: Linux Projects Group
-adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
-title:Principal Member of Staff
-tel;work:+1 248 614 5091
-x-mozilla-html:FALSE
-url:http://oss.oracle.com/~cel
-version:2.1
-end:vcard
+- patch 6 just declares the extra --diff-stat variables.
+
+- patch 7 adds the rest of --diff-stat.
 
 
---------------080908020907090105080001
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+	The patches have been individually compile- and run-tested on 
+2.6.19-rc5 and 2.6.22-rc5, and are based off of your current nfs-utils git 
+tree.  The patches contain code written by people at CITI:
+
+	Andrew Richardson <chardson@umich.edu>
+	David M. Richter <richterd@citi.umich.edu>
+	Alex Soule <soule@umich.edu>
+
+
+	thanks kindly,
+
+	d
+	.
+_____
+ david m. richter
+ CITI -- Center for Information Technology Integration
+ http://www.citi.umich.edu
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
---------------080908020907090105080001
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---------------080908020907090105080001--
