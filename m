@@ -1,19 +1,23 @@
-From: Greky <McCartneyxepwb@vertebrax.net>
-Subject: new account-9408485582
-Date: Mon, 30 Jul 2007 23:06:06 -0400
-Message-ID: <A7FF67AA.F43A96F@vertebrax.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: rpc.mountd crashes when extensively using netgroups
+Date: Tue, 31 Jul 2007 10:48:24 -0400
+Message-ID: <20070731144824.GA15231@fieldses.org>
+References: <46ADDFB2.9070709@inf.ethz.ch>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------000808040708070505070102"
-To: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+To: Stefan Walter <stefan.walter@inf.ethz.ch>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IFi3k-0001K7-7N
-	for nfs@lists.sourceforge.net; Mon, 30 Jul 2007 20:06:08 -0700
-Received: from user-1087o30.cable.mindspring.com ([64.131.224.96])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IFi3m-0004za-Ii
-	for nfs@lists.sourceforge.net; Mon, 30 Jul 2007 20:06:12 -0700
+	id 1IFt1R-00061H-SJ
+	for nfs@lists.sourceforge.net; Tue, 31 Jul 2007 07:48:30 -0700
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IFt1U-0004XN-JW
+	for nfs@lists.sourceforge.net; Tue, 31 Jul 2007 07:48:33 -0700
+In-Reply-To: <46ADDFB2.9070709@inf.ethz.ch>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,148 +30,57 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---------------000808040708070505070102
-Content-Type: text/plain; charset=iso-8859-2; format=flowed
-Content-Transfer-Encoding: 7bit
+On Mon, Jul 30, 2007 at 02:55:14PM +0200, Stefan Walter wrote:
+> There are however two issues for which we could not find an easy
+> solution:
+> 
+>  1. For every client rpc.mountd and the kernel seem to exchange
+>     and use lists with _all_ netgroups used in exports that are
+>     relevant for granting permission to some share for a particular
+>     client. We could imagine two optimizations here:
+> 
+>        * Resolve netgroups and only put the (member) netgroups that
+>          contained the host name that would be used to authorize
+>          a mount in the list.
+> 
+>        * Use the list of mounted paths per client and only put the
+>          netgroup(s) used to export paths that are actually mounted
+>          on a client. 
+> 
+>     This also caused us severe performance problems because
+>     rpc.mountd queries all these netgroups. We were initially using
+>     a LDAP and mouting a directory took up to ten seconds
+>     during which rpc.mountd was busily querying the LDAP server.
+>     We got this down to two seconds using file based netgroups.
+>  
+>  2. Using a fixed size for NFSCLNT_IDMAX does not scale. Mounting
+>     shares on a client for which the 'if' clause of the quick fix
+>     becomes true will not be possible. We thought about enlarging
+>     NFSCLNT_IDMAX and using a custom kernel but dropped the idea. 
+> 
+> Our ultimate goal is to get Red Hat fix the code in nfs-utils 1.0.6
+> that is used in RHEL4. A first step would be to get a suitable fix in
+> the current nfs-utils. 
 
+That's an interesting problem.  Thanks for the report!
 
+I don't believe that long comma-delimited string actually has any
+meaning to the kernel--as far as the kernel is concerned, it's just an
+opaque object that will be passed back to mountd later (along with a
+path name) to get export options.
 
---------------000808040708070505070102
-Content-Type: application/octet-stream;
- name="new account-9408485582.pdf"
-Content-Transfer-Encoding: base64
-Content-Disposition: inline;
- filename="new account-9408485582.pdf"
+So I suppose that string could be replaced by a hash, or maybe even just
+by the ip address of the particular host--the disadvantage to the latter
+being that it would require the kernel to keep a separate export for
+each client address.
 
-JVBERi0xLjUNJeLjz9MNCjQgMCBvYmo8PC9IWzQzNiAxMTldL0xpbmVhcml6ZWQgMS9FIDIzNDUv
-TCA2MjM1L04gMS9PIDgvVCA2MDk1Pj4NZW5kb2JqDSAgICAgICAgICAgICAgICAgICAgICAgICAg
-DQp4cmVmDQo0IDcNCjAwMDAwMDAwMTYgMDAwMDAgbg0KMDAwMDAwMDU1NSAwMDAwMCBuDQowMDAw
-MDAwNjg5IDAwMDAwIG4NCjAwMDAwMDA0MzYgMDAwMDAgbg0KMDAwMDAwMDc4NyAwMDAwMCBuDQow
-MDAwMDAwOTY3IDAwMDAwIG4NCjAwMDAwMDEwODggMDAwMDAgbg0KdHJhaWxlcg0KPDwvU2l6ZSAx
-MS9QcmV2IDYwODUvUm9vdCA2IDAgUi9FbmNyeXB0IDUgMCBSL0luZm8gMyAwIFIvSURbPDM5Y2M4
-YzczMmEyYTExNDg4OTg5OTIxYmZmZGU1ZDljPjwzOWNjOGM3MzJhMmExMTQ4ODk4OTkyMWJmZmRl
-NWQ5Yz5dPj4NCnN0YXJ0eHJlZg0KMA0KJSVFT0YNCiAgICANCjcgMCBvYmo8PC9MZW5ndGggNDcv
-RmlsdGVyL0ZsYXRlRGVjb2RlL1MgMzg+PnN0cmVhbQ0KKxVeAT8EJj96MhSkJNtiEbQSHciYygOV
-jfyMY8ajvVfBPnJ2rgAsmXig2jDOBFINCmVuZHN0cmVhbQ1lbmRvYmoNNSAwIG9iajw8L1IgMy9M
-ZW5ndGggMTI4L0ZpbHRlci9TdGFuZGFyZC9PKA6rNJbVYQVQkIM8au7AgW5rV9+4YeY8YivjMXw4
-5ZNZKS9QIC0zOTA0L1UoUtYHR5RRA6HL5RkM6BDM/AAAAAAAAAAAAAAAAAAAAAApL1YgMj4+DWVu
-ZG9iag02IDAgb2JqPDwvUGFnZXMgMSAwIFIvVHlwZS9DYXRhbG9nL1BhZ2VNb2RlL1VzZU5vbmUv
-UGFnZUxheW91dC9TaW5nbGVQYWdlL01ldGFkYXRhIDIgMCBSPj4NZW5kb2JqDTggMCBvYmo8PC9D
-b250ZW50cyAxMCAwIFIvVHlwZS9QYWdlL1BhcmVudCAxIDAgUi9Sb3RhdGUgMC9NZWRpYUJveFsw
-IDAgNzEzIDg2NV0vQ3JvcEJveFswIDAgNzEzIDg2NV0vUmVzb3VyY2VzPDwvRm9udDw8L0YwIDkg
-MCBSPj4vWE9iamVjdDw8Pj4vUHJvY1NldFsvUERGL1RleHQvSW1hZ2VDXT4+Pj4NZW5kb2JqDTkg
-MCBvYmo8PC9UeXBlL0ZvbnQvTmFtZS9GMC9FbmNvZGluZy9XaW5BbnNpRW5jb2RpbmcvQmFzZUZv
-bnQvSGVsdmV0aWNhL0ZpcnN0Q2hhciAzMi9MYXN0Q2hhciAyNTUvU3VidHlwZS9UeXBlMT4+DWVu
-ZG9iag0xMCAwIG9iajw8L0xlbmd0aCAxMTg3L0ZpbHRlci9GbGF0ZURlY29kZT4+c3RyZWFtDQre
-WyWHQG7aT0y8DrPN/hFdfpjg4HpwSxo3aTDOiLwRfgpLg7vMIK8aXg392BMczNhYhX0d7bV9roJo
-vfDvqiNQzljxfFuP+jvlZt3oxGAnaDJMCExoCBdqj+98+AynNY0+f1SjEkJhrx8tM2kdMk69IB4p
-fGJdyylx/a/QkjkHlZzv4n3XCUHyMnNPNVJA4TPqIRZ4It17TsffkBD+idAxf1+/jXR0mZZYuPEn
-l2gMhfzcTfmYF/13tb3fyklH/3nzNaW5oeEfWVlXntjM3VHS0SSnYNb0xWqKg5POHgFZ1g9gi0iH
-Q9RjceG79p2J6LYyMWfvQUjclLSCb2iCk0N6eZzXmBVE583I2kFla/D5kDyTMQVxleRfwaVfjYlU
-R6Banp05ai1a/DiNUDzHyKK5xIDb+CnkMmDHcOec8hZ+7KcMHoso2bI3FK8BkXC3BwKNbURhz1J8
-jUnY48AjptHbMRsnqJVlmS2IROPJqHlmZ8ffvfANT7GIfHSsW4LZHnwMj3UVGUXdlqthfp6X2Aej
-eSWsY/Cr6+G0igyJF5SrhiLtUXXf1fDHVhV0F1YfjjLNJYcSSt6ypb1StqKmzfFswvEYDHf6Hdrq
-xBt/AD38TyEqSDT/fgUYjWLEhzyhqG+ePQmPWwshFXk8QyptYut1rUuG08ZxjdlzaBp4YQ47l71e
-pPZAW9ME7xLFIdcJuKFZdggM181ooS+p4KI15KQkmI9OYi91l2CDlbN5BrJgAiEQ1KMkhnIwvY9x
-Jl8QbalusTkM+wHa1ZwkZa+t7z7PeJQM1/mN0v7BHNSqe/Zqv8c5HHg8F5TyAvjwnpFxNSQvXVt4
-hCv7mSf0NQEcqH2771O2EElfwOsmIYng60G1izVgvitWJWzLnn6QvNDnjSaUgJguh6Ws6GXaZI+O
-ZTYnV2GbC1Ov3EjiKU3s4KgG+rpRYXfPTSNaqdZlS+PaemHc5QWIE1v/isE/XOyH0EcUK/V3TYTa
-68/jBg5lBMV7XiivCdrxByJpJ+jJIMN94XQGaQ+fmAJqgWbABrHt0aOrnTAsuHwSwQieeAqCiar9
-uCu4IEXItd752wysLP5gEIM8OJ7xSMGbC2O6JIQ0YHqrc+x2fTBBbTna+05T4jBlsoipcJogVMZb
-BlmEq+9uuRQ3rD5s0IID5N/rloQeq4XdHyLhsilcnuwG/dFJaeBRQTuhKkTkAu8kbhhy4OtBU3av
-x/sZZrnzAZouxd5pdwusrZX+Uwwb9gPOk1gdWoBnMwMMP76xxjWtlE7h9fKJRZf78QZxxkE6Kb1Q
-N54Q/g5p50138xZkTL5t5rxI0ruTSKJZoJQStCkHZLE6HPZBuWy+qMY6R8X9Aj0apRJgy2aCjD3U
-OndT8b1Ur8FVYC5S1x9uWcD9FowVtDyvi+dHi7rGV10U/RsK0MNDQNqq8M3KRt5o8Bhuid3PGFAJ
-tFfj1JCbiLifnz2Xy4kHCirjq7EGvNBGjVDclA6Ir2zf0HTYD3WYAbfdPdInNNQ+Ng+9c6PydYpl
-HgJbqZEqm/U4AUY7WTuiLBRUZXwIayaUjhn5hy3Mi9upsDuMurqvoe7lfLhidg0KZW5kc3RyZWFt
-DWVuZG9iag0xIDAgb2JqPDwvQ291bnQgMS9LaWRzWzggMCBSXS9UeXBlL1BhZ2VzPj4NZW5kb2Jq
-DTIgMCBvYmo8PC9MZW5ndGggMzQxOC9UeXBlL01ldGFkYXRhL1N1YnR5cGUvWE1MPj5zdHJlYW0N
-CqkaIq2GhGFblzh11OjolMMRJ+sddW5JbIPW1QkatElBENqElpTUGTe4YSUjsxu0mDwHOMzi1xgC
-8slDFt1cfxLNZyJr9a4pXckiTiIMaKx0eptfUHqrdar797i3zZiAKkdq9BkYdLAnUrlMKv4B+POd
-CTsggWy8vU82acHq5Mqbt7N+Ezo/BhQS75ZbQDuTA+FGZ3vPupZBLrbS6ZO9RnMgQzVpnkWCb8Cj
-1NdOUG7Bw4NqHvPBhLuKu/fJl19kEqDisRoj7Xc9R510Pj1KQcM7fYfT51Dsh1V5hZIAh3AAywIk
-JwN2IlZr2JMTaPTQQ7V85Bquvq6Ol4xu+XHFLRm3rgiOWonK907dvunKS9Uu/hgwsPG68Ri5hAs+
-2ThI8AmTs+Zf3YXb3oSOLGESrs9z6fDZuhzpck0H5B2wqHUnDkmvEeeWRkDozWtJsNW1TE8dOKvU
-2DUmdzzpfWZWJdhjT/exQuriuzRfEW6kBfeeairuJ0xqhgb2FEysRFdGbyprldlJrvjKRH0ZwwDD
-ocW5QCWawaDg4xiwI43FpzW2h9HoCbF+orvU+iVQ/rble2uh6WhpYXhOYMf8pRWggzP4rPRWIXqT
-Ld1tzly6mn/CqWiqImOneNlCrXwomWyoPL2GFQzgN4+S1Rtz/x7BSoahTPp1U9V/vwrCdp3UIr/m
-GAbxD8eGZ9YLQqMrivDOpRP725tmJJCky0czlx6eaifhFMPuqhMg3FsW/U7nNXkJZFfFNUym0iV8
-unrN/u8mXDmVBVYQ5gAe2HZ+NRTeZUCb7lkl+nlDTKF0vyS5NcV67K3NTAqqsa12+zAmcC1k+aEP
-4u5TraAKW2MK/ZvpXLhjsco1mjUfqzq+Cs5SuvijtcF8BP61mt2Me9vZAuG7AHLej8397m7y08qr
-adniacE7Ri2esvGJ79JAVIiTUoaoBylkZ6NSe37/2JDP1cD5Jmz8HRFTA+kgyDt7Wpl57OGAl0aB
-OuM4+6HFbFaCgV9lliqBjSETlu1wPuAi1aqtQ5xfw7wum/15JtgKTUyWfcpYbUiFeF35QJUtOqay
-m2mkZZpS6jryzR3eUO4fhNh3fmXr0qXSWTrk7CQHPGpw/2I63/gWQeKddDn7zrZ69FqPV/0Ik2m2
-CDEEc4CU1unKZhCw2maCdReKyJfAb2krs6O+cXdxTNKLRs1k8z/dQoQQH9VrqRkUEM2q7iVPTNuq
-BnKtlcBevScY+MrFhah5zxe5TGrmKNaWmNPLsTN88lryIG6QdJkQqoKvgDAZLkhvjIullgmDaEvg
-aINDskHXXdZkUGPxGCUpzEPtWKSi+FAeq01hhXlNrNAKLi7u8yOIa+2qUfXecfrWAt9GSQ39VUCq
-SmJmFpraIh3M2X8yuJZYpPry75p94RoYjLywbQfENT/wzVL2Jcqa69K7F013uxKYkB1uvS8WejdN
-yp+RqJlTGnf1WehX1apmVpT2yRPjq06kHoKsYrTYyh4h2pes5nfUNRytpvYpyU3PVPh4nZ7FCjpy
-1WD1LGpHMAYfYGoiwoyhJrKo8MKp5vdggZo/792ba2E01NKdjYU6pfssIQ693ZM4Lj08FD9nGzKA
-91HZM8tTvoP0ecwlqxa6y2aY/LGWqu12Piqua3Ep6IbKjR8M+05+earVPWGG/d7LvFVKcTLfaaPx
-7YEVOVEiSFnaHQ0MsDffqORSqOwYmNaWGnVQVGQSriIzVfApumAuautHIO3gA9Hn9p+2ywvGevYS
-45KriTKMrihiqsjHo1QZaktPvCV6FqW97ItJ+061O0ZMRKXH1PVqhWuUxUxpzPiX+HCujVvNbsDv
-DXUJluuK4Cg+0G76Sux3duo2kS1TF0uX+gXhtv5Qb1CIIv2dDW9IT/PIv8agM9KrRSzxN0+F5Ixy
-8YAyXRA3fLdnjOYekEcpZH1ywxccaTznIII75sAb5bDOEN7QPKPq7wr8CfidHtqnOZvHWDFLvkv7
-8z2/G1NH2APMZr5QemgFkWVoWVwAvXdFDUvp03MfS2x3BA/myo+o/2O1UIbTHeBjySQjStNzmUAZ
-FSNtZUZhBeMnqXNNz3iU+8Qm879Ygs8zf7WLdObGscY2w8bg7GCC2Rn1E08d7PD42ExsuIeDwHrK
-7vvlSJ/7TUqLkObKOpo8gbVBPIYsalVwrr99s8Ko9OjdFbEU/kBi7AaSaiOqjtWVJWevfx3CavEI
-plXbX4bQxmQqCigDFSWvnKIGaZoqlgcmJkRPMCDvIgPohOz7Fzn4ht+TGToYhG0dQL2TaqDAyaVy
-AKgcwKbTn53oCr9c3MF+Lq4wkP0/swt6uHpOd0kPR3Ll8Lz6TG9ImL3e8CHC/gcf7H6mI1oPxvHy
-W2GoAPpZsr3tccg6G1OA6uNzbPHXN8A2gxtcNIfGw60QmwCfFJeiAmTwQeKv32CATK4EyBICtWMM
-1ThXqppJaI0DXbyzlIvuHDHeGuletX1ELwS4DFPzWsqPlf7EWIGHttqMavS8E3H0p9ZVJSchIeq/
-E0/WRU5cHZ04NBWFuEu9H0m1O6my6VXrRdJisUbWIzlKucmgyjSBajpHboCiugTkmLERbNV4MqNI
-syohKYKNS+XUjwnHBAqANM0OijcTPEG7c9Mj6dRZ0y6XfIX0UJ1GUmxR157tp4XVUb9PjzalYp2l
-965aSiP60XR0C4oOvpGgtIQERnfYLwcsx81/9fDHhf2qhwcMk8DwNjcDnnc1wFQYA/V9uKrs82/s
-obk56k79KseQrS8Cy3knJnlhWkphQxq9ESDgLFajeYlPxh3ibZX4TyxR9uUVW/u3EIVT0DpNZsgi
-q43G+PvsnjBImujlVcecTrW4mf/ljEO8g0l1K6IU0Y429ZZpmwFeMUsJlNWtF6a4CJILYR4//yfb
-vCMq/fQzRXt5TLdOp8+ElVFKON+vG6bcw5H9RWTbul83O8lcLAolt/g2BRv+Nr+y4iyTr2BJRE51
-x+S1AqYq1XTlqMQd2k4pKHa3ipBGtobSYUCVLrJj3/irvHPal4uMVuSYrjLnySA9LO9CggDQCiCV
-IXyq4aaVoZGj/D0bwRHBEUD6ZKKshtnD91HDuo/FDxKYmPYQG1QROUSNuEwDSKNCztFfXf5xMdZ2
-SiIJjSS2l6ahQ1Q1xiYZR66geanOo9mKErpzhV94mt1DUefGAzblBMRx1aqevXX4E4yzgx5zAn25
-4uHTbzvbcSO/Lwc79iu3ZQMvkdBn4YWuZEve/1jE1bR+H+5t63B1LzYRNyHhfdf9TNEG2ipylu8G
-T82Rj3mX50YoXbPeqo0TTyCB5QtaYQ7rY9EiyMZnBB0glQDONdqOWiMc3Jceg3Je1gaGbtDWIhuX
-vIZlc78VFdj1vAzHrEaUQyrmovWc7Htkp4pAhpZAjUI8ixyaWjh35fCDXZ5+u6ZxbyZPrdySI+0G
-B/fB22ZB8ORftQUoe5ucpGwyCf30AHNAluSpVPjhdmtGV5ok0Buo8Mg8hEDpN4rqIQQWQhHuqQxF
-UYwvwj/wIvhOU37ttNbj5UStPfEXkoe7xJnla3dieJMuh9ZF99eWLWS0O2wP3sj3sTQCQEhga/US
-XUgUMpxU2BWwFbJ0vCU76r691MyvLoZuoCwtGJ3tBvvUT/lKu71Ld6++X+lvTtZkgdT1coGQYID7
-caVD309CrVVjj0UUT8N3gk0LdLD8jXsLBTv+dOkZiNbkV6wbYezHktL368VQN+xu5mfEtTIZvkv4
-hnQ20e1277qSPCBrfw4T3gDNOdqQBkaG3E2zhPMyDVNREHmJoypzvluPdlQdaROGAphU+hm4UzYC
-RPD1093RLDdykSy3ltqPipe8l5uaJkGtHvusRjqZg5foht53nj/qf3pzQ2IcysNnYdNSS7AQR/Y+
-jI/eIgTn8KoErfgDZ3GvAmE+LF5EG+UUkC998gUv+5bv9RyunbeW5kQd24lQi4JSMGyBPpHo3DS1
-2brq7YMY9G/7GFfoMn9oj29Ul/dBZ8uHxDpRKyLNA9EA38Qi89vKKf0RoZ/csE9+T7idJ5WFrAw5
-qRR7fiKH4o7nc1gv5mwEhQpbA2bpqUELGv5Bpkb3XMaPPDKLLBhbNRJmCdsCBQR/wPczo0S1DGdo
-B6wEu+nuDW2qCNZGPCct6PRW6PGpiWMbnNu+wEu5fPiOhkr6ru6GnF4+Fm8WcGugoXKawj8puob3
-CM1Gc7bGpP0v/KvDUPRyue68izfkN3ijeGQLf2BYPViN7tXlqlH/ie0f95kOip9rkIqz3msQHgvt
-O+irTpZ/j6qntLiXAzETNrZuGPMX75U5ZEzqeP0PYig5C6AUGJtyx5HWv3sHphlcvM6IcW2TZ++/
-UFMFkuOy/XXAGXBZRaEmnIvnopV9q6yC0LsaKQvUz/YIga8G5jtMHXML1qYDnOZkd295zo4Ag3LV
-7USbf9gVh4Tl6//Lv/bAtT5xNR752zXVGj7qQFoLc2Qi3KtltAbMp2iUksB/G/fJ5/TiYTNHeOxl
-UjxvGhiWYMm+0GtvbjBNHK/AxgmF1ioWrDP0xT21HRgKp73bBND8KlaCDFsc7FvE7IS+iWbSWX4N
-CmVuZHN0cmVhbQ1lbmRvYmoNMyAwIG9iajw8L01vZERhdGUohjInwVfbXFy+I1GpdT39dM0F3vhb
-f8b0KS9DcmVhdGlvbkRhdGUohjInwVfbXFy+I1GpdTr3cMpyKS9UaXRsZSgpL0NyZWF0b3IoiHhw
-li6BXHLudSTgJ2S/LJ4pL0F1dGhvciiWaX6UFIQFqVsA9lwoZikvS2V5d29yZHMoKS9TdWJqZWN0
-KCkvUHJvZHVjZXIokmdilBW8CO8wF/00eqYvlQje4UUpPj4NZW5kb2JqDXhyZWYNCjAgNA0KMDAw
-MDAwMDAwMCA2NTUzNSBmDQowMDAwMDAyMzQ1IDAwMDAwIG4NCjAwMDAwMDIzOTUgMDAwMDAgbg0K
-MDAwMDAwNTg4OSAwMDAwMCBuDQp0cmFpbGVyDQo8PC9TaXplIDQvRW5jcnlwdCA1IDAgUj4+DQpz
-dGFydHhyZWYNCjExNg0KJSVFT0YNCg==
---------------000808040708070505070102
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+--b.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
---------------000808040708070505070102
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---------------000808040708070505070102--
