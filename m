@@ -1,30 +1,26 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
+From: Chuck Lever <chuck.lever@oracle.com>
 Subject: Re: [PATCH 0/7] nfsstat: adding -D/--diff-stat to nfsstat
-Date: Wed, 1 Aug 2007 14:57:14 -0400
-Message-ID: <20070801185714.GH13441@fieldses.org>
-References: <Pine.BSO.4.64.0707311651120.13370@citi.umich.edu>
-	<46B074A2.4010909@redhat.com>
-	<Pine.BSO.4.64.0708011149240.25204@citi.umich.edu>
-	<46B0C92C.3020807@redhat.com>
-	<Pine.BSO.4.64.0708011413000.25204@citi.umich.edu>
+Date: Wed, 01 Aug 2007 15:35:48 -0400
+Message-ID: <46B0E094.2080109@oracle.com>
+References: <Pine.BSO.4.64.0707311651120.13370@citi.umich.edu>	<46B074A2.4010909@redhat.com>	<Pine.BSO.4.64.0708011149240.25204@citi.umich.edu>	<46B0C92C.3020807@redhat.com>	<Pine.BSO.4.64.0708011413000.25204@citi.umich.edu>
 	<46B0CF5B.1000609@redhat.com>
+Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>,
-	Andrew Richardson <chardson@umich.edu>, nfs@lists.sourceforge.net,
-	Alex Soule <soule@umich.edu>,
+Content-Type: multipart/mixed; boundary="------------020508080508020908080702"
+Cc: Neil Brown <neilb@suse.de>, Peter Staubach <staubach@redhat.com>,
+	Andrew Richardson <chardson@umich.edu>, Alex Soule <soule@umich.edu>,
 	"david m. richter" <richterd@citi.umich.edu>
-To: Peter Staubach <staubach@redhat.com>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IGJNn-0006bv-OB
-	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 11:57:21 -0700
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	id 1IGK0z-0002T6-GO
+	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 12:37:50 -0700
+Received: from rgminet01.oracle.com ([148.87.113.118])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IGJNo-0007nN-6x
-	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 11:57:21 -0700
+	(Exim 4.44) id 1IGK11-0004jC-4O
+	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 12:37:53 -0700
 In-Reply-To: <46B0CF5B.1000609@redhat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -38,7 +34,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, Aug 01, 2007 at 02:22:19PM -0400, Peter Staubach wrote:
+This is a multi-part message in MIME format.
+--------------020508080508020908080702
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Transfer-Encoding: 7bit
+
+
+
+Peter Staubach wrote:
+> david m. richter wrote:
+>>> Now, if someone was proposing a way to do "nfsstat 5" and make the
+>>> output look useful, then I would be behind that 100%.
+>>>
+>>>    Thanx...
+>>>
+>>>       ps
+>>>     
+>>
+>> 	do you mean "gather stats for the next 5 seconds"?  i don't 
+>> understand the arg.
+> 
 > Sorry, I should have been more explicit.  I have wished for
 > something that would behave like "vmstat 5", ie. print nfsstat
 > statistics in some sort short hand fashion once every few
@@ -48,23 +63,80 @@ On Wed, Aug 01, 2007 at 02:22:19PM -0400, Peter Staubach wrote:
 > for summarize them on one line in any sort of interesting way.
 > This becomes particularly true for NFSv4 which has its multitude
 > of operations...
+> 
+> Perhaps we should just bite the bullet and produce the large
+> output, much like "iostat 5" seems to.
 
-Yeah, I agree, it'd be great to have somebody look into this.
+First, thanks to David and the citi guys for the patches.
 
-Also, do we need code (either in nfsstat or elsewhere) to help people
-use the new per-mount client statistics?
+The kernel stats themselves should never be zeroed except by umount or 
+reboot.  Otherwise, tools like "sar" and "iostat" that are looking 
+directly at the same set of kernel stats, and producing a "one every 5 
+seconds" type of output, would be totally confused if "nfsstat -z" 
+actually cleared the kernel counters.
 
-I'm guessing among Trond and Neil and people at citi there may not be
-anyone with the cycles to implement any of that right now, so these are
-projects looking for volunteers.
+There's a bigger picture here.  nfsstat does not live in a vacuum, it 
+lives in the presence of all the other I/O tools like sar, vmstat, and 
+iostat.  For that matter, we already have "watch nfsstat" and 
+"nfswatch".  Those tools already provide a "once every 5 seconds" type 
+of interface.  I might even be inclined to argue that adding "once every 
+5 seconds" type functionality is really outside of nfsstat's job 
+description.
 
---b.
+So if we wanted an "nfsstat --since" or "nfsstat 5 5" kind of thing, 
+maybe we should think about the other tools, how they fit in, and how 
+they work, and see if we can use one of them for that.  Even better, a 
+GUI like gnome-system-monitor would be very nice for watching NFS client 
+and server performance in real time.
+
+I'm kind of tired of NFS living in its own little world with regard to 
+the other file systems.  The NFS performance metrics I built were 
+precisely for the purpose of making NFS a "first class" file system with 
+regard to reporting errors and performance, and for the purpose of 
+including NFS in the tools sysadmins normally use to watch I/O subsystem 
+  performance data on local disks.
+
+Can we come up with a plan that moves NFS closer to other file systems?
+
+--------------020508080508020908080702
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck.lever.vcf"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="chuck.lever.vcf"
+
+begin:vcard
+fn:Chuck Lever
+n:Lever;Chuck
+org:Oracle Corporation;Corporate Architecture: Linux Projects Group
+adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
+title:Principal Member of Staff
+tel;work:+1 248 614 5091
+x-mozilla-html:FALSE
+url:http://oss.oracle.com/~cel
+version:2.1
+end:vcard
+
+
+--------------020508080508020908080702
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
+--------------020508080508020908080702
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--------------020508080508020908080702--
