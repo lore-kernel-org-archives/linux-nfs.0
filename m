@@ -1,27 +1,29 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: Re: [PATCH 0/7] nfsstat: adding -D/--diff-stat to nfsstat
-Date: Wed, 1 Aug 2007 12:50:33 -0400
-Message-ID: <20070801165033.GA13441@fieldses.org>
+Date: Wed, 1 Aug 2007 13:07:01 -0400
+Message-ID: <20070801170701.GB13441@fieldses.org>
 References: <Pine.BSO.4.64.0707311651120.13370@citi.umich.edu>
 	<46B074A2.4010909@redhat.com>
 	<Pine.BSO.4.64.0708011149240.25204@citi.umich.edu>
+	<1185986954.6700.145.camel@localhost>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>, Peter Staubach <staubach@redhat.com>,
-	Andrew Richardson <chardson@umich.edu>, nfs@lists.sourceforge.net,
-	Alex Soule <soule@umich.edu>
-To: "david m. richter" <richterd@citi.umich.edu>
+Cc: Peter Staubach <staubach@redhat.com>, Neil Brown <neilb@suse.de>,
+	Alex Soule <soule@umich.edu>,
+	"david m. richter" <richterd@citi.umich.edu>,
+	Andrew Richardson <chardson@umich.edu>, nfs@lists.sourceforge.net
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IGHP9-0001QQ-Mi
-	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 09:50:35 -0700
+	id 1IGHf9-0003Td-0P
+	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 10:07:07 -0700
 Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IGHPC-0005dO-FF
-	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 09:50:39 -0700
-In-Reply-To: <Pine.BSO.4.64.0708011149240.25204@citi.umich.edu>
+	(Exim 4.44) id 1IGHfB-000430-KZ
+	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 10:07:11 -0700
+In-Reply-To: <1185986954.6700.145.camel@localhost>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,40 +36,36 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, Aug 01, 2007 at 11:59:45AM -0400, david m. richter wrote:
-> 	yes.  :)  right now, there's no easy way to run a test and get 
-> stats for just that test, since the counters persist -- so you have to do 
-> things like run a test, unmount, remount, etc.  this is a quick way to get 
-> stats collected over an arbitrary period.  and it's not very complicated, 
-> really.
-
-Yah.  Especially for debugging other peoples' problems over email, it'd
-be helpful to have simple one-line commands that use programs that are
-installed everywhere by default.  In this case adding on to nfsstat
-looks like the simplest way to achieve that.  But a simpler
-implementation would be welcome, of course, if you want to have a go at
-it.
-
-> 	i don't think a shell/perl/python/etc script would be anywhere as 
-> useful a substitute.  and with neil's suggestion about adding an optional 
-> timeout to make it easier to use -in- scripts, i think we're on the right 
-> track with this approach.
+On Wed, Aug 01, 2007 at 12:49:14PM -0400, Trond Myklebust wrote:
+> How about instead just adding support for the 'nfsstat -z' option that
+> Solaris offers? That would make it easy to set up the type of script
+> that Peter is advocating.
 > 
-> 	.. thoughts/ideas?
+> All you need to do is to save a snapshot of the current /proc counters
+> in a file, then use that as the baseline for the output of future
+> nfsstat commands.
 
-Can I make one more attempt to interest someone in implementing the
---since=baseline-file approach?  It'd be fun, and would make some more
-flexible use cases very simple.  You could still get a time interval:
+I kinda prefer an explicit path, so
 
-	nfsstat >tmp
-	sleep 30
-	nfsstat --since=tmp
+	nfsstat --since=baseline
 
-or you could do other stuff:
+as opposed to an interface that hides the fact that we're storing the
+baseline in a file, and possibly confuses Solaris users if e.g.
 
-	nfsstat >tmp
-	run-my-weird-test-case-here
-	nfsstat --since=tmp
+	nfsstat -z
+	su
+	nfsstat
+
+doesn't do what's expected.  I dunno.
+
+My one (very minor) complaint about the current implementation is the
+name; -D and --diff-stat don't do it for me.
+
+My honest preference would be for --sleep, with -z for short.  Partly
+because it seems more descriptive.  Partly because it would trip up
+Solaris users, but in a way that would make it obvious what's going on.
+("I run nfsstat -z and it hangs?  Interrupt it, then----ohhh, I see.")
+But mainly because I think it's funnier.
 
 --b.
 
