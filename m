@@ -1,32 +1,28 @@
 From: "david m. richter" <richterd@citi.umich.edu>
 Subject: Re: [PATCH 0/7] nfsstat: adding -D/--diff-stat to nfsstat
-Date: Wed, 1 Aug 2007 14:12:17 -0400 (EDT)
-Message-ID: <Pine.BSO.4.64.0708011411230.25204@citi.umich.edu>
+Date: Wed, 1 Aug 2007 14:14:10 -0400 (EDT)
+Message-ID: <Pine.BSO.4.64.0708011413000.25204@citi.umich.edu>
 References: <Pine.BSO.4.64.0707311651120.13370@citi.umich.edu>
 	<46B074A2.4010909@redhat.com>
 	<Pine.BSO.4.64.0708011149240.25204@citi.umich.edu>
-	<20070801165033.GA13441@fieldses.org>
-	<Pine.BSO.4.64.0708011333100.25204@citi.umich.edu>
-	<1185990384.6700.188.camel@localhost>
-	<Pine.BSO.4.64.0708011347200.25204@citi.umich.edu>
+	<46B0C92C.3020807@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Peter Staubach <staubach@redhat.com>, Neil Brown <neilb@suse.de>,
-	Alex Soule <soule@umich.edu>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	Andrew Richardson <chardson@umich.edu>, nfs@lists.sourceforge.net
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: Neil Brown <neilb@suse.de>,
+	Andrew Richardson <chardson@umich.edu>, nfs@lists.sourceforge.net,
+	Alex Soule <soule@umich.edu>
+To: Peter Staubach <staubach@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IGIgB-00025d-9n
-	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 11:12:18 -0700
+	id 1IGIi0-0002GQ-1p
+	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 11:14:08 -0700
 Received: from citi.umich.edu ([141.211.133.111])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IGIgE-0002yc-0g
-	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 11:12:19 -0700
-In-Reply-To: <Pine.BSO.4.64.0708011347200.25204@citi.umich.edu>
+	(Exim 4.44) id 1IGIi2-0007n9-PA
+	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 11:14:12 -0700
+In-Reply-To: <46B0C92C.3020807@redhat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -39,57 +35,19 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, 1 Aug 2007, david m. richter wrote:
-
-> On Wed, 1 Aug 2007, Trond Myklebust wrote:
+> Now, if someone was proposing a way to do "nfsstat 5" and make the
+> output look useful, then I would be behind that 100%.
 > 
-> > On Wed, 2007-08-01 at 13:35 -0400, david m. richter wrote:
-> > > > Can I make one more attempt to interest someone in implementing the
-> > > > --since=baseline-file approach?  It'd be fun, and would make some more
-> > > > flexible use cases very simple.  You could still get a time interval:
-> > > > 
-> > > > 	nfsstat >tmp
-> > > > 	sleep 30
-> > > > 	nfsstat --since=tmp
-> > > > 
-> > > > or you could do other stuff:
-> > > > 
-> > > > 	nfsstat >tmp
-> > > > 	run-my-weird-test-case-here
-> > > > 	nfsstat --since=tmp
-> > 
-> > Exactly. Being able to zero out the stats is way more flexible than the
-> > -D stuff...
+>    Thanx...
 > 
-> 	perhaps i don't follow: how is zeroing the stats address the same 
-> use-case as --diff-stat/--sleep?  one can already zero the stats by 
-> unmounting, e.g., but that's a pain.  ?  i'm missing something.
+>       ps
 
-	oops -- my mistake.  i have a shell alias that i use to unmount, 
-unload the modules, then reload and remount; that's what i've been doing 
-to zero the stats.
+
+	do you mean "gather stats for the next 5 seconds"?  i don't 
+understand the arg.
 
 	d
 	.
-
-
-
-> > > 	just curious: would you be satisfied if the --since file's ctime 
-> > > were used as the beginning of the time interval?
-> > 
-> > What time interval? nfsstat doesn't output any time intervals, and I
-> > can't see how these proposals introduce one.
-> > 
-> > Is it perhaps Bruce's choice of the word '--since' that is confusing?
-> 
-> 	right -- like i said in another letter, i was just being dumb.  :)
-> 
-> 
-> 	thanks,
-> 	
-> 	d
-> 	.
-> 
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
