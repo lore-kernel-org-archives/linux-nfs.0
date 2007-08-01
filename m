@@ -1,30 +1,30 @@
 From: "david m. richter" <richterd@citi.umich.edu>
 Subject: Re: [PATCH 0/7] nfsstat: adding -D/--diff-stat to nfsstat
-Date: Wed, 1 Aug 2007 13:42:01 -0400 (EDT)
-Message-ID: <Pine.BSO.4.64.0708011335460.25204@citi.umich.edu>
+Date: Wed, 1 Aug 2007 13:45:16 -0400 (EDT)
+Message-ID: <Pine.BSO.4.64.0708011342240.25204@citi.umich.edu>
 References: <Pine.BSO.4.64.0707311651120.13370@citi.umich.edu>
 	<46B074A2.4010909@redhat.com>
 	<Pine.BSO.4.64.0708011149240.25204@citi.umich.edu>
-	<1185986954.6700.145.camel@localhost>
-	<20070801170701.GB13441@fieldses.org>
+	<20070801165033.GA13441@fieldses.org>
+	<Pine.BSO.4.64.0708011333100.25204@citi.umich.edu>
+	<20070801174136.GC13441@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Peter Staubach <staubach@redhat.com>, Neil Brown <neilb@suse.de>,
-	Alex Soule <soule@umich.edu>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Andrew Richardson <chardson@umich.edu>, nfs@lists.sourceforge.net
+Cc: Neil Brown <neilb@suse.de>, Peter Staubach <staubach@redhat.com>,
+	Andrew Richardson <chardson@umich.edu>, nfs@lists.sourceforge.net,
+	Alex Soule <soule@umich.edu>
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IGICu-0007Ei-Be
-	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 10:42:00 -0700
+	id 1IGIG1-0007dz-Hg
+	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 10:45:13 -0700
 Received: from citi.umich.edu ([141.211.133.111])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IGICy-00010C-2d
-	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 10:42:04 -0700
-In-Reply-To: <20070801170701.GB13441@fieldses.org>
+	(Exim 4.44) id 1IGIG5-00023F-9Q
+	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 10:45:17 -0700
+In-Reply-To: <20070801174136.GC13441@fieldses.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,32 +37,39 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-> I kinda prefer an explicit path, so
+On Wed, 1 Aug 2007, J. Bruce Fields wrote:
+
+> On Wed, Aug 01, 2007 at 01:35:16PM -0400, david m. richter wrote:
+> > > Can I make one more attempt to interest someone in implementing the
+> > > --since=baseline-file approach?  It'd be fun, and would make some more
+> > > flexible use cases very simple.  You could still get a time interval:
+> > > 
+> > > 	nfsstat >tmp
+> > > 	sleep 30
+> > > 	nfsstat --since=tmp
+> > > 
+> > > or you could do other stuff:
+> > > 
+> > > 	nfsstat >tmp
+> > > 	run-my-weird-test-case-here
+> > > 	nfsstat --since=tmp
+> > 
+> > 	
+> > 	just curious: would you be satisfied if the --since file's ctime 
+> > were used as the beginning of the time interval?
 > 
-> 	nfsstat --since=baseline
+> Fine by me, but what were you going to use that for?  If you're just
+> producing a diff, then you don't need to know the length of the time
+> interval.  Did you just want to add a header saying "stats since
+> hh:mm:ss", or did you want to calculate per-second rates?
 
-	this explicit path approach would also make troubleshooting over 
-email easier.
+	oh, maybe i just misread your "You could still get a time 
+interval" thing as meaning that you'd want it to display the length of 
+time since --since ran.  but now that i think about it, that's kind of a 
+silly thing -- maybe your --since file isn't your own, etc.
 
-
-> My one (very minor) complaint about the current implementation is the
-> name; -D and --diff-stat don't do it for me.
-
-	and they never did it for me, either.  we were having trouble 
-coming up with something that described how the flag affected the 
-program's behavior ..
-
-
-> My honest preference would be for --sleep, with -z for short.  Partly
-> because it seems more descriptive.  Partly because it would trip up
-> Solaris users, but in a way that would make it obvious what's going on.
-> ("I run nfsstat -z and it hangs?  Interrupt it, then----ohhh, I see.")
-> But mainly because I think it's funnier.
-
-.. and --sleep does a much better job of describing how the flag affects 
-the program from the _user's_ point of view.  i like it much better.
-
-	is -Z any less ambiguous than -z?  (--zzz ;)  or does it matter?
+	--since (or something like it) should probably also have a "diff 
+these two statfiles" mode, like you said bruce.
 
 
 	d
