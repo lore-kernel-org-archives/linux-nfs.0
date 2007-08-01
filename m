@@ -1,7 +1,7 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: "david m. richter" <richterd@citi.umich.edu>
 Subject: Re: [PATCH 0/7] nfsstat: adding -D/--diff-stat to nfsstat
-Date: Wed, 01 Aug 2007 14:02:31 -0400
-Message-ID: <1185991351.6700.203.camel@localhost>
+Date: Wed, 1 Aug 2007 14:12:17 -0400 (EDT)
+Message-ID: <Pine.BSO.4.64.0708011411230.25204@citi.umich.edu>
 References: <Pine.BSO.4.64.0707311651120.13370@citi.umich.edu>
 	<46B074A2.4010909@redhat.com>
 	<Pine.BSO.4.64.0708011149240.25204@citi.umich.edu>
@@ -15,18 +15,17 @@ Cc: Peter Staubach <staubach@redhat.com>, Neil Brown <neilb@suse.de>,
 	Alex Soule <soule@umich.edu>,
 	"J. Bruce Fields" <bfields@fieldses.org>,
 	Andrew Richardson <chardson@umich.edu>, nfs@lists.sourceforge.net
-To: "david m. richter" <richterd@citi.umich.edu>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IGIWv-00011s-5X
-	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 11:02:41 -0700
-Received: from pat.uio.no ([129.240.10.15]
-	ident=[U2FsdGVkX18muBzX6EG9oRpi9gUJqWevXJjB2OdfUmc=])
+	id 1IGIgB-00025d-9n
+	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 11:12:18 -0700
+Received: from citi.umich.edu ([141.211.133.111])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IGIWx-0008EJ-CJ
-	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 11:02:45 -0700
+	(Exim 4.44) id 1IGIgE-0002yc-0g
+	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 11:12:19 -0700
 In-Reply-To: <Pine.BSO.4.64.0708011347200.25204@citi.umich.edu>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -40,7 +39,8 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, 2007-08-01 at 13:48 -0400, david m. richter wrote:
+On Wed, 1 Aug 2007, david m. richter wrote:
+
 > On Wed, 1 Aug 2007, Trond Myklebust wrote:
 > 
 > > On Wed, 2007-08-01 at 13:35 -0400, david m. richter wrote:
@@ -65,35 +65,31 @@ On Wed, 2007-08-01 at 13:48 -0400, david m. richter wrote:
 > use-case as --diff-stat/--sleep?  one can already zero the stats by 
 > unmounting, e.g., but that's a pain.  ?  i'm missing something.
 
-You can emulate the --sleep stuff using a simple script:
+	oops -- my mistake.  i have a shell alias that i use to unmount, 
+unload the modules, then reload and remount; that's what i've been doing 
+to zero the stats.
 
-while true
-do
-	nfsstat >tmp
-	sleep 30
-	nfsstat --since=tmp
-done
+	d
+	.
 
-Actually, you can do better if you also introduce an '--input' command
-which causes nfsstat to read from a file instead of reading
-from /proc/net/rpc/nfs and /proc/net/rpc/nfsd. That could be used to
-eliminate a race in the above using something like the following script
-to return client diff output.
 
-cat /proc/sys/rpc/nfs >prev
-while true
-	sleep 30
-	cat /proc/sys/rpc/nfs >new
-	nfsstat -c --since=prev --input=new
-	mv new prev
-done
 
-Unfortunately the client and server raw formats differ, so you probably
-need to require the user to specify '-c' and '-s' in order to tell
-nfsstat what kind of file you are giving it.
-
-Trond
-
+> > > 	just curious: would you be satisfied if the --since file's ctime 
+> > > were used as the beginning of the time interval?
+> > 
+> > What time interval? nfsstat doesn't output any time intervals, and I
+> > can't see how these proposals introduce one.
+> > 
+> > Is it perhaps Bruce's choice of the word '--since' that is confusing?
+> 
+> 	right -- like i said in another letter, i was just being dumb.  :)
+> 
+> 
+> 	thanks,
+> 	
+> 	d
+> 	.
+> 
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
