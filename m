@@ -1,21 +1,30 @@
-From: "david m. richter" <richterd@citi.umich.edu>
-Subject: [PATCH] mount.nfs: fix a typo: "-o nolocks" -> "-o nolock"
-Date: Wed, 1 Aug 2007 18:12:53 -0400 (EDT)
-Message-ID: <Pine.BSO.4.64.0708011806220.18305@citi.umich.edu>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH 0/7] nfsstat: adding -D/--diff-stat to nfsstat
+Date: Wed, 01 Aug 2007 18:40:13 -0400
+Message-ID: <1186008013.6700.244.camel@localhost>
+References: <Pine.BSO.4.64.0707311651120.13370@citi.umich.edu>
+	<Pine.BSO.4.64.0708011347200.25204@citi.umich.edu>
+	<01AE8AF878612047A442668306EAEB05DD298B@SACEXMV01.hq.netapp.com>
+	<Pine.BSO.4.64.0708011425580.25204@citi.umich.edu>
+	<20070801185052.GG13441@fieldses.org> <46B0E701.6010801@RedHat.com>
+	<20070801204824.GI13441@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Neil Brown <neilb@suse.d>
+Cc: "'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>,
+	Steve Dickson <SteveD@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IGMR1-0002Fk-5M
-	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 15:12:51 -0700
-Received: from citi.umich.edu ([141.211.133.111])
+	id 1IGMrl-00053b-Nz
+	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 15:40:29 -0700
+Received: from pat.uio.no ([129.240.10.15]
+	ident=[U2FsdGVkX1+Dzl8XywtDyusbP7H1HjWDD3LHnxq6IQI=])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IGMR4-0006Bp-WF
-	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 15:12:55 -0700
+	(Exim 4.44) id 1IGMrm-00067s-FT
+	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 15:40:33 -0700
+In-Reply-To: <20070801204824.GI13441@fieldses.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,29 +37,54 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-	Fix a minor typo: the option is "-o nolock", not "-o nolocks".
+On Wed, 2007-08-01 at 16:48 -0400, J. Bruce Fields wrote:
 
-Signed-off-by: David M. Richter <richterd@citi.umich.edu>
+> What would you tell them to do instead?  Parsing the nfsstat output and
+> doing the subtraction yourself is a little tedious, so it's not
+> suprising if they both try to use -z, if that's all we provide.
 
----
- utils/mount/nfsmount.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+The entire point of 'nfsstat' is to act as a parser. Otherwise we'd just
+be all be reading the raw output from /proc/net/rpc/*... It makes sense
+to add other parsing options to it. I'm a lot more sceptical about
+attempts to add non-parsing options.
 
-diff --git a/utils/mount/nfsmount.c b/utils/mount/nfsmount.c
-index bd3403c..f642e0c 100644
---- a/utils/mount/nfsmount.c
-+++ b/utils/mount/nfsmount.c
-@@ -851,7 +851,7 @@ noauth_flavors:
- 		if (!start_statd()) {
- 			nfs_error(_("%s: rpc.statd is not running but is "
- 				"required for remote locking.\n"
--				"   Either use '-o nolocks' to keep "
-+				"   Either use '-o nolock' to keep "
- 				"locks local, or start statd."),
- 					progname);
- 			goto fail;
--- 
-1.4.4
+> Which is why I'd really rather not even emulate zeroing in userspace,
+> and instead have two alternatives:
+> 
+> 	- --sleep: quick and convenient, no concurrency problems.
+
+Has nothing to do with parsing.
+
+> 	- --since: or other operations that do the subtraction for you
+> 	  and take explicit paths for saved snapshots.  That allows you
+> 	  to do everything you could do with -z and more, and makes any
+> 	  problems with concurrency or privileges solvable by choice of
+> 	  appropriate paths to store the snapshots in.
+> 
+> Actually the only operation you *really* need is one that parses two
+> nfsstat outputs and subtracts:
+> 
+> 	nfsstat >tmp1
+> 	...
+> 	nfsstat >tmp2
+> 	nfsstat --diff tmp1 tmp2
+> 
+> and then anything else you can easily script.
+
+Parsing already-parsed output is IMO less useful. Just have it be able
+to take input from somewhere other than just /proc/net/rpc/*
+
+> > > But I think more snapshot-and-diff operations would be a fine idea.
+> > > And probably easy and fun to implement.
+> > Why not point that snapshot at /proc/self/mountstats? Those stats
+> > will never be zero and the wealth of information in there truly
+> > an untaped gold mine....
+> 
+> Yeah, that'd be great.  We'll still need nfsstat for the server at
+> least, I guess?  Does it still provide anything useful on the client
+> side, or does mountstats supercede it completely?
+
+
 
 
 -------------------------------------------------------------------------
