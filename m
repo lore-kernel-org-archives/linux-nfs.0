@@ -1,27 +1,25 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
+From: Chuck Lever <chuck.lever@oracle.com>
 Subject: Re: [PATCH 0/7] nfsstat: adding -D/--diff-stat to nfsstat
-Date: Wed, 1 Aug 2007 16:48:24 -0400
-Message-ID: <20070801204824.GI13441@fieldses.org>
-References: <Pine.BSO.4.64.0707311651120.13370@citi.umich.edu>
-	<Pine.BSO.4.64.0708011347200.25204@citi.umich.edu>
-	<01AE8AF878612047A442668306EAEB05DD298B@SACEXMV01.hq.netapp.com>
-	<Pine.BSO.4.64.0708011425580.25204@citi.umich.edu>
-	<20070801185052.GG13441@fieldses.org> <46B0E701.6010801@RedHat.com>
+Date: Wed, 01 Aug 2007 16:54:19 -0400
+Message-ID: <46B0F2FB.6060503@oracle.com>
+References: <Pine.BSO.4.64.0707311651120.13370@citi.umich.edu>	<46B074A2.4010909@redhat.com>	<Pine.BSO.4.64.0708011149240.25204@citi.umich.edu>	<46B0C92C.3020807@redhat.com>	<Pine.BSO.4.64.0708011413000.25204@citi.umich.edu>	<46B0CF5B.1000609@redhat.com>
+	<46B0E094.2080109@oracle.com> <46B0EA0D.1080100@RedHat.com>
+Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: "'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>
+Content-Type: multipart/mixed; boundary="------------040808060703030907030308"
+Cc: nfs@lists.sourceforge.net
 To: Steve Dickson <SteveD@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IGL7J-0001ra-41
-	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 13:48:25 -0700
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	id 1IGLDb-0002WA-AE
+	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 13:54:55 -0700
+Received: from rgminet01.oracle.com ([148.87.113.118])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IGL7K-0003m2-O5
-	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 13:48:29 -0700
-In-Reply-To: <46B0E701.6010801@RedHat.com>
+	(Exim 4.44) id 1IGLDa-00071p-Bs
+	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 13:54:59 -0700
+In-Reply-To: <46B0EA0D.1080100@RedHat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,71 +32,98 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, Aug 01, 2007 at 04:03:13PM -0400, Steve Dickson wrote:
-> Yeah it was me.... and I should have fought harder because since then
-> I've had numerous requests and there has been a number of time I could
-> have used that functionality in my own debugging...
+This is a multi-part message in MIME format.
+--------------040808060703030907030308
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-I do feel bad about that.  So poking David and the others to do this bit
-of nfsstat hacking was partly my attempt to make up for it (and to
-provide something I'd personally like).
+Steve Dickson wrote:
+> Chuck Lever wrote:
+>> The kernel stats themselves should never be zeroed except by umount or 
+>> reboot.  Otherwise, tools like "sar" and "iostat" that are looking 
+>> directly at the same set of kernel stats, and producing a "one every 5 
+>> seconds" type of output, would be totally confused if "nfsstat -z" 
+>> actually cleared the kernel counters.
+> In general, I agree. Stats that "sar" and "iostat" see should
+> not be zeroed.. but the nfsstat's stats do not fall in this
+> category. They are more like counters than true statistics.
+> I think if they were call nfscounts instead of nfsstats
+> there would be less of an uproar since reseting counter
+> is no big deal...
+> 
+> So in the end.. these counter are used to show nfs activity
+> for the entire box... so being able to zero them would
+> incredibly handy for developers and customers alike...
+> 
+> 
+>>
+>> So if we wanted an "nfsstat --since" or "nfsstat 5 5" kind of thing, 
+>> maybe we should think about the other tools, how they fit in, and how 
+>> they work, and see if we can use one of them for that.  Even better, a 
+>> GUI like gnome-system-monitor would be very nice for watching NFS 
+>> client and server performance in real time.
+>>
+>> I'm kind of tired of NFS living in its own little world with regard to 
+>> the other file systems.  The NFS performance metrics I built were 
+>> precisely for the purpose of making NFS a "first class" file system 
+>> with regard to reporting errors and performance, and for the purpose 
+>> of including NFS in the tools sysadmins normally use to watch I/O 
+>> subsystem  performance data on local disks.
+>>
+>> Can we come up with a plan that moves NFS closer to other file systems?
+> Yeah... lets build a tool that understand the stats in
+> /proc/self/mountstats and continue build there... because imho,
+> thats where the future lies with regard to understanding and
+> analyzing NFS traffic patterns...
 
-Does it look like the nfsstat --sleep/--diff-stats/whatever would have
-done the job in the cases you're thinking of?
+I think I agree with this overall approach.
 
-> > But I'd still object, for the same reasons; global zeroing of the in-kernel
-> > stats is an operation that:
-> > 
-> > 	- isn't friendly to concurrent processes gathering stats:
-> > 	  someone might want to run a cron job that summarizes the day's
-> > 	  nfs stats, but still be able to log in and get a quick
-> > 	  snapshot of current activity.
-> So then don't zero them out... and if some one comes a long and
-> does zero them out, thats a communication problem.. not a
-> technical one... ;-)
+Leave nfsstat alone (or maybe add "-z" to zero the traditional 
+/proc/net/rpc/nfs), and add support for /proc/self/mountstats in sar, 
+iostat, and vmstat.
 
-What would you tell them to do instead?  Parsing the nfsstat output and
-doing the subtraction yourself is a little tedious, so it's not
-suprising if they both try to use -z, if that's all we provide.
+That way you can have your zeroed counters a la Solaris, and also have 
+counters that can't be zeroed for the tools that look for trends.
 
-Which is why I'd really rather not even emulate zeroing in userspace,
-and instead have two alternatives:
+--------------040808060703030907030308
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck.lever.vcf"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="chuck.lever.vcf"
 
-	- --sleep: quick and convenient, no concurrency problems.
+begin:vcard
+fn:Chuck Lever
+n:Lever;Chuck
+org:Oracle Corporation;Corporate Architecture: Linux Projects Group
+adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
+title:Principal Member of Staff
+tel;work:+1 248 614 5091
+x-mozilla-html:FALSE
+url:http://oss.oracle.com/~cel
+version:2.1
+end:vcard
 
-	- --since: or other operations that do the subtraction for you
-	  and take explicit paths for saved snapshots.  That allows you
-	  to do everything you could do with -z and more, and makes any
-	  problems with concurrency or privileges solvable by choice of
-	  appropriate paths to store the snapshots in.
 
-Actually the only operation you *really* need is one that parses two
-nfsstat outputs and subtracts:
-
-	nfsstat >tmp1
-	...
-	nfsstat >tmp2
-	nfsstat --diff tmp1 tmp2
-
-and then anything else you can easily script.
-
-> > But I think more snapshot-and-diff operations would be a fine idea.
-> > And probably easy and fun to implement.
-> Why not point that snapshot at /proc/self/mountstats? Those stats
-> will never be zero and the wealth of information in there truly
-> an untaped gold mine....
-
-Yeah, that'd be great.  We'll still need nfsstat for the server at
-least, I guess?  Does it still provide anything useful on the client
-side, or does mountstats supercede it completely?
-
---b.
+--------------040808060703030907030308
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
+--------------040808060703030907030308
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--------------040808060703030907030308--
