@@ -1,23 +1,24 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: Status of mount.nfs
-Date: Wed, 01 Aug 2007 06:58:21 -0400
-Message-ID: <46B0674D.7000803@RedHat.com>
-References: <20070708191640.GA13962@uio.no>	<18065.43199.104020.412029@notabene.brown>	<20070715083114.GB4158@uio.no>	<18074.50730.591965.39211@notabene.brown>	<20070716092047.GA10353@uio.no>	<18075.17719.855332.259470@notabene.brown>	<20070722191733.GA31501@uio.no>	<46A52816.6050500@oracle.com>	<20070724172451.GA14026@uio.no>	<46A7A5F8.4040204@oracle.com>	<46A897CD.50201@RedHat.com>	<46A96032.7080503@oracle.com>	<46AA089E.50503@RedHat.com>	<1185551769.6586.28.camel@localhost>	<46AA1A70.5010705@RedHat.com>	<1185553679.6586.34.camel@localhost>	<46AA2642.60505@RedHat.com>	<1185556406.6586.45.camel@localhost>	<46AB3BE9.1060903@RedHat.com>
-	<1185906627.6700.30.camel@localhost> <46AFA98E.1070904@oracle.com>
+From: Peter Staubach <staubach@redhat.com>
+Subject: Re: [PATCH 0/7] nfsstat: adding -D/--diff-stat to nfsstat
+Date: Wed, 01 Aug 2007 07:55:14 -0400
+Message-ID: <46B074A2.4010909@redhat.com>
+References: <Pine.BSO.4.64.0707311651120.13370@citi.umich.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: chuck.lever@oracle.com
+Cc: Neil Brown <neilb@suse.de>,
+	Andrew Richardson <chardson@umich.edu>, nfs@lists.sourceforge.net,
+	Alex Soule <soule@umich.edu>
+To: "david m. richter" <richterd@citi.umich.edu>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IGBvy-0003sb-Os
-	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 04:00:07 -0700
+	id 1IGCnQ-00019q-NN
+	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 04:55:20 -0700
 Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IGBw1-0007o8-Dq
-	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 04:00:10 -0700
-In-Reply-To: <46AFA98E.1070904@oracle.com>
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IGCnS-000664-8T
+	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 04:55:23 -0700
+In-Reply-To: <Pine.BSO.4.64.0707311651120.13370@citi.umich.edu>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,21 +31,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Chuck Lever wrote:
-> I was looking at this yesterday.  The stock timeout for TCP connects on 
-> Linux is 75 seconds.  The version of getport() used in the mount command 
-> might control the TCP connect timeout by using a non-blocking connect() 
-> with a select().  The select() then times out if the connection doesn't 
-> complete.
-> 
-> But I'm wondering if we really want to continue using TCP for GETPORT 
-> calls.  Solaris mount appears to use only UDP for GETPORT, for example.
-As as long as the GETPORTs don't use privilege ports I don't think its
-a problem... plus I don't think one size fixes all.. meaning due to
-different firewalls requirements both udp and tcp GETPORTS will be
-needed... imho...
+david m. richter wrote:
+> 	Hello, Neil,
+>
+> 	This set of patches adds -D/--diff-stat to nfsstat.  When this 
+> flag is used, instead of printing out the current total statistics and 
+> exiting, nfsstat takes a snapshot of the current statistics and pauses 
+> until the user types ^C, at which point a second snapshot is taken and 
+> only the difference between the two is printed; i.e., only the statistics 
+> gathered during the pause.
 
-steved.
+Hi.
+
+Perhaps I am missing something, but is something that we really need
+to complicate the nfsstat support with?  Is this not easy enough to
+do with already existing tools or some easily written support in sh
+or perl or awk or name your favorite administrative scripting language?
+
+    Thanx...
+
+       ps
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
