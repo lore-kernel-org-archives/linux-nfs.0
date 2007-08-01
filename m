@@ -1,25 +1,25 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 0/7] nfsstat: adding -D/--diff-stat to nfsstat
-Date: Wed, 01 Aug 2007 16:54:19 -0400
-Message-ID: <46B0F2FB.6060503@oracle.com>
-References: <Pine.BSO.4.64.0707311651120.13370@citi.umich.edu>	<46B074A2.4010909@redhat.com>	<Pine.BSO.4.64.0708011149240.25204@citi.umich.edu>	<46B0C92C.3020807@redhat.com>	<Pine.BSO.4.64.0708011413000.25204@citi.umich.edu>	<46B0CF5B.1000609@redhat.com>
-	<46B0E094.2080109@oracle.com> <46B0EA0D.1080100@RedHat.com>
-Reply-To: chuck.lever@oracle.com
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: Status of mount.nfs
+Date: Wed, 01 Aug 2007 17:12:39 -0400
+Message-ID: <46B0F747.3050704@RedHat.com>
+References: <20070708191640.GA13962@uio.no>	<18065.43199.104020.412029@notabene.brown>	<20070715083114.GB4158@uio.no>	<18074.50730.591965.39211@notabene.brown>	<20070716092047.GA10353@uio.no>	<18075.17719.855332.259470@notabene.brown>	<20070722191733.GA31501@uio.no>	<46A52816.6050500@oracle.com>	<20070724172451.GA14026@uio.no>	<46A7A5F8.4040204@oracle.com>	<46A897CD.50201@RedHat.com>	<46A96032.7080503@oracle.com>	<46AA089E.50503@RedHat.com>	<1185551769.6586.28.camel@localhost>	<46AA1A70.5010705@RedHat.com>	<1185553679.6586.34.camel@localhost>	<46AA2642.60505@RedHat.com>	<1185556406.6586.45.camel@localhost>	<46AB3BE9.1060903@RedHat.com>
+	<1185906627.6700.30.camel@localhost>
+	<46AFA98E.1070904@oracle.com> <46B0674D.7000803@RedHat.com>
+	<46B0E6DC.4080409@oracle.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------040808060703030907030308"
+Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: Steve Dickson <SteveD@redhat.com>
+To: chuck.lever@oracle.com
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IGLDb-0002WA-AE
-	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 13:54:55 -0700
-Received: from rgminet01.oracle.com ([148.87.113.118])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IGLDa-00071p-Bs
-	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 13:54:59 -0700
-In-Reply-To: <46B0EA0D.1080100@RedHat.com>
+	id 1IGLUj-0004RA-BT
+	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 14:12:37 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IGLUn-0000oS-0Y
+	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 14:12:41 -0700
+In-Reply-To: <46B0E6DC.4080409@oracle.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,98 +32,77 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
---------------040808060703030907030308
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
 
-Steve Dickson wrote:
-> Chuck Lever wrote:
->> The kernel stats themselves should never be zeroed except by umount or 
->> reboot.  Otherwise, tools like "sar" and "iostat" that are looking 
->> directly at the same set of kernel stats, and producing a "one every 5 
->> seconds" type of output, would be totally confused if "nfsstat -z" 
->> actually cleared the kernel counters.
-> In general, I agree. Stats that "sar" and "iostat" see should
-> not be zeroed.. but the nfsstat's stats do not fall in this
-> category. They are more like counters than true statistics.
-> I think if they were call nfscounts instead of nfsstats
-> there would be less of an uproar since reseting counter
-> is no big deal...
+
+Chuck Lever wrote:
+> Steve Dickson wrote:
+>> Chuck Lever wrote:
+>>> I was looking at this yesterday.  The stock timeout for TCP connects 
+>>> on Linux is 75 seconds.  The version of getport() used in the mount 
+>>> command might control the TCP connect timeout by using a non-blocking 
+>>> connect() with a select().  The select() then times out if the 
+>>> connection doesn't complete.
+>>>
+>>> But I'm wondering if we really want to continue using TCP for GETPORT 
+>>> calls.  Solaris mount appears to use only UDP for GETPORT, for example.
 > 
-> So in the end.. these counter are used to show nfs activity
-> for the entire box... so being able to zero them would
-> incredibly handy for developers and customers alike...
+>> As as long as the GETPORTs don't use privilege ports I don't think its
+>> a problem...
 > 
+> Not sure what you mean.  Yesterday you said the TCP connect timeout 
+> *was* a problem.  I've recommended two ways to address it.
+TCP timeouts are a problem if you can't control them... But
+point taken... UPD is probably the best way to query a
+portmapper or rpcbinder to get the needed info...
+
 > 
->>
->> So if we wanted an "nfsstat --since" or "nfsstat 5 5" kind of thing, 
->> maybe we should think about the other tools, how they fit in, and how 
->> they work, and see if we can use one of them for that.  Even better, a 
->> GUI like gnome-system-monitor would be very nice for watching NFS 
->> client and server performance in real time.
->>
->> I'm kind of tired of NFS living in its own little world with regard to 
->> the other file systems.  The NFS performance metrics I built were 
->> precisely for the purpose of making NFS a "first class" file system 
->> with regard to reporting errors and performance, and for the purpose 
->> of including NFS in the tools sysadmins normally use to watch I/O 
->> subsystem  performance data on local disks.
->>
->> Can we come up with a plan that moves NFS closer to other file systems?
-> Yeah... lets build a tool that understand the stats in
-> /proc/self/mountstats and continue build there... because imho,
-> thats where the future lies with regard to understanding and
-> analyzing NFS traffic patterns...
+> The ephemeral port space is limited too, don't forget.  It's simply a 
+> somewhat larger space than the privileged port space.  If a large 
+> network application (say, a web server) is running on the system, that 
+> space can shrink fairly rapidly, and we're in nearly the same boat as 
+> with privileged ports.  Using a TCP connection from an ephemeral port 
+> only mitigates the port space problem, it doesn't really correct it 
+> entirely.
+Only mitigates the problem for a short time and you'll always run
+out of privileged port before running out of non-privileged but
+again... point taken... eliminating the problem is probably
+the answer...
 
-I think I agree with this overall approach.
-
-Leave nfsstat alone (or maybe add "-z" to zero the traditional 
-/proc/net/rpc/nfs), and add support for /proc/self/mountstats in sar, 
-iostat, and vmstat.
-
-That way you can have your zeroed counters a la Solaris, and also have 
-counters that can't be zeroed for the tools that look for trends.
-
---------------040808060703030907030308
-Content-Type: text/x-vcard; charset=utf-8;
- name="chuck.lever.vcf"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="chuck.lever.vcf"
-
-begin:vcard
-fn:Chuck Lever
-n:Lever;Chuck
-org:Oracle Corporation;Corporate Architecture: Linux Projects Group
-adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
-title:Principal Member of Staff
-tel;work:+1 248 614 5091
-x-mozilla-html:FALSE
-url:http://oss.oracle.com/~cel
-version:2.1
-end:vcard
+> 
+>> plus I don't think one size fixes all.. meaning due to
+>> different firewalls requirements both udp and tcp GETPORTS will be
+>> needed... imho...
+> 
+> We say "firewall!" a lot, but I would like to see typical use cases for 
+> mounting through a firewall so I understand what kind of implementation 
+> we're aiming for (and maybe even what kind of test cases to build!).  Do 
+> our users really expect to mount NFS shares through any firewall with 
+> "-o defaults" ?
+Yes! Mostly on the server side... meaning people wanted to set the
+port the daemons listen on (via the initscripts) so clients can
+access the server through a firewall... Is this a common setup?
+No. But there are people that want a firewall between the
+server and client.. Also I can only assume the reason for the
+'mountport=" option was to work better with firewalls...
+but that is only speculation...
 
 
---------------040808060703030907030308
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+> 
+> I'd like to hear from the distributors what you consider are the use 
+> cases that absolutely must be supported.  Otherwise we will end up 
+> standing on our left big toenail to support stuff that isn't worth the 
+> pain or is never used.
+In the end, I think we need to be able to control the ports and
+protocol mounts uses, allowing people to punch holes in firewalls.
+
+
+steved.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
---------------040808060703030907030308
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---------------040808060703030907030308--
