@@ -1,23 +1,26 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH 0/7] nfsstat: adding -D/--diff-stat to nfsstat
-Date: Wed, 01 Aug 2007 16:03:13 -0400
-Message-ID: <46B0E701.6010801@RedHat.com>
-References: <Pine.BSO.4.64.0707311651120.13370@citi.umich.edu>	<Pine.BSO.4.64.0708011347200.25204@citi.umich.edu>	<01AE8AF878612047A442668306EAEB05DD298B@SACEXMV01.hq.netapp.com>	<Pine.BSO.4.64.0708011425580.25204@citi.umich.edu>
-	<20070801185052.GG13441@fieldses.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: Status of mount.nfs
+Date: Wed, 01 Aug 2007 16:02:36 -0400
+Message-ID: <46B0E6DC.4080409@oracle.com>
+References: <20070708191640.GA13962@uio.no>	<18065.43199.104020.412029@notabene.brown>	<20070715083114.GB4158@uio.no>	<18074.50730.591965.39211@notabene.brown>	<20070716092047.GA10353@uio.no>	<18075.17719.855332.259470@notabene.brown>	<20070722191733.GA31501@uio.no>	<46A52816.6050500@oracle.com>	<20070724172451.GA14026@uio.no>	<46A7A5F8.4040204@oracle.com>	<46A897CD.50201@RedHat.com>	<46A96032.7080503@oracle.com>	<46AA089E.50503@RedHat.com>	<1185551769.6586.28.camel@localhost>	<46AA1A70.5010705@RedHat.com>	<1185553679.6586.34.camel@localhost>	<46AA2642.60505@RedHat.com>	<1185556406.6586.45.camel@localhost>	<46AB3BE9.1060903@RedHat.com>
+	<1185906627.6700.30.camel@localhost>
+	<46AFA98E.1070904@oracle.com> <46B0674D.7000803@RedHat.com>
+Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-	"'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>
+Content-Type: multipart/mixed; boundary="------------030000050201030203040004"
+Cc: nfs@lists.sourceforge.net
+To: Steve Dickson <SteveD@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IGKPf-00059D-Gk
-	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 13:03:19 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IGKPh-0005Xd-3r
-	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 13:03:23 -0700
-In-Reply-To: <20070801185052.GG13441@fieldses.org>
+	id 1IGKQP-0005Ff-EW
+	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 13:04:05 -0700
+Received: from rgminet01.oracle.com ([148.87.113.118])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IGKQQ-0005sq-AQ
+	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 13:04:09 -0700
+In-Reply-To: <46B0674D.7000803@RedHat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,66 +33,95 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+This is a multi-part message in MIME format.
+--------------030000050201030203040004
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-
-J. Bruce Fields wrote:
-> On Wed, Aug 01, 2007 at 02:37:09PM -0400, david m. richter wrote:
->> 	i think that zeroing all the counters is too much of a "big 
->> hammer" approach to what was intended to be a quick and simple use-case.  
->> if there's a kernel interface for zeroing stuff, then maybe that could be 
->> added, too; someone should have-at.
+Steve Dickson wrote:
+> Chuck Lever wrote:
+>> I was looking at this yesterday.  The stock timeout for TCP connects 
+>> on Linux is 75 seconds.  The version of getport() used in the mount 
+>> command might control the TCP connect timeout by using a non-blocking 
+>> connect() with a select().  The select() then times out if the 
+>> connection doesn't complete.
 >>
->> 	thoughts, neil?
-> 
-> I think it was Steve that tried that a couple years ago.  I objected,
-> and feel like a bit of a jerk for it, because the fact is he did a fine
-> job of it as far as I could tell.
-Yeah it was me.... and I should have fought harder because since then
-I've had numerous requests and there has been a number of time I could
-have used that functionality in my own debugging... Heck I think the
-patch is still in the rhel3 nfs-utils...
+>> But I'm wondering if we really want to continue using TCP for GETPORT 
+>> calls.  Solaris mount appears to use only UDP for GETPORT, for example.
 
-> 
-> But I'd still object, for the same reasons; global zeroing of the in-kernel
-> stats is an operation that:
-> 
-> 	- isn't friendly to concurrent processes gathering stats:
-> 	  someone might want to run a cron job that summarizes the day's
-> 	  nfs stats, but still be able to log in and get a quick
-> 	  snapshot of current activity.
-So then don't zero them out... and if some one comes a long and
-does zero them out, thats a communication problem.. not a
-technical one... ;-)
+> As as long as the GETPORTs don't use privilege ports I don't think its
+> a problem...
+
+Not sure what you mean.  Yesterday you said the TCP connect timeout 
+*was* a problem.  I've recommended two ways to address it.
+
+The ephemeral port space is limited too, don't forget.  It's simply a 
+somewhat larger space than the privileged port space.  If a large 
+network application (say, a web server) is running on the system, that 
+space can shrink fairly rapidly, and we're in nearly the same boat as 
+with privileged ports.  Using a TCP connection from an ephemeral port 
+only mitigates the port space problem, it doesn't really correct it 
+entirely.
+
+> plus I don't think one size fixes all.. meaning due to
+> different firewalls requirements both udp and tcp GETPORTS will be
+> needed... imho...
+
+We say "firewall!" a lot, but I would like to see typical use cases for 
+mounting through a firewall so I understand what kind of implementation 
+we're aiming for (and maybe even what kind of test cases to build!).  Do 
+our users really expect to mount NFS shares through any firewall with 
+"-o defaults" ?
+
+I'd like to hear from the distributors what you consider are the use 
+cases that absolutely must be supported.  Otherwise we will end up 
+standing on our left big toenail to support stuff that isn't worth the 
+pain or is never used.
+
+And can anyone shed some light on why Solaris uses only UDP for GETPORT 
+requests at mount time?  Does it ever fall back to try GETPORT on a TCP 
+connection?  How do Solaris users mount through a firewall?  Come on all 
+you Solaris NFS guys out there, I know you're lurking.
+
+--------------030000050201030203040004
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck.lever.vcf"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="chuck.lever.vcf"
+
+begin:vcard
+fn:Chuck Lever
+n:Lever;Chuck
+org:Oracle Corporation;Corporate Architecture: Linux Projects Group
+adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
+title:Principal Member of Staff
+tel;work:+1 248 614 5091
+x-mozilla-html:FALSE
+url:http://oss.oracle.com/~cel
+version:2.1
+end:vcard
 
 
-> 	- requires special privileges: you may be comfortable allowing
-> 	  anyone to read the stats, but you probably won't allow anyone
-> 	  to zero them.
-This is a nit, imho... you could use groups to allow access to clearing
-the stats...
-
-> 	- requires a new kernel interface, when you could just do
-> 	  everything in userspace and get something that works for free
-> 	  on older kernels too....
-While its true there there was kernel changes needed... but those
-changes very small and self-contained and they made the entire
-process much much simpler....
-
-> 
-> But I think more snapshot-and-diff operations would be a fine idea.
-> And probably easy and fun to implement.
-Why not point that snapshot at /proc/self/mountstats? Those stats
-will never be zero and the wealth of information in there truly
-an untaped gold mine....
-
-steved.
-
+--------------030000050201030203040004
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
+--------------030000050201030203040004
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--------------030000050201030203040004--
