@@ -1,26 +1,23 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH 0/7] nfsstat: adding -D/--diff-stat to nfsstat
-Date: Wed, 1 Aug 2007 10:42:15 +1000
-Message-ID: <18095.55015.61682.405466@notabene.brown>
-References: <Pine.BSO.4.64.0707311651120.13370@citi.umich.edu>
-	<18095.45961.578381.351608@notabene.brown>
-	<Pine.BSO.4.64.0707311928380.5541@citi.umich.edu>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: Status of mount.nfs
+Date: Wed, 01 Aug 2007 06:58:21 -0400
+Message-ID: <46B0674D.7000803@RedHat.com>
+References: <20070708191640.GA13962@uio.no>	<18065.43199.104020.412029@notabene.brown>	<20070715083114.GB4158@uio.no>	<18074.50730.591965.39211@notabene.brown>	<20070716092047.GA10353@uio.no>	<18075.17719.855332.259470@notabene.brown>	<20070722191733.GA31501@uio.no>	<46A52816.6050500@oracle.com>	<20070724172451.GA14026@uio.no>	<46A7A5F8.4040204@oracle.com>	<46A897CD.50201@RedHat.com>	<46A96032.7080503@oracle.com>	<46AA089E.50503@RedHat.com>	<1185551769.6586.28.camel@localhost>	<46AA1A70.5010705@RedHat.com>	<1185553679.6586.34.camel@localhost>	<46AA2642.60505@RedHat.com>	<1185556406.6586.45.camel@localhost>	<46AB3BE9.1060903@RedHat.com>
+	<1185906627.6700.30.camel@localhost> <46AFA98E.1070904@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Andrew Richardson <chardson@umich.edu>,
-	nfs@lists.sourceforge.net, Alex Soule <soule@umich.edu>
-To: "david m. richter" <richterd@citi.umich.edu>
+Cc: nfs@lists.sourceforge.net
+To: chuck.lever@oracle.com
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IG2IB-0002Q6-6H
-	for nfs@lists.sourceforge.net; Tue, 31 Jul 2007 17:42:23 -0700
-Received: from cantor.suse.de ([195.135.220.2] helo=mx1.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IG2ID-00074g-OI
-	for nfs@lists.sourceforge.net; Tue, 31 Jul 2007 17:42:27 -0700
-In-Reply-To: message from david m. richter on Tuesday July 31
+	id 1IGBvy-0003sb-Os
+	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 04:00:07 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IGBw1-0007o8-Dq
+	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 04:00:10 -0700
+In-Reply-To: <46AFA98E.1070904@oracle.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,44 +30,21 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tuesday July 31, richterd@citi.umich.edu wrote:
-> > Sounds useful, though I think it would be even more useful if you
-> > could specify a number of seconds rather than needing to interrupt.
-> > That way you could use it in a script.
-> > Maybe even get it to repeat every n seconds?
-> > 
-> > Thanks. I'll look through the patches.
-> > 
-> > NeilBrown
+Chuck Lever wrote:
+> I was looking at this yesterday.  The stock timeout for TCP connects on 
+> Linux is 75 seconds.  The version of getport() used in the mount command 
+> might control the TCP connect timeout by using a non-blocking connect() 
+> with a select().  The select() then times out if the connection doesn't 
+> complete.
 > 
-> 	roger -- i'll look at adding an optional timeout w/ optional 
-> repeat.  good idea. 
-> 
+> But I'm wondering if we really want to continue using TCP for GETPORT 
+> calls.  Solaris mount appears to use only UDP for GETPORT, for example.
+As as long as the GETPORTs don't use privilege ports I don't think its
+a problem... plus I don't think one size fixes all.. meaning due to
+different firewalls requirements both udp and tcp GETPORTS will be
+needed... imho...
 
-Cool.  I have added everything to the git tree.
-(Nicely broken up patch set by the way - very easy to review).
-I made a couple of little cosmetic changes
- - removed all spaces before tabs or newlines
- - removed tabs before newlines
- - made these:
-+#define DECLARE_SRV(n, s...)	static statinfo n##s[] = { \
-+					SRV(net,s), \
-+					SRV(rpc,s), \
-+					SRV(rc,s), \
-+					SRV(fh,s), \
-+					SRV(proc2,s), \
-+					SRV(proc3,s),\
-+					SRV(proc4,s), \
-+					SRV(proc4ops,s),\
-+					{ NULL, 0, NULL }\
-
-   one per line.
-
-As well as the other bits I asked for, can I get a patch to the man
-page for nfsstat too please?
-
-Thanks,
-NeilBrown
+steved.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
