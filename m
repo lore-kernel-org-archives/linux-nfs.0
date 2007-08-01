@@ -1,30 +1,31 @@
-From: "david m. richter" <richterd@citi.umich.edu>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: [PATCH 0/7] nfsstat: adding -D/--diff-stat to nfsstat
-Date: Wed, 1 Aug 2007 13:45:16 -0400 (EDT)
-Message-ID: <Pine.BSO.4.64.0708011342240.25204@citi.umich.edu>
+Date: Wed, 01 Aug 2007 13:46:24 -0400
+Message-ID: <1185990384.6700.188.camel@localhost>
 References: <Pine.BSO.4.64.0707311651120.13370@citi.umich.edu>
 	<46B074A2.4010909@redhat.com>
 	<Pine.BSO.4.64.0708011149240.25204@citi.umich.edu>
 	<20070801165033.GA13441@fieldses.org>
 	<Pine.BSO.4.64.0708011333100.25204@citi.umich.edu>
-	<20070801174136.GC13441@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>, Peter Staubach <staubach@redhat.com>,
-	Andrew Richardson <chardson@umich.edu>, nfs@lists.sourceforge.net,
-	Alex Soule <soule@umich.edu>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Peter Staubach <staubach@redhat.com>, Neil Brown <neilb@suse.de>,
+	Alex Soule <soule@umich.edu>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Andrew Richardson <chardson@umich.edu>, nfs@lists.sourceforge.net
+To: "david m. richter" <richterd@citi.umich.edu>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IGIG1-0007dz-Hg
-	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 10:45:13 -0700
-Received: from citi.umich.edu ([141.211.133.111])
+	id 1IGIHR-0007lP-Va
+	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 10:46:42 -0700
+Received: from pat.uio.no ([129.240.10.15]
+	ident=[U2FsdGVkX1/l+OcmH4I12T6kJJmfCLSva+ix2E4O6vk=])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IGIG5-00023F-9Q
-	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 10:45:17 -0700
-In-Reply-To: <20070801174136.GC13441@fieldses.org>
+	(Exim 4.44) id 1IGIHT-0002aJ-VZ
+	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 10:46:45 -0700
+In-Reply-To: <Pine.BSO.4.64.0708011333100.25204@citi.umich.edu>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,43 +38,35 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, 1 Aug 2007, J. Bruce Fields wrote:
-
-> On Wed, Aug 01, 2007 at 01:35:16PM -0400, david m. richter wrote:
-> > > Can I make one more attempt to interest someone in implementing the
-> > > --since=baseline-file approach?  It'd be fun, and would make some more
-> > > flexible use cases very simple.  You could still get a time interval:
-> > > 
-> > > 	nfsstat >tmp
-> > > 	sleep 30
-> > > 	nfsstat --since=tmp
-> > > 
-> > > or you could do other stuff:
-> > > 
-> > > 	nfsstat >tmp
-> > > 	run-my-weird-test-case-here
-> > > 	nfsstat --since=tmp
+On Wed, 2007-08-01 at 13:35 -0400, david m. richter wrote:
+> > Can I make one more attempt to interest someone in implementing the
+> > --since=baseline-file approach?  It'd be fun, and would make some more
+> > flexible use cases very simple.  You could still get a time interval:
 > > 
-> > 	
-> > 	just curious: would you be satisfied if the --since file's ctime 
-> > were used as the beginning of the time interval?
-> 
-> Fine by me, but what were you going to use that for?  If you're just
-> producing a diff, then you don't need to know the length of the time
-> interval.  Did you just want to add a header saying "stats since
-> hh:mm:ss", or did you want to calculate per-second rates?
+> > 	nfsstat >tmp
+> > 	sleep 30
+> > 	nfsstat --since=tmp
+> > 
+> > or you could do other stuff:
+> > 
+> > 	nfsstat >tmp
+> > 	run-my-weird-test-case-here
+> > 	nfsstat --since=tmp
 
-	oh, maybe i just misread your "You could still get a time 
-interval" thing as meaning that you'd want it to display the length of 
-time since --since ran.  but now that i think about it, that's kind of a 
-silly thing -- maybe your --since file isn't your own, etc.
+Exactly. Being able to zero out the stats is way more flexible than the
+-D stuff...
 
-	--since (or something like it) should probably also have a "diff 
-these two statfiles" mode, like you said bruce.
+> 	
+> 	just curious: would you be satisfied if the --since file's ctime 
+> were used as the beginning of the time interval?
 
+What time interval? nfsstat doesn't output any time intervals, and I
+can't see how these proposals introduce one.
 
-	d
-	.
+Is it perhaps Bruce's choice of the word '--since' that is confusing?
+
+Trond
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
