@@ -1,27 +1,26 @@
-From: Chuck Lever <chuck.lever@oracle.com>
+From: Steve Dickson <SteveD@redhat.com>
 Subject: Re: [PATCH 0/7] nfsstat: adding -D/--diff-stat to nfsstat
-Date: Wed, 01 Aug 2007 15:35:48 -0400
-Message-ID: <46B0E094.2080109@oracle.com>
-References: <Pine.BSO.4.64.0707311651120.13370@citi.umich.edu>	<46B074A2.4010909@redhat.com>	<Pine.BSO.4.64.0708011149240.25204@citi.umich.edu>	<46B0C92C.3020807@redhat.com>	<Pine.BSO.4.64.0708011413000.25204@citi.umich.edu>
-	<46B0CF5B.1000609@redhat.com>
-Reply-To: chuck.lever@oracle.com
+Date: Wed, 01 Aug 2007 15:42:16 -0400
+Message-ID: <46B0E218.6090703@RedHat.com>
+References: <Pine.BSO.4.64.0707311651120.13370@citi.umich.edu>	<46B074A2.4010909@redhat.com>	<Pine.BSO.4.64.0708011149240.25204@citi.umich.edu>
+	<46B0C92C.3020807@redhat.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------020508080508020908080702"
-Cc: Neil Brown <neilb@suse.de>, Peter Staubach <staubach@redhat.com>,
-	Andrew Richardson <chardson@umich.edu>, Alex Soule <soule@umich.edu>,
+Content-Type: text/plain; charset="us-ascii"
+Cc: Neil Brown <neilb@suse.de>,
+	Andrew Richardson <chardson@umich.edu>, nfs@lists.sourceforge.net,
+	Alex Soule <soule@umich.edu>,
 	"david m. richter" <richterd@citi.umich.edu>
-To: nfs@lists.sourceforge.net
+To: Peter Staubach <staubach@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IGK0z-0002T6-GO
-	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 12:37:50 -0700
-Received: from rgminet01.oracle.com ([148.87.113.118])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IGK11-0004jC-4O
-	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 12:37:53 -0700
-In-Reply-To: <46B0CF5B.1000609@redhat.com>
+	id 1IGK5O-0002ym-QR
+	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 12:42:23 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IGK5S-0008Ku-FW
+	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 12:42:26 -0700
+In-Reply-To: <46B0C92C.3020807@redhat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,109 +33,69 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
---------------020508080508020908080702
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Transfer-Encoding: 7bit
-
 
 
 Peter Staubach wrote:
 > david m. richter wrote:
->>> Now, if someone was proposing a way to do "nfsstat 5" and make the
->>> output look useful, then I would be behind that 100%.
+>>> david m. richter wrote:
+>>>     
+>>>> 	Hello, Neil,
+>>>>
+>>>> 	This set of patches adds -D/--diff-stat to nfsstat.  When this flag is
+>>>> used, instead of printing out the current total statistics and exiting,
+>>>> nfsstat takes a snapshot of the current statistics and pauses until the user
+>>>> types ^C, at which point a second snapshot is taken and only the difference
+>>>> between the two is printed; i.e., only the statistics gathered during the
+>>>> pause.
+>>>>       
+>>> Hi.
+>>>
+>>> Perhaps I am missing something, but is something that we really need
+>>> to complicate the nfsstat support with?  Is this not easy enough to
+>>> do with already existing tools or some easily written support in sh
+>>> or perl or awk or name your favorite administrative scripting language?
 >>>
 >>>    Thanx...
 >>>
 >>>       ps
 >>>     
+>> 	
+>> 	hello, peter,
 >>
->> 	do you mean "gather stats for the next 5 seconds"?  i don't 
->> understand the arg.
+>> 	yes.  :)  right now, there's no easy way to run a test and get 
+>> stats for just that test, since the counters persist -- so you have to do 
+>> things like run a test, unmount, remount, etc.  this is a quick way to get 
+>> stats collected over an arbitrary period.  and it's not very complicated, 
+>> really.
+>>
+>> 	i don't think a shell/perl/python/etc script would be anywhere as 
+>> useful a substitute.  and with neil's suggestion about adding an optional 
+>> timeout to make it easier to use -in- scripts, i think we're on the right 
+>> track with this approach.
+>>
+>> 	.. thoughts/ideas?
 > 
-> Sorry, I should have been more explicit.  I have wished for
-> something that would behave like "vmstat 5", ie. print nfsstat
-> statistics in some sort short hand fashion once every few
-> seconds, 5 in this example.
+> It doesn't seem very complicated to me to store the output from two
+> nfsstat commands and then write a small script or whatever to parse
+> them and create output with the differences.
 > 
-> The problem has always been that there are too many operations
-> for summarize them on one line in any sort of interesting way.
-> This becomes particularly true for NFSv4 which has its multitude
-> of operations...
+> This would address the issues with wanting to be able to measure
+> the statistics for a particular duration or for the duration that
+> a particular problem runs.  Either would be easy to do.
 > 
-> Perhaps we should just bite the bullet and produce the large
-> output, much like "iostat 5" seems to.
-
-First, thanks to David and the citi guys for the patches.
-
-The kernel stats themselves should never be zeroed except by umount or 
-reboot.  Otherwise, tools like "sar" and "iostat" that are looking 
-directly at the same set of kernel stats, and producing a "one every 5 
-seconds" type of output, would be totally confused if "nfsstat -z" 
-actually cleared the kernel counters.
-
-There's a bigger picture here.  nfsstat does not live in a vacuum, it 
-lives in the presence of all the other I/O tools like sar, vmstat, and 
-iostat.  For that matter, we already have "watch nfsstat" and 
-"nfswatch".  Those tools already provide a "once every 5 seconds" type 
-of interface.  I might even be inclined to argue that adding "once every 
-5 seconds" type functionality is really outside of nfsstat's job 
-description.
-
-So if we wanted an "nfsstat --since" or "nfsstat 5 5" kind of thing, 
-maybe we should think about the other tools, how they fit in, and how 
-they work, and see if we can use one of them for that.  Even better, a 
-GUI like gnome-system-monitor would be very nice for watching NFS client 
-and server performance in real time.
-
-I'm kind of tired of NFS living in its own little world with regard to 
-the other file systems.  The NFS performance metrics I built were 
-precisely for the purpose of making NFS a "first class" file system with 
-regard to reporting errors and performance, and for the purpose of 
-including NFS in the tools sysadmins normally use to watch I/O subsystem 
-  performance data on local disks.
-
-Can we come up with a plan that moves NFS closer to other file systems?
-
---------------020508080508020908080702
-Content-Type: text/x-vcard; charset=utf-8;
- name="chuck.lever.vcf"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="chuck.lever.vcf"
-
-begin:vcard
-fn:Chuck Lever
-n:Lever;Chuck
-org:Oracle Corporation;Corporate Architecture: Linux Projects Group
-adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
-title:Principal Member of Staff
-tel;work:+1 248 614 5091
-x-mozilla-html:FALSE
-url:http://oss.oracle.com/~cel
-version:2.1
-end:vcard
+> Now, if someone was proposing a way to do "nfsstat 5" and make the
+> output look useful, then I would be behind that 100%.
+In a way we already have that... do 'watch nfsstat -c' I think
+you get what your looking for...
 
 
---------------020508080508020908080702
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+steved.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
---------------020508080508020908080702
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---------------020508080508020908080702--
