@@ -1,7 +1,7 @@
-From: "david m. richter" <richterd@citi.umich.edu>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: Re: [PATCH 0/7] nfsstat: adding -D/--diff-stat to nfsstat
-Date: Wed, 1 Aug 2007 13:48:58 -0400 (EDT)
-Message-ID: <Pine.BSO.4.64.0708011347200.25204@citi.umich.edu>
+Date: Wed, 1 Aug 2007 13:52:06 -0400
+Message-ID: <20070801175206.GD13441@fieldses.org>
 References: <Pine.BSO.4.64.0707311651120.13370@citi.umich.edu>
 	<46B074A2.4010909@redhat.com>
 	<Pine.BSO.4.64.0708011149240.25204@citi.umich.edu>
@@ -12,19 +12,19 @@ Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Peter Staubach <staubach@redhat.com>, Neil Brown <neilb@suse.de>,
 	Alex Soule <soule@umich.edu>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
+	"david m. richter" <richterd@citi.umich.edu>,
 	Andrew Richardson <chardson@umich.edu>, nfs@lists.sourceforge.net
 To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IGIJb-00081N-LD
-	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 10:48:55 -0700
-Received: from citi.umich.edu ([141.211.133.111])
+	id 1IGIMj-0008QN-MJ
+	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 10:52:09 -0700
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IGIJf-0003N8-En
-	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 10:48:59 -0700
+	(Exim 4.44) id 1IGIMm-0008T0-D7
+	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 10:52:13 -0700
 In-Reply-To: <1185990384.6700.188.camel@localhost>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -38,46 +38,19 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, 1 Aug 2007, Trond Myklebust wrote:
-
-> On Wed, 2007-08-01 at 13:35 -0400, david m. richter wrote:
-> > > Can I make one more attempt to interest someone in implementing the
-> > > --since=baseline-file approach?  It'd be fun, and would make some more
-> > > flexible use cases very simple.  You could still get a time interval:
-> > > 
-> > > 	nfsstat >tmp
-> > > 	sleep 30
-> > > 	nfsstat --since=tmp
-> > > 
-> > > or you could do other stuff:
-> > > 
-> > > 	nfsstat >tmp
-> > > 	run-my-weird-test-case-here
-> > > 	nfsstat --since=tmp
-> 
+On Wed, Aug 01, 2007 at 01:46:24PM -0400, Trond Myklebust wrote:
 > Exactly. Being able to zero out the stats is way more flexible than the
 > -D stuff...
 
-	perhaps i don't follow: how is zeroing the stats address the same 
-use-case as --diff-stat/--sleep?  one can already zero the stats by 
-unmounting, e.g., but that's a pain.  ?  i'm missing something.
+It's definitely a better primitive for building scripts.  I think
+-D/--sleep/whatever is what I'd personally end up using most of the time
+for quick troubleshooting, if only because it's less typing.
 
-
-> > 	just curious: would you be satisfied if the --since file's ctime 
-> > were used as the beginning of the time interval?
-> 
-> What time interval? nfsstat doesn't output any time intervals, and I
-> can't see how these proposals introduce one.
-> 
 > Is it perhaps Bruce's choice of the word '--since' that is confusing?
 
-	right -- like i said in another letter, i was just being dumb.  :)
+I'm not sure what'd be better: --previous? --baseline?
 
-
-	thanks,
-	
-	d
-	.
+--b.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
