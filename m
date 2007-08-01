@@ -1,25 +1,21 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: Status of mount.nfs
-Date: Wed, 01 Aug 2007 17:12:39 -0400
-Message-ID: <46B0F747.3050704@RedHat.com>
-References: <20070708191640.GA13962@uio.no>	<18065.43199.104020.412029@notabene.brown>	<20070715083114.GB4158@uio.no>	<18074.50730.591965.39211@notabene.brown>	<20070716092047.GA10353@uio.no>	<18075.17719.855332.259470@notabene.brown>	<20070722191733.GA31501@uio.no>	<46A52816.6050500@oracle.com>	<20070724172451.GA14026@uio.no>	<46A7A5F8.4040204@oracle.com>	<46A897CD.50201@RedHat.com>	<46A96032.7080503@oracle.com>	<46AA089E.50503@RedHat.com>	<1185551769.6586.28.camel@localhost>	<46AA1A70.5010705@RedHat.com>	<1185553679.6586.34.camel@localhost>	<46AA2642.60505@RedHat.com>	<1185556406.6586.45.camel@localhost>	<46AB3BE9.1060903@RedHat.com>
-	<1185906627.6700.30.camel@localhost>
-	<46AFA98E.1070904@oracle.com> <46B0674D.7000803@RedHat.com>
-	<46B0E6DC.4080409@oracle.com>
+From: "david m. richter" <richterd@citi.umich.edu>
+Subject: nfsstat: include counts for GETACL, SETACL, FS_LOCATIONS?
+Date: Wed, 1 Aug 2007 17:43:37 -0400 (EDT)
+Message-ID: <Pine.BSO.4.64.0708011727030.18305@citi.umich.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: chuck.lever@oracle.com
+To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IGLUj-0004RA-BT
-	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 14:12:37 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IGLUn-0000oS-0Y
-	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 14:12:41 -0700
-In-Reply-To: <46B0E6DC.4080409@oracle.com>
+	id 1IGLyj-0007n6-0i
+	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 14:43:37 -0700
+Received: from citi.umich.edu ([141.211.133.111])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IGLyk-0001C5-RM
+	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 14:43:41 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,71 +28,34 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+	hello, neil,
+
+	in fixing the has_stats()'s-false-positives bug, i've come across 
+some existing assumptions in the code about the number of elements in a 
+given stat type -- e.g., the number of NFSv4 client "operations" being 
+tallied.
+
+	in that specific case, three new counts in /proc/net/rpc/nfs have 
+been added that nfsstat doesn't currently acknowledge: GETACL, SETACL, and 
+FS_LOCATIONS, i believe.  
+
+	the manner in which i fix the has_stats() bug depends on how 
+closely nfsstat is intended to stay synchronized with the data in 
+/proc/net/rpc/nfs.  since these aren't actual NFSv4 procedures, i'm not 
+quite sure what folks expect.
+
+	please let me know what you think.
 
 
-Chuck Lever wrote:
-> Steve Dickson wrote:
->> Chuck Lever wrote:
->>> I was looking at this yesterday.  The stock timeout for TCP connects 
->>> on Linux is 75 seconds.  The version of getport() used in the mount 
->>> command might control the TCP connect timeout by using a non-blocking 
->>> connect() with a select().  The select() then times out if the 
->>> connection doesn't complete.
->>>
->>> But I'm wondering if we really want to continue using TCP for GETPORT 
->>> calls.  Solaris mount appears to use only UDP for GETPORT, for example.
-> 
->> As as long as the GETPORTs don't use privilege ports I don't think its
->> a problem...
-> 
-> Not sure what you mean.  Yesterday you said the TCP connect timeout 
-> *was* a problem.  I've recommended two ways to address it.
-TCP timeouts are a problem if you can't control them... But
-point taken... UPD is probably the best way to query a
-portmapper or rpcbinder to get the needed info...
+	thanks,
 
-> 
-> The ephemeral port space is limited too, don't forget.  It's simply a 
-> somewhat larger space than the privileged port space.  If a large 
-> network application (say, a web server) is running on the system, that 
-> space can shrink fairly rapidly, and we're in nearly the same boat as 
-> with privileged ports.  Using a TCP connection from an ephemeral port 
-> only mitigates the port space problem, it doesn't really correct it 
-> entirely.
-Only mitigates the problem for a short time and you'll always run
-out of privileged port before running out of non-privileged but
-again... point taken... eliminating the problem is probably
-the answer...
+	d
+	.
 
-> 
->> plus I don't think one size fixes all.. meaning due to
->> different firewalls requirements both udp and tcp GETPORTS will be
->> needed... imho...
-> 
-> We say "firewall!" a lot, but I would like to see typical use cases for 
-> mounting through a firewall so I understand what kind of implementation 
-> we're aiming for (and maybe even what kind of test cases to build!).  Do 
-> our users really expect to mount NFS shares through any firewall with 
-> "-o defaults" ?
-Yes! Mostly on the server side... meaning people wanted to set the
-port the daemons listen on (via the initscripts) so clients can
-access the server through a firewall... Is this a common setup?
-No. But there are people that want a firewall between the
-server and client.. Also I can only assume the reason for the
-'mountport=" option was to work better with firewalls...
-but that is only speculation...
-
-
-> 
-> I'd like to hear from the distributors what you consider are the use 
-> cases that absolutely must be supported.  Otherwise we will end up 
-> standing on our left big toenail to support stuff that isn't worth the 
-> pain or is never used.
-In the end, I think we need to be able to control the ports and
-protocol mounts uses, allowing people to punch holes in firewalls.
-
-
-steved.
+_____
+ david m. richter
+ CITI -- Center for Information Technology Integration
+ http://www.citi.umich.edu
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
