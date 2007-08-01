@@ -1,29 +1,36 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: [PATCH 0/7] nfsstat: adding -D/--diff-stat to nfsstat
-Date: Wed, 1 Aug 2007 14:38:56 -0400
-Message-ID: <20070801183856.GF13441@fieldses.org>
+Date: Wed, 01 Aug 2007 14:41:18 -0400
+Message-ID: <1185993678.6700.215.camel@localhost>
 References: <Pine.BSO.4.64.0707311651120.13370@citi.umich.edu>
+	<46B074A2.4010909@redhat.com>
+	<Pine.BSO.4.64.0708011149240.25204@citi.umich.edu>
+	<20070801165033.GA13441@fieldses.org>
+	<Pine.BSO.4.64.0708011333100.25204@citi.umich.edu>
+	<1185990384.6700.188.camel@localhost>
 	<Pine.BSO.4.64.0708011347200.25204@citi.umich.edu>
 	<01AE8AF878612047A442668306EAEB05DD298B@SACEXMV01.hq.netapp.com>
+	<Pine.BSO.4.64.0708011425580.25204@citi.umich.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Peter Staubach <staubach@redhat.com>, Neil Brown <neilb@suse.de>,
+	"Muntz,  Daniel" <Dan.Muntz@netapp.com>,
 	Alex Soule <soule@umich.edu>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Andrew Richardson <chardson@umich.edu>, nfs@lists.sourceforge.net,
-	"david m. richter" <richterd@citi.umich.edu>
-To: "Muntz, Daniel" <Dan.Muntz@netapp.com>
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Andrew Richardson <chardson@umich.edu>, nfs@lists.sourceforge.net
+To: "david m. richter" <richterd@citi.umich.edu>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IGJ6F-0004vI-Dw
-	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 11:39:11 -0700
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	id 1IGJ8k-00059l-4n
+	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 11:41:49 -0700
+Received: from pat.uio.no ([129.240.10.15]
+	ident=[U2FsdGVkX18C6K8KIf7UUsQOxWJnn8yzWhYOVzG9VUw=])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IGJ6J-0002OH-5c
-	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 11:39:15 -0700
-In-Reply-To: <01AE8AF878612047A442668306EAEB05DD298B@SACEXMV01.hq.netapp.com>
+	(Exim 4.44) id 1IGJ8m-00089s-Qz
+	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 11:41:50 -0700
+In-Reply-To: <Pine.BSO.4.64.0708011425580.25204@citi.umich.edu>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,18 +43,18 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, Aug 01, 2007 at 11:15:23AM -0700, Muntz, Daniel wrote:
-> i think you're answering your own question.  being able to zero the
-> stats with 'nfsstat -z' allows you to avoid unmounting, while giving you
-> the ability to, um, zero the stats...  instead of being a pain, it's
-> trivial.
-> 
-> if you don't want to zero your stats, i agree with others here, that a
-> simple script
+On Wed, 2007-08-01 at 14:37 -0400, david m. richter wrote:
 
-I'm sure contributions of simple scripts would be welcome.
+> 	i think that zeroing all the counters is too much of a "big 
+> hammer" approach to what was intended to be a quick and simple use-case.  
+> if there's a kernel interface for zeroing stuff, then maybe that could be 
+> added, too; someone should have-at.
 
---b.
+No! I see no reason to add such an interface when it can be emulated in
+userland.
+
+Trond
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
