@@ -1,28 +1,36 @@
-From: "Mock, JV Jason @ IS" <Jason.V.Mock@L-3Com.com>
-Subject: NFS Caching / Locking
-Date: Thu, 2 Aug 2007 12:42:39 -0500
-Message-ID: <F31FEAB987B7C2469181758C14265CFA040BBABB@gvlexch03.is.l-3com.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: Status of mount.nfs
+Date: Thu, 02 Aug 2007 14:42:05 -0400
+Message-ID: <1186080125.27480.10.camel@localhost>
+References: <20070708191640.GA13962@uio.no>
+	<18065.43199.104020.412029@notabene.brown>	<20070715083114.GB4158@uio.no>
+	<18074.50730.591965.39211@notabene.brown>	<20070716092047.GA10353@uio.no>
+	<18075.17719.855332.259470@notabene.brown>	<20070722191733.GA31501@uio.no>
+	<46A52816.6050500@oracle.com>	<20070724172451.GA14026@uio.no>
+	<46A7A5F8.4040204@oracle.com>	<46A897CD.50201@RedHat.com>
+	<46A96032.7080503@oracle.com>	<46AA089E.50503@RedHat.com>
+	<1185551769.6586.28.camel@localhost>	<46AA1A70.5010705@RedHat.com>
+	<1185553679.6586.34.camel@localhost>	<46AA2642.60505@RedHat.com>
+	<1185556406.6586.45.camel@localhost>	<46AB3BE9.1060903@RedHat.com>
+	<1185906627.6700.30.camel@localhost> <46AFA98E.1070904@oracle.com>
+	<46B0674D.7000803@RedHat.com> <46B0E6DC.4080409@oracle.com>
+	<46B0F747.3050704@RedHat.com>  <46B20467.5050601@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: <nfs@lists.sourceforge.net>
+Cc: nfs@lists.sourceforge.net, Steve Dickson <SteveD@redhat.com>
+To: chuck.lever@oracle.com
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IGehD-0006Js-Qs
-	for nfs@lists.sourceforge.net; Thu, 02 Aug 2007 10:42:48 -0700
-Received: from smtpout4.l-3com.com ([166.20.84.214])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IGehG-0002fe-IQ
-	for nfs@lists.sourceforge.net; Thu, 02 Aug 2007 10:42:51 -0700
-Received: from gvlmailhub.gvl.is.l-3com.com (gvlmailhub.gvl.is.l-3com.com
-	[138.254.134.153])
-	by isdns.is.l-3com.com  with ESMTP id l72HgiDX021909
-	for <nfs@lists.sourceforge.net>; Thu, 2 Aug 2007 12:42:44 -0500
-Received: from gvlexch03.is.l-3com.com (gvlexch03.is.l-3com.com
-	[138.254.134.123])
-	by gvlmailhub.gvl.is.l-3com.com (8.13.1/8.13.1) with ESMTP id
-	l72HgcNa024430
-	for <nfs@lists.sourceforge.net>; Thu, 2 Aug 2007 12:42:39 -0500
+	id 1IGfcn-0004dF-J0
+	for nfs@lists.sourceforge.net; Thu, 02 Aug 2007 11:42:17 -0700
+Received: from pat.uio.no ([129.240.10.15]
+	ident=[U2FsdGVkX1+L6RNT3RDx1Uh0Cgn/rP/QsOQ8RCvcnr0=])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IGfcq-0000rb-Gc
+	for nfs@lists.sourceforge.net; Thu, 02 Aug 2007 11:42:22 -0700
+In-Reply-To: <46B20467.5050601@oracle.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,35 +43,20 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-We've got a few problems, which I'd like to explain, that we need some
-suggestions on methods of correction.  The first being caching where
-client machines would see changes to a written file anywhere from 5 to
-60 seconds later.  The clients are running RHEL4 (2.6.9-32 with
-nfs-utils 1.0.6 - yea yea... I know... ancient...).  I know that
-O_DIRECT can help override the caching, however some of the worst
-effects appear to be with command line calls where we don't have the
-ability/time to modify how they open files.  Just to try to get another
-point of data to work with, we've loaded up 2.6.22.1 with nfs-utils
-1.0.8 (and additionally tried 1.1.0), and we appear to be having less
-problems except for a few occasional delays with executed commands and
-are not able to view locks on all machines (locks are only visible on
-the system that locked the file).  We have no problem using either
-kernel, but we'd love to try to figure out each of these problems.  I
-read through the NFS.sourceforge.net page the comment that "attribute
-caching" and "data caching" are two seperate things.  In that context
-they recommended O_DIRECT to resolve data caching, however is there any
-kind of flag that we can flip to say do not cache data?  At least
-2.6.22.1 is some what of an improvement on the caching...  if we could
-just resolve the locking issues... would anyone have suggestions on
-where to look to correct that?  I don't mind getting the NFS calls
-themselves and the code if need be...
- 
-I do appreciate any direction that anyone can give!!
- 
-Jason V. Mock
-Software Engineer II
-L-3 Communications - Greenville Integrated Systems
-Jason [DOT] V [DOT] Mock [AT] L-3Com [DOT] com
+On Thu, 2007-08-02 at 12:20 -0400, Chuck Lever wrote:
+
+> I'm not suggesting that we don't support mounting through a firewall. 
+> I'm wondering, though, how people expect it to work.  Is it acceptable 
+> to require a few extra mount options on clients to mount successfully 
+> through a firewall, or should a mount with no options whatsoever always 
+> work in this case?
+
+The strategy should be to make the _default_ behaviour safe. If you want
+to add optimisations that need switching on/off then those may take
+extra mount options.
+
+Trond
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
