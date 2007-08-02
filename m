@@ -1,21 +1,37 @@
-From: "Chakri n" <chakriin5@gmail.com>
-Subject: OOPS in shrink_dcache_for_umount
-Date: Thu, 2 Aug 2007 14:27:04 -0700
-Message-ID: <92cbf19b0708021427l7c88c642g3901e393ac2b90b9@mail.gmail.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: Status of mount.nfs
+Date: Thu, 02 Aug 2007 17:43:06 -0400
+Message-ID: <46B24FEA.1040300@oracle.com>
+References: <20070708191640.GA13962@uio.no>	
+	<18065.43199.104020.412029@notabene.brown>	<20070715083114.GB4158@uio.no>	
+	<18074.50730.591965.39211@notabene.brown>	<20070716092047.GA10353@uio.no>	
+	<18075.17719.855332.259470@notabene.brown>	<20070722191733.GA31501@uio.no>	
+	<46A52816.6050500@oracle.com>	<20070724172451.GA14026@uio.no>	
+	<46A7A5F8.4040204@oracle.com>	<46A897CD.50201@RedHat.com>	
+	<46A96032.7080503@oracle.com>	<46AA089E.50503@RedHat.com>	
+	<1185551769.6586.28.camel@localhost>	<46AA1A70.5010705@RedHat.com>	
+	<1185553679.6586.34.camel@localhost>	<46AA2642.60505@RedHat.com>	
+	<1185556406.6586.45.camel@localhost>	<46AB3BE9.1060903@RedHat.com>	
+	<1185906627.6700.30.camel@localhost>
+	<46AFA98E.1070904@oracle.com>	 <46B0674D.7000803@RedHat.com>
+	<46B0E6DC.4080409@oracle.com>	 <46B0F747.3050704@RedHat.com>
+	<46B20467.5050601@oracle.com> <1186080125.27480.10.camel@localhost>
+Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+Content-Type: multipart/mixed; boundary="------------000602090602080002030701"
+Cc: nfs@lists.sourceforge.net, Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IGiCE-0006Ue-AR
-	for nfs@lists.sourceforge.net; Thu, 02 Aug 2007 14:27:03 -0700
-Received: from nz-out-0506.google.com ([64.233.162.239])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IGiCI-0000Sc-4o
-	for nfs@lists.sourceforge.net; Thu, 02 Aug 2007 14:27:06 -0700
-Received: by nz-out-0506.google.com with SMTP id f1so1134039nzc
-	for <nfs@lists.sourceforge.net>; Thu, 02 Aug 2007 14:27:05 -0700 (PDT)
+	id 1IGiT9-00088l-RR
+	for nfs@lists.sourceforge.net; Thu, 02 Aug 2007 14:44:34 -0700
+Received: from rgminet01.oracle.com ([148.87.113.118])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IGiTC-0000aD-L8
+	for nfs@lists.sourceforge.net; Thu, 02 Aug 2007 14:44:36 -0700
+In-Reply-To: <1186080125.27480.10.camel@localhost>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,73 +44,67 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi,
+This is a multi-part message in MIME format.
+--------------000602090602080002030701
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-We are seeing this problem while unmounting file systems. It happens
-once in a while.
-I am able to grab the trace and core from linux-2.6.18-1.8.el5, but I
-have observed the same problem with linux-2.6.20.1 kernel.
+Trond Myklebust wrote:
+> On Thu, 2007-08-02 at 12:20 -0400, Chuck Lever wrote:
+> 
+>> I'm not suggesting that we don't support mounting through a firewall. 
+>> I'm wondering, though, how people expect it to work.  Is it acceptable 
+>> to require a few extra mount options on clients to mount successfully 
+>> through a firewall, or should a mount with no options whatsoever always 
+>> work in this case?
+> 
+> The strategy should be to make the _default_ behaviour safe. If you want
+> to add optimisations that need switching on/off then those may take
+> extra mount options.
 
-Has this problem fixed in recent kernel?
+Exactly: is mounting through a firewall an optimization, or is it 
+something that users expect, by default, to work without using extra 
+options?
 
-BUG: Dentry f7498f70{i=12803e,n=client72} still in use (1) [unmount of nfs 0:18]
-------------[ cut here ]------------
-kernel BUG at fs/dcache.c:615!
-invalid opcode: 0000 [#1]
-SMP
-last sysfs file: /block/ram0/range
-Modules linked in: nfs fscache nfsd exportfs lockd nfs_acl
-ipmi_msghandler kazprocs(U) sunrpc ipv6
- dm_mirror dm_mod video sbs i2c_ec button battery asus_acpi ac lp
-floppy snd_intel8x0 snd_ac97_cod
-ec snd_ac97_bus snd_seq_dummy snd_seq_oss snd_seq_midi_event snd_seq
-snd_seq_device snd_pcm_oss sn
-d_mixer_oss snd_pcm snd_timer snd soundcore snd_page_alloc ide_cd e100
-parport_pc i2c_i801 mii par
-port pcspkr i2c_core cdrom serio_raw ata_piix libata sd_mod scsi_mod
-ext3 jbd ehci_hcd ohci_hcd uh
-ci_hcd
-CPU:    0
-EIP:    0060:[<c047e49f>]    Not tainted VLI
-EFLAGS: 00010246   (2.6.18-8.el5 #1)
-EIP is at shrink_dcache_for_umount_subtree+0x133/0x1c1
-eax: 00000054   ebx: f7498f70   ecx: c0621b24   edx: de121ee8
-esi: 00000001   edi: f7835740   ebp: 0012803e   esp: de121ee4
-ds: 007b   es: 007b   ss: 0068
-Process umount.nfs (pid: 29559, ti=de121000 task=ebbe5000 task.ti=de121000)
-Stack: c0621b24 f7498f70 0012803e f7498fd4 00000001 f8d55765 f7835740 f7835600
-       f8d67980 00000000 00000000 c047ec5d f7835600 c0470153 00000018 f8d67960
-       c0470248 e1b0d380 f8d3a175 f7835600 c04702d7 f74629c0 f7835600 c0483165
-Call Trace:
- [<c047ec5d>] shrink_dcache_for_umount+0x2e/0x3a
- [<c0470153>] generic_shutdown_super+0x16/0xd5
- [<c0470248>] kill_anon_super+0x9/0x2f
- [<f8d3a175>] nfs_kill_super+0xc/0x14 [nfs]
- [<c04702d7>] deactivate_super+0x52/0x65
- [<c0483165>] sys_umount+0x1f0/0x218
- [<c059c9eb>] release_sock+0xc/0x91
- [<c05fd48f>] do_page_fault+0x20a/0x4b8
- [<c05fd4f9>] do_page_fault+0x274/0x4b8
- [<c0483198>] sys_oldumount+0xb/0xe
- [<c0403eff>] syscall_call+0x7/0xb
- =======================
-Code: ed 8b 53 0c 8b 33 8b 4b 24 8d b8 40 01 00 00 8b 40 1c 85 d2 8b
-00 74 03 8b 6a 20 57 50 56 51
- 55 53 68 24 1b 62 c0 e8 c5 5c fa ff <0f> 0b 67 02 18 1b 62 c0 83 c4
-1c 8b 73 18 39 de 75 04 31 f6
- eb
-EIP: [<c047e49f>] shrink_dcache_for_umount_subtree+0x133/0x1c1 SS:ESP
-0068:de121ee4
+--------------000602090602080002030701
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck.lever.vcf"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="chuck.lever.vcf"
+
+begin:vcard
+fn:Chuck Lever
+n:Lever;Chuck
+org:Oracle Corporation;Corporate Architecture: Linux Projects Group
+adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
+title:Principal Member of Staff
+tel;work:+1 248 614 5091
+x-mozilla-html:FALSE
+url:http://oss.oracle.com/~cel
+version:2.1
+end:vcard
 
 
-Thanks
---Chakri
+--------------000602090602080002030701
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
+--------------000602090602080002030701
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--------------000602090602080002030701--
