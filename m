@@ -1,32 +1,26 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: (no subject)
-Date: Thu, 2 Aug 2007 11:45:54 -0400
-Message-ID: <20070802114554.552c3407.jlayton@redhat.com>
-References: <6efae230.53ea6361.46b186ac.d4e1b@o2.pl>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: rpc.mountd crashes when extensively using netgroups
+Date: Thu, 2 Aug 2007 12:05:36 -0400
+Message-ID: <20070802160536.GF21282@fieldses.org>
+References: <46ADDFB2.9070709@inf.ethz.ch>
+	<20070731144824.GA15231@fieldses.org>
+	<20070802113255.d686894c.jlayton@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org,
+	Stefan Walter <stefan.walter@inf.ethz.ch>
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IGcsB-00022f-Bw
-	for nfs@lists.sourceforge.net; Thu, 02 Aug 2007 08:46:03 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IGcsE-00052j-KC
-	for nfs@lists.sourceforge.net; Thu, 02 Aug 2007 08:46:03 -0700
-Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com
-	[172.16.52.254])
-	by mx1.redhat.com (8.13.1/8.13.1) with ESMTP id l72FjtsO011028
-	for <nfs@lists.sourceforge.net>; Thu, 2 Aug 2007 11:45:55 -0400
-Received: from pobox.corp.redhat.com (pobox.corp.redhat.com [10.11.255.20])
-	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l72Fjt0Q023852
-	for <nfs@lists.sourceforge.net>; Thu, 2 Aug 2007 11:45:55 -0400
-Received: from tleilax.poochiereds.net (vpn-14-120.rdu.redhat.com
-	[10.11.14.120])
-	by pobox.corp.redhat.com (8.13.1/8.13.1) with SMTP id l72FjsJO031618
-	for <nfs@lists.sourceforge.net>; Thu, 2 Aug 2007 11:45:54 -0400
-In-Reply-To: <6efae230.53ea6361.46b186ac.d4e1b@o2.pl>
+	id 1IGdBD-0004Bj-4k
+	for nfs@lists.sourceforge.net; Thu, 02 Aug 2007 09:05:39 -0700
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IGdBF-0005Su-EC
+	for nfs@lists.sourceforge.net; Thu, 02 Aug 2007 09:05:43 -0700
+In-Reply-To: <20070802113255.d686894c.jlayton@redhat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -39,55 +33,47 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, 02 Aug 2007 09:24:28 +0200
-Piotr Kandziora <raveen@tlen.pl> wrote:
+On Thu, Aug 02, 2007 at 11:32:55AM -0400, Jeff Layton wrote:
+> On Tue, 31 Jul 2007 10:48:24 -0400
+> "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > That's an interesting problem.  Thanks for the report!
+> > 
+> > I don't believe that long comma-delimited string actually has any
+> > meaning to the kernel--as far as the kernel is concerned, it's just an
+> > opaque object that will be passed back to mountd later (along with a
+> > path name) to get export options.
+> > 
+> > So I suppose that string could be replaced by a hash, or maybe even just
+> > by the ip address of the particular host--the disadvantage to the latter
+> > being that it would require the kernel to keep a separate export for
+> > each client address.
+> 
+> I started having a look at this today. The original patches that I
+> proposed to clean up the rmtab a few months ago also eliminated this
+> comma-delimited string. Neil had valid objections to it at the time,
+> but if we switched to using the IP address as a cache key like Bruce
+> describes then doing that becomes more reasonable.
+> 
+> The only downside I see is the one Bruce points out -- the size of
+> the kernel export cache would increase. I don't have a feel for whether
+> this is a show stopper, however.
 
-> Server NFS: 192.168.0.166
-> client 1: 192.168.0.169
-> client 2: 192.168.0.183
-> 
-> showmount output on server:
-> # showmount -a
-> All mount points on hostname:
-> *:/aa
-> *:/bb
-> 192.168.0.169:*
-> 192.168.0.183:*
-> 
-> # cat /var/lib/nfs/rmtab
-> 192.168.0.183:*:0x00000001
-> *:/aa:0x00000002
-> 192.168.0.169:*:0x00000002
-> *:/bb:0x00000002
-> 
-> client 1:
-> # mount|grep 166
-> 192.168.0.166:/aa on /mnt/tmp0 type nfs (rw,addr=192.168.0.166)
-> 192.168.0.166:/bb on /mnt/tmp1 type nfs (rw,addr=192.168.0.166)
-> 
-> client 2:
-> # mount|grep 166
-> 192.168.0.166:/aa on /mnt/tmp0 type nfs
-> (rw,vers=3,rsize=32768,wsize=32768,hard,proto=udp,timeo=7,retrans=3,addr=192.168.0.166)
-> 
-> On client 1 there are mounted two shares (aa and bb), on client 2 only one share (aa).
-> 
-> My questions are:
-> 
-> How to get information about mounted shares on concrete clients from showmount or other command?
-> 
+Yeah, there might be some risk of solving that problem at the expense of
+people with tons of clients all matching *.example.com.  The actual
+export objects are actually pretty small--68 bytes, last I checked?
+You'd also need two upcalls to mountd per client (for ip address and
+export, as opposed to just ip address).  I don't know what other costs
+there might be.
 
-This info will never be reliable -- see the notes on rmtab in
-rpc.mountd(8).
+What about the idea of hashing the comma-delimited list and passing
+that?  You'd want hash large enough to be collision-free--might as well
+use some cryptographic hash, I guess, though it may be mild overkill.
+Is there any reason why that wouldn't work?
 
-> What is meaning of asterisks in showmount output?
+Could you remind me what problems you were trying to fix with your rmtab
+cleanup?
 
-The nfs-utils rmtab handling code was recently fixed a few months ago.
-You're likely running older code that's inserting these bogus entries
-into the rmtab for each mount.
-
--- 
-Jeff Layton <jlayton@redhat.com>
+--b.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
