@@ -1,19 +1,22 @@
-From: Mahoney O.Becky <uira@nsiw.com>
+From: =?UTF-8?Q?Piotr_Kandziora?= <raveen@tlen.pl>
 Subject: (no subject)
-Date: Wed, 1 Aug 2007 20:08:14 -0400
-Message-ID: <46B1206E.8080507@nsiw.com>
+Date: Thu, 02 Aug 2007 09:24:28 +0200
+Message-ID: <6efae230.53ea6361.46b186ac.d4e1b@o2.pl>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------080302040801030407070603"
+Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IGOEZ-0005Gl-Q7
-	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 17:08:07 -0700
-Received: from pool-71-253-254-25.nrflva.east.verizon.net ([71.253.254.25])
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1IGOEb-0002OJ-VN
-	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 17:08:11 -0700
+	id 1IGV2s-0006Oc-Hm
+	for nfs@lists.sourceforge.net; Thu, 02 Aug 2007 00:24:30 -0700
+Received: from rekin23.go2.pl ([193.17.41.16])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IGV2v-0002RB-5y
+	for nfs@lists.sourceforge.net; Thu, 02 Aug 2007 00:24:34 -0700
+Received: from o2.pl (unknown [10.0.0.17])
+	by rekin23.go2.pl (Postfix) with SMTP id 03B4212885B
+	for <nfs@lists.sourceforge.net>; Thu,  2 Aug 2007 09:24:29 +0200 (CEST)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,150 +29,50 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---------------080302040801030407070603
-Content-Type: text/plain; charset=windows-1250; format=flowed
-Content-Transfer-Encoding: 7bit
+Server NFS: 192.168.0.166
+client 1: 192.168.0.169
+client 2: 192.168.0.183
+
+showmount output on server:
+# showmount -a
+All mount points on hostname:
+*:/aa
+*:/bb
+192.168.0.169:*
+192.168.0.183:*
+
+# cat /var/lib/nfs/rmtab
+192.168.0.183:*:0x00000001
+*:/aa:0x00000002
+192.168.0.169:*:0x00000002
+*:/bb:0x00000002
+
+client 1:
+# mount|grep 166
+192.168.0.166:/aa on /mnt/tmp0 type nfs (rw,addr=192.168.0.166)
+192.168.0.166:/bb on /mnt/tmp1 type nfs (rw,addr=192.168.0.166)
+
+client 2:
+# mount|grep 166
+192.168.0.166:/aa on /mnt/tmp0 type nfs
+(rw,vers=3,rsize=32768,wsize=32768,hard,proto=udp,timeo=7,retrans=3,addr=192.168.0.166)
+
+On client 1 there are mounted two shares (aa and bb), on client 2 only one share (aa).
+
+My questions are:
+
+How to get information about mounted shares on concrete clients from showmount or other command?
+
+What is meaning of asterisks in showmount output?
 
 
 
---------------080302040801030407070603
-Content-Type: application/pdf;
- name="facts.pdf"
-Content-Transfer-Encoding: base64
-Content-Disposition: inline;
- filename="facts.pdf"
-
-JVBERi0xLjEKJeLjz9MKMSAwIG9iaiAKPDwKL1BhZ2VzIDIgMCBSCi9UeXBlIC9DYXRhbG9nCj4+
-CmVuZG9iaiAKMiAwIG9iaiAKPDwKL01lZGlhQm94IFswIDAgNjEyIDc5Ml0KL0tpZHMgWzMgMCBS
-IDQgMCBSIDUgMCBSXQovQ291bnQgMwovVHlwZSAvUGFnZXMKPj4KZW5kb2JqIAo2IDAgb2JqIAo8
-PAovQmFzZUZvbnQgL0NvdXJpZXIKL1N1YnR5cGUgL1R5cGUxCi9OYW1lIC9GMQovVHlwZSAvRm9u
-dAo+PgplbmRvYmogCjcgMCBvYmogCjw8Ci9Gb250IAo8PAovRjEgNiAwIFIKPj4KL1Byb2NTZXQg
-Wy9QREYgL1RleHRdCj4+CmVuZG9iaiAKMyAwIG9iaiAKPDwKL1BhcmVudCAyIDAgUgovTWVkaWFC
-b3ggWzAgMCA2MTIgNzkyXQovUmVzb3VyY2VzIDcgMCBSCi9Db250ZW50cyA4IDAgUgovVHlwZSAv
-UGFnZQo+PgplbmRvYmogCjggMCBvYmogCjw8Ci9MZW5ndGggMTEzOAo+PgpzdHJlYW0KJJaIzjAV
-JO3I61cMl5MtARUivwVuHNljQywtJHbfBy/RVx+0tmztJIyqt0l7BYWNZyM4NIkUFrLR2QfOw3y5
-YhDC7IFFm4D1YtInPbkU6ywMk0RPyFEGdUIDY+qlNUwuwFj4CDGQw+h/0CC5BXgr5QbRC6ySsC8b
-6im9eFQ/+rZPNxccW7xP3TBx5RWpfIz6wrlHsCmzcaMBGwNq/LO8lM442zUPTAyrzB5qok87+/ni
-izpPizh7khhllY7E54geLfmeeCQ6kb+nip4k2GPJXXnHdZftHPi5fV9RPqnVu8zeLAXwPVzgpRS8
-EdGfMuoTLfYrk3Uq6T08v7wbTFB0QJU6LKD2GnS5vJeICAjlZpT+OyWIIY+p/zjtUnJO4Jzmi9Vk
-ZDtko5RqcFwKoP5bAeNER1c6kHTkjMNeG/2Hy4ZCepvD0MAwOD68DCRPVmI4J9OTNTLiwzedTKW5
-jc7c+a5RWwy6iFmcMEqKj6bqoDWK9/u/vdW+w2+dvyf0FP8af7aKiNSge8W11i5nVGk0nsKl6kc6
-OcbGeo0/gaqIxMvdfALSqJs7bY/4HwWsGWkjqtxsrqAWFDCA2zKOjq+xf6fSmD73hQBc1IMgPcfb
-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
-aCAxMjgKL1YgMgovVSAopQchE/H12iQsjPtG6LlH5gAAAAAAAAAAAAAAAAAAAAApCj4+CmVuZG9i
-aiAKMTIgMCBvYmogCjw8Ci9UaXRsZSAolFuJr2K95+Ia9R88sLERdVXqf7ChD72eA7tcKN3lHVH+
-8SfEAmxcchx/LwE+QuIYPH6p2mE3qv6a8u3Ok8t4gcFd3TwD6+4OnFRjvi4+8Y/iU8BqjUSwX8Z3
-XCgybg/TsenDnndjd8ClBXWN+3tI6FOcqKbptJEfaqaE4JaN3klw0VpwDufsFnTbnzNpUMsuWnqE
-dvXCG3hWKQovUHJvZHVjZXIgKJBQnKRyp+fdFr5RWaO6CydF6Suv5A+hlEqlKo/8FFb1+CCIFCpI
-GXg4RSIV+FxceTC1xCYxqvyG7u/OmMA9m4lajzcZ7/MX2VN56iByyMb2U9tikF6wUdRrXCgybg/b
-oO7MjSJ5e5PhXGJoir5cKFn+SdWnsumkmA4vyPfa35LaAHWTHicV++0HMcXXNSZJwjVWapI5KQov
-Q3JlYXRpb25EYXRlICiZD8/6Nfq+h0KgQVwo5+1HMSkKPj4KZW5kb2JqIHhyZWYKMCAxMwowMDAw
-MDAwMDAwIDY1NTM1IGYgCjAwMDAwMDAwMTUgMDAwMDAgbiAKMDAwMDAwMDA2NiAwMDAwMCBuIAow
-MDAwMDAwMzA5IDAwMDAwIG4gCjAwMDAwMDE2MDggMDAwMDAgbiAKMDAwMDAwMzgyOCAwMDAwMCBu
-IAowMDAwMDAwMTYxIDAwMDAwIG4gCjAwMDAwMDAyNDEgMDAwMDAgbiAKMDAwMDAwMDQxNSAwMDAw
-MCBuIAowMDAwMDAxNzE0IDAwMDAwIG4gCjAwMDAwMDM5MzUgMDAwMDAgbiAKMDAwMDAwNTM4MyAw
-MDAwMCBuIAowMDAwMDA1NTMyIDAwMDAwIG4gCnRyYWlsZXIKCjw8Ci9FbmNyeXB0IDExIDAgUgov
-SW5mbyAxMiAwIFIKL1Jvb3QgMSAwIFIKL1NpemUgMTMKL0lEIFs8ZDg5YjYzMzg1ZjY0NzJjMjli
-YjhkZDAwZGY2NDg0YmI+PDhmYzlkMzg3M2FmODYzOWQyYjM4OTJlZTRjOTYyYWE2Pl0KPj4Kc3Rh
-cnR4cmVmCjU5MTQKJSVFT0YK
---------------080302040801030407070603
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
---------------080302040801030407070603
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---------------080302040801030407070603--
