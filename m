@@ -1,21 +1,21 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 06/10] mount.nfs: Always close the socket at the end
-	of	getport()
-Date: Fri, 03 Aug 2007 13:23:54 -0400
-Message-ID: <20070803172354.3357.95372.stgit@monet.1015granger.net>
+Subject: [PATCH 09/10] mount.nfs: Refactor mount logic to allow
+	support for	"bg" option
+Date: Fri, 03 Aug 2007 13:24:10 -0400
+Message-ID: <20070803172410.3357.66177.stgit@monet.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 To: neilb@suse.de
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IH0sW-0001x0-RO
-	for nfs@lists.sourceforge.net; Fri, 03 Aug 2007 10:23:56 -0700
+	id 1IH0sh-00021a-9A
+	for nfs@lists.sourceforge.net; Fri, 03 Aug 2007 10:24:07 -0700
 Received: from flpvm23.prodigy.net ([207.115.20.53])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IH0sa-0007go-ME
-	for nfs@lists.sourceforge.net; Fri, 03 Aug 2007 10:24:00 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IH0sl-0000hW-5w
+	for nfs@lists.sourceforge.net; Fri, 03 Aug 2007 10:24:11 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,42 +28,75 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-These days, none of get_socket()'s callers pass an RPC_ANYSOCK on to the
-RPC code.
+Refactor main() a bit to make adding support for "bg" option easier.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/mount/network.c |    9 ++++-----
- 1 files changed, 4 insertions(+), 5 deletions(-)
+ utils/mount/mount.c |   43 +++++++++++++++++++++++++++----------------
+ 1 files changed, 27 insertions(+), 16 deletions(-)
 
-diff --git a/utils/mount/network.c b/utils/mount/network.c
-index 89cb976..132ff1e 100644
---- a/utils/mount/network.c
-+++ b/utils/mount/network.c
-@@ -210,9 +210,9 @@ out:
+diff --git a/utils/mount/mount.c b/utils/mount/mount.c
+index 9ac817c..c0c3971 100644
+--- a/utils/mount/mount.c
++++ b/utils/mount/mount.c
+@@ -361,6 +361,31 @@ static int chk_mountpoint(char *mount_point)
+ 	return 0;
  }
  
- /*
-- * Create a socket that is locally bound to a reserved or non-reserved
-- * port. For any failures, RPC_ANYSOCK is returned which will cause 
-- * the RPC code to create the socket instead. 
-+ * Create a socket that is locally bound to a reserved or non-reserved port.
-+ *
-+ * The caller should check rpc_createerr to determine the cause of any error.
-  */
- static int get_socket(struct sockaddr_in *saddr, unsigned int p_prot,
- 			unsigned int timeout, int resvp, int conn)
-@@ -360,8 +360,7 @@ static unsigned short getport(struct sockaddr_in *saddr,
- 		else if (port == 0)
- 			rpc_createerr.cf_stat = RPC_PROGNOTREGISTERED;
++static int try_mount(char *spec, char *mount_point, int flags,
++			char *fs_type, char **extra_opts, char *mount_opts,
++			int fake, int nomtab, int bg)
++{
++	int ret;
++
++	if (strcmp(fs_type, "nfs4") == 0)
++		ret = nfs4mount(spec, mount_point, flags,
++				extra_opts, fake, bg);
++	else
++		ret = nfsmount(spec, mount_point, flags,
++				extra_opts, fake, bg);
++
++	if (ret)
++		return ret;
++
++	if (!fake)
++		print_one(spec, mount_point, fs_type, mount_opts);
++
++	if (!nomtab)
++		ret = add_mtab(spec, mount_point, fs_type, flags, *extra_opts,
++				0, 0 /* these are always zero for NFS */ );
++	return ret;
++}
++
+ int main(int argc, char *argv[])
+ {
+ 	int c, flags = 0, mnt_err = 1, fake = 0;
+@@ -492,22 +517,8 @@ int main(int argc, char *argv[])
+ 		goto out;
  	}
--	if (socket != 1)
--		close(socket);
-+	close(socket);
  
- 	return port;
- }
+-	if (strcmp(fs_type, "nfs4") == 0)
+-		mnt_err = nfs4mount(spec, mount_point, flags,
+-					&extra_opts, fake, 0);
+-	else
+-		mnt_err = nfsmount(spec, mount_point, flags,
+-					&extra_opts, fake, 0);
+-
+-	if (mnt_err)
+-		exit(EX_FAIL);
+-
+-	if (!fake)
+-		print_one(spec, mount_point, fs_type, mount_opts);
+-
+-	if (!nomtab)
+-		mnt_err = add_mtab(spec, mount_point, fs_type, flags, extra_opts,
+-				0, 0 /* these are always zero for NFS */ );
++	mnt_err = try_mount(spec, mount_point, flags, fs_type, &extra_opts,
++				mount_opts, fake, nomtab, 0);
+ 
+ out:
+ 	free(mount_point);
 
 
 -------------------------------------------------------------------------
