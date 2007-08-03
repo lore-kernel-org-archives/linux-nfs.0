@@ -1,21 +1,24 @@
 From: Peter Staubach <staubach@redhat.com>
-Subject: [PATCH] 64 bit ino support for NFS server
-Date: Fri, 03 Aug 2007 15:11:34 -0400
-Message-ID: <46B37DE6.80706@redhat.com>
+Subject: Re: [PATCH] 64 bit ino support for NFS server
+Date: Fri, 03 Aug 2007 15:29:10 -0400
+Message-ID: <46B38206.6050504@redhat.com>
+References: <46B37DE6.80706@redhat.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------080609060009020901010107"
+Content-Type: multipart/mixed; boundary="------------020809060609060705030901"
 Cc: Neil Brown <neilb@suse.de>,
+	"J. Bruce Fields" <bfields@citi.umich.edu>,
 	Andrew Morton <akpm@linux-foundation.org>
 To: NFS List <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IH2Yo-0005Ts-F2
-	for nfs@lists.sourceforge.net; Fri, 03 Aug 2007 12:11:44 -0700
+	id 1IH2pn-0007WY-JE
+	for nfs@lists.sourceforge.net; Fri, 03 Aug 2007 12:29:15 -0700
 Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IH2Yr-0001BS-NC
-	for nfs@lists.sourceforge.net; Fri, 03 Aug 2007 12:11:46 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IH2pr-0005Hb-4e
+	for nfs@lists.sourceforge.net; Fri, 03 Aug 2007 12:29:19 -0700
+In-Reply-To: <46B37DE6.80706@redhat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,7 +32,7 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 This is a multi-part message in MIME format.
---------------080609060009020901010107
+--------------020809060609060705030901
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
 
@@ -45,13 +48,16 @@ inode.  For this specific purpose, the inode only contains an
 ino field which unsigned long, which is large enough on 64 bit
 platforms, but is not large enough on 32 bit platforms.
 
-    Thanx...
+   Thanx...
 
-       ps
+      ps
 
-Signed-off-by: Peter Staubach
+ps. Sorry about the retransmit.  I got tangled up with the mailer
+and the trigger got pulled before I was ready...
 
---------------080609060009020901010107
+Signed-off-by: Peter Staubach <staubach@redhat.com>
+
+--------------020809060609060705030901
 Content-Type: text/plain;
  name="fc-6.ino64.server"
 Content-Transfer-Encoding: 7bit
@@ -271,7 +277,7 @@ Content-Disposition: inline;
  
  int nfs4svc_encode_voidres(struct svc_rqst *, __be32 *, void *);
 
---------------080609060009020901010107
+--------------020809060609060705030901
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -282,7 +288,7 @@ This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
---------------080609060009020901010107
+--------------020809060609060705030901
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -292,4 +298,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---------------080609060009020901010107--
+--------------020809060609060705030901--
