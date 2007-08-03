@@ -1,37 +1,23 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Status of mount.nfs
-Date: Fri, 03 Aug 2007 09:02:51 -0400
-Message-ID: <1186146171.7255.6.camel@localhost>
-References: <20070708191640.GA13962@uio.no>
-	<18065.43199.104020.412029@notabene.brown>	<20070715083114.GB4158@uio.no>
-	<18074.50730.591965.39211@notabene.brown>	<20070716092047.GA10353@uio.no>
-	<18075.17719.855332.259470@notabene.brown>	<20070722191733.GA31501@uio.no>
-	<46A52816.6050500@oracle.com>	<20070724172451.GA14026@uio.no>
-	<46A7A5F8.4040204@oracle.com>	<46A897CD.50201@RedHat.com>
-	<46A96032.7080503@oracle.com>	<46AA089E.50503@RedHat.com>
-	<1185551769.6586.28.camel@localhost>	<46AA1A70.5010705@RedHat.com>
-	<1185553679.6586.34.camel@localhost>	<46AA2642.60505@RedHat.com>
-	<1185556406.6586.45.camel@localhost>	<46AB3BE9.1060903@RedHat.com>
-	<1185906627.6700.30.camel@localhost> <46AFA98E.1070904@oracle.com>
-	<46B0674D.7000803@RedHat.com> <46B0E6DC.4080409@oracle.com>
-	<46B0F747.3050704@RedHat.com>  <46B20467.5050601@oracle.com>
-	<1186080125.27480.10.camel@localhost>  <46B24FEA.1040300@oracle.com>
+From: "Mock, JV Jason @ IS" <Jason.V.Mock@L-3Com.com>
+Subject: Re: NFS Caching / Locking
+Date: Fri, 3 Aug 2007 08:20:48 -0500
+Message-ID: <F31FEAB987B7C2469181758C14265CFA040BBABD@gvlexch03.is.l-3com.com>
+References: <F31FEAB987B7C2469181758C14265CFA040BBABB@gvlexch03.is.l-3com.com>
+	<18098.54654.108131.864508@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, Steve Dickson <SteveD@redhat.com>
-To: chuck.lever@oracle.com
+Cc: nfs@lists.sourceforge.net
+To: "Neil Brown" <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IGwo5-0004cS-EF
-	for nfs@lists.sourceforge.net; Fri, 03 Aug 2007 06:03:05 -0700
-Received: from pat.uio.no ([129.240.10.15]
-	ident=[U2FsdGVkX18KcNIhV1CWPzzlKemOjfLMzOQppMOOaPc=])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IGwo8-0003HA-Tb
-	for nfs@lists.sourceforge.net; Fri, 03 Aug 2007 06:03:09 -0700
-In-Reply-To: <46B24FEA.1040300@oracle.com>
+	id 1IGx5N-0006cn-Bh
+	for nfs@lists.sourceforge.net; Fri, 03 Aug 2007 06:20:57 -0700
+Received: from smtpout3.l-3com.com ([166.20.84.211])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IGx5Q-0003b9-PF
+	for nfs@lists.sourceforge.net; Fri, 03 Aug 2007 06:21:01 -0700
+In-Reply-To: <18098.54654.108131.864508@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -44,34 +30,148 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, 2007-08-02 at 17:43 -0400, Chuck Lever wrote:
-> Trond Myklebust wrote:
-> > On Thu, 2007-08-02 at 12:20 -0400, Chuck Lever wrote:
-> > 
-> >> I'm not suggesting that we don't support mounting through a firewall. 
-> >> I'm wondering, though, how people expect it to work.  Is it acceptable 
-> >> to require a few extra mount options on clients to mount successfully 
-> >> through a firewall, or should a mount with no options whatsoever always 
-> >> work in this case?
-> > 
-> > The strategy should be to make the _default_ behaviour safe. If you want
-> > to add optimisations that need switching on/off then those may take
-> > extra mount options.
-> 
-> Exactly: is mounting through a firewall an optimization, or is it 
-> something that users expect, by default, to work without using extra 
-> options?
+I have a two example apps that I've been using to test this... Here's
+essentially what I'm performing:
 
-If the user has opened the firewall for outgoing TCP connections, then
-that is one of the things that I think should just work.
+Locking App:
+[C CODE]
+	int _fd = open("/net/share/file", O_CREAT | O_RDWR);
+	if ( _fd = -1 ){
+		printf("Unable to open file...\n");
+		exit 5;
+	}
 
-It doesn't need to work with maximum efficiency (so if you want to try
-sending UDP portmap requests before falling back to TCP, then fine) but
-opening UDP ports in the firewall or specifying extra mount options
-should not be a requirement.
+	struct flock fl;
+	fl.l_type 	= F_WRLCK
+	fl.l_start 	= 0;
+	fl.l_whence = SEEK_SET;
+	fl.l_len 	= 0;
+	fl.l_pid	= getpid();
 
-Trond
+	if( fnctl(_fd, F_SETLK, $fl) == -1 ) {
+	  printf("Unable to lock file\n");
+	  close(_fd);
+        exit 6;
+	}
 
+	for(;;){}
+[/C CODE]
+
+Testing App:
+[C CODE]
+	int _fd = open("/net/share/file", O_RDONLY);
+	if ( _fd = -1 ){
+		printf("Unable to open file...\n");
+		exit 5;
+	}
+
+	struct flock fl = {0,0,0,0,0};
+
+	if( fnctl(_fd, F_GETLK, $fl) == -1 ) {
+	  printf("Unable to get lock information...\n");
+        close(_fd);
+        exit 6;
+	}
+
+      close(_fd);
+      
+      print("/net/share/file :");
+	switch (fl.l_type) {
+	  case F_WRLCK:
+		print("F_WRLCK");
+        ...
+        ...
+	}
+[/C CODE]
+
+
+I've got a bit more there to make it easy to execute, such as passing in
+the files I want test via command line, but this is essentially how I'm
+testing the locks.  I was unaware of the /proc/lock... 
+
+Either way, this mechanism works with the 2.6.9-32 RHEL4 kernel, however
+when updating to the 2.6.22.1 within RHEL4 it does not.  For example if
+I lock on COMPUTER1, and then check the lock in a separate process on
+COMPUTER1 I get F_WRLCK.  If I lock on COMPUTER1 and the check the lock
+on COMPUTER2, I get F_UNLCK.
+
+Then we're back to the other issue though, I don't mind going back to
+2.6.9-32 if we can figure out how to cut down on this write delay.  Here
+is how I'm testing that part:
+
+Writing app:
+[Cpp Code]
+	ofstream outfile ("/net/share/test.txt");
+	outfile << "test data";
+	outfile.close();
+[/Cpp Code]
+
+Then on three separate machines I execute the following to watch the
+contents of the file:
+	watch --interval=0 -d "cat /net/share/text.txt"
+
+Then when executing the app the writes to the file, the writing system
+will immediately show the modification, while the other 2 may take
+anywhere from 2-60 seconds to see the modification...
+
+Thanks again for any help, and I do appologize for the lack of detail
+(yeesh... Should have read though that last one a little bit before I
+sent it...)
+
+Jason V. Mock
+Software Engineer II
+L-3 Communications - Greenville Integrated Systems
+Jason.V.Mock@L-3Com.com
+
+
+-----Original Message-----
+From: Neil Brown [mailto:neilb@suse.de] 
+Sent: Friday, August 03, 2007 02:13
+To: Mock, JV Jason @ IS
+Cc: nfs@lists.sourceforge.net
+Subject: Re: [NFS] NFS Caching / Locking
+
+On Thursday August 2, Jason.V.Mock@L-3Com.com wrote:
+> We've got a few problems, which I'd like to explain, that we need some
+
+> suggestions on methods of correction.  The first being caching where 
+> client machines would see changes to a written file anywhere from 5 to
+
+> 60 seconds later.  The clients are running RHEL4 (2.6.9-32 with 
+> nfs-utils 1.0.6 - yea yea... I know... ancient...).  I know that 
+> O_DIRECT can help override the caching, however some of the worst 
+> effects appear to be with command line calls where we don't have the 
+> ability/time to modify how they open files.  Just to try to get 
+> another point of data to work with, we've loaded up 2.6.22.1 with 
+> nfs-utils
+> 1.0.8 (and additionally tried 1.1.0), and we appear to be having less 
+> problems except for a few occasional delays with executed commands and
+
+> are not able to view locks on all machines (locks are only visible on 
+> the system that locked the file).  We have no problem using either 
+> kernel, but we'd love to try to figure out each of these problems.  I 
+> read through the NFS.sourceforge.net page the comment that "attribute 
+> caching" and "data caching" are two seperate things.  In that context 
+> they recommended O_DIRECT to resolve data caching, however is there 
+> any kind of flag that we can flip to say do not cache data?  At least
+> 2.6.22.1 is some what of an improvement on the caching...  if we could
+
+> just resolve the locking issues... would anyone have suggestions on 
+> where to look to correct that?  I don't mind getting the NFS calls 
+> themselves and the code if need be...
+
+Could you please give more details on the perceived "locking problem"?
+
+All you say is :
+> are not able to view locks on all machines (locks are only visible on 
+> the system that locked the file).
+
+What do you mean by "view lock"??  Do you mean look in /proc/locks?
+Certainly only the client and the server would be able to see any locks
+in /proc/locks.  All other clients wouldn't be able to detect the lock
+until they try to claim it.
+
+NeilBrown
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
