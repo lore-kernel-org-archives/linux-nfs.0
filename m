@@ -1,29 +1,21 @@
-From: Oleg Nesterov <oleg@tv-sign.ru>
-Subject: Re: 2.6.23-rc1-mm2
-Date: Fri, 3 Aug 2007 21:21:37 +0400
-Message-ID: <20070803172137.GA3783@tv-sign.ru>
-References: <20070731230932.a9459617.akpm@linux-foundation.org>
-	<200708031301.01569.marc.dietrich@ap.physik.uni-giessen.de>
-	<20070803093830.39852a01.akpm@linux-foundation.org>
-	<1186160608.7255.10.camel@localhost>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 00/10] More mount.nfs clean-ups (and repost of earlier
+	patches)
+Date: Fri, 03 Aug 2007 13:23:23 -0400
+Message-ID: <20070803171004.3357.27721.stgit@monet.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>, linux-kernel@vger.kernel.org,
-	nfs@lists.sourceforge.net, Andrew Morton <akpm@linux-foundation.org>,
-	Johannes Berg <johannes@sipsolutions.net>,
-	Marc Dietrich <Marc.Dietrich@ap.physik.uni-giessen.de>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: nfs@lists.sourceforge.net
+To: neilb@suse.de
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IH0oN-0001TP-Dm
-	for nfs@lists.sourceforge.net; Fri, 03 Aug 2007 10:19:39 -0700
-Received: from mail.screens.ru ([213.234.233.54])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IH0oP-0006dp-TB
-	for nfs@lists.sourceforge.net; Fri, 03 Aug 2007 10:19:43 -0700
-In-Reply-To: <1186160608.7255.10.camel@localhost>
+	id 1IH0ry-0001uP-7K
+	for nfs@lists.sourceforge.net; Fri, 03 Aug 2007 10:23:22 -0700
+Received: from flpvm23.prodigy.net ([207.115.20.53])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IH0s2-0007St-2D
+	for nfs@lists.sourceforge.net; Fri, 03 Aug 2007 10:23:26 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,53 +28,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On 08/03, Trond Myklebust wrote:
->
-> On Fri, 2007-08-03 at 09:38 -0700, Andrew Morton wrote:
-> > > stack backtrace:
-> > >  [<c0104fda>] show_trace_log_lvl+0x1a/0x30
-> > >  [<c0105c02>] show_trace+0x12/0x20
-> > >  [<c0105d15>] dump_stack+0x15/0x20
-> > >  [<c013ee42>] __lock_acquire+0xc22/0x1030
-> > >  [<c013f2b1>] lock_acquire+0x61/0x80
-> > >  [<c012edd9>] flush_workqueue+0x49/0x70
-> > >  [<c012ee0d>] flush_scheduled_work+0xd/0x10
-> > >  [<dcf55c0c>] nfs_release_automount_timer+0x2c/0x30 [nfs]
-> > >  [<dcf45d8e>] nfs_free_server+0x9e/0xd0 [nfs]
-> > >  [<dcf4e626>] nfs_kill_super+0x16/0x20 [nfs]
-> > >  [<c017b38d>] deactivate_super+0x7d/0xa0
-> > >  [<c018f94b>] mntput_no_expire+0x4b/0x80
-> > >  [<c018fd94>] expire_mount_list+0xe4/0x140
-> > >  [<c0191219>] mark_mounts_for_expiry+0x99/0xb0
-> > >  [<dcf55d1d>] nfs_expire_automounts+0xd/0x40 [nfs]
-> > >  [<c012e61b>] run_workqueue+0x12b/0x1e0
-> > >  [<c012f05b>] worker_thread+0x9b/0x100
-> > >  [<c0131c72>] kthread+0x42/0x70
-> > >  [<c0104c0f>] kernel_thread_helper+0x7/0x18
-> > >  =======================
-> > > 
-> > 
-> > There is new debugging stuff in -mm: deadlockable usage of workqueue
-> > primitives will now trigger lockdep warnings.  See
-> > 
-> > ftp://ftp.kernel.org/pub/linux/kernel/people/akpm/patches/2.6/2.6.23-rc1/2.6.23-rc1-mm2/broken-out/workqueue-debug-flushing-deadlocks-with-lockdep.patch
-> > ftp://ftp.kernel.org/pub/linux/kernel/people/akpm/patches/2.6/2.6.23-rc1/2.6.23-rc1-mm2/broken-out/workqueue-debug-work-related-deadlocks-with-lockdep.patch
-> > 
-> > I am suspecting that running flush_scheduled_work() from within run_workqueue()
-> > isn't good.
-> 
-> I'll have a look at this. I suspect that most if not all of our calls to
-> run_workqueue()/flush_scheduled_work() can now be replaced by more
-> targeted calls to cancel_work_sync() and cancel_delayed_work_sync().
+Hi Neil-
 
-Yes, please, if possible.
+Note: This patch series contains several patches that have already been
+posted to the list.
 
-To avoid a possible confusion: it is still OK if work->func() flushes
-its own workqueue, so strictly speaking this trace is false positive,
-but it would be very nice if we can get rid of this practice.
+The first two patches are reposted (with a few minor clean-ups) from the 23
+patch series from last week.  The third patch fixes a problem with recent
+changes to umount.nfs that introduced a minor firewall incompatibility.
 
-Oleg.
+As well as a handful of minor fixes, this series also includes two important
+fixes:
 
+1.  Make "bg" mounts work in the mount.nfs helper, and
+
+2.  Allow TCP connect time outs to be tunable for GETPORT, clnt_ping, and
+    mnt_openclnt
+
+There has been recent discussion on the list about what transport should be
+used for GETPORT calls, but I haven't included any patches in this series
+to change the current behavior.
+
+As always, constructive review is welcome from all.
+
+-- 
+corporate:    <chuck dot lever at oracle dot com>
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
