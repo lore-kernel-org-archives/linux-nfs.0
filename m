@@ -1,107 +1,89 @@
-From: Michal Piotrowski <michal.k.k.piotrowski@gmail.com>
-Subject: Re: [2/3] 2.6.23-rc2: known regressions
-Date: Sun, 05 Aug 2007 18:26:26 +0200
-Message-ID: <46B5FA32.50208__24157.0751568817$1186331277$gmane$org@googlemail.com>
-References: <46B5F74D.7010708@googlemail.com>
+From: "Chakri n" <chakriin5@gmail.com>
+Subject: Re: OOPS in shrink_dcache_for_umount
+Date: Sun, 5 Aug 2007 09:39:15 -0700
+Message-ID: <92cbf19b0708050939r6164474di64949e4044691951@mail.gmail.com>
+References: <92cbf19b0708021427l7c88c642g3901e393ac2b90b9@mail.gmail.com>
+	<20070804120105.47ae82fc@highlander.home.lan>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-2
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	LKML <linux-kernel@vger.kernel.org>,
-	linux-fsdevel@vger.kernel.org, nfs@lists.sourceforge.net,
-	Andrew Clayton <andrew@digital-domain.net>,
-	Netdev <netdev@vger.kernel.org>,
-	Stephen Hemminger <shemminger@osdl.org>,
-	Thomas Meyer <thomas@m3y3r.de>,
-	Florian Lohoff <flo@rfc822.org>, Uwe Bugla <uwe.bugla@gmx.de>,
-	linux-pm@lists.linux-foundation.org,
-	"Rafael J. Wysocki" <rjw@sisk.pl>, Pavel Machek <pavel@ucw.cz>,
-	Meelis Roos <mroos@linux.ee>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <46B5F74D.7010708@googlemail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset="iso-8859-1"
+Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+To: "=?ISO-8859-1?Q?Malte_Schr=F6der?=" <maltesch@gmx.de>
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1IHj8L-0003EH-Qv
+	for nfs@lists.sourceforge.net; Sun, 05 Aug 2007 09:39:16 -0700
+Received: from wa-out-1112.google.com ([209.85.146.181])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IHj8O-0000wg-OT
+	for nfs@lists.sourceforge.net; Sun, 05 Aug 2007 09:39:18 -0700
+Received: by wa-out-1112.google.com with SMTP id k22so1667811waf
+	for <nfs@lists.sourceforge.net>; Sun, 05 Aug 2007 09:39:16 -0700 (PDT)
+In-Reply-To: <20070804120105.47ae82fc@highlander.home.lan>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi all,
+Hi Malte,
 
-Here is a list of some known regressions in 2.6.23-rc2.
+Thanks for the information.
 
-Feel free to add new regressions/remove fixed etc.
-http://kernelnewbies.org/known_regressions
+Based on your suggestion I tried the following two patches on top of
+2.6.18-1.8.el5 NFS code. I had to keep the changes minimum to fix this
+crash in our release.
 
-List of Aces
+http://linux-nfs.org/Linux-2.6.x/2.6.20-rc7/linux-2.6.20-007-fix_readdir_ne=
+gative_dentry.dif
+http://linux-nfs.org/Linux-2.6.x/2.6.20-rc7/linux-2.6.20-008-fix_readdir_po=
+sitive_dentry.dif
 
-Name                    Regressions fixed since 21-Jun-2007
-Adrian Bunk                            6
-Andi Kleen                             4
-Andrew Morton                          4
-Linus Torvalds                         4
-Al Viro                                3
-Cornelia Huck                          3
-Jens Axboe                             3
-Tejun Heo                              3
-David Woodhouse                        2
-Hugh Dickins                           2
-Trent Piepho                           2
+The systems are running for the past 7 hours with out any issues.
+Hopefully this fixes it.
 
+Regards
+--Chakri
 
+On 8/4/07, Malte Schr=F6der <maltesch@gmx.de> wrote:
+> On Thu, 2 Aug 2007 14:27:04 -0700
+> "Chakri n" <chakriin5@gmail.com> wrote:
+>
+> > Hi,
+> >
+> > We are seeing this problem while unmounting file systems. It happens
+> > once in a while.
+> > I am able to grab the trace and core from linux-2.6.18-1.8.el5, but I
+> > have observed the same problem with linux-2.6.20.1 kernel.
+> >
+> > Has this problem fixed in recent kernel?
+> >
+>
+> I had those too ... but I haven't seen one in a while.
+> I currently run 2.6.22 + cfs-v19 + the Patch from
+> http://linux-nfs.org/Linux-2.6.x/2.6.22/linux-2.6.22-NFS_ALL.dif
+>
+> --
+> ---------------------------------------
+> Malte Schr=F6der
+> MalteSch@gmx.de
+> ICQ# 68121508
+> ---------------------------------------
+>
+>
+>
 
-FS
-
-Subject         : [NFSD OOPS] 2.6.23-rc1-git10
-References      : http://lkml.org/lkml/2007/8/2/462
-Last known good : ?
-Submitter       : Andrew Clayton <andrew@digital-domain.net>
-Caused-By       : ?
-Handled-By      : ?
-Status          : unknown
-
-
-
-Networking
-
-Subject         : IP v4 routing is broken
-References      : http://www.stardust.webpages.pl/files/tbf/bugs/bug_report01.txt
-Last known good : 2.6.22-git2
-Submitter       : Uwe Bugla <uwe.bugla@gmx.de>
-Caused-By       : ?
-Handled-By      : ?
-Status          : unknown
-
-Subject         : sky2 boot crash in sky2_mac_intr
-References      : http://lkml.org/lkml/2007/7/24/91
-Last known good : ?
-Submitter       : Florian Lohoff <flo@rfc822.org>
-Caused-By       : 
-Handled-By      : Stephen Hemminger <shemminger@osdl.org>
-Status          : unknown
-
-Subject         : New wake ups from sky2
-References      : http://lkml.org/lkml/2007/7/20/386
-Last known good : ?
-Submitter       : Thomas Meyer <thomas@m3y3r.de>
-Caused-By       : Stephen Hemminger <shemminger@osdl.org>
-                  commit eb35cf60e462491249166182e3e755d3d5d91a28
-Handled-By      : Stephen Hemminger <shemminger@osdl.org>
-Status          : unknown
-
-
-
-Power management
-
-Subject         : Kconfig: 'SUSPEND_SMP' refers to undefined symbol 'HOTPLUG_CPU'
-References      : http://lkml.org/lkml/2007/8/4/39
-Last known good : ?
-Submitter       : Meelis Roos <mroos@linux.ee>
-Caused-By       : ?
-Handled-By      : Rafael J. Wysocki <rjw@sisk.pl>
-Status          : unknown
-
-
-
-Regards,
-Michal
-
---
-LOG
-http://www.stardust.webpages.pl/log/
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Splunk Inc.
+Still grepping through log files to find problems?  Stop.
+Now Search log events and configuration files using AJAX and a browser.
+Download your FREE copy of Splunk now >>  http://get.splunk.com/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
