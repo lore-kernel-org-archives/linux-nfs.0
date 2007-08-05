@@ -1,136 +1,113 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: [PATCH] 64 bit ino support for NFS server
-Date: Mon, 06 Aug 2007 11:40:58 -0400
-Message-ID: <46B7410A.3050202@redhat.com>
-References: <46B37DE6.80706@redhat.com> <46B38206.6050504@redhat.com>
-	<20070804223256.GA1155@fieldses.org>
+From: Michal Piotrowski <michal.k.k.piotrowski@gmail.com>
+Subject: Re: [2/3] 2.6.23-rc2: known regressions
+Date: Sun, 05 Aug 2007 18:26:26 +0200
+Message-ID: <46B5FA32.50208__37665.2429615662$1186415607$gmane$org@googlemail.com>
+References: <46B5F74D.7010708@googlemail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	NFS List <nfs@lists.sourceforge.net>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1II4hg-0007iF-Ch
-	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 08:41:08 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1II4hk-00034F-6N
-	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 08:41:12 -0700
-In-Reply-To: <20070804223256.GA1155@fieldses.org>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-2
+Cc: Florian Lohoff <flo@rfc822.org>,
+        Andrew Clayton <andrew@digital-domain.net>,
+        Netdev <netdev@vger.kernel.org>, Meelis Roos <mroos@linux.ee>,
+        LKML <linux-kernel@vger.kernel.org>, Uwe Bugla <uwe.bugla@gmx.de>,
+        nfs@lists.sourceforge.net, Thomas Meyer <thomas@m3y3r.de>,
+        Pavel Machek <pavel@ucw.cz>, linux-fsdevel@vger.kernel.org,
+        Andrew Morton <akpm@linux-foundation.org>,
+        linux-pm@lists.linux-foundation.org,
+        Stephen Hemminger <shemminger@osdl.org>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Return-path: <linux-pm-bounces@lists.linux-foundation.org>
+In-Reply-To: <46B5F74D.7010708@googlemail.com>
+List-Unsubscribe: <https://lists.linux-foundation.org/mailman/listinfo/linux-pm>,
+	<mailto:linux-pm-request@lists.linux-foundation.org?subject=unsubscribe>
+List-Archive: <http://lists.linux-foundation.org/pipermail/linux-pm>
+List-Post: <mailto:linux-pm@lists.linux-foundation.org>
+List-Help: <mailto:linux-pm-request@lists.linux-foundation.org?subject=help>
+List-Subscribe: <https://lists.linux-foundation.org/mailman/listinfo/linux-pm>,
+	<mailto:linux-pm-request@lists.linux-foundation.org?subject=subscribe>
+Sender: linux-pm-bounces@lists.linux-foundation.org
+Errors-To: linux-pm-bounces@lists.linux-foundation.org
+List-ID: <nfs.lists.sourceforge.net>
 
-J. Bruce Fields wrote:
-> On Fri, Aug 03, 2007 at 03:29:10PM -0400, Peter Staubach wrote:
->   
->> Hi.
->>
->> Attached is a patch to modify the NFS server code to support
->> 64 bit ino's, as appropriate for the system and the NFS
->> protocol version.
->>
->> The gist of the changes is to query the underlying file system
->> for attributes and not just to use the cached attributes in the
->> inode.  For this specific purpose, the inode only contains an
->> ino field which unsigned long, which is large enough on 64 bit
->> platforms, but is not large enough on 32 bit platforms.
->>     
->
-> Thanks!
->
->   
->> @@ -203,31 +203,15 @@ encode_fattr3(struct svc_rqst *rqstp, __
->>  static __be32 *
->>  encode_saved_post_attr(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *fhp)
->>  {
->> -	struct inode	*inode = fhp->fh_dentry->d_inode;
->> +	if (!fhp->fh_post_saved) {
->> +		*p++ = xdr_zero;
->> +		return p;
->> +	}
->>     
->
-> The caller, encode_wcc_data(), already did this check.
->
->   
+Hi all,
 
-True.  What a twisty maze of small passages, all alike.
+Here is a list of some known regressions in 2.6.23-rc2.
 
-The current algorithms don't look quite right to me.  I don't
-think that it is valid to return a post_op_attr, which is not
-atomic w.r.t. the operation, even when not returning a pre_op_attr.
-Perhaps a little more cleanup might be good.  I will look into
-this.
+Feel free to add new regressions/remove fixed etc.
+http://kernelnewbies.org/known_regressions
 
->>  	/* Attributes to follow */
->>  	*p++ = xdr_one;
->>  
->> -	*p++ = htonl(nfs3_ftypes[(fhp->fh_post_mode & S_IFMT) >> 12]);
->> -	*p++ = htonl((u32) fhp->fh_post_mode);
->> -	*p++ = htonl((u32) fhp->fh_post_nlink);
->> -	*p++ = htonl((u32) nfsd_ruid(rqstp, fhp->fh_post_uid));
->> -	*p++ = htonl((u32) nfsd_rgid(rqstp, fhp->fh_post_gid));
->> -	if (S_ISLNK(fhp->fh_post_mode) && fhp->fh_post_size > NFS3_MAXPATHLEN) {
->> -		p = xdr_encode_hyper(p, (u64) NFS3_MAXPATHLEN);
->> -	} else {
->> -		p = xdr_encode_hyper(p, (u64) fhp->fh_post_size);
->> -	}
->> -	p = xdr_encode_hyper(p, ((u64)fhp->fh_post_blocks) << 9);
->> -	*p++ = fhp->fh_post_rdev[0];
->> -	*p++ = fhp->fh_post_rdev[1];
->> -	p = encode_fsid(p, fhp);
->> -	p = xdr_encode_hyper(p, (u64) inode->i_ino);
->> -	p = encode_time3(p, &fhp->fh_post_atime);
->> -	p = encode_time3(p, &fhp->fh_post_mtime);
->> -	p = encode_time3(p, &fhp->fh_post_ctime);
->> -
->> -	return p;
->> +	return encode_fattr3(rqstp, p, fhp, &fhp->fh_post_attr);
->>     
->
-> Is there a problem with the lease_get_mtime() call in encode_fattr3()?
-> It looks like that could return the current time rather than the time
-> that was supposedly atomic with respect to the operation.
->
->   
+List of Aces
 
-Sorry, I glossed over that one.  Let me address that.  Good catch.
-
-> Dumb question: I assume it's always legal to call ->getattr while
-> holding the i_mutex?
->   
-
-Not so dumb, and I couldn't find an answer to that, either way.
-I couldn't find any reason why it would be illegal, but neither
-did I find explicit reasons for why it would be legal.
-
-Does anyone else know?  This gets into the lack of complete
-definition for the virtual file system layer...
-
-Thanx for the review, Bruce.
-
-    Thanx...
-
-       ps
+Name                    Regressions fixed since 21-Jun-2007
+Adrian Bunk                            6
+Andi Kleen                             4
+Andrew Morton                          4
+Linus Torvalds                         4
+Al Viro                                3
+Cornelia Huck                          3
+Jens Axboe                             3
+Tejun Heo                              3
+David Woodhouse                        2
+Hugh Dickins                           2
+Trent Piepho                           2
 
 
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Splunk Inc.
-Still grepping through log files to find problems?  Stop.
-Now Search log events and configuration files using AJAX and a browser.
-Download your FREE copy of Splunk now >>  http://get.splunk.com/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+
+FS
+
+Subject         : [NFSD OOPS] 2.6.23-rc1-git10
+References      : http://lkml.org/lkml/2007/8/2/462
+Last known good : ?
+Submitter       : Andrew Clayton <andrew@digital-domain.net>
+Caused-By       : ?
+Handled-By      : ?
+Status          : unknown
+
+
+
+Networking
+
+Subject         : IP v4 routing is broken
+References      : http://www.stardust.webpages.pl/files/tbf/bugs/bug_report01.txt
+Last known good : 2.6.22-git2
+Submitter       : Uwe Bugla <uwe.bugla@gmx.de>
+Caused-By       : ?
+Handled-By      : ?
+Status          : unknown
+
+Subject         : sky2 boot crash in sky2_mac_intr
+References      : http://lkml.org/lkml/2007/7/24/91
+Last known good : ?
+Submitter       : Florian Lohoff <flo@rfc822.org>
+Caused-By       : 
+Handled-By      : Stephen Hemminger <shemminger@osdl.org>
+Status          : unknown
+
+Subject         : New wake ups from sky2
+References      : http://lkml.org/lkml/2007/7/20/386
+Last known good : ?
+Submitter       : Thomas Meyer <thomas@m3y3r.de>
+Caused-By       : Stephen Hemminger <shemminger@osdl.org>
+                  commit eb35cf60e462491249166182e3e755d3d5d91a28
+Handled-By      : Stephen Hemminger <shemminger@osdl.org>
+Status          : unknown
+
+
+
+Power management
+
+Subject         : Kconfig: 'SUSPEND_SMP' refers to undefined symbol 'HOTPLUG_CPU'
+References      : http://lkml.org/lkml/2007/8/4/39
+Last known good : ?
+Submitter       : Meelis Roos <mroos@linux.ee>
+Caused-By       : ?
+Handled-By      : Rafael J. Wysocki <rjw@sisk.pl>
+Status          : unknown
+
+
+
+Regards,
+Michal
+
+--
+LOG
+http://www.stardust.webpages.pl/log/
