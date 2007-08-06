@@ -1,112 +1,121 @@
-From: Marc Dietrich <Marc.Dietrich@ap.physik.uni-giessen.de>
-Subject: Re: [NFS] 2.6.23-rc1-mm2
-Date: Tue, 7 Aug 2007 14:09:30 +0200
-Message-ID: <200708071409.39012.marc.dietrich@ap.physik.uni-giessen.de>
-References: <20070731230932.a9459617.akpm@linux-foundation.org> <200708061305.37208.marc.dietrich@ap.physik.uni-giessen.de> <1186417445.6616.23.camel@localhost>
+From: "Wim Colgate" <Wim.Colgate@xensource.com>
+Subject: Re: NFS_UNSTABLE vs. FILE and DATA sync.
+Date: Mon, 6 Aug 2007 12:33:27 -0700
+Message-ID: <A9AD3C3BCF83FD4182B7D4D99E37FAD836BF1D@exchrdm.ad.xensource.com>
+References: <46B7738C.4020503@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-15"
-Cc: Johannes Berg <johannes@sipsolutions.net>,
-	Oleg Nesterov <oleg@tv-sign.ru>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net,
-	linux-kernel@vger.kernel.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1762220AbXHGMK1@vger.kernel.org>
-In-Reply-To: <1186417445.6616.23.camel@localhost>
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
+To: <chuck.lever@oracle.com>
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1II8LR-0007V3-Aj
+	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 12:34:25 -0700
+Received: from webmailrdm.xensource.com ([66.228.214.202])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1II8LV-0001Yb-7Z
+	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 12:34:29 -0700
+In-Reply-To: <46B7738C.4020503@oracle.com>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-Am Monday 06 August 2007 18:24 schrieb Trond Myklebust:
-> On Mon, 2007-08-06 at 13:05 +0200, Marc Dietrich wrote:
-> > Hi,
-> >
-> > > (...)
-> >
-> > just booting into X is enough.
-> >
-> > I applied the patch, but now I get:
-> >
-> > =================================
-> > [ INFO: inconsistent lock state ]
-> > 2.6.23-rc1-mm2 #4
-> > ---------------------------------
-> > inconsistent {softirq-on-W} -> {in-softirq-W} usage.
-> > swapper/0 [HC0[0]:SC1[1]:HE1:SE0] takes:
-> >  (rpc_credcache_lock){-+..}, at: [<c01dc487>]
-> > _atomic_dec_and_lock+0x17/0x60 {softirq-on-W} state was registered at:
-> >   [<c013e870>] __lock_acquire+0x650/0x1030
-> >   [<c013f2b1>] lock_acquire+0x61/0x80
-> >   [<c02db9ac>] _spin_lock+0x2c/0x40
-> >   [<c01dc487>] _atomic_dec_and_lock+0x17/0x60
-> >   [<dced55fd>] put_rpccred+0x5d/0x100 [sunrpc]
-> >   [<dced56c1>] rpcauth_unbindcred+0x21/0x60 [sunrpc]
-> >   [<dced3fd4>] a0 [sunrpc]
-> >   [<dcecefe0>] rpc_call_sync+0x30/0x40 [sunrpc]
-> >   [<dcedc73b>] rpcb_register+0xdb/0x180 [sunrpc]
-> >   [<dced65b3>] svc_register+0x93/0x160 [sunrpc]
-> >   [<dced6ebe>] __svc_create+0x1ee/0x220 [sunrpc]
-> >   [<dced7053>] svc_create+0x13/0x20 [sunrpc]
-> >   [<dcf6d722>] nfs_callback_up+0x82/0x120 [nfs]
-> >   [<dcf48f36>] nfs_get_client+0x176/0x390 [nfs]
-> >   [<dcf49181>] nfs4_set_client+0x31/0x190 [nfs]
-> >   [<dcf49983>] nfs4_create_server+0x63/0x3b0 [nfs]
-> >   [<dcf52426>] nfs4_get_sb+0x346/0x5b0 [nfs]
-> >   [<c017b444>] vfs_kern_mount+0x94/0x110
-> >   [<c0190a62>] do_mount+0x1f2/0x7d0
-> >   [<c01910a6>] sys_mount+0x66/0xa0
-> >   [<c0104046>] syscall_call+0x7/0xb
-> >   [<ffffffff>] 0xffffffff
-> > irq event stamp: 5277830
-> > hardirqs last  enabled at (5277830): [<c017530a>]
-> > kmem_cache_free+0x8a/0xc0 hardirqs last disabled at (5277829):
-> > [<c01752d2>] kmem_cache_free+0x52/0xc0 softirqs last  enabled at
-> > (5277798): [<c0124173>] __do_softirq+0xa3/0xc0 softirqs last disabled at
-> > (5277817): [<c01241d7>] do_softirq+0x47/0x50
-> >
-> > other info that might help us debug this:
-> > no locks held by swapper/0.
-> >
-> > stack backtrace:
-> >  [<c0104fda>] show_trace_log_lvl+0x1a/0x30
-> >  [<c0105c02>] show_trace+0x12/0x20
-> >  [<c0105d15>] dump_stack+0x15/0x20
-> >  [<c013ccc3>] print_usage_bug+0x153/0x160
-> >  [<c013d8b9>] mark_lock+0x449/0x620
-> >  [<c013e824>] __lock_acquire+0x604/0x1030
-> >  [<c013f2b1>] lock_acquire+0x61/0x80
-> >  [<c02db9ac>] _spin_lock+0x2c/0x40
-> >  [<c01dc487>] _atomic_dec_and_lock+0x17/0x60
-> >  [<dced55fd>] put_rpccred+0x5d/0x100 [sunrpc]
-> >  [<dcf6bf83>] nfs_free_delegation_callback+0x13/0x20 [nfs]
-> >  [<c012f9ea>] __rcu_process_callbacks+0x6a/0x1c0
-> >  [<c012fb52>] rcu_process_callbacks+0x12/0x30
-> >  [<c0124218>] tasklet_action+0x38/0x80
-> >  [<c0124125>] __do_softirq+0x55/0xc0
-> >  [<c01241d7>] do_softirq+0x47/0x50
-> >  [<c0124605>] irq_exit+0x35/0x40
-> >  [<c0112463>] smp_apic_timer_interrupt+0x43/0x80
-> >  [<c0104a77>] apic_timer_interrupt+0x33/0x38
-> >  [<c02690df>] cpuidle_idle_call+0x6f/0x90
-> >  [<c01023c3>] cpu_idle+0x43/0x70
-> >  [<c02d8c27>] rest_init+0x47/0x50
-> >  [<c03bcb6a>] start_kernel+0x22a/0x2b0
-> >  [<00000000>] 0x0
-> >  =======================
->
-> That is a different matter. I assume this patch should suffice to fix
-> the above problem.
->
-> Trond
+Hi Chuck,
 
-yes - it does.
+The linux kernel I was using is 2.6.18-8.
 
-thanks.
+To be fair, I was not trying to force NFS_FILE_SYNC; to make a long
+story short, I started with O_DIRECT (please don't cache data). I moved
+to add O_SYNC (don't return until my data is written safely). And when I
+couldn't explain why I was missing some data (discrepancy between client
+and server), I started investigating what was happening under the hood.
+I didn't really want to start a controversy -- I just wanted to
+understand what was happening.
 
-Marc
+My understanding of NFS is fairly pedestrian in that I merely get the
+big picture. Which is why I posted here.
 
+Thanks,
 
--- 
-	"Our cause has a sacred nature."
-		 Lord Arthur Ponsonby, "Falsehood in Wartime: Propaganda Lies of the First 
-World War", 1928
+Wim
+
+-----Original Message-----
+From: Chuck Lever [mailto:chuck.lever@oracle.com] 
+Sent: Monday, August 06, 2007 12:16 PM
+To: Wim Colgate
+Cc: nfs@lists.sourceforge.net
+Subject: Re: [NFS] NFS_UNSTABLE vs. FILE and DATA sync.
+
+Wim Colgate wrote:
+> Specifically I am trying to inject errors by manually (but politely)
+> bringing the NFS server down then up, then down (rinse and repeat ...)
+> while doing IO from a linux client. As mentioned the open file is
+> O_DIRECT and O_SYNC -- which I thought should mean either the data
+hits
+> the server's storage or I should get an error; and I'm more than happy
+> to deal with an IO error.
+> 
+> I'm confident the writes are less than wsize (4096 bytes to be
+precise).
+> 
+> 
+> Is there a 100% guaranteed method to get the behavior I thought
+O_DIRECT
+> and O_SYNC was providing?
+
+What behavior did you expect O_DIRECT + O_SYNC to provide?  O_DIRECT 
+means "don't cache data" and O_SYNC means "make sure the data is flushed
+
+to the server's disk before each write() system call returns." 
+Technically, you don't need NFS_FILE_SYNC writes to do either of those.
+
+Which kernel are you testing?  The client's use of NFS_FILE_SYNC writes 
+changed over time.
+
+> -----Original Message-----
+> From: Peter Staubach [mailto:staubach@redhat.com] 
+> Sent: Monday, August 06, 2007 10:33 AM
+> To: chuck.lever@oracle.com
+> Cc: Wim Colgate; nfs@lists.sourceforge.net
+> Subject: Re: [NFS] NFS_UNSTABLE vs. FILE and DATA sync.
+> 
+> Chuck Lever wrote:
+>> Wim Colgate wrote:
+>>> If I have a soft mount, and open a file with O_DIRECT and O_SYNC, 
+>>> should I ever expect a callback (nfs_writeback_done) with a 
+>>> successful task->tk_status (i.e >= 0) with the committed state 
+>>> (resp->verf->committed) set to NFS_UNSTABLE?
+>> Yes, this can happen if the server decides to return NFS_UNSTABLE. 
+>> Rare, but possible.
+>>
+>>> A secondary question: if the above is expected, does this occur 
+>>> because someone is caching the write and is there a mechanism to 
+>>> disable this effect?
+>> Servers can return NFS_UNSTABLE to any WRITE request, so I can't
+think
+> 
+>> of a way this might be disabled. 
+> 
+> Actually, it would be a protocol error for a server to return
+> a commitment level less than was requested by the client.  The
+> server can return a greater commitment level, but not less than.
+> 
+>        ps
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Splunk Inc.
+Still grepping through log files to find problems?  Stop.
+Now Search log events and configuration files using AJAX and a browser.
+Download your FREE copy of Splunk now >>  http://get.splunk.com/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
