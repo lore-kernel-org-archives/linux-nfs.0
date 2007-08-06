@@ -1,19 +1,20 @@
-From: "Wim Colgate" <Wim.Colgate@xensource.com>
-Subject: NFS_UNSTABLE vs. FILE and DATA sync.
-Date: Mon, 6 Aug 2007 09:02:08 -0700
-Message-ID: <A9AD3C3BCF83FD4182B7D4D99E37FAD836BEAB@exchrdm.ad.xensource.com>
+From: "Ann Dicen" <ann@cleareaction.com>
+Subject: Callbox: Get your sales leads here!
+Date: Mon, 06 Aug 2007 03:00:02 -0700
+Message-ID: <20070806160837.EA77475159F@mail.cleareaction.com>
+Reply-To: ann@callboxinc.com
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============0319697139=="
-To: <nfs@lists.sourceforge.net>
+Content-Type: multipart/mixed; boundary="===============1288281811=="
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1II53h-0001l5-Eh
-	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 09:03:54 -0700
-Received: from webmailrdm.xensource.com ([66.228.214.202])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1II53l-0005Jr-B7
-	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 09:03:57 -0700
+	id 1II54E-0001rh-R3
+	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 09:04:27 -0700
+Received: from [125.212.91.160] (helo=mail.cleareaction.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1II54H-0000mY-6F
+	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 09:04:30 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,161 +27,164 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
 
---===============0319697139==
-Content-class: urn:content-classes:message
-Content-Type: multipart/alternative;
-	boundary="----_=_NextPart_001_01C7D843.64A63736"
-
-This is a multi-part message in MIME format.
-
-------_=_NextPart_001_01C7D843.64A63736
-Content-Type: text/plain;
-	charset="us-ascii"
-Content-Transfer-Encoding: quoted-printable
-
-Hi,
-
-=20
-
-My last question was a bit too nebulous, and didn't really expect an
-answer. Learning my lesson, I have a specific question.
-
-=20
-
-If I have a soft mount, and open a file with O_DIRECT and O_SYNC, should
-I ever expect a callback (nfs_writeback_done) with a successful
-task->tk_status (i.e >=3D 0) with the committed state
-(resp->verf->committed) set to NFS_UNSTABLE?=20
-
-=20
-
-A secondary question: if the above is expected, does this occur because
-someone is caching the write and is there a mechanism to disable this
-effect?
-
-=20
-
-Regards,
-
-=20
-
-Wim
+--===============1288281811==
+Content-Type: multipart/alternative; charset="iso-8859-1";
+	boundary="b1_27dd1fac7c2d389bdf91baf7233871bd"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 
-------_=_NextPart_001_01C7D843.64A63736
-Content-Type: text/html;
-	charset="us-ascii"
-Content-Transfer-Encoding: quoted-printable
+--b1_27dd1fac7c2d389bdf91baf7233871bd
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: 7bit
 
-<html xmlns:o=3D"urn:schemas-microsoft-com:office:office" =
-xmlns:w=3D"urn:schemas-microsoft-com:office:word" =
-xmlns=3D"http://www.w3.org/TR/REC-html40">
+In our effort to serve you better, we are cleaning up our database and
+would like to make sure we are sending you information relevant to your
+business. We understand that you may not wish to receive emails from us
+in the future. If such, please UNSUBSCRIBE using the link at the bottom
+of this message. 
+-----------------------------------------------------------
+Hi!
 
-<head>
-<META HTTP-EQUIV=3D"Content-Type" CONTENT=3D"text/html; =
-charset=3Dus-ascii">
-<meta name=3DGenerator content=3D"Microsoft Word 11 (filtered medium)">
-<style>
-<!--
- /* Style Definitions */
- p.MsoNormal, li.MsoNormal, div.MsoNormal
-	{margin:0in;
-	margin-bottom:.0001pt;
-	font-size:12.0pt;
-	font-family:"Times New Roman";}
-a:link, span.MsoHyperlink
-	{color:blue;
-	text-decoration:underline;}
-a:visited, span.MsoHyperlinkFollowed
-	{color:purple;
-	text-decoration:underline;}
-span.EmailStyle17
-	{mso-style-type:personal-compose;
-	font-family:Arial;
-	color:windowtext;}
-@page Section1
-	{size:8.5in 11.0in;
-	margin:1.0in 1.25in 1.0in 1.25in;}
-div.Section1
-	{page:Section1;}
--->
+It looks like your firm is in a great position to leverage lead
+generation solutions. With our proven track record on providing
+qualified B2B or B2C sales leads for vendors and providers of leading
+business and consumer products and services, you can expect to
+consistently reach your target market and exceed those sales numbers. 
+
+For a sample listing of the products and services we've successfully
+marketed for our clients, visit:
+
+http://www.callboxinc.com/industry-solutions/it-and-software.html
+
+HotConnect has the potential to convert web page visits to sales. Learn
+about our new service here: 
+
+http://www.callboxinc.com/hotconnect.html
+
+Do you have a moment this week to set up a brief discussion about your
+business needs? Please reply with a date and time. You may also give me
+a call at my number given below or ask directly for a service quote
+here:
+
+http://www.callboxinc.com/request-quote-for-outbound-services.php 
+
+
+Kind regards,
+
+Ann Dicen
+Manager, Client Development
+Callbox Customer Contact Solutions
+16770 Encino Hills Dr
+Encino, CA 91436
+310.439.5814
+888.810.7464 ext.1324
+ann@callboxinc.com
+www.callboxinc.com 
+
+UK: 20.30025986
+
+Singapore: 65.6248.5022
+
+Australia: 612.8002.4767
+
+-----------------------------------------------------------
+If you prefer not to receive emails from us in the future, please reply
+to this email with UNSUBSCRIBE on the subject line.
+
+--b1_27dd1fac7c2d389bdf91baf7233871bd
+Content-Type: text/html; charset="iso-8859-1"
+Content-Transfer-Encoding: 7bit
+
+<html><head><title>Generating Qualified Leads for the Business Products
+and Service Industries</title>
+
+
+
+<meta http-equiv="Content-Type" content="text/html;
+charset=iso-8859-1">
+
+<style type="text/css">SPAN.style251 {
+
+COLOR: #999999; FONT-FAMILY: Verdana
+
+}
+
 </style>
 
-</head>
+<meta content="MSHTML 6.00.2900.3132" name="GENERATOR"></head><body>
 
-<body lang=3DEN-US link=3Dblue vlink=3Dpurple>
+<font color="#999999" face="Verdana" size="1"><span style="font-size:
+7.5pt; color: rgb(153, 153, 153); font-family: verdana;"><span
+class="style251"><font color="#000000" face="Verdana">In our effort to
+serve you better, we are cleaning up our database and would like to
+make sure we are sending you information relevant to your business. We
+understand that you may not wish to receive emails from us in the
+future. If such, please UNSUBSCRIBE using the link at the bottom of
+this message. </font></span></span></font><font face="Verdana, Arial,
+Helvetica, sans-serif" size="2">
 
-<div class=3DSection1>
+<hr>
 
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>Hi,<o:p></o:p></span></font></p>
+</font>
 
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
+<p><font face="Verdana, Arial, Helvetica, sans-serif"
+size="2">Hi!</font></p><font face="Verdana, Arial, Helvetica,
 
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>My last question was a bit too nebulous, and =
-didn&#8217;t
-really expect an answer. Learning my lesson, I have a specific =
-question.<o:p></o:p></span></font></p>
+sans-serif" size="2">It looks like your firm is in a great position to
+leverage lead generation solutions. With our proven track record on
+providing qualified B2B or B2C sales leads for vendors and providers of
+leading business and consumer products and services, you can expect to
+consistently reach your target market and exceed those sales numbers. 
 
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
+<p>For a sample listing of the products and services we've successfully
+marketed for our clients, visit:<span style="text-decoration:
+underline;"><br/></span></p><p><a href="http://www.cleareaction.com/sendstudio/users/link.php?UserID=489349&Newsletter=46&List=51&LinkType=Send&LinkID=50">Callbox: IT and
+Software Industry Business Solutions</a><br/><span
+style="text-decoration: underline;"></span></p>
 
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>If I have a soft mount, and open a file with O_DIRECT =
-and
-O_SYNC, should I ever expect a callback (nfs_writeback_done) with a =
-successful
-task-&gt;tk_status (i.e &gt;=3D 0) with the committed state =
-(resp-&gt;verf-&gt;committed)
-set to NFS_UNSTABLE? <o:p></o:p></span></font></p>
+</font>
 
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
+<p><font face="Verdana, Arial, Helvetica,
 
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>A secondary question: if the above is expected, does =
-this
-occur because someone is caching the write and is there a mechanism to =
-disable this
-effect?<o:p></o:p></span></font></p>
+sans-serif" size="2">Do you have a moment this week to set up a brief
+discussion about your business needs? Please reply with a date and
+time. You may also give me a call at my number given below or ask
+directly for a <a href="http://www.cleareaction.com/sendstudio/users/link.php?UserID=489349&Newsletter=46&List=51&LinkType=Send&LinkID=49">service quote here</a>.
+<br/></font></p><p><font face="Verdana, Arial, Helvetica,
 
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
+sans-serif" size="2">NEW! Take advantage of <a
+href="http://www.cleareaction.com/sendstudio/users/link.php?UserID=489349&Newsletter=46&List=51&LinkType=Send&LinkID=51">HotConnect</a> - Convert web visits to sales
+instantly!<br/></font></p><p></p><p><font face="Verdana, Arial,
 
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>Regards,<o:p></o:p></span></font></p>
+Helvetica, sans-serif" size="2">Kind regards,</font></p>
 
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
+<p><font face="Verdana, Arial, Helvetica, sans-serif" size="2">Ann
+Dicen<br/>Manager, Client Development<br/>Callbox Customer Contact
+Solutions<br/>16770 Encino Hills Dr<br/>Encino, CA
+91436<br/>310.439.5814<br/>888.810.7464
+ext.1324<br/>ann@callboxinc.com<br/>www.callboxinc.com</font></p><p><font
+face="Verdana, Arial, Helvetica, sans-serif" size="2">UK:
+20.30025986</font></p><p><font face="Verdana, Arial, Helvetica,
+sans-serif" size="2">Singapore: 65.6248.5022</font></p><p><font
+face="Verdana, Arial, Helvetica, sans-serif" size="2">Australia:
+612.8002.4767<br/></font></p>
 
-<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
-style=3D'font-size:10.0pt;
-font-family:Arial'>Wim<o:p></o:p></span></font></p>
+<hr>
 
-</div>
+<font face="Arial, Helvetica, sans-serif" size="1">If you prefer not to
+receive emails from us in the future, please click&nbsp;to <a
+href="http://www.cleareaction.com/sendstudio/users/unsub.php?Mem=489349&ConfirmCode=c9fd6bdccf8430518d321ecc778b0b80">UNSUBSCRIBE</a> or reply to this email with
+UNSUBSCRIBE on the subject line. </font>
 
-</body>
+<img src="http://www.cleareaction.com/sendstudio/users/sendopen.php?MemberID=489349&SendID=157&Type=Send"></body></html>
 
-</html>
-
-------_=_NextPart_001_01C7D843.64A63736--
+--b1_27dd1fac7c2d389bdf91baf7233871bd--
 
 
---===============0319697139==
+
+--===============1288281811==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -191,7 +195,7 @@ This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
---===============0319697139==
+--===============1288281811==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -201,4 +205,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---===============0319697139==--
+--===============1288281811==--
