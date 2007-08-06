@@ -1,27 +1,30 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: NFS_UNSTABLE vs. FILE and DATA sync.
-Date: Mon, 06 Aug 2007 15:13:15 -0400
-Message-ID: <46B772CB.1080906@oracle.com>
-References: <A9AD3C3BCF83FD4182B7D4D99E37FAD836BEAB@exchrdm.ad.xensource.com>	
-	<46B74E5C.4060400@oracle.com> <46B755FE.1010909@oracle.com>
-	<1186426710.6616.57.camel@localhost>
-Reply-To: chuck.lever@oracle.com
+From: Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH] nfs-utils: specify a create mode with
+ open(...O_CREAT) call in xflock
+Date: Mon, 6 Aug 2007 15:15:48 -0400
+Message-ID: <20070806151548.d3808295.jlayton@redhat.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------040505030806000806040406"
-Cc: nfs@lists.sourceforge.net,
-	Wim Colgate <Wim.Colgate@xensource.com>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: text/plain; charset="us-ascii"
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1II825-0005Ej-Jz
-	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 12:14:25 -0700
-Received: from agminet01.oracle.com ([141.146.126.228])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1II828-0002s0-BB
-	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 12:14:29 -0700
-In-Reply-To: <1186426710.6616.57.camel@localhost>
+	id 1II83P-0005MK-H3
+	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 12:15:49 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1II83T-0003V7-3q
+	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 12:15:51 -0700
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com
+	[172.16.52.254])
+	by mx1.redhat.com (8.13.1/8.13.1) with ESMTP id l76JFocd012885
+	for <nfs@lists.sourceforge.net>; Mon, 6 Aug 2007 15:15:50 -0400
+Received: from pobox.corp.redhat.com (pobox.corp.redhat.com [10.11.255.20])
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l76JFnXn008726
+	for <nfs@lists.sourceforge.net>; Mon, 6 Aug 2007 15:15:49 -0400
+Received: from tleilax.poochiereds.net (vpn-14-58.rdu.redhat.com [10.11.14.58])
+	by pobox.corp.redhat.com (8.13.1/8.13.1) with SMTP id l76JFm4Z025560
+	for <nfs@lists.sourceforge.net>; Mon, 6 Aug 2007 15:15:49 -0400
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,85 +37,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
---------------040505030806000806040406
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+The xflock function can create a file via open() with O_CREAT, but does
+not specify the create mode when it does so. I think 0644 should be
+appropriate given the current usage of this function.
 
-Trond Myklebust wrote:
-> On Mon, 2007-08-06 at 13:10 -0400, Chuck Lever wrote:
->> Even though an NFS client requests an NFS_FILE_SYNC write, the server 
->> still has the choice of returning something less, even NFS_UNSTABLE.  In 
->> general that's a rare occurrence, but is something I've seen in practice.
-> 
-> As Peter said, a server that return anything other than FILE_SYNC to a
-> FILE_SYNC write request would be in clear violation of the description
-> of WRITE semantics on page 51 of RFC1813:
-> 
->       committed
->          The server should return an indication of the level of
->          commitment of the data and metadata via committed. If
->          the server committed all data and metadata to stable
->          storage, committed should be set to FILE_SYNC. If the
->          level of commitment was at least as strong as
->          DATA_SYNC, then committed should be set to DATA_SYNC.
->          Otherwise, committed must be returned as UNSTABLE. If
->          stable was FILE_SYNC, then committed must also be
->          FILE_SYNC: anything else constitutes a protocol
->          violation. If stable was DATA_SYNC, then committed may
->          be FILE_SYNC or DATA_SYNC: anything else constitutes a
->          protocol violation. If stable was UNSTABLE, then
->          committed may be either FILE_SYNC, DATA_SYNC, or
->          UNSTABLE.
-> 
-> I see no reason why we should care about supporting such a server.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 
-I said nothing about whether the server should or should not return such 
-a value.  I just said that it is a possibility, and that I have observed 
-the behavior in the field.
-
-The client, if it is a good implementation, needs to check for this 
-possibility and throw an error in that case.
-
---------------040505030806000806040406
-Content-Type: text/x-vcard; charset=utf-8;
- name="chuck.lever.vcf"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="chuck.lever.vcf"
-
-begin:vcard
-fn:Chuck Lever
-n:Lever;Chuck
-org:Oracle Corporation;Corporate Architecture: Linux Projects Group
-adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
-title:Principal Member of Staff
-tel;work:+1 248 614 5091
-x-mozilla-html:FALSE
-url:http://oss.oracle.com/~cel
-version:2.1
-end:vcard
-
-
---------------040505030806000806040406
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+diff --git a/support/nfs/xio.c b/support/nfs/xio.c
+index 221cce6..0453ca7 100644
+--- a/support/nfs/xio.c
++++ b/support/nfs/xio.c
+@@ -57,7 +57,7 @@ xflock(char *fname, char *type)
+ 	struct flock	fl = { readonly? F_RDLCK : F_WRLCK, SEEK_SET, 0, 0, 0 };
+ 	int		fd;
+ 
+-	if ((fd = open(fname, readonly? O_RDONLY : (O_RDWR|O_CREAT))) < 0) {
++	if ((fd = open(fname, readonly? O_RDONLY : (O_RDWR|O_CREAT), 0644)) < 0) {
+ 		xlog(L_WARNING, "could not open %s for locking", fname);
+ 		return -1;
+ 	}
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
---------------040505030806000806040406
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---------------040505030806000806040406--
