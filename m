@@ -1,20 +1,21 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 00/20] Basic IPv6 address support for RPC client
-Date: Mon, 06 Aug 2007 11:56:20 -0400
-Message-ID: <20070806154759.31233.2894.stgit@manray.1015granger.net>
+Subject: [PATCH 01/20] Eliminate signed vs. unsigned comparison
+	in	asm-x86_64/bitops.h
+Date: Mon, 06 Aug 2007 11:56:26 -0400
+Message-ID: <20070806155626.31233.83820.stgit@manray.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset="utf-8"
 Cc: nfs@lists.sourceforge.net
 To: trond.myklebust@fys.uio.no
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1II4wo-0000u2-HV
-	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 08:56:46 -0700
+	id 1II4wp-0000u7-1I
+	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 08:56:47 -0700
 Received: from flpi101.sbcis.sbc.com ([207.115.20.70] helo=flpi101.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1II4wr-0001gJ-Jj
-	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 08:56:50 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1II4wt-0005g6-2p
+	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 08:56:51 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,25 +28,45 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi Trond-
-
-Here are 20 patches that I propose for supporting IPv6 addressing in the Linux
-RPC client.  Please consider this work for 2.6.24.
-
-The first several patches are bug fixes and clean-ups, followed by ten patches
-that introduce the real support, then another two patches of clean-up.
-
-Bull has tested many previous versions of this patch set, but this particular
-series has had only my own build testing.
-
--- 
-corporate:    <chuck dot lever at oracle dot com>
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Splunk Inc.
-Still grepping through log files to find problems?  Stop.
-Now Search log events and configuration files using AJAX and a browser.
-Download your FREE copy of Splunk now >>  http://get.splunk.com/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+SW4gZmlsZSBpbmNsdWRlZCBmcm9tIC9ob21lL2NlbC9zcmMvbGludXgvaW5jbHVkZS9saW51eC9t
+bXpvbmUuaDoxNSwKICAgICAgICAgICAgICAgICBmcm9tIC9ob21lL2NlbC9zcmMvbGludXgvaW5j
+bHVkZS9saW51eC9nZnAuaDo0LAogICAgICAgICAgICAgICAgIGZyb20gL2hvbWUvY2VsL3NyYy9s
+aW51eC9pbmNsdWRlL2xpbnV4L3NsYWIuaDoxNCwKICAgICAgICAgICAgICAgICBmcm9tIC9ob21l
+L2NlbC9zcmMvbGludXgvaW5jbHVkZS9saW51eC9wZXJjcHUuaDo1LAogICAgICAgICAgICAgICAg
+IGZyb20KL2hvbWUvY2VsL3NyYy9saW51eC9pbmNsdWRlL2xpbnV4L3JjdXBkYXRlLmg6NDEsCiAg
+ICAgICAgICAgICAgICAgZnJvbSAvaG9tZS9jZWwvc3JjL2xpbnV4L2luY2x1ZGUvbGludXgvZGNh
+Y2hlLmg6MTAsCiAgICAgICAgICAgICAgICAgZnJvbSAvaG9tZS9jZWwvc3JjL2xpbnV4L2luY2x1
+ZGUvbGludXgvZnMuaDoyNzUsCiAgICAgICAgICAgICAgICAgZnJvbSAvaG9tZS9jZWwvc3JjL2xp
+bnV4L2ZzL25mcy9zeXNjdGwuYzo5OgovaG9tZS9jZWwvc3JjL2xpbnV4L2luY2x1ZGUvbGludXgv
+bm9kZW1hc2suaDogSW4gZnVuY3Rpb24K4oCYX19maXJzdF9ub2Rl4oCZOgovaG9tZS9jZWwvc3Jj
+L2xpbnV4L2luY2x1ZGUvbGludXgvbm9kZW1hc2suaDoyMjk6IHdhcm5pbmc6IHNpZ25lZCBhbmQK
+dW5zaWduZWQgdHlwZSBpbiBjb25kaXRpb25hbCBleHByZXNzaW9uCi9ob21lL2NlbC9zcmMvbGlu
+dXgvaW5jbHVkZS9saW51eC9ub2RlbWFzay5oOiBJbiBmdW5jdGlvbgrigJhfX25leHRfbm9kZeKA
+mToKL2hvbWUvY2VsL3NyYy9saW51eC9pbmNsdWRlL2xpbnV4L25vZGVtYXNrLmg6MjM1OiB3YXJu
+aW5nOiBzaWduZWQgYW5kCnVuc2lnbmVkIHR5cGUgaW4gY29uZGl0aW9uYWwgZXhwcmVzc2lvbgov
+aG9tZS9jZWwvc3JjL2xpbnV4L2luY2x1ZGUvbGludXgvbm9kZW1hc2suaDogSW4gZnVuY3Rpb24K
+4oCYX19maXJzdF91bnNldF9ub2Rl4oCZOgovaG9tZS9jZWwvc3JjL2xpbnV4L2luY2x1ZGUvbGlu
+dXgvbm9kZW1hc2suaDoyNTM6IHdhcm5pbmc6IHNpZ25lZCBhbmQKdW5zaWduZWQgdHlwZSBpbiBj
+b25kaXRpb25hbCBleHByZXNzaW9uCgpTaWduZWQtb2ZmLWJ5OiBDaHVjayBMZXZlciA8Y2h1Y2su
+bGV2ZXJAb3JhY2xlLmNvbT4KLS0tCgogaW5jbHVkZS9hc20teDg2XzY0L2JpdG9wcy5oIHwgICAg
+MiArLQogMSBmaWxlcyBjaGFuZ2VkLCAxIGluc2VydGlvbnMoKyksIDEgZGVsZXRpb25zKC0pCgpk
+aWZmIC0tZ2l0IGEvaW5jbHVkZS9hc20teDg2XzY0L2JpdG9wcy5oIGIvaW5jbHVkZS9hc20teDg2
+XzY0L2JpdG9wcy5oCmluZGV4IGQ0ZGJiZTUuLjFkN2Q5YjQgMTAwNjQ0Ci0tLSBhL2luY2x1ZGUv
+YXNtLXg4Nl82NC9iaXRvcHMuaAorKysgYi9pbmNsdWRlL2FzbS14ODZfNjQvYml0b3BzLmgKQEAg
+LTI2MCw3ICsyNjAsNyBAQCBleHRlcm4gbG9uZyBmaW5kX2ZpcnN0X2JpdChjb25zdCB1bnNpZ25l
+ZCBsb25nICogYWRkciwgdW5zaWduZWQgbG9uZyBzaXplKTsKIGV4dGVybiBsb25nIGZpbmRfbmV4
+dF9iaXQoY29uc3QgdW5zaWduZWQgbG9uZyAqIGFkZHIsIGxvbmcgc2l6ZSwgbG9uZyBvZmZzZXQp
+OwogCiAvKiByZXR1cm4gaW5kZXggb2YgZmlyc3QgYmV0IHNldCBpbiB2YWwgb3IgbWF4IHdoZW4g
+bm8gYml0IGlzIHNldCAqLwotc3RhdGljIGlubGluZSB1bnNpZ25lZCBsb25nIF9fc2NhbmJpdCh1
+bnNpZ25lZCBsb25nIHZhbCwgdW5zaWduZWQgbG9uZyBtYXgpCitzdGF0aWMgaW5saW5lIGxvbmcg
+X19zY2FuYml0KHVuc2lnbmVkIGxvbmcgdmFsLCB1bnNpZ25lZCBsb25nIG1heCkKIHsKIAlhc20o
+ImJzZnEgJTEsJTAgOyBjbW92eiAlMiwlMCIgOiAiPSZyIiAodmFsKSA6ICJyIiAodmFsKSwgInIi
+IChtYXgpKTsKIAlyZXR1cm4gdmFsOwoKCi0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0KVGhpcyBTRi5uZXQgZW1h
+aWwgaXMgc3BvbnNvcmVkIGJ5OiBTcGx1bmsgSW5jLgpTdGlsbCBncmVwcGluZyB0aHJvdWdoIGxv
+ZyBmaWxlcyB0byBmaW5kIHByb2JsZW1zPyAgU3RvcC4KTm93IFNlYXJjaCBsb2cgZXZlbnRzIGFu
+ZCBjb25maWd1cmF0aW9uIGZpbGVzIHVzaW5nIEFKQVggYW5kIGEgYnJvd3Nlci4KRG93bmxvYWQg
+eW91ciBGUkVFIGNvcHkgb2YgU3BsdW5rIG5vdyA+PiAgaHR0cDovL2dldC5zcGx1bmsuY29tLwpf
+X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fXwpORlMgbWFpbGxp
+c3QgIC0gIE5GU0BsaXN0cy5zb3VyY2Vmb3JnZS5uZXQKaHR0cHM6Ly9saXN0cy5zb3VyY2Vmb3Jn
+ZS5uZXQvbGlzdHMvbGlzdGluZm8vbmZzCg==
