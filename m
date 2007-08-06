@@ -1,8 +1,8 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 03/20] SUNRPC: Fix some signed v. unsigned comparisons
-	in	xprtsock.c
-Date: Mon, 06 Aug 2007 11:56:36 -0400
-Message-ID: <20070806155636.31233.33750.stgit@manray.1015granger.net>
+Subject: [PATCH 02/20] SUNRPC: Fix a signed v. unsigned comparison
+	in	rpcbind's XDR routines
+Date: Mon, 06 Aug 2007 11:56:31 -0400
+Message-ID: <20070806155631.31233.23672.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
@@ -11,11 +11,11 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1II4wr-0000uH-1S
-	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 08:56:49 -0700
+	id 1II4x0-0000ud-6N
+	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 08:56:58 -0700
 Received: from flpi101.sbcis.sbc.com ([207.115.20.70] helo=flpi101.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1II4wv-0001n7-3S
-	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 08:56:53 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1II4x4-0001mP-3r
+	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 08:57:02 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,58 +28,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Currently these are not harmful because the range of "len" is less than the
-size of a page.
-
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- net/sunrpc/xprtsock.c |   18 ++++++++++++++----
- 1 files changed, 14 insertions(+), 4 deletions(-)
+ net/sunrpc/rpcb_clnt.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
 
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 4ae7eed..274f235 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -338,7 +338,10 @@ static int xs_send_pagedata(struct socket *sock, struct xdr_buf *xdr, unsigned i
- 		if (remainder != 0 || more)
- 			flags |= MSG_MORE;
- 		err = sock->ops->sendpage(sock, *ppage, base, len, flags);
--		if (remainder == 0 || err != len)
-+		if (err < 0 || (unsigned int)err != len)
-+			break;
-+
-+		if (remainder == 0)
- 			break;
- 		sent += err;
- 		ppage++;
-@@ -377,8 +380,12 @@ static int xs_sendpages(struct socket *sock, struct sockaddr *addr, int addrlen,
- 	if (base < xdr->head[0].iov_len || addr != NULL) {
- 		unsigned int len = xdr->head[0].iov_len - base;
- 		remainder -= len;
--		err = xs_send_kvec(sock, addr, addrlen, &xdr->head[0], base, remainder != 0);
--		if (remainder == 0 || err != len)
-+		err = xs_send_kvec(sock, addr, addrlen, &xdr->head[0],
-+				   base, remainder != 0);
-+		if (err < 0 || (unsigned int)err != len)
-+			goto out;
-+
-+		if (remainder == 0)
- 			goto out;
- 		sent += err;
- 		base = 0;
-@@ -389,7 +396,10 @@ static int xs_sendpages(struct socket *sock, struct sockaddr *addr, int addrlen,
- 		unsigned int len = xdr->page_len - base;
- 		remainder -= len;
- 		err = xs_send_pagedata(sock, xdr, base, remainder != 0);
--		if (remainder == 0 || err != len)
-+		if (err < 0 || (unsigned int)err != len)
-+			goto out;
-+
-+		if (remainder == 0)
- 			goto out;
- 		sent += err;
- 		base = 0;
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index d1740db..eae711f 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -490,7 +490,8 @@ static int rpcb_decode_getaddr(struct rpc_rqst *req, __be32 *p,
+ 			       unsigned short *portp)
+ {
+ 	char *addr;
+-	int addr_len, c, i, f, first, val;
++	u32 addr_len;
++	int c, i, f, first, val;
+ 
+ 	*portp = 0;
+ 	addr_len = (unsigned int) ntohl(*p++);
 
 
 -------------------------------------------------------------------------
