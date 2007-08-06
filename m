@@ -1,29 +1,32 @@
-From: Marc Dietrich <Marc.Dietrich@ap.physik.uni-giessen.de>
+From: Johannes Berg <johannes@sipsolutions.net>
 Subject: Re: 2.6.23-rc1-mm2
-Date: Mon, 6 Aug 2007 13:05:23 +0200
-Message-ID: <200708061305.37208.marc.dietrich@ap.physik.uni-giessen.de>
+Date: Mon, 06 Aug 2007 13:13:36 +0200
+Message-ID: <1186398816.28655.66.camel@johannes.berg>
 References: <20070731230932.a9459617.akpm@linux-foundation.org>
 	<20070803172137.GA3783@tv-sign.ru>
 	<1186381496.21957.30.camel@johannes.berg>
+	<200708061305.37208.marc.dietrich@ap.physik.uni-giessen.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: multipart/mixed; boundary="===============0796652763=="
 Cc: Peter Zijlstra <a.p.zijlstra@chello.nl>,
 	Neil Brown <neilb@suse.de>, Ingo Molnar <mingo@elte.hu>,
 	linux-kernel@vger.kernel.org,
 	Trond Myklebust <trond.myklebust@fys.uio.no>,
 	nfs@lists.sourceforge.net, Andrew Morton <akpm@linux-foundation.org>,
 	Oleg Nesterov <oleg@tv-sign.ru>
-To: Johannes Berg <johannes@sipsolutions.net>
+To: Marc Dietrich <Marc.Dietrich@ap.physik.uni-giessen.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1II0Pm-0000hF-DQ
-	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 04:06:22 -0700
-Received: from merkurneu.hrz.uni-giessen.de ([134.176.2.3])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1II0Pp-0005uz-Oi
-	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 04:06:26 -0700
-In-Reply-To: <1186381496.21957.30.camel@johannes.berg>
+	id 1II0Vt-0001Ku-S4
+	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 04:12:44 -0700
+Received: from crystal.sipsolutions.net
+	([195.210.38.204] helo=sipsolutions.net ident=Debian-exim)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1II0Vt-0000La-DH
+	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 04:12:43 -0700
+In-Reply-To: <200708061305.37208.marc.dietrich@ap.physik.uni-giessen.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,155 +40,71 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 
-Hi,
+--===============0796652763==
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature";
+	boundary="=-EY70lVrxONX/dTFlTmB3"
 
-Am Monday 06 August 2007 08:24 schrieb Johannes Berg:
-> On Fri, 2007-08-03 at 21:21 +0400, Oleg Nesterov wrote:
-> > To avoid a possible confusion: it is still OK if work->func() flushes
-> > its own workqueue, so strictly speaking this trace is false positive,
-> > but it would be very nice if we can get rid of this practice.
->
-> I just had a thought: we could get rid of this warning by using a
-> read-lock here. That way, flushing from within a work function (which
-> would be seen as read-after-read recursive lock) won't trigger this
-> warning. Patch below. This would, however, also get rid of any warnings
-> for run_workqueue recursion. Which again we may or may not want, the
-> code inidicates that it should be allowed up to a depth of three.
->
-> However, the question whether we should allow flush_workqueue from
-> within a struct work is mainly an API policy issue; it doesn't hurt to
-> flush a workqueue from within a work, but it is probably nearer the
-> intent to use targeted cancel_work_sync() or such. OTOH, one could
-> imagine situations where multiple different work structs are on that
-> workqueue belonging to the same subsystem and then the general
-> flush_scheduled_work() call is the only way to guarantee nothing is on
-> scheduled at a given point... I don't feel qualified to make the
-> decision for or against allowing this use of the API at this point.
->
-> Marc, do you have an easy way to trigger this warning? Could you verify
-> that it goes away with the patch below applied?
 
-just booting into X is enough.
+--=-EY70lVrxONX/dTFlTmB3
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-I applied the patch, but now I get:
+On Mon, 2007-08-06 at 13:05 +0200, Marc Dietrich wrote:
 
-=================================
-[ INFO: inconsistent lock state ]
-2.6.23-rc1-mm2 #4
----------------------------------
-inconsistent {softirq-on-W} -> {in-softirq-W} usage.
-swapper/0 [HC0[0]:SC1[1]:HE1:SE0] takes:
- (rpc_credcache_lock){-+..}, at: [<c01dc487>] _atomic_dec_and_lock+0x17/0x60
-{softirq-on-W} state was registered at:
-  [<c013e870>] __lock_acquire+0x650/0x1030
-  [<c013f2b1>] lock_acquire+0x61/0x80
-  [<c02db9ac>] _spin_lock+0x2c/0x40
-  [<c01dc487>] _atomic_dec_and_lock+0x17/0x60
-  [<dced55fd>] put_rpccred+0x5d/0x100 [sunrpc]
-  [<dced56c1>] rpcauth_unbindcred+0x21/0x60 [sunrpc]
-  [<dced3fd4>] a0 [sunrpc]
-  [<dcecefe0>] rpc_call_sync+0x30/0x40 [sunrpc]
-  [<dcedc73b>] rpcb_register+0xdb/0x180 [sunrpc]
-  [<dced65b3>] svc_register+0x93/0x160 [sunrpc]
-  [<dced6ebe>] __svc_create+0x1ee/0x220 [sunrpc]
-  [<dced7053>] svc_create+0x13/0x20 [sunrpc]
-  [<dcf6d722>] nfs_callback_up+0x82/0x120 [nfs]
-  [<dcf48f36>] nfs_get_client+0x176/0x390 [nfs]
-  [<dcf49181>] nfs4_set_client+0x31/0x190 [nfs]
-  [<dcf49983>] nfs4_create_server+0x63/0x3b0 [nfs]
-  [<dcf52426>] nfs4_get_sb+0x346/0x5b0 [nfs]
-  [<c017b444>] vfs_kern_mount+0x94/0x110
-  [<c0190a62>] do_mount+0x1f2/0x7d0
-  [<c01910a6>] sys_mount+0x66/0xa0
-  [<c0104046>] syscall_call+0x7/0xb
-  [<ffffffff>] 0xffffffff
-irq event stamp: 5277830
-hardirqs last  enabled at (5277830): [<c017530a>] kmem_cache_free+0x8a/0xc0
-hardirqs last disabled at (5277829): [<c01752d2>] kmem_cache_free+0x52/0xc0
-softirqs last  enabled at (5277798): [<c0124173>] __do_softirq+0xa3/0xc0
-softirqs last disabled at (5277817): [<c01241d7>] do_softirq+0x47/0x50
+> I applied the patch, but now I get:
+>=20
+> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D
+> [ INFO: inconsistent lock state ]
+> 2.6.23-rc1-mm2 #4
+> ---------------------------------
+> inconsistent {softirq-on-W} -> {in-softirq-W} usage.
+> swapper/0 [HC0[0]:SC1[1]:HE1:SE0] takes:
+>  (rpc_credcache_lock){-+..}, at: [<c01dc487>] _atomic_dec_and_lock+0x17/0=
+x60
 
-other info that might help us debug this:
-no locks held by swapper/0.
+Interesting, but doesn't seem related to this at all. As Oleg just
+pointed out this basically disabled checking for workqueue stuff so this
+should be looked into by somebody familiar with the NFS code.
 
-stack backtrace:
- [<c0104fda>] show_trace_log_lvl+0x1a/0x30
- [<c0105c02>] show_trace+0x12/0x20
- [<c0105d15>] dump_stack+0x15/0x20
- [<c013ccc3>] print_usage_bug+0x153/0x160
- [<c013d8b9>] mark_lock+0x449/0x620
- [<c013e824>] __lock_acquire+0x604/0x1030
- [<c013f2b1>] lock_acquire+0x61/0x80
- [<c02db9ac>] _spin_lock+0x2c/0x40
- [<c01dc487>] _atomic_dec_and_lock+0x17/0x60
- [<dced55fd>] put_rpccred+0x5d/0x100 [sunrpc]
- [<dcf6bf83>] nfs_free_delegation_callback+0x13/0x20 [nfs]
- [<c012f9ea>] __rcu_process_callbacks+0x6a/0x1c0
- [<c012fb52>] rcu_process_callbacks+0x12/0x30
- [<c0124218>] tasklet_action+0x38/0x80
- [<c0124125>] __do_softirq+0x55/0xc0
- [<c01241d7>] do_softirq+0x47/0x50
- [<c0124605>] irq_exit+0x35/0x40
- [<c0112463>] smp_apic_timer_interrupt+0x43/0x80
- [<c0104a77>] apic_timer_interrupt+0x33/0x38
- [<c02690df>] cpuidle_idle_call+0x6f/0x90
- [<c01023c3>] cpu_idle+0x43/0x70
- [<c02d8c27>] rest_init+0x47/0x50
- [<c03bcb6a>] start_kernel+0x22a/0x2b0
- [<00000000>] 0x0
- =======================
+johannes
 
-also, sometimes this kernel hangs because of nfs accessing processes remain in 
-D state.
+--=-EY70lVrxONX/dTFlTmB3
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Description: This is a digitally signed message part
 
-Marc
+-----BEGIN PGP SIGNATURE-----
+Comment: Johannes Berg (powerbook)
 
-> johannes
->
-> ---
->  kernel/workqueue.c |    6 +++---
->  1 file changed, 3 insertions(+), 3 deletions(-)
->
-> --- wireless-dev.orig/kernel/workqueue.c	2007-08-06 08:11:23.297846657
-> +0200 +++ wireless-dev/kernel/workqueue.c	2007-08-06 08:19:54.727846657
-> +0200 @@ -272,7 +272,7 @@ static void run_workqueue(struct cpu_wor
->
->  		BUG_ON(get_wq_data(work) != cwq);
->  		work_clear_pending(work);
-> -		lock_acquire(&cwq->wq->lockdep_map, 0, 0, 0, 2, _THIS_IP_);
-> +		lock_acquire(&cwq->wq->lockdep_map, 0, 0, 1, 2, _THIS_IP_);
->  		lock_acquire(&lockdep_map, 0, 0, 0, 2, _THIS_IP_);
->  		f(work);
->  		lock_release(&lockdep_map, 1, _THIS_IP_);
-> @@ -395,7 +395,7 @@ void fastcall flush_workqueue(struct wor
->  	int cpu;
->
->  	might_sleep();
-> -	lock_acquire(&wq->lockdep_map, 0, 0, 0, 2, _THIS_IP_);
-> +	lock_acquire(&wq->lockdep_map, 0, 0, 1, 2, _THIS_IP_);
->  	lock_release(&wq->lockdep_map, 1, _THIS_IP_);
->  	for_each_cpu_mask(cpu, *cpu_map)
->  		flush_cpu_workqueue(per_cpu_ptr(wq->cpu_wq, cpu));
-> @@ -779,7 +779,7 @@ static void cleanup_workqueue_thread(str
->  	if (cwq->thread == NULL)
->  		return;
->
-> -	lock_acquire(&cwq->wq->lockdep_map, 0, 0, 0, 2, _THIS_IP_);
-> +	lock_acquire(&cwq->wq->lockdep_map, 0, 0, 1, 2, _THIS_IP_);
->  	lock_release(&cwq->wq->lockdep_map, 1, _THIS_IP_);
->
->  	flush_cpu_workqueue(cwq);
+iD8DBQBGtwJg/ETPhpq3jKURAs8eAKCfqd2K4uQ2FhrG4yTHm20CxFKPbQCfRhfA
+WgDX3oGozsIV/5PBYEIz1FM=
+=A/da
+-----END PGP SIGNATURE-----
 
--- 
-	"The enemy uses unauthorized weapons."
-		 Lord Arthur Ponsonby, "Falsehood in Wartime: Propaganda Lies of the First 
-World War", 1928
+--=-EY70lVrxONX/dTFlTmB3--
+
+
+
+--===============0796652763==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
+--===============0796652763==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============0796652763==--
