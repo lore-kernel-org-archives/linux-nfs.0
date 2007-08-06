@@ -1,26 +1,27 @@
-From: "Chakri n" <chakriin5@gmail.com>
-Subject: Re: OOPS in shrink_dcache_for_umount
-Date: Mon, 6 Aug 2007 12:18:26 -0700
-Message-ID: <92cbf19b0708061218k456af713g1a7ee0a8864e5995@mail.gmail.com>
-References: <92cbf19b0708021427l7c88c642g3901e393ac2b90b9@mail.gmail.com>
-	<20070804120105.47ae82fc@highlander.home.lan>
-	<92cbf19b0708050939r6164474di64949e4044691951@mail.gmail.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: NFS_UNSTABLE vs. FILE and DATA sync.
+Date: Mon, 06 Aug 2007 15:19:42 -0400
+Message-ID: <1186427982.6616.67.camel@localhost>
+References: <A9AD3C3BCF83FD4182B7D4D99E37FAD836BEAB@exchrdm.ad.xensource.com>
+	<46B74E5C.4060400@oracle.com>  <46B755FE.1010909@oracle.com>
+	<1186426710.6616.57.camel@localhost>  <46B772CB.1080906@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
-To: "=?ISO-8859-1?Q?Malte_Schr=F6der?=" <maltesch@gmx.de>
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net,
+	Wim Colgate <Wim.Colgate@xensource.com>
+To: chuck.lever@oracle.com
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1II85w-0005hE-1O
-	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 12:18:27 -0700
-Received: from rv-out-0910.google.com ([209.85.198.190])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1II85z-0004WC-UN
-	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 12:18:28 -0700
-Received: by rv-out-0910.google.com with SMTP id g11so4041624rvb
-	for <nfs@lists.sourceforge.net>; Mon, 06 Aug 2007 12:18:27 -0700 (PDT)
-In-Reply-To: <92cbf19b0708050939r6164474di64949e4044691951@mail.gmail.com>
+	id 1II87M-0005sU-FJ
+	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 12:19:54 -0700
+Received: from pat.uio.no ([129.240.10.15]
+	ident=[U2FsdGVkX19CAZ0/z4tDjitsHqBI3DcLozpZM3okiHA=])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1II87M-0006kj-IZ
+	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 12:19:56 -0700
+In-Reply-To: <46B772CB.1080906@oracle.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,61 +34,50 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-The patches do not help. The system still paniced in the same place.
+On Mon, 2007-08-06 at 15:13 -0400, Chuck Lever wrote:
+> Trond Myklebust wrote:
+> > On Mon, 2007-08-06 at 13:10 -0400, Chuck Lever wrote:
+> >> Even though an NFS client requests an NFS_FILE_SYNC write, the server 
+> >> still has the choice of returning something less, even NFS_UNSTABLE.  In 
+> >> general that's a rare occurrence, but is something I've seen in practice.
+> > 
+> > As Peter said, a server that return anything other than FILE_SYNC to a
+> > FILE_SYNC write request would be in clear violation of the description
+> > of WRITE semantics on page 51 of RFC1813:
+> > 
+> >       committed
+> >          The server should return an indication of the level of
+> >          commitment of the data and metadata via committed. If
+> >          the server committed all data and metadata to stable
+> >          storage, committed should be set to FILE_SYNC. If the
+> >          level of commitment was at least as strong as
+> >          DATA_SYNC, then committed should be set to DATA_SYNC.
+> >          Otherwise, committed must be returned as UNSTABLE. If
+> >          stable was FILE_SYNC, then committed must also be
+> >          FILE_SYNC: anything else constitutes a protocol
+> >          violation. If stable was DATA_SYNC, then committed may
+> >          be FILE_SYNC or DATA_SYNC: anything else constitutes a
+> >          protocol violation. If stable was UNSTABLE, then
+> >          committed may be either FILE_SYNC, DATA_SYNC, or
+> >          UNSTABLE.
+> > 
+> > I see no reason why we should care about supporting such a server.
+> 
+> I said nothing about whether the server should or should not return such 
+> a value.  I just said that it is a possibility, and that I have observed 
+> the behavior in the field.
+> 
+> The client, if it is a good implementation, needs to check for this 
+> possibility and throw an error in that case.
 
-Still trying to correlate the problem & fix to specific patch.
+We have never supported servers that blatantly violate the protocol, and
+I see no reason to be burdening the client with a whole load of checks
+for server protocol violations either.
 
-Regards
---Chakri
+If you want a tool for testing servers, then use something like pynfs.
 
-On 8/5/07, Chakri n <chakriin5@gmail.com> wrote:
-> Hi Malte,
->
-> Thanks for the information.
->
-> Based on your suggestion I tried the following two patches on top of
-> 2.6.18-1.8.el5 NFS code. I had to keep the changes minimum to fix this
-> crash in our release.
->
-> http://linux-nfs.org/Linux-2.6.x/2.6.20-rc7/linux-2.6.20-007-fix_readdir_=
-negative_dentry.dif
-> http://linux-nfs.org/Linux-2.6.x/2.6.20-rc7/linux-2.6.20-008-fix_readdir_=
-positive_dentry.dif
->
-> The systems are running for the past 7 hours with out any issues.
-> Hopefully this fixes it.
->
-> Regards
-> --Chakri
->
-> On 8/4/07, Malte Schr=F6der <maltesch@gmx.de> wrote:
-> > On Thu, 2 Aug 2007 14:27:04 -0700
-> > "Chakri n" <chakriin5@gmail.com> wrote:
-> >
-> > > Hi,
-> > >
-> > > We are seeing this problem while unmounting file systems. It happens
-> > > once in a while.
-> > > I am able to grab the trace and core from linux-2.6.18-1.8.el5, but I
-> > > have observed the same problem with linux-2.6.20.1 kernel.
-> > >
-> > > Has this problem fixed in recent kernel?
-> > >
-> >
-> > I had those too ... but I haven't seen one in a while.
-> > I currently run 2.6.22 + cfs-v19 + the Patch from
-> > http://linux-nfs.org/Linux-2.6.x/2.6.22/linux-2.6.22-NFS_ALL.dif
-> >
-> > --
-> > ---------------------------------------
-> > Malte Schr=F6der
-> > MalteSch@gmx.de
-> > ICQ# 68121508
-> > ---------------------------------------
-> >
-> >
-> >
->
+Trond
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
