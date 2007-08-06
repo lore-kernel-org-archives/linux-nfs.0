@@ -1,24 +1,26 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: NFS_UNSTABLE vs. FILE and DATA sync.
-Date: Mon, 06 Aug 2007 15:16:28 -0400
-Message-ID: <46B7738C.4020503@oracle.com>
-References: <A9AD3C3BCF83FD4182B7D4D99E37FAD836BEDD@exchrdm.ad.xensource.com>
-Reply-To: chuck.lever@oracle.com
+From: "Chakri n" <chakriin5@gmail.com>
+Subject: Re: OOPS in shrink_dcache_for_umount
+Date: Mon, 6 Aug 2007 12:18:26 -0700
+Message-ID: <92cbf19b0708061218k456af713g1a7ee0a8864e5995@mail.gmail.com>
+References: <92cbf19b0708021427l7c88c642g3901e393ac2b90b9@mail.gmail.com>
+	<20070804120105.47ae82fc@highlander.home.lan>
+	<92cbf19b0708050939r6164474di64949e4044691951@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------040909080606070901000405"
-Cc: nfs@lists.sourceforge.net
-To: Wim Colgate <Wim.Colgate@xensource.com>
+Content-Type: text/plain; charset="iso-8859-1"
+Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+To: "=?ISO-8859-1?Q?Malte_Schr=F6der?=" <maltesch@gmx.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1II85t-0005h5-C7
-	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 12:18:23 -0700
-Received: from agminet01.oracle.com ([141.146.126.228])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1II85v-0005or-8X
-	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 12:18:23 -0700
-In-Reply-To: <A9AD3C3BCF83FD4182B7D4D99E37FAD836BEDD@exchrdm.ad.xensource.com>
+	id 1II85w-0005hE-1O
+	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 12:18:27 -0700
+Received: from rv-out-0910.google.com ([209.85.198.190])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1II85z-0004WC-UN
+	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 12:18:28 -0700
+Received: by rv-out-0910.google.com with SMTP id g11so4041624rvb
+	for <nfs@lists.sourceforge.net>; Mon, 06 Aug 2007 12:18:27 -0700 (PDT)
+In-Reply-To: <92cbf19b0708050939r6164474di64949e4044691951@mail.gmail.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,101 +33,67 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
---------------040909080606070901000405
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Transfer-Encoding: 7bit
+The patches do not help. The system still paniced in the same place.
 
-Wim Colgate wrote:
-> Specifically I am trying to inject errors by manually (but politely)
-> bringing the NFS server down then up, then down (rinse and repeat ...)
-> while doing IO from a linux client. As mentioned the open file is
-> O_DIRECT and O_SYNC -- which I thought should mean either the data hits
-> the server's storage or I should get an error; and I'm more than happy
-> to deal with an IO error.
-> 
-> I'm confident the writes are less than wsize (4096 bytes to be precise).
-> 
-> 
-> Is there a 100% guaranteed method to get the behavior I thought O_DIRECT
-> and O_SYNC was providing?
+Still trying to correlate the problem & fix to specific patch.
 
-What behavior did you expect O_DIRECT + O_SYNC to provide?  O_DIRECT 
-means "don't cache data" and O_SYNC means "make sure the data is flushed 
-to the server's disk before each write() system call returns." 
-Technically, you don't need NFS_FILE_SYNC writes to do either of those.
+Regards
+--Chakri
 
-Which kernel are you testing?  The client's use of NFS_FILE_SYNC writes 
-changed over time.
-
-> -----Original Message-----
-> From: Peter Staubach [mailto:staubach@redhat.com] 
-> Sent: Monday, August 06, 2007 10:33 AM
-> To: chuck.lever@oracle.com
-> Cc: Wim Colgate; nfs@lists.sourceforge.net
-> Subject: Re: [NFS] NFS_UNSTABLE vs. FILE and DATA sync.
-> 
-> Chuck Lever wrote:
->> Wim Colgate wrote:
->>> If I have a soft mount, and open a file with O_DIRECT and O_SYNC, 
->>> should I ever expect a callback (nfs_writeback_done) with a 
->>> successful task->tk_status (i.e >= 0) with the committed state 
->>> (resp->verf->committed) set to NFS_UNSTABLE?
->> Yes, this can happen if the server decides to return NFS_UNSTABLE. 
->> Rare, but possible.
->>
->>> A secondary question: if the above is expected, does this occur 
->>> because someone is caching the write and is there a mechanism to 
->>> disable this effect?
->> Servers can return NFS_UNSTABLE to any WRITE request, so I can't think
-> 
->> of a way this might be disabled. 
-> 
-> Actually, it would be a protocol error for a server to return
-> a commitment level less than was requested by the client.  The
-> server can return a greater commitment level, but not less than.
-> 
->        ps
-
---------------040909080606070901000405
-Content-Type: text/x-vcard; charset=utf-8;
- name="chuck.lever.vcf"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="chuck.lever.vcf"
-
-begin:vcard
-fn:Chuck Lever
-n:Lever;Chuck
-org:Oracle Corporation;Corporate Architecture: Linux Projects Group
-adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
-title:Principal Member of Staff
-tel;work:+1 248 614 5091
-x-mozilla-html:FALSE
-url:http://oss.oracle.com/~cel
-version:2.1
-end:vcard
-
-
---------------040909080606070901000405
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+On 8/5/07, Chakri n <chakriin5@gmail.com> wrote:
+> Hi Malte,
+>
+> Thanks for the information.
+>
+> Based on your suggestion I tried the following two patches on top of
+> 2.6.18-1.8.el5 NFS code. I had to keep the changes minimum to fix this
+> crash in our release.
+>
+> http://linux-nfs.org/Linux-2.6.x/2.6.20-rc7/linux-2.6.20-007-fix_readdir_=
+negative_dentry.dif
+> http://linux-nfs.org/Linux-2.6.x/2.6.20-rc7/linux-2.6.20-008-fix_readdir_=
+positive_dentry.dif
+>
+> The systems are running for the past 7 hours with out any issues.
+> Hopefully this fixes it.
+>
+> Regards
+> --Chakri
+>
+> On 8/4/07, Malte Schr=F6der <maltesch@gmx.de> wrote:
+> > On Thu, 2 Aug 2007 14:27:04 -0700
+> > "Chakri n" <chakriin5@gmail.com> wrote:
+> >
+> > > Hi,
+> > >
+> > > We are seeing this problem while unmounting file systems. It happens
+> > > once in a while.
+> > > I am able to grab the trace and core from linux-2.6.18-1.8.el5, but I
+> > > have observed the same problem with linux-2.6.20.1 kernel.
+> > >
+> > > Has this problem fixed in recent kernel?
+> > >
+> >
+> > I had those too ... but I haven't seen one in a while.
+> > I currently run 2.6.22 + cfs-v19 + the Patch from
+> > http://linux-nfs.org/Linux-2.6.x/2.6.22/linux-2.6.22-NFS_ALL.dif
+> >
+> > --
+> > ---------------------------------------
+> > Malte Schr=F6der
+> > MalteSch@gmx.de
+> > ICQ# 68121508
+> > ---------------------------------------
+> >
+> >
+> >
+>
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
---------------040909080606070901000405
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---------------040909080606070901000405--
