@@ -1,21 +1,19 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 19/20] SUNRPC: Add a helper for extracting the address
-	using	the correct type
-Date: Mon, 06 Aug 2007 11:57:58 -0400
-Message-ID: <20070806155758.31233.92152.stgit@manray.1015granger.net>
+From: "Wim Colgate" <Wim.Colgate@xensource.com>
+Subject: NFS_UNSTABLE vs. FILE and DATA sync.
+Date: Mon, 6 Aug 2007 09:02:08 -0700
+Message-ID: <A9AD3C3BCF83FD4182B7D4D99E37FAD836BEAB@exchrdm.ad.xensource.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: trond.myklebust@fys.uio.no
+Content-Type: multipart/mixed; boundary="===============0319697139=="
+To: <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1II4y7-00018w-Lo
-	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 08:58:07 -0700
-Received: from flpi101.sbcis.sbc.com ([207.115.20.70] helo=flpi101.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1II4yB-0006PP-LF
-	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 08:58:11 -0700
+	id 1II53h-0001l5-Eh
+	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 09:03:54 -0700
+Received: from webmailrdm.xensource.com ([66.228.214.202])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1II53l-0005Jr-B7
+	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 09:03:57 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,86 +26,179 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+This is a multi-part message in MIME format.
 
- net/sunrpc/xprtsock.c |   26 ++++++++++++++++++++------
- 1 files changed, 20 insertions(+), 6 deletions(-)
+--===============0319697139==
+Content-class: urn:content-classes:message
+Content-Type: multipart/alternative;
+	boundary="----_=_NextPart_001_01C7D843.64A63736"
 
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index fb55c1c..24a8348 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -263,9 +263,24 @@ struct sock_xprt {
- #define TCP_RCV_COPY_XID	(1UL << 2)
- #define TCP_RCV_COPY_DATA	(1UL << 3)
- 
-+static inline struct sockaddr *xs_addr(struct rpc_xprt *xprt)
-+{
-+	return (struct sockaddr *) &xprt->addr;
-+}
-+
-+static inline struct sockaddr_in *xs_addr_in(struct rpc_xprt *xprt)
-+{
-+	return (struct sockaddr_in *) &xprt->addr;
-+}
-+
-+static inline struct sockaddr_in6 *xs_addr_in6(struct rpc_xprt *xprt)
-+{
-+	return (struct sockaddr_in6 *) &xprt->addr;
-+}
-+
- static void xs_format_ipv4_peer_addresses(struct rpc_xprt *xprt)
- {
--	struct sockaddr_in *addr = (struct sockaddr_in *) &xprt->addr;
-+	struct sockaddr_in *addr = xs_addr_in(xprt);
- 	char *buf;
- 
- 	buf = kzalloc(20, GFP_KERNEL);
-@@ -317,7 +332,7 @@ static void xs_format_ipv4_peer_addresses(struct rpc_xprt *xprt)
- 
- static void xs_format_ipv6_peer_addresses(struct rpc_xprt *xprt)
- {
--	struct sockaddr_in6 *addr = (struct sockaddr_in6 *) &xprt->addr;
-+	struct sockaddr_in6 *addr = xs_addr_in6(xprt);
- 	char *buf;
- 
- 	buf = kzalloc(40, GFP_KERNEL);
-@@ -547,7 +562,7 @@ static int xs_udp_send_request(struct rpc_task *task)
- 
- 	req->rq_xtime = jiffies;
- 	status = xs_sendpages(transport->sock,
--			      (struct sockaddr *) &xprt->addr,
-+			      xs_addr(xprt),
- 			      xprt->addrlen, xdr,
- 			      req->rq_bytes_sent);
- 
-@@ -1224,7 +1239,7 @@ static unsigned short xs_get_random_port(void)
-  */
- static void xs_set_port(struct rpc_xprt *xprt, unsigned short port)
- {
--	struct sockaddr *addr = (struct sockaddr *) &xprt->addr;
-+	struct sockaddr *addr = xs_addr(xprt);
- 
- 	dprintk("RPC:       setting port for xprt %p to %u\n", xprt, port);
- 
-@@ -1507,8 +1522,7 @@ static int xs_tcp_finish_connecting(struct rpc_xprt *xprt, struct socket *sock)
- 	/* Tell the socket layer to start connecting... */
- 	xprt->stat.connect_count++;
- 	xprt->stat.connect_start = jiffies;
--	return kernel_connect(sock, (struct sockaddr *) &xprt->addr,
--			xprt->addrlen, O_NONBLOCK);
-+	return kernel_connect(sock, xs_addr(xprt), xprt->addrlen, O_NONBLOCK);
- }
- 
- /**
+This is a multi-part message in MIME format.
 
+------_=_NextPart_001_01C7D843.64A63736
+Content-Type: text/plain;
+	charset="us-ascii"
+Content-Transfer-Encoding: quoted-printable
+
+Hi,
+
+=20
+
+My last question was a bit too nebulous, and didn't really expect an
+answer. Learning my lesson, I have a specific question.
+
+=20
+
+If I have a soft mount, and open a file with O_DIRECT and O_SYNC, should
+I ever expect a callback (nfs_writeback_done) with a successful
+task->tk_status (i.e >=3D 0) with the committed state
+(resp->verf->committed) set to NFS_UNSTABLE?=20
+
+=20
+
+A secondary question: if the above is expected, does this occur because
+someone is caching the write and is there a mechanism to disable this
+effect?
+
+=20
+
+Regards,
+
+=20
+
+Wim
+
+
+------_=_NextPart_001_01C7D843.64A63736
+Content-Type: text/html;
+	charset="us-ascii"
+Content-Transfer-Encoding: quoted-printable
+
+<html xmlns:o=3D"urn:schemas-microsoft-com:office:office" =
+xmlns:w=3D"urn:schemas-microsoft-com:office:word" =
+xmlns=3D"http://www.w3.org/TR/REC-html40">
+
+<head>
+<META HTTP-EQUIV=3D"Content-Type" CONTENT=3D"text/html; =
+charset=3Dus-ascii">
+<meta name=3DGenerator content=3D"Microsoft Word 11 (filtered medium)">
+<style>
+<!--
+ /* Style Definitions */
+ p.MsoNormal, li.MsoNormal, div.MsoNormal
+	{margin:0in;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman";}
+a:link, span.MsoHyperlink
+	{color:blue;
+	text-decoration:underline;}
+a:visited, span.MsoHyperlinkFollowed
+	{color:purple;
+	text-decoration:underline;}
+span.EmailStyle17
+	{mso-style-type:personal-compose;
+	font-family:Arial;
+	color:windowtext;}
+@page Section1
+	{size:8.5in 11.0in;
+	margin:1.0in 1.25in 1.0in 1.25in;}
+div.Section1
+	{page:Section1;}
+-->
+</style>
+
+</head>
+
+<body lang=3DEN-US link=3Dblue vlink=3Dpurple>
+
+<div class=3DSection1>
+
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
+style=3D'font-size:10.0pt;
+font-family:Arial'>Hi,<o:p></o:p></span></font></p>
+
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
+style=3D'font-size:10.0pt;
+font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
+
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
+style=3D'font-size:10.0pt;
+font-family:Arial'>My last question was a bit too nebulous, and =
+didn&#8217;t
+really expect an answer. Learning my lesson, I have a specific =
+question.<o:p></o:p></span></font></p>
+
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
+style=3D'font-size:10.0pt;
+font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
+
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
+style=3D'font-size:10.0pt;
+font-family:Arial'>If I have a soft mount, and open a file with O_DIRECT =
+and
+O_SYNC, should I ever expect a callback (nfs_writeback_done) with a =
+successful
+task-&gt;tk_status (i.e &gt;=3D 0) with the committed state =
+(resp-&gt;verf-&gt;committed)
+set to NFS_UNSTABLE? <o:p></o:p></span></font></p>
+
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
+style=3D'font-size:10.0pt;
+font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
+
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
+style=3D'font-size:10.0pt;
+font-family:Arial'>A secondary question: if the above is expected, does =
+this
+occur because someone is caching the write and is there a mechanism to =
+disable this
+effect?<o:p></o:p></span></font></p>
+
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
+style=3D'font-size:10.0pt;
+font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
+
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
+style=3D'font-size:10.0pt;
+font-family:Arial'>Regards,<o:p></o:p></span></font></p>
+
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
+style=3D'font-size:10.0pt;
+font-family:Arial'><o:p>&nbsp;</o:p></span></font></p>
+
+<p class=3DMsoNormal><font size=3D2 face=3DArial><span =
+style=3D'font-size:10.0pt;
+font-family:Arial'>Wim<o:p></o:p></span></font></p>
+
+</div>
+
+</body>
+
+</html>
+
+------_=_NextPart_001_01C7D843.64A63736--
+
+
+--===============0319697139==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
+--===============0319697139==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============0319697139==--
