@@ -1,113 +1,51 @@
-From: Michal Piotrowski <michal.k.k.piotrowski@gmail.com>
-Subject: Re: [2/3] 2.6.23-rc2: known regressions
-Date: Sun, 05 Aug 2007 18:26:26 +0200
-Message-ID: <46B5FA32.50208__37665.2429615662$1186415607$gmane$org@googlemail.com>
-References: <46B5F74D.7010708@googlemail.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 00/20] Basic IPv6 address support for RPC client
+Date: Mon, 06 Aug 2007 11:56:20 -0400
+Message-ID: <20070806154759.31233.2894.stgit@manray.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-2
-Cc: Florian Lohoff <flo@rfc822.org>,
-        Andrew Clayton <andrew@digital-domain.net>,
-        Netdev <netdev@vger.kernel.org>, Meelis Roos <mroos@linux.ee>,
-        LKML <linux-kernel@vger.kernel.org>, Uwe Bugla <uwe.bugla@gmx.de>,
-        nfs@lists.sourceforge.net, Thomas Meyer <thomas@m3y3r.de>,
-        Pavel Machek <pavel@ucw.cz>, linux-fsdevel@vger.kernel.org,
-        Andrew Morton <akpm@linux-foundation.org>,
-        linux-pm@lists.linux-foundation.org,
-        Stephen Hemminger <shemminger@osdl.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <linux-pm-bounces@lists.linux-foundation.org>
-In-Reply-To: <46B5F74D.7010708@googlemail.com>
-List-Unsubscribe: <https://lists.linux-foundation.org/mailman/listinfo/linux-pm>,
-	<mailto:linux-pm-request@lists.linux-foundation.org?subject=unsubscribe>
-List-Archive: <http://lists.linux-foundation.org/pipermail/linux-pm>
-List-Post: <mailto:linux-pm@lists.linux-foundation.org>
-List-Help: <mailto:linux-pm-request@lists.linux-foundation.org?subject=help>
-List-Subscribe: <https://lists.linux-foundation.org/mailman/listinfo/linux-pm>,
-	<mailto:linux-pm-request@lists.linux-foundation.org?subject=subscribe>
-Sender: linux-pm-bounces@lists.linux-foundation.org
-Errors-To: linux-pm-bounces@lists.linux-foundation.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
+To: trond.myklebust@fys.uio.no
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1II4wo-0000u2-HV
+	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 08:56:46 -0700
+Received: from flpi101.sbcis.sbc.com ([207.115.20.70] helo=flpi101.prodigy.net)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1II4wr-0001gJ-Jj
+	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 08:56:50 -0700
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi all,
+Hi Trond-
 
-Here is a list of some known regressions in 2.6.23-rc2.
+Here are 20 patches that I propose for supporting IPv6 addressing in the Linux
+RPC client.  Please consider this work for 2.6.24.
 
-Feel free to add new regressions/remove fixed etc.
-http://kernelnewbies.org/known_regressions
+The first several patches are bug fixes and clean-ups, followed by ten patches
+that introduce the real support, then another two patches of clean-up.
 
-List of Aces
+Bull has tested many previous versions of this patch set, but this particular
+series has had only my own build testing.
 
-Name                    Regressions fixed since 21-Jun-2007
-Adrian Bunk                            6
-Andi Kleen                             4
-Andrew Morton                          4
-Linus Torvalds                         4
-Al Viro                                3
-Cornelia Huck                          3
-Jens Axboe                             3
-Tejun Heo                              3
-David Woodhouse                        2
-Hugh Dickins                           2
-Trent Piepho                           2
+-- 
+corporate:    <chuck dot lever at oracle dot com>
 
-
-
-FS
-
-Subject         : [NFSD OOPS] 2.6.23-rc1-git10
-References      : http://lkml.org/lkml/2007/8/2/462
-Last known good : ?
-Submitter       : Andrew Clayton <andrew@digital-domain.net>
-Caused-By       : ?
-Handled-By      : ?
-Status          : unknown
-
-
-
-Networking
-
-Subject         : IP v4 routing is broken
-References      : http://www.stardust.webpages.pl/files/tbf/bugs/bug_report01.txt
-Last known good : 2.6.22-git2
-Submitter       : Uwe Bugla <uwe.bugla@gmx.de>
-Caused-By       : ?
-Handled-By      : ?
-Status          : unknown
-
-Subject         : sky2 boot crash in sky2_mac_intr
-References      : http://lkml.org/lkml/2007/7/24/91
-Last known good : ?
-Submitter       : Florian Lohoff <flo@rfc822.org>
-Caused-By       : 
-Handled-By      : Stephen Hemminger <shemminger@osdl.org>
-Status          : unknown
-
-Subject         : New wake ups from sky2
-References      : http://lkml.org/lkml/2007/7/20/386
-Last known good : ?
-Submitter       : Thomas Meyer <thomas@m3y3r.de>
-Caused-By       : Stephen Hemminger <shemminger@osdl.org>
-                  commit eb35cf60e462491249166182e3e755d3d5d91a28
-Handled-By      : Stephen Hemminger <shemminger@osdl.org>
-Status          : unknown
-
-
-
-Power management
-
-Subject         : Kconfig: 'SUSPEND_SMP' refers to undefined symbol 'HOTPLUG_CPU'
-References      : http://lkml.org/lkml/2007/8/4/39
-Last known good : ?
-Submitter       : Meelis Roos <mroos@linux.ee>
-Caused-By       : ?
-Handled-By      : Rafael J. Wysocki <rjw@sisk.pl>
-Status          : unknown
-
-
-
-Regards,
-Michal
-
---
-LOG
-http://www.stardust.webpages.pl/log/
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Splunk Inc.
+Still grepping through log files to find problems?  Stop.
+Now Search log events and configuration files using AJAX and a browser.
+Download your FREE copy of Splunk now >>  http://get.splunk.com/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
