@@ -1,8 +1,7 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 06/20] SUNRPC: Use standard macros for printing IP
-	addresses
-Date: Mon, 06 Aug 2007 11:56:52 -0400
-Message-ID: <20070806155652.31233.854.stgit@manray.1015granger.net>
+Subject: [PATCH 07/20] SUNRPC: Free address buffers in a loop
+Date: Mon, 06 Aug 2007 11:56:57 -0400
+Message-ID: <20070806155657.31233.70469.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
@@ -11,11 +10,11 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1II4wy-0000uY-Sm
-	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 08:56:57 -0700
+	id 1II4x1-0000uj-8i
+	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 08:56:59 -0700
 Received: from flpi101.sbcis.sbc.com ([207.115.20.70] helo=flpi101.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1II4x2-0005pw-O3
-	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 08:57:01 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1II4x5-0005vU-3X
+	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 08:57:03 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,37 +27,53 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-include/linux/kernel.h gives us some nice macros for formatting IP
-addresses.  Use them.
+Use more generic logic to free buffers holding formatted addresses.  This
+makes it less likely a bug will be introduced when adding additional buffer
+types in xs_format_peer_address().
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- net/sunrpc/xprtsock.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+ net/sunrpc/xprtsock.c |   19 ++++++++++++-------
+ 1 files changed, 12 insertions(+), 7 deletions(-)
 
 diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 505a7e3..81a90e0 100644
+index 81a90e0..1f71531 100644
 --- a/net/sunrpc/xprtsock.c
 +++ b/net/sunrpc/xprtsock.c
-@@ -267,7 +267,7 @@ static void xs_format_peer_addresses(struct rpc_xprt *xprt)
- 
- 	buf = kzalloc(20, GFP_KERNEL);
- 	if (buf) {
--		snprintf(buf, 20, "%u.%u.%u.%u",
-+		snprintf(buf, 20, NIPQUAD_FMT,
- 				NIPQUAD(addr->sin_addr.s_addr));
+@@ -279,10 +279,14 @@ static void xs_format_peer_addresses(struct rpc_xprt *xprt)
  	}
- 	xprt->address_strings[RPC_DISPLAY_ADDR] = buf;
-@@ -286,7 +286,7 @@ static void xs_format_peer_addresses(struct rpc_xprt *xprt)
+ 	xprt->address_strings[RPC_DISPLAY_PORT] = buf;
+ 
+-	if (xprt->prot == IPPROTO_UDP)
+-		xprt->address_strings[RPC_DISPLAY_PROTO] = "udp";
+-	else
+-		xprt->address_strings[RPC_DISPLAY_PROTO] = "tcp";
++	buf = kzalloc(8, GFP_KERNEL);
++	if (buf) {
++		if (xprt->prot == IPPROTO_UDP)
++			snprintf(buf, 8, "udp");
++		else
++			snprintf(buf, 8, "tcp");
++	}
++	xprt->address_strings[RPC_DISPLAY_PROTO] = buf;
  
  	buf = kzalloc(48, GFP_KERNEL);
  	if (buf) {
--		snprintf(buf, 48, "addr=%u.%u.%u.%u port=%u proto=%s",
-+		snprintf(buf, 48, "addr="NIPQUAD_FMT" port=%u proto=%s",
- 			NIPQUAD(addr->sin_addr.s_addr),
- 			ntohs(addr->sin_port),
- 			xprt->prot == IPPROTO_UDP ? "udp" : "tcp");
+@@ -296,9 +300,10 @@ static void xs_format_peer_addresses(struct rpc_xprt *xprt)
+ 
+ static void xs_free_peer_addresses(struct rpc_xprt *xprt)
+ {
+-	kfree(xprt->address_strings[RPC_DISPLAY_ADDR]);
+-	kfree(xprt->address_strings[RPC_DISPLAY_PORT]);
+-	kfree(xprt->address_strings[RPC_DISPLAY_ALL]);
++	int i;
++
++	for (i = 0; i < RPC_DISPLAY_MAX; i++)
++		kfree(xprt->address_strings[i]);
+ }
+ 
+ #define XS_SENDMSG_FLAGS	(MSG_DONTWAIT | MSG_NOSIGNAL)
 
 
 -------------------------------------------------------------------------
