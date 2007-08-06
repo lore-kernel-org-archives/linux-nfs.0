@@ -1,27 +1,24 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Chuck Lever <chuck.lever@oracle.com>
 Subject: Re: NFS_UNSTABLE vs. FILE and DATA sync.
-Date: Mon, 06 Aug 2007 15:19:42 -0400
-Message-ID: <1186427982.6616.67.camel@localhost>
-References: <A9AD3C3BCF83FD4182B7D4D99E37FAD836BEAB@exchrdm.ad.xensource.com>
-	<46B74E5C.4060400@oracle.com>  <46B755FE.1010909@oracle.com>
-	<1186426710.6616.57.camel@localhost>  <46B772CB.1080906@oracle.com>
+Date: Mon, 06 Aug 2007 15:42:15 -0400
+Message-ID: <46B77997.6000804@oracle.com>
+References: <A9AD3C3BCF83FD4182B7D4D99E37FAD836BF1D@exchrdm.ad.xensource.com>
+Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net,
-	Wim Colgate <Wim.Colgate@xensource.com>
-To: chuck.lever@oracle.com
+Content-Type: multipart/mixed; boundary="------------060600040906000608000201"
+Cc: nfs@lists.sourceforge.net
+To: Wim Colgate <Wim.Colgate@xensource.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1II87M-0005sU-FJ
-	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 12:19:54 -0700
-Received: from pat.uio.no ([129.240.10.15]
-	ident=[U2FsdGVkX19CAZ0/z4tDjitsHqBI3DcLozpZM3okiHA=])
+	id 1II8Tg-0008KZ-Ei
+	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 12:42:57 -0700
+Received: from agminet01.oracle.com ([141.146.126.228])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1II87M-0006kj-IZ
-	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 12:19:56 -0700
-In-Reply-To: <46B772CB.1080906@oracle.com>
+	(Exim 4.44) id 1II8Tj-0004A4-4Q
+	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 12:43:00 -0700
+In-Reply-To: <A9AD3C3BCF83FD4182B7D4D99E37FAD836BF1D@exchrdm.ad.xensource.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,56 +31,133 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Mon, 2007-08-06 at 15:13 -0400, Chuck Lever wrote:
-> Trond Myklebust wrote:
-> > On Mon, 2007-08-06 at 13:10 -0400, Chuck Lever wrote:
-> >> Even though an NFS client requests an NFS_FILE_SYNC write, the server 
-> >> still has the choice of returning something less, even NFS_UNSTABLE.  In 
-> >> general that's a rare occurrence, but is something I've seen in practice.
-> > 
-> > As Peter said, a server that return anything other than FILE_SYNC to a
-> > FILE_SYNC write request would be in clear violation of the description
-> > of WRITE semantics on page 51 of RFC1813:
-> > 
-> >       committed
-> >          The server should return an indication of the level of
-> >          commitment of the data and metadata via committed. If
-> >          the server committed all data and metadata to stable
-> >          storage, committed should be set to FILE_SYNC. If the
-> >          level of commitment was at least as strong as
-> >          DATA_SYNC, then committed should be set to DATA_SYNC.
-> >          Otherwise, committed must be returned as UNSTABLE. If
-> >          stable was FILE_SYNC, then committed must also be
-> >          FILE_SYNC: anything else constitutes a protocol
-> >          violation. If stable was DATA_SYNC, then committed may
-> >          be FILE_SYNC or DATA_SYNC: anything else constitutes a
-> >          protocol violation. If stable was UNSTABLE, then
-> >          committed may be either FILE_SYNC, DATA_SYNC, or
-> >          UNSTABLE.
-> > 
-> > I see no reason why we should care about supporting such a server.
+This is a multi-part message in MIME format.
+--------------060600040906000608000201
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Transfer-Encoding: 7bit
+
+Wim Colgate wrote:
+> The linux kernel I was using is 2.6.18-8.
 > 
-> I said nothing about whether the server should or should not return such 
-> a value.  I just said that it is a possibility, and that I have observed 
-> the behavior in the field.
+> To be fair, I was not trying to force NFS_FILE_SYNC; to make a long
+> story short, I started with O_DIRECT (please don't cache data). I moved
+> to add O_SYNC (don't return until my data is written safely). And when I
+> couldn't explain why I was missing some data (discrepancy between client
+> and server), I started investigating what was happening under the hood.
+
+In fact O_DIRECT also guarantees that the data is on the server's disk 
+before the write() call returns.  In some older versions of the client, 
+O_SYNC forced the direct I/O engine to use NFS_FILE_SYNC writes for 
+everything.  I don't think that logic is there any more.
+
+But what you describe above is a bug.  A network dump would be the next 
+step to understand the true interaction between the client and the 
+server during a server reboot.
+
+There were some bugs in the client's direct I/O engine where server 
+reboot recovery might result in data loss.  Trond fixed a couple of bugs 
+in this area around 2.6.19 or 20.  It would be interesting if you tested 
+a later kernel, just for behavioral comparison.
+
+> -----Original Message-----
+> From: Chuck Lever [mailto:chuck.lever@oracle.com] 
+> Sent: Monday, August 06, 2007 12:16 PM
+> To: Wim Colgate
+> Cc: nfs@lists.sourceforge.net
+> Subject: Re: [NFS] NFS_UNSTABLE vs. FILE and DATA sync.
 > 
-> The client, if it is a good implementation, needs to check for this 
-> possibility and throw an error in that case.
+> Wim Colgate wrote:
+>> Specifically I am trying to inject errors by manually (but politely)
+>> bringing the NFS server down then up, then down (rinse and repeat ...)
+>> while doing IO from a linux client. As mentioned the open file is
+>> O_DIRECT and O_SYNC -- which I thought should mean either the data
+> hits
+>> the server's storage or I should get an error; and I'm more than happy
+>> to deal with an IO error.
+>>
+>> I'm confident the writes are less than wsize (4096 bytes to be
+> precise).
+>>
+>> Is there a 100% guaranteed method to get the behavior I thought
+> O_DIRECT
+>> and O_SYNC was providing?
+> 
+> What behavior did you expect O_DIRECT + O_SYNC to provide?  O_DIRECT 
+> means "don't cache data" and O_SYNC means "make sure the data is flushed
+> 
+> to the server's disk before each write() system call returns." 
+> Technically, you don't need NFS_FILE_SYNC writes to do either of those.
+> 
+> Which kernel are you testing?  The client's use of NFS_FILE_SYNC writes 
+> changed over time.
+> 
+>> -----Original Message-----
+>> From: Peter Staubach [mailto:staubach@redhat.com] 
+>> Sent: Monday, August 06, 2007 10:33 AM
+>> To: chuck.lever@oracle.com
+>> Cc: Wim Colgate; nfs@lists.sourceforge.net
+>> Subject: Re: [NFS] NFS_UNSTABLE vs. FILE and DATA sync.
+>>
+>> Chuck Lever wrote:
+>>> Wim Colgate wrote:
+>>>> If I have a soft mount, and open a file with O_DIRECT and O_SYNC, 
+>>>> should I ever expect a callback (nfs_writeback_done) with a 
+>>>> successful task->tk_status (i.e >= 0) with the committed state 
+>>>> (resp->verf->committed) set to NFS_UNSTABLE?
+>>> Yes, this can happen if the server decides to return NFS_UNSTABLE. 
+>>> Rare, but possible.
+>>>
+>>>> A secondary question: if the above is expected, does this occur 
+>>>> because someone is caching the write and is there a mechanism to 
+>>>> disable this effect?
+>>> Servers can return NFS_UNSTABLE to any WRITE request, so I can't
+> think
+>>> of a way this might be disabled. 
+>> Actually, it would be a protocol error for a server to return
+>> a commitment level less than was requested by the client.  The
+>> server can return a greater commitment level, but not less than.
+>>
+>>        ps
 
-We have never supported servers that blatantly violate the protocol, and
-I see no reason to be burdening the client with a whole load of checks
-for server protocol violations either.
+--------------060600040906000608000201
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck.lever.vcf"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="chuck.lever.vcf"
 
-If you want a tool for testing servers, then use something like pynfs.
+begin:vcard
+fn:Chuck Lever
+n:Lever;Chuck
+org:Oracle Corporation;Corporate Architecture: Linux Projects Group
+adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
+title:Principal Member of Staff
+tel;work:+1 248 614 5091
+x-mozilla-html:FALSE
+url:http://oss.oracle.com/~cel
+version:2.1
+end:vcard
 
-Trond
 
+--------------060600040906000608000201
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
+--------------060600040906000608000201
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--------------060600040906000608000201--
