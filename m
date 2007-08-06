@@ -1,19 +1,21 @@
-From: =?GB2312?B?sKLRxQ==?= <jow.7cv@163.com>
-Subject: =?GB2312?B?y83A8aOhyMPL/czszOy437OxtfzG8A==?=
-Date: Wed, 15 Aug 2007 20:24:39 +0800
-Message-ID: <E1ILHvO-00062h-0Y@mail.sourceforge.net>
-Reply-To: jow.7cv@163.com
-Content-Type: multipart/mixed; boundary="===============1271198761=="
-To: nfs@lists.sourceforge.net
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 20/20] SUNRPC: Split xs_reclassify_socket into an IPv4
+	and	IPv6 version
+Date: Mon, 06 Aug 2007 11:58:04 -0400
+Message-ID: <20070806155803.31233.30721.stgit@manray.1015granger.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
+To: trond.myklebust@fys.uio.no
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1ILHwV-0003wT-9K
-	for nfs@lists.sourceforge.net; Wed, 15 Aug 2007 05:27:00 -0700
-Received: from [123.6.97.5] (helo=163.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1ILHvO-00062h-0Y
-	for nfs@lists.sourceforge.net; Wed, 15 Aug 2007 05:24:35 -0700
+	id 1II4y5-00017y-U2
+	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 08:58:05 -0700
+Received: from flpi101.sbcis.sbc.com ([207.115.20.70] helo=flpi101.prodigy.net)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1II4y9-0006R4-Mr
+	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 08:58:10 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,49 +28,103 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============1271198761==
-Content-Type: text/html;charset="GB2312"
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-<html>
+ net/sunrpc/xprtsock.c |   38 ++++++++++++++++++++------------------
+ 1 files changed, 20 insertions(+), 18 deletions(-)
 
-<head>
-<meta http-equiv="Content-Type" content="text/html; charset=gb2312">
-<title>阴茎增大 赠送￥917元大礼包</title>
-</head>
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 24a8348..45b2af1 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -1326,27 +1326,29 @@ static int xs_bind6(struct sock_xprt *transport, struct socket *sock)
+ static struct lock_class_key xs_key[2];
+ static struct lock_class_key xs_slock_key[2];
+ 
+-static inline void xs_reclassify_socket(struct socket *sock)
++static inline void xs_reclassify_socket4(struct socket *sock)
+ {
+ 	struct sock *sk = sock->sk;
++
+ 	BUG_ON(sk->sk_lock.owner != NULL);
+-	switch (sk->sk_family) {
+-	case AF_INET:
+-		sock_lock_init_class_and_name(sk, "slock-AF_INET-NFS",
+-			&xs_slock_key[0], "sk_lock-AF_INET-NFS", &xs_key[0]);
+-		break;
++	sock_lock_init_class_and_name(sk, "slock-AF_INET-RPC",
++		&xs_slock_key[0], "sk_lock-AF_INET-RPC", &xs_key[0]);
++}
+ 
+-	case AF_INET6:
+-		sock_lock_init_class_and_name(sk, "slock-AF_INET6-NFS",
+-			&xs_slock_key[1], "sk_lock-AF_INET6-NFS", &xs_key[1]);
+-		break;
++static inline void xs_reclassify_socket6(struct socket *sock)
++{
++	struct sock *sk = sock->sk;
+ 
+-	default:
+-		BUG();
+-	}
++	BUG_ON(sk->sk_lock.owner != NULL);
++	sock_lock_init_class_and_name(sk, "slock-AF_INET6-RPC",
++		&xs_slock_key[1], "sk_lock-AF_INET6-RPC", &xs_key[1]);
+ }
+ #else
+-static inline void xs_reclassify_socket(struct socket *sock)
++static inline void xs_reclassify_socket4(struct socket *sock)
++{
++}
++
++static inline void xs_reclassify_socket6(struct socket *sock)
+ {
+ }
+ #endif
+@@ -1404,7 +1406,7 @@ static void xs_udp_connect_worker4(struct work_struct *work)
+ 		dprintk("RPC:       can't create UDP transport socket (%d).\n", -err);
+ 		goto out;
+ 	}
+-	xs_reclassify_socket(sock);
++	xs_reclassify_socket4(sock);
+ 
+ 	if (xs_bind4(transport, sock)) {
+ 		sock_release(sock);
+@@ -1445,7 +1447,7 @@ static void xs_udp_connect_worker6(struct work_struct *work)
+ 		dprintk("RPC:       can't create UDP transport socket (%d).\n", -err);
+ 		goto out;
+ 	}
+-	xs_reclassify_socket(sock);
++	xs_reclassify_socket6(sock);
+ 
+ 	if (xs_bind6(transport, sock) < 0) {
+ 		sock_release(sock);
+@@ -1548,7 +1550,7 @@ static void xs_tcp_connect_worker4(struct work_struct *work)
+ 			dprintk("RPC:       can't create TCP transport socket (%d).\n", -err);
+ 			goto out;
+ 		}
+-		xs_reclassify_socket(sock);
++		xs_reclassify_socket4(sock);
+ 
+ 		if (xs_bind4(transport, sock) < 0) {
+ 			sock_release(sock);
+@@ -1609,7 +1611,7 @@ static void xs_tcp_connect_worker6(struct work_struct *work)
+ 			dprintk("RPC:       can't create TCP transport socket (%d).\n", -err);
+ 			goto out;
+ 		}
+-		xs_reclassify_socket(sock);
++		xs_reclassify_socket6(sock);
+ 
+ 		if (xs_bind6(transport, sock) < 0) {
+ 			sock_release(sock);
 
-<body>
-<b><font size="6">
-<a target="_blank" href="http://www.7cv.com/pdetail.php?localcode=12180052_105760&asstfrom=jow">阴茎增大 赠送￥917元大礼包！</a></font></b>  
-
-<p>&nbsp;<a target="_blank" href="http://www.7cv.com/pdetail.php?localcode=12180052_105760&asstfrom=jow"><img src="http://www.7cv.com/images_shop2007/070810/468-60-2.gif" border=0 alt="阴茎增大 赠送￥917元大礼包！ 七彩谷商城 成人用品 全网最低价！ 杜蕾斯￥3.5起！"></a>
-</p>
-<p><b><span lang="zh-cn"><a target="_blank" href="http://jow.7cv.com">
-<font size="6">七彩谷成人用品商城</font></a></span></b></p>
-
-</body>
-
-</html>
-
-
---===============1271198761==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
---===============1271198761==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============1271198761==--
