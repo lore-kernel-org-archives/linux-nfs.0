@@ -1,24 +1,23 @@
-From: "Kevin Coffman" <kwc@citi.umich.edu>
-Subject: Re: regression with rmtab handling in newer nfs-utils code
-Date: Mon, 6 Aug 2007 18:01:27 -0400
-Message-ID: <4d569c330708061501n501e37dcr6d98800618b4ea4d@mail.gmail.com>
-References: <20070806155500.25869737.jlayton@redhat.com>
+From: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
+Subject: Re: [PATCH 10/10] mount.nfs: Fix background mounts
+Date: Tue, 7 Aug 2007 00:31:52 +0200
+Message-ID: <20070806223152.GA7917@uio.no>
+References: <20070803172415.3357.91411.stgit@monet.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: neilb@suse.de, iisaman@citi.umich.edu, nfs@lists.sourceforge.net
-To: "Jeff Layton" <jlayton@redhat.com>
+Cc: neilb@suse.de, nfs@lists.sourceforge.net
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IIAdg-0005vq-WD
-	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 15:01:25 -0700
-Received: from rv-out-0910.google.com ([209.85.198.190])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IIAdj-0003E4-U9
-	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 15:01:29 -0700
-Received: by rv-out-0910.google.com with SMTP id g11so4198680rvb
-	for <nfs@lists.sourceforge.net>; Mon, 06 Aug 2007 15:01:27 -0700 (PDT)
-In-Reply-To: <20070806155500.25869737.jlayton@redhat.com>
+	id 1IIB7J-0000ya-6b
+	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 15:32:01 -0700
+Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IIB7M-0006Tx-0h
+	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 15:32:05 -0700
+In-Reply-To: <20070803172415.3357.91411.stgit@monet.1015granger.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,36 +30,22 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On 8/6/07, Jeff Layton <jlayton@redhat.com> wrote:
-> I just noticed that there seems to have been a regression with how the
-> rmtab is handled in the latest nfs-utils code. It seems to have gone
-> back to adding extra lines to the rmtab that contain the comma-delimited
-> domain string.
->
-> At first glance, it looks like the extra mountlist_add calls that went
-> in with the patch below are the culprit (though this code seems to have
-> changed a few times since then). I don't think there's any need to
-> have cache_export_ent or nfsd_fh call mountlist_add.
->
-> Can these calls just be removed, or am I missing something?
->
-> commit dbfcba5b03481d49f3e78946fe8fd066e2025545
-> Author: Kevin Coffman <kwc@citi.umich.edu>
-> Date:   Thu Feb 8 17:27:45 2007 -0500
->
->     Remove duplicated code.
->
->     Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
->     Signed-off-by: Kevin Coffman <kwc@citi.umich.edu>
->
->     Remove duplicated code.
->     Signed-off-by: Neil Brown <neilb@suse.de>
->
+On Fri, Aug 03, 2007 at 01:24:15PM -0400, Chuck Lever wrote:
+> The new mount.nfs helper does not support background mounts.  Add support
+> for background mounts.
 
-Sorry.  I assume this is my fault while "fixing" conflicts before
-submitting these patches to Neil.
+I've now pushed the current git (which includes these patches) into Debian,
+which will hopefully give us some experience with "bg" again. It seems to
+have fixed some bugs of the old bg implementation, but this one still
+remains:
 
-K.C.
+  http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=144185
+
+Any chance mount.nfs could simply ignore HUPs?
+
+/* Steinar */
+-- 
+Homepage: http://www.sesse.net/
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
