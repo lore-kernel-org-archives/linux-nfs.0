@@ -1,21 +1,21 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 05/20] SUNRPC: Address a signed v. unsigned comparison
-	in	net/sunrpc/xprtsock.
-Date: Mon, 06 Aug 2007 11:56:47 -0400
-Message-ID: <20070806155647.31233.4510.stgit@manray.1015granger.net>
+Subject: [PATCH 06/20] SUNRPC: Use standard macros for printing IP
+	addresses
+Date: Mon, 06 Aug 2007 11:56:52 -0400
+Message-ID: <20070806155652.31233.854.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 To: trond.myklebust@fys.uio.no
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1II4ww-0000uT-Ow
-	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 08:56:54 -0700
+	id 1II4wy-0000uY-Sm
+	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 08:56:57 -0700
 Received: from flpi101.sbcis.sbc.com ([207.115.20.70] helo=flpi101.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1II4wz-0001rl-RM
-	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 08:56:59 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1II4x2-0005pw-O3
+	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 08:57:01 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,25 +28,37 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+include/linux/kernel.h gives us some nice macros for formatting IP
+addresses.  Use them.
+
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- net/sunrpc/xprtsock.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ net/sunrpc/xprtsock.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 7448402..505a7e3 100644
+index 505a7e3..81a90e0 100644
 --- a/net/sunrpc/xprtsock.c
 +++ b/net/sunrpc/xprtsock.c
-@@ -852,7 +852,7 @@ static inline void xs_tcp_read_request(struct rpc_xprt *xprt, struct xdr_skb_rea
- 		transport->tcp_copied += r;
- 		transport->tcp_offset += r;
+@@ -267,7 +267,7 @@ static void xs_format_peer_addresses(struct rpc_xprt *xprt)
+ 
+ 	buf = kzalloc(20, GFP_KERNEL);
+ 	if (buf) {
+-		snprintf(buf, 20, "%u.%u.%u.%u",
++		snprintf(buf, 20, NIPQUAD_FMT,
+ 				NIPQUAD(addr->sin_addr.s_addr));
  	}
--	if (r != len) {
-+	if (r != (ssize_t) len) {
- 		/* Error when copying to the receive buffer,
- 		 * usually because we weren't able to allocate
- 		 * additional buffer pages. All we can do now
+ 	xprt->address_strings[RPC_DISPLAY_ADDR] = buf;
+@@ -286,7 +286,7 @@ static void xs_format_peer_addresses(struct rpc_xprt *xprt)
+ 
+ 	buf = kzalloc(48, GFP_KERNEL);
+ 	if (buf) {
+-		snprintf(buf, 48, "addr=%u.%u.%u.%u port=%u proto=%s",
++		snprintf(buf, 48, "addr="NIPQUAD_FMT" port=%u proto=%s",
+ 			NIPQUAD(addr->sin_addr.s_addr),
+ 			ntohs(addr->sin_port),
+ 			xprt->prot == IPPROTO_UDP ? "udp" : "tcp");
 
 
 -------------------------------------------------------------------------
