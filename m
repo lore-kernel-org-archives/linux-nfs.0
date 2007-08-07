@@ -1,25 +1,22 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 10/10] mount.nfs: Fix background mounts
-Date: Mon, 06 Aug 2007 20:31:29 -0400
-Message-ID: <46B7BD61.7060304@oracle.com>
-References: <20070803172415.3357.91411.stgit@monet.1015granger.net>	<20070806223152.GA7917@uio.no>
-	<18103.46593.586196.718154@notabene.brown>
-Reply-To: chuck.lever@oracle.com
+From: "Peng Haitao" <penght@cn.fujitsu.com>
+Subject: "mounts" in struct "static struct option longopts[]" of the
+	source file "nfsstat.c" should be replaced by "mounted"
+Date: Tue, 7 Aug 2007 16:50:43 +0800
+Message-ID: <074701c7d8d0$09f903a0$2b8da70a@fnstc2722c6805>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------000306010903050902050105"
-Cc: nfs@lists.sourceforge.net
-To: Neil Brown <neilb@suse.de>
+Content-Type: multipart/mixed;
+	boundary="----=_NextPart_000_0745_01C7D913.180E12D0"
+Cc: okir@suse.de
+To: <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IID0P-0004h7-QP
-	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 17:33:02 -0700
-Received: from agminet01.oracle.com ([141.146.126.228])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IID0R-0003VV-NP
-	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 17:33:05 -0700
-In-Reply-To: <18103.46593.586196.718154@notabene.brown>
+	id 1IIKoA-00079L-5V
+	for nfs@lists.sourceforge.net; Tue, 07 Aug 2007 01:52:54 -0700
+Received: from [222.73.24.84] (helo=song.cn.fujitsu.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IIKoB-0008IB-Mp
+	for nfs@lists.sourceforge.net; Tue, 07 Aug 2007 01:52:58 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,78 +30,71 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 This is a multi-part message in MIME format.
---------------000306010903050902050105
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Transfer-Encoding: 7bit
 
-Neil Brown wrote:
-> On Tuesday August 7, sgunderson@bigfoot.com wrote:
->> On Fri, Aug 03, 2007 at 01:24:15PM -0400, Chuck Lever wrote:
->>> The new mount.nfs helper does not support background mounts.  Add support
->>> for background mounts.
->> I've now pushed the current git (which includes these patches) into Debian,
->> which will hopefully give us some experience with "bg" again. It seems to
->> have fixed some bugs of the old bg implementation, but this one still
->> remains:
->>
->>   http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=144185
->>
->> Any chance mount.nfs could simply ignore HUPs?
->>
->> /* Steinar */
->> -- 
->> Homepage: http://www.sesse.net/
-> 
-> Something like this?  Anyone want to test it?
-> 
-> NeilBrown
+------=_NextPart_000_0745_01C7D913.180E12D0
+Content-Type: text/plain;
+	charset="gb2312"
+Content-Transfer-Encoding: base64
 
-I copied the "bg" logic straight from util-linux, then simplified it. 
-Using daemon() instead of fork() seems like a nice clean-up anyway. 
-(It's just me, but I like a blank between the first and second argument 
-of daemon() -- that matches the coding style in the rest of that file).
+SGVsbG8gZXZlcnlib2R5LA0KDQpJIGZvdW5kIHRoYXQgIm1vdW50cyIgaW4gc3RydWN0ICJzdGF0
+aWMgc3RydWN0IG9wdGlvbiBsb25nb3B0c1tdIiBvZiB0aGUgc291cmNlIGZpbGUgIm5mc3N0YXQu
+YyIgc2hvdWxkIGJlIHJlcGxhY2VkIGJ5ICJtb3VudGVkIi4gDQoNClBhY2thZ2U6IG5mcy11dGls
+cw0KVmVyc2lvbjogMS4xLjANCg0KSSBmb3VuZCBtYW5wYWdlIGFuZCB0aGUgZnVuY3Rpb24gdXNh
+Z2UoKSBpbiB0aGUgc291cmNlIGZpbGUgc2F5czoNCg0KbWFucGFnZToNCi1tLCAtLW1vdW50ZWQN
+CiAgICAgICAgICAgICAgUHJpbnQgaW5mb3JtYXRpb24gYWJvdXQgZWFjaCBvZiB0aGUgbW91bnRl
+ZCBORlMgZmlsZSBzeXN0ZW1zLg0KICAgICAgICAgICAgICBJZiB0aGlzIG9wdGlvbiBpcyB1c2Vk
+LCBhbGwgb3RoZXIgb3B0aW9ucyBhcmUgaWdub3JlZC4NCg0KdGhlIGZ1bmN0aW9uIHVzYWdlKCk6
+DQpwcmludGYoIlVzYWdlOiAlcyBbT1BUSU9OXS4uLlxuXA0KXG5cDQogIC1tLCAtLW1vdW50ZWRc
+dFx0U2hvdyBzdGF0aXN0aWNzIG9uIG1vdW50ZWQgTkZTIGZpbGVzeXN0ZW1zXG5cDQouLi4NCg0K
+YnV0IGluIHN0cnVjdCAic3RhdGljIHN0cnVjdCBvcHRpb24gbG9uZ29wdHNbXSIgd2FzICJtb3Vu
+dHMiIGluc3RlYWQgb2YgIm1vdW50ZWQiLg0KU28sICJtb3VudHMiIHNob3VsZCBiZSByZXBsYWNl
+ZCBieSAibW91bnRlZCIuDQoNCkZvciBleGFtcGxlOg0KPT09PT09PT09PT09PT09PT09PT09PT09
+PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
+PT09PT09PT0NCltyb290QGxvY2FsaG9zdCB+XSMgbmZzc3RhdCAtLW1vdW50ZWQNCm5mc3N0YXQ6
+IHVucmVjb2duaXplZCBvcHRpb24gYC0tbW91bnRlZCcNClRyeSBgbmZzc3RhdCAtLWhlbHAnIGZv
+ciBtb3JlIGluZm9ybWF0aW9uLg0KW3Jvb3RAbG9jYWxob3N0IH5dIyANCj09PT09PT09PT09PT09
+PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
+PT09PT09PT09PT09PT09PT09DQoNCkkgaGF2ZSBtYWRlIGEgcGF0Y2ggZm9yIHRoaXMgYnVnLg0K
+VGhlIGNvbnRlbnQgb2YgdGhlIHBhdGNoOg0KDQpJbmRleDogbmZzLXV0aWxzLTEuMS4wL3V0aWxz
+L25mc3N0YXQvbmZzc3RhdC5jDQo9PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
+PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PQ0KLS0t
+IG5mcy11dGlscy0xLjEuMC5vcmlnL3V0aWxzL25mc3N0YXQvbmZzc3RhdC5jICAgICAgICAyMDA3
+LTA4LTA4IDAyOjMyOjMzLjAwMDAwMDAwMCArMDgwMA0KKysrIG5mcy11dGlscy0xLjEuMC91dGls
+cy9uZnNzdGF0L25mc3N0YXQuYyAgICAgMjAwNy0wOC0wOCAwMjozMzoxMy4wMDAwMDAwMDAgKzA4
+MDANCkBAIC0xOTgsNyArMTk4LDcgQEAgc3RhdGljIHN0cnVjdCBvcHRpb24gbG9uZ29wdHNbXSA9
+DQogICAgICAgIHsgImFsbCIsIDAsIDAsICd2JyB9LA0KICAgICAgICB7ICJhdXRvIiwgMCwgMCwg
+J1wzJyB9LA0KICAgICAgICB7ICJjbGllbnQiLCAwLCAwLCAnYycgfSwNCi0gICAgICAgeyAibW91
+bnRzIiwgMCwgMCwgJ20nIH0sDQorICAgICAgIHsgIm1vdW50ZWQiLCAwLCAwLCAnbScgfSwNCiAg
+ICAgICAgeyAibmZzIiwgMCwgMCwgJ24nIH0sDQogICAgICAgIHsgInJwYyIsIDAsIDAsICdyJyB9
+LA0KICAgICAgICB7ICJzZXJ2ZXIiLCAwLCAwLCAncycgfSwNCj09PT09PT09PT09PT09PT09PT09
+PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
+PT09PT09PT09PT09DQpJbmRleDogbmZzLXV0aWxzLTEuMS4wL3V0aWxzL25mc3N0YXQvbmZzc3Rh
+dC5jDQoNClJlZ2FyZHMNClBlbmcgSGFpdGFv
 
-Steinar, it's not clear to me from the Debian bug report whether this is 
-really a mount bug or an init scripts bug.  I assume this is something 
-that did not work correctly for the legacy util-linux mount command either?
-
-> diff --git a/utils/mount/mount.c b/utils/mount/mount.c
-> index a232519..5769cd2 100644
-> --- a/utils/mount/mount.c
-> +++ b/utils/mount/mount.c
-> @@ -530,9 +530,7 @@ int main(int argc, char *argv[])
->  		 * Parent exits immediately with success.  Make
->  		 * sure not to free "mount_point"
->  		 */
-> -		if (fork() > 0)
-> -			exit(0);
-> -
-> +		daemon(0,0);
->  		mnt_err = try_mount(spec, mount_point, flags, fs_type,
->  					&extra_opts, mount_opts, fake,
->  					nomtab, BACKGROUND);
-
---------------000306010903050902050105
-Content-Type: text/x-vcard; charset=utf-8;
- name="chuck.lever.vcf"
-Content-Transfer-Encoding: 7bit
+------=_NextPart_000_0745_01C7D913.180E12D0
+Content-Type: application/octet-stream;
+	name="nfsstat-1.1.0.patch"
+Content-Transfer-Encoding: quoted-printable
 Content-Disposition: attachment;
- filename="chuck.lever.vcf"
+	filename="nfsstat-1.1.0.patch"
 
-begin:vcard
-fn:Chuck Lever
-n:Lever;Chuck
-org:Oracle Corporation;Corporate Architecture: Linux Projects Group
-adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
-title:Principal Member of Staff
-tel;work:+1 248 614 5091
-x-mozilla-html:FALSE
-url:http://oss.oracle.com/~cel
-version:2.1
-end:vcard
+diff -Nraup nfs-utils-1.1.0.orig/utils/nfsstat/nfsstat.c =
+nfs-utils-1.1.0/utils/nfsstat/nfsstat.c=0A=
+--- nfs-utils-1.1.0.orig/utils/nfsstat/nfsstat.c	2007-08-08 =
+02:32:33.000000000 +0800=0A=
++++ nfs-utils-1.1.0/utils/nfsstat/nfsstat.c	2007-08-08 =
+02:33:13.000000000 +0800=0A=
+@@ -198,7 +198,7 @@ static struct option longopts[] =3D=0A=
+ 	{ "all", 0, 0, 'v' },=0A=
+ 	{ "auto", 0, 0, '\3' },=0A=
+ 	{ "client", 0, 0, 'c' },=0A=
+-	{ "mounts", 0, 0, 'm' },=0A=
++	{ "mounted", 0, 0, 'm' },=0A=
+ 	{ "nfs", 0, 0, 'n' },=0A=
+ 	{ "rpc", 0, 0, 'r' },=0A=
+ 	{ "server", 0, 0, 's' },=0A=
 
-
---------------000306010903050902050105
+------=_NextPart_000_0745_01C7D913.180E12D0
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -115,7 +105,7 @@ This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
---------------000306010903050902050105
+------=_NextPart_000_0745_01C7D913.180E12D0
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -125,4 +115,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---------------000306010903050902050105--
+------=_NextPart_000_0745_01C7D913.180E12D0--
