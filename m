@@ -1,118 +1,112 @@
-From: "Peng Haitao" <penght@cn.fujitsu.com>
-Subject: "mounts" in struct "static struct option longopts[]" of the
-	source file "nfsstat.c" should be replaced by "mounted"
-Date: Tue, 7 Aug 2007 16:50:43 +0800
-Message-ID: <074701c7d8d0$09f903a0$2b8da70a@fnstc2722c6805>
+From: Marc Dietrich <Marc.Dietrich@ap.physik.uni-giessen.de>
+Subject: Re: [NFS] 2.6.23-rc1-mm2
+Date: Tue, 7 Aug 2007 14:09:30 +0200
+Message-ID: <200708071409.39012.marc.dietrich@ap.physik.uni-giessen.de>
+References: <20070731230932.a9459617.akpm@linux-foundation.org> <200708061305.37208.marc.dietrich@ap.physik.uni-giessen.de> <1186417445.6616.23.camel@localhost>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
-	boundary="----=_NextPart_000_0745_01C7D913.180E12D0"
-Cc: okir@suse.de
-To: <nfs@lists.sourceforge.net>
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IIKoA-00079L-5V
-	for nfs@lists.sourceforge.net; Tue, 07 Aug 2007 01:52:54 -0700
-Received: from [222.73.24.84] (helo=song.cn.fujitsu.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IIKoB-0008IB-Mp
-	for nfs@lists.sourceforge.net; Tue, 07 Aug 2007 01:52:58 -0700
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
-
-This is a multi-part message in MIME format.
-
-------=_NextPart_000_0745_01C7D913.180E12D0
 Content-Type: text/plain;
-	charset="gb2312"
-Content-Transfer-Encoding: base64
+  charset="iso-8859-15"
+Cc: Johannes Berg <johannes@sipsolutions.net>,
+	Oleg Nesterov <oleg@tv-sign.ru>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net,
+	linux-kernel@vger.kernel.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1762220AbXHGMK1@vger.kernel.org>
+In-Reply-To: <1186417445.6616.23.camel@localhost>
+Sender: linux-kernel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-SGVsbG8gZXZlcnlib2R5LA0KDQpJIGZvdW5kIHRoYXQgIm1vdW50cyIgaW4gc3RydWN0ICJzdGF0
-aWMgc3RydWN0IG9wdGlvbiBsb25nb3B0c1tdIiBvZiB0aGUgc291cmNlIGZpbGUgIm5mc3N0YXQu
-YyIgc2hvdWxkIGJlIHJlcGxhY2VkIGJ5ICJtb3VudGVkIi4gDQoNClBhY2thZ2U6IG5mcy11dGls
-cw0KVmVyc2lvbjogMS4xLjANCg0KSSBmb3VuZCBtYW5wYWdlIGFuZCB0aGUgZnVuY3Rpb24gdXNh
-Z2UoKSBpbiB0aGUgc291cmNlIGZpbGUgc2F5czoNCg0KbWFucGFnZToNCi1tLCAtLW1vdW50ZWQN
-CiAgICAgICAgICAgICAgUHJpbnQgaW5mb3JtYXRpb24gYWJvdXQgZWFjaCBvZiB0aGUgbW91bnRl
-ZCBORlMgZmlsZSBzeXN0ZW1zLg0KICAgICAgICAgICAgICBJZiB0aGlzIG9wdGlvbiBpcyB1c2Vk
-LCBhbGwgb3RoZXIgb3B0aW9ucyBhcmUgaWdub3JlZC4NCg0KdGhlIGZ1bmN0aW9uIHVzYWdlKCk6
-DQpwcmludGYoIlVzYWdlOiAlcyBbT1BUSU9OXS4uLlxuXA0KXG5cDQogIC1tLCAtLW1vdW50ZWRc
-dFx0U2hvdyBzdGF0aXN0aWNzIG9uIG1vdW50ZWQgTkZTIGZpbGVzeXN0ZW1zXG5cDQouLi4NCg0K
-YnV0IGluIHN0cnVjdCAic3RhdGljIHN0cnVjdCBvcHRpb24gbG9uZ29wdHNbXSIgd2FzICJtb3Vu
-dHMiIGluc3RlYWQgb2YgIm1vdW50ZWQiLg0KU28sICJtb3VudHMiIHNob3VsZCBiZSByZXBsYWNl
-ZCBieSAibW91bnRlZCIuDQoNCkZvciBleGFtcGxlOg0KPT09PT09PT09PT09PT09PT09PT09PT09
-PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
-PT09PT09PT0NCltyb290QGxvY2FsaG9zdCB+XSMgbmZzc3RhdCAtLW1vdW50ZWQNCm5mc3N0YXQ6
-IHVucmVjb2duaXplZCBvcHRpb24gYC0tbW91bnRlZCcNClRyeSBgbmZzc3RhdCAtLWhlbHAnIGZv
-ciBtb3JlIGluZm9ybWF0aW9uLg0KW3Jvb3RAbG9jYWxob3N0IH5dIyANCj09PT09PT09PT09PT09
-PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
-PT09PT09PT09PT09PT09PT09DQoNCkkgaGF2ZSBtYWRlIGEgcGF0Y2ggZm9yIHRoaXMgYnVnLg0K
-VGhlIGNvbnRlbnQgb2YgdGhlIHBhdGNoOg0KDQpJbmRleDogbmZzLXV0aWxzLTEuMS4wL3V0aWxz
-L25mc3N0YXQvbmZzc3RhdC5jDQo9PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
-PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PQ0KLS0t
-IG5mcy11dGlscy0xLjEuMC5vcmlnL3V0aWxzL25mc3N0YXQvbmZzc3RhdC5jICAgICAgICAyMDA3
-LTA4LTA4IDAyOjMyOjMzLjAwMDAwMDAwMCArMDgwMA0KKysrIG5mcy11dGlscy0xLjEuMC91dGls
-cy9uZnNzdGF0L25mc3N0YXQuYyAgICAgMjAwNy0wOC0wOCAwMjozMzoxMy4wMDAwMDAwMDAgKzA4
-MDANCkBAIC0xOTgsNyArMTk4LDcgQEAgc3RhdGljIHN0cnVjdCBvcHRpb24gbG9uZ29wdHNbXSA9
-DQogICAgICAgIHsgImFsbCIsIDAsIDAsICd2JyB9LA0KICAgICAgICB7ICJhdXRvIiwgMCwgMCwg
-J1wzJyB9LA0KICAgICAgICB7ICJjbGllbnQiLCAwLCAwLCAnYycgfSwNCi0gICAgICAgeyAibW91
-bnRzIiwgMCwgMCwgJ20nIH0sDQorICAgICAgIHsgIm1vdW50ZWQiLCAwLCAwLCAnbScgfSwNCiAg
-ICAgICAgeyAibmZzIiwgMCwgMCwgJ24nIH0sDQogICAgICAgIHsgInJwYyIsIDAsIDAsICdyJyB9
-LA0KICAgICAgICB7ICJzZXJ2ZXIiLCAwLCAwLCAncycgfSwNCj09PT09PT09PT09PT09PT09PT09
-PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
-PT09PT09PT09PT09DQpJbmRleDogbmZzLXV0aWxzLTEuMS4wL3V0aWxzL25mc3N0YXQvbmZzc3Rh
-dC5jDQoNClJlZ2FyZHMNClBlbmcgSGFpdGFv
+Am Monday 06 August 2007 18:24 schrieb Trond Myklebust:
+> On Mon, 2007-08-06 at 13:05 +0200, Marc Dietrich wrote:
+> > Hi,
+> >
+> > > (...)
+> >
+> > just booting into X is enough.
+> >
+> > I applied the patch, but now I get:
+> >
+> > =================================
+> > [ INFO: inconsistent lock state ]
+> > 2.6.23-rc1-mm2 #4
+> > ---------------------------------
+> > inconsistent {softirq-on-W} -> {in-softirq-W} usage.
+> > swapper/0 [HC0[0]:SC1[1]:HE1:SE0] takes:
+> >  (rpc_credcache_lock){-+..}, at: [<c01dc487>]
+> > _atomic_dec_and_lock+0x17/0x60 {softirq-on-W} state was registered at:
+> >   [<c013e870>] __lock_acquire+0x650/0x1030
+> >   [<c013f2b1>] lock_acquire+0x61/0x80
+> >   [<c02db9ac>] _spin_lock+0x2c/0x40
+> >   [<c01dc487>] _atomic_dec_and_lock+0x17/0x60
+> >   [<dced55fd>] put_rpccred+0x5d/0x100 [sunrpc]
+> >   [<dced56c1>] rpcauth_unbindcred+0x21/0x60 [sunrpc]
+> >   [<dced3fd4>] a0 [sunrpc]
+> >   [<dcecefe0>] rpc_call_sync+0x30/0x40 [sunrpc]
+> >   [<dcedc73b>] rpcb_register+0xdb/0x180 [sunrpc]
+> >   [<dced65b3>] svc_register+0x93/0x160 [sunrpc]
+> >   [<dced6ebe>] __svc_create+0x1ee/0x220 [sunrpc]
+> >   [<dced7053>] svc_create+0x13/0x20 [sunrpc]
+> >   [<dcf6d722>] nfs_callback_up+0x82/0x120 [nfs]
+> >   [<dcf48f36>] nfs_get_client+0x176/0x390 [nfs]
+> >   [<dcf49181>] nfs4_set_client+0x31/0x190 [nfs]
+> >   [<dcf49983>] nfs4_create_server+0x63/0x3b0 [nfs]
+> >   [<dcf52426>] nfs4_get_sb+0x346/0x5b0 [nfs]
+> >   [<c017b444>] vfs_kern_mount+0x94/0x110
+> >   [<c0190a62>] do_mount+0x1f2/0x7d0
+> >   [<c01910a6>] sys_mount+0x66/0xa0
+> >   [<c0104046>] syscall_call+0x7/0xb
+> >   [<ffffffff>] 0xffffffff
+> > irq event stamp: 5277830
+> > hardirqs last  enabled at (5277830): [<c017530a>]
+> > kmem_cache_free+0x8a/0xc0 hardirqs last disabled at (5277829):
+> > [<c01752d2>] kmem_cache_free+0x52/0xc0 softirqs last  enabled at
+> > (5277798): [<c0124173>] __do_softirq+0xa3/0xc0 softirqs last disabled at
+> > (5277817): [<c01241d7>] do_softirq+0x47/0x50
+> >
+> > other info that might help us debug this:
+> > no locks held by swapper/0.
+> >
+> > stack backtrace:
+> >  [<c0104fda>] show_trace_log_lvl+0x1a/0x30
+> >  [<c0105c02>] show_trace+0x12/0x20
+> >  [<c0105d15>] dump_stack+0x15/0x20
+> >  [<c013ccc3>] print_usage_bug+0x153/0x160
+> >  [<c013d8b9>] mark_lock+0x449/0x620
+> >  [<c013e824>] __lock_acquire+0x604/0x1030
+> >  [<c013f2b1>] lock_acquire+0x61/0x80
+> >  [<c02db9ac>] _spin_lock+0x2c/0x40
+> >  [<c01dc487>] _atomic_dec_and_lock+0x17/0x60
+> >  [<dced55fd>] put_rpccred+0x5d/0x100 [sunrpc]
+> >  [<dcf6bf83>] nfs_free_delegation_callback+0x13/0x20 [nfs]
+> >  [<c012f9ea>] __rcu_process_callbacks+0x6a/0x1c0
+> >  [<c012fb52>] rcu_process_callbacks+0x12/0x30
+> >  [<c0124218>] tasklet_action+0x38/0x80
+> >  [<c0124125>] __do_softirq+0x55/0xc0
+> >  [<c01241d7>] do_softirq+0x47/0x50
+> >  [<c0124605>] irq_exit+0x35/0x40
+> >  [<c0112463>] smp_apic_timer_interrupt+0x43/0x80
+> >  [<c0104a77>] apic_timer_interrupt+0x33/0x38
+> >  [<c02690df>] cpuidle_idle_call+0x6f/0x90
+> >  [<c01023c3>] cpu_idle+0x43/0x70
+> >  [<c02d8c27>] rest_init+0x47/0x50
+> >  [<c03bcb6a>] start_kernel+0x22a/0x2b0
+> >  [<00000000>] 0x0
+> >  =======================
+>
+> That is a different matter. I assume this patch should suffice to fix
+> the above problem.
+>
+> Trond
 
-------=_NextPart_000_0745_01C7D913.180E12D0
-Content-Type: application/octet-stream;
-	name="nfsstat-1.1.0.patch"
-Content-Transfer-Encoding: quoted-printable
-Content-Disposition: attachment;
-	filename="nfsstat-1.1.0.patch"
+yes - it does.
 
-diff -Nraup nfs-utils-1.1.0.orig/utils/nfsstat/nfsstat.c =
-nfs-utils-1.1.0/utils/nfsstat/nfsstat.c=0A=
---- nfs-utils-1.1.0.orig/utils/nfsstat/nfsstat.c	2007-08-08 =
-02:32:33.000000000 +0800=0A=
-+++ nfs-utils-1.1.0/utils/nfsstat/nfsstat.c	2007-08-08 =
-02:33:13.000000000 +0800=0A=
-@@ -198,7 +198,7 @@ static struct option longopts[] =3D=0A=
- 	{ "all", 0, 0, 'v' },=0A=
- 	{ "auto", 0, 0, '\3' },=0A=
- 	{ "client", 0, 0, 'c' },=0A=
--	{ "mounts", 0, 0, 'm' },=0A=
-+	{ "mounted", 0, 0, 'm' },=0A=
- 	{ "nfs", 0, 0, 'n' },=0A=
- 	{ "rpc", 0, 0, 'r' },=0A=
- 	{ "server", 0, 0, 's' },=0A=
+thanks.
 
-------=_NextPart_000_0745_01C7D913.180E12D0
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+Marc
 
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Splunk Inc.
-Still grepping through log files to find problems?  Stop.
-Now Search log events and configuration files using AJAX and a browser.
-Download your FREE copy of Splunk now >>  http://get.splunk.com/
-------=_NextPart_000_0745_01C7D913.180E12D0
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
 
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-
-------=_NextPart_000_0745_01C7D913.180E12D0--
+-- 
+	"Our cause has a sacred nature."
+		 Lord Arthur Ponsonby, "Falsehood in Wartime: Propaganda Lies of the First 
+World War", 1928
