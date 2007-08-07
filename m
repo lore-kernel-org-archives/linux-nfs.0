@@ -1,32 +1,30 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: 2.6.23-rc1-mm2
-Date: Tue, 07 Aug 2007 18:05:14 -0400
-Message-ID: <1186524314.6625.29.camel@heimdal.trondhjem.org>
-References: <20070731230932.a9459617.akpm@linux-foundation.org>
-	<200708031301.01569.marc.dietrich@ap.physik.uni-giessen.de>
-	<20070803093830.39852a01.akpm@linux-foundation.org>
-	<1186160608.7255.10.camel@localhost> <20070803172137.GA3783@tv-sign.ru>
-	<1186520929.6625.12.camel@heimdal.trondhjem.org>
-	<20070807213749.GA461@tv-sign.ru>
+From: "Kevin Coffman" <kwc@citi.umich.edu>
+Subject: Re: [PATCH 7/7] nfsstat: add -D/--diff-stat
+Date: Tue, 7 Aug 2007 18:08:15 -0400
+Message-ID: <4d569c330708071508l37c03338x5f4d77f9182ed04e@mail.gmail.com>
+References: <Pine.BSO.4.64.0707311719160.13370@citi.umich.edu>
+	<20070807211920.GA16557@uio.no>
+	<Pine.BSO.4.64.0708071721280.26009@citi.umich.edu>
+	<20070807215359.GA16870@uio.no>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>, linux-kernel@vger.kernel.org,
-	nfs@lists.sourceforge.net, Andrew Morton <akpm@linux-foundation.org>,
-	Johannes Berg <johannes@sipsolutions.net>,
-	Marc Dietrich <Marc.Dietrich@ap.physik.uni-giessen.de>
-To: Oleg Nesterov <oleg@tv-sign.ru>
+Cc: Neil Brown <neilb@suse.de>,
+	Andrew Richardson <chardson@umich.edu>, nfs@lists.sourceforge.net,
+	Alex Soule <soule@umich.edu>,
+	"david m. richter" <richterd@citi.umich.edu>
+To: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IIXBK-0003mb-MS
-	for nfs@lists.sourceforge.net; Tue, 07 Aug 2007 15:05:39 -0700
-Received: from pat.uio.no ([129.240.10.15]
-	ident=[U2FsdGVkX18FgZCjV2MsKJsijLfCn1HFCEwXOYiwlVM=])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IIXBJ-0004Mz-5a
-	for nfs@lists.sourceforge.net; Tue, 07 Aug 2007 15:05:38 -0700
-In-Reply-To: <20070807213749.GA461@tv-sign.ru>
+	id 1IIXDt-00046k-6g
+	for nfs@lists.sourceforge.net; Tue, 07 Aug 2007 15:08:17 -0700
+Received: from rv-out-0910.google.com ([209.85.198.189])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IIXDw-0005RD-55
+	for nfs@lists.sourceforge.net; Tue, 07 Aug 2007 15:08:21 -0700
+Received: by rv-out-0910.google.com with SMTP id g11so5184992rvb
+	for <nfs@lists.sourceforge.net>; Tue, 07 Aug 2007 15:08:19 -0700 (PDT)
+In-Reply-To: <20070807215359.GA16870@uio.no>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -39,63 +37,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, 2007-08-08 at 01:37 +0400, Oleg Nesterov wrote:
-> On 08/07, Trond Myklebust wrote:
-> >
-> > On Fri, 2007-08-03 at 21:21 +0400, Oleg Nesterov wrote:
-> > > On 08/03, Trond Myklebust wrote:
-> > > > I'll have a look at this. I suspect that most if not all of our calls to
-> > > > run_workqueue()/flush_scheduled_work() can now be replaced by more
-> > > > targeted calls to cancel_work_sync() and cancel_delayed_work_sync().
-> > > 
-> > > Yes, please, if possible.
-> > 
-> > All the NFS and SUNRPC cases appear to be trivial. IOW: the only reason
-> > for the flush_workqueue()/flush_scheduled_work() calls was to ensure
-> > that the cancel_work()/cancel_delayed_work() calls preceding them have
-> > completed. Nevertheless I've split the conversion into two patches,
-> > since one touches only the NFS code, whereas the other touches the
-> > SUNRPC client and server code.
-> > 
-> > The two patches have been tested, and appear to work...
-> 
-> Great!
-> 
-> >  void
-> >  nfs4_kill_renewd(struct nfs_client *clp)
-> >  {
-> >  	down_read(&clp->cl_sem);
-> > -	cancel_delayed_work(&clp->cl_renewd);
-> > +	cancel_delayed_work_sync(&clp->cl_renewd);
-> >  	up_read(&clp->cl_sem);
-> > -	flush_scheduled_work();
-> >  }
-> 
-> this looks unsafe to me, the window is very small, but afaics this can
-> deadlock if called when nfs4_renew_state() has already started, but didn't
-> take ->cl_sem yet.
+On 8/7/07, Steinar H. Gunderson <sgunderson@bigfoot.com> wrote:
+> On Tue, Aug 07, 2007 at 05:26:13PM -0400, david m. richter wrote:
+> >       does anyone know the reason behind no-floating-point-on-Alpha?
+>
+> It seems to have been added as part of this changelog entry (slightly munged
+> in git, perhaps something went wrong from the CVS import):
+>
+>   2005-12-20 Kevin Coffman <kwc@citi.umich.edu> NeilBrown <neilb@suse.de>
+>           Substantial Makefile/configure rewrite.
+>           Run 'autogen.sh' to create "Makefile.in" etc.
+>
+>           Also add -D_FILE_OFFSET_BITS=64 to CPP_FLAGS so that mountd can
+>           stat and export files larger than 2Gig.
+>
+>           1.0.8-rc2 released
+>
+> I sort of suspect it was just copied blindly from somewhere...
 
-Not really. We have removed the nfs_client from the public lists, and we
-are guaranteed that there are no more active superblocks attached to it
-so nothing can call the reclaimer routine (which is the only routine
-that takes a write lock on clp->cl_sem).
-
-> Can't we avoid taking clp->cl_sem here?
-
-Yes, I believe that we can, for the same reasons as above: the race with
-the reclaimer is impossible, hence the read lock on cl_sem is redundant.
-
-> Btw, unless I missed something, the code without this patch looks incorrect
-> too: cancel_delayed_work() can fail if the timer expired, but the ->cl_renewd
-> didn't run yet. In that case nfs4_renew_state() can run and re-schedule itself
-> after flush_scheduled_work() returns.
-
-No, that should not be possible. Again, see above: there are no active
-superblocks, so clp->cl_superblocks is empty.
-
-Cheers
-  Trond
-
+Actually, it was copied carefully from the old config.mk.in :-)
+It was in config.mk.in from the beginning, AFAICT.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
