@@ -1,21 +1,25 @@
-From: <Odin@classytech.com>
-Subject: Research_report-Norine
-Date: Tue, 7 Aug 2007 21:06:09 +0200
-Message-ID: <000f01c7d926$03a88970$42ed8054@winxp5ea62a8ac>
+From: <judi.makrouda@classytech.com>
+Subject: Basic_Chart-judi
+Date: Tue, 7 Aug 2007 21:06:00 +0200
+Message-ID: <001001c7d925$fdf30cd0$42ed8054@winxp5ea62a8ac>
 Mime-Version: 1.0
 Content-Type: multipart/mixed;
-	boundary="----=_NextPart_000_000B_01C7D936.C7315970"
+	boundary="----=_NextPart_000_000C_01C7D936.C17992E0"
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IIUNP-0000mR-Tb
-	for nfs@lists.sourceforge.net; Tue, 07 Aug 2007 12:05:56 -0700
+	id 1IIUNK-0000mJ-BP
+	for nfs@lists.sourceforge.net; Tue, 07 Aug 2007 12:05:50 -0700
 Received: from p5480d40e.dip.t-dialin.net ([84.128.212.14]
 	helo=p5480ED42.dip.t-dialin.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IIUNR-0007r8-0R
-	for nfs@lists.sourceforge.net; Tue, 07 Aug 2007 12:05:59 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IIUNI-0007r8-Bw
+	for nfs@lists.sourceforge.net; Tue, 07 Aug 2007 12:05:54 -0700
+Received: from winxp-5ea62a8ac ([190.136.101.120] helo=winxp-5ea62a8ac)
+	by p5480ED42.dip.t-dialin.net ( sendmail 8.13.3/8.13.1) with esmtpa id
+	1ziCys-000RJN-KZ
+	for nfs@lists.sourceforge.net; Tue, 7 Aug 2007 21:06:15 +0200
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,18 +32,18 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-------=_NextPart_000_000B_01C7D936.C7315970
+------=_NextPart_000_000C_01C7D936.C17992E0
 Content-Type: multipart/alternative;
-	boundary="----=_NextPart_001_000C_01C7D936.C7315970"
+	boundary="----=_NextPart_001_000D_01C7D936.C17992E0"
 
 
-------=_NextPart_001_000C_01C7D936.C7315970
+------=_NextPart_001_000D_01C7D936.C17992E0
 Content-Type: text/plain;
 	charset="windows-1250"
 Content-Transfer-Encoding: quoted-printable
 
 
-------=_NextPart_001_000C_01C7D936.C7315970
+------=_NextPart_001_000D_01C7D936.C17992E0
 Content-Type: text/html;
 	charset="windows-1250"
 Content-Transfer-Encoding: quoted-printable
@@ -54,14 +58,14 @@ charset=3Dwindows-1250">
 <BODY bgColor=3D#ffffff>
 <DIV><FONT face=3DArial size=3D2></FONT>&nbsp;</DIV></BODY></HTML>
 
-------=_NextPart_001_000C_01C7D936.C7315970--
+------=_NextPart_001_000D_01C7D936.C17992E0--
 
-------=_NextPart_000_000B_01C7D936.C7315970
+------=_NextPart_000_000C_01C7D936.C17992E0
 Content-Type: application/pdf;
-	name="Research_report-Norine.pdf"
+	name="Basic_Chart-judi.pdf"
 Content-Transfer-Encoding: base64
 Content-Disposition: attachment;
-	filename="Research_report-Norine.pdf"
+	filename="Basic_Chart-judi.pdf"
 
 JVBERi0xLjUNJeLjz9MNCjIyIDAgb2JqPDwvSFs0MzYgMTQ4XS9MaW5lYXJpemVkIDEvRSAxNzk1
 L0wgMTQyMDgvTiAxMC9PIDI2L1QgMTM3MDY+Pg1lbmRvYmoNICAgICAgICAgICAgICAgICAgICAg
@@ -314,7 +318,7 @@ MDAwMCBuDQowMDAwMDA5ODk2IDAwMDAwIG4NCjAwMDAwMTAwMDcgMDAwMDAgbg0KMDAwMDAxMzUw
 MiAwMDAwMCBuDQp0cmFpbGVyDQo8PC9TaXplIDIyL0VuY3J5cHQgMjMgMCBSPj4NCnN0YXJ0eHJl
 Zg0KMTE2DQolJUVPRg0K
 
-------=_NextPart_000_000B_01C7D936.C7315970
+------=_NextPart_000_000C_01C7D936.C17992E0
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -325,7 +329,7 @@ This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
-------=_NextPart_000_000B_01C7D936.C7315970
+------=_NextPart_000_000C_01C7D936.C17992E0
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -335,4 +339,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
-------=_NextPart_000_000B_01C7D936.C7315970--
+------=_NextPart_000_000C_01C7D936.C17992E0--
