@@ -1,22 +1,18 @@
-From: "Wim Colgate" <Wim.Colgate@xensource.com>
-Subject: Re: NFS_UNSTABLE vs. FILE and DATA sync.
-Date: Mon, 6 Aug 2007 12:33:27 -0700
-Message-ID: <A9AD3C3BCF83FD4182B7D4D99E37FAD836BF1D@exchrdm.ad.xensource.com>
-References: <46B7738C.4020503@oracle.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: <chuck.lever@oracle.com>
+From: gatepath@ins-connect.net
+Subject: Free website analysis worth $399
+Date: Tue, 07 Aug 2007 10:23:13 -0600
+Message-ID: <x1qigs4x013h.xuq20cb81w0v@ins-connect.net>
+Content-Type: multipart/mixed; boundary="===============1602193256=="
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1II8LR-0007V3-Aj
-	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 12:34:25 -0700
-Received: from webmailrdm.xensource.com ([66.228.214.202])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1II8LV-0001Yb-7Z
-	for nfs@lists.sourceforge.net; Mon, 06 Aug 2007 12:34:29 -0700
-In-Reply-To: <46B7738C.4020503@oracle.com>
+	id 1IIQtr-0000Gm-Kz
+	for nfs@lists.sourceforge.net; Tue, 07 Aug 2007 08:23:11 -0700
+Received: from [70.84.10.12] (helo=ins-connect.net)
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1IIQtt-00055i-8q
+	for nfs@lists.sourceforge.net; Tue, 07 Aug 2007 08:23:15 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,93 +25,135 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi Chuck,
+--===============1602193256==
+Content-Type: text/html;
+	 charset="us-ascii"
+Content-Transfer-Encoding: 7BIT
 
-The linux kernel I was using is 2.6.18-8.
+<html>
 
-To be fair, I was not trying to force NFS_FILE_SYNC; to make a long
-story short, I started with O_DIRECT (please don't cache data). I moved
-to add O_SYNC (don't return until my data is written safely). And when I
-couldn't explain why I was missing some data (discrepancy between client
-and server), I started investigating what was happening under the hood.
-I didn't really want to start a controversy -- I just wanted to
-understand what was happening.
+<head>
+<meta http-equiv="Content-Language" content="en-us">
 
-My understanding of NFS is fairly pedestrian in that I merely get the
-big picture. Which is why I posted here.
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
 
-Thanks,
+<style>
+<!--
+div.Section1
+	{page:Section1;}
+ p.MsoNormal
+	{margin:0in;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman";}
+-->
+</style>
+</head>
 
-Wim
+<body>
 
------Original Message-----
-From: Chuck Lever [mailto:chuck.lever@oracle.com] 
-Sent: Monday, August 06, 2007 12:16 PM
-To: Wim Colgate
-Cc: nfs@lists.sourceforge.net
-Subject: Re: [NFS] NFS_UNSTABLE vs. FILE and DATA sync.
+<p class="MsoNormal"><b><u><font face="Arial" color="#333399" size="4">
+<span style="font-weight: bold; color: #333399; font-family: Arial">Free Website 
+Analysis and Ranking Report of Your Website!</span></font></u></b></p>
+<p class="MsoNormal"><font face="Arial" color="#333399" size="2">
+<span style="font-size: 11pt; color: #333399; font-family: Arial">&nbsp;</span></font></p>
+<p class="MsoNormal"><font face="Arial" color="#333399" size="2">
+<span style="color: #333399; font-family: Arial">Top search 
+engine placement is a vital key to a company’s success these days.</span></font></p>
+<p class="MsoNormal"><font face="Arial" color="#333399" size="2">
+<span style="color: #333399; font-family: Arial">We partner 
+with some of the biggest search engine marketing companies to help</span></font></p>
+<p class="MsoNormal"><font face="Arial" color="#333399" size="2">
+<span style="color: #333399; font-family: Arial">you find the 
+right one to optimize your website and improve it’s top search engine positions.</span></font></p>
+<p class="MsoNormal"><font face="Arial" color="#333399" size="2">
+<span style="color: #333399; font-family: Arial">&nbsp;</span></font></p>
+<p class="MsoNormal"><font face="Arial" color="#333399" size="2">
+<span style="color: #333399; font-family: Arial">When your 
+company website is ranked highly in the major search engines, your virtual 
+storefront</span></font></p>
+<p class="MsoNormal"><font size="2" color="#333399">
+<span style="font-family: Arial">b</span></font><font face="Arial" color="#333399" size="2"><span style="color: #333399; font-family: Arial">ecomes 
+prime business property and you are making sales 24/7.</span></font></p>
+<p class="MsoNormal"><font face="Arial" color="#333399" size="2">
+<span style="color: #333399; font-family: Arial">&nbsp;</span></font></p>
+<p class="MsoNormal"><font face="Arial" color="#333399" size="2">
+<span style="color: #333399; font-family: Arial">At no cost to 
+you, our technicians will run a free ranking report showing you exactly where 
+your</span></font></p>
+<p class="MsoNormal"><font size="2" color="#333399">
+<span style="font-family: Arial">w</span></font><font face="Arial" color="#333399" size="2"><span style="color: #333399; font-family: Arial">ebsite 
+currently stands in all the major search engines. Then we will e-mail you our 
+analysis</span></font></p>
+<p class="MsoNormal"><font face="Arial" color="#333399" size="2">
+<span style="color: #333399; font-family: Arial">along with a recommendation of 
+how we can increase your ranking, and improve your traffic!</span></font></p>
+<p class="MsoNormal"><font face="Arial" color="#333399" size="2">
+<span style="font-size: 11pt; color: #333399; font-family: Arial">&nbsp;</span></font></p>
+<p class="MsoNormal"><b><font face="Arial" color="#333399" size="3">
+<span style="font-weight: bold; color: #333399; font-family: Arial">For a FREE 
+Analysis &amp; FREE Ranking Report of Your Website</span></font></b><font face="Arial" color="#333399" size="3"><span style="color: #333399; font-family: Arial">
+<b><span style="font-weight: bold">
+<a style="color: blue; text-decoration: underline" href="mailto:freewebsitereport@ins-connect.net;info@ins-connect.net?subject=For your Free Website Ranking and Analysis Report Type Your Name, Company, Email, Website, and Phone Number Below.">Please click here!</a></span></b></span></font></p>
+<p class="MsoNormal"><font face="Arial" color="#333399" size="2">
+<span style="color: #333399; font-family: Arial">so that we can run a free 
+analysis and free ranking report which most companies charge $399 for. </span></font></p>
+<p class="MsoNormal">
+<span style="FONT-SIZE: 11pt; COLOR: #333399; FONT-FAMILY: Arial">
+<span class="406165521-21062007"><font size="2">
+<span style="COLOR: #333399; FONT-FAMILY: Arial">We look forward to helping you 
+increase your revenue this year from your company website.</span></font></span></span></p>
+<p class="MsoNormal">
+&nbsp;</p>
+<p class="MsoNormal">
+&nbsp;</p>
+<p class="MsoNormal">
+<span class="406165521-21062007"><font face="Arial" size="2" color="#333399">
+_______________________________________________________________________________</font></span></p>
+<div align="center">
+  <p align="left"><font face="Arial" color="#000080" size="1">You are receiving 
+  this message as an opt-in subscriber of Ins-Connect.net or one of our 
+  marketing partners. <br>
+  If you no longer wish to receive further offers, please send an email with 
+  discontinue to: <a href="mailto:support@ins-connect.net?subject=Discontinue">
+  support@ins-connect.net</a><br>
+  Your email address will be removed within 24 hours.</font></p>
+  <p align="left"><font face="Arial" color="#000080" size="1"><br>
+  Ins-Connect<br>
+  27 Russel Ave.<br>
+  Edgewater, NJ<br>
+  07020</font></p>
+  <p>&nbsp;</div>
+<p class="MsoNormal">
+&nbsp;</p>
+<p class="MsoNormal"><font face="Arial" color="#333399" size="2">
+<span style="font-size: 11pt; color: #333399; font-family: Arial">&nbsp;</span></font></p>
 
-Wim Colgate wrote:
-> Specifically I am trying to inject errors by manually (but politely)
-> bringing the NFS server down then up, then down (rinse and repeat ...)
-> while doing IO from a linux client. As mentioned the open file is
-> O_DIRECT and O_SYNC -- which I thought should mean either the data
-hits
-> the server's storage or I should get an error; and I'm more than happy
-> to deal with an IO error.
-> 
-> I'm confident the writes are less than wsize (4096 bytes to be
-precise).
-> 
-> 
-> Is there a 100% guaranteed method to get the behavior I thought
-O_DIRECT
-> and O_SYNC was providing?
+</body>
 
-What behavior did you expect O_DIRECT + O_SYNC to provide?  O_DIRECT 
-means "don't cache data" and O_SYNC means "make sure the data is flushed
+</html>
 
-to the server's disk before each write() system call returns." 
-Technically, you don't need NFS_FILE_SYNC writes to do either of those.
 
-Which kernel are you testing?  The client's use of NFS_FILE_SYNC writes 
-changed over time.
 
-> -----Original Message-----
-> From: Peter Staubach [mailto:staubach@redhat.com] 
-> Sent: Monday, August 06, 2007 10:33 AM
-> To: chuck.lever@oracle.com
-> Cc: Wim Colgate; nfs@lists.sourceforge.net
-> Subject: Re: [NFS] NFS_UNSTABLE vs. FILE and DATA sync.
-> 
-> Chuck Lever wrote:
->> Wim Colgate wrote:
->>> If I have a soft mount, and open a file with O_DIRECT and O_SYNC, 
->>> should I ever expect a callback (nfs_writeback_done) with a 
->>> successful task->tk_status (i.e >= 0) with the committed state 
->>> (resp->verf->committed) set to NFS_UNSTABLE?
->> Yes, this can happen if the server decides to return NFS_UNSTABLE. 
->> Rare, but possible.
->>
->>> A secondary question: if the above is expected, does this occur 
->>> because someone is caching the write and is there a mechanism to 
->>> disable this effect?
->> Servers can return NFS_UNSTABLE to any WRITE request, so I can't
-think
-> 
->> of a way this might be disabled. 
-> 
-> Actually, it would be a protocol error for a server to return
-> a commitment level less than was requested by the client.  The
-> server can return a greater commitment level, but not less than.
-> 
->        ps
+--===============1602193256==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
+--===============1602193256==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============1602193256==--
