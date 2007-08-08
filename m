@@ -1,26 +1,27 @@
-From: Peter Staubach <staubach@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: Re: [PATCH] 64 bit ino support for NFS server
-Date: Wed, 08 Aug 2007 16:49:00 -0400
-Message-ID: <46BA2C3C.6040504@redhat.com>
+Date: Wed, 8 Aug 2007 17:01:04 -0400
+Message-ID: <20070808210104.GO16171@fieldses.org>
 References: <46B37DE6.80706@redhat.com> <46B38206.6050504@redhat.com>
 	<20070804223256.GA1155@fieldses.org> <46BA2289.5060902@redhat.com>
-	<20070808203555.GL16171@fieldses.org>
+	<20070808203555.GL16171@fieldses.org> <46BA2C3C.6040504@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Neil Brown <neilb@suse.de>,
 	Andrew Morton <akpm@linux-foundation.org>,
 	NFS List <nfs@lists.sourceforge.net>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+To: Peter Staubach <staubach@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IIsSq-0004hm-MZ
-	for nfs@lists.sourceforge.net; Wed, 08 Aug 2007 13:49:08 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IIsSu-0004zt-Go
-	for nfs@lists.sourceforge.net; Wed, 08 Aug 2007 13:49:12 -0700
-In-Reply-To: <20070808203555.GL16171@fieldses.org>
+	id 1IIseP-0005zw-Vq
+	for nfs@lists.sourceforge.net; Wed, 08 Aug 2007 14:01:05 -0700
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IIseS-0001zg-Ne
+	for nfs@lists.sourceforge.net; Wed, 08 Aug 2007 14:01:10 -0700
+In-Reply-To: <46BA2C3C.6040504@redhat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,73 +34,36 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-J. Bruce Fields wrote:
-> On Wed, Aug 08, 2007 at 04:07:37PM -0400, Peter Staubach wrote:
->   
->> I'm testing a new version of the patch, which addresses this
->> issue, but then I got to wondering, what is lease_get_mtime()
->> really for and is it solving a real problem, and if so, is it
->> solving it in a reasonable fashion?
->>
->> It appears to me that it is used to detect when an application
->> on the server has acquired an exclusive lease for a file and
->> may be modifying it, but without informing the kernel.  If it
->> was informing the kernel, then the mtime would be updated.
->>
->> NFS doesn't support leases like this, so it would need to be
->> an application running on the server, either as a standalone
->> application or as a server for some other service.
->>     
->
-> Let's say it's Samba, since that's probably what is is.
->
-> So Samba is holding a write lease on the file on behalf of one of its
-> clients.  We never see an open from our NFSv2/v3 client--if it doesn't
-> have data cached, we may never even see a read, just access and
-> getattr--so we don't know to break that lease.
->
-> (Actually, if a write lease, like an NFSv4 write delegation, is meant to
-> cover file attributes as well as data, then perhaps stat should break
-> write leases.  That sounds painful.)
->
-> Anyway, the delay between the time the Samba client makes a change and
-> the time the NFS client sees it could be unbounded.  Whereas with
-> lease_get_mtime() the client will invalidate its cache and perform a
-> read, which *does* break the lease (in nfsd_open).
->
-> But I agree that this is a strange compromise, and I'd like to
-> understand better what the semantics for sharing with a Samba client are
-> supposed to be.
->
->   
+On Wed, Aug 08, 2007 at 04:49:00PM -0400, Peter Staubach wrote:
+> J. Bruce Fields wrote:
+> > So Samba is holding a write lease on the file on behalf of one of its
+> > clients.  We never see an open from our NFSv2/v3 client--if it doesn't
+> > have data cached, we may never even see a read, just access and
+> > getattr--so we don't know to break that lease.
+> >
+> > (Actually, if a write lease, like an NFSv4 write delegation, is meant to
+> > cover file attributes as well as data, then perhaps stat should break
+> > write leases.  That sounds painful.)
+> >
+> > Anyway, the delay between the time the Samba client makes a change and
+> > the time the NFS client sees it could be unbounded.  Whereas with
+> > lease_get_mtime() the client will invalidate its cache and perform a
+> > read, which *does* break the lease (in nfsd_open).
+> >
+> > But I agree that this is a strange compromise, and I'd like to
+> > understand better what the semantics for sharing with a Samba client are
+> > supposed to be.
+> 
+> Yes.
 
-Yes.
+There's a similar problem in the case of, say, a server with both a v3
+and a v4 client.  If the v4 client has a write delegation, then we break
+close-to-open semantics if the v3 client doesn't see change attribute
+updates from the v4 client's local modifications.  So that's what we
+have cb_getattr for.  And if you don't want to do cb_getattr calls then
+I guess you should be breaking the lease.
 
->> And, why does it matter whether the attributes are being
->> returned via GETATTR, via a post_op_attr, or via a post_op_attr
->> as part of a wcc_data?  The first two cases invoke lease_get_mtime(),
->> while the third does not.
->>     
->
-> What's the code path in the third case?
->
->   
-
-The support in fill_post_wcc() doesn't invoke lease_get_mtime().
-
-    Thanx...
-
-       ps
-
->> Could this not lead to time jumping around on a particular file,
->> forwards and backwards?
->>     
->
-> Yeah, sounds bad.
->
-> --b.
->   
-
+--b.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
