@@ -1,32 +1,25 @@
 From: Michal Piotrowski <michal.k.k.piotrowski@gmail.com>
-Subject: Re: [2/3] 2.6.23-rc2: known regressions v2
-Date: Wed, 08 Aug 2007 19:11:44 +0200
-Message-ID: <46B9F950.2030209__26972.8500898511$1186614206$gmane$org@googlemail.com>
-References: <46B9F664.9060600@googlemail.com>
+Subject: [1/2] 2.6.23-rc2: known regressions with patches v2
+Date: Wed, 08 Aug 2007 19:12:46 +0200
+Message-ID: <46B9F98E.9020406__4869.35146986998$1186614214$gmane$org@googlemail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: dth <dth@dth.net>, Andrew Clayton <andrew@digital-domain.net>,
-	Netdev <netdev@vger.kernel.org>, Florian Lohoff <flo@rfc822.org>,
-	Trond Myklebust <Trond.Myklebust@netapp.com>,
-	LKML <linux-kernel@vger.kernel.org>, Uwe Bugla <uwe.bugla@gmx.de>,
-	nfs@lists.sourceforge.net, Thomas Meyer <thomas@m3y3r.de>,
-	linux-fsdevel@vger.kernel.org, linux-mtd@lists.infradead.org,
+To: Linus Torvalds <torvalds@linux-foundation.org>,
 	Andrew Morton <akpm@linux-foundation.org>,
-	David Woodhouse <dwmw2@infradead.org>, Ingo Molnar <mingo@elte.hu>,
-	Stephen Hemminger <shemminger@osdl.org>, Len Brown <lenb@kernel.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
+	LKML <linux-kernel@vger.kernel.org>,
+	Gabriel C <nix.or.die@googlemail.com>,
+	Stefan Richter
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IIp4j-0005Ah-Fh
-	for nfs@lists.sourceforge.net; Wed, 08 Aug 2007 10:12:01 -0700
-Received: from ug-out-1314.google.com ([66.249.92.170])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IIp4m-0006im-Ln
-	for nfs@lists.sourceforge.net; Wed, 08 Aug 2007 10:12:05 -0700
-Received: by ug-out-1314.google.com with SMTP id m2so256705uge
-	for <nfs@lists.sourceforge.net>; Wed, 08 Aug 2007 10:12:03 -0700 (PDT)
-In-Reply-To: <46B9F664.9060600@googlemail.com>
+	id 1IIp5m-0005Nr-9t
+	for nfs@lists.sourceforge.net; Wed, 08 Aug 2007 10:13:06 -0700
+Received: from ug-out-1314.google.com ([66.249.92.169])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IIp5p-00068O-0c
+	for nfs@lists.sourceforge.net; Wed, 08 Aug 2007 10:13:10 -0700
+Received: by ug-out-1314.google.com with SMTP id m2so256903uge
+	for <nfs@lists.sourceforge.net>; Wed, 08 Aug 2007 10:13:08 -0700 (PDT)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -41,7 +34,8 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 Hi all,
 
-Here is a list of some known regressions in 2.6.23-rc2.
+Here is a list of some known regressions in 2.6.23-rc2
+with patches available.
 
 Feel free to add new regressions/remove fixed etc.
 http://kernelnewbies.org/known_regressions
@@ -64,62 +58,66 @@ Trent Piepho                           2
 
 
 
-CPUFREQ
+Unclassified
 
-Subject         : ide problems: 2.6.22-git17 working, 2.6.23-rc1* is not
-References      : http://lkml.org/lkml/2007/7/27/298
-                  http://lkml.org/lkml/2007/7/29/371
+Subject         : Kconfig prompts without help text
+References      : http://lkml.org/lkml/2007/7/16/326
 Last known good : ?
-Submitter       : dth <dth@dth.net>
-Caused-By       : Len Brown <lenb@kernel.org>
-                  commit f79e3185dd0f8650022518d7624c876d8929061b
-Handled-By      : Len Brown <lenb@kernel.org>
-Status          : problem is being debugged
+Submitter       : Stefan Richter <stefanr@s5r6.in-berlin.de>
+Caused-By       : ?
+Handled-By      : Jan Engelhardt <jengelh@linux01.gwdg.de>
+Patch           : http://lkml.org/lkml/2007/7/18/236
+Status          : patch available
+
+Subject         : Oops while modprobing phy fixed module
+References      : http://lkml.org/lkml/2007/7/14/63
+Last known good : ?
+Submitter       : Gabriel C <nix.or.die@googlemail.com>
+Caused-By       : ?
+Handled-By      : Satyam Sharma <satyam.sharma@gmail.com>
+                  Vitaly Bordug <vitb@kernel.crashing.org>
+Patch1          : http://lkml.org/lkml/2007/7/18/506
+Status          : patch available
 
 
 
 FS
 
-Subject         : [NFSD OOPS] 2.6.23-rc1-git10
-References      : http://lkml.org/lkml/2007/8/2/462
+Subject         : NFSv4 poops itself
+References      : http://lkml.org/lkml/2007/7/27/144
 Last known good : ?
-Submitter       : Andrew Clayton <andrew@digital-domain.net>
+Submitter       : Jeff Garzik <jeff@garzik.org> 
 Caused-By       : ?
-Handled-By      : ?
-Status          : unknown
+Handled-By      : Trond Myklebust <Trond.Myklebust@netapp.com>
+Patch           : http://lkml.org/lkml/2007/7/27/183
+Status          : patch available
 
 
+Modpost
 
-MTD
-
-Subject         : error: implicit declaration of function 'cfi_interleave'
-References      : http://lkml.org/lkml/2007/8/6/272
+Subject         : modpost bug breaks ia64 cross compilation
+References      : http://lkml.org/lkml/2007/7/27/30
+                  http://lkml.org/lkml/2007/7/27/418
 Last known good : ?
-Submitter       : Ingo Molnar <mingo@elte.hu>
-Caused-By       : ?
+Submitter       : Jan Dittmer <jdi@l4x.org>
+Caused-By       : Thomas Renninger <trenn@suse.de>
+                  commit 29b71a1ca74491fab9fed09e9d835d840d042690
 Handled-By      : ?
-Status          : unknown
+Patch           : http://lkml.org/lkml/2007/8/2/211
+Status          : patch was suggested
 
 
 
 Networking
 
-Subject         : IP v4 routing is broken
-References      : http://www.stardust.webpages.pl/files/tbf/bugs/bug_report01.txt
-Last known good : 2.6.22-git2
-Submitter       : Uwe Bugla <uwe.bugla@gmx.de>
-Caused-By       : ?
-Handled-By      : ?
-Status          : unknown
-
-Subject         : New wake ups from sky2
-References      : http://lkml.org/lkml/2007/7/20/386
+Subject         : sky2 boot crash in sky2_mac_intr
+References      : http://lkml.org/lkml/2007/7/24/91
 Last known good : ?
-Submitter       : Thomas Meyer <thomas@m3y3r.de>
-Caused-By       : Stephen Hemminger <shemminger@osdl.org>
-                  commit eb35cf60e462491249166182e3e755d3d5d91a28
+Submitter       : Florian Lohoff <flo@rfc822.org>
+Caused-By       : 
 Handled-By      : Stephen Hemminger <shemminger@osdl.org>
-Status          : unknown
+Patch           : http://marc.info/?l=linux-netdev&m=118651402523966&w=2
+Status          : patch available
 
 
 
