@@ -1,25 +1,21 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: [PATCH] 64 bit ino support for NFS server
-Date: Wed, 08 Aug 2007 16:07:37 -0400
-Message-ID: <46BA2289.5060902@redhat.com>
-References: <46B37DE6.80706@redhat.com> <46B38206.6050504@redhat.com>
-	<20070804223256.GA1155@fieldses.org>
+From: "Kottaridis, Chris" <chris.kottaridis@windriver.com>
+Subject: Re: rpc.mountd memory leak
+Date: Wed, 8 Aug 2007 13:13:51 -0700
+Message-ID: <37B62E0F71C9E14B9859FADB1FC3E3E14EB154@ala-mail02.corp.ad.wrs.com>
+References: <20070807202134.46460f83.jlayton@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	NFS List <nfs@lists.sourceforge.net>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Jeff Layton" <jlayton@redhat.com>, <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IIros-0008J3-NB
-	for nfs@lists.sourceforge.net; Wed, 08 Aug 2007 13:07:50 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IIrow-0003LT-GA
-	for nfs@lists.sourceforge.net; Wed, 08 Aug 2007 13:07:54 -0700
-In-Reply-To: <20070804223256.GA1155@fieldses.org>
+	id 1IIruk-0000aP-4L
+	for nfs@lists.sourceforge.net; Wed, 08 Aug 2007 13:13:54 -0700
+Received: from mail.windriver.com ([147.11.1.11] helo=mail.wrs.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IIruo-0007qN-1F
+	for nfs@lists.sourceforge.net; Wed, 08 Aug 2007 13:13:58 -0700
+In-Reply-To: <20070807202134.46460f83.jlayton@redhat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,105 +28,115 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-J. Bruce Fields wrote:
-> On Fri, Aug 03, 2007 at 03:29:10PM -0400, Peter Staubach wrote:
->   
->> Hi.
->>
->> Attached is a patch to modify the NFS server code to support
->> 64 bit ino's, as appropriate for the system and the NFS
->> protocol version.
->>
->> The gist of the changes is to query the underlying file system
->> for attributes and not just to use the cached attributes in the
->> inode.  For this specific purpose, the inode only contains an
->> ino field which unsigned long, which is large enough on 64 bit
->> platforms, but is not large enough on 32 bit platforms.
->>     
->
-> Thanks!
->
->   
->> @@ -203,31 +203,15 @@ encode_fattr3(struct svc_rqst *rqstp, __
->>  static __be32 *
->>  encode_saved_post_attr(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *fhp)
->>  {
->> -	struct inode	*inode = fhp->fh_dentry->d_inode;
->> +	if (!fhp->fh_post_saved) {
->> +		*p++ = xdr_zero;
->> +		return p;
->> +	}
->>     
->
-> The caller, encode_wcc_data(), already did this check.
->
->   
->>  	/* Attributes to follow */
->>  	*p++ = xdr_one;
->>  
->> -	*p++ = htonl(nfs3_ftypes[(fhp->fh_post_mode & S_IFMT) >> 12]);
->> -	*p++ = htonl((u32) fhp->fh_post_mode);
->> -	*p++ = htonl((u32) fhp->fh_post_nlink);
->> -	*p++ = htonl((u32) nfsd_ruid(rqstp, fhp->fh_post_uid));
->> -	*p++ = htonl((u32) nfsd_rgid(rqstp, fhp->fh_post_gid));
->> -	if (S_ISLNK(fhp->fh_post_mode) && fhp->fh_post_size > NFS3_MAXPATHLEN) {
->> -		p = xdr_encode_hyper(p, (u64) NFS3_MAXPATHLEN);
->> -	} else {
->> -		p = xdr_encode_hyper(p, (u64) fhp->fh_post_size);
->> -	}
->> -	p = xdr_encode_hyper(p, ((u64)fhp->fh_post_blocks) << 9);
->> -	*p++ = fhp->fh_post_rdev[0];
->> -	*p++ = fhp->fh_post_rdev[1];
->> -	p = encode_fsid(p, fhp);
->> -	p = xdr_encode_hyper(p, (u64) inode->i_ino);
->> -	p = encode_time3(p, &fhp->fh_post_atime);
->> -	p = encode_time3(p, &fhp->fh_post_mtime);
->> -	p = encode_time3(p, &fhp->fh_post_ctime);
->> -
->> -	return p;
->> +	return encode_fattr3(rqstp, p, fhp, &fhp->fh_post_attr);
->>     
->
-> Is there a problem with the lease_get_mtime() call in encode_fattr3()?
-> It looks like that could return the current time rather than the time
-> that was supposedly atomic with respect to the operation.
->
->   
+Thanks.
 
-I'm testing a new version of the patch, which addresses this
-issue, but then I got to wondering, what is lease_get_mtime()
-really for and is it solving a real problem, and if so, is it
-solving it in a reasonable fashion?
+Also, it seems possible for get_hostent() to return a NULL value if the
+malloc fails. The client_check() doesn't perform any kind of sanity
+check on it's second parameter, the 'he' variable of client_compose().
+So, there is the possibility that client_check() can try and derefence a
+NULL pointer.
 
-It appears to me that it is used to detect when an application
-on the server has acquired an exclusive lease for a file and
-may be modifying it, but without informing the kernel.  If it
-was informing the kernel, then the mtime would be updated.
+In other locations in the code where get_reliable_hostbyaddr() or
+get_hostent() is called a sanity check for NULL is done to make sure the
+value isn't NULL. For example in auth_authenticate():
 
-NFS doesn't support leases like this, so it would need to be
-an application running on the server, either as a standalone
-application or as a server for some other service.
+        hp = get_reliable_hostbyaddr((const char*)&caller->sin_addr,
+sizeof(struct in_addr),
+                                     AF_INET);
+        if (!hp)
+                hp = get_hostent((const char*)&caller->sin_addr,
+sizeof(struct in_addr),
+                                     AF_INET);
+        if (!hp)
+                return exp;
 
-Outside of delegations, we don't support anything else like
-this, so why is this a special case?  Was there a real world
-problem that this solved?
+Should there be a similar check on 'he' in client_compose to prevent a
+NULL pointer dereference in client_check() ? Something like:
 
-And, why does it matter whether the attributes are being
-returned via GETATTR, via a post_op_attr, or via a post_op_attr
-as part of a wcc_data?  The first two cases invoke lease_get_mtime(),
-while the third does not.  Could this not lead to time jumping
-around on a particular file, forwards and backwards?
+        if (clientlist[MCL_WILDCARD] || clientlist[MCL_NETGROUP])
+                he = get_reliable_hostbyaddr((const char*)&addr,
+sizeof(addr), AF_INET);
+        if (he == NULL)
+                he = get_hostent((const char*)&addr, sizeof(addr),
+AF_INET);
 
-    Thanx...
+	  if (he == NULL)
+		return name;
 
-       ps
+Seems like a more graceful way to handle a malloc failure in
+get_hostent().
 
-> Dumb question: I assume it's always legal to call ->getattr while
-> holding the i_mutex?
->
-> --b.
->   
+Thanks
 
+Chris Kottaridis
+Senior Engineer
+Wind River Systems
+719-522-9786
+
+-----Original Message-----
+From: Jeff Layton [mailto:jlayton@redhat.com] 
+Sent: Tuesday, August 07, 2007 6:22 PM
+To: nfs@lists.sourceforge.net
+Cc: Kottaridis, Chris
+Subject: Re: [NFS] rpc.mountd memory leak
+
+On Tue, 7 Aug 2007 14:27:39 -0700
+"Kottaridis, Chris" <chris.kottaridis@windriver.com> wrote:
+
+> I've got a customer experiencing a small memory leak in rpc.mountd 
+> using nfs-utils-1.0.7. For their load it's about 150 KB/day. I have 
+> been previously pointed me to a memory leak in add_name in 
+> support/export/client.c. Thanks! they were seeing a 6 MB/ day leak 
+> before that fix.
+>  
+> I've had trouble reproducing the same leak here, but in looking 
+> through the code I believe I have come across another possible memory 
+> leak in the support/export/client.c file. This time in the 
+> client_compose() routine. It may be the source of the current 150 
+> KB/day leak my customer is seeing.
+>  
+> I've attached an anlysis from code inspection, but it boils down to 
+> the fact that the 'he' variable of client_compose() needs to be 
+> xfree'd before client_compose() returns. The 'he' variable is assigned
+
+> a xmalloc'ed value via either get_hostent() or
+get_reliable_hostbyaddr().
+> Once the client_compose() routine returns the pointer will be lost 
+> forever. The code is identical in nfs-utils-1.1.0 so I believe the 
+> memory leak exists there as well.
+>  
+> I'll keep trying to verify that indeed there is a memory leak here, 
+> but from code inspection it certainly seems like it.
+>  
+> Let me know if you agree that client_compose() has a memory leak.
+>  
+
+Current nfs-utils git tree seems to do this already. Looks like this
+patch fixed it:
+
+commit 1cb4a250fb9f0a8ba34befa47d951430e444a58e
+Author: Steinar H. Gunderson <sesse@debian.org>
+Date:   Fri May 11 21:02:09 2007 +1000
+
+    Memory leak in mountd
+    
+    In client_compose(), free() the hostent structure returned before
+    exiting. Normally, gethostbyaddr() returns a pointer to a static
+    struct, but this hostent comes from either get_reliable_hostbyaddr()
+or
+    get_hostent(), both which return a pointer they privately
+xmalloc()ed,
+    which thus can and should be free()d.
+    
+    Signed-Off-By: Steinar H. Gunderson <sesse@debian.org>
+
+
+You might want to test with that code and see if the problem goes
+away...
+
+Cheers,
+--
+Jeff Layton <jlayton@redhat.com>
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
