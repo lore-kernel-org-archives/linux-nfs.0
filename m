@@ -1,22 +1,26 @@
-From: "Kottaridis, Chris" <chris.kottaridis@windriver.com>
-Subject: Re: rpc.mountd memory leak
-Date: Wed, 8 Aug 2007 13:30:12 -0700
-Message-ID: <37B62E0F71C9E14B9859FADB1FC3E3E14EB158@ala-mail02.corp.ad.wrs.com>
-References: <20070808162009.2e7f6556.jlayton@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] 64 bit ino support for NFS server
+Date: Wed, 8 Aug 2007 16:35:55 -0400
+Message-ID: <20070808203555.GL16171@fieldses.org>
+References: <46B37DE6.80706@redhat.com> <46B38206.6050504@redhat.com>
+	<20070804223256.GA1155@fieldses.org> <46BA2289.5060902@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: "Jeff Layton" <jlayton@redhat.com>
+Cc: Neil Brown <neilb@suse.de>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	NFS List <nfs@lists.sourceforge.net>
+To: Peter Staubach <staubach@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IIsAZ-0002bQ-GX
-	for nfs@lists.sourceforge.net; Wed, 08 Aug 2007 13:30:15 -0700
-Received: from mail.windriver.com ([147.11.1.11] helo=mail.wrs.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IIsAd-0003wh-Fi
-	for nfs@lists.sourceforge.net; Wed, 08 Aug 2007 13:30:19 -0700
-In-Reply-To: <20070808162009.2e7f6556.jlayton@redhat.com>
+	id 1IIsG2-0003Dg-Pf
+	for nfs@lists.sourceforge.net; Wed, 08 Aug 2007 13:35:54 -0700
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IIsG6-0008Ow-MT
+	for nfs@lists.sourceforge.net; Wed, 08 Aug 2007 13:35:59 -0700
+In-Reply-To: <46BA2289.5060902@redhat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,78 +33,54 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
->get_hostent() uses xmalloc() which should make the program die if it
-fails. So checking for
->he == NULL really isn't needed. 
+On Wed, Aug 08, 2007 at 04:07:37PM -0400, Peter Staubach wrote:
+> I'm testing a new version of the patch, which addresses this
+> issue, but then I got to wondering, what is lease_get_mtime()
+> really for and is it solving a real problem, and if so, is it
+> solving it in a reasonable fashion?
+>
+> It appears to me that it is used to detect when an application
+> on the server has acquired an exclusive lease for a file and
+> may be modifying it, but without informing the kernel.  If it
+> was informing the kernel, then the mtime would be updated.
+>
+> NFS doesn't support leases like this, so it would need to be
+> an application running on the server, either as a standalone
+> application or as a server for some other service.
 
-True in 1.1.0, I should have looked there first! Not in 1.0.7.
+Let's say it's Samba, since that's probably what is is.
 
-Again Thanks for the info
+So Samba is holding a write lease on the file on behalf of one of its
+clients.  We never see an open from our NFSv2/v3 client--if it doesn't
+have data cached, we may never even see a read, just access and
+getattr--so we don't know to break that lease.
 
-Chris Kottaridis
-Senior Engineer
-Wind River Systems
-719-522-9786
+(Actually, if a write lease, like an NFSv4 write delegation, is meant to
+cover file attributes as well as data, then perhaps stat should break
+write leases.  That sounds painful.)
 
------Original Message-----
-From: Jeff Layton [mailto:jlayton@redhat.com] 
-Sent: Wednesday, August 08, 2007 2:20 PM
-To: Kottaridis, Chris
-Cc: nfs@lists.sourceforge.net
-Subject: Re: [NFS] rpc.mountd memory leak
+Anyway, the delay between the time the Samba client makes a change and
+the time the NFS client sees it could be unbounded.  Whereas with
+lease_get_mtime() the client will invalidate its cache and perform a
+read, which *does* break the lease (in nfsd_open).
 
-On Wed, 8 Aug 2007 13:13:51 -0700
-"Kottaridis, Chris" <chris.kottaridis@windriver.com> wrote:
+But I agree that this is a strange compromise, and I'd like to
+understand better what the semantics for sharing with a Samba client are
+supposed to be.
 
-> Thanks.
-> 
-> Also, it seems possible for get_hostent() to return a NULL value if 
-> the malloc fails. The client_check() doesn't perform any kind of 
-> sanity check on it's second parameter, the 'he' variable of
-client_compose().
-> So, there is the possibility that client_check() can try and derefence
+> And, why does it matter whether the attributes are being
+> returned via GETATTR, via a post_op_attr, or via a post_op_attr
+> as part of a wcc_data?  The first two cases invoke lease_get_mtime(),
+> while the third does not.
 
-> a NULL pointer.
-> 
-> In other locations in the code where get_reliable_hostbyaddr() or
-> get_hostent() is called a sanity check for NULL is done to make sure 
-> the value isn't NULL. For example in auth_authenticate():
-> 
->         hp = get_reliable_hostbyaddr((const char*)&caller->sin_addr, 
-> sizeof(struct in_addr),
->                                      AF_INET);
->         if (!hp)
->                 hp = get_hostent((const char*)&caller->sin_addr, 
-> sizeof(struct in_addr),
->                                      AF_INET);
->         if (!hp)
->                 return exp;
-> 
-> Should there be a similar check on 'he' in client_compose to prevent a
+What's the code path in the third case?
 
-> NULL pointer dereference in client_check() ? Something like:
-> 
->         if (clientlist[MCL_WILDCARD] || clientlist[MCL_NETGROUP])
->                 he = get_reliable_hostbyaddr((const char*)&addr, 
-> sizeof(addr), AF_INET);
->         if (he == NULL)
->                 he = get_hostent((const char*)&addr, sizeof(addr), 
-> AF_INET);
-> 
-> 	  if (he == NULL)
-> 		return name;
-> 
-> Seems like a more graceful way to handle a malloc failure in 
-> get_hostent().
-> 
-> Thanks
-> 
+> Could this not lead to time jumping around on a particular file,
+> forwards and backwards?
 
-get_hostent() uses xmalloc() which should make the program die if it
-fails. So checking for he == NULL really isn't needed.
+Yeah, sounds bad.
 
---
-Jeff Layton <jlayton@redhat.com>
+--b.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
