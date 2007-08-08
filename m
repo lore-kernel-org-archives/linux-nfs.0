@@ -1,66 +1,115 @@
-From: "UXIS" <uxiscn@126.com>
-Subject: =?GB2312?B?VVhJU7GotcDPo837xPq1xLLO0+uhow==?=
-Date: Wed, 8 Aug 2007 16:16:39 +0800
-Message-ID: <E1IIgic-0006Jt-Sy@mail.sourceforge.net>
-Reply-To: uxiscn@126.com
-Content-Type: multipart/mixed; boundary="===============0559125296=="
-To: nfs@lists.sourceforge.net
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IIgiZ-0008CD-PE
-	for nfs@lists.sourceforge.net; Wed, 08 Aug 2007 01:16:36 -0700
-Received: from [123.6.96.53] (helo=126.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IIgic-0006Jt-Sy
-	for nfs@lists.sourceforge.net; Wed, 08 Aug 2007 01:16:39 -0700
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+From: Michal Piotrowski <michal.k.k.piotrowski@gmail.com>
+Subject: Re: [2/3] 2.6.23-rc2: known regressions v2
+Date: Wed, 08 Aug 2007 19:11:44 +0200
+Message-ID: <46B9F950.2030209__8436.12945541299$1186593233$gmane$org@googlemail.com>
+References: <46B9F664.9060600@googlemail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-2
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	LKML <linux-kernel@vger.kernel.org>, Len Brown <lenb@kernel.org>,
+	dth <dth@dth.net>, linux-fsdevel@vger.kernel.org,
+	nfs@lists.sourceforge.net,
+	Trond Myklebust <Trond.Myklebust@netapp.com>,
+	Andrew Clayton <andrew@digital-domain.net>,
+	linux-mtd@lists.infradead.org,
+	David Woodhouse <dwmw2@infradead.org>,
+	Ingo Molnar <mingo@elte.hu>, Netdev <netdev@vger.kernel.org>,
+	Stephen Hemminger <shemminger@osdl.org>,
+	Thomas Meyer <thomas@m3y3r.de>,
+	Florian Lohoff <flo@rfc822.org>, Uwe Bugla <uwe.bugla@gmx.de>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S937174AbXHHRMp@vger.kernel.org>
+In-Reply-To: <46B9F664.9060600@googlemail.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
---===============0559125296==
-Content-Type: text/plain;charset="GB2312"
+Hi all,
 
-UXIS报道是一个新开通的博客。
+Here is a list of some known regressions in 2.6.23-rc2.
 
-www.uxis.cn
+Feel free to add new regressions/remove fixed etc.
+http://kernelnewbies.org/known_regressions
 
-内容广泛，新鲜，适合各类人士阅读，希望您的参与。
+List of Aces
 
-希望与各位建立合作关系。
+Name                    Regressions fixed since 21-Jun-2007
+Adrian Bunk                            6
+Andi Kleen                             4
+Andrew Morton                          4
+Linus Torvalds                         4
+Al Viro                                3
+Cornelia Huck                          3
+Jens Axboe                             3
+Tejun Heo                              3
+David Woodhouse                        2
+Hugh Dickins                           2
+Peter Zijlstra                         2
+Trent Piepho                           2
 
-www.uxis.cn
-
-可发邮件与我联系建立合作关系。
 
 
---===============0559125296==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+CPUFREQ
 
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Splunk Inc.
-Still grepping through log files to find problems?  Stop.
-Now Search log events and configuration files using AJAX and a browser.
-Download your FREE copy of Splunk now >>  http://get.splunk.com/
---===============0559125296==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+Subject         : ide problems: 2.6.22-git17 working, 2.6.23-rc1* is not
+References      : http://lkml.org/lkml/2007/7/27/298
+                  http://lkml.org/lkml/2007/7/29/371
+Last known good : ?
+Submitter       : dth <dth@dth.net>
+Caused-By       : Len Brown <lenb@kernel.org>
+                  commit f79e3185dd0f8650022518d7624c876d8929061b
+Handled-By      : Len Brown <lenb@kernel.org>
+Status          : problem is being debugged
 
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
 
---===============0559125296==--
+
+FS
+
+Subject         : [NFSD OOPS] 2.6.23-rc1-git10
+References      : http://lkml.org/lkml/2007/8/2/462
+Last known good : ?
+Submitter       : Andrew Clayton <andrew@digital-domain.net>
+Caused-By       : ?
+Handled-By      : ?
+Status          : unknown
+
+
+
+MTD
+
+Subject         : error: implicit declaration of function 'cfi_interleave'
+References      : http://lkml.org/lkml/2007/8/6/272
+Last known good : ?
+Submitter       : Ingo Molnar <mingo@elte.hu>
+Caused-By       : ?
+Handled-By      : ?
+Status          : unknown
+
+
+
+Networking
+
+Subject         : IP v4 routing is broken
+References      : http://www.stardust.webpages.pl/files/tbf/bugs/bug_report01.txt
+Last known good : 2.6.22-git2
+Submitter       : Uwe Bugla <uwe.bugla@gmx.de>
+Caused-By       : ?
+Handled-By      : ?
+Status          : unknown
+
+Subject         : New wake ups from sky2
+References      : http://lkml.org/lkml/2007/7/20/386
+Last known good : ?
+Submitter       : Thomas Meyer <thomas@m3y3r.de>
+Caused-By       : Stephen Hemminger <shemminger@osdl.org>
+                  commit eb35cf60e462491249166182e3e755d3d5d91a28
+Handled-By      : Stephen Hemminger <shemminger@osdl.org>
+Status          : unknown
+
+
+
+Regards,
+Michal
+
+--
+LOG
+http://www.stardust.webpages.pl/log/
