@@ -1,21 +1,21 @@
-From: "david m. richter" <richterd@citi.umich.edu>
-Subject: [PATCH 5/5] nfsstat: include -Z/--sleep in the manpage
-Date: Tue, 7 Aug 2007 19:53:48 -0400 (EDT)
-Message-ID: <Pine.BSO.4.64.0708071949541.26009@citi.umich.edu>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: rpc.mountd memory leak
+Date: Tue, 7 Aug 2007 20:21:34 -0400
+Message-ID: <20070807202134.46460f83.jlayton@redhat.com>
+References: <37B62E0F71C9E14B9859FADB1FC3E3E14EB034@ala-mail02.corp.ad.wrs.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Neil Brown <neilb@suse.de>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IIYrw-0006QI-S4
-	for nfs@lists.sourceforge.net; Tue, 07 Aug 2007 16:53:45 -0700
-Received: from citi.umich.edu ([141.211.133.111])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IIYs0-0006Du-RM
-	for nfs@lists.sourceforge.net; Tue, 07 Aug 2007 16:53:49 -0700
+	id 1IIZIr-0000g6-FA
+	for nfs@lists.sourceforge.net; Tue, 07 Aug 2007 17:21:33 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IIZIv-0008I1-96
+	for nfs@lists.sourceforge.net; Tue, 07 Aug 2007 17:21:37 -0700
+In-Reply-To: <37B62E0F71C9E14B9859FADB1FC3E3E14EB034@ala-mail02.corp.ad.wrs.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,46 +28,59 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-	Add a little blurb about -Z/--sleep to the nfsstat manpage.
+On Tue, 7 Aug 2007 14:27:39 -0700
+"Kottaridis, Chris" <chris.kottaridis@windriver.com> wrote:
 
-Signed-off-by: David M. Richter <richterd@citi.umich.edu>
+> I've got a customer experiencing a small memory leak in rpc.mountd using
+> nfs-utils-1.0.7. For their load it's about 150 KB/day. I have been
+> previously pointed me to a memory leak in add_name in
+> support/export/client.c. Thanks! they were seeing a 6 MB/ day leak
+> before that fix.
+>  
+> I've had trouble reproducing the same leak here, but in looking through
+> the code I believe I have come across another possible memory leak in
+> the support/export/client.c file. This time in the client_compose()
+> routine. It may be the source of the current 150 KB/day leak my customer
+> is seeing.
+>  
+> I've attached an anlysis from code inspection, but it boils down to the
+> fact that the 'he' variable of client_compose() needs to be xfree'd
+> before client_compose() returns. The 'he' variable is assigned a
+> xmalloc'ed value via either get_hostent() or get_reliable_hostbyaddr().
+> Once the client_compose() routine returns the pointer will be lost
+> forever. The code is identical in nfs-utils-1.1.0 so I believe the
+> memory leak exists there as well.
+>  
+> I'll keep trying to verify that indeed there is a memory leak here, but
+> from code inspection it certainly seems like it.
+>  
+> Let me know if you agree that client_compose() has a memory leak.
+>  
 
----
- utils/nfsstat/nfsstat.man |   12 +++++++++++-
- 1 files changed, 11 insertions(+), 1 deletions(-)
+Current nfs-utils git tree seems to do this already. Looks like this
+patch fixed it:
 
-diff --git a/utils/nfsstat/nfsstat.man b/utils/nfsstat/nfsstat.man
-index 895c36b..b17f76e 100644
---- a/utils/nfsstat/nfsstat.man
-+++ b/utils/nfsstat/nfsstat.man
-@@ -2,7 +2,7 @@
- .\" nfsstat(8)
- .\" 
- .\" Copyright (C) 1996-2005 Olaf Kirch <okir@suse.de>
--.TH nfsstat 8 "11 Apr 2005"
-+.TH nfsstat 8 "7 Aug 2007"
- .SH NAME
- nfsstat \- list NFS statistics
- .SH SYNOPSIS
-@@ -71,6 +71,16 @@ Display all of the above facilities.
- .TP
- .B \-v, \-\-verbose
- This is equivalent to \fB\-o all\fR.
-+.TP
-+.B \-Z, \-\-sleep
-+Instead of printing statistics and immediately exiting,
-+.B nfsstat
-+takes a snapshot of the current statistics and pauses until it receives
-+.B SIGINT
-+(typically from
-+.BR Ctrl-C ),
-+at which point it takes another snapshot and displays the difference 
-+between the two.
- .SH EXAMPLES
- .TP
- .B nfsstat \-o all \-234
+commit 1cb4a250fb9f0a8ba34befa47d951430e444a58e
+Author: Steinar H. Gunderson <sesse@debian.org>
+Date:   Fri May 11 21:02:09 2007 +1000
+
+    Memory leak in mountd
+    
+    In client_compose(), free() the hostent structure returned before
+    exiting. Normally, gethostbyaddr() returns a pointer to a static
+    struct, but this hostent comes from either get_reliable_hostbyaddr() or
+    get_hostent(), both which return a pointer they privately xmalloc()ed,
+    which thus can and should be free()d.
+    
+    Signed-Off-By: Steinar H. Gunderson <sesse@debian.org>
+
+
+You might want to test with that code and see if the problem
+goes away...
+
+Cheers,
 -- 
-1.4.4
+Jeff Layton <jlayton@redhat.com>
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
