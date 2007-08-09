@@ -1,25 +1,24 @@
-From: rnews@tasking.nl
-Subject: Re: inconsistencies in nfs(5)
-Date: Thu, 09 Aug 2007 16:04:40 -0000
-Message-ID: <169a.46bb3b18.7157f@altium.nl>
-References: <46BB2DF2.1050501@oracle.com>
-Reply-To: Dick Streefland <dick.streefland@altium.nl>
+From: "david m. richter" <richterd@citi.umich.edu>
+Subject: Re: [PATCH 0/5] nfsstat: more --diff-stat/--sleep items
+Date: Thu, 9 Aug 2007 11:29:54 -0400 (EDT)
+Message-ID: <Pine.BSO.4.64.0708091111450.27071@citi.umich.edu>
+References: <Pine.BSO.4.64.0708071928330.26009@citi.umich.edu>
+	<18106.27209.93060.7817@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
+To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IJAVF-0003Gb-Lp
-	for nfs@lists.sourceforge.net; Thu, 09 Aug 2007 09:04:49 -0700
-Received: from ns2.tasking.nl ([195.193.207.10])
+	id 1IJAAm-0000fg-B7
+	for nfs@lists.sourceforge.net; Thu, 09 Aug 2007 08:43:41 -0700
+Received: from citi.umich.edu ([141.211.133.111])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IJAVH-000775-40
-	for nfs@lists.sourceforge.net; Thu, 09 Aug 2007 09:04:53 -0700
-Received: from greve.tasking.nl (nl-fg300a-2-dmz.tasking.nl [172.16.1.9])
-	by ns2.tasking.nl (8.13.8/8.13.8) with ESMTP id l79G4eRf026997
-	for <nfs@lists.sourceforge.net>; Thu, 9 Aug 2007 18:04:41 +0200 (MEST)
+	(Exim 4.44) id 1IJ9xU-0003G2-EF
+	for nfs@lists.sourceforge.net; Thu, 09 Aug 2007 08:29:57 -0700
+In-Reply-To: <18106.27209.93060.7817@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,36 +31,46 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Chuck Lever <chuck.lever@oracle.com> wrote:
-| +  The description for the "bg" option claims "After a mount operation 
-| is backgrounded, all subsequent mounts on the same NFS server will be 
-| backgrounded immediately, without first attempting the mount."  I don't 
-| think there's logic to do that in either the legacy mount command or in 
-| mount.nfs.  Should this text be removed from the man page?
+On Thu, 9 Aug 2007, Neil Brown wrote:
+<snip>
+> Thanks.  All applied (after I wraps your comments to 80 columns, and
+> removed white space at the end of lines).
+> 
+> NeilBrown
 
-I added that text in 1997, in a patch that was included in mount-2.7g.
-It referred to the following fragment in nfsmount.c:
 
-+       /*
-+        * If the previous mount operation on the same host was
-+        * backgrounded, and the "bg" for this mount is also set,
-+        * give up immediately, to avoid the initial timeout.
-+        */
-+       if (bg && !running_bg &&
-+           prev_bg_host && strcmp(hostname, prev_bg_host) == 0) {
-+               if (retry > 0)
-+                       retval = EX_BG;
-+               return retval;
-+       }
+	thank you -- and sorry about that; i'll be more assiduous in style 
+issues in the future.  :-/
 
-This code got removed somewhere after util-linux-2.12p, but I don't
-know the details.
+	i'd like some input on your idea of adding a timeout to --sleep: i 
+took 5 minutes and dropped it in yesterday, but ran into a getopt_long(3) 
+issue.  i had wanted to just add the timeout as an optional argument to 
+--sleep, as opposed to adding a separate timeout flag (ugh).
 
--- 
-Dick Streefland                      ////                      Altium BV
-dick.streefland@altium.nl           (@ @)          http://www.altium.com
---------------------------------oOO--(_)--OOo---------------------------
+	unless i'm doing something wrong (and i'll poke at it now, maybe 
+i'm being dumb), it seems that getopt wants to see those optional args in 
+the forms:
 
+nfsstat --sleep=5
+nfsstat -Z5
+
+.. but doesn't grok the optarg in these, which are more natural to me:
+
+nfsstat --sleep 5
+nfsstat -Z 5
+
+	if i'm not doing something wrong, what's the feeling about going 
+with -Z5 versus adding -t/--timeout 5?   i don't like an extra flag like 
+that, but the main reason i don't like the -Z5/--sleep=5 requirement is 
+that getopt seems to silently swallow the time argument if one does -Z 
+5/--sleep 5; that is, it just pauses and waits for ^C -- and so it may 
+appear to a user like the timeout thing is just broken/unimplemented.
+	
+
+	thanks kindly,
+
+	d
+	.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
