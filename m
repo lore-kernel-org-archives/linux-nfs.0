@@ -1,7 +1,7 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 0/5] Enable text-based NFS mounts
-Date: Thu, 09 Aug 2007 17:36:45 -0400
-Message-ID: <20070809212708.16767.6031.stgit@monet.1015granger.net>
+Subject: [PATCH 2/5] mount.nfs: Update the mount.nfs(8) man page
+Date: Thu, 09 Aug 2007 17:36:56 -0400
+Message-ID: <20070809213656.16767.65487.stgit@monet.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
@@ -10,11 +10,11 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IJFge-0007g7-Sd
-	for nfs@lists.sourceforge.net; Thu, 09 Aug 2007 14:36:57 -0700
-Received: from flpvm23.prodigy.net ([207.115.20.53])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IJFge-0001s1-UB
+	id 1IJFgg-0007gC-HB
 	for nfs@lists.sourceforge.net; Thu, 09 Aug 2007 14:36:58 -0700
+Received: from flpvm23.prodigy.net ([207.115.20.53])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IJFgk-0001vg-Cc
+	for nfs@lists.sourceforge.net; Thu, 09 Aug 2007 14:37:02 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,32 +27,96 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi Neil-
+Account for recent changes to the mount.nfs command.
 
-Enough people have been pushing me to publish this that I finally stopped
-procrastinating and hacked something together.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-Here are a couple of clean-ups, and two patches that provide a command line
-option on mount.nfs to force it to pass string mount options instead of binary
-mount options to the kernel.
+ utils/mount/mount.c       |    4 ++--
+ utils/mount/mount.nfs.man |   27 ++++++++-------------------
+ 2 files changed, 10 insertions(+), 21 deletions(-)
 
-I'd like to get these integrated into nfs-utils now in order to make it easy
-for people to start testing the kernel logic; and because Trond wants to
-freeze the mount ABI, so the only way to add new options is with a new string-
-based option.
+diff --git a/utils/mount/mount.c b/utils/mount/mount.c
+index a232519..94435c8 100644
+--- a/utils/mount/mount.c
++++ b/utils/mount/mount.c
+@@ -270,7 +270,7 @@ fail_unlock:
+ 
+ void mount_usage(void)
+ {
+-	printf(_("usage: %s remotetarget dir [-rvVwfnh] [-o nfsoptions]\n"),
++	printf(_("usage: %s remotetarget dir [-rvVwfnsh] [-o nfsoptions]\n"),
+ 		progname);
+ 	printf(_("options:\n"));
+ 	printf(_("\t-r\t\tMount file system readonly\n"));
+@@ -279,7 +279,7 @@ void mount_usage(void)
+ 	printf(_("\t-w\t\tMount file system read-write\n"));
+ 	printf(_("\t-f\t\tFake mount, do not actually mount\n"));
+ 	printf(_("\t-n\t\tDo not update /etc/mtab\n"));
+-	printf(_("\t-s\t\tTolerate sloppy mount options rather than failing.\n"));
++	printf(_("\t-s\t\tTolerate sloppy mount options rather than fail\n"));
+ 	printf(_("\t-h\t\tPrint this help\n"));
+ 	printf(_("\tnfsoptions\tRefer to mount.nfs(8) or nfs(5)\n\n"));
+ }
+diff --git a/utils/mount/mount.nfs.man b/utils/mount/mount.nfs.man
+index 231e04f..624358c 100644
+--- a/utils/mount/mount.nfs.man
++++ b/utils/mount/mount.nfs.man
+@@ -3,7 +3,7 @@
+ .SH NAME
+ mount.nfs, mount.nfs4 \- mount a Network File System
+ .SH SYNOPSIS
+-.BI "mount.nfs" " remotetarget dir" " [\-rvVwfnh ] [\-t " version "] [\-o " options "]
++.BI "mount.nfs" " remotetarget dir" " [\-rvVwfnsh ] [\-o " options "]
+ .SH DESCRIPTION
+ .BR mount.nfs
+ is a part of 
+@@ -49,27 +49,17 @@ By default, an entry is created in
+ .I /etc/mtab 
+ for every mounted file system. Use this option to skip making an entry.
+ .TP
++.BI "\-s"
++Tolerate sloppy mount options rather than fail.
++.TP
+ .BI "\-h"
+ Print help message.
+ .TP
+-.BI "version"
+-Specify NFS file system version. Either
+-.BR nfs4 
+-or 
+-.BR nfs.
+-If the command is 
+-.BR mount.nfs4 
+-or the 
+-.I vfstype 
+-option of 
+-.BR mount(8) 
+-command is nfs4, then version 4 is used, else version 3 or 2 is used.
+-.TP
+ .BI "nfsoptions"
+ Refer to 
+-.BR nfs(5)
++.BR nfs (5)
+ or
+-.BR mount(8) 
++.BR mount (8) 
+ manual pages.
+ 
+ .SH NOTE
+@@ -92,9 +82,8 @@ table of mounted file systems
+ .BR nfs (5),
+ .BR mount (8),
+ 
+-.SH BUGS
+-Please notify current developers of NFS of any bugs in the current software or mail nfs@lists.sourceforge.net
++.SH "BUGS"
++Please notify nfs@lists.sourceforge.net of any bugs found in this software.
+ 
+ .SH "AUTHOR"
+ Amit Gud <agud@redhat.com>
+-
 
-The stropt.[ch] files are rather unfinished, but are in good enough shape that
-they can be used now and improved by everyone as we go along.  The command
-line option makes it so that normally mount.nfs will use the legacy binary
-options, and not accidentally pass text-based options; thus it is safe to
-install as a system's default /sbin/mount.nfs.
-
-As the second patch says, when we are all happy with the user space and kernel
-parts of this, it will be easy enough to replace the command line option with
-a switch based on the kernel version.
-
--- 
-corporate:    <chuck dot lever at oracle dot com>
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
