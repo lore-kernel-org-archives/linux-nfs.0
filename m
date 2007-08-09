@@ -1,20 +1,20 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 1/5] mount.nfs: Fix one more double-wide character nit
-Date: Thu, 09 Aug 2007 17:36:51 -0400
-Message-ID: <20070809213651.16767.2602.stgit@monet.1015granger.net>
+Subject: [PATCH 0/5] Enable text-based NFS mounts
+Date: Thu, 09 Aug 2007 17:36:45 -0400
+Message-ID: <20070809212708.16767.6031.stgit@monet.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 To: neilb@suse.de
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IJFgd-0007g1-Ky
-	for nfs@lists.sourceforge.net; Thu, 09 Aug 2007 14:36:55 -0700
+	id 1IJFge-0007g7-Sd
+	for nfs@lists.sourceforge.net; Thu, 09 Aug 2007 14:36:57 -0700
 Received: from flpvm23.prodigy.net ([207.115.20.53])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IJFgg-0005iN-I4
-	for nfs@lists.sourceforge.net; Thu, 09 Aug 2007 14:36:59 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IJFge-0001s1-UB
+	for nfs@lists.sourceforge.net; Thu, 09 Aug 2007 14:36:58 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,26 +27,32 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+Hi Neil-
 
- utils/mount/network.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+Enough people have been pushing me to publish this that I finally stopped
+procrastinating and hacked something together.
 
-diff --git a/utils/mount/network.c b/utils/mount/network.c
-index 5a56c23..eb59c1f 100644
---- a/utils/mount/network.c
-+++ b/utils/mount/network.c
-@@ -388,7 +388,7 @@ static int probe_port(clnt_addr_t *server, const unsigned long *versions,
- 						inet_ntoa(saddr->sin_addr),
- 						prog, *p_vers,
- 						*p_prot == IPPROTO_UDP ?
--							"udp" : "tcp",
-+							_("UDP") : _("TCP"),
- 						p_port);
-                                 }
- 				if (clnt_ping(saddr, prog, *p_vers, *p_prot, NULL))
+Here are a couple of clean-ups, and two patches that provide a command line
+option on mount.nfs to force it to pass string mount options instead of binary
+mount options to the kernel.
 
+I'd like to get these integrated into nfs-utils now in order to make it easy
+for people to start testing the kernel logic; and because Trond wants to
+freeze the mount ABI, so the only way to add new options is with a new string-
+based option.
+
+The stropt.[ch] files are rather unfinished, but are in good enough shape that
+they can be used now and improved by everyone as we go along.  The command
+line option makes it so that normally mount.nfs will use the legacy binary
+options, and not accidentally pass text-based options; thus it is safe to
+install as a system's default /sbin/mount.nfs.
+
+As the second patch says, when we are all happy with the user space and kernel
+parts of this, it will be easy enough to replace the command line option with
+a switch based on the kernel version.
+
+-- 
+corporate:    <chuck dot lever at oracle dot com>
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
