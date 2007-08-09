@@ -1,24 +1,24 @@
-From: "david m. richter" <richterd@citi.umich.edu>
-Subject: Re: [PATCH 0/5] nfsstat: more --diff-stat/--sleep items
-Date: Thu, 9 Aug 2007 11:29:54 -0400 (EDT)
-Message-ID: <Pine.BSO.4.64.0708091111450.27071@citi.umich.edu>
-References: <Pine.BSO.4.64.0708071928330.26009@citi.umich.edu>
-	<18106.27209.93060.7817@notabene.brown>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: inconsistencies in nfs(5)
+Date: Thu, 09 Aug 2007 12:27:07 -0400
+Message-ID: <46BB405B.5050206@oracle.com>
+References: <46BB2DF2.1050501@oracle.com> <169a.46bb3b18.7157f@altium.nl>
+Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: multipart/mixed; boundary="------------090305010206070805070505"
 Cc: nfs@lists.sourceforge.net
-To: Neil Brown <neilb@suse.de>
+To: Dick Streefland <dick.streefland@altium.nl>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IJAAm-0000fg-B7
-	for nfs@lists.sourceforge.net; Thu, 09 Aug 2007 08:43:41 -0700
-Received: from citi.umich.edu ([141.211.133.111])
+	id 1IJAsl-0006jO-I9
+	for nfs@lists.sourceforge.net; Thu, 09 Aug 2007 09:29:07 -0700
+Received: from rgminet01.oracle.com ([148.87.113.118])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IJ9xU-0003G2-EF
-	for nfs@lists.sourceforge.net; Thu, 09 Aug 2007 08:29:57 -0700
-In-Reply-To: <18106.27209.93060.7817@notabene.brown>
+	(Exim 4.44) id 1IJAso-0000YV-DS
+	for nfs@lists.sourceforge.net; Thu, 09 Aug 2007 09:29:11 -0700
+In-Reply-To: <169a.46bb3b18.7157f@altium.nl>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,52 +31,86 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, 9 Aug 2007, Neil Brown wrote:
-<snip>
-> Thanks.  All applied (after I wraps your comments to 80 columns, and
-> removed white space at the end of lines).
+This is a multi-part message in MIME format.
+--------------090305010206070805070505
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Transfer-Encoding: 7bit
+
+rnews@tasking.nl wrote:
+> Chuck Lever <chuck.lever@oracle.com> wrote:
+> | +  The description for the "bg" option claims "After a mount operation 
+> | is backgrounded, all subsequent mounts on the same NFS server will be 
+> | backgrounded immediately, without first attempting the mount."  I don't 
+> | think there's logic to do that in either the legacy mount command or in 
+> | mount.nfs.  Should this text be removed from the man page?
 > 
-> NeilBrown
+> I added that text in 1997, in a patch that was included in mount-2.7g.
+> It referred to the following fragment in nfsmount.c:
+> 
+> +       /*
+> +        * If the previous mount operation on the same host was
+> +        * backgrounded, and the "bg" for this mount is also set,
+> +        * give up immediately, to avoid the initial timeout.
+> +        */
+> +       if (bg && !running_bg &&
+> +           prev_bg_host && strcmp(hostname, prev_bg_host) == 0) {
+> +               if (retry > 0)
+> +                       retval = EX_BG;
+> +               return retval;
+> +       }
+> 
+> This code got removed somewhere after util-linux-2.12p, but I don't
+> know the details.
+
+This is still in utils/mount/nfsmount.c.
+
+I'm not sure how this can affect other mount commands running 
+concurrently on the same client.  The man page implies that if one mount 
+command has backgrounded against a server, subsequent mount commands 
+against the same server will just go right into the background.  But 
+prev_bg_host is unique in each instance of the mount command.
+
+Can you help me understand what you intended?  Do you have a test case?
+
+--------------090305010206070805070505
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck.lever.vcf"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="chuck.lever.vcf"
+
+begin:vcard
+fn:Chuck Lever
+n:Lever;Chuck
+org:Oracle Corporation;Corporate Architecture: Linux Projects Group
+adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
+title:Principal Member of Staff
+tel;work:+1 248 614 5091
+x-mozilla-html:FALSE
+url:http://oss.oracle.com/~cel
+version:2.1
+end:vcard
 
 
-	thank you -- and sorry about that; i'll be more assiduous in style 
-issues in the future.  :-/
-
-	i'd like some input on your idea of adding a timeout to --sleep: i 
-took 5 minutes and dropped it in yesterday, but ran into a getopt_long(3) 
-issue.  i had wanted to just add the timeout as an optional argument to 
---sleep, as opposed to adding a separate timeout flag (ugh).
-
-	unless i'm doing something wrong (and i'll poke at it now, maybe 
-i'm being dumb), it seems that getopt wants to see those optional args in 
-the forms:
-
-nfsstat --sleep=5
-nfsstat -Z5
-
-.. but doesn't grok the optarg in these, which are more natural to me:
-
-nfsstat --sleep 5
-nfsstat -Z 5
-
-	if i'm not doing something wrong, what's the feeling about going 
-with -Z5 versus adding -t/--timeout 5?   i don't like an extra flag like 
-that, but the main reason i don't like the -Z5/--sleep=5 requirement is 
-that getopt seems to silently swallow the time argument if one does -Z 
-5/--sleep 5; that is, it just pauses and waits for ^C -- and so it may 
-appear to a user like the timeout thing is just broken/unimplemented.
-	
-
-	thanks kindly,
-
-	d
-	.
+--------------090305010206070805070505
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
+--------------090305010206070805070505
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--------------090305010206070805070505--
