@@ -1,25 +1,23 @@
-From: Michal Piotrowski <michal.k.k.piotrowski@gmail.com>
-Subject: [1/2] 2.6.23-rc2: known regressions with patches v2
-Date: Wed, 08 Aug 2007 19:12:46 +0200
-Message-ID: <46B9F98E.9020406__4869.35146986998$1186614214$gmane$org@googlemail.com>
+From: "Broderick" <Rawdon_Broderick@shrog.com>
+Subject: Analyst-Coverage-nfs
+Date: Thu, 9 Aug 2007 20:07:48 -0300
+Message-ID: <E1IIujA-0007ez-68@mail.sourceforge.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: Linus Torvalds <torvalds@linux-foundation.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	LKML <linux-kernel@vger.kernel.org>,
-	Gabriel C <nix.or.die@googlemail.com>,
-	Stefan Richter
+Content-Type: multipart/mixed;
+	boundary="=====================_23971359==_"
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IIp5m-0005Nr-9t
-	for nfs@lists.sourceforge.net; Wed, 08 Aug 2007 10:13:06 -0700
-Received: from ug-out-1314.google.com ([66.249.92.169])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IIp5p-00068O-0c
-	for nfs@lists.sourceforge.net; Wed, 08 Aug 2007 10:13:10 -0700
-Received: by ug-out-1314.google.com with SMTP id m2so256903uge
-	for <nfs@lists.sourceforge.net>; Wed, 08 Aug 2007 10:13:08 -0700 (PDT)
+	id 1IIuj9-000372-SX
+	for nfs@lists.sourceforge.net; Wed, 08 Aug 2007 16:14:09 -0700
+Received: from [201.11.225.121] (helo=[201.11.225.121])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IIujA-0007ez-68
+	for nfs@lists.sourceforge.net; Wed, 08 Aug 2007 16:14:12 -0700
+Received: from [135.164.155.38] (port=9543 helo=[135.164.155.38])
+	by [201.11.225.121] with esmtp id 1fkUsI-000VTY-91
+	for nfs@lists.sourceforge.net; Thu, 9 Aug 2007 20:08:15 -0300
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,107 +30,168 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi all,
-
-Here is a list of some known regressions in 2.6.23-rc2
-with patches available.
-
-Feel free to add new regressions/remove fixed etc.
-http://kernelnewbies.org/known_regressions
-
-List of Aces
-
-Name                    Regressions fixed since 21-Jun-2007
-Adrian Bunk                            6
-Andi Kleen                             4
-Andrew Morton                          4
-Linus Torvalds                         4
-Al Viro                                3
-Cornelia Huck                          3
-Jens Axboe                             3
-Tejun Heo                              3
-David Woodhouse                        2
-Hugh Dickins                           2
-Peter Zijlstra                         2
-Trent Piepho                           2
+--=====================_23971359==_
+Content-Type: text/plain; charset="us-ascii"; format=flowed
 
 
+--=====================_23971359==_
+Content-Type: application/pdf; name="Analyst-Coverage-nfs.pdf"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="Analyst-Coverage-nfs.pdf"
 
-Unclassified
-
-Subject         : Kconfig prompts without help text
-References      : http://lkml.org/lkml/2007/7/16/326
-Last known good : ?
-Submitter       : Stefan Richter <stefanr@s5r6.in-berlin.de>
-Caused-By       : ?
-Handled-By      : Jan Engelhardt <jengelh@linux01.gwdg.de>
-Patch           : http://lkml.org/lkml/2007/7/18/236
-Status          : patch available
-
-Subject         : Oops while modprobing phy fixed module
-References      : http://lkml.org/lkml/2007/7/14/63
-Last known good : ?
-Submitter       : Gabriel C <nix.or.die@googlemail.com>
-Caused-By       : ?
-Handled-By      : Satyam Sharma <satyam.sharma@gmail.com>
-                  Vitaly Bordug <vitb@kernel.crashing.org>
-Patch1          : http://lkml.org/lkml/2007/7/18/506
-Status          : patch available
-
-
-
-FS
-
-Subject         : NFSv4 poops itself
-References      : http://lkml.org/lkml/2007/7/27/144
-Last known good : ?
-Submitter       : Jeff Garzik <jeff@garzik.org> 
-Caused-By       : ?
-Handled-By      : Trond Myklebust <Trond.Myklebust@netapp.com>
-Patch           : http://lkml.org/lkml/2007/7/27/183
-Status          : patch available
-
-
-Modpost
-
-Subject         : modpost bug breaks ia64 cross compilation
-References      : http://lkml.org/lkml/2007/7/27/30
-                  http://lkml.org/lkml/2007/7/27/418
-Last known good : ?
-Submitter       : Jan Dittmer <jdi@l4x.org>
-Caused-By       : Thomas Renninger <trenn@suse.de>
-                  commit 29b71a1ca74491fab9fed09e9d835d840d042690
-Handled-By      : ?
-Patch           : http://lkml.org/lkml/2007/8/2/211
-Status          : patch was suggested
-
-
-
-Networking
-
-Subject         : sky2 boot crash in sky2_mac_intr
-References      : http://lkml.org/lkml/2007/7/24/91
-Last known good : ?
-Submitter       : Florian Lohoff <flo@rfc822.org>
-Caused-By       : 
-Handled-By      : Stephen Hemminger <shemminger@osdl.org>
-Patch           : http://marc.info/?l=linux-netdev&m=118651402523966&w=2
-Status          : patch available
-
-
-
-Regards,
-Michal
-
---
-LOG
-http://www.stardust.webpages.pl/log/
+JVBERi0xLjUNJeLjz9MNCjEwIDAgb2JqPDwvSFs0MzYgMTM1XS9MaW5lYXJpemVkIDEvRSAxODA0
+L0wgNzU4NC9OIDQvTyAxNC9UIDczMjI+Pg1lbmRvYmoNICAgICAgICAgICAgICAgICAgICAgICAg
+DQp4cmVmDQoxMCA3DQowMDAwMDAwMDE2IDAwMDAwIG4NCjAwMDAwMDA1NzEgMDAwMDAgbg0KMDAw
+MDAwMDcwNiAwMDAwMCBuDQowMDAwMDAwNDM2IDAwMDAwIG4NCjAwMDAwMDA4MDUgMDAwMDAgbg0K
+MDAwMDAwMDk4NyAwMDAwMCBuDQowMDAwMDAxMTA5IDAwMDAwIG4NCnRyYWlsZXINCjw8L1NpemUg
+MTcvUHJldiA3MzExL1Jvb3QgMTIgMCBSL0VuY3J5cHQgMTEgMCBSL0luZm8gOSAwIFIvSURbPGRh
+NzExNTY0NDQzNmQzNDM5MTg1MDA2MDZkYmY1NWU2PjxkYTcxMTU2NDQ0MzZkMzQzOTE4NTAwNjA2
+ZGJmNTVlNj5dPj4NCnN0YXJ0eHJlZg0KMA0KJSVFT0YNCiANCjEzIDAgb2JqPDwvTGVuZ3RoIDYy
+L0ZpbHRlci9GbGF0ZURlY29kZS9TIDUxPj5zdHJlYW0NCg1tNb6eWmCxz5es6hRU/WlFtIjn+B2U
+Vyds33ssRvrj1n7fLy+f5oC31o2GY7ajra+ToJCIeQo402mQlQWPDQplbmRzdHJlYW0NZW5kb2Jq
+DTExIDAgb2JqPDwvUiAzL0xlbmd0aCAxMjgvRmlsdGVyL1N0YW5kYXJkL08oi0Eg7qAWylGAn/D7
+L4E12ZmOUk6WY43kBjhaiXnGxRMpL1AgLTM5MDQvVSgeyX3/Oqnawj1d8e8hOUefAAAAAAAAAAAA
+AAAAAAAAACkvViAyPj4NZW5kb2JqDTEyIDAgb2JqPDwvUGFnZXMgNyAwIFIvVHlwZS9DYXRhbG9n
+L1BhZ2VNb2RlL1VzZU5vbmUvUGFnZUxheW91dC9TaW5nbGVQYWdlL01ldGFkYXRhIDggMCBSPj4N
+ZW5kb2JqDTE0IDAgb2JqPDwvQ29udGVudHMgMTYgMCBSL1R5cGUvUGFnZS9QYXJlbnQgNyAwIFIv
+Um90YXRlIDAvTWVkaWFCb3hbMCAwIDY4MCA4MDBdL0Nyb3BCb3hbMCAwIDY4MCA4MDBdL1Jlc291
+cmNlczw8L0ZvbnQ8PC9GMCAxNSAwIFI+Pi9YT2JqZWN0PDw+Pi9Qcm9jU2V0Wy9QREYvVGV4dC9J
+bWFnZUNdPj4+Pg1lbmRvYmoNMTUgMCBvYmo8PC9UeXBlL0ZvbnQvTmFtZS9GMC9FbmNvZGluZy9X
+aW5BbnNpRW5jb2RpbmcvQmFzZUZvbnQvSGVsdmV0aWNhL0ZpcnN0Q2hhciAzMi9MYXN0Q2hhciAy
+NTUvU3VidHlwZS9UeXBlMT4+DWVuZG9iag0xNiAwIG9iajw8L0xlbmd0aCA2MjYvRmlsdGVyL0Zs
+YXRlRGVjb2RlPj5zdHJlYW0NClRe84QpqhVFRnPIHemDBL4cqxTTR2ClyhJ3Jas9+316XH7qTTx+
+9uLZmguyZuNreI5BqIVFtyjEanHiGXrP7+Tn5UfmtfijzNc4s6pRDfRFvgET77UgZddtvxQNNRyl
+txyJIITU+Q1k7DoDulbqMfQnVRbfuT7E6UsaOtsXLGhPBENOfXSZbuzXmuxWqJvDKIn9neB8k3mn
+1T8IGdA62vqFIHaVf6PmZYE5UsQsYTGZDJ9QAckf2jkXya5XZ2whZEoQxIppbmSlRF8LWSDWgbU3
+VQnCAU6oqq5uwG1oLrg6vVtaoruLt6DeG7oSZDycehKZMJQGY8lpKYlPyfklNwd1i0D11CQlAlOw
++XReIiS54Yhwu7MgPhoJsIzjG8kkplqf4TXhyvaB0+g7CD1HoDndxNmBtcma0+FWSf3v6ONC/agZ
+9m857WEV/s75y+Zaul5dbjqnHp3qirjj09liXAbDfp5y4+qpZsSf5s40Mis/Hyqjv4i8yMOe8Yj+
+yPSoGv4roxmH5m/6MXXpUZS4PfZ2f3Jd/qtgM0Y44azkEgKcNsN62AlXSZcO+FBmAEkd/ogRPztS
+8j2S3P1nlGOSycjoxsbrj+QCB2iRpG0Xiw6ZxAF5/fH2dNr3C0eQZqFj7Q/g4p/YpD4+A5pL/HnB
+JD1a7KxjtkNgKHzo945g76mNOLPI6/BHqhGDGvlFbaEVJaqBKS85bM1giIyUAZGhfo1ht1g3GY/j
+nbMdNoDHpIZo8BF+ZunJtNNjUhmi4/c35in/XwbGE42aYSyAtozV3Nh2WYcWyu0aebhVPU+dEOKN
+iLE6jbqWGEl4KSPi8duNpPEgDQplbmRzdHJlYW0NZW5kb2JqDTEgMCBvYmo8PC9Db250ZW50cyAy
+IDAgUi9UeXBlL1BhZ2UvUGFyZW50IDcgMCBSL1JvdGF0ZSAwL01lZGlhQm94WzAgMCA2ODAgODAw
+XS9Dcm9wQm94WzAgMCA2ODAgODAwXS9SZXNvdXJjZXM8PC9Gb250PDwvRjAgMTUgMCBSPj4vWE9i
+amVjdDw8Pj4vUHJvY1NldFsvUERGL1RleHQvSW1hZ2VDXT4+Pj4NZW5kb2JqDTIgMCBvYmo8PC9M
+ZW5ndGggNTYvRmlsdGVyL0ZsYXRlRGVjb2RlPj5zdHJlYW0NCv8i3DnhQP2k34aIfXi0nwoRTUCu
+eY32hq//C6Nrs/H4EjFWNTB02BoBQqLOV6NXtPoWCHlf8sQwDQplbmRzdHJlYW0NZW5kb2JqDTMg
+MCBvYmo8PC9Db250ZW50cyA0IDAgUi9UeXBlL1BhZ2UvUGFyZW50IDcgMCBSL1JvdGF0ZSAwL01l
+ZGlhQm94WzAgMCA2ODAgODAwXS9Dcm9wQm94WzAgMCA2ODAgODAwXS9SZXNvdXJjZXM8PC9Gb250
+PDwvRjAgMTUgMCBSPj4vWE9iamVjdDw8Pj4vUHJvY1NldFsvUERGL1RleHQvSW1hZ2VDXT4+Pj4N
+ZW5kb2JqDTQgMCBvYmo8PC9MZW5ndGggNDA1L0ZpbHRlci9GbGF0ZURlY29kZT4+c3RyZWFtDQpM
+3LKbT780vDOEEcSzsL1rrFATiV+XCT8JlSZaCZQk+27DNYS69MR9KAzpxrYHFS9svZVkqpurT3NR
+vRugawDfwYeBhpr9I/627V317Jttrek4vROTbG25KffJqZ/vwlm+M/AWk1HCIr0T747G4b1vGNwz
+mc/BizFdbtuXyhwyczCOMUpfI3fxlpKyC/4dZHQ9UQXAdS7G4Jeoc9fPnF+DTG0u7ots4+B+wrMw
+RDBKZMjlABai6x20slnTdG4S0UmxdtFT9U8EPCQRBuM7XsPAs4xV58CeLTSJ+PE4Iq3J1krqEEGz
+mQZP3jmVYtlgqSd8/kfZq9xybR5ZgTGMz3wGNCjZ8dFtiizxrjzkTNkv32PxCrEgHhnZQIZW5H2D
+DZWxvsQuiiH93IZKxmbNqUrCn+Rz83OmFmCV2rAn/60l6LHv+xo2kxyvtTusfzfDa4qJeQBx1ZDr
+H0WQUoVNMzsltEh3rCMCVkTAZD9oz5+7BSl49lQVX/1KsGxlC2n1q4wEeMWRZX4JiEb1KuTDbnUD
+fI5QwX4NCmVuZHN0cmVhbQ1lbmRvYmoNNSAwIG9iajw8L0NvbnRlbnRzIDYgMCBSL1R5cGUvUGFn
+ZS9QYXJlbnQgNyAwIFIvUm90YXRlIDAvTWVkaWFCb3hbMCAwIDY4MCA4MDBdL0Nyb3BCb3hbMCAw
+IDY4MCA4MDBdL1Jlc291cmNlczw8L0ZvbnQ8PC9GMCAxNSAwIFI+Pi9YT2JqZWN0PDw+Pi9Qcm9j
+U2V0Wy9QREYvVGV4dC9JbWFnZUNdPj4+Pg1lbmRvYmoNNiAwIG9iajw8L0xlbmd0aCA1NDcvRmls
+dGVyL0ZsYXRlRGVjb2RlPj5zdHJlYW0NCjWkFsh3ifLgZcHcO4LXpHgbV5c7dNzXUWbNiHTE+ddr
+GMIHwtC1R3ilU/u754TJUGEg11LWyyFFsYOg/eHD2pWjP3YvVDdLuI9Ie3IjSs+L4/N88mi3n5LR
+3gvB4VP0Yd/6qA0p7vsQoRkjXoZcMN9m8BO69VOjKU5IAZhOxVj5LngpcIT2jKJ0zh/Lz0WM1TOE
+yo3KQGDX124eLeWE3ZdQ9K+GBTusx8YPPVNe/36kpNJZ3d+s3mqhKqgHW9SsqpDmOyp5dfscM9As
+cJMAhvzrWsHpOUchACFu3eSZRO5XDkYq/mwsANTnpELw97JoTpFODC2YqcK+4D514xcldn8rXwwP
+KttqjyKg78pXQb2v3U/EX9Hi/h4BBOyKoOwNeixFQaeyRBBAKj1uU9MI+GG/5PI5T4ECtXI6Zmxq
+aO2T+HnQsoaBrmZK95yIH/dwEVaXQWP5BRb317OcsexnKmxzvyybH1PblnkH9LBBLC2qu/X47SHi
+eLp5s6vi0um1whjrKrp55HH/yo5EJsyCRHmpBio1WU1Gq4gmD7dreCAkTpEG4Ytk87cjH8OYNo0M
+dxpgf19XIFhdMi9SCNomaacAh0P4AbtsuVFnILW8Jn16q5G4V79gtQGA/4mNz2fHihgOkezDy8HY
+/DhnMmQFiRxupDX/+JCLIlmQpIAeAVsx0R73TnessyurQEYgoNBM9cMsd5lM/Lt46TDjUZoS5pbw
+LIkNCmVuZHN0cmVhbQ1lbmRvYmoNNyAwIG9iajw8L0NvdW50IDQvS2lkc1sxNCAwIFIgMSAwIFIg
+MyAwIFIgNSAwIFJdL1R5cGUvUGFnZXM+Pg1lbmRvYmoNOCAwIG9iajw8L0xlbmd0aCAzNDE4L1R5
+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
+ytngfDN+scOiU2WqKeOGWaIGVGlms0jC3h3R5GsaYZJSB5RtN2ANiYrP96apWa24ZjPxjGixcT2d
+islCZEiTdXZE+04m0qPeKgMA5UNXqU9lq9qajW2rnZhtvGuzRnDd37A+rHqUuNjkTjCQI8uTURpO
+m4g/qCTN/hpY8H/v8mucW6eQXn9QDXqnr+oF+H81fDdyb990ZgTjOHVjKv+uls3RPf+ldmh7Is8m
+ElmUaEt0feFzHDrtWoSW10chiCNfzHlneolqZXszAtABxi31kwdlrFtDE6lnKhrN2N+eKccdiM8v
+hW5nWzyzFZriNL0YyhKzRYpPByhbfd06hZEeNMXMQQzUwQuijL/TsVBWSoqOrEzuRECU04MHYvtn
+Hyb9WmaC1anlZBhSLVsj8jMqFK80ne4quOB3+9HxXv1sDQfDKhiOI9nwaDqV47siDFDUb0xQWYjb
+zRZQBYV1YyCynwAPNxfUeDk5/v23WvT/m+vnxDxd8GZ7K/QuMk1Gu9Fyhe/zBrm03Z2u2UbX8UL0
+mESTyxnvvbOaw4CYTaACeR17CfwcGq2iNH05C21uX87mcGAPIb8QaJf3g8HXHZL4t7s3QW30nbOp
+YXJ22HsoGy7/Gb+8g8QJF5cPlFOrNZlkOZ8rOU/Fea5mF6rx7VQQX7mSAQcifxTkrSqpiTj4zwYM
+We/v0p+MtyJxI52dR8Abx1ua+U7eWjec4BW/pcxNuNhh3Vuodc09bnt/ZdK/1AevJ233i7Ga80Kr
+6J45FjV9mnPHLd0IwLg1AFsAQbR2ArF02poYSASOtdTSp74Dy8DM7Amn09GYSX7CFmpjKaFvmxOE
+FyNr4cykLJSUQpht52yEem0nCCsSnvzWO6VC8lgyPPhBNjCQyFZBq2qJOsHFRmi+aUznJHYlRsTn
+D1GVh+JXpayVsOTdE1Y4ASM6Kfr/CSQ+3A85+xGPwQ0KZW5kc3RyZWFtDWVuZG9iag05IDAgb2Jq
+PDwvTW9kRGF0ZSj+rDPKNUyxh1qLz93hx2N/SP1cKKKzQNspL0NyZWF0aW9uRGF0ZSj+rDPKNUyx
+h1qLz93mwmJ8PykvVGl0bGUoKS9DcmVhdG9yKPDmZJ1MFuDYD/aGibiHPywpL0F1dGhvciju92qf
+dhPonyHSkIa6KS9LZXl3b3JkcygpL1N1YmplY3QoKS9Qcm9kdWNlcijq+Xafdyvl2UrFm5qmnjwn
+Rf0xvCk+Pg1lbmRvYmoNeHJlZg0KMCAxMA0KMDAwMDAwMDAwMCA2NTUzNSBmDQowMDAwMDAxODA0
+IDAwMDAwIG4NCjAwMDAwMDE5ODQgMDAwMDAgbg0KMDAwMDAwMjEwNyAwMDAwMCBuDQowMDAwMDAy
+Mjg3IDAwMDAwIG4NCjAwMDAwMDI3NjAgMDAwMDAgbg0KMDAwMDAwMjk0MCAwMDAwMCBuDQowMDAw
+MDAzNTU1IDAwMDAwIG4NCjAwMDAwMDM2MjQgMDAwMDAgbg0KMDAwMDAwNzExOCAwMDAwMCBuDQp0
+cmFpbGVyDQo8PC9TaXplIDEwL0VuY3J5cHQgMTEgMCBSPj4NCnN0YXJ0eHJlZg0KMTE2DQolJUVP
+Rg0K
+--=====================_23971359==_
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
+--=====================_23971359==_
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--=====================_23971359==_--
