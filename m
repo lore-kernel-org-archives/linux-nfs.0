@@ -1,23 +1,22 @@
 From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH 4/5] mount.nfs: Add new files for supporting
-	string-ified	mount options
-Date: Fri, 10 Aug 2007 11:46:36 +1000
-Message-ID: <18107.50044.333597.209861@notabene.brown>
-References: <20070809213706.16767.89918.stgit@monet.1015granger.net>
+Subject: Re: [PATCH 0/5] Enable text-based NFS mounts
+Date: Fri, 10 Aug 2007 11:51:51 +1000
+Message-ID: <18107.50359.957289.693302@notabene.brown>
+References: <20070809212708.16767.6031.stgit@monet.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: neilb@suse.de, nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
 To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IJJaS-0007oh-KQ
-	for nfs@lists.sourceforge.net; Thu, 09 Aug 2007 18:46:48 -0700
-Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	id 1IJJfV-0008Lw-DG
+	for nfs@lists.sourceforge.net; Thu, 09 Aug 2007 18:52:01 -0700
+Received: from mx2.suse.de ([195.135.220.15])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IJJaU-0002gq-L0
-	for nfs@lists.sourceforge.net; Thu, 09 Aug 2007 18:46:52 -0700
+	(Exim 4.44) id 1IJJfZ-0004SL-3r
+	for nfs@lists.sourceforge.net; Thu, 09 Aug 2007 18:52:05 -0700
 In-Reply-To: message from Chuck Lever on Thursday August 9
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -32,68 +31,41 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 On Thursday August 9, chuck.lever@oracle.com wrote:
-> Introduce support files which contain code that builds string mount
-> options and passes them to the kernel.  This is a pre-requisite for
-> actually enabling /sbin/mount.nfs to do text-based mounts.
+> Hi Neil-
 > 
-> This is only partially complete at the moment, but is presented so that
-> folks can start banging on the kernel mount option string parsing code.
-> There are clearly still parts that are not implemented quite yet, such
-> as bg and retry support, but it should be enough to get going.
+> Enough people have been pushing me to publish this that I finally stopped
+> procrastinating and hacked something together.
 > 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
+> Here are a couple of clean-ups, and two patches that provide a command line
+> option on mount.nfs to force it to pass string mount options instead of binary
+> mount options to the kernel.
 
-> +
-> +static int retry_opt = 10000;		/* 10,000 minutes ~= 1 week */
+I've taken patches 2 and 3...
 
-Why one week?  Why no "MAX_INT"? retry_opt is never actually used, so
-I cannot guess.
-Neither is bg_opt, but you did say it was incomplete.
+> 
+> I'd like to get these integrated into nfs-utils now in order to make it easy
+> for people to start testing the kernel logic; and because Trond wants to
+> freeze the mount ABI, so the only way to add new options is with a new string-
+> based option.
+> 
+> The stropt.[ch] files are rather unfinished, but are in good enough shape that
+> they can be used now and improved by everyone as we go along.  The command
+> line option makes it so that normally mount.nfs will use the legacy binary
+> options, and not accidentally pass text-based options; thus it is safe to
+> install as a system's default /sbin/mount.nfs.
 
-> +static int bg_opt = 0;
-...
+Unfortunately a little too unfinished.  Once you've fixed the strtok
+usage I'll take them.
 
-> +
-> +/*
-> + * Walk through our mount options string, and indicate the presence
-> + * of 'bg', 'retry=', and 'clientaddr='.
-> + */
-> +static void extract_interesting_options(char *opts)
-> +{
-> +	char *opt, *opteq;
-> +	int val;
-> +
-> +	for (opt = strtok(opts, ","); opt; opt = strtok(NULL, ",")) {
+> 
+> As the second patch says, when we are all happy with the user space and kernel
+> parts of this, it will be easy enough to replace the command line option with
+> a switch based on the kernel version.
 
-Do you really want to use 'strtok'?  It modifies the 'opts' argument,
-so where you go to use it later, you cannot be sure that it is still
-the same (all the ','s will be turned to nuls).
-
-I'm surprised that this works at all... I'd better go test it....
-
-OK, it doesn't work.
-
-I run
-
-   mount.nfs host:/path /mnt -i -v -o bg,ro,something=whatever
-and it says:
-
-  mount.nfs: using C string mount system call interface
-  mount.nfs: option string is 'bg,addr=192.168.1.10'
-  mount.nfs: Invalid argument
-
-so the 'ro' and the 'something=whatever' don't make it to the kernel.
-
-I'm happy to take the patch before it is complete, but I think at
-least this bit needs to work as expected before it goes into
-nfs-utils....
-
-Thanks,
+Agreed.. though Trond's suggested of disabling -i for early kernel
+versions is a good one.
 
 NeilBrown
-
-   
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
