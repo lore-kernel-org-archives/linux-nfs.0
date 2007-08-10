@@ -1,26 +1,20 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 4/5] mount.nfs: Add new files for supporting
- string-ified mount options
-Date: Fri, 10 Aug 2007 17:07:26 -0400
-Message-ID: <46BCD38E.3000809@oracle.com>
-References: <20070809213706.16767.89918.stgit@monet.1015granger.net>
-	<18107.50044.333597.209861@notabene.brown>
-Reply-To: chuck.lever@oracle.com
+Subject: [PATCH 0/4] Enable text-based NFS mounts, take two
+Date: Fri, 10 Aug 2007 18:19:39 -0400
+Message-ID: <20070810221655.21712.54418.stgit@monet.1015granger.net>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------060909050402000204090900"
+Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: Neil Brown <neilb@suse.de>
+To: neilb@suse.de
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IJbiT-0000XG-5k
-	for nfs@lists.sourceforge.net; Fri, 10 Aug 2007 14:08:17 -0700
-Received: from rgminet01.oracle.com ([148.87.113.118])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IJbiW-0000j1-0w
-	for nfs@lists.sourceforge.net; Fri, 10 Aug 2007 14:08:21 -0700
-In-Reply-To: <18107.50044.333597.209861@notabene.brown>
+	id 1IJcpc-0007cQ-JL
+	for nfs@lists.sourceforge.net; Fri, 10 Aug 2007 15:19:47 -0700
+Received: from flpi101.sbcis.sbc.com ([207.115.20.70] helo=flpi101.prodigy.net)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IJcpf-0003m1-Lb
+	for nfs@lists.sourceforge.net; Fri, 10 Aug 2007 15:19:48 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,76 +27,34 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
---------------060909050402000204090900
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Transfer-Encoding: 7bit
+Hi Neil-
 
-Neil Brown wrote:
-> On Thursday August 9, chuck.lever@oracle.com wrote:
->> Introduce support files which contain code that builds string mount
->> options and passes them to the kernel.  This is a pre-requisite for
->> actually enabling /sbin/mount.nfs to do text-based mounts.
->>
->> This is only partially complete at the moment, but is presented so that
->> folks can start banging on the kernel mount option string parsing code.
->> There are clearly still parts that are not implemented quite yet, such
->> as bg and retry support, but it should be enough to get going.
->>
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> ---
-> 
->> +
->> +static int retry_opt = 10000;		/* 10,000 minutes ~= 1 week */
-> 
-> Why one week?  Why not "MAX_INT"? retry_opt is never actually used, so
-> I cannot guess.
+Here are a couple of clean-ups, and two patches that provide a command
+line option on mount.nfs to force it to pass string mount options instead
+of binary mount options to the kernel.
 
-retry=10000 is the default setting.  According to the nfs(5) man page, 
-this is about 1 week.
+I'd like to get these integrated into nfs-utils now in order to make it
+easy for people to start testing the kernel logic; and because Trond
+wants to freeze the mount ABI, so the only way to add new options is with
+a new string-based option.
 
-The plan is to extract the retry setting from the mount options string 
-if it exists, and use the default value of 10000 if it does not.
+The stropt.[ch] files are rather unfinished, but are in good enough shape
+that they can be used now and improved by everyone as we go along.  The
+command line option makes it so that normally mount.nfs will use the
+legacy binary options, and not accidentally pass text-based options; thus
+it is safe to install as a system's default /sbin/mount.nfs.
 
---------------060909050402000204090900
-Content-Type: text/x-vcard; charset=utf-8;
- name="chuck.lever.vcf"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="chuck.lever.vcf"
+Today's version of these patches should address the concerns raised
+yesterday on this mailing list.
 
-begin:vcard
-fn:Chuck Lever
-n:Lever;Chuck
-org:Oracle Corporation;Corporate Architecture: Linux Projects Group
-adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
-title:Principal Member of Staff
-tel;work:+1 248 614 5091
-x-mozilla-html:FALSE
-url:http://oss.oracle.com/~cel
-version:2.1
-end:vcard
-
-
---------------060909050402000204090900
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+-- 
+corporate:    <chuck dot lever at oracle dot com>
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
---------------060909050402000204090900
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---------------060909050402000204090900--
