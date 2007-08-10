@@ -1,23 +1,23 @@
 From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH 1/5] mount.nfs: Fix one more double-wide character
-	nit
-Date: Fri, 10 Aug 2007 11:19:18 +1000
-Message-ID: <18107.48406.21134.143337@notabene.brown>
-References: <20070809213651.16767.2602.stgit@monet.1015granger.net>
+Subject: Re: [PATCH 4/5] mount.nfs: Add new files for supporting
+	string-ified	mount options
+Date: Fri, 10 Aug 2007 11:46:36 +1000
+Message-ID: <18107.50044.333597.209861@notabene.brown>
+References: <20070809213706.16767.89918.stgit@monet.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
+Cc: neilb@suse.de, nfs@lists.sourceforge.net
 To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IJJA0-00052I-PJ
-	for nfs@lists.sourceforge.net; Thu, 09 Aug 2007 18:19:28 -0700
-Received: from mx2.suse.de ([195.135.220.15])
+	id 1IJJaS-0007oh-KQ
+	for nfs@lists.sourceforge.net; Thu, 09 Aug 2007 18:46:48 -0700
+Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IJJA4-0000Ma-L6
-	for nfs@lists.sourceforge.net; Thu, 09 Aug 2007 18:19:33 -0700
+	(Exim 4.44) id 1IJJaU-0002gq-L0
+	for nfs@lists.sourceforge.net; Thu, 09 Aug 2007 18:46:52 -0700
 In-Reply-To: message from Chuck Lever on Thursday August 9
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -31,52 +31,69 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+On Thursday August 9, chuck.lever@oracle.com wrote:
+> Introduce support files which contain code that builds string mount
+> options and passes them to the kernel.  This is a pre-requisite for
+> actually enabling /sbin/mount.nfs to do text-based mounts.
+> 
+> This is only partially complete at the moment, but is presented so that
+> folks can start banging on the kernel mount option string parsing code.
+> There are clearly still parts that are not implemented quite yet, such
+> as bg and retry support, but it should be enough to get going.
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
 
-It bothers me that you still seem to think the _() stuff is closely
-connected with double/wide characters.   That is not what it is really
-about.
-There are quite possible no wide characters involved at all (depending
-on the local language).
+> +
+> +static int retry_opt = 10000;		/* 10,000 minutes ~= 1 week */
 
-The question is:  Does this string need to be translated.
-In that case of the strings "UDP" and "TCP", I suspect the answer is
-"no".  However as I don't speak any other language, maybe I am wrong.
+Why one week?  Why no "MAX_INT"? retry_opt is never actually used, so
+I cannot guess.
+Neither is bg_opt, but you did say it was incomplete.
 
-I'll happily accept a patch which simply changes "udp" to "UDP" as I
-agree that is a correct change to make.
-And I will also accept a patch that changes "udp" to _("UDP") if the
-subject says "Allow protocol names to be translated" or something else
-that mentions translation or localisation or different languages.
+> +static int bg_opt = 0;
+...
 
-But - despite the fact that it probably seems like I'm being
-unnecessarily picky - I don't want to accept this patch with this
-subject.
+> +
+> +/*
+> + * Walk through our mount options string, and indicate the presence
+> + * of 'bg', 'retry=', and 'clientaddr='.
+> + */
+> +static void extract_interesting_options(char *opts)
+> +{
+> +	char *opt, *opteq;
+> +	int val;
+> +
+> +	for (opt = strtok(opts, ","); opt; opt = strtok(NULL, ",")) {
 
-Sorry :-)
+Do you really want to use 'strtok'?  It modifies the 'opts' argument,
+so where you go to use it later, you cannot be sure that it is still
+the same (all the ','s will be turned to nuls).
+
+I'm surprised that this works at all... I'd better go test it....
+
+OK, it doesn't work.
+
+I run
+
+   mount.nfs host:/path /mnt -i -v -o bg,ro,something=whatever
+and it says:
+
+  mount.nfs: using C string mount system call interface
+  mount.nfs: option string is 'bg,addr=192.168.1.10'
+  mount.nfs: Invalid argument
+
+so the 'ro' and the 'something=whatever' don't make it to the kernel.
+
+I'm happy to take the patch before it is complete, but I think at
+least this bit needs to work as expected before it goes into
+nfs-utils....
+
+Thanks,
 
 NeilBrown
 
-
-On Thursday August 9, chuck.lever@oracle.com wrote:
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
-> 
->  utils/mount/network.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
-> 
-> diff --git a/utils/mount/network.c b/utils/mount/network.c
-> index 5a56c23..eb59c1f 100644
-> --- a/utils/mount/network.c
-> +++ b/utils/mount/network.c
-> @@ -388,7 +388,7 @@ static int probe_port(clnt_addr_t *server, const unsigned long *versions,
->  						inet_ntoa(saddr->sin_addr),
->  						prog, *p_vers,
->  						*p_prot == IPPROTO_UDP ?
-> -							"udp" : "tcp",
-> +							_("UDP") : _("TCP"),
->  						p_port);
->                                  }
->  				if (clnt_ping(saddr, prog, *p_vers, *p_prot, NULL))
+   
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
