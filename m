@@ -1,7 +1,8 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 0/4] Enable text-based NFS mounts, take two
-Date: Fri, 10 Aug 2007 18:19:39 -0400
-Message-ID: <20070810221655.21712.54418.stgit@monet.1015granger.net>
+Subject: [PATCH 2/4] mount.nfs: Replace a "return 0;
+	" that should be an "exit(0); "
+Date: Fri, 10 Aug 2007 18:19:50 -0400
+Message-ID: <20070810221950.21712.90137.stgit@monet.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
@@ -10,11 +11,11 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IJcpc-0007cQ-JL
-	for nfs@lists.sourceforge.net; Fri, 10 Aug 2007 15:19:47 -0700
+	id 1IJcpj-0007cj-FF
+	for nfs@lists.sourceforge.net; Fri, 10 Aug 2007 15:19:51 -0700
 Received: from flpi101.sbcis.sbc.com ([207.115.20.70] helo=flpi101.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IJcpf-0003m1-Lb
-	for nfs@lists.sourceforge.net; Fri, 10 Aug 2007 15:19:48 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IJcpm-0003oO-Gc
+	for nfs@lists.sourceforge.net; Fri, 10 Aug 2007 15:19:55 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,28 +28,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi Neil-
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-Here are a couple of clean-ups, and two patches that provide a command
-line option on mount.nfs to force it to pass string mount options instead
-of binary mount options to the kernel.
+ utils/mount/mount.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-I'd like to get these integrated into nfs-utils now in order to make it
-easy for people to start testing the kernel logic; and because Trond
-wants to freeze the mount ABI, so the only way to add new options is with
-a new string-based option.
+diff --git a/utils/mount/mount.c b/utils/mount/mount.c
+index 94435c8..a6e1685 100644
+--- a/utils/mount/mount.c
++++ b/utils/mount/mount.c
+@@ -431,7 +431,7 @@ int main(int argc, char *argv[])
+ 			break;
+ 		case 'V':
+ 			printf("%s: ("PACKAGE_STRING")\n", progname);
+-			return 0;
++			exit(0);
+ 		case 'w':
+ 			flags &= ~MS_RDONLY;
+ 			break;
 
-The stropt.[ch] files are rather unfinished, but are in good enough shape
-that they can be used now and improved by everyone as we go along.  The
-command line option makes it so that normally mount.nfs will use the
-legacy binary options, and not accidentally pass text-based options; thus
-it is safe to install as a system's default /sbin/mount.nfs.
-
-Today's version of these patches should address the concerns raised
-yesterday on this mailing list.
-
--- 
-corporate:    <chuck dot lever at oracle dot com>
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
