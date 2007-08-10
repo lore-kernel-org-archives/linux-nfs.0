@@ -1,24 +1,24 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 5/5] mount.nfs: Enable mount.nfs to do
-	text-based	mount support
-Date: Thu, 09 Aug 2007 18:49:27 -0400
-Message-ID: <1186699767.6699.221.camel@heimdal.trondhjem.org>
-References: <20070809213711.16767.30201.stgit@monet.1015granger.net>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH 1/5] mount.nfs: Fix one more double-wide character
+	nit
+Date: Fri, 10 Aug 2007 11:19:18 +1000
+Message-ID: <18107.48406.21134.143337@notabene.brown>
+References: <20070809213651.16767.2602.stgit@monet.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: neilb@suse.de, nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
 To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IJGp8-0006oU-4O
-	for nfs@lists.sourceforge.net; Thu, 09 Aug 2007 15:49:47 -0700
-Received: from pat.uio.no ([129.240.10.15])
+	id 1IJJA0-00052I-PJ
+	for nfs@lists.sourceforge.net; Thu, 09 Aug 2007 18:19:28 -0700
+Received: from mx2.suse.de ([195.135.220.15])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IJGpB-0000oR-0i
-	for nfs@lists.sourceforge.net; Thu, 09 Aug 2007 15:49:50 -0700
-In-Reply-To: <20070809213711.16767.30201.stgit@monet.1015granger.net>
+	(Exim 4.44) id 1IJJA4-0000Ma-L6
+	for nfs@lists.sourceforge.net; Thu, 09 Aug 2007 18:19:33 -0700
+In-Reply-To: message from Chuck Lever on Thursday August 9
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,22 +31,52 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, 2007-08-09 at 17:37 -0400, Chuck Lever wrote:
-> A new command line option, "-i", is added to mount.nfs to force the use of
-> the string interface for testing purposes.  "-s", "-t", and "-r" are
-> already taken or have legacy meaning so I picked "-i".
+
+It bothers me that you still seem to think the _() stuff is closely
+connected with double/wide characters.   That is not what it is really
+about.
+There are quite possible no wide characters involved at all (depending
+on the local language).
+
+The question is:  Does this string need to be translated.
+In that case of the strings "UDP" and "TCP", I suspect the answer is
+"no".  However as I don't speak any other language, maybe I am wrong.
+
+I'll happily accept a patch which simply changes "udp" to "UDP" as I
+agree that is a correct change to make.
+And I will also accept a patch that changes "udp" to _("UDP") if the
+subject says "Allow protocol names to be translated" or something else
+that mentions translation or localisation or different languages.
+
+But - despite the fact that it probably seems like I'm being
+unnecessarily picky - I don't want to accept this patch with this
+subject.
+
+Sorry :-)
+
+NeilBrown
+
+
+On Thursday August 9, chuck.lever@oracle.com wrote:
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
 > 
-> At some later point, when everyone is comfortable with the string mount
-> option parsing implementation, we will add a switch based on kernel
-> version, and remove the "-i" command line option.  For now, I am more
-> comfortable enabling it by hand instead.
-
-Please could we at least disable the '-i' option for kernel versions
-prior to 2.6.23. No need to introduce possible security problems: after
-all, 'mount.nfs' is usually installed setuid.
-
-Trond
-
+>  utils/mount/network.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
+> 
+> diff --git a/utils/mount/network.c b/utils/mount/network.c
+> index 5a56c23..eb59c1f 100644
+> --- a/utils/mount/network.c
+> +++ b/utils/mount/network.c
+> @@ -388,7 +388,7 @@ static int probe_port(clnt_addr_t *server, const unsigned long *versions,
+>  						inet_ntoa(saddr->sin_addr),
+>  						prog, *p_vers,
+>  						*p_prot == IPPROTO_UDP ?
+> -							"udp" : "tcp",
+> +							_("UDP") : _("TCP"),
+>  						p_port);
+>                                  }
+>  				if (clnt_ping(saddr, prog, *p_vers, *p_prot, NULL))
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
