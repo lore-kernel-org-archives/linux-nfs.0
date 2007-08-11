@@ -1,25 +1,25 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 01/20] Eliminate signed vs. unsigned comparison
-	in	asm-x86_64/bitops.h
-Date: Sat, 11 Aug 2007 10:24:15 -0400
-Message-ID: <1186842255.17941.0.camel@heimdal.trondhjem.org>
-References: <20070806155626.31233.83820.stgit@manray.1015granger.net>
+Subject: Re: [PATCH 02/20] SUNRPC: Fix a signed v. unsigned comparison
+	in	rpcbind's XDR routines
+Date: Sat, 11 Aug 2007 10:29:48 -0400
+Message-ID: <1186842588.17941.6.camel@heimdal.trondhjem.org>
+References: <20070806155631.31233.23672.stgit@manray.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IJrtn-000287-Gi
-	for nfs@lists.sourceforge.net; Sat, 11 Aug 2007 07:25:03 -0700
+	id 1IJryS-0002ck-86
+	for nfs@lists.sourceforge.net; Sat, 11 Aug 2007 07:29:52 -0700
 Received: from pat.uio.no ([129.240.10.15]
-	ident=[U2FsdGVkX1+xe2Tis9N7HTW6gGJK7vKIkEblUYwhEQs=])
+	ident=[U2FsdGVkX19pxEnW3CDFQH3VVUrgm//ZRlljO4TpQpY=])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IJrto-0004EA-Ds
-	for nfs@lists.sourceforge.net; Sat, 11 Aug 2007 07:25:07 -0700
-In-Reply-To: <20070806155626.31233.83820.stgit@manray.1015granger.net>
+	(Exim 4.44) id 1IJryU-0006bg-T0
+	for nfs@lists.sourceforge.net; Sat, 11 Aug 2007 07:29:56 -0700
+In-Reply-To: <20070806155631.31233.23672.stgit@manray.1015granger.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,35 +32,38 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-T24gTW9uLCAyMDA3LTA4LTA2IGF0IDExOjU2IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToKPiBJ
-biBmaWxlIGluY2x1ZGVkIGZyb20gL2hvbWUvY2VsL3NyYy9saW51eC9pbmNsdWRlL2xpbnV4L21t
-em9uZS5oOjE1LAo+ICAgICAgICAgICAgICAgICAgZnJvbSAvaG9tZS9jZWwvc3JjL2xpbnV4L2lu
-Y2x1ZGUvbGludXgvZ2ZwLmg6NCwKPiAgICAgICAgICAgICAgICAgIGZyb20gL2hvbWUvY2VsL3Ny
-Yy9saW51eC9pbmNsdWRlL2xpbnV4L3NsYWIuaDoxNCwKPiAgICAgICAgICAgICAgICAgIGZyb20g
-L2hvbWUvY2VsL3NyYy9saW51eC9pbmNsdWRlL2xpbnV4L3BlcmNwdS5oOjUsCj4gICAgICAgICAg
-ICAgICAgICBmcm9tCj4gL2hvbWUvY2VsL3NyYy9saW51eC9pbmNsdWRlL2xpbnV4L3JjdXBkYXRl
-Lmg6NDEsCj4gICAgICAgICAgICAgICAgICBmcm9tIC9ob21lL2NlbC9zcmMvbGludXgvaW5jbHVk
-ZS9saW51eC9kY2FjaGUuaDoxMCwKPiAgICAgICAgICAgICAgICAgIGZyb20gL2hvbWUvY2VsL3Ny
-Yy9saW51eC9pbmNsdWRlL2xpbnV4L2ZzLmg6Mjc1LAo+ICAgICAgICAgICAgICAgICAgZnJvbSAv
-aG9tZS9jZWwvc3JjL2xpbnV4L2ZzL25mcy9zeXNjdGwuYzo5Ogo+IC9ob21lL2NlbC9zcmMvbGlu
-dXgvaW5jbHVkZS9saW51eC9ub2RlbWFzay5oOiBJbiBmdW5jdGlvbgo+IOKAmF9fZmlyc3Rfbm9k
-ZeKAmToKPiAvaG9tZS9jZWwvc3JjL2xpbnV4L2luY2x1ZGUvbGludXgvbm9kZW1hc2suaDoyMjk6
-IHdhcm5pbmc6IHNpZ25lZCBhbmQKPiB1bnNpZ25lZCB0eXBlIGluIGNvbmRpdGlvbmFsIGV4cHJl
-c3Npb24KPiAvaG9tZS9jZWwvc3JjL2xpbnV4L2luY2x1ZGUvbGludXgvbm9kZW1hc2suaDogSW4g
-ZnVuY3Rpb24KPiDigJhfX25leHRfbm9kZeKAmToKPiAvaG9tZS9jZWwvc3JjL2xpbnV4L2luY2x1
-ZGUvbGludXgvbm9kZW1hc2suaDoyMzU6IHdhcm5pbmc6IHNpZ25lZCBhbmQKPiB1bnNpZ25lZCB0
-eXBlIGluIGNvbmRpdGlvbmFsIGV4cHJlc3Npb24KPiAvaG9tZS9jZWwvc3JjL2xpbnV4L2luY2x1
-ZGUvbGludXgvbm9kZW1hc2suaDogSW4gZnVuY3Rpb24KPiDigJhfX2ZpcnN0X3Vuc2V0X25vZGXi
-gJk6Cj4gL2hvbWUvY2VsL3NyYy9saW51eC9pbmNsdWRlL2xpbnV4L25vZGVtYXNrLmg6MjUzOiB3
-YXJuaW5nOiBzaWduZWQgYW5kCj4gdW5zaWduZWQgdHlwZSBpbiBjb25kaXRpb25hbCBleHByZXNz
-aW9uCj4gCj4gU2lnbmVkLW9mZi1ieTogQ2h1Y2sgTGV2ZXIgPGNodWNrLmxldmVyQG9yYWNsZS5j
-b20+Cj4gLS0tCgpJIHRoaW5rIHRoaXMgb25lIHJlYWxseSBzaG91bGQgZ28gdGhyb3VnaCBBbmRp
-IEtsZWVuIGluc3RlYWQuCgpDaGVlcnMKICBUcm9uZAoKCi0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0KVGhpcyBT
-Ri5uZXQgZW1haWwgaXMgc3BvbnNvcmVkIGJ5OiBTcGx1bmsgSW5jLgpTdGlsbCBncmVwcGluZyB0
-aHJvdWdoIGxvZyBmaWxlcyB0byBmaW5kIHByb2JsZW1zPyAgU3RvcC4KTm93IFNlYXJjaCBsb2cg
-ZXZlbnRzIGFuZCBjb25maWd1cmF0aW9uIGZpbGVzIHVzaW5nIEFKQVggYW5kIGEgYnJvd3Nlci4K
-RG93bmxvYWQgeW91ciBGUkVFIGNvcHkgb2YgU3BsdW5rIG5vdyA+PiAgaHR0cDovL2dldC5zcGx1
-bmsuY29tLwpfX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fXwpO
-RlMgbWFpbGxpc3QgIC0gIE5GU0BsaXN0cy5zb3VyY2Vmb3JnZS5uZXQKaHR0cHM6Ly9saXN0cy5z
-b3VyY2Vmb3JnZS5uZXQvbGlzdHMvbGlzdGluZm8vbmZzCg==
+On Mon, 2007-08-06 at 11:56 -0400, Chuck Lever wrote:
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> 
+>  net/sunrpc/rpcb_clnt.c |    3 ++-
+>  1 files changed, 2 insertions(+), 1 deletions(-)
+> 
+> diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+> index d1740db..eae711f 100644
+> --- a/net/sunrpc/rpcb_clnt.c
+> +++ b/net/sunrpc/rpcb_clnt.c
+> @@ -490,7 +490,8 @@ static int rpcb_decode_getaddr(struct rpc_rqst *req, __be32 *p,
+>  			       unsigned short *portp)
+>  {
+>  	char *addr;
+> -	int addr_len, c, i, f, first, val;
+> +	u32 addr_len;
+> +	int c, i, f, first, val;
+>  
+>  	*portp = 0;
+>  	addr_len = (unsigned int) ntohl(*p++);
+
+I think I'll get rid of that cast too.
+
+Trond
+
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Splunk Inc.
+Still grepping through log files to find problems?  Stop.
+Now Search log events and configuration files using AJAX and a browser.
+Download your FREE copy of Splunk now >>  http://get.splunk.com/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
