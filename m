@@ -1,24 +1,21 @@
-From: Iana <Iana_Buus@actnow.net.nz>
-Subject: Research-report
-Date: Sun, 12 Aug 2007 12:53:48 +0200
-Message-ID: <3F62B079.A6959DA@actnow.net.nz>
+From: "Dominicis" <Dominicistbxl@actnow.net.nz>
+Subject: GlobalAlert-nfs
+Date: Sun, 12 Aug 2007 12:54:00 +0200
+Message-ID: <E1IKB54-0002ki-O4@mail.sourceforge.net>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------020705070407040508020002"
+Content-Type: multipart/mixed;
+	boundary="=====================_472531==_"
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IKB4y-00066c-1h
-	for nfs@lists.sourceforge.net; Sun, 12 Aug 2007 03:53:59 -0700
+	id 1IKB56-00066h-52
+	for nfs@lists.sourceforge.net; Sun, 12 Aug 2007 03:54:13 -0700
 Received: from amarseille-153-1-99-127.w86-219.abo.wanadoo.fr
 	([86.219.114.127]) by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1IKB4y-0002ki-KT
-	for nfs@lists.sourceforge.net; Sun, 12 Aug 2007 03:53:56 -0700
-Received: from [127.120.32.7] (port=31876 helo=[127.120.32.7])
-	by AMarseille-153-1-99-127.w86-219.abo.wanadoo.fr with esmtp
-	id 1AiAYM-000OFZ-38
-	for nfs@lists.sourceforge.net; Sun, 12 Aug 2007 12:54:24 +0200
+	id 1IKB54-0002ki-O4
+	for nfs@lists.sourceforge.net; Sun, 12 Aug 2007 03:54:04 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,18 +28,14 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---------------020705070407040508020002
-Content-Type: text/plain; charset=iso-8859-2; format=flowed
-Content-Transfer-Encoding: 7bit
+--=====================_472531==_
+Content-Type: text/plain; charset="us-ascii"; format=flowed
 
 
-
---------------020705070407040508020002
-Content-Type: application/octet-stream;
- name="Cash-flow.pdf"
+--=====================_472531==_
+Content-Type: application/octet-stream; name="Research-report-nfs.pdf"
 Content-Transfer-Encoding: base64
-Content-Disposition: inline;
- filename="Cash-flow.pdf"
+Content-Disposition: attachment; filename="Research-report-nfs.pdf"
 
 JVBERi0xLjUNJeLjz9MNCjI2IDAgb2JqPDwvSFs0MzYgMTUxXS9MaW5lYXJpemVkIDEvRSAxNTgx
 L0wgMTgwODIvTiAxMi9PIDMwL1QgMTc1MDA+Pg1lbmRvYmoNICAgICAgICAgICAgICAgICAgICAg
@@ -362,7 +355,7 @@ bg0KMDAwMDAxMTgwOCAwMDAwMCBuDQowMDAwMDEyODAxIDAwMDAwIG4NCjAwMDAwMTI5ODQgMDAw
 MDAgbg0KMDAwMDAxMzY3MSAwMDAwMCBuDQowMDAwMDEzNzk2IDAwMDAwIG4NCjAwMDAwMTcyOTEg
 MDAwMDAgbg0KdHJhaWxlcg0KPDwvU2l6ZSAyNi9FbmNyeXB0IDI3IDAgUj4+DQpzdGFydHhyZWYN
 CjExNg0KJSVFT0YNCg==
---------------020705070407040508020002
+--=====================_472531==_
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -373,7 +366,7 @@ This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
---------------020705070407040508020002
+--=====================_472531==_
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -383,4 +376,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---------------020705070407040508020002--
+--=====================_472531==_--
