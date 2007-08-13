@@ -1,26 +1,27 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: inconsistencies in nfs(5)
-Date: Mon, 13 Aug 2007 10:18:37 -0400
-Message-ID: <46C0683D.9090906@oracle.com>
-References: <46BB2DF2.1050501@oracle.com>
-	<169a.46bb3b18.7157f@altium.nl>	<169a.46bb3b18.7157f@altium.nl>
-	<46BB405B.5050206@oracle.com> <5e6a.46bc1f6e.593b@altium.nl>
-Reply-To: chuck.lever@oracle.com
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH 03/20] SUNRPC: Fix some signed v. unsigned
+	comparisons	in xprtsock.c
+Date: Mon, 13 Aug 2007 13:42:06 -0400
+Message-ID: <1187026926.6628.44.camel@heimdal.trondhjem.org>
+References: <20070806155636.31233.33750.stgit@manray.1015granger.net>
+	<1186843423.17941.18.camel@heimdal.trondhjem.org>
+	<46C06655.6030706@oracle.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------090907030903060200040608"
+Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: Dick Streefland <dick.streefland@altium.nl>
+To: chuck.lever@oracle.com
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IKdoB-0007mW-FG
-	for nfs@lists.sourceforge.net; Mon, 13 Aug 2007 10:34:27 -0700
-Received: from agminet01.oracle.com ([141.146.126.228])
+	id 1IKdvf-00009R-W0
+	for nfs@lists.sourceforge.net; Mon, 13 Aug 2007 10:42:12 -0700
+Received: from pat.uio.no ([129.240.10.15]
+	ident=[U2FsdGVkX1/35X/NK2P9GC0NhkByrxdy6OdyO4/baNE=])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IKdoE-0007w8-Dj
-	for nfs@lists.sourceforge.net; Mon, 13 Aug 2007 10:34:31 -0700
-In-Reply-To: <5e6a.46bc1f6e.593b@altium.nl>
+	(Exim 4.44) id 1IKdvh-0002lD-Ef
+	for nfs@lists.sourceforge.net; Mon, 13 Aug 2007 10:42:16 -0700
+In-Reply-To: <46C06655.6030706@oracle.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,72 +34,50 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
---------------090907030903060200040608
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Transfer-Encoding: 7bit
-
-rnews@tasking.nl wrote:
-> Chuck Lever <chuck.lever@oracle.com> wrote:
-> | This is still in utils/mount/nfsmount.c.
+On Mon, 2007-08-13 at 10:10 -0400, Chuck Lever wrote:
+> Trond Myklebust wrote:
+> > On Mon, 2007-08-06 at 11:56 -0400, Chuck Lever wrote:
+> >> Currently these are not harmful because the range of "len" is less than the
+> >> size of a page.
+> > 
+> > NACK. It is always safe to test an unsigned quantity against a signed
+> > quantity for equality, _provided_ that the two quantities are the same
+> > size. Since we're comparing an unsigned int to an int, that is clearly
+> > the case here.
+> > 
+> > The explicit cast is not only unnecessary, but it is actually bad, since
+> > it may obscure any future comparison errors should we ever for some
+> > reason decide to change the size of err.
 > 
-> It is not in util-linux-ng-2.13-rc2 anymore, which is in Debian sid.
+> As an aside, the purpose of the patches fixing these casts is not just 
+> to correct run-time bugs, but also to eliminate compiler and sparse 
+> warnings, which in some cases are simply extraneous noise due to 
+> compiler pickiness, but can sometimes be nasty bugs (as we found out in 
+> fs/nfs/direct.c, recently).
 > 
-> | I'm not sure how this can affect other mount commands running 
-> | concurrently on the same client.  The man page implies that if one mount 
-> | command has backgrounded against a server, subsequent mount commands 
-> | against the same server will just go right into the background.  But 
-> | prev_bg_host is unique in each instance of the mount command.
-> | 
-> | Can you help me understand what you intended?  Do you have a test case?
-> 
-> Phew, I wrote that 10 years ago! But I think that when you do a
-> "mount -atnfs", multiple mounts will be handled by the same mount
-> instance. The code helps when there are multiple NFS mounts from the
-> same host in fstab, and the server is down when you boot the client.
+> Eventually I think we should use sparse as part of a check-in test 
+> suite, and -Wall all the time for building both fs/nfs and net/sunrpc, 
+> as this setting does catch valid bugs.  In that event, eliminating 
+> spurious compiler and sparse warnings will cut down on noise and make it 
+> easy to spot new problems as we are developing.
 
-OK, that makes sense.  I will try to clarify the sense of nfs(5) to 
-reflect this behavior.
+With which sparse options are you seeing complaints? I've been running
+the latest version of sparse from the git tree with -Wall on both x86_64
+and i686 without seeing any reports of a problem with that code.
 
---------------090907030903060200040608
-Content-Type: text/x-vcard; charset=utf-8;
- name="chuck.lever.vcf"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="chuck.lever.vcf"
+Anyhow, the policy should be that explicit casts are used only as a last
+resort in order to fix a bug. Since we're doing a comparison for
+equality on two objects that are guaranteed by the C spec to be the same
+size, I can't see why we should have a bug.
 
-begin:vcard
-fn:Chuck Lever
-n:Lever;Chuck
-org:Oracle Corporation;Corporate Architecture: Linux Projects Group
-adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
-title:Principal Member of Staff
-tel;work:+1 248 614 5091
-x-mozilla-html:FALSE
-url:http://oss.oracle.com/~cel
-version:2.1
-end:vcard
+Trond
 
-
---------------090907030903060200040608
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
---------------090907030903060200040608
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---------------090907030903060200040608--
