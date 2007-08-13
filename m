@@ -1,27 +1,23 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: [PATCH] 64 bit ino support for NFS client
-Date: Mon, 13 Aug 2007 10:46:48 -0400
-Message-ID: <46C06ED8.8030107@redhat.com>
-References: <46B37CDE.1070904@redhat.com>
-	<Pine.LNX.4.64.0708131511470.15451@maggie.lkpg.cendio.se>
-	<46C05C40.30707@redhat.com>
-	<Pine.LNX.4.64.0708131555330.15782@maggie.lkpg.cendio.se>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] [279/2many] MAINTAINERS - KERNEL NFSD
+Date: Mon, 13 Aug 2007 11:22:27 -0400
+Message-ID: <20070813152227.GD3122@fieldses.org>
+References: <46bffa95.aPjsc88tjaey80vh%joe@perches.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	NFS List <nfs@lists.sourceforge.net>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
-To: =?ISO-8859-1?Q?Peter_=C5strand?= <astrand@cendio.se>
+Content-Type: text/plain; charset="us-ascii"
+Cc: neilb@suse.de, nfs@lists.sourceforge.net
+To: joe@perches.com
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IKbCI-0003GL-FO
-	for nfs@lists.sourceforge.net; Mon, 13 Aug 2007 07:47:12 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IKbCM-0001TY-C7
-	for nfs@lists.sourceforge.net; Mon, 13 Aug 2007 07:47:14 -0700
-In-Reply-To: <Pine.LNX.4.64.0708131555330.15782@maggie.lkpg.cendio.se>
+	id 1IKbkR-0000II-TA
+	for nfs@lists.sourceforge.net; Mon, 13 Aug 2007 08:22:28 -0700
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IKbkU-0002np-TP
+	for nfs@lists.sourceforge.net; Mon, 13 Aug 2007 08:22:32 -0700
+In-Reply-To: <46bffa95.aPjsc88tjaey80vh%joe@perches.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,108 +30,22 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Peter =C5strand wrote:
-> On Mon, 13 Aug 2007, Peter Staubach wrote:
->
->   =
+Dropping any address that got cc'd all 500 patches in the vain hope of
+avoiding drowning them in 500+ threads.
 
->>> This patch seems to overlap with linux-2.6-nfs-64-bit-inode-support.pat=
-ch,
->>> which is included in RHEL5 kernels. Are these patches related, somehow?=
- The
->>> RHEL5 patch causes problems, as described at
->>> https://bugzilla.redhat.com/bugzilla/show_bug.cgi?id=3D241348. =
+On Sun, Aug 12, 2007 at 11:30:45PM -0700, joe@perches.com wrote:
+> +F:	fs/nfsd/
+> +F:	include/linux/nfsd/
 
->>>       =
+Also some stuff under include/linux/sunrpc/ and net/sunrpc/.  At a
+minimum, include/linux/sunrpc/svc* and net/sunrpc/svc*, though actually
+it might be better to err on the side of overlapping and add the whole
+of both directories to both the client and server entries.
 
->> They are related in that they modify similar areas in the NFS code.
->> However, this patch only modifies the NFS code and not the rest of
->> the file systems and areas in the kernel.
->>
->> My opinion on the referenced bugzilla is that things change and
->> it may be time to update applications and such to work in the
->> new world.  Applications which do not get modified, tend to work
->> less and less as time goes by because while the world changes
->> around them, they don't.
->>     =
+Some common sense may have to be applied at times to figure out what's
+relevant to whom.
 
->
-> Sure, but to prevent customer unhappiness, it's much better to update the =
-
-> applications in a certain distribution *before* changing the world around =
-
-> them. I'm arguing that a typical customer would rather being able to run =
-
-> OpenOffice than live in tomorrows world.
->
->   =
-
-
-Without issues to drive and even to identify the broken applications,
-they will never get fixed.
-
-> Another reason why I'm not convinced of this patch is that I haven't hear=
-d =
-
-> any arguments why this is the time to break compatibility with =
-
-> 32 bit non-LFS apps. Why not tomorrow, yesterday or 10 years ago? Why now=
-? =
-
->
->   =
-
-
-We have to start someplace, sometime.  In fact, we've already
-started.  It is unfortunate that this particular aspect is only
-now starting to become visible to application developers.  It
-has been interesting to file systems developers for quite some
-time.
-
->   =
-
->> I don't believe that this is the only cause which will keep those
->> applications from working completely.  With the addition of the
->> LFS thing, they will start to encounter more and more things that
->> they are not prepared to deal with.
->>     =
-
->
-> Can you give an example? =
-
->
->   =
-
-
-Files with large sizes?  We've had these for what, 10 to 12
-years, and people have learned to deal with them.
-
-> If we maintain "good-enough compatibility" with 32 bit non-LFS =
-
-> applications now (proposed solution 1 or 2 in comment #6), we would still =
-
-> have full 64 bit support for LFS and 64 bit applications, and as LFS and =
-
-> 64 bit applications are becoming more and more common, the problem would =
-
-> fade away.
-
-There are many ways to get "good-enough compatibility".  One way
-would be for customers with concerns or issues to only use file
-system implementations which will only generate 32 bit inos.  The
-majority of them still do.  Alternately, they could partition
-their resources into chunks which would not require more then
-32 bit inos for identification.  It is only the newer file systems,
-seeking to take advantage of better technologies, both hardware
-and software, which are required to use larger identifiers in order
-to identify their files.
-
-Supporting 64 bit inos in NFS does not mean that NFS will
-automatically start generating 64 bit inos.  NFS is still dependent
-upon the file system on the server.  The NFS will just pass through
-whatever that the file system on the server presents to it.
-
-       ps
+--b.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
