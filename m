@@ -1,27 +1,25 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 03/20] SUNRPC: Fix some signed v. unsigned
-	comparisons	in xprtsock.c
-Date: Mon, 13 Aug 2007 13:42:06 -0400
-Message-ID: <1187026926.6628.44.camel@heimdal.trondhjem.org>
-References: <20070806155636.31233.33750.stgit@manray.1015granger.net>
-	<1186843423.17941.18.camel@heimdal.trondhjem.org>
-	<46C06655.6030706@oracle.com>
+From: Peter Staubach <staubach@redhat.com>
+Subject: Re: [PATCH 18/20] SUNRPC: Add IPv6 address
+	support	to	net/sunrpc/xprtsock.c
+Date: Mon, 13 Aug 2007 13:48:41 -0400
+Message-ID: <46C09979.4040402@redhat.com>
+References: <20070806155753.31233.82962.stgit@manray.1015granger.net>	<1186844473.17941.23.camel@heimdal.trondhjem.org>
+	<46C06350.6080709@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net,
+	Trond Myklebust <trond.myklebust@fys.uio.no>
 To: chuck.lever@oracle.com
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IKdvf-00009R-W0
-	for nfs@lists.sourceforge.net; Mon, 13 Aug 2007 10:42:12 -0700
-Received: from pat.uio.no ([129.240.10.15]
-	ident=[U2FsdGVkX1/35X/NK2P9GC0NhkByrxdy6OdyO4/baNE=])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IKdvh-0002lD-Ef
-	for nfs@lists.sourceforge.net; Mon, 13 Aug 2007 10:42:16 -0700
-In-Reply-To: <46C06655.6030706@oracle.com>
+	id 1IKe2i-0000us-Ey
+	for nfs@lists.sourceforge.net; Mon, 13 Aug 2007 10:49:31 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IKe2m-0005i2-3Z
+	for nfs@lists.sourceforge.net; Mon, 13 Aug 2007 10:49:32 -0700
+In-Reply-To: <46C06350.6080709@oracle.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,44 +32,91 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Mon, 2007-08-13 at 10:10 -0400, Chuck Lever wrote:
+Chuck Lever wrote:
+>
+>
 > Trond Myklebust wrote:
-> > On Mon, 2007-08-06 at 11:56 -0400, Chuck Lever wrote:
-> >> Currently these are not harmful because the range of "len" is less than the
-> >> size of a page.
-> > 
-> > NACK. It is always safe to test an unsigned quantity against a signed
-> > quantity for equality, _provided_ that the two quantities are the same
-> > size. Since we're comparing an unsigned int to an int, that is clearly
-> > the case here.
-> > 
-> > The explicit cast is not only unnecessary, but it is actually bad, since
-> > it may obscure any future comparison errors should we ever for some
-> > reason decide to change the size of err.
-> 
-> As an aside, the purpose of the patches fixing these casts is not just 
-> to correct run-time bugs, but also to eliminate compiler and sparse 
-> warnings, which in some cases are simply extraneous noise due to 
-> compiler pickiness, but can sometimes be nasty bugs (as we found out in 
-> fs/nfs/direct.c, recently).
-> 
-> Eventually I think we should use sparse as part of a check-in test 
-> suite, and -Wall all the time for building both fs/nfs and net/sunrpc, 
-> as this setting does catch valid bugs.  In that event, eliminating 
-> spurious compiler and sparse warnings will cut down on noise and make it 
-> easy to spot new problems as we are developing.
+>> On Mon, 2007-08-06 at 11:57 -0400, Chuck Lever wrote:
+>>> Finalize support for setting up RPC client transports to remote RPC
+>>> services addressed via IPv6.
+>>>
+>>> Based on work done by Gilles Quillard at Bull Open Source.
+>>>
+>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>>> Cc: Aurelien Charbon <aurelien.charbon@ext.bull.net>
+>>> ---
+>>>
+>>>  net/sunrpc/xprtsock.c |   57 
+>>> ++++++++++++++++++++++++++++++++++++++++---------
+>>>  1 files changed, 47 insertions(+), 10 deletions(-)
+>>>
+>>> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+>>> index 391b88d..fb55c1c 100644
+>>> --- a/net/sunrpc/xprtsock.c
+>>> +++ b/net/sunrpc/xprtsock.c
+>>> @@ -13,6 +13,9 @@
+>>>   *  (C) 1999 Trond Myklebust <trond.myklebust@fys.uio.no>
+>>>   *
+>>>   * IP socket transport implementation, (C) 2005 Chuck Lever 
+>>> <cel@netapp.com>
+>>> + *
+>>> + * IPv6 support contributed by Gilles Quillard, Bull Open Source, 
+>>> 2005.
+>>> + *   <gilles.quillard@bull.net>
+>>>   */
+>>>  
+>>>  #include <linux/types.h>
+>>> @@ -1790,6 +1793,7 @@ static struct rpc_xprt *xs_setup_xprt(struct 
+>>> rpc_xprtsock_create *args, unsigned
+>>>   */
+>>>  struct rpc_xprt *xs_setup_udp(struct rpc_xprtsock_create *args)
+>>>  {
+>>> +    struct sockaddr *addr = args->dstaddr;
+>>>      struct rpc_xprt *xprt;
+>>>      struct sock_xprt *transport;
+>>>  
+>>> @@ -1798,15 +1802,11 @@ struct rpc_xprt *xs_setup_udp(struct 
+>>> rpc_xprtsock_create *args)
+>>>          return xprt;
+>>>      transport = container_of(xprt, struct sock_xprt, xprt);
+>>>  
+>>> -    if (ntohs(((struct sockaddr_in *)args->dstaddr)->sin_port) != 0)
+>>> -        xprt_set_bound(xprt);
+>>> -
+>>>      xprt->prot = IPPROTO_UDP;
+>>>      xprt->tsh_size = 0;
+>>>      /* XXX: header size can vary due to auth type, IPv6, etc. */
+>>>      xprt->max_payload = (1U << 16) - (MAX_HEADER << 3);
+>>>  
+>>> -    INIT_DELAYED_WORK(&transport->connect_worker, 
+>>> xs_udp_connect_worker4);
+>>>      xprt->bind_timeout = XS_BIND_TO;
+>>>      xprt->connect_timeout = XS_UDP_CONN_TO;
+>>>      xprt->reestablish_timeout = XS_UDP_REEST_TO;
+>>> @@ -1819,7 +1819,28 @@ struct rpc_xprt *xs_setup_udp(struct 
+>>> rpc_xprtsock_create *args)
+>>>      else
+>>>          xprt_set_timeout(&xprt->timeout, 5, 5 * HZ);
+>>>  
+>>> -    xs_format_ipv4_peer_addresses(xprt);
+>>> +    switch (addr->sa_family) {
+>>> +    case AF_INET:
+>>> +        if (ntohs(((struct sockaddr_in *)addr)->sin_port) != 0)
+>>
+>> Hmm.... I'm converting these to compare sin_port to htons(0). There is
+>> no need to byte-swap the variable every time we run this code if we can
+>> just have the compiler byte-swap the constant.
+>
+> Not a hot path... but yes, that is true.  Up to you if you want to 
+> change this as described, but my feeling is that would be a little 
+> harder to read.  Your call, of course. 
 
-With which sparse options are you seeing complaints? I've been running
-the latest version of sparse from the git tree with -Wall on both x86_64
-and i686 without seeing any reports of a problem with that code.
+Just out of curiosity, do we really need to byte swap the
+value, 0, anyway?
 
-Anyhow, the policy should be that explicit casts are used only as a last
-resort in order to fix a bug. Since we're doing a comparison for
-equality on two objects that are guaranteed by the C spec to be the same
-size, I can't see why we should have a bug.
+    Thanx...
 
-Trond
-
+       ps
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
