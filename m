@@ -1,26 +1,26 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 03/20] SUNRPC: Fix some signed v. unsigned
- comparisons in xprtsock.c
-Date: Mon, 13 Aug 2007 10:10:29 -0400
-Message-ID: <46C06655.6030706@oracle.com>
-References: <20070806155636.31233.33750.stgit@manray.1015granger.net>
-	<1186843423.17941.18.camel@heimdal.trondhjem.org>
+Subject: Re: [PATCH 18/20] SUNRPC: Add IPv6 address support
+	to	net/sunrpc/xprtsock.c
+Date: Mon, 13 Aug 2007 09:57:36 -0400
+Message-ID: <46C06350.6080709@oracle.com>
+References: <20070806155753.31233.82962.stgit@manray.1015granger.net>
+	<1186844473.17941.23.camel@heimdal.trondhjem.org>
 Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------090909050205060707080201"
+Content-Type: multipart/mixed; boundary="------------010007040204000001080205"
 Cc: nfs@lists.sourceforge.net
 To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IKdmY-0007Z1-Eu
-	for nfs@lists.sourceforge.net; Mon, 13 Aug 2007 10:32:46 -0700
+	id 1IKdmr-0007dr-7t
+	for nfs@lists.sourceforge.net; Mon, 13 Aug 2007 10:33:05 -0700
 Received: from agminet01.oracle.com ([141.146.126.228])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IKdmb-0007wa-Cx
-	for nfs@lists.sourceforge.net; Mon, 13 Aug 2007 10:32:50 -0700
-In-Reply-To: <1186843423.17941.18.camel@heimdal.trondhjem.org>
+	(Exim 4.44) id 1IKdmv-0008A5-53
+	for nfs@lists.sourceforge.net; Mon, 13 Aug 2007 10:33:09 -0700
+In-Reply-To: <1186844473.17941.23.camel@heimdal.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,37 +34,82 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 This is a multi-part message in MIME format.
---------------090909050205060707080201
+--------------010007040204000001080205
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
 
+
+
 Trond Myklebust wrote:
-> On Mon, 2007-08-06 at 11:56 -0400, Chuck Lever wrote:
->> Currently these are not harmful because the range of "len" is less than the
->> size of a page.
+> On Mon, 2007-08-06 at 11:57 -0400, Chuck Lever wrote:
+>> Finalize support for setting up RPC client transports to remote RPC
+>> services addressed via IPv6.
+>>
+>> Based on work done by Gilles Quillard at Bull Open Source.
+>>
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> Cc: Aurelien Charbon <aurelien.charbon@ext.bull.net>
+>> ---
+>>
+>>  net/sunrpc/xprtsock.c |   57 ++++++++++++++++++++++++++++++++++++++++---------
+>>  1 files changed, 47 insertions(+), 10 deletions(-)
+>>
+>> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+>> index 391b88d..fb55c1c 100644
+>> --- a/net/sunrpc/xprtsock.c
+>> +++ b/net/sunrpc/xprtsock.c
+>> @@ -13,6 +13,9 @@
+>>   *  (C) 1999 Trond Myklebust <trond.myklebust@fys.uio.no>
+>>   *
+>>   * IP socket transport implementation, (C) 2005 Chuck Lever <cel@netapp.com>
+>> + *
+>> + * IPv6 support contributed by Gilles Quillard, Bull Open Source, 2005.
+>> + *   <gilles.quillard@bull.net>
+>>   */
+>>  
+>>  #include <linux/types.h>
+>> @@ -1790,6 +1793,7 @@ static struct rpc_xprt *xs_setup_xprt(struct rpc_xprtsock_create *args, unsigned
+>>   */
+>>  struct rpc_xprt *xs_setup_udp(struct rpc_xprtsock_create *args)
+>>  {
+>> +	struct sockaddr *addr = args->dstaddr;
+>>  	struct rpc_xprt *xprt;
+>>  	struct sock_xprt *transport;
+>>  
+>> @@ -1798,15 +1802,11 @@ struct rpc_xprt *xs_setup_udp(struct rpc_xprtsock_create *args)
+>>  		return xprt;
+>>  	transport = container_of(xprt, struct sock_xprt, xprt);
+>>  
+>> -	if (ntohs(((struct sockaddr_in *)args->dstaddr)->sin_port) != 0)
+>> -		xprt_set_bound(xprt);
+>> -
+>>  	xprt->prot = IPPROTO_UDP;
+>>  	xprt->tsh_size = 0;
+>>  	/* XXX: header size can vary due to auth type, IPv6, etc. */
+>>  	xprt->max_payload = (1U << 16) - (MAX_HEADER << 3);
+>>  
+>> -	INIT_DELAYED_WORK(&transport->connect_worker, xs_udp_connect_worker4);
+>>  	xprt->bind_timeout = XS_BIND_TO;
+>>  	xprt->connect_timeout = XS_UDP_CONN_TO;
+>>  	xprt->reestablish_timeout = XS_UDP_REEST_TO;
+>> @@ -1819,7 +1819,28 @@ struct rpc_xprt *xs_setup_udp(struct rpc_xprtsock_create *args)
+>>  	else
+>>  		xprt_set_timeout(&xprt->timeout, 5, 5 * HZ);
+>>  
+>> -	xs_format_ipv4_peer_addresses(xprt);
+>> +	switch (addr->sa_family) {
+>> +	case AF_INET:
+>> +		if (ntohs(((struct sockaddr_in *)addr)->sin_port) != 0)
 > 
-> NACK. It is always safe to test an unsigned quantity against a signed
-> quantity for equality, _provided_ that the two quantities are the same
-> size. Since we're comparing an unsigned int to an int, that is clearly
-> the case here.
-> 
-> The explicit cast is not only unnecessary, but it is actually bad, since
-> it may obscure any future comparison errors should we ever for some
-> reason decide to change the size of err.
+> Hmm.... I'm converting these to compare sin_port to htons(0). There is
+> no need to byte-swap the variable every time we run this code if we can
+> just have the compiler byte-swap the constant.
 
-As an aside, the purpose of the patches fixing these casts is not just 
-to correct run-time bugs, but also to eliminate compiler and sparse 
-warnings, which in some cases are simply extraneous noise due to 
-compiler pickiness, but can sometimes be nasty bugs (as we found out in 
-fs/nfs/direct.c, recently).
+Not a hot path... but yes, that is true.  Up to you if you want to 
+change this as described, but my feeling is that would be a little 
+harder to read.  Your call, of course.
 
-Eventually I think we should use sparse as part of a check-in test 
-suite, and -Wall all the time for building both fs/nfs and net/sunrpc, 
-as this setting does catch valid bugs.  In that event, eliminating 
-spurious compiler and sparse warnings will cut down on noise and make it 
-easy to spot new problems as we are developing.
-
---------------090909050205060707080201
+--------------010007040204000001080205
 Content-Type: text/x-vcard; charset=utf-8;
  name="chuck.lever.vcf"
 Content-Transfer-Encoding: 7bit
@@ -84,7 +129,7 @@ version:2.1
 end:vcard
 
 
---------------090909050205060707080201
+--------------010007040204000001080205
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -95,7 +140,7 @@ This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
---------------090909050205060707080201
+--------------010007040204000001080205
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -105,4 +150,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---------------090909050205060707080201--
+--------------010007040204000001080205--
