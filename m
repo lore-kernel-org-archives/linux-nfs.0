@@ -1,21 +1,21 @@
-From: "david m. richter" <richterd@citi.umich.edu>
-Subject: [PATCH 5/5] nfsstat: Add -S/--since flag.
-Date: Mon, 13 Aug 2007 15:16:14 -0400 (EDT)
-Message-ID: <Pine.BSO.4.64.0708131509010.6965@citi.umich.edu>
+From: Ina Flanagan <wjlorbk@cabinfeverbb.com>
+Subject: Re: Nfs
+Date: Mon, 13 Aug 2007 09:13:24 -0500
+Message-ID: <306367568652.047580197495@cabinfeverbb.com>
+Reply-To: Ina Flanagan <wjlorbk@cabinfeverbb.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Neil Brown <neilb@suse.de>
+Content-Type: multipart/mixed; boundary="===============1439789490=="
+To: Nfs <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IKfOf-000243-Q4
-	for nfs@lists.sourceforge.net; Mon, 13 Aug 2007 12:16:14 -0700
-Received: from citi.umich.edu ([141.211.133.111])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IKfOh-0001SA-EB
-	for nfs@lists.sourceforge.net; Mon, 13 Aug 2007 12:16:18 -0700
+	id 1IKg7g-0007Et-3N
+	for nfs@lists.sourceforge.net; Mon, 13 Aug 2007 13:02:44 -0700
+Received: from cpe-76-180-35-133.buffalo.res.rr.com ([76.180.35.133]
+	helo=cabinfeverbb.com) by mail.sourceforge.net with smtp (Exim 4.44)
+	id 1IKg7a-0008WP-Nj
+	for nfs@lists.sourceforge.net; Mon, 13 Aug 2007 13:02:48 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,291 +28,328 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-	Read statistics from the file given with -S/--since and display 
-the difference between those and the current statistics.  Valid stat files 
-are those in the form of /proc/net/rpc/nfs, /proc/net/rpc/nfsd, or any 
-"pretty" output from nfsstat itself.  Statistics that are missing from a 
-"pretty" stat file are treated as zeroes.
+--===============1439789490==
+Content-Type: multipart/related;
+  boundary="------------F5E58B0D.97D908D1"
 
-	Similar to Neil Brown's suggestion, one might use this in 
-conjunction with watch(1) like this:
+--------------F5E58B0D.97D908D1
+Content-Type: text/html;
+  charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 
-$ watch "nfsstat --since /tmp/stats; nfsstat >/tmp/stats"
+<html>
+<body bgcolor=3D"#ffffff" text=3D"#000000">
+<img src=3D"cid:311D4100=2ECD38CC2B">
+<br>
+It horrifies me that ethics is only an optional extra at Harvard Busines=
+s School=2E
+<br>
+Enthusiasm is very good lubrication for the mind=2E
+<br>
+I remember committing myself to make it in the garbage business, ''whate=
+ver it takes!''
+<br>
+Man cannot discover new oceans unless he has the courage to lose sight o=
+f the shore=2E
+<br>
+Love is what happens to a man and woman who don't know each other=2E
+<br>
+Have friends=2E 'Tis a second existence=2E
+<br>
+The harder you fall, the higher you bounce=2E
+<br>
+All happy families resemble one another every unhappy family is unhappy =
+in its own way=2E
+<br>
+You will find that silence or very gentle words are the most exquisite r=
+evenge for insult=2E
+<br>
+We seldom lose our faith by a blow out, usually is just a slow leak=2E
+<br>
+Our own epoch is determining, day by day, its own style=2E Our eyes, unh=
+appily, are unable yet to discern it=2E
+<br>
+The world may be full of fourth-rate writers but it's also full of fourt=
+h-rate readers=2E
+<br>
+A man's success in business today turns upon his power of getting people=
+ to believe he has something that they want=2E
+</body>
+</html>
 
 
-Signed-off-by: David M. Richter <richterd@citi.umich.edu>
+--------------F5E58B0D.97D908D1
+Content-Type: image/png;
+  name="lotter.png"
+Content-Transfer-Encoding: base64
+Content-ID: <311D4100.CD38CC2B>
 
----
- utils/nfsstat/nfsstat.c |  152 +++++++++++++++++++++++++++++++++++++++++------
- 1 files changed, 134 insertions(+), 18 deletions(-)
+iVBORw0KGgoAAAANSUhEUgAAAXwAAAG4CAMAAABxQKxaAAAChVBMVEX///8AAADrr7C5R0wE
+BPwmYnIiQD1rhHadpZ1PXU3Q0c+7vLno4+HFgYD8/PwWFhYdHR0VFRUWFhYHBwcKCgoVFRUY
+GBgTExMkJCQTExMHBwcMDAwNDQ0pKSkBAQEbGxsHBwcPDw8eHh4YGBgVFRUwMDATExMuLi4t
+LS0BAQEpKSkTExMDAwMsLCwSEhIDAwMeHh4NDQ0MDAwoKCgSEhIYGBgbGxsLCwspZXUFBQUe
+Hh4qKiopKSkSEhIMDAwaGhoeHh4ICAi8xLwXFxcpKSksLCwfHx8DAwMKCgr6+/kWFhYBAQEY
+GBgxbX0UFBQfHx8ICAgMDAwhISEtLS0WFhYpKSkPDw8vLy/J0ckmJiYXFxcrKysUFBQQEBAH
+BwcbGxseHh4FBQUaGhoiIiIYGBgeHh4JCQlkcmIHBwctLS0kJCQFBQUPDw8oKCgKCgoiIiIY
+GBgREREGBgYRERErKysuLi7s7eshISEBAQEDAwMmJiYUFBQVFRUrKysSEhIZGRkXFxckJCQB
+AQEqKiopKSkMDAwWFhYgICAoKCgeHh4NDQ0DAwMrKyspKSkhISEqKiopKSkfHx8hISErKysF
+BQUAAAAKCgomJiYnJycEBAQCAgIEBAQKCgpzgXEICAjS09ECAgIrSUYTExMYGBhEYl8aGhog
+ICAqKiomJiYhISEhISEfHx8TExMgICAMDAwICAhXk6MSEhINDQ1MiJgpKSkjIyMKCgpWZFQc
+HBwZGRkFBQUfHx9HZWIjIyMZGRkLCwsICAFlc2Plc3gGBv4YGBgrKysBAQHi4+AnJyckJCTG
+VFkoKCgxMTEEBAQODg4fHx8XFxcEBAQQEBAxMTEqKioHBwcCAgKDQJSrAAAgAElEQVR4nO19
+BYPrMJCeHT8zlBmvzMzMzMzMzNxema535d6VmZmZmbm/pxqSRuDESbSbTezZ95LYlmT503g0
+Go1GRcH0+YqDDjrooIMOOui56K8+ugIHHXTQM9Bve3QFDjroqagsy7UrZzL9lAtl5rhRiZQu
+obSUzHXlwcNotQ7n6nah3teBnz6fgDcJfpnOpY+KCwcPI1OBlTpkBv/KG2mYEiWoH6WfTX3R
+tfLSwcPom39Q8D0mT5TgvQOJohhcdXL94Fr6S7dkSlGJT2SZzH2r9zKSlTqlZkz1utPX3735
+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
 
-diff --git a/utils/nfsstat/nfsstat.c b/utils/nfsstat/nfsstat.c
-index c6f2ace..828119b 100644
---- a/utils/nfsstat/nfsstat.c
-+++ b/utils/nfsstat/nfsstat.c
-@@ -171,7 +171,8 @@ static void		print_numbers(const char *,
- 					unsigned int);
- static void		print_callstats(const char *, const char **,
- 					unsigned int *, unsigned int);
--static int		parse_statfile(const char *, struct statinfo *);
-+static int		parse_raw_statfile(const char *, struct statinfo *);
-+static int 		parse_pretty_statfile(const char *, struct statinfo *);
- 
- static statinfo		*get_stat_info(const char *, struct statinfo *);
- 
-@@ -222,7 +223,8 @@ void usage(char *name)
-   -v, --verbose, --all\tSame as '-o all'\n\
-   -r, --rpc\t\tShow RPC statistics\n\
-   -n, --nfs\t\tShow NFS statistics\n\
--  -Z, --sleep\tSaves stats, pauses, diffs current and saved\n\
-+  -Z, --sleep\t\tSaves stats, pauses, diffs current and saved\n\
-+  -S, --since file\tShows difference between current stats and those in 'file'\n\
-   --version\t\tShow program version\n\
-   --help\t\tWhat you just did\n\
- \n", name);
-@@ -244,6 +246,7 @@ static struct option longopts[] =
- 	{ "help", 0, 0, '\1' },
- 	{ "version", 0, 0, '\2' },
- 	{ "sleep", 0, 0, 'Z' },
-+	{ "since", 1, 0, 'S' },
- 	{ NULL, 0, 0, 0 }
- };
- 
-@@ -254,9 +257,12 @@ main(int argc, char **argv)
- 			opt_srv = 0,
- 			opt_clt = 0,
- 			opt_prt = 0,
--			opt_sleep = 0;
-+			opt_sleep = 0,
-+			opt_since = 0;
- 	int		c;
--	char           *progname;
-+	char           *progname,
-+		       *serverfile = NFSSRVSTAT,
-+		       *clientfile = NFSCLTSTAT;
- 
- 	struct statinfo *serverinfo = srvinfo,
- 			*serverinfo_tmp = srvinfo_old,
-@@ -273,7 +279,7 @@ main(int argc, char **argv)
- 	else
- 		progname = argv[0];
- 
--	while ((c = getopt_long(argc, argv, "234acmno:Zvrsz\1\2", longopts, NULL)) != EOF) {
-+	while ((c = getopt_long(argc, argv, "234acmno:ZS:vrsz\1\2", longopts, NULL)) != EOF) {
- 		switch (c) {
- 		case 'a':
- 			fprintf(stderr, "nfsstat: nfs acls are not yet supported.\n");
-@@ -306,6 +312,11 @@ main(int argc, char **argv)
- 		case 'Z':
- 			opt_sleep = 1;
- 			break;
-+		case 'S':
-+			opt_since = 1;
-+			serverfile = optarg;
-+			clientfile = optarg;
-+			break;
- 		case '2':
- 		case '3':
- 		case '4':
-@@ -361,7 +372,7 @@ main(int argc, char **argv)
- 			"server.\n");
- 	}
- 
--	if (opt_sleep) {
-+	if (opt_since || opt_sleep) {
- 		serverinfo = srvinfo_old;
- 		serverinfo_tmp = srvinfo;
- 		clientinfo = cltinfo_old;
-@@ -369,11 +380,10 @@ main(int argc, char **argv)
- 	}
- 
- 	if (opt_srv)
--		get_stats(NFSSRVSTAT, serverinfo, &opt_srv, opt_clt, 1);
-+		get_stats(serverfile, serverinfo, &opt_srv, opt_clt, 1);
- 	if (opt_clt)
--		get_stats(NFSCLTSTAT, clientinfo, &opt_clt, opt_srv, 0);
-+		get_stats(clientfile, clientinfo, &opt_clt, opt_srv, 0);
- 
--	/* save stat snapshots; wait for signal; then diff current and saved stats */
- 	if (opt_sleep) {
- 		starttime = time(NULL);
- 		printf("Collecting statistics; press CTRL-C to view results from interval (i.e., from pause to CTRL-C).\n");
-@@ -382,6 +392,9 @@ main(int argc, char **argv)
- 			return 1;
- 		}
- 		pause();
-+	}
-+
-+	if (opt_since || opt_sleep) {
- 		if (opt_srv) {
- 			get_stats(NFSSRVSTAT, serverinfo_tmp, &opt_srv, opt_clt, 1);
- 			diff_stats(serverinfo_tmp, serverinfo, 1);
-@@ -556,9 +569,9 @@ print_callstats(const char *hdr, const c
- 	printf("\n");
- }
- 
--
-+/* returns 0 on success, 1 otherwise */
- static int
--parse_statfile(const char *name, struct statinfo *statp)
-+parse_raw_statfile(const char *name, struct statinfo *statp)
- {
- 	char	buffer[4096], *next;
- 	FILE	*fp;
-@@ -568,7 +581,7 @@ parse_statfile(const char *name, struct
- 	 */
- 	if ((fp = fopen(name, "r")) == NULL) {
- 		// fprintf(stderr, "Warning: %s: %m\n", name);
--		return 0;
-+		return 1;
- 	}
- 
- 	while (fgets(buffer, sizeof(buffer), fp) != NULL) {
-@@ -598,7 +611,79 @@ parse_statfile(const char *name, struct
- 	}
- 
- 	fclose(fp);
--	return 1;
-+	return 0;
-+}
-+
-+/* returns 0 on success, 1 otherwise */
-+static int
-+parse_pretty_statfile(const char *filename, struct statinfo *info)
-+{
-+	int numvals, curindex, numconsumed, n, sum, err = 1;
-+	char buf[4096], *bufp, *fmt, is_proc;
-+	FILE *fp = NULL;
-+	struct statinfo *ip;
-+
-+	if ((fp = fopen(filename, "r")) == NULL)
-+		//err(2, "Unable to open statfile '%s'.\n", filename);
-+		goto out;
-+
-+	while (fgets(buf, sizeof(buf), fp) != NULL) {
-+		for (ip = info; ip->tag; ip++) {
-+			if (strcmp(buf, ip->label))
-+				continue;
-+
-+			sum = 0;
-+			numvals = ip->nrvals - 1;
-+			is_proc = strncmp("proc", ip->tag, 4) ? 0 : 1;
-+			if (is_proc) {
-+				fmt = " %u %*u%% %n";
-+				curindex = 1;
-+				ip->valptr[0] = 0;
-+			} else {
-+				fmt = " %u %n";
-+				curindex = 0;
-+			}
-+more_stats:
-+			/* get (and skip) header */
-+			if (fgets(buf, sizeof(buf), fp) == NULL) {
-+				fprintf(stderr, "Failed to locate header after "
-+						"label for '%s' in %s.\n",
-+						ip->tag, filename);
-+				goto out;
-+			}
-+			/* no header -- done with this "tag" */
-+			if (*buf == '\n') {
-+				ip->valptr[numvals] = sum;
-+				break;
-+			}
-+			/* get stats */
-+			if (fgets(buf, sizeof(buf), fp) == NULL) {
-+				fprintf(stderr, "Failed to locate stats after "
-+						"header for '%s' in %s.\n",
-+						ip->tag, filename);
-+				goto out;
-+			}
-+			bufp = buf;
-+			for (; curindex < numvals; curindex++) {
-+				n = sscanf(bufp, fmt, &ip->valptr[curindex],
-+						&numconsumed);
-+				if (n != 1)
-+					break;
-+				if (is_proc) {
-+					ip->valptr[0]++;
-+					sum++;
-+				}
-+				sum += ip->valptr[curindex];
-+				bufp += numconsumed;
-+			}
-+			goto more_stats;
-+		}
-+	}
-+	err = 0;
-+out:
-+	if (fp)
-+		fclose(fp);
-+	return err;
- }
- 
- static int
-@@ -653,11 +738,42 @@ static void
- get_stats(const char *file, struct statinfo *info, int *opt, int other_opt,
- 		int is_srv)
- {
--	const char *label = is_srv ? "Server" : "Client";
--
--	if (!parse_statfile(file, info)) {
-+	FILE *fp;
-+	char buf[10];
-+	int err = 1;
-+	char *label = is_srv ? "Server" : "Client";
-+
-+	/* try to guess what type of stat file we're dealing with */
-+	if ((fp = fopen(file, "r")) == NULL)
-+		goto out;
-+	if (fgets(buf, 10, fp) == NULL)
-+		goto out;
-+	if (!strncmp(buf, "net ", 4)) {
-+		/* looks like raw client stats */
-+		if (is_srv) {
-+			fprintf(stderr, "Warning: no server info present in "
-+					"raw client stats file.\n");
-+			*opt = 0;
-+		} else
-+			err = parse_raw_statfile(file, info);
-+	} else if (!strncmp(buf, "rc ", 3)) {
-+		/* looks like raw server stats */
-+		if (!is_srv) {
-+			fprintf(stderr, "Warning: no client info present in "
-+					"raw server stats file.\n");
-+			*opt = 0;
-+		} else
-+			err = parse_raw_statfile(file, info);
-+	} else
-+		/* looks like pretty client and server stats */
-+		err = parse_pretty_statfile(file, info);
-+out:
-+	if (fp)
-+		fclose(fp);
-+	if (err) {
- 		if (!other_opt) {
--			fprintf(stderr, "Warning: No %s Stats (%s: %m). \n", label, file);
-+			fprintf(stderr, "Error: No %s Stats (%s: %m). \n",
-+					label, file);
- 			exit(2);
- 		}
- 		*opt = 0;
-@@ -711,7 +827,7 @@ diff_stats(struct statinfo *new, struct
- 		 * diff -- i.e., it should always be included in the
- 		 * total.
- 		 */
--		if (!strncmp("proc", new[i].tag, 4))
-+		if (!strncmp("proc", new[i].tag, 4) && old[i].valptr[0])
- 			new[i].valptr[new[i].nrvals - 1] += new[i].valptr[0];
- 	}
- }
--- 
-1.4.4
+--------------F5E58B0D.97D908D1--
+
+
+
+--===============1439789490==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
+--===============1439789490==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============1439789490==--
