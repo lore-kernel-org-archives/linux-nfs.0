@@ -1,26 +1,26 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 18/20] SUNRPC: Add IPv6 address support
-	to	net/sunrpc/xprtsock.c
-Date: Mon, 13 Aug 2007 09:57:36 -0400
-Message-ID: <46C06350.6080709@oracle.com>
-References: <20070806155753.31233.82962.stgit@manray.1015granger.net>
-	<1186844473.17941.23.camel@heimdal.trondhjem.org>
+Subject: Re: inconsistencies in nfs(5)
+Date: Mon, 13 Aug 2007 10:18:37 -0400
+Message-ID: <46C0683D.9090906@oracle.com>
+References: <46BB2DF2.1050501@oracle.com>
+	<169a.46bb3b18.7157f@altium.nl>	<169a.46bb3b18.7157f@altium.nl>
+	<46BB405B.5050206@oracle.com> <5e6a.46bc1f6e.593b@altium.nl>
 Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------010007040204000001080205"
+Content-Type: multipart/mixed; boundary="------------090907030903060200040608"
 Cc: nfs@lists.sourceforge.net
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Dick Streefland <dick.streefland@altium.nl>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IKdmr-0007dr-7t
-	for nfs@lists.sourceforge.net; Mon, 13 Aug 2007 10:33:05 -0700
+	id 1IKdoB-0007mW-FG
+	for nfs@lists.sourceforge.net; Mon, 13 Aug 2007 10:34:27 -0700
 Received: from agminet01.oracle.com ([141.146.126.228])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IKdmv-0008A5-53
-	for nfs@lists.sourceforge.net; Mon, 13 Aug 2007 10:33:09 -0700
-In-Reply-To: <1186844473.17941.23.camel@heimdal.trondhjem.org>
+	(Exim 4.44) id 1IKdoE-0007w8-Dj
+	for nfs@lists.sourceforge.net; Mon, 13 Aug 2007 10:34:31 -0700
+In-Reply-To: <5e6a.46bc1f6e.593b@altium.nl>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,82 +34,33 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 This is a multi-part message in MIME format.
---------------010007040204000001080205
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+--------------090907030903060200040608
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Content-Transfer-Encoding: 7bit
 
-
-
-Trond Myklebust wrote:
-> On Mon, 2007-08-06 at 11:57 -0400, Chuck Lever wrote:
->> Finalize support for setting up RPC client transports to remote RPC
->> services addressed via IPv6.
->>
->> Based on work done by Gilles Quillard at Bull Open Source.
->>
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> Cc: Aurelien Charbon <aurelien.charbon@ext.bull.net>
->> ---
->>
->>  net/sunrpc/xprtsock.c |   57 ++++++++++++++++++++++++++++++++++++++++---------
->>  1 files changed, 47 insertions(+), 10 deletions(-)
->>
->> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
->> index 391b88d..fb55c1c 100644
->> --- a/net/sunrpc/xprtsock.c
->> +++ b/net/sunrpc/xprtsock.c
->> @@ -13,6 +13,9 @@
->>   *  (C) 1999 Trond Myklebust <trond.myklebust@fys.uio.no>
->>   *
->>   * IP socket transport implementation, (C) 2005 Chuck Lever <cel@netapp.com>
->> + *
->> + * IPv6 support contributed by Gilles Quillard, Bull Open Source, 2005.
->> + *   <gilles.quillard@bull.net>
->>   */
->>  
->>  #include <linux/types.h>
->> @@ -1790,6 +1793,7 @@ static struct rpc_xprt *xs_setup_xprt(struct rpc_xprtsock_create *args, unsigned
->>   */
->>  struct rpc_xprt *xs_setup_udp(struct rpc_xprtsock_create *args)
->>  {
->> +	struct sockaddr *addr = args->dstaddr;
->>  	struct rpc_xprt *xprt;
->>  	struct sock_xprt *transport;
->>  
->> @@ -1798,15 +1802,11 @@ struct rpc_xprt *xs_setup_udp(struct rpc_xprtsock_create *args)
->>  		return xprt;
->>  	transport = container_of(xprt, struct sock_xprt, xprt);
->>  
->> -	if (ntohs(((struct sockaddr_in *)args->dstaddr)->sin_port) != 0)
->> -		xprt_set_bound(xprt);
->> -
->>  	xprt->prot = IPPROTO_UDP;
->>  	xprt->tsh_size = 0;
->>  	/* XXX: header size can vary due to auth type, IPv6, etc. */
->>  	xprt->max_payload = (1U << 16) - (MAX_HEADER << 3);
->>  
->> -	INIT_DELAYED_WORK(&transport->connect_worker, xs_udp_connect_worker4);
->>  	xprt->bind_timeout = XS_BIND_TO;
->>  	xprt->connect_timeout = XS_UDP_CONN_TO;
->>  	xprt->reestablish_timeout = XS_UDP_REEST_TO;
->> @@ -1819,7 +1819,28 @@ struct rpc_xprt *xs_setup_udp(struct rpc_xprtsock_create *args)
->>  	else
->>  		xprt_set_timeout(&xprt->timeout, 5, 5 * HZ);
->>  
->> -	xs_format_ipv4_peer_addresses(xprt);
->> +	switch (addr->sa_family) {
->> +	case AF_INET:
->> +		if (ntohs(((struct sockaddr_in *)addr)->sin_port) != 0)
+rnews@tasking.nl wrote:
+> Chuck Lever <chuck.lever@oracle.com> wrote:
+> | This is still in utils/mount/nfsmount.c.
 > 
-> Hmm.... I'm converting these to compare sin_port to htons(0). There is
-> no need to byte-swap the variable every time we run this code if we can
-> just have the compiler byte-swap the constant.
+> It is not in util-linux-ng-2.13-rc2 anymore, which is in Debian sid.
+> 
+> | I'm not sure how this can affect other mount commands running 
+> | concurrently on the same client.  The man page implies that if one mount 
+> | command has backgrounded against a server, subsequent mount commands 
+> | against the same server will just go right into the background.  But 
+> | prev_bg_host is unique in each instance of the mount command.
+> | 
+> | Can you help me understand what you intended?  Do you have a test case?
+> 
+> Phew, I wrote that 10 years ago! But I think that when you do a
+> "mount -atnfs", multiple mounts will be handled by the same mount
+> instance. The code helps when there are multiple NFS mounts from the
+> same host in fstab, and the server is down when you boot the client.
 
-Not a hot path... but yes, that is true.  Up to you if you want to 
-change this as described, but my feeling is that would be a little 
-harder to read.  Your call, of course.
+OK, that makes sense.  I will try to clarify the sense of nfs(5) to 
+reflect this behavior.
 
---------------010007040204000001080205
+--------------090907030903060200040608
 Content-Type: text/x-vcard; charset=utf-8;
  name="chuck.lever.vcf"
 Content-Transfer-Encoding: 7bit
@@ -129,7 +80,7 @@ version:2.1
 end:vcard
 
 
---------------010007040204000001080205
+--------------090907030903060200040608
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -140,7 +91,7 @@ This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
---------------010007040204000001080205
+--------------090907030903060200040608
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -150,4 +101,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---------------010007040204000001080205--
+--------------090907030903060200040608--
