@@ -1,166 +1,100 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 18/20] SUNRPC: Add IPv6 address
-	support	to	net/sunrpc/xprtsock.c
-Date: Mon, 13 Aug 2007 13:53:34 -0400
-Message-ID: <46C09A9E.8050602@oracle.com>
-References: <20070806155753.31233.82962.stgit@manray.1015granger.net>	<1186844473.17941.23.camel@heimdal.trondhjem.org>
-	<46C06350.6080709@oracle.com> <46C09979.4040402@redhat.com>
-Reply-To: chuck.lever@oracle.com
+From: Michal Piotrowski <michal.k.k.piotrowski@gmail.com>
+Subject: [1/2] 2.6.23-rc3: known regressions with patches
+Date: Mon, 13 Aug 2007 19:59:54 +0200
+Message-ID: <46C09C1A.7050706@googlemail.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------040102060202090508010208"
-Cc: nfs@lists.sourceforge.net,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Peter Staubach <staubach@redhat.com>
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IKe8Z-0001We-Oj
-	for nfs@lists.sourceforge.net; Mon, 13 Aug 2007 10:55:38 -0700
-Received: from agminet01.oracle.com ([141.146.126.228])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IKe8c-0000ap-NA
-	for nfs@lists.sourceforge.net; Mon, 13 Aug 2007 10:55:36 -0700
-In-Reply-To: <46C09979.4040402@redhat.com>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-2
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	LKML <linux-kernel@vger.kernel.org>,
+	Gabriel C <nix.or.die@googlemail.com>,
+	Stefan Richter <stefanr@s5r6.in-berlin.de>,
+	Jan Engelhardt <jengelh@linux01.gwdg.de>,
+	Satyam Sharma <satyam.sharma@gmail.com>,
+	Vitaly Bordug <vitb@kernel.crashing.org>,
+	Dan Merillat <dan.merillat@gmail.com>,
+	Paolo Ornati <ornati@fastwebnet.it>,
+	Andi Kleen <andi@firstfloor.org>,
+	Rusty Russell <rusty@rustcorp.com.au>,
+	linux-fsdevel@vger.kernel.org, nfs@lists.sourceforge.net,
+	Jeff Garzik <jeff@garzik.org>,
+	Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-This is a multi-part message in MIME format.
---------------040102060202090508010208
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+Hi all,
 
-Peter Staubach wrote:
-> Chuck Lever wrote:
->> Trond Myklebust wrote:
->>> On Mon, 2007-08-06 at 11:57 -0400, Chuck Lever wrote:
->>>> Finalize support for setting up RPC client transports to remote RPC
->>>> services addressed via IPv6.
->>>>
->>>> Based on work done by Gilles Quillard at Bull Open Source.
->>>>
->>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->>>> Cc: Aurelien Charbon <aurelien.charbon@ext.bull.net>
->>>> ---
->>>>
->>>>  net/sunrpc/xprtsock.c |   57 
->>>> ++++++++++++++++++++++++++++++++++++++++---------
->>>>  1 files changed, 47 insertions(+), 10 deletions(-)
->>>>
->>>> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
->>>> index 391b88d..fb55c1c 100644
->>>> --- a/net/sunrpc/xprtsock.c
->>>> +++ b/net/sunrpc/xprtsock.c
->>>> @@ -13,6 +13,9 @@
->>>>   *  (C) 1999 Trond Myklebust <trond.myklebust@fys.uio.no>
->>>>   *
->>>>   * IP socket transport implementation, (C) 2005 Chuck Lever 
->>>> <cel@netapp.com>
->>>> + *
->>>> + * IPv6 support contributed by Gilles Quillard, Bull Open Source, 
->>>> 2005.
->>>> + *   <gilles.quillard@bull.net>
->>>>   */
->>>>  
->>>>  #include <linux/types.h>
->>>> @@ -1790,6 +1793,7 @@ static struct rpc_xprt *xs_setup_xprt(struct 
->>>> rpc_xprtsock_create *args, unsigned
->>>>   */
->>>>  struct rpc_xprt *xs_setup_udp(struct rpc_xprtsock_create *args)
->>>>  {
->>>> +    struct sockaddr *addr = args->dstaddr;
->>>>      struct rpc_xprt *xprt;
->>>>      struct sock_xprt *transport;
->>>>  
->>>> @@ -1798,15 +1802,11 @@ struct rpc_xprt *xs_setup_udp(struct 
->>>> rpc_xprtsock_create *args)
->>>>          return xprt;
->>>>      transport = container_of(xprt, struct sock_xprt, xprt);
->>>>  
->>>> -    if (ntohs(((struct sockaddr_in *)args->dstaddr)->sin_port) != 0)
->>>> -        xprt_set_bound(xprt);
->>>> -
->>>>      xprt->prot = IPPROTO_UDP;
->>>>      xprt->tsh_size = 0;
->>>>      /* XXX: header size can vary due to auth type, IPv6, etc. */
->>>>      xprt->max_payload = (1U << 16) - (MAX_HEADER << 3);
->>>>  
->>>> -    INIT_DELAYED_WORK(&transport->connect_worker, 
->>>> xs_udp_connect_worker4);
->>>>      xprt->bind_timeout = XS_BIND_TO;
->>>>      xprt->connect_timeout = XS_UDP_CONN_TO;
->>>>      xprt->reestablish_timeout = XS_UDP_REEST_TO;
->>>> @@ -1819,7 +1819,28 @@ struct rpc_xprt *xs_setup_udp(struct 
->>>> rpc_xprtsock_create *args)
->>>>      else
->>>>          xprt_set_timeout(&xprt->timeout, 5, 5 * HZ);
->>>>  
->>>> -    xs_format_ipv4_peer_addresses(xprt);
->>>> +    switch (addr->sa_family) {
->>>> +    case AF_INET:
->>>> +        if (ntohs(((struct sockaddr_in *)addr)->sin_port) != 0)
->>>
->>> Hmm.... I'm converting these to compare sin_port to htons(0). There is
->>> no need to byte-swap the variable every time we run this code if we can
->>> just have the compiler byte-swap the constant.
->>
->> Not a hot path... but yes, that is true.  Up to you if you want to 
->> change this as described, but my feeling is that would be a little 
->> harder to read.  Your call, of course. 
-> 
-> Just out of curiosity, do we really need to byte swap the
-> value, 0, anyway?
+Here is a list of some known regressions in 2.6.23-rc3
+with patches available.
 
-I think Trond noticed that and may have fixed it in his version.
+Feel free to add new regressions/remove fixed etc.
+http://kernelnewbies.org/known_regressions
 
---------------040102060202090508010208
-Content-Type: text/x-vcard; charset=utf-8;
- name="chuck.lever.vcf"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="chuck.lever.vcf"
+List of Aces
 
-begin:vcard
-fn:Chuck Lever
-n:Lever;Chuck
-org:Oracle Corporation;Corporate Architecture: Linux Projects Group
-adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
-title:Principal Member of Staff
-tel;work:+1 248 614 5091
-x-mozilla-html:FALSE
-url:http://oss.oracle.com/~cel
-version:2.1
-end:vcard
+Name                    Regressions fixed since 21-Jun-2007
+Adrian Bunk                            9
+Andi Kleen                             5
+Linus Torvalds                         5
+Andrew Morton                          4
+Al Viro                                3
+Cornelia Huck                          3
+Jens Axboe                             3
+Tejun Heo                              3
 
 
---------------040102060202090508010208
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
 
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Splunk Inc.
-Still grepping through log files to find problems?  Stop.
-Now Search log events and configuration files using AJAX and a browser.
-Download your FREE copy of Splunk now >>  http://get.splunk.com/
---------------040102060202090508010208
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+Unclassified
 
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+Subject         : reset during bootup - 2.6.23-rc2 (git d23cf676)
+References      : http://lkml.org/lkml/2007/8/11/177
+Last known good : ?
+Submitter       : Dan Merillat <dan.merillat@gmail.com>
+Caused-By       : Rusty Russell <rusty@rustcorp.com.au>
+                  ab144f5ec64c42218a555ec1dbde6b60cf2982d6
+Handled-By      : Paolo Ornati <ornati@fastwebnet.it>
+                  Andi Kleen <andi@firstfloor.org>
+Patch           : http://lkml.org/lkml/2007/8/12/76
+Status          : patch was suggested
 
---------------040102060202090508010208--
+Subject         : Kconfig prompts without help text
+References      : http://lkml.org/lkml/2007/7/16/326
+Last known good : ?
+Submitter       : Stefan Richter <stefanr@s5r6.in-berlin.de>
+Caused-By       : ?
+Handled-By      : Jan Engelhardt <jengelh@linux01.gwdg.de>
+Patch           : http://lkml.org/lkml/2007/7/18/236
+Status          : patch available
+
+Subject         : Oops while modprobing phy fixed module
+References      : http://lkml.org/lkml/2007/7/14/63
+Last known good : ?
+Submitter       : Gabriel C <nix.or.die@googlemail.com>
+Caused-By       : ?
+Handled-By      : Satyam Sharma <satyam.sharma@gmail.com>
+                  Vitaly Bordug <vitb@kernel.crashing.org>
+Patch1          : http://lkml.org/lkml/2007/7/18/506
+Status          : patch available
+
+
+
+FS
+
+Subject         : NFSv4 poops itself
+References      : http://lkml.org/lkml/2007/7/27/144
+Last known good : ?
+Submitter       : Jeff Garzik <jeff@garzik.org> 
+Caused-By       : ?
+Handled-By      : Trond Myklebust <Trond.Myklebust@netapp.com>
+Patch           : http://lkml.org/lkml/2007/7/27/183
+Status          : patch available
+
+
+
+Regards,
+Michal
+
+--
+LOG
+http://www.stardust.webpages.pl/log/
