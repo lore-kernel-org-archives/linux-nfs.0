@@ -1,8 +1,8 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 3/4] Create client_resolve and change client_compose
-	to take a hostent arg
-Date: Tue, 14 Aug 2007 09:32:59 -0400
-Message-ID: <200708141332.l7EDWxmE032149@dantu.rdu.redhat.com>
+Subject: [PATCH 4/4] Add mountd command line option to change how IP
+	addrs are mapped
+Date: Tue, 14 Aug 2007 09:33:04 -0400
+Message-ID: <200708141333.l7EDX46J032156@dantu.rdu.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
@@ -10,24 +10,24 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IKwW1-0005uU-1x
-	for nfs@lists.sourceforge.net; Tue, 14 Aug 2007 06:32:57 -0700
+	id 1IKwW6-0005vj-Iv
+	for nfs@lists.sourceforge.net; Tue, 14 Aug 2007 06:33:02 -0700
 Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IKwW4-0007Yw-Qg
-	for nfs@lists.sourceforge.net; Tue, 14 Aug 2007 06:33:01 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IKwWA-0007eK-10
+	for nfs@lists.sourceforge.net; Tue, 14 Aug 2007 06:33:06 -0700
 Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com
 	[172.16.52.254])
-	by mx1.redhat.com (8.13.1/8.13.1) with ESMTP id l7EDWxld030455
-	for <nfs@lists.sourceforge.net>; Tue, 14 Aug 2007 09:32:59 -0400
+	by mx1.redhat.com (8.13.1/8.13.1) with ESMTP id l7EDX5ex030501
+	for <nfs@lists.sourceforge.net>; Tue, 14 Aug 2007 09:33:05 -0400
 Received: from pobox.corp.redhat.com (pobox.corp.redhat.com [10.11.255.20])
-	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l7EDWxJ6006505
-	for <nfs@lists.sourceforge.net>; Tue, 14 Aug 2007 09:32:59 -0400
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l7EDX4vo006525
+	for <nfs@lists.sourceforge.net>; Tue, 14 Aug 2007 09:33:04 -0400
 Received: from dantu.rdu.redhat.com (dantu.rdu.redhat.com [172.16.57.196])
-	by pobox.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l7EDWx6m001810
-	for <nfs@lists.sourceforge.net>; Tue, 14 Aug 2007 09:32:59 -0400
+	by pobox.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l7EDX4rd001824
+	for <nfs@lists.sourceforge.net>; Tue, 14 Aug 2007 09:33:04 -0400
 Received: from dantu.rdu.redhat.com (localhost.localdomain [127.0.0.1])
-	by dantu.rdu.redhat.com (8.14.1/8.13.8) with ESMTP id l7EDWxQ5032150
-	for <nfs@lists.sourceforge.net>; Tue, 14 Aug 2007 09:32:59 -0400
+	by dantu.rdu.redhat.com (8.14.1/8.13.8) with ESMTP id l7EDX4xE032157
+	for <nfs@lists.sourceforge.net>; Tue, 14 Aug 2007 09:33:04 -0400
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -40,141 +40,258 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This moves the resolution of IP address to hostent into a helper function
-and has other functions call it. Having client_compose take a hostent arg
-allows us to avoid an extra hostname lookup in the auth_authenticate
-codepath as well. Instead of redoing this lookup in client_compose, we can
-simply reuse the hostent that was already generated in auth_authenticate.
+If a host is a member of a large number of netgroups, it becomes easily
+possible for client_compose to generate a m_hostname string that overflows
+the maximum string length allowed by the kernel caches.
+
+This patch adds a new mountd command-line option to tell it to have the
+auth.unix.ip cache map IP address to IP address. With this flag, mountd
+doesn't bother using client_compose to build the m_hostname string. It just
+populates it with the dotted-quad ip address. When mountd handles a mount
+request, it then has an IP address and a path. It then calls client_check
+to check the host against export entries where the path has already matched.
+
+Since we don't bother looking up netgroups which have no relation to the
+mount, this can be a big performance gain in netgroup-heavy configurations.
+The downside is that every host has a corresponding entry in the nfsd.export
+and nfsd.fh caches as well as the auth.unix.ip cache.
+
+For now this behavior is manually selectable, but ideally we'd probably
+want to automatically enable it based on some heuristic. I'm just not yet
+sure what that heuristic should be...
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- support/export/client.c    |   22 ++++++++++++++--------
- support/include/exportfs.h |    3 ++-
- utils/mountd/auth.c        |    8 ++------
- utils/mountd/cache.c       |    5 ++++-
- 4 files changed, 22 insertions(+), 16 deletions(-)
+ utils/mountd/auth.c   |   34 ++++++++++++++++++++++------------
+ utils/mountd/cache.c  |   45 +++++++++++++++++++++++++++++++++++++--------
+ utils/mountd/mountd.c |    6 +++++-
+ 3 files changed, 64 insertions(+), 21 deletions(-)
 
-diff --git a/support/export/client.c b/support/export/client.c
-index d1369f8..33c5432 100644
---- a/support/export/client.c
-+++ b/support/export/client.c
-@@ -235,6 +235,19 @@ client_find(struct hostent *hp)
- 	return NULL;
- }
- 
-+struct hostent *
-+client_resolve(struct in_addr addr)
-+{
-+	struct hostent *he = NULL;
-+
-+	if (clientlist[MCL_WILDCARD] || clientlist[MCL_NETGROUP])
-+		he = get_reliable_hostbyaddr((const char*)&addr, sizeof(addr), AF_INET);
-+	if (he == NULL)
-+		he = get_hostent((const char*)&addr, sizeof(addr), AF_INET);
-+
-+	return he;
-+}
-+
- /*
-  * Find client name given an IP address
-  * This is found by gathering all known names that match that IP address,
-@@ -244,17 +257,11 @@ client_find(struct hostent *hp)
- static char *add_name(char *old, char *add);
- 
- char *
--client_compose(struct in_addr addr)
-+client_compose(struct hostent *he)
- {
--	struct hostent *he = NULL;
- 	char *name = NULL;
- 	int i;
- 
--	if (clientlist[MCL_WILDCARD] || clientlist[MCL_NETGROUP])
--		he = get_reliable_hostbyaddr((const char*)&addr, sizeof(addr), AF_INET);
--	if (he == NULL)
--		he = get_hostent((const char*)&addr, sizeof(addr), AF_INET);
--
- 	for (i = 0 ; i < MCL_MAXTYPES; i++) {
- 		nfs_client	*clp;
- 		for (clp = clientlist[i]; clp ; clp = clp->m_next) {
-@@ -263,7 +270,6 @@ client_compose(struct in_addr addr)
- 			name = add_name(name, clp->m_hostname);
- 		}
- 	}
--	free(he);
- 	return name;
- }
- 
-diff --git a/support/include/exportfs.h b/support/include/exportfs.h
-index a491b1a..c1ba543 100644
---- a/support/include/exportfs.h
-+++ b/support/include/exportfs.h
-@@ -64,7 +64,8 @@ int				client_check(nfs_client *, struct hostent *);
- int				client_match(nfs_client *, char *hname);
- void				client_release(nfs_client *);
- void				client_freeall(void);
--char *				client_compose(struct in_addr addr);
-+char *				client_compose(struct hostent *he);
-+struct hostent *		client_resolve(struct in_addr addr);
- int 				client_member(char *client, char *name);
- 
- int				export_read(char *fname);
 diff --git a/utils/mountd/auth.c b/utils/mountd/auth.c
-index c452a16..408c990 100644
+index 408c990..8061471 100644
 --- a/utils/mountd/auth.c
 +++ b/utils/mountd/auth.c
-@@ -89,7 +89,7 @@ auth_authenticate_internal(char *what, struct sockaddr_in *caller,
+@@ -37,6 +37,7 @@ static nfs_export my_exp;
+ static nfs_client my_client;
+ 
+ extern int new_cache;
++extern int use_ipaddr;
+ 
+ void
+ auth_init(char *exports)
+@@ -88,29 +89,38 @@ auth_authenticate_internal(char *what, struct sockaddr_in *caller,
+ 		int i;
  		/* return static nfs_export with details filled in */
  		char *n;
- 		my_client.m_addrlist[0] = caller->sin_addr;
--		n = client_compose(caller->sin_addr);
-+		n = client_compose(hp);
- 		*error = unknown_host;
- 		if (!n)
- 			return NULL;
-@@ -161,11 +161,7 @@ auth_authenticate(char *what, struct sockaddr_in *caller, char *path)
- 	epath[sizeof (epath) - 1] = '\0';
- 	auth_fixpath(epath); /* strip duplicate '/' etc */
+-		my_client.m_addrlist[0] = caller->sin_addr;
+-		n = client_compose(hp);
+-		*error = unknown_host;
+-		if (!n)
+-			return NULL;
+-		if (my_client.m_hostname != NULL)
++		if (my_client.m_hostname != NULL) {
+ 			free(my_client.m_hostname);
+-		if (*n) {
+-			my_client.m_hostname = n;
++			my_client.m_hostname = NULL;
++		}
++		if (use_ipaddr) {
++			my_client.m_hostname =
++				xstrdup(inet_ntoa(caller->sin_addr));
+ 		} else {
+-			free(n);
+-			my_client.m_hostname = xstrdup("DEFAULT");
++			n = client_compose(hp);
++			*error = unknown_host;
++			if (!n)
++				return NULL;
++			if (*n) {
++				my_client.m_hostname = n;
++			} else {
++				free(n);
++				my_client.m_hostname = xstrdup("DEFAULT");
++			}
+ 		}
+ 		my_client.m_naddr = 1;
++		my_client.m_addrlist[0] = caller->sin_addr;
+ 		my_exp.m_client = &my_client;
  
--	hp = get_reliable_hostbyaddr((const char*)&caller->sin_addr, sizeof(struct in_addr),
--				     AF_INET);
--	if (!hp)
--		hp = get_hostent((const char*)&caller->sin_addr, sizeof(struct in_addr),
--				     AF_INET);
-+	hp = client_resolve(caller->sin_addr);
- 	if (!hp)
- 		return exp;
- 
+ 		exp = NULL;
+ 		for (i = 0; !exp && i < MCL_MAXTYPES; i++) 
+ 			for (exp = exportlist[i]; exp; exp = exp->m_next) {
+-				if (!client_member(my_client.m_hostname, exp->m_client->m_hostname))
+-					continue;
+ 				if (strcmp(path, exp->m_export.e_path))
+ 					continue;
++				if (!use_ipaddr && !client_member(my_client.m_hostname, exp->m_client->m_hostname))
++					continue;
++				if (use_ipaddr && !client_check(exp->m_client, hp))
++					continue;
+ 				break;
+ 			}
+ 		*error = not_exported;
 diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-index 15100d4..b6b0473 100644
+index b6b0473..25248b8 100644
 --- a/utils/mountd/cache.c
 +++ b/utils/mountd/cache.c
-@@ -76,6 +76,7 @@ void auth_unix_ip(FILE *f)
+@@ -61,6 +61,7 @@ int cache_export_ent(char *domain, struct exportent *exp, char *p);
+ 
+ char *lbuf  = NULL;
+ int lbuflen = 0;
++extern int use_ipaddr;
+ 
+ void auth_unix_ip(FILE *f)
+ {
+@@ -74,9 +75,9 @@ void auth_unix_ip(FILE *f)
+ 	char *cp;
+ 	char class[20];
  	char ipaddr[20];
- 	char *client;
+-	char *client;
++	char *client = NULL;
  	struct in_addr addr;
-+	struct hostent *he;
+-	struct hostent *he;
++	struct hostent *he = NULL;
  	if (readline(fileno(f), &lbuf, &lbuflen) != 1)
  		return;
  
-@@ -94,7 +95,8 @@ void auth_unix_ip(FILE *f)
+@@ -95,14 +96,17 @@ void auth_unix_ip(FILE *f)
  	auth_reload();
  
  	/* addr is a valid, interesting address, find the domain name... */
--	client = client_compose(addr);
-+	he = client_resolve(addr);
-+	client = client_compose(he);
- 
+-	he = client_resolve(addr);
+-	client = client_compose(he);
+-
++	if (!use_ipaddr) {
++		he = client_resolve(addr);
++		client = client_compose(he);
++	}
  	
  	qword_print(f, "nfsd");
-@@ -105,6 +107,7 @@ void auth_unix_ip(FILE *f)
+ 	qword_print(f, ipaddr);
+ 	qword_printint(f, time(0)+30*60);
+-	if (client)
++	if (use_ipaddr)
++		qword_print(f, ipaddr);
++	else if (client)
+ 		qword_print(f, *client?client:"DEFAULT");
  	qword_eol(f);
  
- 	if (client) free(client);
+@@ -267,6 +271,8 @@ void nfsd_fh(FILE *f)
+ 	unsigned int fsidnum=0;
+ 	char fsid[32];
+ 	struct exportent *found = NULL;
++	struct hostent *he = NULL;
++	struct in_addr addr;
+ 	char *found_path = NULL;
+ 	nfs_export *exp;
+ 	int i;
+@@ -392,7 +398,7 @@ void nfsd_fh(FILE *f)
+ 				next_exp = exp->m_next;
+ 			}
+ 
+-			if (!client_member(dom, exp->m_client->m_hostname))
++			if (!use_ipaddr && !client_member(dom, exp->m_client->m_hostname))
+ 				continue;
+ 			if (exp->m_export.e_mountpoint &&
+ 			    !is_mountpoint(exp->m_export.e_mountpoint[0]?
+@@ -444,6 +450,15 @@ void nfsd_fh(FILE *f)
+ 				continue;
+ #endif
+ 			}
++			if (use_ipaddr) {
++				if (he == NULL) {
++					if (!inet_aton(dom, &addr))
++						goto out;
++					he = client_resolve(addr);
++				}
++				if (!client_check(exp->m_client, he))
++					continue;
++			}
+ 			/* It's a match !! */
+ 			if (!found) {
+ 				found = &exp->m_export;
+@@ -495,6 +510,8 @@ void nfsd_fh(FILE *f)
+ 		qword_print(f, found->e_path);
+ 	qword_eol(f);
+  out:
++	if (he)
++		free(he);
+ 	free(dom);
+ 	return;		
+ }
+@@ -582,6 +599,8 @@ void nfsd_export(FILE *f)
+ 	char *dom, *path;
+ 	nfs_export *exp, *found = NULL;
+ 	int found_type = 0;
++	struct in_addr addr;
++	struct hostent *he = NULL;
+ 
+ 
+ 	if (readline(fileno(f), &lbuf, &lbuflen) != 1)
+@@ -604,7 +623,7 @@ void nfsd_export(FILE *f)
+ 	/* now find flags for this export point in this domain */
+ 	for (i=0 ; i < MCL_MAXTYPES; i++) {
+ 		for (exp = exportlist[i]; exp; exp = exp->m_next) {
+-			if (!client_member(dom, exp->m_client->m_hostname))
++			if (!use_ipaddr && !client_member(dom, exp->m_client->m_hostname))
+ 				continue;
+ 			if (exp->m_export.e_flags & NFSEXP_CROSSMOUNT) {
+ 				/* if path is a mountpoint below e_path, then OK */
+@@ -618,6 +637,15 @@ void nfsd_export(FILE *f)
+ 					continue;
+ 			} else if (strcmp(path, exp->m_export.e_path) != 0)
+ 				continue;
++			if (use_ipaddr) {
++				if (he == NULL) {
++					if (!inet_aton(dom, &addr))
++						goto out;
++					he = client_resolve(addr);
++				}
++				if (!client_check(exp->m_client, he))
++					continue;
++			}
+ 			if (!found) {
+ 				found = exp;
+ 				found_type = i;
+@@ -659,6 +687,7 @@ void nfsd_export(FILE *f)
+  out:
+ 	if (dom) free(dom);
+ 	if (path) free(path);
 +	if (he) free(he);
- 	
  }
  
+ 
+diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
+index 999f035..06a3471 100644
+--- a/utils/mountd/mountd.c
++++ b/utils/mountd/mountd.c
+@@ -40,6 +40,7 @@ static struct nfs_fh_len *get_rootfh(struct svc_req *, dirpath *, mountstat3 *,
+ int reverse_resolve = 0;
+ int new_cache = 0;
+ int manage_gids;
++int use_ipaddr = 0;
+ 
+ /* PRC: a high-availability callout program can be specified with -H
+  * When this is done, the program will receive callouts whenever clients
+@@ -569,7 +570,7 @@ main(int argc, char **argv)
+ 
+ 	/* Parse the command line options and arguments. */
+ 	opterr = 0;
+-	while ((c = getopt_long(argc, argv, "o:nFd:f:p:P:hH:N:V:vrs:t:g", longopts, NULL)) != EOF)
++	while ((c = getopt_long(argc, argv, "o:nFd:f:ip:P:hH:N:V:vrs:t:g", longopts, NULL)) != EOF)
+ 		switch (c) {
+ 		case 'g':
+ 			manage_gids = 1;
+@@ -597,6 +598,9 @@ main(int argc, char **argv)
+ 		case 'h':
+ 			usage(argv [0], 0);
+ 			break;
++		case 'i':
++			use_ipaddr = 1;
++			break;
+ 		case 'P':	/* XXX for nfs-server compatibility */
+ 		case 'p':
+ 			port = atoi(optarg);
 -- 
 1.5.2.2
 
