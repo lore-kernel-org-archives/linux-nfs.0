@@ -1,33 +1,33 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 1/4] Change nfs_client->m_hostname to be a
+Subject: [PATCH 2/4] Make exportent->e_hostname a
 	dynamically-allocated string
-Date: Tue, 14 Aug 2007 09:32:48 -0400
-Message-ID: <200708141332.l7EDWms3032139@dantu.rdu.redhat.com>
+Date: Tue, 14 Aug 2007 09:32:54 -0400
+Message-ID: <200708141332.l7EDWs7B032144@dantu.rdu.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IKwVr-0005uD-UZ
-	for nfs@lists.sourceforge.net; Tue, 14 Aug 2007 06:32:48 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IKwVu-0007W4-P6
+	id 1IKwVw-0005uO-FF
 	for nfs@lists.sourceforge.net; Tue, 14 Aug 2007 06:32:52 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IKwW0-0006rh-8o
+	for nfs@lists.sourceforge.net; Tue, 14 Aug 2007 06:32:56 -0700
 Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com
 	[172.16.52.254])
-	by mx1.redhat.com (8.13.1/8.13.1) with ESMTP id l7EDWnxK030316
-	for <nfs@lists.sourceforge.net>; Tue, 14 Aug 2007 09:32:49 -0400
+	by mx1.redhat.com (8.13.1/8.13.1) with ESMTP id l7EDWsx6030388
+	for <nfs@lists.sourceforge.net>; Tue, 14 Aug 2007 09:32:54 -0400
 Received: from pobox.corp.redhat.com (pobox.corp.redhat.com [10.11.255.20])
-	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l7EDWnpp006454
-	for <nfs@lists.sourceforge.net>; Tue, 14 Aug 2007 09:32:49 -0400
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l7EDWsug006490
+	for <nfs@lists.sourceforge.net>; Tue, 14 Aug 2007 09:32:54 -0400
 Received: from dantu.rdu.redhat.com (dantu.rdu.redhat.com [172.16.57.196])
-	by pobox.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l7EDWnBa001770
-	for <nfs@lists.sourceforge.net>; Tue, 14 Aug 2007 09:32:49 -0400
+	by pobox.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l7EDWsIO001798
+	for <nfs@lists.sourceforge.net>; Tue, 14 Aug 2007 09:32:54 -0400
 Received: from dantu.rdu.redhat.com (localhost.localdomain [127.0.0.1])
-	by dantu.rdu.redhat.com (8.14.1/8.13.8) with ESMTP id l7EDWmAj032140
-	for <nfs@lists.sourceforge.net>; Tue, 14 Aug 2007 09:32:48 -0400
+	by dantu.rdu.redhat.com (8.14.1/8.13.8) with ESMTP id l7EDWs1M032145
+	for <nfs@lists.sourceforge.net>; Tue, 14 Aug 2007 09:32:54 -0400
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -40,94 +40,153 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Change nfs_client->m_hostname to be dynamically allocated rather than a
-fixed length array of size NFSCLNT_IDMAX. This also adds a bit of
-micro-optimization in a few places since it reduces the amount of string
-copying that needs to be done.
+This makes the e_hostname field of the exportent into a pointer to a
+dynamically allocated string. This is necessary since this is field is
+often filled out from the m_hostname. This too adds a few
+micro-optimizations as we can avoid copying the string in some places
+and simply pass a pointer to the original string instead.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- support/export/client.c    |   17 +++++++++--------
- support/include/exportfs.h |    2 +-
- utils/mountd/auth.c        |   10 ++++++++--
- 3 files changed, 18 insertions(+), 11 deletions(-)
+ support/export/export.c  |    6 ++++++
+ support/export/rmtab.c   |    4 +---
+ support/export/xtab.c    |    9 ++-------
+ support/include/nfslib.h |    2 +-
+ support/nfs/exports.c    |   21 ++++++++-------------
+ 5 files changed, 18 insertions(+), 24 deletions(-)
 
-diff --git a/support/export/client.c b/support/export/client.c
-index 19b53aa..d1369f8 100644
---- a/support/export/client.c
-+++ b/support/export/client.c
-@@ -118,6 +118,7 @@ client_dup(nfs_client *clp, struct hostent *hp)
- 	new = (nfs_client *) xmalloc(sizeof(*new));
- 	memcpy(new, clp, sizeof(*new));
- 	new->m_type = MCL_FQDN;
-+	new->m_hostname = NULL;
+diff --git a/support/export/export.c b/support/export/export.c
+index 74e1d1b..b2cfce5 100644
+--- a/support/export/export.c
++++ b/support/export/export.c
+@@ -85,6 +85,8 @@ export_init(nfs_export *exp, nfs_client *clp, struct exportent *nep)
+ 	struct exportent	*e = &exp->m_export;
  
- 	client_init(new, (char *) hp->h_name, hp);
- 	client_add(new);
-@@ -127,14 +128,12 @@ client_dup(nfs_client *clp, struct hostent *hp)
- static void
- client_init(nfs_client *clp, const char *hname, struct hostent *hp)
- {
--	if (hp) {
--		strncpy(clp->m_hostname, hp->h_name,
--			sizeof (clp->m_hostname) -  1);
--	} else {
--		strncpy(clp->m_hostname, hname,
--			sizeof (clp->m_hostname) - 1);
--	}
--	clp->m_hostname[sizeof (clp->m_hostname) - 1] = '\0';
-+	if (clp->m_hostname)
-+		xfree(clp->m_hostname);
-+	if (hp)
-+		clp->m_hostname = xstrdup(hp->h_name);
-+	else
-+		clp->m_hostname = xstrdup(hname);
+ 	dupexportent(e, nep);
++	if (nep->e_hostname)
++		e->e_hostname = xstrdup(nep->e_hostname);
  
- 	clp->m_exported = 0;
- 	clp->m_count = 0;
-@@ -207,6 +206,8 @@ client_freeall(void)
- 		head = clientlist + i;
- 		while (*head) {
- 			*head = (clp = *head)->m_next;
-+			if (clp->m_hostname != NULL)
-+				xfree(clp->m_hostname);
- 			xfree(clp);
+ 	exp->m_exported = 0;
+ 	exp->m_xtabent = 0;
+@@ -109,6 +111,8 @@ export_dup(nfs_export *exp, struct hostent *hp)
+ 	new = (nfs_export *) xmalloc(sizeof(*new));
+ 	memcpy(new, exp, sizeof(*new));
+ 	dupexportent(&new->m_export, &exp->m_export);
++	if (exp->m_export.e_hostname)
++		new->m_export.e_hostname = xstrdup(exp->m_export.e_hostname);
+ 	clp = client_dup(exp->m_client, hp);
+ 	clp->m_count++;
+ 	new->m_client = clp;
+@@ -244,6 +248,8 @@ export_freeall(void)
+ 				free(exp->m_export.e_mountpoint);
+ 			if (exp->m_export.e_fslocdata)
+ 				xfree(exp->m_export.e_fslocdata);
++			if (exp->m_export.e_hostname)
++				xfree(exp->m_export.e_hostname);
+ 			xfree(exp);
+ 		}
+ 		exportlist[i] = NULL;
+diff --git a/support/export/rmtab.c b/support/export/rmtab.c
+index 15aab15..2a882aa 100644
+--- a/support/export/rmtab.c
++++ b/support/export/rmtab.c
+@@ -43,9 +43,7 @@ rmtab_read(void)
+ 			if (!exp2) {
+ 				struct exportent ee;
+ 				dupexportent(&ee, &exp->m_export);
+-				strncpy (ee.e_hostname, rep->r_client,
+-					 sizeof (ee.e_hostname) - 1);
+-				ee.e_hostname[sizeof (ee.e_hostname) -1] = '\0';
++				ee.e_hostname = rep->r_client;
+ 				exp2 = export_create(&ee, 0);
+ 				exp2->m_changed = exp->m_changed;
+ 			}
+diff --git a/support/export/xtab.c b/support/export/xtab.c
+index 292087b..990113e 100644
+--- a/support/export/xtab.c
++++ b/support/export/xtab.c
+@@ -108,10 +108,7 @@ xtab_write(char *xtab, char *xtabtmp, int is_export)
+ 
+ 			/* write out the export entry using the FQDN */
+ 			xe = exp->m_export;
+-			strncpy(xe.e_hostname,
+-				exp->m_client->m_hostname,
+-				sizeof (xe.e_hostname) - 1);
+-			xe.e_hostname[sizeof (xe.e_hostname) - 1] = '\0';
++			xe.e_hostname = exp->m_client->m_hostname;
+ 			putexportent(&xe);
  		}
  	}
-diff --git a/support/include/exportfs.h b/support/include/exportfs.h
-index 431b5ce..a491b1a 100644
---- a/support/include/exportfs.h
-+++ b/support/include/exportfs.h
-@@ -32,7 +32,7 @@ enum {
+@@ -146,9 +143,7 @@ xtab_append(nfs_export *exp)
+ 		return;
+ 	setexportent(_PATH_XTAB, "a");
+ 	xe = exp->m_export;
+-	strncpy(xe.e_hostname, exp->m_client->m_hostname,
+-	       sizeof (xe.e_hostname) - 1);
+-	xe.e_hostname[sizeof (xe.e_hostname) - 1] = '\0';
++	xe.e_hostname = exp->m_client->m_hostname;
+ 	putexportent(&xe);
+ 	endexportent();
+ 	xfunlock(lockid);
+diff --git a/support/include/nfslib.h b/support/include/nfslib.h
+index 5af9c30..ffa2440 100644
+--- a/support/include/nfslib.h
++++ b/support/include/nfslib.h
+@@ -65,7 +65,7 @@ struct sec_entry {
+  * allow overrides when using exportfs.
+  */
+ struct exportent {
+-	char		e_hostname[NFSCLNT_IDMAX+1];
++	char *		e_hostname;
+ 	char		e_path[NFS_MAXPATHLEN+1];
+ 	/* The mount path may be different from the exported path due
+ 	   to submount. It may change for every mount. The idea is we
+diff --git a/support/nfs/exports.c b/support/nfs/exports.c
+index c82bb0e..1fc6152 100644
+--- a/support/nfs/exports.c
++++ b/support/nfs/exports.c
+@@ -176,13 +176,9 @@ getexportent(int fromkernel, int fromexports)
+ 		if (!has_default_opts)
+ 			xlog(L_WARNING, "No options for %s %s: suggest %s(sync) to avoid warning", ee.e_path, exp, exp);
+ 	}
+-	if (strlen(hostname) >= sizeof(ee.e_hostname)) {
+-		syntaxerr("client name too long");
+-		export_errno = EINVAL;
+-		return NULL;
+-	}
+-	strncpy(ee.e_hostname, hostname, sizeof (ee.e_hostname) - 1);
+-	ee.e_hostname[sizeof (ee.e_hostname) - 1] = '\0';
++	if (ee.e_hostname) 
++		free(ee.e_hostname);
++	ee.e_hostname = xstrdup(hostname);
  
- typedef struct mclient {
- 	struct mclient *	m_next;
--	char			m_hostname[NFSCLNT_IDMAX+1];
-+	char *			m_hostname;
- 	int			m_type;
- 	int			m_naddr;
- 	struct in_addr		m_addrlist[NFSCLNT_ADDRMAX];
-diff --git a/utils/mountd/auth.c b/utils/mountd/auth.c
-index f7fe23d..c452a16 100644
---- a/utils/mountd/auth.c
-+++ b/utils/mountd/auth.c
-@@ -93,8 +93,14 @@ auth_authenticate_internal(char *what, struct sockaddr_in *caller,
- 		*error = unknown_host;
- 		if (!n)
- 			return NULL;
--		strcpy(my_client.m_hostname, *n?n:"DEFAULT");
--		free(n);
-+		if (my_client.m_hostname != NULL)
-+			free(my_client.m_hostname);
-+		if (*n) {
-+			my_client.m_hostname = n;
-+		} else {
-+			free(n);
-+			my_client.m_hostname = xstrdup("DEFAULT");
-+		}
- 		my_client.m_naddr = 1;
- 		my_exp.m_client = &my_client;
+ 	if (parseopts(opt, &ee, fromexports && !has_default_subtree_opts, NULL) < 0)
+ 		return NULL;
+@@ -335,6 +331,7 @@ dupexportent(struct exportent *dst, struct exportent *src)
+ 		dst->e_mountpoint = strdup(src->e_mountpoint);
+ 	if (src->e_fslocdata)
+ 		dst->e_fslocdata = strdup(src->e_fslocdata);
++	dst->e_hostname = NULL;
+ }
  
+ struct exportent *
+@@ -355,12 +352,10 @@ mkexportent(char *hname, char *path, char *options)
+ 	ee.e_nsqgids = 0;
+ 	ee.e_uuid = NULL;
+ 
+-	if (strlen(hname) >= sizeof(ee.e_hostname)) {
+-		xlog(L_WARNING, "client name %s too long", hname);
+-		return NULL;
+-	}
+-	strncpy(ee.e_hostname, hname, sizeof (ee.e_hostname) - 1);
+-	ee.e_hostname[sizeof (ee.e_hostname) - 1] = '\0';
++	if (ee.e_hostname)
++		xfree(ee.e_hostname);
++	ee.e_hostname = xstrdup(hname);
++
+ 	if (strlen(path) >= sizeof(ee.e_path)) {
+ 		xlog(L_WARNING, "path name %s too long", path);
+ 		return NULL;
 -- 
 1.5.2.2
 
