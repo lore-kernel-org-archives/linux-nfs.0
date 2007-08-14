@@ -1,23 +1,22 @@
-From: "Shannon Skerritt" <shannon@thousandhillservices.com>
-Subject: NFS problem: rpc.mountd: can't stat exported dir /home/.hidden
-Date: Tue, 14 Aug 2007 16:42:37 +0100
-Message-ID: <b5ff9fe50708140842k9657506y50ed486a02407002@mail.gmail.com>
-References: <b5ff9fe50708140841n3ae2e34fpe44e9526f5c200fd@mail.gmail.com>
+From: Eli Stair <estair@ilm.com>
+Subject: Re: Live performance tools?
+Date: Tue, 14 Aug 2007 10:39:52 -0700
+Message-ID: <46C1E8E8.3060405@ilm.com>
+References: <slrnfc1j28.fcc.jgoerzen@katherina.lan.complete.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
+To: John Goerzen <jgoerzen@complete.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IKyap-0004mG-R2
-	for nfs@lists.sourceforge.net; Tue, 14 Aug 2007 08:46:04 -0700
-Received: from nz-out-0506.google.com ([64.233.162.226])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IKyXa-0003oV-Ut
-	for nfs@lists.sourceforge.net; Tue, 14 Aug 2007 08:42:43 -0700
-Received: by nz-out-0506.google.com with SMTP id f1so2441728nzc
-	for <nfs@lists.sourceforge.net>; Tue, 14 Aug 2007 08:42:39 -0700 (PDT)
-In-Reply-To: <b5ff9fe50708140841n3ae2e34fpe44e9526f5c200fd@mail.gmail.com>
+	id 1IL0N3-0001zy-8l
+	for nfs@lists.sourceforge.net; Tue, 14 Aug 2007 10:39:57 -0700
+Received: from gateway01.lucasfilm.com ([63.82.98.221])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IL0N6-0001K6-9V
+	for nfs@lists.sourceforge.net; Tue, 14 Aug 2007 10:40:01 -0700
+In-Reply-To: <slrnfc1j28.fcc.jgoerzen@katherina.lan.complete.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,73 +29,68 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi all,
 
-I am hoping that someone can assist me with an interesting problem. I
-have a RHEL WS4 workstation client that is accessing an NFS share via
-AUTOFS.
+Try lighting up an instance of ntop on the network you've got your NFS 
+server(s) on.  Either span/mirror the switch ports so it sees all the 
+traffic in promisc mode, or turn on sflow forwarding to the box.  As for 
+determining what files are being accessed, you can use ethereal to 
+capture traffic on the wire and analyze file ops occuring, but it's not 
+fun to try and analyze #ops/file... you'd have to filter quite well, 
+dump as XML/text and do some post-processing to generate your stats.
 
--- /etc/auto.master
+You could also start up inotify on the linux NFS server, watching the 
+entire directory tree you're exporting via NFS, log the output, and 
+later analyze the file ops as reported.  Maybe you should turn on some 
+trending/monitoring of the clients themselves, I'd suggest ganglia for 
+ease-of-deployment, but you could also use net-snmp and cacti, or 
+monami... there are a number of ways to get data on traffic occuring at 
+both ends of the transaction.
 
-/misc /etc/auto.misc --timeout=60
-/home /etc/auto.home --timeout=60
+There's also an ncurses-based traffic tool that's sometimes handy for 
+looking at NFS, but I don't recall its name offhand.
 
--- /etc/auto.misc
 
-share1 -rw,intr,bg,rsize=32768,wsize=32768 server:/share1
+/eli
 
--- /etc/auto.home
+John Goerzen wrote:
+> Hi,
+> 
+> We are deploying a number of Linux desktop clients running NFS against
+> our Linux NFS server.  We are seeing occasional odd spikes in traffic
+> that are causing performance troubles for all users.  We are trying to
+> isolate the cause of these spikes, but to date haven't been able to.
+> The best we can do is use iostat and verify that yes, the disk we
+> expected is seeing a lot of traffic.
+> 
+> nfsd threads seem to be impervious to lsof.  top also doesn't show much
+> about them, and of course you can't strace them.
+> 
+> Is there any tool out there that could give us any of this sort of info:
+> 
+>  * What IP addresses are generating high volumes of read or write
+>    traffic
+> 
+>  * What files on disk are being accessed frequently via NFS
+> 
+>  * Anything else that could help us pinpoint the trouble
+> 
+> nfsstat does not seem to provide fine enough detail for this.
+> 
+> Thanks,
+> 
+> -- John
+> 
+> 
+> -------------------------------------------------------------------------
+> This SF.net email is sponsored by: Splunk Inc.
+> Still grepping through log files to find problems?  Stop.
+> Now Search log events and configuration files using AJAX and a browser.
+> Download your FREE copy of Splunk now >>  http://get.splunk.com/
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
+> 
 
-* -rw,intr,bg,rsize=32768,wsize=32768 server:/home/&
-
-The workstations authenticate via OpenLDAP and the above obviously
-means that home directories are served via NFS on demand. This all
-works well but I have noticed I am starting to get interesting errors
-when browsing NFS shares particularly using Nautilus/GNOME on the
-workstations.
-
-NFS config on the server:
-
--- /etc/exports
-
-/home x.x.x.x/255.255.255.0(rw)
-
-On the client:
-
-automount[5619]: >> mount: brimstone:/home/.hidden failed, reason
-given by server: No such file or directory
-automount[5619]: mount(nfs): nfs: mount failure server1:/home/.hidden
-on /home/.hidden
-automount[5619]: failed to mount /home/.hidden
-
-On the server:
-
-rpc.mountd: authenticated mount request from workstation:797 for
-/home/.hidden (/home)
-rpc.mountd: can't stat exported dir /home/.hidden: No such file or directory
-
-Occasionally, I'll get references to /home/.directory instead of /home.hidden.
-
-The above can fill the logs and cause serious system slow down, again
-occasionally at the rate of a mount a second on the NFS server.
-
-1. Why are the clients looking for these files?
-2. How do stop this behaviour?
-
-I'm not sure if the above is related (but it certainly sounds like it)
-- but does anyone also have any ideas on how I can disable gam_server?
-It appears it may be part of the problem as per this:
-http://mail.gnome.org/archives/gamin-list/2006-March/msg00007.html
-
-Any thoughts?
-
-Regards,
-Shannon.
-
---
-Shannon Skerritt
-Thousand Hill Services Limited
-Email: shannon@thousandhillservices.com
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
