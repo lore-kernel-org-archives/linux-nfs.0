@@ -1,31 +1,23 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: inconsistencies in nfs(5)
-Date: Wed, 15 Aug 2007 16:34:11 -0400
-Message-ID: <46C36343.8000009@oracle.com>
-References: <46BB2DF2.1050501@oracle.com>
-	<169a.46bb3b18.7157f@altium.nl>	<169a.46bb3b18.7157f@altium.nl>
-	<46BB405B.5050206@oracle.com> <5e6a.46bc1f6e.593b@altium.nl>
-Reply-To: chuck.lever@oracle.com
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH 0/5] nfsstat: adding -S/--since
+Date: Thu, 16 Aug 2007 09:16:53 +1000
+Message-ID: <18115.35173.364849.564000@notabene.brown>
+References: <Pine.BSO.4.64.0708131440190.6965@citi.umich.edu>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------040205040104090108020304"
+Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: Dick Streefland <dick.streefland@altium.nl>
+To: "david m. richter" <richterd@citi.umich.edu>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1ILPbU-0006aI-6R
-	for nfs@lists.sourceforge.net; Wed, 15 Aug 2007 13:36:32 -0700
-Received: from rgminet02.oracle.com ([148.87.113.119])
+	id 1ILS6n-0007Ux-Dn
+	for nfs@lists.sourceforge.net; Wed, 15 Aug 2007 16:17:01 -0700
+Received: from mx2.suse.de ([195.135.220.15])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1ILPbW-000519-P3
-	for nfs@lists.sourceforge.net; Wed, 15 Aug 2007 13:36:36 -0700
-Received: from rgminet01.oracle.com (rgminet01.oracle.com [148.87.113.118])
-	by rgminet02.oracle.com (Switch-3.2.4/Switch-3.1.7) with ESMTP id
-	l7FKa8ia009944
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <nfs@lists.sourceforge.net>; Wed, 15 Aug 2007 14:36:08 -0600
-In-Reply-To: <5e6a.46bc1f6e.593b@altium.nl>
+	(Exim 4.44) id 1ILS6p-00035g-W6
+	for nfs@lists.sourceforge.net; Wed, 15 Aug 2007 16:17:05 -0700
+In-Reply-To: message from david m. richter on Monday August 13
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -38,80 +30,57 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
---------------040205040104090108020304
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Transfer-Encoding: 7bit
-
-rnews@tasking.nl wrote:
-> Chuck Lever <chuck.lever@oracle.com> wrote:
-> | This is still in utils/mount/nfsmount.c.
+On Monday August 13, richterd@citi.umich.edu wrote:
+> 	Hello, Neil,
 > 
-> It is not in util-linux-ng-2.13-rc2 anymore, which is in Debian sid.
+> 	As per your and other folks' suggestions, this set of patches adds 
+> the -S/--since flag, which takes a stats file and then displays the 
+> difference between them and the current stats.  It accepts the raw stats 
+> formats of /proc/net/rpc/nfs{,d} as well as "pretty" nfsstat output saved 
+> to a file (so you can have both client and server stats in the same file).
+
+Thanks.
+
 > 
-> | I'm not sure how this can affect other mount commands running 
-> | concurrently on the same client.  The man page implies that if one mount 
-> | command has backgrounded against a server, subsequent mount commands 
-> | against the same server will just go right into the background.  But 
-> | prev_bg_host is unique in each instance of the mount command.
-> | 
-> | Can you help me understand what you intended?  Do you have a test case?
+> 	This doesn't save the current statistics back to a tempfile like 
+> one of the ideas mentioned, but one can still use it in conjunction with 
+> watch(1); e.g.:
 > 
-> Phew, I wrote that 10 years ago! But I think that when you do a
-> "mount -atnfs", multiple mounts will be handled by the same mount
-> instance. The code helps when there are multiple NFS mounts from the
-> same host in fstab, and the server is down when you boot the client.
+> $ watch "nfsstat --since /tmp/stats; nfsstat >/tmp/stats" 
 
-OK, looking at this again...
+This misses any changes between the two runs of nfsstat.  Normally
+that won't be significant I guess..
 
-I haven't actually tested this, but I think that "mount -a" will invoke 
-the mount.nfs helper repeatedly for each individual NFS mount request. 
-I don't see any support for a "-a" option in mount.nfs; it seems to be 
-designed specifically for handling individual NFS mount requests, and 
-not for "mount all items in /etc/fstab with this fstype."
+> 
+> 
+> - patch 1 just renames some existing variables to clarify their purpose.
+> 
+> - patch 2 adds a few pointers to help with --since and obviates 
+> copy_stats().
+> 
+> - patch 3 removes some comparisons against global struct statinfos.
+> 
+> - patch 4 adds #defines for the output labels and adds them to struct 
+> statinfo.
+> 
+> - patch 5 uses the rest and adds -S/--since.
 
-Thus I don't think this feature you describe can work any more, and it 
-argues perhaps for shortening the bg timeout in mount.nfs.  Comments?
+I didn't see
 
---------------040205040104090108020304
-Content-Type: text/x-vcard; charset=utf-8;
- name="chuck.lever.vcf"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="chuck.lever.vcf"
+  - patch 6 update nfsstat.man to document -S/--since
 
-begin:vcard
-fn:Chuck Lever
-n:Lever;Chuck
-org:Oracle Corporation;Corporate Architecture: Linux Projects Group
-adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
-title:Principal Member of Staff
-tel;work:+1 248 614 5091
-x-mozilla-html:FALSE
-url:http://oss.oracle.com/~cel
-version:2.1
-end:vcard
+maybe that one got lost in the mail :-)
 
+I've committed the first 5 to .git.
 
---------------040205040104090108020304
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+Thanks,
+NeilBrown
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
---------------040205040104090108020304
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---------------040205040104090108020304--
