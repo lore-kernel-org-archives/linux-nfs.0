@@ -1,21 +1,25 @@
-From: "Eli Stair" <estair@ilm.com>
-Subject: Re: Latency problem with some clients but not others
-Date: Wed, 15 Aug 2007 10:58:03 -0700
-Message-ID: <6E56E676C9D6A74EBC980144BC06A17D04BB45E4@mailbox03.lucas.alllucas.com>
-References: <46C33597.3030004@caps-entreprise.com>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [Bugme-new] [Bug 8891] New: in-kernel rpc generates
+ broken RPCBPROC_GETVERSADDR v4 requests
+Date: Wed, 15 Aug 2007 12:29:09 -0700
+Message-ID: <20070815122909.c67c0db6.akpm@linux-foundation.org>
+References: <bug-8891-10286@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1864692396=="
-To: "Romain Dolbeau" <romain.dolbeau@caps-entreprise.com>,
-	<nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Cc: "bugme-daemon@bugzilla.kernel.org" <bugme-daemon@bugzilla.kernel.org>,
+	speidel@ueberschuss.de
+To: netdev@vger.kernel.org, nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1ILN8B-0004eo-7m
-	for nfs@lists.sourceforge.net; Wed, 15 Aug 2007 10:58:07 -0700
-Received: from gateway02.lucasfilm.com ([63.82.98.222])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1ILN8D-0006lK-3W
-	for nfs@lists.sourceforge.net; Wed, 15 Aug 2007 10:58:11 -0700
+	id 1ILOYR-00071h-VO
+	for nfs@lists.sourceforge.net; Wed, 15 Aug 2007 12:29:20 -0700
+Received: from smtp2.linux-foundation.org ([207.189.120.14])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1ILOYV-0001CK-Tg
+	for nfs@lists.sourceforge.net; Wed, 15 Aug 2007 12:29:24 -0700
+In-Reply-To: <bug-8891-10286@http.bugzilla.kernel.org/>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,277 +32,110 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
+On Wed, 15 Aug 2007 12:22:51 -0700 (PDT)
+bugme-daemon@bugzilla.kernel.org wrote:
 
---===============1864692396==
-Content-class: urn:content-classes:message
-Content-Type: multipart/alternative;
-	boundary="----_=_NextPart_001_01C7DF65.D32765C6"
+> http://bugzilla.kernel.org/show_bug.cgi?id=8891
+> 
+>            Summary: in-kernel rpc generates broken RPCBPROC_GETVERSADDR v4
+>                     requests
+>            Product: Networking
+>            Version: 2.5
+>      KernelVersion: 2.6.22.1
+>           Platform: All
+>         OS/Version: Linux
+>               Tree: Mainline
+>             Status: NEW
+>           Severity: normal
+>           Priority: P1
+>          Component: Other
+>         AssignedTo: acme@ghostprotocols.net
+>         ReportedBy: speidel@ueberschuss.de
+> 
+> 
+> Most recent kernel where this bug did not occur: 2.6.20
 
-This is a multi-part message in MIME format.
+Apparently a regression.
 
-------_=_NextPart_001_01C7DF65.D32765C6
-Content-Type: text/plain;
-	charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
+> Distribution: Fedora Core 6
+> Hardware Environment: x86_64
+> Software Environment: NFS
+> Problem Description: When locking a file, an invalid RPCBPROC_GETVERSADDR
+> procedure call is sent out
+> 
+> Steps to reproduce:
+> on the NFS server, run: tcpdump -xX -pni eth0 -s0 port 111 and src host
+> theNFSclient
+> on a client running 2.6.22.1, run: flock -x /nfsmount/somefile ls
+> tcpdump will show:
+> 
+> 17:10:01.290655 IP 141.2.15.141.34572 > 141.2.1.1.sunrpc: P 0:168(168) ack 1
+> win 183 <nop,nop,timestamp 966695 115079499>
+>         0x0000:  4500 00dc 53ad 4000 3f06 bcdc 8d02 0f8d  E...S.@.?.......
+>                 0x0010:  8d02 0101 870c 006f cdcd 938d db00 c8a7 
+> .......o........
+>         0x0020:  8018 00b7 e59d 0000 0101 080a 000e c027  ...............'
+>         0x0030:  06db f94b 8000 00a4 fd48 2a07 0000 0000  ...K.....H*.....
+>         0x0040:  0000 0002 0001 86a0 0000 0004 0000 0009  ................
+>         0x0050:  0000 0001 0000 0054 0000 03c6 0000 0007  .......T........
+>         0x0060:  6572 6964 796b 6500 0000 0000 0000 0000  eridyke.........
+>         0x0070:  0000 000e 0000 0000 0000 0001 0000 0002  ................
+>         0x0080:  0000 0003 0000 0004 0000 0005 0000 0006  ................
+>         0x0090:  0000 0007 0000 0007 0000 0009 0000 000a  ................
+>         0x00a0:  0000 000c 0000 0014 0000 001c 0000 0000  ................
+>         0x00b0:  0000 0000 0001 86b5 0000 0004 0000 0003  ................
+>         0x00c0:  7463 7000 0000 0009 3134 312e 322e 312e  tcp.....141.2.1.
+>         0x00d0:  3100 0000 0000 0004 7270 6362            1.......rpcb
+> 
+> Note the "141.2.1.1" in the output.
+> 
+> According to RFC 1833, you can read here the following fields:
+> 
+> RPCBPROC_GETVERSADDR version 4 procedure is being called
+> r_prog == 0x000186b5 == 100021 == nfs.lockd
+> r_vers == 4
+> r_netid == (length 3) "tcp"
+> r_addr == (length 9) "141.2.1.1"
+> r_owner == (length 4) "rpcb"
+> 
+> This r_addr member is supposed to contain an universal address. Although I have
+> no source for that, the RFC clearly says a service can listen to an address,
+> and RPCBPROC_GETVERSADDR is supposed to return an universal address too. From
+> this I can conclude that an universal address is supposed to contain the port
+> number, and other operating systems are using the format
+> a.b.c.d.PortHighByte.PortLowByte (like in FTP, but with . instead of ,). I
+> interpret the RFC 1833 so that the port number of the rpcbind, that is, 111, is
+> to be appended, so the correct value of r_addr would be "141.2.1.1.0.111". This
+> matches other implementations.
+> 
+> Of course, all this does sound like nitpicking, and as the callee is not even
+> supposed to look at the port number (this argument is only there so the callee
+> can decide correctly which interface address to use for the response). However,
+> this omission triggers an apparently unpatched denial of service vulnerability
+> against HP-UX 11.11's rpcbind and causes it to quit with a core dump and a bus
+> error. When using a correctly formed universal address, or the empty string,
+> there is no crash of HP-UX's rpcbind.
+> 
+> And of course it is HP who has to fix the DoS bug - but Linux 2.6.22 triggers
+> it by a RFC violation, which is a minor bug to be fixed on Linux's side. By the
+> way, does anyone have the right contacts to HP to report this bug? I do not
+> have a HP service contract any more, and the only other support place I found
+> is their public forum, where I of course can only provide limited information
+> about the bug (basically, the same I am posting here).
+> 
+> Maybe the bug is fixed in a more current kernel, I was only using Fedora's
+> highly patched distribution kernel and compared it to the sources of the base
+> version in the main tree, where I see the very same problem in the source code.
+> So I do not think it was Fedora who caused the problem, and am assigning it to
+> mainline.
+> 
 
-
-You can set some significant performance variables affecting your =
-ethernet devices with ethtool.  I personally turn off TSO (tcp =
-segmentation offload) as have seen this cause issues in production on =
-e1000 chipsets from a number of different vendors, with a variety of =
-drivers.  I haven't seen a lot of data on the new NAPI-mode e1000 =
-driver, but it could have the possibility to introduce latency issues =
-with "enhanced" interrupt coalescing and buffering.  I'm not sure how =
-you tune the internals on THAT driver, but on every other NIC you do so =
-with the 'ethtool -C eth{n}' commands. =20
-
-YMMV on those particular fronts, but I've had good luck fixing intel =
-gigabit issues disabling offload functions, and improving bandwidth =
-performance on a number of broadcom chipsets with ethtool coalesce =
-settings.  I'd suggest you get some hard numbers for comparison before =
-making any changes, using netperf or iperf.  That way you can quantify =
-it at least.
-
-If I entirely misunderstood your post, and you're having problems with =
-the 8169 systems, not the intel Xeon with e1000, you might want to =
-seriously consider ditching the Realtek (8169) and test with another =
-card in that problematic system.  Easiest and most direct way to test.
-
-
-/eli
-
------Original Message-----
-From: nfs-bounces@lists.sourceforge.net on behalf of Romain Dolbeau
-Sent: Wed 8/15/2007 10:19 AM
-To: nfs@lists.sourceforge.net
-Subject: [NFS] Latency problem with some clients but not others
-=20
-Hello all,
-
-I have a strange latency problem that affect some clients
-but not others. The server is a x86_64 Debian machine.
-
-I've created a test case with just 2 64 bits clients. Both use
-the same kernel, and have the same packages installed. They both
-mount the same filesystems at the mountpoint through amd (the
-maps are distributed through NIS).
-
-The user is the same, with one single logging through SSH.
-Nothing is running (except kdm) on either clients.
-All machines are directly hooked to the same gigabit switch.
-The network traffic was extremely low during the test.
-Both clients were freshly rebooted.
-
-One of the client is a dual Xeon 5130 system, with an on-board
-intel NIC (module e1000). The other is a single Core 2 Duo 6320,
-with an on-board ??? NIC (module r8169).
-
-When doing a ./configure (lots of small r/w accesses) inside one
-of the NFS mounted filesystem, the first system is fairly fast,
-while the other is much slower - each line of the configure script
-takes up to a second to display a result. *But*, pure throughput is
-fine - if I use dd to write or read a large file, the speed is what
-I would expect from the wire.
-
-The problem is reproductible to all similar clients to the
-second system, but I also have other clients (for instance
-old 32 bits systems with 3c59x cards) that do not exhibit
-the problem. In fact, it seems that all my 32 bits clients
-are fast (well, as fast as they can be :-), and all my 64 bits
-are slow, except two : the one above, and an old Pentium D
-machine with an e100 card.
-
-Any idea where I should look ? My only clue is that all my slow
-64 bits client uses the same driver (r8169), whereas the fast one
-uses e1000 and e100, could that be the source of the problem ?
-(I don't havea spare NIC to try) ; is there any know problem
-with such cheap on-board NIC ? How could I tell ?
-
-Thanks in advance for any help.
-
-P.S. just in case it's significant...
-
-* mount display : "type nfs=20
-(nodev,nosuid,nounmount,noatime,rsize=3D8192,wsize=3D8192,vers=3D3,proto=3D=
-tcp)"
-  for all filesystems on all clients.
-* kernel is current Debian stable (2.6.18-4) or testing (2.6.21-2),
-  same symptoms for both.
-* I've tried both the included r8169 driver and the one from Realtek,
-  same symptoms for both.
-
---=20
-Romain Dolbeau
-<romain.dolbeau@caps-entreprise.com>
-
-
--------------------------------------------------------------------------=
-
-This SF.net email is sponsored by: Splunk Inc.
-Still grepping through log files to find problems?  Stop.
-Now Search log events and configuration files using AJAX and a browser.
-Download your FREE copy of Splunk now >>  http://get.splunk.com/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-
-
-
-------_=_NextPart_001_01C7DF65.D32765C6
-Content-Type: text/html;
-	charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
-<HTML>
-<HEAD>
-<META HTTP-EQUIV=3D"Content-Type" CONTENT=3D"text/html; =
-charset=3Diso-8859-1">
-<META NAME=3D"Generator" CONTENT=3D"MS Exchange Server version =
-6.5.7652.24">
-<TITLE>RE: [NFS] Latency problem with some clients but not =
-others</TITLE>
-</HEAD>
-<BODY>
-<!-- Converted from text/plain format -->
-<BR>
-
-<P><FONT SIZE=3D2>You can set some significant performance variables =
-affecting your ethernet devices with ethtool.&nbsp; I personally turn =
-off TSO (tcp segmentation offload) as have seen this cause issues in =
-production on e1000 chipsets from a number of different vendors, with a =
-variety of drivers.&nbsp; I haven't seen a lot of data on the new =
-NAPI-mode e1000 driver, but it could have the possibility to introduce =
-latency issues with &quot;enhanced&quot; interrupt coalescing and =
-buffering.&nbsp; I'm not sure how you tune the internals on THAT driver, =
-but on every other NIC you do so with the 'ethtool -C eth{n}' =
-commands.&nbsp;<BR>
-<BR>
-YMMV on those particular fronts, but I've had good luck fixing intel =
-gigabit issues disabling offload functions, and improving bandwidth =
-performance on a number of broadcom chipsets with ethtool coalesce =
-settings.&nbsp; I'd suggest you get some hard numbers for comparison =
-before making any changes, using netperf or iperf.&nbsp; That way you =
-can quantify it at least.<BR>
-<BR>
-If I entirely misunderstood your post, and you're having problems with =
-the 8169 systems, not the intel Xeon with e1000, you might want to =
-seriously consider ditching the Realtek (8169) and test with another =
-card in that problematic system.&nbsp; Easiest and most direct way to =
-test.<BR>
-<BR>
-<BR>
-/eli<BR>
-<BR>
------Original Message-----<BR>
-From: nfs-bounces@lists.sourceforge.net on behalf of Romain Dolbeau<BR>
-Sent: Wed 8/15/2007 10:19 AM<BR>
-To: nfs@lists.sourceforge.net<BR>
-Subject: [NFS] Latency problem with some clients but not others<BR>
-<BR>
-Hello all,<BR>
-<BR>
-I have a strange latency problem that affect some clients<BR>
-but not others. The server is a x86_64 Debian machine.<BR>
-<BR>
-I've created a test case with just 2 64 bits clients. Both use<BR>
-the same kernel, and have the same packages installed. They both<BR>
-mount the same filesystems at the mountpoint through amd (the<BR>
-maps are distributed through NIS).<BR>
-<BR>
-The user is the same, with one single logging through SSH.<BR>
-Nothing is running (except kdm) on either clients.<BR>
-All machines are directly hooked to the same gigabit switch.<BR>
-The network traffic was extremely low during the test.<BR>
-Both clients were freshly rebooted.<BR>
-<BR>
-One of the client is a dual Xeon 5130 system, with an on-board<BR>
-intel NIC (module e1000). The other is a single Core 2 Duo 6320,<BR>
-with an on-board ??? NIC (module r8169).<BR>
-<BR>
-When doing a ./configure (lots of small r/w accesses) inside one<BR>
-of the NFS mounted filesystem, the first system is fairly fast,<BR>
-while the other is much slower - each line of the configure script<BR>
-takes up to a second to display a result. *But*, pure throughput is<BR>
-fine - if I use dd to write or read a large file, the speed is what<BR>
-I would expect from the wire.<BR>
-<BR>
-The problem is reproductible to all similar clients to the<BR>
-second system, but I also have other clients (for instance<BR>
-old 32 bits systems with 3c59x cards) that do not exhibit<BR>
-the problem. In fact, it seems that all my 32 bits clients<BR>
-are fast (well, as fast as they can be :-), and all my 64 bits<BR>
-are slow, except two : the one above, and an old Pentium D<BR>
-machine with an e100 card.<BR>
-<BR>
-Any idea where I should look ? My only clue is that all my slow<BR>
-64 bits client uses the same driver (r8169), whereas the fast one<BR>
-uses e1000 and e100, could that be the source of the problem ?<BR>
-(I don't havea spare NIC to try) ; is there any know problem<BR>
-with such cheap on-board NIC ? How could I tell ?<BR>
-<BR>
-Thanks in advance for any help.<BR>
-<BR>
-P.S. just in case it's significant...<BR>
-<BR>
-* mount display : &quot;type nfs<BR>
-(nodev,nosuid,nounmount,noatime,rsize=3D8192,wsize=3D8192,vers=3D3,proto=3D=
-tcp)&quot;<BR>
-&nbsp; for all filesystems on all clients.<BR>
-* kernel is current Debian stable (2.6.18-4) or testing (2.6.21-2),<BR>
-&nbsp; same symptoms for both.<BR>
-* I've tried both the included r8169 driver and the one from =
-Realtek,<BR>
-&nbsp; same symptoms for both.<BR>
-<BR>
---<BR>
-Romain Dolbeau<BR>
-&lt;romain.dolbeau@caps-entreprise.com&gt;<BR>
-<BR>
-<BR>
--------------------------------------------------------------------------=
-<BR>
-This SF.net email is sponsored by: Splunk Inc.<BR>
-Still grepping through log files to find problems?&nbsp; Stop.<BR>
-Now Search log events and configuration files using AJAX and a =
-browser.<BR>
-Download your FREE copy of Splunk now &gt;&gt;&nbsp; <A =
-HREF=3D"http://get.splunk.com/">http://get.splunk.com/</A><BR>
-_______________________________________________<BR>
-NFS maillist&nbsp; -&nbsp; NFS@lists.sourceforge.net<BR>
-<A =
-HREF=3D"https://lists.sourceforge.net/lists/listinfo/nfs">https://lists.s=
-ourceforge.net/lists/listinfo/nfs</A><BR>
-<BR>
-<BR>
-</FONT>
-</P>
-
-</BODY>
-</HTML>
-------_=_NextPart_001_01C7DF65.D32765C6--
-
-
---===============1864692396==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
---===============1864692396==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============1864692396==--
