@@ -1,19 +1,19 @@
-From: " =?utf-8?b?157Xmdeb15DXnNeUINeo15HXp9eU?=" <testmail17@nana10.co.il>
-Subject: =?utf-8?b?16bXkdeZ16fXlCDXkdeo16c=?=
-Date: Wed, 15 Aug 2007 00:41:09 -0700
-Message-ID: <E1ILDUt-0005Of-IL@mail.sourceforge.net>
-Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============0653837230=="
-To: "nfs" <nfs@lists.sourceforge.net>
+From: =?GB2312?B?sKLRxQ==?= <jow.7cv@163.com>
+Subject: =?GB2312?B?y83A8aOhyMPL/czszOy437OxtfzG8A==?=
+Date: Wed, 15 Aug 2007 20:24:39 +0800
+Message-ID: <E1ILHvO-00062h-0Y@mail.sourceforge.net>
+Reply-To: jow.7cv@163.com
+Content-Type: multipart/mixed; boundary="===============1271198761=="
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1ILDUr-0007e9-PY
-	for nfs@lists.sourceforge.net; Wed, 15 Aug 2007 00:40:54 -0700
-Received: from [80.179.149.178] (helo=lovly.co.il)
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1ILDUt-0005Of-IL
-	for nfs@lists.sourceforge.net; Wed, 15 Aug 2007 00:40:57 -0700
+	id 1ILHwV-0003wT-9K
+	for nfs@lists.sourceforge.net; Wed, 15 Aug 2007 05:27:00 -0700
+Received: from [123.6.97.5] (helo=163.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1ILHvO-00062h-0Y
+	for nfs@lists.sourceforge.net; Wed, 15 Aug 2007 05:24:35 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,59 +26,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
+--===============1271198761==
+Content-Type: text/html;charset="GB2312"
 
---===============0653837230==
-Content-Type: multipart/alternative;
-	boundary="----=_NextPart_000_0000_01C6527E.AE8904D0"
+<html>
 
-This is a multi-part message in MIME format.
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=gb2312">
+<title>阴茎增大 赠送￥917元大礼包</title>
+</head>
 
-------=_NextPart_000_0000_01C6527E.AE8904D0
-Content-Type: text/plain;
- charset="utf-8"
-Content-Transfer-Encoding: quoted-printable
+<body>
+<b><font size="6">
+<a target="_blank" href="http://www.7cv.com/pdetail.php?localcode=12180052_105760&asstfrom=jow">阴茎增大 赠送￥917元大礼包！</a></font></b>  
 
-=D7=90=D7=AA=D7=A8 =D7=90=D7=99=D7=A0=D7=98=D7=A8=D7=A0=D7=98 =D7=91=D7=9E=
-=D7=97=D7=99=D7=A8 4444 =D7=A9"=D7=97
-=D7=9C=D7=A9=D7=91=D7=95=D7=A2 =D7=99=D7=9E=D7=99=D7=9D =D7=91=D7=9C=D7=91=
-=D7=93
+<p>&nbsp;<a target="_blank" href="http://www.7cv.com/pdetail.php?localcode=12180052_105760&asstfrom=jow"><img src="http://www.7cv.com/images_shop2007/070810/468-60-2.gif" border=0 alt="阴茎增大 赠送￥917元大礼包！ 七彩谷商城 成人用品 全网最低价！ 杜蕾斯￥3.5起！"></a>
+</p>
+<p><b><span lang="zh-cn"><a target="_blank" href="http://jow.7cv.com">
+<font size="6">七彩谷成人用品商城</font></a></span></b></p>
 
-=D7=9C=D7=A4=D7=A8=D7=98=D7=99=D7=9D =D7=A0=D7=95=D7=A1=D7=A4=D7=99=D7=9D=
- =D7=95=D7=99=D7=A6=D7=99=D7=A8=D7=AA =D7=A7=D7=A9=D7=A8 =D7=9C=D7=97=D7=A5=
- =D7=9B=D7=90=D7=9F
+</body>
 
-
-
-
-=D7=94=D7=A1=D7=A8=D7=94 =D7=9E=D7=AA=D7=A4=D7=95=D7=A6=D7=94
-------=_NextPart_000_0000_01C6527E.AE8904D0
-Content-Type: text/html;
- charset="utf-8"
-
-<HTML>
-<HEAD>
-<META NAME="GENERATOR" Content="Microsoft DHTML Editing Control">
-</HEAD>
-<BODY>
-<P align=center><FONT size=5>  讗转专 讗讬谞讟专谞讟 讘诪讞讬专 4444 
-砖"讞</FONT></P>
-<P align=center><FONT size=5>诇砖讘讜注 讬诪讬诐 讘诇讘讚</FONT></P>
-<P align=center>&nbsp;</P>
-<P align=center><FONT size=5><A href="http://www.yourinquiry.com/contact_OrderPage.html" >诇驻专讟讬诐&nbsp;谞讜住驻讬诐 讜讬爪讬专转 
-拽砖专 诇讞抓&nbsp;讻讗谉</A></FONT></P>
-<P align=center><FONT size=5></FONT>&nbsp;</P>
-<P align=center><FONT size=5></FONT>&nbsp;</P>
-<P align=center><FONT size=5></FONT>&nbsp;</P>
-<P align=center><FONT size=5></FONT>&nbsp;</P>
-<P align=right><FONT size=1><A href="mailto:spamforyou06@gmail.com">讛住专讛 
-诪转驻讜爪讛</A></FONT></P>
-</BODY>
-</HTML>
-------=_NextPart_000_0000_01C6527E.AE8904D0--
+</html>
 
 
---===============0653837230==
+--===============1271198761==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -89,7 +61,7 @@ This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
---===============0653837230==
+--===============1271198761==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -99,4 +71,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---===============0653837230==--
+--===============1271198761==--
