@@ -1,31 +1,29 @@
-From: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
-Subject: Re: Live performance tools?
-Date: Tue, 14 Aug 2007 23:48:29 +0200
-Message-ID: <20070814214829.GA9996@uio.no>
-References: <slrnfc1j28.fcc.jgoerzen@katherina.lan.complete.org>
-	<46C1E8E8.3060405@ilm.com>
+From: "Peng Haitao" <penght@cn.fujitsu.com>
+Subject: [PATCH] long option "--mounted" does not work
+Date: Wed, 15 Aug 2007 08:30:08 +0800
+Message-ID: <026401c7ded3$6f37ebb0$2b8da70a@fnstc2722c6805>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Content-Type: multipart/mixed;
+	boundary="----=_NextPart_000_0262_01C7DF16.7D4A62D0"
+To: <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IL4Fd-0004ZE-C7
-	for nfs@lists.sourceforge.net; Tue, 14 Aug 2007 14:48:33 -0700
-Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IL4Fg-0003CH-CW
-	for nfs@lists.sourceforge.net; Tue, 14 Aug 2007 14:48:37 -0700
-Received: from trofast.ipv6.sesse.net ([2001:700:300:1803:20e:cff:fe36:a766]
-	helo=trofast.sesse.net)
-	by cassarossa.samfundet.no with esmtps (TLS-1.0:RSA_AES_256_CBC_SHA:32)
-	(Exim 4.50) id 1IL4Fa-0004yu-Eo
-	for nfs@lists.sourceforge.net; Tue, 14 Aug 2007 23:48:30 +0200
-Received: from root by trofast.sesse.net with local (Exim 4.67)
-	(envelope-from <sesse@samfundet.no>) id 1IL4FZ-0002fJ-TH
-	for nfs@lists.sourceforge.net; Tue, 14 Aug 2007 23:48:29 +0200
-In-Reply-To: <46C1E8E8.3060405@ilm.com>
+	id 1IL6oO-0004u2-1p
+	for nfs@lists.sourceforge.net; Tue, 14 Aug 2007 17:32:37 -0700
+Received: from [222.73.24.84] (helo=song.cn.fujitsu.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IL6oR-0004Iw-AE
+	for nfs@lists.sourceforge.net; Tue, 14 Aug 2007 17:32:40 -0700
+Received: from tang.cn.fujitsu.com (tang.cn.fujitsu.com [10.167.250.3])
+	by song.cn.fujitsu.com (Postfix) with ESMTP id 708F117011F
+	for <nfs@lists.sourceforge.net>; Wed, 15 Aug 2007 08:32:29 +0800 (CST)
+Received: from fnst.cn.fujitsu.com (localhost.localdomain [127.0.0.1])
+	by tang.cn.fujitsu.com (8.13.1/8.13.1) with ESMTP id l7F0WQxt009166
+	for <nfs@lists.sourceforge.net>; Wed, 15 Aug 2007 08:32:27 +0800
+Received: from fnstc2722c6805 (unknown [10.167.141.43])
+	by fnst.cn.fujitsu.com (Postfix) with ESMTP id B464CD40CF
+	for <nfs@lists.sourceforge.net>; Wed, 15 Aug 2007 08:45:46 +0800 (CST)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -38,22 +36,90 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, Aug 14, 2007 at 10:39:52AM -0700, Eli Stair wrote:
-> You could also start up inotify on the linux NFS server, watching the 
-> entire directory tree you're exporting via NFS, log the output, and 
-> later analyze the file ops as reported.
+This is a multi-part message in MIME format.
 
-blktrace might also be useful here.
+------=_NextPart_000_0262_01C7DF16.7D4A62D0
+Content-Type: text/plain;
+	charset="gb2312"
+Content-Transfer-Encoding: base64
 
-/* Steinar */
--- 
-Homepage: http://www.sesse.net/
+SGVsbG8gZXZlcnlib2R5LA0KDQpJIGZvdW5kIHRoYXQgIm1vdW50cyIgaW4gc3RydWN0ICJzdGF0
+aWMgc3RydWN0IG9wdGlvbiBsb25nb3B0c1tdIiBvZiB0aGUgc291cmNlIGZpbGUgIm5mc3N0YXQu
+YyIgc2hvdWxkIGJlIHJlcGxhY2VkIGJ5ICJtb3VudGVkIi4gDQoNClBhY2thZ2U6IG5mcy11dGls
+cw0KVmVyc2lvbjogMS4xLjANCg0KSSBmb3VuZCBtYW5wYWdlIGFuZCB0aGUgZnVuY3Rpb24gdXNh
+Z2UoKSBpbiB0aGUgc291cmNlIGZpbGUgc2F5czoNCg0KbWFucGFnZToNCi1tLCAtLW1vdW50ZWQN
+CiAgICAgICAgICAgICAgUHJpbnQgaW5mb3JtYXRpb24gYWJvdXQgZWFjaCBvZiB0aGUgbW91bnRl
+ZCBORlMgZmlsZSBzeXN0ZW1zLg0KICAgICAgICAgICAgICBJZiB0aGlzIG9wdGlvbiBpcyB1c2Vk
+LCBhbGwgb3RoZXIgb3B0aW9ucyBhcmUgaWdub3JlZC4NCg0KdGhlIGZ1bmN0aW9uIHVzYWdlKCk6
+DQpwcmludGYoIlVzYWdlOiAlcyBbT1BUSU9OXS4uLlxuXA0KXG5cDQogIC1tLCAtLW1vdW50ZWRc
+dFx0U2hvdyBzdGF0aXN0aWNzIG9uIG1vdW50ZWQgTkZTIGZpbGVzeXN0ZW1zXG5cDQouLi4NCg0K
+YnV0IGluIHN0cnVjdCAic3RhdGljIHN0cnVjdCBvcHRpb24gbG9uZ29wdHNbXSIgd2FzICJtb3Vu
+dHMiIGluc3RlYWQgb2YgIm1vdW50ZWQiLg0KU28sICJtb3VudHMiIHNob3VsZCBiZSByZXBsYWNl
+ZCBieSAibW91bnRlZCIuDQoNCkZvciBleGFtcGxlOg0KPT09PT09PT09PT09PT09PT09PT09PT09
+PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
+PT09PT09PT0NCltyb290QGxvY2FsaG9zdCB+XSMgbmZzc3RhdCAtLW1vdW50ZWQNCm5mc3N0YXQ6
+IHVucmVjb2duaXplZCBvcHRpb24gYC0tbW91bnRlZCcNClRyeSBgbmZzc3RhdCAtLWhlbHAnIGZv
+ciBtb3JlIGluZm9ybWF0aW9uLg0KW3Jvb3RAbG9jYWxob3N0IH5dIyANCj09PT09PT09PT09PT09
+PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
+PT09PT09PT09PT09PT09PT09DQoNCkkgaGF2ZSBtYWRlIGEgcGF0Y2ggZm9yIHRoaXMgYnVnLg0K
+VGhlIGNvbnRlbnQgb2YgdGhlIHBhdGNoOg0KDQpJbmRleDogbmZzLXV0aWxzLTEuMS4wL3V0aWxz
+L25mc3N0YXQvbmZzc3RhdC5jDQo9PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
+PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PQ0KLS0t
+IG5mcy11dGlscy0xLjEuMC5vcmlnL3V0aWxzL25mc3N0YXQvbmZzc3RhdC5jICAgICAgICAyMDA3
+LTA4LTA4IDAyOjMyOjMzLjAwMDAwMDAwMCArMDgwMA0KKysrIG5mcy11dGlscy0xLjEuMC91dGls
+cy9uZnNzdGF0L25mc3N0YXQuYyAgICAgMjAwNy0wOC0wOCAwMjozMzoxMy4wMDAwMDAwMDAgKzA4
+MDANCkBAIC0xOTgsNyArMTk4LDcgQEAgc3RhdGljIHN0cnVjdCBvcHRpb24gbG9uZ29wdHNbXSA9
+DQogICAgICAgIHsgImFsbCIsIDAsIDAsICd2JyB9LA0KICAgICAgICB7ICJhdXRvIiwgMCwgMCwg
+J1wzJyB9LA0KICAgICAgICB7ICJjbGllbnQiLCAwLCAwLCAnYycgfSwNCi0gICAgICAgeyAibW91
+bnRzIiwgMCwgMCwgJ20nIH0sDQorICAgICAgIHsgIm1vdW50ZWQiLCAwLCAwLCAnbScgfSwNCiAg
+ICAgICAgeyAibmZzIiwgMCwgMCwgJ24nIH0sDQogICAgICAgIHsgInJwYyIsIDAsIDAsICdyJyB9
+LA0KICAgICAgICB7ICJzZXJ2ZXIiLCAwLCAwLCAncycgfSwNCj09PT09PT09PT09PT09PT09PT09
+PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
+PT09PT09PT09PT09DQpJbmRleDogbmZzLXV0aWxzLTEuMS4wL3V0aWxzL25mc3N0YXQvbmZzc3Rh
+dC5jDQoNClJlZ2FyZHMNClBlbmcgSGFpdGFv
+
+------=_NextPart_000_0262_01C7DF16.7D4A62D0
+Content-Type: application/octet-stream;
+	name="nfsstat-1.1.0.patch"
+Content-Transfer-Encoding: quoted-printable
+Content-Disposition: attachment;
+	filename="nfsstat-1.1.0.patch"
+
+diff -Nraup nfs-utils-1.1.0.orig/utils/nfsstat/nfsstat.c =
+nfs-utils-1.1.0/utils/nfsstat/nfsstat.c=0A=
+--- nfs-utils-1.1.0.orig/utils/nfsstat/nfsstat.c	2007-08-08 =
+02:32:33.000000000 +0800=0A=
++++ nfs-utils-1.1.0/utils/nfsstat/nfsstat.c	2007-08-08 =
+02:33:13.000000000 +0800=0A=
+@@ -198,7 +198,7 @@ static struct option longopts[] =3D=0A=
+ 	{ "all", 0, 0, 'v' },=0A=
+ 	{ "auto", 0, 0, '\3' },=0A=
+ 	{ "client", 0, 0, 'c' },=0A=
+-	{ "mounts", 0, 0, 'm' },=0A=
++	{ "mounted", 0, 0, 'm' },=0A=
+ 	{ "nfs", 0, 0, 'n' },=0A=
+ 	{ "rpc", 0, 0, 'r' },=0A=
+ 	{ "server", 0, 0, 's' },=0A=
+
+------=_NextPart_000_0262_01C7DF16.7D4A62D0
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
+------=_NextPart_000_0262_01C7DF16.7D4A62D0
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+------=_NextPart_000_0262_01C7DF16.7D4A62D0--
