@@ -1,23 +1,22 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH 0/5] nfsstat: adding -S/--since
-Date: Thu, 16 Aug 2007 09:16:53 +1000
-Message-ID: <18115.35173.364849.564000@notabene.brown>
-References: <Pine.BSO.4.64.0708131440190.6965@citi.umich.edu>
+From: "Mitch Sako" <msako@cadence.com>
+Subject: Compilation Error nfs-utils-1.1.0
+Date: Wed, 15 Aug 2007 16:19:50 -0700
+Message-ID: <862A0FDF1A4DC647A442EFD270291F7301AE5335@MAILSJ2.global.cadence.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: "david m. richter" <richterd@citi.umich.edu>
+To: <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1ILS6n-0007Ux-Dn
-	for nfs@lists.sourceforge.net; Wed, 15 Aug 2007 16:17:01 -0700
-Received: from mx2.suse.de ([195.135.220.15])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1ILS6p-00035g-W6
-	for nfs@lists.sourceforge.net; Wed, 15 Aug 2007 16:17:05 -0700
-In-Reply-To: message from david m. richter on Monday August 13
+	id 1ILS9W-0007ng-6T
+	for nfs@lists.sourceforge.net; Wed, 15 Aug 2007 16:19:50 -0700
+Received: from mx-sanjose2.cadence.com ([158.140.2.61])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1ILS9a-0004e2-Bh
+	for nfs@lists.sourceforge.net; Wed, 15 Aug 2007 16:19:54 -0700
+Received: from MAILSJ2.global.cadence.com (localhost [127.0.0.1])
+	by mx-sanjose2.Cadence.COM (8.12.9/8.12.9) with ESMTP id l7FNHIQB018218
+	for <nfs@lists.sourceforge.net>; Wed, 15 Aug 2007 16:17:18 -0700 (PDT)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,51 +29,34 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Monday August 13, richterd@citi.umich.edu wrote:
-> 	Hello, Neil,
-> 
-> 	As per your and other folks' suggestions, this set of patches adds 
-> the -S/--since flag, which takes a stats file and then displays the 
-> difference between them and the current stats.  It accepts the raw stats 
-> formats of /proc/net/rpc/nfs{,d} as well as "pretty" nfsstat output saved 
-> to a file (so you can have both client and server stats in the same file).
+When I try to build 1.1.0 it gives this error message inside of
+./mountd:
 
-Thanks.
+[root mountd]$ make
+/bin/sh ../../libtool --tag=CC   --mode=link gcc -Wall  -pipe -g -O2
+-o mountd mountd-mountd.o mountd-mount_dispatch.o mountd-auth.o
+mountd-rmtab.o mountd-cache.o mountd-svc_run.o mountd-fsloc.o
+../../support/export/libexport.a ../../support/nfs/libnfs.a
+../../support/misc/libmisc.a  -lwrap  -lblkid 
+gcc -Wall -pipe -g -O2 -o mountd mountd-mountd.o mountd-mount_dispatch.o
+mountd-auth.o mountd-rmtab.o mountd-cache.o mountd-svc_run.o
+mountd-fsloc.o  ../../support/export/libexport.a
+../../support/nfs/libnfs.a ../../support/misc/libmisc.a -lwrap -lblkid
+/usr/lib/libblkid.a(probe.o): In function `set_uuid':
+/usr/local/e2fsprogs-1.40.2/lib/blkid/probe.c:128: undefined reference
+to `uuid_is_null'
+/usr/local/e2fsprogs-1.40.2/lib/blkid/probe.c:129: undefined reference
+to `uuid_unparse'
+/usr/lib/libblkid.a(probe.o): In function `probe_ext3':
+/usr/local/e2fsprogs-1.40.2/lib/blkid/probe.c:176: undefined reference
+to `uuid_is_null'
+collect2: ld returned 1 exit status
+make: *** [mountd] Error 1
 
-> 
-> 	This doesn't save the current statistics back to a tempfile like 
-> one of the ideas mentioned, but one can still use it in conjunction with 
-> watch(1); e.g.:
-> 
-> $ watch "nfsstat --since /tmp/stats; nfsstat >/tmp/stats" 
+I suspect I may have built e2fsprogs or uuid incorrectly?  1.0.6 does
+not have this link error.
 
-This misses any changes between the two runs of nfsstat.  Normally
-that won't be significant I guess..
-
-> 
-> 
-> - patch 1 just renames some existing variables to clarify their purpose.
-> 
-> - patch 2 adds a few pointers to help with --since and obviates 
-> copy_stats().
-> 
-> - patch 3 removes some comparisons against global struct statinfos.
-> 
-> - patch 4 adds #defines for the output labels and adds them to struct 
-> statinfo.
-> 
-> - patch 5 uses the rest and adds -S/--since.
-
-I didn't see
-
-  - patch 6 update nfsstat.man to document -S/--since
-
-maybe that one got lost in the mail :-)
-
-I've committed the first 5 to .git.
-
-Thanks,
-NeilBrown
+It's on an RHEL3 Update 5 system.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
