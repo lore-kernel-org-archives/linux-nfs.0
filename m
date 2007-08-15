@@ -1,24 +1,23 @@
-From: "david m. richter" <richterd@citi.umich.edu>
-Subject: Re: [PATCH 0/5] nfsstat: adding -S/--since
-Date: Wed, 15 Aug 2007 19:23:37 -0400 (EDT)
-Message-ID: <Pine.BSO.4.64.0708151918430.23242@citi.umich.edu>
-References: <Pine.BSO.4.64.0708131440190.6965@citi.umich.edu>
-	<18115.35173.364849.564000@notabene.brown>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: Compilation Error nfs-utils-1.1.0
+Date: Thu, 16 Aug 2007 09:41:06 +1000
+Message-ID: <18115.36626.71550.314140@notabene.brown>
+References: <862A0FDF1A4DC647A442EFD270291F7301AE5335@MAILSJ2.global.cadence.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: Neil Brown <neilb@suse.de>
+To: "Mitch Sako" <msako@cadence.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1ILSDD-0008Ek-9D
-	for nfs@lists.sourceforge.net; Wed, 15 Aug 2007 16:23:39 -0700
-Received: from citi.umich.edu ([141.211.133.111])
+	id 1ILSUE-0001cj-Fp
+	for nfs@lists.sourceforge.net; Wed, 15 Aug 2007 16:41:14 -0700
+Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1ILSDF-0006Xz-Gy
-	for nfs@lists.sourceforge.net; Wed, 15 Aug 2007 16:23:41 -0700
-In-Reply-To: <18115.35173.364849.564000@notabene.brown>
+	(Exim 4.44) id 1ILSUF-00044t-9y
+	for nfs@lists.sourceforge.net; Wed, 15 Aug 2007 16:41:15 -0700
+In-Reply-To: message from Mitch Sako on Wednesday August 15
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,32 +30,46 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-> > $ watch "nfsstat --since /tmp/stats; nfsstat >/tmp/stats" 
+On Wednesday August 15, msako@cadence.com wrote:
+> When I try to build 1.1.0 it gives this error message inside of
+> ./mountd:
 > 
-> This misses any changes between the two runs of nfsstat.  Normally
-> that won't be significant I guess..
-
-	i figured maybe a save-feature could be added in the future if the 
-rest of the feature was accepted or whatever.  wasn't quite sure what 
-format would be best, or how format-stuff in general would play out.
- 
-
-> I didn't see
+> [root mountd]$ make
+> /bin/sh ../../libtool --tag=CC   --mode=link gcc -Wall  -pipe -g -O2
+> -o mountd mountd-mountd.o mountd-mount_dispatch.o mountd-auth.o
+> mountd-rmtab.o mountd-cache.o mountd-svc_run.o mountd-fsloc.o
+> ../../support/export/libexport.a ../../support/nfs/libnfs.a
+> ../../support/misc/libmisc.a  -lwrap  -lblkid 
+> gcc -Wall -pipe -g -O2 -o mountd mountd-mountd.o mountd-mount_dispatch.o
+> mountd-auth.o mountd-rmtab.o mountd-cache.o mountd-svc_run.o
+> mountd-fsloc.o  ../../support/export/libexport.a
+> ../../support/nfs/libnfs.a ../../support/misc/libmisc.a -lwrap -lblkid
+> /usr/lib/libblkid.a(probe.o): In function `set_uuid':
+> /usr/local/e2fsprogs-1.40.2/lib/blkid/probe.c:128: undefined reference
+> to `uuid_is_null'
+> /usr/local/e2fsprogs-1.40.2/lib/blkid/probe.c:129: undefined reference
+> to `uuid_unparse'
+> /usr/lib/libblkid.a(probe.o): In function `probe_ext3':
+> /usr/local/e2fsprogs-1.40.2/lib/blkid/probe.c:176: undefined reference
+> to `uuid_is_null'
+> collect2: ld returned 1 exit status
+> make: *** [mountd] Error 1
 > 
->   - patch 6 update nfsstat.man to document -S/--since
-> 
-> maybe that one got lost in the mail :-)
+> I suspect I may have built e2fsprogs or uuid incorrectly? 
 
-	:) just waiting to see if the rest of it was accepted.  i'll get 
-it to you tomorrow.
+Maybe... but it seems that the uuid_ function are in a separate
+library: libuuid.
+And while libblkid.so depends on libuuid.so, there is no similar
+relationship between libblkid.a and libuuid.a.  so if you are doing a
+static link (which seems to be the case??) you will need to list
+-luuid as well.  And maybe -ldevmapper.
 
 
-> I've committed the first 5 to .git.
+> 1.0.6 does not have this link error.
 
-	thanks kindly, neil,
+1.0.6 does not use libblkid.
 
-	d
-	.
+NeilBrown
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
