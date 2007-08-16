@@ -1,21 +1,22 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 2/3] SUNRPC: Add support for formatted universal
-	addresses
-Date: Thu, 16 Aug 2007 16:03:26 -0400
-Message-ID: <20070816200326.3831.43473.stgit@monet.1015granger.net>
+From: Chuck Lever <chuck.lever@Oracle.com>
+Subject: Linux rpcbind daemon doesn't work with v4 GETVERSADDR requests
+Date: Thu, 16 Aug 2007 16:31:25 -0400
+Message-ID: <46C4B41D.6010406@oracle.com>
+Reply-To: chuck.lever@Oracle.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: trond.myklebust@fys.uio.no
+Content-Type: multipart/mixed; boundary="------------080408070802070706050904"
+Cc: Linux NFS mailing list <nfs@lists.sourceforge.net>
+To: Steve Dickson <SteveD@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1ILlZj-0005pM-GU
-	for nfs@lists.sourceforge.net; Thu, 16 Aug 2007 13:04:11 -0700
-Received: from flpi102.sbcis.sbc.com ([207.115.20.71] helo=flpi102.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1ILlZn-0003n7-KE
-	for nfs@lists.sourceforge.net; Thu, 16 Aug 2007 13:04:15 -0700
+	id 1ILm1S-0000Ph-TP
+	for nfs@lists.sourceforge.net; Thu, 16 Aug 2007 13:32:50 -0700
+Received: from agminet01.oracle.com ([141.146.126.228])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1ILm1V-0006uP-TJ
+	for nfs@lists.sourceforge.net; Thu, 16 Aug 2007 13:32:55 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,72 +29,60 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-"Universal addresses" are a string representation of an IP address and
-port.  They are described fully in RFC 3530, section 2.2.  Add support
-for generating them in the RPC client's socket transport module.
+This is a multi-part message in MIME format.
+--------------080408070802070706050904
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+Hi Steve-
 
- include/linux/sunrpc/xprt.h |    1 +
- net/sunrpc/xprtsock.c       |   18 ++++++++++++++++++
- 2 files changed, 19 insertions(+), 0 deletions(-)
+I was testing the in-kernel rpcbind client to fix a bug with the 
+GETVERSADDR request... and noticed that the Linux rpcbind client doesn't 
+respond correctly to these requests.  I get a 4-byte zero response 
+instead of the expected 24-byte universal address.
 
-diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-index 4596c26..902a9c0 100644
---- a/include/linux/sunrpc/xprt.h
-+++ b/include/linux/sunrpc/xprt.h
-@@ -55,6 +55,7 @@ enum rpc_display_format_t {
- 	RPC_DISPLAY_ALL,
- 	RPC_DISPLAY_HEX_ADDR,
- 	RPC_DISPLAY_HEX_PORT,
-+	RPC_DISPLAY_UNIVERSAL_ADDR,
- 	RPC_DISPLAY_MAX,
- };
- 
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 45b2af1..4fa0cd9 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -328,6 +328,15 @@ static void xs_format_ipv4_peer_addresses(struct rpc_xprt *xprt)
- 				ntohs(addr->sin_port));
- 	}
- 	xprt->address_strings[RPC_DISPLAY_HEX_PORT] = buf;
-+
-+	buf = kzalloc(30, GFP_KERNEL);
-+	if (buf) {
-+		snprintf(buf, 30, NIPQUAD_FMT".%u.%u",
-+				NIPQUAD(addr->sin_addr.s_addr),
-+				ntohs(addr->sin_port) >> 8,
-+				ntohs(addr->sin_port) & 0xff);
-+	}
-+	xprt->address_strings[RPC_DISPLAY_UNIVERSAL_ADDR] = buf;
- }
- 
- static void xs_format_ipv6_peer_addresses(struct rpc_xprt *xprt)
-@@ -380,6 +389,15 @@ static void xs_format_ipv6_peer_addresses(struct rpc_xprt *xprt)
- 				ntohs(addr->sin6_port));
- 	}
- 	xprt->address_strings[RPC_DISPLAY_HEX_PORT] = buf;
-+
-+	buf = kzalloc(50, GFP_KERNEL);
-+	if (buf) {
-+		snprintf(buf, 50, NIP6_FMT".%u.%u",
-+				NIP6(addr->sin6_addr),
-+				ntohs(addr->sin6_port) >> 8,
-+				ntohs(addr->sin6_port) & 0xff);
-+	}
-+	xprt->address_strings[RPC_DISPLAY_UNIVERSAL_ADDR] = buf;
- }
- 
- static void xs_free_peer_addresses(struct rpc_xprt *xprt)
+I finished my testing against a Solaris Nevada snv_63 server.  You could 
+use something like that as a reference.
 
+--------------080408070802070706050904
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck.lever.vcf"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="chuck.lever.vcf"
+
+begin:vcard
+fn:Chuck Lever
+n:Lever;Chuck
+org:Oracle Corporation;Corporate Architecture: Linux Projects Group
+adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
+title:Principal Member of Staff
+tel;work:+1 248 614 5091
+x-mozilla-html:FALSE
+url:http://oss.oracle.com/~cel
+version:2.1
+end:vcard
+
+
+--------------080408070802070706050904
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
+--------------080408070802070706050904
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--------------080408070802070706050904--
