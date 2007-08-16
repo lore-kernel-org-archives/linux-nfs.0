@@ -1,33 +1,23 @@
-From: Romain Dolbeau <romain.dolbeau@caps-entreprise.com>
-Subject: Re: Latency problem with some clients but not others
-Date: Thu, 16 Aug 2007 09:24:24 +0200
-Message-ID: <46C3FBA8.7020905@caps-entreprise.com>
-References: <46C33597.3030004@caps-entreprise.com>
-	<6E56E676C9D6A74EBC980144BC06A17D04BB45E4@mailbox03.lucas.alllucas.com>
+From: Ryusuke Konishi <konishi.ryusuke@lab.ntt.co.jp>
+Subject: Re: [PATCH] unfsd: fix invalid argument error for setattr
+ request
+Date: Thu, 16 Aug 2007 16:51:01 +0900
+Message-ID: <200708160751.AA00238@paprika.lab.ntt.co.jp>
+References: <Pine.LNX.4.64.0708160843060.10107@maggie.lkpg.cendio.se>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
+To: Peter_Astrand <astrand@cendio.se>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1ILZia-0008Ba-MR
-	for nfs@lists.sourceforge.net; Thu, 16 Aug 2007 00:24:32 -0700
-Received: from gandalf.caps-entreprise.com ([212.180.111.10])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1ILZid-000504-Fu
-	for nfs@lists.sourceforge.net; Thu, 16 Aug 2007 00:24:37 -0700
-Received: from localhost (localhost [127.0.0.1])
-	by gandalf.caps-entreprise.com (Postfix) with ESMTP id 1A26916FD5
-	for <nfs@lists.sourceforge.net>; Thu, 16 Aug 2007 09:24:26 +0200 (CEST)
-Received: from gandalf.caps-entreprise.com ([127.0.0.1])
-	by localhost (gandalf [127.0.0.1]) (amavisd-new, port 10024)
-	with ESMTP id 16649-06 for <nfs@lists.sourceforge.net>;
-	Thu, 16 Aug 2007 09:24:25 +0200 (CEST)
-Received: from [172.21.0.9] (bifur.caps-entreprise.com [172.21.0.9])
-	by gandalf.caps-entreprise.com (Postfix) with ESMTP id 4783B16E50
-	for <nfs@lists.sourceforge.net>; Thu, 16 Aug 2007 09:24:25 +0200 (CEST)
-In-Reply-To: <6E56E676C9D6A74EBC980144BC06A17D04BB45E4@mailbox03.lucas.alllucas.com>
+	id 1ILa8i-0002nN-IV
+	for nfs@lists.sourceforge.net; Thu, 16 Aug 2007 00:51:32 -0700
+Received: from tama5.ecl.ntt.co.jp ([129.60.39.102])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1ILa8l-0007Gd-Gc
+	for nfs@lists.sourceforge.net; Thu, 16 Aug 2007 00:51:36 -0700
+In-Reply-To: <Pine.LNX.4.64.0708160843060.10107@maggie.lkpg.cendio.se>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -40,29 +30,33 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Eli Stair wrote:
+Hi,
 
-> If I entirely misunderstood your post, and you're having problems with 
-> the 8169 systems, not the intel Xeon with e1000, you might want to 
-> seriously consider ditching the Realtek (8169) and test with another 
-> card in that problematic system.  Easiest and most direct way to test.
+On Thu, 16 Aug 2007, Peter_Astrand wrote:
+>On Thu, 16 Aug 2007, Ryusuke Konishi wrote:
+>> Hi folks, 
+>> 
+>> I found that the Linux user-space NFS server (unfsd) fails
+>> for setattr requests against the kernel 2.6.22 and later.
+>
+>Hi, I'm curious: Why are you using this old unfsd instead of the kernel 
+>based knfsd, or the modern userspace implementation "unfs3"?
 
-I must not have been very clear, because the other anwser
-also suggested fo tix the Intel, which works just fine ;-)
+I am using both unfsd and knfsd because Debian still offers both.
+(It also offers unfs3 but I didn't notice until you let me know)
 
-The problem seems indeed to be the realtek crap^H^H^Hard,
-as replacing it with an old 3com card brought by a colleague,
-the problem just go away.
+>As far as I understand, noone is maintaining the old unfsd anymore. 
+>
+>
+>Regards, 
 
-I'll try fiddling with ethtool and if it fails, I'll just
-have to buy a bunch of decent PCI cards :-(
+All right.
+As you say, the mail to unfsd maintainers was returned by
+Host unknown. (Sigh)
+It seems to have little hope to modify unfsd for this. 
 
-Thanks to all for your help,
-
--- 
-Romain Dolbeau
-<romain.dolbeau@caps-entreprise.com>
-
+Thanks,
+Ryusuke Konishi
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
