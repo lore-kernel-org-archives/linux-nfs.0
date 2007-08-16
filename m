@@ -1,29 +1,19 @@
-From: Victor Sterpu <victor@ambra.ro>
-Subject: Mounting a partition at boot time from /etc/fstab
-Date: Thu, 16 Aug 2007 11:55:05 +0300
-Message-ID: <46C410E9.2030809@ambra.ro>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+From: =?GB2312?B?0rnSubu2?= <jow.7cv@163.com>
+Subject: =?GB2312?B?v+zAtMrUytSjrMjDy/3SudK5uN+zsaOh?=
+Date: Thu, 16 Aug 2007 21:30:02 +0800
+Message-ID: <E1ILfQB-0002Ox-Ug@mail.sourceforge.net>
+Reply-To: jow.7cv@163.com
+Content-Type: multipart/mixed; boundary="===============0298295312=="
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1ILb6k-0001Ay-CO
-	for nfs@lists.sourceforge.net; Thu, 16 Aug 2007 01:53:34 -0700
-Received: from mail.ambra.ro ([86.107.248.1])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1ILb6n-0004CD-Ai
-	for nfs@lists.sourceforge.net; Thu, 16 Aug 2007 01:53:38 -0700
-Received: from localhost (localhost [127.0.0.1])
-	by mail.ambra.ro (Postfix) with ESMTP id D2A734786A
-	for <nfs@lists.sourceforge.net>; Thu, 16 Aug 2007 11:52:32 +0300 (EEST)
-Received: from mail.ambra.ro ([127.0.0.1])
-	by localhost (mail68 [127.0.0.1]) (amavisd-new, port 10024) with ESMTP
-	id 02089-07 for <nfs@lists.sourceforge.net>;
-	Thu, 16 Aug 2007 11:52:19 +0300 (EEST)
-Received: from [80.97.24.235] (ppp249780235.ambra.ro [80.97.24.235])
-	by mail.ambra.ro (Postfix) with ESMTP id 6F913479C6
-	for <nfs@lists.sourceforge.net>; Thu, 16 Aug 2007 11:52:19 +0300 (EEST)
+	id 1ILfQ9-0000AS-V5
+	for nfs@lists.sourceforge.net; Thu, 16 Aug 2007 06:29:54 -0700
+Received: from [125.40.49.123] (helo=163.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1ILfQB-0002Ox-Ug
+	for nfs@lists.sourceforge.net; Thu, 16 Aug 2007 06:29:58 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,29 +26,51 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-I try to mount the /var partition at boot time.
+--===============0298295312==
+Content-Type: text/html;charset="GB2312"
 
-I receive the following error at boot time:
-statd: server localhost not responding, time out
-lockd: cannot monitor 192.168.250.90
-lockd: failed to monitor 192.168.250.90
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML>
+<HEAD>
+<TITLE> New Document </TITLE>
+<META NAME="Generator" CONTENT="EditPlus">
+<META NAME="Author" CONTENT="">
+<META NAME="Keywords" CONTENT="">
+<META NAME="Description" CONTENT="">
+</HEAD>
 
-This is my /etc/fstab :
-proc            /proc           proc    defaults        0       0
-192.168.250.90:/var/nfs/mail2.ambra.ro /var nfs defaults 0 0
+<BODY>
+<a href="http://www.7cv.com/pdetail.php?localcode=12180052_105760&asstfrom=jow" target="_blank">七彩谷商城 阴茎增大 赠送￥917元大礼包！</a> 
 
-When I do "mount 192.168.250.90:/var/nfs/mail2.ambra.ro /var" the 
-partition is mounted succesfuly.
-I use kernel 2.6.20 with nfs and automount support.
+<br><br>
+快来试试，让她夜夜高潮！
 
-Haw can I mount this nfs partition at boot time?
-Thank you.
+<a href="http://www.7cv.com/pdetail.php?localcode=12180052_105760&asstfrom=jow" target="_blank"><img src="http://www.7cv.com/images_shop2007/070810/468-60-2.gif" border=0 alt="阴茎增大 赠送￥917元大礼包！ 七彩谷商城 成人用品 全网最低价！ 杜蕾斯￥3.5起！"></a> 
+<br><br>
+<a href="http://jow.7cv.com" target="_blank">七彩谷成人用品商城</a> 
+</BODY>
+</HTML>
+
+
+--===============0298295312==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
+--===============0298295312==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============0298295312==--
