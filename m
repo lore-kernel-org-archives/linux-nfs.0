@@ -1,21 +1,26 @@
-From: "david m. richter" <richterd@citi.umich.edu>
-Subject: [PATCH] nfsstat: update manpage for --since
-Date: Fri, 17 Aug 2007 12:50:42 -0400 (EDT)
-Message-ID: <Pine.BSO.4.64.0708171247130.32037@citi.umich.edu>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] 64 bit ino support for NFS server
+Date: Fri, 17 Aug 2007 12:51:22 -0400
+Message-ID: <20070817165122.GC28529@fieldses.org>
+References: <46B37DE6.80706@redhat.com> <46B38206.6050504@redhat.com>
+	<20070804223256.GA1155@fieldses.org> <46C476DF.3070607@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Neil Brown <neilb@suse.de>
+Cc: Neil Brown <neilb@suse.de>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	NFS List <nfs@lists.sourceforge.net>
+To: Peter Staubach <staubach@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IM520-0004qa-Ey
-	for nfs@lists.sourceforge.net; Fri, 17 Aug 2007 09:50:40 -0700
-Received: from citi.umich.edu ([141.211.133.111])
+	id 1IM52i-0004yQ-F4
+	for nfs@lists.sourceforge.net; Fri, 17 Aug 2007 09:51:24 -0700
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IM523-0005vr-HV
-	for nfs@lists.sourceforge.net; Fri, 17 Aug 2007 09:50:44 -0700
+	(Exim 4.44) id 1IM52k-0007OD-IL
+	for nfs@lists.sourceforge.net; Fri, 17 Aug 2007 09:51:28 -0700
+In-Reply-To: <46C476DF.3070607@redhat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,84 +33,40 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-	Add -S/--since to the manpage with a couple examples.
+On Thu, Aug 16, 2007 at 12:10:07PM -0400, Peter Staubach wrote:
+> Attached is a new patch which should address the issues raised
+> by Bruce.
 
----
-	Hello, Neil -- here's the manpage stuff.  I'm not so sure about 
-the "Examples" additions, though.. meh.  thanks, d.
+Thanks!
 
- utils/nfsstat/nfsstat.man |   41 ++++++++++++++++++++++++++++++++++++++++-
- 1 files changed, 40 insertions(+), 1 deletions(-)
+> I also haven't come to any conclusions regarding the value of
+> lease_get_mtime() and whether it should or should not be invoked
+> by fill_post_wcc() too.  I chose not to change this because I
+> thought that it was safer to leave well enough alone.  If we
+> decide to make a change, it can be done separately.
 
-diff --git a/utils/nfsstat/nfsstat.man b/utils/nfsstat/nfsstat.man
-index 5d2acc5..6908b06 100644
---- a/utils/nfsstat/nfsstat.man
-+++ b/utils/nfsstat/nfsstat.man
-@@ -72,8 +72,27 @@ Display all of the above facilities.
- .B \-v, \-\-verbose
- This is equivalent to \fB\-o all\fR.
- .TP
-+.BI "\-S, \-\-since " file
-+Instead of printing current statistics,
-+.B nfsstat
-+imports statistics from
-+.I file
-+and displays the difference between those and the current statistics.
-+Valid input
-+.IR file "s may be in the form of "
-+.B /proc/net/rpc/nfs
-+(raw client stats),
-+.B /proc/net/rpc/nfsd
-+(raw server stats), or saved output from
-+.B nfsstat
-+itself (client and/or server stats).   Any statistics missing from a saved
-+.B nfsstat
-+output
-+.I file
-+are treated as zeroes.
-+.TP
- .B \-Z, \-\-sleep
--Instead of printing statistics and immediately exiting,
-+Instead of printing current statistics and immediately exiting,
- .B nfsstat
- takes a snapshot of the current statistics and pauses until it receives
- .B SIGINT
-@@ -81,6 +100,7 @@ takes a snapshot of the current statisti
- .BR Ctrl-C ),
- at which point it takes another snapshot and displays the difference
- between the two.
-+.\" --------------------- EXAMPLES -------------------------------
- .SH EXAMPLES
- .TP
- .B nfsstat \-o all \-234
-@@ -97,6 +117,25 @@ Show statistics for \fBNFS\fR version 3
- .TP
- .B nfsstat \-m
- Show information about mounted \fBNFS\fR filesystems.
-+.TP
-+.B nfsstat -v >/tmp/stats; run_short_test.sh; nfsstat -v --since /tmp/stats
-+Show statistics collected while a user's
-+.B run_short_test.sh
-+ran.
-+.P
-+.RE 3
-+.nf
-+.B run_long_test.sh &
-+.B watch -n 5 eval 'nfsstat -4 --since /tmp/stats; nfsstat -4 >/tmp/stats'
-+.fi
-+.RS
-+Using
-+.BR watch (1),
-+show updates every 5 seconds of NFSv4 activity being tested by a user's
-+.B run_long_test.sh
-+script.
-+.RE
-+
- .\" --------------------- DISPLAY --------------------------------
- .SH DISPLAY
- The \fBFlags\fR output from the \fB\-m\fR option is the same as the
--- 
-1.4.4
+OK.
+
+Only superficial complaints:
+	- There were some minor whitespace oddities; running the patch
+	  through scripts/checkpatch.pl may be the quickest way to catch
+	  those.
+	- This would be better as two, maybe three separate patches;
+	  e.g.  moving the lease_get_mtime out of encode_fattr3 could be
+	  done separately first.  Ideally we'd do some trivial
+	  transformations like that, followed by one change that
+	  actually changes the inode behavior.  That makes the whole
+	  thing trival to review.
+
+I fixed up the first and added the result to
+
+	git://linux-nfs.org/~bfields/linux.git for-mm
+
+so it should show up in the next -mm.  I'd happily replace it by a more
+finely split up version if that was something you could whip up in a few
+minutes.
+
+--b.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
