@@ -1,26 +1,29 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] 64 bit ino support for NFS server
-Date: Fri, 17 Aug 2007 12:51:22 -0400
-Message-ID: <20070817165122.GC28529@fieldses.org>
-References: <46B37DE6.80706@redhat.com> <46B38206.6050504@redhat.com>
-	<20070804223256.GA1155@fieldses.org> <46C476DF.3070607@redhat.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: StreamCorruptedException Urgent.
+Date: Fri, 17 Aug 2007 12:07:43 -0400
+Message-ID: <46C5C7CF.5040600@oracle.com>
+References: <9AE21525342E4C4F8ECDC61B978843BD03823274@mtw01ex02.mindtree.com>
+Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	NFS List <nfs@lists.sourceforge.net>
-To: Peter Staubach <staubach@redhat.com>
+Content-Type: multipart/mixed; boundary="------------060605030103010505080909"
+Cc: nfs@lists.sourceforge.net
+To: Ignatius Pradeep Kumar Joseph <IgnatiusPradeep_Joseph@mindtree.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IM52i-0004yQ-F4
-	for nfs@lists.sourceforge.net; Fri, 17 Aug 2007 09:51:24 -0700
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	id 1IM5Pb-0007qV-1o
+	for nfs@lists.sourceforge.net; Fri, 17 Aug 2007 10:15:03 -0700
+Received: from rgminet02.oracle.com ([148.87.113.119])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IM52k-0007OD-IL
-	for nfs@lists.sourceforge.net; Fri, 17 Aug 2007 09:51:28 -0700
-In-Reply-To: <46C476DF.3070607@redhat.com>
+	(Exim 4.44) id 1IM5Pd-0004Xp-KV
+	for nfs@lists.sourceforge.net; Fri, 17 Aug 2007 10:15:07 -0700
+Received: from rgminet01.oracle.com (rgminet01.oracle.com [148.87.113.118])
+	by rgminet02.oracle.com (Switch-3.2.4/Switch-3.1.7) with ESMTP id
+	l7HGAAoe026998
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <nfs@lists.sourceforge.net>; Fri, 17 Aug 2007 10:10:10 -0600
+In-Reply-To: <9AE21525342E4C4F8ECDC61B978843BD03823274@mtw01ex02.mindtree.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,46 +36,87 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, Aug 16, 2007 at 12:10:07PM -0400, Peter Staubach wrote:
-> Attached is a new patch which should address the issues raised
-> by Bruce.
+This is a multi-part message in MIME format.
+--------------060605030103010505080909
+Content-Type: text/plain; charset=windows-1252; format=flowed
+Content-Transfer-Encoding: quoted-printable
 
-Thanks!
+Ignatius Pradeep Kumar Joseph wrote:
+> We are facing the following issue =93StreamCorruptedException=94, when =
+we=20
+> are writing large files into *NFS* directory. The report we were trying=
+=20
+> to run was of 41MB size.
+>=20
+> When we un-mount the NFS and write the large file directly to the=20
+> application server directly, we don=92t face any issues. For the moment=
+,=20
+> in order to make the CAT successful, we have un-mounted the NFS in QA2=20
+> and set up the same in QA3 where the stack is deployed.
+>=20
+> =20
+>=20
+> But we have to test these reports with the NFS before we can release it=
+=20
+> to other environments. Please help us in finding why this issue is only=
+=20
+> happening when we are using NFS.
+>=20
+> =20
+>=20
+> See below part of the stack trace. From our end we are also looking at=20
+> various forums to resolve this issue.
 
-> I also haven't come to any conclusions regarding the value of
-> lease_get_mtime() and whether it should or should not be invoked
-> by fill_post_wcc() too.  I chose not to change this because I
-> thought that it was safer to leave well enough alone.  If we
-> decide to make a change, it can be done separately.
+Hello-
 
-OK.
+The Exception message you posted is generated entirely within your Java=20
+environment.  Your problem description is very specific to your=20
+environment and application.  You need to debug your Java application=20
+first to determine what exactly NFS is doing to trigger this issue.
 
-Only superficial complaints:
-	- There were some minor whitespace oddities; running the patch
-	  through scripts/checkpatch.pl may be the quickest way to catch
-	  those.
-	- This would be better as two, maybe three separate patches;
-	  e.g.  moving the lease_get_mtime out of encode_fattr3 could be
-	  done separately first.  Ideally we'd do some trivial
-	  transformations like that, followed by one change that
-	  actually changes the inode behavior.  That makes the whole
-	  thing trival to review.
+Without a lot of domain expertise, I suggest you start with strace to=20
+find out what system calls your application uses, and what return codes=20
+they generate, as your application encounters the error.
 
-I fixed up the first and added the result to
+--------------060605030103010505080909
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck.lever.vcf"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="chuck.lever.vcf"
 
-	git://linux-nfs.org/~bfields/linux.git for-mm
+begin:vcard
+fn:Chuck Lever
+n:Lever;Chuck
+org:Oracle Corporation;Corporate Architecture: Linux Projects Group
+adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
+title:Principal Member of Staff
+tel;work:+1 248 614 5091
+x-mozilla-html:FALSE
+url:http://oss.oracle.com/~cel
+version:2.1
+end:vcard
 
-so it should show up in the next -mm.  I'd happily replace it by a more
-finely split up version if that was something you could whip up in a few
-minutes.
 
---b.
+--------------060605030103010505080909
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
+--------------060605030103010505080909
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--------------060605030103010505080909--
