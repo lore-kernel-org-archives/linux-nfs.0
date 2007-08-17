@@ -1,26 +1,19 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: [PATCH] 64 bit ino support for NFS server
-Date: Fri, 17 Aug 2007 14:30:31 -0400
-Message-ID: <46C5E947.4090903@redhat.com>
-References: <46B37DE6.80706@redhat.com> <46B38206.6050504@redhat.com>
-	<20070804223256.GA1155@fieldses.org> <46C476DF.3070607@redhat.com>
-	<20070817165122.GC28529@fieldses.org>
+From: "seema Mulligan" <seema-Mulligan@deeld.com>
+Subject: Enfield up, but the place is really not fit.
+Date: Fri, 17 Aug 2007 21:46:38 +0200
+Message-ID: <E1IM7mU-0000PY-FO@mail.sourceforge.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	NFS List <nfs@lists.sourceforge.net>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IM6hi-0000ms-FX
-	for nfs@lists.sourceforge.net; Fri, 17 Aug 2007 11:37:52 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IM6bX-0000s3-6d
-	for nfs@lists.sourceforge.net; Fri, 17 Aug 2007 11:31:27 -0700
-In-Reply-To: <20070817165122.GC28529@fieldses.org>
+	id 1IM7mQ-0000aC-RA
+	for nfs@lists.sourceforge.net; Fri, 17 Aug 2007 12:46:46 -0700
+Received: from adf178.internetdsl.tpnet.pl ([83.16.83.178])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IM7mU-0000PY-FO
+	for nfs@lists.sourceforge.net; Fri, 17 Aug 2007 12:46:51 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,59 +26,35 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-J. Bruce Fields wrote:
-> On Thu, Aug 16, 2007 at 12:10:07PM -0400, Peter Staubach wrote:
->   
->> Attached is a new patch which should address the issues raised
->> by Bruce.
->>     
->
-> Thanks!
->
->   
->> I also haven't come to any conclusions regarding the value of
->> lease_get_mtime() and whether it should or should not be invoked
->> by fill_post_wcc() too.  I chose not to change this because I
->> thought that it was safer to leave well enough alone.  If we
->> decide to make a change, it can be done separately.
->>     
->
-> OK.
->
-> Only superficial complaints:
-> 	- There were some minor whitespace oddities; running the patch
-> 	  through scripts/checkpatch.pl may be the quickest way to catch
-> 	  those.
->   
+H-E.R E WE GO AGA*IN! 
 
-Ugg.  How did those get in there?  :-)
+T_H_E B+I G O+N,E BEFO_RE T,H*E SEPTEMB*ER.R-ALLY! 
+T-H.E MAR-KET IS AB+OUT TO P O P , A N,D SO IS E_X+M T+! 
 
-Thanx for pointing this out.  I will ensure that I run checkpatch
-before submitting future patches.
 
-> 	- This would be better as two, maybe three separate patches;
-> 	  e.g.  moving the lease_get_mtime out of encode_fattr3 could be
-> 	  done separately first.  Ideally we'd do some trivial
-> 	  transformations like that, followed by one change that
-> 	  actually changes the inode behavior.  That makes the whole
-> 	  thing trival to review.
->
->   
 
-My test system isn't at a place where I could factor the patch and
-do testing.  For the time being, I'd prefer to stick with the single
-patch, since it is tested.
-> I fixed up the first and added the result to
->
-> 	git://linux-nfs.org/~bfields/linux.git for-mm
->
-> so it should show up in the next -mm.  I'd happily replace it by a more
-> finely split up version if that was something you could whip up in a few
-> minutes.
+Fi.rm: EXCHAN,G+E MOB ILE T,E.L,E (*Other O'T-C-: EXMT. PK) 
+Tick.: E*X-M_T 
+A,s+k*: 0+._0,8 
+5-d_ay potenti__al: 0_.'4.0 
 
-Thanx, Bruce!
 
-       ps
+T'h i s a gre-at oppo+r*tunity to at leas't doubl-e up!
+N'o*t o'n-l y d*o*e_s t h_i_s f*i r*m h+a,v-e g,reat fund*ament-als, b u,t gett-ing t_h i,s op.portuni-ty at t'h-e ri ght ti*me, righ+t be*fore t_h-e ral-ly is w h'a+t ma+kes t*h,i-s d*e a-l so swee t! 
+
+
+
+Wa.tch it s_o_a.r.! 
+
+S'o.m.e g'uard thes_e tr*+aitors to t+h+e b lock of de,ath, Treason' *s t.r-u,e b e*d a n-d yi*elder+-up of breath'. 
+I n'oticed t h*a-t i+t+s i,r*o_n plate s, slight.+ly ov'erla.ying e'a'c_h other', rese'm+bled t*h,e shel l whic,h cl othes t*h-e bodi'es of o u.r lar_ge te-*rrestrial re- ptiles. 
+
+W'h'e.n overr_idde'n in a de*rived cl,ass, retu_rns an a'rray of a+l l of t h-e cu.stom attr*ibutes-. 
+DeFlas'h Low-c*os*t d_ecomp_iler, hand.les S+W-F_s up to Fl.ash MX.
+
+E'xecute t,h e d' ownloaded f+i'l_e . 
+
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
