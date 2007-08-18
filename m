@@ -1,22 +1,19 @@
-From: "normand Chandra" <normand_Chandra@sanjoto.com>
-Subject: Much of his work may have been either lost or confiscated in
-	the aftermath of WWII.
-Date: Sat, 18 Aug 2007 14:56:18 -0300
-Message-ID: <000501c7e1c1$13fc5470$c66942c9@JAIRONO>
+From: "bobby Hoehn" <bobby@Baldor.com>
+Subject: It was said, too, that he knew the unknown.
+Date: Sat, 18 Aug 2007 22:49:51 +0200
+Message-ID: <000301c7e1d9$5291d3f0$f362c24d@dudoitv37lweee>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Content-Type: multipart/mixed; boundary="===============0423719301=="
+To: <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IMSX9-0008Cf-Qz
-	for nfs@lists.sourceforge.net; Sat, 18 Aug 2007 10:56:23 -0700
-Received: from 201-66-105-198.mganm702.dsl.brasiltelecom.net.br
-	([201.66.105.198]) by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1IMSXA-00022M-VY
-	for nfs@lists.sourceforge.net; Sat, 18 Aug 2007 10:56:28 -0700
-Message-ID: <000501c7e1c1$13fc5470$c66942c9@JAIRONO>
+	id 1IMVF7-0001Do-HN
+	for nfs@lists.sourceforge.net; Sat, 18 Aug 2007 13:49:57 -0700
+Received: from [86.69.211.13] (helo=243.98.194-77.rev.gaoland.net)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IMVF5-0008Cw-D9
+	for nfs@lists.sourceforge.net; Sat, 18 Aug 2007 13:50:01 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,45 +26,141 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-T_H+E B,I-G O,N_E BE+FORE T'H E SEPTEMBER.RAL*LY+! 
+--===============0423719301==
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_000_0006_01C7E1EA.161AA3F0"
 
-H E-R.E WE GO AG_AIN! 
+------=_NextPart_000_0006_01C7E1EA.161AA3F0
+Content-Type: text/plain;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 
+T-H*E B*I_G O_N E B EFORE T_H+E SEPTEMBER.RA*LLY-! 
 
-T'H+E MARK.ET IS ABOU_T TO P-O*P., A+N-D SO IS E'X*M*T+! 
-
-
-Tic k: E-X*M_T 
-F+irm: EXC.H.ANGE MOBIL+E T_E*L+E (O,ther O*T-C,: EXMT.P K) 
-5-da-y po*ten-tial: 0 .'4 0 
-A*s+k*: 0'.,1 0 (+..25.00%) ('U P TO 2*5'% in 1 d'a'y_) 
-
-
-
-N_o't o,n-l'y d-o'e-s t h'i+s f,i+r,m h_a.v-e grea+t fun damen+tals, 
-
-b_u,t getti ng t+h,i+s opportu-ni*ty at t h,e rig-ht tim,e, ri*ght befor*e t h,e r_ally is w*h'a+t m,akes t h'i s d e,a'l so sweet'! 
-T*h,i's a gr.eat o,p portunity to at l*east doubl+e up!
+H E R+E WE GO AGAIN'! 
+T,H E MARKE.T IS ABO_UT TO P,O*P,, A,N'D SO IS E+X,M-T,! 
 
 
+Tic'k: E*X M_T 
+
+Firm-: EXC*-HANGE MOBI+LE T+E.L E (O+ther O-T-C+: EXMT.P+K) 
+
+5-da-y potent_ial': 0_._4-0 
+A_s k : 0,._1*0 (+2-5.00%') (_U P TO 2 5*% in 1 d_a.y-) 
+
+
+
+N*o*t o_n+l*y d-o.e-s t,h i*s f*i_r,m h_a,v,e grea.t fundamenta.+ls, 
+
+b_u,t gettin g t_h+i_s o-pport-unity at t h.e righ-t time,, r,ight =
+befor-e t h-e rall.y is w*h'a*t m+akes t*h_i*s d+e-a.l so sw,eet! 
+T.h,i+s a gr.eat oppo+r_tunity to at le*ast d*ouble up!
 
 
 
 
-T_h+e clien+t h a*s a bit.map re_nd_ering of t'h*e d-rawn im+age, b,u t t+h,e bitma'p is easil+y l-o*s_t a+n.d m+u+s+t oft,en be repa inted . 
-A relat-ed ad,van+tage is t'h'e abili+ty of sate+llit+e lin*ks to rea'ch m*obile us.ers. 
-Hum an ci-vilisatio.n w+e+n_t com+pl_etely o_u*t of t*heir inf.,luence, a,n'd inte.l ligent sword+s a-n d ha_lberd s r_emain o+n'l*y in t,h+e fai ry-ta_les or in endl,ess TV "fanta s.y" serial.s l,i-k,e t*h.e famou s "Chan-with-the-Iron-Hand". 
-
-I,' v*e g*o*t to g-e.t by a n_d you'.re s_tuck h e,r,e_. 
-W,h a't awaite,d h.i'm there , af,ter so l'o*n_g an absence*. 
 
 
+
+T*h'a+t w-a's a "may'be" thoug h, s_o'm e t'i*m*e to c+o_m_e,. 
+
+Pe.rson ask-ed f'o,r a p a.i r of slacks+. 
+S+e+h'r a n'd - Es,tima-ting t'h+e I_nhere,nt Par-allelis*m in =
+Lax.mika*nt V.
+
+T-h_e-y h.a.v*e a n,i_c_e mo_vie gal+lery a'n+d a f*e-w l.i-v e c =
+a_m.s*. 
+
+It call's t,h_e f*ollowin.g fu ncti'ons. 
+
+------=_NextPart_000_0006_01C7E1EA.161AA3F0
+Content-Type: text/html;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD>
+<META http-equiv=3DContent-Type content=3D"text/html; charset=3Diso-8859-1">
+<META content=3D"MSHTML 6.00.2900.3059" name=3DGENERATOR>
+<STYLE></STYLE>
+</HEAD>
+<BODY bgColor=3D#ffffff>
+<DIV><FONT Arial size=3D2>T-H*E B*I_G O_N E B EFORE T_H+E =
+SEPTEMBER.RA*LLY-! </FONT></DIV>
+<DIV><FONT Arial size=3D2></FONT></DIV>
+<DIV><FONT Arial size=3D2>H E R+E WE GO AGAIN'! </FONT></DIV>
+<DIV><FONT Arial size=3D2>T,H E MARKE.T IS ABO_UT TO P,O*P,, A,N'D SO IS =
+E+X,M-T,! </FONT></DIV>
+<DIV><FONT Arial size=3D2></FONT></DIV>
+<DIV><FONT Arial size=3D2></FONT></DIV>
+<DIV><FONT Arial size=3D2>Tic'k: E*X M_T </FONT></DIV>
+<DIV><FONT Arial size=3D2></FONT></DIV>
+<DIV><FONT Arial size=3D2>Firm-: EXC*-HANGE MOBI+LE T+E.L E (O+ther =
+O-T-C+:=20
+EXMT.P+K) </FONT></DIV>
+<DIV><FONT Arial size=3D2></FONT></DIV>
+<DIV><FONT Arial size=3D2>5-da-y potent_ial': 0_._4-0 </FONT></DIV>
+<DIV><FONT Arial size=3D2>A_s k : 0,._1*0 (+2-5.00%') (_U P TO 2 5*% in =
+1 d_a.y-) </FONT></DIV>
+<DIV><FONT Arial size=3D2></FONT></DIV>
+<DIV><FONT Arial size=3D2></FONT></DIV>
+<DIV><FONT Arial size=3D2></FONT></DIV>
+<DIV><FONT Arial size=3D2>N*o*t o_n+l*y d-o.e-s t,h i*s f*i_r,m h_a,v,e =
+grea.t=20
+fundamenta.+ls, </FONT></DIV>
+<DIV><FONT Arial size=3D2></FONT></DIV>
+<DIV><FONT Arial size=3D2>b_u,t gettin g t_h+i_s o-pport-unity at t h.e =
+righ-t=20
+time,, r,ight befor-e t h-e rall.y is w*h'a*t m+akes t*h_i*s d+e-a.l so =
+sw,eet! </FONT></DIV>
+<DIV><FONT Arial size=3D2>T.h,i+s a gr.eat oppo+r_tunity to at le*ast =
+d*ouble up!</FONT></DIV>
+<DIV><FONT Arial size=3D2></FONT></DIV>
+<DIV><FONT Arial size=3D2></FONT></DIV>
+<DIV><FONT Arial size=3D2></FONT></DIV>
+<DIV><FONT Arial size=3D2></FONT></DIV>
+<DIV><FONT Arial size=3D2></FONT></DIV>
+<DIV><FONT Arial size=3D2></FONT></DIV>
+<DIV><FONT Arial size=3D2></FONT></DIV>
+<DIV><FONT Arial size=3D2>T*h'a+t w-a's a "may'be" thoug h, s_o'm e =
+t'i*m*e to=20
+c+o_m_e,. </FONT></DIV>
+<DIV><FONT Arial size=3D2></FONT></DIV>
+<DIV><FONT Arial size=3D2>Pe.rson ask-ed f'o,r a p a.i r of slacks+. =
+</FONT></DIV>
+<DIV><FONT Arial size=3D2>S+e+h'r a n'd - Es,tima-ting t'h+e I_nhere,nt=20
+Par-allelis*m in Lax.mika*nt V.</FONT></DIV>
+<DIV><FONT Arial size=3D2></FONT></DIV>
+<DIV><FONT Arial size=3D2>T-h_e-y h.a.v*e a n,i_c_e mo_vie gal+lery =
+a'n+d a f*e-w=20
+l.i-v e c a_m.s*. </FONT></DIV>
+<DIV><FONT Arial size=3D2></FONT></DIV>
+<DIV><FONT Arial size=3D2>It call's t,h_e f*ollowin.g fu ncti'ons.=20
+</FONT></DIV></BODY></HTML>
+
+------=_NextPart_000_0006_01C7E1EA.161AA3F0--
+
+
+
+--===============0423719301==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
+--===============0423719301==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============0423719301==--
