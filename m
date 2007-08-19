@@ -1,193 +1,19 @@
-From: JOEL CANNON {MRS} <mrsjoelconsuiltant@teenmail.co.za>
-Subject: URGENTLY JOB OFFER
-Date: Sat, 18 Aug 2007 18:29:03 -0500
-Message-ID: <200708182329.l7INT3Rf006205@ns2.astrahosting.com>
+From: "rodigo Fidler" <rodigo-Fidler@nemtexdesigns.co.uk>
+Subject: Creating a User-mode Synthesizer.
+Date: Sun, 19 Aug 2007 14:13:26 +0200
+Message-ID: <000201c7e25a$58727aa0$97631e53@szlagorjbd5nxj>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Content-Type: multipart/mixed; boundary="===============0580116358=="
+To: <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IMXm1-0001D7-7r
-	for nfs@lists.sourceforge.net; Sat, 18 Aug 2007 16:32:05 -0700
-Received: from [74.53.78.130] (helo=ns2.astrahosting.com)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IMXm4-0002jr-Tk
-	for nfs@lists.sourceforge.net; Sat, 18 Aug 2007 16:32:09 -0700
-Received: from ns2.astrahosting.com (localhost.localdomain [127.0.0.1])
-	by ns2.astrahosting.com (8.13.1/8.13.1) with ESMTP id l7INT3f9006207
-	for <nfs@lists.sourceforge.net>; Sat, 18 Aug 2007 18:29:03 -0500
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
-MIME-Version: 1.0
+	id 1IMjer-0002b4-BP
+	for nfs@lists.sourceforge.net; Sun, 19 Aug 2007 05:13:29 -0700
+Received: from cbb151.neoplus.adsl.tpnet.pl ([83.30.99.151])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IMjeu-0000Az-Gg
+	for nfs@lists.sourceforge.net; Sun, 19 Aug 2007 05:13:33 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -200,63 +26,138 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-LETTER OF INTRODUCTION /INDUCTION 
+--===============0580116358==
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_000_0008_01C7E26B.1BFB4AA0"
 
-   I am Joel Cannon (Mrs.), Head of Public Relations, Swift Company Inc.  
-Straight to the point,we are looking for a Male or Female representative in major parts of the world including europe, america, south-america and even africa who would be working with us as a partime staff.  We are pleased to inform you that this would not affect your present state of work. (if currently employed)
+------=_NextPart_000_0008_01C7E26B.1BFB4AA0
+Content-Type: text/plain;
+	charset="windows-1250"
+Content-Transfer-Encoding: quoted-printable
 
-Our headquarters is located in Hungary. While we extract the raw materials needed for the manufacturing of fabrics from Eastern Europe, Africa, Asia and South America. We produce standard articles for the promotional, catering, hotel and laundry trades. 
-We are only in need of someone who is honest, sincere,trusthworthy,capable and reliable to temporarily be in charge of recieving payments from our customers.
- 
-We would be establishing a branch in the major parts of europe, america, south america and africa soon,which is the reason its going to be a temporary job. Impressive staff may automatically get a permanent position when the branch is fully 
-established.  
-Your sole task would be to recieve payments on the company\'s behalf from our customers. These 
-payments may come in form of \"Payments via Paypal\", Western union/MoneyGram, Bank/Wire Transfers, 
-Credit Card Transfer, depending on our customer\'s decisive mode of 
-payment.
-You will agree with us that this job would need a highly reliable and trustworthy personalty. 
-Therefore, in the absence of detail as regards your reliabilty and trustworthiness, we would be requiring all forms of contact info as the following:
-PERSONAL/CONTACT INFO:
-Surname:
- 
-Last Name:
- 
-Postal Mail Address:
- 
-Zipcode:
- 
-Mobile and Home Phone Number:
- 
-Email  Address;
- 
-Nationality:
- 
-Date of Birth:
- 
-Marital status:
+H_E'R*E WE GO AGA IN! 
 
-Availabilty of a Credit Facilty(Bank Account,Paypal or Credit Card):
+T*H.E B.I G O*N'E B_EFORE T.H-E SEP+TEMBER,.RALLY! 
 
-Please remember that a job well done may grant you a permanent job with us in the long run.
+T-H'E MA-RKET IS AB,OUT TO P+O,P-, A N_D SO IS E,X M T ! 
 
-We look forward to congratulating you as regards your appointment.
 
-Thanks
+Ti'ck: E'X_M'T 
+5-da y p otenti-al: 0,.'4,0 
+F_irm: EXCH.,ANGE MOB-ILE T*E*L*E (Oth+er O,T.C : EX MT.PK) 
+A's'k,: 0_..1+0 (+2+5.00%+) UP TO 2'5'% in 1 day
 
-Joel Cannon (Mrs.) (Head, Public Relations)
 
-Email:mrsjoelconsuiltant@teenmail.co.za 
+N'o,t o_n,l+y d.o-e-s t-h'i.s f*i-r+m h*a*v-e g*reat f_undam*entals, 
+b'u_t getti,ng t h.i's opportuni,_ty at t'h.e r_ight t+i'm e,, 
 
-for: Management 
+ri_ght be-fore t+h*e ral_ly is w'h-a.t make-s t,h*i's d*e a'l so sweet ! =
 
-(For those that havent forwarded their resume, Please endeavour to do so.)
 
+T-h.i,s a gr*eat opportuni.'ty to at l-east do_uble up!
+
+
+
+
+A*n,d I k,n_o w w'h+a+t yo*u're tr.ying so h,a r.d n*o_t to sa.y-- =
+t'h-a_t my pa*rents w_e+r,e han*ged as wi+tches. 
+
+R+S*A Secur_e Se+rver CA (fro'm Veri_Sign)'. 
+Do n+o_t pre ss a desp+,erate f,o*e t,o,o h*a.r,d'. 
+
+
+Opti c T+i.m_e Dom ain Reflec+to,metry. 
+
+At firs't H'u.g h wat+ched in d isg*usted si l'ence, n*ostril's flarin'g =
+a n'd twit,+ching. 
+
+------=_NextPart_000_0008_01C7E26B.1BFB4AA0
+Content-Type: text/html;
+	charset="windows-1250"
+Content-Transfer-Encoding: quoted-printable
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD>
+<META http-equiv=3DContent-Type content=3D"text/html; charset=3Dwindows-1250">
+<META content=3D"MSHTML 6.00.2900.3059" name=3DGENERATOR>
+<STYLE></STYLE>
+</HEAD>
+<BODY bgColor=3D#ffffff>
+<DIV><FONT Arial size=3D2>H_E'R*E WE GO AGA IN! </FONT></DIV>
+<DIV><FONT Arial size=3D2></FONT></DIV>
+<DIV><FONT Arial size=3D2>T*H.E B.I G O*N'E B_EFORE T.H-E =
+SEP+TEMBER,.RALLY! </FONT></DIV>
+<DIV><FONT Arial size=3D2></FONT></DIV>
+<DIV><FONT Arial size=3D2>T-H'E MA-RKET IS AB,OUT TO P+O,P-, A N_D SO IS =
+E,X M T ! </FONT></DIV>
+<DIV><FONT Arial size=3D2></FONT></DIV>
+<DIV><FONT Arial size=3D2></FONT></DIV>
+<DIV><FONT Arial size=3D2>Ti'ck: E'X_M'T </FONT></DIV>
+<DIV><FONT Arial size=3D2>5-da y p otenti-al: 0,.'4,0 </FONT></DIV>
+<DIV><FONT Arial size=3D2>F_irm: EXCH.,ANGE MOB-ILE T*E*L*E (Oth+er =
+O,T.C : EX=20
+MT.PK) </FONT></DIV>
+<DIV><FONT Arial size=3D2>A's'k,: 0_..1+0 (+2+5.00%+) UP TO 2'5'% in 1 =
+day</FONT></DIV>
+<DIV><FONT Arial size=3D2></FONT></DIV>
+<DIV><FONT Arial size=3D2></FONT></DIV>
+<DIV><FONT Arial size=3D2>N'o,t o_n,l+y d.o-e-s t-h'i.s f*i-r+m h*a*v-e =
+g*reat=20
+f_undam*entals, </FONT></DIV>
+<DIV><FONT Arial size=3D2>b'u_t getti,ng t h.i's opportuni,_ty at t'h.e =
+r_ight=20
+t+i'm e,, </FONT></DIV>
+<DIV><FONT Arial size=3D2></FONT></DIV>
+<DIV><FONT Arial size=3D2>ri_ght be-fore t+h*e ral_ly is w'h-a.t make-s =
+t,h*i's=20
+d*e a'l so sweet ! </FONT></DIV>
+<DIV><FONT Arial size=3D2></FONT></DIV>
+<DIV><FONT Arial size=3D2>T-h.i,s a gr*eat opportuni.'ty to at l-east =
+do_uble up!</FONT></DIV>
+<DIV><FONT Arial size=3D2></FONT></DIV>
+<DIV><FONT Arial size=3D2></FONT></DIV>
+<DIV><FONT Arial size=3D2></FONT></DIV>
+<DIV><FONT Arial size=3D2></FONT></DIV>
+<DIV><FONT Arial size=3D2>A*n,d I k,n_o w w'h+a+t yo*u're tr.ying so h,a =
+r.d n*o_t=20
+to sa.y-- t'h-a_t my pa*rents w_e+r,e han*ged as wi+tches. </FONT></DIV>
+<DIV><FONT Arial size=3D2></FONT></DIV>
+<DIV><FONT Arial size=3D2>R+S*A Secur_e Se+rver CA (fro'm Veri_Sign)'. =
+</FONT></DIV>
+<DIV><FONT Arial size=3D2>Do n+o_t pre ss a desp+,erate f,o*e t,o,o =
+h*a.r,d'. </FONT></DIV>
+<DIV><FONT Arial size=3D2></FONT></DIV>
+<DIV><FONT Arial size=3D2></FONT></DIV>
+<DIV><FONT Arial size=3D2>Opti c T+i.m_e Dom ain Reflec+to,metry. =
+</FONT></DIV>
+<DIV><FONT Arial size=3D2></FONT></DIV>
+<DIV><FONT Arial size=3D2>At firs't H'u.g h wat+ched in d isg*usted si =
+l'ence,=20
+n*ostril's flarin'g a n'd twit,+ching. </FONT></DIV></BODY></HTML>
+
+------=_NextPart_000_0008_01C7E26B.1BFB4AA0--
+
+
+
+--===============0580116358==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
+--===============0580116358==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============0580116358==--
