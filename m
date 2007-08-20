@@ -1,8 +1,7 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [RFC, PATCH 06/20] svc: export svc_sock_enqueue,
-	svc_sock_received
-Date: Mon, 20 Aug 2007 11:23:34 -0500
-Message-ID: <20070820162334.15224.17433.stgit@dell3.ogc.int>
+Subject: [RFC,PATCH 14/20] svc: Register TCP/UDP Transports
+Date: Mon, 20 Aug 2007 11:23:51 -0500
+Message-ID: <20070820162351.15224.42488.stgit@dell3.ogc.int>
 References: <20070820162000.15224.65524.stgit@dell3.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -11,14 +10,14 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1INA2S-0006Nh-H0
-	for nfs@lists.sourceforge.net; Mon, 20 Aug 2007 09:23:38 -0700
+	id 1INA2j-0006PB-20
+	for nfs@lists.sourceforge.net; Mon, 20 Aug 2007 09:23:53 -0700
 Received: from smtp.opengridcomputing.com ([71.42.183.126])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1INA2W-0003we-4C
-	for nfs@lists.sourceforge.net; Mon, 20 Aug 2007 09:23:40 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1INA2n-00043g-1Z
+	for nfs@lists.sourceforge.net; Mon, 20 Aug 2007 09:23:57 -0700
 Received: from dell3.ogc.int (localhost [127.0.0.1])
-	by smtp.opengridcomputing.com (Postfix) with ESMTP id 49C8B7C79B
-	for <nfs@lists.sourceforge.net>; Mon, 20 Aug 2007 11:23:34 -0500 (CDT)
+	by smtp.opengridcomputing.com (Postfix) with ESMTP id 4CF087C79C
+	for <nfs@lists.sourceforge.net>; Mon, 20 Aug 2007 11:23:51 -0500 (CDT)
 In-Reply-To: <20070820162000.15224.65524.stgit@dell3.ogc.int>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -33,70 +32,71 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 
-Export svc_sock_enqueue() and svc_sock_received() so they
-can be used by sunrpc server transport implementations
-(even future modular ones).
-
-Signed-off-by: Greg Banks <gnb@melbourne.sgi.com>
-Signed-off-by: Peter Leckie <pleckie@melbourne.sgi.com>
+Add a call to svc_register_transport for the built
+in transports UDP and TCP. The registration is done in the 
+sunrpc module initialization logic.
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- include/linux/sunrpc/svcsock.h |    2 ++
- net/sunrpc/svcsock.c           |    7 ++++---
- 2 files changed, 6 insertions(+), 3 deletions(-)
+ net/sunrpc/sunrpc_syms.c |    2 ++
+ net/sunrpc/svcsock.c     |   10 ++++++++--
+ 2 files changed, 10 insertions(+), 2 deletions(-)
 
-diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
-index 4e24e6d..0145057 100644
---- a/include/linux/sunrpc/svcsock.h
-+++ b/include/linux/sunrpc/svcsock.h
-@@ -108,6 +108,8 @@ int		svc_addsock(struct svc_serv *serv,
- 			    int fd,
- 			    char *name_return,
- 			    int *proto);
-+void		svc_sock_enqueue(struct svc_sock *svsk);
-+void		svc_sock_received(struct svc_sock *svsk);
+diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
+index 73075de..c68577b 100644
+--- a/net/sunrpc/sunrpc_syms.c
++++ b/net/sunrpc/sunrpc_syms.c
+@@ -134,6 +134,7 @@ EXPORT_SYMBOL(nfsd_debug);
+ EXPORT_SYMBOL(nlm_debug);
+ #endif
  
- /*
-  * svc_makesock socket characteristics
++extern void init_svc_xprt(void);
+ extern struct cache_detail ip_map_cache, unix_gid_cache;
+ 
+ static int __init
+@@ -156,6 +157,7 @@ #endif
+ 	cache_register(&ip_map_cache);
+ 	cache_register(&unix_gid_cache);
+ 	init_socket_xprt();
++	init_svc_xprt();
+ out:
+ 	return err;
+ }
 diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 0dc94a8..8fad53d 100644
+index 6183951..d6443e8 100644
 --- a/net/sunrpc/svcsock.c
 +++ b/net/sunrpc/svcsock.c
-@@ -209,7 +209,7 @@ svc_release_skb(struct svc_rqst *rqstp)
-  * processes, wake 'em up.
-  *
-  */
--static void
-+void
- svc_sock_enqueue(struct svc_sock *svsk)
- {
- 	struct svc_serv	*serv = svsk->sk_server;
-@@ -287,6 +287,7 @@ svc_sock_enqueue(struct svc_sock *svsk)
- out_unlock:
- 	spin_unlock_bh(&pool->sp_lock);
+@@ -933,7 +933,7 @@ svc_udp_has_wspace(struct svc_sock *svsk
+ 	return svc_sock_has_write_space(svsk, sock_wspace(svsk->sk_sk));
  }
-+EXPORT_SYMBOL_GPL(svc_sock_enqueue);
  
- /*
-  * Dequeue the first socket.  Must be called with the pool->sp_lock held.
-@@ -315,14 +316,14 @@ svc_sock_dequeue(struct svc_pool *pool)
-  * Note: SK_DATA only gets cleared when a read-attempt finds
-  * no (or insufficient) data.
-  */
--static inline void
-+void
- svc_sock_received(struct svc_sock *svsk)
- {
- 	svsk->sk_pool = NULL;
- 	clear_bit(SK_BUSY, &svsk->sk_flags);
- 	svc_sock_enqueue(svsk);
+-static const struct svc_xprt svc_udp_xprt = {
++static struct svc_xprt svc_udp_xprt = {
+ 	.xpt_name = "udp",
+ 	.xpt_owner = THIS_MODULE,
+ 	.xpt_recvfrom = svc_udp_recvfrom,
+@@ -1393,7 +1393,7 @@ svc_tcp_has_wspace(struct svc_sock *svsk
+ 	return svc_sock_has_write_space(svsk, sk_stream_wspace(svsk->sk_sk));
  }
--
-+EXPORT_SYMBOL_GPL(svc_sock_received);
  
- /**
-  * svc_reserve - change the space reserved for the reply to a request.
+-static const struct svc_xprt svc_tcp_xprt = {
++static struct svc_xprt svc_tcp_xprt = {
+ 	.xpt_name = "tcp",
+ 	.xpt_owner = THIS_MODULE,
+ 	.xpt_recvfrom = svc_tcp_recvfrom,
+@@ -1406,6 +1406,12 @@ static const struct svc_xprt svc_tcp_xpr
+ 	.xpt_accept = svc_tcp_accept,
+ };
+ 
++void init_svc_xprt(void)
++{
++	svc_register_transport(&svc_udp_xprt);
++	svc_register_transport(&svc_tcp_xprt);
++}
++
+ static void
+ svc_tcp_init_listener(struct svc_sock *svsk)
+ {
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
