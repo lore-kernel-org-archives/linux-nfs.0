@@ -1,24 +1,24 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [RFC,PATCH 19/20] knfsd: call svc_create_svcsock
-Date: Mon, 20 Aug 2007 11:24:01 -0500
-Message-ID: <20070820162401.15224.9446.stgit@dell3.ogc.int>
-References: <20070820162000.15224.65524.stgit@dell3.ogc.int>
+Subject: [RFC,PATCH 02/10] rdma: sysctl for SVCRDMA transport module
+Date: Mon, 20 Aug 2007 11:58:05 -0500
+Message-ID: <20070820165805.15938.92400.stgit@dell3.ogc.int>
+References: <20070820165635.15938.57184.stgit@dell3.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1INA2u-0006SJ-GT
-	for nfs@lists.sourceforge.net; Mon, 20 Aug 2007 09:24:04 -0700
+	id 1INAZs-0001ug-6q
+	for nfs@lists.sourceforge.net; Mon, 20 Aug 2007 09:58:08 -0700
 Received: from smtp.opengridcomputing.com ([71.42.183.126])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1INA2x-0004AO-Od
-	for nfs@lists.sourceforge.net; Mon, 20 Aug 2007 09:24:08 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1INAZv-00051E-IA
+	for nfs@lists.sourceforge.net; Mon, 20 Aug 2007 09:58:11 -0700
 Received: from dell3.ogc.int (localhost [127.0.0.1])
-	by smtp.opengridcomputing.com (Postfix) with ESMTP id F0B5D7C79D
-	for <nfs@lists.sourceforge.net>; Mon, 20 Aug 2007 11:24:01 -0500 (CDT)
-In-Reply-To: <20070820162000.15224.65524.stgit@dell3.ogc.int>
+	by smtp.opengridcomputing.com (Postfix) with ESMTP id AE2D27C79D
+	for <nfs@lists.sourceforge.net>; Mon, 20 Aug 2007 11:58:05 -0500 (CDT)
+In-Reply-To: <20070820165635.15938.57184.stgit@dell3.ogc.int>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,42 +32,47 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 
-Change the call to the socket specific svc_makesock to a call to the
-transport independent svc_create_svcsock function. This avoids 
-conditional #ifdef's for the rdma transport in the nfsd code. 
+Add sysctl flags for SVCRDMA transport module debug messages.
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- fs/nfsd/nfssvc.c |    8 ++++----
- 1 files changed, 4 insertions(+), 4 deletions(-)
+ include/linux/sunrpc/debug.h |   15 ++++++++++++++-
+ 1 files changed, 14 insertions(+), 1 deletions(-)
 
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index ff55950..1499beb 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -235,8 +235,8 @@ static int nfsd_init_socks(int port)
+diff --git a/include/linux/sunrpc/debug.h b/include/linux/sunrpc/debug.h
+index 89458df..ea7ae15 100644
+--- a/include/linux/sunrpc/debug.h
++++ b/include/linux/sunrpc/debug.h
+@@ -52,7 +52,7 @@ #endif
+ #define dprintk(args...)	dfprintk(FACILITY, ## args)
  
- 	error = lockd_up(IPPROTO_UDP);
- 	if (error >= 0) {
--		error = svc_makesock(nfsd_serv, IPPROTO_UDP, port,
--					SVC_SOCK_DEFAULTS);
-+		error = svc_create_svcsock(nfsd_serv, "udp", port,
-+					   SVC_SOCK_DEFAULTS);
- 		if (error < 0)
- 			lockd_down();
- 	}
-@@ -246,8 +246,8 @@ static int nfsd_init_socks(int port)
- #ifdef CONFIG_NFSD_TCP
- 	error = lockd_up(IPPROTO_TCP);
- 	if (error >= 0) {
--		error = svc_makesock(nfsd_serv, IPPROTO_TCP, port,
--					SVC_SOCK_DEFAULTS);
-+		error = svc_create_svcsock(nfsd_serv, "tcp", port,
-+					   SVC_SOCK_DEFAULTS);
- 		if (error < 0)
- 			lockd_down();
- 	}
+ #undef ifdebug
+-#ifdef RPC_DEBUG			
++#ifdef RPC_DEBUG
+ # define ifdebug(fac)		if (unlikely(rpc_debug & RPCDBG_##fac))
+ # define dfprintk(fac, args...)	do { ifdebug(fac) printk(args); } while(0)
+ # define RPC_IFDEBUG(x)		x
+@@ -89,6 +89,19 @@ enum {
+ 	CTL_MIN_RESVPORT,
+ 	CTL_MAX_RESVPORT,
+ 	CTL_TRANSPORTS,
++	CTL_SVCRDMA,
++	CTL_RDMA_MAX_REQUESTS,
++	CTL_RDMA_MAX_REQ_SIZE,
++	CTL_RDMA_ORD,
++	CTL_RDMA_STAT_RECV,
++	CTL_RDMA_STAT_READ,
++	CTL_RDMA_STAT_WRITE,
++	CTL_RDMA_STAT_SQ_STARVE,
++	CTL_RDMA_STAT_RQ_STARVE,
++	CTL_RDMA_STAT_RQ_POLL,
++	CTL_RDMA_STAT_RQ_PROD,
++	CTL_RDMA_STAT_SQ_POLL,
++	CTL_RDMA_STAT_SQ_PROD
+ };
+ 
+ #endif /* _LINUX_SUNRPC_DEBUG_H_ */
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
