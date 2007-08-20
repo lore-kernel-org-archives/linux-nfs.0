@@ -1,7 +1,7 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [RFC,PATCH 01/10] rdma: ONCRPC RDMA Header File
-Date: Mon, 20 Aug 2007 11:58:03 -0500
-Message-ID: <20070820165803.15938.3321.stgit@dell3.ogc.int>
+Subject: [RFC,PATCH 04/10] rdma: SVCRDMA Transport Module
+Date: Mon, 20 Aug 2007 11:58:09 -0500
+Message-ID: <20070820165809.15938.84042.stgit@dell3.ogc.int>
 References: <20070820165635.15938.57184.stgit@dell3.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -10,14 +10,14 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1INAZs-0001uf-5b
-	for nfs@lists.sourceforge.net; Mon, 20 Aug 2007 09:58:08 -0700
+	id 1INAZw-0001z0-6y
+	for nfs@lists.sourceforge.net; Mon, 20 Aug 2007 09:58:13 -0700
 Received: from smtp.opengridcomputing.com ([71.42.183.126])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1INAZt-0003Ey-NR
-	for nfs@lists.sourceforge.net; Mon, 20 Aug 2007 09:58:10 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1INAZz-0003HY-Nk
+	for nfs@lists.sourceforge.net; Mon, 20 Aug 2007 09:58:16 -0700
 Received: from dell3.ogc.int (localhost [127.0.0.1])
-	by smtp.opengridcomputing.com (Postfix) with ESMTP id 968187C79C
-	for <nfs@lists.sourceforge.net>; Mon, 20 Aug 2007 11:58:03 -0500 (CDT)
+	by smtp.opengridcomputing.com (Postfix) with ESMTP id D67E27C7BD
+	for <nfs@lists.sourceforge.net>; Mon, 20 Aug 2007 11:58:09 -0500 (CDT)
 In-Reply-To: <20070820165635.15938.57184.stgit@dell3.ogc.int>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -32,23 +32,23 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 
-These are the core data types that are used to process the ONCRPC protocol
-in the NFS-RDMA client and server.
+This file implements the RDMA transport module initialization and
+termination logic and registers the transport sysctl variables.
 
-Signed-off-by: Tom Talpey <talpey@netapp.com>
+Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- include/linux/sunrpc/rpc_rdma.h |  116 +++++++++++++++++++++++++++++++++++++++
- 1 files changed, 116 insertions(+), 0 deletions(-)
+ net/sunrpc/svc_rdma.c |  270 +++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 270 insertions(+), 0 deletions(-)
 
-diff --git a/include/linux/sunrpc/rpc_rdma.h b/include/linux/sunrpc/rpc_rdma.h
+diff --git a/net/sunrpc/svc_rdma.c b/net/sunrpc/svc_rdma.c
 new file mode 100644
-index 0000000..0013a0d
+index 0000000..620249d
 --- /dev/null
-+++ b/include/linux/sunrpc/rpc_rdma.h
-@@ -0,0 +1,116 @@
++++ b/net/sunrpc/svc_rdma.c
+@@ -0,0 +1,270 @@
 +/*
-+ * Copyright (c) 2003-2007 Network Appliance, Inc. All rights reserved.
++ * Copyright (c) 2005-2006 Network Appliance, Inc. All rights reserved.
 + *
 + * This software is available to you under a choice of one of two
 + * licenses.  You may choose to be licensed under the terms of the GNU
@@ -84,85 +84,239 @@ index 0000000..0013a0d
 + * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 + * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 + * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ *
++ * Author: Tom Tucker <tom@opengridcomputing.com>
 + */
++#include <linux/module.h>
++#include <linux/init.h>
++#include <linux/fs.h>
++#include <linux/sysctl.h>
++#include <linux/sunrpc/clnt.h>
++#include <linux/sunrpc/sched.h>
++#include <linux/sunrpc/svc_rdma.h>
 +
-+#ifndef _LINUX_SUNRPC_RPC_RDMA_H
-+#define _LINUX_SUNRPC_RPC_RDMA_H
++#define RPCDBG_FACILITY	RPCDBG_SVCXPRT
 +
-+struct rpcrdma_segment {
-+	uint32_t rs_handle;	/* Registered memory handle */
-+	uint32_t rs_length;	/* Length of the chunk in bytes */
-+	uint64_t rs_offset;	/* Chunk virtual address or offset */
++/* RPC/RDMA parameters */
++unsigned int svcrdma_ord = RPCRDMA_ORD;
++static unsigned int min_ord = 1;
++static unsigned int max_ord = 4096;
++unsigned int svcrdma_max_requests = RPCRDMA_MAX_REQUESTS;
++static unsigned int min_max_requests = 4;
++static unsigned int max_max_requests = 16384;
++unsigned int svcrdma_max_req_size = RPCRDMA_MAX_REQ_SIZE;
++static unsigned int min_max_inline = 4096;
++static unsigned int max_max_inline = 65536;
++static unsigned int zero = 0;
++static unsigned int one = 1;
++
++unsigned int rdma_stat_recv = 0;
++unsigned int rdma_stat_read = 0;
++unsigned int rdma_stat_write = 0;
++unsigned int rdma_stat_sq_starve = 0;
++unsigned int rdma_stat_rq_starve = 0;
++unsigned int rdma_stat_rq_poll = 0;
++unsigned int rdma_stat_rq_prod = 0;
++unsigned int rdma_stat_sq_poll = 0;
++unsigned int rdma_stat_sq_prod = 0;
++
++extern struct svc_xprt svc_rdma_xprt;
++
++static struct ctl_table_header *svcrdma_table_header;
++static ctl_table svcrdma_parm_table[] = {
++	{
++		.ctl_name	= CTL_RDMA_MAX_REQUESTS,
++		.procname	= "max_requests",
++		.data		= &svcrdma_max_requests,
++		.maxlen		= sizeof(unsigned int),
++		.mode		= 0644,
++		.proc_handler	= &proc_dointvec_minmax,
++		.strategy	= &sysctl_intvec,
++		.extra1		= &min_max_requests,
++		.extra2		= &max_max_requests
++	},
++	{
++		.ctl_name	= CTL_RDMA_MAX_REQ_SIZE,
++		.procname	= "max_req_size",
++		.data		= &svcrdma_max_req_size,
++		.maxlen		= sizeof(unsigned int),
++		.mode		= 0644,
++		.proc_handler	= &proc_dointvec_minmax,
++		.strategy	= &sysctl_intvec,
++		.extra1		= &min_max_inline,
++		.extra2		= &max_max_inline
++	},
++	{
++		.ctl_name	= CTL_RDMA_ORD,
++		.procname	= "max_outbound_read_requests",
++		.data		= &svcrdma_ord,
++		.maxlen		= sizeof(unsigned int),
++		.mode		= 0644,
++		.proc_handler	= &proc_dointvec_minmax,
++		.strategy	= &sysctl_intvec,
++		.extra1		= &min_ord,
++		.extra2		= &max_ord,
++	},
++
++	{
++		.ctl_name	= CTL_RDMA_STAT_READ,
++		.procname	= "rdma_stat_read",
++		.data		= &rdma_stat_read,
++		.maxlen		= sizeof(unsigned int),
++		.mode		= 0644,
++		.proc_handler	= &proc_dointvec_minmax,
++		.strategy	= &sysctl_intvec,
++		.extra1		= &zero,
++		.extra2		= &one,
++	},
++	{
++		.ctl_name	= CTL_RDMA_STAT_RECV,
++		.procname	= "rdma_stat_recv",
++		.data		= &rdma_stat_recv,
++		.maxlen		= sizeof(unsigned int),
++		.mode		= 0644,
++		.proc_handler	= &proc_dointvec_minmax,
++		.strategy	= &sysctl_intvec,
++		.extra1		= &zero,
++		.extra2		= &one,
++	},
++	{
++		.ctl_name	= CTL_RDMA_STAT_WRITE,
++		.procname	= "rdma_stat_write",
++		.data		= &rdma_stat_write,
++		.maxlen		= sizeof(unsigned int),
++		.mode		= 0644,
++		.proc_handler	= &proc_dointvec_minmax,
++		.strategy	= &sysctl_intvec,
++		.extra1		= &zero,
++		.extra2		= &one,
++	},
++	{
++		.ctl_name	= CTL_RDMA_STAT_SQ_STARVE,
++		.procname	= "rdma_stat_sq_starve",
++		.data		= &rdma_stat_sq_starve,
++		.maxlen		= sizeof(unsigned int),
++		.mode		= 0644,
++		.proc_handler	= &proc_dointvec_minmax,
++		.strategy	= &sysctl_intvec,
++		.extra1		= &zero,
++		.extra2		= &one,
++	},
++	{
++		.ctl_name	= CTL_RDMA_STAT_RQ_STARVE,
++		.procname	= "rdma_stat_rq_starve",
++		.data		= &rdma_stat_rq_starve,
++		.maxlen		= sizeof(unsigned int),
++		.mode		= 0644,
++		.proc_handler	= &proc_dointvec_minmax,
++		.strategy	= &sysctl_intvec,
++		.extra1		= &zero,
++		.extra2		= &one,
++	},
++	{
++		.ctl_name	= CTL_RDMA_STAT_RQ_POLL,
++		.procname	= "rdma_stat_rq_poll",
++		.data		= &rdma_stat_rq_poll,
++		.maxlen		= sizeof(unsigned int),
++		.mode		= 0644,
++		.proc_handler	= &proc_dointvec_minmax,
++		.strategy	= &sysctl_intvec,
++		.extra1		= &zero,
++		.extra2		= &one,
++	},
++	{
++		.ctl_name	= CTL_RDMA_STAT_RQ_PROD,
++		.procname	= "rdma_stat_rq_prod",
++		.data		= &rdma_stat_rq_prod,
++		.maxlen		= sizeof(unsigned int),
++		.mode		= 0644,
++		.proc_handler	= &proc_dointvec_minmax,
++		.strategy	= &sysctl_intvec,
++		.extra1		= &zero,
++		.extra2		= &one,
++	},
++	{
++		.ctl_name	= CTL_RDMA_STAT_SQ_POLL,
++		.procname	= "rdma_stat_sq_poll",
++		.data		= &rdma_stat_sq_poll,
++		.maxlen		= sizeof(unsigned int),
++		.mode		= 0644,
++		.proc_handler	= &proc_dointvec_minmax,
++		.strategy	= &sysctl_intvec,
++		.extra1		= &zero,
++		.extra2		= &one,
++	},
++	{
++		.ctl_name	= CTL_RDMA_STAT_SQ_PROD,
++		.procname	= "rdma_stat_sq_prod",
++		.data		= &rdma_stat_sq_prod,
++		.maxlen		= sizeof(unsigned int),
++		.mode		= 0644,
++		.proc_handler	= &proc_dointvec_minmax,
++		.strategy	= &sysctl_intvec,
++		.extra1		= &zero,
++		.extra2		= &one,
++	},
++	{
++		.ctl_name = 0,
++	},
 +};
 +
-+/*
-+ * read chunk(s), encoded as a linked list.
-+ */
-+struct rpcrdma_read_chunk {
-+	uint32_t rc_discrim;	/* 1 indicates presence */
-+	uint32_t rc_position;	/* Position in XDR stream */
-+	struct rpcrdma_segment rc_target;
++static ctl_table svcrdma_table[] = {
++	{
++		.ctl_name	= CTL_SVCRDMA,
++		.procname	= "svc_rdma",
++		.mode		= 0555,
++		.child		= svcrdma_parm_table
++	},
++	{
++		.ctl_name = 0,
++	},
 +};
 +
-+/*
-+ * write chunk, and reply chunk.
-+ */
-+struct rpcrdma_write_chunk {
-+	struct rpcrdma_segment wc_target;
++static ctl_table svcrdma_root_table[] = {
++	{
++		.ctl_name	= CTL_SUNRPC,
++		.procname	= "sunrpc",
++		.mode		= 0555,
++		.child		= svcrdma_table
++	},
++	{
++		.ctl_name = 0,
++	},
 +};
 +
-+/*
-+ * write chunk(s), encoded as a counted array.
-+ */
-+struct rpcrdma_write_array {
-+	uint32_t wc_discrim;	/* 1 indicates presence */
-+	uint32_t wc_nchunks;	/* Array count */
-+	struct rpcrdma_write_chunk wc_array[0];
-+};
++void svc_rdma_cleanup(void)
++{
++	dprintk("SVCRDMA Module Removed, deregister RPC RDMA transport\n");
++	if (svcrdma_table_header) {
++		unregister_sysctl_table(svcrdma_table_header);
++		svcrdma_table_header = NULL;
++	}
++	svc_unregister_transport(&svc_rdma_xprt);
++}
 +
-+struct rpcrdma_msg {
-+	uint32_t rm_xid;	/* Mirrors the RPC header xid */
-+	uint32_t rm_vers;	/* Version of this protocol */
-+	uint32_t rm_credit;	/* Buffers requested/granted */
-+	uint32_t rm_type;	/* Type of message (enum rpcrdma_proc) */
-+	union {
-+
-+		struct {			/* no chunks */
-+			uint32_t rm_empty[3];	/* 3 empty chunk lists */
-+		} rm_nochunks;
-+
-+		struct {			/* no chunks and padded */
-+			uint32_t rm_align;	/* Padding alignment */
-+			uint32_t rm_thresh;	/* Padding threshold */
-+			uint32_t rm_pempty[3];	/* 3 empty chunk lists */
-+		} rm_padded;
-+
-+		uint32_t rm_chunks[0];	/* read, write and reply chunks */
-+
-+	} rm_body;
-+};
-+
-+#define RPCRDMA_HDRLEN_MIN	28
-+
-+enum rpcrdma_errcode {
-+	ERR_VERS = 1,
-+	ERR_CHUNK = 2
-+};
-+
-+struct rpcrdma_err_vers {
-+	uint32_t rdma_vers_low;	/* Version range supported by peer */
-+	uint32_t rdma_vers_high;
-+};
-+
-+enum rpcrdma_proc {
-+	RDMA_MSG = 0,		/* An RPC call or reply msg */
-+	RDMA_NOMSG = 1,		/* An RPC call or reply msg - separate body */
-+	RDMA_MSGP = 2,		/* An RPC call or reply msg with padding */
-+	RDMA_DONE = 3,		/* Client signals reply completion */
-+	RDMA_ERROR = 4		/* An RPC RDMA encoding error */
-+};
-+
-+#endif				/* _LINUX_SUNRPC_RPC_RDMA_H */
++int svc_rdma_init(void)
++{
++	dprintk("SVCRDMA Module Init, register RPC RDMA transport\n");
++	dprintk("\tsvcrdma_ord      : %d\n", svcrdma_ord);
++	dprintk("\tmax_requests     : %d\n", svcrdma_max_requests);
++	dprintk("\tsq_depth         : %d\n",
++		svcrdma_max_requests * RPCRDMA_SQ_DEPTH_MULT);
++	dprintk("\tmax_inline       : %d\n", svcrdma_max_req_size);
++	if (!svcrdma_table_header) {
++		svcrdma_table_header =
++			register_sysctl_table(svcrdma_root_table);
++	}
++	/* Register RDMA with the SVC transport switch */
++	svc_register_transport(&svc_rdma_xprt);
++	return 0;
++}
++MODULE_AUTHOR("Tom Tucker <tom@opengridcomputing.com>");
++MODULE_DESCRIPTION("SVC RDMA Transport");
++MODULE_LICENSE("Dual BSD/GPL");
++module_init(svc_rdma_init);
++module_exit(svc_rdma_cleanup);
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
