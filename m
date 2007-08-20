@@ -1,24 +1,22 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [RFC,PATCH 02/20] svc: xpt_detach and xpt_free
-Date: Mon, 20 Aug 2007 11:23:25 -0500
-Message-ID: <20070820162325.15224.71015.stgit@dell3.ogc.int>
-References: <20070820162000.15224.65524.stgit@dell3.ogc.int>
+Subject: [RFC,PATCH 00/20] svc: Server Side Transport Switch
+Date: Mon, 20 Aug 2007 11:20:00 -0500
+Message-ID: <20070820162000.15224.65524.stgit@dell3.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1INA2J-0006N4-N3
+	id 1INA2J-0006N2-Iu
 	for nfs@lists.sourceforge.net; Mon, 20 Aug 2007 09:23:27 -0700
 Received: from smtp.opengridcomputing.com ([71.42.183.126])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1INA2N-0005Hx-Fc
-	for nfs@lists.sourceforge.net; Mon, 20 Aug 2007 09:23:32 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1INA2N-0003ri-1A
+	for nfs@lists.sourceforge.net; Mon, 20 Aug 2007 09:23:31 -0700
 Received: from dell3.ogc.int (localhost [127.0.0.1])
-	by smtp.opengridcomputing.com (Postfix) with ESMTP id B49B27C79C
-	for <nfs@lists.sourceforge.net>; Mon, 20 Aug 2007 11:23:25 -0500 (CDT)
-In-Reply-To: <20070820162000.15224.65524.stgit@dell3.ogc.int>
+	by smtp.opengridcomputing.com (Postfix) with ESMTP id 257337C0CC
+	for <nfs@lists.sourceforge.net>; Mon, 20 Aug 2007 11:23:21 -0500 (CDT)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,143 +29,51 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+This patchset represents an update to the previously published 
+version. The most significant changes are a renaming of the 
+transport switch data structures and functions based on a 
+recommendation from Chuck Lever. Code cleanup was also done in the
+portlist implementation based on feedback from Trond. Additionally, 
+the synopsis for the register/unregister services were changed
+to return errors and module reference counting was added. 
 
-Add transport switch functions to ensure that no additional receive 
-ready events will be delivered by the transport (xpt_detach), 
-and another to free memory associated with the transport (xpt_free).
-Change svc_delete_socket() and svc_sock_put() to use the new
-transport functions.
+I've included the original description below for new reviewers.
 
-Signed-off-by: Greg Banks <gnb@melbourne.sgi.com>
-Signed-off-by: Peter Leckie <pleckie@melbourne.sgi.com>
+This patchset implements a sunrpc server side pluggable transport 
+switch that supports dynamically registered transports. 
+
+The knfsd daemon has been modified to allow user-mode programs 
+to add a new listening endpoint by writing a string
+to the portlist file. The format of the string is as follows:
+
+<transport-name> <port>
+
+For example,
+
+# echo rdma 2050 > /proc/fs/nfsd/portlist
+
+Will cause the knfsd daemon to attempt to add a listening endpoint on 
+port 2050 using the 'rdma' transport.
+
+Transports register themselves with the transport switch using a
+new API that has the following synopsis:
+
+int svc_register_transport(struct svc_sock_ops *xprt)
+
+The text transport name is contained in a field in the xprt structure.
+A new service has been added as well to take a transport name
+instead of an IP protocol number to specify the transport on which the 
+listening endpoint is to be created. This function is defined as follows:
+
+int svc_create_svcsock(struct svc_serv, char *transport_name, 
+                       unsigned short port, int flags);
+
+The existing svc_makesock interface was left to avoid impacts to existing 
+servers. It has been modified to map IP protocol numbers to transport 
+strings.
+
+-- 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
----
-
- include/linux/sunrpc/svcsock.h |   12 ++++++++++
- net/sunrpc/svcsock.c           |   50 +++++++++++++++++++++++++++++++++-------
- 2 files changed, 53 insertions(+), 9 deletions(-)
-
-diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
-index 4792ed6..27c5b1f 100644
---- a/include/linux/sunrpc/svcsock.h
-+++ b/include/linux/sunrpc/svcsock.h
-@@ -15,6 +15,18 @@ struct svc_xprt {
- 	const char		*xpt_name;
- 	int			(*xpt_recvfrom)(struct svc_rqst *rqstp);
- 	int			(*xpt_sendto)(struct svc_rqst *rqstp);
-+	/*
-+	 * Detach the svc_sock from it's socket, so that the
-+	 * svc_sock will not be enqueued any more.  This is
-+	 * the first stage in the destruction of a svc_sock.
-+	 */
-+	void			(*xpt_detach)(struct svc_sock *);
-+	/*
-+	 * Release all network-level resources held by the svc_sock,
-+	 * and the svc_sock itself.  This is the final stage in the
-+	 * destruction of a svc_sock.
-+	 */
-+	void			(*xpt_free)(struct svc_sock *);
- };
- 
- /*
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 789d94a..4956c88 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -84,6 +84,8 @@ static void		svc_udp_data_ready(struct s
- static int		svc_udp_recvfrom(struct svc_rqst *);
- static int		svc_udp_sendto(struct svc_rqst *);
- static void		svc_close_socket(struct svc_sock *svsk);
-+static void		svc_sock_detach(struct svc_sock *);
-+static void		svc_sock_free(struct svc_sock *);
- 
- static struct svc_deferred_req *svc_deferred_dequeue(struct svc_sock *svsk);
- static int svc_deferred_recv(struct svc_rqst *rqstp);
-@@ -378,14 +380,9 @@ svc_sock_put(struct svc_sock *svsk)
- 	if (atomic_dec_and_test(&svsk->sk_inuse)) {
- 		BUG_ON(! test_bit(SK_DEAD, &svsk->sk_flags));
- 
--		dprintk("svc: releasing dead socket\n");
--		if (svsk->sk_sock->file)
--			sockfd_put(svsk->sk_sock);
--		else
--			sock_release(svsk->sk_sock);
- 		if (svsk->sk_info_authunix != NULL)
- 			svcauth_unix_info_release(svsk->sk_info_authunix);
--		kfree(svsk);
-+    	    	svsk->sk_xprt->xpt_free(svsk);
- 	}
- }
- 
-@@ -889,6 +886,8 @@ static const struct svc_xprt svc_udp_xpr
- 	.xpt_name = "udp",
- 	.xpt_recvfrom = svc_udp_recvfrom,
- 	.xpt_sendto = svc_udp_sendto,
-+	.xpt_detach = svc_sock_detach,
-+	.xpt_free = svc_sock_free,
- };
- 
- static void
-@@ -1331,6 +1330,8 @@ static const struct svc_xprt svc_tcp_xpr
- 	.xpt_name = "tcp",
- 	.xpt_recvfrom = svc_tcp_recvfrom,
- 	.xpt_sendto = svc_tcp_sendto,
-+	.xpt_detach = svc_sock_detach,
-+	.xpt_free = svc_sock_free,
- };
- 
- static void
-@@ -1770,6 +1771,38 @@ bummer:
- }
- 
- /*
-+ * Detach the svc_sock from the socket so that no
-+ * more callbacks occur.
-+ */
-+static void
-+svc_sock_detach(struct svc_sock *svsk)
-+{
-+	struct sock *sk = svsk->sk_sk;
-+
-+	dprintk("svc: svc_sock_detach(%p)\n", svsk);
-+
-+	/* put back the old socket callbacks */
-+	sk->sk_state_change = svsk->sk_ostate;
-+	sk->sk_data_ready = svsk->sk_odata;
-+	sk->sk_write_space = svsk->sk_owspace;
-+}
-+
-+/*
-+ * Free the svc_sock's socket resources and the svc_sock itself.
-+ */
-+static void
-+svc_sock_free(struct svc_sock *svsk)
-+{
-+	dprintk("svc: svc_sock_free(%p)\n", svsk);
-+
-+	if (svsk->sk_sock->file)
-+		sockfd_put(svsk->sk_sock);
-+	else
-+		sock_release(svsk->sk_sock);
-+	kfree(svsk);
-+}
-+
-+/*
-  * Remove a dead socket
-  */
- static void
-@@ -1783,9 +1816,8 @@ svc_delete_socket(struct svc_sock *svsk)
- 	serv = svsk->sk_server;
- 	sk = svsk->sk_sk;
- 
--	sk->sk_state_change = svsk->sk_ostate;
--	sk->sk_data_ready = svsk->sk_odata;
--	sk->sk_write_space = svsk->sk_owspace;
-+	if (svsk->sk_xprt->xpt_detach)
-+		svsk->sk_xprt->xpt_detach(svsk);
- 
- 	spin_lock_bh(&serv->sv_lock);
- 
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
