@@ -1,7 +1,7 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [RFC,PATCH 15/20] svc: transport file implementation
-Date: Mon, 20 Aug 2007 11:23:53 -0500
-Message-ID: <20070820162353.15224.58198.stgit@dell3.ogc.int>
+Subject: [RFC,PATCH 18/20] svc: Add xpt_defer transport function
+Date: Mon, 20 Aug 2007 11:23:59 -0500
+Message-ID: <20070820162359.15224.74970.stgit@dell3.ogc.int>
 References: <20070820162000.15224.65524.stgit@dell3.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -10,14 +10,14 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1INA2m-0006PR-6H
-	for nfs@lists.sourceforge.net; Mon, 20 Aug 2007 09:23:59 -0700
+	id 1INA2t-0006Rx-Qv
+	for nfs@lists.sourceforge.net; Mon, 20 Aug 2007 09:24:04 -0700
 Received: from smtp.opengridcomputing.com ([71.42.183.126])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1INA2p-00044n-60
-	for nfs@lists.sourceforge.net; Mon, 20 Aug 2007 09:24:00 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1INA2x-00047m-8Q
+	for nfs@lists.sourceforge.net; Mon, 20 Aug 2007 09:24:08 -0700
 Received: from dell3.ogc.int (localhost [127.0.0.1])
-	by smtp.opengridcomputing.com (Postfix) with ESMTP id 6EE227C79D
-	for <nfs@lists.sourceforge.net>; Mon, 20 Aug 2007 11:23:53 -0500 (CDT)
+	by smtp.opengridcomputing.com (Postfix) with ESMTP id D5BCF7C79B
+	for <nfs@lists.sourceforge.net>; Mon, 20 Aug 2007 11:23:59 -0500 (CDT)
 In-Reply-To: <20070820162000.15224.65524.stgit@dell3.ogc.int>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -32,140 +32,73 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 
-Create a proc/sys/sunrpc/transport file that contains information 
-about the currently registered transports.
+The RDMA transport includes an ONCRDMA header that precedes the RPC 
+message. This header needs to be saved in addition to the RPC message 
+itself. The RPC transport uses page swapping to implement copy avoidance.
+These transport dependencies are hidden in the xpt_defer routine allowing
+the bulk of the deferral processing to remain in transport independent 
+code.
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- include/linux/sunrpc/debug.h |    1 +
- net/sunrpc/svcsock.c         |   28 ++++++++++++++++++++++++++++
- net/sunrpc/sysctl.c          |   40 +++++++++++++++++++++++++++++++++++++++-
- 3 files changed, 68 insertions(+), 1 deletions(-)
+ include/linux/sunrpc/svcsock.h |    5 +++++
+ net/sunrpc/svcsock.c           |    5 +++--
+ 2 files changed, 8 insertions(+), 2 deletions(-)
 
-diff --git a/include/linux/sunrpc/debug.h b/include/linux/sunrpc/debug.h
-index 10709cb..89458df 100644
---- a/include/linux/sunrpc/debug.h
-+++ b/include/linux/sunrpc/debug.h
-@@ -88,6 +88,7 @@ enum {
- 	CTL_SLOTTABLE_TCP,
- 	CTL_MIN_RESVPORT,
- 	CTL_MAX_RESVPORT,
-+	CTL_TRANSPORTS,
+diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
+index a920e9b..145c82b 100644
+--- a/include/linux/sunrpc/svcsock.h
++++ b/include/linux/sunrpc/svcsock.h
+@@ -51,6 +51,10 @@ struct svc_xprt {
+ 	 * Accept a pending connection, for connection-oriented transports
+ 	 */
+ 	int			(*xpt_accept)(struct svc_sock *svsk);
++
++	/* RPC defer routine. */
++	struct cache_deferred_req *(*xpt_defer)(struct cache_req *req);
++
+ 	/* Transport list link */
+ 	struct list_head	xpt_list;
  };
+@@ -138,6 +142,7 @@ void		svc_sock_add_connection(struct svc
+ void		svc_sock_add_listener(struct svc_sock *);
+ /* Add an initialised connectionless svc_sock to the server */
+ void		svc_sock_add_connectionless(struct svc_sock *);
++void 		svc_revisit(struct cache_deferred_req *dreq, int too_many);
  
- #endif /* _LINUX_SUNRPC_DEBUG_H_ */
+ /*
+  * svc_makesock socket characteristics
 diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index d6443e8..276737e 100644
+index 03ce7e9..b89c577 100644
 --- a/net/sunrpc/svcsock.c
 +++ b/net/sunrpc/svcsock.c
-@@ -139,6 +139,34 @@ int svc_unregister_transport(struct svc_
+@@ -1651,7 +1651,7 @@ svc_recv(struct svc_rqst *rqstp, long ti
+ 	clear_bit(SK_OLD, &svsk->sk_flags);
+ 
+ 	rqstp->rq_secure = svc_port_is_privileged(svc_addr(rqstp));
+-	rqstp->rq_chandle.defer = svc_defer;
++	rqstp->rq_chandle.defer = svsk->sk_xprt->xpt_defer;
+ 
+ 	if (serv->sv_stats)
+ 		serv->sv_stats->netcnt++;
+@@ -2116,7 +2116,7 @@ EXPORT_SYMBOL_GPL(svc_create_svcsock);
+  * Handle defer and revisit of requests
+  */
+ 
+-static void svc_revisit(struct cache_deferred_req *dreq, int too_many)
++void svc_revisit(struct cache_deferred_req *dreq, int too_many)
+ {
+ 	struct svc_deferred_req *dr = container_of(dreq, struct svc_deferred_req, handle);
+ 	struct svc_sock *svsk;
+@@ -2136,6 +2136,7 @@ static void svc_revisit(struct cache_def
+ 	svc_sock_enqueue(svsk);
+ 	svc_sock_put(svsk);
  }
- EXPORT_SYMBOL_GPL(svc_unregister_transport);
++EXPORT_SYMBOL_GPL(svc_revisit);
  
-+/*
-+ * Format the transport list for printing
-+ */
-+int svc_print_transports(char *buf, int maxlen)
-+{
-+	struct list_head *le;
-+	char tmpstr[80];
-+	int len = 0;
-+	buf[0] = '\0';
-+
-+	spin_lock(&svc_transport_lock);
-+	list_for_each(le, &svc_transport_list) {
-+		int slen;
-+		struct svc_xprt *xprt =
-+			list_entry(le, struct svc_xprt, xpt_list);
-+
-+		sprintf(tmpstr, "%s %d\n", xprt->xpt_name, xprt->xpt_max_payload);
-+		slen = strlen(tmpstr);
-+		if (len + slen > maxlen)
-+			break;
-+		len += slen;
-+		strcat(buf, tmpstr);
-+	}
-+	spin_unlock(&svc_transport_lock);
-+
-+	return len;
-+}
-+
- /* apparently the "standard" is that clients close
-  * idle connections after 5 minutes, servers after
-  * 6 minutes
-diff --git a/net/sunrpc/sysctl.c b/net/sunrpc/sysctl.c
-index 738db32..683cf90 100644
---- a/net/sunrpc/sysctl.c
-+++ b/net/sunrpc/sysctl.c
-@@ -27,6 +27,9 @@ unsigned int	nfs_debug;
- unsigned int	nfsd_debug;
- unsigned int	nlm_debug;
- 
-+/* Transport string */
-+char 		xprt_buf[128];
-+
- #ifdef RPC_DEBUG
- 
- static struct ctl_table_header *sunrpc_table_header;
-@@ -48,6 +51,34 @@ rpc_unregister_sysctl(void)
- 	}
- }
- 
-+int svc_print_transports(char *buf, int maxlen);
-+static int proc_do_xprt(ctl_table *table, int write, struct file *file,
-+			void __user *buffer, size_t *lenp, loff_t *ppos)
-+{
-+	char tmpbuf[128];
-+	int len;
-+	if ((*ppos && !write) || !*lenp) {
-+		*lenp = 0;
-+		return 0;
-+	}
-+
-+	if (write) 
-+		return -EINVAL;
-+	else {
-+
-+		len = svc_print_transports(tmpbuf, 128);
-+		if (!access_ok(VERIFY_WRITE, buffer, len))
-+			return -EFAULT;
-+
-+		if (__copy_to_user(buffer, tmpbuf, len))
-+			return -EFAULT;
-+	}
-+
-+	*lenp -= len;
-+	*ppos += len;
-+	return 0;
-+}
-+
- static int
- proc_dodebug(ctl_table *table, int write, struct file *file,
- 				void __user *buffer, size_t *lenp, loff_t *ppos)
-@@ -111,7 +142,6 @@ done:
- 	return 0;
- }
- 
--
- static ctl_table debug_table[] = {
- 	{
- 		.ctl_name	= CTL_RPCDEBUG,
-@@ -145,6 +175,14 @@ static ctl_table debug_table[] = {
- 		.mode		= 0644,
- 		.proc_handler	= &proc_dodebug
- 	},
-+	{
-+		.ctl_name	= CTL_TRANSPORTS,
-+		.procname	= "transports",
-+		.data		= xprt_buf,
-+		.maxlen		= sizeof(xprt_buf),
-+		.mode		= 0444,
-+		.proc_handler	= &proc_do_xprt,
-+	},
- 	{ .ctl_name = 0 }
- };
- 
+ static struct cache_deferred_req *
+ svc_defer(struct cache_req *req)
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
