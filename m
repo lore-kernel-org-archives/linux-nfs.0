@@ -1,23 +1,23 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [RFC,PATCH 02/10] rdma: sysctl for SVCRDMA transport module
-Date: Mon, 20 Aug 2007 11:58:05 -0500
-Message-ID: <20070820165805.15938.92400.stgit@dell3.ogc.int>
+Subject: [RFC,PATCH 01/10] rdma: ONCRPC RDMA Header File
+Date: Mon, 20 Aug 2007 11:58:03 -0500
+Message-ID: <20070820165803.15938.3321.stgit@dell3.ogc.int>
 References: <20070820165635.15938.57184.stgit@dell3.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1INAZs-0001ug-6q
+	id 1INAZs-0001uf-5b
 	for nfs@lists.sourceforge.net; Mon, 20 Aug 2007 09:58:08 -0700
 Received: from smtp.opengridcomputing.com ([71.42.183.126])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1INAZv-00051E-IA
-	for nfs@lists.sourceforge.net; Mon, 20 Aug 2007 09:58:11 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1INAZt-0003Ey-NR
+	for nfs@lists.sourceforge.net; Mon, 20 Aug 2007 09:58:10 -0700
 Received: from dell3.ogc.int (localhost [127.0.0.1])
-	by smtp.opengridcomputing.com (Postfix) with ESMTP id AE2D27C79D
-	for <nfs@lists.sourceforge.net>; Mon, 20 Aug 2007 11:58:05 -0500 (CDT)
+	by smtp.opengridcomputing.com (Postfix) with ESMTP id 968187C79C
+	for <nfs@lists.sourceforge.net>; Mon, 20 Aug 2007 11:58:03 -0500 (CDT)
 In-Reply-To: <20070820165635.15938.57184.stgit@dell3.ogc.int>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -32,47 +32,137 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 
-Add sysctl flags for SVCRDMA transport module debug messages.
+These are the core data types that are used to process the ONCRPC protocol
+in the NFS-RDMA client and server.
 
-Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+Signed-off-by: Tom Talpey <talpey@netapp.com>
 ---
 
- include/linux/sunrpc/debug.h |   15 ++++++++++++++-
- 1 files changed, 14 insertions(+), 1 deletions(-)
+ include/linux/sunrpc/rpc_rdma.h |  116 +++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 116 insertions(+), 0 deletions(-)
 
-diff --git a/include/linux/sunrpc/debug.h b/include/linux/sunrpc/debug.h
-index 89458df..ea7ae15 100644
---- a/include/linux/sunrpc/debug.h
-+++ b/include/linux/sunrpc/debug.h
-@@ -52,7 +52,7 @@ #endif
- #define dprintk(args...)	dfprintk(FACILITY, ## args)
- 
- #undef ifdebug
--#ifdef RPC_DEBUG			
-+#ifdef RPC_DEBUG
- # define ifdebug(fac)		if (unlikely(rpc_debug & RPCDBG_##fac))
- # define dfprintk(fac, args...)	do { ifdebug(fac) printk(args); } while(0)
- # define RPC_IFDEBUG(x)		x
-@@ -89,6 +89,19 @@ enum {
- 	CTL_MIN_RESVPORT,
- 	CTL_MAX_RESVPORT,
- 	CTL_TRANSPORTS,
-+	CTL_SVCRDMA,
-+	CTL_RDMA_MAX_REQUESTS,
-+	CTL_RDMA_MAX_REQ_SIZE,
-+	CTL_RDMA_ORD,
-+	CTL_RDMA_STAT_RECV,
-+	CTL_RDMA_STAT_READ,
-+	CTL_RDMA_STAT_WRITE,
-+	CTL_RDMA_STAT_SQ_STARVE,
-+	CTL_RDMA_STAT_RQ_STARVE,
-+	CTL_RDMA_STAT_RQ_POLL,
-+	CTL_RDMA_STAT_RQ_PROD,
-+	CTL_RDMA_STAT_SQ_POLL,
-+	CTL_RDMA_STAT_SQ_PROD
- };
- 
- #endif /* _LINUX_SUNRPC_DEBUG_H_ */
+diff --git a/include/linux/sunrpc/rpc_rdma.h b/include/linux/sunrpc/rpc_rdma.h
+new file mode 100644
+index 0000000..0013a0d
+--- /dev/null
++++ b/include/linux/sunrpc/rpc_rdma.h
+@@ -0,0 +1,116 @@
++/*
++ * Copyright (c) 2003-2007 Network Appliance, Inc. All rights reserved.
++ *
++ * This software is available to you under a choice of one of two
++ * licenses.  You may choose to be licensed under the terms of the GNU
++ * General Public License (GPL) Version 2, available from the file
++ * COPYING in the main directory of this source tree, or the BSD-type
++ * license below:
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ *
++ *      Redistributions of source code must retain the above copyright
++ *      notice, this list of conditions and the following disclaimer.
++ *
++ *      Redistributions in binary form must reproduce the above
++ *      copyright notice, this list of conditions and the following
++ *      disclaimer in the documentation and/or other materials provided
++ *      with the distribution.
++ *
++ *      Neither the name of the Network Appliance, Inc. nor the names of
++ *      its contributors may be used to endorse or promote products
++ *      derived from this software without specific prior written
++ *      permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
++ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
++ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
++ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
++ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
++ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
++ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
++ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
++ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
++ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
++ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++#ifndef _LINUX_SUNRPC_RPC_RDMA_H
++#define _LINUX_SUNRPC_RPC_RDMA_H
++
++struct rpcrdma_segment {
++	uint32_t rs_handle;	/* Registered memory handle */
++	uint32_t rs_length;	/* Length of the chunk in bytes */
++	uint64_t rs_offset;	/* Chunk virtual address or offset */
++};
++
++/*
++ * read chunk(s), encoded as a linked list.
++ */
++struct rpcrdma_read_chunk {
++	uint32_t rc_discrim;	/* 1 indicates presence */
++	uint32_t rc_position;	/* Position in XDR stream */
++	struct rpcrdma_segment rc_target;
++};
++
++/*
++ * write chunk, and reply chunk.
++ */
++struct rpcrdma_write_chunk {
++	struct rpcrdma_segment wc_target;
++};
++
++/*
++ * write chunk(s), encoded as a counted array.
++ */
++struct rpcrdma_write_array {
++	uint32_t wc_discrim;	/* 1 indicates presence */
++	uint32_t wc_nchunks;	/* Array count */
++	struct rpcrdma_write_chunk wc_array[0];
++};
++
++struct rpcrdma_msg {
++	uint32_t rm_xid;	/* Mirrors the RPC header xid */
++	uint32_t rm_vers;	/* Version of this protocol */
++	uint32_t rm_credit;	/* Buffers requested/granted */
++	uint32_t rm_type;	/* Type of message (enum rpcrdma_proc) */
++	union {
++
++		struct {			/* no chunks */
++			uint32_t rm_empty[3];	/* 3 empty chunk lists */
++		} rm_nochunks;
++
++		struct {			/* no chunks and padded */
++			uint32_t rm_align;	/* Padding alignment */
++			uint32_t rm_thresh;	/* Padding threshold */
++			uint32_t rm_pempty[3];	/* 3 empty chunk lists */
++		} rm_padded;
++
++		uint32_t rm_chunks[0];	/* read, write and reply chunks */
++
++	} rm_body;
++};
++
++#define RPCRDMA_HDRLEN_MIN	28
++
++enum rpcrdma_errcode {
++	ERR_VERS = 1,
++	ERR_CHUNK = 2
++};
++
++struct rpcrdma_err_vers {
++	uint32_t rdma_vers_low;	/* Version range supported by peer */
++	uint32_t rdma_vers_high;
++};
++
++enum rpcrdma_proc {
++	RDMA_MSG = 0,		/* An RPC call or reply msg */
++	RDMA_NOMSG = 1,		/* An RPC call or reply msg - separate body */
++	RDMA_MSGP = 2,		/* An RPC call or reply msg with padding */
++	RDMA_DONE = 3,		/* Client signals reply completion */
++	RDMA_ERROR = 4		/* An RPC RDMA encoding error */
++};
++
++#endif				/* _LINUX_SUNRPC_RPC_RDMA_H */
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
