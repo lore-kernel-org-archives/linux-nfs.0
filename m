@@ -1,26 +1,23 @@
-From: Tom Tucker <tom@opengridcomputing.com>
-Subject: Re: [RFC, PATCH 06/20] svc: export	svc_sock_enqueue,
-	svc_sock_received
-Date: Tue, 21 Aug 2007 13:08:48 -0500
-Message-ID: <1187719728.26221.61.camel@trinity.ogc.int>
-References: <20070820162000.15224.65524.stgit@dell3.ogc.int>
-	<20070820162334.15224.17433.stgit@dell3.ogc.int>
-	<46CB0CC3.8080102@oracle.com>
-Reply-To: tom@opengridcomputing.com
+From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
+Subject: Re: RPC client transport switch design documentation
+Date: Tue, 21 Aug 2007 17:21:21 -0400
+Message-ID: <EXNANE013ednHM3SOlb00000044@exnane01.hq.netapp.com>
+References: <46CA477B.6070003@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
+Cc: Linux NFS mailing list <nfs@lists.sourceforge.net>
 To: chuck.lever@oracle.com
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1INYBa-0001CM-Ql
-	for nfs@lists.sourceforge.net; Tue, 21 Aug 2007 11:10:38 -0700
-Received: from ms-smtp-02.texas.rr.com ([24.93.47.41])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1INYBe-0004zr-VP
-	for nfs@lists.sourceforge.net; Tue, 21 Aug 2007 11:10:43 -0700
-In-Reply-To: <46CB0CC3.8080102@oracle.com>
+	id 1INbFA-0005yy-7d
+	for nfs@lists.sourceforge.net; Tue, 21 Aug 2007 14:26:32 -0700
+Received: from mx2.netapp.com ([216.240.18.37])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1INbFC-00006f-0E
+	for nfs@lists.sourceforge.net; Tue, 21 Aug 2007 14:26:36 -0700
+In-Reply-To: <46CA477B.6070003@oracle.com>
+References: <46CA477B.6070003@oracle.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,41 +30,22 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Good point. 
+At 10:01 PM 8/20/2007, Chuck Lever wrote:
+>   http://wiki.linux-nfs.org/wiki/index.php/RpcClientTransportSwitch
+>
+>Is this the most recent version you remember?  I culled it from my 
+>2.6.11 patchset from two and a half years ago.
 
-Actually, there are a number of interfaces like this. I guess we could
-move the generic transport interfaces to svc_xprt.c. Then svcsock.c
-would contain the tcp/udp transport driver.
+Yep, I think it's the most recent version. The only other documents
+I remember were the original design plans, and this writeup included
+whatever was useful in them. I did have some ancillary docs on the
+mount API rpc requirements, but those would probably be best kept
+separate, even if they were current.
 
-On Tue, 2007-08-21 at 12:03 -0400, Chuck Lever wrote:
-> Tom Tucker wrote:
-> > Export svc_sock_enqueue() and svc_sock_received() so they
-> > can be used by sunrpc server transport implementations
-> > (even future modular ones).
-> > 
-> > Signed-off-by: Greg Banks <gnb@melbourne.sgi.com>
-> > Signed-off-by: Peter Leckie <pleckie@melbourne.sgi.com>
-> > Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
-> > ---
-> > 
-> >  include/linux/sunrpc/svcsock.h |    2 ++
-> >  net/sunrpc/svcsock.c           |    7 ++++---
-> >  2 files changed, 6 insertions(+), 3 deletions(-)
-> > 
-> > diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
-> > index 4e24e6d..0145057 100644
-> > --- a/include/linux/sunrpc/svcsock.h
-> > +++ b/include/linux/sunrpc/svcsock.h
-> > @@ -108,6 +108,8 @@ int		svc_addsock(struct svc_serv *serv,
-> >  			    int fd,
-> >  			    char *name_return,
-> >  			    int *proto);
-> > +void		svc_sock_enqueue(struct svc_sock *svsk);
-> > +void		svc_sock_received(struct svc_sock *svsk);
-> 
-> If these aren't socket-specific, then I would rename them, and move them 
-> to a generic source file instead of keeping them in svcsock.c and svcsock.h.
+Are you updating the document above, or do you need comments/help
+on it now?
 
+Tom.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
