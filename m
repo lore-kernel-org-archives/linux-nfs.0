@@ -1,21 +1,20 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 2/4] mount.nfs: Replace fork() with daemon() for
-	backgrounding	mounts
-Date: Tue, 21 Aug 2007 12:19:08 -0400
-Message-ID: <20070821161907.4373.81726.stgit@monet.1015granger.net>
+Subject: [PATCH 4/4] mount.nfs: Combine two verbose messages into one
+Date: Tue, 21 Aug 2007 12:19:18 -0400
+Message-ID: <20070821161918.4373.84933.stgit@monet.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 To: neilb@suse.de
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1INWRk-0003SX-LN
-	for nfs@lists.sourceforge.net; Tue, 21 Aug 2007 09:19:12 -0700
+	id 1INWS8-0003VO-6E
+	for nfs@lists.sourceforge.net; Tue, 21 Aug 2007 09:19:36 -0700
 Received: from flpvm23.prodigy.net ([207.115.20.53])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1INWRn-0000Z3-0N
-	for nfs@lists.sourceforge.net; Tue, 21 Aug 2007 09:19:15 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1INWSC-0007nT-Az
+	for nfs@lists.sourceforge.net; Tue, 21 Aug 2007 09:19:40 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,45 +27,57 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Neil recommended this change to address a problem with background mount
-processes handling signals properly during an init level change.  It is
-also useful for preventing background mount processes from reporting
-progress on the parent's tty, which is generally just annoying noise.
+A little less noise.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/mount/mount.c |   11 ++++++++---
- 1 files changed, 8 insertions(+), 3 deletions(-)
+ utils/mount/stropts.c |   12 ++----------
+ 1 files changed, 2 insertions(+), 10 deletions(-)
 
-diff --git a/utils/mount/mount.c b/utils/mount/mount.c
-index 40e7958..b350703 100644
---- a/utils/mount/mount.c
-+++ b/utils/mount/mount.c
-@@ -552,15 +552,20 @@ int main(int argc, char *argv[])
- 	mnt_err = try_mount(spec, mount_point, flags, fs_type, &extra_opts,
- 				mount_opts, fake, nomtab, FOREGROUND);
- 	if (mnt_err == EX_BG) {
--		printf(_("mount: backgrounding \"%s\"\n"), spec);
-+		printf(_("%s: backgrounding \"%s\"\n"),
-+			progname, spec);
- 		fflush(stdout);
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index c114200..95392a1 100644
+--- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -254,17 +254,13 @@ int nfsmount_s(const char *spec, const char *node, int flags,
+ {
+ 	int retval = EX_FAIL;
  
- 		/*
- 		 * Parent exits immediately with success.  Make
- 		 * sure parent doesn't free "mount_point".
- 		 */
--		if (fork() > 0)
--			exit(0);
-+		if (daemon(0, 0)) {
-+			nfs_error(_("%s: failed to start "
-+					"background process: %s\n"),
-+						progname, strerror(errno));
-+			exit(EX_FAIL);
-+		}
+-	if (verbose)
+-		printf(_("%s: using C string mount system call interface\n"),
+-			progname);
+-
+ 	extract_interesting_options(*extra_opts);
  
- 		mnt_err = try_mount(spec, mount_point, flags, fs_type,
- 					&extra_opts, mount_opts, fake,
+ 	if (!addr_opt && !append_addr_opt(spec, extra_opts))
+ 		goto fail;
+ 
+ 	if (verbose)
+-		printf(_("%s: option string is '%s'\n"),
++		printf(_("%s: text-based options: '%s'\n"),
+ 			progname, *extra_opts);
+ 
+ 	if (!fake) {
+@@ -300,10 +296,6 @@ int nfs4mount_s(const char *spec, const char *node, int flags,
+ {
+ 	int retval = EX_FAIL;
+ 
+-	if (verbose)
+-		printf(_("%s: using C string mount system call interface\n"),
+-			progname);
+-
+ 	extract_interesting_options(*extra_opts);
+ 
+ 	if (!addr_opt && !append_addr_opt(spec, extra_opts))
+@@ -313,7 +305,7 @@ int nfs4mount_s(const char *spec, const char *node, int flags,
+ 		goto fail;
+ 
+ 	if (verbose)
+-		printf(_("%s: option string is '%s'\n"),
++		printf(_("%s: text-based options: '%s'\n"),
+ 			progname, *extra_opts);
+ 
+ 	if (!fake) {
 
 
 -------------------------------------------------------------------------
