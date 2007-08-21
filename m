@@ -1,15 +1,22 @@
-From: =?shift-jis?B?dHVybmluZ3BvaW50?= <necojp@citiz.net>
-Subject: =?iso-2022-jp?b?GyRCIVobKEJHUxskQjZkOVQhWzxVTmkkTkRzGyhC?=
-	=?iso-2022-jp?b?GyRCPCgkLCQiJGokXiQ3GyhC?=
-Date: Mon, 20 Aug 2007 17:10:52 -0700 (PDT)
-Message-ID: <E1INHKY-00072O-Ea@mail.sourceforge.net>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: RPC client transport switch design documentation
+Date: Mon, 20 Aug 2007 22:01:31 -0400
+Message-ID: <46CA477B.6070003@oracle.com>
+Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-2022-jp"
-To: <nfs@lists.sourceforge.net>
+Content-Type: multipart/mixed; boundary="------------070004080508020306030103"
+Cc: Linux NFS mailing list <nfs@lists.sourceforge.net>
+To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from yag5 (unknown [45.180.118.73])
-	by smtp7 (Coremail) with SMTP id 78dd647Xd0dqZqy9.1
-	for <nfs@lists.sourceforge.net>; Wed, 11 Aug 2004 22:15:02 +0800 (CST)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1INJ4C-0001QA-6b
+	for nfs@lists.sourceforge.net; Mon, 20 Aug 2007 19:02:00 -0700
+Received: from rgminet01.oracle.com ([148.87.113.118])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1INJ4F-0007Ca-4S
+	for nfs@lists.sourceforge.net; Mon, 20 Aug 2007 19:02:04 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -22,59 +29,62 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-※ 下記のＵＲＬからご確認出来ます。
-http://www.10wn.com/h/?bank38
+This is a multi-part message in MIME format.
+--------------070004080508020306030103
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+
+Hi Tom-
+
+A long while ago I promised you that I'd update the RPC client transport 
+switch design doc and put it under linux/Documentation, once the switch 
+is integrated and stable.  So I dug up the most recent version of the 
+client xprt switch doc, and posted it here:
+
+   http://wiki.linux-nfs.org/wiki/index.php/RpcClientTransportSwitch
+
+Is this the most recent version you remember?  I culled it from my 
+2.6.11 patchset from two and a half years ago.
+
+--------------070004080508020306030103
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck.lever.vcf"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="chuck.lever.vcf"
+
+begin:vcard
+fn:Chuck Lever
+n:Lever;Chuck
+org:Oracle Corporation;Corporate Architecture: Linux Projects Group
+adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
+title:Principal Member of Staff
+tel;work:+1 248 614 5091
+x-mozilla-html:FALSE
+url:http://oss.oracle.com/~cel
+version:2.1
+end:vcard
 
 
-▼ 三智子さま
-▼ 橋本 ゆうこ
-
-２名の女性の方から、謝礼の提示がありました。
---------------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-┌───────────────────────
-│     配信停止はコチラまで。
-│     DeliveryStop
-│     info@mjeh.suroot.com
-│
-│【配信停止手続きの際は】
-│必ず件名に「配信停止」とお書き下さい。
-│件名に「配信停止」と記載されていない場合は処理が行えません。
-│尚、停止には数日間ほどお時間をいただく場合がございます。
-│停止まで数日、数回メールが送信されることがございますが、
-│何卒ご了承ください。
-└───────────────────────
-
+--------------070004080508020306030103
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
+--------------070004080508020306030103
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--------------070004080508020306030103--
