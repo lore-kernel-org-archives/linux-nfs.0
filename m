@@ -1,22 +1,24 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: RPC client transport switch design documentation
-Date: Mon, 20 Aug 2007 22:01:31 -0400
-Message-ID: <46CA477B.6070003@oracle.com>
-Reply-To: chuck.lever@oracle.com
+From: Ryusuke Konishi <konishi.ryusuke@lab.ntt.co.jp>
+Subject: Re: [PATCH] unfsd: fix invalid argument error for
+	setattr	request
+Date: Tue, 21 Aug 2007 15:41:00 +0900
+Message-ID: <200708210641.AA00240@paprika.lab.ntt.co.jp>
+References: <20070816133350.GB9941@fieldses.org>
+Reply-To: ryusuke@osrg.net
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------070004080508020306030103"
-Cc: Linux NFS mailing list <nfs@lists.sourceforge.net>
-To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
+Content-Type: text/plain; charset="us-ascii"
+Cc: Peter_Astrand <astrand@cendio.se>, nfs@lists.sourceforge.net
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1INJ4C-0001QA-6b
-	for nfs@lists.sourceforge.net; Mon, 20 Aug 2007 19:02:00 -0700
-Received: from rgminet01.oracle.com ([148.87.113.118])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1INJ4F-0007Ca-4S
-	for nfs@lists.sourceforge.net; Mon, 20 Aug 2007 19:02:04 -0700
+	id 1INNQl-0002q2-SH
+	for nfs@lists.sourceforge.net; Mon, 20 Aug 2007 23:41:35 -0700
+Received: from tama55.ecl.ntt.co.jp ([129.60.39.103])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1INNQp-0004pj-SV
+	for nfs@lists.sourceforge.net; Mon, 20 Aug 2007 23:41:40 -0700
+In-Reply-To: <20070816133350.GB9941@fieldses.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,62 +31,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
---------------070004080508020306030103
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+On Thu, 16 Aug 2007, J. Bruce Fields wrote:
+>> All right.
+>> As you say, the mail to unfsd maintainers was returned by
+>> Host unknown. (Sigh)
+>> It seems to have little hope to modify unfsd for this. 
+>
+>Have you tried the debian bug-tracking system?  Maybe they're
+>practically speaking the only maintainers that unfsd has now.
 
-Hi Tom-
+Thanks!
+I could make contact with a package maintainer of unfsd.
 
-A long while ago I promised you that I'd update the RPC client transport 
-switch design doc and put it under linux/Documentation, once the switch 
-is integrated and stable.  So I dug up the most recent version of the 
-client xprt switch doc, and posted it here:
-
-   http://wiki.linux-nfs.org/wiki/index.php/RpcClientTransportSwitch
-
-Is this the most recent version you remember?  I culled it from my 
-2.6.11 patchset from two and a half years ago.
-
---------------070004080508020306030103
-Content-Type: text/x-vcard; charset=utf-8;
- name="chuck.lever.vcf"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="chuck.lever.vcf"
-
-begin:vcard
-fn:Chuck Lever
-n:Lever;Chuck
-org:Oracle Corporation;Corporate Architecture: Linux Projects Group
-adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
-title:Principal Member of Staff
-tel;work:+1 248 614 5091
-x-mozilla-html:FALSE
-url:http://oss.oracle.com/~cel
-version:2.1
-end:vcard
-
-
---------------070004080508020306030103
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+Regards,
+Ryusuke Konishi
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
---------------070004080508020306030103
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---------------070004080508020306030103--
