@@ -1,27 +1,11 @@
-From: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
-Subject: Re: [PATCH] unfsd: fix invalid argument error for
-	setattr	request
-Date: Tue, 21 Aug 2007 08:45:53 +0200
-Message-ID: <20070821064553.GA16576@uio.no>
-References: <Pine.LNX.4.64.0708160843060.10107@maggie.lkpg.cendio.se>
-	<200708160751.AA00238@paprika.lab.ntt.co.jp>
-	<20070816133350.GB9941@fieldses.org>
+From: "Kelsey Mcgee" <aeodpqyrly@rri.org>
+Subject: Join the millions
+Date: Tue, 21 Aug 2007 07:01:17 -0500
+Message-ID: <32325205348729.65090A1D4B@XQ19X>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Peter_Astrand <astrand@cendio.se>, nfs@lists.sourceforge.net,
-	Ryusuke Konishi <konishi.ryusuke@lab.ntt.co.jp>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: multipart/mixed; boundary="===============1985285084=="
+To: <nfs@lists.sf.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1INNV6-0003IK-KF
-	for nfs@lists.sourceforge.net; Mon, 20 Aug 2007 23:46:20 -0700
-Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1INNV8-0006W1-KX
-	for nfs@lists.sourceforge.net; Mon, 20 Aug 2007 23:46:09 -0700
-In-Reply-To: <20070816133350.GB9941@fieldses.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,27 +18,45 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, Aug 16, 2007 at 09:33:50AM -0400, J. Bruce Fields wrote:
-> Have you tried the debian bug-tracking system?  Maybe they're
-> practically speaking the only maintainers that unfsd has now.
+--===============1985285084==
+Content-Type: text/html;
+        charset="Windows-1251"
+Content-Transfer-Encoding: 7bit
 
-FWIW, mail to the bug tracking system goes to the same e-mail as the one in
-the Maintainer: field in the package.
+<font size="3" face="Times New Roman"><p class="subtextcialis"><font face="Tahoma" color="#333300" size="5"><strong>What is CIALIS?</strong></font></p>
+<p><font face="Tahoma" size="2">CIALIS is the only ED (Erectile Disfunction) tablet clinically proven to work both <br />up to 36 hours and in as fast as 30 minutes. </font><font face="Tahoma" size="2">And because CIALIS has an extended <br />period of effectiveness, you don’t have the pressure to perform within a few hours. <br />You and your partner can relax and take your time choosing the moment that is right for both of you.</font></p>
+<p class="subtextcialis"><font size="2"><font face="Tahoma"><font color="#003300" size="5"><strong>Benefits of CIALIS</strong></font> </font></font></p>
+<ul>
+    <li><font face="Tahoma" size="2">Works up to 36 hours </font></li>
+    <li><font face="Tahoma" size="2">Works fast </font></li>
+    <li><font face="Tahoma" size="2">Works Effectively </font></li>
+    <li><font face="Tahoma" size="2">Keeps you ready </font></li>
+    <li><font face="Tahoma" size="2">No need to plan around meals </font></li>
+    <li><font face="Tahoma" size="2">Used by millions of men </font></li>
+</ul>
+<p><font face="Tahoma" color="#003300" size="5"><strong><a href="http://aibcfjdehk.nasvopas.cn/?glmdehkxowwvyaizchcmbcfj">Buy CIALIS online!</a></strong></font></p></font>
 
-As maintainer of the current nfs-utils packages (including nfs-kernel-server)
-I'd be happy to see nfs-user-server go away from Debian as well, but I've
-spoken to the maintainer in the past and he seemed unwilling to let it go.
-Don't ask me why.
 
-/* Steinar */
--- 
-Homepage: http://www.sesse.net/
+
+--===============1985285084==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
+--===============1985285084==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============1985285084==--
