@@ -1,20 +1,26 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 4/4] mount.nfs: Combine two verbose messages into one
-Date: Tue, 21 Aug 2007 12:19:18 -0400
-Message-ID: <20070821161918.4373.84933.stgit@monet.1015granger.net>
+From: Tom Tucker <tom@opengridcomputing.com>
+Subject: Re: [RFC, PATCH 06/20] svc: export	svc_sock_enqueue,
+	svc_sock_received
+Date: Tue, 21 Aug 2007 13:08:48 -0500
+Message-ID: <1187719728.26221.61.camel@trinity.ogc.int>
+References: <20070820162000.15224.65524.stgit@dell3.ogc.int>
+	<20070820162334.15224.17433.stgit@dell3.ogc.int>
+	<46CB0CC3.8080102@oracle.com>
+Reply-To: tom@opengridcomputing.com
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: neilb@suse.de
+To: chuck.lever@oracle.com
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1INWS8-0003VO-6E
-	for nfs@lists.sourceforge.net; Tue, 21 Aug 2007 09:19:36 -0700
-Received: from flpvm23.prodigy.net ([207.115.20.53])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1INWSC-0007nT-Az
-	for nfs@lists.sourceforge.net; Tue, 21 Aug 2007 09:19:40 -0700
+	id 1INYBa-0001CM-Ql
+	for nfs@lists.sourceforge.net; Tue, 21 Aug 2007 11:10:38 -0700
+Received: from ms-smtp-02.texas.rr.com ([24.93.47.41])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1INYBe-0004zr-VP
+	for nfs@lists.sourceforge.net; Tue, 21 Aug 2007 11:10:43 -0700
+In-Reply-To: <46CB0CC3.8080102@oracle.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,57 +33,40 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-A little less noise.
+Good point. 
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+Actually, there are a number of interfaces like this. I guess we could
+move the generic transport interfaces to svc_xprt.c. Then svcsock.c
+would contain the tcp/udp transport driver.
 
- utils/mount/stropts.c |   12 ++----------
- 1 files changed, 2 insertions(+), 10 deletions(-)
-
-diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-index c114200..95392a1 100644
---- a/utils/mount/stropts.c
-+++ b/utils/mount/stropts.c
-@@ -254,17 +254,13 @@ int nfsmount_s(const char *spec, const char *node, int flags,
- {
- 	int retval = EX_FAIL;
- 
--	if (verbose)
--		printf(_("%s: using C string mount system call interface\n"),
--			progname);
--
- 	extract_interesting_options(*extra_opts);
- 
- 	if (!addr_opt && !append_addr_opt(spec, extra_opts))
- 		goto fail;
- 
- 	if (verbose)
--		printf(_("%s: option string is '%s'\n"),
-+		printf(_("%s: text-based options: '%s'\n"),
- 			progname, *extra_opts);
- 
- 	if (!fake) {
-@@ -300,10 +296,6 @@ int nfs4mount_s(const char *spec, const char *node, int flags,
- {
- 	int retval = EX_FAIL;
- 
--	if (verbose)
--		printf(_("%s: using C string mount system call interface\n"),
--			progname);
--
- 	extract_interesting_options(*extra_opts);
- 
- 	if (!addr_opt && !append_addr_opt(spec, extra_opts))
-@@ -313,7 +305,7 @@ int nfs4mount_s(const char *spec, const char *node, int flags,
- 		goto fail;
- 
- 	if (verbose)
--		printf(_("%s: option string is '%s'\n"),
-+		printf(_("%s: text-based options: '%s'\n"),
- 			progname, *extra_opts);
- 
- 	if (!fake) {
+On Tue, 2007-08-21 at 12:03 -0400, Chuck Lever wrote:
+> Tom Tucker wrote:
+> > Export svc_sock_enqueue() and svc_sock_received() so they
+> > can be used by sunrpc server transport implementations
+> > (even future modular ones).
+> > 
+> > Signed-off-by: Greg Banks <gnb@melbourne.sgi.com>
+> > Signed-off-by: Peter Leckie <pleckie@melbourne.sgi.com>
+> > Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+> > ---
+> > 
+> >  include/linux/sunrpc/svcsock.h |    2 ++
+> >  net/sunrpc/svcsock.c           |    7 ++++---
+> >  2 files changed, 6 insertions(+), 3 deletions(-)
+> > 
+> > diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
+> > index 4e24e6d..0145057 100644
+> > --- a/include/linux/sunrpc/svcsock.h
+> > +++ b/include/linux/sunrpc/svcsock.h
+> > @@ -108,6 +108,8 @@ int		svc_addsock(struct svc_serv *serv,
+> >  			    int fd,
+> >  			    char *name_return,
+> >  			    int *proto);
+> > +void		svc_sock_enqueue(struct svc_sock *svsk);
+> > +void		svc_sock_received(struct svc_sock *svsk);
+> 
+> If these aren't socket-specific, then I would rename them, and move them 
+> to a generic source file instead of keeping them in svcsock.c and svcsock.h.
 
 
 -------------------------------------------------------------------------
