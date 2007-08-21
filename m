@@ -1,25 +1,31 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: RPC client transport switch design documentation
-Date: Tue, 21 Aug 2007 18:12:51 -0400
-Message-ID: <46CB6363.8040704@oracle.com>
-References: <46CA477B.6070003@oracle.com>
-	<EXNANE013ednHM3SOlb00000044@exnane01.hq.netapp.com>
-Reply-To: chuck.lever@oracle.com
+From: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
+Subject: Re: [PATCH 1/4] mount.nfs: mount's background daemon
+	should	free "mount_point" properly
+Date: Wed, 22 Aug 2007 00:19:40 +0200
+Message-ID: <20070821221940.GA20987@uio.no>
+References: <20070821161902.4373.67197.stgit@monet.1015granger.net>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------030301010906070402040409"
-Cc: Linux NFS mailing list <nfs@lists.sourceforge.net>
-To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
+Content-Type: text/plain; charset="us-ascii"
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1INbz5-0002ms-TZ
-	for nfs@lists.sourceforge.net; Tue, 21 Aug 2007 15:14:00 -0700
-Received: from rgminet01.oracle.com ([148.87.113.118])
+	id 1INc4e-0003PS-04
+	for nfs@lists.sourceforge.net; Tue, 21 Aug 2007 15:19:44 -0700
+Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1INbz8-0002vl-6C
-	for nfs@lists.sourceforge.net; Tue, 21 Aug 2007 15:14:04 -0700
-In-Reply-To: <EXNANE013ednHM3SOlb00000044@exnane01.hq.netapp.com>
+	(Exim 4.44) id 1INc4g-0006VX-VQ
+	for nfs@lists.sourceforge.net; Tue, 21 Aug 2007 15:19:48 -0700
+Received: from trofast.ipv6.sesse.net ([2001:700:300:1803:20e:cff:fe36:a766]
+	helo=trofast.sesse.net)
+	by cassarossa.samfundet.no with esmtps (TLS-1.0:RSA_AES_256_CBC_SHA:32)
+	(Exim 4.50) id 1INc4a-0007VE-V6
+	for nfs@lists.sourceforge.net; Wed, 22 Aug 2007 00:19:41 +0200
+Received: from root by trofast.sesse.net with local (Exim 4.67)
+	(envelope-from <sesse@samfundet.no>) id 1INc4a-0005TS-En
+	for nfs@lists.sourceforge.net; Wed, 22 Aug 2007 00:19:40 +0200
+In-Reply-To: <20070821161902.4373.67197.stgit@monet.1015granger.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,72 +38,22 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
---------------030301010906070402040409
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Transfer-Encoding: 7bit
+On Tue, Aug 21, 2007 at 12:19:02PM -0400, Chuck Lever wrote:
+>  		 * Parent exits immediately with success.  Make
+> -		 * sure not to free "mount_point"
+> +		 * sure parent doesn't free "mount_point".
 
-Talpey, Thomas wrote:
-> At 10:01 PM 8/20/2007, Chuck Lever wrote:
->>   http://wiki.linux-nfs.org/wiki/index.php/RpcClientTransportSwitch
->>
->> Is this the most recent version you remember?  I culled it from my 
->> 2.6.11 patchset from two and a half years ago.
-> 
-> Yep, I think it's the most recent version. The only other documents
-> I remember were the original design plans, and this writeup included
-> whatever was useful in them. I did have some ancillary docs on the
-> mount API rpc requirements, but those would probably be best kept
-> separate, even if they were current.
-> 
-> Are you updating the document above, or do you need comments/help
-> on it now?
+What made this change?
 
-I'm planning to bring it up to reflect the current interface, then open 
-it for review and updates.
-
-After that, I'm not sure whether to leave it in the wiki, or put it in 
-the mainline kernel under Documentation/ .
-
---------------030301010906070402040409
-Content-Type: text/x-vcard; charset=utf-8;
- name="chuck.lever.vcf"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="chuck.lever.vcf"
-
-begin:vcard
-fn:Chuck Lever
-n:Lever;Chuck
-org:Oracle Corporation;Corporate Architecture: Linux Projects Group
-adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
-title:Principal Member of Staff
-tel;work:+1 248 614 5091
-x-mozilla-html:FALSE
-url:http://oss.oracle.com/~cel
-version:2.1
-end:vcard
-
-
---------------030301010906070402040409
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+/* Steinar */
+-- 
+Homepage: http://www.sesse.net/
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
---------------030301010906070402040409
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---------------030301010906070402040409--
