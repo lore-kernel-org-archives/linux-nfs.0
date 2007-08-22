@@ -1,21 +1,31 @@
-From: "Morrison, Tom" <tmorrison@empirix.com>
-Subject: NFS/RPC Hangs after updating time...
-Date: Wed, 22 Aug 2007 14:37:22 -0400
-Message-ID: <BD261180E6D35F4D9D32F3E44FD3D90108F975FB@EMPBEDEX.empirix.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] Attribute timeout handling and wrapping
+	u32	jiffies
+Date: Wed, 22 Aug 2007 14:47:33 -0400
+Message-ID: <20070822184733.GF20946@fieldses.org>
+References: <20070725030809.GB27619@sleipnir.redhat.com>
+	<1185372013.6585.73.camel@localhost>
+	<20070725142824.GA24321@sleipnir.redhat.com>
+	<1185373979.6585.81.camel@localhost>
+	<20070727015900.GA3000@sleipnir.redhat.com>
+	<20070731162503.GC2964@sleipnir.redhat.com>
+	<1185911253.6700.52.camel@localhost>
+	<20070822182547.GD2874@sleipnir.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: linux-kernel@vger.kernel.org,
-	"Rushton, Matt" <Mrushton@empirix.com>
-To: <nfs@lists.sourceforge.net>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	linux-nfs <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1INv5k-0005Hn-UP
-	for nfs@lists.sourceforge.net; Wed, 22 Aug 2007 11:38:09 -0700
-Received: from empbedex1.empirix.com ([12.38.203.54])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1INv5o-0000Lw-4h
-	for nfs@lists.sourceforge.net; Wed, 22 Aug 2007 11:38:13 -0700
+	id 1INvEr-0006CX-91
+	for nfs@lists.sourceforge.net; Wed, 22 Aug 2007 11:47:33 -0700
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1INvEu-0003iV-An
+	for nfs@lists.sourceforge.net; Wed, 22 Aug 2007 11:47:37 -0700
+In-Reply-To: <20070822182547.GD2874@sleipnir.redhat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,55 +38,24 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi, 
+On Wed, Aug 22, 2007 at 03:25:47PM -0300, Fabio Olive Leite wrote:
+> Hi Trond,
+> 
+> On Tue, Jul 31, 2007 at 03:47:33PM -0400, Trond Myklebust wrote:
+> > 
+> > It looked good when I laster reviewed it, but I haven't yet tested
+> > it myself. Please send me a reminder if you don't see it appear in
+> > the next NFS_ALL release (which should be within a week).
+> 
+> It was commited to the nfs-2.6.git repo, but I haven't seen it get
+> upstream yet. Were there any issues I could work on to speed up this
+> commit?
 
-I've got an unusual problem with a corner case that I 
-am investigating. I've tried 'googling' around to 
-find if someone has discussed this before, but 
-I have yet to find any discussion close to this - 
-so I bring it to your collective minds...
+Normally if it's not fairly serious (causing an oops, for example) it'll
+wait for the next merge window (after the final 2.6.23 comes out,
+probably next month some time).
 
-I am working with a 2.6.11++ kernel on an embedded 
-server platform that is NFS serving Linux rootfs 
-for other embedded NFS Client boards.
-
-Everything works fine when the system time on the 
-server board is relatively synchronized with the real-time. 
-
-It hangs after attempting to update the time from a 
-nonsensical time (e.g.: 2 months ago) - the most significant
-part of it is that it only hangs IFF it has started 
-serving its NFS client boards before I attempt to 
-update the time.
-
-
-The most significant output (when turning on 
-RPC debugging) is from:
-
-  linux/net/sunrpc/cache.c (cache_check) - line 90:
-
-         >> Want update, refage=1800, age=4288285
-
-It continually loops through this method - and the cache
-never gets updated...even thought with some additional
-sleuthing (aka: additional debug printks - it thinks 
-that there is an cache update pending).
-
-Thanks for any ideas you have on this subject.
-
-Sincerely,
-
-      
-         
-         
-
-Tom Morrison
-Principal S/W Engineer
-Empirix, Inc (www.empirix.com)
-tmorrison@empirix.com
-(781) 266 - 3567
- 
- 
+--b.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
