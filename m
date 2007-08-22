@@ -1,29 +1,21 @@
-From: Fabio Olive Leite <fleite@redhat.com>
-Subject: Re: [PATCH] Attribute timeout handling and wrapping u32
-	jiffies
-Date: Wed, 22 Aug 2007 15:25:47 -0300
-Message-ID: <20070822182547.GD2874@sleipnir.redhat.com>
-References: <20070725030809.GB27619@sleipnir.redhat.com>
-	<1185372013.6585.73.camel@localhost>
-	<20070725142824.GA24321@sleipnir.redhat.com>
-	<1185373979.6585.81.camel@localhost>
-	<20070727015900.GA3000@sleipnir.redhat.com>
-	<20070731162503.GC2964@sleipnir.redhat.com>
-	<1185911253.6700.52.camel@localhost>
+From: "Morrison, Tom" <tmorrison@empirix.com>
+Subject: NFS/RPC Hangs after updating time...
+Date: Wed, 22 Aug 2007 14:37:22 -0400
+Message-ID: <BD261180E6D35F4D9D32F3E44FD3D90108F975FB@EMPBEDEX.empirix.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Cc: linux-nfs <nfs@lists.sourceforge.net>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: text/plain; charset="us-ascii"
+Cc: linux-kernel@vger.kernel.org,
+	"Rushton, Matt" <Mrushton@empirix.com>
+To: <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1INuuA-00043L-On
-	for nfs@lists.sourceforge.net; Wed, 22 Aug 2007 11:26:10 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1INuuD-0003so-Rm
-	for nfs@lists.sourceforge.net; Wed, 22 Aug 2007 11:26:15 -0700
-In-Reply-To: <1185911253.6700.52.camel@localhost>
+	id 1INv5k-0005Hn-UP
+	for nfs@lists.sourceforge.net; Wed, 22 Aug 2007 11:38:09 -0700
+Received: from empbedex1.empirix.com ([12.38.203.54])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1INv5o-0000Lw-4h
+	for nfs@lists.sourceforge.net; Wed, 22 Aug 2007 11:38:13 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,24 +28,55 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi Trond,
+Hi, 
 
-On Tue, Jul 31, 2007 at 03:47:33PM -0400, Trond Myklebust wrote:
-> =
+I've got an unusual problem with a corner case that I 
+am investigating. I've tried 'googling' around to 
+find if someone has discussed this before, but 
+I have yet to find any discussion close to this - 
+so I bring it to your collective minds...
 
-> It looked good when I laster reviewed it, but I haven't yet tested
-> it myself. Please send me a reminder if you don't see it appear in
-> the next NFS_ALL release (which should be within a week).
+I am working with a 2.6.11++ kernel on an embedded 
+server platform that is NFS serving Linux rootfs 
+for other embedded NFS Client boards.
 
-It was commited to the nfs-2.6.git repo, but I haven't seen it get
-upstream yet. Were there any issues I could work on to speed up this
-commit?
+Everything works fine when the system time on the 
+server board is relatively synchronized with the real-time. 
 
-Thanks!
-F=E1bio
--- =
+It hangs after attempting to update the time from a 
+nonsensical time (e.g.: 2 months ago) - the most significant
+part of it is that it only hangs IFF it has started 
+serving its NFS client boards before I attempt to 
+update the time.
 
-ex sed lex awk yacc, e pluribus unix, amem
+
+The most significant output (when turning on 
+RPC debugging) is from:
+
+  linux/net/sunrpc/cache.c (cache_check) - line 90:
+
+         >> Want update, refage=1800, age=4288285
+
+It continually loops through this method - and the cache
+never gets updated...even thought with some additional
+sleuthing (aka: additional debug printks - it thinks 
+that there is an cache update pending).
+
+Thanks for any ideas you have on this subject.
+
+Sincerely,
+
+      
+         
+         
+
+Tom Morrison
+Principal S/W Engineer
+Empirix, Inc (www.empirix.com)
+tmorrison@empirix.com
+(781) 266 - 3567
+ 
+ 
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
