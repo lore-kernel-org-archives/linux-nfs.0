@@ -1,31 +1,29 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] Attribute timeout handling and wrapping
-	u32	jiffies
-Date: Wed, 22 Aug 2007 14:47:33 -0400
-Message-ID: <20070822184733.GF20946@fieldses.org>
-References: <20070725030809.GB27619@sleipnir.redhat.com>
-	<1185372013.6585.73.camel@localhost>
-	<20070725142824.GA24321@sleipnir.redhat.com>
-	<1185373979.6585.81.camel@localhost>
-	<20070727015900.GA3000@sleipnir.redhat.com>
-	<20070731162503.GC2964@sleipnir.redhat.com>
-	<1185911253.6700.52.camel@localhost>
-	<20070822182547.GD2874@sleipnir.redhat.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: mount.nfs: chk_mountpoint()
+Date: Wed, 22 Aug 2007 15:02:35 -0400
+Message-ID: <46CC884B.1030207@oracle.com>
+Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	linux-nfs <nfs@lists.sourceforge.net>
+Content-Type: multipart/mixed; boundary="------------030107080909060600070701"
+To: Linux NFS mailing list <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1INvEr-0006CX-91
-	for nfs@lists.sourceforge.net; Wed, 22 Aug 2007 11:47:33 -0700
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	id 1INvUx-0007wC-DN
+	for nfs@lists.sourceforge.net; Wed, 22 Aug 2007 12:04:11 -0700
+Received: from agminet01.oracle.com ([141.146.126.228])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1INvEu-0003iV-An
-	for nfs@lists.sourceforge.net; Wed, 22 Aug 2007 11:47:37 -0700
-In-Reply-To: <20070822182547.GD2874@sleipnir.redhat.com>
+	(Exim 4.44) id 1INvUx-0000mG-O3
+	for nfs@lists.sourceforge.net; Wed, 22 Aug 2007 12:04:13 -0700
+Received: from agmgw2.us.oracle.com (agmgw2.us.oracle.com [152.68.180.213])
+	by agminet01.oracle.com (Switch-3.2.4/Switch-3.1.7) with ESMTP id
+	l7MJ3mNZ003829
+	for <nfs@lists.sourceforge.net>; Wed, 22 Aug 2007 14:03:49 -0500
+Received: from acsmt351.oracle.com (acsmt351.oracle.com [141.146.40.151])
+	by agmgw2.us.oracle.com (Switch-3.2.0/Switch-3.2.0) with ESMTP id
+	l7M3AZV4002928
+	for <nfs@lists.sourceforge.net>; Wed, 22 Aug 2007 13:03:48 -0600
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -38,30 +36,70 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, Aug 22, 2007 at 03:25:47PM -0300, Fabio Olive Leite wrote:
-> Hi Trond,
-> 
-> On Tue, Jul 31, 2007 at 03:47:33PM -0400, Trond Myklebust wrote:
-> > 
-> > It looked good when I laster reviewed it, but I haven't yet tested
-> > it myself. Please send me a reminder if you don't see it appear in
-> > the next NFS_ALL release (which should be within a week).
-> 
-> It was commited to the nfs-2.6.git repo, but I haven't seen it get
-> upstream yet. Were there any issues I could work on to speed up this
-> commit?
+This is a multi-part message in MIME format.
+--------------030107080909060600070701
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-Normally if it's not fairly serious (causing an oops, for example) it'll
-wait for the next merge window (after the final 2.6.23 comes out,
-probably next month some time).
+Hi all-
 
---b.
+The recent addition of the chk_mountpoint() function in 
+utils/mount/mount.c in nfs-utils commit 3b55934b has broken a particular 
+behavior of background mounts.
+
+nfs(5) states that, if the "bg" option is specified, "A missing mount 
+point is treated as a timeout, to allow for nested NFS mounts."
+
+If I try mounting an NFS share onto a non-existent directory while using 
+the "bg" option, I now get an immediate failure:
+
+   mount.nfs: mount point /mnt/nothere does not exist
+
+instead of the mount backgrounding itself to wait for /mnt/nothere to 
+show up.  This is because chk_mountpoint() is causing the mount request 
+to fail immediately.
+
+Is the documented bg retry behavior still desirable?
+
+--------------030107080909060600070701
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck.lever.vcf"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="chuck.lever.vcf"
+
+begin:vcard
+fn:Chuck Lever
+n:Lever;Chuck
+org:Oracle Corporation;Corporate Architecture: Linux Projects Group
+adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
+title:Principal Member of Staff
+tel;work:+1 248 614 5091
+x-mozilla-html:FALSE
+url:http://oss.oracle.com/~cel
+version:2.1
+end:vcard
+
+
+--------------030107080909060600070701
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
+--------------030107080909060600070701
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--------------030107080909060600070701--
