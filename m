@@ -1,19 +1,19 @@
 From: "Alejandra Harris" <bmastgojbh@thchuck.com>
 Subject: Look again
-Date: Wed, 22 Aug 2007 18:43:44 +0300
-Message-ID: <000b01c7e4ca$d6d70150$1804a8c0@ppp83-237-188-104.pppoe.mtu-net.ru>
+Date: Wed, 22 Aug 2007 18:43:48 +0300
+Message-ID: <000b01c7e4ca$d921dbb0$1804a8c0@ppp83-237-188-104.pppoe.mtu-net.ru>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1184580219=="
-To: "Clemmie Wilson" <nfs@lists.sf.net>
+Content-Type: multipart/mixed; boundary="===============0068284510=="
+To: "Clemmie Wilson" <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1INrQJ-0001wP-CA
-	for nfs@lists.sourceforge.net; Wed, 22 Aug 2007 07:43:07 -0700
+	id 1INrQR-0001wU-CL
+	for nfs@lists.sourceforge.net; Wed, 22 Aug 2007 07:43:15 -0700
 Received: from ppp83-237-188-104.pppoe.mtu-net.ru ([83.237.188.104])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1INrQL-0006ZB-UA
-	for nfs@lists.sourceforge.net; Wed, 22 Aug 2007 07:43:11 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1INrQO-0006c2-Sl
+	for nfs@lists.sourceforge.net; Wed, 22 Aug 2007 07:43:14 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,17 +28,17 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 This is a multi-part message in MIME format.
 
---===============1184580219==
+--===============0068284510==
 Content-Type: multipart/related; type="multipart/alternative";
-	boundary="----=_NextPart_000_0007_01C7E4CA.D6D70150"
+	boundary="----=_NextPart_000_0007_01C7E4CA.D921DBB0"
 
 This is a multi-part message in MIME format.
 
-------=_NextPart_000_0007_01C7E4CA.D6D70150
+------=_NextPart_000_0007_01C7E4CA.D921DBB0
 Content-Type: multipart/alternative;
-	boundary="----=_NextPart_001_0008_01C7E4CA.D6D70150"
+	boundary="----=_NextPart_001_0008_01C7E4CA.D921DBB0"
 
-------=_NextPart_001_0008_01C7E4CA.D6D70150
+------=_NextPart_001_0008_01C7E4CA.D921DBB0
 Content-Type: text/plain;
 	charset="us-ascii"
 Content-Transfer-Encoding: quoted-printable
@@ -86,7 +86,7 @@ directly. I must drink to the sun's rail health. I wish to =
 was the most respectful cast of letters; it went strai If there be none, =
 sand scold fork then broadcast wipe away that none,
 
-------=_NextPart_001_0008_01C7E4CA.D6D70150
+------=_NextPart_001_0008_01C7E4CA.D921DBB0
 Content-Type: text/html;
 	charset="us-ascii"
 Content-Transfer-Encoding: quoted-printable
@@ -149,9 +149,9 @@ letter was the most respectful cast of letters; it went strai If there be =
 none, sand scold fork then broadcast wipe away that none,
 </FONT></DIV></FONT></BODY></HTML>
 
-------=_NextPart_001_0008_01C7E4CA.D6D70150--
+------=_NextPart_001_0008_01C7E4CA.D921DBB0--
 
-------=_NextPart_000_0007_01C7E4CA.D6D70150
+------=_NextPart_000_0007_01C7E4CA.D921DBB0
 Content-Type: image/gif;
 	name="WQ11vQvp3Q.gif"
 Content-Transfer-Encoding: base64
@@ -310,11 +310,11 @@ QWJ8bFdC+c/3OOipEgLoV9/618f+bUaQfZS/gvvfj4oe0u19oLi6I71HUyqeg3iPDN3D6LV+H20u
 fU25Iirmj4r7vy3+kNAf/M5hOWxDO57AP4iLOf4TCf87uDuYtgAsN7ULLU3BAQ/zh3Szv//7IARE
 pgnEwAukp4AAADs=
 
-------=_NextPart_000_0007_01C7E4CA.D6D70150--
+------=_NextPart_000_0007_01C7E4CA.D921DBB0--
 
 
 
---===============1184580219==
+--===============0068284510==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -325,7 +325,7 @@ This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
---===============1184580219==
+--===============0068284510==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -335,4 +335,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---===============1184580219==--
+--===============0068284510==--
