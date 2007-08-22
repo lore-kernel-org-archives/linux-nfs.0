@@ -1,24 +1,22 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: NFS/RPC Hangs after updating time...
-Date: Wed, 22 Aug 2007 16:26:39 -0400
-Message-ID: <20070822202639.GL20946@fieldses.org>
-References: <BD261180E6D35F4D9D32F3E44FD3D90108F975FB@EMPBEDEX.empirix.com>
+From: "Gagnon X Jodi" <airtight@austruck.com>
+Subject: dental clinic data
+Date: Wed, 22 Aug 2007 20:12:27 -0300
+Message-ID: <22537.5530579642$1187820799@news.gmane.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org,
-	"Rushton,  Matt" <Mrushton@empirix.com>
-To: "Morrison, Tom" <tmorrison@empirix.com>
+Content-Type: multipart/mixed; boundary="===============1597569914=="
+Cc: aria1363@yahoo.com, grafica@cantine.org,
+	jordansitecouncil@pausd.org, nfs@lists.sourceforge.net,
+	germany@quantumengel.com, dianerug@msn.com
+To: bogdash-pavel@mail.ru
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1INwmm-0008Cx-So
-	for nfs@lists.sourceforge.net; Wed, 22 Aug 2007 13:26:40 -0700
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1INwmq-0008AW-1L
-	for nfs@lists.sourceforge.net; Wed, 22 Aug 2007 13:26:45 -0700
-In-Reply-To: <BD261180E6D35F4D9D32F3E44FD3D90108F975FB@EMPBEDEX.empirix.com>
+	id 1INyRo-0002AH-14
+	for nfs@lists.sourceforge.net; Wed, 22 Aug 2007 15:13:08 -0700
+Received: from sec-mail-out01.broadnet-mediascape.de ([62.206.1.26])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1INyRr-0007X1-2H
+	for nfs@lists.sourceforge.net; Wed, 22 Aug 2007 15:13:12 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,43 +29,64 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, Aug 22, 2007 at 02:37:22PM -0400, Morrison, Tom wrote:
-> I am working with a 2.6.11++ kernel on an embedded 
-> server platform that is NFS serving Linux rootfs 
-> for other embedded NFS Client boards.
-> 
-> Everything works fine when the system time on the 
-> server board is relatively synchronized with the real-time. 
-> 
-> It hangs after attempting to update the time from a 
-> nonsensical time (e.g.: 2 months ago) - the most significant
-> part of it is that it only hangs IFF it has started 
-> serving its NFS client boards before I attempt to 
-> update the time.
-> 
-> 
-> The most significant output (when turning on 
-> RPC debugging) is from:
-> 
->   linux/net/sunrpc/cache.c (cache_check) - line 90:
-> 
->          >> Want update, refage=1800, age=4288285
-> 
-> It continually loops through this method - and the cache
-> never gets updated...even thought with some additional
-> sleuthing (aka: additional debug printks - it thinks 
-> that there is an cache update pending).
+--===============1597569914==
+Content-type: text/plain; charset=US-ASCII
 
-Can you reproduce the problem with the current kernel? (Say 2.6.22 or
-later?)
 
---b.
+
+
+For the week ending Aug 24, you will receive a List for Nursing Homes, Hospitals and Dentists at no additional cost when you order the Physician Contact List
+
+
+Licensed Physicians in the USA 
+
+788,319 in total – 17,400 emails
+
+Many popular specialties like Emergency Medicine, Plastic Surgery, OBGYN, Oncology, Pediatrics and more
+
+Can easily be sorted by 16 different fields
+
+Price for this week only =  $352
+
+
+*** Get the 3 databases below as a bonus when you order the MD list above ***
+
+American Hospital Listing
+more than 23k hospital administrators in over 7k hospitals [worth over $300 alone)
+
+List of American Dentists
+More than half a million listings [worth $299 alone!]
+
+US Nursing Home Listing
+includes over 31,589 Senior administrators, 11,288 Nursing Directors in over 14,706 Nursing Homes in the United States. (value: $249)
+
+reply by phone: 206-600-6530
+
+
+
+
+
+
+
+--===============1597569914==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
+--===============1597569914==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============1597569914==--
