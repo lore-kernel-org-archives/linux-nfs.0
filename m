@@ -1,23 +1,26 @@
-From: =?iso-2022-jp?B?GyRCIidBNE5PJDRNOztxIicbKEI=?= <good@grape.plala.or.jp>
-Subject: =?iso-2022-jp?b?GyRCIUEhIRsoQlNUQVIbJEIkKiReJEgkYSVtGyhC?=
-	=?iso-2022-jp?b?GyRCITwlcyEhPzdFUD5sISohKiEhTDVDNEpdGyhCMTAwMA==?=
-	=?iso-2022-jp?b?GyRCS3whISFBGyhC?=
-Date: Fri, 24 Aug 2007 05:30:20 +0900
-Message-ID: <E1IOKFK-0003T4-P6@mail.sourceforge.net>
-Reply-To: good@grape.plala.or.jp
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: umount fails with device busy
+Date: Thu, 23 Aug 2007 18:01:47 -0400
+Message-ID: <46CE03CB.4070300@oracle.com>
+References: <20070823184544.237460@gmx.net> <46CDE805.4090909@oracle.com>
+	<46CDEE3A.3040809@redhat.com> <46CDEF90.90007@oracle.com>
+	<46CDF3BE.9030509@redhat.com>
+Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-2022-jp"
-To: <nfs@lists.sourceforge.net>
+Content-Type: multipart/mixed; boundary="------------000500060508000404080501"
+Cc: nfs@lists.sourceforge.net
+To: Peter Staubach <staubach@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IOKFH-0000LR-Qm
-	for nfs@lists.sourceforge.net; Thu, 23 Aug 2007 14:29:40 -0700
-Received: from 203.141.158.173.static.zoot.jp ([203.141.158.173]
-	helo=grape.plala.or.jp) by mail.sourceforge.net with smtp (Exim 4.44)
-	id 1IOKFK-0003T4-P6
-	for nfs@lists.sourceforge.net; Thu, 23 Aug 2007 14:29:44 -0700
+	id 1IOKlx-0003h4-2q
+	for nfs@lists.sourceforge.net; Thu, 23 Aug 2007 15:03:25 -0700
+Received: from rgminet01.oracle.com ([148.87.113.118])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IOKlz-0002WE-RK
+	for nfs@lists.sourceforge.net; Thu, 23 Aug 2007 15:03:29 -0700
+In-Reply-To: <46CDF3BE.9030509@redhat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,68 +33,82 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓
-　〜〜　STARおまとめローン　新登場！！　無担保1000万　〜〜
-〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓
-
-               http://www.areckson.info/
-
-―――　24時間オペレーター対応　―――『本当に急なご融資すぐ対応 』
-
-■╋■━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-╋■┛【　まずはご融資自動診断　】・・安心の低金利　2.5％〜11.5％♪
-■┛━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-―――　24時間オペレーター対応　―――『本当に急なご融資すぐ対応 』
-
-                 http://www.areckson.info/
-
-■STARクレジットの各コース■
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-◆他社おまとめローンに＋アルファーでご融資。
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-　
-　
-　　　---------------------------------------------------- 
-　　　　　最大1000万円までのご融資を準備しております。
-　　　---------------------------------------------------- 
-　　　　　　　http://www.areckson.info/
-
-■即日300万円までご融資対応■
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-◆急なご利用でも即日口座にお振込み。
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-▼お申し込みから15分で対応できます。
-　
-　　　---------------------------------------------------- 
-　　　　　後日カードが届きますのでATMでご返済。　
-　　　----------------------------------------------------
-　　　　　　　http://www.areckson.info/
-
-■実質年率を大幅に引き下げ■
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-◆大口VIPローンなら2.5%の金利で1000万円まで対応。
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-　　　　　　http://www.areckson.info/
----------------------------------------------------------------- 
-このメールは特定電子メール送信適正化法・改正特定商取引法を遵守の上
-送信しておりますが、ご不要な方には大変ご迷惑をおかけいたしました。
-
-■配信元 DIMPLE  LIFE　
-■所在地
-　東京都新宿区東新宿3-1-3
-■配信停止を希望される方はお手数ですが下記アドレスに。
-　配信停止： dimpleinfo@yahoo.co.jp
----------------------------------------------------------------- 
+This is a multi-part message in MIME format.
+--------------000500060508000404080501
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
 
+
+Peter Staubach wrote:
+> Chuck Lever wrote:
+>>>>> When I run umount during these ops I get an device busy. Any help 
+>>>>> would be very appreciated!
+>>>>
+>>>> This is normal and expected behavior.  One problem may be that your 
+>>>> server is slow, and thus there are RPCs left outstanding for a bit 
+>>>> on your client after your application exits.  The COMMIT calls from 
+>>>> that trace suggest that there is dirty data the client is writing 
+>>>> back to the server. 
+>>>
+>>> It seems to me that this should not be the expected behavior unless
+>>> the file system is mounted "nocto".  Is it?
+>>
+>> I'm a little puzzled myself about what dirty data there might be left 
+>> after the application quits.  However, I'll be there is an mmap() 
+>> lurking somewhere in the background...
+>>
+>> Data that was dirtied via a mapped file is not subject to the 
+>> writeback part of close-to-open.
+> 
+> I don't think that I agree with this last statement.  Although
+> it can not be implemented using the normal close system call,
+> something should trigger the flush of any dirty pages and wait
+> for them to complete.
+
+This is the way Linux implements dirty mmaps on NFS because that's the 
+way Linus wants it.  I didn't mean to imply that's the way it *should* 
+work, merely the way it *does* work in Linux.
+
+--------------000500060508000404080501
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck.lever.vcf"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="chuck.lever.vcf"
+
+begin:vcard
+fn:Chuck Lever
+n:Lever;Chuck
+org:Oracle Corporation;Corporate Architecture: Linux Projects Group
+adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
+title:Principal Member of Staff
+tel;work:+1 248 614 5091
+x-mozilla-html:FALSE
+url:http://oss.oracle.com/~cel
+version:2.1
+end:vcard
+
+
+--------------000500060508000404080501
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
+--------------000500060508000404080501
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--------------000500060508000404080501--
