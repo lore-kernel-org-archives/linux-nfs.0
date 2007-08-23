@@ -1,23 +1,19 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: mount.nfs: chk_mountpoint()
-Date: Thu, 23 Aug 2007 14:22:33 -0400
-Message-ID: <46CDD069.3070608@redhat.com>
-References: <46CC884B.1030207@oracle.com> <46CD82A0.1000408@redhat.com>
-	<46CDC7D0.6030803@oracle.com>
+From: z00t@gmx.net
+Subject: umount fails with device busy
+Date: Thu, 23 Aug 2007 20:45:44 +0200
+Message-ID: <20070823184544.237460@gmx.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Linux NFS mailing list <nfs@lists.sourceforge.net>
-To: chuck.lever@oracle.com
+Content-Type: text/plain; charset="iso-8859-1"
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IOHKM-0006BZ-By
-	for nfs@lists.sourceforge.net; Thu, 23 Aug 2007 11:22:45 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IOHKQ-0004BY-CO
-	for nfs@lists.sourceforge.net; Thu, 23 Aug 2007 11:22:46 -0700
-In-Reply-To: <46CDC7D0.6030803@oracle.com>
+	id 1IOHhm-00085d-8U
+	for nfs@lists.sourceforge.net; Thu, 23 Aug 2007 11:46:55 -0700
+Received: from mail.gmx.net ([213.165.64.20])
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1IOHgp-0007qL-Bi
+	for nfs@lists.sourceforge.net; Thu, 23 Aug 2007 11:45:56 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,63 +26,76 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Chuck Lever wrote:
-> Peter Staubach wrote:
->> Chuck Lever wrote:
->>> Hi all-
->>>
->>> The recent addition of the chk_mountpoint() function in 
->>> utils/mount/mount.c in nfs-utils commit 3b55934b has broken a 
->>> particular behavior of background mounts.
->>>
->>> nfs(5) states that, if the "bg" option is specified, "A missing 
->>> mount point is treated as a timeout, to allow for nested NFS mounts."
->>>
->>> If I try mounting an NFS share onto a non-existent directory while 
->>> using the "bg" option, I now get an immediate failure:
->>>
->>>   mount.nfs: mount point /mnt/nothere does not exist
->>>
->>> instead of the mount backgrounding itself to wait for /mnt/nothere 
->>> to show up.  This is because chk_mountpoint() is causing the mount 
->>> request to fail immediately.
->>>
->>> Is the documented bg retry behavior still desirable? 
->>
->> Isn't this what autofs is for?  To be able to handle hierarchies
->> of mounts?
->
-> I think the purpose of this feature is to allow a sysadmin to specify 
-> a set of mount points in /etc/fstab, some possibly nested.  "mount -a 
-> -tnfs" should work no matter what order the mounts in /etc/fstab are 
-> specified.
->
-> After all, some servers may be unresponsive when the client boots -- 
-> the mounting order is nondeterministic; it can't be depended on, in 
-> any event.
->
-> We also don't know if the automounter itself depends on this feature.
+Hi guys,
 
-Autofs depending upon this feature would be a large mistake.
-IMHO, of course.  :-)
+I get the device busy error when I try to umount an NFS file system althoug=
+h there is no process with an open file on it (at least fuser -m /mnt/point=
+ and lsof +f -- /mnt/point don't find anything).
 
-I don't think that it does.
+To be more precise this only happens, when I run the umount right after sto=
+pping an application which has its executables and work directory on this f=
+ile system. Running umount again some seconds later works fine. =
 
-But your explanation makes sense, although we should be moving
-people away from static mounts in fstab and towards dynamic
-mounting via autofs.  Ian and Jeff have made autofs much, much
-better in recent times.  Improving autofs further to make it
-only mount file systems which are actually referenced would make
-it even better.
 
-How do we find out whether we need to continue supporting this
-semantic or whether we can do away with it?  Clearly, if it was
-busted, then not many people were depending upon it because
-there didn't seem to be any hue and cry about it not working.
+I do not have any submounts under this mount point. There are no packet tra=
+nsmit or receive errors nor any NFS/RPC errors only a very small number of =
+RPC retransmitts. So it seems that I have a stable environment. Client and =
+server is SLES9 with 2.6.5-7.202.7-smp/X86_64. =
 
-    Thanx...
 
-       ps
+I enabled NFS debug output and the only noticeable thing is, that some NFS =
+operations are still ongoing after the application processes have already t=
+erminated:
+
+  Aug 23 08:25:23 marvin kernel: NFS reply getattr
+  Aug 23 08:25:23 marvin kernel: NFS: nfs_update_inode(0:12/149296 ct=3D1 i=
+nfo=3D0x6)
+  Aug 23 08:25:23 marvin kernel: NFS: (0:12/149296) revalidation complete
+  Aug 23 08:25:23 marvin kernel: nfs: flush(0:12/149296)
+  Aug 23 08:25:23 marvin kernel: NFS: dentry_delete(bin/stop, 0)
+  Aug 23 08:25:23 marvin kernel: NFS: revalidating (0:12/2)
+  Aug 23 08:25:23 marvin kernel: NFS call  getattr
+  Aug 23 08:25:23 marvin kernel: NFS reply getattr
+  Aug 23 08:25:23 marvin kernel: NFS: nfs_update_inode(0:12/2 ct=3D1 info=
+=3D0x6)
+  Aug 23 08:25:23 marvin kernel: NFS: (0:12/2) revalidation complete
+  Aug 23 08:25:25 marvin kernel: NFS call  fsstat
+  Aug 23 08:25:25 marvin kernel: NFS reply statfs: 0
+  Aug 23 08:25:35 marvin kernel: NFS call  fsstat
+  Aug 23 08:25:35 marvin kernel: NFS reply statfs: 0
+  Aug 23 08:25:38 marvin kernel: NFS: 6368 initiated commit call
+  Aug 23 08:25:38 marvin kernel: NFS: 6369 initiated commit call
+  Aug 23 08:25:38 marvin kernel: NFS: 6370 initiated commit call
+  Aug 23 08:25:38 marvin kernel: NFS: 6371 initiated commit call
+  Aug 23 08:25:38 marvin kernel: NFS: 6368 nfs_commit_done (status 0)
+  Aug 23 08:25:38 marvin kernel: NFS: commit (0:12/121805 3207@0)NFS: dentr=
+y_delete(log/mux_marvin.trc, 0)
+  Aug 23 08:25:38 marvin kernel:  OK
+  Aug 23 08:25:38 marvin kernel: NFS: 6369 nfs_commit_done (status 0)
+  Aug 23 08:25:38 marvin kernel: NFS: commit (0:12/149304 2238@0)NFS: dentr=
+y_delete(log/pw_marvin_1.trc, 0)
+  Aug 23 08:25:38 marvin kernel:  OK
+  Aug 23 08:25:38 marvin kernel: NFS: 6370 nfs_commit_done (status 0)
+  Aug 23 08:25:38 marvin kernel: NFS: commit (0:12/149297 2238@0)NFS: dentr=
+y_delete(log/pw_marvin_0.trc, 0)
+  Aug 23 08:25:38 marvin kernel:  OK
+  Aug 23 08:25:38 marvin kernel: NFS: 6371 nfs_commit_done (status 0)
+  Aug 23 08:25:38 marvin kernel: NFS: commit (0:12/149295 965@0)NFS: dentry=
+_delete(net.trc, 0)
+  Aug 23 08:25:38 marvin kernel:  OK
+  Aug 23 08:25:45 marvin kernel: NFS call  fsstat
+  Aug 23 08:25:45 marvin kernel: NFS reply statfs: 0
+  Aug 23 08:25:55 marvin kernel: NFS call  fsstat
+
+When I run umount during these ops I get an device busy. Any help would be =
+very appreciated!
+
+
+-- =
+
+Der GMX SmartSurfer hilft bis zu 70% Ihrer Onlinekosten zu sparen! =
+
+Ideal f=FCr Modem und ISDN: http://www.gmx.net/de/go/smartsurfer
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
