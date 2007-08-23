@@ -1,23 +1,23 @@
-From: Zoot <z00t@gmx.net>
-Subject: Re: umount fails with device busy
-Date: Thu, 23 Aug 2007 23:15:20 +0200
-Message-ID: <20070823211520.GC4822@localhost>
-References: <20070823184544.237460@gmx.net> <46CDE805.4090909@oracle.com>
-	<46CDEE3A.3040809@redhat.com> <46CDEF90.90007@oracle.com>
+From: =?iso-2022-jp?B?GyRCIidBNE5PJDRNOztxIicbKEI=?= <good@grape.plala.or.jp>
+Subject: =?iso-2022-jp?b?GyRCIUEhIRsoQlNUQVIbJEIkKiReJEgkYSVtGyhC?=
+	=?iso-2022-jp?b?GyRCITwlcyEhPzdFUD5sISohKiEhTDVDNEpdGyhCMTAwMA==?=
+	=?iso-2022-jp?b?GyRCS3whISFBGyhC?=
+Date: Fri, 24 Aug 2007 05:30:20 +0900
+Message-ID: <E1IOKFK-0003T4-P6@mail.sourceforge.net>
+Reply-To: good@grape.plala.or.jp
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset="iso-2022-jp"
+To: <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IOK1X-0007Mj-KE
-	for nfs@lists.sourceforge.net; Thu, 23 Aug 2007 14:15:27 -0700
-Received: from mail.gmx.net ([213.165.64.20])
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1IOK1b-0004gc-A9
-	for nfs@lists.sourceforge.net; Thu, 23 Aug 2007 14:15:32 -0700
-In-Reply-To: <46CDEF90.90007@oracle.com>
+	id 1IOKFH-0000LR-Qm
+	for nfs@lists.sourceforge.net; Thu, 23 Aug 2007 14:29:40 -0700
+Received: from 203.141.158.173.static.zoot.jp ([203.141.158.173]
+	helo=grape.plala.or.jp) by mail.sourceforge.net with smtp (Exim 4.44)
+	id 1IOKFK-0003T4-P6
+	for nfs@lists.sourceforge.net; Thu, 23 Aug 2007 14:29:44 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,28 +30,62 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, Aug 23, 2007 at 04:35:28PM -0400, Chuck Lever wrote:
-> >>>When I run umount during these ops I get an device busy. Any help 
-> >>>would be very appreciated!
-> >>
-> >>This is normal and expected behavior.  One problem may be that your 
-> >>server is slow, and thus there are RPCs left outstanding for a bit on 
-> >>your client after your application exits.  The COMMIT calls from that 
-> >>trace suggest that there is dirty data the client is writing back to 
-> >>the server. 
-> >
-> >It seems to me that this should not be the expected behavior unless
-> >the file system is mounted "nocto".  Is it?
-> 
-> I'm a little puzzled myself about what dirty data there might be left 
-> after the application quits.  However, I'll be there is an mmap() 
-> lurking somewhere in the background...
-> 
-> Data that was dirtied via a mapped file is not subject to the writeback 
-> part of close-to-open.
-At least according to the NFS debug output are the commits only related
-to .trc files which are used by the app to store it's debug output. Not
-used for mmap.
+〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓
+　〜〜　STARおまとめローン　新登場！！　無担保1000万　〜〜
+〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓
+
+               http://www.areckson.info/
+
+―――　24時間オペレーター対応　―――『本当に急なご融資すぐ対応 』
+
+■╋■━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+╋■┛【　まずはご融資自動診断　】・・安心の低金利　2.5％〜11.5％♪
+■┛━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+―――　24時間オペレーター対応　―――『本当に急なご融資すぐ対応 』
+
+                 http://www.areckson.info/
+
+■STARクレジットの各コース■
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+◆他社おまとめローンに＋アルファーでご融資。
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+　
+　
+　　　---------------------------------------------------- 
+　　　　　最大1000万円までのご融資を準備しております。
+　　　---------------------------------------------------- 
+　　　　　　　http://www.areckson.info/
+
+■即日300万円までご融資対応■
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+◆急なご利用でも即日口座にお振込み。
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+▼お申し込みから15分で対応できます。
+　
+　　　---------------------------------------------------- 
+　　　　　後日カードが届きますのでATMでご返済。　
+　　　----------------------------------------------------
+　　　　　　　http://www.areckson.info/
+
+■実質年率を大幅に引き下げ■
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+◆大口VIPローンなら2.5%の金利で1000万円まで対応。
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+　　　　　　http://www.areckson.info/
+---------------------------------------------------------------- 
+このメールは特定電子メール送信適正化法・改正特定商取引法を遵守の上
+送信しておりますが、ご不要な方には大変ご迷惑をおかけいたしました。
+
+■配信元 DIMPLE  LIFE　
+■所在地
+　東京都新宿区東新宿3-1-3
+■配信停止を希望される方はお手数ですが下記アドレスに。
+　配信停止： dimpleinfo@yahoo.co.jp
+---------------------------------------------------------------- 
+
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
