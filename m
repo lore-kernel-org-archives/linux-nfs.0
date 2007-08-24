@@ -1,23 +1,34 @@
-From: Zoot <z00t@gmx.net>
-Subject: Re: umount fails with device busy
-Date: Fri, 24 Aug 2007 20:52:45 +0200
-Message-ID: <20070824185245.GA3583@localhost>
-References: <20070823184544.237460@gmx.net> <46CDE805.4090909@oracle.com>
-	<20070823201414.GB4692@localhost> <46CDEEF2.8040309@oracle.com>
+From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
+Subject: Re: [RFC Patch 08/09] NFS/RDMA client - rpcrdma protocol
+ handling
+Date: Fri, 24 Aug 2007 15:38:24 -0400
+Message-ID: <EXNANE01MWuLn5U9T3T0000008a@exnane01.hq.netapp.com>
+References: <EXNANE01jOuF1Qp4hZD00000c67@exnane01.hq.netapp.com>
+	<4697A9DE.50703@oracle.com>
+	<EXNANE01D8z9tTx7e4V00000c83@exnane01.hq.netapp.com>
+	<4697B233.8040205@oracle.com>
+	<EXNANE01tXsL1c00goZ00000067@exnane01.hq.netapp.com>
+	<46CF2721.4010403@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: Chuck Lever <chuck.lever@oracle.com>
+To: chuck.lever@oracle.com
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IOeH9-0005wO-TL
-	for nfs@lists.sourceforge.net; Fri, 24 Aug 2007 11:52:56 -0700
-Received: from mail.gmx.net ([213.165.64.20])
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1IOeHC-0002gL-Mq
-	for nfs@lists.sourceforge.net; Fri, 24 Aug 2007 11:53:00 -0700
-In-Reply-To: <46CDEEF2.8040309@oracle.com>
+	id 1IOezA-00023d-QX
+	for nfs@lists.sourceforge.net; Fri, 24 Aug 2007 12:38:26 -0700
+Received: from mx2.netapp.com ([216.240.18.37])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IOezD-0004Eo-Tc
+	for nfs@lists.sourceforge.net; Fri, 24 Aug 2007 12:38:29 -0700
+In-Reply-To: <46CF2721.4010403@oracle.com>
+References: <EXNANE01jOuF1Qp4hZD00000c67@exnane01.hq.netapp.com>
+	<4697A9DE.50703@oracle.com>
+	<EXNANE01D8z9tTx7e4V00000c83@exnane01.hq.netapp.com>
+	<4697B233.8040205@oracle.com>
+	<EXNANE01tXsL1c00goZ00000067@exnane01.hq.netapp.com>
+	<46CF2721.4010403@oracle.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,22 +41,38 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, Aug 23, 2007 at 04:32:50PM -0400, Chuck Lever wrote:
-> Zoot wrote:
-> >>This is normal and expected behavior.  One problem may be that your 
-> >>server is slow, and thus there are RPCs left outstanding for a bit on 
-> >>your client after your application exits.  The COMMIT calls from that 
-> >>trace suggest that there is dirty data the client is writing back to the 
-> >>server.
-> >But I had expected that umount blocks until the commit calls are
-> > finished as it is with local file systems?
-> 
-> Sorry, it doesn't.  It has no way of knowing how long those RPCs will take.
-> 
-> There is a "lazy unmount" facility that removes the NFS share from your 
-> client's name space and handles the outstanding RPCs in the background. 
->  I'm not sure if it's working, but you could try "umount -l".
-What's with sync() would it wait for the nfs commits? 
+At 02:44 PM 8/24/2007, Chuck Lever wrote:
+>The name "page_is_bulk" however implies that you are marking the pages, 
+>where really, you are marking the buffer.  Marking the whole buffer is 
+>probably correct, but then you should probably rename the flag for clarity.
+
+Roger. The intent is actually to just mark the "pages" array though.
+The head and tail are used for headers and dribble/roundup, so can't
+be bulk. For instance, they're not well-aligned nor do they have round
+sizes. Maybe... page_data_is_bulk? Should it be a bit flag perhaps?
+
+One other comment while I have the floor. The comment in xdr.h says
+"array of contiguous pages". The pages themselves aren't actually
+contiguous, though when used for bulk data they do represent a
+set of contiguous file blocks. Should that comment be tweaked do
+you think?
+
+Tom.
+
+>> Index: linux-2.6.22/include/linux/sunrpc/xdr.h
+>> ===================================================================
+>> --- linux-2.6.22.orig/include/linux/sunrpc/xdr.h
+>> +++ linux-2.6.22/include/linux/sunrpc/xdr.h
+>> @@ -70,7 +70,8 @@ struct xdr_buf {
+>>  
+>>  	struct page **	pages;		/* Array of contiguous pages */
+>>  	unsigned int	page_base,	/* Start of page data */
+>> -			page_len;	/* Length of page data */
+>> +			page_len,	/* Length of page data */
+>> +			page_is_bulk;	/* Page(s) hold bulk data only */
+>>  
+>>  	unsigned int	buflen,		/* Total length of storage buffer */
+>>  			len;		/* Length of XDR encoded message */
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
