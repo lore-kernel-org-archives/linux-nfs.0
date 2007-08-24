@@ -1,40 +1,82 @@
-From: Jakub Narebski <jnareb@gmail.com>
-Subject: Git User's Survey 2007
-Date: Fri, 24 Aug 2007 01:05:52 +0200
-Message-ID: <fal3rf$r2d$1@sea.gmane.org>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH 1/4] mount.nfs: mount's background daemon should
+	free	"mount_point" properly
+Date: Fri, 24 Aug 2007 13:11:03 +1000
+Message-ID: <18126.19527.640133.608662@notabene.brown>
+References: <20070821161902.4373.67197.stgit@monet.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: sm-users-rm8PX32fqvbMZ2x0e22RKNi2O/JbrIOy@public.gmane.org, elinks-dev-Ugr1wgFcK0zneqvOfBTmdWD2FQJk+8+b@public.gmane.org,
-	dbus-CC+yJ3UmIYqDUpFQwHEjaQ@public.gmane.org, nfs@lists.sourceforge.net, revctrl-lEa0QfImRKayfC07vW7uig@public.gmane.org
-To: dbus-CC+yJ3UmIYqDUpFQwHEjaQ@public.gmane.org
-Return-path: <dbus-bounces@lists.freedesktop.org>
-List-Unsubscribe: <http://lists.freedesktop.org/mailman/listinfo/dbus>,
-	<mailto:dbus-request@lists.freedesktop.org?subject=unsubscribe>
-List-Archive: <http://lists.freedesktop.org/archives/dbus>
-List-Post: <mailto:dbus@lists.freedesktop.org>
-List-Help: <mailto:dbus-request@lists.freedesktop.org?subject=help>
-List-Subscribe: <http://lists.freedesktop.org/mailman/listinfo/dbus>,
-	<mailto:dbus-request@lists.freedesktop.org?subject=subscribe>
-Sender: dbus-bounces@lists.freedesktop.org
-Errors-To: dbus-bounces@lists.freedesktop.org
-List-ID: <nfs.lists.sourceforge.net>
+Cc: nfs@lists.sourceforge.net
+To: Chuck Lever <chuck.lever@oracle.com>
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1IOPZl-00008C-4r
+	for nfs@lists.sourceforge.net; Thu, 23 Aug 2007 20:11:09 -0700
+Received: from cantor.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IOPZp-0008AM-7Z
+	for nfs@lists.sourceforge.net; Thu, 23 Aug 2007 20:11:13 -0700
+In-Reply-To: message from Chuck Lever on Tuesday August 21
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi all,
+On Tuesday August 21, chuck.lever@oracle.com wrote:
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> 
+>  utils/mount/mount.c |    3 ++-
+>  1 files changed, 2 insertions(+), 1 deletions(-)
+> 
+> diff --git a/utils/mount/mount.c b/utils/mount/mount.c
+> index d299358..40e7958 100644
+> --- a/utils/mount/mount.c
+> +++ b/utils/mount/mount.c
+> @@ -557,7 +557,7 @@ int main(int argc, char *argv[])
+>  
+>  		/*
+>  		 * Parent exits immediately with success.  Make
+> -		 * sure not to free "mount_point"
+> +		 * sure parent doesn't free "mount_point".
+>  		 */
 
-We would like to ask you a few questions about your use of the GIT
-version control system. This survey is mainly to understand who is
-using GIT, how and why.
+I certainly agree that this comment could be improved.   I don't think
+your change improves it.  I think I'll just remove the second sentence.
 
-The results will be discussed on the git mailing list and published to 
-the GIT wiki at http://git.or.cz/gitwiki/GitSurvey2007
+>  		if (fork() > 0)
+>  			exit(0);
+> @@ -568,6 +568,7 @@ int main(int argc, char *argv[])
+>  		if (verbose && mnt_err)
+>  			printf(_("%s: giving up \"%s\"\n"),
+>  				progname, spec);
+> +		free(mount_point);
+>  		exit(0);
+>  	}
+>  
 
-We'll close the survey in three weeks starting from 20 August 2007,
-on 10 September 2007.
+Calling 'free' before 'exit' seems like an exercise in
+futility.. unless you want to remove warnings from 'valgrind' or
+something like that...
+How about I just remove the 'exit(0)', and it will fall through and
+free(mount_point) and then exit (with a status that will be ignored)?
 
-Please devote a few minutes of your time to fill this simple
-questionnaire, it will help a lot the git community to understand your
-needs, what you like of GIT, and of course what you don't like  of it.
+NeilBrown
 
-The survey can be found here:
-  http://www.survey.net.nz/survey.php?94e135ff41e871a1ea5bcda3ee1856d9
-  http://tinyurl.com/26774s
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Splunk Inc.
+Still grepping through log files to find problems?  Stop.
+Now Search log events and configuration files using AJAX and a browser.
+Download your FREE copy of Splunk now >>  http://get.splunk.com/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
