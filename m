@@ -1,24 +1,20 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: umount fails with device busy
-Date: Fri, 24 Aug 2007 09:43:47 -0400
-Message-ID: <46CEE093.5050303@redhat.com>
-References: <20070823184544.237460@gmx.net> <46CDE805.4090909@oracle.com>
-	<46CDEE3A.3040809@redhat.com> <46CDEF90.90007@oracle.com>
-	<46CDF3BE.9030509@redhat.com> <46CE03CB.4070300@oracle.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 0/9] More mount.nfs clean-ups
+Date: Fri, 24 Aug 2007 13:11:05 -0400
+Message-ID: <20070824170602.10418.71987.stgit@monet.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: chuck.lever@oracle.com
+To: neilb@suse.de
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IOZS1-0005Bn-RP
-	for nfs@lists.sourceforge.net; Fri, 24 Aug 2007 06:43:50 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IOZS5-0007NC-RR
-	for nfs@lists.sourceforge.net; Fri, 24 Aug 2007 06:43:54 -0700
-In-Reply-To: <46CE03CB.4070300@oracle.com>
+	id 1IOcgu-0003vP-Ar
+	for nfs@lists.sourceforge.net; Fri, 24 Aug 2007 10:11:24 -0700
+Received: from flpi101.sbcis.sbc.com ([207.115.20.70] helo=flpi101.prodigy.net)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IOcgx-000613-Jl
+	for nfs@lists.sourceforge.net; Fri, 24 Aug 2007 10:11:28 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,50 +27,12 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Chuck Lever wrote:
->
->
-> Peter Staubach wrote:
->> Chuck Lever wrote:
->>>>>> When I run umount during these ops I get an device busy. Any help 
->>>>>> would be very appreciated!
->>>>>
->>>>> This is normal and expected behavior.  One problem may be that 
->>>>> your server is slow, and thus there are RPCs left outstanding for 
->>>>> a bit on your client after your application exits.  The COMMIT 
->>>>> calls from that trace suggest that there is dirty data the client 
->>>>> is writing back to the server. 
->>>>
->>>> It seems to me that this should not be the expected behavior unless
->>>> the file system is mounted "nocto".  Is it?
->>>
->>> I'm a little puzzled myself about what dirty data there might be 
->>> left after the application quits.  However, I'll be there is an 
->>> mmap() lurking somewhere in the background...
->>>
->>> Data that was dirtied via a mapped file is not subject to the 
->>> writeback part of close-to-open.
->>
->> I don't think that I agree with this last statement.  Although
->> it can not be implemented using the normal close system call,
->> something should trigger the flush of any dirty pages and wait
->> for them to complete.
->
-> This is the way Linux implements dirty mmaps on NFS because that's the 
-> way Linus wants it.  I didn't mean to imply that's the way it *should* 
-> work, merely the way it *does* work in Linux.
+These patches clean up various hacks that were introduced with the recently
+added text-based mount logic.  The biggest change is to improve the way the
+'addr=' and 'clientaddr=' mount options are handled.
 
-Yes, I recognize that.  That's the way that it worked in Solaris
-too, until I decided that it should work differently and implemented
-it.
-
-That said, I don't know how hard it would be to sell the new
-semantic to Linus.  This may tie in with some other work that
-I am doing, so perhaps I will give it a shot.
-
-    Thanx...
-
-       ps
+-- 
+corporate:    <chuck dot lever at oracle dot com>
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
