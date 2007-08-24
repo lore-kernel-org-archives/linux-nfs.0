@@ -1,59 +1,109 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 2/9] mount.nfs: Don't allow the user to
-	specify	addr= or clientaddr=.
-Date: Fri, 24 Aug 2007 13:25:29 -0400
-Message-ID: <20070824172529.GA6690@fieldses.org>
-References: <20070824171116.10418.56059.stgit@monet.1015granger.net>
+From: Michal Piotrowski <michal.k.k.piotrowski@gmail.com>
+Subject: Re: [2/4] 2.6.23-rc3: known regressions v3
+Date: Fri, 24 Aug 2007 19:38:20 +0200
+Message-ID: <46CF178C.4060506@googlemail.com>
+References: <46CF0DEF.5040107@googlemail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: neilb@suse.de, nfs@lists.sourceforge.net
-To: Chuck Lever <chuck.lever@oracle.com>
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IOcua-0005TJ-9S
-	for nfs@lists.sourceforge.net; Fri, 24 Aug 2007 10:25:32 -0700
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IOcud-0006d1-Gm
-	for nfs@lists.sourceforge.net; Fri, 24 Aug 2007 10:25:36 -0700
-In-Reply-To: <20070824171116.10418.56059.stgit@monet.1015granger.net>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-2
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	LKML <linux-kernel@vger.kernel.org>,
+	Len Brown <len.brown@intel.com>, linux-acpi@vger.kernel.org,
+	Plamen Petrov <plamen.petrov@tk.ru.acad.bg>,
+	Michael Sedkowski <sedmich@gmail.com>, dth <dth@dth.net>,
+	linux-fsdevel@vger.kernel.org, nfs@lists.sourceforge.net,
+	Trond Myklebust <Trond.Myklebust@netapp.com>,
+	Andrew Clayton <andrew@digital-domain.net>,
+	Florin Iucha <florin@iucha.net>, Bret Towe <magnade@gmail.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Return-path: <linux-acpi-owner@vger.kernel.org>
+In-Reply-To: <46CF0DEF.5040107@googlemail.com>
+Sender: linux-acpi-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-On Fri, Aug 24, 2007 at 01:11:16PM -0400, Chuck Lever wrote:
-> The current mount.nfs implementation doesn't allow users to specify their
-> own addr= or clientaddr= option.
+Hi all,
 
-Don't we need clientaddr= in some cases to get the callback channel
-working?
+Here is a list of some known regressions in 2.6.23-rc3.
 
-> The new string-based interface does allow this, even though nfs(5)
-> does not document 'addr=' and specifically forbids adding
-> 'clientaddr='.
+Feel free to add new regressions/remove fixed etc.
+http://kernelnewbies.org/known_regressions
 
-It says that it's currently ignored, which isn't the same as forbidding
-it.
+List of Aces
 
-I'm probably missing the point of the patch.
+Name                    Regressions fixed since 21-Jun-2007
+Adrian Bunk                            9
+Andi Kleen                             5
+Linus Torvalds                         5
+Andrew Morton                          4
+Al Viro                                3
+Alan Stern                             3
+Cornelia Huck                          3
+Jens Axboe                             3
+Tejun Heo                              3
 
---b.
 
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Splunk Inc.
-Still grepping through log files to find problems?  Stop.
-Now Search log events and configuration files using AJAX and a browser.
-Download your FREE copy of Splunk now >>  http://get.splunk.com/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+
+ACPI
+
+Subject         : MCFG bug on hp nx6310
+References      : http://lkml.org/lkml/2007/8/8/252
+Last known good : ?
+Submitter       : Michael Sedkowski <sedmich@gmail.com>
+Caused-By       : ?
+Handled-By      : ?
+Status          : unknown
+
+Subject         : 2.6.23-rc1-git10 hangs on boot - needs "acpi=off"
+References      : http://lkml.org/lkml/2007/8/2/24
+Last known good : ?
+Submitter       : Plamen Petrov <plamen.petrov@tk.ru.acad.bg>
+Caused-By       : ?
+Handled-By      : Len Brown <len.brown@intel.com>
+Status          : problem is being debugged
+
+
+
+CPUFREQ
+
+Subject         : ide problems: 2.6.22-git17 working, 2.6.23-rc1* is not
+References      : http://lkml.org/lkml/2007/7/27/298
+                  http://lkml.org/lkml/2007/7/29/371
+Last known good : ?
+Submitter       : dth <dth@dth.net>
+Caused-By       : Len Brown <lenb@kernel.org>
+                  commit f79e3185dd0f8650022518d7624c876d8929061b
+Handled-By      : Len Brown <lenb@kernel.org>
+Status          : problem is being debugged
+
+
+
+FS
+
+Subject         : nfs4 hang/NFS woes again
+                  (was USB-related oops in sysfs with linux v2.6.23-rc3-50-g28e8351)
+References      : http://lkml.org/lkml/2007/8/15/144
+                  http://lkml.org/lkml/2007/8/22/484
+                  http://lkml.org/lkml/2007/8/23/134
+Last known good : ?
+Submitter       : Florin Iucha <florin@iucha.net>
+                  Bret Towe <magnade@gmail.com>
+Caused-By       : Trond Myklebust <Trond.Myklebust@netapp.com>
+                  commit 3d39c691ff486142dd9aaeac12f553f4476b7a62
+Handled-By      : ?
+Status          : problem is being debugged
+
+Subject         : [NFSD OOPS] 2.6.23-rc1-git10
+References      : http://lkml.org/lkml/2007/8/2/462
+Last known good : ?
+Submitter       : Andrew Clayton <andrew@digital-domain.net>
+Caused-By       : ?
+Handled-By      : ?
+Status          : unknown
+
+
+
+Regards,
+Michal
+
+--
+LOG
+http://www.stardust.webpages.pl/log/
