@@ -1,23 +1,26 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH 0/9] More mount.nfs clean-ups
-Date: Sat, 25 Aug 2007 08:20:09 +1000
-Message-ID: <18127.22937.937135.74231@notabene.brown>
-References: <20070824170602.10418.71987.stgit@monet.1015granger.net>
+From: David Bartley <dtbartle@csclub.uwaterloo.ca>
+Subject: NFS Write Delays
+Date: Sat, 25 Aug 2007 00:47:41 -0400
+Message-ID: <46CFB46D.8010405@csclub.uwaterloo.ca>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Chuck Lever <chuck.lever@oracle.com>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IOhVm-00017I-Qi
-	for nfs@lists.sourceforge.net; Fri, 24 Aug 2007 15:20:14 -0700
-Received: from cantor.suse.de ([195.135.220.2] helo=mx1.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IOhVq-0004lt-Lo
-	for nfs@lists.sourceforge.net; Fri, 24 Aug 2007 15:20:19 -0700
-In-Reply-To: message from Chuck Lever on Friday August 24
+	id 1IOnYk-0002qO-Eu
+	for nfs@lists.sourceforge.net; Fri, 24 Aug 2007 21:47:42 -0700
+Received: from caffeine.csclub.uwaterloo.ca ([129.97.134.17])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IOnYn-0007Kl-Kb
+	for nfs@lists.sourceforge.net; Fri, 24 Aug 2007 21:47:46 -0700
+Received: from caffeine.csclub.uwaterloo.ca (localhost [127.0.0.1])
+	by caffeine.csclub.uwaterloo.ca (Postfix) with ESMTP id C2D7674978
+	for <nfs@lists.sourceforge.net>; Sat, 25 Aug 2007 00:47:41 -0400 (EDT)
+Received: from [129.97.134.14] (glucose-fructose.csclub.uwaterloo.ca
+	[129.97.134.14])
+	by caffeine.csclub.uwaterloo.ca (Postfix) with ESMTP id B3FAD74905
+	for <nfs@lists.sourceforge.net>; Sat, 25 Aug 2007 00:47:41 -0400 (EDT)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,14 +33,30 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Friday August 24, chuck.lever@oracle.com wrote:
-> These patches clean up various hacks that were introduced with the recently
-> added text-based mount logic.  The biggest change is to improve the way the
-> 'addr=' and 'clientaddr=' mount options are handled.
+Hi,
 
-All applied, thanks.
+I'm NFS mounting a 100G ext3 partion over NFS. There's a gigabit link 
+between the server and client. When I attempt to copy a file from the 
+client to the server, nothing is transferred for between 5 and 10 
+seconds. If I run wireshark, I see some RPC requests and replys. It 
+looks like every request gets a reply, so I don't think the server is 
+blocking. As well, I have another client that is able to transfer files 
+without delay to this server. So it appears to be a client issue. I'm 
+not using any extra options when mounting (I did try with async and with 
+udp, but this did not fix anything). This also isn't an issue with the 
+client's disk, as I attempted to dd /dev/zero across and got the same delay.
 
-NeilBrown
+I'm running Debian on all systems. Here's the versions I've tested this 
+with (client and server):
+
+nfs-utils: 1:1.0.10-6+etch.1 and 1.1.1~git-20070709-3
+portmap: 5-26 and 6.0-4
+kernel: client: 2.6.21-1-alpha-smp, server: 2.6.22-1-amd64
+
+If you need any more information, let me know. If there's any flag I can 
+turn on to see what's happening, that would be useful to test.
+
+-- David
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
