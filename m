@@ -1,33 +1,24 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 0/5] Intro: Fix mountd buffer overflow when using
-	large numbers of netgroups
-Date: Mon, 27 Aug 2007 11:21:25 -0400
-Message-ID: <200708271521.l7RFLPnV019402@dantu.rdu.redhat.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: NFS Write Delays
+Date: Mon, 27 Aug 2007 13:17:30 -0400
+Message-ID: <1188235050.6701.87.camel@heimdal.trondhjem.org>
+References: <46CFB46D.8010405@csclub.uwaterloo.ca>
+	<46CFBE60.1080609@csclub.uwaterloo.ca>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
+To: David Bartley <dtbartle@csclub.uwaterloo.ca>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IPgSA-00040B-6A
-	for nfs@lists.sourceforge.net; Mon, 27 Aug 2007 08:24:34 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IPgPa-0007O0-Kb
-	for nfs@lists.sourceforge.net; Mon, 27 Aug 2007 08:21:55 -0700
-Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com
-	[172.16.52.254])
-	by mx1.redhat.com (8.13.1/8.13.1) with ESMTP id l7RFLRrl022549
-	for <nfs@lists.sourceforge.net>; Mon, 27 Aug 2007 11:21:27 -0400
-Received: from pobox.corp.redhat.com (pobox.corp.redhat.com [10.11.255.20])
-	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l7RFLQKG016383
-	for <nfs@lists.sourceforge.net>; Mon, 27 Aug 2007 11:21:26 -0400
-Received: from dantu.rdu.redhat.com (dantu.rdu.redhat.com [172.16.57.196])
-	by pobox.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l7RFLP2O010192
-	for <nfs@lists.sourceforge.net>; Mon, 27 Aug 2007 11:21:26 -0400
-Received: from dantu.rdu.redhat.com (localhost.localdomain [127.0.0.1])
-	by dantu.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id l7RFLPaG019403
-	for <nfs@lists.sourceforge.net>; Mon, 27 Aug 2007 11:21:25 -0400
+	id 1IPiDb-0001Vb-9A
+	for nfs@lists.sourceforge.net; Mon, 27 Aug 2007 10:17:39 -0700
+Received: from pat.uio.no ([129.240.10.15])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IPiDd-00006J-Fb
+	for nfs@lists.sourceforge.net; Mon, 27 Aug 2007 10:17:43 -0700
+In-Reply-To: <46CFBE60.1080609@csclub.uwaterloo.ca>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -40,30 +31,41 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This patchset is intended to address the buffer overrun reported by
-Stefan Walter when a client matches a large number of netgroups. The
-main problem is that the string returned by client_compose can be any
-length, and that is strcpy()'ed into a fixed-length array.
+On Sat, 2007-08-25 at 01:30 -0400, David Bartley wrote:
+> I was able to turn on debugging and I believe I see what's happening. 
+> Here's what I see in /var/log/messages:
+> 
+> 01:01:31 kernel: nfs: write(/mterry2.avi(147458), 262144@0)
+> 01:01:31 kernel: nfs: write(/mterry2.avi(147458), 262144@262144)
+> 01:01:31 kernel: nfs: write(/mterry2.avi(147458), 262144@524288)
+> 01:01:31 kernel: nfs: write(/mterry2.avi(147458), 262144@786432)
+> .
+> .
+> .
+> 01:01:38 kernel: nfs: write(/mterry2.avi(147458), 262144@417071104)
+> 01:01:38 kernel: nfs: write(/mterry2.avi(147458), 201314@417333248)
+> 01:01:38 kernel: nfs: flush(0:13/147458)
+> 01:01:39 kernel: RPC: 62652 reserved req fffffc007b4fc000 xid 4e72324e
+> 01:01:39 kernel: RPC: 62652 xprt_prepare_transmit
+> 01:01:39 kernel: RPC: 62652 xprt_transmit(262332)
+> 01:01:39 kernel: RPC: 62653 reserved req fffffc007b4fc128 xid 4f72324e
+> 
+> So it looks like it takes 7 seconds to read the entire file into memory 
+> (the client has 6G of RAM), and only after it is read in is the file 
+> pushed to the network. I'm wondering if there is some way to force the 
+> data to start transmitting before it's does reading the file in.
+> 
+> -- David
 
-The first four patches are cleanup patches. They also take care of the
-actual buffer overrun. The last patch implements Neil Brown's suggestion
-to allow mountd to conditionally map ipaddr to ipaddr in the
-auth.unix.ip cache and to only check mount requests against exports that
-match the path.
+Sure. You can simply tell the kernel to keep fewer dirty pages by
+adjusting the values of /proc/sys/vm/dirty_background_ratio
+and /proc/sys/vm/dirty_ratio.
 
-This mode is automatically selected when the total length of all of the
-netgroup m_hostname fields is greater than 1/2 of NFSCLNT_IDMAX. I
-decided on this scheme simply because it allowed for a long list of
-netgroups with plenty of space at the end of the string for other
-matches.
+See Documentation/filesystems/proc.txt and/or
+Documentation/sysctl/vm.txt
 
-Unlike earlier versions of this patch, there is no way to select this
-mode manually. The reason is that explaining when an admin should select
-this mode is difficult and adding an option would be very confusing. If
-it becomes desirable to do so, however, we can always add one later.
-
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
-Acked-by: Steve Dickson <steved@redhat.com>
+Cheers
+  Trond
 
 
 -------------------------------------------------------------------------
