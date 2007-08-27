@@ -1,107 +1,129 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 1/4] VFS: Introduce the killattr inode operation for handling ATTR_KILL_S*ID
-Date: Mon, 27 Aug 2007 13:27:13 -0400
-Message-ID: <200708271727.l7RHRDmr007253@dantu.rdu.redhat.com>
+Subject: [PATCH 2/4] NFS: add nfs_killattr inode_operation
+Date: Mon, 27 Aug 2007 13:27:23 -0400
+Message-ID: <200708271727.l7RHRNXo007260@dantu.rdu.redhat.com>
 Cc: linux-cifs-client@lists.samba.org, nfs@lists.sourceforge.net
 To: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1760465AbXH0R1g@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <nfs.lists.sourceforge.net>
 
-This patch adds the killattr inode operation. inodes that have a
-killattr operation defined are responsible for properly handling the
-ATTR_KILL_SUID and ATTR_KILL_SGID bits within this operation. inodes
-that do not have a killattr op will instead use "standard" logic which
-turns these bits into a mode change if the setuid or setgid bits are
-currently set in the inode's mode.
-
-To enable this, the patch does the standard processing of these bits on
-a set of local variables, and then has these local variables supercede
-the values in the iattr when a killattr op isn't defined.
+Add the nfs_killattr inode operation. For NFS, we generally want the server
+to handle clearing these bits. So the function is really just a noop.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/attr.c          |   33 ++++++++++++++++++++-------------
- include/linux/fs.h |    1 +
- 2 files changed, 21 insertions(+), 13 deletions(-)
+ fs/nfs/dir.c           |    3 +++
+ fs/nfs/file.c          |    2 ++
+ fs/nfs/inode.c         |   10 ++++++++++
+ fs/nfs/nfs4proc.c      |    1 +
+ fs/nfs/symlink.c       |    1 +
+ include/linux/nfs_fs.h |    1 +
+ 6 files changed, 18 insertions(+), 0 deletions(-)
 
-diff --git a/fs/attr.c b/fs/attr.c
-index ae58bd3..77608d3 100644
---- a/fs/attr.c
-+++ b/fs/attr.c
-@@ -103,12 +103,11 @@ EXPORT_SYMBOL(inode_setattr);
- int notify_change(struct dentry * dentry, struct iattr * attr)
- {
- 	struct inode *inode = dentry->d_inode;
--	mode_t mode;
-+	mode_t mode = attr->ia_mode;
- 	int error;
- 	struct timespec now;
- 	unsigned int ia_valid = attr->ia_valid;
- 
--	mode = inode->i_mode;
- 	now = current_fs_time(inode->i_sb);
- 
- 	attr->ia_ctime = now;
-@@ -126,28 +125,36 @@ int notify_change(struct dentry * dentry, struct iattr * attr)
- 			return error;
- 	}
- 	if (ia_valid & ATTR_KILL_SUID) {
--		attr->ia_valid &= ~ATTR_KILL_SUID;
--		if (mode & S_ISUID) {
-+		ia_valid &= ~ATTR_KILL_SUID;
-+		if (inode->i_mode & S_ISUID) {
- 			if (!(ia_valid & ATTR_MODE)) {
--				ia_valid = attr->ia_valid |= ATTR_MODE;
--				attr->ia_mode = inode->i_mode;
-+				ia_valid |= ATTR_MODE;
-+				mode = inode->i_mode;
- 			}
--			attr->ia_mode &= ~S_ISUID;
-+			mode &= ~S_ISUID;
- 		}
- 	}
- 	if (ia_valid & ATTR_KILL_SGID) {
--		attr->ia_valid &= ~ ATTR_KILL_SGID;
--		if ((mode & (S_ISGID | S_IXGRP)) == (S_ISGID | S_IXGRP)) {
-+		ia_valid &= ~ATTR_KILL_SGID;
-+		if ((inode->i_mode & (S_ISGID | S_IXGRP)) ==
-+					(S_ISGID | S_IXGRP)) {
- 			if (!(ia_valid & ATTR_MODE)) {
--				ia_valid = attr->ia_valid |= ATTR_MODE;
--				attr->ia_mode = inode->i_mode;
-+				ia_valid |= ATTR_MODE;
-+				mode = inode->i_mode;
- 			}
--			attr->ia_mode &= ~S_ISGID;
-+			mode &= ~S_ISGID;
- 		}
- 	}
--	if (!attr->ia_valid)
-+	if (!ia_valid)
- 		return 0;
- 
-+	if (inode->i_op && inode->i_op->killattr) {
-+		inode->i_op->killattr(dentry, attr);
-+	} else {
-+		attr->ia_valid = ia_valid;
-+		attr->ia_mode = mode;
-+	}
-+
- 	if (ia_valid & ATTR_SIZE)
- 		down_write(&dentry->d_inode->i_alloc_sem);
- 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 291d40b..d213539 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1220,6 +1220,7 @@ struct inode_operations {
- 	void (*truncate_range)(struct inode *, loff_t, loff_t);
- 	long (*fallocate)(struct inode *inode, int mode, loff_t offset,
- 			  loff_t len);
-+	void (*killattr) (struct dentry *dentry, struct iattr *attr);
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 74fe1e2..ac22770 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -78,6 +78,7 @@ const struct inode_operations nfs_dir_inode_operations = {
+ 	.permission	= nfs_permission,
+ 	.getattr	= nfs_getattr,
+ 	.setattr	= nfs_setattr,
++	.killattr	= nfs_killattr,
  };
  
- struct seq_file;
+ #ifdef CONFIG_NFS_V3
+@@ -98,6 +99,7 @@ const struct inode_operations nfs3_dir_inode_operations = {
+ 	.getxattr	= nfs3_getxattr,
+ 	.setxattr	= nfs3_setxattr,
+ 	.removexattr	= nfs3_removexattr,
++	.killattr	= nfs_killattr,
+ };
+ #endif  /* CONFIG_NFS_V3 */
+ 
+@@ -120,6 +122,7 @@ const struct inode_operations nfs4_dir_inode_operations = {
+ 	.getxattr       = nfs4_getxattr,
+ 	.setxattr       = nfs4_setxattr,
+ 	.listxattr      = nfs4_listxattr,
++	.killattr	= nfs_killattr,
+ };
+ 
+ #endif /* CONFIG_NFS_V4 */
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 591d59c..169c2a9 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -80,6 +80,7 @@ const struct inode_operations nfs_file_inode_operations = {
+ 	.permission	= nfs_permission,
+ 	.getattr	= nfs_getattr,
+ 	.setattr	= nfs_setattr,
++	.killattr	= nfs_killattr,
+ };
+ 
+ #ifdef CONFIG_NFS_V3
+@@ -91,6 +92,7 @@ const struct inode_operations nfs3_file_inode_operations = {
+ 	.getxattr	= nfs3_getxattr,
+ 	.setxattr	= nfs3_setxattr,
+ 	.removexattr	= nfs3_removexattr,
++	.killattr	= nfs_killattr,
+ };
+ #endif  /* CONFIG_NFS_v3 */
+ 
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 45633f9..3d68a8d 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -316,6 +316,16 @@ out_no_inode:
+ 	goto out;
+ }
+ 
++/*
++ * On NFS, we want the server to handle clearing of setuid/setgid. Make this
++ * a noop.
++ */
++void
++nfs_killattr(struct dentry *dentry, struct iattr *attr)
++{
++	return;
++}
++
+ #define NFS_VALID_ATTRS (ATTR_MODE|ATTR_UID|ATTR_GID|ATTR_SIZE|ATTR_ATIME|ATTR_ATIME_SET|ATTR_MTIME|ATTR_MTIME_SET)
+ 
+ int
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index b49aa05..7643a25 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -3711,6 +3711,7 @@ static const struct inode_operations nfs4_file_inode_operations = {
+ 	.getxattr	= nfs4_getxattr,
+ 	.setxattr	= nfs4_setxattr,
+ 	.listxattr	= nfs4_listxattr,
++	.killattr	= nfs_killattr,
+ };
+ 
+ const struct nfs_rpc_ops nfs_v4_clientops = {
+diff --git a/fs/nfs/symlink.c b/fs/nfs/symlink.c
+index 83e865a..fd0a880 100644
+--- a/fs/nfs/symlink.c
++++ b/fs/nfs/symlink.c
+@@ -77,4 +77,5 @@ const struct inode_operations nfs_symlink_inode_operations = {
+ 	.put_link	= page_put_link,
+ 	.getattr	= nfs_getattr,
+ 	.setattr	= nfs_setattr,
++	.killattr	= nfs_killattr,
+ };
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index c444d24..bea2cf1 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -301,6 +301,7 @@ extern int __nfs_revalidate_inode(struct nfs_server *, struct inode *);
+ extern int nfs_revalidate_mapping(struct inode *inode, struct address_space *mapping);
+ extern int nfs_revalidate_mapping_nolock(struct inode *inode, struct address_space *mapping);
+ extern int nfs_setattr(struct dentry *, struct iattr *);
++extern void nfs_killattr(struct dentry *dentry, struct iattr *attr);
+ extern void nfs_setattr_update_inode(struct inode *inode, struct iattr *attr);
+ extern void nfs_begin_attr_update(struct inode *);
+ extern void nfs_end_attr_update(struct inode *);
 -- 
 1.5.2.1
+
