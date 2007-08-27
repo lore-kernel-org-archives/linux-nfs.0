@@ -1,77 +1,41 @@
-From: Bernd Schubert <bernd-schubert@gmx.de>
-Subject: Re: slowness due to splitting into pages
-	in?nfs3svc_decode_writeargs()
-Date: Fri, 31 Aug 2007 23:55:29 +0200
-Message-ID: <200708312355.30219.bernd-schubert@gmx.de>
-References: <200708312003.30446.bernd-schubert@gmx.de>
-	<200708312334.50001.bernd-schubert@gmx.de>
-	<20070831214306.GO11165@fieldses.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: nfs4 filesystem mounted via the "bind" option reports wrong
+	fstype
+Date: Mon, 27 Aug 2007 15:32:42 -0400
+Message-ID: <20070827193242.GJ3118@fieldses.org>
+References: <46D318D3.9020101@oxeva.fr> <20070827184059.GI3118@fieldses.org> <20070827191507.GI21089@ftp.linux.org.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: "Brian J. Murrell" <brian@interlinx.bc.ca>,
-	nfs@lists.sourceforge.net
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IRESn-0006DB-3Q
-	for nfs@lists.sourceforge.net; Fri, 31 Aug 2007 14:55:37 -0700
-Received: from mail.gmx.net ([213.165.64.20])
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1IRESr-0004rD-7i
-	for nfs@lists.sourceforge.net; Fri, 31 Aug 2007 14:55:41 -0700
-In-Reply-To: <20070831214306.GO11165@fieldses.org>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: Gabriel Barazer <gabriel@oxeva.fr>, nfsv4@linux-nfs.org,
+	nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org,
+	jkar8572@users.sourceforge.net
+To: Al Viro <viro@ftp.linux.org.uk>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1761288AbXH0TdB@vger.kernel.org>
+In-Reply-To: <20070827191507.GI21089@ftp.linux.org.uk>
+Sender: linux-kernel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-On Friday 31 August 2007, J. Bruce Fields wrote:
-> On Fri, Aug 31, 2007 at 11:34:49PM +0200, Bernd Schubert wrote:
-> > On Friday 31 August 2007, J. Bruce Fields wrote:
-> > > There's no guarantee the later pages in the rq_pages array are
-> > > contiguous in memory after the first one, so the rest of that iovec
-> > > probably has random data in it.
-> >
-> > Hmm, its some time since I last read rfc1813, but I can't remember
-> > something like 'data are send in pages and pages may have random order'.
-> > So I guess some kind of multi-threading is filling in the data the client
-> > is sending?
->
-> The data all arrives in one big chunk, in order.  But then we have to
-> put it some place.  The kernel almost never tries to allocate more than
-> one contiguous page of memory--memory fragmentation can make it
-> difficult to do that reliably--so we just ask for a bunch of pages to
-> put the data in, which may represent memory from all over the place,
-> store those pages into an array, and receive the data into those pages
-> in the order they're listed in the array.
+On Mon, Aug 27, 2007 at 08:15:07PM +0100, Al Viro wrote:
+> On Mon, Aug 27, 2007 at 02:40:59PM -0400, J. Bruce Fields wrote:
+>  
+> > There's no reason not to just mount server:/exports/data directly at
+> > /home/data; the bind mounts are just a workaround for the somewhat
+> > primitive exports facility on the server side.
+> 
+> Bullshit.  Bindings are first-class operations on _client_, regardless
+> of fs types involved.
 
-Ah, now I understand, thanks! I'm still used to userspace programming (*)
+I know.  Did I say something to the contrary?
 
+Maybe I was too terse; in more detail: the original poster appears to be
+mounting server:/exports/data by first mounting server:/ somewhere and
+then bind-mounting the exports/data someplace else.  I couldn't see an
+obvious reason they'd be using two steps instead of just performing a
+single mount of server:/exports/data.
 
-Thanks,
-Bernd
+So my assumption was that this was due to a confused memory of some
+server-side setup instructions.  (On the server side, nfs4 export setup
+often requires the administrator to do some extra bind mounts which
+shouldn't really be necessary.)
 
-
-PS: (*) Don't know if I ever will really like kernel programming - it 
-remembers me to metal-organic chemistry, everything is a 100 times more 
-difficult than usually, even simple weighing 100g of a substance might take a 
-few hours.
-
-
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Splunk Inc.
-Still grepping through log files to find problems?  Stop.
-Now Search log events and configuration files using AJAX and a browser.
-Download your FREE copy of Splunk now >>  http://get.splunk.com/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+--b.
