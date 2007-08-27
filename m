@@ -1,10 +1,11 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH 1/9] mount.nfs: Fix nfs4mount_s prototype.
-Date: Tue, 28 Aug 2007 07:02:34 +1000
-Message-ID: <18131.15338.752272.415718@notabene.brown>
-References: <20070824171111.10418.69889.stgit@monet.1015granger.net>
-	<18127.22242.307898.761934@notabene.brown>
-	<46D30F84.302@oracle.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH 1/7] SUNRPC: Address a few compiler warnings in
+	the RPC	client
+Date: Mon, 27 Aug 2007 17:59:13 -0400
+Message-ID: <1188251953.6701.113.camel@heimdal.trondhjem.org>
+References: <20070827173013.23426.67897.stgit@monet.1015granger.net>
+	<1188238002.6701.99.camel@heimdal.trondhjem.org>
+	<46D322CE.40002@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
@@ -13,13 +14,13 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IPljM-0000Q6-GJ
-	for nfs@lists.sourceforge.net; Mon, 27 Aug 2007 14:02:40 -0700
-Received: from cantor.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	id 1IPmcF-0005wV-Ar
+	for nfs@lists.sourceforge.net; Mon, 27 Aug 2007 14:59:23 -0700
+Received: from pat.uio.no ([129.240.10.15])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IPljQ-0001Hc-E1
-	for nfs@lists.sourceforge.net; Mon, 27 Aug 2007 14:02:45 -0700
-In-Reply-To: message from Chuck Lever on Monday August 27
+	(Exim 4.44) id 1IPmcH-000806-GT
+	for nfs@lists.sourceforge.net; Mon, 27 Aug 2007 14:59:27 -0700
+In-Reply-To: <46D322CE.40002@oracle.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,65 +33,34 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Monday August 27, chuck.lever@oracle.com wrote:
-> Hi Neil-
-> 
-> Neil Brown wrote:
-> >> @@ -286,13 +287,13 @@ fail:
-> >>   * @extra_opts:	pointer to C string containing fs-specific mount options
-> >>   *		(possibly also a return argument)
-> >>   * @fake:	flag indicating whether to carry out the whole operation
-> >> - * @bg:		one if this is a backgrounded mount attempt
-> >> + * @child:	one if this is a backgrounded mount
+On Mon, 2007-08-27 at 15:15 -0400, Chuck Lever wrote:
+> >> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+> >> index c796e2f..0ad3042 100644
+> >> --- a/net/sunrpc/clnt.c
+> >> +++ b/net/sunrpc/clnt.c
+> >> @@ -127,7 +127,7 @@ static struct rpc_clnt * rpc_new_client(struct rpc_xprt *xprt, char *servname, s
+> >>  	struct rpc_clnt		*clnt = NULL;
+> >>  	struct rpc_auth		*auth;
+> >>  	int err;
+> >> -	int len;
+> >> +	size_t len;
 > > 
-> > Any reason for changing 'bg' to 'child'?
+> > What if 'len' overflows when we do 'strlen() + 1'?
 > 
-> I think it's more clear about how the function is being called.
+> strlen() returns size_t, which is unsigned.  Thus the overflow would be 
+> zero.  Seems like that's a better outcome than what would happen today.
 
-Yes, I eventually worked this out.
-nfs4mount_s is firstly called with 'child' set to 0.  Then if that
-fails and that 'bg' option is set, we fork and call it again with
-'child' set to 1.   So 'child' is more meaningful than 'bg'.
+Yes, but there has to be a reason for fixing these signed comparisons
+beyond just silencing the compiler. If we're worried that len may
+overflow the signed integer space, then we really should be setting a
+hard limit on the string length. I personally don't think that a server
+name of 2^31 characters or more makes any sense whatsoever.
 
-However that handling of 'bg' seems much more simple in nfsmount_s
-than in nfsmount - too simple?
-With 'fg', it should try some number of times.
-With 'bg', it should try once, then if that fails, fork and retry some
-number of times in that background.
-Are you doing the 'retry' in the kernel?  How do you tell it to only
-try once before you fork for 'bg'?
-Does the mount retry really need to be in the kernel?  I think that is
-a very different issue that just changing the option parsing to be
-string based.
+Do we know if the callers are checking the size of the server name prior
+to calling rpc_new_client?
 
-Also, I just noticed the:
-                    After a mount operation is backgrounded, all subsequent
-       mounts  on  the  same  NFS  server will be backgrounded immediately,
-       without first attempting  the  mount.
+Trond
 
-part of 'bg'.  That is awkward to implement when each individual mount
-is done in a separate processes as happens with mount.nfs.   There is
-code there which pretends to implement this, but of course it cannot
-work and should be stripped out.
-I wonder if it is worth trying to record the host name in a file so
-that one instance can pass it to the next .... possibly not.  Though
-the kernel could easily know that a particular server is not
-responding, so the first mount attempt should give up quickly....
-
-Just some thoughts.
-
-NeilBrown
-
-> 
-> > And not making a matching change in nfsmount_s?
-> 
-> Upcoming patches will address this.
-
-I notice that nfsmount and nfs4mount use 'running_bg'.  Not sure which
-is better, but it would be nice to be consistent. 
-
-Thanks,
-NeilBrown
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
