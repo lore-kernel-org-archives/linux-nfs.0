@@ -1,20 +1,21 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 7/7] NFS: mount option parser chokes on proto=
-Date: Mon, 27 Aug 2007 13:30:44 -0400
-Message-ID: <20070827173044.23426.92438.stgit@monet.1015granger.net>
+Subject: [PATCH 6/7] NFS: print a unique error message for mount bind
+	errors
+Date: Mon, 27 Aug 2007 13:30:39 -0400
+Message-ID: <20070827173039.23426.32184.stgit@monet.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 To: trond.myklebust@fys.uio.no
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IPiQk-0003Fb-Ph
-	for nfs@lists.sourceforge.net; Mon, 27 Aug 2007 10:31:15 -0700
+	id 1IPiQZ-0003Cn-WE
+	for nfs@lists.sourceforge.net; Mon, 27 Aug 2007 10:31:04 -0700
 Received: from flpi101.sbcis.sbc.com ([207.115.20.70] helo=flpi101.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IPiQo-0007lz-5F
-	for nfs@lists.sourceforge.net; Mon, 27 Aug 2007 10:31:19 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IPiQc-0002Bq-9m
+	for nfs@lists.sourceforge.net; Mon, 27 Aug 2007 10:31:08 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,48 +28,50 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-The NFS mount option parsing logic doesn't recognize any valid transport
-protocols.
+This can help sysadmins track down /etc/fstab or server configuration
+problems.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfs/super.c |    8 ++++----
- 1 files changed, 4 insertions(+), 4 deletions(-)
+ fs/nfs/super.c |   14 ++++++++------
+ 1 files changed, 8 insertions(+), 6 deletions(-)
 
 diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 18f42e8..1f719b0 100644
+index e2cda5f..18f42e8 100644
 --- a/fs/nfs/super.c
 +++ b/fs/nfs/super.c
-@@ -911,13 +911,13 @@ static int nfs_parse_mount_options(char *raw,
- 			kfree(string);
+@@ -1033,7 +1033,7 @@ static int nfs_try_mount(struct nfs_parsed_mount_data *args,
+ 					   args->mount_server.version,
+ 					   args->mount_server.protocol);
+ 		if (status < 0)
+-			goto out_err;
++			goto out_bind_err;
+ 		sin.sin_port = htons(status);
+ 	} else
+ 		sin.sin_port = htons(args->mount_server.port);
+@@ -1049,14 +1049,16 @@ static int nfs_try_mount(struct nfs_parsed_mount_data *args,
+ 			   args->mount_server.version,
+ 			   args->mount_server.protocol,
+ 			   root_fh);
+-	if (status < 0)
+-		goto out_err;
++	if (status == 0)
++		return 0;
  
- 			switch (token) {
--			case Opt_udp:
-+			case Opt_xprt_udp:
- 				mnt->flags &= ~NFS_MOUNT_TCP;
- 				mnt->nfs_server.protocol = IPPROTO_UDP;
- 				mnt->timeo = 7;
- 				mnt->retrans = 5;
- 				break;
--			case Opt_tcp:
-+			case Opt_xprt_tcp:
- 				mnt->flags |= NFS_MOUNT_TCP;
- 				mnt->nfs_server.protocol = IPPROTO_TCP;
- 				mnt->timeo = 600;
-@@ -936,10 +936,10 @@ static int nfs_parse_mount_options(char *raw,
- 			kfree(string);
++	dfprintk(MOUNT, "NFS: unable to mount server " NIPQUAD_FMT
++			", error %d\n", NIPQUAD(sin.sin_addr.s_addr), status);
+ 	return status;
  
- 			switch (token) {
--			case Opt_udp:
-+			case Opt_xprt_udp:
- 				mnt->mount_server.protocol = IPPROTO_UDP;
- 				break;
--			case Opt_tcp:
-+			case Opt_xprt_tcp:
- 				mnt->mount_server.protocol = IPPROTO_TCP;
- 				break;
- 			default:
+-out_err:
+-	dfprintk(MOUNT, "NFS: unable to contact server on host "
+-		 NIPQUAD_FMT "\n", NIPQUAD(sin.sin_addr.s_addr));
++out_bind_err:
++	dfprintk(MOUNT, "NFS: mount unable to bind to server " NIPQUAD_FMT
++			", error %d\n", NIPQUAD(sin.sin_addr.s_addr), status);
+ 	return status;
+ }
+ 
 
 
 -------------------------------------------------------------------------
