@@ -1,78 +1,107 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: NFS Write Delays
-Date: Mon, 27 Aug 2007 13:17:30 -0400
-Message-ID: <1188235050.6701.87.camel@heimdal.trondhjem.org>
-References: <46CFB46D.8010405@csclub.uwaterloo.ca>
-	<46CFBE60.1080609@csclub.uwaterloo.ca>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: David Bartley <dtbartle@csclub.uwaterloo.ca>
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IPiDb-0001Vb-9A
-	for nfs@lists.sourceforge.net; Mon, 27 Aug 2007 10:17:39 -0700
-Received: from pat.uio.no ([129.240.10.15])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IPiDd-00006J-Fb
-	for nfs@lists.sourceforge.net; Mon, 27 Aug 2007 10:17:43 -0700
-In-Reply-To: <46CFBE60.1080609@csclub.uwaterloo.ca>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+From: Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH 1/4] VFS: Introduce the killattr inode operation for handling ATTR_KILL_S*ID
+Date: Mon, 27 Aug 2007 13:27:13 -0400
+Message-ID: <200708271727.l7RHRDmr007253@dantu.rdu.redhat.com>
+Cc: linux-cifs-client@lists.samba.org, nfs@lists.sourceforge.net
+To: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1760465AbXH0R1g@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-On Sat, 2007-08-25 at 01:30 -0400, David Bartley wrote:
-> I was able to turn on debugging and I believe I see what's happening. 
-> Here's what I see in /var/log/messages:
-> 
-> 01:01:31 kernel: nfs: write(/mterry2.avi(147458), 262144@0)
-> 01:01:31 kernel: nfs: write(/mterry2.avi(147458), 262144@262144)
-> 01:01:31 kernel: nfs: write(/mterry2.avi(147458), 262144@524288)
-> 01:01:31 kernel: nfs: write(/mterry2.avi(147458), 262144@786432)
-> .
-> .
-> .
-> 01:01:38 kernel: nfs: write(/mterry2.avi(147458), 262144@417071104)
-> 01:01:38 kernel: nfs: write(/mterry2.avi(147458), 201314@417333248)
-> 01:01:38 kernel: nfs: flush(0:13/147458)
-> 01:01:39 kernel: RPC: 62652 reserved req fffffc007b4fc000 xid 4e72324e
-> 01:01:39 kernel: RPC: 62652 xprt_prepare_transmit
-> 01:01:39 kernel: RPC: 62652 xprt_transmit(262332)
-> 01:01:39 kernel: RPC: 62653 reserved req fffffc007b4fc128 xid 4f72324e
-> 
-> So it looks like it takes 7 seconds to read the entire file into memory 
-> (the client has 6G of RAM), and only after it is read in is the file 
-> pushed to the network. I'm wondering if there is some way to force the 
-> data to start transmitting before it's does reading the file in.
-> 
-> -- David
+This patch adds the killattr inode operation. inodes that have a
+killattr operation defined are responsible for properly handling the
+ATTR_KILL_SUID and ATTR_KILL_SGID bits within this operation. inodes
+that do not have a killattr op will instead use "standard" logic which
+turns these bits into a mode change if the setuid or setgid bits are
+currently set in the inode's mode.
 
-Sure. You can simply tell the kernel to keep fewer dirty pages by
-adjusting the values of /proc/sys/vm/dirty_background_ratio
-and /proc/sys/vm/dirty_ratio.
+To enable this, the patch does the standard processing of these bits on
+a set of local variables, and then has these local variables supercede
+the values in the iattr when a killattr op isn't defined.
 
-See Documentation/filesystems/proc.txt and/or
-Documentation/sysctl/vm.txt
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/attr.c          |   33 ++++++++++++++++++++-------------
+ include/linux/fs.h |    1 +
+ 2 files changed, 21 insertions(+), 13 deletions(-)
 
-Cheers
-  Trond
-
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Splunk Inc.
-Still grepping through log files to find problems?  Stop.
-Now Search log events and configuration files using AJAX and a browser.
-Download your FREE copy of Splunk now >>  http://get.splunk.com/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+diff --git a/fs/attr.c b/fs/attr.c
+index ae58bd3..77608d3 100644
+--- a/fs/attr.c
++++ b/fs/attr.c
+@@ -103,12 +103,11 @@ EXPORT_SYMBOL(inode_setattr);
+ int notify_change(struct dentry * dentry, struct iattr * attr)
+ {
+ 	struct inode *inode = dentry->d_inode;
+-	mode_t mode;
++	mode_t mode = attr->ia_mode;
+ 	int error;
+ 	struct timespec now;
+ 	unsigned int ia_valid = attr->ia_valid;
+ 
+-	mode = inode->i_mode;
+ 	now = current_fs_time(inode->i_sb);
+ 
+ 	attr->ia_ctime = now;
+@@ -126,28 +125,36 @@ int notify_change(struct dentry * dentry, struct iattr * attr)
+ 			return error;
+ 	}
+ 	if (ia_valid & ATTR_KILL_SUID) {
+-		attr->ia_valid &= ~ATTR_KILL_SUID;
+-		if (mode & S_ISUID) {
++		ia_valid &= ~ATTR_KILL_SUID;
++		if (inode->i_mode & S_ISUID) {
+ 			if (!(ia_valid & ATTR_MODE)) {
+-				ia_valid = attr->ia_valid |= ATTR_MODE;
+-				attr->ia_mode = inode->i_mode;
++				ia_valid |= ATTR_MODE;
++				mode = inode->i_mode;
+ 			}
+-			attr->ia_mode &= ~S_ISUID;
++			mode &= ~S_ISUID;
+ 		}
+ 	}
+ 	if (ia_valid & ATTR_KILL_SGID) {
+-		attr->ia_valid &= ~ ATTR_KILL_SGID;
+-		if ((mode & (S_ISGID | S_IXGRP)) == (S_ISGID | S_IXGRP)) {
++		ia_valid &= ~ATTR_KILL_SGID;
++		if ((inode->i_mode & (S_ISGID | S_IXGRP)) ==
++					(S_ISGID | S_IXGRP)) {
+ 			if (!(ia_valid & ATTR_MODE)) {
+-				ia_valid = attr->ia_valid |= ATTR_MODE;
+-				attr->ia_mode = inode->i_mode;
++				ia_valid |= ATTR_MODE;
++				mode = inode->i_mode;
+ 			}
+-			attr->ia_mode &= ~S_ISGID;
++			mode &= ~S_ISGID;
+ 		}
+ 	}
+-	if (!attr->ia_valid)
++	if (!ia_valid)
+ 		return 0;
+ 
++	if (inode->i_op && inode->i_op->killattr) {
++		inode->i_op->killattr(dentry, attr);
++	} else {
++		attr->ia_valid = ia_valid;
++		attr->ia_mode = mode;
++	}
++
+ 	if (ia_valid & ATTR_SIZE)
+ 		down_write(&dentry->d_inode->i_alloc_sem);
+ 
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 291d40b..d213539 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1220,6 +1220,7 @@ struct inode_operations {
+ 	void (*truncate_range)(struct inode *, loff_t, loff_t);
+ 	long (*fallocate)(struct inode *inode, int mode, loff_t offset,
+ 			  loff_t len);
++	void (*killattr) (struct dentry *dentry, struct iattr *attr);
+ };
+ 
+ struct seq_file;
+-- 
+1.5.2.1
