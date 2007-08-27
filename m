@@ -1,72 +1,48 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 1/7] SUNRPC: Address a few compiler warnings in
-	the RPC	client
-Date: Mon, 27 Aug 2007 17:59:13 -0400
-Message-ID: <1188251953.6701.113.camel@heimdal.trondhjem.org>
-References: <20070827173013.23426.67897.stgit@monet.1015granger.net>
-	<1188238002.6701.99.camel@heimdal.trondhjem.org>
-	<46D322CE.40002@oracle.com>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH 08/15] knfsd: spawn kernel thread to probe callback channel
+Date: Tue, 28 Aug 2007 09:26:36 +1000
+Message-ID: <18131.23980.89642.364179@notabene.brown>
+References: <11882461763072-git-send-email-bfields@fieldses.org>
+	<1188246176681-git-send-email-bfields@fieldses.org>
+	<1188246176897-git-send-email-bfields@fieldses.org>
+	<1188246177833-git-send-email-bfields@fieldses.org>
+	<11882461773576-git-send-email-bfields@fieldses.org>
+	<11882461771774-git-send-email-bfields@fieldses.org>
+	<1188246177195-git-send-email-bfields@fieldses.org>
+	<11882461773396-git-send-email-bfields@fieldses.org>
+	<1188246177259-git-send-email-bfields@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: chuck.lever@oracle.com
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IPmcF-0005wV-Ar
-	for nfs@lists.sourceforge.net; Mon, 27 Aug 2007 14:59:23 -0700
-Received: from pat.uio.no ([129.240.10.15])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IPmcH-000806-GT
-	for nfs@lists.sourceforge.net; Mon, 27 Aug 2007 14:59:27 -0700
-In-Reply-To: <46D322CE.40002@oracle.com>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net,
+	"J. Bruce Fields" <bfields@citi.umich.edu>,
+	Adrian Bunk <bunk@kernel.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1758024AbXH0X05@vger.kernel.org>
+In-Reply-To: message from J. Bruce Fields on Monday August 27
+Sender: linux-kernel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-On Mon, 2007-08-27 at 15:15 -0400, Chuck Lever wrote:
-> >> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-> >> index c796e2f..0ad3042 100644
-> >> --- a/net/sunrpc/clnt.c
-> >> +++ b/net/sunrpc/clnt.c
-> >> @@ -127,7 +127,7 @@ static struct rpc_clnt * rpc_new_client(struct rpc_xprt *xprt, char *servname, s
-> >>  	struct rpc_clnt		*clnt = NULL;
-> >>  	struct rpc_auth		*auth;
-> >>  	int err;
-> >> -	int len;
-> >> +	size_t len;
-> > 
-> > What if 'len' overflows when we do 'strlen() + 1'?
-> 
-> strlen() returns size_t, which is unsigned.  Thus the overflow would be 
-> zero.  Seems like that's a better outcome than what would happen today.
+On Monday August 27, bfields@fieldses.org wrote:
+>  
+> +/* Reference counting, callback cleanup, etc., all look racy as heck.
+> + * And why is cb_set an atomic? */
 
-Yes, but there has to be a reason for fixing these signed comparisons
-beyond just silencing the compiler. If we're worried that len may
-overflow the signed integer space, then we really should be setting a
-hard limit on the string length. I personally don't think that a server
-name of 2^31 characters or more makes any sense whatsoever.
+Agreed.... so do we really want this code in mainline?  is the old
+code so bad that this is better?
 
-Do we know if the callers are checking the size of the server name prior
-to calling rpc_new_client?
-
-Trond
+ - cb_set should not be atomic.
+ - This looks like a job for async-rpc rather than a kernel thread
+ - If you do use a thread, you at least want __module_get before
+   starting the thread, and module_put_and_exit to terminate the
+   thread.
+ - Can you just use 'cb_client' rather than cb_set?  If you move
+   rpc_create into the thread, you don't need to set cb_client until
+   the callback is successful.  Then add a 'cb_active' flag bit
+   so that you don't have two callbacks at the same time, and it
+   should be less racy..
 
 
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Splunk Inc.
-Still grepping through log files to find problems?  Stop.
-Now Search log events and configuration files using AJAX and a browser.
-Download your FREE copy of Splunk now >>  http://get.splunk.com/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+The other 14 patches all look ok.
+
+Thanks,
+NeilBrown
