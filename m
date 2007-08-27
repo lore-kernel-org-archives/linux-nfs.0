@@ -1,47 +1,54 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 0/4] add killattr inode operation to allow filesystems to interpret ATTR_KILL_S*ID bits
-Date: Mon, 27 Aug 2007 13:27:03 -0400
-Message-ID: <200708271727.l7RHR36m007248@dantu.rdu.redhat.com>
+Subject: [PATCH 3/4] CIFS: add cifs_killattr inode_operation
+Date: Mon, 27 Aug 2007 13:27:33 -0400
+Message-ID: <200708271727.l7RHRXdK007265@dantu.rdu.redhat.com>
 Cc: linux-cifs-client@lists.samba.org, nfs@lists.sourceforge.net
 To: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1760678AbXH0R2p@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <nfs.lists.sourceforge.net>
 
-When an unprivileged process attempts to modify a file that has the
-setuid or setgid bits set, the VFS will attempt to clear these bits. The
-VFS will set the ATTR_KILL_SUID or ATTR_KILL_SGID bits in the ia_valid
-mask, and then call notify_change to clear these bits and set the mode
-accordingly.
-
-With a networked filesystem (NFS and CIFS in particular but likely
-others), the client machine or process may not have credentials that
-allow for setting the mode. In some situations, this can lead to file
-corruption, an operation failing outright because the setattr fails, or
-to races that lead to a mode change being reverted.
-
-In this situation, we'd like to just leave the handling of this to the
-server and ignore these bits. The problem is that by the time the
-setattr op is called, the VFS has already reinterpreted the ATTR_KILL_*
-bits into a mode change. We can't fix this in the filesystems where this
-is a problem, as doing so would leave us having to second-guess what the
-VFS wants us to do. So we need to change it so that filesystems have
-more flexibility in how to interpret the ATTR_KILL_* bits.
-
-The first patch in the following patchset adds a new inode operation
-called "killattr" and has notify change call it if it's defined. The
-purpose of this inode op is to properly interpret the ATTR_KILL_SUID and
-ATTR_KILL_SGID bits. Filesystems that do not declare a killattr inode
-operation will keep the existing behavior, converting these bits
-into a mode change.
-
-The next two patches add a killattr inode op for NFS and CIFS which just
-clears the bits (to allow the server to handle them). The final patch
-updates the Documentation dir to describe the new killattr inode
-operation.
-
-This patchset should apply cleanly to 2.6.23-rc3-mm1. Comments and
-suggestions appreciated...
+..make it just clear the ATTR_KILL_S*ID bits since we want the
+server to handle it.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/cifs/cifsfs.c |    9 +++++++++
+ 1 files changed, 9 insertions(+), 0 deletions(-)
 
+diff --git a/fs/cifs/cifsfs.c b/fs/cifs/cifsfs.c
+index cabb6a5..c357c55 100644
+--- a/fs/cifs/cifsfs.c
++++ b/fs/cifs/cifsfs.c
+@@ -553,6 +553,13 @@ static loff_t cifs_llseek(struct file *file, loff_t offset, int origin)
+ 	return remote_llseek(file, offset, origin);
+ }
+ 
++/* The server should handle this, so we just clear the bits */
++static void cifs_killattr(struct dentry *dentry, struct iattr *attr)
++{
++	attr->ia_valid &= ~(ATTR_KILL_SUID|ATTR_KILL_SGID);
++	return;
++}
++
+ static struct file_system_type cifs_fs_type = {
+ 	.owner = THIS_MODULE,
+ 	.name = "cifs",
+@@ -574,6 +581,7 @@ const struct inode_operations cifs_dir_inode_ops = {
+ 	.setattr = cifs_setattr,
+ 	.symlink = cifs_symlink,
+ 	.mknod   = cifs_mknod,
++	.killattr = cifs_killattr,
+ #ifdef CONFIG_CIFS_XATTR
+ 	.setxattr = cifs_setxattr,
+ 	.getxattr = cifs_getxattr,
+@@ -588,6 +596,7 @@ const struct inode_operations cifs_file_inode_ops = {
+ 	.getattr = cifs_getattr, /* do we need this anymore? */
+ 	.rename = cifs_rename,
+ 	.permission = cifs_permission,
++	.killattr = cifs_killattr,
+ #ifdef CONFIG_CIFS_XATTR
+ 	.setxattr = cifs_setxattr,
+ 	.getxattr = cifs_getxattr,
+-- 
+1.5.2.1
