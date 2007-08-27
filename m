@@ -1,9 +1,21 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: [PATCH 02/15] nfsd: remove unused cache_for_each macro
-Date: Mon, 27 Aug 2007 16:22:43 -0400
-Message-ID: <1188246176897-git-send-email-bfields@fieldses.org>
+Subject: [PATCH 13/15] knfsd: remove code duplication in
+	nfsd4_setclientid()
+Date: Mon, 27 Aug 2007 16:22:54 -0400
+Message-ID: <11882461782430-git-send-email-bfields@fieldses.org>
 References: <11882461763072-git-send-email-bfields@fieldses.org>
 	<1188246176681-git-send-email-bfields@fieldses.org>
+	<1188246176897-git-send-email-bfields@fieldses.org>
+	<1188246177833-git-send-email-bfields@fieldses.org>
+	<11882461773576-git-send-email-bfields@fieldses.org>
+	<11882461771774-git-send-email-bfields@fieldses.org>
+	<1188246177195-git-send-email-bfields@fieldses.org>
+	<11882461773396-git-send-email-bfields@fieldses.org>
+	<1188246177259-git-send-email-bfields@fieldses.org>
+	<1188246177192-git-send-email-bfields@fieldses.org>
+	<11882461773221-git-send-email-bfields@fieldses.org>
+	<11882461773657-git-send-email-bfields@fieldses.org>
+	<11882461772689-git-send-email-bfields@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Neil Brown <neilb@suse.de>,
@@ -13,13 +25,13 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IPl6y-0004gx-B8
+	id 1IPl6y-0004hG-QM
 	for nfs@lists.sourceforge.net; Mon, 27 Aug 2007 13:23:00 -0700
 Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IPl71-0003NA-I0
-	for nfs@lists.sourceforge.net; Mon, 27 Aug 2007 13:23:04 -0700
-In-Reply-To: <1188246176681-git-send-email-bfields@fieldses.org>
+	(Exim 4.44) id 1IPl71-0003O2-Hr
+	for nfs@lists.sourceforge.net; Mon, 27 Aug 2007 13:23:05 -0700
+In-Reply-To: <11882461772689-git-send-email-bfields@fieldses.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,34 +46,86 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 From: J. Bruce Fields <bfields@citi.umich.edu>
 
-This macro is unused.
+Each branch of this if-then-else has a bunch of duplicated code that we
+could just put at the end.
 
 Signed-off-by: "J. Bruce Fields" <bfields@citi.umich.edu>
 ---
- include/linux/sunrpc/cache.h |   10 ----------
- 1 files changed, 0 insertions(+), 10 deletions(-)
+ fs/nfsd/nfs4state.c |   30 ++++++------------------------
+ 1 files changed, 6 insertions(+), 24 deletions(-)
 
-diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
-index 3699dff..bd7a6b0 100644
---- a/include/linux/sunrpc/cache.h
-+++ b/include/linux/sunrpc/cache.h
-@@ -136,16 +136,6 @@ sunrpc_cache_update(struct cache_detail *detail,
- 		    struct cache_head *new, struct cache_head *old, int hash);
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 09573b9..6256492 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -774,13 +774,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		new = create_client(clname, dname);
+ 		if (new == NULL)
+ 			goto out;
+-		copy_verf(new, &clverifier);
+-		new->cl_addr = sin->sin_addr.s_addr;
+-		copy_cred(&new->cl_cred,&rqstp->rq_cred);
+ 		gen_clid(new);
+-		gen_confirm(new);
+-		gen_callback(new, setclid);
+-		add_to_unconfirmed(new, strhashval);
+ 	} else if (same_verf(&conf->cl_verifier, &clverifier)) {
+ 		/*
+ 		 * CASE 1:
+@@ -806,13 +800,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		new = create_client(clname, dname);
+ 		if (new == NULL)
+ 			goto out;
+-		copy_verf(new,&conf->cl_verifier);
+-		new->cl_addr = sin->sin_addr.s_addr;
+-		copy_cred(&new->cl_cred,&rqstp->rq_cred);
+ 		copy_clid(new, conf);
+-		gen_confirm(new);
+-		gen_callback(new, setclid);
+-		add_to_unconfirmed(new,strhashval);
+ 	} else if (!unconf) {
+ 		/*
+ 		 * CASE 2:
+@@ -825,13 +813,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		new = create_client(clname, dname);
+ 		if (new == NULL)
+ 			goto out;
+-		copy_verf(new,&clverifier);
+-		new->cl_addr = sin->sin_addr.s_addr;
+-		copy_cred(&new->cl_cred,&rqstp->rq_cred);
+ 		gen_clid(new);
+-		gen_confirm(new);
+-		gen_callback(new, setclid);
+-		add_to_unconfirmed(new, strhashval);
+ 	} else if (!same_verf(&conf->cl_confirm, &unconf->cl_confirm)) {
+ 		/*	
+ 		 * CASE3:
+@@ -852,19 +834,19 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		new = create_client(clname, dname);
+ 		if (new == NULL)
+ 			goto out;
+-		copy_verf(new,&clverifier);
+-		new->cl_addr = sin->sin_addr.s_addr;
+-		copy_cred(&new->cl_cred,&rqstp->rq_cred);
+ 		gen_clid(new);
+-		gen_confirm(new);
+-		gen_callback(new, setclid);
+-		add_to_unconfirmed(new, strhashval);
+ 	} else {
+ 		/* No cases hit !!! */
+ 		status = nfserr_inval;
+ 		goto out;
  
- 
--#define cache_for_each(pos, detail, index, member) 						\
--	for (({read_lock(&(detail)->hash_lock); index = (detail)->hash_size;}) ;		\
--	     ({if (index==0)read_unlock(&(detail)->hash_lock); index--;});			\
--		)										\
--		for (pos = container_of((detail)->hash_table[index], typeof(*pos), member);	\
--		     &pos->member;								\
--		     pos = container_of(pos->member.next, typeof(*pos), member))
--
--	     
--
- extern void cache_clean_deferred(void *owner);
- 
- static inline struct cache_head  *cache_get(struct cache_head *h)
+ 	}
++	copy_verf(new, &clverifier);
++	new->cl_addr = sin->sin_addr.s_addr;
++	copy_cred(&new->cl_cred, &rqstp->rq_cred);
++	gen_confirm(new);
++	gen_callback(new, setclid);
++	add_to_unconfirmed(new, strhashval);
+ 	setclid->se_clientid.cl_boot = new->cl_clientid.cl_boot;
+ 	setclid->se_clientid.cl_id = new->cl_clientid.cl_id;
+ 	memcpy(setclid->se_confirm.data, new->cl_confirm.data, sizeof(setclid->se_confirm.data));
 -- 
 1.5.3.rc5.19.g0734d
 
