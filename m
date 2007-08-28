@@ -1,50 +1,60 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 08/15] knfsd: spawn kernel thread to probe callback
-	channel
-Date: Mon, 27 Aug 2007 19:36:15 -0400
-Message-ID: <20070827233615.GP3118@fieldses.org>
-References: <11882461763072-git-send-email-bfields@fieldses.org> <1188246176681-git-send-email-bfields@fieldses.org> <1188246176897-git-send-email-bfields@fieldses.org> <1188246177833-git-send-email-bfields@fieldses.org> <11882461773576-git-send-email-bfields@fieldses.org> <11882461771774-git-send-email-bfields@fieldses.org> <1188246177195-git-send-email-bfields@fieldses.org> <11882461773396-git-send-email-bfields@fieldses.org> <1188246177259-git-send-email-bfields@fieldses.org> <18131.23980.89642.364179@notabene.brown>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: mount.nfs installation
+Date: Tue, 28 Aug 2007 10:01:36 +1000
+Message-ID: <18131.26080.357802.250064@notabene.brown>
+References: <20070827235349.GQ3118@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net,
-	Adrian Bunk <bunk@kernel.org>
-To: Neil Brown <neilb@suse.de>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1759607AbXH0Xg3@vger.kernel.org>
-In-Reply-To: <18131.23980.89642.364179@notabene.brown>
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1IPoWc-0000cT-5b
+	for nfs@lists.sourceforge.net; Mon, 27 Aug 2007 17:01:42 -0700
+Received: from mx1.suse.de ([195.135.220.2])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IPoWe-0006u0-Uc
+	for nfs@lists.sourceforge.net; Mon, 27 Aug 2007 17:01:46 -0700
+In-Reply-To: message from J. Bruce Fields on Monday August 27
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, Aug 28, 2007 at 09:26:36AM +1000, Neil Brown wrote:
-> On Monday August 27, bfields@fieldses.org wrote:
-> >  
-> > +/* Reference counting, callback cleanup, etc., all look racy as heck.
-> > + * And why is cb_set an atomic? */
+On Monday August 27, bfields@fieldses.org wrote:
+> I did a
 > 
-> Agreed.... so do we really want this code in mainline?  is the old
-> code so bad that this is better?
+> 	. autogen.sh
+> 	./configure --prefix=/usr/local
+> 	make
+> 	make install
+> 
+> from latest git (087c1bf) and it installed mount.nfs{4} in /sbin.  Is
+> this operator error on my part or something else?
 
-The code in question is just moved, not rewritten, so those are
-preexisting problems that I was just adding a whiny comment about in
-hopes it would remind me some more patches were probably needed.
-(Thanks for the reminder....)
+Given that 'mount' always looks in /sbin for helpers,  there is not a
+lot of point in installing elsewhere.
 
->  - cb_set should not be atomic.
->  - This looks like a job for async-rpc rather than a kernel thread
+commit 8ab0b89f09dff407101a6f22265873a283e73901
 
-The problem isn't the wait for the rpc itself, it's the creation of the
-new cred that's needed in the gss case.  That could also be made
-asynchronous, but as there's several other delicate changes in the
-pipeline (keyring stuff, etc.), I'd rather not touch it for now.
+(s/patch/path/ in changelog comment).
 
->  - If you do use a thread, you at least want __module_get before
->    starting the thread, and module_put_and_exit to terminate the
->    thread.
->  - Can you just use 'cb_client' rather than cb_set?  If you move
->    rpc_create into the thread, you don't need to set cb_client until
->    the callback is successful.  Then add a 'cb_active' flag bit
->    so that you don't have two callbacks at the same time, and it
->    should be less racy..
+NeilBrown
 
-Yep, probably so.
-
---b.
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Splunk Inc.
+Still grepping through log files to find problems?  Stop.
+Now Search log events and configuration files using AJAX and a browser.
+Download your FREE copy of Splunk now >>  http://get.splunk.com/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
