@@ -1,24 +1,37 @@
-From: James Lentini <jlentini@netapp.com>
-Subject: Re: [PATCH] NFS: fix length computation in
-	nfs_validate_mount_data
-Date: Wed, 29 Aug 2007 16:56:29 -0400 (EDT)
-Message-ID: <Pine.LNX.4.64.0708291653590.2779@jlentini-linux.nane.netapp.com>
-References: <Pine.LNX.4.64.0708291509500.2779@jlentini-linux.nane.netapp.com>
-	<46D5D774.20908@oracle.com>
+From: Michal Piotrowski <michal.k.k.piotrowski@gmail.com>
+Subject: Re: [2/2] 2.6.23-rc3: known regressions with patches
+Date: Wed, 29 Aug 2007 17:28:25 +0200
+Message-ID: <46D59099.8000709__49047.334426041$1188421259$gmane$org@googlemail.com>
+References: <46D58F89.4010108@googlemail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, trond.myklebust@fys.uio.no
-To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Florian Lohoff <flo@rfc822.org>, Netdev <netdev@vger.kernel.org>,
+	Ingo Molnar <mingo@elte.hu>,
+	Trond Myklebust <Trond.Myklebust@netapp.com>,
+	LKML <linux-kernel@vger.kernel.org>,
+	Christian Casteyde <casteyde.christian@free.fr>,
+	Harry Edmon <harry@atmos.washington.edu>,
+	Florin Iucha <florin@iucha.net>, nfs@lists.sourceforge.net,
+	"Daniel K." <daniel@cluded.net>, linux-mtd@lists.infradead.org,
+	linux-fsdevel@vger.kernel.org,
+	Alan Stern <stern@rowland.harvard.edu>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	David Woodhouse <dwmw2@infradead.org>, Bret Towe <magnade@gmail.com>,
+	Stephen Hemminger <shemminger@osdl.org>,
+	Pierre Ossman <drzeus-mmc@drzeus.cx>
+To: Linus Torvalds <torvalds@linux-foundation.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IQUam-0005UX-UX
-	for nfs@lists.sourceforge.net; Wed, 29 Aug 2007 13:56:49 -0700
-Received: from mx2.netapp.com ([216.240.18.37])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IQUaq-0001LC-D9
-	for nfs@lists.sourceforge.net; Wed, 29 Aug 2007 13:56:53 -0700
-In-Reply-To: <46D5D774.20908@oracle.com>
+	id 1IQPTc-0001IH-W1
+	for nfs@lists.sourceforge.net; Wed, 29 Aug 2007 08:29:05 -0700
+Received: from nf-out-0910.google.com ([64.233.182.189])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IQPTf-0006NV-LJ
+	for nfs@lists.sourceforge.net; Wed, 29 Aug 2007 08:29:09 -0700
+Received: by nf-out-0910.google.com with SMTP id 4so525707nfv
+	for <nfs@lists.sourceforge.net>; Wed, 29 Aug 2007 08:29:07 -0700 (PDT)
+In-Reply-To: <46D58F89.4010108@googlemail.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,40 +44,110 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+Hi all,
 
-Agreed. I didn't notice this in your patches.
+Here is a list of some known regressions in 2.6.23-rc4
+with patches available.
 
-On Wed, 29 Aug 2007, Chuck Lever wrote:
+Feel free to add new regressions/remove fixed etc.
+http://kernelnewbies.org/known_regressions
 
-> Yep, this is the same fix as one provided in the clean-up/bug-fix patches I
-> just resent today.
-> 
-> 
-> James Lentini wrote:
-> > While experimenting with the new string mount infrastructure, I noticed an
-> > off by one error in the computation of the hostname's length. This patch
-> > fixes the length computation to match the same computation in
-> > nfs4_validate_mount_data().
-> > 
-> > Signed-off-by: James Lentini <jlentini@netapp.com>
-> > ---
-> > 
-> >  fs/nfs/super.c |    2 +-
-> >  1 file changed, 1 insertion(+), 1 deletion(-)
-> > 
-> > --- fs/nfs/super.c	2007-08-29 15:06:59.320932000 -0400
-> > +++ fs/nfs/super.c	2007-08-29 15:07:51.439960000 -0400
-> > @@ -1153,7 +1153,7 @@ static int nfs_validate_mount_data(struc
-> >  		c = strchr(dev_name, ':');
-> >  		if (c == NULL)
-> >  			return -EINVAL;
-> > -		len = c - dev_name - 1;
-> > +		len = c - dev_name;
-> >  		if (len > sizeof(data->hostname))
-> >  			return -EINVAL;
-> >  		strncpy(data->hostname, dev_name, len);
-> 
-> 
+List of Aces
+
+Name                    Regressions fixed since 21-Jun-2007
+Adrian Bunk                            9
+Andi Kleen                             5
+Linus Torvalds                         5
+Andrew Morton                          4
+Hugh Dickins                           4
+Al Viro                                3
+Alan Stern                             3
+Cornelia Huck                          3
+Jens Axboe                             3
+Tejun Heo                              3
+
+
+
+FS
+
+Subject         : NFSv4 client OOPS
+References      : http://lkml.org/lkml/2007/8/28/207
+Last known good : ?
+Submitter       : Harry Edmon <harry@atmos.washington.edu>
+Caused-By       : ?
+Handled-By      : Trond Myklebust <Trond.Myklebust@netapp.com>
+Patch           : http://lkml.org/lkml/2007/8/28/204
+Status          : patch available
+
+Subject         : nfs4 hang/NFS woes again
+                  (was USB-related oops in sysfs with linux v2.6.23-rc3-50-g28e8351)
+References      : http://lkml.org/lkml/2007/8/15/144
+                  http://lkml.org/lkml/2007/8/22/484
+                  http://lkml.org/lkml/2007/8/23/134
+Last known good : ?
+Submitter       : Florin Iucha <florin@iucha.net>
+                  Bret Towe <magnade@gmail.com>
+Caused-By       : Trond Myklebust <Trond.Myklebust@netapp.com>
+                  commit 3d39c691ff486142dd9aaeac12f553f4476b7a62
+Handled-By      : Trond Myklebust <Trond.Myklebust@netapp.com>
+Patch           : http://lkml.org/lkml/2007/8/28/119
+Status          : patch available
+
+
+
+MMC
+
+Subject         : Unable to access memory card reader anymore
+References      : http://bugzilla.kernel.org/show_bug.cgi?id=8885
+Last known good : ?
+Submitter       : Christian Casteyde <casteyde.christian@free.fr>
+Caused-By       : ?
+Handled-By      : Alan Stern <stern@rowland.harvard.edu>
+Patch           : http://bugzilla.kernel.org/attachment.cgi?id=12438
+Status          : patch available
+
+
+
+MTD
+
+Subject         : error: implicit declaration of function 'cfi_interleave'
+References      : http://lkml.org/lkml/2007/8/6/272
+Last known good : ?
+Submitter       : Ingo Molnar <mingo@elte.hu>
+Caused-By       : ?
+Handled-By      : David Woodhouse <dwmw2@infradead.org>
+Patch           : http://lkml.org/lkml/2007/8/9/586
+Status          : patch available
+
+
+
+Networking
+
+Subject         : BUG: when using 'brctl stp'
+References      : http://lkml.org/lkml/2007/8/10/441
+Last known good : 2.6.23-rc1
+Submitter       : Daniel K. <daniel@cluded.net>
+Caused-By       : ?
+Handled-By      : Stephen Hemminger <shemminger@osdl.org>
+Status          : fix applied by David Miller
+
+Subject         : sky2 boot crash in sky2_mac_intr
+References      : http://lkml.org/lkml/2007/7/24/91
+Last known good : ?
+Submitter       : Florian Lohoff <flo@rfc822.org>
+Caused-By       : 
+Handled-By      : Stephen Hemminger <shemminger@osdl.org>
+Patch           : http://marc.info/?l=linux-netdev&m=118651402523966&w=2
+Status          : patch available
+
+
+
+Regards,
+Michal
+
+-- 
+LOG
+http://www.stardust.webpages.pl/log/
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
