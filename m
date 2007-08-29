@@ -1,25 +1,25 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [RFC,PATCH 03/20] svc: xpt_prep_reply_hdr
-Date: Wed, 29 Aug 2007 13:15:46 -0400
-Message-ID: <46D5A9C2.6000300@oracle.com>
+Subject: Re: [RFC,PATCH 04/20] svc: xpt_has_wspace
+Date: Wed, 29 Aug 2007 13:32:55 -0400
+Message-ID: <46D5ADC7.2090009@oracle.com>
 References: <20070820162000.15224.65524.stgit@dell3.ogc.int>
-	<20070820162327.15224.25232.stgit@dell3.ogc.int>
+	<20070820162329.15224.29032.stgit@dell3.ogc.int>
 Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------060604030006010404070909"
+Content-Type: multipart/mixed; boundary="------------030704060802030703020207"
 Cc: nfs@lists.sourceforge.net
 To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IQR9k-0007bo-KE
-	for nfs@lists.sourceforge.net; Wed, 29 Aug 2007 10:16:41 -0700
-Received: from rgminet01.oracle.com ([148.87.113.118])
+	id 1IQRQo-00012a-1l
+	for nfs@lists.sourceforge.net; Wed, 29 Aug 2007 10:34:18 -0700
+Received: from agminet01.oracle.com ([141.146.126.228])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IQR9n-00008K-NT
-	for nfs@lists.sourceforge.net; Wed, 29 Aug 2007 10:16:45 -0700
-In-Reply-To: <20070820162327.15224.25232.stgit@dell3.ogc.int>
+	(Exim 4.44) id 1IQRQs-0006EN-7Z
+	for nfs@lists.sourceforge.net; Wed, 29 Aug 2007 10:34:22 -0700
+In-Reply-To: <20070820162329.15224.29032.stgit@dell3.ogc.int>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,117 +33,191 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 This is a multi-part message in MIME format.
---------------060604030006010404070909
+--------------030704060802030703020207
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
 
 Tom Tucker wrote:
-> Add a transport function that prepares the transport specific header for 
-> RPC replies. UDP has none, TCP has a 4B record length. This will
-> allow the RDMA transport to prepare it's variable length reply
-> header as well.
+> Move the code that checks for available write space on the socket, 
+> into a new transport function. This will allow transports flexibility
+> when determining if enough space/memory is available to process
+> the reply. The role of this function for RDMA is to avoid stalling
+> an knfsd thread when SQ space is not available.
 > 
+> Signed-off-by: Greg Banks <gnb@melbourne.sgi.com>
+> Signed-off-by: Peter Leckie <pleckie@melbourne.sgi.com>
 > Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 > ---
 > 
->  include/linux/sunrpc/svcsock.h |    4 ++++
->  net/sunrpc/svc.c               |    8 +++++---
->  net/sunrpc/svcsock.c           |   15 +++++++++++++++
->  3 files changed, 24 insertions(+), 3 deletions(-)
+>  include/linux/sunrpc/svcsock.h |    4 ++
+>  net/sunrpc/svcsock.c           |   75 ++++++++++++++++++++++++++--------------
+>  2 files changed, 52 insertions(+), 27 deletions(-)
 > 
 > diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
-> index 27c5b1f..1da42c2 100644
+> index 1da42c2..3faa95c 100644
 > --- a/include/linux/sunrpc/svcsock.h
 > +++ b/include/linux/sunrpc/svcsock.h
-> @@ -27,6 +27,10 @@ struct svc_xprt {
->  	 * destruction of a svc_sock.
+> @@ -31,6 +31,10 @@ struct svc_xprt {
+>  	 * Prepare any transport-specific RPC header.
 >  	 */
->  	void			(*xpt_free)(struct svc_sock *);
+>  	int                     (*xpt_prep_reply_hdr)(struct svc_rqst *);
 > +	/*
-> +	 * Prepare any transport-specific RPC header.
+> +	 * Return 1 if sufficient space to write reply to network.
 > +	 */
-> +	int                     (*xpt_prep_reply_hdr)(struct svc_rqst *);
+> +	int			(*xpt_has_wspace)(struct svc_sock *);
 >  };
 
-A shorter name for this one might be nice, but I know it's kind of hard 
-to choose one.
+Again I think this documentation, while important (required, even), 
+should go somewhere else.  There is more information required here for a 
+complete function document, but there isn't enough space in this 
+structure for it.
+
+And as before the "svc_sock *" might be replaced with something more 
+generic.
 
 >  /*
-> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-> index e673ef9..72a900f 100644
-> --- a/net/sunrpc/svc.c
-> +++ b/net/sunrpc/svc.c
-> @@ -815,9 +815,11 @@ svc_process(struct svc_rqst *rqstp)
->  	rqstp->rq_res.tail[0].iov_len = 0;
->  	/* Will be turned off only in gss privacy case: */
->  	rqstp->rq_sendfile_ok = 1;
-> -	/* tcp needs a space for the record length... */
-> -	if (rqstp->rq_prot == IPPROTO_TCP)
-> -		svc_putnl(resv, 0);
-> +
-> +	/* setup response header. */
-> +	if (rqstp->rq_sock->sk_xprt->xpt_prep_reply_hdr &&
-> +	    rqstp->rq_sock->sk_xprt->xpt_prep_reply_hdr(rqstp))
-> +		goto dropit;
-
-Although others might disagree, I like making all the transport methods 
-mandatory.
-
-The TCP transport will be the common case here, and that will always 
-have to do both the existence check and the call.
-
-What is the purpose of the return code?  Does the RDMA header 
-constructor return something other than zero, and if so, why?
-
-And finally a dumb style nit... I generally don't like the extra comment 
-here -- it restates what is already clear.
-
->  	rqstp->rq_xid = svc_getu32(argv);
->  	svc_putu32(resv, rqstp->rq_xid);
 > diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-> index 4956c88..ca473ee 100644
+> index ca473ee..b16dad4 100644
 > --- a/net/sunrpc/svcsock.c
 > +++ b/net/sunrpc/svcsock.c
-> @@ -1326,12 +1326,27 @@ svc_tcp_sendto(struct svc_rqst *rqstp)
->  	return sent;
+> @@ -205,22 +205,6 @@ svc_release_skb(struct svc_rqst *rqstp)
 >  }
 >  
-> +/*
-> + * Setup response header. TCP has a 4B record length field.
+>  /*
+> - * Any space to write?
+> - */
+> -static inline unsigned long
+> -svc_sock_wspace(struct svc_sock *svsk)
+> -{
+> -	int wspace;
+> -
+> -	if (svsk->sk_sock->type == SOCK_STREAM)
+> -		wspace = sk_stream_wspace(svsk->sk_sk);
+> -	else
+> -		wspace = sock_wspace(svsk->sk_sk);
+> -
+> -	return wspace;
+> -}
+> -
+> -/*
+>   * Queue up a socket with data pending. If there are idle nfsd
+>   * processes, wake 'em up.
+>   *
+> @@ -269,21 +253,13 @@ svc_sock_enqueue(struct svc_sock *svsk)
+>  	BUG_ON(svsk->sk_pool != NULL);
+>  	svsk->sk_pool = pool;
+>  
+> -	set_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
+> -	if (((atomic_read(&svsk->sk_reserved) + serv->sv_max_mesg)*2
+> -	     > svc_sock_wspace(svsk))
+> -	    && !test_bit(SK_CLOSE, &svsk->sk_flags)
+> -	    && !test_bit(SK_CONN, &svsk->sk_flags)) {
+> -		/* Don't enqueue while not enough space for reply */
+> -		dprintk("svc: socket %p  no space, %d*2 > %ld, not enqueued\n",
+> -			svsk->sk_sk, atomic_read(&svsk->sk_reserved)+serv->sv_max_mesg,
+> -			svc_sock_wspace(svsk));
+> +	if (!test_bit(SK_CLOSE, &svsk->sk_flags)
+> +	    && !test_bit(SK_CONN, &svsk->sk_flags)
+> +	    && !svsk->sk_xprt->xpt_has_wspace(svsk)) {
+>  		svsk->sk_pool = NULL;
+>  		clear_bit(SK_BUSY, &svsk->sk_flags);
+>  		goto out_unlock;
+>  	}
+> -	clear_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
+> -
+>  
+>  	if (!list_empty(&pool->sp_threads)) {
+>  		rqstp = list_entry(pool->sp_threads.next,
+
+Your patch changes the order of the tests here of SOCK_NOSPACE, 
+SK_CLOSE, SK_CONN, and the other variables.  Can you prove this is safe?
+
+Have you considered abstracting all of svc_sock_enqueue into the switch 
+API, instead of just the wspace checking part?  At some point the RDMA 
+transport may want to schedule the enqueued I/O differently than the 
+socket interface does.
+
+If not, it should be made more generic (perhaps moved out of svcsock.c 
+and renamed).
+
+> @@ -882,12 +858,45 @@ svc_udp_sendto(struct svc_rqst *rqstp)
+>  	return error;
+>  }
+>  
+> +/**
+> + * svc_sock_has_write_space - Checks if there is enough space
+> + * to send the reply on the socket.
+> + * @svsk: the svc_sock to write on
+> + * @wspace: the number of bytes available for writing
 > + */
-> +static int
-> +svc_tcp_prep_reply_hdr(struct svc_rqst *rqstp)
+> +static int svc_sock_has_write_space(struct svc_sock *svsk, int wspace)
 > +{
-> +	struct kvec *resv = &rqstp->rq_res.head[0];
+> +	struct svc_serv	*serv = svsk->sk_server;
+> +	int required = atomic_read(&svsk->sk_reserved) + serv->sv_max_mesg;
 > +
-> +	/* tcp needs a space for the record length... */
-> +	svc_putnl(resv, 0);
+> +	if (required*2 > wspace) {
+> +		/* Don't enqueue while not enough space for reply */
+> +		dprintk("svc: socket %p  no space, %d*2 > %d, not enqueued\n",
+> +			svsk->sk_sk, required, wspace);
+> +		return 0;
+> +	}
+> +	clear_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
+> +	return 1;
+> +}
+
+My own style preference here is to keep the set_bit(SOCK_NOSPACE) and 
+clear_bit(SOCK_NOSPACE) in the same function if possible, just as a 
+defensive coding practice.
+
+> +static int
+> +svc_udp_has_wspace(struct svc_sock *svsk)
+> +{
+> +	/*
+> +	 * Set the SOCK_NOSPACE flag before checking the available
+> +	 * sock space.
+> +	 */
+> +	set_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
+> +	return svc_sock_has_write_space(svsk, sock_wspace(svsk->sk_sk));
+> +}
 > +
-> +	return 0;
+>  static const struct svc_xprt svc_udp_xprt = {
+>  	.xpt_name = "udp",
+>  	.xpt_recvfrom = svc_udp_recvfrom,
+>  	.xpt_sendto = svc_udp_sendto,
+>  	.xpt_detach = svc_sock_detach,
+>  	.xpt_free = svc_sock_free,
+> +	.xpt_has_wspace = svc_udp_has_wspace,
+>  };
+>  
+>  static void
+> @@ -1340,6 +1349,17 @@ svc_tcp_prep_reply_hdr(struct svc_rqst *
+>  	return 0;
+>  }
+>  
+> +static int
+> +svc_tcp_has_wspace(struct svc_sock *svsk)
+> +{
+> +	/*
+> +	 * Set the SOCK_NOSPACE flag before checking the available
+> +	 * sock space.
+> +	 */
+> +	set_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
+> +	return svc_sock_has_write_space(svsk, sk_stream_wspace(svsk->sk_sk));
 > +}
 > +
 >  static const struct svc_xprt svc_tcp_xprt = {
 >  	.xpt_name = "tcp",
 >  	.xpt_recvfrom = svc_tcp_recvfrom,
->  	.xpt_sendto = svc_tcp_sendto,
+> @@ -1347,6 +1367,7 @@ static const struct svc_xprt svc_tcp_xpr
 >  	.xpt_detach = svc_sock_detach,
 >  	.xpt_free = svc_sock_free,
-> +	.xpt_prep_reply_hdr = svc_tcp_prep_reply_hdr,
+>  	.xpt_prep_reply_hdr = svc_tcp_prep_reply_hdr,
+> +	.xpt_has_wspace = svc_tcp_has_wspace,
 >  };
 >  
 >  static void
-> 
-> -------------------------------------------------------------------------
-> This SF.net email is sponsored by: Splunk Inc.
-> Still grepping through log files to find problems?  Stop.
-> Now Search log events and configuration files using AJAX and a browser.
-> Download your FREE copy of Splunk now >>  http://get.splunk.com/
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
 
-
---------------060604030006010404070909
+--------------030704060802030703020207
 Content-Type: text/x-vcard; charset=utf-8;
  name="chuck.lever.vcf"
 Content-Transfer-Encoding: 7bit
@@ -163,7 +237,7 @@ version:2.1
 end:vcard
 
 
---------------060604030006010404070909
+--------------030704060802030703020207
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -174,7 +248,7 @@ This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
---------------060604030006010404070909
+--------------030704060802030703020207
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -184,4 +258,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---------------060604030006010404070909--
+--------------030704060802030703020207--
