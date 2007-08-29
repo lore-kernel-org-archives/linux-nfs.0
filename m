@@ -1,25 +1,25 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [RFC,PATCH 08/20] svc: centralise accept handling
-Date: Wed, 29 Aug 2007 14:40:10 -0400
-Message-ID: <46D5BD8A.5090509@oracle.com>
+Subject: Re: [RFC,PATCH 09/20] svc: Add SK_LISTENER flag
+Date: Wed, 29 Aug 2007 14:41:22 -0400
+Message-ID: <46D5BDD2.1040203@oracle.com>
 References: <20070820162000.15224.65524.stgit@dell3.ogc.int>
-	<20070820162338.15224.14674.stgit@dell3.ogc.int>
+	<20070820162340.15224.63721.stgit@dell3.ogc.int>
 Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------040407050400010803030802"
+Content-Type: multipart/mixed; boundary="------------080706020503060405020007"
 Cc: nfs@lists.sourceforge.net
 To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IQSTC-000899-I2
-	for nfs@lists.sourceforge.net; Wed, 29 Aug 2007 11:40:50 -0700
-Received: from agminet01.oracle.com ([141.146.126.228])
+	id 1IQSU9-0008FH-HS
+	for nfs@lists.sourceforge.net; Wed, 29 Aug 2007 11:41:49 -0700
+Received: from rgminet01.oracle.com ([148.87.113.118])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IQSTG-00027O-PC
-	for nfs@lists.sourceforge.net; Wed, 29 Aug 2007 11:40:55 -0700
-In-Reply-To: <20070820162338.15224.14674.stgit@dell3.ogc.int>
+	(Exim 4.44) id 1IQSUD-00065G-Qs
+	for nfs@lists.sourceforge.net; Wed, 29 Aug 2007 11:41:54 -0700
+In-Reply-To: <20070820162340.15224.63721.stgit@dell3.ogc.int>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,146 +33,62 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 This is a multi-part message in MIME format.
---------------040407050400010803030802
+--------------080706020503060405020007
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
 
 Tom Tucker wrote:
-> Centralise the handling of the SK_CONN bit so that future
-> server transport implementations will be easier to
-> write correctly.  Also, the xpt_recvfrom method does not 
-> need to check for SK_CONN anymore, that's handled in core 
-> code which calls a new xpt_accept method.
+> Use a new svc_sock flag, SK_LISTENER, that is permanently set on
+> listener sockets. Use that to test for listeners in a way that
+> is not TCP-specific and does not assume the presence of a socket.
+
+OK, this should go before the previous patch that moves the TCP_LISTEN 
+check into svc_recv.
+
 > 
 > Signed-off-by: Greg Banks <gnb@melbourne.sgi.com>
-> Signed-off-by: Peter Leckie <pleckie@melbourne.sgi.com>
-> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 > ---
 > 
->  include/linux/sunrpc/svcsock.h |    4 ++++
->  net/sunrpc/svcsock.c           |   24 +++++++++++-------------
->  2 files changed, 15 insertions(+), 13 deletions(-)
+>  include/linux/sunrpc/svcsock.h |    1 +
+>  net/sunrpc/svcsock.c           |    3 ++-
+>  2 files changed, 3 insertions(+), 1 deletions(-)
 > 
 > diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
-> index 0145057..7663578 100644
+> index 7663578..ea8b62b 100644
 > --- a/include/linux/sunrpc/svcsock.h
 > +++ b/include/linux/sunrpc/svcsock.h
-> @@ -41,6 +41,10 @@ struct svc_xprt {
->  	 * svc_sock.
->  	 */
->  	u32			xpt_max_payload;
-> +	/*
-> +	 * Accept a pending connection, for connection-oriented transports
-> +	 */
-> +	int			(*xpt_accept)(struct svc_sock *svsk);
->  };
+> @@ -70,6 +70,7 @@ #define	SK_CHNGBUF	7			/* need to change
+>  #define	SK_DEFERRED	8			/* request on sk_deferred */
+>  #define	SK_OLD		9			/* used for temp socket aging mark+sweep */
+>  #define	SK_DETACHED	10			/* detached from tempsocks list */
+> +#define	SK_LISTENER	11			/* listener (e.g. TCP) socket */
 >  
->  /*
+>  	atomic_t    	    	sk_reserved;	/* space on outq that is reserved */
+>  
 > diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-> index 5c3a794..94eb921 100644
+> index 94eb921..dcb5c7a 100644
 > --- a/net/sunrpc/svcsock.c
 > +++ b/net/sunrpc/svcsock.c
-> @@ -1012,7 +1012,7 @@ static inline int svc_port_is_privileged
->  /*
->   * Accept a TCP connection
->   */
-> -static void
-> +static int
->  svc_tcp_accept(struct svc_sock *svsk)
->  {
->  	struct sockaddr_storage addr;
-> @@ -1021,12 +1021,12 @@ svc_tcp_accept(struct svc_sock *svsk)
->  	struct socket	*sock = svsk->sk_sock;
->  	struct socket	*newsock;
->  	struct svc_sock	*newsvsk;
-> -	int		err, slen;
-> +	int		err = 0, slen;
->  	char		buf[RPC_MAX_ADDRBUFLEN];
->  
->  	dprintk("svc: tcp_accept %p sock %p\n", svsk, sock);
->  	if (!sock)
-> -		return;
-> +		return -EINVAL;
->  
->  	clear_bit(SK_CONN, &svsk->sk_flags);
->  	err = kernel_accept(sock, &newsock, O_NONBLOCK);
-> @@ -1037,9 +1037,8 @@ svc_tcp_accept(struct svc_sock *svsk)
->  		else if (err != -EAGAIN && net_ratelimit())
->  			printk(KERN_WARNING "%s: accept failed (err %d)!\n",
->  				   serv->sv_name, -err);
-> -		return;
-> +		return err;
->  	}
-> -
->  	set_bit(SK_CONN, &svsk->sk_flags);
->  	svc_sock_enqueue(svsk);
->  
-> @@ -1124,11 +1123,11 @@ svc_tcp_accept(struct svc_sock *svsk)
->  	if (serv->sv_stats)
->  		serv->sv_stats->nettcpconn++;
->  
-> -	return;
-> +	return 0;
->  
->  failed:
->  	sock_release(newsock);
-> -	return;
-> +	return err;
->  }
->  
->  /*
-> @@ -1153,12 +1152,6 @@ svc_tcp_recvfrom(struct svc_rqst *rqstp)
->  		return svc_deferred_recv(rqstp);
->  	}
->  
-> -	if (svsk->sk_sk->sk_state == TCP_LISTEN) {
-> -		svc_tcp_accept(svsk);
-> -		svc_sock_received(svsk);
-> -		return 0;
-> -	}
-> -
->  	if (test_and_clear_bit(SK_CHNGBUF, &svsk->sk_flags))
->  		/* sndbuf needs to have room for one request
->  		 * per thread, otherwise we can stall even when the
-> @@ -1361,6 +1354,7 @@ static const struct svc_xprt svc_tcp_xpr
->  	.xpt_prep_reply_hdr = svc_tcp_prep_reply_hdr,
->  	.xpt_has_wspace = svc_tcp_has_wspace,
->  	.xpt_max_payload = RPCSVC_MAXPAYLOAD_TCP,
-> +	.xpt_accept = svc_tcp_accept,
->  };
->  
->  static void
-> @@ -1521,6 +1515,9 @@ svc_recv(struct svc_rqst *rqstp, long ti
+> @@ -1368,6 +1368,7 @@ svc_tcp_init(struct svc_sock *svsk)
+>  	if (sk->sk_state == TCP_LISTEN) {
+>  		dprintk("setting up TCP socket for listening\n");
+>  		sk->sk_data_ready = svc_tcp_listen_data_ready;
+> +		set_bit(SK_LISTENER, &svsk->sk_flags);
+>  		set_bit(SK_CONN, &svsk->sk_flags);
+>  	} else {
+>  		dprintk("setting up TCP socket for reading\n");
+> @@ -1515,7 +1516,7 @@ svc_recv(struct svc_rqst *rqstp, long ti
 >  	if (test_bit(SK_CLOSE, &svsk->sk_flags)) {
 >  		dprintk("svc_recv: found SK_CLOSE\n");
 >  		svc_delete_socket(svsk);
-> +	} else if (svsk->sk_sk->sk_state == TCP_LISTEN) {
-
-This checks a flag in a "struct sock" in the middle of a "generic" 
-function.  Seems like a step backwards to me.
-
-> +		svsk->sk_xprt->xpt_accept(svsk);
-
-Why aren't you using the return value you just added to svc_tcp_accept?
-
-> +		svc_sock_received(svsk);
+> -	} else if (svsk->sk_sk->sk_state == TCP_LISTEN) {
+> +	} else if (test_bit(SK_LISTENER, &svsk->sk_flags)) {
+>  		svsk->sk_xprt->xpt_accept(svsk);
+>  		svc_sock_received(svsk);
 >  	} else {
->  		dprintk("svc: server %p, pool %u, socket %p, inuse=%d\n",
->  			 rqstp, pool->sp_id, svsk, atomic_read(&svsk->sk_inuse));
-> @@ -1660,6 +1657,7 @@ static struct svc_sock *svc_setup_socket
->  	int		is_temporary = flags & SVC_SOCK_TEMPORARY;
->  
->  	dprintk("svc: svc_setup_socket %p\n", sock);
-> +	*errp = 0;
 
-Hrm, if this is a genuine omission not related to the other changes in 
-this patch, you should perhaps send this as a separate patch.
 
->  	if (!(svsk = kzalloc(sizeof(*svsk), GFP_KERNEL))) {
->  		*errp = -ENOMEM;
->  		return NULL;
-
---------------040407050400010803030802
+--------------080706020503060405020007
 Content-Type: text/x-vcard; charset=utf-8;
  name="chuck.lever.vcf"
 Content-Transfer-Encoding: 7bit
@@ -192,7 +108,7 @@ version:2.1
 end:vcard
 
 
---------------040407050400010803030802
+--------------080706020503060405020007
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -203,7 +119,7 @@ This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
---------------040407050400010803030802
+--------------080706020503060405020007
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -213,4 +129,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---------------040407050400010803030802--
+--------------080706020503060405020007--
