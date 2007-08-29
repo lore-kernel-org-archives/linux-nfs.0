@@ -1,27 +1,25 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [RFC,PATCH 04/20] svc: xpt_has_wspace
-Date: Wed, 29 Aug 2007 16:29:53 -0400
-Message-ID: <20070829202953.GB4687@fieldses.org>
-References: <20070820162000.15224.65524.stgit@dell3.ogc.int>
-	<20070820162329.15224.29032.stgit@dell3.ogc.int>
-	<20070829185323.GF23541@fieldses.org>
-	<1188418276.7502.29.camel@trinity.ogc.int>
-	<1188419193.7502.38.camel@trinity.ogc.int>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH] NFS: fix length computation in
+	nfs_validate_mount_data
+Date: Wed, 29 Aug 2007 16:30:44 -0400
+Message-ID: <46D5D774.20908@oracle.com>
+References: <Pine.LNX.4.64.0708291509500.2779@jlentini-linux.nane.netapp.com>
+Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net
-To: Tom Tucker <tom@opengridcomputing.com>
+Content-Type: multipart/mixed; boundary="------------070008030001000100020902"
+Cc: nfs@lists.sourceforge.net, trond.myklebust@fys.uio.no
+To: James Lentini <jlentini@netapp.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IQUAi-0002nn-K1
-	for nfs@lists.sourceforge.net; Wed, 29 Aug 2007 13:29:54 -0700
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	id 1IQUDX-00038c-ON
+	for nfs@lists.sourceforge.net; Wed, 29 Aug 2007 13:32:47 -0700
+Received: from rgminet01.oracle.com ([148.87.113.118])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IQUAl-00022z-Qd
-	for nfs@lists.sourceforge.net; Wed, 29 Aug 2007 13:29:57 -0700
-In-Reply-To: <1188419193.7502.38.camel@trinity.ogc.int>
+	(Exim 4.44) id 1IQUDb-0003na-0p
+	for nfs@lists.sourceforge.net; Wed, 29 Aug 2007 13:32:52 -0700
+In-Reply-To: <Pine.LNX.4.64.0708291509500.2779@jlentini-linux.nane.netapp.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,17 +32,79 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, Aug 29, 2007 at 03:26:33PM -0500, Tom Tucker wrote:
-> Oops, I didn't mean what I wrote. All the conditions will NOT be tested,
-> but I think the side affects of the order are benign. 
+This is a multi-part message in MIME format.
+--------------070008030001000100020902
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-Oops, OK.--b.
+Yep, this is the same fix as one provided in the clean-up/bug-fix 
+patches I just resent today.
+
+
+James Lentini wrote:
+> While experimenting with the new string mount infrastructure, I 
+> noticed an off by one error in the computation of the hostname's 
+> length. This patch fixes the length computation to match the same 
+> computation in nfs4_validate_mount_data().
+> 
+> Signed-off-by: James Lentini <jlentini@netapp.com>
+> ---
+> 
+>  fs/nfs/super.c |    2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> --- fs/nfs/super.c	2007-08-29 15:06:59.320932000 -0400
+> +++ fs/nfs/super.c	2007-08-29 15:07:51.439960000 -0400
+> @@ -1153,7 +1153,7 @@ static int nfs_validate_mount_data(struc
+>  		c = strchr(dev_name, ':');
+>  		if (c == NULL)
+>  			return -EINVAL;
+> -		len = c - dev_name - 1;
+> +		len = c - dev_name;
+>  		if (len > sizeof(data->hostname))
+>  			return -EINVAL;
+>  		strncpy(data->hostname, dev_name, len);
+
+
+--------------070008030001000100020902
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck.lever.vcf"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="chuck.lever.vcf"
+
+begin:vcard
+fn:Chuck Lever
+n:Lever;Chuck
+org:Oracle Corporation;Corporate Architecture: Linux Projects Group
+adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
+email;internet:chuck dot lever at nospam oracle dot com
+title:Principal Member of Staff
+tel;work:+1 248 614 5091
+x-mozilla-html:FALSE
+version:2.1
+end:vcard
+
+
+--------------070008030001000100020902
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
+--------------070008030001000100020902
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--------------070008030001000100020902--
