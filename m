@@ -1,24 +1,24 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: need info on IPv6 support for NFS in RHEL and SLES distros
-Date: Wed, 29 Aug 2007 12:19:27 -0400
-Message-ID: <46D59C8F.8070508@oracle.com>
-References: <3DFE68BCB5D6994994AA6CB1EC581EA30411E61E@qcaexc02.asiapacific.cpqcorp.net>
+Subject: Re: [RFC,PATCH 00/20] svc: Server Side Transport Switch
+Date: Wed, 29 Aug 2007 12:50:38 -0400
+Message-ID: <46D5A3DE.8030208@oracle.com>
+References: <20070820162000.15224.65524.stgit@dell3.ogc.int>
 Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------020403050009050906090407"
+Content-Type: multipart/mixed; boundary="------------020407010501030105070707"
 Cc: nfs@lists.sourceforge.net
-To: "Prasad, Rahul B (STSD)" <rahul.prasad@hp.com>
+To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IQQGw-0001M6-OB
-	for nfs@lists.sourceforge.net; Wed, 29 Aug 2007 09:20:03 -0700
-Received: from agminet01.oracle.com ([141.146.126.228])
+	id 1IQQmN-00056a-CX
+	for nfs@lists.sourceforge.net; Wed, 29 Aug 2007 09:52:31 -0700
+Received: from rgminet01.oracle.com ([148.87.113.118])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IQQGz-0001eW-Dz
-	for nfs@lists.sourceforge.net; Wed, 29 Aug 2007 09:20:07 -0700
-In-Reply-To: <3DFE68BCB5D6994994AA6CB1EC581EA30411E61E@qcaexc02.asiapacific.cpqcorp.net>
+	(Exim 4.44) id 1IQQmP-0008SK-Jg
+	for nfs@lists.sourceforge.net; Wed, 29 Aug 2007 09:52:35 -0700
+In-Reply-To: <20070820162000.15224.65524.stgit@dell3.ogc.int>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,39 +32,74 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 This is a multi-part message in MIME format.
---------------020403050009050906090407
+--------------020407010501030105070707
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
 
-Prasad, Rahul B (STSD) wrote:
-> Hello all,
-> 
->  
-> 
-> I need information on whether IPv6 is supported on NFS for the following 
-> distros:
-> 
->  
-> 
-> Redhat Enterprise Edition Linux 4 (base version)
-> 
-> Redhat Enterprise Edition Linux 5 (base version)
-> 
-> SuSE Enterprise Linux Server 9 (base version)
-> 
-> SuSE Enterprise Linux Server 10 (base version)
-> 
->  
-> 
-> I am mailing this after searching through the RedHat docs, to no avail. 
->  I would be glad if you could help me on this.
+Hi Tom-
 
-Rahul-
+Tom Tucker wrote:
+> This patchset represents an update to the previously published 
+> version. The most significant changes are a renaming of the 
+> transport switch data structures and functions based on a 
+> recommendation from Chuck Lever. Code cleanup was also done in the
+> portlist implementation based on feedback from Trond. Additionally, 
+> the synopsis for the register/unregister services were changed
+> to return errors and module reference counting was added. 
+> 
+> I've included the original description below for new reviewers.
+> 
+> This patchset implements a sunrpc server side pluggable transport 
+> switch that supports dynamically registered transports. 
+> 
+> The knfsd daemon has been modified to allow user-mode programs 
+> to add a new listening endpoint by writing a string
+> to the portlist file. The format of the string is as follows:
+> 
+> <transport-name> <port>
+> 
+> For example,
+> 
+> # echo rdma 2050 > /proc/fs/nfsd/portlist
+> 
+> Will cause the knfsd daemon to attempt to add a listening endpoint on 
+> port 2050 using the 'rdma' transport.
 
-No Linux distribution contains IPv6 support for NFS right now.  The 
-implementation is still being developed.
+Does this also register the new endpoint with the server's portmapper, 
+or is there an additional step required for this?  At least for RDMA I 
+assume the portmapper registration is not needed, but other transports 
+may want it.
 
---------------020403050009050906090407
+> Transports register themselves with the transport switch using a
+> new API that has the following synopsis:
+> 
+> int svc_register_transport(struct svc_sock_ops *xprt)
+
+As before, the "sock" in svc_sock_ops might be better left out for what 
+is ostensibly a generic data structure.
+
+> The text transport name is contained in a field in the xprt structure.
+> A new service has been added as well to take a transport name
+> instead of an IP protocol number to specify the transport on which the 
+> listening endpoint is to be created. This function is defined as follows:
+> 
+> int svc_create_svcsock(struct svc_serv, char *transport_name, 
+>                        unsigned short port, int flags);
+
+Again, "sock" should be sensibly excised from the function name.
+
+> The existing svc_makesock interface was left to avoid impacts to existing 
+> servers. It has been modified to map IP protocol numbers to transport 
+> strings.
+
+I think the client and server should use the *same* mechanism for 
+matching transports -- either a string *or* a protocol number (not 
+necessarily the IPPROTO number, but something mapped to it, so we can 
+add transport types like RDMA that don't have an IPPROTO number already).
+
+How do others feel about this?  String, or protocol number?
+
+--------------020407010501030105070707
 Content-Type: text/x-vcard; charset=utf-8;
  name="chuck.lever.vcf"
 Content-Transfer-Encoding: 7bit
@@ -84,7 +119,7 @@ version:2.1
 end:vcard
 
 
---------------020403050009050906090407
+--------------020407010501030105070707
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -95,7 +130,7 @@ This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
---------------020403050009050906090407
+--------------020407010501030105070707
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -105,4 +140,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---------------020403050009050906090407--
+--------------020407010501030105070707--
