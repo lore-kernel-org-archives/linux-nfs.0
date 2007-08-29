@@ -1,8 +1,7 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 1/8] SUNRPC: Add a new error code for retry waiting
-	for	another binder
-Date: Wed, 29 Aug 2007 15:49:26 -0400
-Message-ID: <20070829194926.14142.65866.stgit@manray.1015granger.net>
+Subject: [PATCH 7/8] NFS: Return a real error code from mount(2)
+Date: Wed, 29 Aug 2007 15:49:39 -0400
+Message-ID: <20070829194939.14142.26739.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
@@ -11,11 +10,11 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IQTXo-0007Cp-QU
-	for nfs@lists.sourceforge.net; Wed, 29 Aug 2007 12:49:40 -0700
+	id 1IQTXw-0007D9-PO
+	for nfs@lists.sourceforge.net; Wed, 29 Aug 2007 12:49:49 -0700
 Received: from flpi101.sbcis.sbc.com ([207.115.20.70] helo=flpi101.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IQTXt-0003NY-6Y
-	for nfs@lists.sourceforge.net; Wed, 29 Aug 2007 12:49:45 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IQTY0-0003R7-7W
+	for nfs@lists.sourceforge.net; Wed, 29 Aug 2007 12:49:53 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,51 +27,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-We want to make rpcbind error recovery processing more specific in the next
-few patches in order to handle RPC pings slightly differently.  The -EACCES
-return code is overloaded, so the following patches change rpcb_clnt to use
-unique error codes in some cases where -EACCES is now returned.
-
-Add processing in call_bind_status() for an -EAGAIN return code to simply
-retry the same bind request a little later.  Change rpcb_clnt to use it
-appropriately.
+Don't filter the return code from nfs_mount() or the rpcb client.
+Return the real error code so that user space applications can display
+a reasonable error and have a chance at a useful retry strategy.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- net/sunrpc/clnt.c      |    5 +++++
- net/sunrpc/rpcb_clnt.c |    2 +-
- 2 files changed, 6 insertions(+), 1 deletions(-)
+ fs/nfs/super.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 52429b1..e5ccf64 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -952,6 +952,11 @@ call_bind_status(struct rpc_task *task)
- 				"unavailable\n", task->tk_pid);
- 		rpc_delay(task, 3*HZ);
- 		goto retry_timeout;
-+	case -EAGAIN:
-+		dprintk("RPC: %5u rpcb requested a retry", task->tk_pid);
-+		/* avoid busy-waiting here -- could be a network outage. */
-+		rpc_delay(task, 5*HZ);
-+		goto retry_timeout;
- 	case -ETIMEDOUT:
- 		dprintk("RPC: %5u rpcbind request timed out\n",
- 				task->tk_pid);
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index d1740db..01f4b3f 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -325,7 +325,7 @@ void rpcb_getport_async(struct rpc_task *task)
- 	BUG_ON(clnt->cl_parent != clnt);
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 84ddd7e..c28f30d 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -1166,7 +1166,7 @@ static int nfs_validate_mount_data(struct nfs_mount_data **options,
  
- 	if (xprt_test_and_set_binding(xprt)) {
--		status = -EACCES;		/* tell caller to check again */
-+		status = -EAGAIN;	/* tell caller to check again later */
- 		dprintk("RPC: %5u %s: waiting for another binder\n",
- 			task->tk_pid, __FUNCTION__);
- 		goto bailout_nowake;
+ 		status = nfs_try_mount(&args, mntfh);
+ 		if (status)
+-			return -EINVAL;
++			return status;
+ 
+ 		/*
+ 		 * Translate to nfs_mount_data, which nfs_fill_super
 
 
 -------------------------------------------------------------------------
