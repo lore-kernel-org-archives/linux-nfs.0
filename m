@@ -1,8 +1,8 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 6/8] NFS: change NFS mount error return when
-	hostname/pathname	too long
-Date: Wed, 29 Aug 2007 15:49:37 -0400
-Message-ID: <20070829194937.14142.62568.stgit@manray.1015granger.net>
+Subject: [PATCH 8/8] NFS: print a unique error message for mount bind
+	errors
+Date: Wed, 29 Aug 2007 15:49:41 -0400
+Message-ID: <20070829194941.14142.36487.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
@@ -11,11 +11,11 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IQTXy-0007DP-Oz
-	for nfs@lists.sourceforge.net; Wed, 29 Aug 2007 12:49:50 -0700
+	id 1IQTY4-0007Da-2Z
+	for nfs@lists.sourceforge.net; Wed, 29 Aug 2007 12:49:58 -0700
 Received: from flpi101.sbcis.sbc.com ([207.115.20.70] helo=flpi101.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IQTY3-0003QP-5q
-	for nfs@lists.sourceforge.net; Wed, 29 Aug 2007 12:49:55 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IQTY7-0003SU-Gs
+	for nfs@lists.sourceforge.net; Wed, 29 Aug 2007 12:50:00 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,59 +28,50 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-According to the mount(2) man page, the proper error return code for the
-mount(2) system call when the special device name or the mounted-on
-directory name is too long is ENAMETOOLONG.
-
-Also fix an off-by-one error when calculating the length of a hostname.
+This can help sysadmins track down /etc/fstab or server configuration
+problems.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfs/super.c |   10 +++++-----
- 1 files changed, 5 insertions(+), 5 deletions(-)
+ fs/nfs/super.c |   14 ++++++++------
+ 1 files changed, 8 insertions(+), 6 deletions(-)
 
 diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 8e51c9f..84ddd7e 100644
+index c28f30d..a8317a7 100644
 --- a/fs/nfs/super.c
 +++ b/fs/nfs/super.c
-@@ -1153,15 +1153,15 @@ static int nfs_validate_mount_data(struct nfs_mount_data **options,
- 		c = strchr(dev_name, ':');
- 		if (c == NULL)
- 			return -EINVAL;
--		len = c - dev_name - 1;
-+		len = c - dev_name;
- 		if (len > sizeof(data->hostname))
--			return -EINVAL;
-+			return -ENAMETOOLONG;
- 		strncpy(data->hostname, dev_name, len);
- 		args.nfs_server.hostname = data->hostname;
+@@ -1033,7 +1033,7 @@ static int nfs_try_mount(struct nfs_parsed_mount_data *args,
+ 					   args->mount_server.version,
+ 					   args->mount_server.protocol);
+ 		if (status < 0)
+-			goto out_err;
++			goto out_bind_err;
+ 		sin.sin_port = htons(status);
+ 	} else
+ 		sin.sin_port = htons(args->mount_server.port);
+@@ -1049,14 +1049,16 @@ static int nfs_try_mount(struct nfs_parsed_mount_data *args,
+ 			   args->mount_server.version,
+ 			   args->mount_server.protocol,
+ 			   root_fh);
+-	if (status < 0)
+-		goto out_err;
++	if (status == 0)
++		return 0;
  
- 		c++;
- 		if (strlen(c) > NFS_MAXPATHLEN)
--			return -EINVAL;
-+			return -ENAMETOOLONG;
- 		args.nfs_server.export_path = c;
++	dfprintk(MOUNT, "NFS: unable to mount server " NIPQUAD_FMT
++			", error %d\n", NIPQUAD(sin.sin_addr.s_addr), status);
+ 	return status;
  
- 		status = nfs_try_mount(&args, mntfh);
-@@ -1668,7 +1668,7 @@ static int nfs4_validate_mount_data(struct nfs4_mount_data **options,
- 		/* while calculating len, pretend ':' is '\0' */
- 		len = c - dev_name;
- 		if (len > NFS4_MAXNAMLEN)
--			return -EINVAL;
-+			return -ENAMETOOLONG;
- 		*hostname = kzalloc(len, GFP_KERNEL);
- 		if (*hostname == NULL)
- 			return -ENOMEM;
-@@ -1677,7 +1677,7 @@ static int nfs4_validate_mount_data(struct nfs4_mount_data **options,
- 		c++;			/* step over the ':' */
- 		len = strlen(c);
- 		if (len > NFS4_MAXPATHLEN)
--			return -EINVAL;
-+			return -ENAMETOOLONG;
- 		*mntpath = kzalloc(len + 1, GFP_KERNEL);
- 		if (*mntpath == NULL)
- 			return -ENOMEM;
+-out_err:
+-	dfprintk(MOUNT, "NFS: unable to contact server on host "
+-		 NIPQUAD_FMT "\n", NIPQUAD(sin.sin_addr.s_addr));
++out_bind_err:
++	dfprintk(MOUNT, "NFS: mount unable to bind to server " NIPQUAD_FMT
++			", error %d\n", NIPQUAD(sin.sin_addr.s_addr), status);
+ 	return status;
+ }
+ 
 
 
 -------------------------------------------------------------------------
