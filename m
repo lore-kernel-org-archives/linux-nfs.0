@@ -1,10 +1,10 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: Re: [RFC,PATCH 08/20] svc: centralise accept handling
-Date: Wed, 29 Aug 2007 18:56:45 -0500
-Message-ID: <1188431805.7502.75.camel@trinity.ogc.int>
+Subject: Re: [RFC,PATCH 16/20] svc: xpt_create_svc
+Date: Wed, 29 Aug 2007 15:43:41 -0500
+Message-ID: <1188420221.7502.55.camel@trinity.ogc.int>
 References: <20070820162000.15224.65524.stgit@dell3.ogc.int>
-	<20070820162338.15224.14674.stgit@dell3.ogc.int>
-	<46D5BD8A.5090509@oracle.com>
+	<20070820162355.15224.79027.stgit@dell3.ogc.int>
+	<46D5C731.1060201@oracle.com>
 Reply-To: tom@opengridcomputing.com
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -14,12 +14,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IQXQA-0005ZD-DK
-	for nfs@lists.sourceforge.net; Wed, 29 Aug 2007 16:58:02 -0700
-Received: from ms-smtp-06.texas.rr.com ([24.93.47.45])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IQXQE-0006DV-Mx
-	for nfs@lists.sourceforge.net; Wed, 29 Aug 2007 16:58:07 -0700
-In-Reply-To: <46D5BD8A.5090509@oracle.com>
+	id 1IQg0W-0006rY-MZ
+	for nfs@lists.sourceforge.net; Thu, 30 Aug 2007 02:08:10 -0700
+Received: from ms-smtp-02.texas.rr.com ([24.93.47.41])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IQg0Z-0004Rg-Ja
+	for nfs@lists.sourceforge.net; Thu, 30 Aug 2007 02:08:13 -0700
+In-Reply-To: <46D5C731.1060201@oracle.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,152 +32,192 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, 2007-08-29 at 14:40 -0400, Chuck Lever wrote:
+On Wed, 2007-08-29 at 15:21 -0400, Chuck Lever wrote:
 > Tom Tucker wrote:
-> > Centralise the handling of the SK_CONN bit so that future
-> > server transport implementations will be easier to
-> > write correctly.  Also, the xpt_recvfrom method does not 
-> > need to check for SK_CONN anymore, that's handled in core 
-> > code which calls a new xpt_accept method.
-> > 
-> > Signed-off-by: Greg Banks <gnb@melbourne.sgi.com>
-> > Signed-off-by: Peter Leckie <pleckie@melbourne.sgi.com>
+> > Add transport function that makes the creation of a listening endpoint 
+> > transport independent.
+> 
+> I'm beginning to think svc_makesock should be renamed. :-)
+> 
+> I'm not sure about the function naming here.  I can't easily distinguish 
+> between the generic and socket-specific creating functions.
+> 
+
+I _promise_ to clean the names up in the next patch ;-) But this one has
+a special issue because it's called all over the place. That's why I
+added the new API. The idea was we could go in and incrementally patch
+other svc services as needed, but otherwise make the svc internals
+changes opaque to svc clients.
+
 > > Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 > > ---
 > > 
-> >  include/linux/sunrpc/svcsock.h |    4 ++++
-> >  net/sunrpc/svcsock.c           |   24 +++++++++++-------------
-> >  2 files changed, 15 insertions(+), 13 deletions(-)
+> >  include/linux/sunrpc/svcsock.h |    5 +++
+> >  net/sunrpc/svcsock.c           |   65 +++++++++++++++++++++++++++++++++++++---
+> >  2 files changed, 65 insertions(+), 5 deletions(-)
 > > 
 > > diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
-> > index 0145057..7663578 100644
+> > index cc911ab..e2d0256 100644
 > > --- a/include/linux/sunrpc/svcsock.h
 > > +++ b/include/linux/sunrpc/svcsock.h
-> > @@ -41,6 +41,10 @@ struct svc_xprt {
-> >  	 * svc_sock.
-> >  	 */
-> >  	u32			xpt_max_payload;
-> > +	/*
-> > +	 * Accept a pending connection, for connection-oriented transports
-> > +	 */
-> > +	int			(*xpt_accept)(struct svc_sock *svsk);
-> >  };
-> >  
-> >  /*
+> > @@ -14,6 +14,10 @@ #include <linux/sunrpc/svc.h>
+> >  struct svc_xprt {
+> >  	const char		*xpt_name;
+> >  	struct module		*xpt_owner;
+> > +	/* Create an svc socket for this transport */
+> > +	int			(*xpt_create_svc)(struct svc_serv *,
+> > +						  struct sockaddr *,
+> > +						  int);
+> >  	int			(*xpt_recvfrom)(struct svc_rqst *rqstp);
+> >  	int			(*xpt_sendto)(struct svc_rqst *rqstp);
+> >  	/*
+> > @@ -109,6 +113,7 @@ #define	SK_LISTENER	11			/* listener (e.
+> >  int 		svc_register_transport(struct svc_xprt *xprt);
+> >  int 		svc_unregister_transport(struct svc_xprt *xprt);
+> >  int		svc_makesock(struct svc_serv *, int, unsigned short, int flags);
+> > +int		svc_create_svcsock(struct svc_serv *, char *, unsigned short, int);
+> >  void		svc_force_close_socket(struct svc_sock *);
+> >  int		svc_recv(struct svc_rqst *, long);
+> >  int		svc_send(struct svc_rqst *);
 > > diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-> > index 5c3a794..94eb921 100644
+> > index 276737e..44d6484 100644
 > > --- a/net/sunrpc/svcsock.c
 > > +++ b/net/sunrpc/svcsock.c
-> > @@ -1012,7 +1012,7 @@ static inline int svc_port_is_privileged
-> >  /*
-> >   * Accept a TCP connection
-> >   */
-> > -static void
+> > @@ -87,6 +87,8 @@ static void		svc_close_socket(struct svc
+> >  static void		svc_sock_detach(struct svc_sock *);
+> >  static void		svc_sock_free(struct svc_sock *);
+> >  
 > > +static int
-> >  svc_tcp_accept(struct svc_sock *svsk)
-> >  {
-> >  	struct sockaddr_storage addr;
-> > @@ -1021,12 +1021,12 @@ svc_tcp_accept(struct svc_sock *svsk)
-> >  	struct socket	*sock = svsk->sk_sock;
-> >  	struct socket	*newsock;
-> >  	struct svc_sock	*newsvsk;
-> > -	int		err, slen;
-> > +	int		err = 0, slen;
-> >  	char		buf[RPC_MAX_ADDRBUFLEN];
+> > +svc_create_socket(struct svc_serv *, int, struct sockaddr *, int, int);
+> >  static struct svc_deferred_req *svc_deferred_dequeue(struct svc_sock *svsk);
+> >  static int svc_deferred_recv(struct svc_rqst *rqstp);
+> >  static struct cache_deferred_req *svc_defer(struct cache_req *req);
+> > @@ -434,6 +436,7 @@ __svc_sock_put(struct svc_sock *svsk)
 > >  
-> >  	dprintk("svc: tcp_accept %p sock %p\n", svsk, sock);
-> >  	if (!sock)
-> > -		return;
-> > +		return -EINVAL;
-> >  
-> >  	clear_bit(SK_CONN, &svsk->sk_flags);
-> >  	err = kernel_accept(sock, &newsock, O_NONBLOCK);
-> > @@ -1037,9 +1037,8 @@ svc_tcp_accept(struct svc_sock *svsk)
-> >  		else if (err != -EAGAIN && net_ratelimit())
-> >  			printk(KERN_WARNING "%s: accept failed (err %d)!\n",
-> >  				   serv->sv_name, -err);
-> > -		return;
-> > +		return err;
-> >  	}
-> > -
-> >  	set_bit(SK_CONN, &svsk->sk_flags);
-> >  	svc_sock_enqueue(svsk);
-> >  
-> > @@ -1124,11 +1123,11 @@ svc_tcp_accept(struct svc_sock *svsk)
-> >  	if (serv->sv_stats)
-> >  		serv->sv_stats->nettcpconn++;
-> >  
-> > -	return;
-> > +	return 0;
-> >  
-> >  failed:
-> >  	sock_release(newsock);
-> > -	return;
-> > +	return err;
+> >  	if (svsk->sk_info_authunix != NULL)
+> >  		svcauth_unix_info_release(svsk->sk_info_authunix);
+> > +	module_put(svsk->sk_xprt->xpt_owner);
+> >  	svsk->sk_xprt->xpt_free(svsk);
+> >  }
+> >  EXPORT_SYMBOL_GPL(__svc_sock_put);
+> > @@ -961,9 +964,17 @@ svc_udp_has_wspace(struct svc_sock *svsk
+> >  	return svc_sock_has_write_space(svsk, sock_wspace(svsk->sk_sk));
 > >  }
 > >  
-> >  /*
-> > @@ -1153,12 +1152,6 @@ svc_tcp_recvfrom(struct svc_rqst *rqstp)
-> >  		return svc_deferred_recv(rqstp);
-> >  	}
+> > +static int
+> > +svc_udp_create_svc(struct svc_serv *serv, struct sockaddr *sa, int flags)
+> > +{
+> > +	return svc_create_socket(serv, IPPROTO_UDP, sa,
+> > +				 sizeof(struct sockaddr_in), flags);
+> > +}
+> > +
+> >  static struct svc_xprt svc_udp_xprt = {
+> >  	.xpt_name = "udp",
+> >  	.xpt_owner = THIS_MODULE,
+> > +	.xpt_create_svc = svc_udp_create_svc,
+> >  	.xpt_recvfrom = svc_udp_recvfrom,
+> >  	.xpt_sendto = svc_udp_sendto,
+> >  	.xpt_detach = svc_sock_detach,
+> > @@ -1421,9 +1432,17 @@ svc_tcp_has_wspace(struct svc_sock *svsk
+> >  	return svc_sock_has_write_space(svsk, sk_stream_wspace(svsk->sk_sk));
+> >  }
 > >  
-> > -	if (svsk->sk_sk->sk_state == TCP_LISTEN) {
-> > -		svc_tcp_accept(svsk);
-> > -		svc_sock_received(svsk);
-> > -		return 0;
-> > -	}
-> > -
-> >  	if (test_and_clear_bit(SK_CHNGBUF, &svsk->sk_flags))
-> >  		/* sndbuf needs to have room for one request
-> >  		 * per thread, otherwise we can stall even when the
-> > @@ -1361,6 +1354,7 @@ static const struct svc_xprt svc_tcp_xpr
-> >  	.xpt_prep_reply_hdr = svc_tcp_prep_reply_hdr,
-> >  	.xpt_has_wspace = svc_tcp_has_wspace,
-> >  	.xpt_max_payload = RPCSVC_MAXPAYLOAD_TCP,
-> > +	.xpt_accept = svc_tcp_accept,
-> >  };
-> >  
-> >  static void
-> > @@ -1521,6 +1515,9 @@ svc_recv(struct svc_rqst *rqstp, long ti
-> >  	if (test_bit(SK_CLOSE, &svsk->sk_flags)) {
-> >  		dprintk("svc_recv: found SK_CLOSE\n");
+> > +static int
+> > +svc_tcp_create_svc(struct svc_serv *serv, struct sockaddr *sa, int flags)
+> > +{
+> > +	return svc_create_socket(serv, IPPROTO_TCP, sa,
+> > +				 sizeof(struct sockaddr_in), flags);
+> > +}
+> > +
+> >  static struct svc_xprt svc_tcp_xprt = {
+> >  	.xpt_name = "tcp",
+> >  	.xpt_owner = THIS_MODULE,
+> > +	.xpt_create_svc = svc_tcp_create_svc,
+> >  	.xpt_recvfrom = svc_tcp_recvfrom,
+> >  	.xpt_sendto = svc_tcp_sendto,
+> >  	.xpt_detach = svc_sock_detach,
+> > @@ -1606,6 +1625,7 @@ svc_recv(struct svc_rqst *rqstp, long ti
 > >  		svc_delete_socket(svsk);
-> > +	} else if (svsk->sk_sk->sk_state == TCP_LISTEN) {
-> 
-> This checks a flag in a "struct sock" in the middle of a "generic" 
-> function.  Seems like a step backwards to me.
-
-I need to reverse the order of patch 8 and 9. 
-
-> 
-> > +		svsk->sk_xprt->xpt_accept(svsk);
-> 
-> Why aren't you using the return value you just added to svc_tcp_accept?
-
-Oversight. I'll fix it.
-
-> 
-> > +		svc_sock_received(svsk);
+> >  	} else if (test_bit(SK_LISTENER, &svsk->sk_flags)) {
+> >  		svsk->sk_xprt->xpt_accept(svsk);
+> > +		__module_get(svsk->sk_xprt->xpt_owner);
+> >  		svc_sock_received(svsk);
 > >  	} else {
 > >  		dprintk("svc: server %p, pool %u, socket %p, inuse=%d\n",
-> >  			 rqstp, pool->sp_id, svsk, atomic_read(&svsk->sk_inuse));
-> > @@ -1660,6 +1657,7 @@ static struct svc_sock *svc_setup_socket
-> >  	int		is_temporary = flags & SVC_SOCK_TEMPORARY;
+> > @@ -1885,7 +1905,7 @@ EXPORT_SYMBOL_GPL(svc_addsock);
+> >   * Create socket for RPC service.
+> >   */
+> >  static int svc_create_socket(struct svc_serv *serv, int protocol,
+> > -				struct sockaddr *sin, int len, int flags)
+> > +			     struct sockaddr *sin, int len, int flags)
+> >  {
+> >  	struct svc_sock	*svsk;
+> >  	struct socket	*sock;
+> > @@ -2037,18 +2057,53 @@ void svc_force_close_socket(struct svc_s
+> >   *
+> >   */
+> >  int svc_makesock(struct svc_serv *serv, int protocol, unsigned short port,
+> > -			int flags)
+> > +		 int flags)
+> >  {
+> > +	dprintk("svc: creating socket proto = %d\n", protocol);
+> > +	switch (protocol) {
+> > +	case IPPROTO_TCP:
+> > +		return svc_create_svcsock(serv, "tcp", port, flags);
+> > +	case IPPROTO_UDP:
+> > +		return svc_create_svcsock(serv, "udp", port, flags);
+> > +	default:
+> > +		return -EINVAL;
+> > +	}
+> > +}
+> > +
+> > +int svc_create_svcsock(struct svc_serv *serv, char *transport, unsigned short port,
+> > +		       int flags)
+> > +{
+> > +	int ret = -ENOENT;
+> > +	struct list_head *le;
+> >  	struct sockaddr_in sin = {
+> >  		.sin_family		= AF_INET,
+> >  		.sin_addr.s_addr	= INADDR_ANY,
+> >  		.sin_port		= htons(port),
+> >  	};
+> > +	dprintk("svc: creating transport socket %s[%d]\n", transport, port);
+> > +	spin_lock(&svc_transport_lock);
+> > +	list_for_each(le, &svc_transport_list) {
+> > +		struct svc_xprt *xprt =
+> > +			list_entry(le, struct svc_xprt, xpt_list);
 > >  
-> >  	dprintk("svc: svc_setup_socket %p\n", sock);
-> > +	*errp = 0;
+> > -	dprintk("svc: creating socket proto = %d\n", protocol);
+> > -	return svc_create_socket(serv, protocol, (struct sockaddr *) &sin,
+> > -							sizeof(sin), flags);
+> > +		if (strcmp(transport, xprt->xpt_name)==0) {
 > 
-> Hrm, if this is a genuine omission not related to the other changes in 
-> this patch, you should perhaps send this as a separate patch.
-
-It may not a "genuine" ommission since errp is probably only defined
-when the return value is NULL. It may be just an unnecessary code change
-that I should drop.
-
+> nit: I like "xpt_name) == 0)" instead.
 > 
-> >  	if (!(svsk = kzalloc(sizeof(*svsk), GFP_KERNEL))) {
-> >  		*errp = -ENOMEM;
-> >  		return NULL;
+
+ah, took me a second to get this one ... white space ... ok
+
+> > +			spin_unlock(&svc_transport_lock);
+> > +			if (try_module_get(xprt->xpt_owner)) {
+> > +				ret = xprt->xpt_create_svc(serv,
+> > +							   (struct sockaddr*)&sin,
+> > +							   flags);
+> > +				if (ret < 0)
+> > +					module_put(xprt->xpt_owner);
+> > +				goto out;
+> > +			}
+> > +		}
+> > +	}
+> > +	spin_unlock(&svc_transport_lock);
+> > +	dprintk("svc: transport %s not found\n", transport);
+> > + out:
+> > +	return ret;
+> >  }
+> > +EXPORT_SYMBOL_GPL(svc_create_svcsock);
+> >  
+> >  /*
+> >   * Handle defer and revisit of requests
+> 
 
 
 -------------------------------------------------------------------------
