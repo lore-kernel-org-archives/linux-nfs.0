@@ -1,21 +1,21 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 8/8] NFS: print a unique error message for mount bind
-	errors
-Date: Wed, 29 Aug 2007 15:49:41 -0400
-Message-ID: <20070829194941.14142.36487.stgit@manray.1015granger.net>
+Subject: [PATCH 0/8] NFS text-based mount clean up patches for
+	2.6.23-rc
+Date: Wed, 29 Aug 2007 15:49:22 -0400
+Message-ID: <20070829194232.14142.9014.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 To: trond.myklebust@fys.uio.no
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IQTY4-0007Da-2Z
-	for nfs@lists.sourceforge.net; Wed, 29 Aug 2007 12:49:58 -0700
+	id 1IQTYM-0007Jn-7v
+	for nfs@lists.sourceforge.net; Wed, 29 Aug 2007 12:50:14 -0700
 Received: from flpi101.sbcis.sbc.com ([207.115.20.70] helo=flpi101.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IQTY7-0003SU-Gs
-	for nfs@lists.sourceforge.net; Wed, 29 Aug 2007 12:50:00 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IQTYP-0000mL-LW
+	for nfs@lists.sourceforge.net; Wed, 29 Aug 2007 12:50:18 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,51 +28,35 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This can help sysadmins track down /etc/fstab or server configuration
-problems.
+Hi Trond-
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+I've cleaned up my clean-ups.  I've postponed the compiler warning patches
+until 2.6.24 opens.  This series applies on Linus' current git tree.
 
- fs/nfs/super.c |   14 ++++++++------
- 1 files changed, 8 insertions(+), 6 deletions(-)
+These don't really change behavior, just pre-requisite clean-ups:
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index c28f30d..a8317a7 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -1033,7 +1033,7 @@ static int nfs_try_mount(struct nfs_parsed_mount_data *args,
- 					   args->mount_server.version,
- 					   args->mount_server.protocol);
- 		if (status < 0)
--			goto out_err;
-+			goto out_bind_err;
- 		sin.sin_port = htons(status);
- 	} else
- 		sin.sin_port = htons(args->mount_server.port);
-@@ -1049,14 +1049,16 @@ static int nfs_try_mount(struct nfs_parsed_mount_data *args,
- 			   args->mount_server.version,
- 			   args->mount_server.protocol,
- 			   root_fh);
--	if (status < 0)
--		goto out_err;
-+	if (status == 0)
-+		return 0;
- 
-+	dfprintk(MOUNT, "NFS: unable to mount server " NIPQUAD_FMT
-+			", error %d\n", NIPQUAD(sin.sin_addr.s_addr), status);
- 	return status;
- 
--out_err:
--	dfprintk(MOUNT, "NFS: unable to contact server on host "
--		 NIPQUAD_FMT "\n", NIPQUAD(sin.sin_addr.s_addr));
-+out_bind_err:
-+	dfprintk(MOUNT, "NFS: mount unable to bind to server " NIPQUAD_FMT
-+			", error %d\n", NIPQUAD(sin.sin_addr.s_addr), status);
- 	return status;
- }
- 
++ rpcb-eagain
++ rpcb-noprotoopt
++ rpcb-error-handling-cleanup
 
+This one is a behavioral change that helps the in-kernel mount client, but may
+also change how RPC ping behaves for things like the NFSv3 ACL protocol:
+
++ rpcb-fail-null-requests-immediately
+
+These are the same as before:
+
++ nfs-fix-xprt-proto-problem
++ nfs-mount-name-too-long
++ nfs-mount-expose-errors
++ nfs-mount-distinguish-bind-errors
+
+I'd like all of these to be included in 2.6.23-rc before it is released, if
+possible, to help make the new text-based NFS mount API more usable when
+2.6.23 is finally released.
+
+-- 
+corporate:    <chuck dot lever at oracle dot com>
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
