@@ -1,25 +1,22 @@
-From: Tom Tucker <tom@opengridcomputing.com>
-Subject: Re: [RFC,PATCH 16/20] svc: xpt_create_svc
-Date: Wed, 29 Aug 2007 15:43:41 -0500
-Message-ID: <1188420221.7502.55.camel@trinity.ogc.int>
-References: <20070820162000.15224.65524.stgit@dell3.ogc.int>
-	<20070820162355.15224.79027.stgit@dell3.ogc.int>
-	<46D5C731.1060201@oracle.com>
-Reply-To: tom@opengridcomputing.com
+From: xiao.liang@cn.alps.com
+Subject: Re: mount nfs:RPC timeout
+Date: Thu, 30 Aug 2007 17:45:34 +0800
+Message-ID: <OF1293E709.88AA97BF-ON48257347.000F4C02-48257347.00352090@alps.com.hk>
+References: <1188398161.6580.68.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: multipart/mixed; boundary="===============1550852251=="
 Cc: nfs@lists.sourceforge.net
-To: chuck.lever@oracle.com
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IQg0W-0006rY-MZ
-	for nfs@lists.sourceforge.net; Thu, 30 Aug 2007 02:08:10 -0700
-Received: from ms-smtp-02.texas.rr.com ([24.93.47.41])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IQg0Z-0004Rg-Ja
-	for nfs@lists.sourceforge.net; Thu, 30 Aug 2007 02:08:13 -0700
-In-Reply-To: <46D5C731.1060201@oracle.com>
+	id 1IQgWc-0001yP-KP
+	for nfs@lists.sourceforge.net; Thu, 30 Aug 2007 02:41:20 -0700
+Received: from [61.213.178.131] (helo=qalpsgw3.alps.co.jp)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IQgWg-0003Wv-Ha
+	for nfs@lists.sourceforge.net; Thu, 30 Aug 2007 02:41:23 -0700
+In-Reply-To: <1188398161.6580.68.camel@heimdal.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,199 +29,271 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, 2007-08-29 at 15:21 -0400, Chuck Lever wrote:
-> Tom Tucker wrote:
-> > Add transport function that makes the creation of a listening endpoint 
-> > transport independent.
-> 
-> I'm beginning to think svc_makesock should be renamed. :-)
-> 
-> I'm not sure about the function naming here.  I can't easily distinguish 
-> between the generic and socket-specific creating functions.
-> 
+This is a multipart message in MIME format.
+--===============1550852251==
+Content-Type: multipart/alternative;
+	boundary="=_alternative 0035208D48257347_="
 
-I _promise_ to clean the names up in the next patch ;-) But this one has
-a special issue because it's called all over the place. That's why I
-added the new API. The idea was we could go in and incrementally patch
-other svc services as needed, but otherwise make the svc internals
-changes opaque to svc clients.
+This is a multipart message in MIME format.
+--=_alternative 0035208D48257347_=
+Content-Type: text/plain; charset="ISO-2022-JP"
 
-> > Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
-> > ---
-> > 
-> >  include/linux/sunrpc/svcsock.h |    5 +++
-> >  net/sunrpc/svcsock.c           |   65 +++++++++++++++++++++++++++++++++++++---
-> >  2 files changed, 65 insertions(+), 5 deletions(-)
-> > 
-> > diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
-> > index cc911ab..e2d0256 100644
-> > --- a/include/linux/sunrpc/svcsock.h
-> > +++ b/include/linux/sunrpc/svcsock.h
-> > @@ -14,6 +14,10 @@ #include <linux/sunrpc/svc.h>
-> >  struct svc_xprt {
-> >  	const char		*xpt_name;
-> >  	struct module		*xpt_owner;
-> > +	/* Create an svc socket for this transport */
-> > +	int			(*xpt_create_svc)(struct svc_serv *,
-> > +						  struct sockaddr *,
-> > +						  int);
-> >  	int			(*xpt_recvfrom)(struct svc_rqst *rqstp);
-> >  	int			(*xpt_sendto)(struct svc_rqst *rqstp);
-> >  	/*
-> > @@ -109,6 +113,7 @@ #define	SK_LISTENER	11			/* listener (e.
-> >  int 		svc_register_transport(struct svc_xprt *xprt);
-> >  int 		svc_unregister_transport(struct svc_xprt *xprt);
-> >  int		svc_makesock(struct svc_serv *, int, unsigned short, int flags);
-> > +int		svc_create_svcsock(struct svc_serv *, char *, unsigned short, int);
-> >  void		svc_force_close_socket(struct svc_sock *);
-> >  int		svc_recv(struct svc_rqst *, long);
-> >  int		svc_send(struct svc_rqst *);
-> > diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-> > index 276737e..44d6484 100644
-> > --- a/net/sunrpc/svcsock.c
-> > +++ b/net/sunrpc/svcsock.c
-> > @@ -87,6 +87,8 @@ static void		svc_close_socket(struct svc
-> >  static void		svc_sock_detach(struct svc_sock *);
-> >  static void		svc_sock_free(struct svc_sock *);
-> >  
-> > +static int
-> > +svc_create_socket(struct svc_serv *, int, struct sockaddr *, int, int);
-> >  static struct svc_deferred_req *svc_deferred_dequeue(struct svc_sock *svsk);
-> >  static int svc_deferred_recv(struct svc_rqst *rqstp);
-> >  static struct cache_deferred_req *svc_defer(struct cache_req *req);
-> > @@ -434,6 +436,7 @@ __svc_sock_put(struct svc_sock *svsk)
-> >  
-> >  	if (svsk->sk_info_authunix != NULL)
-> >  		svcauth_unix_info_release(svsk->sk_info_authunix);
-> > +	module_put(svsk->sk_xprt->xpt_owner);
-> >  	svsk->sk_xprt->xpt_free(svsk);
-> >  }
-> >  EXPORT_SYMBOL_GPL(__svc_sock_put);
-> > @@ -961,9 +964,17 @@ svc_udp_has_wspace(struct svc_sock *svsk
-> >  	return svc_sock_has_write_space(svsk, sock_wspace(svsk->sk_sk));
-> >  }
-> >  
-> > +static int
-> > +svc_udp_create_svc(struct svc_serv *serv, struct sockaddr *sa, int flags)
-> > +{
-> > +	return svc_create_socket(serv, IPPROTO_UDP, sa,
-> > +				 sizeof(struct sockaddr_in), flags);
-> > +}
-> > +
-> >  static struct svc_xprt svc_udp_xprt = {
-> >  	.xpt_name = "udp",
-> >  	.xpt_owner = THIS_MODULE,
-> > +	.xpt_create_svc = svc_udp_create_svc,
-> >  	.xpt_recvfrom = svc_udp_recvfrom,
-> >  	.xpt_sendto = svc_udp_sendto,
-> >  	.xpt_detach = svc_sock_detach,
-> > @@ -1421,9 +1432,17 @@ svc_tcp_has_wspace(struct svc_sock *svsk
-> >  	return svc_sock_has_write_space(svsk, sk_stream_wspace(svsk->sk_sk));
-> >  }
-> >  
-> > +static int
-> > +svc_tcp_create_svc(struct svc_serv *serv, struct sockaddr *sa, int flags)
-> > +{
-> > +	return svc_create_socket(serv, IPPROTO_TCP, sa,
-> > +				 sizeof(struct sockaddr_in), flags);
-> > +}
-> > +
-> >  static struct svc_xprt svc_tcp_xprt = {
-> >  	.xpt_name = "tcp",
-> >  	.xpt_owner = THIS_MODULE,
-> > +	.xpt_create_svc = svc_tcp_create_svc,
-> >  	.xpt_recvfrom = svc_tcp_recvfrom,
-> >  	.xpt_sendto = svc_tcp_sendto,
-> >  	.xpt_detach = svc_sock_detach,
-> > @@ -1606,6 +1625,7 @@ svc_recv(struct svc_rqst *rqstp, long ti
-> >  		svc_delete_socket(svsk);
-> >  	} else if (test_bit(SK_LISTENER, &svsk->sk_flags)) {
-> >  		svsk->sk_xprt->xpt_accept(svsk);
-> > +		__module_get(svsk->sk_xprt->xpt_owner);
-> >  		svc_sock_received(svsk);
-> >  	} else {
-> >  		dprintk("svc: server %p, pool %u, socket %p, inuse=%d\n",
-> > @@ -1885,7 +1905,7 @@ EXPORT_SYMBOL_GPL(svc_addsock);
-> >   * Create socket for RPC service.
-> >   */
-> >  static int svc_create_socket(struct svc_serv *serv, int protocol,
-> > -				struct sockaddr *sin, int len, int flags)
-> > +			     struct sockaddr *sin, int len, int flags)
-> >  {
-> >  	struct svc_sock	*svsk;
-> >  	struct socket	*sock;
-> > @@ -2037,18 +2057,53 @@ void svc_force_close_socket(struct svc_s
-> >   *
-> >   */
-> >  int svc_makesock(struct svc_serv *serv, int protocol, unsigned short port,
-> > -			int flags)
-> > +		 int flags)
-> >  {
-> > +	dprintk("svc: creating socket proto = %d\n", protocol);
-> > +	switch (protocol) {
-> > +	case IPPROTO_TCP:
-> > +		return svc_create_svcsock(serv, "tcp", port, flags);
-> > +	case IPPROTO_UDP:
-> > +		return svc_create_svcsock(serv, "udp", port, flags);
-> > +	default:
-> > +		return -EINVAL;
-> > +	}
-> > +}
-> > +
-> > +int svc_create_svcsock(struct svc_serv *serv, char *transport, unsigned short port,
-> > +		       int flags)
-> > +{
-> > +	int ret = -ENOENT;
-> > +	struct list_head *le;
-> >  	struct sockaddr_in sin = {
-> >  		.sin_family		= AF_INET,
-> >  		.sin_addr.s_addr	= INADDR_ANY,
-> >  		.sin_port		= htons(port),
-> >  	};
-> > +	dprintk("svc: creating transport socket %s[%d]\n", transport, port);
-> > +	spin_lock(&svc_transport_lock);
-> > +	list_for_each(le, &svc_transport_list) {
-> > +		struct svc_xprt *xprt =
-> > +			list_entry(le, struct svc_xprt, xpt_list);
-> >  
-> > -	dprintk("svc: creating socket proto = %d\n", protocol);
-> > -	return svc_create_socket(serv, protocol, (struct sockaddr *) &sin,
-> > -							sizeof(sin), flags);
-> > +		if (strcmp(transport, xprt->xpt_name)==0) {
+Thank you! Now I do not think it is version problem. Actually, I found 
+that the TCP connection is never complete between my nfs client and 
+server. The server reply the SYN,ACK but the client just do not respond. 
+As for UDP is the same . I use inetd and portmap on client side , I think 
+there must be sth wrong on my client side.
+packets :
+from client to server:
+src port : 794, dest port:111
+from server to client:
+src port:111 dest port:794
+
+the tcpdump on the client side is look like this
+
+10.25.16.160.794 > 10.25.16.130.sunrpc: S, cksum 0x5740 (correct), 
+31406388
+
+ 10.25.16.130.sunrpc > 10.25.16.160.794: S, cksum 0x79e6 (correct), 
+2533961748:2
+ 10.25.16.130.sunrpc > 10.25.16.160.794: S, cksum 0x79e6 (correct), 
+2533961748:2
+ 60) 10.25.16.160.794 > 10.25.16.130.sunrpc: S, cksum 0x5614 (correct), 
+31406388
+ 10.25.16.130.sunrpc > 10.25.16.160.794: S, cksum 0x76ff (correct), 
+2533961748:2
+ 10.25.16.130.sunrpc > 10.25.16.160.794: S, cksum 0x76ff (correct), 
+2533961748:2
+ 10.25.16.130.sunrpc > 10.25.16.160.794: S, cksum 0x76f8 (correct), 
+2533961748:2
+ 10.25.16.130.sunrpc > 10.25.16.160.794: S, cksum 0x76f8 (correct), 
+2533961748:2
+
+
+ 60) 10.25.16.160.794 > 10.25.16.130.sunrpc: S, cksum 0x53bc (correct), 
+31406388
+ 10.25.16.130.sunrpc > 10.25.16.160.794: S, cksum 0x7123 (correct), 
+2533961748:2
+ 10.25.16.130.sunrpc > 10.25.16.160.794: S, cksum 0x7123 (correct), 
+2533961748:2
+ 10.25.16.130.sunrpc > 10.25.16.160.794: S, cksum 0x711c (correct), 
+2533961748:2
+ 10.25.16.130.sunrpc > 10.25.16.160.794: S, cksum 0x711c (correct), 
+2533961748:2
+
+
+ 10.25.16.130.sunrpc > 10.25.16.160.794: S, cksum 0x6563 (correct), 
+2533961748:2
+ 60) 10.25.16.160.794 > 10.25.16.130.sunrpc: S, cksum 0x4f0c (correct), 
+31406388
+ 10.25.16.130.sunrpc > 10.25.16.160.794: S, cksum 0x6561 (correct), 
+2533961748:2
+ 10.25.16.130.sunrpc > 10.25.16.160.794: S, cksum 0x6563 (correct), 
+2533961748:
+
+Is it the portmap or inetd' problem?
+
+
+
+
+Trond Myklebust <trond.myklebust@fys.uio.no> 
+08/29/2007 10:36 PM
+
+宛先
+xiao.liang@cn.alps.com
+cc
+nfs@lists.sourceforge.net
+件名
+Re: [NFS] mount nfs:RPC timeout
+
+
+
+
+
+
+On Wed, 2007-08-29 at 14:08 +0800, xiao.liang@cn.alps.com wrote:
 > 
-> nit: I like "xpt_name) == 0)" instead.
+> Hi, 
+>    I have encounter a nfs mount problem, I use busybox1.3.1,kernel
+> version 2.4.20,libc version 2.3.2. The NFS server is V4 
 > 
-
-ah, took me a second to get this one ... white space ... ok
-
-> > +			spin_unlock(&svc_transport_lock);
-> > +			if (try_module_get(xprt->xpt_owner)) {
-> > +				ret = xprt->xpt_create_svc(serv,
-> > +							   (struct sockaddr*)&sin,
-> > +							   flags);
-> > +				if (ret < 0)
-> > +					module_put(xprt->xpt_owner);
-> > +				goto out;
-> > +			}
-> > +		}
-> > +	}
-> > +	spin_unlock(&svc_transport_lock);
-> > +	dprintk("svc: transport %s not found\n", transport);
-> > + out:
-> > +	return ret;
-> >  }
-> > +EXPORT_SYMBOL_GPL(svc_create_svcsock);
-> >  
-> >  /*
-> >   * Handle defer and revisit of requests
+>    The error is: 
 > 
+>         mount -t nfs 10.25.16.130:/opt/Qtopia /opt/Qtopia 
+> 
+>    after a while 
+> 
+>         mount : RPC : timed out. 
+>         mount: nfsmount failed: Bad file descriptor 
+> 
+>   I use ethereal to catch log in the NFS server side, and found the
+> mount protocol is V1. And another success nfs mount use mount protocol
+> V3. Is it the problem? 
+>   And I do not know how can change the mount protocol to V3, I tried
+> to use the same busybox, the same libc, the same kernel as the success
+> mount but none worked. 
+>   Any suggestion is very very very appreciate! 
 
+mount -t nfs4 10.25.16.130:/opt/Qtopia /opt/Qtopia
+            ^
+
+Please also ensure that you have rpc.idmapd running first.
+
+Cheers
+  Trond
+
+
+
+--=_alternative 0035208D48257347_=
+Content-Type: text/html; charset="ISO-2022-JP"
+
+
+<br><font size=2 face="sans-serif">Thank you! Now I do not think it is
+version problem. Actually, I found that the TCP connection is never complete
+between my nfs client and server. The server reply the SYN,ACK but the
+client just do not respond. As for UDP is the same . I use inetd and portmap
+on client side , I think there must be sth wrong on my client side.</font>
+<br><font size=2 face="sans-serif">packets :</font>
+<br><font size=2 face="sans-serif">from client to server:</font>
+<br><font size=2 face="sans-serif">src port : 794, dest port:111</font>
+<br><font size=2 face="sans-serif">from server to client:</font>
+<br><font size=2 face="sans-serif">src port:111 dest port:794</font>
+<br>
+<br><font size=2 face="sans-serif">the tcpdump on the client side is look
+like this</font>
+<br>
+<br><font size=2 face="sans-serif">10.25.16.160.794 &gt; 10.25.16.130.sunrpc:
+S, cksum 0x5740 (correct), 31406388</font>
+<br>
+<br><font size=2 face="sans-serif">&nbsp;10.25.16.130.sunrpc &gt; 10.25.16.160.794:
+S, cksum 0x79e6 (correct), 2533961748:2</font>
+<br><font size=2 face="sans-serif">&nbsp;10.25.16.130.sunrpc &gt; 10.25.16.160.794:
+S, cksum 0x79e6 (correct), 2533961748:2</font>
+<br><font size=2 face="sans-serif">&nbsp;60) 10.25.16.160.794 &gt; 10.25.16.130.sunrpc:
+S, cksum 0x5614 (correct), 31406388</font>
+<br><font size=2 face="sans-serif">&nbsp;10.25.16.130.sunrpc &gt; 10.25.16.160.794:
+S, cksum 0x76ff (correct), 2533961748:2</font>
+<br><font size=2 face="sans-serif">&nbsp;10.25.16.130.sunrpc &gt; 10.25.16.160.794:
+S, cksum 0x76ff (correct), 2533961748:2</font>
+<br><font size=2 face="sans-serif">&nbsp;10.25.16.130.sunrpc &gt; 10.25.16.160.794:
+S, cksum 0x76f8 (correct), 2533961748:2</font>
+<br><font size=2 face="sans-serif">&nbsp;10.25.16.130.sunrpc &gt; 10.25.16.160.794:
+S, cksum 0x76f8 (correct), 2533961748:2</font>
+<br>
+<br>
+<br><font size=2 face="sans-serif">&nbsp;60) 10.25.16.160.794 &gt; 10.25.16.130.sunrpc:
+S, cksum 0x53bc (correct), 31406388</font>
+<br><font size=2 face="sans-serif">&nbsp;10.25.16.130.sunrpc &gt; 10.25.16.160.794:
+S, cksum 0x7123 (correct), 2533961748:2</font>
+<br><font size=2 face="sans-serif">&nbsp;10.25.16.130.sunrpc &gt; 10.25.16.160.794:
+S, cksum 0x7123 (correct), 2533961748:2</font>
+<br><font size=2 face="sans-serif">&nbsp;10.25.16.130.sunrpc &gt; 10.25.16.160.794:
+S, cksum 0x711c (correct), 2533961748:2</font>
+<br><font size=2 face="sans-serif">&nbsp;10.25.16.130.sunrpc &gt; 10.25.16.160.794:
+S, cksum 0x711c (correct), 2533961748:2</font>
+<br>
+<br>
+<br><font size=2 face="sans-serif">&nbsp;10.25.16.130.sunrpc &gt; 10.25.16.160.794:
+S, cksum 0x6563 (correct), 2533961748:2</font>
+<br><font size=2 face="sans-serif">&nbsp;60) 10.25.16.160.794 &gt; 10.25.16.130.sunrpc:
+S, cksum 0x4f0c (correct), 31406388</font>
+<br><font size=2 face="sans-serif">&nbsp;10.25.16.130.sunrpc &gt; 10.25.16.160.794:
+S, cksum 0x6561 (correct), 2533961748:2</font>
+<br><font size=2 face="sans-serif">&nbsp;10.25.16.130.sunrpc &gt; 10.25.16.160.794:
+S, cksum 0x6563 (correct), 2533961748:</font>
+<br>
+<br><font size=2 face="sans-serif">Is it the portmap or inetd' problem?</font>
+<br>
+<br>
+<br>
+<br>
+<table width=100%>
+<tr valign=top>
+<td width=40%><font size=1 face="sans-serif"><b>Trond Myklebust &lt;trond.myklebust@fys.uio.no&gt;</b>
+</font>
+<p><font size=1 face="sans-serif">08/29/2007 10:36 PM</font>
+<td width=59%>
+<table width=100%>
+<tr valign=top>
+<td>
+<div align=right><font size=1 face="sans-serif">宛先</font></div>
+<td><font size=1 face="sans-serif">xiao.liang@cn.alps.com</font>
+<tr valign=top>
+<td>
+<div align=right><font size=1 face="sans-serif">cc</font></div>
+<td><font size=1 face="sans-serif">nfs@lists.sourceforge.net</font>
+<tr valign=top>
+<td>
+<div align=right><font size=1 face="sans-serif">件名</font></div>
+<td><font size=1 face="sans-serif">Re: [NFS] mount nfs:RPC timeout</font></table>
+<br>
+<table>
+<tr valign=top>
+<td>
+<td></table>
+<br></table>
+<br>
+<br>
+<br><tt><font size=2>On Wed, 2007-08-29 at 14:08 +0800, xiao.liang@cn.alps.com
+wrote:<br>
+&gt; <br>
+&gt; Hi, <br>
+&gt; &nbsp; &nbsp;I have encounter a nfs mount problem, I use busybox1.3.1,kernel<br>
+&gt; version 2.4.20,libc version 2.3.2. The NFS server is V4 <br>
+&gt; <br>
+&gt; &nbsp; &nbsp;The error is: <br>
+&gt; <br>
+&gt; &nbsp; &nbsp; &nbsp; &nbsp; mount -t nfs 10.25.16.130:/opt/Qtopia
+/opt/Qtopia <br>
+&gt; &nbsp; &nbsp; &nbsp; &nbsp; <br>
+&gt; &nbsp; &nbsp;after a while <br>
+&gt; <br>
+&gt; &nbsp; &nbsp; &nbsp; &nbsp; mount : RPC : timed out. <br>
+&gt; &nbsp; &nbsp; &nbsp; &nbsp; mount: nfsmount failed: Bad file descriptor
+<br>
+&gt; <br>
+&gt; &nbsp; I use ethereal to catch log in the NFS server side, and found
+the<br>
+&gt; mount protocol is V1. And another success nfs mount use mount protocol<br>
+&gt; V3. Is it the problem? <br>
+&gt; &nbsp; And I do not know how can change the mount protocol to V3,
+I tried<br>
+&gt; to use the same busybox, the same libc, the same kernel as the success<br>
+&gt; mount but none worked. <br>
+&gt; &nbsp; Any suggestion is very very very appreciate! <br>
+<br>
+mount -t nfs4 10.25.16.130:/opt/Qtopia /opt/Qtopia<br>
+ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;^<br>
+<br>
+Please also ensure that you have rpc.idmapd running first.<br>
+<br>
+Cheers<br>
+ &nbsp;Trond<br>
+<br>
+</font></tt>
+<br>
+--=_alternative 0035208D48257347_=--
+
+
+--===============1550852251==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
+--===============1550852251==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============1550852251==--
