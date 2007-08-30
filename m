@@ -1,34 +1,26 @@
-From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
-Subject: Re: mount.nfs: chk_mountpoint()
-Date: Thu, 30 Aug 2007 15:15:46 -0400
-Message-ID: <EXNANE01okLQ8aZRhQd00000200@exnane01.hq.netapp.com>
-References: <46CC884B.1030207@oracle.com> <46CD82A0.1000408@redhat.com>
-	<46CDC7D0.6030803@oracle.com> <46CDD069.3070608@redhat.com>
-	<46CDE76C.3040800@oracle.com> <46CDEA2E.10902@redhat.com>
-	<20070830101249.GA9880@janus> <46D6AFBC.3000208@redhat.com>
-	<46D6E9CF.4000901@oracle.com> <46D6EB44.7050600@redhat.com>
-	<46D6EDEE.5060907@oracle.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH] mount.nfs: restore admin-specified
+	clientaddr	option
+Date: Thu, 30 Aug 2007 15:23:25 -0400
+Message-ID: <46D7192D.9090904@oracle.com>
+References: <20070830174620.3799.1497.stgit@monet.1015granger.net>
+	<1188500090.7891.8.camel@gaula.trondhjem.org>
+Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net,
-	Frank van Maarseveen <frankvm@frankvm.com>
-To: chuck.lever@oracle.com, Peter Staubach <staubach@redhat.com>
+Content-Type: multipart/mixed; boundary="------------090901050302090708020008"
+Cc: neilb@suse.de, nfs@lists.sourceforge.net
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IQpWp-0006Fm-UV
-	for nfs@lists.sourceforge.net; Thu, 30 Aug 2007 12:18:10 -0700
-Received: from mx2.netapp.com ([216.240.18.37])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IQpWs-0007lF-Ap
-	for nfs@lists.sourceforge.net; Thu, 30 Aug 2007 12:18:12 -0700
-In-Reply-To: <46D6EDEE.5060907@oracle.com>
-References: <46CC884B.1030207@oracle.com> <46CD82A0.1000408@redhat.com>
-	<46CDC7D0.6030803@oracle.com> <46CDD069.3070608@redhat.com>
-	<46CDE76C.3040800@oracle.com> <46CDEA2E.10902@redhat.com>
-	<20070830101249.GA9880@janus> <46D6AFBC.3000208@redhat.com>
-	<46D6E9CF.4000901@oracle.com> <46D6EB44.7050600@redhat.com>
-	<46D6EDEE.5060907@oracle.com>
+	id 1IQpcx-0006sQ-EI
+	for nfs@lists.sourceforge.net; Thu, 30 Aug 2007 12:24:27 -0700
+Received: from agminet01.oracle.com ([141.146.126.228])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IQpd0-0003J2-KW
+	for nfs@lists.sourceforge.net; Thu, 30 Aug 2007 12:24:32 -0700
+In-Reply-To: <1188500090.7891.8.camel@gaula.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -41,32 +33,88 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-At 12:18 PM 8/30/2007, Chuck Lever wrote:
->Peter Staubach wrote:
->> If the application on each client is going to need many mount
->> points, then how does "bg" do anything but increase the number
->> of concurrent mount requests coming from each client, thus
->> increasing the load?
->
->"bg" has an exponential backoff, so the load increase isn't terribly 
->bothersome.  It's the "bg" recovery mechanism that's useful here for 
->getting all the mount requests to be successful in a nondeterministic 
->environment.
+This is a multi-part message in MIME format.
+--------------090901050302090708020008
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-"bg" also tries synchronously before going into the background (and
-backing off). So, by itself "bg" does not generate a storm. It only
-slightly raises the mount traffic after a failure, by giving way to the
-next filesystem in line - which may well be on another server.
+Trond Myklebust wrote:
+> 'clientaddr' was set up because there is no way for the kernel (or an
+> automated userland mount program) to determine exactly which IP address
+> the server should be using for callbacks in the case where there are
+> more than 1 options.
+> That all depends on the local network topology, and routing policies,
+> which may not be visible to the client.
 
-Done right, "bg" is a reasonable approach, IMO.
+The patch corrects a mistaken assumption I made while working on the 
+text-based mount implementation.  The broken behavior is only a week or 
+so old, doesn't affect legacy nfs4_mount_data style mounts, and was 
+never part of an nfs-utils release.
 
-Tom.
+It would be wonderful if we had some of these requirements written down 
+somewhere, so we wouldn't be dependent on individuals who are 
+unavailable at times when we need some historical perspective.  I've 
+started doing this here:
+
+http://wiki.linux-nfs.org/wiki/index.php/NewMountDesignSpec
+
+You have to admit that existing mount option documentation is pretty 
+scant on history and rationale.  Look at what nfs(5) says about 
+clientaddr= :
+
+> clientaddr=n   On a multi-homed client, this causes the client to use a
+>                specific callback address when communicating with an NFS
+>                version 4 server.  This option is currently ignored.
+
+"This option is currently ignored."  Ummm....
+
+And Neil just fixed the "multi-homed" part of mount's automated 
+clientaddr generation.
+
+And nfs(5) doesn't say Jack about NAT routers or network topology or 
+routing policies.
+
+I will send in a patch that also corrects nfs(5).
+
+--------------090901050302090708020008
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck.lever.vcf"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="chuck.lever.vcf"
+
+begin:vcard
+fn:Chuck Lever
+n:Lever;Chuck
+org:Oracle Corporation;Corporate Architecture: Linux Projects Group
+adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
+title:Principal Member of Staff
+tel;work:+1 248 614 5091
+x-mozilla-html:FALSE
+url:http://oss.oracle.com/~cel
+version:2.1
+end:vcard
+
+
+--------------090901050302090708020008
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
+--------------090901050302090708020008
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--------------090901050302090708020008--
