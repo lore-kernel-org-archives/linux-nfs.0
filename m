@@ -1,7 +1,7 @@
 From: Christoph Hellwig <hch@lst.de>
-Subject: [PATH 06/19] ext4: new export ops
-Date: Thu, 30 Aug 2007 15:16:20 +0200
-Message-ID: <20070830131620.GG6834@lst.de>
+Subject: [PATH 05/19] ext3: new export ops
+Date: Thu, 30 Aug 2007 15:16:15 +0200
+Message-ID: <20070830131615.GF6834@lst.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 To: nfs@lists.sourceforge.net, linux-fsdevel@vger.kernel.org
@@ -14,16 +14,16 @@ Trivial switch over to the new generic helpers.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 
-Index: linux-2.6/fs/ext4/super.c
+Index: linux-2.6/fs/ext3/super.c
 ===================================================================
---- linux-2.6.orig/fs/ext4/super.c	2007-03-13 18:19:43.000000000 +0100
-+++ linux-2.6/fs/ext4/super.c	2007-03-13 19:09:18.000000000 +0100
-@@ -607,13 +607,10 @@ static int ext4_show_options(struct seq_
+--- linux-2.6.orig/fs/ext3/super.c	2007-03-13 18:19:43.000000000 +0100
++++ linux-2.6/fs/ext3/super.c	2007-03-13 19:08:17.000000000 +0100
+@@ -556,13 +556,10 @@ static int ext3_show_options(struct seq_
  }
  
  
--static struct dentry *ext4_get_dentry(struct super_block *sb, void *vobjp)
-+static struct inode *ext4_nfs_get_inode(struct super_block *sb,
+-static struct dentry *ext3_get_dentry(struct super_block *sb, void *vobjp)
++static struct inode *ext3_nfs_get_inode(struct super_block *sb,
 +		u64 ino, u32 generation)
  {
 -	__u32 *objp = vobjp;
@@ -32,9 +32,9 @@ Index: linux-2.6/fs/ext4/super.c
  	struct inode *inode;
 -	struct dentry *result;
  
- 	if (ino < EXT4_FIRST_INO(sb) && ino != EXT4_ROOT_INO)
+ 	if (ino < EXT3_FIRST_INO(sb) && ino != EXT3_ROOT_INO)
  		return ERR_PTR(-ESTALE);
-@@ -636,15 +633,20 @@ static struct dentry *ext4_get_dentry(st
+@@ -585,15 +582,20 @@ static struct dentry *ext3_get_dentry(st
  		iput(inode);
  		return ERR_PTR(-ESTALE);
  	}
@@ -51,27 +51,27 @@ Index: linux-2.6/fs/ext4/super.c
 +	return inode;
 +}
 +
-+static struct dentry *ext4_fh_to_dentry(struct super_block *sb, struct fid *fid,
++static struct dentry *ext3_fh_to_dentry(struct super_block *sb, struct fid *fid,
 +		int fh_len, int fh_type)
 +{
-+	return generic_fh_to_dentry(sb, fid, fh_len, fh_type, ext4_nfs_get_inode);
++	return generic_fh_to_dentry(sb, fid, fh_len, fh_type, ext3_nfs_get_inode);
 +}
 +
-+static struct dentry *ext4_fh_to_parent(struct super_block *sb, struct fid *fid,
++static struct dentry *ext3_fh_to_parent(struct super_block *sb, struct fid *fid,
 +		int fh_len, int fh_type)
 +{
-+	return generic_fh_to_parent(sb, fid, fh_len, fh_type, ext4_nfs_get_inode);
++	return generic_fh_to_parent(sb, fid, fh_len, fh_type, ext3_nfs_get_inode);
  }
  
  #ifdef CONFIG_QUOTA
-@@ -714,8 +716,9 @@ static const struct super_operations ext
+@@ -663,8 +665,9 @@ static const struct super_operations ext
  };
  
- static struct export_operations ext4_export_ops = {
-+	.fh_to_dentry = ext4_fh_to_dentry,
-+	.fh_to_parent = ext4_fh_to_parent,
- 	.get_parent = ext4_get_parent,
--	.get_dentry = ext4_get_dentry,
+ static struct export_operations ext3_export_ops = {
++	.fh_to_dentry = ext3_fh_to_dentry,
++	.fh_to_parent = ext3_fh_to_parent,
+ 	.get_parent = ext3_get_parent,
+-	.get_dentry = ext3_get_dentry,
  };
  
  enum {
