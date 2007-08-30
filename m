@@ -1,7 +1,7 @@
 From: Christoph Hellwig <hch@lst.de>
-Subject: [PATH 01/19] xfs: kill struct fid/fid_t namespace pollution
-Date: Thu, 30 Aug 2007 15:15:48 +0200
-Message-ID: <20070830131548.GB6834@lst.de>
+Subject: [PATH 02/19] exportfs: add fid type
+Date: Thu, 30 Aug 2007 15:15:54 +0200
+Message-ID: <20070830131554.GC6834@lst.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net, linux-fsdevel@vger.kernel.org
@@ -9,12 +9,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IQjsD-0006zf-LQ
-	for nfs@lists.sourceforge.net; Thu, 30 Aug 2007 06:15:50 -0700
+	id 1IQjsI-0006zm-45
+	for nfs@lists.sourceforge.net; Thu, 30 Aug 2007 06:15:54 -0700
 Received: from verein.lst.de ([213.95.11.210] helo=mail.lst.de)
 	by mail.sourceforge.net with esmtps (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.44) id 1IQjsH-0005rq-3b
-	for nfs@lists.sourceforge.net; Thu, 30 Aug 2007 06:15:54 -0700
+	(Exim 4.44) id 1IQjsL-0005vY-MT
+	for nfs@lists.sourceforge.net; Thu, 30 Aug 2007 06:15:58 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,287 +27,307 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-XFS currently defines various fid types internally, including an
-fid_t which I will introduce kernel wide in the next patch.
+Add a structured fid type so that we don't have to pass an array
+of u32 values around everywhere.  It's a union of possible layouts.
 
-This patch kills the fid_t and xfs_fid2_t types inside xfs and uses
-xfs_fid_t consistantly.
+As a start there's only the u32 array and the traditional 32bit
+inode format, but there will be more in one of my next patchset
+when I start to document the various filehandle formats we have
+in lowlevel filesystems better.
+
+Also add an enum that gives the various filehandle types human-
+readable names.
+
+Note:  Some people might think the struct containing an anonymous
+union is ugly, but I didn't want to pass around a raw union type.
+
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 
-
-Index: linux-2.6/fs/xfs/linux-2.6/xfs_export.c
+Index: linux-2.6/include/linux/exportfs.h
 ===================================================================
---- linux-2.6.orig/fs/xfs/linux-2.6/xfs_export.c	2007-06-14 17:51:36.000000000 +0200
-+++ linux-2.6/fs/xfs/linux-2.6/xfs_export.c	2007-07-20 19:50:27.000000000 +0200
-@@ -48,8 +48,8 @@ xfs_fs_decode_fh(
- 		struct dentry	*de),
- 	void			*context)
- {
--	xfs_fid2_t		ifid;
--	xfs_fid2_t		pfid;
-+	xfs_fid_t		ifid;
-+	xfs_fid_t		pfid;
- 	void			*parent = NULL;
- 	int			is64 = 0;
- 	__u32			*p = fh;
-@@ -141,7 +141,7 @@ xfs_fs_get_dentry(
- 	bhv_vfs_t		*vfsp = vfs_from_sb(sb);
- 	int			error;
- 
--	error = bhv_vfs_vget(vfsp, &vp, (fid_t *)data);
-+	error = bhv_vfs_vget(vfsp, &vp, data);
- 	if (error || vp == NULL)
- 		return ERR_PTR(-ESTALE) ;
- 
-Index: linux-2.6/fs/xfs/linux-2.6/xfs_vfs.c
-===================================================================
---- linux-2.6.orig/fs/xfs/linux-2.6/xfs_vfs.c	2007-06-14 17:51:36.000000000 +0200
-+++ linux-2.6/fs/xfs/linux-2.6/xfs_vfs.c	2007-07-20 19:50:27.000000000 +0200
-@@ -145,7 +145,7 @@ int
- vfs_vget(
- 	struct bhv_desc		*bdp,
- 	struct bhv_vnode	**vpp,
--	struct fid		*fidp)
-+	struct xfs_fid		*fidp)
- {
- 	struct bhv_desc		*next = bdp;
- 
-Index: linux-2.6/fs/xfs/linux-2.6/xfs_vfs.h
-===================================================================
---- linux-2.6.orig/fs/xfs/linux-2.6/xfs_vfs.h	2007-07-16 15:07:47.000000000 +0200
-+++ linux-2.6/fs/xfs/linux-2.6/xfs_vfs.h	2007-07-20 19:50:27.000000000 +0200
-@@ -24,10 +24,10 @@
- struct bhv_vfs;
- struct bhv_vnode;
- 
--struct fid;
- struct cred;
- struct seq_file;
+--- linux-2.6.orig/include/linux/exportfs.h	2007-07-19 15:56:47.000000000 +0200
++++ linux-2.6/include/linux/exportfs.h	2007-07-20 19:50:34.000000000 +0200
+@@ -7,6 +7,44 @@ struct dentry;
  struct super_block;
-+struct xfs_fid;
- struct xfs_mount_args;
+ struct vfsmount;
  
- typedef struct kstatfs	bhv_statvfs_t;
-@@ -127,7 +127,8 @@ typedef int	(*vfs_root_t)(bhv_desc_t *, 
- typedef int	(*vfs_statvfs_t)(bhv_desc_t *, bhv_statvfs_t *,
- 				struct bhv_vnode *);
- typedef int	(*vfs_sync_t)(bhv_desc_t *, int, struct cred *);
--typedef int	(*vfs_vget_t)(bhv_desc_t *, struct bhv_vnode **, struct fid *);
-+typedef int	(*vfs_vget_t)(bhv_desc_t *, struct bhv_vnode **,
-+				struct xfs_fid *);
- typedef int	(*vfs_dmapiops_t)(bhv_desc_t *, caddr_t);
- typedef int	(*vfs_quotactl_t)(bhv_desc_t *, int, int, caddr_t);
- typedef void	(*vfs_init_vnode_t)(bhv_desc_t *,
-@@ -198,7 +199,7 @@ extern int vfs_mntupdate(bhv_desc_t *, i
- extern int vfs_root(bhv_desc_t *, struct bhv_vnode **);
- extern int vfs_statvfs(bhv_desc_t *, bhv_statvfs_t *, struct bhv_vnode *);
- extern int vfs_sync(bhv_desc_t *, int, struct cred *);
--extern int vfs_vget(bhv_desc_t *, struct bhv_vnode **, struct fid *);
-+extern int vfs_vget(bhv_desc_t *, struct bhv_vnode **, struct xfs_fid *);
- extern int vfs_dmapiops(bhv_desc_t *, caddr_t);
- extern int vfs_quotactl(bhv_desc_t *, int, int, caddr_t);
- extern void vfs_init_vnode(bhv_desc_t *, struct bhv_vnode *, bhv_desc_t *, int);
-Index: linux-2.6/fs/xfs/xfs_fs.h
++/*
++ * The fileid_type identifies how the file within the filesystem is encoded.
++ * In theory this is freely set and parsed by the filesystem, but we try to
++ * stick to conventions so we can share some generic code and don't confuse
++ * sniffers like ethereal/wireshark.
++ *
++ * The filesystem must not use the value '0' or '0xff'.
++ */
++enum fid_type {
++	/*
++	 * The root, or export point, of the filesystem.
++	 * (Never actually passed down to the filesystem.
++	 */
++	FILEID_ROOT = 0,
++
++	/*
++	 * 32bit inode number, 32 bit generation number.
++	 */
++	FILEID_INO32_GEN = 1,
++
++	/*
++	 * 32bit inode number, 32 bit generation number,
++	 * 32 bit parent directory inode number.
++	 */
++	FILEID_INO32_GEN_PARENT = 2,
++};
++
++struct fid {
++	union {
++		struct {
++			u32 ino;
++			u32 gen;
++			u32 parent_ino;
++			u32 parent_gen;
++		} i32;
++		__u32 raw[6];
++	};
++};
+ 
+ /**
+  * struct export_operations - for nfsd to communicate with file systems
+@@ -117,9 +155,9 @@ extern struct dentry *find_exported_dent
+ 	void *parent, int (*acceptable)(void *context, struct dentry *de),
+ 	void *context);
+ 
+-extern int exportfs_encode_fh(struct dentry *dentry, __u32 *fh, int *max_len,
+-	int connectable);
+-extern struct dentry *exportfs_decode_fh(struct vfsmount *mnt, __u32 *fh,
++extern int exportfs_encode_fh(struct dentry *dentry, struct fid *fid,
++	int *max_len, int connectable);
++extern struct dentry *exportfs_decode_fh(struct vfsmount *mnt, struct fid *fid,
+ 	int fh_len, int fileid_type, int (*acceptable)(void *, struct dentry *),
+ 	void *context);
+ 
+Index: linux-2.6/fs/nfsd/nfsfh.c
 ===================================================================
---- linux-2.6.orig/fs/xfs/xfs_fs.h	2007-07-16 15:07:47.000000000 +0200
-+++ linux-2.6/fs/xfs/xfs_fs.h	2007-07-20 19:50:27.000000000 +0200
-@@ -389,30 +389,13 @@ typedef struct xfs_fsop_attrmulti_handle
+--- linux-2.6.orig/fs/nfsd/nfsfh.c	2007-07-19 15:56:46.000000000 +0200
++++ linux-2.6/fs/nfsd/nfsfh.c	2007-07-20 19:51:49.000000000 +0200
+@@ -115,8 +115,7 @@ fh_verify(struct svc_rqst *rqstp, struct
+ 	dprintk("nfsd: fh_verify(%s)\n", SVCFH_fmt(fhp));
+ 
+ 	if (!fhp->fh_dentry) {
+-		__u32 *datap=NULL;
+-		__u32 tfh[3];		/* filehandle fragment for oldstyle filehandles */
++		struct fid *fid = NULL, sfid;
+ 		int fileid_type;
+ 		int data_left = fh->fh_size/4;
+ 
+@@ -128,7 +127,6 @@ fh_verify(struct svc_rqst *rqstp, struct
+ 
+ 		if (fh->fh_version == 1) {
+ 			int len;
+-			datap = fh->fh_auth;
+ 			if (--data_left<0) goto out;
+ 			switch (fh->fh_auth_type) {
+ 			case 0: break;
+@@ -144,9 +142,10 @@ fh_verify(struct svc_rqst *rqstp, struct
+ 				fh->fh_fsid[1] = fh->fh_fsid[2];
+ 			}
+ 			if ((data_left -= len)<0) goto out;
+-			exp = rqst_exp_find(rqstp, fh->fh_fsid_type, datap);
+-			datap += len;
++			exp = rqst_exp_find(rqstp, fh->fh_fsid_type, fh->fh_auth);
++ 			fid = (struct fid *)(fh->fh_auth + len);
+ 		} else {
++			__u32 tfh[2];
+ 			dev_t xdev;
+ 			ino_t xino;
+ 			if (fh->fh_size != NFS_FHSIZE)
+@@ -190,22 +189,22 @@ fh_verify(struct svc_rqst *rqstp, struct
+ 			error = nfserr_badhandle;
+ 
+ 		if (fh->fh_version != 1) {
+-			tfh[0] = fh->ofh_ino;
+-			tfh[1] = fh->ofh_generation;
+-			tfh[2] = fh->ofh_dirino;
+-			datap = tfh;
++			sfid.i32.ino = fh->ofh_ino;
++			sfid.i32.gen = fh->ofh_generation;
++			sfid.i32.parent_ino = fh->ofh_dirino;
++			fid = &sfid;
+ 			data_left = 3;
+ 			if (fh->ofh_dirino == 0)
+-				fileid_type = 1;
++				fileid_type = FILEID_INO32_GEN;
+ 			else
+-				fileid_type = 2;
++				fileid_type = FILEID_INO32_GEN_PARENT;
+ 		} else
+ 			fileid_type = fh->fh_fileid_type;
+ 
+-		if (fileid_type == 0)
++		if (fileid_type == FILEID_ROOT)
+ 			dentry = dget(exp->ex_dentry);
+ 		else {
+-			dentry = exportfs_decode_fh(exp->ex_mnt, datap,
++			dentry = exportfs_decode_fh(exp->ex_mnt, fid,
+ 					data_left, fileid_type,
+ 					nfsd_acceptable, exp);
+ 		}
+@@ -286,16 +285,21 @@ out:
+  * an inode.  In this case a call to fh_update should be made
+  * before the fh goes out on the wire ...
   */
- typedef struct { __u32 val[2]; } xfs_fsid_t; /* file system id type */
- 
--
--#ifndef HAVE_FID
--#define MAXFIDSZ	46
--
--typedef struct fid {
--	__u16		fid_len;		/* length of data in bytes */
--	unsigned char	fid_data[MAXFIDSZ];	/* data (fid_len worth)  */
--} fid_t;
--#endif
--
- typedef struct xfs_fid {
--	__u16	xfs_fid_len;		/* length of remainder	*/
--	__u16	xfs_fid_pad;
--	__u32	xfs_fid_gen;		/* generation number	*/
--	__u64	xfs_fid_ino;		/* 64 bits inode number */
-+	__u16	fid_len;		/* length of remainder	*/
-+	__u16	fid_pad;
-+	__u32	fid_gen;		/* generation number	*/
-+	__u64	fid_ino;		/* 64 bits inode number */
- } xfs_fid_t;
- 
--typedef struct xfs_fid2 {
--	__u16	fid_len;	/* length of remainder */
--	__u16	fid_pad;	/* padding, must be zero */
--	__u32	fid_gen;	/* generation number */
--	__u64	fid_ino;	/* inode number */
--} xfs_fid2_t;
--
- typedef struct xfs_handle {
- 	union {
- 		__s64	    align;	/* force alignment of ha_fid	 */
-@@ -422,9 +405,9 @@ typedef struct xfs_handle {
- } xfs_handle_t;
- #define ha_fsid ha_u._ha_fsid
- 
--#define XFS_HSIZE(handle)	(((char *) &(handle).ha_fid.xfs_fid_pad	 \
-+#define XFS_HSIZE(handle)	(((char *) &(handle).ha_fid.fid_pad	 \
- 				 - (char *) &(handle))			  \
--				 + (handle).ha_fid.xfs_fid_len)
-+				 + (handle).ha_fid.fid_len)
- 
- /*
-  * Flags for going down operation
-Index: linux-2.6/fs/xfs/xfs_vfsops.c
-===================================================================
---- linux-2.6.orig/fs/xfs/xfs_vfsops.c	2007-07-16 15:07:47.000000000 +0200
-+++ linux-2.6/fs/xfs/xfs_vfsops.c	2007-07-20 19:50:27.000000000 +0200
-@@ -1602,10 +1602,9 @@ STATIC int
- xfs_vget(
- 	bhv_desc_t	*bdp,
- 	bhv_vnode_t	**vpp,
--	fid_t		*fidp)
-+	xfs_fid_t	*xfid)
+-static inline int _fh_update(struct dentry *dentry, struct svc_export *exp,
+-			     __u32 *datap, int *maxsize)
++static void _fh_update(struct svc_fh *fhp, struct svc_export *exp,
++		struct dentry *dentry)
  {
- 	xfs_mount_t	*mp = XFS_BHVTOM(bdp);
--	xfs_fid_t	*xfid = (struct xfs_fid *)fidp;
- 	xfs_inode_t	*ip;
- 	int		error;
- 	xfs_ino_t	ino;
-@@ -1615,11 +1614,11 @@ xfs_vget(
- 	 * Invalid.  Since handles can be created in user space and passed in
- 	 * via gethandle(), this is not cause for a panic.
- 	 */
--	if (xfid->xfs_fid_len != sizeof(*xfid) - sizeof(xfid->xfs_fid_len))
-+	if (xfid->fid_len != sizeof(*xfid) - sizeof(xfid->fid_len))
- 		return XFS_ERROR(EINVAL);
+-	if (dentry == exp->ex_dentry) {
+-		*maxsize = 0;
+-		return 0;
+-	}
++	if (dentry != exp->ex_dentry) {
++		struct fid *fid = (struct fid *)
++			(fhp->fh_handle.fh_auth + fhp->fh_handle.fh_size/4 - 1);
++		int maxsize = (fhp->fh_maxsize - fhp->fh_handle.fh_size)/4;
++		int subtreecheck = !(exp->ex_flags & NFSEXP_NOSUBTREECHECK);
  
--	ino  = xfid->xfs_fid_ino;
--	igen = xfid->xfs_fid_gen;
-+	ino  = xfid->fid_ino;
-+	igen = xfid->fid_gen;
- 
- 	/*
- 	 * NFS can sometimes send requests for ino 0.  Fail them gracefully.
-Index: linux-2.6/fs/xfs/xfs_vnodeops.c
-===================================================================
---- linux-2.6.orig/fs/xfs/xfs_vnodeops.c	2007-07-20 17:20:02.000000000 +0200
-+++ linux-2.6/fs/xfs/xfs_vnodeops.c	2007-07-20 19:50:27.000000000 +0200
-@@ -3637,28 +3637,18 @@ std_return:
- 	goto std_return;
+-	return exportfs_encode_fh(dentry, datap, maxsize,
+-			  !(exp->ex_flags & NFSEXP_NOSUBTREECHECK));
++		fhp->fh_handle.fh_fileid_type =
++			exportfs_encode_fh(dentry, fid, &maxsize, subtreecheck);
++		fhp->fh_handle.fh_size += maxsize * 4;
++	} else {
++		fhp->fh_handle.fh_fileid_type = FILEID_ROOT;
++	}
  }
  
--
--/*
-- * xfs_fid2
-- *
-- * A fid routine that takes a pointer to a previously allocated
-- * fid structure (like xfs_fast_fid) but uses a 64 bit inode number.
-- */
- STATIC int
- xfs_fid2(
- 	bhv_desc_t	*bdp,
--	fid_t		*fidp)
-+	xfs_fid_t	*xfid)
- {
- 	xfs_inode_t	*ip;
--	xfs_fid2_t	*xfid;
- 
- 	vn_trace_entry(BHV_TO_VNODE(bdp), __FUNCTION__,
- 				       (inst_t *)__return_address);
--	ASSERT(sizeof(fid_t) >= sizeof(xfs_fid2_t));
- 
--	xfid = (xfs_fid2_t *)fidp;
- 	ip = XFS_BHVTOI(bdp);
--	xfid->fid_len = sizeof(xfs_fid2_t) - sizeof(xfid->fid_len);
-+	xfid->fid_len = sizeof(xfs_fid_t) - sizeof(xfid->fid_len);
- 	xfid->fid_pad = 0;
- 	/*
- 	 * use memcpy because the inode is a long long and there's no
-Index: linux-2.6/fs/xfs/linux-2.6/xfs_vnode.h
-===================================================================
---- linux-2.6.orig/fs/xfs/linux-2.6/xfs_vnode.h	2007-07-16 15:07:47.000000000 +0200
-+++ linux-2.6/fs/xfs/linux-2.6/xfs_vnode.h	2007-07-20 19:50:27.000000000 +0200
-@@ -170,7 +170,7 @@ typedef int	(*vop_readlink_t)(bhv_desc_t
- typedef int	(*vop_fsync_t)(bhv_desc_t *, int, struct cred *,
- 				xfs_off_t, xfs_off_t);
- typedef int	(*vop_inactive_t)(bhv_desc_t *, struct cred *);
--typedef int	(*vop_fid2_t)(bhv_desc_t *, struct fid *);
-+typedef int	(*vop_fid2_t)(bhv_desc_t *, struct xfs_fid *);
- typedef int	(*vop_release_t)(bhv_desc_t *);
- typedef int	(*vop_rwlock_t)(bhv_desc_t *, bhv_vrwlock_t);
- typedef void	(*vop_rwunlock_t)(bhv_desc_t *, bhv_vrwlock_t);
-Index: linux-2.6/fs/xfs/linux-2.6/xfs_ioctl.c
-===================================================================
---- linux-2.6.orig/fs/xfs/linux-2.6/xfs_ioctl.c	2007-07-16 15:07:47.000000000 +0200
-+++ linux-2.6/fs/xfs/linux-2.6/xfs_ioctl.c	2007-07-20 19:50:27.000000000 +0200
-@@ -150,11 +150,11 @@ xfs_find_handle(
- 		lock_mode = xfs_ilock_map_shared(ip);
- 
- 		/* fill in fid section of handle from inode */
--		handle.ha_fid.xfs_fid_len = sizeof(xfs_fid_t) -
--					    sizeof(handle.ha_fid.xfs_fid_len);
--		handle.ha_fid.xfs_fid_pad = 0;
--		handle.ha_fid.xfs_fid_gen = ip->i_d.di_gen;
--		handle.ha_fid.xfs_fid_ino = ip->i_ino;
-+		handle.ha_fid.fid_len = sizeof(xfs_fid_t) -
-+					sizeof(handle.ha_fid.fid_len);
-+		handle.ha_fid.fid_pad = 0;
-+		handle.ha_fid.fid_gen = ip->i_d.di_gen;
-+		handle.ha_fid.fid_ino = ip->i_ino;
- 
- 		xfs_iunlock_map_shared(ip, lock_mode);
- 
-@@ -220,10 +220,10 @@ xfs_vget_fsop_handlereq(
- 	if (hlen < sizeof(*handlep))
- 		memset(((char *)handlep) + hlen, 0, sizeof(*handlep) - hlen);
- 	if (hlen > sizeof(handlep->ha_fsid)) {
--		if (handlep->ha_fid.xfs_fid_len !=
--				(hlen - sizeof(handlep->ha_fsid)
--					- sizeof(handlep->ha_fid.xfs_fid_len))
--		    || handlep->ha_fid.xfs_fid_pad)
-+		if (handlep->ha_fid.fid_len !=
-+		    (hlen - sizeof(handlep->ha_fsid) -
-+		            sizeof(handlep->ha_fid.fid_len)) ||
-+		    handlep->ha_fid.fid_pad)
- 			return XFS_ERROR(EINVAL);
- 	}
- 
-@@ -231,9 +231,9 @@ xfs_vget_fsop_handlereq(
- 	 * Crack the handle, obtain the inode # & generation #
- 	 */
- 	xfid = (struct xfs_fid *)&handlep->ha_fid;
--	if (xfid->xfs_fid_len == sizeof(*xfid) - sizeof(xfid->xfs_fid_len)) {
--		ino  = xfid->xfs_fid_ino;
--		igen = xfid->xfs_fid_gen;
-+	if (xfid->fid_len == sizeof(*xfid) - sizeof(xfid->fid_len)) {
-+		ino  = xfid->fid_ino;
-+		igen = xfid->fid_gen;
- 	} else {
- 		return XFS_ERROR(EINVAL);
- 	}
-Index: linux-2.6/fs/xfs/linux-2.6/xfs_export.h
-===================================================================
---- linux-2.6.orig/fs/xfs/linux-2.6/xfs_export.h	2007-06-14 17:51:36.000000000 +0200
-+++ linux-2.6/fs/xfs/linux-2.6/xfs_export.h	2007-07-20 19:50:27.000000000 +0200
-@@ -71,13 +71,13 @@ xfs_fileid_length(int hasparent, int is6
- 
  /*
-  * Decode encoded inode information (either for the inode itself
-- * or the parent) into an xfs_fid2_t structure.  Advances and
-+ * or the parent) into an xfs_fid_t structure.  Advances and
-  * returns the new data pointer
-  */
- static inline __u32 *
--xfs_fileid_decode_fid2(__u32 *p, xfs_fid2_t *fid, int is64)
-+xfs_fileid_decode_fid2(__u32 *p, xfs_fid_t *fid, int is64)
+@@ -457,12 +461,8 @@ fh_compose(struct svc_fh *fhp, struct sv
+ 		datap += len/4;
+ 		fhp->fh_handle.fh_size = 4 + len;
+ 
+-		if (inode) {
+-			int size = (fhp->fh_maxsize-len-4)/4;
+-			fhp->fh_handle.fh_fileid_type =
+-				_fh_update(dentry, exp, datap, &size);
+-			fhp->fh_handle.fh_size += size*4;
+-		}
++		if (inode)
++			_fh_update(fhp, exp, dentry);
+ 		if (fhp->fh_handle.fh_fileid_type == 255)
+ 			return nfserr_opnotsupp;
+ 	}
+@@ -479,7 +479,6 @@ __be32
+ fh_update(struct svc_fh *fhp)
  {
--	fid->fid_len = sizeof(xfs_fid2_t) - sizeof(fid->fid_len);
-+	fid->fid_len = sizeof(xfs_fid_t) - sizeof(fid->fid_len);
- 	fid->fid_pad = 0;
- 	fid->fid_ino = *p++;
- #if XFS_BIG_INUMS
+ 	struct dentry *dentry;
+-	__u32 *datap;
+ 
+ 	if (!fhp->fh_dentry)
+ 		goto out_bad;
+@@ -490,15 +489,10 @@ fh_update(struct svc_fh *fhp)
+ 	if (fhp->fh_handle.fh_version != 1) {
+ 		_fh_update_old(dentry, fhp->fh_export, &fhp->fh_handle);
+ 	} else {
+-		int size;
+-		if (fhp->fh_handle.fh_fileid_type != 0)
++		if (fhp->fh_handle.fh_fileid_type != FILEID_ROOT)
+ 			goto out;
+-		datap = fhp->fh_handle.fh_auth+
+-			fhp->fh_handle.fh_size/4 -1;
+-		size = (fhp->fh_maxsize - fhp->fh_handle.fh_size)/4;
+-		fhp->fh_handle.fh_fileid_type =
+-			_fh_update(dentry, fhp->fh_export, datap, &size);
+-		fhp->fh_handle.fh_size += size*4;
++
++		_fh_update(fhp, fhp->fh_export, dentry);
+ 		if (fhp->fh_handle.fh_fileid_type == 255)
+ 			return nfserr_opnotsupp;
+ 	}
+Index: linux-2.6/fs/exportfs/expfs.c
+===================================================================
+--- linux-2.6.orig/fs/exportfs/expfs.c	2007-07-19 15:56:46.000000000 +0200
++++ linux-2.6/fs/exportfs/expfs.c	2007-07-20 19:50:34.000000000 +0200
+@@ -434,29 +434,29 @@ out:
+  * can be used to check that it is still valid.  It places them in the
+  * filehandle fragment where export_decode_fh expects to find them.
+  */
+-static int export_encode_fh(struct dentry *dentry, __u32 *fh, int *max_len,
+-		   int connectable)
++static int export_encode_fh(struct dentry *dentry, struct fid *fid,
++		int *max_len, int connectable)
+ {
+ 	struct inode * inode = dentry->d_inode;
+ 	int len = *max_len;
+-	int type = 1;
++	int type = FILEID_INO32_GEN;
+ 	
+ 	if (len < 2 || (connectable && len < 4))
+ 		return 255;
+ 
+ 	len = 2;
+-	fh[0] = inode->i_ino;
+-	fh[1] = inode->i_generation;
++	fid->i32.ino = inode->i_ino;
++	fid->i32.gen = inode->i_generation;
+ 	if (connectable && !S_ISDIR(inode->i_mode)) {
+ 		struct inode *parent;
+ 
+ 		spin_lock(&dentry->d_lock);
+ 		parent = dentry->d_parent->d_inode;
+-		fh[2] = parent->i_ino;
+-		fh[3] = parent->i_generation;
++		fid->i32.parent_ino = parent->i_ino;
++		fid->i32.parent_gen = parent->i_generation;
+ 		spin_unlock(&dentry->d_lock);
+ 		len = 4;
+-		type = 2;
++		type = FILEID_INO32_GEN_PARENT;
+ 	}
+ 	*max_len = len;
+ 	return type;
+@@ -494,33 +494,33 @@ static struct dentry *export_decode_fh(s
+ 				   acceptable, context);
+ }
+ 
+-int exportfs_encode_fh(struct dentry *dentry, __u32 *fh, int *max_len,
++int exportfs_encode_fh(struct dentry *dentry, struct fid *fid, int *max_len,
+ 		int connectable)
+ {
+  	struct export_operations *nop = dentry->d_sb->s_export_op;
+ 	int error;
+ 
+ 	if (nop->encode_fh)
+-		error = nop->encode_fh(dentry, fh, max_len, connectable);
++		error = nop->encode_fh(dentry, fid->raw, max_len, connectable);
+ 	else
+-		error = export_encode_fh(dentry, fh, max_len, connectable);
++		error = export_encode_fh(dentry, fid, max_len, connectable);
+ 
+ 	return error;
+ }
+ EXPORT_SYMBOL_GPL(exportfs_encode_fh);
+ 
+-struct dentry *exportfs_decode_fh(struct vfsmount *mnt, __u32 *fh, int fh_len,
+-		int fileid_type, int (*acceptable)(void *, struct dentry *),
+-		void *context)
++struct dentry *exportfs_decode_fh(struct vfsmount *mnt, struct fid *fid,
++		int fh_len, int fileid_type,
++		int (*acceptable)(void *, struct dentry *), void *context)
+ {
+ 	struct export_operations *nop = mnt->mnt_sb->s_export_op;
+ 	struct dentry *result;
+ 
+ 	if (nop->decode_fh) {
+-		result = nop->decode_fh(mnt->mnt_sb, fh, fh_len, fileid_type,
++		result = nop->decode_fh(mnt->mnt_sb, fid->raw, fh_len, fileid_type,
+ 			acceptable, context);
+ 	} else {
+-		result = export_decode_fh(mnt->mnt_sb, fh, fh_len, fileid_type,
++		result = export_decode_fh(mnt->mnt_sb, fid->raw, fh_len, fileid_type,
+ 			acceptable, context);
+ 	}
+ 
 
 --
 
