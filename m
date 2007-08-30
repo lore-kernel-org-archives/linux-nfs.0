@@ -1,7 +1,7 @@
 From: Christoph Hellwig <hch@lst.de>
-Subject: [PATH 13/19] shmem: new export ops
-Date: Thu, 30 Aug 2007 15:16:56 +0200
-Message-ID: <20070830131656.GN6834@lst.de>
+Subject: [PATH 15/19] gfs2: new export ops
+Date: Thu, 30 Aug 2007 15:17:08 +0200
+Message-ID: <20070830131708.GP6834@lst.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 To: nfs@lists.sourceforge.net, linux-fsdevel@vger.kernel.org
@@ -9,72 +9,123 @@ Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <nfs.lists.sourceforge.net>
 
-I'm not sure what people were thinking when adding support to
-export tmpfs, but here's the conversion anyway:
+Convert gfs2 to the new ops.   Uses a similar structure to the generic
+helpers, but gfs2 has it's own file handle formats.
 
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 
-Index: linux-2.6/mm/shmem.c
+
+Index: linux-2.6/fs/gfs2/ops_export.c
 ===================================================================
---- linux-2.6.orig/mm/shmem.c	2007-02-11 10:46:30.000000000 +0100
-+++ linux-2.6/mm/shmem.c	2007-02-11 10:53:12.000000000 +0100
-@@ -1977,33 +1977,25 @@
- 	return ino->i_ino == inum && fh[0] == ino->i_generation;
- }
+--- linux-2.6.orig/fs/gfs2/ops_export.c	2007-07-19 15:56:46.000000000 +0200
++++ linux-2.6/fs/gfs2/ops_export.c	2007-07-20 19:58:06.000000000 +0200
+@@ -31,40 +31,6 @@
+ #define GFS2_LARGE_FH_SIZE 8
+ #define GFS2_OLD_FH_SIZE 10
  
--static struct dentry *shmem_get_dentry(struct super_block *sb, void *vfh)
-+static struct dentry *shmem_fh_to_dentry(struct super_block *sb,
-+		struct fid *fid, int fh_len, int fh_type)
- {
--	struct dentry *de = NULL;
- 	struct inode *inode;
--	__u32 *fh = vfh;
--	__u64 inum = fh[2];
--	inum = (inum << 32) | fh[1];
-+	struct dentry *dentry = NULL;
-+	u64 inum = fid->raw[2];
-+	inum = (inum << 32) | fid->raw[1];
- 
--	inode = ilookup5(sb, (unsigned long)(inum+fh[0]), shmem_match, vfh);
-+	if (fh_len < 3)
-+		return NULL;
-+
-+	inode = ilookup5(sb, (unsigned long)(inum + fid->raw[0]),
-+			shmem_match, fid->raw);
- 	if (inode) {
--		de = d_find_alias(inode);
-+		dentry = d_find_alias(inode);
- 		iput(inode);
- 	}
- 
--	return de? de: ERR_PTR(-ESTALE);
+-static struct dentry *gfs2_decode_fh(struct super_block *sb,
+-				     __u32 *p,
+-				     int fh_len,
+-				     int fh_type,
+-				     int (*acceptable)(void *context,
+-						       struct dentry *dentry),
+-				     void *context)
+-{
+-	__be32 *fh = (__force __be32 *)p;
+-	struct gfs2_inum_host inum, parent;
+-
+-	memset(&parent, 0, sizeof(struct gfs2_inum));
+-
+-	switch (fh_len) {
+-	case GFS2_LARGE_FH_SIZE:
+-	case GFS2_OLD_FH_SIZE:
+-		parent.no_formal_ino = ((u64)be32_to_cpu(fh[4])) << 32;
+-		parent.no_formal_ino |= be32_to_cpu(fh[5]);
+-		parent.no_addr = ((u64)be32_to_cpu(fh[6])) << 32;
+-		parent.no_addr |= be32_to_cpu(fh[7]);
+-	case GFS2_SMALL_FH_SIZE:
+-		inum.no_formal_ino = ((u64)be32_to_cpu(fh[0])) << 32;
+-		inum.no_formal_ino |= be32_to_cpu(fh[1]);
+-		inum.no_addr = ((u64)be32_to_cpu(fh[2])) << 32;
+-		inum.no_addr |= be32_to_cpu(fh[3]);
+-		break;
+-	default:
+-		return NULL;
+-	}
+-
+-	return gfs2_export_ops.find_exported_dentry(sb, &inum, &parent,
+-						    acceptable, context);
 -}
 -
--static struct dentry *shmem_decode_fh(struct super_block *sb, __u32 *fh,
--		int len, int type,
--		int (*acceptable)(void *context, struct dentry *de),
--		void *context)
--{
--	if (len < 3)
--		return ERR_PTR(-ESTALE);
--
--	return sb->s_export_op->find_exported_dentry(sb, fh, NULL, acceptable,
--							context);
-+	return dentry;
+ static int gfs2_encode_fh(struct dentry *dentry, __u32 *p, int *len,
+ 			  int connectable)
+ {
+@@ -189,10 +155,10 @@ static struct dentry *gfs2_get_parent(st
+ 	return dentry;
  }
  
- static int shmem_encode_fh(struct dentry *dentry, __u32 *fh, int *len,
-@@ -2038,9 +2030,8 @@
+-static struct dentry *gfs2_get_dentry(struct super_block *sb, void *inum_obj)
++static struct dentry *gfs2_get_dentry(struct super_block *sb,
++		struct gfs2_inum_host *inum)
+ {
+ 	struct gfs2_sbd *sdp = sb->s_fs_info;
+-	struct gfs2_inum_host *inum = inum_obj;
+ 	struct gfs2_holder i_gh, ri_gh, rgd_gh;
+ 	struct gfs2_rgrpd *rgd;
+ 	struct inode *inode;
+@@ -289,11 +255,50 @@ fail:
+ 	return ERR_PTR(error);
+ }
  
- static struct export_operations shmem_export_ops = {
- 	.get_parent     = shmem_get_parent,
--	.get_dentry     = shmem_get_dentry,
- 	.encode_fh      = shmem_encode_fh,
--	.decode_fh      = shmem_decode_fh,
-+	.fh_to_dentry	= shmem_fh_to_dentry,
++static struct dentry *gfs2_fh_to_dentry(struct super_block *sb, struct fid *fid,
++		int fh_len, int fh_type)
++{
++	struct gfs2_inum_host this;
++	__be32 *fh = (__force __be32 *)fid->raw;
++
++	switch (fh_type) {
++	case GFS2_SMALL_FH_SIZE:
++	case GFS2_LARGE_FH_SIZE:
++	case GFS2_OLD_FH_SIZE:
++		this.no_formal_ino = ((u64)be32_to_cpu(fh[0])) << 32;
++		this.no_formal_ino |= be32_to_cpu(fh[1]);
++		this.no_addr = ((u64)be32_to_cpu(fh[2])) << 32;
++		this.no_addr |= be32_to_cpu(fh[3]);
++		return gfs2_get_dentry(sb, &this);
++	default:
++		return NULL;
++	}
++}
++
++static struct dentry *gfs2_fh_to_parent(struct super_block *sb, struct fid *fid,
++		int fh_len, int fh_type)
++{
++	struct gfs2_inum_host parent;
++	__be32 *fh = (__force __be32 *)fid->raw;
++
++	switch (fh_type) {
++	case GFS2_LARGE_FH_SIZE:
++	case GFS2_OLD_FH_SIZE:
++		parent.no_formal_ino = ((u64)be32_to_cpu(fh[4])) << 32;
++		parent.no_formal_ino |= be32_to_cpu(fh[5]);
++		parent.no_addr = ((u64)be32_to_cpu(fh[6])) << 32;
++		parent.no_addr |= be32_to_cpu(fh[7]);
++		return gfs2_get_dentry(sb, &parent);
++	default:
++		return NULL;
++	}
++}
++
+ struct export_operations gfs2_export_ops = {
+-	.decode_fh = gfs2_decode_fh,
+ 	.encode_fh = gfs2_encode_fh,
++	.fh_to_dentry = gfs2_fh_to_dentry,
++	.fh_to_parent = gfs2_fh_to_parent,
+ 	.get_name = gfs2_get_name,
+ 	.get_parent = gfs2_get_parent,
+-	.get_dentry = gfs2_get_dentry,
  };
  
- static int shmem_parse_options(char *options, int *mode, uid_t *uid,
 
 --
