@@ -1,29 +1,24 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: mount.nfs: chk_mountpoint()
-Date: Thu, 30 Aug 2007 17:11:32 -0400
-Message-ID: <46D73284.4090309@redhat.com>
-References: <46CC884B.1030207@oracle.com> <46CD82A0.1000408@redhat.com>
-	<46CDC7D0.6030803@oracle.com> <46CDD069.3070608@redhat.com>
-	<46CDE76C.3040800@oracle.com> <46CDEA2E.10902@redhat.com>
-	<20070830101249.GA9880@janus> <46D6AFBC.3000208@redhat.com>
-	<46D6E9CF.4000901@oracle.com> <46D6EB44.7050600@redhat.com>
-	<46D6EDEE.5060907@oracle.com>
-	<EXNANE01okLQ8aZRhQd00000200@exnane01.hq.netapp.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [RFC,PATCH 00/20] svc: Server Side Transport Switch
+Date: Thu, 30 Aug 2007 17:12:49 -0400
+Message-ID: <46D732D1.3070008@oracle.com>
+References: <C2FB1E3A.3A83F%tom@opengridcomputing.com>
+Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net,
-	Frank van Maarseveen <frankvm@frankvm.com>
-To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
+Content-Type: multipart/mixed; boundary="------------050009040802070700050107"
+Cc: nfs@lists.sourceforge.net
+To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IQrId-0000VB-Nj
-	for nfs@lists.sourceforge.net; Thu, 30 Aug 2007 14:11:35 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IQrIg-0008J7-Ta
-	for nfs@lists.sourceforge.net; Thu, 30 Aug 2007 14:11:40 -0700
-In-Reply-To: <EXNANE01okLQ8aZRhQd00000200@exnane01.hq.netapp.com>
+	id 1IQrK5-0000gh-J3
+	for nfs@lists.sourceforge.net; Thu, 30 Aug 2007 14:13:05 -0700
+Received: from rgminet01.oracle.com ([148.87.113.118])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IQrK8-0000cU-P4
+	for nfs@lists.sourceforge.net; Thu, 30 Aug 2007 14:13:10 -0700
+In-Reply-To: <C2FB1E3A.3A83F%tom@opengridcomputing.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,69 +31,95 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Talpey, Thomas wrote:
-> At 12:18 PM 8/30/2007, Chuck Lever wrote:
->   
->> Peter Staubach wrote:
->>     
->>> If the application on each client is going to need many mount
->>> points, then how does "bg" do anything but increase the number
->>> of concurrent mount requests coming from each client, thus
->>> increasing the load?
->>>       
->> "bg" has an exponential backoff, so the load increase isn't terribly 
->> bothersome.  It's the "bg" recovery mechanism that's useful here for 
->> getting all the mount requests to be successful in a nondeterministic 
->> environment.
->>     
->
-> "bg" also tries synchronously before going into the background (and
-> backing off). So, by itself "bg" does not generate a storm. It only
-> slightly raises the mount traffic after a failure, by giving way to the
-> next filesystem in line - which may well be on another server.
->
-> Done right, "bg" is a reasonable approach, IMO.
+This is a multi-part message in MIME format.
+--------------050009040802070700050107
+Content-Type: text/plain; charset=US-ASCII; format=flowed
+Content-Transfer-Encoding: 7bit
 
-I will belabor this just a little more and then move on.
 
-Yes, if everything is working correctly, then the "bg" option
-adds insignificant overhead and that is in the argument processing
-for the mount command.
 
-However, if it backgrounds, there can be multiple mounts
-running at the same time.  This could add up to quite a bit
-for very many file systems.
+Tom Tucker wrote:
+> [...snip...]
+>>> For example,
+>>>
+>>> # echo rdma 2050 > /proc/fs/nfsd/portlist
+>>>
+>>> Will cause the knfsd daemon to attempt to add a listening endpoint on
+>>> port 2050 using the 'rdma' transport.
+>> Does this also register the new endpoint with the server's portmapper,
+>> or is there an additional step required for this?  At least for RDMA I
+>> assume the portmapper registration is not needed, but other transports
+>> may want it.
+> 
+> No it doesn't, but IMO it needs to. The reason it doesn't is that the
+> current portmapper registration service doesn't look at the netid, it looks
+> at the protocol number and maps that to a netid internally. I think this is
+> broken, but that's what it does. Since RMDA doesn't have an IP protocol, I
+> couldn't map it with the current services.
+> 
+> I think the right thing to do is to modify the rpcb_register service to take
+> a netid and set it in the rpc_msg, and modify the portmapper to honor the
+> netid specified. 
 
-And, why are they getting mounted?  Probably not because they
-are doing to needed immediately, but because they are being
-statically mounted and the only way to do that is via fstab
-at mount time.
+Version 2 of the rpcbind protocol doesn't take a netid.  To register a 
+netid with the local portmapper, you need two things to happen:
 
-All of these file systems are sitting, in the namespace,
-waiting to cause problems for applications looking at the
-namespace if the slightest problem occurs out on the network
-or at one of the servers which was mounted from.  They add
-overhead to applications which do look at the namespace in
-the meantime because they add to the number of file systems
-that these applications need to keep track of.
+1.  The local portmapper needs to be something that can take v3 or v4 
+registration requests
 
-I wish that I had a nickel for each time that I heard a
-customer complain because some dead server caused his
-application or the df command to hang and he wasn't
-interested in that server.  I'd be retired and typing this
-from some fun location.  :-)
+2.  rpcb_register needs to be converted to use v3 or v4 of the rpcbind 
+protocol to do the registering.
 
-Oh well, "bg" is a solution, but I think that there are better.
+3.  Mr. Talpey needs to submit his patch to make RPC transport 
+implementations support RPC_DISPLAY_NETID so the rpcbind client has a 
+proper netid string to send to the local rpcbind daemon.
 
-    Thanx...
+Thing 1 seems to be happening as distributions start using the new 
+rpcbind daemon to replace the old portmapper.
 
-       ps
+Thing 2 can happen easily after thing 1 is commonplace.
+
+Thing 3 is under development.
+
+--------------050009040802070700050107
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck.lever.vcf"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="chuck.lever.vcf"
+
+begin:vcard
+fn:Chuck Lever
+n:Lever;Chuck
+org:Oracle Corporation;Corporate Architecture: Linux Projects Group
+adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
+title:Principal Member of Staff
+tel;work:+1 248 614 5091
+x-mozilla-html:FALSE
+url:http://oss.oracle.com/~cel
+version:2.1
+end:vcard
+
+
+--------------050009040802070700050107
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
+--------------050009040802070700050107
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--------------050009040802070700050107--
