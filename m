@@ -1,24 +1,26 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: statd (status) port used when setting specific port for
- lockd - SLES9 SP3 Linux for System z.
-Date: Fri, 31 Aug 2007 07:47:53 +1000
-Message-ID: <18135.15113.531784.217271@notabene.brown>
-References: <OFDE88F129.B785EDAA-ON85257347.0040488E-85257347.0040C993@us.ibm.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH] mount.nfs: restore
+	admin-specified	clientaddr	option
+Date: Thu, 30 Aug 2007 18:41:52 -0400
+Message-ID: <1188513712.6626.28.camel@heimdal.trondhjem.org>
+References: <20070830174620.3799.1497.stgit@monet.1015granger.net>
+	<1188500090.7891.8.camel@gaula.trondhjem.org>
+	<46D7192D.9090904@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Terry Spaulding <spauld@us.ibm.com>
+Cc: neilb@suse.de, nfs@lists.sourceforge.net
+To: chuck.lever@oracle.com
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IQrrt-0003zJ-Em
-	for nfs@lists.sourceforge.net; Thu, 30 Aug 2007 14:48:01 -0700
-Received: from mx2.suse.de ([195.135.220.15])
+	id 1IQsi8-0000pz-TV
+	for nfs@lists.sourceforge.net; Thu, 30 Aug 2007 15:42:01 -0700
+Received: from pat.uio.no ([129.240.10.15])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IQrrw-0006K6-NN
-	for nfs@lists.sourceforge.net; Thu, 30 Aug 2007 14:48:06 -0700
-In-Reply-To: message from Terry Spaulding on Thursday August 30
+	(Exim 4.44) id 1IQsiB-0001x7-Td
+	for nfs@lists.sourceforge.net; Thu, 30 Aug 2007 15:42:05 -0700
+In-Reply-To: <46D7192D.9090904@oracle.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,28 +33,21 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thursday August 30, spauld@us.ibm.com wrote:
-> 
-> I noticed that when I set the lockd ports to specific port that the statd
-> port is set to the same port.
+On Thu, 2007-08-30 at 15:23 -0400, Chuck Lever wrote:
 
-This behaviour is specific to SLES9 and SLES10.  The kernels in those
-distributions contain statd functionality and use the same port as
-lockd uses.
+> It would be wonderful if we had some of these requirements written down 
+> somewhere, so we wouldn't be dependent on individuals who are 
+> unavailable at times when we need some historical perspective.  I've 
+> started doing this here:
 
-> 
-> Should I also set statd to a specific unique port  different from lockd ?
-> 
+Nobody ever asked me either before or after disabling this in the
+mainline nfs-utils. It came as a complete surprise to me to learn now
+that it had been done.
 
-You cannot in SLES9/10.  On other systems where statd is a user-space
-program, they cannot be the same port.
+Yes, that irritates me.
 
+Trond
 
-> Is there any problem with statd using the same port as lockd ?
-
-Not on SLES9/10.
-
-NeilBrown
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
