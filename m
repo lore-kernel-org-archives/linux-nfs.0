@@ -1,21 +1,28 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 1/3] VFS: make notify_change pass ATTR_KILL_S*ID to
-	setattr operations
-Date: Thu, 30 Aug 2007 11:06:38 -0400
-Message-ID: <200708301506.l7UF6c63002133@dantu.rdu.redhat.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: mount.nfs: chk_mountpoint()
+Date: Thu, 30 Aug 2007 12:01:19 -0400
+Message-ID: <46D6E9CF.4000901@oracle.com>
+References: <46CC884B.1030207@oracle.com> <46CD82A0.1000408@redhat.com>
+	<46CDC7D0.6030803@oracle.com> <46CDD069.3070608@redhat.com>
+	<46CDE76C.3040800@oracle.com> <46CDEA2E.10902@redhat.com>
+	<20070830101249.GA9880@janus> <46D6AFBC.3000208@redhat.com>
+Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, linux-cifs-client@lists.samba.org
-To: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Content-Type: multipart/mixed; boundary="------------050804050604050700060105"
+Cc: nfs@lists.sourceforge.net,
+	Frank van Maarseveen <frankvm@frankvm.com>
+To: Peter Staubach <staubach@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IQmAp-0008Pi-QO
-	for nfs@lists.sourceforge.net; Thu, 30 Aug 2007 08:43:11 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IQmAt-0001s8-8H
-	for nfs@lists.sourceforge.net; Thu, 30 Aug 2007 08:43:16 -0700
+	id 1IQmTJ-0002eS-Nh
+	for nfs@lists.sourceforge.net; Thu, 30 Aug 2007 09:02:18 -0700
+Received: from rgminet01.oracle.com ([148.87.113.118])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IQmTM-0007Eu-Rh
+	for nfs@lists.sourceforge.net; Thu, 30 Aug 2007 09:02:22 -0700
+In-Reply-To: <46D6AFBC.3000208@redhat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,86 +35,98 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Make notify_change not clear the ATTR_KILL_S*ID bits in the ia_vaid that
-gets passed to the setattr inode operation. This allows the filesystems
-to reinterpret whether this mode change is simply intended to clear the
-setuid/setgid bits.
+This is a multi-part message in MIME format.
+--------------050804050604050700060105
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-This means that notify_change should never be called with both ATTR_MODE
-and either of the ATTR_KILL_S*ID bits set, since the filesystem would
-have no way to know what part of the mode change was intentional. If
-it is called this way, consider it a BUG().
+Peter Staubach wrote:
+> Frank van Maarseveen wrote:
+>> On Thu, Aug 23, 2007 at 04:12:30PM -0400, Peter Staubach wrote:
+>>  
+>>> I would guess that not so many people are using the "bg" option,
+>>> period.  Many of Linux's customers are ex-Sun customers and they
+>>> were educated to use autofs and to move away from and stay away
+>>> from static mounts via fstab or vfstab.
+>>>
+>>> The "bg" option was a hack added to speed up system booting.
+>>>     
+>>
+>> No, it is indispensable to recover properly from a power outage:
+>> servers tend to boot slower than clients. Also, it is not unusual to
+>> have some minor network/server problems after an outage causing the
+>> mount to fail.
+>>
+>> Without the bg option a temporary power outage may render all client
+>> systems unusable.
+> 
+> And a better solution to this problem is still to use autofs.
+> 
+> That said, what use are the clients _until_ the servers are up?
+> The applications on them can't run correctly because the file
+> systems that they depend upon may or may not be there yet.  With
+> autofs, you would have a chance of getting the synchronization
+> right.
+> 
+> You also get all sorts of benefits such as decreased resource
+> usage (by not having inactive file systems mounted), reduced
+> hangs (by not having inactive file systems from servers which
+> go down still mounted), in addition to the situation described
+> above and other benefits as well.
+> 
+> I do recognize that we can't get rid of the bg option, but I
+> would request that people using it consider different alternatives
+> to solving their problems.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/attr.c |   22 ++++++++++++----------
- 1 files changed, 12 insertions(+), 10 deletions(-)
+For the record, one downside to using automounter is the mount storm 
+that is caused when a distributed application starts up on multiple 
+clients requiring many NFS mount points on each client.  This is one 
+reason some sites choose not to use automounter.  "bg"s retry behavior, 
+though a kludge, is somewhat more friendly.
 
-diff --git a/fs/attr.c b/fs/attr.c
-index ae58bd3..f98d10c 100644
---- a/fs/attr.c
-+++ b/fs/attr.c
-@@ -103,12 +103,11 @@ EXPORT_SYMBOL(inode_setattr);
- int notify_change(struct dentry * dentry, struct iattr * attr)
- {
- 	struct inode *inode = dentry->d_inode;
--	mode_t mode;
-+	mode_t mode = inode->i_mode;
- 	int error;
- 	struct timespec now;
- 	unsigned int ia_valid = attr->ia_valid;
- 
--	mode = inode->i_mode;
- 	now = current_fs_time(inode->i_sb);
- 
- 	attr->ia_ctime = now;
-@@ -125,18 +124,21 @@ int notify_change(struct dentry * dentry, struct iattr * attr)
- 		if (error)
- 			return error;
- 	}
-+
-+	/*
-+	 * It's not valid to pass an iattr with both ATTR_MODE and
-+	 * ATTR_KILL_S*ID set.
-+	 */
-+	if (ia_valid & (ATTR_KILL_SUID|ATTR_KILL_SGID) && ia_valid & ATTR_MODE)
-+		BUG();
-+
- 	if (ia_valid & ATTR_KILL_SUID) {
--		attr->ia_valid &= ~ATTR_KILL_SUID;
- 		if (mode & S_ISUID) {
--			if (!(ia_valid & ATTR_MODE)) {
--				ia_valid = attr->ia_valid |= ATTR_MODE;
--				attr->ia_mode = inode->i_mode;
--			}
--			attr->ia_mode &= ~S_ISUID;
-+			ia_valid = attr->ia_valid |= ATTR_MODE;
-+			attr->ia_mode = (inode->i_mode & ~S_ISUID);
- 		}
- 	}
- 	if (ia_valid & ATTR_KILL_SGID) {
--		attr->ia_valid &= ~ ATTR_KILL_SGID;
- 		if ((mode & (S_ISGID | S_IXGRP)) == (S_ISGID | S_IXGRP)) {
- 			if (!(ia_valid & ATTR_MODE)) {
- 				ia_valid = attr->ia_valid |= ATTR_MODE;
-@@ -145,7 +147,7 @@ int notify_change(struct dentry * dentry, struct iattr * attr)
- 			attr->ia_mode &= ~S_ISGID;
- 		}
- 	}
--	if (!attr->ia_valid)
-+	if (!(attr->ia_valid & ~(ATTR_KILL_SUID | ATTR_KILL_SGID)))
- 		return 0;
- 
- 	if (ia_valid & ATTR_SIZE)
--- 
-1.5.2.1
+ From my experience, generally mountd (on most any server 
+implementation) has been a scalability problem in these scenarios.  It 
+can't handle more than a few requests per second.
 
+--------------050804050604050700060105
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck.lever.vcf"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="chuck.lever.vcf"
+
+begin:vcard
+fn:Chuck Lever
+n:Lever;Chuck
+org:Oracle Corporation;Corporate Architecture: Linux Projects Group
+adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
+title:Principal Member of Staff
+tel;work:+1 248 614 5091
+x-mozilla-html:FALSE
+url:http://oss.oracle.com/~cel
+version:2.1
+end:vcard
+
+
+--------------050804050604050700060105
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
+--------------050804050604050700060105
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--------------050804050604050700060105--
