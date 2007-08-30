@@ -1,33 +1,25 @@
-From: Terry Spaulding <spauld@us.ibm.com>
-Subject: statd (status) port used when setting specific port for lockd
- - SLES9 SP3 Linux for System z.
-Date: Thu, 30 Aug 2007 07:47:39 -0400
-Message-ID: <OFDE88F129.B785EDAA-ON85257347.0040488E-85257347.0040C993@us.ibm.com>
+From: Peter Staubach <staubach@redhat.com>
+Subject: Re: mount.nfs: chk_mountpoint()
+Date: Thu, 30 Aug 2007 07:53:32 -0400
+Message-ID: <46D6AFBC.3000208@redhat.com>
+References: <46CC884B.1030207@oracle.com> <46CD82A0.1000408@redhat.com>
+	<46CDC7D0.6030803@oracle.com> <46CDD069.3070608@redhat.com>
+	<46CDE76C.3040800@oracle.com> <46CDEA2E.10902@redhat.com>
+	<20070830101249.GA9880@janus>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: neilb@suse.de
-To: nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
+To: Frank van Maarseveen <frankvm@frankvm.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IQiVz-0006Ou-Ih
-	for nfs@lists.sourceforge.net; Thu, 30 Aug 2007 04:48:47 -0700
-Received: from e3.ny.us.ibm.com ([32.97.182.143])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IQiW2-0007Vi-M9
-	for nfs@lists.sourceforge.net; Thu, 30 Aug 2007 04:48:52 -0700
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e3.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l7UBlBg9018158
-	for <nfs@lists.sourceforge.net>; Thu, 30 Aug 2007 07:47:11 -0400
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id
-	l7UBlBbB106268
-	for <nfs@lists.sourceforge.net>; Thu, 30 Aug 2007 07:47:11 -0400
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id
-	l7UBlBfF011105
-	for <nfs@lists.sourceforge.net>; Thu, 30 Aug 2007 07:47:11 -0400
+	id 1IQiah-0006u1-Sb
+	for nfs@lists.sourceforge.net; Thu, 30 Aug 2007 04:53:40 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IQial-0007F3-5e
+	for nfs@lists.sourceforge.net; Thu, 30 Aug 2007 04:53:44 -0700
+In-Reply-To: <20070830101249.GA9880@janus>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -40,66 +32,44 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+Frank van Maarseveen wrote:
+> On Thu, Aug 23, 2007 at 04:12:30PM -0400, Peter Staubach wrote:
+>   
+>> I would guess that not so many people are using the "bg" option,
+>> period.  Many of Linux's customers are ex-Sun customers and they
+>> were educated to use autofs and to move away from and stay away
+>> from static mounts via fstab or vfstab.
+>>
+>> The "bg" option was a hack added to speed up system booting.
+>>     
+>
+> No, it is indispensable to recover properly from a power outage:
+> servers tend to boot slower than clients. Also, it is not unusual to
+> have some minor network/server problems after an outage causing the
+> mount to fail.
+>
+> Without the bg option a temporary power outage may render all client
+> systems unusable.
 
-I noticed that when I set the lockd ports to specific port that the statd
-port is set to the same port.
+And a better solution to this problem is still to use autofs.
 
-Should I also set statd to a specific unique port  different from lockd ?
+That said, what use are the clients _until_ the servers are up?
+The applications on them can't run correctly because the file
+systems that they depend upon may or may not be there yet.  With
+autofs, you would have a chance of getting the synchronization
+right.
 
-Is there any problem with statd using the same port as lockd ?
+You also get all sorts of benefits such as decreased resource
+usage (by not having inactive file systems mounted), reduced
+hangs (by not having inactive file systems from servers which
+go down still mounted), in addition to the situation described
+above and other benefits as well.
 
-Any assistance is greatly appreciated.
+I do recognize that we can't get rid of the bg option, but I
+would request that people using it consider different alternatives
+to solving their problems.
 
-
-My current NFS Server and client:
-
-linux01:/ # rpcinfo -p
-   program vers proto   port
-    100000    2   tcp    111  portmapper
-    100000    2   udp    111  portmapper
-    100005    2   udp   2050  mountd
-    100005    2   tcp   2050  mountd
-    100005    3   udp   2050  mountd
-    100005    3   tcp   2050  mountd
-    100003    2   udp   2049  nfs
-    100003    3   udp   2049  nfs
-    100227    3   udp   2049  nfs_acl
-    100003    2   tcp   2049  nfs
-    100003    3   tcp   2049  nfs
-    100227    3   tcp   2049  nfs_acl
-    100024    1   udp   2051  status
-    100021    1   udp   2051  nlockmgr
-    100021    3   udp   2051  nlockmgr
-    100021    4   udp   2051  nlockmgr
-    100024    1   tcp   2051  status
-    100021    1   tcp   2051  nlockmgr
-    100021    3   tcp   2051  nlockmgr
-    100021    4   tcp   2051  nlockmgr
-    100005    1   udp   2050  mountd
-linux01:/ #
-
-NFS Client:
-linux02:~ # rpcinfo -p
-   program vers proto   port
-    100000    2   tcp    111  portmapper
-    100000    2   udp    111  portmapper
-    100024    1   udp   2051  status
-    100021    1   udp   2051  nlockmgr
-    100021    3   udp   2051  nlockmgr
-    100021    4   udp   2051  nlockmgr
-    100024    1   tcp   2051  status
-    100021    1   tcp   2051  nlockmgr
-    100021    3   tcp   2051  nlockmgr
-    100021    4   tcp   2051  nlockmgr
-linux02:~ #
-
-Thanks ...............
-
-
-Regards,
-Terry L. Spaulding
-spauld@us.ibm.com
-
+       ps
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
