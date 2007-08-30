@@ -1,24 +1,24 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] mount.nfs: Update description of clientaddr=
-	in	nfs(5)
-Date: Thu, 30 Aug 2007 17:37:16 -0400
-Message-ID: <20070830213716.GE10808@fieldses.org>
-References: <20070830194810.4524.58037.stgit@monet.1015granger.net>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: statd (status) port used when setting specific port for
+ lockd - SLES9 SP3 Linux for System z.
+Date: Fri, 31 Aug 2007 07:47:53 +1000
+Message-ID: <18135.15113.531784.217271@notabene.brown>
+References: <OFDE88F129.B785EDAA-ON85257347.0040488E-85257347.0040C993@us.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: Chuck Lever <chuck.lever@oracle.com>
+To: Terry Spaulding <spauld@us.ibm.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IQrhU-000314-Sz
-	for nfs@lists.sourceforge.net; Thu, 30 Aug 2007 14:37:16 -0700
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	id 1IQrrt-0003zJ-Em
+	for nfs@lists.sourceforge.net; Thu, 30 Aug 2007 14:48:01 -0700
+Received: from mx2.suse.de ([195.135.220.15])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IQrhX-0002Sj-6B
-	for nfs@lists.sourceforge.net; Thu, 30 Aug 2007 14:37:21 -0700
-In-Reply-To: <20070830194810.4524.58037.stgit@monet.1015granger.net>
+	(Exim 4.44) id 1IQrrw-0006K6-NN
+	for nfs@lists.sourceforge.net; Thu, 30 Aug 2007 14:48:06 -0700
+In-Reply-To: message from Terry Spaulding on Thursday August 30
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,20 +31,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, Aug 30, 2007 at 03:48:10PM -0400, Chuck Lever wrote:
-> +Specifies a single IPv4 address in dotted-quad form that the
-> +NFS client should advertise to a server for performing NFSv4
-> +callback requests for this mount point.
-> +If not specified, the mount command attempts to discover an
-> +appropriate callback address, then passes it to the NFS client.
-> +However, in the presence of multiple client network interfaces,
-> +special routing policies, or atypical network topologies, the
-> +exact address to use for callbacks may be difficult for the
-> +mount command to determine automatically.
+On Thursday August 30, spauld@us.ibm.com wrote:
+> 
+> I noticed that when I set the lockd ports to specific port that the statd
+> port is set to the same port.
 
-Sounds good to me!
+This behaviour is specific to SLES9 and SLES10.  The kernels in those
+distributions contain statd functionality and use the same port as
+lockd uses.
 
---b.
+> 
+> Should I also set statd to a specific unique port  different from lockd ?
+> 
+
+You cannot in SLES9/10.  On other systems where statd is a user-space
+program, they cannot be the same port.
+
+
+> Is there any problem with statd using the same port as lockd ?
+
+Not on SLES9/10.
+
+NeilBrown
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
