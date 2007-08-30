@@ -1,35 +1,23 @@
-From: Terry Spaulding <spauld@us.ibm.com>
-Subject: Re: statd (status) port used when setting specific port for
- lockd - SLES9 SP3 Linux for System z.
-Date: Thu, 30 Aug 2007 19:04:20 -0400
-Message-ID: <OFB846E7E2.F0DD22AF-ON85257347.007EA140-85257347.007EBDA0@us.ibm.com>
-References: <18135.15113.531784.217271@notabene.brown>
+From: Mr BOKA COULIBALY <mrcoulibalyboka@yahoo.fr>
+Subject: ATTN: Sir,
+Date: Fri, 31 Aug 2007 00:52:28 +0100
+Message-ID: <4d1285f12704c66cf9030752e3d640f6@www.c360uk.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Neil Brown <neilb@suse.de>
+Content-Type: multipart/mixed; boundary="===============0185995431=="
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IQt3Q-0002rC-QX
-	for nfs@lists.sourceforge.net; Thu, 30 Aug 2007 16:04:01 -0700
-Received: from e2.ny.us.ibm.com ([32.97.182.142])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IQt3T-0001cs-Pj
-	for nfs@lists.sourceforge.net; Thu, 30 Aug 2007 16:04:05 -0700
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e2.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l7UN3qHq030331
-	for <nfs@lists.sourceforge.net>; Thu, 30 Aug 2007 19:03:52 -0400
-Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id
-	l7UN3qCS693394
-	for <nfs@lists.sourceforge.net>; Thu, 30 Aug 2007 19:03:52 -0400
-Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
-	by d01av01.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id
-	l7UN3pno014131
-	for <nfs@lists.sourceforge.net>; Thu, 30 Aug 2007 19:03:51 -0400
-In-Reply-To: <18135.15113.531784.217271@notabene.brown>
+	id 1IQtsk-0007SG-VU
+	for nfs@lists.sourceforge.net; Thu, 30 Aug 2007 16:57:03 -0700
+Received: from zeus.claripoint.com ([83.138.163.33]
+	helo=mail-alt.claripoint.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IQtsp-00060f-0g
+	for nfs@lists.sourceforge.net; Thu, 30 Aug 2007 16:57:07 -0700
+Received: from localhost ([127.0.0.1])
+	by mail-alt.claripoint.com (Kerio MailServer 5.7.9)
+	for nfs@lists.sourceforge.net; Fri, 31 Aug 2007 00:52:28 +0100
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -42,43 +30,77 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Thanks Neil....
 
-----------------------------------------------------------------------------------------------------------------------------------------------------
-On Thursday August 30, spauld@us.ibm.com wrote:
->
-> I noticed that when I set the lockd ports to specific port that the statd
-> port is set to the same port.
-
-This behavior is specific to SLES9 and SLES10.  The kernels in those
-distributions contain statd functionality and use the same port as
-lockd uses.
-
->
-> Should I also set statd to a specific unique port  different from lockd ?
->
-
-You cannot in SLES9/10.  On other systems where statd is a user-space
-program, they cannot be the same port.
+--===============0185995431==
+Content-Type: multipart/alternative;
+	boundary="b1_4d1285f12704c66cf9030752e3d640f6"
 
 
-> Is there any problem with statd using the same port as lockd ?
+--b1_4d1285f12704c66cf9030752e3d640f6
+Content-Type: text/plain; charset = "iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 
-Not on SLES9/10.
+ATTN : Sir,&nbsp;We are representing our corporate associate a member of =
+the contract award committee and 14 project allocation manager of the Dep=
+artment of Minerals and Natural Resources in Cote d&#39;Ivoire West Afric=
+a.&nbsp;I am in search of an agent to assist us in the transfer of ( USD$=
+5.5M) and subsequent investment in properties in your country. &nbsp;You =
+will be required to.(1) Assist in the transfer of the said funds(2) Advis=
+e on lucrative areas for investment(3) Assist us in purchase of propertie=
+s or Profitable Business.If you decide to render your service to us in th=
+is regard, 20% of the total sum of USD$5.5M will be for you. &nbsp;Thank =
+you and God bless as I awaits in anticipation of your fullest co-operatio=
+n. &nbsp;Mr BOKA COULIBALYFinancierEmail: mrcoulibalyboka@yahoo.frTo join=
+ the party go to http://www.labour.org.uk/join=20
 
-NeilBrown
------------------------------------------------------------------------------
 
-Regards,
-Terry L. Spaulding
-spauld@us.ibm.com
+--b1_4d1285f12704c66cf9030752e3d640f6
+Content-Type: text/html; charset = "iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 
+<p>ATTN : Sir,<br />&nbsp;<br />We are representing our corporate associa=
+te a member of the contract award committee and 14 project allocation man=
+ager of the Department of Minerals and Natural Resources in Cote d&#39;Iv=
+oire West Africa.<br />&nbsp;<br />I am in search of an agent to assist u=
+s in the transfer of ( USD$5.5M) and subsequent investment in properties =
+in your country. <br />&nbsp;<br />You will be required to.<br />(1) Assi=
+st in the transfer of the said funds<br />(2) Advise on lucrative areas f=
+or investment<br />(3) Assist us in purchase of properties or Profitable =
+Business.<br />If you decide to render your service to us in this regard,=
+ 20% of the total sum of USD$5.5M will be for you. <br />&nbsp;<br />Than=
+k you and God bless as I awaits in anticipation of your fullest co-operat=
+ion. <br />&nbsp;<br />Mr BOKA COULIBALY<br />Financier<br />Email: <a hr=
+ef=3D"mailto:mrcoulibalyboka@yahoo.fr">mrcoulibalyboka@yahoo.fr</a></p><b=
+r /><br />To join the party go to <a
+href=3D"http://www.labour.org.uk/join">http://www.labour.org.uk/join</a>=20
+
+
+
+--b1_4d1285f12704c66cf9030752e3d640f6--
+
+
+
+
+
+--===============0185995431==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
+--===============0185995431==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============0185995431==--
