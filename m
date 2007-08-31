@@ -1,29 +1,32 @@
 From: Chuck Lever <chuck.lever@oracle.com>
 Subject: Re: [RFC] [PATCH] rpcbind netid declared per-transport
-Date: Fri, 31 Aug 2007 10:32:11 -0400
-Message-ID: <46D8266B.5060400@oracle.com>
+Date: Fri, 31 Aug 2007 12:59:39 -0400
+Message-ID: <46D848FB.6070409@oracle.com>
 References: <EXNANE01Mb1s7nlT2Nq00000219@exnane01.hq.netapp.com>
+	<46D820F8.6040309@oracle.com>
+	<1188570399.6649.83.camel@heimdal.trondhjem.org>
+	<46D825EB.90801@oracle.com>
+	<1188573228.6649.100.camel@heimdal.trondhjem.org>
+	<46D835F4.4030703@oracle.com>
+	<EXNANE01hjJ8uT6Ssuo00000243@exnane01.hq.netapp.com>
+	<46D84176.5020807@oracle.com>
+	<EXNANE01FlmmlQ080Gx00000245@exnane01.hq.netapp.com>
 Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------060304080903010909050906"
+Content-Type: multipart/mixed; boundary="------------040000020307050005030100"
 Cc: nfs@lists.sourceforge.net
 To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IR9lp-00019N-Pr
-	for nfs@lists.sourceforge.net; Fri, 31 Aug 2007 09:54:57 -0700
-Received: from agminet02.oracle.com ([141.146.126.229])
+	id 1IR9s6-0001tG-DC
+	for nfs@lists.sourceforge.net; Fri, 31 Aug 2007 10:01:29 -0700
+Received: from rgminet01.oracle.com ([148.87.113.118])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IR7YU-00074m-Vs
-	for nfs@lists.sourceforge.net; Fri, 31 Aug 2007 07:33:03 -0700
-Received: from agminet01.oracle.com (agminet01.oracle.com [141.146.126.228])
-	by agminet02.oracle.com (Switch-3.2.4/Switch-3.1.7) with ESMTP id
-	l7VEWt61001562
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <nfs@lists.sourceforge.net>; Fri, 31 Aug 2007 09:32:55 -0500
-In-Reply-To: <EXNANE01Mb1s7nlT2Nq00000219@exnane01.hq.netapp.com>
+	(Exim 4.44) id 1IR9s8-0004Sq-Jc
+	for nfs@lists.sourceforge.net; Fri, 31 Aug 2007 10:01:31 -0700
+In-Reply-To: <EXNANE01FlmmlQ080Gx00000245@exnane01.hq.netapp.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,36 +40,34 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 This is a multi-part message in MIME format.
---------------060304080903010909050906
+--------------040000020307050005030100
 Content-Type: text/plain; charset=us-ascii; format=flowed
 Content-Transfer-Encoding: 7bit
 
 Talpey, Thomas wrote:
-> Index: linux-2.6.22/include/linux/sunrpc/clnt.h
-> ===================================================================
-> --- linux-2.6.22.orig/include/linux/sunrpc/clnt.h
-> +++ linux-2.6.22/include/linux/sunrpc/clnt.h
-> @@ -92,6 +92,14 @@ struct rpc_procinfo {
->  	char *			p_name;		/* name of procedure */
->  };
->  
-> +/*
-> + * RFC1833/RFC3530 rpcbind (v3+) well-known netid's.
-> + */
-> +#define	RPCB_NETID_UDP	"\165\144\160"		/* "udp" */
-> +#define	RPCB_NETID_TCP	"\164\143\160"		/* "tcp" */
-> +#define	RPCB_NETID_UDP6	"\165\144\160\066"	/* "udp6" */
-> +#define	RPCB_NETID_TCP6	"\164\143\160\066"	/* "tcp6" */
-> +
->  #ifdef __KERNEL__
->  
->  struct rpc_create_args {
+> At 12:27 PM 8/31/2007, Chuck Lever wrote:
+>> Talpey, Thomas wrote:
+>>> "RPCB_" prefix: They're (with this patch) part of the rpcbind api. The prefix
+>> ...
+>> It's a nit, I guess.
+> 
+> How about RPCBIND_NETID_foo? It's more obvious, and keeps the RPC...
 
-Also I would rename these -- "RPCB_" is used just for identifiers inside 
-of rpcb_clnt.c.  Once you move these to a header, they should share the 
-same prefix as the other global RPC defines.
+OK by me.
 
---------------060304080903010909050906
+>>> RPCB_MAXNETIDLEN: Sure, I'll move it. It is, after all, a limit on the string
+>>> ...
+>> We need to know the maximum size to compute the largest possible size of 
+>> the RPC buffer needed for the request.  See the definition of 
+>> RPCB_netid_sz.  Those are all added together to get the largest possible 
+>> request size, and that's used to compute the largest possible buffer size.
+> 
+> Yes, I know, but it could be larger and more dynamically calculated.
+
+I'm not sure what you mean, then.  The buffer size maximums are 
+statically computed at kernel compile time.
+
+--------------040000020307050005030100
 Content-Type: text/x-vcard; charset=utf-8;
  name="chuck.lever.vcf"
 Content-Transfer-Encoding: 7bit
@@ -86,7 +87,7 @@ version:2.1
 end:vcard
 
 
---------------060304080903010909050906
+--------------040000020307050005030100
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -97,7 +98,7 @@ This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
---------------060304080903010909050906
+--------------040000020307050005030100
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -107,4 +108,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---------------060304080903010909050906--
+--------------040000020307050005030100--
