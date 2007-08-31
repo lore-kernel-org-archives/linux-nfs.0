@@ -1,24 +1,27 @@
-From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
-Subject: [PATCH 06/19] SUNRPC: mark bulk read/write data in xdrbuf
-Date: Mon, 10 Sep 2007 13:44:58 -0400
-Message-ID: <EXNANE01r9oD6XMLDth000004b5@exnane01.hq.netapp.com>
+From: Bernd Schubert <bernd-schubert@gmx.de>
+Subject: Re:
+	=?iso-8859-1?q?slowness_due_to_splitting_into_pages_in=09nf?=
+	=?iso-8859-1?q?s3svc=5Fdecode=5Fwriteargs_=28=29?=
+Date: Sat, 1 Sep 2007 01:34:03 +0200
+Message-ID: <200709010134.03876.bernd-schubert@gmx.de>
+References: <200708312003.30446.bernd-schubert@gmx.de>
+	<1188586335.26165.104.camel@pc.ilinx>
+	<20070831190001.GD11165@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	"Brian J. Murrell" <brian@interlinx.bc.ca>
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IUnYb-0003Eg-Ci
-	for nfs@lists.sourceforge.net; Mon, 10 Sep 2007 11:00:21 -0700
-Received: from mx2.netapp.com ([216.240.18.37])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IUnYf-0006ok-Uw
-	for nfs@lists.sourceforge.net; Mon, 10 Sep 2007 11:00:26 -0700
-Received: from svlexrs02.hq.netapp.com (svlexrs02.corp.netapp.com
-	[10.57.156.154])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id
-	l8AI017Z020680
-	for <nfs@lists.sourceforge.net>; Mon, 10 Sep 2007 11:00:19 -0700 (PDT)
+	id 1IRG0D-00072J-16
+	for nfs@lists.sourceforge.net; Fri, 31 Aug 2007 16:34:13 -0700
+Received: from mail.gmx.net ([213.165.64.20])
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1IRG0G-0004IS-2J
+	for nfs@lists.sourceforge.net; Fri, 31 Aug 2007 16:34:17 -0700
+In-Reply-To: <20070831190001.GD11165@fieldses.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,117 +34,52 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-SUNRPC: mark bulk read/write data in xdrbuf
+On Friday 31 August 2007, J. Bruce Fields wrote:
+> On Fri, Aug 31, 2007 at 02:52:15PM -0400, Brian J. Murrell wrote:
+> > On Fri, 2007-08-31 at 14:45 -0400, J. Bruce Fields wrote:
+> > > Hm.  Any chance this is the same problem?:
+> > >
+> > > 	http://marc.info/?l=linux-nfs&m=112289652218095&w=2
+> >
+> > Did this ever land anywhere?
+>
+> No--I think there were some discussion of problems in the followup
+> posts.
 
-Adds a flag word to the xdrbuf struct which indicates any bulk
-disposition of the data. This enables RPC transport providers to
-marshal it efficiently/appropriately, and may enable other
-optimizations.
+To sum up this discussion:
 
-Signed-off-by: Tom Talpey <tmt@netapp.com>
+There are two choices to move the data:
 
----
+1.) To page 2 ... n - this will overwrite nfsv4 at the end of page n.
 
- fs/nfs/nfs2xdr.c           |    2 ++
- fs/nfs/nfs3xdr.c           |    2 ++
- fs/nfs/nfs4xdr.c           |    2 ++
- include/linux/sunrpc/xdr.h |    5 ++++-
- net/sunrpc/clnt.c          |    1 +
- 5 files changed, 11 insertions(+), 1 deletion(-)
+2.) To page 1 ... n - 1 - this will overwrite the header, thus, all pointers 
+to that memory will point to wrong data now.
 
-Index: kernel/fs/nfs/nfs2xdr.c
-===================================================================
---- kernel.orig/fs/nfs/nfs2xdr.c
-+++ kernel/fs/nfs/nfs2xdr.c
-@@ -251,6 +251,7 @@ nfs_xdr_readargs(struct rpc_rqst *req, _
- 	replen = (RPC_REPHDRSIZE + auth->au_rslack + NFS_readres_sz) << 2;
- 	xdr_inline_pages(&req->rq_rcv_buf, replen,
- 			 args->pages, args->pgbase, count);
-+	req->rq_rcv_buf.flags |= XDRBUF_READ;
- 	return 0;
- }
- 
-@@ -313,6 +314,7 @@ nfs_xdr_writeargs(struct rpc_rqst *req, 
- 
- 	/* Copy the page array */
- 	xdr_encode_pages(sndbuf, args->pages, args->pgbase, count);
-+	sndbuf->flags |= XDRBUF_WRITE;
- 	return 0;
- }
- 
-Index: kernel/fs/nfs/nfs3xdr.c
-===================================================================
---- kernel.orig/fs/nfs/nfs3xdr.c
-+++ kernel/fs/nfs/nfs3xdr.c
-@@ -346,6 +346,7 @@ nfs3_xdr_readargs(struct rpc_rqst *req, 
- 	replen = (RPC_REPHDRSIZE + auth->au_rslack + NFS3_readres_sz) << 2;
- 	xdr_inline_pages(&req->rq_rcv_buf, replen,
- 			 args->pages, args->pgbase, count);
-+	req->rq_rcv_buf.flags |= XDRBUF_READ;
- 	return 0;
- }
- 
-@@ -367,6 +368,7 @@ nfs3_xdr_writeargs(struct rpc_rqst *req,
- 
- 	/* Copy the page array */
- 	xdr_encode_pages(sndbuf, args->pages, args->pgbase, count);
-+	sndbuf->flags |= XDRBUF_WRITE;
- 	return 0;
- }
- 
-Index: kernel/fs/nfs/nfs4xdr.c
-===================================================================
---- kernel.orig/fs/nfs/nfs4xdr.c
-+++ kernel/fs/nfs/nfs4xdr.c
-@@ -1865,6 +1865,7 @@ static int nfs4_xdr_enc_read(struct rpc_
- 	replen = (RPC_REPHDRSIZE + auth->au_rslack + NFS4_dec_read_sz) << 2;
- 	xdr_inline_pages(&req->rq_rcv_buf, replen,
- 			 args->pages, args->pgbase, args->count);
-+	req->rq_rcv_buf.flags |= XDRBUF_READ;
- out:
- 	return status;
- }
-@@ -1941,6 +1942,7 @@ static int nfs4_xdr_enc_write(struct rpc
- 	status = encode_write(&xdr, args);
- 	if (status)
- 		goto out;
-+	req->rq_snd_buf.flags |= XDRBUF_WRITE;
- 	status = encode_getfattr(&xdr, args->bitmask);
- out:
- 	return status;
-Index: kernel/include/linux/sunrpc/xdr.h
-===================================================================
---- kernel.orig/include/linux/sunrpc/xdr.h
-+++ kernel/include/linux/sunrpc/xdr.h
-@@ -70,7 +70,10 @@ struct xdr_buf {
- 
- 	struct page **	pages;		/* Array of contiguous pages */
- 	unsigned int	page_base,	/* Start of page data */
--			page_len;	/* Length of page data */
-+			page_len,	/* Length of page data */
-+			flags;		/* Flags for data disposition */
-+#define XDRBUF_READ		0x01		/* target of file read */
-+#define XDRBUF_WRITE		0x02		/* source of file write */
- 
- 	unsigned int	buflen,		/* Total length of storage buffer */
- 			len;		/* Length of XDR encoded message */
-Index: kernel/net/sunrpc/clnt.c
-===================================================================
---- kernel.orig/net/sunrpc/clnt.c
-+++ kernel/net/sunrpc/clnt.c
-@@ -871,6 +871,7 @@ rpc_xdr_buf_init(struct xdr_buf *buf, vo
- 	buf->head[0].iov_len = len;
- 	buf->tail[0].iov_len = 0;
- 	buf->page_len = 0;
-+	buf->flags = 0;
- 	buf->len = 0;
- 	buf->buflen = len;
- }
+Seems both aproaches are troublesome and nobody bothered to implement it. Not 
+that I much like the idea of data moving at all, but what about
+
+3.) On allocating the pages, allocate one page more than required. After 
+filling in page 1, skip page 2 and proceed with page 3.
+Now we would have space to properly move the data later on, thus:
+
+memcpy  (page2, page1 + hdr, PAGE_SIZE - hdr_length)
+memcpy  (page2 + PAGE_SIZE - hdr_length, page3, hdr_length)
+
+memmove(page3, page3 + hdr_length, PAGE_SIZE - hdr_length)
+[...] 
+
+
+Can you point me to the function assigning the data-block from the network to 
+the page-vector?
+
+Thanks,
+Bernd
 
 -------------------------------------------------------------------------
-This SF.net email is sponsored by: Microsoft
-Defy all challenges. Microsoft(R) Visual Studio 2005.
-http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+This SF.net email is sponsored by: Splunk Inc.
+Still grepping through log files to find problems?  Stop.
+Now Search log events and configuration files using AJAX and a browser.
+Download your FREE copy of Splunk now >>  http://get.splunk.com/
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
