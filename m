@@ -1,26 +1,25 @@
 From: Chuck Lever <chuck.lever@oracle.com>
 Subject: Re: [RFC] [PATCH] rpcbind netid declared per-transport
-Date: Fri, 31 Aug 2007 10:30:03 -0400
-Message-ID: <46D825EB.90801@oracle.com>
+Date: Fri, 31 Aug 2007 10:33:41 -0400
+Message-ID: <46D826C5.2020308@oracle.com>
 References: <EXNANE01Mb1s7nlT2Nq00000219@exnane01.hq.netapp.com>	
 	<46D820F8.6040309@oracle.com>
 	<1188570399.6649.83.camel@heimdal.trondhjem.org>
 Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------010709030902040503020508"
-Cc: nfs@lists.sourceforge.net,
-	"Talpey, Thomas" <Thomas.Talpey@netapp.com>
+Content-Type: multipart/mixed; boundary="------------040300000900050202000508"
+Cc: Linux NFS mailing list <nfs@lists.sourceforge.net>
 To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IR7XI-0000Nr-60
-	for nfs@lists.sourceforge.net; Fri, 31 Aug 2007 07:31:48 -0700
+	id 1IR7fa-0001Bw-3x
+	for nfs@lists.sourceforge.net; Fri, 31 Aug 2007 07:40:22 -0700
 Received: from agminet01.oracle.com ([141.146.126.228])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IR7XM-0006Yf-C4
-	for nfs@lists.sourceforge.net; Fri, 31 Aug 2007 07:31:52 -0700
+	(Exim 4.44) id 1IR7b9-0001Fv-3A
+	for nfs@lists.sourceforge.net; Fri, 31 Aug 2007 07:35:47 -0700
 In-Reply-To: <1188570399.6649.83.camel@heimdal.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -35,7 +34,7 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 This is a multi-part message in MIME format.
---------------010709030902040503020508
+--------------040300000900050202000508
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
 
@@ -54,13 +53,12 @@ Trond Myklebust wrote:
 > BTW: Any reason why we are using escaped octal instead of plain ascii
 > here?
 
-Is there a guarantee that these C strings will be US-ASCII on *every* 
-platform in every locale on which Linux kernels are built?  Z-series, 
-for example?
+In other words, I'm not smart enough to do this any other way.  :-/
 
-If yes, then we can use a normal string.
+If there's a nice C construct that gives us guaranteed US-ASCII strings 
+no matter what the locale then I'd love to learn it.
 
---------------010709030902040503020508
+--------------040300000900050202000508
 Content-Type: text/x-vcard; charset=utf-8;
  name="chuck.lever.vcf"
 Content-Transfer-Encoding: 7bit
@@ -80,7 +78,7 @@ version:2.1
 end:vcard
 
 
---------------010709030902040503020508
+--------------040300000900050202000508
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -91,7 +89,7 @@ This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
---------------010709030902040503020508
+--------------040300000900050202000508
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -101,4 +99,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---------------010709030902040503020508--
+--------------040300000900050202000508--
