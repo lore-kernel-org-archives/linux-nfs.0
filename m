@@ -1,24 +1,35 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: slowness due to splitting into pages
-	in	nfs3svc_decode_writeargs()
-Date: Fri, 31 Aug 2007 14:45:15 -0400
-Message-ID: <20070831184515.GC11165@fieldses.org>
+From: "Brian J. Murrell" <brian@interlinx.bc.ca>
+Subject: Re: slowness due to splitting into
+	pages	in	nfs3svc_decode_writeargs()
+Date: Fri, 31 Aug 2007 14:52:15 -0400
+Message-ID: <1188586335.26165.104.camel@pc.ilinx>
 References: <200708312003.30446.bernd-schubert@gmx.de>
+	<20070831184515.GC11165@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Bernd Schubert <bernd-schubert@gmx.de>
+Content-Type: multipart/mixed; boundary="===============1951418929=="
+To: nfs <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IRBUZ-000423-09
-	for nfs@lists.sourceforge.net; Fri, 31 Aug 2007 11:45:15 -0700
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	id 1IRBbN-0004m8-Cx
+	for nfs@lists.sourceforge.net; Fri, 31 Aug 2007 11:52:17 -0700
+Received: from server.klug.on.ca ([205.189.48.131])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IRBUc-00082r-5V
-	for nfs@lists.sourceforge.net; Fri, 31 Aug 2007 11:45:19 -0700
-In-Reply-To: <200708312003.30446.bernd-schubert@gmx.de>
+	(Exim 4.44) id 1IRBbQ-0000TX-OI
+	for nfs@lists.sourceforge.net; Fri, 31 Aug 2007 11:52:22 -0700
+Received: from linux.interlinx.bc.ca (d38-139-100.home1.cgocable.net
+	[72.38.139.100])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by server.klug.on.ca (Postfix) with ESMTP id B2B212803
+	for <nfs@lists.sourceforge.net>; Fri, 31 Aug 2007 14:52:17 -0400 (EDT)
+Received: from [10.75.22.1] (pc.ilinx [10.75.22.1])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by linux.interlinx.bc.ca (Postfix) with ESMTP id A000710FC78
+	for <nfs@lists.sourceforge.net>; Fri, 31 Aug 2007 14:52:15 -0400 (EDT)
+In-Reply-To: <20070831184515.GC11165@fieldses.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,59 +42,67 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, Aug 31, 2007 at 08:03:30PM +0200, Bernd Schubert wrote:
-> I'm presently investigating why writing to a nfs exported lustre filesystem is 
-> rather slow. Reading from lustre over nfs about 200-300 MB/s, but writing to 
-> it over nfs is only 20-50MB/s (both with IPoIB). Writing directly to this 
-> lustre cluster is about 600-700 MB/s both reading and writing. Well, 200-300 
-> MB/s over NFS per client would be acceptable.
-> 
-> After several dozens of printks, systemtaps, etc I think its not the fault of 
-> lustre, but a generic nfsd and/or vfs problem.
 
-Thanks for looking into this!
+--===============1951418929==
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature";
+	boundary="=-Jye8i+3MnNBnUEIg3Z69"
 
-> In nfs3svc_decode_writeargs() all the data received are splitted into 
-> PAGE_SIZE, except the very first page. This page only gets 
-> PAGE_SIZE - header_length. So far no problem, but now on writing the pages in 
-> generic_file_buffered_write(), this function tries to write PAGE_SIZE. So it 
-> takes the first nfs page, which is PAGE_SIZE - header_length. 
-> To fill up to PAGE_SIZE it will take header_length from the second page. Of 
-> course, now there's also only PAGE_SIZE - header_length for the 2nd nfs page 
-> left. 
-> It will continue this way until the last page is written. Don't know why this 
-> doesn't show a big effect on other file system. Well, maybe it does, but 
-> nobody did notice it before?
 
-Hm.  Any chance this is the same problem?:
+--=-Jye8i+3MnNBnUEIg3Z69
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-	http://marc.info/?l=linux-nfs&m=112289652218095&w=2
+On Fri, 2007-08-31 at 14:45 -0400, J. Bruce Fields wrote:
+>=20
+> Hm.  Any chance this is the same problem?:
+>=20
+> 	http://marc.info/?l=3Dlinux-nfs&m=3D112289652218095&w=3D2
 
-> Using this patch I get write speed of about 200 MB/s, even with kernel 
-> debugging enabled and several left-over printks 
+Did this ever land anywhere?
 
-At too high a cost, unfortunately:
+b.
 
-> -- nfs3xdr.c.bak	2007-07-09 01:32:17.000000000 +0200
->  	rqstp->rq_vec[0].iov_base = (void*)p;
-...
-> +	rqstp->rq_vec[0].iov_len = len;
-> +	args->vlen = 1;
+--=20
+A day in the yard with my son is just like a day at work.  He goes
+hunting around for stuff and brings it back to me and says: "Hey Dad,
+look what I found.  The money is for me and the screw is for you."
 
-There's no guarantee the later pages in the rq_pages array are
-contiguous in memory after the first one, so the rest of that iovec
-probably has random data in it.
+--=-Jye8i+3MnNBnUEIg3Z69
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Description: This is a digitally signed message part
 
-(You might want to add to your tests some checks that the right data
-still gets to the file afterwards.)
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.6 (GNU/Linux)
 
---b.
+iD8DBQBG2GNel3EQlGLyuXARAl+MAJ9c1UOVmFcktvWS98JiGNkV0m+zqQCfZQiL
+caI0LraSYLgnmyKt5X8woKw=
+=WzZw
+-----END PGP SIGNATURE-----
+
+--=-Jye8i+3MnNBnUEIg3Z69--
+
+
+
+--===============1951418929==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
+--===============1951418929==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============1951418929==--
