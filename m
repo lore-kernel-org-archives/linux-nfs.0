@@ -1,26 +1,22 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH] mount.nfs: Update description of clientaddr= in
- nfs(5)
-Date: Fri, 31 Aug 2007 09:56:36 -0400
-Message-ID: <46D81E14.3000504@oracle.com>
-References: <20070830194810.4524.58037.stgit@monet.1015granger.net>
-	<EXNANE01q6DqaJY4kJS00000210@exnane01.hq.netapp.com>
-Reply-To: chuck.lever@oracle.com
+From: Gabriel Barazer <gabriel@oxeva.fr>
+Subject: [PATCH] mount.nfs4: don't try to detect a clientaddr if
+	clientaddr= option is provided
+Date: Fri, 31 Aug 2007 16:01:20 +0200
+Message-ID: <11885688803306-git-send-email-gabriel@oxeva.fr>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------090600050700000006080400"
-Cc: nfs@lists.sourceforge.net
-To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
+Content-Type: text/plain; charset="us-ascii"
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IR712-0005XG-Kk
-	for nfs@lists.sourceforge.net; Fri, 31 Aug 2007 06:58:28 -0700
-Received: from agminet01.oracle.com ([141.146.126.228])
+	id 1IR73b-0005py-1Q
+	for nfs@lists.sourceforge.net; Fri, 31 Aug 2007 07:01:07 -0700
+Received: from tok69-4-82-236-110-238.fbx.proxad.net ([82.236.110.238]
+	helo=masternode.reagi.com)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IR716-0007rE-GH
-	for nfs@lists.sourceforge.net; Fri, 31 Aug 2007 06:58:33 -0700
-In-Reply-To: <EXNANE01q6DqaJY4kJS00000210@exnane01.hq.netapp.com>
+	(Exim 4.44) id 1IR73e-0000w9-Uk
+	for nfs@lists.sourceforge.net; Fri, 31 Aug 2007 07:01:11 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,67 +29,52 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
---------------090600050700000006080400
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Transfer-Encoding: 7bit
+If get_my_ipv4addr() fails (dns error, wrong hostname, etc.), nfs4mount would
+fail even if the clientaddr= is provided (and with clientaddr=, get_my_ipv4addr
+detection is then useless).
 
-Talpey, Thomas wrote:
-> At 03:48 PM 8/30/2007, Chuck Lever wrote:
->> +However, in the presence of multiple client network interfaces,
->> +special routing policies, or atypical network topologies, the
->> +exact address to use for callbacks may be difficult for the
->> +mount command to determine automatically.
-> 
-> "Difficult" doesn't actually say what happens. Perhaps:
-> 
-> ... atypical network topologies, the ...
-> "server may not be able to establish a connection to the
-> address supplied by the client to use for callbacks. This in turn
-> may lead to degraded client NFSv4 operation."
+Signed-off-by: Gabriel Barazer <gabriel@oxeva.fr>
+---
+ utils/mount/nfs4mount.c |   10 ++++++++--
+ 1 files changed, 8 insertions(+), 2 deletions(-)
 
-I think detailing the consequences a little is a good idea, so I'll try 
-to work this in.
+diff --git a/utils/mount/nfs4mount.c b/utils/mount/nfs4mount.c
+index c4e8bfb..391665b 100644
+--- a/utils/mount/nfs4mount.c
++++ b/utils/mount/nfs4mount.c
+@@ -199,8 +199,6 @@ int nfs4mount(const char *spec, const char *node, int flags,
+ 
+ 	if (fill_ipv4_sockaddr(hostname, &server_addr))
+ 		goto fail;
+-	if (get_my_ipv4addr(ip_addr, sizeof(ip_addr)))
+-		goto fail;
+ 
+ 	/* add IP address to mtab options for use when unmounting */
+ 	s = inet_ntoa(server_addr.sin_addr);
+@@ -328,6 +326,14 @@ int nfs4mount(const char *spec, const char *node, int flags,
+ 		}
+ 	}
+ 
++	/* Try to get and resolve the local address only if
++	 * it is not provided by the clientaddr= option.
++	 * Else, nfs4mount could fail if the local hostname is not resolvable
++	 * (poor DNS config or early mount), even if clientaddr= is provided.
++	 */
++	if (!ip_addr_in_opts && get_my_ipv4addr(ip_addr, sizeof(ip_addr)))
++		goto fail;
++
+ 	data.flags = (soft ? NFS4_MOUNT_SOFT : 0)
+ 		| (intr ? NFS4_MOUNT_INTR : 0)
+ 		| (nocto ? NFS4_MOUNT_NOCTO : 0)
+-- 
+1.5.2.5
 
---------------090600050700000006080400
-Content-Type: text/x-vcard; charset=utf-8;
- name="chuck.lever.vcf"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="chuck.lever.vcf"
-
-begin:vcard
-fn:Chuck Lever
-n:Lever;Chuck
-org:Oracle Corporation;Corporate Architecture: Linux Projects Group
-adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
-title:Principal Member of Staff
-tel;work:+1 248 614 5091
-x-mozilla-html:FALSE
-url:http://oss.oracle.com/~cel
-version:2.1
-end:vcard
-
-
---------------090600050700000006080400
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
---------------090600050700000006080400
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---------------090600050700000006080400--
