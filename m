@@ -1,23 +1,24 @@
-From: "Morrison, Tom" <tmorrison@empirix.com>
-Subject: Follow up to: NFS/RPC Hangs after updating time...
-Date: Fri, 31 Aug 2007 14:35:19 -0400
-Message-ID: <BD261180E6D35F4D9D32F3E44FD3D901091DE759@EMPBEDEX.empirix.com>
-References: <BD261180E6D35F4D9D32F3E44FD3D90108F975FB@EMPBEDEX.empirix.com>
-	<20070822202639.GL20946@fieldses.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: slowness due to splitting into pages
+	in	nfs3svc_decode_writeargs()
+Date: Fri, 31 Aug 2007 14:45:15 -0400
+Message-ID: <20070831184515.GC11165@fieldses.org>
+References: <200708312003.30446.bernd-schubert@gmx.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: nfs@lists.sourceforge.net
+To: Bernd Schubert <bernd-schubert@gmx.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IRBLm-000396-0O
-	for nfs@lists.sourceforge.net; Fri, 31 Aug 2007 11:36:10 -0700
-Received: from empbedex1.empirix.com ([12.38.203.54])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IRBLq-0002PE-04
-	for nfs@lists.sourceforge.net; Fri, 31 Aug 2007 11:36:14 -0700
-In-Reply-To: <20070822202639.GL20946@fieldses.org>
+	id 1IRBUZ-000423-09
+	for nfs@lists.sourceforge.net; Fri, 31 Aug 2007 11:45:15 -0700
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IRBUc-00082r-5V
+	for nfs@lists.sourceforge.net; Fri, 31 Aug 2007 11:45:19 -0700
+In-Reply-To: <200708312003.30446.bernd-schubert@gmx.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,60 +31,51 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a follow-up...
-
-After a huge pain in the rear upgrading from a 
-2.6.11++ to a 2.6.23-rc3 (I'll give the powerpc
-folks a 'piece' of my mind on that front) - the 
-NFS hang problem that I was experiencing on the 
-older kernel is NOT occurring on this new version.
-
-Now what do I do?
-
-Is the net/sunrpc net/nfsx pieces isolated enough 
-from the rest of the kernel that I could fork-lift 
-it back to the 2.6.11 (or is that really a lost cause).
-
-Thanks for any/all feedback on this front!
-
-
------Original Message-----
-From: J. Bruce Fields [mailto:bfields@fieldses.org] 
-Sent: Wednesday, August 22, 2007 4:27 PM
-To: Morrison, Tom
-Cc: nfs@lists.sourceforge.net; linux-kernel@vger.kernel.org; Rushton,
-Matt
-Subject: Re: NFS/RPC Hangs after updating time...
-
-On Wed, Aug 22, 2007 at 02:37:22PM -0400, Morrison, Tom wrote:
-> I am working with a 2.6.11++ kernel on an embedded 
-> server platform that is NFS serving Linux rootfs 
-> for other embedded NFS Client boards.
+On Fri, Aug 31, 2007 at 08:03:30PM +0200, Bernd Schubert wrote:
+> I'm presently investigating why writing to a nfs exported lustre filesystem is 
+> rather slow. Reading from lustre over nfs about 200-300 MB/s, but writing to 
+> it over nfs is only 20-50MB/s (both with IPoIB). Writing directly to this 
+> lustre cluster is about 600-700 MB/s both reading and writing. Well, 200-300 
+> MB/s over NFS per client would be acceptable.
 > 
-> Everything works fine when the system time on the 
-> server board is relatively synchronized with the real-time. 
-> 
-> It hangs after attempting to update the time from a 
-> nonsensical time (e.g.: 2 months ago) - the most significant
-> part of it is that it only hangs IFF it has started 
-> serving its NFS client boards before I attempt to 
-> update the time.
-> 
-> 
-> The most significant output (when turning on 
-> RPC debugging) is from:
-> 
->   linux/net/sunrpc/cache.c (cache_check) - line 90:
-> 
->          >> Want update, refage=1800, age=4288285
-> 
-> It continually loops through this method - and the cache
-> never gets updated...even thought with some additional
-> sleuthing (aka: additional debug printks - it thinks 
-> that there is an cache update pending).
+> After several dozens of printks, systemtaps, etc I think its not the fault of 
+> lustre, but a generic nfsd and/or vfs problem.
 
-Can you reproduce the problem with the current kernel? (Say 2.6.22 or
-later?)
+Thanks for looking into this!
+
+> In nfs3svc_decode_writeargs() all the data received are splitted into 
+> PAGE_SIZE, except the very first page. This page only gets 
+> PAGE_SIZE - header_length. So far no problem, but now on writing the pages in 
+> generic_file_buffered_write(), this function tries to write PAGE_SIZE. So it 
+> takes the first nfs page, which is PAGE_SIZE - header_length. 
+> To fill up to PAGE_SIZE it will take header_length from the second page. Of 
+> course, now there's also only PAGE_SIZE - header_length for the 2nd nfs page 
+> left. 
+> It will continue this way until the last page is written. Don't know why this 
+> doesn't show a big effect on other file system. Well, maybe it does, but 
+> nobody did notice it before?
+
+Hm.  Any chance this is the same problem?:
+
+	http://marc.info/?l=linux-nfs&m=112289652218095&w=2
+
+> Using this patch I get write speed of about 200 MB/s, even with kernel 
+> debugging enabled and several left-over printks 
+
+At too high a cost, unfortunately:
+
+> -- nfs3xdr.c.bak	2007-07-09 01:32:17.000000000 +0200
+>  	rqstp->rq_vec[0].iov_base = (void*)p;
+...
+> +	rqstp->rq_vec[0].iov_len = len;
+> +	args->vlen = 1;
+
+There's no guarantee the later pages in the rq_pages array are
+contiguous in memory after the first one, so the rest of that iovec
+probably has random data in it.
+
+(You might want to add to your tests some checks that the right data
+still gets to the file afterwards.)
 
 --b.
 
