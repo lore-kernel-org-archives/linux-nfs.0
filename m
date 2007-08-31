@@ -1,26 +1,26 @@
 From: Chuck Lever <chuck.lever@oracle.com>
 Subject: Re: [PATCH] mount.nfs: Update description of clientaddr= in
  nfs(5)
-Date: Fri, 31 Aug 2007 09:54:50 -0400
-Message-ID: <46D81DAA.6070009@oracle.com>
+Date: Fri, 31 Aug 2007 09:56:36 -0400
+Message-ID: <46D81E14.3000504@oracle.com>
 References: <20070830194810.4524.58037.stgit@monet.1015granger.net>
-	<46D75CE7.2020605@oxeva.fr>
+	<EXNANE01q6DqaJY4kJS00000210@exnane01.hq.netapp.com>
 Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------030905080809030208020604"
+Content-Type: multipart/mixed; boundary="------------090600050700000006080400"
 Cc: nfs@lists.sourceforge.net
-To: Gabriel Barazer <gabriel@oxeva.fr>
+To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IR6z3-0005KW-6g
-	for nfs@lists.sourceforge.net; Fri, 31 Aug 2007 06:56:25 -0700
-Received: from rgminet01.oracle.com ([148.87.113.118])
+	id 1IR712-0005XG-Kk
+	for nfs@lists.sourceforge.net; Fri, 31 Aug 2007 06:58:28 -0700
+Received: from agminet01.oracle.com ([141.146.126.228])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IR6z6-0006c5-7f
-	for nfs@lists.sourceforge.net; Fri, 31 Aug 2007 06:56:29 -0700
-In-Reply-To: <46D75CE7.2020605@oxeva.fr>
+	(Exim 4.44) id 1IR716-0007rE-GH
+	for nfs@lists.sourceforge.net; Fri, 31 Aug 2007 06:58:33 -0700
+In-Reply-To: <EXNANE01q6DqaJY4kJS00000210@exnane01.hq.netapp.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,30 +34,28 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 This is a multi-part message in MIME format.
---------------030905080809030208020604
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+--------------090600050700000006080400
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Content-Transfer-Encoding: 7bit
 
-Gabriel Barazer wrote:
-> On 08/30/2007 9:48:10 PM +0200, Chuck Lever <chuck.lever@oracle.com> wrote:
->> The description of clientaddr= in nfs(5) is out of date and omits some
->> other typical reasons for using it.  Let's start with this rewrite.
+Talpey, Thomas wrote:
+> At 03:48 PM 8/30/2007, Chuck Lever wrote:
+>> +However, in the presence of multiple client network interfaces,
+>> +special routing policies, or atypical network topologies, the
+>> +exact address to use for callbacks may be difficult for the
+>> +mount command to determine automatically.
 > 
-> By the way, can we update the man page date show the current version 
-> somewhere ? This is a bit disturbing to see "20 November 1993" at the 
-> bottom of the man page, and would clear minds about the "ignored at this 
-> time" or "not implemented yet" : does the word "currently" makes any 
-> sense, when the only date showed is 15 years ago ?
+> "Difficult" doesn't actually say what happens. Perhaps:
+> 
+> ... atypical network topologies, the ...
+> "server may not be able to establish a connection to the
+> address supplied by the client to use for callbacks. This in turn
+> may lead to degraded client NFSv4 operation."
 
-As part of the new text-based mount work, I'm designing a complete 
-replacement for nfs(5).  You can view a partially complete version of 
-the new document here:
+I think detailing the consequences a little is a good idea, so I'll try 
+to work this in.
 
-http://wiki.linux-nfs.org/wiki/index.php/NewNfsManPage
-
-It's in the wiki so others can review, comment, and participate.
-
---------------030905080809030208020604
+--------------090600050700000006080400
 Content-Type: text/x-vcard; charset=utf-8;
  name="chuck.lever.vcf"
 Content-Transfer-Encoding: 7bit
@@ -77,7 +75,7 @@ version:2.1
 end:vcard
 
 
---------------030905080809030208020604
+--------------090600050700000006080400
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -88,7 +86,7 @@ This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
---------------030905080809030208020604
+--------------090600050700000006080400
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -98,4 +96,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---------------030905080809030208020604--
+--------------090600050700000006080400--
