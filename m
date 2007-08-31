@@ -1,22 +1,24 @@
-From: Gabriel Barazer <gabriel@oxeva.fr>
-Subject: [PATCH] mount.nfs4: don't try to detect a clientaddr if
-	clientaddr= option is provided
-Date: Fri, 31 Aug 2007 16:01:20 +0200
-Message-ID: <11885688803306-git-send-email-gabriel@oxeva.fr>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [RFC] [PATCH] rpcbind netid declared per-transport
+Date: Fri, 31 Aug 2007 10:08:56 -0400
+Message-ID: <46D820F8.6040309@oracle.com>
+References: <EXNANE01Mb1s7nlT2Nq00000219@exnane01.hq.netapp.com>
+Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Content-Type: multipart/mixed; boundary="------------010701070604080505070101"
+Cc: nfs@lists.sourceforge.net
+To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IR73b-0005py-1Q
-	for nfs@lists.sourceforge.net; Fri, 31 Aug 2007 07:01:07 -0700
-Received: from tok69-4-82-236-110-238.fbx.proxad.net ([82.236.110.238]
-	helo=masternode.reagi.com)
+	id 1IR7Co-0006mY-AJ
+	for nfs@lists.sourceforge.net; Fri, 31 Aug 2007 07:10:38 -0700
+Received: from agminet01.oracle.com ([141.146.126.228])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IR73e-0000w9-Uk
-	for nfs@lists.sourceforge.net; Fri, 31 Aug 2007 07:01:11 -0700
+	(Exim 4.44) id 1IR7Cp-0005Uf-Ec
+	for nfs@lists.sourceforge.net; Fri, 31 Aug 2007 07:10:40 -0700
+In-Reply-To: <EXNANE01Mb1s7nlT2Nq00000219@exnane01.hq.netapp.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,52 +31,196 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-If get_my_ipv4addr() fails (dns error, wrong hostname, etc.), nfs4mount would
-fail even if the clientaddr= is provided (and with clientaddr=, get_my_ipv4addr
-detection is then useless).
+This is a multi-part message in MIME format.
+--------------010701070604080505070101
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Transfer-Encoding: 7bit
 
-Signed-off-by: Gabriel Barazer <gabriel@oxeva.fr>
----
- utils/mount/nfs4mount.c |   10 ++++++++--
- 1 files changed, 8 insertions(+), 2 deletions(-)
+Talpey, Thomas wrote:
+> The following patch moves rpcbind v3 "netid" selection from the
+> rpbcind client to the originating transport, where I believe it belongs.
+> This also enables IPv6 rpcbind transport resolution by the client.
+> 
+> Patch base is 2.6.23-rc4 + Trond NFS_ALL.
+> 
+> Comments?
+> 
+> Tom.
+> 
+> -----
+> 
+> SUNRPC: export per-transport netid's
+> 
+> The rpcbind (v3+) netid is provided by each RPC client transport.
+> This enables IPv6 rpcbind client support, and future extension.
 
-diff --git a/utils/mount/nfs4mount.c b/utils/mount/nfs4mount.c
-index c4e8bfb..391665b 100644
---- a/utils/mount/nfs4mount.c
-+++ b/utils/mount/nfs4mount.c
-@@ -199,8 +199,6 @@ int nfs4mount(const char *spec, const char *node, int flags,
- 
- 	if (fill_ipv4_sockaddr(hostname, &server_addr))
- 		goto fail;
--	if (get_my_ipv4addr(ip_addr, sizeof(ip_addr)))
--		goto fail;
- 
- 	/* add IP address to mtab options for use when unmounting */
- 	s = inet_ntoa(server_addr.sin_addr);
-@@ -328,6 +326,14 @@ int nfs4mount(const char *spec, const char *node, int flags,
- 		}
- 	}
- 
-+	/* Try to get and resolve the local address only if
-+	 * it is not provided by the clientaddr= option.
-+	 * Else, nfs4mount could fail if the local hostname is not resolvable
-+	 * (poor DNS config or early mount), even if clientaddr= is provided.
-+	 */
-+	if (!ip_addr_in_opts && get_my_ipv4addr(ip_addr, sizeof(ip_addr)))
-+		goto fail;
-+
- 	data.flags = (soft ? NFS4_MOUNT_SOFT : 0)
- 		| (intr ? NFS4_MOUNT_INTR : 0)
- 		| (nocto ? NFS4_MOUNT_NOCTO : 0)
--- 
-1.5.2.5
+More clear: "This fixes an omission with IPv6 rpcbind client support."
 
+"Enables" suggests there's nothing more to do to make IPv6 work.
+
+> Signed-off-by: Tom Talpey <tmt@netapp.com>
+> 
+> ---
+> 
+>  include/linux/sunrpc/clnt.h |    8 ++++++++
+>  include/linux/sunrpc/xprt.h |    1 +
+>  net/sunrpc/rpcb_clnt.c      |   24 +++++++++---------------
+>  net/sunrpc/xprtsock.c       |   10 ++++++++++
+>  4 files changed, 28 insertions(+), 15 deletions(-)
+> 
+> Index: linux-2.6.22/include/linux/sunrpc/xprt.h
+> ===================================================================
+> --- linux-2.6.22.orig/include/linux/sunrpc/xprt.h
+> +++ linux-2.6.22/include/linux/sunrpc/xprt.h
+> @@ -56,6 +56,7 @@ enum rpc_display_format_t {
+>  	RPC_DISPLAY_HEX_ADDR,
+>  	RPC_DISPLAY_HEX_PORT,
+>  	RPC_DISPLAY_UNIVERSAL_ADDR,
+> +	RPC_DISPLAY_NETID,
+>  	RPC_DISPLAY_MAX,
+>  };
+>  
+> Index: linux-2.6.22/net/sunrpc/xprtsock.c
+> ===================================================================
+> --- linux-2.6.22.orig/net/sunrpc/xprtsock.c
+> +++ linux-2.6.22/net/sunrpc/xprtsock.c
+> @@ -337,6 +337,11 @@ static void xs_format_ipv4_peer_addresse
+>  				ntohs(addr->sin_port) & 0xff);
+>  	}
+>  	xprt->address_strings[RPC_DISPLAY_UNIVERSAL_ADDR] = buf;
+> +
+> +	if (xprt->prot == IPPROTO_UDP)
+> +		xprt->address_strings[RPC_DISPLAY_NETID] = RPCB_NETID_UDP;
+> +	else
+> +		xprt->address_strings[RPC_DISPLAY_NETID] = RPCB_NETID_TCP;
+>  }
+>  
+>  static void xs_format_ipv6_peer_addresses(struct rpc_xprt *xprt)
+> @@ -398,6 +403,11 @@ static void xs_format_ipv6_peer_addresse
+>  				ntohs(addr->sin6_port) & 0xff);
+>  	}
+>  	xprt->address_strings[RPC_DISPLAY_UNIVERSAL_ADDR] = buf;
+> +
+> +	if (xprt->prot == IPPROTO_UDP)
+> +		xprt->address_strings[RPC_DISPLAY_NETID] = RPCB_NETID_UDP6;
+> +	else
+> +		xprt->address_strings[RPC_DISPLAY_NETID] = RPCB_NETID_TCP6;
+>  }
+>  
+>  static void xs_free_peer_addresses(struct rpc_xprt *xprt)
+> Index: linux-2.6.22/net/sunrpc/rpcb_clnt.c
+> ===================================================================
+> --- linux-2.6.22.orig/net/sunrpc/rpcb_clnt.c
+> +++ linux-2.6.22/net/sunrpc/rpcb_clnt.c
+> @@ -95,20 +95,9 @@ enum {
+>  /*
+>   * r_netid
+>   *
+> - * Quoting RFC 3530, section 2.2:
+> - *
+> - * For TCP over IPv4 the value of r_netid is the string "tcp".  For UDP
+> - * over IPv4 the value of r_netid is the string "udp".
+> - *
+> - * ...
+> - *
+> - * For TCP over IPv6 the value of r_netid is the string "tcp6".  For UDP
+> - * over IPv6 the value of r_netid is the string "udp6".
+> + * Note that RFC 1833 does not put any size restrictions on the
+> + * netid string, but all currently defined netid's fit in 4 bytes.
+>   */
+> -#define RPCB_NETID_UDP	"\165\144\160"		/* "udp" */
+> -#define RPCB_NETID_TCP	"\164\143\160"		/* "tcp" */
+> -#define RPCB_NETID_UDP6	"\165\144\160\066"	/* "udp6" */
+> -#define RPCB_NETID_TCP6	"\164\143\160\066"	/* "tcp6" */
+>  
+>  #define RPCB_MAXNETIDLEN	(4u)
+
+Actually I would keep RPCB_MAXNETIDLEN with the RPCB_NETID definitions 
+in the header file.
+
+> @@ -408,8 +397,13 @@ void rpcb_getport_async(struct rpc_task 
+>  	map->r_prot = xprt->prot;
+>  	map->r_port = 0;
+>  	map->r_xprt = xprt_get(xprt);
+> -	map->r_netid = (xprt->prot == IPPROTO_TCP) ? RPCB_NETID_TCP :
+> -						   RPCB_NETID_UDP;
+> +	map->r_netid = rpc_peeraddr2str(clnt, RPC_DISPLAY_NETID);
+> +	if (strlen(map->r_netid) > RPCB_MAXNETIDLEN) {
+> +		status = -ENAMETOOLONG;
+> +		dprintk("RPC: %5u %s: netid %s too long (%d)\n",
+> +			task->tk_pid, __FUNCTION__, map->r_netid, RPCB_MAXNETIDLEN);
+> +		goto bailout;
+> +	}
+ >
+>  	memcpy(&map->r_addr,
+>  	       rpc_peeraddr2str(rpcb_clnt, RPC_DISPLAY_UNIVERSAL_ADDR),
+>  	       sizeof(map->r_addr));
+> Index: linux-2.6.22/include/linux/sunrpc/clnt.h
+> ===================================================================
+> --- linux-2.6.22.orig/include/linux/sunrpc/clnt.h
+> +++ linux-2.6.22/include/linux/sunrpc/clnt.h
+> @@ -92,6 +92,14 @@ struct rpc_procinfo {
+>  	char *			p_name;		/* name of procedure */
+>  };
+>  
+> +/*
+> + * RFC1833/RFC3530 rpcbind (v3+) well-known netid's.
+> + */
+> +#define	RPCB_NETID_UDP	"\165\144\160"		/* "udp" */
+> +#define	RPCB_NETID_TCP	"\164\143\160"		/* "tcp" */
+> +#define	RPCB_NETID_UDP6	"\165\144\160\066"	/* "udp6" */
+> +#define	RPCB_NETID_TCP6	"\164\143\160\066"	/* "tcp6" */
+> +
+>  #ifdef __KERNEL__
+>  
+>  struct rpc_create_args {
+
+IMO this is the wrong header to use for these definitions.
+
+clnt.h is for internal definitions that are specific to the Linux RPC 
+client implementation.  msg_prot.h is for definitions that are specified 
+by the relevant RFCs.  I think the NETID values fall in the latter 
+category and thus belong in msg_prot.h
+
+--------------010701070604080505070101
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck.lever.vcf"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="chuck.lever.vcf"
+
+begin:vcard
+fn:Chuck Lever
+n:Lever;Chuck
+org:Oracle Corporation;Corporate Architecture: Linux Projects Group
+adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
+title:Principal Member of Staff
+tel;work:+1 248 614 5091
+x-mozilla-html:FALSE
+url:http://oss.oracle.com/~cel
+version:2.1
+end:vcard
+
+
+--------------010701070604080505070101
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
+--------------010701070604080505070101
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--------------010701070604080505070101--
