@@ -1,22 +1,24 @@
-From: "sportsmen" <Langevimqqqb@abait.net>
-Subject: medical hospitals in america
-Date: Fri, 31 Aug 2007 10:44:05 +0100
-Message-ID: <28093.8495685861$1188550480@news.gmane.org>
+From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
+Subject: [RFC] [PATCH] rpcbind netid declared per-transport
+Date: Fri, 31 Aug 2007 09:35:19 -0400
+Message-ID: <EXNANE01Mb1s7nlT2Nq00000219@exnane01.hq.netapp.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1400000904=="
-To: jim.attrell@nortexmodular.com,
-	96130cf5c0eaca128a529baea50123a2@t2.jpg,
-	tony@healthsvingsaccount-hsa.com, nfs@lists.sourceforge.net,
-	webmaster@vwhj.com, clist@worldnet.fr
+Content-Type: text/plain; charset="us-ascii"
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IR2Gr-0008Br-13
-	for nfs@lists.sourceforge.net; Fri, 31 Aug 2007 01:54:29 -0700
-Received: from cgp3.sentechsa.net ([66.18.69.56] helo=sentechsa.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IR2Gu-0003Nt-5r
-	for nfs@lists.sourceforge.net; Fri, 31 Aug 2007 01:54:33 -0700
+	id 1IR6gS-0003Ly-4T
+	for nfs@lists.sourceforge.net; Fri, 31 Aug 2007 06:37:12 -0700
+Received: from mx2.netapp.com ([216.240.18.37])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IR6gT-0001tD-HG
+	for nfs@lists.sourceforge.net; Fri, 31 Aug 2007 06:37:16 -0700
+Received: from svlexrs02.hq.netapp.com (svlexrs02.corp.netapp.com
+	[10.57.156.154])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id
+	l7VDZNh3015862
+	for <nfs@lists.sourceforge.net>; Fri, 31 Aug 2007 06:35:23 -0700 (PDT)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,64 +31,141 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============1400000904==
-Content-type: text/plain; charset=US-ASCII
+The following patch moves rpcbind v3 "netid" selection from the
+rpbcind client to the originating transport, where I believe it belongs.
+This also enables IPv6 rpcbind transport resolution by the client.
 
+Patch base is 2.6.23-rc4 + Trond NFS_ALL.
 
+Comments?
 
+Tom.
 
-Sep 1 - 7: With every purchase of our Medical Doctor Listing comes absolutely FREE a Directory for Dentists, Nursing Homes and Hospitals
+-----
 
+SUNRPC: export per-transport netid's
 
-Licensed Medical Doctors in the USA 
+The rpcbind (v3+) netid is provided by each RPC client transport.
+This enables IPv6 rpcbind client support, and future extension.
 
-788,631 in total – 17,400 emails
+Signed-off-by: Tom Talpey <tmt@netapp.com>
 
-34 primary and secondary specialties
+---
 
-16 different sortable fields
+ include/linux/sunrpc/clnt.h |    8 ++++++++
+ include/linux/sunrpc/xprt.h |    1 +
+ net/sunrpc/rpcb_clnt.c      |   24 +++++++++---------------
+ net/sunrpc/xprtsock.c       |   10 ++++++++++
+ 4 files changed, 28 insertions(+), 15 deletions(-)
 
-New Price: $350
-
-
-*** FREE OFFER: Get the 3 directories below for FREE with the purchase of the Doctor data ***
-
-American Hospitals
-23,000 Admins in more than 7,000 hospitals {a $399 value]
-
-Dentists in the USA
-More than half a million listings [worth $299 alone!]
-
-American Nursing Home List
-includes over 31,589 Senior administrators, 11,288 Nursing Directors in over 14,706 Nursing Homes in the United States. (value: $249)
-
-send and email to: sourcedata@hotmail.com
-
-
-
-
-Send an email with "rem" in the subject to discontinue these emails
-
-
---===============1400000904==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+Index: linux-2.6.22/include/linux/sunrpc/xprt.h
+===================================================================
+--- linux-2.6.22.orig/include/linux/sunrpc/xprt.h
++++ linux-2.6.22/include/linux/sunrpc/xprt.h
+@@ -56,6 +56,7 @@ enum rpc_display_format_t {
+ 	RPC_DISPLAY_HEX_ADDR,
+ 	RPC_DISPLAY_HEX_PORT,
+ 	RPC_DISPLAY_UNIVERSAL_ADDR,
++	RPC_DISPLAY_NETID,
+ 	RPC_DISPLAY_MAX,
+ };
+ 
+Index: linux-2.6.22/net/sunrpc/xprtsock.c
+===================================================================
+--- linux-2.6.22.orig/net/sunrpc/xprtsock.c
++++ linux-2.6.22/net/sunrpc/xprtsock.c
+@@ -337,6 +337,11 @@ static void xs_format_ipv4_peer_addresse
+ 				ntohs(addr->sin_port) & 0xff);
+ 	}
+ 	xprt->address_strings[RPC_DISPLAY_UNIVERSAL_ADDR] = buf;
++
++	if (xprt->prot == IPPROTO_UDP)
++		xprt->address_strings[RPC_DISPLAY_NETID] = RPCB_NETID_UDP;
++	else
++		xprt->address_strings[RPC_DISPLAY_NETID] = RPCB_NETID_TCP;
+ }
+ 
+ static void xs_format_ipv6_peer_addresses(struct rpc_xprt *xprt)
+@@ -398,6 +403,11 @@ static void xs_format_ipv6_peer_addresse
+ 				ntohs(addr->sin6_port) & 0xff);
+ 	}
+ 	xprt->address_strings[RPC_DISPLAY_UNIVERSAL_ADDR] = buf;
++
++	if (xprt->prot == IPPROTO_UDP)
++		xprt->address_strings[RPC_DISPLAY_NETID] = RPCB_NETID_UDP6;
++	else
++		xprt->address_strings[RPC_DISPLAY_NETID] = RPCB_NETID_TCP6;
+ }
+ 
+ static void xs_free_peer_addresses(struct rpc_xprt *xprt)
+Index: linux-2.6.22/net/sunrpc/rpcb_clnt.c
+===================================================================
+--- linux-2.6.22.orig/net/sunrpc/rpcb_clnt.c
++++ linux-2.6.22/net/sunrpc/rpcb_clnt.c
+@@ -95,20 +95,9 @@ enum {
+ /*
+  * r_netid
+  *
+- * Quoting RFC 3530, section 2.2:
+- *
+- * For TCP over IPv4 the value of r_netid is the string "tcp".  For UDP
+- * over IPv4 the value of r_netid is the string "udp".
+- *
+- * ...
+- *
+- * For TCP over IPv6 the value of r_netid is the string "tcp6".  For UDP
+- * over IPv6 the value of r_netid is the string "udp6".
++ * Note that RFC 1833 does not put any size restrictions on the
++ * netid string, but all currently defined netid's fit in 4 bytes.
+  */
+-#define RPCB_NETID_UDP	"\165\144\160"		/* "udp" */
+-#define RPCB_NETID_TCP	"\164\143\160"		/* "tcp" */
+-#define RPCB_NETID_UDP6	"\165\144\160\066"	/* "udp6" */
+-#define RPCB_NETID_TCP6	"\164\143\160\066"	/* "tcp6" */
+ 
+ #define RPCB_MAXNETIDLEN	(4u)
+ 
+@@ -408,8 +397,13 @@ void rpcb_getport_async(struct rpc_task 
+ 	map->r_prot = xprt->prot;
+ 	map->r_port = 0;
+ 	map->r_xprt = xprt_get(xprt);
+-	map->r_netid = (xprt->prot == IPPROTO_TCP) ? RPCB_NETID_TCP :
+-						   RPCB_NETID_UDP;
++	map->r_netid = rpc_peeraddr2str(clnt, RPC_DISPLAY_NETID);
++	if (strlen(map->r_netid) > RPCB_MAXNETIDLEN) {
++		status = -ENAMETOOLONG;
++		dprintk("RPC: %5u %s: netid %s too long (%d)\n",
++			task->tk_pid, __FUNCTION__, map->r_netid, RPCB_MAXNETIDLEN);
++		goto bailout;
++	}
+ 	memcpy(&map->r_addr,
+ 	       rpc_peeraddr2str(rpcb_clnt, RPC_DISPLAY_UNIVERSAL_ADDR),
+ 	       sizeof(map->r_addr));
+Index: linux-2.6.22/include/linux/sunrpc/clnt.h
+===================================================================
+--- linux-2.6.22.orig/include/linux/sunrpc/clnt.h
++++ linux-2.6.22/include/linux/sunrpc/clnt.h
+@@ -92,6 +92,14 @@ struct rpc_procinfo {
+ 	char *			p_name;		/* name of procedure */
+ };
+ 
++/*
++ * RFC1833/RFC3530 rpcbind (v3+) well-known netid's.
++ */
++#define	RPCB_NETID_UDP	"\165\144\160"		/* "udp" */
++#define	RPCB_NETID_TCP	"\164\143\160"		/* "tcp" */
++#define	RPCB_NETID_UDP6	"\165\144\160\066"	/* "udp6" */
++#define	RPCB_NETID_TCP6	"\164\143\160\066"	/* "tcp6" */
++
+ #ifdef __KERNEL__
+ 
+ struct rpc_create_args {
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
---===============1400000904==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============1400000904==--
