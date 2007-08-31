@@ -1,27 +1,37 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH] mount.nfs: Update description of clientaddr= in nfs(5)
-Date: Fri, 31 Aug 2007 11:15:59 -0400
-Message-ID: <20070831151559.9043.42134.stgit@monet.1015granger.net>
+From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
+Subject: Re: [RFC] [PATCH] rpcbind netid declared per-transport
+Date: Fri, 31 Aug 2007 12:41:20 -0400
+Message-ID: <EXNANE01FlmmlQ080Gx00000245@exnane01.hq.netapp.com>
+References: <EXNANE01Mb1s7nlT2Nq00000219@exnane01.hq.netapp.com>
+	<46D820F8.6040309@oracle.com>
+	<1188570399.6649.83.camel@heimdal.trondhjem.org>
+	<46D825EB.90801@oracle.com>
+	<1188573228.6649.100.camel@heimdal.trondhjem.org>
+	<46D835F4.4030703@oracle.com>
+	<EXNANE01hjJ8uT6Ssuo00000243@exnane01.hq.netapp.com>
+	<46D84176.5020807@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
+To: chuck.lever@oracle.com
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IR8Pg-0006VH-L9
-	for nfs@lists.sourceforge.net; Fri, 31 Aug 2007 08:28:01 -0700
-Received: from flpvm09.prodigy.net ([207.115.20.39])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IR8EH-0008D5-5r
-	for nfs@lists.sourceforge.net; Fri, 31 Aug 2007 08:16:13 -0700
-Received: from monet.1015granger.net
-	(adsl-76-241-169-38.dsl.sfldmi.sbcglobal.net [76.241.169.38])
-	by flpvm09.prodigy.net (8.13.8 out.dk.spool/8.13.8) with ESMTP id
-	l7VFFoZX010578
-	for <nfs@lists.sourceforge.net>; Fri, 31 Aug 2007 08:15:51 -0700
-Received: from monet.1015granger.net (monet.1015granger.net [127.0.0.1])
-	by monet.1015granger.net (8.14.1/8.14.1) with ESMTP id l7VFFxvk009059
-	for <nfs@lists.sourceforge.net>; Fri, 31 Aug 2007 11:15:59 -0400
+	id 1IR9ZA-0008GI-RZ
+	for nfs@lists.sourceforge.net; Fri, 31 Aug 2007 09:41:53 -0700
+Received: from mx2.netapp.com ([216.240.18.37])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IR9ZD-0000I9-9q
+	for nfs@lists.sourceforge.net; Fri, 31 Aug 2007 09:41:57 -0700
+In-Reply-To: <46D84176.5020807@oracle.com>
+References: <EXNANE01Mb1s7nlT2Nq00000219@exnane01.hq.netapp.com>
+	<46D820F8.6040309@oracle.com>
+	<1188570399.6649.83.camel@heimdal.trondhjem.org>
+	<46D825EB.90801@oracle.com>
+	<1188573228.6649.100.camel@heimdal.trondhjem.org>
+	<46D835F4.4030703@oracle.com>
+	<EXNANE01hjJ8uT6Ssuo00000243@exnane01.hq.netapp.com>
+	<46D84176.5020807@oracle.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,48 +44,38 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-The description of clientaddr= in nfs(5) is out of date and omits some
-other typical reasons for using it.  Expand the description.
+At 12:27 PM 8/31/2007, Chuck Lever wrote:
+>Talpey, Thomas wrote:
+>> "RPCB_" prefix: They're (with this patch) part of the rpcbind api. The prefix
+>...
+>It's a nit, I guess.
 
-Rewrite, take 2.  This may address review comments..?
+How about RPCBIND_NETID_foo? It's more obvious, and keeps the RPC...
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+>> RPCB_MAXNETIDLEN: Sure, I'll move it. It is, after all, a limit on the string
+>>...
+>
+>We need to know the maximum size to compute the largest possible size of 
+>the RPC buffer needed for the request.  See the definition of 
+>RPCB_netid_sz.  Those are all added together to get the largest possible 
+>request size, and that's used to compute the largest possible buffer size.
 
- utils/mount/nfs.man |   19 +++++++++++++++----
- 1 files changed, 15 insertions(+), 4 deletions(-)
+Yes, I know, but it could be larger and more dynamically calculated.
+I'll move it, but leave it as-is then, there is no need to change it.
+I'll also move the MAXADDRLEN, since that has the same meaning
+for the UNIVERSAL_ADDR argument.
 
-diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
-index e66daba..7248099 100644
---- a/utils/mount/nfs.man
-+++ b/utils/mount/nfs.man
-@@ -412,10 +412,21 @@ and
- .IR tcp .
- .TP 1.5i
- .I clientaddr=n
--On a multi-homed client, this
--causes the client to use a specific callback address when
--communicating with an NFS version 4 server.
--This option is currently ignored.
-+Specifies a single IPv4 address in dotted-quad form that
-+the NFS client advertises to allow servers to perform
-+NFSv4 callback requests against files on this mount point.
-+If the server is not able to establish callback connections
-+to clients, performance may degrade, or accesses to
-+files may temporarily hang.
-+.IP
-+If this option is not specified, the
-+.BR mount (8)
-+command attempts to discover an appropriate callback
-+address automatically.
-+The automatic discovery process is not perfect, however.
-+In the presence of multiple client network interfaces, special
-+routing policies, or atypical network topologies, the exact
-+address to use for callbacks may be nontrivial to determine.
- .TP 1.5i
- .I sec=mode
- Same as \f3sec=mode\f1 for the nfs filesystem type (see above).
 
+>Netids are standardized on-the-wire marshaled values, so they definitely 
+>belong in msg_prot.h, which as you say, contains marshaling and error 
+>code definitions.
+
+XDR marshaling, a much lower level than rpcbind. But, I'll move the netid's.
+It's a fine spot for them.
+
+Stand by for updated patch.
+
+Tom.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
