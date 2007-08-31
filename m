@@ -1,25 +1,26 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: Follow up to: NFS/RPC Hangs after updating time...
-Date: Fri, 31 Aug 2007 17:45:51 -0400
-Message-ID: <20070831214551.GP11165@fieldses.org>
-References: <BD261180E6D35F4D9D32F3E44FD3D90108F975FB@EMPBEDEX.empirix.com>
-	<20070822202639.GL20946@fieldses.org>
-	<BD261180E6D35F4D9D32F3E44FD3D901091DE759@EMPBEDEX.empirix.com>
+From: Bernd Schubert <bernd-schubert@gmx.de>
+Subject: Re: slowness due to splitting into pages
+	in?nfs3svc_decode_writeargs()
+Date: Fri, 31 Aug 2007 23:55:29 +0200
+Message-ID: <200708312355.30219.bernd-schubert@gmx.de>
+References: <200708312003.30446.bernd-schubert@gmx.de>
+	<200708312334.50001.bernd-schubert@gmx.de>
+	<20070831214306.GO11165@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
-To: "Morrison, Tom" <tmorrison@empirix.com>
+Cc: "Brian J. Murrell" <brian@interlinx.bc.ca>,
+	nfs@lists.sourceforge.net
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IREJI-0005Df-E8
-	for nfs@lists.sourceforge.net; Fri, 31 Aug 2007 14:45:48 -0700
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IREJM-0005an-ME
-	for nfs@lists.sourceforge.net; Fri, 31 Aug 2007 14:45:53 -0700
-In-Reply-To: <BD261180E6D35F4D9D32F3E44FD3D901091DE759@EMPBEDEX.empirix.com>
+	id 1IRESn-0006DB-3Q
+	for nfs@lists.sourceforge.net; Fri, 31 Aug 2007 14:55:37 -0700
+Received: from mail.gmx.net ([213.165.64.20])
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1IRESr-0004rD-7i
+	for nfs@lists.sourceforge.net; Fri, 31 Aug 2007 14:55:41 -0700
+In-Reply-To: <20070831214306.GO11165@fieldses.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,59 +33,39 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, Aug 31, 2007 at 02:35:19PM -0400, Morrison, Tom wrote:
-> This is a follow-up...
-> 
-> After a huge pain in the rear upgrading from a 
-> 2.6.11++ to a 2.6.23-rc3 (I'll give the powerpc
-> folks a 'piece' of my mind on that front) - the 
-> NFS hang problem that I was experiencing on the 
-> older kernel is NOT occurring on this new version.
-> 
-> Now what do I do?
+On Friday 31 August 2007, J. Bruce Fields wrote:
+> On Fri, Aug 31, 2007 at 11:34:49PM +0200, Bernd Schubert wrote:
+> > On Friday 31 August 2007, J. Bruce Fields wrote:
+> > > There's no guarantee the later pages in the rq_pages array are
+> > > contiguous in memory after the first one, so the rest of that iovec
+> > > probably has random data in it.
+> >
+> > Hmm, its some time since I last read rfc1813, but I can't remember
+> > something like 'data are send in pages and pages may have random order'.
+> > So I guess some kind of multi-threading is filling in the data the client
+> > is sending?
+>
+> The data all arrives in one big chunk, in order.  But then we have to
+> put it some place.  The kernel almost never tries to allocate more than
+> one contiguous page of memory--memory fragmentation can make it
+> difficult to do that reliably--so we just ask for a bunch of pages to
+> put the data in, which may represent memory from all over the place,
+> store those pages into an array, and receive the data into those pages
+> in the order they're listed in the array.
 
-Well, between the time jump and the rpc debugging output, you've got
-some great clues there--given some time I'm sure it would be possible to
-completely figure out what's going on.
+Ah, now I understand, thanks! I'm still used to userspace programming (*)
 
-Unfortunately the people with the most knowledge of the code probably
-don't have the time to fix problems on old kernels, so unless somebody
-else recognizes the problem immediately, I'm not sure what to suggest.
-Obviously, a wholesale upgrade to a more recent kernel would be the one
-sure bet....
 
-> Is the net/sunrpc net/nfsx pieces isolated enough 
-> from the rest of the kernel that I could fork-lift 
-> it back to the 2.6.11 (or is that really a lost cause).
+Thanks,
+Bernd
 
-I suspect it's a lost cause.  A lot has happened in the last couple
-years.
 
---b.
+PS: (*) Don't know if I ever will really like kernel programming - it 
+remembers me to metal-organic chemistry, everything is a 100 times more 
+difficult than usually, even simple weighing 100g of a substance might take a 
+few hours.
 
-> > It hangs after attempting to update the time from a 
-> > nonsensical time (e.g.: 2 months ago) - the most significant
-> > part of it is that it only hangs IFF it has started 
-> > serving its NFS client boards before I attempt to 
-> > update the time.
-> > 
-> > 
-> > The most significant output (when turning on 
-> > RPC debugging) is from:
-> > 
-> >   linux/net/sunrpc/cache.c (cache_check) - line 90:
-> > 
-> >          >> Want update, refage=1800, age=4288285
-> > 
-> > It continually loops through this method - and the cache
-> > never gets updated...even thought with some additional
-> > sleuthing (aka: additional debug printks - it thinks 
-> > that there is an cache update pending).
-> 
-> Can you reproduce the problem with the current kernel? (Say 2.6.22 or
-> later?)
-> 
-> --b.
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
