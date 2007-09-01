@@ -1,27 +1,19 @@
-From: Bernd Schubert <bernd-schubert@gmx.de>
-Subject: Re:
-	=?iso-8859-1?q?slowness_due_to_splitting_into_pages_in=09nf?=
-	=?iso-8859-1?q?s3svc=5Fdecode=5Fwriteargs_=28=29?=
-Date: Sat, 1 Sep 2007 01:34:03 +0200
-Message-ID: <200709010134.03876.bernd-schubert@gmx.de>
-References: <200708312003.30446.bernd-schubert@gmx.de>
-	<1188586335.26165.104.camel@pc.ilinx>
-	<20070831190001.GD11165@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	"Brian J. Murrell" <brian@interlinx.bc.ca>
-To: nfs@lists.sourceforge.net
+From: "Rare nude photos of Kate Moss" <super1ficial145@gmail.com>
+Subject: Rare nude photos of Kate Moss
+Date: Sat, 1 Sep 2007 12:35:10 +0800
+Message-ID: <E1IRKhX-0001R1-Uf@mail.sourceforge.net>
+Reply-To: super1ficial145@gmail.com
+Content-Type: multipart/mixed; boundary="===============1831013728=="
+To: "nfs" <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IRG0D-00072J-16
-	for nfs@lists.sourceforge.net; Fri, 31 Aug 2007 16:34:13 -0700
-Received: from mail.gmx.net ([213.165.64.20])
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1IRG0G-0004IS-2J
-	for nfs@lists.sourceforge.net; Fri, 31 Aug 2007 16:34:17 -0700
-In-Reply-To: <20070831190001.GD11165@fieldses.org>
+	id 1IRKhV-0000cy-1g
+	for nfs@lists.sourceforge.net; Fri, 31 Aug 2007 21:35:13 -0700
+Received: from [123.8.144.246] (helo=gmail.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IRKhX-0001R1-Uf
+	for nfs@lists.sourceforge.net; Fri, 31 Aug 2007 21:35:17 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,52 +26,48 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Friday 31 August 2007, J. Bruce Fields wrote:
-> On Fri, Aug 31, 2007 at 02:52:15PM -0400, Brian J. Murrell wrote:
-> > On Fri, 2007-08-31 at 14:45 -0400, J. Bruce Fields wrote:
-> > > Hm.  Any chance this is the same problem?:
-> > >
-> > > 	http://marc.info/?l=linux-nfs&m=112289652218095&w=2
-> >
-> > Did this ever land anywhere?
->
-> No--I think there were some discussion of problems in the followup
-> posts.
+--===============1831013728==
+Content-Type: text/plain;
+	charset="gb2312"
+Content-Transfer-Encoding: quoted-printable
 
-To sum up this discussion:
+Rare nude photos of Kate Moss http://www.kovenews.com/n453c67.aspx
 
-There are two choices to move the data:
+Kimberly Stewart lingerie photos   http://www.kovenews.com/n175c56.aspx
 
-1.) To page 2 ... n - this will overwrite nfsv4 at the end of page n.
+Victoria looks 'awful naked'   http://www.kovenews.com/n522c57.aspx
 
-2.) To page 1 ... n - 1 - this will overwrite the header, thus, all pointers 
-to that memory will point to wrong data now.
+Should naked human body be used as an art symbol?  =20
+http://www.kovenews.com/n521c57.aspx
 
-Seems both aproaches are troublesome and nobody bothered to implement it. Not 
-that I much like the idea of data moving at all, but what about
+what is mesothelioma  http://www.kovenews.com/n143c52.aspx
 
-3.) On allocating the pages, allocate one page more than required. After 
-filling in page 1, skip page 2 and proceed with page 3.
-Now we would have space to properly move the data later on, thus:
+Sun Protection Tips http://www.kovenews.com/n218c48.aspx
 
-memcpy  (page2, page1 + hdr, PAGE_SIZE - hdr_length)
-memcpy  (page2 + PAGE_SIZE - hdr_length, page3, hdr_length)
+How to Stay Safe in the Sun  http://www.kovenews.com/n217c47.aspx
 
-memmove(page3, page3 + hdr_length, PAGE_SIZE - hdr_length)
-[...] 
+=20
 
 
-Can you point me to the function assigning the data-block from the network to 
-the page-vector?
-
-Thanks,
-Bernd
+--===============1831013728==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
+--===============1831013728==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============1831013728==--
