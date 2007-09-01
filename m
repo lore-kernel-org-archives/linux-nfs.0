@@ -1,19 +1,20 @@
-From: "Rare nude photos of Kate Moss" <super1ficial145@gmail.com>
-Subject: Rare nude photos of Kate Moss
-Date: Sat, 1 Sep 2007 12:35:10 +0800
-Message-ID: <E1IRKhX-0001R1-Uf@mail.sourceforge.net>
-Reply-To: super1ficial145@gmail.com
-Content-Type: multipart/mixed; boundary="===============1831013728=="
-To: "nfs" <nfs@lists.sourceforge.net>
+From: <blp4c@bssgroup.com>
+Subject: Get on this right away
+Date: Sat, 1 Sep 2007 15:53:00 +0700
+Message-ID: <46D9286C.2020403@bssgroup.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IRKhV-0000cy-1g
-	for nfs@lists.sourceforge.net; Fri, 31 Aug 2007 21:35:13 -0700
-Received: from [123.8.144.246] (helo=gmail.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IRKhX-0001R1-Uf
-	for nfs@lists.sourceforge.net; Fri, 31 Aug 2007 21:35:17 -0700
+	id 1IROkB-0008EJ-SB
+	for nfs@lists.sourceforge.net; Sat, 01 Sep 2007 01:54:18 -0700
+Received: from [125.160.232.53]
+	(helo=53.subnet125-160-232.speedy.telkom.net.id)
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1IROkD-0004ac-CT
+	for nfs@lists.sourceforge.net; Sat, 01 Sep 2007 01:54:20 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,48 +27,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============1831013728==
-Content-Type: text/plain;
-	charset="gb2312"
-Content-Transfer-Encoding: quoted-printable
+VGPM goes after subscription gaming industry.
 
-Rare nude photos of Kate Moss http://www.kovenews.com/n453c67.aspx
+Vega Promotional, Inc
+VGPM
+$0.07
 
-Kimberly Stewart lingerie photos   http://www.kovenews.com/n175c56.aspx
+Subscription gaming hits Billion dollare mark. Games like World of
+Warcraft pulled in over 471 million in 2006. Grabbing a lion's share of
+that market is VGPM's goal with a new line-up of subscriber games. Read
+the news, see the potential, and get on VGPM Tuesday.
 
-Victoria looks 'awful naked'   http://www.kovenews.com/n522c57.aspx
-
-Should naked human body be used as an art symbol?  =20
-http://www.kovenews.com/n521c57.aspx
-
-what is mesothelioma  http://www.kovenews.com/n143c52.aspx
-
-Sun Protection Tips http://www.kovenews.com/n218c48.aspx
-
-How to Stay Safe in the Sun  http://www.kovenews.com/n217c47.aspx
-
-=20
-
-
---===============1831013728==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
---===============1831013728==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============1831013728==--
