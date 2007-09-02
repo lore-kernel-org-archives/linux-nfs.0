@@ -1,25 +1,11 @@
-From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 2/2] SUNRPC: Fix default hostname created in
-	rpc_create()
-Date: Sat,  1 Sep 2007 12:42:40 -0400
-Message-ID: <1188664961458-git-send-email-bfields@citi.umich.edu>
-References: <11886649602150-git-send-email-bfields@citi.umich.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: "J. Bruce Fields" <bfields@citi.umich.edu>,
-	nfs@lists.sourceforge.net, Olga Kornievskaia <aglo@citi.umich.edu>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+From: "College girls go nude before camera" <supercial145@gmail.com>
+Subject: College girls go nude before camera
+Date: Sun, 2 Sep 2007 14:31:57 +0800
+Message-ID: <E1IRj06-0000Xd-GD@mail.sourceforge.net>
+Reply-To: super1fial145@gmail.com
+Content-Type: multipart/mixed; boundary="===============0107579032=="
+To: "NFS" <NFS@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IRW3T-0000co-MP
-	for nfs@lists.sourceforge.net; Sat, 01 Sep 2007 09:42:39 -0700
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IRW3W-0003uH-W2
-	for nfs@lists.sourceforge.net; Sat, 01 Sep 2007 09:42:44 -0700
-In-Reply-To: <11886649602150-git-send-email-bfields@citi.umich.edu>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,43 +18,57 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Since 43780b87fa7..., rpc_create() fills in a default hostname based on
-the ip address if the servername passed in is null.  A small typo made
-that default incorrect.  (But this information appears to be used only
-for debugging right now, so I don't believe the typo causes any bugs in
-the current kernel.)
+--===============0107579032==
+Content-Type: text/plain;
+	charset="gb2312"
+Content-Transfer-Encoding: quoted-printable
 
-Thanks to Olga Kornievskaia for bug report and testing.
+College girls go nude before camera for eternal beauty
 
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
-Cc: Olga Kornievskaia <aglo@citi.umich.edu>
-Cc: Chuck Lever <chuck.lever@oracle.com>
----
- net/sunrpc/clnt.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+http://www.kovenews.com/n436c67.aspx
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 52429b1..f167fdf 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -253,7 +253,7 @@ struct rpc_clnt *rpc_create(struct rpc_create_args *args)
- 	 */
- 	if (args->servername == NULL) {
- 		struct sockaddr_in *addr =
--					(struct sockaddr_in *) &args->address;
-+					(struct sockaddr_in *) args->address;
- 		snprintf(servername, sizeof(servername), NIPQUAD_FMT,
- 			NIPQUAD(addr->sin_addr.s_addr));
- 		args->servername = servername;
--- 
-1.5.3.rc5.19.g0734d
+the photo of lung cancer  http://www.kovenews.com/n530c71.aspx
 
+Jennifer Aniston's naked set strut  http://www.kovenews.com/n523c57.aspx
+
+
+Naked memories   http://www.kovenews.com/n519c57.aspx
+
+Orlando Bloom will not go naked on London stage   http://www.kovenews.com=
+/n518c57.aspx
+
+Trailblazer of Chinese nude art ahead of his time  http://www.kovenews.co=
+m/n441c67.aspx =20
+
+Hilton nominated for Teen Choice Awards    http://www.kovenews.com/n430c5=
+6.aspx
+
+Eva Longoria takes rollercoaster romance to new heights  http://www.koven=
+ews.com/n445c81.aspx
+
+Spears says umbrella attack was acting, not anger   http://www.kovenews.c=
+om/n444c81.aspx
+
+
+--===============0107579032==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
+--===============0107579032==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============0107579032==--
