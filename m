@@ -1,19 +1,23 @@
-From: "Rose McGowan goes bra-less" <jijianiujian@hotmail.com>
-Subject: Rose McGowan goes bra-less
-Date: Wed, 12 Sep 2007 13:38:17 +0800
-Message-ID: <E1IVKvd-0006vO-5r@mail.sourceforge.net>
-Reply-To: jinfjianujian@gmail.com
-Content-Type: multipart/mixed; boundary="===============1633227760=="
-To: "nfs" <nfs@lists.sourceforge.net>
+From: Online Co-Ordiantor <winners@info.co.uk>
+Subject: ATTENTION WINNER
+Date: Tue, 4 Sep 2007 07:02:55 +0800 (CST)
+Message-ID: <200709032302.l83N2tuf097401@s23.coowo.com>
+Reply-To: onlinecoordinator_officer@yahoo.co.uk
+Mime-Version: 1.0
+Content-Type: multipart/mixed; boundary="===============1607455668=="
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IVKvZ-00085l-2K
-	for nfs@lists.sourceforge.net; Tue, 11 Sep 2007 22:38:17 -0700
-Received: from [125.42.36.214] (helo=hotmail.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IVKvd-0006vO-5r
-	for nfs@lists.sourceforge.net; Tue, 11 Sep 2007 22:38:21 -0700
+	id 1ISKwc-0004ki-5d
+	for nfs@lists.sourceforge.net; Mon, 03 Sep 2007 16:02:58 -0700
+Received: from [61.66.28.23] (helo=s23.coowo.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1ISKwg-0003Vi-5w
+	for nfs@lists.sourceforge.net; Mon, 03 Sep 2007 16:03:02 -0700
+Received: from s23.coowo.com (localhost.coowo.com [127.0.0.1])
+	by s23.coowo.com (8.13.8/8.13.8) with ESMTP id l83N2tiI097442
+	for <nfs@lists.sourceforge.net>; Tue, 4 Sep 2007 07:02:55 +0800 (CST)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,46 +30,56 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============1633227760==
-Content-Type: text/plain;
-	charset="gb2312"
+--===============1607455668==
+Content-Type: text/plain
 Content-Transfer-Encoding: quoted-printable
 
-Rose McGowan goes bra-less    http://www.kovenews.com/n550c67.aspx
+ ATTENTION: WINNER
 
-Mesothelioma & Asbestos Lung Cancer    http://www.kovenews.com/n545c71.as=
-px
+This is to inform you that you have been selected for a cash prize of=20
+=A31,000.000.00 (British Pounds) held on the 20th August, 2007 in
 
-Naked on glacier to expose climate change   http://www.kovenews.com/n512c=
-57.aspx
+=20
+UK. The selection process was carried out through random selection in=20
+Our computerized email selection system (ess) from a database of over=20
+200,000 email  Addresses drawn from which you were selected.
 
-Shakira prefers to go naked   http://www.kovenews.com/n544c57.aspx
+Contact our fiduciary agent for claims with:
 
-Naked performance with dead pig branded 'sick'   http://www.kovenews.com/=
-n543c57.aspx
+Mr.Denise Green
+Email:onlinecoordinator_officer@yahoo.co.uk=20
+Tel : +44 70359 03310
 
-Zsa Zsa Gabor's husband found naked in car    http://www.kovenews.com/n54=
-2c57.aspx
+Fill the below:
+1. Name:  2. Address 3. Marital Status: 4. Occupation: 5. Age:
+6. Sex: 7. Nationality: 8. Country of Residence: 9. Telephone Number:
 
-Hilton gives up appeal of jail sentence   http://www.kovenews.com/n653c81=
-.aspx
-
-Sly fined for importing restricted drugs    http://www.kovenews.com/n652c=
-81.aspx
-
+Yours faithfully,
+Sir. Garry Becks.
+(Online supervisor
 
 
---===============1633227760==
+=20
+=20
+=20
+=20
+
+
+
+
+
+--===============1607455668==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
 Content-Disposition: inline
 
 -------------------------------------------------------------------------
-This SF.net email is sponsored by: Microsoft
-Defy all challenges. Microsoft(R) Visual Studio 2005.
-http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
---===============1633227760==
+This SF.net email is sponsored by: Splunk Inc.
+Still grepping through log files to find problems?  Stop.
+Now Search log events and configuration files using AJAX and a browser.
+Download your FREE copy of Splunk now >>  http://get.splunk.com/
+--===============1607455668==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -75,4 +89,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---===============1633227760==--
+--===============1607455668==--
