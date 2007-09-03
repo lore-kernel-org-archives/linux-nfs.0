@@ -1,24 +1,33 @@
-From: "nfs" <nfs@freesurf.ch>
-Subject: feverishly stovepipe
-Date: Mon, 03 Sep 2007 08:07:47 +0100
-Message-ID: <003f01c7edf1$a76824f0$ea0c1648@ASDK>
+From: Michal Piotrowski <michal.k.k.piotrowski@gmail.com>
+Subject: Re: [2/4] 2.6.23-rc5: known regressions
+Date: Mon, 03 Sep 2007 12:10:19 +0200
+Message-ID: <46DBDD8B.7040706__46109.2618098066$1188841324$gmane$org@googlemail.com>
+References: <46DBD982.3080102@googlemail.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============0639933247=="
-To: <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Cc: dth <dth@dth.net>, Jeff Chua <jeff.chua.linux@gmail.com>,
+	"Antonino A. Daplas" <adaplas@gmail.com>,
+	Peter Kovar <peter.kovar@gmail.com>,
+	Trond Myklebust <Trond.Myklebust@netapp.com>,
+	LKML <linux-kernel@vger.kernel.org>, Markus <lists4me@web.de>,
+	nfs@lists.sourceforge.net, "H. Peter Anvin" <hpa@zytor.com>,
+	linux-fsdevel@vger.kernel.org,
+	Andrew Clayton <andrew@digital-domain.net>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Ingo Molnar <mingo@elte.hu>, Len Brown <lenb@kernel.org>
+To: Linus Torvalds <torvalds@linux-foundation.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1ISEsF-000620-6i
-	for nfs@lists.sourceforge.net; Mon, 03 Sep 2007 09:34:03 -0700
-Received: from 9.caba30.xdsl.nauticom.net ([72.22.12.234])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IS5Cf-0004wB-4p
-	for nfs@lists.sourceforge.net; Sun, 02 Sep 2007 23:14:30 -0700
-Received: from ASDK ([192.207.44.86])
-	by 9.caba30.xdsl.nauticom.net (8.13.4/8.13.4) with SMTP id
-	k8295993938280d4Xy013239
-	for <nfs@lists.sourceforge.net>; Mon, 03 Sep 2007 02:14:14 -0500 (CDT)
-	(envelope-from nfs@freesurf.ch)
+	id 1ISFqj-0005Wj-Pk
+	for nfs@lists.sourceforge.net; Mon, 03 Sep 2007 10:36:33 -0700
+Received: from nf-out-0910.google.com ([64.233.182.188])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IS8tT-0002cP-MK
+	for nfs@lists.sourceforge.net; Mon, 03 Sep 2007 03:10:58 -0700
+Received: by nf-out-0910.google.com with SMTP id 30so1121445nfu
+	for <nfs@lists.sourceforge.net>; Mon, 03 Sep 2007 03:10:54 -0700 (PDT)
+In-Reply-To: <46DBD982.3080102@googlemail.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,240 +40,98 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
+Hi all,
 
---===============0639933247==
-Content-Type: multipart/related;
-	boundary="----=_NextPart_000_003C_01C7EDD0.20050990";
-	type="multipart/alternative"
+Here is a list of some known regressions in 2.6.23-rc5.
 
-This is a multi-part message in MIME format.
+Feel free to add new regressions/remove fixed etc.
+http://kernelnewbies.org/known_regressions
 
-------=_NextPart_000_003C_01C7EDD0.20050990
-Content-Type: multipart/alternative;
-	boundary="----=_NextPart_001_003D_01C7EDD0.20050990"
+List of Aces
 
-
-------=_NextPart_001_003D_01C7EDD0.20050990
-Content-Type: text/plain;
-	charset="us-ascii"
-Content-Transfer-Encoding: quoted-printable
-
-tksup lkxfj , imuytx  cbutt 
- osaeiap
-------=_NextPart_001_003D_01C7EDD0.20050990
-Content-Type: text/html;
-	charset="us-ascii"
-Content-Transfer-Encoding: quoted-printable
-
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><H=
-EAD>
-<META http-equiv=3DContent-Type content=3D"text/html; charset=3Dis=
-o-8859-1">
-<META content=3D"MSHTML 6.00.6000.16525" name=3DGENERATOR>
-=
-<STYLE></STYLE>
-</HEAD>
-<BODY bgColor=3D#ffffff>
-<DIV>iadycto bxfaavv=
-
-geeau
-swjnm<IMG src=3D"
-cid:003f01c7edf1$a76824f0$ea0c1648@ASDK">
-
-vutrmppbxornfjmml</DIV></BODY></HTML>
-
-
-------=_NextPart_001_003D_01C7EDD0.20050990--
-
-------=_NextPart_000_003C_01C7EDD0.20050990
-Content-Type: image/jpeg;
-	name="corporation.jpg"
-Content-Transfer-Encoding: base64
-Content-ID: <003f01c7edf1$a76824f0$ea0c1648@ASDK>
-
-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
-2Q==
-
-------=_NextPart_000_003C_01C7EDD0.20050990--
-	
+Name                    Regressions fixed since 21-Jun-2007
+Adrian Bunk                            9
+Linus Torvalds                         6
+Andi Kleen                             5
+Hugh Dickins                           5
+Andrew Morton                          4
+Al Viro                                3
+Alan Stern                             3
+Alexey Starikovskiy                    3
+Cornelia Huck                          3
+Jens Axboe                             3
+Stephen Hemminger                      3
+Tejun Heo                              3
 
 
 
---===============0639933247==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+Unclassified
+
+Subject         : console is messed up after resume from s2ram or switching to console from X
+References      : http://lkml.org/lkml/2007/8/4/6
+Last known good : ?
+Submitter       : Jeff Chua <jeff.chua.linux@gmail.com>
+Caused-By       : ?
+Handled-By      : H. Peter Anvin <hpa@zytor.com>
+                  Antonino A. Daplas <adaplas@gmail.com>
+Workaround      : "s2ram --force --acpi_sleep 1 --vbe_mode"
+Status          : problem is being debugged
+
+Subject         : konqueror suddenly vanishing, "konqueror: Fatal IO error: client killed"
+References      : http://lkml.org/lkml/2007/7/22/86
+Last known good : ?
+Submitter       : Markus <lists4me@web.de>
+Caused-By       : ?
+Handled-By      : Ingo Molnar <mingo@elte.hu>
+Status          : problem is being debugged
+
+
+
+CPUFREQ
+
+Subject         : ide problems: 2.6.22-git17 working, 2.6.23-rc1* is not
+References      : http://lkml.org/lkml/2007/7/27/298
+                  http://lkml.org/lkml/2007/7/29/371
+Last known good : ?
+Submitter       : dth <dth@dth.net>
+Caused-By       : Len Brown <lenb@kernel.org>
+                  commit f79e3185dd0f8650022518d7624c876d8929061b
+Handled-By      : Len Brown <lenb@kernel.org>
+Status          : problem is being debugged
+
+
+FS
+
+Subject         : NFSv3 server error in LOOKUP after READDIRPLUS Call
+References      : http://bugzilla.kernel.org/show_bug.cgi?id=8966
+Last known good : ?
+Submitter       : Peter Kovar <peter.kovar@gmail.com>
+Caused-By       : ?
+Handled-By      : ?
+Status          : unknown
+
+Subject         : [NFSD OOPS] 2.6.23-rc1-git10
+References      : http://lkml.org/lkml/2007/8/2/462
+Last known good : ?
+Submitter       : Andrew Clayton <andrew@digital-domain.net>
+Caused-By       : ?
+Handled-By      : ?
+Status          : unknown
+
+
+
+Regards,
+Michal
+
+--
+LOG
+http://www.stardust.webpages.pl/log/
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
---===============0639933247==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============0639933247==--
-	
