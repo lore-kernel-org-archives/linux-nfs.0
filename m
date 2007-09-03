@@ -1,23 +1,23 @@
 From: Online Co-Ordiantor <winners@info.co.uk>
 Subject: ATTENTION WINNER
-Date: Tue, 4 Sep 2007 06:09:09 +0800 (CST)
-Message-ID: <200709032209.l83M992E052167@s23.coowo.com>
+Date: Tue, 4 Sep 2007 06:09:06 +0800 (CST)
+Message-ID: <200709032209.l83M962p052022@s23.coowo.com>
 Reply-To: onlinecoordinator_officer@yahoo.co.uk
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1001517218=="
+Content-Type: multipart/mixed; boundary="===============0353114334=="
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1ISK6Z-0007wQ-VT
-	for nfs@lists.sourceforge.net; Mon, 03 Sep 2007 15:09:12 -0700
+	id 1ISK98-00087k-Ee
+	for nfs@lists.sourceforge.net; Mon, 03 Sep 2007 15:11:51 -0700
 Received: from [61.66.28.23] (helo=s23.coowo.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1ISK6e-0002Oi-6J
-	for nfs@lists.sourceforge.net; Mon, 03 Sep 2007 15:09:16 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1ISK6b-0002Kz-ED
+	for nfs@lists.sourceforge.net; Mon, 03 Sep 2007 15:09:14 -0700
 Received: from s23.coowo.com (localhost.coowo.com [127.0.0.1])
-	by s23.coowo.com (8.13.8/8.13.8) with ESMTP id l83M99gM052174
-	for <nfs@lists.sourceforge.net>; Tue, 4 Sep 2007 06:09:10 +0800 (CST)
+	by s23.coowo.com (8.13.8/8.13.8) with ESMTP id l83M97pP052037
+	for <nfs@lists.sourceforge.net>; Tue, 4 Sep 2007 06:09:07 +0800 (CST)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,7 +30,7 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============1001517218==
+--===============0353114334==
 Content-Type: text/plain
 Content-Transfer-Encoding: quoted-printable
 
@@ -68,7 +68,7 @@ Sir. Garry Becks.
 
 
 
---===============1001517218==
+--===============0353114334==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -79,7 +79,7 @@ This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
---===============1001517218==
+--===============0353114334==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -89,4 +89,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---===============1001517218==--
+--===============0353114334==--
