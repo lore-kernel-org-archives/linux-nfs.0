@@ -1,20 +1,21 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 0/2] Fix clientaddr= option for text-based NFS mounts
-Date: Tue, 04 Sep 2007 16:13:44 -0400
-Message-ID: <20070904201102.4721.77675.stgit@monet.1015granger.net>
+Subject: [PATCH 2/2] mount.nfs: Update description of clientaddr= in
+	nfs(5)
+Date: Tue, 04 Sep 2007 16:13:55 -0400
+Message-ID: <20070904201355.4721.10122.stgit@monet.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 To: neilb@suse.de
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1ISemo-00088s-6K
-	for nfs@lists.sourceforge.net; Tue, 04 Sep 2007 13:14:10 -0700
+	id 1ISemo-00088v-Uk
+	for nfs@lists.sourceforge.net; Tue, 04 Sep 2007 13:14:11 -0700
 Received: from flpi102.sbcis.sbc.com ([207.115.20.71] helo=flpi102.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1ISems-0001F4-J4
-	for nfs@lists.sourceforge.net; Tue, 04 Sep 2007 13:14:14 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1ISems-0000D7-Bs
+	for nfs@lists.sourceforge.net; Tue, 04 Sep 2007 13:14:15 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,17 +28,49 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi Neil-
+The description of clientaddr= in nfs(5) is out of date and omits some
+other typical reasons for using it.  Expand its description.
 
-Please apply these two patches against the latest nfs-utils.  The first patch
-reverts a recent change that made it illegal for a user to specify clientaddr=
-for a text-based NFS mount, and the second clarifies the documentation of the
-clientaddr= option in nfs(5).
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-Thanks!
+ utils/mount/nfs.man |   22 +++++++++++++++++-----
+ 1 files changed, 17 insertions(+), 5 deletions(-)
 
--- 
-corporate:    <chuck dot lever at oracle dot com>
+diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
+index e66daba..d92da19 100644
+--- a/utils/mount/nfs.man
++++ b/utils/mount/nfs.man
+@@ -411,11 +411,23 @@ Valid protocol types are
+ and
+ .IR tcp .
+ .TP 1.5i
+-.I clientaddr=n
+-On a multi-homed client, this
+-causes the client to use a specific callback address when
+-communicating with an NFS version 4 server.
+-This option is currently ignored.
++.I clientaddr=n.n.n.n
++Specifies a single IPv4 address in dotted-quad form that
++the NFS client advertises to allow servers to perform
++NFSv4 callback requests against files on this mount point.
++If the server is not able to establish callback connections
++to clients, performance may degrade, or accesses to
++files may temporarily hang.
++.IP
++If this option is not specified, the
++.BR mount (8)
++command attempts to discover an appropriate callback
++address automatically.
++The automatic discovery process is not perfect, however.
++In the presence of multiple client network interfaces, special
++routing policies, or atypical network topologies, the exact
++address to use for callbacks may be nontrivial to determine,
++and should be explicitly set using this mount option.
+ .TP 1.5i
+ .I sec=mode
+ Same as \f3sec=mode\f1 for the nfs filesystem type (see above).
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
