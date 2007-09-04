@@ -1,7 +1,7 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 3/7] CIFS: ignore mode change if it's just for clearing setuid/setgid bits
-Date: Tue, 4 Sep 2007 10:37:14 -0400
-Message-ID: <200709041437.l84EbEX8010012@dantu.rdu.redhat.com>
+Subject: [PATCH 4/7] ecryptfs: allow lower fs to interpret ATTR_KILL_S*ID
+Date: Tue, 4 Sep 2007 10:37:24 -0400
+Message-ID: <200709041437.l84EbOwL010017@dantu.rdu.redhat.com>
 Cc: linux-cifs-client@lists.samba.org, nfs@lists.sourceforge.net,
 	ecryptfs-devel@lists.sourceforge.net,
 	reiserfs-devel@vger.kernel.org, unionfs@filesystems.org
@@ -10,31 +10,33 @@ Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <nfs.lists.sourceforge.net>
 
-If the ATTR_KILL_S*ID bits are set then any mode change is only for
-clearing the setuid/setgid bits. For NFS, skip the mode change and
-let the server handle it.
+Make sure ecryptfs doesn't trip the BUG() in notify_change. This also
+allows the lower filesystem to interpret these bits in their own way.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/cifs/inode.c |    5 +++++
- 1 files changed, 5 insertions(+), 0 deletions(-)
+ fs/ecryptfs/inode.c |    8 ++++++++
+ 1 files changed, 8 insertions(+), 0 deletions(-)
 
-diff --git a/fs/cifs/inode.c b/fs/cifs/inode.c
-index 66436f5..8fa3d63 100644
---- a/fs/cifs/inode.c
-+++ b/fs/cifs/inode.c
-@@ -1547,6 +1547,11 @@ int cifs_setattr(struct dentry *direntry, struct iattr *attrs)
+diff --git a/fs/ecryptfs/inode.c b/fs/ecryptfs/inode.c
+index 131954b..dac4199 100644
+--- a/fs/ecryptfs/inode.c
++++ b/fs/ecryptfs/inode.c
+@@ -959,6 +959,14 @@ static int ecryptfs_setattr(struct dentry *dentry, struct iattr *ia)
+ 		if (rc < 0)
+ 			goto out;
  	}
- 
- 	time_buf.Attributes = 0;
 +
-+	/* skip mode change if it's just for clearing setuid/setgid */
-+	if (attrs->ia_valid & (ATTR_KILL_SUID|ATTR_KILL_SGID))
-+		attrs->ia_valid &= ~ATTR_MODE;
++	/*
++	 * mode change is for clearing setuid/setgid bits. Allow lower fs
++	 * to interpret this in its own way.
++	 */
++	if (ia->ia_valid & (ATTR_KILL_SUID | ATTR_KILL_SGID))
++		ia->ia_valid &= ~ATTR_MODE;
 +
- 	if (attrs->ia_valid & ATTR_MODE) {
- 		cFYI(1, ("Mode changed to 0x%x", attrs->ia_mode));
- 		mode = attrs->ia_mode;
+ 	rc = notify_change(lower_dentry, ia);
+ out:
+ 	fsstack_copy_attr_all(inode, lower_inode, NULL);
 -- 
 1.5.2.1
 
