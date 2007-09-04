@@ -1,72 +1,84 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 7/7] unionfs: fix unionfs_create and
-	unionfs_setattr to handle ATTR_KILL_S*ID
-Date: Tue, 4 Sep 2007 10:37:55 -0400
-Message-ID: <200709041437.l84EbtRZ010033@dantu.rdu.redhat.com>
-Cc: nfs@lists.sourceforge.net, unionfs@filesystems.org,
-	linux-cifs-client@lists.samba.org, ecryptfs-devel@lists.sourceforge.net,
-	reiserfs-devel@vger.kernel.org
-To: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Return-path: <linux-cifs-client-bounces+glfc-linux-cifs-client=gmane.org@lists.samba.org>
-List-Unsubscribe: <https://lists.samba.org/mailman/listinfo/linux-cifs-client>,
-	<mailto:linux-cifs-client-request@lists.samba.org?subject=unsubscribe>
-List-Archive: <http://lists.samba.org/archive/linux-cifs-client>
-List-Post: <mailto:linux-cifs-client@lists.samba.org>
-List-Help: <mailto:linux-cifs-client-request@lists.samba.org?subject=help>
-List-Subscribe: <https://lists.samba.org/mailman/listinfo/linux-cifs-client>,
-	<mailto:linux-cifs-client-request@lists.samba.org?subject=subscribe>
-Sender: linux-cifs-client-bounces+glfc-linux-cifs-client=gmane.org@lists.samba.org
-Errors-To: linux-cifs-client-bounces+glfc-linux-cifs-client=gmane.org@lists.samba.org
-List-ID: <nfs.lists.sourceforge.net>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 1/2] mount.nfs: restore admin-specified clientaddr
+	option
+Date: Tue, 04 Sep 2007 16:13:50 -0400
+Message-ID: <20070904201350.4721.48924.stgit@monet.1015granger.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
+To: neilb@suse.de
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1ISemo-00088u-Su
+	for nfs@lists.sourceforge.net; Tue, 04 Sep 2007 13:14:11 -0700
+Received: from flpi102.sbcis.sbc.com ([207.115.20.71] helo=flpi102.prodigy.net)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1ISems-0000Ba-Bt
+	for nfs@lists.sourceforge.net; Tue, 04 Sep 2007 13:14:15 -0700
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-Don't allow either function to trip the BUG() in notify_change. For
-unionfs_setattr, clear ATTR_MODE if the either ATTR_KILL_S*ID is set.
+Revert an earlier change to make specifying the clientaddr= option illegal.
 
-unionfs_create is setting the mode explicitly already.  Don't set
-ATTR_KILL_S*ID. Just fix up the mode to have the same effect. Also, move
-locking the i_mutex to lower in the function. It's not needed until it
-checks the i_size.
+Jeff Layton pointed out that admins may want to specify the clientaddr=
+option to advertise a different callback address when accessing an NFSv4
+server through a NAT router.
 
-(Jeff Sipek indicated that he was planning to change some of this code,
-so this patch may need changes if it goes in after his patchset)
-
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/unionfs/inode.c |   10 ++++++----
- 1 files changed, 6 insertions(+), 4 deletions(-)
 
-diff --git a/fs/unionfs/inode.c b/fs/unionfs/inode.c
-index 59bb418..f2e7f25 100644
---- a/fs/unionfs/inode.c
-+++ b/fs/unionfs/inode.c
-@@ -78,15 +78,14 @@ static int unionfs_create(struct inode *parent, struct dentry *dentry,
- 		struct dentry *lower_dir_dentry;
- 		struct iattr newattrs;
+ utils/mount/stropts.c |   11 ++++-------
+ 1 files changed, 4 insertions(+), 7 deletions(-)
+
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index 12f6423..236a3b4 100644
+--- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -201,7 +201,9 @@ static int append_addr_opt(struct sockaddr_in *saddr, char **extra_opts)
+ }
  
--		mutex_lock(&wh_dentry->d_inode->i_mutex);
- 		newattrs.ia_valid = ATTR_CTIME | ATTR_MODE | ATTR_ATIME
--			| ATTR_MTIME | ATTR_UID | ATTR_GID | ATTR_FORCE
--			| ATTR_KILL_SUID | ATTR_KILL_SGID;
-+			| ATTR_MTIME | ATTR_UID | ATTR_GID | ATTR_FORCE;
+ /*
+- * Append the 'clientaddr=' option to the options string.
++ * Called if no 'clientaddr=' option was specified in the options string
++ * to discover our address and append an appropriate 'clientaddr=' option
++ * to the options string.
+  *
+  * Returns 1 if 'clientaddr=' option created successfully;
+  * otherwise zero.
+@@ -319,15 +321,10 @@ int nfs4mount_s(const char *spec, const char *node, int flags,
+ 		return EX_FAIL;
+ 	}
  
--		newattrs.ia_mode = mode & ~current->fs->umask;
-+		newattrs.ia_mode = mode & ~(current->fs->umask|S_ISUID|S_ISGID);
- 		newattrs.ia_uid = current->fsuid;
- 		newattrs.ia_gid = current->fsgid;
+-	if (ca_opt) {
+-		nfs_error(_("%s: Illegal option: 'clientaddr='"), progname);
+-		return EX_FAIL;
+-	}
+-
+ 	if (!append_addr_opt(&saddr, extra_opts))
+ 		return EX_FAIL;
  
-+		mutex_lock(&wh_dentry->d_inode->i_mutex);
- 		if (wh_dentry->d_inode->i_size != 0) {
- 			newattrs.ia_valid |= ATTR_SIZE;
- 			newattrs.ia_size = 0;
-@@ -1032,6 +1031,9 @@ static int unionfs_setattr(struct dentry *dentry, struct iattr *ia)
- 	bend = dbend(dentry);
- 	inode = dentry->d_inode;
+-	if (!append_clientaddr_opt(&saddr, extra_opts))
++	if (!ca_opt && !append_clientaddr_opt(&saddr, extra_opts))
+ 		return EX_FAIL;
  
-+	if (ia->ia_valid & (ATTR_KILL_SUID | ATTR_KILL_SGID))
-+		ia->ia_valid &= ~ATTR_MODE;
-+
- 	for (bindex = bstart; (bindex <= bend) || (bindex == bstart);
- 	     bindex++) {
- 		lower_dentry = unionfs_lower_dentry_idx(dentry, bindex);
--- 
-1.5.2.1
+ 	if (verbose)
+
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Splunk Inc.
+Still grepping through log files to find problems?  Stop.
+Now Search log events and configuration files using AJAX and a browser.
+Download your FREE copy of Splunk now >>  http://get.splunk.com/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
