@@ -1,23 +1,21 @@
-From: Online Co-Ordiantor <winners@info.co.uk>
-Subject: ATTENTION WINNER
-Date: Tue, 4 Sep 2007 07:02:55 +0800 (CST)
-Message-ID: <200709032302.l83N2tuf097401@s23.coowo.com>
-Reply-To: onlinecoordinator_officer@yahoo.co.uk
+From: "Guilherme Vilela" <vilela.list@gmail.com>
+Subject: Problem to recognize that the file system is full
+Date: Tue, 4 Sep 2007 11:01:41 -0300
+Message-ID: <89a10cbc0709040701x4a6e0e3cna375e714a19b19e4@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1607455668=="
+Content-Type: multipart/mixed; boundary="===============0826512958=="
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1ISKwc-0004ki-5d
-	for nfs@lists.sourceforge.net; Mon, 03 Sep 2007 16:02:58 -0700
-Received: from [61.66.28.23] (helo=s23.coowo.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1ISKwg-0003Vi-5w
-	for nfs@lists.sourceforge.net; Mon, 03 Sep 2007 16:03:02 -0700
-Received: from s23.coowo.com (localhost.coowo.com [127.0.0.1])
-	by s23.coowo.com (8.13.8/8.13.8) with ESMTP id l83N2tiI097442
-	for <nfs@lists.sourceforge.net>; Tue, 4 Sep 2007 07:02:55 +0800 (CST)
+	id 1ISYyL-0005eD-RZ
+	for nfs@lists.sourceforge.net; Tue, 04 Sep 2007 07:01:41 -0700
+Received: from ug-out-1314.google.com ([66.249.92.173])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1ISYyN-0005JV-Si
+	for nfs@lists.sourceforge.net; Tue, 04 Sep 2007 07:01:46 -0700
+Received: by ug-out-1314.google.com with SMTP id m2so415126uge
+	for <nfs@lists.sourceforge.net>; Tue, 04 Sep 2007 07:01:42 -0700 (PDT)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,45 +28,75 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============1607455668==
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+--===============0826512958==
+Content-Type: multipart/alternative;
+	boundary="----=_Part_22674_31286818.1188914501898"
 
- ATTENTION: WINNER
+------=_Part_22674_31286818.1188914501898
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
-This is to inform you that you have been selected for a cash prize of=20
-=A31,000.000.00 (British Pounds) held on the 20th August, 2007 in
+Hi,
+I'm tryng to mount a nfs file system with the option async and run a program
+that writes to the file system. The problem is that the program keep writing
+even when the file system is full. It appears that the nfs dont see that the
+file system is full and keeps writing to the cache. This program does'nt
+occur when mounting with the sync option or with async and noac option, but
+the performance get very poor and that is important to my application. The
+problem doesnt occur too with the local file system. I'm running linux
+centos 5.0.
 
-=20
-UK. The selection process was carried out through random selection in=20
-Our computerized email selection system (ess) from a database of over=20
-200,000 email  Addresses drawn from which you were selected.
+Bellow is my test program.
+Any idea how to resolve this problem?
 
-Contact our fiduciary agent for claims with:
-
-Mr.Denise Green
-Email:onlinecoordinator_officer@yahoo.co.uk=20
-Tel : +44 70359 03310
-
-Fill the below:
-1. Name:  2. Address 3. Marital Status: 4. Occupation: 5. Age:
-6. Sex: 7. Nationality: 8. Country of Residence: 9. Telephone Number:
-
-Yours faithfully,
-Sir. Garry Becks.
-(Online supervisor
+Thanks,
+Guilherme
 
 
-=20
-=20
-=20
-=20
+//io-stress.cpp
+
+#include <iostream>
+#include <fstream>
+#include <string>
+
+using namespace std;
+
+int main()
+{
+        int i = 0;
+        string roller( "|/-\\" );
+        string sample( "*", 1024 );
+        ofstream ofs( "io-stress.txt" );
+        ofs.exceptions( ios::failbit | ios::badbit );
+
+        while ( ofs )
+        {
+                ofs << sample << endl << flush;
+                ofs.flush();
+                if ( i == 3 )
+                        i = 0;
+                cout << "\b" << roller[i++];
+        }
+        ofs.close();
+        return 0;
+}
+
+------=_Part_22674_31286818.1188914501898
+Content-Type: text/html; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+Hi,<br>I&#39;m tryng to mount a nfs file system with the option async and run a program that writes to the file system. The problem is that the program keep writing even when the file system is full. It appears that the nfs dont see that the file system is full and keeps writing to the cache. This program does&#39;nt occur when mounting with the sync option or with async and noac option, but the performance get very poor and that is important to my application. The problem doesnt occur too with the local file system. I&#39;m running linux centos 
+5.0.<br><br>Bellow is my test program.<br>Any idea how to resolve this problem?<br><br>Thanks,<br>Guilherme<br><br><br>//io-stress.cpp<br><br>#include &lt;iostream&gt;<br>#include &lt;fstream&gt;<br>#include &lt;string&gt;
+<br><br>using namespace std;<br><br>int main()<br>{<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int i = 0;<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; string roller( &quot;|/-\\&quot; );<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; string sample( &quot;*&quot;, 1024 );<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ofstream ofs( &quot;io-stress.txt&quot; );
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ofs.exceptions( ios::failbit | ios::badbit );<br><br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; while ( ofs )<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ofs &lt;&lt; sample &lt;&lt; endl &lt;&lt; flush;<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ofs.flush();<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if ( i == 3 )
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; i = 0;<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; cout &lt;&lt; &quot;\b&quot; &lt;&lt; roller[i++];<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ofs.close();<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return 0;<br>}<br><br>
+
+------=_Part_22674_31286818.1188914501898--
 
 
-
-
-
---===============1607455668==
+--===============0826512958==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -79,7 +107,7 @@ This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
---===============1607455668==
+--===============0826512958==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -89,4 +117,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---===============1607455668==--
+--===============0826512958==--
