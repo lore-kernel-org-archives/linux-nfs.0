@@ -1,21 +1,20 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 1/2] mount.nfs: restore admin-specified clientaddr
-	option
-Date: Tue, 04 Sep 2007 16:13:50 -0400
-Message-ID: <20070904201350.4721.48924.stgit@monet.1015granger.net>
+Subject: [PATCH 0/2] Fix clientaddr= option for text-based NFS mounts
+Date: Tue, 04 Sep 2007 16:13:44 -0400
+Message-ID: <20070904201102.4721.77675.stgit@monet.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 To: neilb@suse.de
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1ISemo-00088u-Su
-	for nfs@lists.sourceforge.net; Tue, 04 Sep 2007 13:14:11 -0700
+	id 1ISemo-00088s-6K
+	for nfs@lists.sourceforge.net; Tue, 04 Sep 2007 13:14:10 -0700
 Received: from flpi102.sbcis.sbc.com ([207.115.20.71] helo=flpi102.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1ISems-0000Ba-Bt
-	for nfs@lists.sourceforge.net; Tue, 04 Sep 2007 13:14:15 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1ISems-0001F4-J4
+	for nfs@lists.sourceforge.net; Tue, 04 Sep 2007 13:14:14 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,51 +27,17 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Revert an earlier change to make specifying the clientaddr= option illegal.
+Hi Neil-
 
-Jeff Layton pointed out that admins may want to specify the clientaddr=
-option to advertise a different callback address when accessing an NFSv4
-server through a NAT router.
+Please apply these two patches against the latest nfs-utils.  The first patch
+reverts a recent change that made it illegal for a user to specify clientaddr=
+for a text-based NFS mount, and the second clarifies the documentation of the
+clientaddr= option in nfs(5).
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+Thanks!
 
- utils/mount/stropts.c |   11 ++++-------
- 1 files changed, 4 insertions(+), 7 deletions(-)
-
-diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-index 12f6423..236a3b4 100644
---- a/utils/mount/stropts.c
-+++ b/utils/mount/stropts.c
-@@ -201,7 +201,9 @@ static int append_addr_opt(struct sockaddr_in *saddr, char **extra_opts)
- }
- 
- /*
-- * Append the 'clientaddr=' option to the options string.
-+ * Called if no 'clientaddr=' option was specified in the options string
-+ * to discover our address and append an appropriate 'clientaddr=' option
-+ * to the options string.
-  *
-  * Returns 1 if 'clientaddr=' option created successfully;
-  * otherwise zero.
-@@ -319,15 +321,10 @@ int nfs4mount_s(const char *spec, const char *node, int flags,
- 		return EX_FAIL;
- 	}
- 
--	if (ca_opt) {
--		nfs_error(_("%s: Illegal option: 'clientaddr='"), progname);
--		return EX_FAIL;
--	}
--
- 	if (!append_addr_opt(&saddr, extra_opts))
- 		return EX_FAIL;
- 
--	if (!append_clientaddr_opt(&saddr, extra_opts))
-+	if (!ca_opt && !append_clientaddr_opt(&saddr, extra_opts))
- 		return EX_FAIL;
- 
- 	if (verbose)
-
+-- 
+corporate:    <chuck dot lever at oracle dot com>
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
