@@ -1,24 +1,20 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH 0/2] Fix clientaddr= option for text-based NFS
-	mounts
-Date: Wed, 5 Sep 2007 04:57:26 +0100
-Message-ID: <18142.10534.774264.236058@notabene.brown>
-References: <20070904201102.4721.77675.stgit@monet.1015granger.net>
+From: ndsvt@infoseek.jp
+Subject: =?ISO-2022-JP?B?iq6RU5azl7+DgYNig1qDk4NXg4OBW4LmguiPtZHSj/OCxYK3gfSQZ4LJim+CppazgqKP6o2Hgs2Ws46LgrWCxIKtgr6Cs4KiLYrHl52O0g==?=
+Date: Wed,  5 Sep 2007 02:46:39 -0700 (PDT)
+Message-ID: <24167.4398225316$1188985610@news.gmane.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: multipart/mixed; boundary="===============0884412045=="
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1ISm1D-0002LW-Oo
-	for nfs@lists.sourceforge.net; Tue, 04 Sep 2007 20:57:31 -0700
-Received: from mx2.suse.de ([195.135.220.15])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1ISm1H-0000SY-6E
-	for nfs@lists.sourceforge.net; Tue, 04 Sep 2007 20:57:36 -0700
-In-Reply-To: message from Chuck Lever on Tuesday September 4
+	id 1ISrSz-0003N7-32
+	for nfs@lists.sourceforge.net; Wed, 05 Sep 2007 02:46:33 -0700
+Received: from ppp-124.120.110.166.revip2.asianet.co.th ([124.120.110.166]
+	helo=ppp-revipop000478.asianet.co.th)
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1ISrT3-0008Bl-CY
+	for nfs@lists.sourceforge.net; Wed, 05 Sep 2007 02:46:37 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,24 +27,52 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tuesday September 4, chuck.lever@oracle.com wrote:
-> Hi Neil-
-> 
-> Please apply these two patches against the latest nfs-utils.  The first patch
-> reverts a recent change that made it illegal for a user to specify clientaddr=
-> for a text-based NFS mount, and the second clarifies the documentation of the
-> clientaddr= option in nfs(5).
+--===============0884412045==
+Content-Type: text/plain;
+	charset="iso-2022-jp"
+Content-Transfer-Encoding: 7bit
 
-Applied.  Sorry for not getting it the first time you posted it - I
-was just about to leave for Europe and things were a bit hectic.
+　■こんにちは、メッセンジャー事務局より　お知らせです!!■
+フリーBBSからSNSメッセンジャー（招待制メッセンジャーシステム）へと
+リニューアルオープンしましたのでご連絡さしあげます。
+永久完全無料保証のメッセンジャーですので10日までのご案内となります。
+0円メッセンジャーでは、皆様からのご意見をもとに改正させて頂き参加型Web
+コミュニティーとして便利な機能を加えて新たにオープン致しております。
+最新のセキュリティーで安全面は強化、参加も以前と全く同じく男女共完全無料でご利用可能です。
+既に一度登録済み（※2007年4月8日以前は無効）となっておりましたので
+変更通知とリニューアルのお知らせと新たに招待状を送らせて頂きます。
+2007年4月集計（4月8日現在）で、参加頂いてる会員数は382万人突破!!
+http://love-girl-boy.org.uk/pc/main.php?u9psla01
+【コミュニティー】完全無料！0円確認メール
+SNS 参加型Webコミュニティーとは？
+★大型メッセンジャーで色々な交友・交際のキッカケ作りが簡単
+☆業者を完全ブロック・ネカマ・中傷的な書き込み・悪戯行為を徹底排除
+★連絡先の交換も文字化けは一切なし
+☆「友人の友人」 との交流が簡単にできます
+是非、永久完全無料！0円メッセンジャーへ参加して
+ご利用してご自身の目で確かめてみて下さい!!
 
-NeilBrown
+
+
+--===============0884412045==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
+--===============0884412045==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============0884412045==--
