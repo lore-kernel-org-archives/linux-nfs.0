@@ -1,24 +1,32 @@
-From: "Kevin Coffman" <kwc@citi.umich.edu>
-Subject: Re: librpcsecgss-0.15 still uses GSSAPI_CFLAGS
-Date: Thu, 6 Sep 2007 13:21:53 -0400
-Message-ID: <4d569c330709061021l277907e7vc8e5bf4535221079@mail.gmail.com>
-References: <200709061317.22165.vapier@gentoo.org>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH 1/5] Fix mountd memory leak in nfsd_fh
+Date: Thu, 6 Sep 2007 13:29:56 -0400
+Message-ID: <200709061729.l86HTuee015462@dantu.rdu.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: "Mike Frysinger" <vapier@gentoo.org>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1ITL3A-0006V6-8X
-	for nfs@lists.sourceforge.net; Thu, 06 Sep 2007 10:21:52 -0700
-Received: from rv-out-0910.google.com ([209.85.198.184])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1ITL3C-0008EL-MW
-	for nfs@lists.sourceforge.net; Thu, 06 Sep 2007 10:21:57 -0700
-Received: by rv-out-0910.google.com with SMTP id g11so624115rvb
-	for <nfs@lists.sourceforge.net>; Thu, 06 Sep 2007 10:21:54 -0700 (PDT)
-In-Reply-To: <200709061317.22165.vapier@gentoo.org>
+	id 1ITLB2-0007Mp-7Y
+	for nfs@lists.sourceforge.net; Thu, 06 Sep 2007 10:30:01 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1ITLB6-0000Mz-C8
+	for nfs@lists.sourceforge.net; Thu, 06 Sep 2007 10:30:04 -0700
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com
+	[172.16.52.254])
+	by mx1.redhat.com (8.13.1/8.13.1) with ESMTP id l86HTvKJ028292
+	for <nfs@lists.sourceforge.net>; Thu, 6 Sep 2007 13:29:57 -0400
+Received: from pobox.corp.redhat.com (pobox.corp.redhat.com [10.11.255.20])
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l86HTv3k010372
+	for <nfs@lists.sourceforge.net>; Thu, 6 Sep 2007 13:29:57 -0400
+Received: from dantu.rdu.redhat.com (dantu.rdu.redhat.com [172.16.57.196])
+	by pobox.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l86HTuf3001483
+	for <nfs@lists.sourceforge.net>; Thu, 6 Sep 2007 13:29:56 -0400
+Received: from dantu.rdu.redhat.com (localhost.localdomain [127.0.0.1])
+	by dantu.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id l86HTuLS015463
+	for <nfs@lists.sourceforge.net>; Thu, 6 Sep 2007 13:29:56 -0400
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,37 +39,41 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-yes, sorry.  There is a 0.16 version available that should fix this.
+nfsd_fh() uses strdup for creating found_path and doesn't check the
+return value. It also doesn't free this memory when the function
+returns. Check the return value of strdup and return immediately
+if it's NULL. Also, free found_path on exit.
 
-A new version of librpcsecgss is now available from:
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Acked-by: Steve Dickson <steved@redhat.com>
+---
+ utils/mountd/cache.c |    3 +++
+ 1 files changed, 3 insertions(+), 0 deletions(-)
 
-http://www.citi.umich.edu/projects/nfsv4/linux/librpcsecgss/librpcsecgss-0.16.tar.gz
+diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+index 15100d4..fedc0bf 100644
+--- a/utils/mountd/cache.c
++++ b/utils/mountd/cache.c
+@@ -445,6 +445,8 @@ void nfsd_fh(FILE *f)
+ 			if (!found) {
+ 				found = &exp->m_export;
+ 				found_path = strdup(path);
++				if (found_path == NULL)
++					goto out;
+ 			} else if (strcmp(found->e_path, exp->m_export.e_path)!= 0)
+ 			{
+ 				xlog(L_WARNING, "%s and %s have same filehandle for %s, using first",
+@@ -492,6 +494,7 @@ void nfsd_fh(FILE *f)
+ 		qword_print(f, found->e_path);
+ 	qword_eol(f);
+  out:
++	free(found_path);
+ 	free(dom);
+ 	return;		
+ }
+-- 
+1.5.2.1
 
-Changes since librpcsecgss-0.15:
-
-       * Patch from Guillaume Rousse <Guillaume.Rousse@inria.fr>
-         Fix include path to find gssglue headers.
-
-It was also updated to include a change to librpcsecgss.pc.in to
-change libgssapi to libgssglue in the Requires line.
-
-On 9/6/07, Mike Frysinger <vapier@gentoo.org> wrote:
-> looks like src/Makefile.am needs a quick fixup to use GSSGLUE_CFLAGS rather
-> than GSSAPI_CFLAGS ... i'd check cvs to see if this were already done, but i
-> have no idea where these projects are kept as they dont seem to be on sf.net
-> -mike
->
-> -------------------------------------------------------------------------
-> This SF.net email is sponsored by: Splunk Inc.
-> Still grepping through log files to find problems?  Stop.
-> Now Search log events and configuration files using AJAX and a browser.
-> Download your FREE copy of Splunk now >>  http://get.splunk.com/
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
->
->
->
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
