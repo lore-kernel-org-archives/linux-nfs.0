@@ -1,19 +1,23 @@
-From: "Intradot Labs" <vm348882409-1077632193tl@ml.unmcs.com>
-Subject: =?iso-8859-1?q?Vos_donn=E9es_aussi_sont_vitales?=
-Date: Thu,  6 Sep 2007 16:46:47 +0200 (CEST)
-Message-ID: <20070906144647.B9A9414005F@mercury.alinto.net>
+From: Mike Frysinger <vapier@gentoo.org>
+Subject: librpcsecgss-0.15 still uses GSSAPI_CFLAGS
+Date: Thu, 6 Sep 2007 13:17:21 -0400
+Message-ID: <200709061317.22165.vapier@gentoo.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============2042247431=="
+Content-Type: multipart/mixed; boundary="===============0352497080=="
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1ITJis-0002wr-RB
-	for nfs@lists.sourceforge.net; Thu, 06 Sep 2007 08:56:51 -0700
-Received: from saturn.alinto.net ([83.145.109.104] helo=alinto.net)
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1ITJVj-0002Ln-VP
-	for nfs@lists.sourceforge.net; Thu, 06 Sep 2007 08:43:20 -0700
+	id 1ITKxe-0005xx-3l
+	for nfs@lists.sourceforge.net; Thu, 06 Sep 2007 10:16:10 -0700
+Received: from smtp.gentoo.org ([140.211.166.183])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1ITKxh-0003Er-Jf
+	for nfs@lists.sourceforge.net; Thu, 06 Sep 2007 10:16:14 -0700
+Received: from localhost (localhost [127.0.0.1])
+	by smtp.gentoo.org (Postfix) with ESMTP id 9468664D5D
+	for <nfs@lists.sourceforge.net>; Thu,  6 Sep 2007 17:16:11 +0000 (UTC)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,259 +30,50 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============2042247431==
-Content-Type: multipart/alternative;
-	boundary="=_792983926d8cfb223ff7e99d8057bcfd"
-
---=_792983926d8cfb223ff7e99d8057bcfd
-Content-Type: text/plain; charset="ISO-8859-1"
+--===============0352497080==
+Content-Type: multipart/signed; boundary="nextPart10345900.DeBTF8FoPT";
+	protocol="application/pgp-signature"; micalg=pgp-sha1
 Content-Transfer-Encoding: 7bit
 
-VOS DONNÉES AUSSI SONT VITALES
-Intradot protège votre réseau, sauvegarde vos données et garantit la confidentialité des informations concernant vos patients.
-
-Sauvegardes 100% automatisées, 24 heures sur 24, de toutes les données du réseau !
-
-L'activité des professionnels de santé est de plus en plus dépendante de la bonne santé... de leur système d'information. Le caractère hautement confidentiel des données stockées ainsi que l'augmentation des volumes de données font qu'une attention toute particulière doit être portée à leur sauvegarde et à la protection du réseau.
-          
-- Que se passerait-il si vous perdiez tout ou partie de vos données informatiques ?
-- Quelles seraient les conséquences sur votre activité en cas de perte de données ?
-- Et en cas de vol de données par un tiers, quel est le poids des implications légales pour votre cabinet ?
-
-Leader dans le domaine de la protection des données informatique, Intradot Labs présente avec Boss et Distribackup la première solution de sauvegarde en continu de bout en bout, entièrement automatisée. Déployée au sein de votre réseau, elle garantit la disponibilité des données du réseau informatique et leur restauration rapide en cas de sinistre.
-
-# Suivez la présentation « 30 secondes » pour découvrir Boss : http://www.intradot.com/produits/boss/boss-sx-generalites.html
-# Inscrivez-vous à l'une de nos webconfs hebdomadaires pour découvrir les solutions Intradot : http://www.intradot.com/societe/evenements.html
-# Recevez une brochure de nos produits au format PDF ou par courrier sur simple demande : http://www.intradot.com/divers/nous-contacter.html#form1
-
---
-Copyright © 2007 Intradot. Tous droits réservés.
-Désinscription : http://tracking.unmcs.com/desinscription.php?ids=fr,348882409,1077632193
---=_792983926d8cfb223ff7e99d8057bcfd
-Content-Type: text/html; charset="ISO-8859-1"
+--nextPart10345900.DeBTF8FoPT
+Content-Type: text/plain;
+  charset="us-ascii"
 Content-Transfer-Encoding: quoted-printable
+Content-Disposition: inline
 
-<html>
-<head>
-<meta http-equiv=3D"Content-Type" content=3D"text/html; charset=3Diso-8859-=
-1" />
-<title>Intradot</title>
-</head>
+looks like src/Makefile.am needs a quick fixup to use GSSGLUE_CFLAGS rather=
+=20
+than GSSAPI_CFLAGS ... i'd check cvs to see if this were already done, but =
+i=20
+have no idea where these projects are kept as they dont seem to be on sf.net
+=2Dmike
 
-<link rel=3D'stylesheet' href=3D"http://tracking.unmcs.com/o.php?url=3Dhttp=
-%3A%2F%2Ftracking.unmcs.com%2Fmail.css&o=3D348882409,1077632193" type=3D'te=
-xt/css'>
-<body bgcolor=3D"#a9a9a9">
+--nextPart10345900.DeBTF8FoPT
+Content-Type: application/pgp-signature; name=signature.asc 
+Content-Description: This is a digitally signed message part.
 
-<style type=3D"text/css">
-body { background-color:#a9a9a9; }
-a { color:#7DA136; text-decoration:none; }
-a:hover { color:#cc3300; text-decoration:underline; }
-p { text-align:justify; }
-.txt1 a { color: #3671a9; }
-.txt1 { font:9px Arial, sans-serif; color:#676c6e; }
-.txt2 { font:12px/18px Arial, sans-serif; color:#666666; }
-#questions strong, li strong { color:#3671a9; }
-#questions { margin:0 0 10px 0; }
-#entete { background:#3671a9; font-size:11px; font-weight:bold; width:560px=
-; height:39px; text-align:center; }
-#entete a { color:#FFFFFF; text-decoration:none; }
-#titrimg { width:280px; height:277px; text-align:center; font-size:30px; ba=
-ckground-color:#eee; }
-#titrimg2 { width:280px; height:277px; text-align:center; background-color:=
-#eee; color:#999; }
-img { font-family:Arial, Helvetica, sans-serif; }
-.emphase { color: #CC3300; font-weight: bold; }
-.ico { font: 10px Arial, sans-serif; color:#fff; }
-.ico a { color: #fff; }
-.ico a:hover { text-decoration: underline; }
-</style>
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.6 (GNU/Linux)
 
-<table width=3D"700" border=3D"0" align=3D"center" cellpadding=3D"0" cellsp=
-acing=3D"0">
-	<tr>
-		<td colspan=3D"2" align=3D"center" class=3D"txt1"><a href=3D"http://track=
-ing.unmcs.com/redirect.php?url=3Dhttp%3A%2F%2Fwww.intradot.com%2Fmailings%2=
-Fwww%2Finternes%2Fm2_sante.html&ids=3D1587739734,348882409,1077632193">Cliq=
-uez ici</a> si ce message ne s'affiche pas correctement.<br />Looking for c=
-ontinuous data protection, offsite backup, multi-sites backup? <a href=3D"h=
-ttp://tracking.unmcs.com/redirect.php?url=3Dhttp%3A%2F%2Fwww.intradot.com%2=
-Fmailings%2Fwww%2Finternes%2Fpromo_ete_07uk.html&ids=3D1415504751,348882409=
-,1077632193">Click here to view this page in English</a></td>
-	</tr>
-	<tr>
-		<td id=3D"titrimg"><a href=3D"http://tracking.unmcs.com/redirect.php?url=
-=3Dhttp%3A%2F%2Fwww.intradot.com&ids=3D645306506,348882409,1077632193"><img=
- src=3D"http://www.intradot.com/mailings/images/sante_visug.jpg" alt=3D"Vos=
- donn&eacute;es aussi sont vitales" width=3D"465" height=3D"326" border=3D"=
-0"></a></td>
-		<td id=3D"titrimg2"><a href=3D"http://tracking.unmcs.com/redirect.php?url=
-=3Dhttp%3A%2F%2Fwww.intradot.com&ids=3D645306506,348882409,1077632193"><img=
- src=3D"http://www.intradot.com/mailings/images/sante_visud.jpg" alt=3D"Int=
-radot prot&egrave;ge votre r&eacute;seau, sauvegarde vos donn&eacute;es et =
-garantit la confidentialit&eacute; des informations concernant vos patients=
-" width=3D"235" height=3D"326" border=3D"0"></a></td>
-	</tr>
-	<tr>
-	  <td colspan=3D"2" bgcolor=3D"#FFFFFF" background=3D"http://www.intradot.=
-com/mailings/images/bgbody.jpg" class=3D"txt2" style=3D"padding:30px;">
-			<p class=3D"emphase">Sauvegardes 100% automatis&eacute;es, 24 heures sur=
- 24, de toutes les donn&eacute;es du r&eacute;seau !</p>
-			<p>L'activit&eacute; des professionnels de sant&eacute; est de plus en p=
-lus d&eacute;pendante de la bonne sant&eacute;... de leur syst&egrave;me d'=
-information. Le caract&egrave;re hautement confidentiel des donn&eacute;es =
-stock&eacute;es ainsi que l'augmentation des volumes de donn&eacute;es font=
- qu'une attention toute particuli&egrave;re doit &ecirc;tre port&eacute;e &=
-agrave; leur sauvegarde et &agrave; la protection du r&eacute;seau.</p>
-			<p><table width=3D"100%" border=3D"0" cellpadding=3D"10" cellspacing=3D"=
-0" id=3D"questions">         =20
-            	<tr>
-					<td width=3D"33%" align=3D"center" valign=3D"top" background=3D"http:/=
-/www.intradot.com/mailings/images/bgquestions.jpg" class=3D"txt2"><img src=
-=3D"http://www.intradot.com/mailings/images/brokendata.gif" width=3D"92"><b=
-r />
-              Que se passerait-il <strong>si vous perdiez tout ou partie de=
- vos donn&eacute;es</strong> informatiques ?</td>
-              		<td>&nbsp;</td>
-              		<td width=3D"33%" align=3D"center" valign=3D"top" backgroun=
-d=3D"http://www.intradot.com/mailings/images/bgquestions.jpg" class=3D"txt2=
-"><img src=3D"http://www.intradot.com/mailings/images/companyclosed.gif" wi=
-dth=3D"92"><br />
-              Quelles seraient les <strong>cons&eacute;quences sur votre ac=
-tivit&eacute;</strong>&nbsp;en cas de perte de donn&eacute;es ?</td>
-              		<td>&nbsp;</td>
-              		<td width=3D"33%" align=3D"center" valign=3D"top" backgroun=
-d=3D"http://www.intradot.com/mailings/images/bgquestions.jpg" class=3D"txt2=
-"><img src=3D"http://www.intradot.com/mailings/images/datastolen.gif" width=
-=3D"92"><br />
-              Et en cas de<strong> vol de donn&eacute;es</strong> par un ti=
-ers, quel est le poids des implications l&eacute;gales pour votre &eacute;t=
-ablissement ?</td>
-				</tr>
-			</table></p>
-			<p>Leader dans le domaine de la protection des donn&eacute;es informatiq=
-ue, Intradot Labs pr&eacute;sente avec <a href=3D"http://tracking.unmcs.com=
-/redirect.php?url=3Dhttp%3A%2F%2Fwww.intradot.com%2Fproduits%2Fboss%2Fboss-=
-full-generalites.html&ids=3D846780642,348882409,1077632193">Boss</a> et <a =
-href=3D"http://tracking.unmcs.com/redirect.php?url=3Dhttp%3A%2F%2Fwww.intra=
-dot.com%2Fproduits%2Fdistribackup%2Fdistribackup-generalites.html&ids=3D145=
-2997609,348882409,1077632193">Distribackup</a> la premi&egrave;re solution =
-de sauvegarde en continu de bout en bout, enti&egrave;rement automatis&eacu=
-te;e. D&eacute;ploy&eacute;e au sein de votre r&eacute;seau, elle garantit =
-la disponibilit&eacute; des donn&eacute;es du r&eacute;seau informatique et=
- leur restauration rapide en cas de sinistre.</p></td>
-  </tr>
-  <tr><td colspan=3D"2" bgcolor=3D"#FFFFFF" background=3D"http://www.intrad=
-ot.com/mailings/images/bgbody.jpg" style=3D"padding:0 30px;">
-  <table width=3D"100%" border=3D"0" cellspacing=3D"0" cellpadding=3D"0">
-              <tr>
-                <td align=3D"right" background=3D"http://www.intradot.com/m=
-ailings/images/icocorntl.jpg"><img src=3D"http://www.intradot.com/mailings/=
-images/icocorntr.jpg" /></td>
-                <td rowspan=3D"3" width=3D"20"><img src=3D"http://www.intra=
-dot.com/mailings/images/pixel.gif" width=3D"20" height=3D"1" alt=3D"" /></t=
-d>
-                <td align=3D"right" background=3D"http://www.intradot.com/m=
-ailings/images/icocorntl.jpg"><img src=3D"http://www.intradot.com/mailings/=
-images/icocorntr.jpg" /></td>
-                <td rowspan=3D"3" width=3D"20"><img src=3D"http://www.intra=
-dot.com/mailings/images/pixel.gif" width=3D"20" height=3D"1" alt=3D"" /></t=
-d>
-                <td align=3D"right" background=3D"http://www.intradot.com/m=
-ailings/images/icocorntl.jpg"><img src=3D"http://www.intradot.com/mailings/=
-images/icocorntr.jpg" /></td>
-              </tr>
-              <tr>
-                <td width=3D"33%" bgcolor=3D"#696969"><table width=3D"100%"=
- border=3D"0" cellspacing=3D"0" cellpadding=3D"0">
-                  <tr>
-                    <td><img src=3D"http://www.intradot.com/mailings/images=
-/pixel.gif" width=3D"10" /></td>
-                    <td><img src=3D"http://www.intradot.com/mailings/images=
-/ico30s.jpg" alt=3D" " style=3D"float:left;" /></td>
-                    <td><img src=3D"http://www.intradot.com/mailings/images=
-/pixel.gif" width=3D"10" /></td>
-                    <td class=3D"ico"><a href=3D"http://tracking.unmcs.com/=
-redirect.php?url=3Dhttp%3A%2F%2Fwww.intradot.com%2Fproduits%2Fboss%2Fboss-s=
-x-generalites.html&ids=3D2097792043,348882409,1077632193">Suivez la pr&eacu=
-te;sentation &laquo;&nbsp;30&nbsp;secondes&nbsp;&raquo; pour d&eacute;couvr=
-ir Boss.</a></td>
-                    <td><img src=3D"http://www.intradot.com/mailings/images=
-/pixel.gif" width=3D"10" /></td>
-                  </tr>
-                </table>                </td>
-                <td width=3D"33%" bgcolor=3D"#696969"><table width=3D"100%"=
- border=3D"0" cellspacing=3D"0" cellpadding=3D"0">
-                    <tr>
-                      <td><img src=3D"http://www.intradot.com/mailings/imag=
-es/pixel.gif" width=3D"10" /></td>
-                      <td><img src=3D"http://www.intradot.com/mailings/imag=
-es/icowebconf.jpg" alt=3D" " width=3D"58" height=3D"70" style=3D"float:left=
-;" /></td>
-                      <td><img src=3D"http://www.intradot.com/mailings/imag=
-es/pixel.gif" width=3D"10" /></td>
-                      <td class=3D"ico"><a href=3D"http://tracking.unmcs.co=
-m/redirect.php?url=3Dhttp%3A%2F%2Fwww.intradot.com%2Fsociete%2Fevenements.h=
-tml&ids=3D683352125,348882409,1077632193">Inscrivez-vous &agrave; l'une de =
-nos webconfs hebdomadaires pour d&eacute;couvrir les solutions Intradot.</a=
-></td>
-                      <td><img src=3D"http://www.intradot.com/mailings/imag=
-es/pixel.gif" width=3D"10" /></td>
-                    </tr>
-                </table></td>
-                <td width=3D"33%" bgcolor=3D"#696969"><table width=3D"100%"=
- border=3D"0" cellspacing=3D"0" cellpadding=3D"0">
-                    <tr>
-                      <td><img src=3D"http://www.intradot.com/mailings/imag=
-es/pixel.gif" width=3D"10" /></td>
-                      <td><img src=3D"http://www.intradot.com/mailings/imag=
-es/icopdf.jpg" alt=3D" " width=3D"57" height=3D"70" style=3D"float:left;" /=
-></td>
-                      <td><img src=3D"http://www.intradot.com/mailings/imag=
-es/pixel.gif" width=3D"10" /></td>
-                      <td class=3D"ico"><a href=3D"http://tracking.unmcs.co=
-m/redirect.php?url=3Dhttp%3A%2F%2Fwww.intradot.com%2Fdivers%2Fnous-contacte=
-r.html%23form1&ids=3D1088525480,348882409,1077632193">Recevez une brochure =
-de nos produits au format PDF ou par courrier sur simple demande.</a></td>
-                      <td><img src=3D"http://www.intradot.com/mailings/imag=
-es/pixel.gif" width=3D"10" /></td>
-                    </tr>
-                </table></td>
-              </tr>
-              <tr>
-                <td align=3D"right" background=3D"http://www.intradot.com/m=
-ailings/images/icocornbl.jpg"><img src=3D"http://www.intradot.com/mailings/=
-images/icocornbr.jpg" /></td>
-                <td align=3D"right" background=3D"http://www.intradot.com/m=
-ailings/images/icocornbl.jpg"><img src=3D"http://www.intradot.com/mailings/=
-images/icocornbr.jpg" /></td>
-                <td align=3D"right" background=3D"http://www.intradot.com/m=
-ailings/images/icocornbl.jpg"><img src=3D"http://www.intradot.com/mailings/=
-images/icocornbr.jpg" /></td>
-              </tr>
-              <tr><td colspan=3D"5"><img src=3D"http://www.intradot.com/mai=
-lings/images/pixel.gif" width=3D"10" /></td></tr>
-            </table>
-  </td></tr>
-	<tr>
-		<td colspan=3D"2"><img src=3D"http://www.intradot.com/mailings/images/foo=
-ter.jpg" alt=3D"" width=3D"700" height=3D"30"></td>
-	</tr>
-	<tr>
-	  <td colspan=3D"2" align=3D"center" class=3D"txt1">Copyright &copy; 2007 =
-Intradot. Tous droits r&eacute;serv&eacute;s.<br>
-	  Si vous ne souhaitez plus recevoir d'e-mails, <a href=3D"http://tracking=
-.unmcs.com/desinscription.php?ids=3Dfr,348882409,1077632193">cliquez ici</a=
->.</td>
-	</tr>
-</table>
-</body>
-</html>
+iQIVAwUARuA2IkFjO5/oN/WBAQLm4w/+KUoG2e1Aodre38l9IaSZp2x/rAdCiqU8
+Np0doOeNvL9J2b9qAgHXjmMevXD83k2g3+UYlyvlqLgxcDOaX9ZWkgpo/67b38li
+LTFNA0qFgkKrlgTNwret0iOg5P7hINfp3yxZJC5XxPtCGQhY4RBXC30J/5q4NaFe
+p45PgJOmfdaO+aXqhlSgldcaOnE8hD0KsvZFEqd0PGA8Ou0TO9wP+YqvsThFJgGN
+pp5o2mp67gxBLEqZN8y0yTeM/xNBupuYJ+1ztgIMW5MX/T4Hg3QUg0UCnrSVPPdD
+p34dJrqoO9Trn6a3pxhY+HYIAS3Aq2RRkhperdzBEnxcjXxFx2vmqarQNxht3GmC
+zgmKvt4965An33wgGo/1xasJ57RssqkYOcViGKDi9Gg8MfcKJVLxoodmqeSxhOhT
+4aZlD6pMtgrMwheL++a98Q+53jRitHCy5SM3cizI0lku0QjLG+TJMtCuusFj4Hv5
+wx+U0mVNtOEUFBX/gSEimtpVia1T3xqsn5noEv3NQvbLdQS5oQjrMkU7kyKY9aiS
+HwYevmqd1Vq5+NWPyeveMxh4sCw8DPSaijsqrgUAQgc3CzYVSAGtWOSUZCPBNdhH
+gSLvFOa8Qci7Z+dUSWiuBLA6x+NapxrtfzEtNPZruxHGYfv5E6sIqEXcSkSiR+su
+UkaSUSMsPWQ=
+=nZbl
+-----END PGP SIGNATURE-----
 
---=_792983926d8cfb223ff7e99d8057bcfd--
+--nextPart10345900.DeBTF8FoPT--
 
 
---===============2042247431==
+--===============0352497080==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -289,7 +84,7 @@ This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >>  http://get.splunk.com/
---===============2042247431==
+--===============0352497080==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -299,4 +94,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---===============2042247431==--
+--===============0352497080==--
