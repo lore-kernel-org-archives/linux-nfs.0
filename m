@@ -1,8 +1,8 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 0/5] Intro: Fix mountd buffer overflow when using
-	large numbers of netgroups
-Date: Thu, 6 Sep 2007 13:29:51 -0400
-Message-ID: <200709061729.l86HTpZB015457@dantu.rdu.redhat.com>
+Subject: [PATCH 3/5] Make exportent->e_hostname a
+	dynamically-allocated string
+Date: Thu, 6 Sep 2007 13:30:07 -0400
+Message-ID: <200709061730.l86HU7dl015472@dantu.rdu.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
@@ -10,24 +10,24 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1ITLAx-0007Mf-0H
-	for nfs@lists.sourceforge.net; Thu, 06 Sep 2007 10:29:56 -0700
+	id 1ITLBI-0007S7-9R
+	for nfs@lists.sourceforge.net; Thu, 06 Sep 2007 10:31:02 -0700
 Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1ITLB1-0002oC-CM
-	for nfs@lists.sourceforge.net; Thu, 06 Sep 2007 10:29:59 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1ITLBL-00032D-NY
+	for nfs@lists.sourceforge.net; Thu, 06 Sep 2007 10:30:21 -0700
 Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com
 	[172.16.52.254])
-	by mx1.redhat.com (8.13.1/8.13.1) with ESMTP id l86HTqVg028209
-	for <nfs@lists.sourceforge.net>; Thu, 6 Sep 2007 13:29:52 -0400
+	by mx1.redhat.com (8.13.1/8.13.1) with ESMTP id l86HU9Xt028491
+	for <nfs@lists.sourceforge.net>; Thu, 6 Sep 2007 13:30:09 -0400
 Received: from pobox.corp.redhat.com (pobox.corp.redhat.com [10.11.255.20])
-	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l86HTqWx010229
-	for <nfs@lists.sourceforge.net>; Thu, 6 Sep 2007 13:29:52 -0400
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l86HU8eG011065
+	for <nfs@lists.sourceforge.net>; Thu, 6 Sep 2007 13:30:08 -0400
 Received: from dantu.rdu.redhat.com (dantu.rdu.redhat.com [172.16.57.196])
-	by pobox.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l86HTpMt001473
-	for <nfs@lists.sourceforge.net>; Thu, 6 Sep 2007 13:29:51 -0400
+	by pobox.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l86HU70W001875
+	for <nfs@lists.sourceforge.net>; Thu, 6 Sep 2007 13:30:07 -0400
 Received: from dantu.rdu.redhat.com (localhost.localdomain [127.0.0.1])
-	by dantu.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id l86HTp2b015458
-	for <nfs@lists.sourceforge.net>; Thu, 6 Sep 2007 13:29:51 -0400
+	by dantu.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id l86HU7jf015473
+	for <nfs@lists.sourceforge.net>; Thu, 6 Sep 2007 13:30:07 -0400
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -40,40 +40,153 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This patchset is intended to address the buffer overrun reported by
-Stefan Walter when a client matches a large number of netgroups. The
-main problem is that the string returned by client_compose can be any
-length, and that is strcpy()'ed into a fixed-length array.
-
-The first four patches are cleanup patches. They also take care of the
-actual buffer overrun. The last patch implements Neil Brown's suggestion
-to allow mountd to conditionally map ipaddr to ipaddr in the
-auth.unix.ip cache and to only check mount requests against exports that
-match the path.
-
-This mode is automatically selected when the total length of all of the
-netgroup m_hostname fields is greater than 1/2 of NFSCLNT_IDMAX. I
-decided on this scheme simply because it allowed for a long list of
-netgroups with plenty of space at the end of the string for other
-matches.
-
-Unlike earlier versions of this patch, there is no way to select this
-mode manually. The reason is that explaining when an admin should select
-this mode is difficult and adding an option would be very confusing. If
-it becomes desirable to do so, however, we can always add one later.
-
-This patchset is very similar to the last one. The main difference is
-the removal of some null pointer checks when freeing memory, and some
-changes to error handling when memory can't be allocated. My reasoning
-is that in most cases, when memory can't be allocated it's probably best
-to kill off mountd. Not doing this could leave the exports table in an
-indeterminate state. The main exception is in the codepath that actually
-services mount requests. If memory can't be allocated there, it's
-probably best to just fail the mount request and keep mountd up. The
-next mount request might work just fine.
+This makes the e_hostname field of the exportent into a pointer to a
+dynamically allocated string. This is necessary since this is field is
+often filled out from the m_hostname. This too adds a few
+micro-optimizations as we can avoid copying the string in some places
+and simply pass a pointer to the original string instead.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 Acked-by: Steve Dickson <steved@redhat.com>
+---
+ support/export/export.c  |    5 +++++
+ support/export/rmtab.c   |    4 +---
+ support/export/xtab.c    |    9 ++-------
+ support/include/nfslib.h |    2 +-
+ support/nfs/exports.c    |   19 ++++++-------------
+ 5 files changed, 15 insertions(+), 24 deletions(-)
+
+diff --git a/support/export/export.c b/support/export/export.c
+index 74e1d1b..93c58b6 100644
+--- a/support/export/export.c
++++ b/support/export/export.c
+@@ -85,6 +85,8 @@ export_init(nfs_export *exp, nfs_client *clp, struct exportent *nep)
+ 	struct exportent	*e = &exp->m_export;
+ 
+ 	dupexportent(e, nep);
++	if (nep->e_hostname)
++		e->e_hostname = xstrdup(nep->e_hostname);
+ 
+ 	exp->m_exported = 0;
+ 	exp->m_xtabent = 0;
+@@ -109,6 +111,8 @@ export_dup(nfs_export *exp, struct hostent *hp)
+ 	new = (nfs_export *) xmalloc(sizeof(*new));
+ 	memcpy(new, exp, sizeof(*new));
+ 	dupexportent(&new->m_export, &exp->m_export);
++	if (exp->m_export.e_hostname)
++		new->m_export.e_hostname = xstrdup(exp->m_export.e_hostname);
+ 	clp = client_dup(exp->m_client, hp);
+ 	clp->m_count++;
+ 	new->m_client = clp;
+@@ -244,6 +248,7 @@ export_freeall(void)
+ 				free(exp->m_export.e_mountpoint);
+ 			if (exp->m_export.e_fslocdata)
+ 				xfree(exp->m_export.e_fslocdata);
++			xfree(exp->m_export.e_hostname);
+ 			xfree(exp);
+ 		}
+ 		exportlist[i] = NULL;
+diff --git a/support/export/rmtab.c b/support/export/rmtab.c
+index 15aab15..2a882aa 100644
+--- a/support/export/rmtab.c
++++ b/support/export/rmtab.c
+@@ -43,9 +43,7 @@ rmtab_read(void)
+ 			if (!exp2) {
+ 				struct exportent ee;
+ 				dupexportent(&ee, &exp->m_export);
+-				strncpy (ee.e_hostname, rep->r_client,
+-					 sizeof (ee.e_hostname) - 1);
+-				ee.e_hostname[sizeof (ee.e_hostname) -1] = '\0';
++				ee.e_hostname = rep->r_client;
+ 				exp2 = export_create(&ee, 0);
+ 				exp2->m_changed = exp->m_changed;
+ 			}
+diff --git a/support/export/xtab.c b/support/export/xtab.c
+index 292087b..990113e 100644
+--- a/support/export/xtab.c
++++ b/support/export/xtab.c
+@@ -108,10 +108,7 @@ xtab_write(char *xtab, char *xtabtmp, int is_export)
+ 
+ 			/* write out the export entry using the FQDN */
+ 			xe = exp->m_export;
+-			strncpy(xe.e_hostname,
+-				exp->m_client->m_hostname,
+-				sizeof (xe.e_hostname) - 1);
+-			xe.e_hostname[sizeof (xe.e_hostname) - 1] = '\0';
++			xe.e_hostname = exp->m_client->m_hostname;
+ 			putexportent(&xe);
+ 		}
+ 	}
+@@ -146,9 +143,7 @@ xtab_append(nfs_export *exp)
+ 		return;
+ 	setexportent(_PATH_XTAB, "a");
+ 	xe = exp->m_export;
+-	strncpy(xe.e_hostname, exp->m_client->m_hostname,
+-	       sizeof (xe.e_hostname) - 1);
+-	xe.e_hostname[sizeof (xe.e_hostname) - 1] = '\0';
++	xe.e_hostname = exp->m_client->m_hostname;
+ 	putexportent(&xe);
+ 	endexportent();
+ 	xfunlock(lockid);
+diff --git a/support/include/nfslib.h b/support/include/nfslib.h
+index 5af9c30..ffa2440 100644
+--- a/support/include/nfslib.h
++++ b/support/include/nfslib.h
+@@ -65,7 +65,7 @@ struct sec_entry {
+  * allow overrides when using exportfs.
+  */
+ struct exportent {
+-	char		e_hostname[NFSCLNT_IDMAX+1];
++	char *		e_hostname;
+ 	char		e_path[NFS_MAXPATHLEN+1];
+ 	/* The mount path may be different from the exported path due
+ 	   to submount. It may change for every mount. The idea is we
+diff --git a/support/nfs/exports.c b/support/nfs/exports.c
+index c82bb0e..6b56708 100644
+--- a/support/nfs/exports.c
++++ b/support/nfs/exports.c
+@@ -176,13 +176,8 @@ getexportent(int fromkernel, int fromexports)
+ 		if (!has_default_opts)
+ 			xlog(L_WARNING, "No options for %s %s: suggest %s(sync) to avoid warning", ee.e_path, exp, exp);
+ 	}
+-	if (strlen(hostname) >= sizeof(ee.e_hostname)) {
+-		syntaxerr("client name too long");
+-		export_errno = EINVAL;
+-		return NULL;
+-	}
+-	strncpy(ee.e_hostname, hostname, sizeof (ee.e_hostname) - 1);
+-	ee.e_hostname[sizeof (ee.e_hostname) - 1] = '\0';
++	xfree(ee.e_hostname);
++	ee.e_hostname = xstrdup(hostname);
+ 
+ 	if (parseopts(opt, &ee, fromexports && !has_default_subtree_opts, NULL) < 0)
+ 		return NULL;
+@@ -335,6 +330,7 @@ dupexportent(struct exportent *dst, struct exportent *src)
+ 		dst->e_mountpoint = strdup(src->e_mountpoint);
+ 	if (src->e_fslocdata)
+ 		dst->e_fslocdata = strdup(src->e_fslocdata);
++	dst->e_hostname = NULL;
+ }
+ 
+ struct exportent *
+@@ -355,12 +351,9 @@ mkexportent(char *hname, char *path, char *options)
+ 	ee.e_nsqgids = 0;
+ 	ee.e_uuid = NULL;
+ 
+-	if (strlen(hname) >= sizeof(ee.e_hostname)) {
+-		xlog(L_WARNING, "client name %s too long", hname);
+-		return NULL;
+-	}
+-	strncpy(ee.e_hostname, hname, sizeof (ee.e_hostname) - 1);
+-	ee.e_hostname[sizeof (ee.e_hostname) - 1] = '\0';
++	xfree(ee.e_hostname);
++	ee.e_hostname = xstrdup(hname);
++
+ 	if (strlen(path) >= sizeof(ee.e_path)) {
+ 		xlog(L_WARNING, "path name %s too long", path);
+ 		return NULL;
+-- 
+1.5.2.1
 
 
 -------------------------------------------------------------------------
