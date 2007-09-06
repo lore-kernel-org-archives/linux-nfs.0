@@ -1,32 +1,33 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 1/5] Fix mountd memory leak in nfsd_fh
-Date: Thu, 6 Sep 2007 13:29:56 -0400
-Message-ID: <200709061729.l86HTuee015462@dantu.rdu.redhat.com>
+Subject: [PATCH 0/5] Intro: Fix mountd buffer overflow when using
+	large numbers of netgroups
+Date: Thu, 6 Sep 2007 13:29:51 -0400
+Message-ID: <200709061729.l86HTpZB015457@dantu.rdu.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1ITLB2-0007Mp-7Y
-	for nfs@lists.sourceforge.net; Thu, 06 Sep 2007 10:30:01 -0700
+	id 1ITLAx-0007Mf-0H
+	for nfs@lists.sourceforge.net; Thu, 06 Sep 2007 10:29:56 -0700
 Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1ITLB6-0000Mz-C8
-	for nfs@lists.sourceforge.net; Thu, 06 Sep 2007 10:30:04 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1ITLB1-0002oC-CM
+	for nfs@lists.sourceforge.net; Thu, 06 Sep 2007 10:29:59 -0700
 Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com
 	[172.16.52.254])
-	by mx1.redhat.com (8.13.1/8.13.1) with ESMTP id l86HTvKJ028292
-	for <nfs@lists.sourceforge.net>; Thu, 6 Sep 2007 13:29:57 -0400
+	by mx1.redhat.com (8.13.1/8.13.1) with ESMTP id l86HTqVg028209
+	for <nfs@lists.sourceforge.net>; Thu, 6 Sep 2007 13:29:52 -0400
 Received: from pobox.corp.redhat.com (pobox.corp.redhat.com [10.11.255.20])
-	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l86HTv3k010372
-	for <nfs@lists.sourceforge.net>; Thu, 6 Sep 2007 13:29:57 -0400
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l86HTqWx010229
+	for <nfs@lists.sourceforge.net>; Thu, 6 Sep 2007 13:29:52 -0400
 Received: from dantu.rdu.redhat.com (dantu.rdu.redhat.com [172.16.57.196])
-	by pobox.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l86HTuf3001483
-	for <nfs@lists.sourceforge.net>; Thu, 6 Sep 2007 13:29:56 -0400
+	by pobox.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l86HTpMt001473
+	for <nfs@lists.sourceforge.net>; Thu, 6 Sep 2007 13:29:51 -0400
 Received: from dantu.rdu.redhat.com (localhost.localdomain [127.0.0.1])
-	by dantu.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id l86HTuLS015463
-	for <nfs@lists.sourceforge.net>; Thu, 6 Sep 2007 13:29:56 -0400
+	by dantu.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id l86HTp2b015458
+	for <nfs@lists.sourceforge.net>; Thu, 6 Sep 2007 13:29:51 -0400
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -39,40 +40,40 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-nfsd_fh() uses strdup for creating found_path and doesn't check the
-return value. It also doesn't free this memory when the function
-returns. Check the return value of strdup and return immediately
-if it's NULL. Also, free found_path on exit.
+This patchset is intended to address the buffer overrun reported by
+Stefan Walter when a client matches a large number of netgroups. The
+main problem is that the string returned by client_compose can be any
+length, and that is strcpy()'ed into a fixed-length array.
+
+The first four patches are cleanup patches. They also take care of the
+actual buffer overrun. The last patch implements Neil Brown's suggestion
+to allow mountd to conditionally map ipaddr to ipaddr in the
+auth.unix.ip cache and to only check mount requests against exports that
+match the path.
+
+This mode is automatically selected when the total length of all of the
+netgroup m_hostname fields is greater than 1/2 of NFSCLNT_IDMAX. I
+decided on this scheme simply because it allowed for a long list of
+netgroups with plenty of space at the end of the string for other
+matches.
+
+Unlike earlier versions of this patch, there is no way to select this
+mode manually. The reason is that explaining when an admin should select
+this mode is difficult and adding an option would be very confusing. If
+it becomes desirable to do so, however, we can always add one later.
+
+This patchset is very similar to the last one. The main difference is
+the removal of some null pointer checks when freeing memory, and some
+changes to error handling when memory can't be allocated. My reasoning
+is that in most cases, when memory can't be allocated it's probably best
+to kill off mountd. Not doing this could leave the exports table in an
+indeterminate state. The main exception is in the codepath that actually
+services mount requests. If memory can't be allocated there, it's
+probably best to just fail the mount request and keep mountd up. The
+next mount request might work just fine.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 Acked-by: Steve Dickson <steved@redhat.com>
----
- utils/mountd/cache.c |    3 +++
- 1 files changed, 3 insertions(+), 0 deletions(-)
-
-diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-index 15100d4..fedc0bf 100644
---- a/utils/mountd/cache.c
-+++ b/utils/mountd/cache.c
-@@ -445,6 +445,8 @@ void nfsd_fh(FILE *f)
- 			if (!found) {
- 				found = &exp->m_export;
- 				found_path = strdup(path);
-+				if (found_path == NULL)
-+					goto out;
- 			} else if (strcmp(found->e_path, exp->m_export.e_path)!= 0)
- 			{
- 				xlog(L_WARNING, "%s and %s have same filehandle for %s, using first",
-@@ -492,6 +494,7 @@ void nfsd_fh(FILE *f)
- 		qword_print(f, found->e_path);
- 	qword_eol(f);
-  out:
-+	free(found_path);
- 	free(dom);
- 	return;		
- }
--- 
-1.5.2.1
 
 
 -------------------------------------------------------------------------
