@@ -1,19 +1,25 @@
-From: "News" <news@maecontract.com>
-Subject: Just Try To Get Out Of This Parent Trap, Lindsay
-Date: Thu, 06 Sep 2007 11:45:04 +0000
-Message-ID: <103101c7f07b$025419ae$85c731d3@your-htcamx467t.hananet>
+From: "Guilherme Vilela" <vilela.list@gmail.com>
+Subject: Re: Problem to recognize that the file system is full
+Date: Thu, 6 Sep 2007 10:44:02 -0300
+Message-ID: <89a10cbc0709060644k41d20b61xbbd47a0e0724ba4c@mail.gmail.com>
+References: <89a10cbc0709040701x4a6e0e3cna375e714a19b19e4@mail.gmail.com>
+	<1188915804.5999.7.camel@gaula.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: "Passias Pantelis" <nfs@lists.sourceforge.net>
+Cc: trond.myklebust@fys.uio.no
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1ITFoy-0000kq-4a
-	for nfs@lists.sourceforge.net; Thu, 06 Sep 2007 04:46:54 -0700
-Received: from [211.49.199.133] (helo=your-htcamx467t.hananet)
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1ITFp1-00055g-Gf
-	for nfs@lists.sourceforge.net; Thu, 06 Sep 2007 04:46:56 -0700
+	id 1ITHeL-000511-3i
+	for nfs@lists.sourceforge.net; Thu, 06 Sep 2007 06:44:01 -0700
+Received: from hu-out-0506.google.com ([72.14.214.227])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1ITHeP-0001yg-Gq
+	for nfs@lists.sourceforge.net; Thu, 06 Sep 2007 06:44:05 -0700
+Received: by hu-out-0506.google.com with SMTP id 28so48110hub
+	for <nfs@lists.sourceforge.net>; Thu, 06 Sep 2007 06:44:03 -0700 (PDT)
+In-Reply-To: <1188915804.5999.7.camel@gaula.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,19 +32,34 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-We are glad to inform you of a CANCER CURE invented 
-by ANDOVER MEDICAL INC (ADOV), that will take 
-the world by storm. This new medicine, is above all other 
-and boosts a 80% success rate during clinical trials
+On 9/4/07, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+> On Tue, 2007-09-04 at 11:01 -0300, Guilherme Vilela wrote:
+> > Hi,
+> > I'm tryng to mount a nfs file system with the option async and run a
+> > program that writes to the file system. The problem is that the
+> > program keep writing even when the file system is full. It appears
+> > that the nfs dont see that the file system is full and keeps writing
+> > to the cache. This program does'nt occur when mounting with the sync
+> > option or with async and noac option, but the performance get very
+> > poor and that is important to my application. The problem doesnt occur
+> > too with the local file system. I'm running linux centos 5.0.
+> >
+> > Bellow is my test program.
+> > Any idea how to resolve this problem?
+>
+> You might try to backport this patch.
+>
+> http://client.linux-nfs.org/Linux-2.6.x/2.6.23-rc4/linux-2.6.23-015-osync_on_error.dif
+>
+> Cheers
+>   Trond
+>
+>
+Thanks!
 
-Over the next few days you will hear about this in the PAPERS and on TV. 
-So buy shares now, while price is low, before the news hits.
+That works!
 
-ANDOVER MEDICAL INC (ADOV)
-$.45
-
--- 
-
+Guilherme
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
