@@ -1,79 +1,113 @@
-From: Kamalesh Babulal <kamalesh@linux.vnet.ibm.com>
-Subject: [BUG] 2.6.23-rc5 kernel BUG at fs/nfs/nfs4xdr.c:945
-Date: Fri, 07 Sep 2007 15:32:32 +0530
-Message-ID: <46E121B8.4080105@linux.vnet.ibm.com>
+From: "Susan kestenbaum" <er65sscliace@mac.com>
+Subject: Your Can Trade Stock Option With Our System
+Date: Sat, 08 Sep 2007 00:20:26 +1200
+Message-ID: <3FD6EB43.085FC3F3@mac.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: bfields@fieldses.org, neilb@suse.de, nfs@lists.sourceforge.net
-To: linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S965232AbXIGKDE@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: multipart/mixed; boundary="===============0575577180=="
+To: <nfs@lists.sourceforge.net>
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1ITcc0-000185-49
+	for nfs@lists.sourceforge.net; Fri, 07 Sep 2007 05:07:01 -0700
+Received: from c-24-99-108-2.hsd1.ga.comcast.net ([24.99.108.2] helo=mac.com)
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1ITcc2-0004dG-7Y
+	for nfs@lists.sourceforge.net; Fri, 07 Sep 2007 05:07:04 -0700
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-Sep  7 11:42:49 p55lp2 kernel: kernel BUG at fs/nfs/nfs4xdr.c:945!
-Sep  7 11:42:49 p55lp2 kernel: Oops: Exception in kernel mode, sig: 5 [#1]
-Sep  7 11:42:49 p55lp2 kernel: SMP NR_CPUS=128 NUMA pSeries
-Sep  7 11:42:49 p55lp2 kernel: Modules linked in: nfs lockd nfs_acl 
-sunrpc ipv6 loop dm_mod ibmveth sg ibmvscsic sd_mod scsi_mod
-Sep  7 11:42:49 p55lp2 kernel: NIP: d000000000378044 LR: 
-d000000000378034 CTR: 80000000001c5840
-Sep  7 11:42:49 p55lp2 kernel: REGS: c0000000d971b050 TRAP: 0700   Not 
-tainted  (2.6.23-rc5-ppc64)
-Sep  7 11:42:49 p55lp2 kernel: MSR: 8000000000029032 <EE,ME,IR,DR>  CR: 
-28000444  XER: 00000014
-Sep  7 11:42:49 p55lp2 kernel: TASK = c000000002787740[11508] 'fsstress' 
-THREAD: c0000000d9718000 CPU: 1
-Sep  7 11:42:49 p55lp2 kernel: GPR00: 0000000000000001 c0000000d971b2d0 
-d0000000003bd648 0000000000000037  
-Sep  7 11:42:49 p55lp2 kernel: GPR04: 0000000000000000 0000000000000000 
-0000000000000000 0000000000000000  
-Sep  7 11:42:49 p55lp2 kernel: GPR08: 0000000000000002 c000000000616538 
-c0000000ef7afb58 c000000000616540  
-Sep  7 11:42:49 p55lp2 kernel: GPR12: 0000000000004000 c0000000005e4a80 
-0000000000000000 00000000200b2510  
-Sep  7 11:42:49 p55lp2 kernel: GPR16: 0000000020105550 00000000200b2534 
-000000002008c15c 0000000000000001  
-Sep  7 11:42:49 p55lp2 kernel: GPR20: 0000000000000000 0000000000000001 
-fffffffffffff000 c0000000d971ba30  
-Sep  7 11:42:49 p55lp2 kernel: GPR24: d00000000034f524 c0000000dc4f8054 
-c0000000d971b7d0 c0000000d9d313f0  
-Sep  7 11:42:49 p55lp2 kernel: GPR28: 0000000000000276 0000000022000000 
-d0000000003b8d78 0000000000000000  
-Sep  7 11:42:49 p55lp2 kernel: NIP [d000000000378044] 
-.encode_lookup+0x6c/0xbc [nfs]
-Sep  7 11:42:49 p55lp2 kernel: LR [d000000000378034] 
-.encode_lookup+0x5c/0xbc [nfs]
-Sep  7 11:42:49 p55lp2 kernel: Call Trace:
-Sep  7 11:42:49 p55lp2 kernel: [c0000000d971b2d0] [d000000000378034] 
-.encode_lookup+0x5c/0xbc [nfs] (unreliable)
-Sep  7 11:42:49 p55lp2 kernel: [c0000000d971b370] [d000000000379f8c] 
-.nfs4_xdr_enc_lookup+0x78/0xbc [nfs]
-Sep  7 11:42:49 p55lp2 kernel: [c0000000d971b440] [d000000000314534] 
-.rpcauth_wrap_req+0xe4/0x124 [sunrpc]
-Sep  7 11:42:49 p55lp2 kernel: [c0000000d971b4f0] [d00000000030a790] 
-.call_transmit+0x218/0x2b8 [sunrpc]
-Sep  7 11:42:49 p55lp2 kernel: [c0000000d971b590] [d0000000003124d8] 
-.__rpc_execute+0xd4/0x368 [sunrpc]
-Sep  7 11:42:49 p55lp2 kernel: [c0000000d971b630] [d00000000030b114] 
-.rpc_do_run_task+0xc8/0x104 [sunrpc]
-Sep  7 11:42:49 p55lp2 kernel: [c0000000d971b6e0] [d00000000030b224] 
-.rpc_call_sync+0x2c/0x64 [sunrpc]
-Sep  7 11:42:49 p55lp2 kernel: [c0000000d971b760] [d00000000036ef04] 
-._nfs4_proc_lookupfh+0xd4/0x124 [nfs]
-Sep  7 11:42:49 p55lp2 kernel: [c0000000d971b850] [d0000000003719a0] 
-._nfs4_proc_lookup+0x80/0x21c [nfs]
-Sep  7 11:42:49 p55lp2 kernel: [c0000000d971b910] [d000000000371ba4] 
-.nfs4_proc_lookup+0x68/0xac [nfs]
-Sep  7 11:42:49 p55lp2 kernel: [c0000000d971b9c0] [d000000000354bf4] 
-.nfs_lookup+0x158/0x334 [nfs]
-Sep  7 11:42:49 p55lp2 kernel: [c0000000d971bbc0] [c0000000000f3a28] 
-.lookup_hash+0xfc/0x140
-Sep  7 11:42:49 p55lp2 kernel: [c0000000d971bc60] [c0000000000f7b28] 
-.sys_renameat+0x164/0x228
-Sep  7 11:42:49 p55lp2 kernel: [c0000000d971be30] [c000000000008534] 
-syscall_exit+0x0/0x40
-Sep  7 11:42:49 p55lp2 kernel: Instruction dump:
-Sep  7 11:42:49 p55lp2 kernel: e8410028 7fa4eb78 7c7f1b79 7fb80026 
-40820014 e8be83a8 e87e8350 4800c5f9  
-Sep  7 11:42:49 p55lp2 kernel: e8410028 7fb80120 7c180026 54001ffe 
-<0b000000> 3800000f 7b850020 387f0008
+--===============0575577180==
+Content-Type: text/html;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: 7bit
+
+<html>
+
+<head>
+</head>
+
+<body>
+<font color="#FFFFFF">djvan KIK 88eq7</font>
+<div id="yiv500530255">
+  <font color="#000000"><font size="4" face="Microsoft Sans Serif">Out most
+
+  recent trades:</font><p><font size="4" face="Microsoft Sans
+Serif">OPTION&nbsp;&nbsp; 
+  OPENED&nbsp;&nbsp;&nbsp;&nbsp; CLOSED&nbsp;&nbsp;&nbsp;&nbsp;
+PROFIT</font><br>
+  ===============================================<br>
+  <font size="4">.EZQPJ&nbsp; &nbsp;03/28/07&nbsp;&nbsp;
+03/29/07&nbsp;&nbsp; 0%<br>
+  .NLQEG&nbsp; &nbsp;03/28/07&nbsp;&nbsp; 04/17/07&nbsp;&nbsp; -50%<br>
+  .CTXDH&nbsp; &nbsp;03/30/07&nbsp;&nbsp; 04/17/07&nbsp;&nbsp; 100%<br>
+  .NZQDX&nbsp; &nbsp;04/03/07&nbsp;&nbsp; 04/09/07&nbsp;&nbsp; 0%<br>
+  .IQUEY&nbsp; &nbsp;04/04/07&nbsp;&nbsp; 04/16/07&nbsp;&nbsp; 100%<br>
+  .RUPQF&nbsp; &nbsp;04/11/07&nbsp;&nbsp; 04/12/07&nbsp;&nbsp; 100%<br>
+  .AAOEI&nbsp; &nbsp;04/13/07&nbsp;&nbsp; 04/23/07&nbsp;&nbsp; -50%<br>
+  .GDEP&nbsp;&nbsp; &nbsp;04/18/07&nbsp;&nbsp; 04/20/07&nbsp;&nbsp;
+100%<br>
+  .PAQEP&nbsp; &nbsp;04/20/07&nbsp;&nbsp; 04/23/07&nbsp;&nbsp; 100%<br>
+  .PHMQF&nbsp; &nbsp;04/26/07&nbsp;&nbsp; 05/01/07&nbsp;&nbsp; 100%<br>
+  .FCXEN&nbsp; &nbsp;04/30/07&nbsp;&nbsp; 05/03/07&nbsp;&nbsp; 100%<br>
+  .QLCQW&nbsp; &nbsp;05/01/07&nbsp;&nbsp; 05/04/07&nbsp;&nbsp; 100%<br>
+  .GEQS&nbsp;&nbsp; &nbsp;05/01/07&nbsp;&nbsp; 05/15/07&nbsp;&nbsp;
+-50%</font></p>
+  <p><br>
+  <font face="Microsoft Sans Serif">View ALL our trades at:
+  <a href="http://www.oss.cc/oss_Results.asp" target="_blank"
+rel="nofollow" style="text-decoration: none">
+  <span id="lw_1181906990_0" style="background:">
+  http://www.oss.cc/oss_Results.asp</span></a></font></p>
+  <p>The Option Signal Service<p>&nbsp;</font><font
+color="#CCCCCC"><p>Trade 
+  Stock Option With Our System</font></div>
+<p><font size="1">delete response </font>
+<font face="Microsoft Sans Serif" size="1" style="line-height: 1.35em">
+<a style="text-decoration: none"
+href="mailto:delresponse@excite.com">here</a></font></p>
+<p>810 Helen St.<br>
+Neenah WI 54956</p>
+<font color="#FFFFFF">z84nus GH66687N 24ba1 hce YUP7xbr SCU
+51zm0</font><br>
+<font color="#FFFFFF">Researchers from Boston University and the Mayo
+Clinic College of Medicine in Jacksonville, Florida, also took part in the
+five-year study.  </font>
+</body>
+
+</html>
+
+
+
+
+--===============0575577180==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Splunk Inc.
+Still grepping through log files to find problems?  Stop.
+Now Search log events and configuration files using AJAX and a browser.
+Download your FREE copy of Splunk now >>  http://get.splunk.com/
+--===============0575577180==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============0575577180==--
