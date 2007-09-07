@@ -1,24 +1,23 @@
-From: Wolfgang Walter <wolfgang.walter@studentenwerk.mhn.de>
+From: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
 Subject: Re: problems with lockd in 2.6.22.6
-Date: Fri, 7 Sep 2007 20:05:28 +0200
-Message-ID: <200709072005.28802.wolfgang.walter@studentenwerk.mhn.de>
+Date: Fri, 7 Sep 2007 22:39:11 +0200
+Message-ID: <20070907203911.GA7706@uio.no>
 References: <200709071749.55760.wolfgang.walter@studentenwerk.mhn.de>
-	<20070907161945.GI24638@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: neilb@suse.de, netdev@vger.kernel.org, nfs@lists.sourceforge.net
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
+To: wolfgang.walter@studentenwerk.mhn.de
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1ITiCy-0000gO-28
-	for nfs@lists.sourceforge.net; Fri, 07 Sep 2007 11:05:32 -0700
-Received: from mailin.studentenwerk.mhn.de ([141.84.225.229]
-	helo=email.studentenwerk.mhn.de)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1ITiD2-0007RQ-43
-	for nfs@lists.sourceforge.net; Fri, 07 Sep 2007 11:05:36 -0700
-In-Reply-To: <20070907161945.GI24638@fieldses.org>
+	id 1ITkbk-00080y-B7
+	for nfs@lists.sourceforge.net; Fri, 07 Sep 2007 13:39:16 -0700
+Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1ITkbm-00044P-Nn
+	for nfs@lists.sourceforge.net; Fri, 07 Sep 2007 13:39:21 -0700
+In-Reply-To: <200709071749.55760.wolfgang.walter@studentenwerk.mhn.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,50 +30,22 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-QW0gRnJlaXRhZywgNy4gU2VwdGVtYmVyIDIwMDcgMTg6MTkgc2NocmllYmVuIFNpZToKPiBPbiBG
-cmksIFNlcCAwNywgMjAwNyBhdCAwNTo0OTo1NVBNICswMjAwLCBXb2xmZ2FuZyBXYWx0ZXIgd3Jv
-dGU6Cj4gPiBIZWxsbywKPiA+Cj4gPiB3ZSB1cGdyYWRlZCB0aGUga2VybmVsIG9mIGEgbmZzLXNl
-cnZlciBmcm9tIDIuNi4xNy4xMSB0byAyLjYuMjIuNi4gU2luY2UKPiA+IHRoZW4gd2UgZ2V0IHRo
-ZSBtZXNzYWdlCj4gPgo+ID4gbG9ja2Q6IHRvbyBtYW55IG9wZW4gVENQIHNvY2tldHMsIGNvbnNp
-ZGVyIGluY3JlYXNpbmcgdGhlIG51bWJlciBvZiBuZnNkCj4gPiB0aHJlYWRzIGxvY2tkOiBsYXN0
-IFRDUCBjb25uZWN0IGZyb20gXlxcMjM2XlzDiV5ECgo+ID4KPiA+IDIpIFRoZSBudW1iZXIgb2Yg
-bmZzZCB0aHJlYWRzIHdlIGFyZSBydW5uaW5nIG9uIHRoZSBtYWNoaW5lIGlzIDEwMjQuCj4gPiBT
-byB0aGlzIGlzIG5vdCB0aGUgcHJvYmxlbS4gSXQgc2VlbXMsIHRob3VnaCwgdGhhdCBpbiB0aGUg
-Y2FzZSBvZgo+ID4gbG9ja2Qgc3ZjX3RjcF9hY2NlcHQgZG9lcyBub3QgY2hlY2sgdGhlIG51bWJl
-ciBvZiBuZnNkIHRocmVhZHMgYnV0IHRoZQo+ID4gbnVtYmVyIG9mIGxvY2tkIHRocmVhZHMgd2hp
-Y2ggaXMgb25lLiAgQXMgc29vbiBhcyB0aGUgbnVtYmVyIG9mIG9wZW4KPiA+IGxvY2tkIHNvY2tl
-dHMgc3VycGFzc2VzIDgwIHRoaXMgbWVzc2FnZSBnZXRzIGxvZ2dlZC4gIFRoaXMgdXN1YWxseQo+
-ID4gaGFwcGVucyBldmVyeSBldmVuaW5nIHdoZW4gYSBsb3Qgb2YgcGVvcGxlIHNodXRkb3duIHRo
-ZWlyIHdvcmtzdGF0aW9uLgo+Cj4gU28gdG8gYmUgY2xlYXI6IHRoZXJlJ3Mgbm90IGFuIGFjdHVh
-bCBwcm9ibGVtIGhlcmUgb3RoZXIgdGhhbiB0aGF0IHRoZQo+IGxvZ3MgYXJlIGdldHRpbmcgc3Bh
-bW1lZD8gIChOb3QgdGhhdCB0aGF0IGlzbid0IGEgcHJvYmxlbSBpbiBpdHNlbGYuKQo+CgpXaGVu
-IG1vcmUgdGhhbiA4MCBuZnMgY2xpZW50cyB0cnkgdG8gbG9jayBmaWxlcyBhdCB0aGUgc2FtZSB0
-aW1lIHRoZW4gaXQKcHJvYmFibHkgd291bGQuCgo+ID4gMykgRm9yIHVua25vd24gcmVhc29uIHRo
-ZXNlIHNvY2tldHMgdGhlbiByZW1haW4gb3Blbi4gSW4gdGhlIG1vcm5pbmcKPiA+IHdoZW4gcGVv
-cGxlIHN0YXJ0IHRoZWlyIHdvcmtzdGF0aW9uIGFnYWluIHdlIHRoZXJlZm9yIG5vdCBvbmx5IGdl
-dCBhCj4gPiBsb3Qgb2YgdGhlc2UgbWVzc2FnZXMgYWdhaW4gYnV0IG9mdGVuIHRoZSBuZnMtc2Vy
-dmVyIGRvZXMgbm90IHByb3Blcmx5Cj4gPiB3b3JrIGFueSBtb3JlLiBSZXN0YXJ0aW5nIHRoZSBu
-ZnMtZGFlbW9uIGlzIGEgd29ya2Fyb3VuZC4KPgo+IEhtLCB0aGFua3MuCj4KCkkgZG9uJ3Qga25v
-dyBpZiB0aGUgbG9ja2QgdGhpbmcgaXMgdGhlIHJlYXNvbiwgdGhvdWdoLgoKMi42LjIyLjYgcGVy
-IHNlIHJ1bnMgc3RhYmxlIChubyBvb3BzLCBubyBjcmFzaCBldGMpIGJ1dCBrZXJuZWwgbmZzIHNl
-ZW1zCnRvIGJlIGEgbGl0dGxlIGJpdCB1bnN0YWJsZS4gMi42LjE3LjExIHJ1biBmb3IgbW9udGhz
-IHdpdGhvdXQgYW55IG5mc2QtcmVsYXRlZCAKcHJvYmxlbXMgd2hlcmVhcyBpbiAyLjYuMjIuNiBu
-ZnMgbmVlZHMgdG8gYmUgcmVzdGFydGVkIGFsbW9zdCBldmVyeSBkYXkuIApTb21ldGltZXMgdGhp
-cyBmYWlscyB3aXRoCgpsb2NrZF9kb3duOiBsb2NrZCBmYWlsZWQgdG8gZXhpdCwgY2xlYXJpbmcg
-cGlkCm5mc2Q6IGxhc3Qgc2VydmVyIGhhcyBleGl0ZWQKbmZzZDogdW5leHBvcnRpbmcgYWxsIGZp
-bGVzeXN0ZW1zCmxvY2tkX3VwOiBtYWtlc29jayBmYWlsZWQsIGVycm9yPS05OAoKYWZ0ZXIgd2hp
-Y2ggdGhlIHNlcnZlciBtdXN0IGJlIHJlYm9vdGVkLgoKSSB0aGluayB0aGVyZSBpcyBzb21ldGhp
-bmcgd2l0aCBsb2NrZCBiZWNhdXNlIHRoZXJlIGFyZSBubyBwcm9ibGVtcyBvdmVyIHRoZSAKZGF5
-LiBJdCBpcyBpbiB0aGUgbW9ybmluZyB3aGVuIGEgbG90IG9mIHBlb3BsZSBsb2cgaW50byB0aGVp
-ciBtYWNoaW5lcyBhbmQgCnN0YXJ0IHRoZWlyIGRlc2t0b3BzIChJIHRoaW5rIGtkZSBsb2NrcyBp
-dHMgY29uZmlnIGZpbGVzIHdoZW4gaXQgcmVhZHMgdGhlbSkuCgpSZWdhcmRzCi0tIApXb2xmZ2Fu
-ZyBXYWx0ZXIKU3R1ZGVudGVud2VyayBNw7xuY2hlbgpBbnN0YWx0IGRlcyDDtmZmZW50bGljaGVu
-IFJlY2h0cwoKLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQpUaGlzIFNGLm5ldCBlbWFpbCBpcyBzcG9uc29yZWQg
-Ynk6IFNwbHVuayBJbmMuClN0aWxsIGdyZXBwaW5nIHRocm91Z2ggbG9nIGZpbGVzIHRvIGZpbmQg
-cHJvYmxlbXM/ICBTdG9wLgpOb3cgU2VhcmNoIGxvZyBldmVudHMgYW5kIGNvbmZpZ3VyYXRpb24g
-ZmlsZXMgdXNpbmcgQUpBWCBhbmQgYSBicm93c2VyLgpEb3dubG9hZCB5b3VyIEZSRUUgY29weSBv
-ZiBTcGx1bmsgbm93ID4+ICBodHRwOi8vZ2V0LnNwbHVuay5jb20vCl9fX19fX19fX19fX19fX19f
-X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fCk5GUyBtYWlsbGlzdCAgLSAgTkZTQGxpc3Rz
-LnNvdXJjZWZvcmdlLm5ldApodHRwczovL2xpc3RzLnNvdXJjZWZvcmdlLm5ldC9saXN0cy9saXN0
-aW5mby9uZnMK
+On Fri, Sep 07, 2007 at 05:49:55PM +0200, Wolfgang Walter wrote:
+> 2) The number of nfsd threads we are running on the machine is 1024. So this is not
+> the problem.
+
+Wow, 1024? How many clients do you have? I'd normally assume 16 or 32 or
+something was a reasonable value...
+
+/* Steinar */
+-- 
+Homepage: http://www.sesse.net/
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Splunk Inc.
+Still grepping through log files to find problems?  Stop.
+Now Search log events and configuration files using AJAX and a browser.
+Download your FREE copy of Splunk now >>  http://get.splunk.com/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
