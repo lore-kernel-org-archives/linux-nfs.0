@@ -1,72 +1,61 @@
-From: Wolfgang Walter <wolfgang.walter@studentenwerk.mhn.de>
-Subject: problems with lockd in 2.6.22.6
-Date: Fri, 7 Sep 2007 17:49:55 +0200
-Message-ID: <200709071749.55760.wolfgang.walter@studentenwerk.mhn.de>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [NFS] problems with lockd in 2.6.22.6
+Date: Fri, 7 Sep 2007 12:19:45 -0400
+Message-ID: <20070907161945.GI24638@fieldses.org>
+References: <200709071749.55760.wolfgang.walter@studentenwerk.mhn.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: netdev@vger.kernel.org, nfs@lists.sourceforge.net
-To: neilb@suse.de
+Content-Type: text/plain; charset=utf-8
+Cc: neilb@suse.de, netdev@vger.kernel.org, nfs@lists.sourceforge.net
+To: Wolfgang Walter <wolfgang.walter@studentenwerk.mhn.de>
 Return-path: <netdev-owner@vger.kernel.org>
+In-Reply-To: <200709071749.55760.wolfgang.walter@studentenwerk.mhn.de>
 Sender: netdev-owner@vger.kernel.org
 List-ID: <nfs.lists.sourceforge.net>
 
-Hello,
+On Fri, Sep 07, 2007 at 05:49:55PM +0200, Wolfgang Walter wrote:
+> Hello,
+>=20
+> we upgraded the kernel of a nfs-server from 2.6.17.11 to 2.6.22.6. Si=
+nce then we get the message
+>=20
+> lockd: too many open TCP sockets, consider increasing the number of n=
+fsd threads
+> lockd: last TCP connect from ^\\236^\=C3=89^D
+>=20
+> 1) These random characters in the second line are caused by a bug in =
+svc_tcp_accept.
+> I already posted this patch on netdev@vger.kernel.org:
 
-we upgraded the kernel of a nfs-server from 2.6.17.11 to 2.6.22.6. Sinc=
-e then we get the message
+Thanks, I've applied that.  (The bug is a little subtle: there's
+actually two previous __svc_print_addr() calls which might have
+initialized "buf" correctly, and it's not obvious that the second isn't
+always called (since it's in a dprintk, which is a macro that expands
+into a printk inside a conditional)).
 
-lockd: too many open TCP sockets, consider increasing the number of nfs=
-d threads
-lockd: last TCP connect from ^\\236^\=C9^D
+> with this patch applied one gets something like
+>=20
+> lockd: too many open TCP sockets, consider increasing the number of
+> nfsd threads lockd: last TCP connect from 10.11.0.12, port=3D784
+>=20
+>=20
+> 2) The number of nfsd threads we are running on the machine is 1024.
+> So this is not the problem. It seems, though, that in the case of
+> lockd svc_tcp_accept does not check the number of nfsd threads but th=
+e
+> number of lockd threads which is one.  As soon as the number of open
+> lockd sockets surpasses 80 this message gets logged.  This usually
+> happens every evening when a lot of people shutdown their workstation=
+=2E
 
-1) These random characters in the second line are caused by a bug in sv=
-c_tcp_accept.
-I already posted this patch on netdev@vger.kernel.org:
+So to be clear: there's not an actual problem here other than that the
+logs are getting spammed?  (Not that that isn't a problem in itself.)
 
-Signed-off-by: Wolfgang Walter <wolfgang.walter@studentenwerk.mhn.de>
---- linux-2.6.22.6/net/sunrpc/svcsock.c	2007-08-27 18:10:14.000000000 +=
-0200
-+++ linux-2.6.22.6w/net/sunrpc/svcsock.c	2007-09-03 18:27:30.000000000 =
-+0200
-@@ -1090,7 +1090,7 @@
- 						   serv->sv_name);
- 				printk(KERN_NOTICE
- 				       "%s: last TCP connect from %s\n",
--				       serv->sv_name, buf);
-+				       serv->sv_name, __svc_print_addr(sin, buf, sizeof(buf)));
- 			}
- 			/*
- 			 * Always select the oldest socket. It's not fair,
+> 3) For unknown reason these sockets then remain open. In the morning
+> when people start their workstation again we therefor not only get a
+> lot of these messages again but often the nfs-server does not proberl=
+y
+> work any more. Restarting the nfs-daemon is a workaround.
 
+Hm, thanks.
 
-with this patch applied one gets something like
-
-lockd: too many open TCP sockets, consider increasing the number of nfs=
-d threads
-lockd: last TCP connect from 10.11.0.12, port=3D784
-
-
-2) The number of nfsd threads we are running on the machine is 1024. So=
- this is not
-the problem. It seems, though, that in the case of lockd svc_tcp_accept=
- does not
-check the number of nfsd threads but the number of lockd threads which =
-is one.
-As soon as the number of open lockd sockets surpasses 80 this message g=
-ets logged.
-This usually happens every evening when a lot of people shutdown their =
-workstation.
-
-3) For unknown reason these sockets then remain open. In the morning wh=
-en people
-start their workstation again we therefor not only get a lot of these m=
-essages
-again but often the nfs-server does not proberly work any more. Restart=
-ing the
-nfs-daemon is a workaround.
-
-Reagrds,
---=20
-Wolfgang Walter
-Studentenwerk M=FCnchen
-Anstalt des =F6ffentlichen Rechts
+--b.
