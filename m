@@ -1,59 +1,72 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [BUG] 2.6.23-rc5 kernel BUG at fs/nfs/nfs4xdr.c:945
-Date: Fri, 7 Sep 2007 11:29:13 -0400
-Message-ID: <20070907152913.GF24638@fieldses.org>
-References: <46E121B8.4080105@linux.vnet.ibm.com>
+From: Wolfgang Walter <wolfgang.walter@studentenwerk.mhn.de>
+Subject: problems with lockd in 2.6.22.6
+Date: Fri, 7 Sep 2007 17:49:55 +0200
+Message-ID: <200709071749.55760.wolfgang.walter@studentenwerk.mhn.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: neilb@suse.de, Trond Myklebust <trond@netapp.com>,
-	nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
-To: Kamalesh Babulal <kamalesh@linux.vnet.ibm.com>
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1ITfll-0007xa-9a
-	for nfs@lists.sourceforge.net; Fri, 07 Sep 2007 08:29:18 -0700
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1ITflo-0001XS-Ko
-	for nfs@lists.sourceforge.net; Fri, 07 Sep 2007 08:29:22 -0700
-In-Reply-To: <46E121B8.4080105@linux.vnet.ibm.com>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: text/plain; charset=iso-8859-1
+Cc: netdev@vger.kernel.org, nfs@lists.sourceforge.net
+To: neilb@suse.de
+Return-path: <netdev-owner@vger.kernel.org>
+Sender: netdev-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-On Fri, Sep 07, 2007 at 03:32:32PM +0530, Kamalesh Babulal wrote:
-> Sep  7 11:42:49 p55lp2 kernel: kernel BUG at fs/nfs/nfs4xdr.c:945!
+Hello,
 
-That's the first line of encode_lookup:
+we upgraded the kernel of a nfs-server from 2.6.17.11 to 2.6.22.6. Sinc=
+e then we get the message
 
-	static int encode_lookup(struct xdr_stream *xdr, const struct qstr *name)
-	{
-		int len = name->len;
-		__be32 *p;
+lockd: too many open TCP sockets, consider increasing the number of nfs=
+d threads
+lockd: last TCP connect from ^\\236^\=C9^D
 
-		RESERVE_SPACE(8 + len);
+1) These random characters in the second line are caused by a bug in sv=
+c_tcp_accept.
+I already posted this patch on netdev@vger.kernel.org:
 
-So len is either very large, or it's just garbage.  Do you know if
-fsstress is trying to do something with a particularly long filename
-here?
+Signed-off-by: Wolfgang Walter <wolfgang.walter@studentenwerk.mhn.de>
+--- linux-2.6.22.6/net/sunrpc/svcsock.c	2007-08-27 18:10:14.000000000 +=
+0200
++++ linux-2.6.22.6w/net/sunrpc/svcsock.c	2007-09-03 18:27:30.000000000 =
++0200
+@@ -1090,7 +1090,7 @@
+ 						   serv->sv_name);
+ 				printk(KERN_NOTICE
+ 				       "%s: last TCP connect from %s\n",
+-				       serv->sv_name, buf);
++				       serv->sv_name, __svc_print_addr(sin, buf, sizeof(buf)));
+ 			}
+ 			/*
+ 			 * Always select the oldest socket. It's not fair,
 
---b.
 
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Splunk Inc.
-Still grepping through log files to find problems?  Stop.
-Now Search log events and configuration files using AJAX and a browser.
-Download your FREE copy of Splunk now >>  http://get.splunk.com/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+with this patch applied one gets something like
+
+lockd: too many open TCP sockets, consider increasing the number of nfs=
+d threads
+lockd: last TCP connect from 10.11.0.12, port=3D784
+
+
+2) The number of nfsd threads we are running on the machine is 1024. So=
+ this is not
+the problem. It seems, though, that in the case of lockd svc_tcp_accept=
+ does not
+check the number of nfsd threads but the number of lockd threads which =
+is one.
+As soon as the number of open lockd sockets surpasses 80 this message g=
+ets logged.
+This usually happens every evening when a lot of people shutdown their =
+workstation.
+
+3) For unknown reason these sockets then remain open. In the morning wh=
+en people
+start their workstation again we therefor not only get a lot of these m=
+essages
+again but often the nfs-server does not proberly work any more. Restart=
+ing the
+nfs-daemon is a workaround.
+
+Reagrds,
+--=20
+Wolfgang Walter
+Studentenwerk M=FCnchen
+Anstalt des =F6ffentlichen Rechts
