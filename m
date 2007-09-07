@@ -1,20 +1,24 @@
-From: "=?utf-8?b?157XkNeZ16jXlCA+15DXqteoINeQ15nXoNeY16jXoNeYINec16jXkNepINeU16nXoNeU?=" <meira@gmail.com>
-Subject: =?utf-8?b?157XkNeZ16jXlCA+15DXqteoINeQ15nXoNeY16jXoNeYINec?=
-	=?utf-8?b?16jXkNepINeU16nXoNeU?=
-Date: Fri, 7 Sep 2007 19:54:02 -0700
-Message-ID: <E1ITh3O-0005ZM-CK@mail.sourceforge.net>
+From: Wolfgang Walter <wolfgang.walter@studentenwerk.mhn.de>
+Subject: Re: problems with lockd in 2.6.22.6
+Date: Fri, 7 Sep 2007 20:05:28 +0200
+Message-ID: <200709072005.28802.wolfgang.walter@studentenwerk.mhn.de>
+References: <200709071749.55760.wolfgang.walter@studentenwerk.mhn.de>
+	<20070907161945.GI24638@fieldses.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1404119445=="
-To: "nfs" <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset="utf-8"
+Cc: neilb@suse.de, netdev@vger.kernel.org, nfs@lists.sourceforge.net
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1ITh3L-0001JJ-Gc
-	for nfs@lists.sourceforge.net; Fri, 07 Sep 2007 09:51:31 -0700
-Received: from [80.179.149.182] (helo=lovly.co.il)
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1ITh3O-0005ZM-CK
-	for nfs@lists.sourceforge.net; Fri, 07 Sep 2007 09:51:36 -0700
+	id 1ITiCy-0000gO-28
+	for nfs@lists.sourceforge.net; Fri, 07 Sep 2007 11:05:32 -0700
+Received: from mailin.studentenwerk.mhn.de ([141.84.225.229]
+	helo=email.studentenwerk.mhn.de)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1ITiD2-0007RQ-43
+	for nfs@lists.sourceforge.net; Fri, 07 Sep 2007 11:05:36 -0700
+In-Reply-To: <20070907161945.GI24638@fieldses.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,282 +31,50 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
-
---===============1404119445==
-Content-Type: multipart/alternative;
-	boundary="----=_NextPart_000_0000_01C6527E.AE8904D0"
-
-This is a multi-part message in MIME format.
-
-------=_NextPart_000_0000_01C6527E.AE8904D0
-Content-Type: text/plain;
- charset="utf-8"
-Content-Transfer-Encoding: quoted-printable
-
-
-=20
-  =D7=A9=D7=A0=D7=94 =D7=98=D7=95=D7=91=D7=94 - =D7=95=D7=A9=D7=A0=D7=AA =
-=D7=A2=D7=A1=D7=A7=D7=99=D7=9D =D7=A4=D7=95=D7=A8=D7=94.
-
-*=D7=91=D7=A2=D7=9C =D7=A2=D7=A1=D7=A7/=D7=97=D7=91=D7=A8=D7=94 =D7=9E=D7=
-=91=D7=A6=D7=A2 =D7=94=D7=97=D7=95=D7=93=D7=A9 =D7=91=D7=A0=D7=99=D7=99=D7=
-=AA =D7=90=D7=AA=D7=A8 =D7=90=D7=99=D7=A0=D7=98=D7=A8=D7=A0=D7=98 =D7=94=D7=
-=9B=D7=95=D7=9C=D7=9C =D7=9E=D7=A2=D7=A8=D7=9B=D7=AA =D7=A0=D7=99=D7=94=D7=
-=95=D7=9C =D7=90=D7=AA=D7=A8 =D7=9E=D7=AA=D7=A7=D7=93=D7=9E=D7=AA =D7=91=D7=
-=A2=D7=91=D7=A8=D7=99=D7=AA =D7=9E=D7=9C=D7=90=D7=94 =D7=9C=D7=9C=D7=90 =D7=
-=94=D7=92=D7=91=D7=9C=D7=AA =D7=A0=D7=95=D7=A9=D7=90=D7=99=D7=9D:
-=20
- - =D7=9E=D7=A2=D7=A8=D7=9B=D7=AA =D7=A0=D7=99=D7=94=D7=95=D7=9C =D7=90=D7=
-=AA=D7=A8 =D7=9C=D7=A9=D7=9C=D7=99=D7=98=D7=94 =D7=9E=D7=9C=D7=90=D7=94 =D7=
-=94=D7=95=D7=A1=D7=A4=D7=94/=D7=A2=D7=A8=D7=99=D7=9B=D7=94/=D7=A2=D7=93=D7=
-=9B=D7=95=D7=9F.
- - =D7=93=D7=A4=D7=99 =D7=AA=D7=95=D7=9B=D7=9F =D7=9C=D7=9C=D7=90 =D7=94=D7=
-=92=D7=91=D7=9C=D7=94/=D7=94=D7=95=D7=A1=D7=A4=D7=94/=D7=A2=D7=A8=D7=99=D7=
-=9B=D7=94/=D7=A2=D7=93=D7=9B=D7=95=D7=9F.
- - =D7=9E=D7=90=D7=9E=D7=A8=D7=99=D7=9D/=D7=9B=D7=AA=D7=91=D7=95=D7=AA/=D7=
-=97=D7=93=D7=A9=D7=95=D7=AA =D7=9C=D7=9C=D7=90 =D7=94=D7=92=D7=91=D7=9C=D7=
-=AA =D7=93=D7=A4=D7=99=D7=9D.=20
- - =D7=A2=D7=99=D7=A6=D7=95=D7=91 =D7=90=D7=99=D7=A9=D7=99 =D7=91=D7=AA=D7=
-=99=D7=90=D7=95=D7=9D =D7=9E=D7=9C=D7=90 =D7=A2=D7=9D =D7=95=D7=A4=D7=92=D7=
-=99=D7=A9=D7=94 =D7=91=D7=9E=D7=A9=D7=A8=D7=93=D7=9B=D7=9D =D7=A2=D7=9D =D7=
-=9E=D7=A2=D7=A6=D7=91=D7=99 =D7=94=D7=97=D7=91=D7=A8=D7=94.
- - =D7=92=D7=9C=D7=A8=D7=99=D7=99=D7=AA =D7=AA=D7=9E=D7=95=D7=A0=D7=95=D7=
-=AA =D7=91=D7=A9=D7=9C=D7=99=D7=98=D7=94 =D7=9E=D7=9C=D7=90=D7=94 =D7=94=D7=
-=95=D7=A1=D7=A4=D7=94/=D7=A2=D7=A8=D7=99=D7=9B=D7=94/=D7=A2=D7=93=D7=9B=D7=
-=95=D7=9F.
- - =D7=98=D7=99=D7=A7=D7=A8 =D7=97=D7=93=D7=A9=D7=95=D7=AA {=D7=A0=D7=92=D7=
-=9C=D7=9C}=D7=91=D7=93=D7=A3 =D7=94=D7=91=D7=99=D7=AA =D7=9C=D7=A2=D7=93=D7=
-=9B=D7=95=D7=9F =D7=A2=D7=A6=D7=9E=D7=99 =D7=A9=D7=9C =D7=9B=D7=AA=D7=91=D7=
-=95=D7=AA/=D7=9E=D7=90=D7=9E=D7=A8=D7=99=D7=9D.
- - =D7=A4=D7=95=D7=A8=D7=95=D7=9D =D7=90=D7=99=D7=A0=D7=98=D7=A8=D7=90=D7=
-=A7=D7=98=D7=99=D7=91=D7=99 =D7=9C=D7=92=D7=95=D7=9C=D7=A9=D7=99 =D7=94=D7=
-=90=D7=AA=D7=A8 =D7=94=D7=95=D7=A1=D7=A4=D7=94/=D7=A2=D7=A8=D7=99=D7=9B=D7=
-=94/=D7=A2=D7=93=D7=9B=D7=95=D7=9F.
- - =D7=9E=D7=A2=D7=A8=D7=9B=D7=AA =D7=94=D7=A0=D7=99=D7=94=D7=95=D7=9C =D7=
-=9C=D7=A2=D7=93=D7=9B=D7=95=D7=9F -  =D7=9C=D7=A9=D7=99=D7=9E=D7=95=D7=A9=
- =D7=9E=D7=A0=D7=94=D7=9C =D7=94=D7=90=D7=AA=D7=A8.
- - =D7=94=D7=96=D7=A0=D7=AA =D7=94=D7=9B=D7=AA=D7=91=D7=95=D7=AA /=D7=AA=D7=
-=9E=D7=95=D7=A0=D7=95=D7=AA/=D7=A4=D7=95=D7=A8=D7=95=D7=9D -  =D7=A2"=D7=99=
- =D7=9E=D7=A0=D7=94=D7=9C =D7=94=D7=90=D7=AA=D7=A8 =D7=91=D7=97=D7=91=D7=A8=
-=D7=AA=D7=9B=D7=9D =D7=91=D7=A6=D7=95=D7=A8=D7=94 =D7=99=D7=93=D7=99=D7=93=
-=D7=95=D7=AA=D7=99=D7=AA =D7=95=D7=A7=D7=9C=D7=94.=20
--          =D7=91=D7=A1=D7=99=D7=95=D7=9D =D7=94=D7=A4=D7=A8=D7=95=D7=99=D7=
-=A7=D7=98 =D7=94=D7=93=D7=A8=D7=9B=D7=94 =D7=A9=D7=9C =D7=A0=D7=A6=D7=99=D7=
-=92/=D7=AA =D7=94=D7=97=D7=91=D7=A8=D7=94 =D7=A2=D7=9C =D7=9E=D7=A2=D7=A8=
-=D7=9B=D7=AA =D7=94=D7=A0=D7=99=D7=94=D7=95=D7=9C =D7=9C=D7=9C=D7=90 =D7=A2=
-=D7=9C=D7=95=D7=AA =D7=A0=D7=95=D7=A1=D7=A4=D7=AA!!!.
-=20
-*=D7=91=D7=95=D7=A0=D7=95=D7=A1 =D7=9C=D7=9E=D7=96=D7=9E=D7=99=D7=A0=D7=99=
-=D7=9D =D7=91=D7=A8=D7=90=D7=A9 =D7=94=D7=A9=D7=A0=D7=94 =D7=A8=D7=99=D7=A9=
-=D7=95=D7=9D =D7=9C=D7=9E=D7=A0=D7=95=D7=A2=D7=99 =D7=97=D7=99=D7=A4=D7=95=
-=D7=A9 =D7=97=D7=99=D7=A0=D7=9D !!!
-=20
-=D7=95=D7=9B=D7=9C =D7=96=D7=94 =D7=91=D7=9E=D7=97=D7=99=D7=A8 5990 =E2=82=
-=AA  =D7=91=D7=9C=D7=91=D7=93!!! =D7=94=D7=9E=D7=97=D7=99=D7=A8 =D7=94=D7=
-=96=D7=95=D7=9C =D7=91=D7=99=D7=95=D7=AA=D7=A8 =D7=91=D7=90=D7=A8=D7=A5!!=
-!
-=20
-=20
-*=D7=94=D7=9E=D7=97=D7=99=D7=A8=D7=99=D7=9D =D7=AA=D7=A7=D7=A4=D7=99=D7=9D=
- =D7=A2=D7=93 =D7=9C=D7=AA=D7=90=D7=A8=D7=99=D7=9A 30.09.07 =D7=91=D7=9B=D7=
-=A4=D7=95=D7=A3 =D7=9C=D7=AA=D7=A7=D7=A0=D7=95=D7=9F =D7=94=D7=97=D7=91=D7=
-=A8=D7=94.
-*=D7=A0=D7=99=D7=AA=D7=9F =D7=9C=D7=A9=D7=93=D7=A8=D7=92 =D7=9C=D7=97=D7=A0=
-=D7=95=D7=AA =D7=95=D7=99=D7=A8=D7=98=D7=95=D7=90=D7=9C=D7=99=D7=AA =D7=91=
-=D7=AA=D7=95=D7=A1=D7=A4=D7=AA =D7=A9=D7=9C 3000 =E2=82=AA =D7=91=D7=9C=D7=
-=91=D7=93 =D7=9C=D7=9C=D7=90 =D7=94=D7=92=D7=91=D7=9C=D7=AA =D7=9E=D7=95=D7=
-=A6=D7=A8=D7=99=D7=9D!!!.
-*=D7=A0=D7=99=D7=AA=D7=9F =D7=9C=D7=A7=D7=91=D7=9C =D7=94"=D7=9E =D7=9C=D7=
-=A7=D7=99=D7=93=D7=95=D7=9D =D7=90=D7=AA=D7=A8=D7=99=D7=9D =D7=A7=D7=99=D7=
-=99=D7=9E=D7=99=D7=9D .
-*=D7=94=D7=9E=D7=97=D7=99=D7=A8=D7=99=D7=9D =D7=9C=D7=90 =D7=9B=D7=95=D7=9C=
-=D7=9C=D7=99=D7=9D =D7=9E=D7=A2"=D7=9E =D7=9B=D7=97=D7=95=D7=A7.
-=20
-=20
-          =D7=9C=D7=A4=D7=A8=D7=98=D7=99=D7=9D =D7=A0=D7=95=D7=A1=D7=A4=D7=
-=99=D7=9D =D7=9C=D7=97=D7=A5 =D7=9B=D7=90=D7=9F
-=20
-=20
-=20
-=20
-                                                                         =
-                                                  =D7=9C=D7=94=D7=A1=D7=A8=
-=D7=94 =D7=9E=D7=A8=D7=A9=D7=99=D7=9E=D7=AA =D7=AA=D7=A4=D7=95=D7=A6=D7=94
-------=_NextPart_000_0000_01C6527E.AE8904D0
-Content-Type: text/html;
- charset="utf-8"
-
-<HTML>
-<HEAD>
-<META NAME="GENERATOR" Content="Microsoft DHTML Editing Control">
-</HEAD>
-<BODY>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt">
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><B><SPAN lang=HE 
-style="FONT-SIZE: 18pt; COLOR: black; FONT-FAMILY: 'Times New (W1)'; mso-text-animation: sparkle"></SPAN></B><SPAN 
-lang=HE style="FONT-SIZE: 18pt; COLOR: black"><?xml:namespace prefix = o ns = 
-"urn:schemas-microsoft-com:office:office" /><o:p></o:p></SPAN></P><SPAN 
-lang=HE>&nbsp;</P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN lang=HE 
-style="FONT-SIZE: 22pt; COLOR: #ff9900"><o:p>&nbsp; <FONT color=#ff0000>שנה טובה 
-- ושנת עסקים פורה.</FONT></o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN lang=HE 
-style="FONT-SIZE: 22pt; COLOR: #ff9900"><o:p><FONT 
-color=#ff0000></FONT></o:p></SPAN>&nbsp;</P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><B><U><SPAN lang=HE 
-style="FONT-SIZE: 20pt; COLOR: #66ff33; FONT-FAMILY: 'Times New (W1)'">*בעל 
-עסק/חברה מבצע החודש בניית אתר אינטרנט הכולל מערכת ניהול אתר מתקדמת בעברית מלאה 
-ללא הגבלת נושאים:</SPAN></U></B><SPAN dir=ltr 
-style="FONT-SIZE: 20pt; COLOR: #66ff33"><o:p></o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN lang=HE 
-style="COLOR: #ff6600"><o:p>&nbsp;</o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN lang=HE 
-style="FONT-SIZE: 14pt; COLOR: black; FONT-FAMILY: 'Times New (W1)'"><SPAN 
-style="mso-spacerun: yes">&nbsp;</SPAN>- מערכת ניהול אתר לשליטה מלאה 
-הוספה/עריכה/עדכון.<o:p></o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN lang=HE 
-style="FONT-SIZE: 14pt; COLOR: black; FONT-FAMILY: 'Times New (W1)'"><SPAN 
-style="mso-spacerun: yes">&nbsp;</SPAN>- דפי תוכן ללא 
-הגבלה/הוספה/עריכה/עדכון</SPAN><SPAN lang=HE 
-style="FONT-SIZE: 14pt; COLOR: black">.<o:p></o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN lang=HE 
-style="FONT-SIZE: 14pt; COLOR: black; FONT-FAMILY: 'Times New (W1)'">&nbsp;- 
-מאמרים/כתבות/חדשות ללא הגבלת דפים. <o:p></o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN lang=HE 
-style="FONT-SIZE: 14pt; COLOR: black; FONT-FAMILY: 'Times New (W1)'">&nbsp;- 
-עיצוב אישי בתיאום מלא עם&nbsp;ופגישה במשרדכם עם מעצבי החברה</SPAN><SPAN lang=HE 
-style="FONT-SIZE: 14pt; COLOR: black">.<o:p></o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN lang=HE 
-style="FONT-SIZE: 14pt; COLOR: black; FONT-FAMILY: 'Times New (W1)'"><SPAN 
-style="mso-spacerun: yes">&nbsp;</SPAN>- גלריית תמונות בשליטה מלאה 
-הוספה/עריכה/עדכון.<o:p></o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN lang=HE 
-style="FONT-SIZE: 14pt; COLOR: black; FONT-FAMILY: 'Times New (W1)'"><SPAN 
-style="mso-spacerun: yes">&nbsp;</SPAN>- טיקר חדשות {נגלל}בדף הבית לעדכון עצמי 
-של כתבות/מאמרים</SPAN><SPAN lang=HE 
-style="FONT-SIZE: 14pt; COLOR: black">.<o:p></o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN lang=HE 
-style="FONT-SIZE: 14pt; COLOR: black"><SPAN 
-style="mso-spacerun: yes">&nbsp;</SPAN>- פורום אינטראקטיבי לגולשי האתר 
-</SPAN><SPAN lang=HE 
-style="FONT-SIZE: 14pt; COLOR: black; FONT-FAMILY: 'Times New (W1)'">הוספה/עריכה/עדכון.</SPAN><SPAN 
-lang=HE style="FONT-SIZE: 14pt; COLOR: black"><o:p></o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN lang=HE 
-style="FONT-SIZE: 14pt; COLOR: black; FONT-FAMILY: 'Times New (W1)'">&nbsp;- 
-מערכת הניהול לעדכון - <SPAN style="mso-spacerun: yes">&nbsp;</SPAN>לשימוש מנהל 
-האתר</SPAN><SPAN lang=HE 
-style="FONT-SIZE: 14pt; COLOR: black">.<o:p></o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN lang=HE 
-style="FONT-SIZE: 14pt; COLOR: black; FONT-FAMILY: 'Times New (W1)'">&nbsp;- 
-הזנת הכתבות /תמונות/פורום -<SPAN style="mso-spacerun: yes">&nbsp; </SPAN>ע"י 
-מנהל האתר בחברתכם בצורה ידידותית וקלה. </SPAN><SPAN lang=HE 
-style="FONT-SIZE: 14pt; COLOR: black"><o:p></o:p></SPAN></P>
-<P class=MsoNormal dir=rtl 
-style="MARGIN: 0cm 21.75pt 0pt 0cm; TEXT-INDENT: -18pt; mso-list: l0 level1 lfo1; tab-stops: list 21.75pt"><SPAN 
-style="FONT-SIZE: 14pt; COLOR: black; FONT-FAMILY: 'Times New (W1)'; mso-fareast-font-family: 'Times New (W1)'; mso-bidi-font-size: 12.0pt"><SPAN 
-style="mso-list: Ignore">-<SPAN 
-style="FONT: 7pt 'Times New Roman'">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
-</SPAN></SPAN></SPAN><SPAN dir=rtl><SPAN lang=HE 
-style="FONT-SIZE: 14pt; COLOR: black; FONT-FAMILY: 'Times New (W1)'">בסיום 
-הפרויקט הדרכה של נציג/ת החברה על מערכת הניהול ללא עלות נוספת!!!</SPAN><SPAN 
-lang=HE>.<o:p></o:p></SPAN></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 3.75pt 0pt 0cm"><SPAN 
-lang=HE><o:p>&nbsp;</o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 3.75pt 0pt 0cm"><SPAN lang=HE 
-style="COLOR: #33cccc">*בונוס למזמינים בראש השנה רישום למנועי חיפוש חינם 
-!!!<o:p></o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN 
-lang=HE>&nbsp;<o:p></o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><B><SPAN lang=HE 
-style="FONT-SIZE: 20pt; COLOR: aqua; mso-ansi-font-size: 12.0pt">וכל זה 
-במחיר&nbsp;</SPAN></B><B><SPAN lang=HE 
-style="FONT-SIZE: 18pt; COLOR: aqua; mso-ansi-font-size: 12.0pt">5990 
-</SPAN></B><B><SPAN lang=HE 
-style="FONT-SIZE: 20pt; COLOR: aqua; mso-ansi-font-size: 12.0pt">₪ <SPAN 
-style="mso-spacerun: yes">&nbsp;</SPAN>בלבד!!!</SPAN></B><B><SPAN lang=HE 
-style="FONT-SIZE: 20pt; COLOR: black; mso-ansi-font-size: 12.0pt"> 
-</SPAN></B><B><SPAN lang=HE 
-style="FONT-SIZE: 18pt; COLOR: #ff3300; FONT-FAMILY: 'Times New (W1)'; mso-text-animation: sparkle">המחיר 
-הזול ביותר בארץ!!!</SPAN></B><SPAN lang=HE 
-style="FONT-SIZE: 18pt; COLOR: black"><o:p></o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN 
-lang=HE>&nbsp;</SPAN><SPAN lang=HE 
-style="FONT-SIZE: 13.5pt; COLOR: black"><o:p></o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><B><SPAN 
-lang=HE><o:p>&nbsp;</o:p></SPAN></B></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN lang=HE 
-style="FONT-SIZE: 8pt; COLOR: black">*המחירים תקפים עד לתאריך&nbsp;30.09.07 
-בכפוף לתקנון החברה.<o:p></o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN lang=HE 
-style="FONT-SIZE: 8pt; COLOR: black">*ניתן לשדרג לחנות וירטואלית בתוספת של 3000 
-₪ בלבד ללא הגבלת מוצרים!!!.<o:p></o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN lang=HE 
-style="FONT-SIZE: 8pt; COLOR: black">*ניתן לקבל ה"מ לקידום אתרים קיימים 
-.<o:p></o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN lang=HE 
-style="FONT-SIZE: 8pt; COLOR: black">*המחירים לא כוללים מע"מ כחוק.</SPAN><SPAN 
-lang=HE><o:p></o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN 
-lang=HE>&nbsp;</SPAN><SPAN lang=HE 
-style="FONT-SIZE: 8pt; COLOR: black"><o:p></o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN lang=HE 
-style="FONT-SIZE: 18pt; COLOR: black"><o:p>&nbsp;</o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN lang=HE 
-style="FONT-SIZE: 26pt; COLOR: black"><SPAN 
-style="mso-spacerun: yes">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
-</SPAN></SPAN><SPAN lang=HE style="FONT-SIZE: 26pt; COLOR: red"><A 
-href="http://www.yourinquiry.com"><SPAN 
-style="COLOR: red; mso-ansi-font-size: 12.0pt"><FONT color=cyan>לפרטים נוספים 
-לחץ </FONT></SPAN></A></SPAN><SPAN lang=HE 
-style="FONT-SIZE: 26pt; COLOR: red; FONT-FAMILY: 'Times New (W1)'"><A 
-href="http://www.yourinquiry.com"><SPAN 
-style="COLOR: red; mso-ansi-font-size: 12.0pt"><FONT 
-color=cyan>כאן</FONT></SPAN></A></SPAN><SPAN lang=HE 
-style="COLOR: red"><o:p></o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN 
-lang=HE>&nbsp;<o:p></o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN 
-lang=HE>&nbsp;<o:p></o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN 
-lang=HE>&nbsp;<o:p></o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN 
-lang=HE>&nbsp;<o:p></o:p></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN lang=HE 
-style="FONT-SIZE: 7.5pt; COLOR: black; FONT-FAMILY: 'Times New (W1)'">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbs
- p; 
-</SPAN><SPAN lang=HE><A href="mailto:spamforyou06@gmail.com"><SPAN 
-style="FONT-SIZE: 7.5pt; FONT-FAMILY: 'Times New (W1)'; mso-ansi-font-size: 12.0pt">להסרה 
-מרשימת תפוצה</SPAN></A><U><SPAN 
-style="COLOR: blue"><o:p></o:p></SPAN></U></SPAN></P>
-<P class=MsoNormal dir=rtl style="MARGIN: 0cm 0cm 0pt"><SPAN lang=HE><A 
-href="mailto:spamforyou06@gmail.com"></A><o:p></o:p></SPAN></P>
-<P class=MsoNormal dir=rtl 
-style="MARGIN: 0cm 0cm 0pt"></SPAN>&nbsp;</P>
-</BODY>
-</HTML>
-------=_NextPart_000_0000_01C6527E.AE8904D0--
-
-
---===============1404119445==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Splunk Inc.
-Still grepping through log files to find problems?  Stop.
-Now Search log events and configuration files using AJAX and a browser.
-Download your FREE copy of Splunk now >>  http://get.splunk.com/
---===============1404119445==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============1404119445==--
+QW0gRnJlaXRhZywgNy4gU2VwdGVtYmVyIDIwMDcgMTg6MTkgc2NocmllYmVuIFNpZToKPiBPbiBG
+cmksIFNlcCAwNywgMjAwNyBhdCAwNTo0OTo1NVBNICswMjAwLCBXb2xmZ2FuZyBXYWx0ZXIgd3Jv
+dGU6Cj4gPiBIZWxsbywKPiA+Cj4gPiB3ZSB1cGdyYWRlZCB0aGUga2VybmVsIG9mIGEgbmZzLXNl
+cnZlciBmcm9tIDIuNi4xNy4xMSB0byAyLjYuMjIuNi4gU2luY2UKPiA+IHRoZW4gd2UgZ2V0IHRo
+ZSBtZXNzYWdlCj4gPgo+ID4gbG9ja2Q6IHRvbyBtYW55IG9wZW4gVENQIHNvY2tldHMsIGNvbnNp
+ZGVyIGluY3JlYXNpbmcgdGhlIG51bWJlciBvZiBuZnNkCj4gPiB0aHJlYWRzIGxvY2tkOiBsYXN0
+IFRDUCBjb25uZWN0IGZyb20gXlxcMjM2XlzDiV5ECgo+ID4KPiA+IDIpIFRoZSBudW1iZXIgb2Yg
+bmZzZCB0aHJlYWRzIHdlIGFyZSBydW5uaW5nIG9uIHRoZSBtYWNoaW5lIGlzIDEwMjQuCj4gPiBT
+byB0aGlzIGlzIG5vdCB0aGUgcHJvYmxlbS4gSXQgc2VlbXMsIHRob3VnaCwgdGhhdCBpbiB0aGUg
+Y2FzZSBvZgo+ID4gbG9ja2Qgc3ZjX3RjcF9hY2NlcHQgZG9lcyBub3QgY2hlY2sgdGhlIG51bWJl
+ciBvZiBuZnNkIHRocmVhZHMgYnV0IHRoZQo+ID4gbnVtYmVyIG9mIGxvY2tkIHRocmVhZHMgd2hp
+Y2ggaXMgb25lLiAgQXMgc29vbiBhcyB0aGUgbnVtYmVyIG9mIG9wZW4KPiA+IGxvY2tkIHNvY2tl
+dHMgc3VycGFzc2VzIDgwIHRoaXMgbWVzc2FnZSBnZXRzIGxvZ2dlZC4gIFRoaXMgdXN1YWxseQo+
+ID4gaGFwcGVucyBldmVyeSBldmVuaW5nIHdoZW4gYSBsb3Qgb2YgcGVvcGxlIHNodXRkb3duIHRo
+ZWlyIHdvcmtzdGF0aW9uLgo+Cj4gU28gdG8gYmUgY2xlYXI6IHRoZXJlJ3Mgbm90IGFuIGFjdHVh
+bCBwcm9ibGVtIGhlcmUgb3RoZXIgdGhhbiB0aGF0IHRoZQo+IGxvZ3MgYXJlIGdldHRpbmcgc3Bh
+bW1lZD8gIChOb3QgdGhhdCB0aGF0IGlzbid0IGEgcHJvYmxlbSBpbiBpdHNlbGYuKQo+CgpXaGVu
+IG1vcmUgdGhhbiA4MCBuZnMgY2xpZW50cyB0cnkgdG8gbG9jayBmaWxlcyBhdCB0aGUgc2FtZSB0
+aW1lIHRoZW4gaXQKcHJvYmFibHkgd291bGQuCgo+ID4gMykgRm9yIHVua25vd24gcmVhc29uIHRo
+ZXNlIHNvY2tldHMgdGhlbiByZW1haW4gb3Blbi4gSW4gdGhlIG1vcm5pbmcKPiA+IHdoZW4gcGVv
+cGxlIHN0YXJ0IHRoZWlyIHdvcmtzdGF0aW9uIGFnYWluIHdlIHRoZXJlZm9yIG5vdCBvbmx5IGdl
+dCBhCj4gPiBsb3Qgb2YgdGhlc2UgbWVzc2FnZXMgYWdhaW4gYnV0IG9mdGVuIHRoZSBuZnMtc2Vy
+dmVyIGRvZXMgbm90IHByb3Blcmx5Cj4gPiB3b3JrIGFueSBtb3JlLiBSZXN0YXJ0aW5nIHRoZSBu
+ZnMtZGFlbW9uIGlzIGEgd29ya2Fyb3VuZC4KPgo+IEhtLCB0aGFua3MuCj4KCkkgZG9uJ3Qga25v
+dyBpZiB0aGUgbG9ja2QgdGhpbmcgaXMgdGhlIHJlYXNvbiwgdGhvdWdoLgoKMi42LjIyLjYgcGVy
+IHNlIHJ1bnMgc3RhYmxlIChubyBvb3BzLCBubyBjcmFzaCBldGMpIGJ1dCBrZXJuZWwgbmZzIHNl
+ZW1zCnRvIGJlIGEgbGl0dGxlIGJpdCB1bnN0YWJsZS4gMi42LjE3LjExIHJ1biBmb3IgbW9udGhz
+IHdpdGhvdXQgYW55IG5mc2QtcmVsYXRlZCAKcHJvYmxlbXMgd2hlcmVhcyBpbiAyLjYuMjIuNiBu
+ZnMgbmVlZHMgdG8gYmUgcmVzdGFydGVkIGFsbW9zdCBldmVyeSBkYXkuIApTb21ldGltZXMgdGhp
+cyBmYWlscyB3aXRoCgpsb2NrZF9kb3duOiBsb2NrZCBmYWlsZWQgdG8gZXhpdCwgY2xlYXJpbmcg
+cGlkCm5mc2Q6IGxhc3Qgc2VydmVyIGhhcyBleGl0ZWQKbmZzZDogdW5leHBvcnRpbmcgYWxsIGZp
+bGVzeXN0ZW1zCmxvY2tkX3VwOiBtYWtlc29jayBmYWlsZWQsIGVycm9yPS05OAoKYWZ0ZXIgd2hp
+Y2ggdGhlIHNlcnZlciBtdXN0IGJlIHJlYm9vdGVkLgoKSSB0aGluayB0aGVyZSBpcyBzb21ldGhp
+bmcgd2l0aCBsb2NrZCBiZWNhdXNlIHRoZXJlIGFyZSBubyBwcm9ibGVtcyBvdmVyIHRoZSAKZGF5
+LiBJdCBpcyBpbiB0aGUgbW9ybmluZyB3aGVuIGEgbG90IG9mIHBlb3BsZSBsb2cgaW50byB0aGVp
+ciBtYWNoaW5lcyBhbmQgCnN0YXJ0IHRoZWlyIGRlc2t0b3BzIChJIHRoaW5rIGtkZSBsb2NrcyBp
+dHMgY29uZmlnIGZpbGVzIHdoZW4gaXQgcmVhZHMgdGhlbSkuCgpSZWdhcmRzCi0tIApXb2xmZ2Fu
+ZyBXYWx0ZXIKU3R1ZGVudGVud2VyayBNw7xuY2hlbgpBbnN0YWx0IGRlcyDDtmZmZW50bGljaGVu
+IFJlY2h0cwoKLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQpUaGlzIFNGLm5ldCBlbWFpbCBpcyBzcG9uc29yZWQg
+Ynk6IFNwbHVuayBJbmMuClN0aWxsIGdyZXBwaW5nIHRocm91Z2ggbG9nIGZpbGVzIHRvIGZpbmQg
+cHJvYmxlbXM/ICBTdG9wLgpOb3cgU2VhcmNoIGxvZyBldmVudHMgYW5kIGNvbmZpZ3VyYXRpb24g
+ZmlsZXMgdXNpbmcgQUpBWCBhbmQgYSBicm93c2VyLgpEb3dubG9hZCB5b3VyIEZSRUUgY29weSBv
+ZiBTcGx1bmsgbm93ID4+ICBodHRwOi8vZ2V0LnNwbHVuay5jb20vCl9fX19fX19fX19fX19fX19f
+X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fCk5GUyBtYWlsbGlzdCAgLSAgTkZTQGxpc3Rz
+LnNvdXJjZWZvcmdlLm5ldApodHRwczovL2xpc3RzLnNvdXJjZWZvcmdlLm5ldC9saXN0cy9saXN0
+aW5mby9uZnMK
