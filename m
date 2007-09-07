@@ -1,48 +1,14 @@
 From: Kamalesh Babulal <kamalesh@linux.vnet.ibm.com>
 Subject: [BUG] 2.6.23-rc5 kernel BUG at fs/nfs/nfs4xdr.c:945
-Date: Fri, 07 Sep 2007 13:16:07 +0530
-Message-ID: <46E101BF.90607@linux.vnet.ibm.com>
+Date: Fri, 07 Sep 2007 15:32:32 +0530
+Message-ID: <46E121B8.4080105@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Cc: bfields@fieldses.org, neilb@suse.de, nfs@lists.sourceforge.net
-To: linux-kernel-owner@vger.kernel.org
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1ITYYE-0007ph-47
-	for nfs@lists.sourceforge.net; Fri, 07 Sep 2007 00:46:50 -0700
-Received: from e23smtp06.au.ibm.com ([202.81.18.175])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1ITYYA-0000kA-JW
-	for nfs@lists.sourceforge.net; Fri, 07 Sep 2007 00:46:54 -0700
-Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
-	by e23smtp06.au.ibm.com (8.13.1/8.13.1) with ESMTP id l877kCxF031136
-	for <nfs@lists.sourceforge.net>; Fri, 7 Sep 2007 17:46:12 +1000
-Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.250.244])
-	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id
-	l877nkaD171294
-	for <nfs@lists.sourceforge.net>; Fri, 7 Sep 2007 17:49:46 +1000
-Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
-	by d23av03.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id
-	l877kCDt026557
-	for <nfs@lists.sourceforge.net>; Fri, 7 Sep 2007 17:46:12 +1000
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
-
-Hi,
-
-When i run file system stress (fsstress) on the nfs(v4) mounted partition on
-ppc64 machine, on 2.6.23-rc5 the following kernel bug is raised.
+To: linux-kernel@vger.kernel.org
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S965232AbXIGKDE@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
 Sep  7 11:42:49 p55lp2 kernel: kernel BUG at fs/nfs/nfs4xdr.c:945!
 Sep  7 11:42:49 p55lp2 kernel: Oops: Exception in kernel mode, sig: 5 [#1]
@@ -111,20 +77,3 @@ Sep  7 11:42:49 p55lp2 kernel: e8410028 7fa4eb78 7c7f1b79 7fb80026
 40820014 e8be83a8 e87e8350 4800c5f9  
 Sep  7 11:42:49 p55lp2 kernel: e8410028 7fb80120 7c180026 54001ffe 
 <0b000000> 3800000f 7b850020 387f0008
-
-Both server and client were ppc64 machine running  2.6.23-rc5 kernel, 
-over opensuse10.2.
-
-Thanks & Regards,
-Kamalesh Babulal.
-Linux Technology Center,
-IBM, ISTL.
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Splunk Inc.
-Still grepping through log files to find problems?  Stop.
-Now Search log events and configuration files using AJAX and a browser.
-Download your FREE copy of Splunk now >>  http://get.splunk.com/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
