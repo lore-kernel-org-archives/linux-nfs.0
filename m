@@ -1,42 +1,34 @@
-From: suzuki <suzuki@in.ibm.com>
-Subject: Re: [BUG] 2.6.23-rc5 kernel BUG at fs/nfs/nfs4xdr.c:945
-Date: Tue, 11 Sep 2007 10:26:10 +0530
-Message-ID: <46E61FEA.9010800@in.ibm.com>
-References: <46E121B8.4080105@linux.vnet.ibm.com>
-	<6bffcb0e0709071656o6881fa17y61818a9733293a4c@mail.gmail.com>
-	<1189289549.13713.4.camel@localhost.localdomain>
-	<46E4FC2F.6040105@in.ibm.com>
-	<1189458228.6634.4.camel@heimdal.trondhjem.org>
+From: Michal Piotrowski <michal.k.k.piotrowski@gmail.com>
+Subject: Re: [2/4] 2.6.23-rc5: known regressions v2
+Date: Sat, 08 Sep 2007 13:11:13 +0200
+Message-ID: <46E28351.8050900__38072.8043070578$1189520176$gmane$org@googlemail.com>
+References: <46E27DEF.7060109@googlemail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Michal Piotrowski <michal.k.k.piotrowski@gmail.com>,
-	neilb@suse.de, linux-kernel@vger.kernel.org,
-	Kamalesh Babulal <kamalesh@linux.vnet.ibm.com>, bfields@fieldses.org,
-	nfs@lists.sourceforge.net, ffilz@us.ibm.com,
-	Poornima <bnpoorni@in.ibm.com>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: autofs@linux.kernel.org, jfs-discussion@lists.sourceforge.net,
+	Oliver Neukum <oliver@neukum.org>,
+	Daniel J Blueman <daniel.blueman@gmail.com>,
+	linux-usb-devel@lists.sourceforge.net,
+	Andrew Clayton <andrew@digital-domain.net>, Greg KH <gregkh@suse.de>,
+	Trond Myklebust <Trond.Myklebust@netapp.com>,
+	LKML <linux-kernel@vger.kernel.org>, nfs@lists.sourceforge.net,
+	Dave Kleikamp <shaggy@austin.ibm.com>, linux-fsdevel@vger.kernel.org,
+	Alan Stern <stern@rowland.harvard.edu>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Tino Keitel <tino.keitel@gmx.de>, Ian Kent <raven@themaw.net>
+To: Linus Torvalds <torvalds@linux-foundation.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IUxpD-00006t-2G
-	for nfs@lists.sourceforge.net; Mon, 10 Sep 2007 21:58:11 -0700
-Received: from e6.ny.us.ibm.com ([32.97.182.146])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IUxpH-0002na-HQ
-	for nfs@lists.sourceforge.net; Mon, 10 Sep 2007 21:58:15 -0700
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by e6.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l8B4xUR0014473
-	for <nfs@lists.sourceforge.net>; Tue, 11 Sep 2007 00:59:30 -0400
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id
-	l8B4w5q2541448
-	for <nfs@lists.sourceforge.net>; Tue, 11 Sep 2007 00:58:05 -0400
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id
-	l8B4w4KX022937
-	for <nfs@lists.sourceforge.net>; Tue, 11 Sep 2007 00:58:04 -0400
-In-Reply-To: <1189458228.6634.4.camel@heimdal.trondhjem.org>
+	id 1ITyEy-0005DZ-Mt
+	for nfs@lists.sourceforge.net; Sat, 08 Sep 2007 04:12:40 -0700
+Received: from mu-out-0910.google.com ([209.85.134.189])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1ITyF2-0007wA-FY
+	for nfs@lists.sourceforge.net; Sat, 08 Sep 2007 04:12:45 -0700
+Received: by mu-out-0910.google.com with SMTP id w9so865593mue
+	for <nfs@lists.sourceforge.net>; Sat, 08 Sep 2007 04:12:43 -0700 (PDT)
+In-Reply-To: <46E27DEF.7060109@googlemail.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -49,38 +41,88 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Trond Myklebust wrote:
-> On Mon, 2007-09-10 at 13:41 +0530, suzuki wrote:
->> Hi
->>
->> I have been trying to debug this issue from my side and could find the 
->> following.
->>
->> The pathconf() request gets a reply with :
->>
->> pathinfo.max_namelen = (unsiged int) -1
->> pathinfo.max_link    = 255
->>
->> Is this really an expected answer from a server for a proper connection 
->> ( for mount requests on an exported dir) ? Is there something that needs 
->> to be fixed at server side ?
-> 
-> I assume that this is with my patch applied? 
+Hi all,
 
-No. This is without your patch. So I am trying to debug why the server 
-is sending a -1 ! (which sounds like an error ?)
+Here is a list of some known regressions in 2.6.23-rc5.
 
-Thanks
+Feel free to add new regressions/remove fixed etc.
+http://kernelnewbies.org/known_regressions
 
-Suzuki K P
-IBM Linux Technology Centre
+List of Aces
 
-Yes: as long as the kernel
-> sets NAME_MAX to 255, then the above is expected behaviour.
-> 
-> Trond
-> 
+Name                    Regressions fixed since 21-Jun-2007
+Adrian Bunk                            10
+Linus Torvalds                         6
+Andi Kleen                             5
+Hugh Dickins                           5
+Trond Myklebust                        5
+Andrew Morton                          4
+Al Viro                                3
+Alan Stern                             3
+Alexey Starikovskiy                    3
+Cornelia Huck                          3
+David S. Miller                        3
+Jens Axboe                             3
+Stephen Hemminger                      3
+Tejun Heo                              3
 
+
+
+FS
+
+Subject         : umount triggers a warning in jfs and takes almost a minute
+References      : http://lkml.org/lkml/2007/9/4/73
+Last known good : ?
+Submitter       : Oliver Neukum <oliver@neukum.org>
+Caused-By       : ?
+Handled-By      : ?
+Status          : unknown
+
+Subject         : [NFSv4] 2.6.23-rc4 oops in nfs4_cb_recall
+References      : http://lkml.org/lkml/2007/9/4/53
+Last known good : ?
+Submitter       : Daniel J Blueman <daniel.blueman@gmail.com>
+Caused-By       : ?
+Handled-By      : ?
+Status          : unknown
+
+Subject         : [NFSD OOPS] 2.6.23-rc1-git10
+References      : http://lkml.org/lkml/2007/8/2/462
+Last known good : ?
+Submitter       : Andrew Clayton <andrew@digital-domain.net>
+Caused-By       : ?
+Handled-By      : ?
+Status          : unknown
+
+
+
+USB
+
+Subject         : 2.6.23-rc1: USB hard disk broken
+References      : http://lkml.org/lkml/2007/7/25/62
+Last known good : ?
+Submitter       : Tino Keitel <tino.keitel@gmx.de>
+Caused-By       : ?
+Handled-By      : Oliver Neukum <oliver@neukum.org>
+Status          : unknown
+
+Subject         : USB hard disk broken in 2.6.23-rc3 (autosuspend related)
+References      : http://bugzilla.kernel.org/show_bug.cgi?id=8892
+Last known good : ?
+Submitter       : Roman Jarosz <kedgedev@centrum.cz>
+Caused-By       : ?
+Handled-By      : Alan Stern <stern@rowland.harvard.edu>
+Workaround      : echo -1 >/sys/bus/usb/devices/1-4/power/autosuspend
+Status          : possible hardware problem
+
+
+
+Regards,
+Michal
+
+--
+LOG
+http://www.stardust.webpages.pl/log/
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
