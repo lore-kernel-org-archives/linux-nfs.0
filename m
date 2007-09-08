@@ -1,34 +1,33 @@
 From: Michal Piotrowski <michal.k.k.piotrowski@gmail.com>
-Subject: Re: [2/4] 2.6.23-rc5: known regressions v2
-Date: Sat, 08 Sep 2007 13:11:13 +0200
-Message-ID: <46E28351.8050900__38072.8043070578$1189520176$gmane$org@googlemail.com>
-References: <46E27DEF.7060109@googlemail.com>
+Subject: [1/2] 2.6.23-rc5: known regressions with patches v2
+Date: Sat, 08 Sep 2007 13:11:35 +0200
+Message-ID: <46E28367.2070001__32776.4592519545$1189520192$gmane$org@googlemail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: autofs@linux.kernel.org, jfs-discussion@lists.sourceforge.net,
-	Oliver Neukum <oliver@neukum.org>,
-	Daniel J Blueman <daniel.blueman@gmail.com>,
-	linux-usb-devel@lists.sourceforge.net,
-	Andrew Clayton <andrew@digital-domain.net>, Greg KH <gregkh@suse.de>,
+Cc: Gabriel C <nix.or.die@googlemail.com>,
+	Bartlomiej Zolnierkiewicz <bzolnier@gmail.com>,
+	Peter Kovar <peter.kovar@gmail.com>, Neil Brown <neilb@suse.de>,
+	Vitaly Bordug <vitb@kernel.crashing.org>,
 	Trond Myklebust <Trond.Myklebust@netapp.com>,
-	LKML <linux-kernel@vger.kernel.org>, nfs@lists.sourceforge.net,
-	Dave Kleikamp <shaggy@austin.ibm.com>, linux-fsdevel@vger.kernel.org,
-	Alan Stern <stern@rowland.harvard.edu>,
+	LKML <linux-kernel@vger.kernel.org>,
+	Tony Breeds <tony@bakeyournoodle.com>, linux-ide@vger.kernel.org,
+	nfs@lists.sourceforge.net, linux-fsdevel@vger.kernel.org,
+	Satyam Sharma <satyam.sharma@gmail.com>,
 	Andrew Morton <akpm@linux-foundation.org>,
-	Tino Keitel <tino.keitel@gmx.de>, Ian Kent <raven@themaw.net>
+	Andrey Borzenkov <arvidjaar@mail.ru>, Bret Towe <magnade@gmail.com>,
+	Bjorn Helgaas <bjorn.helgaas@hp.com>
 To: Linus Torvalds <torvalds@linux-foundation.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1ITyEy-0005DZ-Mt
-	for nfs@lists.sourceforge.net; Sat, 08 Sep 2007 04:12:40 -0700
-Received: from mu-out-0910.google.com ([209.85.134.189])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1ITyF2-0007wA-FY
-	for nfs@lists.sourceforge.net; Sat, 08 Sep 2007 04:12:45 -0700
-Received: by mu-out-0910.google.com with SMTP id w9so865593mue
-	for <nfs@lists.sourceforge.net>; Sat, 08 Sep 2007 04:12:43 -0700 (PDT)
-In-Reply-To: <46E27DEF.7060109@googlemail.com>
+	id 1ITyFK-0005Eb-FF
+	for nfs@lists.sourceforge.net; Sat, 08 Sep 2007 04:13:02 -0700
+Received: from fk-out-0910.google.com ([209.85.128.188])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1ITyFO-0001tf-F6
+	for nfs@lists.sourceforge.net; Sat, 08 Sep 2007 04:13:07 -0700
+Received: by fk-out-0910.google.com with SMTP id 19so899970fkr
+	for <nfs@lists.sourceforge.net>; Sat, 08 Sep 2007 04:13:06 -0700 (PDT)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -43,7 +42,8 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 Hi all,
 
-Here is a list of some known regressions in 2.6.23-rc5.
+Here is a list of some known regressions in 2.6.23-rc5
+with patches available.
 
 Feel free to add new regressions/remove fixed etc.
 http://kernelnewbies.org/known_regressions
@@ -68,52 +68,58 @@ Tejun Heo                              3
 
 
 
+Some of these patches are available in -krf (known regressions fixes) tree
+http://www.stardust.webpages.pl/files/patches/krf/2.6.23-rc5-git1/linux-2.6.23-rc5-git1-krf1.patch.bz2
+http://www.stardust.webpages.pl/files/patches/krf/2.6.23-rc5-git1/linux-2.6.23-rc5-git1-krf1.tar.bz2
+
+
+
+Unclassified
+
+Subject         : 8250 claims non existing device blocking IO port
+References      : http://lkml.org/lkml/2007/8/18/20
+Last known good : ?
+Submitter       : Andrey Borzenkov <arvidjaar@mail.ru>
+Caused-By       : ?
+Handled-By      : Bjorn Helgaas <bjorn.helgaas@hp.com>
+Patch           : http://lkml.org/lkml/2007/8/21/291
+Status          : patch available
+
+Subject         : Oops while modprobing phy fixed module
+References      : http://lkml.org/lkml/2007/7/14/63
+Last known good : ?
+Submitter       : Gabriel C <nix.or.die@googlemail.com>
+Caused-By       : ?
+Handled-By      : Satyam Sharma <satyam.sharma@gmail.com>
+                  Vitaly Bordug <vitb@kernel.crashing.org>
+Patch1          : http://lkml.org/lkml/2007/7/18/506
+Status          : patch available
+
+
+
 FS
 
-Subject         : umount triggers a warning in jfs and takes almost a minute
-References      : http://lkml.org/lkml/2007/9/4/73
+Subject         : NFSv3 server error in LOOKUP after READDIRPLUS Call
+References      : http://bugzilla.kernel.org/show_bug.cgi?id=8966
 Last known good : ?
-Submitter       : Oliver Neukum <oliver@neukum.org>
+Submitter       : Peter Kovar <peter.kovar@gmail.com>
 Caused-By       : ?
-Handled-By      : ?
-Status          : unknown
+Handled-By      : Neil Brown <neilb@suse.de>
+Patch           : http://bugzilla.kernel.org/attachment.cgi?id=12689
+Status          : patch available
 
-Subject         : [NFSv4] 2.6.23-rc4 oops in nfs4_cb_recall
-References      : http://lkml.org/lkml/2007/9/4/53
+
+
+IDE
+
+Subject         : linux-2.6.23-rc4 ppc build failure
+References      : http://lkml.org/lkml/2007/8/29/154
 Last known good : ?
-Submitter       : Daniel J Blueman <daniel.blueman@gmail.com>
+Submitter       : Bret Towe <magnade@gmail.com>
 Caused-By       : ?
-Handled-By      : ?
-Status          : unknown
-
-Subject         : [NFSD OOPS] 2.6.23-rc1-git10
-References      : http://lkml.org/lkml/2007/8/2/462
-Last known good : ?
-Submitter       : Andrew Clayton <andrew@digital-domain.net>
-Caused-By       : ?
-Handled-By      : ?
-Status          : unknown
-
-
-
-USB
-
-Subject         : 2.6.23-rc1: USB hard disk broken
-References      : http://lkml.org/lkml/2007/7/25/62
-Last known good : ?
-Submitter       : Tino Keitel <tino.keitel@gmx.de>
-Caused-By       : ?
-Handled-By      : Oliver Neukum <oliver@neukum.org>
-Status          : unknown
-
-Subject         : USB hard disk broken in 2.6.23-rc3 (autosuspend related)
-References      : http://bugzilla.kernel.org/show_bug.cgi?id=8892
-Last known good : ?
-Submitter       : Roman Jarosz <kedgedev@centrum.cz>
-Caused-By       : ?
-Handled-By      : Alan Stern <stern@rowland.harvard.edu>
-Workaround      : echo -1 >/sys/bus/usb/devices/1-4/power/autosuspend
-Status          : possible hardware problem
+Handled-By      : Tony Breeds <tony@bakeyournoodle.com>
+Patch           : http://lkml.org/lkml/2007/8/31/1
+Status          : patch was suggested
 
 
 
