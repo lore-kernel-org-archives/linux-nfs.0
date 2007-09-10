@@ -1,25 +1,24 @@
 From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
-Subject: [PATCH 08/19] SUNRPC: Provide a new API for registering
- transport implementations
-Date: Mon, 10 Sep 2007 13:46:00 -0400
-Message-ID: <EXNANE01qFRE7R2V0oH000004b7@exnane01.hq.netapp.com>
+Subject: [PATCH 12/19] NFS/SUNRPC: support transport protocol naming
+Date: Mon, 10 Sep 2007 13:47:57 -0400
+Message-ID: <EXNANE01tacom1iaCRq000004bb@exnane01.hq.netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IUnZT-0003Kq-5h
-	for nfs@lists.sourceforge.net; Mon, 10 Sep 2007 11:01:15 -0700
+	id 1IUnbP-0003Yj-5b
+	for nfs@lists.sourceforge.net; Mon, 10 Sep 2007 11:03:15 -0700
 Received: from mx2.netapp.com ([216.240.18.37])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IUnZX-00078g-N4
-	for nfs@lists.sourceforge.net; Mon, 10 Sep 2007 11:01:19 -0700
-Received: from svlexrs01.hq.netapp.com (svlexrs01.corp.netapp.com
-	[10.57.156.158])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id
-	l8AI1DOw021058
-	for <nfs@lists.sourceforge.net>; Mon, 10 Sep 2007 11:01:13 -0700 (PDT)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IUnbT-0003VY-Me
+	for nfs@lists.sourceforge.net; Mon, 10 Sep 2007 11:03:19 -0700
+Received: from svlexrs02.hq.netapp.com (svlexrs02.corp.netapp.com
+	[10.57.156.154])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id
+	l8AI3D7V026591
+	for <nfs@lists.sourceforge.net>; Mon, 10 Sep 2007 11:03:13 -0700 (PDT)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,144 +31,135 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-SUNRPC: Provide a new API for registering transport implementations
+NFS/SUNRPC: support transport protocol naming
 
-To allow transport capabilities to be loaded dynamically, provide an API
-for registering and unregistering the transports with the RPC client.
-Eventually xprt_create_transport() will be changed to search the list of
-registered transports when initializing a fresh transport.
+To prepare for including non-sockets-based RPC transports, select
+RPC transports by an identifier (to be used in following patches).
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Signed-off-by: Tom Talpey <tmt@netapp.com>
 
 ---
 
- include/linux/sunrpc/xprt.h |   11 ++++++
- net/sunrpc/xprt.c           |   75 ++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 86 insertions(+)
+ include/linux/sunrpc/xprt.h     |    5 ++---
+ include/linux/sunrpc/xprtsock.h |   11 +++++++++++
+ net/sunrpc/clnt.c               |    2 +-
+ net/sunrpc/xprt.c               |    8 +++-----
+ net/sunrpc/xprtsock.c           |    6 ++----
+ 5 files changed, 19 insertions(+), 13 deletions(-)
 
 Index: kernel/include/linux/sunrpc/xprt.h
 ===================================================================
 --- kernel.orig/include/linux/sunrpc/xprt.h
 +++ kernel/include/linux/sunrpc/xprt.h
-@@ -208,6 +208,15 @@ struct rpc_xprtsock_create {
- 	struct rpc_timeout *	timeout;	/* optional timeout parameters */
+@@ -187,7 +187,7 @@ struct rpc_xprt {
  };
  
-+struct xprt_class {
-+	struct list_head	list;
-+	unsigned short		family;
-+	int			protocol;
-+	struct rpc_xprt *	(*setup)(struct rpc_xprtsock_create *);
-+	struct module		*owner;
-+	char			name[32];
-+};
+ struct xprt_create {
+-	int			proto;		/* IPPROTO_UDP or IPPROTO_TCP */
++	int			ident;		/* XPRT_TRANSPORT identifier */
+ 	struct sockaddr *	srcaddr;	/* optional local address */
+ 	struct sockaddr *	dstaddr;	/* remote peer address */
+ 	size_t			addrlen;
+@@ -196,8 +196,7 @@ struct xprt_create {
+ 
+ struct xprt_class {
+ 	struct list_head	list;
+-	unsigned short		family;
+-	int			protocol;
++	int			ident;		/* XPRT_TRANSPORT identifier */
+ 	struct rpc_xprt *	(*setup)(struct xprt_create *);
+ 	struct module		*owner;
+ 	char			name[32];
+Index: kernel/include/linux/sunrpc/xprtsock.h
+===================================================================
+--- kernel.orig/include/linux/sunrpc/xprtsock.h
++++ kernel/include/linux/sunrpc/xprtsock.h
+@@ -19,6 +19,17 @@ int		init_socket_xprt(void);
+ void		cleanup_socket_xprt(void);
+ 
+ /*
++ * RPC transport identifiers for UDP, TCP
++ *
++ * To preserve compatibility with the historical use of raw IP protocol
++ * id's for transport selection, these are specified with the previous
++ * values. No such restriction exists for new transports, except that
++ * they may not collide with these values (17 and 6, respectively).
++ */
++#define XPRT_TRANSPORT_UDP	IPPROTO_UDP
++#define XPRT_TRANSPORT_TCP	IPPROTO_TCP
 +
- /*
-  * Transport operations used by ULPs
++/*
+  * RPC slot table sizes for UDP, TCP transports
   */
-@@ -239,6 +248,8 @@ static inline __be32 *xprt_skip_transpor
- /*
-  * Transport switch helper functions
-  */
-+int			xprt_register_transport(struct xprt_class *type);
-+int			xprt_unregister_transport(struct xprt_class *type);
- void			xprt_set_retrans_timeout_def(struct rpc_task *task);
- void			xprt_set_retrans_timeout_rtt(struct rpc_task *task);
- void			xprt_wake_pending_tasks(struct rpc_xprt *xprt, int status);
+ extern unsigned int xprt_udp_slot_table_entries;
 Index: kernel/net/sunrpc/xprt.c
 ===================================================================
 --- kernel.orig/net/sunrpc/xprt.c
 +++ kernel/net/sunrpc/xprt.c
-@@ -62,6 +62,9 @@ static inline void	do_xprt_reserve(struc
- static void	xprt_connect_status(struct rpc_task *task);
- static int      __xprt_get_cong(struct rpc_xprt *, struct rpc_task *);
+@@ -104,7 +104,7 @@ int xprt_register_transport(struct xprt_
+ 	spin_lock(&xprt_list_lock);
+ 	list_for_each_entry(t, &xprt_list, list) {
+ 		/* don't register the same transport class twice */
+-		if (t == transport)
++		if (t->ident == transport->ident)
+ 			goto out;
+ 	}
  
-+static spinlock_t xprt_list_lock = SPIN_LOCK_UNLOCKED;
-+static LIST_HEAD(xprt_list);
-+
- /*
-  * The transport code maintains an estimate on the maximum number of out-
-  * standing RPC requests, using a smoothed version of the congestion
-@@ -81,6 +84,78 @@ static int      __xprt_get_cong(struct r
- #define RPCXPRT_CONGESTED(xprt) ((xprt)->cong >= (xprt)->cwnd)
+@@ -987,15 +987,13 @@ struct rpc_xprt *xprt_create_transport(s
  
- /**
-+ * xprt_register_transport - register a transport implementation
-+ * @transport: transport to register
-+ *
-+ * If a transport implementation is loaded as a kernel module, it can
-+ * call this interface to make itself known to the RPC client.
-+ *
-+ * Returns:
-+ * 0:		transport successfully registered
-+ * -EEXIST:	transport already registered
-+ * -EINVAL:	transport module being unloaded
-+ */
-+int xprt_register_transport(struct xprt_class *transport)
-+{
-+	struct xprt_class *t;
-+	int result;
-+
-+	result = -EEXIST;
-+	spin_lock(&xprt_list_lock);
-+	list_for_each_entry(t, &xprt_list, list) {
-+		/* don't register the same transport class twice */
-+		if (t == transport)
-+			goto out;
-+	}
-+
-+	result = -EINVAL;
-+	if (try_module_get(THIS_MODULE)) {
-+		list_add_tail(&transport->list, &xprt_list);
-+		printk(KERN_INFO "RPC: Registered %s transport module.\n",
-+			transport->name);
-+		result = 0;
-+	}
-+
-+out:
-+	spin_unlock(&xprt_list_lock);
-+	return result;
-+}
-+EXPORT_SYMBOL_GPL(xprt_register_transport);
-+
-+/**
-+ * xprt_unregister_transport - unregister a transport implementation
-+ * transport: transport to unregister
-+ *
-+ * Returns:
-+ * 0:		transport successfully unregistered
-+ * -ENOENT:	transport never registered
-+ */
-+int xprt_unregister_transport(struct xprt_class *transport)
-+{
-+	struct xprt_class *t;
-+	int result;
-+
-+	result = 0;
-+	spin_lock(&xprt_list_lock);
-+	list_for_each_entry(t, &xprt_list, list) {
-+		if (t == transport) {
-+			printk(KERN_INFO
-+				"RPC: Unregistered %s transport module.\n",
-+				transport->name);
-+			list_del_init(&transport->list);
-+			module_put(THIS_MODULE);
-+			goto out;
-+		}
-+	}
-+	result = -ENOENT;
-+
-+out:
-+	spin_unlock(&xprt_list_lock);
-+	return result;
-+}
-+EXPORT_SYMBOL_GPL(xprt_unregister_transport);
-+
-+/**
-  * xprt_reserve_xprt - serialize write access to transports
-  * @task: task that is requesting access to the transport
-  *
+ 	spin_lock(&xprt_list_lock);
+ 	list_for_each_entry(t, &xprt_list, list) {
+-		if ((t->family == args->dstaddr->sa_family) &&
+-		    (t->protocol == args->proto)) {
++		if (t->ident == args->ident) {
+ 			spin_unlock(&xprt_list_lock);
+ 			goto found;
+ 		}
+ 	}
+ 	spin_unlock(&xprt_list_lock);
+-	printk(KERN_ERR "RPC: transport (%u/%d) not supported\n",
+-			args->dstaddr->sa_family, args->proto);
++	printk(KERN_ERR "RPC: transport (%d) not supported\n", args->ident);
+ 	return ERR_PTR(-EIO);
+ 
+ found:
+Index: kernel/net/sunrpc/xprtsock.c
+===================================================================
+--- kernel.orig/net/sunrpc/xprtsock.c
++++ kernel/net/sunrpc/xprtsock.c
+@@ -1955,8 +1955,7 @@ static struct xprt_class	xs_udp_transpor
+ 	.list		= LIST_HEAD_INIT(xs_udp_transport.list),
+ 	.name		= "udp",
+ 	.owner		= THIS_MODULE,
+-	.family		= AF_INET,
+-	.protocol	= IPPROTO_UDP,
++	.ident		= IPPROTO_UDP,
+ 	.setup		= xs_setup_udp,
+ };
+ 
+@@ -1964,8 +1963,7 @@ static struct xprt_class	xs_tcp_transpor
+ 	.list		= LIST_HEAD_INIT(xs_tcp_transport.list),
+ 	.name		= "tcp",
+ 	.owner		= THIS_MODULE,
+-	.family		= AF_INET,
+-	.protocol	= IPPROTO_TCP,
++	.ident		= IPPROTO_TCP,
+ 	.setup		= xs_setup_tcp,
+ };
+ 
+Index: kernel/net/sunrpc/clnt.c
+===================================================================
+--- kernel.orig/net/sunrpc/clnt.c
++++ kernel/net/sunrpc/clnt.c
+@@ -235,7 +235,7 @@ struct rpc_clnt *rpc_create(struct rpc_c
+ 	struct rpc_xprt *xprt;
+ 	struct rpc_clnt *clnt;
+ 	struct xprt_create xprtargs = {
+-		.proto = args->protocol,
++		.ident = args->protocol,
+ 		.srcaddr = args->saddress,
+ 		.dstaddr = args->address,
+ 		.addrlen = args->addrsize,
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
