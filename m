@@ -1,7 +1,7 @@
 From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
-Subject: [PATCH 12/19] NFS/SUNRPC: support transport protocol naming
-Date: Mon, 10 Sep 2007 13:47:57 -0400
-Message-ID: <EXNANE01tacom1iaCRq000004bb@exnane01.hq.netapp.com>
+Subject: [PATCH 10/19] SUNRPC: rename the rpc_xprtsock_create structure
+Date: Mon, 10 Sep 2007 13:47:07 -0400
+Message-ID: <EXNANE01Pf3L9BGTuAy000004b9@exnane01.hq.netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
@@ -9,16 +9,16 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IUnbP-0003Yj-5b
-	for nfs@lists.sourceforge.net; Mon, 10 Sep 2007 11:03:15 -0700
+	id 1IUnaS-0003Rr-Kv
+	for nfs@lists.sourceforge.net; Mon, 10 Sep 2007 11:02:16 -0700
 Received: from mx2.netapp.com ([216.240.18.37])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IUnbT-0003VY-Me
-	for nfs@lists.sourceforge.net; Mon, 10 Sep 2007 11:03:19 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IUnaX-0003CS-61
+	for nfs@lists.sourceforge.net; Mon, 10 Sep 2007 11:02:21 -0700
 Received: from svlexrs02.hq.netapp.com (svlexrs02.corp.netapp.com
 	[10.57.156.154])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id
-	l8AI3D7V026591
-	for <nfs@lists.sourceforge.net>; Mon, 10 Sep 2007 11:03:13 -0700 (PDT)
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id
+	l8AI2BlM021333
+	for <nfs@lists.sourceforge.net>; Mon, 10 Sep 2007 11:02:11 -0700 (PDT)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,135 +31,120 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-NFS/SUNRPC: support transport protocol naming
+SUNRPC: rename the rpc_xprtsock_create structure
 
-To prepare for including non-sockets-based RPC transports, select
-RPC transports by an identifier (to be used in following patches).
+To prepare for including non-sockets-based RPC transports, change the
+overly suggestive name of the transport creation arguments struct.
 
 Signed-off-by: Tom Talpey <tmt@netapp.com>
 
 ---
 
- include/linux/sunrpc/xprt.h     |    5 ++---
- include/linux/sunrpc/xprtsock.h |   11 +++++++++++
- net/sunrpc/clnt.c               |    2 +-
- net/sunrpc/xprt.c               |    8 +++-----
- net/sunrpc/xprtsock.c           |    6 ++----
- 5 files changed, 19 insertions(+), 13 deletions(-)
+ include/linux/sunrpc/xprt.h |   10 +++++-----
+ net/sunrpc/clnt.c           |    2 +-
+ net/sunrpc/xprt.c           |    2 +-
+ net/sunrpc/xprtsock.c       |    6 +++---
+ 4 files changed, 10 insertions(+), 10 deletions(-)
 
 Index: kernel/include/linux/sunrpc/xprt.h
 ===================================================================
 --- kernel.orig/include/linux/sunrpc/xprt.h
 +++ kernel/include/linux/sunrpc/xprt.h
-@@ -187,7 +187,7 @@ struct rpc_xprt {
+@@ -200,7 +200,7 @@ struct rpc_xprt {
+ 	char *			address_strings[RPC_DISPLAY_MAX];
  };
  
- struct xprt_create {
--	int			proto;		/* IPPROTO_UDP or IPPROTO_TCP */
-+	int			ident;		/* XPRT_TRANSPORT identifier */
+-struct rpc_xprtsock_create {
++struct xprt_create {
+ 	int			proto;		/* IPPROTO_UDP or IPPROTO_TCP */
  	struct sockaddr *	srcaddr;	/* optional local address */
  	struct sockaddr *	dstaddr;	/* remote peer address */
- 	size_t			addrlen;
-@@ -196,8 +196,7 @@ struct xprt_create {
- 
- struct xprt_class {
+@@ -212,7 +212,7 @@ struct xprt_class {
  	struct list_head	list;
--	unsigned short		family;
--	int			protocol;
-+	int			ident;		/* XPRT_TRANSPORT identifier */
- 	struct rpc_xprt *	(*setup)(struct xprt_create *);
+ 	unsigned short		family;
+ 	int			protocol;
+-	struct rpc_xprt *	(*setup)(struct rpc_xprtsock_create *);
++	struct rpc_xprt *	(*setup)(struct xprt_create *);
  	struct module		*owner;
  	char			name[32];
-Index: kernel/include/linux/sunrpc/xprtsock.h
-===================================================================
---- kernel.orig/include/linux/sunrpc/xprtsock.h
-+++ kernel/include/linux/sunrpc/xprtsock.h
-@@ -19,6 +19,17 @@ int		init_socket_xprt(void);
- void		cleanup_socket_xprt(void);
- 
+ };
+@@ -225,7 +225,7 @@ void			xprt_set_timeout(struct rpc_timeo
  /*
-+ * RPC transport identifiers for UDP, TCP
-+ *
-+ * To preserve compatibility with the historical use of raw IP protocol
-+ * id's for transport selection, these are specified with the previous
-+ * values. No such restriction exists for new transports, except that
-+ * they may not collide with these values (17 and 6, respectively).
-+ */
-+#define XPRT_TRANSPORT_UDP	IPPROTO_UDP
-+#define XPRT_TRANSPORT_TCP	IPPROTO_TCP
-+
-+/*
-  * RPC slot table sizes for UDP, TCP transports
+  * Generic internal transport functions
   */
- extern unsigned int xprt_udp_slot_table_entries;
-Index: kernel/net/sunrpc/xprt.c
-===================================================================
---- kernel.orig/net/sunrpc/xprt.c
-+++ kernel/net/sunrpc/xprt.c
-@@ -104,7 +104,7 @@ int xprt_register_transport(struct xprt_
- 	spin_lock(&xprt_list_lock);
- 	list_for_each_entry(t, &xprt_list, list) {
- 		/* don't register the same transport class twice */
--		if (t == transport)
-+		if (t->ident == transport->ident)
- 			goto out;
- 	}
- 
-@@ -987,15 +987,13 @@ struct rpc_xprt *xprt_create_transport(s
- 
- 	spin_lock(&xprt_list_lock);
- 	list_for_each_entry(t, &xprt_list, list) {
--		if ((t->family == args->dstaddr->sa_family) &&
--		    (t->protocol == args->proto)) {
-+		if (t->ident == args->ident) {
- 			spin_unlock(&xprt_list_lock);
- 			goto found;
- 		}
- 	}
- 	spin_unlock(&xprt_list_lock);
--	printk(KERN_ERR "RPC: transport (%u/%d) not supported\n",
--			args->dstaddr->sa_family, args->proto);
-+	printk(KERN_ERR "RPC: transport (%d) not supported\n", args->ident);
- 	return ERR_PTR(-EIO);
- 
- found:
-Index: kernel/net/sunrpc/xprtsock.c
-===================================================================
---- kernel.orig/net/sunrpc/xprtsock.c
-+++ kernel/net/sunrpc/xprtsock.c
-@@ -1955,8 +1955,7 @@ static struct xprt_class	xs_udp_transpor
- 	.list		= LIST_HEAD_INIT(xs_udp_transport.list),
- 	.name		= "udp",
- 	.owner		= THIS_MODULE,
--	.family		= AF_INET,
--	.protocol	= IPPROTO_UDP,
-+	.ident		= IPPROTO_UDP,
- 	.setup		= xs_setup_udp,
- };
- 
-@@ -1964,8 +1963,7 @@ static struct xprt_class	xs_tcp_transpor
- 	.list		= LIST_HEAD_INIT(xs_tcp_transport.list),
- 	.name		= "tcp",
- 	.owner		= THIS_MODULE,
--	.family		= AF_INET,
--	.protocol	= IPPROTO_TCP,
-+	.ident		= IPPROTO_TCP,
- 	.setup		= xs_setup_tcp,
- };
+-struct rpc_xprt *	xprt_create_transport(struct rpc_xprtsock_create *args);
++struct rpc_xprt		*xprt_create_transport(struct xprt_create *args);
+ void			xprt_connect(struct rpc_task *task);
+ void			xprt_reserve(struct rpc_task *task);
+ int			xprt_reserve_xprt(struct rpc_task *task);
+@@ -265,8 +265,8 @@ void			xprt_disconnect(struct rpc_xprt *
+ /*
+  * Socket transport setup operations
+  */
+-struct rpc_xprt *	xs_setup_udp(struct rpc_xprtsock_create *args);
+-struct rpc_xprt *	xs_setup_tcp(struct rpc_xprtsock_create *args);
++struct rpc_xprt		*xs_setup_udp(struct xprt_create *args);
++struct rpc_xprt		*xs_setup_tcp(struct xprt_create *args);
+ int			init_socket_xprt(void);
+ void			cleanup_socket_xprt(void);
  
 Index: kernel/net/sunrpc/clnt.c
 ===================================================================
 --- kernel.orig/net/sunrpc/clnt.c
 +++ kernel/net/sunrpc/clnt.c
-@@ -235,7 +235,7 @@ struct rpc_clnt *rpc_create(struct rpc_c
+@@ -234,7 +234,7 @@ struct rpc_clnt *rpc_create(struct rpc_c
+ {
  	struct rpc_xprt *xprt;
  	struct rpc_clnt *clnt;
- 	struct xprt_create xprtargs = {
--		.proto = args->protocol,
-+		.ident = args->protocol,
+-	struct rpc_xprtsock_create xprtargs = {
++	struct xprt_create xprtargs = {
+ 		.proto = args->protocol,
  		.srcaddr = args->saddress,
  		.dstaddr = args->address,
- 		.addrlen = args->addrsize,
+Index: kernel/net/sunrpc/xprt.c
+===================================================================
+--- kernel.orig/net/sunrpc/xprt.c
++++ kernel/net/sunrpc/xprt.c
+@@ -979,7 +979,7 @@ void xprt_set_timeout(struct rpc_timeout
+  * @args: rpc transport creation arguments
+  *
+  */
+-struct rpc_xprt *xprt_create_transport(struct rpc_xprtsock_create *args)
++struct rpc_xprt *xprt_create_transport(struct xprt_create *args)
+ {
+ 	struct rpc_xprt	*xprt;
+ 	struct rpc_rqst	*req;
+Index: kernel/net/sunrpc/xprtsock.c
+===================================================================
+--- kernel.orig/net/sunrpc/xprtsock.c
++++ kernel/net/sunrpc/xprtsock.c
+@@ -1784,7 +1784,7 @@ static struct rpc_xprt_ops xs_tcp_ops = 
+ 	.print_stats		= xs_tcp_print_stats,
+ };
+ 
+-static struct rpc_xprt *xs_setup_xprt(struct rpc_xprtsock_create *args,
++static struct rpc_xprt *xs_setup_xprt(struct xprt_create *args,
+ 				      unsigned int slot_table_size)
+ {
+ 	struct rpc_xprt *xprt;
+@@ -1826,7 +1826,7 @@ static struct rpc_xprt *xs_setup_xprt(st
+  * @args: rpc transport creation arguments
+  *
+  */
+-struct rpc_xprt *xs_setup_udp(struct rpc_xprtsock_create *args)
++struct rpc_xprt *xs_setup_udp(struct xprt_create *args)
+ {
+ 	struct sockaddr *addr = args->dstaddr;
+ 	struct rpc_xprt *xprt;
+@@ -1892,7 +1892,7 @@ struct rpc_xprt *xs_setup_udp(struct rpc
+  * @args: rpc transport creation arguments
+  *
+  */
+-struct rpc_xprt *xs_setup_tcp(struct rpc_xprtsock_create *args)
++struct rpc_xprt *xs_setup_tcp(struct xprt_create *args)
+ {
+ 	struct sockaddr *addr = args->dstaddr;
+ 	struct rpc_xprt *xprt;
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
