@@ -1,24 +1,25 @@
 From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
-Subject: [PATCH 11/19] SUNRPC: rearrange RPC sockets definitions
-Date: Mon, 10 Sep 2007 13:47:31 -0400
-Message-ID: <EXNANE01HsjCGvseE4D000004ba@exnane01.hq.netapp.com>
+Subject: [PATCH 15/19] RPCRDMA: Kconfig and header file with rpcrdma
+ protocol definitions
+Date: Mon, 10 Sep 2007 13:49:15 -0400
+Message-ID: <EXNANE013MBhe3WYIgo000004be@exnane01.hq.netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IUnas-0003T7-EU
-	for nfs@lists.sourceforge.net; Mon, 10 Sep 2007 11:02:42 -0700
+	id 1IUncp-0003fW-So
+	for nfs@lists.sourceforge.net; Mon, 10 Sep 2007 11:04:44 -0700
 Received: from mx2.netapp.com ([216.240.18.37])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IUnaw-0007bw-VP
-	for nfs@lists.sourceforge.net; Mon, 10 Sep 2007 11:02:47 -0700
-Received: from svlexrs01.hq.netapp.com (svlexrs01.corp.netapp.com
-	[10.57.156.158])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IUncu-00047C-9n
+	for nfs@lists.sourceforge.net; Mon, 10 Sep 2007 11:04:48 -0700
+Received: from svlexrs02.hq.netapp.com (svlexrs02.corp.netapp.com
+	[10.57.156.154])
 	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id
-	l8AI2eVd021489
-	for <nfs@lists.sourceforge.net>; Mon, 10 Sep 2007 11:02:41 -0700 (PDT)
+	l8AI4ggn022128
+	for <nfs@lists.sourceforge.net>; Mon, 10 Sep 2007 11:04:42 -0700 (PDT)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,136 +32,251 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-SUNRPC: rearrange RPC sockets definitions
+RPCRDMA: Kconfig and header file with rpcrdma protocol definitions
 
-To prepare for including non-sockets-based RPC transports, move the
-sockets-dependent definitions into their own file.
+This file implements the configuration target, protocol template and
+constants for the rpcrdma transport framing, for use by the xprtrdma
+rpc transport implementation.
 
-Signed-off-by: Tom Talpey <tmt@netapp.com>
+Signed-off-by: Tom Talpey <talpey@netapp.com>
 
 ---
 
- include/linux/sunrpc/xprt.h     |   22 ----------------------
- include/linux/sunrpc/xprtsock.h |   40 ++++++++++++++++++++++++++++++++++++++++
- net/sunrpc/sunrpc_syms.c        |    2 +-
- net/sunrpc/xprtsock.c           |    1 +
- 4 files changed, 42 insertions(+), 23 deletions(-)
+ fs/Kconfig                      |    8 ++
+ include/linux/sunrpc/rpc_rdma.h |  116 ++++++++++++++++++++++++++++++++++++++++
+ include/linux/sunrpc/xprtrdma.h |   85 +++++++++++++++++++++++++++++
+ 3 files changed, 209 insertions(+)
 
-Index: kernel/include/linux/sunrpc/xprt.h
-===================================================================
---- kernel.orig/include/linux/sunrpc/xprt.h
-+++ kernel/include/linux/sunrpc/xprt.h
-@@ -19,25 +19,11 @@
- 
- #ifdef __KERNEL__
- 
--extern unsigned int xprt_udp_slot_table_entries;
--extern unsigned int xprt_tcp_slot_table_entries;
--
- #define RPC_MIN_SLOT_TABLE	(2U)
- #define RPC_DEF_SLOT_TABLE	(16U)
- #define RPC_MAX_SLOT_TABLE	(128U)
- 
- /*
-- * Parameters for choosing a free port
-- */
--extern unsigned int xprt_min_resvport;
--extern unsigned int xprt_max_resvport;
--
--#define RPC_MIN_RESVPORT	(1U)
--#define RPC_MAX_RESVPORT	(65535U)
--#define RPC_DEF_MIN_RESVPORT	(665U)
--#define RPC_DEF_MAX_RESVPORT	(1023U)
--
--/*
-  * This describes a timeout strategy
-  */
- struct rpc_timeout {
-@@ -263,14 +249,6 @@ void			xprt_release_rqst_cong(struct rpc
- void			xprt_disconnect(struct rpc_xprt *xprt);
- 
- /*
-- * Socket transport setup operations
-- */
--struct rpc_xprt		*xs_setup_udp(struct xprt_create *args);
--struct rpc_xprt		*xs_setup_tcp(struct xprt_create *args);
--int			init_socket_xprt(void);
--void			cleanup_socket_xprt(void);
--
--/*
-  * Reserved bit positions in xprt->state
-  */
- #define XPRT_LOCKED		(0)
-Index: kernel/include/linux/sunrpc/xprtsock.h
+Index: kernel/include/linux/sunrpc/rpc_rdma.h
 ===================================================================
 --- /dev/null
-+++ kernel/include/linux/sunrpc/xprtsock.h
-@@ -0,0 +1,40 @@
++++ kernel/include/linux/sunrpc/rpc_rdma.h
+@@ -0,0 +1,116 @@
 +/*
-+ *  linux/include/linux/sunrpc/xprtsock.h
++ * Copyright (c) 2003-2007 Network Appliance, Inc. All rights reserved.
 + *
-+ *  Declarations for the RPC transport socket provider.
++ * This software is available to you under a choice of one of two
++ * licenses.  You may choose to be licensed under the terms of the GNU
++ * General Public License (GPL) Version 2, available from the file
++ * COPYING in the main directory of this source tree, or the BSD-type
++ * license below:
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ *
++ *      Redistributions of source code must retain the above copyright
++ *      notice, this list of conditions and the following disclaimer.
++ *
++ *      Redistributions in binary form must reproduce the above
++ *      copyright notice, this list of conditions and the following
++ *      disclaimer in the documentation and/or other materials provided
++ *      with the distribution.
++ *
++ *      Neither the name of the Network Appliance, Inc. nor the names of
++ *      its contributors may be used to endorse or promote products
++ *      derived from this software without specific prior written
++ *      permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
++ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
++ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
++ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
++ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
++ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
++ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
++ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
++ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
++ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
++ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 + */
 +
-+#ifndef _LINUX_SUNRPC_XPRTSOCK_H
-+#define _LINUX_SUNRPC_XPRTSOCK_H
++#ifndef _LINUX_SUNRPC_RPC_RDMA_H
++#define _LINUX_SUNRPC_RPC_RDMA_H
 +
-+#ifdef __KERNEL__
++struct rpcrdma_segment {
++	uint32_t rs_handle;	/* Registered memory handle */
++	uint32_t rs_length;	/* Length of the chunk in bytes */
++	uint64_t rs_offset;	/* Chunk virtual address or offset */
++};
 +
 +/*
-+ * Socket transport setup operations
++ * read chunk(s), encoded as a linked list.
 + */
-+struct rpc_xprt *xs_setup_udp(struct xprt_create *args);
-+struct rpc_xprt *xs_setup_tcp(struct xprt_create *args);
-+
-+int		init_socket_xprt(void);
-+void		cleanup_socket_xprt(void);
++struct rpcrdma_read_chunk {
++	uint32_t rc_discrim;	/* 1 indicates presence */
++	uint32_t rc_position;	/* Position in XDR stream */
++	struct rpcrdma_segment rc_target;
++};
 +
 +/*
-+ * RPC slot table sizes for UDP, TCP transports
++ * write chunk, and reply chunk.
 + */
-+extern unsigned int xprt_udp_slot_table_entries;
-+extern unsigned int xprt_tcp_slot_table_entries;
++struct rpcrdma_write_chunk {
++	struct rpcrdma_segment wc_target;
++};
 +
 +/*
-+ * Parameters for choosing a free port
++ * write chunk(s), encoded as a counted array.
 + */
-+extern unsigned int xprt_min_resvport;
-+extern unsigned int xprt_max_resvport;
++struct rpcrdma_write_array {
++	uint32_t wc_discrim;	/* 1 indicates presence */
++	uint32_t wc_nchunks;	/* Array count */
++	struct rpcrdma_write_chunk wc_array[0];
++};
 +
-+#define RPC_MIN_RESVPORT	(1U)
-+#define RPC_MAX_RESVPORT	(65535U)
-+#define RPC_DEF_MIN_RESVPORT	(665U)
-+#define RPC_DEF_MAX_RESVPORT	(1023U)
++struct rpcrdma_msg {
++	uint32_t rm_xid;	/* Mirrors the RPC header xid */
++	uint32_t rm_vers;	/* Version of this protocol */
++	uint32_t rm_credit;	/* Buffers requested/granted */
++	uint32_t rm_type;	/* Type of message (enum rpcrdma_proc) */
++	union {
 +
-+#endif /* __KERNEL__ */
++		struct {			/* no chunks */
++			uint32_t rm_empty[3];	/* 3 empty chunk lists */
++		} rm_nochunks;
 +
-+#endif /* _LINUX_SUNRPC_XPRTSOCK_H */
-Index: kernel/net/sunrpc/xprtsock.c
++		struct {			/* no chunks and padded */
++			uint32_t rm_align;	/* Padding alignment */
++			uint32_t rm_thresh;	/* Padding threshold */
++			uint32_t rm_pempty[3];	/* 3 empty chunk lists */
++		} rm_padded;
++
++		uint32_t rm_chunks[0];	/* read, write and reply chunks */
++
++	} rm_body;
++};
++
++#define RPCRDMA_HDRLEN_MIN	28
++
++enum rpcrdma_errcode {
++	ERR_VERS = 1,
++	ERR_CHUNK = 2
++};
++
++struct rpcrdma_err_vers {
++	uint32_t rdma_vers_low;	/* Version range supported by peer */
++	uint32_t rdma_vers_high;
++};
++
++enum rpcrdma_proc {
++	RDMA_MSG = 0,		/* An RPC call or reply msg */
++	RDMA_NOMSG = 1,		/* An RPC call or reply msg - separate body */
++	RDMA_MSGP = 2,		/* An RPC call or reply msg with padding */
++	RDMA_DONE = 3,		/* Client signals reply completion */
++	RDMA_ERROR = 4		/* An RPC RDMA encoding error */
++};
++
++#endif				/* _LINUX_SUNRPC_RPC_RDMA_H */
+Index: kernel/include/linux/sunrpc/xprtrdma.h
 ===================================================================
---- kernel.orig/net/sunrpc/xprtsock.c
-+++ kernel/net/sunrpc/xprtsock.c
-@@ -32,6 +32,7 @@
- #include <linux/tcp.h>
- #include <linux/sunrpc/clnt.h>
- #include <linux/sunrpc/sched.h>
-+#include <linux/sunrpc/xprtsock.h>
- #include <linux/file.h>
- 
- #include <net/sock.h>
-Index: kernel/net/sunrpc/sunrpc_syms.c
+--- /dev/null
++++ kernel/include/linux/sunrpc/xprtrdma.h
+@@ -0,0 +1,85 @@
++/*
++ * Copyright (c) 2003-2007 Network Appliance, Inc. All rights reserved.
++ *
++ * This software is available to you under a choice of one of two
++ * licenses.  You may choose to be licensed under the terms of the GNU
++ * General Public License (GPL) Version 2, available from the file
++ * COPYING in the main directory of this source tree, or the BSD-type
++ * license below:
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ *
++ *      Redistributions of source code must retain the above copyright
++ *      notice, this list of conditions and the following disclaimer.
++ *
++ *      Redistributions in binary form must reproduce the above
++ *      copyright notice, this list of conditions and the following
++ *      disclaimer in the documentation and/or other materials provided
++ *      with the distribution.
++ *
++ *      Neither the name of the Network Appliance, Inc. nor the names of
++ *      its contributors may be used to endorse or promote products
++ *      derived from this software without specific prior written
++ *      permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
++ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
++ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
++ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
++ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
++ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
++ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
++ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
++ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
++ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
++ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++#ifndef _LINUX_SUNRPC_XPRTRDMA_H
++#define _LINUX_SUNRPC_XPRTRDMA_H
++
++/*
++ * RPC transport identifier for RDMA
++ */
++#define XPRT_TRANSPORT_RDMA	256
++
++/*
++ * rpcbind (v3+) RDMA netid.
++ */
++#define RPCBIND_NETID_RDMA	"rdma"
++
++/*
++ * Constants. Max RPC/NFS header is big enough to account for
++ * additional marshaling buffers passed down by Linux client.
++ *
++ * RDMA header is currently fixed max size, and is big enough for a
++ * fully-chunked NFS message (read chunks are the largest). Note only
++ * a single chunk type per message is supported currently.
++ */
++#define RPCRDMA_MIN_SLOT_TABLE	(2U)
++#define RPCRDMA_DEF_SLOT_TABLE	(32U)
++#define RPCRDMA_MAX_SLOT_TABLE	(256U)
++
++#define RPCRDMA_DEF_INLINE  (1024)	/* default inline max */
++
++#define RPCRDMA_INLINE_PAD_THRESH  (512)/* payload threshold to pad (bytes) */
++
++#define RDMA_RESOLVE_TIMEOUT	(5*HZ)	/* TBD 5 seconds */
++#define RDMA_CONNECT_RETRY_MAX	(2)	/* retries if no listener backlog */
++
++/* memory registration strategies */
++#define RPCRDMA_PERSISTENT_REGISTRATION (1)
++
++enum rpcrdma_memreg {
++	RPCRDMA_BOUNCEBUFFERS = 0,
++	RPCRDMA_REGISTER,
++	RPCRDMA_MEMWINDOWS,
++	RPCRDMA_MEMWINDOWS_ASYNC,
++	RPCRDMA_MTHCAFMR,
++	RPCRDMA_ALLPHYSICAL,
++	RPCRDMA_LAST
++};
++
++#endif /* _LINUX_SUNRPC_XPRTRDMA_H */
+Index: kernel/fs/Kconfig
 ===================================================================
---- kernel.orig/net/sunrpc/sunrpc_syms.c
-+++ kernel/net/sunrpc/sunrpc_syms.c
-@@ -20,7 +20,7 @@
- #include <linux/sunrpc/auth.h>
- #include <linux/workqueue.h>
- #include <linux/sunrpc/rpc_pipe_fs.h>
--
-+#include <linux/sunrpc/xprtsock.h>
+--- kernel.orig/fs/Kconfig
++++ kernel/fs/Kconfig
+@@ -1731,6 +1731,14 @@ config SUNRPC
+ config SUNRPC_GSS
+ 	tristate
  
- /* RPC scheduler */
- EXPORT_SYMBOL(rpc_execute);
++config SUNRPC_XPRT_RDMA
++	tristate "RDMA transport for sunrpc (EXPERIMENTAL)"
++	depends on SUNRPC && EXPERIMENTAL
++	default m
++	help
++	  Adds a client RPC transport for supporting kernel NFS over RDMA
++	  mounts, including Infiniband and iWARP. Experimental.
++
+ config SUNRPC_BIND34
+ 	bool "Support for rpcbind versions 3 & 4 (EXPERIMENTAL)"
+ 	depends on SUNRPC && EXPERIMENTAL
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
