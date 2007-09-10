@@ -1,8 +1,7 @@
 From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
-Subject: [PATCH 09/19] SUNRPC: Finish API to load RPC transport
- implementations dynamically
-Date: Mon, 10 Sep 2007 13:46:39 -0400
-Message-ID: <EXNANE01ODt9Cz93MgP000004b8@exnane01.hq.netapp.com>
+Subject: [PATCH 11/19] SUNRPC: rearrange RPC sockets definitions
+Date: Mon, 10 Sep 2007 13:47:31 -0400
+Message-ID: <EXNANE01HsjCGvseE4D000004ba@exnane01.hq.netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
@@ -10,16 +9,16 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IUnZu-0003M3-70
-	for nfs@lists.sourceforge.net; Mon, 10 Sep 2007 11:01:42 -0700
+	id 1IUnas-0003T7-EU
+	for nfs@lists.sourceforge.net; Mon, 10 Sep 2007 11:02:42 -0700
 Received: from mx2.netapp.com ([216.240.18.37])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IUnZy-0007G5-KC
-	for nfs@lists.sourceforge.net; Mon, 10 Sep 2007 11:01:46 -0700
-Received: from svlexrs02.hq.netapp.com (svlexrs02.corp.netapp.com
-	[10.57.156.154])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IUnaw-0007bw-VP
+	for nfs@lists.sourceforge.net; Mon, 10 Sep 2007 11:02:47 -0700
+Received: from svlexrs01.hq.netapp.com (svlexrs01.corp.netapp.com
+	[10.57.156.158])
 	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id
-	l8AI1fVu021174
-	for <nfs@lists.sourceforge.net>; Mon, 10 Sep 2007 11:01:41 -0700 (PDT)
+	l8AI2eVd021489
+	for <nfs@lists.sourceforge.net>; Mon, 10 Sep 2007 11:02:41 -0700 (PDT)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,168 +31,136 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-SUNRPC: Finish API to load RPC transport implementations dynamically
- 
-Allow RPC client transport implementations to be loaded as needed, or
-as they become available from distributors or third-party vendors.
+SUNRPC: rearrange RPC sockets definitions
 
-Note that we leave the IP sockets implementation in sunrpc.o
-permanently, as IP functionality is always available in any
-kernel that runs NFS.
+To prepare for including non-sockets-based RPC transports, move the
+sockets-dependent definitions into their own file.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Signed-off-by: Tom Talpey <tmt@netapp.com>
 
 ---
 
- net/sunrpc/xprt.c     |   26 +++++++++++++++-----------
- net/sunrpc/xprtsock.c |   47 ++++++++++++++++++++++++++++++++++++++++++-----
- 2 files changed, 57 insertions(+), 16 deletions(-)
+ include/linux/sunrpc/xprt.h     |   22 ----------------------
+ include/linux/sunrpc/xprtsock.h |   40 ++++++++++++++++++++++++++++++++++++++++
+ net/sunrpc/sunrpc_syms.c        |    2 +-
+ net/sunrpc/xprtsock.c           |    1 +
+ 4 files changed, 42 insertions(+), 23 deletions(-)
 
-Index: kernel/net/sunrpc/xprt.c
+Index: kernel/include/linux/sunrpc/xprt.h
 ===================================================================
---- kernel.orig/net/sunrpc/xprt.c
-+++ kernel/net/sunrpc/xprt.c
-@@ -983,19 +983,23 @@ struct rpc_xprt *xprt_create_transport(s
- {
- 	struct rpc_xprt	*xprt;
- 	struct rpc_rqst	*req;
-+	struct xprt_class *t;
+--- kernel.orig/include/linux/sunrpc/xprt.h
++++ kernel/include/linux/sunrpc/xprt.h
+@@ -19,25 +19,11 @@
  
--	switch (args->proto) {
--	case IPPROTO_UDP:
--		xprt = xs_setup_udp(args);
--		break;
--	case IPPROTO_TCP:
--		xprt = xs_setup_tcp(args);
--		break;
--	default:
--		printk(KERN_ERR "RPC: unrecognized transport protocol: %d\n",
--				args->proto);
--		return ERR_PTR(-EIO);
-+	spin_lock(&xprt_list_lock);
-+	list_for_each_entry(t, &xprt_list, list) {
-+		if ((t->family == args->dstaddr->sa_family) &&
-+		    (t->protocol == args->proto)) {
-+			spin_unlock(&xprt_list_lock);
-+			goto found;
-+		}
- 	}
-+	spin_unlock(&xprt_list_lock);
-+	printk(KERN_ERR "RPC: transport (%u/%d) not supported\n",
-+			args->dstaddr->sa_family, args->proto);
-+	return ERR_PTR(-EIO);
+ #ifdef __KERNEL__
+ 
+-extern unsigned int xprt_udp_slot_table_entries;
+-extern unsigned int xprt_tcp_slot_table_entries;
+-
+ #define RPC_MIN_SLOT_TABLE	(2U)
+ #define RPC_DEF_SLOT_TABLE	(16U)
+ #define RPC_MAX_SLOT_TABLE	(128U)
+ 
+ /*
+- * Parameters for choosing a free port
+- */
+-extern unsigned int xprt_min_resvport;
+-extern unsigned int xprt_max_resvport;
+-
+-#define RPC_MIN_RESVPORT	(1U)
+-#define RPC_MAX_RESVPORT	(65535U)
+-#define RPC_DEF_MIN_RESVPORT	(665U)
+-#define RPC_DEF_MAX_RESVPORT	(1023U)
+-
+-/*
+  * This describes a timeout strategy
+  */
+ struct rpc_timeout {
+@@ -263,14 +249,6 @@ void			xprt_release_rqst_cong(struct rpc
+ void			xprt_disconnect(struct rpc_xprt *xprt);
+ 
+ /*
+- * Socket transport setup operations
+- */
+-struct rpc_xprt		*xs_setup_udp(struct xprt_create *args);
+-struct rpc_xprt		*xs_setup_tcp(struct xprt_create *args);
+-int			init_socket_xprt(void);
+-void			cleanup_socket_xprt(void);
+-
+-/*
+  * Reserved bit positions in xprt->state
+  */
+ #define XPRT_LOCKED		(0)
+Index: kernel/include/linux/sunrpc/xprtsock.h
+===================================================================
+--- /dev/null
++++ kernel/include/linux/sunrpc/xprtsock.h
+@@ -0,0 +1,40 @@
++/*
++ *  linux/include/linux/sunrpc/xprtsock.h
++ *
++ *  Declarations for the RPC transport socket provider.
++ */
 +
-+found:
-+	xprt = t->setup(args);
- 	if (IS_ERR(xprt)) {
- 		dprintk("RPC:       xprt_create_transport: failed, %ld\n",
- 				-PTR_ERR(xprt));
++#ifndef _LINUX_SUNRPC_XPRTSOCK_H
++#define _LINUX_SUNRPC_XPRTSOCK_H
++
++#ifdef __KERNEL__
++
++/*
++ * Socket transport setup operations
++ */
++struct rpc_xprt *xs_setup_udp(struct xprt_create *args);
++struct rpc_xprt *xs_setup_tcp(struct xprt_create *args);
++
++int		init_socket_xprt(void);
++void		cleanup_socket_xprt(void);
++
++/*
++ * RPC slot table sizes for UDP, TCP transports
++ */
++extern unsigned int xprt_udp_slot_table_entries;
++extern unsigned int xprt_tcp_slot_table_entries;
++
++/*
++ * Parameters for choosing a free port
++ */
++extern unsigned int xprt_min_resvport;
++extern unsigned int xprt_max_resvport;
++
++#define RPC_MIN_RESVPORT	(1U)
++#define RPC_MAX_RESVPORT	(65535U)
++#define RPC_DEF_MIN_RESVPORT	(665U)
++#define RPC_DEF_MAX_RESVPORT	(1023U)
++
++#endif /* __KERNEL__ */
++
++#endif /* _LINUX_SUNRPC_XPRTSOCK_H */
 Index: kernel/net/sunrpc/xprtsock.c
 ===================================================================
 --- kernel.orig/net/sunrpc/xprtsock.c
 +++ kernel/net/sunrpc/xprtsock.c
-@@ -20,6 +20,7 @@
+@@ -32,6 +32,7 @@
+ #include <linux/tcp.h>
+ #include <linux/sunrpc/clnt.h>
+ #include <linux/sunrpc/sched.h>
++#include <linux/sunrpc/xprtsock.h>
+ #include <linux/file.h>
  
- #include <linux/types.h>
- #include <linux/slab.h>
-+#include <linux/module.h>
- #include <linux/capability.h>
- #include <linux/pagemap.h>
- #include <linux/errno.h>
-@@ -777,6 +778,7 @@ static void xs_destroy(struct rpc_xprt *
- 	xs_free_peer_addresses(xprt);
- 	kfree(xprt->slot);
- 	kfree(xprt);
-+	module_put(THIS_MODULE);
- }
+ #include <net/sock.h>
+Index: kernel/net/sunrpc/sunrpc_syms.c
+===================================================================
+--- kernel.orig/net/sunrpc/sunrpc_syms.c
++++ kernel/net/sunrpc/sunrpc_syms.c
+@@ -20,7 +20,7 @@
+ #include <linux/sunrpc/auth.h>
+ #include <linux/workqueue.h>
+ #include <linux/sunrpc/rpc_pipe_fs.h>
+-
++#include <linux/sunrpc/xprtsock.h>
  
- static inline struct rpc_xprt *xprt_from_sock(struct sock *sk)
-@@ -1782,7 +1784,8 @@ static struct rpc_xprt_ops xs_tcp_ops = 
- 	.print_stats		= xs_tcp_print_stats,
- };
- 
--static struct rpc_xprt *xs_setup_xprt(struct rpc_xprtsock_create *args, unsigned int slot_table_size)
-+static struct rpc_xprt *xs_setup_xprt(struct rpc_xprtsock_create *args,
-+				      unsigned int slot_table_size)
- {
- 	struct rpc_xprt *xprt;
- 	struct sock_xprt *new;
-@@ -1876,7 +1879,12 @@ struct rpc_xprt *xs_setup_udp(struct rpc
- 	dprintk("RPC:       set up transport to address %s\n",
- 			xprt->address_strings[RPC_DISPLAY_ALL]);
- 
--	return xprt;
-+	if (try_module_get(THIS_MODULE))
-+		return xprt;
-+
-+	kfree(xprt->slot);
-+	kfree(xprt);
-+	return ERR_PTR(-EINVAL);
- }
- 
- /**
-@@ -1934,11 +1942,34 @@ struct rpc_xprt *xs_setup_tcp(struct rpc
- 	dprintk("RPC:       set up transport to address %s\n",
- 			xprt->address_strings[RPC_DISPLAY_ALL]);
- 
--	return xprt;
-+	if (try_module_get(THIS_MODULE))
-+		return xprt;
-+
-+	kfree(xprt->slot);
-+	kfree(xprt);
-+	return ERR_PTR(-EINVAL);
- }
- 
-+static struct xprt_class	xs_udp_transport = {
-+	.list		= LIST_HEAD_INIT(xs_udp_transport.list),
-+	.name		= "udp",
-+	.owner		= THIS_MODULE,
-+	.family		= AF_INET,
-+	.protocol	= IPPROTO_UDP,
-+	.setup		= xs_setup_udp,
-+};
-+
-+static struct xprt_class	xs_tcp_transport = {
-+	.list		= LIST_HEAD_INIT(xs_tcp_transport.list),
-+	.name		= "tcp",
-+	.owner		= THIS_MODULE,
-+	.family		= AF_INET,
-+	.protocol	= IPPROTO_TCP,
-+	.setup		= xs_setup_tcp,
-+};
-+
- /**
-- * init_socket_xprt - set up xprtsock's sysctls
-+ * init_socket_xprt - set up xprtsock's sysctls, register with RPC client
-  *
-  */
- int init_socket_xprt(void)
-@@ -1948,11 +1979,14 @@ int init_socket_xprt(void)
- 		sunrpc_table_header = register_sysctl_table(sunrpc_table);
- #endif
- 
-+	xprt_register_transport(&xs_udp_transport);
-+	xprt_register_transport(&xs_tcp_transport);
-+
- 	return 0;
- }
- 
- /**
-- * cleanup_socket_xprt - remove xprtsock's sysctls
-+ * cleanup_socket_xprt - remove xprtsock's sysctls, unregister
-  *
-  */
- void cleanup_socket_xprt(void)
-@@ -1963,4 +1997,7 @@ void cleanup_socket_xprt(void)
- 		sunrpc_table_header = NULL;
- 	}
- #endif
-+
-+	xprt_unregister_transport(&xs_udp_transport);
-+	xprt_unregister_transport(&xs_tcp_transport);
- }
+ /* RPC scheduler */
+ EXPORT_SYMBOL(rpc_execute);
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
