@@ -1,61 +1,62 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 4/7] unionfs: fix unionfs_create and unionfs_setattr to handle ATTR_KILL_S*ID
-Date: Mon, 10 Sep 2007 10:52:37 -0400
-Message-ID: <200709101452.l8AEqbj8016283@dantu.rdu.redhat.com>
-Cc: linux-cifs-client@lists.samba.org, nfs@lists.sourceforge.net,
-	ecryptfs-devel@lists.sourceforge.net,
-	reiserfs-devel@vger.kernel.org, unionfs@filesystems.org
+Subject: [PATCH 1/7] ecryptfs: allow lower fs to interpret
+	ATTR_KILL_S*ID
+Date: Mon, 10 Sep 2007 10:52:21 -0400
+Message-ID: <200709101452.l8AEqLSI016267@dantu.rdu.redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net, unionfs@filesystems.org,
+	linux-cifs-client@lists.samba.org,
+	ecryptfs-devel@lists.sourceforge.net, reiserfs-devel@vger.kernel.org
 To: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Return-path: <reiserfs-devel-owner@vger.kernel.org>
-Sender: reiserfs-devel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Return-path: <nfs-bounces@lists.sourceforge.net>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-Don't allow either function to trip the BUG() in notify_change. For
-unionfs_setattr, clear ATTR_MODE if the either ATTR_KILL_S*ID is set.
-
-unionfs_create is setting the mode explicitly already.  Don't set
-ATTR_KILL_S*ID. Just fix up the mode to have the same effect. Also, move
-locking the i_mutex to lower in the function. It's not needed until it
-checks the i_size.
+Make sure ecryptfs doesn't trip the BUG() in notify_change. This also
+allows the lower filesystem to interpret these bits in their own way.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/unionfs/inode.c |   10 ++++++----
- 1 files changed, 6 insertions(+), 4 deletions(-)
+ fs/ecryptfs/inode.c |    8 ++++++++
+ 1 files changed, 8 insertions(+), 0 deletions(-)
 
-diff --git a/fs/unionfs/inode.c b/fs/unionfs/inode.c
-index 59bb418..f2e7f25 100644
---- a/fs/unionfs/inode.c
-+++ b/fs/unionfs/inode.c
-@@ -78,15 +78,14 @@ static int unionfs_create(struct inode *parent, struct dentry *dentry,
- 		struct dentry *lower_dir_dentry;
- 		struct iattr newattrs;
- 
--		mutex_lock(&wh_dentry->d_inode->i_mutex);
- 		newattrs.ia_valid = ATTR_CTIME | ATTR_MODE | ATTR_ATIME
--			| ATTR_MTIME | ATTR_UID | ATTR_GID | ATTR_FORCE
--			| ATTR_KILL_SUID | ATTR_KILL_SGID;
-+			| ATTR_MTIME | ATTR_UID | ATTR_GID | ATTR_FORCE;
- 
--		newattrs.ia_mode = mode & ~current->fs->umask;
-+		newattrs.ia_mode = mode & ~(current->fs->umask|S_ISUID|S_ISGID);
- 		newattrs.ia_uid = current->fsuid;
- 		newattrs.ia_gid = current->fsgid;
- 
-+		mutex_lock(&wh_dentry->d_inode->i_mutex);
- 		if (wh_dentry->d_inode->i_size != 0) {
- 			newattrs.ia_valid |= ATTR_SIZE;
- 			newattrs.ia_size = 0;
-@@ -1032,6 +1031,9 @@ static int unionfs_setattr(struct dentry *dentry, struct iattr *ia)
- 	bend = dbend(dentry);
- 	inode = dentry->d_inode;
- 
+diff --git a/fs/ecryptfs/inode.c b/fs/ecryptfs/inode.c
+index 131954b..dac4199 100644
+--- a/fs/ecryptfs/inode.c
++++ b/fs/ecryptfs/inode.c
+@@ -959,6 +959,14 @@ static int ecryptfs_setattr(struct dentry *dentry, struct iattr *ia)
+ 		if (rc < 0)
+ 			goto out;
+ 	}
++
++	/*
++	 * mode change is for clearing setuid/setgid bits. Allow lower fs
++	 * to interpret this in its own way.
++	 */
 +	if (ia->ia_valid & (ATTR_KILL_SUID | ATTR_KILL_SGID))
 +		ia->ia_valid &= ~ATTR_MODE;
 +
- 	for (bindex = bstart; (bindex <= bend) || (bindex == bstart);
- 	     bindex++) {
- 		lower_dentry = unionfs_lower_dentry_idx(dentry, bindex);
+ 	rc = notify_change(lower_dentry, ia);
+ out:
+ 	fsstack_copy_attr_all(inode, lower_inode, NULL);
 -- 
 1.5.2.1
 
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Microsoft
+Defy all challenges. Microsoft(R) Visual Studio 2005.
+http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
