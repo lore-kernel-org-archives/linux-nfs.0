@@ -1,55 +1,60 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 2/7] knfsd: only set ATTR_KILL_S*ID if ATTR_MODE isn't being explicitly set
-Date: Mon, 10 Sep 2007 10:52:26 -0400
-Message-ID: <200709101452.l8AEqQFI016272@dantu.rdu.redhat.com>
-Cc: linux-cifs-client@lists.samba.org, nfs@lists.sourceforge.net,
-	ecryptfs-devel@lists.sourceforge.net,
-	reiserfs-devel@vger.kernel.org, unionfs@filesystems.org
+Subject: [PATCH 7/7] CIFS: ignore mode change if it's just for
+	clearing setuid/setgid bits
+Date: Mon, 10 Sep 2007 10:52:52 -0400
+Message-ID: <200709101452.l8AEqqse016299@dantu.rdu.redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net, unionfs@filesystems.org,
+	linux-cifs-client@lists.samba.org,
+	ecryptfs-devel@lists.sourceforge.net, reiserfs-devel@vger.kernel.org
 To: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Return-path: <nfs-bounces@lists.sourceforge.net>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-It's theoretically possible for a single SETATTR call to come in that
-sets the mode and the uid/gid. In that case, assume the mode is
-correct and don't set the ATTR_KILL_S*ID bits. Doing so would trip the
-BUG() in notify_change.
+If the ATTR_KILL_S*ID bits are set then any mode change is only for
+clearing the setuid/setgid bits. For CIFS, skip the mode change and
+let the server handle it.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfsd/vfs.c |   17 +++++++++++------
- 1 files changed, 11 insertions(+), 6 deletions(-)
+ fs/cifs/inode.c |    5 +++++
+ 1 files changed, 5 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 70f2c86..3b5b8cf 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -369,14 +369,19 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
- 	if (iap->ia_valid & ATTR_MODE) {
- 		iap->ia_mode &= S_IALLUGO;
- 		imode = iap->ia_mode |= (imode & ~S_IALLUGO);
-+		if ((iap->ia_valid & ATTR_UID) && iap->ia_uid != inode->i_uid)
-+			iap->ia_valid |= ATTR_KILL_PRIV;
-+	} else {
-+		/*
-+		 * Revoke setuid/setgid bit on chown/chgrp, unless the mode
-+		 * is being explicitly set
-+		 */
-+		if ((iap->ia_valid & ATTR_UID) && iap->ia_uid != inode->i_uid)
-+			iap->ia_valid |= ATTR_KILL_SUID | ATTR_KILL_PRIV;
-+		if ((iap->ia_valid & ATTR_GID) && iap->ia_gid != inode->i_gid)
-+			iap->ia_valid |= ATTR_KILL_SGID;
+diff --git a/fs/cifs/inode.c b/fs/cifs/inode.c
+index 66436f5..8fa3d63 100644
+--- a/fs/cifs/inode.c
++++ b/fs/cifs/inode.c
+@@ -1547,6 +1547,11 @@ int cifs_setattr(struct dentry *direntry, struct iattr *attrs)
  	}
  
--	/* Revoke setuid/setgid bit on chown/chgrp */
--	if ((iap->ia_valid & ATTR_UID) && iap->ia_uid != inode->i_uid)
--		iap->ia_valid |= ATTR_KILL_SUID | ATTR_KILL_PRIV;
--	if ((iap->ia_valid & ATTR_GID) && iap->ia_gid != inode->i_gid)
--		iap->ia_valid |= ATTR_KILL_SGID;
--
- 	/* Change the attributes. */
- 
- 	iap->ia_valid |= ATTR_CTIME;
+ 	time_buf.Attributes = 0;
++
++	/* skip mode change if it's just for clearing setuid/setgid */
++	if (attrs->ia_valid & (ATTR_KILL_SUID|ATTR_KILL_SGID))
++		attrs->ia_valid &= ~ATTR_MODE;
++
+ 	if (attrs->ia_valid & ATTR_MODE) {
+ 		cFYI(1, ("Mode changed to 0x%x", attrs->ia_mode));
+ 		mode = attrs->ia_mode;
 -- 
 1.5.2.1
 
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Microsoft
+Defy all challenges. Microsoft(R) Visual Studio 2005.
+http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
