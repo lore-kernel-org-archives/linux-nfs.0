@@ -1,28 +1,27 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 19/19] text-based mount.nfs: Implement fg/bg
-	processing for	NFSv4 mounts
-Date: Mon, 10 Sep 2007 21:00:04 -0400
-Message-ID: <20070911010004.24927.4625.stgit@monet.1015granger.net>
+Subject: [PATCH 00/19] RFC: fg/bg and fallback support for mount.nfs
+Date: Mon, 10 Sep 2007 20:58:22 -0400
+Message-ID: <20070911004840.24927.47585.stgit@monet.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IUu6n-00039M-Ek
-	for nfs@lists.sourceforge.net; Mon, 10 Sep 2007 18:00:05 -0700
+	id 1IUu5C-0002vg-Cx
+	for nfs@lists.sourceforge.net; Mon, 10 Sep 2007 17:58:26 -0700
 Received: from flpi102.sbcis.sbc.com ([207.115.20.71] helo=flpi102.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IUu6s-0001aZ-4o
-	for nfs@lists.sourceforge.net; Mon, 10 Sep 2007 18:00:10 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IUu5G-0007kl-2u
+	for nfs@lists.sourceforge.net; Mon, 10 Sep 2007 17:58:31 -0700
 Received: from monet.1015granger.net
 	(adsl-76-241-169-38.dsl.sfldmi.sbcglobal.net [76.241.169.38])
 	by flpi102.prodigy.net (8.13.8 out.dk.spool/8.13.8) with ESMTP id
-	l8B0xr6Q029734
-	for <nfs@lists.sourceforge.net>; Mon, 10 Sep 2007 17:59:53 -0700
+	l8B0wD6I027257
+	for <nfs@lists.sourceforge.net>; Mon, 10 Sep 2007 17:58:13 -0700
 Received: from monet.1015granger.net (monet.1015granger.net [127.0.0.1])
-	by monet.1015granger.net (8.14.1/8.14.1) with ESMTP id l8B104vq025098
-	for <nfs@lists.sourceforge.net>; Mon, 10 Sep 2007 21:00:04 -0400
+	by monet.1015granger.net (8.14.1/8.14.1) with ESMTP id l8B0wMiK024984
+	for <nfs@lists.sourceforge.net>; Mon, 10 Sep 2007 20:58:23 -0400
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,41 +34,56 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-We can now finish the fg/bg implementation for NFSv4 mounts by copying the
-logic from nfsmount_s.
+I'm posting this for review and comments.  This patch series is incomplete
+and known not to work.  I'm still working out the bugs.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+In this series, I implement support for probing the server and retrying
+when an initial text-based mount attempt fails, and support for retrying
+text-based mount requests in the foreground and background.
 
- utils/mount/stropts.c |   14 +++++++++++---
- 1 files changed, 11 insertions(+), 3 deletions(-)
+Road map:
 
-diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-index a1ddd99..4caf6dd 100644
---- a/utils/mount/stropts.c
-+++ b/utils/mount/stropts.c
-@@ -772,9 +772,17 @@ int nfs4mount_s(const char *spec, const char *node, int flags,
- 	if (!append_clientaddr_option(&saddr, options))
- 		goto out;
- 
--	if (!try_nfs4mount(spec, node, flags, options, fake, extra_opts))
--		goto out;
--	retval = 0;
-+	if (po_rightmost(options, "bg", "fg") > -1) {
-+		retval =  nfs4mount_fg(spec, node, flags, options,
-+							fake, extra_opts);
-+	} else {
-+		if (!child)
-+			retval = nfs4mount_parent(spec, node, hostname, flags,
-+						  options, fake, extra_opts);
-+		else
-+			retval = nfs4mount_child(spec, node, hostname, flags,
-+						 options, fake, extra_opts);
-+	}
- 
- out:
- 	po_destroy(options);
+Clean-up:
+01 use-child-argument-for-nfsmount-s
 
+Implement lexical parsing helpers to handle mount option manipulation:
+02 add-mount-option-parsing-helpers
+03 use-new-option-parsing-facility
+
+Use the new parsing facility to fix a problem with the mounthost option:
+04 fix-mounthost-option
+
+Clean-up:
+05 remove-unused-string-parsing-helpers
+
+Adjust error reporting for text-based mounts:
+06 rename-mount-errors
+07 add-new-mount-errors-function
+08 handle-new-error-reports
+
+Clean-up:
+09 comment-network-functions
+
+Add structure for falling back:
+10 add-try-nfsmount-and-friend
+11 use-try-nfsmount-and-friend
+12 add-rewrite-mount-options
+13 add-fallback-support
+
+Add structure for foreground NFS mounts:
+14 add-nfs-foreground-mount
+15 use-nfs-foreground-mount
+
+Add structure for background NFS mounts:
+16 add-bg-helpers
+17 add-bg-for-nfs-mounts
+
+Duplicate NFS implementation for NFSv4 mounts:
+18 fg-bg-helpers-for-nfs4
+19 add-fg-and-bg-for-nfs4-mounts
+
+-- 
+corporate:    <chuck dot lever at oracle dot com>
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
