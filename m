@@ -1,20 +1,21 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 03/15] SUNRPC: Use correct argument type in memcpy()
-Date: Tue, 11 Sep 2007 18:00:15 -0400
-Message-ID: <20070911220014.26136.17254.stgit@monet.1015granger.net>
+Subject: [PATCH 06/15] SUNRPC: Make rpcb_decode_getaddr more picky
+	about	universal addresses
+Date: Tue, 11 Sep 2007 18:00:31 -0400
+Message-ID: <20070911220030.26136.18494.stgit@monet.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 To: trond.myklebust@fys.uio.no
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IVDme-0006qA-NN
-	for nfs@lists.sourceforge.net; Tue, 11 Sep 2007 15:00:36 -0700
+	id 1IVDmh-0006qG-P5
+	for nfs@lists.sourceforge.net; Tue, 11 Sep 2007 15:00:40 -0700
 Received: from flpi102.sbcis.sbc.com ([207.115.20.71] helo=flpi102.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IVDmh-0005Bi-Cj
-	for nfs@lists.sourceforge.net; Tue, 11 Sep 2007 15:00:41 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IVDmm-0001oS-7j
+	for nfs@lists.sourceforge.net; Tue, 11 Sep 2007 15:00:44 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,34 +28,65 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Noticed by Tom Talpey <tmt@netapp.com>:
-
-OBTW, there's a nit on that memcpy, too. The r_addr is an array, so
-
-memcpy(&map->r_addr
-
-is passing the address of the array as a char **. It's the same as
-map->r_addr, but technically the wrong type.
+Add better sanity checking of server replies to the GETVERSADDR reply
+decoder.  Change the error return code: EIO is what other XDR decoding
+routines return if there is a failure while decoding.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- net/sunrpc/rpcb_clnt.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ net/sunrpc/rpcb_clnt.c |   28 +++++++++++++++++++++++-----
+ 1 files changed, 23 insertions(+), 5 deletions(-)
 
 diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index 0bb6709..f88ab90 100644
+index f88ab90..34738c5 100644
 --- a/net/sunrpc/rpcb_clnt.c
 +++ b/net/sunrpc/rpcb_clnt.c
-@@ -410,7 +410,7 @@ void rpcb_getport_async(struct rpc_task *task)
- 	map->r_xprt = xprt_get(xprt);
- 	map->r_netid = (xprt->prot == IPPROTO_TCP) ? RPCB_NETID_TCP :
- 						   RPCB_NETID_UDP;
--	memcpy(&map->r_addr,
-+	memcpy(map->r_addr,
- 	       rpc_peeraddr2str(rpcb_clnt, RPC_DISPLAY_UNIVERSAL_ADDR),
- 	       sizeof(map->r_addr));
- 	map->r_owner = RPCB_OWNER_STRING;	/* ignored for GETADDR */
+@@ -528,12 +528,19 @@ static int rpcb_decode_getaddr(struct rpc_rqst *req, __be32 *p,
+ 
+ 	*portp = 0;
+ 	addr_len = ntohl(*p++);
+-	if (addr_len > RPCB_MAXADDRLEN)			/* sanity */
+-		return -EINVAL;
+-
+-	dprintk("RPC:       rpcb_decode_getaddr returned string: '%s'\n",
+-			(char *) p);
+ 
++	/*
++	 * Simple sanity check.  The smallest possible universal
++	 * address is an IPv4 address string containing 11 bytes.
++	 */
++	if (addr_len < 11 || addr_len > RPCB_MAXADDRLEN)
++		goto out_err;
++
++	/*
++	 * Start at the end and walk backwards until the first dot
++	 * is encountered.  When the second dot is found, we have
++	 * both parts of the port number.
++	 */
+ 	addr = (char *)p;
+ 	val = 0;
+ 	first = 1;
+@@ -555,8 +562,19 @@ static int rpcb_decode_getaddr(struct rpc_rqst *req, __be32 *p,
+ 		}
+ 	}
+ 
++	/*
++	 * Simple sanity check.  If we never saw a dot in the reply,
++	 * then this was probably just garbage.
++	 */
++	if (first)
++		goto out_err;
++
+ 	dprintk("RPC:       rpcb_decode_getaddr port=%u\n", *portp);
+ 	return 0;
++
++out_err:
++	dprintk("RPC:       rpcbind server returned malformed reply\n");
++	return -EIO;
+ }
+ 
+ #define RPCB_program_sz		(1u)
 
 
 -------------------------------------------------------------------------
