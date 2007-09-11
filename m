@@ -1,180 +1,66 @@
-From: "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Subject: [PATCH 3/3] Remove unnecessary code from idmapd.
-Date: Tue, 11 Sep 2007 09:03:27 -0400
-Message-ID: <1189515807.12340.6.camel@moss-terrapins.epoch.ncsc.mil>
-References: <1189459543.7914.16.camel@moss-terrapins.epoch.ncsc.mil>
+From: nbsyt7@infoseek.jp
+Subject: =?ISO-2022-JP?B?jaGT+oKplr6T+onvgqaC3IK5gvGCqYFIlnuTloLJg3GDfYK1gsSCooLcgreBRYFFgUWCsphBl42R0oLBgsSC3IK3i1iCtYKtgqiK6IKigrWC3IK3?=
+Date: Tue, 11 Sep 2007 06:44:33 -0700 (PDT)
+Message-ID: <37821.6082267047$1189518277@news.gmane.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfsv4@linux-nfs.org
+Content-Type: multipart/mixed; boundary="===============0020243781=="
 To: nfs@lists.sourceforge.net
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <1189459543.7914.16.camel@moss-terrapins.epoch.ncsc.mil>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
-List-ID: <nfs.lists.sourceforge.net>
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1IV62O-0001Oh-Sa
+	for nfs@lists.sourceforge.net; Tue, 11 Sep 2007 06:44:21 -0700
+Received: from ppp-124.120.96.160.revip2.asianet.co.th ([124.120.96.160]
+	helo=ppp-revipop001581.asianet.co.th)
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1IV62T-00079T-7O
+	for nfs@lists.sourceforge.net; Tue, 11 Sep 2007 06:44:25 -0700
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-This patch removes unnecessary code from idmapd. setproctitle is not used
-anywhere and it can be removed. In addition the kernel section of the
-nfs_idmap.h header is not used and is out of date and thus is removed.
+--===============0020243781==
+Content-Type: text/plain;
+	charset="iso-2022-jp"
+Content-Transfer-Encoding: 7bit
 
-Signed-off-by: David P. Quigley <dpquigl@tycho.nsa.gov>
----
- utils/idmapd/Makefile.am    |    1 -
- utils/idmapd/nfs_idmap.h    |    7 ---
- utils/idmapd/setproctitle.c |  110 -------------------------------------------
- 3 files changed, 0 insertions(+), 118 deletions(-)
- delete mode 100644 utils/idmapd/setproctitle.c
+メールだけで会う事に抵抗ありますか？もしそうなら、電話で話しませんか？
+フリー掲示板では番号だって交換できますから、メールだけで会うのが不安なのは私も一緒です、
+なので一度電話できればお互いに信用して会えますよね？勝手な話ばかりして申し訳ありません。
+このメールを確認できてるようなら返事が欲しいんです。
+いつも使ってるフリーアドレスです。
+http://free.gals-cafe.info/SFP/
+ここならパソコンでも携帯でもフリーアドレスでも何でも大丈夫でお金も掛かりません。
+写真を準備して待ってますね、電話で話す事が出来れば今でも約束する事が出来ると思うんです
 
-diff --git a/utils/idmapd/Makefile.am b/utils/idmapd/Makefile.am
-index 586ac9a..eb393df 100644
---- a/utils/idmapd/Makefile.am
-+++ b/utils/idmapd/Makefile.am
-@@ -16,7 +16,6 @@ idmapd_SOURCES = \
- 	atomicio.c \
- 	cfg.c \
- 	idmapd.c \
--	setproctitle.c \
- 	strlcat.c \
- 	strlcpy.c \
- 	\
-diff --git a/utils/idmapd/nfs_idmap.h b/utils/idmapd/nfs_idmap.h
-index 5ec7cf1..59bced3 100644
---- a/utils/idmapd/nfs_idmap.h
-+++ b/utils/idmapd/nfs_idmap.h
-@@ -61,11 +61,4 @@ struct idmap_msg {
- 	u_int8_t  im_status;
- };
- 
--#ifdef __KERNEL__
--void      *nfs_idmap_new(struct nfs_server *);
--void       nfs_idmap_delete(struct nfs_server *);
--int        nfs_idmap_id(struct nfs_server *, u_int8_t, char *, u_int,  uid_t *);
--int        nfs_idmap_name(struct nfs_server *, u_int8_t, uid_t, char *, u_int *);
--#endif /* __KERNEL__ */
--
- #endif /* NFS_IDMAP_H */
-diff --git a/utils/idmapd/setproctitle.c b/utils/idmapd/setproctitle.c
-deleted file mode 100644
-index 0679f4e..0000000
---- a/utils/idmapd/setproctitle.c
-+++ /dev/null
-@@ -1,110 +0,0 @@
--/*
-- * Modified for OpenSSH by Kevin Steves
-- * October 2000
-- */
--
--/*
-- * Copyright (c) 1994, 1995 Christopher G. Demetriou
-- * All rights reserved.
-- *
-- * Redistribution and use in source and binary forms, with or without
-- * modification, are permitted provided that the following conditions
-- * are met:
-- * 1. Redistributions of source code must retain the above copyright
-- *    notice, this list of conditions and the following disclaimer.
-- * 2. Redistributions in binary form must reproduce the above copyright
-- *    notice, this list of conditions and the following disclaimer in the
-- *    documentation and/or other materials provided with the distribution.
-- * 3. All advertising materials mentioning features or use of this software
-- *    must display the following acknowledgement:
-- *      This product includes software developed by Christopher G. Demetriou
-- *	for the NetBSD Project.
-- * 4. The name of the author may not be used to endorse or promote products
-- *    derived from this software without specific prior written permission
-- *
-- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-- * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-- * IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-- * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-- */
--
--#if defined(LIBC_SCCS) && !defined(lint)
--static char rcsid[] = "$OpenBSD: setproctitle.c,v 1.8 2001/11/06 19:21:40 art Exp $";
--#endif /* LIBC_SCCS and not lint */
--
--#include <sys/types.h>
--
--#include <stdio.h>
--#include <string.h>
--#include <stdarg.h>
--
--#ifdef HAVE_CONFIG_H
--#include "config.h"
--#endif /* HAVE_CONFIG_H */
--
--#ifndef HAVE_SETPROCTITLE
--
--#define SPT_NONE	0
--#define SPT_PSTAT	1
--
--#ifndef SPT_TYPE
--#define SPT_TYPE	SPT_NONE
--#endif
--
--#if SPT_TYPE == SPT_PSTAT
--#include <sys/param.h>
--#include <sys/pstat.h>
--#endif /* SPT_TYPE == SPT_PSTAT */
--
--#define	MAX_PROCTITLE	2048
--
--extern char *__progname;
--
--/*
-- * Set Process Title (SPT) defines.  Modeled after sendmail's
-- * SPT type definition strategy.
-- *
-- * SPT_TYPE:
-- *
-- * SPT_NONE:	Don't set the process title.  Default.
-- * SPT_PSTAT:	Use pstat(PSTAT_SETCMD).  HP-UX specific.
-- */
--
--void
--setproctitle(const char *fmt, ...)
--{
--#if SPT_TYPE != SPT_NONE
--	va_list ap;
--
--	char buf[MAX_PROCTITLE];
--	size_t used;
--
--#if SPT_TYPE == SPT_PSTAT
--	union pstun pst;
--#endif /* SPT_TYPE == SPT_PSTAT */
--
--	va_start(ap, fmt);
--	if (fmt != NULL) {
--		used = snprintf(buf, MAX_PROCTITLE, "%s: ", __progname);
--		if (used >= MAX_PROCTITLE)
--			used = MAX_PROCTITLE - 1;
--		(void)vsnprintf(buf + used, MAX_PROCTITLE - used, fmt, ap);
--	} else
--		(void)snprintf(buf, MAX_PROCTITLE, "%s", __progname);
--	va_end(ap);
--	used = strlen(buf);
--
--#if SPT_TYPE == SPT_PSTAT
--	pst.pst_command = buf;
--	pstat(PSTAT_SETCMD, pst, used, 0, 0);
--#endif /* SPT_TYPE == SPT_PSTAT */
--
--#endif /* SPT_TYPE != SPT_NONE */
--}
--#endif /* HAVE_SETPROCTITLE */
--- 
-1.5.2.4
+
+
+--===============0020243781==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Microsoft
+Defy all challenges. Microsoft(R) Visual Studio 2005.
+http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+--===============0020243781==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============0020243781==--
