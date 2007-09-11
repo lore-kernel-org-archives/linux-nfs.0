@@ -1,139 +1,77 @@
-From: Michal Piotrowski <michal.k.k.piotrowski@gmail.com>
-Subject: [1/2] 2.6.23-rc5: known regressions with patches v2
-Date: Sat, 08 Sep 2007 13:11:35 +0200
-Message-ID: <46E28367.2070001__32776.4592519545$1189520192$gmane$org@googlemail.com>
+From: Mark Hindley <mark@hindley.org.uk>
+Subject: [OOPS] 2.6.23-rc5 in tcp/net/nfsd
+Date: Tue, 11 Sep 2007 09:32:00 +0100
+Message-ID: <20070911083200.GA3409@hindley.org.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Gabriel C <nix.or.die@googlemail.com>,
-	Bartlomiej Zolnierkiewicz <bzolnier@gmail.com>,
-	Peter Kovar <peter.kovar@gmail.com>, Neil Brown <neilb@suse.de>,
-	Vitaly Bordug <vitb@kernel.crashing.org>,
-	Trond Myklebust <Trond.Myklebust@netapp.com>,
-	LKML <linux-kernel@vger.kernel.org>,
-	Tony Breeds <tony@bakeyournoodle.com>, linux-ide@vger.kernel.org,
-	nfs@lists.sourceforge.net, linux-fsdevel@vger.kernel.org,
-	Satyam Sharma <satyam.sharma@gmail.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Andrey Borzenkov <arvidjaar@mail.ru>, Bret Towe <magnade@gmail.com>,
-	Bjorn Helgaas <bjorn.helgaas@hp.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1ITyFK-0005Eb-FF
-	for nfs@lists.sourceforge.net; Sat, 08 Sep 2007 04:13:02 -0700
-Received: from fk-out-0910.google.com ([209.85.128.188])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1ITyFO-0001tf-F6
-	for nfs@lists.sourceforge.net; Sat, 08 Sep 2007 04:13:07 -0700
-Received: by fk-out-0910.google.com with SMTP id 19so899970fkr
-	for <nfs@lists.sourceforge.net>; Sat, 08 Sep 2007 04:13:06 -0700 (PDT)
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: netdev@vger.kernel.org, nfs@lists.sourceforge.net, neilb@suse.de
+To: linux-kernel@vger.kernel.org
+Return-path: <netdev-owner@vger.kernel.org>
+Sender: netdev-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-Hi all,
+This oops appeared over night on a box running 2.6.23-rc5 (recent with the
+tcp_input.c fix).
 
-Here is a list of some known regressions in 2.6.23-rc5
-with patches available.
+I can't find a similar one reported.
 
-Feel free to add new regressions/remove fixed etc.
-http://kernelnewbies.org/known_regressions
-
-List of Aces
-
-Name                    Regressions fixed since 21-Jun-2007
-Adrian Bunk                            10
-Linus Torvalds                         6
-Andi Kleen                             5
-Hugh Dickins                           5
-Trond Myklebust                        5
-Andrew Morton                          4
-Al Viro                                3
-Alan Stern                             3
-Alexey Starikovskiy                    3
-Cornelia Huck                          3
-David S. Miller                        3
-Jens Axboe                             3
-Stephen Hemminger                      3
-Tejun Heo                              3
+Mark
 
 
-
-Some of these patches are available in -krf (known regressions fixes) tree
-http://www.stardust.webpages.pl/files/patches/krf/2.6.23-rc5-git1/linux-2.6.23-rc5-git1-krf1.patch.bz2
-http://www.stardust.webpages.pl/files/patches/krf/2.6.23-rc5-git1/linux-2.6.23-rc5-git1-krf1.tar.bz2
-
-
-
-Unclassified
-
-Subject         : 8250 claims non existing device blocking IO port
-References      : http://lkml.org/lkml/2007/8/18/20
-Last known good : ?
-Submitter       : Andrey Borzenkov <arvidjaar@mail.ru>
-Caused-By       : ?
-Handled-By      : Bjorn Helgaas <bjorn.helgaas@hp.com>
-Patch           : http://lkml.org/lkml/2007/8/21/291
-Status          : patch available
-
-Subject         : Oops while modprobing phy fixed module
-References      : http://lkml.org/lkml/2007/7/14/63
-Last known good : ?
-Submitter       : Gabriel C <nix.or.die@googlemail.com>
-Caused-By       : ?
-Handled-By      : Satyam Sharma <satyam.sharma@gmail.com>
-                  Vitaly Bordug <vitb@kernel.crashing.org>
-Patch1          : http://lkml.org/lkml/2007/7/18/506
-Status          : patch available
-
-
-
-FS
-
-Subject         : NFSv3 server error in LOOKUP after READDIRPLUS Call
-References      : http://bugzilla.kernel.org/show_bug.cgi?id=8966
-Last known good : ?
-Submitter       : Peter Kovar <peter.kovar@gmail.com>
-Caused-By       : ?
-Handled-By      : Neil Brown <neilb@suse.de>
-Patch           : http://bugzilla.kernel.org/attachment.cgi?id=12689
-Status          : patch available
-
-
-
-IDE
-
-Subject         : linux-2.6.23-rc4 ppc build failure
-References      : http://lkml.org/lkml/2007/8/29/154
-Last known good : ?
-Submitter       : Bret Towe <magnade@gmail.com>
-Caused-By       : ?
-Handled-By      : Tony Breeds <tony@bakeyournoodle.com>
-Patch           : http://lkml.org/lkml/2007/8/31/1
-Status          : patch was suggested
-
-
-
-Regards,
-Michal
-
---
-LOG
-http://www.stardust.webpages.pl/log/
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Microsoft
-Defy all challenges. Microsoft(R) Visual Studio 2005.
-http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+BUG: unable to handle kernel NULL pointer dereference at virtual address 0000007e 
+ printing eip: 
+c02625bf 
+*pde = 00000000 
+Oops: 0002 [#1] 
+PREEMPT
+Modules linked in: softdog nfs cpufreq_userspace nfsd exportfs lockd sunrpc ppdev lp ac battery ipv6 cpufreq_ondemand cpufreq_powersave longhaul af_packet tcp_diag inev
+CPU:    0
+EIP:    0060:[<c02625bf>]    Not tainted VLI
+EFLAGS: 00010246   (2.6.23-rc5-2-mcyrixiii #1)
+EIP is at ip_fragment+0x7f/0x680
+eax: c3c09c00   ebx: 00000000   ecx: b524d006   edx: 0000007b
+esi: c1f77810   edi: c1f77e00   ebp: 00000000   esp: ccb48b3c
+ds: 007b   es: 007b   fs: 0000  gs: 0000  ss: 0068
+Process nfsd (pid: 2942, ti=ccb48000 task=cf78c530 task.ti=ccb48000)
+Stack: 00000060 00000060 c0262dd0 c3c09c00 c0382600 00000158 000005c8 00000014
+       cbbc5424 00000158 00000000 00008b80 00000000 c1134a40 c3c09c00 00000000
+       cee8b780 c0382600 c0264115 00000282 ceabbe40 00000158 c026306c 00000000
+Call Trace:
+ [<c0262dd0>] ip_finish_output2+0x0/0x1c0
+ [<c0264115>] ip_output+0xd5/0x290
+ [<c026306c>] ip_generic_getfrag+0x4c/0xa0
+ [<c025d3e8>] __ip_select_ident+0x58/0xc0
+ [<c02619ef>] ip_push_pending_frames+0x2df/0x3a0
+ [<c0263020>] ip_generic_getfrag+0x0/0xa0
+ [<c027afab>] udp_push_pending_frames+0x2ab/0x2d0
+ [<c027bfc9>] udp_sendmsg+0x469/0x590
+ [<c025c470>] __ip_route_output_key+0x6f0/0x710
+ [<c0261f8f>] ip_append_data+0x4df/0x970
+ [<c01203d0>] irq_exit+0x40/0x70
+ [<c02811fb>] inet_sendmsg+0x3b/0x50
+ [<c023a79b>] sock_sendmsg+0xbb/0xe0
+ [<c012bf80>] autoremove_wake_function+0x0/0x40
+ [<c02811fb>] inet_sendmsg+0x3b/0x50
+ [<c023ba57>] kernel_sendmsg+0x27/0x40
+ [<c023c53a>] sock_no_sendpage+0x5a/0x70
+ [<c027c766>] udp_sendpage+0xd6/0x130
+ [<d030a5a0>] nfsd_acceptable+0x0/0xd0 [nfsd]
+ [<c027c690>] udp_sendpage+0x0/0x130
+ [<c0281265>] inet_sendpage+0x55/0x90
+ [<c0281210>] inet_sendpage+0x0/0x90
+ [<c0239acf>] kernel_sendpage+0x3f/0x50
+ [<d02e7893>] svc_sendto+0x1b3/0x280 [sunrpc]
+ [<d031312a>] encode_post_op_attr+0x4a/0x60 [nfsd]
+ [<c01593e5>] __slab_free+0x55/0x280
+ [<d02e7971>] svc_udp_sendto+0x11/0x30 [sunrpc]
+ [<d02e8737>] svc_send+0xb7/0x100 [sunrpc]
+ [<d02ea34b>] svcauth_unix_release+0x3b/0x50 [sunrpc]
+ [<d0312ed0>] nfs3svc_release_fhandle+0x0/0x10 [nfsd]
+ [<d02e7178>] svc_process+0x418/0x690 [sunrpc]
+ [<d02e9f1a>] svc_recv+0x35a/0x3d0 [sunrpc]
+ [<d0308775>] nfsd+0x185/0x2a0 [nfsd]
+ [<d03085f0>] nfsd+0x0/0x2a0 [nfsd]
+ [<c0105027>] kernel_thread_helper+0x7/0x10
+ =======================
+Code: 01 00 00 03 75 0e 8b 42 18 8b 40 0c 8b 80 c4 00 00 00 eb 0a 8b 4c 24 08 8b 41 18 8b 40 28 0f c8 89 04 24 8b 44 24 08 b9 04 00 00 <00> ba 03 00 00 00 bf a6 ff ff
+EIP: [<c02625bf>] ip_fragment+0x7f/0x680 SS:ESP 0068:ccb48b3c
