@@ -1,27 +1,30 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 12/19] NFS/SUNRPC: support transport protocol
-	naming
-Date: Tue, 11 Sep 2007 12:03:12 -0400
-Message-ID: <46E6BC40.2090605@oracle.com>
-References: <EXNANE01tacom1iaCRq000004bb@exnane01.hq.netapp.com>
-	<46E5E07C.5070202@oracle.com>
-	<EXNANE01PMKSUW8VcOM000004ce@exnane01.hq.netapp.com>
-Reply-To: chuck.lever@oracle.com
+From: "Chris Carlson" <c.carlson@aristoslogic.com>
+Subject: nfs_refresh_inode: inode number mismatch
+Date: Tue, 11 Sep 2007 09:41:51 -0700
+Message-ID: <46E6C54F.4020100@aristoslogic.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------050700040907050705010100"
-Cc: nfs@lists.sourceforge.net
-To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
+Content-Type: text/plain; charset="us-ascii"
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IV8Do-0002X4-Ha
-	for nfs@lists.sourceforge.net; Tue, 11 Sep 2007 09:04:17 -0700
-Received: from rgminet01.oracle.com ([148.87.113.118])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IV8Do-00080F-Md
-	for nfs@lists.sourceforge.net; Tue, 11 Sep 2007 09:04:21 -0700
-In-Reply-To: <EXNANE01PMKSUW8VcOM000004ce@exnane01.hq.netapp.com>
+	id 1IV8oS-0007ZI-7r
+	for nfs@lists.sourceforge.net; Tue, 11 Sep 2007 09:42:08 -0700
+Received: from 65-119-21-40.dia.static.qwest.net ([65.119.21.40]
+	helo=gabriel.aristoslogic.com)
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1IV8oV-0006Q2-SE
+	for nfs@lists.sourceforge.net; Tue, 11 Sep 2007 09:42:13 -0700
+Received: from gabriel.aristoslogic.com (localhost [127.0.0.1])
+	by localhost.aristoslogic.com (Postfix) with ESMTP id E081C221F
+	for <nfs@lists.sourceforge.net>; Tue, 11 Sep 2007 09:42:05 -0700 (PDT)
+Received: from daak.aristoslogic.com (unknown [172.31.1.2])
+	by gabriel.aristoslogic.com (Postfix) with SMTP id A8E592204
+	for <nfs@lists.sourceforge.net>; Tue, 11 Sep 2007 09:42:05 -0700 (PDT)
+Received: from [172.31.10.74] ([172.31.10.74]) by
+	daak.aristoslogic.com (Netscape Messaging Server 4.1) with ESMTP
+	id JO7QE500.AC2 for <nfs@lists.sourceforge.net>; Tue, 11 Sep
+	2007 09:42:05 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,79 +37,44 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
---------------050700040907050705010100
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Transfer-Encoding: 7bit
 
-Talpey, Thomas wrote:
-> At 08:25 PM 9/10/2007, Chuck Lever wrote:
->> Just a general comment.
->>
->> I don't see how this will make it easier to add NFS client support for 
->> new RPC transports.  I thought we recently decided to pass down a 
->> string, and let the transports themselves register a netid that matches it?
->>
->> For example, these changes are required to support RDMA -- you can't 
->> just ship a new RDMA SUNRPC transport module and expect it to work 
->> without this ULP change.  Likewise, if we add SCTP sometime in the 
->> future, will we want to make this same kind of modification to the NFS 
->> client before the SCTP SUNRCP transport module works correctly?
-> 
-> Well, the "string" discussion was in the context of the server-side
-> switch,
+We are running MontaVista Embedded Linux 2.4 with NetApps NFS servers as 
+the root filesystem and Linux 2.6 mounted filesystems.  A simple test 
+runs to copy files from one mount point to another (both are different 
+directories on the same NFS server mounted at differet points).
 
-Oops.  I thought it was about both sides.
+After 30 copies of a hundred files are made, the system is rebooted and 
+the test repeats.
 
-> but you call out a good goal to add transports without touching
-> the upper layers.
-> 
-> I think the choice of integer or string is basically arbitrary. One way or
-> the other, some mapping from identifier to the actual transport is defined.
-> Strings are a little more self-describing, but in the end harder to maintain
-> for that very reason. That's the way my thinking came down, anyway.
+After 2 reboots, an NFS file is created, and we get the following error 
+from the kernel:
 
-I guess I see it the other way.  The user specifies a string. 
-Converting it to a number means something has to keep track of the mapping.
+nfs_refresh_inode: inode number mismatch
+expected (0x11/0xdacea3), got (0x11/0xb8d5e3)
 
---------------050700040907050705010100
-Content-Type: text/x-vcard; charset=utf-8;
- name="chuck.lever.vcf"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="chuck.lever.vcf"
+We're just trying to figure out what to do to figure out what the 
+problem is.  Is there a good place to place printks or breakpoints?
 
-begin:vcard
-fn:Chuck Lever
-n:Lever;Chuck
-org:Oracle Corporation;Corporate Architecture: Linux Projects Group
-adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
-title:Principal Member of Staff
-tel;work:+1 248 614 5091
-x-mozilla-html:FALSE
-url:http://oss.oracle.com/~cel
-version:2.1
-end:vcard
+Thanks for any assistance you can provide.
+
+Chris Carlson
 
 
---------------050700040907050705010100
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+CONFIDENTIALITY NOTICE:
+
+This email, together with any attachments, is intended only for use by Aristos Logic Corporation and the
+individual(s) to which it is addressed and may contain information that is privileged, confidential or 
+exempt from disclosure. If you are not the intended recipient, you are hereby notified that any dissemination,
+distribution, or copying of this email, or any attachment, is strictly prohibited. If you have received this
+email in error, please notify Aristos Logic Corporation by sending an email to sysadm@aristoslogic.com
+and delete this email, along with any attachments, from your computer.
+
+Thank you.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
 Defy all challenges. Microsoft(R) Visual Studio 2005.
 http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
---------------050700040907050705010100
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---------------050700040907050705010100--
