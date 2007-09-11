@@ -1,113 +1,55 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: nfs_refresh_inode: inode number mismatch
-Date: Tue, 11 Sep 2007 13:09:08 -0400
-Message-ID: <46E6CBB4.7020503@oracle.com>
-References: <46E6C54F.4020100@aristoslogic.com>
-Reply-To: chuck.lever@oracle.com
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 2/3] Remove old logging implementation for idmapd and
+	rework gssd and idmapd to use the new xlog logging infrastructure.
+Date: Tue, 11 Sep 2007 13:16:21 -0400
+Message-ID: <20070911171621.GI13948@fieldses.org>
+References: <1189459543.7914.16.camel@moss-terrapins.epoch.ncsc.mil>
+	<1189515746.12340.4.camel@moss-terrapins.epoch.ncsc.mil>
+	<4d569c330709110800g558b1fect5f84ea20e25efc7b@mail.gmail.com>
+	<1189523208.12340.10.camel@moss-terrapins.epoch.ncsc.mil>
+	<4d569c330709110824t60745764l3fc63a393d51b0b9@mail.gmail.com>
+	<4d569c330709110828qfaf7726we21d80d8001c92f9@mail.gmail.com>
+	<20070911153742.GG13948@fieldses.org>
+	<1189530078.12340.28.camel@moss-terrapins.epoch.ncsc.mil>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------000702010902070209050205"
-Cc: nfs@lists.sourceforge.net
-To: Chris Carlson <c.carlson@aristoslogic.com>
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IV9GJ-0002Eq-0U
-	for nfs@lists.sourceforge.net; Tue, 11 Sep 2007 10:10:55 -0700
-Received: from agminet01.oracle.com ([141.146.126.228])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IV9GN-0000zO-B1
-	for nfs@lists.sourceforge.net; Tue, 11 Sep 2007 10:10:59 -0700
-In-Reply-To: <46E6C54F.4020100@aristoslogic.com>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
-
-This is a multi-part message in MIME format.
---------------000702010902070209050205
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Transfer-Encoding: 7bit
-
-Hi Chris-
-
-Chris Carlson wrote:
-> We are running MontaVista Embedded Linux 2.4 with NetApps NFS servers as 
-> the root filesystem and Linux 2.6 mounted filesystems.  A simple test 
-> runs to copy files from one mount point to another (both are different 
-> directories on the same NFS server mounted at differet points).
-> 
-> After 30 copies of a hundred files are made, the system is rebooted and 
-> the test repeats.
-> 
-> After 2 reboots, an NFS file is created, and we get the following error 
-> from the kernel:
-> 
-> nfs_refresh_inode: inode number mismatch
-> expected (0x11/0xdacea3), got (0x11/0xb8d5e3)
-> 
-> We're just trying to figure out what to do to figure out what the 
-> problem is.  Is there a good place to place printks or breakpoints?
-
-This may be due to an RPC XID collision.  Which 2.4 kernel are you 
-using?  The Linux NFS client may be sending the same XID sequence on the 
-same port number after each reboot, in which case the server will 
-respond with a cached reply rather than doing real work.  The cached 
-reply may contain old file ID information, which triggers the "inode 
-number mismatch" message you see in your log.
-
-One way to detect if this is happening is to use "pktt" on the filer. 
-You can capture a packet trace across client reboots to determine if
-
-A) the transport socket's port number is the same across reboots, and
-
-B) the RPC XID sequence is the same
-
---------------000702010902070209050205
-Content-Type: text/x-vcard; charset=utf-8;
- name="chuck.lever.vcf"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="chuck.lever.vcf"
-
-begin:vcard
-fn:Chuck Lever
-n:Lever;Chuck
-org:Oracle Corporation;Corporate Architecture: Linux Projects Group
-adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
-title:Principal Member of Staff
-tel;work:+1 248 614 5091
-x-mozilla-html:FALSE
-url:http://oss.oracle.com/~cel
-version:2.1
-end:vcard
-
-
---------------000702010902070209050205
 Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+Cc: nfs@lists.sourceforge.net, nfsv4@linux-nfs.org
+To: "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <1189530078.12340.28.camel@moss-terrapins.epoch.ncsc.mil>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
+List-ID: <nfs.lists.sourceforge.net>
 
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Microsoft
-Defy all challenges. Microsoft(R) Visual Studio 2005.
-http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
---------------000702010902070209050205
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+On Tue, Sep 11, 2007 at 01:01:18PM -0400, David P. Quigley wrote:
+> Another question about the code in general. Why is it that idmapd is
+> using fcntl and user signals to indicate changes to the rpc pipe. Isn't
+> there something else we can use like Inotify or a Netlink socket?
 
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+When a new nfs client is created, a new directory containing several
+files (including the upcall pipe) are created.  The dnotify stuff is
+there so we find out about those new files and directories.  I don't
+know much about netlink--how would it help us there?
 
---------------000702010902070209050205--
+I assume Inotify would work, but I don't see any advantage over dnotify.
+If we didn't leave in some compatability code then it would mean
+dropping support for pre-inotify kernels, wouldn't it?--could be that
+there were only a few of those and that nfsv4 wasn't really usable on
+them anyway (I don't remember), but absent a real motivation to move
+from dnotify to inotify I'd rather not.
+
+> I am assuming that this is just a result of the code being written
+> before these things were in place. I was originally starting doimapd
+> based on the idmapd source however if it is acceptable to move to one
+> of these other techniques I can switched over to that instead.
+
+For new stuff I don't think there'd be a problem using something else.
+
+--b.
