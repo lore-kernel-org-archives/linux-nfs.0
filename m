@@ -1,68 +1,62 @@
-From: "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Subject: Re: [NFS] [PATCH 2/3] Remove old logging implementation for idmapd
-	and rework gssd and idmapd to use the new xlog logging infrastructure.
-Date: Tue, 11 Sep 2007 17:35:33 -0400
-Message-ID: <1189546533.12340.63.camel@moss-terrapins.epoch.ncsc.mil>
-References: <4d569c330709110800g558b1fect5f84ea20e25efc7b@mail.gmail.com>
-	<1189523208.12340.10.camel@moss-terrapins.epoch.ncsc.mil>
-	<4d569c330709110824t60745764l3fc63a393d51b0b9@mail.gmail.com>
-	<4d569c330709110828qfaf7726we21d80d8001c92f9@mail.gmail.com>
-	<20070911153742.GG13948@fieldses.org>
-	<1189530078.12340.28.camel@moss-terrapins.epoch.ncsc.mil>
-	<20070911171621.GI13948@fieldses.org>
-	<1189532033.12340.43.camel@moss-terrapins.epoch.ncsc.mil>
-	<20070911143905.5f478095.jlayton@redhat.com>
-	<1189545431.12340.54.camel@moss-terrapins.epoch.ncsc.mil>
-	<20070911213103.GC5643@fieldses.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 01/15] SUNRPC: Only one dprintk is needed during
+	client	creation
+Date: Tue, 11 Sep 2007 18:00:03 -0400
+Message-ID: <20070911215959.26136.12210.stgit@monet.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, nfsv4@linux-nfs.org,
-	Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <20070911213103.GC5643@fieldses.org>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
-List-ID: <nfs.lists.sourceforge.net>
+Cc: nfs@lists.sourceforge.net
+To: trond.myklebust@fys.uio.no
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1IVDmR-0006pX-CA
+	for nfs@lists.sourceforge.net; Tue, 11 Sep 2007 15:00:23 -0700
+Received: from flpi102.sbcis.sbc.com ([207.115.20.71] helo=flpi102.prodigy.net)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IVDmW-00058g-2o
+	for nfs@lists.sourceforge.net; Tue, 11 Sep 2007 15:00:28 -0700
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, 2007-09-11 at 17:31 -0400, J. Bruce Fields wrote:
-> On Tue, Sep 11, 2007 at 05:17:11PM -0400, David P. Quigley wrote:
-> > I've been looking through some implementations using netlink sockets
-> > particularly the connector and it brings up an interesting point.
-> > netlink is a connectionless protocol which means it isn't "reliable".
-> > The connector documentation states 
-> > 
-> > "Netlink itself is not reliable protocol, that means that messages can
-> > be lost due to memory pressure or process' receiving queue overflowed,
-> > so caller is warned must be prepared. That is why struct cn_msg [main
-> > connector's message header] contains u32 seq and u32 ack fields." 
-> > 
-> > I don't see an indication that the connector netlink protocol implements
-> > some sort of reliability in the form of retransmission. I will be
-> > looking into this more but it seems that checks need to be made based on
-> > sequence and acknowledgement numbers on whether or not to retry
-> > messages.
-> 
-> I guess we'd need to understand what exactly you're trying to do.
-> 
-> --b.
+Remove one of two identical dprintk's that occur when an RPC client is
+created.
 
-The concept for this daemon is that labeled NFS needs to be able to
-determine what the generic label on the wire means to the local box.
-This is similar in concept to the mapping of user@dns to uid/gid that
-idmapd handles. If the kernel calls up to the daemon using a netlink
-socket it has the potential to lose the message for a translation due to
-memory pressure. Based on what I can see right now the kernel would have
-to check the seq number of the next message that it receives and see if
-it is the reply to it's request. If it isn't then it is going to have to
-retransmit its request again. This isn't a big deal but I think to make
-netlink reliable some sort of retransmission needs to be done. We are
-still working on the exact method for performing these translations so I
-can't yet say how time consuming a translation will be.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+ net/sunrpc/clnt.c |    3 ---
+ 1 files changed, 0 insertions(+), 3 deletions(-)
+
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 52429b1..c796e2f 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -269,9 +269,6 @@ struct rpc_clnt *rpc_create(struct rpc_create_args *args)
+ 	if (args->flags & RPC_CLNT_CREATE_NONPRIVPORT)
+ 		xprt->resvport = 0;
+ 
+-	dprintk("RPC:       creating %s client for %s (xprt %p)\n",
+-			args->program->name, args->servername, xprt);
+-
+ 	clnt = rpc_new_client(xprt, args->servername, args->program,
+ 				args->version, args->authflavor);
+ 	if (IS_ERR(clnt))
+
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Microsoft
+Defy all challenges. Microsoft(R) Visual Studio 2005.
+http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
