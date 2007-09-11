@@ -1,28 +1,28 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 11/19] text-based mount.nfs: Use helpers for invoking
-	mount(2)	system call
-Date: Mon, 10 Sep 2007 20:59:22 -0400
-Message-ID: <20070911005922.24927.84596.stgit@monet.1015granger.net>
+Subject: [PATCH 05/19] text-based mount.nfs: Remove a helper function
+	that is	no longer used
+Date: Mon, 10 Sep 2007 20:58:50 -0400
+Message-ID: <20070911005850.24927.46203.stgit@monet.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IUu65-00032m-Sh
-	for nfs@lists.sourceforge.net; Mon, 10 Sep 2007 17:59:21 -0700
+	id 1IUu5Z-0002wP-TG
+	for nfs@lists.sourceforge.net; Mon, 10 Sep 2007 17:58:50 -0700
 Received: from flpi102.sbcis.sbc.com ([207.115.20.71] helo=flpi102.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IUu6A-0001LL-Ar
-	for nfs@lists.sourceforge.net; Mon, 10 Sep 2007 17:59:26 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IUu5e-0007rR-J2
+	for nfs@lists.sourceforge.net; Mon, 10 Sep 2007 17:58:54 -0700
 Received: from monet.1015granger.net
 	(adsl-76-241-169-38.dsl.sfldmi.sbcglobal.net [76.241.169.38])
 	by flpi102.prodigy.net (8.13.8 out.dk.spool/8.13.8) with ESMTP id
-	l8B0xB0A028471
-	for <nfs@lists.sourceforge.net>; Mon, 10 Sep 2007 17:59:11 -0700
+	l8B0wd5X027769
+	for <nfs@lists.sourceforge.net>; Mon, 10 Sep 2007 17:58:40 -0700
 Received: from monet.1015granger.net (monet.1015granger.net [127.0.0.1])
-	by monet.1015granger.net (8.14.1/8.14.1) with ESMTP id l8B0xMPx025050
-	for <nfs@lists.sourceforge.net>; Mon, 10 Sep 2007 20:59:22 -0400
+	by monet.1015granger.net (8.14.1/8.14.1) with ESMTP id l8B0woKR025014
+	for <nfs@lists.sourceforge.net>; Mon, 10 Sep 2007 20:58:50 -0400
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,70 +35,71 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Use the new mount system call helpers.
+Remove an older string parsing function in the text-based mount.nfs
+implementation that is no longer used, in favor of the new option
+parsing helpers.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/mount/stropts.c |   36 ++----------------------------------
- 1 files changed, 2 insertions(+), 34 deletions(-)
+ utils/mount/stropts.c |   37 -------------------------------------
+ 1 files changed, 0 insertions(+), 37 deletions(-)
 
 diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-index 2fd01ca..03267be 100644
+index da9c14a..796a741 100644
 --- a/utils/mount/stropts.c
 +++ b/utils/mount/stropts.c
-@@ -280,24 +280,8 @@ int nfsmount_s(const char *spec, const char *node, int flags,
- 	if (!fix_up_mounthost_opt(options))
- 		goto out;
+@@ -65,11 +65,6 @@ extern int nfs_mount_data_version;
+ extern char *progname;
+ extern int verbose;
  
--	*extra_opts = po_join(options);
--	if (!*extra_opts) {
--		nfs_error(_("%s: internal option parsing error"), progname);
-+	if (!try_nfsmount(spec, node, flags, options, fake, extra_opts))
- 		goto out;
--	}
+-static int retry_opt = 10000;		/* 10,000 minutes ~= 1 week */
+-static int bg_opt = 0;
+-static int addr_opt = 0;
+-static int ca_opt = 0;
 -
--	if (verbose)
--		printf(_("%s: text-based options: '%s'\n"),
--			progname, *extra_opts);
+ static int parse_devname(const char *spec, char **hostname)
+ {
+ 	int ret = 0;
+@@ -142,38 +137,6 @@ static int fill_ipv4_sockaddr(const char *hostname, struct sockaddr_in *addr)
+ }
+ 
+ /*
+- * Walk through our mount options string, and indicate the presence
+- * of 'bg', 'retry=', 'addr=', and 'clientaddr='.
+- */
+-static void extract_interesting_options(char *opts)
+-{
+-	char *opt, *opteq;
+-	int val;
 -
--	if (!fake) {
--		if (mount(spec, node, "nfs",
--				flags & ~(MS_USER|MS_USERS), *extra_opts)) {
--			mount_error(spec, node, errno);
--			goto out;
+-	opts = xstrdup(opts);
+-
+-	for (opt = strtok(opts, ","); opt; opt = strtok(NULL, ",")) {
+-		if ((opteq = strchr(opt, '='))) {
+-			val = atoi(opteq + 1);
+-			*opteq = '\0';
+-			if (strcmp(opt, "bg") == 0)
+-				bg_opt++;
+-			else if (strcmp(opt, "retry") == 0)
+-				retry_opt = val;
+-			else if (strcmp(opt, "addr") == 0)
+-				addr_opt++;
+-			else if (strcmp(opt, "clientaddr") == 0)
+-				ca_opt++;
+-		} else {
+-			if (strcmp(opt, "bg") == 0)
+-				bg_opt++;
 -		}
 -	}
 -
- 	retval = 0;
- 
- out:
-@@ -376,24 +360,8 @@ int nfs4mount_s(const char *spec, const char *node, int flags,
- 	if (!append_clientaddr_option(&saddr, options))
- 		goto out;
- 
--	*extra_opts = po_join(options);
--	if (!options) {
--		nfs_error(_("%s: internal option parsing error"), progname);
-+	if (!try_nfs4mount(spec, node, flags, options, fake, extra_opts))
- 		goto out;
--	}
+-	free(opts);
+-}
 -
--	if (verbose)
--		printf(_("%s: text-based options: '%s'\n"),
--			progname, *extra_opts);
--
--	if (!fake) {
--		if (mount(spec, node, "nfs4",
--				flags & ~(MS_USER|MS_USERS), *extra_opts)) {
--			mount_error(spec, node, errno);
--			goto out;
--		}
--	}
--
- 	retval = 0;
- 
- out:
+-/*
+  * Append the 'addr=' option to the options string to pass a resolved
+  * server address to the kernel.  After a successful mount, this address
+  * is also added to /etc/mtab for use when unmounting.
 
 
 -------------------------------------------------------------------------
