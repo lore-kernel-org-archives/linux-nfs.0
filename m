@@ -1,8 +1,8 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 14/15] LOCKD: Convert printk's to dprintk's in lockd
-	XDR	routines
-Date: Tue, 11 Sep 2007 18:01:15 -0400
-Message-ID: <20070911220115.26136.81403.stgit@monet.1015granger.net>
+Subject: [PATCH 15/15] NFSD: Convert printk's to dprintk's in NFSD's
+	nfs4xdr
+Date: Tue, 11 Sep 2007 18:01:20 -0400
+Message-ID: <20070911220120.26136.8914.stgit@monet.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
@@ -11,11 +11,11 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IVDny-0006zk-2r
-	for nfs@lists.sourceforge.net; Tue, 11 Sep 2007 15:01:58 -0700
+	id 1IVDo3-00073M-OI
+	for nfs@lists.sourceforge.net; Tue, 11 Sep 2007 15:02:03 -0700
 Received: from flpi102.sbcis.sbc.com ([207.115.20.71] helo=flpi102.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IVDo2-0005fm-Je
-	for nfs@lists.sourceforge.net; Tue, 11 Sep 2007 15:02:02 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IVDo8-0005jG-8z
+	for nfs@lists.sourceforge.net; Tue, 11 Sep 2007 15:02:08 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,68 +28,77 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Due to recent edict to remove or replace printk's that might flood the
-system log.
+Due to recent edict to remove or replace printk's that can flood the system
+log.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/lockd/xdr.c  |    8 ++++----
- fs/lockd/xdr4.c |    8 ++++----
- 2 files changed, 8 insertions(+), 8 deletions(-)
+ fs/nfsd/nfs4xdr.c |   16 ++++++++++------
+ 1 files changed, 10 insertions(+), 6 deletions(-)
 
-diff --git a/fs/lockd/xdr.c b/fs/lockd/xdr.c
-index 5316e30..633653b 100644
---- a/fs/lockd/xdr.c
-+++ b/fs/lockd/xdr.c
-@@ -62,8 +62,9 @@ static __be32 *nlm_decode_cookie(__be32 *p, struct nlm_cookie *c)
- 	}
- 	else 
- 	{
--		printk(KERN_NOTICE
--			"lockd: bad cookie size %d (only cookies under %d bytes are supported.)\n", len, NLM_MAXCOOKIELEN);
-+		dprintk("lockd: bad cookie size %d (only cookies under "
-+			"%d bytes are supported.)\n",
-+				len, NLM_MAXCOOKIELEN);
- 		return NULL;
- 	}
- 	return p;
-@@ -84,8 +85,7 @@ nlm_decode_fh(__be32 *p, struct nfs_fh *f)
- 	unsigned int	len;
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 8ef0964..62e6464 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -102,7 +102,8 @@ check_filename(char *str, int len, __be32 err)
+ out:						\
+ 	return status;				\
+ xdr_error:					\
+-	printk(KERN_NOTICE "xdr error! (%s:%d)\n", __FILE__, __LINE__);	\
++	dprintk("NFSD: xdr error (%s:%d)\n",	\
++			__FILE__, __LINE__);	\
+ 	status = nfserr_bad_xdr;		\
+ 	goto out
  
- 	if ((len = ntohl(*p++)) != NFS2_FHSIZE) {
--		printk(KERN_NOTICE
--			"lockd: bad fhandle size %d (should be %d)\n",
-+		dprintk("lockd: bad fhandle size %d (should be %d)\n",
- 			len, NFS2_FHSIZE);
+@@ -124,7 +125,8 @@ xdr_error:					\
+ 	if (!(x = (p==argp->tmp || p == argp->tmpp) ? \
+  		savemem(argp, p, nbytes) :	\
+  		(char *)p)) {			\
+-		printk(KERN_NOTICE "xdr error! (%s:%d)\n", __FILE__, __LINE__); \
++		dprintk("NFSD: xdr error (%s:%d)\n", \
++				__FILE__, __LINE__); \
+ 		goto xdr_error;			\
+ 		}				\
+ 	p += XDR_QUADLEN(nbytes);		\
+@@ -140,7 +142,8 @@ xdr_error:					\
+ 		p = argp->p;			\
+ 		argp->p += XDR_QUADLEN(nbytes);	\
+ 	} else if (!(p = read_buf(argp, nbytes))) { \
+-		printk(KERN_NOTICE "xdr error! (%s:%d)\n", __FILE__, __LINE__); \
++		dprintk("NFSD: xdr error (%s:%d)\n", \
++				__FILE__, __LINE__); \
+ 		goto xdr_error;			\
+ 	}					\
+ } while (0)
+@@ -948,7 +951,8 @@ nfsd4_decode_write(struct nfsd4_compoundargs *argp, struct nfsd4_write *write)
+ 	 */
+ 	avail = (char*)argp->end - (char*)argp->p;
+ 	if (avail + argp->pagelen < write->wr_buflen) {
+-		printk(KERN_NOTICE "xdr error! (%s:%d)\n", __FILE__, __LINE__); 
++		dprintk("NFSD: xdr error (%s:%d)\n",
++				__FILE__, __LINE__); 
+ 		goto xdr_error;
+ 	}
+ 	argp->rqstp->rq_vec[0].iov_base = p;
+@@ -1019,7 +1023,7 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
+ 		argp->ops = kmalloc(argp->opcnt * sizeof(*argp->ops), GFP_KERNEL);
+ 		if (!argp->ops) {
+ 			argp->ops = argp->iops;
+-			printk(KERN_INFO "nfsd: couldn't allocate room for COMPOUND\n");
++			dprintk("nfsd: couldn't allocate room for COMPOUND\n");
+ 			goto xdr_error;
+ 		}
+ 	}
+@@ -1326,7 +1330,7 @@ static char *nfsd4_path(struct svc_rqst *rqstp, struct svc_export *exp, __be32 *
+ 	path = exp->ex_path;
+ 
+ 	if (strncmp(path, rootpath, strlen(rootpath))) {
+-		printk("nfsd: fs_locations failed;"
++		dprintk("nfsd: fs_locations failed;"
+ 			"%s is not contained in %s\n", path, rootpath);
+ 		*stat = nfserr_notsupp;
  		return NULL;
- 	}
-diff --git a/fs/lockd/xdr4.c b/fs/lockd/xdr4.c
-index 846fc1d..43ff939 100644
---- a/fs/lockd/xdr4.c
-+++ b/fs/lockd/xdr4.c
-@@ -64,8 +64,9 @@ nlm4_decode_cookie(__be32 *p, struct nlm_cookie *c)
- 	}
- 	else 
- 	{
--		printk(KERN_NOTICE
--			"lockd: bad cookie size %d (only cookies under %d bytes are supported.)\n", len, NLM_MAXCOOKIELEN);
-+		dprintk("lockd: bad cookie size %d (only cookies under "
-+			"%d bytes are supported.)\n",
-+				len, NLM_MAXCOOKIELEN);
- 		return NULL;
- 	}
- 	return p;
-@@ -86,8 +87,7 @@ nlm4_decode_fh(__be32 *p, struct nfs_fh *f)
- 	memset(f->data, 0, sizeof(f->data));
- 	f->size = ntohl(*p++);
- 	if (f->size > NFS_MAXFHSIZE) {
--		printk(KERN_NOTICE
--			"lockd: bad fhandle size %d (should be <=%d)\n",
-+		dprintk("lockd: bad fhandle size %d (should be <=%d)\n",
- 			f->size, NFS_MAXFHSIZE);
- 		return NULL;
- 	}
 
 
 -------------------------------------------------------------------------
