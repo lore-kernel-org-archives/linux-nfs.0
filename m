@@ -1,61 +1,71 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [OOPS] 2.6.23-rc5 in tcp/net/nfsd
-Date: Tue, 11 Sep 2007 11:26:52 +0200
-Message-ID: <18150.24412.855004.90148@notabene.brown>
-References: <20070911083200.GA3409@hindley.org.uk>
+From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
+Subject: Re: [PATCH 12/19] NFS/SUNRPC: support transport protocol
+ naming
+Date: Tue, 11 Sep 2007 08:16:45 -0400
+Message-ID: <EXNANE01PMKSUW8VcOM000004ce@exnane01.hq.netapp.com>
+References: <EXNANE01tacom1iaCRq000004bb@exnane01.hq.netapp.com>
+	<46E5E07C.5070202@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, netdev@vger.kernel.org,
-	nfs@lists.sourceforge.net
-To: Mark Hindley <mark@hindley.org.uk>
-Return-path: <netdev-owner@vger.kernel.org>
-In-Reply-To: message from Mark Hindley on Tuesday September 11
-Sender: netdev-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
+To: chuck.lever@oracle.com
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1IV4g3-00014z-E9
+	for nfs@lists.sourceforge.net; Tue, 11 Sep 2007 05:17:11 -0700
+Received: from mx2.netapp.com ([216.240.18.37])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IV4g6-0001ae-1j
+	for nfs@lists.sourceforge.net; Tue, 11 Sep 2007 05:17:16 -0700
+In-Reply-To: <46E5E07C.5070202@oracle.com>
+References: <EXNANE01tacom1iaCRq000004bb@exnane01.hq.netapp.com>
+	<46E5E07C.5070202@oracle.com>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tuesday September 11, mark@hindley.org.uk wrote:
-> This oops appeared over night on a box running 2.6.23-rc5 (recent with the
-> tcp_input.c fix).
-> 
-> I can't find a similar one reported.
+At 08:25 PM 9/10/2007, Chuck Lever wrote:
+>Just a general comment.
+>
+>I don't see how this will make it easier to add NFS client support for 
+>new RPC transports.  I thought we recently decided to pass down a 
+>string, and let the transports themselves register a netid that matches it?
+>
+>For example, these changes are required to support RDMA -- you can't 
+>just ship a new RDMA SUNRPC transport module and expect it to work 
+>without this ULP change.  Likewise, if we add SCTP sometime in the 
+>future, will we want to make this same kind of modification to the NFS 
+>client before the SCTP SUNRCP transport module works correctly?
 
+Well, the "string" discussion was in the context of the server-side
+switch, but you call out a good goal to add transports without touching
+the upper layers.
 
-Okay..... this is weird.
-> 
-> Mark
-> 
-> 
-> BUG: unable to handle kernel NULL pointer dereference at virtual address 0000007e 
-                                                                           ^^^^^^^^
+I think the choice of integer or string is basically arbitrary. One way or
+the other, some mapping from identifier to the actual transport is defined.
+Strings are a little more self-describing, but in the end harder to maintain
+for that very reason. That's the way my thinking came down, anyway.
 
-That is the bad address,
+One way to allow extension would be to add a proto=%d syntax, this would
+obviate having to change the many uses of xprt->prot and rpc_create()
+in the in-kernel clients (another reason I chose to stick with int's). Happy
+to code that...
 
-> EFLAGS: 00010246   (2.6.23-rc5-2-mcyrixiii #1)
-> EIP is at ip_fragment+0x7f/0x680
-> eax: c3c09c00   ebx: 00000000   ecx: b524d006   edx: 0000007b
-                                                  ^^^^^^^^^^^^^
+Tom.
 
-It looks like an offset of 3 from edx.  I got that from decoding:
-
-> Code: .... <00> ba 03 00 00 00 bf a6 ff ff
-
-which is 
-   0:   00 ba 03 00 00 00         add    %bh,0x3(%rdx)
-
-However that instruction doesn't appear in ip_fragment.
-The code in ip_fragment reads:
-  27:   b9 04 00 00 00            mov    $0x4,%ecx
-                    ^^
-  2c:   ba 03 00 00 00            mov    $0x3,%edx
-        ^^^^^^^^^^^^^^
-
-which contains the bytes of the offending instruction.
-Note that $0x4 is ICMP_FRAG_NEEDED and $0x3 is ICMP_DEST_UNREACH:
-these are args to icmp_send.  So the latter is the correct disassembly
-based on the C code.
-
-So somehow the kernel is jumping to a bad address.  I don't know how
-that would happening.... maybe a single bit error in memory or a
-register???
-
-NeilBrown
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Microsoft
+Defy all challenges. Microsoft(R) Visual Studio 2005.
+http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
