@@ -1,53 +1,35 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH 0/2] gssd patches
-Date: Tue, 11 Sep 2007 17:20:45 +0200
-Message-ID: <18150.45645.242629.726957@notabene.brown>
-References: <20070907141603.16229.68150.stgit@RoCk.CiTi.UmIcH.EdU>
+From: "Kevin Coffman" <kwc@citi.umich.edu>
+Subject: Re: [PATCH 2/3] Remove old logging implementation for idmapd and
+	rework gssd and idmapd to use the new xlog logging infrastructure.
+Date: Tue, 11 Sep 2007 11:24:41 -0400
+Message-ID: <4d569c330709110824t60745764l3fc63a393d51b0b9@mail.gmail.com>
+References: <1189459543.7914.16.camel@moss-terrapins.epoch.ncsc.mil>
+	<1189515746.12340.4.camel@moss-terrapins.epoch.ncsc.mil>
+	<4d569c330709110800g558b1fect5f84ea20e25efc7b@mail.gmail.com>
+	<1189523208.12340.10.camel@moss-terrapins.epoch.ncsc.mil>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Kevin Coffman <kwc@citi.umich.edu>
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IV7Z1-00048l-1P
-	for nfs@lists.sourceforge.net; Tue, 11 Sep 2007 08:22:10 -0700
-Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IV7Z3-0001TH-9p
-	for nfs@lists.sourceforge.net; Tue, 11 Sep 2007 08:22:11 -0700
-In-Reply-To: message from Kevin Coffman on Friday September 7
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Cc: nfsv4@linux-nfs.org, nfs@lists.sourceforge.net
+To: "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <1189523208.12340.10.camel@moss-terrapins.epoch.ncsc.mil>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
+List-ID: <nfs.lists.sourceforge.net>
 
-On Friday September 7, kwc@citi.umich.edu wrote:
-> Hi Neil,
-> The first patch fixes the dependency checks to now look for
-> libgssglue rather than libgssapi.
-> The second patch fixes the usage message for gssd to reflect
-> the new -M option.
-> 
-> Thanks,
-> K.C.
+On 9/11/07, David P. Quigley <dpquigl@tycho.nsa.gov> wrote:
+> Could you point me to the second in gssd that is doing this? It might be
+> better to use the print statements in a saner way.
+>
+> Dave
 
-Thanks.  Applied.
-
-NeilBrown
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Microsoft
-Defy all challenges. Microsoft(R) Visual Studio 2005.
-http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+Agreed.  The cuprit is print_hexl() in svcgssd_proc.c, which currently
+calls printerr() multiple times.  I'll look to see if I can find other
+instances that might be depending on the line acculation of printerr.
