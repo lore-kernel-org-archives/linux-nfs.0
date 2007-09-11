@@ -1,20 +1,21 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 11/15] NFS: Kernel mount client should use async bind
-Date: Tue, 11 Sep 2007 18:00:58 -0400
-Message-ID: <20070911220057.26136.96662.stgit@monet.1015granger.net>
+Subject: [PATCH 14/15] LOCKD: Convert printk's to dprintk's in lockd
+	XDR	routines
+Date: Tue, 11 Sep 2007 18:01:15 -0400
+Message-ID: <20070911220115.26136.81403.stgit@monet.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 To: trond.myklebust@fys.uio.no
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IVDnd-0006z3-Ef
-	for nfs@lists.sourceforge.net; Tue, 11 Sep 2007 15:01:37 -0700
+	id 1IVDny-0006zk-2r
+	for nfs@lists.sourceforge.net; Tue, 11 Sep 2007 15:01:58 -0700
 Received: from flpi102.sbcis.sbc.com ([207.115.20.71] helo=flpi102.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IVDni-00026o-31
-	for nfs@lists.sourceforge.net; Tue, 11 Sep 2007 15:01:42 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IVDo2-0005fm-Je
+	for nfs@lists.sourceforge.net; Tue, 11 Sep 2007 15:02:02 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,55 +28,68 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Simplify the in-kernel mount client by using autobind instead of an
-explicit call to rpc_getport_sync.
+Due to recent edict to remove or replace printk's that might flood the
+system log.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfs/super.c |   21 +++++----------------
- 1 files changed, 5 insertions(+), 16 deletions(-)
+ fs/lockd/xdr.c  |    8 ++++----
+ fs/lockd/xdr4.c |    8 ++++----
+ 2 files changed, 8 insertions(+), 8 deletions(-)
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index e2dbfb5..2cabe09 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -1027,15 +1027,7 @@ static int nfs_try_mount(struct nfs_parsed_mount_data *args,
- 		sin = args->mount_server.address;
- 	else
- 		sin = args->nfs_server.address;
--	if (args->mount_server.port == 0) {
--		status = rpcb_getport_sync(&sin,
--					   args->mount_server.program,
--					   args->mount_server.version,
--					   args->mount_server.protocol);
--		if (status < 0)
--			goto out_err;
--		sin.sin_port = htons(status);
--	} else
-+	if (args->mount_server.port != 0)
- 		sin.sin_port = htons(args->mount_server.port);
+diff --git a/fs/lockd/xdr.c b/fs/lockd/xdr.c
+index 5316e30..633653b 100644
+--- a/fs/lockd/xdr.c
++++ b/fs/lockd/xdr.c
+@@ -62,8 +62,9 @@ static __be32 *nlm_decode_cookie(__be32 *p, struct nlm_cookie *c)
+ 	}
+ 	else 
+ 	{
+-		printk(KERN_NOTICE
+-			"lockd: bad cookie size %d (only cookies under %d bytes are supported.)\n", len, NLM_MAXCOOKIELEN);
++		dprintk("lockd: bad cookie size %d (only cookies under "
++			"%d bytes are supported.)\n",
++				len, NLM_MAXCOOKIELEN);
+ 		return NULL;
+ 	}
+ 	return p;
+@@ -84,8 +85,7 @@ nlm_decode_fh(__be32 *p, struct nfs_fh *f)
+ 	unsigned int	len;
  
- 	/*
-@@ -1049,14 +1041,11 @@ static int nfs_try_mount(struct nfs_parsed_mount_data *args,
- 			   args->mount_server.version,
- 			   args->mount_server.protocol,
- 			   root_fh);
--	if (status < 0)
--		goto out_err;
--
--	return status;
-+	if (status == 0)
-+		return 0;
- 
--out_err:
--	dfprintk(MOUNT, "NFS: unable to contact server on host "
--		 NIPQUAD_FMT "\n", NIPQUAD(sin.sin_addr.s_addr));
-+	dfprintk(MOUNT, "NFS: unable to mount server " NIPQUAD_FMT
-+			", error %d\n", NIPQUAD(sin.sin_addr.s_addr), status);
- 	return status;
- }
- 
+ 	if ((len = ntohl(*p++)) != NFS2_FHSIZE) {
+-		printk(KERN_NOTICE
+-			"lockd: bad fhandle size %d (should be %d)\n",
++		dprintk("lockd: bad fhandle size %d (should be %d)\n",
+ 			len, NFS2_FHSIZE);
+ 		return NULL;
+ 	}
+diff --git a/fs/lockd/xdr4.c b/fs/lockd/xdr4.c
+index 846fc1d..43ff939 100644
+--- a/fs/lockd/xdr4.c
++++ b/fs/lockd/xdr4.c
+@@ -64,8 +64,9 @@ nlm4_decode_cookie(__be32 *p, struct nlm_cookie *c)
+ 	}
+ 	else 
+ 	{
+-		printk(KERN_NOTICE
+-			"lockd: bad cookie size %d (only cookies under %d bytes are supported.)\n", len, NLM_MAXCOOKIELEN);
++		dprintk("lockd: bad cookie size %d (only cookies under "
++			"%d bytes are supported.)\n",
++				len, NLM_MAXCOOKIELEN);
+ 		return NULL;
+ 	}
+ 	return p;
+@@ -86,8 +87,7 @@ nlm4_decode_fh(__be32 *p, struct nfs_fh *f)
+ 	memset(f->data, 0, sizeof(f->data));
+ 	f->size = ntohl(*p++);
+ 	if (f->size > NFS_MAXFHSIZE) {
+-		printk(KERN_NOTICE
+-			"lockd: bad fhandle size %d (should be <=%d)\n",
++		dprintk("lockd: bad fhandle size %d (should be <=%d)\n",
+ 			f->size, NFS_MAXFHSIZE);
+ 		return NULL;
+ 	}
 
 
 -------------------------------------------------------------------------
