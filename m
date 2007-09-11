@@ -1,21 +1,21 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 02/15] SUNRPC: fix a signed v. unsigned comparison nit
-	in	rpc_bind_new_program
-Date: Tue, 11 Sep 2007 18:00:09 -0400
-Message-ID: <20070911220008.26136.14060.stgit@monet.1015granger.net>
+Subject: [PATCH 04/15] SUNRPC: Make sure server name is reasonable
+	before	trying to print it
+Date: Tue, 11 Sep 2007 18:00:20 -0400
+Message-ID: <20070911220020.26136.45994.stgit@monet.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 To: trond.myklebust@fys.uio.no
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IVDmy-0006r4-D1
-	for nfs@lists.sourceforge.net; Tue, 11 Sep 2007 15:00:56 -0700
-Received: from flpi102.sbcis.sbc.com ([207.115.20.71] helo=flpi102.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IVDn2-0005JC-Ba
+	id 1IVDn2-0006rU-Hr
 	for nfs@lists.sourceforge.net; Tue, 11 Sep 2007 15:01:00 -0700
+Received: from flpi102.sbcis.sbc.com ([207.115.20.71] helo=flpi102.prodigy.net)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IVDn6-0005Ka-6E
+	for nfs@lists.sourceforge.net; Tue, 11 Sep 2007 15:01:05 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,33 +28,49 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-L2hvbWUvY2VsL2xpbnV4L25ldC9zdW5ycGMvY2xudC5jOiBJbiBmdW5jdGlvbiDigJhycGNfYmlu
-ZF9uZXdfcHJvZ3JhbeKAmToKL2hvbWUvY2VsL2xpbnV4L25ldC9zdW5ycGMvY2xudC5jOjQ0NTog
-d2FybmluZzoKCWNvbXBhcmlzb24gYmV0d2VlbiBzaWduZWQgYW5kIHVuc2lnbmVkCgpSUEMgdmVy
-c2lvbiBudW1iZXJzIGFyZSB1MzIsIG5vdCBpbnQuCgpTaWduZWQtb2ZmLWJ5OiBDaHVjayBMZXZl
-ciA8Y2h1Y2subGV2ZXJAb3JhY2xlLmNvbT4KLS0tCgogaW5jbHVkZS9saW51eC9zdW5ycGMvY2xu
-dC5oIHwgICAgMiArLQogbmV0L3N1bnJwYy9jbG50LmMgICAgICAgICAgIHwgICAgMiArLQogMiBm
-aWxlcyBjaGFuZ2VkLCAyIGluc2VydGlvbnMoKyksIDIgZGVsZXRpb25zKC0pCgpkaWZmIC0tZ2l0
-IGEvaW5jbHVkZS9saW51eC9zdW5ycGMvY2xudC5oIGIvaW5jbHVkZS9saW51eC9zdW5ycGMvY2xu
-dC5oCmluZGV4IGMwZDlkMTQuLmQ5ZDVjNWEgMTAwNjQ0Ci0tLSBhL2luY2x1ZGUvbGludXgvc3Vu
-cnBjL2NsbnQuaAorKysgYi9pbmNsdWRlL2xpbnV4L3N1bnJwYy9jbG50LmgKQEAgLTExNyw3ICsx
-MTcsNyBAQCBzdHJ1Y3QgcnBjX2NyZWF0ZV9hcmdzIHsKIAogc3RydWN0IHJwY19jbG50ICpycGNf
-Y3JlYXRlKHN0cnVjdCBycGNfY3JlYXRlX2FyZ3MgKmFyZ3MpOwogc3RydWN0IHJwY19jbG50CSpy
-cGNfYmluZF9uZXdfcHJvZ3JhbShzdHJ1Y3QgcnBjX2NsbnQgKiwKLQkJCQlzdHJ1Y3QgcnBjX3By
-b2dyYW0gKiwgaW50KTsKKwkJCQlzdHJ1Y3QgcnBjX3Byb2dyYW0gKiwgdTMyKTsKIHN0cnVjdCBy
-cGNfY2xudCAqcnBjX2Nsb25lX2NsaWVudChzdHJ1Y3QgcnBjX2NsbnQgKik7CiB2b2lkCQlycGNf
-c2h1dGRvd25fY2xpZW50KHN0cnVjdCBycGNfY2xudCAqKTsKIHZvaWQJCXJwY19yZWxlYXNlX2Ns
-aWVudChzdHJ1Y3QgcnBjX2NsbnQgKik7CmRpZmYgLS1naXQgYS9uZXQvc3VucnBjL2NsbnQuYyBi
-L25ldC9zdW5ycGMvY2xudC5jCmluZGV4IGM3OTZlMmYuLmMzZDU3MWEgMTAwNjQ0Ci0tLSBhL25l
-dC9zdW5ycGMvY2xudC5jCisrKyBiL25ldC9zdW5ycGMvY2xudC5jCkBAIC00MzYsNyArNDM2LDcg
-QEAgcnBjX3JlbGVhc2VfY2xpZW50KHN0cnVjdCBycGNfY2xudCAqY2xudCkKICAqLwogc3RydWN0
-IHJwY19jbG50ICpycGNfYmluZF9uZXdfcHJvZ3JhbShzdHJ1Y3QgcnBjX2NsbnQgKm9sZCwKIAkJ
-CQkgICAgICBzdHJ1Y3QgcnBjX3Byb2dyYW0gKnByb2dyYW0sCi0JCQkJICAgICAgaW50IHZlcnMp
-CisJCQkJICAgICAgdTMyIHZlcnMpCiB7CiAJc3RydWN0IHJwY19jbG50ICpjbG50OwogCXN0cnVj
-dCBycGNfdmVyc2lvbiAqdmVyc2lvbjsKCgotLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tClRoaXMgU0YubmV0IGVt
-YWlsIGlzIHNwb25zb3JlZCBieTogTWljcm9zb2Z0CkRlZnkgYWxsIGNoYWxsZW5nZXMuIE1pY3Jv
-c29mdChSKSBWaXN1YWwgU3R1ZGlvIDIwMDUuCmh0dHA6Ly9jbGsuYXRkbXQuY29tL01SVC9nby92
-c2UwMTIwMDAwMDcwbXJ0L2RpcmVjdC8wMS8KX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
-X19fX19fX19fX19fX19fX18KTkZTIG1haWxsaXN0ICAtICBORlNAbGlzdHMuc291cmNlZm9yZ2Uu
-bmV0Cmh0dHBzOi8vbGlzdHMuc291cmNlZm9yZ2UubmV0L2xpc3RzL2xpc3RpbmZvL25mcwo=
+Check the length of the passed-in server name before trying to print it in
+the log.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+ net/sunrpc/clnt.c |   10 ++++++++--
+ 1 files changed, 8 insertions(+), 2 deletions(-)
+
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index c3d571a..0357819 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -127,7 +127,14 @@ static struct rpc_clnt * rpc_new_client(struct rpc_xprt *xprt, char *servname, s
+ 	struct rpc_clnt		*clnt = NULL;
+ 	struct rpc_auth		*auth;
+ 	int err;
+-	int len;
++	size_t len;
++
++	/* sanity check the name before trying to print it */
++	err = -EINVAL;
++	len = strlen(servname);
++	if (len > RPC_MAXNETNAMELEN)
++		goto out_no_rpciod;
++	len++;
+ 
+ 	dprintk("RPC:       creating %s client for %s (xprt %p)\n",
+ 			program->name, servname, xprt);
+@@ -148,7 +155,6 @@ static struct rpc_clnt * rpc_new_client(struct rpc_xprt *xprt, char *servname, s
+ 	clnt->cl_parent = clnt;
+ 
+ 	clnt->cl_server = clnt->cl_inline_name;
+-	len = strlen(servname) + 1;
+ 	if (len > sizeof(clnt->cl_inline_name)) {
+ 		char *buf = kmalloc(len, GFP_KERNEL);
+ 		if (buf != 0)
+
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Microsoft
+Defy all challenges. Microsoft(R) Visual Studio 2005.
+http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
