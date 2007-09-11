@@ -1,27 +1,27 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 00/19] RFC: fg/bg and fallback support for mount.nfs
-Date: Mon, 10 Sep 2007 20:58:22 -0400
-Message-ID: <20070911004840.24927.47585.stgit@monet.1015granger.net>
+Subject: [PATCH 04/19] text-based mount.nfs: Fix mounthost= processing
+Date: Mon, 10 Sep 2007 20:58:44 -0400
+Message-ID: <20070911005844.24927.84467.stgit@monet.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IUu5C-0002vg-Cx
-	for nfs@lists.sourceforge.net; Mon, 10 Sep 2007 17:58:26 -0700
+	id 1IUu5W-0002w6-Up
+	for nfs@lists.sourceforge.net; Mon, 10 Sep 2007 17:58:47 -0700
 Received: from flpi102.sbcis.sbc.com ([207.115.20.71] helo=flpi102.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IUu5G-0007kl-2u
-	for nfs@lists.sourceforge.net; Mon, 10 Sep 2007 17:58:31 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IUu5b-00017f-KH
+	for nfs@lists.sourceforge.net; Mon, 10 Sep 2007 17:58:51 -0700
 Received: from monet.1015granger.net
 	(adsl-76-241-169-38.dsl.sfldmi.sbcglobal.net [76.241.169.38])
 	by flpi102.prodigy.net (8.13.8 out.dk.spool/8.13.8) with ESMTP id
-	l8B0wD6I027257
-	for <nfs@lists.sourceforge.net>; Mon, 10 Sep 2007 17:58:13 -0700
+	l8B0wYMn027681
+	for <nfs@lists.sourceforge.net>; Mon, 10 Sep 2007 17:58:34 -0700
 Received: from monet.1015granger.net (monet.1015granger.net [127.0.0.1])
-	by monet.1015granger.net (8.14.1/8.14.1) with ESMTP id l8B0wMiK024984
-	for <nfs@lists.sourceforge.net>; Mon, 10 Sep 2007 20:58:23 -0400
+	by monet.1015granger.net (8.14.1/8.14.1) with ESMTP id l8B0wiZv025008
+	for <nfs@lists.sourceforge.net>; Mon, 10 Sep 2007 20:58:45 -0400
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,56 +34,66 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-I'm posting this for review and comments.  This patch series is incomplete
-and known not to work.  I'm still working out the bugs.
+The nfs(5) man page shows that the mounthost= option takes a name, not an
+address.  The kernel's text-based mount option parsing logic expects an
+IPv4 address.
 
-In this series, I implement support for probing the server and retrying
-when an initial text-based mount attempt fails, and support for retrying
-text-based mount requests in the foreground and background.
+Resolve the hostname and pass in a new mount option, 'mountaddr=', to the
+kernel.  This is necessary because the kernel cannot itself resolve
+hostnames to addresses.
 
-Road map:
+This will require changes in the kernel to recognize the new option.
 
-Clean-up:
-01 use-child-argument-for-nfsmount-s
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-Implement lexical parsing helpers to handle mount option manipulation:
-02 add-mount-option-parsing-helpers
-03 use-new-option-parsing-facility
+ utils/mount/stropts.c |   25 +++++++++++++++++++++++++
+ 1 files changed, 25 insertions(+), 0 deletions(-)
 
-Use the new parsing facility to fix a problem with the mounthost option:
-04 fix-mounthost-option
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index 3d20d39..da9c14a 100644
+--- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -225,6 +225,28 @@ static int append_clientaddr_option(struct sockaddr_in *saddr,
+ }
+ 
+ /*
++ * Called to resolve the 'mounthost=' hostname and append a new
++ * option using an IPv4 address.
++ */
++static int fix_up_mounthost_opt(struct mount_options *options)
++{
++	struct sockaddr_in maddr;
++	char *mounthost, new_option[32];
++
++	mounthost = po_get(options, "mounthost");
++	if (!mounthost)
++		return 1;
++
++	if (!fill_ipv4_sockaddr(mounthost, &maddr))
++		return 0;
++
++	snprintf(new_option, sizeof(new_option) - 1,
++			"mountaddr=%s", inet_ntoa(maddr.sin_addr));
++
++	return po_append(options, new_option);
++}
++
++/*
+  * nfsmount_s - Mount an NFSv2 or v3 file system using C string options
+  *
+  * @spec:	C string hostname:path specifying remoteshare to mount
+@@ -261,6 +283,9 @@ int nfsmount_s(const char *spec, const char *node, int flags,
+ 	if (!append_addr_option(&saddr, options, child))
+ 		goto out;
+ 
++	if (!fix_up_mounthost_opt(options))
++		goto out;
++
+ 	*extra_opts = po_join(options);
+ 	if (!*extra_opts) {
+ 		nfs_error(_("%s: internal option parsing error"), progname);
 
-Clean-up:
-05 remove-unused-string-parsing-helpers
-
-Adjust error reporting for text-based mounts:
-06 rename-mount-errors
-07 add-new-mount-errors-function
-08 handle-new-error-reports
-
-Clean-up:
-09 comment-network-functions
-
-Add structure for falling back:
-10 add-try-nfsmount-and-friend
-11 use-try-nfsmount-and-friend
-12 add-rewrite-mount-options
-13 add-fallback-support
-
-Add structure for foreground NFS mounts:
-14 add-nfs-foreground-mount
-15 use-nfs-foreground-mount
-
-Add structure for background NFS mounts:
-16 add-bg-helpers
-17 add-bg-for-nfs-mounts
-
-Duplicate NFS implementation for NFSv4 mounts:
-18 fg-bg-helpers-for-nfs4
-19 add-fg-and-bg-for-nfs4-mounts
-
--- 
-corporate:    <chuck dot lever at oracle dot com>
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
