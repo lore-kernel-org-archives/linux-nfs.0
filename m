@@ -1,76 +1,80 @@
-From: "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Subject: Re: [PATCH 2/3] Remove old logging implementation for idmapd and
-	rework gssd and idmapd to use the new xlog logging infrastructure.
-Date: Tue, 11 Sep 2007 13:33:53 -0400
-Message-ID: <1189532033.12340.43.camel@moss-terrapins.epoch.ncsc.mil>
-References: <1189459543.7914.16.camel@moss-terrapins.epoch.ncsc.mil>
-	<1189515746.12340.4.camel@moss-terrapins.epoch.ncsc.mil>
-	<4d569c330709110800g558b1fect5f84ea20e25efc7b@mail.gmail.com>
-	<1189523208.12340.10.camel@moss-terrapins.epoch.ncsc.mil>
-	<4d569c330709110824t60745764l3fc63a393d51b0b9@mail.gmail.com>
-	<4d569c330709110828qfaf7726we21d80d8001c92f9@mail.gmail.com>
-	<20070911153742.GG13948@fieldses.org>
-	<1189530078.12340.28.camel@moss-terrapins.epoch.ncsc.mil>
-	<20070911171621.GI13948@fieldses.org>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: nfs_refresh_inode: inode number mismatch
+Date: Tue, 11 Sep 2007 13:43:53 -0400
+Message-ID: <20070911134353.60e7bda7.jlayton@redhat.com>
+References: <46E6C54F.4020100@aristoslogic.com>
+	<20070911130226.131bad3d.jlayton@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, nfsv4@linux-nfs.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <20070911171621.GI13948@fieldses.org>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
-List-ID: <nfs.lists.sourceforge.net>
+Cc: nfs@lists.sourceforge.net
+To: "Chris Carlson" <c.carlson@aristoslogic.com>
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1IV9nG-0005tv-16
+	for nfs@lists.sourceforge.net; Tue, 11 Sep 2007 10:44:58 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IV9nK-00062B-Ak
+	for nfs@lists.sourceforge.net; Tue, 11 Sep 2007 10:45:02 -0700
+In-Reply-To: <20070911130226.131bad3d.jlayton@redhat.com>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, 2007-09-11 at 13:16 -0400, J. Bruce Fields wrote:
-> On Tue, Sep 11, 2007 at 01:01:18PM -0400, David P. Quigley wrote:
-> > Another question about the code in general. Why is it that idmapd is
-> > using fcntl and user signals to indicate changes to the rpc pipe. Isn't
-> > there something else we can use like Inotify or a Netlink socket?
-> 
-> When a new nfs client is created, a new directory containing several
-> files (including the upcall pipe) are created.  The dnotify stuff is
-> there so we find out about those new files and directories.  I don't
-> know much about netlink--how would it help us there?
+On Tue, 11 Sep 2007 13:02:26 -0400
+Jeff Layton <jlayton@redhat.com> wrote:
 
-I'm not sure that it would be a big help. It seemes that it is a newer
-method for transporting data between user and kernel space. There is a
-Linux journal article from back in 2005 about them which can be found at
-http://www.linuxjournal.com/article/7356. It could remove a dependency
-on pipefs, however the only question would be which technology has been
-around longer. It would also seem the the method of passing the messages
-up to user space would be different. Instead of each client having a
-separate file you could have idmapd/doimapd listen on one netlink socket
-and messages that come in contain a clientid which the daemon would
-associate with the separate clients internally. Again I'm not sure if it
-is a big help, but rather a different way of thinking about it that I am
-considering. 
+> On Tue, 11 Sep 2007 09:41:51 -0700
+> "Chris Carlson" <c.carlson@aristoslogic.com> wrote:
+> 
+> > 
+> > We are running MontaVista Embedded Linux 2.4 with NetApps NFS servers as 
+> > the root filesystem and Linux 2.6 mounted filesystems.  A simple test 
+> > runs to copy files from one mount point to another (both are different 
+> > directories on the same NFS server mounted at differet points).
+> > 
+> > After 30 copies of a hundred files are made, the system is rebooted and 
+> > the test repeats.
+> > 
+> > After 2 reboots, an NFS file is created, and we get the following error 
+> > from the kernel:
+> > 
+> > nfs_refresh_inode: inode number mismatch
+> > expected (0x11/0xdacea3), got (0x11/0xb8d5e3)
+> > 
+> 
+> This may be a bug in the NetApp. I saw some similar messages when
+> working on an issue and it turned out to be a filer bug. I ended
+> up tracking it down by doing network captures, and then searching them
+> for the 'expected' and 'got' sequence of bytes in wireshark. It showed
+> that in some cases the netapp was sending back a new fileid in the
+> WCC attributes for the dir when a create call would fail.
+> 
 
-> 
-> I assume Inotify would work, but I don't see any advantage over dnotify.
-> If we didn't leave in some compatability code then it would mean
-> dropping support for pre-inotify kernels, wouldn't it?--could be that
-> there were only a few of those and that nfsv4 wasn't really usable on
-> them anyway (I don't remember), but absent a real motivation to move
-> from dnotify to inotify I'd rather not.
+For the record, the NetApp engineers I worked with on this issue referenced
+NetApp BURT:
 
-That is a good point. Since I'm working on something that will hopefully
-be in future kernels I think I can make the assumption of having the
-extra features.
+244015: We should not have pre/post attributes in case of an error coming
+from exports code
 
-> 
-> > I am assuming that this is just a result of the code being written
-> > before these things were in place. I was originally starting doimapd
-> > based on the idmapd source however if it is acceptable to move to one
-> > of these other techniques I can switched over to that instead.
-> 
-> For new stuff I don't think there'd be a problem using something else.
-> 
-> --b.
+You might want to check that your filer has that fix.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Microsoft
+Defy all challenges. Microsoft(R) Visual Studio 2005.
+http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
