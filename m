@@ -1,27 +1,28 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 15/24] text-based mount.nfs:
-Date: Wed, 12 Sep 2007 12:15:47 -0400
-Message-ID: <20070912161547.23491.23793.stgit@manray.1015granger.net>
+Subject: [PATCH 18/24] text-based mount.nfs: add a function to do
+	foreground	retries
+Date: Wed, 12 Sep 2007 12:16:03 -0400
+Message-ID: <20070912161603.23491.45099.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IVUsV-0004SI-VK
-	for nfs@lists.sourceforge.net; Wed, 12 Sep 2007 09:15:48 -0700
+	id 1IVUsp-0004YD-Vf
+	for nfs@lists.sourceforge.net; Wed, 12 Sep 2007 09:16:08 -0700
 Received: from flpi101.sbcis.sbc.com ([207.115.20.70] helo=flpi101.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IVUsZ-0000mc-Qh
-	for nfs@lists.sourceforge.net; Wed, 12 Sep 2007 09:15:52 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IVUst-0002oD-8C
+	for nfs@lists.sourceforge.net; Wed, 12 Sep 2007 09:16:12 -0700
 Received: from manray.1015granger.net
 	(adsl-76-241-169-38.dsl.sfldmi.sbcglobal.net [76.241.169.38])
 	by flpi101.prodigy.net (8.13.8 out.dk.spool/8.13.8) with ESMTP id
-	l8CGEwCD029052
-	for <nfs@lists.sourceforge.net>; Wed, 12 Sep 2007 09:14:58 -0700
+	l8CGFDSb029739
+	for <nfs@lists.sourceforge.net>; Wed, 12 Sep 2007 09:15:13 -0700
 Received: from manray.1015granger.net (manray.1015granger.net [127.0.0.1])
-	by manray.1015granger.net (8.14.1/8.14.1) with ESMTP id l8CGFlqC023597
-	for <nfs@lists.sourceforge.net>; Wed, 12 Sep 2007 12:15:47 -0400
+	by manray.1015granger.net (8.14.1/8.14.1) with ESMTP id l8CGG33H023615
+	for <nfs@lists.sourceforge.net>; Wed, 12 Sep 2007 12:16:03 -0400
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,160 +35,80 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Introduce a function for probing the server for what it supports, and then
-rewriting the mount options as a result.
+Make the differences between the foreground and background mount logic
+explicit by creating separate functions to handle each -- think of them as
+separate scripts for doing a foreground or a background mount.
+
+NFS foreground mounts are supposed to retry for a little while before
+giving up.  Add a function that handles this.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/mount/stropts.c |  134 +++++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 134 insertions(+), 0 deletions(-)
+ utils/mount/stropts.c |   50 +++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 50 insertions(+), 0 deletions(-)
 
 diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-index c435e0d..f6d11e9 100644
+index 7f5a5bc..892790e 100644
 --- a/utils/mount/stropts.c
 +++ b/utils/mount/stropts.c
-@@ -210,6 +210,140 @@ static int fix_up_mounthost_opt(struct mount_options *options)
+@@ -426,6 +426,56 @@ parse_err:
  }
  
  /*
-+ * Reconstruct the mount option string based on a portmapper probe
-+ * of the server.  Returns one if the server's portmapper returned
-+ * something we can use, otherwise zero.
++ * Handle "foreground" NFS mounts.
 + *
-+ * Unfortunately, for fallback, we need to parse out the mount options
-+ * in user space.  Unrecognized options are ignored here.
++ * Retry the mount request for as long as the 'retry=' option says.
 + *
-+ * Order of processing:
-+ * 1.  fill in mnt_server and nfs_server, based on existing options
-+ * 2.  strip out transport and NFS version related options
-+ * 3.  probe the server
-+ * 4.  append fresh transport and NFS version related options
-+ *
-+ * Returns 1 if successful.  Otherwise, returns zero.
++ * Returns a valid mount command return code: zero if successful,
++ * EX_FAIL if a failure occurred.
 + */
-+static int rewrite_mount_opts(struct mount_options *options)
++static int nfsmount_fg(const char *spec, const char *node,
++		       int flags, struct mount_options *options,
++		       int fake, char **extra_opts)
 +{
-+	char *option, new_option[64];
-+	clnt_addr_t mnt_server = { };
-+	clnt_addr_t nfs_server = { };
++	unsigned int secs = 1;
++	time_t timeout = time(NULL);
++	char *retry;
 +
-+	option = po_get(options, "addr");
-+	if (option) {
-+		nfs_server.saddr.sin_family = AF_INET;
-+		if (!inet_aton((const char *)option, &nfs_server.saddr.sin_addr))
-+			return 0;
-+	} else
-+		return 0;
-+
-+	option = po_get(options, "mountaddr");
-+	if (option) {
-+		mnt_server.saddr.sin_family = AF_INET;
-+		if (!inet_aton((const char *)option, &mnt_server.saddr.sin_addr))
-+			return 0;
-+	} else
-+		memcpy(&mnt_server.saddr, &nfs_server.saddr,
-+				sizeof(mnt_server.saddr));
-+
-+	option = po_get(options, "mountport");
-+	if (option) {
-+		mnt_server.pmap.pm_port = atoi(option);
-+		po_remove_all(options, "mountport");
-+	}
-+	mnt_server.pmap.pm_prog = MOUNTPROG;
-+	option = po_get(options, "mountprog");
-+	if (option) {
-+		mnt_server.pmap.pm_prog = atoi(option);
-+		po_remove_all(options, "mountprog");
-+	}
-+	option = po_get(options, "mountvers");
-+	if (option) {
-+		mnt_server.pmap.pm_vers = atoi(option);
-+		po_remove_all(options, "mountvers");
-+	}
-+
-+	option = po_get(options, "port");
-+	if (option) {
-+		nfs_server.pmap.pm_port = atoi(option);
-+		po_remove_all(options, "port");
-+	}
-+	nfs_server.pmap.pm_prog = NFS_PROGRAM;
-+	option = po_get(options, "nfsprog");
-+	if (option) {
-+		nfs_server.pmap.pm_prog = atoi(option);
-+		po_remove_all(options, "nfsprog");
-+	}
-+
-+	po_remove_all(options, "nfsvers");
-+	po_remove_all(options, "vers");
-+	po_remove_all(options, "tcp");
-+	po_remove_all(options, "udp");
-+
-+	option = po_get(options, "proto");
-+	if (option) {
-+		if (strcmp(option, "tcp") == 0)
-+			po_remove_all(options, "proto");
-+		if (strcmp(option, "udp") == 0)
-+			po_remove_all(options, "proto");
-+	}
-+
-+	if (!probe_bothports(&mnt_server, &nfs_server)) {
-+		rpc_mount_errors("rpcbind", 0, 0);
-+		return 0;
-+	}
-+
-+	if (mnt_server.pmap.pm_prog != MOUNTPROG) {
-+		snprintf(new_option, sizeof(new_option) - 1,
-+			 "mountprog=%lu", mnt_server.pmap.pm_prog);
-+		if (!po_append(options, new_option))
-+			return 0;
-+	}
-+
-+	snprintf(new_option, sizeof(new_option) - 1,
-+		 "mountvers=%lu", mnt_server.pmap.pm_vers);
-+	if (!po_append(options, new_option))
-+		return 0;
-+
-+	snprintf(new_option, sizeof(new_option) - 1,
-+		 "mountport=%lu", mnt_server.pmap.pm_port);
-+	if (!po_append(options, new_option))
-+		return 0;
-+
-+	if (nfs_server.pmap.pm_prog != NFS_PROGRAM) {
-+		snprintf(new_option, sizeof(new_option) - 1,
-+			 "nfsprog=%lu", nfs_server.pmap.pm_prog);
-+		if (!po_append(options, new_option))
-+			return 0;
-+	}
-+
-+	snprintf(new_option, sizeof(new_option) - 1,
-+		 "nfsvers=%lu", nfs_server.pmap.pm_vers);
-+	po_append(options, new_option);
-+
-+	if (nfs_server.pmap.pm_prot == IPPROTO_TCP)
-+		snprintf(new_option, sizeof(new_option) - 1,
-+			 "proto=tcp");
++	retry = po_get(options, "retry");
++	if (!retry)
++		timeout += 60 * 2;	/* default: 2 minutes */
 +	else
-+		snprintf(new_option, sizeof(new_option) - 1,
-+			 "proto=udp");
-+	if (!po_append(options, new_option))
-+		return 0;
++		timeout += 60 * atoi(retry);
 +
-+	if (nfs_server.pmap.pm_port != NFS_PORT) {
-+		snprintf(new_option, sizeof(new_option) - 1,
-+			 "port=%lu", nfs_server.pmap.pm_port);
-+		if (!po_append(options, new_option))
++	for (;;) {
++		if (try_nfsmount(spec, node, flags, options,
++						fake, extra_opts))
 +			return 0;
 +
-+	}
++		if (is_permanent_error(errno))
++			break;
 +
-+	return 1;
++		if (time(NULL) > timeout) {
++			errno = ETIMEDOUT;
++			break;
++		}
++
++		if (verbose)
++			printf(_("%s: will retry until %s\n"),
++				progname, ctime(&timeout));
++
++		if (sleep(secs))
++			break;
++		secs <<= 1;
++		if (secs > 5)
++			secs = 5;
++	};
++
++	mount_error(spec, node, errno);
++	return EX_FAIL;
 +}
 +
 +/*
-  * Attempt an NFS mount via a mount(2) system call.
+  * nfsmount_s - Mount an NFSv2 or v3 file system using C string options
   *
-  * Returns 1 if successful.  Otherwise, returns zero.
+  * @spec:	C string hostname:path specifying remoteshare to mount
 
 
 -------------------------------------------------------------------------
