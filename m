@@ -1,28 +1,28 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 12/24] mount.nfs: Provide comments for public network
-	functions
-Date: Wed, 12 Sep 2007 12:15:32 -0400
-Message-ID: <20070912161532.23491.84494.stgit@manray.1015granger.net>
+Subject: [PATCH 16/24] text-based mount.nfs: Implement falling back to
+	NFSv2	and UDP
+Date: Wed, 12 Sep 2007 12:15:53 -0400
+Message-ID: <20070912161553.23491.53440.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IVUsG-0004Qe-FX
-	for nfs@lists.sourceforge.net; Wed, 12 Sep 2007 09:15:32 -0700
+	id 1IVUsc-0004So-4P
+	for nfs@lists.sourceforge.net; Wed, 12 Sep 2007 09:15:54 -0700
 Received: from flpi101.sbcis.sbc.com ([207.115.20.70] helo=flpi101.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IVUsK-0002WL-2W
-	for nfs@lists.sourceforge.net; Wed, 12 Sep 2007 09:15:37 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IVUsf-0000pV-Se
+	for nfs@lists.sourceforge.net; Wed, 12 Sep 2007 09:15:58 -0700
 Received: from manray.1015granger.net
 	(adsl-76-241-169-38.dsl.sfldmi.sbcglobal.net [76.241.169.38])
 	by flpi101.prodigy.net (8.13.8 out.dk.spool/8.13.8) with ESMTP id
-	l8CGEgQ9028355
-	for <nfs@lists.sourceforge.net>; Wed, 12 Sep 2007 09:14:42 -0700
+	l8CGF3wt029268
+	for <nfs@lists.sourceforge.net>; Wed, 12 Sep 2007 09:15:03 -0700
 Received: from manray.1015granger.net (manray.1015granger.net [127.0.0.1])
-	by manray.1015granger.net (8.14.1/8.14.1) with ESMTP id l8CGFW1Z023579
-	for <nfs@lists.sourceforge.net>; Wed, 12 Sep 2007 12:15:32 -0400
+	by manray.1015granger.net (8.14.1/8.14.1) with ESMTP id l8CGFr7h023603
+	for <nfs@lists.sourceforge.net>; Wed, 12 Sep 2007 12:15:53 -0400
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,117 +35,90 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Clean up: Document public functions in util/mount/network.c with block
-comments.
+If the initial user-specified options fail (with EOPNOTSUPP) then the
+server has rejected the requested NFS version or transport protocol.
+
+In that case, probe the server, and construct a fresh set of mount options
+that ask for the specific mountd and NFS version and transport protocol
+that the server supports.  Rewrite the mount options based on the results
+of the probe, then try the request again.
+
+An additional kernel patch is required to cause the kernel to return
+EOPNOTSUPP when an rpcbind fails during a NULL request.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/mount/network.c |   42 +++++++++++++++++++++++++++++++++++++-----
- 1 files changed, 37 insertions(+), 5 deletions(-)
+ utils/mount/stropts.c |   40 +++++++++++++++++++++++++++++++++++-----
+ 1 files changed, 35 insertions(+), 5 deletions(-)
 
-diff --git a/utils/mount/network.c b/utils/mount/network.c
-index 16b802d..49d3c6b 100644
---- a/utils/mount/network.c
-+++ b/utils/mount/network.c
-@@ -139,6 +139,13 @@ static const unsigned long probe_mnt3_first[] = {
- 	0,
- };
- 
-+/**
-+ * nfs_gethostbyname - resolve a hostname to an IPv4 address
-+ * @hostname: pointer to a C string containing a DNS hostname
-+ * @saddr: returns an IPv4 address 
-+ *
-+ * Returns 1 if successful, otherwise zero.
-+ */
- int nfs_gethostbyname(const char *hostname, struct sockaddr_in *saddr)
- {
- 	struct hostent *hp;
-@@ -457,6 +464,16 @@ static int probe_mntport(clnt_addr_t *mnt_server)
- 		return probe_port(mnt_server, probe_mnt1_first, probe_udp_only);
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index f6d11e9..d4777df 100644
+--- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -344,7 +344,10 @@ static int rewrite_mount_opts(struct mount_options *options)
  }
  
-+/**
-+ * probe_bothports - discover the RPC endpoints of mountd and NFS server
-+ * @mnt_server: pointer to address and pmap argument for mountd results
-+ * @nfs_server: pointer to address and pmap argument for NFS server
-+ *
-+ * Returns 1 if successful, otherwise zero if some error occurred.
-+ * Note that the arguments are both input and output arguments.
-+ *
-+ * A side effect of calling this function is that rpccreateerr is set.
-+ */
- int probe_bothports(clnt_addr_t *mnt_server, clnt_addr_t *nfs_server)
+ /*
+- * Attempt an NFS mount via a mount(2) system call.
++ * Attempt an NFS mount via a mount(2) system call.  If the kernel
++ * claims the requested service isn't supported on the server, probe
++ * the server to see what's supported, rewrite the mount options,
++ * and retry the request.
+  *
+  * Returns 1 if successful.  Otherwise, returns zero.
+  * "errno" is set to reflect the individual error.
+@@ -355,10 +358,8 @@ static int try_nfsmount(const char *spec, const char *node,
  {
- 	struct pmap *nfs_pmap = &nfs_server->pmap;
-@@ -524,8 +541,10 @@ static int probe_statd(void)
- 	return 1;
- }
+ 	free(*extra_opts);
+ 	*extra_opts = po_join(options);
+-	if (!*extra_opts) {
+-		nfs_error(_("%s: internal option parsing error"), progname);
+-		return 0;
+-	}
++	if (!*extra_opts)
++		goto parse_err;
  
--/*
-- * Attempt to start rpc.statd
-+/**
-+ * start_statd - attempt to start rpc.statd
-+ *
-+ * Returns 1 if statd is running; otherwise zero.
-  */
- int start_statd(void)
- {
-@@ -549,7 +568,7 @@ int start_statd(void)
+ 	if (verbose)
+ 		printf(_("%s: text-based options: '%s'\n"),
+@@ -371,8 +372,37 @@ static int try_nfsmount(const char *spec, const char *node,
+ 				flags & ~(MS_USER|MS_USERS), *extra_opts))
+ 		return 1;
+ 
++	/*
++	 * Kernel returns EOPNOTSUPP if the RPC bind failed,
++	 * and EPROTONOSUPPORT if the version isn't supported.
++	 */
++	if (errno != EOPNOTSUPP && errno != EPROTONOSUPPORT) {
++		mount_error(spec, node, errno);
++		return 0;
++	}
++
++	if (!rewrite_mount_opts(options))
++		goto parse_err;
++	free(*extra_opts);
++	*extra_opts = po_join(options);
++	if (!*extra_opts)
++		goto parse_err;
++
++	if (verbose)
++		printf(_("%s: text-based options (retry): '%s'\n"),
++			progname, *extra_opts);
++
++	if (!mount(spec, node, "nfs",
++				flags & ~(MS_USER|MS_USERS), *extra_opts))
++		return 1;
++
+ 	mount_error(spec, node, errno);
  	return 0;
++
++parse_err:
++	nfs_error(_("%s: internal option parsing error"), progname);
++	errno = EINVAL;
++	return 0;
  }
  
--/*
-+/**
-  * nfs_call_umount - ask the server to remove a share from it's rmtab
-  * @mnt_server: address of RPC MNT program server
-  * @argp: directory path of share to "unmount"
-@@ -593,6 +612,13 @@ int nfs_call_umount(clnt_addr_t *mnt_server, dirpath *argp)
- 	return 0;
- }
- 
-+/**
-+ * mnt_openclnt - get a handle for a remote mountd service
-+ * @mnt_server: address and pmap arguments of mountd service
-+ * @msock: returns a file descriptor of the underlying transport socket
-+ *
-+ * Returns an active handle for the remote's mountd service
-+ */
- CLIENT *mnt_openclnt(clnt_addr_t *mnt_server, int *msock)
- {
- 	struct sockaddr_in *mnt_saddr = &mnt_server->saddr;
-@@ -634,6 +660,12 @@ CLIENT *mnt_openclnt(clnt_addr_t *mnt_server, int *msock)
- 	return NULL;
- }
- 
-+/**
-+ * mnt_closeclnt - terminate a handle for a remote mountd service
-+ * @clnt: pointer to an active handle for a remote mountd service
-+ * @msock: file descriptor of the underlying transport socket
-+ *
-+ */
- void mnt_closeclnt(CLIENT *clnt, int msock)
- {
- 	auth_destroy(clnt->cl_auth);
-@@ -641,7 +673,7 @@ void mnt_closeclnt(CLIENT *clnt, int msock)
- 	close(msock);
- }
- 
--/*
-+/**
-  * clnt_ping - send an RPC ping to the remote RPC service endpoint
-  * @saddr: server's address
-  * @prog: target RPC program number
-@@ -729,7 +761,7 @@ int clnt_ping(struct sockaddr_in *saddr, const unsigned long prog,
- 		return 0;
- }
- 
--/*
-+/**
-  * get_client_address - acquire our local network address
-  * @saddr: server's address
-  * @caddr: filled in with our network address
+ /*
 
 
 -------------------------------------------------------------------------
