@@ -1,7 +1,7 @@
 From: Michal Piotrowski <michal.k.k.piotrowski@gmail.com>
 Subject: Re: [2/4] 2.6.23-rc6: known regressions
 Date: Wed, 12 Sep 2007 18:58:54 +0200
-Message-ID: <46E81ACE.6030305__20641.8618131012$1189616415$gmane$org@googlemail.com>
+Message-ID: <46E81ACE.6030305__33119.8144158863$1189616426$gmane$org@googlemail.com>
 References: <46E8187E.9000006@googlemail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-2
@@ -18,9 +18,9 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
 	linux-acpi@vger.kernel.org, Len Brown <lenb@kernel.org>,
 	Chuck Ebbert <cebbert@redhat.com>, dth <dth@dth.net>
 To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <linux-acpi-owner@vger.kernel.org>
 In-Reply-To: <46E8187E.9000006@googlemail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Sender: linux-acpi-owner@vger.kernel.org
 List-ID: <nfs.lists.sourceforge.net>
 
 Hi all,
