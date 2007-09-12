@@ -1,8 +1,7 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 16/24] text-based mount.nfs: Implement falling back to
-	NFSv2	and UDP
-Date: Wed, 12 Sep 2007 12:15:53 -0400
-Message-ID: <20070912161553.23491.53440.stgit@manray.1015granger.net>
+Subject: [PATCH 15/24] text-based mount.nfs:
+Date: Wed, 12 Sep 2007 12:15:47 -0400
+Message-ID: <20070912161547.23491.23793.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
@@ -10,19 +9,19 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IVUsc-0004So-4P
-	for nfs@lists.sourceforge.net; Wed, 12 Sep 2007 09:15:54 -0700
+	id 1IVUsV-0004SI-VK
+	for nfs@lists.sourceforge.net; Wed, 12 Sep 2007 09:15:48 -0700
 Received: from flpi101.sbcis.sbc.com ([207.115.20.70] helo=flpi101.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IVUsf-0000pV-Se
-	for nfs@lists.sourceforge.net; Wed, 12 Sep 2007 09:15:58 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IVUsZ-0000mc-Qh
+	for nfs@lists.sourceforge.net; Wed, 12 Sep 2007 09:15:52 -0700
 Received: from manray.1015granger.net
 	(adsl-76-241-169-38.dsl.sfldmi.sbcglobal.net [76.241.169.38])
 	by flpi101.prodigy.net (8.13.8 out.dk.spool/8.13.8) with ESMTP id
-	l8CGF3wt029268
-	for <nfs@lists.sourceforge.net>; Wed, 12 Sep 2007 09:15:03 -0700
+	l8CGEwCD029052
+	for <nfs@lists.sourceforge.net>; Wed, 12 Sep 2007 09:14:58 -0700
 Received: from manray.1015granger.net (manray.1015granger.net [127.0.0.1])
-	by manray.1015granger.net (8.14.1/8.14.1) with ESMTP id l8CGFr7h023603
-	for <nfs@lists.sourceforge.net>; Wed, 12 Sep 2007 12:15:53 -0400
+	by manray.1015granger.net (8.14.1/8.14.1) with ESMTP id l8CGFlqC023597
+	for <nfs@lists.sourceforge.net>; Wed, 12 Sep 2007 12:15:47 -0400
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,90 +34,160 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-If the initial user-specified options fail (with EOPNOTSUPP) then the
-server has rejected the requested NFS version or transport protocol.
-
-In that case, probe the server, and construct a fresh set of mount options
-that ask for the specific mountd and NFS version and transport protocol
-that the server supports.  Rewrite the mount options based on the results
-of the probe, then try the request again.
-
-An additional kernel patch is required to cause the kernel to return
-EOPNOTSUPP when an rpcbind fails during a NULL request.
+Introduce a function for probing the server for what it supports, and then
+rewriting the mount options as a result.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/mount/stropts.c |   40 +++++++++++++++++++++++++++++++++++-----
- 1 files changed, 35 insertions(+), 5 deletions(-)
+ utils/mount/stropts.c |  134 +++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 134 insertions(+), 0 deletions(-)
 
 diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-index f6d11e9..d4777df 100644
+index c435e0d..f6d11e9 100644
 --- a/utils/mount/stropts.c
 +++ b/utils/mount/stropts.c
-@@ -344,7 +344,10 @@ static int rewrite_mount_opts(struct mount_options *options)
+@@ -210,6 +210,140 @@ static int fix_up_mounthost_opt(struct mount_options *options)
  }
  
  /*
-- * Attempt an NFS mount via a mount(2) system call.
-+ * Attempt an NFS mount via a mount(2) system call.  If the kernel
-+ * claims the requested service isn't supported on the server, probe
-+ * the server to see what's supported, rewrite the mount options,
-+ * and retry the request.
-  *
-  * Returns 1 if successful.  Otherwise, returns zero.
-  * "errno" is set to reflect the individual error.
-@@ -355,10 +358,8 @@ static int try_nfsmount(const char *spec, const char *node,
- {
- 	free(*extra_opts);
- 	*extra_opts = po_join(options);
--	if (!*extra_opts) {
--		nfs_error(_("%s: internal option parsing error"), progname);
--		return 0;
--	}
-+	if (!*extra_opts)
-+		goto parse_err;
- 
- 	if (verbose)
- 		printf(_("%s: text-based options: '%s'\n"),
-@@ -371,8 +372,37 @@ static int try_nfsmount(const char *spec, const char *node,
- 				flags & ~(MS_USER|MS_USERS), *extra_opts))
- 		return 1;
- 
-+	/*
-+	 * Kernel returns EOPNOTSUPP if the RPC bind failed,
-+	 * and EPROTONOSUPPORT if the version isn't supported.
-+	 */
-+	if (errno != EOPNOTSUPP && errno != EPROTONOSUPPORT) {
-+		mount_error(spec, node, errno);
++ * Reconstruct the mount option string based on a portmapper probe
++ * of the server.  Returns one if the server's portmapper returned
++ * something we can use, otherwise zero.
++ *
++ * Unfortunately, for fallback, we need to parse out the mount options
++ * in user space.  Unrecognized options are ignored here.
++ *
++ * Order of processing:
++ * 1.  fill in mnt_server and nfs_server, based on existing options
++ * 2.  strip out transport and NFS version related options
++ * 3.  probe the server
++ * 4.  append fresh transport and NFS version related options
++ *
++ * Returns 1 if successful.  Otherwise, returns zero.
++ */
++static int rewrite_mount_opts(struct mount_options *options)
++{
++	char *option, new_option[64];
++	clnt_addr_t mnt_server = { };
++	clnt_addr_t nfs_server = { };
++
++	option = po_get(options, "addr");
++	if (option) {
++		nfs_server.saddr.sin_family = AF_INET;
++		if (!inet_aton((const char *)option, &nfs_server.saddr.sin_addr))
++			return 0;
++	} else
++		return 0;
++
++	option = po_get(options, "mountaddr");
++	if (option) {
++		mnt_server.saddr.sin_family = AF_INET;
++		if (!inet_aton((const char *)option, &mnt_server.saddr.sin_addr))
++			return 0;
++	} else
++		memcpy(&mnt_server.saddr, &nfs_server.saddr,
++				sizeof(mnt_server.saddr));
++
++	option = po_get(options, "mountport");
++	if (option) {
++		mnt_server.pmap.pm_port = atoi(option);
++		po_remove_all(options, "mountport");
++	}
++	mnt_server.pmap.pm_prog = MOUNTPROG;
++	option = po_get(options, "mountprog");
++	if (option) {
++		mnt_server.pmap.pm_prog = atoi(option);
++		po_remove_all(options, "mountprog");
++	}
++	option = po_get(options, "mountvers");
++	if (option) {
++		mnt_server.pmap.pm_vers = atoi(option);
++		po_remove_all(options, "mountvers");
++	}
++
++	option = po_get(options, "port");
++	if (option) {
++		nfs_server.pmap.pm_port = atoi(option);
++		po_remove_all(options, "port");
++	}
++	nfs_server.pmap.pm_prog = NFS_PROGRAM;
++	option = po_get(options, "nfsprog");
++	if (option) {
++		nfs_server.pmap.pm_prog = atoi(option);
++		po_remove_all(options, "nfsprog");
++	}
++
++	po_remove_all(options, "nfsvers");
++	po_remove_all(options, "vers");
++	po_remove_all(options, "tcp");
++	po_remove_all(options, "udp");
++
++	option = po_get(options, "proto");
++	if (option) {
++		if (strcmp(option, "tcp") == 0)
++			po_remove_all(options, "proto");
++		if (strcmp(option, "udp") == 0)
++			po_remove_all(options, "proto");
++	}
++
++	if (!probe_bothports(&mnt_server, &nfs_server)) {
++		rpc_mount_errors("rpcbind", 0, 0);
 +		return 0;
 +	}
 +
-+	if (!rewrite_mount_opts(options))
-+		goto parse_err;
-+	free(*extra_opts);
-+	*extra_opts = po_join(options);
-+	if (!*extra_opts)
-+		goto parse_err;
++	if (mnt_server.pmap.pm_prog != MOUNTPROG) {
++		snprintf(new_option, sizeof(new_option) - 1,
++			 "mountprog=%lu", mnt_server.pmap.pm_prog);
++		if (!po_append(options, new_option))
++			return 0;
++	}
 +
-+	if (verbose)
-+		printf(_("%s: text-based options (retry): '%s'\n"),
-+			progname, *extra_opts);
++	snprintf(new_option, sizeof(new_option) - 1,
++		 "mountvers=%lu", mnt_server.pmap.pm_vers);
++	if (!po_append(options, new_option))
++		return 0;
 +
-+	if (!mount(spec, node, "nfs",
-+				flags & ~(MS_USER|MS_USERS), *extra_opts))
-+		return 1;
++	snprintf(new_option, sizeof(new_option) - 1,
++		 "mountport=%lu", mnt_server.pmap.pm_port);
++	if (!po_append(options, new_option))
++		return 0;
 +
- 	mount_error(spec, node, errno);
- 	return 0;
++	if (nfs_server.pmap.pm_prog != NFS_PROGRAM) {
++		snprintf(new_option, sizeof(new_option) - 1,
++			 "nfsprog=%lu", nfs_server.pmap.pm_prog);
++		if (!po_append(options, new_option))
++			return 0;
++	}
 +
-+parse_err:
-+	nfs_error(_("%s: internal option parsing error"), progname);
-+	errno = EINVAL;
-+	return 0;
- }
- 
- /*
++	snprintf(new_option, sizeof(new_option) - 1,
++		 "nfsvers=%lu", nfs_server.pmap.pm_vers);
++	po_append(options, new_option);
++
++	if (nfs_server.pmap.pm_prot == IPPROTO_TCP)
++		snprintf(new_option, sizeof(new_option) - 1,
++			 "proto=tcp");
++	else
++		snprintf(new_option, sizeof(new_option) - 1,
++			 "proto=udp");
++	if (!po_append(options, new_option))
++		return 0;
++
++	if (nfs_server.pmap.pm_port != NFS_PORT) {
++		snprintf(new_option, sizeof(new_option) - 1,
++			 "port=%lu", nfs_server.pmap.pm_port);
++		if (!po_append(options, new_option))
++			return 0;
++
++	}
++
++	return 1;
++}
++
++/*
+  * Attempt an NFS mount via a mount(2) system call.
+  *
+  * Returns 1 if successful.  Otherwise, returns zero.
 
 
 -------------------------------------------------------------------------
