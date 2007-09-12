@@ -1,8 +1,8 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 04/24] text-based mount.nfs: Use "child" instead of
-	"bg" for	nfsmount_s
-Date: Wed, 12 Sep 2007 12:14:50 -0400
-Message-ID: <20070912161450.23491.50487.stgit@manray.1015granger.net>
+Subject: [PATCH 01/24] text-based mount.nfs: Fix memory leak in
+	add_mtab()
+Date: Wed, 12 Sep 2007 12:14:34 -0400
+Message-ID: <20070912161434.23491.58121.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
@@ -10,19 +10,19 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IVUrd-0004Ik-6T
-	for nfs@lists.sourceforge.net; Wed, 12 Sep 2007 09:14:53 -0700
+	id 1IVUra-0004IY-JO
+	for nfs@lists.sourceforge.net; Wed, 12 Sep 2007 09:14:50 -0700
 Received: from flpi101.sbcis.sbc.com ([207.115.20.70] helo=flpi101.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IVUrg-0000ND-KG
-	for nfs@lists.sourceforge.net; Wed, 12 Sep 2007 09:14:57 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IVUrd-0000IJ-3O
+	for nfs@lists.sourceforge.net; Wed, 12 Sep 2007 09:14:54 -0700
 Received: from manray.1015granger.net
 	(adsl-76-241-169-38.dsl.sfldmi.sbcglobal.net [76.241.169.38])
 	by flpi101.prodigy.net (8.13.8 out.dk.spool/8.13.8) with ESMTP id
-	l8CGE0IC026404
-	for <nfs@lists.sourceforge.net>; Wed, 12 Sep 2007 09:14:00 -0700
+	l8CGDjuB025834
+	for <nfs@lists.sourceforge.net>; Wed, 12 Sep 2007 09:13:45 -0700
 Received: from manray.1015granger.net (manray.1015granger.net [127.0.0.1])
-	by manray.1015granger.net (8.14.1/8.14.1) with ESMTP id l8CGEo8m023531
-	for <nfs@lists.sourceforge.net>; Wed, 12 Sep 2007 12:14:50 -0400
+	by manray.1015granger.net (8.14.1/8.14.1) with ESMTP id l8CGEYFI023513
+	for <nfs@lists.sourceforge.net>; Wed, 12 Sep 2007 12:14:35 -0400
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,43 +35,34 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Match a recent change to nfs4mount_s -- eventually it will become clear why
-these were renamed.
+Properly release memory acquired by fix_opts_string.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/mount/stropts.c |    6 +++---
- 1 files changed, 3 insertions(+), 3 deletions(-)
+ utils/mount/mount.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
 
-diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-index 236a3b4..018c6e7 100644
---- a/utils/mount/stropts.c
-+++ b/utils/mount/stropts.c
-@@ -243,12 +243,12 @@ static int append_clientaddr_opt(struct sockaddr_in *saddr, char **extra_opts)
-  * @extra_opts:	pointer to C string containing fs-specific mount options
-  *		(possibly also a return argument)
-  * @fake:	flag indicating whether to carry out the whole operation
-- * @bg:		one if this is a backgrounded mount attempt
-+ * @child:	one if this is a backgrounded mount
-  *
-  * XXX: need to handle bg, fg, and retry options.
-  */
- int nfsmount_s(const char *spec, const char *node, int flags,
--		char **extra_opts, int fake, int bg)
-+		char **extra_opts, int fake, int child)
- {
- 	struct sockaddr_in saddr;
- 	char *hostname;
-@@ -263,7 +263,7 @@ int nfsmount_s(const char *spec, const char *node, int flags,
+diff --git a/utils/mount/mount.c b/utils/mount/mount.c
+index 2513943..152ae04 100644
+--- a/utils/mount/mount.c
++++ b/utils/mount/mount.c
+@@ -237,6 +237,7 @@ static int add_mtab(char *spec, char *mount_point, char *fstype,
  
- 	extract_interesting_options(*extra_opts);
- 
--	if (!bg && addr_opt) {
-+	if (!child && addr_opt) {
- 		nfs_error(_("%s: Illegal option: 'addr='"), progname);
- 		return EX_FAIL;
+ 	if (flags & MS_REMOUNT) {
+ 		update_mtab(ment.mnt_dir, &ment);
++		free(ment.mnt_opts);
+ 		return 0;
  	}
+ 
+@@ -267,6 +268,7 @@ fail_close:
+ 	endmntent(mtab);
+ fail_unlock:
+ 	unlock_mtab();
++	free(ment.mnt_opts);
+ 
+ 	return result;
+ }
 
 
 -------------------------------------------------------------------------
