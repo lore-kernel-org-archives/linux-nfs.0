@@ -1,28 +1,27 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 01/24] text-based mount.nfs: Fix memory leak in
-	add_mtab()
-Date: Wed, 12 Sep 2007 12:14:34 -0400
-Message-ID: <20070912161434.23491.58121.stgit@manray.1015granger.net>
+Subject: [PATCH 02/24] mount.nfs: Don't leak extra_opts
+Date: Wed, 12 Sep 2007 12:14:40 -0400
+Message-ID: <20070912161440.23491.23368.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IVUra-0004IY-JO
-	for nfs@lists.sourceforge.net; Wed, 12 Sep 2007 09:14:50 -0700
+	id 1IVUrj-0004It-Mo
+	for nfs@lists.sourceforge.net; Wed, 12 Sep 2007 09:14:59 -0700
 Received: from flpi101.sbcis.sbc.com ([207.115.20.70] helo=flpi101.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IVUrd-0000IJ-3O
-	for nfs@lists.sourceforge.net; Wed, 12 Sep 2007 09:14:54 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IVUrm-00028j-Lc
+	for nfs@lists.sourceforge.net; Wed, 12 Sep 2007 09:15:03 -0700
 Received: from manray.1015granger.net
 	(adsl-76-241-169-38.dsl.sfldmi.sbcglobal.net [76.241.169.38])
 	by flpi101.prodigy.net (8.13.8 out.dk.spool/8.13.8) with ESMTP id
-	l8CGDjuB025834
-	for <nfs@lists.sourceforge.net>; Wed, 12 Sep 2007 09:13:45 -0700
+	l8CGDo2C026041
+	for <nfs@lists.sourceforge.net>; Wed, 12 Sep 2007 09:13:50 -0700
 Received: from manray.1015granger.net (manray.1015granger.net [127.0.0.1])
-	by manray.1015granger.net (8.14.1/8.14.1) with ESMTP id l8CGEYFI023513
-	for <nfs@lists.sourceforge.net>; Wed, 12 Sep 2007 12:14:35 -0400
+	by manray.1015granger.net (8.14.1/8.14.1) with ESMTP id l8CGEeGO023519
+	for <nfs@lists.sourceforge.net>; Wed, 12 Sep 2007 12:14:40 -0400
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,7 +34,7 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Properly release memory acquired by fix_opts_string.
+Properly release extra_opts before exiting.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
@@ -44,24 +43,17 @@ Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
  1 files changed, 2 insertions(+), 0 deletions(-)
 
 diff --git a/utils/mount/mount.c b/utils/mount/mount.c
-index 2513943..152ae04 100644
+index 152ae04..2c1899a 100644
 --- a/utils/mount/mount.c
 +++ b/utils/mount/mount.c
-@@ -237,6 +237,7 @@ static int add_mtab(char *spec, char *mount_point, char *fstype,
- 
- 	if (flags & MS_REMOUNT) {
- 		update_mtab(ment.mnt_dir, &ment);
-+		free(ment.mnt_opts);
- 		return 0;
+@@ -575,6 +575,8 @@ int main(int argc, char *argv[])
  	}
  
-@@ -267,6 +268,7 @@ fail_close:
- 	endmntent(mtab);
- fail_unlock:
- 	unlock_mtab();
-+	free(ment.mnt_opts);
- 
- 	return result;
+ out:
++	if (extra_opts)
++		free(extra_opts);
+ 	free(mount_point);
+ 	exit(mnt_err);
  }
 
 
