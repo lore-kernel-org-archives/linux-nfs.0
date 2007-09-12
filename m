@@ -1,8 +1,7 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 10/24] text-based mount.nfs: Add text-based error
-	reporting	function
-Date: Wed, 12 Sep 2007 12:15:21 -0400
-Message-ID: <20070912161521.23491.9345.stgit@manray.1015granger.net>
+Subject: [PATCH 03/24] mount.nfs: Don't leak mount_opts
+Date: Wed, 12 Sep 2007 12:14:45 -0400
+Message-ID: <20070912161445.23491.7851.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
@@ -10,19 +9,19 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IVUs5-0004PO-6s
-	for nfs@lists.sourceforge.net; Wed, 12 Sep 2007 09:15:23 -0700
+	id 1IVUs0-0004P9-Lv
+	for nfs@lists.sourceforge.net; Wed, 12 Sep 2007 09:15:16 -0700
 Received: from flpi101.sbcis.sbc.com ([207.115.20.70] helo=flpi101.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IVUs9-0002SA-Qa
-	for nfs@lists.sourceforge.net; Wed, 12 Sep 2007 09:15:26 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IVUs2-0002Aa-SH
+	for nfs@lists.sourceforge.net; Wed, 12 Sep 2007 09:15:21 -0700
 Received: from manray.1015granger.net
 	(adsl-76-241-169-38.dsl.sfldmi.sbcglobal.net [76.241.169.38])
 	by flpi101.prodigy.net (8.13.8 out.dk.spool/8.13.8) with ESMTP id
-	l8CGEV9R027811
-	for <nfs@lists.sourceforge.net>; Wed, 12 Sep 2007 09:14:32 -0700
+	l8CGDteu026207
+	for <nfs@lists.sourceforge.net>; Wed, 12 Sep 2007 09:13:55 -0700
 Received: from manray.1015granger.net (manray.1015granger.net [127.0.0.1])
-	by manray.1015granger.net (8.14.1/8.14.1) with ESMTP id l8CGFLgF023567
-	for <nfs@lists.sourceforge.net>; Wed, 12 Sep 2007 12:15:21 -0400
+	by manray.1015granger.net (8.14.1/8.14.1) with ESMTP id l8CGEjK2023525
+	for <nfs@lists.sourceforge.net>; Wed, 12 Sep 2007 12:14:45 -0400
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,97 +34,84 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-The mount_errors() function prints an error based on what just happened in
-the user-space RPC library.  This is meaningless for text-based mounts,
-since they don't use the RPC library for most things.
-
-Add a new error printing function that the text-based logic can use to
-report an error.
+Properly release mount_opts before exiting.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/mount/error.c |   55 +++++++++++++++++++++++++++++++++++++++++++++++++++
- utils/mount/error.h |    2 ++
- 2 files changed, 57 insertions(+), 0 deletions(-)
+ utils/mount/mount.c |   19 +++++++++++++------
+ 1 files changed, 13 insertions(+), 6 deletions(-)
 
-diff --git a/utils/mount/error.c b/utils/mount/error.c
-index 3f7458c..480c944 100644
---- a/utils/mount/error.c
-+++ b/utils/mount/error.c
-@@ -130,6 +130,61 @@ void rpc_mount_errors(char *server, int will_retry, int bg)
- 		fprintf(stderr, "%s\n", errbuf);
+diff --git a/utils/mount/mount.c b/utils/mount/mount.c
+index 2c1899a..8c2e91d 100644
+--- a/utils/mount/mount.c
++++ b/utils/mount/mount.c
+@@ -470,19 +470,19 @@ int main(int argc, char *argv[])
+ 				nfs_error(_("%s: Passing mount options via a"
+ 					" string is unsupported by this"
+ 					" kernel\n"), progname);
+-				exit(EX_USAGE);
++				goto out_usage;
+ 			}
+ 			if (uid != 0) {
+ 				nfs_error(_("%s: -i option is restricted to 'root'\n"),
+ 					progname);
+-				exit(EX_USAGE);
++				goto out_usage;
+ 			}
+ 			++string;
+ 			break;
+ 		case 'h':
+ 		default:
+ 			mount_usage();
+-			exit(EX_USAGE);
++			goto out_usage;
+ 		}
+ 	}
+ 
+@@ -491,7 +491,7 @@ int main(int argc, char *argv[])
+ 	 */
+ 	if (optind != argc - 2) {
+ 		mount_usage();
+-		exit(EX_USAGE);
++		goto out_usage;
+ 	}
+ 
+ 	if (strcmp(progname, "mount.nfs4") == 0)
+@@ -510,7 +510,7 @@ int main(int argc, char *argv[])
+ 		    strcmp(mc->m.mnt_type, fs_type) != 0) {
+ 			nfs_error(_("%s: permission denied: no match for %s "
+ 				"found in /etc/fstab"), progname, mount_point);
+-			exit(EX_USAGE);
++			goto out_usage;
+ 		}
+ 
+ 		/*
+@@ -525,7 +525,7 @@ int main(int argc, char *argv[])
+ 	mount_point = canonicalize(mount_point);
+ 	if (!mount_point) {
+ 		nfs_error(_("%s: no mount point provided"), progname);
+-		exit(EX_USAGE);
++		goto out_usage;
+ 	}
+ 	if (mount_point[0] != '/') {
+ 		nfs_error(_("%s: unrecognized mount point %s"),
+@@ -575,8 +575,15 @@ int main(int argc, char *argv[])
+ 	}
+ 
+ out:
++	if (mount_opts)
++		free(mount_opts);
+ 	if (extra_opts)
+ 		free(extra_opts);
+ 	free(mount_point);
+ 	exit(mnt_err);
++
++out_usage:
++	if (mount_opts)
++		free(mount_opts);
++	exit(EX_USAGE);
  }
- 
-+/**
-+ * sys_mount_errors - log an error that occurred during a mount system call
-+ * @server: C string containing name of server we are attempting to mount
-+ * @error: errno value to report
-+ * @will_retry: one indicates mount will retry at some later point
-+ * @bg: one indicates this is a background mount
-+ *
-+ * Passed an errno value generated by a mount system call, and reports it
-+ * on stderr (fg mount) or in the system log (bg mount).
-+ */
-+void sys_mount_errors(char *server, int error, int will_retry, int bg)
-+{
-+	int pos = 0;
-+	char *tmp;
-+	static int onlyonce = 0;
-+
-+	tmp = &errbuf[pos];
-+	if (bg)
-+		pos = snprintf(tmp, (erreob - tmp),
-+				_("mount to NFS server '%s' failed: "),
-+					server);
-+	else
-+		pos = snprintf(tmp, (erreob - tmp),
-+				_("%s: mount to NFS server '%s' failed: "),
-+					progname, server);
-+
-+	tmp = &errbuf[pos];
-+	if (error == ETIMEDOUT) {
-+		if (will_retry)
-+			pos = snprintf(tmp, (erreob - tmp),
-+					_("timed out, retrying"));
-+		else
-+			pos = snprintf(tmp, (erreob - tmp),
-+					_("timed out, giving up"));
-+	} else {
-+		if (bg) {
-+			if (will_retry)
-+				pos = snprintf(tmp, (erreob - tmp),
-+						_("%s, retrying"),
-+						strerror(error));
-+			else
-+				pos = snprintf(tmp, (erreob - tmp),
-+						_("%s, giving up"),
-+						strerror(error));
-+		}
-+	}
-+
-+	if (bg) {
-+		if (onlyonce++ < 1)
-+			openlog("mount", LOG_CONS|LOG_PID, LOG_AUTH);
-+		syslog(LOG_ERR, "%s", errbuf);
-+	} else
-+		fprintf(stderr, "%s\n", errbuf);
-+}
-+
- /*
-  * mount_error - report a foreground mount error
-  * @spec: C string containing the device name being mounted
-diff --git a/utils/mount/error.h b/utils/mount/error.h
-index ce9a7b6..8b8e9ae 100644
---- a/utils/mount/error.h
-+++ b/utils/mount/error.h
-@@ -25,4 +25,6 @@ char *nfs_strerror(int);
- 
- void mount_error(const char *, const char *, int);
- void rpc_mount_errors(char *, int, int);
-+void sys_mount_errors(char *, int, int, int);
-+
- void umount_error(int, const char *);
 
 
 -------------------------------------------------------------------------
