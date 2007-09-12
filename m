@@ -1,66 +1,69 @@
-From: Wolfgang Walter <wolfgang.walter@studentenwerk.mhn.de>
-Subject: Re: [patch] sunrpc: make closing of old temporary sockets work (was: problems with lockd in 2.6.22.6)
-Date: Thu, 13 Sep 2007 00:18:55 +0200
-Message-ID: <200709130018.55728.wolfgang.walter@studentenwerk.mhn.de>
-References: <200709121407.11151.wolfgang.walter@studentenwerk.mhn.de> <200709122140.57783.wolfgang.walter@studentenwerk.mhn.de> <20070912195512.GC13792@fieldses.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: [PATCH] knfsd: remove unnecessary BUG_ON's
+Date: Wed, 12 Sep 2007 19:43:17 -0400
+Message-ID: <20070912234317.GF13792@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: Neil Brown <neilb@suse.de>, trond.myklebust@fys.uio.no,
-	netdev@vger.kernel.org, nfs@lists.sourceforge.net,
-	linux-kernel@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Return-path: <netdev-owner@vger.kernel.org>
-In-Reply-To: <20070912195512.GC13792@fieldses.org>
-Sender: netdev-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
+To: Neil Brown <neilb@suse.de>
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1IVbrY-0006r2-9U
+	for nfs@lists.sourceforge.net; Wed, 12 Sep 2007 16:43:16 -0700
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IVbrb-0001DH-Pr
+	for nfs@lists.sourceforge.net; Wed, 12 Sep 2007 16:43:21 -0700
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wednesday 12 September 2007, J. Bruce Fields wrote:
-> On Wed, Sep 12, 2007 at 09:40:57PM +0200, Wolfgang Walter wrote:
-> > On Wednesday 12 September 2007, J. Bruce Fields wrote:
-> > > On Wed, Sep 12, 2007 at 04:14:06PM +0200, Neil Brown wrote:
-> > > > So it is in 2.6.21 and later and should probably go to .stable =
-for .21
-> > > > and .22.
-> > > >=20
-> > > > Bruce:  for you :-)
-> > >=20
-> > > OK, thanks!  But, (as is alas often the case) I'm still confused:
-> > >=20
-> > > >  		if (!test_and_set_bit(SK_OLD, &svsk->sk_flags))
-> > > >  			continue;
-> > > > -		if (atomic_read(&svsk->sk_inuse) || test_bit(SK_BUSY,=20
-&svsk->sk_flags))
-> > > > +		if (atomic_read(&svsk->sk_inuse) > 1
-> > > > +		    || test_bit(SK_BUSY, &svsk->sk_flags))
-> > > >  			continue;
-> > > >  		atomic_inc(&svsk->sk_inuse);
-> > > >  		list_move(le, &to_be_aged);
-> > >=20
-> > > What is it that ensures svsk->sk_inuse isn't incremented or SK_BU=
-SY set
-> > > after that test?  Not all the code that does either of those is u=
-nder
-> > > the same serv->sv_lock lock that this code is.
-> > >=20
-> >=20
-> > This should not matter - SK_CLOSED may be set at any time.
-> >=20
-> > svc_age_temp_sockets only detaches the socket, sets SK_CLOSED and t=
-hen=20
-> > enqueues it. If SK_BUSY is set its already enqueued and svc_sock_en=
-queue=20
-> > ensures that it is not enqueued twice.
->=20
-> Oh, got it.  And the list manipulation is safe thanks to sv_lock.  Ne=
-at,
-> thanks.  Can you verify that this solves your problem?
->=20
+Trivial patch, but--any objection to removing these assertions?
 
-I'll test it tomorrow. So friday morning I'll know and mail you for sur=
-e.
+We set svsk->sk_pool = pool just 30-some lines above, and there's no
+obvious reason this should have changed, or any other particular reason
+to assert this here.
 
-Regards,
---=20
-Wolfgang Walter
-Studentenwerk M=FCnchen
-Anstalt des =F6ffentlichen Rechts
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+---
+ net/sunrpc/svcsock.c |    2 --
+ 1 files changed, 0 insertions(+), 2 deletions(-)
+
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 12ff5da..d064879 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -298,12 +298,10 @@ svc_sock_enqueue(struct svc_sock *svsk)
+ 		atomic_inc(&svsk->sk_inuse);
+ 		rqstp->rq_reserved = serv->sv_max_mesg;
+ 		atomic_add(rqstp->rq_reserved, &svsk->sk_reserved);
+-		BUG_ON(svsk->sk_pool != pool);
+ 		wake_up(&rqstp->rq_wait);
+ 	} else {
+ 		dprintk("svc: socket %p put into queue\n", svsk->sk_sk);
+ 		list_add_tail(&svsk->sk_ready, &pool->sp_sockets);
+-		BUG_ON(svsk->sk_pool != pool);
+ 	}
+ 
+ out_unlock:
+-- 
+1.5.3.1.40.g6972
+
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Microsoft
+Defy all challenges. Microsoft(R) Visual Studio 2005.
+http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
