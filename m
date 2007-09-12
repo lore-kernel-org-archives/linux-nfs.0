@@ -1,27 +1,28 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 07/24] text-based mount.nfs: Fix mounthost= processing
-Date: Wed, 12 Sep 2007 12:15:06 -0400
-Message-ID: <20070912161506.23491.18278.stgit@manray.1015granger.net>
+Subject: [PATCH 05/24] text-based mount.nfs: parse option strings into
+	lists
+Date: Wed, 12 Sep 2007 12:14:55 -0400
+Message-ID: <20070912161455.23491.46418.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IVUrs-0004OW-5m
-	for nfs@lists.sourceforge.net; Wed, 12 Sep 2007 09:15:09 -0700
+	id 1IVUrj-0004Is-Nt
+	for nfs@lists.sourceforge.net; Wed, 12 Sep 2007 09:15:00 -0700
 Received: from flpi101.sbcis.sbc.com ([207.115.20.70] helo=flpi101.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IVUrw-0002MG-5u
-	for nfs@lists.sourceforge.net; Wed, 12 Sep 2007 09:15:12 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IVUrl-0000P6-V7
+	for nfs@lists.sourceforge.net; Wed, 12 Sep 2007 09:15:03 -0700
 Received: from manray.1015granger.net
 	(adsl-76-241-169-38.dsl.sfldmi.sbcglobal.net [76.241.169.38])
 	by flpi101.prodigy.net (8.13.8 out.dk.spool/8.13.8) with ESMTP id
-	l8CGEGDm027085
-	for <nfs@lists.sourceforge.net>; Wed, 12 Sep 2007 09:14:16 -0700
+	l8CGE5Ze026651
+	for <nfs@lists.sourceforge.net>; Wed, 12 Sep 2007 09:14:06 -0700
 Received: from manray.1015granger.net (manray.1015granger.net [127.0.0.1])
-	by manray.1015granger.net (8.14.1/8.14.1) with ESMTP id l8CGF6hc023549
-	for <nfs@lists.sourceforge.net>; Wed, 12 Sep 2007 12:15:06 -0400
+	by manray.1015granger.net (8.14.1/8.14.1) with ESMTP id l8CGEt6G023537
+	for <nfs@lists.sourceforge.net>; Wed, 12 Sep 2007 12:14:55 -0400
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,66 +35,542 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-The nfs(5) man page shows that the mounthost= option takes a name, not an
-address.  The kernel's text-based mount option parsing logic expects an
-IPv4 address.
+Adapt a parsing trick used by Python.
 
-Resolve the hostname and pass in a new mount option, 'mountaddr=', to the
-kernel.  This is necessary because the kernel cannot itself resolve
-hostnames to addresses.
+Change incoming option strings into an ADT so we don't have to copy and
+parse the whole option string multiple times while trying to manipulate
+the options.  Just before calling the mount(2) system call, convert the
+ADT back into a C string.
 
-This requires a patch to the kernel to recognize the new 'mountaddr='
-option.
+This initial patch adds helpers for creating and manipulating the ADT.
+
+One major advantage of this approach is that we can copy the final version
+of the mount options into /etc/mtab when we're done, instead of copying in
+the mount options that the user specified.  Any fallback from NFS v3 to NFS
+v2 or TCP to UDP that was done by mount.nfs will be reflected in /etc/mtab.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/mount/stropts.c |   25 +++++++++++++++++++++++++
- 1 files changed, 25 insertions(+), 0 deletions(-)
+ utils/mount/Makefile.am |    4 
+ utils/mount/parse_opt.c |  449 +++++++++++++++++++++++++++++++++++++++++++++++
+ utils/mount/parse_opt.h |   35 ++++
+ 3 files changed, 486 insertions(+), 2 deletions(-)
 
-diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-index d10e3d3..2fa5781 100644
---- a/utils/mount/stropts.c
-+++ b/utils/mount/stropts.c
-@@ -225,6 +225,28 @@ static int append_clientaddr_option(struct sockaddr_in *saddr,
- }
+diff --git a/utils/mount/Makefile.am b/utils/mount/Makefile.am
+index 23e7ae9..f703047 100644
+--- a/utils/mount/Makefile.am
++++ b/utils/mount/Makefile.am
+@@ -9,11 +9,11 @@ man5_MANS	= nfs.man
  
- /*
-+ * Called to resolve the 'mounthost=' hostname and append a new
-+ * option using an IPv4 address.
+ sbin_PROGRAMS	= mount.nfs
+ EXTRA_DIST = nfsmount.x $(man8_MANS) $(man5_MANS)
+-mount_nfs_SOURCES = mount.c error.c network.c fstab.c \
++mount_nfs_SOURCES = mount.c error.c network.c fstab.c parse_opt.c \
+ 		    nfsmount.c nfs4mount.c stropts.c\
+ 		    nfsumount.c \
+ 		    mount_constants.h error.h network.h fstab.h \
+-		    nfs4_mount.h nfs_mount4.h stropts.h
++		    nfs4_mount.h nfs_mount4.h stropts.h parse_opt.h
+ 
+ mount_nfs_LDADD = ../../support/nfs/libnfs.a \
+ 		  ../../support/export/libexport.a
+diff --git a/utils/mount/parse_opt.c b/utils/mount/parse_opt.c
+new file mode 100644
+index 0000000..fd0dbc4
+--- /dev/null
++++ b/utils/mount/parse_opt.c
+@@ -0,0 +1,449 @@
++/*
++ * parse_opt.c -- mount option string parsing helpers
++ *
++ * Copyright (C) 2007 Oracle.  All rights reserved.
++ * Copyright (C) 2007 Chuck Lever <chuck.lever@oracle.com>
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public
++ * License as published by the Free Software Foundation; either
++ * version 2 of the License, or (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public
++ * License along with this program; if not, write to the
++ * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
++ * Boston, MA 021110-1307, USA.
++ *
 + */
-+static int fix_up_mounthost_opt(struct mount_options *options)
-+{
-+	struct sockaddr_in maddr;
-+	char *mounthost, new_option[32];
-+
-+	mounthost = po_get(options, "mounthost");
-+	if (!mounthost)
-+		return 1;
-+
-+	if (!fill_ipv4_sockaddr(mounthost, &maddr))
-+		return 0;
-+
-+	snprintf(new_option, sizeof(new_option) - 1,
-+			"mountaddr=%s", inet_ntoa(maddr.sin_addr));
-+
-+	return po_append(options, new_option);
-+}
 +
 +/*
-  * nfsmount_s - Mount an NFSv2 or v3 file system using C string options
-  *
-  * @spec:	C string hostname:path specifying remoteshare to mount
-@@ -261,6 +283,9 @@ int nfsmount_s(const char *spec, const char *node, int flags,
- 	if (!append_addr_option(&saddr, options, child))
- 		goto out;
- 
-+	if (!fix_up_mounthost_opt(options))
-+		goto out;
++ * Converting a C string containing mount options to an ADT
++ * and manipulating that is cleaner in C than manipulating
++ * the C string itself.  This is similar to the way Python
++ * handles string manipulation.
++ *
++ * The current implementation uses a linked list as the ADT,
++ * since lists are simple, and we don't need to worry about
++ * more than ten or twenty options at a time.
++ *
++ * Hopefully the interface is abstract enough that the
++ * underlying ADT can be replaced if needed without changing
++ * the API.
++ */
 +
- 	free(*extra_opts);
- 	*extra_opts = po_join(options);
- 	if (!*extra_opts) {
++
++#include <ctype.h>
++#include <unistd.h>
++#include <stdio.h>
++#include <string.h>
++#include <stdlib.h>
++#include <errno.h>
++
++#include "parse_opt.h"
++
++
++struct mount_option {
++	struct mount_option *next, *prev;
++	char *keyword;
++	char *value;
++};
++
++struct mount_options {
++	struct mount_option *head, *tail;
++	unsigned int count;
++};
++
++static struct mount_option *option_create(char *str)
++{
++	struct mount_option *option;
++	char *opteq;
++
++	if (!str)
++		return NULL;
++
++	option = malloc(sizeof(*option));
++	if (!option)
++		return NULL;
++	
++	option->next = NULL;
++	option->prev = NULL;
++
++	if ((opteq = strchr(str, '='))) {
++		*opteq = '\0';
++		option->keyword = strdup(str);
++		if (!option->keyword)
++			goto fail;
++		option->value = strdup(opteq + 1);
++		if (!option->value) {
++			free(option->keyword);
++			goto fail;
++		}
++	} else {
++		option->keyword = strdup(str);
++		if (!option->keyword)
++			goto fail;
++		option->value = NULL;
++	}
++
++	return option;
++
++fail:
++	free(option);
++	return NULL;
++}
++
++static struct mount_option *option_dup(struct mount_option *option)
++{
++	struct mount_option *dup;
++
++	if (!option)
++		return NULL;
++
++	dup = malloc(sizeof(*dup));
++	if (!dup)
++		return NULL;
++	
++	dup->next = NULL;
++	dup->prev = NULL;
++
++	dup->keyword = strdup(option->keyword);
++	if (!dup->keyword)
++		goto fail;
++
++	if (option->value) {
++		dup->value = strdup(option->value);
++		if (!dup->value) {
++			free(dup->keyword);
++			goto fail;
++		}
++	}
++
++	return dup;
++
++fail:
++	free(dup);
++	return NULL;
++}
++
++static void option_destroy(struct mount_option *option)
++{
++	free(option->keyword);
++	if (option->value)
++		free(option->value);
++	free(option);
++}
++
++static struct mount_options *options_create(void)
++{
++	struct mount_options *options;
++
++	options = malloc(sizeof(*options));
++	if (!options)
++		return NULL;
++	
++	options->head = options->tail = NULL;
++	options->count = 0;
++
++	return options;
++}
++
++static int options_empty(struct mount_options *options)
++{
++	return options->count == 0;
++}
++
++static void options_tail_insert(struct mount_options *options,
++				struct mount_option *option)
++{
++	struct mount_option *prev = options->tail;
++
++	option->next = NULL;
++	option->prev = prev;
++
++	if (prev)
++		prev->next = option;
++	else
++		options->head = option;
++	options->tail = option;
++
++	options->count++;
++}
++
++static void options_delete(struct mount_options *options,
++			   struct mount_option *option)
++{
++	struct mount_option *prev = option->prev;
++	struct mount_option *next = option->next;
++
++	if (options_empty(options))
++		return;
++
++	if (prev)
++		prev->next = option->next;
++	if (next)
++		next->prev = option->prev;
++
++	if (options->head == option)
++		options->head = option->next;
++	if (options->tail == option)
++		options->tail = prev;
++
++	options->count--;
++
++	option_destroy(option);
++}
++
++
++/**
++ * po_destroy - deallocate a group of mount options
++ * @options: pointer to mount options to free
++ *
++ */
++void po_destroy(struct mount_options *options)
++{
++	while (!options_empty(options))
++		options_delete(options, options->head);
++
++	free(options);
++}
++
++/**
++ * po_split - split options string into group of options
++ * @options: pointer to C string containing zero or more comma-delimited options
++ *
++ * Convert our mount options string to a list to make it easier
++ * to adjust the options as we go.  This is just an exercise in
++ * lexical parsing -- this function doesn't pay attention to the
++ * meaning of the options themselves.
++ *
++ * Returns a new group of mount options if successful; otherwise NULL
++ * is returned if some failure occurred.
++ */
++struct mount_options *po_split(char *str)
++{
++	struct mount_options *options;
++	char *opt;
++
++	if (!str)
++		return options_create();
++
++	str = strdup(str);
++	if (!str)
++		return NULL;
++
++	options = options_create();
++	if (options) {
++		for (opt = strtok(str, ","); opt; opt = strtok(NULL, ",")) {
++			struct mount_option *option = option_create(opt);
++			if (option)
++				options_tail_insert(options, option);
++			else
++				goto fail;
++		}
++	}
++
++	free(str);
++	return options;
++
++fail:
++	po_destroy(options);
++	free(str);
++	return NULL;
++}
++
++/**
++ * po_duplicate - duplicate a group of mount options
++ * @options: point to mount options to duplicate
++ *
++ * Returns a new group of mount options if successful; otherwise NULL
++ * is returned if some failure occurred.
++ */
++struct mount_options *po_duplicate(struct mount_options *options)
++{
++	struct mount_option *option, *copy;
++	struct mount_options *dup_options = options_create();
++
++	if (!dup_options)
++		return NULL;
++
++	if (!options_empty(options)) {
++		for (option = options->head; option; option = option->next) {
++			copy = option_dup(option);
++			if (!copy)
++				goto fail;
++			options_tail_insert(dup_options, copy);
++		}
++	}
++
++	return dup_options;
++
++fail:
++	po_destroy(dup_options);
++	return NULL;
++}
++
++/**
++ * po_join - recombine group of mount options into a C string
++ * @options: pointer to mount options to recombine
++ *
++ * Convert our mount options ADT back into a string that the
++ * rest of the world can use.
++ *
++ * Returns the address of a C string containing a comma-delimited
++ * list of mount options and values, or NULL if some failure occurred.
++ */
++char *po_join(struct mount_options *options)
++{
++	char *str;
++	size_t len = 0;
++	struct mount_option *option;
++
++	if (options_empty(options))
++		return "";
++
++	for (option = options->head; option; option = option->next) {
++		len += strlen(option->keyword);
++		if (option->value)
++			len +=strlen(option->value) + 1;  /* equals sign */
++		if (option->next)
++			len++;  /* comma */
++	}
++
++	len++;	/* NULL on the end */
++
++	str = malloc(len);
++	if (!str)
++		return NULL;
++	str[0] = '\0';
++
++	for (option = options->head; option; option = option->next) {
++		strcat(str, option->keyword);
++		if (option->value) {
++			strcat(str, "=");
++			strcat(str, option->value);
++		}
++		if (option->next)
++			strcat(str, ",");
++	}
++
++	return str;
++}
++
++/**
++ * po_append - concatenate an option onto a group of options
++ * @options: pointer to mount options
++ * @option: pointer to a C string containing the option to add
++ *
++ * Returns 1 if the list was successfully concatenated; otherwise
++ * zero.
++ */
++int po_append(struct mount_options *options, char *str)
++{
++	struct mount_option *option = option_create(str);
++
++	if (option) {
++		options_tail_insert(options, option);
++		return 1;
++	}
++	return 0;
++}
++
++/**
++ * po_contains - check for presense of an option in a group
++ * @options: pointer to mount options
++ * @keyword: pointer to a C string containing option keyword for which to search
++ *
++ * Returns 1 if the option is present in the list; otherwise zero.
++ */
++int po_contains(struct mount_options *options, char *keyword)
++{
++	struct mount_option *option;
++
++	for (option = options->head; option; option = option->next)
++		if (strcmp(option->keyword, keyword) == 0)
++			return 1;
++
++	return 0;
++}
++
++/**
++ * po_get - return the value of the rightmost instance of an option
++ * @options: pointer to mount options
++ * @keyword: pointer to a C string containing option keyword for which to search
++ *
++ * If multiple instances of the same option are present in a mount option
++ * list, the rightmost instance is always the effective one.
++ *
++ * Returns pointer to C string containing the value of the option.
++ * Returns NULL if the option isn't found, or if the option doesn't
++ * have a value.
++ */
++char *po_get(struct mount_options *options, char *keyword)
++{
++	struct mount_option *option;
++
++	for (option = options->tail; option; option = option->prev)
++		if (strcmp(option->keyword, keyword) == 0)
++			return option->value;
++	return NULL;
++}
++
++/**
++ * po_rightmost - determine the relative position of two options
++ * @options: pointer to mount options
++ * @key1: pointer to a C string containing an option keyword
++ * @key2: pointer to a C string containing another option keyword
++ *
++ * The kernel parses the mount option string from left to right.
++ * If an option is specified more than once (for example, "intr"
++ * and "nointr", the rightmost option is the last to be parsed,
++ * and it therefore takes precedence over previous similar options.
++ *
++ * This function can be used to determine which of two similar
++ * options will be the one to take effect.
++ *
++ * Returns 1 if key2 is rightmost or key1 is not present.
++ * Returns -1 if key1 is rightmost or key2 is not present.
++ * Returns 0 if neither key is present.
++ */
++int po_rightmost(struct mount_options *options, char *key1, char *key2)
++{
++	struct mount_option *option;
++
++	for (option = options->tail; option; option = option->prev) {
++		if (strcmp(option->keyword, key2) == 0)
++			return 1;
++		if (strcmp(option->keyword, key1) == 0)
++			return -1;
++	}
++	return 0;
++}
++
++/**
++ * po_remove_all - remove instances of an option from a group
++ * @options: pointer to mount options
++ * @keyword: pointer to a C string containing an option keyword to remove
++ *
++ * Returns 1 if the option was found and removed; passed-in list is
++ * truncated upon return; otherwise zero.
++ */
++int po_remove_all(struct mount_options *options, char *keyword)
++{
++	struct mount_option *option, *next;
++	int found = 0;
++
++	for (option = options->head; option; option = next) {
++		next = option->next;
++		if (strcmp(option->keyword, keyword) == 0) {
++			options_delete(options, option);
++			found = 1;
++		}
++	}
++
++	return found;
++}
+diff --git a/utils/mount/parse_opt.h b/utils/mount/parse_opt.h
+new file mode 100644
+index 0000000..b1bae5d
+--- /dev/null
++++ b/utils/mount/parse_opt.h
+@@ -0,0 +1,35 @@
++/*
++ * parse_opt.h -- mount option string parsing helpers
++ *
++ * Copyright (C) 2007 Oracle.  All rights reserved.
++ * Copyright (C) 2007 Chuck Lever <chuck.lever@oracle.com>
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public
++ * License as published by the Free Software Foundation; either
++ * version 2 of the License, or (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public
++ * License along with this program; if not, write to the
++ * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
++ * Boston, MA 021110-1307, USA.
++ *
++ */
++
++struct mount_options;
++
++struct mount_options *	po_split(char *);
++struct mount_options *	po_duplicate(struct mount_options *);
++char *			po_join(struct mount_options *);
++
++int			po_append(struct mount_options *, char *);
++int			po_contains(struct mount_options *, char *);
++char *			po_get(struct mount_options *, char *);
++int			po_rightmost(struct mount_options *, char *, char *);
++int			po_remove_all(struct mount_options *, char *);
++void			po_destroy(struct mount_options *);
 
 
 -------------------------------------------------------------------------
