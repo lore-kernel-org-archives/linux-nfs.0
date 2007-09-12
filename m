@@ -1,8 +1,8 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 14/24] text-based mount.nfs: Use helpers for invoking
-	mount(2)	system call
-Date: Wed, 12 Sep 2007 12:15:42 -0400
-Message-ID: <20070912161542.23491.78214.stgit@manray.1015granger.net>
+Subject: [PATCH 11/24] mount.nfs: Add error messages for errors
+	reported by	text-based mount(2)
+Date: Wed, 12 Sep 2007 12:15:26 -0400
+Message-ID: <20070912161526.23491.65094.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
@@ -10,19 +10,19 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IVUsT-0004S0-6Z
-	for nfs@lists.sourceforge.net; Wed, 12 Sep 2007 09:15:45 -0700
+	id 1IVUsE-0004QP-Eq
+	for nfs@lists.sourceforge.net; Wed, 12 Sep 2007 09:15:30 -0700
 Received: from flpi101.sbcis.sbc.com ([207.115.20.70] helo=flpi101.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IVUsW-0002ay-Ke
-	for nfs@lists.sourceforge.net; Wed, 12 Sep 2007 09:15:50 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IVUsI-0002U3-Se
+	for nfs@lists.sourceforge.net; Wed, 12 Sep 2007 09:15:35 -0700
 Received: from manray.1015granger.net
 	(adsl-76-241-169-38.dsl.sfldmi.sbcglobal.net [76.241.169.38])
 	by flpi101.prodigy.net (8.13.8 out.dk.spool/8.13.8) with ESMTP id
-	l8CGEqwh028826
-	for <nfs@lists.sourceforge.net>; Wed, 12 Sep 2007 09:14:53 -0700
+	l8CGEbIo028082
+	for <nfs@lists.sourceforge.net>; Wed, 12 Sep 2007 09:14:37 -0700
 Received: from manray.1015granger.net (manray.1015granger.net [127.0.0.1])
-	by manray.1015granger.net (8.14.1/8.14.1) with ESMTP id l8CGFglP023591
-	for <nfs@lists.sourceforge.net>; Wed, 12 Sep 2007 12:15:42 -0400
+	by manray.1015granger.net (8.14.1/8.14.1) with ESMTP id l8CGFQfu023573
+	for <nfs@lists.sourceforge.net>; Wed, 12 Sep 2007 12:15:27 -0400
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,72 +35,66 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Use the new mount system call helpers.
+The text-based mount(2) system call API can return some additional errors
+that we would like to report to our users.  These should be safe to use
+with the legacy mount(2) ABI as well.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/mount/stropts.c |   38 ++------------------------------------
- 1 files changed, 2 insertions(+), 36 deletions(-)
+ utils/mount/error.c |   20 ++++++++++++++++++--
+ 1 files changed, 18 insertions(+), 2 deletions(-)
 
-diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-index 7c1d3ac..c435e0d 100644
---- a/utils/mount/stropts.c
-+++ b/utils/mount/stropts.c
-@@ -281,25 +281,8 @@ int nfsmount_s(const char *spec, const char *node, int flags,
- 	if (!fix_up_mounthost_opt(options))
- 		goto out;
+diff --git a/utils/mount/error.c b/utils/mount/error.c
+index 480c944..10d4ed2 100644
+--- a/utils/mount/error.c
++++ b/utils/mount/error.c
+@@ -185,7 +185,7 @@ void sys_mount_errors(char *server, int error, int will_retry, int bg)
+ 		fprintf(stderr, "%s\n", errbuf);
+ }
  
--	free(*extra_opts);
--	*extra_opts = po_join(options);
--	if (!*extra_opts) {
--		nfs_error(_("%s: internal option parsing error"), progname);
-+	if (!try_nfsmount(spec, node, flags, options, fake, extra_opts))
- 		goto out;
--	}
--
--	if (verbose)
--		printf(_("%s: text-based options: '%s'\n"),
--			progname, *extra_opts);
--
--	if (!fake) {
--		if (mount(spec, node, "nfs",
--				flags & ~(MS_USER|MS_USERS), *extra_opts)) {
--			mount_error(spec, node, errno);
--			goto out;
--		}
--	}
--
- 	retval = 0;
- 
- out:
-@@ -380,25 +363,8 @@ int nfs4mount_s(const char *spec, const char *node, int flags,
- 	if (!append_clientaddr_option(&saddr, options))
- 		goto out;
- 
--	free(*extra_opts);
--	*extra_opts = po_join(options);
--	if (!options) {
--		nfs_error(_("%s: internal option parsing error"), progname);
-+	if (!try_nfs4mount(spec, node, flags, options, fake, extra_opts))
- 		goto out;
--	}
--
--	if (verbose)
--		printf(_("%s: text-based options: '%s'\n"),
--			progname, *extra_opts);
--
--	if (!fake) {
--		if (mount(spec, node, "nfs4",
--				flags & ~(MS_USER|MS_USERS), *extra_opts)) {
--			mount_error(spec, node, errno);
--			goto out;
--		}
--	}
--
- 	retval = 0;
- 
- out:
+-/*
++/**
+  * mount_error - report a foreground mount error
+  * @spec: C string containing the device name being mounted
+  * @mount_point: C string containing the pathname of the local mounted on dir
+@@ -195,12 +195,24 @@ void sys_mount_errors(char *server, int error, int will_retry, int bg)
+ void mount_error(const char *spec, const char *mount_point, int error)
+ {
+ 	switch(error) {
++	case EACCES:
++		nfs_error(_("%s: access denied by server while mounting %s"),
++				progname, spec);
++		break;
++	case EINVAL:
++		nfs_error(_("%s: an incorrect mount option was specified"), progname);
++		break;
++	case EOPNOTSUPP:
++		nfs_error(_("%s: requested NFS version or transport"
++				" protocol is not supported"),
++				progname);
++		break;
+ 	case ENOTDIR:
+ 		nfs_error(_("%s: mount point %s is not a directory"),
+ 				progname, mount_point);
+ 		break;
+ 	case EBUSY:
+-		nfs_error(_("%s: %s is already mounted or busy"),
++		nfs_error(_("%s: %s is busy or already mounted"),
+ 			progname, mount_point);
+ 		break;
+ 	case ENOENT:
+@@ -212,6 +224,10 @@ void mount_error(const char *spec, const char *mount_point, int error)
+ 			nfs_error(_("%s: mount point %s does not exist"),
+ 				progname, mount_point);
+ 		break;
++	case EIO:
++	case EFAULT:
++		nfs_error(_("%s: internal error"), progname);
++		break;
+ 	default:
+ 		nfs_error(_("%s: %s"),
+ 			progname, strerror(error));
 
 
 -------------------------------------------------------------------------
