@@ -1,21 +1,22 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: [PATCH] knfsd: remove unnecessary BUG_ON's
-Date: Wed, 12 Sep 2007 19:43:17 -0400
-Message-ID: <20070912234317.GF13792@fieldses.org>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: lockd not responding
+Date: Wed, 12 Sep 2007 20:27:21 -0400
+Message-ID: <20070912202721.d8f70ac1.jlayton@redhat.com>
+References: <fc84aa$o11$1@sea.gmane.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: Neil Brown <neilb@suse.de>
+To: kenneth johansson <ken@kenjo.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IVbrY-0006r2-9U
-	for nfs@lists.sourceforge.net; Wed, 12 Sep 2007 16:43:16 -0700
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IVbrb-0001DH-Pr
-	for nfs@lists.sourceforge.net; Wed, 12 Sep 2007 16:43:21 -0700
+	id 1IVcYK-0002Rb-29
+	for nfs@lists.sourceforge.net; Wed, 12 Sep 2007 17:27:28 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IVcYO-0006wN-Jq
+	for nfs@lists.sourceforge.net; Wed, 12 Sep 2007 17:27:32 -0700
+In-Reply-To: <fc84aa$o11$1@sea.gmane.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,37 +29,24 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Trivial patch, but--any objection to removing these assertions?
+On Wed, 12 Sep 2007 07:26:02 +0000 (UTC)
+kenneth johansson <ken@kenjo.org> wrote:
 
-We set svsk->sk_pool = pool just 30-some lines above, and there's no
-obvious reason this should have changed, or any other particular reason
-to assert this here.
+> Got a warning from the lock validating check again and
+> later a unresponsive lockd with a backtrace this time
+> actually at the same place the lock warning was on.
 
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
----
- net/sunrpc/svcsock.c |    2 --
- 1 files changed, 0 insertions(+), 2 deletions(-)
+FWIW, I think I ran into the exact same problem recently. I opened a
+BZ case for it so I wouldn't forget about it, but haven't had time to
+track it down:
 
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 12ff5da..d064879 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -298,12 +298,10 @@ svc_sock_enqueue(struct svc_sock *svsk)
- 		atomic_inc(&svsk->sk_inuse);
- 		rqstp->rq_reserved = serv->sv_max_mesg;
- 		atomic_add(rqstp->rq_reserved, &svsk->sk_reserved);
--		BUG_ON(svsk->sk_pool != pool);
- 		wake_up(&rqstp->rq_wait);
- 	} else {
- 		dprintk("svc: socket %p put into queue\n", svsk->sk_sk);
- 		list_add_tail(&svsk->sk_ready, &pool->sp_sockets);
--		BUG_ON(svsk->sk_pool != pool);
- 	}
- 
- out_unlock:
+https://bugzilla.redhat.com/show_bug.cgi?id=280311
+
+I'm not certain that lockd was stuck at the time, since I had some
+other things going on with the box, but it may have been...
+
 -- 
-1.5.3.1.40.g6972
-
+Jeff Layton <jlayton@redhat.com>
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
