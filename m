@@ -1,151 +1,50 @@
-From: Steven Whitehouse <swhiteho@redhat.com>
-Subject: Re: [PATCH 15/19] gfs2: new export ops
-Date: Fri, 14 Sep 2007 16:18:36 +0100
-Message-ID: <1189783116.1068.58.camel@quoit>
-References: <20070914114911.GP28282@lst.de>
+From: Greg Banks <gnb@sgi.com>
+Subject: Re: [NFS] [PATH 10/19] xfs: new export ops
+Date: Sat, 15 Sep 2007 01:22:16 +1000
+Message-ID: <20070914152216.GI21965@sgi.com>
+References: <20070830131641.GK6834@lst.de>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-fsdevel@vger.kernel.org, nfs@lists.sourceforge.net,
-	wcheng@redhat.com
-To: hch@lst.de
+Content-Type: text/plain; charset=us-ascii
+Cc: nfs@lists.sourceforge.net, linux-fsdevel@vger.kernel.org
+To: Christoph Hellwig <hch@lst.de>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20070914114911.GP28282@lst.de>
+In-Reply-To: <20070830131641.GK6834@lst.de>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <nfs.lists.sourceforge.net>
 
-Hi,
-
-On Fri, 2007-09-14 at 13:49 +0200, hch@lst.de wrote:
-> plain text document attachment (gfs2-implement-fh_to_dentry)
-> Convert gfs2 to the new ops.   Uses a similar structure to the generic
-> helpers, but gfs2 has it's own file handle formats.
-> 
-> 
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
-> 
-This looks good from a GFS2 point of view:
-
-Acked-by: Steven Whitehouse <swhiteho@redhat.com>
-Acked-by: Wendy Cheng <wcheng@redhat.com>
-
-Steve.
-
-> 
-> Index: linux-2.6/fs/gfs2/ops_export.c
-> ===================================================================
-> --- linux-2.6.orig/fs/gfs2/ops_export.c	2007-07-19 15:56:46.000000000 +0200
-> +++ linux-2.6/fs/gfs2/ops_export.c	2007-07-20 19:58:06.000000000 +0200
-> @@ -31,40 +31,6 @@
->  #define GFS2_LARGE_FH_SIZE 8
->  #define GFS2_OLD_FH_SIZE 10
+On Thu, Aug 30, 2007 at 03:16:41PM +0200, Christoph Hellwig wrote:
+> -#if XFS_BIG_INUMS
+>  	bhv_vfs_t		*vfs = vfs_from_sb(inode->i_sb);
 >  
-> -static struct dentry *gfs2_decode_fh(struct super_block *sb,
-> -				     __u32 *p,
-> -				     int fh_len,
-> -				     int fh_type,
-> -				     int (*acceptable)(void *context,
-> -						       struct dentry *dentry),
-> -				     void *context)
-> -{
-> -	__be32 *fh = (__force __be32 *)p;
-> -	struct gfs2_inum_host inum, parent;
-> -
-> -	memset(&parent, 0, sizeof(struct gfs2_inum));
-> -
-> -	switch (fh_len) {
-> -	case GFS2_LARGE_FH_SIZE:
-> -	case GFS2_OLD_FH_SIZE:
-> -		parent.no_formal_ino = ((u64)be32_to_cpu(fh[4])) << 32;
-> -		parent.no_formal_ino |= be32_to_cpu(fh[5]);
-> -		parent.no_addr = ((u64)be32_to_cpu(fh[6])) << 32;
-> -		parent.no_addr |= be32_to_cpu(fh[7]);
-> -	case GFS2_SMALL_FH_SIZE:
-> -		inum.no_formal_ino = ((u64)be32_to_cpu(fh[0])) << 32;
-> -		inum.no_formal_ino |= be32_to_cpu(fh[1]);
-> -		inum.no_addr = ((u64)be32_to_cpu(fh[2])) << 32;
-> -		inum.no_addr |= be32_to_cpu(fh[3]);
-> -		break;
-> -	default:
-> -		return NULL;
+> -	if (!(vfs->vfs_flag & VFS_32BITINODES)) {
+> -		/* filesystem may contain 64bit inode numbers */
+> -		is64 = XFS_FILEID_TYPE_64FLAG;
 > -	}
-> -
-> -	return gfs2_export_ops.find_exported_dentry(sb, &inum, &parent,
-> -						    acceptable, context);
-> -}
-> -
->  static int gfs2_encode_fh(struct dentry *dentry, __u32 *p, int *len,
->  			  int connectable)
->  {
-> @@ -189,10 +155,10 @@ static struct dentry *gfs2_get_parent(st
->  	return dentry;
->  }
+> -#endif
 >  
-> -static struct dentry *gfs2_get_dentry(struct super_block *sb, void *inum_obj)
-> +static struct dentry *gfs2_get_dentry(struct super_block *sb,
-> +		struct gfs2_inum_host *inum)
->  {
->  	struct gfs2_sbd *sdp = sb->s_fs_info;
-> -	struct gfs2_inum_host *inum = inum_obj;
->  	struct gfs2_holder i_gh, ri_gh, rgd_gh;
->  	struct gfs2_rgrpd *rgd;
->  	struct inode *inode;
-> @@ -289,11 +255,50 @@ fail:
->  	return ERR_PTR(error);
->  }
->  
-> +static struct dentry *gfs2_fh_to_dentry(struct super_block *sb, struct fid *fid,
-> +		int fh_len, int fh_type)
-> +{
-> +	struct gfs2_inum_host this;
-> +	__be32 *fh = (__force __be32 *)fid->raw;
+>  	/* Directories don't need their parent encoded, they have ".." */
+>  	if (S_ISDIR(inode->i_mode))
+> -	    connectable = 0;
+> +		fileid_type = FILEID_INO32_GEN;
+> +	else
+> +		fileid_type = FILEID_INO32_GEN_PARENT;
 > +
-> +	switch (fh_type) {
-> +	case GFS2_SMALL_FH_SIZE:
-> +	case GFS2_LARGE_FH_SIZE:
-> +	case GFS2_OLD_FH_SIZE:
-> +		this.no_formal_ino = ((u64)be32_to_cpu(fh[0])) << 32;
-> +		this.no_formal_ino |= be32_to_cpu(fh[1]);
-> +		this.no_addr = ((u64)be32_to_cpu(fh[2])) << 32;
-> +		this.no_addr |= be32_to_cpu(fh[3]);
-> +		return gfs2_get_dentry(sb, &this);
-> +	default:
-> +		return NULL;
-> +	}
-> +}
-> +
-> +static struct dentry *gfs2_fh_to_parent(struct super_block *sb, struct fid *fid,
-> +		int fh_len, int fh_type)
-> +{
-> +	struct gfs2_inum_host parent;
-> +	__be32 *fh = (__force __be32 *)fid->raw;
-> +
-> +	switch (fh_type) {
-> +	case GFS2_LARGE_FH_SIZE:
-> +	case GFS2_OLD_FH_SIZE:
-> +		parent.no_formal_ino = ((u64)be32_to_cpu(fh[4])) << 32;
-> +		parent.no_formal_ino |= be32_to_cpu(fh[5]);
-> +		parent.no_addr = ((u64)be32_to_cpu(fh[6])) << 32;
-> +		parent.no_addr |= be32_to_cpu(fh[7]);
-> +		return gfs2_get_dentry(sb, &parent);
-> +	default:
-> +		return NULL;
-> +	}
-> +}
-> +
->  struct export_operations gfs2_export_ops = {
-> -	.decode_fh = gfs2_decode_fh,
->  	.encode_fh = gfs2_encode_fh,
-> +	.fh_to_dentry = gfs2_fh_to_dentry,
-> +	.fh_to_parent = gfs2_fh_to_parent,
->  	.get_name = gfs2_get_name,
->  	.get_parent = gfs2_get_parent,
-> -	.get_dentry = gfs2_get_dentry,
->  };
->  
-> 
-> --
-> -
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> +	/* filesystem may contain 64bit inode numbers */
+> +	if (!(vfs->vfs_flag & VFS_32BITINODES))
+> +		fileid_type |= XFS_FILEID_TYPE_64FLAG;
 
+Not really a comment on your patches, but I got the original logic
+wrong here.  The VFS_32BITINODES flag only affects newly allocated
+inodes and is no guarantee that any particular inode is < 2^32-1.
+It's possible for an unlucky user to perform a sequence of mounts
+and IO which results in large inode numbers despite the presence of
+that flag; we recently saw this happen by accident on a customer site.
+So the right thing to do is probably to check the inode number against
+(u32)~0.  Unfortunately, given the current encoding scheme, you have to
+check both the inode and the parent inode, which complicates the logic.
+
+Greg.
+-- 
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+Apparently, I'm Bedevere.  Which MPHG character are you?
+I don't speak for SGI.
