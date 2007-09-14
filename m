@@ -1,24 +1,25 @@
-From: Greg Banks <gnb@sgi.com>
-Subject: Re: [PATCH] knfsd: remove unnecessary BUG_ON's
-Date: Sat, 15 Sep 2007 02:40:58 +1000
-Message-ID: <20070914164058.GK21965@sgi.com>
-References: <20070912234317.GF13792@fieldses.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] exportfs: fix doc types
+Date: Fri, 14 Sep 2007 12:40:40 -0400
+Message-ID: <20070914164040.GC26622@fieldses.org>
+References: <20070830131724.GS6834@lst.de> <20070914152424.GJ21965@sgi.com>
+	<20070914160301.GA6461@lst.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-fsdevel@vger.kernel.org, nfs@lists.sourceforge.net,
+	Greg Banks <gnb@sgi.com>
+To: Christoph Hellwig <hch@lst.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IWEDk-0007gx-RE
+	id 1IWEDj-0007gn-Tl
 	for nfs@lists.sourceforge.net; Fri, 14 Sep 2007 09:40:44 -0700
-Received: from netops-testserver-3-out.sgi.com
-	([192.48.171.28] helo=relay.sgi.com
-	ident=[U2FsdGVkX198B0NLqw8IktKcwstmBAr7SU1RTbJO21E=])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IWEDn-0001P1-Gw
-	for nfs@lists.sourceforge.net; Fri, 14 Sep 2007 09:40:49 -0700
-In-Reply-To: <20070912234317.GF13792@fieldses.org>
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IWEDm-0001OQ-F4
+	for nfs@lists.sourceforge.net; Fri, 14 Sep 2007 09:40:48 -0700
+In-Reply-To: <20070914160301.GA6461@lst.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,24 +32,13 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, Sep 12, 2007 at 07:43:17PM -0400, J. Bruce Fields wrote:
-> Trivial patch, but--any objection to removing these assertions?
-> 
-> We set svsk->sk_pool = pool just 30-some lines above, and there's no
-> obvious reason this should have changed, or any other particular reason
-> to assert this here.
+On Fri, Sep 14, 2007 at 06:03:01PM +0200, Christoph Hellwig wrote:
+> And here's a patch to fix the typos Greg found:
 
-Yeah, you'd think that.  However we saw these BUG_ON()s tripped
-when attempting to port the 2.6.18-based NFS/RDMA patches to a
-2.6.19-like kernel.  All it takes is for some transport code to get
-confused about the proper way to clear SK_BUSY, and *blam*.  So I
-think they're useful.
+Thanks.  I already had a couple of those in a separate patch, so I've
+folded this in.
 
-Greg.
--- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-Apparently, I'm Bedevere.  Which MPHG character are you?
-I don't speak for SGI.
+--b.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
