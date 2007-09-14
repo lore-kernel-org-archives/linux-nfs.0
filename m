@@ -1,27 +1,151 @@
-From: Christoph Hellwig <hch@lst.de>
-Subject: Re: [NFS] [PATH 04/19] ext2: new export ops
-Date: Fri, 14 Sep 2007 17:01:09 +0200
-Message-ID: <20070914150109.GA4154@lst.de>
-References: <20070830131609.GE6834@lst.de> <20070914145803.GH21965@sgi.com>
+From: Steven Whitehouse <swhiteho@redhat.com>
+Subject: Re: [PATCH 15/19] gfs2: new export ops
+Date: Fri, 14 Sep 2007 16:18:36 +0100
+Message-ID: <1189783116.1068.58.camel@quoit>
+References: <20070914114911.GP28282@lst.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@lst.de>, nfs@lists.sourceforge.net,
-	linux-fsdevel@vger.kernel.org
-To: Greg Banks <gnb@sgi.com>
+Content-Type: text/plain
+Cc: linux-fsdevel@vger.kernel.org, nfs@lists.sourceforge.net,
+	wcheng@redhat.com
+To: hch@lst.de
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20070914145803.GH21965@sgi.com>
+In-Reply-To: <20070914114911.GP28282@lst.de>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <nfs.lists.sourceforge.net>
 
-On Sat, Sep 15, 2007 at 12:58:03AM +1000, Greg Banks wrote:
-> These patches look good, and cleanup in this area is certainly a
-> good thing.  One small comment: the easy filesystems (ext[234], efs,
-> ntfs) might be cleaner if the per-fs get_inode function were a member
-> of export_ops instead of an extra argument to generic_fh_to_dentry().
-> That way you wouldn't need these two little helper functions in each
-> filesystem, because you could point export_ops.fh_to_dentry directly
-> at generic_fh_to_dentry.
+Hi,
 
-I was pondering this, but in the end I prefer the cleaner layering of
-the callback version.  This also mirrors what we do in other areas
-(e.g. address_space operations)
+On Fri, 2007-09-14 at 13:49 +0200, hch@lst.de wrote:
+> plain text document attachment (gfs2-implement-fh_to_dentry)
+> Convert gfs2 to the new ops.   Uses a similar structure to the generic
+> helpers, but gfs2 has it's own file handle formats.
+> 
+> 
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
+> 
+This looks good from a GFS2 point of view:
+
+Acked-by: Steven Whitehouse <swhiteho@redhat.com>
+Acked-by: Wendy Cheng <wcheng@redhat.com>
+
+Steve.
+
+> 
+> Index: linux-2.6/fs/gfs2/ops_export.c
+> ===================================================================
+> --- linux-2.6.orig/fs/gfs2/ops_export.c	2007-07-19 15:56:46.000000000 +0200
+> +++ linux-2.6/fs/gfs2/ops_export.c	2007-07-20 19:58:06.000000000 +0200
+> @@ -31,40 +31,6 @@
+>  #define GFS2_LARGE_FH_SIZE 8
+>  #define GFS2_OLD_FH_SIZE 10
+>  
+> -static struct dentry *gfs2_decode_fh(struct super_block *sb,
+> -				     __u32 *p,
+> -				     int fh_len,
+> -				     int fh_type,
+> -				     int (*acceptable)(void *context,
+> -						       struct dentry *dentry),
+> -				     void *context)
+> -{
+> -	__be32 *fh = (__force __be32 *)p;
+> -	struct gfs2_inum_host inum, parent;
+> -
+> -	memset(&parent, 0, sizeof(struct gfs2_inum));
+> -
+> -	switch (fh_len) {
+> -	case GFS2_LARGE_FH_SIZE:
+> -	case GFS2_OLD_FH_SIZE:
+> -		parent.no_formal_ino = ((u64)be32_to_cpu(fh[4])) << 32;
+> -		parent.no_formal_ino |= be32_to_cpu(fh[5]);
+> -		parent.no_addr = ((u64)be32_to_cpu(fh[6])) << 32;
+> -		parent.no_addr |= be32_to_cpu(fh[7]);
+> -	case GFS2_SMALL_FH_SIZE:
+> -		inum.no_formal_ino = ((u64)be32_to_cpu(fh[0])) << 32;
+> -		inum.no_formal_ino |= be32_to_cpu(fh[1]);
+> -		inum.no_addr = ((u64)be32_to_cpu(fh[2])) << 32;
+> -		inum.no_addr |= be32_to_cpu(fh[3]);
+> -		break;
+> -	default:
+> -		return NULL;
+> -	}
+> -
+> -	return gfs2_export_ops.find_exported_dentry(sb, &inum, &parent,
+> -						    acceptable, context);
+> -}
+> -
+>  static int gfs2_encode_fh(struct dentry *dentry, __u32 *p, int *len,
+>  			  int connectable)
+>  {
+> @@ -189,10 +155,10 @@ static struct dentry *gfs2_get_parent(st
+>  	return dentry;
+>  }
+>  
+> -static struct dentry *gfs2_get_dentry(struct super_block *sb, void *inum_obj)
+> +static struct dentry *gfs2_get_dentry(struct super_block *sb,
+> +		struct gfs2_inum_host *inum)
+>  {
+>  	struct gfs2_sbd *sdp = sb->s_fs_info;
+> -	struct gfs2_inum_host *inum = inum_obj;
+>  	struct gfs2_holder i_gh, ri_gh, rgd_gh;
+>  	struct gfs2_rgrpd *rgd;
+>  	struct inode *inode;
+> @@ -289,11 +255,50 @@ fail:
+>  	return ERR_PTR(error);
+>  }
+>  
+> +static struct dentry *gfs2_fh_to_dentry(struct super_block *sb, struct fid *fid,
+> +		int fh_len, int fh_type)
+> +{
+> +	struct gfs2_inum_host this;
+> +	__be32 *fh = (__force __be32 *)fid->raw;
+> +
+> +	switch (fh_type) {
+> +	case GFS2_SMALL_FH_SIZE:
+> +	case GFS2_LARGE_FH_SIZE:
+> +	case GFS2_OLD_FH_SIZE:
+> +		this.no_formal_ino = ((u64)be32_to_cpu(fh[0])) << 32;
+> +		this.no_formal_ino |= be32_to_cpu(fh[1]);
+> +		this.no_addr = ((u64)be32_to_cpu(fh[2])) << 32;
+> +		this.no_addr |= be32_to_cpu(fh[3]);
+> +		return gfs2_get_dentry(sb, &this);
+> +	default:
+> +		return NULL;
+> +	}
+> +}
+> +
+> +static struct dentry *gfs2_fh_to_parent(struct super_block *sb, struct fid *fid,
+> +		int fh_len, int fh_type)
+> +{
+> +	struct gfs2_inum_host parent;
+> +	__be32 *fh = (__force __be32 *)fid->raw;
+> +
+> +	switch (fh_type) {
+> +	case GFS2_LARGE_FH_SIZE:
+> +	case GFS2_OLD_FH_SIZE:
+> +		parent.no_formal_ino = ((u64)be32_to_cpu(fh[4])) << 32;
+> +		parent.no_formal_ino |= be32_to_cpu(fh[5]);
+> +		parent.no_addr = ((u64)be32_to_cpu(fh[6])) << 32;
+> +		parent.no_addr |= be32_to_cpu(fh[7]);
+> +		return gfs2_get_dentry(sb, &parent);
+> +	default:
+> +		return NULL;
+> +	}
+> +}
+> +
+>  struct export_operations gfs2_export_ops = {
+> -	.decode_fh = gfs2_decode_fh,
+>  	.encode_fh = gfs2_encode_fh,
+> +	.fh_to_dentry = gfs2_fh_to_dentry,
+> +	.fh_to_parent = gfs2_fh_to_parent,
+>  	.get_name = gfs2_get_name,
+>  	.get_parent = gfs2_get_parent,
+> -	.get_dentry = gfs2_get_dentry,
+>  };
+>  
+> 
+> --
+> -
+> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
