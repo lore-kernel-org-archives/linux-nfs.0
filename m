@@ -1,63 +1,61 @@
-From: "Hayden Panettiere goes bra-less" <shuangpengjian@gmail.com>
-Subject: Hayden Panettiere goes bra-less
-Date: Fri, 14 Sep 2007 15:38:51 +0800
-Message-ID: <E1IW5lP-0006TP-Rd@mail.sourceforge.net>
-Reply-To: jianshuangpeng@gmail.com
-Content-Type: multipart/mixed; boundary="===============0260717382=="
-To: "NFS" <NFS@lists.sourceforge.net>
-Return-path: <nfs-bounces@lists.sourceforge.net>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+From: Wolfgang Walter <wolfgang.walter@studentenwerk.mhn.de>
+Subject: Re: [patch] sunrpc: make closing of old temporary sockets work (was: problems with lockd in 2.6.22.6)
+Date: Fri, 14 Sep 2007 11:12:30 +0200
+Message-ID: <200709141112.30634.wolfgang.walter@studentenwerk.mhn.de>
+References: <200709121407.11151.wolfgang.walter@studentenwerk.mhn.de> <200709122140.57783.wolfgang.walter@studentenwerk.mhn.de> <20070912195512.GC13792@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-1
+Cc: Neil Brown <neilb@suse.de>, trond.myklebust@fys.uio.no,
+	netdev@vger.kernel.org, nfs@lists.sourceforge.net,
+	linux-kernel@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <netdev-owner@vger.kernel.org>
+In-Reply-To: <20070912195512.GC13792@fieldses.org>
+Sender: netdev-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
---===============0260717382==
-Content-Type: text/plain;
-	charset="gb2312"
-Content-Transfer-Encoding: quoted-printable
+Am Mittwoch, 12. September 2007 21:55 schrieb J. Bruce Fields:
+> On Wed, Sep 12, 2007 at 09:40:57PM +0200, Wolfgang Walter wrote:
+> > On Wednesday 12 September 2007, J. Bruce Fields wrote:
+> > > On Wed, Sep 12, 2007 at 04:14:06PM +0200, Neil Brown wrote:
+> > > > So it is in 2.6.21 and later and should probably go to .stable =
+for
+> > > > .21 and .22.
+> > > >
+> > > > Bruce:  for you :-)
+> > >
+> > > OK, thanks!  But, (as is alas often the case) I'm still confused:
+> > > >  		if (!test_and_set_bit(SK_OLD, &svsk->sk_flags))
+> > > >  			continue;
+> > > > -		if (atomic_read(&svsk->sk_inuse) || test_bit(SK_BUSY,
+> > > > &svsk->sk_flags)) +		if (atomic_read(&svsk->sk_inuse) > 1
+> > > > +		    || test_bit(SK_BUSY, &svsk->sk_flags))
+> > > >  			continue;
+> > > >  		atomic_inc(&svsk->sk_inuse);
+> > > >  		list_move(le, &to_be_aged);
+> > >
+> > > What is it that ensures svsk->sk_inuse isn't incremented or SK_BU=
+SY set
+> > > after that test?  Not all the code that does either of those is u=
+nder
+> > > the same serv->sv_lock lock that this code is.
+> >
+> > This should not matter - SK_CLOSED may be set at any time.
+> >
+> > svc_age_temp_sockets only detaches the socket, sets SK_CLOSED and t=
+hen
+> > enqueues it. If SK_BUSY is set its already enqueued and svc_sock_en=
+queue
+> > ensures that it is not enqueued twice.
+>
+> Oh, got it.  And the list manipulation is safe thanks to sv_lock.  Ne=
+at,
+> thanks.  Can you verify that this solves your problem?
 
-Hayden Panettiere goes bra-less   http://www.kovenews.com/n524c67.aspx
+Patch works fine here.
 
-the photo of breast cancer  http://www.kovenews.com/n595c71.aspx
-
-US troops find naked and abused boys in Baghdad   =20
-http://www.kovenews.com/n541c57.aspx
-
-Jessica Alba feels naked without her handbag  =20
-http://www.kovenews.com/n540c57.aspx
-
-Brad Pitt unhappy as Vanity Fair splashes semi-naked photos =20
-http://www.kovenews.com/n539c57.aspx
-
-Naked on Everest: a peek on the peak?   =20
-http://www.kovenews.com/n538c57.aspx
-
-
---===============0260717382==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Microsoft
-Defy all challenges. Microsoft(R) Visual Studio 2005.
-http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
---===============0260717382==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============0260717382==--
+Regards,
+--=20
+Wolfgang Walter
+Studentenwerk M=FCnchen
+Anstalt des =F6ffentlichen Rechts
