@@ -1,94 +1,65 @@
-From: Randy Dunlap <randy.dunlap@oracle.com>
-Subject: Re: [PATCH 19/19] exportfs: update documentation
-Date: Fri, 14 Sep 2007 14:24:57 -0700
-Message-ID: <20070914142457.d96c9924.randy.dunlap@oracle.com>
-References: <20070914114928.GT28282@lst.de>
+From: Oliver Borm <borm@lfa.mw.tum.de>
+Subject: NFSv3 with kerberos
+Date: Sat, 15 Sep 2007 01:10:31 +0200
+Message-ID: <46EB14E7.9070701@lfa.mw.tum.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: linux-fsdevel@vger.kernel.org, nfs@lists.sourceforge.net
-To: hch@lst.de
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20070914114928.GT28282@lst.de>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+To: nfs@lists.sourceforge.net
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1IWKJe-0005Ka-QE
+	for nfs@lists.sourceforge.net; Fri, 14 Sep 2007 16:11:14 -0700
+Received: from lfa-mail.lfa.mw.tu-muenchen.de ([129.187.66.5])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IWKJj-0008ID-4D
+	for nfs@lists.sourceforge.net; Fri, 14 Sep 2007 16:11:19 -0700
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, 14 Sep 2007 13:49:28 +0200 hch@lst.de wrote:
+I'm using gentoo linux with kernel from gentoo-sources-2.6.21-r4,
+nfs-util-1.1.0, libnfsidmap-0.20  and librpcsecgss-0.14-r1.
+When my exports on the server are:
 
-typos only below:
+ /local/tmp gss/krb5i(rw,async,subtree_check,insecure)
+ /local/tmp 192.168.1.1/255.255.255.0(rw,async,subtree_check,insecure)
 
+Then I can mount these shares with both NFSv3 and NFSv4 and Kerberos
+Auth! But when the exports are only:
 
-> Update deocumentation to the current state of affairs.  Remove duplicated
-> method descruptions in exportfs.h and point to Documentation/filesystems/
-> Exporting instead.  Add a little file header comment in expfs.c describing
-> what's going on and mentioning Neils and my copyright [1].
-> 
-> [1] Neil, in case you want a different/additional attribution just change
->     the patch in your queue to reflect the preferred version.
-> 
-> 
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
-> 
-> Index: linux-2.6/Documentation/filesystems/Exporting
-> ===================================================================
-> --- linux-2.6.orig/Documentation/filesystems/Exporting	2007-03-16 15:10:54.000000000 +0100
-> +++ linux-2.6/Documentation/filesystems/Exporting	2007-03-16 17:11:50.000000000 +0100
-> + encode_fh  (optinonal)
+/foobar  gss/krb5i(rw,async,subtree_check,insecure)
 
-               (optional)
+Then I cannot mount these shares with NFSv3:
 
-> +    Takes a dentry and creates a filehandle fragment which can later be used
-> +    to find/create a dentry for the same object.  The default implementation
-> +    creates a filehandle fragment that encodes a 32bit inode and generation
-> +    number for the inode encoded, and if nessecary the same information for
+kiste-55 local # mount -t nfs -osec=krb5 192.168.1.21:/local/tmp test
+mount: 192.168.1.21:/local/tmp failed, reason given by server:
+Permission denied
 
-                                            necessary
+And on the server a tail /var/log/messages gives:
 
-> +    the parent.
-> +
-> +  fh_to_dentry (mandatory)
-> +    Given a filehandle fragment, this should find the implied object and
-> +    create a dentry for it (possibly with d_alloc_anon).
-> +
-> +  fh_to_parent (optional but strongly recommended)
-> +    Given a filehandle fragment, this should find the parent of the
-> +    implied object and create a dentry for it (possibly with d_alloc_anon).
-> +    May simplify fail if the filehandle fragment is too small.\
+Sep 15 00:36:12 kiste3-1 mountd[7543]: mount request from unknown host
+192.168.1.55 for /local/tmp (/local/tmp)
 
-           simply  (?)
+Is this a bug or a feature? Is the problem here, with my settings? With
+nfs4 the server knows the host! We're running an MS Win AD as the KDC
+and DNS.
+I want to use NFSv3 because the acl mapping is there supported better,
+than wiht NFSv4! I have tested the tools on the CITI, but these were not
+so good.
 
-> +
-> +  get_parent (optional but strongly recommended)
-> +    When given a dentry for a directory, this should return  a dentry for
-> +    the parent.  Quite possibly the parent dentry will have been allocated
-> +    by d_alloc_anon.  The default get_parent function just returns an error
-> +    so any filehandle lookup that requires finding a parent will fail.
-> +    ->lookup("..") is *not* used as a default as it can leave ".." entries
-> +    in the dcache which are too messy to work with.
-
-> Index: linux-2.6/fs/exportfs/expfs.c
-> ===================================================================
-> --- linux-2.6.orig/fs/exportfs/expfs.c	2007-03-16 17:06:10.000000000 +0100
-> +++ linux-2.6/fs/exportfs/expfs.c	2007-03-16 23:45:14.000000000 +0100
-> @@ -1,4 +1,13 @@
-> -
-> +/*
-> + * Copyright (C) Neil Brown 2002
-> + * Copyright (C) Christoph Hellwig 2007
-> + *
-> + * This file contains the code mapping from inodes to NFS file handles,
-> + * and for mapping back from file handles to dentries.
-> + *
-> + * For details on why we doo all the strange and hairy things in here
-
-                            do
-
-> + * take a look at Documentation/filesystems/Exporting.
-> + */
->  #include <linux/exportfs.h>
->  #include <linux/fs.h>
->  #include <linux/file.h>
-
-
----
-~Randy
-*** Remember to use Documentation/SubmitChecklist when testing your code ***
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Microsoft
+Defy all challenges. Microsoft(R) Visual Studio 2005.
+http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
