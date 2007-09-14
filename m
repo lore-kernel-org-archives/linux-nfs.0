@@ -1,7 +1,7 @@
 From: hch@lst.de
-Subject: [PATCH 11/19] fat: new export ops
-Date: Fri, 14 Sep 2007 13:48:52 +0200
-Message-ID: <20070914114852.GL28282@lst.de>
+Subject: [PATCH 09/19] ntfs: new export ops
+Date: Fri, 14 Sep 2007 13:48:42 +0200
+Message-ID: <20070914114842.GJ28282@lst.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 To: linux-fsdevel@vger.kernel.org, nfs@lists.sourceforge.net
@@ -9,57 +9,111 @@ Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <nfs.lists.sourceforge.net>
 
-Very little changes here, fat had a mostly no op decode_fh before
-and does not store any parent information.
+Trivial switch over to the new generic helpers.
 
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 
-Index: linux-2.6/fs/fat/inode.c
+
+Index: linux-2.6/fs/ntfs/namei.c
 ===================================================================
---- linux-2.6.orig/fs/fat/inode.c	2007-03-13 19:22:40.000000000 +0100
-+++ linux-2.6/fs/fat/inode.c	2007-03-13 19:23:13.000000000 +0100
-@@ -651,24 +651,15 @@ static const struct super_operations fat
-  * of i_logstart is used to store the directory entry offset.
-  */
- 
--static struct dentry *
--fat_decode_fh(struct super_block *sb, __u32 *fh, int len, int fhtype,
--	      int (*acceptable)(void *context, struct dentry *de),
--	      void *context)
--{
--	if (fhtype != 3)
--		return ERR_PTR(-ESTALE);
--	if (len < 5)
--		return ERR_PTR(-ESTALE);
--
--	return sb->s_export_op->find_exported_dentry(sb, fh, NULL, acceptable, context);
--}
--
--static struct dentry *fat_get_dentry(struct super_block *sb, void *inump)
-+static struct dentry *fat_fh_to_dentry(struct super_block *sb,
-+		struct fid *fid, int fh_len, int fh_type)
- {
- 	struct inode *inode = NULL;
- 	struct dentry *result;
--	__u32 *fh = inump;
-+	u32 *fh = fid->raw;
-+
-+	if (fh_len < 5 || fh_type != 3)
-+		return NULL;
- 
- 	inode = iget(sb, fh[0]);
- 	if (!inode || is_bad_inode(inode) || inode->i_generation != fh[1]) {
-@@ -782,9 +773,8 @@ out:
+--- linux-2.6.orig/fs/ntfs/namei.c	2007-09-13 15:10:45.000000000 +0200
++++ linux-2.6/fs/ntfs/namei.c	2007-09-13 15:20:12.000000000 +0200
+@@ -450,58 +450,40 @@ try_next:
+ 	return parent_dent;
  }
  
- static struct export_operations fat_export_ops = {
--	.decode_fh	= fat_decode_fh,
- 	.encode_fh	= fat_encode_fh,
--	.get_dentry	= fat_get_dentry,
-+	.fh_to_dentry	= fat_fh_to_dentry,
- 	.get_parent	= fat_get_parent,
- };
+-/**
+- * ntfs_get_dentry - find a dentry for the inode from a file handle sub-fragment
+- * @sb:		super block identifying the mounted ntfs volume
+- * @fh:		the file handle sub-fragment
+- *
+- * Find a dentry for the inode given a file handle sub-fragment.  This function
+- * is called from fs/exportfs/expfs.c::find_exported_dentry() which in turn is
+- * called from the default ->decode_fh() which is export_decode_fh() in the
+- * same file.  The code is closely based on the default ->get_dentry() helper
+- * fs/exportfs/expfs.c::get_object().
+- *
+- * The @fh contains two 32-bit unsigned values, the first one is the inode
+- * number and the second one is the inode generation.
+- *
+- * Return the dentry on success or the error code on error (IS_ERR() is true).
+- */
+-static struct dentry *ntfs_get_dentry(struct super_block *sb, void *fh)
++static struct inode *ntfs_nfs_get_inode(struct super_block *sb,
++		u64 ino, u32 generation)
+ {
+-	struct inode *vi;
+-	struct dentry *dent;
+-	unsigned long ino = ((u32 *)fh)[0];
+-	u32 gen = ((u32 *)fh)[1];
+-
+-	ntfs_debug("Entering for inode 0x%lx, generation 0x%x.", ino, gen);
+-	vi = ntfs_iget(sb, ino);
+-	if (IS_ERR(vi)) {
+-		ntfs_error(sb, "Failed to get inode 0x%lx.", ino);
+-		return (struct dentry *)vi;
+-	}
+-	if (unlikely(is_bad_inode(vi) || vi->i_generation != gen)) {
+-		/* We didn't find the right inode. */
+-		ntfs_error(sb, "Inode 0x%lx, bad count: %d %d or version 0x%x "
+-				"0x%x.", vi->i_ino, vi->i_nlink,
+-				atomic_read(&vi->i_count), vi->i_generation,
+-				gen);
+-		iput(vi);
+-		return ERR_PTR(-ESTALE);
+-	}
+-	/* Now find a dentry.  If possible, get a well-connected one. */
+-	dent = d_alloc_anon(vi);
+-	if (unlikely(!dent)) {
+-		iput(vi);
+-		return ERR_PTR(-ENOMEM);
++	struct inode *inode;
++
++	inode = ntfs_iget(sb, ino);
++	if (!IS_ERR(inode)) {
++		if (is_bad_inode(inode) || inode->i_generation != generation) {
++			iput(inode);
++			inode = ERR_PTR(-ESTALE);
++		}
+ 	}
+-	ntfs_debug("Done for inode 0x%lx, generation 0x%x.", ino, gen);
+-	return dent;
++
++	return inode;
++}
++
++static struct dentry *ntfs_fh_to_dentry(struct super_block *sb, struct fid *fid,
++		int fh_len, int fh_type)
++{
++	return generic_fh_to_dentry(sb, fid, fh_len, fh_type,
++				    ntfs_nfs_get_inode);
++}
++
++static struct dentry *ntfs_fh_to_parent(struct super_block *sb, struct fid *fid,
++		int fh_len, int fh_type)
++{
++	return generic_fh_to_parent(sb, fid, fh_len, fh_type,
++				    ntfs_nfs_get_inode);
+ }
  
+ /**
+  * Export operations allowing NFS exporting of mounted NTFS partitions.
+  *
+- * We use the default ->decode_fh() and ->encode_fh() for now.  Note that they
++ * We use the default ->encode_fh() for now.  Note that they
+  * use 32 bits to store the inode number which is an unsigned long so on 64-bit
+  * architectures is usually 64 bits so it would all fail horribly on huge
+  * volumes.  I guess we need to define our own encode and decode fh functions
+@@ -520,7 +502,6 @@ static struct dentry *ntfs_get_dentry(st
+ struct export_operations ntfs_export_ops = {
+ 	.get_parent	= ntfs_get_parent,	/* Find the parent of a given
+ 						   directory. */
+-	.get_dentry	= ntfs_get_dentry,	/* Find a dentry for the inode
+-						   given a file handle
+-						   sub-fragment. */
++	.fh_to_dentry	= ntfs_fh_to_dentry,
++	.fh_to_parent	= ntfs_fh_to_parent,
+ };
 
 --
