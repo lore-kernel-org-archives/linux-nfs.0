@@ -1,21 +1,22 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH 2/7] NFS: if ATTR_KILL_S*ID bits are set,
- then skip mode change
-Date: Fri, 14 Sep 2007 09:38:46 -0400
-Message-ID: <20070914093846.7cdd89da.jlayton@redhat.com>
-References: <200709041437.l84Eb4lw010007@dantu.rdu.redhat.com>
-	<20070914102545.GF21965@sgi.com>
-	<20070914070258.8fccb40e.jlayton@redhat.com>
-	<20070914130924.GG21965@sgi.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: [PATCH] Correctly close old nfsd/lockd sockets.
+Date: Fri, 14 Sep 2007 10:28:08 -0400
+Message-ID: <20070914142808.GD20606@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: linux-kernel@vger.kernel.org, reiserfs-devel@vger.kernel.org,
-	ecryptfs-devel@lists.sourceforge.net, nfs@lists.sourceforge.net,
-	linux-fsdevel@vger.kernel.org, unionfs@filesystems.org,
-	linux-cifs-client@lists.samba.org
-To: Greg Banks <gnb@sgi.com>
+Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net,
+	linux-kernel@vger.kernel.org, trond.myklebust@fys.uio.no
+To: Linus Torvalds <torvalds@linux-foundation.org>, stable@kernel.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
-In-Reply-To: <20070914130924.GG21965@sgi.com>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1IWC9c-0007ah-TD
+	for nfs@lists.sourceforge.net; Fri, 14 Sep 2007 07:28:21 -0700
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IWC9g-0006YG-F0
+	for nfs@lists.sourceforge.net; Fri, 14 Sep 2007 07:28:25 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,57 +29,43 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, 14 Sep 2007 23:09:24 +1000
-Greg Banks <gnb@sgi.com> wrote:
+From: Neil Brown <neilb@suse.de>
 
-> On Fri, Sep 14, 2007 at 07:02:58AM -0400, Jeff Layton wrote:
-> > On Fri, 14 Sep 2007 20:25:45 +1000
-> > Greg Banks <gnb@sgi.com> wrote:
-> > 
-> > > I'm curious about the reasons behind this change.  You mention
-> > > credential issues; how exactly is it that you have the correct creds
-> > > to perform a WRITE rpc but not a SETATTR rpc?
-> > > 
-> > 
-> > Consider this case. user1 and user2 are both members of group
-> > "allusers":
-> > 
-> > user1$ echo foo > foo
-> > user1$ chgrp allusers foo
-> > user1$ chmod 04770 foo
-> > user2$ echo bar >> foo
-> > 
-> > On most local filesystems, this would work correctly. The end result
-> > would be a file with mode 0770 and the expected contents. On NFS
-> > though, the write by user2 fails. When the write is attempted, the
-> > kernel tries to squash the setuid bit using the credentials of user2,
-> > who's not allowed to change the mode. The write then fails because the
-> > setattr fails.
-> 
-> Ok, I ran an experiment and I see this failure mode.
-> 
-> So the SETATTR rpc is really a side effect of the client kernel's
-> behaviour and not an operation directly requested by the user process
-> on the client.  Is there any reason why that rpc needs to have user2's
-> creds?  Why not do the rpc with a fake set of creds with uid and gid
-> set to the uid and gid of the file, in this case user1/allusers ?
-> That way the rpc will most likely pass the server's permission check.
-> 
+Commit aaf68cfbf2241d24d46583423f6bff5c47e088b3 added a bias
+to sk_inuse, so this test for an unused socket now fails.  So no
+sockets get closed because they are old (they might get closed
+if the client closed them).
 
-That might work in some cases, but there are many where it wouldn't...
+This bug has existed since 2.6.21-rc1.
 
-Suppose user1 here is root and all of the user1 operations are being
-done on the server. If the server has root squashing enabled, then
-user2's operation would still fail.
+Thanks to Wolfgang Walter for finding and reporting the bug.
 
-Another problem:
+Cc: Wolfgang Walter <wolfgang.walter@studentenwerk.mhn.de>
+Signed-off-by: Neil Brown <neilb@suse.de>
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+---
+ net/sunrpc/svcsock.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
 
-Suppose we're using gssapi. There's no guarantee that the client will
-have the proper credentials to fake up a call as user1 (you might need
-user1 krb5 tickets, etc).
+This looks appropriate for both 2.6.23 and 2.6.22.x.
 
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index e053f5a..0417283 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -1593,7 +1593,8 @@ svc_age_temp_sockets(unsigned long closure)
+ 
+ 		if (!test_and_set_bit(SK_OLD, &svsk->sk_flags))
+ 			continue;
+-		if (atomic_read(&svsk->sk_inuse) || test_bit(SK_BUSY, &svsk->sk_flags))
++		if (atomic_read(&svsk->sk_inuse) > 1
++		    || test_bit(SK_BUSY, &svsk->sk_flags))
+ 			continue;
+ 		atomic_inc(&svsk->sk_inuse);
+ 		list_move(le, &to_be_aged);
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.5.3.1.42.gfe5df
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
