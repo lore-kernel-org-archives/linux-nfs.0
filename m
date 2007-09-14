@@ -1,58 +1,94 @@
-From: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
-Subject: Re: User Exerience Designers - Yahoo! - California
-Date: Fri, 14 Sep 2007 21:17:03 +0200
-Message-ID: <20070914191703.GA29388@uio.no>
-References: <BAE5EA07D0E17D4FA8143FF9F3B9A47208D639@SNV-EXVS06.ds.corp.yahoo.com>
+From: Randy Dunlap <randy.dunlap@oracle.com>
+Subject: Re: [PATCH 19/19] exportfs: update documentation
+Date: Fri, 14 Sep 2007 14:24:57 -0700
+Message-ID: <20070914142457.d96c9924.randy.dunlap@oracle.com>
+References: <20070914114928.GT28282@lst.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Gary Jong <gjong@yahoo-inc.com>
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IWGf8-00070x-PF
-	for nfs@lists.sourceforge.net; Fri, 14 Sep 2007 12:17:11 -0700
-Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IWGfB-00068c-4z
-	for nfs@lists.sourceforge.net; Fri, 14 Sep 2007 12:17:15 -0700
-In-Reply-To: <BAE5EA07D0E17D4FA8143FF9F3B9A47208D639@SNV-EXVS06.ds.corp.yahoo.com>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: text/plain; charset=US-ASCII
+Cc: linux-fsdevel@vger.kernel.org, nfs@lists.sourceforge.net
+To: hch@lst.de
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20070914114928.GT28282@lst.de>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-On Fri, Sep 14, 2007 at 12:11:45PM -0700, Gary Jong wrote:
-> I'm a member of the Yahoo! Inc Talent Acquisition team and have been
-> able to make contact with you through Internet research techniques.  I'm
-> contacting you to inform you of variety of exciting career opportunities
-> within Yahoo! which I thought may be of interest to you. 
+On Fri, 14 Sep 2007 13:49:28 +0200 hch@lst.de wrote:
 
-Your Internet research techniques might need some polishing -- you have
-reached the mailing list for the development of NFS in the Linux kernel.
+typos only below:
 
-If you are looking for Neil Brown (the only Neil I know of on this list), he
-is indeed on this mailing list, but you may want to contact him via private
-e-mail to neilb@suse.de. Whether he is qualified to make the jump from kernel
-coding to graphic design is probably something you can assess better than me,
-though :-)
 
-/* Steinar */
--- 
-Homepage: http://www.sesse.net/
+> Update deocumentation to the current state of affairs.  Remove duplicated
+> method descruptions in exportfs.h and point to Documentation/filesystems/
+> Exporting instead.  Add a little file header comment in expfs.c describing
+> what's going on and mentioning Neils and my copyright [1].
+> 
+> [1] Neil, in case you want a different/additional attribution just change
+>     the patch in your queue to reflect the preferred version.
+> 
+> 
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
+> 
+> Index: linux-2.6/Documentation/filesystems/Exporting
+> ===================================================================
+> --- linux-2.6.orig/Documentation/filesystems/Exporting	2007-03-16 15:10:54.000000000 +0100
+> +++ linux-2.6/Documentation/filesystems/Exporting	2007-03-16 17:11:50.000000000 +0100
+> + encode_fh  (optinonal)
 
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Microsoft
-Defy all challenges. Microsoft(R) Visual Studio 2005.
-http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+               (optional)
+
+> +    Takes a dentry and creates a filehandle fragment which can later be used
+> +    to find/create a dentry for the same object.  The default implementation
+> +    creates a filehandle fragment that encodes a 32bit inode and generation
+> +    number for the inode encoded, and if nessecary the same information for
+
+                                            necessary
+
+> +    the parent.
+> +
+> +  fh_to_dentry (mandatory)
+> +    Given a filehandle fragment, this should find the implied object and
+> +    create a dentry for it (possibly with d_alloc_anon).
+> +
+> +  fh_to_parent (optional but strongly recommended)
+> +    Given a filehandle fragment, this should find the parent of the
+> +    implied object and create a dentry for it (possibly with d_alloc_anon).
+> +    May simplify fail if the filehandle fragment is too small.\
+
+           simply  (?)
+
+> +
+> +  get_parent (optional but strongly recommended)
+> +    When given a dentry for a directory, this should return  a dentry for
+> +    the parent.  Quite possibly the parent dentry will have been allocated
+> +    by d_alloc_anon.  The default get_parent function just returns an error
+> +    so any filehandle lookup that requires finding a parent will fail.
+> +    ->lookup("..") is *not* used as a default as it can leave ".." entries
+> +    in the dcache which are too messy to work with.
+
+> Index: linux-2.6/fs/exportfs/expfs.c
+> ===================================================================
+> --- linux-2.6.orig/fs/exportfs/expfs.c	2007-03-16 17:06:10.000000000 +0100
+> +++ linux-2.6/fs/exportfs/expfs.c	2007-03-16 23:45:14.000000000 +0100
+> @@ -1,4 +1,13 @@
+> -
+> +/*
+> + * Copyright (C) Neil Brown 2002
+> + * Copyright (C) Christoph Hellwig 2007
+> + *
+> + * This file contains the code mapping from inodes to NFS file handles,
+> + * and for mapping back from file handles to dentries.
+> + *
+> + * For details on why we doo all the strange and hairy things in here
+
+                            do
+
+> + * take a look at Documentation/filesystems/Exporting.
+> + */
+>  #include <linux/exportfs.h>
+>  #include <linux/fs.h>
+>  #include <linux/file.h>
+
+
+---
+~Randy
+*** Remember to use Documentation/SubmitChecklist when testing your code ***
