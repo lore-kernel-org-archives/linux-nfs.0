@@ -1,84 +1,97 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [patch] sunrpc: make closing of old temporary sockets
-	work	(was: problems with lockd in 2.6.22.6)
-Date: Fri, 14 Sep 2007 10:29:15 -0400
-Message-ID: <20070914142915.GE20606@fieldses.org>
-References: <200709121407.11151.wolfgang.walter@studentenwerk.mhn.de>
-	<200709122140.57783.wolfgang.walter@studentenwerk.mhn.de>
-	<20070912195512.GC13792@fieldses.org>
-	<200709141112.30634.wolfgang.walter@studentenwerk.mhn.de>
+From: Greg Banks <gnb@sgi.com>
+Subject: Re: [NFS] [PATCH 2/7] NFS: if ATTR_KILL_S*ID bits
+	are set, then skip mode change
+Date: Sat, 15 Sep 2007 00:40:33 +1000
+Message-ID: <20070914144033.GD25610@sgi.com>
+References: <200709041437.l84Eb4lw010007@dantu.rdu.redhat.com>
+	<20070914102545.GF21965@sgi.com>
+	<20070914070258.8fccb40e.jlayton@redhat.com>
+	<20070914130924.GG21965@sgi.com>
+	<20070914093846.7cdd89da.jlayton@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>, netdev@vger.kernel.org,
-	nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org,
-	trond.myklebust@fys.uio.no
-To: Wolfgang Walter <wolfgang.walter@studentenwerk.mhn.de>
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IWCAq-0007hX-RZ
-	for nfs@lists.sourceforge.net; Fri, 14 Sep 2007 07:29:36 -0700
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IWCAt-0006JT-F5
-	for nfs@lists.sourceforge.net; Fri, 14 Sep 2007 07:29:40 -0700
-In-Reply-To: <200709141112.30634.wolfgang.walter@studentenwerk.mhn.de>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Cc: linux-kernel@vger.kernel.org, reiserfs-devel@vger.kernel.org,
+	ecryptfs-devel@lists.sourceforge.net, nfs@lists.sourceforge.net,
+	linux-fsdevel@vger.kernel.org, unionfs@filesystems.org,
+	linux-cifs-client@lists.samba.org
+To: Jeff Layton <jlayton@redhat.com>
+Return-path: <ecryptfs-devel-bounces@lists.sourceforge.net>
+In-Reply-To: <20070914093846.7cdd89da.jlayton@redhat.com>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/ecryptfs-devel>,
+	<mailto:ecryptfs-devel-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=ecryptfs-devel>
+List-Post: <mailto:ecryptfs-devel@lists.sourceforge.net>
+List-Help: <mailto:ecryptfs-devel-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/ecryptfs-devel>,
+	<mailto:ecryptfs-devel-request@lists.sourceforge.net?subject=subscribe>
+Sender: ecryptfs-devel-bounces@lists.sourceforge.net
+Errors-To: ecryptfs-devel-bounces@lists.sourceforge.net
+List-ID: <nfs.lists.sourceforge.net>
 
-On Fri, Sep 14, 2007 at 11:12:30AM +0200, Wolfgang Walter wrote:
-> Am Mittwoch, 12. September 2007 21:55 schrieb J. Bruce Fields:
-> > On Wed, Sep 12, 2007 at 09:40:57PM +0200, Wolfgang Walter wrote:
-> > > On Wednesday 12 September 2007, J. Bruce Fields wrote:
-> > > > On Wed, Sep 12, 2007 at 04:14:06PM +0200, Neil Brown wrote:
-> > > > > So it is in 2.6.21 and later and should probably go to .stable for
-> > > > > .21 and .22.
-> > > > >
-> > > > > Bruce:  for you :-)
-> > > >
-> > > > OK, thanks!  But, (as is alas often the case) I'm still confused:
-> > > > >  		if (!test_and_set_bit(SK_OLD, &svsk->sk_flags))
-> > > > >  			continue;
-> > > > > -		if (atomic_read(&svsk->sk_inuse) || test_bit(SK_BUSY,
-> > > > > &svsk->sk_flags)) +		if (atomic_read(&svsk->sk_inuse) > 1
-> > > > > +		    || test_bit(SK_BUSY, &svsk->sk_flags))
-> > > > >  			continue;
-> > > > >  		atomic_inc(&svsk->sk_inuse);
-> > > > >  		list_move(le, &to_be_aged);
-> > > >
-> > > > What is it that ensures svsk->sk_inuse isn't incremented or SK_BUSY set
-> > > > after that test?  Not all the code that does either of those is under
-> > > > the same serv->sv_lock lock that this code is.
-> > >
-> > > This should not matter - SK_CLOSED may be set at any time.
-> > >
-> > > svc_age_temp_sockets only detaches the socket, sets SK_CLOSED and then
-> > > enqueues it. If SK_BUSY is set its already enqueued and svc_sock_enqueue
-> > > ensures that it is not enqueued twice.
-> >
-> > Oh, got it.  And the list manipulation is safe thanks to sv_lock.  Neat,
-> > thanks.  Can you verify that this solves your problem?
+On Fri, Sep 14, 2007 at 09:38:46AM -0400, Jeff Layton wrote:
+> On Fri, 14 Sep 2007 23:09:24 +1000
+> Greg Banks <gnb@sgi.com> wrote:
 > 
-> Patch works fine here.
+> > On Fri, Sep 14, 2007 at 07:02:58AM -0400, Jeff Layton wrote:
+> > > On Fri, 14 Sep 2007 20:25:45 +1000
+> > > Greg Banks <gnb@sgi.com> wrote:
+> > > 
+> > > > I'm curious about the reasons behind this change.  You mention
+> > > > credential issues; how exactly is it that you have the correct creds
+> > > > to perform a WRITE rpc but not a SETATTR rpc?
+> > > > 
+> > > 
+> > > Consider this case. user1 and user2 are both members of group
+> > > "allusers":
+> > > 
+> > > user1$ echo foo > foo
+> > > user1$ chgrp allusers foo
+> > > user1$ chmod 04770 foo
+> > > user2$ echo bar >> foo
+> > > 
+> > > On most local filesystems, this would work correctly. The end result
+> > > would be a file with mode 0770 and the expected contents. On NFS
+> > > though, the write by user2 fails. When the write is attempted, the
+> > > kernel tries to squash the setuid bit using the credentials of user2,
+> > > who's not allowed to change the mode. The write then fails because the
+> > > setattr fails.
+> > 
+> > Ok, I ran an experiment and I see this failure mode.
+> > 
+> > So the SETATTR rpc is really a side effect of the client kernel's
+> > behaviour and not an operation directly requested by the user process
+> > on the client.  Is there any reason why that rpc needs to have user2's
+> > creds?  Why not do the rpc with a fake set of creds with uid and gid
+> > set to the uid and gid of the file, in this case user1/allusers ?
+> > That way the rpc will most likely pass the server's permission check.
+> > 
+> 
+> That might work in some cases, but there are many where it wouldn't...
+> 
+> Suppose user1 here is root and all of the user1 operations are being
+> done on the server. If the server has root squashing enabled, then
+> user2's operation would still fail.
 
-Great, thanks again!
+In that case, user1's operations would also fail, which is even more
+serious a problem.  Also arguably you actually *want* writes by a
+nonroot user to a setuid root executable to fail ;-)
 
---b.
+> Another problem:
+> 
+> Suppose we're using gssapi. There's no guarantee that the client will
+> have the proper credentials to fake up a call as user1 (you might need
+> user1 krb5 tickets, etc).
+
+Yes, good point.  You could use the root creds, except for root squashing.
+Ok, you convinced me.
+
+Greg.
+-- 
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+Apparently, I'm Bedevere.  Which MPHG character are you?
+I don't speak for SGI.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
 Defy all challenges. Microsoft(R) Visual Studio 2005.
 http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
