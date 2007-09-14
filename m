@@ -1,24 +1,24 @@
-From: "Dianna D. Fraser" <Dianna@vigoschools.net>
-Subject: My boyfriend's putz keeps slipping out.
-Date: Fri, 14 Sep 2007 07:40:54 +0200
-Message-ID: <092b01c7f691$d0fd71f0$c0a80264@Dianna>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] knfsd: remove unnecessary BUG_ON's
+Date: Fri, 14 Sep 2007 12:50:13 -0400
+Message-ID: <20070914165013.GE26622@fieldses.org>
+References: <20070912234317.GF13792@fieldses.org>
+	<20070914164058.GK21965@sgi.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============0408936345=="
-To: "Kellie O. Crews" <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net
+To: Greg Banks <gnb@sgi.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IWEML-0000E4-5s
-	for nfs@lists.sourceforge.net; Fri, 14 Sep 2007 09:49:37 -0700
-Received: from cbl217-132-91-148.bb.netvision.net.il ([217.132.91.148]
-	helo=nerdshack.com) by mail.sourceforge.net with smtp (Exim 4.44)
-	id 1IWEMM-0005D5-QR
-	for nfs@lists.sourceforge.net; Fri, 14 Sep 2007 09:49:42 -0700
-Received: from 205.137.32.112 (HELO barracuda.vigoschools.net)
-	by lists.sourceforge.net with esmtp (TKBMCJARURV IXSOA)
-	id XHmqlw-JTi10u-qm
-	for nfs@lists.sourceforge.net; Fri, 14 Sep 2007 07:40:54 +0200
+	id 1IWEMv-0000Jb-Fd
+	for nfs@lists.sourceforge.net; Fri, 14 Sep 2007 09:50:13 -0700
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IWEMz-0005TV-1O
+	for nfs@lists.sourceforge.net; Fri, 14 Sep 2007 09:50:18 -0700
+In-Reply-To: <20070914164058.GK21965@sgi.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,74 +31,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
+On Sat, Sep 15, 2007 at 02:40:58AM +1000, Greg Banks wrote:
+> On Wed, Sep 12, 2007 at 07:43:17PM -0400, J. Bruce Fields wrote:
+> > Trivial patch, but--any objection to removing these assertions?
+> > 
+> > We set svsk->sk_pool = pool just 30-some lines above, and there's no
+> > obvious reason this should have changed, or any other particular reason
+> > to assert this here.
+> 
+> Yeah, you'd think that.  However we saw these BUG_ON()s tripped
+> when attempting to port the 2.6.18-based NFS/RDMA patches to a
+> 2.6.19-like kernel.  All it takes is for some transport code to get
+> confused about the proper way to clear SK_BUSY, and *blam*.  So I
+> think they're useful.
 
---===============0408936345==
-Content-Type: multipart/alternative;
-	boundary="----=_NextPart_2345_0993_01C7F6A2.948641F0"
+OK, I'll take your word for it--dropped.  (But, I'm just curious--do you
+remember what the sequence of events was?)
 
-This is a multi-part message in MIME format.
-
-------=_NextPart_2345_0993_01C7F6A2.948641F0
-Content-Type: text/plain;
-        charset="us-ascii"
-Content-Transfer-Encoding: quoted-printable
-
-Baronesses always srieked at me and even youths did in the open john!
-Well, now I smil at them, because I took Me_ga=2E d_ik=2E
-for 7 months and now my dick is terribly greater than civil=2E
-pick up http://laureas=2Ecom/
---------------------------
-become increasingly dangerous=2E It will not only worsen,
-side with a velcro closure on top=2E
-claiming they are not part of the African Union=2E We
-In the five week Supreme Court trial, evidence was given
-but will become a war between the Somali people and
-------=_NextPart_2345_0993_01C7F6A2.948641F0
-Content-Type: text/html;
-        charset="us-ascii"
-Content-Transfer-Encoding: quoted-printable
-
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4=2E0 Transitional//EN">
-<HTML><HEAD>
-<META http-equiv=3DContent-Type content=3D"text/html; charset=3Dus-ascii"=
->
-<META content=3D"MSHTML 6=2E00=2E2720=2E3000" name=3DGENERATOR>
-<STYLE></STYLE>
-</HEAD>
-<BODY>Baronesses always srieked at me and even youths did in the open joh=
-n!<br>
-Well, now I smil at them, because I took Me_ga=2E d_ik=2E<br>
-for 7 months and now my dick is terribly greater than civil=2E<br>
-pick up <a href=3D"http://laureas=2Ecom/">http://laureas=2Ecom/</a><br>
---------------------------<br>
-<font size=3D"-1">become increasingly dangerous=2E It will not only worse=
-n,<br>side with a velcro closure on top=2E<br>claiming they are not part =
-of the African Union=2E We<br>In the five week Supreme Court trial, evide=
-nce was given<br>but will become a war between the Somali people and</fon=
-t></BODY></HTML>
-
-------=_NextPart_2345_0993_01C7F6A2.948641F0--
-
-
---===============0408936345==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+--b.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
 Defy all challenges. Microsoft(R) Visual Studio 2005.
 http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
---===============0408936345==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============0408936345==--
