@@ -1,25 +1,24 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] exportfs: fix doc types
-Date: Fri, 14 Sep 2007 12:40:40 -0400
-Message-ID: <20070914164040.GC26622@fieldses.org>
-References: <20070830131724.GS6834@lst.de> <20070914152424.GJ21965@sgi.com>
-	<20070914160301.GA6461@lst.de>
+Subject: Re: [PATCH 00/19] export operations rewrite
+Date: Fri, 14 Sep 2007 12:43:55 -0400
+Message-ID: <20070914164355.GD26622@fieldses.org>
+References: <20070914114746.GA28282@lst.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: linux-fsdevel@vger.kernel.org, nfs@lists.sourceforge.net,
-	Greg Banks <gnb@sgi.com>
-To: Christoph Hellwig <hch@lst.de>
+Cc: linux-fsdevel@vger.kernel.org, Neil Brown <neilb@suse.de>,
+	nfs@lists.sourceforge.net
+To: hch@lst.de
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IWEDj-0007gn-Tl
-	for nfs@lists.sourceforge.net; Fri, 14 Sep 2007 09:40:44 -0700
+	id 1IWEGp-00081n-ST
+	for nfs@lists.sourceforge.net; Fri, 14 Sep 2007 09:43:55 -0700
 Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IWEDm-0001OQ-F4
-	for nfs@lists.sourceforge.net; Fri, 14 Sep 2007 09:40:48 -0700
-In-Reply-To: <20070914160301.GA6461@lst.de>
+	(Exim 4.44) id 1IWEGs-0002dn-CZ
+	for nfs@lists.sourceforge.net; Fri, 14 Sep 2007 09:44:00 -0700
+In-Reply-To: <20070914114746.GA28282@lst.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,11 +31,34 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, Sep 14, 2007 at 06:03:01PM +0200, Christoph Hellwig wrote:
-> And here's a patch to fix the typos Greg found:
+On Fri, Sep 14, 2007 at 01:47:46PM +0200, hch@lst.de wrote:
+> This patchset is a medium scale rewrite of the export operations
+> interface.  The goal is to make the interface less complex, and
+> easier to understand from the filesystem side, aswell as preparing
+> generic support for exporting of 64bit inode numbers.
+> 
+> This touches all nfs exporting filesystems, and I've done testing
+> on all of the filesystems I have here locally (xfs, ext2, ext3, reiserfs,
+> jfs)
+> 
+> Compared to the last version I've fixed the white space issues that
+> checkpatch.pl complained about.
 
-Thanks.  I already had a couple of those in a separate patch, so I've
-folded this in.
+OK, thanks again.  Everything I have now is in
+
+	git://linux-nfs.org/~bfields/linux.git	for-mm
+
+I'm hoping Neil can take a quick look as well (and make a response to
+the comment on patch #1 along the way).
+
+> Note that this patch series is against mainline.  There will be some
+> xfs changes landing in -mm soon that revamp lots of the code touched
+> here.  They should hopefully include the first path in the series so
+> it can be simply dropped, but the xfs conversion will need some smaller
+> updates.  I will send this update as soon as the xfs tree updates get
+> pulled into -mm.
+
+OK.  Let me know if you need me to do anything when that happens.
 
 --b.
 
