@@ -1,7 +1,7 @@
 From: hch@lst.de
-Subject: [PATCH 05/19] ext3: new export ops
-Date: Fri, 14 Sep 2007 13:48:20 +0200
-Message-ID: <20070914114820.GF28282@lst.de>
+Subject: [PATCH 11/19] fat: new export ops
+Date: Fri, 14 Sep 2007 13:48:52 +0200
+Message-ID: <20070914114852.GL28282@lst.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 To: linux-fsdevel@vger.kernel.org, nfs@lists.sourceforge.net
@@ -9,73 +9,57 @@ Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <nfs.lists.sourceforge.net>
 
-Trivial switch over to the new generic helpers.
+Very little changes here, fat had a mostly no op decode_fh before
+and does not store any parent information.
 
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 
-Index: linux-2.6/fs/ext3/super.c
+Index: linux-2.6/fs/fat/inode.c
 ===================================================================
---- linux-2.6.orig/fs/ext3/super.c	2007-09-13 15:10:46.000000000 +0200
-+++ linux-2.6/fs/ext3/super.c	2007-09-13 15:16:57.000000000 +0200
-@@ -562,13 +562,10 @@ static int ext3_show_options(struct seq_
- }
+--- linux-2.6.orig/fs/fat/inode.c	2007-03-13 19:22:40.000000000 +0100
++++ linux-2.6/fs/fat/inode.c	2007-03-13 19:23:13.000000000 +0100
+@@ -651,24 +651,15 @@ static const struct super_operations fat
+  * of i_logstart is used to store the directory entry offset.
+  */
  
- 
--static struct dentry *ext3_get_dentry(struct super_block *sb, void *vobjp)
-+static struct inode *ext3_nfs_get_inode(struct super_block *sb,
-+		u64 ino, u32 generation)
+-static struct dentry *
+-fat_decode_fh(struct super_block *sb, __u32 *fh, int len, int fhtype,
+-	      int (*acceptable)(void *context, struct dentry *de),
+-	      void *context)
+-{
+-	if (fhtype != 3)
+-		return ERR_PTR(-ESTALE);
+-	if (len < 5)
+-		return ERR_PTR(-ESTALE);
+-
+-	return sb->s_export_op->find_exported_dentry(sb, fh, NULL, acceptable, context);
+-}
+-
+-static struct dentry *fat_get_dentry(struct super_block *sb, void *inump)
++static struct dentry *fat_fh_to_dentry(struct super_block *sb,
++		struct fid *fid, int fh_len, int fh_type)
  {
--	__u32 *objp = vobjp;
--	unsigned long ino = objp[0];
--	__u32 generation = objp[1];
- 	struct inode *inode;
--	struct dentry *result;
+ 	struct inode *inode = NULL;
+ 	struct dentry *result;
+-	__u32 *fh = inump;
++	u32 *fh = fid->raw;
++
++	if (fh_len < 5 || fh_type != 3)
++		return NULL;
  
- 	if (ino < EXT3_FIRST_INO(sb) && ino != EXT3_ROOT_INO)
- 		return ERR_PTR(-ESTALE);
-@@ -591,15 +588,22 @@ static struct dentry *ext3_get_dentry(st
- 		iput(inode);
- 		return ERR_PTR(-ESTALE);
- 	}
--	/* now to find a dentry.
--	 * If possible, get a well-connected one
--	 */
--	result = d_alloc_anon(inode);
--	if (!result) {
--		iput(inode);
--		return ERR_PTR(-ENOMEM);
--	}
--	return result;
-+
-+	return inode;
-+}
-+
-+static struct dentry *ext3_fh_to_dentry(struct super_block *sb, struct fid *fid,
-+		int fh_len, int fh_type)
-+{
-+	return generic_fh_to_dentry(sb, fid, fh_len, fh_type,
-+				    ext3_nfs_get_inode);
-+}
-+
-+static struct dentry *ext3_fh_to_parent(struct super_block *sb, struct fid *fid,
-+		int fh_len, int fh_type)
-+{
-+	return generic_fh_to_parent(sb, fid, fh_len, fh_type,
-+				    ext3_nfs_get_inode);
+ 	inode = iget(sb, fh[0]);
+ 	if (!inode || is_bad_inode(inode) || inode->i_generation != fh[1]) {
+@@ -782,9 +773,8 @@ out:
  }
  
- #ifdef CONFIG_QUOTA
-@@ -669,8 +673,9 @@ static const struct super_operations ext
+ static struct export_operations fat_export_ops = {
+-	.decode_fh	= fat_decode_fh,
+ 	.encode_fh	= fat_encode_fh,
+-	.get_dentry	= fat_get_dentry,
++	.fh_to_dentry	= fat_fh_to_dentry,
+ 	.get_parent	= fat_get_parent,
  };
  
- static struct export_operations ext3_export_ops = {
-+	.fh_to_dentry = ext3_fh_to_dentry,
-+	.fh_to_parent = ext3_fh_to_parent,
- 	.get_parent = ext3_get_parent,
--	.get_dentry = ext3_get_dentry,
- };
- 
- enum {
 
 --
