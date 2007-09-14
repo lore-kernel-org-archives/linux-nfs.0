@@ -1,23 +1,24 @@
 From: Greg Banks <gnb@sgi.com>
 Subject: Re: Question about svc_age_temp_sockets
-Date: Fri, 14 Sep 2007 19:16:44 +1000
-Message-ID: <20070914091644.GD21965@sgi.com>
-References: <C30998A8.138C0%tom@opengridcomputing.com>
+Date: Fri, 14 Sep 2007 19:19:53 +1000
+Message-ID: <20070914091953.GE21965@sgi.com>
+References: <200709101033.13929.wolfgang.walter@studentenwerk.mhn.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: Tom Tucker <tom@opengridcomputing.com>
+To: Wolfgang Walter <wolfgang.walter@studentenwerk.mhn.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IW7I7-0001DZ-OJ
-	for nfs@lists.sourceforge.net; Fri, 14 Sep 2007 02:16:48 -0700
-Received: from netops-testserver-4-out.sgi.com ([192.48.171.29]
-	helo=relay.sgi.com) by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1IW7I8-0007m6-Vo
-	for nfs@lists.sourceforge.net; Fri, 14 Sep 2007 02:16:50 -0700
-In-Reply-To: <C30998A8.138C0%tom@opengridcomputing.com>
+	id 1IW7L5-0001Uz-MJ
+	for nfs@lists.sourceforge.net; Fri, 14 Sep 2007 02:19:51 -0700
+Received: from netops-testserver-3-out.sgi.com
+	([192.48.171.28] helo=relay.sgi.com
+	ident=[U2FsdGVkX1+3/QiDd6iO48fvBthAi+ZCMFok3SMve8I=])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IW7LA-0007VN-BZ
+	for nfs@lists.sourceforge.net; Fri, 14 Sep 2007 02:19:56 -0700
+In-Reply-To: <200709101033.13929.wolfgang.walter@studentenwerk.mhn.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,26 +31,32 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Sun, Sep 09, 2007 at 12:33:44PM -0500, Tom Tucker wrote:
+On Mon, Sep 10, 2007 at 10:33:13AM +0200, Wolfgang Walter wrote:
+> > I'm confused about how svc_age_temp_sockets is supposed to work.
+> > [...]
 > 
-> I'm confused about how svc_age_temp_sockets is supposed to work. [...]
-> - There's a check for a zero sk_inuse count. I don't see a legitimate way
-> for a socket to be on the tempsocks list with a zero refcount.
+> Hmm, I think it works like that:
 > 
-> Am I just hopelessly confused here or is this code broken?
+> 		if (!test_and_set_bit(SK_OLD, &svsk->sk_flags))
+>                         continue;
+> 
+> So: if SK_OLD is NOT already set then
+> 		
+> 		  !test_and_set_bit(SK_OLD, &svsk->sk_flags)
+> 
+> is true and therefor continue is executed (so the transport is not closed,
+> only SK_OLD is set).
+> 
+> If SK_OLD is already set then this evaluates to false and the transport is 
+> removed. This means that SK_OLD was set when the timer run the last time and 
+> there was no request has arrived since then.
 
-When the code was written, the natural idle state of a svcsock
-was sk_inuse == 0.  Later, in commit
+That's right, it's mark-and-sweep.  The SK_OLD bit indicates
+"no requests have been received since the last ageing timer".
+If it's seen in the next ageing timer, then the socket had been
+idle for between 1 and 2 timer periods and thus may be shut down.
 
-http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git;a=commitdiff;h=aaf68cfbf2241d24d46583423f6bff5c47e088b3
-
-Neil changed this so the natural idle state is sk_inuse == 1 and
-the sk_inuse == 0 condition only happens transiently during socket
-shutdown.  This is a far better design, but it seems the check
-in svc_age_temp_sockets() wasn't updated at the time and is now
-dead code.  It could probably be removed.
-
-Greg.
+Greg
 -- 
 Greg Banks, R&D Software Engineer, SGI Australian Software Group.
 Apparently, I'm Bedevere.  Which MPHG character are you?
