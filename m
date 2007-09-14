@@ -1,22 +1,29 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: [PATCH] Correctly close old nfsd/lockd sockets.
-Date: Fri, 14 Sep 2007 10:28:08 -0400
-Message-ID: <20070914142808.GD20606@fieldses.org>
+Subject: Re: [patch] sunrpc: make closing of old temporary sockets
+	work	(was: problems with lockd in 2.6.22.6)
+Date: Fri, 14 Sep 2007 10:29:15 -0400
+Message-ID: <20070914142915.GE20606@fieldses.org>
+References: <200709121407.11151.wolfgang.walter@studentenwerk.mhn.de>
+	<200709122140.57783.wolfgang.walter@studentenwerk.mhn.de>
+	<20070912195512.GC13792@fieldses.org>
+	<200709141112.30634.wolfgang.walter@studentenwerk.mhn.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net,
-	linux-kernel@vger.kernel.org, trond.myklebust@fys.uio.no
-To: Linus Torvalds <torvalds@linux-foundation.org>, stable@kernel.org
+Cc: Neil Brown <neilb@suse.de>, netdev@vger.kernel.org,
+	nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org,
+	trond.myklebust@fys.uio.no
+To: Wolfgang Walter <wolfgang.walter@studentenwerk.mhn.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IWC9c-0007ah-TD
-	for nfs@lists.sourceforge.net; Fri, 14 Sep 2007 07:28:21 -0700
+	id 1IWCAq-0007hX-RZ
+	for nfs@lists.sourceforge.net; Fri, 14 Sep 2007 07:29:36 -0700
 Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IWC9g-0006YG-F0
-	for nfs@lists.sourceforge.net; Fri, 14 Sep 2007 07:28:25 -0700
+	(Exim 4.44) id 1IWCAt-0006JT-F5
+	for nfs@lists.sourceforge.net; Fri, 14 Sep 2007 07:29:40 -0700
+In-Reply-To: <200709141112.30634.wolfgang.walter@studentenwerk.mhn.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,43 +36,44 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-From: Neil Brown <neilb@suse.de>
+On Fri, Sep 14, 2007 at 11:12:30AM +0200, Wolfgang Walter wrote:
+> Am Mittwoch, 12. September 2007 21:55 schrieb J. Bruce Fields:
+> > On Wed, Sep 12, 2007 at 09:40:57PM +0200, Wolfgang Walter wrote:
+> > > On Wednesday 12 September 2007, J. Bruce Fields wrote:
+> > > > On Wed, Sep 12, 2007 at 04:14:06PM +0200, Neil Brown wrote:
+> > > > > So it is in 2.6.21 and later and should probably go to .stable for
+> > > > > .21 and .22.
+> > > > >
+> > > > > Bruce:  for you :-)
+> > > >
+> > > > OK, thanks!  But, (as is alas often the case) I'm still confused:
+> > > > >  		if (!test_and_set_bit(SK_OLD, &svsk->sk_flags))
+> > > > >  			continue;
+> > > > > -		if (atomic_read(&svsk->sk_inuse) || test_bit(SK_BUSY,
+> > > > > &svsk->sk_flags)) +		if (atomic_read(&svsk->sk_inuse) > 1
+> > > > > +		    || test_bit(SK_BUSY, &svsk->sk_flags))
+> > > > >  			continue;
+> > > > >  		atomic_inc(&svsk->sk_inuse);
+> > > > >  		list_move(le, &to_be_aged);
+> > > >
+> > > > What is it that ensures svsk->sk_inuse isn't incremented or SK_BUSY set
+> > > > after that test?  Not all the code that does either of those is under
+> > > > the same serv->sv_lock lock that this code is.
+> > >
+> > > This should not matter - SK_CLOSED may be set at any time.
+> > >
+> > > svc_age_temp_sockets only detaches the socket, sets SK_CLOSED and then
+> > > enqueues it. If SK_BUSY is set its already enqueued and svc_sock_enqueue
+> > > ensures that it is not enqueued twice.
+> >
+> > Oh, got it.  And the list manipulation is safe thanks to sv_lock.  Neat,
+> > thanks.  Can you verify that this solves your problem?
+> 
+> Patch works fine here.
 
-Commit aaf68cfbf2241d24d46583423f6bff5c47e088b3 added a bias
-to sk_inuse, so this test for an unused socket now fails.  So no
-sockets get closed because they are old (they might get closed
-if the client closed them).
+Great, thanks again!
 
-This bug has existed since 2.6.21-rc1.
-
-Thanks to Wolfgang Walter for finding and reporting the bug.
-
-Cc: Wolfgang Walter <wolfgang.walter@studentenwerk.mhn.de>
-Signed-off-by: Neil Brown <neilb@suse.de>
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
----
- net/sunrpc/svcsock.c |    3 ++-
- 1 files changed, 2 insertions(+), 1 deletions(-)
-
-This looks appropriate for both 2.6.23 and 2.6.22.x.
-
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index e053f5a..0417283 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -1593,7 +1593,8 @@ svc_age_temp_sockets(unsigned long closure)
- 
- 		if (!test_and_set_bit(SK_OLD, &svsk->sk_flags))
- 			continue;
--		if (atomic_read(&svsk->sk_inuse) || test_bit(SK_BUSY, &svsk->sk_flags))
-+		if (atomic_read(&svsk->sk_inuse) > 1
-+		    || test_bit(SK_BUSY, &svsk->sk_flags))
- 			continue;
- 		atomic_inc(&svsk->sk_inuse);
- 		list_move(le, &to_be_aged);
--- 
-1.5.3.1.42.gfe5df
-
+--b.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
