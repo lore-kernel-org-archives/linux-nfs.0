@@ -1,46 +1,77 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [NFS] [PATCH 2/7] NFS: if ATTR_KILL_S*ID bits are set, then
-	skip mode change
-Date: Mon, 17 Sep 2007 09:10:47 -0400
-Message-ID: <1190034647.6700.3.camel@heimdal.trondhjem.org>
-References: <200709041437.l84Eb4lw010007@dantu.rdu.redhat.com>
-	 <20070914102545.GF21965@sgi.com>
-	 <20070914070258.8fccb40e.jlayton@redhat.com>
-	 <20070914130924.GG21965@sgi.com>
-	 <20070914093846.7cdd89da.jlayton@redhat.com>
-	 <20070914144033.GD25610@sgi.com>
-	 <20070914105838.efbfc45e.jlayton@redhat.com>
-	 <20070914154345.GE25610@sgi.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 07/10] text-based mount.nfs: Use "child" instead of
+	"bg" for	nfsmount_s
+Date: Mon, 17 Sep 2007 12:29:14 -0400
+Message-ID: <20070917162914.25850.62160.stgit@monet.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Jeff Layton <jlayton@redhat.com>, reiserfs-devel@vger.kernel.org,
-	linux-kernel@vger.kernel.org, ecryptfs-devel@lists.sourceforge.net,
-	nfs@lists.sourceforge.net, linux-fsdevel@vger.kernel.org,
-	unionfs@filesystems.org, linux-cifs-client@lists.samba.org
-To: Greg Banks <gnb@sgi.com>
-Return-path: <reiserfs-devel-owner@vger.kernel.org>
-In-Reply-To: <20070914154345.GE25610@sgi.com>
-Sender: reiserfs-devel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
+To: neilb@suse.de
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1IXJTI-0000jT-Tr
+	for nfs@lists.sourceforge.net; Mon, 17 Sep 2007 09:29:16 -0700
+Received: from flpi185.sbcis.sbc.com ([207.115.20.187]
+	helo=flpi185.prodigy.net)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IXJTM-0006hZ-Jv
+	for nfs@lists.sourceforge.net; Mon, 17 Sep 2007 09:29:21 -0700
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Sat, 2007-09-15 at 01:43 +1000, Greg Banks wrote:
-> On Fri, Sep 14, 2007 at 10:58:38AM -0400, Jeff Layton wrote:
-> > If Irix isn't clearing these bits
-> > on a write then it might be good to see if they can fix that...
-> 
-> I think first you'd have to mount a serious argument that it's broken,
-> more serious than "it works differently from Linux".
+Match a recent change to nfs4mount_s -- eventually it will become clear why
+these were renamed.
 
-How about: "If IRIX isn't clearing these bits then they're leaving their
-customers wide open to all sorts of security issues."
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-Unless you make the chmod/chgrp atomic with the write, then there will
-always be a way for a client to inject data while the setuid/setgid bits
-are set: basically, it allows said client to rewrite a setuid/setgid
-executable.
+ utils/mount/stropts.c |    6 +++---
+ 1 files changed, 3 insertions(+), 3 deletions(-)
 
-We're not fixing this in the client because it isn't fixable on the
-client.
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index a04596d..f73521f 100644
+--- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -243,12 +243,12 @@ static int append_clientaddr_opt(struct sockaddr_in *saddr, char **extra_opts)
+  * @extra_opts:	pointer to C string containing fs-specific mount options
+  *		(possibly also a return argument)
+  * @fake:	flag indicating whether to carry out the whole operation
+- * @bg:		one if this is a backgrounded mount attempt
++ * @child:	one if this is a backgrounded mount
+  *
+  * XXX: need to handle bg, fg, and retry options.
+  */
+ int nfsmount_s(const char *spec, const char *node, int flags,
+-		char **extra_opts, int fake, int bg)
++		char **extra_opts, int fake, int child)
+ {
+ 	struct sockaddr_in saddr;
+ 	char *hostname;
+@@ -263,7 +263,7 @@ int nfsmount_s(const char *spec, const char *node, int flags,
+ 
+ 	extract_interesting_options(*extra_opts);
+ 
+-	if (!bg && addr_opt) {
++	if (!child && addr_opt) {
+ 		nfs_error(_("%s: Illegal option: 'addr='"), progname);
+ 		return EX_FAIL;
+ 	}
 
-Trond
 
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Microsoft
+Defy all challenges. Microsoft(R) Visual Studio 2005.
+http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
