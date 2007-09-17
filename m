@@ -1,22 +1,21 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 00/10] Prepare for nfs-utils support of text-based NFS
-	mount
-Date: Mon, 17 Sep 2007 12:28:36 -0400
-Message-ID: <20070917162559.25850.38981.stgit@monet.1015granger.net>
+Subject: [PATCH 02/10] mount.nfs: add EX_SUCCESS exit code
+Date: Mon, 17 Sep 2007 12:28:48 -0400
+Message-ID: <20070917162848.25850.78482.stgit@monet.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 To: neilb@suse.de
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IXJTY-0000kV-JQ
+	id 1IXJTa-0000kX-98
 	for nfs@lists.sourceforge.net; Mon, 17 Sep 2007 09:29:36 -0700
 Received: from flpi185.sbcis.sbc.com ([207.115.20.187]
 	helo=flpi185.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IXJTd-0006PY-4Z
-	for nfs@lists.sourceforge.net; Mon, 17 Sep 2007 09:29:37 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IXJTb-0006V3-JY
+	for nfs@lists.sourceforge.net; Mon, 17 Sep 2007 09:29:36 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,17 +28,32 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Neil-
+We've had some recent trouble, especially in the umount code, that appears
+to be due to functions returning a 1 or a 0 return code when they should be
+returning a mount exit code (such as EX_FAIL) or a 0.
 
-I've completed a set of patches that implement text-based NFS mounts more or
-less properly (see recent posts to nfs@lists.sourceforge.net).  I'm sending
-you a group of patches that fix some bugs and prepare the NFS mount command
-for the upcoming changes, which I hope to post later this week.
+To help clearly distinguish these two classes of functions, define an
+EX_SUCCESS exit code, which is equal to zero.
 
-Please consider the following patches for inclusion in nfs-utils.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
--- 
-corporate:    <chuck dot lever at oracle dot com>
+ support/include/xcommon.h |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
+
+diff --git a/support/include/xcommon.h b/support/include/xcommon.h
+index 9e23d12..d1a4b18 100644
+--- a/support/include/xcommon.h
++++ b/support/include/xcommon.h
+@@ -36,6 +36,7 @@ extern void die(int err, const char *fmt, ...);
+ extern void (*at_die)(void);
+ 
+ /* exit status - bits below are ORed */
++#define EX_SUCCESS	0	/* no failure occurred */
+ #define EX_USAGE	1	/* incorrect invocation or permission */
+ #define EX_SYSERR	2	/* out of memory, cannot fork, ... */
+ #define EX_SOFTWARE	4	/* internal mount bug or wrong version */
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
