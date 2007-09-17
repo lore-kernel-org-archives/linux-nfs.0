@@ -1,24 +1,25 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH] export man page updated.
-Date: Mon, 17 Sep 2007 12:46:09 -0400
-Message-ID: <46EEAF51.5010400@oracle.com>
-References: <46EE9E73.1070002@RedHat.com>
-Reply-To: chuck.lever@oracle.com
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: Problem with NFS4,
+	Error: state recovery failed on NFSv4	server 192.168.0.1 with error
+	121
+Date: Mon, 17 Sep 2007 13:07:41 -0400
+Message-ID: <1190048861.6700.105.camel@heimdal.trondhjem.org>
+References: <358c6ad3a55609518d1dfa15ef1f2bd2@imap.u7.se>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------070809010608080701010907"
+Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: Steve Dickson <SteveD@redhat.com>
+To: jonas@websystem.se
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IXJkL-0003F9-5O
-	for nfs@lists.sourceforge.net; Mon, 17 Sep 2007 09:46:53 -0700
-Received: from agminet01.oracle.com ([141.146.126.228])
+	id 1IXK4a-0005PQ-Sr
+	for nfs@lists.sourceforge.net; Mon, 17 Sep 2007 10:07:51 -0700
+Received: from pat.uio.no ([129.240.10.15])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IXJkO-0006yp-Ny
-	for nfs@lists.sourceforge.net; Mon, 17 Sep 2007 09:46:58 -0700
-In-Reply-To: <46EE9E73.1070002@RedHat.com>
+	(Exim 4.44) id 1IXK4d-0007AF-Fe
+	for nfs@lists.sourceforge.net; Mon, 17 Sep 2007 10:07:53 -0700
+In-Reply-To: <358c6ad3a55609518d1dfa15ef1f2bd2@imap.u7.se>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,76 +32,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
---------------070809010608080701010907
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+On Sun, 2007-09-16 at 19:45 +0200, Jonas Jonsson wrote:
 
-Steve Dickson wrote:
-> It was pointed that the exportfs man page talks about
-> the wrong file. In 2.6 kernels the export information
-> is now kept in /var/lib/nfs/etab not /var/lib/nfs/xtab.
+> Then the ls process hangs and the syslog starts to flodd with
 > 
-> This patch basically does a 's/xtab/etab' and is relative
-> to the to the Fedora git tree
-> 
-> git://git.infradead.org/~steved/nfs-utils.fedora
+> Error: state recovery failed on NFSv4 server 192.168.0.1 with error 121
 
-Hrm, an attachment.
+Error 121 is EREMOTEIO. That basically means that the server is sick and
+there is little the client can do other than retry in the hope that it
+eventually gets better.
 
-@@ -93,8 +93,8 @@ file, so that only default options and options given 
-on the command
-  line are used.
-  .TP
-  .B -r
--Reexport all directories. It synchronizes /var/lib/nfs/xtab
--with /etc/exports. It removes entries in /var/lib/nfs/xtab
-+Reexport all directories. It synchronizes /var/lib/nfs/etab
-+with /etc/exports. It removes entries in /var/lib/nfs/etab
-  which are deleted from /etc/exports, and remove any entries from the
-  kernel export table which are no longer valid.
-  .TP
+What kernel are you using on the server?
 
-In this hunk, why isn't the file name bold, like the others?
+> Error: state recovery failed on NFSv4 server 192.168.0.1 with error 2
 
---------------070809010608080701010907
-Content-Type: text/x-vcard; charset=utf-8;
- name="chuck.lever.vcf"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="chuck.lever.vcf"
+ENOENT. That means that a file you were reading on the server has
+disappeared while the server was incommunicado.
 
-begin:vcard
-fn:Chuck Lever
-n:Lever;Chuck
-org:Oracle Corporation;Corporate Architecture: Linux Projects Group
-adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
-title:Principal Member of Staff
-tel;work:+1 248 614 5091
-x-mozilla-html:FALSE
-url:http://oss.oracle.com/~cel
-version:2.1
-end:vcard
+Cheers
+  Trond
 
-
---------------070809010608080701010907
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
 Defy all challenges. Microsoft(R) Visual Studio 2005.
 http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
---------------070809010608080701010907
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---------------070809010608080701010907--
