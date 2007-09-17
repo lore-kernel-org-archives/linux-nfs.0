@@ -1,8 +1,8 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 0/7] fix setuid/setgid clearing in networked
-	filesystems (take 6)
-Date: Mon, 17 Sep 2007 07:29:05 -0400
-Message-ID: <200709171129.l8HBT5Kq024360@dantu.rdu.redhat.com>
+Subject: [PATCH 1/7] ecryptfs: allow lower fs to interpret
+	ATTR_KILL_S*ID
+Date: Mon, 17 Sep 2007 07:29:10 -0400
+Message-ID: <200709171129.l8HBTA7D024365@dantu.rdu.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net, unionfs@filesystems.org,
@@ -10,34 +10,51 @@ Cc: nfs@lists.sourceforge.net, unionfs@filesystems.org,
 	ecryptfs-devel@lists.sourceforge.net, reiserfs-devel@vger.kernel.org
 To: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
 	akpm@linux-foundation.org
-Return-path: <nfs-bounces@lists.sourceforge.net>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Return-path: <ecryptfs-devel-bounces@lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/ecryptfs-devel>,
+	<mailto:ecryptfs-devel-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=ecryptfs-devel>
+List-Post: <mailto:ecryptfs-devel@lists.sourceforge.net>
+List-Help: <mailto:ecryptfs-devel-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/ecryptfs-devel>,
+	<mailto:ecryptfs-devel-request@lists.sourceforge.net?subject=subscribe>
+Sender: ecryptfs-devel-bounces@lists.sourceforge.net
+Errors-To: ecryptfs-devel-bounces@lists.sourceforge.net
+List-ID: <nfs.lists.sourceforge.net>
 
-This patchset is the latest one for fixing the clearing of setuid/setgid
-bits in networked filesystems. It should apply cleanly to 2.6.23-rc4-mm1.
-This is basically the same patchset as take 5. The main differences are
-that the patches have been reordered to make the tree cleanly bisectable,
-and the comment in notify_change is now a bit more descriptive. I've also
-moved the description of the main rationale for the patch into patch 5.
-
-Andrew, would it be possible to go ahead and get this committed to -mm?
+This patch makes sure ecryptfs doesn't trip the BUG() in notify_change.
+It also allows the lower filesystem to interpret ATTR_KILL_S*ID in its
+own way.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/ecryptfs/inode.c |    8 ++++++++
+ 1 files changed, 8 insertions(+), 0 deletions(-)
+
+diff --git a/fs/ecryptfs/inode.c b/fs/ecryptfs/inode.c
+index 131954b..dac4199 100644
+--- a/fs/ecryptfs/inode.c
++++ b/fs/ecryptfs/inode.c
+@@ -959,6 +959,14 @@ static int ecryptfs_setattr(struct dentry *dentry, struct iattr *ia)
+ 		if (rc < 0)
+ 			goto out;
+ 	}
++
++	/*
++	 * mode change is for clearing setuid/setgid bits. Allow lower fs
++	 * to interpret this in its own way.
++	 */
++	if (ia->ia_valid & (ATTR_KILL_SUID | ATTR_KILL_SGID))
++		ia->ia_valid &= ~ATTR_MODE;
++
+ 	rc = notify_change(lower_dentry, ia);
+ out:
+ 	fsstack_copy_attr_all(inode, lower_inode, NULL);
+-- 
+1.5.2.1
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
 Defy all challenges. Microsoft(R) Visual Studio 2005.
 http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
