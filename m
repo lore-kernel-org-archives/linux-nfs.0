@@ -1,8 +1,8 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 6/7] NFS: if ATTR_KILL_S*ID bits are set,
-	then skip mode change
-Date: Mon, 17 Sep 2007 07:29:36 -0400
-Message-ID: <200709171129.l8HBTaTA024392@dantu.rdu.redhat.com>
+Subject: [PATCH 7/7] CIFS: ignore mode change if it's just
+	for clearing setuid/setgid bits
+Date: Mon, 17 Sep 2007 07:29:41 -0400
+Message-ID: <200709171129.l8HBTfBL024397@dantu.rdu.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net, unionfs@filesystems.org,
@@ -23,29 +23,30 @@ Errors-To: ecryptfs-devel-bounces@lists.sourceforge.net
 List-ID: <nfs.lists.sourceforge.net>
 
 If the ATTR_KILL_S*ID bits are set then any mode change is only for
-clearing the setuid/setgid bits. For NFS, skip the mode change and
+clearing the setuid/setgid bits. For CIFS, skip the mode change and
 let the server handle it.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfs/inode.c |    4 ++++
- 1 files changed, 4 insertions(+), 0 deletions(-)
+ fs/cifs/inode.c |    5 +++++
+ 1 files changed, 5 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 45633f9..441bd8b 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -327,6 +327,10 @@ nfs_setattr(struct dentry *dentry, struct iattr *attr)
+diff --git a/fs/cifs/inode.c b/fs/cifs/inode.c
+index 66436f5..8fa3d63 100644
+--- a/fs/cifs/inode.c
++++ b/fs/cifs/inode.c
+@@ -1547,6 +1547,11 @@ int cifs_setattr(struct dentry *direntry, struct iattr *attrs)
+ 	}
  
- 	nfs_inc_stats(inode, NFSIOS_VFSSETATTR);
- 
-+	/* skip mode change if it's just for clearing setuid/setgid */
-+	if (attr->ia_valid & (ATTR_KILL_SUID | ATTR_KILL_SGID))
-+		attr->ia_valid &= ~ATTR_MODE;
+ 	time_buf.Attributes = 0;
 +
- 	if (attr->ia_valid & ATTR_SIZE) {
- 		if (!S_ISREG(inode->i_mode) || attr->ia_size == i_size_read(inode))
- 			attr->ia_valid &= ~ATTR_SIZE;
++	/* skip mode change if it's just for clearing setuid/setgid */
++	if (attrs->ia_valid & (ATTR_KILL_SUID|ATTR_KILL_SGID))
++		attrs->ia_valid &= ~ATTR_MODE;
++
+ 	if (attrs->ia_valid & ATTR_MODE) {
+ 		cFYI(1, ("Mode changed to 0x%x", attrs->ia_mode));
+ 		mode = attrs->ia_mode;
 -- 
 1.5.2.1
 
