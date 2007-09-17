@@ -1,8 +1,8 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 1/7] ecryptfs: allow lower fs to interpret
-	ATTR_KILL_S*ID
-Date: Mon, 17 Sep 2007 07:29:10 -0400
-Message-ID: <200709171129.l8HBTA7D024365@dantu.rdu.redhat.com>
+Subject: [PATCH 3/7] reiserfs: turn of ATTR_KILL_S*ID at
+	beginning of reiserfs_setattr
+Date: Mon, 17 Sep 2007 07:29:21 -0400
+Message-ID: <200709171129.l8HBTL7t024375@dantu.rdu.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net, unionfs@filesystems.org,
@@ -22,34 +22,32 @@ Sender: ecryptfs-devel-bounces@lists.sourceforge.net
 Errors-To: ecryptfs-devel-bounces@lists.sourceforge.net
 List-ID: <nfs.lists.sourceforge.net>
 
-This patch makes sure ecryptfs doesn't trip the BUG() in notify_change.
-It also allows the lower filesystem to interpret ATTR_KILL_S*ID in its
-own way.
+reiserfs_setattr can call notify_change recursively using the same
+iattr struct. This could cause it to trip the BUG() in notify_change.
+Fix reiserfs to clear those bits near the beginning of the function.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/ecryptfs/inode.c |    8 ++++++++
- 1 files changed, 8 insertions(+), 0 deletions(-)
+ fs/reiserfs/inode.c |    6 +++++-
+ 1 files changed, 5 insertions(+), 1 deletions(-)
 
-diff --git a/fs/ecryptfs/inode.c b/fs/ecryptfs/inode.c
-index 131954b..dac4199 100644
---- a/fs/ecryptfs/inode.c
-+++ b/fs/ecryptfs/inode.c
-@@ -959,6 +959,14 @@ static int ecryptfs_setattr(struct dentry *dentry, struct iattr *ia)
- 		if (rc < 0)
- 			goto out;
- 	}
+diff --git a/fs/reiserfs/inode.c b/fs/reiserfs/inode.c
+index 9ea1200..0804289 100644
+--- a/fs/reiserfs/inode.c
++++ b/fs/reiserfs/inode.c
+@@ -3061,7 +3061,11 @@ int reiserfs_setattr(struct dentry *dentry, struct iattr *attr)
+ {
+ 	struct inode *inode = dentry->d_inode;
+ 	int error;
+-	unsigned int ia_valid = attr->ia_valid;
++	unsigned int ia_valid;
 +
-+	/*
-+	 * mode change is for clearing setuid/setgid bits. Allow lower fs
-+	 * to interpret this in its own way.
-+	 */
-+	if (ia->ia_valid & (ATTR_KILL_SUID | ATTR_KILL_SGID))
-+		ia->ia_valid &= ~ATTR_MODE;
++	/* must be turned off for recursive notify_change calls */
++	ia_valid = attr->ia_valid &= ~(ATTR_KILL_SUID|ATTR_KILL_SGID);
 +
- 	rc = notify_change(lower_dentry, ia);
- out:
- 	fsstack_copy_attr_all(inode, lower_inode, NULL);
+ 	reiserfs_write_lock(inode->i_sb);
+ 	if (attr->ia_valid & ATTR_SIZE) {
+ 		/* version 2 items will be caught by the s_maxbytes check
 -- 
 1.5.2.1
 
