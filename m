@@ -1,27 +1,26 @@
-From: Jonas Jonsson <jonas@websystem.se>
-Subject: Re: Problem with NFS4,
-	Error: state recovery failed on NFSv4	 server 192.168.0.1 with
-	error 121
-Date: Mon, 17 Sep 2007 21:12:37 +0200
-Message-ID: <1190056357.5541.12.camel@fry.u7.se>
-References: <358c6ad3a55609518d1dfa15ef1f2bd2@imap.u7.se>
-	<1190048861.6700.105.camel@heimdal.trondhjem.org>
-	<1190049122.6700.108.camel@heimdal.trondhjem.org>
-Reply-To: jonas@websystem.se
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 01/10] mount.nfs: Provide comments for
+ public	network functions
+Date: Mon, 17 Sep 2007 15:55:44 -0400
+Message-ID: <46EEDBC0.9080209@oracle.com>
+References: <20070917162842.25850.7104.stgit@monet.1015granger.net>
+	<1190047593.6700.93.camel@heimdal.trondhjem.org>
+Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: nfs@lists.sourceforge.net
+Content-Type: multipart/mixed; boundary="------------020106040106090503070109"
+Cc: neilb@suse.de, nfs@lists.sourceforge.net
 To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IXM2H-0001EW-QU
-	for nfs@lists.sourceforge.net; Mon, 17 Sep 2007 12:13:37 -0700
-Received: from gonzzor.campus.luth.se ([130.240.199.196] helo=bender.u7.se)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IXM2L-0005e6-2M
-	for nfs@lists.sourceforge.net; Mon, 17 Sep 2007 12:13:38 -0700
-In-Reply-To: <1190049122.6700.108.camel@heimdal.trondhjem.org>
+	id 1IXMhs-0005lL-Iw
+	for nfs@lists.sourceforge.net; Mon, 17 Sep 2007 12:56:32 -0700
+Received: from rgminet01.oracle.com ([148.87.113.118])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IXMhu-0000X4-OK
+	for nfs@lists.sourceforge.net; Mon, 17 Sep 2007 12:56:37 -0700
+In-Reply-To: <1190047593.6700.93.camel@heimdal.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,47 +33,183 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-bcOlbiAyMDA3LTA5LTE3IGtsb2NrYW4gMTM6MTIgLTA0MDAgc2tyZXYgVHJvbmQgTXlrbGVidXN0
-Ogo+IE9uIE1vbiwgMjAwNy0wOS0xNyBhdCAxMzowNyAtMDQwMCwgVHJvbmQgTXlrbGVidXN0IHdy
-b3RlOgo+ID4gT24gU3VuLCAyMDA3LTA5LTE2IGF0IDE5OjQ1ICswMjAwLCBKb25hcyBKb25zc29u
-IHdyb3RlOgo+ID4gCj4gPiA+IFRoZW4gdGhlIGxzIHByb2Nlc3MgaGFuZ3MgYW5kIHRoZSBzeXNs
-b2cgc3RhcnRzIHRvIGZsb2RkIHdpdGgKPiA+ID4gCj4gPiA+IEVycm9yOiBzdGF0ZSByZWNvdmVy
-eSBmYWlsZWQgb24gTkZTdjQgc2VydmVyIDE5Mi4xNjguMC4xIHdpdGggZXJyb3IgMTIxCj4gPiAK
-PiA+IEVycm9yIDEyMSBpcyBFUkVNT1RFSU8uIFRoYXQgYmFzaWNhbGx5IG1lYW5zIHRoYXQgdGhl
-IHNlcnZlciBpcyBzaWNrIGFuZAo+ID4gdGhlcmUgaXMgbGl0dGxlIHRoZSBjbGllbnQgY2FuIGRv
-IG90aGVyIHRoYW4gcmV0cnkgaW4gdGhlIGhvcGUgdGhhdCBpdAo+ID4gZXZlbnR1YWxseSBnZXRz
-IGJldHRlci4KPiA+IAo+ID4gV2hhdCBrZXJuZWwgYXJlIHlvdSB1c2luZyBvbiB0aGUgc2VydmVy
-PwoKU2VydmVyOiAKTGludXggYmVuZGVyIDIuNi4yMi1nZW50b28tcjUgIzIgU01QIEZyaSBTZXAg
-MTQgMjM6MTc6MzEgQ0VTVCAyMDA3Cng4Nl82NCBBTUQgQXRobG9uKHRtKSA2NCBYMiBEdWFsIENv
-cmUgUHJvY2Vzc29yIDM4MDArIEF1dGhlbnRpY0FNRApHTlUvTGludXgKCkNsaWVudDogKFdoZW4g
-bm90IHRlc3RpbmcgbG9jYWwpCkxpbnV4IGZyeSAyLjYuMjItZ2VudG9vLXI1ICMzIFNNUCBTYXQg
-U2VwIDE1IDAxOjI4OjI3IENFU1QgMjAwNyB4ODZfNjQKSW50ZWwoUikgQ29yZShUTSkyIENQVSA2
-NDAwIEAgMi4xM0dIeiBHZW51aW5lSW50ZWwgR05VL0xpbnV4Cgo+ID4gCj4gPiA+IEVycm9yOiBz
-dGF0ZSByZWNvdmVyeSBmYWlsZWQgb24gTkZTdjQgc2VydmVyIDE5Mi4xNjguMC4xIHdpdGggZXJy
-b3IgMgo+ID4gCj4gPiBFTk9FTlQuIFRoYXQgbWVhbnMgdGhhdCBhIGZpbGUgeW91IHdlcmUgcmVh
-ZGluZyBvbiB0aGUgc2VydmVyIGhhcwo+ID4gZGlzYXBwZWFyZWQgd2hpbGUgdGhlIHNlcnZlciB3
-YXMgaW5jb21tdW5pY2Fkby4KPiA+IAo+ID4gQ2hlZXJzCj4gPiAgIFRyb25kCj4gCj4gQlRXOiBX
-aGF0IGtpbmQgb2YgbmV0d29yayBjb25uZWN0aW9uIGFyZSB5b3UgcnVubmluZyBiZXR3ZWVuIHRo
-ZSBjbGllbnQKPiBhbmQgc2VydmVyLiBJcyBpdCByZWFsbHkgdGhhdCBiYWQgdGhhdCB0aGUgY2xp
-ZW50IGlzIGNvbnN0YW50bHkgaGF2aW5nCj4gdG8gcmVjb3ZlciBzdGF0ZT8KCkkgZ2V0IHRoaXMg
-ZXJyb3IgZXZlbiB3aGVuIEkgdHJ5IGxvY2FsIG9uIHNlcnZlciBtYWNoaW5lLCBidXQgYmV0d2Vl
-bgp0aGUgc2VydmVyIGFuZCBjbGllbnQgSSBoYXZlIEdiaXQgZWh0ZXJuZXQgY29ubmVjdGlvbi4g
-VGhlIG1vc3Qgc3RyYW5nZQp0aGluZyBpcyB0aGF0IEkgaGF2ZSBtYW5hZ2UgdG8gZ2V0IHJldmVy
-c2VkIHNpdHVhdGlvbiB3b3JraW5nLgoKSSBjYW4gZ28gb24gYW5kIHVzZSBscyAtbGEgL21udC9u
-ZnMgYXMgbG9uZyBhcyBJIGRvbid0IHN0YW5kIGluIHRoZQpkaXJlY3RvcnksIHRoZSBJIGdldCB0
-aGUgcmVjb3ZlcnkgZXJyb3IuIEFuZCBpZiBJIHRyeSB0byByZWFkL3dyaXRlIHRvIGEKZmlsZSBJ
-IGdldCB0aGlzIGVycm9yLgoKSSB0cmllZCBOZXdweW5mcyAoIGh0dHA6Ly93d3cuY2l0aS51bWlj
-aC5lZHUvcHJvamVjdHMvbmZzdjQvcHluZnMvICkgYW5kCndpdGggdGhpcyBhcHBsaWNhdGlvbiBJ
-IG1hbmFnZSB0byB3cml0ZSBhbmQgcmVhZCB0byB0aGUgc2VydmVyIHdpdGhvdXQKdGhlIGVycm9y
-cywgc28gSSdtIGtpbmQgb2YgY29uZnVzZWQuCgpJIGhhdmUgYWxzbyB0cmllZCBhIE9wZW5Tb2xh
-cmlzIGxpdmVjZAooIGh0dHA6Ly93d3cuZ2VudW5peC5vcmcvZGlzdHJpYnV0aW9ucy9iZWxlbml4
-X3NpdGUvICkgd2l0aCBhbG1vc3Qgc2FtZQpyZXN1bHQsIG5vdGhpbmcgaW4gdGhlIGxvZ3Mgb3Ig
-c28sIGJ1dCB0aGUgbW91bnQgY29tbWFuZCBoYW5ncy4KIApJcyB0aGVyZSBhbnl0aGluZyBlbHNl
-IEkgY2FuIHRyeSB0byBkZWJ1ZyB0aGlzIGZ1cnRoZXI/Cj4gCj4gQ2hlZXJzCj4gICBUcm9uZAo+
-IAoKCi0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0KVGhpcyBTRi5uZXQgZW1haWwgaXMgc3BvbnNvcmVkIGJ5OiBN
-aWNyb3NvZnQKRGVmeSBhbGwgY2hhbGxlbmdlcy4gTWljcm9zb2Z0KFIpIFZpc3VhbCBTdHVkaW8g
-MjAwNS4KaHR0cDovL2Nsay5hdGRtdC5jb20vTVJUL2dvL3ZzZTAxMjAwMDAwNzBtcnQvZGlyZWN0
-LzAxLwpfX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fXwpORlMg
-bWFpbGxpc3QgIC0gIE5GU0BsaXN0cy5zb3VyY2Vmb3JnZS5uZXQKaHR0cHM6Ly9saXN0cy5zb3Vy
-Y2Vmb3JnZS5uZXQvbGlzdHMvbGlzdGluZm8vbmZzCg==
+This is a multi-part message in MIME format.
+--------------020106040106090503070109
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+
+Trond Myklebust wrote:
+> On Mon, 2007-09-17 at 12:28 -0400, Chuck Lever wrote:
+>> Clean up: Document public functions in util/mount/network.c with block
+>> comments.
+> 
+> Just out of curiosity. I see that you've used the kernel 'docbook'
+> format in your comments. Are there any plans to port the kernel
+> documentation mechanism to nfs-utils, or is there perhaps a public
+> utility that can make use of this format?
+
+At this moment, not that I know of, though I suspect doxygen may be able to.
+
+I used it simply because it's a format that we are all moderately 
+familiar with, and thus it is reasonably conventional.
+
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> ---
+>>
+>>  utils/mount/network.c |   42 +++++++++++++++++++++++++++++++++++++-----
+>>  1 files changed, 37 insertions(+), 5 deletions(-)
+>>
+>> diff --git a/utils/mount/network.c b/utils/mount/network.c
+>> index 16b802d..49d3c6b 100644
+>> --- a/utils/mount/network.c
+>> +++ b/utils/mount/network.c
+>> @@ -139,6 +139,13 @@ static const unsigned long probe_mnt3_first[] = {
+>>  	0,
+>>  };
+>>  
+>> +/**
+>> + * nfs_gethostbyname - resolve a hostname to an IPv4 address
+>> + * @hostname: pointer to a C string containing a DNS hostname
+>> + * @saddr: returns an IPv4 address 
+>> + *
+>> + * Returns 1 if successful, otherwise zero.
+>> + */
+>>  int nfs_gethostbyname(const char *hostname, struct sockaddr_in *saddr)
+>>  {
+>>  	struct hostent *hp;
+>> @@ -457,6 +464,16 @@ static int probe_mntport(clnt_addr_t *mnt_server)
+>>  		return probe_port(mnt_server, probe_mnt1_first, probe_udp_only);
+>>  }
+>>  
+>> +/**
+>> + * probe_bothports - discover the RPC endpoints of mountd and NFS server
+>> + * @mnt_server: pointer to address and pmap argument for mountd results
+>> + * @nfs_server: pointer to address and pmap argument for NFS server
+>> + *
+>> + * Returns 1 if successful, otherwise zero if some error occurred.
+>> + * Note that the arguments are both input and output arguments.
+>> + *
+>> + * A side effect of calling this function is that rpccreateerr is set.
+>> + */
+>>  int probe_bothports(clnt_addr_t *mnt_server, clnt_addr_t *nfs_server)
+>>  {
+>>  	struct pmap *nfs_pmap = &nfs_server->pmap;
+>> @@ -524,8 +541,10 @@ static int probe_statd(void)
+>>  	return 1;
+>>  }
+>>  
+>> -/*
+>> - * Attempt to start rpc.statd
+>> +/**
+>> + * start_statd - attempt to start rpc.statd
+>> + *
+>> + * Returns 1 if statd is running; otherwise zero.
+>>   */
+>>  int start_statd(void)
+>>  {
+>> @@ -549,7 +568,7 @@ int start_statd(void)
+>>  	return 0;
+>>  }
+>>  
+>> -/*
+>> +/**
+>>   * nfs_call_umount - ask the server to remove a share from it's rmtab
+>>   * @mnt_server: address of RPC MNT program server
+>>   * @argp: directory path of share to "unmount"
+>> @@ -593,6 +612,13 @@ int nfs_call_umount(clnt_addr_t *mnt_server, dirpath *argp)
+>>  	return 0;
+>>  }
+>>  
+>> +/**
+>> + * mnt_openclnt - get a handle for a remote mountd service
+>> + * @mnt_server: address and pmap arguments of mountd service
+>> + * @msock: returns a file descriptor of the underlying transport socket
+>> + *
+>> + * Returns an active handle for the remote's mountd service
+>> + */
+>>  CLIENT *mnt_openclnt(clnt_addr_t *mnt_server, int *msock)
+>>  {
+>>  	struct sockaddr_in *mnt_saddr = &mnt_server->saddr;
+>> @@ -634,6 +660,12 @@ CLIENT *mnt_openclnt(clnt_addr_t *mnt_server, int *msock)
+>>  	return NULL;
+>>  }
+>>  
+>> +/**
+>> + * mnt_closeclnt - terminate a handle for a remote mountd service
+>> + * @clnt: pointer to an active handle for a remote mountd service
+>> + * @msock: file descriptor of the underlying transport socket
+>> + *
+>> + */
+>>  void mnt_closeclnt(CLIENT *clnt, int msock)
+>>  {
+>>  	auth_destroy(clnt->cl_auth);
+>> @@ -641,7 +673,7 @@ void mnt_closeclnt(CLIENT *clnt, int msock)
+>>  	close(msock);
+>>  }
+>>  
+>> -/*
+>> +/**
+>>   * clnt_ping - send an RPC ping to the remote RPC service endpoint
+>>   * @saddr: server's address
+>>   * @prog: target RPC program number
+>> @@ -729,7 +761,7 @@ int clnt_ping(struct sockaddr_in *saddr, const unsigned long prog,
+>>  		return 0;
+>>  }
+>>  
+>> -/*
+>> +/**
+>>   * get_client_address - acquire our local network address
+>>   * @saddr: server's address
+>>   * @caddr: filled in with our network address
+>>
+>>
+>> -------------------------------------------------------------------------
+>> This SF.net email is sponsored by: Microsoft
+>> Defy all challenges. Microsoft(R) Visual Studio 2005.
+>> http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+>> _______________________________________________
+>> NFS maillist  -  NFS@lists.sourceforge.net
+>> https://lists.sourceforge.net/lists/listinfo/nfs
+> 
+
+--------------020106040106090503070109
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck.lever.vcf"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="chuck.lever.vcf"
+
+begin:vcard
+fn:Chuck Lever
+n:Lever;Chuck
+org:Oracle Corporation;Corporate Architecture: Linux Projects Group
+adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
+title:Principal Member of Staff
+tel;work:+1 248 614 5091
+x-mozilla-html:FALSE
+url:http://oss.oracle.com/~cel
+version:2.1
+end:vcard
+
+
+--------------020106040106090503070109
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Microsoft
+Defy all challenges. Microsoft(R) Visual Studio 2005.
+http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+--------------020106040106090503070109
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+
+--------------020106040106090503070109--
