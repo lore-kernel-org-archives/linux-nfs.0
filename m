@@ -1,20 +1,20 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 2/5] mountd: Change nfs_client->m_hostname to be a
-	dynamically-allocated string
-Date: Mon, 17 Sep 2007 08:51:59 -0400
-Message-ID: <200709171251.l8HCpxeI025380@dantu.rdu.redhat.com>
+Subject: [PATCH 5/5] mountd: add new mode for handling netgroup-heavy
+	configurations
+Date: Mon, 17 Sep 2007 08:52:15 -0400
+Message-ID: <200709171252.l8HCqFVB025395@dantu.rdu.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net, neilb@suse.de
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IXG5B-00016Q-Kn
-	for nfs@lists.sourceforge.net; Mon, 17 Sep 2007 05:52:09 -0700
+	id 1IXG5F-00016q-4f
+	for nfs@lists.sourceforge.net; Mon, 17 Sep 2007 05:52:15 -0700
 Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IXG5E-0003Tt-6x
-	for nfs@lists.sourceforge.net; Mon, 17 Sep 2007 05:52:14 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IXG5J-0005Kh-ES
+	for nfs@lists.sourceforge.net; Mon, 17 Sep 2007 05:52:18 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,92 +27,284 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Change nfs_client->m_hostname to be dynamically allocated rather than a
-fixed length array of size NFSCLNT_IDMAX. This also adds a bit of
-micro-optimization in a few places since it reduces the amount of string
-copying that needs to be done.
+If a host is a member of a large number of netgroups, it becomes easily
+possible for client_compose to generate a m_hostname string that
+overflows the maximum string length allowed by the kernel caches.
+
+This patch adds a new mode for mountd where it will map IP address to IP
+address in the auth.unix.ip cache. When this enabled, mountd doesn't
+bother using client_compose to build the m_hostname string. It just
+populates it with the dotted-quad ip address. When mountd handles a
+mount request, it then has an IP address and a path. It then calls
+client_check to check the host against export entries where the path has
+already matched.
+
+Since we don't bother looking up netgroups which have no relation to the
+mount, this can be a big performance gain in netgroup-heavy
+configurations.  The downside is that every host has a corresponding
+entry in the nfsd.export and nfsd.fh caches as well as the auth.unix.ip
+cache.
+
+The new behavior is automatically enabled if the length of all of the
+concatenated netgroup names in the export table is longer than half
+NFSCLNT_IDMAX. The rationale for this logic is that this should allow
+for a host to be a member of a long list of netgroups while still
+allowing for other matches.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 Acked-by: Steve Dickson <steved@redhat.com>
 ---
- support/export/client.c    |   15 +++++++--------
- support/include/exportfs.h |    2 +-
- utils/mountd/auth.c        |    9 +++++++--
- 3 files changed, 15 insertions(+), 11 deletions(-)
+ utils/mountd/auth.c   |   61 ++++++++++++++++++++++++++++++++++++++++---------
+ utils/mountd/cache.c  |   44 +++++++++++++++++++++++++++++------
+ utils/mountd/mountd.c |    1 +
+ 3 files changed, 87 insertions(+), 19 deletions(-)
 
-diff --git a/support/export/client.c b/support/export/client.c
-index 19b53aa..1754aa0 100644
---- a/support/export/client.c
-+++ b/support/export/client.c
-@@ -118,6 +118,7 @@ client_dup(nfs_client *clp, struct hostent *hp)
- 	new = (nfs_client *) xmalloc(sizeof(*new));
- 	memcpy(new, clp, sizeof(*new));
- 	new->m_type = MCL_FQDN;
-+	new->m_hostname = NULL;
- 
- 	client_init(new, (char *) hp->h_name, hp);
- 	client_add(new);
-@@ -127,14 +128,11 @@ client_dup(nfs_client *clp, struct hostent *hp)
- static void
- client_init(nfs_client *clp, const char *hname, struct hostent *hp)
- {
--	if (hp) {
--		strncpy(clp->m_hostname, hp->h_name,
--			sizeof (clp->m_hostname) -  1);
--	} else {
--		strncpy(clp->m_hostname, hname,
--			sizeof (clp->m_hostname) - 1);
--	}
--	clp->m_hostname[sizeof (clp->m_hostname) - 1] = '\0';
-+	xfree(clp->m_hostname);
-+	if (hp)
-+		clp->m_hostname = xstrdup(hp->h_name);
-+	else
-+		clp->m_hostname = xstrdup(hname);
- 
- 	clp->m_exported = 0;
- 	clp->m_count = 0;
-@@ -207,6 +205,7 @@ client_freeall(void)
- 		head = clientlist + i;
- 		while (*head) {
- 			*head = (clp = *head)->m_next;
-+			xfree(clp->m_hostname);
- 			xfree(clp);
- 		}
- 	}
-diff --git a/support/include/exportfs.h b/support/include/exportfs.h
-index 431b5ce..a491b1a 100644
---- a/support/include/exportfs.h
-+++ b/support/include/exportfs.h
-@@ -32,7 +32,7 @@ enum {
- 
- typedef struct mclient {
- 	struct mclient *	m_next;
--	char			m_hostname[NFSCLNT_IDMAX+1];
-+	char *			m_hostname;
- 	int			m_type;
- 	int			m_naddr;
- 	struct in_addr		m_addrlist[NFSCLNT_ADDRMAX];
 diff --git a/utils/mountd/auth.c b/utils/mountd/auth.c
-index f7fe23d..950ea20 100644
+index 84fea30..a821c13 100644
 --- a/utils/mountd/auth.c
 +++ b/utils/mountd/auth.c
-@@ -93,8 +93,13 @@ auth_authenticate_internal(char *what, struct sockaddr_in *caller,
- 		*error = unknown_host;
- 		if (!n)
- 			return NULL;
--		strcpy(my_client.m_hostname, *n?n:"DEFAULT");
--		free(n);
-+		free(my_client.m_hostname);
-+		if (*n) {
-+			my_client.m_hostname = n;
-+		} else {
-+			free(n);
-+			my_client.m_hostname = xstrdup("DEFAULT");
-+		}
+@@ -37,6 +37,7 @@ static nfs_export my_exp;
+ static nfs_client my_client;
+ 
+ extern int new_cache;
++extern int use_ipaddr;
+ 
+ void
+ auth_init(char *exports)
+@@ -47,6 +48,34 @@ auth_init(char *exports)
+ 	xtab_mount_write();
+ }
+ 
++/*
++ * A client can match many different netgroups and it's tough to know
++ * beforehand whether it will. If the concatenated string of netgroup
++ * m_hostnames is >512 bytes, then enable the "use_ipaddr" mode. This
++ * makes mountd change how it matches a client ip address when a mount
++ * request comes in. It's more efficient at handling netgroups at the
++ * expense of larger kernel caches.
++ */
++static void
++check_useipaddr()
++{
++	nfs_client *clp;
++	int old_use_ipaddr = use_ipaddr;
++	unsigned int len = 0;
++
++	/* add length of m_hostname + 1 for the comma */
++	for (clp = clientlist[MCL_NETGROUP]; clp; clp = clp->m_next)
++		len += (strlen(clp->m_hostname) + 1);
++
++	if (len > (NFSCLNT_IDMAX / 2))
++		use_ipaddr = 1;
++	else
++		use_ipaddr = 0;
++
++	if (use_ipaddr != old_use_ipaddr)
++		cache_flush(1);
++}
++
+ unsigned int
+ auth_reload()
+ {
+@@ -72,6 +101,7 @@ auth_reload()
+ 	export_freeall();
+ 	memset(&my_client, 0, sizeof(my_client));
+ 	xtab_export_read();
++	check_useipaddr();
+ 	++counter;
+ 
+ 	return counter;
+@@ -88,28 +118,37 @@ auth_authenticate_internal(char *what, struct sockaddr_in *caller,
+ 		int i;
+ 		/* return static nfs_export with details filled in */
+ 		char *n;
+-		my_client.m_addrlist[0] = caller->sin_addr;
+-		n = client_compose(hp);
+-		*error = unknown_host;
+-		if (!n)
+-			return NULL;
+ 		free(my_client.m_hostname);
+-		if (*n) {
+-			my_client.m_hostname = n;
++		if (use_ipaddr) {
++			my_client.m_hostname =
++				strdup(inet_ntoa(caller->sin_addr));
+ 		} else {
+-			free(n);
+-			my_client.m_hostname = xstrdup("DEFAULT");
++			n = client_compose(hp);
++			*error = unknown_host;
++			if (!n)
++				my_client.m_hostname = NULL;
++			else if (*n)
++				my_client.m_hostname = n;
++			else {
++				free(n);
++				my_client.m_hostname = strdup("DEFAULT");
++			}
+ 		}
++		if (my_client.m_hostname == NULL)
++			return NULL;
  		my_client.m_naddr = 1;
++		my_client.m_addrlist[0] = caller->sin_addr;
  		my_exp.m_client = &my_client;
  
+ 		exp = NULL;
+ 		for (i = 0; !exp && i < MCL_MAXTYPES; i++) 
+ 			for (exp = exportlist[i]; exp; exp = exp->m_next) {
+-				if (!client_member(my_client.m_hostname, exp->m_client->m_hostname))
+-					continue;
+ 				if (strcmp(path, exp->m_export.e_path))
+ 					continue;
++				if (!use_ipaddr && !client_member(my_client.m_hostname, exp->m_client->m_hostname))
++					continue;
++				if (use_ipaddr && !client_check(exp->m_client, hp))
++					continue;
+ 				break;
+ 			}
+ 		*error = not_exported;
+diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+index ef460f7..ce1a5a9 100644
+--- a/utils/mountd/cache.c
++++ b/utils/mountd/cache.c
+@@ -61,6 +61,7 @@ int cache_export_ent(char *domain, struct exportent *exp, char *p);
+ 
+ char *lbuf  = NULL;
+ int lbuflen = 0;
++extern int use_ipaddr;
+ 
+ void auth_unix_ip(FILE *f)
+ {
+@@ -74,9 +75,9 @@ void auth_unix_ip(FILE *f)
+ 	char *cp;
+ 	char class[20];
+ 	char ipaddr[20];
+-	char *client;
++	char *client = NULL;
+ 	struct in_addr addr;
+-	struct hostent *he;
++	struct hostent *he = NULL;
+ 	if (readline(fileno(f), &lbuf, &lbuflen) != 1)
+ 		return;
+ 
+@@ -95,14 +96,17 @@ void auth_unix_ip(FILE *f)
+ 	auth_reload();
+ 
+ 	/* addr is a valid, interesting address, find the domain name... */
+-	he = client_resolve(addr);
+-	client = client_compose(he);
+-
++	if (!use_ipaddr) {
++		he = client_resolve(addr);
++		client = client_compose(he);
++	}
+ 	
+ 	qword_print(f, "nfsd");
+ 	qword_print(f, ipaddr);
+ 	qword_printint(f, time(0)+30*60);
+-	if (client)
++	if (use_ipaddr)
++		qword_print(f, ipaddr);
++	else if (client)
+ 		qword_print(f, *client?client:"DEFAULT");
+ 	qword_eol(f);
+ 
+@@ -266,6 +270,8 @@ void nfsd_fh(FILE *f)
+ 	unsigned int fsidnum=0;
+ 	char fsid[32];
+ 	struct exportent *found = NULL;
++	struct hostent *he = NULL;
++	struct in_addr addr;
+ 	char *found_path = NULL;
+ 	nfs_export *exp;
+ 	int i;
+@@ -391,7 +397,7 @@ void nfsd_fh(FILE *f)
+ 				next_exp = exp->m_next;
+ 			}
+ 
+-			if (!client_member(dom, exp->m_client->m_hostname))
++			if (!use_ipaddr && !client_member(dom, exp->m_client->m_hostname))
+ 				continue;
+ 			if (exp->m_export.e_mountpoint &&
+ 			    !is_mountpoint(exp->m_export.e_mountpoint[0]?
+@@ -443,6 +449,15 @@ void nfsd_fh(FILE *f)
+ 				continue;
+ #endif
+ 			}
++			if (use_ipaddr) {
++				if (he == NULL) {
++					if (!inet_aton(dom, &addr))
++						goto out;
++					he = client_resolve(addr);
++				}
++				if (!client_check(exp->m_client, he))
++					continue;
++			}
+ 			/* It's a match !! */
+ 			if (!found) {
+ 				found = &exp->m_export;
+@@ -497,6 +512,7 @@ void nfsd_fh(FILE *f)
+ 	qword_eol(f);
+  out:
+ 	free(found_path);
++	free(he);
+ 	free(dom);
+ 	return;		
+ }
+@@ -584,6 +600,8 @@ void nfsd_export(FILE *f)
+ 	char *dom, *path;
+ 	nfs_export *exp, *found = NULL;
+ 	int found_type = 0;
++	struct in_addr addr;
++	struct hostent *he = NULL;
+ 
+ 
+ 	if (readline(fileno(f), &lbuf, &lbuflen) != 1)
+@@ -606,7 +624,7 @@ void nfsd_export(FILE *f)
+ 	/* now find flags for this export point in this domain */
+ 	for (i=0 ; i < MCL_MAXTYPES; i++) {
+ 		for (exp = exportlist[i]; exp; exp = exp->m_next) {
+-			if (!client_member(dom, exp->m_client->m_hostname))
++			if (!use_ipaddr && !client_member(dom, exp->m_client->m_hostname))
+ 				continue;
+ 			if (exp->m_export.e_flags & NFSEXP_CROSSMOUNT) {
+ 				/* if path is a mountpoint below e_path, then OK */
+@@ -620,6 +638,15 @@ void nfsd_export(FILE *f)
+ 					continue;
+ 			} else if (strcmp(path, exp->m_export.e_path) != 0)
+ 				continue;
++			if (use_ipaddr) {
++				if (he == NULL) {
++					if (!inet_aton(dom, &addr))
++						goto out;
++					he = client_resolve(addr);
++				}
++				if (!client_check(exp->m_client, he))
++					continue;
++			}
+ 			if (!found) {
+ 				found = exp;
+ 				found_type = i;
+@@ -661,6 +688,7 @@ void nfsd_export(FILE *f)
+  out:
+ 	if (dom) free(dom);
+ 	if (path) free(path);
++	if (he) free(he);
+ }
+ 
+ 
+diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
+index 999f035..4a50588 100644
+--- a/utils/mountd/mountd.c
++++ b/utils/mountd/mountd.c
+@@ -40,6 +40,7 @@ static struct nfs_fh_len *get_rootfh(struct svc_req *, dirpath *, mountstat3 *,
+ int reverse_resolve = 0;
+ int new_cache = 0;
+ int manage_gids;
++int use_ipaddr = -1;
+ 
+ /* PRC: a high-availability callout program can be specified with -H
+  * When this is done, the program will receive callouts whenever clients
 -- 
 1.5.2.1
 
