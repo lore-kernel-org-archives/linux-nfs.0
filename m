@@ -1,21 +1,21 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 02/10] mount.nfs: add EX_SUCCESS exit code
-Date: Mon, 17 Sep 2007 12:28:48 -0400
-Message-ID: <20070917162848.25850.78482.stgit@monet.1015granger.net>
+Subject: [PATCH 05/10] mount.nfs: Don't leak extra_opts
+Date: Mon, 17 Sep 2007 12:29:03 -0400
+Message-ID: <20070917162903.25850.47328.stgit@monet.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 To: neilb@suse.de
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IXJTa-0000kX-98
-	for nfs@lists.sourceforge.net; Mon, 17 Sep 2007 09:29:36 -0700
+	id 1IXJTo-0000kg-IX
+	for nfs@lists.sourceforge.net; Mon, 17 Sep 2007 09:29:48 -0700
 Received: from flpi185.sbcis.sbc.com ([207.115.20.187]
 	helo=flpi185.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IXJTb-0006V3-JY
-	for nfs@lists.sourceforge.net; Mon, 17 Sep 2007 09:29:36 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IXJTj-0006fF-AH
+	for nfs@lists.sourceforge.net; Mon, 17 Sep 2007 09:29:43 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,31 +28,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-We've had some recent trouble, especially in the umount code, that appears
-to be due to functions returning a 1 or a 0 return code when they should be
-returning a mount exit code (such as EX_FAIL) or a 0.
-
-To help clearly distinguish these two classes of functions, define an
-EX_SUCCESS exit code, which is equal to zero.
+The mount.nfs[4] command should properly release extra_opts before exiting.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- support/include/xcommon.h |    1 +
+ utils/mount/mount.c |    1 +
  1 files changed, 1 insertions(+), 0 deletions(-)
 
-diff --git a/support/include/xcommon.h b/support/include/xcommon.h
-index 9e23d12..d1a4b18 100644
---- a/support/include/xcommon.h
-+++ b/support/include/xcommon.h
-@@ -36,6 +36,7 @@ extern void die(int err, const char *fmt, ...);
- extern void (*at_die)(void);
+diff --git a/utils/mount/mount.c b/utils/mount/mount.c
+index 31e1969..fe2c48b 100644
+--- a/utils/mount/mount.c
++++ b/utils/mount/mount.c
+@@ -575,6 +575,7 @@ int main(int argc, char *argv[])
+ 	}
  
- /* exit status - bits below are ORed */
-+#define EX_SUCCESS	0	/* no failure occurred */
- #define EX_USAGE	1	/* incorrect invocation or permission */
- #define EX_SYSERR	2	/* out of memory, cannot fork, ... */
- #define EX_SOFTWARE	4	/* internal mount bug or wrong version */
+ out:
++	free(extra_opts);
+ 	free(mount_point);
+ 	exit(mnt_err);
+ }
 
 
 -------------------------------------------------------------------------
