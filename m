@@ -1,8 +1,8 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 04/10] text-based mount.nfs: Fix memory leak in
-	add_mtab()
-Date: Mon, 17 Sep 2007 12:28:58 -0400
-Message-ID: <20070917162858.25850.25050.stgit@monet.1015granger.net>
+Subject: [PATCH 01/10] mount.nfs: Provide comments for public network
+	functions
+Date: Mon, 17 Sep 2007 12:28:42 -0400
+Message-ID: <20070917162842.25850.7104.stgit@monet.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
@@ -11,12 +11,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IXJTz-0000ll-Fu
-	for nfs@lists.sourceforge.net; Mon, 17 Sep 2007 09:29:59 -0700
+	id 1IXJUN-0000ra-JI
+	for nfs@lists.sourceforge.net; Mon, 17 Sep 2007 09:30:23 -0700
 Received: from flpi185.sbcis.sbc.com ([207.115.20.187]
 	helo=flpi185.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IXJU1-0006YJ-W1
-	for nfs@lists.sourceforge.net; Mon, 17 Sep 2007 09:30:04 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IXJUS-0007KD-8S
+	for nfs@lists.sourceforge.net; Mon, 17 Sep 2007 09:30:28 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,35 +29,117 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-The add_mtab() function in utils/mount/mount.c calls fix_opts_string() to
-construct an /etc/mtab entry, but never frees the result.
+Clean up: Document public functions in util/mount/network.c with block
+comments.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/mount/mount.c |    2 ++
- 1 files changed, 2 insertions(+), 0 deletions(-)
+ utils/mount/network.c |   42 +++++++++++++++++++++++++++++++++++++-----
+ 1 files changed, 37 insertions(+), 5 deletions(-)
 
-diff --git a/utils/mount/mount.c b/utils/mount/mount.c
-index 751fbb9..31e1969 100644
---- a/utils/mount/mount.c
-+++ b/utils/mount/mount.c
-@@ -237,6 +237,7 @@ static int add_mtab(char *spec, char *mount_point, char *fstype,
+diff --git a/utils/mount/network.c b/utils/mount/network.c
+index 16b802d..49d3c6b 100644
+--- a/utils/mount/network.c
++++ b/utils/mount/network.c
+@@ -139,6 +139,13 @@ static const unsigned long probe_mnt3_first[] = {
+ 	0,
+ };
  
- 	if (flags & MS_REMOUNT) {
- 		update_mtab(ment.mnt_dir, &ment);
-+		free(ment.mnt_opts);
- 		return EX_SUCCESS;
- 	}
- 
-@@ -267,6 +268,7 @@ fail_close:
- 	endmntent(mtab);
- fail_unlock:
- 	unlock_mtab();
-+	free(ment.mnt_opts);
- 
- 	return result;
++/**
++ * nfs_gethostbyname - resolve a hostname to an IPv4 address
++ * @hostname: pointer to a C string containing a DNS hostname
++ * @saddr: returns an IPv4 address 
++ *
++ * Returns 1 if successful, otherwise zero.
++ */
+ int nfs_gethostbyname(const char *hostname, struct sockaddr_in *saddr)
+ {
+ 	struct hostent *hp;
+@@ -457,6 +464,16 @@ static int probe_mntport(clnt_addr_t *mnt_server)
+ 		return probe_port(mnt_server, probe_mnt1_first, probe_udp_only);
  }
+ 
++/**
++ * probe_bothports - discover the RPC endpoints of mountd and NFS server
++ * @mnt_server: pointer to address and pmap argument for mountd results
++ * @nfs_server: pointer to address and pmap argument for NFS server
++ *
++ * Returns 1 if successful, otherwise zero if some error occurred.
++ * Note that the arguments are both input and output arguments.
++ *
++ * A side effect of calling this function is that rpccreateerr is set.
++ */
+ int probe_bothports(clnt_addr_t *mnt_server, clnt_addr_t *nfs_server)
+ {
+ 	struct pmap *nfs_pmap = &nfs_server->pmap;
+@@ -524,8 +541,10 @@ static int probe_statd(void)
+ 	return 1;
+ }
+ 
+-/*
+- * Attempt to start rpc.statd
++/**
++ * start_statd - attempt to start rpc.statd
++ *
++ * Returns 1 if statd is running; otherwise zero.
+  */
+ int start_statd(void)
+ {
+@@ -549,7 +568,7 @@ int start_statd(void)
+ 	return 0;
+ }
+ 
+-/*
++/**
+  * nfs_call_umount - ask the server to remove a share from it's rmtab
+  * @mnt_server: address of RPC MNT program server
+  * @argp: directory path of share to "unmount"
+@@ -593,6 +612,13 @@ int nfs_call_umount(clnt_addr_t *mnt_server, dirpath *argp)
+ 	return 0;
+ }
+ 
++/**
++ * mnt_openclnt - get a handle for a remote mountd service
++ * @mnt_server: address and pmap arguments of mountd service
++ * @msock: returns a file descriptor of the underlying transport socket
++ *
++ * Returns an active handle for the remote's mountd service
++ */
+ CLIENT *mnt_openclnt(clnt_addr_t *mnt_server, int *msock)
+ {
+ 	struct sockaddr_in *mnt_saddr = &mnt_server->saddr;
+@@ -634,6 +660,12 @@ CLIENT *mnt_openclnt(clnt_addr_t *mnt_server, int *msock)
+ 	return NULL;
+ }
+ 
++/**
++ * mnt_closeclnt - terminate a handle for a remote mountd service
++ * @clnt: pointer to an active handle for a remote mountd service
++ * @msock: file descriptor of the underlying transport socket
++ *
++ */
+ void mnt_closeclnt(CLIENT *clnt, int msock)
+ {
+ 	auth_destroy(clnt->cl_auth);
+@@ -641,7 +673,7 @@ void mnt_closeclnt(CLIENT *clnt, int msock)
+ 	close(msock);
+ }
+ 
+-/*
++/**
+  * clnt_ping - send an RPC ping to the remote RPC service endpoint
+  * @saddr: server's address
+  * @prog: target RPC program number
+@@ -729,7 +761,7 @@ int clnt_ping(struct sockaddr_in *saddr, const unsigned long prog,
+ 		return 0;
+ }
+ 
+-/*
++/**
+  * get_client_address - acquire our local network address
+  * @saddr: server's address
+  * @caddr: filled in with our network address
 
 
 -------------------------------------------------------------------------
