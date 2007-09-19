@@ -1,123 +1,92 @@
 From: Christoph Hellwig <hch@lst.de>
-Subject: [PATCH 06/18] efs: new export ops
-Date: Wed, 19 Sep 2007 18:30:43 +0200
-Message-ID: <20070919163043.GG18952@lst.de>
+Subject: [PATCH 10/18] fat: new export ops
+Date: Wed, 19 Sep 2007 18:31:04 +0200
+Message-ID: <20070919163104.GK18952@lst.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset="us-ascii"
 Cc: akpm@osdl.org
 To: linux-fsdevel@vger.kernel.org, nfs@lists.sourceforge.net
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1IY2S8-0003a3-UN
+	for nfs@lists.sourceforge.net; Wed, 19 Sep 2007 09:31:05 -0700
+Received: from verein.lst.de ([213.95.11.210] helo=mail.lst.de)
+	by mail.sourceforge.net with esmtps (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.44) id 1IY2SC-00019I-AP
+	for nfs@lists.sourceforge.net; Wed, 19 Sep 2007 09:31:09 -0700
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-Trivial switch over to the new generic helpers.
+Very little changes here, fat had a mostly no op decode_fh before
+and does not store any parent information.
 
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 
-Index: linux-2.6/fs/efs/namei.c
+Index: linux-2.6/fs/fat/inode.c
 ===================================================================
---- linux-2.6.orig/fs/efs/namei.c	2007-09-13 15:10:46.000000000 +0200
-+++ linux-2.6/fs/efs/namei.c	2007-09-13 15:19:00.000000000 +0200
-@@ -10,6 +10,8 @@
- #include <linux/string.h>
- #include <linux/efs_fs.h>
- #include <linux/smp_lock.h>
-+#include <linux/exportfs.h>
-+
+--- linux-2.6.orig/fs/fat/inode.c	2007-03-13 19:22:40.000000000 +0100
++++ linux-2.6/fs/fat/inode.c	2007-03-13 19:23:13.000000000 +0100
+@@ -651,24 +651,15 @@ static const struct super_operations fat
+  * of i_logstart is used to store the directory entry offset.
+  */
  
- static efs_ino_t efs_find_entry(struct inode *inode, const char *name, int len) {
- 	struct buffer_head *bh;
-@@ -75,13 +77,10 @@ struct dentry *efs_lookup(struct inode *
- 	return NULL;
- }
- 
--struct dentry *efs_get_dentry(struct super_block *sb, void *vobjp)
-+static struct inode *efs_nfs_get_inode(struct super_block *sb, u64 ino,
-+		u32 generation)
+-static struct dentry *
+-fat_decode_fh(struct super_block *sb, __u32 *fh, int len, int fhtype,
+-	      int (*acceptable)(void *context, struct dentry *de),
+-	      void *context)
+-{
+-	if (fhtype != 3)
+-		return ERR_PTR(-ESTALE);
+-	if (len < 5)
+-		return ERR_PTR(-ESTALE);
+-
+-	return sb->s_export_op->find_exported_dentry(sb, fh, NULL, acceptable, context);
+-}
+-
+-static struct dentry *fat_get_dentry(struct super_block *sb, void *inump)
++static struct dentry *fat_fh_to_dentry(struct super_block *sb,
++		struct fid *fid, int fh_len, int fh_type)
  {
--	__u32 *objp = vobjp;
--	unsigned long ino = objp[0];
--	__u32 generation = objp[1];
- 	struct inode *inode;
--	struct dentry *result;
- 
- 	if (ino == 0)
- 		return ERR_PTR(-ESTALE);
-@@ -91,20 +90,25 @@ struct dentry *efs_get_dentry(struct sup
- 
- 	if (is_bad_inode(inode) ||
- 	    (generation && inode->i_generation != generation)) {
--	    	result = ERR_PTR(-ESTALE);
--		goto out_iput;
-+		iput(inode);
-+		return ERR_PTR(-ESTALE);
- 	}
- 
--	result = d_alloc_anon(inode);
--	if (!result) {
--		result = ERR_PTR(-ENOMEM);
--		goto out_iput;
--	}
--	return result;
-+	return inode;
-+}
- 
-- out_iput:
--	iput(inode);
--	return result;
-+struct dentry *efs_fh_to_dentry(struct super_block *sb, struct fid *fid,
-+		int fh_len, int fh_type)
-+{
-+	return generic_fh_to_dentry(sb, fid, fh_len, fh_type,
-+				    efs_nfs_get_inode);
-+}
+ 	struct inode *inode = NULL;
+ 	struct dentry *result;
+-	__u32 *fh = inump;
++	u32 *fh = fid->raw;
 +
-+struct dentry *efs_fh_to_parent(struct super_block *sb, struct fid *fid,
-+		int fh_len, int fh_type)
-+{
-+	return generic_fh_to_parent(sb, fid, fh_len, fh_type,
-+				    efs_nfs_get_inode);
++	if (fh_len < 5 || fh_type != 3)
++		return NULL;
+ 
+ 	inode = iget(sb, fh[0]);
+ 	if (!inode || is_bad_inode(inode) || inode->i_generation != fh[1]) {
+@@ -782,9 +773,8 @@ out:
  }
  
- struct dentry *efs_get_parent(struct dentry *child)
-Index: linux-2.6/fs/efs/super.c
-===================================================================
---- linux-2.6.orig/fs/efs/super.c	2007-09-13 15:10:46.000000000 +0200
-+++ linux-2.6/fs/efs/super.c	2007-09-13 15:18:26.000000000 +0200
-@@ -114,7 +114,8 @@ static const struct super_operations efs
+ static struct export_operations fat_export_ops = {
+-	.decode_fh	= fat_decode_fh,
+ 	.encode_fh	= fat_encode_fh,
+-	.get_dentry	= fat_get_dentry,
++	.fh_to_dentry	= fat_fh_to_dentry,
+ 	.get_parent	= fat_get_parent,
  };
- 
- static struct export_operations efs_export_ops = {
--	.get_dentry	= efs_get_dentry,
-+	.fh_to_dentry	= efs_fh_to_dentry,
-+	.fh_to_parent	= efs_fh_to_parent,
- 	.get_parent	= efs_get_parent,
- };
- 
-Index: linux-2.6/include/linux/efs_fs.h
-===================================================================
---- linux-2.6.orig/include/linux/efs_fs.h	2007-09-13 15:10:46.000000000 +0200
-+++ linux-2.6/include/linux/efs_fs.h	2007-09-13 15:18:26.000000000 +0200
-@@ -35,6 +35,7 @@ static inline struct efs_sb_info *SUPER_
- }
- 
- struct statfs;
-+struct fid;
- 
- extern const struct inode_operations efs_dir_inode_operations;
- extern const struct file_operations efs_dir_operations;
-@@ -45,7 +46,10 @@ extern efs_block_t efs_map_block(struct 
- extern int efs_get_block(struct inode *, sector_t, struct buffer_head *, int);
- 
- extern struct dentry *efs_lookup(struct inode *, struct dentry *, struct nameidata *);
--extern struct dentry *efs_get_dentry(struct super_block *sb, void *vobjp);
-+extern struct dentry *efs_fh_to_dentry(struct super_block *sb, struct fid *fid,
-+		int fh_len, int fh_type);
-+extern struct dentry *efs_fh_to_parent(struct super_block *sb, struct fid *fid,
-+		int fh_len, int fh_type);
- extern struct dentry *efs_get_parent(struct dentry *);
- extern int efs_bmap(struct inode *, int);
  
 
 --
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Microsoft
+Defy all challenges. Microsoft(R) Visual Studio 2005.
+http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
