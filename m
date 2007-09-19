@@ -1,23 +1,21 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: confirm 838085666815dd9fe36e3b48d0d6d30e1c7d3a07
-Date: Wed, 19 Sep 2007 17:05:59 +0100
-Message-ID: <20070919160559.GA15543@infradead.org>
-References: <mailman.40712.1190213474.21971.nfs@lists.sourceforge.net>
+From: Christoph Hellwig <hch@lst.de>
+Subject: [PATCH 00/18] export operations rewrite
+Date: Wed, 19 Sep 2007 18:30:09 +0200
+Message-ID: <20070919163009.GA18952@lst.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: neilb@suse.de
+Cc: akpm@osdl.org
+To: linux-fsdevel@vger.kernel.org, nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IY23u-0000q0-RL
-	for nfs@lists.sourceforge.net; Wed, 19 Sep 2007 09:06:03 -0700
-Received: from pentafluge.infradead.org ([213.146.154.40])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IY23z-0006Bk-Ed
-	for nfs@lists.sourceforge.net; Wed, 19 Sep 2007 09:06:07 -0700
-In-Reply-To: <mailman.40712.1190213474.21971.nfs@lists.sourceforge.net>
+	id 1IY2RL-0003TJ-HP
+	for nfs@lists.sourceforge.net; Wed, 19 Sep 2007 09:30:15 -0700
+Received: from verein.lst.de ([213.95.11.210] helo=mail.lst.de)
+	by mail.sourceforge.net with esmtps (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.44) id 1IY2RM-0005c1-VN
+	for nfs@lists.sourceforge.net; Wed, 19 Sep 2007 09:30:20 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,40 +28,22 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-And once again..
+This patchset is a medium scale rewrite of the export operations
+interface.  The goal is to make the interface less complex, and
+easier to understand from the filesystem side, aswell as preparing
+generic support for exporting of 64bit inode numbers.
 
-Can we please move linux-nfs to vger which has a working listmanger instead
-of this bloody piece of junk mailman is?
+This touches all nfs exporting filesystems, and I've done testing
+on all of the filesystems I have here locally (xfs, ext2, ext3, reiserfs,   
+jfs)
 
-On Wed, Sep 19, 2007 at 07:51:14AM -0700, nfs-request@lists.sourceforge.net wrote:
-> Your membership in the mailing list NFS has been disabled due to
-> excessive bounces The last bounce received from you was dated
-> 19-Sep-2007.  You will not get any more messages from this list until
-> you re-enable your membership.  You will receive 3 more reminders like
-> this before your membership in the list is deleted.
-> 
-> To re-enable your membership, you can simply respond to this message
-> (leaving the Subject: line intact), or visit the confirmation page at
-> 
->     https://lists.sourceforge.net/lists/confirm/nfs/838085666815dd9fe36e3b48d0d6d30e1c7d3a07
-> 
-> 
-> You can also visit your membership page at
-> 
->     https://lists.sourceforge.net/lists/options/nfs/hch%40infradead.org
-> 
-> 
-> On your membership page, you can change various delivery options such
-> as your email address and whether you get digests or not.  As a
-> reminder, your membership password is
-> 
->    
-> 
-> If you have any questions or problems, you can contact the list owner
-> at
-> 
->     nfs-owner@lists.sourceforge.net
----end quoted text---
+Unlike the last posting this series is against -mm (2.6.23-rc6-mm1
+specificly), so the first patch has been dropped as it's in git-xfs
+already, and the XFS conversion has gotten some major context changes
+due to the changes in git-xfs.  Except for those and some typo fixes
+in the documentation patch it's identical to the previous one.
+
+This series is sent for inclusion into -mm.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
