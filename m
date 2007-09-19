@@ -1,23 +1,23 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH 0/7] fix setuid/setgid clearing in networked
- filesystems (take 6)
-Date: Wed, 19 Sep 2007 11:52:50 -0400
-Message-ID: <20070919115250.b55a90cc.jlayton@redhat.com>
-References: <200709171129.l8HBT5Kq024360@dantu.rdu.redhat.com>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: confirm 838085666815dd9fe36e3b48d0d6d30e1c7d3a07
+Date: Wed, 19 Sep 2007 17:05:59 +0100
+Message-ID: <20070919160559.GA15543@infradead.org>
+References: <mailman.40712.1190213474.21971.nfs@lists.sourceforge.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: reiserfs-devel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	ecryptfs-devel@lists.sourceforge.net, nfs@lists.sourceforge.net,
-	linux-fsdevel@vger.kernel.org, akpm@linux-foundation.org,
-	unionfs@filesystems.org, linux-cifs-client@lists.samba.org
-To: Jeff Layton <jlayton@redhat.com>
+Cc: nfs@lists.sourceforge.net
+To: neilb@suse.de
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-list1-new-b.sourceforge.net ([10.3.1.93]
-	helo=sc8-sf-list1-new.sourceforge.net)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IY1rV-0007w4-Ki
-	for nfs@lists.sourceforge.net; Wed, 19 Sep 2007 08:53:13 -0700
-In-Reply-To: <200709171129.l8HBT5Kq024360@dantu.rdu.redhat.com>
+	id 1IY23u-0000q0-RL
+	for nfs@lists.sourceforge.net; Wed, 19 Sep 2007 09:06:03 -0700
+Received: from pentafluge.infradead.org ([213.146.154.40])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IY23z-0006Bk-Ed
+	for nfs@lists.sourceforge.net; Wed, 19 Sep 2007 09:06:07 -0700
+In-Reply-To: <mailman.40712.1190213474.21971.nfs@lists.sourceforge.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,28 +30,40 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Mon, 17 Sep 2007 07:29:05 -0400
-Jeff Layton <jlayton@redhat.com> wrote:
+And once again..
 
-> This patchset is the latest one for fixing the clearing of setuid/setgid
-> bits in networked filesystems. It should apply cleanly to 2.6.23-rc4-mm1.
-> This is basically the same patchset as take 5. The main differences are
-> that the patches have been reordered to make the tree cleanly bisectable,
-> and the comment in notify_change is now a bit more descriptive. I've also
-> moved the description of the main rationale for the patch into patch 5.
+Can we please move linux-nfs to vger which has a working listmanger instead
+of this bloody piece of junk mailman is?
+
+On Wed, Sep 19, 2007 at 07:51:14AM -0700, nfs-request@lists.sourceforge.net wrote:
+> Your membership in the mailing list NFS has been disabled due to
+> excessive bounces The last bounce received from you was dated
+> 19-Sep-2007.  You will not get any more messages from this list until
+> you re-enable your membership.  You will receive 3 more reminders like
+> this before your membership in the list is deleted.
 > 
-> Andrew, would it be possible to go ahead and get this committed to -mm?
+> To re-enable your membership, you can simply respond to this message
+> (leaving the Subject: line intact), or visit the confirmation page at
 > 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-
-Andrew,
-  This will need some changes before it can apply cleanly to
-2.6.23-rc6-mm1. You can ignore this for now. I'll respin, retest and
-repost...
-
-Thanks,
--- 
-Jeff Layton <jlayton@redhat.com>
+>     https://lists.sourceforge.net/lists/confirm/nfs/838085666815dd9fe36e3b48d0d6d30e1c7d3a07
+> 
+> 
+> You can also visit your membership page at
+> 
+>     https://lists.sourceforge.net/lists/options/nfs/hch%40infradead.org
+> 
+> 
+> On your membership page, you can change various delivery options such
+> as your email address and whether you get digests or not.  As a
+> reminder, your membership password is
+> 
+>    
+> 
+> If you have any questions or problems, you can contact the list owner
+> at
+> 
+>     nfs-owner@lists.sourceforge.net
+---end quoted text---
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
