@@ -1,345 +1,140 @@
 From: Christoph Hellwig <hch@lst.de>
-Subject: [PATCH 09/18] xfs: new export ops
-Date: Wed, 19 Sep 2007 18:30:59 +0200
-Message-ID: <20070919163059.GJ18952@lst.de>
+Subject: [PATCH 15/18] ocfs2: new export ops
+Date: Wed, 19 Sep 2007 18:31:24 +0200
+Message-ID: <20070919163124.GP18952@lst.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset="us-ascii"
 Cc: akpm@osdl.org
 To: linux-fsdevel@vger.kernel.org, nfs@lists.sourceforge.net
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1IY2SR-0003cu-QZ
+	for nfs@lists.sourceforge.net; Wed, 19 Sep 2007 09:31:23 -0700
+Received: from verein.lst.de ([213.95.11.210] helo=mail.lst.de)
+	by mail.sourceforge.net with esmtps (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.44) id 1IY2SV-00067g-MO
+	for nfs@lists.sourceforge.net; Wed, 19 Sep 2007 09:31:28 -0700
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-This one is a lot more complicated than the previous ones.  XFS already
-had a very clever scheme for supporting 64bit inode numbers in filehandles,
-and I've reworked this to be some kind of a prototype for the generic
-64bit inode filehandle support.
+OCFS2 has it's own 64bit-firendly filehandle format so we can't use
+the generic helpers here.  I'll add a struct for the types later.
 
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 
-Index: linux-2.6-xfs/fs/xfs/linux-2.6/xfs_export.c
+
+Index: linux-2.6/fs/ocfs2/export.c
 ===================================================================
---- linux-2.6-xfs.orig/fs/xfs/linux-2.6/xfs_export.c	2007-09-17 14:01:25.000000000 +0200
-+++ linux-2.6-xfs/fs/xfs/linux-2.6/xfs_export.c	2007-09-17 14:06:24.000000000 +0200
-@@ -33,62 +33,25 @@
- static struct dentry dotdot = { .d_name.name = "..", .d_name.len = 2, };
- 
- /*
-- * XFS encodes and decodes the fileid portion of NFS filehandles
-- * itself instead of letting the generic NFS code do it.  This
-- * allows filesystems with 64 bit inode numbers to be exported.
-- *
-- * Note that a side effect is that xfs_vget() won't be passed a
-- * zero inode/generation pair under normal circumstances.  As
-- * however a malicious client could send us such data, the check
-- * remains in that code.
-+ * Note that we only accept fileids which are long enough rather than allow
-+ * the parent generation number to default to zero.  XFS considers zero a
-+ * valid generation number not an invalid/wildcard value.
-  */
--
--STATIC struct dentry *
--xfs_fs_decode_fh(
--	struct super_block	*sb,
--	__u32			*fh,
--	int			fh_len,
--	int			fileid_type,
--	int (*acceptable)(
--		void		*context,
--		struct dentry	*de),
--	void			*context)
-+static int xfs_fileid_length(int fileid_type)
- {
--	xfs_fid_t		ifid;
--	xfs_fid_t		pfid;
--	void			*parent = NULL;
--	int			is64 = 0;
--	__u32			*p = fh;
--
--#if XFS_BIG_INUMS
--	is64 = (fileid_type & XFS_FILEID_TYPE_64FLAG);
--	fileid_type &= ~XFS_FILEID_TYPE_64FLAG;
--#endif
--
--	/*
--	 * Note that we only accept fileids which are long enough
--	 * rather than allow the parent generation number to default
--	 * to zero.  XFS considers zero a valid generation number not
--	 * an invalid/wildcard value.  There's little point printk'ing
--	 * a warning here as we don't have the client information
--	 * which would make such a warning useful.
--	 */
--	if (fileid_type > 2 ||
--	    fh_len < xfs_fileid_length((fileid_type == 2), is64))
--		return NULL;
--
--	p = xfs_fileid_decode_fid2(p, &ifid, is64);
--
--	if (fileid_type == 2) {
--		p = xfs_fileid_decode_fid2(p, &pfid, is64);
--		parent = &pfid;
-+	switch (fileid_type) {
-+	case FILEID_INO32_GEN:
-+		return 2;
-+	case FILEID_INO32_GEN_PARENT:
-+		return 4;
-+	case FILEID_INO32_GEN | XFS_FILEID_TYPE_64FLAG:
-+		return 3;
-+	case FILEID_INO32_GEN_PARENT | XFS_FILEID_TYPE_64FLAG:
-+		return 6;
- 	}
--
--	fh = (__u32 *)&ifid;
--	return sb->s_export_op->find_exported_dentry(sb, fh, parent, acceptable, context);
-+	return 255; /* invalid */
- }
- 
--
- STATIC int
- xfs_fs_encode_fh(
- 	struct dentry		*dentry,
-@@ -96,21 +59,21 @@ xfs_fs_encode_fh(
- 	int			*max_len,
- 	int			connectable)
- {
-+	struct fid		*fid = (struct fid *)fh;
-+	struct xfs_fid64	*fid64 = (struct xfs_fid64 *)fh;
- 	struct inode		*inode = dentry->d_inode;
--	int			type = 1;
--	__u32			*p = fh;
-+	int			fileid_type;
- 	int			len;
--	int			is64 = 0;
--#if XFS_BIG_INUMS
--	if (!(XFS_M(inode->i_sb)->m_flags & XFS_MOUNT_SMALL_INUMS)) {
--		/* filesystem may contain 64bit inode numbers */
--		is64 = XFS_FILEID_TYPE_64FLAG;
--	}
--#endif
- 
- 	/* Directories don't need their parent encoded, they have ".." */
- 	if (S_ISDIR(inode->i_mode))
--	    connectable = 0;
-+		fileid_type = FILEID_INO32_GEN;
-+	else
-+		fileid_type = FILEID_INO32_GEN_PARENT;
-+
-+	/* filesystem may contain 64bit inode numbers */
-+	if (!(XFS_M(inode->i_sb)->m_flags & XFS_MOUNT_SMALL_INUMS))
-+		fileid_type |= XFS_FILEID_TYPE_64FLAG;
- 
- 	/*
- 	 * Only encode if there is enough space given.  In practice
-@@ -118,39 +81,118 @@ xfs_fs_encode_fh(
- 	 * over NFSv2 with the subtree_check export option; the other
- 	 * seven combinations work.  The real answer is "don't use v2".
- 	 */
--	len = xfs_fileid_length(connectable, is64);
-+	len = xfs_fileid_length(fileid_type);
- 	if (*max_len < len)
- 		return 255;
- 	*max_len = len;
- 
--	p = xfs_fileid_encode_inode(p, inode, is64);
--	if (connectable) {
-+	switch (fileid_type) {
-+	case FILEID_INO32_GEN_PARENT:
-+		spin_lock(&dentry->d_lock);
-+		fid->i32.parent_ino = dentry->d_parent->d_inode->i_ino;
-+		fid->i32.parent_gen = dentry->d_parent->d_inode->i_generation;
-+		spin_unlock(&dentry->d_lock);
-+		/*FALLTHRU*/
-+	case FILEID_INO32_GEN:
-+		fid->i32.ino = inode->i_ino;
-+		fid->i32.gen = inode->i_generation;
-+		break;
-+	case FILEID_INO32_GEN_PARENT | XFS_FILEID_TYPE_64FLAG:
- 		spin_lock(&dentry->d_lock);
--		p = xfs_fileid_encode_inode(p, dentry->d_parent->d_inode, is64);
-+		fid64->parent_ino = dentry->d_parent->d_inode->i_ino;
-+		fid64->parent_gen = dentry->d_parent->d_inode->i_generation;
- 		spin_unlock(&dentry->d_lock);
--		type = 2;
-+		/*FALLTHRU*/
-+	case FILEID_INO32_GEN | XFS_FILEID_TYPE_64FLAG:
-+		fid64->ino = inode->i_ino;
-+		fid64->gen = inode->i_generation;
-+		break;
- 	}
--	BUG_ON((p - fh) != len);
--	return type | is64;
-+
-+	return fileid_type;
- }
- 
--STATIC struct dentry *
--xfs_fs_get_dentry(
-+STATIC struct inode *
-+xfs_nfs_get_inode(
- 	struct super_block	*sb,
--	void			*data)
--{
-+	u64			ino,
-+	u32			generation)
-+ {
-+	xfs_fid_t		xfid;
- 	bhv_vnode_t		*vp;
--	struct inode		*inode;
--	struct dentry		*result;
- 	int			error;
- 
--	error = xfs_vget(XFS_M(sb), &vp, data);
--	if (error || vp == NULL)
--		return ERR_PTR(-ESTALE) ;
-+	xfid.fid_len = sizeof(xfs_fid_t) - sizeof(xfid.fid_len);
-+	xfid.fid_pad = 0;
-+	xfid.fid_ino = ino;
-+	xfid.fid_gen = generation;
-+
-+	error = xfs_vget(XFS_M(sb), &vp, &xfid);
-+	if (error)
-+		return ERR_PTR(-error);
-+
-+	return vp ? vn_to_inode(vp) : NULL;
-+}
-+
-+STATIC struct dentry *
-+xfs_fs_fh_to_dentry(struct super_block *sb, struct fid *fid,
-+		 int fh_len, int fileid_type)
-+{
-+	struct xfs_fid64	*fid64 = (struct xfs_fid64 *)fid;
-+	struct inode		*inode = NULL;
-+	struct dentry		*result;
-+
-+	if (fh_len < xfs_fileid_length(fileid_type))
-+		return NULL;
-+
-+	switch (fileid_type) {
-+	case FILEID_INO32_GEN_PARENT:
-+	case FILEID_INO32_GEN:
-+		inode = xfs_nfs_get_inode(sb, fid->i32.ino, fid->i32.gen);
-+		break;
-+	case FILEID_INO32_GEN_PARENT | XFS_FILEID_TYPE_64FLAG:
-+	case FILEID_INO32_GEN | XFS_FILEID_TYPE_64FLAG:
-+		inode = xfs_nfs_get_inode(sb, fid64->ino, fid64->gen);
-+		break;
-+	}
- 
--	inode = vn_to_inode(vp);
-+	if (!inode)
-+		return NULL;
-+	if (IS_ERR(inode))
-+		return ERR_PTR(PTR_ERR(inode));
-+	result = d_alloc_anon(inode);
-+	if (!result) {
-+		iput(inode);
-+		return ERR_PTR(-ENOMEM);
-+	}
-+	return result;
-+}
-+
-+STATIC struct dentry *
-+xfs_fs_fh_to_parent(struct super_block *sb, struct fid *fid,
-+		 int fh_len, int fileid_type)
-+{
-+	struct xfs_fid64	*fid64 = (struct xfs_fid64 *)fid;
-+	struct inode		*inode = NULL;
-+	struct dentry		*result;
-+
-+	switch (fileid_type) {
-+	case FILEID_INO32_GEN_PARENT:
-+		inode = xfs_nfs_get_inode(sb, fid->i32.parent_ino,
-+					      fid->i32.parent_gen);
-+		break;
-+	case FILEID_INO32_GEN_PARENT | XFS_FILEID_TYPE_64FLAG:
-+		inode = xfs_nfs_get_inode(sb, fid64->parent_ino,
-+					      fid64->parent_gen);
-+		break;
-+	}
-+
-+	if (!inode)
-+		return NULL;
-+	if (IS_ERR(inode))
-+		return ERR_PTR(PTR_ERR(inode));
- 	result = d_alloc_anon(inode);
--        if (!result) {
-+	if (!result) {
- 		iput(inode);
- 		return ERR_PTR(-ENOMEM);
- 	}
-@@ -179,8 +221,8 @@ xfs_fs_get_parent(
- }
- 
- struct export_operations xfs_export_operations = {
--	.decode_fh		= xfs_fs_decode_fh,
- 	.encode_fh		= xfs_fs_encode_fh,
-+	.fh_to_dentry		= xfs_fs_fh_to_dentry,
-+	.fh_to_parent		= xfs_fs_fh_to_parent,
- 	.get_parent		= xfs_fs_get_parent,
--	.get_dentry		= xfs_fs_get_dentry,
+--- linux-2.6.orig/fs/ocfs2/export.c	2007-05-06 13:51:17.000000000 +0200
++++ linux-2.6/fs/ocfs2/export.c	2007-06-12 15:54:44.000000000 +0200
+@@ -45,9 +45,9 @@ struct ocfs2_inode_handle
+ 	u32 ih_generation;
  };
-Index: linux-2.6-xfs/fs/xfs/linux-2.6/xfs_export.h
-===================================================================
---- linux-2.6-xfs.orig/fs/xfs/linux-2.6/xfs_export.h	2007-09-17 14:01:25.000000000 +0200
-+++ linux-2.6-xfs/fs/xfs/linux-2.6/xfs_export.h	2007-09-17 14:02:52.000000000 +0200
-@@ -59,50 +59,14 @@
-  * a subdirectory) or use the "fsid" export option.
-  */
  
-+struct xfs_fid64 {
-+	u64 ino;
-+	u32 gen;
-+	u64 parent_ino;
-+	u32 parent_gen;
-+} __attribute__((packed));
-+
- /* This flag goes on the wire.  Don't play with it. */
- #define XFS_FILEID_TYPE_64FLAG	0x80	/* NFS fileid has 64bit inodes */
+-static struct dentry *ocfs2_get_dentry(struct super_block *sb, void *vobjp)
++static struct dentry *ocfs2_get_dentry(struct super_block *sb,
++		struct ocfs2_inode_handle *handle)
+ {
+-	struct ocfs2_inode_handle *handle = vobjp;
+ 	struct inode *inode;
+ 	struct dentry *result;
  
--/* Calculate the length in u32 units of the fileid data */
--static inline int
--xfs_fileid_length(int hasparent, int is64)
--{
--	return hasparent ? (is64 ? 6 : 4) : (is64 ? 3 : 2);
--}
+@@ -200,54 +200,37 @@ bail:
+ 	return type;
+ }
+ 
+-static struct dentry *ocfs2_decode_fh(struct super_block *sb, u32 *fh_in,
+-				      int fh_len, int fileid_type,
+-				      int (*acceptable)(void *context,
+-						        struct dentry *de),
+-				      void *context)
++static struct dentry *ocfs2_fh_to_dentry(struct super_block *sb,
++		struct fid *fid, int fh_len, int fh_type)
+ {
+-	struct ocfs2_inode_handle handle, parent;
+-	struct dentry *ret = NULL;
+-	__le32 *fh = (__force __le32 *) fh_in;
 -
--/*
-- * Decode encoded inode information (either for the inode itself
-- * or the parent) into an xfs_fid_t structure.  Advances and
-- * returns the new data pointer
-- */
--static inline __u32 *
--xfs_fileid_decode_fid2(__u32 *p, xfs_fid_t *fid, int is64)
--{
--	fid->fid_len = sizeof(xfs_fid_t) - sizeof(fid->fid_len);
--	fid->fid_pad = 0;
--	fid->fid_ino = *p++;
--#if XFS_BIG_INUMS
--	if (is64)
--		fid->fid_ino |= (((__u64)(*p++)) << 32);
--#endif
--	fid->fid_gen = *p++;
--	return p;
--}
+-	mlog_entry("(0x%p, 0x%p, %d, %d, 0x%p, 0x%p)\n",
+-		   sb, fh, fh_len, fileid_type, acceptable, context);
++	struct ocfs2_inode_handle handle;
+ 
+-	if (fh_len < 3 || fileid_type > 2)
+-		goto bail;
++	if (fh_len < 3 || fh_type > 2)
++		return NULL;
+ 
+-	if (fileid_type == 2) {
+-		if (fh_len < 6)
+-			goto bail;
 -
--/*
-- * Encode inode information (either for the inode itself or the
-- * parent) into a fileid buffer.  Advances and returns the new
-- * data pointer.
-- */
--static inline __u32 *
--xfs_fileid_encode_inode(__u32 *p, struct inode *inode, int is64)
--{
--	*p++ = (__u32)inode->i_ino;
--#if XFS_BIG_INUMS
--	if (is64)
--		*p++ = (__u32)(inode->i_ino >> 32);
--#endif
--	*p++ = inode->i_generation;
--	return p;
--}
+-		parent.ih_blkno = (u64)le32_to_cpu(fh[3]) << 32;
+-		parent.ih_blkno |= (u64)le32_to_cpu(fh[4]);
+-		parent.ih_generation = le32_to_cpu(fh[5]);
 -
- #endif	/* __XFS_EXPORT_H__ */
+-		mlog(0, "Decoding parent: blkno: %llu, generation: %u\n",
+-		     (unsigned long long)parent.ih_blkno,
+-		     parent.ih_generation);
+-	}
+-
+-	handle.ih_blkno = (u64)le32_to_cpu(fh[0]) << 32;
+-	handle.ih_blkno |= (u64)le32_to_cpu(fh[1]);
+-	handle.ih_generation = le32_to_cpu(fh[2]);
++	handle.ih_blkno = (u64)le32_to_cpu(fid->raw[0]) << 32;
++	handle.ih_blkno |= (u64)le32_to_cpu(fid->raw[1]);
++	handle.ih_generation = le32_to_cpu(fid->raw[2]);
++	return ocfs2_get_dentry(sb, &handle);
++}
+ 
+-	mlog(0, "Encoding fh: blkno: %llu, generation: %u\n",
+-	     (unsigned long long)handle.ih_blkno, handle.ih_generation);
++static struct dentry *ocfs2_fh_to_parent(struct super_block *sb,
++		struct fid *fid, int fh_len, int fh_type)
++{
++	struct ocfs2_inode_handle parent;
+ 
+-	ret = ocfs2_export_ops.find_exported_dentry(sb, &handle, &parent,
+-						    acceptable, context);
++	if (fh_type != 2 || fh_len < 6)
++		return NULL;
+ 
+-bail:
+-	mlog_exit_ptr(ret);
+-	return ret;
++	parent.ih_blkno = (u64)le32_to_cpu(fid->raw[3]) << 32;
++	parent.ih_blkno |= (u64)le32_to_cpu(fid->raw[4]);
++	parent.ih_generation = le32_to_cpu(fid->raw[5]);
++	return ocfs2_get_dentry(sb, &parent);
+ }
+ 
+ struct export_operations ocfs2_export_ops = {
+-	.decode_fh	= ocfs2_decode_fh,
+ 	.encode_fh	= ocfs2_encode_fh,
+-
++	.fh_to_dentry	= ocfs2_fh_to_dentry,
++	.fh_to_parent	= ocfs2_fh_to_parent,
+ 	.get_parent	= ocfs2_get_parent,
+-	.get_dentry	= ocfs2_get_dentry,
+ };
 
 --
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Microsoft
+Defy all challenges. Microsoft(R) Visual Studio 2005.
+http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
