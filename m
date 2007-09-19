@@ -1,146 +1,327 @@
 From: Christoph Hellwig <hch@lst.de>
-Subject: [PATCH 08/18] ntfs: new export ops
-Date: Wed, 19 Sep 2007 18:30:53 +0200
-Message-ID: <20070919163053.GI18952@lst.de>
+Subject: [PATCH 17/18] exportfs: make struct export_operations const
+Date: Wed, 19 Sep 2007 18:31:33 +0200
+Message-ID: <20070919163133.GR18952@lst.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset=us-ascii
 Cc: akpm@osdl.org
 To: linux-fsdevel@vger.kernel.org, nfs@lists.sourceforge.net
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IY2Ry-0003VK-Gv
-	for nfs@lists.sourceforge.net; Wed, 19 Sep 2007 09:30:54 -0700
-Received: from verein.lst.de ([213.95.11.210] helo=mail.lst.de)
-	by mail.sourceforge.net with esmtps (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.44) id 1IY2S2-0005rr-Gb
-	for nfs@lists.sourceforge.net; Wed, 19 Sep 2007 09:30:59 -0700
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-Trivial switch over to the new generic helpers.
+Now that nfsd has stopped writing to the find_exported_dentry member
+we an mark the export_operations const
 
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 
-
+Index: linux-2.6/fs/efs/super.c
+===================================================================
+--- linux-2.6.orig/fs/efs/super.c	2007-09-13 15:06:51.000000000 +0200
++++ linux-2.6/fs/efs/super.c	2007-09-13 15:09:05.000000000 +0200
+@@ -113,7 +113,7 @@ static const struct super_operations efs
+ 	.remount_fs	= efs_remount,
+ };
+ 
+-static struct export_operations efs_export_ops = {
++static const struct export_operations efs_export_ops = {
+ 	.fh_to_dentry	= efs_fh_to_dentry,
+ 	.fh_to_parent	= efs_fh_to_parent,
+ 	.get_parent	= efs_get_parent,
+Index: linux-2.6/fs/ext2/super.c
+===================================================================
+--- linux-2.6.orig/fs/ext2/super.c	2007-09-13 15:05:26.000000000 +0200
++++ linux-2.6/fs/ext2/super.c	2007-09-13 15:09:05.000000000 +0200
+@@ -292,7 +292,7 @@ static struct dentry *ext2_fh_to_parent(
+  * systems, but can be improved upon.
+  * Currently only get_parent is required.
+  */
+-static struct export_operations ext2_export_ops = {
++static const struct export_operations ext2_export_ops = {
+ 	.fh_to_dentry = ext2_fh_to_dentry,
+ 	.fh_to_parent = ext2_fh_to_parent,
+ 	.get_parent = ext2_get_parent,
+Index: linux-2.6/fs/ext3/super.c
+===================================================================
+--- linux-2.6.orig/fs/ext3/super.c	2007-09-13 15:06:39.000000000 +0200
++++ linux-2.6/fs/ext3/super.c	2007-09-13 15:09:05.000000000 +0200
+@@ -670,7 +670,7 @@ static const struct super_operations ext
+ #endif
+ };
+ 
+-static struct export_operations ext3_export_ops = {
++static const struct export_operations ext3_export_ops = {
+ 	.fh_to_dentry = ext3_fh_to_dentry,
+ 	.fh_to_parent = ext3_fh_to_parent,
+ 	.get_parent = ext3_get_parent,
+Index: linux-2.6/fs/ext4/super.c
+===================================================================
+--- linux-2.6.orig/fs/ext4/super.c	2007-09-13 15:06:44.000000000 +0200
++++ linux-2.6/fs/ext4/super.c	2007-09-13 15:09:05.000000000 +0200
+@@ -721,7 +721,7 @@ static const struct super_operations ext
+ #endif
+ };
+ 
+-static struct export_operations ext4_export_ops = {
++static const struct export_operations ext4_export_ops = {
+ 	.fh_to_dentry = ext4_fh_to_dentry,
+ 	.fh_to_parent = ext4_fh_to_parent,
+ 	.get_parent = ext4_get_parent,
+Index: linux-2.6/fs/fat/inode.c
+===================================================================
+--- linux-2.6.orig/fs/fat/inode.c	2007-09-13 15:08:12.000000000 +0200
++++ linux-2.6/fs/fat/inode.c	2007-09-13 15:09:05.000000000 +0200
+@@ -769,7 +769,7 @@ out:
+ 	return parent;
+ }
+ 
+-static struct export_operations fat_export_ops = {
++static const struct export_operations fat_export_ops = {
+ 	.encode_fh	= fat_encode_fh,
+ 	.fh_to_dentry	= fat_fh_to_dentry,
+ 	.get_parent	= fat_get_parent,
+Index: linux-2.6/fs/gfs2/ops_export.c
+===================================================================
+--- linux-2.6.orig/fs/gfs2/ops_export.c	2007-09-13 15:08:53.000000000 +0200
++++ linux-2.6/fs/gfs2/ops_export.c	2007-09-13 15:09:05.000000000 +0200
+@@ -294,7 +294,7 @@ static struct dentry *gfs2_fh_to_parent(
+ 	}
+ }
+ 
+-struct export_operations gfs2_export_ops = {
++const struct export_operations gfs2_export_ops = {
+ 	.encode_fh = gfs2_encode_fh,
+ 	.fh_to_dentry = gfs2_fh_to_dentry,
+ 	.fh_to_parent = gfs2_fh_to_parent,
+Index: linux-2.6/fs/isofs/export.c
+===================================================================
+--- linux-2.6.orig/fs/isofs/export.c	2007-09-13 15:08:18.000000000 +0200
++++ linux-2.6/fs/isofs/export.c	2007-09-13 15:09:05.000000000 +0200
+@@ -207,7 +207,7 @@ static struct dentry *isofs_fh_to_parent
+ 			fh_len > 4 ? ifid->parent_generation : 0);
+ }
+ 
+-struct export_operations isofs_export_ops = {
++const struct export_operations isofs_export_ops = {
+ 	.encode_fh	= isofs_export_encode_fh,
+ 	.fh_to_dentry	= isofs_fh_to_dentry,
+ 	.fh_to_parent	= isofs_fh_to_parent,
+Index: linux-2.6/fs/isofs/isofs.h
+===================================================================
+--- linux-2.6.orig/fs/isofs/isofs.h	2007-09-11 16:23:34.000000000 +0200
++++ linux-2.6/fs/isofs/isofs.h	2007-09-13 15:09:05.000000000 +0200
+@@ -178,4 +178,4 @@ isofs_normalize_block_and_offset(struct 
+ extern const struct inode_operations isofs_dir_inode_operations;
+ extern const struct file_operations isofs_dir_operations;
+ extern const struct address_space_operations isofs_symlink_aops;
+-extern struct export_operations isofs_export_ops;
++extern const struct export_operations isofs_export_ops;
+Index: linux-2.6/fs/jfs/super.c
+===================================================================
+--- linux-2.6.orig/fs/jfs/super.c	2007-09-13 15:07:17.000000000 +0200
++++ linux-2.6/fs/jfs/super.c	2007-09-13 15:09:05.000000000 +0200
+@@ -48,7 +48,7 @@ MODULE_LICENSE("GPL");
+ static struct kmem_cache * jfs_inode_cachep;
+ 
+ static const struct super_operations jfs_super_operations;
+-static struct export_operations jfs_export_operations;
++static const struct export_operations jfs_export_operations;
+ static struct file_system_type jfs_fs_type;
+ 
+ #define MAX_COMMIT_THREADS 64
+@@ -737,7 +737,7 @@ static const struct super_operations jfs
+ #endif
+ };
+ 
+-static struct export_operations jfs_export_operations = {
++static const struct export_operations jfs_export_operations = {
+ 	.fh_to_dentry	= jfs_fh_to_dentry,
+ 	.fh_to_parent	= jfs_fh_to_parent,
+ 	.get_parent	= jfs_get_parent,
 Index: linux-2.6/fs/ntfs/namei.c
 ===================================================================
---- linux-2.6.orig/fs/ntfs/namei.c	2007-09-13 15:10:45.000000000 +0200
-+++ linux-2.6/fs/ntfs/namei.c	2007-09-13 15:20:12.000000000 +0200
-@@ -450,58 +450,40 @@ try_next:
- 	return parent_dent;
- }
- 
--/**
-- * ntfs_get_dentry - find a dentry for the inode from a file handle sub-fragment
-- * @sb:		super block identifying the mounted ntfs volume
-- * @fh:		the file handle sub-fragment
-- *
-- * Find a dentry for the inode given a file handle sub-fragment.  This function
-- * is called from fs/exportfs/expfs.c::find_exported_dentry() which in turn is
-- * called from the default ->decode_fh() which is export_decode_fh() in the
-- * same file.  The code is closely based on the default ->get_dentry() helper
-- * fs/exportfs/expfs.c::get_object().
-- *
-- * The @fh contains two 32-bit unsigned values, the first one is the inode
-- * number and the second one is the inode generation.
-- *
-- * Return the dentry on success or the error code on error (IS_ERR() is true).
-- */
--static struct dentry *ntfs_get_dentry(struct super_block *sb, void *fh)
-+static struct inode *ntfs_nfs_get_inode(struct super_block *sb,
-+		u64 ino, u32 generation)
- {
--	struct inode *vi;
--	struct dentry *dent;
--	unsigned long ino = ((u32 *)fh)[0];
--	u32 gen = ((u32 *)fh)[1];
--
--	ntfs_debug("Entering for inode 0x%lx, generation 0x%x.", ino, gen);
--	vi = ntfs_iget(sb, ino);
--	if (IS_ERR(vi)) {
--		ntfs_error(sb, "Failed to get inode 0x%lx.", ino);
--		return (struct dentry *)vi;
--	}
--	if (unlikely(is_bad_inode(vi) || vi->i_generation != gen)) {
--		/* We didn't find the right inode. */
--		ntfs_error(sb, "Inode 0x%lx, bad count: %d %d or version 0x%x "
--				"0x%x.", vi->i_ino, vi->i_nlink,
--				atomic_read(&vi->i_count), vi->i_generation,
--				gen);
--		iput(vi);
--		return ERR_PTR(-ESTALE);
--	}
--	/* Now find a dentry.  If possible, get a well-connected one. */
--	dent = d_alloc_anon(vi);
--	if (unlikely(!dent)) {
--		iput(vi);
--		return ERR_PTR(-ENOMEM);
-+	struct inode *inode;
-+
-+	inode = ntfs_iget(sb, ino);
-+	if (!IS_ERR(inode)) {
-+		if (is_bad_inode(inode) || inode->i_generation != generation) {
-+			iput(inode);
-+			inode = ERR_PTR(-ESTALE);
-+		}
- 	}
--	ntfs_debug("Done for inode 0x%lx, generation 0x%x.", ino, gen);
--	return dent;
-+
-+	return inode;
-+}
-+
-+static struct dentry *ntfs_fh_to_dentry(struct super_block *sb, struct fid *fid,
-+		int fh_len, int fh_type)
-+{
-+	return generic_fh_to_dentry(sb, fid, fh_len, fh_type,
-+				    ntfs_nfs_get_inode);
-+}
-+
-+static struct dentry *ntfs_fh_to_parent(struct super_block *sb, struct fid *fid,
-+		int fh_len, int fh_type)
-+{
-+	return generic_fh_to_parent(sb, fid, fh_len, fh_type,
-+				    ntfs_nfs_get_inode);
- }
- 
- /**
-  * Export operations allowing NFS exporting of mounted NTFS partitions.
-  *
-- * We use the default ->decode_fh() and ->encode_fh() for now.  Note that they
-+ * We use the default ->encode_fh() for now.  Note that they
-  * use 32 bits to store the inode number which is an unsigned long so on 64-bit
-  * architectures is usually 64 bits so it would all fail horribly on huge
-  * volumes.  I guess we need to define our own encode and decode fh functions
-@@ -520,7 +502,6 @@ static struct dentry *ntfs_get_dentry(st
- struct export_operations ntfs_export_ops = {
+--- linux-2.6.orig/fs/ntfs/namei.c	2007-09-13 15:07:28.000000000 +0200
++++ linux-2.6/fs/ntfs/namei.c	2007-09-13 15:09:05.000000000 +0200
+@@ -497,7 +497,7 @@ static struct dentry *ntfs_fh_to_parent(
+  * allowing the inode number 0 which is used in NTFS for the system file $MFT
+  * and due to using iget() whereas NTFS needs ntfs_iget().
+  */
+-struct export_operations ntfs_export_ops = {
++const struct export_operations ntfs_export_ops = {
  	.get_parent	= ntfs_get_parent,	/* Find the parent of a given
  						   directory. */
--	.get_dentry	= ntfs_get_dentry,	/* Find a dentry for the inode
--						   given a file handle
--						   sub-fragment. */
-+	.fh_to_dentry	= ntfs_fh_to_dentry,
-+	.fh_to_parent	= ntfs_fh_to_parent,
+ 	.fh_to_dentry	= ntfs_fh_to_dentry,
+Index: linux-2.6/fs/ntfs/ntfs.h
+===================================================================
+--- linux-2.6.orig/fs/ntfs/ntfs.h	2007-09-11 16:23:35.000000000 +0200
++++ linux-2.6/fs/ntfs/ntfs.h	2007-09-13 15:09:05.000000000 +0200
+@@ -69,7 +69,7 @@ extern const struct inode_operations ntf
+ extern const struct  file_operations ntfs_empty_file_ops;
+ extern const struct inode_operations ntfs_empty_inode_ops;
+ 
+-extern struct export_operations ntfs_export_ops;
++extern const struct export_operations ntfs_export_ops;
+ 
+ /**
+  * NTFS_SB - return the ntfs volume given a vfs super block
+Index: linux-2.6/fs/ocfs2/export.c
+===================================================================
+--- linux-2.6.orig/fs/ocfs2/export.c	2007-09-13 15:09:00.000000000 +0200
++++ linux-2.6/fs/ocfs2/export.c	2007-09-13 15:09:05.000000000 +0200
+@@ -228,7 +228,7 @@ static struct dentry *ocfs2_fh_to_parent
+ 	return ocfs2_get_dentry(sb, &parent);
+ }
+ 
+-struct export_operations ocfs2_export_ops = {
++const struct export_operations ocfs2_export_ops = {
+ 	.encode_fh	= ocfs2_encode_fh,
+ 	.fh_to_dentry	= ocfs2_fh_to_dentry,
+ 	.fh_to_parent	= ocfs2_fh_to_parent,
+Index: linux-2.6/fs/ocfs2/export.h
+===================================================================
+--- linux-2.6.orig/fs/ocfs2/export.h	2007-09-11 16:23:35.000000000 +0200
++++ linux-2.6/fs/ocfs2/export.h	2007-09-13 15:09:05.000000000 +0200
+@@ -28,6 +28,6 @@
+ 
+ #include <linux/exportfs.h>
+ 
+-extern struct export_operations ocfs2_export_ops;
++extern const struct export_operations ocfs2_export_ops;
+ 
+ #endif /* OCFS2_EXPORT_H */
+Index: linux-2.6/fs/reiserfs/super.c
+===================================================================
+--- linux-2.6.orig/fs/reiserfs/super.c	2007-09-13 15:08:29.000000000 +0200
++++ linux-2.6/fs/reiserfs/super.c	2007-09-13 15:09:05.000000000 +0200
+@@ -649,7 +649,7 @@ static struct quotactl_ops reiserfs_qctl
  };
+ #endif
+ 
+-static struct export_operations reiserfs_export_ops = {
++static const struct export_operations reiserfs_export_ops = {
+ 	.encode_fh = reiserfs_encode_fh,
+ 	.fh_to_dentry = reiserfs_fh_to_dentry,
+ 	.fh_to_parent = reiserfs_fh_to_parent,
+Index: linux-2.6/fs/xfs/linux-2.6/xfs_export.c
+===================================================================
+--- linux-2.6.orig/fs/xfs/linux-2.6/xfs_export.c	2007-09-13 15:08:05.000000000 +0200
++++ linux-2.6/fs/xfs/linux-2.6/xfs_export.c	2007-09-13 15:09:05.000000000 +0200
+@@ -215,7 +215,7 @@ xfs_fs_get_parent(
+ 	return parent;
+ }
+ 
+-struct export_operations xfs_export_operations = {
++const struct export_operations xfs_export_operations = {
+ 	.encode_fh		= xfs_fs_encode_fh,
+ 	.fh_to_dentry		= xfs_fs_fh_to_dentry,
+ 	.fh_to_parent		= xfs_fs_fh_to_parent,
+Index: linux-2.6/fs/xfs/linux-2.6/xfs_super.h
+===================================================================
+--- linux-2.6.orig/fs/xfs/linux-2.6/xfs_super.h	2007-09-11 16:23:35.000000000 +0200
++++ linux-2.6/fs/xfs/linux-2.6/xfs_super.h	2007-09-13 15:09:05.000000000 +0200
+@@ -117,6 +117,6 @@ extern int  xfs_blkdev_get(struct xfs_mo
+ extern void xfs_blkdev_put(struct block_device *);
+ extern void xfs_blkdev_issue_flush(struct xfs_buftarg *);
+ 
+-extern struct export_operations xfs_export_operations;
++extern const struct export_operations xfs_export_operations;
+ 
+ #endif	/* __XFS_SUPER_H__ */
+Index: linux-2.6/include/linux/fs.h
+===================================================================
+--- linux-2.6.orig/include/linux/fs.h	2007-09-11 16:23:35.000000000 +0200
++++ linux-2.6/include/linux/fs.h	2007-09-13 15:09:05.000000000 +0200
+@@ -930,7 +930,7 @@ struct super_block {
+ 	const struct super_operations	*s_op;
+ 	struct dquot_operations	*dq_op;
+  	struct quotactl_ops	*s_qcop;
+-	struct export_operations *s_export_op;
++	const struct export_operations *s_export_op;
+ 	unsigned long		s_flags;
+ 	unsigned long		s_magic;
+ 	struct dentry		*s_root;
+Index: linux-2.6/mm/shmem.c
+===================================================================
+--- linux-2.6.orig/mm/shmem.c	2007-09-13 15:08:23.000000000 +0200
++++ linux-2.6/mm/shmem.c	2007-09-13 15:09:05.000000000 +0200
+@@ -2049,7 +2049,7 @@ static int shmem_encode_fh(struct dentry
+ 	return 1;
+ }
+ 
+-static struct export_operations shmem_export_ops = {
++static const struct export_operations shmem_export_ops = {
+ 	.get_parent     = shmem_get_parent,
+ 	.encode_fh      = shmem_encode_fh,
+ 	.fh_to_dentry	= shmem_fh_to_dentry,
+Index: linux-2.6/fs/exportfs/expfs.c
+===================================================================
+--- linux-2.6.orig/fs/exportfs/expfs.c	2007-09-13 15:05:20.000000000 +0200
++++ linux-2.6/fs/exportfs/expfs.c	2007-09-13 15:10:04.000000000 +0200
+@@ -29,7 +29,7 @@ static struct dentry *exportfs_get_dentr
+ static int exportfs_get_name(struct dentry *dir, char *name,
+ 		struct dentry *child)
+ {
+-	struct export_operations *nop = dir->d_sb->s_export_op;
++	const struct export_operations *nop = dir->d_sb->s_export_op;
+ 
+ 	if (nop->get_name)
+ 		return nop->get_name(dir, name, child);
+@@ -497,7 +497,7 @@ static struct dentry *export_decode_fh(s
+ int exportfs_encode_fh(struct dentry *dentry, struct fid *fid, int *max_len,
+ 		int connectable)
+ {
+- 	struct export_operations *nop = dentry->d_sb->s_export_op;
++	const struct export_operations *nop = dentry->d_sb->s_export_op;
+ 	int error;
+ 
+ 	if (nop->encode_fh)
+@@ -513,7 +513,7 @@ struct dentry *exportfs_decode_fh(struct
+ 		int fh_len, int fileid_type,
+ 		int (*acceptable)(void *, struct dentry *), void *context)
+ {
+-	struct export_operations *nop = mnt->mnt_sb->s_export_op;
++	const struct export_operations *nop = mnt->mnt_sb->s_export_op;
+ 	struct dentry *result, *alias;
+ 	int err;
+ 
+Index: linux-2.6/fs/cifs/cifsfs.c
+===================================================================
+--- linux-2.6.orig/fs/cifs/cifsfs.c	2007-09-11 16:23:35.000000000 +0200
++++ linux-2.6/fs/cifs/cifsfs.c	2007-09-13 15:09:05.000000000 +0200
+@@ -50,7 +50,7 @@ static struct quotactl_ops cifs_quotactl
+ #endif /* QUOTA */
+ 
+ #ifdef CONFIG_CIFS_EXPERIMENTAL
+-extern struct export_operations cifs_export_ops;
++extern const struct export_operations cifs_export_ops;
+ #endif /* EXPERIMENTAL */
+ 
+ int cifsFYI = 0;
+Index: linux-2.6/fs/cifs/export.c
+===================================================================
+--- linux-2.6.orig/fs/cifs/export.c	2007-09-11 16:23:35.000000000 +0200
++++ linux-2.6/fs/cifs/export.c	2007-09-13 15:09:05.000000000 +0200
+@@ -52,7 +52,7 @@ static struct dentry *cifs_get_parent(st
+ 	return ERR_PTR(-EACCES);
+ }
+ 
+-struct export_operations cifs_export_ops = {
++const struct export_operations cifs_export_ops = {
+ 	.get_parent = cifs_get_parent,
+ /*	Following five export operations are unneeded so far and can default:
+ 	.get_dentry =
+Index: linux-2.6/fs/gfs2/ops_fstype.h
+===================================================================
+--- linux-2.6.orig/fs/gfs2/ops_fstype.h	2007-09-11 16:23:34.000000000 +0200
++++ linux-2.6/fs/gfs2/ops_fstype.h	2007-09-13 15:09:05.000000000 +0200
+@@ -14,6 +14,6 @@
+ 
+ extern struct file_system_type gfs2_fs_type;
+ extern struct file_system_type gfs2meta_fs_type;
+-extern struct export_operations gfs2_export_ops;
++extern const struct export_operations gfs2_export_ops;
+ 
+ #endif /* __OPS_FSTYPE_DOT_H__ */
 
 --
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Microsoft
-Defy all challenges. Microsoft(R) Visual Studio 2005.
-http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
