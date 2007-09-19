@@ -1,36 +1,25 @@
-From: "Chakri n" <chakriin5@gmail.com>
-Subject: Re: A unresponsive file system can hang all I/O in the system
-	on linux-2.6.23-rc6 (dirty_thresh problem?)
-Date: Fri, 28 Sep 2007 03:36:51 -0700
-Message-ID: <92cbf19b0709280336r1af60b3cq945cdd03366b8102@mail.gmail.com>
-References: <92cbf19b0709272332s25684643odaade0e98cb3a1f4@mail.gmail.com>
-	<20070927235034.ae7bd73d.akpm@linux-foundation.org>
-	<1190962752.31636.15.camel@twins>
-	<92cbf19b0709280127yba48b60wfe58e532944894ca@mail.gmail.com>
-	<1190968800.31636.26.camel@twins>
-	<92cbf19b0709280201o3778f945mf1d8d61cbb3d0558@mail.gmail.com>
-	<1190970729.31636.29.camel@twins>
-	<92cbf19b0709280220o7cdd4b1cua37a8776af68ac25@mail.gmail.com>
-	<1190971419.31636.38.camel@twins>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: nfs_refresh_verifier / nfs_renew_times confusion
+Date: Wed, 19 Sep 2007 16:57:54 -0400
+Message-ID: <1190235474.6734.79.camel@heimdal.trondhjem.org>
+References: <46F184A8.9050801@oracle.com>
+	<1190234217.6734.57.camel@heimdal.trondhjem.org>
+	<46F18B12.4000802@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	nfs@lists.sourceforge.net,
-	linux-pm <linux-pm@lists.linux-foundation.org>,
-	lkml <linux-kernel@vger.kernel.org>
-To: "Peter Zijlstra" <a.p.zijlstra@chello.nl>
+Cc: Linux NFS mailing list <nfs@lists.sourceforge.net>
+To: chuck.lever@oracle.com
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IbDDF-0000EC-C1
-	for nfs@lists.sourceforge.net; Fri, 28 Sep 2007 03:36:49 -0700
-Received: from py-out-1112.google.com ([64.233.166.180])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IbDDI-0002yF-QB
-	for nfs@lists.sourceforge.net; Fri, 28 Sep 2007 03:36:54 -0700
-Received: by py-out-1112.google.com with SMTP id a25so5734104pyi
-	for <nfs@lists.sourceforge.net>; Fri, 28 Sep 2007 03:36:52 -0700 (PDT)
-In-Reply-To: <1190971419.31636.38.camel@twins>
+	id 1IY6cW-0005XD-V7
+	for nfs@lists.sourceforge.net; Wed, 19 Sep 2007 13:58:05 -0700
+Received: from pat.uio.no ([129.240.10.15])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IY6cX-0006vk-ET
+	for nfs@lists.sourceforge.net; Wed, 19 Sep 2007 13:58:08 -0700
+In-Reply-To: <46F18B12.4000802@oracle.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -43,25 +32,62 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-It's works on .23-rc8-mm2 with out any problems.
+On Wed, 2007-09-19 at 16:48 -0400, Chuck Lever wrote:
+> Trond Myklebust wrote:
+> > Time to clean all that up. The legacy nfs_renew_times() has no meaning
+> > now that we use d_time to cache the verifier. Would you like to send me
+> > a patch removing them?
+> 
+> I can -- there are some minor nits.
+> 
+> In nfs_dentry_iput() we have this:
+> 
+> static void nfs_dentry_iput(struct dentry *dentry, struct inode *inode)
+> {
+>          nfs_inode_return_delegation(inode);
+>          if (S_ISDIR(inode->i_mode))
+>                  /* drop any readdir cache as it could easily be old */
+>                  NFS_I(inode)->cache_validity |= NFS_INO_INVALID_DATA;
+> 
+>          if (dentry->d_flags & DCACHE_NFSFS_RENAMED) {
+>                  lock_kernel();
+>                  drop_nlink(inode);
+>                  nfs_complete_unlink(dentry, inode);
+>                  unlock_kernel();
+>          }
+>          /* When creating a negative dentry, we want to renew d_time */
+>          nfs_renew_times(dentry);
+>          ^^^^^^^^^^^^^^^^^^^^^^^^
+>          iput(inode);
+> }
+> 
+> This is the only instance of nfs_renew_times() by itself.  Seems like 
+> this might break the behavior of negative dentry caching.  Should this 
+> be removed entirely, or replaced somehow with nfs_refresh_verifier()?
 
-"dd" process does not hang any more.
+Just remove it. Unfortunately I don't think that we can avoid
+revalidating the resulting negative dentry since the UNLINK call is
+asynchronous, and so the new verifier on the directory will only be
+known a posteriori.
 
-Thanks for all the help.
+> It looks like nfs_set_verifier() and nfs_refresh_verifier() reduce to 
+> exactly the same logic, but we have this at the end of nfs_readdir_lookup:
+> 
+>          nfs_renew_times(dentry);
+>          nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
+>          return dentry;
+> out_renew:
+>          nfs_renew_times(dentry);
+>          nfs_refresh_verifier(dentry, nfs_save_change_attribute(dir));
+>          return dentry;
+> }
+> 
+> Both of which are exactly equivalent now.  I can address this as well.
 
-Cheers
---Chakri
+Thanks.
 
+Trond
 
-On 9/28/07, Peter Zijlstra <a.p.zijlstra@chello.nl> wrote:
->  [ and one copy for the list too ]
->
-> On Fri, 2007-09-28 at 02:20 -0700, Chakri n wrote:
-> > It's 2.6.23-rc6.
->
-> Could you try .23-rc8-mm2. It includes the per bdi stuff.
->
->
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
