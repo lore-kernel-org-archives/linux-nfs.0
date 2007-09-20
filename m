@@ -1,8 +1,8 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 3/7] reiserfs: turn of ATTR_KILL_S*ID at beginning of
-	reiserfs_setattr
-Date: Thu, 20 Sep 2007 05:10:52 -0400
-Message-ID: <200709200910.l8K9AqND001338@dantu.rdu.redhat.com>
+Subject: [PATCH 6/7] NFS: if ATTR_KILL_S*ID bits are set,
+	then skip mode change
+Date: Thu, 20 Sep 2007 05:11:07 -0400
+Message-ID: <200709200911.l8K9B7c6001353@dantu.rdu.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net, unionfs@filesystems.org,
@@ -23,32 +23,30 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-reiserfs_setattr can call notify_change recursively using the same
-iattr struct. This could cause it to trip the BUG() in notify_change.
-Fix reiserfs to clear those bits near the beginning of the function.
+If the ATTR_KILL_S*ID bits are set then any mode change is only for
+clearing the setuid/setgid bits. For NFS, skip the mode change and
+let the server handle it.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/reiserfs/inode.c |    6 +++++-
- 1 files changed, 5 insertions(+), 1 deletions(-)
+ fs/nfs/inode.c |    4 ++++
+ 1 files changed, 4 insertions(+), 0 deletions(-)
 
-diff --git a/fs/reiserfs/inode.c b/fs/reiserfs/inode.c
-index 9ea1200..0804289 100644
---- a/fs/reiserfs/inode.c
-+++ b/fs/reiserfs/inode.c
-@@ -3061,7 +3061,11 @@ int reiserfs_setattr(struct dentry *dentry, struct iattr *attr)
- {
- 	struct inode *inode = dentry->d_inode;
- 	int error;
--	unsigned int ia_valid = attr->ia_valid;
-+	unsigned int ia_valid;
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 1ca3793..83f624d 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -327,6 +327,10 @@ nfs_setattr(struct dentry *dentry, struct iattr *attr)
+ 
+ 	nfs_inc_stats(inode, NFSIOS_VFSSETATTR);
+ 
++	/* skip mode change if it's just for clearing setuid/setgid */
++	if (attr->ia_valid & (ATTR_KILL_SUID | ATTR_KILL_SGID))
++		attr->ia_valid &= ~ATTR_MODE;
 +
-+	/* must be turned off for recursive notify_change calls */
-+	ia_valid = attr->ia_valid &= ~(ATTR_KILL_SUID|ATTR_KILL_SGID);
-+
- 	reiserfs_write_lock(inode->i_sb);
  	if (attr->ia_valid & ATTR_SIZE) {
- 		/* version 2 items will be caught by the s_maxbytes check
+ 		if (!S_ISREG(inode->i_mode) || attr->ia_size == i_size_read(inode))
+ 			attr->ia_valid &= ~ATTR_SIZE;
 -- 
 1.5.2.1
 
