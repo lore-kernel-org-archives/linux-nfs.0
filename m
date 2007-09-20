@@ -1,8 +1,8 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 4/7] unionfs: fix unionfs_setattr to handle
-	ATTR_KILL_S*ID
-Date: Thu, 20 Sep 2007 05:10:57 -0400
-Message-ID: <200709200910.l8K9AvRm001343@dantu.rdu.redhat.com>
+Subject: [PATCH 3/7] reiserfs: turn of ATTR_KILL_S*ID at beginning of
+	reiserfs_setattr
+Date: Thu, 20 Sep 2007 05:10:52 -0400
+Message-ID: <200709200910.l8K9AqND001338@dantu.rdu.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net, unionfs@filesystems.org,
@@ -23,33 +23,32 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Don't allow unionfs_setattr to trip the BUG() in notify_change. Clear
-ATTR_MODE if the either ATTR_KILL_S*ID is set. This also allows the
-lower filesystem to interpret these bits in its own way.
+reiserfs_setattr can call notify_change recursively using the same
+iattr struct. This could cause it to trip the BUG() in notify_change.
+Fix reiserfs to clear those bits near the beginning of the function.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/unionfs/inode.c |    7 +++++++
- 1 files changed, 7 insertions(+), 0 deletions(-)
+ fs/reiserfs/inode.c |    6 +++++-
+ 1 files changed, 5 insertions(+), 1 deletions(-)
 
-diff --git a/fs/unionfs/inode.c b/fs/unionfs/inode.c
-index 687b9a7..9cb54d9 100644
---- a/fs/unionfs/inode.c
-+++ b/fs/unionfs/inode.c
-@@ -1021,6 +1021,13 @@ static int unionfs_setattr(struct dentry *dentry, struct iattr *ia)
- 	bend = dbend(dentry);
- 	inode = dentry->d_inode;
- 
-+	/*
-+	 * mode change is for clearing setuid/setgid. Allow lower filesystem
-+	 * to reinterpret it in its own way.
-+	 */
-+	if (ia->ia_valid & (ATTR_KILL_SUID | ATTR_KILL_SGID))
-+		ia->ia_valid &= ~ATTR_MODE;
+diff --git a/fs/reiserfs/inode.c b/fs/reiserfs/inode.c
+index 9ea1200..0804289 100644
+--- a/fs/reiserfs/inode.c
++++ b/fs/reiserfs/inode.c
+@@ -3061,7 +3061,11 @@ int reiserfs_setattr(struct dentry *dentry, struct iattr *attr)
+ {
+ 	struct inode *inode = dentry->d_inode;
+ 	int error;
+-	unsigned int ia_valid = attr->ia_valid;
++	unsigned int ia_valid;
 +
- 	for (bindex = bstart; (bindex <= bend) || (bindex == bstart);
- 	     bindex++) {
- 		lower_dentry = unionfs_lower_dentry_idx(dentry, bindex);
++	/* must be turned off for recursive notify_change calls */
++	ia_valid = attr->ia_valid &= ~(ATTR_KILL_SUID|ATTR_KILL_SGID);
++
+ 	reiserfs_write_lock(inode->i_sb);
+ 	if (attr->ia_valid & ATTR_SIZE) {
+ 		/* version 2 items will be caught by the s_maxbytes check
 -- 
 1.5.2.1
 
