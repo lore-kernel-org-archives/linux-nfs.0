@@ -1,30 +1,28 @@
-From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
-Subject: Re: [PATCH 15/19] RPCRDMA: Kconfig and header file
- with	rpcrdma protocol definitions
-Date: Thu, 20 Sep 2007 17:18:36 -0400
-Message-ID: <EXNANE01qSkcJse1fTv00000573@exnane01.hq.netapp.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH 15/19] RPCRDMA: Kconfig and header
+	file	with	rpcrdma protocol definitions
+Date: Thu, 20 Sep 2007 17:25:50 -0400
+Message-ID: <1190323550.6763.157.camel@heimdal.trondhjem.org>
 References: <EXNANE013MBhe3WYIgo000004be@exnane01.hq.netapp.com>
 	<1190321705.6763.140.camel@heimdal.trondhjem.org>
 	<EXNANE01Uor03u9PH3I00000571@exnane01.hq.netapp.com>
 	<1190322784.6763.147.camel@heimdal.trondhjem.org>
+	<EXNANE01qSkcJse1fTv00000573@exnane01.hq.netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IYTQA-0002Ac-Ay
-	for nfs@lists.sourceforge.net; Thu, 20 Sep 2007 14:18:50 -0700
-Received: from mx2.netapp.com ([216.240.18.37])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IYTQD-0004es-Uh
-	for nfs@lists.sourceforge.net; Thu, 20 Sep 2007 14:18:55 -0700
-In-Reply-To: <1190322784.6763.147.camel@heimdal.trondhjem.org>
-References: <EXNANE013MBhe3WYIgo000004be@exnane01.hq.netapp.com>
-	<1190321705.6763.140.camel@heimdal.trondhjem.org>
-	<EXNANE01Uor03u9PH3I00000571@exnane01.hq.netapp.com>
-	<1190322784.6763.147.camel@heimdal.trondhjem.org>
+	id 1IYTX4-0002v2-Jc
+	for nfs@lists.sourceforge.net; Thu, 20 Sep 2007 14:25:58 -0700
+Received: from pat.uio.no ([129.240.10.15])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IYTX5-0007OR-K3
+	for nfs@lists.sourceforge.net; Thu, 20 Sep 2007 14:26:02 -0700
+In-Reply-To: <EXNANE01qSkcJse1fTv00000573@exnane01.hq.netapp.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,22 +35,21 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-At 05:13 PM 9/20/2007, Trond Myklebust wrote:
->Please send it as an incremental patch.
+On Thu, 2007-09-20 at 17:18 -0400, Talpey, Thomas wrote:
 
-Will do - have to wait for later unfortunately.
+> One reason to prefer "select" is that the option will disappear if
+> it "depends on" and INFINIBAND isn't turned on. That's not the
+> way RPC over sockets transports is visible. For example, if TCP is
+> off you still get SUNRPC.
 
->Note, however, that automatically selecting INFINIBAND is never going to
->suffice to make RDMA work: the user needs to configure the correct
->hardware support too.
->That makes me tend to prefer making it a 'depends on'...
+Not really. If networking isn't defined, then it disappears.
 
-One reason to prefer "select" is that the option will disappear if
-it "depends on" and INFINIBAND isn't turned on. That's not the
-way RPC over sockets transports is visible. For example, if TCP is
-off you still get SUNRPC.
+I'd think that it would be fairly obvious to most people that if they
+want to see an option to use NFS over RDMA, then they also have to
+select an RDMA-capable transport.
 
-Tom.
+Trond
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
