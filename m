@@ -1,16 +1,30 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 5/7] VFS: make notify_change pass ATTR_KILL_S*ID to
-	setattr operations
-Date: Thu, 20 Sep 2007 05:11:02 -0400
-Message-ID: <200709200911.l8K9B2pI001348@dantu.rdu.redhat.com>
+From: Jonas Jonsson <jonas@websystem.se>
+Subject: Re: Problem with NFS4,
+	Error: state recovery failed on	NFSv4 server 192.168.0.1 with error
+	121
+Date: Thu, 20 Sep 2007 11:52:14 +0200
+Message-ID: <1190281934.4636.9.camel@fry.u7.se>
+References: <358c6ad3a55609518d1dfa15ef1f2bd2@imap.u7.se>
+	<1190048861.6700.105.camel@heimdal.trondhjem.org>
+	<1190049122.6700.108.camel@heimdal.trondhjem.org>
+	<1190056357.5541.12.camel@fry.u7.se>
+	<1190059068.6700.125.camel@heimdal.trondhjem.org>
+	<1190060733.5541.14.camel@fry.u7.se>
+Reply-To: jonas@websystem.se
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, unionfs@filesystems.org,
-	linux-cifs-client@lists.samba.org,
-	ecryptfs-devel@lists.sourceforge.net, reiserfs-devel@vger.kernel.org
-To: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	akpm@linux-foundation.org
+Content-Type: text/plain; charset="utf-8"
+Cc: nfs@lists.sourceforge.net
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1IYIir-0003tW-26
+	for nfs@lists.sourceforge.net; Thu, 20 Sep 2007 02:53:26 -0700
+Received: from gonzzor.campus.luth.se ([130.240.199.196] helo=bender.u7.se)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IYIir-00057J-Lj
+	for nfs@lists.sourceforge.net; Thu, 20 Sep 2007 02:53:28 -0700
+In-Reply-To: <1190060733.5541.14.camel@fry.u7.se>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -23,107 +37,69 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-When an unprivileged process attempts to modify a file that has the
-setuid or setgid bits set, the VFS will attempt to clear these bits. The
-VFS will set the ATTR_KILL_SUID or ATTR_KILL_SGID bits in the ia_valid
-mask, and then call notify_change to clear these bits and set the mode
-accordingly.
-
-With a networked filesystem (NFS and CIFS in particular but likely
-others), the client machine or process may not have credentials that
-allow for setting the mode. In some situations, this can lead to file
-corruption, an operation failing outright because the setattr fails, or
-to races that lead to a mode change being reverted.
-
-In this situation, we'd like to just leave the handling of this to the
-server and ignore these bits. The problem is that by the time the
-setattr op is called, the VFS has already reinterpreted the ATTR_KILL_*
-bits into a mode change. The setattr operation has no way to know its
-intent.
-
-The following patch fixes this by making notify_change no longer
-clear the ATTR_KILL_SUID and ATTR_KILL_SGID bits in the ia_valid before
-handing it off to the setattr inode op. setattr can then check for the
-presence of these bits, and if they're set it can assume that the mode
-change was only for the purposes of clearing these bits.
-
-This means that we now have an implicit assumption that notify_change is
-never called with ATTR_MODE and either ATTR_KILL_S*ID bit set. Nothing
-currently enforces that, so this patch also adds a BUG() if that occurs.
-
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/attr.c |   26 ++++++++++++++++----------
- 1 files changed, 16 insertions(+), 10 deletions(-)
-
-diff --git a/fs/attr.c b/fs/attr.c
-index ae58bd3..966b73e 100644
---- a/fs/attr.c
-+++ b/fs/attr.c
-@@ -103,12 +103,11 @@ EXPORT_SYMBOL(inode_setattr);
- int notify_change(struct dentry * dentry, struct iattr * attr)
- {
- 	struct inode *inode = dentry->d_inode;
--	mode_t mode;
-+	mode_t mode = inode->i_mode;
- 	int error;
- 	struct timespec now;
- 	unsigned int ia_valid = attr->ia_valid;
- 
--	mode = inode->i_mode;
- 	now = current_fs_time(inode->i_sb);
- 
- 	attr->ia_ctime = now;
-@@ -125,18 +124,25 @@ int notify_change(struct dentry * dentry, struct iattr * attr)
- 		if (error)
- 			return error;
- 	}
-+
-+	/*
-+	 * We now pass ATTR_KILL_S*ID to the lower level setattr function so
-+	 * that the function has the ability to reinterpret a mode change
-+	 * that's due to these bits. This adds an implicit restriction that
-+	 * no function will ever call notify_change with both ATTR_MODE and
-+	 * ATTR_KILL_S*ID set.
-+	 */
-+	if ((ia_valid & (ATTR_KILL_SUID|ATTR_KILL_SGID)) &&
-+	    (ia_valid & ATTR_MODE))
-+		BUG();
-+
- 	if (ia_valid & ATTR_KILL_SUID) {
--		attr->ia_valid &= ~ATTR_KILL_SUID;
- 		if (mode & S_ISUID) {
--			if (!(ia_valid & ATTR_MODE)) {
--				ia_valid = attr->ia_valid |= ATTR_MODE;
--				attr->ia_mode = inode->i_mode;
--			}
--			attr->ia_mode &= ~S_ISUID;
-+			ia_valid = attr->ia_valid |= ATTR_MODE;
-+			attr->ia_mode = (inode->i_mode & ~S_ISUID);
- 		}
- 	}
- 	if (ia_valid & ATTR_KILL_SGID) {
--		attr->ia_valid &= ~ ATTR_KILL_SGID;
- 		if ((mode & (S_ISGID | S_IXGRP)) == (S_ISGID | S_IXGRP)) {
- 			if (!(ia_valid & ATTR_MODE)) {
- 				ia_valid = attr->ia_valid |= ATTR_MODE;
-@@ -145,7 +151,7 @@ int notify_change(struct dentry * dentry, struct iattr * attr)
- 			attr->ia_mode &= ~S_ISGID;
- 		}
- 	}
--	if (!attr->ia_valid)
-+	if (!(attr->ia_valid & ~(ATTR_KILL_SUID | ATTR_KILL_SGID)))
- 		return 0;
- 
- 	if (ia_valid & ATTR_SIZE)
--- 
-1.5.2.1
-
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Microsoft
-Defy all challenges. Microsoft(R) Visual Studio 2005.
-http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+SGkKCkFueSBtb3JlIGNsdWVzPwoKL0pvbmFzCgptw6VuIDIwMDctMDktMTcga2xvY2thbiAyMjoy
+NSArMDIwMCBza3JldiBKb25hcyBKb25zc29uOgo+IG3DpW4gMjAwNy0wOS0xNyBrbG9ja2FuIDE1
+OjU3IC0wNDAwIHNrcmV2IFRyb25kIE15a2xlYnVzdDoKPiA+IE9uIE1vbiwgMjAwNy0wOS0xNyBh
+dCAyMToxMiArMDIwMCwgSm9uYXMgSm9uc3NvbiB3cm90ZToKPiA+ID4gbcOlbiAyMDA3LTA5LTE3
+IGtsb2NrYW4gMTM6MTIgLTA0MDAgc2tyZXYgVHJvbmQgTXlrbGVidXN0Ogo+ID4gPiA+IE9uIE1v
+biwgMjAwNy0wOS0xNyBhdCAxMzowNyAtMDQwMCwgVHJvbmQgTXlrbGVidXN0IHdyb3RlOgo+ID4g
+PiA+ID4gT24gU3VuLCAyMDA3LTA5LTE2IGF0IDE5OjQ1ICswMjAwLCBKb25hcyBKb25zc29uIHdy
+b3RlOgo+ID4gPiA+ID4gCj4gPiA+ID4gPiA+IFRoZW4gdGhlIGxzIHByb2Nlc3MgaGFuZ3MgYW5k
+IHRoZSBzeXNsb2cgc3RhcnRzIHRvIGZsb2RkIHdpdGgKPiA+ID4gPiA+ID4gCj4gPiA+ID4gPiA+
+IEVycm9yOiBzdGF0ZSByZWNvdmVyeSBmYWlsZWQgb24gTkZTdjQgc2VydmVyIDE5Mi4xNjguMC4x
+IHdpdGggZXJyb3IgMTIxCj4gPiA+ID4gPiAKPiA+ID4gPiA+IEVycm9yIDEyMSBpcyBFUkVNT1RF
+SU8uIFRoYXQgYmFzaWNhbGx5IG1lYW5zIHRoYXQgdGhlIHNlcnZlciBpcyBzaWNrIGFuZAo+ID4g
+PiA+ID4gdGhlcmUgaXMgbGl0dGxlIHRoZSBjbGllbnQgY2FuIGRvIG90aGVyIHRoYW4gcmV0cnkg
+aW4gdGhlIGhvcGUgdGhhdCBpdAo+ID4gPiA+ID4gZXZlbnR1YWxseSBnZXRzIGJldHRlci4KPiA+
+ID4gPiA+IAo+ID4gPiA+ID4gV2hhdCBrZXJuZWwgYXJlIHlvdSB1c2luZyBvbiB0aGUgc2VydmVy
+Pwo+ID4gPiAKPiA+ID4gU2VydmVyOiAKPiA+ID4gTGludXggYmVuZGVyIDIuNi4yMi1nZW50b28t
+cjUgIzIgU01QIEZyaSBTZXAgMTQgMjM6MTc6MzEgQ0VTVCAyMDA3Cj4gPiA+IHg4Nl82NCBBTUQg
+QXRobG9uKHRtKSA2NCBYMiBEdWFsIENvcmUgUHJvY2Vzc29yIDM4MDArIEF1dGhlbnRpY0FNRAo+
+ID4gPiBHTlUvTGludXgKPiA+ID4gCj4gPiA+IENsaWVudDogKFdoZW4gbm90IHRlc3RpbmcgbG9j
+YWwpCj4gPiA+IExpbnV4IGZyeSAyLjYuMjItZ2VudG9vLXI1ICMzIFNNUCBTYXQgU2VwIDE1IDAx
+OjI4OjI3IENFU1QgMjAwNyB4ODZfNjQKPiA+ID4gSW50ZWwoUikgQ29yZShUTSkyIENQVSA2NDAw
+IEAgMi4xM0dIeiBHZW51aW5lSW50ZWwgR05VL0xpbnV4Cj4gPiA+IAo+ID4gPiA+ID4gCj4gPiA+
+ID4gPiA+IEVycm9yOiBzdGF0ZSByZWNvdmVyeSBmYWlsZWQgb24gTkZTdjQgc2VydmVyIDE5Mi4x
+NjguMC4xIHdpdGggZXJyb3IgMgo+ID4gPiA+ID4gCj4gPiA+ID4gPiBFTk9FTlQuIFRoYXQgbWVh
+bnMgdGhhdCBhIGZpbGUgeW91IHdlcmUgcmVhZGluZyBvbiB0aGUgc2VydmVyIGhhcwo+ID4gPiA+
+ID4gZGlzYXBwZWFyZWQgd2hpbGUgdGhlIHNlcnZlciB3YXMgaW5jb21tdW5pY2Fkby4KPiA+ID4g
+PiA+IAo+ID4gPiA+ID4gQ2hlZXJzCj4gPiA+ID4gPiAgIFRyb25kCj4gPiA+ID4gCj4gPiA+ID4g
+QlRXOiBXaGF0IGtpbmQgb2YgbmV0d29yayBjb25uZWN0aW9uIGFyZSB5b3UgcnVubmluZyBiZXR3
+ZWVuIHRoZSBjbGllbnQKPiA+ID4gPiBhbmQgc2VydmVyLiBJcyBpdCByZWFsbHkgdGhhdCBiYWQg
+dGhhdCB0aGUgY2xpZW50IGlzIGNvbnN0YW50bHkgaGF2aW5nCj4gPiA+ID4gdG8gcmVjb3ZlciBz
+dGF0ZT8KPiA+ID4gCj4gPiA+IEkgZ2V0IHRoaXMgZXJyb3IgZXZlbiB3aGVuIEkgdHJ5IGxvY2Fs
+IG9uIHNlcnZlciBtYWNoaW5lLCBidXQgYmV0d2Vlbgo+ID4gPiB0aGUgc2VydmVyIGFuZCBjbGll
+bnQgSSBoYXZlIEdiaXQgZWh0ZXJuZXQgY29ubmVjdGlvbi4gVGhlIG1vc3Qgc3RyYW5nZQo+ID4g
+PiB0aGluZyBpcyB0aGF0IEkgaGF2ZSBtYW5hZ2UgdG8gZ2V0IHJldmVyc2VkIHNpdHVhdGlvbiB3
+b3JraW5nLgo+ID4gPiAKPiA+ID4gSSBjYW4gZ28gb24gYW5kIHVzZSBscyAtbGEgL21udC9uZnMg
+YXMgbG9uZyBhcyBJIGRvbid0IHN0YW5kIGluIHRoZQo+ID4gPiBkaXJlY3RvcnksIHRoZSBJIGdl
+dCB0aGUgcmVjb3ZlcnkgZXJyb3IuIEFuZCBpZiBJIHRyeSB0byByZWFkL3dyaXRlIHRvIGEKPiA+
+ID4gZmlsZSBJIGdldCB0aGlzIGVycm9yLgo+ID4gPiAKPiA+ID4gSSB0cmllZCBOZXdweW5mcyAo
+IGh0dHA6Ly93d3cuY2l0aS51bWljaC5lZHUvcHJvamVjdHMvbmZzdjQvcHluZnMvICkgYW5kCj4g
+PiA+IHdpdGggdGhpcyBhcHBsaWNhdGlvbiBJIG1hbmFnZSB0byB3cml0ZSBhbmQgcmVhZCB0byB0
+aGUgc2VydmVyIHdpdGhvdXQKPiA+ID4gdGhlIGVycm9ycywgc28gSSdtIGtpbmQgb2YgY29uZnVz
+ZWQuCj4gPiA+IAo+ID4gPiBJIGhhdmUgYWxzbyB0cmllZCBhIE9wZW5Tb2xhcmlzIGxpdmVjZAo+
+ID4gPiAoIGh0dHA6Ly93d3cuZ2VudW5peC5vcmcvZGlzdHJpYnV0aW9ucy9iZWxlbml4X3NpdGUv
+ICkgd2l0aCBhbG1vc3Qgc2FtZQo+ID4gPiByZXN1bHQsIG5vdGhpbmcgaW4gdGhlIGxvZ3Mgb3Ig
+c28sIGJ1dCB0aGUgbW91bnQgY29tbWFuZCBoYW5ncy4KPiA+ID4gIAo+ID4gPiBJcyB0aGVyZSBh
+bnl0aGluZyBlbHNlIEkgY2FuIHRyeSB0byBkZWJ1ZyB0aGlzIGZ1cnRoZXI/Cj4gPiAKPiA+IENv
+dWxkIHlvdSB0cnkgdG8gdHJpZ2dlciB0aGUgcHJvYmxlbSBvbiB0aGUgY2xpZW50LCB0aGVuIGxv
+ZyBpbiBhcyByb290Cj4gPiBvbiB0aGUgc2VydmVyLCBhbmQgdHlwZQo+ID4gCj4gPiBlY2hvIHQg
+Pi9wcm9jL3N5c3JxLXRyaWdnZXIKPiA+IAo+ID4gYW5kIHNlbmQgdXMgdGhlIG91dHB1dCBmcm9t
+ICdkbWVzZyAtcyA5MDAwMCc/Cj4gPiAKPiA+IFRoYXQgb3VnaHQgdG8gZ2l2ZSB1cyBhbiBpZGVh
+IHdoYXQgdGhlIHNlcnZlciBpcyBkb2luZyB0aGF0IGlzIGNhdXNpbmcKPiA+IGl0IHRvIGhhbmcu
+Li4KPiA+IAo+ID4gQ2hlZXJzCj4gPiAgIFRyb25kCj4gPiAKPiBBdHRhY2hlZCB0aGUgb3V0cHV0
+IGZyb20gZG1lc2cgLXMgOTAwMDAKPiAKPiAvSm9uYXMKPiAtLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tCj4gVGhp
+cyBTRi5uZXQgZW1haWwgaXMgc3BvbnNvcmVkIGJ5OiBNaWNyb3NvZnQKPiBEZWZ5IGFsbCBjaGFs
+bGVuZ2VzLiBNaWNyb3NvZnQoUikgVmlzdWFsIFN0dWRpbyAyMDA1Lgo+IGh0dHA6Ly9jbGsuYXRk
+bXQuY29tL01SVC9nby92c2UwMTIwMDAwMDcwbXJ0L2RpcmVjdC8wMS8KPiBfX19fX19fX19fX19f
+X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fXyBORlMgbWFpbGxpc3QgLSBORlNAbGlz
+dHMuc291cmNlZm9yZ2UubmV0IGh0dHBzOi8vbGlzdHMuc291cmNlZm9yZ2UubmV0L2xpc3RzL2xp
+c3RpbmZvL25mcwoKCi0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0KVGhpcyBTRi5uZXQgZW1haWwgaXMgc3BvbnNv
+cmVkIGJ5OiBNaWNyb3NvZnQKRGVmeSBhbGwgY2hhbGxlbmdlcy4gTWljcm9zb2Z0KFIpIFZpc3Vh
+bCBTdHVkaW8gMjAwNS4KaHR0cDovL2Nsay5hdGRtdC5jb20vTVJUL2dvL3ZzZTAxMjAwMDAwNzBt
+cnQvZGlyZWN0LzAxLwpfX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
+X19fXwpORlMgbWFpbGxpc3QgIC0gIE5GU0BsaXN0cy5zb3VyY2Vmb3JnZS5uZXQKaHR0cHM6Ly9s
+aXN0cy5zb3VyY2Vmb3JnZS5uZXQvbGlzdHMvbGlzdGluZm8vbmZzCg==
