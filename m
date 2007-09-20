@@ -1,24 +1,24 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 00/19] NFS/RDMA client support
-Date: Thu, 20 Sep 2007 11:20:20 -0400
-Message-ID: <1190301620.6763.52.camel@heimdal.trondhjem.org>
-References: <EXNANE01TIVvLVKi3s1000004af@exnane01.hq.netapp.com>
-	<EXNANE010ZkfzDskqC500000565@exnane01.hq.netapp.com>
+Subject: Re: [PATCH 15/19] RPCRDMA: Kconfig and header file
+	with	rpcrdma protocol definitions
+Date: Thu, 20 Sep 2007 16:55:05 -0400
+Message-ID: <1190321705.6763.140.camel@heimdal.trondhjem.org>
+References: <EXNANE013MBhe3WYIgo000004be@exnane01.hq.netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IYNpM-0004bp-PX
-	for nfs@lists.sourceforge.net; Thu, 20 Sep 2007 08:20:28 -0700
+	id 1IYT3Z-0008DM-Sw
+	for nfs@lists.sourceforge.net; Thu, 20 Sep 2007 13:55:31 -0700
 Received: from pat.uio.no ([129.240.10.15])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IYNpO-0007gK-26
-	for nfs@lists.sourceforge.net; Thu, 20 Sep 2007 08:20:33 -0700
-In-Reply-To: <EXNANE010ZkfzDskqC500000565@exnane01.hq.netapp.com>
+	(Exim 4.44) id 1IYT3c-0001ir-9w
+	for nfs@lists.sourceforge.net; Thu, 20 Sep 2007 13:55:34 -0700
+In-Reply-To: <EXNANE013MBhe3WYIgo000004be@exnane01.hq.netapp.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,26 +31,49 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, 2007-09-20 at 10:57 -0400, Talpey, Thomas wrote:
-> Trond - I believe the NFS/RDMA client patchset is ready for kernel
-> inclusion. The one open issue of transport naming as integers, is
-> compatible with the existing kernel code and user binaries. So, while
-> using a string is better long-term, there are a bunch of issues and
-> a fairly large patch set to get there. Since transport naming isn't
-> an NFS/RDMA issue, I feel they should be considered separately.
-> 
-> Do you agree? If there are any remaining issues in the patchset
-> already sent, I'm happy to address them.
-> 
+On Mon, 2007-09-10 at 13:49 -0400, Talpey, Thomas wrote:
 
-OK. Given the size of the changes, and the fact that we're in 2.6.23-rc7
-(Arr') already, I'm not sure I can promise you inclusion in 2.6.24, but
-I'll give the patches a review and put then into the git repository and
-NFS_ALL as soon as possible.
-In the worst case, we can defer the actual merging into mainline until
-2.6.25...
+> +config SUNRPC_XPRT_RDMA
+> +	tristate "RDMA transport for sunrpc (EXPERIMENTAL)"
+> +	depends on SUNRPC && EXPERIMENTAL
+> +	default m
+> +	help
+> +	  Adds a client RPC transport for supporting kernel NFS over RDMA
+> +	  mounts, including Infiniband and iWARP. Experimental.
+> +
 
-Trond
+Hmm... There is a dependency on the Infiniband code that is missing
+here. I'm getting the following compile errors:
+
+ERROR: "ib_dealloc_pd" [net/sunrpc/xprtrdma/xprtrdma.ko] undefined!
+ERROR: "ib_dealloc_mw" [net/sunrpc/xprtrdma/xprtrdma.ko] undefined!
+ERROR: "rdma_destroy_id" [net/sunrpc/xprtrdma/xprtrdma.ko] undefined!
+ERROR: "ib_alloc_mw" [net/sunrpc/xprtrdma/xprtrdma.ko] undefined!
+ERROR: "ib_modify_qp" [net/sunrpc/xprtrdma/xprtrdma.ko] undefined!
+ERROR: "rdma_connect" [net/sunrpc/xprtrdma/xprtrdma.ko] undefined!
+ERROR: "ib_unmap_fmr" [net/sunrpc/xprtrdma/xprtrdma.ko] undefined!
+ERROR: "ib_alloc_pd" [net/sunrpc/xprtrdma/xprtrdma.ko] undefined!
+ERROR: "ib_get_dma_mr" [net/sunrpc/xprtrdma/xprtrdma.ko] undefined!
+ERROR: "ib_query_device" [net/sunrpc/xprtrdma/xprtrdma.ko] undefined!
+ERROR: "rdma_destroy_qp" [net/sunrpc/xprtrdma/xprtrdma.ko] undefined!
+ERROR: "rdma_create_id" [net/sunrpc/xprtrdma/xprtrdma.ko] undefined!
+ERROR: "ib_destroy_cq" [net/sunrpc/xprtrdma/xprtrdma.ko] undefined!
+ERROR: "rdma_create_qp" [net/sunrpc/xprtrdma/xprtrdma.ko] undefined!
+ERROR: "rdma_resolve_route" [net/sunrpc/xprtrdma/xprtrdma.ko] undefined!
+ERROR: "ib_dealloc_fmr" [net/sunrpc/xprtrdma/xprtrdma.ko] undefined!
+ERROR: "rdma_disconnect" [net/sunrpc/xprtrdma/xprtrdma.ko] undefined!
+ERROR: "ib_alloc_fmr" [net/sunrpc/xprtrdma/xprtrdma.ko] undefined!
+ERROR: "ib_query_qp" [net/sunrpc/xprtrdma/xprtrdma.ko] undefined!
+ERROR: "ib_dereg_mr" [net/sunrpc/xprtrdma/xprtrdma.ko] undefined!
+ERROR: "ib_reg_phys_mr" [net/sunrpc/xprtrdma/xprtrdma.ko] undefined!
+ERROR: "rdma_resolve_addr" [net/sunrpc/xprtrdma/xprtrdma.ko] undefined!
+ERROR: "ib_create_cq" [net/sunrpc/xprtrdma/xprtrdma.ko] undefined!
+make[2]: *** [__modpost] Error 1
+make[1]: *** [modules] Error 2
+make: *** [modules] Error 2
+
+Cheers
+  Trond
 
 
 -------------------------------------------------------------------------
