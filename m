@@ -1,23 +1,24 @@
-From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: [PATCH 00/19] NFS/RDMA client support
-Date: Thu, 20 Sep 2007 10:57:32 -0400
-Message-ID: <EXNANE010ZkfzDskqC500000565@exnane01.hq.netapp.com>
+Date: Thu, 20 Sep 2007 11:20:20 -0400
+Message-ID: <1190301620.6763.52.camel@heimdal.trondhjem.org>
 References: <EXNANE01TIVvLVKi3s1000004af@exnane01.hq.netapp.com>
+	<EXNANE010ZkfzDskqC500000565@exnane01.hq.netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IYNWv-0001H4-Cs
-	for nfs@lists.sourceforge.net; Thu, 20 Sep 2007 08:01:25 -0700
-Received: from mx2.netapp.com ([216.240.18.37])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IYNWx-0004Dt-MQ
-	for nfs@lists.sourceforge.net; Thu, 20 Sep 2007 08:01:30 -0700
-In-Reply-To: <EXNANE01TIVvLVKi3s1000004af@exnane01.hq.netapp.com>
-References: <EXNANE01TIVvLVKi3s1000004af@exnane01.hq.netapp.com>
+	id 1IYNpM-0004bp-PX
+	for nfs@lists.sourceforge.net; Thu, 20 Sep 2007 08:20:28 -0700
+Received: from pat.uio.no ([129.240.10.15])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IYNpO-0007gK-26
+	for nfs@lists.sourceforge.net; Thu, 20 Sep 2007 08:20:33 -0700
+In-Reply-To: <EXNANE010ZkfzDskqC500000565@exnane01.hq.netapp.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,95 +31,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Trond - I believe the NFS/RDMA client patchset is ready for kernel
-inclusion. The one open issue of transport naming as integers, is
-compatible with the existing kernel code and user binaries. So, while
-using a string is better long-term, there are a bunch of issues and
-a fairly large patch set to get there. Since transport naming isn't
-an NFS/RDMA issue, I feel they should be considered separately.
+On Thu, 2007-09-20 at 10:57 -0400, Talpey, Thomas wrote:
+> Trond - I believe the NFS/RDMA client patchset is ready for kernel
+> inclusion. The one open issue of transport naming as integers, is
+> compatible with the existing kernel code and user binaries. So, while
+> using a string is better long-term, there are a bunch of issues and
+> a fairly large patch set to get there. Since transport naming isn't
+> an NFS/RDMA issue, I feel they should be considered separately.
+> 
+> Do you agree? If there are any remaining issues in the patchset
+> already sent, I'm happy to address them.
+> 
 
-Do you agree? If there are any remaining issues in the patchset
-already sent, I'm happy to address them.
+OK. Given the size of the changes, and the fact that we're in 2.6.23-rc7
+(Arr') already, I'm not sure I can promise you inclusion in 2.6.24, but
+I'll give the patches a review and put then into the git repository and
+NFS_ALL as soon as possible.
+In the worst case, we can defer the actual merging into mainline until
+2.6.25...
 
-Tom.
+Trond
 
-At 01:41 PM 9/10/2007, Talpey, Thomas wrote:
->The following 19 messages contain a patch series to implement the
->fully integrated NFS/RDMA client into kernel 2.6.23-rc5 + NFS_ALL.
->They also integrate cleanly into the current <git://linux-nfs.org/nfs-2.6>.
->
->I would like to see them considered for inclusion into 2.6.24, most
->especially the first 14 which are purely infrastructure related.
->
->The patches are sequenced into the following functional groupings:
->
->01-02 implement RPCBIND netid's in each transport, instead of being
->decided by the rpcbind client before sending. This change also corrects
->the problem that IPv6 netid's were not supported.
->
->03-05 "invert" the parsing of NFS mount options in kernel to use the
->existing kernel-private nfs_parsed_mount_options structure for NFS[234],
->instead of continuing to use the legacy nfs_mount_data in both kernel
->and user space. Coupled with the new string-based NFS mount API, this
->allows extension of NFS mount options with no required changes to user
->space. It's needed for adding RDMA, but may also be useful for other
->NFS-related projects (such as fscache?).
->
->06 adds a flag to the xdrbuf to permit the rdma transport to marshal
->data appropriately.
->
->07-09 implement dynamic RPC transport registration, and logically
->reorganize the socket support as built-in TCP/UDP transports. These
->patches originated with Chuck Lever's transport switch work.
->
->10-11 rearrange a few sockets-specific RPC transport definitions into
->their own logical components. This is in preparation for adding the first
->new RPC transport.
->
->12-14 change the way RPC transports are selected from a raw IP
->protocol to a new RPC-layer identifier. Also #14 allows NFS to
->accurately print the "proto=" argument via /proc/mounts.
->
->15-19 implement the new RPC RDMA transport:
->
-> 15 declares the RPC/RDMA protocol, RPC RDMA transport definitions,
->and configuration option.
->
-> 16 adds support for the "-o rdma" option to string-based NFS mounts
->
-> 17 adds the core RPC RDMA transport switch implementation. It has
->stubs for the RDMA API below it, and the RPC/RDMA protocol marshaling
->used when sending and receiving RPC messages.
->
-> 18 implements the RPC message handling and connection management.
->
-> 19 implements the kernel RDMA verbs interface.
->
->Since this version is fully integrated with the new string-based NFS
->kernel mount API, it requires the latest nfs-utils mount.nfs command,
->which must be invoked with the new "-i" flag. Additionally, until the
->server implements the necessary rpcbindv3 support, the RDMA port
->number must be provided in the mount command line. Currently, most
->NFS/RDMA servers are listening on 2050, this is likely to change.
->
->	mount -i [-t nfs4] -o rdma,port=2050 server:/filesystem /mountpoint
->
->The core net/sunrpc/xprtrdma files are little changed from the July
->RFC Patches, except to fit into the above infrastructure, fix two
->issues in corner case RDMA chunk marshaling, and to correct kernel
->coding style nits.
->
->Comments on any and all issues are welcome.
->
->Tom.
->
->-------------------------------------------------------------------------
->This SF.net email is sponsored by: Microsoft
->Defy all challenges. Microsoft(R) Visual Studio 2005.
->http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
->_______________________________________________
->NFS maillist  -  NFS@lists.sourceforge.net
->https://lists.sourceforge.net/lists/listinfo/nfs
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
