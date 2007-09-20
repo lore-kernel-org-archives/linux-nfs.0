@@ -1,30 +1,20 @@
-From: Jonas Jonsson <jonas@websystem.se>
-Subject: Re: Problem with NFS4,
-	Error: state recovery failed on	NFSv4 server 192.168.0.1 with error
-	121
-Date: Thu, 20 Sep 2007 11:52:14 +0200
-Message-ID: <1190281934.4636.9.camel@fry.u7.se>
-References: <358c6ad3a55609518d1dfa15ef1f2bd2@imap.u7.se>
-	<1190048861.6700.105.camel@heimdal.trondhjem.org>
-	<1190049122.6700.108.camel@heimdal.trondhjem.org>
-	<1190056357.5541.12.camel@fry.u7.se>
-	<1190059068.6700.125.camel@heimdal.trondhjem.org>
-	<1190060733.5541.14.camel@fry.u7.se>
-Reply-To: jonas@websystem.se
+From: <maddstang@ifc.sumy.ua>
+Subject: Here is that link
+Date: Thu, 20 Sep 2007 13:52:07 +0100
+Message-ID: <001e01c7fb85$0d143a00$a4575196@lulx>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: nfs@lists.sourceforge.net
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: text/plain; charset="us-ascii"
+To: <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IYIir-0003tW-26
-	for nfs@lists.sourceforge.net; Thu, 20 Sep 2007 02:53:26 -0700
-Received: from gonzzor.campus.luth.se ([130.240.199.196] helo=bender.u7.se)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IYIir-00057J-Lj
-	for nfs@lists.sourceforge.net; Thu, 20 Sep 2007 02:53:28 -0700
-In-Reply-To: <1190060733.5541.14.camel@fry.u7.se>
+	id 1IYLVz-0004vw-Mf
+	for nfs@lists.sourceforge.net; Thu, 20 Sep 2007 05:52:20 -0700
+Received: from host86-146-231-76.range86-146.btcentralplus.com
+	([86.146.231.76]) by mail.sourceforge.net with smtp (Exim 4.44)
+	id 1IYLW1-0008Ou-Ud
+	for nfs@lists.sourceforge.net; Thu, 20 Sep 2007 05:52:24 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,69 +27,14 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-SGkKCkFueSBtb3JlIGNsdWVzPwoKL0pvbmFzCgptw6VuIDIwMDctMDktMTcga2xvY2thbiAyMjoy
-NSArMDIwMCBza3JldiBKb25hcyBKb25zc29uOgo+IG3DpW4gMjAwNy0wOS0xNyBrbG9ja2FuIDE1
-OjU3IC0wNDAwIHNrcmV2IFRyb25kIE15a2xlYnVzdDoKPiA+IE9uIE1vbiwgMjAwNy0wOS0xNyBh
-dCAyMToxMiArMDIwMCwgSm9uYXMgSm9uc3NvbiB3cm90ZToKPiA+ID4gbcOlbiAyMDA3LTA5LTE3
-IGtsb2NrYW4gMTM6MTIgLTA0MDAgc2tyZXYgVHJvbmQgTXlrbGVidXN0Ogo+ID4gPiA+IE9uIE1v
-biwgMjAwNy0wOS0xNyBhdCAxMzowNyAtMDQwMCwgVHJvbmQgTXlrbGVidXN0IHdyb3RlOgo+ID4g
-PiA+ID4gT24gU3VuLCAyMDA3LTA5LTE2IGF0IDE5OjQ1ICswMjAwLCBKb25hcyBKb25zc29uIHdy
-b3RlOgo+ID4gPiA+ID4gCj4gPiA+ID4gPiA+IFRoZW4gdGhlIGxzIHByb2Nlc3MgaGFuZ3MgYW5k
-IHRoZSBzeXNsb2cgc3RhcnRzIHRvIGZsb2RkIHdpdGgKPiA+ID4gPiA+ID4gCj4gPiA+ID4gPiA+
-IEVycm9yOiBzdGF0ZSByZWNvdmVyeSBmYWlsZWQgb24gTkZTdjQgc2VydmVyIDE5Mi4xNjguMC4x
-IHdpdGggZXJyb3IgMTIxCj4gPiA+ID4gPiAKPiA+ID4gPiA+IEVycm9yIDEyMSBpcyBFUkVNT1RF
-SU8uIFRoYXQgYmFzaWNhbGx5IG1lYW5zIHRoYXQgdGhlIHNlcnZlciBpcyBzaWNrIGFuZAo+ID4g
-PiA+ID4gdGhlcmUgaXMgbGl0dGxlIHRoZSBjbGllbnQgY2FuIGRvIG90aGVyIHRoYW4gcmV0cnkg
-aW4gdGhlIGhvcGUgdGhhdCBpdAo+ID4gPiA+ID4gZXZlbnR1YWxseSBnZXRzIGJldHRlci4KPiA+
-ID4gPiA+IAo+ID4gPiA+ID4gV2hhdCBrZXJuZWwgYXJlIHlvdSB1c2luZyBvbiB0aGUgc2VydmVy
-Pwo+ID4gPiAKPiA+ID4gU2VydmVyOiAKPiA+ID4gTGludXggYmVuZGVyIDIuNi4yMi1nZW50b28t
-cjUgIzIgU01QIEZyaSBTZXAgMTQgMjM6MTc6MzEgQ0VTVCAyMDA3Cj4gPiA+IHg4Nl82NCBBTUQg
-QXRobG9uKHRtKSA2NCBYMiBEdWFsIENvcmUgUHJvY2Vzc29yIDM4MDArIEF1dGhlbnRpY0FNRAo+
-ID4gPiBHTlUvTGludXgKPiA+ID4gCj4gPiA+IENsaWVudDogKFdoZW4gbm90IHRlc3RpbmcgbG9j
-YWwpCj4gPiA+IExpbnV4IGZyeSAyLjYuMjItZ2VudG9vLXI1ICMzIFNNUCBTYXQgU2VwIDE1IDAx
-OjI4OjI3IENFU1QgMjAwNyB4ODZfNjQKPiA+ID4gSW50ZWwoUikgQ29yZShUTSkyIENQVSA2NDAw
-IEAgMi4xM0dIeiBHZW51aW5lSW50ZWwgR05VL0xpbnV4Cj4gPiA+IAo+ID4gPiA+ID4gCj4gPiA+
-ID4gPiA+IEVycm9yOiBzdGF0ZSByZWNvdmVyeSBmYWlsZWQgb24gTkZTdjQgc2VydmVyIDE5Mi4x
-NjguMC4xIHdpdGggZXJyb3IgMgo+ID4gPiA+ID4gCj4gPiA+ID4gPiBFTk9FTlQuIFRoYXQgbWVh
-bnMgdGhhdCBhIGZpbGUgeW91IHdlcmUgcmVhZGluZyBvbiB0aGUgc2VydmVyIGhhcwo+ID4gPiA+
-ID4gZGlzYXBwZWFyZWQgd2hpbGUgdGhlIHNlcnZlciB3YXMgaW5jb21tdW5pY2Fkby4KPiA+ID4g
-PiA+IAo+ID4gPiA+ID4gQ2hlZXJzCj4gPiA+ID4gPiAgIFRyb25kCj4gPiA+ID4gCj4gPiA+ID4g
-QlRXOiBXaGF0IGtpbmQgb2YgbmV0d29yayBjb25uZWN0aW9uIGFyZSB5b3UgcnVubmluZyBiZXR3
-ZWVuIHRoZSBjbGllbnQKPiA+ID4gPiBhbmQgc2VydmVyLiBJcyBpdCByZWFsbHkgdGhhdCBiYWQg
-dGhhdCB0aGUgY2xpZW50IGlzIGNvbnN0YW50bHkgaGF2aW5nCj4gPiA+ID4gdG8gcmVjb3ZlciBz
-dGF0ZT8KPiA+ID4gCj4gPiA+IEkgZ2V0IHRoaXMgZXJyb3IgZXZlbiB3aGVuIEkgdHJ5IGxvY2Fs
-IG9uIHNlcnZlciBtYWNoaW5lLCBidXQgYmV0d2Vlbgo+ID4gPiB0aGUgc2VydmVyIGFuZCBjbGll
-bnQgSSBoYXZlIEdiaXQgZWh0ZXJuZXQgY29ubmVjdGlvbi4gVGhlIG1vc3Qgc3RyYW5nZQo+ID4g
-PiB0aGluZyBpcyB0aGF0IEkgaGF2ZSBtYW5hZ2UgdG8gZ2V0IHJldmVyc2VkIHNpdHVhdGlvbiB3
-b3JraW5nLgo+ID4gPiAKPiA+ID4gSSBjYW4gZ28gb24gYW5kIHVzZSBscyAtbGEgL21udC9uZnMg
-YXMgbG9uZyBhcyBJIGRvbid0IHN0YW5kIGluIHRoZQo+ID4gPiBkaXJlY3RvcnksIHRoZSBJIGdl
-dCB0aGUgcmVjb3ZlcnkgZXJyb3IuIEFuZCBpZiBJIHRyeSB0byByZWFkL3dyaXRlIHRvIGEKPiA+
-ID4gZmlsZSBJIGdldCB0aGlzIGVycm9yLgo+ID4gPiAKPiA+ID4gSSB0cmllZCBOZXdweW5mcyAo
-IGh0dHA6Ly93d3cuY2l0aS51bWljaC5lZHUvcHJvamVjdHMvbmZzdjQvcHluZnMvICkgYW5kCj4g
-PiA+IHdpdGggdGhpcyBhcHBsaWNhdGlvbiBJIG1hbmFnZSB0byB3cml0ZSBhbmQgcmVhZCB0byB0
-aGUgc2VydmVyIHdpdGhvdXQKPiA+ID4gdGhlIGVycm9ycywgc28gSSdtIGtpbmQgb2YgY29uZnVz
-ZWQuCj4gPiA+IAo+ID4gPiBJIGhhdmUgYWxzbyB0cmllZCBhIE9wZW5Tb2xhcmlzIGxpdmVjZAo+
-ID4gPiAoIGh0dHA6Ly93d3cuZ2VudW5peC5vcmcvZGlzdHJpYnV0aW9ucy9iZWxlbml4X3NpdGUv
-ICkgd2l0aCBhbG1vc3Qgc2FtZQo+ID4gPiByZXN1bHQsIG5vdGhpbmcgaW4gdGhlIGxvZ3Mgb3Ig
-c28sIGJ1dCB0aGUgbW91bnQgY29tbWFuZCBoYW5ncy4KPiA+ID4gIAo+ID4gPiBJcyB0aGVyZSBh
-bnl0aGluZyBlbHNlIEkgY2FuIHRyeSB0byBkZWJ1ZyB0aGlzIGZ1cnRoZXI/Cj4gPiAKPiA+IENv
-dWxkIHlvdSB0cnkgdG8gdHJpZ2dlciB0aGUgcHJvYmxlbSBvbiB0aGUgY2xpZW50LCB0aGVuIGxv
-ZyBpbiBhcyByb290Cj4gPiBvbiB0aGUgc2VydmVyLCBhbmQgdHlwZQo+ID4gCj4gPiBlY2hvIHQg
-Pi9wcm9jL3N5c3JxLXRyaWdnZXIKPiA+IAo+ID4gYW5kIHNlbmQgdXMgdGhlIG91dHB1dCBmcm9t
-ICdkbWVzZyAtcyA5MDAwMCc/Cj4gPiAKPiA+IFRoYXQgb3VnaHQgdG8gZ2l2ZSB1cyBhbiBpZGVh
-IHdoYXQgdGhlIHNlcnZlciBpcyBkb2luZyB0aGF0IGlzIGNhdXNpbmcKPiA+IGl0IHRvIGhhbmcu
-Li4KPiA+IAo+ID4gQ2hlZXJzCj4gPiAgIFRyb25kCj4gPiAKPiBBdHRhY2hlZCB0aGUgb3V0cHV0
-IGZyb20gZG1lc2cgLXMgOTAwMDAKPiAKPiAvSm9uYXMKPiAtLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tCj4gVGhp
-cyBTRi5uZXQgZW1haWwgaXMgc3BvbnNvcmVkIGJ5OiBNaWNyb3NvZnQKPiBEZWZ5IGFsbCBjaGFs
-bGVuZ2VzLiBNaWNyb3NvZnQoUikgVmlzdWFsIFN0dWRpbyAyMDA1Lgo+IGh0dHA6Ly9jbGsuYXRk
-bXQuY29tL01SVC9nby92c2UwMTIwMDAwMDcwbXJ0L2RpcmVjdC8wMS8KPiBfX19fX19fX19fX19f
-X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fXyBORlMgbWFpbGxpc3QgLSBORlNAbGlz
-dHMuc291cmNlZm9yZ2UubmV0IGh0dHBzOi8vbGlzdHMuc291cmNlZm9yZ2UubmV0L2xpc3RzL2xp
-c3RpbmZvL25mcwoKCi0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0KVGhpcyBTRi5uZXQgZW1haWwgaXMgc3BvbnNv
-cmVkIGJ5OiBNaWNyb3NvZnQKRGVmeSBhbGwgY2hhbGxlbmdlcy4gTWljcm9zb2Z0KFIpIFZpc3Vh
-bCBTdHVkaW8gMjAwNS4KaHR0cDovL2Nsay5hdGRtdC5jb20vTVJUL2dvL3ZzZTAxMjAwMDAwNzBt
-cnQvZGlyZWN0LzAxLwpfX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
-X19fXwpORlMgbWFpbGxpc3QgIC0gIE5GU0BsaXN0cy5zb3VyY2Vmb3JnZS5uZXQKaHR0cHM6Ly9s
-aXN0cy5zb3VyY2Vmb3JnZS5uZXQvbGlzdHMvbGlzdGluZm8vbmZzCg==
+Don't pay for another game. Get over 1000 free games online.
+http://81.95.187.157/
+
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Microsoft
+Defy all challenges. Microsoft(R) Visual Studio 2005.
+http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
