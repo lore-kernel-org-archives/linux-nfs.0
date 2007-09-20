@@ -1,8 +1,8 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 0/7] fix setuid/setgid clearing in networked
-	filesystems (rev 7)
-Date: Thu, 20 Sep 2007 05:10:35 -0400
-Message-ID: <200709200910.l8K9AZId001323@dantu.rdu.redhat.com>
+Subject: [PATCH 1/7] ecryptfs: allow lower fs to interpret
+	ATTR_KILL_S*ID
+Date: Thu, 20 Sep 2007 05:10:41 -0400
+Message-ID: <200709200910.l8K9AfBQ001328@dantu.rdu.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net, unionfs@filesystems.org,
@@ -23,26 +23,36 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This patchset is the 7th revision for fixing the clearing of setuid and
-setgid bits in networked filesystems. It should apply cleanly to
-2.6.23-rc6-mm1.
-
-The first four patches in the set are cleanup patches to make sure that
-those filesystems don't trip the new BUG() call in notify_change. The
-fifth patch (the main one) fixes notify_change to not clear the
-ATTR_KILL_S*ID bits when interpreting them into a mode change. The final
-two patches change NFS and CIFS to take advantage of the new scheme.
-
-This is basically the same patchset as version 6. The main differences
-are changes to ecryptfs and unionfs patches to accomodate changes made
-in recent -mm patches. Also, when I sent out the 6th revision I forgot
-to mention that the knfsd patch had been changed to more closely reflect
-the existing behavior when receiving a setattr call that changes the
-mode and uid/gid.
-
-This patchset is being submitted for inclusion into -mm.
+Make sure ecryptfs doesn't trip the BUG() in notify_change. This also
+allows the lower filesystem to interpret ATTR_KILL_S*ID in its own way.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/ecryptfs/inode.c |    8 ++++++++
+ 1 files changed, 8 insertions(+), 0 deletions(-)
+
+diff --git a/fs/ecryptfs/inode.c b/fs/ecryptfs/inode.c
+index fc4c6cb..23a2fef 100644
+--- a/fs/ecryptfs/inode.c
++++ b/fs/ecryptfs/inode.c
+@@ -959,6 +959,14 @@ static int ecryptfs_setattr(struct dentry *dentry, struct iattr *ia)
+ 		if (rc < 0)
+ 			goto out;
+ 	}
++
++	/*
++	 * mode change is for clearing setuid/setgid bits. Allow lower fs
++	 * to interpret this in its own way.
++	 */
++	if (ia->ia_valid & (ATTR_KILL_SUID | ATTR_KILL_SGID))
++		ia->ia_valid &= ~ATTR_MODE;
++
+ 	rc = notify_change(lower_dentry, ia);
+ out:
+ 	fsstack_copy_attr_all(inode, lower_inode);
+-- 
+1.5.2.1
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
