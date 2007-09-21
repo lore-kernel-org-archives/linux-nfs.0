@@ -1,28 +1,23 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: NFS on loopback locks up entire system(2.6.23-rc6)?
-Date: Fri, 21 Sep 2007 14:14:13 -0400
-Message-ID: <1190398453.6690.12.camel@heimdal.trondhjem.org>
-References: <92cbf19b0709201722k6265e647x31b7d25bc54b63a0@mail.gmail.com>
-	<1190335423.6763.180.camel@heimdal.trondhjem.org>
-	<92cbf19b0709202012s375c6f54m588987b4bbf552bc@mail.gmail.com>
-	<1190384005.6680.20.camel@heimdal.trondhjem.org>
-	<92cbf19b0709210920p3647788dl11d8c4e0cee1f70f@mail.gmail.com>
-	<1190391881.6680.73.camel@heimdal.trondhjem.org>
-	<92cbf19b0709211106n12b1b4ecxc0d415aa097d21b2@mail.gmail.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: nfs_refresh_inode: inode number mismatch
+Date: Fri, 21 Sep 2007 16:46:37 -0400
+Message-ID: <1190407597.6721.40.camel@heimdal.trondhjem.org>
+References: <46E6C54F.4020100@aristoslogic.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
-To: Chakri n <chakriin5@gmail.com>
+Cc: nfs@lists.sourceforge.net
+To: Chris Carlson <c.carlson@aristoslogic.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IYn1D-0005cg-Kn
-	for nfs@lists.sourceforge.net; Fri, 21 Sep 2007 11:14:23 -0700
-Received: from mx2.netapp.com ([216.240.18.37])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IYn1G-0000xn-GO
-	for nfs@lists.sourceforge.net; Fri, 21 Sep 2007 11:14:28 -0700
-In-Reply-To: <92cbf19b0709211106n12b1b4ecxc0d415aa097d21b2@mail.gmail.com>
+	id 1IYpOg-0004jU-4M
+	for nfs@lists.sourceforge.net; Fri, 21 Sep 2007 13:46:46 -0700
+Received: from pat.uio.no ([129.240.10.15])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IYpOi-0000Xw-IH
+	for nfs@lists.sourceforge.net; Fri, 21 Sep 2007 13:46:51 -0700
+In-Reply-To: <46E6C54F.4020100@aristoslogic.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,52 +30,33 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-No. The requirement for 'hard' mounts is not that the server be up all
-the time. The server can go up and down as it pleases: the client can
-happily recover from that.
+On Tue, 2007-09-11 at 09:41 -0700, Chris Carlson wrote:
+> We are running MontaVista Embedded Linux 2.4 with NetApps NFS servers as 
+> the root filesystem and Linux 2.6 mounted filesystems.  A simple test 
+> runs to copy files from one mount point to another (both are different 
+> directories on the same NFS server mounted at differet points).
+> 
+> After 30 copies of a hundred files are made, the system is rebooted and 
+> the test repeats.
+> 
+> After 2 reboots, an NFS file is created, and we get the following error 
+> from the kernel:
+> 
+> nfs_refresh_inode: inode number mismatch
+> expected (0x11/0xdacea3), got (0x11/0xb8d5e3)
+> 
+> We're just trying to figure out what to do to figure out what the 
+> problem is.  Is there a good place to place printks or breakpoints?
 
-The requirement is rather that nobody remove it permanently before the
-application is done with it, and the partition is unmounted. That is
-hardly unreasonable (it is the only way I know of to ensure data
-integrity), and it is much less strict than the requirements for local
-disks.
+It is a known problem with some versions of OnTap: they sometimes return
+corrupted attribute information when an operation is denied due to a
+'read-only' export option.
+You should be able to fix the problem by upgrading to a more recent
+version of OnTap.
 
-Trond
+Cheers
+  Trond
 
-On Fri, 2007-09-21 at 11:06 -0700, Chakri n wrote:
-> Isn't this a strict requirement from client side, asking to guarantee
-> that a server stays up all the time?
-> 
-> I have seen many cases, where people go and directly change IP of
-> their NFS filers or servers worrying least about the clients using
-> them.
-> 
-> Can we get around with some sort of congestion logic?
-> 
-> Thanks
-> --Chakri
-> 
-> On 9/21/07, Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
-> > On Fri, 2007-09-21 at 09:20 -0700, Chakri n wrote:
-> > > Thanks.
-> > >
-> > > I was using flock (BSD locking) and I think the problem should be
-> > > solved if I move my application to use POSIX locks.
-> >
-> > Yup.
-> >
-> > > And any option to avoid processes waiting indefinitely to free pages
-> > > from NFS requests waiting on unresponsive NFS server?
-> >
-> > The only solution I know of is to use soft mounts, but that brings
-> > another set of problems:
-> >      1. most applications don't know how to recover safely from an EIO
-> >         error.
-> >      2. You lose data.
-> >
-> > Cheers
-> >   Trond
-> >
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
