@@ -1,24 +1,23 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH supplemental 15/19] Add RDMA dependency
-	to	SUNRPC_XPRT_RDMA
-Date: Thu, 20 Sep 2007 18:00:15 -0400
-Message-ID: <1190325615.6763.169.camel@heimdal.trondhjem.org>
-References: <EXNANE01OSQeSOzNCWb00000575@exnane01.hq.netapp.com>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [PATCH 02/18] exportfs: add new methods
+Date: Thu, 20 Sep 2007 17:18:40 -0700
+Message-ID: <20070920171840.0c6949a6.akpm@linux-foundation.org>
+References: <20070919163025.GC18952@lst.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
+Cc: linux-fsdevel@vger.kernel.org, nfs@lists.sourceforge.net
+To: Christoph Hellwig <hch@lst.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IYU4L-0006MO-DZ
-	for nfs@lists.sourceforge.net; Thu, 20 Sep 2007 15:00:21 -0700
-Received: from pat.uio.no ([129.240.10.15])
+	id 1IYWEJ-0002Wt-2x
+	for nfs@lists.sourceforge.net; Thu, 20 Sep 2007 17:18:47 -0700
+Received: from smtp2.linux-foundation.org ([207.189.120.14])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IYU4O-00021t-RT
-	for nfs@lists.sourceforge.net; Thu, 20 Sep 2007 15:00:26 -0700
-In-Reply-To: <EXNANE01OSQeSOzNCWb00000575@exnane01.hq.netapp.com>
+	(Exim 4.44) id 1IYWEL-0004Hq-Rn
+	for nfs@lists.sourceforge.net; Thu, 20 Sep 2007 17:18:52 -0700
+In-Reply-To: <20070919163025.GC18952@lst.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,18 +30,16 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, 2007-09-20 at 17:37 -0400, Talpey, Thomas wrote:
-> RPCRDMA: Kconfig RDMA dependency
-> 
-> Add a dependency on RDMA before enabling SUNRPC_XPRT_RDMA
-> Yes, "INFINIBAND" also turns on iWARP and other RDMA support.
-> 
-> Signed-off-by: Tom Talpey <talpey@netapp.com>
+On Wed, 19 Sep 2007 18:30:25 +0200
+Christoph Hellwig <hch@lst.de> wrote:
 
-Thanks Tom!
+> +		/*
+> +		 * It's not a directory.  Life is a little more complicated.
+> +		 */
+> +		struct dentry *target_dir, *nresult;
+> +		char nbuf[NAME_MAX+1];
 
-Trond
-
+Lots of stack usage there.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
