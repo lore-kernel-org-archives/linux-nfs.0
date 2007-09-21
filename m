@@ -1,11 +1,27 @@
-From: "Dane Levy" <anorthic@incamail.com>
-Subject: Most popular online apothecary.
-Date: Fri, 21 Sep 2007 10:33:37 +0200
-Message-ID: <87118287205037.F8DE913CFB@8A3TA4P>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: NFS on loopback locks up entire system(2.6.23-rc6)?
+Date: Fri, 21 Sep 2007 08:47:27 -0400
+Message-ID: <20070921124727.GA15108@fieldses.org>
+References: <92cbf19b0709201722k6265e647x31b7d25bc54b63a0@mail.gmail.com>
+	<1190335423.6763.180.camel@heimdal.trondhjem.org>
+	<92cbf19b0709202012s375c6f54m588987b4bbf552bc@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============0246122924=="
-To: <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net,
+	Trond Myklebust <Trond.Myklebust@netapp.com>,
+	linux-kernel@vger.kernel.org
+To: Chakri n <chakriin5@gmail.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1IYhup-0000dm-JV
+	for nfs@lists.sourceforge.net; Fri, 21 Sep 2007 05:47:27 -0700
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IYhut-0003yF-Ai
+	for nfs@lists.sourceforge.net; Fri, 21 Sep 2007 05:47:32 -0700
+In-Reply-To: <92cbf19b0709202012s375c6f54m588987b4bbf552bc@mail.gmail.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -18,78 +34,37 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============0246122924==
-Content-Type: multipart/alternative;
-	boundary="----=_NextPart_000_00E5_07914B41.BC9277B4"
+On Thu, Sep 20, 2007 at 08:12:34PM -0700, Chakri n wrote:
+> And unfortunately in my case, I cannot use "mount --bind". I want to
+> use the same file system from two different nodes, and I want file &
+> record locking to be consistent. The only way to make sure locking is
+> consistent is to use loopback NFS on 1 host and NFS mount the same
+> file system on other nodes, so that NFS server ensures file & record
+> locking to be consistent. Is there any alternative to this?
 
-------=_NextPart_000_00E5_07914B41.BC9277B4
-Content-Type: text/plain;
-        charset="Windows-1252"
-Content-Transfer-Encoding: 7bit
+The NFS server acquires a lock on the exported filesystem before
+granting it to an NFS client, so loopback mounting shouldn't add any
+extra safety.  If you've witnessed some exception to this rule, please
+let us know.
 
-Greetings my friend.
-You are welcome in our pharmacy shop. Only nowadays you've got extraordinary possibility to purchase  cheap.
-Special offer only for you. Extremely cheap prices huge  range of medications.
-http://nkjriaj.suffixsent.cn/?178896452714
-With respect 
-Darlene Hooper
-kings. She also sent to the mausoleum an immense quantity of flax, tow, 
-peculiar viewpoint. That you have upheld it all this time. That you have 
-watching his opportunity, to get down into the water under the boats and 
-seems to have dropped out of the news recently.” “Out of favor?” “No sign of 
-affection which she could not control. She had surrendered and sacrificed 
-Boranova is mad or a fool, any more than I think that you are mad or a fool. 
-------=_NextPart_000_00E5_07914B41.BC9277B4
-Content-Type: text/html;
-        charset="Windows-1252"
-Content-Transfer-Encoding: 7bit
+> Is it possible or any efforts to integrate ext3 or other local file
+> systems locking & network file system locking, so that user can use
+> "mount --bind" on local host and NFS mount on remote nodes, but file &
+> record locking will be consistent between both the nodes?
 
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD>
-<META http-equiv=Content-Type content="text/html; charset=iso-8859-1">
-<META content="MSHTML 6.00.3790.2759" name=GENERATOR>
-<STYLE></STYLE>
-</HEAD>
-<BODY>
-Good afternoon..<BR>
-You are welcome in our chemist’s. Only nowadays you've got great chance to get  
-cheap.<BR>
-Special offer only for you. Extremely cheap costs great choice of medical goods.<BR>
-<A href="http://nkjriaj.suffixsent.cn/?178896452714">http://nkjriaj.suffixsent.cn/?178896452714</A><BR>
-With every good wish<BR>
-Joann Mackey
-<P><BR>
-  tomb. This request was granted; and she went to the tomb with a few <BR>
-  had been brought in toward evening, had partaken even more gratefully of a <BR>
-  still alive, shut up in her monument, and that she desired to see him there. <BR>
-  himself be led by the other, hanging back only slightly. Norbert waved and <BR>
-  there. Antony, when the first effects of his panic subsided, began to grow <BR>
-  large. “I do not know that Russian word you've used.” Boranova said, “We have <BR>
-  <BR>
-</P></BODY></HTML>
+That's the way it works already, more or less.
 
-------=_NextPart_000_00E5_07914B41.BC9277B4--
+(It depends a little on what you mean by "file and record locking".  The
+byte-range locks acquired by fcntl() have always been enforced over NFS.
+Locks acquired by flock() haven't always been, but loopback mounting
+doesn't solve this problem.)
 
-
-
---===============0246122924==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+--b.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
 Defy all challenges. Microsoft(R) Visual Studio 2005.
 http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
---===============0246122924==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============0246122924==--
