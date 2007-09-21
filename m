@@ -1,37 +1,102 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [NFS] NFS on loopback locks up entire system(2.6.23-rc6)?
-Date: Fri, 21 Sep 2007 12:24:41 -0400
-Message-ID: <1190391881.6680.73.camel@heimdal.trondhjem.org>
-References: <92cbf19b0709201722k6265e647x31b7d25bc54b63a0@mail.gmail.com>
-	 <1190335423.6763.180.camel@heimdal.trondhjem.org>
-	 <92cbf19b0709202012s375c6f54m588987b4bbf552bc@mail.gmail.com>
-	 <1190384005.6680.20.camel@heimdal.trondhjem.org>
-	 <92cbf19b0709210920p3647788dl11d8c4e0cee1f70f@mail.gmail.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: Problem with NFS4,
+	Error: state recovery failed on NFSv4	server 192.168.0.1 with error
+	121
+Date: Fri, 21 Sep 2007 13:41:26 -0400
+Message-ID: <1190396486.6690.4.camel@heimdal.trondhjem.org>
+References: <358c6ad3a55609518d1dfa15ef1f2bd2@imap.u7.se>
+	<1190048861.6700.105.camel@heimdal.trondhjem.org>
+	<1190049122.6700.108.camel@heimdal.trondhjem.org>
+	<1190056357.5541.12.camel@fry.u7.se>
+	<1190059068.6700.125.camel@heimdal.trondhjem.org>
+	<1190060733.5541.14.camel@fry.u7.se>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
-To: Chakri n <chakriin5@gmail.com>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1761311AbXIUQYx@vger.kernel.org>
-In-Reply-To: <92cbf19b0709210920p3647788dl11d8c4e0cee1f70f@mail.gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset="utf-8"
+Cc: "Dr. J. Bruce Fields" <bfields@citi.umich.edu>,
+	nfs@lists.sourceforge.net
+To: jonas@websystem.se
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1IYmVS-00029L-W9
+	for nfs@lists.sourceforge.net; Fri, 21 Sep 2007 10:41:35 -0700
+Received: from pat.uio.no ([129.240.10.15])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IYmVW-0000kw-AX
+	for nfs@lists.sourceforge.net; Fri, 21 Sep 2007 10:41:40 -0700
+In-Reply-To: <1190060733.5541.14.camel@fry.u7.se>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, 2007-09-21 at 09:20 -0700, Chakri n wrote:
-> Thanks.
-> 
-> I was using flock (BSD locking) and I think the problem should be
-> solved if I move my application to use POSIX locks.
-
-Yup.
-
-> And any option to avoid processes waiting indefinitely to free pages
-> from NFS requests waiting on unresponsive NFS server?
-
-The only solution I know of is to use soft mounts, but that brings
-another set of problems:
-     1. most applications don't know how to recover safely from an EIO
-        error.
-     2. You lose data.
-
-Cheers
-  Trond
+T24gTW9uLCAyMDA3LTA5LTE3IGF0IDIyOjI1ICswMjAwLCBKb25hcyBKb25zc29uIHdyb3RlOgo+
+IG3DpW4gMjAwNy0wOS0xNyBrbG9ja2FuIDE1OjU3IC0wNDAwIHNrcmV2IFRyb25kIE15a2xlYnVz
+dDoKPiA+IE9uIE1vbiwgMjAwNy0wOS0xNyBhdCAyMToxMiArMDIwMCwgSm9uYXMgSm9uc3NvbiB3
+cm90ZToKPiA+ID4gbcOlbiAyMDA3LTA5LTE3IGtsb2NrYW4gMTM6MTIgLTA0MDAgc2tyZXYgVHJv
+bmQgTXlrbGVidXN0Ogo+ID4gPiA+IE9uIE1vbiwgMjAwNy0wOS0xNyBhdCAxMzowNyAtMDQwMCwg
+VHJvbmQgTXlrbGVidXN0IHdyb3RlOgo+ID4gPiA+ID4gT24gU3VuLCAyMDA3LTA5LTE2IGF0IDE5
+OjQ1ICswMjAwLCBKb25hcyBKb25zc29uIHdyb3RlOgo+ID4gPiA+ID4gCj4gPiA+ID4gPiA+IFRo
+ZW4gdGhlIGxzIHByb2Nlc3MgaGFuZ3MgYW5kIHRoZSBzeXNsb2cgc3RhcnRzIHRvIGZsb2RkIHdp
+dGgKPiA+ID4gPiA+ID4gCj4gPiA+ID4gPiA+IEVycm9yOiBzdGF0ZSByZWNvdmVyeSBmYWlsZWQg
+b24gTkZTdjQgc2VydmVyIDE5Mi4xNjguMC4xIHdpdGggZXJyb3IgMTIxCj4gPiA+ID4gPiAKPiA+
+ID4gPiA+IEVycm9yIDEyMSBpcyBFUkVNT1RFSU8uIFRoYXQgYmFzaWNhbGx5IG1lYW5zIHRoYXQg
+dGhlIHNlcnZlciBpcyBzaWNrIGFuZAo+ID4gPiA+ID4gdGhlcmUgaXMgbGl0dGxlIHRoZSBjbGll
+bnQgY2FuIGRvIG90aGVyIHRoYW4gcmV0cnkgaW4gdGhlIGhvcGUgdGhhdCBpdAo+ID4gPiA+ID4g
+ZXZlbnR1YWxseSBnZXRzIGJldHRlci4KPiA+ID4gPiA+IAo+ID4gPiA+ID4gV2hhdCBrZXJuZWwg
+YXJlIHlvdSB1c2luZyBvbiB0aGUgc2VydmVyPwo+ID4gPiAKPiA+ID4gU2VydmVyOiAKPiA+ID4g
+TGludXggYmVuZGVyIDIuNi4yMi1nZW50b28tcjUgIzIgU01QIEZyaSBTZXAgMTQgMjM6MTc6MzEg
+Q0VTVCAyMDA3Cj4gPiA+IHg4Nl82NCBBTUQgQXRobG9uKHRtKSA2NCBYMiBEdWFsIENvcmUgUHJv
+Y2Vzc29yIDM4MDArIEF1dGhlbnRpY0FNRAo+ID4gPiBHTlUvTGludXgKPiA+ID4gCj4gPiA+IENs
+aWVudDogKFdoZW4gbm90IHRlc3RpbmcgbG9jYWwpCj4gPiA+IExpbnV4IGZyeSAyLjYuMjItZ2Vu
+dG9vLXI1ICMzIFNNUCBTYXQgU2VwIDE1IDAxOjI4OjI3IENFU1QgMjAwNyB4ODZfNjQKPiA+ID4g
+SW50ZWwoUikgQ29yZShUTSkyIENQVSA2NDAwIEAgMi4xM0dIeiBHZW51aW5lSW50ZWwgR05VL0xp
+bnV4Cj4gPiA+IAo+ID4gPiA+ID4gCj4gPiA+ID4gPiA+IEVycm9yOiBzdGF0ZSByZWNvdmVyeSBm
+YWlsZWQgb24gTkZTdjQgc2VydmVyIDE5Mi4xNjguMC4xIHdpdGggZXJyb3IgMgo+ID4gPiA+ID4g
+Cj4gPiA+ID4gPiBFTk9FTlQuIFRoYXQgbWVhbnMgdGhhdCBhIGZpbGUgeW91IHdlcmUgcmVhZGlu
+ZyBvbiB0aGUgc2VydmVyIGhhcwo+ID4gPiA+ID4gZGlzYXBwZWFyZWQgd2hpbGUgdGhlIHNlcnZl
+ciB3YXMgaW5jb21tdW5pY2Fkby4KPiA+ID4gPiA+IAo+ID4gPiA+ID4gQ2hlZXJzCj4gPiA+ID4g
+PiAgIFRyb25kCj4gPiA+ID4gCj4gPiA+ID4gQlRXOiBXaGF0IGtpbmQgb2YgbmV0d29yayBjb25u
+ZWN0aW9uIGFyZSB5b3UgcnVubmluZyBiZXR3ZWVuIHRoZSBjbGllbnQKPiA+ID4gPiBhbmQgc2Vy
+dmVyLiBJcyBpdCByZWFsbHkgdGhhdCBiYWQgdGhhdCB0aGUgY2xpZW50IGlzIGNvbnN0YW50bHkg
+aGF2aW5nCj4gPiA+ID4gdG8gcmVjb3ZlciBzdGF0ZT8KPiA+ID4gCj4gPiA+IEkgZ2V0IHRoaXMg
+ZXJyb3IgZXZlbiB3aGVuIEkgdHJ5IGxvY2FsIG9uIHNlcnZlciBtYWNoaW5lLCBidXQgYmV0d2Vl
+bgo+ID4gPiB0aGUgc2VydmVyIGFuZCBjbGllbnQgSSBoYXZlIEdiaXQgZWh0ZXJuZXQgY29ubmVj
+dGlvbi4gVGhlIG1vc3Qgc3RyYW5nZQo+ID4gPiB0aGluZyBpcyB0aGF0IEkgaGF2ZSBtYW5hZ2Ug
+dG8gZ2V0IHJldmVyc2VkIHNpdHVhdGlvbiB3b3JraW5nLgo+ID4gPiAKPiA+ID4gSSBjYW4gZ28g
+b24gYW5kIHVzZSBscyAtbGEgL21udC9uZnMgYXMgbG9uZyBhcyBJIGRvbid0IHN0YW5kIGluIHRo
+ZQo+ID4gPiBkaXJlY3RvcnksIHRoZSBJIGdldCB0aGUgcmVjb3ZlcnkgZXJyb3IuIEFuZCBpZiBJ
+IHRyeSB0byByZWFkL3dyaXRlIHRvIGEKPiA+ID4gZmlsZSBJIGdldCB0aGlzIGVycm9yLgo+ID4g
+PiAKPiA+ID4gSSB0cmllZCBOZXdweW5mcyAoIGh0dHA6Ly93d3cuY2l0aS51bWljaC5lZHUvcHJv
+amVjdHMvbmZzdjQvcHluZnMvICkgYW5kCj4gPiA+IHdpdGggdGhpcyBhcHBsaWNhdGlvbiBJIG1h
+bmFnZSB0byB3cml0ZSBhbmQgcmVhZCB0byB0aGUgc2VydmVyIHdpdGhvdXQKPiA+ID4gdGhlIGVy
+cm9ycywgc28gSSdtIGtpbmQgb2YgY29uZnVzZWQuCj4gPiA+IAo+ID4gPiBJIGhhdmUgYWxzbyB0
+cmllZCBhIE9wZW5Tb2xhcmlzIGxpdmVjZAo+ID4gPiAoIGh0dHA6Ly93d3cuZ2VudW5peC5vcmcv
+ZGlzdHJpYnV0aW9ucy9iZWxlbml4X3NpdGUvICkgd2l0aCBhbG1vc3Qgc2FtZQo+ID4gPiByZXN1
+bHQsIG5vdGhpbmcgaW4gdGhlIGxvZ3Mgb3Igc28sIGJ1dCB0aGUgbW91bnQgY29tbWFuZCBoYW5n
+cy4KPiA+ID4gIAo+ID4gPiBJcyB0aGVyZSBhbnl0aGluZyBlbHNlIEkgY2FuIHRyeSB0byBkZWJ1
+ZyB0aGlzIGZ1cnRoZXI/Cj4gPiAKPiA+IENvdWxkIHlvdSB0cnkgdG8gdHJpZ2dlciB0aGUgcHJv
+YmxlbSBvbiB0aGUgY2xpZW50LCB0aGVuIGxvZyBpbiBhcyByb290Cj4gPiBvbiB0aGUgc2VydmVy
+LCBhbmQgdHlwZQo+ID4gCj4gPiBlY2hvIHQgPi9wcm9jL3N5c3JxLXRyaWdnZXIKPiA+IAo+ID4g
+YW5kIHNlbmQgdXMgdGhlIG91dHB1dCBmcm9tICdkbWVzZyAtcyA5MDAwMCc/Cj4gPiAKPiA+IFRo
+YXQgb3VnaHQgdG8gZ2l2ZSB1cyBhbiBpZGVhIHdoYXQgdGhlIHNlcnZlciBpcyBkb2luZyB0aGF0
+IGlzIGNhdXNpbmcKPiA+IGl0IHRvIGhhbmcuLi4KPiA+IAo+ID4gQ2hlZXJzCj4gPiAgIFRyb25k
+Cj4gPiAKPiBBdHRhY2hlZCB0aGUgb3V0cHV0IGZyb20gZG1lc2cgLXMgOTAwMDAKPiAKPiAvSm9u
+YXMKClNvLCBpdCBsb29rcyBhcyBpZiB0aGUgc2VydmVyIGlzIGhhbmdpbmcgaW4gbGF1bmRyb21h
+dF9tYWluLCBhbmQgdGhhdCBpcwpwcmV2ZW50aW5nIHRoZSBjbGllbnQgZnJvbSByZWdpc3Rlcmlu
+ZyBhIHNldGNsaWVudGlkLgoKQnJ1Y2U/CgpDaGVlcnMKICBUcm9uZAoKCi0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0KVGhpcyBTRi5uZXQgZW1haWwgaXMgc3BvbnNvcmVkIGJ5OiBNaWNyb3NvZnQKRGVmeSBhbGwg
+Y2hhbGxlbmdlcy4gTWljcm9zb2Z0KFIpIFZpc3VhbCBTdHVkaW8gMjAwNS4KaHR0cDovL2Nsay5h
+dGRtdC5jb20vTVJUL2dvL3ZzZTAxMjAwMDAwNzBtcnQvZGlyZWN0LzAxLwpfX19fX19fX19fX19f
+X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fXwpORlMgbWFpbGxpc3QgIC0gIE5GU0Bs
+aXN0cy5zb3VyY2Vmb3JnZS5uZXQKaHR0cHM6Ly9saXN0cy5zb3VyY2Vmb3JnZS5uZXQvbGlzdHMv
+bGlzdGluZm8vbmZzCg==
