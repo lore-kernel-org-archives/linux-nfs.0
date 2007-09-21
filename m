@@ -1,25 +1,11 @@
-From: Christoph Hellwig <hch@lst.de>
-Subject: Re: [PATCH 02/18] exportfs: add new methods
-Date: Fri, 21 Sep 2007 10:01:39 +0200
-Message-ID: <20070921080139.GA4928@lst.de>
-References: <20070919163025.GC18952@lst.de>
-	<20070920171840.0c6949a6.akpm@linux-foundation.org>
+From: "Dane Levy" <anorthic@incamail.com>
+Subject: Most popular online apothecary.
+Date: Fri, 21 Sep 2007 10:33:37 +0200
+Message-ID: <87118287205037.F8DE913CFB@8A3TA4P>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: linux-fsdevel@vger.kernel.org, nfs@lists.sourceforge.net,
-	Christoph Hellwig <hch@lst.de>
-To: Andrew Morton <akpm@linux-foundation.org>
+Content-Type: multipart/mixed; boundary="===============0246122924=="
+To: <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IYdSM-00048b-GM
-	for nfs@lists.sourceforge.net; Fri, 21 Sep 2007 01:01:46 -0700
-Received: from verein.lst.de ([213.95.11.210] helo=mail.lst.de)
-	by mail.sourceforge.net with esmtps (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.44) id 1IYdSP-0005fe-VP
-	for nfs@lists.sourceforge.net; Fri, 21 Sep 2007 01:01:51 -0700
-In-Reply-To: <20070920171840.0c6949a6.akpm@linux-foundation.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,25 +18,78 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, Sep 20, 2007 at 05:18:40PM -0700, Andrew Morton wrote:
-> On Wed, 19 Sep 2007 18:30:25 +0200
-> Christoph Hellwig <hch@lst.de> wrote:
-> 
-> > +		/*
-> > +		 * It's not a directory.  Life is a little more complicated.
-> > +		 */
-> > +		struct dentry *target_dir, *nresult;
-> > +		char nbuf[NAME_MAX+1];
-> 
-> Lots of stack usage there.
+--===============0246122924==
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_000_00E5_07914B41.BC9277B4"
 
-True.  But this is just copying the old code around to make use of the
-new methods, so I didn't want to mess with underlying details.
+------=_NextPart_000_00E5_07914B41.BC9277B4
+Content-Type: text/plain;
+        charset="Windows-1252"
+Content-Transfer-Encoding: 7bit
+
+Greetings my friend.
+You are welcome in our pharmacy shop. Only nowadays you've got extraordinary possibility to purchase  cheap.
+Special offer only for you. Extremely cheap prices huge  range of medications.
+http://nkjriaj.suffixsent.cn/?178896452714
+With respect 
+Darlene Hooper
+kings. She also sent to the mausoleum an immense quantity of flax, tow, 
+peculiar viewpoint. That you have upheld it all this time. That you have 
+watching his opportunity, to get down into the water under the boats and 
+seems to have dropped out of the news recently.” “Out of favor?” “No sign of 
+affection which she could not control. She had surrendered and sacrificed 
+Boranova is mad or a fool, any more than I think that you are mad or a fool. 
+------=_NextPart_000_00E5_07914B41.BC9277B4
+Content-Type: text/html;
+        charset="Windows-1252"
+Content-Transfer-Encoding: 7bit
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD>
+<META http-equiv=Content-Type content="text/html; charset=iso-8859-1">
+<META content="MSHTML 6.00.3790.2759" name=GENERATOR>
+<STYLE></STYLE>
+</HEAD>
+<BODY>
+Good afternoon..<BR>
+You are welcome in our chemist’s. Only nowadays you've got great chance to get  
+cheap.<BR>
+Special offer only for you. Extremely cheap costs great choice of medical goods.<BR>
+<A href="http://nkjriaj.suffixsent.cn/?178896452714">http://nkjriaj.suffixsent.cn/?178896452714</A><BR>
+With every good wish<BR>
+Joann Mackey
+<P><BR>
+  tomb. This request was granted; and she went to the tomb with a few <BR>
+  had been brought in toward evening, had partaken even more gratefully of a <BR>
+  still alive, shut up in her monument, and that she desired to see him there. <BR>
+  himself be led by the other, hanging back only slightly. Norbert waved and <BR>
+  there. Antony, when the first effects of his panic subsided, began to grow <BR>
+  large. “I do not know that Russian word you've used.” Boranova said, “We have <BR>
+  <BR>
+</P></BODY></HTML>
+
+------=_NextPart_000_00E5_07914B41.BC9277B4--
+
+
+
+--===============0246122924==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
 Defy all challenges. Microsoft(R) Visual Studio 2005.
 http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+--===============0246122924==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============0246122924==--
