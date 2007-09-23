@@ -1,24 +1,24 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: lockd not responding
-Date: Sat, 22 Sep 2007 17:31:05 -0400
-Message-ID: <20070922173105.5b2607f5.jlayton@redhat.com>
-References: <fc84aa$o11$1@sea.gmane.org>
-	<20070912202721.d8f70ac1.jlayton@redhat.com>
-	<1190407932.6721.42.camel@heimdal.trondhjem.org>
+From: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
+Subject: Re: Bug#443591: nfs-kernel-server: Unexporting directories
+	no	longer working
+Date: Sun, 23 Sep 2007 02:01:02 +0200
+Message-ID: <20070923000102.GA29785@uio.no>
+References: <20070922174231.11200.29119.reportbug@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: kenneth johansson <ken@kenjo.org>, nfs@lists.sourceforge.net
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: nfs@lists.sourceforge.net
+To: David Liontooth <liontooth@cogweb.net>, 443591@bugs.debian.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IZCZw-0006wv-EC
-	for nfs@lists.sourceforge.net; Sat, 22 Sep 2007 14:31:57 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IZCa0-0002FF-4r
-	for nfs@lists.sourceforge.net; Sat, 22 Sep 2007 14:32:01 -0700
-In-Reply-To: <1190407932.6721.42.camel@heimdal.trondhjem.org>
+	id 1IZEud-0003jZ-5s
+	for nfs@lists.sourceforge.net; Sat, 22 Sep 2007 17:01:29 -0700
+Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IZEuZ-0004gu-4i
+	for nfs@lists.sourceforge.net; Sat, 22 Sep 2007 17:01:26 -0700
+In-Reply-To: <20070922174231.11200.29119.reportbug@localhost.localdomain>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,49 +31,25 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, 21 Sep 2007 16:52:12 -0400
-Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
-
-> On Wed, 2007-09-12 at 20:27 -0400, Jeff Layton wrote:
-> > On Wed, 12 Sep 2007 07:26:02 +0000 (UTC)
-> > kenneth johansson <ken@kenjo.org> wrote:
-> > 
-> > > Got a warning from the lock validating check again and
-> > > later a unresponsive lockd with a backtrace this time
-> > > actually at the same place the lock warning was on.
-> > 
-> > FWIW, I think I ran into the exact same problem recently. I opened a
-> > BZ case for it so I wouldn't forget about it, but haven't had time to
-> > track it down:
-> > 
-> > https://bugzilla.redhat.com/show_bug.cgi?id=280311
-> > 
-> > I'm not certain that lockd was stuck at the time, since I had some
-> > other things going on with the box, but it may have been...
+On Sat, Sep 22, 2007 at 10:42:31AM -0700, David Liontooth wrote:
+> Package: nfs-kernel-server
+> Version: 1:1.1.0-13
+> Severity: normal
 > 
-> Does the attached patch help?
 > 
-> Cheers
->   Trond
+> The command to unexport a directory appears to no longer have any effect.
 > 
+> I issue "exportfs -u :/tv01" and "exportfs" shows /tv01 still exported; consequently, I cannot unmount it.
+> In contrast, removing /tv01 from /etc/exports and then running exportfs -ra successfully removes the export.
+> 
+> This used to work fine.
 
-Thanks, Trond -- nice work :-)
+Sending this on to upstream, as I cannot see any good reason offhand why it
+should not work.
 
-Yes. It does seem to. I have a reproducer of sorts -- run this in a
-continuous loop:
-
-lock file
-sleep 2 seconds
-unlock file
-sleep 1 second
-
-When run simultaneously on the server and client against the same
-inode, the lockdep warning usually pops within a few minutes. With
-the patch above, I never saw it, even after running for 20 mins or
-so.
-
+/* Steinar */
 -- 
-Jeff Layton <jlayton@redhat.com>
+Homepage: http://www.sesse.net/
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
