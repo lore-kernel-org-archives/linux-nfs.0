@@ -1,24 +1,24 @@
-From: David Liontooth <liontooth@cogweb.net>
-Subject: Re: Bug#443591: nfs-kernel-server: Unexporting directories
- no	longer working
-Date: Mon, 24 Sep 2007 16:29:02 -0700
-Message-ID: <46F8483E.3000103@cogweb.net>
-References: <20070922174231.11200.29119.reportbug@localhost.localdomain>	<20070923000102.GA29785@uio.no>
-	<18167.24613.796605.199161@notabene.brown>
+From: James Lentini <jlentini@netapp.com>
+Subject: Re: [PATCH] NFS: initialize default port in kernel mount
+	client
+Date: Mon, 24 Sep 2007 19:53:15 -0400 (EDT)
+Message-ID: <Pine.LNX.4.64.0709241942430.32008@jlentini-linux.nane.netapp.com>
+References: <Pine.LNX.4.64.0709241731560.32008@jlentini-linux.nane.netapp.com>
+	<46F83B09.2090202@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: 443591@bugs.debian.org, nfs@lists.sourceforge.net
-To: Neil Brown <neilb@suse.de>
+Cc: nfs@lists.sourceforge.net
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IZxMX-0008KH-IU
-	for nfs@lists.sourceforge.net; Mon, 24 Sep 2007 16:29:14 -0700
-Received: from smtp-2.smtp.ucla.edu ([169.232.47.136])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IZxMb-0003Wj-Cb
-	for nfs@lists.sourceforge.net; Mon, 24 Sep 2007 16:29:18 -0700
-In-Reply-To: <18167.24613.796605.199161@notabene.brown>
+	id 1IZxjr-0002CR-J4
+	for nfs@lists.sourceforge.net; Mon, 24 Sep 2007 16:53:19 -0700
+Received: from mx2.netapp.com ([216.240.18.37])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IZxjv-0003Ea-Bg
+	for nfs@lists.sourceforge.net; Mon, 24 Sep 2007 16:53:24 -0700
+In-Reply-To: <46F83B09.2090202@oracle.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,90 +32,65 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 
-Hi Neil,
 
-Thanks for looking.
+On Mon, 24 Sep 2007, Chuck Lever wrote:
 
-Neil Brown wrote:
-> On Sunday September 23, sgunderson@bigfoot.com wrote:
->   
->> On Sat, Sep 22, 2007 at 10:42:31AM -0700, David Liontooth wrote:
->>     
->>> Package: nfs-kernel-server
->>> Version: 1:1.1.0-13
->>> Severity: normal
->>>
->>>
->>> The command to unexport a directory appears to no longer have any effect.
->>>
->>> I issue "exportfs -u :/tv01" and "exportfs" shows /tv01 still exported; consequently, I cannot unmount it.
->>> In contrast, removing /tv01 from /etc/exports and then running exportfs -ra successfully removes the export.
->>>
->>> This used to work fine.
->>>       
->> Sending this on to upstream, as I cannot see any good reason offhand why it
->> should not work.
->>     
->
-> Some simple testing and code review suggests that this works as
-> expected.  However it is possible that I am expecting something
-> different to you, or testing something different.
->
-> You say you:
->     exportfs -u :/tv01
->
-> What exactly is in your /etc/exports that this is expected to revert?
->   
+> Hi James-
+> 
+> James Lentini wrote:
+> > If no mount server port number is specified, this change to the kernel mount
+> > client
+> > 
+> > http://linux-nfs.org/cgi-bin/gitweb.cgi?p=nfs-2.6.git;a=commitdiff;h=209ce98
+> > 06996537eceaf07d95def0e9300316c84
+> > 
+> > inadvertently allows the NFS server's port number to be the used as the
+> > mount server's port number. If the user specifies an NFS server port (-o
+> > port=x), the mount will fail.
+> > 
+> > The fix below sets the mount server's port to 0 if no mount server port is
+> > specified by the user.
+> > 
+> > Signed-off-by: James Lentini <jlentini@netapp.com>
+> > --
+> > 
+> >  super.c |    2 ++
+> >  1 file changed, 2 insertions(+)
+> > 
+> > Index: nfs-2.6/fs/nfs/super.c
+> > ===================================================================
+> > --- nfs-2.6/fs/nfs/super.c
+> > +++ nfs-2.6/fs/nfs/super.c
+> > @@ -1006,6 +1006,8 @@ static int nfs_try_mount(struct nfs_pars
+> >  		sin = args->nfs_server.address;
+> >  	if (args->mount_server.port != 0)
+> >  		sin.sin_port = htons(args->mount_server.port);
+> > +	else
+> > +		sin.sin_port = htons(0);
+> 
+> Why not just set sin.sin_port = args->mount_server.port unconditionally?
 
-/tv01 \
-        134.32.443.30(ro,no_subtree_check,async) \
-        134.32.443.32(ro,no_subtree_check,async) \
-        134.32.443.33(ro,no_subtree_check,async) \
-        134.32.443.34(ro,no_subtree_check,async) \
-        134.32.443.35(ro,no_subtree_check,async) \
-        134.32.443.36(ro,no_subtree_check,async) \
-        134.32.443.37(ro,no_subtree_check,async)
+Good observation. Something like this perhaps?
 
-Several other drives have similar entries.
-> The obvious answer would be
->
->     /tv01  (some,flags,here)
->
-> however "exportfs" will complain about that, so I suspect not.
->
-> Maybe you have:
->
->     /tv01 somehost(someflags)  otherhost(otherflags)
->
-> and you expect
->     exportfs -u :/tv01
->
-> to unexport /tv01 to all hosts?  I would agree that doesn't work.  Did
-> it ever?  What version?
->   
+Signed-off-by: James Lentini <jlentini@netapp.com>
 
-I see. So that would unexport only the first one?
-
-Can I unexport only /tv01 to all hosts?
-(If it's just a matter of my being uninformed, let's close the bug --
-but I'd appreciate an answer!)
-
-> As an aside, you can always:
->    exportfs -f
-> and then unmount filesystems.  They will be free to be unmounted until
-> the next NFS access request arrives.  Maybe that will serve your
-> needs?
->   
-I see -- that may be helpful -- but what if someone is accessing one of
-the drives right then?
-I would prefer to have individual control; I export a dozen other drives
-to several different machines, and they should not be unexported.
-
-Dave
-
-
-
-
+Index: nfs-2.6/fs/nfs/super.c
+===================================================================
+--- nfs-2.6/fs/nfs/super.c
++++ nfs-2.6/fs/nfs/super.c
+@@ -1004,8 +1004,10 @@ static int nfs_try_mount(struct nfs_pars
+ 		sin = args->mount_server.address;
+ 	else
+ 		sin = args->nfs_server.address;
+-	if (args->mount_server.port != 0)
+-		sin.sin_port = htons(args->mount_server.port);
++	/* 
++ 	 * autobind will be used if mount_server.port == 0
++ 	 */
++	sin.sin_port = htons(args->mount_server.port);
+ 
+ 	/*
+ 	 * Now ask the mount server to map our export path
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
