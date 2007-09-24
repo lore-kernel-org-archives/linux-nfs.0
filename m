@@ -1,35 +1,25 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: Problem with NFS4,
-	Error: state recovery failed on NFSv4	server 192.168.0.1 with error
-	121
-Date: Mon, 24 Sep 2007 18:20:26 -0400
-Message-ID: <20070924222026.GP26387@fieldses.org>
-References: <358c6ad3a55609518d1dfa15ef1f2bd2@imap.u7.se>
-	<1190048861.6700.105.camel@heimdal.trondhjem.org>
-	<1190049122.6700.108.camel@heimdal.trondhjem.org>
-	<1190056357.5541.12.camel@fry.u7.se>
-	<1190059068.6700.125.camel@heimdal.trondhjem.org>
-	<1190060733.5541.14.camel@fry.u7.se>
-	<1190396486.6690.4.camel@heimdal.trondhjem.org>
-	<20070922185227.GD403@fieldses.org>
-	<1190668767.3958.9.camel@fry.u7.se>
-	<20070924220247.GO26387@fieldses.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH] NFS: initialize default port in kernel mount
+	client
+Date: Mon, 24 Sep 2007 18:32:41 -0400
+Message-ID: <46F83B09.2090202@oracle.com>
+References: <Pine.LNX.4.64.0709241731560.32008@jlentini-linux.nane.netapp.com>
+Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Jonas Jonsson <jonas@websystem.se>
+Content-Type: multipart/mixed; boundary="------------050000090104030107020504"
+Cc: nfs@lists.sourceforge.net
+To: James Lentini <jlentini@netapp.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IZwI3-0001eF-Gi
-	for nfs@lists.sourceforge.net; Mon, 24 Sep 2007 15:20:31 -0700
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	id 1IZwU4-0002oB-4J
+	for nfs@lists.sourceforge.net; Mon, 24 Sep 2007 15:32:57 -0700
+Received: from rgminet01.oracle.com ([148.87.113.118])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IZwI6-0005no-HB
-	for nfs@lists.sourceforge.net; Mon, 24 Sep 2007 15:20:34 -0700
-In-Reply-To: <20070924220247.GO26387@fieldses.org>
+	(Exim 4.44) id 1IZwU4-0000oX-RV
+	for nfs@lists.sourceforge.net; Mon, 24 Sep 2007 15:32:58 -0700
+In-Reply-To: <Pine.LNX.4.64.0709241731560.32008@jlentini-linux.nane.netapp.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -42,31 +32,84 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Mon, Sep 24, 2007 at 06:02:47PM -0400, bfields wrote:
-> OK, thanks!  Looks like it starts out fairly normally, then at packet
-> 824 it gets into this SETCLIENTID->NFS4ERR_RESOURCE loop.  I'm not sure
-> how that happened.
+This is a multi-part message in MIME format.
+--------------050000090104030107020504
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Transfer-Encoding: 7bit
+
+Hi James-
+
+James Lentini wrote:
+> If no mount server port number is specified, this change to the kernel 
+> mount client
 > 
-> I'm a little unclear whether RESOURCE is supposed to be a temporary
-> error or not, but in either case retrying it indefinitely with no delay
-> is probably a bad idea.  But I guess that's not the bug.  OK, I'll try
-> to figure out what lead up to that....
+> http://linux-nfs.org/cgi-bin/gitweb.cgi?p=nfs-2.6.git;a=commitdiff;h=209ce98
+> 06996537eceaf07d95def0e9300316c84
+> 
+> inadvertently allows the NFS server's port number to be the used as 
+> the mount server's port number. If the user specifies an NFS server 
+> port (-o port=x), the mount will fail.
+> 
+> The fix below sets the mount server's port to 0 if no mount server 
+> port is specified by the user.
+> 
+> Signed-off-by: James Lentini <jlentini@netapp.com>
+> --
+> 
+>  super.c |    2 ++
+>  1 file changed, 2 insertions(+)
+> 
+> Index: nfs-2.6/fs/nfs/super.c
+> ===================================================================
+> --- nfs-2.6/fs/nfs/super.c
+> +++ nfs-2.6/fs/nfs/super.c
+> @@ -1006,6 +1006,8 @@ static int nfs_try_mount(struct nfs_pars
+>  		sin = args->nfs_server.address;
+>  	if (args->mount_server.port != 0)
+>  		sin.sin_port = htons(args->mount_server.port);
+> +	else
+> +		sin.sin_port = htons(0);
 
-Oh, good grief, we're lame.  Could you check your .config--is it
-possible you have CONFIG_CRYPTO_MD5 turned off?  If so, could you verify
-that turning it on fixes the problem?
+Why not just set sin.sin_port = args->mount_server.port unconditionally?
 
-The recovery code is being silly and returning RESOURCE if it can't load
-that crypto module.  Current upstream doesn't allow building v4 without
-MD5, so you probably won't be able to reproduce the problem on the
-latest kernel.
+--------------050000090104030107020504
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck.lever.vcf"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="chuck.lever.vcf"
 
---b.
+begin:vcard
+fn:Chuck Lever
+n:Lever;Chuck
+org:Oracle Corporation;Corporate Architecture: Linux Projects Group
+adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
+title:Principal Member of Staff
+tel;work:+1 248 614 5091
+x-mozilla-html:FALSE
+url:http://oss.oracle.com/~cel
+version:2.1
+end:vcard
+
+
+--------------050000090104030107020504
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
 Defy all challenges. Microsoft(R) Visual Studio 2005.
 http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+--------------050000090104030107020504
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--------------050000090104030107020504--
