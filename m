@@ -1,26 +1,23 @@
 From: Neil Brown <neilb@suse.de>
-Subject: Re: Bug#443591: nfs-kernel-server: Unexporting
-	directories	no	longer working
-Date: Mon, 24 Sep 2007 16:58:45 +1000
-Message-ID: <18167.24613.796605.199161@notabene.brown>
-References: <20070922174231.11200.29119.reportbug@localhost.localdomain>
-	<20070923000102.GA29785@uio.no>
+Subject: Re: Multiple ranges in squash_uids
+Date: Mon, 24 Sep 2007 17:21:43 +1000
+Message-ID: <18167.25991.404551.826517@notabene.brown>
+References: <20070922101154.GA27465@uio.no>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: David Liontooth <liontooth@cogweb.net>,
-	nfs@lists.sourceforge.net, 443591@bugs.debian.org
+Cc: nfs@lists.sourceforge.net
 To: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IZhu7-0005MT-JI
-	for nfs@lists.sourceforge.net; Sun, 23 Sep 2007 23:58:51 -0700
+	id 1IZiGK-0007Y4-Tu
+	for nfs@lists.sourceforge.net; Mon, 24 Sep 2007 00:21:49 -0700
 Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IZhuC-00035U-Bd
-	for nfs@lists.sourceforge.net; Sun, 23 Sep 2007 23:58:56 -0700
-In-Reply-To: message from Steinar H. Gunderson on Sunday September 23
+	(Exim 4.44) id 1IZiGN-0002bP-4e
+	for nfs@lists.sourceforge.net; Mon, 24 Sep 2007 00:21:53 -0700
+In-Reply-To: message from Steinar H. Gunderson on Saturday September 22
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,54 +30,73 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Sunday September 23, sgunderson@bigfoot.com wrote:
-> On Sat, Sep 22, 2007 at 10:42:31AM -0700, David Liontooth wrote:
-> > Package: nfs-kernel-server
-> > Version: 1:1.1.0-13
-> > Severity: normal
-> > 
-> > 
-> > The command to unexport a directory appears to no longer have any effect.
-> > 
-> > I issue "exportfs -u :/tv01" and "exportfs" shows /tv01 still exported; consequently, I cannot unmount it.
-> > In contrast, removing /tv01 from /etc/exports and then running exportfs -ra successfully removes the export.
-> > 
-> > This used to work fine.
+On Saturday September 22, sgunderson@bigfoot.com wrote:
+> Hi,
 > 
-> Sending this on to upstream, as I cannot see any good reason offhand why it
-> should not work.
+> A user recently complained that you cannot use options like
+> "squash_uids=1000-1005,2000-3000", even though the manual page says it's
+> supported. The issue is that the option tokenizer thinks "2000-3000" is a
+> separate option, so although the uid range parser does handle multiple ranges
+> correctly, it doesn't work right.
+> 
+> The user also supplied a patch (see
+> http://bugs.debian.org/cgi-bin/bugreport.cgi?msg=5;filename=nfs-utils_parse_squashids_fix.diff;att=1;bug=442370),
+> but I'm not sure if it's the best way to do it. Any suggestions?
 
-Some simple testing and code review suggests that this works as
-expected.  However it is possible that I am expecting something
-different to you, or testing something different.
+Yes.... the suggested patch treats a comma followed by a digit
+differently from a comma followed by a non-digit.  I agree that is
+ugly, though the code in parsesquash does exactly the same thing.
 
-You say you:
-    exportfs -u :/tv01
+I would rather change the separator character to e.g. ':', like:
 
-What exactly is in your /etc/exports that this is expected to revert?
-The obvious answer would be
+diff --git a/support/nfs/exports.c b/support/nfs/exports.c
+index c82bb0e..029a4d4 100644
+--- a/support/nfs/exports.c
++++ b/support/nfs/exports.c
+@@ -678,9 +678,6 @@ parsesquash(char *list, int **idp, int *lenp, char **ep)
+ 	int	len = *lenp;
+ 	int	*id = *idp;
+ 
+-	if (**ep)
+-	    *--(*ep) = ',';
+-
+ 	do {
+ 		id0 = parsenum(&cp);
+ 		if (*cp == '-') {
+@@ -697,17 +694,15 @@ parsesquash(char *list, int **idp, int *lenp, char **ep)
+ 			id = (int *) xrealloc(id, (len + 8) * sizeof(*id));
+ 		id[len++] = id0;
+ 		id[len++] = id1;
+-		if (!*cp || *cp == ')' || (*cp == ',' && !isdigit(cp[1])))
++		if (cp >= *ep)
+ 			break;
+-		if (*cp != ',') {
++		if (*cp != ':') {
+ 			syntaxerr("bad uid/gid list");
+ 			return -1;
+ 		}
+ 		cp++;
+ 	} while(1);
+ 
+-	if (**ep == ',') (*ep)++;
+-
+ 	*lenp = len;
+ 	*idp = id;
+ 	return 1;
 
-    /tv01  (some,flags,here)
 
-however "exportfs" will complain about that, so I suspect not.
+(plus a patch to fix the manpage)..
 
-Maybe you have:
+except that this is all completely irrelevant to nfs-utils as we don't
+support squash_uids or squash_gids, and never have done.
+I wonder what manpage the customer was reading when they saw that:
 
-    /tv01 somehost(someflags)  otherhost(otherflags)
+    The manpage shows "squash_uids=0-15,20,25-50" as a valid entry for the
+    /etc/exports file.
 
-and you expect
-    exportfs -u :/tv01
+It appears in exports.man, but is commented out.
 
-to unexport /tv01 to all hosts?  I would agree that doesn't work.  Did
-it ever?  What version?
-
-As an aside, you can always:
-   exportfs -f
-and then unmount filesystems.  They will be free to be unmounted until
-the next NFS access request arrives.  Maybe that will server your
-needs?
-
-NeilBrown
+NeilBrownm
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
