@@ -1,19 +1,19 @@
-From: =?GB2312?B?1ty1pA==?= <2005rnkj@163.com>
+From: =?GB2312?B?1ty1pA==?= <zhoudan9988@126.com>
 Subject: =?GB2312?B?u6ix36Gi0OXGt7njvbu74dW5zrs=?=
-Date: Mon, 24 Sep 2007 08:14:53 +0800
-Message-ID: <E1IZbaz-0005qF-GP@mail.sourceforge.net>
+Date: Mon, 24 Sep 2007 14:31:37 +0800
+Message-ID: <E1IZhTZ-0002EV-9k@mail.sourceforge.net>
 Reply-To: dan0998@hotmail.com
-Content-Type: multipart/mixed; boundary="===============1765334620=="
+Content-Type: multipart/mixed; boundary="===============1433387685=="
 To: "nfs" <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IZbaw-0001w8-H5
-	for nfs@lists.sourceforge.net; Sun, 23 Sep 2007 17:14:38 -0700
-Received: from [218.19.170.188] (helo=163.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IZbaz-0005qF-GP
-	for nfs@lists.sourceforge.net; Sun, 23 Sep 2007 17:14:43 -0700
+	id 1IZhTW-0002sJ-3T
+	for nfs@lists.sourceforge.net; Sun, 23 Sep 2007 23:31:22 -0700
+Received: from [219.137.108.136] (helo=126.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IZhTZ-0002EV-9k
+	for nfs@lists.sourceforge.net; Sun, 23 Sep 2007 23:31:27 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,7 +26,7 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============1765334620==
+--===============1433387685==
 Content-Type: text/plain;
 	charset="gb2312"
 Content-Transfer-Encoding: quoted-printable
@@ -138,7 +138,7 @@ Content-Transfer-Encoding: quoted-printable
 =C1=AA=CF=B5=C8=CB=A3=BA=D6=DC=B5=A4 =D0=A1=BD=E3
 
 
---===============1765334620==
+--===============1433387685==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -148,7 +148,7 @@ Content-Disposition: inline
 This SF.net email is sponsored by: Microsoft
 Defy all challenges. Microsoft(R) Visual Studio 2005.
 http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
---===============1765334620==
+--===============1433387685==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -158,4 +158,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---===============1765334620==--
+--===============1433387685==--
