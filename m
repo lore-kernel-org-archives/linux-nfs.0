@@ -1,24 +1,35 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH][RFC] use after free in NLM subsystem -- how
-	best	to fix it?
-Date: Mon, 24 Sep 2007 18:13:23 -0400
-Message-ID: <1190672003.6700.34.camel@heimdal.trondhjem.org>
-References: <20070924161236.48779845.jlayton@poochiereds.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: Problem with NFS4,
+	Error: state recovery failed on NFSv4	server 192.168.0.1 with error
+	121
+Date: Mon, 24 Sep 2007 18:20:26 -0400
+Message-ID: <20070924222026.GP26387@fieldses.org>
+References: <358c6ad3a55609518d1dfa15ef1f2bd2@imap.u7.se>
+	<1190048861.6700.105.camel@heimdal.trondhjem.org>
+	<1190049122.6700.108.camel@heimdal.trondhjem.org>
+	<1190056357.5541.12.camel@fry.u7.se>
+	<1190059068.6700.125.camel@heimdal.trondhjem.org>
+	<1190060733.5541.14.camel@fry.u7.se>
+	<1190396486.6690.4.camel@heimdal.trondhjem.org>
+	<20070922185227.GD403@fieldses.org>
+	<1190668767.3958.9.camel@fry.u7.se>
+	<20070924220247.GO26387@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Jeff Layton <jlayton@poochiereds.net>
+Cc: nfs@lists.sourceforge.net,
+	Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Jonas Jonsson <jonas@websystem.se>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IZwBF-0000wg-Jq
-	for nfs@lists.sourceforge.net; Mon, 24 Sep 2007 15:13:29 -0700
-Received: from pat.uio.no ([129.240.10.15])
+	id 1IZwI3-0001eF-Gi
+	for nfs@lists.sourceforge.net; Mon, 24 Sep 2007 15:20:31 -0700
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IZwBJ-0003mZ-86
-	for nfs@lists.sourceforge.net; Mon, 24 Sep 2007 15:13:34 -0700
-In-Reply-To: <20070924161236.48779845.jlayton@poochiereds.net>
+	(Exim 4.44) id 1IZwI6-0005no-HB
+	for nfs@lists.sourceforge.net; Mon, 24 Sep 2007 15:20:34 -0700
+In-Reply-To: <20070924220247.GO26387@fieldses.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,28 +42,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Mon, 2007-09-24 at 16:12 -0400, Jeff Layton wrote:
-
-> When a lock that a client is blocking on comes free, lockd does this in
-> nlmsvc_grant_blocked():
+On Mon, Sep 24, 2007 at 06:02:47PM -0400, bfields wrote:
+> OK, thanks!  Looks like it starts out fairly normally, then at packet
+> 824 it gets into this SETCLIENTID->NFS4ERR_RESOURCE loop.  I'm not sure
+> how that happened.
 > 
->     nlm_async_call(block->b_call, NLMPROC_GRANTED_MSG, &nlmsvc_grant_ops);
-> 
-> the callback from this call is nlmsvc_grant_callback(). That function
-> does this at the end to wake up lockd:
-> 
->     svc_wake_up(block->b_daemon);
-> 
-> ...the problem is, that there is no guarantee that lockd will be up
-> when this happens. If someone shuts down or restarts lockd before the
-> async call completes, then the b_daemon pointer will point to freed
-> memory.
+> I'm a little unclear whether RESOURCE is supposed to be a temporary
+> error or not, but in either case retrying it indefinitely with no delay
+> is probably a bad idea.  But I guess that's not the bug.  OK, I'll try
+> to figure out what lead up to that....
 
-Why shouldn't we be guaranteeing that lockd is up here?
+Oh, good grief, we're lame.  Could you check your .config--is it
+possible you have CONFIG_CRYPTO_MD5 turned off?  If so, could you verify
+that turning it on fixes the problem?
 
-Cheers
-  Trond
+The recovery code is being silly and returning RESOURCE if it can't load
+that crypto module.  Current upstream doesn't allow building v4 without
+MD5, so you probably won't be able to reproduce the problem on the
+latest kernel.
 
+--b.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
