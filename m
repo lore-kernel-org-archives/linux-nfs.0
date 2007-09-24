@@ -1,26 +1,19 @@
-From: kenneth johansson <ken@kenjo.org>
-Subject: Re: lockd not responding
-Date: Sun, 23 Sep 2007 20:52:40 +0200
-Message-ID: <1190573560.7249.3.camel@duo>
-References: <fc84aa$o11$1@sea.gmane.org>
-	<20070912202721.d8f70ac1.jlayton@redhat.com>
-	<1190407932.6721.42.camel@heimdal.trondhjem.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, Jeff Layton <jlayton@redhat.com>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: =?GB2312?B?1ty1pA==?= <2005rnkj@163.com>
+Subject: =?GB2312?B?u6ix36Gi0OXGt7njvbu74dW5zrs=?=
+Date: Mon, 24 Sep 2007 08:14:53 +0800
+Message-ID: <E1IZbaz-0005qF-GP@mail.sourceforge.net>
+Reply-To: dan0998@hotmail.com
+Content-Type: multipart/mixed; boundary="===============1765334620=="
+To: "nfs" <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IZWZd-0004mL-Lv
-	for nfs@lists.sourceforge.net; Sun, 23 Sep 2007 11:52:57 -0700
-Received: from 1-1-4-20a.ras.sth.bostream.se ([82.182.72.90]
-	helo=garbo.kenjo.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IZWZh-0005LX-2X
-	for nfs@lists.sourceforge.net; Sun, 23 Sep 2007 11:53:02 -0700
-In-Reply-To: <1190407932.6721.42.camel@heimdal.trondhjem.org>
+	id 1IZbaw-0001w8-H5
+	for nfs@lists.sourceforge.net; Sun, 23 Sep 2007 17:14:38 -0700
+Received: from [218.19.170.188] (helo=163.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IZbaz-0005qF-GP
+	for nfs@lists.sourceforge.net; Sun, 23 Sep 2007 17:14:43 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,41 +26,136 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+--===============1765334620==
+Content-Type: text/plain;
+	charset="gb2312"
+Content-Transfer-Encoding: quoted-printable
 
-On Fri, 2007-09-21 at 16:52 -0400, Trond Myklebust wrote:
-> On Wed, 2007-09-12 at 20:27 -0400, Jeff Layton wrote:
-> > On Wed, 12 Sep 2007 07:26:02 +0000 (UTC)
-> > kenneth johansson <ken@kenjo.org> wrote:
-> > 
-> > > Got a warning from the lock validating check again and
-> > > later a unresponsive lockd with a backtrace this time
-> > > actually at the same place the lock warning was on.
-> > 
-> > FWIW, I think I ran into the exact same problem recently. I opened a
-> > BZ case for it so I wouldn't forget about it, but haven't had time to
-> > track it down:
-> > 
-> > https://bugzilla.redhat.com/show_bug.cgi?id=280311
-> > 
-> > I'm not certain that lockd was stuck at the time, since I had some
-> > other things going on with the box, but it may have been...
-> 
-> Does the attached patch help?
+=BA=E8=CD=FE=C7=EF=BC=BE=BB=A8=B1=DF=D0=E5=C6=B7=B3=F6=BF=DA=D5=B9 =D7=F7=
+=CE=AA"=C7=EF=BD=BB=BB=E1"=B5=C4"=B9=DD=CD=E2=B9=DD"
 
-Yes it does. 
+=B6=C0=BE=DF5=B4=F3=D3=C5=CA=C6    10=B4=F3=D0=A7=B9=FB
 
-I tested Jeffs lock unlock loop and it got the lock warning in a minute
-or two the three times I tested without the patch and has run for about
-an hour now with with no warning.
+=BA=F1=BB=FD=B1=A1=B7=A2=A3=AC=BA=E8=CD=FE=C7=EF=BC=BE=BB=A8=B1=DF=D0=E5=C6=
+=B7=B3=F6=BF=DA=D5=B9=B6=C0=BE=DF5=B4=F3=D3=C5=CA=C6
 
-So there is an Ack from me on this fix.
+=D3=C5=CA=C6=D2=BB=A3=BA=D3=EB102=BD=EC=B9=E3=BD=BB=BB=E1=CD=AC=C6=DA=CD=AC=
+=B5=D8=A3=BA=CA=B1=BC=E4=A3=BA2007=C4=EA10=D4=C215-19=C8=D5(=D5=B9=B3=F65=
+=CC=EC=CA=B1=BC=E4)=A3=BB=B5=D8=D6=B7=A3=BA=B9=E3=B6=AB=B9=FA=BC=CA=C3=B3=
+=D2=D7=B4=F3=CF=C3=D5=B9=C0=C0=D6=D0=D0=C4--=D5=FD=B6=D4=D6=D0=B9=FA=B3=F6=
+=BF=DA=C9=CC=C6=B7=BD=BB=D2=D7=BB=E1=A3=A87-8=A3=A9=BA=C5=B9=DD=A3=AC=B8=BD=
+=CA=F4=D3=DA=B9=E3=BD=BB=BB=E1=D5=B9=C7=F8(=B7=FE=D7=B0=A1=A2=BC=D2=B7=C4=
+=A1=A2=B7=C4=D6=AF=C3=E6=C1=CF=A1=A2=B3=E9=C9=B4=A1=A2=B5=D8=CC=BA=B9=D2=CC=
+=BA=B9=DD=B6=D4=C3=E6=A3=AC=BD=F6=D2=BB=C7=C5=D6=AE=B8=F4=A3=AC=D3=D0=CC=EC=
+=C7=C5=A1=A2=CB=ED=B5=C0=CD=A8=D0=D0)=A3=AC=D3=D0=B4=F3=D0=CD=B5=C4=B9=E3=
+=B8=E6=C5=C6=BC=B0=BA=EC=B5=D8=CC=BA=D6=B8=D2=FD=BF=CD=C8=CB=B2=CE=B9=DB=A3=
+=A8=B9=FA=CD=E2=BF=CD=C9=CC=C3=E2=B7=D1=B2=CE=B9=DB=A3=A9=A3=A1=D3=C3=D2=D4=
+=B1=A3=D5=CF=B2=CE=D5=B9=C6=F3=D2=B5=D0=A7=B9=FB=A1=A3
+=D3=C5=CA=C6=B6=FE=A3=BA=D0=FB=B4=AB=B9=A5=CA=C6=BC=B0=B9=DB=D6=DA=D7=E9=D6=
+=AF=A3=BA=B8=C3=BB=E1=D4=DA=B4=F3=D6=DA=C3=BD=CC=E5=A1=A2=B1=A8=BF=AF=A1=A2=
+=D7=A8=D2=B5=D4=D3=D6=BE=A1=A2=D7=A8=D2=B5=CD=F8=D5=BE=BC=B0BBS=B5=C8300=BC=
+=D2=C3=BD=CC=E5=C9=CF=B7=A2=B2=BC=D5=B9=BB=E1=D0=C5=CF=A2=A3=BB=D6=F7=B0=EC=
+=B5=A5=CE=BB=D1=FB=C7=EB=B5=C2=B9=FA=A1=A2=D2=E2=B4=F3=C0=FB=A1=A2=C8=F0=CA=
+=BF=A1=A2=C3=C0=B9=FA=A1=A2=D3=A2=B9=FA=A1=A2=B7=A8=B9=FA=A1=A2=C8=D5=B1=BE=
+=B5=C8=C3=B3=D2=D7=BB=FA=B9=B9=D7=E9=CD=C5=B5=BD=BB=E1=B2=C9=B9=BA=A1=A38=
+=D4=C223=C8=D5=D4=DA"=D6=D0=B9=FA=B4=F3=BE=C6=B5=EA"=BE=D9=B0=EC=B9=FA=C4=
+=DA=CD=E2=BC=C7=D5=DF=D5=D0=B4=FD=BB=E1=BD=F8=D0=D0=D5=B9=BB=E1=BD=F8=D5=B9=
+=CD=A8=B1=A8=BC=B0=D0=FB=B4=AB=A3=AC=B2=A2=D3=EB=B9=E3=BD=BB=BB=E1=CD=AC=CA=
+=B1=A3=AC=D6=D0=CD=E2=B2=C9=B9=BA=C9=CC=D4=C6=BC=AF=A3=AC=B2=BB=BF=C9=B9=C0=
+=C1=BF=B5=C4=CA=D0=B3=A1=C7=B1=C1=A6=A3=AC=BE=DE=B4=F3=C9=CC=BB=FA=C8=AB=C3=
+=E6=D5=C3=CF=D4=A1=A3
+=D3=C5=CA=C6=C8=FD=A3=BA=CC=EC=CA=B1=A1=A2=B5=D8=C0=FB=A1=A2=C8=CB=BA=CD=A3=
+=BA=B9=E3=B6=AB=BB=A8=B1=DF=D0=E5=C6=B7=B3=F6=BF=DA=D5=B9=C3=BF=C4=EA=B4=BA=
+=A1=A2=C7=EF=C1=BD=BD=EC=D4=DA=B9=E3=B6=AB=B9=FA=BC=CA=C3=B3=D2=D7=B4=F3=CF=
+=C3=D5=B9=C0=C0=D6=D0=D0=C4=BE=D9=B0=EC=A3=AC=D3=EB=B9=E3=BD=BB=BB=E1=CD=AC=
+=C6=DA=CD=AC=B5=D8=BE=D9=D0=D0=A3=AC=BD=AB=C3=D6=B2=B9=B9=E3=BD=BB=BB=E1=D5=
+=B9=CE=BB=B2=BB=D7=E3=B4=F8=C0=B4=B5=C4=C8=B1=BA=B6=A3=AC=CE=AA=B9=E3=BD=BB=
+=BB=E1=B2=CE=B9=DB=C9=CC=B4=F8=C0=B4=D0=C2=B5=C4=C9=CC=BB=FA=A3=AC=D5=BC=BE=
+=A1=CC=EC=CA=B1=A1=A2=B5=D8=C0=FB=A1=A2=C8=CB=BA=CD=B5=C4=D3=C5=CA=C6=A3=AC=
+=D3=EB=B9=E3=BD=BB=BB=E1=BB=A5=B2=B9=A1=A2=BB=A5=B6=AF=A3=AC=BE=A1=CF=ED=B9=
+=FA=BC=CA=B2=C9=B9=BA=D7=CA=D4=B4=A3=AC=B2=A2=B4=F2=C6=C6=B9=E3=BD=BB=BB=E1=
+=B4=F3=B6=F8=C8=AB=B5=C4=B4=AB=CD=B3=C4=A3=CA=BD=A3=AC=CE=AA=B2=CE=D5=B9=C6=
+=F3=D2=B5=BF=AA=CD=D8=B9=FA=BC=CA=CA=D0=B3=A1=CC=E1=B9=A9=D7=A8=D2=B5=BB=AF=
+=A1=A2=B1=EA=D7=BC=BB=AF=B5=C4=D5=B9=BB=E1=C5=E4=CC=D7=B7=FE=CE=F1=A3=AC=CA=
+=C7=D3=EB=B9=E3=BD=BB=BB=E1=C8=DA=CE=AA=D2=BB=CC=E5=B5=C4=B9=FA=BC=CA=D7=A8=
+=D2=B5=C6=B7=C5=C6=CA=A2=BB=E1=A3=A1=B2=A2=CE=AA=B9=E3=BD=BB=BB=E1=D7=A2=C8=
+=EB=D0=C2=B5=C4=D1=AA=D2=BA=A3=AC=B8=F8=B2=CE=B9=DB=BF=CD=C9=CC=B4=F8=C0=B4=
+=B8=FC=B4=F3=B5=C4=C9=CC=BB=FA=A3=A1
+=D3=C5=CA=C6=CB=C4=A3=BA=D6=F7=B0=EC=B5=A5=CE=BB=D3=C5=CA=C6=A3=BA"=B9=E3=
+=B6=AB=CA=A1=B6=D4=CD=E2=BE=AD=BC=C3=C3=B3=D2=D7=BA=CF=D7=F7=C6=F3=D2=B5=D0=
+=AD=BB=E1"=D6=B1=CA=F4"=B9=E3=B6=AB=CA=A1=B6=D4=CD=E2=BE=AD=BC=C3=C3=B3=D2=
+=D7=BA=CF=D7=F7=CC=FC"=A3=AC=D3=C9"=B9=E3=B6=AB=CA=A1=B6=D4=CD=E2=BE=AD=BC=
+=C3=C3=B3=D2=D7=BA=CF=D7=F7=C6=F3=D2=B5=D0=AD=BB=E1"=B0=D1=D5=B9=BB=E1=C3=
+=FB=B5=A5=CC=E1=BD=BB=B8=F7=B4=F3=CA=B9=B9=DD=A3=AC=D5=EB=B6=D4=C6=F3=D2=B5=
+=D1=FB=C7=EB=CD=E2=C9=CC=B2=CE=B9=DB=A1=A3
+=D3=C5=CA=C6=CE=E5=A3=BA=BB=E1=BF=AF--=B2=C9=B9=BA=B1=A6=B5=E4=A3=BA=B2=CE=
+=D5=B9=C6=F3=D2=B5=C3=E2=B7=D1=BF=AF=B5=C7300=D7=D6=D7=F3=D3=D2=D6=D0=D3=A2=
+=CE=C4=BC=F2=BD=E9=A3=AC=C3=E2=B7=D1=D4=F9=CB=CD=B8=F8=CB=F9=D3=D0=B9=FA=CD=
+=E2=B2=CE=B9=DB=BF=CD=C9=CC=A3=AC=B2=A2=D4=DA=BB=E1=BA=F3=D3=CA=BC=C4=B8=F8=
+=CF=E0=B9=D8=B9=FA=CD=E2=B2=C9=B9=BA=B5=A5=CE=BB=A3=AC=B1=BB=D2=B5=C4=DA=C8=
+=CB=CA=BF=C6=C0=BC=DB=CE=AA"=B2=C9=B9=BA=B1=A6=B5=E4"=A1=A3
+
+10=B4=F3=D0=A7=B9=FB=A3=AC=CE=E5=D0=C7=BC=B6=BB=E1=D5=B9=B7=FE=CE=F1=CA=C7=
+=C4=FA=B2=CE=D5=B9=D0=A7=B9=FB=B5=C4=B1=A3=D6=A4=20
+
+=D0=A7=B9=FB=D2=BB=A3=BA=CC=E1=B8=DF=C6=F3=D2=B5=B5=C4=D6=AA=C3=FB=B6=C8=BC=
+=B0=B2=FA=C6=B7=C3=C0=D3=FE=B6=C8=A3=BB
+=D0=A7=B9=FB=B6=FE=A3=BA=CD=D8=BF=ED=C6=F3=D2=B5=CA=D0=B3=A1=C7=FE=B5=C0=A3=
+=AC=BF=AA=B4=B4=B9=FA=CD=E2=C3=B3=D2=D7=D0=C2=CD=BE=BE=B6=A3=BB
+=D0=A7=B9=FB=C8=FD=A3=BA=CD=DA=BE=F2=C7=B1=D4=DA=B5=C4=CF=FB=B7=D1=D5=DF=A3=
+=AC=D4=F6=BC=D3=BF=CD=BB=A7=D7=CA=D4=B4=BA=CD=CA=D0=B3=A1=B7=DD=B6=EE=A3=AC=
+=CC=E1=B8=DF=CA=D0=B3=A1=D5=BC=D3=D0=C2=CA=A3=BB
+=D0=A7=B9=FB=CB=C4=A3=BA=D1=B9=CB=F5=C6=F3=D2=B5=CA=D0=B3=A1=D3=AA=CF=FA=B5=
+=C4=D6=D0=BC=E4=BB=B7=BD=DA=A3=AC=BD=B5=B5=CD=CF=FA=CA=DB=B3=C9=B1=BE=A3=AC=
+=CC=E1=B8=DF=C0=FB=C8=F3=A3=BB
+=D0=A7=B9=FB=CE=E5=A3=BA=D5=C6=CE=D5=D0=D0=D2=B5=B6=AF=CC=AC=A3=AC=D4=F6=BC=
+=D3=C6=F3=D2=B5=D0=C5=CF=A2=C7=FE=B5=C0=A3=AC=C8=B7=B1=A3=C6=F3=D2=B5=B6=D4=
+=CA=D0=B3=A1=D0=C5=CF=A2=B5=C4=B8=DF=B6=C8=C1=E9=C3=F4=D0=D4=BC=B0=B6=B4=B2=
+=EC=C1=A6=A3=BB
+=D0=A7=B9=FB=C1=F9=A3=BA=C0=A9=B4=F3=C6=F3=D2=B5=D0=FB=B4=AB=C1=A6=B6=C8=BA=
+=CD=B7=B6=CE=A7=A3=AC=D7=EE=B4=F3=B3=CC=B6=C8=BD=DA=CA=A1=B9=E3=B8=E6=CD=B6=
+=C8=EB=A3=BB
+=D0=A7=B9=FB=C6=DF=A3=BA=D3=D0=D6=FA=D3=DA=CA=B5=CF=D6=D3=AA=CF=FA=B5=C4=D5=
+=BD=C2=D4=C4=BF=B1=EA=A3=AC=BD=A8=C1=A2=D7=BF=D4=BD=B5=C4=BE=BA=D5=F9=D3=C5=
+=CA=C6=A3=BB
+=D0=A7=B9=FB=B0=CB=A3=BA=CC=E1=B9=A9=CF=D6=B3=A1=B2=FA=C6=B7=D1=DD=CA=BE=A3=
+=AC=D3=D0=D0=A7=BC=A4=B7=A2=D6=F7=B9=CB=B5=C4=CF=FB=B7=D1=D3=FB=CD=FB=A3=BB
+=D0=A7=B9=FB=BE=C5=A3=BA=D3=D0=D0=A7=B5=C4=D5=B9=CA=BE=B2=FA=C6=B7=CC=D8=D0=
+=D4=A3=AC=CC=E1=B9=A9=BC=BC=CA=F5=D3=C5=B5=E3=A1=A2=CA=FD=BE=DD=BA=CD=CC=D8=
+=D5=F7=A3=AC=BB=F1=C8=A1=B2=FA=C6=B7=BA=CD=B7=FE=CE=F1=B5=C4=B7=B4=C0=A1=A3=
+=BB
+=D0=A7=B9=FB=CA=AE=A3=BA=D3=EB=C2=F2=D6=F7=BD=F8=D0=D0=C3=E6=B6=D4=C3=E6=B5=
+=C4=BB=E1=CC=B8=A3=AC=B4=D9=BD=F8=B8=FC=C9=EE=D2=BB=B2=BD=B5=C4=BA=CF=D7=F7=
+=A1=A3
+=BA=E8=CD=FE=C7=EF=BC=BE=BB=A8=B1=DF=D0=E5=C6=B7=B3=F6=BF=DA=D5=B9--=BD=AB=
+=CA=C7=C4=FA=CD=D8=D5=B9=B9=FA=BC=CA=CA=D0=B3=A1=B5=C4=D7=EE=BC=D1=C1=BC=BB=
+=FA
+=CE=D2=C3=C7=B5=C4=B7=FE=CE=F1=D7=DA=D6=BC--=C8=C3=C3=BF=D2=BB=CE=BB=B2=CE=
+=D3=EB=D5=DF=B6=BC=B5=C3=B5=BD=CA=B5=BB=DD=20
+
+=D7=E9=CE=AF=BB=E1=C6=DA=B4=FD=C4=FA=B5=C4=B2=CE=D3=EB=A3=BA13423656707/0=
+20-80963099 =20
+=C1=AA=CF=B5=C8=CB=A3=BA=D6=DC=B5=A4 =D0=A1=BD=E3
 
 
+--===============1765334620==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
 Defy all challenges. Microsoft(R) Visual Studio 2005.
 http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+--===============1765334620==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============1765334620==--
