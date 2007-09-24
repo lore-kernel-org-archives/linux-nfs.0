@@ -1,7 +1,7 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 7/7] NFS: Eliminate nfs_refresh_verifier()
-Date: Mon, 24 Sep 2007 15:40:16 -0400
-Message-ID: <20070924194016.3568.33431.stgit@monet.1015granger.net>
+Subject: [PATCH 3/7] NFS: Show "nointr" mount option
+Date: Mon, 24 Sep 2007 15:39:55 -0400
+Message-ID: <20070924193955.3568.51044.stgit@monet.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
@@ -10,12 +10,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IZtnL-0001Qq-08
-	for nfs@lists.sourceforge.net; Mon, 24 Sep 2007 12:40:39 -0700
+	id 1IZtnO-0001R3-Q6
+	for nfs@lists.sourceforge.net; Mon, 24 Sep 2007 12:40:42 -0700
 Received: from flpi195.sbcis.sbc.com ([207.115.20.197]
 	helo=flpi195.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IZtnO-0007fG-MB
-	for nfs@lists.sourceforge.net; Mon, 24 Sep 2007 12:40:44 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IZtnS-0007gm-NG
+	for nfs@lists.sourceforge.net; Mon, 24 Sep 2007 12:40:47 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,71 +28,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-nfs_set_verifier() and nfs_refresh_verifier() do exactly the same thing, so
-replace one with the other.
+The default "intr" setting is different for NFS and NFSv4.  To avoid
+confusion on this issue, don't hide the "nointr" option in /proc/mounts.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfs/dir.c |   16 +++++-----------
- 1 files changed, 5 insertions(+), 11 deletions(-)
+ fs/nfs/super.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 0ed590d..2b5e611 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -666,11 +666,6 @@ static inline void nfs_set_verifier(struct dentry * dentry, unsigned long verf)
- 	dentry->d_time = verf;
- }
- 
--static void nfs_refresh_verifier(struct dentry * dentry, unsigned long verf)
--{
--	nfs_set_verifier(dentry, verf);
--}
--
- /*
-  * Return the intent data that applies to this particular path component
-  *
-@@ -794,7 +789,7 @@ static int nfs_lookup_revalidate(struct dentry * dentry, struct nameidata *nd)
- 	if ((error = nfs_refresh_inode(inode, &fattr)) != 0)
- 		goto out_bad;
- 
--	nfs_refresh_verifier(dentry, verifier);
-+	nfs_set_verifier(dentry, verifier);
-  out_valid:
- 	unlock_kernel();
- 	dput(parent);
-@@ -1093,7 +1088,7 @@ static int nfs_open_revalidate(struct dentry *dentry, struct nameidata *nd)
- 	verifier = nfs_save_change_attribute(dir);
- 	ret = nfs4_open_revalidate(dir, dentry, openflags, nd);
- 	if (!ret)
--		nfs_refresh_verifier(dentry, verifier);
-+		nfs_set_verifier(dentry, verifier);
- 	unlock_kernel();
- out:
- 	dput(parent);
-@@ -1169,10 +1164,8 @@ static struct dentry *nfs_readdir_lookup(nfs_readdir_descriptor_t *desc)
- 		dentry = alias;
- 	}
- 
--	nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
--	return dentry;
- out_renew:
--	nfs_refresh_verifier(dentry, nfs_save_change_attribute(dir));
-+	nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
- 	return dentry;
- }
- 
-@@ -1695,7 +1688,8 @@ out:
- 		d_rehash(rehash);
- 	if (!error) {
- 		d_move(old_dentry, new_dentry);
--		nfs_refresh_verifier(new_dentry, nfs_save_change_attribute(new_dir));
-+		nfs_set_verifier(new_dentry,
-+					nfs_save_change_attribute(new_dir));
- 	}
- 
- 	/* new dentry created? */
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index a7d77f3..134aaf2 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -424,7 +424,7 @@ static void nfs_show_mount_options(struct seq_file *m, struct nfs_server *nfss,
+ 		const char *nostr;
+ 	} nfs_info[] = {
+ 		{ NFS_MOUNT_SOFT, ",soft", ",hard" },
+-		{ NFS_MOUNT_INTR, ",intr", "" },
++		{ NFS_MOUNT_INTR, ",intr", ",nointr" },
+ 		{ NFS_MOUNT_NOCTO, ",nocto", "" },
+ 		{ NFS_MOUNT_NOAC, ",noac", "" },
+ 		{ NFS_MOUNT_NONLM, ",nolock", "" },
 
 
 -------------------------------------------------------------------------
