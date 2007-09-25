@@ -1,111 +1,49 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: NLM: Fix a circular lock dependency in lockd
-Date: Tue, 25 Sep 2007 15:55:03 -0400
-Message-ID: <1190750103.7330.32.camel@heimdal.trondhjem.org>
+From: "Mark Maggelet" <mark@educationplanet.com>
+Subject: cp: failed to preserve ownership for `/backup2/restart':
+	Operation not permitted
+Date: Tue, 25 Sep 2007 14:39:27 -0700
+Message-ID: <2127a07b0709251439s674dc1act8c37f64c789e4657@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net
-To: Linus Torvalds <torvalds@linux-foundation.org>,
-	stable@vger.kernel.org
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1758778AbXIYTz1@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+To: nfs@lists.sourceforge.net
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1IaI7n-00021p-NT
+	for nfs@lists.sourceforge.net; Tue, 25 Sep 2007 14:39:23 -0700
+Received: from rv-out-0910.google.com ([209.85.198.190])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IaI7r-0005ch-M8
+	for nfs@lists.sourceforge.net; Tue, 25 Sep 2007 14:39:28 -0700
+Received: by rv-out-0910.google.com with SMTP id g11so7169680rvb
+	for <nfs@lists.sourceforge.net>; Tue, 25 Sep 2007 14:39:27 -0700 (PDT)
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-The problem is that the garbage collector for the 'host' structures
-nlm_gc_hosts(), holds nlm_host_mutex while calling down to
-nlmsvc_mark_resources, which, eventually takes the file->f_mutex.
+Hi,
+Sorry if this has been covered.
+I'm trying to mount a nfs share from my nas to my linux server(rhel4).
+I get this error and the file permissions of the copied file appear as
+nfsnobody.nfsnobody
 
-We cannot therefore call nlmsvc_lookup_host() from within
-nlmsvc_create_block, since the caller will already hold file->f_mutex, so
-the attempt to grab nlm_host_mutex may deadlock.
+Is there a way to keep permissions?
 
-Fix the problem by calling nlmsvc_lookup_host() outside the file->f_mutex.
+Thanks,
+- Mark
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
-
- fs/lockd/svclock.c |   29 ++++++++++++++++++-----------
- 1 files changed, 18 insertions(+), 11 deletions(-)
-
-diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-index a21e4bc..d098c7a 100644
---- a/fs/lockd/svclock.c
-+++ b/fs/lockd/svclock.c
-@@ -171,19 +171,14 @@ found:
-  * GRANTED_RES message by cookie, without having to rely on the client's IP
-  * address. --okir
-  */
--static inline struct nlm_block *
--nlmsvc_create_block(struct svc_rqst *rqstp, struct nlm_file *file,
--		struct nlm_lock *lock, struct nlm_cookie *cookie)
-+static struct nlm_block *
-+nlmsvc_create_block(struct svc_rqst *rqstp, struct nlm_host *host,
-+		    struct nlm_file *file, struct nlm_lock *lock,
-+		    struct nlm_cookie *cookie)
- {
- 	struct nlm_block	*block;
--	struct nlm_host		*host;
- 	struct nlm_rqst		*call = NULL;
- 
--	/* Create host handle for callback */
--	host = nlmsvc_lookup_host(rqstp, lock->caller, lock->len);
--	if (host == NULL)
--		return NULL;
--
- 	call = nlm_alloc_call(host);
- 	if (call == NULL)
- 		return NULL;
-@@ -366,6 +361,7 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file *file,
- 			struct nlm_lock *lock, int wait, struct nlm_cookie *cookie)
- {
- 	struct nlm_block	*block = NULL;
-+	struct nlm_host		*host;
- 	int			error;
- 	__be32			ret;
- 
-@@ -377,6 +373,10 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file *file,
- 				(long long)lock->fl.fl_end,
- 				wait);
- 
-+	/* Create host handle for callback */
-+	host = nlmsvc_lookup_host(rqstp, lock->caller, lock->len);
-+	if (host == NULL)
-+		return nlm_lck_denied_nolocks;
- 
- 	/* Lock file against concurrent access */
- 	mutex_lock(&file->f_mutex);
-@@ -385,7 +385,8 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file *file,
- 	 */
- 	block = nlmsvc_lookup_block(file, lock);
- 	if (block == NULL) {
--		block = nlmsvc_create_block(rqstp, file, lock, cookie);
-+		block = nlmsvc_create_block(rqstp, nlm_get_host(host), file,
-+				lock, cookie);
- 		ret = nlm_lck_denied_nolocks;
- 		if (block == NULL)
- 			goto out;
-@@ -449,6 +450,7 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file *file,
- out:
- 	mutex_unlock(&file->f_mutex);
- 	nlmsvc_release_block(block);
-+	nlm_release_host(host);
- 	dprintk("lockd: nlmsvc_lock returned %u\n", ret);
- 	return ret;
- }
-@@ -477,10 +479,15 @@ nlmsvc_testlock(struct svc_rqst *rqstp, struct nlm_file *file,
- 
- 	if (block == NULL) {
- 		struct file_lock *conf = kzalloc(sizeof(*conf), GFP_KERNEL);
-+		struct nlm_host	*host;
- 
- 		if (conf == NULL)
- 			return nlm_granted;
--		block = nlmsvc_create_block(rqstp, file, lock, cookie);
-+		/* Create host handle for callback */
-+		host = nlmsvc_lookup_host(rqstp, lock->caller, lock->len);
-+		if (host == NULL)
-+			return nlm_lck_denied_nolocks;
-+		block = nlmsvc_create_block(rqstp, host, file, lock, cookie);
- 		if (block == NULL) {
- 			kfree(conf);
- 			return nlm_granted;
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Microsoft
+Defy all challenges. Microsoft(R) Visual Studio 2005.
+http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
