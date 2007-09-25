@@ -1,24 +1,24 @@
-From: James Lentini <jlentini@netapp.com>
-Subject: Re: [PATCH] NFS: initialize default port in kernel mount
-	client
-Date: Mon, 24 Sep 2007 19:53:15 -0400 (EDT)
-Message-ID: <Pine.LNX.4.64.0709241942430.32008@jlentini-linux.nane.netapp.com>
-References: <Pine.LNX.4.64.0709241731560.32008@jlentini-linux.nane.netapp.com>
-	<46F83B09.2090202@oracle.com>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH 00/14] Prepare for fallback and fg/bg support in
+	text mounts
+Date: Tue, 25 Sep 2007 11:52:48 +1000
+Message-ID: <18168.27120.983628.71275@notabene.brown>
+References: <20070924152541.3804.77498.stgit@monet.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IZxjr-0002CR-J4
-	for nfs@lists.sourceforge.net; Mon, 24 Sep 2007 16:53:19 -0700
-Received: from mx2.netapp.com ([216.240.18.37])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IZxjv-0003Ea-Bg
-	for nfs@lists.sourceforge.net; Mon, 24 Sep 2007 16:53:24 -0700
-In-Reply-To: <46F83B09.2090202@oracle.com>
+	id 1IZzbe-00054d-BE
+	for nfs@lists.sourceforge.net; Mon, 24 Sep 2007 18:52:58 -0700
+Received: from mx2.suse.de ([195.135.220.15])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IZzbd-0004So-Rx
+	for nfs@lists.sourceforge.net; Mon, 24 Sep 2007 18:53:03 -0700
+In-Reply-To: message from Chuck Lever on Monday September 24
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,66 +31,21 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-
-
-On Mon, 24 Sep 2007, Chuck Lever wrote:
-
-> Hi James-
+On Monday September 24, chuck.lever@oracle.com wrote:
+> Hi Neil-
 > 
-> James Lentini wrote:
-> > If no mount server port number is specified, this change to the kernel mount
-> > client
-> > 
-> > http://linux-nfs.org/cgi-bin/gitweb.cgi?p=nfs-2.6.git;a=commitdiff;h=209ce98
-> > 06996537eceaf07d95def0e9300316c84
-> > 
-> > inadvertently allows the NFS server's port number to be the used as the
-> > mount server's port number. If the user specifies an NFS server port (-o
-> > port=x), the mount will fail.
-> > 
-> > The fix below sets the mount server's port to 0 if no mount server port is
-> > specified by the user.
-> > 
-> > Signed-off-by: James Lentini <jlentini@netapp.com>
-> > --
-> > 
-> >  super.c |    2 ++
-> >  1 file changed, 2 insertions(+)
-> > 
-> > Index: nfs-2.6/fs/nfs/super.c
-> > ===================================================================
-> > --- nfs-2.6/fs/nfs/super.c
-> > +++ nfs-2.6/fs/nfs/super.c
-> > @@ -1006,6 +1006,8 @@ static int nfs_try_mount(struct nfs_pars
-> >  		sin = args->nfs_server.address;
-> >  	if (args->mount_server.port != 0)
-> >  		sin.sin_port = htons(args->mount_server.port);
-> > +	else
-> > +		sin.sin_port = htons(0);
+> Here's a refresh of the patch series to prepare nfs-utils for introducing
+> support for version/protocol fallback and fg/bg to text-based NFS mounts.
 > 
-> Why not just set sin.sin_port = args->mount_server.port unconditionally?
+> This series addresses some minor memory leaks, adds comments and new error
+> reporting functions, and fixes a handful of umount misbehaviors.
 
-Good observation. Something like this perhaps?
+Thanks.  all applied.
 
-Signed-off-by: James Lentini <jlentini@netapp.com>
+I still don't think there is any point calling "free" just before
+"exit" (patches 5 and 6) but it doesn't hurt....
 
-Index: nfs-2.6/fs/nfs/super.c
-===================================================================
---- nfs-2.6/fs/nfs/super.c
-+++ nfs-2.6/fs/nfs/super.c
-@@ -1004,8 +1004,10 @@ static int nfs_try_mount(struct nfs_pars
- 		sin = args->mount_server.address;
- 	else
- 		sin = args->nfs_server.address;
--	if (args->mount_server.port != 0)
--		sin.sin_port = htons(args->mount_server.port);
-+	/* 
-+ 	 * autobind will be used if mount_server.port == 0
-+ 	 */
-+	sin.sin_port = htons(args->mount_server.port);
- 
- 	/*
- 	 * Now ask the mount server to map our export path
+NeilBrown
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
