@@ -1,27 +1,26 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH][RFC] use after free in NLM subsystem -- how
-	best	to fix it?
-Date: Tue, 25 Sep 2007 11:26:30 -0400
-Message-ID: <20070925152630.GD30845@fieldses.org>
-References: <20070924161236.48779845.jlayton@poochiereds.net>
-	<1190672003.6700.34.camel@heimdal.trondhjem.org>
-	<20070925102501.c770c202.jlayton@redhat.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 00/14] Prepare for fallback and fg/bg support in
+ text mounts
+Date: Tue, 25 Sep 2007 12:03:16 -0400
+Message-ID: <46F93144.5000201@oracle.com>
+References: <20070924152541.3804.77498.stgit@monet.1015granger.net>
+	<18168.27120.983628.71275@notabene.brown>
+Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Jeff Layton <jlayton@redhat.com>
+Content-Type: multipart/mixed; boundary="------------030309010104040403000001"
+Cc: nfs@lists.sourceforge.net
+To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IaCIz-0001y6-7d
-	for nfs@lists.sourceforge.net; Tue, 25 Sep 2007 08:26:33 -0700
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	id 1IaCtN-00083r-34
+	for nfs@lists.sourceforge.net; Tue, 25 Sep 2007 09:04:09 -0700
+Received: from rgminet01.oracle.com ([148.87.113.118])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IaCJ2-0002E0-Vo
-	for nfs@lists.sourceforge.net; Tue, 25 Sep 2007 08:26:38 -0700
-In-Reply-To: <20070925102501.c770c202.jlayton@redhat.com>
+	(Exim 4.44) id 1IaCtO-0006OC-18
+	for nfs@lists.sourceforge.net; Tue, 25 Sep 2007 09:04:14 -0700
+In-Reply-To: <18168.27120.983628.71275@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,40 +33,63 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, Sep 25, 2007 at 10:25:01AM -0400, Jeff Layton wrote:
-> As a side note, I think we need to consider some locking around
-> nlmsvc_pid/nlmsvc_serv. This part of lockd seems racy:
-> 
->         if (!nlmsvc_pid || current->pid == nlmsvc_pid) {
->                 if (nlmsvc_ops)
->                         nlmsvc_invalidate_all();
->                 nlm_shutdown_hosts();
->                 nlmsvc_pid = 0;
->                 nlmsvc_serv = NULL;
-> 
-> if either nlm_invalidate_all or nlm_shutdown_hosts takes a while, and
-> lockd is being restarted:
-> 
-> 1) lockd_down is called and starts shutting down lockd
-> 2) lockd takes a while to come down, lockd_down gives up, and sets
->    nlmsvc_pid=0
-> 3) lockd_up is called and fires up a new lockd thread, it sets
->    nlmsvc_pid to the new thread's pid
-> 4) first lockd finishes and sets nlmsvc_pid=0
-> 
-> Perhaps we need to have only lockd_down set those vars so that it's
-> done under the nlmsvc_mutex?
+This is a multi-part message in MIME format.
+--------------030309010104040403000001
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Transfer-Encoding: 7bit
 
-Could be.  I believe nfsd startup/shutdown is similarly racy; see for
-example http://lkml.org/lkml/2007/8/2/462, which I think Neil determined
-was a similar race.
+Neil Brown wrote:
+> I still don't think there is any point calling "free" just before
+> "exit" (patches 5 and 6) but it doesn't hurt....
 
---b.
+Granted, I'm being paranoid there.  I have a few goals:
+
+1.  Consistently use a defensive coding style to help prevent the 
+introduction of new leaks;
+
+2.  We want a clean baseline valgrind report so we can see newly 
+introduced leaks easily, because:
+
+3.  We don't want a memory leak during long-running backgrounded mounts.
+
+--------------030309010104040403000001
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck.lever.vcf"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="chuck.lever.vcf"
+
+begin:vcard
+fn:Chuck Lever
+n:Lever;Chuck
+org:Oracle Corporation;Corporate Architecture: Linux Projects Group
+adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
+title:Principal Member of Staff
+tel;work:+1 248 614 5091
+x-mozilla-html:FALSE
+url:http://oss.oracle.com/~cel
+version:2.1
+end:vcard
+
+
+--------------030309010104040403000001
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
 Defy all challenges. Microsoft(R) Visual Studio 2005.
 http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+--------------030309010104040403000001
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--------------030309010104040403000001--
