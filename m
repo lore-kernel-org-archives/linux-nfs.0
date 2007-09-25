@@ -1,26 +1,27 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH][RFC] use after free in NLM subsystem -- how
-	best	to fix it?
-Date: Tue, 25 Sep 2007 13:05:48 -0400
-Message-ID: <1190739948.7330.18.camel@heimdal.trondhjem.org>
-References: <20070924161236.48779845.jlayton@poochiereds.net>
-	<1190672003.6700.34.camel@heimdal.trondhjem.org>
-	<20070925102501.c770c202.jlayton@redhat.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH] NFS: initialize default port in kernel mount
+	client
+Date: Tue, 25 Sep 2007 11:58:21 -0400
+Message-ID: <46F9301D.5060107@oracle.com>
+References: <Pine.LNX.4.64.0709241731560.32008@jlentini-linux.nane.netapp.com>
+	<46F83B09.2090202@oracle.com>
+	<Pine.LNX.4.64.0709241942430.32008@jlentini-linux.nane.netapp.com>
+Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: multipart/mixed; boundary="------------020607060603060007040501"
 Cc: nfs@lists.sourceforge.net
-To: Jeff Layton <jlayton@redhat.com>
+To: James Lentini <jlentini@netapp.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IaDrD-0006rO-Ny
-	for nfs@lists.sourceforge.net; Tue, 25 Sep 2007 10:06:00 -0700
-Received: from pat.uio.no ([129.240.10.15])
+	id 1IaDwi-00089X-3h
+	for nfs@lists.sourceforge.net; Tue, 25 Sep 2007 10:11:40 -0700
+Received: from agminet01.oracle.com ([141.146.126.228])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IaDrF-0006Ih-RK
-	for nfs@lists.sourceforge.net; Tue, 25 Sep 2007 10:06:04 -0700
-In-Reply-To: <20070925102501.c770c202.jlayton@redhat.com>
+	(Exim 4.44) id 1IaDwj-0001DZ-NA
+	for nfs@lists.sourceforge.net; Tue, 25 Sep 2007 10:11:45 -0700
+In-Reply-To: <Pine.LNX.4.64.0709241942430.32008@jlentini-linux.nane.netapp.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,59 +34,111 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, 2007-09-25 at 10:25 -0400, Jeff Layton wrote:
+This is a multi-part message in MIME format.
+--------------020607060603060007040501
+Content-Type: text/plain; charset=US-ASCII; format=flowed
+Content-Transfer-Encoding: 7bit
 
-> That's certainly one approach. I avoided that since it seems like it
-> would add extra complexity -- it would mean reference counting of some
-> sort. I suppose we could keep a list of async calls that are in
-> progress and cancel those when lockd begins shutting down. Or is there
-> an easier way to make sure they are cancelled before lockd goes down?
-
-You already have such a list: nlm_blocked.
-
-
-> As a side note, I think we need to consider some locking around
-> nlmsvc_pid/nlmsvc_serv. This part of lockd seems racy:
+James Lentini wrote:
 > 
->         if (!nlmsvc_pid || current->pid == nlmsvc_pid) {
->                 if (nlmsvc_ops)
->                         nlmsvc_invalidate_all();
->                 nlm_shutdown_hosts();
->                 nlmsvc_pid = 0;
->                 nlmsvc_serv = NULL;
+> On Mon, 24 Sep 2007, Chuck Lever wrote:
 > 
-> if either nlm_invalidate_all or nlm_shutdown_hosts takes a while, and
-> lockd is being restarted:
+>> Hi James-
+>>
+>> James Lentini wrote:
+>>> If no mount server port number is specified, this change to the kernel mount
+>>> client
+>>>
+>>> http://linux-nfs.org/cgi-bin/gitweb.cgi?p=nfs-2.6.git;a=commitdiff;h=209ce98
+>>> 06996537eceaf07d95def0e9300316c84
+>>>
+>>> inadvertently allows the NFS server's port number to be the used as the
+>>> mount server's port number. If the user specifies an NFS server port (-o
+>>> port=x), the mount will fail.
+>>>
+>>> The fix below sets the mount server's port to 0 if no mount server port is
+>>> specified by the user.
+>>>
+>>> Signed-off-by: James Lentini <jlentini@netapp.com>
+>>> --
+>>>
+>>>  super.c |    2 ++
+>>>  1 file changed, 2 insertions(+)
+>>>
+>>> Index: nfs-2.6/fs/nfs/super.c
+>>> ===================================================================
+>>> --- nfs-2.6/fs/nfs/super.c
+>>> +++ nfs-2.6/fs/nfs/super.c
+>>> @@ -1006,6 +1006,8 @@ static int nfs_try_mount(struct nfs_pars
+>>>  		sin = args->nfs_server.address;
+>>>  	if (args->mount_server.port != 0)
+>>>  		sin.sin_port = htons(args->mount_server.port);
+>>> +	else
+>>> +		sin.sin_port = htons(0);
+>> Why not just set sin.sin_port = args->mount_server.port unconditionally?
 > 
-> 1) lockd_down is called and starts shutting down lockd
-> 2) lockd takes a while to come down, lockd_down gives up, and sets
->    nlmsvc_pid=0
-> 3) lockd_up is called and fires up a new lockd thread, it sets
->    nlmsvc_pid to the new thread's pid
-> 4) first lockd finishes and sets nlmsvc_pid=0
+> Good observation. Something like this perhaps?
 > 
-> Perhaps we need to have only lockd_down set those vars so that it's
-> done under the nlmsvc_mutex?
+> Signed-off-by: James Lentini <jlentini@netapp.com>
 > 
-> Thoughts?
+> Index: nfs-2.6/fs/nfs/super.c
+> ===================================================================
+> --- nfs-2.6/fs/nfs/super.c
+> +++ nfs-2.6/fs/nfs/super.c
+> @@ -1004,8 +1004,10 @@ static int nfs_try_mount(struct nfs_pars
+>  		sin = args->mount_server.address;
+>  	else
+>  		sin = args->nfs_server.address;
+> -	if (args->mount_server.port != 0)
+> -		sin.sin_port = htons(args->mount_server.port);
+> +	/* 
+> + 	 * autobind will be used if mount_server.port == 0
+> + 	 */
+> +	sin.sin_port = htons(args->mount_server.port);
+>  
+>  	/*
+>  	 * Now ask the mount server to map our export path
 
-For cleanliness, I suggest adding a new refcount to lockd: nlmsvc_ref.
-Replace the test for (nlmsvc_users || !signalled()) in lockd() with a
-test for nlmsvc_ref != 0, and then have lockd_up() take one reference to
-it whenever it bumps nlmsvc_users == 0  / lockd_down() release a
-reference whenever it decrements nlmsvc_users == 1.
+That's the idea, but I don't think the comment is needed.
 
-Have nlmsvc_insert_block() take a reference whenever adding something to
-an empty nlm_blocked / nlmsvc_unlink_block release the reference
-whenever nlm_blocked is emptied.
+--------------020607060603060007040501
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck.lever.vcf"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="chuck.lever.vcf"
 
-Trond
+begin:vcard
+fn:Chuck Lever
+n:Lever;Chuck
+org:Oracle Corporation;Corporate Architecture: Linux Projects Group
+adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
+title:Principal Member of Staff
+tel;work:+1 248 614 5091
+x-mozilla-html:FALSE
+url:http://oss.oracle.com/~cel
+version:2.1
+end:vcard
 
+
+--------------020607060603060007040501
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
 Defy all challenges. Microsoft(R) Visual Studio 2005.
 http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+--------------020607060603060007040501
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--------------020607060603060007040501--
