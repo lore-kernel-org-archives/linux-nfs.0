@@ -1,35 +1,24 @@
-From: Jonas Jonsson <jonas@websystem.se>
-Subject: Re: Problem with NFS4,
-	Error: state recovery failed on NFSv4	 server 192.168.0.1 with
-	error 121
-Date: Tue, 25 Sep 2007 14:14:53 +0200
-Message-ID: <1190722493.3935.3.camel@fry.u7.se>
-References: <358c6ad3a55609518d1dfa15ef1f2bd2@imap.u7.se>
-	<1190048861.6700.105.camel@heimdal.trondhjem.org>
-	<1190049122.6700.108.camel@heimdal.trondhjem.org>
-	<1190056357.5541.12.camel@fry.u7.se>
-	<1190059068.6700.125.camel@heimdal.trondhjem.org>
-	<1190060733.5541.14.camel@fry.u7.se>
-	<1190396486.6690.4.camel@heimdal.trondhjem.org>
-	<20070922185227.GD403@fieldses.org> <1190668767.3958.9.camel@fry.u7.se>
-	<20070924220247.GO26387@fieldses.org>
-	<20070924222026.GP26387@fieldses.org>
-Reply-To: jonas@websystem.se
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH][RFC] use after free in NLM subsystem -- how best
+ to fix it?
+Date: Tue, 25 Sep 2007 10:25:01 -0400
+Message-ID: <20070925102501.c770c202.jlayton@redhat.com>
+References: <20070924161236.48779845.jlayton@poochiereds.net>
+	<1190672003.6700.34.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: nfs@lists.sourceforge.net,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Ia9LE-0006kv-Nx
-	for nfs@lists.sourceforge.net; Tue, 25 Sep 2007 05:16:40 -0700
-Received: from gonzzor.campus.luth.se ([130.240.199.196] helo=bender.u7.se)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Ia9LJ-0000mR-En
-	for nfs@lists.sourceforge.net; Tue, 25 Sep 2007 05:16:45 -0700
-In-Reply-To: <20070924222026.GP26387@fieldses.org>
+	id 1IaBLx-0002sT-B4
+	for nfs@lists.sourceforge.net; Tue, 25 Sep 2007 07:25:35 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IaBM2-0001Ql-0v
+	for nfs@lists.sourceforge.net; Tue, 25 Sep 2007 07:25:38 -0700
+In-Reply-To: <1190672003.6700.34.camel@heimdal.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -42,34 +31,69 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-bcOlbiAyMDA3LTA5LTI0IGtsb2NrYW4gMTg6MjAgLTA0MDAgc2tyZXYgSi4gQnJ1Y2UgRmllbGRz
-Ogo+IE9uIE1vbiwgU2VwIDI0LCAyMDA3IGF0IDA2OjAyOjQ3UE0gLTA0MDAsIGJmaWVsZHMgd3Jv
-dGU6Cj4gPiBPSywgdGhhbmtzISAgTG9va3MgbGlrZSBpdCBzdGFydHMgb3V0IGZhaXJseSBub3Jt
-YWxseSwgdGhlbiBhdCBwYWNrZXQKPiA+IDgyNCBpdCBnZXRzIGludG8gdGhpcyBTRVRDTElFTlRJ
-RC0+TkZTNEVSUl9SRVNPVVJDRSBsb29wLiAgSSdtIG5vdCBzdXJlCj4gPiBob3cgdGhhdCBoYXBw
-ZW5lZC4KPiA+IAo+ID4gSSdtIGEgbGl0dGxlIHVuY2xlYXIgd2hldGhlciBSRVNPVVJDRSBpcyBz
-dXBwb3NlZCB0byBiZSBhIHRlbXBvcmFyeQo+ID4gZXJyb3Igb3Igbm90LCBidXQgaW4gZWl0aGVy
-IGNhc2UgcmV0cnlpbmcgaXQgaW5kZWZpbml0ZWx5IHdpdGggbm8gZGVsYXkKPiA+IGlzIHByb2Jh
-Ymx5IGEgYmFkIGlkZWEuICBCdXQgSSBndWVzcyB0aGF0J3Mgbm90IHRoZSBidWcuICBPSywgSSds
-bCB0cnkKPiA+IHRvIGZpZ3VyZSBvdXQgd2hhdCBsZWFkIHVwIHRvIHRoYXQuLi4uCj4gCj4gT2gs
-IGdvb2QgZ3JpZWYsIHdlJ3JlIGxhbWUuICBDb3VsZCB5b3UgY2hlY2sgeW91ciAuY29uZmlnLS1p
-cyBpdAo+IHBvc3NpYmxlIHlvdSBoYXZlIENPTkZJR19DUllQVE9fTUQ1IHR1cm5lZCBvZmY/ICBJ
-ZiBzbywgY291bGQgeW91IHZlcmlmeQo+IHRoYXQgdHVybmluZyBpdCBvbiBmaXhlcyB0aGUgcHJv
-YmxlbT8KPiAKPiBUaGUgcmVjb3ZlcnkgY29kZSBpcyBiZWluZyBzaWxseSBhbmQgcmV0dXJuaW5n
-IFJFU09VUkNFIGlmIGl0IGNhbid0IGxvYWQKPiB0aGF0IGNyeXB0byBtb2R1bGUuICBDdXJyZW50
-IHVwc3RyZWFtIGRvZXNuJ3QgYWxsb3cgYnVpbGRpbmcgdjQgd2l0aG91dAo+IE1ENSwgc28geW91
-IHByb2JhYmx5IHdvbid0IGJlIGFibGUgdG8gcmVwcm9kdWNlIHRoZSBwcm9ibGVtIG9uIHRoZQo+
-IGxhdGVzdCBrZXJuZWwuCgpZZXMsIHRoaXMgc29sdmVkIHRoZSBwcm9ibGVtLiBJIGhhZCB0aGUg
-TUQ1IGNvbXBpbGVkIGFzIGEgbW9kdWxlLCBidXQgaXQKd2Fzbid0IGxvYWRlZCB3aGVuIGxvYWRp
-bmcgbmZzIG1vZHVsZS4gVGhpcyBtaWdodCBiZSBmaXhlZCBpbiBsYXRlcgp2ZXJzaW9ucyBvZiB0
-aGUga2VybmVsLgoKSG93ZXZlciwgb25lIHRoaW5nIGlzIHN0cmFuZ2UsIHdoeSBkaWQgbHMgd29y
-ayB3aGVuIHN0YW5kaW5nIG91dHNpZGUgdGhlCk5GUyBtb3VudGVkIGZpbGVzeXN0ZW0gb24gdGhl
-IGNsaWVudC4gQnV0IHdoZW4gSSB3YXMgc3RhbmRpbmcgaW4gdGhlCm1vdW50ZWQgZmlsZXN5c3Rl
-bSwgbHMgaGFuZ2VkLgoKVGhhbmtzLgoKL0pvbmFzCj4gCj4gLS1iLgoKCi0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0KVGhpcyBTRi5uZXQgZW1haWwgaXMgc3BvbnNvcmVkIGJ5OiBNaWNyb3NvZnQKRGVmeSBhbGwg
-Y2hhbGxlbmdlcy4gTWljcm9zb2Z0KFIpIFZpc3VhbCBTdHVkaW8gMjAwNS4KaHR0cDovL2Nsay5h
-dGRtdC5jb20vTVJUL2dvL3ZzZTAxMjAwMDAwNzBtcnQvZGlyZWN0LzAxLwpfX19fX19fX19fX19f
-X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fXwpORlMgbWFpbGxpc3QgIC0gIE5GU0Bs
-aXN0cy5zb3VyY2Vmb3JnZS5uZXQKaHR0cHM6Ly9saXN0cy5zb3VyY2Vmb3JnZS5uZXQvbGlzdHMv
-bGlzdGluZm8vbmZzCg==
+On Mon, 24 Sep 2007 18:13:23 -0400
+Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+
+> On Mon, 2007-09-24 at 16:12 -0400, Jeff Layton wrote:
+> 
+> > When a lock that a client is blocking on comes free, lockd does this in
+> > nlmsvc_grant_blocked():
+> > 
+> >     nlm_async_call(block->b_call, NLMPROC_GRANTED_MSG, &nlmsvc_grant_ops);
+> > 
+> > the callback from this call is nlmsvc_grant_callback(). That function
+> > does this at the end to wake up lockd:
+> > 
+> >     svc_wake_up(block->b_daemon);
+> > 
+> > ...the problem is, that there is no guarantee that lockd will be up
+> > when this happens. If someone shuts down or restarts lockd before the
+> > async call completes, then the b_daemon pointer will point to freed
+> > memory.
+> 
+> Why shouldn't we be guaranteeing that lockd is up here?
+> 
+> Cheers
+>   Trond
+> 
+
+That's certainly one approach. I avoided that since it seems like it
+would add extra complexity -- it would mean reference counting of some
+sort. I suppose we could keep a list of async calls that are in
+progress and cancel those when lockd begins shutting down. Or is there
+an easier way to make sure they are cancelled before lockd goes down?
+
+As a side note, I think we need to consider some locking around
+nlmsvc_pid/nlmsvc_serv. This part of lockd seems racy:
+
+        if (!nlmsvc_pid || current->pid == nlmsvc_pid) {
+                if (nlmsvc_ops)
+                        nlmsvc_invalidate_all();
+                nlm_shutdown_hosts();
+                nlmsvc_pid = 0;
+                nlmsvc_serv = NULL;
+
+if either nlm_invalidate_all or nlm_shutdown_hosts takes a while, and
+lockd is being restarted:
+
+1) lockd_down is called and starts shutting down lockd
+2) lockd takes a while to come down, lockd_down gives up, and sets
+   nlmsvc_pid=0
+3) lockd_up is called and fires up a new lockd thread, it sets
+   nlmsvc_pid to the new thread's pid
+4) first lockd finishes and sets nlmsvc_pid=0
+
+Perhaps we need to have only lockd_down set those vars so that it's
+done under the nlmsvc_mutex?
+
+Thoughts?
+-- 
+Jeff Layton <jlayton@redhat.com>
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Microsoft
+Defy all challenges. Microsoft(R) Visual Studio 2005.
+http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
