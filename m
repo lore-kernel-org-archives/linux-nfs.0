@@ -1,21 +1,21 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 3/7] text-based mount.nfs: prepare for more complex
-	error exit	handling
-Date: Tue, 25 Sep 2007 13:31:39 -0400
-Message-ID: <20070925173139.4845.22937.stgit@monet.1015granger.net>
+Subject: [PATCH 2/7] text-based mount.nfs: Use new parser to handle
+	'addr='	and 'clientaddr='
+Date: Tue, 25 Sep 2007 13:31:34 -0400
+Message-ID: <20070925173134.4845.47584.stgit@monet.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 To: neilb@suse.de
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IaEG5-0001qi-KO
-	for nfs@lists.sourceforge.net; Tue, 25 Sep 2007 10:31:41 -0700
+	id 1IaEFz-0001qT-Ds
+	for nfs@lists.sourceforge.net; Tue, 25 Sep 2007 10:31:35 -0700
 Received: from flpi102.sbcis.sbc.com ([207.115.20.71] helo=flpi102.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IaEG9-00022L-Ry
-	for nfs@lists.sourceforge.net; Tue, 25 Sep 2007 10:31:46 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IaEG3-0001Oe-7L
+	for nfs@lists.sourceforge.net; Tue, 25 Sep 2007 10:31:40 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,116 +28,91 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-I'm about to add an object or two that needs to be freed before the main
-functions exit.  Prepare the logic by adding an 'out' label and some
-goto's.
+Introduce, but don't yet use, functions that will eventually replace
+append_addr_opt() and append_clientaddr_opt().
+
+Note the behavioral change in append_addr_opt() -- it simply removes
+any previous 'addr=' rather than throwing an error.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/mount/stropts.c |   36 +++++++++++++++++++++---------------
- 1 files changed, 21 insertions(+), 15 deletions(-)
+ utils/mount/stropts.c |   55 +++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 55 insertions(+), 0 deletions(-)
 
 diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-index b2e8d2f..4dbd19e 100644
+index f73521f..b2e8d2f 100644
 --- a/utils/mount/stropts.c
 +++ b/utils/mount/stropts.c
-@@ -307,24 +307,24 @@ int nfsmount_s(const char *spec, const char *node, int flags,
- {
- 	struct sockaddr_in saddr;
- 	char *hostname;
--	int err;
-+	int err, retval = EX_FAIL;
+@@ -40,6 +40,7 @@
+ #include "stropts.h"
+ #include "error.h"
+ #include "network.h"
++#include "parse_opt.h"
  
- 	if (!parse_devname(spec, &hostname))
--		return EX_FAIL;
-+		goto out;
- 	err = fill_ipv4_sockaddr(hostname, &saddr);
- 	free(hostname);
- 	if (!err)
--		return EX_FAIL;
-+		goto out;
- 
- 	extract_interesting_options(*extra_opts);
- 
- 	if (!child && addr_opt) {
- 		nfs_error(_("%s: Illegal option: 'addr='"), progname);
--		return EX_FAIL;
-+		goto out;
- 	}
- 
- 	if (!append_addr_opt(&saddr, extra_opts))
--		return EX_FAIL;
-+		goto out;
- 
- 	if (verbose)
- 		printf(_("%s: text-based options: '%s'\n"),
-@@ -334,11 +334,14 @@ int nfsmount_s(const char *spec, const char *node, int flags,
- 		if (mount(spec, node, "nfs",
- 				flags & ~(MS_USER|MS_USERS), *extra_opts)) {
- 			mount_error(spec, node, errno);
--			return EX_FAIL;
-+			goto out;
- 		}
- 	}
- 
--	return EX_SUCCESS;
-+	retval = EX_SUCCESS;
-+
-+out:
-+	return retval;
+ #ifdef HAVE_RPCSVC_NFS_PROT_H
+ #include <rpcsvc/nfs_prot.h>
+@@ -235,6 +236,60 @@ static int append_clientaddr_opt(struct sockaddr_in *saddr, char **extra_opts)
  }
  
  /*
-@@ -360,27 +363,27 @@ int nfs4mount_s(const char *spec, const char *node, int flags,
- {
- 	struct sockaddr_in saddr;
- 	char *hostname;
--	int err;
-+	int err, retval = EX_FAIL;
- 
- 	if (!parse_devname(spec, &hostname))
--		return EX_FAIL;
-+		goto out;
- 	err = fill_ipv4_sockaddr(hostname, &saddr);
- 	free(hostname);
- 	if (!err)
--		return EX_FAIL;
-+		goto out;
- 
- 	extract_interesting_options(*extra_opts);
- 
- 	if (addr_opt) {
- 		nfs_error(_("%s: Illegal option: 'addr='"), progname);
--		return EX_FAIL;
-+		goto out;
- 	}
- 
- 	if (!append_addr_opt(&saddr, extra_opts))
--		return EX_FAIL;
-+		goto out;
- 
- 	if (!ca_opt && !append_clientaddr_opt(&saddr, extra_opts))
--		return EX_FAIL;
-+		goto out;
- 
- 	if (verbose)
- 		printf(_("%s: text-based options: '%s'\n"),
-@@ -390,9 +393,12 @@ int nfs4mount_s(const char *spec, const char *node, int flags,
- 		if (mount(spec, node, "nfs4",
- 				flags & ~(MS_USER|MS_USERS), *extra_opts)) {
- 			mount_error(spec, node, errno);
--			return EX_FAIL;
-+			goto out;
- 		}
- 	}
- 
--	return EX_SUCCESS;
-+	retval = EX_SUCCESS;
++ * Append the 'addr=' option to the options string to pass a resolved
++ * server address to the kernel.  After a successful mount, this address
++ * is also added to /etc/mtab for use when unmounting.
++ *
++ * If 'addr=' is already present, we strip it out.  This prevents users
++ * from setting a bogus 'addr=' option themselves, and also allows bg
++ * retries to recompute the server's address, in case it has changed.
++ *
++ * Returns 1 if 'addr=' option appended successfully;
++ * otherwise zero.
++ */
++static int append_addr_option(struct sockaddr_in *saddr,
++			   struct mount_options *options)
++{
++	char new_option[24];
 +
-+out:
-+	return retval;
- }
++	po_remove_all(options, "addr");
++
++	snprintf(new_option, sizeof(new_option) - 1,
++			"addr=%s", inet_ntoa(saddr->sin_addr));
++
++	if (po_append(options, new_option) == PO_SUCCEEDED)
++		return 1;
++	return 0;
++}
++
++/*
++ * Called to discover our address and append an appropriate 'clientaddr='
++ * option to the options string.
++ *
++ * Returns 1 if 'clientaddr=' option created successfully or if
++ * 'clientaddr=' option is already present; otherwise zero.
++ */
++static int append_clientaddr_option(struct sockaddr_in *saddr,
++				    struct mount_options *options)
++{
++	struct sockaddr_in my_addr;
++	char new_option[32];
++
++	if (po_contains(options, "clientaddr") == PO_SUCCEEDED)
++		return 1;
++
++	if (!get_client_address(saddr, &my_addr))
++		return 0;
++
++	snprintf(new_option, sizeof(new_option) - 1,
++			"clientaddr=%s", inet_ntoa(my_addr.sin_addr));
++
++	if (po_append(options, new_option) == PO_SUCCEEDED)
++		return 1;
++	return 0;
++}
++
++/*
+  * nfsmount_s - Mount an NFSv2 or v3 file system using C string options
+  *
+  * @spec:	C string hostname:path specifying remoteshare to mount
 
 
 -------------------------------------------------------------------------
