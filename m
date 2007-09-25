@@ -1,27 +1,21 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH] NFS: initialize default port in kernel mount
-	client
-Date: Tue, 25 Sep 2007 11:58:21 -0400
-Message-ID: <46F9301D.5060107@oracle.com>
-References: <Pine.LNX.4.64.0709241731560.32008@jlentini-linux.nane.netapp.com>
-	<46F83B09.2090202@oracle.com>
-	<Pine.LNX.4.64.0709241942430.32008@jlentini-linux.nane.netapp.com>
-Reply-To: chuck.lever@oracle.com
+Subject: [PATCH 1/7] text-based mount.nfs: parse option strings into
+	lists
+Date: Tue, 25 Sep 2007 13:31:28 -0400
+Message-ID: <20070925173128.4845.82743.stgit@monet.1015granger.net>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------020607060603060007040501"
+Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: James Lentini <jlentini@netapp.com>
+To: neilb@suse.de
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IaDwi-00089X-3h
-	for nfs@lists.sourceforge.net; Tue, 25 Sep 2007 10:11:40 -0700
-Received: from agminet01.oracle.com ([141.146.126.228])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IaDwj-0001DZ-NA
-	for nfs@lists.sourceforge.net; Tue, 25 Sep 2007 10:11:45 -0700
-In-Reply-To: <Pine.LNX.4.64.0709241942430.32008@jlentini-linux.nane.netapp.com>
+	id 1IaEFw-0001qH-4n
+	for nfs@lists.sourceforge.net; Tue, 25 Sep 2007 10:31:32 -0700
+Received: from flpi102.sbcis.sbc.com ([207.115.20.71] helo=flpi102.prodigy.net)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IaEG0-0001Mu-Mo
+	for nfs@lists.sourceforge.net; Tue, 25 Sep 2007 10:31:37 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,111 +28,542 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
---------------020607060603060007040501
-Content-Type: text/plain; charset=US-ASCII; format=flowed
-Content-Transfer-Encoding: 7bit
+Adapt a parsing trick used by Python.
 
-James Lentini wrote:
-> 
-> On Mon, 24 Sep 2007, Chuck Lever wrote:
-> 
->> Hi James-
->>
->> James Lentini wrote:
->>> If no mount server port number is specified, this change to the kernel mount
->>> client
->>>
->>> http://linux-nfs.org/cgi-bin/gitweb.cgi?p=nfs-2.6.git;a=commitdiff;h=209ce98
->>> 06996537eceaf07d95def0e9300316c84
->>>
->>> inadvertently allows the NFS server's port number to be the used as the
->>> mount server's port number. If the user specifies an NFS server port (-o
->>> port=x), the mount will fail.
->>>
->>> The fix below sets the mount server's port to 0 if no mount server port is
->>> specified by the user.
->>>
->>> Signed-off-by: James Lentini <jlentini@netapp.com>
->>> --
->>>
->>>  super.c |    2 ++
->>>  1 file changed, 2 insertions(+)
->>>
->>> Index: nfs-2.6/fs/nfs/super.c
->>> ===================================================================
->>> --- nfs-2.6/fs/nfs/super.c
->>> +++ nfs-2.6/fs/nfs/super.c
->>> @@ -1006,6 +1006,8 @@ static int nfs_try_mount(struct nfs_pars
->>>  		sin = args->nfs_server.address;
->>>  	if (args->mount_server.port != 0)
->>>  		sin.sin_port = htons(args->mount_server.port);
->>> +	else
->>> +		sin.sin_port = htons(0);
->> Why not just set sin.sin_port = args->mount_server.port unconditionally?
-> 
-> Good observation. Something like this perhaps?
-> 
-> Signed-off-by: James Lentini <jlentini@netapp.com>
-> 
-> Index: nfs-2.6/fs/nfs/super.c
-> ===================================================================
-> --- nfs-2.6/fs/nfs/super.c
-> +++ nfs-2.6/fs/nfs/super.c
-> @@ -1004,8 +1004,10 @@ static int nfs_try_mount(struct nfs_pars
->  		sin = args->mount_server.address;
->  	else
->  		sin = args->nfs_server.address;
-> -	if (args->mount_server.port != 0)
-> -		sin.sin_port = htons(args->mount_server.port);
-> +	/* 
-> + 	 * autobind will be used if mount_server.port == 0
-> + 	 */
-> +	sin.sin_port = htons(args->mount_server.port);
->  
->  	/*
->  	 * Now ask the mount server to map our export path
+The strategy is to parse mount option strings into an abstract data type
+so we don't have to copy and/or tokenize the whole option string multiple
+times while trying to manipulate the mount options.  Then, just before
+calling the mount(2) system call, convert the object back into a C string.
 
-That's the idea, but I don't think the comment is needed.
+This initial patch adds methods for creating and manipulating mount option
+data objects.
 
---------------020607060603060007040501
-Content-Type: text/x-vcard; charset=utf-8;
- name="chuck.lever.vcf"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="chuck.lever.vcf"
+One major advantage of this approach is that we can copy the final version
+of the mount options into /etc/mtab when we're done, instead of copying in
+the original mount options that the user specified.  Any fallback from NFS
+v3 to NFS v2 or TCP to UDP that was done by mount.nfs will be reflected in
+/etc/mtab.
 
-begin:vcard
-fn:Chuck Lever
-n:Lever;Chuck
-org:Oracle Corporation;Corporate Architecture: Linux Projects Group
-adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
-title:Principal Member of Staff
-tel;work:+1 248 614 5091
-x-mozilla-html:FALSE
-url:http://oss.oracle.com/~cel
-version:2.1
-end:vcard
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
+ utils/mount/Makefile.am |    4 
+ utils/mount/parse_opt.c |  430 +++++++++++++++++++++++++++++++++++++++++++++++
+ utils/mount/parse_opt.h |   46 +++++
+ 3 files changed, 478 insertions(+), 2 deletions(-)
 
---------------020607060603060007040501
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+diff --git a/utils/mount/Makefile.am b/utils/mount/Makefile.am
+index 23e7ae9..f703047 100644
+--- a/utils/mount/Makefile.am
++++ b/utils/mount/Makefile.am
+@@ -9,11 +9,11 @@ man5_MANS	= nfs.man
+ 
+ sbin_PROGRAMS	= mount.nfs
+ EXTRA_DIST = nfsmount.x $(man8_MANS) $(man5_MANS)
+-mount_nfs_SOURCES = mount.c error.c network.c fstab.c \
++mount_nfs_SOURCES = mount.c error.c network.c fstab.c parse_opt.c \
+ 		    nfsmount.c nfs4mount.c stropts.c\
+ 		    nfsumount.c \
+ 		    mount_constants.h error.h network.h fstab.h \
+-		    nfs4_mount.h nfs_mount4.h stropts.h
++		    nfs4_mount.h nfs_mount4.h stropts.h parse_opt.h
+ 
+ mount_nfs_LDADD = ../../support/nfs/libnfs.a \
+ 		  ../../support/export/libexport.a
+diff --git a/utils/mount/parse_opt.c b/utils/mount/parse_opt.c
+new file mode 100644
+index 0000000..d6d61e2
+--- /dev/null
++++ b/utils/mount/parse_opt.c
+@@ -0,0 +1,430 @@
++/*
++ * parse_opt.c -- mount option string parsing helpers
++ *
++ * Copyright (C) 2007 Oracle.  All rights reserved.
++ * Copyright (C) 2007 Chuck Lever <chuck.lever@oracle.com>
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public
++ * License as published by the Free Software Foundation; either
++ * version 2 of the License, or (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public
++ * License along with this program; if not, write to the
++ * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
++ * Boston, MA 021110-1307, USA.
++ *
++ */
++
++/*
++ * Converting a C string containing mount options to a data object
++ * and manipulating that is cleaner in C than manipulating the C
++ * string itself.  This is similar to the way Python handles string
++ * manipulation.
++ *
++ * The current implementation uses a linked list as the data object
++ * since lists are simple, and we don't need to worry about more
++ * than ten or twenty options at a time.
++ *
++ * Hopefully the interface is abstract enough that the underlying
++ * data structure can be replaced if needed without changing the API.
++ */
++
++
++#include <ctype.h>
++#include <unistd.h>
++#include <stdio.h>
++#include <string.h>
++#include <stdlib.h>
++#include <errno.h>
++
++#include "parse_opt.h"
++
++
++struct mount_option {
++	struct mount_option *next, *prev;
++	char *keyword;
++	char *value;
++};
++
++struct mount_options {
++	struct mount_option *head, *tail;
++	unsigned int count;
++};
++
++static struct mount_option *option_create(char *str)
++{
++	struct mount_option *option;
++	char *opteq;
++
++	if (!str)
++		return NULL;
++
++	option = malloc(sizeof(*option));
++	if (!option)
++		return NULL;
++	
++	option->next = NULL;
++	option->prev = NULL;
++
++	if ((opteq = strchr(str, '='))) {
++		*opteq = '\0';
++		option->keyword = strdup(str);
++		if (!option->keyword)
++			goto fail;
++		option->value = strdup(opteq + 1);
++		if (!option->value) {
++			free(option->keyword);
++			goto fail;
++		}
++	} else {
++		option->keyword = strdup(str);
++		if (!option->keyword)
++			goto fail;
++		option->value = NULL;
++	}
++
++	return option;
++
++fail:
++	free(option);
++	return NULL;
++}
++
++static void option_destroy(struct mount_option *option)
++{
++	free(option->keyword);
++	free(option->value);
++	free(option);
++}
++
++static void options_init(struct mount_options *options)
++{
++	options->head = options->tail = NULL;
++	options->count = 0;
++}
++
++static struct mount_options *options_create(void)
++{
++	struct mount_options *options;
++
++	options = malloc(sizeof(*options));
++	if (options)
++		options_init(options);
++
++	return options;
++}
++
++static int options_empty(struct mount_options *options)
++{
++	return options->count == 0;
++}
++
++static void options_tail_insert(struct mount_options *options,
++				struct mount_option *option)
++{
++	struct mount_option *prev = options->tail;
++
++	option->next = NULL;
++	option->prev = prev;
++
++	if (prev)
++		prev->next = option;
++	else
++		options->head = option;
++	options->tail = option;
++
++	options->count++;
++}
++
++static void options_delete(struct mount_options *options,
++			   struct mount_option *option)
++{
++	struct mount_option *prev = option->prev;
++	struct mount_option *next = option->next;
++
++	if (!options_empty(options)) {
++		if (prev)
++			prev->next = option->next;
++		if (next)
++			next->prev = option->prev;
++
++		if (options->head == option)
++			options->head = option->next;
++		if (options->tail == option)
++			options->tail = prev;
++
++		options->count--;
++
++		option_destroy(option);
++	}
++}
++
++
++/**
++ * po_destroy - deallocate a group of mount options
++ * @options: pointer to mount options to free
++ *
++ */
++void po_destroy(struct mount_options *options)
++{
++	if (options) {
++		while (!options_empty(options))
++			options_delete(options, options->head);
++		free(options);
++	}
++}
++
++/**
++ * po_split - split options string into group of options
++ * @options: pointer to C string containing zero or more comma-delimited options
++ *
++ * Convert our mount options string to a list to make it easier
++ * to adjust the options as we go.  This is just an exercise in
++ * lexical parsing -- this function doesn't pay attention to the
++ * meaning of the options themselves.
++ *
++ * Returns a new group of mount options if successful; otherwise NULL
++ * is returned if some failure occurred.
++ */
++struct mount_options *po_split(char *str)
++{
++	struct mount_options *options;
++	char *opt;
++
++	if (!str)
++		return options_create();
++
++	str = strdup(str);
++	if (!str)
++		return NULL;
++
++	options = options_create();
++	if (options) {
++		for (opt = strtok(str, ","); opt; opt = strtok(NULL, ",")) {
++			struct mount_option *option = option_create(opt);
++			if (option)
++				options_tail_insert(options, option);
++			else
++				goto fail;
++		}
++	}
++
++	free(str);
++	return options;
++
++fail:
++	po_destroy(options);
++	free(str);
++	return NULL;
++}
++
++/**
++ * po_replace - replace mount options in one mount_options object with another
++ * @target: pointer to previously instantiated object to replace
++ * @source: pointer to object containing source mount options
++ *
++ * Side effect: the object referred to by source is emptied.
++ */
++void po_replace(struct mount_options *target, struct mount_options *source)
++{
++	if (target) {
++		while (!options_empty(target))
++			options_delete(target, target->head);
++
++		if (source) {
++			target->head = source->head;
++			target->tail = source->tail;
++			target->count = source->count;
++
++			options_init(source);
++		}
++	}
++}
++
++/**
++ * po_join - recombine group of mount options into a C string
++ * @options: pointer to mount options to recombine
++ * @str: handle on string to replace (input and output)
++ *
++ * Convert our mount options object back into a string that the
++ * rest of the world can use.
++ *
++ * Returns 1 if the string was successfully created; otherwise
++ * zero.  Upon return, @string contains the address of a
++ * replacement C string containing a comma-delimited list of
++ * mount options and values; or the passed-in string is freed
++ * and NULL is returned if some failure occurred.
++ */
++int po_join(struct mount_options *options, char **str)
++{
++	size_t len = 0;
++	struct mount_option *option;
++
++	if (!str || !options)
++		return PO_FAILED;
++		
++	free(*str);
++	*str = NULL;
++
++	if (options_empty(options)) {
++		*str = strdup("");
++		return *str ? PO_SUCCEEDED : PO_FAILED;
++	}
++
++	for (option = options->head; option; option = option->next) {
++		len += strlen(option->keyword);
++		if (option->value)
++			len +=strlen(option->value) + 1;  /* equals sign */
++		if (option->next)
++			len++;  /* comma */
++	}
++
++	len++;	/* NULL on the end */
++
++	*str = malloc(len);
++	if (!*str)
++		return PO_FAILED;
++	*str[0] = '\0';
++
++	for (option = options->head; option; option = option->next) {
++		strcat(*str, option->keyword);
++		if (option->value) {
++			strcat(*str, "=");
++			strcat(*str, option->value);
++		}
++		if (option->next)
++			strcat(*str, ",");
++	}
++
++	return PO_SUCCEEDED;
++}
++
++/**
++ * po_append - concatenate an option onto a group of options
++ * @options: pointer to mount options
++ * @option: pointer to a C string containing the option to add
++ *
++ * Returns 1 if the list was successfully concatenated; otherwise
++ * zero.
++ */
++int po_append(struct mount_options *options, char *str)
++{
++	struct mount_option *option = option_create(str);
++
++	if (option) {
++		options_tail_insert(options, option);
++		return PO_SUCCEEDED;
++	}
++	return PO_FAILED;
++}
++
++/**
++ * po_contains - check for presense of an option in a group
++ * @options: pointer to mount options
++ * @keyword: pointer to a C string containing option keyword for which to search
++ *
++ * Returns 1 if the option is present in the list; otherwise zero.
++ */
++int po_contains(struct mount_options *options, char *keyword)
++{
++	struct mount_option *option;
++
++	if (options && keyword) {
++		for (option = options->head; option; option = option->next)
++			if (strcmp(option->keyword, keyword) == 0)
++				return PO_FOUND;
++	}
++
++	return PO_NOT_FOUND;
++}
++
++/**
++ * po_get - return the value of the rightmost instance of an option
++ * @options: pointer to mount options
++ * @keyword: pointer to a C string containing option keyword for which to search
++ *
++ * If multiple instances of the same option are present in a mount option
++ * list, the rightmost instance is always the effective one.
++ *
++ * Returns pointer to C string containing the value of the option.
++ * Returns NULL if the option isn't found, or if the option doesn't
++ * have a value.
++ */
++char *po_get(struct mount_options *options, char *keyword)
++{
++	struct mount_option *option;
++
++	if (options && keyword) {
++		for (option = options->tail; option; option = option->prev)
++			if (strcmp(option->keyword, keyword) == 0)
++				return option->value;
++	}
++
++	return NULL;
++}
++
++/**
++ * po_rightmost - determine the relative position of two options
++ * @options: pointer to mount options
++ * @key1: pointer to a C string containing an option keyword
++ * @key2: pointer to a C string containing another option keyword
++ *
++ * The kernel parses the mount option string from left to right.
++ * If an option is specified more than once (for example, "intr"
++ * and "nointr", the rightmost option is the last to be parsed,
++ * and it therefore takes precedence over previous similar options.
++ *
++ * This function can be used to determine which of two similar
++ * options will be the one to take effect.
++ *
++ * Returns 1 if key2 is rightmost or key1 is not present.
++ * Returns -1 if key1 is rightmost or key2 is not present.
++ * Returns 0 if neither key is present.
++ */
++int po_rightmost(struct mount_options *options, char *key1, char *key2)
++{
++	struct mount_option *option;
++
++	if (options) {
++		for (option = options->tail; option; option = option->prev) {
++			if (key2 && strcmp(option->keyword, key2) == 0)
++				return 1;
++			if (key1 && strcmp(option->keyword, key1) == 0)
++				return -1;
++		}
++	}
++
++	return PO_NOT_FOUND;
++}
++
++/**
++ * po_remove_all - remove instances of an option from a group
++ * @options: pointer to mount options
++ * @keyword: pointer to a C string containing an option keyword to remove
++ *
++ * Returns 1 if the option was found and removed; passed-in list is
++ * truncated upon return; otherwise zero.
++ */
++int po_remove_all(struct mount_options *options, char *keyword)
++{
++	struct mount_option *option, *next;
++	int found = PO_NOT_FOUND;
++
++	if (options && keyword) {
++		for (option = options->head; option; option = next) {
++			next = option->next;
++			if (strcmp(option->keyword, keyword) == 0) {
++				options_delete(options, option);
++				found = PO_FOUND;
++			}
++		}
++	}
++
++	return found;
++}
+diff --git a/utils/mount/parse_opt.h b/utils/mount/parse_opt.h
+new file mode 100644
+index 0000000..93430d9
+--- /dev/null
++++ b/utils/mount/parse_opt.h
+@@ -0,0 +1,46 @@
++/*
++ * parse_opt.h -- mount option string parsing helpers
++ *
++ * Copyright (C) 2007 Oracle.  All rights reserved.
++ * Copyright (C) 2007 Chuck Lever <chuck.lever@oracle.com>
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public
++ * License as published by the Free Software Foundation; either
++ * version 2 of the License, or (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public
++ * License along with this program; if not, write to the
++ * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
++ * Boston, MA 021110-1307, USA.
++ *
++ */
++
++enum {
++	PO_FAILED = 0,
++	PO_SUCCEEDED = 1,
++};
++
++enum {
++	PO_NOT_FOUND = 0,
++	PO_FOUND = 1,
++};
++
++struct mount_options;
++
++struct mount_options *	po_split(char *);
++void			po_replace(struct mount_options *,
++				   struct mount_options *);
++int			po_join(struct mount_options *, char **);
++
++int			po_append(struct mount_options *, char *);
++int			po_contains(struct mount_options *, char *);
++char *			po_get(struct mount_options *, char *);
++int			po_rightmost(struct mount_options *, char *, char *);
++int			po_remove_all(struct mount_options *, char *);
++void			po_destroy(struct mount_options *);
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
 Defy all challenges. Microsoft(R) Visual Studio 2005.
 http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
---------------020607060603060007040501
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---------------020607060603060007040501--
