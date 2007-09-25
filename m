@@ -1,105 +1,111 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 7/7] text-based mount.nfs: Fix mounthost= processing
-Date: Tue, 25 Sep 2007 13:32:00 -0400
-Message-ID: <20070925173200.4845.21140.stgit@monet.1015granger.net>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: NLM: Fix a circular lock dependency in lockd
+Date: Tue, 25 Sep 2007 15:55:03 -0400
+Message-ID: <1190750103.7330.32.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: neilb@suse.de
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IaEGQ-0001tL-OJ
-	for nfs@lists.sourceforge.net; Tue, 25 Sep 2007 10:32:02 -0700
-Received: from flpi102.sbcis.sbc.com ([207.115.20.71] helo=flpi102.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IaEGV-0001YJ-JK
-	for nfs@lists.sourceforge.net; Tue, 25 Sep 2007 10:32:07 -0700
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: text/plain
+Cc: linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net
+To: Linus Torvalds <torvalds@linux-foundation.org>,
+	stable@vger.kernel.org
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1758778AbXIYTz1@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-The 'mounthost=' option names a host where the mountd service is running.
-The option is used to direct clients to use a different host for the mountd
-procotol than the host where the NFS service is running.
+The problem is that the garbage collector for the 'host' structures
+nlm_gc_hosts(), holds nlm_host_mutex while calling down to
+nlmsvc_mark_resources, which, eventually takes the file->f_mutex.
 
-The nfs(5) man page shows that the 'mounthost=' option takes a name, not
-an address.  The kernel's text-based mount option parsing logic expects an
-IPv4 address.  This is necessary because the kernel cannot itself resolve
-hostnames to addresses.
+We cannot therefore call nlmsvc_lookup_host() from within
+nlmsvc_create_block, since the caller will already hold file->f_mutex, so
+the attempt to grab nlm_host_mutex may deadlock.
 
-Resolve the hostname and pass in a new mount option that contains the
-resolved address, 'mountaddr=', to the kernel.
+Fix the problem by calling nlmsvc_lookup_host() outside the file->f_mutex.
 
-This requires a patch to the kernel to recognize the new 'mountaddr='
-option, and to change the 'mounthost=' parsing logic to treat the value of
-this option as a simple string.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- utils/mount/stropts.c |   27 +++++++++++++++++++++++++++
- 1 files changed, 27 insertions(+), 0 deletions(-)
+ fs/lockd/svclock.c |   29 ++++++++++++++++++-----------
+ 1 files changed, 18 insertions(+), 11 deletions(-)
 
-diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-index e3a3ac9..b31b3a2 100644
---- a/utils/mount/stropts.c
-+++ b/utils/mount/stropts.c
-@@ -191,6 +191,30 @@ static int append_clientaddr_option(struct sockaddr_in *saddr,
+diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
+index a21e4bc..d098c7a 100644
+--- a/fs/lockd/svclock.c
++++ b/fs/lockd/svclock.c
+@@ -171,19 +171,14 @@ found:
+  * GRANTED_RES message by cookie, without having to rely on the client's IP
+  * address. --okir
+  */
+-static inline struct nlm_block *
+-nlmsvc_create_block(struct svc_rqst *rqstp, struct nlm_file *file,
+-		struct nlm_lock *lock, struct nlm_cookie *cookie)
++static struct nlm_block *
++nlmsvc_create_block(struct svc_rqst *rqstp, struct nlm_host *host,
++		    struct nlm_file *file, struct nlm_lock *lock,
++		    struct nlm_cookie *cookie)
+ {
+ 	struct nlm_block	*block;
+-	struct nlm_host		*host;
+ 	struct nlm_rqst		*call = NULL;
+ 
+-	/* Create host handle for callback */
+-	host = nlmsvc_lookup_host(rqstp, lock->caller, lock->len);
+-	if (host == NULL)
+-		return NULL;
+-
+ 	call = nlm_alloc_call(host);
+ 	if (call == NULL)
+ 		return NULL;
+@@ -366,6 +361,7 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file *file,
+ 			struct nlm_lock *lock, int wait, struct nlm_cookie *cookie)
+ {
+ 	struct nlm_block	*block = NULL;
++	struct nlm_host		*host;
+ 	int			error;
+ 	__be32			ret;
+ 
+@@ -377,6 +373,10 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file *file,
+ 				(long long)lock->fl.fl_end,
+ 				wait);
+ 
++	/* Create host handle for callback */
++	host = nlmsvc_lookup_host(rqstp, lock->caller, lock->len);
++	if (host == NULL)
++		return nlm_lck_denied_nolocks;
+ 
+ 	/* Lock file against concurrent access */
+ 	mutex_lock(&file->f_mutex);
+@@ -385,7 +385,8 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file *file,
+ 	 */
+ 	block = nlmsvc_lookup_block(file, lock);
+ 	if (block == NULL) {
+-		block = nlmsvc_create_block(rqstp, file, lock, cookie);
++		block = nlmsvc_create_block(rqstp, nlm_get_host(host), file,
++				lock, cookie);
+ 		ret = nlm_lck_denied_nolocks;
+ 		if (block == NULL)
+ 			goto out;
+@@ -449,6 +450,7 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file *file,
+ out:
+ 	mutex_unlock(&file->f_mutex);
+ 	nlmsvc_release_block(block);
++	nlm_release_host(host);
+ 	dprintk("lockd: nlmsvc_lock returned %u\n", ret);
+ 	return ret;
  }
+@@ -477,10 +479,15 @@ nlmsvc_testlock(struct svc_rqst *rqstp, struct nlm_file *file,
  
- /*
-+ * Called to resolve the 'mounthost=' hostname and append a new
-+ * option using an IPv4 address.
-+ */
-+static int fix_up_mounthost_opt(struct mount_options *options)
-+{
-+	struct sockaddr_in maddr;
-+	char *mounthost, new_option[32];
-+
-+	mounthost = po_get(options, "mounthost");
-+	if (!mounthost)
-+		return 1;
-+
-+	if (!fill_ipv4_sockaddr(mounthost, &maddr))
-+		return 0;
-+
-+	snprintf(new_option, sizeof(new_option) - 1,
-+			"mountaddr=%s", inet_ntoa(maddr.sin_addr));
-+
-+	if (po_append(options, new_option) == PO_SUCCEEDED)
-+		return 1;
-+	return 0;
-+}
-+
-+/*
-  * nfsmount_s - Mount an NFSv2 or v3 file system using C string options
-  *
-  * @spec:	C string hostname:path specifying remoteshare to mount
-@@ -227,6 +251,9 @@ int nfsmount_s(const char *spec, const char *node, int flags,
- 	if (!append_addr_option(&saddr, options))
- 		goto out;
+ 	if (block == NULL) {
+ 		struct file_lock *conf = kzalloc(sizeof(*conf), GFP_KERNEL);
++		struct nlm_host	*host;
  
-+	if (!fix_up_mounthost_opt(options))
-+		goto out;
-+
- 	if (po_join(options, extra_opts) == PO_FAILED) {
- 		nfs_error(_("%s: internal option parsing error"), progname);
- 		goto out;
-
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Microsoft
-Defy all challenges. Microsoft(R) Visual Studio 2005.
-http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+ 		if (conf == NULL)
+ 			return nlm_granted;
+-		block = nlmsvc_create_block(rqstp, file, lock, cookie);
++		/* Create host handle for callback */
++		host = nlmsvc_lookup_host(rqstp, lock->caller, lock->len);
++		if (host == NULL)
++			return nlm_lck_denied_nolocks;
++		block = nlmsvc_create_block(rqstp, host, file, lock, cookie);
+ 		if (block == NULL) {
+ 			kfree(conf);
+ 			return nlm_granted;
