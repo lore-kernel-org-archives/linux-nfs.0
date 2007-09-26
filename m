@@ -1,24 +1,24 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: cp: failed to preserve ownership for
-	`/backup2/restart':	Operation not permitted
-Date: Tue, 25 Sep 2007 19:09:19 -0400
-Message-ID: <1190761759.6698.4.camel@heimdal.trondhjem.org>
-References: <2127a07b0709251439s674dc1act8c37f64c789e4657@mail.gmail.com>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH 0/7] Add mount option parsing facility to
+	text-based mount.nfs
+Date: Wed, 26 Sep 2007 10:59:28 +1000
+Message-ID: <18169.44784.512106.346767@notabene.brown>
+References: <20070925172637.4845.51938.stgit@monet.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: Mark Maggelet <mark@educationplanet.com>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IaJXY-0002Bx-8Z
-	for nfs@lists.sourceforge.net; Tue, 25 Sep 2007 16:10:04 -0700
-Received: from pat.uio.no ([129.240.10.15])
+	id 1IaLFa-0004B8-Tq
+	for nfs@lists.sourceforge.net; Tue, 25 Sep 2007 17:59:39 -0700
+Received: from cantor.suse.de ([195.135.220.2] helo=mx1.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IaJXb-0003qs-UN
-	for nfs@lists.sourceforge.net; Tue, 25 Sep 2007 16:10:09 -0700
-In-Reply-To: <2127a07b0709251439s674dc1act8c37f64c789e4657@mail.gmail.com>
+	(Exim 4.44) id 1IaLFd-0008SA-MV
+	for nfs@lists.sourceforge.net; Tue, 25 Sep 2007 17:59:44 -0700
+In-Reply-To: message from Chuck Lever on Tuesday September 25
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,24 +31,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, 2007-09-25 at 14:39 -0700, Mark Maggelet wrote:
-> Hi,
-> Sorry if this has been covered.
-> I'm trying to mount a nfs share from my nas to my linux server(rhel4).
-> I get this error and the file permissions of the copied file appear as
-> nfsnobody.nfsnobody
+On Tuesday September 25, chuck.lever@oracle.com wrote:
+> Hi Neil-
 > 
-> Is there a way to keep permissions?
+> Seven more patches for text-based mount.nfs.
 > 
-> Thanks,
-> - Mark
+> I found that it is necessary to do some rather advanced lexical parsing of
+> the mount option string in order to handle version/protocol fallback.  So I've
+> implemented a data structure that can handle the parsing requirements, and
+> some wrapper logic to convert the mount option string to the new data
+> structure and then convert it back to a string before calling mount(2).
+> 
+> This series introduces the new facility and makes use of it for existing text-
+> based mount option processing (like adding "addr=" and so on).  In subsequent
+> patches I will make more use of the new facility.
 
-It sounds like the /etc/passwd and /etc/groups files on your client and
-server are out of sync: please make sure that the username+uid and
-groupname+gid match on both machines.
+Nice.
 
-Trond
+However: The current parsing of mount options (parse_opts,
+parse_options) allows for "quotes" around options so that an option
+can contain a comma (Gumble SELinux Grumble  context=foo,bar Grumble).
+Your mount option parsing doesn't allow for this.  Should it?
 
+NeilBrown
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
