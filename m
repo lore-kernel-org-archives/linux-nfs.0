@@ -1,21 +1,21 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 0/5] rpc.mountd: Fix mountd buffer overflow when using
-	large numbers of netgroups (resend)
-Date: Thu, 27 Sep 2007 06:53:38 -0400
-Message-ID: <200709271053.l8RArcOw031610@dantu.rdu.redhat.com>
+Subject: [PATCH 1/5] rpc.mountd: fix memory leak and error handling in
+	nfsd_fh
+Date: Thu, 27 Sep 2007 06:53:43 -0400
+Message-ID: <200709271053.l8RArhNp031615@dantu.rdu.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 To: neilb@suse.de
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Iar07-0006va-Fj
-	for nfs@lists.sourceforge.net; Thu, 27 Sep 2007 03:53:47 -0700
+	id 1Iar08-0006vo-KD
+	for nfs@lists.sourceforge.net; Thu, 27 Sep 2007 03:53:48 -0700
 Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Iar09-0003Ez-AD
-	for nfs@lists.sourceforge.net; Thu, 27 Sep 2007 03:53:49 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Iar0C-00035x-DC
+	for nfs@lists.sourceforge.net; Thu, 27 Sep 2007 03:53:53 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,26 +28,40 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This patchset is intended to address the buffer overrun reported by
-Stefan Walter when a client matches a large number of netgroups. The
-main problem is that the string returned by client_compose can be any
-length, and that is strcpy()'ed into a fixed-length array.
-
-The first four patches are cleanup patches. They also take care of the
-actual buffer overrun. The last patch implements Neil Brown's suggestion
-to allow mountd to conditionally map ipaddr to ipaddr in the
-auth.unix.ip cache and to only check mount requests against exports that
-match the path.
-
-Unlike earlier versions of this patch, there is no way to select this
-mode manually. The reason is that explaining when an admin should select
-this mode is difficult and adding an option would be very confusing. If
-it becomes desirable to do so, however, we can always add one later.
-
-Neil, I think this patchset is ready whenever you are...
+nfsd_fh() uses strdup for creating found_path and doesn't check the
+return value. It also doesn't free this memory when the function
+returns. Check the return value of strdup and return immediately
+if it's NULL. Also, free found_path on exit.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 Acked-by: Steve Dickson <steved@redhat.com>
+---
+ utils/mountd/cache.c |    3 +++
+ 1 files changed, 3 insertions(+), 0 deletions(-)
+
+diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+index 15100d4..fedc0bf 100644
+--- a/utils/mountd/cache.c
++++ b/utils/mountd/cache.c
+@@ -445,6 +445,8 @@ void nfsd_fh(FILE *f)
+ 			if (!found) {
+ 				found = &exp->m_export;
+ 				found_path = strdup(path);
++				if (found_path == NULL)
++					goto out;
+ 			} else if (strcmp(found->e_path, exp->m_export.e_path)!= 0)
+ 			{
+ 				xlog(L_WARNING, "%s and %s have same filehandle for %s, using first",
+@@ -492,6 +494,7 @@ void nfsd_fh(FILE *f)
+ 		qword_print(f, found->e_path);
+ 	qword_eol(f);
+  out:
++	free(found_path);
+ 	free(dom);
+ 	return;		
+ }
+-- 
+1.5.2.1
 
 
 -------------------------------------------------------------------------
