@@ -1,7 +1,8 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [RFC, PATCH 26/33] svc: Make svc_sock_release svc_xprt_release
-Date: Thu, 27 Sep 2007 00:02:29 -0500
-Message-ID: <20070927050229.12677.83113.stgit@dell3.ogc.int>
+Subject: [RFC,
+	PATCH 29/33] svc: Move common create logic to common code
+Date: Thu, 27 Sep 2007 00:02:35 -0500
+Message-ID: <20070927050235.12677.21554.stgit@dell3.ogc.int>
 References: <20070927045751.12677.98896.stgit@dell3.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -11,12 +12,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IalWA-0005jV-49
-	for nfs@lists.sourceforge.net; Wed, 26 Sep 2007 22:02:30 -0700
+	id 1IalWA-0005jk-W7
+	for nfs@lists.sourceforge.net; Wed, 26 Sep 2007 22:02:31 -0700
 Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]
 	helo=smtp.opengridcomputing.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IalWE-0005Vm-Mr
-	for nfs@lists.sourceforge.net; Wed, 26 Sep 2007 22:02:35 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IalWF-0005VB-Js
+	for nfs@lists.sourceforge.net; Wed, 26 Sep 2007 22:02:36 -0700
 In-Reply-To: <20070927045751.12677.98896.stgit@dell3.ogc.int>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -31,79 +32,116 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 
-The svc_sock_release function only touches transport independent fields.
-Change the function to manipulate svc_xprt directly instead of the transport
-dependent svc_sock structure. 
+Move the code that adds a transport instance to the sv_tempsocks and
+sv_permsocks lists out of the transport specific functions and into core
+logic. 
+
+The svc_addsock routine still manipulates sv_permsocks directly. This
+code may be removed when rpc.nfsd is modified to create transports
+by writing to the portlist file.
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- net/sunrpc/svcsock.c |   15 +++++++--------
- 1 files changed, 7 insertions(+), 8 deletions(-)
+ net/sunrpc/svc_xprt.c |    7 +++++++
+ net/sunrpc/svcsock.c  |   38 +++++++++++++++++++-------------------
+ 2 files changed, 26 insertions(+), 19 deletions(-)
 
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index 8d87b6a..78c93a4 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -146,6 +146,13 @@ int svc_create_xprt(struct svc_serv *ser
+ 				if (IS_ERR(newxprt)) {
+ 					module_put(xcl->xcl_owner);
+ 					ret = PTR_ERR(newxprt);
++				} else {
++					clear_bit(XPT_TEMP, 
++						  &newxprt->xpt_flags);
++					spin_lock_bh(&serv->sv_lock);
++					list_add(&newxprt->xpt_list, 
++						 &serv->sv_permsocks);
++					spin_unlock_bh(&serv->sv_lock);
+ 				}
+ 				goto out;
+ 			}
 diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 37978f7..89f345d 100644
+index b1affaa..8a708a8 100644
 --- a/net/sunrpc/svcsock.c
 +++ b/net/sunrpc/svcsock.c
-@@ -377,9 +377,9 @@ void svc_reserve(struct svc_rqst *rqstp,
- }
+@@ -92,6 +92,7 @@ static int svc_deferred_recv(struct svc_
+ static struct cache_deferred_req *svc_defer(struct cache_req *req);
+ static struct svc_xprt *
+ svc_create_socket(struct svc_serv *, int, struct sockaddr *, int, int);
++static void svc_age_temp_xprts(unsigned long closure);
  
- static void
--svc_sock_release(struct svc_rqst *rqstp)
-+svc_xprt_release(struct svc_rqst *rqstp)
- {
--	struct svc_sock	*svsk = rqstp->rq_sock;
-+	struct svc_xprt	*xprt = rqstp->rq_xprt;
+ /* apparently the "standard" is that clients close
+  * idle connections after 5 minutes, servers after
+@@ -1598,6 +1599,18 @@ svc_recv(struct svc_rqst *rqstp, long ti
+ 			 */
+ 			__module_get(newxpt->xpt_class->xcl_owner);
+ 			svc_check_conn_limits(xprt->xpt_server);
++			spin_lock_bh(&serv->sv_lock);
++			set_bit(XPT_TEMP, &newxpt->xpt_flags);
++			list_add(&newxpt->xpt_list, &serv->sv_tempsocks);
++			serv->sv_tmpcnt++;
++			if (serv->sv_temptimer.function == NULL) {
++				/* setup timer to age temp sockets */
++				setup_timer(&serv->sv_temptimer, svc_age_temp_xprts,
++					    (unsigned long)serv);
++				mod_timer(&serv->sv_temptimer,
++					  jiffies + svc_conn_age_period * HZ);
++			}
++			spin_unlock_bh(&serv->sv_lock);
+ 		}			
+ 		svc_xprt_received(xprt);
+ 	} else {
+@@ -1746,7 +1759,6 @@ static struct svc_sock *svc_setup_socket
+ 	struct svc_sock	*svsk;
+ 	struct sock	*inet;
+ 	int		pmap_register = !(flags & SVC_SOCK_ANONYMOUS);
+-	int		is_temporary = flags & SVC_SOCK_TEMPORARY;
  
- 	rqstp->rq_xprt->xpt_ops.xpo_release(rqstp);
- 
-@@ -387,7 +387,6 @@ svc_sock_release(struct svc_rqst *rqstp)
- 	rqstp->rq_res.page_len = 0;
- 	rqstp->rq_res.page_base = 0;
- 
--
- 	/* Reset response buffer and release
- 	 * the reservation.
- 	 * But first, check that enough space was reserved
-@@ -400,9 +399,9 @@ svc_sock_release(struct svc_rqst *rqstp)
- 
- 	rqstp->rq_res.head[0].iov_len = 0;
- 	svc_reserve(rqstp, 0);
--	rqstp->rq_sock = NULL;
-+	rqstp->rq_xprt = NULL;
- 
--	svc_xprt_put(&svsk->sk_xprt);
-+	svc_xprt_put(xprt);
- }
- 
- /*
-@@ -1618,7 +1617,7 @@ svc_recv(struct svc_rqst *rqstp, long ti
- 	/* No data, incomplete (TCP) read, or accept() */
- 	if (len == 0 || len == -EAGAIN) {
- 		rqstp->rq_res.len = 0;
--		svc_sock_release(rqstp);
-+		svc_xprt_release(rqstp);
- 		return -EAGAIN;
+ 	dprintk("svc: svc_setup_socket %p\n", sock);
+ 	if (!(svsk = kzalloc(sizeof(*svsk), GFP_KERNEL))) {
+@@ -1785,24 +1797,6 @@ static struct svc_sock *svc_setup_socket
+ 		set_bit(XPT_CACHE_AUTH, &svsk->sk_xprt.xpt_flags);
  	}
- 	svsk->sk_xprt.xpt_lastrecv = get_seconds();
-@@ -1639,7 +1638,7 @@ void
- svc_drop(struct svc_rqst *rqstp)
- {
- 	dprintk("svc: socket %p dropped request\n", rqstp->rq_sock);
--	svc_sock_release(rqstp);
-+	svc_xprt_release(rqstp);
- }
  
- /*
-@@ -1674,7 +1673,7 @@ svc_send(struct svc_rqst *rqstp)
- 	else
- 		len = xprt->xpt_ops.xpo_sendto(rqstp);
- 	mutex_unlock(&xprt->xpt_mutex);
--	svc_sock_release(rqstp);
-+	svc_xprt_release(rqstp);
+-	spin_lock_bh(&serv->sv_lock);
+-	if (is_temporary) {
+-		set_bit(XPT_TEMP, &svsk->sk_xprt.xpt_flags);
+-		list_add(&svsk->sk_xprt.xpt_list, &serv->sv_tempsocks);
+-		serv->sv_tmpcnt++;
+-		if (serv->sv_temptimer.function == NULL) {
+-			/* setup timer to age temp sockets */
+-			setup_timer(&serv->sv_temptimer, svc_age_temp_xprts,
+-					(unsigned long)serv);
+-			mod_timer(&serv->sv_temptimer,
+-					jiffies + svc_conn_age_period * HZ);
+-		}
+-	} else {
+-		clear_bit(XPT_TEMP, &svsk->sk_xprt.xpt_flags);
+-		list_add(&svsk->sk_xprt.xpt_list, &serv->sv_permsocks);
+-	}
+-	spin_unlock_bh(&serv->sv_lock);
+-
+ 	dprintk("svc: svc_setup_socket created %p (inet %p)\n",
+ 				svsk, svsk->sk_sk);
  
- 	if (len == -ECONNREFUSED || len == -ENOTCONN || len == -EAGAIN)
- 		return 0;
+@@ -1833,6 +1827,12 @@ int svc_addsock(struct svc_serv *serv,
+ 			svc_xprt_received(&svsk->sk_xprt);
+ 			err = 0;
+ 		}
++		if (so->sk->sk_protocol == IPPROTO_TCP)
++			set_bit(XPT_LISTENER, &svsk->sk_xprt.xpt_flags);
++		clear_bit(XPT_TEMP, &svsk->sk_xprt.xpt_flags);
++		spin_lock_bh(&serv->sv_lock);
++		list_add(&svsk->sk_xprt.xpt_list, &serv->sv_permsocks);
++		spin_unlock_bh(&serv->sv_lock);
+ 	}
+ 	if (err) {
+ 		sockfd_put(so);
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
