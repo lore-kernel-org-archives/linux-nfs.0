@@ -1,23 +1,23 @@
 From: Tom Tucker <tom@opengridcomputing.com>
 Subject: [RFC,
-	PATCH 04/33] svc: Add a max payload value to the transport
-Date: Thu, 27 Sep 2007 00:01:43 -0500
-Message-ID: <20070927050142.12677.65077.stgit@dell3.ogc.int>
+	PATCH 06/33] svc: Add transport specific xpo_release function
+Date: Thu, 27 Sep 2007 00:01:47 -0500
+Message-ID: <20070927050147.12677.85535.stgit@dell3.ogc.int>
 References: <20070927045751.12677.98896.stgit@dell3.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: neilb@suse.de, gnb@sgi.com
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IalVP-0005bC-LL
-	for nfs@lists.sourceforge.net; Wed, 26 Sep 2007 22:01:43 -0700
+	id 1IalVU-0005bY-9P
+	for nfs@lists.sourceforge.net; Wed, 26 Sep 2007 22:01:48 -0700
 Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]
 	helo=smtp.opengridcomputing.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IalVU-0005Ay-Bd
-	for nfs@lists.sourceforge.net; Wed, 26 Sep 2007 22:01:48 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IalVY-0001gE-Lm
+	for nfs@lists.sourceforge.net; Wed, 26 Sep 2007 22:01:53 -0700
 In-Reply-To: <20070927045751.12677.98896.stgit@dell3.ogc.int>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -32,84 +32,117 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 
-The svc_max_payload function currently looks at the socket type
-to determine the max payload. Add a max payload value to svc_xprt_class
-so it can be returned directly. 
+The svc_sock_release function releases pages allocated to a thread. For
+UDP, this also returns the receive skb to the stack. For RDMA it will 
+post a receive WR and bump the client credit count. 
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- include/linux/sunrpc/svc_xprt.h |    2 ++
- net/sunrpc/svc.c                |    4 +---
- net/sunrpc/svc_xprt.c           |    1 +
- net/sunrpc/svcsock.c            |    2 ++
- 4 files changed, 6 insertions(+), 3 deletions(-)
+ include/linux/sunrpc/svc.h      |    2 +-
+ include/linux/sunrpc/svc_xprt.h |    1 +
+ net/sunrpc/svcsock.c            |   16 +++++++++-------
+ 3 files changed, 11 insertions(+), 8 deletions(-)
 
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 37f7448..cfb2652 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -217,7 +217,7 @@ struct svc_rqst {
+ 	struct auth_ops *	rq_authop;	/* authentication flavour */
+ 	u32			rq_flavor;	/* pseudoflavor */
+ 	struct svc_cred		rq_cred;	/* auth info */
+-	struct sk_buff *	rq_skbuff;	/* fast recv inet buffer */
++	void *			rq_xprt_ctxt;	/* transport specific context ptr */
+ 	struct svc_deferred_req*rq_deferred;	/* deferred request we are replaying */
+ 
+ 	struct xdr_buf		rq_arg;
 diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index a9a3afe..827f0fe 100644
+index f0ba052..5871faa 100644
 --- a/include/linux/sunrpc/svc_xprt.h
 +++ b/include/linux/sunrpc/svc_xprt.h
-@@ -17,11 +17,13 @@ struct svc_xprt_class {
- 	struct module		*xcl_owner;
- 	struct svc_xprt_ops	*xcl_ops;
- 	struct list_head	xcl_list;
-+	u32			xcl_max_payload;
+@@ -12,6 +12,7 @@ #include <linux/sunrpc/svc.h>
+ struct svc_xprt_ops {
+ 	int		(*xpo_recvfrom)(struct svc_rqst *);
+ 	int		(*xpo_sendto)(struct svc_rqst *);
++	void		(*xpo_release)(struct svc_rqst *);
  };
  
- struct svc_xprt {
- 	struct svc_xprt_class	*xpt_class;
- 	struct svc_xprt_ops	xpt_ops;
-+	u32			xpt_max_payload;
- };
- 
- int	svc_reg_xprt_class(struct svc_xprt_class *);
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 55ea6df..2a4b3c6 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -1034,10 +1034,8 @@ err_bad:
-  */
- u32 svc_max_payload(const struct svc_rqst *rqstp)
- {
--	int max = RPCSVC_MAXPAYLOAD_TCP;
-+	int max = rqstp->rq_xprt->xpt_max_payload;
- 
--	if (rqstp->rq_sock->sk_sock->type == SOCK_DGRAM)
--		max = RPCSVC_MAXPAYLOAD_UDP;
- 	if (rqstp->rq_server->sv_max_payload < max)
- 		max = rqstp->rq_server->sv_max_payload;
- 	return max;
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index f868192..6151db5 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -90,5 +90,6 @@ void svc_xprt_init(struct svc_xprt_class
- {
- 	xpt->xpt_class = xcl;
- 	xpt->xpt_ops = *xcl->xcl_ops;
-+	xpt->xpt_max_payload = xcl->xcl_max_payload;
- }
- EXPORT_SYMBOL_GPL(svc_xprt_init);
+ struct svc_xprt_class {
 diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 2a56697..dd5c6fb 100644
+index cc8c7ce..e7d203a 100644
 --- a/net/sunrpc/svcsock.c
 +++ b/net/sunrpc/svcsock.c
-@@ -905,6 +905,7 @@ static struct svc_xprt_ops svc_udp_ops =
+@@ -184,14 +184,14 @@ svc_thread_dequeue(struct svc_pool *pool
+ /*
+  * Release an skbuff after use
+  */
+-static inline void
++static void
+ svc_release_skb(struct svc_rqst *rqstp)
+ {
+-	struct sk_buff *skb = rqstp->rq_skbuff;
++	struct sk_buff *skb = (struct sk_buff *)rqstp->rq_xprt_ctxt;
+ 	struct svc_deferred_req *dr = rqstp->rq_deferred;
+ 
+ 	if (skb) {
+-		rqstp->rq_skbuff = NULL;
++		rqstp->rq_xprt_ctxt = NULL;
+ 
+ 		dprintk("svc: service %p, releasing skb %p\n", rqstp, skb);
+ 		skb_free_datagram(rqstp->rq_sock->sk_sk, skb);
+@@ -394,7 +394,7 @@ svc_sock_release(struct svc_rqst *rqstp)
+ {
+ 	struct svc_sock	*svsk = rqstp->rq_sock;
+ 
+-	svc_release_skb(rqstp);
++	rqstp->rq_xprt->xpt_ops.xpo_release(rqstp);
+ 
+ 	svc_free_res_pages(rqstp);
+ 	rqstp->rq_res.page_len = 0;
+@@ -866,7 +866,7 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
+ 			skb_free_datagram(svsk->sk_sk, skb);
+ 			return 0;
+ 		}
+-		rqstp->rq_skbuff = skb;
++		rqstp->rq_xprt_ctxt = skb;
+ 	}
+ 
+ 	rqstp->rq_arg.page_base = 0;
+@@ -902,6 +902,7 @@ svc_udp_sendto(struct svc_rqst *rqstp)
+ static struct svc_xprt_ops svc_udp_ops = {
+ 	.xpo_recvfrom = svc_udp_recvfrom,
+ 	.xpo_sendto = svc_udp_sendto,
++	.xpo_release = svc_release_skb,
+ };
+ 
  static struct svc_xprt_class svc_udp_class = {
- 	.xcl_name = "udp",
- 	.xcl_ops = &svc_udp_ops,
-+	.xcl_max_payload = RPCSVC_MAXPAYLOAD_UDP,
+@@ -1290,7 +1291,7 @@ svc_tcp_recvfrom(struct svc_rqst *rqstp)
+ 		rqstp->rq_arg.page_len = len - rqstp->rq_arg.head[0].iov_len;
+ 	}
+ 
+-	rqstp->rq_skbuff      = NULL;
++	rqstp->rq_xprt_ctxt   = NULL;
+ 	rqstp->rq_prot	      = IPPROTO_TCP;
+ 
+ 	/* Reset TCP read info */
+@@ -1356,6 +1357,7 @@ svc_tcp_sendto(struct svc_rqst *rqstp)
+ static struct svc_xprt_ops svc_tcp_ops = {
+ 	.xpo_recvfrom = svc_tcp_recvfrom,
+ 	.xpo_sendto = svc_tcp_sendto,
++	.xpo_release = svc_release_skb,
  };
  
- static void
-@@ -1358,6 +1359,7 @@ static struct svc_xprt_ops svc_tcp_ops =
  static struct svc_xprt_class svc_tcp_class = {
- 	.xcl_name = "tcp",
- 	.xcl_ops = &svc_tcp_ops,
-+	.xcl_max_payload = RPCSVC_MAXPAYLOAD_TCP,
- };
+@@ -1577,7 +1579,7 @@ svc_send(struct svc_rqst *rqstp)
+ 	}
  
- void svc_init_xprt_sock(void) 
+ 	/* release the receive skb before sending the reply */
+-	svc_release_skb(rqstp);
++	rqstp->rq_xprt->xpt_ops.xpo_release(rqstp);
+ 
+ 	/* calculate over-all length */
+ 	xb = & rqstp->rq_res;
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
