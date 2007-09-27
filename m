@@ -1,8 +1,7 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [RFC,
-	PATCH 15/33] svc: Move sk_flags to the svc_xprt structure
-Date: Thu, 27 Sep 2007 00:02:06 -0500
-Message-ID: <20070927050206.12677.134.stgit@dell3.ogc.int>
+Subject: [RFC, PATCH 16/33] svc: Move sk_server and sk_pool to svc_xprt
+Date: Thu, 27 Sep 2007 00:02:08 -0500
+Message-ID: <20070927050208.12677.10694.stgit@dell3.ogc.int>
 References: <20070927045751.12677.98896.stgit@dell3.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -12,12 +11,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IalVi-0005dQ-8c
-	for nfs@lists.sourceforge.net; Wed, 26 Sep 2007 22:02:02 -0700
+	id 1IalVj-0005fE-R8
+	for nfs@lists.sourceforge.net; Wed, 26 Sep 2007 22:02:03 -0700
 Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]
 	helo=smtp.opengridcomputing.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IalVm-0001kb-82
-	for nfs@lists.sourceforge.net; Wed, 26 Sep 2007 22:02:07 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IalVo-0001kb-Aj
+	for nfs@lists.sourceforge.net; Wed, 26 Sep 2007 22:02:08 -0700
 In-Reply-To: <20070927045751.12677.98896.stgit@dell3.ogc.int>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -32,567 +31,281 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 
-This functionally trivial change moves the transport independent sk_flags 
-field to the transport independent svc_xprt structure.
+This is another incremental change that moves transport independent 
+fields from svc_sock to the svc_xprt structure. The changes 
+should be functionally null.
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- include/linux/sunrpc/svc_xprt.h |   12 +++
- include/linux/sunrpc/svcsock.h  |   13 ----
- net/sunrpc/svcsock.c            |  144 ++++++++++++++++++++-------------------
- 3 files changed, 84 insertions(+), 85 deletions(-)
+ include/linux/sunrpc/svc_xprt.h |    5 +++-
+ include/linux/sunrpc/svcsock.h  |    2 -
+ net/sunrpc/svc_xprt.c           |    3 +-
+ net/sunrpc/svcsock.c            |   53 +++++++++++++++++++--------------------
+ 4 files changed, 32 insertions(+), 31 deletions(-)
 
 diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index c9196bc..935726e 100644
+index 935726e..b850922 100644
 --- a/include/linux/sunrpc/svc_xprt.h
 +++ b/include/linux/sunrpc/svc_xprt.h
-@@ -37,6 +37,18 @@ struct svc_xprt {
- 	struct svc_xprt_ops	xpt_ops;
- 	u32			xpt_max_payload;
- 	struct kref		xpt_ref;
-+	unsigned long		xpt_flags;
-+#define	XPT_BUSY	0			/* enqueued/receiving */
-+#define	XPT_CONN	1			/* conn pending */
-+#define	XPT_CLOSE	2			/* dead or dying */
-+#define	XPT_DATA	3			/* data pending */
-+#define	XPT_TEMP	4			/* connected transport */
-+#define	XPT_DEAD	6			/* transport closed */
-+#define	XPT_CHNGBUF	7			/* need to change snd/rcv buffer sizes */
-+#define	XPT_DEFERRED	8			/* deferred request pending */
-+#define	XPT_OLD		9			/* used for transport aging mark+sweep */
-+#define	XPT_DETACHED	10			/* detached from tempsocks list */
-+#define XPT_LISTENER	11			/* listening endpoint */
+@@ -49,11 +49,14 @@ #define	XPT_DEFERRED	8			/* deferred req
+ #define	XPT_OLD		9			/* used for transport aging mark+sweep */
+ #define	XPT_DETACHED	10			/* detached from tempsocks list */
+ #define XPT_LISTENER	11			/* listening endpoint */
++
++	struct svc_pool *	xpt_pool;	/* current pool iff queued */
++	struct svc_serv *	xpt_server;	/* service for this transport */
  };
  
  int	svc_reg_xprt_class(struct svc_xprt_class *);
+ int	svc_unreg_xprt_class(struct svc_xprt_class *);
+-void	svc_xprt_init(struct svc_xprt_class *, struct svc_xprt *);
++void	svc_xprt_init(struct svc_xprt_class *, struct svc_xprt *, struct svc_serv *);
+ int	svc_create_xprt(struct svc_serv *, char *, unsigned short, int);
+ void	svc_xprt_put(struct svc_xprt *xprt);
+ 
 diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
-index ba07d50..b8a8496 100644
+index b8a8496..92d4cc9 100644
 --- a/include/linux/sunrpc/svcsock.h
 +++ b/include/linux/sunrpc/svcsock.h
-@@ -24,19 +24,6 @@ struct svc_sock {
+@@ -22,8 +22,6 @@ struct svc_sock {
+ 	struct socket *		sk_sock;	/* berkeley socket layer */
+ 	struct sock *		sk_sk;		/* INET layer */
  
- 	struct svc_pool *	sk_pool;	/* current pool iff queued */
- 	struct svc_serv *	sk_server;	/* service for this socket */
--	unsigned long		sk_flags;
--#define	SK_BUSY		0			/* enqueued/receiving */
--#define	SK_CONN		1			/* conn pending */
--#define	SK_CLOSE	2			/* dead or dying */
--#define	SK_DATA		3			/* data pending */
--#define	SK_TEMP		4			/* temp (TCP) socket */
--#define	SK_DEAD		6			/* socket closed */
--#define	SK_CHNGBUF	7			/* need to change snd/rcv buffer sizes */
--#define	SK_DEFERRED	8			/* request on sk_deferred */
--#define	SK_OLD		9			/* used for temp socket aging mark+sweep */
--#define	SK_DETACHED	10			/* detached from tempsocks list */
--#define SK_LISTENER	11			/* listening endpoint */
--
+-	struct svc_pool *	sk_pool;	/* current pool iff queued */
+-	struct svc_serv *	sk_server;	/* service for this socket */
  	atomic_t    	    	sk_reserved;	/* space on outq that is reserved */
  
  	spinlock_t		sk_lock;	/* protects sk_deferred and
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index 9a9670f..e1a9378 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -102,12 +102,13 @@ EXPORT_SYMBOL_GPL(svc_xprt_put);
+  * Called by transport drivers to initialize the transport independent
+  * portion of the transport instance.
+  */
+-void svc_xprt_init(struct svc_xprt_class *xcl, struct svc_xprt *xpt)
++void svc_xprt_init(struct svc_xprt_class *xcl, struct svc_xprt *xpt, struct svc_serv *serv)
+ {
+ 	xpt->xpt_class = xcl;
+ 	xpt->xpt_ops = *xcl->xcl_ops;
+ 	xpt->xpt_max_payload = xcl->xcl_max_payload;
+ 	kref_init(&xpt->xpt_ref);
++	xpt->xpt_server = serv;
+ }
+ EXPORT_SYMBOL_GPL(svc_xprt_init);
+ 
 diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index a92b000..c6b521d 100644
+index c6b521d..625e31c 100644
 --- a/net/sunrpc/svcsock.c
 +++ b/net/sunrpc/svcsock.c
-@@ -55,22 +55,22 @@ #include <linux/sunrpc/stats.h>
-  *	BKL protects svc_serv->sv_nrthread.
-  *	svc_sock->sk_lock protects the svc_sock->sk_deferred list
-  *             and the ->sk_info_authunix cache.
-- *	svc_sock->sk_flags.SK_BUSY prevents a svc_sock being enqueued multiply.
-+ *	svc_sock->sk_xprt.xpt_flags.XPT_BUSY prevents a svc_sock being enqueued multiply.
-  *
-  *	Some flags can be set to certain values at any time
-  *	providing that certain rules are followed:
-  *
-- *	SK_CONN, SK_DATA, can be set or cleared at any time.
-+ *	XPT_CONN, XPT_DATA, can be set or cleared at any time.
-  *		after a set, svc_sock_enqueue must be called.
-  *		after a clear, the socket must be read/accepted
-  *		 if this succeeds, it must be set again.
-- *	SK_CLOSE can set at any time. It is never cleared.
-- *      xpt_ref contains a bias of '1' until SK_DEAD is set.
-+ *	XPT_CLOSE can set at any time. It is never cleared.
-+ *      xpt_ref contains a bias of '1' until XPT_DEAD is set.
-  *             so when xprt_ref hits zero, we know the transport is dead
-  *             and no-one is using it.
-- *      SK_DEAD can only be set while SK_BUSY is held which ensures
-+ *      XPT_DEAD can only be set while XPT_BUSY is held which ensures
-  *             no other thread will be using the socket or will try to
-- *	       set SK_DEAD.
-+ *	       set XPT_DEAD.
-  *
-  */
- 
-@@ -235,10 +235,10 @@ svc_sock_enqueue(struct svc_sock *svsk)
+@@ -230,7 +230,7 @@ svc_sock_wspace(struct svc_sock *svsk)
+ static void
+ svc_sock_enqueue(struct svc_sock *svsk)
+ {
+-	struct svc_serv	*serv = svsk->sk_server;
++	struct svc_serv	*serv = svsk->sk_xprt.xpt_server;
+ 	struct svc_pool *pool;
  	struct svc_rqst	*rqstp;
  	int cpu;
- 
--	if (!(svsk->sk_flags &
--	      ( (1<<SK_CONN)|(1<<SK_DATA)|(1<<SK_CLOSE)|(1<<SK_DEFERRED)) ))
-+	if (!(svsk->sk_xprt.xpt_flags &
-+	      ( (1<<XPT_CONN)|(1<<XPT_DATA)|(1<<XPT_CLOSE)|(1<<XPT_DEFERRED)) ))
- 		return;
--	if (test_bit(SK_DEAD, &svsk->sk_flags))
-+	if (test_bit(XPT_DEAD, &svsk->sk_xprt.xpt_flags))
+@@ -242,7 +242,7 @@ svc_sock_enqueue(struct svc_sock *svsk)
  		return;
  
  	cpu = get_cpu();
-@@ -252,7 +252,7 @@ svc_sock_enqueue(struct svc_sock *svsk)
- 		printk(KERN_ERR
- 			"svc_sock_enqueue: threads and sockets both waiting??\n");
+-	pool = svc_pool_for_cpu(svsk->sk_server, cpu);
++	pool = svc_pool_for_cpu(svsk->sk_xprt.xpt_server, cpu);
+ 	put_cpu();
  
--	if (test_bit(SK_DEAD, &svsk->sk_flags)) {
-+	if (test_bit(XPT_DEAD, &svsk->sk_xprt.xpt_flags)) {
- 		/* Don't enqueue dead sockets */
- 		dprintk("svc: socket %p is dead, not enqueued\n", svsk->sk_sk);
- 		goto out_unlock;
-@@ -260,10 +260,10 @@ svc_sock_enqueue(struct svc_sock *svsk)
- 
- 	/* Mark socket as busy. It will remain in this state until the
- 	 * server has processed all pending data and put the socket back
--	 * on the idle list.  We update SK_BUSY atomically because
-+	 * on the idle list.  We update XPT_BUSY atomically because
- 	 * it also guards against trying to enqueue the svc_sock twice.
- 	 */
--	if (test_and_set_bit(SK_BUSY, &svsk->sk_flags)) {
-+	if (test_and_set_bit(XPT_BUSY, &svsk->sk_xprt.xpt_flags)) {
- 		/* Don't enqueue socket while already enqueued */
+ 	spin_lock_bh(&pool->sp_lock);
+@@ -268,8 +268,8 @@ svc_sock_enqueue(struct svc_sock *svsk)
  		dprintk("svc: socket %p busy, not enqueued\n", svsk->sk_sk);
  		goto out_unlock;
-@@ -272,11 +272,11 @@ svc_sock_enqueue(struct svc_sock *svsk)
- 	svsk->sk_pool = pool;
+ 	}
+-	BUG_ON(svsk->sk_pool != NULL);
+-	svsk->sk_pool = pool;
++	BUG_ON(svsk->sk_xprt.xpt_pool != NULL);
++	svsk->sk_xprt.xpt_pool = pool;
  
  	/* Handle pending connection */
--	if (test_bit(SK_CONN, &svsk->sk_flags))
-+	if (test_bit(XPT_CONN, &svsk->sk_xprt.xpt_flags))
- 		goto process;
- 
- 	/* Handle close in-progress */
--	if (test_bit(SK_CLOSE, &svsk->sk_flags))
-+	if (test_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags))
- 		goto process;
- 
- 	/* Check if we have space to reply to a request */
-@@ -284,7 +284,7 @@ svc_sock_enqueue(struct svc_sock *svsk)
+ 	if (test_bit(XPT_CONN, &svsk->sk_xprt.xpt_flags))
+@@ -283,7 +283,7 @@ svc_sock_enqueue(struct svc_sock *svsk)
+ 	if (!svsk->sk_xprt.xpt_ops.xpo_has_wspace(&svsk->sk_xprt)) {
  		/* Don't enqueue while not enough space for reply */
  		dprintk("svc: no write space, socket %p  not enqueued\n", svsk);
- 		svsk->sk_pool = NULL;
--		clear_bit(SK_BUSY, &svsk->sk_flags);
-+		clear_bit(XPT_BUSY, &svsk->sk_xprt.xpt_flags);
+-		svsk->sk_pool = NULL;
++		svsk->sk_xprt.xpt_pool = NULL;
+ 		clear_bit(XPT_BUSY, &svsk->sk_xprt.xpt_flags);
  		goto out_unlock;
  	}
+@@ -304,12 +304,12 @@ svc_sock_enqueue(struct svc_sock *svsk)
+ 		svc_xprt_get(&svsk->sk_xprt);
+ 		rqstp->rq_reserved = serv->sv_max_mesg;
+ 		atomic_add(rqstp->rq_reserved, &svsk->sk_reserved);
+-		BUG_ON(svsk->sk_pool != pool);
++		BUG_ON(svsk->sk_xprt.xpt_pool != pool);
+ 		wake_up(&rqstp->rq_wait);
+ 	} else {
+ 		dprintk("svc: socket %p put into queue\n", svsk->sk_sk);
+ 		list_add_tail(&svsk->sk_ready, &pool->sp_sockets);
+-		BUG_ON(svsk->sk_pool != pool);
++		BUG_ON(svsk->sk_xprt.xpt_pool != pool);
+ 	}
  
-@@ -340,14 +340,14 @@ svc_sock_dequeue(struct svc_pool *pool)
- /*
-  * Having read something from a socket, check whether it
-  * needs to be re-enqueued.
-- * Note: SK_DATA only gets cleared when a read-attempt finds
-+ * Note: XPT_DATA only gets cleared when a read-attempt finds
-  * no (or insufficient) data.
-  */
+ out_unlock:
+@@ -346,7 +346,7 @@ svc_sock_dequeue(struct svc_pool *pool)
  static inline void
  svc_sock_received(struct svc_sock *svsk)
  {
- 	svsk->sk_pool = NULL;
--	clear_bit(SK_BUSY, &svsk->sk_flags);
-+	clear_bit(XPT_BUSY, &svsk->sk_xprt.xpt_flags);
+-	svsk->sk_pool = NULL;
++	svsk->sk_xprt.xpt_pool = NULL;
+ 	clear_bit(XPT_BUSY, &svsk->sk_xprt.xpt_flags);
  	svc_sock_enqueue(svsk);
  }
- 
-@@ -696,8 +696,8 @@ svc_udp_data_ready(struct sock *sk, int 
- 
- 	if (svsk) {
- 		dprintk("svc: socket %p(inet %p), count=%d, busy=%d\n",
--			svsk, sk, count, test_bit(SK_BUSY, &svsk->sk_flags));
--		set_bit(SK_DATA, &svsk->sk_flags);
-+			svsk, sk, count, test_bit(XPT_BUSY, &svsk->sk_xprt.xpt_flags));
-+		set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
- 		svc_sock_enqueue(svsk);
- 	}
- 	if (sk->sk_sleep && waitqueue_active(sk->sk_sleep))
-@@ -714,7 +714,7 @@ svc_write_space(struct sock *sk)
- 
- 	if (svsk) {
- 		dprintk("svc: socket %p(inet %p), write_space busy=%d\n",
--			svsk, sk, test_bit(SK_BUSY, &svsk->sk_flags));
-+			svsk, sk, test_bit(XPT_BUSY, &svsk->sk_xprt.xpt_flags));
- 		svc_sock_enqueue(svsk);
- 	}
- 
-@@ -764,7 +764,7 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
- 		.msg_flags = MSG_DONTWAIT,
- 	};
- 
--	if (test_and_clear_bit(SK_CHNGBUF, &svsk->sk_flags))
-+	if (test_and_clear_bit(XPT_CHNGBUF, &svsk->sk_xprt.xpt_flags))
- 	    /* udp sockets need large rcvbuf as all pending
- 	     * requests are still in that buffer.  sndbuf must
- 	     * also be large enough that there is enough space
-@@ -782,7 +782,7 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
- 		return svc_deferred_recv(rqstp);
- 	}
- 
--	clear_bit(SK_DATA, &svsk->sk_flags);
-+	clear_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
- 	skb = NULL;
- 	err = kernel_recvmsg(svsk->sk_sock, &msg, NULL,
- 			     0, 0, MSG_PEEK | MSG_DONTWAIT);
-@@ -793,7 +793,7 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
- 		if (err != -EAGAIN) {
- 			/* possibly an icmp error */
- 			dprintk("svc: recvfrom returned error %d\n", -err);
--			set_bit(SK_DATA, &svsk->sk_flags);
-+			set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
- 		}
- 		svc_sock_received(svsk);
- 		return -EAGAIN;
-@@ -805,7 +805,7 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
- 		   need that much accuracy */
- 	}
- 	svsk->sk_sk->sk_stamp = skb->tstamp;
--	set_bit(SK_DATA, &svsk->sk_flags); /* there may be more data... */
-+	set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags); /* there may be more data... */
+@@ -749,7 +749,7 @@ static int
+ svc_udp_recvfrom(struct svc_rqst *rqstp)
+ {
+ 	struct svc_sock	*svsk = rqstp->rq_sock;
+-	struct svc_serv	*serv = svsk->sk_server;
++	struct svc_serv	*serv = svsk->sk_xprt.xpt_server;
+ 	struct sk_buff	*skb;
+ 	union {
+ 		struct cmsghdr	hdr;
+@@ -889,7 +889,7 @@ static int
+ svc_udp_has_wspace(struct svc_xprt *xprt)
+ {
+ 	struct svc_sock *svsk = (struct svc_sock*)xprt;
+-	struct svc_serv	*serv = svsk->sk_server;
++	struct svc_serv	*serv = svsk->sk_xprt.xpt_server;
+ 	int required;
  
  	/*
- 	 * Maybe more packets - kick another thread ASAP.
-@@ -955,8 +955,8 @@ svc_udp_init(struct svc_sock *svsk)
- 			    3 * svsk->sk_server->sv_max_mesg,
- 			    3 * svsk->sk_server->sv_max_mesg);
+@@ -943,7 +943,6 @@ svc_udp_init(struct svc_sock *svsk)
+ 	int one = 1;
+ 	mm_segment_t oldfs;
  
--	set_bit(SK_DATA, &svsk->sk_flags); /* might have come in before data_ready set up */
--	set_bit(SK_CHNGBUF, &svsk->sk_flags);
-+	set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags); /* might have come in before data_ready set up */
-+	set_bit(XPT_CHNGBUF, &svsk->sk_xprt.xpt_flags);
+-	svc_xprt_init(&svc_udp_class, &svsk->sk_xprt);
+ 	svsk->sk_sk->sk_data_ready = svc_udp_data_ready;
+ 	svsk->sk_sk->sk_write_space = svc_write_space;
  
- 	oldfs = get_fs();
- 	set_fs(KERNEL_DS);
-@@ -990,7 +990,7 @@ svc_tcp_listen_data_ready(struct sock *s
+@@ -952,8 +951,8 @@ svc_udp_init(struct svc_sock *svsk)
+ 	 * svc_udp_recvfrom will re-adjust if necessary
  	 */
- 	if (sk->sk_state == TCP_LISTEN) {
- 		if (svsk) {
--			set_bit(SK_CONN, &svsk->sk_flags);
-+			set_bit(XPT_CONN, &svsk->sk_xprt.xpt_flags);
- 			svc_sock_enqueue(svsk);
- 		} else
- 			printk("svc: socket %p: no user data\n", sk);
-@@ -1014,7 +1014,7 @@ svc_tcp_state_change(struct sock *sk)
- 	if (!svsk)
- 		printk("svc: socket %p: no user data\n", sk);
- 	else {
--		set_bit(SK_CLOSE, &svsk->sk_flags);
-+		set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
- 		svc_sock_enqueue(svsk);
- 	}
- 	if (sk->sk_sleep && waitqueue_active(sk->sk_sleep))
-@@ -1029,7 +1029,7 @@ svc_tcp_data_ready(struct sock *sk, int 
- 	dprintk("svc: socket %p TCP data ready (svsk %p)\n",
- 		sk, sk->sk_user_data);
- 	if (svsk) {
--		set_bit(SK_DATA, &svsk->sk_flags);
-+		set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
- 		svc_sock_enqueue(svsk);
- 	}
- 	if (sk->sk_sleep && waitqueue_active(sk->sk_sleep))
-@@ -1070,7 +1070,7 @@ svc_tcp_accept(struct svc_xprt *xprt)
- 	if (!sock)
- 		return NULL;
+ 	svc_sock_setbufsize(svsk->sk_sock,
+-			    3 * svsk->sk_server->sv_max_mesg,
+-			    3 * svsk->sk_server->sv_max_mesg);
++			    3 * svsk->sk_xprt.xpt_server->sv_max_mesg,
++			    3 * svsk->sk_xprt.xpt_server->sv_max_mesg);
  
--	clear_bit(SK_CONN, &svsk->sk_flags);
-+	clear_bit(XPT_CONN, &svsk->sk_xprt.xpt_flags);
- 	err = kernel_accept(sock, &newsock, O_NONBLOCK);
- 	if (err < 0) {
- 		if (err == -ENOMEM)
-@@ -1082,7 +1082,7 @@ svc_tcp_accept(struct svc_xprt *xprt)
- 		return NULL;
- 	}
- 
--	set_bit(SK_CONN, &svsk->sk_flags);
-+	set_bit(XPT_CONN, &svsk->sk_xprt.xpt_flags);
- 	svc_sock_enqueue(svsk);
- 
- 	err = kernel_getpeername(newsock, sin, &slen);
-@@ -1148,16 +1148,16 @@ svc_tcp_recvfrom(struct svc_rqst *rqstp)
+ 	set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags); /* might have come in before data_ready set up */
+ 	set_bit(XPT_CHNGBUF, &svsk->sk_xprt.xpt_flags);
+@@ -1059,7 +1058,7 @@ svc_tcp_accept(struct svc_xprt *xprt)
+ 	struct svc_sock *svsk = (struct svc_sock *)xprt;
+ 	struct sockaddr_storage addr;
+ 	struct sockaddr	*sin = (struct sockaddr *) &addr;
+-	struct svc_serv	*serv = svsk->sk_server;
++	struct svc_serv	*serv = svsk->sk_xprt.xpt_server;
+ 	struct socket	*sock = svsk->sk_sock;
+ 	struct socket	*newsock;
+ 	struct svc_sock	*newsvsk;
+@@ -1142,7 +1141,7 @@ static int
+ svc_tcp_recvfrom(struct svc_rqst *rqstp)
+ {
+ 	struct svc_sock	*svsk = rqstp->rq_sock;
+-	struct svc_serv	*serv = svsk->sk_server;
++	struct svc_serv	*serv = svsk->sk_xprt.xpt_server;
+ 	int		len;
+ 	struct kvec *vec;
  	int pnum, vlen;
- 
- 	dprintk("svc: tcp_recv %p data %d conn %d close %d\n",
--		svsk, test_bit(SK_DATA, &svsk->sk_flags),
--		test_bit(SK_CONN, &svsk->sk_flags),
--		test_bit(SK_CLOSE, &svsk->sk_flags));
-+		svsk, test_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags),
-+		test_bit(XPT_CONN, &svsk->sk_xprt.xpt_flags),
-+		test_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags));
- 
- 	if ((rqstp->rq_deferred = svc_deferred_dequeue(svsk))) {
+@@ -1285,7 +1284,7 @@ svc_tcp_recvfrom(struct svc_rqst *rqstp)
  		svc_sock_received(svsk);
- 		return svc_deferred_recv(rqstp);
+ 	} else {
+ 		printk(KERN_NOTICE "%s: recvfrom returned errno %d\n",
+-					svsk->sk_server->sv_name, -len);
++					svsk->sk_xprt.xpt_server->sv_name, -len);
+ 		goto err_delete;
  	}
  
--	if (test_and_clear_bit(SK_CHNGBUF, &svsk->sk_flags))
-+	if (test_and_clear_bit(XPT_CHNGBUF, &svsk->sk_xprt.xpt_flags))
- 		/* sndbuf needs to have room for one request
- 		 * per thread, otherwise we can stall even when the
- 		 * network isn't a bottleneck.
-@@ -1174,7 +1174,7 @@ svc_tcp_recvfrom(struct svc_rqst *rqstp)
- 				    (serv->sv_nrthreads+3) * serv->sv_max_mesg,
- 				    3 * serv->sv_max_mesg);
- 
--	clear_bit(SK_DATA, &svsk->sk_flags);
-+	clear_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
- 
- 	/* Receive data. If we haven't got the record length yet, get
- 	 * the next four bytes. Otherwise try to gobble up as much as
-@@ -1233,7 +1233,7 @@ svc_tcp_recvfrom(struct svc_rqst *rqstp)
- 		return -EAGAIN;	/* record not complete */
- 	}
- 	len = svsk->sk_reclen;
--	set_bit(SK_DATA, &svsk->sk_flags);
-+	set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
- 
- 	vec = rqstp->rq_vec;
- 	vec[0] = rqstp->rq_arg.head[0];
-@@ -1309,7 +1309,7 @@ svc_tcp_sendto(struct svc_rqst *rqstp)
- 	reclen = htonl(0x80000000|((xbufp->len ) - 4));
- 	memcpy(xbufp->head[0].iov_base, &reclen, 4);
- 
--	if (test_bit(SK_DEAD, &rqstp->rq_sock->sk_flags))
-+	if (test_bit(XPT_DEAD, &rqstp->rq_sock->sk_xprt.xpt_flags))
- 		return -ENOTCONN;
- 
+@@ -1315,7 +1314,7 @@ svc_tcp_sendto(struct svc_rqst *rqstp)
  	sent = svc_sendto(rqstp, &rqstp->rq_res);
-@@ -1318,7 +1318,7 @@ svc_tcp_sendto(struct svc_rqst *rqstp)
- 		       rqstp->rq_sock->sk_server->sv_name,
+ 	if (sent != xbufp->len) {
+ 		printk(KERN_NOTICE "rpc-srv/tcp: %s: %s %d when sending %d bytes - shutting down socket\n",
+-		       rqstp->rq_sock->sk_server->sv_name,
++		       rqstp->rq_sock->sk_xprt.xpt_server->sv_name,
  		       (sent<0)?"got error":"sent only",
  		       sent, xbufp->len);
--		set_bit(SK_CLOSE, &rqstp->rq_sock->sk_flags);
-+		set_bit(XPT_CLOSE, &rqstp->rq_sock->sk_xprt.xpt_flags);
- 		svc_sock_enqueue(rqstp->rq_sock);
- 		sent = -EAGAIN;
- 	}
-@@ -1405,7 +1405,7 @@ svc_tcp_init(struct svc_sock *svsk)
+ 		set_bit(XPT_CLOSE, &rqstp->rq_sock->sk_xprt.xpt_flags);
+@@ -1341,7 +1340,7 @@ static int
+ svc_tcp_has_wspace(struct svc_xprt *xprt)
+ {
+ 	struct svc_sock *svsk = (struct svc_sock*)xprt;
+-	struct svc_serv	*serv = svsk->sk_server;
++	struct svc_serv	*serv = svsk->sk_xprt.xpt_server;
+ 	int required;
+ 
+ 	/*
+@@ -1400,8 +1399,6 @@ svc_tcp_init(struct svc_sock *svsk)
+ 	struct sock	*sk = svsk->sk_sk;
+ 	struct tcp_sock *tp = tcp_sk(sk);
+ 
+-	svc_xprt_init(&svc_tcp_class, &svsk->sk_xprt);
+-
  	if (sk->sk_state == TCP_LISTEN) {
  		dprintk("setting up TCP socket for listening\n");
  		sk->sk_data_ready = svc_tcp_listen_data_ready;
--		set_bit(SK_CONN, &svsk->sk_flags);
-+		set_bit(XPT_CONN, &svsk->sk_xprt.xpt_flags);
+@@ -1422,8 +1419,8 @@ svc_tcp_init(struct svc_sock *svsk)
+ 		 * svc_tcp_recvfrom will re-adjust if necessary
+ 		 */
+ 		svc_sock_setbufsize(svsk->sk_sock,
+-				    3 * svsk->sk_server->sv_max_mesg,
+-				    3 * svsk->sk_server->sv_max_mesg);
++				    3 * svsk->sk_xprt.xpt_server->sv_max_mesg,
++				    3 * svsk->sk_xprt.xpt_server->sv_max_mesg);
+ 
+ 		set_bit(XPT_CHNGBUF, &svsk->sk_xprt.xpt_flags);
+ 		set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
+@@ -1608,7 +1605,7 @@ svc_recv(struct svc_rqst *rqstp, long ti
+ 			 * listener holds a reference too 
+ 			 */
+ 			__module_get(newxpt->xpt_class->xcl_owner);
+-			svc_check_conn_limits(svsk->sk_server);
++			svc_check_conn_limits(svsk->sk_xprt.xpt_server);
+ 		}			
+ 		svc_sock_received(svsk);
  	} else {
- 		dprintk("setting up TCP socket for reading\n");
- 		sk->sk_state_change = svc_tcp_state_change;
-@@ -1425,10 +1425,10 @@ svc_tcp_init(struct svc_sock *svsk)
- 				    3 * svsk->sk_server->sv_max_mesg,
- 				    3 * svsk->sk_server->sv_max_mesg);
- 
--		set_bit(SK_CHNGBUF, &svsk->sk_flags);
--		set_bit(SK_DATA, &svsk->sk_flags);
-+		set_bit(XPT_CHNGBUF, &svsk->sk_xprt.xpt_flags);
-+		set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
- 		if (sk->sk_state != TCP_ESTABLISHED)
--			set_bit(SK_CLOSE, &svsk->sk_flags);
-+			set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
- 	}
- }
- 
-@@ -1445,12 +1445,12 @@ svc_sock_update_bufs(struct svc_serv *se
- 	list_for_each(le, &serv->sv_permsocks) {
- 		struct svc_sock *svsk =
- 			list_entry(le, struct svc_sock, sk_list);
--		set_bit(SK_CHNGBUF, &svsk->sk_flags);
-+		set_bit(XPT_CHNGBUF, &svsk->sk_xprt.xpt_flags);
- 	}
- 	list_for_each(le, &serv->sv_tempsocks) {
- 		struct svc_sock *svsk =
- 			list_entry(le, struct svc_sock, sk_list);
--		set_bit(SK_CHNGBUF, &svsk->sk_flags);
-+		set_bit(XPT_CHNGBUF, &svsk->sk_xprt.xpt_flags);
- 	}
- 	spin_unlock_bh(&serv->sv_lock);
- }
-@@ -1492,7 +1492,7 @@ svc_check_conn_limits(struct svc_serv *s
- 			svsk = list_entry(serv->sv_tempsocks.prev,
- 					  struct svc_sock,
- 					  sk_list);
--			set_bit(SK_CLOSE, &svsk->sk_flags);
-+			set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
- 			svc_xprt_get(&svsk->sk_xprt);
- 		}
- 		spin_unlock_bh(&serv->sv_lock);
-@@ -1596,10 +1596,10 @@ svc_recv(struct svc_rqst *rqstp, long ti
- 	spin_unlock_bh(&pool->sp_lock);
- 
- 	len = 0;
--	if (test_bit(SK_CLOSE, &svsk->sk_flags)) {
--		dprintk("svc_recv: found SK_CLOSE\n");
-+	if (test_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags)) {
-+		dprintk("svc_recv: found XPT_CLOSE\n");
- 		svc_delete_socket(svsk);
--	} else if (test_bit(SK_LISTENER, &svsk->sk_flags)) {
-+	} else if (test_bit(XPT_LISTENER, &svsk->sk_xprt.xpt_flags)) {
- 		struct svc_xprt *newxpt;
- 		newxpt = svsk->sk_xprt.xpt_ops.xpo_accept(&svsk->sk_xprt);
- 		if (newxpt) {
-@@ -1626,7 +1626,7 @@ svc_recv(struct svc_rqst *rqstp, long ti
- 		return -EAGAIN;
- 	}
+@@ -1776,7 +1773,6 @@ static struct svc_sock *svc_setup_socket
+ 	svsk->sk_ostate = inet->sk_state_change;
+ 	svsk->sk_odata = inet->sk_data_ready;
+ 	svsk->sk_owspace = inet->sk_write_space;
+-	svsk->sk_server = serv;
  	svsk->sk_lastrecv = get_seconds();
--	clear_bit(SK_OLD, &svsk->sk_flags);
-+	clear_bit(XPT_OLD, &svsk->sk_xprt.xpt_flags);
+ 	spin_lock_init(&svsk->sk_lock);
+ 	INIT_LIST_HEAD(&svsk->sk_deferred);
+@@ -1784,10 +1780,13 @@ static struct svc_sock *svc_setup_socket
+ 	mutex_init(&svsk->sk_mutex);
  
- 	rqstp->rq_secure = svc_port_is_privileged(svc_addr(rqstp));
- 	rqstp->rq_chandle.defer = svc_defer;
-@@ -1673,7 +1673,7 @@ svc_send(struct svc_rqst *rqstp)
- 
- 	/* Grab svsk->sk_mutex to serialize outgoing data. */
- 	mutex_lock(&svsk->sk_mutex);
--	if (test_bit(SK_DEAD, &svsk->sk_flags))
-+	if (test_bit(XPT_DEAD, &svsk->sk_xprt.xpt_flags))
- 		len = -ENOTCONN;
- 	else
- 		len = svsk->sk_xprt.xpt_ops.xpo_sendto(rqstp);
-@@ -1709,21 +1709,21 @@ svc_age_temp_sockets(unsigned long closu
- 	list_for_each_safe(le, next, &serv->sv_tempsocks) {
- 		svsk = list_entry(le, struct svc_sock, sk_list);
- 
--		if (!test_and_set_bit(SK_OLD, &svsk->sk_flags))
-+		if (!test_and_set_bit(XPT_OLD, &svsk->sk_xprt.xpt_flags))
- 			continue;
- 		if (atomic_read(&svsk->sk_xprt.xpt_ref.refcount) > 1 
- 		    || test_bit(SK_BUSY, &svsk->sk_flags))
- 			continue;
- 		svc_xprt_get(&svsk->sk_xprt);
- 		list_move(le, &to_be_aged);
--		set_bit(SK_CLOSE, &svsk->sk_flags);
--		set_bit(SK_DETACHED, &svsk->sk_flags);
-+		set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
-+		set_bit(XPT_DETACHED, &svsk->sk_xprt.xpt_flags);
- 	}
- 	spin_unlock_bh(&serv->sv_lock);
- 
- 	while (!list_empty(&to_be_aged)) {
- 		le = to_be_aged.next;
--		/* fiddling the sk_list node is safe 'cos we're SK_DETACHED */
-+		/* fiddling the sk_list node is safe 'cos we're XPT_DETACHED */
- 		list_del_init(le);
- 		svsk = list_entry(le, struct svc_sock, sk_list);
- 
-@@ -1769,7 +1769,7 @@ static struct svc_sock *svc_setup_socket
- 		return NULL;
- 	}
- 
--	set_bit(SK_BUSY, &svsk->sk_flags);
-+	set_bit(XPT_BUSY, &svsk->sk_xprt.xpt_flags);
- 	inet->sk_user_data = svsk;
- 	svsk->sk_sock = sock;
- 	svsk->sk_sk = inet;
-@@ -1791,7 +1791,7 @@ static struct svc_sock *svc_setup_socket
+ 	/* Initialize the socket */
+-	if (sock->type == SOCK_DGRAM)
++	if (sock->type == SOCK_DGRAM) {
++		svc_xprt_init(&svc_udp_class, &svsk->sk_xprt, serv);
+ 		svc_udp_init(svsk);
+-	else
++	} else {
++		svc_xprt_init(&svc_tcp_class, &svsk->sk_xprt, serv);
+ 		svc_tcp_init(svsk);
++	}
  
  	spin_lock_bh(&serv->sv_lock);
  	if (is_temporary) {
--		set_bit(SK_TEMP, &svsk->sk_flags);
-+		set_bit(XPT_TEMP, &svsk->sk_xprt.xpt_flags);
- 		list_add(&svsk->sk_list, &serv->sv_tempsocks);
- 		serv->sv_tmpcnt++;
- 		if (serv->sv_temptimer.function == NULL) {
-@@ -1802,7 +1802,7 @@ static struct svc_sock *svc_setup_socket
- 					jiffies + svc_conn_age_period * HZ);
- 		}
- 	} else {
--		clear_bit(SK_TEMP, &svsk->sk_flags);
-+		clear_bit(XPT_TEMP, &svsk->sk_xprt.xpt_flags);
- 		list_add(&svsk->sk_list, &serv->sv_permsocks);
- 	}
- 	spin_unlock_bh(&serv->sv_lock);
-@@ -1890,7 +1890,7 @@ svc_create_socket(struct svc_serv *serv,
+@@ -1948,7 +1947,7 @@ svc_delete_socket(struct svc_sock *svsk)
  
- 	if ((svsk = svc_setup_socket(serv, sock, &error, flags)) != NULL) {
- 		if (protocol == IPPROTO_TCP) 
--			set_bit(SK_LISTENER, &svsk->sk_flags);
-+			set_bit(XPT_LISTENER, &svsk->sk_xprt.xpt_flags);
- 		svc_sock_received(svsk);
- 		return (struct svc_xprt *)svsk;
- 	}
-@@ -1955,7 +1955,7 @@ svc_delete_socket(struct svc_sock *svsk)
+ 	dprintk("svc: svc_delete_socket(%p)\n", svsk);
  
- 	spin_lock_bh(&serv->sv_lock);
+-	serv = svsk->sk_server;
++	serv = svsk->sk_xprt.xpt_server;
+ 	sk = svsk->sk_sk;
  
--	if (!test_and_set_bit(SK_DETACHED, &svsk->sk_flags))
-+	if (!test_and_set_bit(XPT_DETACHED, &svsk->sk_xprt.xpt_flags))
- 		list_del_init(&svsk->sk_list);
- 	/*
- 	 * We used to delete the svc_sock from whichever list
-@@ -1964,10 +1964,10 @@ svc_delete_socket(struct svc_sock *svsk)
- 	 * while still attached to a queue, the queue itself
- 	 * is about to be destroyed (in svc_destroy).
- 	 */
--	if (!test_and_set_bit(SK_DEAD, &svsk->sk_flags)) {
-+	if (!test_and_set_bit(XPT_DEAD, &svsk->sk_xprt.xpt_flags)) {
- 		BUG_ON(atomic_read(&svsk->sk_xprt.xpt_ref.refcount)<2);
- 		svc_xprt_put(&svsk->sk_xprt);
--		if (test_bit(SK_TEMP, &svsk->sk_flags))
-+		if (test_bit(XPT_TEMP, &svsk->sk_xprt.xpt_flags))
- 			serv->sv_tmpcnt--;
- 	}
- 
-@@ -1976,26 +1976,26 @@ svc_delete_socket(struct svc_sock *svsk)
- 
- static void svc_close_socket(struct svc_sock *svsk)
- {
--	set_bit(SK_CLOSE, &svsk->sk_flags);
--	if (test_and_set_bit(SK_BUSY, &svsk->sk_flags))
-+	set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
-+	if (test_and_set_bit(XPT_BUSY, &svsk->sk_xprt.xpt_flags))
- 		/* someone else will have to effect the close */
- 		return;
- 
- 	svc_xprt_get(&svsk->sk_xprt);
- 	svc_delete_socket(svsk);
--	clear_bit(SK_BUSY, &svsk->sk_flags);
-+	clear_bit(XPT_BUSY, &svsk->sk_xprt.xpt_flags);
- 	svc_xprt_put(&svsk->sk_xprt);
- }
- 
- void svc_force_close_socket(struct svc_sock *svsk)
- {
--	set_bit(SK_CLOSE, &svsk->sk_flags);
--	if (test_bit(SK_BUSY, &svsk->sk_flags)) {
-+	set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
-+	if (test_bit(XPT_BUSY, &svsk->sk_xprt.xpt_flags)) {
- 		/* Waiting to be processed, but no threads left,
- 		 * So just remove it from the waiting list
- 		 */
- 		list_del_init(&svsk->sk_ready);
--		clear_bit(SK_BUSY, &svsk->sk_flags);
-+		clear_bit(XPT_BUSY, &svsk->sk_xprt.xpt_flags);
- 	}
- 	svc_close_socket(svsk);
- }
-@@ -2020,7 +2020,7 @@ static void svc_revisit(struct cache_def
- 	spin_lock(&svsk->sk_lock);
- 	list_add(&dr->handle.recent, &svsk->sk_deferred);
- 	spin_unlock(&svsk->sk_lock);
--	set_bit(SK_DEFERRED, &svsk->sk_flags);
-+	set_bit(XPT_DEFERRED, &svsk->sk_xprt.xpt_flags);
- 	svc_sock_enqueue(svsk);
- 	svc_xprt_put(&svsk->sk_xprt);
- }
-@@ -2083,16 +2083,16 @@ static struct svc_deferred_req *svc_defe
- {
- 	struct svc_deferred_req *dr = NULL;
- 
--	if (!test_bit(SK_DEFERRED, &svsk->sk_flags))
-+	if (!test_bit(XPT_DEFERRED, &svsk->sk_xprt.xpt_flags))
- 		return NULL;
- 	spin_lock(&svsk->sk_lock);
--	clear_bit(SK_DEFERRED, &svsk->sk_flags);
-+	clear_bit(XPT_DEFERRED, &svsk->sk_xprt.xpt_flags);
- 	if (!list_empty(&svsk->sk_deferred)) {
- 		dr = list_entry(svsk->sk_deferred.next,
- 				struct svc_deferred_req,
- 				handle.recent);
- 		list_del_init(&dr->handle.recent);
--		set_bit(SK_DEFERRED, &svsk->sk_flags);
-+		set_bit(XPT_DEFERRED, &svsk->sk_xprt.xpt_flags);
- 	}
- 	spin_unlock(&svsk->sk_lock);
- 	return dr;
+ 	svsk->sk_xprt.xpt_ops.xpo_detach(&svsk->sk_xprt);
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
