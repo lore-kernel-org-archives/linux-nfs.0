@@ -1,8 +1,8 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 1/5] rpc.mountd: fix memory leak and error handling in
-	nfsd_fh
-Date: Thu, 27 Sep 2007 06:53:43 -0400
-Message-ID: <200709271053.l8RArhNp031615@dantu.rdu.redhat.com>
+Subject: [PATCH 2/5] rpc.mountd: Change nfs_client->m_hostname to be a
+	dynamically-allocated string
+Date: Thu, 27 Sep 2007 06:53:48 -0400
+Message-ID: <200709271053.l8RArmaM031620@dantu.rdu.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
@@ -11,11 +11,11 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Iar08-0006vo-KD
-	for nfs@lists.sourceforge.net; Thu, 27 Sep 2007 03:53:48 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Iar0C-00035x-DC
+	id 1Iar0D-0006vv-1F
 	for nfs@lists.sourceforge.net; Thu, 27 Sep 2007 03:53:53 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Iar0F-00036r-UY
+	for nfs@lists.sourceforge.net; Thu, 27 Sep 2007 03:53:58 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,38 +28,92 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-nfsd_fh() uses strdup for creating found_path and doesn't check the
-return value. It also doesn't free this memory when the function
-returns. Check the return value of strdup and return immediately
-if it's NULL. Also, free found_path on exit.
+Change nfs_client->m_hostname to be dynamically allocated rather than a
+fixed length array of size NFSCLNT_IDMAX. This also adds a bit of
+micro-optimization in a few places since it reduces the amount of string
+copying that needs to be done.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 Acked-by: Steve Dickson <steved@redhat.com>
 ---
- utils/mountd/cache.c |    3 +++
- 1 files changed, 3 insertions(+), 0 deletions(-)
+ support/export/client.c    |   15 +++++++--------
+ support/include/exportfs.h |    2 +-
+ utils/mountd/auth.c        |    9 +++++++--
+ 3 files changed, 15 insertions(+), 11 deletions(-)
 
-diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-index 15100d4..fedc0bf 100644
---- a/utils/mountd/cache.c
-+++ b/utils/mountd/cache.c
-@@ -445,6 +445,8 @@ void nfsd_fh(FILE *f)
- 			if (!found) {
- 				found = &exp->m_export;
- 				found_path = strdup(path);
-+				if (found_path == NULL)
-+					goto out;
- 			} else if (strcmp(found->e_path, exp->m_export.e_path)!= 0)
- 			{
- 				xlog(L_WARNING, "%s and %s have same filehandle for %s, using first",
-@@ -492,6 +494,7 @@ void nfsd_fh(FILE *f)
- 		qword_print(f, found->e_path);
- 	qword_eol(f);
-  out:
-+	free(found_path);
- 	free(dom);
- 	return;		
- }
+diff --git a/support/export/client.c b/support/export/client.c
+index 19b53aa..1754aa0 100644
+--- a/support/export/client.c
++++ b/support/export/client.c
+@@ -118,6 +118,7 @@ client_dup(nfs_client *clp, struct hostent *hp)
+ 	new = (nfs_client *) xmalloc(sizeof(*new));
+ 	memcpy(new, clp, sizeof(*new));
+ 	new->m_type = MCL_FQDN;
++	new->m_hostname = NULL;
+ 
+ 	client_init(new, (char *) hp->h_name, hp);
+ 	client_add(new);
+@@ -127,14 +128,11 @@ client_dup(nfs_client *clp, struct hostent *hp)
+ static void
+ client_init(nfs_client *clp, const char *hname, struct hostent *hp)
+ {
+-	if (hp) {
+-		strncpy(clp->m_hostname, hp->h_name,
+-			sizeof (clp->m_hostname) -  1);
+-	} else {
+-		strncpy(clp->m_hostname, hname,
+-			sizeof (clp->m_hostname) - 1);
+-	}
+-	clp->m_hostname[sizeof (clp->m_hostname) - 1] = '\0';
++	xfree(clp->m_hostname);
++	if (hp)
++		clp->m_hostname = xstrdup(hp->h_name);
++	else
++		clp->m_hostname = xstrdup(hname);
+ 
+ 	clp->m_exported = 0;
+ 	clp->m_count = 0;
+@@ -207,6 +205,7 @@ client_freeall(void)
+ 		head = clientlist + i;
+ 		while (*head) {
+ 			*head = (clp = *head)->m_next;
++			xfree(clp->m_hostname);
+ 			xfree(clp);
+ 		}
+ 	}
+diff --git a/support/include/exportfs.h b/support/include/exportfs.h
+index 431b5ce..a491b1a 100644
+--- a/support/include/exportfs.h
++++ b/support/include/exportfs.h
+@@ -32,7 +32,7 @@ enum {
+ 
+ typedef struct mclient {
+ 	struct mclient *	m_next;
+-	char			m_hostname[NFSCLNT_IDMAX+1];
++	char *			m_hostname;
+ 	int			m_type;
+ 	int			m_naddr;
+ 	struct in_addr		m_addrlist[NFSCLNT_ADDRMAX];
+diff --git a/utils/mountd/auth.c b/utils/mountd/auth.c
+index f7fe23d..950ea20 100644
+--- a/utils/mountd/auth.c
++++ b/utils/mountd/auth.c
+@@ -93,8 +93,13 @@ auth_authenticate_internal(char *what, struct sockaddr_in *caller,
+ 		*error = unknown_host;
+ 		if (!n)
+ 			return NULL;
+-		strcpy(my_client.m_hostname, *n?n:"DEFAULT");
+-		free(n);
++		free(my_client.m_hostname);
++		if (*n) {
++			my_client.m_hostname = n;
++		} else {
++			free(n);
++			my_client.m_hostname = xstrdup("DEFAULT");
++		}
+ 		my_client.m_naddr = 1;
+ 		my_exp.m_client = &my_client;
+ 
 -- 
 1.5.2.1
 
