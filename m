@@ -1,21 +1,28 @@
-From: "Carlo Bernard" <mecwt@bluespec.com>
-Subject: Hi my friend!
-Date: Thu, 27 Sep 2007 18:12:25 +0000
-Message-ID: <042658065.57195431907306@bluespec.com>
-Reply-To: mecwt@bluespec.com
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH][RFC] use after free in NLM subsystem -- how
+	best	to fix it?
+Date: Thu, 27 Sep 2007 14:38:03 -0400
+Message-ID: <20070927183803.GF10113@fieldses.org>
+References: <20070924161236.48779845.jlayton@poochiereds.net>
+	<1190672003.6700.34.camel@heimdal.trondhjem.org>
+	<20070925102501.c770c202.jlayton@redhat.com>
+	<1190739948.7330.18.camel@heimdal.trondhjem.org>
+	<20070927135938.d5e733c6.jlayton@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Iaxqc-0005H8-FG
-	for nfs@lists.sourceforge.net; Thu, 27 Sep 2007 11:12:26 -0700
-Received: from host81-155-111-73.range81-155.btcentralplus.com
-	([81.155.111.73]) by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1Iaxqg-0004kV-3U
-	for nfs@lists.sourceforge.net; Thu, 27 Sep 2007 11:12:31 -0700
+	id 1IayFO-00087n-G6
+	for nfs@lists.sourceforge.net; Thu, 27 Sep 2007 11:38:02 -0700
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IayFS-0001A6-1t
+	for nfs@lists.sourceforge.net; Thu, 27 Sep 2007 11:38:07 -0700
+In-Reply-To: <20070927135938.d5e733c6.jlayton@redhat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,22 +35,51 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi!!
-I put my ad to the agency cause I want to have serious on a site
- of acquaintances.
-I have chosen you after searching a lot. I Loved you greatly so I decided to
-write you. I write through the Internet agency that is why my letter will be a 
-short one. I am  29. I am young but wise already to
-make a woman happy and make the house cozy and comfortable. I have never 
-been married before and I think this is the right moment to do it. I have chosen 
-you cause I liked your the story you told about yourself. I think the 
-true love comes with time and what is really important in the relationship is the 
-trust and understanding. I hope you will reply and i will send you my picture at 
-once. 
+On Thu, Sep 27, 2007 at 01:59:38PM -0400, Jeff Layton wrote:
+> Now that I've started really digging into this, I'm thinking that I may
+> be wrong about the race that exists in current mainline. There was a
+> change done ~June 2007:
+> 
+> commit 34f52e3591f241b825353ba27def956d8487c400
+> Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+> Date:   Thu Jun 14 16:40:31 2007 -0400
+> 
+>     SUNRPC: Convert rpc_clnt->cl_users to a kref
+>     
+>     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> 
+> ...this changed nlm_destroy_host from just setting cl_dead to instead
+> use rpc_shutdown_client. So this code now actually kills active RPC
+> tasks for the RPC client and waits for them to come down instead of
+> just marking the client dead. This should mitigate the race that
+> definitely exists in earlier kernels.
 
-Please write straight to the address: pechenyushechka@gmail.com
+Is there still a window where lockd could be killed just as someone is
+starting a new rpc (but the task isn't yet visible to
+rpc_shutdown_client)?
 
-girlfriend ANA
+--b.
+
+> I have seen a crash on recent kernels that looks very similar to the
+> problem that I originally described. Somehow a nlmsvc_grant_callback
+> outlived its lockd. I've only seen it once though, so I think I have to
+> conclude that the race there is something different and much more
+> subtle.
+> 
+> Adding reference counting might still be the way to go, but it's
+> not clear to me that basing it on adding and removing from the
+> nlm_blocked list will eliminate whatever this race is.
+> 
+> -- 
+> Jeff Layton <jlayton@redhat.com>
+> 
+> -------------------------------------------------------------------------
+> This SF.net email is sponsored by: Microsoft
+> Defy all challenges. Microsoft(R) Visual Studio 2005.
+> http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
