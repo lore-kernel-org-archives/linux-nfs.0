@@ -1,12 +1,36 @@
-From: "Erma Shirley" <vaughn.dalzell@vaz.at>
-Subject: Good luck, dear friend
-Date: Thu, 27 Sep 2007 18:58:05 +0100
-Message-ID: <01c8012f$f439ab90$1f460055@vaughn.dalzell>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH][RFC] use after free in NLM subsystem -- how best
+ to fix it?
+Date: Thu, 27 Sep 2007 13:59:38 -0400
+Message-ID: <20070927135938.d5e733c6.jlayton@redhat.com>
+References: <20070924161236.48779845.jlayton@poochiereds.net>
+	<1190672003.6700.34.camel@heimdal.trondhjem.org>
+	<20070925102501.c770c202.jlayton@redhat.com>
+	<1190739948.7330.18.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
-	boundary="----=_NextPart_000_0006_01C8012F.F439AB90"
-To: <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1IaxeF-0003iW-Iz
+	for nfs@lists.sourceforge.net; Thu, 27 Sep 2007 10:59:39 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IaxeJ-00089j-PG
+	for nfs@lists.sourceforge.net; Thu, 27 Sep 2007 10:59:44 -0700
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com
+	[172.16.52.254])
+	by mx1.redhat.com (8.13.1/8.13.1) with ESMTP id l8RHxeWo003332
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <nfs@lists.sourceforge.net>; Thu, 27 Sep 2007 13:59:40 -0400
+Received: from pobox.corp.redhat.com (pobox.corp.redhat.com [10.11.255.20])
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l8RHxeuG028097
+	for <nfs@lists.sourceforge.net>; Thu, 27 Sep 2007 13:59:40 -0400
+Received: from tleilax.poochiereds.net (vpn-14-92.rdu.redhat.com [10.11.14.92])
+	by pobox.corp.redhat.com (8.13.1/8.13.1) with SMTP id l8RHxd9C003365
+	for <nfs@lists.sourceforge.net>; Thu, 27 Sep 2007 13:59:39 -0400
+In-Reply-To: <1190739948.7330.18.camel@heimdal.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -19,129 +43,93 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
+On Tue, 25 Sep 2007 13:05:48 -0400
+Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
 
-------=_NextPart_000_0006_01C8012F.F439AB90
-Content-Type: text/plain; format=flowed; charset="iso-8859-2";
-	reply-type=original
-Content-Transfer-Encoding: 7bit
+> On Tue, 2007-09-25 at 10:25 -0400, Jeff Layton wrote:
+> 
+> > That's certainly one approach. I avoided that since it seems like it
+> > would add extra complexity -- it would mean reference counting of some
+> > sort. I suppose we could keep a list of async calls that are in
+> > progress and cancel those when lockd begins shutting down. Or is there
+> > an easier way to make sure they are cancelled before lockd goes down?
+> 
+> You already have such a list: nlm_blocked.
+> 
+> 
+> > As a side note, I think we need to consider some locking around
+> > nlmsvc_pid/nlmsvc_serv. This part of lockd seems racy:
+> > 
+> >         if (!nlmsvc_pid || current->pid == nlmsvc_pid) {
+> >                 if (nlmsvc_ops)
+> >                         nlmsvc_invalidate_all();
+> >                 nlm_shutdown_hosts();
+> >                 nlmsvc_pid = 0;
+> >                 nlmsvc_serv = NULL;
+> > 
+> > if either nlm_invalidate_all or nlm_shutdown_hosts takes a while, and
+> > lockd is being restarted:
+> > 
+> > 1) lockd_down is called and starts shutting down lockd
+> > 2) lockd takes a while to come down, lockd_down gives up, and sets
+> >    nlmsvc_pid=0
+> > 3) lockd_up is called and fires up a new lockd thread, it sets
+> >    nlmsvc_pid to the new thread's pid
+> > 4) first lockd finishes and sets nlmsvc_pid=0
+> > 
+> > Perhaps we need to have only lockd_down set those vars so that it's
+> > done under the nlmsvc_mutex?
+> > 
+> > Thoughts?
+> 
+> For cleanliness, I suggest adding a new refcount to lockd: nlmsvc_ref.
+> Replace the test for (nlmsvc_users || !signalled()) in lockd() with a
+> test for nlmsvc_ref != 0, and then have lockd_up() take one reference to
+> it whenever it bumps nlmsvc_users == 0  / lockd_down() release a
+> reference whenever it decrements nlmsvc_users == 1.
+> 
+> Have nlmsvc_insert_block() take a reference whenever adding something to
+> an empty nlm_blocked / nlmsvc_unlink_block release the reference
+> whenever nlm_blocked is emptied.
+> 
+> Trond
+> 
 
+Now that I've started really digging into this, I'm thinking that I may
+be wrong about the race that exists in current mainline. There was a
+change done ~June 2007:
 
+commit 34f52e3591f241b825353ba27def956d8487c400
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Thu Jun 14 16:40:31 2007 -0400
 
-------=_NextPart_000_0006_01C8012F.F439AB90
-Content-Type: image/gif;
-	name="img20.gif"
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment;
-	filename="img20.gif"
+    SUNRPC: Convert rpc_clnt->cl_users to a kref
+    
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-R0lGODlhrAD+APcAAAAAAIAAAACAAICAAAAAgIAAgACAgICAgMDAwP8AAAD/AP//AAAA//8A/wD/
-/////wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMwAAZgAAmQAAzAAA/wAzAAAzMwAzZgAzmQAzzAAz/wBm
-AABmMwBmZgBmmQBmzABm/wCZAACZMwCZZgCZmQCZzACZ/wDMAADMMwDMZgDMmQDMzADM/wD/AAD/
-MwD/ZgD/mQD/zAD//zMAADMAMzMAZjMAmTMAzDMA/zMzADMzMzMzZjMzmTMzzDMz/zNmADNmMzNm
-ZjNmmTNmzDNm/zOZADOZMzOZZjOZmTOZzDOZ/zPMADPMMzPMZjPMmTPMzDPM/zP/ADP/MzP/ZjP/
-mTP/zDP//2YAAGYAM2YAZmYAmWYAzGYA/2YzAGYzM2YzZmYzmWYzzGYz/2ZmAGZmM2ZmZmZmmWZm
-zGZm/2aZAGaZM2aZZmaZmWaZzGaZ/2bMAGbMM2bMZmbMmWbMzGbM/2b/AGb/M2b/Zmb/mWb/zGb/
-/5kAAJkAM5kAZpkAmZkAzJkA/5kzAJkzM5kzZpkzmZkzzJkz/5lmAJlmM5lmZplmmZlmzJlm/5mZ
-AJmZM5mZZpmZmZmZzJmZ/5nMAJnMM5nMZpnMmZnMzJnM/5n/AJn/M5n/Zpn/mZn/zJn//8wAAMwA
-M8wAZswAmcwAzMwA/8wzAMwzM8wzZswzmcwzzMwz/8xmAMxmM8xmZsxmmcxmzMxm/8yZAMyZM8yZ
-ZsyZmcyZzMyZ/8zMAMzMM8zMZszMmczMzMzM/8z/AMz/M8z/Zsz/mcz/zMz///8AAP8AM/8AZv8A
-mf8AzP8A//8zAP8zM/8zZv8zmf8zzP8z//9mAP9mM/9mZv9mmf9mzP9m//+ZAP+ZM/+ZZv+Zmf+Z
-zP+Z///MAP/MM//MZv/Mmf/MzP/M////AP//M///Zv//mf//zP///yH5BAEAABAALAAAAACsAP4A
-AAj/AP8JHEiwoMGDCBMqXMiwocOHECNKnEixosWK1LRdTEjtYMeNIEOKHJmQGUmGGgfiO8myZcgp
-WgaadMlwmsRmEVfR3Mmz58J4Eav5HDowJVGiRo8SdKa0KUVGkx4mdZoqIlSnB5EFw8q1K9dOB21O
-vLdSJCxbAn+lQzmtqleHcsCG3Grw49u7C9Hi7YlsHkW7FWG5ZbkI69S9iBM7BaOYpNDGJBlDnky5
-sdiGgCtrPnmZYebNR6VVLLvXT8V8ApEdfQwyG+iGfSo+fva6NkScXf3Zbkwaq26vg3cejnisKazX
-wSfLa7rtLornzwVGl46COvTqA6ETvD79H3fs3q9b/7/OhGCX79nBdw8Pnr126+nbv98ufv36jd2j
-58d+Pz799NQZtN9///R2nnr8IUiffAqy59+DAI5HoEP3HFRheAcNiKGA1Wm4YX/9RchhhB7q1+CH
-2okXoIcEhqhQPwfBuGFBGoZooojTgejijg2W2OGJOaY4340BZjjfaBMuqCJ6KwKZoIrujWgkiUxi
-6OOK3s1IpHcuIARlSDb22F6RKKoYCI/3oTmkmFRCqV+WQQJ4XpdejglSmFRKieJBMti5YJKAkhln
-kYNaCWeCEa7gJ5ki4Umond8hqmed24VCqZ5BcicookKO956LGMrYqII1jpnmj1PSeGJ4lk6KI6r/
-lf/q4JaPvirQhaN+KmZ9psKqqptfzqhqqlb2KiyRnBrraaC7NetsZbg9CxE+x0mrULTWNjRNtQwx
-le23G3kL7rhYfUauRKztZu65EAHWXGPYHjSFs7+xm1C8Bs3bbGeTAWLvvwv5C/DA0rYwlD/rOuSP
-awRXZLBnCKHBUi06DYWCvge9UB033BDE8T8cfzxQyAWFLLLJInuc8ivDteCyywyhdpDEGPU2UDYV
-t9QPww+lDHLHP5fs89BBC+Tzz0AnBLPBMDdc0dBAQ1301CBPLfXRBcF8xT9Nc/1w1i+/PFDYXzdV
-r0H24ErRyUlf3XbSI7+tMtUGhf0PXXbXTfbDXXf/TS7bcQc+hR+AI400yYEbDbfeL6smkN9jE/R1
-32X/jbjicaOMOeYfH40y1oxPXvnjko/9sCGQj2vy3JsXjcsvgRfeOuiPM+216QuV3fUho6u+uOyc
-y50y8HTjbrAfouOeNdh5EyQKZNLM5BDUnf8eteZuC6102BXuffs27/ZeO0LPO42V+Aqhn7pA6Z6L
-T7ztW+SMzQihX//2CsUvkjZ6uYQvQ9wiSABD0r+I9E5sAPvfQsyVsIoU0Hz7Q4zMBNJACH5LfyAZ
-DmRe8YqmICIRIvkDHljCL3RVRgw0eaAFlSKGDp6kI5EQyDPEZb8VVkZcB9kaRRBoEBwShWc90dzh
-/1TWMXx0wQqeQ5wQfWg6FqwvIUfsGilUURAmIqQZ9LOIaHxCNLpdrnjAW5zkbPfE+tVwIhrBBxU1
-08Xste4f97BHGPHHNNHxEGwHIZtEOsgMZiynMqATWVWqlzjW0S50eBwf83hIuYEFEmipGN71DCLJ
-L+axBSyAQvIUOUblNRJgRxNKJU22Eqw9kiHNq13lVvLJT25EYEpJxCMUMjRRyk1xpRQjN3DREbgd
-cmm342RBWLlJV14ElhFRxQBJ0sZJzs2UUWNdQbpHRr557x9/sKbyvJbNMoJLiKtL4uE+lgtgsM2S
-A5GRHlWZt2ya7o4C6Yc3bdiTM05knqCp4F5qSP+NLKbPnvQEDTwtWMKN0CagXDlbSA6K0MRIoqFH
-eahLVOgTgJJLov94V7Ys+pCBNkaD0lRcOH3ZsZGaFJ3oXCRHc7dSQFpPe4mT2uysJ8ZO1hEkfrOi
-bcQZ0jDekmqENCPXguk1jxbVb37zZ214asifWs2pQb0k5IzJyaZdM1tJvJzsZDpOkhYydJsk6jat
-GlZpMZWIXhVIPiTpxc8ZBFup3OZYtSnMf2BMILRoF1bOmrm0/mOtt+Qq1og5VKR6tJVltWtB8vqQ
-CSqFr2o9K1sV5y/I3u6meuPkDdZJ1YMwljJudetXVzdTj4HFskcVH1kHUhixrnMhQFSrT/44rsr/
-dbaTbzENRBybEI0iRKlNsW1icfuWQrQEpAKhrWJeyzyIssQQoNHpHv+FTMokpyKtRejZWjoQhXbl
-uuwbGHIhojavGPcg0jXOWljCXa5AwlqwWK9ImFuZ9xJFpqLtqki1+sWUZhazzqWkV90YvEJmtSHA
-NOwT92ZHfG6GwEGDsE+LRxBipm61YMWwWBcimYlgMCEdnt6AR/zMtEL4IBY25oVLV1WOhjgi6T3I
-ixfyuahGmMQx/ekhFynMFUeuxVjFcYFjZ+K3CZGOwTRs+ojrYJeW+MlEbqqBa2pTomr4woHYYmrb
-ixgJl1TIk0XtO6d6x6kKJMuJtBZ+j2yyX4xj/7+jbCuCLaI+Lr+lVa/hcp03ok+B0OwkeHaIRj/c
-mAM2GWIN+bPTCGGvPp+L0ewidGWkV5FkIGaWDLH0SO5RXs8osCKUpkg7LrIFKowE0wsZtVcc/RZI
-O6wnwF0IbW3BiIGBt6M+kfRGtCFat5l0ZPp1Ky7YTL0halW/ZjRqRdb4j4K25BfCE7JIgV1aaZ6T
-iJs79o7HB+CQMLvTLWHrib9stMR1gqknKxq51c3ubV/WynEds3APHZFX3Frc0q5ault3bpi2O5qF
-W/e60zcDMssVyIqkN0jwHVrSTlLHDmfztNUdzQiP859iI2xd4d1jO0uk1/l++JS110xn7rtzFP9O
-tsFIo2xP6s7jDQnDV99o46pN/KkwHR61KV7uabvbCtU8uFTLqnCKQBeMIc/cyK3dsWe0Lcc9N5y7
-W9CFwlqTs4Z2+UB4G25djjicTO+rjTmmippWD+VEJu3Qv6aFbiJwfQouW4z/5V2atIDVCB9Jdh1S
-jW30szbVwDtBttE+FvA28P8U+kZczZNYG3Ay5VOptJzNrhFSg+sDkcenA2yRZXLeNi78PE/Gy/lT
-LIMy2oC56B8i+Dk7rOgKUfRO1S7acRRb6SwdKDUqeAMcnETmzSKar7GNeyRDLsaw/1cp5uDLn9kF
-5enGN0HyUY1S6IHbrgVEGS98VdYnpBoy04b/NLR8F2g+899R3h73N75leSffNpw47erwMex/aOM4
-3BhHM65n8rZloQbqp2Kj00oCYQirUEOkFxKrkDNDMXYlNXHnpHYB2HGZlXAsZj7ShnY2x3NvhEeY
-pWRp5mMQlIEPGHU1RzsJVkwqKHSqlxjkdxDE5nAwOHAdOEbwlEqUM1A1NGOb8YKI0YLLoxB7t3qv
-RhJAOBHMxmcQdYQSkYRHMXc+wVCU0XpDgXlNAYVE2FDncBGksBBbmIUnYQ4XMQoLIYY7AV4J6BVM
-aC1UeBdr2CzFkRAgJ4Fz2F9Z9TFnEIBvWBucQEvRBnUzd3s0h1EeuGHOxWzSl21+hTm1cGOj/2V8
-L7dgV0VfDhETPaFPrDE8afAzp8eBNAc0HRRV7sZOFQh3LlMFbzdcDHFePIF3kpQGIXMKk1Vt1TaK
-7ER0AzgQqRBW79dl4ESDayY0v2hAqTgQqgAznzVUP2aDjREbEWF+OJd+YQdUkChMevAwybiM7GcR
-jicRztgzXgeIQxaIwFiNCTdckRhvPqFpIgGNihhxI5VzErh2PHZw86aOPiEMWBGHSmFPVriH1sKP
-deESABU/AEkZuqYQviURfSgSsaCNDtGG3neJFrGQEdGQIeF5E+kSEgmGHvmRPYFRjFcbFvWQe5GQ
-DyGSzcJRJplaWKGRe0FRJLENlMhSihcRsf91XzRFMlxlOCqjCUoUbWe3c3lkBVYHEbclEZS3E3zF
-Va8QCj0piv33dOZYO3pwfZc0V/iYEPiAhSPRlH7VOd0wWgMXcOw2gYkkiWVWkzRhhQTRd/5Wgx9T
-DfUXO6NgkgRmlvumh3K1flXVFW4phzsZWBD3idF4ciWYe3S1ca50kF0nENugEY9EPREHZRwocuYI
-gkzWYI7Zji8lYILlTJxjDIDIDZjmX9iHWJ70BIrXi/8Qao8ZUj31Um4jFIcgByb3D7OEmqo0AyxQ
-j1X1BEblmv+weSHRcHS4iLzGf/wVlBpIYY7zD0JxhElpG8EQnSgxgwuRhgRBWzS5dRtRnVz/cQgF
-UpwRIZMi1hWhh5F8mRctAVz5QEUrgUP3YJzouRmhJxcicZ8L0QzgBhJ+gRAB+hod2SypwC1uOaDn
-UgqlQE9euRdGiRjYiRUoGRQ7sQcM0Qn62RMPCpIgMZIsAZMeOpAJEXoIIaKYMXpOIQq6VRF+gAoQ
-gaKEVqAjOhKsOBTMAA9NWKEYYZEbwQtmuBM3ihfGSRDkSRQ+2ghe4UIacaQuESmLsi7H8EfR0Qgo
-+iBoghAWiQJOihVM+g9K+pr28KSrAhGgkhCF4ioKcab/Yh+LshD5oRBcEAiMgqZvCiZeAhqnchCt
-sKb8gQUOwaZ1ShKOEhHcORJ7Oh551Smq/4IFOhInazIoR6Iks7IfJnIkUPojkVIUwEITiSqpW+IW
-eAKqTUIoDEGqHzKoWqIetbInwtJbHOGnw+Kqg0IIulWorbqnd5onZcIslpoluSopxyCQCSGiIPWp
-1aEKqOqrKLB3yyohpyopv6qqbpolGpEjceApuxoRPsooA+IMz0qtKFBrvLoehfAHvmKnrQofr+qt
-09Ec2KqqO8EiqKojwEpBORKs0rGu9ronryCtHTIsq7KsknISUMohmYIC/WAH/ToQOKErTAKxmpqu
-m3IdtfAluOqmmLomEQEDNmA+kLKtFaEsNYqm29Gu+BGwSUKIJdsrIisRkwolLDt5JUsZdf9Xs5BR
-pEphoiVLoycxhDgbtLaxlfczdE6jCPt0aIfFliGKFdnYFS0nbxlGnA5xqCFxCyyBtXSGT3uTGQ02
-Ej7rkCzRkjuktGbGjM61HHnDSKbIfUujYMqItuqHYM2ztlR7EIEJEmUhNnrEXMX4TqR4joxjk6h0
-dYDLtJpht2T1cmPjRH3ZmIObeAtRcIAbuFFLGWxrR5XLNZRbVLKVuXOrNL+JEBfSAp0rVZs7Egpq
-dzm4uQy2uANRDZnbtv8EUmOqbKDLEqvbEjykSZqrSskmty7ZXAaBGg52CdvXNPlwuZPBSJrkumop
-vIGbugQBdA7RAsgbuv8AdJ3Jur/rucD/y2Ivg2pLO29FC5E2ODoPiUC2wLwUwaNl+71rOTmdhGmM
-RFzhq1K5a7kPc4Bds1kHGbbau79bFom3mHf5636eYMDux8Dguxt9azf0Vb7dVkc5+Fqv6wnSe1Tp
-a8F3K7QgHMIiPMIURMJH0YUSYZQ3CxFAK8JkmMLNthFDOqI6exBW+y/FsBc1bBBLCUG+QE8CrKUN
-kQ2iYsJGfBDwoKMU0a1EqI/JNRBOjBCXUBGmVhn/ucREEcUTFMUHwQsVYYkMEUdYccUTwcS2AaIN
-0Y22EcT54xJozBBqzJWKAb/sgmp/cRFsDC6qQLYOYccTUaAVxAw+yBCCvBdX6jQd2hh5WYwVzkCs
-hHBrBnEMiRxgZkwR8kUQ+uR3F8Geu6ENN+wQ7cCOEKHEBHEPPSwQcYwQL0wSeTsZM8wur8BqrQwZ
-RycQ01DER3wUh5zLd8wQdExPREyhjYYP/BIQADs= 
+...this changed nlm_destroy_host from just setting cl_dead to instead
+use rpc_shutdown_client. So this code now actually kills active RPC
+tasks for the RPC client and waits for them to come down instead of
+just marking the client dead. This should mitigate the race that
+definitely exists in earlier kernels.
 
-------=_NextPart_000_0006_01C8012F.F439AB90
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+I have seen a crash on recent kernels that looks very similar to the
+problem that I originally described. Somehow a nlmsvc_grant_callback
+outlived its lockd. I've only seen it once though, so I think I have to
+conclude that the race there is something different and much more
+subtle.
+
+Adding reference counting might still be the way to go, but it's
+not clear to me that basing it on adding and removing from the
+nlm_blocked list will eliminate whatever this race is.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
 Defy all challenges. Microsoft(R) Visual Studio 2005.
 http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
-------=_NextPart_000_0006_01C8012F.F439AB90
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
-------=_NextPart_000_0006_01C8012F.F439AB90--
