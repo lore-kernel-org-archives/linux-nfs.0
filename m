@@ -1,23 +1,12 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [RFC,PATCH 00/33] SVC Transport Switch
-Date: Thu, 27 Sep 2007 13:55:38 -0400
-Message-ID: <20070927175538.GC10113@fieldses.org>
-References: <20070927045751.12677.98896.stgit@dell3.ogc.int>
+From: "Erma Shirley" <vaughn.dalzell@vaz.at>
+Subject: Good luck, dear friend
+Date: Thu, 27 Sep 2007 18:58:05 +0100
+Message-ID: <01c8012f$f439ab90$1f460055@vaughn.dalzell>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: neilb@suse.de, nfs@lists.sourceforge.net, gnb@sgi.com
-To: Tom Tucker <tom@opengridcomputing.com>
+Content-Type: multipart/mixed;
+	boundary="----=_NextPart_000_0006_01C8012F.F439AB90"
+To: <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IaxaP-0003G4-Or
-	for nfs@lists.sourceforge.net; Thu, 27 Sep 2007 10:55:42 -0700
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IaxaP-0006Jb-I8
-	for nfs@lists.sourceforge.net; Thu, 27 Sep 2007 10:55:41 -0700
-In-Reply-To: <20070927045751.12677.98896.stgit@dell3.ogc.int>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,72 +19,129 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, Sep 26, 2007 at 11:57:51PM -0500, Tom Tucker wrote:
-> The following series implements a pluggable transport switch for
-> RPC servers.
+This is a multi-part message in MIME format.
 
-Seeing as this seems not to break anything obvious (well, it compiles
-anyway), and people seem to agree we'll merge some version of this
-eventually, I've added it to for-mm in hopes it'll get included in an
--mm release soon.
+------=_NextPart_000_0006_01C8012F.F439AB90
+Content-Type: text/plain; format=flowed; charset="iso-8859-2";
+	reply-type=original
+Content-Transfer-Encoding: 7bit
 
-I'll take an hour to read through it some time just for fun, but I'm
-depending on Neil and others for serious review in this case.  (One
-trivial complaint: git's complaining about lines that add trailing
-whitespace.  Might want to run scripts/checkpatch.pl, feeling free to
-ignore any false positives.)
 
---b.
 
-> The biggest changes in this latest incarnation
-> are as follows:
-> 
-> - The overall design of the switch has been modified to be more similar
->   to the client side, e.g.
-> 	- There is a transport class structure svc_xprt_class, and
-> 	- A transport independent structure is manipulated by xprt 
-> 	  independent code (svc_xprt)
-> 	- Further consolidation of transport independent logic out of 
-> 	  transport providers and into transport independent code.
-> - Transport independent code has been broken out into a separate file
-> - Transport independent functions prevously adorned with _sock_ have
->   had their names changed, e.g. svc_sock_enqueue
-> - atomic refcounts have been changed to krefs
-> 
-> The patchset is large (33 patches). There are some things that I would like to 
-> do that I didn't do because the patchset is already big.  For example, normalize 
-> the creation of nfsd listening endpoints using writes to the portlist file. 
-> 
-> I've attempted to organize the patchset such that logical changes are 
-> clearly reviewable without too much clutter from functionally empty name
-> changes.  This was somewhat awkward since intermediate patches may look 
-> ugly/broken/incomplete to some reviewers. This was to avoid losing the
-> context of a change while keeping each patch a reasonable size.  For example, 
-> making svc_recv transport independent and moving it to the svc_xprt file 
-> cannot be done in the same patch without losing the diffs to the svc_recv 
-> function.
-> 
-> This patchset has had limited testing with TCP/UDP. In this case, the tests 
-> included connectathon and building the kernel on an NFS mount running on the 
-> transport switch. 
-> 
-> This patchset is against the 2.6.23-rc8 kernel tree.
-> 
-> -- 
-> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
-> 
-> -------------------------------------------------------------------------
-> This SF.net email is sponsored by: Microsoft
-> Defy all challenges. Microsoft(R) Visual Studio 2005.
-> http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
+------=_NextPart_000_0006_01C8012F.F439AB90
+Content-Type: image/gif;
+	name="img20.gif"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment;
+	filename="img20.gif"
+
+R0lGODlhrAD+APcAAAAAAIAAAACAAICAAAAAgIAAgACAgICAgMDAwP8AAAD/AP//AAAA//8A/wD/
+/////wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMwAAZgAAmQAAzAAA/wAzAAAzMwAzZgAzmQAzzAAz/wBm
+AABmMwBmZgBmmQBmzABm/wCZAACZMwCZZgCZmQCZzACZ/wDMAADMMwDMZgDMmQDMzADM/wD/AAD/
+MwD/ZgD/mQD/zAD//zMAADMAMzMAZjMAmTMAzDMA/zMzADMzMzMzZjMzmTMzzDMz/zNmADNmMzNm
+ZjNmmTNmzDNm/zOZADOZMzOZZjOZmTOZzDOZ/zPMADPMMzPMZjPMmTPMzDPM/zP/ADP/MzP/ZjP/
+mTP/zDP//2YAAGYAM2YAZmYAmWYAzGYA/2YzAGYzM2YzZmYzmWYzzGYz/2ZmAGZmM2ZmZmZmmWZm
+zGZm/2aZAGaZM2aZZmaZmWaZzGaZ/2bMAGbMM2bMZmbMmWbMzGbM/2b/AGb/M2b/Zmb/mWb/zGb/
+/5kAAJkAM5kAZpkAmZkAzJkA/5kzAJkzM5kzZpkzmZkzzJkz/5lmAJlmM5lmZplmmZlmzJlm/5mZ
+AJmZM5mZZpmZmZmZzJmZ/5nMAJnMM5nMZpnMmZnMzJnM/5n/AJn/M5n/Zpn/mZn/zJn//8wAAMwA
+M8wAZswAmcwAzMwA/8wzAMwzM8wzZswzmcwzzMwz/8xmAMxmM8xmZsxmmcxmzMxm/8yZAMyZM8yZ
+ZsyZmcyZzMyZ/8zMAMzMM8zMZszMmczMzMzM/8z/AMz/M8z/Zsz/mcz/zMz///8AAP8AM/8AZv8A
+mf8AzP8A//8zAP8zM/8zZv8zmf8zzP8z//9mAP9mM/9mZv9mmf9mzP9m//+ZAP+ZM/+ZZv+Zmf+Z
+zP+Z///MAP/MM//MZv/Mmf/MzP/M////AP//M///Zv//mf//zP///yH5BAEAABAALAAAAACsAP4A
+AAj/AP8JHEiwoMGDCBMqXMiwocOHECNKnEixosWK1LRdTEjtYMeNIEOKHJmQGUmGGgfiO8myZcgp
+WgaadMlwmsRmEVfR3Mmz58J4Eav5HDowJVGiRo8SdKa0KUVGkx4mdZoqIlSnB5EFw8q1K9dOB21O
+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 
+
+------=_NextPart_000_0006_01C8012F.F439AB90
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
 Defy all challenges. Microsoft(R) Visual Studio 2005.
 http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+------=_NextPart_000_0006_01C8012F.F439AB90
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+------=_NextPart_000_0006_01C8012F.F439AB90--
