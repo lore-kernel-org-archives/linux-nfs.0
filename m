@@ -1,8 +1,7 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [RFC,
-	PATCH 05/33] svc: Move sk_sendto and sk_recvfrom to svc_xprt_class
-Date: Thu, 27 Sep 2007 00:01:45 -0500
-Message-ID: <20070927050145.12677.57585.stgit@dell3.ogc.int>
+Subject: [RFC,PATCH 08/33] svc: Add xpo_prep_reply_hdr
+Date: Thu, 27 Sep 2007 00:01:51 -0500
+Message-ID: <20070927050151.12677.59462.stgit@dell3.ogc.int>
 References: <20070927045751.12677.98896.stgit@dell3.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -12,11 +11,11 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IalVS-0005bN-13
+	id 1IalVS-0005bS-PR
 	for nfs@lists.sourceforge.net; Wed, 26 Sep 2007 22:01:46 -0700
 Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]
 	helo=smtp.opengridcomputing.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IalVW-0005Bc-Eh
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IalVX-0005Bc-HC
 	for nfs@lists.sourceforge.net; Wed, 26 Sep 2007 22:01:51 -0700
 In-Reply-To: <20070927045751.12677.98896.stgit@dell3.ogc.int>
 List-Id: "Discussion of NFS under Linux development, interoperability,
@@ -32,103 +31,96 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 
-The sk_sendto and sk_recvfrom are function pointers that allow svc_sock
-to be used for both UDP and TCP. Move these function pointers to the 
-svc_xprt_ops structure.
+Some transports add fields to the RPC header for replies, e.g. the TCP
+record length. This function is called when preparing the reply header
+to allow each transport to add whatever fields it requires.
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- include/linux/sunrpc/svc_xprt.h |    2 ++
- include/linux/sunrpc/svcsock.h  |    3 ---
- net/sunrpc/svcsock.c            |   12 ++++++------
- 3 files changed, 8 insertions(+), 9 deletions(-)
+ include/linux/sunrpc/svc_xprt.h |    1 +
+ net/sunrpc/svc.c                |    6 +++---
+ net/sunrpc/svcsock.c            |   19 +++++++++++++++++++
+ 3 files changed, 23 insertions(+), 3 deletions(-)
 
 diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index 827f0fe..f0ba052 100644
+index 85d84b2..1cd86fe 100644
 --- a/include/linux/sunrpc/svc_xprt.h
 +++ b/include/linux/sunrpc/svc_xprt.h
-@@ -10,6 +10,8 @@ #define SUNRPC_SVC_XPRT_H
- #include <linux/sunrpc/svc.h>
+@@ -11,6 +11,7 @@ #include <linux/sunrpc/svc.h>
  
  struct svc_xprt_ops {
-+	int		(*xpo_recvfrom)(struct svc_rqst *);
-+	int		(*xpo_sendto)(struct svc_rqst *);
- };
+ 	int		(*xpo_recvfrom)(struct svc_rqst *);
++	void		(*xpo_prep_reply_hdr)(struct svc_rqst *);
+ 	int		(*xpo_sendto)(struct svc_rqst *);
+ 	void		(*xpo_release)(struct svc_rqst *);
+ 	void		(*xpo_detach)(struct svc_xprt *);
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index 2a4b3c6..ee68117 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -815,9 +815,9 @@ svc_process(struct svc_rqst *rqstp)
+ 	rqstp->rq_res.tail[0].iov_len = 0;
+ 	/* Will be turned off only in gss privacy case: */
+ 	rqstp->rq_splice_ok = 1;
+-	/* tcp needs a space for the record length... */
+-	if (rqstp->rq_prot == IPPROTO_TCP)
+-		svc_putnl(resv, 0);
++
++	/* Setup reply header */
++	rqstp->rq_xprt->xpt_ops.xpo_prep_reply_hdr(rqstp);
  
- struct svc_xprt_class {
-diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
-index 1878cbe..08e78d0 100644
---- a/include/linux/sunrpc/svcsock.h
-+++ b/include/linux/sunrpc/svcsock.h
-@@ -45,9 +45,6 @@ #define	SK_DETACHED	10			/* detached fro
- 						 * be revisted */
- 	struct mutex		sk_mutex;	/* to serialize sending data */
- 
--	int			(*sk_recvfrom)(struct svc_rqst *rqstp);
--	int			(*sk_sendto)(struct svc_rqst *rqstp);
--
- 	/* We keep the old state_change and data_ready CB's here */
- 	void			(*sk_ostate)(struct sock *);
- 	void			(*sk_odata)(struct sock *, int bytes);
+ 	rqstp->rq_xid = svc_getu32(argv);
+ 	svc_putu32(resv, rqstp->rq_xid);
 diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index dd5c6fb..cc8c7ce 100644
+index 0db0a26..99f5faf 100644
 --- a/net/sunrpc/svcsock.c
 +++ b/net/sunrpc/svcsock.c
-@@ -900,6 +900,8 @@ svc_udp_sendto(struct svc_rqst *rqstp)
+@@ -893,12 +893,18 @@ svc_udp_sendto(struct svc_rqst *rqstp)
+ 	return error;
  }
  
++static void 
++svc_udp_prep_reply_hdr(struct svc_rqst *rqstp)
++{
++}
++
  static struct svc_xprt_ops svc_udp_ops = {
-+	.xpo_recvfrom = svc_udp_recvfrom,
-+	.xpo_sendto = svc_udp_sendto,
+ 	.xpo_recvfrom = svc_udp_recvfrom,
+ 	.xpo_sendto = svc_udp_sendto,
+ 	.xpo_release = svc_release_skb,
+ 	.xpo_detach = svc_sock_detach,
+ 	.xpo_free = svc_sock_free,
++	.xpo_prep_reply_hdr = svc_udp_prep_reply_hdr,
  };
  
  static struct svc_xprt_class svc_udp_class = {
-@@ -917,8 +919,6 @@ svc_udp_init(struct svc_sock *svsk)
- 	svc_xprt_init(&svc_udp_class, &svsk->sk_xprt);
- 	svsk->sk_sk->sk_data_ready = svc_udp_data_ready;
- 	svsk->sk_sk->sk_write_space = svc_write_space;
--	svsk->sk_recvfrom = svc_udp_recvfrom;
--	svsk->sk_sendto = svc_udp_sendto;
- 
- 	/* initialise setting must have enough space to
- 	 * receive and respond to one request.
-@@ -1354,6 +1354,8 @@ svc_tcp_sendto(struct svc_rqst *rqstp)
+@@ -1350,12 +1356,25 @@ svc_tcp_sendto(struct svc_rqst *rqstp)
+ 	return sent;
  }
  
++/*
++ * Setup response header. TCP has a 4B record length field.
++ */
++static void
++svc_tcp_prep_reply_hdr(struct svc_rqst *rqstp)
++{
++	struct kvec *resv = &rqstp->rq_res.head[0];
++
++	/* tcp needs a space for the record length... */
++	svc_putnl(resv, 0);
++}
++
  static struct svc_xprt_ops svc_tcp_ops = {
-+	.xpo_recvfrom = svc_tcp_recvfrom,
-+	.xpo_sendto = svc_tcp_sendto,
+ 	.xpo_recvfrom = svc_tcp_recvfrom,
+ 	.xpo_sendto = svc_tcp_sendto,
+ 	.xpo_release = svc_release_skb,
+ 	.xpo_detach = svc_sock_detach,
+ 	.xpo_free = svc_sock_free,
++	.xpo_prep_reply_hdr = svc_tcp_prep_reply_hdr,
  };
  
  static struct svc_xprt_class svc_tcp_class = {
-@@ -1381,8 +1383,6 @@ svc_tcp_init(struct svc_sock *svsk)
- 	struct tcp_sock *tp = tcp_sk(sk);
- 
- 	svc_xprt_init(&svc_tcp_class, &svsk->sk_xprt);
--	svsk->sk_recvfrom = svc_tcp_recvfrom;
--	svsk->sk_sendto = svc_tcp_sendto;
- 
- 	if (sk->sk_state == TCP_LISTEN) {
- 		dprintk("setting up TCP socket for listening\n");
-@@ -1530,7 +1530,7 @@ svc_recv(struct svc_rqst *rqstp, long ti
- 
- 	dprintk("svc: server %p, pool %u, socket %p, inuse=%d\n",
- 		 rqstp, pool->sp_id, svsk, atomic_read(&svsk->sk_inuse));
--	len = svsk->sk_recvfrom(rqstp);
-+	len = svsk->sk_xprt.xpt_ops.xpo_recvfrom(rqstp);
- 	dprintk("svc: got len=%d\n", len);
- 
- 	/* No data, incomplete (TCP) read, or accept() */
-@@ -1590,7 +1590,7 @@ svc_send(struct svc_rqst *rqstp)
- 	if (test_bit(SK_DEAD, &svsk->sk_flags))
- 		len = -ENOTCONN;
- 	else
--		len = svsk->sk_sendto(rqstp);
-+		len = svsk->sk_xprt.xpt_ops.xpo_sendto(rqstp);
- 	mutex_unlock(&svsk->sk_mutex);
- 	svc_sock_release(rqstp);
- 
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
