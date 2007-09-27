@@ -1,21 +1,21 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 4/5] rpc.mountd: create client_resolve and change
-	client_compose to take a hostent arg
-Date: Thu, 27 Sep 2007 06:53:58 -0400
-Message-ID: <200709271053.l8RArwQr031630@dantu.rdu.redhat.com>
+Subject: [PATCH 3/5] rpc.mountd: make exportent->e_hostname a
+	dynamically-allocated string
+Date: Thu, 27 Sep 2007 06:53:53 -0400
+Message-ID: <200709271053.l8RArrHG031625@dantu.rdu.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 To: neilb@suse.de
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Iar0G-0006w6-AP
-	for nfs@lists.sourceforge.net; Thu, 27 Sep 2007 03:53:56 -0700
+	id 1Iar0D-0006vw-2j
+	for nfs@lists.sourceforge.net; Thu, 27 Sep 2007 03:53:53 -0700
 Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Iar0K-0003Le-Ri
-	for nfs@lists.sourceforge.net; Thu, 27 Sep 2007 03:54:01 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Iar0F-000395-SN
+	for nfs@lists.sourceforge.net; Thu, 27 Sep 2007 03:53:58 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,143 +28,151 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This moves the resolution of IP address to hostent into a helper function
-and has other functions call it. Having client_compose take a hostent arg
-allows us to avoid an extra hostname lookup in the auth_authenticate
-codepath as well. Instead of redoing this lookup in client_compose, we can
-simply reuse the hostent that was already generated in auth_authenticate.
+This makes the e_hostname field of the exportent into a pointer to a
+dynamically allocated string. This is necessary since this is field is
+often filled out from the m_hostname. This too adds a few
+micro-optimizations as we can avoid copying the string in some places
+and simply pass a pointer to the original string instead.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 Acked-by: Steve Dickson <steved@redhat.com>
 ---
- support/export/client.c    |   22 ++++++++++++++--------
- support/include/exportfs.h |    3 ++-
- utils/mountd/auth.c        |    8 ++------
- utils/mountd/cache.c       |    6 ++++--
- 4 files changed, 22 insertions(+), 17 deletions(-)
+ support/export/export.c  |    5 +++++
+ support/export/rmtab.c   |    4 +---
+ support/export/xtab.c    |    9 ++-------
+ support/include/nfslib.h |    2 +-
+ support/nfs/exports.c    |   19 ++++++-------------
+ 5 files changed, 15 insertions(+), 24 deletions(-)
 
-diff --git a/support/export/client.c b/support/export/client.c
-index 1754aa0..1cb242f 100644
---- a/support/export/client.c
-+++ b/support/export/client.c
-@@ -233,6 +233,19 @@ client_find(struct hostent *hp)
- 	return NULL;
- }
+diff --git a/support/export/export.c b/support/export/export.c
+index 74e1d1b..93c58b6 100644
+--- a/support/export/export.c
++++ b/support/export/export.c
+@@ -85,6 +85,8 @@ export_init(nfs_export *exp, nfs_client *clp, struct exportent *nep)
+ 	struct exportent	*e = &exp->m_export;
  
-+struct hostent *
-+client_resolve(struct in_addr addr)
-+{
-+	struct hostent *he = NULL;
-+
-+	if (clientlist[MCL_WILDCARD] || clientlist[MCL_NETGROUP])
-+		he = get_reliable_hostbyaddr((const char*)&addr, sizeof(addr), AF_INET);
-+	if (he == NULL)
-+		he = get_hostent((const char*)&addr, sizeof(addr), AF_INET);
-+
-+	return he;
-+}
-+
- /*
-  * Find client name given an IP address
-  * This is found by gathering all known names that match that IP address,
-@@ -242,17 +255,11 @@ client_find(struct hostent *hp)
- static char *add_name(char *old, char *add);
+ 	dupexportent(e, nep);
++	if (nep->e_hostname)
++		e->e_hostname = xstrdup(nep->e_hostname);
  
- char *
--client_compose(struct in_addr addr)
-+client_compose(struct hostent *he)
- {
--	struct hostent *he = NULL;
- 	char *name = NULL;
- 	int i;
+ 	exp->m_exported = 0;
+ 	exp->m_xtabent = 0;
+@@ -109,6 +111,8 @@ export_dup(nfs_export *exp, struct hostent *hp)
+ 	new = (nfs_export *) xmalloc(sizeof(*new));
+ 	memcpy(new, exp, sizeof(*new));
+ 	dupexportent(&new->m_export, &exp->m_export);
++	if (exp->m_export.e_hostname)
++		new->m_export.e_hostname = xstrdup(exp->m_export.e_hostname);
+ 	clp = client_dup(exp->m_client, hp);
+ 	clp->m_count++;
+ 	new->m_client = clp;
+@@ -244,6 +248,7 @@ export_freeall(void)
+ 				free(exp->m_export.e_mountpoint);
+ 			if (exp->m_export.e_fslocdata)
+ 				xfree(exp->m_export.e_fslocdata);
++			xfree(exp->m_export.e_hostname);
+ 			xfree(exp);
+ 		}
+ 		exportlist[i] = NULL;
+diff --git a/support/export/rmtab.c b/support/export/rmtab.c
+index 15aab15..2a882aa 100644
+--- a/support/export/rmtab.c
++++ b/support/export/rmtab.c
+@@ -43,9 +43,7 @@ rmtab_read(void)
+ 			if (!exp2) {
+ 				struct exportent ee;
+ 				dupexportent(&ee, &exp->m_export);
+-				strncpy (ee.e_hostname, rep->r_client,
+-					 sizeof (ee.e_hostname) - 1);
+-				ee.e_hostname[sizeof (ee.e_hostname) -1] = '\0';
++				ee.e_hostname = rep->r_client;
+ 				exp2 = export_create(&ee, 0);
+ 				exp2->m_changed = exp->m_changed;
+ 			}
+diff --git a/support/export/xtab.c b/support/export/xtab.c
+index 292087b..990113e 100644
+--- a/support/export/xtab.c
++++ b/support/export/xtab.c
+@@ -108,10 +108,7 @@ xtab_write(char *xtab, char *xtabtmp, int is_export)
  
--	if (clientlist[MCL_WILDCARD] || clientlist[MCL_NETGROUP])
--		he = get_reliable_hostbyaddr((const char*)&addr, sizeof(addr), AF_INET);
--	if (he == NULL)
--		he = get_hostent((const char*)&addr, sizeof(addr), AF_INET);
--
- 	for (i = 0 ; i < MCL_MAXTYPES; i++) {
- 		nfs_client	*clp;
- 		for (clp = clientlist[i]; clp ; clp = clp->m_next) {
-@@ -261,7 +268,6 @@ client_compose(struct in_addr addr)
- 			name = add_name(name, clp->m_hostname);
+ 			/* write out the export entry using the FQDN */
+ 			xe = exp->m_export;
+-			strncpy(xe.e_hostname,
+-				exp->m_client->m_hostname,
+-				sizeof (xe.e_hostname) - 1);
+-			xe.e_hostname[sizeof (xe.e_hostname) - 1] = '\0';
++			xe.e_hostname = exp->m_client->m_hostname;
+ 			putexportent(&xe);
  		}
  	}
--	free(he);
- 	return name;
- }
- 
-diff --git a/support/include/exportfs.h b/support/include/exportfs.h
-index a491b1a..c1ba543 100644
---- a/support/include/exportfs.h
-+++ b/support/include/exportfs.h
-@@ -64,7 +64,8 @@ int				client_check(nfs_client *, struct hostent *);
- int				client_match(nfs_client *, char *hname);
- void				client_release(nfs_client *);
- void				client_freeall(void);
--char *				client_compose(struct in_addr addr);
-+char *				client_compose(struct hostent *he);
-+struct hostent *		client_resolve(struct in_addr addr);
- int 				client_member(char *client, char *name);
- 
- int				export_read(char *fname);
-diff --git a/utils/mountd/auth.c b/utils/mountd/auth.c
-index 950ea20..84fea30 100644
---- a/utils/mountd/auth.c
-+++ b/utils/mountd/auth.c
-@@ -89,7 +89,7 @@ auth_authenticate_internal(char *what, struct sockaddr_in *caller,
- 		/* return static nfs_export with details filled in */
- 		char *n;
- 		my_client.m_addrlist[0] = caller->sin_addr;
--		n = client_compose(caller->sin_addr);
-+		n = client_compose(hp);
- 		*error = unknown_host;
- 		if (!n)
- 			return NULL;
-@@ -160,11 +160,7 @@ auth_authenticate(char *what, struct sockaddr_in *caller, char *path)
- 	epath[sizeof (epath) - 1] = '\0';
- 	auth_fixpath(epath); /* strip duplicate '/' etc */
- 
--	hp = get_reliable_hostbyaddr((const char*)&caller->sin_addr, sizeof(struct in_addr),
--				     AF_INET);
--	if (!hp)
--		hp = get_hostent((const char*)&caller->sin_addr, sizeof(struct in_addr),
--				     AF_INET);
-+	hp = client_resolve(caller->sin_addr);
- 	if (!hp)
- 		return exp;
- 
-diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-index fedc0bf..ef460f7 100644
---- a/utils/mountd/cache.c
-+++ b/utils/mountd/cache.c
-@@ -76,6 +76,7 @@ void auth_unix_ip(FILE *f)
- 	char ipaddr[20];
- 	char *client;
- 	struct in_addr addr;
-+	struct hostent *he;
- 	if (readline(fileno(f), &lbuf, &lbuflen) != 1)
+@@ -146,9 +143,7 @@ xtab_append(nfs_export *exp)
  		return;
+ 	setexportent(_PATH_XTAB, "a");
+ 	xe = exp->m_export;
+-	strncpy(xe.e_hostname, exp->m_client->m_hostname,
+-	       sizeof (xe.e_hostname) - 1);
+-	xe.e_hostname[sizeof (xe.e_hostname) - 1] = '\0';
++	xe.e_hostname = exp->m_client->m_hostname;
+ 	putexportent(&xe);
+ 	endexportent();
+ 	xfunlock(lockid);
+diff --git a/support/include/nfslib.h b/support/include/nfslib.h
+index 5af9c30..ffa2440 100644
+--- a/support/include/nfslib.h
++++ b/support/include/nfslib.h
+@@ -65,7 +65,7 @@ struct sec_entry {
+  * allow overrides when using exportfs.
+  */
+ struct exportent {
+-	char		e_hostname[NFSCLNT_IDMAX+1];
++	char *		e_hostname;
+ 	char		e_path[NFS_MAXPATHLEN+1];
+ 	/* The mount path may be different from the exported path due
+ 	   to submount. It may change for every mount. The idea is we
+diff --git a/support/nfs/exports.c b/support/nfs/exports.c
+index c82bb0e..6b56708 100644
+--- a/support/nfs/exports.c
++++ b/support/nfs/exports.c
+@@ -176,13 +176,8 @@ getexportent(int fromkernel, int fromexports)
+ 		if (!has_default_opts)
+ 			xlog(L_WARNING, "No options for %s %s: suggest %s(sync) to avoid warning", ee.e_path, exp, exp);
+ 	}
+-	if (strlen(hostname) >= sizeof(ee.e_hostname)) {
+-		syntaxerr("client name too long");
+-		export_errno = EINVAL;
+-		return NULL;
+-	}
+-	strncpy(ee.e_hostname, hostname, sizeof (ee.e_hostname) - 1);
+-	ee.e_hostname[sizeof (ee.e_hostname) - 1] = '\0';
++	xfree(ee.e_hostname);
++	ee.e_hostname = xstrdup(hostname);
  
-@@ -94,7 +95,8 @@ void auth_unix_ip(FILE *f)
- 	auth_reload();
- 
- 	/* addr is a valid, interesting address, find the domain name... */
--	client = client_compose(addr);
-+	he = client_resolve(addr);
-+	client = client_compose(he);
- 
- 	
- 	qword_print(f, "nfsd");
-@@ -105,7 +107,7 @@ void auth_unix_ip(FILE *f)
- 	qword_eol(f);
- 
- 	if (client) free(client);
--	
-+	free(he);
+ 	if (parseopts(opt, &ee, fromexports && !has_default_subtree_opts, NULL) < 0)
+ 		return NULL;
+@@ -335,6 +330,7 @@ dupexportent(struct exportent *dst, struct exportent *src)
+ 		dst->e_mountpoint = strdup(src->e_mountpoint);
+ 	if (src->e_fslocdata)
+ 		dst->e_fslocdata = strdup(src->e_fslocdata);
++	dst->e_hostname = NULL;
  }
  
- void auth_unix_gid(FILE *f)
+ struct exportent *
+@@ -355,12 +351,9 @@ mkexportent(char *hname, char *path, char *options)
+ 	ee.e_nsqgids = 0;
+ 	ee.e_uuid = NULL;
+ 
+-	if (strlen(hname) >= sizeof(ee.e_hostname)) {
+-		xlog(L_WARNING, "client name %s too long", hname);
+-		return NULL;
+-	}
+-	strncpy(ee.e_hostname, hname, sizeof (ee.e_hostname) - 1);
+-	ee.e_hostname[sizeof (ee.e_hostname) - 1] = '\0';
++	xfree(ee.e_hostname);
++	ee.e_hostname = xstrdup(hname);
++
+ 	if (strlen(path) >= sizeof(ee.e_path)) {
+ 		xlog(L_WARNING, "path name %s too long", path);
+ 		return NULL;
 -- 
 1.5.2.1
 
