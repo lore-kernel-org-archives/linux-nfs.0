@@ -1,65 +1,110 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: NFS server development update
-Date: Thu, 27 Sep 2007 11:39:56 -0400
-Message-ID: <20070927153956.GF2522@fieldses.org>
-References: <20070927153233.GE2522@fieldses.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 0/7] Add mount option parsing facility to
+	text-based mount.nfs
+Date: Thu, 27 Sep 2007 13:31:37 -0400
+Message-ID: <46FBE8F9.8040804@oracle.com>
+References: <20070925172637.4845.51938.stgit@monet.1015granger.net>
+	<18169.44784.512106.346767@notabene.brown>
+Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
+Content-Type: multipart/mixed; boundary="------------010006010307060402010308"
+Cc: nfs@lists.sourceforge.net
+To: Neil Brown <neilb@suse.de>
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1IaxE3-0000mG-4t
+	for nfs@lists.sourceforge.net; Thu, 27 Sep 2007 10:32:35 -0700
+Received: from agminet01.oracle.com ([141.146.126.228])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IaxE6-0004ST-9I
+	for nfs@lists.sourceforge.net; Thu, 27 Sep 2007 10:32:40 -0700
+In-Reply-To: <18169.44784.512106.346767@notabene.brown>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
+
+This is a multi-part message in MIME format.
+--------------010006010307060402010308
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+
+Neil Brown wrote:
+> On Tuesday September 25, chuck.lever@oracle.com wrote:
+>> Hi Neil-
+>>
+>> Seven more patches for text-based mount.nfs.
+>>
+>> I found that it is necessary to do some rather advanced lexical parsing of
+>> the mount option string in order to handle version/protocol fallback.  So I've
+>> implemented a data structure that can handle the parsing requirements, and
+>> some wrapper logic to convert the mount option string to the new data
+>> structure and then convert it back to a string before calling mount(2).
+>>
+>> This series introduces the new facility and makes use of it for existing text-
+>> based mount option processing (like adding "addr=" and so on).  In subsequent
+>> patches I will make more use of the new facility.
+> 
+> Nice.
+> 
+> However: The current parsing of mount options (parse_opts,
+> parse_options) allows for "quotes" around options so that an option
+> can contain a comma (Gumble SELinux Grumble  context=foo,bar Grumble).
+> Your mount option parsing doesn't allow for this.  Should it?
+
+Well, amusingly, the strtok(3) man page states this in its BUGS section: 
+  "Avoid using these functions."
+
+The mount option parser should definitely be aware of quotes.  I'll 
+rework po_split() to handle quotes correctly, and resubmit the patches.
+
+--------------010006010307060402010308
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck.lever.vcf"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="chuck.lever.vcf"
+
+begin:vcard
+fn:Chuck Lever
+n:Lever;Chuck
+org:Oracle Corporation;Corporate Architecture: Linux Projects Group
+adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
+email;internet:chuck dot lever at nospam oracle dot com
+title:Principal Member of Staff
+tel;work:+1 248 614 5091
+x-mozilla-html:FALSE
+version:2.1
+end:vcard
+
+
+--------------010006010307060402010308
 Content-Type: text/plain; charset="us-ascii"
-Cc: linux-kernel@vger.kernel.org
-To: nfs@lists.sourceforge.net, nfsv4@linux-nfs.org
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <20070927153233.GE2522@fieldses.org>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
-List-ID: <nfs.lists.sourceforge.net>
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
-On Thu, Sep 27, 2007 at 11:32:33AM -0400, J. Bruce Fields wrote:
-> I'll follow up with a summary of the patches I currently have.
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Microsoft
+Defy all challenges. Microsoft(R) Visual Studio 2005.
+http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+--------------010006010307060402010308
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
-... but this time around that's nothing major--mostly just small
-bugfixes and cleanup, including 64 bit inode support from Peter Staubach
-and some preparation for supporting callbacks (hence delegations) over
-krb5.
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
 
-One outstanding question is what to do about the server RDMA and
-transport-switch code, not yet included below.  It would nice to finally
-see that start going in, but it's a lot of code to add this late.
-
---b.
-
->From git://linux-nfs.org/~bfields/linux.git nfs-server-stable:
-
-Andrew Morton (1):
-      nfsd warning fix
-
-Christoph Hellwig (1):
-      nfsd: fix horrible indentation in nfsd_setattr
-
-Dr. David Alan Gilbert (1):
-      knfsd: Add source address to sunrpc svc errors
-
-J. Bruce Fields (14):
-      nfsd: tone down inaccurate dprintk
-      nfsd: remove unused cache_for_each macro
-      knfsd: delete code made redundant by map_new_errors
-      knfsd: cleanup of nfsd4 cmp_* functions
-      knfsd: demote some printk()s to dprintk()s
-      knfsd: nfs4 name->id mapping not correctly parsing negative downcall
-      knfsd: spawn kernel thread to probe callback channel
-      knfsd: move nfsv4 slab creation/destruction to module init/exit
-      knfsd: fix callback rpc cred
-      knfsd: remove code duplication in nfsd4_setclientid()
-      svcgss: move init code into separate function
-      knfsd: let nfsd manage timing out its own leases
-      knfsd: don't shutdown callbacks until nfsv4 client is freed
-      knfsd: nfsv4 delegation recall should take reference on client
-
-Peter Staubach (1):
-      knfsd: 64 bit ino support for NFS server
+--------------010006010307060402010308--
