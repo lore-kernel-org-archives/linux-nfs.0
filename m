@@ -1,8 +1,8 @@
 From: Tom Tucker <tom@opengridcomputing.com>
 Subject: [RFC,
-	PATCH 29/33] svc: Move common create logic to common code
-Date: Thu, 27 Sep 2007 00:02:35 -0500
-Message-ID: <20070927050235.12677.21554.stgit@dell3.ogc.int>
+	PATCH 28/33] svc: Make svc_age_temp_sockets svc_age_temp_transports
+Date: Thu, 27 Sep 2007 00:02:33 -0500
+Message-ID: <20070927050233.12677.44689.stgit@dell3.ogc.int>
 References: <20070927045751.12677.98896.stgit@dell3.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -12,12 +12,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IalWA-0005jk-W7
-	for nfs@lists.sourceforge.net; Wed, 26 Sep 2007 22:02:31 -0700
+	id 1IalWF-0005jg-SG
+	for nfs@lists.sourceforge.net; Wed, 26 Sep 2007 22:02:35 -0700
 Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]
 	helo=smtp.opengridcomputing.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IalWF-0005VB-Js
-	for nfs@lists.sourceforge.net; Wed, 26 Sep 2007 22:02:36 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IalWD-0005U9-Gs
+	for nfs@lists.sourceforge.net; Wed, 26 Sep 2007 22:02:35 -0700
 In-Reply-To: <20070927045751.12677.98896.stgit@dell3.ogc.int>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -32,116 +32,94 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 
-Move the code that adds a transport instance to the sv_tempsocks and
-sv_permsocks lists out of the transport specific functions and into core
-logic. 
-
-The svc_addsock routine still manipulates sv_permsocks directly. This
-code may be removed when rpc.nfsd is modified to create transports
-by writing to the portlist file.
+This function is transport independent. Change it to use svc_xprt directly
+and change it's name to reflect this.
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- net/sunrpc/svc_xprt.c |    7 +++++++
- net/sunrpc/svcsock.c  |   38 +++++++++++++++++++-------------------
- 2 files changed, 26 insertions(+), 19 deletions(-)
+ net/sunrpc/svcsock.c |   32 +++++++++++++++++---------------
+ 1 files changed, 17 insertions(+), 15 deletions(-)
 
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 8d87b6a..78c93a4 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -146,6 +146,13 @@ int svc_create_xprt(struct svc_serv *ser
- 				if (IS_ERR(newxprt)) {
- 					module_put(xcl->xcl_owner);
- 					ret = PTR_ERR(newxprt);
-+				} else {
-+					clear_bit(XPT_TEMP, 
-+						  &newxprt->xpt_flags);
-+					spin_lock_bh(&serv->sv_lock);
-+					list_add(&newxprt->xpt_list, 
-+						 &serv->sv_permsocks);
-+					spin_unlock_bh(&serv->sv_lock);
- 				}
- 				goto out;
- 			}
 diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index b1affaa..8a708a8 100644
+index f5da434..b1affaa 100644
 --- a/net/sunrpc/svcsock.c
 +++ b/net/sunrpc/svcsock.c
-@@ -92,6 +92,7 @@ static int svc_deferred_recv(struct svc_
- static struct cache_deferred_req *svc_defer(struct cache_req *req);
- static struct svc_xprt *
- svc_create_socket(struct svc_serv *, int, struct sockaddr *, int, int);
-+static void svc_age_temp_xprts(unsigned long closure);
+@@ -1685,49 +1685,51 @@ svc_send(struct svc_rqst *rqstp)
+  * a mark-and-sweep algorithm.
+  */
+ static void
+-svc_age_temp_sockets(unsigned long closure)
++svc_age_temp_xprts(unsigned long closure)
+ {
+ 	struct svc_serv *serv = (struct svc_serv *)closure;
+-	struct svc_sock *svsk;
++	struct svc_xprt *xprt;
+ 	struct list_head *le, *next;
+ 	LIST_HEAD(to_be_aged);
  
- /* apparently the "standard" is that clients close
-  * idle connections after 5 minutes, servers after
-@@ -1598,6 +1599,18 @@ svc_recv(struct svc_rqst *rqstp, long ti
- 			 */
- 			__module_get(newxpt->xpt_class->xcl_owner);
- 			svc_check_conn_limits(xprt->xpt_server);
-+			spin_lock_bh(&serv->sv_lock);
-+			set_bit(XPT_TEMP, &newxpt->xpt_flags);
-+			list_add(&newxpt->xpt_list, &serv->sv_tempsocks);
-+			serv->sv_tmpcnt++;
-+			if (serv->sv_temptimer.function == NULL) {
-+				/* setup timer to age temp sockets */
-+				setup_timer(&serv->sv_temptimer, svc_age_temp_xprts,
-+					    (unsigned long)serv);
-+				mod_timer(&serv->sv_temptimer,
-+					  jiffies + svc_conn_age_period * HZ);
-+			}
-+			spin_unlock_bh(&serv->sv_lock);
- 		}			
- 		svc_xprt_received(xprt);
- 	} else {
-@@ -1746,7 +1759,6 @@ static struct svc_sock *svc_setup_socket
- 	struct svc_sock	*svsk;
- 	struct sock	*inet;
- 	int		pmap_register = !(flags & SVC_SOCK_ANONYMOUS);
--	int		is_temporary = flags & SVC_SOCK_TEMPORARY;
+-	dprintk("svc_age_temp_sockets\n");
++	dprintk("svc_age_temp_xprts\n");
  
- 	dprintk("svc: svc_setup_socket %p\n", sock);
- 	if (!(svsk = kzalloc(sizeof(*svsk), GFP_KERNEL))) {
-@@ -1785,24 +1797,6 @@ static struct svc_sock *svc_setup_socket
- 		set_bit(XPT_CACHE_AUTH, &svsk->sk_xprt.xpt_flags);
+ 	if (!spin_trylock_bh(&serv->sv_lock)) {
+ 		/* busy, try again 1 sec later */
+-		dprintk("svc_age_temp_sockets: busy\n");
++		dprintk("svc_age_temp_xprts: busy\n");
+ 		mod_timer(&serv->sv_temptimer, jiffies + HZ);
+ 		return;
  	}
  
--	spin_lock_bh(&serv->sv_lock);
--	if (is_temporary) {
--		set_bit(XPT_TEMP, &svsk->sk_xprt.xpt_flags);
--		list_add(&svsk->sk_xprt.xpt_list, &serv->sv_tempsocks);
--		serv->sv_tmpcnt++;
--		if (serv->sv_temptimer.function == NULL) {
--			/* setup timer to age temp sockets */
--			setup_timer(&serv->sv_temptimer, svc_age_temp_xprts,
--					(unsigned long)serv);
--			mod_timer(&serv->sv_temptimer,
--					jiffies + svc_conn_age_period * HZ);
--		}
--	} else {
--		clear_bit(XPT_TEMP, &svsk->sk_xprt.xpt_flags);
--		list_add(&svsk->sk_xprt.xpt_list, &serv->sv_permsocks);
--	}
--	spin_unlock_bh(&serv->sv_lock);
--
- 	dprintk("svc: svc_setup_socket created %p (inet %p)\n",
- 				svsk, svsk->sk_sk);
+ 	list_for_each_safe(le, next, &serv->sv_tempsocks) {
+-		svsk = list_entry(le, struct svc_sock, sk_xprt.xpt_list);
++		xprt = list_entry(le, struct svc_xprt, xpt_list);
  
-@@ -1833,6 +1827,12 @@ int svc_addsock(struct svc_serv *serv,
- 			svc_xprt_received(&svsk->sk_xprt);
- 			err = 0;
- 		}
-+		if (so->sk->sk_protocol == IPPROTO_TCP)
-+			set_bit(XPT_LISTENER, &svsk->sk_xprt.xpt_flags);
-+		clear_bit(XPT_TEMP, &svsk->sk_xprt.xpt_flags);
-+		spin_lock_bh(&serv->sv_lock);
-+		list_add(&svsk->sk_xprt.xpt_list, &serv->sv_permsocks);
-+		spin_unlock_bh(&serv->sv_lock);
+-		if (!test_and_set_bit(XPT_OLD, &svsk->sk_xprt.xpt_flags))
++		/* First time through, just mark it OLD. Second time 
++		 * through, close it. */
++		if (!test_and_set_bit(XPT_OLD, &xprt->xpt_flags))
+ 			continue;
+ 		if (atomic_read(&svsk->sk_xprt.xpt_ref.refcount) > 1 
+ 		    || test_bit(SK_BUSY, &svsk->sk_flags))
+ 			continue;
+-		svc_xprt_get(&svsk->sk_xprt);
++		svc_xprt_get(xprt);
+ 		list_move(le, &to_be_aged);
+-		set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
+-		set_bit(XPT_DETACHED, &svsk->sk_xprt.xpt_flags);
++		set_bit(XPT_CLOSE, &xprt->xpt_flags);
++		set_bit(XPT_DETACHED, &xprt->xpt_flags);
  	}
- 	if (err) {
- 		sockfd_put(so);
+ 	spin_unlock_bh(&serv->sv_lock);
+ 
+ 	while (!list_empty(&to_be_aged)) {
+ 		le = to_be_aged.next;
+-		/* fiddling the sk_xprt.xpt_list node is safe 'cos we're XPT_DETACHED */
++		/* fiddling the xpt_list node is safe 'cos we're XPT_DETACHED */
+ 		list_del_init(le);
+-		svsk = list_entry(le, struct svc_sock, sk_xprt.xpt_list);
++		xprt = list_entry(le, struct svc_xprt, xpt_list);
+ 
+ 		dprintk("queuing svsk %p for closing, %lu seconds old\n",
+-			svsk, get_seconds() - svsk->sk_xprt.xpt_lastrecv);
++			xprt, get_seconds() - xprt->xpt_lastrecv);
+ 
+ 		/* a thread will dequeue and close it soon */
+-		svc_xprt_enqueue(&svsk->sk_xprt);
+-		svc_xprt_put(&svsk->sk_xprt);
++		svc_xprt_enqueue(xprt);
++		svc_xprt_put(xprt);
+ 	}
+ 
+ 	mod_timer(&serv->sv_temptimer, jiffies + svc_conn_age_period * HZ);
+@@ -1790,7 +1792,7 @@ static struct svc_sock *svc_setup_socket
+ 		serv->sv_tmpcnt++;
+ 		if (serv->sv_temptimer.function == NULL) {
+ 			/* setup timer to age temp sockets */
+-			setup_timer(&serv->sv_temptimer, svc_age_temp_sockets,
++			setup_timer(&serv->sv_temptimer, svc_age_temp_xprts,
+ 					(unsigned long)serv);
+ 			mod_timer(&serv->sv_temptimer,
+ 					jiffies + svc_conn_age_period * HZ);
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
