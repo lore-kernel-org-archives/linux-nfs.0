@@ -1,8 +1,7 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [RFC,
-	PATCH 25/33] svc: Move the sockaddr information to svc_xprt
-Date: Thu, 27 Sep 2007 00:02:27 -0500
-Message-ID: <20070927050227.12677.32560.stgit@dell3.ogc.int>
+Subject: [RFC, PATCH 26/33] svc: Make svc_sock_release svc_xprt_release
+Date: Thu, 27 Sep 2007 00:02:29 -0500
+Message-ID: <20070927050229.12677.83113.stgit@dell3.ogc.int>
 References: <20070927045751.12677.98896.stgit@dell3.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -12,11 +11,11 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IalWA-0005jU-3K
+	id 1IalWA-0005jV-49
 	for nfs@lists.sourceforge.net; Wed, 26 Sep 2007 22:02:30 -0700
 Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]
 	helo=smtp.opengridcomputing.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IalWC-0005VB-Cu
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IalWE-0005Vm-Mr
 	for nfs@lists.sourceforge.net; Wed, 26 Sep 2007 22:02:35 -0700
 In-Reply-To: <20070927045751.12677.98896.stgit@dell3.ogc.int>
 List-Id: "Discussion of NFS under Linux development, interoperability,
@@ -32,142 +31,79 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 
-Move the IP address fields to the svc_xprt structure. Note that this 
-assumes that _all_ RPC transports must have IP based 4-tuples. This 
-seems reasonable given the tight coupling with the portmapper etc...
-Thoughts?
+The svc_sock_release function only touches transport independent fields.
+Change the function to manipulate svc_xprt directly instead of the transport
+dependent svc_sock structure. 
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- include/linux/sunrpc/svc_xprt.h |    3 ++
- include/linux/sunrpc/svcsock.h  |    4 ---
- net/sunrpc/svcsock.c            |   50 +++++++++++++++++++++------------------
- 3 files changed, 30 insertions(+), 27 deletions(-)
+ net/sunrpc/svcsock.c |   15 +++++++--------
+ 1 files changed, 7 insertions(+), 8 deletions(-)
 
-diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index ef5026d..e00ff60 100644
---- a/include/linux/sunrpc/svc_xprt.h
-+++ b/include/linux/sunrpc/svc_xprt.h
-@@ -62,6 +62,9 @@ #define XPT_CACHE_AUTH	12			/* cache aut
- 	void		*	xpt_auth_cache;	/* auth cache */
- 	struct list_head	xpt_deferred;	/* deferred requests that need to
- 						 * be revisted */
-+	struct sockaddr_storage	xpt_local;	/* local address */
-+	struct sockaddr_storage	xpt_remote;	/* remote peer's address */
-+	int			xpt_remotelen;	/* length of address */
- };
- 
- int	svc_reg_xprt_class(struct svc_xprt_class *);
-diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
-index 96a229e..206f092 100644
---- a/include/linux/sunrpc/svcsock.h
-+++ b/include/linux/sunrpc/svcsock.h
-@@ -28,10 +28,6 @@ struct svc_sock {
- 	/* private TCP part */
- 	int			sk_reclen;	/* length of record */
- 	int			sk_tcplen;	/* current read length */
--
--	struct sockaddr_storage	sk_local;	/* local address */
--	struct sockaddr_storage	sk_remote;	/* remote peer's address */
--	int			sk_remotelen;	/* length of address */
- };
- 
- /*
 diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 9e3071c..37978f7 100644
+index 37978f7..89f345d 100644
 --- a/net/sunrpc/svcsock.c
 +++ b/net/sunrpc/svcsock.c
-@@ -631,33 +631,13 @@ svc_recvfrom(struct svc_rqst *rqstp, str
- 	struct msghdr msg = {
- 		.msg_flags	= MSG_DONTWAIT,
- 	};
--	struct sockaddr *sin;
- 	int len;
- 
- 	len = kernel_recvmsg(svsk->sk_sock, &msg, iov, nr, buflen,
- 				msg.msg_flags);
- 
--	/* sock_recvmsg doesn't fill in the name/namelen, so we must..
--	 */
--	memcpy(&rqstp->rq_addr, &svsk->sk_remote, svsk->sk_remotelen);
--	rqstp->rq_addrlen = svsk->sk_remotelen;
--
--	/* Destination address in request is needed for binding the
--	 * source address in RPC callbacks later.
--	 */
--	sin = (struct sockaddr *)&svsk->sk_local;
--	switch (sin->sa_family) {
--	case AF_INET:
--		rqstp->rq_daddr.addr = ((struct sockaddr_in *)sin)->sin_addr;
--		break;
--	case AF_INET6:
--		rqstp->rq_daddr.addr6 = ((struct sockaddr_in6 *)sin)->sin6_addr;
--		break;
--	}
--
- 	dprintk("svc: socket %p recvfrom(%p, %Zu) = %d\n",
- 		svsk, iov[0].iov_base, iov[0].iov_len, len);
--
- 	return len;
+@@ -377,9 +377,9 @@ void svc_reserve(struct svc_rqst *rqstp,
  }
  
-@@ -1109,14 +1089,14 @@ svc_tcp_accept(struct svc_xprt *xprt)
- 	if (!(newsvsk = svc_setup_socket(serv, newsock, &err,
- 				 (SVC_SOCK_ANONYMOUS | SVC_SOCK_TEMPORARY))))
- 		goto failed;
--	memcpy(&newsvsk->sk_remote, sin, slen);
--	newsvsk->sk_remotelen = slen;
-+	memcpy(&newsvsk->sk_xprt.xpt_remote, sin, slen);
-+	newsvsk->sk_xprt.xpt_remotelen = slen;
- 	err = kernel_getsockname(newsock, sin, &slen);
- 	if (unlikely(err < 0)) {
- 		dprintk("svc_tcp_accept: kernel_getsockname error %d\n", -err);
- 		slen = offsetof(struct sockaddr, sa_data);
- 	}
--	memcpy(&newsvsk->sk_local, sin, slen);
-+	memcpy(&newsvsk->sk_xprt.xpt_local, sin, slen);
+ static void
+-svc_sock_release(struct svc_rqst *rqstp)
++svc_xprt_release(struct svc_rqst *rqstp)
+ {
+-	struct svc_sock	*svsk = rqstp->rq_sock;
++	struct svc_xprt	*xprt = rqstp->rq_xprt;
  
- 	if (serv->sv_stats)
- 		serv->sv_stats->nettcpconn++;
-@@ -1490,6 +1470,29 @@ svc_check_conn_limits(struct svc_serv *s
- 	}
+ 	rqstp->rq_xprt->xpt_ops.xpo_release(rqstp);
+ 
+@@ -387,7 +387,6 @@ svc_sock_release(struct svc_rqst *rqstp)
+ 	rqstp->rq_res.page_len = 0;
+ 	rqstp->rq_res.page_base = 0;
+ 
+-
+ 	/* Reset response buffer and release
+ 	 * the reservation.
+ 	 * But first, check that enough space was reserved
+@@ -400,9 +399,9 @@ svc_sock_release(struct svc_rqst *rqstp)
+ 
+ 	rqstp->rq_res.head[0].iov_len = 0;
+ 	svc_reserve(rqstp, 0);
+-	rqstp->rq_sock = NULL;
++	rqstp->rq_xprt = NULL;
+ 
+-	svc_xprt_put(&svsk->sk_xprt);
++	svc_xprt_put(xprt);
  }
  
-+static void inline svc_copy_addr(struct svc_rqst *rqstp, struct svc_xprt *xprt)
-+{
-+	struct sockaddr *sin;
-+
-+	/* sock_recvmsg doesn't fill in the name/namelen, so we must..
-+	 */
-+	memcpy(&rqstp->rq_addr, &xprt->xpt_remote, xprt->xpt_remotelen);
-+	rqstp->rq_addrlen = xprt->xpt_remotelen;
-+
-+	/* Destination address in request is needed for binding the
-+	 * source address in RPC callbacks later.
-+	 */
-+	sin = (struct sockaddr *)&xprt->xpt_local;
-+	switch (sin->sa_family) {
-+	case AF_INET:
-+		rqstp->rq_daddr.addr = ((struct sockaddr_in *)sin)->sin_addr;
-+		break;
-+	case AF_INET6:
-+		rqstp->rq_daddr.addr6 = ((struct sockaddr_in6 *)sin)->sin6_addr;
-+		break;
-+	}
-+}
-+
  /*
-  * Receive the next request on any socket.  This code is carefully
-  * organised not to touch any cachelines in the shared svc_serv
-@@ -1608,6 +1611,7 @@ svc_recv(struct svc_rqst *rqstp, long ti
- 			len = svc_deferred_recv(rqstp);
- 		} else 
- 			len = svsk->sk_xprt.xpt_ops.xpo_recvfrom(rqstp);
-+		svc_copy_addr(rqstp, &svsk->sk_xprt);
- 		dprintk("svc: got len=%d\n", len);
+@@ -1618,7 +1617,7 @@ svc_recv(struct svc_rqst *rqstp, long ti
+ 	/* No data, incomplete (TCP) read, or accept() */
+ 	if (len == 0 || len == -EAGAIN) {
+ 		rqstp->rq_res.len = 0;
+-		svc_sock_release(rqstp);
++		svc_xprt_release(rqstp);
+ 		return -EAGAIN;
  	}
+ 	svsk->sk_xprt.xpt_lastrecv = get_seconds();
+@@ -1639,7 +1638,7 @@ void
+ svc_drop(struct svc_rqst *rqstp)
+ {
+ 	dprintk("svc: socket %p dropped request\n", rqstp->rq_sock);
+-	svc_sock_release(rqstp);
++	svc_xprt_release(rqstp);
+ }
  
+ /*
+@@ -1674,7 +1673,7 @@ svc_send(struct svc_rqst *rqstp)
+ 	else
+ 		len = xprt->xpt_ops.xpo_sendto(rqstp);
+ 	mutex_unlock(&xprt->xpt_mutex);
+-	svc_sock_release(rqstp);
++	svc_xprt_release(rqstp);
+ 
+ 	if (len == -ECONNREFUSED || len == -ENOTCONN || len == -EAGAIN)
+ 		return 0;
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
