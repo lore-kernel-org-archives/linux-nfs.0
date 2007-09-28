@@ -1,24 +1,36 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH 0/8] Refresh: Add string option parsing facility
-	to mount.nfs
-Date: Sat, 29 Sep 2007 08:00:58 +1000
-Message-ID: <18173.31130.784485.904909@notabene.brown>
-References: <20070928202752.12851.56345.stgit@monet.1015granger.net>
+From: "Chakri n" <chakriin5@gmail.com>
+Subject: Re: A unresponsive file system can hang all I/O in the system
+	on linux-2.6.23-rc6 (dirty_thresh problem?)
+Date: Fri, 28 Sep 2007 16:33:18 -0700
+Message-ID: <92cbf19b0709281633ib4cfbdet5edc19381beeece3@mail.gmail.com>
+References: <92cbf19b0709272332s25684643odaade0e98cb3a1f4@mail.gmail.com>
+	<1190998853.6702.17.camel@heimdal.trondhjem.org>
+	<20070928114930.2c201324.akpm@linux-foundation.org>
+	<1191006971.6702.25.camel@heimdal.trondhjem.org>
+	<20070928122628.965137f2.akpm@linux-foundation.org>
+	<1191009148.6702.46.camel@heimdal.trondhjem.org>
+	<20070928131012.4a03c53e.akpm@linux-foundation.org>
+	<1191011538.6702.59.camel@heimdal.trondhjem.org>
+	<20070928134326.e3bb63b1.akpm@linux-foundation.org>
+	<92cbf19b0709281436i41247863t6cbc919c33e972a3@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Chuck Lever <chuck.lever@oracle.com>
+Cc: a.p.zijlstra@chello.nl, linux-pm@lists.linux-foundation.org,
+	nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org,
+	Trond Myklebust <trond.myklebust@fys.uio.no>
+To: "Andrew Morton" <akpm@linux-foundation.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IbNtY-0006O0-8f
-	for nfs@lists.sourceforge.net; Fri, 28 Sep 2007 15:01:17 -0700
-Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IbNtc-0004x4-25
-	for nfs@lists.sourceforge.net; Fri, 28 Sep 2007 15:01:17 -0700
-In-Reply-To: message from Chuck Lever on Friday September 28
+	id 1IbPKc-0006iz-B2
+	for nfs@lists.sourceforge.net; Fri, 28 Sep 2007 16:33:17 -0700
+Received: from wa-out-1112.google.com ([209.85.146.176])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IbPKh-0000CI-7c
+	for nfs@lists.sourceforge.net; Fri, 28 Sep 2007 16:33:19 -0700
+Received: by wa-out-1112.google.com with SMTP id k22so5418374waf
+	for <nfs@lists.sourceforge.net>; Fri, 28 Sep 2007 16:33:18 -0700 (PDT)
+In-Reply-To: <92cbf19b0709281436i41247863t6cbc919c33e972a3@mail.gmail.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,15 +43,91 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Friday September 28, chuck.lever@oracle.com wrote:
-> Refresh of series that adds string option parsing to text-based mount.nfs.
+No change in behavior even in case of low memory systems. I confirmed
+it running on 1Gig machine.
 
-Thanks.  They are applied.
+Thanks
+--Chakri
 
-I guess we are close to a 1.1.1 release now?  I'm away for a week but
-we can maybe do that when I get back?
-
-NeilBrown
+On 9/28/07, Chakri n <chakriin5@gmail.com> wrote:
+> Here is a the snapshot of vmstats when the problem happened. I believe
+> this could help a little.
+>
+> crash> kmem -V
+>        NR_FREE_PAGES: 680853
+>          NR_INACTIVE: 95380
+>            NR_ACTIVE: 26891
+>        NR_ANON_PAGES: 2507
+>       NR_FILE_MAPPED: 1832
+>        NR_FILE_PAGES: 119779
+>        NR_FILE_DIRTY: 0
+>         NR_WRITEBACK: 18272
+>  NR_SLAB_RECLAIMABLE: 1305
+> NR_SLAB_UNRECLAIMABLE: 2085
+>         NR_PAGETABLE: 123
+>      NR_UNSTABLE_NFS: 0
+>            NR_BOUNCE: 0
+>      NR_VMSCAN_WRITE: 0
+>
+> In my testing, I always saw the processes are waiting in
+> balance_dirty_pages_ratelimited(), never in throttle_vm_writeout()
+> path.
+>
+> But this could be because I have about 4Gig of memory in the system
+> and plenty of mem is still available around.
+>
+> I will rerun the test limiting memory to 1024MB and lets see if it
+> takes in any different path.
+>
+> Thanks
+> --Chakri
+>
+>
+> On 9/28/07, Andrew Morton <akpm@linux-foundation.org> wrote:
+> > On Fri, 28 Sep 2007 16:32:18 -0400
+> > Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+> >
+> > > On Fri, 2007-09-28 at 13:10 -0700, Andrew Morton wrote:
+> > > > On Fri, 28 Sep 2007 15:52:28 -0400
+> > > > Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+> > > >
+> > > > > On Fri, 2007-09-28 at 12:26 -0700, Andrew Morton wrote:
+> > > > > > On Fri, 28 Sep 2007 15:16:11 -0400 Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+> > > > > > > Looking back, they were getting caught up in
+> > > > > > > balance_dirty_pages_ratelimited() and friends. See the attached
+> > > > > > > example...
+> > > > > >
+> > > > > > that one is nfs-on-loopback, which is a special case, isn't it?
+> > > > >
+> > > > > I'm not sure that the hang that is illustrated here is so special. It is
+> > > > > an example of a bog-standard ext3 write, that ends up calling the NFS
+> > > > > client, which is hanging. The fact that it happens to be hanging on the
+> > > > > nfsd process is more or less irrelevant here: the same thing could
+> > > > > happen to any other process in the case where we have an NFS server that
+> > > > > is down.
+> > > >
+> > > > hm, so ext3 got stuck in nfs via __alloc_pages direct reclaim?
+> > > >
+> > > > We should be able to fix that by marking the backing device as
+> > > > write-congested.  That'll have small race windows, but it should be a 99.9%
+> > > > fix?
+> > >
+> > > No. The problem would rather appear to be that we're doing
+> > > per-backing_dev writeback (if I read sync_sb_inodes() correctly), but
+> > > we're measuring variables which are global to the VM. The backing device
+> > > that we are selecting may not be writing out any dirty pages, in which
+> > > case, we're just spinning in balance_dirty_pages_ratelimited().
+> >
+> > OK, so it's unrelated to page reclaim.
+> >
+> > > Should we therefore perhaps be looking at adding per-backing_dev stats
+> > > too?
+> >
+> > That's what mm-per-device-dirty-threshold.patch and friends are doing.
+> > Whether it works adequately is not really known at this time.
+> > Unfortunately kernel developers don't test -mm much.
+> >
+>
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
