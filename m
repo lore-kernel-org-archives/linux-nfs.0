@@ -1,129 +1,123 @@
-From: Tom Tucker <tom@opengridcomputing.com>
-Subject: Re: [RFC,PATCH 22/33] svc: Move sk_lastrecv to svc_xprt
-Date: Fri, 28 Sep 2007 11:16:17 -0500
-Message-ID: <1190996177.10604.54.camel@trinity.ogc.int>
-References: <20070927045751.12677.98896.stgit@dell3.ogc.int>
-	<20070927050220.12677.62957.stgit@dell3.ogc.int>
-	<18172.33312.649312.820488@notabene.brown>
-Reply-To: tom@opengridcomputing.com
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: NFS: Fix an Oops in encode_lookup()
+Date: Fri, 28 Sep 2007 12:27:41 -0400
+Message-ID: <1190996861.6702.7.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, gnb@sgi.com
-To: Neil Brown <neilb@suse.de>
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IbIWy-0004pC-NC
-	for nfs@lists.sourceforge.net; Fri, 28 Sep 2007 09:17:32 -0700
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]
-	helo=smtp.opengridcomputing.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IbIX3-0004lK-FS
-	for nfs@lists.sourceforge.net; Fri, 28 Sep 2007 09:17:37 -0700
-In-Reply-To: <18172.33312.649312.820488@notabene.brown>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: text/plain
+Cc: Kamalesh Babulal <kamalesh@linux.vnet.ibm.com>,
+	linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1758126AbXI1Q22@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-On Fri, 2007-09-28 at 14:25 +1000, Neil Brown wrote:
-> On Thursday September 27, tom@opengridcomputing.com wrote:
-> > 
-> > This functionally trivial change moves the tranpsort independent sk_lastrecv 
-> > field to the svc_xprt structure. 
-> 
-> It would seem that sk_lastrecv is entirely unused (Well, a dprintk
-> prints it, but that isn't very interesting).
+It doesn't look as if the NFS file name limit is being initialised correctly
+in the struct nfs_server. Make sure that we limit whatever is being set in
+nfs_probe_fsinfo() and nfs_init_server().
 
-agreed.
+Also ensure that readdirplus and nfs4_path_walk respect our file name
+limits.
 
-> I think it used to be used to time out idle connections, but Greg's
-> mark/sweep does a better job without needing this field.  Shall we
-> just remove it?
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
 
-I think so. Greg?
+ fs/nfs/client.c  |   29 +++++++++++++++++++----------
+ fs/nfs/dir.c     |    2 ++
+ fs/nfs/getroot.c |    3 +++
+ 3 files changed, 24 insertions(+), 10 deletions(-)
 
-> 
-> NeilBrown
-> 
-> 
-> > 
-> > Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
-> > ---
-> > 
-> >  include/linux/sunrpc/svc_xprt.h |    1 +
-> >  include/linux/sunrpc/svcsock.h  |    1 -
-> >  net/sunrpc/svcsock.c            |    6 +++---
-> >  3 files changed, 4 insertions(+), 4 deletions(-)
-> > 
-> > diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-> > index 5b2aef4..edb7ad2 100644
-> > --- a/include/linux/sunrpc/svc_xprt.h
-> > +++ b/include/linux/sunrpc/svc_xprt.h
-> > @@ -56,6 +56,7 @@ #define XPT_LISTENER	11			/* listening e
-> >  	struct svc_serv *	xpt_server;	/* service for this transport */
-> >  	atomic_t    	    	xpt_reserved;	/* space on outq that is reserved */
-> >  	struct mutex		xpt_mutex;	/* to serialize sending data */
-> > +	time_t			xpt_lastrecv;	/* time of last received request */
-> >  };
-> >  
-> >  int	svc_reg_xprt_class(struct svc_xprt_class *);
-> > diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
-> > index 41c2dfa..406d003 100644
-> > --- a/include/linux/sunrpc/svcsock.h
-> > +++ b/include/linux/sunrpc/svcsock.h
-> > @@ -33,7 +33,6 @@ struct svc_sock {
-> >  	/* private TCP part */
-> >  	int			sk_reclen;	/* length of record */
-> >  	int			sk_tcplen;	/* current read length */
-> > -	time_t			sk_lastrecv;	/* time of last received request */
-> >  
-> >  	/* cache of various info for TCP sockets */
-> >  	void			*sk_info_authunix;
-> > diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-> > index 71b7f86..04155aa 100644
-> > --- a/net/sunrpc/svcsock.c
-> > +++ b/net/sunrpc/svcsock.c
-> > @@ -1622,7 +1622,7 @@ svc_recv(struct svc_rqst *rqstp, long ti
-> >  		svc_sock_release(rqstp);
-> >  		return -EAGAIN;
-> >  	}
-> > -	svsk->sk_lastrecv = get_seconds();
-> > +	svsk->sk_xprt.xpt_lastrecv = get_seconds();
-> >  	clear_bit(XPT_OLD, &svsk->sk_xprt.xpt_flags);
-> >  
-> >  	rqstp->rq_secure = svc_port_is_privileged(svc_addr(rqstp));
-> > @@ -1725,7 +1725,7 @@ svc_age_temp_sockets(unsigned long closu
-> >  		svsk = list_entry(le, struct svc_sock, sk_xprt.xpt_list);
-> >  
-> >  		dprintk("queuing svsk %p for closing, %lu seconds old\n",
-> > -			svsk, get_seconds() - svsk->sk_lastrecv);
-> > +			svsk, get_seconds() - svsk->sk_xprt.xpt_lastrecv);
-> >  
-> >  		/* a thread will dequeue and close it soon */
-> >  		svc_xprt_enqueue(&svsk->sk_xprt);
-> > @@ -1773,7 +1773,7 @@ static struct svc_sock *svc_setup_socket
-> >  	svsk->sk_ostate = inet->sk_state_change;
-> >  	svsk->sk_odata = inet->sk_data_ready;
-> >  	svsk->sk_owspace = inet->sk_write_space;
-> > -	svsk->sk_lastrecv = get_seconds();
-> > +	svsk->sk_xprt.xpt_lastrecv = get_seconds();
-> >  	spin_lock_init(&svsk->sk_lock);
-> >  	INIT_LIST_HEAD(&svsk->sk_deferred);
-> >  
-
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Microsoft
-Defy all challenges. Microsoft(R) Visual Studio 2005.
-http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index a49f9fe..a204484 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -588,16 +588,6 @@ static int nfs_init_server(struct nfs_server *server, const struct nfs_mount_dat
+ 	server->namelen  = data->namlen;
+ 	/* Create a client RPC handle for the NFSv3 ACL management interface */
+ 	nfs_init_server_aclclient(server);
+-	if (clp->cl_nfsversion == 3) {
+-		if (server->namelen == 0 || server->namelen > NFS3_MAXNAMLEN)
+-			server->namelen = NFS3_MAXNAMLEN;
+-		if (!(data->flags & NFS_MOUNT_NORDIRPLUS))
+-			server->caps |= NFS_CAP_READDIRPLUS;
+-	} else {
+-		if (server->namelen == 0 || server->namelen > NFS2_MAXNAMLEN)
+-			server->namelen = NFS2_MAXNAMLEN;
+-	}
+-
+ 	dprintk("<-- nfs_init_server() = 0 [new %p]\n", clp);
+ 	return 0;
+ 
+@@ -794,6 +784,16 @@ struct nfs_server *nfs_create_server(const struct nfs_mount_data *data,
+ 	error = nfs_probe_fsinfo(server, mntfh, &fattr);
+ 	if (error < 0)
+ 		goto error;
++	if (server->nfs_client->rpc_ops->version == 3) {
++		if (server->namelen == 0 || server->namelen > NFS3_MAXNAMLEN)
++			server->namelen = NFS3_MAXNAMLEN;
++		if (!(data->flags & NFS_MOUNT_NORDIRPLUS))
++			server->caps |= NFS_CAP_READDIRPLUS;
++	} else {
++		if (server->namelen == 0 || server->namelen > NFS2_MAXNAMLEN)
++			server->namelen = NFS2_MAXNAMLEN;
++	}
++
+ 	if (!(fattr.valid & NFS_ATTR_FATTR)) {
+ 		error = server->nfs_client->rpc_ops->getattr(server, mntfh, &fattr);
+ 		if (error < 0) {
+@@ -984,6 +984,9 @@ struct nfs_server *nfs4_create_server(const struct nfs4_mount_data *data,
+ 	if (error < 0)
+ 		goto error;
+ 
++	if (server->namelen == 0 || server->namelen > NFS4_MAXNAMLEN)
++		server->namelen = NFS4_MAXNAMLEN;
++
+ 	BUG_ON(!server->nfs_client);
+ 	BUG_ON(!server->nfs_client->rpc_ops);
+ 	BUG_ON(!server->nfs_client->rpc_ops->file_inode_ops);
+@@ -1056,6 +1059,9 @@ struct nfs_server *nfs4_create_referral_server(struct nfs_clone_mount *data,
+ 	if (error < 0)
+ 		goto error;
+ 
++	if (server->namelen == 0 || server->namelen > NFS4_MAXNAMLEN)
++		server->namelen = NFS4_MAXNAMLEN;
++
+ 	dprintk("Referral FSID: %llx:%llx\n",
+ 		(unsigned long long) server->fsid.major,
+ 		(unsigned long long) server->fsid.minor);
+@@ -1115,6 +1121,9 @@ struct nfs_server *nfs_clone_server(struct nfs_server *source,
+ 	if (error < 0)
+ 		goto out_free_server;
+ 
++	if (server->namelen == 0 || server->namelen > NFS4_MAXNAMLEN)
++		server->namelen = NFS4_MAXNAMLEN;
++
+ 	dprintk("Cloned FSID: %llx:%llx\n",
+ 		(unsigned long long) server->fsid.major,
+ 		(unsigned long long) server->fsid.minor);
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index ea97408..e4a04d1 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -1162,6 +1162,8 @@ static struct dentry *nfs_readdir_lookup(nfs_readdir_descriptor_t *desc)
+ 	}
+ 	if (!desc->plus || !(entry->fattr->valid & NFS_ATTR_FATTR))
+ 		return NULL;
++	if (name.len > NFS_SERVER(dir)->namelen)
++		return NULL;
+ 	/* Note: caller is already holding the dir->i_mutex! */
+ 	dentry = d_alloc(parent, &name);
+ 	if (dentry == NULL)
+diff --git a/fs/nfs/getroot.c b/fs/nfs/getroot.c
+index d1cbf0a..522e5ad 100644
+--- a/fs/nfs/getroot.c
++++ b/fs/nfs/getroot.c
+@@ -175,6 +175,9 @@ next_component:
+ 		path++;
+ 	name.len = path - (const char *) name.name;
+ 
++	if (name.len > NFS4_MAXNAMLEN)
++		return -ENAMETOOLONG;
++
+ eat_dot_dir:
+ 	while (*path == '/')
+ 		path++;
