@@ -1,123 +1,69 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: NFS: Fix an Oops in encode_lookup()
-Date: Fri, 28 Sep 2007 12:27:41 -0400
-Message-ID: <1190996861.6702.7.camel@heimdal.trondhjem.org>
+From: Alan Stern <stern@rowland.harvard.edu>
+Subject: Re: [linux-pm] Re: A unresponsive file system can hang all
+ I/O in the system on linux-2.6.23-rc6 (dirty_thresh problem?)
+Date: Fri, 28 Sep 2007 12:45:41 -0400 (EDT)
+Message-ID: <Pine.LNX.4.44L0.0709281244250.4336-100000@iolanthe.rowland.org>
+References: <1190986542.13204.10.camel@twins>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Kamalesh Babulal <kamalesh@linux.vnet.ibm.com>,
-	linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1758126AbXI1Q22@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Cc: Jonathan Corbet <corbet@lwn.net>,
+	lkml <linux-kernel@vger.kernel.org>, nfs@lists.sourceforge.net,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-pm <linux-pm@lists.linux-foundation.org>
+To: Peter Zijlstra <a.p.zijlstra@chello.nl>
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1IbIyI-0007cX-Om
+	for nfs@lists.sourceforge.net; Fri, 28 Sep 2007 09:45:46 -0700
+Received: from iolanthe.rowland.org ([192.131.102.54])
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1IbIyK-0006Ha-RP
+	for nfs@lists.sourceforge.net; Fri, 28 Sep 2007 09:45:51 -0700
+In-Reply-To: <1190986542.13204.10.camel@twins>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-It doesn't look as if the NFS file name limit is being initialised correctly
-in the struct nfs_server. Make sure that we limit whatever is being set in
-nfs_probe_fsinfo() and nfs_init_server().
+On Fri, 28 Sep 2007, Peter Zijlstra wrote:
 
-Also ensure that readdirplus and nfs4_path_walk respect our file name
-limits.
+> On Fri, 2007-09-28 at 07:28 -0600, Jonathan Corbet wrote:
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
+> > Is it really NFS-related?  I was trying to back up my 2.6.23-rc8 system
+> > to an external USB drive the other day when something flaked and the
+> > drive fell off the bus.  That, too, was sufficient to wedge the entire
+> > system, even though the only thing which needed the dead drive was one
+> > rsync process.  It's kind of a bummer to have to hit the reset button
+> > after the failure of (what should be) a non-critical piece of hardware.
+> > 
+> > Not that I have a fix to propose...:)
+> 
+> the per bdi work in -mm should make the system not drop dead.
+> 
+> Still, would a remove,re-insert of the usb media end up with the same
+> bdi? That is, would it recognise as the same and resume the transfer.
 
- fs/nfs/client.c  |   29 +++++++++++++++++++----------
- fs/nfs/dir.c     |    2 ++
- fs/nfs/getroot.c |    3 +++
- 3 files changed, 24 insertions(+), 10 deletions(-)
+Removal and replacement of the media might work.  I have never tried 
+it.
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index a49f9fe..a204484 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -588,16 +588,6 @@ static int nfs_init_server(struct nfs_server *server, const struct nfs_mount_dat
- 	server->namelen  = data->namlen;
- 	/* Create a client RPC handle for the NFSv3 ACL management interface */
- 	nfs_init_server_aclclient(server);
--	if (clp->cl_nfsversion == 3) {
--		if (server->namelen == 0 || server->namelen > NFS3_MAXNAMLEN)
--			server->namelen = NFS3_MAXNAMLEN;
--		if (!(data->flags & NFS_MOUNT_NORDIRPLUS))
--			server->caps |= NFS_CAP_READDIRPLUS;
--	} else {
--		if (server->namelen == 0 || server->namelen > NFS2_MAXNAMLEN)
--			server->namelen = NFS2_MAXNAMLEN;
--	}
--
- 	dprintk("<-- nfs_init_server() = 0 [new %p]\n", clp);
- 	return 0;
- 
-@@ -794,6 +784,16 @@ struct nfs_server *nfs_create_server(const struct nfs_mount_data *data,
- 	error = nfs_probe_fsinfo(server, mntfh, &fattr);
- 	if (error < 0)
- 		goto error;
-+	if (server->nfs_client->rpc_ops->version == 3) {
-+		if (server->namelen == 0 || server->namelen > NFS3_MAXNAMLEN)
-+			server->namelen = NFS3_MAXNAMLEN;
-+		if (!(data->flags & NFS_MOUNT_NORDIRPLUS))
-+			server->caps |= NFS_CAP_READDIRPLUS;
-+	} else {
-+		if (server->namelen == 0 || server->namelen > NFS2_MAXNAMLEN)
-+			server->namelen = NFS2_MAXNAMLEN;
-+	}
-+
- 	if (!(fattr.valid & NFS_ATTR_FATTR)) {
- 		error = server->nfs_client->rpc_ops->getattr(server, mntfh, &fattr);
- 		if (error < 0) {
-@@ -984,6 +984,9 @@ struct nfs_server *nfs4_create_server(const struct nfs4_mount_data *data,
- 	if (error < 0)
- 		goto error;
- 
-+	if (server->namelen == 0 || server->namelen > NFS4_MAXNAMLEN)
-+		server->namelen = NFS4_MAXNAMLEN;
-+
- 	BUG_ON(!server->nfs_client);
- 	BUG_ON(!server->nfs_client->rpc_ops);
- 	BUG_ON(!server->nfs_client->rpc_ops->file_inode_ops);
-@@ -1056,6 +1059,9 @@ struct nfs_server *nfs4_create_referral_server(struct nfs_clone_mount *data,
- 	if (error < 0)
- 		goto error;
- 
-+	if (server->namelen == 0 || server->namelen > NFS4_MAXNAMLEN)
-+		server->namelen = NFS4_MAXNAMLEN;
-+
- 	dprintk("Referral FSID: %llx:%llx\n",
- 		(unsigned long long) server->fsid.major,
- 		(unsigned long long) server->fsid.minor);
-@@ -1115,6 +1121,9 @@ struct nfs_server *nfs_clone_server(struct nfs_server *source,
- 	if (error < 0)
- 		goto out_free_server;
- 
-+	if (server->namelen == 0 || server->namelen > NFS4_MAXNAMLEN)
-+		server->namelen = NFS4_MAXNAMLEN;
-+
- 	dprintk("Cloned FSID: %llx:%llx\n",
- 		(unsigned long long) server->fsid.major,
- 		(unsigned long long) server->fsid.minor);
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index ea97408..e4a04d1 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -1162,6 +1162,8 @@ static struct dentry *nfs_readdir_lookup(nfs_readdir_descriptor_t *desc)
- 	}
- 	if (!desc->plus || !(entry->fattr->valid & NFS_ATTR_FATTR))
- 		return NULL;
-+	if (name.len > NFS_SERVER(dir)->namelen)
-+		return NULL;
- 	/* Note: caller is already holding the dir->i_mutex! */
- 	dentry = d_alloc(parent, &name);
- 	if (dentry == NULL)
-diff --git a/fs/nfs/getroot.c b/fs/nfs/getroot.c
-index d1cbf0a..522e5ad 100644
---- a/fs/nfs/getroot.c
-+++ b/fs/nfs/getroot.c
-@@ -175,6 +175,9 @@ next_component:
- 		path++;
- 	name.len = path - (const char *) name.name;
- 
-+	if (name.len > NFS4_MAXNAMLEN)
-+		return -ENAMETOOLONG;
-+
- eat_dot_dir:
- 	while (*path == '/')
- 		path++;
+But Jon described removal of the device, not the media.  Replacing the 
+device definitely will not work.
+
+Alan Stern
+
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Microsoft
+Defy all challenges. Microsoft(R) Visual Studio 2005.
+http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
