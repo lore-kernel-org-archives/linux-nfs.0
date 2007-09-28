@@ -1,11 +1,27 @@
-From: "Jefferson Denton" <tequila@xo.com>
-Subject: Very cool offer
-Date: Fri, 28 Sep 2007 19:39:25 +0200
-Message-ID: <01c801f6$8310fb90$3d8ee558@tequila>
+From: Tom Tucker <tom@opengridcomputing.com>
+Subject: Re: [RFC,PATCH 00/33] SVC Transport Switch
+Date: Fri, 28 Sep 2007 12:39:07 -0500
+Message-ID: <1191001147.10604.101.camel@trinity.ogc.int>
+References: <20070927045751.12677.98896.stgit@dell3.ogc.int>
+	<18172.34896.98978.904440@notabene.brown>
+Reply-To: tom@opengridcomputing.com
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============2056587655=="
-To: <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	nfs@lists.sourceforge.net, Chuck Lever <cel@citi.umich.edu>,
+	gnb@sgi.com
+To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1IbJpC-0004jj-PY
+	for nfs@lists.sourceforge.net; Fri, 28 Sep 2007 10:40:26 -0700
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]
+	helo=smtp.opengridcomputing.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IbJpG-0000Kk-Mz
+	for nfs@lists.sourceforge.net; Fri, 28 Sep 2007 10:40:31 -0700
+In-Reply-To: <18172.34896.98978.904440@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -18,76 +34,37 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
+On Fri, 2007-09-28 at 14:51 +1000, Neil Brown wrote:
+> On Wednesday September 26, tom@opengridcomputing.com wrote:
+> > 
+> > I've attempted to organize the patchset such that logical changes are 
+> > clearly reviewable without too much clutter from functionally empty name
+> > changes.  
+> 
+> And you did a very thorough job, thanks!
+> 
 
---===============2056587655==
-Content-Type: multipart/alternative;
-	boundary="----=_NextPart_000_0007_01C801F6.8310FB90"
+Thanks,
 
-This is a multi-part message in MIME format.
+> Just a few minor issues as noted in previous emails.  Most of them can
+> be addressed by incremental patches rather than respinning the whole
+> series.  I'm just not sure about where the IP-address info should
+> live.  Maybe other people have opinions???
+> 
 
-------=_NextPart_000_0007_01C801F6.8310FB90
-Content-Type: text/plain;
-	charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
+I've already redone the patchset for whitespace cleanup and to handle a
+few checkpatch.pl style issues. How about if I roll in your suggestions,
+repost the whole thing and then go to incremental after that?
 
- Save your time,creepy dont go anywhere just download legal soft,  hundreds=
- of titles,digit new software products and all of  that with prices less th=
-en any box softwre !
-Cheaper then ever, for exampleMicrosoft Office 2007 Enterprise    $79.95 ch=
-ose
-Adobe Creative Suite 2   $149.95 armful
-Macromedia studio 8      $99,95  buckley and a lot more here.Visit us now d=
-on't waste your time 
-!
-------=_NextPart_000_0007_01C801F6.8310FB90
-Content-Type: text/html;
-	charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
+Thoughts?
+Tom
+> NeilBrown
 
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD>
-<META http-equiv=3DContent-Type content=3D"text/html; charset=3Diso-8859-1">
-<META content=3D"MSHTML 6.00.3790.2663" name=3DGENERATOR>
-<STYLE></STYLE>
-</HEAD>
-<BODY>
-<BODY>
-<P> Save your time,creepy dont go anywhere just download legal soft,  hundr=
-eds of titles,digit new software products and all of  that with prices less=
- then any box softwre !<br />
-Cheaper then ever, for example</P>
-<P>Microsoft Office 2007 Enterprise    $79.95 chose<br />
-Adobe Creative Suite 2   $149.95 armful<br />
-Macromedia studio 8      $99,95  buckley</P>
-<P> and a lot more here.<a href=3D"http://sfsacac.popularoemsoft.net">Visit=
- us now don't waste your time</a> 
-!</P>
-</BODY>
-</BODY></HTML>
-
-------=_NextPart_000_0007_01C801F6.8310FB90--
-
-
-
---===============2056587655==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
 Defy all challenges. Microsoft(R) Visual Studio 2005.
 http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
---===============2056587655==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============2056587655==--
