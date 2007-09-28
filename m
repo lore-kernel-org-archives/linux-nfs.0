@@ -1,48 +1,100 @@
 From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH 00/19] export operations rewrite
-Date: Fri, 28 Sep 2007 12:09:56 +1000
-Message-ID: <18172.25204.554112.418896@notabene.brown>
-References: <20070914114746.GA28282@lst.de>
+Subject: Re: [RFC,
+	PATCH 06/33] svc: Add transport specific xpo_release function
+Date: Fri, 28 Sep 2007 12:58:45 +1000
+Message-ID: <18172.28133.761225.855135@notabene.brown>
+References: <20070927045751.12677.98896.stgit@dell3.ogc.int>
+	<20070927050147.12677.85535.stgit@dell3.ogc.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, nfs@lists.sourceforge.net
-To: hch@lst.de, akpm@linux-foundation.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: message from hch@lst.de on Friday September 14
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net, gnb@sgi.com
+To: Tom Tucker <tom@opengridcomputing.com>
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1Ib644-0006Xw-JN
+	for nfs@lists.sourceforge.net; Thu, 27 Sep 2007 19:58:52 -0700
+Received: from ns1.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1Ib649-0006pi-7h
+	for nfs@lists.sourceforge.net; Thu, 27 Sep 2007 19:58:57 -0700
+In-Reply-To: message from Tom Tucker on Thursday September 27
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Friday September 14, hch@lst.de wrote:
-> This patchset is a medium scale rewrite of the export operations
-> interface.  The goal is to make the interface less complex, and
-> easier to understand from the filesystem side, aswell as preparing
-> generic support for exporting of 64bit inode numbers.
+On Thursday September 27, tom@opengridcomputing.com wrote:
+> 
+> The svc_sock_release function releases pages allocated to a thread. For
+> UDP, this also returns the receive skb to the stack. For RDMA it will 
+> post a receive WR and bump the client credit count. 
+> 
+..
+> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+> index 37f7448..cfb2652 100644
+> --- a/include/linux/sunrpc/svc.h
+> +++ b/include/linux/sunrpc/svc.h
+> @@ -217,7 +217,7 @@ struct svc_rqst {
+>  	struct auth_ops *	rq_authop;	/* authentication flavour */
+>  	u32			rq_flavor;	/* pseudoflavor */
+>  	struct svc_cred		rq_cred;	/* auth info */
+> -	struct sk_buff *	rq_skbuff;	/* fast recv inet buffer */
+> +	void *			rq_xprt_ctxt;	/* transport specific context ptr */
+>  	struct svc_deferred_req*rq_deferred;	/* deferred request we are replaying */
+>  
+>  	struct xdr_buf		rq_arg;
+..
+> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+> index cc8c7ce..e7d203a 100644
+> --- a/net/sunrpc/svcsock.c
+> +++ b/net/sunrpc/svcsock.c
+> @@ -184,14 +184,14 @@ svc_thread_dequeue(struct svc_pool *pool
+>  /*
+>   * Release an skbuff after use
+>   */
+> -static inline void
+> +static void
+>  svc_release_skb(struct svc_rqst *rqstp)
+>  {
+> -	struct sk_buff *skb = rqstp->rq_skbuff;
+> +	struct sk_buff *skb = (struct sk_buff *)rqstp->rq_xprt_ctxt;
 
-These 19 patches
-Acked-by: NeilBrown <neilb@suse.de>
+Minor style point: We don't cast void* in the kernel.
 
-I didn't do a very thorough review this time, but I did the previous
-time, and the one problem I found (module dependencies) has been
-addressed - Thanks.
+>  	struct svc_deferred_req *dr = rqstp->rq_deferred;
+>  
+>  	if (skb) {
+> -		rqstp->rq_skbuff = NULL;
+> +		rqstp->rq_xprt_ctxt = NULL;
+>  
+>  		dprintk("svc: service %p, releasing skb %p\n", rqstp, skb);
+>  		skb_free_datagram(rqstp->rq_sock->sk_sk, skb);
+> @@ -394,7 +394,7 @@ svc_sock_release(struct svc_rqst *rqstp)
+>  {
+>  	struct svc_sock	*svsk = rqstp->rq_sock;
+>  
+> -	svc_release_skb(rqstp);
+> +	rqstp->rq_xprt->xpt_ops.xpo_release(rqstp);
+
+These are somewhat ugly, aren't they?
+What would you think of giving rqstp a pointer directly to xpt_ops to
+avoid the double indirection?
 
 NeilBrown
 
-> 
-> This touches all nfs exporting filesystems, and I've done testing
-> on all of the filesystems I have here locally (xfs, ext2, ext3, reiserfs,
-> jfs)
-> 
-> Compared to the last version I've fixed the white space issues that
-> checkpatch.pl complained about.
-> 
-> Note that this patch series is against mainline.  There will be some
-> xfs changes landing in -mm soon that revamp lots of the code touched
-> here.  They should hopefully include the first path in the series so
-> it can be simply dropped, but the xfs conversion will need some smaller
-> updates.  I will send this update as soon as the xfs tree updates get
-> pulled into -mm.
-> 
-> -
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Microsoft
+Defy all challenges. Microsoft(R) Visual Studio 2005.
+http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
