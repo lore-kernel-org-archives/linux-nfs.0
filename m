@@ -1,27 +1,24 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH 0/7] nfsstat: adding -D/--diff-stat to nfsstat
-Date: Wed, 01 Aug 2007 17:50:32 -0400
-Message-ID: <46B10028.8080106@RedHat.com>
-References: <Pine.BSO.4.64.0707311651120.13370@citi.umich.edu>
-	<Pine.BSO.4.64.0708011347200.25204@citi.umich.edu>
-	<01AE8AF878612047A442668306EAEB05DD298B@SACEXMV01.hq.netapp.com>
-	<Pine.BSO.4.64.0708011425580.25204@citi.umich.edu>
-	<20070801185052.GG13441@fieldses.org> <46B0E701.6010801@RedHat.com>
-	<20070801204824.GI13441@fieldses.org>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH 0/5] rpc.mountd: Fix mountd buffer overflow when
+ using large numbers of netgroups (resend)
+Date: Fri, 28 Sep 2007 07:19:29 -0400
+Message-ID: <20070928071929.c5b5632b.jlayton@redhat.com>
+References: <200709271053.l8RArcOw031610@dantu.rdu.redhat.com>
+	<18172.24167.3212.167596@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: "'nfs@lists.sourceforge.net'" <nfs@lists.sourceforge.net>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: nfs@lists.sourceforge.net
+To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IGM5S-0008St-9G
-	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 14:50:34 -0700
+	id 1IbDse-0004f8-Cu
+	for nfs@lists.sourceforge.net; Fri, 28 Sep 2007 04:19:36 -0700
 Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IGM5T-0006bN-Vs
-	for nfs@lists.sourceforge.net; Wed, 01 Aug 2007 14:50:38 -0700
-In-Reply-To: <20070801204824.GI13441@fieldses.org>
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IbDsf-0003SI-Uc
+	for nfs@lists.sourceforge.net; Fri, 28 Sep 2007 04:19:41 -0700
+In-Reply-To: <18172.24167.3212.167596@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,97 +31,71 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+On Fri, 28 Sep 2007 11:52:39 +1000
+Neil Brown <neilb@suse.de> wrote:
 
-
-J. Bruce Fields wrote:
+> On Thursday September 27, jlayton@redhat.com wrote:
+> > This patchset is intended to address the buffer overrun reported by
+> > Stefan Walter when a client matches a large number of netgroups. The
+> > main problem is that the string returned by client_compose can be any
+> > length, and that is strcpy()'ed into a fixed-length array.
+> > 
+> > The first four patches are cleanup patches. They also take care of the
+> > actual buffer overrun. The last patch implements Neil Brown's suggestion
+> > to allow mountd to conditionally map ipaddr to ipaddr in the
+> > auth.unix.ip cache and to only check mount requests against exports that
+> > match the path.
 > 
-> Does it look like the nfsstat --sleep/--diff-stats/whatever would have
-> done the job in the cases you're thinking of?
-It would a bit more awkward... but I'm sure I could make it work...
-
+> All applied... however
+> > 
+> > Unlike earlier versions of this patch, there is no way to select this
+> > mode manually. The reason is that explaining when an admin should select
+> > this mode is difficult and adding an option would be very confusing. If
+> > it becomes desirable to do so, however, we can always add one later.
 > 
->>> But I'd still object, for the same reasons; global zeroing of the in-kernel
->>> stats is an operation that:
->>>
->>> 	- isn't friendly to concurrent processes gathering stats:
->>> 	  someone might want to run a cron job that summarizes the day's
->>> 	  nfs stats, but still be able to log in and get a quick
->>> 	  snapshot of current activity.
->> So then don't zero them out... and if some one comes a long and
->> does zero them out, thats a communication problem.. not a
->> technical one... ;-)
+> I'm not convinced by this argument.  The difference between a bug and
+> a feature is that a feature can be turned off (?)
 > 
-> What would you tell them to do instead?  Parsing the nfsstat output and
-> doing the subtraction yourself is a little tedious, so it's not
-> suprising if they both try to use -z, if that's all we provide.
-A *little* tedious??? :-) I don't know how I would tell them
-to solve that problem esp with the current tools... I would
-probably tell to see if they could get the mountstats numbers
-to do what they wanted... and then tell them to send me the patch! 8-)
-
+> "Different netgroup-based configurations benefit from different
+>  tradeoffs in lookup and cache behaviour in mountd.
+>  If some client hosts are in many different netgroups, and these
+>  netgroups control access to a similar number of filesystems, then it
+>  is best to check for membership of a client only in the netgroups
+>  relating to filesystems that it is actually trying to access.
+>  However if there are relatively few netgroups each with many member
+>  hosts, it is best to find a complete list of all netgroups that a
+>  given client is in as this make it easy to cache access tests.
 > 
-> Which is why I'd really rather not even emulate zeroing in userspace,
-> and instead have two alternatives:
+>  Mountd will normally attempt to guess the best caching and lookup
+>  strategy based on a simple analysis of the /etc/exports file.  The
+>  choice mountd makes can be force by using the --netgroups=many or
+>  --netgroups=few command line options.
+> "
 > 
-> 	- --sleep: quick and convenient, no concurrency problems.
+> Certainly it doesn't give the full story, but it means that the option
+> is there in case the default breaks in some scenario that we haven't
+> thought of yet.
 > 
-> 	- --since: or other operations that do the subtraction for you
-> 	  and take explicit paths for saved snapshots.  That allows you
-> 	  to do everything you could do with -z and more, and makes any
-> 	  problems with concurrency or privileges solvable by choice of
-> 	  appropriate paths to store the snapshots in.
-Understood and I can see how these would be useful in
-long term system analyzation but they would be awkward for
-short term system debugging... which I think is the real difference
-in these approaches...
-
+> Am I at all convincing?
 > 
-> Actually the only operation you *really* need is one that parses two
-> nfsstat outputs and subtracts:
-> 
-> 	nfsstat >tmp1
-> 	...
-> 	nfsstat >tmp2
-> 	nfsstat --diff tmp1 tmp2
-> 
-> and then anything else you can easily script.
-Personally I would make the output binary (with a -b flag) since
-it seem like it would be easier to do binary compares than
-string... But of course that would be giving you more ammo
-and I would not want to do that... ;-)
 
+Yes. This is a really tough call, IMO. On the one hand, having things
+"just work" is the ideal situation. On the other hand, giving people
+the ability to affect this behavior could be important in some
+situations. The hard part is that this is really an implementation
+detail that users really shouldn't need to worry about.
 
-> 
->>> But I think more snapshot-and-diff operations would be a fine idea.
->>> And probably easy and fun to implement.
->> Why not point that snapshot at /proc/self/mountstats? Those stats
->> will never be zero and the wealth of information in there truly
->> an untaped gold mine....
-> 
-> Yeah, that'd be great.  We'll still need nfsstat for the server at
-> least, I guess?  
-Good point...
+I'll follow your lead on this. If you think an option is warranted here,
+I can roll up a patch to add one...
 
-> Does it still provide anything useful on the client
-> side, or does mountstats supercede it completely?
-I think the both are needed since they provide  different
-types of information... The nfsstat stats are basically
-"hello world" counters that show there is NFS activity....
-The mountstats are much more granular and are per mount
-which could be used  to for many different things... like
-server responsive for an example...
-
-
-steved.
-
-
-
+Thanks,
+--
+Jeff Layton <jlayton@redhat.com>
 
 -------------------------------------------------------------------------
-This SF.net email is sponsored by: Splunk Inc.
-Still grepping through log files to find problems?  Stop.
-Now Search log events and configuration files using AJAX and a browser.
-Download your FREE copy of Splunk now >>  http://get.splunk.com/
+This SF.net email is sponsored by: Microsoft
+Defy all challenges. Microsoft(R) Visual Studio 2005.
+http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
