@@ -1,11 +1,8 @@
 From: Neil Brown <neilb@suse.de>
-Subject: Re: [RFC,
-	PATCH 33/33] knfsd: Support adding transports by writing portlist
-	file
-Date: Fri, 28 Sep 2007 14:48:56 +1000
-Message-ID: <18172.34744.784138.666846@notabene.brown>
+Subject: Re: [RFC,PATCH 00/33] SVC Transport Switch
+Date: Fri, 28 Sep 2007 14:51:28 +1000
+Message-ID: <18172.34896.98978.904440@notabene.brown>
 References: <20070927045751.12677.98896.stgit@dell3.ogc.int>
-	<20070927050243.12677.15463.stgit@dell3.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net, gnb@sgi.com
@@ -14,13 +11,13 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Ib7me-00085v-Fl
-	for nfs@lists.sourceforge.net; Thu, 27 Sep 2007 21:49:00 -0700
-Received: from mx1.suse.de ([195.135.220.2])
+	id 1Ib7p8-0008NW-IA
+	for nfs@lists.sourceforge.net; Thu, 27 Sep 2007 21:51:35 -0700
+Received: from ns1.suse.de ([195.135.220.2] helo=mx1.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Ib7mi-0001yA-Sl
-	for nfs@lists.sourceforge.net; Thu, 27 Sep 2007 21:49:05 -0700
-In-Reply-To: message from Tom Tucker on Thursday September 27
+	(Exim 4.44) id 1Ib7pB-0002oV-68
+	for nfs@lists.sourceforge.net; Thu, 27 Sep 2007 21:51:39 -0700
+In-Reply-To: message from Tom Tucker on Wednesday September 26
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,81 +30,20 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thursday September 27, tom@opengridcomputing.com wrote:
+On Wednesday September 26, tom@opengridcomputing.com wrote:
 > 
-> Update the write handler for the portlist file to allow creating new
-> listening endpoints on a transport. The general form of the string is:
-> 
-> <transport_name><space><port number>
-> 
-> For example:
-> 
-> tcp 2049
-> 
-> This is intended to support the creation of a listening endpoint for
-> RDMA transports without adding #ifdef code to the nfssvc.c file.
-> The general idea is that the rpc.nfsd program would read the transports
-> file and then write the portlist file to create listening endpoints
-> for all or selected transports. The current mechanism of writing an
-> fd would become obsolete.
+> I've attempted to organize the patchset such that logical changes are 
+> clearly reviewable without too much clutter from functionally empty name
+> changes.  
 
-Nuh.
-I'll only accept
-      rdma 2049
-(or whatever) because there seems to be no other way to do it.
-Writing an 'fd' is the *preferred* way.
+And you did a very thorough job, thanks!
 
-There is more to binding an endpoint than protocol and port number.
-There is also local address and I'm not convinced that someone might
-come up with some other way they want to pre-condition a socket.
-
-If there was any way to associate an RDMA endpoint with a
-filedescriptor, I would much prefer that 'rpc.nfsd' does that and passes
-down the filedescriptor.  If RDMA is so no-Unix-like (rant rant..)
-that there is no such file descriptor, then I guess we can live with 
-getting the kernel to open the connection.
-
-
-> 
-> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
-> ---
-> 
->  fs/nfsd/nfsctl.c |   16 ++++++++++++++++
->  1 files changed, 16 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-> index baac89d..923b817 100644
-> --- a/fs/nfsd/nfsctl.c
-> +++ b/fs/nfsd/nfsctl.c
-> @@ -554,6 +554,22 @@ static ssize_t write_ports(struct file *
->  		kfree(toclose);
->  		return len;
->  	}
-> +	/*
-> +	 * Add a transport listener by writing it's transport name
-> +	 */
-> +	if (isalnum(buf[0])) {
-
-Should really be "isalpha" as we already know it isn't isdigit.
+Just a few minor issues as noted in previous emails.  Most of them can
+be addressed by incremental patches rather than respinning the whole
+series.  I'm just not sure about where the IP-address info should
+live.  Maybe other people have opinions???
 
 NeilBrown
-
-
-> +		int err;
-> +		char transport[16];
-> +		int port;
-> +		if (sscanf(buf, "%15s %4d", transport, &port) == 2) {
-> +			err = nfsd_create_serv();
-> +			if (!err)
-> +				err = svc_create_xprt(nfsd_serv,
-> +						      transport, port,
-> +						      SVC_SOCK_ANONYMOUS);
-> +			return err < 0 ? err : 0;
-> +		}
-> +	}
->  	return -EINVAL;
->  }
->  
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
