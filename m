@@ -1,9 +1,10 @@
 From: Neil Brown <neilb@suse.de>
-Subject: Re: [RFC,PATCH 11/33] svc: Add xpo_accept transport function
-Date: Fri, 28 Sep 2007 13:21:14 +1000
-Message-ID: <18172.29482.366028.515043@notabene.brown>
+Subject: Re: [RFC,
+	PATCH 12/33] svc: Add a generic transport svc_create_xprt function
+Date: Fri, 28 Sep 2007 13:21:38 +1000
+Message-ID: <18172.29506.542120.710648@notabene.brown>
 References: <20070927045751.12677.98896.stgit@dell3.ogc.int>
-	<20070927050157.12677.92320.stgit@dell3.ogc.int>
+	<20070927050159.12677.37758.stgit@dell3.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net, gnb@sgi.com
@@ -12,12 +13,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Ib6Po-0000EN-OH
-	for nfs@lists.sourceforge.net; Thu, 27 Sep 2007 20:21:20 -0700
-Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	id 1Ib6QC-0000Em-LT
+	for nfs@lists.sourceforge.net; Thu, 27 Sep 2007 20:21:44 -0700
+Received: from mx2.suse.de ([195.135.220.15])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Ib6Pt-0005Tx-HD
-	for nfs@lists.sourceforge.net; Thu, 27 Sep 2007 20:21:25 -0700
+	(Exim 4.44) id 1Ib6QF-0005YK-Uj
+	for nfs@lists.sourceforge.net; Thu, 27 Sep 2007 20:21:49 -0700
 In-Reply-To: message from Tom Tucker on Thursday September 27
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -32,24 +33,57 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 On Thursday September 27, tom@opengridcomputing.com wrote:
-> @@ -1046,9 +1054,10 @@ static inline int svc_port_is_privileged
->  /*
->   * Accept a TCP connection
->   */
-> -static void
-> -svc_tcp_accept(struct svc_sock *svsk)
-> +static struct svc_xprt *
-> +svc_tcp_accept(struct svc_xprt *xprt)
->  {
-> +	struct svc_sock *svsk = (struct svc_sock *)xprt;
+> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+> index 6151db5..fab0ce3 100644
+> --- a/net/sunrpc/svc_xprt.c
+> +++ b/net/sunrpc/svc_xprt.c
+> @@ -93,3 +93,41 @@ void svc_xprt_init(struct svc_xprt_class
+>  	xpt->xpt_max_payload = xcl->xcl_max_payload;
+>  }
+>  EXPORT_SYMBOL_GPL(svc_xprt_init);
+> +
+> +int svc_create_xprt(struct svc_serv *serv, char *xprt_name, unsigned short port,
+> +		    int flags)
+> +{
+> +	int ret = -ENOENT;
+> +	struct list_head *le;
+> +	struct sockaddr_in sin = {
+> +		.sin_family		= AF_INET,
+> + 		.sin_addr.s_addr	= INADDR_ANY,
+> + 		.sin_port		= htons(port),
+> + 	};
+> +	dprintk("svc: creating transport %s[%d]\n", xprt_name, port);
+> +	spin_lock(&svc_xprt_class_lock);
+> +	list_for_each(le, &svc_xprt_class_list) {
+> +		struct svc_xprt_class *xcl =
+> +			list_entry(le, struct svc_xprt_class, xcl_list);
 
-This cast should use container_of
+list_for_each_entry is preferred.
 
-        struct svc_sock *svsk = container_of(xprt, struct svc_sock *, sk_xprt);
+> +		if (strcmp(xprt_name, xcl->xcl_name)==0) {
+> +			spin_unlock(&svc_xprt_class_lock);
+> +			if (try_module_get(xcl->xcl_owner)) {
+> +				struct svc_xprt *newxprt;
+> +				ret = 0;
+> +				newxprt = xcl->xcl_ops->xpo_create
+> +					(serv, (struct sockaddr*)&sin, flags);
+> +				if (IS_ERR(newxprt)) {
+> +					module_put(xcl->xcl_owner);
+> +					ret = PTR_ERR(newxprt);
+> +				}
+> +				goto out;
+> +			}
+> +		}
+> +	}
+> +	spin_unlock(&svc_xprt_class_lock);
 
-That makes it clearer what is happening.
+if try_module_get fails, you spin_unlock twice.  the "goto out;"
+needs to be moved down one line.
 
-
+And I'm confused as to why xpo_create returns a pointer which you
+never use.  xpo_accept does the same thing:  a pointer is returned,
+but only the success status is used.  Why not just return
+0-or-negative-error ??
 
 NeilBrown
 
