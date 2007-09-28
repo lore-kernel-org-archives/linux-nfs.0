@@ -1,8 +1,7 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 6/8] text-based mount.nfs: start using new mount
-	option	parsing facility
-Date: Fri, 28 Sep 2007 16:36:56 -0400
-Message-ID: <20070928203656.12851.4424.stgit@monet.1015granger.net>
+Subject: [PATCH 8/8] text-based mount.nfs: Fix mounthost= processing
+Date: Fri, 28 Sep 2007 16:37:06 -0400
+Message-ID: <20070928203706.12851.94869.stgit@monet.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
@@ -11,11 +10,11 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IbMa9-0006Z9-0K
-	for nfs@lists.sourceforge.net; Fri, 28 Sep 2007 13:37:05 -0700
+	id 1IbMaC-0006au-71
+	for nfs@lists.sourceforge.net; Fri, 28 Sep 2007 13:37:09 -0700
 Received: from flpi102.sbcis.sbc.com ([207.115.20.71] helo=flpi102.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IbMaD-0004Vf-NZ
-	for nfs@lists.sourceforge.net; Fri, 28 Sep 2007 13:37:10 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IbMaH-0004cL-3a
+	for nfs@lists.sourceforge.net; Fri, 28 Sep 2007 13:37:13 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,67 +27,73 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Use the new mount option parsing functions to handle existing mount
-option string parsing needs in the text-based mount implementation.
+The 'mounthost=' option names a host where the mountd service is running.
+The option is used to direct clients to use a different host for the mountd
+procotol than the host where the NFS service is running.
+
+The nfs(5) man page shows that the 'mounthost=' option takes a name, not
+an address.  The kernel's text-based mount option parsing logic expects an
+IPv4 address.  This is necessary because the kernel cannot itself resolve
+hostnames to addresses.
+
+Resolve the hostname and pass in a new mount option that contains the
+resolved address, 'mountaddr=', to the kernel.
+
+This requires a patch to the kernel to recognize the new 'mountaddr='
+option, and to change the 'mounthost=' parsing logic to treat the value of
+this option as a simple string.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/mount/stropts.c |   20 +++-----------------
- 1 files changed, 3 insertions(+), 17 deletions(-)
+ utils/mount/stropts.c |   27 +++++++++++++++++++++++++++
+ 1 files changed, 27 insertions(+), 0 deletions(-)
 
 diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-index bdc8f2c..537a924 100644
+index e3a3ac9..b31b3a2 100644
 --- a/utils/mount/stropts.c
 +++ b/utils/mount/stropts.c
-@@ -317,20 +317,13 @@ int nfsmount_s(const char *spec, const char *node, int flags,
- 	if (!err)
+@@ -191,6 +191,30 @@ static int append_clientaddr_option(struct sockaddr_in *saddr,
+ }
+ 
+ /*
++ * Called to resolve the 'mounthost=' hostname and append a new
++ * option using an IPv4 address.
++ */
++static int fix_up_mounthost_opt(struct mount_options *options)
++{
++	struct sockaddr_in maddr;
++	char *mounthost, new_option[32];
++
++	mounthost = po_get(options, "mounthost");
++	if (!mounthost)
++		return 1;
++
++	if (!fill_ipv4_sockaddr(mounthost, &maddr))
++		return 0;
++
++	snprintf(new_option, sizeof(new_option) - 1,
++			"mountaddr=%s", inet_ntoa(maddr.sin_addr));
++
++	if (po_append(options, new_option) == PO_SUCCEEDED)
++		return 1;
++	return 0;
++}
++
++/*
+  * nfsmount_s - Mount an NFSv2 or v3 file system using C string options
+  *
+  * @spec:	C string hostname:path specifying remoteshare to mount
+@@ -227,6 +251,9 @@ int nfsmount_s(const char *spec, const char *node, int flags,
+ 	if (!append_addr_option(&saddr, options))
  		goto out;
  
--	extract_interesting_options(*extra_opts);
--
- 	options = po_split(*extra_opts);
- 	if (!options) {
++	if (!fix_up_mounthost_opt(options))
++		goto out;
++
+ 	if (po_join(options, extra_opts) == PO_FAILED) {
  		nfs_error(_("%s: internal option parsing error"), progname);
  		goto out;
- 	}
- 
--	if (!child && addr_opt) {
--		nfs_error(_("%s: Illegal option: 'addr='"), progname);
--		goto out;
--	}
--
--	if (!append_addr_opt(&saddr, extra_opts))
-+	if (!append_addr_option(&saddr, options))
- 		goto out;
- 
- 	if (po_join(options, extra_opts) == PO_FAILED) {
-@@ -386,23 +379,16 @@ int nfs4mount_s(const char *spec, const char *node, int flags,
- 	if (!err)
- 		goto out;
- 
--	extract_interesting_options(*extra_opts);
--
- 	options = po_split(*extra_opts);
- 	if (!options) {
- 		nfs_error(_("%s: internal option parsing error"), progname);
- 		goto out;
- 	}
- 
--	if (addr_opt) {
--		nfs_error(_("%s: Illegal option: 'addr='"), progname);
--		goto out;
--	}
--
--	if (!append_addr_opt(&saddr, extra_opts))
-+	if (!append_addr_option(&saddr, options))
- 		goto out;
- 
--	if (!ca_opt && !append_clientaddr_opt(&saddr, extra_opts))
-+	if (!append_clientaddr_option(&saddr, options))
- 		goto out;
- 
- 	if (po_join(options, extra_opts) == PO_FAILED) {
 
 
 -------------------------------------------------------------------------
