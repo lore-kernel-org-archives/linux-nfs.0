@@ -1,32 +1,21 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: A unresponsive file system can hang all I/O in the system
-	on	linux-2.6.23-rc6 (dirty_thresh problem?)
-Date: Fri, 28 Sep 2007 16:32:18 -0400
-Message-ID: <1191011538.6702.59.camel@heimdal.trondhjem.org>
-References: <92cbf19b0709272332s25684643odaade0e98cb3a1f4@mail.gmail.com>
-	<20070927235034.ae7bd73d.akpm@linux-foundation.org>
-	<1190998853.6702.17.camel@heimdal.trondhjem.org>
-	<20070928114930.2c201324.akpm@linux-foundation.org>
-	<1191006971.6702.25.camel@heimdal.trondhjem.org>
-	<20070928122628.965137f2.akpm@linux-foundation.org>
-	<1191009148.6702.46.camel@heimdal.trondhjem.org>
-	<20070928131012.4a03c53e.akpm@linux-foundation.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 0/8] Refresh: Add string option parsing facility to
+	mount.nfs
+Date: Fri, 28 Sep 2007 16:36:24 -0400
+Message-ID: <20070928202752.12851.56345.stgit@monet.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, linux-pm@lists.linux-foundation.org,
-	linux-kernel@vger.kernel.org, a.p.zijlstra@chello.nl
-To: Andrew Morton <akpm@linux-foundation.org>
+Cc: nfs@lists.sourceforge.net
+To: neilb@suse.de
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IbMVo-00065q-Us
-	for nfs@lists.sourceforge.net; Fri, 28 Sep 2007 13:32:37 -0700
-Received: from pat.uio.no ([129.240.10.15])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IbMVq-0003Jo-8d
-	for nfs@lists.sourceforge.net; Fri, 28 Sep 2007 13:32:40 -0700
-In-Reply-To: <20070928131012.4a03c53e.akpm@linux-foundation.org>
+	id 1IbMZT-0006U0-T8
+	for nfs@lists.sourceforge.net; Fri, 28 Sep 2007 13:36:24 -0700
+Received: from flpi102.sbcis.sbc.com ([207.115.20.71] helo=flpi102.prodigy.net)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IbMZY-00072v-T2
+	for nfs@lists.sourceforge.net; Fri, 28 Sep 2007 13:36:29 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -39,42 +28,25 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, 2007-09-28 at 13:10 -0700, Andrew Morton wrote:
-> On Fri, 28 Sep 2007 15:52:28 -0400
-> Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
-> 
-> > On Fri, 2007-09-28 at 12:26 -0700, Andrew Morton wrote:
-> > > On Fri, 28 Sep 2007 15:16:11 -0400 Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
-> > > > Looking back, they were getting caught up in
-> > > > balance_dirty_pages_ratelimited() and friends. See the attached
-> > > > example...
-> > > 
-> > > that one is nfs-on-loopback, which is a special case, isn't it?
-> > 
-> > I'm not sure that the hang that is illustrated here is so special. It is
-> > an example of a bog-standard ext3 write, that ends up calling the NFS
-> > client, which is hanging. The fact that it happens to be hanging on the
-> > nfsd process is more or less irrelevant here: the same thing could
-> > happen to any other process in the case where we have an NFS server that
-> > is down.
-> 
-> hm, so ext3 got stuck in nfs via __alloc_pages direct reclaim?
-> 
-> We should be able to fix that by marking the backing device as
-> write-congested.  That'll have small race windows, but it should be a 99.9%
-> fix?
+Refresh of series that adds string option parsing to text-based mount.nfs.
 
-No. The problem would rather appear to be that we're doing
-per-backing_dev writeback (if I read sync_sb_inodes() correctly), but
-we're measuring variables which are global to the VM. The backing device
-that we are selecting may not be writing out any dirty pages, in which
-case, we're just spinning in balance_dirty_pages_ratelimited().
+I found that it is necessary to do some rather advanced lexical parsing of
+the mount option string in order to handle version/protocol fallback.  So I've
+implemented a data structure that can handle the parsing requirements, and
+some wrapper logic to convert the mount option string to the new data
+structure and then convert it back to a string before calling mount(2).
 
-Should we therefore perhaps be looking at adding per-backing_dev stats
-too?
+This series introduces the new facility and makes use of it for existing text-
+based mount option processing (like adding "addr=" and so on).  In subsequent
+patches I will make more use of the new facility.
 
-Trond
+This refresh also introduces a string tokenization facility that can handle
+quoted commas, so we can deal properly with 'context="foo,bar"'.  Note that a
+kernel patch will also be required for the NFS client to handle quoted commas
+in the value part of NFS mount options.
 
+-- 
+corporate:    <chuck dot lever at oracle dot com>
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
