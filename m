@@ -1,54 +1,83 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [RFC,PATCH 00/33] SVC Transport Switch
-Date: Fri, 28 Sep 2007 14:51:28 +1000
-Message-ID: <18172.34896.98978.904440@notabene.brown>
-References: <20070927045751.12677.98896.stgit@dell3.ogc.int>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: A unresponsive file system can hang all I/O in the system on
+ linux-2.6.23-rc6 (dirty_thresh problem?)
+Date: Thu, 27 Sep 2007 23:50:34 -0700
+Message-ID: <20070927235034.ae7bd73d.akpm@linux-foundation.org>
+References: <92cbf19b0709272332s25684643odaade0e98cb3a1f4@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, gnb@sgi.com
-To: Tom Tucker <tom@opengridcomputing.com>
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Ib7p8-0008NW-IA
-	for nfs@lists.sourceforge.net; Thu, 27 Sep 2007 21:51:35 -0700
-Received: from ns1.suse.de ([195.135.220.2] helo=mx1.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Ib7pB-0002oV-68
-	for nfs@lists.sourceforge.net; Thu, 27 Sep 2007 21:51:39 -0700
-In-Reply-To: message from Tom Tucker on Wednesday September 26
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: text/plain; charset=US-ASCII
+Cc: linux-pm <linux-pm@lists.linux-foundation.org>,
+	lkml <linux-kernel@vger.kernel.org>, nfs@lists.sourceforge.net,
+	Peter Zijlstra <a.p.zijlstra@chello.nl>
+To: "Chakri n" <chakriin5@gmail.com>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1760438AbXI1Guz@vger.kernel.org>
+In-Reply-To: <92cbf19b0709272332s25684643odaade0e98cb3a1f4@mail.gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-On Wednesday September 26, tom@opengridcomputing.com wrote:
+On Thu, 27 Sep 2007 23:32:36 -0700 "Chakri n" <chakriin5@gmail.com> wrote:
+
+> Hi,
 > 
-> I've attempted to organize the patchset such that logical changes are 
-> clearly reviewable without too much clutter from functionally empty name
-> changes.  
+> In my testing, a unresponsive file system can hang all I/O in the system.
+> This is not seen in 2.4.
+> 
+> I started 20 threads doing I/O on a NFS share. They are just doing 4K
+> writes in a loop.
+> 
+> Now I stop NFS server hosting the NFS share and start a
+> "dd" process to write a file on local EXT3 file system.
+> 
+> # dd if=/dev/zero of=/tmp/x count=1000
+> 
+> This process never progresses.
 
-And you did a very thorough job, thanks!
+yup.
 
-Just a few minor issues as noted in previous emails.  Most of them can
-be addressed by incremental patches rather than respinning the whole
-series.  I'm just not sure about where the IP-address info should
-live.  Maybe other people have opinions???
+> There is plenty of HIGH MEMORY available in the system, but this
+> process never progresses.
+> 
+> ...
+> 
+> The problem seems to be in balance_dirty_pages, which calculates
+> dirty_thresh based on only ZONE_NORMAL. The same scenario works fine
+> in 2.4. The dd processes finishes in no time.
+> NFS file systems can go offline, due to multiple reasons, a failed
+> switch, filer etc, but that should not effect other file systems in
+> the machine.
+> Can this behavior be fenced?, can the buffer cache be tuned so that
+> other processes do not see the effect?
 
-NeilBrown
+It's unrelated to the actual value of dirty_thresh: if the machine fills up
+with dirty (or unstable) NFS pages then eventually new writers will block
+until that condition clears.
 
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Microsoft
-Defy all challenges. Microsoft(R) Visual Studio 2005.
-http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+2.4 doesn't have this problem at low levels of dirty data because 2.4
+VFS/MM doesn't account for NFS pages at all.
+
+I'm not sure what we can do about this from a design perspective, really. 
+We have data floating about in memory which we're not allowed to discard
+and if we allow it to increase without bound it will eventually either
+wedge userspace _anyway_ or it will take the machine down, resulting in
+data loss.
+
+What it would be nice to do would be to write that data to local disk if
+poss, then reclaim it.  Perhaps David Howells' fscache code can do that (or
+could be tweaked to do so).
+
+If you really want to fill all memory with pages whic are dirty against a
+dead NFS server then you can manually increase
+/proc/sys/vm/dirty_background_ratio and dirty_ratio - that should give you
+the 2.4 behaviour.
+
+
+<thinks>
+
+Actually we perhaps could address this at the VFS level in another way. 
+Processes which are writing to the dead NFS server will eventually block in
+balance_dirty_pages() once they've exceeded the memory limits and will
+remain blocked until the server wakes up - that's the behaviour we want.
+
+What we _don't_ want to happen is for other processes which are writing to
+other, non-dead devices to get collaterally blocked.  We have patches which
+might fix that queued for 2.6.24.  Peter?
