@@ -1,30 +1,24 @@
-From: "Steinar H. Gunderson" <sesse@debian.org>
-Subject: Re: [PATCH] Properly ignore quota options
-Date: Sat, 29 Sep 2007 15:08:59 +0200
-Message-ID: <20070929130859.GA32536@uio.no>
-References: <20070718170931.GA30174@uio.no>
+From: "Donavan mani" <Donavan-mani@LloydsTSB-Offshore.com>
+Subject: ledrogta
+Date: Sat, 29 Sep 2007 21:26:48 +0200
+Message-ID: <000c01c802ce$ade2f570$df291457@121472300310>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Content-Type: multipart/mixed; boundary="===============1126941064=="
+To: <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Ibc43-0000Y7-LR
-	for nfs@lists.sourceforge.net; Sat, 29 Sep 2007 06:08:59 -0700
-Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Ibc48-0002sC-Dy
-	for nfs@lists.sourceforge.net; Sat, 29 Sep 2007 06:09:04 -0700
-Received: from trofast.ipv6.sesse.net ([2001:700:300:1803:20e:cff:fe36:a766]
-	helo=trofast.sesse.net) by cassarossa.samfundet.no with esmtps
-	(TLS-1.0:RSA_AES_256_CBC_SHA1:32) (Exim 4.63)
-	(envelope-from <sesse@samfundet.no>) id 1Ibc43-0007Hj-W4
-	for nfs@lists.sourceforge.net; Sat, 29 Sep 2007 15:09:00 +0200
-Received: from root by trofast.sesse.net with local (Exim 4.67)
-	(envelope-from <sesse@samfundet.no>) id 1Ibc43-0008TX-EU
-	for nfs@lists.sourceforge.net; Sat, 29 Sep 2007 15:08:59 +0200
-In-Reply-To: <20070718170931.GA30174@uio.no>
+	id 1Ibhxf-0000WU-6D
+	for nfs@lists.sourceforge.net; Sat, 29 Sep 2007 12:26:47 -0700
+Received: from host223-41-dynamic.20-87-r.retail.telecomitalia.it
+	([87.20.41.223]) by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1Ibhxj-0007yh-Iv
+	for nfs@lists.sourceforge.net; Sat, 29 Sep 2007 12:26:52 -0700
+Received: from 121472300310 ([185.113.190.129] helo=121472300310)
+	by [87.20.41.223] ( sendmail 8.13.3/8.13.1) with esmtpa id
+	1GoQFv-000VDM-aC
+	for nfs@lists.sourceforge.net; Sat, 29 Sep 2007 21:27:08 +0200
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,26 +31,58 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, Jul 18, 2007 at 07:09:31PM +0200, Steinar H. Gunderson wrote:
-> The mount(5) man page states that the noquota, quota, usrquota and
-> grpquota options are ignored. (They are, however, used by the quota
-> tools, so having them in fstab can be useful.) Make mount.nfs ignore
-> them properly, matching the man page. There are a few aliases (like
-> usrjquota) that are parsed by quota, but as these are not documented
-> nor seem to be widely used, they are not included.
-> 
-> Signed-off-by: Steinar H. Gunderson <sesse@debian.org>
+--===============1126941064==
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_000_0005_01C802DF.716BC570"
 
-This patch was also dropped on the floor. Neil?
+------=_NextPart_000_0005_01C802DF.716BC570
+Content-Type: text/plain;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 
-/* Steinar */ 
--- 
-Homepage: http://www.sesse.net/
+Hi nfs
+
+Emergency report. Check DMXC!
+5 day price: ~$0.50
+------=_NextPart_000_0005_01C802DF.716BC570
+Content-Type: text/html;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD>
+<META http-equiv=3DContent-Type content=3D"text/html; charset=3Diso-8859-1">
+<META content=3D"MSHTML 6.00.2900.3059" name=3DGENERATOR>
+<STYLE></STYLE>
+</HEAD>
+<BODY bgColor=3D#ffffff>
+<DIV><FONT Arial size=3D2>Hi nfs</FONT></DIV>
+<DIV><FONT Arial size=3D2></FONT></DIV>
+<DIV><FONT Arial size=3D2>Emergency report. Check DMXC!</FONT></DIV>
+<DIV><FONT Arial size=3D2>5 day price: ~$0.50</FONT></DIV></BODY></HTML>
+
+------=_NextPart_000_0005_01C802DF.716BC570--
+
+
+
+--===============1126941064==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
 Defy all challenges. Microsoft(R) Visual Studio 2005.
 http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+--===============1126941064==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============1126941064==--
