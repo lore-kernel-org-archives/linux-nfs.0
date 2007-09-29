@@ -1,21 +1,27 @@
-From: "Outravia" <outravia@outravia.com.br>
-Subject: =?iso-8859-1?q?Voc=EA_n=E3o_tem_tempo_para_uma_amante_ciume?=
- =?iso-8859-1?q?nta_-_Cultura_com_Pitadas_Crist=E3s_-_Outravia_News_-_18?=
-Date: Fri, 28 Sep 2007 22:14:53 -0300
-Message-ID: <20070929011643.158E9FED306@server99.t5.com.br>
-Reply-To: outravia@outravia.com.br
+From: Daniel Phillips <phillips@phunq.net>
+Subject: Re: A unresponsive file system can hang all I/O in the system
+	on linux-2.6.23-rc6 (dirty_thresh problem?)
+Date: Fri, 28 Sep 2007 18:27:47 -0700
+Message-ID: <200709281827.48350.phillips@phunq.net>
+References: <10659.1190986132@lwn.net> <1190986542.13204.10.camel@twins>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============0857977076=="
-To: nfs@lists.sf.net
+Content-Type: text/plain; charset="us-ascii"
+Cc: Jonathan Corbet <corbet@lwn.net>,
+	lkml <linux-kernel@vger.kernel.org>, nfs@lists.sourceforge.net,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-pm <linux-pm@lists.linux-foundation.org>
+To: Peter Zijlstra <a.p.zijlstra@chello.nl>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IbQuZ-0007eP-N7
-	for nfs@lists.sourceforge.net; Fri, 28 Sep 2007 18:14:27 -0700
-Received: from logan.t5.com.br ([201.33.17.130] helo=server99.t5.com.br)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IbQub-0006SU-MT
-	for nfs@lists.sourceforge.net; Fri, 28 Sep 2007 18:14:32 -0700
+	id 1IbR7f-0000aD-Gl
+	for nfs@lists.sourceforge.net; Fri, 28 Sep 2007 18:27:59 -0700
+Received: from phunq.net ([64.81.85.152] helo=moonbase.phunq.net)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IbR7k-0002aX-AR
+	for nfs@lists.sourceforge.net; Fri, 28 Sep 2007 18:28:04 -0700
+In-Reply-To: <1190986542.13204.10.camel@twins>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,216 +34,60 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============0857977076==
-Content-Type: text/html
-Content-Transfer-Encoding: quoted-printable
+On Friday 28 September 2007 06:35, Peter Zijlstra wrote:
+> ,,,it would be grand (and dangerous) if we could provide for a
+> button that would just kill off all outstanding pages against a dead
+> device.
 
-<html>
-<head>
-<title>news18</title>
-<meta http-equiv=3D"Content-Type" content=3D"text/html; charset=3Diso-=
-8859-1">
-</head>
-<body bgcolor=3D"#FFFFFF" leftmargin=3D"0" topmargin=3D"0" marginwidth=
-=3D"0" marginheight=3D"0">
-<p align=3D"center">
-  <!-- ImageReady Slices (news18.jpg) -->
-</p>
-<div align=3D"center">Caso n&atilde;o consiga ver este e-mail, clique =
-<a href=3D"www.outravia.com.br/news18.html" target=3D"_blank">aqui=20
-</a>=20
-  <table id=3D"Table_01" width=3D"679" height=3D"1055" border=3D"0" ce=
-llpadding=3D"0" cellspacing=3D"0">
-      <tr>
-        <td colspan=3D"3">
-          <a href=3D"http://www.outravia.com.br/primeiranews.html" tar=
-get=3D"_blank">
-            <img src=3D"http://www.outravia.com.br/n18/news18_01.jpg" =
-width=3D"382" height=3D"124" border=3D"0" alt=3D""></a></td>
-		  <td colspan=3D"3" rowspan=3D"2">
-		    <a href=3D"http://www.outravia.com.br/" target=3D"_blank">
-		      <img src=3D"http://www.outravia.com.br/n18/news18_02.jpg" widt=
-h=3D"296" height=3D"135" border=3D"0"=20
-alt=3D""></a></td>
-		  <td>
-		    <img src=3D"http://www.outravia.com.br/n18/spacer.gif" width=3D"=
-1" height=3D"124" alt=3D""></td>
-	  </tr>
-      <tr>
-        <td colspan=3D"3">
-          <img src=3D"http://www.outravia.com.br/n18/news18_03.jpg" wi=
-dth=3D"382" height=3D"11" alt=3D""></td>
-		  <td>
-		    <img src=3D"http://www.outravia.com.br/n18/spacer.gif" width=3D"=
-1" height=3D"11" alt=3D""></td>
-	  </tr>
-      <tr>
-        <td colspan=3D"5">
-          <a href=3D"http://sotao.wordpress.com/2007/09/24/chomsky/" t=
-arget=3D"_blank">
-            <img src=3D"http://www.outravia.com.br/n18/news18_04.jpg" =
-width=3D"497" height=3D"112" border=3D"0" alt=3D""></a></td>
-		  <td rowspan=3D"2">
-		    <img src=3D"http://www.outravia.com.br/n18/news18_05.jpg" width=
-=3D"181" height=3D"231" alt=3D""></td>
-		  <td>
-		    <img src=3D"http://www.outravia.com.br/n18/spacer.gif" width=3D"=
-1" height=3D"112" alt=3D""></td>
-	  </tr>
-      <tr>
-        <td colspan=3D"5">
-          <a href=3D"http://sotao.wordpress.com/2007/09/24/uma-definic=
-ao-singular/" target=3D"_blank">
-            <img src=3D"http://www.outravia.com.br/n18/news18_06.jpg" =
-width=3D"497" height=3D"119" border=3D"0" alt=3D""></a></td>
-		  <td>
-		    <img src=3D"http://www.outravia.com.br/n18/spacer.gif" width=3D"=
-1" height=3D"119" alt=3D""></td>
-	  </tr>
-      <tr>
-        <td colspan=3D"4">
-          <a href=3D"http://cabesound.wordpress.com/2007/09/24/caetano=
--veloso/" target=3D"_blank">
-            <img src=3D"http://www.outravia.com.br/n18/news18_07.jpg" =
-width=3D"401" height=3D"206" border=3D"0" alt=3D""></a></td>
-		  <td colspan=3D"2">
-		    <a href=3D"http://pontesmusicais.wordpress.com/2007/09/24/voce-c=
-ome-o-que/" target=3D"_blank">
-		      <img src=3D"http://www.outravia.com.br/n18/news18_08.jpg" widt=
-h=3D"277" height=3D"206" border=3D"0"=20
-alt=3D""></a></td>
-		  <td>
-		    <img src=3D"http://www.outravia.com.br/n18/spacer.gif" width=3D"=
-1" height=3D"206" alt=3D""></td>
-	  </tr>
-      <tr>
-        <td colspan=3D"2">
-          <img src=3D"http://www.outravia.com.br/n18/news18_09.jpg" wi=
-dth=3D"205" height=3D"35" alt=3D""></td>
-		  <td colspan=3D"4" rowspan=3D"3">
-		    <a href=3D"http://cinemateia.wordpress.com/2007/09/26/labirinto-=
-de-fauno/" target=3D"_blank">
-		      <img src=3D"http://www.outravia.com.br/n18/news18_10.jpg" widt=
-h=3D"473" height=3D"169" border=3D"0"=20
-alt=3D""></a></td>
-		  <td>
-		    <img src=3D"http://www.outravia.com.br/n18/spacer.gif" width=3D"=
-1" height=3D"35" alt=3D""></td>
-	  </tr>
-      <tr>
-        <td>
-          <a href=3D"http://creativecannes.wordpress.com/2007/09/26/ex=
-ercicios-para-dormir/" target=3D"_blank">
-            <img src=3D"http://www.outravia.com.br/n18/news18_11.jpg" =
-width=3D"103" height=3D"112" border=3D"0" alt=3D""></a></td>
-		  <td>
-		    <a href=3D"http://creativecannes.wordpress.com/2007/09/26/get-on=
--board/" target=3D"_blank">
-		      <img src=3D"http://www.outravia.com.br/n18/news18_12.jpg" widt=
-h=3D"102" height=3D"112" border=3D"0"=20
-alt=3D""></a></td>
-		  <td>
-		    <img src=3D"http://www.outravia.com.br/n18/spacer.gif" width=3D"=
-1" height=3D"112" alt=3D""></td>
-	  </tr>
-      <tr>
-        <td rowspan=3D"2">
-          <a href=3D"http://creativecannes.wordpress.com/2007/09/26/ad=
-ote-um-animal-de-estimacao/" target=3D"_blank">
-            <img src=3D"http://www.outravia.com.br/n18/news18_13.jpg" =
-width=3D"103" height=3D"114" border=3D"0" alt=3D""></a></td>
-		  <td rowspan=3D"2">
-		    <a href=3D"http://creativecannes.wordpress.com/2007/09/26/use-ca=
-pacete/" target=3D"_blank">
-		      <img src=3D"http://www.outravia.com.br/n18/news18_14.jpg" widt=
-h=3D"102" height=3D"114" border=3D"0"=20
-alt=3D""></a></td>
-		  <td>
-		    <img src=3D"http://www.outravia.com.br/n18/spacer.gif" width=3D"=
-1" height=3D"22" alt=3D""></td>
-	  </tr>
-      <tr>
-        <td colspan=3D"4" rowspan=3D"2">
-          <a href=3D"http://blogu2.wordpress.com/2007/09/24/love-and-p=
-eace-or-else/" target=3D"_blank">
-            <img src=3D"http://www.outravia.com.br/n18/news18_15.jpg" =
-width=3D"473" height=3D"163" border=3D"0" alt=3D""></a></td>
-		  <td>
-		    <img src=3D"http://www.outravia.com.br/n18/spacer.gif" width=3D"=
-1" height=3D"92" alt=3D""></td>
-	  </tr>
-      <tr>
-        <td colspan=3D"2">
-          <a href=3D"http://sotao.wordpress.com/links-que-a-outravia-r=
-ecomenda/" target=3D"_blank">
-            <img src=3D"http://www.outravia.com.br/n18/news18_16.jpg" =
-width=3D"205" height=3D"71" border=3D"0" alt=3D""></a></td>
-		  <td>
-		    <img src=3D"http://www.outravia.com.br/n18/spacer.gif" width=3D"=
-1" height=3D"71" alt=3D""></td>
-	  </tr>
-      <tr>
-        <td colspan=3D"6">
-          <a href=3D"http://www.outravia.com.br/" target=3D"_blank">
-            <img src=3D"http://www.outravia.com.br/n18/news18_17.jpg" =
-width=3D"678" height=3D"150" border=3D"0" alt=3D""></a></td>
-		  <td>
-		    <img src=3D"http://www.outravia.com.br/n18/spacer.gif" width=3D"=
-1" height=3D"150" alt=3D""></td>
-	  </tr>
-      <tr>
-        <td>
-          <img src=3D"http://www.outravia.com.br/n18/spacer.gif" width=
-=3D"103" height=3D"1" alt=3D""></td>
-		  <td>
-		    <img src=3D"http://www.outravia.com.br/n18/spacer.gif" width=3D"=
-102" height=3D"1" alt=3D""></td>
-		  <td>
-		    <img src=3D"http://www.outravia.com.br/n18/spacer.gif" width=3D"=
-177" height=3D"1" alt=3D""></td>
-		  <td>
-		    <img src=3D"http://www.outravia.com.br/n18/spacer.gif" width=3D"=
-19" height=3D"1" alt=3D""></td>
-		  <td>
-		    <img src=3D"http://www.outravia.com.br/n18/spacer.gif" width=3D"=
-96" height=3D"1" alt=3D""></td>
-		  <td>
-		    <img src=3D"http://www.outravia.com.br/n18/spacer.gif" width=3D"=
-181" height=3D"1" alt=3D""></td>
-		  <td></td>
-	  </tr>
-    </table>
-</div>
-<p align=3D"center"><p align=3D"center">Para cancelar o recebimento cl=
-ique <a href=3D"mailto: cancelar@outavia.com.br">aqui</a> </p>
-=A0</p>
-<p>
-  <!-- End ImageReady Slices -->
-</p>
-<p>&nbsp; </p>
-</body>
-</html>
+Substitute "resources" for "pages" and you begin to get an idea of how 
+tricky that actually is.  That said, this is exactly what we have done 
+with ddsnap, for the simple reason that our users, now emboldened by 
+being able to stop or terminate the user space part, felt justified in 
+expecting that the system continue as if nothing had happened, and 
+furthermore, be able to restart ddsnap without a hiccup.  (Otherwise 
+known as a sysop's diety-given right to kill.)
 
+So this is what we do in the specific case of ddsnap:
 
+   * When we detect some nasty state change such as our userspace
+      control daemon disappearing on us, we go poking around and
+      explicitly release every semaphore that the device driver could
+      possibly wait on forever (interestingly they are all in our own
+      driver except for BKL, which is just an artifact of device mapper
+      not having gone over to unlock_ioctl for no good reason that I
+      know of).
 
---===============0857977076==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+   * Then at the points were the driver falls through some lock thus
+      released, we check our "ready" flag, and if it indicates "busted",
+      proceed with wherever cleanup is needed at that point.
+
+Does not sound like an approach one would expect to work reliably, does 
+it?  But there just may be some general principle to be ferretted out 
+here.  (Anyone who has ideas on how bits of this procedure could be 
+abstracted, please do not hesitate to step boldly forth into the 
+limelight.)
+
+Incidentally, only a small subset of locks needed special handling as 
+above.  Most can be shown to have no way to block forever, short of an 
+outright bug.
+
+I shudder to think how much work it would be to bring every driver in 
+the kernel up to such a standard, particularly if user space components 
+are involved, as with USB.  On the other hand, every driver fixed is 
+one less driver that sucks.  The next one to emerge from the pipeline 
+will most likely be NBD, which we have been working on in fits and 
+starts for a while.  Look for it to morph into "ddbd", with cross-node 
+distributed data awareness, in addition to perforning its current job 
+without deadlocking.
+
+Regards,
+
+Daniel
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
 Defy all challenges. Microsoft(R) Visual Studio 2005.
 http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
---===============0857977076==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============0857977076==--
