@@ -1,36 +1,28 @@
-From: "Chakri n" <chakriin5@gmail.com>
+From: Daniel Phillips <phillips@phunq.net>
 Subject: Re: A unresponsive file system can hang all I/O in the system
 	on linux-2.6.23-rc6 (dirty_thresh problem?)
-Date: Fri, 28 Sep 2007 16:33:18 -0700
-Message-ID: <92cbf19b0709281633ib4cfbdet5edc19381beeece3@mail.gmail.com>
+Date: Fri, 28 Sep 2007 17:46:43 -0700
+Message-ID: <200709281746.44499.phillips@phunq.net>
 References: <92cbf19b0709272332s25684643odaade0e98cb3a1f4@mail.gmail.com>
-	<1190998853.6702.17.camel@heimdal.trondhjem.org>
-	<20070928114930.2c201324.akpm@linux-foundation.org>
-	<1191006971.6702.25.camel@heimdal.trondhjem.org>
-	<20070928122628.965137f2.akpm@linux-foundation.org>
-	<1191009148.6702.46.camel@heimdal.trondhjem.org>
-	<20070928131012.4a03c53e.akpm@linux-foundation.org>
-	<1191011538.6702.59.camel@heimdal.trondhjem.org>
-	<20070928134326.e3bb63b1.akpm@linux-foundation.org>
-	<92cbf19b0709281436i41247863t6cbc919c33e972a3@mail.gmail.com>
+	<20070927235034.ae7bd73d.akpm@linux-foundation.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: a.p.zijlstra@chello.nl, linux-pm@lists.linux-foundation.org,
-	nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
-To: "Andrew Morton" <akpm@linux-foundation.org>
+Cc: nfs@lists.sourceforge.net,
+	linux-pm <linux-pm@lists.linux-foundation.org>,
+	lkml <linux-kernel@vger.kernel.org>,
+	Peter Zijlstra <a.p.zijlstra@chello.nl>
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IbPKc-0006iz-B2
-	for nfs@lists.sourceforge.net; Fri, 28 Sep 2007 16:33:17 -0700
-Received: from wa-out-1112.google.com ([209.85.146.176])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IbPKh-0000CI-7c
-	for nfs@lists.sourceforge.net; Fri, 28 Sep 2007 16:33:19 -0700
-Received: by wa-out-1112.google.com with SMTP id k22so5418374waf
-	for <nfs@lists.sourceforge.net>; Fri, 28 Sep 2007 16:33:18 -0700 (PDT)
-In-Reply-To: <92cbf19b0709281436i41247863t6cbc919c33e972a3@mail.gmail.com>
+	id 1IbQTz-0004vx-Ck
+	for nfs@lists.sourceforge.net; Fri, 28 Sep 2007 17:46:59 -0700
+Received: from phunq.net ([64.81.85.152] helo=moonbase.phunq.net)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IbQU4-000122-8s
+	for nfs@lists.sourceforge.net; Fri, 28 Sep 2007 17:47:04 -0700
+In-Reply-To: <20070927235034.ae7bd73d.akpm@linux-foundation.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -43,91 +35,46 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-No change in behavior even in case of low memory systems. I confirmed
-it running on 1Gig machine.
+On Thursday 27 September 2007 23:50, Andrew Morton wrote:
+> Actually we perhaps could address this at the VFS level in another
+> way. Processes which are writing to the dead NFS server will
+> eventually block in balance_dirty_pages() once they've exceeded the
+> memory limits and will remain blocked until the server wakes up -
+> that's the behaviour we want.
 
-Thanks
---Chakri
+It is not necessary to restrict total dirty pages at all.  Instead it is 
+necessary to restrict total writeout in flight.  This is evident from 
+the fact that making progress is the one and only reason our kernel 
+exists, and writeout is how we make progress clearing memory.  In other 
+words, if we guarantee the progress of writeout, we will live happily 
+ever after and not have to sell the farm.
 
-On 9/28/07, Chakri n <chakriin5@gmail.com> wrote:
-> Here is a the snapshot of vmstats when the problem happened. I believe
-> this could help a little.
->
-> crash> kmem -V
->        NR_FREE_PAGES: 680853
->          NR_INACTIVE: 95380
->            NR_ACTIVE: 26891
->        NR_ANON_PAGES: 2507
->       NR_FILE_MAPPED: 1832
->        NR_FILE_PAGES: 119779
->        NR_FILE_DIRTY: 0
->         NR_WRITEBACK: 18272
->  NR_SLAB_RECLAIMABLE: 1305
-> NR_SLAB_UNRECLAIMABLE: 2085
->         NR_PAGETABLE: 123
->      NR_UNSTABLE_NFS: 0
->            NR_BOUNCE: 0
->      NR_VMSCAN_WRITE: 0
->
-> In my testing, I always saw the processes are waiting in
-> balance_dirty_pages_ratelimited(), never in throttle_vm_writeout()
-> path.
->
-> But this could be because I have about 4Gig of memory in the system
-> and plenty of mem is still available around.
->
-> I will rerun the test limiting memory to 1024MB and lets see if it
-> takes in any different path.
->
-> Thanks
-> --Chakri
->
->
-> On 9/28/07, Andrew Morton <akpm@linux-foundation.org> wrote:
-> > On Fri, 28 Sep 2007 16:32:18 -0400
-> > Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
-> >
-> > > On Fri, 2007-09-28 at 13:10 -0700, Andrew Morton wrote:
-> > > > On Fri, 28 Sep 2007 15:52:28 -0400
-> > > > Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
-> > > >
-> > > > > On Fri, 2007-09-28 at 12:26 -0700, Andrew Morton wrote:
-> > > > > > On Fri, 28 Sep 2007 15:16:11 -0400 Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
-> > > > > > > Looking back, they were getting caught up in
-> > > > > > > balance_dirty_pages_ratelimited() and friends. See the attached
-> > > > > > > example...
-> > > > > >
-> > > > > > that one is nfs-on-loopback, which is a special case, isn't it?
-> > > > >
-> > > > > I'm not sure that the hang that is illustrated here is so special. It is
-> > > > > an example of a bog-standard ext3 write, that ends up calling the NFS
-> > > > > client, which is hanging. The fact that it happens to be hanging on the
-> > > > > nfsd process is more or less irrelevant here: the same thing could
-> > > > > happen to any other process in the case where we have an NFS server that
-> > > > > is down.
-> > > >
-> > > > hm, so ext3 got stuck in nfs via __alloc_pages direct reclaim?
-> > > >
-> > > > We should be able to fix that by marking the backing device as
-> > > > write-congested.  That'll have small race windows, but it should be a 99.9%
-> > > > fix?
-> > >
-> > > No. The problem would rather appear to be that we're doing
-> > > per-backing_dev writeback (if I read sync_sb_inodes() correctly), but
-> > > we're measuring variables which are global to the VM. The backing device
-> > > that we are selecting may not be writing out any dirty pages, in which
-> > > case, we're just spinning in balance_dirty_pages_ratelimited().
-> >
-> > OK, so it's unrelated to page reclaim.
-> >
-> > > Should we therefore perhaps be looking at adding per-backing_dev stats
-> > > too?
-> >
-> > That's what mm-per-device-dirty-threshold.patch and friends are doing.
-> > Whether it works adequately is not really known at this time.
-> > Unfortunately kernel developers don't test -mm much.
-> >
->
+The current situation has an eerily similar feeling to the VM 
+instability in early 2.4, which was never solved until we convinced 
+ourselves that the only way to deal with Moore's law as applied to 
+number of memory pages was to implement positive control of swapout in 
+the form of reverse mapping[1].  This time round, we need to add 
+positive control of writeout in the form of rate limiting.
+
+I _think_ Peter is with me on this, and not only that, but between the 
+too of us we already have patches for most of the subsystems that need 
+it, and we have both been busy testing (different subsets of) these 
+patches to destruction for the better part of a year.
+
+Anyway, to fix the immediate bug before the one true dirty_limit removal 
+patch lands (promise) I think you are on the right track by noticing 
+that balance_dirty_pages has to become aware of how congested the 
+involved block device is, since blocking a writeout process on an 
+underused block device is clearly a bad idea.  Note how much this idea 
+looks like rate limiting.
+
+[1] We lost the scent for a number of reasons, not least because the 
+experimental implementation of reverse mapping at the time was buggy 
+for reasons entirely unrelated to the reverse mapping itself.
+
+Regards,
+
+Daniel
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
