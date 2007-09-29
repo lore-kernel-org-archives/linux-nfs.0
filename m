@@ -1,24 +1,27 @@
-From: "Donavan mani" <Donavan-mani@LloydsTSB-Offshore.com>
-Subject: ledrogta
-Date: Sat, 29 Sep 2007 21:26:48 +0200
-Message-ID: <000c01c802ce$ade2f570$df291457@121472300310>
+From: Tom Tucker <tom@opengridcomputing.com>
+Subject: Re: [RFC,
+	PATCH 23/33] svc: Move the authinfo cache to svc_xprt.
+Date: Sat, 29 Sep 2007 15:49:36 -0500
+Message-ID: <1191098976.10604.123.camel@trinity.ogc.int>
+References: <20070927045751.12677.98896.stgit@dell3.ogc.int>
+	<20070927050222.12677.48478.stgit@dell3.ogc.int>
+	<18172.33610.417174.67852@notabene.brown>
+Reply-To: tom@opengridcomputing.com
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1126941064=="
-To: <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net, gnb@sgi.com
+To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Ibhxf-0000WU-6D
-	for nfs@lists.sourceforge.net; Sat, 29 Sep 2007 12:26:47 -0700
-Received: from host223-41-dynamic.20-87-r.retail.telecomitalia.it
-	([87.20.41.223]) by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1Ibhxj-0007yh-Iv
-	for nfs@lists.sourceforge.net; Sat, 29 Sep 2007 12:26:52 -0700
-Received: from 121472300310 ([185.113.190.129] helo=121472300310)
-	by [87.20.41.223] ( sendmail 8.13.3/8.13.1) with esmtpa id
-	1GoQFv-000VDM-aC
-	for nfs@lists.sourceforge.net; Sat, 29 Sep 2007 21:27:08 +0200
+	id 1IbjH6-0000wF-5W
+	for nfs@lists.sourceforge.net; Sat, 29 Sep 2007 13:50:56 -0700
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]
+	helo=smtp.opengridcomputing.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IbjH7-0001Yg-HQ
+	for nfs@lists.sourceforge.net; Sat, 29 Sep 2007 13:50:59 -0700
+In-Reply-To: <18172.33610.417174.67852@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,58 +34,39 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============1126941064==
-Content-Type: multipart/alternative;
-	boundary="----=_NextPart_000_0005_01C802DF.716BC570"
+On Fri, 2007-09-28 at 14:30 +1000, Neil Brown wrote:
+> On Thursday September 27, tom@opengridcomputing.com wrote:
+> >  
+> >  	/* Initialize the socket */
+> >  	if (sock->type == SOCK_DGRAM) {
+> >  		svc_xprt_init(&svc_udp_class, &svsk->sk_xprt, serv);
+> >  		svc_udp_init(svsk);
+> > +		clear_bit(XPT_CACHE_AUTH, &svsk->sk_xprt.xpt_flags);
+> >  	} else {
+> >  		svc_xprt_init(&svc_tcp_class, &svsk->sk_xprt, serv);
+> >  		svc_tcp_init(svsk);
+> > +		set_bit(XPT_CACHE_AUTH, &svsk->sk_xprt.xpt_flags);
+> >  	}
+> >  
 
-------=_NextPart_000_0005_01C802DF.716BC570
-Content-Type: text/plain;
-	charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
+This is design detritus. At one point, I was going to move this stuff
+into common logic, but decided I couldn't do it. I agree it will look
+cleaner if it gets moved it into the svc_xxx_init functions.
 
-Hi nfs
+Thanks,
+Tom
+> 
+> Why don't these clear_bit/set_bit calls go inside svc_{udp,tcp}_init?
+> Further, why aren't the svc_xprt_init calling inside there too?
+> 
+> 
+> NeilBrown
 
-Emergency report. Check DMXC!
-5 day price: ~$0.50
-------=_NextPart_000_0005_01C802DF.716BC570
-Content-Type: text/html;
-	charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD>
-<META http-equiv=3DContent-Type content=3D"text/html; charset=3Diso-8859-1">
-<META content=3D"MSHTML 6.00.2900.3059" name=3DGENERATOR>
-<STYLE></STYLE>
-</HEAD>
-<BODY bgColor=3D#ffffff>
-<DIV><FONT Arial size=3D2>Hi nfs</FONT></DIV>
-<DIV><FONT Arial size=3D2></FONT></DIV>
-<DIV><FONT Arial size=3D2>Emergency report. Check DMXC!</FONT></DIV>
-<DIV><FONT Arial size=3D2>5 day price: ~$0.50</FONT></DIV></BODY></HTML>
-
-------=_NextPart_000_0005_01C802DF.716BC570--
-
-
-
---===============1126941064==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
 Defy all challenges. Microsoft(R) Visual Studio 2005.
 http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
---===============1126941064==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============1126941064==--
