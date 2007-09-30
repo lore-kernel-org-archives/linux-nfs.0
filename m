@@ -1,27 +1,21 @@
-From: Tom Tucker <tom@opengridcomputing.com>
-Subject: Re: [RFC,
-	PATCH 23/33] svc: Move the authinfo cache to svc_xprt.
-Date: Sat, 29 Sep 2007 15:49:36 -0500
-Message-ID: <1191098976.10604.123.camel@trinity.ogc.int>
-References: <20070927045751.12677.98896.stgit@dell3.ogc.int>
-	<20070927050222.12677.48478.stgit@dell3.ogc.int>
-	<18172.33610.417174.67852@notabene.brown>
-Reply-To: tom@opengridcomputing.com
+From: "Yakov Lerner" <iler.ml@gmail.com>
+Subject: filetimes after creat()
+Date: Sun, 30 Sep 2007 12:56:27 +0200
+Message-ID: <f36b08ee0709300356o2256a044lbf518034a303138@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, gnb@sgi.com
-To: Neil Brown <neilb@suse.de>
+Content-Type: multipart/mixed; boundary="===============0252847454=="
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IbjH6-0000wF-5W
-	for nfs@lists.sourceforge.net; Sat, 29 Sep 2007 13:50:56 -0700
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]
-	helo=smtp.opengridcomputing.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IbjH7-0001Yg-HQ
-	for nfs@lists.sourceforge.net; Sat, 29 Sep 2007 13:50:59 -0700
-In-Reply-To: <18172.33610.417174.67852@notabene.brown>
+	id 1IbwTI-0003fy-HG
+	for nfs@lists.sourceforge.net; Sun, 30 Sep 2007 03:56:25 -0700
+Received: from wa-out-1112.google.com ([209.85.146.182])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IbwTM-0007rk-IZ
+	for nfs@lists.sourceforge.net; Sun, 30 Sep 2007 03:56:29 -0700
+Received: by wa-out-1112.google.com with SMTP id k22so6380512waf
+	for <nfs@lists.sourceforge.net>; Sun, 30 Sep 2007 03:56:28 -0700 (PDT)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,39 +28,52 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, 2007-09-28 at 14:30 +1000, Neil Brown wrote:
-> On Thursday September 27, tom@opengridcomputing.com wrote:
-> >  
-> >  	/* Initialize the socket */
-> >  	if (sock->type == SOCK_DGRAM) {
-> >  		svc_xprt_init(&svc_udp_class, &svsk->sk_xprt, serv);
-> >  		svc_udp_init(svsk);
-> > +		clear_bit(XPT_CACHE_AUTH, &svsk->sk_xprt.xpt_flags);
-> >  	} else {
-> >  		svc_xprt_init(&svc_tcp_class, &svsk->sk_xprt, serv);
-> >  		svc_tcp_init(svsk);
-> > +		set_bit(XPT_CACHE_AUTH, &svsk->sk_xprt.xpt_flags);
-> >  	}
-> >  
+--===============0252847454==
+Content-Type: multipart/alternative;
+	boundary="----=_Part_6987_30276570.1191149787722"
 
-This is design detritus. At one point, I was going to move this stuff
-into common logic, but decided I couldn't do it. I agree it will look
-cleaner if it gets moved it into the svc_xxx_init functions.
+------=_Part_6987_30276570.1191149787722
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
-Thanks,
-Tom
-> 
-> Why don't these clear_bit/set_bit calls go inside svc_{udp,tcp}_init?
-> Further, why aren't the svc_xprt_init calling inside there too?
-> 
-> 
-> NeilBrown
+Assume the GMT time on server != GMT time on the client.
+I do creat() then stat(). Which filetimes I am supposed to see:
+server time or client time ? Is the answer same for atime, mtime, and ctime
+?
 
+Thanks
+Yakov
+
+------=_Part_6987_30276570.1191149787722
+Content-Type: text/html; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+Assume the GMT time on server != GMT time on the client.<br>I do creat() then stat(). Which filetimes I am supposed to see:<br>server time or client time ? Is the answer same for atime, mtime, and ctime ?<br><br>Thanks<br>
+Yakov<br><br><br>
+
+------=_Part_6987_30276570.1191149787722--
+
+
+--===============0252847454==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
 Defy all challenges. Microsoft(R) Visual Studio 2005.
 http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+--===============0252847454==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============0252847454==--
