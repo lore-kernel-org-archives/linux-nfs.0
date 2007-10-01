@@ -1,8 +1,7 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [RFC,
-	PATCH 04/35] svc: Add a max payload value to the transport
-Date: Mon, 01 Oct 2007 14:27:38 -0500
-Message-ID: <20071001192738.3250.6971.stgit@dell3.ogc.int>
+Subject: [RFC,PATCH 01/35] svc: Add an svc transport class
+Date: Mon, 01 Oct 2007 14:27:31 -0500
+Message-ID: <20071001192730.3250.89167.stgit@dell3.ogc.int>
 References: <20071001191426.3250.15371.stgit@dell3.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -12,12 +11,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IcQva-0005V2-Va
-	for nfs@lists.sourceforge.net; Mon, 01 Oct 2007 12:27:39 -0700
+	id 1IcQvW-0005Uh-GY
+	for nfs@lists.sourceforge.net; Mon, 01 Oct 2007 12:27:34 -0700
 Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]
 	helo=smtp.opengridcomputing.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IcQvf-00078Y-L6
-	for nfs@lists.sourceforge.net; Mon, 01 Oct 2007 12:27:44 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IcQvb-000773-6i
+	for nfs@lists.sourceforge.net; Mon, 01 Oct 2007 12:27:39 -0700
 In-Reply-To: <20071001191426.3250.15371.stgit@dell3.ogc.int>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -32,84 +31,193 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 
-The svc_max_payload function currently looks at the socket type
-to determine the max payload. Add a max payload value to svc_xprt_class
-so it can be returned directly. 
+The transport class (svc_xprt_class) represents a type of transport, e.g. 
+udp, tcp, rdma.  A transport class has a unique name and a set of transport 
+operations kept in the svc_xprt_ops structure.
+
+A transport class can be dynamically registered and unregisterd. The 
+svc_xprt_class represents the module that implements the transport
+type and keeps reference counts on the module to avoid unloading while
+there are active users.
+
+The endpoint (svc_xprt) is a generic, transport independent endpoint that can 
+be used to send and receive data for an RPC service. It inherits it's 
+operations from the transport class. 
+
+A transport driver module registers and unregisters itself with svc sunrpc
+by calling svc_reg_xprt_class, and svc_unreg_xprt_class respectively. 
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- include/linux/sunrpc/svc_xprt.h |    2 ++
- net/sunrpc/svc.c                |    4 +---
- net/sunrpc/svc_xprt.c           |    1 +
- net/sunrpc/svcsock.c            |    2 ++
- 4 files changed, 6 insertions(+), 3 deletions(-)
+ include/linux/sunrpc/debug.h    |    1 
+ include/linux/sunrpc/svc_xprt.h |   31 +++++++++++++
+ net/sunrpc/Makefile             |    3 +
+ net/sunrpc/svc_xprt.c           |   94 +++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 128 insertions(+), 1 deletions(-)
 
+diff --git a/include/linux/sunrpc/debug.h b/include/linux/sunrpc/debug.h
+index 3912cf1..092fcfa 100644
+--- a/include/linux/sunrpc/debug.h
++++ b/include/linux/sunrpc/debug.h
+@@ -21,6 +21,7 @@ #define RPCDBG_BIND		0x0020
+ #define RPCDBG_SCHED		0x0040
+ #define RPCDBG_TRANS		0x0080
+ #define RPCDBG_SVCSOCK		0x0100
++#define RPCDBG_SVCXPRT		0x0100
+ #define RPCDBG_SVCDSP		0x0200
+ #define RPCDBG_MISC		0x0400
+ #define RPCDBG_CACHE		0x0800
 diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index a9a3afe..827f0fe 100644
---- a/include/linux/sunrpc/svc_xprt.h
+new file mode 100644
+index 0000000..a9a3afe
+--- /dev/null
 +++ b/include/linux/sunrpc/svc_xprt.h
-@@ -17,11 +17,13 @@ struct svc_xprt_class {
- 	struct module		*xcl_owner;
- 	struct svc_xprt_ops	*xcl_ops;
- 	struct list_head	xcl_list;
-+	u32			xcl_max_payload;
- };
- 
- struct svc_xprt {
- 	struct svc_xprt_class	*xpt_class;
- 	struct svc_xprt_ops	xpt_ops;
-+	u32			xpt_max_payload;
- };
- 
- int	svc_reg_xprt_class(struct svc_xprt_class *);
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 55ea6df..2a4b3c6 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -1034,10 +1034,8 @@ err_bad:
-  */
- u32 svc_max_payload(const struct svc_rqst *rqstp)
- {
--	int max = RPCSVC_MAXPAYLOAD_TCP;
-+	int max = rqstp->rq_xprt->xpt_max_payload;
- 
--	if (rqstp->rq_sock->sk_sock->type == SOCK_DGRAM)
--		max = RPCSVC_MAXPAYLOAD_UDP;
- 	if (rqstp->rq_server->sv_max_payload < max)
- 		max = rqstp->rq_server->sv_max_payload;
- 	return max;
+@@ -0,0 +1,31 @@
++/*
++ * linux/include/linux/sunrpc/svc_xprt.h
++ *
++ * RPC server transport I/O
++ */
++
++#ifndef SUNRPC_SVC_XPRT_H
++#define SUNRPC_SVC_XPRT_H
++
++#include <linux/sunrpc/svc.h>
++
++struct svc_xprt_ops {
++};
++
++struct svc_xprt_class {
++	const char		*xcl_name;
++	struct module		*xcl_owner;
++	struct svc_xprt_ops	*xcl_ops;
++	struct list_head	xcl_list;
++};
++
++struct svc_xprt {
++	struct svc_xprt_class	*xpt_class;
++	struct svc_xprt_ops	xpt_ops;
++};
++
++int	svc_reg_xprt_class(struct svc_xprt_class *);
++int	svc_unreg_xprt_class(struct svc_xprt_class *);
++void	svc_xprt_init(struct svc_xprt_class *, struct svc_xprt *);
++
++#endif /* SUNRPC_SVC_XPRT_H */
+diff --git a/net/sunrpc/Makefile b/net/sunrpc/Makefile
+index 8ebfc4d..e37aa99 100644
+--- a/net/sunrpc/Makefile
++++ b/net/sunrpc/Makefile
+@@ -10,6 +10,7 @@ sunrpc-y := clnt.o xprt.o socklib.o xprt
+ 	    auth.o auth_null.o auth_unix.o \
+ 	    svc.o svcsock.o svcauth.o svcauth_unix.o \
+ 	    rpcb_clnt.o timer.o xdr.o \
+-	    sunrpc_syms.o cache.o rpc_pipe.o
++	    sunrpc_syms.o cache.o rpc_pipe.o \
++	    svc_xprt.o
+ sunrpc-$(CONFIG_PROC_FS) += stats.o
+ sunrpc-$(CONFIG_SYSCTL) += sysctl.o
 diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index f838b57..8ea65c3 100644
---- a/net/sunrpc/svc_xprt.c
+new file mode 100644
+index 0000000..f838b57
+--- /dev/null
 +++ b/net/sunrpc/svc_xprt.c
-@@ -90,5 +90,6 @@ void svc_xprt_init(struct svc_xprt_class
- {
- 	xpt->xpt_class = xcl;
- 	xpt->xpt_ops = *xcl->xcl_ops;
-+	xpt->xpt_max_payload = xcl->xcl_max_payload;
- }
- EXPORT_SYMBOL_GPL(svc_xprt_init);
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index d52a6e2..d84b5c8 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -905,6 +905,7 @@ static struct svc_xprt_ops svc_udp_ops =
- static struct svc_xprt_class svc_udp_class = {
- 	.xcl_name = "udp",
- 	.xcl_ops = &svc_udp_ops,
-+	.xcl_max_payload = RPCSVC_MAXPAYLOAD_UDP,
- };
- 
- static void
-@@ -1358,6 +1359,7 @@ static struct svc_xprt_ops svc_tcp_ops =
- static struct svc_xprt_class svc_tcp_class = {
- 	.xcl_name = "tcp",
- 	.xcl_ops = &svc_tcp_ops,
-+	.xcl_max_payload = RPCSVC_MAXPAYLOAD_TCP,
- };
- 
- void svc_init_xprt_sock(void)
+@@ -0,0 +1,94 @@
++/*
++ * linux/net/sunrpc/svc_xprt.c
++ *
++ * Author: Tom Tucker <tom@opengridcomputing.com>
++ */
++
++#include <linux/sched.h>
++#include <linux/errno.h>
++#include <linux/fcntl.h>
++#include <linux/net.h>
++#include <linux/in.h>
++#include <linux/inet.h>
++#include <linux/udp.h>
++#include <linux/tcp.h>
++#include <linux/unistd.h>
++#include <linux/slab.h>
++#include <linux/netdevice.h>
++#include <linux/skbuff.h>
++#include <linux/file.h>
++#include <linux/freezer.h>
++#include <net/sock.h>
++#include <net/checksum.h>
++#include <net/ip.h>
++#include <net/ipv6.h>
++#include <net/tcp_states.h>
++#include <linux/uaccess.h>
++#include <asm/ioctls.h>
++
++#include <linux/sunrpc/types.h>
++#include <linux/sunrpc/clnt.h>
++#include <linux/sunrpc/xdr.h>
++#include <linux/sunrpc/svcsock.h>
++#include <linux/sunrpc/stats.h>
++#include <linux/sunrpc/svc_xprt.h>
++
++#define RPCDBG_FACILITY	RPCDBG_SVCXPRT
++
++/* List of registered transport classes */
++static spinlock_t svc_xprt_class_lock = SPIN_LOCK_UNLOCKED;
++static LIST_HEAD(svc_xprt_class_list);
++
++int svc_reg_xprt_class(struct svc_xprt_class *xcl)
++{
++	struct svc_xprt_class *cl;
++	int res = -EEXIST;
++
++	dprintk("svc: Adding svc transport class '%s'\n",
++		xcl->xcl_name);
++
++	INIT_LIST_HEAD(&xcl->xcl_list);
++	spin_lock(&svc_xprt_class_lock);
++	list_for_each_entry(cl, &svc_xprt_class_list, xcl_list) {
++		if (xcl == cl)
++			goto out;
++	}
++	list_add_tail(&xcl->xcl_list, &svc_xprt_class_list);
++	res = 0;
++out:
++	spin_unlock(&svc_xprt_class_lock);
++	return res;
++}
++EXPORT_SYMBOL_GPL(svc_reg_xprt_class);
++
++int svc_unreg_xprt_class(struct svc_xprt_class *xcl)
++{
++	struct svc_xprt_class *cl;
++	int res = 0;
++
++	dprintk("svc: Removing svc transport class '%s'\n", xcl->xcl_name);
++
++	spin_lock(&svc_xprt_class_lock);
++	list_for_each_entry(cl, &svc_xprt_class_list, xcl_list) {
++		if (xcl == cl) {
++			list_del_init(&cl->xcl_list);
++			goto out;
++		}
++	}
++	res = -ENOENT;
++ out:
++	spin_unlock(&svc_xprt_class_lock);
++	return res;
++}
++EXPORT_SYMBOL_GPL(svc_unreg_xprt_class);
++
++/*
++ * Called by transport drivers to initialize the transport independent
++ * portion of the transport instance.
++ */
++void svc_xprt_init(struct svc_xprt_class *xcl, struct svc_xprt *xpt)
++{
++	xpt->xpt_class = xcl;
++	xpt->xpt_ops = *xcl->xcl_ops;
++}
++EXPORT_SYMBOL_GPL(svc_xprt_init);
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
