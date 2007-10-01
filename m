@@ -1,25 +1,20 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: Utility to tune NFS parameters?
-Date: Thu, 4 Oct 2007 10:31:52 -0400
-Message-ID: <78EC3A4D-AC81-4A35-BD50-166C87707763@oracle.com>
-References: <29A7C5F65D54744CBFD97CD62A33DEE90241DA6F@VFOHMLAO13.Enterprise.afmc.ds.af.mil>
-	<48609735-2D9E-4E5E-A593-51D99C096BB7@oracle.com>
-	<29A7C5F65D54744CBFD97CD62A33DEE90241DC19@VFOHMLAO13.Enterprise.afmc.ds.af.mil>
-Mime-Version: 1.0 (Apple Message framework v752.2)
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: "Maute, Kevin P CTR AFRL/RBOO" <Kevin.Maute@WPAFB.AF.MIL>
+From: "DJ FILLERS" <DJ980@v-chat.net>
+Subject: idjinsfa
+Date: Mon, 1 Oct 2007 10:29:40 +0800
+Message-ID: <000601c803d2$eb118ab0$981aafca@user2qi8hf5rn5>
+Mime-Version: 1.0
+Content-Type: multipart/mixed; boundary="===============1168627541=="
+To: <nfs@lists.sf.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IdRkh-0003CH-3H
-	for nfs@lists.sourceforge.net; Thu, 04 Oct 2007 07:32:35 -0700
-Received: from agminet01.oracle.com ([141.146.126.228])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IdRkk-0000EN-1A
-	for nfs@lists.sourceforge.net; Thu, 04 Oct 2007 07:32:40 -0700
-In-Reply-To: <29A7C5F65D54744CBFD97CD62A33DEE90241DC19@VFOHMLAO13.Enterprise.afmc.ds.af.mil>
+	id 1IcB2c-0000U0-W0
+	for nfs@lists.sourceforge.net; Sun, 30 Sep 2007 19:29:51 -0700
+Received: from n25z189l83.broadband.ctm.net ([202.86.189.83]
+	helo=ce32.macau.ctm.net)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IcB2f-0000o8-NB
+	for nfs@lists.sourceforge.net; Sun, 30 Sep 2007 19:29:56 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,66 +27,72 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-cc: nfs@lists.sourceforge.net, used for generic NFS issues;
-removed nfsv4@linux-nfs.org, as it is for NFSv4 development.
+--===============1168627541==
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_000_0003_01C80415.F934CAB0"
 
-On Oct 4, 2007, at 9:10 AM, Maute, Kevin P CTR AFRL/RBOO wrote:
-> To give a little history, I have a compute cluster that was running
-> RHEL4 and /home mounted as an NFS share.  Fairly standard and it  
-> seemed
-> to have the standard NFS response.  I upgraded the cluster to RHEL5  
-> and
-> all I/O is VERY sluggish.  Top is my standard day-to-day tool and it
-> shows nothing.
+------=_NextPart_000_0003_01C80415.F934CAB0
+Content-Type: text/plain;
+	charset="windows-1250"
+Content-Transfer-Encoding: quoted-printable
 
-Top will show you CPU hogs.  NFS is an I/O subsystem, so you won't  
-get much information about it from top.  There is an "nfstop"  
-floating around, but I don't know if it's in RHEL 5.
+Good day nfs
 
-Anyway, upgrading to RHEL 5 is not supposed to cause a negative NFS  
-performance change.  Consult the Linux NFS FAQ and How-To for advice  
-on how to begin troubleshooting...
+Alert to all investors!
+Look at D-M-X-C!
+5-day price: ~$0.50
 
-    http://nfs.sourceforge.net
+Check it at 31.09.2007
+iaznosuf
+icauges
+iduavlag
+idnelps
+------=_NextPart_000_0003_01C80415.F934CAB0
+Content-Type: text/html;
+	charset="windows-1250"
+Content-Transfer-Encoding: quoted-printable
 
->> -----Original Message-----
->> From: Chuck Lever [mailto:chuck.lever@oracle.com]
->> Sent: Wednesday, October 03, 2007 5:05 PM
->> To: Maute, Kevin P CTR AFRL/RBOO
->> Cc: nfsv4@linux-nfs.org
->> Subject: Re: Utility to tune NFS parameters?
->>
->> On Oct 3, 2007, at 4:24 PM, Maute, Kevin P CTR AFRL/VAOO wrote:
->>> I am looking for a utility that runs under RH Linux to test NFS
->>> throughput.  This is not the first time in my career that I have
->>> looked for such a beast but I am hoping for better results this
->>> time :)
->>
->> Kevin-
->>
->> You can use any file system performance tool for this.
->> Anything from
->> iozone to iometer.
->>
->> You might also test raw network throughput using iPerf or a similar
->> tool to get a baseline for comparing NFS read and write throughput.
->>
->> --
->> Chuck Lever
->> chuck[dot]lever[at]oracle[dot]com
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD>
+<META http-equiv=3DContent-Type content=3D"text/html; charset=3Dwindows-1250">
+<META content=3D"MSHTML 6.00.2900.3059" name=3DGENERATOR>
+<STYLE></STYLE>
+</HEAD>
+<BODY bgColor=3D#ffffff>
+<DIV><FONT Arial size=3D2>Good day nfs</FONT></DIV>
+<DIV><FONT Arial size=3D2></FONT></DIV>
+<DIV><FONT Arial size=3D2>Alert to all investors!</FONT></DIV>
+<DIV><FONT Arial size=3D2>Look at D-M-X-C!</FONT></DIV>
+<DIV><FONT Arial size=3D2>5-day price: ~$0.50</FONT></DIV>
+<DIV><FONT Arial size=3D2></FONT></DIV>
+<DIV><FONT Arial size=3D2>Check it at 31.09.2007</FONT></DIV>
+<DIV><FONT Arial size=3D2>iaznosuf</FONT></DIV>
+<DIV><FONT Arial size=3D2>icauges</FONT></DIV>
+<DIV><FONT Arial size=3D2>iduavlag</FONT></DIV>
+<DIV><FONT Arial size=3D2>idnelps</FONT></DIV></BODY></HTML>
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+------=_NextPart_000_0003_01C80415.F934CAB0--
 
 
 
+--===============1168627541==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
-This SF.net email is sponsored by: Splunk Inc.
-Still grepping through log files to find problems?  Stop.
-Now Search log events and configuration files using AJAX and a browser.
-Download your FREE copy of Splunk now >> http://get.splunk.com/
+This SF.net email is sponsored by: Microsoft
+Defy all challenges. Microsoft(R) Visual Studio 2005.
+http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+--===============1168627541==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============1168627541==--
