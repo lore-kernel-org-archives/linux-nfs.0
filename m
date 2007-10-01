@@ -1,23 +1,23 @@
 From: Tom Tucker <tom@opengridcomputing.com>
 Subject: [RFC,
-	PATCH 12/35] svc: Add a generic transport svc_create_xprt function
-Date: Mon, 01 Oct 2007 14:27:56 -0500
-Message-ID: <20071001192756.3250.60536.stgit@dell3.ogc.int>
+	PATCH 13/35] svc: Change services to use new svc_create_xprt service
+Date: Mon, 01 Oct 2007 14:27:59 -0500
+Message-ID: <20071001192758.3250.2651.stgit@dell3.ogc.int>
 References: <20071001191426.3250.15371.stgit@dell3.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: neilb@suse.de, bfields@fieldses.org, gnb@sgi.com
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IcQvu-0005Vo-C8
-	for nfs@lists.sourceforge.net; Mon, 01 Oct 2007 12:27:58 -0700
+	id 1IcQvy-0005Y7-To
+	for nfs@lists.sourceforge.net; Mon, 01 Oct 2007 12:28:02 -0700
 Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]
 	helo=smtp.opengridcomputing.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IcQvy-0007Fp-50
-	for nfs@lists.sourceforge.net; Mon, 01 Oct 2007 12:28:03 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IcQw2-0000vQ-F7
+	for nfs@lists.sourceforge.net; Mon, 01 Oct 2007 12:28:08 -0700
 In-Reply-To: <20071001191426.3250.15371.stgit@dell3.ogc.int>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -32,241 +32,153 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 
-The svc_create_xprt function is a transport independent version
-of the svc_makesock function. 
-
-Since transport instance creation contains transport dependent and 
-independent components, add an xpo_create transport function. The 
-transport implementation of this function allocates the memory for the 
-endpoint, implements the transport dependent initialization logic, and
-calls svc_xprt_init to initialize the transport independent field (svc_xprt) 
-in it's data structure.
+Modify the various kernel RPC svcs to use the svc_create_xprt service.
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- include/linux/sunrpc/svc_xprt.h |    4 +++
- net/sunrpc/svc_xprt.c           |   35 ++++++++++++++++++++++++
- net/sunrpc/svcsock.c            |   58 +++++++++++++++++++++++++++++----------
- 3 files changed, 82 insertions(+), 15 deletions(-)
+ fs/lockd/svc.c                 |   17 ++++++++---------
+ fs/nfs/callback.c              |    4 ++--
+ fs/nfsd/nfssvc.c               |    4 ++--
+ include/linux/sunrpc/svcsock.h |    1 -
+ net/sunrpc/sunrpc_syms.c       |    1 -
+ net/sunrpc/svcsock.c           |   22 ----------------------
+ 6 files changed, 12 insertions(+), 37 deletions(-)
 
-diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index 4c1a650..6a34bb4 100644
---- a/include/linux/sunrpc/svc_xprt.h
-+++ b/include/linux/sunrpc/svc_xprt.h
-@@ -10,6 +10,9 @@ #define SUNRPC_SVC_XPRT_H
- #include <linux/sunrpc/svc.h>
- 
- struct svc_xprt_ops {
-+	struct svc_xprt	*(*xpo_create)(struct svc_serv *,
-+				       struct sockaddr *,
-+				       int);
- 	struct svc_xprt	*(*xpo_accept)(struct svc_xprt *);
- 	int		(*xpo_has_wspace)(struct svc_xprt *);
- 	int		(*xpo_recvfrom)(struct svc_rqst *);
-@@ -37,5 +40,6 @@ struct svc_xprt {
- int	svc_reg_xprt_class(struct svc_xprt_class *);
- int	svc_unreg_xprt_class(struct svc_xprt_class *);
- void	svc_xprt_init(struct svc_xprt_class *, struct svc_xprt *);
-+int	svc_create_xprt(struct svc_serv *, char *, unsigned short, int);
- 
- #endif /* SUNRPC_SVC_XPRT_H */
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 8ea65c3..d57064f 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -93,3 +93,38 @@ void svc_xprt_init(struct svc_xprt_class
- 	xpt->xpt_max_payload = xcl->xcl_max_payload;
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index 82e2192..8686915 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -219,13 +219,12 @@ lockd(struct svc_rqst *rqstp)
+ 	module_put_and_exit(0);
  }
- EXPORT_SYMBOL_GPL(svc_xprt_init);
-+
-+int svc_create_xprt(struct svc_serv *serv, char *xprt_name, unsigned short port,
-+		    int flags)
-+{
-+	struct svc_xprt_class *xcl;
-+	int ret = -ENOENT;
-+	struct sockaddr_in sin = {
-+		.sin_family		= AF_INET,
-+		.sin_addr.s_addr	= INADDR_ANY,
-+		.sin_port		= htons(port),
-+	};
-+	dprintk("svc: creating transport %s[%d]\n", xprt_name, port);
-+	spin_lock(&svc_xprt_class_lock);
-+	list_for_each_entry(xcl, &svc_xprt_class_list, xcl_list) {
-+		if (strcmp(xprt_name, xcl->xcl_name) == 0) {
-+			spin_unlock(&svc_xprt_class_lock);
-+			if (try_module_get(xcl->xcl_owner)) {
-+				struct svc_xprt *newxprt;
-+				ret = 0;
-+				newxprt = xcl->xcl_ops->xpo_create
-+					(serv, (struct sockaddr *)&sin, flags);
-+				if (IS_ERR(newxprt)) {
-+					module_put(xcl->xcl_owner);
-+					ret = PTR_ERR(newxprt);
-+				}
-+			}
-+			goto out;
-+		}
-+	}
-+	spin_unlock(&svc_xprt_class_lock);
-+	dprintk("svc: transport %s not found\n", xprt_name);
-+ out:
-+	return ret;
-+}
-+EXPORT_SYMBOL_GPL(svc_create_xprt);
+ 
+-
+-static int find_socket(struct svc_serv *serv, int proto)
++static int find_xprt(struct svc_serv *serv, char *proto)
+ {
+ 	struct svc_sock *svsk;
+ 	int found = 0;
+ 	list_for_each_entry(svsk, &serv->sv_permsocks, sk_list)
+-		if (svsk->sk_sk->sk_protocol == proto) {
++		if (strcmp(svsk->sk_xprt.xpt_class->xcl_name, proto) == 0) {
+ 			found = 1;
+ 			break;
+ 		}
+@@ -243,13 +242,13 @@ static int make_socks(struct svc_serv *s
+ 	int err = 0;
+ 
+ 	if (proto == IPPROTO_UDP || nlm_udpport)
+-		if (!find_socket(serv, IPPROTO_UDP))
+-			err = svc_makesock(serv, IPPROTO_UDP, nlm_udpport,
+-						SVC_SOCK_DEFAULTS);
++		if (!find_xprt(serv, "udp"))
++			err = svc_create_xprt(serv, "udp", nlm_udpport,
++					      SVC_SOCK_DEFAULTS);
+ 	if (err >= 0 && (proto == IPPROTO_TCP || nlm_tcpport))
+-		if (!find_socket(serv, IPPROTO_TCP))
+-			err = svc_makesock(serv, IPPROTO_TCP, nlm_tcpport,
+-						SVC_SOCK_DEFAULTS);
++		if (!find_xprt(serv, "tcp"))
++			err = svc_create_xprt(serv, "tcp", nlm_tcpport,
++					      SVC_SOCK_DEFAULTS);
+ 
+ 	if (err >= 0) {
+ 		warned = 0;
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index a796be5..e27ca14 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -123,8 +123,8 @@ int nfs_callback_up(void)
+ 	if (!serv)
+ 		goto out_err;
+ 
+-	ret = svc_makesock(serv, IPPROTO_TCP, nfs_callback_set_tcpport,
+-							SVC_SOCK_ANONYMOUS);
++	ret = svc_create_xprt(serv, "tcp", nfs_callback_set_tcpport,
++			      SVC_SOCK_ANONYMOUS);
+ 	if (ret <= 0)
+ 		goto out_destroy;
+ 	nfs_callback_tcpport = ret;
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index a8c89ae..bf70b06 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -236,7 +236,7 @@ static int nfsd_init_socks(int port)
+ 
+ 	error = lockd_up(IPPROTO_UDP);
+ 	if (error >= 0) {
+-		error = svc_makesock(nfsd_serv, IPPROTO_UDP, port,
++		error = svc_create_xprt(nfsd_serv, "udp", port,
+ 					SVC_SOCK_DEFAULTS);
+ 		if (error < 0)
+ 			lockd_down();
+@@ -247,7 +247,7 @@ static int nfsd_init_socks(int port)
+ #ifdef CONFIG_NFSD_TCP
+ 	error = lockd_up(IPPROTO_TCP);
+ 	if (error >= 0) {
+-		error = svc_makesock(nfsd_serv, IPPROTO_TCP, port,
++		error = svc_create_xprt(nfsd_serv, "tcp", port,
+ 					SVC_SOCK_DEFAULTS);
+ 		if (error < 0)
+ 			lockd_down();
+diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
+index 9882ce0..3181d9d 100644
+--- a/include/linux/sunrpc/svcsock.h
++++ b/include/linux/sunrpc/svcsock.h
+@@ -67,7 +67,6 @@ #define SK_LISTENER	11			/* listening en
+ /*
+  * Function prototypes.
+  */
+-int		svc_makesock(struct svc_serv *, int, unsigned short, int flags);
+ void		svc_force_close_socket(struct svc_sock *);
+ int		svc_recv(struct svc_rqst *, long);
+ int		svc_send(struct svc_rqst *);
+diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
+index a62ce47..e4cad0f 100644
+--- a/net/sunrpc/sunrpc_syms.c
++++ b/net/sunrpc/sunrpc_syms.c
+@@ -72,7 +72,6 @@ EXPORT_SYMBOL(svc_drop);
+ EXPORT_SYMBOL(svc_process);
+ EXPORT_SYMBOL(svc_recv);
+ EXPORT_SYMBOL(svc_wake_up);
+-EXPORT_SYMBOL(svc_makesock);
+ EXPORT_SYMBOL(svc_reserve);
+ EXPORT_SYMBOL(svc_auth_register);
+ EXPORT_SYMBOL(auth_domain_lookup);
 diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index ffc54a1..e3c74e0 100644
+index e3c74e0..373f020 100644
 --- a/net/sunrpc/svcsock.c
 +++ b/net/sunrpc/svcsock.c
-@@ -90,6 +90,8 @@ static void		svc_sock_free(struct svc_xp
- static struct svc_deferred_req *svc_deferred_dequeue(struct svc_sock *svsk);
- static int svc_deferred_recv(struct svc_rqst *rqstp);
- static struct cache_deferred_req *svc_defer(struct cache_req *req);
-+static struct svc_xprt *
-+svc_create_socket(struct svc_serv *, int, struct sockaddr *, int, int);
- 
- /* apparently the "standard" is that clients close
-  * idle connections after 5 minutes, servers after
-@@ -381,6 +383,7 @@ svc_sock_put(struct svc_sock *svsk)
- {
- 	if (atomic_dec_and_test(&svsk->sk_inuse)) {
- 		BUG_ON(!test_bit(SK_DEAD, &svsk->sk_flags));
-+		module_put(svsk->sk_xprt.xpt_class->xcl_owner);
- 		svsk->sk_xprt.xpt_ops.xpo_free(&svsk->sk_xprt);
- 	}
- }
-@@ -921,7 +924,15 @@ svc_udp_accept(struct svc_xprt *xprt)
- 	return NULL;
+@@ -2012,28 +2012,6 @@ void svc_force_close_socket(struct svc_s
+ 	svc_close_socket(svsk);
  }
  
-+static struct svc_xprt *
-+svc_udp_create(struct svc_serv *serv, struct sockaddr *sa, int flags)
-+{
-+	return svc_create_socket(serv, IPPROTO_UDP, sa,
-+				 sizeof(struct sockaddr_in), flags);
-+}
-+
- static struct svc_xprt_ops svc_udp_ops = {
-+	.xpo_create = svc_udp_create,
- 	.xpo_recvfrom = svc_udp_recvfrom,
- 	.xpo_sendto = svc_udp_sendto,
- 	.xpo_release = svc_release_skb,
-@@ -934,6 +945,7 @@ static struct svc_xprt_ops svc_udp_ops =
- 
- static struct svc_xprt_class svc_udp_class = {
- 	.xcl_name = "udp",
-+	.xcl_owner = THIS_MODULE,
- 	.xcl_ops = &svc_udp_ops,
- 	.xcl_max_payload = RPCSVC_MAXPAYLOAD_UDP,
- };
-@@ -1357,7 +1369,15 @@ svc_tcp_has_wspace(struct svc_xprt *xprt
- 	return 1;
- }
- 
-+static struct svc_xprt *
-+svc_tcp_create(struct svc_serv *serv, struct sockaddr *sa, int flags)
-+{
-+	return svc_create_socket(serv, IPPROTO_TCP, sa,
-+				 sizeof(struct sockaddr_in), flags);
-+}
-+
- static struct svc_xprt_ops svc_tcp_ops = {
-+	.xpo_create = svc_tcp_create,
- 	.xpo_recvfrom = svc_tcp_recvfrom,
- 	.xpo_sendto = svc_tcp_sendto,
- 	.xpo_release = svc_release_skb,
-@@ -1370,6 +1390,7 @@ static struct svc_xprt_ops svc_tcp_ops =
- 
- static struct svc_xprt_class svc_tcp_class = {
- 	.xcl_name = "tcp",
-+	.xcl_owner = THIS_MODULE,
- 	.xcl_ops = &svc_tcp_ops,
- 	.xcl_max_payload = RPCSVC_MAXPAYLOAD_TCP,
- };
-@@ -1594,8 +1615,14 @@ svc_recv(struct svc_rqst *rqstp, long ti
- 	} else if (test_bit(SK_LISTENER, &svsk->sk_flags)) {
- 		struct svc_xprt *newxpt;
- 		newxpt = svsk->sk_xprt.xpt_ops.xpo_accept(&svsk->sk_xprt);
--		if (newxpt)
-+		if (newxpt) {
-+			/*
-+			 * We know this module_get will succeed because the
-+			 * listener holds a reference too
-+			 */
-+			__module_get(newxpt->xpt_class->xcl_owner);
- 			svc_check_conn_limits(svsk->sk_server);
-+		}
- 		svc_sock_received(svsk);
- 	} else {
- 		dprintk("svc: server %p, pool %u, socket %p, inuse=%d\n",
-@@ -1835,8 +1862,9 @@ EXPORT_SYMBOL_GPL(svc_addsock);
- /*
-  * Create socket for RPC service.
-  */
--static int svc_create_socket(struct svc_serv *serv, int protocol,
--				struct sockaddr *sin, int len, int flags)
-+static struct svc_xprt *
-+svc_create_socket(struct svc_serv *serv, int protocol,
-+		  struct sockaddr *sin, int len, int flags)
- {
- 	struct svc_sock	*svsk;
- 	struct socket	*sock;
-@@ -1851,13 +1879,13 @@ static int svc_create_socket(struct svc_
- 	if (protocol != IPPROTO_UDP && protocol != IPPROTO_TCP) {
- 		printk(KERN_WARNING "svc: only UDP and TCP "
- 				"sockets supported\n");
+-/**
+- * svc_makesock - Make a socket for nfsd and lockd
+- * @serv: RPC server structure
+- * @protocol: transport protocol to use
+- * @port: port to use
+- * @flags: requested socket characteristics
+- *
+- */
+-int svc_makesock(struct svc_serv *serv, int protocol, unsigned short port,
+-			int flags)
+-{
+-	dprintk("svc: creating socket proto = %d\n", protocol);
+-	switch (protocol) {
+-	case IPPROTO_TCP:
+-		return svc_create_xprt(serv, "tcp", port, flags);
+-	case IPPROTO_UDP:
+-		return svc_create_xprt(serv, "udp", port, flags);
+-	default:
 -		return -EINVAL;
-+		return ERR_PTR(-EINVAL);
- 	}
- 	type = (protocol == IPPROTO_UDP)? SOCK_DGRAM : SOCK_STREAM;
- 
- 	error = sock_create_kern(sin->sa_family, type, protocol, &sock);
- 	if (error < 0)
--		return error;
-+		return ERR_PTR(error);
- 
- 	svc_reclassify_socket(sock);
- 
-@@ -1876,13 +1904,13 @@ static int svc_create_socket(struct svc_
- 		if (protocol == IPPROTO_TCP)
- 			set_bit(SK_LISTENER, &svsk->sk_flags);
- 		svc_sock_received(svsk);
--		return ntohs(inet_sk(svsk->sk_sk)->sport);
-+		return (struct svc_xprt *)svsk;
- 	}
- 
- bummer:
- 	dprintk("svc: svc_create_socket error = %d\n", -error);
- 	sock_release(sock);
--	return error;
-+	return ERR_PTR(error);
- }
- 
- /*
-@@ -1995,15 +2023,15 @@ void svc_force_close_socket(struct svc_s
- int svc_makesock(struct svc_serv *serv, int protocol, unsigned short port,
- 			int flags)
- {
--	struct sockaddr_in sin = {
--		.sin_family		= AF_INET,
--		.sin_addr.s_addr	= INADDR_ANY,
--		.sin_port		= htons(port),
--	};
+-	}
+-}
 -
- 	dprintk("svc: creating socket proto = %d\n", protocol);
--	return svc_create_socket(serv, protocol, (struct sockaddr *) &sin,
--							sizeof(sin), flags);
-+	switch (protocol) {
-+	case IPPROTO_TCP:
-+		return svc_create_xprt(serv, "tcp", port, flags);
-+	case IPPROTO_UDP:
-+		return svc_create_xprt(serv, "udp", port, flags);
-+	default:
-+		return -EINVAL;
-+	}
- }
- 
  /*
+  * Handle defer and revisit of requests
+  */
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
