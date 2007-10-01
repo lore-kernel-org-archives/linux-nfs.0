@@ -1,23 +1,23 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: "Wim Colgate" <Wim.Colgate@xensource.com>
 Subject: Re: simple question about r/wsize
-Date: Mon, 01 Oct 2007 19:11:01 -0400
-Message-ID: <1191280261.6611.19.camel@heimdal.trondhjem.org>
+Date: Mon, 1 Oct 2007 16:19:31 -0700
+Message-ID: <A9AD3C3BCF83FD4182B7D4D99E37FAD8447557@exchrdm.ad.xensource.com>
 References: <A9AD3C3BCF83FD4182B7D4D99E37FAD8447540@exchrdm.ad.xensource.com>
+	<1191280261.6611.19.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: Wim Colgate <Wim.Colgate@xensource.com>
+To: "Trond Myklebust" <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IcUPy-0003VW-S6
-	for nfs@lists.sourceforge.net; Mon, 01 Oct 2007 16:11:15 -0700
-Received: from pat.uio.no ([129.240.10.15])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IcUQ3-0007ln-K4
-	for nfs@lists.sourceforge.net; Mon, 01 Oct 2007 16:11:20 -0700
-In-Reply-To: <A9AD3C3BCF83FD4182B7D4D99E37FAD8447540@exchrdm.ad.xensource.com>
+	id 1IcUY4-0004K2-Eb
+	for nfs@lists.sourceforge.net; Mon, 01 Oct 2007 16:19:36 -0700
+Received: from webmailrdm.xensource.com ([66.228.214.202])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IcUY8-000873-C9
+	for nfs@lists.sourceforge.net; Mon, 01 Oct 2007 16:19:41 -0700
+In-Reply-To: <1191280261.6611.19.camel@heimdal.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,24 +30,47 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-T24gTW9uLCAyMDA3LTEwLTAxIGF0IDE1OjA0IC0wNzAwLCBXaW0gQ29sZ2F0ZSB3cm90ZToKPiBX
-aGF04oCZcyB0aGUgY3VycmVudCBORlMgdjMgd3NpemUgYW5kIHJzaXplPyBJdCBhcHBlYXJzIHRv
-IGJlIDRLIOKAkyBhbmQKPiBqdXN0IHdhbnRlZCBhIGNvbmZpcm1hdGlvbi4KPiAKCkl0IHNvdW5k
-cyBsaWtlIHlvdSBhcmUgd29ya2luZyB3aXRoIGFuIG9sZCBzeXN0ZW0uIElJUkMsIG9sZGVyIHZl
-cnNpb25zCm9mIFJlZEhhdCB1c2VkIHRvIGppbW15IHRoZSAnbW91bnQnIGNvbW1hbmQgdG8gbWFr
-ZSA0ayB0aGUgZGVmYXVsdCwKYmVjYXVzZSB0aGF0IHdvcmtlZCBiZXN0IHdpdGggVURQIG1vdW50
-cyBvbiBjcnVtbXkgbmV0d29ya3MuCgpGb3IgbmV3ZXIgY2xpZW50cywgdGhlIGRlZmF1bHQgc2hv
-dWxkIGRlcGVuZCBvbiB3aGF0IHlvdXIgc2VydmVyCnNwZWNpZmllcyBpbiB0aGUgRlNJTkZPIG5m
-cyBjb21tYW5kLiBGb3IgbW9zdCBzZXJ2ZXJzLCB3aGVuIHlvdSBtb3VudAp3aXRoIGEgVENQIGNv
-bm5lY3Rpb24sIHRoZSBkZWZhdWx0IHdpbGwgYmUgMzJrLCBidXQgc29tZSBtYXkgaGF2ZSBsYXJn
-ZXIKZGVmYXVsdHMgKE5ldEFwcCBzZXJ2ZXJzIG9mdGVuIHNwZWNpZnkgYSA2NGsgZGVmYXVsdCkg
-b3Igc21hbGxlciAob2xkZXIKTGludXggc2VydmVycyB3aWxsIHN1cHBvcnQgYW4gOGsgbWF4aW11
-bSkuCgonY2F0IC9wcm9jL21vdW50cycgc2hvdWxkIGFsd2F5cyB0ZWxsIHlvdSB3aGF0IHRoZSBj
-bGllbnQgaXMgYWN0dWFsbHkKdXNpbmcgZm9yIHJzaXplL3dzaXplLgoKQ2hlZXJzCiAgVHJvbmQK
-CgotLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tClRoaXMgU0YubmV0IGVtYWlsIGlzIHNwb25zb3JlZCBieTogTWlj
-cm9zb2Z0CkRlZnkgYWxsIGNoYWxsZW5nZXMuIE1pY3Jvc29mdChSKSBWaXN1YWwgU3R1ZGlvIDIw
-MDUuCmh0dHA6Ly9jbGsuYXRkbXQuY29tL01SVC9nby92c2UwMTIwMDAwMDcwbXJ0L2RpcmVjdC8w
-MS8KX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX18KTkZTIG1h
-aWxsaXN0ICAtICBORlNAbGlzdHMuc291cmNlZm9yZ2UubmV0Cmh0dHBzOi8vbGlzdHMuc291cmNl
-Zm9yZ2UubmV0L2xpc3RzL2xpc3RpbmZvL25mcwo=
+Thanks Trond,
+
+As usual, you are fast to answer; and right. I was looking through the
+code and saw 4K being bantered around. However, cat'ing /proc/mounts
+shows 32K for rsize and wsize.
+
+Wim
+
+-----Original Message-----
+From: Trond Myklebust [mailto:trond.myklebust@fys.uio.no] 
+Sent: Monday, October 01, 2007 4:11 PM
+To: Wim Colgate
+Cc: nfs@lists.sourceforge.net
+Subject: Re: [NFS] simple question about r/wsize
+
+On Mon, 2007-10-01 at 15:04 -0700, Wim Colgate wrote:
+> What's the current NFS v3 wsize and rsize? It appears to be 4K - and
+> just wanted a confirmation.
+> 
+
+It sounds like you are working with an old system. IIRC, older versions
+of RedHat used to jimmy the 'mount' command to make 4k the default,
+because that worked best with UDP mounts on crummy networks.
+
+For newer clients, the default should depend on what your server
+specifies in the FSINFO nfs command. For most servers, when you mount
+with a TCP connection, the default will be 32k, but some may have larger
+defaults (NetApp servers often specify a 64k default) or smaller (older
+Linux servers will support an 8k maximum).
+
+'cat /proc/mounts' should always tell you what the client is actually
+using for rsize/wsize.
+
+Cheers
+  Trond
+
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Microsoft
+Defy all challenges. Microsoft(R) Visual Studio 2005.
+http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
