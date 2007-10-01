@@ -1,22 +1,21 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [RFC,
-	PATCH 10/35] svc: Move close processing to a single place
-Date: Mon, 01 Oct 2007 14:27:51 -0500
-Message-ID: <20071001192751.3250.95052.stgit@dell3.ogc.int>
+Subject: [RFC,PATCH 08/35] svc: Add xpo_prep_reply_hdr
+Date: Mon, 01 Oct 2007 14:27:47 -0500
+Message-ID: <20071001192747.3250.92817.stgit@dell3.ogc.int>
 References: <20071001191426.3250.15371.stgit@dell3.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: neilb@suse.de, bfields@fieldses.org, gnb@sgi.com
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IcQvj-0005VT-RB
+	id 1IcQvk-0005VY-I6
 	for nfs@lists.sourceforge.net; Mon, 01 Oct 2007 12:27:48 -0700
 Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]
 	helo=smtp.opengridcomputing.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IcQvo-0007AA-42
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IcQvo-0000rm-Qz
 	for nfs@lists.sourceforge.net; Mon, 01 Oct 2007 12:27:53 -0700
 In-Reply-To: <20071001191426.3250.15371.stgit@dell3.ogc.int>
 List-Id: "Discussion of NFS under Linux development, interoperability,
@@ -32,65 +31,96 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 
-Close handling was duplicated in the UDP and TCP recvfrom 
-methods. This code has been moved to the transport independent
-svc_recv function.
+Some transports add fields to the RPC header for replies, e.g. the TCP
+record length. This function is called when preparing the reply header
+to allow each transport to add whatever fields it requires.
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- net/sunrpc/svcsock.c |   24 ++++++++++--------------
- 1 files changed, 10 insertions(+), 14 deletions(-)
+ include/linux/sunrpc/svc_xprt.h |    1 +
+ net/sunrpc/svc.c                |    6 +++---
+ net/sunrpc/svcsock.c            |   19 +++++++++++++++++++
+ 3 files changed, 23 insertions(+), 3 deletions(-)
 
+diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+index 85d84b2..1cd86fe 100644
+--- a/include/linux/sunrpc/svc_xprt.h
++++ b/include/linux/sunrpc/svc_xprt.h
+@@ -11,6 +11,7 @@ #include <linux/sunrpc/svc.h>
+ 
+ struct svc_xprt_ops {
+ 	int		(*xpo_recvfrom)(struct svc_rqst *);
++	void		(*xpo_prep_reply_hdr)(struct svc_rqst *);
+ 	int		(*xpo_sendto)(struct svc_rqst *);
+ 	void		(*xpo_release)(struct svc_rqst *);
+ 	void		(*xpo_detach)(struct svc_xprt *);
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index 2a4b3c6..ee68117 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -815,9 +815,9 @@ svc_process(struct svc_rqst *rqstp)
+ 	rqstp->rq_res.tail[0].iov_len = 0;
+ 	/* Will be turned off only in gss privacy case: */
+ 	rqstp->rq_splice_ok = 1;
+-	/* tcp needs a space for the record length... */
+-	if (rqstp->rq_prot == IPPROTO_TCP)
+-		svc_putnl(resv, 0);
++
++	/* Setup reply header */
++	rqstp->rq_xprt->xpt_ops.xpo_prep_reply_hdr(rqstp);
+ 
+ 	rqstp->rq_xid = svc_getu32(argv);
+ 	svc_putu32(resv, rqstp->rq_xid);
 diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 59b6115..1028914 100644
+index cb13977..770d569 100644
 --- a/net/sunrpc/svcsock.c
 +++ b/net/sunrpc/svcsock.c
-@@ -792,11 +792,6 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
- 		return svc_deferred_recv(rqstp);
- 	}
+@@ -893,12 +893,18 @@ svc_udp_sendto(struct svc_rqst *rqstp)
+ 	return error;
+ }
  
--	if (test_bit(SK_CLOSE, &svsk->sk_flags)) {
--		svc_delete_socket(svsk);
--		return 0;
--	}
--
- 	clear_bit(SK_DATA, &svsk->sk_flags);
- 	skb = NULL;
- 	err = kernel_recvmsg(svsk->sk_sock, &msg, NULL,
-@@ -1199,11 +1194,6 @@ svc_tcp_recvfrom(struct svc_rqst *rqstp)
- 		return svc_deferred_recv(rqstp);
- 	}
++static void
++svc_udp_prep_reply_hdr(struct svc_rqst *rqstp)
++{
++}
++
+ static struct svc_xprt_ops svc_udp_ops = {
+ 	.xpo_recvfrom = svc_udp_recvfrom,
+ 	.xpo_sendto = svc_udp_sendto,
+ 	.xpo_release = svc_release_skb,
+ 	.xpo_detach = svc_sock_detach,
+ 	.xpo_free = svc_sock_free,
++	.xpo_prep_reply_hdr = svc_udp_prep_reply_hdr,
+ };
  
--	if (test_bit(SK_CLOSE, &svsk->sk_flags)) {
--		svc_delete_socket(svsk);
--		return 0;
--	}
--
- 	if (svsk->sk_sk->sk_state == TCP_LISTEN) {
- 		svc_tcp_accept(svsk);
- 		svc_sock_received(svsk);
-@@ -1589,10 +1579,16 @@ svc_recv(struct svc_rqst *rqstp, long ti
- 	}
- 	spin_unlock_bh(&pool->sp_lock);
+ static struct svc_xprt_class svc_udp_class = {
+@@ -1350,12 +1356,25 @@ svc_tcp_sendto(struct svc_rqst *rqstp)
+ 	return sent;
+ }
  
--	dprintk("svc: server %p, pool %u, socket %p, inuse=%d\n",
--		 rqstp, pool->sp_id, svsk, atomic_read(&svsk->sk_inuse));
--	len = svsk->sk_xprt.xpt_ops.xpo_recvfrom(rqstp);
--	dprintk("svc: got len=%d\n", len);
-+	len = 0;
-+	if (test_bit(SK_CLOSE, &svsk->sk_flags)) {
-+		dprintk("svc_recv: found SK_CLOSE\n");
-+		svc_delete_socket(svsk);
-+	} else {
-+		dprintk("svc: server %p, pool %u, socket %p, inuse=%d\n",
-+			rqstp, pool->sp_id, svsk, atomic_read(&svsk->sk_inuse));
-+		len = svsk->sk_xprt.xpt_ops.xpo_recvfrom(rqstp);
-+		dprintk("svc: got len=%d\n", len);
-+	}
++/*
++ * Setup response header. TCP has a 4B record length field.
++ */
++static void
++svc_tcp_prep_reply_hdr(struct svc_rqst *rqstp)
++{
++	struct kvec *resv = &rqstp->rq_res.head[0];
++
++	/* tcp needs a space for the record length... */
++	svc_putnl(resv, 0);
++}
++
+ static struct svc_xprt_ops svc_tcp_ops = {
+ 	.xpo_recvfrom = svc_tcp_recvfrom,
+ 	.xpo_sendto = svc_tcp_sendto,
+ 	.xpo_release = svc_release_skb,
+ 	.xpo_detach = svc_sock_detach,
+ 	.xpo_free = svc_sock_free,
++	.xpo_prep_reply_hdr = svc_tcp_prep_reply_hdr,
+ };
  
- 	/* No data, incomplete (TCP) read, or accept() */
- 	if (len == 0 || len == -EAGAIN) {
+ static struct svc_xprt_class svc_tcp_class = {
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
