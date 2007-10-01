@@ -1,8 +1,7 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [RFC,
-	PATCH 06/35] svc: Add transport specific xpo_release function
-Date: Mon, 01 Oct 2007 14:27:42 -0500
-Message-ID: <20071001192742.3250.93576.stgit@dell3.ogc.int>
+Subject: [RFC,PATCH 11/35] svc: Add xpo_accept transport function
+Date: Mon, 01 Oct 2007 14:27:54 -0500
+Message-ID: <20071001192753.3250.94322.stgit@dell3.ogc.int>
 References: <20071001191426.3250.15371.stgit@dell3.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -12,12 +11,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IcQvf-0005VD-Hp
-	for nfs@lists.sourceforge.net; Mon, 01 Oct 2007 12:27:43 -0700
+	id 1IcQvr-0005Vi-Aq
+	for nfs@lists.sourceforge.net; Mon, 01 Oct 2007 12:27:55 -0700
 Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]
 	helo=smtp.opengridcomputing.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IcQvk-0007AA-7z
-	for nfs@lists.sourceforge.net; Mon, 01 Oct 2007 12:27:48 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IcQvv-0007D5-J3
+	for nfs@lists.sourceforge.net; Mon, 01 Oct 2007 12:28:00 -0700
 In-Reply-To: <20071001191426.3250.15371.stgit@dell3.ogc.int>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -32,117 +31,279 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 
-The svc_sock_release function releases pages allocated to a thread. For
-UDP, this also returns the receive skb to the stack. For RDMA it will 
-post a receive WR and bump the client credit count. 
+Previously, the accept logic looked into the socket state to determine
+whether to call accept or recv when data-ready was indicated on an endpoint. 
+Since some transports don't use sockets, this logic was changed to use a flag 
+bit (SK_LISTENER) to identify listening endpoints. A transport function 
+(xpo_accept) was added to allow each transport to define its own accept 
+processing. A transport's initialization logic is reponsible for setting the 
+SK_LISTENER bit. I didn't see any way to do this in transport independent 
+logic since the passive side of a UDP connection doesn't listen and
+always recv's.
+
+In the svc_recv function, if the SK_LISTENER bit is set, the transport
+xpo_accept function is called to handle accept processing.
+
+Note that all functions are defined even if they don't make sense
+for a given transport. For example, accept doesn't mean anything for
+UDP. The fuction is defined anyway and bug checks if called. The
+UDP transport should never set the SK_LISTENER bit.
+
+The code that poaches connections when the connection
+limit is hit was moved to a subroutine to make the accept logic path
+easier to follow. Since this is in the new connection path, it should 
+not be a performance issue.
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- include/linux/sunrpc/svc.h      |    2 +-
- include/linux/sunrpc/svc_xprt.h |    1 +
- net/sunrpc/svcsock.c            |   16 +++++++++-------
- 3 files changed, 11 insertions(+), 8 deletions(-)
+ include/linux/sunrpc/svc_xprt.h |    1 
+ include/linux/sunrpc/svcsock.h  |    1 
+ net/sunrpc/svcsock.c            |  130 ++++++++++++++++++++++-----------------
+ 3 files changed, 75 insertions(+), 57 deletions(-)
 
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 37f7448..cfb2652 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -217,7 +217,7 @@ struct svc_rqst {
- 	struct auth_ops *	rq_authop;	/* authentication flavour */
- 	u32			rq_flavor;	/* pseudoflavor */
- 	struct svc_cred		rq_cred;	/* auth info */
--	struct sk_buff *	rq_skbuff;	/* fast recv inet buffer */
-+	void *			rq_xprt_ctxt;	/* transport specific context ptr */
- 	struct svc_deferred_req*rq_deferred;	/* deferred request we are replaying */
- 
- 	struct xdr_buf		rq_arg;
 diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index f0ba052..5871faa 100644
+index 47bedfa..4c1a650 100644
 --- a/include/linux/sunrpc/svc_xprt.h
 +++ b/include/linux/sunrpc/svc_xprt.h
-@@ -12,6 +12,7 @@ #include <linux/sunrpc/svc.h>
- struct svc_xprt_ops {
- 	int		(*xpo_recvfrom)(struct svc_rqst *);
- 	int		(*xpo_sendto)(struct svc_rqst *);
-+	void		(*xpo_release)(struct svc_rqst *);
- };
+@@ -10,6 +10,7 @@ #define SUNRPC_SVC_XPRT_H
+ #include <linux/sunrpc/svc.h>
  
- struct svc_xprt_class {
+ struct svc_xprt_ops {
++	struct svc_xprt	*(*xpo_accept)(struct svc_xprt *);
+ 	int		(*xpo_has_wspace)(struct svc_xprt *);
+ 	int		(*xpo_recvfrom)(struct svc_rqst *);
+ 	void		(*xpo_prep_reply_hdr)(struct svc_rqst *);
+diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
+index 08e78d0..9882ce0 100644
+--- a/include/linux/sunrpc/svcsock.h
++++ b/include/linux/sunrpc/svcsock.h
+@@ -36,6 +36,7 @@ #define	SK_CHNGBUF	7			/* need to change
+ #define	SK_DEFERRED	8			/* request on sk_deferred */
+ #define	SK_OLD		9			/* used for temp socket aging mark+sweep */
+ #define	SK_DETACHED	10			/* detached from tempsocks list */
++#define SK_LISTENER	11			/* listening endpoint */
+ 
+ 	atomic_t    	    	sk_reserved;	/* space on outq that is reserved */
+ 
 diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 150531f..2d5731c 100644
+index 1028914..ffc54a1 100644
 --- a/net/sunrpc/svcsock.c
 +++ b/net/sunrpc/svcsock.c
-@@ -184,14 +184,14 @@ svc_thread_dequeue(struct svc_pool *pool
- /*
-  * Release an skbuff after use
-  */
--static inline void
-+static void
- svc_release_skb(struct svc_rqst *rqstp)
- {
--	struct sk_buff *skb = rqstp->rq_skbuff;
-+	struct sk_buff *skb = rqstp->rq_xprt_ctxt;
- 	struct svc_deferred_req *dr = rqstp->rq_deferred;
+@@ -914,6 +914,13 @@ svc_udp_has_wspace(struct svc_xprt *xprt
+ 	return 1;
+ }
  
- 	if (skb) {
--		rqstp->rq_skbuff = NULL;
-+		rqstp->rq_xprt_ctxt = NULL;
- 
- 		dprintk("svc: service %p, releasing skb %p\n", rqstp, skb);
- 		skb_free_datagram(rqstp->rq_sock->sk_sk, skb);
-@@ -394,7 +394,7 @@ svc_sock_release(struct svc_rqst *rqstp)
- {
- 	struct svc_sock	*svsk = rqstp->rq_sock;
- 
--	svc_release_skb(rqstp);
-+	rqstp->rq_xprt->xpt_ops.xpo_release(rqstp);
- 
- 	svc_free_res_pages(rqstp);
- 	rqstp->rq_res.page_len = 0;
-@@ -866,7 +866,7 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
- 			skb_free_datagram(svsk->sk_sk, skb);
- 			return 0;
- 		}
--		rqstp->rq_skbuff = skb;
-+		rqstp->rq_xprt_ctxt = skb;
- 	}
- 
- 	rqstp->rq_arg.page_base = 0;
-@@ -902,6 +902,7 @@ svc_udp_sendto(struct svc_rqst *rqstp)
++static struct svc_xprt *
++svc_udp_accept(struct svc_xprt *xprt)
++{
++	BUG();
++	return NULL;
++}
++
  static struct svc_xprt_ops svc_udp_ops = {
  	.xpo_recvfrom = svc_udp_recvfrom,
  	.xpo_sendto = svc_udp_sendto,
-+	.xpo_release = svc_release_skb,
+@@ -922,6 +929,7 @@ static struct svc_xprt_ops svc_udp_ops =
+ 	.xpo_free = svc_sock_free,
+ 	.xpo_prep_reply_hdr = svc_udp_prep_reply_hdr,
+ 	.xpo_has_wspace = svc_udp_has_wspace,
++	.xpo_accept = svc_udp_accept,
  };
  
  static struct svc_xprt_class svc_udp_class = {
-@@ -1290,7 +1291,7 @@ svc_tcp_recvfrom(struct svc_rqst *rqstp)
- 		rqstp->rq_arg.page_len = len - rqstp->rq_arg.head[0].iov_len;
+@@ -1046,9 +1054,10 @@ static inline int svc_port_is_privileged
+ /*
+  * Accept a TCP connection
+  */
+-static void
+-svc_tcp_accept(struct svc_sock *svsk)
++static struct svc_xprt *
++svc_tcp_accept(struct svc_xprt *xprt)
+ {
++	struct svc_sock *svsk = container_of(xprt, struct svc_sock, sk_xprt);
+ 	struct sockaddr_storage addr;
+ 	struct sockaddr	*sin = (struct sockaddr *) &addr;
+ 	struct svc_serv	*serv = svsk->sk_server;
+@@ -1060,7 +1069,7 @@ svc_tcp_accept(struct svc_sock *svsk)
+ 
+ 	dprintk("svc: tcp_accept %p sock %p\n", svsk, sock);
+ 	if (!sock)
+-		return;
++		return NULL;
+ 
+ 	clear_bit(SK_CONN, &svsk->sk_flags);
+ 	err = kernel_accept(sock, &newsock, O_NONBLOCK);
+@@ -1071,7 +1080,7 @@ svc_tcp_accept(struct svc_sock *svsk)
+ 		else if (err != -EAGAIN && net_ratelimit())
+ 			printk(KERN_WARNING "%s: accept failed (err %d)!\n",
+ 				   serv->sv_name, -err);
+-		return;
++		return NULL;
  	}
  
--	rqstp->rq_skbuff      = NULL;
-+	rqstp->rq_xprt_ctxt   = NULL;
- 	rqstp->rq_prot	      = IPPROTO_TCP;
+ 	set_bit(SK_CONN, &svsk->sk_flags);
+@@ -1117,59 +1126,14 @@ svc_tcp_accept(struct svc_sock *svsk)
  
- 	/* Reset TCP read info */
-@@ -1356,6 +1357,7 @@ svc_tcp_sendto(struct svc_rqst *rqstp)
- static struct svc_xprt_ops svc_tcp_ops = {
- 	.xpo_recvfrom = svc_tcp_recvfrom,
- 	.xpo_sendto = svc_tcp_sendto,
-+	.xpo_release = svc_release_skb,
+ 	svc_sock_received(newsvsk);
+ 
+-	/* make sure that we don't have too many active connections.
+-	 * If we have, something must be dropped.
+-	 *
+-	 * There's no point in trying to do random drop here for
+-	 * DoS prevention. The NFS clients does 1 reconnect in 15
+-	 * seconds. An attacker can easily beat that.
+-	 *
+-	 * The only somewhat efficient mechanism would be if drop
+-	 * old connections from the same IP first. But right now
+-	 * we don't even record the client IP in svc_sock.
+-	 */
+-	if (serv->sv_tmpcnt > (serv->sv_nrthreads+3)*20) {
+-		struct svc_sock *svsk = NULL;
+-		spin_lock_bh(&serv->sv_lock);
+-		if (!list_empty(&serv->sv_tempsocks)) {
+-			if (net_ratelimit()) {
+-				/* Try to help the admin */
+-				printk(KERN_NOTICE "%s: too many open TCP "
+-					"sockets, consider increasing the "
+-					"number of nfsd threads\n",
+-						   serv->sv_name);
+-				printk(KERN_NOTICE
+-				       "%s: last TCP connect from %s\n",
+-				       serv->sv_name, __svc_print_addr(sin,
+-							buf, sizeof(buf)));
+-			}
+-			/*
+-			 * Always select the oldest socket. It's not fair,
+-			 * but so is life
+-			 */
+-			svsk = list_entry(serv->sv_tempsocks.prev,
+-					  struct svc_sock,
+-					  sk_list);
+-			set_bit(SK_CLOSE, &svsk->sk_flags);
+-			atomic_inc(&svsk->sk_inuse);
+-		}
+-		spin_unlock_bh(&serv->sv_lock);
+-
+-		if (svsk) {
+-			svc_sock_enqueue(svsk);
+-			svc_sock_put(svsk);
+-		}
+-
+-	}
+-
+ 	if (serv->sv_stats)
+ 		serv->sv_stats->nettcpconn++;
+ 
+-	return;
++	return &newsvsk->sk_xprt;
+ 
+ failed:
+ 	sock_release(newsock);
+-	return;
++	return NULL;
+ }
+ 
+ /*
+@@ -1194,12 +1158,6 @@ svc_tcp_recvfrom(struct svc_rqst *rqstp)
+ 		return svc_deferred_recv(rqstp);
+ 	}
+ 
+-	if (svsk->sk_sk->sk_state == TCP_LISTEN) {
+-		svc_tcp_accept(svsk);
+-		svc_sock_received(svsk);
+-		return 0;
+-	}
+-
+ 	if (test_and_clear_bit(SK_CHNGBUF, &svsk->sk_flags))
+ 		/* sndbuf needs to have room for one request
+ 		 * per thread, otherwise we can stall even when the
+@@ -1407,6 +1365,7 @@ static struct svc_xprt_ops svc_tcp_ops =
+ 	.xpo_free = svc_sock_free,
+ 	.xpo_prep_reply_hdr = svc_tcp_prep_reply_hdr,
+ 	.xpo_has_wspace = svc_tcp_has_wspace,
++	.xpo_accept = svc_tcp_accept,
  };
  
  static struct svc_xprt_class svc_tcp_class = {
-@@ -1577,7 +1579,7 @@ svc_send(struct svc_rqst *rqstp)
+@@ -1488,6 +1447,55 @@ svc_sock_update_bufs(struct svc_serv *se
+ 	spin_unlock_bh(&serv->sv_lock);
+ }
+ 
++static void
++svc_check_conn_limits(struct svc_serv *serv)
++{
++	char	buf[RPC_MAX_ADDRBUFLEN];
++
++	/* make sure that we don't have too many active connections.
++	 * If we have, something must be dropped.
++	 *
++	 * There's no point in trying to do random drop here for
++	 * DoS prevention. The NFS clients does 1 reconnect in 15
++	 * seconds. An attacker can easily beat that.
++	 *
++	 * The only somewhat efficient mechanism would be if drop
++	 * old connections from the same IP first. But right now
++	 * we don't even record the client IP in svc_sock.
++	 */
++	if (serv->sv_tmpcnt > (serv->sv_nrthreads+3)*20) {
++		struct svc_sock *svsk = NULL;
++		spin_lock_bh(&serv->sv_lock);
++		if (!list_empty(&serv->sv_tempsocks)) {
++			if (net_ratelimit()) {
++				/* Try to help the admin */
++				printk(KERN_NOTICE "%s: too many open TCP "
++					"sockets, consider increasing the "
++					"number of nfsd threads\n",
++						   serv->sv_name);
++				printk(KERN_NOTICE
++				       "%s: last TCP connect from %s\n",
++				       serv->sv_name, buf);
++			}
++			/*
++			 * Always select the oldest socket. It's not fair,
++			 * but so is life
++			 */
++			svsk = list_entry(serv->sv_tempsocks.prev,
++					  struct svc_sock,
++					  sk_list);
++			set_bit(SK_CLOSE, &svsk->sk_flags);
++			atomic_inc(&svsk->sk_inuse);
++		}
++		spin_unlock_bh(&serv->sv_lock);
++
++		if (svsk) {
++			svc_sock_enqueue(svsk);
++			svc_sock_put(svsk);
++		}
++	}
++}
++
+ /*
+  * Receive the next request on any socket.  This code is carefully
+  * organised not to touch any cachelines in the shared svc_serv
+@@ -1583,6 +1591,12 @@ svc_recv(struct svc_rqst *rqstp, long ti
+ 	if (test_bit(SK_CLOSE, &svsk->sk_flags)) {
+ 		dprintk("svc_recv: found SK_CLOSE\n");
+ 		svc_delete_socket(svsk);
++	} else if (test_bit(SK_LISTENER, &svsk->sk_flags)) {
++		struct svc_xprt *newxpt;
++		newxpt = svsk->sk_xprt.xpt_ops.xpo_accept(&svsk->sk_xprt);
++		if (newxpt)
++			svc_check_conn_limits(svsk->sk_server);
++		svc_sock_received(svsk);
+ 	} else {
+ 		dprintk("svc: server %p, pool %u, socket %p, inuse=%d\n",
+ 			rqstp, pool->sp_id, svsk, atomic_read(&svsk->sk_inuse));
+@@ -1859,6 +1873,8 @@ static int svc_create_socket(struct svc_
  	}
  
- 	/* release the receive skb before sending the reply */
--	svc_release_skb(rqstp);
-+	rqstp->rq_xprt->xpt_ops.xpo_release(rqstp);
- 
- 	/* calculate over-all length */
- 	xb = & rqstp->rq_res;
+ 	if ((svsk = svc_setup_socket(serv, sock, &error, flags)) != NULL) {
++		if (protocol == IPPROTO_TCP)
++			set_bit(SK_LISTENER, &svsk->sk_flags);
+ 		svc_sock_received(svsk);
+ 		return ntohs(inet_sk(svsk->sk_sk)->sport);
+ 	}
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
