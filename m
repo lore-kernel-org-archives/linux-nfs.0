@@ -1,26 +1,21 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [RFC,PATCH 00/33] SVC Transport Switch
-Date: Mon, 1 Oct 2007 11:58:45 -0400
-Message-ID: <20071001155845.GB10719@fieldses.org>
-References: <20070927045751.12677.98896.stgit@dell3.ogc.int>
-	<18172.34896.98978.904440@notabene.brown>
-	<1191001147.10604.101.camel@trinity.ogc.int>
+From: Tom Tucker <tom@opengridcomputing.com>
+Subject: [RFC,PATCH 00/35] SVC Transport Switch
+Date: Mon, 01 Oct 2007 14:14:26 -0500
+Message-ID: <20071001191426.3250.15371.stgit@dell3.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net,
-	Chuck Lever <cel@citi.umich.edu>, gnb@sgi.com
-To: Tom Tucker <tom@opengridcomputing.com>
+Cc: neilb@suse.de, bfields@fieldses.org, gnb@sgi.com
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IcNwV-0000mw-Oq
-	for nfs@lists.sourceforge.net; Mon, 01 Oct 2007 09:16:25 -0700
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IcNfZ-0004ig-Ii
-	for nfs@lists.sourceforge.net; Mon, 01 Oct 2007 08:58:54 -0700
-In-Reply-To: <1191001147.10604.101.camel@trinity.ogc.int>
+	id 1IcQvV-0005UX-BD
+	for nfs@lists.sourceforge.net; Mon, 01 Oct 2007 12:27:33 -0700
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]
+	helo=smtp.opengridcomputing.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IcQvZ-0000ks-9V
+	for nfs@lists.sourceforge.net; Mon, 01 Oct 2007 12:27:38 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,23 +28,46 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, Sep 28, 2007 at 12:39:07PM -0500, Tom Tucker wrote:
-> On Fri, 2007-09-28 at 14:51 +1000, Neil Brown wrote:
-> > Just a few minor issues as noted in previous emails.  Most of them can
-> > be addressed by incremental patches rather than respinning the whole
-> > series.  I'm just not sure about where the IP-address info should
-> > live.  Maybe other people have opinions???
-> > 
-> 
-> I've already redone the patchset for whitespace cleanup and to handle a
-> few checkpatch.pl style issues. How about if I roll in your suggestions,
-> repost the whole thing
+This is rev 2 of the new pluggable transport switch for
+RPC servers. This version includes two new patches: one to add a field
+for keeping track of a transport specific header that precedes the
+RPC header for deferral processing, and one that cleans up some 
+left over references to svc_sock in transport independent code.
 
-Fine by me.
+Also in this patch are bug fixes, whitespace, and style changes based on
+reviews from from Neil Brown, Bruce Fields, and Chuck Lever.
 
---b.
+Edited text from rev 1 follows:
 
-> and then go to incremental after that?
+- The overall design of the switch has been modified to be more similar
+  to the client side, e.g.
+        - There is a transport class structure svc_xprt_class, and
+        - A transport independent structure is manipulated by xprt 
+          independent code (svc_xprt)
+        - Further consolidation of transport independent logic out of 
+          transport providers and into transport independent code.
+- Transport independent code has been broken out into a separate file
+- Transport independent functions prevously adorned with _sock_ have
+  had their names changed, e.g. svc_sock_enqueue
+- atomic refcounts have been changed to krefs
+
+I've attempted to organize the patchset such that logical changes are 
+clearly reviewable without too much clutter from functionally empty name
+changes.  This was somewhat awkward since intermediate patches may look 
+ugly/broken/incomplete to some reviewers. This was to avoid losing the
+context of a change while keeping each patch a reasonable size.  For example, 
+making svc_recv transport independent and moving it to the svc_xprt file 
+cannot be done in the same patch without losing the diffs to the svc_recv 
+function.
+
+This patchset has had limited testing with TCP/UDP. In this case, the tests 
+included connectathon and building the kernel on an NFS mount running on the 
+transport switch. 
+
+This patchset is against the 2.6.23-rc8 kernel tree.
+
+-- 
+Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
