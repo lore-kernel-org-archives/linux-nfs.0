@@ -1,26 +1,23 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [RFC,
-	PATCH 13/35] svc: Change services to use new svc_create_xprt service
-Date: Tue, 2 Oct 2007 11:44:50 -0400
-Message-ID: <608B3480-525A-43C6-945C-3482CDE823FC@oracle.com>
-References: <20071001191426.3250.15371.stgit@dell3.ogc.int>
-	<20071001192758.3250.2651.stgit@dell3.ogc.int>
-Mime-Version: 1.0 (Apple Message framework v752.2)
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: NLM mutex deadlock in 2.6.22.9
+Date: Tue, 02 Oct 2007 11:46:32 -0400
+Message-ID: <1191339992.6709.29.camel@heimdal.trondhjem.org>
+References: <20071002103119.GA4641@janus>
+Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: neilb@suse.de, bfields@fieldses.org, nfs@lists.sourceforge.net,
-	gnb@sgi.com
-To: Tom Tucker <tom@opengridcomputing.com>
+Cc: Linux NFS mailing list <nfs@lists.sourceforge.net>
+To: Frank van Maarseveen <frankvm@frankvm.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Icjvl-00082e-2b
-	for nfs@lists.sourceforge.net; Tue, 02 Oct 2007 08:45:05 -0700
-Received: from agminet01.oracle.com ([141.146.126.228])
+	id 1IcjxK-0008DJ-Hs
+	for nfs@lists.sourceforge.net; Tue, 02 Oct 2007 08:46:42 -0700
+Received: from pat.uio.no ([129.240.10.15])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Icjvp-0005PD-Sv
-	for nfs@lists.sourceforge.net; Tue, 02 Oct 2007 08:45:10 -0700
-In-Reply-To: <20071001192758.3250.2651.stgit@dell3.ogc.int>
+	(Exim 4.44) id 1IcjxN-0006EV-3G
+	for nfs@lists.sourceforge.net; Tue, 02 Oct 2007 08:46:47 -0700
+In-Reply-To: <20071002103119.GA4641@janus>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,174 +30,39 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Oct 1, 2007, at 3:27 PM, Tom Tucker wrote:
->
-> Modify the various kernel RPC svcs to use the svc_create_xprt service.
->
-> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
-> ---
->
->  fs/lockd/svc.c                 |   17 ++++++++---------
->  fs/nfs/callback.c              |    4 ++--
->  fs/nfsd/nfssvc.c               |    4 ++--
->  include/linux/sunrpc/svcsock.h |    1 -
->  net/sunrpc/sunrpc_syms.c       |    1 -
->  net/sunrpc/svcsock.c           |   22 ----------------------
->  6 files changed, 12 insertions(+), 37 deletions(-)
->
-> diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-> index 82e2192..8686915 100644
-> --- a/fs/lockd/svc.c
-> +++ b/fs/lockd/svc.c
-> @@ -219,13 +219,12 @@ lockd(struct svc_rqst *rqstp)
->  	module_put_and_exit(0);
->  }
->
-> -
-> -static int find_socket(struct svc_serv *serv, int proto)
-> +static int find_xprt(struct svc_serv *serv, char *proto)
->  {
->  	struct svc_sock *svsk;
->  	int found = 0;
->  	list_for_each_entry(svsk, &serv->sv_permsocks, sk_list)
-> -		if (svsk->sk_sk->sk_protocol == proto) {
-> +		if (strcmp(svsk->sk_xprt.xpt_class->xcl_name, proto) == 0) {
->  			found = 1;
->  			break;
->  		}
+On Tue, 2007-10-02 at 12:31 +0200, Frank van Maarseveen wrote:
+> nlmsvc_lock() starts out with a
+> 
+>         mutex_lock(&file->f_mutex);
+> 
+> and at some point via the garbage collector it calls mutex_lock()
+> again. alt-sysrq-t said:
+> 
+> lockd         D ABD55800     0  4462      2 (L-TLB)
+>        f6849d28 00000046 000ee6b2 abd55800 00000000 c0141ed3 c070daac 00157800 
+>        f779e900 00000000 f6f08f50 c0898154 f6f08a00 00000000 eefdb7d8 c2a21d80 
+>        f6f08a00 f6f08b0c 000186a0 3ee72980 000002ab 00000001 00000001 c0573e61 
+> Call Trace:
+>  [<c0573f32>] __mutex_lock_slowpath+0xb2/0x250
+>  [<c0573e61>] mutex_lock+0x21/0x30
+>  [<c0233ff9>] nlmsvc_traverse_blocks+0x29/0xa0
+>  [<c0236589>] nlm_traverse_files+0x89/0x240
+>  [<c02368eb>] nlmsvc_mark_resources+0x1b/0x30
+>  [<c0233179>] nlm_gc_hosts+0x59/0x1a0
+>  [<c02326f4>] nlm_lookup_host+0x44/0x350
+>  [<c0232b3f>] nlmsvc_lookup_host+0x5f/0x70
+> 		nlmsvc_create_block() is inlined
+>  [<c023433d>] nlmsvc_lock+0x14d/0x360
+>  [<c023961a>] nlm4svc_proc_lock+0xea/0x140
+>  [<c05600a0>] svc_process+0x320/0x700
+>  [<c0233663>] lockd+0x133/0x270
+>  [<c0105337>] kernel_thread_helper+0x7/0x10
 
-This is scary.  :-)
+The following fix has already been sent to stable@kernel.org...
 
-First, I think we would be better off making the server transport API  
-stronger by not allowing ULPs to dig around in svc_xprt or the  
-svc_xprt_class structures directly.  Perhaps you could provide a  
-method for obtaining the transport's NETID.
+http://client.linux-nfs.org/Linux-2.6.x/2.6.23-rc8/linux-2.6.23-001-fix_lockd_circular_dependency.dif
 
-Second, is there any guarantee that the string name of the underlying  
-protocol is the same as the name of the transport class?  Is there  
-any relationship between the transport name and the NETIDs it supports?
-
-> @@ -243,13 +242,13 @@ static int make_socks(struct svc_serv *s
->  	int err = 0;
->
->  	if (proto == IPPROTO_UDP || nlm_udpport)
-> -		if (!find_socket(serv, IPPROTO_UDP))
-> -			err = svc_makesock(serv, IPPROTO_UDP, nlm_udpport,
-> -						SVC_SOCK_DEFAULTS);
-> +		if (!find_xprt(serv, "udp"))
-> +			err = svc_create_xprt(serv, "udp", nlm_udpport,
-> +					      SVC_SOCK_DEFAULTS);
->  	if (err >= 0 && (proto == IPPROTO_TCP || nlm_tcpport))
-> -		if (!find_socket(serv, IPPROTO_TCP))
-> -			err = svc_makesock(serv, IPPROTO_TCP, nlm_tcpport,
-> -						SVC_SOCK_DEFAULTS);
-> +		if (!find_xprt(serv, "tcp"))
-> +			err = svc_create_xprt(serv, "tcp", nlm_tcpport,
-> +					      SVC_SOCK_DEFAULTS);
->
->  	if (err >= 0) {
->  		warned = 0;
-> diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-> index a796be5..e27ca14 100644
-> --- a/fs/nfs/callback.c
-> +++ b/fs/nfs/callback.c
-> @@ -123,8 +123,8 @@ int nfs_callback_up(void)
->  	if (!serv)
->  		goto out_err;
->
-> -	ret = svc_makesock(serv, IPPROTO_TCP, nfs_callback_set_tcpport,
-> -							SVC_SOCK_ANONYMOUS);
-> +	ret = svc_create_xprt(serv, "tcp", nfs_callback_set_tcpport,
-> +			      SVC_SOCK_ANONYMOUS);
->  	if (ret <= 0)
->  		goto out_destroy;
->  	nfs_callback_tcpport = ret;
-> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-> index a8c89ae..bf70b06 100644
-> --- a/fs/nfsd/nfssvc.c
-> +++ b/fs/nfsd/nfssvc.c
-> @@ -236,7 +236,7 @@ static int nfsd_init_socks(int port)
->
->  	error = lockd_up(IPPROTO_UDP);
->  	if (error >= 0) {
-> -		error = svc_makesock(nfsd_serv, IPPROTO_UDP, port,
-> +		error = svc_create_xprt(nfsd_serv, "udp", port,
->  					SVC_SOCK_DEFAULTS);
->  		if (error < 0)
->  			lockd_down();
-> @@ -247,7 +247,7 @@ static int nfsd_init_socks(int port)
->  #ifdef CONFIG_NFSD_TCP
->  	error = lockd_up(IPPROTO_TCP);
->  	if (error >= 0) {
-> -		error = svc_makesock(nfsd_serv, IPPROTO_TCP, port,
-> +		error = svc_create_xprt(nfsd_serv, "tcp", port,
->  					SVC_SOCK_DEFAULTS);
->  		if (error < 0)
->  			lockd_down();
-> diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/ 
-> svcsock.h
-> index 9882ce0..3181d9d 100644
-> --- a/include/linux/sunrpc/svcsock.h
-> +++ b/include/linux/sunrpc/svcsock.h
-> @@ -67,7 +67,6 @@ #define SK_LISTENER	11			/* listening en
->  /*
->   * Function prototypes.
->   */
-> -int		svc_makesock(struct svc_serv *, int, unsigned short, int flags);
->  void		svc_force_close_socket(struct svc_sock *);
->  int		svc_recv(struct svc_rqst *, long);
->  int		svc_send(struct svc_rqst *);
-> diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
-> index a62ce47..e4cad0f 100644
-> --- a/net/sunrpc/sunrpc_syms.c
-> +++ b/net/sunrpc/sunrpc_syms.c
-> @@ -72,7 +72,6 @@ EXPORT_SYMBOL(svc_drop);
->  EXPORT_SYMBOL(svc_process);
->  EXPORT_SYMBOL(svc_recv);
->  EXPORT_SYMBOL(svc_wake_up);
-> -EXPORT_SYMBOL(svc_makesock);
->  EXPORT_SYMBOL(svc_reserve);
->  EXPORT_SYMBOL(svc_auth_register);
->  EXPORT_SYMBOL(auth_domain_lookup);
-> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-> index e3c74e0..373f020 100644
-> --- a/net/sunrpc/svcsock.c
-> +++ b/net/sunrpc/svcsock.c
-> @@ -2012,28 +2012,6 @@ void svc_force_close_socket(struct svc_s
->  	svc_close_socket(svsk);
->  }
->
-> -/**
-> - * svc_makesock - Make a socket for nfsd and lockd
-> - * @serv: RPC server structure
-> - * @protocol: transport protocol to use
-> - * @port: port to use
-> - * @flags: requested socket characteristics
-> - *
-> - */
-> -int svc_makesock(struct svc_serv *serv, int protocol, unsigned  
-> short port,
-> -			int flags)
-> -{
-> -	dprintk("svc: creating socket proto = %d\n", protocol);
-> -	switch (protocol) {
-> -	case IPPROTO_TCP:
-> -		return svc_create_xprt(serv, "tcp", port, flags);
-> -	case IPPROTO_UDP:
-> -		return svc_create_xprt(serv, "udp", port, flags);
-> -	default:
-> -		return -EINVAL;
-> -	}
-> -}
-> -
->  /*
->   * Handle defer and revisit of requests
->   */
-
-Chuck Lever
-chuck.lever@oracle.com
-
-
+Trond
 
 
 -------------------------------------------------------------------------
