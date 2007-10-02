@@ -1,26 +1,26 @@
 From: Chuck Lever <chuck.lever@oracle.com>
 Subject: Re: [RFC,
-	PATCH 05/35] svc: Move sk_sendto and sk_recvfrom to svc_xprt_class
-Date: Tue, 2 Oct 2007 11:04:16 -0400
-Message-ID: <CBDFC3B7-FE67-4715-87CA-E828D76844BB@oracle.com>
+	PATCH 06/35] svc: Add transport specific xpo_release function
+Date: Tue, 2 Oct 2007 11:18:53 -0400
+Message-ID: <D6D83B86-2A07-44F2-A729-9BF9DD74A6D4@oracle.com>
 References: <20071001191426.3250.15371.stgit@dell3.ogc.int>
-	<20071001192740.3250.73564.stgit@dell3.ogc.int>
+	<20071001192742.3250.93576.stgit@dell3.ogc.int>
 Mime-Version: 1.0 (Apple Message framework v752.2)
 Content-Type: text/plain; charset="us-ascii"
 Cc: neilb@suse.de, bfields@fieldses.org, nfs@lists.sourceforge.net,
 	gnb@sgi.com
 To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IcjKL-0000OG-97
-	for nfs@lists.sourceforge.net; Tue, 02 Oct 2007 08:06:25 -0700
+	id 1IcjZ6-0003WX-FT
+	for nfs@lists.sourceforge.net; Tue, 02 Oct 2007 08:21:40 -0700
 Received: from agminet01.oracle.com ([141.146.126.228])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IcjKP-0001q9-1f
-	for nfs@lists.sourceforge.net; Tue, 02 Oct 2007 08:06:30 -0700
-In-Reply-To: <20071001192740.3250.73564.stgit@dell3.ogc.int>
+	(Exim 4.44) id 1IcjZ5-0005bP-P2
+	for nfs@lists.sourceforge.net; Tue, 02 Oct 2007 08:21:40 -0700
+In-Reply-To: <20071001192742.3250.93576.stgit@dell3.ogc.int>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,120 +35,140 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 On Oct 1, 2007, at 3:27 PM, Tom Tucker wrote:
 >
-> The sk_sendto and sk_recvfrom are function pointers that allow  
-> svc_sock
-> to be used for both UDP and TCP. Move these function pointers to the
-> svc_xprt_ops structure.
+> The svc_sock_release function releases pages allocated to a thread.  
+> For
+> UDP, this also returns the receive skb to the stack. For RDMA it will
+> post a receive WR and bump the client credit count.
 >
 > Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 > ---
 >
->  include/linux/sunrpc/svc_xprt.h |    2 ++
->  include/linux/sunrpc/svcsock.h  |    3 ---
->  net/sunrpc/svcsock.c            |   12 ++++++------
->  3 files changed, 8 insertions(+), 9 deletions(-)
+>  include/linux/sunrpc/svc.h      |    2 +-
+>  include/linux/sunrpc/svc_xprt.h |    1 +
+>  net/sunrpc/svcsock.c            |   16 +++++++++-------
+>  3 files changed, 11 insertions(+), 8 deletions(-)
 >
+> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+> index 37f7448..cfb2652 100644
+> --- a/include/linux/sunrpc/svc.h
+> +++ b/include/linux/sunrpc/svc.h
+> @@ -217,7 +217,7 @@ struct svc_rqst {
+>  	struct auth_ops *	rq_authop;	/* authentication flavour */
+>  	u32			rq_flavor;	/* pseudoflavor */
+>  	struct svc_cred		rq_cred;	/* auth info */
+> -	struct sk_buff *	rq_skbuff;	/* fast recv inet buffer */
+> +	void *			rq_xprt_ctxt;	/* transport specific context ptr */
+>  	struct svc_deferred_req*rq_deferred;	/* deferred request we are  
+> replaying */
+>
+>  	struct xdr_buf		rq_arg;
 > diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/ 
 > svc_xprt.h
-> index 827f0fe..f0ba052 100644
+> index f0ba052..5871faa 100644
 > --- a/include/linux/sunrpc/svc_xprt.h
 > +++ b/include/linux/sunrpc/svc_xprt.h
-> @@ -10,6 +10,8 @@ #define SUNRPC_SVC_XPRT_H
->  #include <linux/sunrpc/svc.h>
->
+> @@ -12,6 +12,7 @@ #include <linux/sunrpc/svc.h>
 >  struct svc_xprt_ops {
-> +	int		(*xpo_recvfrom)(struct svc_rqst *);
-> +	int		(*xpo_sendto)(struct svc_rqst *);
+>  	int		(*xpo_recvfrom)(struct svc_rqst *);
+>  	int		(*xpo_sendto)(struct svc_rqst *);
+> +	void		(*xpo_release)(struct svc_rqst *);
 >  };
 >
 >  struct svc_xprt_class {
-> diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/ 
-> svcsock.h
-> index 1878cbe..08e78d0 100644
-> --- a/include/linux/sunrpc/svcsock.h
-> +++ b/include/linux/sunrpc/svcsock.h
-> @@ -45,9 +45,6 @@ #define	SK_DETACHED	10			/* detached fro
->  						 * be revisted */
->  	struct mutex		sk_mutex;	/* to serialize sending data */
->
-> -	int			(*sk_recvfrom)(struct svc_rqst *rqstp);
-> -	int			(*sk_sendto)(struct svc_rqst *rqstp);
-> -
->  	/* We keep the old state_change and data_ready CB's here */
->  	void			(*sk_ostate)(struct sock *);
->  	void			(*sk_odata)(struct sock *, int bytes);
+
+You intend to add xpo_detach and xpo_free in a later patch.  The  
+method names suggest all of these operate on the svc_xprt.   
+xpo_release, however appears to operate on a request, not on a svc_xprt.
+
+Perhaps you might name this method xpo_release_rqst or some other  
+name that indicates that this operates on a request.  The name  
+xpo_release could easily refer to closing the underlying socket.  As  
+an example, the client-side transport uses ->release_request.
+
+The client side also appears to treat the transport as handling  
+requests, instead of socket reads and writes.  The use of the method  
+names recvfrom and sendto suggest we are talking about bytes on a  
+socket here, not transmitting and receiving whole RPC requests.  I  
+think that's a useful abstraction.
+
+While I'm whining aloud... I don't prefer the method names detach or  
+free, either.  On the client side we used close and destroy, which  
+(to me, anyway) makes more sense.
+
 > diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-> index d84b5c8..150531f 100644
+> index 150531f..2d5731c 100644
 > --- a/net/sunrpc/svcsock.c
 > +++ b/net/sunrpc/svcsock.c
-> @@ -900,6 +900,8 @@ svc_udp_sendto(struct svc_rqst *rqstp)
->  }
+> @@ -184,14 +184,14 @@ svc_thread_dequeue(struct svc_pool *pool
+>  /*
+>   * Release an skbuff after use
+>   */
+> -static inline void
+> +static void
+>  svc_release_skb(struct svc_rqst *rqstp)
+>  {
+> -	struct sk_buff *skb = rqstp->rq_skbuff;
+> +	struct sk_buff *skb = rqstp->rq_xprt_ctxt;
+>  	struct svc_deferred_req *dr = rqstp->rq_deferred;
 >
+>  	if (skb) {
+> -		rqstp->rq_skbuff = NULL;
+> +		rqstp->rq_xprt_ctxt = NULL;
+>
+>  		dprintk("svc: service %p, releasing skb %p\n", rqstp, skb);
+>  		skb_free_datagram(rqstp->rq_sock->sk_sk, skb);
+> @@ -394,7 +394,7 @@ svc_sock_release(struct svc_rqst *rqstp)
+>  {
+>  	struct svc_sock	*svsk = rqstp->rq_sock;
+>
+> -	svc_release_skb(rqstp);
+> +	rqstp->rq_xprt->xpt_ops.xpo_release(rqstp);
+>
+>  	svc_free_res_pages(rqstp);
+>  	rqstp->rq_res.page_len = 0;
+> @@ -866,7 +866,7 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
+>  			skb_free_datagram(svsk->sk_sk, skb);
+>  			return 0;
+>  		}
+> -		rqstp->rq_skbuff = skb;
+> +		rqstp->rq_xprt_ctxt = skb;
+>  	}
+>
+>  	rqstp->rq_arg.page_base = 0;
+> @@ -902,6 +902,7 @@ svc_udp_sendto(struct svc_rqst *rqstp)
 >  static struct svc_xprt_ops svc_udp_ops = {
-> +	.xpo_recvfrom = svc_udp_recvfrom,
-> +	.xpo_sendto = svc_udp_sendto,
+>  	.xpo_recvfrom = svc_udp_recvfrom,
+>  	.xpo_sendto = svc_udp_sendto,
+> +	.xpo_release = svc_release_skb,
 >  };
 >
 >  static struct svc_xprt_class svc_udp_class = {
-> @@ -917,8 +919,6 @@ svc_udp_init(struct svc_sock *svsk)
->  	svc_xprt_init(&svc_udp_class, &svsk->sk_xprt);
->  	svsk->sk_sk->sk_data_ready = svc_udp_data_ready;
->  	svsk->sk_sk->sk_write_space = svc_write_space;
-> -	svsk->sk_recvfrom = svc_udp_recvfrom;
-> -	svsk->sk_sendto = svc_udp_sendto;
+> @@ -1290,7 +1291,7 @@ svc_tcp_recvfrom(struct svc_rqst *rqstp)
+>  		rqstp->rq_arg.page_len = len - rqstp->rq_arg.head[0].iov_len;
+>  	}
 >
->  	/* initialise setting must have enough space to
->  	 * receive and respond to one request.
-> @@ -1354,6 +1354,8 @@ svc_tcp_sendto(struct svc_rqst *rqstp)
->  }
+> -	rqstp->rq_skbuff      = NULL;
+> +	rqstp->rq_xprt_ctxt   = NULL;
+>  	rqstp->rq_prot	      = IPPROTO_TCP;
 >
+>  	/* Reset TCP read info */
+> @@ -1356,6 +1357,7 @@ svc_tcp_sendto(struct svc_rqst *rqstp)
 >  static struct svc_xprt_ops svc_tcp_ops = {
-> +	.xpo_recvfrom = svc_tcp_recvfrom,
-> +	.xpo_sendto = svc_tcp_sendto,
+>  	.xpo_recvfrom = svc_tcp_recvfrom,
+>  	.xpo_sendto = svc_tcp_sendto,
+> +	.xpo_release = svc_release_skb,
 >  };
 >
 >  static struct svc_xprt_class svc_tcp_class = {
-> @@ -1381,8 +1383,6 @@ svc_tcp_init(struct svc_sock *svsk)
->  	struct tcp_sock *tp = tcp_sk(sk);
+> @@ -1577,7 +1579,7 @@ svc_send(struct svc_rqst *rqstp)
+>  	}
 >
->  	svc_xprt_init(&svc_tcp_class, &svsk->sk_xprt);
-> -	svsk->sk_recvfrom = svc_tcp_recvfrom;
-> -	svsk->sk_sendto = svc_tcp_sendto;
+>  	/* release the receive skb before sending the reply */
+> -	svc_release_skb(rqstp);
+> +	rqstp->rq_xprt->xpt_ops.xpo_release(rqstp);
 >
->  	if (sk->sk_state == TCP_LISTEN) {
->  		dprintk("setting up TCP socket for listening\n");
-> @@ -1530,7 +1530,7 @@ svc_recv(struct svc_rqst *rqstp, long ti
->
->  	dprintk("svc: server %p, pool %u, socket %p, inuse=%d\n",
->  		 rqstp, pool->sp_id, svsk, atomic_read(&svsk->sk_inuse));
-> -	len = svsk->sk_recvfrom(rqstp);
-> +	len = svsk->sk_xprt.xpt_ops.xpo_recvfrom(rqstp);
->  	dprintk("svc: got len=%d\n", len);
->
->  	/* No data, incomplete (TCP) read, or accept() */
-> @@ -1590,7 +1590,7 @@ svc_send(struct svc_rqst *rqstp)
->  	if (test_bit(SK_DEAD, &svsk->sk_flags))
->  		len = -ENOTCONN;
->  	else
-> -		len = svsk->sk_sendto(rqstp);
-> +		len = svsk->sk_xprt.xpt_ops.xpo_sendto(rqstp);
->  	mutex_unlock(&svsk->sk_mutex);
->  	svc_sock_release(rqstp);
-
-Again, here you have copied a pointer from the class structure to the  
-instance structure -- the address of the transport ops structure  
-never changes during the lifetime of the xprt instance, does it?  You  
-could just as easily use the class's ops pointer instead.
-
-It looks like on the client side, I didn't put the ops vector or the  
-payload maximum in the class structure at all... 6 of one, half dozen  
-of the other.  Using the class's value of the ops and payload maximum  
-would save some space in the svc_xprt, though, come to think of it.
-
-Also, to address Neil's concern about the appearance of the  
-expression which dereferences these methods, why not use a macro,  
-similar to VOP_GETATTR() in the old BSD kernels, that replaces this  
-long chain of indirections with a simple to recognize macro call?
+>  	/* calculate over-all length */
+>  	xb = & rqstp->rq_res;
 
 Chuck Lever
 chuck.lever@oracle.com
