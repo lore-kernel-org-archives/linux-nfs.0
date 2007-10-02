@@ -1,33 +1,21 @@
-From: Tom Tucker <tom@opengridcomputing.com>
-Subject: Re: [RFC,
-	PATCH 05/35] svc: Move sk_sendto and sk_recvfrom	to	svc_xprt_class
-Date: Tue, 02 Oct 2007 14:55:06 -0500
-Message-ID: <1191354906.1565.65.camel@trinity.ogc.int>
-References: <20071001191426.3250.15371.stgit@dell3.ogc.int>
-	<20071001192740.3250.73564.stgit@dell3.ogc.int>
-	<CBDFC3B7-FE67-4715-87CA-E828D76844BB@oracle.com>
-	<1191342596.1565.11.camel@trinity.ogc.int>
-	<4A775179-9659-41B6-999F-8316BA181152@oracle.com>
-	<1191349462.1565.46.camel@trinity.ogc.int>
-	<1191349842.1565.54.camel@trinity.ogc.int>
-	<7FF82697-AB93-4339-AD46-CAE93E967242@oracle.com>
-Reply-To: tom@opengridcomputing.com
+From: Bob Kryger <bobk@panix.com>
+Subject: nfs write problems
+Date: Tue, 02 Oct 2007 15:56:41 -0400
+Message-ID: <4702A279.3080001@panix.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: neilb@suse.de, bfields@fieldses.org, nfs@lists.sourceforge.net,
-	gnb@sgi.com
-To: Chuck Lever <chuck.lever@oracle.com>
+To: nfs@lists.sourceforge.net,
+	For users of Fedora <fedora-list@redhat.com>,
+	Bob Kryger <bobk@panix.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Icnqv-0001tg-TZ
-	for nfs@lists.sourceforge.net; Tue, 02 Oct 2007 12:56:22 -0700
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]
-	helo=smtp.opengridcomputing.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Icnqz-0005P8-Qm
-	for nfs@lists.sourceforge.net; Tue, 02 Oct 2007 12:56:27 -0700
-In-Reply-To: <7FF82697-AB93-4339-AD46-CAE93E967242@oracle.com>
+	id 1IcnrD-0001uF-Hb
+	for nfs@lists.sourceforge.net; Tue, 02 Oct 2007 12:56:42 -0700
+Received: from mail3.panix.com ([166.84.1.74])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IcnrH-0008NV-Cw
+	for nfs@lists.sourceforge.net; Tue, 02 Oct 2007 12:56:44 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -40,57 +28,45 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, 2007-10-02 at 14:47 -0400, Chuck Lever wrote:
-> On Oct 2, 2007, at 2:30 PM, Tom Tucker wrote:
-> 
-> > On Tue, 2007-10-02 at 13:24 -0500, Tom Tucker wrote:
-> >> On Tue, 2007-10-02 at 12:57 -0400, Chuck Lever wrote:
-> >>> On Oct 2, 2007, at 12:29 PM, Tom Tucker wrote:
-> >>
-> >> [...snip...]
+So, I have a relatively new system on which I am seeing strange NFS 
+behavior.
 
-[...snip...]
+In short I am getting seemingly random errors in files written via NFS.
 
-> >
-> > Actually, I'm having second thoughts. Since the svc_xprt structure is
-> > allocated on the rqstp thread in which the transport is going to be
-> > used, won't the memory be local to the allocating processor on a NUMA
-> > system?
-> 
-> The ops vector isn't in the svc_xprt.  It's a constant, so it's in  
-> memory allocated by the kernel loader at boot time.
-> 
+    * I do not get the errors if I write files locally.
+    * I have no errors in the NIC, I even tried a second NIC in a PCI
+      slot as opposed to the onboard one. There are no errors recorded
+      on the NIC or the switch on a 1Gb port.
+    * I see no memory errors, I ran memtest for 3 days clean.
+    * To test I am using dd if=/dev/zero of various (large) file sizes.
+    * Since I know that the file should be all zeros I wrote a C program
+      to read it back and tell me where it finds non-zero bytes. The
+      program results are confirmed with od.
+    * The files read back always have the errors in the same place, so
+      it is not a problem with reading the files.
+    * There are no errors in any logs.
+    * The problem occurs on both the RAID1 (ext3) and RAID10 (xfs)
+      filesystems.
+    * I've tried two clients, both FC5 one 64bit, and the other a 32 bit
+      with the same results. This error was uncovered by users
+      attempting to write files from other systems and other Fedora
+      releases, so it is repeatable regardless of the client.
+    * the server is not running anything else and spends a large portion
+      of the time idle. loadaverages are quite low. swap is mostly
+      unused. a large portion of RAM is allocated to file cache, but I
+      expect that this would be normal for this amount of file IO.
 
-I think one of us missing something. Here's how I think it works...
+The server is running an up-to-date FC6, although this also occurred 
+with FC5. I am about to try F7.
 
-The svc_xprt_ops structure is a constant in kernel memory. The
-svc_xprt_class is also a constant and points to the svc_xprt_ops
-structure. The svc_xprt structure, however, is allocated via kmalloc and
-contains a _copy_ of the constant svc_xprt_ops structure and a copy of
-the xcl_max_payload value. See the svc_xprt_init function.
+Hardware is an AMD 1220 dual core 64bit, on a Tyan K8SSA S3950
+with an Adaptec Raid 2230SLP and 7 Fujitsu MAU3147NC.
+The RAID config is that 1 disks (on diff channels) are in a Mirror for 
+the OS, 4 are in a Raid 10 config and 1 is a hot spare.
 
-My original thinking (flawed I think) was that since the svc_xprt was
-allocated in the context of the current rqstp thread, that it would be
-allocated from processor local memory. While I think this is true,
-subsequent assignment of a rqstp thread to service a transport has no
-affinity to a particular transport. So as you say, it will likely be in
-some other processors memory, so what does it matter?
-
-So the question in my mind, is "is it worth it to create rqstp to
-transport affinity when assigning a thread to service a transport. If
-not, then I should remove all this copy nonsense and access the constant
-in svc_xprt_class directly.
-
-> In other words, on each request, you will need to get the address of  
-> the vector from dynamically allocated memory, but the vector itself  
-> (and therefore the addresses of the transport methods) will be fixed  
-> and in the boot CPU's memory pool.
-> 
-> --
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
-> 
-
+Anyone ever seen anything like this before?
+Suggest where I might look next?
+Additional tests?
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
