@@ -1,11 +1,11 @@
 From: Tom Tucker <tom@opengridcomputing.com>
 Subject: Re: [RFC,
-	PATCH 25/35] svc: Move the sockaddr information to	svc_xprt
-Date: Tue, 02 Oct 2007 11:50:42 -0500
-Message-ID: <1191343842.1565.34.camel@trinity.ogc.int>
+	PATCH 29/35] svc: Move common create logic to common code
+Date: Tue, 02 Oct 2007 11:51:43 -0500
+Message-ID: <1191343903.1565.37.camel@trinity.ogc.int>
 References: <20071001191426.3250.15371.stgit@dell3.ogc.int>
-	<20071001192825.3250.57889.stgit@dell3.ogc.int>
-	<7CA516C0-3E3A-455B-925C-1D733BF71E23@oracle.com>
+	<20071001192834.3250.88964.stgit@dell3.ogc.int>
+	<BB17F85E-446E-4DBA-BD0D-8463FC605294@oracle.com>
 Reply-To: tom@opengridcomputing.com
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -16,13 +16,13 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IckzS-0006rx-1J
+	id 1IckzS-0006sS-IC
 	for nfs@lists.sourceforge.net; Tue, 02 Oct 2007 09:52:58 -0700
 Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]
 	helo=smtp.opengridcomputing.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IckyX-00068f-5I
-	for nfs@lists.sourceforge.net; Tue, 02 Oct 2007 09:52:03 -0700
-In-Reply-To: <7CA516C0-3E3A-455B-925C-1D733BF71E23@oracle.com>
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IckzW-0006TC-7F
+	for nfs@lists.sourceforge.net; Tue, 02 Oct 2007 09:53:03 -0700
+In-Reply-To: <BB17F85E-446E-4DBA-BD0D-8463FC605294@oracle.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,171 +35,33 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, 2007-10-02 at 12:34 -0400, Chuck Lever wrote:
+On Tue, 2007-10-02 at 12:42 -0400, Chuck Lever wrote:
 > On Oct 1, 2007, at 3:28 PM, Tom Tucker wrote:
 > >
-> > Move the IP address fields to the svc_xprt structure. Note that this
-> > assumes that _all_ RPC transports must have IP based 4-tuples. This
-> > seems reasonable given the tight coupling with the portmapper etc...
-> > Thoughts?
+[...snip...]
+
+> > @@ -1832,6 +1826,12 @@ int svc_addsock(struct svc_serv *serv,
+> >  			svc_xprt_received(&svsk->sk_xprt);
+> >  			err = 0;
+> >  		}
+> > +		if (so->sk->sk_protocol == IPPROTO_TCP)
+> > +			set_bit(XPT_LISTENER, &svsk->sk_xprt.xpt_flags);
 > 
-> My quibble is with "IP based 4-tuples" in your description -- that  
-> doesn't describe IPv6 addresses.  "For now, we assume that an IP  
-> address and port is used to locate RPC transport endpoints." might be  
-> better.
+> One might wish that, even though this is in socket-transport-specific  
+> code, you didn't have to check the underlying socket's protocol  
+> setting here, but that this could be done in a TCP-specific function  
+> such as svc_tcp_init.
 
-I meant to imply both.
-
+I'll move it to svc_tcp_init and look at sk_state. Thanks,
+Tom
 > 
-> The svc_copy_addr function below might benefit from a comment about  
-> why the address's port isn't copied as well.  Otherwise we would use  
-> a straight memcpy.
-> 
-
-ok,
-
-> Also, the preference is to let the compiler decide for itself whether  
-> inlining is appropriate.
-> 
-
-ok,
-
-> >
-> > Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
-> > ---
-> >
-> >  include/linux/sunrpc/svc_xprt.h |    3 ++
-> >  include/linux/sunrpc/svcsock.h  |    4 ---
-> >  net/sunrpc/svcsock.c            |   50 ++++++++++++++++++++ 
-> > +------------------
-> >  3 files changed, 30 insertions(+), 27 deletions(-)
-> >
-> > diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/ 
-> > svc_xprt.h
-> > index ba92909..47ad941 100644
-> > --- a/include/linux/sunrpc/svc_xprt.h
-> > +++ b/include/linux/sunrpc/svc_xprt.h
-> > @@ -62,6 +62,9 @@ #define XPT_CACHE_AUTH	12		/* cache auth
-> >  	void			*xpt_auth_cache;/* auth cache */
-> >  	struct list_head	xpt_deferred;	/* deferred requests that need
-> >  						 * to be revisted */
-> > +	struct sockaddr_storage	xpt_local;	/* local address */
-> > +	struct sockaddr_storage	xpt_remote;	/* remote peer's address */
-> > +	int			xpt_remotelen;	/* length of address */
-> >  };
-> >
-> >  int	svc_reg_xprt_class(struct svc_xprt_class *);
-> > diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/ 
-> > svcsock.h
-> > index 96a229e..206f092 100644
-> > --- a/include/linux/sunrpc/svcsock.h
-> > +++ b/include/linux/sunrpc/svcsock.h
-> > @@ -28,10 +28,6 @@ struct svc_sock {
-> >  	/* private TCP part */
-> >  	int			sk_reclen;	/* length of record */
-> >  	int			sk_tcplen;	/* current read length */
-> > -
-> > -	struct sockaddr_storage	sk_local;	/* local address */
-> > -	struct sockaddr_storage	sk_remote;	/* remote peer's address */
-> > -	int			sk_remotelen;	/* length of address */
-> >  };
-> >
-> >  /*
-> > diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-> > index 0732dc2..ab34bb2 100644
-> > --- a/net/sunrpc/svcsock.c
-> > +++ b/net/sunrpc/svcsock.c
-> > @@ -632,33 +632,13 @@ svc_recvfrom(struct svc_rqst *rqstp, str
-> >  	struct msghdr msg = {
-> >  		.msg_flags	= MSG_DONTWAIT,
-> >  	};
-> > -	struct sockaddr *sin;
-> >  	int len;
-> >
-> >  	len = kernel_recvmsg(svsk->sk_sock, &msg, iov, nr, buflen,
-> >  				msg.msg_flags);
-> >
-> > -	/* sock_recvmsg doesn't fill in the name/namelen, so we must..
-> > -	 */
-> > -	memcpy(&rqstp->rq_addr, &svsk->sk_remote, svsk->sk_remotelen);
-> > -	rqstp->rq_addrlen = svsk->sk_remotelen;
-> > -
-> > -	/* Destination address in request is needed for binding the
-> > -	 * source address in RPC callbacks later.
-> > -	 */
-> > -	sin = (struct sockaddr *)&svsk->sk_local;
-> > -	switch (sin->sa_family) {
-> > -	case AF_INET:
-> > -		rqstp->rq_daddr.addr = ((struct sockaddr_in *)sin)->sin_addr;
-> > -		break;
-> > -	case AF_INET6:
-> > -		rqstp->rq_daddr.addr6 = ((struct sockaddr_in6 *)sin)->sin6_addr;
-> > -		break;
-> > -	}
-> > -
-> >  	dprintk("svc: socket %p recvfrom(%p, %Zu) = %d\n",
-> >  		svsk, iov[0].iov_base, iov[0].iov_len, len);
-> > -
-> >  	return len;
-> >  }
-> >
-> > @@ -1113,14 +1093,14 @@ svc_tcp_accept(struct svc_xprt *xprt)
-> >  	if (!(newsvsk = svc_setup_socket(serv, newsock, &err,
-> >  				 (SVC_SOCK_ANONYMOUS | SVC_SOCK_TEMPORARY))))
-> >  		goto failed;
-> > -	memcpy(&newsvsk->sk_remote, sin, slen);
-> > -	newsvsk->sk_remotelen = slen;
-> > +	memcpy(&newsvsk->sk_xprt.xpt_remote, sin, slen);
-> > +	newsvsk->sk_xprt.xpt_remotelen = slen;
-> >  	err = kernel_getsockname(newsock, sin, &slen);
-> >  	if (unlikely(err < 0)) {
-> >  		dprintk("svc_tcp_accept: kernel_getsockname error %d\n", -err);
-> >  		slen = offsetof(struct sockaddr, sa_data);
+> > +		clear_bit(XPT_TEMP, &svsk->sk_xprt.xpt_flags);
+> > +		spin_lock_bh(&serv->sv_lock);
+> > +		list_add(&svsk->sk_xprt.xpt_list, &serv->sv_permsocks);
+> > +		spin_unlock_bh(&serv->sv_lock);
 > >  	}
-> > -	memcpy(&newsvsk->sk_local, sin, slen);
-> > +	memcpy(&newsvsk->sk_xprt.xpt_local, sin, slen);
-> >
-> >  	if (serv->sv_stats)
-> >  		serv->sv_stats->nettcpconn++;
-> > @@ -1496,6 +1476,29 @@ svc_check_conn_limits(struct svc_serv *s
-> >  	}
-> >  }
-> >
-> > +static inline void svc_copy_addr(struct svc_rqst *rqstp, struct  
-> > svc_xprt *xprt)
-> > +{
-> > +	struct sockaddr *sin;
-> > +
-> > +	/* sock_recvmsg doesn't fill in the name/namelen, so we must..
-> > +	 */
-> > +	memcpy(&rqstp->rq_addr, &xprt->xpt_remote, xprt->xpt_remotelen);
-> > +	rqstp->rq_addrlen = xprt->xpt_remotelen;
-> > +
-> > +	/* Destination address in request is needed for binding the
-> > +	 * source address in RPC callbacks later.
-> > +	 */
-> > +	sin = (struct sockaddr *)&xprt->xpt_local;
-> > +	switch (sin->sa_family) {
-> > +	case AF_INET:
-> > +		rqstp->rq_daddr.addr = ((struct sockaddr_in *)sin)->sin_addr;
-> > +		break;
-> > +	case AF_INET6:
-> > +		rqstp->rq_daddr.addr6 = ((struct sockaddr_in6 *)sin)->sin6_addr;
-> > +		break;
-> > +	}
-> > +}
-> > +
-> >  /*
-> >   * Receive the next request on any socket.  This code is carefully
-> >   * organised not to touch any cachelines in the shared svc_serv
-> > @@ -1614,6 +1617,7 @@ svc_recv(struct svc_rqst *rqstp, long ti
-> >  			len = svc_deferred_recv(rqstp);
-> >  		} else
-> >  			len = svsk->sk_xprt.xpt_ops.xpo_recvfrom(rqstp);
-> > +		svc_copy_addr(rqstp, &svsk->sk_xprt);
-> >  		dprintk("svc: got len=%d\n", len);
-> >  	}
-> >
+> >  	if (err) {
+> >  		sockfd_put(so);
 > 
 > Chuck Lever
 > chuck.lever@oracle.com
