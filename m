@@ -1,11 +1,10 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: Re: [RFC,
-	PATCH 13/35] svc: Change services to use new	svc_create_xprt service
-Date: Tue, 02 Oct 2007 11:45:05 -0500
-Message-ID: <1191343505.1565.28.camel@trinity.ogc.int>
+Subject: Re: [RFC,PATCH 20/35] svc: Make svc_send transport neutral
+Date: Tue, 02 Oct 2007 11:46:36 -0500
+Message-ID: <1191343596.1565.30.camel@trinity.ogc.int>
 References: <20071001191426.3250.15371.stgit@dell3.ogc.int>
-	<20071001192758.3250.2651.stgit@dell3.ogc.int>
-	<608B3480-525A-43C6-945C-3482CDE823FC@oracle.com>
+	<20071001192814.3250.76840.stgit@dell3.ogc.int>
+	<F39B3C28-FF6B-4513-853F-121130E70932@oracle.com>
 Reply-To: tom@opengridcomputing.com
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -16,13 +15,13 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IckzQ-0006qy-KZ
-	for nfs@lists.sourceforge.net; Tue, 02 Oct 2007 09:52:56 -0700
+	id 1IckzL-0006qy-2j
+	for nfs@lists.sourceforge.net; Tue, 02 Oct 2007 09:52:51 -0700
 Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]
 	helo=smtp.opengridcomputing.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Ickt5-0001g7-KT
-	for nfs@lists.sourceforge.net; Tue, 02 Oct 2007 09:46:24 -0700
-In-Reply-To: <608B3480-525A-43C6-945C-3482CDE823FC@oracle.com>
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IckuZ-0002CO-8W
+	for nfs@lists.sourceforge.net; Tue, 02 Oct 2007 09:47:56 -0700
+In-Reply-To: <F39B3C28-FF6B-4513-853F-121130E70932@oracle.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,183 +34,52 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, 2007-10-02 at 11:44 -0400, Chuck Lever wrote:
-> On Oct 1, 2007, at 3:27 PM, Tom Tucker wrote:
+On Tue, 2007-10-02 at 12:15 -0400, Chuck Lever wrote:
+> On Oct 1, 2007, at 3:28 PM, Tom Tucker wrote:
 > >
-> > Modify the various kernel RPC svcs to use the svc_create_xprt service.
-> >
-> > Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
-> > ---
-> >
-> >  fs/lockd/svc.c                 |   17 ++++++++---------
-> >  fs/nfs/callback.c              |    4 ++--
-> >  fs/nfsd/nfssvc.c               |    4 ++--
-> >  include/linux/sunrpc/svcsock.h |    1 -
-> >  net/sunrpc/sunrpc_syms.c       |    1 -
-> >  net/sunrpc/svcsock.c           |   22 ----------------------
-> >  6 files changed, 12 insertions(+), 37 deletions(-)
-> >
-> > diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-> > index 82e2192..8686915 100644
-> > --- a/fs/lockd/svc.c
-> > +++ b/fs/lockd/svc.c
-> > @@ -219,13 +219,12 @@ lockd(struct svc_rqst *rqstp)
-> >  	module_put_and_exit(0);
-> >  }
-> >
-> > -
-> > -static int find_socket(struct svc_serv *serv, int proto)
-> > +static int find_xprt(struct svc_serv *serv, char *proto)
-> >  {
-> >  	struct svc_sock *svsk;
-> >  	int found = 0;
-> >  	list_for_each_entry(svsk, &serv->sv_permsocks, sk_list)
-> > -		if (svsk->sk_sk->sk_protocol == proto) {
-> > +		if (strcmp(svsk->sk_xprt.xpt_class->xcl_name, proto) == 0) {
-> >  			found = 1;
-> >  			break;
-> >  		}
+
+[...snip...]
+
+> > -	if ((svsk = rqstp->rq_sock) == NULL) {
+> > -		printk(KERN_WARNING "NULL socket pointer in %s:%d\n",
+> > +	if ((xprt = rqstp->rq_xprt) == NULL) {
+> > +		printk(KERN_WARNING "NULL transport pointer in %s:%d\n",
+> >  				__FILE__, __LINE__);
+> >  		return -EFAULT;
+> >  	}
 > 
-> This is scary.  :-)
-> 
+> Do we still want this printk here?  Maybe it can be removed.
 
-Yes, I agree. In fact, this is the "last place" where svcs ramble around
-svc_xprt internals. This was along the lines of "how much bigger do I
-make this patchset". BTW, this function was already here , I just
-modified it.
-
-> First, I think we would be better off making the server transport API  
-> stronger by not allowing ULPs to dig around in svc_xprt or the  
-> svc_xprt_class structures directly.  Perhaps you could provide a  
-> method for obtaining the transport's NETID.
-
-I'll propose a service. NETID or simply protocol/port? What's the
-consensus?
+I don't know why it's here. Maybe replace it with a BUG_ON?
 
 > 
-> Second, is there any guarantee that the string name of the underlying  
-> protocol is the same as the name of the transport class?  Is there  
-> any relationship between the transport name and the NETIDs it supports?
-> 
-
-None that are enforced, but that would be cool.
-
-> > @@ -243,13 +242,13 @@ static int make_socks(struct svc_serv *s
-> >  	int err = 0;
+> > @@ -1674,13 +1674,13 @@ svc_send(struct svc_rqst *rqstp)
+> >  		xb->page_len +
+> >  		xb->tail[0].iov_len;
 > >
-> >  	if (proto == IPPROTO_UDP || nlm_udpport)
-> > -		if (!find_socket(serv, IPPROTO_UDP))
-> > -			err = svc_makesock(serv, IPPROTO_UDP, nlm_udpport,
-> > -						SVC_SOCK_DEFAULTS);
-> > +		if (!find_xprt(serv, "udp"))
-> > +			err = svc_create_xprt(serv, "udp", nlm_udpport,
-> > +					      SVC_SOCK_DEFAULTS);
-> >  	if (err >= 0 && (proto == IPPROTO_TCP || nlm_tcpport))
-> > -		if (!find_socket(serv, IPPROTO_TCP))
-> > -			err = svc_makesock(serv, IPPROTO_TCP, nlm_tcpport,
-> > -						SVC_SOCK_DEFAULTS);
-> > +		if (!find_xprt(serv, "tcp"))
-> > +			err = svc_create_xprt(serv, "tcp", nlm_tcpport,
-> > +					      SVC_SOCK_DEFAULTS);
+> > -	/* Grab svsk->sk_mutex to serialize outgoing data. */
+> > -	mutex_lock(&svsk->sk_mutex);
+> > -	if (test_bit(XPT_DEAD, &svsk->sk_xprt.xpt_flags))
+> > +	/* Grab mutex to serialize outgoing data. */
+> > +	mutex_lock(&xprt->xpt_mutex);
+> > +	if (test_bit(XPT_DEAD, &xprt->xpt_flags))
+> >  		len = -ENOTCONN;
+> >  	else
+> > -		len = svsk->sk_xprt.xpt_ops.xpo_sendto(rqstp);
+> > -	mutex_unlock(&svsk->sk_mutex);
+> > +		len = xprt->xpt_ops.xpo_sendto(rqstp);
+> > +	mutex_unlock(&xprt->xpt_mutex);
+> >  	svc_sock_release(rqstp);
 > >
-> >  	if (err >= 0) {
-> >  		warned = 0;
-> > diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-> > index a796be5..e27ca14 100644
-> > --- a/fs/nfs/callback.c
-> > +++ b/fs/nfs/callback.c
-> > @@ -123,8 +123,8 @@ int nfs_callback_up(void)
-> >  	if (!serv)
-> >  		goto out_err;
+> >  	if (len == -ECONNREFUSED || len == -ENOTCONN || len == -EAGAIN)
+> > @@ -1782,7 +1782,6 @@ static struct svc_sock *svc_setup_socket
+> >  	svsk->sk_lastrecv = get_seconds();
+> >  	spin_lock_init(&svsk->sk_lock);
+> >  	INIT_LIST_HEAD(&svsk->sk_deferred);
+> > -	mutex_init(&svsk->sk_mutex);
 > >
-> > -	ret = svc_makesock(serv, IPPROTO_TCP, nfs_callback_set_tcpport,
-> > -							SVC_SOCK_ANONYMOUS);
-> > +	ret = svc_create_xprt(serv, "tcp", nfs_callback_set_tcpport,
-> > +			      SVC_SOCK_ANONYMOUS);
-> >  	if (ret <= 0)
-> >  		goto out_destroy;
-> >  	nfs_callback_tcpport = ret;
-> > diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-> > index a8c89ae..bf70b06 100644
-> > --- a/fs/nfsd/nfssvc.c
-> > +++ b/fs/nfsd/nfssvc.c
-> > @@ -236,7 +236,7 @@ static int nfsd_init_socks(int port)
-> >
-> >  	error = lockd_up(IPPROTO_UDP);
-> >  	if (error >= 0) {
-> > -		error = svc_makesock(nfsd_serv, IPPROTO_UDP, port,
-> > +		error = svc_create_xprt(nfsd_serv, "udp", port,
-> >  					SVC_SOCK_DEFAULTS);
-> >  		if (error < 0)
-> >  			lockd_down();
-> > @@ -247,7 +247,7 @@ static int nfsd_init_socks(int port)
-> >  #ifdef CONFIG_NFSD_TCP
-> >  	error = lockd_up(IPPROTO_TCP);
-> >  	if (error >= 0) {
-> > -		error = svc_makesock(nfsd_serv, IPPROTO_TCP, port,
-> > +		error = svc_create_xprt(nfsd_serv, "tcp", port,
-> >  					SVC_SOCK_DEFAULTS);
-> >  		if (error < 0)
-> >  			lockd_down();
-> > diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/ 
-> > svcsock.h
-> > index 9882ce0..3181d9d 100644
-> > --- a/include/linux/sunrpc/svcsock.h
-> > +++ b/include/linux/sunrpc/svcsock.h
-> > @@ -67,7 +67,6 @@ #define SK_LISTENER	11			/* listening en
-> >  /*
-> >   * Function prototypes.
-> >   */
-> > -int		svc_makesock(struct svc_serv *, int, unsigned short, int flags);
-> >  void		svc_force_close_socket(struct svc_sock *);
-> >  int		svc_recv(struct svc_rqst *, long);
-> >  int		svc_send(struct svc_rqst *);
-> > diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
-> > index a62ce47..e4cad0f 100644
-> > --- a/net/sunrpc/sunrpc_syms.c
-> > +++ b/net/sunrpc/sunrpc_syms.c
-> > @@ -72,7 +72,6 @@ EXPORT_SYMBOL(svc_drop);
-> >  EXPORT_SYMBOL(svc_process);
-> >  EXPORT_SYMBOL(svc_recv);
-> >  EXPORT_SYMBOL(svc_wake_up);
-> > -EXPORT_SYMBOL(svc_makesock);
-> >  EXPORT_SYMBOL(svc_reserve);
-> >  EXPORT_SYMBOL(svc_auth_register);
-> >  EXPORT_SYMBOL(auth_domain_lookup);
-> > diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-> > index e3c74e0..373f020 100644
-> > --- a/net/sunrpc/svcsock.c
-> > +++ b/net/sunrpc/svcsock.c
-> > @@ -2012,28 +2012,6 @@ void svc_force_close_socket(struct svc_s
-> >  	svc_close_socket(svsk);
-> >  }
-> >
-> > -/**
-> > - * svc_makesock - Make a socket for nfsd and lockd
-> > - * @serv: RPC server structure
-> > - * @protocol: transport protocol to use
-> > - * @port: port to use
-> > - * @flags: requested socket characteristics
-> > - *
-> > - */
-> > -int svc_makesock(struct svc_serv *serv, int protocol, unsigned  
-> > short port,
-> > -			int flags)
-> > -{
-> > -	dprintk("svc: creating socket proto = %d\n", protocol);
-> > -	switch (protocol) {
-> > -	case IPPROTO_TCP:
-> > -		return svc_create_xprt(serv, "tcp", port, flags);
-> > -	case IPPROTO_UDP:
-> > -		return svc_create_xprt(serv, "udp", port, flags);
-> > -	default:
-> > -		return -EINVAL;
-> > -	}
-> > -}
-> > -
-> >  /*
-> >   * Handle defer and revisit of requests
-> >   */
+> >  	/* Initialize the socket */
+> >  	if (sock->type == SOCK_DGRAM)
 > 
 > Chuck Lever
 > chuck.lever@oracle.com
