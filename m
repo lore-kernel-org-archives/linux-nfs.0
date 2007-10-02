@@ -1,22 +1,24 @@
-From: "Wim Colgate" <Wim.Colgate@xensource.com>
+From: Gabriel Barazer <gabriel@oxeva.fr>
 Subject: Re: simple question about r/wsize
-Date: Mon, 1 Oct 2007 16:19:31 -0700
-Message-ID: <A9AD3C3BCF83FD4182B7D4D99E37FAD8447557@exchrdm.ad.xensource.com>
+Date: Tue, 02 Oct 2007 04:51:56 +0200
+Message-ID: <4701B24C.2070102@oxeva.fr>
 References: <A9AD3C3BCF83FD4182B7D4D99E37FAD8447540@exchrdm.ad.xensource.com>
 	<1191280261.6611.19.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: "Trond Myklebust" <trond.myklebust@fys.uio.no>
+Content-Type: text/plain; charset="utf-8"
+Cc: nfs@lists.sourceforge.net,
+	Wim Colgate <Wim.Colgate@xensource.com>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IcUY4-0004K2-Eb
-	for nfs@lists.sourceforge.net; Mon, 01 Oct 2007 16:19:36 -0700
-Received: from webmailrdm.xensource.com ([66.228.214.202])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IcUY8-000873-C9
-	for nfs@lists.sourceforge.net; Mon, 01 Oct 2007 16:19:41 -0700
+	id 1IcXrf-0008C6-Go
+	for nfs@lists.sourceforge.net; Mon, 01 Oct 2007 19:52:03 -0700
+Received: from mail.reagi.com ([195.60.188.80])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IcXri-0003HG-SN
+	for nfs@lists.sourceforge.net; Mon, 01 Oct 2007 19:52:08 -0700
 In-Reply-To: <1191280261.6611.19.camel@heimdal.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -30,47 +32,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Thanks Trond,
-
-As usual, you are fast to answer; and right. I was looking through the
-code and saw 4K being bantered around. However, cat'ing /proc/mounts
-shows 32K for rsize and wsize.
-
-Wim
-
------Original Message-----
-From: Trond Myklebust [mailto:trond.myklebust@fys.uio.no] 
-Sent: Monday, October 01, 2007 4:11 PM
-To: Wim Colgate
-Cc: nfs@lists.sourceforge.net
-Subject: Re: [NFS] simple question about r/wsize
-
-On Mon, 2007-10-01 at 15:04 -0700, Wim Colgate wrote:
-> What's the current NFS v3 wsize and rsize? It appears to be 4K - and
-> just wanted a confirmation.
-> 
-
-It sounds like you are working with an old system. IIRC, older versions
-of RedHat used to jimmy the 'mount' command to make 4k the default,
-because that worked best with UDP mounts on crummy networks.
-
-For newer clients, the default should depend on what your server
-specifies in the FSINFO nfs command. For most servers, when you mount
-with a TCP connection, the default will be 32k, but some may have larger
-defaults (NetApp servers often specify a 64k default) or smaller (older
-Linux servers will support an 8k maximum).
-
-'cat /proc/mounts' should always tell you what the client is actually
-using for rsize/wsize.
-
-Cheers
-  Trond
-
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Microsoft
-Defy all challenges. Microsoft(R) Visual Studio 2005.
-http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+T24gMTAvMDIvMjAwNyAxOjExOjAxIEFNICswMjAwLCBUcm9uZCBNeWtsZWJ1c3QgCjx0cm9uZC5t
+eWtsZWJ1c3RAZnlzLnVpby5ubz4gd3JvdGU6Cj4gT24gTW9uLCAyMDA3LTEwLTAxIGF0IDE1OjA0
+IC0wNzAwLCBXaW0gQ29sZ2F0ZSB3cm90ZToKPj4gV2hhdOKAmXMgdGhlIGN1cnJlbnQgTkZTIHYz
+IHdzaXplIGFuZCByc2l6ZT8gSXQgYXBwZWFycyB0byBiZSA0SyDigJMgYW5kCj4+IGp1c3Qgd2Fu
+dGVkIGEgY29uZmlybWF0aW9uLgo+Pgo+IAo+IEl0IHNvdW5kcyBsaWtlIHlvdSBhcmUgd29ya2lu
+ZyB3aXRoIGFuIG9sZCBzeXN0ZW0uIElJUkMsIG9sZGVyIHZlcnNpb25zCj4gb2YgUmVkSGF0IHVz
+ZWQgdG8gamltbXkgdGhlICdtb3VudCcgY29tbWFuZCB0byBtYWtlIDRrIHRoZSBkZWZhdWx0LAo+
+IGJlY2F1c2UgdGhhdCB3b3JrZWQgYmVzdCB3aXRoIFVEUCBtb3VudHMgb24gY3J1bW15IG5ldHdv
+cmtzLgo+IAo+IEZvciBuZXdlciBjbGllbnRzLCB0aGUgZGVmYXVsdCBzaG91bGQgZGVwZW5kIG9u
+IHdoYXQgeW91ciBzZXJ2ZXIKPiBzcGVjaWZpZXMgaW4gdGhlIEZTSU5GTyBuZnMgY29tbWFuZC4g
+Rm9yIG1vc3Qgc2VydmVycywgd2hlbiB5b3UgbW91bnQKPiB3aXRoIGEgVENQIGNvbm5lY3Rpb24s
+IHRoZSBkZWZhdWx0IHdpbGwgYmUgMzJrLCBidXQgc29tZSBtYXkgaGF2ZSBsYXJnZXIKPiBkZWZh
+dWx0cyAoTmV0QXBwIHNlcnZlcnMgb2Z0ZW4gc3BlY2lmeSBhIDY0ayBkZWZhdWx0KSBvciBzbWFs
+bGVyIChvbGRlcgo+IExpbnV4IHNlcnZlcnMgd2lsbCBzdXBwb3J0IGFuIDhrIG1heGltdW0pLgoK
+SSBzZWUgb24gbXkgc2VydmVycyAoPjIuNi4yMSwgbGF0ZXN0IG5mcy11dGlscykgdGhhdCB0aGUg
+cnNpemUvd3NpemUgaXMgCmFjdHVhbGx5IGRlZmluZWQgYnkgdGhlIGFtb3VudCBvZiBtZW1vcnkg
+b24gdGhlIE5GUyBzZXJ2ZXIuIEl0IHNlZW1zIHRvIApzZXQgdGhlIHJzaXplL3dzaXplIHRvICh0
+b3RhbCBtZW1vcnkpLzgxOTIgKDUxMmsgaW4gbXkgY2FzZSBmb3IgYSA0R0IgCm5mcyBzZXJ2ZXIp
+LiBJcyBpdCBhIGJ1ZyBvciBhIHdhbnRlZCBiZWhhdmlvciA/CgpHYWJyaWVsCgotLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tClRoaXMgU0YubmV0IGVtYWlsIGlzIHNwb25zb3JlZCBieTogTWljcm9zb2Z0CkRlZnkg
+YWxsIGNoYWxsZW5nZXMuIE1pY3Jvc29mdChSKSBWaXN1YWwgU3R1ZGlvIDIwMDUuCmh0dHA6Ly9j
+bGsuYXRkbXQuY29tL01SVC9nby92c2UwMTIwMDAwMDcwbXJ0L2RpcmVjdC8wMS8KX19fX19fX19f
+X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX18KTkZTIG1haWxsaXN0ICAtICBO
+RlNAbGlzdHMuc291cmNlZm9yZ2UubmV0Cmh0dHBzOi8vbGlzdHMuc291cmNlZm9yZ2UubmV0L2xp
+c3RzL2xpc3RpbmZvL25mcwo=
