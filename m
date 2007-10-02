@@ -1,23 +1,25 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: NLM mutex deadlock in 2.6.22.9
-Date: Tue, 02 Oct 2007 11:46:32 -0400
-Message-ID: <1191339992.6709.29.camel@heimdal.trondhjem.org>
-References: <20071002103119.GA4641@janus>
-Mime-Version: 1.0
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [RFC,PATCH 20/35] svc: Make svc_send transport neutral
+Date: Tue, 2 Oct 2007 12:15:35 -0400
+Message-ID: <F39B3C28-FF6B-4513-853F-121130E70932@oracle.com>
+References: <20071001191426.3250.15371.stgit@dell3.ogc.int>
+	<20071001192814.3250.76840.stgit@dell3.ogc.int>
+Mime-Version: 1.0 (Apple Message framework v752.2)
 Content-Type: text/plain; charset="us-ascii"
-Cc: Linux NFS mailing list <nfs@lists.sourceforge.net>
-To: Frank van Maarseveen <frankvm@frankvm.com>
+Cc: neilb@suse.de, bfields@fieldses.org, nfs@lists.sourceforge.net,
+	gnb@sgi.com
+To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IcjxK-0008DJ-Hs
-	for nfs@lists.sourceforge.net; Tue, 02 Oct 2007 08:46:42 -0700
-Received: from pat.uio.no ([129.240.10.15])
+	id 1IckQ3-00039v-Un
+	for nfs@lists.sourceforge.net; Tue, 02 Oct 2007 09:16:24 -0700
+Received: from rgminet01.oracle.com ([148.87.113.118])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IcjxN-0006EV-3G
-	for nfs@lists.sourceforge.net; Tue, 02 Oct 2007 08:46:47 -0700
-In-Reply-To: <20071002103119.GA4641@janus>
+	(Exim 4.44) id 1IckQ8-0001aT-PG
+	for nfs@lists.sourceforge.net; Tue, 02 Oct 2007 09:16:29 -0700
+In-Reply-To: <20071001192814.3250.76840.stgit@dell3.ogc.int>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,39 +32,118 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, 2007-10-02 at 12:31 +0200, Frank van Maarseveen wrote:
-> nlmsvc_lock() starts out with a
-> 
->         mutex_lock(&file->f_mutex);
-> 
-> and at some point via the garbage collector it calls mutex_lock()
-> again. alt-sysrq-t said:
-> 
-> lockd         D ABD55800     0  4462      2 (L-TLB)
->        f6849d28 00000046 000ee6b2 abd55800 00000000 c0141ed3 c070daac 00157800 
->        f779e900 00000000 f6f08f50 c0898154 f6f08a00 00000000 eefdb7d8 c2a21d80 
->        f6f08a00 f6f08b0c 000186a0 3ee72980 000002ab 00000001 00000001 c0573e61 
-> Call Trace:
->  [<c0573f32>] __mutex_lock_slowpath+0xb2/0x250
->  [<c0573e61>] mutex_lock+0x21/0x30
->  [<c0233ff9>] nlmsvc_traverse_blocks+0x29/0xa0
->  [<c0236589>] nlm_traverse_files+0x89/0x240
->  [<c02368eb>] nlmsvc_mark_resources+0x1b/0x30
->  [<c0233179>] nlm_gc_hosts+0x59/0x1a0
->  [<c02326f4>] nlm_lookup_host+0x44/0x350
->  [<c0232b3f>] nlmsvc_lookup_host+0x5f/0x70
-> 		nlmsvc_create_block() is inlined
->  [<c023433d>] nlmsvc_lock+0x14d/0x360
->  [<c023961a>] nlm4svc_proc_lock+0xea/0x140
->  [<c05600a0>] svc_process+0x320/0x700
->  [<c0233663>] lockd+0x133/0x270
->  [<c0105337>] kernel_thread_helper+0x7/0x10
+On Oct 1, 2007, at 3:28 PM, Tom Tucker wrote:
+>
+> Move the sk_mutex field to the transport independent svc_xprt  
+> structure.
+> Now all the fields that svc_send touches are transport neutral.  
+> Change the
+> svc_send function to use the transport independent svc_xprt  
+> directly instead
+> of the transport dependent svc_sock structure.
+>
+> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+> ---
+>
+>  include/linux/sunrpc/svc_xprt.h |    1 +
+>  include/linux/sunrpc/svcsock.h  |    1 -
+>  net/sunrpc/svc_xprt.c           |    1 +
+>  net/sunrpc/svcsock.c            |   17 ++++++++---------
+>  4 files changed, 10 insertions(+), 10 deletions(-)
+>
+> diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/ 
+> svc_xprt.h
+> index e8be38f..c16a2c6 100644
+> --- a/include/linux/sunrpc/svc_xprt.h
+> +++ b/include/linux/sunrpc/svc_xprt.h
+> @@ -55,6 +55,7 @@ #define XPT_LISTENER	11		/* listening en
+>  	struct svc_pool		*xpt_pool;	/* current pool iff queued */
+>  	struct svc_serv		*xpt_server;	/* service for transport */
+>  	atomic_t    	    	xpt_reserved;	/* space on outq that is rsvd */
+> +	struct mutex		xpt_mutex;	/* to serialize sending data */
+>  };
+>
+>  int	svc_reg_xprt_class(struct svc_xprt_class *);
+> diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/ 
+> svcsock.h
+> index ba41f11..41c2dfa 100644
+> --- a/include/linux/sunrpc/svcsock.h
+> +++ b/include/linux/sunrpc/svcsock.h
+> @@ -24,7 +24,6 @@ struct svc_sock {
+>  						 * sk_info_authunix */
+>  	struct list_head	sk_deferred;	/* deferred requests that need to
+>  						 * be revisted */
+> -	struct mutex		sk_mutex;	/* to serialize sending data */
+>
+>  	/* We keep the old state_change and data_ready CB's here */
+>  	void			(*sk_ostate)(struct sock *);
+> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+> index 5195131..2a7e214 100644
+> --- a/net/sunrpc/svc_xprt.c
+> +++ b/net/sunrpc/svc_xprt.c
+> @@ -112,6 +112,7 @@ void svc_xprt_init(struct svc_xprt_class
+>  	xpt->xpt_server = serv;
+>  	INIT_LIST_HEAD(&xpt->xpt_list);
+>  	INIT_LIST_HEAD(&xpt->xpt_ready);
+> +	mutex_init(&xpt->xpt_mutex);
+>  }
+>  EXPORT_SYMBOL_GPL(svc_xprt_init);
+>
+> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+> index 7cf15c6..eee64ce 100644
+> --- a/net/sunrpc/svcsock.c
+> +++ b/net/sunrpc/svcsock.c
+> @@ -1655,12 +1655,12 @@ svc_drop(struct svc_rqst *rqstp)
+>  int
+>  svc_send(struct svc_rqst *rqstp)
+>  {
+> -	struct svc_sock	*svsk;
+> +	struct svc_xprt	*xprt;
+>  	int		len;
+>  	struct xdr_buf	*xb;
+>
+> -	if ((svsk = rqstp->rq_sock) == NULL) {
+> -		printk(KERN_WARNING "NULL socket pointer in %s:%d\n",
+> +	if ((xprt = rqstp->rq_xprt) == NULL) {
+> +		printk(KERN_WARNING "NULL transport pointer in %s:%d\n",
+>  				__FILE__, __LINE__);
+>  		return -EFAULT;
+>  	}
 
-The following fix has already been sent to stable@kernel.org...
+Do we still want this printk here?  Maybe it can be removed.
 
-http://client.linux-nfs.org/Linux-2.6.x/2.6.23-rc8/linux-2.6.23-001-fix_lockd_circular_dependency.dif
+> @@ -1674,13 +1674,13 @@ svc_send(struct svc_rqst *rqstp)
+>  		xb->page_len +
+>  		xb->tail[0].iov_len;
+>
+> -	/* Grab svsk->sk_mutex to serialize outgoing data. */
+> -	mutex_lock(&svsk->sk_mutex);
+> -	if (test_bit(XPT_DEAD, &svsk->sk_xprt.xpt_flags))
+> +	/* Grab mutex to serialize outgoing data. */
+> +	mutex_lock(&xprt->xpt_mutex);
+> +	if (test_bit(XPT_DEAD, &xprt->xpt_flags))
+>  		len = -ENOTCONN;
+>  	else
+> -		len = svsk->sk_xprt.xpt_ops.xpo_sendto(rqstp);
+> -	mutex_unlock(&svsk->sk_mutex);
+> +		len = xprt->xpt_ops.xpo_sendto(rqstp);
+> +	mutex_unlock(&xprt->xpt_mutex);
+>  	svc_sock_release(rqstp);
+>
+>  	if (len == -ECONNREFUSED || len == -ENOTCONN || len == -EAGAIN)
+> @@ -1782,7 +1782,6 @@ static struct svc_sock *svc_setup_socket
+>  	svsk->sk_lastrecv = get_seconds();
+>  	spin_lock_init(&svsk->sk_lock);
+>  	INIT_LIST_HEAD(&svsk->sk_deferred);
+> -	mutex_init(&svsk->sk_mutex);
+>
+>  	/* Initialize the socket */
+>  	if (sock->type == SOCK_DGRAM)
 
-Trond
+Chuck Lever
+chuck.lever@oracle.com
+
+
 
 
 -------------------------------------------------------------------------
