@@ -1,27 +1,27 @@
-From: Tom Tucker <tom@opengridcomputing.com>
-Subject: Re: [RFC,PATCH 11/35] svc: Add xpo_accept transport function
-Date: Tue, 02 Oct 2007 11:41:45 -0500
-Message-ID: <1191343305.1565.24.camel@trinity.ogc.int>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [RFC,PATCH 20/35] svc: Make svc_send transport neutral
+Date: Tue, 2 Oct 2007 12:54:32 -0400
+Message-ID: <AD252E26-A2D6-4B02-AB06-36EE400B2F58@oracle.com>
 References: <20071001191426.3250.15371.stgit@dell3.ogc.int>
-	<20071001192753.3250.94322.stgit@dell3.ogc.int>
-	<EECEF6FF-4C84-4764-BF0B-383AA870AFDD@oracle.com>
-Reply-To: tom@opengridcomputing.com
-Mime-Version: 1.0
+	<20071001192814.3250.76840.stgit@dell3.ogc.int>
+	<F39B3C28-FF6B-4513-853F-121130E70932@oracle.com>
+	<1191343596.1565.30.camel@trinity.ogc.int>
+Mime-Version: 1.0 (Apple Message framework v752.2)
 Content-Type: text/plain; charset="us-ascii"
 Cc: neilb@suse.de, bfields@fieldses.org, nfs@lists.sourceforge.net,
 	gnb@sgi.com
-To: Chuck Lever <chuck.lever@oracle.com>
+To: tom@opengridcomputing.com
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IckzY-0006uM-NH
-	for nfs@lists.sourceforge.net; Tue, 02 Oct 2007 09:53:05 -0700
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]
-	helo=smtp.opengridcomputing.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Ickps-0008Jq-Ex
-	for nfs@lists.sourceforge.net; Tue, 02 Oct 2007 09:43:04 -0700
-In-Reply-To: <EECEF6FF-4C84-4764-BF0B-383AA870AFDD@oracle.com>
+	id 1Icl1V-0007J9-Ua
+	for nfs@lists.sourceforge.net; Tue, 02 Oct 2007 09:55:06 -0700
+Received: from agminet01.oracle.com ([141.146.126.228])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1Icl1Z-0005FX-Sc
+	for nfs@lists.sourceforge.net; Tue, 02 Oct 2007 09:55:11 -0700
+In-Reply-To: <1191343596.1565.30.camel@trinity.ogc.int>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,45 +34,73 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, 2007-10-02 at 11:33 -0400, Chuck Lever wrote:
-> On Oct 1, 2007, at 3:27 PM, Tom Tucker wrote:
 
-[...snip...]
+On Oct 2, 2007, at 12:46 PM, Tom Tucker wrote:
 
-> > +		if (newxpt)
-> > +			svc_check_conn_limits(svsk->sk_server);
-> > +		svc_sock_received(svsk);
-> >  	} else {
-> >  		dprintk("svc: server %p, pool %u, socket %p, inuse=%d\n",
-> >  			rqstp, pool->sp_id, svsk, atomic_read(&svsk->sk_inuse));
-> 
-> Instead of adding a test_bit() and conditional branch here, why not  
-> always call xpo_accept?  For UDP, the method simply returns.
-> 
+> On Tue, 2007-10-02 at 12:15 -0400, Chuck Lever wrote:
+>> On Oct 1, 2007, at 3:28 PM, Tom Tucker wrote:
+>>>
+>
+> [...snip...]
+>
+>>> -	if ((svsk = rqstp->rq_sock) == NULL) {
+>>> -		printk(KERN_WARNING "NULL socket pointer in %s:%d\n",
+>>> +	if ((xprt = rqstp->rq_xprt) == NULL) {
+>>> +		printk(KERN_WARNING "NULL transport pointer in %s:%d\n",
+>>>  				__FILE__, __LINE__);
+>>>  		return -EFAULT;
+>>>  	}
+>>
+>> Do we still want this printk here?  Maybe it can be removed.
+>
+> I don't know why it's here. Maybe replace it with a BUG_ON?
 
-That's what I thought at first too, but UDP needs to call receive here.
-Doing nothing stalls the service and lockd never gets set up.
+/me makes an X with his fingers and hisses like a cat....
 
-> > @@ -1859,6 +1873,8 @@ static int svc_create_socket(struct svc_
-> >  	}
-> >
-> >  	if ((svsk = svc_setup_socket(serv, sock, &error, flags)) != NULL) {
-> > +		if (protocol == IPPROTO_TCP)
-> > +			set_bit(SK_LISTENER, &svsk->sk_flags);
-> >  		svc_sock_received(svsk);
-> >  		return ntohs(inet_sk(svsk->sk_sk)->sport);
-> >  	}
-> 
-> If you really need to set SK_LISTENER for TCP, shouldn't that be done  
-> in svc_tcp_init() ?
+BUG_ON is heavyweight and often makes the system unusable after a  
+short while by leaving a lot of bogus state (like held locks).   
+Unless a NULL here is a real sign of a software fault that requires a  
+hard stop, simply returning EFAULT makes sense.
 
-Yes, it could since svc_tcp_init looks at the socket state. 
+>>
+>>> @@ -1674,13 +1674,13 @@ svc_send(struct svc_rqst *rqstp)
+>>>  		xb->page_len +
+>>>  		xb->tail[0].iov_len;
+>>>
+>>> -	/* Grab svsk->sk_mutex to serialize outgoing data. */
+>>> -	mutex_lock(&svsk->sk_mutex);
+>>> -	if (test_bit(XPT_DEAD, &svsk->sk_xprt.xpt_flags))
+>>> +	/* Grab mutex to serialize outgoing data. */
+>>> +	mutex_lock(&xprt->xpt_mutex);
+>>> +	if (test_bit(XPT_DEAD, &xprt->xpt_flags))
+>>>  		len = -ENOTCONN;
+>>>  	else
+>>> -		len = svsk->sk_xprt.xpt_ops.xpo_sendto(rqstp);
+>>> -	mutex_unlock(&svsk->sk_mutex);
+>>> +		len = xprt->xpt_ops.xpo_sendto(rqstp);
+>>> +	mutex_unlock(&xprt->xpt_mutex);
+>>>  	svc_sock_release(rqstp);
+>>>
+>>>  	if (len == -ECONNREFUSED || len == -ENOTCONN || len == -EAGAIN)
+>>> @@ -1782,7 +1782,6 @@ static struct svc_sock *svc_setup_socket
+>>>  	svsk->sk_lastrecv = get_seconds();
+>>>  	spin_lock_init(&svsk->sk_lock);
+>>>  	INIT_LIST_HEAD(&svsk->sk_deferred);
+>>> -	mutex_init(&svsk->sk_mutex);
+>>>
+>>>  	/* Initialize the socket */
+>>>  	if (sock->type == SOCK_DGRAM)
+>>
+>> Chuck Lever
+>> chuck.lever@oracle.com
+>>
+>>
+>
 
-> 
-> Chuck Lever
-> chuck.lever@oracle.com
-> 
-> 
+Chuck Lever
+chuck.lever@oracle.com
+
+
 
 
 -------------------------------------------------------------------------
