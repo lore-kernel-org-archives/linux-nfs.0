@@ -1,20 +1,21 @@
-From: bf7as23@hotmail.co.jp
-Subject: =?ISO-2022-JP?B?W5GslfGCv4LhgvGCy4LpXYqukVOKhILokNiC6JDql3CDUoN+g4WDaoNlg0KBSZHlkGyCzJK0VklQg1qDjIN1koaQU4LMie+I9YJRlpyQbIFJgUmBSQ==?=
-Date: Mon,  1 Oct 2007 21:33:05 -0700 (PDT)
-Message-ID: <17174.9786161401$1191299597@news.gmane.org>
+From: "Stevenson R Jonathan" <2-accede@jamichigan.org>
+Subject: get more leads with these healthcare lists
+Date: Tue, 02 Oct 2007 01:31:53 -0400
+Message-ID: <16908.3766676069$1191299599@news.gmane.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============2147287860=="
-To: nfs@lists.sourceforge.net
+Content-Type: multipart/mixed; boundary="===============0461421892=="
+Cc: inkinge@drinking.com, okle@samaplast.ch, get@urbansmarts.com
+To: nfs@lists.sf.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IcZRK-00014D-TZ
+	id 1IcZRL-00014I-Bj
 	for nfs@lists.sourceforge.net; Mon, 01 Oct 2007 21:32:59 -0700
-Received: from ppp-124.121.229.70.revip2.asianet.co.th ([124.121.229.70]
-	helo=ppp-superweb002292.gogoasianet.co.th)
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1IcZRP-0008JH-5D
-	for nfs@lists.sourceforge.net; Mon, 01 Oct 2007 21:33:03 -0700
+Received: from tecnoilexc01.tecnoil.com.br ([200.198.82.211]
+	helo=TECNOILSRV01.tecnoil.local)
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1IcZRQ-0003Ih-6s
+	for nfs@lists.sourceforge.net; Mon, 01 Oct 2007 21:33:04 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,29 +28,42 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============2147287860==
-Content-Type: text/plain;
-	charset="iso-2022-jp"
-Content-Transfer-Encoding: 7bit
-
-@šœc™šœc@Š®‘SŠ„‚èØ‚èê–åƒRƒ~ƒ…ƒjƒeƒB@šœc™šœc
-@@@@@@@@@@«««««
-@@@@http://vips.lovesoku.com/P_H_LOVERS/
-Š®‘SŠ„‚èØ‚è‚¾‚©‚çŒã•…‚ê‚È‚­‘ål‚ÌŠÔ‚ğŠy‚µ‚ß‚Ü‚·ô
-NEWƒVƒXƒeƒ€“‹Ú‚Å’ZŠÔ‚É‘¦ƒAƒhŒğŠ·E‘¦‰ï‚¢‚ª‰Â”\I
-‚à‚¿‚ë‚ñ‚·‚×‚Ä‚Ì‹@”\‚ªyŠ®‘S–³—¿z‚Å‚²—˜—p‚É‚È‚ê‚Ü‚·B
-@@@@@@@@@@«««««
-@@@@http://vips.lovesoku.com/P_H_LOVERS/
-@¦¦¦¦@‚±‚ñ‚È‚Æ‚±‚ë‚ª‚¨‚·‚·‚ß‚È‚ñ‚Å‚·I@¦¦¦¦
-‚PDƒ[ƒ‹‚Ì•ÔM—¦‚ª”¼’[‚È‚¢I—‚Ìq‚àÏ‹É“I‚Å‚·I
-‚QD‚²‹ßŠ‚Å’T‚¹‚Î’¼sƒzƒeƒ‹‚Ìƒz[ƒ€ƒ‰ƒ“‚à–²‚¶‚á‚È‚¢B
-‚RDŠ®‘SŠ„‚èØ‚èê–å‚¾‚©‚ç‚½‚­‚³‚ñ‚Ì—‚Ìq‚Æƒ€ƒtƒt¥¥¥ô
-@@@@@@@@@@«««««
-@@@@http://vips.lovesoku.com/P_H_LOVERS/
+--===============0461421892==
+Content-type: text/plain; charset=US-ASCII
 
 
 
---===============2147287860==
+
+
+
+Practicing Physicians in the USA 
+
+788,296 in total – 17,400 emails
+
+Physicians in many different specialties
+
+Can easily be sorted by 16 different fields
+
+Lowered Price -  $297
+
+
+*** FREE OFFER: Get the directories below for FREE with the purchase of the Doctor data ***
+
+Pharmaceutical Company Decision makers in the USA
+5000 personal emails and names for decision makers
+
+Contact List of US Hospitals
+23,000 Admins in more than 7,000 hospitals {a $399 value]
+
+send us an email:    datasourcemd@hotmail.com  
+
+* only until Oct 5
+
+
+for stopping this email in future send us an email with 433 in the subject
+
+
+--===============0461421892==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -59,7 +73,7 @@ Content-Disposition: inline
 This SF.net email is sponsored by: Microsoft
 Defy all challenges. Microsoft(R) Visual Studio 2005.
 http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
---===============2147287860==
+--===============0461421892==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -69,4 +83,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---===============2147287860==--
+--===============0461421892==--
