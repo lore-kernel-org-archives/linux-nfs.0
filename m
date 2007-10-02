@@ -1,33 +1,26 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: [PATCH] nfs-utils: exportfs: automatically set 'nohide' on
- referral exports.
-Date: Tue, 02 Oct 2007 10:38:08 -0400
-Message-ID: <470257D0.7000306@RedHat.com>
-Mime-Version: 1.0
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [RFC,
+	PATCH 04/35] svc: Add a max payload value to the transport
+Date: Tue, 2 Oct 2007 10:54:09 -0400
+Message-ID: <8E01CAF1-5D8D-4AE5-B15D-C04983079F76@oracle.com>
+References: <20071001191426.3250.15371.stgit@dell3.ogc.int>
+	<20071001192738.3250.6971.stgit@dell3.ogc.int>
+Mime-Version: 1.0 (Apple Message framework v752.2)
 Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Cc: neilb@suse.de, bfields@fieldses.org, nfs@lists.sourceforge.net,
+	gnb@sgi.com
+To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Icisv-0005GC-IC
-	for nfs@lists.sourceforge.net; Tue, 02 Oct 2007 07:38:05 -0700
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Icit0-0003d8-EP
-	for nfs@lists.sourceforge.net; Tue, 02 Oct 2007 07:38:10 -0700
-Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com
-	[172.16.52.254])
-	by mx1.redhat.com (8.13.1/8.13.1) with ESMTP id l92Ec9fI020585
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <nfs@lists.sourceforge.net>; Tue, 2 Oct 2007 10:38:09 -0400
-Received: from lacrosse.corp.redhat.com (lacrosse.corp.redhat.com
-	[172.16.52.154])
-	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l92Ec8Sp014058
-	for <nfs@lists.sourceforge.net>; Tue, 2 Oct 2007 10:38:08 -0400
-Received: from [10.12.32.32] (dickson.boston.devel.redhat.com [10.12.32.32])
-	by lacrosse.corp.redhat.com (8.12.11.20060308/8.11.6) with ESMTP id
-	l92Ec86V029369
-	for <nfs@lists.sourceforge.net>; Tue, 2 Oct 2007 10:38:08 -0400
+	id 1IcjAQ-0007NF-Az
+	for nfs@lists.sourceforge.net; Tue, 02 Oct 2007 07:56:11 -0700
+Received: from agminet01.oracle.com ([141.146.126.228])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IcjAU-0006WN-6o
+	for nfs@lists.sourceforge.net; Tue, 02 Oct 2007 07:56:15 -0700
+In-Reply-To: <20071001192738.3250.6971.stgit@dell3.ogc.int>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -40,54 +33,99 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-To activate referral mounts, the local directory (on the
-server) has to be --bind mounted (i.e. mount --bind . .),
-which means when the local directory is accessed (by the client)
-a mount point is being crossed. If the 'nohide' is not
-set on the export (or crossmnt on the parent export) the
-referral *silently* fails since the mount point can not be
-crossed.
+On Oct 1, 2007, at 3:27 PM, Tom Tucker wrote:
+>
+> The svc_max_payload function currently looks at the socket type
+> to determine the max payload. Add a max payload value to  
+> svc_xprt_class
+> so it can be returned directly.
+>
+> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+> ---
+>
+>  include/linux/sunrpc/svc_xprt.h |    2 ++
+>  net/sunrpc/svc.c                |    4 +---
+>  net/sunrpc/svc_xprt.c           |    1 +
+>  net/sunrpc/svcsock.c            |    2 ++
+>  4 files changed, 6 insertions(+), 3 deletions(-)
+>
+> diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/ 
+> svc_xprt.h
+> index a9a3afe..827f0fe 100644
+> --- a/include/linux/sunrpc/svc_xprt.h
+> +++ b/include/linux/sunrpc/svc_xprt.h
+> @@ -17,11 +17,13 @@ struct svc_xprt_class {
+>  	struct module		*xcl_owner;
+>  	struct svc_xprt_ops	*xcl_ops;
+>  	struct list_head	xcl_list;
+> +	u32			xcl_max_payload;
+>  };
+>
+>  struct svc_xprt {
+>  	struct svc_xprt_class	*xpt_class;
+>  	struct svc_xprt_ops	xpt_ops;
+> +	u32			xpt_max_payload;
+>  };
 
-This silent failure  makes it almost impossible to figure
-out why referral mounts fail, since there is no error message
-or network traffic. So by setting the nohide option automatically
-this silent failure is eliminated.
-
-This patch is relative to the Fedora nfs-utils git tree:
-git://git.infradead.org/~steved/nfs-utils.fedora
-
-but does apply to Neil's git tree.
-
-steved.
+Why do you need this field in both the class and the instance  
+structures?  Since svc_xprt refers back to svc_xprt_class, you can  
+just take the max payload value from the class.
 
 
-commit 34038ab17a5fa157bfee103eb3fe58bb999b40a4
-Author: Steve Dickson <steved@dickson.boston.devel.redhat.com>
-Date:   Tue Oct 2 09:56:42 2007 -0400
+>  int	svc_reg_xprt_class(struct svc_xprt_class *);
+> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+> index 55ea6df..2a4b3c6 100644
+> --- a/net/sunrpc/svc.c
+> +++ b/net/sunrpc/svc.c
+> @@ -1034,10 +1034,8 @@ err_bad:
+>   */
+>  u32 svc_max_payload(const struct svc_rqst *rqstp)
+>  {
+> -	int max = RPCSVC_MAXPAYLOAD_TCP;
+> +	int max = rqstp->rq_xprt->xpt_max_payload;
+>
+> -	if (rqstp->rq_sock->sk_sock->type == SOCK_DGRAM)
+> -		max = RPCSVC_MAXPAYLOAD_UDP;
+>  	if (rqstp->rq_server->sv_max_payload < max)
+>  		max = rqstp->rq_server->sv_max_payload;
+>  	return max;
+> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+> index f838b57..8ea65c3 100644
+> --- a/net/sunrpc/svc_xprt.c
+> +++ b/net/sunrpc/svc_xprt.c
+> @@ -90,5 +90,6 @@ void svc_xprt_init(struct svc_xprt_class
+>  {
+>  	xpt->xpt_class = xcl;
+>  	xpt->xpt_ops = *xcl->xcl_ops;
+> +	xpt->xpt_max_payload = xcl->xcl_max_payload;
+>  }
+>  EXPORT_SYMBOL_GPL(svc_xprt_init);
+> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+> index d52a6e2..d84b5c8 100644
+> --- a/net/sunrpc/svcsock.c
+> +++ b/net/sunrpc/svcsock.c
+> @@ -905,6 +905,7 @@ static struct svc_xprt_ops svc_udp_ops =
+>  static struct svc_xprt_class svc_udp_class = {
+>  	.xcl_name = "udp",
+>  	.xcl_ops = &svc_udp_ops,
+> +	.xcl_max_payload = RPCSVC_MAXPAYLOAD_UDP,
+>  };
+>
+>  static void
+> @@ -1358,6 +1359,7 @@ static struct svc_xprt_ops svc_tcp_ops =
+>  static struct svc_xprt_class svc_tcp_class = {
+>  	.xcl_name = "tcp",
+>  	.xcl_ops = &svc_tcp_ops,
+> +	.xcl_max_payload = RPCSVC_MAXPAYLOAD_TCP,
+>  };
+>
+>  void svc_init_xprt_sock(void)
 
-     This patch turns on the 'nohide' export option automatically
-     for all FS location exports due to the fact this option
-     is need to for referral mount to work.
+Chuck Lever
+chuck.lever@oracle.com
 
-     Signed-off-by: Steve Dickson <steved@redhat.com>
 
-diff --git a/support/nfs/exports.c b/support/nfs/exports.c
-index 5fc3e4a..40012c3 100644
---- a/support/nfs/exports.c
-+++ b/support/nfs/exports.c
-@@ -508,6 +508,12 @@ bad_option:
-  		while (isblank(*cp))
-  			cp++;
-  	}
-+	/*
-+	 * Turn on nohide which will allow this export to cross over
-+	 * the 'mount --bind' mount point.
-+	 */
-+	if (ep->e_fslocdata)
-+		ep->e_flags |= NFSEXP_NOHIDE;
 
-  	ep->e_squids = squids;
-  	ep->e_sqgids = sqgids;
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
