@@ -1,24 +1,29 @@
-From: Letter <simonjamesinvestmentfunds@yahoo.fr>
-Subject: Investment Fund/ Partinership
-Date: Wed, 3 Oct 2007 10:05:15 -0400
-Message-ID: <200710031405.l93E5FjZ008567@ns1.birmandreis.com>
-Reply-To: simonjamesinvestmentfunds@yahoo.fr
+From: Tom Tucker <tom@opengridcomputing.com>
+Subject: Re: [RFC,
+	PATCH 04/35] svc: Add a max payload value to the transport
+Date: Wed, 03 Oct 2007 09:26:53 -0500
+Message-ID: <1191421613.1565.100.camel@trinity.ogc.int>
+References: <20071001191426.3250.15371.stgit@dell3.ogc.int>
+	<20071001192738.3250.6971.stgit@dell3.ogc.int>
+	<8E01CAF1-5D8D-4AE5-B15D-C04983079F76@oracle.com>
+	<1191342488.1565.8.camel@trinity.ogc.int>
+	<20071003110932.GN21388@sgi.com>
+Reply-To: tom@opengridcomputing.com
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Cc: neilb@suse.de, bfields@fieldses.org, nfs@lists.sourceforge.net
+To: Greg Banks <gnb@sgi.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Id59m-0005Ae-HQ
-	for nfs@lists.sourceforge.net; Wed, 03 Oct 2007 07:24:58 -0700
-Received: from mail.birmandreis.com ([206.123.44.146] helo=ns1.birmandreis.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Id59q-0003Ah-TP
-	for nfs@lists.sourceforge.net; Wed, 03 Oct 2007 07:25:03 -0700
-Received: from ns1.birmandreis.com (ns1.birmandreis.com [127.0.0.1] (may be
-	forged))
-	by ns1.birmandreis.com (8.12.11/8.12.8) with ESMTP id l93E5GUr008575
-	for <nfs@lists.sourceforge.net>; Wed, 3 Oct 2007 10:05:16 -0400
+	id 1Id5Cp-0005aX-KX
+	for nfs@lists.sourceforge.net; Wed, 03 Oct 2007 07:28:07 -0700
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]
+	helo=smtp.opengridcomputing.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Id5Cu-0004YE-Jc
+	for nfs@lists.sourceforge.net; Wed, 03 Oct 2007 07:28:12 -0700
+In-Reply-To: <20071003110932.GN21388@sgi.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,25 +36,39 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
->From Mr Simon  H. James
- 
-Dear Friend.
- 
-This Message Might Meet You In Utmost Surprise. However, It's Just My Urgent Need For Foreign Partner That Made Me To Contact You For This Transaction. I Am A Banker By Profession Cote d'ivoire  In West Africa And Currently Holding The Post Of Foreign Remittance  Director In Our Bank.
- 
-I Have The Opportunity Of Transferring The Left Over Funds ($15.Million) Of One Of My Bank Clients who have directed me to invest his fund , unfortunately Died Along With His Entire Family In Kenya Plane Crash 2003.You Can Confirm The Geniuses Of The Deceased Death .
-You can  view this  site  to know  more.
- 
-http://www.cnn.com/2003/WORLD/africa/07/20/kenya.crash/index.html
- 
-Hence, I Am Inviting You For A Business Deal Where This Money Can Be Shared Between Us In The Ratio Of 50/40 / 10% For  Any income  expenses that  will  come  During the transfer, If You Agree To My Business Proposal. Further Details Of The Transfer Will Be Forwarded To You As Soon As I Receive Your Return Mail. Have A Great Day.
-Yours,
- 
-Mr Simon  H. James 
- 
-Email:  simonjamesinvestmentfund@yahoo.co.uk
+On Wed, 2007-10-03 at 21:09 +1000, Greg Banks wrote:
+> On Tue, Oct 02, 2007 at 11:28:08AM -0500, Tom Tucker wrote:
 
+[...snip...]
 
+> > 
+> > The premise was that I didn't want a given thread peeking into some
+> > other processors memory, so anything needed from the class is copied
+> > into the svc_xprt structure when the transport instance is created.
+> 
+> If I understand the code correctly, the only field in svc_xprt_class
+> that ever changes is the list_head used to add it to the global list,
+> which changes once when the transport module is loaded.  After that
+> all the svc_xprt_class cachelines will remain in shared state in all
+> CPUs' caches; it's effectively read-only.  Given that, there's little
+> to be concerned about.
+> 
+> > 
+> > Greg, help me here ;-)
+> 
+> Sorry, I agree with Chuck :-/
+
+np, let's get it right. So the max_payload should remain in the
+svc_xprt_class structure. 
+
+I see only one possible benefit of copying the svc_xprt_ops structure
+and that is that it saves one ptr de-reference when calling ops. What's
+the consensus? Copy it, or keep a ptr?
+
+Tom
+
+> 
+> Greg.
 
 
 -------------------------------------------------------------------------
