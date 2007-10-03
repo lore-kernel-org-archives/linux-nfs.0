@@ -1,22 +1,27 @@
-From: Suresh Jayaraman <sjayaraman@suse.de>
-Subject: [RFC] [PATCH 2/2] nfs: Remove function
-	nfs_verify_change_attributes
-Date: Wed, 03 Oct 2007 17:50:10 +0530
-Message-ID: <1191414010.20470.54.camel@jays-ws.blr.novell.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: nfs write problems
+Date: Wed, 3 Oct 2007 09:31:18 -0400
+Message-ID: <20071003133118.GP21675@fieldses.org>
+References: <4702A279.3080001@panix.com>
+	<1191370059.6707.38.camel@heimdal.trondhjem.org>
+	<47036D3F.8070904@panix.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: "nfs@lists.sourceforge.net" <nfs@lists.sourceforge.net>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: For users of Fedora <fedora-list@redhat.com>,
+	nfs@lists.sourceforge.net,
+	Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Bob Kryger <bobk@panix.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Id38U-0006to-Ql
-	for nfs@lists.sourceforge.net; Wed, 03 Oct 2007 05:15:33 -0700
-Received: from victor.provo.novell.com ([137.65.250.26])
+	id 1Id4Js-0007Lv-H7
+	for nfs@lists.sourceforge.net; Wed, 03 Oct 2007 06:31:20 -0700
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Id38Y-0003cf-QN
-	for nfs@lists.sourceforge.net; Wed, 03 Oct 2007 05:15:36 -0700
+	(Exim 4.44) id 1Id4Jw-0003XB-Gr
+	for nfs@lists.sourceforge.net; Wed, 03 Oct 2007 06:31:25 -0700
+In-Reply-To: <47036D3F.8070904@panix.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,55 +34,24 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-The function nfs_verify_change_attributes() is misleading and no longer
-required if [PATCH 1/2] of this patchset is included. One would normally
-expect the function to return true if there is a change in attributes
-but, the function does the other way around.
+On Wed, Oct 03, 2007 at 06:21:51AM -0400, Bob Kryger wrote:
+> Trond Myklebust wrote:
+> > Feel free to describe your test in a bit more detail. Without more
+> > information, we obviously can't rule out the existence of an NFS bug,
+> >   
+> I was trying to be thorough, I hope I succeeded.
 
-* Please note that this patch assumes inclusion of the previous patch
-[PATCH 1/2] nfs: Fix i_size update in O_DIRECT write which remove the
-last invocation of this function.
+The dd test sounded simple enough, but if you could include a transcript
+of the commands you ran (together with the C code of any test programs)
+just to be sure, that might help.
 
-Signed-off-by: Suresh Jayaraman <sjayaraman@suse.de>
-
----
-
- include/linux/nfs_fs.h |   13 -------------
- 1 files changed, 0 insertions(+), 13 deletions(-)
-
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 7250eea..d103cc0 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -264,19 +264,6 @@ static inline long nfs_save_change_attri
- 	return NFS_I(inode)->cache_change_attribute;
- }
- 
--/**
-- * nfs_verify_change_attribute - Detects NFS inode cache updates
-- * @inode - pointer to inode
-- * @chattr - previously saved change attribute
-- * Return "false" if metadata has been updated (or is in the process of
-- * being updated) since the change attribute was saved.
-- */
--static inline int nfs_verify_change_attribute(struct inode *inode, unsigned long chattr)
--{
--	return !nfs_caches_unstable(inode)
--		&& time_after_eq(chattr, NFS_I(inode)->cache_change_attribute);
--}
--
- /*
-  * linux/fs/nfs/inode.c
-  */
-
--- 
-Suresh Jayaraman
-
+--b.
 
 -------------------------------------------------------------------------
-This SF.net email is sponsored by: Microsoft
-Defy all challenges. Microsoft(R) Visual Studio 2005.
-http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+This SF.net email is sponsored by: Splunk Inc.
+Still grepping through log files to find problems?  Stop.
+Now Search log events and configuration files using AJAX and a browser.
+Download your FREE copy of Splunk now >> http://get.splunk.com/
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
