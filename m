@@ -1,23 +1,25 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [RFC] [PATCH 1/2] nfs: Fix i_size update in O_DIRECT write
-Date: Wed, 03 Oct 2007 09:35:27 -0400
-Message-ID: <1191418527.6667.8.camel@heimdal.trondhjem.org>
-References: <1191413953.20470.52.camel@jays-ws.blr.novell.com>
+From: Tom Tucker <tom@opengridcomputing.com>
+Subject: Re: [RFC,PATCH 00/35] SVC Transport Switch
+Date: Wed, 03 Oct 2007 09:02:37 -0500
+Message-ID: <1191420157.1565.91.camel@trinity.ogc.int>
+References: <20071001191426.3250.15371.stgit@dell3.ogc.int>
+	<20071003110345.GM21388@sgi.com>
+Reply-To: tom@opengridcomputing.com
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: "nfs@lists.sourceforge.net" <nfs@lists.sourceforge.net>
-To: Suresh Jayaraman <sjayaraman@suse.de>
+Cc: neilb@suse.de, bfields@fieldses.org, nfs@lists.sourceforge.net
+To: Greg Banks <gnb@sgi.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Id4OY-0007y5-9f
-	for nfs@lists.sourceforge.net; Wed, 03 Oct 2007 06:36:10 -0700
-Received: from pat.uio.no ([129.240.10.15])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Id4Oc-0004mg-TY
-	for nfs@lists.sourceforge.net; Wed, 03 Oct 2007 06:36:15 -0700
-In-Reply-To: <1191413953.20470.52.camel@jays-ws.blr.novell.com>
+	id 1Id4pM-0002hV-LG
+	for nfs@lists.sourceforge.net; Wed, 03 Oct 2007 07:03:52 -0700
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]
+	helo=smtp.opengridcomputing.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Id4pQ-0001e5-Cz
+	for nfs@lists.sourceforge.net; Wed, 03 Oct 2007 07:03:57 -0700
+In-Reply-To: <20071003110345.GM21388@sgi.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,85 +32,103 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, 2007-10-03 at 17:49 +0530, Suresh Jayaraman wrote:
-> When a process writes with O_DIRECT and another process reads with a
-> buffered read on the same client, it gets an EOF. It seems that the
-> O_DIRECT write is not updating the i_size of the inode, so the pread()
-> thinks it is past EOF and returns NULL.
+On Wed, 2007-10-03 at 21:03 +1000, Greg Banks wrote:
+> On Mon, Oct 01, 2007 at 02:14:26PM -0500, Tom Tucker wrote:
+> > This is rev 2 of the new pluggable transport switch for
+> > RPC servers. This version includes two new patches: one to add a field
+> > for keeping track of a transport specific header that precedes the
+> > RPC header for deferral processing, and one that cleans up some 
+> > left over references to svc_sock in transport independent code.
 > 
-> While doing Direct I/O write in nfs_file_direct_write(), we avoid
-> updating i_size. We expect the server to set the new i_size and the
-> client to read the updated size back from post-op attributes.
-> nfs_update_inode() is doing this. We seem to update the i_size only when
-> "data_stable" is set. "data_stable" will never be set if both data and
-> meta-data have changed. This leads to buffered read not seeing the
-> changes at all. The following patch tries to fix this.
+> > Subject: [RFC,PATCH 22/35] svc: Remove sk_lastrecv
 > 
-> Signed-off-by: Suresh Jayaraman <sjayaraman@suse.de>
+> ok
 > 
-> ---
 > 
->  fs/nfs/inode.c |   13 +++++++------
->  1 files changed, 7 insertions(+), 6 deletions(-)
+> > Subject: [RFC,PATCH 31/35] svc: Make svc_check_conn_limits xprt independent
 > 
-> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-> index 71a49c3..953a4ef 100644
-> --- a/fs/nfs/inode.c
-> +++ b/fs/nfs/inode.c
-> @@ -944,6 +944,7 @@ static int nfs_update_inode(struct inode
->  	unsigned int	invalid = 0;
->  	unsigned long now = jiffies;
->  	int data_stable;
-> +	int attr_changed;
+> ok
+> 
+> 
+> > Subject: [RFC,PATCH 33/35] svc: Add transport hdr size for defer/revisit
+> 
+> Hmm.  When I did it this way I needed to do two things this patch
+> doesn't do.
+> 
+>  * Save my equivalent of rqstp->rq_hdr_len in the deferred call record
 >  
->  	dfprintk(VFS, "NFS: %s(%s/%ld ct=%d info=0x%x)\n",
->  			__FUNCTION__, inode->i_sb->s_id, inode->i_ino,
-> @@ -975,8 +976,9 @@ static int nfs_update_inode(struct inode
->  		nfsi->cache_change_attribute = now - 600*HZ;
->  
->  	/* Are we racing with known updates of the metadata on the server? */
-> -	data_stable = nfs_verify_change_attribute(inode, fattr->time_start);
-> -	if (data_stable)
-> +	data_stable = !nfs_caches_unstable(inode);
-> +	attr_changed = (fattr->time_start != NFS_I(inode)->cache_change_attribute);
+>  * Have a hunk a in svc_deferred_recv() to restore
+>    rqstp->rq_arg.head[0].iov_base properly so that on revisit it points
+>    to the byte *after* the transport-specific header (where it should
+>    be on return from xpo_recvfrom).
+>    
+> Like this:
+> 
+> 
+> --- linux-2.6.16.orig/include/linux/sunrpc/svc.h        2007-03-27 23:10:51.439088106 +1000
+> +++ linux-2.6.16/include/linux/sunrpc/svc.h     2007-05-23 23:11:52.324128040 +1000
+> @@ -350,6 +350,8 @@ struct svc_deferred_req {
+>         u32                     daddr;  /* where reply must come from */
+>         struct cache_deferred_req handle;
+>         int                     argslen;
+> +       int                     trans_header;   /* size of preserved transport-
+> +                                                * specific header */
+>         u32                     args[0];
+>  };
+>                                                                                 
+> --- linux-2.6.16.orig/net/sunrpc/svcsock.c      2007-05-23 23:05:56.293445240 +1000
+> +++ linux-2.6.16/net/sunrpc/svcsock.c   2007-05-23 23:11:52.396118869 +1000
+> @@ -1727,6 +1729,8 @@ static struct cache_deferred_req *svc_de
+>                 dr->addr = rqstp->rq_addr;
+>                 dr->daddr = rqstp->rq_daddr;
+>                 dr->argslen = rqstp->rq_arg.len >> 2;
+> +               dr->trans_header = rqstp->rq_arg.trans_header;
+> +               skip += dr->trans_header;
+>                 memcpy(dr->args, rqstp->rq_arg.head[0].iov_base-skip, dr->argslen<<2);
+>                 dprintk("svc: deferred %d bytes of request, dr=%p\n",
+>                         dr->argslen<<2, dr);
+> @@ -1745,10 +1749,11 @@ static int svc_deferred_recv(struct svc_
+>  {
+>         struct svc_deferred_req *dr = rqstp->rq_deferred;
+>                                                                                 
+> -       rqstp->rq_arg.head[0].iov_base = dr->args;
+> +       rqstp->rq_arg.head[0].iov_base = dr->args + dr->trans_header;
+>         rqstp->rq_arg.head[0].iov_len = dr->argslen<<2;
+>         rqstp->rq_arg.page_len = 0;
+>         rqstp->rq_arg.len = dr->argslen<<2;
+> +       rqstp->rq_arg.trans_header = dr->trans_header;
+>         rqstp->rq_prot        = dr->prot;
+>         rqstp->rq_addr        = dr->addr;
+>         rqstp->rq_daddr       = dr->daddr;
+> 
+> Is this somehow no longer necessary?
 
-What does cache_change_attributes have to do with time_start? The former
-exists in order to track dcache updates, and the latter just tells you
-when the getattr rpc call was started.
+No, it's still necessary, but your approach is a nice optimization since
+you don't need to re-parse the header to get it's size when handling the
+deferred recv.
 
-> +	if (data_stable && !attr_changed)
->  		nfsi->cache_validity &= ~(NFS_INO_INVALID_ATTR|NFS_INO_REVAL_PAGECACHE|NFS_INO_INVALID_ATIME);
->  
->  	/* Do atomic weak cache consistency updates */
-> @@ -989,11 +991,10 @@ static int nfs_update_inode(struct inode
->  		/* Do we perhaps have any outstanding writes? */
->  		if (nfsi->npages == 0) {
->  			/* No, but did we race with nfs_end_data_update()? */
-> -			if (data_stable) {
-> +			if (!data_stable && attr_changed) {
->  				inode->i_size = new_isize;
-> -				invalid |= NFS_INO_INVALID_DATA;
-> +				invalid |= NFS_INO_INVALID_DATA|NFS_INO_INVALID_ATTR;
->  			}
-> -			invalid |= NFS_INO_INVALID_ATTR;
->  		} else if (new_isize > cur_isize) {
->  			inode->i_size = new_isize;
->  			invalid |= NFS_INO_INVALID_ATTR|NFS_INO_INVALID_DATA;
-> @@ -1062,7 +1063,7 @@ static int nfs_update_inode(struct inode
->  	if (!(S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode)
->  				|| S_ISLNK(inode->i_mode)))
->  		invalid &= ~NFS_INO_INVALID_DATA;
-> -	if (data_stable)
-> +	if (data_stable && !attr_changed)
->  		invalid &= ~(NFS_INO_INVALID_ATTR|NFS_INO_INVALID_ATIME|NFS_INO_REVAL_PAGECACHE);
->  	if (!nfs_have_delegation(inode, FMODE_READ) ||
->  			(nfsi->cache_validity & NFS_INO_REVAL_FORCED))
+Thanks,
 
-NACK. I can't make heads or tails of what attr_changed is supposed to
-tell us, or what its relevance is to O_DIRECT.
+> 
+> @@ -393,6 +393,9 @@ svc_recvfrom(struct svc_rqst *rqstp, str
+>         };
+>         int len;
+>                                                                                                                                           
+> +       /* TCP/UDP have no transport header */
+> +       rqstp->rq_xprt_hlen = 0;
+> +
+>         len = kernel_recvmsg(svsk->sk_sock, &msg, iov, nr, buflen,
+>                                 msg.msg_flags);
+> 
+> This comment is not quite correct.  TCP has a transport header, but
+> we don't need it after svc_tcp_recvfrom() returns, so it doesn't
+> need to be handled by defer/revisit.
+> 
 
-Cheers
-  Trond
+Ok, 
+
+> 
+> Greg.
 
 
 -------------------------------------------------------------------------
