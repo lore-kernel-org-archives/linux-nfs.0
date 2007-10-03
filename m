@@ -1,29 +1,25 @@
-From: Tom Tucker <tom@opengridcomputing.com>
-Subject: Re: [RFC,
-	PATCH 12/35] svc: Add a generic transport	svc_create_xprt	function
-Date: Wed, 03 Oct 2007 15:04:18 -0500
-Message-ID: <1191441858.1918.10.camel@trinity.ogc.int>
-References: <20071001191426.3250.15371.stgit@dell3.ogc.int>
-	<20071001192756.3250.60536.stgit@dell3.ogc.int>
-	<383DDDA6-29E5-41CF-A2F7-9C45BB26CE64@oracle.com>
-	<1191441669.1918.8.camel@trinity.ogc.int>
-Reply-To: tom@opengridcomputing.com
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [RFC] [PATCH 1/2] nfs: Fix i_size update in O_DIRECT write
+Date: Wed, 03 Oct 2007 19:21:38 -0400
+Message-ID: <1191453698.6726.13.camel@heimdal.trondhjem.org>
+References: <1191413953.20470.52.camel@jays-ws.blr.novell.com>
+	<4703E929.BANGALORE.BLR1.100.1617768.1.E510.1@1:45C9E2C2.BANGALORE.BLR.100.1617768.1.11D54.1@13>
+	<1191423807.20470.107.camel@jays-ws.blr.novell.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: neilb@suse.de, bfields@fieldses.org, nfs@lists.sourceforge.net,
-	gnb@sgi.com
-To: Chuck Lever <chuck.lever@oracle.com>
+Cc: "nfs@lists.sourceforge.net" <nfs@lists.sourceforge.net>
+To: Suresh Jayaraman <sjayaraman@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IdATM-0002v0-Dr
-	for nfs@lists.sourceforge.net; Wed, 03 Oct 2007 13:05:34 -0700
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]
-	helo=smtp.opengridcomputing.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IdATQ-0000T7-Ul
-	for nfs@lists.sourceforge.net; Wed, 03 Oct 2007 13:05:37 -0700
-In-Reply-To: <1191441669.1918.8.camel@trinity.ogc.int>
+	id 1IdDXI-0005zi-2u
+	for nfs@lists.sourceforge.net; Wed, 03 Oct 2007 16:21:48 -0700
+Received: from pat.uio.no ([129.240.10.15])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IdDXM-0001Az-51
+	for nfs@lists.sourceforge.net; Wed, 03 Oct 2007 16:21:53 -0700
+In-Reply-To: <1191423807.20470.107.camel@jays-ws.blr.novell.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,260 +32,158 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, 2007-10-03 at 15:01 -0500, Tom Tucker wrote:
-> On Tue, 2007-10-02 at 11:39 -0400, Chuck Lever wrote:
-> > On Oct 1, 2007, at 3:27 PM, Tom Tucker wrote:
-> > >
-> [...snip...]
-> > >
-> > >  struct svc_xprt_ops {
-> > > +	struct svc_xprt	*(*xpo_create)(struct svc_serv *,
-> > > +				       struct sockaddr *,
-> > > +				       int);
+On Wed, 2007-10-03 at 20:33 +0530, Suresh Jayaraman wrote:
+> On Wed, 2007-10-03 at 09:35 -0400, Trond Myklebust wrote:
+> > On Wed, 2007-10-03 at 17:49 +0530, Suresh Jayaraman wrote:
+> > > When a process writes with O_DIRECT and another process reads with a
+> > > buffered read on the same client, it gets an EOF. It seems that the
+> > > O_DIRECT write is not updating the i_size of the inode, so the pread()
+> > > thinks it is past EOF and returns NULL.
+> > > 
+> > > While doing Direct I/O write in nfs_file_direct_write(), we avoid
+> > > updating i_size. We expect the server to set the new i_size and the
+> > > client to read the updated size back from post-op attributes.
+> > > nfs_update_inode() is doing this. We seem to update the i_size only when
+> > > "data_stable" is set. "data_stable" will never be set if both data and
+> > > meta-data have changed. This leads to buffered read not seeing the
+> > > changes at all. The following patch tries to fix this.
+> > > 
+> > > Signed-off-by: Suresh Jayaraman <sjayaraman@suse.de>
+> > > 
+> > > ---
+> > > 
+> > >  fs/nfs/inode.c |   13 +++++++------
+> > >  1 files changed, 7 insertions(+), 6 deletions(-)
+> > > 
+> > > diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+> > > index 71a49c3..953a4ef 100644
+> > > --- a/fs/nfs/inode.c
+> > > +++ b/fs/nfs/inode.c
+> > > @@ -944,6 +944,7 @@ static int nfs_update_inode(struct inode
+> > >  	unsigned int	invalid = 0;
+> > >  	unsigned long now = jiffies;
+> > >  	int data_stable;
+> > > +	int attr_changed;
+> > >  
+> > >  	dfprintk(VFS, "NFS: %s(%s/%ld ct=%d info=0x%x)\n",
+> > >  			__FUNCTION__, inode->i_sb->s_id, inode->i_ino,
+> > > @@ -975,8 +976,9 @@ static int nfs_update_inode(struct inode
+> > >  		nfsi->cache_change_attribute = now - 600*HZ;
+> > >  
+> > >  	/* Are we racing with known updates of the metadata on the server? */
+> > > -	data_stable = nfs_verify_change_attribute(inode, fattr->time_start);
+> > > -	if (data_stable)
+> > > +	data_stable = !nfs_caches_unstable(inode);
+> > > +	attr_changed = (fattr->time_start != NFS_I(inode)->cache_change_attribute);
 > > 
-> > Should xpo_create also have a length argument, as in (struct sockaddr  
-> > *, socklen_t) ?
-> 
-> I think socklen_t is only defined in userland.
-> 
-> > 
-> > (or whatever the type of sockaddr lengths are: size_t perhaps?)
+> > What does cache_change_attributes have to do with time_start? The former
+> > exists in order to track dcache updates, and the latter just tells you
+> > when the getattr rpc call was started.
 > > 
 > 
-> I've seen it both ways. I just copied kernel_bind which takes an int for
-> the length. Does anyone know what the preferred type is for sockaddr
-> len? 
+> this was how we used to detects nfs inode cache updates (calling
+> nfs_verify_change_attribute() function), is it obsolete?
+> 
+> <snip>
+> static inline int nfs_verify_change_attribute(struct inode *inode, unsigned long chattr)
+> {
+>         return !nfs_caches_unstable(inode)
+> 	        && time_after_eq(chattr,NFS_I(inode)->cache_change_attribute);
+> }
+> </snip>
+> 
+> This code was not newly introduced. nfs_verify_change_attribute() was
+> misleading (it returns false if meta-data has been updated) and it seems
+> there are couple of issues with it.
+> 
+> We do this,
+> data_stable = nfs_verify_change_attribute(inode, fattr->time_start);
+> if (data_stable)
+>               nfsi->cache_validity &= ~(NFS_INO_INVALID_ATTR|NFS_INO_REVAL_PAGECACHE|NFS_INO_INVALID_ATIME);
+> 
+> Consider the case, where there are no data updates (only metadata
+> updates),
+> both !nfs_caches_unstable and 
+> time_after_eq(chattr, NFS_I(inode)->cache_change_attribute); returns
+> true but, do we still need to clear the NFS_INO_INVALID_ATTR bit?
+> 
+> > > +	if (data_stable && !attr_changed)
+> > >  		nfsi->cache_validity &= ~(NFS_INO_INVALID_ATTR|NFS_INO_REVAL_PAGECACHE|NFS_INO_INVALID_ATIME);
+> > >  
+> > >  	/* Do atomic weak cache consistency updates */
+> > > @@ -989,11 +991,10 @@ static int nfs_update_inode(struct inode
+> > >  		/* Do we perhaps have any outstanding writes? */
+> > >  		if (nfsi->npages == 0) {
+> > >  			/* No, but did we race with nfs_end_data_update()? */
+> > > -			if (data_stable) {
+> > > +			if (!data_stable && attr_changed) {
+> > >  				inode->i_size = new_isize;
+> > > -				invalid |= NFS_INO_INVALID_DATA;
+> > > +				invalid |= NFS_INO_INVALID_DATA|NFS_INO_INVALID_ATTR;
+> > >  			}
+> > > -			invalid |= NFS_INO_INVALID_ATTR;
+> > >  		} else if (new_isize > cur_isize) {
+> > >  			inode->i_size = new_isize;
+> > >  			invalid |= NFS_INO_INVALID_ATTR|NFS_INO_INVALID_DATA;
+> > > @@ -1062,7 +1063,7 @@ static int nfs_update_inode(struct inode
+> > >  	if (!(S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode)
+> > >  				|| S_ISLNK(inode->i_mode)))
+> > >  		invalid &= ~NFS_INO_INVALID_DATA;
+> > > -	if (data_stable)
+> > > +	if (data_stable && !attr_changed)
+> > >  		invalid &= ~(NFS_INO_INVALID_ATTR|NFS_INO_INVALID_ATIME|NFS_INO_REVAL_PAGECACHE);
+> > >  	if (!nfs_have_delegation(inode, FMODE_READ) ||
+> > >  			(nfsi->cache_validity & NFS_INO_REVAL_FORCED))
+> > 
+> > tell us, or what its relevance is to O_DIRECT.
+> 
+> In nfs_update_inode(), if file size is stale, we do this:
+> 
+>         if (new_isize != cur_isize) {
+>                 /* Do we perhaps have any outstanding writes? */
+>                 if (nfsi->npages == 0) { 
+>                         /* No, but did we race with nfs_end_data_update()? */
+>                         if (data_stable) {
+>                                 inode->i_size = new_isize;
+>                                 invalid |= NFS_INO_INVALID_DATA;
+>                         }
+>                         invalid |= NFS_INO_INVALID_ATTR;
+>                 } else if (new_isize > cur_isize) {
+>                         inode->i_size = new_isize;
+>                         invalid |= NFS_INO_INVALID_ATTR|NFS_INO_INVALID_DATA;
+>                 }
+> nfsi->npages (oustanding writes) will be 0 for direct writes, and
+> data_stable will not be set and so, i_size is not getting updated.
+> Because of this, when a buffered read happens it is not seeing the size
+> of the file.
+> 
+> Is this the expected behaviour? Sorry, if I had not been clear or if had
+> missed something trivial.
 
-Oops, I just realized I confused the flags for len. Yes, it should have
-a length. I'll code an int initially to match kernel_bind unless someone
-feels strongly otherwise.
+I fully agree that the current code is messy, but I've just spent the
+last 2 weeks working on a set of cleanups that will hopefully make it
+much less confusing, and a lot more accurate. ...and yes, the above two
+code snippets that you point out are among those slated for removal.
 
->  
-> > >  	struct svc_xprt	*(*xpo_accept)(struct svc_xprt *);
-> > >  	int		(*xpo_has_wspace)(struct svc_xprt *);
-> > >  	int		(*xpo_recvfrom)(struct svc_rqst *);
-> > > @@ -37,5 +40,6 @@ struct svc_xprt {
-> > >  int	svc_reg_xprt_class(struct svc_xprt_class *);
-> > >  int	svc_unreg_xprt_class(struct svc_xprt_class *);
-> > >  void	svc_xprt_init(struct svc_xprt_class *, struct svc_xprt *);
-> > > +int	svc_create_xprt(struct svc_serv *, char *, unsigned short, int);
-> > >
-> > >  #endif /* SUNRPC_SVC_XPRT_H */
-> > > diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-> > > index 8ea65c3..d57064f 100644
-> > > --- a/net/sunrpc/svc_xprt.c
-> > > +++ b/net/sunrpc/svc_xprt.c
-> > > @@ -93,3 +93,38 @@ void svc_xprt_init(struct svc_xprt_class
-> > >  	xpt->xpt_max_payload = xcl->xcl_max_payload;
-> > >  }
-> > >  EXPORT_SYMBOL_GPL(svc_xprt_init);
-> > > +
-> > > +int svc_create_xprt(struct svc_serv *serv, char *xprt_name,  
-> > > unsigned short port,
-> > > +		    int flags)
-> > > +{
-> > > +	struct svc_xprt_class *xcl;
-> > > +	int ret = -ENOENT;
-> > > +	struct sockaddr_in sin = {
-> > > +		.sin_family		= AF_INET,
-> > > +		.sin_addr.s_addr	= INADDR_ANY,
-> > > +		.sin_port		= htons(port),
-> > > +	};
-> > > +	dprintk("svc: creating transport %s[%d]\n", xprt_name, port);
-> > > +	spin_lock(&svc_xprt_class_lock);
-> > > +	list_for_each_entry(xcl, &svc_xprt_class_list, xcl_list) {
-> > > +		if (strcmp(xprt_name, xcl->xcl_name) == 0) {
-> > > +			spin_unlock(&svc_xprt_class_lock);
-> > > +			if (try_module_get(xcl->xcl_owner)) {
-> > > +				struct svc_xprt *newxprt;
-> > > +				ret = 0;
-> > > +				newxprt = xcl->xcl_ops->xpo_create
-> > > +					(serv, (struct sockaddr *)&sin, flags);
-> > > +				if (IS_ERR(newxprt)) {
-> > > +					module_put(xcl->xcl_owner);
-> > > +					ret = PTR_ERR(newxprt);
-> > > +				}
-> > > +			}
-> > > +			goto out;
-> > > +		}
-> > > +	}
-> > > +	spin_unlock(&svc_xprt_class_lock);
-> > > +	dprintk("svc: transport %s not found\n", xprt_name);
-> > > + out:
-> > > +	return ret;
-> > > +}
-> > > +EXPORT_SYMBOL_GPL(svc_create_xprt);
-> > > diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-> > > index ffc54a1..e3c74e0 100644
-> > > --- a/net/sunrpc/svcsock.c
-> > > +++ b/net/sunrpc/svcsock.c
-> > > @@ -90,6 +90,8 @@ static void		svc_sock_free(struct svc_xp
-> > >  static struct svc_deferred_req *svc_deferred_dequeue(struct  
-> > > svc_sock *svsk);
-> > >  static int svc_deferred_recv(struct svc_rqst *rqstp);
-> > >  static struct cache_deferred_req *svc_defer(struct cache_req *req);
-> > > +static struct svc_xprt *
-> > > +svc_create_socket(struct svc_serv *, int, struct sockaddr *, int,  
-> > > int);
-> > >
-> > >  /* apparently the "standard" is that clients close
-> > >   * idle connections after 5 minutes, servers after
-> > > @@ -381,6 +383,7 @@ svc_sock_put(struct svc_sock *svsk)
-> > >  {
-> > >  	if (atomic_dec_and_test(&svsk->sk_inuse)) {
-> > >  		BUG_ON(!test_bit(SK_DEAD, &svsk->sk_flags));
-> > > +		module_put(svsk->sk_xprt.xpt_class->xcl_owner);
-> > >  		svsk->sk_xprt.xpt_ops.xpo_free(&svsk->sk_xprt);
-> > >  	}
-> > >  }
-> > > @@ -921,7 +924,15 @@ svc_udp_accept(struct svc_xprt *xprt)
-> > >  	return NULL;
-> > >  }
-> > >
-> > > +static struct svc_xprt *
-> > > +svc_udp_create(struct svc_serv *serv, struct sockaddr *sa, int flags)
-> > > +{
-> > > +	return svc_create_socket(serv, IPPROTO_UDP, sa,
-> > > +				 sizeof(struct sockaddr_in), flags);
-> > > +}
-> > > +
-> > >  static struct svc_xprt_ops svc_udp_ops = {
-> > > +	.xpo_create = svc_udp_create,
-> > >  	.xpo_recvfrom = svc_udp_recvfrom,
-> > >  	.xpo_sendto = svc_udp_sendto,
-> > >  	.xpo_release = svc_release_skb,
-> > > @@ -934,6 +945,7 @@ static struct svc_xprt_ops svc_udp_ops =
-> > >
-> > >  static struct svc_xprt_class svc_udp_class = {
-> > >  	.xcl_name = "udp",
-> > > +	.xcl_owner = THIS_MODULE,
-> > >  	.xcl_ops = &svc_udp_ops,
-> > >  	.xcl_max_payload = RPCSVC_MAXPAYLOAD_UDP,
-> > >  };
-> > > @@ -1357,7 +1369,15 @@ svc_tcp_has_wspace(struct svc_xprt *xprt
-> > >  	return 1;
-> > >  }
-> > >
-> > > +static struct svc_xprt *
-> > > +svc_tcp_create(struct svc_serv *serv, struct sockaddr *sa, int flags)
-> > > +{
-> > > +	return svc_create_socket(serv, IPPROTO_TCP, sa,
-> > > +				 sizeof(struct sockaddr_in), flags);
-> > > +}
-> > > +
-> > >  static struct svc_xprt_ops svc_tcp_ops = {
-> > > +	.xpo_create = svc_tcp_create,
-> > >  	.xpo_recvfrom = svc_tcp_recvfrom,
-> > >  	.xpo_sendto = svc_tcp_sendto,
-> > >  	.xpo_release = svc_release_skb,
-> > > @@ -1370,6 +1390,7 @@ static struct svc_xprt_ops svc_tcp_ops =
-> > >
-> > >  static struct svc_xprt_class svc_tcp_class = {
-> > >  	.xcl_name = "tcp",
-> > > +	.xcl_owner = THIS_MODULE,
-> > >  	.xcl_ops = &svc_tcp_ops,
-> > >  	.xcl_max_payload = RPCSVC_MAXPAYLOAD_TCP,
-> > >  };
-> > > @@ -1594,8 +1615,14 @@ svc_recv(struct svc_rqst *rqstp, long ti
-> > >  	} else if (test_bit(SK_LISTENER, &svsk->sk_flags)) {
-> > >  		struct svc_xprt *newxpt;
-> > >  		newxpt = svsk->sk_xprt.xpt_ops.xpo_accept(&svsk->sk_xprt);
-> > > -		if (newxpt)
-> > > +		if (newxpt) {
-> > > +			/*
-> > > +			 * We know this module_get will succeed because the
-> > > +			 * listener holds a reference too
-> > > +			 */
-> > > +			__module_get(newxpt->xpt_class->xcl_owner);
-> > >  			svc_check_conn_limits(svsk->sk_server);
-> > > +		}
-> > >  		svc_sock_received(svsk);
-> > >  	} else {
-> > >  		dprintk("svc: server %p, pool %u, socket %p, inuse=%d\n",
-> > > @@ -1835,8 +1862,9 @@ EXPORT_SYMBOL_GPL(svc_addsock);
-> > >  /*
-> > >   * Create socket for RPC service.
-> > >   */
-> > > -static int svc_create_socket(struct svc_serv *serv, int protocol,
-> > > -				struct sockaddr *sin, int len, int flags)
-> > > +static struct svc_xprt *
-> > > +svc_create_socket(struct svc_serv *serv, int protocol,
-> > > +		  struct sockaddr *sin, int len, int flags)
-> > >  {
-> > >  	struct svc_sock	*svsk;
-> > >  	struct socket	*sock;
-> > > @@ -1851,13 +1879,13 @@ static int svc_create_socket(struct svc_
-> > >  	if (protocol != IPPROTO_UDP && protocol != IPPROTO_TCP) {
-> > >  		printk(KERN_WARNING "svc: only UDP and TCP "
-> > >  				"sockets supported\n");
-> > > -		return -EINVAL;
-> > > +		return ERR_PTR(-EINVAL);
-> > >  	}
-> > >  	type = (protocol == IPPROTO_UDP)? SOCK_DGRAM : SOCK_STREAM;
-> > >
-> > >  	error = sock_create_kern(sin->sa_family, type, protocol, &sock);
-> > >  	if (error < 0)
-> > > -		return error;
-> > > +		return ERR_PTR(error);
-> > >
-> > >  	svc_reclassify_socket(sock);
-> > >
-> > > @@ -1876,13 +1904,13 @@ static int svc_create_socket(struct svc_
-> > >  		if (protocol == IPPROTO_TCP)
-> > >  			set_bit(SK_LISTENER, &svsk->sk_flags);
-> > >  		svc_sock_received(svsk);
-> > > -		return ntohs(inet_sk(svsk->sk_sk)->sport);
-> > > +		return (struct svc_xprt *)svsk;
-> > >  	}
-> > >
-> > >  bummer:
-> > >  	dprintk("svc: svc_create_socket error = %d\n", -error);
-> > >  	sock_release(sock);
-> > > -	return error;
-> > > +	return ERR_PTR(error);
-> > >  }
-> > >
-> > >  /*
-> > > @@ -1995,15 +2023,15 @@ void svc_force_close_socket(struct svc_s
-> > >  int svc_makesock(struct svc_serv *serv, int protocol, unsigned  
-> > > short port,
-> > >  			int flags)
-> > >  {
-> > > -	struct sockaddr_in sin = {
-> > > -		.sin_family		= AF_INET,
-> > > -		.sin_addr.s_addr	= INADDR_ANY,
-> > > -		.sin_port		= htons(port),
-> > > -	};
-> > > -
-> > >  	dprintk("svc: creating socket proto = %d\n", protocol);
-> > > -	return svc_create_socket(serv, protocol, (struct sockaddr *) &sin,
-> > > -							sizeof(sin), flags);
-> > > +	switch (protocol) {
-> > > +	case IPPROTO_TCP:
-> > > +		return svc_create_xprt(serv, "tcp", port, flags);
-> > > +	case IPPROTO_UDP:
-> > > +		return svc_create_xprt(serv, "udp", port, flags);
-> > > +	default:
-> > > +		return -EINVAL;
-> > > +	}
-> > >  }
-> > >
-> > >  /*
-> > 
-> > Chuck Lever
-> > chuck.lever@oracle.com
-> > 
-> > 
-> 
-> 
-> -------------------------------------------------------------------------
-> This SF.net email is sponsored by: Splunk Inc.
-> Still grepping through log files to find problems?  Stop.
-> Now Search log events and configuration files using AJAX and a browser.
-> Download your FREE copy of Splunk now >> http://get.splunk.com/
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
+Please could you have a look at the patchsets on
+  http://client.linux-nfs.org/Linux-2.6.x/2.6.23-rc9/
+
+The ones of interest w.r.t. attribute and dcache revalidation start at
+  http://client.linux-nfs.org/Linux-2.6.x/2.6.23-rc9/linux-2.6.23-079-optimise_nfs_update_inode.dif
+and go right to
+  http://client.linux-nfs.org/Linux-2.6.x/2.6.23-rc9/linux-2.6.23-118-simplify_filehandle_revalidation.dif
+
+Apologies for dragging these changes out to 39 patches, but I wanted to
+make really sure to be able to document and test each atomic change on
+its own merits.
+
+If the resulting revalidation code still has problems with getting the
+size right when doing O_DIRECT writes, then I suggest that we attack
+that by adding something into nfs_direct_write_result() to update the
+file size following a successful write.
+
+Cheers
+  Trond
 
 
 -------------------------------------------------------------------------
