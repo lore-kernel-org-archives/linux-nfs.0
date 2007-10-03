@@ -1,27 +1,24 @@
-From: Greg Banks <gnb@sgi.com>
-Subject: Re: [RFC,PATCH 22/33] svc: Move sk_lastrecv to svc_xprt
-Date: Wed, 3 Oct 2007 20:10:34 +1000
-Message-ID: <20071003101033.GK21388@sgi.com>
-References: <20070927045751.12677.98896.stgit@dell3.ogc.int>
-	<20070927050220.12677.62957.stgit@dell3.ogc.int>
-	<18172.33312.649312.820488@notabene.brown>
-	<1190996177.10604.54.camel@trinity.ogc.int>
+From: Bob Kryger <bobk@panix.com>
+Subject: Re: nfs write problems
+Date: Wed, 03 Oct 2007 06:21:51 -0400
+Message-ID: <47036D3F.8070904@panix.com>
+References: <4702A279.3080001@panix.com>
+	<1191370059.6707.38.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net
-To: Tom Tucker <tom@opengridcomputing.com>
+Cc: For users of Fedora <fedora-list@redhat.com>,
+	nfs@lists.sourceforge.net
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Id18B-0000vn-F6
-	for nfs@lists.sourceforge.net; Wed, 03 Oct 2007 03:07:03 -0700
-Received: from netops-testserver-3-out.sgi.com
-	([192.48.171.28] helo=relay.sgi.com
-	ident=[U2FsdGVkX1/aQO+GXtFCyUoVugkslCGYze7xW16ykqw=])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Id18G-0007Uf-Ed
-	for nfs@lists.sourceforge.net; Wed, 03 Oct 2007 03:07:08 -0700
-In-Reply-To: <1190996177.10604.54.camel@trinity.ogc.int>
+	id 1Id1MZ-0002ac-8h
+	for nfs@lists.sourceforge.net; Wed, 03 Oct 2007 03:21:55 -0700
+Received: from mail2.panix.com ([166.84.1.73])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Id1Mb-0005vV-C0
+	for nfs@lists.sourceforge.net; Wed, 03 Oct 2007 03:22:00 -0700
+In-Reply-To: <1191370059.6707.38.camel@heimdal.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,32 +31,78 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, Sep 28, 2007 at 11:16:17AM -0500, Tom Tucker wrote:
-> On Fri, 2007-09-28 at 14:25 +1000, Neil Brown wrote:
-> > On Thursday September 27, tom@opengridcomputing.com wrote:
-> > > 
-> > > This functionally trivial change moves the tranpsort independent sk_lastrecv 
-> > > field to the svc_xprt structure. 
-> > 
-> > It would seem that sk_lastrecv is entirely unused (Well, a dprintk
-> > prints it, but that isn't very interesting).
-> 
-> agreed.
-> 
-> > I think it used to be used to time out idle connections, but Greg's
-> > mark/sweep does a better job without needing this field.  Shall we
-> > just remove it?
-> 
-> I think so. Greg?
+Trond Myklebust wrote:
+> On Tue, 2007-10-02 at 15:56 -0400, Bob Kryger wrote:
+>   
+>> So, I have a relatively new system on which I am seeing strange NFS 
+>> behavior.
+>>
+>> In short I am getting seemingly random errors in files written via NFS.
+>>     
+[snip details]
+>> Anyone ever seen anything like this before?
+>> Suggest where I might look next?
+>> Additional tests?
+>>     
+>
+> Feel free to describe your test in a bit more detail. Without more
+> information, we obviously can't rule out the existence of an NFS bug,
+>   
+I was trying to be thorough, I hope I succeeded.
 
-Sure, why not.  I have in the past found sk_lastrecv useful
-forensically, but I could live without it.
+Is there anything else that might be helpful? I certainly would not go 
+to a bug first, as I may very well have something misconfigured, but I 
+cannot seem to identify what that might be. I do have about 8 other 
+linux NFS servers in production on different hardware, SATA mostly, 
+where I am not seeing any issues. I don't think it's a hardware issue 
+though, as I cannot reproduce the problem without the use of NFS. (Hmm, 
+maybe if I NFS mount to the server itself. Would that prove anything?)
+> however usually whenever people describe this sort of problem it is
+> because they have failed to understand the NFS caching model as
+> described in
+>
+>     http://nfs.sourceforge.net/#faq_a8
+>   
+Excellent, Thanks for the lead and I will test these items shortly.
 
-Greg.
--- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-Apparently, I'm Bedevere.  Which MPHG character are you?
-I don't speak for SGI.
+After reading the FAQ, I'm not sure I see how the cache consistency 
+mechanisms apply to this problem. If I test the files after they are 
+closed shouldn't the data be consistent, written completely to the 
+server? If there were a data write error should I not see it somewhere? 
+If so where? client? server? would it be up to the client program to 
+catch it? I wonder if dd would see it. For the purpose of testing, I 
+have limited this server to serving to only a single client at a time, 
+so there will be no other variables/systems interfering.
+
+So to test this I read back the data of a newly written, 256M file, 
+right from the client that wrote it. In this case with nocto option. 
+This should take the client cache into account. I compared the results 
+from the server side as well. It had errors, the same errors in the same 
+locations on both the client and the server. So, this seems to indicate 
+that it is the issue is on the nfs client not the server. (hmmm) But the 
+same client does not have a problem with any other server. At least one 
+has never been reported. I'll verify that rigorously.
+
+I am not familiar with the mechanism that NFS uses to verify data 
+validity between the client and the server. I assume that there is some 
+sort of checksum. Did I mention that this is NFSv3? At least I have not 
+specified v4.
+> So please include a reproducible test for us.
+>   
+Easily reproducible on this system. Short of providing access to this 
+system, not sure what more to do. Oh, wait, was that humor? Indicating 
+that I have provided significant detail? Dang, I've got to sharpen my 
+international tongue-in-cheek detector.
+> Cheers
+>   Trond
+>   
+Cool name
+
+thanks
+Bob
+>
+>   
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
