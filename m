@@ -1,24 +1,27 @@
-From: Bob Kryger <bobk@panix.com>
-Subject: Re: nfs write problems
-Date: Wed, 03 Oct 2007 06:21:51 -0400
-Message-ID: <47036D3F.8070904@panix.com>
-References: <4702A279.3080001@panix.com>
-	<1191370059.6707.38.camel@heimdal.trondhjem.org>
+From: Greg Banks <gnb@sgi.com>
+Subject: Re: [RFC,
+	PATCH 33/33] knfsd: Support adding transports by writing portlist
+	file
+Date: Wed, 3 Oct 2007 20:27:19 +1000
+Message-ID: <20071003102719.GL21388@sgi.com>
+References: <20070927045751.12677.98896.stgit@dell3.ogc.int>
+	<20070927050243.12677.15463.stgit@dell3.ogc.int>
+	<18172.34744.784138.666846@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: For users of Fedora <fedora-list@redhat.com>,
-	nfs@lists.sourceforge.net
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: nfs@lists.sourceforge.net
+To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Id1MZ-0002ac-8h
-	for nfs@lists.sourceforge.net; Wed, 03 Oct 2007 03:21:55 -0700
-Received: from mail2.panix.com ([166.84.1.73])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Id1Mb-0005vV-C0
-	for nfs@lists.sourceforge.net; Wed, 03 Oct 2007 03:22:00 -0700
-In-Reply-To: <1191370059.6707.38.camel@heimdal.trondhjem.org>
+	id 1Id1NI-0002gz-MV
+	for nfs@lists.sourceforge.net; Wed, 03 Oct 2007 03:22:40 -0700
+Received: from netops-testserver-4-out.sgi.com ([192.48.171.29]
+	helo=relay.sgi.com) by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1Id1NL-0004eh-HG
+	for nfs@lists.sourceforge.net; Wed, 03 Oct 2007 03:22:45 -0700
+In-Reply-To: <18172.34744.784138.666846@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,78 +34,67 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Trond Myklebust wrote:
-> On Tue, 2007-10-02 at 15:56 -0400, Bob Kryger wrote:
->   
->> So, I have a relatively new system on which I am seeing strange NFS 
->> behavior.
->>
->> In short I am getting seemingly random errors in files written via NFS.
->>     
-[snip details]
->> Anyone ever seen anything like this before?
->> Suggest where I might look next?
->> Additional tests?
->>     
->
-> Feel free to describe your test in a bit more detail. Without more
-> information, we obviously can't rule out the existence of an NFS bug,
->   
-I was trying to be thorough, I hope I succeeded.
+On Fri, Sep 28, 2007 at 02:48:56PM +1000, Neil Brown wrote:
+> On Thursday September 27, tom@opengridcomputing.com wrote:
+> > 
+> > Update the write handler for the portlist file to allow creating new
+> > listening endpoints on a transport. The general form of the string is:
+> > 
+> > <transport_name><space><port number>
+> > 
+> > For example:
+> > 
+> > tcp 2049
+> > 
+> > This is intended to support the creation of a listening endpoint for
+> > RDMA transports without adding #ifdef code to the nfssvc.c file.
+> > The general idea is that the rpc.nfsd program would read the transports
+> > file and then write the portlist file to create listening endpoints
+> > for all or selected transports. The current mechanism of writing an
+> > fd would become obsolete.
+> 
+> Nuh.
+> I'll only accept
+>       rdma 2049
+> (or whatever) because there seems to be no other way to do it.
+> Writing an 'fd' is the *preferred* way.
+> 
+> There is more to binding an endpoint than protocol and port number.
+> There is also local address and I'm not convinced that someone might
+> come up with some other way they want to pre-condition a socket.
+> 
+> If there was any way to associate an RDMA endpoint with a
+> filedescriptor,
 
-Is there anything else that might be helpful? I certainly would not go 
-to a bug first, as I may very well have something misconfigured, but I 
-cannot seem to identify what that might be. I do have about 8 other 
-linux NFS servers in production on different hardware, SATA mostly, 
-where I am not seeing any issues. I don't think it's a hardware issue 
-though, as I cannot reproduce the problem without the use of NFS. (Hmm, 
-maybe if I NFS mount to the server itself. Would that prove anything?)
-> however usually whenever people describe this sort of problem it is
-> because they have failed to understand the NFS caching model as
-> described in
->
->     http://nfs.sourceforge.net/#faq_a8
->   
-Excellent, Thanks for the lead and I will test these items shortly.
+The whole point of RDMA is not to have a file descriptor or any of that
+slow stuff like read(), write(), or reliable connections in software.
+(Of course you also lose helpful things like strace, tethereal, and
+iptables.  Swings...roundabouts.)
 
-After reading the FAQ, I'm not sure I see how the cache consistency 
-mechanisms apply to this problem. If I test the files after they are 
-closed shouldn't the data be consistent, written completely to the 
-server? If there were a data write error should I not see it somewhere? 
-If so where? client? server? would it be up to the client program to 
-catch it? I wonder if dd would see it. For the purpose of testing, I 
-have limited this server to serving to only a single client at a time, 
-so there will be no other variables/systems interfering.
+In the case of the local address, you could pass that into the
+portlist file too, like:
 
-So to test this I read back the data of a newly written, 256M file, 
-right from the client that wrote it. In this case with nocto option. 
-This should take the client cache into account. I compared the results 
-from the server side as well. It had errors, the same errors in the same 
-locations on both the client and the server. So, this seems to indicate 
-that it is the issue is on the nfs client not the server. (hmmm) But the 
-same client does not have a problem with any other server. At least one 
-has never been reported. I'll verify that rigorously.
+echo 'tcp 192.168.0.1:2049' > /proc/fs/nfsd/portlist
 
-I am not familiar with the mechanism that NFS uses to verify data 
-validity between the client and the server. I assume that there is some 
-sort of checksum. Did I mention that this is NFSv3? At least I have not 
-specified v4.
-> So please include a reproducible test for us.
->   
-Easily reproducible on this system. Short of providing access to this 
-system, not sure what more to do. Oh, wait, was that humor? Indicating 
-that I have provided significant detail? Dang, I've got to sharpen my 
-international tongue-in-cheek detector.
-> Cheers
->   Trond
->   
-Cool name
+Or perhaps
 
-thanks
-Bob
->
->   
+echo '23/rdma' > /proc/fs/nfsd/portlist
 
+where 23 is the same file descriptor passed for TCP?
+
+
+> I would much prefer that 'rpc.nfsd' does that and passes
+> down the filedescriptor.  If RDMA is so no-Unix-like (rant rant..)
+> that there is no such file descriptor, then I guess we can live with 
+> getting the kernel to open the connection.
+
+It's as unUnixlike as you can imagine :-/
+
+Greg.
+-- 
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+Apparently, I'm Bedevere.  Which MPHG character are you?
+I don't speak for SGI.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
