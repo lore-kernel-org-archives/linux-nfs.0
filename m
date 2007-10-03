@@ -1,29 +1,28 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [RFC,PATCH 14/35] svc: Change sk_inuse to a kref
-Date: Wed, 3 Oct 2007 11:34:01 -0400
-Message-ID: <20071003153401.GD10001@fieldses.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [RFC,
+	PATCH 13/35] svc: Change services to use new svc_create_xprt service
+Date: Wed, 3 Oct 2007 11:25:50 -0400
+Message-ID: <D376113E-3F59-4E3D-BE3D-AE778647BD0E@oracle.com>
 References: <20071001191426.3250.15371.stgit@dell3.ogc.int>
-	<20071001192801.3250.49751.stgit@dell3.ogc.int>
-	<20071003111210.GA19381@infradead.org>
-	<20071003144517.GA10001@fieldses.org>
-	<20071003145238.GA30564@infradead.org>
-	<50751C78-DD55-4549-A03E-2DFBBEF7AED3@oracle.com>
-Mime-Version: 1.0
+	<20071001192758.3250.2651.stgit@dell3.ogc.int>
+	<608B3480-525A-43C6-945C-3482CDE823FC@oracle.com>
+	<1191343505.1565.28.camel@trinity.ogc.int>
+Mime-Version: 1.0 (Apple Message framework v752.2)
 Content-Type: text/plain; charset="us-ascii"
-Cc: Christoph Hellwig <hch@infradead.org>, neilb@suse.de,
-	nfs@lists.sourceforge.net, gnb@sgi.com
-To: Chuck Lever <chuck.lever@oracle.com>
+Cc: neilb@suse.de, bfields@fieldses.org, nfs@lists.sourceforge.net,
+	gnb@sgi.com
+To: tom@opengridcomputing.com
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Id6Ei-00070A-JC
-	for nfs@lists.sourceforge.net; Wed, 03 Oct 2007 08:34:08 -0700
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	id 1Id6me-0003Lq-Fs
+	for nfs@lists.sourceforge.net; Wed, 03 Oct 2007 09:09:12 -0700
+Received: from agminet01.oracle.com ([141.146.126.228])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Id6En-0006Rg-E3
-	for nfs@lists.sourceforge.net; Wed, 03 Oct 2007 08:34:13 -0700
-In-Reply-To: <50751C78-DD55-4549-A03E-2DFBBEF7AED3@oracle.com>
+	(Exim 4.44) id 1Id6mj-0001dW-Bx
+	for nfs@lists.sourceforge.net; Wed, 03 Oct 2007 09:09:17 -0700
+In-Reply-To: <1191343505.1565.28.camel@trinity.ogc.int>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,28 +35,73 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, Oct 03, 2007 at 11:13:58AM -0400, Chuck Lever wrote:
-> We're using krefs without issue in several other areas of the RPC client 
-> and server.  Both rpc_clnt and rpc_xprt have a kref in them, for example.  
-> I don't see the harm in using them here as well, as long as they are used 
-> carefully.
+On Oct 2, 2007, at 12:45 PM, Tom Tucker wrote:
+> On Tue, 2007-10-02 at 11:44 -0400, Chuck Lever wrote:
+>> On Oct 1, 2007, at 3:27 PM, Tom Tucker wrote:
+>>>
+>>> Modify the various kernel RPC svcs to use the svc_create_xprt  
+>>> service.
+>>>
+>>> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+>>> ---
+>>>
+>>>  fs/lockd/svc.c                 |   17 ++++++++---------
+>>>  fs/nfs/callback.c              |    4 ++--
+>>>  fs/nfsd/nfssvc.c               |    4 ++--
+>>>  include/linux/sunrpc/svcsock.h |    1 -
+>>>  net/sunrpc/sunrpc_syms.c       |    1 -
+>>>  net/sunrpc/svcsock.c           |   22 ----------------------
+>>>  6 files changed, 12 insertions(+), 37 deletions(-)
+>>>
+>>> diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+>>> index 82e2192..8686915 100644
+>>> --- a/fs/lockd/svc.c
+>>> +++ b/fs/lockd/svc.c
+>>> @@ -219,13 +219,12 @@ lockd(struct svc_rqst *rqstp)
+>>>  	module_put_and_exit(0);
+>>>  }
+>>>
+>>> -
+>>> -static int find_socket(struct svc_serv *serv, int proto)
+>>> +static int find_xprt(struct svc_serv *serv, char *proto)
+>>>  {
+>>>  	struct svc_sock *svsk;
+>>>  	int found = 0;
+>>>  	list_for_each_entry(svsk, &serv->sv_permsocks, sk_list)
+>>> -		if (svsk->sk_sk->sk_protocol == proto) {
+>>> +		if (strcmp(svsk->sk_xprt.xpt_class->xcl_name, proto) == 0) {
+>>>  			found = 1;
+>>>  			break;
+>>>  		}
+>>
+>> This is scary.  :-)
+>>
+>
+> Yes, I agree. In fact, this is the "last place" where svcs ramble  
+> around
+> svc_xprt internals. This was along the lines of "how much bigger do I
+> make this patchset". BTW, this function was already here , I just
+> modified it.
+>
+>> First, I think we would be better off making the server transport API
+>> stronger by not allowing ULPs to dig around in svc_xprt or the
+>> svc_xprt_class structures directly.  Perhaps you could provide a
+>> method for obtaining the transport's NETID.
+>
+> I'll propose a service. NETID or simply protocol/port? What's the
+> consensus?
 
-I believe the change in this case is more or less a no-op, so I can't
-bring myself to care either way.
+I think NETID is all that is needed here.
 
-I seem to recall Andrew (? I thought?) saying that the use of kref's
-helped made obvious cases where use of a reference count followed the
-simplest
+You might consider moving the whole function into the RPC server to  
+make this even cleaner.  The fact that this facility is planted  
+squarely in lockd is a bit of a layering violation to begin with.
 
-	atomic_set( ,0) on init
-	atomic_inc() on get
-	atomic_dec_and_test() on put
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-pattern, and that that simplified reviewing.
 
-I dunno.
-
---b.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
