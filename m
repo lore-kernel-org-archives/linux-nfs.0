@@ -1,117 +1,55 @@
-From: "ali dagkent" <seckin30@gmail.com>
-Subject: ek gelir
-Date: Thu, 4 Oct 2007 10:04:37 +0300
-Message-ID: <5720a83c342089604e8d08dc23524086@gmail.com>
-Reply-To: seckin30@gmail.com
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [NFS] What's slated for inclusion in 2.6.24-rc1 from the NFS
+	client git tree...
+Date: Thu, 04 Oct 2007 10:00:50 -0400
+Message-ID: <1191506450.6685.17.camel@heimdal.trondhjem.org>
+References: <1191454876.6726.32.camel@heimdal.trondhjem.org>
+	<20071004085206.0a8e37b5@poseidon.drzeus.cx>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-9"
-To: <nfs@lists.sourceforge.net>
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IdKna-00086Y-8j
-	for nfs@lists.sourceforge.net; Thu, 04 Oct 2007 00:07:08 -0700
-Received: from [78.161.82.32] (helo=esas2116-92f3d3.local)
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1IdKne-0002Z0-K3
-	for nfs@lists.sourceforge.net; Thu, 04 Oct 2007 00:07:11 -0700
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net, Andrew Morton <akpm@linux-foundation.org>,
+	nfsv4@linux-nfs.org, linux-kernel@vger.kernel.org
+To: Pierre Ossman <drzeus-list@drzeus.cx>, Peter Staubach <staubach@redhat.com>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <20071004085206.0a8e37b5@poseidon.drzeus.cx>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
+List-ID: <nfs.lists.sourceforge.net>
 
+On Thu, 2007-10-04 at 08:52 +0200, Pierre Ossman wrote:
+> On Wed, 03 Oct 2007 19:41:16 -0400
+> Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+> 
+> > 
+> > We also have the 64-bit inode support from RedHat/Peter Staubach.
+> > 
+> 
+> As has been pointed[1] out[2], this will cause regressions for non-LFS
+> applications (of which there are still lots and lots). This change
+> should be in feature-removal (the "feature" being removed is legacy
+> support for non-LFS applications using NFS servers that make full use
+> of the protocol) and preferably accompanied with appropriate user space
+> changes (e.g. compatibility option in glibc).
+> 
+> [1] https://bugzilla.redhat.com/show_bug.cgi?id=241348
+> [2] http://marc.info/?l=linux-nfs&m=118701088726477&w=2
+> 
+> Rgds
 
-merhaba arkadaslar..
+How about a boot/module parameter to turn it on or off?
 
-basliktan da anlasilacagi uzre internetten para kazanilabilir.. =
+I don't see any point in having a sysctl for something like this: either
+you have legacy applications or you don't. It is not something that you
+switch off as you go off to lunch.
+A compile parameter, OTOH, would be too restrictive since it would force
+distros to choose just one behaviour (which would mean they would have
+to choose the most conservative).
 
-tam olarak sistemi anlatmadan once bazi bilgiler sunmak istiyorum sizlere.. =
-
-suan dunya uzerinde internette online sayisi 600 milyonu buldu ve bu rakam =
-her gecen gun her gecen saniye artmakda belkide turizmden sonra bacasiz =
-
-saniyi diye adladirabilecegimiz bir sektor doguyor... elbette bu sektorde n=
-asil ve hangi konumda duracagimizi turk milleti olarak daha bilemiyoruz. =
-
-cunku turk milleti olarak internet mantigini pekde kavgamis sayilmayiz... =
-
-bilincsiz insanlarin internette gafil avladiklari turkiyede hangisinin dogr=
-u hangisinin yanlis oldugunu kestiremiyoruz.. =
-
-bu sebepden dolayi beyinlerimize internet kotu aks edildi... =
-
-internetti bilincli kullanmak nasil oluyor diye sorarsaniz ilk once iliski =
-icinde oldugunuz web sitelerini arastirmakta elbette yarar dogacaktir... =
-
- simdi sizlere sunacagimiz muthis bir sistem var. kesinlikle soyleyecegim b=
-utun cumleleri butun kelimeleri arastirmakda ozgursunuz.. =
-
-en basta soyledigim gibi internet gelecek 10 yilin en kazancli sektoru olac=
-ak ve internette bir kimlik sahibi olmak hepimizin yararina olacaktir. =
-
-iste bizleri bu kimlige kavusuturacak bir sistem dogdu... dunya devi sirket=
-lerin bir araya gelerek olusturduklari muthis bir sistem.. =
-
-firma amerikanin 37. buyuk sirketi. ve bunyesinde microsoft(intel), yahoo, =
-ebay, cisco system gibi sirketler var... ve bu sirketler GDI grubunu olsutu=
-rdular. =
-
-. GDI nedemek?
-GDI (global domains international) internet alan adlarini olusturan buyuk b=
-ir firma... =
-
-bu sistem olusturulurken amac olarak dunyaya ws uzantili web sitelerini yay=
-mak olarak belirlediler. =
-
-yani com a karsi acilmis bir savas olarak da dusunebiliriz... ve bu amac do=
-grultusunda muthis adimlar atarak ilerliyorlar... =
-
-peki bunu nasil yapacaklarda 600 ve surekli artan milyon kullaciya ulastira=
-caklar diye bir soru geliyor akla? iste burda devreye bizler giriyoruz...
- firma bizlere ws uzantili web siteleri kiraliyor. kiraladigimiz web sitele=
-ri her amacda kullanilabilir ustun ozeliklere sahipdir.. =
-
-aylik sadece 10$ gibi bir rakamla bu gelisen sektorde yerimizi aliyoruz.. a=
-ma firma sadece bizlere web sitesi kiralamiyor bizleri ayni =
-
-zamanda muthis bir gelire kavusmamizi sagliyor... biz bu web sitelerini kir=
-aladigimiz anda bu sistemin bir parcasi oluyoruz ve daha sonra web sitesi =
-
-sahibi olabilecek kisileri bu sisteme davet ediyoruz... bu sisteme topladig=
-imiz her uyeden aylik surekli 1$ dolar aliyoruz bu az bir rakam olarak goru=
-nenilir
- ama is bundan sonra basliyor yani uye yaptigimiz kiside para kazanmak isti=
-yecek ve baska birilerini bu sisteme davet edecektir yine onlarin davet ett=
-igi =
-
- kisilerde bize 1$ dolar para kazandiriyor... bir govde uzerinde olan dalla=
-rin yayilmasi bu mant=FDigin cok guzel bir ornegidir.. daha fazla bilgi alm=
-ak
- isteyen arkadaslarim
-
-turkce 9 dakikal=FDk videoyu mutlaka izleyin
-http://www.sayisal.ws/turkcevideo.html
-
-lr.dogal_bitkiselkozmetik@hotmail.com  veya =
-
-
-www.seckin30.ws   adresinden bizlere ula=FEabilirler
-saygilarimla
-
-
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Splunk Inc.
-Still grepping through log files to find problems?  Stop.
-Now Search log events and configuration files using AJAX and a browser.
-Download your FREE copy of Splunk now >> http://get.splunk.com/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+Trond
