@@ -1,90 +1,66 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [RFC,
-	PATCH 12/35] svc: Add a generic transport svc_create_xprt function
-Date: Thu, 4 Oct 2007 11:18:48 -0400
-Message-ID: <B16CBD55-C114-43D1-A2D2-8C0D7EB28032@oracle.com>
-References: <20071001191426.3250.15371.stgit@dell3.ogc.int>
-	<20071001192756.3250.60536.stgit@dell3.ogc.int>
-	<383DDDA6-29E5-41CF-A2F7-9C45BB26CE64@oracle.com>
-	<20071004023024.GU21388@sgi.com>
-Mime-Version: 1.0 (Apple Message framework v752.2)
-Content-Type: text/plain; charset="us-ascii"
-Cc: neilb@suse.de, bfields@fieldses.org, nfs@lists.sourceforge.net
-To: Greg Banks <gnb@sgi.com>
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IdSTp-0000Fs-9k
-	for nfs@lists.sourceforge.net; Thu, 04 Oct 2007 08:19:13 -0700
-Received: from agminet01.oracle.com ([141.146.126.228])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IdSTp-0005Cn-6x
-	for nfs@lists.sourceforge.net; Thu, 04 Oct 2007 08:19:17 -0700
-In-Reply-To: <20071004023024.GU21388@sgi.com>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+From: Pierre Ossman <drzeus-list@drzeus.cx>
+Subject: Re: [NFS] What's slated for inclusion in 2.6.24-rc1 from the NFS
+ client git tree...
+Date: Thu, 4 Oct 2007 18:43:04 +0200
+Message-ID: <20071004184304.6e71ab6d@poseidon.drzeus.cx>
+References: <1191454876.6726.32.camel@heimdal.trondhjem.org>
+	<20071004085206.0a8e37b5@poseidon.drzeus.cx>
+	<1191506450.6685.17.camel@heimdal.trondhjem.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Cc: Peter Staubach <staubach@redhat.com>, nfsv4@linux-nfs.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1760929AbXJDQnV@vger.kernel.org>
+In-Reply-To: <1191506450.6685.17.camel@heimdal.trondhjem.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-On Oct 3, 2007, at 10:30 PM, Greg Banks wrote:
-> On Tue, Oct 02, 2007 at 11:39:18AM -0400, Chuck Lever wrote:
->> On Oct 1, 2007, at 3:27 PM, Tom Tucker wrote:
->>>
->>> struct svc_xprt_ops {
->>> +	struct svc_xprt	*(*xpo_create)(struct svc_serv *,
->>> +				       struct sockaddr *,
->>> +				       int);
->>
->> Should xpo_create also have a length argument, as in (struct sockaddr
->> *, socklen_t) ?
->
-> Consistency would be nice.  Let's see, how often do we
-> maintain address length fields now?
->
-> svc_deferred_req.addr: yes
-> svc_rqst.rq_addr: yes
-> svc_sock.sk_local: no
-> svc_sock.sk_remote: yes
-> rpc_xprt.addr: yes
-> rpc_create_args.address:     \
-> rpc_create_args.saddress:    / one length field for both
-> rpc_xprtsock_create.srcaddr: \
-> rpc_xprtsock_create.dstaddr: / one length field for both
-> rpc_peeraddr(): yes
-> rpcb_create(): no
-> xs_send_kvec(): yes
-> xs_sendpages(): yes
-> __svc_print_addr(): no
-> svc_port_is_privileged(): no
-> svc_create_socket(): yes
->
->> (or whatever the type of sockaddr lengths are: size_t perhaps?)
->
-> socklen_t should be right, but the kernel doesn't seem to have one.
+On Thu, 04 Oct 2007 10:00:50 -0400
+Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
 
-FYI I've been using size_t as I convert "struct sockaddr_in *" to  
-"struct sockaddr *, length".
+> On Thu, 2007-10-04 at 08:52 +0200, Pierre Ossman wrote:
+> > On Wed, 03 Oct 2007 19:41:16 -0400
+> > Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+> > 
+> > > 
+> > > We also have the 64-bit inode support from RedHat/Peter Staubach.
+> > > 
+> > 
+> > As has been pointed[1] out[2], this will cause regressions for
+> > non-LFS applications (of which there are still lots and lots). This
+> > change should be in feature-removal (the "feature" being removed is
+> > legacy support for non-LFS applications using NFS servers that make
+> > full use of the protocol) and preferably accompanied with
+> > appropriate user space changes (e.g. compatibility option in glibc).
+> > 
+> > [1] https://bugzilla.redhat.com/show_bug.cgi?id=241348
+> > [2] http://marc.info/?l=linux-nfs&m=118701088726477&w=2
+> > 
+> > Rgds
+> 
+> How about a boot/module parameter to turn it on or off?
+> 
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+That would be perfect. It can even be in non-legacy mode by default,
+just as long as you can go back to the old behaviour when/if you run
+into a non-LFS application.
 
+> I don't see any point in having a sysctl for something like this:
+> either you have legacy applications or you don't. It is not something
+> that you switch off as you go off to lunch.
+> A compile parameter, OTOH, would be too restrictive since it would
+> force distros to choose just one behaviour (which would mean they
+> would have to choose the most conservative).
+> 
 
+Agreed.
 
+Rgds
+-- 
+     -- Pierre Ossman
 
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Splunk Inc.
-Still grepping through log files to find problems?  Stop.
-Now Search log events and configuration files using AJAX and a browser.
-Download your FREE copy of Splunk now >> http://get.splunk.com/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+  Linux kernel, MMC maintainer        http://www.kernel.org
+  PulseAudio, core developer          http://pulseaudio.org
+  rdesktop, core developer          http://www.rdesktop.org
