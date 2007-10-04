@@ -1,28 +1,25 @@
-From: Tom Tucker <tom@opengridcomputing.com>
-Subject: Re: [RFC,
-	PATCH 13/35] svc: Change services to use new	svc_create_xprt service
-Date: Thu, 04 Oct 2007 09:27:11 -0500
-Message-ID: <1191508031.411.29.camel@trinity.ogc.int>
-References: <20071001191426.3250.15371.stgit@dell3.ogc.int>
-	<20071001192758.3250.2651.stgit@dell3.ogc.int>
-	<608B3480-525A-43C6-945C-3482CDE823FC@oracle.com>
-	<20071004023531.GV21388@sgi.com>
-Reply-To: tom@opengridcomputing.com
-Mime-Version: 1.0
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: Utility to tune NFS parameters?
+Date: Thu, 4 Oct 2007 10:31:52 -0400
+Message-ID: <78EC3A4D-AC81-4A35-BD50-166C87707763@oracle.com>
+References: <29A7C5F65D54744CBFD97CD62A33DEE90241DA6F@VFOHMLAO13.Enterprise.afmc.ds.af.mil>
+	<48609735-2D9E-4E5E-A593-51D99C096BB7@oracle.com>
+	<29A7C5F65D54744CBFD97CD62A33DEE90241DC19@VFOHMLAO13.Enterprise.afmc.ds.af.mil>
+Mime-Version: 1.0 (Apple Message framework v752.2)
 Content-Type: text/plain; charset="us-ascii"
-Cc: neilb@suse.de, bfields@fieldses.org, nfs@lists.sourceforge.net
-To: Greg Banks <gnb@sgi.com>
+Cc: nfs@lists.sourceforge.net
+To: "Maute, Kevin P CTR AFRL/RBOO" <Kevin.Maute@WPAFB.AF.MIL>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IdRgk-0002m2-Dg
-	for nfs@lists.sourceforge.net; Thu, 04 Oct 2007 07:28:38 -0700
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]
-	helo=smtp.opengridcomputing.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IdRgo-000785-9y
-	for nfs@lists.sourceforge.net; Thu, 04 Oct 2007 07:28:35 -0700
-In-Reply-To: <20071004023531.GV21388@sgi.com>
+	id 1IdRkh-0003CH-3H
+	for nfs@lists.sourceforge.net; Thu, 04 Oct 2007 07:32:35 -0700
+Received: from agminet01.oracle.com ([141.146.126.228])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IdRkk-0000EN-1A
+	for nfs@lists.sourceforge.net; Thu, 04 Oct 2007 07:32:40 -0700
+In-Reply-To: <29A7C5F65D54744CBFD97CD62A33DEE90241DC19@VFOHMLAO13.Enterprise.afmc.ds.af.mil>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,94 +32,59 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, 2007-10-04 at 12:35 +1000, Greg Banks wrote:
-> On Tue, Oct 02, 2007 at 11:44:50AM -0400, Chuck Lever wrote:
-> > On Oct 1, 2007, at 3:27 PM, Tom Tucker wrote:
-> > >
-> > >-static int find_socket(struct svc_serv *serv, int proto)
-> > >+static int find_xprt(struct svc_serv *serv, char *proto)
-> > > {
-> > > 	struct svc_sock *svsk;
-> > > 	int found = 0;
-> > > 	list_for_each_entry(svsk, &serv->sv_permsocks, sk_list)
-> > >-		if (svsk->sk_sk->sk_protocol == proto) {
-> > >+		if (strcmp(svsk->sk_xprt.xpt_class->xcl_name, proto) == 0) {
-> > > 			found = 1;
-> > > 			break;
-> > > 		}
-> > 
-> > This is scary.  :-)
-> > 
-> > First, I think we would be better off making the server transport API  
-> > stronger by not allowing ULPs to dig around in svc_xprt or the  
-> > svc_xprt_class structures directly.  Perhaps you could provide a  
-> > method for obtaining the transport's NETID.
-> 
-> Or a function to do the match:
-> 
-> struct svc_xprt_ops {
->     ...
->     int (*xpo_netid_supported)(const char *netid);
->     ...
-> };
-> 
-> Or, your could push the find_xprt() function down into svc_xprt.c
-> where such futzing belongs.
+cc: nfs@lists.sourceforge.net, used for generic NFS issues;
+removed nfsv4@linux-nfs.org, as it is for NFSv4 development.
 
-I think this is the correct approach, although the parameters of the
-svc_find_xprt function may need some tweaking.
+On Oct 4, 2007, at 9:10 AM, Maute, Kevin P CTR AFRL/RBOO wrote:
+> To give a little history, I have a compute cluster that was running
+> RHEL4 and /home mounted as an NFS share.  Fairly standard and it  
+> seemed
+> to have the standard NFS response.  I upgraded the cluster to RHEL5  
+> and
+> all I/O is VERY sluggish.  Top is my standard day-to-day tool and it
+> shows nothing.
 
-> 
-> > Second, is there any guarantee that the string name of the underlying  
-> > protocol 
+Top will show you CPU hogs.  NFS is an I/O subsystem, so you won't  
+get much information about it from top.  There is an "nfstop"  
+floating around, but I don't know if it's in RHEL 5.
 
-The transport string doesn't name a protocol, it names a transport
-class. I'll check the code because I bet I've got a confused name or two
-in the code.
+Anyway, upgrading to RHEL 5 is not supposed to cause a negative NFS  
+performance change.  Consult the Linux NFS FAQ and How-To for advice  
+on how to begin troubleshooting...
 
-The transport class identifies a provider that serves up the API we've
-defined. To be painfully pedantic, the transport provider determines the
-underlying protocol. Within a protocol family, the address family in the
-sockaddr is used to further discriminate. So in the case of the "tcp"
-transport class, the socket type (SOCK_STREAM), combined with the
-address family (AF_INET/AF_INET6) in the provided sockaddr determines
-the protocol (TCP/IPV4, or TCP/IPV6). 
+    http://nfs.sourceforge.net
 
-Along these lines, a reasonable argument could be made that the names of
-the transport classes should be "sock_stream", and "sock_dgram", not
-"tcp", and "udp". 
+>> -----Original Message-----
+>> From: Chuck Lever [mailto:chuck.lever@oracle.com]
+>> Sent: Wednesday, October 03, 2007 5:05 PM
+>> To: Maute, Kevin P CTR AFRL/RBOO
+>> Cc: nfsv4@linux-nfs.org
+>> Subject: Re: Utility to tune NFS parameters?
+>>
+>> On Oct 3, 2007, at 4:24 PM, Maute, Kevin P CTR AFRL/VAOO wrote:
+>>> I am looking for a utility that runs under RH Linux to test NFS
+>>> throughput.  This is not the first time in my career that I have
+>>> looked for such a beast but I am hoping for better results this
+>>> time :)
+>>
+>> Kevin-
+>>
+>> You can use any file system performance tool for this.
+>> Anything from
+>> iozone to iometer.
+>>
+>> You might also test raw network throughput using iPerf or a similar
+>> tool to get a baseline for comparing NFS read and write throughput.
+>>
+>> --
+>> Chuck Lever
+>> chuck[dot]lever[at]oracle[dot]com
 
-> is the same as the name of the transport class?  Is there  
-> > any relationship between the transport name and the NETIDs it supports?
-> 
-
-I think trying to map the netid to a transport instance is a mistake.
-The "transport" name here is above the network layer and maps more to an
-API (socket, ofa rdma) than to a network protocol. "rdma" in this
-context can mean iWARP, or IB, and iWARP can mean RDDP/TCP, RDDP/SCTP,
-etc...
-
-Given the current support, "rdma" can be over IB or RDDP/TCP. So, IMO:
-
-rdma:AF_INET:0.0.0.0:2081
-rdma:AF_INET6:ff.ff.ff.ff.10.10.0.5:2081
-tcp:AF_INET:0.0.0.0:2049
-
-etc, are strings that map a transport instance logically and uniquely.
-
-If you always want to listen on zero, then you can get rid of the
-address itself. 
-
-This approach also allows the transport to extend naturally to other
-address families. 
-
-> This is already confused: our "tcp" transport supports both TCP/IPv4
-> and TCP/IPv6, which are two separate netids "tcp4" and "tcp6" in
-> TLI jargon.
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
 
-> 
-> Greg.
 
 
 -------------------------------------------------------------------------
