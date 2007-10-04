@@ -1,33 +1,26 @@
 From: Greg Banks <gnb@sgi.com>
 Subject: Re: [RFC,
-	PATCH 05/35] svc: Move sk_sendto and sk_recvfrom to	svc_xprt_class
-Date: Thu, 4 Oct 2007 11:34:46 +1000
-Message-ID: <20071004013446.GR21388@sgi.com>
+	PATCH 06/35] svc: Add transport specific xpo_release function
+Date: Thu, 4 Oct 2007 11:48:48 +1000
+Message-ID: <20071004014848.GS21388@sgi.com>
 References: <20071001191426.3250.15371.stgit@dell3.ogc.int>
-	<20071001192740.3250.73564.stgit@dell3.ogc.int>
-	<CBDFC3B7-FE67-4715-87CA-E828D76844BB@oracle.com>
-	<1191342596.1565.11.camel@trinity.ogc.int>
-	<4A775179-9659-41B6-999F-8316BA181152@oracle.com>
-	<1191349462.1565.46.camel@trinity.ogc.int>
-	<1191349842.1565.54.camel@trinity.ogc.int>
-	<7FF82697-AB93-4339-AD46-CAE93E967242@oracle.com>
-	<1191354906.1565.65.camel@trinity.ogc.int>
+	<20071001192742.3250.93576.stgit@dell3.ogc.int>
+	<D6D83B86-2A07-44F2-A729-9BF9DD74A6D4@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: neilb@suse.de, bfields@fieldses.org, nfs@lists.sourceforge.net
-To: Tom Tucker <tom@opengridcomputing.com>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IdFX2-0001bw-BB
-	for nfs@lists.sourceforge.net; Wed, 03 Oct 2007 18:29:48 -0700
-Received: from netops-testserver-3-out.sgi.com
-	([192.48.171.28] helo=relay.sgi.com
-	ident=[U2FsdGVkX1+tik7FxSaS0PP7cWaeLW4egMGiYbmNQUw=])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IdFX7-0002KR-9t
-	for nfs@lists.sourceforge.net; Wed, 03 Oct 2007 18:29:45 -0700
-In-Reply-To: <1191354906.1565.65.camel@trinity.ogc.int>
+	id 1IdFkc-0002ty-8q
+	for nfs@lists.sourceforge.net; Wed, 03 Oct 2007 18:43:42 -0700
+Received: from netops-testserver-4-out.sgi.com ([192.48.171.29]
+	helo=relay.sgi.com) by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1IdFkh-0007Y9-7u
+	for nfs@lists.sourceforge.net; Wed, 03 Oct 2007 18:43:47 -0700
+In-Reply-To: <D6D83B86-2A07-44F2-A729-9BF9DD74A6D4@oracle.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -40,57 +33,41 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, Oct 02, 2007 at 02:55:06PM -0500, Tom Tucker wrote:
-> On Tue, 2007-10-02 at 14:47 -0400, Chuck Lever wrote:
-> > On Oct 2, 2007, at 2:30 PM, Tom Tucker wrote:
-> > 
-> > > On Tue, 2007-10-02 at 13:24 -0500, Tom Tucker wrote:
-> > >> On Tue, 2007-10-02 at 12:57 -0400, Chuck Lever wrote:
-> > >>> On Oct 2, 2007, at 12:29 PM, Tom Tucker wrote:
-> > >>
-> > >> [...snip...]
-> 
-> [...snip...]
-> 
-> > >
-> > > Actually, I'm having second thoughts. Since the svc_xprt structure is
-> > > allocated on the rqstp thread in which the transport is going to be
-> > > used, won't the memory be local to the allocating processor on a NUMA
-> > > system?
-> > 
-> > The ops vector isn't in the svc_xprt.  It's a constant, so it's in  
-> > memory allocated by the kernel loader at boot time.
-> > 
-> 
-> I think one of us missing something. Here's how I think it works...
-> 
-> The svc_xprt_ops structure is a constant in kernel memory. The
-> svc_xprt_class is also a constant and points to the svc_xprt_ops
-> structure. The svc_xprt structure, however, is allocated via kmalloc and
-> contains a _copy_ of the constant svc_xprt_ops structure and a copy of
-> the xcl_max_payload value. See the svc_xprt_init function.
-> 
-> My original thinking (flawed I think) was that since the svc_xprt was
-> allocated in the context of the current rqstp thread, that it would be
-> allocated from processor local memory. While I think this is true,
-> subsequent assignment of a rqstp thread to service a transport has no
-> affinity to a particular transport.
+On Tue, Oct 02, 2007 at 11:18:53AM -0400, Chuck Lever wrote:
+> On Oct 1, 2007, at 3:27 PM, Tom Tucker wrote:
+> >
+> You intend to add xpo_detach and xpo_free in a later patch.  The  
+> method names suggest all of these operate on the svc_xprt.   
+> xpo_release, however appears to operate on a request, not on a svc_xprt.
 
-Actually it does, on systems where these effects matter, thanks
-to irq binding.  Altix hardware irq behaviour is that interrupts
-from one device go to one CPU only (on other platforms you may
-need to explicitly bind interrupts to achieve the same effect).
-Given non-variable IP routing (i.e. assuming you tune ARP to behave
-sensibly, and don't use mode=rr bonding) this means that network irqs
-destined for a particular TCP socket have a very strong affinity to
-a particular CPU.  In the steady state, NFS traffic from a single client
-hits only a single CPU and inter-node NUMA traffic is very small.
+Good point.
 
-The only part of this picture that doesn't work right in tot is
-that svc_rqst structures are allocated at system boot and end up
-on node0, and for really large systems doing a lot of IO this can
-have a noticeable effect.  I have a patch which I need to get around
-to posting.
+> Perhaps you might name this method xpo_release_rqst or some other  
+> name that indicates that this operates on a request.  The name  
+> xpo_release could easily refer to closing the underlying socket.  As  
+> an example, the client-side transport uses ->release_request.
+
+I'd really like that, except that server-side the naming waters are
+muddied by svc_rqst being the per-thread structure rather a per-request
+structure.  I'd use the word "call" to be slightly less ambiguous.
+
+> The client side also appears to treat the transport as handling  
+> requests, instead of socket reads and writes.  The use of the method  
+> names recvfrom and sendto suggest we are talking about bytes on a  
+> socket here, not transmitting and receiving whole RPC requests.  I  
+> think that's a useful abstraction.
+
+Agreed.
+
+> While I'm whining aloud... I don't prefer the method names detach or  
+> free, either.  On the client side we used close and destroy, which  
+> (to me, anyway) makes more sense.
+
+"xpo_destroy" is as good as "xpo_free" by me.  However "xpo_detach"
+is actually a precise description of what the method does: it prevents
+further data ready callbacks so that no new incoming data is noticed,
+and nothing else.  Actually closing the socket needs to be done later
+when any sender has finished.
 
 Greg.
 -- 
