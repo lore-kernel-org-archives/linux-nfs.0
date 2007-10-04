@@ -1,51 +1,64 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [NFS] What's slated for inclusion in 2.6.24-rc1 from the NFS
-	client git tree...
-Date: Thu, 4 Oct 2007 12:59:16 -0700
-Message-ID: <20071004125916.dbe4fd13.akpm@linux-foundation.org>
-References: <1191454876.6726.32.camel@heimdal.trondhjem.org>
-	<20071004085206.0a8e37b5@poseidon.drzeus.cx>
-	<1191506450.6685.17.camel@heimdal.trondhjem.org>
-	<20071004184304.6e71ab6d@poseidon.drzeus.cx>
-	<20071004114243.3161af16.akpm@linux-foundation.org>
-	<1191525363.6739.12.camel@heimdal.trondhjem.org>
+From: Bob Kryger <bobk@panix.com>
+Subject: Re: [NFS] nfs write problems
+Date: Thu, 04 Oct 2007 16:12:20 -0400
+Message-ID: <47054924.2040003@panix.com>
+References: <4702A279.3080001@panix.com>
+	<1191370059.6707.38.camel@heimdal.trondhjem.org>
+	<47036D3F.8070904@panix.com> <20071003133118.GP21675@fieldses.org>
+Reply-To: For users of Fedora <fedora-list@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfsv4@linux-nfs.org, linux-kernel@vger.kernel.org,
-	nfs@lists.sourceforge.net, drzeus-list@drzeus.cx
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <1191525363.6739.12.camel@heimdal.trondhjem.org>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: For users of Fedora <fedora-list@redhat.com>,
+	nfs@lists.sourceforge.net,
+	Trond Myklebust <trond.myklebust@fys.uio.no>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <fedora-list-bounces@redhat.com>
+In-Reply-To: <20071003133118.GP21675@fieldses.org>
+List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/fedora-list>,
+	<mailto:fedora-list-request@redhat.com?subject=unsubscribe>
+List-Archive: <https://www.redhat.com/archives/fedora-list>
+List-Post: <mailto:fedora-list@redhat.com>
+List-Help: <mailto:fedora-list-request@redhat.com?subject=help>
+List-Subscribe: <https://www.redhat.com/mailman/listinfo/fedora-list>,
+	<mailto:fedora-list-request@redhat.com?subject=subscribe>
+Sender: fedora-list-bounces@redhat.com
+Errors-To: fedora-list-bounces@redhat.com
 List-ID: <nfs.lists.sourceforge.net>
 
-On Thu, 04 Oct 2007 15:16:03 -0400
-Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+Interesting development that changes the suspect component.
 
-> > > 
-> > > That would be perfect. It can even be in non-legacy mode by default,
-> > > just as long as you can go back to the old behaviour when/if you run
-> > > into a non-LFS application.
-> > > 
-> > 
-> > Wouldn't a mount option be better?
-> 
-> I suppose that might be OK if you know that the 32-bit legacy
-> applications will only touch one or two servers, but that sounds like a
-> niche thing.
-> 
-> On the downside, forcing all those people who have portable 64-bit aware
-> applications to upgrade their version of mount just in order to have
-> stat64() work correctly seems unnecessarily complicated. I'd prefer not
-> to have to do that unless someone comes up with a good reason why we
-> must.
+On the suggestion of a colleague I setup samba and mounted the same 
+location via CIFS.
+I am getting the same results the files are corrupted if they are 
+written via samba or NFS.
 
-Confused.  You don't need to modify mount(8) when adding a new mount option?
+Now, I'm really confused. I guess I'll try swapping out the SCSI HBA.
+
+Thanks
+Bob
+
+J. Bruce Fields wrote:
+> On Wed, Oct 03, 2007 at 06:21:51AM -0400, Bob Kryger wrote:
+>   
+>> Trond Myklebust wrote:
+>>     
+>>> Feel free to describe your test in a bit more detail. Without more
+>>> information, we obviously can't rule out the existence of an NFS bug,
+>>>   
+>>>       
+>> I was trying to be thorough, I hope I succeeded.
+>>     
+>
+> The dd test sounded simple enough, but if you could include a transcript
+> of the commands you ran (together with the C code of any test programs)
+> just to be sure, that might help.
+>
+> --b.
+>
+>
+>   
+
+-- 
+fedora-list mailing list
+fedora-list@redhat.com
+To unsubscribe: https://www.redhat.com/mailman/listinfo/fedora-list
