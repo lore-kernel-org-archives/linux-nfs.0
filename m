@@ -1,24 +1,29 @@
-From: "Lea C. Stacy" <Lea@sinaman.com>
-Subject: Our penis growth pills will give you the results you need to
-	make your intimate relationship the best it could possibly be.
-Date: Thu, 04 Oct 2007 22:04:17 +0400
-Message-ID: <263801c806b0$fafb40c0$854a4c5b@Lea>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: What's slated for inclusion in 2.6.24-rc1 from the NFS
+ client git tree...
+Date: Thu, 4 Oct 2007 11:42:43 -0700
+Message-ID: <20071004114243.3161af16.akpm@linux-foundation.org>
+References: <1191454876.6726.32.camel@heimdal.trondhjem.org>
+	<20071004085206.0a8e37b5@poseidon.drzeus.cx>
+	<1191506450.6685.17.camel@heimdal.trondhjem.org>
+	<20071004184304.6e71ab6d@poseidon.drzeus.cx>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1552550344=="
-To: "Maryellen F. ReaganSchafer" <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Cc: staubach@redhat.com, nfsv4@linux-nfs.org,
+	linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net,
+	trond.myklebust@fys.uio.no
+To: Pierre Ossman <drzeus-list@drzeus.cx>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IdV3g-0002f0-Ih
-	for nfs@lists.sourceforge.net; Thu, 04 Oct 2007 11:04:24 -0700
-Received: from ppp91-76-74-133.pppoe.mtu-net.ru ([91.76.74.133])
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1IdV3i-0001Xw-PP
-	for nfs@lists.sourceforge.net; Thu, 04 Oct 2007 11:04:29 -0700
-Received: from 202.85.139.200 (HELO sinamail1.sina.com.hk)
-	by lists.sourceforge.net with esmtp (YIKFHUVPAC NMGDOC)
-	id h1qbp-WwOQhv-84
-	for nfs@lists.sourceforge.net; Thu, 04 Oct 2007 22:04:17 +0400
+	id 1IdVfc-0006nI-Hc
+	for nfs@lists.sourceforge.net; Thu, 04 Oct 2007 11:43:36 -0700
+Received: from smtp2.linux-foundation.org ([207.189.120.14])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IdVfg-0001oz-Hm
+	for nfs@lists.sourceforge.net; Thu, 04 Oct 2007 11:43:41 -0700
+In-Reply-To: <20071004184304.6e71ab6d@poseidon.drzeus.cx>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,70 +36,47 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
+On Thu, 4 Oct 2007 18:43:04 +0200
+Pierre Ossman <drzeus-list@drzeus.cx> wrote:
 
---===============1552550344==
-Content-Type: multipart/alternative;
-	boundary="----=_NextPart_9782_26A0_01C806D2.820CE0C0"
+> On Thu, 04 Oct 2007 10:00:50 -0400
+> Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+> 
+> > On Thu, 2007-10-04 at 08:52 +0200, Pierre Ossman wrote:
+> > > On Wed, 03 Oct 2007 19:41:16 -0400
+> > > Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+> > > 
+> > > > 
+> > > > We also have the 64-bit inode support from RedHat/Peter Staubach.
+> > > > 
+> > > 
+> > > As has been pointed[1] out[2], this will cause regressions for
+> > > non-LFS applications (of which there are still lots and lots). This
+> > > change should be in feature-removal (the "feature" being removed is
+> > > legacy support for non-LFS applications using NFS servers that make
+> > > full use of the protocol) and preferably accompanied with
+> > > appropriate user space changes (e.g. compatibility option in glibc).
+> > > 
+> > > [1] https://bugzilla.redhat.com/show_bug.cgi?id=241348
+> > > [2] http://marc.info/?l=linux-nfs&m=118701088726477&w=2
+> > > 
+> > > Rgds
+> > 
+> > How about a boot/module parameter to turn it on or off?
+> > 
+> 
+> That would be perfect. It can even be in non-legacy mode by default,
+> just as long as you can go back to the old behaviour when/if you run
+> into a non-LFS application.
+> 
 
-This is a multi-part message in MIME format.
-
-------=_NextPart_9782_26A0_01C806D2.820CE0C0
-Content-Type: text/plain;
-        charset="iso-8859-2"
-Content-Transfer-Encoding: quoted-printable
-
-The added width to your penis fills and presses her from side to side to =
-give your partner the most exhilarating sensations
-http://drspcok=2Ecom/
-
-Simon didn't appear to let it excuse his hit on Hollweg=2E
-from Iran, Syria and the United States=2E
-Current Club: AC Milan
-mutter; v 1=2E To utter words, especially complaints or
-couples in Italy attend a rally in Rome=2E
-------=_NextPart_9782_26A0_01C806D2.820CE0C0
-Content-Type: text/html;
-        charset="iso-8859-2"
-Content-Transfer-Encoding: quoted-printable
-
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4=2E0 Transitional//EN">
-<HTML><HEAD>
-<META http-equiv=3DContent-Type content=3D"text/html; charset=3Diso-8859-=
-2">
-<META content=3D"MSHTML 6=2E00=2E2800=2E1437" name=3DGENERATOR>
-<STYLE></STYLE>
-</HEAD>
-<BODY>life is too short to be small<br>
-<a href=3D"http://drspcok=2Ecom/">http://drspcok=2Ecom/</a><br>
-<br>
-<font size=3D"-1">Simon didn't appear to let it excuse his hit on Hollweg=
-=2E<br>from Iran, Syria and the United States=2E<br>Current Club: AC Mila=
-n<br>mutter; v 1=2E To utter words, especially complaints or<br>couples i=
-n Italy attend a rally in Rome=2E</font></BODY></HTML>
-
-------=_NextPart_9782_26A0_01C806D2.820CE0C0--
-
-
---===============1552550344==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+Wouldn't a mount option be better?
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >> http://get.splunk.com/
---===============1552550344==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============1552550344==--
