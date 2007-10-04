@@ -1,26 +1,27 @@
-From: Andrea Righi <righiandr@users.sourceforge.net>
-Subject: Re: nfsd closes port 2049
-Date: Mon, 15 Oct 2007 21:34:59 +0200 (MEST)
-Message-ID: <4713C0E4.4040300@users.sourceforge.net>
-References: <47139C02.9020009@cineca.it>
-	<EXNANE01sVxONvzyJxA000006ff@exnane01.hq.netapp.com>
-	<4713B033.6040207@users.sourceforge.net>
-	<EXNANE01IcVux1Zcn8T00000700@exnane01.hq.netapp.com>
-Reply-To: righiandr@users.sourceforge.net
-Mime-Version: 1.0
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [RFC,
+	PATCH 12/35] svc: Add a generic transport svc_create_xprt function
+Date: Thu, 4 Oct 2007 11:18:48 -0400
+Message-ID: <B16CBD55-C114-43D1-A2D2-8C0D7EB28032@oracle.com>
+References: <20071001191426.3250.15371.stgit@dell3.ogc.int>
+	<20071001192756.3250.60536.stgit@dell3.ogc.int>
+	<383DDDA6-29E5-41CF-A2F7-9C45BB26CE64@oracle.com>
+	<20071004023024.GU21388@sgi.com>
+Mime-Version: 1.0 (Apple Message framework v752.2)
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
+Cc: neilb@suse.de, bfields@fieldses.org, nfs@lists.sourceforge.net
+To: Greg Banks <gnb@sgi.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IhVpz-0005ZD-At
-	for nfs@lists.sourceforge.net; Mon, 15 Oct 2007 12:43:27 -0700
-Received: from as3.cineca.com ([130.186.84.211])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IhVq3-0005zE-6a
-	for nfs@lists.sourceforge.net; Mon, 15 Oct 2007 12:42:56 -0700
-In-Reply-To: <EXNANE01IcVux1Zcn8T00000700@exnane01.hq.netapp.com>
+	id 1IdSTp-0000Fs-9k
+	for nfs@lists.sourceforge.net; Thu, 04 Oct 2007 08:19:13 -0700
+Received: from agminet01.oracle.com ([141.146.126.228])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IdSTp-0005Cn-6x
+	for nfs@lists.sourceforge.net; Thu, 04 Oct 2007 08:19:17 -0700
+In-Reply-To: <20071004023024.GU21388@sgi.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,24 +34,51 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Talpey, Thomas wrote:
-> I'm snipping out LKMLfrom the cc, this isn't really a kernel issue.
-> 
-> I can give two suggestions. One, look carefully at whether GPFS had
-> a momentary issue at the time of any error. The server permission check
-> would consult it, and any error will cause the export to be denied.
-> 
-> Second, you can add "no_subtree_check" to the export line, which
-> will bypass this checking. Since you appear to be exporting the root
-> of the filesystem, it seems there is little need for this checking. In
-> newer versions of nfs_utils, non-checking is in fact the default. You
-> can read about the option with "man exports".
+On Oct 3, 2007, at 10:30 PM, Greg Banks wrote:
+> On Tue, Oct 02, 2007 at 11:39:18AM -0400, Chuck Lever wrote:
+>> On Oct 1, 2007, at 3:27 PM, Tom Tucker wrote:
+>>>
+>>> struct svc_xprt_ops {
+>>> +	struct svc_xprt	*(*xpo_create)(struct svc_serv *,
+>>> +				       struct sockaddr *,
+>>> +				       int);
+>>
+>> Should xpo_create also have a length argument, as in (struct sockaddr
+>> *, socklen_t) ?
+>
+> Consistency would be nice.  Let's see, how often do we
+> maintain address length fields now?
+>
+> svc_deferred_req.addr: yes
+> svc_rqst.rq_addr: yes
+> svc_sock.sk_local: no
+> svc_sock.sk_remote: yes
+> rpc_xprt.addr: yes
+> rpc_create_args.address:     \
+> rpc_create_args.saddress:    / one length field for both
+> rpc_xprtsock_create.srcaddr: \
+> rpc_xprtsock_create.dstaddr: / one length field for both
+> rpc_peeraddr(): yes
+> rpcb_create(): no
+> xs_send_kvec(): yes
+> xs_sendpages(): yes
+> __svc_print_addr(): no
+> svc_port_is_privileged(): no
+> svc_create_socket(): yes
+>
+>> (or whatever the type of sockaddr lengths are: size_t perhaps?)
+>
+> socklen_t should be right, but the kernel doesn't seem to have one.
 
-No error logged by GPFS during the latest failure. But I'll try the
-no_subtree_check and I'll keep you informed.
+FYI I've been using size_t as I convert "struct sockaddr_in *" to  
+"struct sockaddr *, length".
 
-Thanks,
--Andrea
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
