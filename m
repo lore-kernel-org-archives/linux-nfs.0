@@ -1,92 +1,61 @@
-From: "Jack Goodwin" <xrorhl@bosscan.com>
-Subject: Hey man i found a site ocassionally today with good soft
-	packeges
-Date: Thu, 4 Oct 2007 22:46:17 +0000 (UTC)
-Message-ID: <0111ffa4$0111fe78$1c86e860@xrorhl>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [NFS] What's slated for inclusion in 2.6.24-rc1 from the NFS
+	client git tree...
+Date: Thu, 04 Oct 2007 20:58:47 -0400
+Message-ID: <1191545927.6739.21.camel@heimdal.trondhjem.org>
+References: <1191454876.6726.32.camel@heimdal.trondhjem.org>
+	<20071004085206.0a8e37b5@poseidon.drzeus.cx>
+	<1191506450.6685.17.camel@heimdal.trondhjem.org>
+	<20071004184304.6e71ab6d@poseidon.drzeus.cx>
+	<20071004114243.3161af16.akpm@linux-foundation.org>
+	<1191525363.6739.12.camel@heimdal.trondhjem.org>
+	<20071004125916.dbe4fd13.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1956384501=="
-To: <nfs@lists.sourceforge.net>
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Date: Thu, 34 Sep 2007 17:45:58 -0500
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
-
-This is a multi-part message in MIME format.
-
---===============1956384501==
-Content-Type: multipart/alternative;
-	boundary="----=_NextPart_000_000E_0111FFA4.0111FE0C"
-
-This is a multi-part message in MIME format.
-
-------=_NextPart_000_000E_0111FFA4.0111FE0C
-Content-Type: text/plain;
-	charset="iso-8859-1"
-Content-Transfer-Encoding: 7bit
-
- Save your time,antagonistic dont go anywhere just download legal soft,  hundreds of titles,djakarta new software products and all of  that with prices less then any box softwre !
-Cheaper then ever for exampleMicrosoft Office 2007 Enterprise    $79.95 closet
-Autodesk AutoCAD 2008   $129 costume
-Macromedia studio 8      $99.95 addis and a lot more here.Visit us now don't waste your time albert 
-!
-
-
-------=_NextPart_000_000E_0111FFA4.0111FE0C
-Content-Type: text/html;
-	charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD><TITLE></TITLE>
-<META content=3D"text/html; charset=3Diso-8859-1" http-equiv=3DContent-Type>
-<META content=3D"MSHTML 6.00.2900.2869" name=3DGENERATOR></HEAD>
-<BODY>
-<BODY>
-<P> Save your time,antagonistic dont go anywhere just download legal soft, =
- hundreds of titles,djakarta new software products and all of  that with pr=
-ices less then any box softwre !<br />
-Cheaper then ever for example</P>
-<P>Microsoft Office 2007 Enterprise    $79.95 closet<br />
-Autodesk AutoCAD 2008   $129 costume<br />
-Macromedia studio 8      $99.95 addis</P>
-<P> and a lot more here.<a href=3D"http://tctudud.realsoftdirect.net">Visit=
- us now don't waste your time albert</a> 
-!</P>
-</BODY>
-</BODY></HTML>
-
-------=_NextPart_000_000E_0111FFA4.0111FE0C--
-
-
-
---===============1956384501==
 Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+Cc: nfsv4@linux-nfs.org, linux-kernel@vger.kernel.org,
+	nfs@lists.sourceforge.net, drzeus-list@drzeus.cx
+To: Andrew Morton <akpm@linux-foundation.org>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <20071004125916.dbe4fd13.akpm@linux-foundation.org>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
+List-ID: <nfs.lists.sourceforge.net>
 
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Splunk Inc.
-Still grepping through log files to find problems?  Stop.
-Now Search log events and configuration files using AJAX and a browser.
-Download your FREE copy of Splunk now >> http://get.splunk.com/
---===============1956384501==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+On Thu, 2007-10-04 at 12:59 -0700, Andrew Morton wrote:
+> On Thu, 04 Oct 2007 15:16:03 -0400
+> Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+> 
+> > > > 
+> > > > That would be perfect. It can even be in non-legacy mode by default,
+> > > > just as long as you can go back to the old behaviour when/if you run
+> > > > into a non-LFS application.
+> > > > 
+> > > 
+> > > Wouldn't a mount option be better?
+> > 
+> > I suppose that might be OK if you know that the 32-bit legacy
+> > applications will only touch one or two servers, but that sounds like a
+> > niche thing.
+> > 
+> > On the downside, forcing all those people who have portable 64-bit aware
+> > applications to upgrade their version of mount just in order to have
+> > stat64() work correctly seems unnecessarily complicated. I'd prefer not
+> > to have to do that unless someone comes up with a good reason why we
+> > must.
+> 
+> Confused.  You don't need to modify mount(8) when adding a new mount option?
 
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+Prior to 2.6.22, the 'mount' program used a binary blob for passing the
+NFS mount options to the kernel.
+It is only very recently that we have started doing in-kernel parsing of
+text strings, and in order to make use of that, people will need to
+upgrade to the latest version of nfs-utils.
 
---===============1956384501==--
+Trond
