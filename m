@@ -1,20 +1,39 @@
-From: cxi89w@excite.co.jp
-Subject: =?ISO-2022-JP?B?gZmLdpT8jnGBmSCCs4LcguaC6INBg1+Di4NngnKCbYJygsyKrpFTlrOTR4LMlrOXv4+1kdKP84Kqk82CooK9grKIxJPggsWCt4FC?=
-Date: Fri,  5 Oct 2007 01:37:14 -0700 (PDT)
-Message-ID: <10789.6999725655$1191573463@news.gmane.org>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: What's slated for inclusion in 2.6.24-rc1 from the NFS
+ client git tree...
+Date: Fri, 5 Oct 2007 08:24:43 -0400
+Message-ID: <20071005082443.ce34b904.jlayton@redhat.com>
+References: <1191454876.6726.32.camel@heimdal.trondhjem.org>
+	<20071004085206.0a8e37b5@poseidon.drzeus.cx>
+	<1191506450.6685.17.camel@heimdal.trondhjem.org>
+	<20071004184304.6e71ab6d@poseidon.drzeus.cx>
+	<20071004114243.3161af16.akpm@linux-foundation.org>
+	<1191525363.6739.12.camel@heimdal.trondhjem.org>
+	<47054205.8000908@redhat.com>
+	<20071005082513.4b5a058c@poseidon.drzeus.cx>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============0476263251=="
+Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IdigF-0003V4-4B
-	for nfs@lists.sourceforge.net; Fri, 05 Oct 2007 01:37:07 -0700
-Received: from ppp-124.120.106.17.revip2.asianet.co.th ([124.120.106.17]
-	helo=webstar-web002394.gogoasianet.co.th)
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1IdigJ-0003eQ-VB
-	for nfs@lists.sourceforge.net; Fri, 05 Oct 2007 01:37:12 -0700
+	id 1IdmEZ-0000gW-9B
+	for nfs@lists.sourceforge.net; Fri, 05 Oct 2007 05:24:47 -0700
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IdmEd-0002py-6z
+	for nfs@lists.sourceforge.net; Fri, 05 Oct 2007 05:24:52 -0700
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com
+	[172.16.52.254])
+	by mx1.redhat.com (8.13.8/8.13.1) with ESMTP id l95COi1p024224
+	for <nfs@lists.sourceforge.net>; Fri, 5 Oct 2007 08:24:44 -0400
+Received: from pobox.corp.redhat.com (pobox.corp.redhat.com [10.11.255.20])
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id l95COiZU007934
+	for <nfs@lists.sourceforge.net>; Fri, 5 Oct 2007 08:24:44 -0400
+Received: from tleilax.poochiereds.net (vpn-14-72.rdu.redhat.com [10.11.14.72])
+	by pobox.corp.redhat.com (8.13.1/8.13.1) with SMTP id l95COhhq010744
+	for <nfs@lists.sourceforge.net>; Fri, 5 Oct 2007 08:24:43 -0400
+In-Reply-To: <20071005082513.4b5a058c@poseidon.drzeus.cx>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,58 +46,32 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============0476263251==
-Content-Type: text/plain;
-	charset="iso-2022-jp"
-Content-Transfer-Encoding: 7bit
+On Fri, 5 Oct 2007 08:25:13 +0200
+Pierre Ossman <drzeus-list@drzeus.cx> wrote:
+>
+> > It would be better to identify these applications and get them
+> > fixed.  The world is evolving and it is time for them to do so.
+> > 
+> 
+> Print a warning or something so that they can be found. Don't go
+> breaking systems left and right. People have better things to do than
+> to fix the build systems for ever program they use.
+> 
 
-こんにちは、アダルトＳＮＳ運営事務局です。
-☆久美子☆　さんがあなたを
-ソーシャルネットワーキングサイトアダルトＳＮＳへ招待しています。
-メッセージ：
-連絡遅くなってごめんなさい…
-もう無理ですか？大丈夫なら連絡ください♪
-連絡待ってますね(((o(^｡^")o)))
-下記のURLより　☆久美子☆　さんの登録画面をご覧いただけます。
-↓こちらからアダルトＳＮＳトップページを見ることができます。
-http://freefree.adultxyzmail.com/adultsns/
-※この招待状の有効期限は30日間です。
-□■□　ソーシャル・ネットワーキング サービスアダルトＳＮＳって何？　□■□
-アダルトＳＮＳは、身近な人や同じ趣味、関心を持つ人と交流ができる大人の為の
-ソーシャル・ネットワーキング サービスです。
-■アダルトＳＮＳなら新しい友人関係を活性化できる
-新しい友人とコミュニケーションできるツール等をご用意しています。
-■アダルトＳＮＳなら色々な方とコミュニケーションできる
-大人の内緒話、大人故のアドルトな話、多くの情報を発信する事が可能です。
-アダルトＳＮＳへ参加↓
-http://freefree.adultxyzmail.com/adultsns/
-あなたのご参加を心よりお待ちしております。
-■メッセージの相手に覚えがない方へ ..
-あなたがメッセージの相手に覚えがない場合、メールアドレスを間違えて
-送信されている可能性があります。このまま削除をお願い致します。
-アダルトＳＮＳ 運営事務局
+Unfortunately, the kernel doesn't have any way to know that the app is
+not built with LFS defines. glibc uses the same syscalls regardless of
+how it's built. If you want to print a warning you'll have to modify
+glibc to do so, and then you have the problem of where to send this
+output...
 
-
-
---===============0476263251==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+-- 
+Jeff Layton <jlayton@redhat.com>
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >> http://get.splunk.com/
---===============0476263251==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============0476263251==--
