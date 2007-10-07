@@ -1,23 +1,21 @@
-From: Pavel Machek <pavel@ucw.cz>
-Subject: Re: NFS on loopback locks up entire system(2.6.23-rc6)?
-Date: Sat, 6 Oct 2007 07:35:35 +0000
-Message-ID: <20071006073534.GA4727@ucw.cz>
-References: <92cbf19b0709201722k6265e647x31b7d25bc54b63a0@mail.gmail.com>
-	<1190335423.6763.180.camel@heimdal.trondhjem.org>
+From: =?iso-2022-jp?B?GyRCIVo4N0EqJS0lYyVDJTclcyUwMEZGYiFbGyhC?= <crea@c-mobile.info>
+Subject: =?iso-2022-jp?b?GyRCISEhWiEhJCo/PTl+JCskaU07O3E8QjlUGyhC?=
+	=?iso-2022-jp?b?GyRCJF4kRyRIJEskKyQvQi4kJCEhIVsbKEI=?=
+Date: Sun, 07 Oct 2007 10:38:23 +0900
+Message-ID: <20071007053016.43C06374F5@c-mobile.info>
+Reply-To: crea@c-mobile.info
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Content-Type: text/plain; charset="iso-2022-jp"
+To: <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Ie4CV-0005WZ-Af
-	for nfs@lists.sourceforge.net; Sat, 06 Oct 2007 00:35:51 -0700
-Received: from gprs189-60.eurotel.cz ([160.218.189.60] helo=spitz.ucw.cz)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Ie4CX-0004d8-HF
-	for nfs@lists.sourceforge.net; Sat, 06 Oct 2007 00:35:56 -0700
-In-Reply-To: <1190335423.6763.180.camel@heimdal.trondhjem.org>
+	id 1IeOic-0005Ee-5f
+	for nfs@lists.sourceforge.net; Sat, 06 Oct 2007 22:30:22 -0700
+Received: from [116.90.185.161] (helo=c-mobile.info)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IeOig-0007WG-C0
+	for nfs@lists.sourceforge.net; Sat, 06 Oct 2007 22:30:27 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,37 +28,51 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+　　【　好評おまとめローン９００　只今　実施中！！　】
 
-> > I am testing NFS on loopback locks up entire system with 2.6.23-rc6 kernel.
-> > 
-> > I have mounted a local ext3 partition using loopback NFS (version 3)
-> > and started my test program. The test program forks 20 threads
-> > allocates 10MB for each thread, writes & reads a file on the loopback
-> > NFS mount. After running for about 5 min, I cannot even login to the
-> > machine. Commands like ps etc, hang in a live session.
-> > 
-> > The machine is a DELL 1950 with 4Gig of RAM, so there is plenty of RAM
-> > & CPU to play around and no other io/heavy processes are running on
-> > the system.
-...
-> > Any ideas what could potentially trigger this?
-> 
-> This is pretty much expected: the NFS server is trying to allocate
-> memory. The VM then tries to satisfy that demand by freeing up resources
-> from the NFS client by telling the client to write out cached pages. The
-> client again is in a congested state in which it is waiting on the NFS
-> server to finish writing out what it already sent.
-> 	Quod Erat Deadlocked...
+　　　　【　お申込から融資実行までとにかく速い　】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+　　　　　　　▼　オリエンタルエクスプレス　▼
 
-Could we add nice warning to documentation? Or make kernel
-printk(ALERT) when user tries to mount 127.0.0.1 (ok, that may not be
-completely foolproof). Or make server refuse connections from
-localhost and syslog loudly?
-							Pavel
--- 
-(english) http://www.livejournal.com/~pavelmachek
-(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
+　　　　　　　　http://www.safe-ray.info/
+
+--------------------------------------------------------------- 
+┏━┓┏━┓┏━┓┏━┓　 ●まずはご融資自動診断
+┃自┃┃動┃┃診┃┃断┃　 ●ご融資可能額をメールでお知らせ
+┗━┛┗━┛┗━┛┗━┛　 ●診断額は即日ご融資
+--------------------------------------------------------------- 
+　　　　　　　　http://www.safe-ray.info/
+
+■オリエンタルエクスプレスなら■
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+◆100万円ご融資実行時間　平均35分！！
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+◆300万円ご融資実行時間　平均45分！！
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+◆500万円ご融資実行時間　平均65分！！
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+◆900万円ご融資実行時間　平均80分！！
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+　　　　　　http://www.safe-ray.info/
+
+---------------------------------------------------------------- 
+このメールは特定電子メール送信適正化法・改正特定商取引法を遵守の上
+送信しておりますが、ご不要な方には大変ご迷惑をおかけいたしました。
+
+■配信元 トライアルフリー
+■所在地
+　東京都港区六本木5-3-8
+■配信停止を希望される方はお手数ですが下記アドレスに。
+　配信停止： info@tfree.co.jp
+
+----------------------------------------------------------------
+
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
