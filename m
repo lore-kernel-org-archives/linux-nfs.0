@@ -1,8 +1,8 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 05/12] text-based mount.nfs: Create helpers for
-	invoking	mount(2) system call
-Date: Mon, 08 Oct 2007 11:54:02 -0400
-Message-ID: <20071008155402.15051.82181.stgit@manray.1015granger.net>
+Subject: [PATCH 03/12] text-based mount.nfs: combine nfsmount_s()
+	and	nfs4mount_s() paths
+Date: Mon, 08 Oct 2007 11:53:51 -0400
+Message-ID: <20071008155351.15051.10327.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
@@ -11,10 +11,10 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Ieuvl-0007iq-Jx
+	id 1Ieuvl-0007iJ-09
 	for nfs@lists.sourceforge.net; Mon, 08 Oct 2007 08:54:05 -0700
 Received: from flpi102.sbcis.sbc.com ([207.115.20.71] helo=flpi102.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Ieuvq-0006Js-NT
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Ieuvn-0006BX-GH
 	for nfs@lists.sourceforge.net; Mon, 08 Oct 2007 08:54:10 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -28,103 +28,120 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Add simple helper functions that invoke the mount(2) system call for
-text-based mounts.  These look the same right now, but the NFSv2/v3 helper
-will become more complex over the following patches as we implement version
-and transport protocol fallback.
-
+The top-level logic that handles text-based mount options is mostly the
+same for NFS and NFSv4 mounts.  To improve maintainability, let's combine
+the nfsmount_s() and nfs4mount_s() functions.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/mount/stropts.c |   74 +++++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 74 insertions(+), 0 deletions(-)
+ utils/mount/mount.c   |   12 +++-------
+ utils/mount/stropts.c |   59 +++++++++++++++++++++++++++++++++++++++++++++++++
+ utils/mount/stropts.h |    4 ++-
+ 3 files changed, 65 insertions(+), 10 deletions(-)
 
+diff --git a/utils/mount/mount.c b/utils/mount/mount.c
+index e622231..21946f7 100644
+--- a/utils/mount/mount.c
++++ b/utils/mount/mount.c
+@@ -376,14 +376,10 @@ static int try_mount(char *spec, char *mount_point, int flags,
+ {
+ 	int ret;
+ 
+-	if (string) {
+-		if (strcmp(fs_type, "nfs4") == 0)
+-			ret = nfs4mount_s(spec, mount_point, flags,
+-						extra_opts, fake, bg);
+-		else
+-			ret = nfsmount_s(spec, mount_point, flags,
+-						extra_opts, fake, bg);
+-	} else {
++	if (string)
++		ret = nfsmount_string(spec, mount_point, fs_type, flags,
++					extra_opts, fake, bg);
++	else {
+ 		if (strcmp(fs_type, "nfs4") == 0)
+ 			ret = nfs4mount(spec, mount_point, flags,
+ 					extra_opts, fake, bg);
 diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-index 6f57e86..c048be0 100644
+index 6270312..8859bf5 100644
 --- a/utils/mount/stropts.c
 +++ b/utils/mount/stropts.c
-@@ -237,6 +237,80 @@ static int set_mandatory_options(const char *type,
- 	return 1;
+@@ -365,3 +365,62 @@ out:
+ 	po_destroy(options);
+ 	return retval;
  }
++
++/**
++ * nfsmount_string - Mount an NFS file system using C string options
++ * @spec: C string specifying remote share to mount ("hostname:path")
++ * @node: C string pathname of local mounted-on directory
++ * @type: C string that represents file system type ("nfs" or "nfs4")
++ * @flags: MS_ style mount flags
++ * @extra_opts:	pointer to C string containing fs-specific mount options
++ *		(input and output argument)
++ * @fake: flag indicating whether to carry out the whole operation
++ * @child: one if this is a mount daemon (bg)
++ */
++int nfsmount_string(const char *spec, const char *node, const char *type,
++		    int flags, char **extra_opts, int fake, int child)
++{
++	struct mount_options *options = NULL;
++	struct sockaddr_in saddr;
++	char *hostname;
++	int err, retval = EX_FAIL;
++
++	if (!parse_devname(spec, &hostname))
++		goto out;
++	err = fill_ipv4_sockaddr(hostname, &saddr);
++	free(hostname);
++	if (!err)
++		goto out;
++
++	options = po_split(*extra_opts);
++	if (!options) {
++		nfs_error(_("%s: internal option parsing error"), progname);
++		goto out;
++	}
++
++	if (!set_mandatory_options(type, &saddr, options))
++		goto out;
++
++	if (po_join(options, extra_opts) == PO_FAILED) {
++		nfs_error(_("%s: internal option parsing error"), progname);
++		goto out;
++	}
++
++	if (verbose)
++		printf(_("%s: text-based options: '%s'\n"),
++			progname, *extra_opts);
++
++	if (!fake) {
++		if (mount(spec, node, type,
++				flags & ~(MS_USER|MS_USERS), *extra_opts)) {
++			mount_error(spec, node, errno);
++			goto out;
++		}
++	}
++
++	retval = EX_SUCCESS;
++
++out:
++	po_destroy(options);
++	return retval;
++}
+diff --git a/utils/mount/stropts.h b/utils/mount/stropts.h
+index a2a0604..b926d68 100644
+--- a/utils/mount/stropts.h
++++ b/utils/mount/stropts.h
+@@ -21,5 +21,5 @@
+  *
+  */
  
-+/*
-+ * Attempt an NFSv2/3 mount via a mount(2) system call.
-+ *
-+ * Returns 1 if successful.  Otherwise, returns zero.
-+ * "errno" is set to reflect the individual error.
-+ */
-+static int try_nfs23mount(const char *spec, const char *node,
-+			  int flags, struct mount_options *options,
-+			  int fake, char **extra_opts)
-+{
-+	if (po_join(options, extra_opts) == PO_FAILED) {
-+		errno = EIO;
-+		return 0;
-+	}
-+
-+	if (verbose)
-+		printf(_("%s: text-based options: '%s'\n"),
-+			progname, *extra_opts);
-+
-+	if (fake)
-+		return 1;
-+
-+	if (!mount(spec, node, "nfs",
-+				flags & ~(MS_USER|MS_USERS), *extra_opts))
-+		return 1;
-+	return 0;
-+}
-+
-+/*
-+ * Attempt an NFS v4 mount via a mount(2) system call.
-+ *
-+ * Returns 1 if successful.  Otherwise, returns zero.
-+ * "errno" is set to reflect the individual error.
-+ */
-+static int try_nfs4mount(const char *spec, const char *node,
-+			 int flags, struct mount_options *options,
-+			 int fake, char **extra_opts)
-+{
-+	if (po_join(options, extra_opts) == PO_FAILED) {
-+		errno = EIO;
-+		return 0;
-+	}
-+
-+	if (verbose)
-+		printf(_("%s: text-based options: '%s'\n"),
-+			progname, *extra_opts);
-+
-+	if (fake)
-+		return 1;
-+
-+	if (!mount(spec, node, "nfs4",
-+				flags & ~(MS_USER|MS_USERS), *extra_opts))
-+		return 1;
-+	return 0;
-+}
-+
-+/*
-+ * Try the mount(2) system call.
-+ *
-+ * Returns 1 if successful.  Otherwise, returns zero.
-+ * "errno" is set to reflect the individual error.
-+ */
-+static int try_mount(const char *spec, const char *node, const char *type,
-+		     int flags, struct mount_options *options, int fake,
-+		     char **extra_opts)
-+{
-+	if (strncmp(type, "nfs4", 4) == 0)
-+		return try_nfs4mount(spec, node, flags,
-+					options, fake, extra_opts);
-+	else
-+		return try_nfs23mount(spec, node, flags,
-+					options, fake, extra_opts);
-+}
-+
- /**
-  * nfsmount_string - Mount an NFS file system using C string options
-  * @spec: C string specifying remote share to mount ("hostname:path")
+-int nfsmount_s(const char *, const char *, int , char **, int, int);
+-int nfs4mount_s(const char *, const char *, int, char **, int, int);
++int nfsmount_string(const char *, const char *, const char *, int,
++			char **, int, int);
 
 
 -------------------------------------------------------------------------
