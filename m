@@ -1,21 +1,21 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 10/12] text-based mount.nfs: add function to do
-	foreground	retries
-Date: Mon, 08 Oct 2007 11:54:28 -0400
-Message-ID: <20071008155428.15051.72113.stgit@manray.1015granger.net>
+Subject: [PATCH 12/12] text-based mount.nfs: Plug "fg" and "bg"
+	processing	into nfsmount_string()
+Date: Mon, 08 Oct 2007 11:54:39 -0400
+Message-ID: <20071008155439.15051.25776.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 To: neilb@suse.de
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Ieuw9-0007l6-Vz
-	for nfs@lists.sourceforge.net; Mon, 08 Oct 2007 08:54:30 -0700
+	id 1IeuwK-0007mB-HM
+	for nfs@lists.sourceforge.net; Mon, 08 Oct 2007 08:54:40 -0700
 Received: from flpi102.sbcis.sbc.com ([207.115.20.71] helo=flpi102.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IeuwF-0001Hn-5R
-	for nfs@lists.sourceforge.net; Mon, 08 Oct 2007 08:54:35 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IeuwP-0006br-Ja
+	for nfs@lists.sourceforge.net; Mon, 08 Oct 2007 08:54:45 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,81 +28,65 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Make the differences between the foreground and background mount logic
-explicit by creating separate functions to handle each -- think of them as
-separate scripts for doing a foreground or a background mount.
-
-NFS foreground mounts are supposed to retry for a little while before
-giving up.  Add a function to handle this.
+We have all the pre-requisites now, so add "fg" and "bg" mount processing
+to text-based NFS mounts.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/mount/stropts.c |   51 +++++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 51 insertions(+), 0 deletions(-)
+ utils/mount/stropts.c |   26 +++++++++++++-------------
+ 1 files changed, 13 insertions(+), 13 deletions(-)
 
 diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-index 2cf62a3..e9be78d 100644
+index 27ada39..814c215 100644
 --- a/utils/mount/stropts.c
 +++ b/utils/mount/stropts.c
-@@ -507,6 +507,57 @@ static int try_mount(const char *spec, const char *node, const char *type,
- 					options, fake, extra_opts);
- }
+@@ -664,32 +664,32 @@ int nfsmount_string(const char *spec, const char *node, const char *type,
+ 	struct mount_options *options = NULL;
+ 	struct sockaddr_in saddr;
+ 	char *hostname;
+-	int err, retval = EX_FAIL;
++	int retval = EX_FAIL;
  
-+/*
-+ * Handle "foreground" NFS mounts.
-+ *
-+ * Retry the mount request for as long as the 'retry=' option says.
-+ *
-+ * Returns a valid mount command exit code.
-+ */
-+static int nfsmount_fg(const char *spec, const char *node,
-+		       const char *type, int flags,
-+		       struct mount_options *options, int fake,
-+		       char **extra_opts)
-+{
-+	unsigned int secs = 1;
-+	time_t timeout = time(NULL);
-+	char *retry;
-+
-+	timeout += 60 * 2;		/* default: 2 minutes */
-+	retry = po_get(options, "retry");
-+	if (retry)
-+		timeout += 60 * atoi(retry);
-+
-+	if (verbose)
-+		printf(_("%s: timeout set for %s"),
-+			progname, ctime(&timeout));
-+
-+	for (;;) {
-+		if (try_mount(spec, node, type, flags,
-+					options, fake, extra_opts))
-+			return EX_SUCCESS;
-+
-+		if (is_permanent_error(errno))
-+			break;
-+
-+		if (time(NULL) > timeout) {
-+			errno = ETIMEDOUT;
-+			break;
-+		}
-+
-+		if (errno != ETIMEDOUT) {
-+			if (sleep(secs))
-+				break;
-+			secs <<= 1;
-+			if (secs > 10)
-+				secs = 10;
-+		}
-+	};
-+
-+	mount_error(spec, node, errno);
-+	return EX_FAIL;
-+}
-+
- /**
-  * nfsmount_string - Mount an NFS file system using C string options
-  * @spec: C string specifying remote share to mount ("hostname:path")
+ 	if (!parse_devname(spec, &hostname))
+-		goto out;
+-	err = fill_ipv4_sockaddr(hostname, &saddr);
+-	free(hostname);
+-	if (!err)
+-		goto out;
++		return retval;
++	if (!fill_ipv4_sockaddr(hostname, &saddr))
++		goto fail;
+ 
+ 	options = po_split(*extra_opts);
+ 	if (!options) {
+ 		nfs_error(_("%s: internal option parsing error"), progname);
+-		goto out;
++		goto fail;
+ 	}
+ 
+ 	if (!set_mandatory_options(type, &saddr, options))
+ 		goto out;
+ 
+-	if (try_mount(spec, node, type, flags, options, fake, extra_opts)) {
+-		mount_error(spec, node, errno);
+-		goto out;
+-	}
+-
+-	retval = EX_SUCCESS;
++	if (po_rightmost(options, "bg", "fg") > -1)
++		retval = nfsmount_fg(spec, node, type, flags, options,
++							fake, extra_opts);
++	else
++		retval = nfsmount_bg(spec, node, type, hostname, flags,
++					options, fake, child, extra_opts);
+ 
+ out:
+ 	po_destroy(options);
++fail:
++	free(hostname);
+ 	return retval;
+ }
 
 
 -------------------------------------------------------------------------
