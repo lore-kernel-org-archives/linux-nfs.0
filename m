@@ -1,24 +1,19 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: Autofs problem while using new nfs-utils package
-Date: Mon, 08 Oct 2007 11:58:22 -0400
-Message-ID: <470A539E.6090509@oracle.com>
-References: <200710060219.20536.mike@cs.mun.ca>
-Reply-To: chuck.lever@oracle.com
+From: "Susana Landers" <IsabelleclergyStacy@thechestore.com>
+Subject: Re: Thank you, we are ready to give you a loan
+Date: Mon, 8 Oct 2007 15:19:08 -0100
+Message-ID: <a6ee01c809ad$e471baf0$2101a8c0@CONSORCIO2>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------040802010503090109060209"
-Cc: nfs@lists.sourceforge.net
-To: Michael Rayment <mike@cs.mun.ca>
+Content-Type: multipart/mixed; boundary="===============0127573784=="
+To: <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IewAX-00081s-Ap
-	for nfs@lists.sourceforge.net; Mon, 08 Oct 2007 10:13:25 -0700
-Received: from agminet01.oracle.com ([141.146.126.228])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IewAb-0000yy-88
-	for nfs@lists.sourceforge.net; Mon, 08 Oct 2007 10:13:30 -0700
-In-Reply-To: <200710060219.20536.mike@cs.mun.ca>
+	id 1Iez1B-00017U-DL
+	for nfs@lists.sourceforge.net; Mon, 08 Oct 2007 13:15:58 -0700
+Received: from [190.42.132.44] (helo=consorcio2.local.lan)
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1Iez0Q-0001S2-5q
+	for nfs@lists.sourceforge.net; Mon, 08 Oct 2007 13:15:11 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,70 +27,80 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 This is a multi-part message in MIME format.
---------------040802010503090109060209
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Transfer-Encoding: 7bit
 
-Michael Rayment wrote:
-> I just emerged the latest gentoo release of the nfs-utils package, 
-> nfs-utils-1.1.0-r1.ebuild.  I found that the autofs code did not work for my 
-> diskless computers that have a readonly /etc directory with a /etc/mtab 
-> symbolically linked to /proc/mounts.  This was because the creation of the 
-> mtab lock file /etc/mtab~nnnn failed.  I noticed that in the update_mtab() 
-> function, a check was put in to acertain whether this situation existed and 
-> silently carried on whereas the add_mtab() function did not perform the check 
-> and consequently failed.  My simple minded fix was to add the the same check 
-> to add_mtab() as can be seen in the context diff below.  Automounting worked 
-> fine after the fix was applied.   Hopefully some fix will make its way into 
-> the authoratative release so that I do not have to patch my code locally.
+--===============0127573784==
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_000_A6EA_01C809AD.E471BAF0"
 
-At first blush, this seems reasonable to me.  I assume you copied this 
-logic from util-linux's mount command.  Does the umount.nfs command also 
-suffer from this problem?  If it does, you should include a hunk to fix 
-that as well.
+This is a multi-part message in MIME format.
 
-To submit a patch for inclusion in nfs-utils, add a patch description 
-(parts of the above paragraph will work) and a Signed-off-by: line, and 
-send all of this with your diff in a text e-mail to neilb@suse.de, cc: 
-nfs@lists.sourceforge.net.
+------=_NextPart_000_A6EA_01C809AD.E471BAF0
+Content-Type: text/plain;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 
-> *** utils/mount/mount.c.sav     Sat Oct  6 01:52:21 2007
-> --- utils/mount/mount.c Sat Oct  6 01:55:25 2007
-> ***************
-> *** 181,188 ****
-> --- 181,191 ----
->                 update_mtab(ment.mnt_dir, &ment);
->                 return 0;
->         }
-> 
-> +       if (mtab_does_not_exist() || !mtab_is_writable())
-> +               return 0;
-> +
->         lock_mtab();
-> 
->           if ((mtab = setmntent(MOUNTED, "a+")) == NULL) {
->                 fprintf(stderr, "Can't open " MOUNTED);
+Your credit doesn't matter to us!
 
---------------040802010503090109060209
-Content-Type: text/x-vcard; charset=utf-8;
- name="chuck.lever.vcf"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="chuck.lever.vcf"
+If you have your own business and need IMMEDIATE ready money to spend =
+ANY way you like or wish Extra money to give your business a boost or =
+want A low interest loan - NO STRINGS ATTACHED, here is the deal we can =
+offer you TONIGHT (hurry, this lot will expire THIS EVENING):
 
-begin:vcard
-fn:Chuck Lever
-n:Lever;Chuck
-org:Oracle Corporation;Corporate Architecture: Linux Projects Group
-adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
-title:Principal Member of Staff
-tel;work:+1 248 614 5091
-x-mozilla-html:FALSE
-version:2.1
-end:vcard
+$65,000+ loan
+
+Hurry, when best deal is gone, it is gone. Simply Call Us...
+
+Do not worry about approval, your credit history will not disqualify you!
+
+Call Us Free on 877-347-3607
+------=_NextPart_000_A6EA_01C809AD.E471BAF0
+Content-Type: text/html;
+	charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD>
+<META http-equiv=3DContent-Type content=3D"text/html; =
+charset=3Diso-8859-1">
+<META content=3D"MSHTML 6.00.2900.2963" name=3DGENERATOR>
+<STYLE></STYLE>
+</HEAD>=20
+<BODY bgColor=3D#ffffff>
+<DIV><FONT face=3DPalatino size=3D3><B>Your your credit =
+report does not=20
+matter to us!</B></FONT></DIV>  =20
+<DIV><FONT face=3DPalatino size=3D3>&nbsp;</FONT></DIV>
+<DIV><FONT face=3DPalatino size=3D3>If you have your own =
+business and=20
+want IMMEDIATE ready money to spend ANY way you like or want Extra money =
+to=20
+give your company a boost or  need A low interest loan - NO STRINGS =
+ATTACHED,=20
+here is our best deal we can offer you TODAY (hurry, this offer will =
+expire=20
+THIS NIGHT):</FONT></DIV> =20
+<DIV><FONT face=3DPalatino size=3D3>&nbsp;</FONT></DIV>
+<DIV><FONT face=3DPalatino size=3D3><B>$41,000+ =
+loan</B></FONT></DIV>
+<DIV><FONT face=3DPalatino size=3D3>&nbsp;</FONT></DIV>
+<DIV><FONT face=3DPalatino size=3D3><B>Hurry, when the deal =
+is gone, it=20
+is gone. Simply Call Us... </B></FONT></DIV>    =20
+<DIV><FONT face=3DPalatino size=3D3>&nbsp;</FONT></DIV>
+<DIV><FONT face=3DPalatino size=3D3>Don't worry about =
+approval, your=20
+credit will not disqualify you!</FONT></DIV> =20
+<DIV><FONT face=3DPalatino size=3D3>&nbsp;</FONT></DIV>
+<DIV><FONT face=3DPalatino size=3D3><B>Call Us Free on=20
+877-347-3607</B></FONT></DIV>
+</BODY></HTML>
 
 
---------------040802010503090109060209
+------=_NextPart_000_A6EA_01C809AD.E471BAF0--
+
+
+
+--===============0127573784==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -106,7 +111,7 @@ This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >> http://get.splunk.com/
---------------040802010503090109060209
+--===============0127573784==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -116,4 +121,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---------------040802010503090109060209--
+--===============0127573784==--
