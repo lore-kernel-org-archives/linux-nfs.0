@@ -1,21 +1,21 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 03/12] text-based mount.nfs: combine nfsmount_s()
-	and	nfs4mount_s() paths
-Date: Mon, 08 Oct 2007 11:53:51 -0400
-Message-ID: <20071008155351.15051.10327.stgit@manray.1015granger.net>
+Subject: [PATCH 07/12] text-based mount.nfs: Implement falling back to
+	NFSv2	and UDP
+Date: Mon, 08 Oct 2007 11:54:12 -0400
+Message-ID: <20071008155412.15051.69209.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 To: neilb@suse.de
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Ieuvl-0007iJ-09
-	for nfs@lists.sourceforge.net; Mon, 08 Oct 2007 08:54:05 -0700
+	id 1Ieuvu-0007kG-AJ
+	for nfs@lists.sourceforge.net; Mon, 08 Oct 2007 08:54:15 -0700
 Received: from flpi102.sbcis.sbc.com ([207.115.20.71] helo=flpi102.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Ieuvn-0006BX-GH
-	for nfs@lists.sourceforge.net; Mon, 08 Oct 2007 08:54:10 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Ieuvz-0001AD-F1
+	for nfs@lists.sourceforge.net; Mon, 08 Oct 2007 08:54:19 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,120 +28,111 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-The top-level logic that handles text-based mount options is mostly the
-same for NFS and NFSv4 mounts.  To improve maintainability, let's combine
-the nfsmount_s() and nfs4mount_s() functions.
+If the initial user-specified options fail (with EOPNOTSUPP or
+EPROTONOSUPPORT) then the server has rejected the requested NFS version
+or transport protocol.
+
+In that case, probe the server, then construct a fresh set of mount
+options that ask for the specific mountd and NFS version and transport
+protocol that the server supports.  Rewrite the mount options based on
+the results of the probe, then try the request again.
+
+An additional kernel patch is required to cause the kernel to return
+EOPNOTSUPP when an rpcbind fails during a NULL request.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/mount/mount.c   |   12 +++-------
- utils/mount/stropts.c |   59 +++++++++++++++++++++++++++++++++++++++++++++++++
- utils/mount/stropts.h |    4 ++-
- 3 files changed, 65 insertions(+), 10 deletions(-)
+ utils/mount/stropts.c |   66 ++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 files changed, 64 insertions(+), 2 deletions(-)
 
-diff --git a/utils/mount/mount.c b/utils/mount/mount.c
-index e622231..21946f7 100644
---- a/utils/mount/mount.c
-+++ b/utils/mount/mount.c
-@@ -376,14 +376,10 @@ static int try_mount(char *spec, char *mount_point, int flags,
- {
- 	int ret;
- 
--	if (string) {
--		if (strcmp(fs_type, "nfs4") == 0)
--			ret = nfs4mount_s(spec, mount_point, flags,
--						extra_opts, fake, bg);
--		else
--			ret = nfsmount_s(spec, mount_point, flags,
--						extra_opts, fake, bg);
--	} else {
-+	if (string)
-+		ret = nfsmount_string(spec, mount_point, fs_type, flags,
-+					extra_opts, fake, bg);
-+	else {
- 		if (strcmp(fs_type, "nfs4") == 0)
- 			ret = nfs4mount(spec, mount_point, flags,
- 					extra_opts, fake, bg);
 diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-index 6270312..8859bf5 100644
+index d000695..62eca87 100644
 --- a/utils/mount/stropts.c
 +++ b/utils/mount/stropts.c
-@@ -365,3 +365,62 @@ out:
- 	po_destroy(options);
- 	return retval;
+@@ -351,10 +351,64 @@ err:
  }
-+
-+/**
-+ * nfsmount_string - Mount an NFS file system using C string options
-+ * @spec: C string specifying remote share to mount ("hostname:path")
-+ * @node: C string pathname of local mounted-on directory
-+ * @type: C string that represents file system type ("nfs" or "nfs4")
-+ * @flags: MS_ style mount flags
-+ * @extra_opts:	pointer to C string containing fs-specific mount options
-+ *		(input and output argument)
-+ * @fake: flag indicating whether to carry out the whole operation
-+ * @child: one if this is a mount daemon (bg)
+ 
+ /*
+- * Attempt an NFSv2/3 mount via a mount(2) system call.
++ * Retry an NFS mount that failed because the requested service isn't
++ * available on the server.
+  *
+  * Returns 1 if successful.  Otherwise, returns zero.
+  * "errno" is set to reflect the individual error.
++ *
++ * Side effect: If the retry is successful, both 'options' and
++ * 'extra_opts' are updated to reflect the mount options that worked.
++ * If the retry fails, 'options' and 'extra_opts' are left unchanged.
 + */
-+int nfsmount_string(const char *spec, const char *node, const char *type,
-+		    int flags, char **extra_opts, int fake, int child)
++static int retry_nfsmount(const char *spec, const char *node,
++			int flags, struct mount_options *options,
++			int fake, char **extra_opts)
 +{
-+	struct mount_options *options = NULL;
-+	struct sockaddr_in saddr;
-+	char *hostname;
-+	int err, retval = EX_FAIL;
++	struct mount_options *retry_options;
++	char *retry_str = NULL;
 +
-+	if (!parse_devname(spec, &hostname))
-+		goto out;
-+	err = fill_ipv4_sockaddr(hostname, &saddr);
-+	free(hostname);
-+	if (!err)
-+		goto out;
-+
-+	options = po_split(*extra_opts);
-+	if (!options) {
-+		nfs_error(_("%s: internal option parsing error"), progname);
-+		goto out;
++	retry_options = rewrite_mount_options(*extra_opts);
++	if (!retry_options) {
++		errno = EIO;
++		return 0;
 +	}
 +
-+	if (!set_mandatory_options(type, &saddr, options))
-+		goto out;
-+
-+	if (po_join(options, extra_opts) == PO_FAILED) {
-+		nfs_error(_("%s: internal option parsing error"), progname);
-+		goto out;
++	if (po_join(retry_options, &retry_str) == PO_FAILED) {
++		po_destroy(retry_options);
++		errno = EIO;
++		return 0;
 +	}
 +
 +	if (verbose)
-+		printf(_("%s: text-based options: '%s'\n"),
-+			progname, *extra_opts);
++		printf(_("%s: text-based options (retry): '%s'\n"),
++			progname, retry_str);
 +
-+	if (!fake) {
-+		if (mount(spec, node, type,
-+				flags & ~(MS_USER|MS_USERS), *extra_opts)) {
-+			mount_error(spec, node, errno);
-+			goto out;
-+		}
++	if (!mount(spec, node, "nfs",
++				flags & ~(MS_USER|MS_USERS), retry_str)) {
++		free(*extra_opts);
++		*extra_opts = retry_str;
++		po_replace(options, retry_options);
++		return 1;
 +	}
 +
-+	retval = EX_SUCCESS;
-+
-+out:
-+	po_destroy(options);
-+	return retval;
++	po_destroy(retry_options);
++	free(retry_str);
++	return 0;
 +}
-diff --git a/utils/mount/stropts.h b/utils/mount/stropts.h
-index a2a0604..b926d68 100644
---- a/utils/mount/stropts.h
-+++ b/utils/mount/stropts.h
-@@ -21,5 +21,5 @@
-  *
++
++/*
++ * Attempt an NFSv2/3 mount via a mount(2) system call.  If the kernel
++ * claims the requested service isn't supported on the server, probe
++ * the server to see what's supported, rewrite the mount options,
++ * and retry the request.
++ *
++ * Returns 1 if successful.  Otherwise, returns zero.
++ * "errno" is set to reflect the individual error.
++ *
++ * Side effect: If the retry is successful, both 'options' and
++ * 'extra_opts' are updated to reflect the mount options that worked.
++ * If the retry fails, 'options' and 'extra_opts' are left unchanged.
   */
+ static int try_nfs23mount(const char *spec, const char *node,
+ 			  int flags, struct mount_options *options,
+@@ -375,7 +429,15 @@ static int try_nfs23mount(const char *spec, const char *node,
+ 	if (!mount(spec, node, "nfs",
+ 				flags & ~(MS_USER|MS_USERS), *extra_opts))
+ 		return 1;
+-	return 0;
++
++	/*
++	 * The kernel returns EOPNOTSUPP if the RPC bind failed,
++	 * and EPROTONOSUPPORT if the version isn't supported.
++	 */
++	if (errno != EOPNOTSUPP && errno != EPROTONOSUPPORT)
++		return 0;
++
++	return retry_nfsmount(spec, node, flags, options, fake, extra_opts);
+ }
  
--int nfsmount_s(const char *, const char *, int , char **, int, int);
--int nfs4mount_s(const char *, const char *, int, char **, int, int);
-+int nfsmount_string(const char *, const char *, const char *, int,
-+			char **, int, int);
+ /*
 
 
 -------------------------------------------------------------------------
