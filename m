@@ -1,94 +1,90 @@
 From: Greg Banks <gnb@sgi.com>
-Subject: Re: [NFS] What's slated for inclusion in 2.6.24-rc1 from the NFS client git tree...
-Date: Mon, 8 Oct 2007 18:36:16 +1000
-Message-ID: <20071008083616.GA30931@sgi.com>
-References: <1191454876.6726.32.camel@heimdal.trondhjem.org> <20071004085206.0a8e37b5@poseidon.drzeus.cx> <1191506450.6685.17.camel@heimdal.trondhjem.org> <30494.1191605410@turing-police.cc.vt.edu> <20071005140037.1309a8d3.jlayton@redhat.com>
+Subject: Re: simple question about r/wsize
+Date: Mon, 8 Oct 2007 18:54:00 +1000
+Message-ID: <20071008085400.GB30931@sgi.com>
+References: <A9AD3C3BCF83FD4182B7D4D99E37FAD8447540@exchrdm.ad.xensource.com>
+	<1191280261.6611.19.camel@heimdal.trondhjem.org>
+	<4701B24C.2070102@oxeva.fr>
+	<1191294340.6611.34.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="gBBFr7Ir9EOA20Yy"
-Cc: Valdis.Kletnieks@vt.edu, Peter Staubach <staubach@redhat.com>,
-	Andrew@sc8-sf-spam2-b.sourceforge.net, nfsv4@linux-nfs.org,
-	linux-kernel@vger.kernel.org,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	nfs@lists.sourceforge.net, Pierre Ossman <drzeus-list@drzeus.cx>,
-	Morton <akpm@linux-foundation.org>
-To: Jeff Layton <jlayton@redhat.com>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1754497AbXJHI3P@vger.kernel.org>
-In-Reply-To: <20071005140037.1309a8d3.jlayton@redhat.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net,
+	Wim Colgate <Wim.Colgate@xensource.com>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1IeoFy-0003DK-2J
+	for nfs@lists.sourceforge.net; Mon, 08 Oct 2007 01:46:30 -0700
+Received: from netops-testserver-3-out.sgi.com
+	([192.48.171.28] helo=relay.sgi.com
+	ident=[U2FsdGVkX195l16bJlaUckZx6ymMbRhav+/hwpOtCQM=])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IeoG2-0001zP-40
+	for nfs@lists.sourceforge.net; Mon, 08 Oct 2007 01:46:35 -0700
+In-Reply-To: <1191294340.6611.34.camel@heimdal.trondhjem.org>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-
---gBBFr7Ir9EOA20Yy
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-
-On Fri, Oct 05, 2007 at 02:00:37PM -0400, Jeff Layton wrote:
-> On Fri, 05 Oct 2007 13:30:10 -0400
-> Valdis.Kletnieks@vt.edu wrote:
-> >
-> > How does Joe Sysadmin tell if he has an affected legacy app or not?
+On Mon, Oct 01, 2007 at 11:05:40PM -0400, Trond Myklebust wrote:
+> On Tue, 2007-10-02 at 04:51 +0200, Gabriel Barazer wrote:
+> > On 10/02/2007 1:11:01 AM +0200, Trond Myklebust 
+> > <trond.myklebust@fys.uio.no> wrote:
+> > > On Mon, 2007-10-01 at 15:04 -0700, Wim Colgate wrote:
+> > >> What???s the current NFS v3 wsize and rsize? It appears to be 4K ??? and
+> > >> just wanted a confirmation.
+> > >>
+> > > 
+> > > It sounds like you are working with an old system. IIRC, older versions
+> > > of RedHat used to jimmy the 'mount' command to make 4k the default,
+> > > because that worked best with UDP mounts on crummy networks.
+> > > 
+> > > For newer clients, the default should depend on what your server
+> > > specifies in the FSINFO nfs command. For most servers, when you mount
+> > > with a TCP connection, the default will be 32k, but some may have larger
+> > > defaults (NetApp servers often specify a 64k default) or smaller (older
+> > > Linux servers will support an 8k maximum).
 > > 
-> > (The obvious "try it and see what breaks" is a non-starter for many places,
-> > because you too easily end up in a loop of "enable it, find 4-5 show stoppers,
-> > turn it off, fix them, lather rinse repease".  Been there, done that, got
-> > the tshirt - a project I got dragged into involves a large storage array that
-> > appears to insist on exporting 64-bit stuff, and a large farm of clients that
-> > are very 64-bit unclean....)
-> > 
+> > I see on my servers (>2.6.21, latest nfs-utils) that the rsize/wsize is 
+> > actually defined by the amount of memory on the NFS server. It seems to 
+> > set the rsize/wsize to (total memory)/8192 (512k in my case for a 4GB 
+> > nfs server). Is it a bug or a wanted behavior ?
 > 
-> In addition to Trond's suggestion, you might be able to use "nm" or
-> something like it and see if there are references to non-LFS (f)stat
-> calls in your binaries. For instance, if you see references to stat()
-> (and not stat64()), then the app is probably not built with 64-bit file
-> offsets.
+> On a standard 2.6.23-rc8, the server sets RPCSVC_MAXPAYLOAD_TCP == 1MB,
+> RPCSVC_MAXPAYLOAD_UDP == 32k. There is no link to the total amount of
+> memory.
 
-Attached is a Perl script I wrote a while back to scan directories
-looking for old stat calls in binaries.  Here's the output from
-my laptop:
+I think Gabriel may be referring to this code in fs/nfsd/nfssvc.c
 
-# ./summarise-stat64.pl /usr/bin
-    775 26.8% are scripts (shell, perl, whatever)
-   1404 48.5% don't use any stat() family calls at all
-    428 14.8% use 32-bit stat() family interfaces only
-    278  9.6% use 64-bit stat64() family interfaces only
-     11  0.4% use both 32-bit and 64-bit stat() family interfaces
+202         if (nfsd_max_blksize == 0) {
+203                 /* choose a suitable default */
+204                 struct sysinfo i;
+205                 si_meminfo(&i);
+206                 /* Aim for 1/4096 of memory per thread
+207                  * This gives 1MB on 4Gig machines
+208                  * But only uses 32K on 128M machines.
+209                  * Bottom out at 8K on 32M and smaller.
+210                  * Of course, this is only a default.
+211                  */
+212                 nfsd_max_blksize = NFSSVC_MAXBLKSIZE;
+213                 i.totalram <<= PAGE_SHIFT - 12;
+214                 while (nfsd_max_blksize > i.totalram &&
+215                        nfsd_max_blksize >= 8*1024*2)
+216                         nfsd_max_blksize /= 2;
+217         }
 
-# ./summarise-stat64.pl /usr/sbin
-    164 35.7% are scripts (shell, perl, whatever)
-    170 37.0% don't use any stat() family calls at all
-     78 17.0% use 32-bit stat() family interfaces only
-     46 10.0% use 64-bit stat64() family interfaces only
-      1  0.2% use both 32-bit and 64-bit stat() family interfaces
-
-# ./summarise-stat64.pl -v /usr/bin
-...
-/usr/bin/vi use 32-bit stat() family interfaces only
-/usr/bin/view use 32-bit stat() family interfaces only
-/usr/bin/vim use 32-bit stat() family interfaces only
-...
-/usr/bin/Mail use 32-bit stat() family interfaces only
-/usr/bin/mail use 32-bit stat() family interfaces only
-/usr/bin/mailx use 32-bit stat() family interfaces only
-...
-/usr/bin/gdb use 32-bit stat() family interfaces only
-/usr/bin/gdbtui use 32-bit stat() family interfaces only
-/usr/bin/rpcgen use 32-bit stat() family interfaces only
-...
-/usr/bin/cc use 32-bit stat() family interfaces only
-/usr/bin/gcc use 32-bit stat() family interfaces only
-/usr/bin/gcov use 32-bit stat() family interfaces only
-/usr/bin/unprotoize use 32-bit stat() family interfaces only
-...
-/usr/bin/git use 32-bit stat() family interfaces only
-/usr/bin/git-check-ref-format use 32-bit stat() family interfaces only
-/usr/bin/git-cat-file use 32-bit stat() family interfaces only
-/usr/bin/git-checkout-index use 32-bit stat() family interfaces only
-/usr/bin/git-clone-pack use 32-bit stat() family interfaces only
-/usr/bin/git-commit-tree use 32-bit stat() family interfaces only
-/usr/bin/git-convert-objects use 32-bit stat() family interfaces only
-/usr/bin/git-daemon use 32-bit stat() family interfaces only
-/usr/bin/git-describe use 32-bit stat() family interfaces only
-...
+You can override this default by writing to
+/proc/fs/nfsd/max_block_size (before the first nfsd is started,
+which basically means modifying /etc/init.d/nfsserver).
 
 Greg.
 -- 
@@ -96,199 +92,11 @@ Greg Banks, R&D Software Engineer, SGI Australian Software Group.
 Apparently, I'm Bedevere.  Which MPHG character are you?
 I don't speak for SGI.
 
---gBBFr7Ir9EOA20Yy
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: attachment; filename="summarise-stat64.pl"
-
-#!/usr/bin/perl
-#
-# A Perl script for evaluating and summarising which executables in
-# the given directories depend on the old 32-bit stat() family APIs.
-#
-# Usage: summariese-stat64.pl directory [...]
-#
-# Copyright (c) 2007 Silicon Graphics, Inc.  All Rights Reserved.
-# By Greg Banks <gnb@melbourne.sgi.com>
-#
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-#
-
-use strict;
-use warnings;
-
-my @pathnames;		# file and directories to read, from the commandline
-my @results;		# array of { path, used32, used64, not_exe, no_perm } hashes
-my $verbose = 0;
-
-sub usage
-{
-    print STDERR "Usage: summarise-stat64 [--verbose] file_or_directory...\n";
-    exit 1;
-}
-
-# Parse arguments
-foreach my $a (@ARGV)
-{
-    if ($a eq '--verbose' || $a eq '-v')
-    {
-	$verbose++;
-    }
-    elsif ($a =~ m/^-/)
-    {
-	usage;
-    }
-    else
-    {
-	push(@pathnames,$a);
-    }
-}
-usage unless scalar(@pathnames);
-
-# Function to scan a file
-sub scan_file
-{
-	my ($path) = @_;
-	my $fh;
-
-	my %res =
-	(
-		path => $path,
-		used32 => 0,
-		used64 => 0,
-		not_exe => 0,
-		no_perm => 0,
-	);
-
-	open $fh,'-|', "nm -uD \"$path\" 2>&1"
-		or return;
-	while (<$fh>)
-	{
-		chomp;
-
-		if (m/File format not recognized/)
-		{
-			$res{not_exe} = 1;
-		}
-		elsif (m/Permission denied/)
-		{
-			$res{no_perm} = 1;
-		}
-		elsif (m/^\s+U __(|l|f)xstat$/)
-		{
-			$res{used32}++;
-		}
-		elsif (m/^\s+U __(|l|f)xstat64$/)
-		{
-			$res{used64}++;
-		}
-	}
-	close $fh;
-	push(@results, \%res);
-}
-
-# Function to scan a directory
-sub scan_directory
-{
-	my ($path) = @_;
-	my $dh;
-	return unless opendir($dh,$path);
-	while (my $d = readdir $dh)
-	{
-		next if ($d =~ m/^\./);
-		print "$path/$d\n" if $verbose > 2;
-		scan_path("$path/$d");
-	}
-	closedir $dh;
-}
-
-# Function to scan something that might be a file or a directory
-sub scan_path
-{
-	my ($path) = @_;
-	print "scan_path($path)\n" if $verbose > 2;
-	if ( -d $path )
-	{
-		scan_directory($path);
-	}
-	elsif ( -e $path )
-	{
-		scan_file($path);
-	}
-}
-
-# Scan files and directories specified in the commandline
-foreach my $path (@pathnames)
-{
-	scan_path($path);
-}
-
-my @status_strings =
-(
-	"cannot be read (permission denied)",
-	"are scripts (shell, perl, whatever)",
-	"don't use any stat() family calls at all",
-	"use 32-bit stat() family interfaces only",
-	"use 64-bit stat64() family interfaces only",
-	"use both 32-bit and 64-bit stat() family interfaces",
-);
-
-sub STATUS_UNCLEAN { return 3 };
-sub STATUS_MIXED { return 5 };
-sub STATUS_MAX { return 5 };
-sub status
-{
-	my ($r) = @_;
-	return 0 if ($r->{no_perm});
-	return 1 if ($r->{not_exe});
-	return 2 + ($r->{used64} ? 2 : 0) + ($r->{used32} ? 1 : 0);
-}
-
-# Function to generate a summary
-sub emit_summary
-{
-	my @summ;
-	my $total = 0;
-
-	foreach my $r (@results)
-	{
-		my $s = status($r);
-		$summ[$s] = 0 unless defined $summ[$s];
-		$summ[$s]++;
-		$total++;
-		printf "%s %s\n", $r->{path}, $status_strings[$s]
-		    if ($verbose && ($s == STATUS_UNCLEAN || $s == STATUS_MIXED));
-	}
-
-	foreach my $s (0..STATUS_MAX)
-	{
-		next unless defined $summ[$s];
-		printf "%7d %4.1f%% %s\n",
-			$summ[$s], (100.0 * $summ[$s] / $total), $status_strings[$s];
-	}
-}
-
-# Function to dump raw data
-sub emit_raw
-{
-	foreach my $r (@results)
-	{
-		print "$r->{used32} $r->{used64} $r->{not_exe} $r->{no_perm} $r->{path}\n";
-	}
-}
-
-emit_raw if $verbose > 1;
-emit_summary;
-
---gBBFr7Ir9EOA20Yy--
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Splunk Inc.
+Still grepping through log files to find problems?  Stop.
+Now Search log events and configuration files using AJAX and a browser.
+Download your FREE copy of Splunk now >> http://get.splunk.com/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
