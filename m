@@ -1,61 +1,71 @@
-From: David Chinner <dgc@sgi.com>
-Subject: Re: [NFS] What's slated for inclusion in 2.6.24-rc1 from the NFS client git tree...
-Date: Mon, 8 Oct 2007 08:56:09 +1000
-Message-ID: <20071007225609.GQ23367404@sgi.com>
-References: <1191454876.6726.32.camel@heimdal.trondhjem.org> <20071004085206.0a8e37b5@poseidon.drzeus.cx> <1191506450.6685.17.camel@heimdal.trondhjem.org> <30494.1191605410@turing-police.cc.vt.edu> <20071005141222.5afbb6b9.jlayton@redhat.com>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [RFC,PATCH 14/35] svc: Change sk_inuse to a kref
+Date: Mon, 8 Oct 2007 13:52:12 +1000
+Message-ID: <18185.43372.936660.630626@notabene.brown>
+References: <20071001191426.3250.15371.stgit@dell3.ogc.int>
+	<20071001192801.3250.49751.stgit@dell3.ogc.int>
+	<20071003111210.GA19381@infradead.org>
+	<20071003144517.GA10001@fieldses.org>
+	<20071003145238.GA30564@infradead.org>
+	<20071003151139.GB10001@fieldses.org>
+	<20071003151525.GA32010@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Valdis.Kletnieks@vt.edu, Peter Staubach <staubach@redhat.com>,
-	Andrew@sc8-sf-spam2-b.sourceforge.net, nfsv4@linux-nfs.org,
-	linux-kernel@vger.kernel.org,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	nfs@lists.sourceforge.net, Pierre Ossman <drzeus-list@drzeus.cx>,
-	Morton <akpm@linux-foundation.org>
-To: Jeff Layton <jlayton@redhat.com>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1757188AbXJGW4y@vger.kernel.org>
-In-Reply-To: <20071005141222.5afbb6b9.jlayton@redhat.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	nfs@lists.sourceforge.net, gnb@sgi.com
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1IejfP-0001jy-Rl
+	for nfs@lists.sourceforge.net; Sun, 07 Oct 2007 20:52:32 -0700
+Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IejfS-0004yp-QX
+	for nfs@lists.sourceforge.net; Sun, 07 Oct 2007 20:52:33 -0700
+In-Reply-To: message from Christoph Hellwig on Wednesday October 3
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, Oct 05, 2007 at 02:12:22PM -0400, Jeff Layton wrote:
-> On Fri, 05 Oct 2007 13:30:10 -0400
-> Valdis.Kletnieks@vt.edu wrote:
+On Wednesday October 3, hch@infradead.org wrote:
+> On Wed, Oct 03, 2007 at 11:11:39AM -0400, J. Bruce Fields wrote:
+> > OK, but why are they a complete pain in the ass, and which hard-to-avoid
+> > races are you thinking of?  Is that documented somewhere?
 > 
-> > On Thu, 04 Oct 2007 10:00:50 EDT, Trond Myklebust said:
-> > 
-> > > How about a boot/module parameter to turn it on or off?
-> > > 
-> > > I don't see any point in having a sysctl for something like this: either
-> > > you have legacy applications or you don't. It is not something that you
-> > > switch off as you go off to lunch.
-> > 
-> > How does Joe Sysadmin tell if he has an affected legacy app or not?
-> > 
-> > (The obvious "try it and see what breaks" is a non-starter for many places,
-> > because you too easily end up in a loop of "enable it, find 4-5 show stoppers,
-> > turn it off, fix them, lather rinse repease".  Been there, done that, got
-> > the tshirt - a project I got dragged into involves a large storage array that
-> > appears to insist on exporting 64-bit stuff, and a large farm of clients that
-> > are very 64-bit unclean....)
-> > 
-> 
-> Note that "try it and see what breaks" isn't reliable either. If glibc
-> gets back a 64 bit inode number that just happens to fit in the 32-bit
-> field, then everything will work. You don't actually get an EOVERFLOW
-> until st_ino overflows the field, and that may not happen often enough
-> for testing this way to detect it...
+> They lack a primitive equivalent to atomic_dec_and_test which is required
+> if you need the lock to prevent it going up from zero again.  There have
+> been various lkml threads on this.
 
-There's a damn easy way of testing this.
+I think you mean an equivalent to atomic_dec_and_lock.
 
-Use XFS on a 64 bit Linux NFS server, mount is '-o inode64,ino64'
-and then export it to you client that is going to have problems.
-the "ino64" mount option guarantees that the userspace visible
-inode number is always > 32 bits in length....
+I have noticed that too.  However I don't think it means that krefs
+should be a avoided.
+Rather, I think it means that we need something slightly different
+(lrefs?) that use atomic_dec_and_lock instead of atomic_dec_and_test,
+and then some accessible documentation which explains the different
+common usage patterns of reference counting, and when krefs are
+correct, and when lrefs are correct.
 
-Cheers,
+I'm in favour of using krefs for sk_inuse.  dec_and_lock isn't an
+issue in this case.
 
-Dave.
--- 
-Dave Chinner
-Principal Engineer
-SGI Australian Software Group
+NeilBrown
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Splunk Inc.
+Still grepping through log files to find problems?  Stop.
+Now Search log events and configuration files using AJAX and a browser.
+Download your FREE copy of Splunk now >> http://get.splunk.com/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
