@@ -1,28 +1,19 @@
-From: Tom Tucker <tom@opengridcomputing.com>
-Subject: Re: [RFC,
-	PATCH 13/35] svc: Change services to use new	svc_create_xprt service
-Date: Tue, 09 Oct 2007 13:32:18 -0500
-Message-ID: <1191954738.30309.60.camel@trinity.ogc.int>
-References: <20071001191426.3250.15371.stgit@dell3.ogc.int>
-	<20071001192758.3250.2651.stgit@dell3.ogc.int>
-	<20071009170923.GH22750@fieldses.org>
-Reply-To: tom@opengridcomputing.com
+From: "dhiraj@ e-BookServices" <dhiraj@e-bookservices.com>
+Subject: Multi-lingual typesetting & Publishing-related Services
+Date: Wed, 10 Oct 2007 00:21:12 +0530
+Message-ID: <E1IfKAm-0002eG-75@mail.sourceforge.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: neilb@suse.de, nfs@lists.sourceforge.net, aglo@citi.umich.edu,
-	gnb@sgi.com
-To: "J. Bruce Fields" <bfields@fieldses.org>
+To: <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IfJtf-0000XO-Ru
-	for nfs@lists.sourceforge.net; Tue, 09 Oct 2007 11:33:35 -0700
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]
-	helo=smtp.opengridcomputing.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IfJtk-0003V6-R2
-	for nfs@lists.sourceforge.net; Tue, 09 Oct 2007 11:33:41 -0700
-In-Reply-To: <20071009170923.GH22750@fieldses.org>
+	id 1IfKAi-0002XX-T3
+	for nfs@lists.sourceforge.net; Tue, 09 Oct 2007 11:51:12 -0700
+Received: from [122.162.108.94] (helo=192.168.1.2)
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1IfKAm-0002eG-75
+	for nfs@lists.sourceforge.net; Tue, 09 Oct 2007 11:51:18 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,37 +26,49 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, 2007-10-09 at 13:09 -0400, J. Bruce Fields wrote:
-> On Mon, Oct 01, 2007 at 02:27:59PM -0500, Tom Tucker wrote:
-> > diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-> > index a796be5..e27ca14 100644
-> > --- a/fs/nfs/callback.c
-> > +++ b/fs/nfs/callback.c
-> > @@ -123,8 +123,8 @@ int nfs_callback_up(void)
-> >  	if (!serv)
-> >  		goto out_err;
-> >  
-> > -	ret = svc_makesock(serv, IPPROTO_TCP, nfs_callback_set_tcpport,
-> > -							SVC_SOCK_ANONYMOUS);
-> > +	ret = svc_create_xprt(serv, "tcp", nfs_callback_set_tcpport,
-> > +			      SVC_SOCK_ANONYMOUS);
-> >  	if (ret <= 0)
-> >  		goto out_destroy;
-> >  	nfs_callback_tcpport = ret;
-> 
-> Looks like svc_makesock returned a port number, where svc_create_xprt
-> returns a 0 or -ERRNO.  This is breaking nfsv4 callbacks.
-> 
+Hello,
 
-Bruce:
+The purpose of this email is to initiate dialogue and help position e-BookServices.com as a potential vendor for
+publishing-related work. The following is a brief introduction about e-BookServices.
 
-Yikes! I missed that. My inclination is to have this port number pulled
-from xpt_local in the svc_xprt structure. What do you think?
+We provide publishing-related services to international clientele. Located in India, our range of services include:
+- Multi-Lingual typesetting/page composition/design/layout in QuarkXPress, InDesign, FrameMaker etc 
+- Format conversion (eg. conversion from PageMaker to QuarkXPress, InDesign etc, including cross-platform)
+- Formatting of manuscripts (MS-Word, WordPerfect etc) 
+- Desktop Publishing (DTP) 
+- Keying-in, scanning and OCR (for re-prints, archives, web publishing etc) 
+- XML Conversion 
+- Website Design & Development
 
-Tom
+We practice and believe in a scientific approach for delivering high and consistent quality services.
 
-> --b.
+Many companies are now outsourcing their work to India. Not only do they achieve substantial cost savings, but the
+availability of a large number of professionally trained personnel also ensures a high quality of work. We can serve you
+efficiently and cost effectively, and deliver as per your customized needs. 
 
+We are one of the leading Indian organizations in our field, and serve many international organizations. For accomplishing
+jobs with us, a team of highly trained and dedicated professionals work at our state-of-the-art facilities located in New
+Delhi, India. Most have undergone formal training in the software we specialize in.
+ 
+We understand the basic international business processes, and ensure that all projects undertaken by us are completed
+within the stipulated time period with complete confidentiality, accuracy, and quality.
+
+You do not need to pay us a deposit. Entire payment may be made after receiving satisfactory delivery of service.
+References can be provided on request.
+
+If you are interested in cutting your current costs to at least one-third, increasing your profit margins without
+compromising on the quality and turn-around time, then please do get back to us. We will be glad to send you a most
+competitive business proposal. 
+
+Thank you once again and please let me know if there would be an opportunity to have a conversation with you, so that we
+can provide you with more specific details.
+
+Sincerely,
+ 
+Dhiraj Agarwaal
+Mobile: +(91) 98100 50809
+E-mail: dhiraj@e-BookServices.com
+URL:  http://www.e-BookServices.com
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
