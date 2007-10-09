@@ -1,23 +1,23 @@
 From: Tom Tucker <tom@opengridcomputing.com>
 Subject: [RFC,
-	PATCH 1/7] svc: Don't copy xprt_class data into svc_xprt instance
-Date: Tue, 09 Oct 2007 10:37:09 -0500
-Message-ID: <20071009153709.18846.73892.stgit@dell3.ogc.int>
+	PATCH 6/7] svc: Add svc API that queries for a transport instance
+Date: Tue, 09 Oct 2007 10:37:20 -0500
+Message-ID: <20071009153720.18846.88361.stgit@dell3.ogc.int>
 References: <20071009153539.18846.33780.stgit@dell3.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: neilb@suse.de, bfields@fieldses.org, gnb@sgi.com
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IfH8x-0005de-0N
-	for nfs@lists.sourceforge.net; Tue, 09 Oct 2007 08:37:11 -0700
+	id 1IfH96-0005fb-QF
+	for nfs@lists.sourceforge.net; Tue, 09 Oct 2007 08:37:21 -0700
 Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]
 	helo=smtp.opengridcomputing.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IfH90-0000Db-VN
-	for nfs@lists.sourceforge.net; Tue, 09 Oct 2007 08:37:16 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IfH9B-0008Ao-OK
+	for nfs@lists.sourceforge.net; Tue, 09 Oct 2007 08:37:26 -0700
 In-Reply-To: <20071009153539.18846.33780.stgit@dell3.ogc.int>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -32,141 +32,109 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 
-Previously, data from the transport class was copied into the transport
-structure. Make the xpt_xpo a ptr to the ops structure from the transport
-class, and access the max_payload value through the existing xpt_class 
-pointer. 
+Add a new svc function that allows a service to query whether a 
+transport instance has already been created. This is used in lockd 
+to determine whether or not a transport needs to be created when
+a lockd instance is brought up. 
+
+Specifying 0 for the address family or port is effectively a wild-card,
+and will result in matching the first transport in the service's list
+that has a matching class name.
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- include/linux/sunrpc/svc_xprt.h |    3 +--
- net/sunrpc/svc.c                |    4 ++--
- net/sunrpc/svc_xprt.c           |   19 +++++++++----------
- 3 files changed, 12 insertions(+), 14 deletions(-)
+ fs/lockd/svc.c                  |   16 ++--------------
+ include/linux/sunrpc/svc_xprt.h |    2 ++
+ net/sunrpc/svc_xprt.c           |   30 ++++++++++++++++++++++++++++++
+ 3 files changed, 34 insertions(+), 14 deletions(-)
 
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index a8e79a9..470af01 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -219,18 +219,6 @@ lockd(struct svc_rqst *rqstp)
+ 	module_put_and_exit(0);
+ }
+ 
+-static int find_xprt(struct svc_serv *serv, char *proto)
+-{
+-	struct svc_xprt *xprt;
+-	int found = 0;
+-	list_for_each_entry(xprt, &serv->sv_permsocks, xpt_list)
+-		if (strcmp(xprt->xpt_class->xcl_name, proto) == 0) {
+-			found = 1;
+-			break;
+-		}
+-	return found;
+-}
+-
+ /*
+  * Make any sockets that are needed but not present.
+  * If nlm_udpport or nlm_tcpport were set as module
+@@ -242,11 +230,11 @@ static int make_socks(struct svc_serv *s
+ 	int err = 0;
+ 
+ 	if (proto == IPPROTO_UDP || nlm_udpport)
+-		if (!find_xprt(serv, "udp"))
++		if (!svc_find_xprt(serv, "udp", 0, 0))
+ 			err = svc_create_xprt(serv, "udp", nlm_udpport,
+ 					      SVC_SOCK_DEFAULTS);
+ 	if (err >= 0 && (proto == IPPROTO_TCP || nlm_tcpport))
+-		if (!find_xprt(serv, "tcp"))
++		if (!svc_find_xprt(serv, "tcp", 0, 0))
+ 			err = svc_create_xprt(serv, "tcp", nlm_tcpport,
+ 					      SVC_SOCK_DEFAULTS);
+ 
 diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index 53c8891..89bd5ff 100644
+index 2f45327..5dba9a5 100644
 --- a/include/linux/sunrpc/svc_xprt.h
 +++ b/include/linux/sunrpc/svc_xprt.h
-@@ -34,8 +34,7 @@ struct svc_xprt_class {
- 
- struct svc_xprt {
- 	struct svc_xprt_class	*xpt_class;
--	struct svc_xprt_ops	xpt_ops;
--	u32			xpt_max_payload;
-+	struct svc_xprt_ops	*xpt_ops;
- 	struct kref		xpt_ref;
- 	struct list_head	xpt_list;
- 	struct list_head	xpt_ready;
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 440ea59..e1d4c03 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -812,7 +812,7 @@ svc_process(struct svc_rqst *rqstp)
- 	rqstp->rq_splice_ok = 1;
- 
- 	/* Setup reply header */
--	rqstp->rq_xprt->xpt_ops.xpo_prep_reply_hdr(rqstp);
-+	rqstp->rq_xprt->xpt_ops->xpo_prep_reply_hdr(rqstp);
- 
- 	rqstp->rq_xid = svc_getu32(argv);
- 	svc_putu32(resv, rqstp->rq_xid);
-@@ -1029,7 +1029,7 @@ err_bad:
-  */
- u32 svc_max_payload(const struct svc_rqst *rqstp)
- {
--	int max = rqstp->rq_xprt->xpt_max_payload;
-+	int max = rqstp->rq_xprt->xpt_class->xcl_max_payload;
- 
- 	if (rqstp->rq_server->sv_max_payload < max)
- 		max = rqstp->rq_server->sv_max_payload;
+@@ -82,4 +82,6 @@ static inline void svc_xprt_get(struct s
+ void	svc_delete_xprt(struct svc_xprt *xprt);
+ void	svc_close_xprt(struct svc_xprt *xprt);
+ int	svc_print_xprts(char *buf, int maxlen);
++struct svc_xprt *
++svc_find_xprt(struct svc_serv *serv, char *xprt_class, int af, int port);
+ #endif /* SUNRPC_SVC_XPRT_H */
 diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index e55904f..16ffc73 100644
+index 323977a..4841c4b 100644
 --- a/net/sunrpc/svc_xprt.c
 +++ b/net/sunrpc/svc_xprt.c
-@@ -127,7 +127,7 @@ static inline void svc_xprt_free(struct 
- 		container_of(kref, struct svc_xprt, xpt_ref);
- 	struct module *owner = xprt->xpt_class->xcl_owner;
- 	BUG_ON(atomic_read(&kref->refcount));
--	xprt->xpt_ops.xpo_free(xprt);
-+	xprt->xpt_ops->xpo_free(xprt);
- 	if (test_bit(XPT_CACHE_AUTH, &xprt->xpt_flags)
- 	    && xprt->xpt_auth_cache != NULL)
- 		svcauth_unix_info_release(xprt->xpt_auth_cache);
-@@ -148,8 +148,7 @@ void svc_xprt_init(struct svc_xprt_class
- 		   struct svc_serv *serv)
- {
- 	xpt->xpt_class = xcl;
--	xpt->xpt_ops = *xcl->xcl_ops;
--	xpt->xpt_max_payload = xcl->xcl_max_payload;
-+	xpt->xpt_ops = xcl->xcl_ops;
- 	kref_init(&xpt->xpt_ref);
- 	xpt->xpt_server = serv;
- 	INIT_LIST_HEAD(&xpt->xpt_list);
-@@ -281,7 +280,7 @@ svc_xprt_enqueue(struct svc_xprt *xprt)
- 		goto process;
- 
- 	/* Check if we have space to reply to a request */
--	if (!xprt->xpt_ops.xpo_has_wspace(xprt)) {
-+	if (!xprt->xpt_ops->xpo_has_wspace(xprt)) {
- 		/* Don't enqueue while not enough space for reply */
- 		dprintk("svc: no write space, transport %p  not enqueued\n", xprt);
- 		xprt->xpt_pool = NULL;
-@@ -382,7 +381,7 @@ svc_xprt_release(struct svc_rqst *rqstp)
- {
- 	struct svc_xprt	*xprt = rqstp->rq_xprt;
- 
--	rqstp->rq_xprt->xpt_ops.xpo_release(rqstp);
-+	rqstp->rq_xprt->xpt_ops->xpo_release(rqstp);
- 
- 	svc_free_res_pages(rqstp);
- 	rqstp->rq_res.page_len = 0;
-@@ -604,7 +603,7 @@ svc_recv(struct svc_rqst *rqstp, long ti
- 		svc_delete_xprt(xprt);
- 	} else if (test_bit(XPT_LISTENER, &xprt->xpt_flags)) {
- 		struct svc_xprt *newxpt;
--		newxpt = xprt->xpt_ops.xpo_accept(xprt);
-+		newxpt = xprt->xpt_ops->xpo_accept(xprt);
- 		if (newxpt) {
- 			svc_xprt_received(newxpt);
- 			/*
-@@ -636,7 +635,7 @@ svc_recv(struct svc_rqst *rqstp, long ti
- 			svc_xprt_received(xprt);
- 			len = svc_deferred_recv(rqstp);
- 		} else
--			len = xprt->xpt_ops.xpo_recvfrom(rqstp);
-+			len = xprt->xpt_ops->xpo_recvfrom(rqstp);
- 		svc_copy_addr(rqstp, xprt);
- 		dprintk("svc: got len=%d\n", len);
- 	}
-@@ -684,7 +683,7 @@ svc_send(struct svc_rqst *rqstp)
- 	}
- 
- 	/* release the receive skb before sending the reply */
--	rqstp->rq_xprt->xpt_ops.xpo_release(rqstp);
-+	rqstp->rq_xprt->xpt_ops->xpo_release(rqstp);
- 
- 	/* calculate over-all length */
- 	xb = & rqstp->rq_res;
-@@ -697,7 +696,7 @@ svc_send(struct svc_rqst *rqstp)
- 	if (test_bit(XPT_DEAD, &xprt->xpt_flags))
- 		len = -ENOTCONN;
- 	else
--		len = xprt->xpt_ops.xpo_sendto(rqstp);
-+		len = xprt->xpt_ops->xpo_sendto(rqstp);
- 	mutex_unlock(&xprt->xpt_mutex);
- 	svc_xprt_release(rqstp);
- 
-@@ -772,7 +771,7 @@ svc_delete_xprt(struct svc_xprt *xprt)
- 
- 	serv = xprt->xpt_server;
- 
--	xprt->xpt_ops.xpo_detach(xprt);
-+	xprt->xpt_ops->xpo_detach(xprt);
- 
- 	spin_lock_bh(&serv->sv_lock);
- 
+@@ -950,3 +950,33 @@ static struct svc_deferred_req *svc_defe
+ 	spin_unlock(&xprt->xpt_lock);
+ 	return dr;
+ }
++
++/*
++ * Return the transport instance pointer for the endpoint accepting
++ * connections/peer traffic from the specified transport class,
++ * address family and port.
++ *
++ * Specifying 0 for the address family or port is a wildcard and will
++ * match any transport with the firt transport with the same class
++ * name active for the service.
++ */
++struct svc_xprt *svc_find_xprt(struct svc_serv *serv, char *xcl_name,
++			       int af, int port)
++{
++	struct svc_xprt *xprt = NULL;
++	list_for_each_entry(xprt, &serv->sv_permsocks, xpt_list) {
++		struct sockaddr_in *sin;
++		if (strcmp(xprt->xpt_class->xcl_name, xcl_name))
++			continue;
++		sin = (struct sockaddr_in *)&xprt->xpt_local;
++		if (af && sin->sin_family != af)
++			continue;
++
++		if (port && (sin->sin_port != port))
++			continue;
++
++		break;
++	}
++	return xprt;
++}
++EXPORT_SYMBOL_GPL(svc_find_xprt);
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
