@@ -1,7 +1,7 @@
 From: Tom Tucker <tom@opengridcomputing.com>
 Subject: [RFC, PATCH] svc: Modify svc_create_xprt to return local port
-Date: Tue, 09 Oct 2007 17:47:54 -0500
-Message-ID: <20071009224754.25123.39425.stgit@dell3.ogc.int>
+Date: Tue, 09 Oct 2007 17:52:53 -0500
+Message-ID: <20071009225253.25816.36183.stgit@dell3.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: neilb@suse.de, bfields@fieldses.org, gnb@sgi.com
@@ -10,12 +10,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IfNrn-0001d0-P9
-	for nfs@lists.sourceforge.net; Tue, 09 Oct 2007 15:47:56 -0700
+	id 1IfNwc-0001zu-Cj
+	for nfs@lists.sourceforge.net; Tue, 09 Oct 2007 15:52:56 -0700
 Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]
 	helo=smtp.opengridcomputing.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IfNrs-0006DL-M4
-	for nfs@lists.sourceforge.net; Tue, 09 Oct 2007 15:48:01 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IfNwh-0000DR-Bl
+	for nfs@lists.sourceforge.net; Tue, 09 Oct 2007 15:52:59 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,6 +28,9 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+
+Please take this version of the patch. The previous version has a
+whitespace issue. Sorry for the inconvenience.
 
 This patch fixes a regression introduced by the svc transport
 switch as follows:
@@ -90,7 +93,7 @@ index b580d4c..d35195e 100644
  			}
  			goto out;
 diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 7838b27..e906ce1 100644
+index 7838b27..4bb2d57 100644
 --- a/net/sunrpc/svcsock.c
 +++ b/net/sunrpc/svcsock.c
 @@ -1278,6 +1278,8 @@ svc_create_socket(struct svc_serv *serv,
@@ -102,19 +105,18 @@ index 7838b27..e906ce1 100644
  
  	dprintk("svc: svc_create_socket(%s, %d, %s)\n",
  			serv->sv_program->pg_name, protocol,
-@@ -1301,6 +1303,11 @@ svc_create_socket(struct svc_serv *serv,
- 	error = kernel_bind(sock, sin, len);
+@@ -1302,12 +1304,18 @@ svc_create_socket(struct svc_serv *serv,
  	if (error < 0)
  		goto bummer;
-+	
+ 
 +	newlen = len;
 +	error = kernel_getsockname(sock, &newsin, &newlen);
 +	if (error < 0)
 +		goto bummer;
- 
++
  	if (protocol == IPPROTO_TCP) {
  		if ((error = kernel_listen(sock, 64)) < 0)
-@@ -1308,6 +1315,7 @@ svc_create_socket(struct svc_serv *serv,
+ 			goto bummer;
  	}
  
  	if ((svsk = svc_setup_socket(serv, sock, &error, flags)) != NULL) {
