@@ -1,25 +1,24 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: linux-2.6.23-rc9-CITI_NFS4_ALL-1
-Date: Tue, 9 Oct 2007 11:24:40 -0400
-Message-ID: <20071009152440.GA22750@fieldses.org>
-References: <E1Idoz6-0000W5-SM@fieldses.org> <4709FBF6.4090700@bull.net>
-	<1191943060.8739.9.camel@heimdal.trondhjem.org>
+From: Tom Tucker <tom@opengridcomputing.com>
+Subject: [RFC,
+	PATCH 3/7] svc: Move setting of XPT_LISTENER bit to svc_tcp_init
+Date: Tue, 09 Oct 2007 10:37:13 -0500
+Message-ID: <20071009153713.18846.17462.stgit@dell3.ogc.int>
+References: <20071009153539.18846.33780.stgit@dell3.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfsv4@linux-nfs.org, Le Rouzic <aime.le-rouzic@bull.net>,
-	nfs@lists.sourceforge.net
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: neilb@suse.de, bfields@fieldses.org, gnb@sgi.com
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IfGxQ-0003pN-6d
-	for nfs@lists.sourceforge.net; Tue, 09 Oct 2007 08:25:16 -0700
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IfGxT-00035p-6b
-	for nfs@lists.sourceforge.net; Tue, 09 Oct 2007 08:25:21 -0700
-In-Reply-To: <1191943060.8739.9.camel@heimdal.trondhjem.org>
+	id 1IfH90-0005ez-9F
+	for nfs@lists.sourceforge.net; Tue, 09 Oct 2007 08:37:15 -0700
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]
+	helo=smtp.opengridcomputing.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IfH95-00088U-BJ
+	for nfs@lists.sourceforge.net; Tue, 09 Oct 2007 08:37:19 -0700
+In-Reply-To: <20071009153539.18846.33780.stgit@dell3.ogc.int>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,38 +31,46 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, Oct 09, 2007 at 11:17:40AM -0400, Trond Myklebust wrote:
-> 
-> On Mon, 2007-10-08 at 11:44 +0200, Le Rouzic wrote:
-> > Hi,
-> > 
-> > Running 2.6.23-rc9-CITI_NFS4_ALL-1 on two Intel X86_64 two ways machines as client and
-> > server, the runtest (-b) of the basic commands of the connectathon suite gives
-> > the following errors:
-> > 
-> > ./runtests -b -t /mnt/nosec1/test_nfs1_nfs4_gb
-> > /test6: readdir
-> >         ./test6: (/mnt/nosec1/test_nfs1_nfs4_gb) unlinked 'file.0' dir entry
-> > read pass 1
-> >         ./test6: (/mnt/nosec1/test_nfs1_nfs4_gb) Test failed with 1 errors
-> > 
-> > 
-> > Bug has been registered at:
-> > 
-> > Bug: 
-> >   http://bugzilla.linux-nfs.org/show_bug.cgi?id=148  
-> > 
-> > Cheers
-> 
-> I believe that applying the following 2 patches should fix this problem.
 
-Thanks for taking care of this, Trond....
+Move the setting of the XPT_LISTENER bit to svc_tcp_init where 
+the remaining TCP transport initializiation is done.
 
-I've been wondering whether to keep putting out these patches.  Looks
-like they're still getting some testing, so I guess I should!  The name
-doesn't make as much sense any more, but oh well.
+Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+---
 
---b.
+ net/sunrpc/svcsock.c |    5 +----
+ 1 files changed, 1 insertions(+), 4 deletions(-)
+
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index f967c23..07a6f42 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -1128,6 +1128,7 @@ svc_tcp_init(struct svc_sock *svsk, stru
+ 	set_bit(XPT_CACHE_AUTH, &svsk->sk_xprt.xpt_flags);
+ 	if (sk->sk_state == TCP_LISTEN) {
+ 		dprintk("setting up TCP socket for listening\n");
++		set_bit(XPT_LISTENER, &svsk->sk_xprt.xpt_flags);
+ 		sk->sk_data_ready = svc_tcp_listen_data_ready;
+ 		set_bit(XPT_CONN, &svsk->sk_xprt.xpt_flags);
+ 	} else {
+@@ -1253,8 +1254,6 @@ int svc_addsock(struct svc_serv *serv,
+ 			svc_xprt_received(&svsk->sk_xprt);
+ 			err = 0;
+ 		}
+-		if (so->sk->sk_protocol == IPPROTO_TCP)
+-			set_bit(XPT_LISTENER, &svsk->sk_xprt.xpt_flags);
+ 		clear_bit(XPT_TEMP, &svsk->sk_xprt.xpt_flags);
+ 		spin_lock_bh(&serv->sv_lock);
+ 		list_add(&svsk->sk_xprt.xpt_list, &serv->sv_permsocks);
+@@ -1311,8 +1310,6 @@ svc_create_socket(struct svc_serv *serv,
+ 	}
+ 
+ 	if ((svsk = svc_setup_socket(serv, sock, &error, flags)) != NULL) {
+-		if (protocol == IPPROTO_TCP)
+-			set_bit(XPT_LISTENER, &svsk->sk_xprt.xpt_flags);
+ 		svc_xprt_received(&svsk->sk_xprt);
+ 		return (struct svc_xprt *)svsk;
+ 	}
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
