@@ -1,28 +1,23 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [RFC,
-	PATCH 13/35] svc: Change services to use new	svc_create_xprt service
-Date: Tue, 9 Oct 2007 16:19:35 -0400
-Message-ID: <20071009201935.GV22750@fieldses.org>
-References: <20071001191426.3250.15371.stgit@dell3.ogc.int>
-	<20071001192758.3250.2651.stgit@dell3.ogc.int>
-	<20071009170923.GH22750@fieldses.org>
-	<1191954738.30309.60.camel@trinity.ogc.int>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: proc/sys/sunrpc/max_resvport
+Date: Tue, 09 Oct 2007 16:57:40 -0400
+Message-ID: <1191963460.7052.1.camel@heimdal.trondhjem.org>
+References: <1191949933.30724.56.camel@pc.ilinx>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: neilb@suse.de, nfs@lists.sourceforge.net, aglo@citi.umich.edu,
-	gnb@sgi.com
-To: Tom Tucker <tom@opengridcomputing.com>
+Cc: nfs@lists.sourceforge.net
+To: "Brian J. Murrell" <brian@interlinx.bc.ca>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IfLYE-0003da-7I
-	for nfs@lists.sourceforge.net; Tue, 09 Oct 2007 13:19:34 -0700
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	id 1IfM8U-0007cz-Jr
+	for nfs@lists.sourceforge.net; Tue, 09 Oct 2007 13:57:02 -0700
+Received: from pat.uio.no ([129.240.10.15])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IfLYI-0003Rt-Vy
-	for nfs@lists.sourceforge.net; Tue, 09 Oct 2007 13:19:39 -0700
-In-Reply-To: <1191954738.30309.60.camel@trinity.ogc.int>
+	(Exim 4.44) id 1IfM8X-0000Gg-IK
+	for nfs@lists.sourceforge.net; Tue, 09 Oct 2007 13:57:08 -0700
+In-Reply-To: <1191949933.30724.56.camel@pc.ilinx>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,39 +30,24 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, Oct 09, 2007 at 01:32:18PM -0500, Tom Tucker wrote:
-> On Tue, 2007-10-09 at 13:09 -0400, J. Bruce Fields wrote:
-> > On Mon, Oct 01, 2007 at 02:27:59PM -0500, Tom Tucker wrote:
-> > > diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-> > > index a796be5..e27ca14 100644
-> > > --- a/fs/nfs/callback.c
-> > > +++ b/fs/nfs/callback.c
-> > > @@ -123,8 +123,8 @@ int nfs_callback_up(void)
-> > >  	if (!serv)
-> > >  		goto out_err;
-> > >  
-> > > -	ret = svc_makesock(serv, IPPROTO_TCP, nfs_callback_set_tcpport,
-> > > -							SVC_SOCK_ANONYMOUS);
-> > > +	ret = svc_create_xprt(serv, "tcp", nfs_callback_set_tcpport,
-> > > +			      SVC_SOCK_ANONYMOUS);
-> > >  	if (ret <= 0)
-> > >  		goto out_destroy;
-> > >  	nfs_callback_tcpport = ret;
-> > 
-> > Looks like svc_makesock returned a port number, where svc_create_xprt
-> > returns a 0 or -ERRNO.  This is breaking nfsv4 callbacks.
-> > 
-> 
-> Bruce:
-> 
-> Yikes! I missed that. My inclination is to have this port number pulled
-> from xpt_local in the svc_xprt structure. What do you think?
 
-Minor nit: the printk() at the end of fs/lockd/svc.c:make_socks() still
-refers to "makesock".  Maybe something like "failed to create sockets"
-would be more informative anyway.
+On Tue, 2007-10-09 at 13:12 -0400, Brian J. Murrell wrote:
+> I've been trying to link /proc/sys/sunrpc/max_resvport to the process
+> the portmapper uses to allocate ports from but have not found it.  So
+> perhaps somebody here can answer what I hope is a simple question.
+> 
+> Can /proc/sys/sunrpc/max_resvport be used to limit (the upper bound of)
+> the port range that the portmapper will allocate for all RPC servcies?
+> If I set it to, say, 900, I can be guaranteed that no RPC servers will
+> get bound to ports > 900?
 
---b.
+No. The portmapper is a userland process and has nothing to do
+with /proc/sys/sunrpc/max_resvport.
+
+The latter controls the kernel's sunrpc client port usage _only_.
+
+Trond
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
