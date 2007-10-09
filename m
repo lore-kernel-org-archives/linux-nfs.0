@@ -1,31 +1,28 @@
-From: "Brian J. Murrell" <brian@interlinx.bc.ca>
-Subject: proc/sys/sunrpc/max_resvport
-Date: Tue, 09 Oct 2007 13:12:13 -0400
-Message-ID: <1191949933.30724.56.camel@pc.ilinx>
+From: Tom Tucker <tom@opengridcomputing.com>
+Subject: Re: [RFC,
+	PATCH 13/35] svc: Change services to use new	svc_create_xprt service
+Date: Tue, 09 Oct 2007 13:32:18 -0500
+Message-ID: <1191954738.30309.60.camel@trinity.ogc.int>
+References: <20071001191426.3250.15371.stgit@dell3.ogc.int>
+	<20071001192758.3250.2651.stgit@dell3.ogc.int>
+	<20071009170923.GH22750@fieldses.org>
+Reply-To: tom@opengridcomputing.com
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1908163460=="
-To: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset="us-ascii"
+Cc: neilb@suse.de, nfs@lists.sourceforge.net, aglo@citi.umich.edu,
+	gnb@sgi.com
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IfIcq-0000WX-FR
-	for nfs@lists.sourceforge.net; Tue, 09 Oct 2007 10:12:08 -0700
-Received: from server.klug.on.ca ([205.189.48.131])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IfIcu-0001pW-GM
-	for nfs@lists.sourceforge.net; Tue, 09 Oct 2007 10:12:13 -0700
-Received: from linux.interlinx.bc.ca (d38-139-100.home1.cgocable.net
-	[72.38.139.100])
-	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
-	(No client certificate requested)
-	by server.klug.on.ca (Postfix) with ESMTP id 7D3B52803
-	for <nfs@lists.sourceforge.net>; Tue,  9 Oct 2007 13:12:09 -0400 (EDT)
-Received: from [10.75.22.1] (pc.ilinx [10.75.22.1])
-	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
-	(No client certificate requested)
-	by linux.interlinx.bc.ca (Postfix) with ESMTP id 305C486F8
-	for <nfs@lists.sourceforge.net>; Tue,  9 Oct 2007 13:11:00 -0400 (EDT)
+	id 1IfJtf-0000XO-Ru
+	for nfs@lists.sourceforge.net; Tue, 09 Oct 2007 11:33:35 -0700
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]
+	helo=smtp.opengridcomputing.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IfJtk-0003V6-R2
+	for nfs@lists.sourceforge.net; Tue, 09 Oct 2007 11:33:41 -0700
+In-Reply-To: <20071009170923.GH22750@fieldses.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -38,69 +35,43 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+On Tue, 2007-10-09 at 13:09 -0400, J. Bruce Fields wrote:
+> On Mon, Oct 01, 2007 at 02:27:59PM -0500, Tom Tucker wrote:
+> > diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+> > index a796be5..e27ca14 100644
+> > --- a/fs/nfs/callback.c
+> > +++ b/fs/nfs/callback.c
+> > @@ -123,8 +123,8 @@ int nfs_callback_up(void)
+> >  	if (!serv)
+> >  		goto out_err;
+> >  
+> > -	ret = svc_makesock(serv, IPPROTO_TCP, nfs_callback_set_tcpport,
+> > -							SVC_SOCK_ANONYMOUS);
+> > +	ret = svc_create_xprt(serv, "tcp", nfs_callback_set_tcpport,
+> > +			      SVC_SOCK_ANONYMOUS);
+> >  	if (ret <= 0)
+> >  		goto out_destroy;
+> >  	nfs_callback_tcpport = ret;
+> 
+> Looks like svc_makesock returned a port number, where svc_create_xprt
+> returns a 0 or -ERRNO.  This is breaking nfsv4 callbacks.
+> 
 
---===============1908163460==
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature";
-	boundary="=-iRfwz7ZGHWQ65eG78ikO"
+Bruce:
 
+Yikes! I missed that. My inclination is to have this port number pulled
+from xpt_local in the svc_xprt structure. What do you think?
 
---=-iRfwz7ZGHWQ65eG78ikO
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+Tom
 
-I've been trying to link /proc/sys/sunrpc/max_resvport to the process
-the portmapper uses to allocate ports from but have not found it.  So
-perhaps somebody here can answer what I hope is a simple question.
+> --b.
 
-Can /proc/sys/sunrpc/max_resvport be used to limit (the upper bound of)
-the port range that the portmapper will allocate for all RPC servcies?
-If I set it to, say, 900, I can be guaranteed that no RPC servers will
-get bound to ports > 900?
-
-Thanx,
-b.
-
---=20
-My other computer is your Microsoft Windows server.
-
-Brian J. Murrell
-
---=-iRfwz7ZGHWQ65eG78ikO
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Description: This is a digitally signed message part
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.6 (GNU/Linux)
-
-iD8DBQBHC7Ztl3EQlGLyuXARAgNpAJ9A2ZN74OQU9mNiPtlDQ+9AEaDAKwCdGXA6
-0CWIWboIkjigbWxStWf5E0w=
-=4l73
------END PGP SIGNATURE-----
-
---=-iRfwz7ZGHWQ65eG78ikO--
-
-
-
---===============1908163460==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >> http://get.splunk.com/
---===============1908163460==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============1908163460==--
