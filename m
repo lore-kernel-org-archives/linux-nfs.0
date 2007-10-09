@@ -1,19 +1,23 @@
-From: "Susana Landers" <IsabelleclergyStacy@thechestore.com>
-Subject: Re: Thank you, we are ready to give you a loan
-Date: Mon, 8 Oct 2007 15:19:08 -0100
-Message-ID: <a6ee01c809ad$e471baf0$2101a8c0@CONSORCIO2>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH 06/12] text-based mount.nfs:
+Date: Tue, 9 Oct 2007 11:37:15 +1000
+Message-ID: <18186.56139.301135.961540@notabene.brown>
+References: <20071008155407.15051.60775.stgit@manray.1015granger.net>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============0127573784=="
-To: <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Iez1B-00017U-DL
-	for nfs@lists.sourceforge.net; Mon, 08 Oct 2007 13:15:58 -0700
-Received: from [190.42.132.44] (helo=consorcio2.local.lan)
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1Iez0Q-0001S2-5q
-	for nfs@lists.sourceforge.net; Mon, 08 Oct 2007 13:15:11 -0700
+	id 1If42D-0006wS-B9
+	for nfs@lists.sourceforge.net; Mon, 08 Oct 2007 18:37:29 -0700
+Received: from ns1.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1If42I-0004qr-3u
+	for nfs@lists.sourceforge.net; Mon, 08 Oct 2007 18:37:26 -0700
+In-Reply-To: message from Chuck Lever on Monday October 8
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,99 +30,73 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
 
---===============0127573784==
-Content-Type: multipart/alternative;
-	boundary="----=_NextPart_000_A6EA_01C809AD.E471BAF0"
+First 5 OK and applied.  But I'm a bit uncertain about this one.
+I think the rest are OK as well, so once we've sorted this one, the
+rest can be applied.
 
-This is a multi-part message in MIME format.
+Apart from the empty subject line :-), it doesn't look right.
+In particular....
 
-------=_NextPart_000_A6EA_01C809AD.E471BAF0
-Content-Type: text/plain;
-	charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
+On Monday October 8, chuck.lever@oracle.com wrote:
+> Introduce a function for probing the server for what it supports, and then
+> rewriting the mount options using the probe results.
 
-Your credit doesn't matter to us!
+>  /*
+> + * Reconstruct the mount option string based on a portmapper probe
+> + * of the server.  Returns one if the server's portmapper returned
+> + * something we can use, otherwise zero.
+> + *
+> + * Unfortunately, for fallback, we need to parse out the mount options
+> + * in user space.  Unrecognized options are ignored here.
 
-If you have your own business and need IMMEDIATE ready money to spend =
-ANY way you like or wish Extra money to give your business a boost or =
-want A low interest loan - NO STRINGS ATTACHED, here is the deal we can =
-offer you TONIGHT (hurry, this lot will expire THIS EVENING):
+(I that paragraph of the comment still relevant?)
 
-$65,000+ loan
+> + *
+> + * Order of processing:
+> + * 1.  fill in mnt_server and nfs_server, based on existing options
 
-Hurry, when best deal is gone, it is gone. Simply Call Us...
+This statement doesn't seem to be true.
+In particular, the 'version number' and 'proto' in the existing
+options are *not* (that I can see) filled in for nfs_server.
 
-Do not worry about approval, your credit history will not disqualify you!
+So it would seem that
+	mount -o vers=3  server:/path /dir
 
-Call Us Free on 877-347-3607
-------=_NextPart_000_A6EA_01C809AD.E471BAF0
-Content-Type: text/html;
-	charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
+would fall back to v2 if 'server' didn't support v3.  I don't think
+that is right (current mount.nfs doesn't do that).
 
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD>
-<META http-equiv=3DContent-Type content=3D"text/html; =
-charset=3Diso-8859-1">
-<META content=3D"MSHTML 6.00.2900.2963" name=3DGENERATOR>
-<STYLE></STYLE>
-</HEAD>=20
-<BODY bgColor=3D#ffffff>
-<DIV><FONT face=3DPalatino size=3D3><B>Your your credit =
-report does not=20
-matter to us!</B></FONT></DIV>  =20
-<DIV><FONT face=3DPalatino size=3D3>&nbsp;</FONT></DIV>
-<DIV><FONT face=3DPalatino size=3D3>If you have your own =
-business and=20
-want IMMEDIATE ready money to spend ANY way you like or want Extra money =
-to=20
-give your company a boost or  need A low interest loan - NO STRINGS =
-ATTACHED,=20
-here is our best deal we can offer you TODAY (hurry, this offer will =
-expire=20
-THIS NIGHT):</FONT></DIV> =20
-<DIV><FONT face=3DPalatino size=3D3>&nbsp;</FONT></DIV>
-<DIV><FONT face=3DPalatino size=3D3><B>$41,000+ =
-loan</B></FONT></DIV>
-<DIV><FONT face=3DPalatino size=3D3>&nbsp;</FONT></DIV>
-<DIV><FONT face=3DPalatino size=3D3><B>Hurry, when the deal =
-is gone, it=20
-is gone. Simply Call Us... </B></FONT></DIV>    =20
-<DIV><FONT face=3DPalatino size=3D3>&nbsp;</FONT></DIV>
-<DIV><FONT face=3DPalatino size=3D3>Don't worry about =
-approval, your=20
-credit will not disqualify you!</FONT></DIV> =20
-<DIV><FONT face=3DPalatino size=3D3>&nbsp;</FONT></DIV>
-<DIV><FONT face=3DPalatino size=3D3><B>Call Us Free on=20
-877-347-3607</B></FONT></DIV>
-</BODY></HTML>
+Did I misunderstand the code?
 
 
-------=_NextPart_000_A6EA_01C809AD.E471BAF0--
+By the by, when testing what the current code does, I discovered that
+if
 
+      mount server:/path /dir
 
+falls back to v2 because the default (v3) doesn't work, then
+     umount /dir
 
---===============0127573784==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+fails with
+
+     umount.nfs: Server failed to unmount 'server:/path'
+
+which is a worry.
+I think there are two problem here:
+  1/ we should fall back to v2 umount if v3 fails (well, the MOUNT
+     versions  are different, but you know what I mean).
+  2/ If the call to the server fails, we should still unmount the
+     filesystem (call del_mtab .... not a good choice for the name
+     of the function that does the actual unmount...)
+Thoughts?
+
+NeilBrown
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >> http://get.splunk.com/
---===============0127573784==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============0127573784==--
