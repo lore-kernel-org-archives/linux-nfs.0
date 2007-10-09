@@ -1,21 +1,20 @@
-From: "Rex E Atwood" <spite@adenaw.com>
-Subject: free data
-Date: Tue, 09 Oct 2007 01:37:28 -0400
-Message-ID: <2452.86529320783$1191905252@news.gmane.org>
+From: ktrdf@infoseek.jp
+Subject: =?ISO-2022-JP?B?ldSOlo6eitSCqYKpgsGCxIK1gtyCwYLEgrKC34LxgsiCs4KigUKCqYLIguiO6IrUjuaCwYLEgrWC3IKigtyCtYK9gUWBRYFF?=
+Date: Mon,  8 Oct 2007 23:33:37 -0700 (PDT)
+Message-ID: <30561.7085229189$1191911634@news.gmane.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1321438944=="
-To: yxnikv@hotmail.com, aps@holmeister.net, d30s_test83@hotmail.com,
-	8wh4k1s5@work.com, nfs@lists.sourceforge.net
+Content-Type: multipart/mixed; boundary="===============1576178549=="
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1If6zm-0007qj-S8
-	for nfs@lists.sourceforge.net; Mon, 08 Oct 2007 21:47:02 -0700
-Received: from email.supportnet.com.br ([201.31.175.132]
-	helo=serverexch.SupportSPO.Net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1If6zr-0005oj-R4
-	for nfs@lists.sourceforge.net; Mon, 08 Oct 2007 21:47:08 -0700
+	id 1If8eo-0001E2-D4
+	for nfs@lists.sourceforge.net; Mon, 08 Oct 2007 23:33:30 -0700
+Received: from ppp-124.121.231.3.revip2.asianet.co.th ([124.121.231.3]
+	helo=ooo-superweb004796.gogoasianet.co.th)
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1If8et-0002hg-2o
+	for nfs@lists.sourceforge.net; Mon, 08 Oct 2007 23:33:35 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,48 +27,34 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============1321438944==
-Content-type: text/plain; charset=US-ASCII
+--===============1576178549==
+Content-Type: text/plain;
+	charset="iso-2022-jp"
+Content-Transfer-Encoding: 7bit
+
+‚±‚ñ‚É‚¿‚Í
+„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª
+BBS‚©‚ç‚Ì‚¨’m‚ç‚¹‚Å‚·B
+BBS‚ÅŒð—¬‚ðL‚°‚é‚«‚Á‚©‚¯ì‚è‚É‚È‚éî•ñ‚ð‚¨“Í‚¯‚µ‚Ü‚·B
+„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª
+ƒƒbƒZ[ƒWƒ{ƒbƒNƒX‚É³”FˆË—ŠƒƒbƒZ[ƒW‚ª“Í‚¢‚Ä‚¢‚Ü‚·
+¦ŠúŒÀ‚Íƒ[ƒ‹‚ðŽóM‚µ‚½“ú‚©‚ç‚PTŠÔ‚Æ‚È‚è‚Ü‚·¦
+ƒƒbƒZ[ƒW‚Ì“à—e‚ðŠm”F‚µ³”F‚ð‚¨‚±‚È‚¤‚É‚Í
+ˆÈ‰º‚ÌURL‚æ‚èŽQ‰Á‚­‚¾‚³‚¢
+http://www.richwoman.com.etyg.net/UNDER-SNS/
+³”F‚³‚ê‚Ü‚·‚ÆABBS‚Ö‚ÌŽQ‰ÁŠ®—¹‚Æ‚È‚èA“Še“à—e‚È‚Ç‚àŠÏ——o—ˆ‚Ü‚·B
+‘‚«ž‚Ý‚à“¯Žž‚És‚¦‚Ü‚·‚Ì‚Å‚²Šm”F‚­‚¾‚³‚¢B
+¡ „ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª
+‚²ˆÓŒ©A‚²Š´‘z‚È‚Ç‚Í‚¨‹CŒy‚É‚Ç‚¤‚¼I
+— ƒ\[ƒVƒƒƒ‹ƒlƒbƒgƒ[ƒN
+URL @F http://www.richwoman.com.etyg.net/UNDER-SNS/
+’S“–@F –{“c
+‚±‚Ìƒ[ƒ‹‚É‘‚©‚ê‚½“à—e‚Ì–³’f“]ÚA–³’f•¡»‚ð‹Ö‚¶‚Ü‚·B
+„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª„ª ¡
 
 
 
-
-
-
-Licensed Medical Doctors in America 
-
-788,381 in total – 17,076 emails
-
-Many popular specialties like Emergency Medicine, Plastic Surgery, OBGYN, Oncology, Pediatrics and more
-
-16 different sortable fields
-
-Specially reduced price: $328
-
-
-*** Get the data below as a gift when you order the MD list above ***
-
-Pharmaceutical Company Decision makers in the USA
-5000 personal emails and names for decision makers
-
-Hospitals in the USA
-more than 23k hospital administrators in over 7k hospitals [worth over $300 alone)
-
-Dentists in the USA
-More than half a million listings [worth $299 alone!]
-
-US Chiropractor Database
-More than 100,000 chiropractors practicing in the USA
-
-reply by email:       meddatapro@hotmail.com    call us: 206-666-2137
-
-the above expires on Oct 12
-
-
-for termination of this mail send a blank message with 3571 in the subject
-
-
---===============1321438944==
+--===============1576178549==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -80,7 +65,7 @@ This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >> http://get.splunk.com/
---===============1321438944==
+--===============1576178549==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -90,4 +75,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---===============1321438944==--
+--===============1576178549==--
