@@ -1,19 +1,21 @@
-From: "dhiraj@ e-BookServices" <dhiraj@e-bookservices.com>
-Subject: Multi-lingual typesetting & Publishing-related Services
-Date: Wed, 10 Oct 2007 00:21:12 +0530
-Message-ID: <E1IfKAm-0002eG-75@mail.sourceforge.net>
+From: "Saurabh Sehgal" <saurabh.r.s@gmail.com>
+Subject: Nfs Failover
+Date: Tue, 9 Oct 2007 15:40:22 -0400
+Message-ID: <2a46ebd60710091240k37369e15rbc99b57d26579e8a@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: <nfs@lists.sourceforge.net>
+Content-Type: multipart/mixed; boundary="===============1798326725=="
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IfKAi-0002XX-T3
-	for nfs@lists.sourceforge.net; Tue, 09 Oct 2007 11:51:12 -0700
-Received: from [122.162.108.94] (helo=192.168.1.2)
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1IfKAm-0002eG-75
-	for nfs@lists.sourceforge.net; Tue, 09 Oct 2007 11:51:18 -0700
+	id 1IfKwG-00081B-El
+	for nfs@lists.sourceforge.net; Tue, 09 Oct 2007 12:40:20 -0700
+Received: from fk-out-0910.google.com ([209.85.128.185])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IfKwK-0004Ix-ED
+	for nfs@lists.sourceforge.net; Tue, 09 Oct 2007 12:40:25 -0700
+Received: by fk-out-0910.google.com with SMTP id 19so1644177fkr
+	for <nfs@lists.sourceforge.net>; Tue, 09 Oct 2007 12:40:23 -0700 (PDT)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,55 +28,74 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hello,
+--===============1798326725==
+Content-Type: multipart/alternative;
+	boundary="----=_Part_7665_15546596.1191958822817"
 
-The purpose of this email is to initiate dialogue and help position e-BookServices.com as a potential vendor for
-publishing-related work. The following is a brief introduction about e-BookServices.
+------=_Part_7665_15546596.1191958822817
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
-We provide publishing-related services to international clientele. Located in India, our range of services include:
-- Multi-Lingual typesetting/page composition/design/layout in QuarkXPress, InDesign, FrameMaker etc 
-- Format conversion (eg. conversion from PageMaker to QuarkXPress, InDesign etc, including cross-platform)
-- Formatting of manuscripts (MS-Word, WordPerfect etc) 
-- Desktop Publishing (DTP) 
-- Keying-in, scanning and OCR (for re-prints, archives, web publishing etc) 
-- XML Conversion 
-- Website Design & Development
+Hi all,
 
-We practice and believe in a scientific approach for delivering high and consistent quality services.
+I am trying to do an nfs failover from one server to another in a 4 node
+cluster . During this failover, I have a link from /var/lib/nfs directory to
+a mount that resides on a shared disk. When i want to move the "resources"
+from one node to the other ... this is how I go about initiating the move :
 
-Many companies are now outsourcing their work to India. Not only do they achieve substantial cost savings, but the
-availability of a large number of professionally trained personnel also ensures a high quality of work. We can serve you
-efficiently and cost effectively, and deliver as per your customized needs. 
+1) /etc/init.d/nfsserver stop
+2) mount /var/lib/nfs on the failover node
+3) move IP address to failover node
+3) /etc/init.d/nfsserver start
+4) /sbin/sm-notify -v <failover ip address>
 
-We are one of the leading Indian organizations in our field, and serve many international organizations. For accomplishing
-jobs with us, a team of highly trained and dedicated professionals work at our state-of-the-art facilities located in New
-Delhi, India. Most have undergone formal training in the software we specialize in.
- 
-We understand the basic international business processes, and ensure that all projects undertaken by us are completed
-within the stipulated time period with complete confidentiality, accuracy, and quality.
+Are these the correct steps ? What I end up getting is a Stale NFS File
+handle on all client nodes, until I unmount and remount them again. For the
+purpose of my application this mount/unmount of clients is undesirable .
+What should I do ? Any help would be appreciated.
 
-You do not need to pay us a deposit. Entire payment may be made after receiving satisfactory delivery of service.
-References can be provided on request.
+( I am using SLES 10 SP 1 as a platform :
+uname -a
+Linux mach1 2.6.16.46-0.12-smp #1 SMP Thu May 17 14:00:09 UTC 2007 x86_64
+x86_64 x86_64 GNU/Linux  )
 
-If you are interested in cutting your current costs to at least one-third, increasing your profit margins without
-compromising on the quality and turn-around time, then please do get back to us. We will be glad to send you a most
-competitive business proposal. 
 
-Thank you once again and please let me know if there would be an opportunity to have a conversation with you, so that we
-can provide you with more specific details.
+Thank you,
 
-Sincerely,
- 
-Dhiraj Agarwaal
-Mobile: +(91) 98100 50809
-E-mail: dhiraj@e-BookServices.com
-URL:  http://www.e-BookServices.com
+Saurabh
+
+------=_Part_7665_15546596.1191958822817
+Content-Type: text/html; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+Hi all, <br><br>I am trying to do an nfs failover from one server to another in a 4 node cluster . During this failover, I have a link from /var/lib/nfs directory to a mount that resides on a shared disk. When i want to move the &quot;resources&quot; from one node to the other ... this is how I go about initiating the move :
+<br><br>1) /etc/init.d/nfsserver stop<br>2) mount /var/lib/nfs on the failover node<br>3) move IP address to failover node<br>3) /etc/init.d/nfsserver start<br>4) /sbin/sm-notify -v &lt;failover ip address&gt;<br><br>Are these the correct steps ? What I end up getting is a Stale NFS File handle on all client nodes, until I unmount and remount them again. For the purpose of my application this mount/unmount of clients is undesirable . What should I do ? Any help would be appreciated.
+<br><br>( I am using SLES 10 SP 1 as a platform :<br>uname -a<br>Linux mach1 2.6.16.46-0.12-smp #1 SMP Thu May 17 14:00:09 UTC 2007 x86_64 x86_64 x86_64 GNU/Linux&nbsp; )<br><br><br>Thank you, <br><br>Saurabh<br>
+
+------=_Part_7665_15546596.1191958822817--
+
+
+--===============1798326725==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >> http://get.splunk.com/
+--===============1798326725==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============1798326725==--
