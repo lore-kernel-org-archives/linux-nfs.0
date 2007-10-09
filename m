@@ -1,28 +1,23 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [RFC,
-	PATCH 13/35] svc: Change services to use new	svc_create_xprt service
-Date: Tue, 9 Oct 2007 15:49:14 -0400
-Message-ID: <20071009194914.GP22750@fieldses.org>
-References: <20071001191426.3250.15371.stgit@dell3.ogc.int>
-	<20071001192758.3250.2651.stgit@dell3.ogc.int>
-	<20071009170923.GH22750@fieldses.org>
-	<1191954738.30309.60.camel@trinity.ogc.int>
+Subject: Re: Nfs Failover
+Date: Tue, 9 Oct 2007 15:51:28 -0400
+Message-ID: <20071009195128.GQ22750@fieldses.org>
+References: <2a46ebd60710091240k37369e15rbc99b57d26579e8a@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: neilb@suse.de, nfs@lists.sourceforge.net, aglo@citi.umich.edu,
-	gnb@sgi.com
-To: Tom Tucker <tom@opengridcomputing.com>
+Cc: nfs@lists.sourceforge.net
+To: Saurabh Sehgal <saurabh.r.s@gmail.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IfL4w-0000Ul-CZ
-	for nfs@lists.sourceforge.net; Tue, 09 Oct 2007 12:49:18 -0700
+	id 1IfL70-0000iy-HM
+	for nfs@lists.sourceforge.net; Tue, 09 Oct 2007 12:51:26 -0700
 Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IfL50-00070A-D2
-	for nfs@lists.sourceforge.net; Tue, 09 Oct 2007 12:49:23 -0700
-In-Reply-To: <1191954738.30309.60.camel@trinity.ogc.int>
+	(Exim 4.44) id 1IfL74-0007mP-F3
+	for nfs@lists.sourceforge.net; Tue, 09 Oct 2007 12:51:31 -0700
+In-Reply-To: <2a46ebd60710091240k37369e15rbc99b57d26579e8a@mail.gmail.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,41 +30,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, Oct 09, 2007 at 01:32:18PM -0500, Tom Tucker wrote:
-> On Tue, 2007-10-09 at 13:09 -0400, J. Bruce Fields wrote:
-> > On Mon, Oct 01, 2007 at 02:27:59PM -0500, Tom Tucker wrote:
-> > > diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-> > > index a796be5..e27ca14 100644
-> > > --- a/fs/nfs/callback.c
-> > > +++ b/fs/nfs/callback.c
-> > > @@ -123,8 +123,8 @@ int nfs_callback_up(void)
-> > >  	if (!serv)
-> > >  		goto out_err;
-> > >  
-> > > -	ret = svc_makesock(serv, IPPROTO_TCP, nfs_callback_set_tcpport,
-> > > -							SVC_SOCK_ANONYMOUS);
-> > > +	ret = svc_create_xprt(serv, "tcp", nfs_callback_set_tcpport,
-> > > +			      SVC_SOCK_ANONYMOUS);
-> > >  	if (ret <= 0)
-> > >  		goto out_destroy;
-> > >  	nfs_callback_tcpport = ret;
-> > 
-> > Looks like svc_makesock returned a port number, where svc_create_xprt
-> > returns a 0 or -ERRNO.  This is breaking nfsv4 callbacks.
-> > 
+On Tue, Oct 09, 2007 at 03:40:22PM -0400, Saurabh Sehgal wrote:
+> Hi all,
 > 
-> Bruce:
+> I am trying to do an nfs failover from one server to another in a 4 node
+> cluster . During this failover, I have a link from /var/lib/nfs directory to
+> a mount that resides on a shared disk. When i want to move the "resources"
+> from one node to the other ... this is how I go about initiating the move :
 > 
-> Yikes! I missed that. My inclination is to have this port number pulled
-> from xpt_local in the svc_xprt structure. What do you think?
+> 1) /etc/init.d/nfsserver stop
+> 2) mount /var/lib/nfs on the failover node
+> 3) move IP address to failover node
+> 3) /etc/init.d/nfsserver start
+> 4) /sbin/sm-notify -v <failover ip address>
+> 
+> Are these the correct steps ? What I end up getting is a Stale NFS File
+> handle on all client nodes, until I unmount and remount them again. For the
+> purpose of my application this mount/unmount of clients is undesirable .
+> What should I do ? Any help would be appreciated.
 
-Were you thinking of doing that in the caller, or inside svc_create_xprt
-itself?  I'd be inclined to do the latter, and keep returning the port
-number on success, though it's true that this seems to be the only
-caller that uses the port number.
-
-By the way, I guess it's actually the previous patch that introduced the
-problem.
+What filesystem are you exporting?
 
 --b.
 
