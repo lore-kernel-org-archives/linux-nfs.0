@@ -1,21 +1,23 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [RFC,PATCH 0/7] svc: Incremental svc patchset cleanup
-Date: Tue, 09 Oct 2007 10:35:39 -0500
-Message-ID: <20071009153539.18846.33780.stgit@dell3.ogc.int>
+Subject: [RFC, PATCH 5/7] svc: Remove extraneous debug svc_send printk
+Date: Tue, 09 Oct 2007 10:37:18 -0500
+Message-ID: <20071009153718.18846.55296.stgit@dell3.ogc.int>
+References: <20071009153539.18846.33780.stgit@dell3.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: neilb@suse.de, bfields@fieldses.org, gnb@sgi.com
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IfH8v-0005cb-UB
-	for nfs@lists.sourceforge.net; Tue, 09 Oct 2007 08:37:10 -0700
+	id 1IfH9B-0005fY-Hr
+	for nfs@lists.sourceforge.net; Tue, 09 Oct 2007 08:37:25 -0700
 Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]
 	helo=smtp.opengridcomputing.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IfH8z-0000Cn-P1
-	for nfs@lists.sourceforge.net; Tue, 09 Oct 2007 08:37:15 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IfH99-00089l-JO
+	for nfs@lists.sourceforge.net; Tue, 09 Oct 2007 08:37:25 -0700
+In-Reply-To: <20071009153539.18846.33780.stgit@dell3.ogc.int>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,21 +30,34 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This patchset is a series of independent, incremental patches against
-the previously posted svc transport switch patchset. I believe each
-of these patches can be taken independently. They are presented as a 
-series soley because they reflect what I believe to be the collective 
-consensus of the svc transport switch review.
 
-The main, non-trivial changes are as follows:
+The svc_send function has a debug check and kern info printk 
+for a null xprt pointers in the rqstp structure. Remove the 
+printk.
 
-- Transport class data is no longer copied to each transport instance.
-
-- A svc_xprt_find service has been added to allow a service to query
-  for transport instances based on class name, address family and port.
-
--- 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+---
+
+ net/sunrpc/svc_xprt.c |    5 +----
+ 1 files changed, 1 insertions(+), 4 deletions(-)
+
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index 76036af..323977a 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -678,11 +678,8 @@ svc_send(struct svc_rqst *rqstp)
+ 	int		len;
+ 	struct xdr_buf	*xb;
+ 
+-	if ((xprt = rqstp->rq_xprt) == NULL) {
+-		printk(KERN_WARNING "NULL transport pointer in %s:%d\n",
+-				__FILE__, __LINE__);
++	if ((xprt = rqstp->rq_xprt) == NULL)
+ 		return -EFAULT;
+-	}
+ 
+ 	/* release the receive skb before sending the reply */
+ 	rqstp->rq_xprt->xpt_ops->xpo_release_rqst(rqstp);
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
