@@ -1,26 +1,26 @@
-From: "Aaron Wiebe" <epiphani@gmail.com>
-Subject: Re: [RFC,PATCH 7/7] svc: Place type on same line for new API
-Date: Tue, 9 Oct 2007 12:14:28 -0400
-Message-ID: <e7ca40f70710090914h69e3ed89hdc4e68edb305b816@mail.gmail.com>
-References: <20071009153539.18846.33780.stgit@dell3.ogc.int>
-	<20071009153722.18846.31423.stgit@dell3.ogc.int>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [RFC,
+	PATCH 13/35] svc: Change services to use new	svc_create_xprt service
+Date: Tue, 9 Oct 2007 13:09:23 -0400
+Message-ID: <20071009170923.GH22750@fieldses.org>
+References: <20071001191426.3250.15371.stgit@dell3.ogc.int>
+	<20071001192758.3250.2651.stgit@dell3.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: neilb@suse.de, bfields@fieldses.org, nfs@lists.sourceforge.net,
+Cc: neilb@suse.de, nfs@lists.sourceforge.net, aglo@citi.umich.edu,
 	gnb@sgi.com
-To: "Tom Tucker" <tom@opengridcomputing.com>
+To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IfHiy-0002uA-1u
-	for nfs@lists.sourceforge.net; Tue, 09 Oct 2007 09:14:34 -0700
-Received: from wa-out-1112.google.com ([209.85.146.178])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IfHj3-00086P-69
-	for nfs@lists.sourceforge.net; Tue, 09 Oct 2007 09:14:29 -0700
-Received: by wa-out-1112.google.com with SMTP id k22so2223962waf
-	for <nfs@lists.sourceforge.net>; Tue, 09 Oct 2007 09:14:28 -0700 (PDT)
-In-Reply-To: <20071009153722.18846.31423.stgit@dell3.ogc.int>
+	id 1IfIaE-0000E6-Se
+	for nfs@lists.sourceforge.net; Tue, 09 Oct 2007 10:09:29 -0700
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IfIaI-0000w1-RD
+	for nfs@lists.sourceforge.net; Tue, 09 Oct 2007 10:09:32 -0700
+In-Reply-To: <20071001192758.3250.2651.stgit@dell3.ogc.int>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,20 +33,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-New to list here, so I'll apologize in advance if this has already
-been discussed...
+On Mon, Oct 01, 2007 at 02:27:59PM -0500, Tom Tucker wrote:
+> diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+> index a796be5..e27ca14 100644
+> --- a/fs/nfs/callback.c
+> +++ b/fs/nfs/callback.c
+> @@ -123,8 +123,8 @@ int nfs_callback_up(void)
+>  	if (!serv)
+>  		goto out_err;
+>  
+> -	ret = svc_makesock(serv, IPPROTO_TCP, nfs_callback_set_tcpport,
+> -							SVC_SOCK_ANONYMOUS);
+> +	ret = svc_create_xprt(serv, "tcp", nfs_callback_set_tcpport,
+> +			      SVC_SOCK_ANONYMOUS);
+>  	if (ret <= 0)
+>  		goto out_destroy;
+>  	nfs_callback_tcpport = ret;
 
-On 10/9/07, Tom Tucker <tom@opengridcomputing.com> wrote:
->
-> The convention is place the type name on the same line as the function
-> name. The inline directive was also removed to allow the compiler to
-> elect whether or not to inline.
+Looks like svc_makesock returned a port number, where svc_create_xprt
+returns a 0 or -ERRNO.  This is breaking nfsv4 callbacks.
 
-The two versions of gcc that I checked do not attempt to decide
-whether or not to inline without -O3.  Has the kernel tree started
-using -O3?
-
--Aaron
+--b.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
