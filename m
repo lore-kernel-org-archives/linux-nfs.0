@@ -1,23 +1,24 @@
 From: Tom Tucker <tom@opengridcomputing.com>
 Subject: [RFC,
-	PATCH 6/7] svc: Add svc API that queries for a transport instance
-Date: Tue, 09 Oct 2007 10:37:20 -0500
-Message-ID: <20071009153720.18846.88361.stgit@dell3.ogc.int>
+	PATCH 4/7] svc: Add a sockaddr length argument to the xpo_create
+	function.
+Date: Tue, 09 Oct 2007 10:37:16 -0500
+Message-ID: <20071009153716.18846.36128.stgit@dell3.ogc.int>
 References: <20071009153539.18846.33780.stgit@dell3.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: neilb@suse.de, bfields@fieldses.org, gnb@sgi.com
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IfH96-0005fb-QF
+	id 1IfH94-0005fO-JB
 	for nfs@lists.sourceforge.net; Tue, 09 Oct 2007 08:37:21 -0700
 Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]
 	helo=smtp.opengridcomputing.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IfH9B-0008Ao-OK
-	for nfs@lists.sourceforge.net; Tue, 09 Oct 2007 08:37:26 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IfH97-0000G1-H3
+	for nfs@lists.sourceforge.net; Tue, 09 Oct 2007 08:37:21 -0700
 In-Reply-To: <20071009153539.18846.33780.stgit@dell3.ogc.int>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -32,109 +33,76 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 
-Add a new svc function that allows a service to query whether a 
-transport instance has already been created. This is used in lockd 
-to determine whether or not a transport needs to be created when
-a lockd instance is brought up. 
-
-Specifying 0 for the address family or port is effectively a wild-card,
-and will result in matching the first transport in the service's list
-that has a matching class name.
+The xpo_create function doesn't currently accept a sockaddr length.
+Add this as a parameter to be consistent with other kernel interfaces
+taking a sockaddr.
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- fs/lockd/svc.c                  |   16 ++--------------
- include/linux/sunrpc/svc_xprt.h |    2 ++
- net/sunrpc/svc_xprt.c           |   30 ++++++++++++++++++++++++++++++
- 3 files changed, 34 insertions(+), 14 deletions(-)
+ include/linux/sunrpc/svc_xprt.h |    2 +-
+ net/sunrpc/svc_xprt.c           |    4 +++-
+ net/sunrpc/svcsock.c            |   10 ++++------
+ 3 files changed, 8 insertions(+), 8 deletions(-)
 
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index a8e79a9..470af01 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -219,18 +219,6 @@ lockd(struct svc_rqst *rqstp)
- 	module_put_and_exit(0);
- }
- 
--static int find_xprt(struct svc_serv *serv, char *proto)
--{
--	struct svc_xprt *xprt;
--	int found = 0;
--	list_for_each_entry(xprt, &serv->sv_permsocks, xpt_list)
--		if (strcmp(xprt->xpt_class->xcl_name, proto) == 0) {
--			found = 1;
--			break;
--		}
--	return found;
--}
--
- /*
-  * Make any sockets that are needed but not present.
-  * If nlm_udpport or nlm_tcpport were set as module
-@@ -242,11 +230,11 @@ static int make_socks(struct svc_serv *s
- 	int err = 0;
- 
- 	if (proto == IPPROTO_UDP || nlm_udpport)
--		if (!find_xprt(serv, "udp"))
-+		if (!svc_find_xprt(serv, "udp", 0, 0))
- 			err = svc_create_xprt(serv, "udp", nlm_udpport,
- 					      SVC_SOCK_DEFAULTS);
- 	if (err >= 0 && (proto == IPPROTO_TCP || nlm_tcpport))
--		if (!find_xprt(serv, "tcp"))
-+		if (!svc_find_xprt(serv, "tcp", 0, 0))
- 			err = svc_create_xprt(serv, "tcp", nlm_tcpport,
- 					      SVC_SOCK_DEFAULTS);
- 
 diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index 2f45327..5dba9a5 100644
+index a1a7d15..2f45327 100644
 --- a/include/linux/sunrpc/svc_xprt.h
 +++ b/include/linux/sunrpc/svc_xprt.h
-@@ -82,4 +82,6 @@ static inline void svc_xprt_get(struct s
- void	svc_delete_xprt(struct svc_xprt *xprt);
- void	svc_close_xprt(struct svc_xprt *xprt);
- int	svc_print_xprts(char *buf, int maxlen);
-+struct svc_xprt *
-+svc_find_xprt(struct svc_serv *serv, char *xprt_class, int af, int port);
- #endif /* SUNRPC_SVC_XPRT_H */
+@@ -12,7 +12,7 @@ #include <linux/module.h>
+ 
+ struct svc_xprt_ops {
+ 	struct svc_xprt	*(*xpo_create)(struct svc_serv *,
+-				       struct sockaddr *,
++				       struct sockaddr *, int,
+ 				       int);
+ 	struct svc_xprt	*(*xpo_accept)(struct svc_xprt *);
+ 	int		(*xpo_has_wspace)(struct svc_xprt *);
 diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 323977a..4841c4b 100644
+index 807795f..76036af 100644
 --- a/net/sunrpc/svc_xprt.c
 +++ b/net/sunrpc/svc_xprt.c
-@@ -950,3 +950,33 @@ static struct svc_deferred_req *svc_defe
- 	spin_unlock(&xprt->xpt_lock);
- 	return dr;
+@@ -178,7 +178,9 @@ int svc_create_xprt(struct svc_serv *ser
+ 				struct svc_xprt *newxprt;
+ 				ret = 0;
+ 				newxprt = xcl->xcl_ops->xpo_create
+-					(serv, (struct sockaddr *)&sin, flags);
++					(serv,
++					 (struct sockaddr *)&sin, sizeof(sin),
++					 flags);
+ 				if (IS_ERR(newxprt)) {
+ 					module_put(xcl->xcl_owner);
+ 					ret = PTR_ERR(newxprt);
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 07a6f42..ec834a7 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -655,10 +655,9 @@ svc_udp_accept(struct svc_xprt *xprt)
  }
-+
-+/*
-+ * Return the transport instance pointer for the endpoint accepting
-+ * connections/peer traffic from the specified transport class,
-+ * address family and port.
-+ *
-+ * Specifying 0 for the address family or port is a wildcard and will
-+ * match any transport with the firt transport with the same class
-+ * name active for the service.
-+ */
-+struct svc_xprt *svc_find_xprt(struct svc_serv *serv, char *xcl_name,
-+			       int af, int port)
-+{
-+	struct svc_xprt *xprt = NULL;
-+	list_for_each_entry(xprt, &serv->sv_permsocks, xpt_list) {
-+		struct sockaddr_in *sin;
-+		if (strcmp(xprt->xpt_class->xcl_name, xcl_name))
-+			continue;
-+		sin = (struct sockaddr_in *)&xprt->xpt_local;
-+		if (af && sin->sin_family != af)
-+			continue;
-+
-+		if (port && (sin->sin_port != port))
-+			continue;
-+
-+		break;
-+	}
-+	return xprt;
-+}
-+EXPORT_SYMBOL_GPL(svc_find_xprt);
+ 
+ static struct svc_xprt *
+-svc_udp_create(struct svc_serv *serv, struct sockaddr *sa, int flags)
++svc_udp_create(struct svc_serv *serv, struct sockaddr *sa, int alen, int flags)
+ {
+-	return svc_create_socket(serv, IPPROTO_UDP, sa,
+-				 sizeof(struct sockaddr_in), flags);
++	return svc_create_socket(serv, IPPROTO_UDP, sa, alen, flags);
+ }
+ 
+ static struct svc_xprt_ops svc_udp_ops = {
+@@ -1081,10 +1080,9 @@ svc_tcp_has_wspace(struct svc_xprt *xprt
+ }
+ 
+ static struct svc_xprt *
+-svc_tcp_create(struct svc_serv *serv, struct sockaddr *sa, int flags)
++svc_tcp_create(struct svc_serv *serv, struct sockaddr *sa, int alen, int flags)
+ {
+-	return svc_create_socket(serv, IPPROTO_TCP, sa,
+-				 sizeof(struct sockaddr_in), flags);
++	return svc_create_socket(serv, IPPROTO_TCP, sa, alen, flags);
+ }
+ 
+ static struct svc_xprt_ops svc_tcp_ops = {
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
