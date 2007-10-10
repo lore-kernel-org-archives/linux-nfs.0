@@ -1,20 +1,38 @@
-From: Jason.V.Mock@L-3Com.com
-Subject: Kernel Oops in NFS
-Date: Wed, 10 Oct 2007 09:39:52 -0500
-Message-ID: <F31FEAB987B7C2469181758C14265CFA040BBB64@gvlexch03.is.l-3com.com>
+From: "Brian J. Murrell" <brian@interlinx.bc.ca>
+Subject: Re: proc/sys/sunrpc/max_resvport
+Date: Wed, 10 Oct 2007 11:10:30 -0400
+Message-ID: <1192029030.31407.35.camel@pc.ilinx>
+References: <1191949933.30724.56.camel@pc.ilinx>
+	<1191963460.7052.1.camel@heimdal.trondhjem.org>
+	<1191963718.3697.2.camel@pc.ilinx>
+	<1191964149.7052.4.camel@heimdal.trondhjem.org>
+	<1191965208.3697.5.camel@pc.ilinx>
+	<1191973408.7418.18.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: "Kile, SE Scott @ IS" <scott.kile@L-3com.com>
-To: <nfs@lists.sourceforge.net>, <linux-kernel@vger.kernel.org>
+Content-Type: multipart/mixed; boundary="===============1141202300=="
+To: nfs <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IfcjC-0008OL-IV
-	for nfs@lists.sourceforge.net; Wed, 10 Oct 2007 07:40:02 -0700
-Received: from smtpout3.l-3com.com ([166.20.84.211])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IfcjF-00048R-Cu
-	for nfs@lists.sourceforge.net; Wed, 10 Oct 2007 07:40:07 -0700
+	id 1IfdCc-0003Pq-Ht
+	for nfs@lists.sourceforge.net; Wed, 10 Oct 2007 08:10:26 -0700
+Received: from server.klug.on.ca ([205.189.48.131])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IfdCf-0002r1-Eh
+	for nfs@lists.sourceforge.net; Wed, 10 Oct 2007 08:10:31 -0700
+Received: from linux.interlinx.bc.ca (d38-139-100.home1.cgocable.net
+	[72.38.139.100])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by server.klug.on.ca (Postfix) with ESMTP id 172F52803
+	for <nfs@lists.sourceforge.net>; Wed, 10 Oct 2007 11:10:26 -0400 (EDT)
+Received: from [10.75.22.1] (pc.ilinx [10.75.22.1])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by linux.interlinx.bc.ca (Postfix) with ESMTP id 4E7758705
+	for <nfs@lists.sourceforge.net>; Wed, 10 Oct 2007 11:09:13 -0400 (EDT)
+In-Reply-To: <1191973408.7418.18.camel@heimdal.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,88 +45,99 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-We've come across an Oops, in what appears to NFS.
 
-2.6.22.6 vanilla + realtime-lsm
-RHEL4 over PXE/NFS_ROOT
+--===============1141202300==
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature";
+	boundary="=-oWKXCn3zXWt0nhT5t/jw"
 
 
-Oct  9 14:26:13 WS15 gdm(pam_unix)[6038]: session opened for user mockj
-by (uid=0)
-Oct  9 14:26:48 WS15 gconfd (mockj-7583): starting (version 2.8.1), pid
-7583 user 'mockj'
-Oct  9 14:26:48 WS15 kernel: BUG: unable to handle kernel NULL pointer
-dereference at virtual address 00000004
-Oct  9 14:26:48 WS15 kernel:  printing eip:
-Oct  9 14:26:48 WS15 kernel: c01a9fb8
-Oct  9 14:26:48 WS15 kernel: *pde = c691d067
-Oct  9 14:26:48 WS15 kernel: Oops: 0000 [#1]
-Oct  9 14:26:48 WS15 kernel: PREEMPT SMP 
-Oct  9 14:26:48 WS15 kernel: Modules linked in: lm85 w83781d hwmon_vid
-hwmon ipv6 parport_pc lp parport autofs4 tulip dm_mirror dm_mod button
-battery ac mct_u232 usbserial uhci_hcd ehci_hcd nvidia(P) e7xxx_edac
-edac_mc rng_core i2c_i801 i2c_core aic79xx scsi_transport_spi ata_piix
-libata scsi_mod snd_intel8x0 snd_ac97_codec ac97_bus snd_pcm_oss
-snd_mixer_oss snd_pcm snd_page_alloc snd_seq_dummy snd_seq_oss
-snd_seq_midi_event snd_seq snd_timer snd_seq_device snd soundcore
-realtime commoncap
-Oct  9 14:26:48 WS15 kernel: CPU:    0
-Oct  9 14:26:48 WS15 kernel: EIP:    0060:[<c01a9fb8>]    Tainted: P
-VLI
-Oct  9 14:26:48 WS15 kernel: EFLAGS: 00210246   (2.6.22-6.0.WSsmp #1)
-Oct  9 14:26:48 WS15 kernel: EIP is at nfs_lookup+0x11b/0x26a
-Oct  9 14:26:48 WS15 kernel: eax: 00000000   ebx: c0367600   ecx:
-00000000   edx: 00000000
-Oct  9 14:26:48 WS15 kernel: esi: 00000000   edi: 00000000   ebp:
-00000000   esp: f63b5d44
-Oct  9 14:26:48 WS15 kernel: ds: 007b   es: 007b   fs: 00d8  gs: 0033
-ss: 0068
-Oct  9 14:26:48 WS15 kernel: Process gconfd-2 (pid: 7583, ti=f63b4000
-task=f6273070 task.ti=f63b4000)
-Oct  9 14:26:48 WS15 kernel: Stack: f63b5d60 f63b5d98 f63b5d9c 7fffffff
-f63b5ed8 f63ef118 f63f5e8c f63b0002 
-Oct  9 14:26:48 WS15 kernel:        f63db21c 00000000 c014843e 00000000
-0000000e 00000001 00000001 000081c0 
-Oct  9 14:26:48 WS15 kernel:        00000002 00001459 000000c9 00000271
-00000000 00002000 00000008 00000000 
-Oct  9 14:26:48 WS15 kernel: Call Trace:
-Oct  9 14:26:48 WS15 kernel:  [<c014843e>] write_cache_pages+0x235/0x285
-Oct  9 14:26:48 WS15 kernel:  [<c01b4332>] nfs_flush_one+0x0/0xe5
-Oct  9 14:26:48 WS15 kernel:  [<c01488c5>] mapping_tagged+0x2b/0x32
-Oct  9 14:26:48 WS15 kernel:  [<c016e227>] d_alloc+0x15e/0x166
-Oct  9 14:26:48 WS15 kernel:  [<c0166663>] lookup_one_len+0xc5/0xe0
-Oct  9 14:26:48 WS15 kernel:  [<c01aabba>] nfs_sillyrename+0x12b/0x253
-Oct  9 14:26:48 WS15 kernel:  [<c01aba09>] nfs_permission+0x0/0x147
-Oct  9 14:26:48 WS15 kernel:  [<c01aae6e>] nfs_unlink+0x81/0xfc
-Oct  9 14:26:48 WS15 kernel:  [<c01667f4>] may_delete+0x55/0x10a
-Oct  9 14:26:48 WS15 kernel:  [<c0167a82>] vfs_unlink+0xa1/0xc5
-Oct  9 14:26:48 WS15 kernel:  [<c0167b3b>] do_unlinkat+0x95/0xf5
-Oct  9 14:26:48 WS15 kernel:  [<c0105a67>] do_syscall_trace+0x15c/0x19d
-Oct  9 14:26:48 WS15 kernel:  [<c0103136>] syscall_call+0x7/0xb
-Oct  9 14:26:48 WS15 kernel:  [<c0350000>] cache_make_upcall+0x40/0x129
-Oct  9 14:26:48 WS15 kernel:  =======================
-Oct  9 14:26:48 WS15 kernel: Code: 24 14 8b 00 83 c2 20 8b 58 38 8d 44
-24 1c 89 04 24 8b 44 24 18 ff 53 20 83 f8 fe 0f 84 93 00 00 00 85 c0 89
-c5 0f 88 3d 01 00 00 <8b> 76 04 8b 54 24 18 89 74 24 10 8b 82 a4 00 00
-00 8b 54 24 64 
-Oct  9 14:26:48 WS15 kernel: EIP: [<c01a9fb8>] nfs_lookup+0x11b/0x26a
-SS:ESP 0068:f63b5d4
+--=-oWKXCn3zXWt0nhT5t/jw
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-We haven't seen any negative side-effects other than users seeing this
-in Kwrited quite often.  We've yet to update to 2.6.22.9, however we've
-examined the change logs and patches associated with NFS between then
-and now, and don't see anything appropriate for the errors we're
-receiving.  Let me know if you need anything else for this...
+On Tue, 2007-10-09 at 19:43 -0400, Trond Myklebust wrote:
+>=20
+> There are two ports involved in an IP connection: one source port (i.e.
+> the client) and one destination port (i.e. the server). If bind() is run
+> on a socket that was set up by the client, it will set the source port
+> for the connection.
 
-Jason V. Mock
-Software Engineer
-L-3 Communications - Greenville Integrated Systems
+I see where this is going.  I had not considered that one might want to
+set a range of ports that the client uses.
+
+> The reason why an RPC client would want to select a particular port
+> number is that for most *NIX setups, the ports with number < 1024 will
+> usually require root privileges to bind() to.
+
+Indeed.  The insecurity of putting (even a tiny amount of) trust in a
+remote application using a port < 1024 aside.  :-)
+
+> By requiring that RPC
+> calls must originate from such a 'privileged port', an NFS server can
+> therefore make it slightly harder for an unprivileged process on that
+> machine to spoof NFS requests.
+
+Sure.
+
+> See the 'secure' and 'insecure' export options on 'man 5 exports'.
+
+Yeah.  I'm familiar with them.  I had just not drawn the link from that
+to this sysctl being for limiting the client bind address.
+
+> Not really. portmap doesn't choose the port numbers: the server
+> processes themselves choose that number, and so they are the ones that
+> you need to fix up.
+
+Hrm?  Really?  I thought the process of registering an RPC server with
+the port mapper involved the port mapper finding an available port for
+it to run on.  I thought that was whole point of the port mapper -- to
+allocate ports out of a "limited" pool of available ports for services
+that wanted to be available -- rather than the more traditional
+"officially assigned port"-from-IANA method of getting a port number.
+
+b.
+
+--=20
+My other computer is your Microsoft Windows server.
+
+Brian J. Murrell
+
+--=-oWKXCn3zXWt0nhT5t/jw
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Description: This is a digitally signed message part
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.6 (GNU/Linux)
+
+iD8DBQBHDOtml3EQlGLyuXARApxiAJ4tSI7yeDlQ0AQlkGoajxpfw+NRiQCg0Tsb
+AHd0bwADqFymRLBIhEQTAtI=
+=sMR2
+-----END PGP SIGNATURE-----
+
+--=-oWKXCn3zXWt0nhT5t/jw--
+
+
+
+--===============1141202300==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >> http://get.splunk.com/
+--===============1141202300==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============1141202300==--
