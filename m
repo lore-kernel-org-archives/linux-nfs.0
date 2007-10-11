@@ -1,21 +1,22 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [RFC,PATCH 2/3] svc: Fix bugs in svc_find_xprt
-Date: Wed, 10 Oct 2007 21:28:59 -0500
-Message-ID: <20071011022859.3501.12076.stgit@dell3.ogc.int>
+Subject: [RFC, PATCH 1/3] svc: Change sockaddr to sockaddr_storage in
+	svc_create_xprt
+Date: Wed, 10 Oct 2007 21:28:57 -0500
+Message-ID: <20071011022857.3501.4698.stgit@dell3.ogc.int>
 References: <20071011022356.3501.63859.stgit@dell3.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: bfields@fieldses.org, neilb@suse.de, gnb@sgi.com
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IfnnJ-00078Q-9r
+	id 1IfnnJ-00078N-7D
 	for nfs@lists.sourceforge.net; Wed, 10 Oct 2007 19:29:01 -0700
 Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]
 	helo=smtp.opengridcomputing.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IfnnN-0007df-9p
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IfnnM-0001LC-9I
 	for nfs@lists.sourceforge.net; Wed, 10 Oct 2007 19:29:06 -0700
 In-Reply-To: <20071011022356.3501.63859.stgit@dell3.ogc.int>
 List-Id: "Discussion of NFS under Linux development, interoperability,
@@ -31,84 +32,47 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 
-The bug fixes are as follows:
-
-- Verify the required arguments to the function.
-- Change the address family wildcard to the more type-friendly AF_UNSPEC.
-- Properly handle the address family when comparing ports
-- The svc_find_xprt service needs a lock on the sv_permsocks list
+A sockaddr is too small to handle an IPv6 address. Change the 
+newsin local variable to point to sockaddr_storage.
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- fs/lockd/svc.c        |    4 ++--
- net/sunrpc/svc_xprt.c |   26 ++++++++++++++++----------
- 2 files changed, 18 insertions(+), 12 deletions(-)
+ net/sunrpc/svcsock.c |    7 ++++---
+ 1 files changed, 4 insertions(+), 3 deletions(-)
 
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index 470af01..ee4a9bc 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -230,11 +230,11 @@ static int make_socks(struct svc_serv *s
- 	int err = 0;
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 4bb2d57..cc752b7 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -1278,7 +1278,8 @@ svc_create_socket(struct svc_serv *serv,
+ 	int		error;
+ 	int		type;
+ 	char		buf[RPC_MAX_ADDRBUFLEN];
+-	struct sockaddr	newsin;
++	struct sockaddr_storage addr;
++	struct sockaddr *newsin = (struct sockaddr *)&addr;
+ 	int		newlen;
  
- 	if (proto == IPPROTO_UDP || nlm_udpport)
--		if (!svc_find_xprt(serv, "udp", 0, 0))
-+		if (!svc_find_xprt(serv, "udp", AF_UNSPEC, 0))
- 			err = svc_create_xprt(serv, "udp", nlm_udpport,
- 					      SVC_SOCK_DEFAULTS);
- 	if (err >= 0 && (proto == IPPROTO_TCP || nlm_tcpport))
--		if (!svc_find_xprt(serv, "tcp", 0, 0))
-+		if (!svc_find_xprt(serv, "tcp", AF_UNSPEC, 0))
- 			err = svc_create_xprt(serv, "tcp", nlm_tcpport,
- 					      SVC_SOCK_DEFAULTS);
+ 	dprintk("svc: svc_create_socket(%s, %d, %s)\n",
+@@ -1305,7 +1306,7 @@ svc_create_socket(struct svc_serv *serv,
+ 		goto bummer;
  
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index d35195e..5fc8d41 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -960,25 +960,31 @@ static struct svc_deferred_req *svc_defe
-  * connections/peer traffic from the specified transport class,
-  * address family and port.
-  *
-- * Specifying 0 for the address family or port is a wildcard and will
-- * match any transport with the firt transport with the same class
-- * name active for the service.
-+ * AF_UNSPEC for the address family or zero for a port
-+ * number are wild cards.
-  */
- struct svc_xprt *svc_find_xprt(struct svc_serv *serv, char *xcl_name,
- 			       int af, int port)
- {
--	struct svc_xprt *xprt = NULL;
-+	struct svc_xprt *xprt;
-+	struct svc_xprt *found = NULL;
-+
-+	/* Sanity check args */
-+	if (!serv || !xcl_name)
-+		return found;
-+
-+	spin_lock_bh(&serv->sv_lock);
- 	list_for_each_entry(xprt, &serv->sv_permsocks, xpt_list) {
--		struct sockaddr_in *sin;
- 		if (strcmp(xprt->xpt_class->xcl_name, xcl_name))
- 			continue;
--		sin = (struct sockaddr_in *)&xprt->xpt_local;
--		if (af && sin->sin_family != af)
-+		if (af != AF_UNSPEC && af != xprt->xpt_local.ss_family)
- 			continue;
--		if (port && (sin->sin_port != port))
-+		if (port && port != svc_local_port(xprt))
- 			continue;
--		return xprt;
-+		found = xprt;
-+		break;
+ 	newlen = len;
+-	error = kernel_getsockname(sock, &newsin, &newlen);
++	error = kernel_getsockname(sock, newsin, &newlen);
+ 	if (error < 0)
+ 		goto bummer;
+ 
+@@ -1315,7 +1316,7 @@ svc_create_socket(struct svc_serv *serv,
  	}
--	return NULL;
-+	spin_unlock_bh(&serv->sv_lock);
-+	return found;
- }
- EXPORT_SYMBOL_GPL(svc_find_xprt);
+ 
+ 	if ((svsk = svc_setup_socket(serv, sock, &error, flags)) != NULL) {
+-		memcpy(&svsk->sk_xprt.xpt_local, &newsin, newlen);
++		memcpy(&svsk->sk_xprt.xpt_local, newsin, newlen);
+ 		svc_xprt_received(&svsk->sk_xprt);
+ 		return (struct svc_xprt *)svsk;
+ 	}
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
