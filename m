@@ -1,24 +1,24 @@
-From: Tom Tucker <tom@opengridcomputing.com>
+From: Greg Banks <gnb@sgi.com>
 Subject: Re: [RFC,
- PATCH 3/3] knfsd: Modify write_ports to use svc_find_xprt service
-Date: Thu, 11 Oct 2007 00:11:26 -0500
-Message-ID: <C3331AAE.3C378%tom@opengridcomputing.com>
-References: <20071011034608.GC6684@fieldses.org>
+	PATCH 0/3] svc: gnb review cleanup for transport switch
+Date: Thu, 11 Oct 2007 15:25:10 +1000
+Message-ID: <20071011052510.GD31422@sgi.com>
+References: <20071011022356.3501.63859.stgit@dell3.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, Greg Banks <gnb@sgi.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-	NeilBrown <neilb@suse.de>
+Cc: bfields@fieldses.org, neilb@suse.de, nfs@lists.sourceforge.net
+To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IfqCF-0004Jf-PO
-	for nfs@lists.sourceforge.net; Wed, 10 Oct 2007 22:02:55 -0700
-Received: from mail.es335.com ([67.65.19.105])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IfqCK-0005Z6-I6
-	for nfs@lists.sourceforge.net; Wed, 10 Oct 2007 22:03:00 -0700
-In-Reply-To: <20071011034608.GC6684@fieldses.org>
+	id 1IfqP3-0005gt-J7
+	for nfs@lists.sourceforge.net; Wed, 10 Oct 2007 22:16:11 -0700
+Received: from netops-testserver-4-out.sgi.com ([192.48.171.29]
+	helo=relay.sgi.com) by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1IfqP6-0001U3-7G
+	for nfs@lists.sourceforge.net; Wed, 10 Oct 2007 22:16:13 -0700
+In-Reply-To: <20071011022356.3501.63859.stgit@dell3.ogc.int>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,69 +31,52 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+G'day,
 
-Bruce:
+Compendium reply.
 
-What's the most efficient way for you to accept fixes/changes? I've been
-going incremental because it's easy on me :-). Is this the best option for
-you?
-
-Regarding patch #6, I think the svc_find_xprt API _may_ be ok, but the
-implementation was bogus (sorry). I _think_ the implementation is fixed in
-the latest incremental. Greg can confirm.
-
-WRT the suggestions below, I'll make those mods and test them tomorrow.
-
-Thanks,
-Tom
-
-On 10/10/07 10:46 PM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-
-> On Thu, Oct 11, 2007 at 01:00:58PM +1000, Neil Brown wrote:
->> On Wednesday October 10, tom@opengridcomputing.com wrote:
->>> if (sscanf(buf, "%15s %4d", transport, &port) == 2) {
->> 
->> We should give a bit of thought to this parsing and future expansion.
->> Suppose we did want to pump more information into the kernel as has
->> been suggested (e.g. local IP address), we would want this code to
->> handle the new format correctly, probably by failing.
->> 
->> So maybe we really want
->> 
->>> if (sscanf(buf, "%15s %4d%c", transport, &port, &nl) == 2
->>            && nl == '\n') {
->> 
->> or something like that???
->> 
->> BTW, I'm fairly happy with the state of this patch set and suggest
->> that we aim for 2.6.24-rc1.  I still want to read through the final
->> code with all patches applied, but I should be able to find time for
->> that in the next month or so.  I don't expect any significant issues.
+On Wed, Oct 10, 2007 at 09:23:56PM -0500, Tom Tucker wrote:
+> This patchset implements cleanup that is primarily driven by Greg Bank's 
+> review of the transport switch. A summary follows:
 > 
-> It seems OK to me, and it would be nice to get this batch in and have
-> just the rdma stuff left to merge in 2.6.25.
+> - Fix the svc_create_xprt to properly allocate the temporary sockaddr storage
+>   necessary for IPv6.
+>  
+> - Fix the svc_find_xprt service to lock the sv_permsocks list
 > 
-> But we're very short for time, and it appears that there's still some
-> work to be done.  Certainly any user interfaces need to be sorted out,
-> as we'll be stuck with them....
+> - Fix the svc_find_xprt service to handle the address family correctly
+>   when matching the port number on IPv6 connections.
 > 
-> Other work to be done: these incremental fixes are helpful for reviewers
-> like Greg who are keeping close watch on the process, but we need to
-> submit a patch series that shows our changes with perfect hindsight, so
-> we need to combine these with the previous patches.  I did this with the
-> most recent two of Tom's 7-patch series; result here:
+> Thanks Greg.
 > 
-> git://linux-nfs.org/~bfields/linux.git server-xprt-switch
+> Other changes include:
 > 
-> I didn't apply patch #6 since Greg still had comments, and I haven't
-> applied the most recent fixes.
+> - Use the svc_find_xprt service to support adding and removing knfsd transports
+>   by writing strings to the /proc/fs/nfs/portlist file.
 > 
-> If this isn't all ready by Friday (OK, maybe Monday) then I think we're
-> out of time.
-> 
-> --b.
+
+> Subject: [RFC,PATCH 1/3] svc: Change sockaddr to sockaddr_storage in
+> svc_create_xprt
+
+ok
+
+> Subject: [RFC,PATCH 2/3] svc: Fix bugs in svc_find_xprt
 
 
+ok
+
+> Subject: [RFC,PATCH 3/3] knfsd: Modify write_ports to use
+> svc_find_xprt service
+
+ok by me, but Neil makes a good point about designing this interface
+carefully.
+
+
+Greg.
+-- 
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+Apparently, I'm Bedevere.  Which MPHG character are you?
+I don't speak for SGI.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
