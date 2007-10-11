@@ -1,8 +1,8 @@
 From: Tom Tucker <tom@opengridcomputing.com>
 Subject: Re: [RFC,
 	PATCH 0/3] svc: gnb review cleanup for transport switch
-Date: Thu, 11 Oct 2007 15:53:13 -0500
-Message-ID: <1192135993.7491.25.camel@trinity.ogc.int>
+Date: Thu, 11 Oct 2007 16:14:28 -0500
+Message-ID: <1192137268.7491.27.camel@trinity.ogc.int>
 References: <20071011022356.3501.63859.stgit@dell3.ogc.int>
 	<20071011203029.GE22823@fieldses.org>
 Reply-To: tom@opengridcomputing.com
@@ -14,12 +14,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Ig534-0002Sb-SA
-	for nfs@lists.sourceforge.net; Thu, 11 Oct 2007 13:54:27 -0700
+	id 1Ig5Nd-0004Xz-FT
+	for nfs@lists.sourceforge.net; Thu, 11 Oct 2007 14:15:41 -0700
 Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]
 	helo=smtp.opengridcomputing.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Ig539-0002zy-1n
-	for nfs@lists.sourceforge.net; Thu, 11 Oct 2007 13:54:32 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Ig5Nh-0004jv-JR
+	for nfs@lists.sourceforge.net; Thu, 11 Oct 2007 14:15:46 -0700
 In-Reply-To: <20071011203029.GE22823@fieldses.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -32,6 +32,13 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
+
+FYI:
+
+I found by inspection an issue where multiple deferral of the same
+request breaks...
+
+Tom
 
 On Thu, 2007-10-11 at 16:30 -0400, J. Bruce Fields wrote:
 > On Wed, Oct 10, 2007 at 09:23:56PM -0500, Tom Tucker wrote:
@@ -46,15 +53,6 @@ On Thu, 2007-10-11 at 16:30 -0400, J. Bruce Fields wrote:
 > 
 > I'll keep investigating.
 > 
-
-Hmm. It looks like something's amiss with v4 still. V3 seems to work
-fine for me. Maybe my callback fix didn't take... I'll look here as
-well.
-
-FYI, for my tests, I used an old client to mount, build the cthon04
-tests in the mounted dir and then run them from the mounted dir.
-
-
 > --b.
 
 
