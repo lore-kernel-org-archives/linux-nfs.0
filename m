@@ -1,38 +1,25 @@
-From: "Brian J. Murrell" <brian@interlinx.bc.ca>
-Subject: Re: proc/sys/sunrpc/max_resvport
-Date: Wed, 10 Oct 2007 11:10:30 -0400
-Message-ID: <1192029030.31407.35.camel@pc.ilinx>
-References: <1191949933.30724.56.camel@pc.ilinx>
-	<1191963460.7052.1.camel@heimdal.trondhjem.org>
-	<1191963718.3697.2.camel@pc.ilinx>
-	<1191964149.7052.4.camel@heimdal.trondhjem.org>
-	<1191965208.3697.5.camel@pc.ilinx>
-	<1191973408.7418.18.camel@heimdal.trondhjem.org>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH 06/12] text-based mount.nfs:
+Date: Thu, 11 Oct 2007 11:32:11 +1000
+Message-ID: <18189.32027.462332.151295@notabene.brown>
+References: <20071008155407.15051.60775.stgit@manray.1015granger.net>
+	<18186.56139.301135.961540@notabene.brown>
+	<5847045D-72E9-4322-AB08-F8952C26AA44@oracle.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1141202300=="
-To: nfs <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IfdCc-0003Pq-Ht
-	for nfs@lists.sourceforge.net; Wed, 10 Oct 2007 08:10:26 -0700
-Received: from server.klug.on.ca ([205.189.48.131])
+	id 1IfmuQ-0001zm-SE
+	for nfs@lists.sourceforge.net; Wed, 10 Oct 2007 18:32:18 -0700
+Received: from ns1.suse.de ([195.135.220.2] helo=mx1.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IfdCf-0002r1-Eh
-	for nfs@lists.sourceforge.net; Wed, 10 Oct 2007 08:10:31 -0700
-Received: from linux.interlinx.bc.ca (d38-139-100.home1.cgocable.net
-	[72.38.139.100])
-	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
-	(No client certificate requested)
-	by server.klug.on.ca (Postfix) with ESMTP id 172F52803
-	for <nfs@lists.sourceforge.net>; Wed, 10 Oct 2007 11:10:26 -0400 (EDT)
-Received: from [10.75.22.1] (pc.ilinx [10.75.22.1])
-	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
-	(No client certificate requested)
-	by linux.interlinx.bc.ca (Postfix) with ESMTP id 4E7758705
-	for <nfs@lists.sourceforge.net>; Wed, 10 Oct 2007 11:09:13 -0400 (EDT)
-In-Reply-To: <1191973408.7418.18.camel@heimdal.trondhjem.org>
+	(Exim 4.44) id 1IfmuT-0006It-Ii
+	for nfs@lists.sourceforge.net; Wed, 10 Oct 2007 18:32:24 -0700
+In-Reply-To: message from Chuck Lever on Tuesday October 9
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -45,99 +32,106 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+On Tuesday October 9, chuck.lever@oracle.com wrote:
+> >>  /*
+> >> + * Reconstruct the mount option string based on a portmapper probe
+> >> + * of the server.  Returns one if the server's portmapper returned
+> >> + * something we can use, otherwise zero.
+> >> + *
+> >> + * Unfortunately, for fallback, we need to parse out the mount  
+> >> options
+> >> + * in user space.  Unrecognized options are ignored here.
+> >
+> > (I that paragraph of the comment still relevant?)
+> 
+> I'm not sure what you think is irrelevant... the bit about  
+> unrecognized options?  If so, that comment was meant to imply that as  
+> we add support for new mount options in the kernel, we needn't be too  
+> concerned about adding support for them here as well.
+> 
+> Or maybe you meant the "need to parse out the mount options in user  
+> space" -- that implies that, for text-based mounts, mount.nfs still  
+> needs to parse the mount options in order to do the port probe and  
+> then rewrite them.  Our dream of parsing only in the kernel is dashed  
+> on the rocks.
 
---===============1141202300==
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature";
-	boundary="=-oWKXCn3zXWt0nhT5t/jw"
+The comment talks about parsing out the mount options, which is now
+done in a very different part of the code.
+And I misread the "Unrecognised options are ignored here" as saying that
+they get removed... Maybe the "unfortunately" predisposed me to think
+something bad?
+
+> 
+> I will see about clarifying that when resubmitting the patch.
+
+Yes, new version much clearer, thanks.
+
+> > By the by, when testing what the current code does, I discovered that
+> > if
+> >
+> >       mount server:/path /dir
+> >
+> > falls back to v2 because the default (v3) doesn't work, then
+> >      umount /dir
+> >
+> > fails with
+> >
+> >      umount.nfs: Server failed to unmount 'server:/path'
+> >
+> > which is a worry.
+> 
+> OK, it's not supposed to do that either, and I never saw that  
+> behavior during testing.  (Well, actually we did see it, but it was  
+> only with NFSv4, and is supposed to be fixed by one of the patches in  
+> the last set I sent you).
+> 
+> > I think there are two problem here:
+> >   1/ we should fall back to v2 umount if v3 fails (well, the MOUNT
+> >      versions  are different, but you know what I mean).
+> >   2/ If the call to the server fails, we should still unmount the
+> >      filesystem (call del_mtab .... not a good choice for the name
+> >      of the function that does the actual unmount...)
+> > Thoughts?
+> 
+> First I would like to understand precisely why umount is failing.  In  
+> this case, mount.nfs should rewrite the mount options, then post them  
+> in /etc/mtab so that umount can use the same service endpoint when  
+> doing the unmount.  The umount should then use the post-fallback  
+> options, and succeed.  Does "umount -v" provide any helpful
+> information?
+
+(remembering this is with the binary mount interface, not the new
+ASCII one) the updated mount options are *not* written to /etc/mtab.
+It just has 
+
+ eli:/var/tmp/samba /mnt nfs rw,addr=192.168.1.3 0 0
+
+nfsvers=2 has not been added.
+umount -v says:
+umount.nfs: trying 192.168.1.3 prog 100005 vers 3 prot UDP port 723
+umount.nfs: Server failed to unmount 'eli:/var/tmp/samba'
 
 
---=-oWKXCn3zXWt0nhT5t/jw
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+> 
+> Certainly it would be good to rename del_mtab() !
+> 
+> I also agree that it would be an overall improvement if the RPC  
+> umount request did not determine whether or not umount also tries to  
+> detach the local file system.  I don't see any good reason to link  
+> the two.
 
-On Tue, 2007-10-09 at 19:43 -0400, Trond Myklebust wrote:
->=20
-> There are two ports involved in an IP connection: one source port (i.e.
-> the client) and one destination port (i.e. the server). If bind() is run
-> on a socket that was set up by the client, it will set the source port
-> for the connection.
+I've broken the link, so the unmount now succeeds.  It would be good
+to get it to send the right request to the server though, either by
+recording the protocol in mtab, or using probe_mntport or similar.
 
-I see where this is going.  I had not considered that one might want to
-set a range of ports that the client uses.
-
-> The reason why an RPC client would want to select a particular port
-> number is that for most *NIX setups, the ports with number < 1024 will
-> usually require root privileges to bind() to.
-
-Indeed.  The insecurity of putting (even a tiny amount of) trust in a
-remote application using a port < 1024 aside.  :-)
-
-> By requiring that RPC
-> calls must originate from such a 'privileged port', an NFS server can
-> therefore make it slightly harder for an unprivileged process on that
-> machine to spoof NFS requests.
-
-Sure.
-
-> See the 'secure' and 'insecure' export options on 'man 5 exports'.
-
-Yeah.  I'm familiar with them.  I had just not drawn the link from that
-to this sysctl being for limiting the client bind address.
-
-> Not really. portmap doesn't choose the port numbers: the server
-> processes themselves choose that number, and so they are the ones that
-> you need to fix up.
-
-Hrm?  Really?  I thought the process of registering an RPC server with
-the port mapper involved the port mapper finding an available port for
-it to run on.  I thought that was whole point of the port mapper -- to
-allocate ports out of a "limited" pool of available ports for services
-that wanted to be available -- rather than the more traditional
-"officially assigned port"-from-IANA method of getting a port number.
-
-b.
-
---=20
-My other computer is your Microsoft Windows server.
-
-Brian J. Murrell
-
---=-oWKXCn3zXWt0nhT5t/jw
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Description: This is a digitally signed message part
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.6 (GNU/Linux)
-
-iD8DBQBHDOtml3EQlGLyuXARApxiAJ4tSI7yeDlQ0AQlkGoajxpfw+NRiQCg0Tsb
-AHd0bwADqFymRLBIhEQTAtI=
-=sMR2
------END PGP SIGNATURE-----
-
---=-oWKXCn3zXWt0nhT5t/jw--
-
-
-
---===============1141202300==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+Thanks,
+NeilBrown
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >> http://get.splunk.com/
---===============1141202300==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============1141202300==--
