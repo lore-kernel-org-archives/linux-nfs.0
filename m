@@ -1,28 +1,27 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [RFC,
-	PATCH 3/3] knfsd: Modify write_ports to use	svc_find_xprt service
-Date: Thu, 11 Oct 2007 10:56:23 -0400
-Message-ID: <20071011145623.GA17468@fieldses.org>
-References: <20071011022356.3501.63859.stgit@dell3.ogc.int>
-	<20071011022901.3501.5244.stgit@dell3.ogc.int>
-	<18189.37354.527748.91357@notabene.brown>
-	<20071011034608.GC6684@fieldses.org>
-	<18189.45080.324267.923517@notabene.brown>
+From: "matteo.debiaggi" <matteo.debiaggi@charta.it>
+Subject: Re: Lock problem.
+Date: Thu, 11 Oct 2007 17:23:30 +0200
+Message-ID: <470E3FF2.8070601@charta.it>
+References: <470DE540.1090908@charta.it>
+	<18189.63030.815930.43180@notabene.brown>
+	<470E2012.5020808@charta.it>
+	<EXNANE011B6gVs1tIzm000006ba@exnane01.hq.netapp.com>
+	<470E3226.4080706@charta.it>
+	<EXNANE01zwWJv3zOdnj000006bc@exnane01.hq.netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, gnb@sgi.com
-To: Neil Brown <neilb@suse.de>
+Cc: nfs@lists.sourceforge.net
+To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IfzSb-0003Ta-IQ
-	for nfs@lists.sourceforge.net; Thu, 11 Oct 2007 07:56:25 -0700
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IfzSf-000574-Gr
-	for nfs@lists.sourceforge.net; Thu, 11 Oct 2007 07:56:30 -0700
-In-Reply-To: <18189.45080.324267.923517@notabene.brown>
+	id 1Ifzst-00088l-RS
+	for nfs@lists.sourceforge.net; Thu, 11 Oct 2007 08:23:35 -0700
+Received: from [213.209.214.162] (helo=charta.it)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Ifzsx-0003Mz-JY
+	for nfs@lists.sourceforge.net; Thu, 11 Oct 2007 08:23:41 -0700
+In-Reply-To: <EXNANE01zwWJv3zOdnj000006bc@exnane01.hq.netapp.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,21 +34,9 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, Oct 11, 2007 at 03:09:44PM +1000, Neil Brown wrote:
-> On Wednesday October 10, bfields@fieldses.org wrote:
-> > 
-> > If this isn't all ready by Friday (OK, maybe Monday) then I think we're
-> > out of time.
-> 
-> Sorry, when I said "2.6.24-rc1" previously, I was failing to do
-> correct addition.  I meant 2.6.25-rc1.
->
-> I really don't think it is appropriate to submit these for 2.6.24.
-> And I cannot see any real need to do that.
+I found the parameters 'threads' only in the lockd solaris man.
+And i think i'll perform other tests going deeply to be sure...
 
-OK.  That takes some pressure off!
-
---b.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
