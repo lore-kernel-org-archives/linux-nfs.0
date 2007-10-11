@@ -1,24 +1,25 @@
-From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [RFC,
-	PATCH 3/3] knfsd: Modify write_ports to use svc_find_xprt service
-Date: Wed, 10 Oct 2007 21:29:01 -0500
-Message-ID: <20071011022901.3501.5244.stgit@dell3.ogc.int>
-References: <20071011022356.3501.63859.stgit@dell3.ogc.int>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 06/12] text-based mount.nfs:
+Date: Wed, 10 Oct 2007 22:49:41 -0400
+Message-ID: <470D8F45.8020202@oracle.com>
+References: <20071008155407.15051.60775.stgit@manray.1015granger.net>	<18186.56139.301135.961540@notabene.brown>	<5847045D-72E9-4322-AB08-F8952C26AA44@oracle.com>
+	<18189.32027.462332.151295@notabene.brown>
+Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: bfields@fieldses.org, neilb@suse.de, gnb@sgi.com
-To: nfs@lists.sourceforge.net
+Content-Type: multipart/mixed; boundary="------------060307020507080003090307"
+Cc: nfs@lists.sourceforge.net
+To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IfnnK-0007A2-Ev
-	for nfs@lists.sourceforge.net; Wed, 10 Oct 2007 19:29:02 -0700
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]
-	helo=smtp.opengridcomputing.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IfnnP-0001Oq-Fx
-	for nfs@lists.sourceforge.net; Wed, 10 Oct 2007 19:29:07 -0700
-In-Reply-To: <20071011022356.3501.63859.stgit@dell3.ogc.int>
+	id 1Ifo8T-0000iA-Kv
+	for nfs@lists.sourceforge.net; Wed, 10 Oct 2007 19:50:53 -0700
+Received: from rgminet01.oracle.com ([148.87.113.118])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1Ifo8X-0007GZ-RQ
+	for nfs@lists.sourceforge.net; Wed, 10 Oct 2007 19:50:58 -0700
+In-Reply-To: <18189.32027.462332.151295@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,102 +32,112 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+This is a multi-part message in MIME format.
+--------------060307020507080003090307
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-This patch enhances the write_ports function as follows:
+Neil Brown wrote:
+>>> By the by, when testing what the current code does, I discovered that
+>>> if
+>>>
+>>>       mount server:/path /dir
+>>>
+>>> falls back to v2 because the default (v3) doesn't work, then
+>>>      umount /dir
+>>>
+>>> fails with
+>>>
+>>>      umount.nfs: Server failed to unmount 'server:/path'
+>>>
+>>> which is a worry.
+>> OK, it's not supposed to do that either, and I never saw that  
+>> behavior during testing.  (Well, actually we did see it, but it was  
+>> only with NFSv4, and is supposed to be fixed by one of the patches in  
+>> the last set I sent you).
+>>
+>>> I think there are two problem here:
+>>>   1/ we should fall back to v2 umount if v3 fails (well, the MOUNT
+>>>      versions  are different, but you know what I mean).
+>>>   2/ If the call to the server fails, we should still unmount the
+>>>      filesystem (call del_mtab .... not a good choice for the name
+>>>      of the function that does the actual unmount...)
+>>> Thoughts?
+>> First I would like to understand precisely why umount is failing.  In  
+>> this case, mount.nfs should rewrite the mount options, then post them  
+>> in /etc/mtab so that umount can use the same service endpoint when  
+>> doing the unmount.  The umount should then use the post-fallback  
+>> options, and succeed.  Does "umount -v" provide any helpful
+>> information?
+> 
+> (remembering this is with the binary mount interface, not the new
+> ASCII one) the updated mount options are *not* written to /etc/mtab.
+> It just has 
+> 
+>  eli:/var/tmp/samba /mnt nfs rw,addr=192.168.1.3 0 0
+> 
+> nfsvers=2 has not been added.
+> umount -v says:
+> umount.nfs: trying 192.168.1.3 prog 100005 vers 3 prot UDP port 723
+> umount.nfs: Server failed to unmount 'eli:/var/tmp/samba'
 
-- Check if a server transport instance already exists before attempting to 
-  create a new one, and 
+OK... the new information is that this is failing with the legacy mount. 
+  That makes a little more sense.
 
-- Implement the ability to remove a previously created server transport
-  instance. 
+>> Certainly it would be good to rename del_mtab() !
+>>
+>> I also agree that it would be an overall improvement if the RPC  
+>> umount request did not determine whether or not umount also tries to  
+>> detach the local file system.  I don't see any good reason to link  
+>> the two.
+> 
+> I've broken the link, so the unmount now succeeds.  It would be good
+> to get it to send the right request to the server though, either by
+> recording the protocol in mtab, or using probe_mntport or similar.
 
-Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
----
+Yeah, that's odd.  It is supposed to be probing the server's mountd in 
+nfs_call_umount.  The problem may be that it's only trying a single 
+mount RPC (for vers=3), and not doing any kind of version fallback.
 
- fs/nfsd/nfsctl.c      |   36 +++++++++++++++++++++++++++++++++---
- net/sunrpc/svc_xprt.c |    1 +
- 2 files changed, 34 insertions(+), 3 deletions(-)
+--------------060307020507080003090307
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck.lever.vcf"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="chuck.lever.vcf"
 
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 923b817..0dfc130 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -540,7 +540,7 @@ static ssize_t write_ports(struct file *
- 		}
- 		return err < 0 ? err : 0;
- 	}
--	if (buf[0] == '-') {
-+	if (buf[0] == '-' && isdigit(buf[1])) {
- 		char *toclose = kstrdup(buf+1, GFP_KERNEL);
- 		int len = 0;
- 		if (!toclose)
-@@ -557,16 +557,46 @@ static ssize_t write_ports(struct file *
- 	/*
- 	 * Add a transport listener by writing it's transport name
- 	 */
--	if (isalnum(buf[0])) {
-+	if (isalpha(buf[0])) {
- 		int err;
- 		char transport[16];
- 		int port;
- 		if (sscanf(buf, "%15s %4d", transport, &port) == 2) {
- 			err = nfsd_create_serv();
--			if (!err)
-+			if (!err) {
-+				if (svc_find_xprt(nfsd_serv, transport,
-+						  AF_UNSPEC, port))
-+					return -EADDRINUSE;
-+
- 				err = svc_create_xprt(nfsd_serv,
- 						      transport, port,
- 						      SVC_SOCK_ANONYMOUS);
-+			}
-+			return err < 0 ? err : 0;
-+		}
-+	}
-+	/*
-+	 * Remove a transport by writing it's transport name and port number
-+	 */
-+	if (buf[0] == '-' && isalpha(buf[1])) {
-+		struct svc_xprt *xprt;
-+		int err = -EINVAL;
-+		char transport[16];
-+		int port;
-+		if (sscanf(&buf[1], "%15s %4d", transport, &port) == 2) {
-+			if (port == 0)
-+				return -EINVAL;
-+			lock_kernel();
-+			if (nfsd_serv) {
-+				xprt = svc_find_xprt(nfsd_serv, transport,
-+						     AF_UNSPEC, port);
-+				if (xprt) {
-+					svc_close_xprt(xprt);
-+					err = 0;
-+				} else
-+					err = -ENOENT;
-+			}
-+			unlock_kernel();
- 			return err < 0 ? err : 0;
- 		}
- 	}
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 5fc8d41..cbf80b0 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -809,6 +809,7 @@ void svc_close_xprt(struct svc_xprt *xpr
- 	clear_bit(XPT_BUSY, &xprt->xpt_flags);
- 	svc_xprt_put(xprt);
- }
-+EXPORT_SYMBOL_GPL(svc_close_xprt);
- 
- void svc_close_all(struct list_head *xprt_list)
- {
+begin:vcard
+fn:Chuck Lever
+n:Lever;Chuck
+org:Oracle Corporation;Corporate Architecture: Linux Projects Group
+adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
+email;internet:chuck dot lever at nospam oracle dot com
+title:Principal Member of Staff
+tel;work:+1 248 614 5091
+x-mozilla-html:FALSE
+version:2.1
+end:vcard
+
+
+--------------060307020507080003090307
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >> http://get.splunk.com/
+--------------060307020507080003090307
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--------------060307020507080003090307--
