@@ -1,28 +1,25 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: Re: [RFC,
-	PATCH 3/3] knfsd: Modify write_ports to use	svc_find_xprt service
-Date: Thu, 11 Oct 2007 13:04:16 -0400
-Message-ID: <20071011170416.GA22823@fieldses.org>
-References: <20071011034608.GC6684@fieldses.org>
-	<C3331AAE.3C378%tom@opengridcomputing.com>
-	<20071011152512.GB17468@fieldses.org>
-	<1192116428.7491.5.camel@trinity.ogc.int>
+	PATCH 0/3] svc: gnb review cleanup for transport switch
+Date: Thu, 11 Oct 2007 13:09:59 -0400
+Message-ID: <20071011170959.GB22823@fieldses.org>
+References: <20071011022356.3501.63859.stgit@dell3.ogc.int>
+	<20071011052510.GD31422@sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: NeilBrown <neilb@suse.de>, nfs@lists.sourceforge.net,
-	Greg Banks <gnb@sgi.com>
-To: Tom Tucker <tom@opengridcomputing.com>
+Cc: neilb@suse.de, nfs@lists.sourceforge.net
+To: Greg Banks <gnb@sgi.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Ig1SN-0003LE-6E
-	for nfs@lists.sourceforge.net; Thu, 11 Oct 2007 10:04:19 -0700
+	id 1Ig1Xu-0003tw-AH
+	for nfs@lists.sourceforge.net; Thu, 11 Oct 2007 10:10:02 -0700
 Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Ig1SO-000336-8h
-	for nfs@lists.sourceforge.net; Thu, 11 Oct 2007 10:04:22 -0700
-In-Reply-To: <1192116428.7491.5.camel@trinity.ogc.int>
+	(Exim 4.44) id 1Ig1Xu-0005vs-FG
+	for nfs@lists.sourceforge.net; Thu, 11 Oct 2007 10:10:07 -0700
+In-Reply-To: <20071011052510.GD31422@sgi.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,63 +32,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, Oct 11, 2007 at 10:27:08AM -0500, Tom Tucker wrote:
-> On Thu, 2007-10-11 at 11:25 -0400, J. Bruce Fields wrote:
-> > Well, the problem is that there's two different histories we want, and
-> > no tool really makes it easy (or perhaps can make it really easy) to
-> > track them both:
-> > 
-> > 	- There's the final cleaned-up series that we want submitted.
-> > 	- There's the incremental changes that are made to fix problems
-> > 	  in the original series.
-> > 
-> > A lot of people deal with this by just resubmitting the whole thing
-> > (usually as a big mailbomb each time) with a changelog in the 0/n
-> > message that explains what changed since the previous submission.
-> > 
-> > But in practice I think that means we lose some follow-up review because
-> > it's harder for reviewers in the previous round to plow through the
-> > whole series from the start each time.  And it looks like Greg is still
-> > spotting some problems that might not have been otherwise.  So that's
-> > working.
-> > 
-> > So for now I guess I'll try what seems to be Andrew's approach--take
-> > incremental patches, then merge them in before the end.  If that turns
-> > out to be too hard, I'll complain.
+On Thu, Oct 11, 2007 at 03:25:10PM +1000, Greg Banks wrote:
+> Compendium reply.
 > 
-> np. I've got a stacked git tree that has the whole set, so I can flatten
-> it or keep it at your discretion. 
+> On Wed, Oct 10, 2007 at 09:23:56PM -0500, Tom Tucker wrote:
+> > Subject: [RFC,PATCH 3/3] knfsd: Modify write_ports to use
+> > svc_find_xprt service
+> 
+> ok by me, but Neil makes a good point about designing this interface
+> carefully.
 
-Well, if you want to be a total hero and do *both* the incremental
-patches and also keep a series with the merged in as appropriate, that'd
-be great.  So given a series of patches:
+The important point being that the kernel is required to stay backwards
+compatible with older user utilities--we can't tell people "oh, if
+you're upgrading from 2.6.25 to 2.6.26 and you want nfs/rdma to keep
+working then you'll also have to upgrade to nfs-utils-1.3.0."
 
-	1/3	clean up frobnicator
-	2/3	introduce new frobnicator-next-generation api
-	3/3	move users to frobnicator-next-generation
-
-if you had an incremental fix, you could send it out like:
-
-	0/1	"Oops, here's a fix for my last series.  I also have a
-		fixed version of the series here: git://..."
-	1/1	rename frobnicator-next-generation to frobnicator-new
-
-and then git://... would have a series that looked like:
-
-	1/3	clean up frobnicator
-	2/3	introduce new frobnicator-new api
-	3/3	move users to frobnicator-new
-
-I'd both apply the incremental patch and fetch the modified series, diff
-them to make sure they both got the same result, then take the modified
-series and throw away the old one.
-
-Anyway, for now I think I've caught up to your latest here:
-
-	git://linux-nfs.org/~bfields	server-xprt-switch
-
-mostly left separated out at this point, except the two I fooled with
-yesterday.
+(With maybe some leeway if rdma is still in such an experimental state
+that there aren't yet any real users....)
 
 --b.
 
