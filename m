@@ -1,8 +1,8 @@
 From: Tom Tucker <tom@opengridcomputing.com>
 Subject: Re: [RFC,
 	PATCH 0/3] svc: gnb review cleanup for transport switch
-Date: Thu, 11 Oct 2007 16:14:28 -0500
-Message-ID: <1192137268.7491.27.camel@trinity.ogc.int>
+Date: Thu, 11 Oct 2007 17:04:42 -0500
+Message-ID: <1192140282.7491.33.camel@trinity.ogc.int>
 References: <20071011022356.3501.63859.stgit@dell3.ogc.int>
 	<20071011203029.GE22823@fieldses.org>
 Reply-To: tom@opengridcomputing.com
@@ -14,12 +14,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Ig5Nd-0004Xz-FT
-	for nfs@lists.sourceforge.net; Thu, 11 Oct 2007 14:15:41 -0700
+	id 1Ig6AF-0000wr-LR
+	for nfs@lists.sourceforge.net; Thu, 11 Oct 2007 15:05:55 -0700
 Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]
 	helo=smtp.opengridcomputing.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Ig5Nh-0004jv-JR
-	for nfs@lists.sourceforge.net; Thu, 11 Oct 2007 14:15:46 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Ig6AJ-0004F1-O8
+	for nfs@lists.sourceforge.net; Thu, 11 Oct 2007 15:06:01 -0700
 In-Reply-To: <20071011203029.GE22823@fieldses.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -33,12 +33,11 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-FYI:
+I think I found the problem. The patchset is not caching the auth data
+properly. This causes the server to fail the setting of the client id
+with a 10018 error.
 
-I found by inspection an issue where multiple deferral of the same
-request breaks...
-
-Tom
+I'll send a patch off tonight....sorry :-\
 
 On Thu, 2007-10-11 at 16:30 -0400, J. Bruce Fields wrote:
 > On Wed, Oct 10, 2007 at 09:23:56PM -0500, Tom Tucker wrote:
