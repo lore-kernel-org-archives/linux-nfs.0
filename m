@@ -1,23 +1,23 @@
-From: "matteo.debiaggi" <matteo.debiaggi@charta.it>
-Subject: Lock problem.
-Date: Thu, 11 Oct 2007 10:56:32 +0200
-Message-ID: <470DE540.1090908@charta.it>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: Lock problem.
+Date: Thu, 11 Oct 2007 20:08:54 +1000
+Message-ID: <18189.63030.815930.43180@notabene.brown>
+References: <470DE540.1090908@charta.it>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
+To: "matteo.debiaggi" <matteo.debiaggi@charta.it>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IftqV-0001nB-Bw
-	for nfs@lists.sourceforge.net; Thu, 11 Oct 2007 01:56:43 -0700
-Received: from [213.209.214.162] (helo=charta.it)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IftqV-0006xp-Jm
-	for nfs@lists.sourceforge.net; Thu, 11 Oct 2007 01:56:48 -0700
-Received: from [10.100.11.235] (lproxy.charta.it [192.168.1.100])
-	(authenticated bits=0)
-	by charta.it (8.12.11/8.12.11) with ESMTP id l9B8uWvw011241
-	for <nfs@lists.sourceforge.net>; Thu, 11 Oct 2007 10:56:32 +0200 (MEST)
+	id 1IfuyU-0000Z1-Pt
+	for nfs@lists.sourceforge.net; Thu, 11 Oct 2007 03:09:02 -0700
+Received: from ns.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IfuyY-0007LO-Hg
+	for nfs@lists.sourceforge.net; Thu, 11 Oct 2007 03:09:08 -0700
+In-Reply-To: message from matteo.debiaggi on Thursday October 11
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,117 +30,75 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi at all,
-Situation :
+On Thursday October 11, matteo.debiaggi@charta.it wrote:
+> Hi at all,
+> Situation :
+> 
+> 
+> Problem :
+>  Some times, not every times ,we face a strange lock where reader waits 
+> more or less for the same time( about 30sec,uhm..) lock gets acquired, 
+> at the end it did it.
 
-I have a linux client :
-debian,  kernel  2.6.16
-64bit
-nfs-common_1%3a1.0.6-3.1_amd64.deb
+Weird... you would need a 'tcpdump -s0 ' trace of the lockd requests,
+and maybe the nfs requests too.  My guess would be that the solaris
+server isn't sending a 'GRANT' for some reason, and the Linux client
+is timing out and retrying.
 
-rpcinfo -p localhosts stats(about nfs..)
-    100000    2   tcp    111  portmapper
-    100000    2   udp    111  portmapper
-    100021    1   udp  34865  nlockmgr
-    100021    3   udp  34865  nlockmgr
-    100021    4   udp  34865  nlockmgr
-    100021    1   tcp  40293  nlockmgr
-    100021    3   tcp  40293  nlockmgr
-    100021    4   tcp  40293  nlockmgr
+> 
+> Here's simplyfied code:
+> 
+> WRITER:
+> 
+> for (;;) {
+>   fd = open(file, O_WRONLY|O_APPEND|O_CREAT, 0666);
 
-And a soalris 8 with all possible patches( or better, all patches i 
-found..) relative to nfs.
-32bit
+Suppose the reader wakes up here, opens the file, and gets the lock.
 
-rpcinfo -p localhost stats(about nfs..)
- program vers proto   port  service
-    100011    1   udp  32773  rquotad
-    100001    2   udp  32777  rstatd
-    100001    3   udp  32777  rstatd
-    100001    4   udp  32777  rstatd
-    100021    1   udp   4045  nlockmgr
-    100021    2   udp   4045  nlockmgr
-    100021    3   udp   4045  nlockmgr
-    100021    4   udp   4045  nlockmgr
-    100021    1   tcp   4045  nlockmgr
-    100021    2   tcp   4045  nlockmgr
-    100021    3   tcp   4045  nlockmgr
-    100021    4   tcp   4045  nlockmgr
-    100005    1   udp  36355  mountd
-    100005    2   udp  36355  mountd
-    100005    3   udp  36355  mountd
-    100005    1   tcp  49762  mountd
-    100005    2   tcp  49762  mountd
-    100005    3   tcp  49762  mountd
-    100003    2   udp   2049  nfs
-    100003    3   udp   2049  nfs
-    100227    2   udp   2049  nfs_acl
-    100227    3   udp   2049  nfs_acl
-    100003    2   tcp   2049  nfs
-    100003    3   tcp   2049  nfs
-    100227    2   tcp   2049  nfs_acl
-    100227    3   tcp   2049  nfs_acl
+>   lockf(fd, F_LOCK, 0);
 
-Client wants work with files located in a dir shared with  parameters:
-share   -F   nfs     -o rw,root=nb,anon=505 /dir
-Client mounts dir  in this way :
-....type nfs (rw,noexec,nosuid,nodev,sync,actimeo=0,noac,addr=....,user=...)
+This then might not until the READER has read all of the file and
+closed it.  So you could loose a line.  Best to check the link-count
+on the file at this point, and retry if it is 0.
 
-In the shared dir  there are concurrent processes writing their own 
-content on the same file.
-They make files as root but with ugo 666.
+>   write(fd, line, LINE_SIZE);
+>   lockf(fd, F_ULOCK, 0);
+>   close(fd);
+> 
+>   usleep(WR_PAUSE);
+> }
+> 
+> 
+> READER:
+> 
+> for (;;) {
+>   while(access(file, F_OK))
+>     usleep(RD_PAUSE);
+> 
+>   fd = open(file, O_RDWR);
+>   lockf(fd, F_LOCK, 0);
+>   unlink(file);
+>   lockf(fd, F_ULOCK, 0);
+>   lockf(fd, F_LOCK, 0); /* incriminated lock !!! */
 
-In the client side  another process has a loop looking for mentioned 
-file. Whenever it finds file, it tryes to read it.
+Why unlock and relock?  To try and avoid the race mentioned above?  I
+doubt that would be reliable.
 
-Problem :
- Some times, not every times ,we face a strange lock where reader waits 
-more or less for the same time( about 30sec,uhm..) lock gets acquired, 
-at the end it did it.
-
-Here's simplyfied code:
-
-WRITER:
-
-for (;;) {
-  fd = open(file, O_WRONLY|O_APPEND|O_CREAT, 0666);
-  lockf(fd, F_LOCK, 0);
-  write(fd, line, LINE_SIZE);
-  lockf(fd, F_ULOCK, 0);
-  close(fd);
-
-  usleep(WR_PAUSE);
-}
+NeilBrown
 
 
-READER:
-
-for (;;) {
-  while(access(file, F_OK))
-    usleep(RD_PAUSE);
-
-  fd = open(file, O_RDWR);
-  lockf(fd, F_LOCK, 0);
-  unlink(file);
-  lockf(fd, F_ULOCK, 0);
-  lockf(fd, F_LOCK, 0); /* incriminated lock !!! */
-
-  while (read(fd, line, LINE_SIZE) == LINE_SIZE)
-    ++line_numb;
-
-  close(fd);
-}
-
-
-Any help would be appreciated.
-Thanks in advance.
-Matteo.
-
-
-
-
-
-
+> 
+>   while (read(fd, line, LINE_SIZE) == LINE_SIZE)
+>     ++line_numb;
+> 
+>   close(fd);
+> }
+> 
+> 
+> Any help would be appreciated.
+> Thanks in advance.
+> Matteo.
+> 
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
