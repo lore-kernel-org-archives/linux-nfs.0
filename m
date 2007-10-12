@@ -1,21 +1,27 @@
-From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [RFC,PATCH] svc: Restore rq_xprt_hlen in svc_deferred_recv
-Date: Fri, 12 Oct 2007 14:21:10 -0500
-Message-ID: <20071012192110.25641.29211.stgit@dell3.ogc.int>
+From: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
+Subject: Re: Bug#443591: Bug#443591: nfs-kernel-server:
+	Unexporting	directories no longer working
+Date: Fri, 12 Oct 2007 21:59:58 +0200
+Message-ID: <20071012195958.GA13362@uio.no>
+References: <20070922174231.11200.29119.reportbug@localhost.localdomain>
+	<20070923000102.GA29785@uio.no>
+	<18167.24613.796605.199161@notabene.brown>
+	<46F8483E.3000103@cogweb.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: bfields@fieldses.org, neilb@suse.de, gnb@sgi.com
-To: nfs@lists.sourceforge.net
+Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net
+To: David Liontooth <liontooth@cogweb.net>, 443591@bugs.debian.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IgQ4N-0000wZ-96
-	for nfs@lists.sourceforge.net; Fri, 12 Oct 2007 12:21:11 -0700
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]
-	helo=smtp.opengridcomputing.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IgQ4S-000299-DI
-	for nfs@lists.sourceforge.net; Fri, 12 Oct 2007 12:21:16 -0700
+	id 1IgQg5-0004nr-I0
+	for nfs@lists.sourceforge.net; Fri, 12 Oct 2007 13:00:09 -0700
+Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IgQg7-0004oC-Kd
+	for nfs@lists.sourceforge.net; Fri, 12 Oct 2007 13:00:15 -0700
+In-Reply-To: <46F8483E.3000103@cogweb.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,54 +34,17 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+On Mon, Sep 24, 2007 at 04:29:02PM -0700, David Liontooth wrote:
+> Hi Neil,
+> 
+> Thanks for looking.
 
-Fixed a couple bugs in the deferral processing. This won't see significant
-testing until I complete the rdma driver mods because tcp/udp always
-set the xprt_hlen to zero.  The changes are as follows:
+I didn't see an answer to this mail; was the problem forgotten, or was it
+resolved?
 
-- Restore the length of the transport header in the rqstp structure
-in case the request gets deferred again. 
-
-- Update the iov_head and arg.len with xprt_hlen.
-
-- Add comments that describe how xprt_hlen is used.
-
-Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
----
-
- net/sunrpc/svc_xprt.c |   13 +++++++++----
- 1 files changed, 9 insertions(+), 4 deletions(-)
-
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index c823e66..b56bf05 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -925,16 +925,21 @@ static int svc_deferred_recv(struct svc_
- {
- 	struct svc_deferred_req *dr = rqstp->rq_deferred;
- 
--	rqstp->rq_arg.head[0].iov_base = dr->args;
--	rqstp->rq_arg.head[0].iov_len = dr->argslen<<2;
-+	/* setup iov_base to point past the transport header */
-+	rqstp->rq_arg.head[0].iov_base = dr->args + (dr->xprt_hlen>>2);
-+	/* The iov_len doesn't include the transport header bytes */
-+	rqstp->rq_arg.head[0].iov_len = (dr->argslen<<2) - dr->xprt_hlen;
- 	rqstp->rq_arg.page_len = 0;
--	rqstp->rq_arg.len = dr->argslen<<2;
-+	/* The rq_arg len does not include the transport header bytes */
-+	rqstp->rq_arg.len = (dr->argslen<<2) - dr->xprt_hlen;
- 	rqstp->rq_prot        = dr->prot;
- 	memcpy(&rqstp->rq_addr, &dr->addr, dr->addrlen);
- 	rqstp->rq_addrlen     = dr->addrlen;
-+	/* Save off transport header len in case we get deferred again */
-+	rqstp->rq_xprt_hlen   = dr->xprt_hlen;
- 	rqstp->rq_daddr       = dr->daddr;
- 	rqstp->rq_respages    = rqstp->rq_pages;
--	return dr->argslen<<2;
-+	return (dr->argslen<<2) - dr->xprt_hlen;
- }
- 
- 
+/* Steinar */
+-- 
+Homepage: http://www.sesse.net/
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
