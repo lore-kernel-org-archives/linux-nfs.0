@@ -1,29 +1,23 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH 06/12] text-based mount.nfs:
-Date: Fri, 12 Oct 2007 09:04:49 +1000
-Message-ID: <18190.44049.604497.746871@notabene.brown>
-References: <20071008155407.15051.60775.stgit@manray.1015granger.net>
-	<18186.56139.301135.961540@notabene.brown>
-	<5847045D-72E9-4322-AB08-F8952C26AA44@oracle.com>
-	<18189.32027.462332.151295@notabene.brown>
-	<470D8F45.8020202@oracle.com>
-	<18189.39095.274290.825015@notabene.brown>
-	<3025DF8E-F29F-48BA-BCF3-F9530776A659@oracle.com>
+From: "Madge W. Yazzie" <Madge@kcmsd.net>
+Subject: Megadik is your new magic wand!
+Date: Fri, 12 Oct 2007 14:10:16 +0200
+Message-ID: <5f5701c80cc8$d9d7f320$c0a8008a@Madge>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: multipart/mixed; boundary="===============1235137712=="
+To: "Noemi I. Bartley" <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Ig75P-0006j3-2L
-	for nfs@lists.sourceforge.net; Thu, 11 Oct 2007 16:05:01 -0700
-Received: from mx2.suse.de ([195.135.220.15])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Ig75S-0005Gm-Pc
-	for nfs@lists.sourceforge.net; Thu, 11 Oct 2007 16:05:04 -0700
-In-Reply-To: message from Chuck Lever on Thursday October 11
+	id 1IgJKi-0004x6-Ke
+	for nfs@lists.sourceforge.net; Fri, 12 Oct 2007 05:09:36 -0700
+Received: from [91.89.179.174] (helo=nova.edu)
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1IgJKm-0004WU-TA
+	for nfs@lists.sourceforge.net; Fri, 12 Oct 2007 05:09:41 -0700
+Received: from 169.142.1.207 (HELO kcmsd.net)
+	by lists.sourceforge.net with esmtp (ZEDUIBVHJ OMGZW)
+	id wMvY0W-keIZhu-N
+	for nfs@lists.sourceforge.net; Fri, 12 Oct 2007 14:10:16 +0200
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,51 +30,91 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thursday October 11, chuck.lever@oracle.com wrote:
-> On Oct 10, 2007, at 11:29 PM, Neil Brown wrote:
-> >
-> > Two key fixes:
-> >   1/ Don't give up probing if we get RPC_PROGVERSMISMATCH.
-> >   2/ Don't set pm_vers if it isn't set in mtab.  Leave it at zero so
-> >      the probe routines get a chance to do the right thing.
-> 
-> I think that's the right thing to do.
-> 
-> >    An awkwardness here was we were overloading the meaning of
-> >         pm_vers == 0
-> >    In some contexts it means "Has not been explicitly set, probe".
-> >    In other contexts it means "Mountd is not used (due to NFSv4)".
-> >
-> >    I introduced '63356' for the second meaning, but would rather a
-> >    cleaner approach.
-> 
-> That shouldn't be necessary.  Kevin and I just added a bit of logic  
-> to prevent the do_nfs_unmount() call for "nfs4" file systems (see nfs- 
-> utils commit 97fed306).
-> 
-> That ought to make your patch much simpler, overall.
-> 
-> >    Maybe we don't need the second meaning, as the 2/3 versus 4
-> >    distinction is present in mnt_type so we never call do_nfs_umount
-> >    for a v4 mount.  Is that true?
-> 
-> Yep!
-> 
-> Actually you could make it clear that do_nfs_unmount() is not for v4  
-> by renaming it do_nfs_unmount23() or something like that.
-> 
+This is a multi-part message in MIME format.
 
-Thanks for the feedback.  I've removed the v4 handling from
-do_nfs_umount and nfs_call_umount, and it does the right thing for
-this case now.
+--===============1235137712==
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_24405_5FBF_01C80CD9.9D60C320"
 
-NeilBrown
+This is a multi-part message in MIME format.
+
+------=_NextPart_24405_5FBF_01C80CD9.9D60C320
+Content-Type: text/plain;
+        charset="iso-8859-2"
+Content-Transfer-Encoding: quoted-printable
+
+Finally  you will never worry about your size any more=2E
+We have a solution that will make all your 'se^xual wishes come true=2E
+Leave behind what you've seen before=2E The new era for you begins!
+Girls will love you!=20
+Friends will be jealous!=20
+And you will Finally  your new life! Like a real man with a real penis!
+you will never worry about MegaDik and a solution your new size!
+
+Just click here and have the penis you always wanted!
+http://oqned=2Ecom/
+
+negative=2E
+comfortably=2E George doesnt take you around his house and say, entertain=
+ment firm=2E When takeover artist Saul Steinberg cast his eye on
+figures, plus, according to one guest, millions of Hungarians=2E
+Fourteen
+------=_NextPart_24405_5FBF_01C80CD9.9D60C320
+Content-Type: text/html;
+        charset="iso-8859-2"
+Content-Transfer-Encoding: quoted-printable
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4=2E0 Transitional//EN">
+<HTML><HEAD>
+<META http-equiv=3DContent-Type content=3D"text/html; charset=3Diso-8859-=
+2">
+<META content=3D"MSHTML 6=2E00=2E2800=2E1478" name=3DGENERATOR>
+<STYLE type=3D"text/css">
+=2Estyle2 {font-size: 10px; color: #616161;}
+=2Estyle7 {font-size: 14px; color: #FF2F2F;}
+body {background-color: #edf9fe; color: #5c5c5c;}
+</STYLE>
+</HEAD>
+<BODY>Finally  you will never worry about your size any more=2E</b><br> W=
+e have a solution that will make all your 'se^xual wishes come true=2E <b=
+r>=20
+<b>Leave behind what you've seen before=2E <span class=3D"style7">The new=
+ era for you begins!</span></b><br>=20
+Girls will love you! <br>=20
+Friends will be jealous! <br>=20
+<b>And you will Finally  your new life! Like a real man with a real penis=
+!<br>=20
+<span class=3D"style7">Discover MegaDik and enjoy your new size!</span></=
+b><br><br>=20
+<a href=3D"http://oqned=2Ecom/"><b>http://oqned=2Ecom/ Just click here an=
+d have the penis you always longed for!</b></a><br><br>
+<br><span class=3D"style2">negative=2E<br>comfortably=2E George doesnt ta=
+ke you around his house and say, entertainment firm=2E When takeover arti=
+st Saul Steinberg cast his eye on<br>figures, plus, according to one gues=
+t, millions of Hungarians=2E<br>Fourteen</span></BODY></HTML>
+
+------=_NextPart_24405_5FBF_01C80CD9.9D60C320--
+
+
+--===============1235137712==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >> http://get.splunk.com/
+--===============1235137712==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============1235137712==--
