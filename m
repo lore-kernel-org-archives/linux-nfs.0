@@ -1,27 +1,23 @@
-From: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
-Subject: Re: Bug#443591: Bug#443591: nfs-kernel-server:
-	Unexporting	directories no longer working
-Date: Fri, 12 Oct 2007 21:59:58 +0200
-Message-ID: <20071012195958.GA13362@uio.no>
-References: <20070922174231.11200.29119.reportbug@localhost.localdomain>
-	<20070923000102.GA29785@uio.no>
-	<18167.24613.796605.199161@notabene.brown>
-	<46F8483E.3000103@cogweb.net>
+From: Kevin Coffman <kwc@citi.umich.edu>
+Subject: [PATCH 9/9] Remove unnecessary code from idmapd.
+Date: Fri, 12 Oct 2007 16:35:25 -0400
+Message-ID: <20071012203525.24796.22738.stgit@RoCk.CiTi.UmIcH.EdU>
+References: <20071012202348.24796.29260.stgit@RoCk.CiTi.UmIcH.EdU>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net
-To: David Liontooth <liontooth@cogweb.net>, 443591@bugs.debian.org
+Cc: nfs@lists.sourceforge.net
+To: neilb@suse.de
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IgQg5-0004nr-I0
-	for nfs@lists.sourceforge.net; Fri, 12 Oct 2007 13:00:09 -0700
-Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
+	id 1IgRE9-0008GW-MC
+	for nfs@lists.sourceforge.net; Fri, 12 Oct 2007 13:35:21 -0700
+Received: from citi.umich.edu ([141.211.133.111])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IgQg7-0004oC-Kd
-	for nfs@lists.sourceforge.net; Fri, 12 Oct 2007 13:00:15 -0700
-In-Reply-To: <46F8483E.3000103@cogweb.net>
+	(Exim 4.44) id 1IgREE-0007gZ-DD
+	for nfs@lists.sourceforge.net; Fri, 12 Oct 2007 13:35:27 -0700
+In-Reply-To: <20071012202348.24796.29260.stgit@RoCk.CiTi.UmIcH.EdU>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,17 +30,166 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Mon, Sep 24, 2007 at 04:29:02PM -0700, David Liontooth wrote:
-> Hi Neil,
-> 
-> Thanks for looking.
+From: Kevin Coffman <kwc@citi.umich.edu>
 
-I didn't see an answer to this mail; was the problem forgotten, or was it
-resolved?
+This patch removes unnecessary code from idmapd. setproctitle is not used
+anywhere and it can be removed. In addition the kernel section of the
+nfs_idmap.h header is not used and is out of date and thus is removed.
 
-/* Steinar */
--- 
-Homepage: http://www.sesse.net/
+Signed-off-by: David P. Quigley <dpquigl@tycho.nsa.gov>
+Signed-off-by: Kevin Coffman <kwc@citi.umich.edu>
+---
+
+ utils/idmapd/Makefile.am    |    1 
+ utils/idmapd/nfs_idmap.h    |    7 ---
+ utils/idmapd/setproctitle.c |  110 -------------------------------------------
+ 3 files changed, 0 insertions(+), 118 deletions(-)
+
+diff --git a/utils/idmapd/Makefile.am b/utils/idmapd/Makefile.am
+index 586ac9a..eb393df 100644
+--- a/utils/idmapd/Makefile.am
++++ b/utils/idmapd/Makefile.am
+@@ -16,7 +16,6 @@ idmapd_SOURCES = \
+ 	atomicio.c \
+ 	cfg.c \
+ 	idmapd.c \
+-	setproctitle.c \
+ 	strlcat.c \
+ 	strlcpy.c \
+ 	\
+diff --git a/utils/idmapd/nfs_idmap.h b/utils/idmapd/nfs_idmap.h
+index 5ec7cf1..59bced3 100644
+--- a/utils/idmapd/nfs_idmap.h
++++ b/utils/idmapd/nfs_idmap.h
+@@ -61,11 +61,4 @@ struct idmap_msg {
+ 	u_int8_t  im_status;
+ };
+ 
+-#ifdef __KERNEL__
+-void      *nfs_idmap_new(struct nfs_server *);
+-void       nfs_idmap_delete(struct nfs_server *);
+-int        nfs_idmap_id(struct nfs_server *, u_int8_t, char *, u_int,  uid_t *);
+-int        nfs_idmap_name(struct nfs_server *, u_int8_t, uid_t, char *, u_int *);
+-#endif /* __KERNEL__ */
+-
+ #endif /* NFS_IDMAP_H */
+diff --git a/utils/idmapd/setproctitle.c b/utils/idmapd/setproctitle.c
+deleted file mode 100644
+index 0679f4e..0000000
+--- a/utils/idmapd/setproctitle.c
++++ /dev/null
+@@ -1,110 +0,0 @@
+-/*
+- * Modified for OpenSSH by Kevin Steves
+- * October 2000
+- */
+-
+-/*
+- * Copyright (c) 1994, 1995 Christopher G. Demetriou
+- * All rights reserved.
+- *
+- * Redistribution and use in source and binary forms, with or without
+- * modification, are permitted provided that the following conditions
+- * are met:
+- * 1. Redistributions of source code must retain the above copyright
+- *    notice, this list of conditions and the following disclaimer.
+- * 2. Redistributions in binary form must reproduce the above copyright
+- *    notice, this list of conditions and the following disclaimer in the
+- *    documentation and/or other materials provided with the distribution.
+- * 3. All advertising materials mentioning features or use of this software
+- *    must display the following acknowledgement:
+- *      This product includes software developed by Christopher G. Demetriou
+- *	for the NetBSD Project.
+- * 4. The name of the author may not be used to endorse or promote products
+- *    derived from this software without specific prior written permission
+- *
+- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+- * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+- * IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+- * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+- */
+-
+-#if defined(LIBC_SCCS) && !defined(lint)
+-static char rcsid[] = "$OpenBSD: setproctitle.c,v 1.8 2001/11/06 19:21:40 art Exp $";
+-#endif /* LIBC_SCCS and not lint */
+-
+-#include <sys/types.h>
+-
+-#include <stdio.h>
+-#include <string.h>
+-#include <stdarg.h>
+-
+-#ifdef HAVE_CONFIG_H
+-#include "config.h"
+-#endif /* HAVE_CONFIG_H */
+-
+-#ifndef HAVE_SETPROCTITLE
+-
+-#define SPT_NONE	0
+-#define SPT_PSTAT	1
+-
+-#ifndef SPT_TYPE
+-#define SPT_TYPE	SPT_NONE
+-#endif
+-
+-#if SPT_TYPE == SPT_PSTAT
+-#include <sys/param.h>
+-#include <sys/pstat.h>
+-#endif /* SPT_TYPE == SPT_PSTAT */
+-
+-#define	MAX_PROCTITLE	2048
+-
+-extern char *__progname;
+-
+-/*
+- * Set Process Title (SPT) defines.  Modeled after sendmail's
+- * SPT type definition strategy.
+- *
+- * SPT_TYPE:
+- *
+- * SPT_NONE:	Don't set the process title.  Default.
+- * SPT_PSTAT:	Use pstat(PSTAT_SETCMD).  HP-UX specific.
+- */
+-
+-void
+-setproctitle(const char *fmt, ...)
+-{
+-#if SPT_TYPE != SPT_NONE
+-	va_list ap;
+-
+-	char buf[MAX_PROCTITLE];
+-	size_t used;
+-
+-#if SPT_TYPE == SPT_PSTAT
+-	union pstun pst;
+-#endif /* SPT_TYPE == SPT_PSTAT */
+-
+-	va_start(ap, fmt);
+-	if (fmt != NULL) {
+-		used = snprintf(buf, MAX_PROCTITLE, "%s: ", __progname);
+-		if (used >= MAX_PROCTITLE)
+-			used = MAX_PROCTITLE - 1;
+-		(void)vsnprintf(buf + used, MAX_PROCTITLE - used, fmt, ap);
+-	} else
+-		(void)snprintf(buf, MAX_PROCTITLE, "%s", __progname);
+-	va_end(ap);
+-	used = strlen(buf);
+-
+-#if SPT_TYPE == SPT_PSTAT
+-	pst.pst_command = buf;
+-	pstat(PSTAT_SETCMD, pst, used, 0, 0);
+-#endif /* SPT_TYPE == SPT_PSTAT */
+-
+-#endif /* SPT_TYPE != SPT_NONE */
+-}
+-#endif /* HAVE_SETPROCTITLE */
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
