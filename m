@@ -1,20 +1,28 @@
-From: Le Rouzic <aime.le-rouzic@bull.net>
-Subject: 2.6.23-rc9-CITI_NFS4_ALL-1 connectathon suite testdir error
-Date: Fri, 12 Oct 2007 16:12:13 +0200
-Message-ID: <470F80BD.1090608@bull.net>
+From: Tom Tucker <tom@opengridcomputing.com>
+Subject: Re: [RFC,
+	PATCH 0/3] svc: gnb review cleanup for transport switch
+Date: Fri, 12 Oct 2007 10:17:14 -0500
+Message-ID: <1192202234.30080.21.camel@trinity.ogc.int>
+References: <20071011022356.3501.63859.stgit@dell3.ogc.int>
+	<20071011203029.GE22823@fieldses.org>
+	<1192140282.7491.33.camel@trinity.ogc.int>
+	<20071011220820.GF22823@fieldses.org>
+Reply-To: tom@opengridcomputing.com
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: nfsv4 <nfsv4@linux-nfs.org>
+Cc: neilb@suse.de, nfs@lists.sourceforge.net, gnb@sgi.com
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IgLFN-0000rd-3U
-	for nfs@lists.sourceforge.net; Fri, 12 Oct 2007 07:12:13 -0700
-Received: from ecfrec.frec.bull.fr ([129.183.4.8])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IgLFR-0007SH-S9
-	for nfs@lists.sourceforge.net; Fri, 12 Oct 2007 07:12:18 -0700
+	id 1IgMHW-0000Tm-9m
+	for nfs@lists.sourceforge.net; Fri, 12 Oct 2007 08:18:30 -0700
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]
+	helo=smtp.opengridcomputing.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IgMHb-0005V1-5k
+	for nfs@lists.sourceforge.net; Fri, 12 Oct 2007 08:18:35 -0700
+In-Reply-To: <20071011220820.GF22823@fieldses.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,36 +35,38 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi,
+On Thu, 2007-10-11 at 18:08 -0400, J. Bruce Fields wrote:
+> On Thu, Oct 11, 2007 at 05:04:42PM -0500, Tom Tucker wrote:
+> > I think I found the problem. The patchset is not caching the auth data
+> > properly. This causes the server to fail the setting of the client id
+> > with a 10018 error.
+> > 
+> > I'll send a patch off tonight....sorry :-\
 
-Running 2.6.23-rc9-CITI_NFS4_ALL-1 on two Intel X86_64 bi-ways machines as
-client and server, get the following error with the runtest (-s) of the special
-tests of the connectathon suite when running it with several other robustness
-tests (fsx,iozone,fssbfss_stress) in the same time:
+A quick update. The problem is not what I thought it was, but I did
+discover some interesting things:
 
- Second check for lost reply on non-idempotent requests
- testing 50 idempotencies in directory "testdir"
- rmdir 1: Directory not empty
- special tests failed
+- If you wait 60 seconds after the nfs4 mount, everything works fine.
+You can run connectathon and the world is happy. Before the 60 seconds
+you get the hang. Curiously, there are connection management timers in
+the client that have this value.
 
+- It looks like the module load logic that is down in the
+crypto_alloc_hash path is not working properly. Maybe the module name
+changed or something, or maybe it always worked this way and I'm
+confused, but you have to manually load md5 for nfs4 to work
 
- 
-------------------------------------------------------------- 
-Bug: 
-  http://bugzilla.linux-nfs.org/show_bug.cgi?id=150  
-  
-Cheers
-  
+- It looks like the callback path is still broken. It's not the port
+number, it's the IP address. Since I moved the IP address, it's likely
+that I'm the culprit. 
 
--- 
------------------------------------------------------------------
-Company : Bull, Architect of an Open World TM (www.bull.com)
-Name    : Aime Le Rouzic 
-Mail    : Bull - BP 208 - 38432 Echirolles Cedex - France
-E-Mail  : aime.le-rouzic@bull.net
-Phone   : 33 (4) 76.29.75.51
-Fax     : 33 (4) 76.29.75.18
------------------------------------------------------------------ 
+I'll keep you updated,
+Tom
+
+> 
+> OK, thanks!
+> 
+> --b.
 
 
 -------------------------------------------------------------------------
