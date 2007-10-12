@@ -1,8 +1,8 @@
 From: Kevin Coffman <kwc@citi.umich.edu>
-Subject: [PATCH 3/9] Use printerr to print svcgssd downcall debugging
-	info
-Date: Fri, 12 Oct 2007 16:34:54 -0400
-Message-ID: <20071012203454.24796.7255.stgit@RoCk.CiTi.UmIcH.EdU>
+Subject: [PATCH 4/9] Copy new cacheio functions used by svcgssd to
+	nfslib
+Date: Fri, 12 Oct 2007 16:35:00 -0400
+Message-ID: <20071012203459.24796.45416.stgit@RoCk.CiTi.UmIcH.EdU>
 References: <20071012202348.24796.29260.stgit@RoCk.CiTi.UmIcH.EdU>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -12,12 +12,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IgRDf-00089e-3X
-	for nfs@lists.sourceforge.net; Fri, 12 Oct 2007 13:34:51 -0700
+	id 1IgRDk-00089j-DM
+	for nfs@lists.sourceforge.net; Fri, 12 Oct 2007 13:34:56 -0700
 Received: from citi.umich.edu ([141.211.133.111])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IgRDk-0007S1-7k
-	for nfs@lists.sourceforge.net; Fri, 12 Oct 2007 13:34:56 -0700
+	(Exim 4.44) id 1IgRDo-0007To-M9
+	for nfs@lists.sourceforge.net; Fri, 12 Oct 2007 13:35:01 -0700
 In-Reply-To: <20071012202348.24796.29260.stgit@RoCk.CiTi.UmIcH.EdU>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -33,86 +33,117 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 From: Kevin Coffman <kwc@citi.umich.edu>
 
-Rather than depending on modified qword_* functions to print
-svcgssd debugging information, use printerr in the downcall
-function.
-
-And while we're at it, label things so we know what we're looking at!
+Copy private qword_ functions from the svcgssd version into
+the general nfslib library.   Add prototypes as needed.
+Also, update readline to use a bigger buffer allocation as is
+needed in the svcgssd version.
 
 Signed-off-by: Kevin Coffman <kwc@citi.umich.edu>
 ---
 
- utils/gssd/cacheio.c      |   11 -----------
- utils/gssd/svcgssd_proc.c |    8 +++++++-
- 2 files changed, 7 insertions(+), 12 deletions(-)
+ support/include/nfslib.h |    5 +++++
+ support/nfs/cacheio.c    |   47 +++++++++++++++++++++++++++++++++++++++-------
+ 2 files changed, 45 insertions(+), 7 deletions(-)
 
-diff --git a/utils/gssd/cacheio.c b/utils/gssd/cacheio.c
-index e24ef56..f47f1fa 100644
---- a/utils/gssd/cacheio.c
-+++ b/utils/gssd/cacheio.c
-@@ -153,17 +153,12 @@ void qword_addeol(char **bpp, int *lp)
+diff --git a/support/include/nfslib.h b/support/include/nfslib.h
+index ffa2440..422b012 100644
+--- a/support/include/nfslib.h
++++ b/support/include/nfslib.h
+@@ -144,6 +144,11 @@ int qword_get(char **bpp, char *dest, int bufsize);
+ int qword_get_int(char **bpp, int *anint);
+ void cache_flush(int force);
+ int check_new_cache(void);
++void qword_add(char **bpp, int *lp, char *str);
++void qword_addhex(char **bpp, int *lp, char *buf, int blen);
++void qword_addint(char **bpp, int *lp, int n);
++void qword_adduint(char **bpp, int *lp, unsigned int n);
++void qword_addeol(char **bpp, int *lp);
+ 
+ void closeall(int min);
+ 
+diff --git a/support/nfs/cacheio.c b/support/nfs/cacheio.c
+index 9d271cd..48292f8 100644
+--- a/support/nfs/cacheio.c
++++ b/support/nfs/cacheio.c
+@@ -88,6 +88,37 @@ void qword_addhex(char **bpp, int *lp, char *buf, int blen)
+ 	*lp = len;
  }
  
++void qword_addint(char **bpp, int *lp, int n)
++{
++	int len;
++
++	len = snprintf(*bpp, *lp, "%d ", n);
++	if (len > *lp)
++		len = *lp;
++	*bpp += len;
++	*lp -= len;
++}
++
++void qword_adduint(char **bpp, int *lp, unsigned int n)
++{
++	int len;
++
++	len = snprintf(*bpp, *lp, "%u ", n);
++	if (len > *lp)
++		len = *lp;
++	*bpp += len;
++	*lp -= len;
++}
++
++void qword_addeol(char **bpp, int *lp)
++{
++	if (*lp <= 0)
++		return;
++	**bpp = '\n';
++	(*bpp)++;
++	(*lp)--;
++}
++
  static char qword_buf[8192];
--static char tmp_buf[8192];
  void qword_print(FILE *f, char *str)
  {
- 	char *bp = qword_buf;
- 	int len = sizeof(qword_buf);
- 	qword_add(&bp, &len, str);
- 	fwrite(qword_buf, bp-qword_buf, 1, f);
--	/* XXX: */
--	memcpy(tmp_buf, qword_buf, bp-qword_buf);
--	tmp_buf[bp-qword_buf] = '\0';
--	printerr(2, "%s", tmp_buf);
+@@ -192,23 +223,25 @@ int qword_get_int(char **bpp, int *anint)
+ 	return 0;
  }
  
- void qword_printhex(FILE *f, char *str, int slen)
-@@ -172,16 +167,11 @@ void qword_printhex(FILE *f, char *str, int slen)
- 	int len = sizeof(qword_buf);
- 	qword_addhex(&bp, &len, str, slen);
- 	fwrite(qword_buf, bp-qword_buf, 1, f);
--	/* XXX: */
--	memcpy(tmp_buf, qword_buf, bp-qword_buf);
--	tmp_buf[bp-qword_buf] = '\0';
--	printerr(2, "%s", tmp_buf);
- }
- 
- void qword_printint(FILE *f, int num)
++#define READLINE_BUFFER_INCREMENT 2048
++
+ int readline(int fd, char **buf, int *lenp)
  {
- 	fprintf(f, "%d ", num);
--	printerr(2, "%d ", num);
- }
+ 	/* read a line into *buf, which is malloced *len long
+ 	 * realloc if needed until we find a \n
+ 	 * nul out the \n and return
+-	 * 0 of eof, 1 of success 
++	 * 0 on eof, 1 on success
+ 	 */
+-	int len = *lenp;
++	int len;
  
- int qword_eol(FILE *f)
-@@ -189,7 +179,6 @@ int qword_eol(FILE *f)
- 	int err;
- 	fprintf(f,"\n");
- 	err = fflush(f);
--	printerr(2, "\n");
- 	return err;
- }
- 
-diff --git a/utils/gssd/svcgssd_proc.c b/utils/gssd/svcgssd_proc.c
-index 52c3aaf..2dffa83 100644
---- a/utils/gssd/svcgssd_proc.c
-+++ b/utils/gssd/svcgssd_proc.c
-@@ -90,8 +90,14 @@ do_svc_downcall(gss_buffer_desc *out_handle, struct svc_cred *cred,
- 	qword_printint(f, cred->cr_uid);
- 	qword_printint(f, cred->cr_gid);
- 	qword_printint(f, cred->cr_ngroups);
--	for (i=0; i < cred->cr_ngroups; i++)
-+	printerr(2, "mech: %s, hndl len: %d, ctx len %d, timeout: %d, "
-+		 "uid: %d, gid: %d, num aux grps: %d:\n",
-+		 fname, out_handle->length, context_token->length, 0x7fffffff,
-+		 cred->cr_uid, cred->cr_gid, cred->cr_ngroups);
-+	for (i=0; i < cred->cr_ngroups; i++) {
- 		qword_printint(f, cred->cr_groups[i]);
-+		printerr(2, "  (%4d) %d\n", i+1, cred->cr_groups[i]);
-+	}
- 	qword_print(f, fname);
- 	qword_printhex(f, context_token->value, context_token->length);
- 	err = qword_eol(f);
+-	if (len == 0) {
+-		char *b = malloc(128);
++	if (*lenp == 0) {
++		char *b = malloc(READLINE_BUFFER_INCREMENT);
+ 		if (b == NULL)
+ 			return 0;
+ 		*buf = b;
+-		*lenp = 128;
++		*lenp = READLINE_BUFFER_INCREMENT;
+ 	}
+-	len = read(fd, *buf, len);
++	len = read(fd, *buf, *lenp);
+ 	if (len <= 0)
+ 		return 0;
+ 	while ((*buf)[len-1] != '\n') {
+@@ -217,7 +250,7 @@ int readline(int fd, char **buf, int *lenp)
+ 	 */
+ 		char *new;
+ 		int nl;
+-		*lenp *= 2;
++		*lenp += READLINE_BUFFER_INCREMENT;
+ 		new = realloc(*buf, *lenp);
+ 		if (new == NULL)
+ 			return 0;
 
 
 -------------------------------------------------------------------------
