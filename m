@@ -1,22 +1,21 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [RFC,
-	PATCH] svc: Don't call xpo_free until after releasing auth data
-Date: Fri, 12 Oct 2007 13:58:32 -0500
-Message-ID: <20071012185832.24685.35490.stgit@dell3.ogc.int>
+Subject: [RFC,PATCH] svc: bzero the xprt memory in svc_xprt_init
+Date: Fri, 12 Oct 2007 14:00:48 -0500
+Message-ID: <20071012190048.24784.44983.stgit@dell3.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: bfields@fieldses.org, neilb@suse.de, gnb@sgi.com
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IgPiU-000730-NH
-	for nfs@lists.sourceforge.net; Fri, 12 Oct 2007 11:58:34 -0700
+	id 1IgPkf-0007FS-PJ
+	for nfs@lists.sourceforge.net; Fri, 12 Oct 2007 12:00:52 -0700
 Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]
 	helo=smtp.opengridcomputing.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IgPiY-0000d5-Q4
-	for nfs@lists.sourceforge.net; Fri, 12 Oct 2007 11:58:40 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IgPkj-0003gH-TM
+	for nfs@lists.sourceforge.net; Fri, 12 Oct 2007 12:00:55 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,31 +29,54 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 
-The svc_xprt_free function is calling xpo_free and then using the xprt
-pointer while attempting to free the cached auth data. Reverse the order
-of these operations.
+The transport class driver is responsible for allocating the 
+memory that contains svc_xprt. We don't know whether the driver
+used kzalloc or kmalloc. Initialize the svc_xprt structure to
+zeroes just in case.
+
+Also changed the name of the svc_xprt ptr variable to xprt to
+be consistent with the naming used everywhere else for the
+transport ptr.
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- net/sunrpc/svc_xprt.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ net/sunrpc/svc_xprt.c |   21 +++++++++++----------
+ 1 files changed, 11 insertions(+), 10 deletions(-)
 
 diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index cbf80b0..56fcc7c 100644
+index 56fcc7c..c823e66 100644
 --- a/net/sunrpc/svc_xprt.c
 +++ b/net/sunrpc/svc_xprt.c
-@@ -127,10 +127,10 @@ static void svc_xprt_free(struct kref *k
- 		container_of(kref, struct svc_xprt, xpt_ref);
- 	struct module *owner = xprt->xpt_class->xcl_owner;
- 	BUG_ON(atomic_read(&kref->refcount));
--	xprt->xpt_ops->xpo_free(xprt);
- 	if (test_bit(XPT_CACHE_AUTH, &xprt->xpt_flags)
- 	    && xprt->xpt_auth_cache != NULL)
- 		svcauth_unix_info_release(xprt->xpt_auth_cache);
-+	xprt->xpt_ops->xpo_free(xprt);
- 	module_put(owner);
+@@ -144,18 +144,19 @@ EXPORT_SYMBOL_GPL(svc_xprt_put);
+  * Called by transport drivers to initialize the transport independent
+  * portion of the transport instance.
+  */
+-void svc_xprt_init(struct svc_xprt_class *xcl, struct svc_xprt *xpt,
++void svc_xprt_init(struct svc_xprt_class *xcl, struct svc_xprt *xprt,
+ 		   struct svc_serv *serv)
+ {
+-	xpt->xpt_class = xcl;
+-	xpt->xpt_ops = xcl->xcl_ops;
+-	kref_init(&xpt->xpt_ref);
+-	xpt->xpt_server = serv;
+-	INIT_LIST_HEAD(&xpt->xpt_list);
+-	INIT_LIST_HEAD(&xpt->xpt_ready);
+-	INIT_LIST_HEAD(&xpt->xpt_deferred);
+-	mutex_init(&xpt->xpt_mutex);
+-	spin_lock_init(&xpt->xpt_lock);
++	memset(xprt, 0, sizeof(*xprt));
++	xprt->xpt_class = xcl;
++	xprt->xpt_ops = xcl->xcl_ops;
++	kref_init(&xprt->xpt_ref);
++	xprt->xpt_server = serv;
++	INIT_LIST_HEAD(&xprt->xpt_list);
++	INIT_LIST_HEAD(&xprt->xpt_ready);
++	INIT_LIST_HEAD(&xprt->xpt_deferred);
++	mutex_init(&xprt->xpt_mutex);
++	spin_lock_init(&xprt->xpt_lock);
  }
+ EXPORT_SYMBOL_GPL(svc_xprt_init);
  
 
 -------------------------------------------------------------------------
