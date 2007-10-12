@@ -1,164 +1,69 @@
 From: Le Rouzic <aime.le-rouzic@bull.net>
-Subject: Fix for Oops with kerberos flavor on 2.6.23-rc9-CITI_NFS4_ALL-1
-Date: Fri, 12 Oct 2007 16:05:12 +0200
-Message-ID: <470F7F18.4060504@bull.net>
-References: <470DD848.2090204@bull.net>
+Subject: 2.6.23-rc9-CITI_NFS4_ALL-1 connectathon suite testdir error
+Date: Fri, 12 Oct 2007 16:12:13 +0200
+Message-ID: <470F80BD.1090608@bull.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
+Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 To: nfsv4 <nfsv4@linux-nfs.org>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <470DD848.2090204@bull.net>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
-List-ID: <nfs.lists.sourceforge.net>
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1IgLFN-0000rd-3U
+	for nfs@lists.sourceforge.net; Fri, 12 Oct 2007 07:12:13 -0700
+Received: from ecfrec.frec.bull.fr ([129.183.4.8])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IgLFR-0007SH-S9
+	for nfs@lists.sourceforge.net; Fri, 12 Oct 2007 07:12:18 -0700
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
+
+Hi,
+
+Running 2.6.23-rc9-CITI_NFS4_ALL-1 on two Intel X86_64 bi-ways machines as
+client and server, get the following error with the runtest (-s) of the special
+tests of the connectathon suite when running it with several other robustness
+tests (fsx,iozone,fssbfss_stress) in the same time:
+
+ Second check for lost reply on non-idempotent requests
+ testing 50 idempotencies in directory "testdir"
+ rmdir 1: Directory not empty
+ special tests failed
 
 
-
-
- Hi,
-
-  Oops fixed by the following patch delivered by Bruce Fields.
-
-diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcaut=
-h_gss.c
-index f530df0..3b5ea95 100644
---- a/net/sunrpc/auth_gss/svcauth_gss.c
-+++ b/net/sunrpc/auth_gss/svcauth_gss.c
-@@ -935,7 +935,7 @@ char *svc_gss_principal(struct svc_rqst *rqstp)
- {
- 	struct gss_svc_data *gd =3D (struct gss_svc_data *)rqstp->rq_auth_data;
- =
-
--	if (gd)
-+	if (gd && gd->rsci)
- 		return gd->rsci->client_name;
- 	return NULL;
- }
-
-
-
-See Bug: =
-
-  http://bugzilla.linux-nfs.org/show_bug.cgi?id=3D149  =
-
-
-
+ 
+------------------------------------------------------------- 
+Bug: 
+  http://bugzilla.linux-nfs.org/show_bug.cgi?id=150  
+  
 Cheers
+  
 
-
-
-
-
-
-
-
-
-Le Rouzic a =E9crit :
-
->Hi,
->
->Running 2.6.23-rc9-CITI_NFS4_ALL-1 on two Intel X86_64 two ways machines =
-
->as client and server with NFSV4 mounting
->using kerberos flavors (krb5 or krb5i or krb5p),
->I get the following Oops when running several robustness tests =
-
->(fsx,iozone,fssb,connectathon,fss_stress):
->
->frec kernel: Unable to handle kernel NULL pointer dereference at =
-
->0000000000000080 RIP:
->frec kernel:  [<ffffffff805ac308>] svc_gss_principal+0x12/0x1a
->frec kernel: PGD 2bd43067 PUD 2c1bb067 PMD 0
->frec kernel: Oops: 0000 [1] SMP
->frec kernel: CPU 0
->frec kernel: Modules linked in: hidp hid rfcomm l2cap bluetooth =
-
->dm_multipath backlight radeon drm
->parport_pc lp parport floppy nvram e752x_edac edac_core i6300esb =
-
->i2c_i801 i2c_core dm_snapshot dm_zero dm_mirror dm_mod
->frec kernel: Pid: 3280, comm: nfsd Not tainted 2.6.23-rc9-CITI_NFS4_ALL-1 =
-#2
->frec kernel: RIP: 0010:[<ffffffff805ac308>]  [<ffffffff805ac308>] =
-
->svc_gss_principal+0x12/0x1a
->frec kernel: RSP: 0018:ffff81006555bd78  EFLAGS: 00010286
->frec kernel: RAX: 0000000000000000 RBX: ffff81007c1e0a00 RCX: =
-
->0000000000000000
->frec kernel: RDX: ffff810065153c00 RSI: 0000000000000028 RDI: =
-
->ffff8100655d2000
->frec kernel: RBP: ffffffff808b5ed0 R08: ffff8100604706e0 R09: =
-
->0000000000000000
->frec kernel: R10: ffff81006a8641c0 R11: 0000000000000058 R12: =
-
->0000000000000000
->frec kernel: R13: ffff8100655d2000 R14: ffff8100655d2028 R15: =
-
->ffff8100657e4080
->frec kernel: FS:  00002b97ba3c06f0(0000) GS:ffffffff807a1000(0000) =
-
->knlGS:0000000000000000
->frec kernel: CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
->frec kernel: CR2: 0000000000000080 CR3: 000000002bd40000 CR4: =
-
->00000000000006e0
->frec kernel: DR0: 0000000000000000 DR1: 0000000000000000 DR2: =
-
->0000000000000000
->frec kernel: DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: =
-
->0000000000000400
->frec kernel: Process nfsd (pid: 3280, threadinfo ffff81006555a000, task =
-
->ffff81007d0ee860)
->frec kernel: Stack:  ffffffff8034702f 0000000000000286 ffffffff808b5ed0 =
-
->3439653362313538
->frec kernel:  3633316539316532 3462383431386532 3232313935306462 =
-
->0000000000000000
->frec kernel:  ffffffff805b39ad ffffffff00000028 ffff81005a53b080 =
-
->ffff81006555be10
->frec kernel: Call Trace:
->frec kernel:  [<ffffffff8034702f>] nfsd4_setclientid+0x247/0x496
->frec kernel:  [<ffffffff805b39ad>] _spin_unlock_bh+0x9/0x15
->frec kernel:  [<ffffffff8033d453>] nfsd4_proc_compound+0x1ad/0x2b9
->frec kernel:  [<ffffffff8032ecb5>] nfsd_dispatch+0xde/0x1b6
->
->------------------------------------------------------------- =
-
->See Bug: =
-
->  http://bugzilla.linux-nfs.org/show_bug.cgi?id=3D149  =
-
->
->Cheers
->  =
-
->
-
-
--- =
-
+-- 
 -----------------------------------------------------------------
 Company : Bull, Architect of an Open World TM (www.bull.com)
-Name    : Aime Le Rouzic =
-
+Name    : Aime Le Rouzic 
 Mail    : Bull - BP 208 - 38432 Echirolles Cedex - France
 E-Mail  : aime.le-rouzic@bull.net
 Phone   : 33 (4) 76.29.75.51
 Fax     : 33 (4) 76.29.75.18
------------------------------------------------------------------ =
+----------------------------------------------------------------- 
+
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Splunk Inc.
+Still grepping through log files to find problems?  Stop.
+Now Search log events and configuration files using AJAX and a browser.
+Download your FREE copy of Splunk now >> http://get.splunk.com/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
