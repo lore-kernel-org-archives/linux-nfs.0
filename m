@@ -1,7 +1,7 @@
 From: Kevin Coffman <kwc@citi.umich.edu>
-Subject: [PATCH 9/9] Remove unnecessary code from idmapd.
-Date: Fri, 12 Oct 2007 16:35:25 -0400
-Message-ID: <20071012203525.24796.22738.stgit@RoCk.CiTi.UmIcH.EdU>
+Subject: [PATCH 6/9] Remove svcgssd's private version of cacheio.c
+Date: Fri, 12 Oct 2007 16:35:10 -0400
+Message-ID: <20071012203510.24796.27060.stgit@RoCk.CiTi.UmIcH.EdU>
 References: <20071012202348.24796.29260.stgit@RoCk.CiTi.UmIcH.EdU>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -11,12 +11,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IgRE9-0008GW-MC
-	for nfs@lists.sourceforge.net; Fri, 12 Oct 2007 13:35:21 -0700
+	id 1IgRDu-0008Fe-6v
+	for nfs@lists.sourceforge.net; Fri, 12 Oct 2007 13:35:06 -0700
 Received: from citi.umich.edu ([141.211.133.111])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IgREE-0007gZ-DD
-	for nfs@lists.sourceforge.net; Fri, 12 Oct 2007 13:35:27 -0700
+	(Exim 4.44) id 1IgRDy-0007bQ-TY
+	for nfs@lists.sourceforge.net; Fri, 12 Oct 2007 13:35:11 -0700
 In-Reply-To: <20071012202348.24796.29260.stgit@RoCk.CiTi.UmIcH.EdU>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -32,163 +32,374 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 From: Kevin Coffman <kwc@citi.umich.edu>
 
-This patch removes unnecessary code from idmapd. setproctitle is not used
-anywhere and it can be removed. In addition the kernel section of the
-nfs_idmap.h header is not used and is out of date and thus is removed.
+Now that svcgssd is using the qword_* functions in the
+support library, remove the private version.
 
-Signed-off-by: David P. Quigley <dpquigl@tycho.nsa.gov>
 Signed-off-by: Kevin Coffman <kwc@citi.umich.edu>
 ---
 
- utils/idmapd/Makefile.am    |    1 
- utils/idmapd/nfs_idmap.h    |    7 ---
- utils/idmapd/setproctitle.c |  110 -------------------------------------------
- 3 files changed, 0 insertions(+), 118 deletions(-)
+ utils/gssd/cacheio.c |  297 --------------------------------------------------
+ utils/gssd/cacheio.h |   49 --------
+ 2 files changed, 0 insertions(+), 346 deletions(-)
 
-diff --git a/utils/idmapd/Makefile.am b/utils/idmapd/Makefile.am
-index 586ac9a..eb393df 100644
---- a/utils/idmapd/Makefile.am
-+++ b/utils/idmapd/Makefile.am
-@@ -16,7 +16,6 @@ idmapd_SOURCES = \
- 	atomicio.c \
- 	cfg.c \
- 	idmapd.c \
--	setproctitle.c \
- 	strlcat.c \
- 	strlcpy.c \
- 	\
-diff --git a/utils/idmapd/nfs_idmap.h b/utils/idmapd/nfs_idmap.h
-index 5ec7cf1..59bced3 100644
---- a/utils/idmapd/nfs_idmap.h
-+++ b/utils/idmapd/nfs_idmap.h
-@@ -61,11 +61,4 @@ struct idmap_msg {
- 	u_int8_t  im_status;
- };
- 
--#ifdef __KERNEL__
--void      *nfs_idmap_new(struct nfs_server *);
--void       nfs_idmap_delete(struct nfs_server *);
--int        nfs_idmap_id(struct nfs_server *, u_int8_t, char *, u_int,  uid_t *);
--int        nfs_idmap_name(struct nfs_server *, u_int8_t, uid_t, char *, u_int *);
--#endif /* __KERNEL__ */
--
- #endif /* NFS_IDMAP_H */
-diff --git a/utils/idmapd/setproctitle.c b/utils/idmapd/setproctitle.c
+diff --git a/utils/gssd/cacheio.c b/utils/gssd/cacheio.c
 deleted file mode 100644
-index 0679f4e..0000000
---- a/utils/idmapd/setproctitle.c
+index f47f1fa..0000000
+--- a/utils/gssd/cacheio.c
 +++ /dev/null
-@@ -1,110 +0,0 @@
+@@ -1,297 +0,0 @@
 -/*
-- * Modified for OpenSSH by Kevin Steves
-- * October 2000
+-  Copyright (c) 2004 The Regents of the University of Michigan.
+-  All rights reserved.
+-
+-  Redistribution and use in source and binary forms, with or without
+-  modification, are permitted provided that the following conditions
+-  are met:
+-
+-  1. Redistributions of source code must retain the above copyright
+-     notice, this list of conditions and the following disclaimer.
+-  2. Redistributions in binary form must reproduce the above copyright
+-     notice, this list of conditions and the following disclaimer in the
+-     documentation and/or other materials provided with the distribution.
+-  3. Neither the name of the University nor the names of its
+-     contributors may be used to endorse or promote products derived
+-     from this software without specific prior written permission.
+-
+-  THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED
+-  WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+-  MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+-  DISCLAIMED. IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+-  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+-  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+-  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+-  BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+-  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+-  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+-  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+-*/
+-
+-/*
+- * support/nfs/cacheio.c
+- * support IO on the cache channel files in 2.5 and beyond.
+- * These use 'qwords' which are like words, but with a little quoting.
+- *
 - */
 -
+-
 -/*
-- * Copyright (c) 1994, 1995 Christopher G. Demetriou
-- * All rights reserved.
+- * Support routines for text-based upcalls.
+- * Fields are separated by spaces.
+- * Fields are either mangled to quote space tab newline slosh with slosh
+- * or a hexified with a leading \x
+- * Record is terminated with newline.
 - *
-- * Redistribution and use in source and binary forms, with or without
-- * modification, are permitted provided that the following conditions
-- * are met:
-- * 1. Redistributions of source code must retain the above copyright
-- *    notice, this list of conditions and the following disclaimer.
-- * 2. Redistributions in binary form must reproduce the above copyright
-- *    notice, this list of conditions and the following disclaimer in the
-- *    documentation and/or other materials provided with the distribution.
-- * 3. All advertising materials mentioning features or use of this software
-- *    must display the following acknowledgement:
-- *      This product includes software developed by Christopher G. Demetriou
-- *	for the NetBSD Project.
-- * 4. The name of the author may not be used to endorse or promote products
-- *    derived from this software without specific prior written permission
-- *
-- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-- * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-- * IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-- * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 - */
 -
--#if defined(LIBC_SCCS) && !defined(lint)
--static char rcsid[] = "$OpenBSD: setproctitle.c,v 1.8 2001/11/06 19:21:40 art Exp $";
--#endif /* LIBC_SCCS and not lint */
--
+-#include "cacheio.h"
+-#include <stdio.h>
+-#include <ctype.h>
+-#include <unistd.h>
 -#include <sys/types.h>
+-#include <sys/stat.h>
+-#include <fcntl.h>
+-#include <time.h>
+-#include <stdlib.h>
+-#include <string.h>
+-#include <errno.h>
+-#include "err_util.h"
+-
+-void qword_add(char **bpp, int *lp, char *str)
+-{
+-	char *bp = *bpp;
+-	int len = *lp;
+-	char c;
+-
+-	if (len < 0) return;
+-
+-	while ((c=*str++) && len)
+-		switch(c) {
+-		case ' ':
+-		case '\t':
+-		case '\n':
+-		case '\\':
+-			if (len >= 4) {
+-				*bp++ = '\\';
+-				*bp++ = '0' + ((c & 0300)>>6);
+-				*bp++ = '0' + ((c & 0070)>>3);
+-				*bp++ = '0' + ((c & 0007)>>0);
+-			}
+-			len -= 4;
+-			break;
+-		default:
+-			*bp++ = c;
+-			len--;
+-		}
+-	if (c || len <1) len = -1;
+-	else {
+-		*bp++ = ' ';
+-		len--;
+-	}
+-	*bpp = bp;
+-	*lp = len;
+-}
+-
+-void qword_addhex(char **bpp, int *lp, char *buf, int blen)
+-{
+-	char *bp = *bpp;
+-	int len = *lp;
+-
+-	if (len < 0) return;
+-
+-	if (len > 2) {
+-		*bp++ = '\\';
+-		*bp++ = 'x';
+-		len -= 2;
+-		while (blen && len >= 2) {
+-			unsigned char c = *buf++;
+-			*bp++ = '0' + ((c&0xf0)>>4) + (c>=0xa0)*('a'-'9'-1);
+-			*bp++ = '0' + (c&0x0f) + ((c&0x0f)>=0x0a)*('a'-'9'-1);
+-			len -= 2;
+-			blen--;
+-		}
+-	}
+-	if (blen || len<1) len = -1;
+-	else {
+-		*bp++ = ' ';
+-		len--;
+-	}
+-	*bpp = bp;
+-	*lp = len;
+-}
+-
+-void qword_addint(char **bpp, int *lp, int n)
+-{
+-	int len;
+-
+-	len = snprintf(*bpp, *lp, "%d ", n);
+-	if (len > *lp)
+-		len = *lp;
+-	*bpp += len;
+-	*lp -= len;
+-}
+-
+-void qword_adduint(char **bpp, int *lp, unsigned int n)
+-{
+-	int len;
+-
+-	len = snprintf(*bpp, *lp, "%u ", n);
+-	if (len > *lp)
+-		len = *lp;
+-	*bpp += len;
+-	*lp -= len;
+-}
+-
+-void qword_addeol(char **bpp, int *lp)
+-{
+-	if (*lp <= 0)
+-		return;
+-	**bpp = '\n';
+-	(*bpp)++;
+-	(*lp)--;
+-}
+-
+-static char qword_buf[8192];
+-void qword_print(FILE *f, char *str)
+-{
+-	char *bp = qword_buf;
+-	int len = sizeof(qword_buf);
+-	qword_add(&bp, &len, str);
+-	fwrite(qword_buf, bp-qword_buf, 1, f);
+-}
+-
+-void qword_printhex(FILE *f, char *str, int slen)
+-{
+-	char *bp = qword_buf;
+-	int len = sizeof(qword_buf);
+-	qword_addhex(&bp, &len, str, slen);
+-	fwrite(qword_buf, bp-qword_buf, 1, f);
+-}
+-
+-void qword_printint(FILE *f, int num)
+-{
+-	fprintf(f, "%d ", num);
+-}
+-
+-int qword_eol(FILE *f)
+-{
+-	int err;
+-	fprintf(f,"\n");
+-	err = fflush(f);
+-	return err;
+-}
+-
+-
+-
+-#define isodigit(c) (isdigit(c) && c <= '7')
+-int qword_get(char **bpp, char *dest, int bufsize)
+-{
+-	/* return bytes copied, or -1 on error */
+-	char *bp = *bpp;
+-	int len = 0;
+-
+-	while (*bp == ' ') bp++;
+-
+-	if (bp[0] == '\\' && bp[1] == 'x') {
+-		/* HEX STRING */
+-		bp += 2;
+-		while (isxdigit(bp[0]) && isxdigit(bp[1]) && len < bufsize) {
+-			int byte = isdigit(*bp) ? *bp-'0' : toupper(*bp)-'A'+10;
+-			bp++;
+-			byte <<= 4;
+-			byte |= isdigit(*bp) ? *bp-'0' : toupper(*bp)-'A'+10;
+-			*dest++ = byte;
+-			bp++;
+-			len++;
+-		}
+-	} else {
+-		/* text with \nnn octal quoting */
+-		while (*bp != ' ' && *bp != '\n' && *bp && len < bufsize-1) {
+-			if (*bp == '\\' &&
+-			    isodigit(bp[1]) && (bp[1] <= '3') &&
+-			    isodigit(bp[2]) &&
+-			    isodigit(bp[3])) {
+-				int byte = (*++bp -'0');
+-				bp++;
+-				byte = (byte << 3) | (*bp++ - '0');
+-				byte = (byte << 3) | (*bp++ - '0');
+-				*dest++ = byte;
+-				len++;
+-			} else {
+-				*dest++ = *bp++;
+-				len++;
+-			}
+-		}
+-	}
+-
+-	if (*bp != ' ' && *bp != '\n' && *bp != '\0')
+-		return -1;
+-	while (*bp == ' ') bp++;
+-	*bpp = bp;
+-	*dest = '\0';
+-	return len;
+-}
+-
+-int qword_get_int(char **bpp, int *anint)
+-{
+-	char buf[50];
+-	char *ep;
+-	int rv;
+-	int len = qword_get(bpp, buf, 50);
+-	if (len < 0) return -1;
+-	if (len ==0) return -1;
+-	rv = strtol(buf, &ep, 0);
+-	if (*ep) return -1;
+-	*anint = rv;
+-	return 0;
+-}
+-
+-#define READLINE_BUFFER_INCREMENT 2048
+-
+-int readline(int fd, char **buf, int *lenp)
+-{
+-	/* read a line into *buf, which is malloced *len long
+-	 * realloc if needed until we find a \n
+-	 * nul out the \n and return
+-	 * 0 of eof, 1 of success
+-	 */
+-	int len;
+-
+-	if (*lenp == 0) {
+-		char *b = malloc(READLINE_BUFFER_INCREMENT);
+-		if (b == NULL)
+-			return 0;
+-		*buf = b;
+-		*lenp = READLINE_BUFFER_INCREMENT;
+-	}
+-	len = read(fd, *buf, *lenp);
+-	if (len <= 0) {
+-		printerr(0, "readline: read error: len %d errno %d (%s)\n",
+-			 len, errno, strerror(errno));
+-		return 0;
+-	}
+-	while ((*buf)[len-1] != '\n') {
+-	/* now the less common case.  There was no newline,
+-	 * so we have to keep reading after re-alloc
+-	 */
+-		char *new;
+-		int nl;
+-		*lenp += READLINE_BUFFER_INCREMENT;
+-		new = realloc(*buf, *lenp);
+-		if (new == NULL)
+-			return 0;
+-		*buf = new;
+-		nl = read(fd, *buf +len, *lenp - len);
+-		if (nl <= 0 ) {
+-			printerr(0, "readline: read error: len %d "
+-				 "errno %d (%s)\n", nl, errno, strerror(errno));
+-			return 0;
+-		}
+-		len += nl;
+-	}
+-	(*buf)[len-1] = 0;
+-	printerr(3, "readline: read %d chars into buffer of size %d:\n%s\n",
+-		 len, *lenp, *buf);
+-	return 1;
+-}
+diff --git a/utils/gssd/cacheio.h b/utils/gssd/cacheio.h
+deleted file mode 100644
+index 6585fc7..0000000
+--- a/utils/gssd/cacheio.h
++++ /dev/null
+@@ -1,49 +0,0 @@
+-/*
+-  Copyright (c) 2004 The Regents of the University of Michigan.
+-  All rights reserved.
+-
+-  Redistribution and use in source and binary forms, with or without
+-  modification, are permitted provided that the following conditions
+-  are met:
+-
+-  1. Redistributions of source code must retain the above copyright
+-     notice, this list of conditions and the following disclaimer.
+-  2. Redistributions in binary form must reproduce the above copyright
+-     notice, this list of conditions and the following disclaimer in the
+-     documentation and/or other materials provided with the distribution.
+-  3. Neither the name of the University nor the names of its
+-     contributors may be used to endorse or promote products derived
+-     from this software without specific prior written permission.
+-
+-  THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED
+-  WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+-  MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+-  DISCLAIMED. IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+-  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+-  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+-  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+-  BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+-  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+-  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+-  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+-*/
+-
+-#ifndef _CACHEIO_H_
+-#define _CACHEIO_H_
 -
 -#include <stdio.h>
--#include <string.h>
--#include <stdarg.h>
 -
--#ifdef HAVE_CONFIG_H
--#include "config.h"
--#endif /* HAVE_CONFIG_H */
+-void qword_add(char **bpp, int *lp, char *str);
+-void qword_addhex(char **bpp, int *lp, char *buf, int blen);
+-void qword_addint(char **bpp, int *lp, int n);
+-void qword_adduint(char **bpp, int *lp, unsigned int n);
+-void qword_addeol(char **bpp, int *lp);
+-void qword_print(FILE *f, char *str);
+-void qword_printhex(FILE *f, char *str, int slen);
+-void qword_printint(FILE *f, int num);
+-int qword_eol(FILE *f);
+-int readline(int fd, char **buf, int *lenp);
+-int qword_get(char **bpp, char *dest, int bufsize);
+-int qword_get_int(char **bpp, int *anint);
 -
--#ifndef HAVE_SETPROCTITLE
--
--#define SPT_NONE	0
--#define SPT_PSTAT	1
--
--#ifndef SPT_TYPE
--#define SPT_TYPE	SPT_NONE
--#endif
--
--#if SPT_TYPE == SPT_PSTAT
--#include <sys/param.h>
--#include <sys/pstat.h>
--#endif /* SPT_TYPE == SPT_PSTAT */
--
--#define	MAX_PROCTITLE	2048
--
--extern char *__progname;
--
--/*
-- * Set Process Title (SPT) defines.  Modeled after sendmail's
-- * SPT type definition strategy.
-- *
-- * SPT_TYPE:
-- *
-- * SPT_NONE:	Don't set the process title.  Default.
-- * SPT_PSTAT:	Use pstat(PSTAT_SETCMD).  HP-UX specific.
-- */
--
--void
--setproctitle(const char *fmt, ...)
--{
--#if SPT_TYPE != SPT_NONE
--	va_list ap;
--
--	char buf[MAX_PROCTITLE];
--	size_t used;
--
--#if SPT_TYPE == SPT_PSTAT
--	union pstun pst;
--#endif /* SPT_TYPE == SPT_PSTAT */
--
--	va_start(ap, fmt);
--	if (fmt != NULL) {
--		used = snprintf(buf, MAX_PROCTITLE, "%s: ", __progname);
--		if (used >= MAX_PROCTITLE)
--			used = MAX_PROCTITLE - 1;
--		(void)vsnprintf(buf + used, MAX_PROCTITLE - used, fmt, ap);
--	} else
--		(void)snprintf(buf, MAX_PROCTITLE, "%s", __progname);
--	va_end(ap);
--	used = strlen(buf);
--
--#if SPT_TYPE == SPT_PSTAT
--	pst.pst_command = buf;
--	pstat(PSTAT_SETCMD, pst, used, 0, 0);
--#endif /* SPT_TYPE == SPT_PSTAT */
--
--#endif /* SPT_TYPE != SPT_NONE */
--}
--#endif /* HAVE_SETPROCTITLE */
+-#endif /* _CACHEIO_H_ */
 
 
 -------------------------------------------------------------------------
