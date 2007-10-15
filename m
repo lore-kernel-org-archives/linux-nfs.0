@@ -1,8 +1,9 @@
 From: Greg Banks <gnb@sgi.com>
-Subject: Re: [RFC,PATCH] svc: bzero the xprt memory in svc_xprt_init
-Date: Mon, 15 Oct 2007 11:22:26 +1000
-Message-ID: <20071015012226.GB13665@sgi.com>
-References: <20071012190048.24784.44983.stgit@dell3.ogc.int>
+Subject: Re: [RFC,
+	PATCH] svc: Restore rq_xprt_hlen in svc_deferred_recv
+Date: Mon, 15 Oct 2007 11:22:41 +1000
+Message-ID: <20071015012241.GC13665@sgi.com>
+References: <20071012192110.25641.29211.stgit@dell3.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: bfields@fieldses.org, neilb@suse.de, nfs@lists.sourceforge.net
@@ -11,14 +12,14 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IhETx-0006eD-Vd
-	for nfs@lists.sourceforge.net; Sun, 14 Oct 2007 18:10:58 -0700
+	id 1IhEUD-0006jT-8I
+	for nfs@lists.sourceforge.net; Sun, 14 Oct 2007 18:11:13 -0700
 Received: from netops-testserver-3-out.sgi.com
 	([192.48.171.28] helo=relay.sgi.com
-	ident=[U2FsdGVkX1/ZV/CDOXQinLlssDUGx0z9DweVwFYNQ70=])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IhEU2-0003RR-3e
-	for nfs@lists.sourceforge.net; Sun, 14 Oct 2007 18:11:03 -0700
-In-Reply-To: <20071012190048.24784.44983.stgit@dell3.ogc.int>
+	ident=[U2FsdGVkX195Zlz7H7gUlMOx0ntbW4qSOc9sHNpzeVI=])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IhEUH-0003Yl-EC
+	for nfs@lists.sourceforge.net; Sun, 14 Oct 2007 18:11:18 -0700
+In-Reply-To: <20071012192110.25641.29211.stgit@dell3.ogc.int>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,20 +32,21 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, Oct 12, 2007 at 02:00:48PM -0500, Tom Tucker wrote:
+On Fri, Oct 12, 2007 at 02:21:10PM -0500, Tom Tucker wrote:
 > 
-> The transport class driver is responsible for allocating the 
-> memory that contains svc_xprt. We don't know whether the driver
-> used kzalloc or kmalloc. Initialize the svc_xprt structure to
-> zeroes just in case.
+> Fixed a couple bugs in the deferral processing. This won't see significant
+> testing until I complete the rdma driver mods because tcp/udp always
+> set the xprt_hlen to zero.  The changes are as follows:
+> 
+> - Restore the length of the transport header in the rqstp structure
+> in case the request gets deferred again. 
+> 
+> - Update the iov_head and arg.len with xprt_hlen.
+> 
+> - Add comments that describe how xprt_hlen is used.
+> 
 
 ok.
-
-> Also changed the name of the svc_xprt ptr variable to xprt to
-> be consistent with the naming used everywhere else for the
-> transport ptr.
-
-Cool, there's a lot to be said for consistency.
 
 Greg.
 -- 
