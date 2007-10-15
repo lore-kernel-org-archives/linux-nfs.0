@@ -1,67 +1,56 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: nfsd updates for 2.6.24
-Date: Sun, 14 Oct 2007 20:04:05 -0400
-Message-ID: <20071015000405.GD31260@fieldses.org>
+From: Greg Banks <gnb@sgi.com>
+Subject: Re: [RFC,
+	PATCH] svc: Don't call xpo_free until after releasing auth data
+Date: Mon, 15 Oct 2007 11:21:44 +1000
+Message-ID: <20071015012144.GA13665@sgi.com>
+References: <20071012185832.24685.35490.stgit@dell3.ogc.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, nfs@lists.sourceforge.net,
-	nfsv4@linux-nfs.org, Neil Brown <neilb@suse.de>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1764339AbXJOAEV@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Cc: bfields@fieldses.org, neilb@suse.de, nfs@lists.sourceforge.net
+To: Tom Tucker <tom@opengridcomputing.com>
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1IhETV-0006dn-3F
+	for nfs@lists.sourceforge.net; Sun, 14 Oct 2007 18:10:29 -0700
+Received: from netops-testserver-4-out.sgi.com ([192.48.171.29]
+	helo=relay.sgi.com) by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1IhETZ-0000JA-9d
+	for nfs@lists.sourceforge.net; Sun, 14 Oct 2007 18:10:34 -0700
+In-Reply-To: <20071012185832.24685.35490.stgit@dell3.ogc.int>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-You can pull the following nfs server changes from
+On Fri, Oct 12, 2007 at 01:58:32PM -0500, Tom Tucker wrote:
+> 
+> The svc_xprt_free function is calling xpo_free and then using the xprt
+> pointer while attempting to free the cached auth data. Reverse the order
+> of these operations.
+> 
 
-  git://linux-nfs.org/~bfields/linux.git nfs-server-stable
+ok.
 
-Nothing earth-shaking this time; mainly small bugfixes and cleanups.
+Greg.
+-- 
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+Apparently, I'm Bedevere.  Which MPHG character are you?
+I don't speak for SGI.
 
---b.
-
-Andrew Morton (1):
-      nfsd warning fix
-
-Christoph Hellwig (1):
-      nfsd: fix horrible indentation in nfsd_setattr
-
-Dr. David Alan Gilbert (1):
-      knfsd: Add source address to sunrpc svc errors
-
-J. Bruce Fields (15):
-      nfsd: tone down inaccurate dprintk
-      nfsd: remove unused cache_for_each macro
-      knfsd: delete code made redundant by map_new_errors
-      knfsd: cleanup of nfsd4 cmp_* functions
-      knfsd: demote some printk()s to dprintk()s
-      knfsd: nfs4 name->id mapping not correctly parsing negative downcall
-      knfsd: spawn kernel thread to probe callback channel
-      knfsd: move nfsv4 slab creation/destruction to module init/exit
-      knfsd: fix callback rpc cred
-      knfsd: remove code duplication in nfsd4_setclientid()
-      svcgss: move init code into separate function
-      knfsd: let nfsd manage timing out its own leases
-      knfsd: don't shutdown callbacks until nfsv4 client is freed
-      knfsd: nfsv4 delegation recall should take reference on client
-      knfsd: query filesystem for NFSv4 getattr of FATTR4_MAXNAME
-
-Peter Staubach (1):
-      knfsd: 64 bit ino support for NFS server
-
- fs/nfsd/nfs3xdr.c                 |   59 +++++------
- fs/nfsd/nfs4callback.c            |   89 +++++------------
- fs/nfsd/nfs4idmap.c               |    8 +-
- fs/nfsd/nfs4proc.c                |    4 +-
- fs/nfsd/nfs4state.c               |  200 +++++++++++++++++-------------------
- fs/nfsd/nfs4xdr.c                 |   22 ++--
- fs/nfsd/nfsctl.c                  |    7 +-
- fs/nfsd/nfssvc.c                  |    8 +-
- fs/nfsd/nfsxdr.c                  |    4 +
- fs/nfsd/vfs.c                     |   43 +++++---
- include/linux/nfsd/nfsd.h         |   18 ++--
- include/linux/nfsd/nfsfh.h        |   42 +-------
- include/linux/nfsd/xdr4.h         |    4 +-
- include/linux/sunrpc/cache.h      |   10 --
- net/sunrpc/auth_gss/svcauth_gss.c |  144 ++++++++++++++------------
- net/sunrpc/svc.c                  |   40 ++++++--
- 16 files changed, 326 insertions(+), 376 deletions(-)
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Splunk Inc.
+Still grepping through log files to find problems?  Stop.
+Now Search log events and configuration files using AJAX and a browser.
+Download your FREE copy of Splunk now >> http://get.splunk.com/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
