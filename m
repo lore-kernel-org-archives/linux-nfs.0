@@ -1,20 +1,27 @@
-From: <hi@filesnetwork.com>
-Subject: I can't believe my eyes
-Date: Mon, 15 Oct 2007 16:12:55 +0200
-Message-ID: <47137567.5020400@filesnetwork.com>
+From: Jordi Prats <jprats@cesca.es>
+Subject: reply cache
+Date: Mon, 15 Oct 2007 18:53:52 +0200
+Message-ID: <47139B20.7070805@cesca.es>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IhQhJ-0000fA-VN
-	for nfs@lists.sourceforge.net; Mon, 15 Oct 2007 07:13:34 -0700
-Received: from host207-91-dynamic.8-87-r.retail.telecomitalia.it
-	([87.8.91.207]) by mail.sourceforge.net with smtp (Exim 4.44)
-	id 1IhQhN-0003Ib-Lj
-	for nfs@lists.sourceforge.net; Mon, 15 Oct 2007 07:13:39 -0700
+	id 1IhT5U-00042A-ML
+	for nfs@lists.sourceforge.net; Mon, 15 Oct 2007 09:46:40 -0700
+Received: from carlit.cesca.es ([84.88.0.2])
+	by mail.sourceforge.net with esmtps (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.44) id 1IhT5Y-0000b7-P1
+	for nfs@lists.sourceforge.net; Mon, 15 Oct 2007 09:46:46 -0700
+Received: from carlit.cesca.es (localhost [127.0.0.1])
+	by carlit.cesca.es (Postfix) with ESMTP id 6789E33056F
+	for <nfs@lists.sourceforge.net>; Mon, 15 Oct 2007 18:46:14 +0200 (CEST)
+Received: from [213.97.212.36] (36.Red-213-97-212.staticIP.rima-tde.net
+	[213.97.212.36])
+	by carlit.cesca.es (Postfix) with ESMTP id A34B833013D
+	for <nfs@lists.sourceforge.net>; Mon, 15 Oct 2007 18:46:13 +0200 (CEST)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,16 +34,22 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-PPYH Stirs Investors As More Properties Are Being Acquired.
+Hi all,
+According to the file fs/nfsd/nfscache.c (line 30 on 2.6.23), reply 
+cache is fixed size. Why is this a fixed size cache? Shouldn't be 
+relative to the number of nfsd threads? I've a server with this statistics:
 
-PHYSICAL PROPERTY INC (PPYH.OB)
-Current: $0.25
+rc 0 959398 336415498
 
-These guys are not taking things slow. They have announced yet another
-target in motion, Vision City. Check out their website and watch for
-more news releases Monday.  Call your broker, Set your buy, watch it
-explode this week.
+By what I've been researching this means: 0 hits, 959398 misses (I 
+supose that means something like "recently deleted") and 336415498 not 
+in cache (and never has been). Is that right?
 
+Modifying the CACHESIZE to a bigger size do you think it could enhance 
+NFS performance by getting some hits on the reply cache?
+
+Thanks!
+Jordi
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
