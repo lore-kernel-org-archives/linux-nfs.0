@@ -1,20 +1,27 @@
-From: vxczf89@infoseek.jp
-Subject: =?ISO-2022-JP?B?gqCCyIK9gsmC3IK3gt2Cs4LxgqmC54qukVNGcmVlgsyR5ZBsgr6Cr4LMj7WR0o/zgqqTzYKigr2CqJJtgueCuYLFgrc=?=
-Date: Mon, 15 Oct 2007 23:48:11 -0700 (PDT)
-Message-ID: <36908.958599861$1192517315@news.gmane.org>
+From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
+Subject: Re: nfsd closes port 2049
+Date: Tue, 16 Oct 2007 08:10:30 -0400
+Message-ID: <EXNANE014r3mbfJ8VrR0000070e@exnane01.hq.netapp.com>
+References: <47139C02.9020009@cineca.it>
+	<18195.52347.544844.155538@notabene.brown>
+	<4713E25D.6090302@users.sourceforge.net>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============2088717901=="
-To: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset="us-ascii"
+Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net
+To: righiandr@users.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IhgDj-0000Wl-Kt
-	for nfs@lists.sourceforge.net; Mon, 15 Oct 2007 23:48:03 -0700
-Received: from ppp-124.120.95.65.revip2.asianet.co.th ([124.120.95.65]
-	helo=ooo-superweb0024a00.gogoasianet.co.th)
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1IhgDo-00019L-J3
-	for nfs@lists.sourceforge.net; Mon, 15 Oct 2007 23:48:09 -0700
+	id 1IhlGc-0007Bm-4w
+	for nfs@lists.sourceforge.net; Tue, 16 Oct 2007 05:11:25 -0700
+Received: from mx2.netapp.com ([216.240.18.37])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IhlGg-0004pV-Ci
+	for nfs@lists.sourceforge.net; Tue, 16 Oct 2007 05:11:27 -0700
+In-Reply-To: <4713E25D.6090302@users.sourceforge.net>
+References: <47139C02.9020009@cineca.it>
+	<18195.52347.544844.155538@notabene.brown>
+	<4713E25D.6090302@users.sourceforge.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,57 +34,32 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============2088717901==
-Content-Type: text/plain;
-	charset="iso-2022-jp"
-Content-Transfer-Encoding: 7bit
+At 05:57 PM 10/15/2007, Andrea Righi wrote:
+>Neil Brown wrote:
+>>> The weird thing is that at a certain point the socket opened on port
+>>> 2049 on the NFS server is being closed for unknown reasons (or better
+>>> for unknown reasons for me!).
+>> 
+>> This is fixed in any release based on 2.6.16.31 or later.
+>> The relevant mainline patch is 
+>>     1a047060a99f274a7c52cfea8159e4142a14b8a7
+>> as below.
+>> So update your kernel package.
+>
+>Thanks Neil, looking at the source and in my logs this seems to explain
+>perfectly my problem. I'll try the patch ASAP.
 
-こんにちは、完全無料の大人のソーシャルネットワーク運営事務局の小林です。
-ますみさんがあなたを大人のソーシャルネットワークへ招待しています。
-[メッセージ]
-ますみです♪遅くなってごめんなさいm(_ _)m
-返事待ってますね♪
-下記のURLよりますみさんの登録画面をご覧いただけます。
-↓こちらから大人のソーシャルネットワークを見ることができます。
-http://www.frees.com.hytr.net/adults-sns/
-※この招待状の有効期限は30日間です。
-☆★☆　大人のソーシャルネットワークって何？　☆★☆
-大人のソーシャルネットワークは、
-大人が大人らしく何でも自由に同じ趣味、関心を持つ人と交流ができる
-大人の為の完全無料ソーシャル・ネットワーキング サービスです。
-◆完全無料の大人のソーシャルネットワークなら新しい様々な関係を活性化できます。
-大人だから許されるあなたの知らないアダルトな大人の世界を覗けます。
-◆完全無料の大人のソーシャルネットワークなら色々な方とコミュニケーションできる
-大人の秘話、体験談、趣味、アドバイスなど大人同士のアダルトな情報を発信、キャッチできます
-大人のソーシャルネットワークへ参加↓
-http://www.frees.com.hytr.net/adults-sns/
-あなたのご参加を心よりお待ちしております。
-■メッセージの相手に覚えがない方へ ..
-あなたがメッセージの相手に覚えがない場合、メールアドレスを間違えて
-送信されている可能性があります。このまま削除をお願い致します。
-完全無料の大人のソーシャルネットワーク運営事務局
+BTW, the nfsd_acceptable() issue is different from this one, and the
+no_subtree_check I suggested may still be needed (right Neil?). I'm
+interested in what you find - keep us posted.
 
-
-
---===============2088717901==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+Tom.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >> http://get.splunk.com/
---===============2088717901==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============2088717901==--
