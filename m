@@ -1,71 +1,398 @@
-From: Andrea Righi <righiandr@users.sourceforge.net>
-Subject: Re: nfsd closes port 2049
-Date: Tue, 16 Oct 2007 19:50:19 +0200 (MEST)
-Message-ID: <4714F9DA.8070407@users.sourceforge.net>
-References: <47139C02.9020009@cineca.it>
-	<18195.52347.544844.155538@notabene.brown>
-	<4713E25D.6090302@users.sourceforge.net>
-	<EXNANE014r3mbfJ8VrR0000070e@exnane01.hq.netapp.com>
-Reply-To: righiandr@users.sourceforge.net
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: 2.6.23-rc9-CITI_NFS4_ALL-1 connectathon suite testdir error
+Date: Tue, 16 Oct 2007 18:56:47 -0400
+Message-ID: <1192575407.7554.40.camel@heimdal.trondhjem.org>
+References: <470F80BD.1090608@bull.net>
 Mime-Version: 1.0
+Content-Type: multipart/mixed; boundary="=-o+Eb0KjmobeqXCrpxo61"
+Cc: nfs@lists.sourceforge.net, nfsv4 <nfsv4@linux-nfs.org>
+To: Le Rouzic <aime.le-rouzic@bull.net>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <470F80BD.1090608@bull.net>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
+List-ID: <nfs.lists.sourceforge.net>
+
+
+--=-o+Eb0KjmobeqXCrpxo61
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+
+
+On Fri, 2007-10-12 at 16:12 +0200, Le Rouzic wrote:
+> Hi,
+> 
+> Running 2.6.23-rc9-CITI_NFS4_ALL-1 on two Intel X86_64 bi-ways machines as
+> client and server, get the following error with the runtest (-s) of the special
+> tests of the connectathon suite when running it with several other robustness
+> tests (fsx,iozone,fssbfss_stress) in the same time:
+> 
+>  Second check for lost reply on non-idempotent requests
+>  testing 50 idempotencies in directory "testdir"
+>  rmdir 1: Directory not empty
+>  special tests failed
+> 
+> 
+>  
+> ------------------------------------------------------------- 
+> Bug: 
+>   http://bugzilla.linux-nfs.org/show_bug.cgi?id=150  
+>   
+> Cheers
+
+I'm hoping that the attached patch will fix this problem. It basically
+ensures that lookup(), readdir(), and open() cannot race with the
+sillyrename code.
+
+Cheers
+  Trond
+
+--=-o+Eb0KjmobeqXCrpxo61
+Content-Disposition: inline; filename=linux-2.6.23-133-fix_sillyrename_race.dif
+Content-Type: message/rfc822; name=linux-2.6.23-133-fix_sillyrename_race.dif
+
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date: Mon, 15 Oct 2007 18:17:53 -0400
+NFS: Fix a race in sillyrename
+Subject: No Subject
+Message-Id: <1192575337.7554.39.camel@heimdal.trondhjem.org>
+Mime-Version: 1.0
+Content-Transfer-Encoding: 7bit
+
+lookup() and sillyrename() can race one another because the sillyrename()
+completion cannot take the parent directory's inode->i_mutex since the
+latter may be held by whoever is calling dput().
+
+We therefore have little option but to add extra locking to ensure that
+nfs_lookup() and nfs_atomic_open() do not race with the sillyrename
+completion.
+If somebody has looked up the sillyrenamed file in the meantime, we just
+transfer the sillydelete information to the new dentry.
+
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+
+ fs/nfs/dir.c           |   14 +++++-
+ fs/nfs/inode.c         |    3 +
+ fs/nfs/nfs4proc.c      |    6 +++
+ fs/nfs/unlink.c        |  114 ++++++++++++++++++++++++++++++++++++++++++------
+ include/linux/nfs_fs.h |    8 +++
+ 5 files changed, 127 insertions(+), 18 deletions(-)
+
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 8ec7fbd..3533453 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -562,6 +562,7 @@ static int nfs_readdir(struct file *filp, void *dirent, filldir_t filldir)
+ 	nfs_fattr_init(&fattr);
+ 	desc->entry = &my_entry;
+ 
++	nfs_block_sillyrename(dentry);
+ 	while(!desc->entry->eof) {
+ 		res = readdir_search_pagecache(desc);
+ 
+@@ -592,6 +593,7 @@ static int nfs_readdir(struct file *filp, void *dirent, filldir_t filldir)
+ 			break;
+ 		}
+ 	}
++	nfs_unblock_sillyrename(dentry);
+ 	unlock_kernel();
+ 	if (res > 0)
+ 		res = 0;
+@@ -866,6 +868,7 @@ struct dentry_operations nfs_dentry_operations = {
+ static struct dentry *nfs_lookup(struct inode *dir, struct dentry * dentry, struct nameidata *nd)
+ {
+ 	struct dentry *res;
++	struct dentry *parent;
+ 	struct inode *inode = NULL;
+ 	int error;
+ 	struct nfs_fh fhandle;
+@@ -894,26 +897,31 @@ static struct dentry *nfs_lookup(struct inode *dir, struct dentry * dentry, stru
+ 		goto out_unlock;
+ 	}
+ 
++	parent = dentry->d_parent;
++	/* Protect against concurrent sillydeletes */
++	nfs_block_sillyrename(parent);
+ 	error = NFS_PROTO(dir)->lookup(dir, &dentry->d_name, &fhandle, &fattr);
+ 	if (error == -ENOENT)
+ 		goto no_entry;
+ 	if (error < 0) {
+ 		res = ERR_PTR(error);
+-		goto out_unlock;
++		goto out_unblock_sillyrename;
+ 	}
+ 	inode = nfs_fhget(dentry->d_sb, &fhandle, &fattr);
+ 	res = (struct dentry *)inode;
+ 	if (IS_ERR(res))
+-		goto out_unlock;
++		goto out_unblock_sillyrename;
+ 
+ no_entry:
+ 	res = d_materialise_unique(dentry, inode);
+ 	if (res != NULL) {
+ 		if (IS_ERR(res))
+-			goto out_unlock;
++			goto out_unblock_sillyrename;
+ 		dentry = res;
+ 	}
+ 	nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
++out_unblock_sillyrename:
++	nfs_unblock_sillyrename(parent);
+ out_unlock:
+ 	unlock_kernel();
+ out:
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 035c769..facb065 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -1165,6 +1165,9 @@ static void init_once(void * foo, struct kmem_cache * cachep, unsigned long flag
+ 	INIT_RADIX_TREE(&nfsi->nfs_page_tree, GFP_ATOMIC);
+ 	nfsi->ncommit = 0;
+ 	nfsi->npages = 0;
++	atomic_set(&nfsi->silly_count, 1);
++	INIT_HLIST_HEAD(&nfsi->silly_list);
++	init_waitqueue_head(&nfsi->waitqueue);
+ 	nfs4_init_once(nfsi);
+ }
+ 
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index cb99fd9..2cb3b8b 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1372,6 +1372,7 @@ out_close:
+ struct dentry *
+ nfs4_atomic_open(struct inode *dir, struct dentry *dentry, struct nameidata *nd)
+ {
++	struct dentry *parent;
+ 	struct path path = {
+ 		.mnt = nd->mnt,
+ 		.dentry = dentry,
+@@ -1394,6 +1395,9 @@ nfs4_atomic_open(struct inode *dir, struct dentry *dentry, struct nameidata *nd)
+ 	cred = rpcauth_lookupcred(NFS_CLIENT(dir)->cl_auth, 0);
+ 	if (IS_ERR(cred))
+ 		return (struct dentry *)cred;
++	parent = dentry->d_parent;
++	/* Protect against concurrent sillydeletes */
++	nfs_block_sillyrename(parent);
+ 	state = nfs4_do_open(dir, &path, nd->intent.open.flags, &attr, cred);
+ 	put_rpccred(cred);
+ 	if (IS_ERR(state)) {
+@@ -1401,12 +1405,14 @@ nfs4_atomic_open(struct inode *dir, struct dentry *dentry, struct nameidata *nd)
+ 			d_add(dentry, NULL);
+ 			nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
+ 		}
++		nfs_unblock_sillyrename(parent);
+ 		return (struct dentry *)state;
+ 	}
+ 	res = d_add_unique(dentry, igrab(state->inode));
+ 	if (res != NULL)
+ 		path.dentry = res;
+ 	nfs_set_verifier(path.dentry, nfs_save_change_attribute(dir));
++	nfs_unblock_sillyrename(parent);
+ 	nfs4_intent_set_file(nd, &path, state);
+ 	return res;
+ }
+diff --git a/fs/nfs/unlink.c b/fs/nfs/unlink.c
+index 1aed850..6ecd46c 100644
+--- a/fs/nfs/unlink.c
++++ b/fs/nfs/unlink.c
+@@ -14,6 +14,7 @@
+ 
+ 
+ struct nfs_unlinkdata {
++	struct hlist_node list;
+ 	struct nfs_removeargs args;
+ 	struct nfs_removeres res;
+ 	struct inode *dir;
+@@ -52,6 +53,20 @@ static int nfs_copy_dname(struct dentry *dentry, struct nfs_unlinkdata *data)
+ 	return 0;
+ }
+ 
++static void nfs_free_dname(struct nfs_unlinkdata *data)
++{
++	kfree(data->args.name.name);
++	data->args.name.name = NULL;
++	data->args.name.len = 0;
++}
++
++static void nfs_dec_sillycount(struct inode *dir)
++{
++	struct nfs_inode *nfsi = NFS_I(dir);
++	if (atomic_dec_return(&nfsi->silly_count) == 1)
++		wake_up(&nfsi->waitqueue);
++}
++
+ /**
+  * nfs_async_unlink_init - Initialize the RPC info
+  * task: rpc_task of the sillydelete
+@@ -95,6 +110,8 @@ static void nfs_async_unlink_done(struct rpc_task *task, void *calldata)
+ static void nfs_async_unlink_release(void *calldata)
+ {
+ 	struct nfs_unlinkdata	*data = calldata;
++
++	nfs_dec_sillycount(data->dir);
+ 	nfs_free_unlinkdata(data);
+ }
+ 
+@@ -104,33 +121,100 @@ static const struct rpc_call_ops nfs_unlink_ops = {
+ 	.rpc_release = nfs_async_unlink_release,
+ };
+ 
+-static int nfs_call_unlink(struct dentry *dentry, struct nfs_unlinkdata *data)
++static int nfs_do_call_unlink(struct dentry *parent, struct inode *dir, struct nfs_unlinkdata *data)
+ {
+ 	struct rpc_task *task;
++	struct dentry *alias;
++
++	alias = d_lookup(parent, &data->args.name);
++	if (alias != NULL) {
++		int ret = 0;
++		/*
++		 * Hey, we raced with lookup... See if we need to transfer
++		 * the sillyrename information to the aliased dentry.
++		 */
++		nfs_free_dname(data);
++		spin_lock(&alias->d_lock);
++		if (!(alias->d_flags & DCACHE_NFSFS_RENAMED)) {
++			alias->d_fsdata = data;
++			alias->d_flags ^= DCACHE_NFSFS_RENAMED;
++			ret = 1;
++		}
++		spin_unlock(&alias->d_lock);
++		nfs_dec_sillycount(dir);
++		dput(alias);
++		return ret;
++	}
++	data->dir = igrab(dir);
++	if (!data->dir) {
++		nfs_dec_sillycount(dir);
++		return 0;
++	}
++	data->args.fh = NFS_FH(dir);
++	nfs_fattr_init(&data->res.dir_attr);
++
++	task = rpc_run_task(NFS_CLIENT(dir), RPC_TASK_ASYNC, &nfs_unlink_ops, data);
++	if (!IS_ERR(task))
++		rpc_put_task(task);
++	return 1;
++}
++
++static int nfs_call_unlink(struct dentry *dentry, struct nfs_unlinkdata *data)
++{
+ 	struct dentry *parent;
+ 	struct inode *dir;
++	int ret = 0;
+ 
+-	if (nfs_copy_dname(dentry, data) < 0)
+-		goto out_free;
+ 
+ 	parent = dget_parent(dentry);
+ 	if (parent == NULL)
+ 		goto out_free;
+-	dir = igrab(parent->d_inode);
++	dir = parent->d_inode;
++	if (nfs_copy_dname(dentry, data) == 0)
++		goto out_dput;
++	/* Non-exclusive lock protects against concurrent lookup() calls */
++	spin_lock(&dir->i_lock);
++	if (atomic_inc_not_zero(&NFS_I(dir)->silly_count) == 0) {
++		/* Deferred delete */
++		hlist_add_head(&data->list, &NFS_I(dir)->silly_list);
++		spin_unlock(&dir->i_lock);
++		ret = 1;
++		goto out_dput;
++	}
++	spin_unlock(&dir->i_lock);
++	ret = nfs_do_call_unlink(parent, dir, data);
++out_dput:
+ 	dput(parent);
+-	if (dir == NULL)
+-		goto out_free;
++out_free:
++	return ret;
++}
+ 
+-	data->dir = dir;
+-	data->args.fh = NFS_FH(dir);
+-	nfs_fattr_init(&data->res.dir_attr);
++void nfs_block_sillyrename(struct dentry *dentry)
++{
++	struct nfs_inode *nfsi = NFS_I(dentry->d_inode);
+ 
+-	task = rpc_run_task(NFS_CLIENT(dir), RPC_TASK_ASYNC, &nfs_unlink_ops, data);
+-	if (!IS_ERR(task))
+-		rpc_put_task(task);
+-	return 1;
+-out_free:
+-	return 0;
++	wait_event(nfsi->waitqueue, atomic_cmpxchg(&nfsi->silly_count, 1, 0) == 1);
++}
++
++void nfs_unblock_sillyrename(struct dentry *dentry)
++{
++	struct inode *dir = dentry->d_inode;
++	struct nfs_inode *nfsi = NFS_I(dir);
++	struct nfs_unlinkdata *data;
++
++	atomic_inc(&nfsi->silly_count);
++	spin_lock(&dir->i_lock);
++	while (!hlist_empty(&nfsi->silly_list)) {
++		if (!atomic_inc_not_zero(&nfsi->silly_count))
++			break;
++		data = hlist_entry(nfsi->silly_list.first, struct nfs_unlinkdata, list);
++		hlist_del(&data->list);
++		spin_unlock(&dir->i_lock);
++		if (nfs_do_call_unlink(dentry, dir, data) == 0)
++			nfs_free_unlinkdata(data);
++		spin_lock(&dir->i_lock);
++	}
++	spin_unlock(&dir->i_lock);
+ }
+ 
+ /**
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index c5164c2..e82a6eb 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -160,6 +160,12 @@ struct nfs_inode {
+ 	/* Open contexts for shared mmap writes */
+ 	struct list_head	open_files;
+ 
++	/* Number of in-flight sillydelete RPC calls */
++	atomic_t		silly_count;
++	/* List of deferred sillydelete requests */
++	struct hlist_head	silly_list;
++	wait_queue_head_t	waitqueue;
++
+ #ifdef CONFIG_NFS_V4
+ 	struct nfs4_cached_acl	*nfs4_acl;
+         /* NFSv4 state */
+@@ -394,6 +400,8 @@ extern void nfs_release_automount_timer(void);
+  */
+ extern int  nfs_async_unlink(struct inode *dir, struct dentry *dentry);
+ extern void nfs_complete_unlink(struct dentry *dentry, struct inode *);
++extern void nfs_block_sillyrename(struct dentry *dentry);
++extern void nfs_unblock_sillyrename(struct dentry *dentry);
+ 
+ /*
+  * linux/fs/nfs/write.c
+
+--=-o+Eb0KjmobeqXCrpxo61
 Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net
-To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IhqYn-0003QL-5Q
-	for nfs@lists.sourceforge.net; Tue, 16 Oct 2007 10:50:29 -0700
-Received: from as4.cineca.com ([130.186.84.213])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IhqYq-0008AD-5M
-	for nfs@lists.sourceforge.net; Tue, 16 Oct 2007 10:50:34 -0700
-In-Reply-To: <EXNANE014r3mbfJ8VrR0000070e@exnane01.hq.netapp.com>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
-Talpey, Thomas wrote:
-> At 05:57 PM 10/15/2007, Andrea Righi wrote:
->> Neil Brown wrote:
->>>> The weird thing is that at a certain point the socket opened on port
->>>> 2049 on the NFS server is being closed for unknown reasons (or better
->>>> for unknown reasons for me!).
->>> This is fixed in any release based on 2.6.16.31 or later.
->>> The relevant mainline patch is 
->>>     1a047060a99f274a7c52cfea8159e4142a14b8a7
->>> as below.
->>> So update your kernel package.
->> Thanks Neil, looking at the source and in my logs this seems to explain
->> perfectly my problem. I'll try the patch ASAP.
-> 
-> BTW, the nfsd_acceptable() issue is different from this one, and the
-> no_subtree_check I suggested may still be needed (right Neil?). I'm
-> interested in what you find - keep us posted.
-> 
-> Tom.
-> 
-
-I've just finished to update the kernel to 2.6.16.53-0.8-smp (always SLES10
-x86_64 of course) that includes the fix reported by Neil. I've exported the fs
-withtout the no_subtree_check option for now, let's see in these days what'll
-happen.
-
--Andrea
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Splunk Inc.
-Still grepping through log files to find problems?  Stop.
-Now Search log events and configuration files using AJAX and a browser.
-Download your FREE copy of Splunk now >> http://get.splunk.com/
 _______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+NFSv4 mailing list
+NFSv4@linux-nfs.org
+http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
+--=-o+Eb0KjmobeqXCrpxo61--
