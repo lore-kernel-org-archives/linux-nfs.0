@@ -1,27 +1,26 @@
-From: "Maute, Kevin P CTR AFRL/RBOO" <Kevin.Maute@WPAFB.AF.MIL>
-Subject: Re: Benchmarks: ACCESS RPCs, NOACLs, RHEL3 and RHEL4 Kernels
-Date: Tue, 16 Oct 2007 13:48:40 -0400
-Message-ID: <29A7C5F65D54744CBFD97CD62A33DEE9024E7986@VFOHMLAO13.Enterprise.afmc.ds.af.mil>
-References: <920746F6DF728345915EF4D6DA610D0F03F8E5D0@MAILSJ2.global.cadence.com>
-	<8D58CDF3-6940-4DCB-AC20-8523A3FA0C08@oracle.com>
+From: Andrea Righi <righiandr@users.sourceforge.net>
+Subject: Re: nfsd closes port 2049
+Date: Tue, 16 Oct 2007 19:50:19 +0200 (MEST)
+Message-ID: <4714F9DA.8070407@users.sourceforge.net>
+References: <47139C02.9020009@cineca.it>
+	<18195.52347.544844.155538@notabene.brown>
+	<4713E25D.6090302@users.sourceforge.net>
+	<EXNANE014r3mbfJ8VrR0000070e@exnane01.hq.netapp.com>
+Reply-To: righiandr@users.sourceforge.net
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: "Chuck Lever" <chuck.lever@oracle.com>,
-	"Jim Dennis" <jdennis@cadence.com>
+Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net
+To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IhqXE-0003EK-67
-	for nfs@lists.sourceforge.net; Tue, 16 Oct 2007 10:48:52 -0700
-Received: from fohfwa001.oh.afmc.af.mil ([131.28.29.203])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IhqXG-0007H7-G0
-	for nfs@lists.sourceforge.net; Tue, 16 Oct 2007 10:48:57 -0700
-Received: from fohmlrl01 (fohmlrl01.enterprise.afmc.ds.af.mil [131.28.34.155])
-	by fohfwa001.oh.afmc.af.mil with ESMTP id l9GHmgdA018531
-	for <nfs@lists.sourceforge.net>; Tue, 16 Oct 2007 17:48:42 GMT
-In-Reply-To: <8D58CDF3-6940-4DCB-AC20-8523A3FA0C08@oracle.com>
+	id 1IhqYn-0003QL-5Q
+	for nfs@lists.sourceforge.net; Tue, 16 Oct 2007 10:50:29 -0700
+Received: from as4.cineca.com ([130.186.84.213])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IhqYq-0008AD-5M
+	for nfs@lists.sourceforge.net; Tue, 16 Oct 2007 10:50:34 -0700
+In-Reply-To: <EXNANE014r3mbfJ8VrR0000070e@exnane01.hq.netapp.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,153 +33,33 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-I am also currently exploring optimizing RHEL5 performance.  I have a
-compute cluster which seemed responsive (RHEL4) but has been dog slow
-since I upgraded to RHEL5.  I was not aware of the NOACL issue but am
-curious if anyone in the know can explain what changed 4->5 to account
-for this where everything else is relatively unchanged.
+Talpey, Thomas wrote:
+> At 05:57 PM 10/15/2007, Andrea Righi wrote:
+>> Neil Brown wrote:
+>>>> The weird thing is that at a certain point the socket opened on port
+>>>> 2049 on the NFS server is being closed for unknown reasons (or better
+>>>> for unknown reasons for me!).
+>>> This is fixed in any release based on 2.6.16.31 or later.
+>>> The relevant mainline patch is 
+>>>     1a047060a99f274a7c52cfea8159e4142a14b8a7
+>>> as below.
+>>> So update your kernel package.
+>> Thanks Neil, looking at the source and in my logs this seems to explain
+>> perfectly my problem. I'll try the patch ASAP.
+> 
+> BTW, the nfsd_acceptable() issue is different from this one, and the
+> no_subtree_check I suggested may still be needed (right Neil?). I'm
+> interested in what you find - keep us posted.
+> 
+> Tom.
+> 
 
---------------------------------------------
-Kevin Maute
-Sr. Linux/Unix System Administrator
-RCF Information Systems
-AFRL/RBOO Contractor
-937.255.1810
-kevin.maute@wpafb.af.mil 
- 
+I've just finished to update the kernel to 2.6.16.53-0.8-smp (always SLES10
+x86_64 of course) that includes the fix reported by Neil. I've exported the fs
+withtout the no_subtree_check option for now, let's see in these days what'll
+happen.
 
-> -----Original Message-----
-> From: nfs-bounces@lists.sourceforge.net 
-> [mailto:nfs-bounces@lists.sourceforge.net] On Behalf Of Chuck Lever
-> Sent: Tuesday, October 16, 2007 12:30 PM
-> To: Jim Dennis
-> Cc: nfs@lists.sourceforge.net
-> Subject: Re: [NFS] Benchmarks: ACCESS RPCs, NOACLs, RHEL3 and 
-> RHEL4 Kernels
-> 
-> On Oct 15, 2007, at 3:14 PM, Jim Dennis wrote:
-> >  I've been tasked with performing some benchmarks to measure the  
-> > effect
-> > of using the NOACL option
-> >  on RHEL3, RHEL4, RHEL5, and SLES10  NFS clients (mostly accessing
-> > NetApps filers).
-> >
-> >  Apparently in the 2.4.21-* (RHEL3) kernels there was a bug  
-> > relating to
-> > caching of the results of ACCESS
-> >  RPCs.  A side effect of this issue is an apparent 
-> performance gain  
-> > when
-> > one uses the NOACL mount
-> >  option.
-> >
-> >  This is apparently still the case as of RHEL3 update 8 (fixed in  
-> > update
-> > 9???).  Here's an old e-mail
-> >  reference:
-> >
-> > 
-> http://acl.bestbits.at/pipermail/acl-devel/2002-September/001158.html
-> >
-> > Don't know how closely this relates to this following:
-> >
-> >     CVE-2007-0004
-> >
-> >     The NFS client implementation in the kernel in Red Hat 
-> Enterprise
-> > Linux (RHEL) 3, when
-> >     a filesystem is mounted with the noacl option, checks 
-> permissions
-> > for the open system
-> >     call via vfs_permission (mode bits) data rather than an 
-> NFS ACCESS
-> > call to the server,
-> >     which allows local client processes to obtain a false success  
-> > status
-> > from open calls that
-> >     the server would deny, and possibly obtain sensitive information
-> > about file permissions on
-> >     the server, as demonstrated in a root_squash environment.   
-> > NOTE: it
-> > is uncertain whether
-> >     any scenarios involving this issue cross privilege boundaries.
-> >
-> >  ... but we're unconcerned about the security implications in any  
-> > event.
-> > (These particular compute
-> >  clusters are limited to filers on which only the UNIX permissions  
-> > apply
-> > --- we don't put any ACLs
-> >  in these file trees.
-> >
-> >  I'm aware that the stock vendor kernels for RHEL4 and later do not
-> > support the NOACL option; and
-> >  I'm also aware of simple patches which allow us to re-introduce the
-> > support.  Part of my task is
-> >  to test the effects of those patches.
-> >
-> >  Questions I have:
-> >
-> >     * Has anyone published test results related to this?
-> >     * Any suggestions on the best performance testing (benchmarking)
-> > methodology?
-> >         * (In particular for measuing the specific effects 
-> of the RPC
-> > ACCESS and any other
-> > 	     ACL related overhead?)
-> > 	  * Comments on fstress? (http://www.cs.duke.edu/ari/fstress/)
-> > 	  * Other tools/suites?
-> >     * Any caveats about unintended consequences or risks 
-> associated  
-> > with
-> > disabling ACL checks
-> > 	on the client side?
-> 
-> Hi Jim-
-> 
-> When I was at NetApp we worked on this problem in all of these  
-> distributions.
-> 
-> My impression of fstress is that it is a read/write benchmark, thus  
-> it won't generate a lot of access traffic in any event.
-> 
-> A software build workload is going to be much more impacted 
-> by excess  
-> ACCESS requests.  When we investigated this issue, our 
-> customers used  
-> multi-client software build workloads, and evaluated the results  
-> based on the wall clock time for a cold and warm cache run of a full  
-> build.
-> 
-> The community choice to address this issue was to improve the NFS  
-> client's ability to cache the results of ACCESS requests rather than  
-> to continue to allow administrators to disable ACCESS checking.   
-> Disabling ACCESS checking was really a side-effect of "noacl" 
-> -- it's  
-> true purpose was to prevent the client from sending ACL requests to  
-> servers that don't support NFSv3 ACLs.
-> 
-> As a result of these improvements, the RHEL 5 NFS client should have  
-> very good ACCESS result caching behavior.
-> 
-> --
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
-> 
-> 
-> 
-> 
-> --------------------------------------------------------------
-> -----------
-> This SF.net email is sponsored by: Splunk Inc.
-> Still grepping through log files to find problems?  Stop.
-> Now Search log events and configuration files using AJAX and 
-> a browser.
-> Download your FREE copy of Splunk now >> http://get.splunk.com/
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
-> 
+-Andrea
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
