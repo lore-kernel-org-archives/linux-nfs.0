@@ -1,23 +1,25 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
 Subject: Re: [PATCH RFC 1/1] NLM GRANTED callback race
-Date: Wed, 17 Oct 2007 12:44:38 -0400
-Message-ID: <1192639478.7573.50.camel@heimdal.trondhjem.org>
+Date: Wed, 17 Oct 2007 13:30:27 -0400
+Message-ID: <EXNANE013Bma4RCIlWr00000742@exnane01.hq.netapp.com>
 References: <EXNANE01OSQeSOzNCWb00000734@exnane01.hq.netapp.com>
+	<1192639478.7573.50.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IiC0G-0005vO-O3
-	for nfs@lists.sourceforge.net; Wed, 17 Oct 2007 09:44:16 -0700
-Received: from pat.uio.no ([129.240.10.15])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IiC0J-0008NO-L2
-	for nfs@lists.sourceforge.net; Wed, 17 Oct 2007 09:44:22 -0700
-In-Reply-To: <EXNANE01OSQeSOzNCWb00000734@exnane01.hq.netapp.com>
+	id 1IiCjT-0002Il-HD
+	for nfs@lists.sourceforge.net; Wed, 17 Oct 2007 10:30:59 -0700
+Received: from mx2.netapp.com ([216.240.18.37])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IiCjW-0006BR-8p
+	for nfs@lists.sourceforge.net; Wed, 17 Oct 2007 10:31:05 -0700
+In-Reply-To: <1192639478.7573.50.camel@heimdal.trondhjem.org>
+References: <EXNANE01OSQeSOzNCWb00000734@exnane01.hq.netapp.com>
+	<1192639478.7573.50.camel@heimdal.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,45 +32,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+At 12:44 PM 10/17/2007, Trond Myklebust wrote:
+>So what will happen in this case if the NLM_GRANTED reply races with my
+>UNLOCK call to release the lock?
 
-On Wed, 2007-10-17 at 09:36 -0400, Talpey, Thomas wrote:
-> I've discovered a serious and somewhat interesting issue in the NLM
-> client that's been present for quite a while. Basically, if an NLM server
-> GRANTED callback arrives for a lock the client already holds, the client
-> *rejects* the lock. This leads to incorrect behavior (since the server
-> may give the lock to another process), but it also may lead to deadlock
-> in the affected client when the next process is on the same machine;
-> it means two processes are contending in the local locking code. We
-> have seen this in the field recently.
-> 
-> I have a proposed fix (patch below), which adds further checking to
-> the NLM callback to scan for held locks, if the callback does not find
-> a blocked lock in the client's nlm_blocked list. If found, the client will
-> *accept* the lock instead of rejecting it. We're testing the patch at
-> high scale currently, an earlier version of the patch (for kernel 2.6.15)
-> works well at extreme levels.
-> 
-> To see this, you need to have NLM lock contention, and enough
-> network traffic to cause UDP NLM_GRANTED callbacks to be lost in
-> the network. Typically, the client will retry the NLM_LOCK rpc after
-> 30 seconds when this occurs. These retries often succeed, but there
-> are still the old GRANTED callbacks floating around, either at the server
-> or in the network itself. We can duplicate this in minutes at high load,
-> even with server callback retry.
-> 
-> Comments?
+Alas, that is the beast which is NLM. The callback reply can race the UNLOCK
+even without this change. I can't fix that, it's a protocol issue. Wait a sec
+yes I can, it's called NFSv4.1 Sessions. :-)
 
-So what will happen in this case if the NLM_GRANTED reply races with my
-UNLOCK call to release the lock?
+>Servers have to perform consistency checks on NLM_GRANTED, or the
+>protocol will break. Once the client has been granted the lock via a
+>separate LOCK call, then the result of the NLM_GRANTED request _MUST_ be
+>ignored on the server.
 
-Servers have to perform consistency checks on NLM_GRANTED, or the
-protocol will break. Once the client has been granted the lock via a
-separate LOCK call, then the result of the NLM_GRANTED request _MUST_ be
-ignored on the server.
+I agree the server should do this, but the spec doesn't say so, there are
+servers out there who don't, and the protocol itself doesn't help. So the
+intent of this fix is to restore order, even though there are perhaps
+better-but-still-imperfect fixes that require global change.
 
-Cheers
-  Trond
+BTW, the Linux server discards unsent NLM_GRANTED callbacks when
+the client is granted a lock in its retry case. But it performs no such
+checking on any responses that arrive from prior sends (see
+fs/lockd/svclock.c nlmsvc_grant_reply() and nlmsvc_unlink_block()).
+It simply processes the next blocked lock, as I described.
 
+Tom.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
