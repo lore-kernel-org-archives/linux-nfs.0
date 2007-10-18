@@ -1,98 +1,62 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [NFS] Interesting problem with sunrpc cache
-Date: Thu, 18 Oct 2007 10:55:49 -0400
-Message-ID: <20071018145549.GA24088@fieldses.org>
-References: <1192715235.7466.13.camel@moss-terrapins.epoch.ncsc.mil>
+From: Allard Hoeve <allard@byte.nl>
+Subject: Re: lockd crash
+Date: Thu, 18 Oct 2007 17:09:26 +0200 (CEST)
+Message-ID: <Pine.LNX.4.62.0710181707440.6931@office2.c1.internal>
+References: <Pine.LNX.4.62.0710181511090.759@office2.c1.internal>
+	<1192718684.7437.3.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, nfsv4@linux-nfs.org
-To: "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <1192715235.7466.13.camel@moss-terrapins.epoch.ncsc.mil>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
-List-ID: <nfs.lists.sourceforge.net>
+Cc: nfs@lists.sourceforge.net
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1IiX0A-0003F1-Ha
+	for nfs@lists.sourceforge.net; Thu, 18 Oct 2007 08:09:34 -0700
+Received: from gw.c1.byte.nl ([82.94.214.64] helo=smtp.byte.nl)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IiX0B-0007ch-Ee
+	for nfs@lists.sourceforge.net; Thu, 18 Oct 2007 08:09:39 -0700
+In-Reply-To: <1192718684.7437.3.camel@heimdal.trondhjem.org>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, Oct 18, 2007 at 09:47:15AM -0400, David P. Quigley wrote:
-> Hello,
->     I have been working on a Domain of Interpretation mapper for the
-> labeled nfs work and I seem to have hit a wall. I started with idmapd as
-> a base and proceeded to modify it to work with DOIs instead. Because of
-> this with a few minor exceptions I expected everything to work. For the
-> most part it does however I seem to have a minor problem with the cache
-> on the nfsd side.
-> 
->     I am running into a problem where I can't mount the export because
-> the server keeps trying to translate the label. I initially get a
-> success but then it repeatedly attempts to retry.
 
-So you're just getting repeated NFS4ERR_DELAY responses to the same
-request from the client?  Or does the server just stop responding?  Is
-this always reproduceble?
+Hello Trond, all,
 
-> I have tracked it down to a bit of code which essentially is a
-> duplication of do_idmap_lookup_nowait.
+>> We've been experincing strange lockd crashes on one of our file servers
+>> lately. The kernel lockd gets stuck in a D state and is unkillable, while
+>> other NFS processes continue to work fine. Files are served, we're able to
+>> mount/umount etc, but trying to attain a lock results in a (killable with
+>> KILL) process on the client.
+>
+> http://client.linux-nfs.org/Linux-2.6.x/2.6.23-rc7/linux-2.6.23-001-fix_lockd_circular_dependency.dif
 
-When exactly does the label translation occur?
+Thanks for the link.
 
-The idmapper is the only server cache that uses this custom
-deferral/revisit code.  We did it because currently deferrals require
-setting aside the whole compound and then reprocessing it later.  Since
-a getattr (possibly including file owners, requiring idmapping) seemed
-likely to occur after a nonidempotent operation, this seemed like a bad
-idea.
+Is it feasible to backport this to, say 2.6.20?
 
-But the solution in nfs4idmap.c is a little ugly and idmapper-specific.
-(There are also some (much less likely) races that could occur due to
-the export-related upcalls).  Also, if your DOI translation typically
-only happens at the beginning of a compound (for example), then may
-never see this problem anyway.
+Otherwise, I'll have to find a way to upgrade to 2.6.23, which is a bit 
+too new to my tastes :)
 
-I think the real solution is to augment the existing
-svc_defer/svc_revisit to allow us to store a lot more state so we don't
-have to start the compound processing over from scratch each time.  It
-shouldn't be hard.  The problem is more that I don't know how to measure
-the improvement.  And at some point I wonder what we'll save by storing
-all this other state, just to save a kernel task.  Are tasks really that
-expensive?
+Regards,
 
-But anyway, it'd still be interesting to understand this bug since it's
-likely to be a bug in the nfs4idmap.c as well.
+Allard Hoeve
 
-> In this function we set ret to -ETIMEDOUT which
-> is -110 and then we test three conditions. The conditional checks if the
-> cache entry has the CACHE_VALID bit set, that the epiration time hasn't
-> lapsed and that the flush time hasn't lapsed. The last two conditions
-> here are true so I have determined it is because the CACHE_VALID bit
-> isn't being set properly. 
-
-Right, so there could be odd race conditions in the custom defer/revisit
-code, but as long as CACHE_VALID eventually gets set you'd think it'd
-recover.  Perhaps there's more than one cache item involved?
-
->     This lead me to check deeper into where this bit is set. The answer
-> to this is that it should be set inside sunrpc_cache_update using the
-> cache_fresh_locked function. Entering this function we hit the two
-> conditions up top where it says that the valid bit isn't set and we
-> update it directly. The line below should update the valid bit since the
-> internals of cache_fresh_locked just set the expiry_time entry of cache
-> head and then use test_and_set_bit to set the CACHE_VALID bit in the
-> cache head's flags.
-> 
-> is_new = cache_fresh_locked(old, new->expiry_time);
-> 
->     I am very perplexed why something like this is happening. I've been
-> trying to figure it out for the better part of a week and I have finally
-> hit the wall at this point. Has anyone else encountered this problem or
-> have any insight into why this might happen.
-
-I don't have any bright ideas right now, sorry.
-
---b.
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Splunk Inc.
+Still grepping through log files to find problems?  Stop.
+Now Search log events and configuration files using AJAX and a browser.
+Download your FREE copy of Splunk now >> http://get.splunk.com/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
