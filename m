@@ -1,25 +1,23 @@
-From: "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Subject: Re: Interesting problem with sunrpc cache
-Date: Thu, 18 Oct 2007 14:22:00 -0400
-Message-ID: <1192731720.7466.37.camel@moss-terrapins.epoch.ncsc.mil>
-References: <1192715235.7466.13.camel@moss-terrapins.epoch.ncsc.mil>
-	<20071018145549.GA24088@fieldses.org>
-	<1192722476.7466.28.camel@moss-terrapins.epoch.ncsc.mil>
-	<20071018170104.GD24088@fieldses.org>
+From: Jason.V.Mock@L-3Com.com
+Subject: Re: Kernel Oops in NFS
+Date: Thu, 18 Oct 2007 16:01:52 -0500
+Message-ID: <F31FEAB987B7C2469181758C14265CFA040BBB7A@gvlexch03.is.l-3com.com>
+References: <F31FEAB987B7C2469181758C14265CFA040BBB64@gvlexch03.is.l-3com.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, nfsv4@linux-nfs.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: "Kile, SE Scott @ IS" <scott.kile@L-3com.com>
+To: "Mock, JV Jason @ IS" <Jason.V.Mock@L-3Com.com>,
+	<nfs@lists.sourceforge.net>, <linux-kernel@vger.kernel.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Iia0X-0000yr-6E
-	for nfs@lists.sourceforge.net; Thu, 18 Oct 2007 11:22:09 -0700
-Received: from mummy.ncsc.mil ([144.51.88.129] helo=jazzhorn.ncsc.mil)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Iia0c-0001QU-4r
-	for nfs@lists.sourceforge.net; Thu, 18 Oct 2007 11:22:14 -0700
-In-Reply-To: <20071018170104.GD24088@fieldses.org>
+	id 1IicVE-0000Ek-8p
+	for nfs@lists.sourceforge.net; Thu, 18 Oct 2007 14:02:02 -0700
+Received: from smtpout1.l-3com.com ([128.170.207.211])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IicVI-0001wx-7d
+	for nfs@lists.sourceforge.net; Thu, 18 Oct 2007 14:02:05 -0700
+In-Reply-To: <F31FEAB987B7C2469181758C14265CFA040BBB64@gvlexch03.is.l-3com.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,95 +30,90 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, 2007-10-18 at 13:01 -0400, J. Bruce Fields wrote:
-> On Thu, Oct 18, 2007 at 11:47:56AM -0400, David P. Quigley wrote:
-> > On Thu, 2007-10-18 at 10:55 -0400, J. Bruce Fields wrote:
-> > > On Thu, Oct 18, 2007 at 09:47:15AM -0400, David P. Quigley wrote:
-> > > > Hello,
-> > > >     I have been working on a Domain of Interpretation mapper for the
-> > > > labeled nfs work and I seem to have hit a wall. I started with idmapd as
-> > > > a base and proceeded to modify it to work with DOIs instead. Because of
-> > > > this with a few minor exceptions I expected everything to work. For the
-> > > > most part it does however I seem to have a minor problem with the cache
-> > > > on the nfsd side.
-> > > > 
-> > > >     I am running into a problem where I can't mount the export because
-> > > > the server keeps trying to translate the label. I initially get a
-> > > > success but then it repeatedly attempts to retry.
-> > > 
-> > > So you're just getting repeated NFS4ERR_DELAY responses to the same
-> > > request from the client?  Or does the server just stop responding?  Is
-> > > this always reproduceble?
-> > 
-> > The server stops responding since it is hung in the
-> > nfs_map_local_to_global function so these retries are between the kernel
-> > and the userspace daemon.
+> We've come across an Oops, in what appears to NFS.
 > 
-> OK.  It's not doing exactly the same thing as the nfs4idmap.c code,
-> then--maybe you'll want to post your patch to help us understand?
+> 2.6.22.6 vanilla + realtime-lsm
+> RHEL4 over PXE/NFS_ROOT
+> 
+> 
+> Oct  9 14:26:13 WS15 gdm(pam_unix)[6038]: session opened for 
+> user mockj by (uid=0) Oct  9 14:26:48 WS15 gconfd 
+> (mockj-7583): starting (version 2.8.1), pid
+> 7583 user 'mockj'
+> Oct  9 14:26:48 WS15 kernel: BUG: unable to handle kernel 
+> NULL pointer dereference at virtual address 00000004 Oct  9 
+> 14:26:48 WS15 kernel:  printing eip:
+> Oct  9 14:26:48 WS15 kernel: c01a9fb8
+> Oct  9 14:26:48 WS15 kernel: *pde = c691d067 Oct  9 14:26:48 
+> WS15 kernel: Oops: 0000 [#1] Oct  9 14:26:48 WS15 kernel: 
+> PREEMPT SMP Oct  9 14:26:48 WS15 kernel: Modules linked in: 
+> lm85 w83781d hwmon_vid hwmon ipv6 parport_pc lp parport 
+> autofs4 tulip dm_mirror dm_mod button battery ac mct_u232 
+> usbserial uhci_hcd ehci_hcd nvidia(P) e7xxx_edac edac_mc 
+> rng_core i2c_i801 i2c_core aic79xx scsi_transport_spi 
+> ata_piix libata scsi_mod snd_intel8x0 snd_ac97_codec ac97_bus 
+> snd_pcm_oss snd_mixer_oss snd_pcm snd_page_alloc 
+> snd_seq_dummy snd_seq_oss snd_seq_midi_event snd_seq 
+> snd_timer snd_seq_device snd soundcore realtime commoncap
+> Oct  9 14:26:48 WS15 kernel: CPU:    0
+> Oct  9 14:26:48 WS15 kernel: EIP:    0060:[<c01a9fb8>]    Tainted: P
+> VLI
+> Oct  9 14:26:48 WS15 kernel: EFLAGS: 00210246   (2.6.22-6.0.WSsmp #1)
+> Oct  9 14:26:48 WS15 kernel: EIP is at nfs_lookup+0x11b/0x26a
+> Oct  9 14:26:48 WS15 kernel: eax: 00000000   ebx: c0367600   ecx:
+> 00000000   edx: 00000000
+> Oct  9 14:26:48 WS15 kernel: esi: 00000000   edi: 00000000   ebp:
+> 00000000   esp: f63b5d44
+> Oct  9 14:26:48 WS15 kernel: ds: 007b   es: 007b   fs: 00d8  gs: 0033
+> ss: 0068
+> Oct  9 14:26:48 WS15 kernel: Process gconfd-2 (pid: 7583, 
+> ti=f63b4000 task=f6273070 task.ti=f63b4000) Oct  9 14:26:48 
+> WS15 kernel: Stack: f63b5d60 f63b5d98 f63b5d9c 7fffffff
+> f63b5ed8 f63ef118 f63f5e8c f63b0002 
+> Oct  9 14:26:48 WS15 kernel:        f63db21c 00000000 
+> c014843e 00000000
+> 0000000e 00000001 00000001 000081c0 
+> Oct  9 14:26:48 WS15 kernel:        00000002 00001459 
+> 000000c9 00000271
+> 00000000 00002000 00000008 00000000
+> Oct  9 14:26:48 WS15 kernel: Call Trace:
+> Oct  9 14:26:48 WS15 kernel:  [<c014843e>] 
+> write_cache_pages+0x235/0x285 Oct  9 14:26:48 WS15 kernel:  
+> [<c01b4332>] nfs_flush_one+0x0/0xe5 Oct  9 14:26:48 WS15 
+> kernel:  [<c01488c5>] mapping_tagged+0x2b/0x32 Oct  9 
+> 14:26:48 WS15 kernel:  [<c016e227>] d_alloc+0x15e/0x166 Oct  
+> 9 14:26:48 WS15 kernel:  [<c0166663>] 
+> lookup_one_len+0xc5/0xe0 Oct  9 14:26:48 WS15 kernel:  
+> [<c01aabba>] nfs_sillyrename+0x12b/0x253 Oct  9 14:26:48 WS15 
+> kernel:  [<c01aba09>] nfs_permission+0x0/0x147 Oct  9 
+> 14:26:48 WS15 kernel:  [<c01aae6e>] nfs_unlink+0x81/0xfc Oct  
+> 9 14:26:48 WS15 kernel:  [<c01667f4>] may_delete+0x55/0x10a 
+> Oct  9 14:26:48 WS15 kernel:  [<c0167a82>] 
+> vfs_unlink+0xa1/0xc5 Oct  9 14:26:48 WS15 kernel:  
+> [<c0167b3b>] do_unlinkat+0x95/0xf5 Oct  9 14:26:48 WS15 
+> kernel:  [<c0105a67>] do_syscall_trace+0x15c/0x19d Oct  9 
+> 14:26:48 WS15 kernel:  [<c0103136>] syscall_call+0x7/0xb Oct  
+> 9 14:26:48 WS15 kernel:  [<c0350000>] 
+> cache_make_upcall+0x40/0x129 Oct  9 14:26:48 WS15 kernel:  
+> ======================= Oct  9 14:26:48 WS15 kernel: Code: 24 
+> 14 8b 00 83 c2 20 8b 58 38 8d 44
+> 24 1c 89 04 24 8b 44 24 18 ff 53 20 83 f8 fe 0f 84 93 00 00 
+> 00 85 c0 89
+> c5 0f 88 3d 01 00 00 <8b> 76 04 8b 54 24 18 89 74 24 10 8b 82 
+> a4 00 00 00 8b 54 24 64 Oct  9 14:26:48 WS15 kernel: EIP: 
+> [<c01a9fb8>] nfs_lookup+0x11b/0x26a SS:ESP 0068:f63b5d4
+> 
+> We haven't seen any negative side-effects other than users 
+> seeing this in Kwrited quite often.  We've yet to update to 
+> 2.6.22.9, however we've examined the change logs and patches 
+> associated with NFS between then and now, and don't see 
+> anything appropriate for the errors we're receiving.  Let me 
+> know if you need anything else for this...
 
-That's a good idea. I'm gonna table my translation stuff for a day or so
-to incorporate some other patches from my other team mates and I will
-post a patch set probably on Monday. I wanted to have a working DOI
-translation daemon sent out with it but unfortunately that doesn't seem
-like it is going to be an option.
+I was just checking to see if there's anything that I'm missing here, in
+regards to never hearing a single thing back about this.
 
-> 
-> > > > I have tracked it down to a bit of code which essentially is a
-> > > > duplication of do_idmap_lookup_nowait.
-> > > 
-> > > When exactly does the label translation occur?
-> > 
-> > We added a new recommended attribute so we have a function called
-> > nfsd4_encode_security_label in nfs4xdr.c. This grabs the label using
-> > security_inode_getsecurity and then sends it to the translation daemon.
-> 
-> When is this attribute requested?
-
-The call to nfsd4_encode_security_label is in nfsd4_encode_fattr. We
-usually pull this across with every getattr request. The decoding which
-we haven't hit yet is in nfsd4_decode_fattr
-> 
-> > I don't think there is more than one cache item. I can't tell for sure
-> > since there doesn't seem to be more than one iteration before it goes
-> > into the loop but I do a lookup on the local representation and I get a
-> > negative cache entry back.
-> 
-> It shouldn't have CACHE_NEGATIVE set at this point.  (CACHE_VALID should
-> be cleared, if that's what you mean.)
-> 
-> > I'm not sure if the negative bit is set so I will check that in a bit
-> > (no pun intended).
-> 
-> Hmph.
-> 
-> > Then I make the upcall to userspace and the parse function comes back
-> > with a sucessful translation and no error code. At this point I put
-> > the node into the update function and in theory the negative entry we
-> > pulled from the lookup should update the global field for the entry. I
-> > supposed that I could toss another lookup call in there to make sure
-> > that this is actually happening.  However, update seems to be working
-> > properly in that it returns a cache entry that has the appropriate
-> > values.
-> 
-> You could also printk() the address of the cache items in question just
-> to make sure the right one's getting updated.
-
-I'll give that a try.
-
-> 
-> > Any bit of insight helps me get closer to solving the problem. The
-> > interesting thing is that if this bit was being set properly it seems as
-> > if everything else would be working perfectly.
-> 
-> Happy to help if I'm able, but I'm leaving for an early weekend sometime
-> this afternoon, so will probably be mostly unresponsive till Monday.
-
-Have a nice weekend :)
-
-> 
-> --b.
-
+- Jason Mock
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
