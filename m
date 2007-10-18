@@ -1,21 +1,20 @@
-From: Erez Zadok <ezk@cs.sunysb.edu>
-Subject: nfsv2 ref leak in 2.6.24?
-Date: Fri, 19 Oct 2007 01:49:49 -0400
-Message-ID: <200710190549.l9J5nnX8007119@agora.fsl.cs.sunysb.edu>
+From: <purposemoney@pediatrichealthchoice.com>
+Subject: Thursday News Report
+Date: Thu, 18 Oct 2007 13:41:35 +0530
+Message-ID: <002f01c8115e$80510310$c84b726f@hfn>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: bfields@fieldses.org, nfs@lists.sourceforge.net, neilb@suse.de,
-	trond.myklebust@fys.uio.no, linux-kernel@vger.kernel.org
+To: <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IikkM-0007Xt-60
-	for nfs@lists.sourceforge.net; Thu, 18 Oct 2007 22:50:10 -0700
-Received: from filer.fsl.cs.sunysb.edu ([130.245.126.2])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IikkQ-0008Rv-BZ
-	for nfs@lists.sourceforge.net; Thu, 18 Oct 2007 22:50:15 -0700
+	id 1Iin1C-0004V5-Tl
+	for nfs@lists.sourceforge.net; Fri, 19 Oct 2007 01:15:43 -0700
+Received: from [122.164.83.218]
+	(helo=ABTS-TN-dynamic-218.83.164.122.airtelbroadband.in)
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1Iin1H-0007Ou-Ib
+	for nfs@lists.sourceforge.net; Fri, 19 Oct 2007 01:15:48 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,21 +27,71 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-I'm testing unionfs on top of nfsv2/3/4, using 2.6.24 as of linus's commit
-4fa4d23fa20de67df919030c1216295664866ad7.  A lot of my unionfs regression
-tests are failing on nfs2, b/c files that should be deleted, aren't.  It
-feels like there may be a ref leak that prevents the files from being
-deleted, or maybe an unlink issue.  It doesn't happen in all of my previous
-kernels w/ identical unionfs (code 2.6.9--2.6.23).  And in 2.6.24 it happens
-only w/ nfs2 -- nfs3/4 are fine.
 
-I'm not sure if this is a client or server issue, and I'm only starting to
-dig deeper.  But I thought I'd ask you in case this is a known problem and
-you have a fix.  If this is the first you hear of this problem, let me know
-and I'll try to narrow it down further.
 
-Thanks,
-Erez.
+News For Your Life On Oct 18th
+
+Financial News:
+
+New Fee Structure Generates Huge Response.
+
+Exit Only Inc. "exto"
+$0.41
+
+May brought us the first look at Exit Only's new Vehicle Web-marketing
+solution. The concept of marketing new and used vehicles through the web
+is not new. Posting of a sellers vehicle to the site without charge is
+something new to web based vehicle marketing. Sellers are now only
+charged for actual results, namely $2 per lead for actual interested
+buyers.
+
+Company Bullets:
+
+- Initial marketing in Canada was met with overwhelming response.
+- The companies year end goals were met in just the first few months.
+- the US expansion is tested and ready for immediate launch.
+- Exit has partnered with a number of online services to provide
+immediate market exposure.
+- In addition the site is now providing Mobile access, delivering
+sellers contact information of potential buyers right to their cell
+phone.
+
+Duplication of the Canadian results in the much larger US market base
+will certainly make this company the next major online player. Contact
+your broker, or review any market site for further information.
+
+
+International News:
+
+Rice touts 'most serious' Mideast peace efforts in years ----- RAMALLAH,
+West Bank -- Israel and Palestinian negotiators are involved in the most
+serious effort in "many, many years" to try to end the Mideast conflict,
+said U.S. Secretary of State Condoleezza Rice on Monday. U.S. Secretary
+of State Condoleezza Rice meets Monday with Palestinian President
+Mahmoud Abbas. "Frankly, it's time for the establishment of a
+Palestinian state and it's time for Israel to live in the security that
+is going to come with a peaceful and democratic neighbor," Rice said. A
+day after meeting with Israeli leaders, Rice met in the West Bank with
+Palestinian President Mahmoud Abbas and said she's pushing both sides to
+work "intensely" toward agreeing on a "serious, substantive and
+concrete" framework for a November peace conference in Annapolis,
+Maryland.
+
+USA News Updates:
+
+Hazardous Waste Car Involved In Derailment ----- STEILACOOM, Wash. -- A
+derailment early Thursday halted train traffic on both sets of tracks on
+the Burlington Northern Santa Fe main line and blocked access to a ferry
+terminal south of Tacoma, a railroad spokesman said. Amtrak passengers
+were being bused between Seattle and Portland, Ore., and railroad crews
+were working to reopen the road leading to the dock used by ferries
+between the mainland and McNeil, Anderson and Ketron islands, BNSF
+spokesman Gus Melonas said. McNeil Island is the site of a state prison
+and the state's Special Commitment Center, where sexual predators are
+confined for treatment after serving their prison time. State-operated
+ferry service between the island and Steilacoom provides 19 runs around
+the clock for supplies, staff, visitors and inmate transfers.
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
