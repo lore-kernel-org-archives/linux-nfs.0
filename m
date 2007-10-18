@@ -1,30 +1,23 @@
-From: Andrea Righi <righiandr@users.sourceforge.net>
-Subject: Re: nfsd closes port 2049
-Date: Thu, 18 Oct 2007 16:34:54 +0200 (MEST)
-Message-ID: <47176F0E.2000007@users.sourceforge.net>
-References: <47139C02.9020009@cineca.it>
-	<18195.52347.544844.155538@notabene.brown>
-	<4713E25D.6090302@users.sourceforge.net>
-	<EXNANE014r3mbfJ8VrR0000070e@exnane01.hq.netapp.com>
-	<18198.64875.25036.248314@notabene.brown>
-	<EXNANE013MBhe3WYIgo0000075b@exnane01.hq.netapp.com>
-	<471754BA.7000907@users.sourceforge.net>
-	<EXNANE01FT3kMUVfNIJ00000760@exnane01.hq.netapp.com>
-Reply-To: righiandr@users.sourceforge.net
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: lockd crash
+Date: Thu, 18 Oct 2007 10:44:44 -0400
+Message-ID: <1192718684.7437.3.camel@heimdal.trondhjem.org>
+References: <Pine.LNX.4.62.0710181511090.759@office2.c1.internal>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
+To: Allard Hoeve <allard@byte.nl>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IiWSw-0007YF-N5
-	for nfs@lists.sourceforge.net; Thu, 18 Oct 2007 07:35:14 -0700
-Received: from as1.cineca.com ([130.186.84.251])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IiWSz-00052k-CW
-	for nfs@lists.sourceforge.net; Thu, 18 Oct 2007 07:35:20 -0700
-In-Reply-To: <EXNANE01FT3kMUVfNIJ00000760@exnane01.hq.netapp.com>
+	id 1IiWbY-00008P-QS
+	for nfs@lists.sourceforge.net; Thu, 18 Oct 2007 07:44:08 -0700
+Received: from pat.uio.no ([129.240.10.15])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IiWbc-0005c2-TR
+	for nfs@lists.sourceforge.net; Thu, 18 Oct 2007 07:44:14 -0700
+In-Reply-To: <Pine.LNX.4.62.0710181511090.759@office2.c1.internal>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,31 +30,32 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Talpey, Thomas wrote:
-> At 08:42 AM 10/18/2007, Andrea Righi wrote:
->> The NFS server is working fine for the 2nd day using the fix (with kernel
->> 2.6.16.53-0.8-smp), but I'm not yet using the no_subtree_check option. I tried
->> to stress the filesystem with multiple accesses from all the clients (256),
->> alterning with periods of inactivity. This was a good "pattern" to 
->> reproduce the
->> problem and since it didn't happen anymore I'm considering the issue resolved.
+
+On Thu, 2007-10-18 at 15:18 +0200, Allard Hoeve wrote:
+> Hello all,
 > 
-> Great! Do you have any "nfsd_acceptable" failures in the server's syslog?
-> If none, then the second issue didn't occur either, a good thing in itself. :-)
+> We've been experincing strange lockd crashes on one of our file servers 
+> lately. The kernel lockd gets stuck in a D state and is unkillable, while 
+> other NFS processes continue to work fine. Files are served, we're able to 
+> mount/umount etc, but trying to attain a lock results in a (killable with 
+> KILL) process on the client.
 > 
-> Tom.
+> We're running 2.6.17.3 currently. I know that's not a very new kernel, but 
+> we're stuck at that version for the moment, I'm afraid.
 > 
+> I've attached a stacktrace that dmesg gave us. It would be great if you 
+> can take a look at it.
+> 
+> Regards,
+> 
+> Allard Hoeve
 
-I rebooted the NFS server with the new kernel on Oct 17 10:45:24, and:
+Already fixed in mainline. Please see
 
-node0101:~ # (bzcat /var/log/messages-2007101[78].bz2; cat /var/log/messages) | grep nfsd_acceptable
-Oct 16 23:04:41 node0101 kernel: nfsd_acceptable failed at ffff810155e88150
-Oct 17 07:52:38 node0101 kernel: nfsd_acceptable failed at ffff81015da98970
-Oct 17 10:22:33 node0101 kernel: nfsd_acceptable failed at ffff8100d8cffa40
+http://client.linux-nfs.org/Linux-2.6.x/2.6.23-rc7/linux-2.6.23-001-fix_lockd_circular_dependency.dif
 
-So, any nfsd_acceptable failure in the logs.
+Trond
 
--Andrea
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
