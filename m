@@ -1,65 +1,67 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: nfsv2 ref leak in 2.6.24?
-Date: Fri, 19 Oct 2007 09:41:16 -0400
-Message-ID: <1192801277.7073.4.camel@heimdal.trondhjem.org>
-References: <200710190549.l9J5nnX8007119@agora.fsl.cs.sunysb.edu>
+From: Jason.V.Mock@L-3Com.com
+Subject: RE: [NFS] Kernel Oops in NFS
+Date: Fri, 19 Oct 2007 13:30:57 -0500
+Message-ID: <F31FEAB987B7C2469181758C14265CFA040BBB86@gvlexch03.is.l-3com.com>
+References: <F31FEAB987B7C2469181758C14265CFA040BBB64@gvlexch03.is.l-3com.com> <F31FEAB987B7C2469181758C14265CFA040BBB7A@gvlexch03.is.l-3com.com> <1192749866.7437.57.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: bfields@fieldses.org, neilb@suse.de, nfs@lists.sourceforge.net,
-	linux-kernel@vger.kernel.org
-To: Erez Zadok <ezk@cs.sunysb.edu>
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Iis5G-0003GX-Bv
-	for nfs@lists.sourceforge.net; Fri, 19 Oct 2007 06:40:14 -0700
-Received: from pat.uio.no ([129.240.10.15])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Iis5K-0004b6-GI
-	for nfs@lists.sourceforge.net; Fri, 19 Oct 2007 06:40:19 -0700
-In-Reply-To: <200710190549.l9J5nnX8007119@agora.fsl.cs.sunysb.edu>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: <linux-kernel@vger.kernel.org>,
+	"Kile, SE Scott @ IS" <scott.kile@L-3com.com>,
+	<nfs@lists.sourceforge.net>
+To: "Trond Myklebust" <trond.myklebust@fys.uio.no>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S934586AbXJSSbU@vger.kernel.org>
+In-Reply-To: <1192749866.7437.57.camel@heimdal.trondhjem.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-
-On Fri, 2007-10-19 at 01:49 -0400, Erez Zadok wrote:
-> I'm testing unionfs on top of nfsv2/3/4, using 2.6.24 as of linus's commit
-> 4fa4d23fa20de67df919030c1216295664866ad7.  A lot of my unionfs regression
-> tests are failing on nfs2, b/c files that should be deleted, aren't.  It
-> feels like there may be a ref leak that prevents the files from being
-> deleted, or maybe an unlink issue.  It doesn't happen in all of my previous
-> kernels w/ identical unionfs (code 2.6.9--2.6.23).  And in 2.6.24 it happens
-> only w/ nfs2 -- nfs3/4 are fine.
+> -----Original Message-----
+> From: Trond Myklebust [mailto:trond.myklebust@fys.uio.no] 
+> Sent: Thursday, October 18, 2007 18:24
+> To: Mock, JV Jason @ IS
+> Cc: nfs@lists.sourceforge.net; linux-kernel@vger.kernel.org; 
+> Kile, SE Scott @ IS
+> Subject: Re: [NFS] Kernel Oops in NFS
 > 
-> I'm not sure if this is a client or server issue, and I'm only starting to
-> dig deeper.  But I thought I'd ask you in case this is a known problem and
-> you have a fix.  If this is the first you hear of this problem, let me know
-> and I'll try to narrow it down further.
+> 
+> On Thu, 2007-10-18 at 16:01 -0500, Jason.V.Mock@L-3Com.com wrote:
+> > > We've come across an Oops, in what appears to NFS.
+> > > 
+> > > 2.6.22.6 vanilla + realtime-lsm
+> > > RHEL4 over PXE/NFS_ROOT
+...
+> > > [<c01a9fb8>] nfs_lookup+0x11b/0x26a SS:ESP 0068:f63b5d4
+> > > 
+> > > We haven't seen any negative side-effects other than users seeing 
+> > > this in Kwrited quite often.  We've yet to update to 2.6.22.9, 
+> > > however we've examined the change logs and patches 
+> associated with 
+> > > NFS between then and now, and don't see anything 
+> appropriate for the 
+> > > errors we're receiving.  Let me know if you need anything 
+> else for 
+> > > this...
+> > 
+> > I was just checking to see if there's anything that I'm 
+> missing here, 
+> > in regards to never hearing a single thing back about this.
+> > 
+> > - Jason Mock
+> 
+> Well... Your Oops did have the 'tainted' flag set, but in 
+> this case I believe that the issue is already known. Please try
+> 
+>   
+> http://client.linux-nfs.org/Linux-2.6.x/2.6.22/linux-2.6.22-01
+> 0-fix_nfs_reval_fsid.dif
+> 
+> Trond
+> 
 
-A couple of questions:
+Thanks Trond.  The Tainted flag is *probably* due to the NVIDIA driver,
+but I'd also have to check the realtime-lsm.  Either way we'll get that
+built up and see...
 
-      * Are these files being sillyrenamed?
-      * Are they shown as being removed by the server?
+Thanks again!!
 
-Cheers
-  Trond
-
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Splunk Inc.
-Still grepping through log files to find problems?  Stop.
-Now Search log events and configuration files using AJAX and a browser.
-Download your FREE copy of Splunk now >> http://get.splunk.com/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+- Jason Mock
