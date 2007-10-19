@@ -1,19 +1,24 @@
-From: "Ernesto Weber" <ShaunzirconMullins@avantbrowser.com>
-Subject: Will this Stock be a "Super Nova?"
-Date: Fri, 19 Oct 2007 14:15:19 -0100
-Message-ID: <04ac01c81249$c8fb8ae0$4001a8c0@anatgzbzh1jbg6>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: nfsv2 ref leak in 2.6.24?
+Date: Fri, 19 Oct 2007 09:41:16 -0400
+Message-ID: <1192801277.7073.4.camel@heimdal.trondhjem.org>
+References: <200710190549.l9J5nnX8007119@agora.fsl.cs.sunysb.edu>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1680323693=="
-To: <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Cc: bfields@fieldses.org, neilb@suse.de, nfs@lists.sourceforge.net,
+	linux-kernel@vger.kernel.org
+To: Erez Zadok <ezk@cs.sunysb.edu>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Iiqln-0003AI-BY
-	for nfs@lists.sourceforge.net; Fri, 19 Oct 2007 05:16:03 -0700
-Received: from [78.134.151.184] (helo=anatgzbzh1jbg6.lan)
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1Iiqls-0001Cb-Cc
-	for nfs@lists.sourceforge.net; Fri, 19 Oct 2007 05:16:08 -0700
+	id 1Iis5G-0003GX-Bv
+	for nfs@lists.sourceforge.net; Fri, 19 Oct 2007 06:40:14 -0700
+Received: from pat.uio.no ([129.240.10.15])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1Iis5K-0004b6-GI
+	for nfs@lists.sourceforge.net; Fri, 19 Oct 2007 06:40:19 -0700
+In-Reply-To: <200710190549.l9J5nnX8007119@agora.fsl.cs.sunysb.edu>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,100 +31,35 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
 
---===============1680323693==
-Content-Type: multipart/alternative;
-	boundary="----=_NextPart_000_04A8_01C81249.C8FB8AE0"
+On Fri, 2007-10-19 at 01:49 -0400, Erez Zadok wrote:
+> I'm testing unionfs on top of nfsv2/3/4, using 2.6.24 as of linus's commit
+> 4fa4d23fa20de67df919030c1216295664866ad7.  A lot of my unionfs regression
+> tests are failing on nfs2, b/c files that should be deleted, aren't.  It
+> feels like there may be a ref leak that prevents the files from being
+> deleted, or maybe an unlink issue.  It doesn't happen in all of my previous
+> kernels w/ identical unionfs (code 2.6.9--2.6.23).  And in 2.6.24 it happens
+> only w/ nfs2 -- nfs3/4 are fine.
+> 
+> I'm not sure if this is a client or server issue, and I'm only starting to
+> dig deeper.  But I thought I'd ask you in case this is a known problem and
+> you have a fix.  If this is the first you hear of this problem, let me know
+> and I'll try to narrow it down further.
 
-This is a multi-part message in MIME format.
+A couple of questions:
 
-------=_NextPart_000_04A8_01C81249.C8FB8AE0
-Content-Type: text/plain;
-	charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
+      * Are these files being sillyrenamed?
+      * Are they shown as being removed by the server?
 
-SMKG IS GOING TO SOAR!
-DO NOT MISS OUT!
-WATCH IT ON FRIDAY OCT 19!
+Cheers
+  Trond
 
-Company: SMART CARD MARKETING
-Symbol: SMKG
-Price: 0.007 (Up 40%!)
-5-D Target: $0.07
-30-D Target: $0.15
-
-SMKG COULD GET YOU GAINS OF UP TO 2000% IN SHORT-TERM HOLDING!
-THIS COMPANY IS SO STRONG AND UNDERVALUED THAT ONCE DISCOVERED A =
-TAKEOVER BY A MAJOR CELL PHONE CARRIER SUCH AS AT&T IS VERY POSSIBLE!
-ADD SMKG TO YOUR RADAR ON FRIDAY OCTOBER 19!
-------=_NextPart_000_04A8_01C81249.C8FB8AE0
-Content-Type: text/html;
-	charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD>
-<META http-equiv=3DContent-Type content=3D"text/html; =
-charset=3Diso-8859-1">
-<META content=3D"MSHTML 6.00.2800.1106" name=3DGENERATOR>
-<STYLE></STYLE>
-</HEAD>=20
-<BODY bgColor=3D#ffffff>
-<DIV align=3Dleft><FONT face=3DArial size=3D2><B><I>SMKG IS GOING TO=20
-SOAR!</I></B></FONT></DIV>
-<DIV align=3Dleft><FONT face=3DArial size=3D2><I>DO NOT MISS =
-OUT!</I></FONT></DIV>
-<DIV align=3Dleft><FONT face=3DArial size=3D2><B><I>WATCH IT ON FRIDAY =
-OCT=20
-19!</I></B></FONT></DIV><BR>
-<DIV align=3Dleft><FONT face=3DArial size=3D2>Company: <B>SMART CARD=20
-MARKETING</B></FONT></DIV>
-<DIV align=3Dleft><FONT face=3DArial size=3D2>Symbol: <B>SMKG</B> =
-</FONT></DIV>
-<DIV align=3Dleft><FONT face=3DArial size=3D2>Price: 0.007 <B>(Up=20
-40%!)</B></FONT></DIV>
-<DIV align=3Dleft><FONT face=3DArial size=3D2><B>5-D Target: =
-$0.07</B></FONT></DIV>
-<DIV align=3Dleft><FONT face=3DArial size=3D2><B>30-D Target:=20
-$0.15</B></FONT></DIV><BR>
-<DIV align=3Dleft><FONT face=3DArial size=3D2><I>SMKG COULD GET YOU =
-GAINS OF UP TO=20
-2000% IN SHORT-TERM HOLDING!</I></FONT></DIV>
-<DIV align=3Dleft><FONT face=3DArial size=3D2><I>THIS COMPANY IS SO =
-STRONG AND 
-UNDERVALUED THAT ONCE DISCOVERED A TAKEOVER BY A MAJOR CELL PHONE =
-CARRIER SUCH=20
-AS AT&T IS VERY POSSIBLE!</I></FONT></DIV>
-<DIV align=3Dleft><FONT face=3DArial size=3D2><B><U>ADD SMKG TO YOUR =
-RADAR ON FRIDAY=20
-OCTOBER 19!</U></B></FONT></DIV>
-</BODY></HTML>
-
-
-------=_NextPart_000_04A8_01C81249.C8FB8AE0--
-
-
-
---===============1680323693==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >> http://get.splunk.com/
---===============1680323693==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============1680323693==--
