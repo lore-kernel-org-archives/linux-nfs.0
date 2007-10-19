@@ -1,24 +1,23 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: nfsv2 ref leak in 2.6.24?
-Date: Fri, 19 Oct 2007 17:52:32 -0400
-Message-ID: <1192830752.7466.32.camel@heimdal.trondhjem.org>
-References: <200710192140.l9JLeLEO004110@agora.fsl.cs.sunysb.edu>
+From: Tom Tucker <tom@opengridcomputing.com>
+Subject: [RFC,PATCH 01/10] rdma: ONCRPC RDMA Header File
+Date: Fri, 19 Oct 2007 16:56:11 -0500
+Message-ID: <20071019215611.31937.43162.stgit@dell3.ogc.int>
+References: <20071019215304.31937.28876.stgit@dell3.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: bfields@fieldses.org, neilb@suse.de, nfs@lists.sourceforge.net,
-	linux-kernel@vger.kernel.org
-To: Erez Zadok <ezk@cs.sunysb.edu>
+Cc: bfields@fieldses.org, neilb@suse.de, gnb@sgi.com
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Iizlo-0006YA-7A
-	for nfs@lists.sourceforge.net; Fri, 19 Oct 2007 14:52:40 -0700
-Received: from pat.uio.no ([129.240.10.15])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Iizlt-0001n5-5K
-	for nfs@lists.sourceforge.net; Fri, 19 Oct 2007 14:52:45 -0700
-In-Reply-To: <200710192140.l9JLeLEO004110@agora.fsl.cs.sunysb.edu>
+	id 1IizpD-0006u1-TP
+	for nfs@lists.sourceforge.net; Fri, 19 Oct 2007 14:56:12 -0700
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]
+	helo=smtp.opengridcomputing.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IizpI-0002rt-UC
+	for nfs@lists.sourceforge.net; Fri, 19 Oct 2007 14:56:17 -0700
+In-Reply-To: <20071019215304.31937.28876.stgit@dell3.ogc.int>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,67 +31,137 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 
-On Fri, 2007-10-19 at 17:40 -0400, Erez Zadok wrote:
-> In message <1192801277.7073.4.camel@heimdal.trondhjem.org>, Trond Myklebust writes:
-> > 
-> > On Fri, 2007-10-19 at 01:49 -0400, Erez Zadok wrote:
-> > > I'm testing unionfs on top of nfsv2/3/4, using 2.6.24 as of linus's commit
-> > > 4fa4d23fa20de67df919030c1216295664866ad7.  A lot of my unionfs regression
-> > > tests are failing on nfs2, b/c files that should be deleted, aren't.  It
-> > > feels like there may be a ref leak that prevents the files from being
-> > > deleted, or maybe an unlink issue.  It doesn't happen in all of my previous
-> > > kernels w/ identical unionfs (code 2.6.9--2.6.23).  And in 2.6.24 it happens
-> > > only w/ nfs2 -- nfs3/4 are fine.
-> > > 
-> > > I'm not sure if this is a client or server issue, and I'm only starting to
-> > > dig deeper.  But I thought I'd ask you in case this is a known problem and
-> > > you have a fix.  If this is the first you hear of this problem, let me know
-> > > and I'll try to narrow it down further.
-> > 
-> > A couple of questions:
-> > 
-> >       * Are these files being sillyrenamed?
-> >       * Are they shown as being removed by the server?
-> > 
-> > Cheers
-> >   Trond
-> 
-> Trond, I was able to narrow down the problem w/o using unionfs at all (yay!
-> :-).  All I do is setup a loop device, mkfs it as ext2, mount it, then
-> export it to localhost and mount it locally as nfs2.  I go and touch a new
-> file in the ext2 directory.  Then I readdir the export point to find the new
-> file indeed.  Then I stat(1) the new file, and get the appropriate stat
-> output.  Now the strange thing is that right after the stat through the
-> export point, the file DISAPPEARS from the lower ext2 dir, but REAPPEARS a
-> few seconds later.
+These are the core data types that are used to process the ONCRPC protocol
+in the NFS-RDMA client and server.
 
-Let me get this straight:
+Signed-off-by: Tom Talpey <talpey@netapp.com>
+---
 
-  1) You create the file on the server
-  2) You readdir the file from the client
-  3) You stat the file from the client
+ include/linux/sunrpc/rpc_rdma.h |  116 +++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 116 insertions(+), 0 deletions(-)
 
-....with the result that the file disappears from sight on the server?
-
-That would indicate some dcache issues with the server code. What export
-options are you using?
-
-> It doesn't happen all the time, so it feels like some sort of a race or
-> timing-related bug.  And it only happens w/ nfs2 on 2.6.24 (v3/4 work fine;
-> v2/3/4 work find in previous kernels).
-> 
-> I'm trying to get a script that'll be able to reproduce this for you more
-> deterministically.
-> 
-> BTW, does your just-posted set of patches, subject "[GIT] NFS client fixes
-> for 2.6.23++" possibly fix this?  I can try it and let you know.
-
-I doubt the new patches fix the problem if I did indeed get your method
-right.
-
-Cheers
-  Trond
-
+diff --git a/include/linux/sunrpc/rpc_rdma.h b/include/linux/sunrpc/rpc_rdma.h
+new file mode 100644
+index 0000000..0013a0d
+--- /dev/null
++++ b/include/linux/sunrpc/rpc_rdma.h
+@@ -0,0 +1,116 @@
++/*
++ * Copyright (c) 2003-2007 Network Appliance, Inc. All rights reserved.
++ *
++ * This software is available to you under a choice of one of two
++ * licenses.  You may choose to be licensed under the terms of the GNU
++ * General Public License (GPL) Version 2, available from the file
++ * COPYING in the main directory of this source tree, or the BSD-type
++ * license below:
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ *
++ *      Redistributions of source code must retain the above copyright
++ *      notice, this list of conditions and the following disclaimer.
++ *
++ *      Redistributions in binary form must reproduce the above
++ *      copyright notice, this list of conditions and the following
++ *      disclaimer in the documentation and/or other materials provided
++ *      with the distribution.
++ *
++ *      Neither the name of the Network Appliance, Inc. nor the names of
++ *      its contributors may be used to endorse or promote products
++ *      derived from this software without specific prior written
++ *      permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
++ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
++ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
++ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
++ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
++ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
++ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
++ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
++ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
++ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
++ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++#ifndef _LINUX_SUNRPC_RPC_RDMA_H
++#define _LINUX_SUNRPC_RPC_RDMA_H
++
++struct rpcrdma_segment {
++	uint32_t rs_handle;	/* Registered memory handle */
++	uint32_t rs_length;	/* Length of the chunk in bytes */
++	uint64_t rs_offset;	/* Chunk virtual address or offset */
++};
++
++/*
++ * read chunk(s), encoded as a linked list.
++ */
++struct rpcrdma_read_chunk {
++	uint32_t rc_discrim;	/* 1 indicates presence */
++	uint32_t rc_position;	/* Position in XDR stream */
++	struct rpcrdma_segment rc_target;
++};
++
++/*
++ * write chunk, and reply chunk.
++ */
++struct rpcrdma_write_chunk {
++	struct rpcrdma_segment wc_target;
++};
++
++/*
++ * write chunk(s), encoded as a counted array.
++ */
++struct rpcrdma_write_array {
++	uint32_t wc_discrim;	/* 1 indicates presence */
++	uint32_t wc_nchunks;	/* Array count */
++	struct rpcrdma_write_chunk wc_array[0];
++};
++
++struct rpcrdma_msg {
++	uint32_t rm_xid;	/* Mirrors the RPC header xid */
++	uint32_t rm_vers;	/* Version of this protocol */
++	uint32_t rm_credit;	/* Buffers requested/granted */
++	uint32_t rm_type;	/* Type of message (enum rpcrdma_proc) */
++	union {
++
++		struct {			/* no chunks */
++			uint32_t rm_empty[3];	/* 3 empty chunk lists */
++		} rm_nochunks;
++
++		struct {			/* no chunks and padded */
++			uint32_t rm_align;	/* Padding alignment */
++			uint32_t rm_thresh;	/* Padding threshold */
++			uint32_t rm_pempty[3];	/* 3 empty chunk lists */
++		} rm_padded;
++
++		uint32_t rm_chunks[0];	/* read, write and reply chunks */
++
++	} rm_body;
++};
++
++#define RPCRDMA_HDRLEN_MIN	28
++
++enum rpcrdma_errcode {
++	ERR_VERS = 1,
++	ERR_CHUNK = 2
++};
++
++struct rpcrdma_err_vers {
++	uint32_t rdma_vers_low;	/* Version range supported by peer */
++	uint32_t rdma_vers_high;
++};
++
++enum rpcrdma_proc {
++	RDMA_MSG = 0,		/* An RPC call or reply msg */
++	RDMA_NOMSG = 1,		/* An RPC call or reply msg - separate body */
++	RDMA_MSGP = 2,		/* An RPC call or reply msg with padding */
++	RDMA_DONE = 3,		/* Client signals reply completion */
++	RDMA_ERROR = 4		/* An RPC RDMA encoding error */
++};
++
++#endif				/* _LINUX_SUNRPC_RPC_RDMA_H */
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
