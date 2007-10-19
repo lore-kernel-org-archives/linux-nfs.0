@@ -1,24 +1,23 @@
 From: Tom Tucker <tom@opengridcomputing.com>
 Subject: [RFC,
-	PATCH 4/4] svc: Move svc_xprt_received call to follow addition of
-	xprt to list
-Date: Fri, 19 Oct 2007 16:45:30 -0500
-Message-ID: <20071019214530.31422.4899.stgit@dell3.ogc.int>
+	PATCH 2/4] svc: svc_addsock needs to set the svc_xprt address
+Date: Fri, 19 Oct 2007 16:45:26 -0500
+Message-ID: <20071019214525.31422.35242.stgit@dell3.ogc.int>
 References: <20071019214058.31422.35615.stgit@dell3.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: bfields@fieldses.org, neilb@suse.de, gnb@sgi.com
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Iizev-0005va-BQ
-	for nfs@lists.sourceforge.net; Fri, 19 Oct 2007 14:45:33 -0700
+	id 1Iizep-0005vQ-RL
+	for nfs@lists.sourceforge.net; Fri, 19 Oct 2007 14:45:27 -0700
 Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]
 	helo=smtp.opengridcomputing.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Iizez-0008I2-Kh
-	for nfs@lists.sourceforge.net; Fri, 19 Oct 2007 14:45:38 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Iizeu-0007lI-1Z
+	for nfs@lists.sourceforge.net; Fri, 19 Oct 2007 14:45:33 -0700
 In-Reply-To: <20071019214058.31422.35615.stgit@dell3.ogc.int>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -33,35 +32,31 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 
-The call to svc_xprt_received function should be called after the transport 
-is completely initialized and added to the tempsocks list.
+The svc_addsock function needs to set the local address in the 
+svc_xprt structure.
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- net/sunrpc/svc_xprt.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ net/sunrpc/svcsock.c |    5 +++++
+ 1 files changed, 5 insertions(+), 0 deletions(-)
 
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 6b2c73c..bb007e7 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -615,7 +615,6 @@ int svc_recv(struct svc_rqst *rqstp, lon
- 		struct svc_xprt *newxpt;
- 		newxpt = xprt->xpt_ops->xpo_accept(xprt);
- 		if (newxpt) {
--			svc_xprt_received(newxpt);
- 			/*
- 			 * We know this module_get will succeed because the
- 			 * listener holds a reference too
-@@ -634,6 +633,7 @@ int svc_recv(struct svc_rqst *rqstp, lon
- 					  jiffies + svc_conn_age_period * HZ);
- 			}
- 			spin_unlock_bh(&serv->sv_lock);
-+			svc_xprt_received(newxpt);
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index cc752b7..e1a27ee 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -1249,6 +1249,11 @@ int svc_addsock(struct svc_serv *serv,
+ 	else {
+ 		svsk = svc_setup_socket(serv, so, &err, SVC_SOCK_DEFAULTS);
+ 		if (svsk) {
++			int salen;
++			(void)kernel_getsockname(svsk->sk_sock,
++						 (struct sockaddr *)
++						 &svsk->sk_xprt.xpt_local,
++						 &salen);
+ 			svc_xprt_received(&svsk->sk_xprt);
+ 			err = 0;
  		}
- 		svc_xprt_received(xprt);
- 	} else {
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
