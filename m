@@ -1,26 +1,25 @@
-From: Erez Zadok <ezk@cs.sunysb.edu>
+From: Linus Torvalds <torvalds@linux-foundation.org>
 Subject: Re: [GIT] NFS client fixes for 2.6.23++
-Date: Fri, 19 Oct 2007 22:44:01 -0400
-Message-ID: <200710200244.l9K2i1ik016752@agora.fsl.cs.sunysb.edu>
-References: <alpine.LFD.0.999.0710191929340.3794@woody.linux-foundation.org>
+Date: Fri, 19 Oct 2007 19:57:12 -0700 (PDT)
+Message-ID: <alpine.LFD.0.999.0710191953230.3794@woody.linux-foundation.org>
+References: <200710200244.l9K2i1ik016752@agora.fsl.cs.sunysb.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, Erez Zadok <ezk@cs.sunysb.edu>,
+Cc: nfs@lists.sourceforge.net,
 	Trond Myklebust <Trond.Myklebust@netapp.com>,
 	linux-kernel@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
+To: Erez Zadok <ezk@cs.sunysb.edu>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Ij4Js-0007oD-D1
-	for nfs@lists.sourceforge.net; Fri, 19 Oct 2007 19:44:08 -0700
-Received: from filer.fsl.cs.sunysb.edu ([130.245.126.2])
+	id 1Ij4Wg-0000U3-9n
+	for nfs@lists.sourceforge.net; Fri, 19 Oct 2007 19:57:22 -0700
+Received: from smtp2.linux-foundation.org ([207.189.120.14])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Ij4Jw-0002dD-Jr
-	for nfs@lists.sourceforge.net; Fri, 19 Oct 2007 19:44:13 -0700
-In-reply-to: Your message of "Fri, 19 Oct 2007 19:32:13 PDT."
-	<alpine.LFD.0.999.0710191929340.3794@woody.linux-foundation.org>
+	(Exim 4.44) id 1Ij4Wk-0005U3-KS
+	for nfs@lists.sourceforge.net; Fri, 19 Oct 2007 19:57:27 -0700
+In-Reply-To: <200710200244.l9K2i1ik016752@agora.fsl.cs.sunysb.edu>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,24 +32,20 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-In message <alpine.LFD.0.999.0710191929340.3794@woody.linux-foundation.org>, Linus Torvalds writes:
-> 
-> 
-> On Fri, 19 Oct 2007, Erez Zadok wrote:
-> > 
-> > Trond, with Linus's latest tree, you need to #include <linux/sched.h> in
-> > fs/nfs/unlink.c, else I get:
-> > 
-> >   CC [M]  fs/nfs/unlink.o
-> > fs/nfs/unlink.c: In function 'nfs_dec_sillycount':
-> > fs/nfs/unlink.c:67: error: 'TASK_UNINTERRUPTIBLE' undeclared (first use in this function)
-> ...
-> 
-> Hmm? Which architecture?
 
-i386
 
-Erez.
+On Fri, 19 Oct 2007, Erez Zadok wrote:
+> 
+> i386
+
+Hmm. Doesn't happen here, not on x86-64 nor i386.
+
+Probably some subtle config issue as usual, where some configuration 
+doesn't include <sched.h> indirectly.
+
+But I'll add the direct includes of <linux/sched.h> and <linux/wait.h>. 
+
+		Linus
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
