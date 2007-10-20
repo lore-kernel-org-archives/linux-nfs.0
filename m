@@ -1,25 +1,25 @@
-From: Erez Zadok <ezk@cs.sunysb.edu>
+From: Linus Torvalds <torvalds@linux-foundation.org>
 Subject: Re: [GIT] NFS client fixes for 2.6.23++
-Date: Fri, 19 Oct 2007 22:19:22 -0400
-Message-ID: <200710200219.l9K2JMI8015439@agora.fsl.cs.sunysb.edu>
-References: <1192828993.7466.18.camel@heimdal.trondhjem.org>
+Date: Fri, 19 Oct 2007 19:32:13 -0700 (PDT)
+Message-ID: <alpine.LFD.0.999.0710191929340.3794@woody.linux-foundation.org>
+References: <200710200219.l9K2JMI8015439@agora.fsl.cs.sunysb.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Linus Torvalds <torvalds@osdl.org>, nfs@lists.sourceforge.net,
+Cc: nfs@lists.sourceforge.net,
+	Trond Myklebust <Trond.Myklebust@netapp.com>,
 	linux-kernel@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Erez Zadok <ezk@cs.sunysb.edu>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Ij3w0-0005Kb-0H
-	for nfs@lists.sourceforge.net; Fri, 19 Oct 2007 19:19:28 -0700
-Received: from filer.fsl.cs.sunysb.edu ([130.245.126.2])
+	id 1Ij48V-0006mF-LX
+	for nfs@lists.sourceforge.net; Fri, 19 Oct 2007 19:32:24 -0700
+Received: from smtp2.linux-foundation.org ([207.189.120.14])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Ij3w4-0003Jo-5T
-	for nfs@lists.sourceforge.net; Fri, 19 Oct 2007 19:19:33 -0700
-In-reply-to: Your message of "Fri, 19 Oct 2007 17:23:13 EDT."
-	<1192828993.7466.18.camel@heimdal.trondhjem.org>
+	(Exim 4.44) id 1Ij48a-0007Up-Vh
+	for nfs@lists.sourceforge.net; Fri, 19 Oct 2007 19:32:29 -0700
+In-Reply-To: <200710200219.l9K2JMI8015439@agora.fsl.cs.sunysb.edu>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,39 +32,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-In message <1192828993.7466.18.camel@heimdal.trondhjem.org>, Trond Myklebust writes:
-> Hi Linus,
-> 
-> Please pull from the repository at
-> 
->    git pull git://git.linux-nfs.org/pub/linux/nfs-2.6.git
-> 
-> This will update the following files through the appended changesets.
-> 
->   Cheers,
->     Trond
 
-Trond, with Linus's latest tree, you need to #include <linux/sched.h> in
-fs/nfs/unlink.c, else I get:
 
-  CC [M]  fs/nfs/unlink.o
-fs/nfs/unlink.c: In function 'nfs_dec_sillycount':
-fs/nfs/unlink.c:67: error: 'TASK_UNINTERRUPTIBLE' undeclared (first use in
-this function)
-fs/nfs/unlink.c:67: error: (Each undeclared identifier is reported only once
-fs/nfs/unlink.c:67: error: for each function it appears in.)
-fs/nfs/unlink.c:67: error: 'TASK_INTERRUPTIBLE' undeclared (first use in
-this function)
-fs/nfs/unlink.c: In function 'nfs_block_sillyrename':
-fs/nfs/unlink.c:196: error: 'TASK_UNINTERRUPTIBLE' undeclared (first use in
-this function)
-fs/nfs/unlink.c:196: error: implicit declaration of function 'schedule'
-make[2]: *** [fs/nfs/unlink.o] Error 1
-make[1]: *** [fs/nfs] Error 2
-make: *** [fs] Error 2
+On Fri, 19 Oct 2007, Erez Zadok wrote:
+> 
+> Trond, with Linus's latest tree, you need to #include <linux/sched.h> in
+> fs/nfs/unlink.c, else I get:
+> 
+>   CC [M]  fs/nfs/unlink.o
+> fs/nfs/unlink.c: In function 'nfs_dec_sillycount':
+> fs/nfs/unlink.c:67: error: 'TASK_UNINTERRUPTIBLE' undeclared (first use in this function)
+...
 
-Cheers,
-Erez.
+Hmm? Which architecture?
+
+That said, I do think that there is a distinct lack of proper includes in 
+that file. It seems to depend on getting much of the includes indirectly 
+from <linux/nfs_fs.h> and friends. And with different architectures having 
+different header files..
+
+		Linus
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
