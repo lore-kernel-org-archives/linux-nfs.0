@@ -1,70 +1,107 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [NFS] [GIT] NFS client fixes for 2.6.23++
-Date: Sat, 20 Oct 2007 13:22:37 -0400
-Message-ID: <1192900957.7440.10.camel@heimdal.trondhjem.org>
-References: <200710200219.l9K2JMI8015439@agora.fsl.cs.sunysb.edu>
-	 <alpine.LFD.0.999.0710191929340.3794@woody.linux-foundation.org>
+Subject: Re: [GIT] NFS client fixes for 2.6.23++
+Date: Sat, 20 Oct 2007 13:24:05 -0400
+Message-ID: <1192901045.7440.11.camel@heimdal.trondhjem.org>
+References: <1192828993.7466.18.camel@heimdal.trondhjem.org>
+	<20071020014149.GA19871@lixom.net>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Erez Zadok <ezk@cs.sunysb.edu>, nfs@lists.sourceforge.net,
+Content-Type: text/plain; charset="us-ascii"
+Cc: Linus Torvalds <torvalds@osdl.org>, nfs@lists.sourceforge.net,
 	linux-kernel@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1764137AbXJTRWe@vger.kernel.org>
-In-Reply-To: <alpine.LFD.0.999.0710191929340.3794@woody.linux-foundation.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+To: Olof Johansson <olof@lixom.net>
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1IjI3B-0007GS-8d
+	for nfs@lists.sourceforge.net; Sat, 20 Oct 2007 10:23:49 -0700
+Received: from mx2.netapp.com ([216.240.18.37])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IjI3G-0004F3-He
+	for nfs@lists.sourceforge.net; Sat, 20 Oct 2007 10:23:54 -0700
+In-Reply-To: <20071020014149.GA19871@lixom.net>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
 
-On Fri, 2007-10-19 at 19:32 -0700, Linus Torvalds wrote:
+On Fri, 2007-10-19 at 20:41 -0500, Olof Johansson wrote:
+> nfs: Fix build break with CONFIG_NFS_V4=n
 > 
-> On Fri, 19 Oct 2007, Erez Zadok wrote:
+> Signed-off-by: Olof Johansson <olof@lixom.net>
+
+Acked-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+....with apologies.
+
+> ---
+> 
+> 
+> On Fri, Oct 19, 2007 at 05:23:13PM -0400, Trond Myklebust wrote:
+> > Hi Linus,
 > > 
-> > Trond, with Linus's latest tree, you need to #include <linux/sched.h> in
-> > fs/nfs/unlink.c, else I get:
+> > Please pull from the repository at
 > > 
-> >   CC [M]  fs/nfs/unlink.o
-> > fs/nfs/unlink.c: In function 'nfs_dec_sillycount':
-> > fs/nfs/unlink.c:67: error: 'TASK_UNINTERRUPTIBLE' undeclared (first use in this function)
-> ...
+> >    git pull git://git.linux-nfs.org/pub/linux/nfs-2.6.git
+> > 
+> > This will update the following files through the appended changesets.
+> > 
+> [...]
+> > @@ -522,8 +522,12 @@ void put_nfs_open_context(struct nfs_open_context *ctx)
+> >  		return;
+> >  	list_del(&ctx->list);
+> >  	spin_unlock(&inode->i_lock);
+> > -	if (ctx->state != NULL)
+> > -		nfs4_close_state(&ctx->path, ctx->state, ctx->mode);
+> > +	if (ctx->state != NULL) {
+> > +		if (wait)
+> > +			nfs4_close_sync(&ctx->path, ctx->state, ctx->mode);
+> > +		else
+> > +			nfs4_close_state(&ctx->path, ctx->state, ctx->mode);
+> > +	}
+> >  	if (ctx->cred != NULL)
+> >  		put_rpccred(ctx->cred);
+> >  	dput(ctx->path.dentry);
 > 
-> Hmm? Which architecture?
+> This gives me build errors on most PPC defconfigs, which don't enable NFSv4.
 > 
-> That said, I do think that there is a distinct lack of proper includes in 
-> that file. It seems to depend on getting much of the includes indirectly 
-> from <linux/nfs_fs.h> and friends. And with different architectures having 
-> different header files..
+> This seems sufficient to fix it.
 > 
-> 		Linus
+> 
+> diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+> index a4e3b96..b35069a 100644
+> --- a/fs/nfs/nfs4_fs.h
+> +++ b/fs/nfs/nfs4_fs.h
+> @@ -236,6 +236,7 @@ extern struct svc_version nfs4_callback_version1;
+>  #else
+>  
+>  #define nfs4_close_state(a, b, c) do { } while (0)
+> +#define nfs4_close_sync(a, b, c) do { } while (0)
+>  
+>  #endif /* CONFIG_NFS_V4 */
+>  #endif /* __LINUX_FS_NFS_NFS4_FS.H */
+> 
+> -------------------------------------------------------------------------
+> This SF.net email is sponsored by: Splunk Inc.
+> Still grepping through log files to find problems?  Stop.
+> Now Search log events and configuration files using AJAX and a browser.
+> Download your FREE copy of Splunk now >> http://get.splunk.com/
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
 
-This ought to fix it.
-----------------------------------------------------
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date: Sat, 20 Oct 2007 13:21:04 -0400
-NFS: Fix the include files needed by fs/nfs/unlink.c
-
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
-
- fs/nfs/unlink.c |    7 ++++++-
- 1 files changed, 6 insertions(+), 1 deletions(-)
-
-diff --git a/fs/nfs/unlink.c b/fs/nfs/unlink.c
-index 6ecd46c..057e6ce 100644
---- a/fs/nfs/unlink.c
-+++ b/fs/nfs/unlink.c
-@@ -5,9 +5,14 @@
-  *
-  */
- 
-+#include <asm/atomic.h>
-+#include <linux/dcache.h>
- #include <linux/slab.h>
- #include <linux/string.h>
--#include <linux/dcache.h>
-+#include <linux/sched.h>
-+#include <linux/spinlock.h>
-+#include <linux/wait.h>
-+#include <linux/sunrpc/auth.h>
- #include <linux/sunrpc/sched.h>
- #include <linux/sunrpc/clnt.h>
- #include <linux/nfs_fs.h>
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Splunk Inc.
+Still grepping through log files to find problems?  Stop.
+Now Search log events and configuration files using AJAX and a browser.
+Download your FREE copy of Splunk now >> http://get.splunk.com/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
