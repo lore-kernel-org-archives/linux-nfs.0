@@ -1,7 +1,7 @@
-From: Olof Johansson <olof@lixom.net>
+From: Erez Zadok <ezk@cs.sunysb.edu>
 Subject: Re: [GIT] NFS client fixes for 2.6.23++
-Date: Fri, 19 Oct 2007 20:41:49 -0500
-Message-ID: <20071020014149.GA19871@lixom.net>
+Date: Fri, 19 Oct 2007 22:19:22 -0400
+Message-ID: <200710200219.l9K2JMI8015439@agora.fsl.cs.sunysb.edu>
 References: <1192828993.7466.18.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -9,15 +9,17 @@ Cc: Linus Torvalds <torvalds@osdl.org>, nfs@lists.sourceforge.net,
 	linux-kernel@vger.kernel.org
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Ij3FH-0001Ro-B7
-	for nfs@lists.sourceforge.net; Fri, 19 Oct 2007 18:35:19 -0700
-Received: from lixom.net ([66.141.50.11] helo=mail.lixom.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Ij3FK-00007S-Ja
-	for nfs@lists.sourceforge.net; Fri, 19 Oct 2007 18:35:24 -0700
-In-Reply-To: <1192828993.7466.18.camel@heimdal.trondhjem.org>
+	id 1Ij3w0-0005Kb-0H
+	for nfs@lists.sourceforge.net; Fri, 19 Oct 2007 19:19:28 -0700
+Received: from filer.fsl.cs.sunysb.edu ([130.245.126.2])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1Ij3w4-0003Jo-5T
+	for nfs@lists.sourceforge.net; Fri, 19 Oct 2007 19:19:33 -0700
+In-reply-to: Your message of "Fri, 19 Oct 2007 17:23:13 EDT."
+	<1192828993.7466.18.camel@heimdal.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,14 +32,7 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-nfs: Fix build break with CONFIG_NFS_V4=n
-
-Signed-off-by: Olof Johansson <olof@lixom.net>
-
----
-
-
-On Fri, Oct 19, 2007 at 05:23:13PM -0400, Trond Myklebust wrote:
+In message <1192828993.7466.18.camel@heimdal.trondhjem.org>, Trond Myklebust writes:
 > Hi Linus,
 > 
 > Please pull from the repository at
@@ -46,40 +41,30 @@ On Fri, Oct 19, 2007 at 05:23:13PM -0400, Trond Myklebust wrote:
 > 
 > This will update the following files through the appended changesets.
 > 
-[...]
-> @@ -522,8 +522,12 @@ void put_nfs_open_context(struct nfs_open_context *ctx)
->  		return;
->  	list_del(&ctx->list);
->  	spin_unlock(&inode->i_lock);
-> -	if (ctx->state != NULL)
-> -		nfs4_close_state(&ctx->path, ctx->state, ctx->mode);
-> +	if (ctx->state != NULL) {
-> +		if (wait)
-> +			nfs4_close_sync(&ctx->path, ctx->state, ctx->mode);
-> +		else
-> +			nfs4_close_state(&ctx->path, ctx->state, ctx->mode);
-> +	}
->  	if (ctx->cred != NULL)
->  		put_rpccred(ctx->cred);
->  	dput(ctx->path.dentry);
+>   Cheers,
+>     Trond
 
-This gives me build errors on most PPC defconfigs, which don't enable NFSv4.
+Trond, with Linus's latest tree, you need to #include <linux/sched.h> in
+fs/nfs/unlink.c, else I get:
 
-This seems sufficient to fix it.
+  CC [M]  fs/nfs/unlink.o
+fs/nfs/unlink.c: In function 'nfs_dec_sillycount':
+fs/nfs/unlink.c:67: error: 'TASK_UNINTERRUPTIBLE' undeclared (first use in
+this function)
+fs/nfs/unlink.c:67: error: (Each undeclared identifier is reported only once
+fs/nfs/unlink.c:67: error: for each function it appears in.)
+fs/nfs/unlink.c:67: error: 'TASK_INTERRUPTIBLE' undeclared (first use in
+this function)
+fs/nfs/unlink.c: In function 'nfs_block_sillyrename':
+fs/nfs/unlink.c:196: error: 'TASK_UNINTERRUPTIBLE' undeclared (first use in
+this function)
+fs/nfs/unlink.c:196: error: implicit declaration of function 'schedule'
+make[2]: *** [fs/nfs/unlink.o] Error 1
+make[1]: *** [fs/nfs] Error 2
+make: *** [fs] Error 2
 
-
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index a4e3b96..b35069a 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -236,6 +236,7 @@ extern struct svc_version nfs4_callback_version1;
- #else
- 
- #define nfs4_close_state(a, b, c) do { } while (0)
-+#define nfs4_close_sync(a, b, c) do { } while (0)
- 
- #endif /* CONFIG_NFS_V4 */
- #endif /* __LINUX_FS_NFS_NFS4_FS.H */
+Cheers,
+Erez.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
