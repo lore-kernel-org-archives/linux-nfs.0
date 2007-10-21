@@ -1,28 +1,24 @@
-From: "Steinar H. Gunderson" <sesse@debian.org>
-Subject: [PATCH] Fix logging segfaults on amd64
-Date: Sun, 21 Oct 2007 13:02:57 +0200
-Message-ID: <20071021110257.GA24016@uio.no>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: nfsv2 ref leak in 2.6.24?
+Date: Sun, 21 Oct 2007 12:58:12 -0400
+Message-ID: <1192985892.7505.32.camel@heimdal.trondhjem.org>
+References: <200710202135.l9KLZJIB023526@agora.fsl.cs.sunysb.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Cc: bfields@fieldses.org, neilb@suse.de, nfs@lists.sourceforge.net,
+	linux-kernel@vger.kernel.org
+To: Erez Zadok <ezk@cs.sunysb.edu>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IjYaO-0002qG-9p
-	for nfs@lists.sourceforge.net; Sun, 21 Oct 2007 04:03:12 -0700
-Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
+	id 1Ije7c-0002Wq-VT
+	for nfs@lists.sourceforge.net; Sun, 21 Oct 2007 09:57:53 -0700
+Received: from pat.uio.no ([129.240.10.15])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IjYaF-0001MN-Tu
-	for nfs@lists.sourceforge.net; Sun, 21 Oct 2007 04:03:05 -0700
-Received: from trofast.ipv6.sesse.net ([2001:700:300:1803:20e:cff:fe36:a766]
-	helo=trofast.sesse.net) by cassarossa.samfundet.no with esmtps
-	(TLS-1.0:RSA_AES_256_CBC_SHA1:32) (Exim 4.63)
-	(envelope-from <sesse@samfundet.no>) id 1IjYaA-0005R7-Ng
-	for nfs@lists.sourceforge.net; Sun, 21 Oct 2007 13:02:59 +0200
-Received: from root by trofast.sesse.net with local (Exim 4.68)
-	(envelope-from <sesse@samfundet.no>) id 1IjYa9-0006Fy-AC
-	for nfs@lists.sourceforge.net; Sun, 21 Oct 2007 13:02:57 +0200
+	(Exim 4.44) id 1Ije7i-0006FF-1h
+	for nfs@lists.sourceforge.net; Sun, 21 Oct 2007 09:57:58 -0700
+In-Reply-To: <200710202135.l9KLZJIB023526@agora.fsl.cs.sunysb.edu>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,49 +31,42 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi,
 
-It seems an error crept into nfs-utils 1.1.1 just before release, so exportfs
--r segfaults on amd64 whenever there is a warning. The attached patch, from
-Steve Langasek, fixes the issue (an abuse of va_list).
+On Sat, 2007-10-20 at 17:35 -0400, Erez Zadok wrote:
 
-Signed-off-by: Steinar H. Gunderson <sesse@debian.org>
-Signed-off-by: Steve Langasek <vorlon@debian.org>
+> Trond, I verified that w/ the above patch the problem is w/ nfs: the client
+> leaves .nfsXXX files behind for every file unlinked while open.  Let me know
+> when you get a fix and I'll test it.
 
---- nfs-utils-1.1.1.orig/support/nfs/xlog.c
-+++ nfs-utils-1.1.1/support/nfs/xlog.c
-@@ -133,9 +133,13 @@ xlog_enabled(int fac)
- void
- xlog_backend(int kind, const char *fmt, va_list args)
- {
-+       va_list args2;
-+
-        if (!(kind & (L_ALL)) && !(logging && (kind & logmask)))
-                return;
+Doh... Another typo.
 
-+       va_copy(args2, args);
-+
-        if (log_syslog) {
-                switch (kind) {
-                case L_FATAL:
-@@ -172,10 +176,12 @@ xlog_backend(int kind, const char *fmt, 
-                fprintf(stderr, "%s: ", log_name);
- #endif
+Trond
+-------------------------- CUT HERE --------------------
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date: Sun, 21 Oct 2007 12:02:22 -0400
+NFS: Fix a typo in nfs_call_unlink()
 
--               vfprintf(stderr, fmt, args);
-+               vfprintf(stderr, fmt, args2);
-                fprintf(stderr, "\n");
-        }
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
 
-+       va_end(args2);
-+
-        if (kind == L_FATAL)
-                exit(1);
- }
+ fs/nfs/unlink.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-/* Steinar */
--- 
-Homepage: http://www.sesse.net/
+diff --git a/fs/nfs/unlink.c b/fs/nfs/unlink.c
+index ce558c2..233ad38 100644
+--- a/fs/nfs/unlink.c
++++ b/fs/nfs/unlink.c
+@@ -171,7 +171,7 @@ static int nfs_call_unlink(struct dentry *dentry, struct nfs_unlinkdata *data)
+ 	if (parent == NULL)
+ 		goto out_free;
+ 	dir = parent->d_inode;
+-	if (nfs_copy_dname(dentry, data) == 0)
++	if (nfs_copy_dname(dentry, data) != 0)
+ 		goto out_dput;
+ 	/* Non-exclusive lock protects against concurrent lookup() calls */
+ 	spin_lock(&dir->i_lock);
+
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
