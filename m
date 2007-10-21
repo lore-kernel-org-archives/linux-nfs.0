@@ -1,21 +1,22 @@
-From: "Marikka Remington" <Remingtonmpij@wickedescapesezine.com>
-Subject: ikatavat
-Date: Sun, 21 Oct 2007 19:20:07 +0200
-Message-ID: <E1IjeTE-0005lu-0T@mail.sourceforge.net>
+From: "janean Fecto" <janean_Fecto@wickedescapesezine.com>
+Subject: ihneleim
+Date: Sun, 21 Oct 2007 19:20:25 +0200
+Message-ID: <000301c81406$ab451610$afcf6850@pcsara>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sf.net
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IjeTB-0004lj-DV
-	for nfs@lists.sourceforge.net; Sun, 21 Oct 2007 10:20:09 -0700
+	id 1IjeTR-0004m4-Gi
+	for nfs@lists.sourceforge.net; Sun, 21 Oct 2007 10:20:26 -0700
 Received: from host111-207-static.104-80-b.business.telecomitalia.it
 	([80.104.207.111]
 	helo=host175-207-static.104-80-b.business.telecomitalia.it)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IjeTE-0005lu-0T
-	for nfs@lists.sourceforge.net; Sun, 21 Oct 2007 10:20:14 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IjeTU-0005tq-FR
+	for nfs@lists.sourceforge.net; Sun, 21 Oct 2007 10:20:30 -0700
+Message-ID: <000301c81406$ab451610$afcf6850@pcsara>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,11 +29,11 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hey ya nfs
-stop wondering because now you really can make it big!
-http://lfalls.com/
+hello buddy nfs
+put her in a trance everytime you penetrate her with ya big one
+http://lcgspllc.com/
 
-Marikka Remington
+janean Fecto
 
 
 -------------------------------------------------------------------------
