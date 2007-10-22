@@ -1,23 +1,23 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [RFC,PATCH 00/10] rdma: SVCRDMA Transport Driver
-Date: Mon, 22 Oct 2007 18:02:19 -0400
-Message-ID: <20071022220219.GW583@fieldses.org>
-References: <20071019215304.31937.28876.stgit@dell3.ogc.int>
+From: Gabriel Barazer <gabriel@oxeva.fr>
+Subject: Re: about /proc/net/rpc/nfsd
+Date: Tue, 23 Oct 2007 00:02:26 +0200
+Message-ID: <471D1DF2.4070201@oxeva.fr>
+References: <471D17F8.5060709@cesca.es>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: neilb@suse.de, nfs@lists.sourceforge.net, gnb@sgi.com
-To: Tom Tucker <tom@opengridcomputing.com>
+Cc: nfs@lists.sourceforge.net
+To: Jordi Prats <jprats@cesca.es>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Ik5Lq-0002TY-Iy
-	for nfs@lists.sourceforge.net; Mon, 22 Oct 2007 15:02:22 -0700
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	id 1Ik5M1-0002Tl-1t
+	for nfs@lists.sourceforge.net; Mon, 22 Oct 2007 15:02:33 -0700
+Received: from mail.reagi.com ([195.60.188.80])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Ik5Ls-00070D-6y
-	for nfs@lists.sourceforge.net; Mon, 22 Oct 2007 15:02:27 -0700
-In-Reply-To: <20071019215304.31937.28876.stgit@dell3.ogc.int>
+	(Exim 4.44) id 1Ik5M5-0001Ij-0U
+	for nfs@lists.sourceforge.net; Mon, 22 Oct 2007 15:02:38 -0700
+In-Reply-To: <471D17F8.5060709@cesca.es>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,30 +30,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, Oct 19, 2007 at 04:53:04PM -0500, Tom Tucker wrote:
-> This patchset implements the RDMA Transport Driver for the 
-> server transport switch. This patchset has been tested with iozone
-> and Connectathon over NFSv3. 
-
-Do you want these applied?
-
-> This patchset along with all of the previous server side
-> transport switches are also available in this git tree:
+On 10/22/2007 11:36:56 PM +0200, Jordi Prats <jprats@cesca.es> wrote:
+> Hi all,
+> I've been researching the meaning of the contents of the 
+> /proc/net/rpc/nfsd file using the 2.6.23 kernel sources.
 > 
-> git://linux-nfs.org/~tomtucker/nfs-rdma-dev-2.6.git
+> 
+> Sorry for this so long mail... That's all what I've got reading the 
+> source files. There's anything incorrect? There's some "educated guests" 
+>   So, could anyone please confirm or refute them?
+> 
+> If you what me to do something with this I'd be glad of it!
 
-This is missing a couple changes I made in my version: the two I notice
-are that I merged both "svc: Don't copy xprt_class data into svc_xprt
-instance" and "svc: Rename xpo_release to xpo_release_rqst" in with the
-previous patches.
+Wow this is an awesome job you've done here to document precisely this 
+proc file. I've tagged your mail and copied it in a safe place.  I'm 
+sure this would be very useful to keep a place where all these proc 
+files are explained like this, maybe on the linux-nfs wiki ?
 
-So I've ignored that for now and just applied these new patches on top
-of mine.  I also rebased onto the latest linus git.
+Great job Jordi !
 
-Also, there's still that small sysctl complaint from Andrew outstanding,
-which I haven't had the time to look into.
-
---b.
+Gabriel
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
