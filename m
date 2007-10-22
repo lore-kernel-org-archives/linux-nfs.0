@@ -1,23 +1,12 @@
-From: Chris Hall <chris@halldom.com>
-Subject: NFSv4, SSH etc.
-Date: Mon, 22 Oct 2007 11:14:21 +0100
-Message-ID: <4qlKQmD9fHHHFwKt@agrotera.halldom.com>
+From: "Mathew Mason" <tajuana.dalzell@uqss.uquebec.ca>
+Subject: Very-very magic stick
+Date: Mon, 22 Oct 2007 22:03:37 +1000
+Message-ID: <01c814f7$65823990$e8a7e9dc@tajuana.dalzell>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1670898847=="
-To: nfs@lists.sourceforge.net
+Content-Type: multipart/mixed;
+	boundary="----=_NextPart_000_000E_01C814F7.65823990"
+To: <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IjuKQ-0000Kk-UJ
-	for nfs@lists.sourceforge.net; Mon, 22 Oct 2007 03:16:12 -0700
-Received: from anchor-post-36.mail.demon.net ([194.217.242.86])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IjuKU-0004TY-UA
-	for nfs@lists.sourceforge.net; Mon, 22 Oct 2007 03:16:16 -0700
-Received: from [80.177.246.141] (helo=agrotera.halldom.com)
-	by anchor-post-36.mail.demon.net with esmtp (Exim 4.67)
-	id 1IjuKH-000N0v-M4
-	for nfs@lists.sourceforge.net; Mon, 22 Oct 2007 10:16:02 +0000
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,110 +19,130 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a PGP signed message sent according to RFC3156 [PGP/MIME]
+This is a multi-part message in MIME format.
 
---===============1670898847==
-Content-Type: multipart/signed;boundary="=_Turnpike_26GJkeDwfHHH574x=";
-	protocol="application/pgp-signature";micalg=pgp-sha1
-
-This is a PGP signed message sent according to RFC3156 [PGP/MIME]
-
---=_Turnpike_26GJkeDwfHHH574x=
-Content-Type: text/plain;charset=us-ascii
-Content-Transfer-Encoding: quoted-printable
+------=_NextPart_000_000E_01C814F7.65823990
+Content-Type: text/plain;
+	charset="iso-8859-2"
+Content-Transfer-Encoding: 7bit
 
 
-Help !  I am failing to set up a secure NFS server.  (Generally thought
-to be impossible by most sources !)
 
-I am running a fully up to date Fedora 7.
+------=_NextPart_000_000E_01C814F7.65823990
+Content-Type: image/gif;
+	name="must02.gif"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment;
+	filename="must02.gif"
 
-  kernel-2.6.22.9-91.fc7
-  nfs-utils-lib-1.0.8-10.fc7
-  nfs-utils-1.1.0-3.fc7
-  libtirpc-0.1.7-9.fc7
-  rpcbind-0.1.4-6.fc7
+R0lGODlhqgARAfcAAAAAAIAAAACAAICAAAAAgIAAgACAgICAgMDAwP8AAAD/AP//AAAA//8A/wD/
+/////wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMwAAZgAAmQAAzAAA/wAzAAAzMwAzZgAzmQAzzAAz/wBm
+AABmMwBmZgBmmQBmzABm/wCZAACZMwCZZgCZmQCZzACZ/wDMAADMMwDMZgDMmQDMzADM/wD/AAD/
+MwD/ZgD/mQD/zAD//zMAADMAMzMAZjMAmTMAzDMA/zMzADMzMzMzZjMzmTMzzDMz/zNmADNmMzNm
+ZjNmmTNmzDNm/zOZADOZMzOZZjOZmTOZzDOZ/zPMADPMMzPMZjPMmTPMzDPM/zP/ADP/MzP/ZjP/
+mTP/zDP//2YAAGYAM2YAZmYAmWYAzGYA/2YzAGYzM2YzZmYzmWYzzGYz/2ZmAGZmM2ZmZmZmmWZm
+zGZm/2aZAGaZM2aZZmaZmWaZzGaZ/2bMAGbMM2bMZmbMmWbMzGbM/2b/AGb/M2b/Zmb/mWb/zGb/
+/5kAAJkAM5kAZpkAmZkAzJkA/5kzAJkzM5kzZpkzmZkzzJkz/5lmAJlmM5lmZplmmZlmzJlm/5mZ
+AJmZM5mZZpmZmZmZzJmZ/5nMAJnMM5nMZpnMmZnMzJnM/5n/AJn/M5n/Zpn/mZn/zJn//8wAAMwA
+M8wAZswAmcwAzMwA/8wzAMwzM8wzZswzmcwzzMwz/8xmAMxmM8xmZsxmmcxmzMxm/8yZAMyZM8yZ
+ZsyZmcyZzMyZ/8zMAMzMM8zMZszMmczMzMzM/8z/AMz/M8z/Zsz/mcz/zMz///8AAP8AM/8AZv8A
+mf8AzP8A//8zAP8zM/8zZv8zmf8zzP8z//9mAP9mM/9mZv9mmf9mzP9m//+ZAP+ZM/+ZZv+Zmf+Z
+zP+Z///MAP/MM//MZv/Mmf/MzP/M////AP//M///Zv//mf//zP///yH5BAEAABAALAAAAACqABEB
+AAj/AP8JzCawoMGD9wRuO8iwocOHECNKnHiwWTOKGA06a6htYcaPAhP+oyaQFsiTKA8WA5kqpcuX
+KVvBnDkx3UlVNHPq3Mmzp8+fQIMKHUq0qNGjSJM2RINGqVOiYApJJEmT2dOrPalmRHYMpkisYMOK
+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 
 
-I have been trying to get NFSv4 working between a client on the inside
-of my firewall and a server on the outside (DMZ).
-
- a. I thought NFSv4 would be better because it apparently only requires
-    the one TCP port, which is easier to manage.  This turns out not to
-    be entirely the case -- umount appears to still want to talk to port
-    111 to find mountd.
-
-    Is there some configuration I have missed, please ?
-
- b. I already use SSH into the server.  So I thought the easy way to
-    secure access to the server was to forward the nfsd port from the
-    client to the server.
-
-    This does not work.  The server refuses, returning:
-
-        Reject State: AUTH_ERROR (1)
-        Auth State: bad credential (seal broken) (1)
-
-    I guess this is because nfsd is upset by receiving a packet which it
-    sees as coming from lo, containing a foreign host name.
-
-    I can find no way around that.
-
-    Have I missed something, please ?
-
- c. I have tried to figure out whether idmapd might help me.
-
-    I'm sorry, I cannot find anything that tells me what nfsd actually
-    gets from idmapd, or what one can put in idmapd.conf to influence
-    that.
-
-    Where do I look, please.
-
-I realise that Kerberos is a way of securing this.  But that would
-require first that I set up a KDC etc etc, and second that I secure the
-connection from the server in the DMZ.
-
-I had hoped to stick with SSH which already does the job of providing a
-secure, one-way connection to the server.
-
-I could use NFSv3 and SSH.  I can set the ports to use at the server
-end, and I can tell the client to forward nfsd and mountd ports -- for
-which I can set special ports on the client.  However:
-
- d. do I need to forward lockd ?  How do I tell the client to use a
-    special port number -- dedicated to lockd on the client ?
-
- e. similarly, do I need to forward port 111 ?
-
- f. I can turn off rquotad on the server, so I don't need to figure out
-    how to secure that.  But I do not know how statd fits into this.
-    What should I do there ?
-
-Thanks,
-
-Chris
---=20
-Chris Hall
-
---=_Turnpike_26GJkeDwfHHH574x=
-Content-Type: application/pgp-signature
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: PGP SDK 3.8.3
-
-iQEVAwUARxx3/Og9H9B04S2cAQKtRggAiGf3BeuS7oJj+Gink8mUwfF5lK+u3l71
-PZzkZ/ejIJv2p6S0tpgYaFmKCf1ccrJgcsJA3Ra9uGadZqLIY7qji+0HyI6FECly
-LxlVwdx3h7iGN6NN4OhT19Fke7ivt09hEZMtDkHvbjIjgv7qa2LlSPXpYuGxxxov
-XExLN88h+Z4u6BjctW7l+En3nd+vHHXljUiU8Zd7G3fg0/FoQ1QJRPCzFCOpGoo4
-k4Jg2t0NMzvk1SBSZO06sP5PxphvCP5m9qYLZYGzaQTEozfMYXc7rAqkYjO1rVaK
-AM1M1Dj9q0/w2GgzEitpQNGdh0PDElsdSUMi+xkWqJA4RzMEPoqjgQ==
-=m/vT
------END PGP SIGNATURE-----
-
---=_Turnpike_26GJkeDwfHHH574x=--
-
-
---===============1670898847==
+------=_NextPart_000_000E_01C814F7.65823990
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -144,7 +153,7 @@ This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >> http://get.splunk.com/
---===============1670898847==
+------=_NextPart_000_000E_01C814F7.65823990
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -154,4 +163,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---===============1670898847==--
+------=_NextPart_000_000E_01C814F7.65823990--
