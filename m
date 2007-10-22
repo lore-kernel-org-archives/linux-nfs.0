@@ -1,24 +1,24 @@
-From: "Kevin Coffman" <kwc@citi.umich.edu>
-Subject: Re: [PATCH] Fix logging segfaults on amd64
-Date: Mon, 22 Oct 2007 09:47:03 -0400
-Message-ID: <4d569c330710220647p70bd2a8qbafda75b95b1afd8@mail.gmail.com>
-References: <20071021110257.GA24016@uio.no>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: NFSv4, SSH etc.
+Date: Mon, 22 Oct 2007 13:15:13 -0400
+Message-ID: <471CDAA1.7070205@oracle.com>
+References: <4qlKQmD9fHHHFwKt@agrotera.halldom.com>
+Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: multipart/mixed; boundary="------------010803030003000807000901"
 Cc: nfs@lists.sourceforge.net
-To: "Steinar H. Gunderson" <sesse@debian.org>
+To: Chris Hall <chris@halldom.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IjxcR-0006Yi-IJ
-	for nfs@lists.sourceforge.net; Mon, 22 Oct 2007 06:46:59 -0700
-Received: from rv-out-0910.google.com ([209.85.198.191])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IjxcV-0006Ma-Ke
-	for nfs@lists.sourceforge.net; Mon, 22 Oct 2007 06:47:05 -0700
-Received: by rv-out-0910.google.com with SMTP id g11so4060107rvb
-	for <nfs@lists.sourceforge.net>; Mon, 22 Oct 2007 06:47:03 -0700 (PDT)
-In-Reply-To: <20071021110257.GA24016@uio.no>
+	id 1Ik19d-0000bH-2j
+	for nfs@lists.sourceforge.net; Mon, 22 Oct 2007 10:33:29 -0700
+Received: from rgminet01.oracle.com ([148.87.113.118])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1Ik19i-0003O5-Bi
+	for nfs@lists.sourceforge.net; Mon, 22 Oct 2007 10:33:34 -0700
+In-Reply-To: <4qlKQmD9fHHHFwKt@agrotera.halldom.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,21 +31,75 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On 10/21/07, Steinar H. Gunderson <sesse@debian.org> wrote:
-> Hi,
->
-> It seems an error crept into nfs-utils 1.1.1 just before release, so exportfs
-> -r segfaults on amd64 whenever there is a warning. The attached patch, from
-> Steve Langasek, fixes the issue (an abuse of va_list).
+This is a multi-part message in MIME format.
+--------------010803030003000807000901
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-Thanks, I discovered this on Thursday and came up with the same
-solution on Friday.  I was going to send it on today.
+Chris Hall wrote:
+> Help !  I am failing to set up a secure NFS server.  (Generally thought
+> to be impossible by most sources !)
+> 
+> I am running a fully up to date Fedora 7.
+> 
+>   kernel-2.6.22.9-91.fc7
+>   nfs-utils-lib-1.0.8-10.fc7
+>   nfs-utils-1.1.0-3.fc7
+>   libtirpc-0.1.7-9.fc7
+>   rpcbind-0.1.4-6.fc7
+> 
+> I have been trying to get NFSv4 working between a client on the inside
+> of my firewall and a server on the outside (DMZ).
+> 
+>  a. I thought NFSv4 would be better because it apparently only requires
+>     the one TCP port, which is easier to manage.  This turns out not to
+>     be entirely the case -- umount appears to still want to talk to port
+>     111 to find mountd.
+
+This is a known bug in nfs-utils-1.1.0, and was addressed in 
+nfs-utils-1.1.1, just released last week.  NFSv4 certainly doesn't need 
+to talk to mountd.  The umount.nfs[4] command was changed to skip the 
+mountd step when unmounting "nfs4" file systems.
+
+--------------010803030003000807000901
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck.lever.vcf"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="chuck.lever.vcf"
+
+begin:vcard
+fn:Chuck Lever
+n:Lever;Chuck
+org:Oracle Corporation;Corporate Architecture: Linux Projects Group
+adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
+email;internet:chuck dot lever at nospam oracle dot com
+title:Principal Member of Staff
+tel;work:+1 248 614 5091
+x-mozilla-html:FALSE
+version:2.1
+end:vcard
+
+
+--------------010803030003000807000901
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >> http://get.splunk.com/
+--------------010803030003000807000901
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--------------010803030003000807000901--
