@@ -1,21 +1,27 @@
-From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [RFC,PATCH] svc: Fix the UDP address logic
-Date: Mon, 22 Oct 2007 16:01:48 -0500
-Message-ID: <20071022210148.9997.94538.stgit@dell3.ogc.int>
+From: Jordi Prats <jprats@cesca.es>
+Subject: about /proc/net/rpc/nfsd
+Date: Mon, 22 Oct 2007 23:36:56 +0200
+Message-ID: <471D17F8.5060709@cesca.es>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: bfields@fieldses.org, neilb@suse.de, gnb@sgi.com
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Ik4PI-0004vq-BS
-	for nfs@lists.sourceforge.net; Mon, 22 Oct 2007 14:01:52 -0700
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]
-	helo=smtp.opengridcomputing.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Ik4PN-000428-G6
-	for nfs@lists.sourceforge.net; Mon, 22 Oct 2007 14:01:57 -0700
+	id 1Ik4qo-0007ks-QD
+	for nfs@lists.sourceforge.net; Mon, 22 Oct 2007 14:30:18 -0700
+Received: from carlit.cesca.es ([84.88.0.2])
+	by mail.sourceforge.net with esmtps (TLSv1:DES-CBC3-SHA:168)
+	(Exim 4.44) id 1Ik4qt-0005Af-OO
+	for nfs@lists.sourceforge.net; Mon, 22 Oct 2007 14:30:24 -0700
+Received: from carlit.cesca.es (localhost [127.0.0.1])
+	by carlit.cesca.es (Postfix) with ESMTP id 9C806331CF9
+	for <nfs@lists.sourceforge.net>; Mon, 22 Oct 2007 23:29:51 +0200 (CEST)
+Received: from [213.97.212.36] (36.Red-213-97-212.staticIP.rima-tde.net
+	[213.97.212.36])
+	by carlit.cesca.es (Postfix) with ESMTP id A7F63331CF6
+	for <nfs@lists.sourceforge.net>; Mon, 22 Oct 2007 23:29:50 +0200 (CEST)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,86 +34,95 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+Hi all,
+I've been researching the meaning of the contents of the 
+/proc/net/rpc/nfsd file using the 2.6.23 kernel sources.
 
-When the address information was moved to the svc_xprt structure, a bug
-was introduced to UDP that caused an incorrect address to be used
-when responding to RPC on the UDP transport. This was the result of
-failing to completely implement the generic address logic for the UDP 
-transport.
+$ cat /proc/net/rpc/nfsd
+rc 0 959398 336415498
+fh 0 0 0 0 0
+io 743250564 1224442800
+th 16 9193 1322.293 121.816 246.724 134.568 138.140 84.223 32.349 37.372 
+7.716 28.454
+ra 32 2044764 555 263 206 115 119 82 89 98 64 50896
+net 337376442 0 337375903 1956
+rpc 337333487 12 12 0 0
+proc2 18 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+proc3 22 41 322956721 70371 521208 10500197 134 2096930 779219 48538 
+4760 1 0 40535 4351 11538 0 0 19386 57668 47 0 222804
+proc4 2 0 0
 
-Thanks to Greg for pointing this out...
+This is what I've learned:
 
-Since I confused myself, it's probably a good idea to describe how 
-this is supposed to work. The transport is responsible for setting 
-the xpt_local and xpt_remote addresses in the svc_xprt structure as
-part of xpo_recvfrom processing. This cannot be done in a generic way 
-and in fact varies between TCP, UDP and RDMA. A set of xpo_ functions
-(e.g. getlocalname, getremotename) could have been added but this would
-have resulted in additional caching and copying of the addresses around. 
+* rc (reply cache): <hits> <misses> <nocache> (according a thread on 
+this list from Chuck Leaver and Thomas Talpey with me)
+- hits: client it's retransmiting (a bad thing! o hits is good)
+- misses: a operation that requires caching
+- nocache: a operation that no requires caching
 
-The generic svc_recv code copies the addresses from the svc_xprt 
-structure into the rqstp structure as part of svc_recv processing.  
+* fh (filehandle): <stale> <total-lookups> <anonlookups> 
+<dir-not-in-cache> <nodir-not-in-cache>
+- stale: *supose* to be file handle errors (like when you resize the 
+underlying filesystem)
+- total-lookups, anonlookups, dir-not-in-cache, nodir-not-in-cache: do 
+not appear (and I always seen it as zeros). So I supose they are unused.
 
-The xpt_local address should also be set on listening endpoints, for
-tcp/rdma this is done as part of endpoint creation and for new 
-connections in xpo_accept processing. 
+* io (input/output): <bytes-read> <bytes-written>
+- bytes-read: bytes read directly from disk
+- bytes-written: bytes written to disk
 
-This patch was tested with Connectathon over V3 on UDP.
+* th (threads): <threads> <fullcnt> <10%-20%> <20%-30%> ... <90%-100%> 
+<100%>
+  - threads: number of nfsd threads
+  - fullcnt: number of times that the last 10% of threads  (so all 
+threads) are busy.
+  - 10%-20%, 20%-30% ... 90%-100%: 10 numbers representing 10-20%, 
+20-30% to 100%. Counts the number of times a given interval are busy. 
+For example you have 10 threats and you get this:
+12 11 10 9 8 7 6 5 4 3
 
-Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
----
+12 times the thread 1 was busy, 11 times the thread 2 was busy, 10 time 
+the thread 3 was busy, and so on...
 
- net/sunrpc/svcsock.c |   16 ++++++++++------
- 1 files changed, 10 insertions(+), 6 deletions(-)
+* ra (read-ahead): <cache-size> <10%> <20%> ... <100%> <not-found>
+- cache-size: always the double of number threads
+- 10%, 20% ... 100%: how deep it found what was looking for. I *suppose* 
+this means how far the cached block is from the original block that was 
+first requested.
+- not-found: not found in the read-ahead cache
 
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index e1a27ee..0f8a3d5 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -473,17 +473,21 @@ svc_write_space(struct sock *sk)
- static inline void svc_udp_get_dest_address(struct svc_rqst *rqstp,
- 					    struct cmsghdr *cmh)
- {
--	struct svc_sock *svsk =
--		container_of(rqstp->rq_xprt, struct svc_sock, sk_xprt);
-+	struct svc_xprt *xprt = rqstp->rq_xprt;
-+	struct svc_sock *svsk = container_of(xprt, struct svc_sock, sk_xprt);
- 	switch (svsk->sk_sk->sk_family) {
- 	case AF_INET: {
- 		struct in_pktinfo *pki = CMSG_DATA(cmh);
--		rqstp->rq_daddr.addr.s_addr = pki->ipi_spec_dst.s_addr;
-+		struct sockaddr_in *sin =
-+			(struct sockaddr_in *)&xprt->xpt_local;
-+		sin->sin_addr.s_addr = pki->ipi_spec_dst.s_addr;
- 		break;
- 		}
- 	case AF_INET6: {
- 		struct in6_pktinfo *pki = CMSG_DATA(cmh);
--		ipv6_addr_copy(&rqstp->rq_daddr.addr6, &pki->ipi6_addr);
-+		struct sockaddr_in6 *sin6 =
-+			(struct sockaddr_in6 *)&xprt->xpt_local;
-+		ipv6_addr_copy(&sin6->sin6_addr, &pki->ipi6_addr);
- 		break;
- 		}
- 	}
-@@ -506,7 +510,7 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
- 	struct cmsghdr *cmh = &buffer.hdr;
- 	int		err, len;
- 	struct msghdr msg = {
--		.msg_name = svc_addr(rqstp),
-+		.msg_name = &svsk->sk_xprt.xpt_remote,
- 		.msg_control = cmh,
- 		.msg_controllen = sizeof(buffer),
- 		.msg_flags = MSG_DONTWAIT,
-@@ -541,7 +545,7 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
- 		svc_xprt_received(&svsk->sk_xprt);
- 		return -EAGAIN;
- 	}
--	rqstp->rq_addrlen = sizeof(rqstp->rq_addr);
-+	svsk->sk_xprt.xpt_remotelen = sizeof(svsk->sk_xprt.xpt_remote);
- 	if (skb->tstamp.tv64 == 0) {
- 		skb->tstamp = ktime_get_real();
- 		/* Don't enable netstamp, sunrpc doesn't
+* net: <netcnt> <netudpcnt> <nettcpcnt> <nettcpconn>
+- netcnt: counts every read
+- netudpcnt: counts every UDP packet it receives
+- nettcpcnt: counts every time it receives data from a TCP connection
+- nettcpconn: count every TCP connection it receives
+
+* rpc: <rpccnt> <rpcbadfmt+rpcbadauth+rpcbadclnt> <rpcbadfmt> 
+<rpcbadauth> <rpcbadclnt>
+- rpccnt: counts all rpc operations
+- rpcbadfmt: counts if while processing a RPC it encounters the 
+following errors: err_bad_dir, err_bad_rpc, err_bad_prog, err_bad_vers, 
+err_bad_proc, err_bad
+- rpcbadauth: bad authentication. It does not count if you try to mount 
+from a machine that it's not in your exports file
+- rpcbadclnt: unused
+
+I've had no time to investigate about proc<N>. I *supose* that N is the 
+protocol version (2 for NFS2, 3 for NFS3 and 4 for NFSv4) So they are 
+stats about operations from a given protocol. I'll research this in short.
+
+
+Sorry for this so long mail... That's all what I've got reading the 
+source files. There's anything incorrect? There's some "educated guests" 
+  So, could anyone please confirm or refute them?
+
+If you what me to do something with this I'd be glad of it!
+
+regards,
+Jordi
+
+
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
