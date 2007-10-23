@@ -1,25 +1,24 @@
-From: "Kevin Coffman" <kwc@citi.umich.edu>
-Subject: Re: libnfsidmap
-Date: Tue, 23 Oct 2007 10:22:35 -0400
-Message-ID: <4d569c330710230722y2e4dedeesb55a0d5c605f1fc8@mail.gmail.com>
-References: <1193136846.5620.504.camel@serendib.melbourne.sgi.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: about /proc/net/rpc/nfsd
+Date: Tue, 23 Oct 2007 11:07:13 -0400
+Message-ID: <471E0E21.5050606@oracle.com>
+References: <471D17F8.5060709@cesca.es> <471D1DF2.4070201@oxeva.fr>
+Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	nfs@lists.sourceforge.net, Greg Banks <gnb@sgi.com>
-To: Harshula <harshula@sgi.com>
+Content-Type: multipart/mixed; boundary="------------020004070800080201040405"
+Cc: nfs@lists.sourceforge.net
+To: Gabriel Barazer <gabriel@oxeva.fr>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IkKeP-0004Hw-QV
-	for nfs@lists.sourceforge.net; Tue, 23 Oct 2007 07:22:33 -0700
-Received: from rv-out-0910.google.com ([209.85.198.190])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IkKeT-0007JP-Vl
-	for nfs@lists.sourceforge.net; Tue, 23 Oct 2007 07:22:39 -0700
-Received: by rv-out-0910.google.com with SMTP id g11so5255699rvb
-	for <nfs@lists.sourceforge.net>; Tue, 23 Oct 2007 07:22:35 -0700 (PDT)
-In-Reply-To: <1193136846.5620.504.camel@serendib.melbourne.sgi.com>
+	id 1IkLNT-0001Q5-2k
+	for nfs@lists.sourceforge.net; Tue, 23 Oct 2007 08:09:07 -0700
+Received: from agminet01.oracle.com ([141.146.126.228])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IkLNW-0001Ci-7H
+	for nfs@lists.sourceforge.net; Tue, 23 Oct 2007 08:09:12 -0700
+In-Reply-To: <471D1DF2.4070201@oxeva.fr>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,35 +31,71 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On 10/23/07, Harshula <harshula@sgi.com> wrote:
-> Hi Bruce,
->
-> We are building nfs-utils 1.0.7 with libnfsidmap 0.20 to avoid a bug
-> with userid mappings in libnfsidmap 0.12.
->
-> Then we tripped over nfs/<FQDN> principals not being resolved. Luckily I
-> came across:
-> http://linux-nfs.org/pipermail/nfsv4/2006-June/004564.html
->
-> and realised that the code to handle nfs/<FQDN> principals is now in
-> nfs-utils (utils/gssd/svcgssd_proc.c).
->
-> Are there any other known issues we might trip over as a result of using
-> nfs-utils 1.0.7 with libnfsidmap 0.20?
->
-> Thanks,
-> #
+This is a multi-part message in MIME format.
+--------------020004070800080201040405
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-Sorry for the troubles.  I'm not Bruce, but AFAIK there aren't other
-issues, and it should always be safe to use the latest libraries.
+Gabriel Barazer wrote:
+> On 10/22/2007 11:36:56 PM +0200, Jordi Prats <jprats@cesca.es> wrote:
+>> Hi all,
+>> I've been researching the meaning of the contents of the 
+>> /proc/net/rpc/nfsd file using the 2.6.23 kernel sources.
+>>
+>>
+>> Sorry for this so long mail... That's all what I've got reading the 
+>> source files. There's anything incorrect? There's some "educated guests" 
+>>   So, could anyone please confirm or refute them?
+>>
+>> If you what me to do something with this I'd be glad of it!
+> 
+> Wow this is an awesome job you've done here to document precisely this 
+> proc file. I've tagged your mail and copied it in a safe place.  I'm 
+> sure this would be very useful to keep a place where all these proc 
+> files are explained like this, maybe on the linux-nfs wiki ?
 
-K.C.
+This belongs in the NFS server performance chapter of the NFS How-To. 
+The How-To's maintainer is csmithere@gmail.com.
+
+--------------020004070800080201040405
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck.lever.vcf"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="chuck.lever.vcf"
+
+begin:vcard
+fn:Chuck Lever
+n:Lever;Chuck
+org:Oracle Corporation;Corporate Architecture: Linux Projects Group
+adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
+email;internet:chuck dot lever at nospam oracle dot com
+title:Principal Member of Staff
+tel;work:+1 248 614 5091
+x-mozilla-html:FALSE
+version:2.1
+end:vcard
+
+
+--------------020004070800080201040405
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >> http://get.splunk.com/
+--------------020004070800080201040405
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--------------020004070800080201040405--
