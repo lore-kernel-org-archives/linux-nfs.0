@@ -1,57 +1,57 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH]NFS: Fix for bug in handling of errors for O_DIRECT writes
-Date: Tue, 23 Oct 2007 17:09:13 -0400
-Message-ID: <1193173753.20475.54.camel@heimdal.trondhjem.org>
-References: <20071023123636.6732.patches@notabene>
-Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Chuck Lever <chuck.lever@oracle.com>, Neil Brown <neilb@suse.de>,
-	nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
-To: Linus Torvalds <torvalds@osdl.org>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1753322AbXJWVIf@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+From: Kumar Gala <galak@kernel.crashing.org>
+Subject: LTP ustat01 test fails on NFSROOT
+Date: Tue, 23 Oct 2007 17:52:44 -0500
+Message-ID: <CBDE987B-0713-4D62-8122-054183E75410@kernel.crashing.org>
+Mime-Version: 1.0 (Apple Message framework v752.2)
+Content-Type: text/plain; charset="us-ascii"
+Cc: neilb@suse.de, bfields@fieldses.org, nfs@lists.sourceforge.net,
+	trond.myklebust@fys.uio.no
+To: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1IkSbT-0000qe-Av
+	for nfs@lists.sourceforge.net; Tue, 23 Oct 2007 15:52:03 -0700
+Received: from gate.crashing.org ([63.228.1.57]
+	ident=[U2FsdGVkX1+Y5RXyHT48r41kLXskRtvMxthfyYlIBfY=])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IkSbY-00079Z-IP
+	for nfs@lists.sourceforge.net; Tue, 23 Oct 2007 15:52:08 -0700
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-From: Neil Brown <neilb@suse.de>
+I'm looking into an issue with LTP's ustat01 & ustat02 tests in which  
+they report the following:
 
-commit eda3cef8dd2b838 ensured that if a WRITE returns an error, then
-data->res.verf->committed is not tested (as it is not initialised).
+ustat01     1  FAIL  :  ustat(2) failed and setthe errno to 116 :  
+Stale NFS file handle
+ustat02     2  FAIL  :  ustat(2) failed to produce expected error;  
+14, errno: EFAULT and got 116
 
-commit 60fa3f769f inadvertently reverted this while fixing other problems.
+It appears sometime between 2.6.21 and 2.6.22-rc1 some changes to NFS  
+got introduced that cause this.
 
-So move the test so that we never examine ->committed in an error
-case, and fix a speeling error while we are there.
+was wondering about any ideas while I try to debug what's going on.
 
-Cc: Chuck Lever <chuck.lever@oracle.com>
-Signed-off-by: Neil Brown <neilb@suse.de>
-Acked-by: Chuck Lever <chuck.lever@oracle.com>
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
-Note: only compile tested - I haven't tried triggering the bug yet.
+thanks
 
-NeilBrown
+- k
 
-### Diffstat output
- ./fs/nfs/direct.c |    6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
-
-diff .prev/fs/nfs/direct.c ./fs/nfs/direct.c
---- .prev/fs/nfs/direct.c	2007-10-23 12:31:29.000000000 +1000
-+++ ./fs/nfs/direct.c	2007-10-23 12:32:07.000000000 +1000
-@@ -549,13 +549,13 @@ static void nfs_direct_write_result(stru
- 
- 	spin_lock(&dreq->lock);
- 
--	if (unlikely(dreq->error != 0))
--		goto out_unlock;
- 	if (unlikely(status < 0)) {
--		/* An error has occured, so we should not commit */
-+		/* An error has occurred, so we should not commit */
- 		dreq->flags = 0;
- 		dreq->error = status;
- 	}
-+	if (unlikely(dreq->error != 0))
-+		goto out_unlock;
- 
- 	dreq->count += data->res.count;
- 
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Splunk Inc.
+Still grepping through log files to find problems?  Stop.
+Now Search log events and configuration files using AJAX and a browser.
+Download your FREE copy of Splunk now >> http://get.splunk.com/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
