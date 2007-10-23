@@ -1,60 +1,57 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: invalid argument when creating a file on an nfs share
-Date: Tue, 23 Oct 2007 17:05:45 -0400
-Message-ID: <1193173545.20475.50.camel@heimdal.trondhjem.org>
-References: <ffkhif$h1c$1@ger.gmane.org>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH]NFS: Fix for bug in handling of errors for O_DIRECT writes
+Date: Tue, 23 Oct 2007 17:09:13 -0400
+Message-ID: <1193173753.20475.54.camel@heimdal.trondhjem.org>
+References: <20071023123636.6732.patches@notabene>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Jeroen <jwilke@baselogistics.nl>
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IkQvu-0007VN-Jr
-	for nfs@lists.sourceforge.net; Tue, 23 Oct 2007 14:05:02 -0700
-Received: from pat.uio.no ([129.240.10.15])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IkQvy-0000Fh-Oc
-	for nfs@lists.sourceforge.net; Tue, 23 Oct 2007 14:05:08 -0700
-In-Reply-To: <ffkhif$h1c$1@ger.gmane.org>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: text/plain
+Cc: Chuck Lever <chuck.lever@oracle.com>, Neil Brown <neilb@suse.de>,
+	nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+To: Linus Torvalds <torvalds@osdl.org>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1753322AbXJWVIf@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
+From: Neil Brown <neilb@suse.de>
 
-On Tue, 2007-10-23 at 12:17 +0200, Jeroen wrote:
-> Hi all,
-> 
-> Whenever I try saving a file to a mounted nfs share I get the following 
-> error :
-> 
-> /mnt/home/user$ touch bla
-> touch: setting times of `bla': Invalid argument
-> 
-> it does create the file bla in the specified location but I am unsure as 
-> to what is causing this error.
+commit eda3cef8dd2b838 ensured that if a WRITE returns an error, then
+data->res.verf->committed is not tested (as it is not initialised).
 
-"strace -v -o dump touch bla" should tell you which command is failing,
-and the exact error being returned.
+commit 60fa3f769f inadvertently reverted this while fixing other problems.
 
-Cheers
-  Trond
+So move the test so that we never examine ->committed in an error
+case, and fix a speeling error while we are there.
 
+Cc: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Neil Brown <neilb@suse.de>
+Acked-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+Note: only compile tested - I haven't tried triggering the bug yet.
 
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Splunk Inc.
-Still grepping through log files to find problems?  Stop.
-Now Search log events and configuration files using AJAX and a browser.
-Download your FREE copy of Splunk now >> http://get.splunk.com/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+NeilBrown
+
+### Diffstat output
+ ./fs/nfs/direct.c |    6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff .prev/fs/nfs/direct.c ./fs/nfs/direct.c
+--- .prev/fs/nfs/direct.c	2007-10-23 12:31:29.000000000 +1000
++++ ./fs/nfs/direct.c	2007-10-23 12:32:07.000000000 +1000
+@@ -549,13 +549,13 @@ static void nfs_direct_write_result(stru
+ 
+ 	spin_lock(&dreq->lock);
+ 
+-	if (unlikely(dreq->error != 0))
+-		goto out_unlock;
+ 	if (unlikely(status < 0)) {
+-		/* An error has occured, so we should not commit */
++		/* An error has occurred, so we should not commit */
+ 		dreq->flags = 0;
+ 		dreq->error = status;
+ 	}
++	if (unlikely(dreq->error != 0))
++		goto out_unlock;
+ 
+ 	dreq->count += data->res.count;
+ 
