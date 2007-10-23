@@ -1,30 +1,21 @@
-From: Jeroen <jwilke@baselogistics.nl>
-Subject: invalid argument when creating a file on an nfs share
-Date: Tue, 23 Oct 2007 12:17:22 +0200
-Message-ID: <ffkhif$h1c$1@ger.gmane.org>
+From: Harshula <harshula@sgi.com>
+Subject: libnfsidmap
+Date: Tue, 23 Oct 2007 20:54:06 +1000
+Message-ID: <1193136846.5620.504.camel@serendib.melbourne.sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net, Greg Banks <gnb@sgi.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IkHBA-0006en-N8
-	for nfs@lists.sourceforge.net; Tue, 23 Oct 2007 03:40:10 -0700
-Received: from main.gmane.org ([80.91.229.2] helo=ciao.gmane.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IkHBE-0006pc-Dw
-	for nfs@lists.sourceforge.net; Tue, 23 Oct 2007 03:40:14 -0700
-Received: from root by ciao.gmane.org with local (Exim 4.43)
-	id 1IkHB4-0004J4-Fe
-	for nfs@lists.sourceforge.net; Tue, 23 Oct 2007 10:40:02 +0000
-Received: from d594eedd.static.dsl.concepts.nl ([213.148.238.221])
-	by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-	id 1AlnuQ-0007hv-00
-	for <nfs@lists.sourceforge.net>; Tue, 23 Oct 2007 10:40:02 +0000
-Received: from jwilke by d594eedd.static.dsl.concepts.nl with local (Gmexim
-	0.1 (Debian)) id 1AlnuQ-0007hv-00
-	for <nfs@lists.sourceforge.net>; Tue, 23 Oct 2007 10:40:02 +0000
+	id 1IkHOn-00081o-MW
+	for nfs@lists.sourceforge.net; Tue, 23 Oct 2007 03:54:13 -0700
+Received: from netops-testserver-4-out.sgi.com ([192.48.171.29]
+	helo=relay.sgi.com) by mail.sourceforge.net with esmtp (Exim 4.44)
+	id 1IkHOs-0003Dl-2h
+	for nfs@lists.sourceforge.net; Tue, 23 Oct 2007 03:54:19 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,39 +28,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+Hi Bruce,
 
-Hi all,
+We are building nfs-utils 1.0.7 with libnfsidmap 0.20 to avoid a bug
+with userid mappings in libnfsidmap 0.12.
 
-Whenever I try saving a file to a mounted nfs share I get the following 
-error :
+Then we tripped over nfs/<FQDN> principals not being resolved. Luckily I
+came across:
+http://linux-nfs.org/pipermail/nfsv4/2006-June/004564.html
 
-/mnt/home/user$ touch bla
-touch: setting times of `bla': Invalid argument
+and realised that the code to handle nfs/<FQDN> principals is now in
+nfs-utils (utils/gssd/svcgssd_proc.c).
 
-it does create the file bla in the specified location but I am unsure as 
-to what is causing this error.
+Are there any other known issues we might trip over as a result of using
+nfs-utils 1.0.7 with libnfsidmap 0.20?
 
-users and groups on the client are "shared" via pam_ldap
-
-/etc/exports on the server:
-
-/home           192.168.0.8(rw,sync,map_identity,no_root_squash)
-
-
-/etc/fstab on client:
-
-192.168.0.12:/home/ /mnt/home nfs auto,rw 0 0
-
-client OS is debian Etch,
-
-Server is running debian unstable  nfs-user-server :Universal NFS Server 
-2.2beta47
-
-Regards
-
-Jeroen
-
-
+Thanks,
+#
 
 
 -------------------------------------------------------------------------
