@@ -1,25 +1,24 @@
-From: Greg Banks <gnb@sgi.com>
-Subject: Re: [RFC,PATCH] svc: Fix the UDP address logic
-Date: Tue, 23 Oct 2007 12:46:07 +1000
-Message-ID: <20071023024607.GC6354@sgi.com>
-References: <20071022210148.9997.94538.stgit@dell3.ogc.int>
-	<20071023015329.GA6354@sgi.com>
-	<471D58C0.1090707@opengridcomputing.com>
+From: Tom Tucker <tom@opengridcomputing.com>
+Subject: Re: [RFC,PATCH 00/10] rdma: SVCRDMA Transport Driver
+Date: Mon, 22 Oct 2007 21:44:13 -0500
+Message-ID: <471D5FFD.8090601@opengridcomputing.com>
+References: <20071019215304.31937.28876.stgit@dell3.ogc.int>
+	<20071022220219.GW583@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: bfields@fieldses.org, neilb@suse.de, nfs@lists.sourceforge.net
-To: Tom Tucker <tom@opengridcomputing.com>
+Cc: neilb@suse.de, nfs@lists.sourceforge.net, gnb@sgi.com
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Ik9j4-0003L5-QR
-	for nfs@lists.sourceforge.net; Mon, 22 Oct 2007 19:42:41 -0700
-Received: from netops-testserver-4-out.sgi.com ([192.48.171.29]
-	helo=relay.sgi.com) by mail.sourceforge.net with esmtp (Exim 4.44)
-	id 1Ik9j9-0004yH-6W
-	for nfs@lists.sourceforge.net; Mon, 22 Oct 2007 19:42:44 -0700
-In-Reply-To: <471D58C0.1090707@opengridcomputing.com>
+	id 1Ik9kl-0003W9-G5
+	for nfs@lists.sourceforge.net; Mon, 22 Oct 2007 19:44:23 -0700
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]
+	helo=smtp.opengridcomputing.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Ik9kq-0005PF-Rp
+	for nfs@lists.sourceforge.net; Mon, 22 Oct 2007 19:44:29 -0700
+In-Reply-To: <20071022220219.GW583@fieldses.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,26 +31,50 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Mon, Oct 22, 2007 at 09:13:20PM -0500, Tom Tucker wrote:
-> Greg Banks wrote:
-> >On Mon, Oct 22, 2007 at 04:01:48PM -0500, Tom Tucker wrote:
-> >  
-> >This is useful text, any chance you can put it into a comment
-> >or a text file describing the xprt switch interface?
-> >
-> >  
-> I think it would be most useful if I wrote a document  describing the 
-> transport switch and the requirements of a transport driver. The text 
-> file would be for the Documentation directory. I'll try to get to it in 
-> the next week.
+J. Bruce Fields wrote:
+> On Fri, Oct 19, 2007 at 04:53:04PM -0500, Tom Tucker wrote:
+>   
+>> This patchset implements the RDMA Transport Driver for the 
+>> server transport switch. This patchset has been tested with iozone
+>> and Connectathon over NFSv3. 
+>>     
+>
+> Do you want these applied?
+>
+>   
+Yes. I'm assuming that this would include all incremental patches prior 
+to the RDMA transport driver as well?
+>> This patchset along with all of the previous server side
+>> transport switches are also available in this git tree:
+>>
+>> git://linux-nfs.org/~tomtucker/nfs-rdma-dev-2.6.git
+>>     
+>
+> This is missing a couple changes I made in my version: the two I notice
+> are that I merged both "svc: Don't copy xprt_class data into svc_xprt
+> instance" and "svc: Rename xpo_release to xpo_release_rqst" in with the
+> previous patches.
+>
+>   
+Yes, please. Should I post my subsequent patches relative to your git 
+tree? That might make life easier.
+> So I've ignored that for now and just applied these new patches on top
+> of mine.  I also rebased onto the latest linus git.
+>   
+I should compare your tot to mine to make sure we're not out of sync. 
+I'll do that tomorrow.
 
-Great!
+FYI, I'm working on a "perfect hindsight" branch as well. I'll let you 
+know when I've got that done.
+> Also, there's still that small sysctl complaint from Andrew outstanding,
+> which I haven't had the time to look into.
+>
+>   
 
-Greg.
--- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-Apparently, I'm Bedevere.  Which MPHG character are you?
-I don't speak for SGI.
+> --b.
+>   
+
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
