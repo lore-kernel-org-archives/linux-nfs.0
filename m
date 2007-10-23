@@ -1,26 +1,25 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [RFC,
-	PATCH 1/4] svc: Fix skip computation in svc_defer and	svc_revisit
-Date: Tue, 23 Oct 2007 14:03:55 -0400
-Message-ID: <20071023180354.GE30496@fieldses.org>
-References: <20071019214058.31422.35615.stgit@dell3.ogc.int>
-	<20071019214523.31422.28978.stgit@dell3.ogc.int>
-	<20071023024530.GB6354@sgi.com>
+Subject: Re: [RFC,PATCH 00/10] rdma: SVCRDMA Transport Driver
+Date: Tue, 23 Oct 2007 14:05:31 -0400
+Message-ID: <20071023180531.GF30496@fieldses.org>
+References: <20071019215304.31937.28876.stgit@dell3.ogc.int>
+	<20071022220219.GW583@fieldses.org>
+	<471D5FFD.8090601@opengridcomputing.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: neilb@suse.de, nfs@lists.sourceforge.net
-To: Greg Banks <gnb@sgi.com>
+Cc: neilb@suse.de, nfs@lists.sourceforge.net, gnb@sgi.com
+To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IkO6c-000539-B4
-	for nfs@lists.sourceforge.net; Tue, 23 Oct 2007 11:03:54 -0700
+	id 1IkO88-0005FX-SQ
+	for nfs@lists.sourceforge.net; Tue, 23 Oct 2007 11:05:28 -0700
 Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IkO6h-0004rO-Ge
-	for nfs@lists.sourceforge.net; Tue, 23 Oct 2007 11:03:59 -0700
-In-Reply-To: <20071023024530.GB6354@sgi.com>
+	(Exim 4.44) id 1IkO8E-0005RJ-3Q
+	for nfs@lists.sourceforge.net; Tue, 23 Oct 2007 11:05:34 -0700
+In-Reply-To: <471D5FFD.8090601@opengridcomputing.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,29 +32,51 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, Oct 23, 2007 at 12:45:30PM +1000, Greg Banks wrote:
-> On Fri, Oct 19, 2007 at 04:45:23PM -0500, Tom Tucker wrote:
-> > 
-> > The rq_arg.len includes the size of the transport header. The computations
-> > assumed that it did not.
-> 
-> ok, assuming that your latest svc_rdma_xdr_decode_req(), which I
-> haven't read yet, doesn't change rq_arg.len as it parses the RDMA
-> chunking header.
-> 
-> The reason I mention that is that one set of patches I was working
-> with some time ago had different semantics for rq_arg.len; when
-> parsing the chunking header, rq_arg.len was adjusted downward as
-> rq_head[0].iov_base was adjusted forward.  This kept rq_arg.len equal
-> to the sum of rq_{head[0],pages[...],tail[0]}.iov_len, which seemed
-> like a good idea.
-> 
-> But your way seems valid too.
+On Mon, Oct 22, 2007 at 09:44:13PM -0500, Tom Tucker wrote:
+> J. Bruce Fields wrote:
+>> On Fri, Oct 19, 2007 at 04:53:04PM -0500, Tom Tucker wrote:
+>>   
+>>> This patchset implements the RDMA Transport Driver for the server 
+>>> transport switch. This patchset has been tested with iozone
+>>> and Connectathon over NFSv3.     
+>>
+>> Do you want these applied?
+>>
+>>   
+> Yes. I'm assuming that this would include all incremental patches prior to 
+> the RDMA transport driver as well?
 
-The integrity and privacy code may be a particularly unpleasant source
-of assumptions about the various length fields; see e.g.
-unwrap_integ_data() and unwrap_priv_data().  (But maybe nobody cares
-about krb5i/krb5p over rdma?)
+Yes; you can check my server-xprt-switch branch to see if I got it all.
+
+>>> This patchset along with all of the previous server side
+>>> transport switches are also available in this git tree:
+>>>
+>>> git://linux-nfs.org/~tomtucker/nfs-rdma-dev-2.6.git
+>>>     
+>>
+>> This is missing a couple changes I made in my version: the two I notice
+>> are that I merged both "svc: Don't copy xprt_class data into svc_xprt
+>> instance" and "svc: Rename xpo_release to xpo_release_rqst" in with the
+>> previous patches.
+>>
+>>   
+> Yes, please. Should I post my subsequent patches relative to your git tree? 
+> That might make life easier.
+
+Sure; thanks.
+
+>> So I've ignored that for now and just applied these new patches on top
+>> of mine.  I also rebased onto the latest linus git.
+>>   
+> I should compare your tot to mine to make sure we're not out of sync. I'll 
+> do that tomorrow.
+>
+> FYI, I'm working on a "perfect hindsight" branch as well. I'll let you know 
+> when I've got that done.
+
+Oh, OK, fantastic.  I'll stop monkeying with my copy if that's the case.
+(Though only exception being that if I may need to rebase every now and
+then.)
 
 --b.
 
