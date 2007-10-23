@@ -1,24 +1,24 @@
-From: Greg Banks <gnb@sgi.com>
+From: Tom Tucker <tom@opengridcomputing.com>
 Subject: Re: [RFC,PATCH] svc: Fix the UDP address logic
-Date: Tue, 23 Oct 2007 11:53:29 +1000
-Message-ID: <20071023015329.GA6354@sgi.com>
+Date: Mon, 22 Oct 2007 21:13:20 -0500
+Message-ID: <471D58C0.1090707@opengridcomputing.com>
 References: <20071022210148.9997.94538.stgit@dell3.ogc.int>
+	<20071023015329.GA6354@sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: bfields@fieldses.org, neilb@suse.de, nfs@lists.sourceforge.net
-To: Tom Tucker <tom@opengridcomputing.com>
+To: Greg Banks <gnb@sgi.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Ik8uE-0006zA-L3
-	for nfs@lists.sourceforge.net; Mon, 22 Oct 2007 18:50:07 -0700
-Received: from netops-testserver-3-out.sgi.com
-	([192.48.171.28] helo=relay.sgi.com
-	ident=[U2FsdGVkX19eA9fJu+MCC7PLgHLWGNk8TPYinkimt3s=])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Ik8uJ-0005aT-03
-	for nfs@lists.sourceforge.net; Mon, 22 Oct 2007 18:50:12 -0700
-In-Reply-To: <20071022210148.9997.94538.stgit@dell3.ogc.int>
+	id 1Ik9Gs-0000ci-Vc
+	for nfs@lists.sourceforge.net; Mon, 22 Oct 2007 19:13:31 -0700
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]
+	helo=smtp.opengridcomputing.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Ik9Gy-0005Dq-9a
+	for nfs@lists.sourceforge.net; Mon, 22 Oct 2007 19:13:36 -0700
+In-Reply-To: <20071023015329.GA6354@sgi.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,27 +31,34 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Mon, Oct 22, 2007 at 04:01:48PM -0500, Tom Tucker wrote:
-> 
-> When the address information was moved to the svc_xprt structure, a bug
-> was introduced to UDP that caused an incorrect address to be used
-> when responding to RPC on the UDP transport. This was the result of
-> failing to completely implement the generic address logic for the UDP 
-> transport.
+Greg Banks wrote:
+> On Mon, Oct 22, 2007 at 04:01:48PM -0500, Tom Tucker wrote:
+>   
+>> When the address information was moved to the svc_xprt structure, a bug
+>> was introduced to UDP that caused an incorrect address to be used
+>> when responding to RPC on the UDP transport. This was the result of
+>> failing to completely implement the generic address logic for the UDP 
+>> transport.
+>>     
+>
+> ok.
+>
+>   
+>> Since I confused myself, it's probably a good idea to describe how 
+>> this is supposed to work. [...]
+>>     
+>
+> This is useful text, any chance you can put it into a comment
+> or a text file describing the xprt switch interface?
+>
+>   
+I think it would be most useful if I wrote a document  describing the 
+transport switch and the requirements of a transport driver. The text 
+file would be for the Documentation directory. I'll try to get to it in 
+the next week.
+> Greg.
+>   
 
-ok.
-
-> Since I confused myself, it's probably a good idea to describe how 
-> this is supposed to work. [...]
-
-This is useful text, any chance you can put it into a comment
-or a text file describing the xprt switch interface?
-
-Greg.
--- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-Apparently, I'm Bedevere.  Which MPHG character are you?
-I don't speak for SGI.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
