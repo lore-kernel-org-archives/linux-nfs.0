@@ -1,21 +1,19 @@
-From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [RFC,PATCH] svc: REPOST - Fix the UDP address logic
-Date: Tue, 23 Oct 2007 13:13:01 -0500
-Message-ID: <20071023181301.11155.90411.stgit@dell3.ogc.int>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: bfields@fieldses.org, neilb@suse.de, gnb@sgi.com
+From: =?GB2312?B?t++7y7Gm?= <jow.7cv@163.com>
+Subject: =?GB2312?B?vfTL9aGwy720pqGx07XT0KGw0NS4o6Gx?=
+Date: Wed, 24 Oct 2007 02:14:51 +0800
+Message-ID: <E1IkOHE-0000tk-Sm@mail.sourceforge.net>
+Reply-To: jow.7cv@163.com
+Content-Type: multipart/mixed; boundary="===============0687931671=="
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IkOFT-0005zd-Mf
-	for nfs@lists.sourceforge.net; Tue, 23 Oct 2007 11:13:03 -0700
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]
-	helo=smtp.opengridcomputing.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IkOFW-0000Ey-SL
-	for nfs@lists.sourceforge.net; Tue, 23 Oct 2007 11:13:09 -0700
+	id 1IkOHA-000697-B0
+	for nfs@lists.sourceforge.net; Tue, 23 Oct 2007 11:14:51 -0700
+Received: from [125.40.49.58] (helo=163.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IkOHE-0000tk-Sm
+	for nfs@lists.sourceforge.net; Tue, 23 Oct 2007 11:14:53 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,120 +26,106 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+--===============0687931671==
+Content-Type: text/plain;charset="GB2312"
 
-This version of the patch sets xpt_remotelen based on the address
-family returned in the sockaddr. If the address family is not
-AF_INET or AF_INET6, the svc_udp_recvfrom function will
-return -ENOTSUPP.
---
+http://jow.7cv.com/promotion/bycy/puyukang/index.php
 
-When the address information was moved to the svc_xprt structure, a bug
-was introduced to UDP that caused an incorrect address to be used
-when responding to RPC on the UDP transport. This was the result of
-failing to completely implement the generic address logic for the UDP 
-transport.
+失色的梦--说说现在的你
 
-Thanks to Greg for pointing this out...
+您对您现在的身体满意吗？
+您是否听到他抱怨您太松弛？
+您是否还能像二十岁时那样一晚高潮几次？
+您是否每一次都能满足伴侣的要求？
+您是否感觉越来越难达到高潮？
+您是否已经渐渐开始在关键时刻突然熄火？
+你是否发现无论您多么努力，他也提不起性趣......
 
-Since I confused myself, it's probably a good idea to describe how 
-this is supposed to work. The transport is responsible for setting 
-the xpt_local and xpt_remote addresses in the svc_xprt structure as
-part of xpo_recvfrom processing. This cannot be done in a generic way 
-and in fact varies between TCP, UDP and RDMA. A set of xpo_ functions
-(e.g. getlocalname, getremotename) could have been added but this would
-have resulted in additional caching and copying of the addresses around. 
 
-The generic svc_recv code copies the addresses from the svc_xprt 
-structure into the rqstp structure as part of svc_recv processing.  
+订购地址：七彩谷成人用品商城
 
-The xpt_local address should also be set on listening endpoints, for
-tcp/rdma this is done as part of endpoint creation and for new 
-connections in xpo_accept processing. 
+http://jow.7cv.com
+——————————————————————————————
+“蒲玉康凤凰宝”五大神奇功效
+ ① 促进阴道壁细胞再生，快速强力收阴缩阴，增强阴道肌肉弹性，增加娇嫩及敏感，彻底改善女性婚后产后阴道宽松症状，提高性欲，
+重现少女般紧窄状态，10分钟见效，长期紧窄不反弹。
+ ② 对女性性冷淡，性欲减退，腰膝酸软，多胎生育，堕胎，中老年夫妇性生活障碍有显著意想不到的调节和辅助治疗作用。
+ ③ 杀菌消炎，除异味，有效预防和治疗阴道炎， 盆腔炎， 附件炎，白带异常，月经不调，宫颈糜烂，子宫下垂， 痛经等妇科疾病。
+ ④ 调节内分泌，促进体内雌性激素，荷尔蒙正常分泌，延缓衰老，淡化各种色斑色素，让乳房饱满圆润，坚挺光泽，动感迷人，令肌肤白皙有弹性。
+ ⑤ 促进血液循环，增加阴道润滑，改善干涩，性交疼痛。
 
-This patch was tested with Connectathon over V3 on UDP.
 
-Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
----
+订购地址：七彩谷成人用品商城
 
- net/sunrpc/svcsock.c |   31 +++++++++++++++++++++++++------
- 1 files changed, 25 insertions(+), 6 deletions(-)
+http://jow.7cv.com
 
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index e1a27ee..8924cad 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -140,6 +140,18 @@ static char *__svc_print_addr(struct soc
- 	return buf;
- }
- 
-+static size_t svc_sockaddr_len(struct sockaddr *addr)
-+{
-+	switch (addr->sa_family) {
-+	case AF_INET:
-+		return sizeof(struct sockaddr_in);
-+	case AF_INET6:
-+		return sizeof(struct sockaddr_in6);
-+	}
-+	dprintk("svc: unrecognized address family %d\n", addr->sa_family);
-+	return -ENOTSUPP;
-+}
-+
- /**
-  * svc_print_addr - Format rq_addr field for printing
-  * @rqstp: svc_rqst struct containing address to print
-@@ -473,17 +485,21 @@ svc_write_space(struct sock *sk)
- static inline void svc_udp_get_dest_address(struct svc_rqst *rqstp,
- 					    struct cmsghdr *cmh)
- {
--	struct svc_sock *svsk =
--		container_of(rqstp->rq_xprt, struct svc_sock, sk_xprt);
-+	struct svc_xprt *xprt = rqstp->rq_xprt;
-+	struct svc_sock *svsk = container_of(xprt, struct svc_sock, sk_xprt);
- 	switch (svsk->sk_sk->sk_family) {
- 	case AF_INET: {
- 		struct in_pktinfo *pki = CMSG_DATA(cmh);
--		rqstp->rq_daddr.addr.s_addr = pki->ipi_spec_dst.s_addr;
-+		struct sockaddr_in *sin =
-+			(struct sockaddr_in *)&xprt->xpt_local;
-+		sin->sin_addr.s_addr = pki->ipi_spec_dst.s_addr;
- 		break;
- 		}
- 	case AF_INET6: {
- 		struct in6_pktinfo *pki = CMSG_DATA(cmh);
--		ipv6_addr_copy(&rqstp->rq_daddr.addr6, &pki->ipi6_addr);
-+		struct sockaddr_in6 *sin6 =
-+			(struct sockaddr_in6 *)&xprt->xpt_local;
-+		ipv6_addr_copy(&sin6->sin6_addr, &pki->ipi6_addr);
- 		break;
- 		}
- 	}
-@@ -506,7 +522,7 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
- 	struct cmsghdr *cmh = &buffer.hdr;
- 	int		err, len;
- 	struct msghdr msg = {
--		.msg_name = svc_addr(rqstp),
-+		.msg_name = &svsk->sk_xprt.xpt_remote,
- 		.msg_control = cmh,
- 		.msg_controllen = sizeof(buffer),
- 		.msg_flags = MSG_DONTWAIT,
-@@ -541,7 +557,10 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
- 		svc_xprt_received(&svsk->sk_xprt);
- 		return -EAGAIN;
- 	}
--	rqstp->rq_addrlen = sizeof(rqstp->rq_addr);
-+	len = svc_sockaddr_len((struct sockaddr *)&svsk->sk_xprt.xpt_remote);
-+	if (len < 0)
-+		return len;
-+	svsk->sk_xprt.xpt_remotelen = len;
- 	if (skb->tstamp.tv64 == 0) {
- 		skb->tstamp = ktime_get_real();
- 		/* Don't enable netstamp, sunrpc doesn't
+——————————————————————————————
+·女战士-助情素
+·FLY小春助情粉
+·西班牙D8水
+·Spanischie Fliege苍蝇调情露
+·HP 女性高潮喷水刺激器
+·真皮2栓贞操带
+·SM束缚性爱沙发（小号）
+·仿真器具皮鞭（两用）
+·灵舌出洞
+·完美调情豪华装
+·好兄弟双跳
+·脉冲光头七兄弟
+·海星私密抚慰
+·浮点震动火笼
+·性爱机器－骑得乐（遥控喷水型）
+·玲珑充气美少女Ⅱ
+
+http://jow.7cv.com
+
+——————————————————————————————
+·MAXMAN强效增大胶囊6瓶装
+·SUPERMAX阴茎增大丸3瓶装
+·美国OP男根增大贴片4盒装
+·ProExtender+MAXMANⅡ复合
+·精装ProExtender阴茎增大器
+·美国FANCY SET阴茎增大套装
+·三便宝胶囊超值3盒装
+·STRONG速勃胶囊3盒装
+·魔根金虫草胶丸买三送一
+·法国虎哥生力片买四送一
+·德国金刚片
+·Semenax男性活力增进4瓶装
+·皇族八宝海狗丸超值3盒
+·香港宝和堂海狗丸超值3盒装
+·生精固本丸豪华装
+·九鞭补肾丸
+　
+
+http://jow.7cv.com
+
+——————————————————————————————
+
+七彩谷成人用品商城
+
+http://jow.7cv.com
+
+
+--===============0687931671==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >> http://get.splunk.com/
+--===============0687931671==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============0687931671==--
