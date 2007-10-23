@@ -1,25 +1,21 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: about /proc/net/rpc/nfsd
-Date: Tue, 23 Oct 2007 14:09:58 -0400
-Message-ID: <471E38F6.7000006@oracle.com>
-References: <471D17F8.5060709@cesca.es> <471D1DF2.4070201@oxeva.fr>
-	<471E0E21.5050606@oracle.com> <471E28AA.9010501@cesca.es>
-Reply-To: chuck.lever@oracle.com
+From: Tom Tucker <tom@opengridcomputing.com>
+Subject: [RFC,PATCH] svc: REPOST - Fix the UDP address logic
+Date: Tue, 23 Oct 2007 13:13:01 -0500
+Message-ID: <20071023181301.11155.90411.stgit@dell3.ogc.int>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------020603010204010404060801"
-Cc: nfs@lists.sourceforge.net, csmithere@gmail.com
-To: Jordi Prats <jprats@cesca.es>
+Content-Type: text/plain; charset="us-ascii"
+Cc: bfields@fieldses.org, neilb@suse.de, gnb@sgi.com
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IkOEp-0005wy-7M
-	for nfs@lists.sourceforge.net; Tue, 23 Oct 2007 11:12:23 -0700
-Received: from rgminet01.oracle.com ([148.87.113.118])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IkOEt-0008Se-CX
-	for nfs@lists.sourceforge.net; Tue, 23 Oct 2007 11:12:28 -0700
-In-Reply-To: <471E28AA.9010501@cesca.es>
+	id 1IkOFT-0005zd-Mf
+	for nfs@lists.sourceforge.net; Tue, 23 Oct 2007 11:13:03 -0700
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]
+	helo=smtp.opengridcomputing.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IkOFW-0000Ey-SL
+	for nfs@lists.sourceforge.net; Tue, 23 Oct 2007 11:13:09 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,92 +28,120 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
---------------020603010204010404060801
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
 
-Jordi Prats wrote:
-> Hi,
-> What would you thing about creating a nfsd man page on section 5 with 
-> what does it mean every value?
-> 
-> I think on wiki pages should go how to interpret to enhance performance, 
-> but not the meaning of every value you can get on statistics.
-> 
-> So, I'm thinking this as two different things to answer the following 
-> questions:
-> - What is this value? (on a man page)
-> - How do I interpret this value to enhance performance? (on wiki's page 
-> about performance)
-> 
-> What do you think?
+This version of the patch sets xpt_remotelen based on the address
+family returned in the sockaddr. If the address family is not
+AF_INET or AF_INET6, the svc_udp_recvfrom function will
+return -ENOTSUPP.
+--
 
-I don't have any objection to that.  What would you call it: nfsd(7)? 
-I'm not sure in which man section proc files are documented.
+When the address information was moved to the svc_xprt structure, a bug
+was introduced to UDP that caused an incorrect address to be used
+when responding to RPC on the UDP transport. This was the result of
+failing to completely implement the generic address logic for the UDP 
+transport.
 
-> Chuck Lever wrote:
->> Gabriel Barazer wrote:
->>> On 10/22/2007 11:36:56 PM +0200, Jordi Prats <jprats@cesca.es> wrote:
->>>> Hi all,
->>>> I've been researching the meaning of the contents of the 
->>>> /proc/net/rpc/nfsd file using the 2.6.23 kernel sources.
->>>>
->>>>
->>>> Sorry for this so long mail... That's all what I've got reading the 
->>>> source files. There's anything incorrect? There's some "educated 
->>>> guests"   So, could anyone please confirm or refute them?
->>>>
->>>> If you what me to do something with this I'd be glad of it!
->>>
->>> Wow this is an awesome job you've done here to document precisely 
->>> this proc file. I've tagged your mail and copied it in a safe place.  
->>> I'm sure this would be very useful to keep a place where all these 
->>> proc files are explained like this, maybe on the linux-nfs wiki ?
->>
->> This belongs in the NFS server performance chapter of the NFS How-To. 
->> The How-To's maintainer is csmithere@gmail.com.
+Thanks to Greg for pointing this out...
 
+Since I confused myself, it's probably a good idea to describe how 
+this is supposed to work. The transport is responsible for setting 
+the xpt_local and xpt_remote addresses in the svc_xprt structure as
+part of xpo_recvfrom processing. This cannot be done in a generic way 
+and in fact varies between TCP, UDP and RDMA. A set of xpo_ functions
+(e.g. getlocalname, getremotename) could have been added but this would
+have resulted in additional caching and copying of the addresses around. 
 
---------------020603010204010404060801
-Content-Type: text/x-vcard; charset=utf-8;
- name="chuck.lever.vcf"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="chuck.lever.vcf"
+The generic svc_recv code copies the addresses from the svc_xprt 
+structure into the rqstp structure as part of svc_recv processing.  
 
-begin:vcard
-fn:Chuck Lever
-n:Lever;Chuck
-org:Oracle Corporation;Corporate Architecture: Linux Projects Group
-adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
-email;internet:chuck dot lever at nospam oracle dot com
-title:Principal Member of Staff
-tel;work:+1 248 614 5091
-x-mozilla-html:FALSE
-version:2.1
-end:vcard
+The xpt_local address should also be set on listening endpoints, for
+tcp/rdma this is done as part of endpoint creation and for new 
+connections in xpo_accept processing. 
 
+This patch was tested with Connectathon over V3 on UDP.
 
---------------020603010204010404060801
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+---
+
+ net/sunrpc/svcsock.c |   31 +++++++++++++++++++++++++------
+ 1 files changed, 25 insertions(+), 6 deletions(-)
+
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index e1a27ee..8924cad 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -140,6 +140,18 @@ static char *__svc_print_addr(struct soc
+ 	return buf;
+ }
+ 
++static size_t svc_sockaddr_len(struct sockaddr *addr)
++{
++	switch (addr->sa_family) {
++	case AF_INET:
++		return sizeof(struct sockaddr_in);
++	case AF_INET6:
++		return sizeof(struct sockaddr_in6);
++	}
++	dprintk("svc: unrecognized address family %d\n", addr->sa_family);
++	return -ENOTSUPP;
++}
++
+ /**
+  * svc_print_addr - Format rq_addr field for printing
+  * @rqstp: svc_rqst struct containing address to print
+@@ -473,17 +485,21 @@ svc_write_space(struct sock *sk)
+ static inline void svc_udp_get_dest_address(struct svc_rqst *rqstp,
+ 					    struct cmsghdr *cmh)
+ {
+-	struct svc_sock *svsk =
+-		container_of(rqstp->rq_xprt, struct svc_sock, sk_xprt);
++	struct svc_xprt *xprt = rqstp->rq_xprt;
++	struct svc_sock *svsk = container_of(xprt, struct svc_sock, sk_xprt);
+ 	switch (svsk->sk_sk->sk_family) {
+ 	case AF_INET: {
+ 		struct in_pktinfo *pki = CMSG_DATA(cmh);
+-		rqstp->rq_daddr.addr.s_addr = pki->ipi_spec_dst.s_addr;
++		struct sockaddr_in *sin =
++			(struct sockaddr_in *)&xprt->xpt_local;
++		sin->sin_addr.s_addr = pki->ipi_spec_dst.s_addr;
+ 		break;
+ 		}
+ 	case AF_INET6: {
+ 		struct in6_pktinfo *pki = CMSG_DATA(cmh);
+-		ipv6_addr_copy(&rqstp->rq_daddr.addr6, &pki->ipi6_addr);
++		struct sockaddr_in6 *sin6 =
++			(struct sockaddr_in6 *)&xprt->xpt_local;
++		ipv6_addr_copy(&sin6->sin6_addr, &pki->ipi6_addr);
+ 		break;
+ 		}
+ 	}
+@@ -506,7 +522,7 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
+ 	struct cmsghdr *cmh = &buffer.hdr;
+ 	int		err, len;
+ 	struct msghdr msg = {
+-		.msg_name = svc_addr(rqstp),
++		.msg_name = &svsk->sk_xprt.xpt_remote,
+ 		.msg_control = cmh,
+ 		.msg_controllen = sizeof(buffer),
+ 		.msg_flags = MSG_DONTWAIT,
+@@ -541,7 +557,10 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
+ 		svc_xprt_received(&svsk->sk_xprt);
+ 		return -EAGAIN;
+ 	}
+-	rqstp->rq_addrlen = sizeof(rqstp->rq_addr);
++	len = svc_sockaddr_len((struct sockaddr *)&svsk->sk_xprt.xpt_remote);
++	if (len < 0)
++		return len;
++	svsk->sk_xprt.xpt_remotelen = len;
+ 	if (skb->tstamp.tv64 == 0) {
+ 		skb->tstamp = ktime_get_real();
+ 		/* Don't enable netstamp, sunrpc doesn't
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >> http://get.splunk.com/
---------------020603010204010404060801
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---------------020603010204010404060801--
