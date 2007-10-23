@@ -1,19 +1,19 @@
 From: =?GB2312?B?t++7y7Gm?= <jow.7cv@163.com>
 Subject: =?GB2312?B?vfTL9aGwy720pqGx07XT0KGw0NS4o6Gx?=
-Date: Wed, 24 Oct 2007 02:14:51 +0800
-Message-ID: <E1IkOHE-0000tk-Sm@mail.sourceforge.net>
+Date: Wed, 24 Oct 2007 05:01:07 +0800
+Message-ID: <E1IkQs9-0007OG-3W@mail.sourceforge.net>
 Reply-To: jow.7cv@163.com
-Content-Type: multipart/mixed; boundary="===============0687931671=="
+Content-Type: multipart/mixed; boundary="===============0177452119=="
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IkOHA-000697-B0
-	for nfs@lists.sourceforge.net; Tue, 23 Oct 2007 11:14:51 -0700
+	id 1IkQs4-00075q-9r
+	for nfs@lists.sourceforge.net; Tue, 23 Oct 2007 14:01:04 -0700
 Received: from [125.40.49.58] (helo=163.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IkOHE-0000tk-Sm
-	for nfs@lists.sourceforge.net; Tue, 23 Oct 2007 11:14:53 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IkQs9-0007OG-3W
+	for nfs@lists.sourceforge.net; Tue, 23 Oct 2007 14:01:09 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,7 +26,7 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============0687931671==
+--===============0177452119==
 Content-Type: text/plain;charset="GB2312"
 
 http://jow.7cv.com/promotion/bycy/puyukang/index.php
@@ -107,7 +107,7 @@ http://jow.7cv.com
 http://jow.7cv.com
 
 
---===============0687931671==
+--===============0177452119==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -118,7 +118,7 @@ This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >> http://get.splunk.com/
---===============0687931671==
+--===============0177452119==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -128,4 +128,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---===============0687931671==--
+--===============0177452119==--
