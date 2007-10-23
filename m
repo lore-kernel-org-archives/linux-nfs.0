@@ -1,25 +1,25 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [RFC,PATCH 00/10] rdma: SVCRDMA Transport Driver
-Date: Tue, 23 Oct 2007 14:05:31 -0400
-Message-ID: <20071023180531.GF30496@fieldses.org>
-References: <20071019215304.31937.28876.stgit@dell3.ogc.int>
-	<20071022220219.GW583@fieldses.org>
-	<471D5FFD.8090601@opengridcomputing.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: about /proc/net/rpc/nfsd
+Date: Tue, 23 Oct 2007 14:09:58 -0400
+Message-ID: <471E38F6.7000006@oracle.com>
+References: <471D17F8.5060709@cesca.es> <471D1DF2.4070201@oxeva.fr>
+	<471E0E21.5050606@oracle.com> <471E28AA.9010501@cesca.es>
+Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: neilb@suse.de, nfs@lists.sourceforge.net, gnb@sgi.com
-To: Tom Tucker <tom@opengridcomputing.com>
+Content-Type: multipart/mixed; boundary="------------020603010204010404060801"
+Cc: nfs@lists.sourceforge.net, csmithere@gmail.com
+To: Jordi Prats <jprats@cesca.es>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IkO88-0005FX-SQ
-	for nfs@lists.sourceforge.net; Tue, 23 Oct 2007 11:05:28 -0700
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	id 1IkOEp-0005wy-7M
+	for nfs@lists.sourceforge.net; Tue, 23 Oct 2007 11:12:23 -0700
+Received: from rgminet01.oracle.com ([148.87.113.118])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IkO8E-0005RJ-3Q
-	for nfs@lists.sourceforge.net; Tue, 23 Oct 2007 11:05:34 -0700
-In-Reply-To: <471D5FFD.8090601@opengridcomputing.com>
+	(Exim 4.44) id 1IkOEt-0008Se-CX
+	for nfs@lists.sourceforge.net; Tue, 23 Oct 2007 11:12:28 -0700
+In-Reply-To: <471E28AA.9010501@cesca.es>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,59 +32,92 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Mon, Oct 22, 2007 at 09:44:13PM -0500, Tom Tucker wrote:
-> J. Bruce Fields wrote:
->> On Fri, Oct 19, 2007 at 04:53:04PM -0500, Tom Tucker wrote:
->>   
->>> This patchset implements the RDMA Transport Driver for the server 
->>> transport switch. This patchset has been tested with iozone
->>> and Connectathon over NFSv3.     
->>
->> Do you want these applied?
->>
->>   
-> Yes. I'm assuming that this would include all incremental patches prior to 
-> the RDMA transport driver as well?
+This is a multi-part message in MIME format.
+--------------020603010204010404060801
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-Yes; you can check my server-xprt-switch branch to see if I got it all.
+Jordi Prats wrote:
+> Hi,
+> What would you thing about creating a nfsd man page on section 5 with 
+> what does it mean every value?
+> 
+> I think on wiki pages should go how to interpret to enhance performance, 
+> but not the meaning of every value you can get on statistics.
+> 
+> So, I'm thinking this as two different things to answer the following 
+> questions:
+> - What is this value? (on a man page)
+> - How do I interpret this value to enhance performance? (on wiki's page 
+> about performance)
+> 
+> What do you think?
 
->>> This patchset along with all of the previous server side
->>> transport switches are also available in this git tree:
+I don't have any objection to that.  What would you call it: nfsd(7)? 
+I'm not sure in which man section proc files are documented.
+
+> Chuck Lever wrote:
+>> Gabriel Barazer wrote:
+>>> On 10/22/2007 11:36:56 PM +0200, Jordi Prats <jprats@cesca.es> wrote:
+>>>> Hi all,
+>>>> I've been researching the meaning of the contents of the 
+>>>> /proc/net/rpc/nfsd file using the 2.6.23 kernel sources.
+>>>>
+>>>>
+>>>> Sorry for this so long mail... That's all what I've got reading the 
+>>>> source files. There's anything incorrect? There's some "educated 
+>>>> guests"   So, could anyone please confirm or refute them?
+>>>>
+>>>> If you what me to do something with this I'd be glad of it!
 >>>
->>> git://linux-nfs.org/~tomtucker/nfs-rdma-dev-2.6.git
->>>     
+>>> Wow this is an awesome job you've done here to document precisely 
+>>> this proc file. I've tagged your mail and copied it in a safe place.  
+>>> I'm sure this would be very useful to keep a place where all these 
+>>> proc files are explained like this, maybe on the linux-nfs wiki ?
 >>
->> This is missing a couple changes I made in my version: the two I notice
->> are that I merged both "svc: Don't copy xprt_class data into svc_xprt
->> instance" and "svc: Rename xpo_release to xpo_release_rqst" in with the
->> previous patches.
->>
->>   
-> Yes, please. Should I post my subsequent patches relative to your git tree? 
-> That might make life easier.
+>> This belongs in the NFS server performance chapter of the NFS How-To. 
+>> The How-To's maintainer is csmithere@gmail.com.
 
-Sure; thanks.
 
->> So I've ignored that for now and just applied these new patches on top
->> of mine.  I also rebased onto the latest linus git.
->>   
-> I should compare your tot to mine to make sure we're not out of sync. I'll 
-> do that tomorrow.
->
-> FYI, I'm working on a "perfect hindsight" branch as well. I'll let you know 
-> when I've got that done.
+--------------020603010204010404060801
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck.lever.vcf"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="chuck.lever.vcf"
 
-Oh, OK, fantastic.  I'll stop monkeying with my copy if that's the case.
-(Though only exception being that if I may need to rebase every now and
-then.)
+begin:vcard
+fn:Chuck Lever
+n:Lever;Chuck
+org:Oracle Corporation;Corporate Architecture: Linux Projects Group
+adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
+email;internet:chuck dot lever at nospam oracle dot com
+title:Principal Member of Staff
+tel;work:+1 248 614 5091
+x-mozilla-html:FALSE
+version:2.1
+end:vcard
 
---b.
+
+--------------020603010204010404060801
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >> http://get.splunk.com/
+--------------020603010204010404060801
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--------------020603010204010404060801--
