@@ -1,24 +1,25 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: about /proc/net/rpc/nfsd
-Date: Tue, 23 Oct 2007 11:07:13 -0400
-Message-ID: <471E0E21.5050606@oracle.com>
-References: <471D17F8.5060709@cesca.es> <471D1DF2.4070201@oxeva.fr>
+Subject: Re: [RFC,PATCH] svc: Fix the UDP address logic
+Date: Tue, 23 Oct 2007 11:13:43 -0400
+Message-ID: <471E0FA7.5010105@oracle.com>
+References: <20071022210148.9997.94538.stgit@dell3.ogc.int>
 Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------020004070800080201040405"
-Cc: nfs@lists.sourceforge.net
-To: Gabriel Barazer <gabriel@oxeva.fr>
+Content-Type: multipart/mixed; boundary="------------050509040703070107040306"
+Cc: bfields@fieldses.org, neilb@suse.de, nfs@lists.sourceforge.net,
+	gnb@sgi.com
+To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IkLNT-0001Q5-2k
-	for nfs@lists.sourceforge.net; Tue, 23 Oct 2007 08:09:07 -0700
+	id 1IkLUs-0002hO-9d
+	for nfs@lists.sourceforge.net; Tue, 23 Oct 2007 08:16:46 -0700
 Received: from agminet01.oracle.com ([141.146.126.228])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IkLNW-0001Ci-7H
-	for nfs@lists.sourceforge.net; Tue, 23 Oct 2007 08:09:12 -0700
-In-Reply-To: <471D1DF2.4070201@oxeva.fr>
+	(Exim 4.44) id 1IkLUx-000686-E4
+	for nfs@lists.sourceforge.net; Tue, 23 Oct 2007 08:16:51 -0700
+In-Reply-To: <20071022210148.9997.94538.stgit@dell3.ogc.int>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,52 +33,112 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 This is a multi-part message in MIME format.
---------------020004070800080201040405
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+--------------050509040703070107040306
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 7bit
 
-Gabriel Barazer wrote:
-> On 10/22/2007 11:36:56 PM +0200, Jordi Prats <jprats@cesca.es> wrote:
->> Hi all,
->> I've been researching the meaning of the contents of the 
->> /proc/net/rpc/nfsd file using the 2.6.23 kernel sources.
->>
->>
->> Sorry for this so long mail... That's all what I've got reading the 
->> source files. There's anything incorrect? There's some "educated guests" 
->>   So, could anyone please confirm or refute them?
->>
->> If you what me to do something with this I'd be glad of it!
+Tom Tucker wrote:
+> When the address information was moved to the svc_xprt structure, a bug
+> was introduced to UDP that caused an incorrect address to be used
+> when responding to RPC on the UDP transport. This was the result of
+> failing to completely implement the generic address logic for the UDP 
+> transport.
 > 
-> Wow this is an awesome job you've done here to document precisely this 
-> proc file. I've tagged your mail and copied it in a safe place.  I'm 
-> sure this would be very useful to keep a place where all these proc 
-> files are explained like this, maybe on the linux-nfs wiki ?
+> Thanks to Greg for pointing this out...
+> 
+> Since I confused myself, it's probably a good idea to describe how 
+> this is supposed to work. The transport is responsible for setting 
+> the xpt_local and xpt_remote addresses in the svc_xprt structure as
+> part of xpo_recvfrom processing. This cannot be done in a generic way 
+> and in fact varies between TCP, UDP and RDMA. A set of xpo_ functions
+> (e.g. getlocalname, getremotename) could have been added but this would
+> have resulted in additional caching and copying of the addresses around. 
+> 
+> The generic svc_recv code copies the addresses from the svc_xprt 
+> structure into the rqstp structure as part of svc_recv processing.  
+> 
+> The xpt_local address should also be set on listening endpoints, for
+> tcp/rdma this is done as part of endpoint creation and for new 
+> connections in xpo_accept processing. 
+> 
+> This patch was tested with Connectathon over V3 on UDP.
+> 
+> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+> ---
+> 
+>  net/sunrpc/svcsock.c |   16 ++++++++++------
+>  1 files changed, 10 insertions(+), 6 deletions(-)
+> 
+> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+> index e1a27ee..0f8a3d5 100644
+> --- a/net/sunrpc/svcsock.c
+> +++ b/net/sunrpc/svcsock.c
+> @@ -473,17 +473,21 @@ svc_write_space(struct sock *sk)
+>  static inline void svc_udp_get_dest_address(struct svc_rqst *rqstp,
+>  					    struct cmsghdr *cmh)
+>  {
+> -	struct svc_sock *svsk =
+> -		container_of(rqstp->rq_xprt, struct svc_sock, sk_xprt);
+> +	struct svc_xprt *xprt = rqstp->rq_xprt;
+> +	struct svc_sock *svsk = container_of(xprt, struct svc_sock, sk_xprt);
+>  	switch (svsk->sk_sk->sk_family) {
+>  	case AF_INET: {
+>  		struct in_pktinfo *pki = CMSG_DATA(cmh);
+> -		rqstp->rq_daddr.addr.s_addr = pki->ipi_spec_dst.s_addr;
+> +		struct sockaddr_in *sin =
+> +			(struct sockaddr_in *)&xprt->xpt_local;
+> +		sin->sin_addr.s_addr = pki->ipi_spec_dst.s_addr;
+>  		break;
+>  		}
+>  	case AF_INET6: {
+>  		struct in6_pktinfo *pki = CMSG_DATA(cmh);
+> -		ipv6_addr_copy(&rqstp->rq_daddr.addr6, &pki->ipi6_addr);
+> +		struct sockaddr_in6 *sin6 =
+> +			(struct sockaddr_in6 *)&xprt->xpt_local;
+> +		ipv6_addr_copy(&sin6->sin6_addr, &pki->ipi6_addr);
+>  		break;
+>  		}
+>  	}
+> @@ -506,7 +510,7 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
+>  	struct cmsghdr *cmh = &buffer.hdr;
+>  	int		err, len;
+>  	struct msghdr msg = {
+> -		.msg_name = svc_addr(rqstp),
+> +		.msg_name = &svsk->sk_xprt.xpt_remote,
+>  		.msg_control = cmh,
+>  		.msg_controllen = sizeof(buffer),
+>  		.msg_flags = MSG_DONTWAIT,
+> @@ -541,7 +545,7 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
+>  		svc_xprt_received(&svsk->sk_xprt);
+>  		return -EAGAIN;
+>  	}
+> -	rqstp->rq_addrlen = sizeof(rqstp->rq_addr);
+> +	svsk->sk_xprt.xpt_remotelen = sizeof(svsk->sk_xprt.xpt_remote);
 
-This belongs in the NFS server performance chapter of the NFS How-To. 
-The How-To's maintainer is csmithere@gmail.com.
+This worries me a bit.  Why isn't rq_addrlen involved here?  the 
+xpt_remote field should be a sockaddr_storage, and the remote_len field 
+should be the actual length of the address, not the size of the storage 
+space.
 
---------------020004070800080201040405
+>  	if (skb->tstamp.tv64 == 0) {
+>  		skb->tstamp = ktime_get_real();
+>  		/* Don't enable netstamp, sunrpc doesn't
+
+--------------050509040703070107040306
 Content-Type: text/x-vcard; charset=utf-8;
  name="chuck.lever.vcf"
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: base64
 Content-Disposition: attachment;
  filename="chuck.lever.vcf"
 
-begin:vcard
-fn:Chuck Lever
-n:Lever;Chuck
-org:Oracle Corporation;Corporate Architecture: Linux Projects Group
-adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
-email;internet:chuck dot lever at nospam oracle dot com
-title:Principal Member of Staff
-tel;work:+1 248 614 5091
-x-mozilla-html:FALSE
-version:2.1
-end:vcard
-
-
---------------020004070800080201040405
+YmVnaW46dmNhcmQNCmZuOkNodWNrIExldmVyDQpuOkxldmVyO0NodWNrDQpvcmc6T3JhY2xl
+IENvcnBvcmF0aW9uO0NvcnBvcmF0ZSBBcmNoaXRlY3R1cmU6IExpbnV4IFByb2plY3RzIEdy
+b3VwDQphZHI6OzsxMDE1IEdyYW5nZXIgQXZlbnVlO0FubiBBcmJvcjtNSTs0ODEwNDtVU0EN
+CmVtYWlsO2ludGVybmV0OmNodWNrIGRvdCBsZXZlciBhdCBub3NwYW0gb3JhY2xlIGRvdCBj
+b20NCnRpdGxlOlByaW5jaXBhbCBNZW1iZXIgb2YgU3RhZmYNCnRlbDt3b3JrOisxIDI0OCA2
+MTQgNTA5MQ0KeC1tb3ppbGxhLWh0bWw6RkFMU0UNCnZlcnNpb246Mi4xDQplbmQ6dmNhcmQN
+Cg0K
+--------------050509040703070107040306
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -88,7 +149,7 @@ This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >> http://get.splunk.com/
---------------020004070800080201040405
+--------------050509040703070107040306
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -98,4 +159,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---------------020004070800080201040405--
+--------------050509040703070107040306--
