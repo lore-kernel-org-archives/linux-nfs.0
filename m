@@ -1,27 +1,24 @@
-From: David Liontooth <liontooth@cogweb.net>
-Subject: Bug#443591: nfs-kernel-server: Unexporting directories no
- longer working
-Date: Tue, 23 Oct 2007 17:09:39 -0700
-Message-ID: <471E8D43.6080901@cogweb.net>
-References: <20070922174231.11200.29119.reportbug@localhost.localdomain>
-	<20070923000102.GA29785@uio.no>
-	<18167.24613.796605.199161@notabene.brown>
-	<46F8483E.3000103@cogweb.net> <20071012195958.GA13362@uio.no>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: LTP ustat01 test fails on NFSROOT
+Date: Tue, 23 Oct 2007 21:21:34 -0400
+Message-ID: <1193188894.27073.20.camel@heimdal.trondhjem.org>
+References: <CBDE987B-0713-4D62-8122-054183E75410@kernel.crashing.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>, 443591@bugs.debian.org,
-	nfs@lists.sourceforge.net
-To: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
+Cc: neilb@suse.de, bfields@fieldses.org, nfs@lists.sourceforge.net,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+To: Kumar Gala <galak@kernel.crashing.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IkToh-000809-20
-	for nfs@lists.sourceforge.net; Tue, 23 Oct 2007 17:09:47 -0700
-Received: from smtp-9.smtp.ucla.edu ([169.232.48.138])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IkTol-0003xW-CA
-	for nfs@lists.sourceforge.net; Tue, 23 Oct 2007 17:09:52 -0700
-In-Reply-To: <20071012195958.GA13362@uio.no>
+	id 1IkUvL-0006EC-Pk
+	for nfs@lists.sourceforge.net; Tue, 23 Oct 2007 18:20:45 -0700
+Received: from pat.uio.no ([129.240.10.15])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IkUvR-0007MO-04
+	for nfs@lists.sourceforge.net; Tue, 23 Oct 2007 18:20:49 -0700
+In-Reply-To: <CBDE987B-0713-4D62-8122-054183E75410@kernel.crashing.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,58 +31,34 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Steinar H. Gunderson wrote:
-> On Mon, Sep 24, 2007 at 04:29:02PM -0700, David Liontooth wrote:
->   
->> Hi Neil,
->>
->> Thanks for looking.
->>     
->
-> I didn't see an answer to this mail; was the problem forgotten, or was it
-> resolved?
->
-> /* Steinar */
->   
-I didn't hear back from Neil, but the issue should be considered
-resolved. I mistakenly believed it was possible to unexport a particular
-resource to several hosts, without unexporting other resources.
 
-For instance, I have 
+On Tue, 2007-10-23 at 17:52 -0500, Kumar Gala wrote:
+> I'm looking into an issue with LTP's ustat01 & ustat02 tests in which  
+> they report the following:
+> 
+> ustat01     1  FAIL  :  ustat(2) failed and setthe errno to 116 :  
+> Stale NFS file handle
+> ustat02     2  FAIL  :  ustat(2) failed to produce expected error;  
+> 14, errno: EFAULT and got 116
+> 
+> It appears sometime between 2.6.21 and 2.6.22-rc1 some changes to NFS  
+> got introduced that cause this.
+> 
+> was wondering about any ideas while I try to debug what's going on.
+> 
+> thanks
+> 
+> - k
 
-/tv01 \
-        134.32.443.30(ro,no_subtree_check,async) \
-        134.32.443.32(ro,no_subtree_check,async) \
-        134.32.443.33(ro,no_subtree_check,async) \
-        134.32.443.34(ro,no_subtree_check,async) \
-        134.32.443.35(ro,no_subtree_check,async) \
-        134.32.443.36(ro,no_subtree_check,async) \
-        134.32.443.37(ro,no_subtree_check,async)
+I'm seeing zero problems with the latest checkouts from Linus' git tree.
+Mind giving us some more details?
 
-Several other drives have similar entries.
+'strace' output would be useful, as would the standard NFS list of
+client mount options, server export options, details on how your
+exported partition is set up on the server, etc...
 
-If I understand Neil correctly, it's not possible to unexport /tv01 to
-all of these hosts by issuing
+Trond
 
-	exportfs -u :/tv01
-
-man exportfs says, "To  remove individual export entries, one can
-specify a host:/path pair. This deletes the specified entry from xtab
-and removes the corresponding kernel entry (if any)."  The man page may
-be assuming the resource has only been exported to one host, but it
-doesn't state that limitation. Apparently there's no command for
-unexporting a resource to all or a subset of hosts; the command works
-only if there's a single host.
-
-We could leave the report in place but downgrade it to wishlist. If I've
-described the situation correctly, the man page could do with a
-revision, for instance using this language:
-
-To remove an export to a host, specify a host:/path pair. This deletes
-the specified entry from xtab and removes the corresponding kernel entry
-(if any). To remove one or more exports to several hosts, use exportfs -ua.
-
-David
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
