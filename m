@@ -1,28 +1,28 @@
-From: Greg Banks <gnb@sgi.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: Re: [RFC,
-	PATCH 1/4] svc: Fix skip computation in svc_defer and svc_revisit
-Date: Wed, 24 Oct 2007 12:45:09 +1000
-Message-ID: <20071024024509.GB17462@sgi.com>
+	PATCH 1/4] svc: Fix skip computation in svc_defer and	svc_revisit
+Date: Tue, 23 Oct 2007 22:53:42 -0400
+Message-ID: <20071024025342.GB2691@fieldses.org>
 References: <20071019214058.31422.35615.stgit@dell3.ogc.int>
 	<20071019214523.31422.28978.stgit@dell3.ogc.int>
 	<20071023024530.GB6354@sgi.com>
 	<20071023180354.GE30496@fieldses.org>
+	<20071024024509.GB17462@sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: neilb@suse.de, nfs@lists.sourceforge.net
-To: "J. Bruce Fields" <bfields@fieldses.org>
+To: Greg Banks <gnb@sgi.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IkWBA-0005MX-8l
-	for nfs@lists.sourceforge.net; Tue, 23 Oct 2007 19:41:08 -0700
-Received: from netops-testserver-3-out.sgi.com
-	([192.48.171.28] helo=relay.sgi.com
-	ident=[U2FsdGVkX185mjKnRM0/zfyH6eQh2K+ibOy0wY/ukB4=])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IkWBF-0007gY-KP
-	for nfs@lists.sourceforge.net; Tue, 23 Oct 2007 19:41:13 -0700
-In-Reply-To: <20071023180354.GE30496@fieldses.org>
+	id 1IkWNL-0006Ur-62
+	for nfs@lists.sourceforge.net; Tue, 23 Oct 2007 19:53:43 -0700
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IkWNP-0002jg-Db
+	for nfs@lists.sourceforge.net; Tue, 23 Oct 2007 19:53:48 -0700
+In-Reply-To: <20071024024509.GB17462@sgi.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,47 +35,47 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tue, Oct 23, 2007 at 02:03:55PM -0400, J. Bruce Fields wrote:
-> On Tue, Oct 23, 2007 at 12:45:30PM +1000, Greg Banks wrote:
-> > On Fri, Oct 19, 2007 at 04:45:23PM -0500, Tom Tucker wrote:
+On Wed, Oct 24, 2007 at 12:45:09PM +1000, Greg Banks wrote:
+> On Tue, Oct 23, 2007 at 02:03:55PM -0400, J. Bruce Fields wrote:
+> > On Tue, Oct 23, 2007 at 12:45:30PM +1000, Greg Banks wrote:
+> > > On Fri, Oct 19, 2007 at 04:45:23PM -0500, Tom Tucker wrote:
+> > > > 
+> > > > The rq_arg.len includes the size of the transport header. The computations
+> > > > assumed that it did not.
 > > > 
-> > > The rq_arg.len includes the size of the transport header. The computations
-> > > assumed that it did not.
+> > > ok, assuming that your latest svc_rdma_xdr_decode_req(), which I
+> > > haven't read yet, doesn't change rq_arg.len as it parses the RDMA
+> > > chunking header.
+> > > 
+> > > The reason I mention that is that one set of patches I was working
+> > > with some time ago had different semantics for rq_arg.len; when
+> > > parsing the chunking header, rq_arg.len was adjusted downward as
+> > > rq_head[0].iov_base was adjusted forward.  This kept rq_arg.len equal
+> > > to the sum of rq_{head[0],pages[...],tail[0]}.iov_len, which seemed
+> > > like a good idea.
+> > > 
+> > > But your way seems valid too.
 > > 
-> > ok, assuming that your latest svc_rdma_xdr_decode_req(), which I
-> > haven't read yet, doesn't change rq_arg.len as it parses the RDMA
-> > chunking header.
-> > 
-> > The reason I mention that is that one set of patches I was working
-> > with some time ago had different semantics for rq_arg.len; when
-> > parsing the chunking header, rq_arg.len was adjusted downward as
-> > rq_head[0].iov_base was adjusted forward.  This kept rq_arg.len equal
-> > to the sum of rq_{head[0],pages[...],tail[0]}.iov_len, which seemed
-> > like a good idea.
-> > 
-> > But your way seems valid too.
+> > The integrity and privacy code may be a particularly unpleasant source
+> > of assumptions about the various length fields; see e.g.
+> > unwrap_integ_data() and unwrap_priv_data().  (But maybe nobody cares
+> > about krb5i/krb5p over rdma?)
 > 
-> The integrity and privacy code may be a particularly unpleasant source
-> of assumptions about the various length fields; see e.g.
-> unwrap_integ_data() and unwrap_priv_data().  (But maybe nobody cares
-> about krb5i/krb5p over rdma?)
+> More or less the entire point of NFS/RDMA is that the CPU never
+> has to see the data that goes on the wire; no memory copies (*),
+> no message digest calculations, no encryptions.  This makes krb5[ip]
+> over RDMA rather an unhelpful combination.
 
-More or less the entire point of NFS/RDMA is that the CPU never
-has to see the data that goes on the wire; no memory copies (*),
-no message digest calculations, no encryptions.  This makes krb5[ip]
-over RDMA rather an unhelpful combination.
+Yeah, I figured.
 
-But if there's some code there that makes actual assumptions about
-the xdr_buf.len field, we need to find it, document it and ensure
-we're maintaining that assumption in the new code.
+But obviously we have to at least make sure that combination doesn't
+cause a crash.
 
-(*) Last time I looked the write path still had an unnecessary memcpy.
+--b.
 
-Greg.
--- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-Apparently, I'm Bedevere.  Which MPHG character are you?
-I don't speak for SGI.
+> But if there's some code there that makes actual assumptions about
+> the xdr_buf.len field, we need to find it, document it and ensure
+> we're maintaining that assumption in the new code.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
