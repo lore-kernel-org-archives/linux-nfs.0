@@ -1,26 +1,25 @@
-From: Kumar Gala <galak@kernel.crashing.org>
-Subject: Re: LTP ustat01 test fails on NFSROOT
-Date: Wed, 24 Oct 2007 00:05:32 -0500
-Message-ID: <1954B8FA-6E29-4FB7-86B0-EA43AF8F2AAF@kernel.crashing.org>
-References: <CBDE987B-0713-4D62-8122-054183E75410@kernel.crashing.org>
-	<1193188894.27073.20.camel@heimdal.trondhjem.org>
-Mime-Version: 1.0 (Apple Message framework v752.2)
-Content-Type: text/plain; charset="us-ascii"
-Cc: neilb@suse.de, bfields@fieldses.org, nfs@lists.sourceforge.net,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [RFC,PATCH] svc: REPOST - Fix the UDP address logic
+Date: Wed, 24 Oct 2007 14:29:59 -0400
+Message-ID: <471F8F27.1040008@oracle.com>
+References: <20071023181301.11155.90411.stgit@dell3.ogc.int>
+Reply-To: chuck.lever@oracle.com
+Mime-Version: 1.0
+Content-Type: multipart/mixed; boundary="------------060802090106070203020901"
+Cc: bfields@fieldses.org, neilb@suse.de, nfs@lists.sourceforge.net,
+	gnb@sgi.com
+To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IkYQO-0001Zw-4L
-	for nfs@lists.sourceforge.net; Tue, 23 Oct 2007 22:05:00 -0700
-Received: from gate.crashing.org ([63.228.1.57]
-	ident=[U2FsdGVkX1/78Zb7A2wE8cy+4JAP8Lr2UpgussSaEIE=])
+	id 1Ikl16-0004Dj-15
+	for nfs@lists.sourceforge.net; Wed, 24 Oct 2007 11:31:44 -0700
+Received: from rgminet01.oracle.com ([148.87.113.118])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IkYQT-0000WO-5i
-	for nfs@lists.sourceforge.net; Tue, 23 Oct 2007 22:05:05 -0700
-In-Reply-To: <1193188894.27073.20.camel@heimdal.trondhjem.org>
+	(Exim 4.44) id 1Ikl1B-0003ad-6f
+	for nfs@lists.sourceforge.net; Wed, 24 Oct 2007 11:31:49 -0700
+In-Reply-To: <20071023181301.11155.90411.stgit@dell3.ogc.int>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,84 +32,179 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+This is a multi-part message in MIME format.
+--------------060802090106070203020901
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
-On Oct 23, 2007, at 8:21 PM, Trond Myklebust wrote:
+Tom Tucker wrote:
+> This version of the patch sets xpt_remotelen based on the address
+> family returned in the sockaddr. If the address family is not
+> AF_INET or AF_INET6, the svc_udp_recvfrom function will
+> return -ENOTSUPP.
+> --
+> 
+> When the address information was moved to the svc_xprt structure, a bug
+> was introduced to UDP that caused an incorrect address to be used
+> when responding to RPC on the UDP transport. This was the result of
+> failing to completely implement the generic address logic for the UDP 
+> transport.
+> 
+> Thanks to Greg for pointing this out...
+> 
+> Since I confused myself, it's probably a good idea to describe how 
+> this is supposed to work. The transport is responsible for setting 
+> the xpt_local and xpt_remote addresses in the svc_xprt structure as
+> part of xpo_recvfrom processing. This cannot be done in a generic way 
+> and in fact varies between TCP, UDP and RDMA. A set of xpo_ functions
+> (e.g. getlocalname, getremotename) could have been added but this would
+> have resulted in additional caching and copying of the addresses around. 
+> 
+> The generic svc_recv code copies the addresses from the svc_xprt 
+> structure into the rqstp structure as part of svc_recv processing.  
+> 
+> The xpt_local address should also be set on listening endpoints, for
+> tcp/rdma this is done as part of endpoint creation and for new 
+> connections in xpo_accept processing. 
+> 
+> This patch was tested with Connectathon over V3 on UDP.
+> 
+> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+> ---
+> 
+>  net/sunrpc/svcsock.c |   31 +++++++++++++++++++++++++------
+>  1 files changed, 25 insertions(+), 6 deletions(-)
+> 
+> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+> index e1a27ee..8924cad 100644
+> --- a/net/sunrpc/svcsock.c
+> +++ b/net/sunrpc/svcsock.c
+> @@ -140,6 +140,18 @@ static char *__svc_print_addr(struct soc
+>  	return buf;
+>  }
+>  
+> +static size_t svc_sockaddr_len(struct sockaddr *addr)
+> +{
+> +	switch (addr->sa_family) {
+> +	case AF_INET:
+> +		return sizeof(struct sockaddr_in);
+> +	case AF_INET6:
+> +		return sizeof(struct sockaddr_in6);
+> +	}
+> +	dprintk("svc: unrecognized address family %d\n", addr->sa_family);
+> +	return -ENOTSUPP;
+> +}
+> +
 
->
-> On Tue, 2007-10-23 at 17:52 -0500, Kumar Gala wrote:
->> I'm looking into an issue with LTP's ustat01 & ustat02 tests in which
->> they report the following:
->>
->> ustat01     1  FAIL  :  ustat(2) failed and setthe errno to 116 :
->> Stale NFS file handle
->> ustat02     2  FAIL  :  ustat(2) failed to produce expected error;
->> 14, errno: EFAULT and got 116
->>
->> It appears sometime between 2.6.21 and 2.6.22-rc1 some changes to NFS
->> got introduced that cause this.
->>
->> was wondering about any ideas while I try to debug what's going on.
->>
->> thanks
->>
->> - k
->
-> I'm seeing zero problems with the latest checkouts from Linus' git  
-> tree.
-> Mind giving us some more details?
+Nit: sa_family is probably an unsigned short, so use "%u" instead of
+"%d".  Also I'm using -EAFNOSUPPORT in similar error cases, but I may 
+have missed a stated preference.
 
-I tried 2.6.24-rc1 w/the same result.
+I'm working blind here (not having pulled down Bruce's or your summary
+branches).  I suspect you may need the result of svc_sockaddr_len() in
+other parts of your code (perhaps in the RDMA transport implementation).
 
-The system is a 32-bit PPC embedded board that we mounting the rootfs  
-over nfs on.
+Based on your patch and comments, I assume that there are some missing
+changes (from me, perhaps) that leave updating rq_addrlen with a
+sizeof() instead of a real address size in several other places besides
+the UDP receive path.  It would be cleaner to fix all of those in one or
+more separate patches (placed before your "Fix the UDP address logic"
+patch).
 
-The defconfig is arch/powerpc/configs/mpc8641_hpcn_defconfig
+(There is a documented preference for this kind of patch atomizing and
+ordering which you can probably find in Documentation/SubmittingPatches
+or something like that).
 
-> 'strace' output would be useful, as would the standard NFS list of
-> client mount options, server export options, details on how your
-> exported partition is set up on the server, etc...
+>  /**
+>   * svc_print_addr - Format rq_addr field for printing
+>   * @rqstp: svc_rqst struct containing address to print
+> @@ -473,17 +485,21 @@ svc_write_space(struct sock *sk)
+>  static inline void svc_udp_get_dest_address(struct svc_rqst *rqstp,
+>  					    struct cmsghdr *cmh)
+>  {
+> -	struct svc_sock *svsk =
+> -		container_of(rqstp->rq_xprt, struct svc_sock, sk_xprt);
+> +	struct svc_xprt *xprt = rqstp->rq_xprt;
+> +	struct svc_sock *svsk = container_of(xprt, struct svc_sock, sk_xprt);
+>  	switch (svsk->sk_sk->sk_family) {
+>  	case AF_INET: {
+>  		struct in_pktinfo *pki = CMSG_DATA(cmh);
+> -		rqstp->rq_daddr.addr.s_addr = pki->ipi_spec_dst.s_addr;
+> +		struct sockaddr_in *sin =
+> +			(struct sockaddr_in *)&xprt->xpt_local;
+> +		sin->sin_addr.s_addr = pki->ipi_spec_dst.s_addr;
+>  		break;
+>  		}
+>  	case AF_INET6: {
+>  		struct in6_pktinfo *pki = CMSG_DATA(cmh);
+> -		ipv6_addr_copy(&rqstp->rq_daddr.addr6, &pki->ipi6_addr);
+> +		struct sockaddr_in6 *sin6 =
+> +			(struct sockaddr_in6 *)&xprt->xpt_local;
+> +		ipv6_addr_copy(&sin6->sin6_addr, &pki->ipi6_addr);
+>  		break;
+>  		}
+>  	}
 
-strace:
+Neil asked me to add macros for casting sockaddr_storage fields in the 
+svc_rqst structure (see svc_addr() and svc_addr_in()).  You might 
+consider adding similar macros for cleanly extracting address 
+information from svc_xprt.
 
-stat64("/", {st_dev=makedev(0, 14), st_ino=58821800, st_mode=S_IFDIR| 
-0775, st_nlink=18, st_uid=500, st_gid=500, st_blksize=4096,  
-st_blocks=8, st_size=4096, st_atime=2007/10/23-22:43:30,  
-st_mtime=2007/10/18-19:51:19, st_ctime=2007/10/18-19:51:19}) = 0
-ustat(0xe, 0x1001a008)                  = -1 ESTALE (Stale NFS file  
-handle)
-fstat64(1, {st_dev=makedev(0, 14), st_ino=58821964, st_mode=S_IFCHR| 
-0600, st_nlink=1, st_uid=0, st_gid=0, st_blksize=4096, st_blocks=0,  
-st_rdev=makedev(4, 64), st_atime=2007/10/16-18:32:59,  
-st_mtime=2007/10/16-18:32:59, st_ctime=2007/10/24-05:03:34}) = 0
+> @@ -506,7 +522,7 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
+>  	struct cmsghdr *cmh = &buffer.hdr;
+>  	int		err, len;
+>  	struct msghdr msg = {
+> -		.msg_name = svc_addr(rqstp),
+> +		.msg_name = &svsk->sk_xprt.xpt_remote,
+>  		.msg_control = cmh,
+>  		.msg_controllen = sizeof(buffer),
+>  		.msg_flags = MSG_DONTWAIT,
+> @@ -541,7 +557,10 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
+>  		svc_xprt_received(&svsk->sk_xprt);
+>  		return -EAGAIN;
+>  	}
+> -	rqstp->rq_addrlen = sizeof(rqstp->rq_addr);
+> +	len = svc_sockaddr_len((struct sockaddr *)&svsk->sk_xprt.xpt_remote);
+> +	if (len < 0)
+> +		return len;
+> +	svsk->sk_xprt.xpt_remotelen = len;
+>  	if (skb->tstamp.tv64 == 0) {
+>  		skb->tstamp = ktime_get_real();
+>  		/* Don't enable netstamp, sunrpc doesn't
 
+--------------060802090106070203020901
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck.lever.vcf"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment;
+ filename="chuck.lever.vcf"
 
-Info on the server:
-
-[root@ducky ~]# exportfs -v
-/               <world>(rw,async,wdelay,no_root_squash,no_subtree_check)
-[root@ducky ~]# uname -a
-Linux ducky.am.freescale.net 2.6.22.5-76.fc7 #1 SMP Thu Aug 30  
-13:04:34 EDT 2007 ppc64 ppc64 ppc64 GNU/Linux
-
-On the host system:
-
-(not sure how to get client mount options, mount reports:
-
-%root% on / type unknown (rw)
-
--sh-2.05b# cat /proc/cmdline
-root=/dev/nfs rw nfsroot=192.168.1.15:/home/galak/ltib-joust-8572/ 
-rootfs  
-ip=192.168.1.147:192.168.1.15:192.168.1.1:255.255.254.0:rocky:eth0:off c 
-onsole=ttyS0,115200
-
-If there is some other info that would be useful please let me know.
+YmVnaW46dmNhcmQNCmZuOkNodWNrIExldmVyDQpuOkxldmVyO0NodWNrDQpvcmc6T3JhY2xl
+IENvcnBvcmF0aW9uO0NvcnBvcmF0ZSBBcmNoaXRlY3R1cmU6IExpbnV4IFByb2plY3RzIEdy
+b3VwDQphZHI6OzsxMDE1IEdyYW5nZXIgQXZlbnVlO0FubiBBcmJvcjtNSTs0ODEwNDtVU0EN
+CmVtYWlsO2ludGVybmV0OmNodWNrIGRvdCBsZXZlciBhdCBub3NwYW0gb3JhY2xlIGRvdCBj
+b20NCnRpdGxlOlByaW5jaXBhbCBNZW1iZXIgb2YgU3RhZmYNCnRlbDt3b3JrOisxIDI0OCA2
+MTQgNTA5MQ0KeC1tb3ppbGxhLWh0bWw6RkFMU0UNCnZlcnNpb246Mi4xDQplbmQ6dmNhcmQN
+Cg0K
+--------------060802090106070203020901
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >> http://get.splunk.com/
+--------------060802090106070203020901
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--------------060802090106070203020901--
