@@ -1,19 +1,38 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [Fwd: [CFP] 2008 Linux Storage and Filesystem Workshop]
-Date: Wed, 24 Oct 2007 15:45:03 -0400
-Message-ID: <1193255103.7515.29.camel@heimdal.trondhjem.org>
+From: Prasad P <pvp@us.ibm.com>
+Subject: [PATCH] Fix incorrect assignment
+Date: Wed, 24 Oct 2007 15:14:32 -0500
+Message-ID: <OFE5621A0A.80A31B03-ON8725737E.006E4E77-8625737E.006F322A@us.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net, nfsv4@linux-nfs.org
+Content-Type: multipart/mixed; boundary="===============1755424904=="
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IkmBh-0003T8-V8
-	for nfs@lists.sourceforge.net; Wed, 24 Oct 2007 12:46:46 -0700
-Received: from mx2.netapp.com ([216.240.18.37])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IkmBj-0004k2-RU
-	for nfs@lists.sourceforge.net; Wed, 24 Oct 2007 12:46:50 -0700
+	id 1Ikmh8-0006eE-Eh
+	for nfs@lists.sourceforge.net; Wed, 24 Oct 2007 13:19:14 -0700
+Received: from e32.co.us.ibm.com ([32.97.110.150])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1Ikmcj-00054U-ML
+	for nfs@lists.sourceforge.net; Wed, 24 Oct 2007 13:14:43 -0700
+Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com
+	[9.17.195.227])
+	by e32.co.us.ibm.com (8.12.11.20060308/8.13.8) with ESMTP id
+	l9OJ5RqC029820
+	for <nfs@lists.sourceforge.net>; Wed, 24 Oct 2007 15:05:27 -0400
+Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
+	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id
+	l9OKEYcf117106
+	for <nfs@lists.sourceforge.net>; Wed, 24 Oct 2007 14:14:34 -0600
+Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id
+	l9OKEYbw030749
+	for <nfs@lists.sourceforge.net>; Wed, 24 Oct 2007 14:14:34 -0600
+Received: from d03nm121.boulder.ibm.com (d03nm121.boulder.ibm.com
+	[9.17.195.147])
+	by d03av02.boulder.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id
+	l9OKEYEL030718
+	for <nfs@lists.sourceforge.net>; Wed, 24 Oct 2007 14:14:34 -0600
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,50 +45,94 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+--===============1755424904==
+Content-type: multipart/alternative;
+	Boundary="0__=08BBF9EDDFFDC8E78f9e8a93df938690918c08BBF9EDDFFDC8E7"
+Content-Disposition: inline
 
--------- Forwarded Message --------
-From: Chris Mason <chris.mason@oracle.com>
-To: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: [CFP] 2008 Linux Storage and Filesystem Workshop
-Date: 	Wed, 24 Oct 2007 15:23:18 -0400
+--0__=08BBF9EDDFFDC8E78f9e8a93df938690918c08BBF9EDDFFDC8E7
+Content-type: text/plain; charset=US-ASCII
 
-Hello everyone,
 
-We are organizing another filesystem and storage workshop in San Jose
-next Feb 25 and 26.  You can find some great writeups of last year's
-conference on LWN:
 
-http://lwn.net/Articles/226351/
+Dereferenced pointer "dentry" without checking and assigned to inode
+in the declaration.
 
-This year we're trying to concentrate on more problem solving sessions,
-short term projects and joint sessions.  You can find all the details
-on the conference webpages:
+Cc: Steve French <smfltc@us.ibm.com>
+Signed-off-by: Prasad V Potluri <pvp@us.ibm.com>
+---
 
-http://www.usenix.org/events/lsf08/
+diff -uprN a/fs/nfsd/nfs2acl.c b/fs/nfsd/nfs2acl.c
+--- a/fs/nfsd/nfs2acl.c 2007-10-09 15:31:38.000000000 -0500
++++ b/fs/nfsd/nfs2acl.c 2007-10-24 14:03:13.000000000 -0500
+@@ -221,7 +221,7 @@ static int nfsaclsvc_encode_getaclres(st
+            struct nfsd3_getaclres *resp)
+ {
+      struct dentry *dentry = resp->fh.fh_dentry;
+-     struct inode *inode = dentry->d_inode;
++     struct inode *inode;
+      struct kvec *head = rqstp->rq_res.head;
+      unsigned int base;
+      int n;
+--
+Thanks.
 
-Soon there will be a link for submitting your position statement, which
-is basically a note to the organizers that you are interested in
-attending and which topics you think should be covered.
+Regards,
+Prasad Potluri
+email: pvp at-sign us dot ibm dot com
+--0__=08BBF9EDDFFDC8E78f9e8a93df938690918c08BBF9EDDFFDC8E7
+Content-type: text/html; charset=US-ASCII
+Content-Disposition: inline
 
-We're also looking for people to lead the discussion around the major
-topics, so please let us know if you're interested in that.  The
-discussion leaders will have input into the people that get invited and
-the format of the discussion.
+<html><body>
+<p>Dereferenced pointer &quot;dentry&quot; without checking and assigned to inode<br>
+in the declaration.<br>
+<br>
+Cc: Steve French &lt;smfltc@us.ibm.com&gt;<br>
+Signed-off-by: Prasad V Potluri &lt;pvp@us.ibm.com&gt;<br>
+---<br>
+<br>
+diff -uprN a/fs/nfsd/nfs2acl.c b/fs/nfsd/nfs2acl.c<br>
+--- a/fs/nfsd/nfs2acl.c	2007-10-09 15:31:38.000000000 -0500<br>
++++ b/fs/nfsd/nfs2acl.c	2007-10-24 14:03:13.000000000 -0500<br>
+@@ -221,7 +221,7 @@ static int nfsaclsvc_encode_getaclres(st<br>
+ 		struct nfsd3_getaclres *resp)<br>
+ {<br>
+ 	struct dentry *dentry = resp-&gt;fh.fh_dentry;<br>
+-	struct inode *inode = dentry-&gt;d_inode;<br>
++	struct inode *inode;<br>
+ 	struct kvec *head = rqstp-&gt;rq_res.head;<br>
+ 	unsigned int base;<br>
+ 	int n;<br>
+--<br>
+Thanks.<br>
+<br>
+Regards,<br>
+Prasad Potluri<br>
+email: pvp at-sign us dot ibm dot com</body></html>
+--0__=08BBF9EDDFFDC8E78f9e8a93df938690918c08BBF9EDDFFDC8E7--
 
-Please let me know if there are any questions about the workshop.
 
-Thanks,
-Chris
--
-To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--===============1755424904==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >> http://get.splunk.com/
+--===============1755424904==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============1755424904==--
