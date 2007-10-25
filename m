@@ -1,11 +1,25 @@
-From: "Mariya" <ra@opticaldisc-systems.com>
-Subject: Re: Looking for a wife?
-Date: Thu, 25 Oct 2007 03:56:17 +0300
-Message-ID: <00c501c816a1$d4745a80$9d08000a@89.0.118.224.dynamic.barak-online.net>
+From: Greg Banks <gnb@sgi.com>
+Subject: Re: [RFC,PATCH] svc: REPOST - Fix the UDP address logic
+Date: Thu, 25 Oct 2007 11:56:58 +1000
+Message-ID: <20071025015658.GA30105@sgi.com>
+References: <20071023181301.11155.90411.stgit@dell3.ogc.int>
+	<471F8F27.1040008@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: "Leon" <nfs@lists.sourceforge.net>
+Cc: bfields@fieldses.org, neilb@suse.de, nfs@lists.sourceforge.net
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1Ikrtc-00046O-1p
+	for nfs@lists.sourceforge.net; Wed, 24 Oct 2007 18:52:28 -0700
+Received: from netops-testserver-3-out.sgi.com
+	([192.48.171.28] helo=relay.sgi.com
+	ident=[U2FsdGVkX19OqrpcvAEfUiSwm5G3leX0WFdo4S1t0n8=])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Ikrtg-00044T-Ez
+	for nfs@lists.sourceforge.net; Wed, 24 Oct 2007 18:52:33 -0700
+In-Reply-To: <471F8F27.1040008@oracle.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -18,30 +32,36 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hello, Leon
+On Wed, Oct 24, 2007 at 02:29:59PM -0400, Chuck Lever wrote:
+> Tom Tucker wrote:
+> > 
+> >+static size_t svc_sockaddr_len(struct sockaddr *addr)
+> >+{
+> >+	switch (addr->sa_family) {
+> >+	case AF_INET:
+> >+		return sizeof(struct sockaddr_in);
+> >+	case AF_INET6:
+> >+		return sizeof(struct sockaddr_in6);
+> >+	}
+> >+	dprintk("svc: unrecognized address family %d\n", addr->sa_family);
+> >+	return -ENOTSUPP;
+> >+}
+> >+
+> 
+> Nit: sa_family is probably an unsigned short, so use "%u" instead of
+> "%d".  Also I'm using -EAFNOSUPPORT in similar error cases, but I may 
+> have missed a stated preference.
 
-What can I tell about myself? I don't like winter and cold. I hate
-loneliness which is associated with cold winter into my mind. I have not yet
-met a person who will have place into his heart for me.People say that I am
-beautiful and clever, why I can't find my soul mate?
-I don't like parties where are a lot of people, I don't like discos. I like
-quite rest, for example, theatre, cinema, coziness of sweet home  where I
-feel in protection.
-I feel that you are calm and kind-hearted and you want to create family too.
-Am I not mistaken?
-I want to create my native home, to take care of someone who will love me.
-I want to hear from somebody "my Darling wife, my Beloved Woman" and to feel
-the happiest in the world.
-If you have some place for me in your heart, write me please 
-http://russobride.info/?idAff=101 and you will see that in my heart 
-you will take all free space.
+EAFNOSUPPORT is the most appropriate error.
 
+Also, you might want to make the return the signed ssize_t so that
+the return value -EAFNOSUPPORT is actually negative.
 
-Kiss-kiss
-
-Mariya
-
-
+Greg.
+-- 
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+Apparently, I'm Bedevere.  Which MPHG character are you?
+I don't speak for SGI.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
