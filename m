@@ -1,22 +1,20 @@
-From: Bernd Schubert <bernd-schubert@gmx.de>
+From: Andreas Schuldei <andreas@schuldei.org>
 Subject: Re: nfs performance problem
-Date: Thu, 25 Oct 2007 15:53:51 +0200
-Message-ID: <200710251553.52138.bernd-schubert@gmx.de>
-References: <20071025131029.GH8334@barnabas.schuldei.org>
+Date: Thu, 25 Oct 2007 16:39:45 +0200
+Message-ID: <20071025141913.GD4499@jakobus.spotify.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Andreas Schuldei <andreas@schuldei.org>
-To: nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
+To: Bernd Schubert <bernd-schubert@gmx.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Il39t-0005ZS-GX
-	for nfs@lists.sourceforge.net; Thu, 25 Oct 2007 06:54:01 -0700
-Received: from mail.gmx.net ([213.165.64.20])
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1Il39x-0000dJ-Bf
-	for nfs@lists.sourceforge.net; Thu, 25 Oct 2007 06:54:07 -0700
-In-Reply-To: <20071025131029.GH8334@barnabas.schuldei.org>
+	id 1Il3sW-00020X-FH
+	for nfs@lists.sourceforge.net; Thu, 25 Oct 2007 07:40:08 -0700
+Received: from petrus.schuldei.org ([81.27.3.162] helo=barnabas.schuldei.org)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Il3sZ-0003Js-Nt
+	for nfs@lists.sourceforge.net; Thu, 25 Oct 2007 07:40:14 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,46 +27,44 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hello Andreas,
+* Bernd Schubert (bernd-schubert@gmx.de) [071025 15:54]:
+> Hello Andreas,
+> 
+> On Thursday 25 October 2007 15:10:29 Andreas Schuldei wrote:
+> > lotta:/var/disks/sda on /var/disks/sda type nfs
+> > (ro,hard,intr,proto=tcp,rsize=32k,addr=217.213.5.44) lotta:/var/disks/sdb
+> 
+> try to increase rsize and wsize as much as possible, the maximum can be 
+> adjusted in /proc/fs/nfsd/max_block_size on the nfs server.
 
-On Thursday 25 October 2007 15:10:29 Andreas Schuldei wrote:
-> lotta:/var/disks/sda on /var/disks/sda type nfs
-> (ro,hard,intr,proto=tcp,rsize=32k,addr=217.213.5.44) lotta:/var/disks/sdb
-
-try to increase rsize and wsize as much as possible, the maximum can be 
-adjusted in /proc/fs/nfsd/max_block_size on the nfs server.
-
->
-> but when i then do the same dd again on the client i get
-> disappointing 60-70Mbyte/s altogether. from a single disk i get
-> ~25Mbytes/s on the client side.
->
-> i played with some buffers /proc/sys/net/core/rmem_max and
-> /proc/sys/net/core/rmem_default and increased them to 256M on the
-> client.
->
-> i was suspecting that the nfs server reads the files in too small
-> chunks and tried to help it with
->
-> for i in a  h i  ; do ( echo $((1024*6)) >
-> /sys/block/sd$i/queue/read_ahead_kb ) ; done
-
-Are your partitions on lvm or md? This wouldn't help then, AFAIK for lvm you 
-can't do it via /sys, but must always use blockdev
-
->
-> to get it to read in the files in one go.
->
-> I would hope to at least double the speed. do
-> you have a benchmark tool that can tell me the latency? i tried
-> iozone and tried forcing it to only do read tests and did not get
-> any helpfull error or output at all.
-
-First of all, what is you *local* performance?
+the with a max_block_size and rsize=512k i did not achive a noticable performance impact.
+increasing it to 2M decreased the performance to 12-12Mbytes/s per disk. do i need to adjust more 
+tuneables to benefit from the increased size?
 
 
-Cheers,
-Bernd
+> > i was suspecting that the nfs server reads the files in too small
+> > chunks and tried to help it with
+> >
+> > for i in a  h i  ; do ( echo $((1024*6)) >
+> > /sys/block/sd$i/queue/read_ahead_kb ) ; done
+> 
+> Are your partitions on lvm or md? This wouldn't help then, AFAIK for lvm you 
+> can't do it via /sys, but must always use blockdev
+
+they are on xfs directly on disk, no lvm or md involved.
+
+> > to get it to read in the files in one go.
+> >
+> > I would hope to at least double the speed. do
+> > you have a benchmark tool that can tell me the latency? i tried
+> > iozone and tried forcing it to only do read tests and did not get
+> > any helpfull error or output at all.
+> 
+> First of all, what is you *local* performance?
+
+i mentioned that i get 50Mbyte/s out of each disk, even
+when doing the dd on all four disks at the same time.
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
