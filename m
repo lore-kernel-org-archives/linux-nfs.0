@@ -1,91 +1,161 @@
-From: Steve French <smfltc@us.ibm.com>
-Subject: Re: [PATCH] Fix incorrect assignment
-Date: Thu, 25 Oct 2007 12:58:18 -0500
-Message-ID: <4720D93A.1000300@us.ibm.com>
-References: <20071024205736.GL29830@fieldses.org>
-	<OF5B1D195B.8B37E3EE-ON8725737F.00547AB2-8625737F.0054CCF1@us.ibm.com>
-	<20071025160319.GA31888@fieldses.org>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: LTP ustat01 test fails on NFSROOT
+Date: Thu, 25 Oct 2007 13:59:28 -0400
+Message-ID: <1193335168.7705.39.camel@heimdal.trondhjem.org>
+References: <CBDE987B-0713-4D62-8122-054183E75410@kernel.crashing.org>
+	 <1193188894.27073.20.camel@heimdal.trondhjem.org>
+	 <1954B8FA-6E29-4FB7-86B0-EA43AF8F2AAF@kernel.crashing.org>
+	 <2B2C1270-60FB-4830-A62C-D0357D2E1FB3@kernel.crashing.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Prasad P <pvp@us.ibm.com>, nfs@lists.sourceforge.net
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Il6wg-0000V3-Uc
-	for nfs@lists.sourceforge.net; Thu, 25 Oct 2007 10:56:38 -0700
-Received: from e1.ny.us.ibm.com ([32.97.182.141])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Il6wj-00037C-38
-	for nfs@lists.sourceforge.net; Thu, 25 Oct 2007 10:56:44 -0700
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e1.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id l9PHsXmY005115
-	for <nfs@lists.sourceforge.net>; Thu, 25 Oct 2007 13:54:33 -0400
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v8.5) with ESMTP id
-	l9PHsXIF136512
-	for <nfs@lists.sourceforge.net>; Thu, 25 Oct 2007 13:54:33 -0400
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id
-	l9PHsWtW004840
-	for <nfs@lists.sourceforge.net>; Thu, 25 Oct 2007 13:54:32 -0400
-In-Reply-To: <20071025160319.GA31888@fieldses.org>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: text/plain
+Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	nfs@lists.sourceforge.net, neilb@suse.de, bfields@fieldses.org,
+	chuck.lever@oracle.com
+To: Kumar Gala <galak@kernel.crashing.org>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1756978AbXJYR71@vger.kernel.org>
+In-Reply-To: <2B2C1270-60FB-4830-A62C-D0357D2E1FB3@kernel.crashing.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-J. Bruce Fields wrote:
-> On Thu, Oct 25, 2007 at 10:26:14AM -0500, Prasad P wrote:
->   
->> nfs-bounces@lists.sourceforge.net wrote on 10/24/2007 03:57:36 PM:
->>     
->>> On Wed, Oct 24, 2007 at 03:14:32PM -0500, Prasad P wrote:
->>>       
->>>> Dereferenced pointer "dentry" without checking and assigned to inode
->>>> in the declaration.
->>>>         
->>> Seems reasonable, but: looking at nfsd_dispatch(), it appears that the
->>> encode function is never called in this case (since rq_vers == 2 and
->>> nfsacld_proc_getacl() would have returned an error if it couldn't find a
->>> dentry).  Am I missing something?  Do you have a test case?
->>>
->>> --b.
->>>       
->> No, I don't have a test case.  This error was found by coverity scan.
->>
->> After declaration of the variables, we actually check the dentry and
->> dentry->d_inode, and if they are not NULL, assign dentry->d_inode to inode
->> variable.
->>
->> if (dentry == NULL || dentry->d_inode == NULL)
->>       return 0;
->> inode = dentry->d_inode;
->>     
->
-> Yeah, the current code is obviously a little schizophrenic.  I'm just
-> wondering whether we should fix it by deleting the early assignment or
-> by removing the unnecessary checks.
->   
+Could you please try the following patch?
 
-My preference would be the more intuitive and also safer answer (in the 
-long term) ie to remove the early assignment.  It saves having to think 
-as much in the long term about error conditions in the callers of this 
-function.
+Cheers
+  Trond
+--------------------------------- CUT HERE -----------------------------
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date: Thu, 25 Oct 2007 13:56:10 -0400
+NFS: Fix the ustat() regression
 
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Splunk Inc.
-Still grepping through log files to find problems?  Stop.
-Now Search log events and configuration files using AJAX and a browser.
-Download your FREE copy of Splunk now >> http://get.splunk.com/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+Since 2.6.18, the superblock sb->s_root has been a dummy dentry with a
+dummy inode. This breaks ustat(), which actually uses sb->s_root in a
+vfstat() call.
+
+Fix this by making the s_root a dummy alias to the directory inode that was
+used when creating the superblock.
+
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+
+ fs/nfs/getroot.c |   81 ++++++++++++++++++------------------------------------
+ 1 files changed, 27 insertions(+), 54 deletions(-)
+
+diff --git a/fs/nfs/getroot.c b/fs/nfs/getroot.c
+index 522e5ad..0ee4384 100644
+--- a/fs/nfs/getroot.c
++++ b/fs/nfs/getroot.c
+@@ -43,6 +43,25 @@
+ #define NFSDBG_FACILITY		NFSDBG_CLIENT
+ 
+ /*
++ * Set the superblock root dentry.
++ * Note that this function frees the inode in case of error.
++ */
++static int nfs_superblock_set_dummy_root(struct super_block *sb, struct inode *inode)
++{
++	/* The mntroot acts as the dummy root dentry for this superblock */
++	if (sb->s_root == NULL) {
++		sb->s_root = d_alloc_root(inode);
++		if (sb->s_root == NULL) {
++			iput(inode);
++			return -ENOMEM;
++		}
++		/* Circumvent igrab(): we know the inode is not being freed */
++		atomic_inc(&inode->i_count);
++	}
++	return 0;
++}
++
++/*
+  * get an NFS2/NFS3 root dentry from the root filehandle
+  */
+ struct dentry *nfs_get_root(struct super_block *sb, struct nfs_fh *mntfh)
+@@ -54,33 +73,6 @@ struct dentry *nfs_get_root(struct super_block *sb, struct nfs_fh *mntfh)
+ 	struct inode *inode;
+ 	int error;
+ 
+-	/* create a dummy root dentry with dummy inode for this superblock */
+-	if (!sb->s_root) {
+-		struct nfs_fh dummyfh;
+-		struct dentry *root;
+-		struct inode *iroot;
+-
+-		memset(&dummyfh, 0, sizeof(dummyfh));
+-		memset(&fattr, 0, sizeof(fattr));
+-		nfs_fattr_init(&fattr);
+-		fattr.valid = NFS_ATTR_FATTR;
+-		fattr.type = NFDIR;
+-		fattr.mode = S_IFDIR | S_IRUSR | S_IWUSR;
+-		fattr.nlink = 2;
+-
+-		iroot = nfs_fhget(sb, &dummyfh, &fattr);
+-		if (IS_ERR(iroot))
+-			return ERR_PTR(PTR_ERR(iroot));
+-
+-		root = d_alloc_root(iroot);
+-		if (!root) {
+-			iput(iroot);
+-			return ERR_PTR(-ENOMEM);
+-		}
+-
+-		sb->s_root = root;
+-	}
+-
+ 	/* get the actual root for this mount */
+ 	fsinfo.fattr = &fattr;
+ 
+@@ -96,6 +88,10 @@ struct dentry *nfs_get_root(struct super_block *sb, struct nfs_fh *mntfh)
+ 		return ERR_PTR(PTR_ERR(inode));
+ 	}
+ 
++	error = nfs_superblock_set_dummy_root(sb, inode);
++	if (error != 0)
++		return ERR_PTR(error);
++
+ 	/* root dentries normally start off anonymous and get spliced in later
+ 	 * if the dentry tree reaches them; however if the dentry already
+ 	 * exists, we'll pick it up at this point and use it as the root
+@@ -241,33 +237,6 @@ struct dentry *nfs4_get_root(struct super_block *sb, struct nfs_fh *mntfh)
+ 
+ 	dprintk("--> nfs4_get_root()\n");
+ 
+-	/* create a dummy root dentry with dummy inode for this superblock */
+-	if (!sb->s_root) {
+-		struct nfs_fh dummyfh;
+-		struct dentry *root;
+-		struct inode *iroot;
+-
+-		memset(&dummyfh, 0, sizeof(dummyfh));
+-		memset(&fattr, 0, sizeof(fattr));
+-		nfs_fattr_init(&fattr);
+-		fattr.valid = NFS_ATTR_FATTR;
+-		fattr.type = NFDIR;
+-		fattr.mode = S_IFDIR | S_IRUSR | S_IWUSR;
+-		fattr.nlink = 2;
+-
+-		iroot = nfs_fhget(sb, &dummyfh, &fattr);
+-		if (IS_ERR(iroot))
+-			return ERR_PTR(PTR_ERR(iroot));
+-
+-		root = d_alloc_root(iroot);
+-		if (!root) {
+-			iput(iroot);
+-			return ERR_PTR(-ENOMEM);
+-		}
+-
+-		sb->s_root = root;
+-	}
+-
+ 	/* get the info about the server and filesystem */
+ 	error = nfs4_server_capabilities(server, mntfh);
+ 	if (error < 0) {
+@@ -289,6 +258,10 @@ struct dentry *nfs4_get_root(struct super_block *sb, struct nfs_fh *mntfh)
+ 		return ERR_PTR(PTR_ERR(inode));
+ 	}
+ 
++	error = nfs_superblock_set_dummy_root(sb, inode);
++	if (error != 0)
++		return ERR_PTR(error);
++
+ 	/* root dentries normally start off anonymous and get spliced in later
+ 	 * if the dentry tree reaches them; however if the dentry already
+ 	 * exists, we'll pick it up at this point and use it as the root
