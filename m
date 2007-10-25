@@ -1,15 +1,27 @@
-From: Prasad P <pvp@us.ibm.com>
-Subject: Re: [PATCH] Fix incorrect assignment
-Date: Thu, 25 Oct 2007 10:26:14 -0500
-Message-ID: <OF5B1D195B.8B37E3EE-ON8725737F.00547AB2-8625737F.0054CCF1@us.ibm.com>
-References: <20071024205736.GL29830@fieldses.org>
-Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============2025350691=="
-Cc: nfs-bounces@lists.sourceforge.net, nfs@lists.sourceforge.net,
-	smfltc@us.ibm.com
-To: "J. Bruce Fields" <bfields@fieldses.org>
+From: Kumar Gala <galak@kernel.crashing.org>
+Subject: Re: LTP ustat01 test fails on NFSROOT
+Date: Thu, 25 Oct 2007 10:59:53 -0500
+Message-ID: <2B2C1270-60FB-4830-A62C-D0357D2E1FB3@kernel.crashing.org>
+References: <CBDE987B-0713-4D62-8122-054183E75410@kernel.crashing.org>
+	<1193188894.27073.20.camel@heimdal.trondhjem.org>
+	<1954B8FA-6E29-4FB7-86B0-EA43AF8F2AAF@kernel.crashing.org>
+Mime-Version: 1.0 (Apple Message framework v752.2)
+Content-Type: text/plain; charset="us-ascii"
+Cc: neilb@suse.de, bfields@fieldses.org, nfs@lists.sourceforge.net,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-In-Reply-To: <20071024205736.GL29830@fieldses.org>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1Il57F-0005Gb-K4
+	for nfs@lists.sourceforge.net; Thu, 25 Oct 2007 08:59:25 -0700
+Received: from gate.crashing.org ([63.228.1.57]
+	ident=[U2FsdGVkX18A7P5BO3dbXvYRjUxGy4e6SlmX4WNtppw=])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1Il57I-000379-PJ
+	for nfs@lists.sourceforge.net; Thu, 25 Oct 2007 08:59:31 -0700
+In-Reply-To: <1954B8FA-6E29-4FB7-86B0-EA43AF8F2AAF@kernel.crashing.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -22,190 +34,95 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============2025350691==
-Content-type: multipart/alternative;
-	Boundary="0__=08BBF9ECDFC7FC228f9e8a93df938690918c08BBF9ECDFC7FC22"
-Content-Disposition: inline
 
---0__=08BBF9ECDFC7FC228f9e8a93df938690918c08BBF9ECDFC7FC22
-Content-type: text/plain; charset=US-ASCII
-
-nfs-bounces@lists.sourceforge.net wrote on 10/24/2007 03:57:36 PM:
-
-> On Wed, Oct 24, 2007 at 03:14:32PM -0500, Prasad P wrote:
-> >
-> >
-> > Dereferenced pointer "dentry" without checking and assigned to inode
-> > in the declaration.
->
-> Seems reasonable, but: looking at nfsd_dispatch(), it appears that the
-> encode function is never called in this case (since rq_vers == 2 and
-> nfsacld_proc_getacl() would have returned an error if it couldn't find a
-> dentry).  Am I missing something?  Do you have a test case?
->
-> --b.
-
-No, I don't have a test case.  This error was found by coverity scan.
-
-After declaration of the variables, we actually check the dentry and
-dentry->d_inode, and if they are not NULL, assign dentry->d_inode to inode
-variable.
-
-if (dentry == NULL || dentry->d_inode == NULL)
-      return 0;
-inode = dentry->d_inode;
+On Oct 24, 2007, at 12:05 AM, Kumar Gala wrote:
 
 >
+> On Oct 23, 2007, at 8:21 PM, Trond Myklebust wrote:
 >
-> >
-> > Cc: Steve French <smfltc@us.ibm.com>
-> > Signed-off-by: Prasad V Potluri <pvp@us.ibm.com>
-> > ---
-> >
-> > diff -uprN a/fs/nfsd/nfs2acl.c b/fs/nfsd/nfs2acl.c
-> > --- a/fs/nfsd/nfs2acl.c 2007-10-09 15:31:38.000000000 -0500
-> > +++ b/fs/nfsd/nfs2acl.c 2007-10-24 14:03:13.000000000 -0500
-> > @@ -221,7 +221,7 @@ static int nfsaclsvc_encode_getaclres(st
-> >             struct nfsd3_getaclres *resp)
-> >  {
-> >       struct dentry *dentry = resp->fh.fh_dentry;
-> > -     struct inode *inode = dentry->d_inode;
-> > +     struct inode *inode;
-> >       struct kvec *head = rqstp->rq_res.head;
-> >       unsigned int base;
-> >       int n;
-> > --
-> > Thanks.
-> >
-> > Regards,
-> > Prasad Potluri
-> > email: pvp at-sign us dot ibm dot com
-> >
--------------------------------------------------------------------------
-> > This SF.net email is sponsored by: Splunk Inc.
-> > Still grepping through log files to find problems?  Stop.
-> > Now Search log events and configuration files using AJAX and a browser.
-> > Download your FREE copy of Splunk now >> http://get.splunk.com/
-> > _______________________________________________
-> > NFS maillist  -  NFS@lists.sourceforge.net
-> > https://lists.sourceforge.net/lists/listinfo/nfs
+>>
+>> On Tue, 2007-10-23 at 17:52 -0500, Kumar Gala wrote:
+>>> I'm looking into an issue with LTP's ustat01 & ustat02 tests in  
+>>> which
+>>> they report the following:
+>>>
+>>> ustat01     1  FAIL  :  ustat(2) failed and setthe errno to 116 :
+>>> Stale NFS file handle
+>>> ustat02     2  FAIL  :  ustat(2) failed to produce expected error;
+>>> 14, errno: EFAULT and got 116
+>>>
+>>> It appears sometime between 2.6.21 and 2.6.22-rc1 some changes to  
+>>> NFS
+>>> got introduced that cause this.
+>>>
+>>> was wondering about any ideas while I try to debug what's going on.
+>>>
+>>> thanks
+>>>
+>>> - k
+>>
+>> I'm seeing zero problems with the latest checkouts from Linus' git  
+>> tree.
+>> Mind giving us some more details?
+>
+> I tried 2.6.24-rc1 w/the same result.
+>
+> The system is a 32-bit PPC embedded board that we mounting the  
+> rootfs over nfs on.
+>
+> The defconfig is arch/powerpc/configs/mpc8641_hpcn_defconfig
+>
+>> 'strace' output would be useful, as would the standard NFS list of
+>> client mount options, server export options, details on how your
+>> exported partition is set up on the server, etc...
+>
+> strace:
+>
+> stat64("/", {st_dev=makedev(0, 14), st_ino=58821800,  
+> st_mode=S_IFDIR|0775, st_nlink=18, st_uid=500, st_gid=500,  
+> st_blksize=4096, st_blocks=8, st_size=4096,  
+> st_atime=2007/10/23-22:43:30, st_mtime=2007/10/18-19:51:19,  
+> st_ctime=2007/10/18-19:51:19}) = 0
+> ustat(0xe, 0x1001a008)                  = -1 ESTALE (Stale NFS file  
+> handle)
+> fstat64(1, {st_dev=makedev(0, 14), st_ino=58821964, st_mode=S_IFCHR| 
+> 0600, st_nlink=1, st_uid=0, st_gid=0, st_blksize=4096, st_blocks=0,  
+> st_rdev=makedev(4, 64), st_atime=2007/10/16-18:32:59,  
+> st_mtime=2007/10/16-18:32:59, st_ctime=2007/10/24-05:03:34}) = 0
 >
 >
-> -------------------------------------------------------------------------
-> This SF.net email is sponsored by: Splunk Inc.
-> Still grepping through log files to find problems?  Stop.
-> Now Search log events and configuration files using AJAX and a browser.
-> Download your FREE copy of Splunk now >> http://get.splunk.com/
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
-Thanks.
+> Info on the server:
+>
+> [root@ducky ~]# exportfs -v
+> /               <world> 
+> (rw,async,wdelay,no_root_squash,no_subtree_check)
+> [root@ducky ~]# uname -a
+> Linux ducky.am.freescale.net 2.6.22.5-76.fc7 #1 SMP Thu Aug 30  
+> 13:04:34 EDT 2007 ppc64 ppc64 ppc64 GNU/Linux
+>
+> On the host system:
+>
+> (not sure how to get client mount options, mount reports:
+>
+> %root% on / type unknown (rw)
+>
+> -sh-2.05b# cat /proc/cmdline
+> root=/dev/nfs rw nfsroot=192.168.1.15:/home/galak/ltib-joust-8572/ 
+> rootfs  
+> ip=192.168.1.147:192.168.1.15:192.168.1.1:255.255.254.0:rocky:eth0:off 
+>  console=ttyS0,115200
+>
+> If there is some other info that would be useful please let me know.
 
-Regards,
-Prasad Potluri
-email: pvp at-sign us dot ibm dot com
---0__=08BBF9ECDFC7FC228f9e8a93df938690918c08BBF9ECDFC7FC22
-Content-type: text/html; charset=US-ASCII
-Content-Disposition: inline
+any ideas?  any other debug info needed?
 
-<html><body>
-<p><tt>nfs-bounces@lists.sourceforge.net wrote on 10/24/2007 03:57:36 PM:<br>
-<br>
-&gt; On Wed, Oct 24, 2007 at 03:14:32PM -0500, Prasad P wrote:<br>
-&gt; &gt; <br>
-&gt; &gt; <br>
-&gt; &gt; Dereferenced pointer &quot;dentry&quot; without checking and assigned to inode<br>
-&gt; &gt; in the declaration.<br>
-&gt; <br>
-&gt; Seems reasonable, but: looking at nfsd_dispatch(), it appears that the<br>
-&gt; encode function is never called in this case (since rq_vers == 2 and<br>
-&gt; nfsacld_proc_getacl() would have returned an error if it couldn't find a<br>
-&gt; dentry). &nbsp;Am I missing something? &nbsp;Do you have a test case?<br>
-&gt; <br>
-&gt; --b.<br>
-</tt><br>
-<tt>No, I don't have a test case. &nbsp;This error was found by coverity scan.</tt><br>
-<br>
-<tt>After declaration of the variables, we actually check the dentry and</tt><br>
-<tt>dentry-&gt;d_inode, and if they are not NULL, assign dentry-&gt;d_inode to inode</tt><br>
-<tt>variable.</tt><br>
-<br>
-<tt>if (dentry == NULL || dentry-&gt;d_inode == NULL)</tt><br>
-<tt>	return 0;</tt><br>
-<tt>inode = dentry-&gt;d_inode;</tt><br>
-<br>
-<tt>&gt; <br>
-&gt; <br>
-&gt; &gt; <br>
-&gt; &gt; Cc: Steve French &lt;smfltc@us.ibm.com&gt;<br>
-&gt; &gt; Signed-off-by: Prasad V Potluri &lt;pvp@us.ibm.com&gt;<br>
-&gt; &gt; ---<br>
-&gt; &gt; <br>
-&gt; &gt; diff -uprN a/fs/nfsd/nfs2acl.c b/fs/nfsd/nfs2acl.c<br>
-&gt; &gt; --- a/fs/nfsd/nfs2acl.c 2007-10-09 15:31:38.000000000 -0500<br>
-&gt; &gt; +++ b/fs/nfsd/nfs2acl.c 2007-10-24 14:03:13.000000000 -0500<br>
-&gt; &gt; @@ -221,7 +221,7 @@ static int nfsaclsvc_encode_getaclres(st<br>
-&gt; &gt; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; struct nfsd3_getaclres *resp)<br>
-&gt; &gt; &nbsp;{<br>
-&gt; &gt; &nbsp; &nbsp; &nbsp; struct dentry *dentry = resp-&gt;fh.fh_dentry;<br>
-&gt; &gt; - &nbsp; &nbsp; struct inode *inode = dentry-&gt;d_inode;<br>
-&gt; &gt; + &nbsp; &nbsp; struct inode *inode;<br>
-&gt; &gt; &nbsp; &nbsp; &nbsp; struct kvec *head = rqstp-&gt;rq_res.head;<br>
-&gt; &gt; &nbsp; &nbsp; &nbsp; unsigned int base;<br>
-&gt; &gt; &nbsp; &nbsp; &nbsp; int n;<br>
-&gt; &gt; --<br>
-&gt; &gt; Thanks.<br>
-&gt; &gt; <br>
-&gt; &gt; Regards,<br>
-&gt; &gt; Prasad Potluri<br>
-&gt; &gt; email: pvp at-sign us dot ibm dot com<br>
-&gt; &gt; -------------------------------------------------------------------------<br>
-&gt; &gt; This SF.net email is sponsored by: Splunk Inc.<br>
-&gt; &gt; Still grepping through log files to find problems? &nbsp;Stop.<br>
-&gt; &gt; Now Search log events and configuration files using AJAX and a browser.<br>
-&gt; &gt; Download your FREE copy of Splunk now &gt;&gt; <a href="http://get.splunk.com/">http://get.splunk.com/</a><br>
-&gt; &gt; _______________________________________________<br>
-&gt; &gt; NFS maillist &nbsp;- &nbsp;NFS@lists.sourceforge.net<br>
-&gt; &gt; <a href="https://lists.sourceforge.net/lists/listinfo/nfs">https://lists.sourceforge.net/lists/listinfo/nfs</a><br>
-&gt; <br>
-&gt; <br>
-&gt; -------------------------------------------------------------------------<br>
-&gt; This SF.net email is sponsored by: Splunk Inc.<br>
-&gt; Still grepping through log files to find problems? &nbsp;Stop.<br>
-&gt; Now Search log events and configuration files using AJAX and a browser.<br>
-&gt; Download your FREE copy of Splunk now &gt;&gt; <a href="http://get.splunk.com/">http://get.splunk.com/</a><br>
-&gt; _______________________________________________<br>
-&gt; NFS maillist &nbsp;- &nbsp;NFS@lists.sourceforge.net<br>
-&gt; <a href="https://lists.sourceforge.net/lists/listinfo/nfs">https://lists.sourceforge.net/lists/listinfo/nfs</a><br>
-Thanks.</tt><br>
-<br>
-<tt>Regards,</tt><br>
-<tt>Prasad Potluri</tt><br>
-<tt>email: pvp at-sign us dot ibm dot com</tt><br>
-</body></html>
---0__=08BBF9ECDFC7FC228f9e8a93df938690918c08BBF9ECDFC7FC22--
-
-
-
---===============2025350691==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+- k
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >> http://get.splunk.com/
---===============2025350691==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============2025350691==--
