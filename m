@@ -1,23 +1,11 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] Fix incorrect assignment
-Date: Wed, 24 Oct 2007 16:57:36 -0400
-Message-ID: <20071024205736.GL29830@fieldses.org>
-References: <OFE5621A0A.80A31B03-ON8725737E.006E4E77-8625737E.006F322A@us.ibm.com>
+From: "Mariya" <ra@opticaldisc-systems.com>
+Subject: Re: Looking for a wife?
+Date: Thu, 25 Oct 2007 03:56:17 +0300
+Message-ID: <00c501c816a1$d4745a80$9d08000a@89.0.118.224.dynamic.barak-online.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Prasad P <pvp@us.ibm.com>
+To: "Leon" <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IknIF-0001zu-BH
-	for nfs@lists.sourceforge.net; Wed, 24 Oct 2007 13:57:35 -0700
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IknIK-0008G4-L4
-	for nfs@lists.sourceforge.net; Wed, 24 Oct 2007 13:57:41 -0700
-In-Reply-To: <OFE5621A0A.80A31B03-ON8725737E.006E4E77-8625737E.006F322A@us.ibm.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,51 +18,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, Oct 24, 2007 at 03:14:32PM -0500, Prasad P wrote:
-> 
-> 
-> Dereferenced pointer "dentry" without checking and assigned to inode
-> in the declaration.
+Hello, Leon
 
-Seems reasonable, but: looking at nfsd_dispatch(), it appears that the
-encode function is never called in this case (since rq_vers == 2 and
-nfsacld_proc_getacl() would have returned an error if it couldn't find a
-dentry).  Am I missing something?  Do you have a test case?
+What can I tell about myself? I don't like winter and cold. I hate
+loneliness which is associated with cold winter into my mind. I have not yet
+met a person who will have place into his heart for me.People say that I am
+beautiful and clever, why I can't find my soul mate?
+I don't like parties where are a lot of people, I don't like discos. I like
+quite rest, for example, theatre, cinema, coziness of sweet home  where I
+feel in protection.
+I feel that you are calm and kind-hearted and you want to create family too.
+Am I not mistaken?
+I want to create my native home, to take care of someone who will love me.
+I want to hear from somebody "my Darling wife, my Beloved Woman" and to feel
+the happiest in the world.
+If you have some place for me in your heart, write me please 
+http://russobride.info/?idAff=101 and you will see that in my heart 
+you will take all free space.
 
---b.
 
+Kiss-kiss
 
-> 
-> Cc: Steve French <smfltc@us.ibm.com>
-> Signed-off-by: Prasad V Potluri <pvp@us.ibm.com>
-> ---
-> 
-> diff -uprN a/fs/nfsd/nfs2acl.c b/fs/nfsd/nfs2acl.c
-> --- a/fs/nfsd/nfs2acl.c 2007-10-09 15:31:38.000000000 -0500
-> +++ b/fs/nfsd/nfs2acl.c 2007-10-24 14:03:13.000000000 -0500
-> @@ -221,7 +221,7 @@ static int nfsaclsvc_encode_getaclres(st
->             struct nfsd3_getaclres *resp)
->  {
->       struct dentry *dentry = resp->fh.fh_dentry;
-> -     struct inode *inode = dentry->d_inode;
-> +     struct inode *inode;
->       struct kvec *head = rqstp->rq_res.head;
->       unsigned int base;
->       int n;
-> --
-> Thanks.
-> 
-> Regards,
-> Prasad Potluri
-> email: pvp at-sign us dot ibm dot com
-> -------------------------------------------------------------------------
-> This SF.net email is sponsored by: Splunk Inc.
-> Still grepping through log files to find problems?  Stop.
-> Now Search log events and configuration files using AJAX and a browser.
-> Download your FREE copy of Splunk now >> http://get.splunk.com/
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
+Mariya
+
 
 
 -------------------------------------------------------------------------
