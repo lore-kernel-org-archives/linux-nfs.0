@@ -1,8 +1,8 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 15/27] NFS: Use unsigned intermediates for
-	manipulating header	lengths (NFSv3 XDR)
-Date: Fri, 26 Oct 2007 13:31:57 -0400
-Message-ID: <20071026173157.31475.97314.stgit@manray.1015granger.net>
+Subject: [PATCH 16/27] NFS: Use unsigned intermediates for
+	manipulating header	lengths (NFSv4 XDR)
+Date: Fri, 26 Oct 2007 13:32:03 -0400
+Message-ID: <20071026173203.31475.4819.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
@@ -11,12 +11,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IlT2Y-0007KI-QR
-	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 10:32:10 -0700
+	id 1IlT2b-0007KS-BO
+	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 10:32:13 -0700
 Received: from flpi185.sbcis.sbc.com ([207.115.20.187]
 	helo=flpi185.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IlT2e-00007k-5e
-	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 10:32:16 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IlT2g-00008d-P3
+	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 10:32:18 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,124 +29,62 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Clean up: prevent length underflow and mixed sign comparisons when
-unmarshalling NFS version 3 read, readdir, and readlink replies.
+Clean up: prevent length underflow and mixed sign comparison when
+unmarshalling NFS version 4 getacl, readdir, and readlink replies.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfs/nfs3xdr.c |   27 +++++++++++++++------------
- 1 files changed, 15 insertions(+), 12 deletions(-)
+ fs/nfs/nfs4xdr.c |   14 +++++++++-----
+ 1 files changed, 9 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
-index 616d326..3917e2f 100644
---- a/fs/nfs/nfs3xdr.c
-+++ b/fs/nfs/nfs3xdr.c
-@@ -506,9 +506,9 @@ nfs3_xdr_readdirres(struct rpc_rqst *req, __be32 *p, struct nfs3_readdirres *res
- 	struct xdr_buf *rcvbuf = &req->rq_rcv_buf;
- 	struct kvec *iov = rcvbuf->head;
- 	struct page **page;
--	int hdrlen, recvd;
-+	size_t hdrlen;
-+	u32 len, recvd, pglen;
- 	int status, nr;
--	unsigned int len, pglen;
- 	__be32 *entry, *end, *kaddr;
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 51dd380..2e1fe17 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -3476,10 +3476,11 @@ static int decode_readdir(struct xdr_stream *xdr, struct rpc_rqst *req, struct n
+ 	struct xdr_buf	*rcvbuf = &req->rq_rcv_buf;
+ 	struct page	*page = *rcvbuf->pages;
+ 	struct kvec	*iov = rcvbuf->head;
+-	unsigned int	nr, pglen = rcvbuf->page_len;
++	size_t		hdrlen;
++	u32		recvd, pglen = rcvbuf->page_len;
+ 	__be32		*end, *entry, *p, *kaddr;
+-	uint32_t	len, attrlen, xlen;
+-	int 		hdrlen, recvd, status;
++	unsigned int	nr;
++	int		status;
  
- 	status = ntohl(*p++);
-@@ -527,7 +527,7 @@ nfs3_xdr_readdirres(struct rpc_rqst *req, __be32 *p, struct nfs3_readdirres *res
- 	hdrlen = (u8 *) p - (u8 *) iov->iov_base;
- 	if (iov->iov_len < hdrlen) {
- 		dprintk("NFS: READDIR reply header overflowed:"
--				"length %d > %Zu\n", hdrlen, iov->iov_len);
-+				"length %Zu > %Zu\n", hdrlen, iov->iov_len);
- 		return -errno_NFSERR_IO;
- 	} else if (iov->iov_len != hdrlen) {
- 		dprintk("NFS: READDIR header is short. iovec will be shifted.\n");
-@@ -549,7 +549,7 @@ nfs3_xdr_readdirres(struct rpc_rqst *req, __be32 *p, struct nfs3_readdirres *res
- 		len = ntohl(*p++);		/* string length */
- 		p += XDR_QUADLEN(len) + 2;	/* name + cookie */
- 		if (len > NFS3_MAXNAMLEN) {
--			dprintk("NFS: giant filename in readdir (len %x)!\n",
-+			dprintk("NFS: giant filename in readdir (len 0x%x)!\n",
- 						len);
- 			goto err_unmap;
- 		}
-@@ -570,7 +570,7 @@ nfs3_xdr_readdirres(struct rpc_rqst *req, __be32 *p, struct nfs3_readdirres *res
- 				len = ntohl(*p++);
- 				if (len > NFS3_FHSIZE) {
- 					dprintk("NFS: giant filehandle in "
--						"readdir (len %x)!\n", len);
-+						"readdir (len 0x%x)!\n", len);
- 					goto err_unmap;
- 				}
- 				p += XDR_QUADLEN(len);
-@@ -815,7 +815,8 @@ nfs3_xdr_readlinkres(struct rpc_rqst *req, __be32 *p, struct nfs_fattr *fattr)
+ 	status = decode_op_hdr(xdr, OP_READDIR);
+ 	if (status)
+@@ -3503,6 +3504,7 @@ static int decode_readdir(struct xdr_stream *xdr, struct rpc_rqst *req, struct n
+ 	end = p + ((pglen + readdir->pgbase) >> 2);
+ 	entry = p;
+ 	for (nr = 0; *p++; nr++) {
++		u32 len, attrlen, xlen;
+ 		if (end - p < 3)
+ 			goto short_pkt;
+ 		dprintk("cookie = %Lu, ", *((unsigned long long *)p));
+@@ -3551,7 +3553,8 @@ static int decode_readlink(struct xdr_stream *xdr, struct rpc_rqst *req)
  {
  	struct xdr_buf *rcvbuf = &req->rq_rcv_buf;
  	struct kvec *iov = rcvbuf->head;
 -	int hdrlen, len, recvd;
 +	size_t hdrlen;
 +	u32 len, recvd;
- 	char	*kaddr;
- 	int	status;
+ 	__be32 *p;
+ 	char *kaddr;
+ 	int status;
+@@ -3646,7 +3649,8 @@ static int decode_getacl(struct xdr_stream *xdr, struct rpc_rqst *req,
+ 	if (unlikely(bitmap[0] & (FATTR4_WORD0_ACL - 1U)))
+ 		return -EIO;
+ 	if (likely(bitmap[0] & FATTR4_WORD0_ACL)) {
+-		int hdrlen, recvd;
++		size_t hdrlen;
++		u32 recvd;
  
-@@ -827,7 +828,7 @@ nfs3_xdr_readlinkres(struct rpc_rqst *req, __be32 *p, struct nfs_fattr *fattr)
- 
- 	/* Convert length of symlink */
- 	len = ntohl(*p++);
--	if (len >= rcvbuf->page_len || len <= 0) {
-+	if (len >= rcvbuf->page_len) {
- 		dprintk("nfs: server returned giant symlink!\n");
- 		return -ENAMETOOLONG;
- 	}
-@@ -835,7 +836,7 @@ nfs3_xdr_readlinkres(struct rpc_rqst *req, __be32 *p, struct nfs_fattr *fattr)
- 	hdrlen = (u8 *) p - (u8 *) iov->iov_base;
- 	if (iov->iov_len < hdrlen) {
- 		dprintk("NFS: READLINK reply header overflowed:"
--				"length %d > %Zu\n", hdrlen, iov->iov_len);
-+				"length %Zu > %Zu\n", hdrlen, iov->iov_len);
- 		return -errno_NFSERR_IO;
- 	} else if (iov->iov_len != hdrlen) {
- 		dprintk("NFS: READLINK header is short. "
-@@ -863,7 +864,9 @@ static int
- nfs3_xdr_readres(struct rpc_rqst *req, __be32 *p, struct nfs_readres *res)
- {
- 	struct kvec *iov = req->rq_rcv_buf.head;
--	int	status, count, ocount, recvd, hdrlen;
-+	size_t hdrlen;
-+	u32 count, ocount, recvd;
-+	int status;
- 
- 	status = ntohl(*p++);
- 	p = xdr_decode_post_op_attr(p, res->fattr);
-@@ -871,7 +874,7 @@ nfs3_xdr_readres(struct rpc_rqst *req, __be32 *p, struct nfs_readres *res)
- 	if (status != 0)
- 		return -nfs_stat_to_errno(status);
- 
--	/* Decode reply could and EOF flag. NFSv3 is somewhat redundant
-+	/* Decode reply count and EOF flag. NFSv3 is somewhat redundant
- 	 * in that it puts the count both in the res struct and in the
- 	 * opaque data count. */
- 	count    = ntohl(*p++);
-@@ -886,7 +889,7 @@ nfs3_xdr_readres(struct rpc_rqst *req, __be32 *p, struct nfs_readres *res)
- 	hdrlen = (u8 *) p - (u8 *) iov->iov_base;
- 	if (iov->iov_len < hdrlen) {
- 		dprintk("NFS: READ reply header overflowed:"
--				"length %d > %Zu\n", hdrlen, iov->iov_len);
-+				"length %Zu > %Zu\n", hdrlen, iov->iov_len);
-        		return -errno_NFSERR_IO;
- 	} else if (iov->iov_len != hdrlen) {
- 		dprintk("NFS: READ header is short. iovec will be shifted.\n");
-@@ -896,7 +899,7 @@ nfs3_xdr_readres(struct rpc_rqst *req, __be32 *p, struct nfs_readres *res)
- 	recvd = req->rq_rcv_buf.len - hdrlen;
- 	if (count > recvd) {
- 		dprintk("NFS: server cheating in read reply: "
--			"count %d > recvd %d\n", count, recvd);
-+			"count %u > recvd %u\n", count, recvd);
- 		count = recvd;
- 		res->eof = 0;
- 	}
+ 		/* We ignore &savep and don't do consistency checks on
+ 		 * the attr length.  Let userspace figure it out.... */
 
 
 -------------------------------------------------------------------------
