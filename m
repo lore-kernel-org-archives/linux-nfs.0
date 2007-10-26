@@ -1,22 +1,22 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 06/27] SUNRPC: Fix xdr_decode_string_inplace()
-	argument signage
-Date: Fri, 26 Oct 2007 13:31:10 -0400
-Message-ID: <20071026173110.31475.94749.stgit@manray.1015granger.net>
+Subject: [PATCH 11/27] NFS: Fix use of copy_to_user() in
+	idmap_pipe_upcall
+Date: Fri, 26 Oct 2007 13:31:36 -0400
+Message-ID: <20071026173136.31475.13261.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 To: trond.myklebust@fys.uio.no
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IlT2G-0007EB-RC
-	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 10:31:53 -0700
+	id 1IlT2B-0007Dv-0M
+	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 10:31:49 -0700
 Received: from flpi185.sbcis.sbc.com ([207.115.20.187]
 	helo=flpi185.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IlT2M-0005ru-7P
-	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 10:31:58 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IlT2F-0008Ms-AY
+	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 10:31:52 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,44 +29,47 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-xdr_decode_string_inplace() compares an incoming length to a maximum length
-allowed by the protocol.  Make sure both sides of the comparison have the
-same sign.
-
+The idmap_pipe_upcall() function expects the copy_to_user() function to
+return a negative error value if the call fails, but copy_to_user()
+returns an unsigned long number of bytes that couldn't be copied.
+    
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- include/linux/sunrpc/xdr.h |    3 ++-
- net/sunrpc/xdr.c           |    2 +-
- 2 files changed, 3 insertions(+), 2 deletions(-)
+ fs/nfs/idmap.c |   13 +++++++------
+ 1 files changed, 7 insertions(+), 6 deletions(-)
 
-diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
-index 0751c94..9ddae63 100644
---- a/include/linux/sunrpc/xdr.h
-+++ b/include/linux/sunrpc/xdr.h
-@@ -112,7 +112,8 @@ struct xdr_buf {
- __be32 *xdr_encode_opaque_fixed(__be32 *p, const void *ptr, unsigned int len);
- __be32 *xdr_encode_opaque(__be32 *p, const void *ptr, unsigned int len);
- __be32 *xdr_encode_string(__be32 *p, const char *s);
--__be32 *xdr_decode_string_inplace(__be32 *p, char **sp, int *lenp, int maxlen);
-+__be32 *xdr_decode_string_inplace(__be32 *p, char **sp, int *lenp,
-+				  unsigned int maxlen);
- __be32 *xdr_encode_netobj(__be32 *p, const struct xdr_netobj *);
- __be32 *xdr_decode_netobj(__be32 *p, struct xdr_netobj *);
- 
-diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
-index 3d1f7cd..ff16bab 100644
---- a/net/sunrpc/xdr.c
-+++ b/net/sunrpc/xdr.c
-@@ -93,7 +93,7 @@ xdr_encode_string(__be32 *p, const char *string)
- }
- 
- __be32 *
--xdr_decode_string_inplace(__be32 *p, char **sp, int *lenp, int maxlen)
-+xdr_decode_string_inplace(__be32 *p, char **sp, int *lenp, unsigned int maxlen)
+diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
+index e687ba2..6ecc9c3 100644
+--- a/fs/nfs/idmap.c
++++ b/fs/nfs/idmap.c
+@@ -357,19 +357,20 @@ idmap_pipe_upcall(struct file *filp, struct rpc_pipe_msg *msg,
+ 		  char __user *dst, size_t buflen)
  {
- 	unsigned int	len;
+ 	char *data = (char *)msg->data + msg->copied;
+-	ssize_t mlen = msg->len - msg->copied;
+-	ssize_t left;
++	size_t mlen = msg->len;
++	unsigned long left;
  
+ 	if (mlen > buflen)
+ 		mlen = buflen;
+ 
+ 	left = copy_to_user(dst, data, mlen);
+-	if (left < 0) {
+-		msg->errno = left;
+-		return left;
++	if (left == mlen) {
++		msg->errno = -EFAULT;
++		return -1;
+ 	}
++
+ 	mlen -= left;
+-	msg->copied += mlen;
++	msg->copied += left;
+ 	msg->errno = 0;
+ 	return mlen;
+ }
 
 
 -------------------------------------------------------------------------
