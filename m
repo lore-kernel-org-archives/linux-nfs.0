@@ -1,20 +1,29 @@
-From: nst5au@infoseek.jp
-Subject: =?ISO-2022-JP?B?gXOKrpFTlrOXv4F0gqiL4IKpgq+CuILJlrOXv4LMj2+J74KigUmBSYFJjaGCsYKxgsmM5I/Qie6BSYFJgUmPg4/uineQtoFJgUmBSQ==?=
-Date: Thu, 25 Oct 2007 22:11:03 -0700 (PDT)
-Message-ID: <24487.6226330691$1193375486@news.gmane.org>
-Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============0296657666=="
-To: nfs@lists.sourceforge.net
+From: Kumar Gala <galak@kernel.crashing.org>
+Subject: Re: LTP ustat01 test fails on NFSROOT
+Date: Fri, 26 Oct 2007 04:42:28 -0500
+Message-ID: <0CC518FE-47B0-4A32-B682-1CA5F7CBAC2F@kernel.crashing.org>
+References: <CBDE987B-0713-4D62-8122-054183E75410@kernel.crashing.org>
+	<1193188894.27073.20.camel@heimdal.trondhjem.org>
+	<1954B8FA-6E29-4FB7-86B0-EA43AF8F2AAF@kernel.crashing.org>
+	<2B2C1270-60FB-4830-A62C-D0357D2E1FB3@kernel.crashing.org>
+	<1193335168.7705.39.camel@heimdal.trondhjem.org>
+Mime-Version: 1.0 (Apple Message framework v752.2)
+Content-Type: text/plain; charset="us-ascii"
+Cc: neilb@suse.de, bfields@fieldses.org, nfs@lists.sourceforge.net,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IlHTE-0005ii-61
-	for nfs@lists.sourceforge.net; Thu, 25 Oct 2007 22:10:56 -0700
-Received: from ppp-124.120.99.187.revip2.asianet.co.th ([124.120.99.187]
-	helo=ooo-superweb0015a07.goanet.co.th)
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1IlHTJ-0001BK-62
-	for nfs@lists.sourceforge.net; Thu, 25 Oct 2007 22:11:01 -0700
+	id 1IlLh1-0006kw-Un
+	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 02:41:28 -0700
+Received: from gate.crashing.org ([63.228.1.57]
+	ident=[U2FsdGVkX1+SdxM8cwLcWki8acm4is/eC4QNOWXZ6wE=])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IlLh6-00014F-5l
+	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 02:41:33 -0700
+In-Reply-To: <1193335168.7705.39.camel@heimdal.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,50 +36,44 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============0296657666==
-Content-Type: text/plain;
-	charset="iso-2022-jp"
-Content-Transfer-Encoding: 7bit
 
-男も女も、期待することは一緒です。
-http://free.soku-aposugu.com/loved30/
-このサイトには男性と割切ったエッチする代わりに逆援で支えてくれる女性が
-数多く登録してくれてます。
-〓女性達の声は…〓
-●『チェリーの男の子にエッチの快感を教えてあげたい♪』
-●『旦那とはできないようなちょっとアブナイＨのパートナー見つけたい』
-●『立場上、ヘタにエッチできないし、サイトで探そうかな？？』
-●『セクフレは年下クンがいいな♪』
-http://free.soku-aposugu.com/loved30/
-☆登録されてるハイソな女性達は手はじめに最低■３万～■サポートしてくれます。
-⇒会う回数や内容によってグングンＵＰ！？または女性と直接ご相談ください
-※【【完全無料】】でフリーアドにも対応
-※連絡先交換自由で写真でタイプを選べます。当然女性からもお誘いがあります
-アナタも急いで表記URLにアクセスして、この時期ならではの感動を
-是非体験して下さい！
-http://free.soku-aposugu.com/loved30/
+On Oct 25, 2007, at 12:59 PM, Trond Myklebust wrote:
 
+> Could you please try the following patch?
+>
+> Cheers
+>   Trond
+> --------------------------------- CUT HERE  
+> -----------------------------
+> From: Trond Myklebust <Trond.Myklebust@netapp.com>
+> Date: Thu, 25 Oct 2007 13:56:10 -0400
+> NFS: Fix the ustat() regression
+>
+> Since 2.6.18, the superblock sb->s_root has been a dummy dentry with a
+> dummy inode. This breaks ustat(), which actually uses sb->s_root in a
+> vfstat() call.
+>
+> Fix this by making the s_root a dummy alias to the directory inode  
+> that was
+> used when creating the superblock.
+>
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> ---
+>
+>  fs/nfs/getroot.c |   81 +++++++++++++++++ 
+> +------------------------------------
+>  1 files changed, 27 insertions(+), 54 deletions(-)
 
+Any reason not to send this to Linus as a bug fix for 2.6.24 (and  
+possibly stable)?
 
---===============0296657666==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+- k
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >> http://get.splunk.com/
---===============0296657666==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============0296657666==--
