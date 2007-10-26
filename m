@@ -1,8 +1,8 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 14/27] NFS: Use unsigned intermediates for
-	manipulating header	lengths (NFSv2 XDR)
-Date: Fri, 26 Oct 2007 13:31:52 -0400
-Message-ID: <20071026173152.31475.96442.stgit@manray.1015granger.net>
+Subject: [PATCH 13/27] NFS: Ensure nfs_wcc_update_inode always
+	converts file	size to loff_t
+Date: Fri, 26 Oct 2007 13:31:47 -0400
+Message-ID: <20071026173147.31475.30475.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
@@ -11,12 +11,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IlT2R-0007GM-0q
-	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 10:32:03 -0700
+	id 1IlT2H-0007EL-V7
+	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 10:31:54 -0700
 Received: from flpi185.sbcis.sbc.com ([207.115.20.187]
 	helo=flpi185.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IlT2W-0008UI-EF
-	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 10:32:08 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IlT2N-0008QT-B5
+	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 10:31:59 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,102 +29,37 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Clean up: prevent length underflow and mixed sign comparisons when
-unmarshalling NFS version 2 read, readdir, and readlink replies.
+The nfs_wcc_update_inode() function omits logic to convert the type of
+the NFS on-the-wire value of a file's size (__u64) to the type of file
+size value stored in struct inode (loff_t, which is signed).
+
+Everywhere else in the NFS client I checked already correctly converts the
+file size type.
+
+This effects only very large files.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfs/nfs2xdr.c |   24 ++++++++++++++----------
- 1 files changed, 14 insertions(+), 10 deletions(-)
+ fs/nfs/inode.c |    5 +++--
+ 1 files changed, 3 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
-index 668ab96..1f7ea67 100644
---- a/fs/nfs/nfs2xdr.c
-+++ b/fs/nfs/nfs2xdr.c
-@@ -262,7 +262,9 @@ static int
- nfs_xdr_readres(struct rpc_rqst *req, __be32 *p, struct nfs_readres *res)
- {
- 	struct kvec *iov = req->rq_rcv_buf.head;
--	int	status, count, recvd, hdrlen;
-+	size_t hdrlen;
-+	u32 count, recvd;
-+	int status;
- 
- 	if ((status = ntohl(*p++)))
- 		return -nfs_stat_to_errno(status);
-@@ -273,7 +275,7 @@ nfs_xdr_readres(struct rpc_rqst *req, __be32 *p, struct nfs_readres *res)
- 	hdrlen = (u8 *) p - (u8 *) iov->iov_base;
- 	if (iov->iov_len < hdrlen) {
- 		dprintk("NFS: READ reply header overflowed:"
--				"length %d > %Zu\n", hdrlen, iov->iov_len);
-+				"length %Zu > %Zu\n", hdrlen, iov->iov_len);
- 		return -errno_NFSERR_IO;
- 	} else if (iov->iov_len != hdrlen) {
- 		dprintk("NFS: READ header is short. iovec will be shifted.\n");
-@@ -283,11 +285,11 @@ nfs_xdr_readres(struct rpc_rqst *req, __be32 *p, struct nfs_readres *res)
- 	recvd = req->rq_rcv_buf.len - hdrlen;
- 	if (count > recvd) {
- 		dprintk("NFS: server cheating in read reply: "
--			"count %d > recvd %d\n", count, recvd);
-+			"count %u > recvd %u\n", count, recvd);
- 		count = recvd;
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index db5d96d..cd0e57f 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -814,8 +814,9 @@ static void nfs_wcc_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+ 			if (S_ISDIR(inode->i_mode))
+ 				nfsi->cache_validity |= NFS_INO_INVALID_DATA;
+ 		}
+-		if (inode->i_size == fattr->pre_size && nfsi->npages == 0)
+-			inode->i_size = fattr->size;
++		if (inode->i_size == nfs_size_to_loff_t(fattr->pre_size) &&
++		    nfsi->npages == 0)
++			inode->i_size = nfs_size_to_loff_t(fattr->size);
  	}
+ }
  
--	dprintk("RPC:      readres OK count %d\n", count);
-+	dprintk("RPC:      readres OK count %u\n", count);
- 	if (count < res->count)
- 		res->count = count;
- 
-@@ -423,9 +425,10 @@ nfs_xdr_readdirres(struct rpc_rqst *req, __be32 *p, void *dummy)
- 	struct xdr_buf *rcvbuf = &req->rq_rcv_buf;
- 	struct kvec *iov = rcvbuf->head;
- 	struct page **page;
--	int hdrlen, recvd;
-+	size_t hdrlen;
-+	unsigned int pglen, recvd;
-+	u32 len;
- 	int status, nr;
--	unsigned int len, pglen;
- 	__be32 *end, *entry, *kaddr;
- 
- 	if ((status = ntohl(*p++)))
-@@ -434,7 +437,7 @@ nfs_xdr_readdirres(struct rpc_rqst *req, __be32 *p, void *dummy)
- 	hdrlen = (u8 *) p - (u8 *) iov->iov_base;
- 	if (iov->iov_len < hdrlen) {
- 		dprintk("NFS: READDIR reply header overflowed:"
--				"length %d > %Zu\n", hdrlen, iov->iov_len);
-+				"length %Zu > %Zu\n", hdrlen, iov->iov_len);
- 		return -errno_NFSERR_IO;
- 	} else if (iov->iov_len != hdrlen) {
- 		dprintk("NFS: READDIR header is short. iovec will be shifted.\n");
-@@ -576,7 +579,8 @@ nfs_xdr_readlinkres(struct rpc_rqst *req, __be32 *p, void *dummy)
- {
- 	struct xdr_buf *rcvbuf = &req->rq_rcv_buf;
- 	struct kvec *iov = rcvbuf->head;
--	int hdrlen, len, recvd;
-+	size_t hdrlen;
-+	u32 len, recvd;
- 	char	*kaddr;
- 	int	status;
- 
-@@ -584,14 +588,14 @@ nfs_xdr_readlinkres(struct rpc_rqst *req, __be32 *p, void *dummy)
- 		return -nfs_stat_to_errno(status);
- 	/* Convert length of symlink */
- 	len = ntohl(*p++);
--	if (len >= rcvbuf->page_len || len <= 0) {
-+	if (len >= rcvbuf->page_len) {
- 		dprintk("nfs: server returned giant symlink!\n");
- 		return -ENAMETOOLONG;
- 	}
- 	hdrlen = (u8 *) p - (u8 *) iov->iov_base;
- 	if (iov->iov_len < hdrlen) {
- 		dprintk("NFS: READLINK reply header overflowed:"
--				"length %d > %Zu\n", hdrlen, iov->iov_len);
-+				"length %Zu > %Zu\n", hdrlen, iov->iov_len);
- 		return -errno_NFSERR_IO;
- 	} else if (iov->iov_len != hdrlen) {
- 		dprintk("NFS: READLINK header is short. iovec will be shifted.\n");
 
 
 -------------------------------------------------------------------------
