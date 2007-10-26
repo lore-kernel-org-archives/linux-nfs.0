@@ -1,8 +1,7 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 02/27] SUNRPC: Fix an unnecessary implicit type cast
-	in	rpcrdma_count_chunks()
-Date: Fri, 26 Oct 2007 13:30:49 -0400
-Message-ID: <20071026173049.31475.68976.stgit@manray.1015granger.net>
+Subject: [PATCH 03/27] SUNRPC: Check a return result
+Date: Fri, 26 Oct 2007 13:30:54 -0400
+Message-ID: <20071026173054.31475.61789.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
@@ -11,12 +10,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IlT1a-0007Aj-6R
+	id 1IlT1d-0007CQ-Vj
 	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 10:31:14 -0700
 Received: from flpi185.sbcis.sbc.com ([207.115.20.187]
 	helo=flpi185.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IlT1a-0007w0-9B
-	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 10:31:10 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IlT1g-000809-MC
+	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 10:31:17 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,31 +28,41 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Nit: rl_nchunks is an unsigned integer, so pass it into
-rpcrdma_count_chunks() via an unsigned integer argument.  This eliminates
-a harmless mixed sign comparison in rpcrdma_count_chunks()
+Minor: Replace an empty if statement with a debugging dprintk.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Cc: Thomas Talpey <Thomas.Talpey@netapp.com>
 ---
 
- net/sunrpc/xprtrdma/rpc_rdma.c |    3 ++-
- 1 files changed, 2 insertions(+), 1 deletions(-)
+ net/sunrpc/xprtrdma/verbs.c |    8 +++++---
+ 1 files changed, 5 insertions(+), 3 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 65e211e..7024ac8 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -559,7 +559,8 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
-  * RDMA'd by server. See map at rpcrdma_create_chunks()! :-)
-  */
- static int
--rpcrdma_count_chunks(struct rpcrdma_rep *rep, int max, int wrchunk, u32 **iptrp)
-+rpcrdma_count_chunks(struct rpcrdma_rep *rep, unsigned int max, int wrchunk,
-+		     u32 **iptrp)
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 44b0fb9..ffbf22a 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -522,7 +522,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
+ 				struct rpcrdma_create_data_internal *cdata)
  {
- 	unsigned int i, total_len;
- 	struct rpcrdma_write_chunk *cur_wchunk;
+ 	struct ib_device_attr devattr;
+-	int rc;
++	int rc, err;
+ 
+ 	rc = ib_query_device(ia->ri_id->device, &devattr);
+ 	if (rc) {
+@@ -648,8 +648,10 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
+ 	return 0;
+ 
+ out2:
+-	if (ib_destroy_cq(ep->rep_cq))
+-		;
++	err = ib_destroy_cq(ep->rep_cq);
++	if (err)
++		dprintk("RPC:       %s: ib_destroy_cq returned %i\n",
++			__func__, err);
+ out1:
+ 	return rc;
+ }
 
 
 -------------------------------------------------------------------------
