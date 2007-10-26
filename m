@@ -1,22 +1,24 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 26/27] SUNRPC: RPC program information is stored in
-	unsigned	integers
-Date: Fri, 26 Oct 2007 13:32:56 -0400
-Message-ID: <20071026173256.31475.3060.stgit@manray.1015granger.net>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH 06/27] SUNRPC: Fix xdr_decode_string_inplace()
+	argument	signage
+Date: Fri, 26 Oct 2007 14:24:07 -0400
+Message-ID: <1193423047.7486.27.camel@heimdal.trondhjem.org>
+References: <20071026173110.31475.94749.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: trond.myklebust@fys.uio.no
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IlTSG-0001Hq-Jt
-	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 10:58:44 -0700
-Received: from flpi185.sbcis.sbc.com ([207.115.20.187]
-	helo=flpi185.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IlT3Z-0006pN-3W
-	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 10:33:13 -0700
+	id 1IlTpy-0003my-Qi
+	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 11:23:14 -0700
+Received: from pat.uio.no ([129.240.10.15])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IlTq3-00005i-8T
+	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 11:23:20 -0700
+In-Reply-To: <20071026173110.31475.94749.stgit@manray.1015granger.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,61 +31,49 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Clean up: When looping over RPC version and procedure numbers, use
-unsigned index variables.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+On Fri, 2007-10-26 at 13:31 -0400, Chuck Lever wrote:
+> xdr_decode_string_inplace() compares an incoming length to a maximum length
+> allowed by the protocol.  Make sure both sides of the comparison have the
+> same sign.
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> 
+>  include/linux/sunrpc/xdr.h |    3 ++-
+>  net/sunrpc/xdr.c           |    2 +-
+>  2 files changed, 3 insertions(+), 2 deletions(-)
+> 
+> diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
+> index 0751c94..9ddae63 100644
+> --- a/include/linux/sunrpc/xdr.h
+> +++ b/include/linux/sunrpc/xdr.h
+> @@ -112,7 +112,8 @@ struct xdr_buf {
+>  __be32 *xdr_encode_opaque_fixed(__be32 *p, const void *ptr, unsigned int len);
+>  __be32 *xdr_encode_opaque(__be32 *p, const void *ptr, unsigned int len);
+>  __be32 *xdr_encode_string(__be32 *p, const char *s);
+> -__be32 *xdr_decode_string_inplace(__be32 *p, char **sp, int *lenp, int maxlen);
+> +__be32 *xdr_decode_string_inplace(__be32 *p, char **sp, int *lenp,
+> +				  unsigned int maxlen);
+>  __be32 *xdr_encode_netobj(__be32 *p, const struct xdr_netobj *);
+>  __be32 *xdr_decode_netobj(__be32 *p, struct xdr_netobj *);
+>  
+> diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
+> index 3d1f7cd..ff16bab 100644
+> --- a/net/sunrpc/xdr.c
+> +++ b/net/sunrpc/xdr.c
+> @@ -93,7 +93,7 @@ xdr_encode_string(__be32 *p, const char *string)
+>  }
+>  
+>  __be32 *
+> -xdr_decode_string_inplace(__be32 *p, char **sp, int *lenp, int maxlen)
+> +xdr_decode_string_inplace(__be32 *p, char **sp, int *lenp, unsigned int maxlen)
+>  {
+>  	unsigned int	len;
 
- net/sunrpc/stats.c |    4 ++--
- net/sunrpc/svc.c   |    5 +++--
- 2 files changed, 5 insertions(+), 4 deletions(-)
+Nope. maxlen should be of the same type as *lenp.
 
-diff --git a/net/sunrpc/stats.c b/net/sunrpc/stats.c
-index 4d4f373..9d1f182 100644
---- a/net/sunrpc/stats.c
-+++ b/net/sunrpc/stats.c
-@@ -33,7 +33,7 @@ struct proc_dir_entry	*proc_net_rpc = NULL;
- static int rpc_proc_show(struct seq_file *seq, void *v) {
- 	const struct rpc_stat	*statp = seq->private;
- 	const struct rpc_program *prog = statp->program;
--	int		i, j;
-+	unsigned int i, j;
- 
- 	seq_printf(seq,
- 		"net %u %u %u %u\n",
-@@ -81,7 +81,7 @@ void svc_seq_show(struct seq_file *seq, const struct svc_stat *statp) {
- 	const struct svc_program *prog = statp->program;
- 	const struct svc_procedure *proc;
- 	const struct svc_version *vers;
--	int		i, j;
-+	unsigned int i, j;
- 
- 	seq_printf(seq,
- 		"net %u %u %u %u\n",
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 4695ad7..c14630f 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -363,7 +363,7 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
- 	   void (*shutdown)(struct svc_serv *serv))
- {
- 	struct svc_serv	*serv;
--	int vers;
-+	unsigned int vers;
- 	unsigned int xdrsize;
- 	unsigned int i;
- 
-@@ -736,7 +736,8 @@ svc_register(struct svc_serv *serv, int proto, unsigned short port)
- {
- 	struct svc_program	*progp;
- 	unsigned long		flags;
--	int			i, error = 0, dummy;
-+	unsigned int		i;
-+	int			error = 0, dummy;
- 
- 	if (!port)
- 		clear_thread_flag(TIF_SIGPENDING);
+Trond
 
 
 -------------------------------------------------------------------------
