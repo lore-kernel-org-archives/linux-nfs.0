@@ -1,8 +1,8 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 23/27] NFS: Clean up: copy hostname with kstrndup
-	during mount	processing
-Date: Fri, 26 Oct 2007 13:32:40 -0400
-Message-ID: <20071026173240.31475.40562.stgit@manray.1015granger.net>
+Subject: [PATCH 19/27] NFS: Ensure that NFS version 4 mounts use
+	NFS_PORT if	nfsport wasn't set
+Date: Fri, 26 Oct 2007 13:32:19 -0400
+Message-ID: <20071026173219.31475.68965.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
@@ -11,12 +11,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IlT3E-0007LW-0n
-	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 10:33:09 -0700
+	id 1IlT2r-0007LL-VI
+	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 10:32:45 -0700
 Received: from flpi185.sbcis.sbc.com ([207.115.20.187]
 	helo=flpi185.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IlT3I-0000SO-E2
-	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 10:32:57 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IlT2w-0000Fs-Cx
+	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 10:32:35 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,46 +29,34 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Clean up: mount option parsing uses kstrndup in several places, rather than
-using kzalloc.  Replace the few remaining uses of kzalloc with kstrndup,
-for consistency.
+Text-based mount option parsing introduced a minor regression in the
+behavior of NFS version 4 mounts.  NFS version 4 is not supposed to require
+a running rpcbind service on the server in order for a mount to succeed.
+
+In other words, if the mount options don't specify a port number, the port
+number is supposed to default to 2049.  For earlier versions of NFS, the
+default port number was zero in order to cause the RPC client to autobind
+to the server's NFS service.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfs/super.c |   13 ++++---------
- 1 files changed, 4 insertions(+), 9 deletions(-)
+ fs/nfs/super.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
 
 diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 5c553b1..ccfe303 100644
+index fa517ae..1b2fac8 100644
 --- a/fs/nfs/super.c
 +++ b/fs/nfs/super.c
-@@ -1642,21 +1642,16 @@ static int nfs4_validate_mount_data(void *options,
- 		len = c - dev_name;
- 		if (len > NFS4_MAXNAMLEN)
- 			return -ENAMETOOLONG;
--		args->nfs_server.hostname = kzalloc(len, GFP_KERNEL);
--		if (args->nfs_server.hostname == NULL)
--			return -ENOMEM;
--		strncpy(args->nfs_server.hostname, dev_name, len - 1);
-+		/* N.B. caller will free nfs_server.hostname in all cases */
-+		args->nfs_server.hostname = kstrndup(dev_name, len, GFP_KERNEL);
+@@ -1612,6 +1612,8 @@ static int nfs4_validate_mount_data(void *options,
+ 		if (nfs_parse_mount_options((char *)options, args) == 0)
+ 			return -EINVAL;
  
- 		c++;			/* step over the ':' */
- 		len = strlen(c);
- 		if (len > NFS4_MAXPATHLEN)
- 			return -ENAMETOOLONG;
--		args->nfs_server.export_path = kzalloc(len + 1, GFP_KERNEL);
--		if (args->nfs_server.export_path == NULL)
--			return -ENOMEM;
--		strncpy(args->nfs_server.export_path, c, len);
-+		args->nfs_server.export_path = kstrndup(c, len, GFP_KERNEL);
- 
--		dprintk("MNTPATH: %s\n", args->nfs_server.export_path);
-+		dprintk("NFS: MNTPATH: '%s'\n", args->nfs_server.export_path);
- 
- 		if (args->client_address == NULL)
- 			goto out_no_client_address;
++		if (args->nfs_server.address.sin_port == 0)
++			args->nfs_server.address.sin_port = htons(NFS_PORT);
+ 		if (!nfs_verify_server_address((struct sockaddr *)
+ 						&args->nfs_server.address))
+ 			return -EINVAL;
 
 
 -------------------------------------------------------------------------
