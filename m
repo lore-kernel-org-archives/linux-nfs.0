@@ -1,9 +1,9 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 22/27] NFS: text-based mounts should support
-	multiple	security flavors
-Date: Fri, 26 Oct 2007 14:54:27 -0400
-Message-ID: <1193424867.7486.43.camel@heimdal.trondhjem.org>
-References: <20071026173234.31475.2268.stgit@manray.1015granger.net>
+Subject: Re: [PATCH 25/27] NFS: Make cl_nfsversion an unsigned integer,
+	like nrvers
+Date: Fri, 26 Oct 2007 15:02:34 -0400
+Message-ID: <1193425354.7486.48.camel@heimdal.trondhjem.org>
+References: <20071026173250.31475.47700.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
@@ -12,13 +12,13 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IlUJL-0006rh-0K
-	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 11:53:41 -0700
+	id 1IlUR6-0007ei-Es
+	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 12:01:39 -0700
 Received: from pat.uio.no ([129.240.10.15])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IlUJN-0005Cx-A3
-	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 11:53:40 -0700
-In-Reply-To: <20071026173234.31475.2268.stgit@manray.1015granger.net>
+	(Exim 4.44) id 1IlUR9-00018h-DC
+	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 12:01:42 -0700
+In-Reply-To: <20071026173250.31475.47700.stgit@manray.1015granger.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,270 +33,137 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 
 On Fri, 2007-10-26 at 13:32 -0400, Chuck Lever wrote:
-> Add support to the in-kernel NFS mount option parser for handling multiple
-> security flavors.
-> 
-> This does not implement support for multiple security flavors in the
-> underlying NFS or mountd clients.  When that support is added, simply crank
-> up the value of the MAX_SECURITY_FLAVORS macro, and that will enable the
-> mount option parser to grok colons and multiple security flavors.
-> 
+> NFS version numbers are unsigned.  Clean up a little bit of confusion by
+> changing the cl_nfsversion field in the nfs_client struct to match nrvers.
+
+Can we instead please just get rid of cl_nfsversion? It is utterly
+redundant: we've got the exact same information in rpc_ops->version,
+and/or cl_rpcclient->cl_vers.
+
+Trond
+
 > Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 > ---
 > 
->  fs/nfs/internal.h |    5 +-
->  fs/nfs/super.c    |  173 ++++++++++++++++++++++++++++++-----------------------
->  2 files changed, 103 insertions(+), 75 deletions(-)
+>  fs/nfs/client.c           |   22 +++++++++++++---------
+>  fs/nfs/internal.h         |    4 +++-
+>  include/linux/nfs_fs_sb.h |    2 +-
+>  3 files changed, 17 insertions(+), 11 deletions(-)
 > 
+> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+> index 4081197..101f30e 100644
+> --- a/fs/nfs/client.c
+> +++ b/fs/nfs/client.c
+> @@ -101,7 +101,7 @@ struct rpc_program		nfsacl_program = {
+>   */
+>  static struct nfs_client *nfs_alloc_client(const char *hostname,
+>  					   const struct sockaddr_in *addr,
+> -					   int nfsversion)
+> +					   unsigned int nfsversion)
+>  {
+>  	struct nfs_client *clp;
+>  
+> @@ -166,7 +166,7 @@ static void nfs4_shutdown_client(struct nfs_client *clp)
+>   */
+>  static void nfs_free_client(struct nfs_client *clp)
+>  {
+> -	dprintk("--> nfs_free_client(%d)\n", clp->cl_nfsversion);
+> +	dprintk("--> nfs_free_client(%u)\n", clp->cl_nfsversion);
+>  
+>  	nfs4_shutdown_client(clp);
+>  
+> @@ -207,7 +207,9 @@ void nfs_put_client(struct nfs_client *clp)
+>   * Find a client by address
+>   * - caller must hold nfs_client_lock
+>   */
+> -static struct nfs_client *__nfs_find_client(const struct sockaddr_in *addr, int nfsversion, int match_port)
+> +static struct nfs_client *__nfs_find_client(const struct sockaddr_in *addr,
+> +					    unsigned int nfsversion,
+> +					    int match_port)
+>  {
+>  	struct nfs_client *clp;
+>  
+> @@ -238,7 +240,8 @@ found:
+>   * Find a client by IP address and protocol version
+>   * - returns NULL if no such client
+>   */
+> -struct nfs_client *nfs_find_client(const struct sockaddr_in *addr, int nfsversion)
+> +struct nfs_client *nfs_find_client(const struct sockaddr_in *addr,
+> +				   unsigned int nfsversion)
+>  {
+>  	struct nfs_client *clp;
+>  
+> @@ -258,12 +261,12 @@ struct nfs_client *nfs_find_client(const struct sockaddr_in *addr, int nfsversio
+>   */
+>  static struct nfs_client *nfs_get_client(const char *hostname,
+>  					 const struct sockaddr_in *addr,
+> -					 int nfsversion)
+> +					 unsigned int nfsversion)
+>  {
+>  	struct nfs_client *clp, *new = NULL;
+>  	int error;
+>  
+> -	dprintk("--> nfs_get_client(%s,"NIPQUAD_FMT":%d,%d)\n",
+> +	dprintk("--> nfs_get_client(%s,"NIPQUAD_FMT":%d,%u)\n",
+>  		hostname ?: "", NIPQUAD(addr->sin_addr),
+>  		addr->sin_port, nfsversion);
+>  
+> @@ -544,7 +547,8 @@ static int nfs_init_server(struct nfs_server *server,
+>  			   const struct nfs_parsed_mount_data *data)
+>  {
+>  	struct nfs_client *clp;
+> -	int error, nfsvers = 2;
+> +	unsigned nfsvers = 2;
+> +	int error;
+>  
+>  	dprintk("--> nfs_init_server()\n");
+>  
+> @@ -1262,7 +1266,7 @@ static int nfs_server_list_show(struct seq_file *m, void *v)
+>  	/* display one transport per line on subsequent lines */
+>  	clp = list_entry(v, struct nfs_client, cl_share_link);
+>  
+> -	seq_printf(m, "v%d %02x%02x%02x%02x %4hx %3d %s\n",
+> +	seq_printf(m, "v%u %02x%02x%02x%02x %4hx %3d %s\n",
+>  		   clp->cl_nfsversion,
+>  		   NIPQUAD(clp->cl_addr.sin_addr),
+>  		   ntohs(clp->cl_addr.sin_port),
+> @@ -1341,7 +1345,7 @@ static int nfs_volume_list_show(struct seq_file *m, void *v)
+>  		 (unsigned long long) server->fsid.major,
+>  		 (unsigned long long) server->fsid.minor);
+>  
+> -	seq_printf(m, "v%d %02x%02x%02x%02x %4hx %-7s %-17s\n",
+> +	seq_printf(m, "v%u %02x%02x%02x%02x %4hx %-7s %-17s\n",
+>  		   clp->cl_nfsversion,
+>  		   NIPQUAD(clp->cl_addr.sin_addr),
+>  		   ntohs(clp->cl_addr.sin_port),
 > diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-> index 99a74a7..5f93512 100644
+> index 5f93512..3d5e587 100644
 > --- a/fs/nfs/internal.h
 > +++ b/fs/nfs/internal.h
-> @@ -28,6 +28,9 @@ struct nfs_clone_mount {
->  /*
->   * In-kernel mount arguments
->   */
-> +
-> +#define MAX_SECURITY_FLAVORS	(1)
-> +
->  struct nfs_parsed_mount_data {
->  	int			flags;
->  	int			rsize, wsize;
-> @@ -37,7 +40,7 @@ struct nfs_parsed_mount_data {
->  	int			namlen;
->  	unsigned int		bsize;
->  	unsigned int		auth_flavor_len;
-> -	rpc_authflavor_t	auth_flavors[1];
-> +	rpc_authflavor_t	auth_flavors[MAX_SECURITY_FLAVORS];
->  	char			*client_address;
+> @@ -63,7 +63,9 @@ struct nfs_parsed_mount_data {
+>  extern struct rpc_program nfs_program;
 >  
->  	struct {
-> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-> index be96a8c..5c553b1 100644
-> --- a/fs/nfs/super.c
-> +++ b/fs/nfs/super.c
-> @@ -590,6 +590,99 @@ static int nfs_verify_server_address(struct sockaddr *addr)
->  }
->  
->  /*
-> + * Parse the value of the 'sec=' option.
-> + */
-> +static int nfs_parse_security_flavors(char *value,
-> +				      struct nfs_parsed_mount_data *mnt)
-> +{
-> +	char *p, *string;
-> +
-> +	mnt->auth_flavor_len = 0;
-> +
-> +	while ((p = strsep(&value, ":")) != NULL) {
-> +		substring_t args[MAX_OPT_ARGS];
-> +		int token;
-> +
-> +		if (!*p)
-> +			continue;
-> +
-> +		if (mnt->auth_flavor_len >= MAX_SECURITY_FLAVORS)
-> +			goto out_inval_auth;
-> +
-> +		string = match_strdup(args);
-> +		if (string == NULL)
-> +			goto out_nomem;
-> +		token = match_token(string, nfs_secflavor_tokens, args);
-> +		kfree(string);
-> +
-> +		switch (token) {
-> +		case Opt_sec_none:
-> +			mnt->auth_flavors[mnt->auth_flavor_len] =
-> +							RPC_AUTH_NULL;
-> +			break;
-> +		case Opt_sec_sys:
-> +			mnt->auth_flavors[mnt->auth_flavor_len] =
-> +							RPC_AUTH_UNIX;
-> +			break;
-> +		case Opt_sec_krb5:
-> +			mnt->auth_flavors[mnt->auth_flavor_len] =
-> +							RPC_AUTH_GSS_KRB5;
-> +			break;
-> +		case Opt_sec_krb5i:
-> +			mnt->auth_flavors[mnt->auth_flavor_len] =
-> +							RPC_AUTH_GSS_KRB5I;
-> +			break;
-> +		case Opt_sec_krb5p:
-> +			mnt->auth_flavors[mnt->auth_flavor_len] =
-> +							RPC_AUTH_GSS_KRB5P;
-> +			break;
-> +		case Opt_sec_lkey:
-> +			mnt->auth_flavors[mnt->auth_flavor_len] =
-> +							RPC_AUTH_GSS_LKEY;
-> +			break;
-> +		case Opt_sec_lkeyi:
-> +			mnt->auth_flavors[mnt->auth_flavor_len] =
-> +							RPC_AUTH_GSS_LKEYI;
-> +			break;
-> +		case Opt_sec_lkeyp:
-> +			mnt->auth_flavors[mnt->auth_flavor_len] =
-> +							RPC_AUTH_GSS_LKEYP;
-> +			break;
-> +		case Opt_sec_spkm:
-> +			mnt->auth_flavors[mnt->auth_flavor_len] =
-> +							RPC_AUTH_GSS_SPKM;
-> +			break;
-> +		case Opt_sec_spkmi:
-> +			mnt->auth_flavors[mnt->auth_flavor_len] =
-> +							RPC_AUTH_GSS_SPKMI;
-> +			break;
-> +		case Opt_sec_spkmp:
-> +			mnt->auth_flavors[mnt->auth_flavor_len] =
-> +							RPC_AUTH_GSS_SPKMP;
-> +			break;
-> +		default:
-> +			goto out_unrec_sec;
-> +		}
-> +
-> +		mnt->auth_flavor_len++;
-> +	}
-> +
-> +	return 1;
-> +
-> +out_nomem:
-> +	printk(KERN_INFO "NFS: not enough memory to parse sec= option\n");
-> +	return 0;
-> +
-> +out_unrec_sec:
-> +	printk(KERN_INFO "NFS: unrecognized security flavor\n");
-> +	return 0;
-> +
-> +out_inval_auth:
-> +	printk(KERN_INFO "NFS: Too many security flavors\n");
-> +	return 0;
-> +}
-> +
-
-So where do you now set or clear NFS_MOUNT_SECFLAVOUR?
-
-> +/*
->   * Error-check and convert a string of mount options from user space into
->   * a data structure
->   */
-> @@ -787,73 +880,10 @@ static int nfs_parse_mount_options(char *raw,
->  			string = match_strdup(args);
->  			if (string == NULL)
->  				goto out_nomem;
-> -			token = match_token(string, nfs_secflavor_tokens, args);
-> +			token = nfs_parse_security_flavors(string, mnt);
->  			kfree(string);
-> -
-> -			/*
-> -			 * The flags setting is for v2/v3.  The flavor_len
-> -			 * setting is for v4.  v2/v3 also need to know the
-> -			 * difference between NULL and UNIX.
-> -			 */
-> -			switch (token) {
-> -			case Opt_sec_none:
-> -				mnt->flags &= ~NFS_MOUNT_SECFLAVOUR;
-> -				mnt->auth_flavor_len = 0;
-> -				mnt->auth_flavors[0] = RPC_AUTH_NULL;
-> -				break;
-> -			case Opt_sec_sys:
-> -				mnt->flags &= ~NFS_MOUNT_SECFLAVOUR;
-> -				mnt->auth_flavor_len = 0;
-> -				mnt->auth_flavors[0] = RPC_AUTH_UNIX;
-> -				break;
-> -			case Opt_sec_krb5:
-> -				mnt->flags |= NFS_MOUNT_SECFLAVOUR;
-> -				mnt->auth_flavor_len = 1;
-> -				mnt->auth_flavors[0] = RPC_AUTH_GSS_KRB5;
-> -				break;
-> -			case Opt_sec_krb5i:
-> -				mnt->flags |= NFS_MOUNT_SECFLAVOUR;
-> -				mnt->auth_flavor_len = 1;
-> -				mnt->auth_flavors[0] = RPC_AUTH_GSS_KRB5I;
-> -				break;
-> -			case Opt_sec_krb5p:
-> -				mnt->flags |= NFS_MOUNT_SECFLAVOUR;
-> -				mnt->auth_flavor_len = 1;
-> -				mnt->auth_flavors[0] = RPC_AUTH_GSS_KRB5P;
-> -				break;
-> -			case Opt_sec_lkey:
-> -				mnt->flags |= NFS_MOUNT_SECFLAVOUR;
-> -				mnt->auth_flavor_len = 1;
-> -				mnt->auth_flavors[0] = RPC_AUTH_GSS_LKEY;
-> -				break;
-> -			case Opt_sec_lkeyi:
-> -				mnt->flags |= NFS_MOUNT_SECFLAVOUR;
-> -				mnt->auth_flavor_len = 1;
-> -				mnt->auth_flavors[0] = RPC_AUTH_GSS_LKEYI;
-> -				break;
-> -			case Opt_sec_lkeyp:
-> -				mnt->flags |= NFS_MOUNT_SECFLAVOUR;
-> -				mnt->auth_flavor_len = 1;
-> -				mnt->auth_flavors[0] = RPC_AUTH_GSS_LKEYP;
-> -				break;
-> -			case Opt_sec_spkm:
-> -				mnt->flags |= NFS_MOUNT_SECFLAVOUR;
-> -				mnt->auth_flavor_len = 1;
-> -				mnt->auth_flavors[0] = RPC_AUTH_GSS_SPKM;
-> -				break;
-> -			case Opt_sec_spkmi:
-> -				mnt->flags |= NFS_MOUNT_SECFLAVOUR;
-> -				mnt->auth_flavor_len = 1;
-> -				mnt->auth_flavors[0] = RPC_AUTH_GSS_SPKMI;
-> -				break;
-> -			case Opt_sec_spkmp:
-> -				mnt->flags |= NFS_MOUNT_SECFLAVOUR;
-> -				mnt->auth_flavor_len = 1;
-> -				mnt->auth_flavors[0] = RPC_AUTH_GSS_SPKMP;
-> -				break;
-> -			default:
-> -				goto out_unrec_sec;
-> -			}
-> +			if (!token)
-> +				return 0;
->  			break;
->  		case Opt_proto:
->  			string = match_strdup(args);
-> @@ -955,10 +985,6 @@ out_unrec_xprt:
->  	printk(KERN_INFO "NFS: unrecognized transport protocol\n");
->  	return 0;
->  
-> -out_unrec_sec:
-> -	printk(KERN_INFO "NFS: unrecognized security flavor\n");
-> -	return 0;
-> -
->  out_unknown:
->  	printk(KERN_INFO "NFS: unknown mount option: %s\n", p);
->  	return 0;
-> @@ -1050,6 +1076,7 @@ static int nfs_validate_mount_data(void *options,
->  	args->acdirmax		= 60;
->  	args->mount_server.protocol = XPRT_TRANSPORT_UDP;
->  	args->nfs_server.protocol = XPRT_TRANSPORT_TCP;
-> +	args->auth_flavors[0] = RPC_AUTH_UNIX;
->  
->  	switch (data->version) {
->  	case 1:
-> @@ -1104,7 +1131,8 @@ static int nfs_validate_mount_data(void *options,
->  		args->nfs_server.hostname = kstrdup(data->hostname, GFP_KERNEL);
->  		args->namlen		= data->namlen;
->  		args->bsize		= data->bsize;
-> -		args->auth_flavors[0]	= data->pseudoflavor;
-> +		if (data->flags & NFS_MOUNT_SECFLAVOUR)
-
-                     Ehem! Please compare with the line you are moving.
-
-> +			args->auth_flavors[0] = data->pseudoflavor;
->  		break;
->  	default: {
->  		unsigned int len;
-> @@ -1138,9 +1166,6 @@ static int nfs_validate_mount_data(void *options,
->  		}
->  	}
->  
-> -	if (!(args->flags & NFS_MOUNT_SECFLAVOUR))
-> -		args->auth_flavors[0] = RPC_AUTH_UNIX;
-> -
->  #ifndef CONFIG_NFS_V3
->  	if (args->flags & NFS_MOUNT_VER3)
->  		goto out_v3_not_compiled;
+>  extern void nfs_put_client(struct nfs_client *);
+> -extern struct nfs_client *nfs_find_client(const struct sockaddr_in *, int);
+> +extern struct nfs_client *nfs_find_client(
+> +					const struct sockaddr_in *,
+> +					unsigned int);
+>  extern struct nfs_server *nfs_create_server(
+>  					const struct nfs_parsed_mount_data *,
+>  					struct nfs_fh *);
+> diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+> index 0cac49b..64638ca 100644
+> --- a/include/linux/nfs_fs_sb.h
+> +++ b/include/linux/nfs_fs_sb.h
+> @@ -14,7 +14,7 @@ struct nfs_client {
+>  	int			cl_cons_state;	/* current construction state (-ve: init error) */
+>  #define NFS_CS_READY		0		/* ready to be used */
+>  #define NFS_CS_INITING		1		/* busy initialising */
+> -	int			cl_nfsversion;	/* NFS protocol version */
+> +	unsigned int		cl_nfsversion;	/* NFS protocol version */
+>  	unsigned long		cl_res_state;	/* NFS resources state */
+>  #define NFS_CS_CALLBACK		1		/* - callback started */
+>  #define NFS_CS_IDMAP		2		/* - idmap started */
 > 
 
 
