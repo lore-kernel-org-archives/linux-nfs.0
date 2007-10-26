@@ -1,22 +1,22 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 18/27] NFS: Prevent nfs_getattr() hang during heavy
-	write	workloads
-Date: Fri, 26 Oct 2007 13:32:13 -0400
-Message-ID: <20071026173213.31475.72792.stgit@manray.1015granger.net>
+Subject: [PATCH 27/27] NFS: Remove an unneeded check
+	in	decode_compound_header_arg()
+Date: Fri, 26 Oct 2007 13:33:01 -0400
+Message-ID: <20071026173301.31475.98468.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 To: trond.myklebust@fys.uio.no
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IlT35-0007LK-JQ
-	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 10:32:45 -0700
+	id 1IlT3p-0007LC-GV
+	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 10:33:29 -0700
 Received: from flpi185.sbcis.sbc.com ([207.115.20.187]
 	helo=flpi185.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IlT2v-0006QR-AL
-	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 10:32:35 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IlT3d-0000g0-Hd
+	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 10:33:18 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,51 +29,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-POSIX requires that ctime and mtime, as reported by the stat(2) call,
-reflect the activity of the most recent write(2).  To that end, nfs_getattr()
-flushes pending dirty writes to a file before doing a GETATTR to allow the
-NFS server to set the file's size, ctime, and mtime properly.
-
-However, nfs_getattr() can be starved when a constant stream of application
-writes to a file prevents nfs_wb_nocommit() from completing.  This usually
-results in hangs of programs doing a stat against an NFS file that is being
-written.  "ls -l" is a common victim of this behavior.
-
-To prevent starvation, hold the file's i_mutex in nfs_getattr() to
-freeze applications writes temporarily so the client can more quickly obtain
-clean values for a file's size, mtime, and ctime.
+Clean up:  The header tag length is unsigned, so checking that it is less
+than zero is unnecessary.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfs/inode.c |   13 +++++++++++--
- 1 files changed, 11 insertions(+), 2 deletions(-)
+ fs/nfs/callback_xdr.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index cd0e57f..cc3a09d 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -461,9 +461,18 @@ int nfs_getattr(struct vfsmount *mnt, struct dentry *dentry, struct kstat *stat)
- 	int need_atime = NFS_I(inode)->cache_validity & NFS_INO_INVALID_ATIME;
- 	int err;
- 
--	/* Flush out writes to the server in order to update c/mtime */
--	if (S_ISREG(inode->i_mode))
-+	/*
-+	 * Flush out writes to the server in order to update c/mtime.
-+	 *
-+	 * Hold the i_mutex to suspend application writes temporarily;
-+	 * this prevents long-running writing applications from blocking
-+	 * nfs_wb_nocommit.
-+	 */
-+	if (S_ISREG(inode->i_mode)) {
-+		mutex_lock(&inode->i_mutex);
- 		nfs_wb_nocommit(inode);
-+		mutex_unlock(&inode->i_mutex);
-+	}
- 
- 	/*
- 	 * We may force a getattr if the user cares about atime.
+diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
+index 058ade7..97abd82 100644
+--- a/fs/nfs/callback_xdr.c
++++ b/fs/nfs/callback_xdr.c
+@@ -139,7 +139,7 @@ static __be32 decode_compound_hdr_arg(struct xdr_stream *xdr, struct cb_compound
+ 	if (unlikely(status != 0))
+ 		return status;
+ 	/* We do not like overly long tags! */
+-	if (hdr->taglen > CB_OP_TAGLEN_MAXSZ-12 || hdr->taglen < 0) {
++	if (hdr->taglen > CB_OP_TAGLEN_MAXSZ - 12) {
+ 		printk("NFSv4 CALLBACK %s: client sent tag of length %u\n",
+ 				__FUNCTION__, hdr->taglen);
+ 		return htonl(NFS4ERR_RESOURCE);
 
 
 -------------------------------------------------------------------------
