@@ -1,22 +1,21 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 17/27] NFS: Change sign of some loop indices in
-	nfs4xdr.c
-Date: Fri, 26 Oct 2007 13:32:08 -0400
-Message-ID: <20071026173208.31475.1559.stgit@manray.1015granger.net>
+Subject: [PATCH 21/27] NFS: Remove support for the 'mountprog' option
+Date: Fri, 26 Oct 2007 13:32:29 -0400
+Message-ID: <20071026173229.31475.70902.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 To: trond.myklebust@fys.uio.no
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IlT2f-0007Kn-J3
-	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 10:32:17 -0700
+	id 1IlT38-0007LS-8C
+	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 10:33:09 -0700
 Received: from flpi185.sbcis.sbc.com ([207.115.20.187]
 	helo=flpi185.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IlT2l-0006LN-0w
-	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 10:32:23 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IlT3D-0000Pt-FY
+	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 10:32:51 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,64 +28,72 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Nit: Eliminate some mixed sign comparisons in loop indices.
+Remove the mount option that allows users to specify an alternate mountd
+program number.  The client hasn't support setting an alternate mountd
+program number for a very long time.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfs/nfs4xdr.c |   16 ++++++++--------
- 1 files changed, 8 insertions(+), 8 deletions(-)
+ fs/nfs/internal.h |    1 -
+ fs/nfs/super.c    |   11 +----------
+ 2 files changed, 1 insertions(+), 11 deletions(-)
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 2e1fe17..eae46f0 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -2515,14 +2515,12 @@ static int decode_attr_files_total(struct xdr_stream *xdr, uint32_t *bitmap, uin
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 27bab89..99a74a7 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -52,7 +52,6 @@ struct nfs_parsed_mount_data {
+ 		struct sockaddr_in	address;
+ 		char			*hostname;
+ 		char			*export_path;
+-		unsigned int		program;
+ 		int			protocol;
+ 	} nfs_server;
+ };
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 6242165..be96a8c 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -83,7 +83,7 @@ enum {
+ 	Opt_actimeo,
+ 	Opt_namelen,
+ 	Opt_mountport,
+-	Opt_mountprog, Opt_mountvers,
++	Opt_mountvers,
+ 	Opt_nfsvers,
  
- static int decode_pathname(struct xdr_stream *xdr, struct nfs4_pathname *path)
- {
--	int n;
-+	u32 n;
- 	__be32 *p;
- 	int status = 0;
+ 	/* Mount options that take string arguments */
+@@ -137,7 +137,6 @@ static match_table_t nfs_mount_option_tokens = {
+ 	{ Opt_userspace, "retry=%u" },
+ 	{ Opt_namelen, "namlen=%u" },
+ 	{ Opt_mountport, "mountport=%u" },
+-	{ Opt_mountprog, "mountprog=%u" },
+ 	{ Opt_mountvers, "mountvers=%u" },
+ 	{ Opt_nfsvers, "nfsvers=%u" },
+ 	{ Opt_nfsvers, "vers=%u" },
+@@ -762,13 +761,6 @@ static int nfs_parse_mount_options(char *raw,
+ 				return 0;
+ 			mnt->mount_server.port = option;
+ 			break;
+-		case Opt_mountprog:
+-			if (match_int(args, &option))
+-				return 0;
+-			if (option < 0)
+-				return 0;
+-			mnt->mount_server.program = option;
+-			break;
+ 		case Opt_mountvers:
+ 			if (match_int(args, &option))
+ 				return 0;
+@@ -1057,7 +1049,6 @@ static int nfs_validate_mount_data(void *options,
+ 	args->acdirmin		= 30;
+ 	args->acdirmax		= 60;
+ 	args->mount_server.protocol = XPRT_TRANSPORT_UDP;
+-	args->mount_server.program = NFS_MNT_PROGRAM;
+ 	args->nfs_server.protocol = XPRT_TRANSPORT_TCP;
  
- 	READ_BUF(4);
- 	READ32(n);
--	if (n < 0)
--		goto out_eio;
- 	if (n == 0)
- 		goto root_path;
- 	dprintk("path ");
-@@ -2579,13 +2577,11 @@ static int decode_attr_fs_locations(struct xdr_stream *xdr, uint32_t *bitmap, st
- 		goto out_eio;
- 	res->nlocations = 0;
- 	while (res->nlocations < n) {
--		int m;
-+		u32 m;
- 		struct nfs4_fs_location *loc = &res->locations[res->nlocations];
- 
- 		READ_BUF(4);
- 		READ32(m);
--		if (m <= 0)
--			goto out_eio;
- 
- 		loc->nservers = 0;
- 		dprintk("%s: servers ", __FUNCTION__);
-@@ -2598,8 +2594,12 @@ static int decode_attr_fs_locations(struct xdr_stream *xdr, uint32_t *bitmap, st
- 			if (loc->nservers < NFS4_FS_LOCATION_MAXSERVERS)
- 				loc->nservers++;
- 			else {
--				int i;
--				dprintk("%s: using first %d of %d servers returned for location %d\n", __FUNCTION__, NFS4_FS_LOCATION_MAXSERVERS, m, res->nlocations);
-+				unsigned int i;
-+				dprintk("%s: using first %u of %u servers "
-+					"returned for location %u\n",
-+						__FUNCTION__,
-+						NFS4_FS_LOCATION_MAXSERVERS,
-+						m, res->nlocations);
- 				for (i = loc->nservers; i < m; i++) {
- 					unsigned int len;
- 					char *data;
+ 	switch (data->version) {
 
 
 -------------------------------------------------------------------------
