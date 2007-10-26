@@ -1,110 +1,162 @@
-From: Le Rouzic <aime.le-rouzic@bull.net>
-Subject: Oops when mounting with krb5i flavor on
-	linux-2.6.23-rc9-CITI_NFS4_ALL-1
-Date: Fri, 26 Oct 2007 16:24:37 +0200
-Message-ID: <4721F8A5.3080804@bull.net>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: nfs performance problem
+Date: Fri, 26 Oct 2007 10:18:29 -0400
+Message-ID: <4721F735.8050503@oracle.com>
+References: <20071025131029.GH8334@barnabas.schuldei.org>
+	<7B68ECC3-7EBA-442F-9FFD-A0E3F2DCC61A@oracle.com>
+	<20071025193457.GE4499@jakobus.spotify.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: multipart/mixed; boundary="------------030500060600050402070704"
 Cc: nfs@lists.sourceforge.net
-To: nfsv4 <nfsv4@linux-nfs.org>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
-List-ID: <nfs.lists.sourceforge.net>
+To: Andreas Schuldei <andreas@schuldei.org>
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1IlQ9m-00020v-Ox
+	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 07:27:26 -0700
+Received: from rgminet01.oracle.com ([148.87.113.118])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IlQ9q-00027R-Jl
+	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 07:27:32 -0700
+In-Reply-To: <20071025193457.GE4499@jakobus.spotify.net>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi,
+This is a multi-part message in MIME format.
+--------------030500060600050402070704
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-Running 2.6.23-rc9-CITI_NFS4_ALL-1 on one Intel X86_64 bi-ways machine acting
-as client and having AIX as server, if I do a NFSV4 mounting on linux
-using the krb5i flavor get the following Oops during the mount:
+Andreas Schuldei wrote:
+> * Chuck Lever (chuck.lever@oracle.com) [071025 20:25]:
+>> On Oct 25, 2007, at 9:10 AM, Andreas Schuldei wrote:
+>> With a single client, you should not expect to get any better performance than by running the web service on the NFS 
+>> > server.  The advantage of using NFS under a web service is that you can transparently scale horizontally.  When you add 
+>> > a second or third web server that serves the same file set, you will see an effective increase in the size of the data 
+>> > cache between your NFS server's disks and the web servers.
+> 
+> Not with terabyte of data and a distributed access pattern.
+> Certainly i will have some cache hits but not enough to be able
+> to serv considerable amounts out of RAM.
 
-kernel: Unable to handle kernel NULL pointer dereference at 0000000000000020
-RIP:
-kernel:  [<ffffffff805b06a6>] g_token_size+0x1/0x15
-kernel: PGD 62f27067 PUD 7698f067 PMD 0
-kernel: Oops: 0000 [1] SMP
-kernel: CPU 1
-kernel: Modules linked in: hidp hid rfcomm l2cap bluetooth cpufreq_ondemand
-acpi_cpufreq dm_mirror dm_multipath dm_mod
-backlight parport_pc lp parport nvram i2c_i801 i2c_core
-kernel: Pid: 3111, comm: mount.nfs4 Not tainted 2.6.23-rc9-CITI_NFS4_ALL-1 #6
-kernel: RIP: 0010:[<ffffffff805b06a6>]  [<ffffffff805b06a6>]
-g_token_size+0x1/0x15
-kernel: RSP: 0018:ffff810060ca5578  EFLAGS: 00010246
-kernel: RAX: 000000004721a1e4 RBX: 0000000000000020 RCX: 0000000000000000
-kernel: RDX: ffff810060ca5648 RSI: 0000000000000016 RDI: 0000000000000020
-kernel: RBP: ffff810060ca5648 R08: ffff810060ca55f8 R09: ffff81007e984300
-kernel: R10: ffff810062be9d80 R11: ffffffff805b36a8 R12: 0000000000000000
-kernel: R13: ffff810060ca55f8 R14: 000000004721a1e4 R15: ffff81007e984300
-kernel: FS:  00002b68e7eaa6f0(0000) GS:ffff81007f86aac0(0000)
-knlGS:0000000000000000
-kernel: CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-kernel: CR2: 0000000000000020 CR3: 0000000061160000 CR4: 00000000000006e0
-kernel: DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-kernel: DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-kernel: Process mount.nfs4 (pid: 3111, threadinfo ffff810060ca4000, task
-ffff8100786010c0)
-kernel: Stack:  0000000000000020 ffffffff805b3700 0000000000000000
-ffff810060ca5598
-kernel:  ffff810060ca55e8 0000000000000282 ffff81006f0d73c0 ffffffff805b8573
-kernel:  ffff810060ca55f8 ffff810062ade048 ffff810060d7e000 ffff810062ade044
-kernel: Call Trace:
-kernel:  [<ffffffff805b3700>] gss_get_mic_kerberos+0x58/0x164
-kernel:  [<ffffffff805b8573>] _spin_lock_irqsave+0x9/0xe
-kernel:  [<ffffffff805afff0>] gss_marshal+0x134/0x19c
-kernel:  [<ffffffff8032a2a1>] nfs4_xdr_enc_lookup_root+0x0/0x71
-kernel:  [<ffffffff8059c4c8>] call_transmit+0x18b/0x23a
-kernel:  [<ffffffff805a27d0>] __rpc_execute+0x7d/0x240
-kernel:  [<ffffffff8059cce3>] rpc_do_run_task+0x89/0xa6
-kernel:  [<ffffffff8023503c>] __group_send_sig_info+0x80/0x8b
-kernel:  [<ffffffff8059cd63>] rpc_call_sync+0x19/0x32
-kernel:  [<ffffffff803224e1>] nfs4_proc_get_root+0x83/0xca
-kernel:  [<ffffffff803124cd>] nfs4_path_walk+0x71/0x24f
-kernel:  [<ffffffff805ac025>] rpc_populate+0x159/0x1a8
-kernel:  [<ffffffff8029212a>] mntput_no_expire+0x1c/0x97
-kernel:  [<ffffffff805ad1e7>] rpc_mkdir+0x1eb/0x256
-kernel:  [<ffffffff8029853e>] simple_pin_fs+0x89/0xad
-kernel:  [<ffffffff8059c0cc>] rpc_register_client+0x10/0x3f
-kernel:  [<ffffffff8059d1c9>] rpc_clone_client+0x101/0x152
-kernel:  [<ffffffff8030e454>] nfs4_create_server+0x21b/0x38b
-kernel:  [<ffffffff802621ba>] strndup_user+0x51/0x77
-kernel:  [<ffffffff80316244>] nfs4_get_sb+0x377/0x4a8
-kernel:  [<ffffffff8025cee5>] __alloc_pages+0x71/0x2d3
-kernel:  [<ffffffff8027f4bc>] vfs_kern_mount+0x93/0x123
-kernel:  [<ffffffff8027f59b>] do_kern_mount+0x43/0xdd
-kernel:  [<ffffffff80293710>] do_mount+0x697/0x70b
-kernel:  [<ffffffff8026586a>] handle_mm_fault+0x724/0x757
-kernel:  [<ffffffff80539fcd>] ip_output+0x2ca/0x311
-kernel:  [<ffffffff805b8573>] _spin_lock_irqsave+0x9/0xe
-kernel:  [<ffffffff8040f128>] __up_read+0x13/0x8a
-kernel:  [<ffffffff805ba4a1>] do_page_fault+0x461/0x7d1
-kernel:  [<ffffffff805485b6>] tcp_transmit_skb+0x699/0x6d6
-kernel:  [<ffffffff802626f3>] zone_statistics+0x3f/0x60
-kernel:  [<ffffffff80291f50>] copy_mount_options+0xce/0x126
-kernel:  [<ffffffff8029380e>] sys_mount+0x8a/0xcd
-kernel:  [<ffffffff8020bb5e>] system_call+0x7e/0x83
-kernel:
+If you don't intend to scale horizontally by adding more clients, then 
+inserting NFS between your disks and your web service is not recommended 
+unless you have security requirement that needs to be solved by 
+administering your data separate from running the web service.
 
-More at:
-------------------------------------------------------------- 
-Bug: 
-  http://bugzilla.linux-nfs.org/show_bug.cgi?id=154  
+>> If anything, the 10s 
+>> latency you see when the web server is on the same system with the disks is indicative of local file system 
+>> configuration issues.
+> 
+> how can i measure the latency on the local machine? i would be
+> very interested in seeing how it behaves latency wise.
 
-Regards
+The iostat command has options for displaying disk service time.
 
--- 
------------------------------------------------------------------
-Company : Bull, Architect of an Open World TM (www.bull.com)
-Name    : Aime Le Rouzic 
-Mail    : Bull - BP 208 - 38432 Echirolles Cedex - France
-E-Mail  : aime.le-rouzic@bull.net
-Phone   : 33 (4) 76.29.75.51
-Fax     : 33 (4) 76.29.75.18
------------------------------------------------------------------ 
+>>> on the client i mount them like this:
+>>>
+>>> lotta:/var/disks/sda on /var/disks/sda type nfs (ro,hard,intr,proto=tcp,rsize=32k,addr=217.213.5.44)
+>>> lotta:/var/disks/sdb on /var/disks/sdb type nfs (ro,hard,intr,proto=tcp,rsize=32k,addr=217.213.5.44)
+>>> lotta:/var/disks/sdh on /var/disks/sdh type nfs (ro,hard,intr,proto=tcp,rsize=32k,addr=217.213.5.44)
+>>> lotta:/var/disks/sdi on /var/disks/sdi type nfs (ro,hard,intr,proto=tcp,rsize=32k,addr=217.213.5.44)
+>> There are some client-side mount options that might also help.  Using "nocto" and "actimeo=7200" could reduce 
+>> synchonous NFS protocol overhead.  I also notice a significant amount of readdirplus traffic.  Readdirplus requests are 
+>> fairly heavyweight, and in this scenario may be unneeded overhead.  Your client might support the recently added 
+>> "nordirplus" mount option, which could be helpful.
+>>
+>> I wonder if "rsize=32k" is supported - you might want "rsize=32768" instead.
+> 
+> i think that gave an effect. now i am in the 90-100Mbyte/s
+> ballpark and might hit the one-nic (1gbit) bottleneck.
+> 
+>> Or better, let the client and server 
+>> negotiate the maximum that each supports automatically by leaving this option off.  You can check what options are in 
+>> effect on each NFS mount point by looking in /proc/self/mountstats on the client.
+> 
+> there it says now, after i specified rsize=2097152:
+>         opts:   rw,vers=3,rsize=1048576,wsize=1048576,acregmin=3,acregmax=60,acdirmin=30,acdirmax=60,hard,intr,nolock,proto=tcp,timeo=600,retrans=2,sec=sys
+> 
+> i am surprised that it did not protest when it could not parse
+> the "k". note that it it only took 1M chunks. how come?
+
+1MB is the maximum that both your server and client support.  Again, if 
+you don't specify rsize at all, the maximum both support will be 
+negotiated automatically.
+
+>> Insufficient read-ahead on your server may be an issue here.  Read traffic from the client often arrives at the server 
+>> out of order, preventing the server from cleanly detecting sequential reads.  I believe there was a recent change to 
+>> the NFS server that addresses this issue.
+> 
+> when did that go in? do i need to activate that somehow?
+
+I don't think activation is needed.  Someone else on the list can speak 
+to when it was included in recent kernels or in distributions.  However, 
+since you are already close to your network limits, read-ahead is 
+probably not an issue for you.
+
+> how can i measure the latency on a loaded server? both locally
+> and over nfs?
+
+The iostat command, as mentioned above, will report on local disk 
+activity.  NFS client activity has not been integrated into iostat, but 
+there are some NFS client metrics available in /proc/self/mountstats.  I 
+have a pair of Python tools that can extract and display RPC request 
+latency information.  See:
+
+   http://oss.oracle.com/~cel/linux-2.6/2.6.21/iostat-ms
+
+and
+
+   http://oss.oracle.com/~cel/linux-2.6/2.6.21/mountstats
+
+--------------030500060600050402070704
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck.lever.vcf"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="chuck.lever.vcf"
+
+begin:vcard
+fn:Chuck Lever
+n:Lever;Chuck
+org:Oracle Corporation;Corporate Architecture, Linux Projects Group
+email;internet:chuck.lever@oracle.com
+title:Principal Member of Staff
+tel;work:+1 248 614 5091
+x-mozilla-html:FALSE
+version:2.1
+end:vcard
+
+
+--------------030500060600050402070704
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Splunk Inc.
+Still grepping through log files to find problems?  Stop.
+Now Search log events and configuration files using AJAX and a browser.
+Download your FREE copy of Splunk now >> http://get.splunk.com/
+--------------030500060600050402070704
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+
+--------------030500060600050402070704--
