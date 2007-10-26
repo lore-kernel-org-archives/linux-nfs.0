@@ -1,7 +1,8 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 21/27] NFS: Remove support for the 'mountprog' option
-Date: Fri, 26 Oct 2007 13:32:29 -0400
-Message-ID: <20071026173229.31475.70902.stgit@manray.1015granger.net>
+Subject: [PATCH 23/27] NFS: Clean up: copy hostname with kstrndup
+	during mount	processing
+Date: Fri, 26 Oct 2007 13:32:40 -0400
+Message-ID: <20071026173240.31475.40562.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
@@ -10,12 +11,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IlT38-0007LS-8C
+	id 1IlT3E-0007LW-0n
 	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 10:33:09 -0700
 Received: from flpi185.sbcis.sbc.com ([207.115.20.187]
 	helo=flpi185.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IlT3D-0000Pt-FY
-	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 10:32:51 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IlT3I-0000SO-E2
+	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 10:32:57 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,72 +29,46 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Remove the mount option that allows users to specify an alternate mountd
-program number.  The client hasn't support setting an alternate mountd
-program number for a very long time.
+Clean up: mount option parsing uses kstrndup in several places, rather than
+using kzalloc.  Replace the few remaining uses of kzalloc with kstrndup,
+for consistency.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfs/internal.h |    1 -
- fs/nfs/super.c    |   11 +----------
- 2 files changed, 1 insertions(+), 11 deletions(-)
+ fs/nfs/super.c |   13 ++++---------
+ 1 files changed, 4 insertions(+), 9 deletions(-)
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 27bab89..99a74a7 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -52,7 +52,6 @@ struct nfs_parsed_mount_data {
- 		struct sockaddr_in	address;
- 		char			*hostname;
- 		char			*export_path;
--		unsigned int		program;
- 		int			protocol;
- 	} nfs_server;
- };
 diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 6242165..be96a8c 100644
+index 5c553b1..ccfe303 100644
 --- a/fs/nfs/super.c
 +++ b/fs/nfs/super.c
-@@ -83,7 +83,7 @@ enum {
- 	Opt_actimeo,
- 	Opt_namelen,
- 	Opt_mountport,
--	Opt_mountprog, Opt_mountvers,
-+	Opt_mountvers,
- 	Opt_nfsvers,
+@@ -1642,21 +1642,16 @@ static int nfs4_validate_mount_data(void *options,
+ 		len = c - dev_name;
+ 		if (len > NFS4_MAXNAMLEN)
+ 			return -ENAMETOOLONG;
+-		args->nfs_server.hostname = kzalloc(len, GFP_KERNEL);
+-		if (args->nfs_server.hostname == NULL)
+-			return -ENOMEM;
+-		strncpy(args->nfs_server.hostname, dev_name, len - 1);
++		/* N.B. caller will free nfs_server.hostname in all cases */
++		args->nfs_server.hostname = kstrndup(dev_name, len, GFP_KERNEL);
  
- 	/* Mount options that take string arguments */
-@@ -137,7 +137,6 @@ static match_table_t nfs_mount_option_tokens = {
- 	{ Opt_userspace, "retry=%u" },
- 	{ Opt_namelen, "namlen=%u" },
- 	{ Opt_mountport, "mountport=%u" },
--	{ Opt_mountprog, "mountprog=%u" },
- 	{ Opt_mountvers, "mountvers=%u" },
- 	{ Opt_nfsvers, "nfsvers=%u" },
- 	{ Opt_nfsvers, "vers=%u" },
-@@ -762,13 +761,6 @@ static int nfs_parse_mount_options(char *raw,
- 				return 0;
- 			mnt->mount_server.port = option;
- 			break;
--		case Opt_mountprog:
--			if (match_int(args, &option))
--				return 0;
--			if (option < 0)
--				return 0;
--			mnt->mount_server.program = option;
--			break;
- 		case Opt_mountvers:
- 			if (match_int(args, &option))
- 				return 0;
-@@ -1057,7 +1049,6 @@ static int nfs_validate_mount_data(void *options,
- 	args->acdirmin		= 30;
- 	args->acdirmax		= 60;
- 	args->mount_server.protocol = XPRT_TRANSPORT_UDP;
--	args->mount_server.program = NFS_MNT_PROGRAM;
- 	args->nfs_server.protocol = XPRT_TRANSPORT_TCP;
+ 		c++;			/* step over the ':' */
+ 		len = strlen(c);
+ 		if (len > NFS4_MAXPATHLEN)
+ 			return -ENAMETOOLONG;
+-		args->nfs_server.export_path = kzalloc(len + 1, GFP_KERNEL);
+-		if (args->nfs_server.export_path == NULL)
+-			return -ENOMEM;
+-		strncpy(args->nfs_server.export_path, c, len);
++		args->nfs_server.export_path = kstrndup(c, len, GFP_KERNEL);
  
- 	switch (data->version) {
+-		dprintk("MNTPATH: %s\n", args->nfs_server.export_path);
++		dprintk("NFS: MNTPATH: '%s'\n", args->nfs_server.export_path);
+ 
+ 		if (args->client_address == NULL)
+ 			goto out_no_client_address;
 
 
 -------------------------------------------------------------------------
