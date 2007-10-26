@@ -1,8 +1,8 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 01/27] SUNRPC: Prevent mixed sign comparisons
-	in	rpcrdma_convert_iovs()
-Date: Fri, 26 Oct 2007 13:30:43 -0400
-Message-ID: <20071026173043.31475.35420.stgit@manray.1015granger.net>
+Subject: [PATCH 02/27] SUNRPC: Fix an unnecessary implicit type cast
+	in	rpcrdma_count_chunks()
+Date: Fri, 26 Oct 2007 13:30:49 -0400
+Message-ID: <20071026173049.31475.68976.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
@@ -11,12 +11,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IlT1S-00078J-M8
-	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 10:31:02 -0700
+	id 1IlT1a-0007Aj-6R
+	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 10:31:14 -0700
 Received: from flpi185.sbcis.sbc.com ([207.115.20.187]
 	helo=flpi185.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IlT1Y-0007sP-3b
-	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 10:31:08 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IlT1a-0007w0-9B
+	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 10:31:10 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,57 +29,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Keep the type of the buffer position the same during iovec conversion to
-reduce the likelihood of unexpected results from comparisons and length
-computations.
+Nit: rl_nchunks is an unsigned integer, so pass it into
+rpcrdma_count_chunks() via an unsigned integer argument.  This eliminates
+a harmless mixed sign comparison in rpcrdma_count_chunks()
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Cc: Thomas Talpey <Thomas.Talpey@netapp.com>
 ---
 
- net/sunrpc/xprtrdma/rpc_rdma.c |    8 ++++----
- 1 files changed, 4 insertions(+), 4 deletions(-)
+ net/sunrpc/xprtrdma/rpc_rdma.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
 
 diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 12db635..65e211e 100644
+index 65e211e..7024ac8 100644
 --- a/net/sunrpc/xprtrdma/rpc_rdma.c
 +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -83,7 +83,7 @@ static const char transfertypes[][12] = {
+@@ -559,7 +559,8 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
+  * RDMA'd by server. See map at rpcrdma_create_chunks()! :-)
   */
- 
  static int
--rpcrdma_convert_iovs(struct xdr_buf *xdrbuf, int pos,
-+rpcrdma_convert_iovs(struct xdr_buf *xdrbuf, unsigned int pos,
- 	enum rpcrdma_chunktype type, struct rpcrdma_mr_seg *seg, int nsegs)
+-rpcrdma_count_chunks(struct rpcrdma_rep *rep, int max, int wrchunk, u32 **iptrp)
++rpcrdma_count_chunks(struct rpcrdma_rep *rep, unsigned int max, int wrchunk,
++		     u32 **iptrp)
  {
- 	int len, n = 0, p;
-@@ -130,7 +130,7 @@ rpcrdma_convert_iovs(struct xdr_buf *xdrbuf, int pos,
- 	}
- 
- 	if (pos < xdrbuf->len)
--		dprintk("RPC:       %s: marshaled only %d of %d\n",
-+		dprintk("RPC:       %s: marshaled only %u of %u\n",
- 				__func__, pos, xdrbuf->len);
- 
- 	return n;
-@@ -176,7 +176,7 @@ rpcrdma_create_chunks(struct rpc_rqst *rqst, struct xdr_buf *target,
- 	struct rpcrdma_req *req = rpcr_to_rdmar(rqst);
- 	struct rpcrdma_xprt *r_xprt = rpcx_to_rdmax(rqst->rq_task->tk_xprt);
- 	int nsegs, nchunks = 0;
--	int pos;
-+	unsigned int pos;
- 	struct rpcrdma_mr_seg *seg = req->rl_segments;
- 	struct rpcrdma_read_chunk *cur_rchunk = NULL;
- 	struct rpcrdma_write_array *warray = NULL;
-@@ -220,7 +220,7 @@ rpcrdma_create_chunks(struct rpc_rqst *rqst, struct xdr_buf *target,
- 					(u32 *)&cur_rchunk->rc_target.rs_offset,
- 					seg->mr_base);
- 			dprintk("RPC:       %s: read chunk "
--				"elem %d@0x%llx:0x%x pos %d (%s)\n", __func__,
-+				"elem %d@0x%llx:0x%x pos %u (%s)\n", __func__,
- 				seg->mr_len, seg->mr_base, seg->mr_rkey, pos,
- 				n < nsegs ? "more" : "last");
- 			cur_rchunk++;
+ 	unsigned int i, total_len;
+ 	struct rpcrdma_write_chunk *cur_wchunk;
 
 
 -------------------------------------------------------------------------
