@@ -1,27 +1,22 @@
-From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
-Subject: Re: nfs performance problem
-Date: Fri, 26 Oct 2007 13:01:37 -0400
-Message-ID: <EXNANE018awYFDIfWb400000807@exnane01.hq.netapp.com>
-References: <20071025131029.GH8334@barnabas.schuldei.org>
-	<7B68ECC3-7EBA-442F-9FFD-A0E3F2DCC61A@oracle.com>
-	<20071025193457.GE4499@jakobus.spotify.net>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 01/27] SUNRPC: Prevent mixed sign comparisons
+	in	rpcrdma_convert_iovs()
+Date: Fri, 26 Oct 2007 13:30:43 -0400
+Message-ID: <20071026173043.31475.35420.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: Andreas Schuldei <andreas@schuldei.org>
+To: trond.myklebust@fys.uio.no
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IlSbU-0004X4-IU
-	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 10:04:12 -0700
-Received: from mx2.netapp.com ([216.240.18.37])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IlSbZ-0002nh-Tu
-	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 10:04:18 -0700
-In-Reply-To: <20071025193457.GE4499@jakobus.spotify.net>
-References: <20071025131029.GH8334@barnabas.schuldei.org>
-	<7B68ECC3-7EBA-442F-9FFD-A0E3F2DCC61A@oracle.com>
-	<20071025193457.GE4499@jakobus.spotify.net>
+	id 1IlT1S-00078J-M8
+	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 10:31:02 -0700
+Received: from flpi185.sbcis.sbc.com ([207.115.20.187]
+	helo=flpi185.prodigy.net)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IlT1Y-0007sP-3b
+	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 10:31:08 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,37 +29,58 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-At 03:34 PM 10/25/2007, Andreas Schuldei wrote:
->> But don't expect to get better data throughput over NFS than you see 
->on your local NFS server. 
->
->That is exactly the point. on my server i get 4*50Mbytes =
->200Mbyte/s out of the disks (with the above FOR loop around the
->find and dd) and when i export on the same server the disks to an
->nfs client i all of a sudden loose ~75% of the performance.
+Keep the type of the buffer position the same during iovec conversion to
+reduce the likelihood of unexpected results from comparisons and length
+computations.
 
-Andreas - you mentioned earlier in the thread that you're using 2.6.22
-as the server kernel. You might consider moving it forward to 2.6.23,
-as there is a significant readahead improvement/fix there. When you
-run a local read, all readahead is perfect. However on older kernels
-serving NFS, the reordering of reads due to Linux's multithreaded nfsd's
-triggers several issues which spook the readahead into truly awful
-behavior.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Cc: Thomas Talpey <Thomas.Talpey@netapp.com>
+---
 
-Fengguang Wu's changes are merged in 2.6.23, in testing with NFS/RDMA
-we now see the same performance over the wire as locally, for any
-number of readers.
+ net/sunrpc/xprtrdma/rpc_rdma.c |    8 ++++----
+ 1 files changed, 4 insertions(+), 4 deletions(-)
 
-My one caveat to this is that your files are relatively small, so I would
-not expect a truly dramatic speedup from it. It's certainly worth trying,
-there are other improvements in 2.6.23.
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index 12db635..65e211e 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -83,7 +83,7 @@ static const char transfertypes[][12] = {
+  */
+ 
+ static int
+-rpcrdma_convert_iovs(struct xdr_buf *xdrbuf, int pos,
++rpcrdma_convert_iovs(struct xdr_buf *xdrbuf, unsigned int pos,
+ 	enum rpcrdma_chunktype type, struct rpcrdma_mr_seg *seg, int nsegs)
+ {
+ 	int len, n = 0, p;
+@@ -130,7 +130,7 @@ rpcrdma_convert_iovs(struct xdr_buf *xdrbuf, int pos,
+ 	}
+ 
+ 	if (pos < xdrbuf->len)
+-		dprintk("RPC:       %s: marshaled only %d of %d\n",
++		dprintk("RPC:       %s: marshaled only %u of %u\n",
+ 				__func__, pos, xdrbuf->len);
+ 
+ 	return n;
+@@ -176,7 +176,7 @@ rpcrdma_create_chunks(struct rpc_rqst *rqst, struct xdr_buf *target,
+ 	struct rpcrdma_req *req = rpcr_to_rdmar(rqst);
+ 	struct rpcrdma_xprt *r_xprt = rpcx_to_rdmax(rqst->rq_task->tk_xprt);
+ 	int nsegs, nchunks = 0;
+-	int pos;
++	unsigned int pos;
+ 	struct rpcrdma_mr_seg *seg = req->rl_segments;
+ 	struct rpcrdma_read_chunk *cur_rchunk = NULL;
+ 	struct rpcrdma_write_array *warray = NULL;
+@@ -220,7 +220,7 @@ rpcrdma_create_chunks(struct rpc_rqst *rqst, struct xdr_buf *target,
+ 					(u32 *)&cur_rchunk->rc_target.rs_offset,
+ 					seg->mr_base);
+ 			dprintk("RPC:       %s: read chunk "
+-				"elem %d@0x%llx:0x%x pos %d (%s)\n", __func__,
++				"elem %d@0x%llx:0x%x pos %u (%s)\n", __func__,
+ 				seg->mr_len, seg->mr_base, seg->mr_rkey, pos,
+ 				n < nsegs ? "more" : "last");
+ 			cur_rchunk++;
 
-Do you have Infiniband or iWARP adapters in your environment? If you're
-worried about bandwidth and application startup latency, using it could
-certainly help. You'd need to run a 2.6.24-rc1 client though, and some
-assembly is still required to use the server (it's not yet upstream).
-
-Tom.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
