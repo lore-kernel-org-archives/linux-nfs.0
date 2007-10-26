@@ -1,7 +1,8 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 03/27] SUNRPC: Check a return result
-Date: Fri, 26 Oct 2007 13:30:54 -0400
-Message-ID: <20071026173054.31475.61789.stgit@manray.1015granger.net>
+Subject: [PATCH 05/27] SUNRPC: Remove an unneeded implicit type cast
+	when	calling rpc_depopulate()
+Date: Fri, 26 Oct 2007 13:31:04 -0400
+Message-ID: <20071026173104.31475.2321.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
@@ -10,12 +11,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IlT1d-0007CQ-Vj
-	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 10:31:14 -0700
+	id 1IlT1h-0007Cj-LV
+	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 10:31:17 -0700
 Received: from flpi185.sbcis.sbc.com ([207.115.20.187]
 	helo=flpi185.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IlT1g-000809-MC
-	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 10:31:17 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IlT1m-00082F-3H
+	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 10:31:23 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,41 +29,30 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Minor: Replace an empty if statement with a debugging dprintk.
+The two arguments of rpc_depopulate() that pass in inode numbers should use
+the same type as inode->i_ino: unsigned long.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Cc: Thomas Talpey <Thomas.Talpey@netapp.com>
 ---
 
- net/sunrpc/xprtrdma/verbs.c |    8 +++++---
- 1 files changed, 5 insertions(+), 3 deletions(-)
+ net/sunrpc/rpc_pipe.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 44b0fb9..ffbf22a 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -522,7 +522,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
- 				struct rpcrdma_create_data_internal *cdata)
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index 18f0a8d..57cd24e 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -512,8 +512,8 @@ rpc_get_inode(struct super_block *sb, int mode)
+ /*
+  * FIXME: This probably has races.
+  */
+-static void
+-rpc_depopulate(struct dentry *parent, int start, int eof)
++static void rpc_depopulate(struct dentry *parent,
++			   unsigned long start, unsigned long eof)
  {
- 	struct ib_device_attr devattr;
--	int rc;
-+	int rc, err;
- 
- 	rc = ib_query_device(ia->ri_id->device, &devattr);
- 	if (rc) {
-@@ -648,8 +648,10 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
- 	return 0;
- 
- out2:
--	if (ib_destroy_cq(ep->rep_cq))
--		;
-+	err = ib_destroy_cq(ep->rep_cq);
-+	if (err)
-+		dprintk("RPC:       %s: ib_destroy_cq returned %i\n",
-+			__func__, err);
- out1:
- 	return rc;
- }
+ 	struct inode *dir = parent->d_inode;
+ 	struct list_head *pos, *next;
 
 
 -------------------------------------------------------------------------
