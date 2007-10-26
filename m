@@ -1,22 +1,22 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 27/27] NFS: Remove an unneeded check
-	in	decode_compound_header_arg()
-Date: Fri, 26 Oct 2007 13:33:01 -0400
-Message-ID: <20071026173301.31475.98468.stgit@manray.1015granger.net>
+Subject: [PATCH 26/27] SUNRPC: RPC program information is stored in
+	unsigned	integers
+Date: Fri, 26 Oct 2007 13:32:56 -0400
+Message-ID: <20071026173256.31475.3060.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 To: trond.myklebust@fys.uio.no
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IlT3p-0007LC-GV
-	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 10:33:29 -0700
+	id 1IlTSG-0001Hq-Jt
+	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 10:58:44 -0700
 Received: from flpi185.sbcis.sbc.com ([207.115.20.187]
 	helo=flpi185.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IlT3d-0000g0-Hd
-	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 10:33:18 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IlT3Z-0006pN-3W
+	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 10:33:13 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,28 +29,61 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Clean up:  The header tag length is unsigned, so checking that it is less
-than zero is unnecessary.
+Clean up: When looping over RPC version and procedure numbers, use
+unsigned index variables.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfs/callback_xdr.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ net/sunrpc/stats.c |    4 ++--
+ net/sunrpc/svc.c   |    5 +++--
+ 2 files changed, 5 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-index 058ade7..97abd82 100644
---- a/fs/nfs/callback_xdr.c
-+++ b/fs/nfs/callback_xdr.c
-@@ -139,7 +139,7 @@ static __be32 decode_compound_hdr_arg(struct xdr_stream *xdr, struct cb_compound
- 	if (unlikely(status != 0))
- 		return status;
- 	/* We do not like overly long tags! */
--	if (hdr->taglen > CB_OP_TAGLEN_MAXSZ-12 || hdr->taglen < 0) {
-+	if (hdr->taglen > CB_OP_TAGLEN_MAXSZ - 12) {
- 		printk("NFSv4 CALLBACK %s: client sent tag of length %u\n",
- 				__FUNCTION__, hdr->taglen);
- 		return htonl(NFS4ERR_RESOURCE);
+diff --git a/net/sunrpc/stats.c b/net/sunrpc/stats.c
+index 4d4f373..9d1f182 100644
+--- a/net/sunrpc/stats.c
++++ b/net/sunrpc/stats.c
+@@ -33,7 +33,7 @@ struct proc_dir_entry	*proc_net_rpc = NULL;
+ static int rpc_proc_show(struct seq_file *seq, void *v) {
+ 	const struct rpc_stat	*statp = seq->private;
+ 	const struct rpc_program *prog = statp->program;
+-	int		i, j;
++	unsigned int i, j;
+ 
+ 	seq_printf(seq,
+ 		"net %u %u %u %u\n",
+@@ -81,7 +81,7 @@ void svc_seq_show(struct seq_file *seq, const struct svc_stat *statp) {
+ 	const struct svc_program *prog = statp->program;
+ 	const struct svc_procedure *proc;
+ 	const struct svc_version *vers;
+-	int		i, j;
++	unsigned int i, j;
+ 
+ 	seq_printf(seq,
+ 		"net %u %u %u %u\n",
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index 4695ad7..c14630f 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -363,7 +363,7 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
+ 	   void (*shutdown)(struct svc_serv *serv))
+ {
+ 	struct svc_serv	*serv;
+-	int vers;
++	unsigned int vers;
+ 	unsigned int xdrsize;
+ 	unsigned int i;
+ 
+@@ -736,7 +736,8 @@ svc_register(struct svc_serv *serv, int proto, unsigned short port)
+ {
+ 	struct svc_program	*progp;
+ 	unsigned long		flags;
+-	int			i, error = 0, dummy;
++	unsigned int		i;
++	int			error = 0, dummy;
+ 
+ 	if (!port)
+ 		clear_thread_flag(TIF_SIGPENDING);
 
 
 -------------------------------------------------------------------------
