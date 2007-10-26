@@ -1,8 +1,8 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 09/27] SUNRPC: Fix use of copy_to_user() in
-	gss_pipe_upcall()
-Date: Fri, 26 Oct 2007 13:31:26 -0400
-Message-ID: <20071026173126.31475.41682.stgit@manray.1015granger.net>
+Subject: [PATCH 07/27] SUNRPC: Fix return type mismatch in
+	svc_max_payload()
+Date: Fri, 26 Oct 2007 13:31:15 -0400
+Message-ID: <20071026173115.31475.84484.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
@@ -11,12 +11,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IlT2U-0007J6-0o
+	id 1IlT2T-0007Id-Km
 	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 10:32:06 -0700
 Received: from flpi185.sbcis.sbc.com ([207.115.20.187]
 	helo=flpi185.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IlT2Z-0005yh-CA
-	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 10:32:11 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IlT2V-0005sW-K3
+	for nfs@lists.sourceforge.net; Fri, 26 Oct 2007 10:32:09 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,46 +29,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-The gss_pipe_upcall() function expects the copy_to_user() function to
-return a negative error value if the call fails, but copy_to_user()
-returns an unsigned long number of bytes that couldn't be copied.
+Nit: make sure return type and type of temporary return value match in
+svc_max_payload().
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- net/sunrpc/auth_gss/auth_gss.c |   13 +++++++------
- 1 files changed, 7 insertions(+), 6 deletions(-)
+ net/sunrpc/svc.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 53995af..f9e546c 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -472,18 +472,19 @@ gss_pipe_upcall(struct file *filp, struct rpc_pipe_msg *msg,
- 		char __user *dst, size_t buflen)
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index a4a6bf7..4695ad7 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -1054,7 +1054,7 @@ err_bad:
+  */
+ u32 svc_max_payload(const struct svc_rqst *rqstp)
  {
- 	char *data = (char *)msg->data + msg->copied;
--	ssize_t mlen = msg->len;
--	ssize_t left;
-+	size_t mlen = msg->len;
-+	unsigned long left;
+-	int max = RPCSVC_MAXPAYLOAD_TCP;
++	u32 max = RPCSVC_MAXPAYLOAD_TCP;
  
- 	if (mlen > buflen)
- 		mlen = buflen;
- 	left = copy_to_user(dst, data, mlen);
--	if (left < 0) {
--		msg->errno = left;
--		return left;
-+	if (left == mlen) {
-+		msg->errno = -EFAULT;
-+		return -1;
- 	}
-+
- 	mlen -= left;
--	msg->copied += mlen;
-+	msg->copied += left;
- 	msg->errno = 0;
- 	return mlen;
- }
+ 	if (rqstp->rq_sock->sk_sock->type == SOCK_DGRAM)
+ 		max = RPCSVC_MAXPAYLOAD_UDP;
 
 
 -------------------------------------------------------------------------
