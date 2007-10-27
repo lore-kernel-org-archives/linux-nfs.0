@@ -1,23 +1,11 @@
-From: Andreas Schuldei <andreas@schuldei.org>
-Subject: Re: nfs performance problem
-Date: Sat, 27 Oct 2007 11:25:04 +0200
-Message-ID: <20071027092504.GC25508@jakobus.schuldei.org>
-References: <20071025131029.GH8334@barnabas.schuldei.org>
-	<200710251553.52138.bernd-schubert@gmx.de>
+From: devzero@web.de
+Subject: stale nfs file handle with exported loopback mounts
+Date: Sat, 27 Oct 2007 18:13:52 +0200
+Message-ID: <2051050286@web.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Bernd Schubert <bernd-schubert@gmx.de>
+To: NFS@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Ilhv2-0001vt-Gj
-	for nfs@lists.sourceforge.net; Sat, 27 Oct 2007 02:25:24 -0700
-Received: from petrus.schuldei.org ([81.27.3.162] helo=barnabas.schuldei.org)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Ilhv6-0007He-QL
-	for nfs@lists.sourceforge.net; Sat, 27 Oct 2007 02:25:30 -0700
-In-Reply-To: <200710251553.52138.bernd-schubert@gmx.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,18 +18,47 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-* Bernd Schubert (bernd-schubert@gmx.de) [071027 01:39]:
-> Hello Andreas,
-> 
-> On Thursday 25 October 2007 15:10:29 Andreas Schuldei wrote:
-> > lotta:/var/disks/sda on /var/disks/sda type nfs
-> > (ro,hard,intr,proto=tcp,rsize=32k,addr=217.213.5.44) lotta:/var/disks/sdb
-> 
-> try to increase rsize and wsize as much as possible, the maximum can be 
-> adjusted in /proc/fs/nfsd/max_block_size on the nfs server.
+Hello !
 
-i cant increase this to more then 1M. is that the hard limit?
+with 2.6.22 i`m trying to export loopback mounted iso-images.
 
+this is /etc/exports:
+
+/export *(ro,crossmnt,subtree_check)
+
+in /export, i have loopback mounted iso-images
+
+after mounting on the client side under /mnt (tried one older and one recent system) , i`m getting:
+
+vmhost:/mnt # ls -la
+/bin/ls: iso1: Input/output error
+/bin/ls: iso2  Input/output error
+/bin/ls: iso3: Input/output error
+total 10128
+drwxrwxrwt   18 root root  270336 Oct 26 08:45 .
+drwxrwxrwt  186 root root   20760 Oct 27 17:45 ..
+drwxr-xr-x    2 root root   16384 Jan  1  1970 iso1
+drwxr-xr-x    2 root root   16384 Jan  1  1970 iso2
+drwxr-xr-x    2 root root   16384 Jan  1  1970 iso3
+
+vmhost:/mnt/iso1 # ls
+/bin/ls: .: Stale NFS file handle
+vmhost:/mnt/iso1 # ls -la
+/bin/ls: .: Input/output error
+
+i`m unsure if i should blame suse here (it`s an opensuse 10.3 box which seems to have nfs-utils 1.1.0)
+
+does somebody have such setup up and running and can tell his distro / kernel and nfs-utils version ?
+maybe i change distro then.
+
+any clues what`s going wrong here and how to resolve ?
+
+regards
+roland
+
+_____________________________________________________________________
+Der WEB.DE SmartSurfer hilft bis zu 70% Ihrer Onlinekosten zu sparen!
+http://smartsurfer.web.de/?mc=100071&distributionid=000000000066
 
 
 -------------------------------------------------------------------------
