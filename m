@@ -1,11 +1,20 @@
-From: devzero@web.de
-Subject: stale nfs file handle with exported loopback mounts
-Date: Sat, 27 Oct 2007 18:13:52 +0200
-Message-ID: <2051050286@web.de>
+From: iudy45@excite.co.jp
+Subject: =?ISO-2022-JP?B?mEGXjZJ4guqCxIK3gt2C3IK5gvGCxYK1gr2BQoFCgUKCsYLxgsiOhILFgreCqoOIg42DVoNOgqiK6IKigsWCt4FC?=
+Date: Mon, 29 Oct 2007 00:42:23 -0800 (PST)
+Message-ID: <45444.0489913852$1193647362@news.gmane.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: NFS@lists.sourceforge.net
+Content-Type: multipart/mixed; boundary="===============0282737317=="
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1ImQCO-0003EZ-61
+	for nfs@lists.sourceforge.net; Mon, 29 Oct 2007 01:42:16 -0700
+Received: from ppp-124.121.231.225.revip2.asianet.co.th ([124.121.231.225]
+	helo=ooo-superweb0025a08.goanet.co.th)
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1ImQCS-0004u8-2d
+	for nfs@lists.sourceforge.net; Mon, 29 Oct 2007 01:42:21 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -18,54 +27,44 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hello !
+--===============0282737317==
+Content-Type: text/plain;
+	charset="iso-2022-jp"
+Content-Transfer-Encoding: 7bit
 
-with 2.6.22 i`m trying to export loopback mounted iso-images.
+麻夜です、BBSの所からメール貰ってたみたいですけどわかりますか？
+改めて自己紹介をさせて貰いますね！
+私は34歳でおとめ座です、生まれは桜島だったので長渕さんの引退コンサートは凄く感動しました。
+生まれ故郷のあのコンサートの思い出は一生の宝物になりそうです！
+もしこれからお付き合いをさせて頂けるなら貴方の事をもっとたくさんしりたいな
+趣味とか好きな事とか、気が合う人なら凄くいいなって思います
+写真とかも送って欲しいんですけど、このメールだと受信メールに制限を掛けてあるので添付ファイルは受信しないようになってるんです…
+http://free.sexy-agent.com/HLT/
+ここで写真や私の紹介をみれますので覗いてみてくださいね。
+ここはいつも使ってるBBSなので今回は自己紹介もかねて送りますね！
+それでは貴方からの返事楽しみに待ってますね
 
-this is /etc/exports:
 
-/export *(ro,crossmnt,subtree_check)
 
-in /export, i have loopback mounted iso-images
-
-after mounting on the client side under /mnt (tried one older and one recent system) , i`m getting:
-
-vmhost:/mnt # ls -la
-/bin/ls: iso1: Input/output error
-/bin/ls: iso2  Input/output error
-/bin/ls: iso3: Input/output error
-total 10128
-drwxrwxrwt   18 root root  270336 Oct 26 08:45 .
-drwxrwxrwt  186 root root   20760 Oct 27 17:45 ..
-drwxr-xr-x    2 root root   16384 Jan  1  1970 iso1
-drwxr-xr-x    2 root root   16384 Jan  1  1970 iso2
-drwxr-xr-x    2 root root   16384 Jan  1  1970 iso3
-
-vmhost:/mnt/iso1 # ls
-/bin/ls: .: Stale NFS file handle
-vmhost:/mnt/iso1 # ls -la
-/bin/ls: .: Input/output error
-
-i`m unsure if i should blame suse here (it`s an opensuse 10.3 box which seems to have nfs-utils 1.1.0)
-
-does somebody have such setup up and running and can tell his distro / kernel and nfs-utils version ?
-maybe i change distro then.
-
-any clues what`s going wrong here and how to resolve ?
-
-regards
-roland
-
-_____________________________________________________________________
-Der WEB.DE SmartSurfer hilft bis zu 70% Ihrer Onlinekosten zu sparen!
-http://smartsurfer.web.de/?mc=100071&distributionid=000000000066
-
+--===============0282737317==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >> http://get.splunk.com/
+--===============0282737317==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============0282737317==--
