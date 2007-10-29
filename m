@@ -1,24 +1,24 @@
 From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
-Subject: Re: [PATCH 18/27] NFS: Prevent nfs_getattr() hang during
- heavy write	workloads
-Date: Mon, 29 Oct 2007 10:56:47 -0400
-Message-ID: <EXNANE017zynrvDOv5y00000824@exnane01.hq.netapp.com>
-References: <20071026173213.31475.72792.stgit@manray.1015granger.net>
+Subject: Re: [PATCH 19/27] NFS: Ensure that NFS version 4 mounts use
+ NFS_PORT if	nfsport wasn't set
+Date: Mon, 29 Oct 2007 10:59:50 -0400
+Message-ID: <EXNANE01S0qPzg9uV5400000825@exnane01.hq.netapp.com>
+References: <20071026173219.31475.68965.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1ImW4r-0007JJ-Cw
-	for nfs@lists.sourceforge.net; Mon, 29 Oct 2007 07:58:54 -0700
+	id 1ImW6q-0007Ww-1R
+	for nfs@lists.sourceforge.net; Mon, 29 Oct 2007 08:00:56 -0700
 Received: from mx2.netapp.com ([216.240.18.37])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1ImW4w-0003tK-Qz
-	for nfs@lists.sourceforge.net; Mon, 29 Oct 2007 07:58:59 -0700
-In-Reply-To: <20071026173213.31475.72792.stgit@manray.1015granger.net>
-References: <20071026173213.31475.72792.stgit@manray.1015granger.net>
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1ImW6v-0000NW-Cc
+	for nfs@lists.sourceforge.net; Mon, 29 Oct 2007 08:01:01 -0700
+In-Reply-To: <20071026173219.31475.68965.stgit@manray.1015granger.net>
+References: <20071026173219.31475.68965.stgit@manray.1015granger.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,59 +31,42 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Can you expound a little on whether holding a mutex across the
-nfs_wb_nocommit() call is safe? In the hard-mount non-interruptible
-case, isn't it possible that the writeback will take an unbounded time?
+But... 2049 is only valid for TCP. Ther eis no such guarantee for RDMA,
+SCTP, etc etc. Wouldn't it be safer/better to fail the mount if no port
+is specified? This is what rpcbind would do if it fails to resolve the port,
+for example.
 
 Tom.
 
 At 01:32 PM 10/26/2007, Chuck Lever wrote:
->POSIX requires that ctime and mtime, as reported by the stat(2) call,
->reflect the activity of the most recent write(2).  To that end, nfs_getattr()
->flushes pending dirty writes to a file before doing a GETATTR to allow the
->NFS server to set the file's size, ctime, and mtime properly.
+>Text-based mount option parsing introduced a minor regression in the
+>behavior of NFS version 4 mounts.  NFS version 4 is not supposed to require
+>a running rpcbind service on the server in order for a mount to succeed.
 >
->However, nfs_getattr() can be starved when a constant stream of application
->writes to a file prevents nfs_wb_nocommit() from completing.  This usually
->results in hangs of programs doing a stat against an NFS file that is being
->written.  "ls -l" is a common victim of this behavior.
->
->To prevent starvation, hold the file's i_mutex in nfs_getattr() to
->freeze applications writes temporarily so the client can more quickly obtain
->clean values for a file's size, mtime, and ctime.
+>In other words, if the mount options don't specify a port number, the port
+>number is supposed to default to 2049.  For earlier versions of NFS, the
+>default port number was zero in order to cause the RPC client to autobind
+>to the server's NFS service.
 >
 >Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 >---
 >
-> fs/nfs/inode.c |   13 +++++++++++--
-> 1 files changed, 11 insertions(+), 2 deletions(-)
+> fs/nfs/super.c |    2 ++
+> 1 files changed, 2 insertions(+), 0 deletions(-)
 >
->diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
->index cd0e57f..cc3a09d 100644
->--- a/fs/nfs/inode.c
->+++ b/fs/nfs/inode.c
->@@ -461,9 +461,18 @@ int nfs_getattr(struct vfsmount *mnt, struct 
->dentry *dentry, struct kstat *stat)
-> 	int need_atime = NFS_I(inode)->cache_validity & NFS_INO_INVALID_ATIME;
-> 	int err;
+>diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+>index fa517ae..1b2fac8 100644
+>--- a/fs/nfs/super.c
+>+++ b/fs/nfs/super.c
+>@@ -1612,6 +1612,8 @@ static int nfs4_validate_mount_data(void *options,
+> 		if (nfs_parse_mount_options((char *)options, args) == 0)
+> 			return -EINVAL;
 > 
->-	/* Flush out writes to the server in order to update c/mtime */
->-	if (S_ISREG(inode->i_mode))
->+	/*
->+	* Flush out writes to the server in order to update c/mtime.
->+	*
->+	* Hold the i_mutex to suspend application writes temporarily;
->+	* this prevents long-running writing applications from blocking
->+	* nfs_wb_nocommit.
->+	*/
->+	if (S_ISREG(inode->i_mode)) {
->+		mutex_lock(&inode->i_mutex);
-> 		nfs_wb_nocommit(inode);
->+		mutex_unlock(&inode->i_mutex);
->+	}
-> 
-> 	/*
-> 	* We may force a getattr if the user cares about atime.
+>+		if (args->nfs_server.address.sin_port == 0)
+>+			args->nfs_server.address.sin_port = htons(NFS_PORT);
+> 		if (!nfs_verify_server_address((struct sockaddr *)
+> 						&args->nfs_server.address))
+> 			return -EINVAL;
 >
 >
 >-------------------------------------------------------------------------
