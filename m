@@ -1,21 +1,26 @@
-From: =?WINDOWS-1255?B?4Onw4uQg?= <wwawajae@erconcorp.com>
-Subject: =?windows-1255?b?5O7s9uQg7OD0+fjl+iD36ePl7Q==?=
-Date: Mon, 29 Oct 2007 10:34:21 -0500 (EDT)
-Message-ID: <4426960.1033197219065.35.6@euroriesgogalicia.com>
-Reply-To: =?WINDOWS-1255?B?4Onw4uQg?= <wwawajae@erconcorp.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 18/27] NFS: Prevent nfs_getattr() hang during
+ heavy write	workloads
+Date: Mon, 29 Oct 2007 11:44:38 -0400
+Message-ID: <4725FFE6.2030000@oracle.com>
+References: <20071026173213.31475.72792.stgit@manray.1015granger.net>
+	<EXNANE017zynrvDOv5y00000824@exnane01.hq.netapp.com>
+Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============0085948046=="
-To: nfs@lists.sourceforge.net
+Content-Type: multipart/mixed; boundary="------------090908070306000707060804"
+Cc: nfs@lists.sourceforge.net
+To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1ImWdO-0003rp-K7
-	for nfs@lists.sourceforge.net; Mon, 29 Oct 2007 08:34:34 -0700
-Received: from host217-20-dynamic.56-82-r.retail.telecomitalia.it
-	([82.56.20.217]) by mail.sourceforge.net with smtp (Exim 4.44)
-	id 1ImWdT-0000z8-A6
-	for nfs@lists.sourceforge.net; Mon, 29 Oct 2007 08:34:40 -0700
+	id 1ImWog-0005su-C1
+	for nfs@lists.sourceforge.net; Mon, 29 Oct 2007 08:46:14 -0700
+Received: from rgminet01.oracle.com ([148.87.113.118])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1ImWoj-0008Bg-CZ
+	for nfs@lists.sourceforge.net; Mon, 29 Oct 2007 08:46:20 -0700
+In-Reply-To: <EXNANE017zynrvDOv5y00000824@exnane01.hq.netapp.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,98 +33,102 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============0085948046==
-Content-Type: multipart/alternative;
-	boundary="----=_Part_6039564_65128803.033481718631"
+This is a multi-part message in MIME format.
+--------------090908070306000707060804
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Transfer-Encoding: 7bit
 
-------=_Part_6039564_65128803.033481718631
+Talpey, Thomas wrote:
+> Can you expound a little on whether holding a mutex across the
+> nfs_wb_nocommit() call is safe?   In the hard-mount non-interruptible
+> case, isn't it possible that the writeback will take an unbounded time?
 
-Content-Type: text/plain; windows-1257
-Content-Transfer-Encoding: quoted-printable
+Without this change, nfs_wb_nocommit() will wait forever anyway in that 
+case.  As applications continue queuing writes to that inode, eventually 
+the mount point's bdi congestion logic kicks in and user space is forced 
+to wait for that file as well.
 
-------=_Part_6039564_65128803.033481718631
-Content-Type: text/html; windows-1257
-Content-Transfer-Encoding: quoted-printable
+With the change, the i_mutex prevents new application writes.  User 
+space will stop and wait sooner, but the end result is the same.
 
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD>
-<META http-equiv=3DContent-Type content=3D"text/html; charset=3Dwindows-12=
-55">
-<META content=3D"MSHTML 6.00.2900.3086" name=3DGENERATOR></HEAD>
-<BODY>
-<BLOCKQUOTE dir=3Drtl style=3D"FONT-SIZE: 14px; FONT-FAMILY: tahoma"><FONT=
- 
-  style=3D"COLOR: brown"><BIG><BIG><BIG><BIG>&#1495;&#1489;&#1512;&#1514; =
-<FONT 
-  style=3D"COLOR: black">&#1502;&#1511;&#1505;&#1497;&#1502;&#1493;&#1501;=
- &#1513;&#1497;&#1493;&#1493;&#1511;</FONT></BIG></BIG></BIG><BR><BR><FONT=
- 
-  style=3D"COLOR: black">&#1502;&#1510;&#1497;&#1506;&#1492; <FONT style=3D=
-"COLOR: brown"><BIG>&#1495;&#1513;&#1497;&#1508;&#1492; 
-  &#1502;&#1511;&#1505;&#1497;&#1502;&#1488;&#1500;&#1497;&#1514;</BIG></F=
-ONT> &#1500;&#1499;&#1500; &#1489;&#1506;&#1500;&#1497; <FONT style=3D"COL=
-OR: brown"><BIG>&#1492;&#1506;&#1505;&#1511;&#1497;&#1501; / &#1495;&#1489=
-;&#1512;&#1493;&#1514; 
-  / &#1489;&#1506;&#1500;&#1497; &#1488;&#1514;&#1512;&#1497; &#1492;&#148=
-8;&#1497;&#1504;&#1496;&#1512;&#1504;&#1496; &#1493;&#1499;"&#1493; .</BIG=
-></FONT><BR><BR><FONT 
-  style=3D"COLOR: black"><BIG><BIG>&#1488;&#1514;&#1501; &#1497;&#1499;&#1=
-493;&#1500;&#1497;&#1501;</BIG></BIG></FONT> <FONT 
-  style=3D"COLOR: brown"><BIG>&#1500;&#1502;&#1502;&#1513;</BIG></FONT> &#=
-1488;&#1514; <FONT 
-  style=3D"COLOR: brown"><BIG>&#1502;&#1511;&#1505;&#1497;&#1502;&#1493;&#=
-1501; &#1492;&#1508;&#1493;&#1496;&#1504;&#1510;&#1497;&#1488;&#1500; &#14=
-92;&#1506;&#1505;&#1511;&#1497;</BIG></FONT> &#1513;&#1500;&#1499;&#1501; =
+> At 01:32 PM 10/26/2007, Chuck Lever wrote:
+>> POSIX requires that ctime and mtime, as reported by the stat(2) call,
+>> reflect the activity of the most recent write(2).  To that end, nfs_getattr()
+>> flushes pending dirty writes to a file before doing a GETATTR to allow the
+>> NFS server to set the file's size, ctime, and mtime properly.
+>>
+>> However, nfs_getattr() can be starved when a constant stream of application
+>> writes to a file prevents nfs_wb_nocommit() from completing.  This usually
+>> results in hangs of programs doing a stat against an NFS file that is being
+>> written.  "ls -l" is a common victim of this behavior.
+>>
+>> To prevent starvation, hold the file's i_mutex in nfs_getattr() to
+>> freeze applications writes temporarily so the client can more quickly obtain
+>> clean values for a file's size, mtime, and ctime.
+>>
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> ---
+>>
+>> fs/nfs/inode.c |   13 +++++++++++--
+>> 1 files changed, 11 insertions(+), 2 deletions(-)
+>>
+>> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+>> index cd0e57f..cc3a09d 100644
+>> --- a/fs/nfs/inode.c
+>> +++ b/fs/nfs/inode.c
+>> @@ -461,9 +461,18 @@ int nfs_getattr(struct vfsmount *mnt, struct 
+>> dentry *dentry, struct kstat *stat)
+>> 	int need_atime = NFS_I(inode)->cache_validity & NFS_INO_INVALID_ATIME;
+>> 	int err;
+>>
+>> -	/* Flush out writes to the server in order to update c/mtime */
+>> -	if (S_ISREG(inode->i_mode))
+>> +	/*
+>> +	* Flush out writes to the server in order to update c/mtime.
+>> +	*
+>> +	* Hold the i_mutex to suspend application writes temporarily;
+>> +	* this prevents long-running writing applications from blocking
+>> +	* nfs_wb_nocommit.
+>> +	*/
+>> +	if (S_ISREG(inode->i_mode)) {
+>> +		mutex_lock(&inode->i_mutex);
+>> 		nfs_wb_nocommit(inode);
+>> +		mutex_unlock(&inode->i_mutex);
+>> +	}
+>>
+>> 	/*
+>> 	* We may force a getattr if the user cares about atime.
+>>
+>>
+>> -------------------------------------------------------------------------
+>> This SF.net email is sponsored by: Splunk Inc.
+>> Still grepping through log files to find problems?  Stop.
+>> Now Search log events and configuration files using AJAX and a browser.
+>> Download your FREE copy of Splunk now >> http://get.splunk.com/
+>> _______________________________________________
+>> NFS maillist  -  NFS@lists.sourceforge.net
+>> https://lists.sourceforge.net/lists/listinfo/nfs
 
-  <BIG>!</BIG><BR><BR><BIG>&#1512;&#1493;&#1510;&#1497;&#1501; &#1500;&#14=
-91;&#1506;&#1514; &#1488;&#1497;&#1498; <FONT 
-  style=3D"COLOR: brown"><BIG>&#1492;&#1506;&#1493;&#1513;&#1512;</BIG></F=
-ONT> &#1502;&#1490;&#1497;&#1506; &#1488;&#1500;&#1497;&#1499;&#1501; <FON=
-T 
-  style=3D"COLOR: brown"><BIG>&#1489;&#1502;&#1492;&#1497;&#1512;&#1493;&#=
-1514; ?</BIG></FONT><BR><BR><FONT 
-  style=3D"COLOR: brown"><BIG>&#1512;&#1511; &#1488;&#1510;&#1500;&#1504;&=
-#1493;</BIG></FONT> &#1488;&#1514;/&#1492; &#1497;&#1499;&#1493;&#1500;/&#=
-1492; <FONT 
-  style=3D"COLOR: brown"><BIG>&#1500;&#1492;&#1490;&#1491;&#1497;&#1500;</=
-BIG></FONT> &#1488;&#1514; <FONT 
-  style=3D"COLOR: brown"><BIG>&#1502;&#1495;&#1494;&#1493;&#1512; &#1492;&=
-#1502;&#1499;&#1497;&#1512;&#1493;&#1514; &#1513;&#1500;&#1498; !</BIG></F=
-ONT><BR><BR><BIG><FONT 
-  style=3D"COLOR: brown">&#1502;&#1511;&#1505;&#1497;&#1502;&#1493;&#1501;=
-</FONT> &#1495;&#1513;&#1497;&#1508;&#1492; <FONT 
-  style=3D"COLOR: brown">&#1502;&#1497;&#1504;&#1497;&#1502;&#1493;&#1501;=
-</FONT> &#1502;&#1495;&#1497;&#1512; .</BIG><BR><BR><FONT 
-  style=3D"COLOR: brown">&#1510;&#1512;&#1493; &#1511;&#1513;&#1512; &#150=
-6;&#1499;&#1513;&#1497;&#1493; .</FONT> 
-  <CENTER>{ <BIG><FONT style=3D"COLOR: brown">&#1502;&#1489;&#1510;&#1506;=
-</FONT> &#1502;&#1495;&#1497;&#1512; &#1492;&#1499;&#1512;&#1493;&#1514; &=
-#1497;&#1497;&#1504;&#1514;&#1503; &#1500; =96 
-  <FONT style=3D"COLOR: brown"><BIG>7</BIG> &#1497;&#1502;&#1497;&#1501; &=
-#1489;&#1500;&#1489;&#1491;</FONT></BIG> 
-  }</CENTER><BR><FONT style=3D"COLOR: brown">&#1500;&#1508;&#1512;&#1496;&=
-#1497;&#1501; &#1504;&#1493;&#1505;&#1508;&#1497;&#1501;:<BR>
-  <TABLE style=3D"FONT-SIZE: 14px; FONT-FAMILY: tahoma" cellSpacing=3D0 
-  cellPadding=3D0 align=3Dcenter border=3D0>
-    <TR>
-      <TD vAlign=3Dtop><BIG>&#1513;&#1502;&#1493;&#1488;&#1500; 
-        <BLOCKQUOTE 
-        style=3D"MARGIN-TOP: 0px">03-552-6357<BR>052-406-6219</BLOCKQUOTE>=
-</BIG></TD>
-      <TD vAlign=3Dtop><BIG>&#1506;&#1497;&#1491;&#1503;
-        <BLOCKQUOTE 
-style=3D"MARGIN-TOP: 0px">054-487-1359</BLOCKQUOTE></BIG></TD></TR>
-    <TR>
-      <TD colSpan=3D2><BR>
-        <CENTER><A 
-        href=3D"mailto:Samual101@walla.com">Samual101@walla.com</A></CENTE=
-R></TD></TR></TABLE><BR></FONT></BIG></FONT></BIG></FONT></BLOCKQUOTE></BO=
-DY></HTML>
+--------------090908070306000707060804
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck.lever.vcf"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="chuck.lever.vcf"
 
-------=_Part_6039564_65128803.033481718631--
+begin:vcard
+fn:Chuck Lever
+n:Lever;Chuck
+org:Oracle Corporation;Corporate Architecture: Linux Projects Group
+adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
+title:Principal Member of Staff
+tel;work:+1 248 614 5091
+x-mozilla-html:FALSE
+version:2.1
+end:vcard
 
 
---===============0085948046==
+--------------090908070306000707060804
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -130,7 +139,7 @@ This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >> http://get.splunk.com/
---===============0085948046==
+--------------090908070306000707060804
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -140,4 +149,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---===============0085948046==--
+--------------090908070306000707060804--
