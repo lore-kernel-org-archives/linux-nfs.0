@@ -1,28 +1,26 @@
-From: "Steinar H. Gunderson" <sesse@debian.org>
-Subject: [PATCH] Clarify language in man exportfs
-Date: Mon, 29 Oct 2007 19:04:43 +0100
-Message-ID: <20071029180443.GA6109@uio.no>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 08/27] SUNRPC: Prevent length underflow
+	in	read_flush()
+Date: Mon, 29 Oct 2007 11:30:25 -0400
+Message-ID: <4725FC91.4080705@oracle.com>
+References: <20071026173120.31475.76007.stgit@manray.1015granger.net>
+	<20071026184923.GI13033@fieldses.org>
+Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Content-Type: multipart/mixed; boundary="------------010104070503030502010806"
+Cc: nfs@lists.sourceforge.net, trond.myklebust@fys.uio.no
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1ImYyp-0004ez-ES
-	for nfs@lists.sourceforge.net; Mon, 29 Oct 2007 11:04:51 -0700
-Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
+	id 1Imd5P-0006GB-3u
+	for nfs@lists.sourceforge.net; Mon, 29 Oct 2007 15:27:58 -0700
+Received: from agminet01.oracle.com ([141.146.126.228])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1ImYyq-0001w7-GK
-	for nfs@lists.sourceforge.net; Mon, 29 Oct 2007 11:04:57 -0700
-Received: from trofast.ipv6.sesse.net ([2001:700:300:1803:20e:cff:fe36:a766]
-	helo=trofast.sesse.net) by cassarossa.samfundet.no with esmtps
-	(TLS-1.0:RSA_AES_256_CBC_SHA1:32) (Exim 4.63)
-	(envelope-from <sesse@samfundet.no>) id 1ImYyl-0001xJ-0J
-	for nfs@lists.sourceforge.net; Mon, 29 Oct 2007 19:04:47 +0100
-Received: from root by trofast.sesse.net with local (Exim 4.68)
-	(envelope-from <sesse@samfundet.no>) id 1ImYyh-0001au-35
-	for nfs@lists.sourceforge.net; Mon, 29 Oct 2007 19:04:43 +0100
+	(Exim 4.44) id 1Imd5T-0006lR-Ct
+	for nfs@lists.sourceforge.net; Mon, 29 Oct 2007 15:28:00 -0700
+In-Reply-To: <20071026184923.GI13033@fieldses.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,42 +33,105 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-(I still have two pending minor patches, by the way :-) )
+This is a multi-part message in MIME format.
+--------------010104070503030502010806
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Transfer-Encoding: 7bit
 
-As discussed in a user case earlier, the wording in the exportfs man page can
-be a bit confusing, implying that "exportfs -u :/foo" will unexport /foo from
-all hosts, which it won't. Thus, make the language clearer -- based on
-suggestion/patch from David Liontooth.
+J. Bruce Fields wrote:
+> On Fri, Oct 26, 2007 at 01:31:20PM -0400, Chuck Lever wrote:
+>> Make sure we compare an unsigned length to an unsigned count in
+>> read_flush().
+> 
+> OK by me, thanks.  This motivated by the hope of being able to turn on
+> more compile warnings some day?
 
-Signed-off-by: Steinar H. Gunderson <sesse@debian.org>
+The long-term goal is cleaner, less buggy code overall.  One tactic to 
+reach this goal is enabling the use of automated code checking tools.
 
---- nfs-utils-1.1.1.orig/utils/exportfs/exportfs.man
-+++ nfs-utils-1.1.1/utils/exportfs/exportfs.man
-@@ -167,11 +167,13 @@ all entries listed in
- are removed from the kernel export tables, and the file is cleared. This
- effectively shuts down all NFS activity.
- .P
--To remove individual export entries, one can specify a
-+To remove an export to a host, specify a
- .I host:/path
- pair. This deletes the specified entry from
- .B xtab
- and removes the corresponding kernel entry (if any).
-+To remove one or more exports to several hosts, use
-+.BR "exportfs -ua" .
- .P
- .\" -------------------- Dumping the Export Table -----------------
- .SS Dumping the Export Table 
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> ---
+>>
+>>  net/sunrpc/cache.c |   10 +++++-----
+>>  1 files changed, 5 insertions(+), 5 deletions(-)
+>>
+>> diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+>> index 8e05557..578084f 100644
+>> --- a/net/sunrpc/cache.c
+>> +++ b/net/sunrpc/cache.c
+>> @@ -1242,18 +1242,18 @@ static ssize_t read_flush(struct file *file, char __user *buf,
+>>  	struct cache_detail *cd = PDE(file->f_path.dentry->d_inode)->data;
+>>  	char tbuf[20];
+>>  	unsigned long p = *ppos;
+>> -	int len;
+>> +	size_t len;
+>>  
+>>  	sprintf(tbuf, "%lu\n", cd->flush_time);
+>>  	len = strlen(tbuf);
+>>  	if (p >= len)
+>>  		return 0;
+>>  	len -= p;
+>> -	if (len > count) len = count;
+>> +	if (len > count)
+>> +		len = count;
+>>  	if (copy_to_user(buf, (void*)(tbuf+p), len))
+>> -		len = -EFAULT;
+>> -	else
+>> -		*ppos += len;
+>> +		return -EFAULT;
+>> +	*ppos += len;
+>>  	return len;
+>>  }
+>>  
+>>
+>>
+>> -------------------------------------------------------------------------
+>> This SF.net email is sponsored by: Splunk Inc.
+>> Still grepping through log files to find problems?  Stop.
+>> Now Search log events and configuration files using AJAX and a browser.
+>> Download your FREE copy of Splunk now >> http://get.splunk.com/
+>> _______________________________________________
+>> NFS maillist  -  NFS@lists.sourceforge.net
+>> https://lists.sourceforge.net/lists/listinfo/nfs
 
-/* Steinar */
--- 
-Homepage: http://www.sesse.net/
+--------------010104070503030502010806
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck.lever.vcf"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="chuck.lever.vcf"
+
+begin:vcard
+fn:Chuck Lever
+n:Lever;Chuck
+org:Oracle Corporation;Corporate Architecture: Linux Projects Group
+adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
+title:Principal Member of Staff
+tel;work:+1 248 614 5091
+x-mozilla-html:FALSE
+version:2.1
+end:vcard
+
+
+--------------010104070503030502010806
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >> http://get.splunk.com/
+--------------010104070503030502010806
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--------------010104070503030502010806--
