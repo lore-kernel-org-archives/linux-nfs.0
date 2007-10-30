@@ -1,14 +1,24 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: stale nfs file handle with exported loopback mounts
-Date: Tue, 30 Oct 2007 16:14:51 +1100
-Message-ID: <18214.48587.2205.753253@notabene.brown>
-References: <2051050286@web.de>
+From: "Kevin Coffman" <kwc@citi.umich.edu>
+Subject: Re: Kerberized NFSv4 with AD - Errors received
+Date: Tue, 30 Oct 2007 12:40:36 -0400
+Message-ID: <4d569c330710300940q7ee25e95g47ab5395f4917e34@mail.gmail.com>
+References: <cf8a6bbc0710300914r6302613emf09dc5d445cbe586@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: NFS@lists.sourceforge.net
-To: devzero@web.de
+Cc: nfs@lists.sourceforge.net
+To: "Felderi Santiago" <cibao5@gmail.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-In-Reply-To: message from devzero@web.de on Saturday October 27
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1Imu8m-0000bt-89
+	for nfs@lists.sourceforge.net; Tue, 30 Oct 2007 09:40:33 -0700
+Received: from rv-out-0910.google.com ([209.85.198.189])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Imu8q-0000IC-Nq
+	for nfs@lists.sourceforge.net; Tue, 30 Oct 2007 09:40:38 -0700
+Received: by rv-out-0910.google.com with SMTP id g11so6992560rvb
+	for <nfs@lists.sourceforge.net>; Tue, 30 Oct 2007 09:40:36 -0700 (PDT)
+In-Reply-To: <cf8a6bbc0710300914r6302613emf09dc5d445cbe586@mail.gmail.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -21,72 +31,56 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Saturday October 27, devzero@web.de wrote:
-> Hello !
-> 
-> with 2.6.22 i`m trying to export loopback mounted iso-images.
-> 
-> this is /etc/exports:
-> 
-> /export *(ro,crossmnt,subtree_check)
+On 10/30/07, Felderi Santiago <cibao5@gmail.com> wrote:
+> Hello everyone,
+>
+> I am working on trying to get Kerberized NFSv4 working with AD.  At this
+> point everything seems to be setup correctly.  The machine has been joined
+> to AD, the keytab has been updated with the appropriate entries and the
+> computer account has the appropriate servicePrincipal and userPrincipal
+> Names.  The Kerberized NFS Share resides on a Filer.
+>
+> When trying to mount the share on the client side I get the following error
+> messages.
+>
+> Does anyone understand why we're getting this error?  Any help or insight
+> would be very appreciated.
+>
+> Thanks!
+>
+> Oct 29 20:03:33 dev-unix-shell01 rpc.gssd[3284]: processing client list Oct
+> 29 20:03:33 dev-unix-shell01 rpc.gssd[3284]: processing client list Oct 29
+> 20:03:33 dev-unix-shell01 rpc.gssd[3284]: handling krb5 upcall Oct 29
+> 20:03:33 dev-unix-shell01 rpc.gssd[3284]: Using keytab file
+> '/etc/krb5.keytab'
+> Oct 29 20:03:33 dev-unix-shell01 rpc.gssd[3284]: INFO: Credentials in CC
+> 'FILE:/tmp/krb5cc_machine_<DOMAIN>are good until 1193722038
+> Oct 29 20:03:33 dev-unix-shell01 rpc.gssd[3284]: using
+> FILE:/tmp/krb5cc_machine_<DOMAIN> as credentials cache for
+> machine creds Oct 29 20:03:33 dev-unix-shell01 rpc.gssd[3284]: using
+> environment variable to select krb5 ccache
+> FILE:/tmp/krb5cc_machine_<DOMAIN>
+> Oct 29 20:03:33 dev-unix-shell01 rpc.gssd[3284]: creating context using euid
+> 0 (save_uid 0) Oct 29 20:03:33 dev-unix-shell01 rpc.gssd[3284]: creating tcp
+> client for server prod-fs-sv1.<domainname>
+> Oct 29 20:03:34 dev-unix-shell01 rpc.gssd[3284]: creating context with
+> server nfs@prod-fs-sv1.<domain_name>
+> Oct 29 20:03:34 dev-unix-shell01 rpc.gssd[3284]: DEBUG:
+> serialize_krb5_ctx: lucid version!
+> Oct 29 20:03:34 dev-unix-shell01 rpc.gssd[3284]: doing downcall Oct 29
+> 20:03:34 dev-unix-shell01 rpc.gssd[3284]: processing client list
 
-I recommend replacing subtree_check with no_subtree_check, but it
-shouldn't make an important difference in this case.
+There is no error message here.  This is all normal, apparently
+successful, debug output.
 
+What error are you seeing?
 
-This should work with nfs-utils 1.1.0 or later.  With earlier releases
-you need to explicitly export the subordinate filesystems too.
+BTW, you said, "the keytab has been updated with the appropriate
+entries".  I'm not sure what this means, but I hope it does not mean
+that keys for non-supported enctypes were simply manually removed from
+the keytab file using ktutil.
 
-> 
-> in /export, i have loopback mounted iso-images
-> 
-> after mounting on the client side under /mnt (tried one older and one recent system) , i`m getting:
-> 
-> vmhost:/mnt # ls -la
-> /bin/ls: iso1: Input/output error
-> /bin/ls: iso2  Input/output error
-> /bin/ls: iso3: Input/output error
-> total 10128
-> drwxrwxrwt   18 root root  270336 Oct 26 08:45 .
-> drwxrwxrwt  186 root root   20760 Oct 27 17:45 ..
-> drwxr-xr-x    2 root root   16384 Jan  1  1970 iso1
-> drwxr-xr-x    2 root root   16384 Jan  1  1970 iso2
-> drwxr-xr-x    2 root root   16384 Jan  1  1970 iso3
-> 
-> vmhost:/mnt/iso1 # ls
-> /bin/ls: .: Stale NFS file handle
-> vmhost:/mnt/iso1 # ls -la
-> /bin/ls: .: Input/output error
-
-It is a little odd that the errors are inconsistent.
-
-Can you find any log messages from mountd in syslog?  What do they
-say?
-Also what does
-   cat /proc/fs/nfsd/exports
-
-on the server show.
-
-Finally, a tcpdump:
-
-  tcpdump -s 0 -w /tmp/tcpdump port 2049
-
-while you run the experiment might help.
-
-> 
-> i`m unsure if i should blame suse here (it`s an opensuse 10.3 box which seems to have nfs-utils 1.1.0)
-> 
-> does somebody have such setup up and running and can tell his distro / kernel and nfs-utils version ?
-> maybe i change distro then.
-
-I doubt that it is a distro-specific thing.  As long as you have
-nfs-utils-1.1.0 it should work.  I don't have a 10.3 box
-set up yet, but it works fine on Debian/unstable for me.
-
-Maybe try adding the "no_root_squash" export option.
-What does "ls -l /export" on the server show?
-
-NeilBrown
+K.C.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
