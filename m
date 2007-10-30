@@ -1,24 +1,21 @@
-From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
-Subject: Re: [PATCH] - Adjust man pages for mountd/statd to match
- configuration options.
-Date: Tue, 30 Oct 2007 08:18:51 -0400
-Message-ID: <EXNANE017zynrvDOv5y00000832@exnane01.hq.netapp.com>
-References: <18214.35373.27736.378763@notabene.brown>
+From: "Felderi Santiago" <cibao5@gmail.com>
+Subject: Kerberized NFSv4 with AD - Errors received
+Date: Tue, 30 Oct 2007 12:14:45 -0400
+Message-ID: <cf8a6bbc0710300914r6302613emf09dc5d445cbe586@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, Steve Dickson <SteveD@redhat.com>
-To: Neil Brown <neilb@suse.de>
+Content-Type: multipart/mixed; boundary="===============1218202425=="
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Imq3T-0003lc-28
-	for nfs@lists.sourceforge.net; Tue, 30 Oct 2007 05:18:50 -0700
-Received: from mx2.netapp.com ([216.240.18.37])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Imq3Y-0006lS-CJ
-	for nfs@lists.sourceforge.net; Tue, 30 Oct 2007 05:18:52 -0700
-In-Reply-To: <18214.35373.27736.378763@notabene.brown>
-References: <18214.35373.27736.378763@notabene.brown>
+	id 1Imtjn-0006Jw-3M
+	for nfs@lists.sourceforge.net; Tue, 30 Oct 2007 09:14:43 -0700
+Received: from ug-out-1314.google.com ([66.249.92.168])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Imtjr-00058v-4j
+	for nfs@lists.sourceforge.net; Tue, 30 Oct 2007 09:14:48 -0700
+Received: by ug-out-1314.google.com with SMTP id m2so139646uge
+	for <nfs@lists.sourceforge.net>; Tue, 30 Oct 2007 09:14:46 -0700 (PDT)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,180 +28,97 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-At 09:34 PM 10/29/2007, Neil Brown wrote:
->
->Someone mentioned to me that if you configure nfs-utils without
->TCP_WRAPPERS, the man pages still say it is available.
->This sort of thing has bothered me on and off before so I thought I
->would do something about it.  i.e. modify the man pages based on the
->config.
+--===============1218202425==
+Content-Type: multipart/alternative;
+	boundary="----=_Part_1220_11522699.1193760885915"
 
-I think it would be better to add some words to the effect that the
-TCP_WRAPPERS support may not be available on all installs. People
-do "man foo" on all kinds of systems (including googling), not just the
-one that they're actually running "foo" on. So making it conditional
-will serve more to confuse than clarify.
+------=_Part_1220_11522699.1193760885915
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
-Besides, the text just says to add the relevant hosts to /etc/hosts.allow.
-This is harmless, and might even be a good idea. Just change the verbs
-from "is" to "may be" and "have" to "may have".
+Hello everyone,
 
-So I say don't drop the text.
+I am working on trying to get Kerberized NFSv4 working with AD.  At this
+point everything seems to be setup correctly.  The machine has been joined
+to AD, the keytab has been updated with the appropriate entries and the
+computer account has the appropriate servicePrincipal and userPrincipal
+Names.  The Kerberized NFS Share resides on a Filer.
 
-Tom.
+When trying to mount the share on the client side I get the following error
+messages.
 
->
->The following git-patch does this, but I would welcome review as I'm
->not a very experiences automake hacker.
->
->Running "autogen.sh" reports:
->
->utils/mountd/Makefile.am:29: `%'-style pattern rules are a GNU make extension
->utils/statd/Makefile.am:66: `%'-style pattern rules are a GNU make extension
->
->
->Should we care?  Is there a better way?
->
->NeilBrown
->
->(patch can be cherry-picked from git://neil.brown.name/nfs-utils/)
->
->>From be806a06d414603e0930c61d1576d47f46ff064c Mon Sep 17 00:00:00 2001
->From: Neil Brown <neilb@suse.de>
->Date: Tue, 30 Oct 2007 12:18:34 +1100
->Subject: [PATCH] Make man pages configurable and exclude TCP_WRAPPERS 
->notes where appropriate.
->
->This patch makes mountd.man and statd.man able to be modified based on
->configuration, and removes the TCP_WRAPPERS section when that feature
->is not configured in.
->---
-> aclocal/tcp-wrappers.m4                    |    1 +
-> utils/mountd/Makefile.am                   |   10 ++++++++++
-> utils/mountd/{mountd.man => mountd.man.in} |    2 ++
-> utils/statd/Makefile.am                    |   10 ++++++++++
-> utils/statd/{statd.man => statd.man.in}    |    2 ++
-> 5 files changed, 25 insertions(+), 0 deletions(-)
-> rename utils/mountd/{mountd.man => mountd.man.in} (99%)
-> rename utils/statd/{statd.man => statd.man.in} (99%)
->
->diff --git a/aclocal/tcp-wrappers.m4 b/aclocal/tcp-wrappers.m4
->index 35ac8e0..d76c65d 100644
->--- a/aclocal/tcp-wrappers.m4
->+++ b/aclocal/tcp-wrappers.m4
->@@ -51,4 +51,5 @@ AC_DEFUN([AC_TCP_WRAPPERS],[
->   AC_SUBST(LIBWRAP)
->   AC_SUBST(HAVE_LIBWRAP)
->   AC_SUBST(HAVE_TCP_WRAPPER)
->+  AM_CONDITIONAL(USE_TCP_WRAPPERS, [test $HAVE_TCP_WRAPPER = 1])
-> ])
->diff --git a/utils/mountd/Makefile.am b/utils/mountd/Makefile.am
->index 1e76cf8..63a441b 100644
->--- a/utils/mountd/Makefile.am
->+++ b/utils/mountd/Makefile.am
->@@ -19,6 +19,16 @@ mountd_CPPFLAGS = $(AM_CPPFLAGS) $(CPPFLAGS) \
-> 
-> MAINTAINERCLEANFILES = Makefile.in
-> 
->+MAN_SED =
->+if USE_TCP_WRAPPERS
->+MAN_SED += -e 's/USE_TCP_WRAP/yes/'
->+else
->+MAN_SED += -e 's/USE_TCP_WRAP/no/'
->+endif
->+
->+%.man : %.man.in
->+	sed $(MAN_SED) < $< > $@
->+
-> #######################################################################
-> # The following allows the current practice of having
-> # daemons renamed during the install to include RPCPREFIX
->diff --git a/utils/mountd/mountd.man b/utils/mountd/mountd.man.in
->similarity index 99%
->rename from utils/mountd/mountd.man
->rename to utils/mountd/mountd.man.in
->index 4276663..6ed1bef 100644
->--- a/utils/mountd/mountd.man
->+++ b/utils/mountd/mountd.man.in
->@@ -166,6 +166,7 @@ the server. Note that the 'primary' group id is 
->not affected so a
-> command on the client will still be effective.  This function requires
-> a Linux Kernel with version at least 2.6.21.
-> 
->+.if 'USE_TCP_WRAP'no' .ig
-> .SH TCP_WRAPPERS SUPPORT
-> This
-> .B rpc.mountd
->@@ -187,6 +188,7 @@ For further information please have a look at the
-> and
-> .BR hosts_access (5)
-> manual pages.
->+..
-> 
-> .SH SEE ALSO
-> .BR rpc.nfsd (8),
->diff --git a/utils/statd/Makefile.am b/utils/statd/Makefile.am
->index 8a3ba4e..2efb9f9 100644
->--- a/utils/statd/Makefile.am
->+++ b/utils/statd/Makefile.am
->@@ -56,6 +56,16 @@ MAINTAINERCLEANFILES = Makefile.in
-> 
-> CLEANFILES = $(GENFILES)
-> 
->+MAN_SED =
->+if USE_TCP_WRAPPERS
->+MAN_SED += -e 's/USE_TCP_WRAP/yes/'
->+else
->+MAN_SED += -e 's/USE_TCP_WRAP/no/'
->+endif
->+
->+%.man : %.man.in
->+	sed $(MAN_SED) < $< > $@
->+
-> #######################################################################
-> # The following allows the current practice of having
-> # daemons renamed during the install to include RPCPREFIX
->diff --git a/utils/statd/statd.man b/utils/statd/statd.man.in
->similarity index 99%
->rename from utils/statd/statd.man
->rename to utils/statd/statd.man.in
->index e8be9f3..d30159c 100644
->--- a/utils/statd/statd.man
->+++ b/utils/statd/statd.man.in
->@@ -144,6 +144,7 @@ to print out version information and exit.
-> 
-> 
-> 
->+.if 'USE_TCP_WRAP'no' .ig
-> .SH TCP_WRAPPERS SUPPORT
-> This
-> .B rpc.statd
->@@ -165,6 +166,7 @@ For further information please have a look at the
-> and
-> .BR hosts_access (5)
-> manual pages.
->+..
-> 
-> .SH SIGNALS
-> .BR SIGUSR1
->-- 
->1.5.3.4
->
->
->-------------------------------------------------------------------------
->This SF.net email is sponsored by: Splunk Inc.
->Still grepping through log files to find problems?  Stop.
->Now Search log events and configuration files using AJAX and a browser.
->Download your FREE copy of Splunk now >> http://get.splunk.com/
->_______________________________________________
->NFS maillist  -  NFS@lists.sourceforge.net
->https://lists.sourceforge.net/lists/listinfo/nfs
+Does anyone understand why we're getting this error?  Any help or insight
+would be very appreciated.
+
+Thanks!
+
+Oct 29 20:03:33 dev-unix-shell01 rpc.gssd[3284]: processing client list Oct
+29 20:03:33 dev-unix-shell01 rpc.gssd[3284]: processing client list Oct 29
+20:03:33 dev-unix-shell01 rpc.gssd[3284]: handling krb5 upcall Oct 29
+20:03:33 dev-unix-shell01 rpc.gssd[3284]: Using keytab file
+'/etc/krb5.keytab'
+Oct 29 20:03:33 dev-unix-shell01 rpc.gssd[3284]: INFO: Credentials in CC
+'FILE:/tmp/krb5cc_machine_<DOMAIN>are good until 1193722038 Oct 29 20:03:33
+dev-unix-shell01 rpc.gssd[3284]: using FILE:/tmp/krb5cc_machine_<DOMAIN> as
+credentials cache for machine creds Oct 29 20:03:33 dev-unix-shell01
+rpc.gssd[3284]: using environment variable to select krb5 ccache
+FILE:/tmp/krb5cc_machine_<DOMAIN>
+Oct 29 20:03:33 dev-unix-shell01 rpc.gssd[3284]: creating context using euid
+0 (save_uid 0) Oct 29 20:03:33 dev-unix-shell01 rpc.gssd[3284]: creating tcp
+client for server prod-fs-sv1.<domainname>
+Oct 29 20:03:34 dev-unix-shell01 rpc.gssd[3284]: creating context with
+server nfs@prod-fs-sv1.<domain_name>
+Oct 29 20:03:34 dev-unix-shell01 rpc.gssd[3284]: DEBUG:
+serialize_krb5_ctx: lucid version!
+Oct 29 20:03:34 dev-unix-shell01 rpc.gssd[3284]: doing downcall Oct 29
+20:03:34 dev-unix-shell01 rpc.gssd[3284]: processing client list
+
+------=_Part_1220_11522699.1193760885915
+Content-Type: text/html; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+<div>Hello everyone,</div>
+<div>&nbsp;</div>
+<div>I am working on trying to get Kerberized NFSv4 working with AD.&nbsp; At this point everything seems to be setup correctly.&nbsp; The machine has been joined to AD, the keytab has been updated with the appropriate entries and the computer account has the appropriate servicePrincipal and userPrincipal Names.&nbsp; The Kerberized NFS Share resides on a Filer.
+</div>
+<div>&nbsp;</div>
+<div>When trying to mount the share on the client side I get the following error messages.</div>
+<div>&nbsp;</div>
+<div>Does anyone understand why we&#39;re getting this error?&nbsp; Any help or insight would be very appreciated.</div>
+<div>&nbsp;</div>
+<div>Thanks!</div>
+<p>Oct 29 20:03:33 dev-unix-shell01 rpc.gssd[3284]: processing client list Oct 29 20:03:33 dev-unix-shell01 rpc.gssd[3284]: processing client list Oct 29 20:03:33 dev-unix-shell01 rpc.gssd[3284]: handling krb5 upcall Oct 29 20:03:33 dev-unix-shell01 
+rpc.gssd[3284]: Using keytab file &#39;/etc/krb5.keytab&#39;<br>Oct 29 20:03:33 dev-unix-shell01 rpc.gssd[3284]: INFO: Credentials in CC &#39;FILE:/tmp/krb5cc_machine_&lt;DOMAIN&gt;are good until 1193722038 Oct 29 20:03:33 dev-unix-shell01 
+rpc.gssd[3284]: using FILE:/tmp/krb5cc_machine_&lt;DOMAIN&gt; as credentials cache for machine creds Oct 29 20:03:33 dev-unix-shell01 rpc.gssd[3284]: using environment variable to select krb5 ccache FILE:/tmp/krb5cc_machine_&lt;DOMAIN&gt;
+<br>Oct 29 20:03:33 dev-unix-shell01 rpc.gssd[3284]: creating context using euid 0 (save_uid 0) Oct 29 20:03:33 dev-unix-shell01 rpc.gssd[3284]: creating tcp client for server prod-fs-sv1.&lt;domainname&gt;<br>Oct 29 20:03:34 dev-unix-shell01 
+rpc.gssd[3284]: creating context with server <a href="mailto:nfs@prod-fs-sv1.&lt;domain_name&gt;">nfs@prod-fs-sv1.&lt;domain_name&gt;</a><br>Oct 29 20:03:34 dev-unix-shell01 rpc.gssd[3284]: DEBUG: <br>serialize_krb5_ctx: lucid version!
+<br>Oct 29 20:03:34 dev-unix-shell01 rpc.gssd[3284]: doing downcall Oct 29 20:03:34 dev-unix-shell01 rpc.gssd[3284]: processing client list</p>
+<p>&nbsp;</p>
+
+------=_Part_1220_11522699.1193760885915--
+
+
+--===============1218202425==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >> http://get.splunk.com/
+--===============1218202425==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============1218202425==--
