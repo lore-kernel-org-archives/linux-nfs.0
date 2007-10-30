@@ -1,26 +1,22 @@
-From: Quentin Godfroy <godfroy@clipper.ens.fr>
-Subject: NFSD3 : oops with sec=krb5 and RPCSEC_GSS_KRB5 not compiled in
-Date: Tue, 30 Oct 2007 00:35:30 +0100
-Message-ID: <20071029233530.GA21043@goelette.ens.fr>
+From: Neil Brown <neilb@suse.de>
+Subject: [PATCH] - Adjust man pages for mountd/statd to match
+ configuration options.
+Date: Tue, 30 Oct 2007 12:34:37 +1100
+Message-ID: <18214.35373.27736.378763@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
+Cc: Steve Dickson <SteveD@redhat.com>
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Ime8y-0004Oy-4J
-	for nfs@lists.sourceforge.net; Mon, 29 Oct 2007 16:35:40 -0700
-Received: from nef2.ens.fr ([129.199.96.40])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Ime92-0004vg-7D
-	for nfs@lists.sourceforge.net; Mon, 29 Oct 2007 16:35:45 -0700
-Received: from clipper.ens.fr (clipper-gw.ens.fr [129.199.1.22])
-	by nef2.ens.fr (8.13.6/1.01.28121999) with ESMTP id l9TNZVPd066921
-	for <nfs@lists.sourceforge.net>; Tue, 30 Oct 2007 00:35:31 +0100 (CET)
-Received: from goelette.ens.fr (root@goelette [129.199.129.6]) by
-	clipper.ens.fr (8.13.1/jb-1.1)
-	id l9TNZUfs010698 for <nfs@lists.sourceforge.net>;
-	Tue, 30 Oct 2007 00:35:30 +0100 (MET)
+	id 1Img09-0007eh-NY
+	for nfs@lists.sourceforge.net; Mon, 29 Oct 2007 18:34:41 -0700
+Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1Img0E-0006tP-Pw
+	for nfs@lists.sourceforge.net; Mon, 29 Oct 2007 18:34:47 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,62 +29,147 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi,
 
-on a 2.6.22.6, when trying to change an already mounted nfsv3 export from
-sec=sys to sec=krb5, with CONFIG_RPCSEC_GSS_KRB5 not compiled in (which
-meant that the rps.svcgssd service was refusing to run), i got the
-following oops on the server side :
+Someone mentioned to me that if you configure nfs-utils without
+TCP_WRAPPERS, the man pages still say it is available.
+This sort of thing has bothered me on and off before so I thought I
+would do something about it.  i.e. modify the man pages based on the
+config.
 
->BUG: unable to handle kernel NULL pointer dereference at virtual address
->00000008
-> printing eip:
->d0af084b
->*pde = 00000000
->Oops: 0000 [#1]
->Modules linked in: nfsd exportfs lockd nfs_acl sunrpc ipt_LOG ipt_recent
->ipt_REJECT xt_tcpudp iptable_filter ip_tables x_tables ipv6 ebtable_broute
->ebtable_nat ebtable_filter ebtables tcp_diag inet_diag floppy uhci_hcd
->iTCO_wdt usbcore
->CPU:    0
->EIP:    0060:[<d0af084b>]    Not tainted VLI
->EFLAGS: 00010246   (2.6.22.6-pluton #1)
->EIP is at encode_fsid+0x7b/0xa0 [nfsd]
->eax: c58ed0e0   ebx: c9ebb004   ecx: 00000000   edx: 00000002
->esi: c1f58048   edi: c9ebb0ec   ebp: c9ebb004   esp: c599ff18
->ds: 007b   es: 007b   fs: 0000  gs: 0000  ss: 0068
->Process nfsd (pid: 13237, ti=c599e000 task=cbea9a50 task.ti=c599e000)
->Stack: 00000000 c1f58038 d0af0922 c9d7cb40 d0aeeeef 00000000 c9ec4000
->d0af1e30 
->       d0b0f464 c1f58014 d0af1e50 c9ebb0ec c9ec4000 d0ae327f c9ec4000
->cb01a504 
->       c9ec4000 c1f58000 c9ec4000 00000000 c9ebb138 cab1f480 d0a89a34
->c9ec4000 
->Call Trace:
-> [<d0af0922>] encode_fattr3+0xb2/0x140 [nfsd]
-> [<d0aeeeef>] nfsd3_proc_getattr+0xff/0x110 [nfsd]
-> [<d0af1e30>] nfs3svc_encode_attrstat+0x0/0x40 [nfsd]
-> [<d0af1e50>] nfs3svc_encode_attrstat+0x20/0x40 [nfsd]
-> [<d0ae327f>] nfsd_dispatch+0xef/0x200 [nfsd]
-> [<d0a89a34>] svc_process+0x444/0x7e0 [sunrpc]
-> [<c010496b>] common_interrupt+0x23/0x28
-> [<d0ae3895>] nfsd+0x155/0x260 [nfsd]
-> [<d0ae3740>] nfsd+0x0/0x260 [nfsd]
-> [<c0104aeb>] kernel_thread_helper+0x7/0x1c
-> =======================
->Code: c3 8b 83 88 00 00 00 8b 48 30 89 cb c1 fb 1f 89 d8 0f c8 89 06 89 c8
->0f c8 89 46 04 8d 46 08 5b 5e c3 8b 83 88 00 00 00 8b 48 34 <8b> 59 08 8b 01
->8b 51 04 31 d8 8b 59 0c 0f c8 89 46 04 8d 46 08 
->EIP: [<d0af084b>] encode_fsid+0x7b/0xa0 [nfsd] SS:ESP 0068:c599ff18
+The following git-patch does this, but I would welcome review as I'm
+not a very experiences automake hacker.
+
+Running "autogen.sh" reports:
+
+utils/mountd/Makefile.am:29: `%'-style pattern rules are a GNU make extension
+utils/statd/Makefile.am:66: `%'-style pattern rules are a GNU make extension
 
 
-Moreover, all the other exported mounts freezed instantly, and the only
-solution was to reboot the server.
+Should we care?  Is there a better way?
 
-The configure file is on
-http://www.eleves.ens.fr/home/godfroy/config-2.6.22.6
+NeilBrown
 
-Quentin Godfroy
+(patch can be cherry-picked from git://neil.brown.name/nfs-utils/)
+
+>From be806a06d414603e0930c61d1576d47f46ff064c Mon Sep 17 00:00:00 2001
+From: Neil Brown <neilb@suse.de>
+Date: Tue, 30 Oct 2007 12:18:34 +1100
+Subject: [PATCH] Make man pages configurable and exclude TCP_WRAPPERS notes where appropriate.
+
+This patch makes mountd.man and statd.man able to be modified based on
+configuration, and removes the TCP_WRAPPERS section when that feature
+is not configured in.
+---
+ aclocal/tcp-wrappers.m4                    |    1 +
+ utils/mountd/Makefile.am                   |   10 ++++++++++
+ utils/mountd/{mountd.man => mountd.man.in} |    2 ++
+ utils/statd/Makefile.am                    |   10 ++++++++++
+ utils/statd/{statd.man => statd.man.in}    |    2 ++
+ 5 files changed, 25 insertions(+), 0 deletions(-)
+ rename utils/mountd/{mountd.man => mountd.man.in} (99%)
+ rename utils/statd/{statd.man => statd.man.in} (99%)
+
+diff --git a/aclocal/tcp-wrappers.m4 b/aclocal/tcp-wrappers.m4
+index 35ac8e0..d76c65d 100644
+--- a/aclocal/tcp-wrappers.m4
++++ b/aclocal/tcp-wrappers.m4
+@@ -51,4 +51,5 @@ AC_DEFUN([AC_TCP_WRAPPERS],[
+   AC_SUBST(LIBWRAP)
+   AC_SUBST(HAVE_LIBWRAP)
+   AC_SUBST(HAVE_TCP_WRAPPER)
++  AM_CONDITIONAL(USE_TCP_WRAPPERS, [test $HAVE_TCP_WRAPPER = 1])
+ ])
+diff --git a/utils/mountd/Makefile.am b/utils/mountd/Makefile.am
+index 1e76cf8..63a441b 100644
+--- a/utils/mountd/Makefile.am
++++ b/utils/mountd/Makefile.am
+@@ -19,6 +19,16 @@ mountd_CPPFLAGS = $(AM_CPPFLAGS) $(CPPFLAGS) \
+ 
+ MAINTAINERCLEANFILES = Makefile.in
+ 
++MAN_SED =
++if USE_TCP_WRAPPERS
++MAN_SED += -e 's/USE_TCP_WRAP/yes/'
++else
++MAN_SED += -e 's/USE_TCP_WRAP/no/'
++endif
++
++%.man : %.man.in
++	sed $(MAN_SED) < $< > $@
++
+ #######################################################################
+ # The following allows the current practice of having
+ # daemons renamed during the install to include RPCPREFIX
+diff --git a/utils/mountd/mountd.man b/utils/mountd/mountd.man.in
+similarity index 99%
+rename from utils/mountd/mountd.man
+rename to utils/mountd/mountd.man.in
+index 4276663..6ed1bef 100644
+--- a/utils/mountd/mountd.man
++++ b/utils/mountd/mountd.man.in
+@@ -166,6 +166,7 @@ the server. Note that the 'primary' group id is not affected so a
+ command on the client will still be effective.  This function requires
+ a Linux Kernel with version at least 2.6.21.
+ 
++.if 'USE_TCP_WRAP'no' .ig
+ .SH TCP_WRAPPERS SUPPORT
+ This
+ .B rpc.mountd
+@@ -187,6 +188,7 @@ For further information please have a look at the
+ and
+ .BR hosts_access (5)
+ manual pages.
++..
+ 
+ .SH SEE ALSO
+ .BR rpc.nfsd (8),
+diff --git a/utils/statd/Makefile.am b/utils/statd/Makefile.am
+index 8a3ba4e..2efb9f9 100644
+--- a/utils/statd/Makefile.am
++++ b/utils/statd/Makefile.am
+@@ -56,6 +56,16 @@ MAINTAINERCLEANFILES = Makefile.in
+ 
+ CLEANFILES = $(GENFILES)
+ 
++MAN_SED =
++if USE_TCP_WRAPPERS
++MAN_SED += -e 's/USE_TCP_WRAP/yes/'
++else
++MAN_SED += -e 's/USE_TCP_WRAP/no/'
++endif
++
++%.man : %.man.in
++	sed $(MAN_SED) < $< > $@
++
+ #######################################################################
+ # The following allows the current practice of having
+ # daemons renamed during the install to include RPCPREFIX
+diff --git a/utils/statd/statd.man b/utils/statd/statd.man.in
+similarity index 99%
+rename from utils/statd/statd.man
+rename to utils/statd/statd.man.in
+index e8be9f3..d30159c 100644
+--- a/utils/statd/statd.man
++++ b/utils/statd/statd.man.in
+@@ -144,6 +144,7 @@ to print out version information and exit.
+ 
+ 
+ 
++.if 'USE_TCP_WRAP'no' .ig
+ .SH TCP_WRAPPERS SUPPORT
+ This
+ .B rpc.statd
+@@ -165,6 +166,7 @@ For further information please have a look at the
+ and
+ .BR hosts_access (5)
+ manual pages.
++..
+ 
+ .SH SIGNALS
+ .BR SIGUSR1
+-- 
+1.5.3.4
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
