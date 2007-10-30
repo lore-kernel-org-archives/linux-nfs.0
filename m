@@ -1,25 +1,14 @@
-From: "Iyer, Rahul" <Rahul.Iyer@netapp.com>
-Subject: Re: How to specify sctp protocol?
-Date: Mon, 29 Oct 2007 21:35:31 -0700
-Message-ID: <7619F3097FAB384287CF636FF92D0CA10BA4C08E@exsvl01.hq.netapp.com>
-References: <200710291746.15411.huangxiong@uit.com.cn>
-	<200710291808.45838.huangxiong@uit.com.cn>
-	<7619F3097FAB384287CF636FF92D0CA10B605CDC@exsvl01.hq.netapp.com>
-	<200710300958.15823.huangxiong@uit.com.cn>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: stale nfs file handle with exported loopback mounts
+Date: Tue, 30 Oct 2007 16:14:51 +1100
+Message-ID: <18214.48587.2205.753253@notabene.brown>
+References: <2051050286@web.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-2022-jp"
-Cc: nfs@lists.sourceforge.net
-To: "Huang Xiong" <huangxiong@uit.com.cn>
+Content-Type: text/plain; charset="us-ascii"
+Cc: NFS@lists.sourceforge.net
+To: devzero@web.de
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1ImiqB-0008Lw-N3
-	for nfs@lists.sourceforge.net; Mon, 29 Oct 2007 21:36:35 -0700
-Received: from mx2.netapp.com ([216.240.18.37])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1ImiqG-00027d-2w
-	for nfs@lists.sourceforge.net; Mon, 29 Oct 2007 21:36:41 -0700
-In-Reply-To: <200710300958.15823.huangxiong@uit.com.cn>
+In-Reply-To: message from devzero@web.de on Saturday October 27
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,132 +21,72 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
- 
+On Saturday October 27, devzero@web.de wrote:
+> Hello !
 > 
-> Hi Rahul,
+> with 2.6.22 i`m trying to export loopback mounted iso-images.
 > 
-> Thanks for your kindly comment. 
+> this is /etc/exports:
 > 
-> NFSv4 supports TCP and UDP, does this implementation affect 
-> the relative
-> operations(mount/read/write) on NFS share exported from 
-> underlying GFS filesystem, which indicates it uses SCTP only?
->
-If I understand you correctly, it shouldn't.
- 
-> Or if I want to use NFS on GFS smoothly, need I add TCP 
-> support to GFS?
->
-Sorry, can't help you here. I'm not conversant with GFS configuration.
-Regards
-Rahul
+> /export *(ro,crossmnt,subtree_check)
+
+I recommend replacing subtree_check with no_subtree_check, but it
+shouldn't make an important difference in this case.
 
 
+This should work with nfs-utils 1.1.0 or later.  With earlier releases
+you need to explicitly export the subordinate filesystems too.
 
-> Regards,
-> Phillip
 > 
+> in /export, i have loopback mounted iso-images
 > 
->  
+> after mounting on the client side under /mnt (tried one older and one recent system) , i`m getting:
 > 
+> vmhost:/mnt # ls -la
+> /bin/ls: iso1: Input/output error
+> /bin/ls: iso2  Input/output error
+> /bin/ls: iso3: Input/output error
+> total 10128
+> drwxrwxrwt   18 root root  270336 Oct 26 08:45 .
+> drwxrwxrwt  186 root root   20760 Oct 27 17:45 ..
+> drwxr-xr-x    2 root root   16384 Jan  1  1970 iso1
+> drwxr-xr-x    2 root root   16384 Jan  1  1970 iso2
+> drwxr-xr-x    2 root root   16384 Jan  1  1970 iso3
 > 
+> vmhost:/mnt/iso1 # ls
+> /bin/ls: .: Stale NFS file handle
+> vmhost:/mnt/iso1 # ls -la
+> /bin/ls: .: Input/output error
+
+It is a little odd that the errors are inconsistent.
+
+Can you find any log messages from mountd in syslog?  What do they
+say?
+Also what does
+   cat /proc/fs/nfsd/exports
+
+on the server show.
+
+Finally, a tcpdump:
+
+  tcpdump -s 0 -w /tmp/tcpdump port 2049
+
+while you run the experiment might help.
+
 > 
-> 在 星期一 29 十月 2007 18:12，Iyer, Rahul 写道：
-> > No, I meant the Linux implementation doesn't support it yet. It 
-> > supports TCP and UDP transports over IPv4. IPv6 is being 
-> added. -Rahul
-> >
-> > > -----Original Message-----
-> > > From: Huang Xiong [mailto:huangxiong@uit.com.cn]
-> > > Sent: Monday, October 29, 2007 3:39 PM
-> > > To: Iyer, Rahul
-> > > Cc: nfs@lists.sourceforge.net
-> > > Subject: Re: [NFS] How to specify sctp protocol?
-> > >
-> > > Perhaps I understand wrong. Please see below:
-> > >
-> > >
-> > > From "http://www.ietf.org/rfc/rfc3530.txt"
-> > >
-> > > 3.1.  Ports and Transports
-> > >
-> > >    Historically, NFS version 2 and version 3 servers have 
-> resided on
-> > >    port 2049.  The registered port 2049 [RFC3232] for the 
-> NFS protocol
-> > >    should be the default configuration.  Using the 
-> registered port for
-> > >    NFS services means the NFS client will not need to use the RPC
-> > >    binding protocols as described in [RFC1833]; this will 
-> allow NFS to
-> > >    transit firewalls.
-> > >
-> > >    Where an NFS version 4 implementation supports 
-> operation over the 
-> > > IP
-> > >    network protocol, the supported transports between NFS and IP 
-> > > MUST be
-> > >    among the IETF-approved congestion control transport 
-> protocols, 
-> > > which
-> > >    include TCP and SCTP.  To enhance the possibilities for
-> > >    interoperability, an NFS version 4 implementation MUST support
-> > >    operation over the TCP transport protocol, at least 
-> until such time
-> > >    as a standards track RFC revises this requirement to use a 
-> > > different
-> > >    IETF-approved congestion control transport protocol.
-> > >
-> > >
-> > >
-> > > 在 星期一 29 十月 2007 17:59，Iyer, Rahul 写道：
-> > >
-> > > > I don't believe you can. I don't think NFS over SCTP is
-> > >
-> > > supported yet.
-> > >
-> > > > -Rahul
-> > > >
-> > > > > -----Original Message-----
-> > > > > From: Huang Xiong [mailto:huangxiong@uit.com.cn]
-> > > > > Sent: Monday, October 29, 2007 3:16 PM
-> > > > > To: nfs@lists.sourceforge.net
-> > > > > Subject: [NFS] How to specify sctp protocol?
-> > > > >
-> > > > > Hello folks,
-> > > > >
-> > > > > As NFSv4 supports SCTP protocol,  how to specify this 
-> protocol 
-> > > > > in application?
-> > > > > or need to add some option appened with mount the NFS shares?
-> > > > >
-> > > > > My underlying filesystem is GFS, which uses SCTP for cluster 
-> > > > > internode communication. I wonder that I have to specify the 
-> > > > > SCTP option when I try to mount NFS share based on GFS.
-> > > > >
-> > > > > I've been trying to find some useful information but with
-> > >
-> > > no success.
-> > >
-> > > > > Anyone having an idea or experienced the same problem?
-> > > > > Maybe I can provide more useful information on this.
-> > > > >
-> > > > > Thanks in advance.
-> > > > > Phillip
-> > > > >
-> > > > > --------------------------------------------------------------
-> > > > > -----------
-> > > > > This SF.net email is sponsored by: Splunk Inc.
-> > > > > Still grepping through log files to find problems?  Stop.
-> > > > > Now Search log events and configuration files using 
-> AJAX and a 
-> > > > > browser.
-> > > > > Download your FREE copy of Splunk now >> 
-> http://get.splunk.com/ 
-> > > > > _______________________________________________
-> > > > > NFS maillist  -  NFS@lists.sourceforge.net 
-> > > > > https://lists.sourceforge.net/lists/listinfo/nfs
+> i`m unsure if i should blame suse here (it`s an opensuse 10.3 box which seems to have nfs-utils 1.1.0)
 > 
+> does somebody have such setup up and running and can tell his distro / kernel and nfs-utils version ?
+> maybe i change distro then.
+
+I doubt that it is a distro-specific thing.  As long as you have
+nfs-utils-1.1.0 it should work.  I don't have a 10.3 box
+set up yet, but it works fine on Debian/unstable for me.
+
+Maybe try adding the "no_root_squash" export option.
+What does "ls -l /export" on the server show?
+
+NeilBrown
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
