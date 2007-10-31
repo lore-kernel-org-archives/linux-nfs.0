@@ -1,12 +1,14 @@
-From: devzero@web.de
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: Re: stale nfs file handle with exported loopback mounts
-Date: Wed, 31 Oct 2007 23:19:43 +0100
-Message-ID: <2058443428@web.de>
+Date: Wed, 31 Oct 2007 18:39:36 -0400
+Message-ID: <20071031223936.GO4569@fieldses.org>
+References: <2058443428@web.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-15"
+Content-Type: text/plain; charset="utf-8"
 Cc: Neil Brown <neilb@suse.de>, NFS@lists.sourceforge.net
-To: "J. Bruce Fields" <bfields@fieldses.org>
+To: devzero@web.de
 Return-path: <nfs-bounces@lists.sourceforge.net>
+In-Reply-To: <2058443428@web.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -19,559 +21,407 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
->If you add an explicit export for each one, =
-
-you mean, i should export each of those ~500 loopback mounted iso images ?
-come on, that`s not what admins or users want, isn`t it ?
-
-> -----Urspr=FCngliche Nachricht-----
-> Von: "J. Bruce Fields" <bfields@fieldses.org>
-> Gesendet: 31.10.07 21:58:00
-> An: devzero@web.de
-> CC: Neil Brown <neilb@suse.de>, NFS@lists.sourceforge.net
-> Betreff: Re: [NFS] stale nfs file handle with exported loopback mounts
-
-
-> =
-
-> On Wed, Oct 31, 2007 at 09:46:13PM +0100, devzero@web.de wrote:
-> > hi !
-> > =
-
-> > i tried latest grml build (lenny/sid) as server today (suse 9.3 as clie=
-nt).
-> > =
-
-> > error still existing, but a little bit different:
-> > =
-
-> > if i cd to the loopback-mount dir`s on the client, i see the contents o=
-f the parent directory, i.e. i get a recursion.
-> =
-
-> That suggests something funky in the way we're identifying those
-> filesystems in the filehandle.  If you add an explicit export for each
-> one, each with its own "fsid=3Dxyz" option (with xyz whatever positive
-> integer you'd like, as long as it's difficult for export), does the
-> problem go away??
-> =
-
-> --b.
-> =
-
-> > =
-
-> > regards
-> > roland
-> > =
-
-> > =
-
-> > =
-
-> > > -----Urspr=FCngliche Nachricht-----
-> > > Von: devzero@web.de
-> > > Gesendet: 30.10.07 21:05:56
-> > > An: Neil Brown <neilb@suse.de>
-> > > CC: NFS@lists.sourceforge.net
-> > > Betreff: Re: [NFS] stale nfs file handle with exported loopback mounts
-> > =
-
-> > =
-
-> > > =
-
-> > > > I recommend replacing subtree_check with no_subtree_check, but it
-> > > > shouldn't make an important difference in this case.
-> > > =
-
-> > > ok, i leave it as is.
-> > > =
-
-> > > > This should work with nfs-utils 1.1.0 or later.  With earlier relea=
-ses
-> > > > you need to explicitly export the subordinate filesystems too.
-> > > > =
-
-> > > =
-
-> > > mhh - opensuse doesn`t have nfs-utils package, but it has nfs-client-=
-1.1.0-8 which looks like they repackaged nfs-utils 1.1.0
-> > > =
-
-> > > > It is a little odd that the errors are inconsistent.
-> > > =
-
-> > > ok, but only a minor issue, if an issue at all, isn`t it ?
-> > > =
-
-> > > > Can you find any log messages from mountd in syslog?  What do they
-> > > > say?
-> > > =
-
-> > > yes, on the client i`m getting :
-> > > =
-
-> > > Jun  3 21:36:01 linux kernel: nfs_update_inode: inode number mismatch
-> > > Jun  3 21:36:01 linux kernel: expected (0:11/0x2), got (0:11/0x13881)
-> > > Jun  3 21:36:01 linux kernel: nfs_update_inode: inode number mismatch
-> > > Jun  3 21:36:01 linux kernel: expected (0:11/0x2), got (0:11/0x13881)
-> > > Jun  3 21:36:17 linux kernel: nfs_update_inode: inode number mismatch
-> > > Jun  3 21:36:17 linux kernel: expected (0:11/0x2), got (0:11/0x13881)
-> > > Jun  3 21:36:17 linux kernel: nfs_update_inode: inode number mismatch
-> > > Jun  3 21:36:17 linux kernel: expected (0:11/0x2), got (0:11/0x13881)
-> > > Jun  3 21:36:20 linux kernel: nfs_update_inode: inode number mismatch
-> > > Jun  3 21:36:20 linux kernel: expected (0:11/0x2), got (0:11/0x13881)
-> > > Jun  3 21:36:20 linux kernel: nfs_update_inode: inode number mismatch
-> > > =
-
-> > > =
-
-> > > no error message on the server:
-> > > Oct 26 10:09:31 opensuse103 mountd[4293]: authenticated unmount reque=
-st from 10.0.0.40:1014 for /mnt (/mnt)
-> > > Oct 26 10:10:07 opensuse103 mountd[4293]: authenticated mount request=
- from 10.0.0.40:612 for /mnt (/mnt)
-> > > Oct 26 10:10:43 opensuse103 mountd[4293]: authenticated unmount reque=
-st from 10.0.0.40:623 for /mnt (/mnt)
-> > > Oct 26 10:10:52 opensuse103 mountd[4293]: authenticated mount request=
- from 10.0.0.40:624 for /mnt (/mnt)
-> > > =
-
-> > > > Also what does
-> > > >    cat /proc/fs/nfsd/exports
-> > > > =
-
-> > > > on the server show.
-> > > =
-
-> > > opensuse103:~ # cat /proc/fs/nfsd/exports
-> > > # Version 1.1
-> > > # Path Client(Flags) # IPs
-> > > /mnt/iso1       *(ro,no_root_squash,sync,wdelay,crossmnt,uuid=3D2c49f=
-ef2:ba464293:9b2bf2b8:322ccbcb)
-> > > /mnt/iso3       *(ro,no_root_squash,sync,wdelay,crossmnt,uuid=3D27ae9=
-c67:0b794b36:8b5e9e17:37b569eb)
-> > > /mnt    *(ro,no_root_squash,sync,wdelay,crossmnt,uuid=3D08164ee4:2db1=
-41eb:ac961701:49c74396)
-> > > /mnt/iso2       *(ro,no_root_squash,sync,wdelay,crossmnt,uuid=3D2aad6=
-ea5:a05d4441:b94c48e6:e5d9981e)
-> > > =
-
-> > > =
-
-> > > > Finally, a tcpdump:
-> > > > =
-
-> > > >   tcpdump -s 0 -w /tmp/tcpdump port 2049
-> > > > =
-
-> > > > while you run the experiment might help.
-> > > =
-
-> > > ah - this seems to give a hint, but i don`t have a clue why the serve=
-r (10.0.0.30) is telling the client (10.0.0.40) a "RPC Version mismatch".
-> > > I also tried  --no-nfs-version 4 for rpc.mountd (setting in /etc/sysc=
-onfig/nfs), but this didn`t make a difference.
-> > > =
-
-> > > here is the tcpdump output - i did =
-
-> > > =
-
-> > > - mount
-> > > - ls / ls -la / cd to subdirs
-> > > =
-
-> > > 10:15:06.480542 IP 10.0.0.40.0 > 10.0.0.30.2049: 0 null
-> > > 10:15:06.480572 IP 10.0.0.30.2049 > 10.0.0.40.0: reply ERR 0: RPC Ver=
-sion mismatch (167772160-0)
-> > > 10:15:06.480765 IP 10.0.0.40.1022 > 10.0.0.30.2049: . ack 2031114913 =
-win 1460 <nop,nop,timestamp 686128 737918>
-> > > 10:15:06.480821 IP 10.0.0.40.2079804678 > 10.0.0.30.2049: 108 fsinfo =
-fh Unknown/01000700813801000000000008164EE42DB141EBAC96170149C743963CD81908
-> > > 10:15:06.480833 IP 10.0.0.30.2049 > 10.0.0.40.1022: . ack 108 win 181=
- <nop,nop,timestamp 737918 686128>
-> > > 10:15:06.513365 IP 10.0.0.30.2049 > 10.0.0.40.2079804678: reply ok 84=
- fsinfo rtmax 65536 rtpref 65536 wtmax 65536 wtpref 65536 dtpref 4096
-> > > 10:15:06.514408 IP 10.0.0.40.1022 > 10.0.0.30.2049: . ack 85 win 1460=
- <nop,nop,timestamp 686160 737926>
-> > > 10:15:06.514902 IP 10.0.0.40.2096581894 > 10.0.0.30.2049: 108 getattr=
- fh Unknown/01000700813801000000000008164EE42DB141EBAC96170149C743963CD81908
-> > > 10:15:06.515256 IP 10.0.0.30.2049 > 10.0.0.40.2096581894: reply ok 11=
-6 getattr DIR 40755 ids 0/0 sz 4096
-> > > 10:15:06.553865 IP 10.0.0.40.1022 > 10.0.0.30.2049: . ack 201 win 146=
-0 <nop,nop,timestamp 686201 737926>
-> > > 10:16:03.091784 IP 10.0.0.40.2113359110 > 10.0.0.30.2049: 108 getattr=
- fh Unknown/01000700813801000000000008164EE42DB141EBAC96170149C7439647219C8C
-> > > 10:16:03.093366 IP 10.0.0.30.2049 > 10.0.0.40.2113359110: reply ok 11=
-6 getattr DIR 40755 ids 0/0 sz 4096
-> > > 10:16:03.096046 IP 10.0.0.40.1022 > 10.0.0.30.2049: . ack 317 win 146=
-0 <nop,nop,timestamp 743610 752071>
-> > > 10:16:03.097370 IP 10.0.0.40.2130136326 > 10.0.0.30.2049: 112 access =
-fh Unknown/01000700813801000000000008164EE42DB141EBAC96170149C743960000001F=
- 001f
-> > > 10:16:03.098156 IP 10.0.0.30.2049 > 10.0.0.40.2130136326: reply ok 12=
-4 access c 0003
-> > > 10:16:03.156812 IP 10.0.0.40.1022 > 10.0.0.30.2049: . ack 441 win 146=
-0 <nop,nop,timestamp 743651 752072>
-> > > 10:16:08.967804 IP 10.0.0.40.2146913542 > 10.0.0.30.2049: 108 getattr=
- fh Unknown/01000700813801000000000008164EE42DB141EBAC96170149C7439600000000
-> > > 10:16:08.968305 IP 10.0.0.30.2049 > 10.0.0.40.2146913542: reply ok 11=
-6 getattr DIR 40755 ids 0/0 sz 4096
-> > > 10:16:08.974285 IP 10.0.0.40.1022 > 10.0.0.30.2049: . ack 557 win 146=
-0 <nop,nop,timestamp 749477 753540>
-> > > 10:16:08.975739 IP 10.0.0.40.2163690758 > 10.0.0.30.2049: 132 readdir=
-plus fh Unknown/01000700813801000000000008164EE42DB141EBAC96170149C74396000=
-00000 512 bytes @ 0
-> > > 10:16:08.975985 IP 10.0.0.30.2049 > 10.0.0.40.2163690758: reply ok 14=
-48 readdirplus
-> > > 10:16:08.976510 IP 10.0.0.30.2049 > 10.0.0.40.1684108288: reply Unkno=
-wn rpc response code=3D2021855861 340
-> > > 10:16:08.982238 IP 10.0.0.40.1022 > 10.0.0.30.2049: . ack 2345 win 21=
-84 <nop,nop,timestamp 749479 753541>
-> > > 10:16:08.984415 IP 10.0.0.40.2180467974 > 10.0.0.30.2049: 116 lookup =
-fh Unknown/01000700813801000000000008164EE42DB141EBAC96170149C7439600000004=
- "iso3"
-> > > 10:16:08.984931 IP 10.0.0.30.2049 > 10.0.0.40.2180467974: reply ok 23=
-2 lookup fh Unknown/0100060027AE9C670B794B368B5E9E1737B569EB000000010000000=
-2000041ED
-> > > 10:16:09.008819 IP 10.0.0.40.2197245190 > 10.0.0.30.2049: 104 getattr=
- fh Unknown/0100060027AE9C670B794B368B5E9E1737B569EB0000000FDD22CC3C7002F0AC
-> > > 10:16:09.010946 IP 10.0.0.30.2049 > 10.0.0.40.2197245190: reply ok 18=
-8 getattr REG 2 ids 5/0 sz 0
-> > > 10:16:09.032541 IP 10.0.0.40.2214022406 > 10.0.0.30.2049: 128 getattr=
- fh Unknown/01000702813801000000000008164EE42DB141EBAC96170149C74396E66D0700
-> > > 10:16:09.033405 IP 10.0.0.30.2049 > 10.0.0.40.2214022406: reply ok 18=
-8 getattr REG 1 ids 1/0 sz 0
-> > > 10:16:09.033490 IP 10.0.0.40.2230799622 > 10.0.0.30.2049: 128 getattr=
- fh Unknown/01000702813801000000000008164EE42DB141EBAC96170149C74396E56D0700
-> > > 10:16:09.036811 IP 10.0.0.30.2049 > 10.0.0.40.2230799622: reply ok 18=
-8 getattr REG 1 ids 1/0 sz 0
-> > > 10:16:09.037823 IP 10.0.0.40.2247576838 > 10.0.0.30.2049: 108 getattr=
- fh Unknown/01000700813801000000000008164EE42DB141EBAC96170149C7439600000000
-> > > 10:16:09.039817 IP 10.0.0.30.2049 > 10.0.0.40.2247576838: reply ok 11=
-6 getattr DIR 40755 ids 0/0 sz 4096
-> > > 10:16:09.040423 IP 10.0.0.40.2264354054 > 10.0.0.30.2049: 112 getattr=
- fh Unknown/01000700813801000000000008164EE42DB141EBAC96170149C743960000000F
-> > > 10:16:09.040856 IP 10.0.0.30.2049 > 10.0.0.40.2264354054: reply ok 18=
-8 getattr REG 2 ids 5/0 sz 0
-> > > 10:16:09.041590 IP 10.0.0.40.2281131270 > 10.0.0.30.2049: 116 lookup =
-fh Unknown/01000700813801000000000008164EE42DB141EBAC96170149C7439600000004=
- "iso2"
-> > > 10:16:09.041920 IP 10.0.0.30.2049 > 10.0.0.40.2281131270: reply ok 23=
-2 lookup fh Unknown/010006002AAD6EA5A05D4441B94C48E6E5D9981E000000010000000=
-2000041ED
-> > > 10:16:09.049633 IP 10.0.0.40.2297908486 > 10.0.0.30.2049: 104 getattr=
- fh Unknown/010006002AAD6EA5A05D4441B94C48E6E5D9981E0000000F5FDC84454326E193
-> > > 10:16:09.049781 IP 10.0.0.30.2049 > 10.0.0.40.2297908486: reply ok 18=
-8 getattr REG 2 ids 5/0 sz 0
-> > > 10:16:09.063218 IP 10.0.0.40.2314685702 > 10.0.0.30.2049: 128 getattr=
- fh Unknown/01000702813801000000000008164EE42DB141EBAC96170149C74396E46D0700
-> > > 10:16:09.072505 IP 10.0.0.30.2049 > 10.0.0.40.2314685702: reply ok 18=
-8 getattr REG 1 ids 1/0 sz 0
-> > > 10:16:09.091698 IP 10.0.0.40.2331462918 > 10.0.0.30.2049: 124 getattr=
- fh Unknown/01000702813801000000000008164EE42DB141EBAC96170149C74396E46D0700
-> > > 10:16:09.092022 IP 10.0.0.30.2049 > 10.0.0.40.2331462918: reply ok 11=
-6 getattr REG 100644 ids 0/0 sz 1048576
-> > > 10:16:09.128971 IP 10.0.0.40.2348240134 > 10.0.0.30.2049: 128 getattr=
- fh Unknown/01000702813801000000000008164EE42DB141EBAC96170149C74396E36D0700
-> > > 10:16:09.129304 IP 10.0.0.30.2049 > 10.0.0.40.2348240134: reply ok 18=
-8 getattr REG 1 ids 1/0 sz 0
-> > > 10:16:09.184155 IP 10.0.0.40.2365017350 > 10.0.0.30.2049: 124 getattr=
- fh Unknown/01000702813801000000000008164EE42DB141EBAC96170149C74396E36D0700
-> > > 10:16:09.184582 IP 10.0.0.30.2049 > 10.0.0.40.2365017350: reply ok 11=
-6 getattr REG 100644 ids 0/0 sz 1048576
-> > > 10:16:09.189234 IP 10.0.0.40.2381794566 > 10.0.0.30.2049: 116 lookup =
-fh Unknown/01000700813801000000000008164EE42DB141EBAC96170149C7439600000004=
- "iso1"
-> > > 10:16:09.189435 IP 10.0.0.30.2049 > 10.0.0.40.2381794566: reply ok 23=
-2 lookup fh Unknown/010006002C49FEF2BA4642939B2BF2B8322CCBCB000000010000000=
-2000041ED
-> > > 10:16:09.193476 IP 10.0.0.40.2398571782 > 10.0.0.30.2049: 104 getattr=
- fh Unknown/010006002C49FEF2BA4642939B2BF2B8322CCBCB0000000F58896A884A0C62B7
-> > > 10:16:09.193652 IP 10.0.0.30.2049 > 10.0.0.40.2398571782: reply ok 18=
-8 getattr REG 2 ids 5/0 sz 0
-> > > 10:16:09.194937 IP 10.0.0.40.2415348998 > 10.0.0.30.2049: 128 getattr=
- fh Unknown/01000702813801000000000008164EE42DB141EBAC96170149C74396E76D0700
-> > > 10:16:09.195033 IP 10.0.0.30.2049 > 10.0.0.40.2415348998: reply ok 18=
-8 getattr REG 1 ids 1/0 sz 0
-> > > 10:16:09.195230 IP 10.0.0.40.2432126214 > 10.0.0.30.2049: 128 getattr=
- fh Unknown/01000702813801000000000008164EE42DB141EBAC96170149C74396E86D0700
-> > > 10:16:09.323635 IP 10.0.0.30.2049 > 10.0.0.40.1022: . ack 2572 win 41=
-6 <nop,nop,timestamp 753629 749566>
-> > > 10:16:09.324345 IP 10.0.0.30.2049 > 10.0.0.40.2432126214: reply ok 18=
-8 getattr REG 1 ids 1/0 sz 0
-> > > 10:16:09.341475 IP 10.0.0.40.2448903430 > 10.0.0.30.2049: 128 getattr=
- fh Unknown/01000702813801000000000008164EE42DB141EBAC96170149C74396E26D0700
-> > > 10:16:09.341524 IP 10.0.0.30.2049 > 10.0.0.40.1022: . ack 2700 win 44=
-9 <nop,nop,timestamp 753632 749707>
-> > > 10:16:09.341928 IP 10.0.0.30.2049 > 10.0.0.40.2448903430: reply ok 18=
-8 getattr REG 1 ids 1/0 sz 0
-> > > 10:16:09.342117 IP 10.0.0.40.2465680646 > 10.0.0.30.2049: 124 getattr=
- fh Unknown/01000702813801000000000008164EE42DB141EBAC96170149C74396E26D0700
-> > > 10:16:09.343404 IP 10.0.0.30.2049 > 10.0.0.40.2465680646: reply ok 11=
-6 getattr REG 100644 ids 0/0 sz 1048576
-> > > 10:16:09.389316 IP 10.0.0.40.1022 > 10.0.0.30.2049: . ack 5573 win 21=
-84 <nop,nop,timestamp 749751 753633>
-> > > 10:16:13.449513 IP 10.0.0.40.2482457862 > 10.0.0.30.2049: 108 getattr=
- fh Unknown/01000700813801000000000008164EE42DB141EBAC96170149C7439647219CB5
-> > > 10:16:13.449815 IP 10.0.0.30.2049 > 10.0.0.40.2482457862: reply ok 11=
-6 getattr DIR 40755 ids 0/0 sz 4096
-> > > 10:16:13.452344 IP 10.0.0.40.1022 > 10.0.0.30.2049: . ack 5689 win 21=
-84 <nop,nop,timestamp 753943 754660>
-> > > 10:16:13.453973 IP 10.0.0.40.2499235078 > 10.0.0.30.2049: 100 getattr=
- fh Unknown/010006002C49FEF2BA4642939B2BF2B8322CCBCB47219C8C0000000047219C8C
-> > > 10:16:13.454154 IP 10.0.0.30.2049 > 10.0.0.40.2499235078: reply ok 11=
-6 getattr DIR 40755 ids 0/0 sz 4096
-> > > 10:16:13.456194 IP 10.0.0.40.2516012294 > 10.0.0.30.2049: 108 getattr=
- fh Unknown/01000700813801000000000008164EE42DB141EBAC96170149C7439647219C8C
-> > > 10:16:13.456361 IP 10.0.0.30.2049 > 10.0.0.40.2516012294: reply ok 11=
-6 getattr DIR 40755 ids 0/0 sz 4096
-> > > 10:16:13.458282 IP 10.0.0.40.2532789510 > 10.0.0.30.2049: 116 lookup =
-fh Unknown/01000700813801000000000008164EE42DB141EBAC96170149C7439600000004=
- "iso1"
-> > > 10:16:13.458461 IP 10.0.0.30.2049 > 10.0.0.40.2532789510: reply ok 23=
-2 lookup fh Unknown/010006002C49FEF2BA4642939B2BF2B8322CCBCB000000010000000=
-2000041ED
-> > > 10:16:13.510637 IP 10.0.0.40.1022 > 10.0.0.30.2049: . ack 6153 win 21=
-84 <nop,nop,timestamp 753985 754662>
-> > > 10:16:14.030110 IP 10.0.0.40.2549566726 > 10.0.0.30.2049: 112 access =
-fh Unknown/01000700813801000000000008164EE42DB141EBAC96170149C743960000001F=
- 001f
-> > > 10:16:14.030927 IP 10.0.0.30.2049 > 10.0.0.40.2549566726: reply ok 12=
-4 access c 0003
-> > > 10:16:14.033436 IP 10.0.0.40.1022 > 10.0.0.30.2049: . ack 6277 win 21=
-84 <nop,nop,timestamp 754548 754805>
-> > > 10:16:14.034732 IP 10.0.0.40.2566343942 > 10.0.0.30.2049: 108 getattr=
- fh Unknown/01000700813801000000000008164EE42DB141EBAC96170149C7439600000000
-> > > 10:16:14.034980 IP 10.0.0.30.2049 > 10.0.0.40.2566343942: reply ok 11=
-6 getattr DIR 40755 ids 0/0 sz 4096
-> > > 10:16:14.037319 IP 10.0.0.40.2583121158 > 10.0.0.30.2049: 112 access =
-fh Unknown/01000700813801000000000008164EE42DB141EBAC96170149C743960000001F=
- 001f
-> > > 10:16:14.037486 IP 10.0.0.30.2049 > 10.0.0.40.2583121158: reply ok 12=
-4 access c 0003
-> > > 10:16:14.040323 IP 10.0.0.40.2599898374 > 10.0.0.30.2049: 132 readdir=
-plus fh Unknown/01000700813801000000000008164EE42DB141EBAC96170149C74396000=
-00000 512 bytes @ 0
-> > > 10:16:14.040554 IP 10.0.0.30.2049 > 10.0.0.40.2599898374: reply ok 14=
-48 readdirplus
-> > > 10:16:14.041020 IP 10.0.0.30.2049 > 10.0.0.40.1684108288: reply Unkno=
-wn rpc response code=3D2021855861 340
-> > > 10:16:14.043583 IP 10.0.0.40.1022 > 10.0.0.30.2049: . ack 8305 win 29=
-08 <nop,nop,timestamp 754550 754808>
-> > > 10:16:14.045104 IP 10.0.0.40.2616675590 > 10.0.0.30.2049: 112 access =
-fh Unknown/01000700813801000000000008164EE42DB141EBAC96170149C743960000001F=
- 001f
-> > > 10:16:14.045402 IP 10.0.0.30.2049 > 10.0.0.40.2616675590: reply ok 12=
-4 access c 0003
-> > > 10:16:14.047830 IP 10.0.0.40.2633452806 > 10.0.0.30.2049: 112 access =
-fh Unknown/01000700813801000000000008164EE42DB141EBAC96170149C743960000001F=
- 001f
-> > > 10:16:14.048039 IP 10.0.0.30.2049 > 10.0.0.40.2633452806: reply ok 12=
-4 access c 0003
-> > > 10:16:14.099385 IP 10.0.0.40.1022 > 10.0.0.30.2049: . ack 8553 win 29=
-08 <nop,nop,timestamp 754592 754810>
-> > > 10:16:14.293714 IP 10.0.0.40.2650230022 > 10.0.0.30.2049: 108 getattr=
- fh Unknown/01000700813801000000000008164EE42DB141EBAC96170149C7439600000000
-> > > 10:16:14.294019 IP 10.0.0.30.2049 > 10.0.0.40.2650230022: reply ok 11=
-6 getattr DIR 40755 ids 0/0 sz 4096
-> > > 10:16:14.297263 IP 10.0.0.40.1022 > 10.0.0.30.2049: . ack 8669 win 29=
-08 <nop,nop,timestamp 754763 754871>
-> > > 10:16:14.297272 IP 10.0.0.40.2667007238 > 10.0.0.30.2049: 112 access =
-fh Unknown/01000700813801000000000008164EE42DB141EBAC96170149C743960000001F=
- 001f
-> > > 10:16:14.297466 IP 10.0.0.30.2049 > 10.0.0.40.2667007238: reply ok 12=
-4 access c 0003
-> > > 10:16:14.297586 IP 10.0.0.40.2683784454 > 10.0.0.30.2049: 112 access =
-fh Unknown/01000700813801000000000008164EE42DB141EBAC96170149C743960000001F=
- 001f
-> > > 10:16:14.297987 IP 10.0.0.30.2049 > 10.0.0.40.2683784454: reply ok 12=
-4 access c 0003
-> > > 10:16:14.301165 IP 10.0.0.40.2700561670 > 10.0.0.30.2049: 104 access =
-fh Unknown/010006002C49FEF2BA4642939B2BF2B8322CCBCB0000001F47219C8C00000000=
- 001f
-> > > 10:16:14.301405 IP 10.0.0.30.2049 > 10.0.0.40.2700561670: reply ok 12=
-4 access c 0003
-> > > 10:16:14.351229 IP 10.0.0.40.1022 > 10.0.0.30.2049: . ack 9041 win 29=
-08 <nop,nop,timestamp 754810 754873>
-> > > 10:16:14.842633 IP 10.0.0.40.2717338886 > 10.0.0.30.2049: 100 getattr=
- fh Unknown/010006002C49FEF2BA4642939B2BF2B8322CCBCB0000000047219C8C00000000
-> > > 10:16:14.851711 IP 10.0.0.30.2049 > 10.0.0.40.2717338886: reply ok 11=
-6 getattr DIR 40755 ids 0/0 sz 4096
-> > > 10:16:14.856846 IP 10.0.0.40.1022 > 10.0.0.30.2049: . ack 9157 win 29=
-08 <nop,nop,timestamp 755272 755008>
-> > > =
-
-> > > =
-
-> > > > > does somebody have such setup up and running and can tell his dis=
-tro / kernel and nfs-utils version ?
-> > > > > maybe i change distro then.
-> > > > =
-
-> > > > I doubt that it is a distro-specific thing.  As long as you have
-> > > > nfs-utils-1.1.0 it should work.  I don't have a 10.3 box
-> > > > set up yet, but it works fine on Debian/unstable for me.
-> > > =
-
-> > > ok, will try this on debian.
-> > > =
-
-> > > > Maybe try adding the "no_root_squash" export option.
-> > > no difference
-> > > =
-
-> > > > What does "ls -l /export" on the server show?
-> > > nothing unusual. no errors, just the dirs/mountpoints
-> > > =
-
-> > > Thanks for your help!
-> > > =
-
-> > > regards
-> > > roland
-> > > =
-
-> > > =
-
-> > > > =
-
-> > > > On Saturday October 27, devzero@web.de wrote:
-> > > > > Hello !
-> > > > > =
-
-> > > > > with 2.6.22 i`m trying to export loopback mounted iso-images.
-> > > > > =
-
-> > > > > this is /etc/exports:
-> > > > > =
-
-> > > > > /export *(ro,crossmnt,subtree_check)
-> > > > =
-
-> > > > I recommend replacing subtree_check with no_subtree_check, but it
-> > > > shouldn't make an important difference in this case.
-> > > > =
-
-> > > > =
-
-> > > > This should work with nfs-utils 1.1.0 or later.  With earlier relea=
-ses
-> > > > you need to explicitly export the subordinate filesystems too.
-> > > > =
-
-> > > > > =
-
-> > > > > in /export, i have loopback mounted iso-images
-> > > > > =
-
-> > > > > after mounting on the client side under /mnt (tried one older and=
- one recent system) , i`m getting:
-> > > > > =
-
-> > > > > vmhost:/mnt # ls -la
-> > > > > /bin/ls: iso1: Input/output error
-> > > > > /bin/ls: iso2  Input/output error
-> > > > > /bin/ls: iso3: Input/output error
-> > > > > total 10128
-> > > > > drwxrwxrwt   18 root root  270336 Oct 26 08:45 .
-> > > > > drwxrwxrwt  186 root root   20760 Oct 27 17:45 ..
-> > > > > drwxr-xr-x    2 root root   16384 Jan  1  1970 iso1
-> > > > > drwxr-xr-x    2 root root   16384 Jan  1  1970 iso2
-> > > > > drwxr-xr-x    2 root root   16384 Jan  1  1970 iso3
-> > > > > =
-
-> > > > > vmhost:/mnt/iso1 # ls
-> > > > > /bin/ls: .: Stale NFS file handle
-> > > > > vmhost:/mnt/iso1 # ls -la
-> > > > > /bin/ls: .: Input/output error
-> > > > =
-
-> > > > It is a little odd that the errors are inconsistent.
-> > > > =
-
-> > > > Can you find any log messages from mountd in syslog?  What do they
-> > > > say?
-> > > > Also what does
-> > > >    cat /proc/fs/nfsd/exports
-> > > > =
-
-> > > > on the server show.
-> > > > =
-
-> > > > Finally, a tcpdump:
-> > > > =
-
-> > > >   tcpdump -s 0 -w /tmp/tcpdump port 2049
-> > > > =
-
-> > > > while you run the experiment might help.
-> > > > =
-
-> > > > > =
-
-> > > > > i`m unsure if i should blame suse here (it`s an opensuse 10.3 box=
- which seems to have nfs-utils 1.1.0)
-> > > > > =
-
-> > > > > does somebody have such setup up and running and can tell his dis=
-tro / kernel and nfs-utils version ?
-> > > > > maybe i change distro then.
-> > > > =
-
-> > > > I doubt that it is a distro-specific thing.  As long as you have
-> > > > nfs-utils-1.1.0 it should work.  I don't have a 10.3 box
-> > > > set up yet, but it works fine on Debian/unstable for me.
-> > > > =
-
-> > > > Maybe try adding the "no_root_squash" export option.
-> > > > What does "ls -l /export" on the server show?
-> > > > =
-
-> > > > NeilBrown
-> > > > =
-
-> > > =
-
-> > > =
-
-> > =
-
-> > =
-
-> > _____________________________________________________________________
-> > Der WEB.DE SmartSurfer hilft bis zu 70% Ihrer Onlinekosten zu sparen!
-> > http://smartsurfer.web.de/?mc=3D100071&distributionid=3D000000000066
-> > =
-
-> > =
-
-> > -----------------------------------------------------------------------=
---
-> > This SF.net email is sponsored by: Splunk Inc.
-> > Still grepping through log files to find problems?  Stop.
-> > Now Search log events and configuration files using AJAX and a browser.
-> > Download your FREE copy of Splunk now >> http://get.splunk.com/
-> > _______________________________________________
-> > NFS maillist  -  NFS@lists.sourceforge.net
-> > https://lists.sourceforge.net/lists/listinfo/nfs
-> =
-
-
-
-__________________________________________________________________________
-Erweitern Sie FreeMail zu einem noch leistungsst=E4rkeren E-Mail-Postfach!		=
-
-Mehr Infos unter http://produkte.web.de/club/?mc=3D021131
-
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Splunk Inc.
-Still grepping through log files to find problems?  Stop.
-Now Search log events and configuration files using AJAX and a browser.
-Download your FREE copy of Splunk now >> http://get.splunk.com/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+T24gV2VkLCBPY3QgMzEsIDIwMDcgYXQgMTE6MTk6NDNQTSArMDEwMCwgZGV2emVyb0B3ZWIuZGUg
+d3JvdGU6Cj4gPklmIHlvdSBhZGQgYW4gZXhwbGljaXQgZXhwb3J0IGZvciBlYWNoIG9uZSwgCj4g
+eW91IG1lYW4sIGkgc2hvdWxkIGV4cG9ydCBlYWNoIG9mIHRob3NlIH41MDAgbG9vcGJhY2sgbW91
+bnRlZCBpc28gaW1hZ2VzID8KPiBjb21lIG9uLCB0aGF0YHMgbm90IHdoYXQgYWRtaW5zIG9yIHVz
+ZXJzIHdhbnQsIGlzbmB0IGl0ID8KCk5vLCBvZiBjb3Vyc2Ugbm90OyBJIHdhcyBqdXN0IHN1Z2dl
+c3RpbmcgaXQgYXMgYSB3YXkgdG8gY29uZmlybSB0aGF0J3MKd2hlcmUgdGhlIHByb2JsZW0gaXMu
+CgotLWIuCgo+IAo+ID4gLS0tLS1VcnNwcsO8bmdsaWNoZSBOYWNocmljaHQtLS0tLQo+ID4gVm9u
+OiAiSi4gQnJ1Y2UgRmllbGRzIiA8YmZpZWxkc0BmaWVsZHNlcy5vcmc+Cj4gPiBHZXNlbmRldDog
+MzEuMTAuMDcgMjE6NTg6MDAKPiA+IEFuOiBkZXZ6ZXJvQHdlYi5kZQo+ID4gQ0M6IE5laWwgQnJv
+d24gPG5laWxiQHN1c2UuZGU+LCBORlNAbGlzdHMuc291cmNlZm9yZ2UubmV0Cj4gPiBCZXRyZWZm
+OiBSZTogW05GU10gc3RhbGUgbmZzIGZpbGUgaGFuZGxlIHdpdGggZXhwb3J0ZWQgbG9vcGJhY2sg
+bW91bnRzCj4gCj4gCj4gPiAKPiA+IE9uIFdlZCwgT2N0IDMxLCAyMDA3IGF0IDA5OjQ2OjEzUE0g
+KzAxMDAsIGRldnplcm9Ad2ViLmRlIHdyb3RlOgo+ID4gPiBoaSAhCj4gPiA+IAo+ID4gPiBpIHRy
+aWVkIGxhdGVzdCBncm1sIGJ1aWxkIChsZW5ueS9zaWQpIGFzIHNlcnZlciB0b2RheSAoc3VzZSA5
+LjMgYXMgY2xpZW50KS4KPiA+ID4gCj4gPiA+IGVycm9yIHN0aWxsIGV4aXN0aW5nLCBidXQgYSBs
+aXR0bGUgYml0IGRpZmZlcmVudDoKPiA+ID4gCj4gPiA+IGlmIGkgY2QgdG8gdGhlIGxvb3BiYWNr
+LW1vdW50IGRpcmBzIG9uIHRoZSBjbGllbnQsIGkgc2VlIHRoZSBjb250ZW50cyBvZiB0aGUgcGFy
+ZW50IGRpcmVjdG9yeSwgaS5lLiBpIGdldCBhIHJlY3Vyc2lvbi4KPiA+IAo+ID4gVGhhdCBzdWdn
+ZXN0cyBzb21ldGhpbmcgZnVua3kgaW4gdGhlIHdheSB3ZSdyZSBpZGVudGlmeWluZyB0aG9zZQo+
+ID4gZmlsZXN5c3RlbXMgaW4gdGhlIGZpbGVoYW5kbGUuICBJZiB5b3UgYWRkIGFuIGV4cGxpY2l0
+IGV4cG9ydCBmb3IgZWFjaAo+ID4gb25lLCBlYWNoIHdpdGggaXRzIG93biAiZnNpZD14eXoiIG9w
+dGlvbiAod2l0aCB4eXogd2hhdGV2ZXIgcG9zaXRpdmUKPiA+IGludGVnZXIgeW91J2QgbGlrZSwg
+YXMgbG9uZyBhcyBpdCdzIGRpZmZpY3VsdCBmb3IgZXhwb3J0KSwgZG9lcyB0aGUKPiA+IHByb2Js
+ZW0gZ28gYXdheT8/Cj4gPiAKPiA+IC0tYi4KPiA+IAo+ID4gPiAKPiA+ID4gcmVnYXJkcwo+ID4g
+PiByb2xhbmQKPiA+ID4gCj4gPiA+IAo+ID4gPiAKPiA+ID4gPiAtLS0tLVVyc3Byw7xuZ2xpY2hl
+IE5hY2hyaWNodC0tLS0tCj4gPiA+ID4gVm9uOiBkZXZ6ZXJvQHdlYi5kZQo+ID4gPiA+IEdlc2Vu
+ZGV0OiAzMC4xMC4wNyAyMTowNTo1Ngo+ID4gPiA+IEFuOiBOZWlsIEJyb3duIDxuZWlsYkBzdXNl
+LmRlPgo+ID4gPiA+IENDOiBORlNAbGlzdHMuc291cmNlZm9yZ2UubmV0Cj4gPiA+ID4gQmV0cmVm
+ZjogUmU6IFtORlNdIHN0YWxlIG5mcyBmaWxlIGhhbmRsZSB3aXRoIGV4cG9ydGVkIGxvb3BiYWNr
+IG1vdW50cwo+ID4gPiAKPiA+ID4gCj4gPiA+ID4gCj4gPiA+ID4gPiBJIHJlY29tbWVuZCByZXBs
+YWNpbmcgc3VidHJlZV9jaGVjayB3aXRoIG5vX3N1YnRyZWVfY2hlY2ssIGJ1dCBpdAo+ID4gPiA+
+ID4gc2hvdWxkbid0IG1ha2UgYW4gaW1wb3J0YW50IGRpZmZlcmVuY2UgaW4gdGhpcyBjYXNlLgo+
+ID4gPiA+IAo+ID4gPiA+IG9rLCBpIGxlYXZlIGl0IGFzIGlzLgo+ID4gPiA+IAo+ID4gPiA+ID4g
+VGhpcyBzaG91bGQgd29yayB3aXRoIG5mcy11dGlscyAxLjEuMCBvciBsYXRlci4gIFdpdGggZWFy
+bGllciByZWxlYXNlcwo+ID4gPiA+ID4geW91IG5lZWQgdG8gZXhwbGljaXRseSBleHBvcnQgdGhl
+IHN1Ym9yZGluYXRlIGZpbGVzeXN0ZW1zIHRvby4KPiA+ID4gPiA+IAo+ID4gPiA+IAo+ID4gPiA+
+IG1oaCAtIG9wZW5zdXNlIGRvZXNuYHQgaGF2ZSBuZnMtdXRpbHMgcGFja2FnZSwgYnV0IGl0IGhh
+cyBuZnMtY2xpZW50LTEuMS4wLTggd2hpY2ggbG9va3MgbGlrZSB0aGV5IHJlcGFja2FnZWQgbmZz
+LXV0aWxzIDEuMS4wCj4gPiA+ID4gCj4gPiA+ID4gPiBJdCBpcyBhIGxpdHRsZSBvZGQgdGhhdCB0
+aGUgZXJyb3JzIGFyZSBpbmNvbnNpc3RlbnQuCj4gPiA+ID4gCj4gPiA+ID4gb2ssIGJ1dCBvbmx5
+IGEgbWlub3IgaXNzdWUsIGlmIGFuIGlzc3VlIGF0IGFsbCwgaXNuYHQgaXQgPwo+ID4gPiA+IAo+
+ID4gPiA+ID4gQ2FuIHlvdSBmaW5kIGFueSBsb2cgbWVzc2FnZXMgZnJvbSBtb3VudGQgaW4gc3lz
+bG9nPyAgV2hhdCBkbyB0aGV5Cj4gPiA+ID4gPiBzYXk/Cj4gPiA+ID4gCj4gPiA+ID4geWVzLCBv
+biB0aGUgY2xpZW50IGlgbSBnZXR0aW5nIDoKPiA+ID4gPiAKPiA+ID4gPiBKdW4gIDMgMjE6MzY6
+MDEgbGludXgga2VybmVsOiBuZnNfdXBkYXRlX2lub2RlOiBpbm9kZSBudW1iZXIgbWlzbWF0Y2gK
+PiA+ID4gPiBKdW4gIDMgMjE6MzY6MDEgbGludXgga2VybmVsOiBleHBlY3RlZCAoMDoxMS8weDIp
+LCBnb3QgKDA6MTEvMHgxMzg4MSkKPiA+ID4gPiBKdW4gIDMgMjE6MzY6MDEgbGludXgga2VybmVs
+OiBuZnNfdXBkYXRlX2lub2RlOiBpbm9kZSBudW1iZXIgbWlzbWF0Y2gKPiA+ID4gPiBKdW4gIDMg
+MjE6MzY6MDEgbGludXgga2VybmVsOiBleHBlY3RlZCAoMDoxMS8weDIpLCBnb3QgKDA6MTEvMHgx
+Mzg4MSkKPiA+ID4gPiBKdW4gIDMgMjE6MzY6MTcgbGludXgga2VybmVsOiBuZnNfdXBkYXRlX2lu
+b2RlOiBpbm9kZSBudW1iZXIgbWlzbWF0Y2gKPiA+ID4gPiBKdW4gIDMgMjE6MzY6MTcgbGludXgg
+a2VybmVsOiBleHBlY3RlZCAoMDoxMS8weDIpLCBnb3QgKDA6MTEvMHgxMzg4MSkKPiA+ID4gPiBK
+dW4gIDMgMjE6MzY6MTcgbGludXgga2VybmVsOiBuZnNfdXBkYXRlX2lub2RlOiBpbm9kZSBudW1i
+ZXIgbWlzbWF0Y2gKPiA+ID4gPiBKdW4gIDMgMjE6MzY6MTcgbGludXgga2VybmVsOiBleHBlY3Rl
+ZCAoMDoxMS8weDIpLCBnb3QgKDA6MTEvMHgxMzg4MSkKPiA+ID4gPiBKdW4gIDMgMjE6MzY6MjAg
+bGludXgga2VybmVsOiBuZnNfdXBkYXRlX2lub2RlOiBpbm9kZSBudW1iZXIgbWlzbWF0Y2gKPiA+
+ID4gPiBKdW4gIDMgMjE6MzY6MjAgbGludXgga2VybmVsOiBleHBlY3RlZCAoMDoxMS8weDIpLCBn
+b3QgKDA6MTEvMHgxMzg4MSkKPiA+ID4gPiBKdW4gIDMgMjE6MzY6MjAgbGludXgga2VybmVsOiBu
+ZnNfdXBkYXRlX2lub2RlOiBpbm9kZSBudW1iZXIgbWlzbWF0Y2gKPiA+ID4gPiAKPiA+ID4gPiAK
+PiA+ID4gPiBubyBlcnJvciBtZXNzYWdlIG9uIHRoZSBzZXJ2ZXI6Cj4gPiA+ID4gT2N0IDI2IDEw
+OjA5OjMxIG9wZW5zdXNlMTAzIG1vdW50ZFs0MjkzXTogYXV0aGVudGljYXRlZCB1bm1vdW50IHJl
+cXVlc3QgZnJvbSAxMC4wLjAuNDA6MTAxNCBmb3IgL21udCAoL21udCkKPiA+ID4gPiBPY3QgMjYg
+MTA6MTA6MDcgb3BlbnN1c2UxMDMgbW91bnRkWzQyOTNdOiBhdXRoZW50aWNhdGVkIG1vdW50IHJl
+cXVlc3QgZnJvbSAxMC4wLjAuNDA6NjEyIGZvciAvbW50ICgvbW50KQo+ID4gPiA+IE9jdCAyNiAx
+MDoxMDo0MyBvcGVuc3VzZTEwMyBtb3VudGRbNDI5M106IGF1dGhlbnRpY2F0ZWQgdW5tb3VudCBy
+ZXF1ZXN0IGZyb20gMTAuMC4wLjQwOjYyMyBmb3IgL21udCAoL21udCkKPiA+ID4gPiBPY3QgMjYg
+MTA6MTA6NTIgb3BlbnN1c2UxMDMgbW91bnRkWzQyOTNdOiBhdXRoZW50aWNhdGVkIG1vdW50IHJl
+cXVlc3QgZnJvbSAxMC4wLjAuNDA6NjI0IGZvciAvbW50ICgvbW50KQo+ID4gPiA+IAo+ID4gPiA+
+ID4gQWxzbyB3aGF0IGRvZXMKPiA+ID4gPiA+ICAgIGNhdCAvcHJvYy9mcy9uZnNkL2V4cG9ydHMK
+PiA+ID4gPiA+IAo+ID4gPiA+ID4gb24gdGhlIHNlcnZlciBzaG93Lgo+ID4gPiA+IAo+ID4gPiA+
+IG9wZW5zdXNlMTAzOn4gIyBjYXQgL3Byb2MvZnMvbmZzZC9leHBvcnRzCj4gPiA+ID4gIyBWZXJz
+aW9uIDEuMQo+ID4gPiA+ICMgUGF0aCBDbGllbnQoRmxhZ3MpICMgSVBzCj4gPiA+ID4gL21udC9p
+c28xICAgICAgICoocm8sbm9fcm9vdF9zcXVhc2gsc3luYyx3ZGVsYXksY3Jvc3NtbnQsdXVpZD0y
+YzQ5ZmVmMjpiYTQ2NDI5Mzo5YjJiZjJiODozMjJjY2JjYikKPiA+ID4gPiAvbW50L2lzbzMgICAg
+ICAgKihybyxub19yb290X3NxdWFzaCxzeW5jLHdkZWxheSxjcm9zc21udCx1dWlkPTI3YWU5YzY3
+OjBiNzk0YjM2OjhiNWU5ZTE3OjM3YjU2OWViKQo+ID4gPiA+IC9tbnQgICAgKihybyxub19yb290
+X3NxdWFzaCxzeW5jLHdkZWxheSxjcm9zc21udCx1dWlkPTA4MTY0ZWU0OjJkYjE0MWViOmFjOTYx
+NzAxOjQ5Yzc0Mzk2KQo+ID4gPiA+IC9tbnQvaXNvMiAgICAgICAqKHJvLG5vX3Jvb3Rfc3F1YXNo
+LHN5bmMsd2RlbGF5LGNyb3NzbW50LHV1aWQ9MmFhZDZlYTU6YTA1ZDQ0NDE6Yjk0YzQ4ZTY6ZTVk
+OTk4MWUpCj4gPiA+ID4gCj4gPiA+ID4gCj4gPiA+ID4gPiBGaW5hbGx5LCBhIHRjcGR1bXA6Cj4g
+PiA+ID4gPiAKPiA+ID4gPiA+ICAgdGNwZHVtcCAtcyAwIC13IC90bXAvdGNwZHVtcCBwb3J0IDIw
+NDkKPiA+ID4gPiA+IAo+ID4gPiA+ID4gd2hpbGUgeW91IHJ1biB0aGUgZXhwZXJpbWVudCBtaWdo
+dCBoZWxwLgo+ID4gPiA+IAo+ID4gPiA+IGFoIC0gdGhpcyBzZWVtcyB0byBnaXZlIGEgaGludCwg
+YnV0IGkgZG9uYHQgaGF2ZSBhIGNsdWUgd2h5IHRoZSBzZXJ2ZXIgKDEwLjAuMC4zMCkgaXMgdGVs
+bGluZyB0aGUgY2xpZW50ICgxMC4wLjAuNDApIGEgIlJQQyBWZXJzaW9uIG1pc21hdGNoIi4KPiA+
+ID4gPiBJIGFsc28gdHJpZWQgIC0tbm8tbmZzLXZlcnNpb24gNCBmb3IgcnBjLm1vdW50ZCAoc2V0
+dGluZyBpbiAvZXRjL3N5c2NvbmZpZy9uZnMpLCBidXQgdGhpcyBkaWRuYHQgbWFrZSBhIGRpZmZl
+cmVuY2UuCj4gPiA+ID4gCj4gPiA+ID4gaGVyZSBpcyB0aGUgdGNwZHVtcCBvdXRwdXQgLSBpIGRp
+ZCAKPiA+ID4gPiAKPiA+ID4gPiAtIG1vdW50Cj4gPiA+ID4gLSBscyAvIGxzIC1sYSAvIGNkIHRv
+IHN1YmRpcnMKPiA+ID4gPiAKPiA+ID4gPiAxMDoxNTowNi40ODA1NDIgSVAgMTAuMC4wLjQwLjAg
+PiAxMC4wLjAuMzAuMjA0OTogMCBudWxsCj4gPiA+ID4gMTA6MTU6MDYuNDgwNTcyIElQIDEwLjAu
+MC4zMC4yMDQ5ID4gMTAuMC4wLjQwLjA6IHJlcGx5IEVSUiAwOiBSUEMgVmVyc2lvbiBtaXNtYXRj
+aCAoMTY3NzcyMTYwLTApCj4gPiA+ID4gMTA6MTU6MDYuNDgwNzY1IElQIDEwLjAuMC40MC4xMDIy
+ID4gMTAuMC4wLjMwLjIwNDk6IC4gYWNrIDIwMzExMTQ5MTMgd2luIDE0NjAgPG5vcCxub3AsdGlt
+ZXN0YW1wIDY4NjEyOCA3Mzc5MTg+Cj4gPiA+ID4gMTA6MTU6MDYuNDgwODIxIElQIDEwLjAuMC40
+MC4yMDc5ODA0Njc4ID4gMTAuMC4wLjMwLjIwNDk6IDEwOCBmc2luZm8gZmggVW5rbm93bi8wMTAw
+MDcwMDgxMzgwMTAwMDAwMDAwMDAwODE2NEVFNDJEQjE0MUVCQUM5NjE3MDE0OUM3NDM5NjNDRDgx
+OTA4Cj4gPiA+ID4gMTA6MTU6MDYuNDgwODMzIElQIDEwLjAuMC4zMC4yMDQ5ID4gMTAuMC4wLjQw
+LjEwMjI6IC4gYWNrIDEwOCB3aW4gMTgxIDxub3Asbm9wLHRpbWVzdGFtcCA3Mzc5MTggNjg2MTI4
+Pgo+ID4gPiA+IDEwOjE1OjA2LjUxMzM2NSBJUCAxMC4wLjAuMzAuMjA0OSA+IDEwLjAuMC40MC4y
+MDc5ODA0Njc4OiByZXBseSBvayA4NCBmc2luZm8gcnRtYXggNjU1MzYgcnRwcmVmIDY1NTM2IHd0
+bWF4IDY1NTM2IHd0cHJlZiA2NTUzNiBkdHByZWYgNDA5Ngo+ID4gPiA+IDEwOjE1OjA2LjUxNDQw
+OCBJUCAxMC4wLjAuNDAuMTAyMiA+IDEwLjAuMC4zMC4yMDQ5OiAuIGFjayA4NSB3aW4gMTQ2MCA8
+bm9wLG5vcCx0aW1lc3RhbXAgNjg2MTYwIDczNzkyNj4KPiA+ID4gPiAxMDoxNTowNi41MTQ5MDIg
+SVAgMTAuMC4wLjQwLjIwOTY1ODE4OTQgPiAxMC4wLjAuMzAuMjA0OTogMTA4IGdldGF0dHIgZmgg
+VW5rbm93bi8wMTAwMDcwMDgxMzgwMTAwMDAwMDAwMDAwODE2NEVFNDJEQjE0MUVCQUM5NjE3MDE0
+OUM3NDM5NjNDRDgxOTA4Cj4gPiA+ID4gMTA6MTU6MDYuNTE1MjU2IElQIDEwLjAuMC4zMC4yMDQ5
+ID4gMTAuMC4wLjQwLjIwOTY1ODE4OTQ6IHJlcGx5IG9rIDExNiBnZXRhdHRyIERJUiA0MDc1NSBp
+ZHMgMC8wIHN6IDQwOTYKPiA+ID4gPiAxMDoxNTowNi41NTM4NjUgSVAgMTAuMC4wLjQwLjEwMjIg
+PiAxMC4wLjAuMzAuMjA0OTogLiBhY2sgMjAxIHdpbiAxNDYwIDxub3Asbm9wLHRpbWVzdGFtcCA2
+ODYyMDEgNzM3OTI2Pgo+ID4gPiA+IDEwOjE2OjAzLjA5MTc4NCBJUCAxMC4wLjAuNDAuMjExMzM1
+OTExMCA+IDEwLjAuMC4zMC4yMDQ5OiAxMDggZ2V0YXR0ciBmaCBVbmtub3duLzAxMDAwNzAwODEz
+ODAxMDAwMDAwMDAwMDA4MTY0RUU0MkRCMTQxRUJBQzk2MTcwMTQ5Qzc0Mzk2NDcyMTlDOEMKPiA+
+ID4gPiAxMDoxNjowMy4wOTMzNjYgSVAgMTAuMC4wLjMwLjIwNDkgPiAxMC4wLjAuNDAuMjExMzM1
+OTExMDogcmVwbHkgb2sgMTE2IGdldGF0dHIgRElSIDQwNzU1IGlkcyAwLzAgc3ogNDA5Ngo+ID4g
+PiA+IDEwOjE2OjAzLjA5NjA0NiBJUCAxMC4wLjAuNDAuMTAyMiA+IDEwLjAuMC4zMC4yMDQ5OiAu
+IGFjayAzMTcgd2luIDE0NjAgPG5vcCxub3AsdGltZXN0YW1wIDc0MzYxMCA3NTIwNzE+Cj4gPiA+
+ID4gMTA6MTY6MDMuMDk3MzcwIElQIDEwLjAuMC40MC4yMTMwMTM2MzI2ID4gMTAuMC4wLjMwLjIw
+NDk6IDExMiBhY2Nlc3MgZmggVW5rbm93bi8wMTAwMDcwMDgxMzgwMTAwMDAwMDAwMDAwODE2NEVF
+NDJEQjE0MUVCQUM5NjE3MDE0OUM3NDM5NjAwMDAwMDFGIDAwMWYKPiA+ID4gPiAxMDoxNjowMy4w
+OTgxNTYgSVAgMTAuMC4wLjMwLjIwNDkgPiAxMC4wLjAuNDAuMjEzMDEzNjMyNjogcmVwbHkgb2sg
+MTI0IGFjY2VzcyBjIDAwMDMKPiA+ID4gPiAxMDoxNjowMy4xNTY4MTIgSVAgMTAuMC4wLjQwLjEw
+MjIgPiAxMC4wLjAuMzAuMjA0OTogLiBhY2sgNDQxIHdpbiAxNDYwIDxub3Asbm9wLHRpbWVzdGFt
+cCA3NDM2NTEgNzUyMDcyPgo+ID4gPiA+IDEwOjE2OjA4Ljk2NzgwNCBJUCAxMC4wLjAuNDAuMjE0
+NjkxMzU0MiA+IDEwLjAuMC4zMC4yMDQ5OiAxMDggZ2V0YXR0ciBmaCBVbmtub3duLzAxMDAwNzAw
+ODEzODAxMDAwMDAwMDAwMDA4MTY0RUU0MkRCMTQxRUJBQzk2MTcwMTQ5Qzc0Mzk2MDAwMDAwMDAK
+PiA+ID4gPiAxMDoxNjowOC45NjgzMDUgSVAgMTAuMC4wLjMwLjIwNDkgPiAxMC4wLjAuNDAuMjE0
+NjkxMzU0MjogcmVwbHkgb2sgMTE2IGdldGF0dHIgRElSIDQwNzU1IGlkcyAwLzAgc3ogNDA5Ngo+
+ID4gPiA+IDEwOjE2OjA4Ljk3NDI4NSBJUCAxMC4wLjAuNDAuMTAyMiA+IDEwLjAuMC4zMC4yMDQ5
+OiAuIGFjayA1NTcgd2luIDE0NjAgPG5vcCxub3AsdGltZXN0YW1wIDc0OTQ3NyA3NTM1NDA+Cj4g
+PiA+ID4gMTA6MTY6MDguOTc1NzM5IElQIDEwLjAuMC40MC4yMTYzNjkwNzU4ID4gMTAuMC4wLjMw
+LjIwNDk6IDEzMiByZWFkZGlycGx1cyBmaCBVbmtub3duLzAxMDAwNzAwODEzODAxMDAwMDAwMDAw
+MDA4MTY0RUU0MkRCMTQxRUJBQzk2MTcwMTQ5Qzc0Mzk2MDAwMDAwMDAgNTEyIGJ5dGVzIEAgMAo+
+ID4gPiA+IDEwOjE2OjA4Ljk3NTk4NSBJUCAxMC4wLjAuMzAuMjA0OSA+IDEwLjAuMC40MC4yMTYz
+NjkwNzU4OiByZXBseSBvayAxNDQ4IHJlYWRkaXJwbHVzCj4gPiA+ID4gMTA6MTY6MDguOTc2NTEw
+IElQIDEwLjAuMC4zMC4yMDQ5ID4gMTAuMC4wLjQwLjE2ODQxMDgyODg6IHJlcGx5IFVua25vd24g
+cnBjIHJlc3BvbnNlIGNvZGU9MjAyMTg1NTg2MSAzNDAKPiA+ID4gPiAxMDoxNjowOC45ODIyMzgg
+SVAgMTAuMC4wLjQwLjEwMjIgPiAxMC4wLjAuMzAuMjA0OTogLiBhY2sgMjM0NSB3aW4gMjE4NCA8
+bm9wLG5vcCx0aW1lc3RhbXAgNzQ5NDc5IDc1MzU0MT4KPiA+ID4gPiAxMDoxNjowOC45ODQ0MTUg
+SVAgMTAuMC4wLjQwLjIxODA0Njc5NzQgPiAxMC4wLjAuMzAuMjA0OTogMTE2IGxvb2t1cCBmaCBV
+bmtub3duLzAxMDAwNzAwODEzODAxMDAwMDAwMDAwMDA4MTY0RUU0MkRCMTQxRUJBQzk2MTcwMTQ5
+Qzc0Mzk2MDAwMDAwMDQgImlzbzMiCj4gPiA+ID4gMTA6MTY6MDguOTg0OTMxIElQIDEwLjAuMC4z
+MC4yMDQ5ID4gMTAuMC4wLjQwLjIxODA0Njc5NzQ6IHJlcGx5IG9rIDIzMiBsb29rdXAgZmggVW5r
+bm93bi8wMTAwMDYwMDI3QUU5QzY3MEI3OTRCMzY4QjVFOUUxNzM3QjU2OUVCMDAwMDAwMDEwMDAw
+MDAwMjAwMDA0MUVECj4gPiA+ID4gMTA6MTY6MDkuMDA4ODE5IElQIDEwLjAuMC40MC4yMTk3MjQ1
+MTkwID4gMTAuMC4wLjMwLjIwNDk6IDEwNCBnZXRhdHRyIGZoIFVua25vd24vMDEwMDA2MDAyN0FF
+OUM2NzBCNzk0QjM2OEI1RTlFMTczN0I1NjlFQjAwMDAwMDBGREQyMkNDM0M3MDAyRjBBQwo+ID4g
+PiA+IDEwOjE2OjA5LjAxMDk0NiBJUCAxMC4wLjAuMzAuMjA0OSA+IDEwLjAuMC40MC4yMTk3MjQ1
+MTkwOiByZXBseSBvayAxODggZ2V0YXR0ciBSRUcgMiBpZHMgNS8wIHN6IDAKPiA+ID4gPiAxMDox
+NjowOS4wMzI1NDEgSVAgMTAuMC4wLjQwLjIyMTQwMjI0MDYgPiAxMC4wLjAuMzAuMjA0OTogMTI4
+IGdldGF0dHIgZmggVW5rbm93bi8wMTAwMDcwMjgxMzgwMTAwMDAwMDAwMDAwODE2NEVFNDJEQjE0
+MUVCQUM5NjE3MDE0OUM3NDM5NkU2NkQwNzAwCj4gPiA+ID4gMTA6MTY6MDkuMDMzNDA1IElQIDEw
+LjAuMC4zMC4yMDQ5ID4gMTAuMC4wLjQwLjIyMTQwMjI0MDY6IHJlcGx5IG9rIDE4OCBnZXRhdHRy
+IFJFRyAxIGlkcyAxLzAgc3ogMAo+ID4gPiA+IDEwOjE2OjA5LjAzMzQ5MCBJUCAxMC4wLjAuNDAu
+MjIzMDc5OTYyMiA+IDEwLjAuMC4zMC4yMDQ5OiAxMjggZ2V0YXR0ciBmaCBVbmtub3duLzAxMDAw
+NzAyODEzODAxMDAwMDAwMDAwMDA4MTY0RUU0MkRCMTQxRUJBQzk2MTcwMTQ5Qzc0Mzk2RTU2RDA3
+MDAKPiA+ID4gPiAxMDoxNjowOS4wMzY4MTEgSVAgMTAuMC4wLjMwLjIwNDkgPiAxMC4wLjAuNDAu
+MjIzMDc5OTYyMjogcmVwbHkgb2sgMTg4IGdldGF0dHIgUkVHIDEgaWRzIDEvMCBzeiAwCj4gPiA+
+ID4gMTA6MTY6MDkuMDM3ODIzIElQIDEwLjAuMC40MC4yMjQ3NTc2ODM4ID4gMTAuMC4wLjMwLjIw
+NDk6IDEwOCBnZXRhdHRyIGZoIFVua25vd24vMDEwMDA3MDA4MTM4MDEwMDAwMDAwMDAwMDgxNjRF
+RTQyREIxNDFFQkFDOTYxNzAxNDlDNzQzOTYwMDAwMDAwMAo+ID4gPiA+IDEwOjE2OjA5LjAzOTgx
+NyBJUCAxMC4wLjAuMzAuMjA0OSA+IDEwLjAuMC40MC4yMjQ3NTc2ODM4OiByZXBseSBvayAxMTYg
+Z2V0YXR0ciBESVIgNDA3NTUgaWRzIDAvMCBzeiA0MDk2Cj4gPiA+ID4gMTA6MTY6MDkuMDQwNDIz
+IElQIDEwLjAuMC40MC4yMjY0MzU0MDU0ID4gMTAuMC4wLjMwLjIwNDk6IDExMiBnZXRhdHRyIGZo
+IFVua25vd24vMDEwMDA3MDA4MTM4MDEwMDAwMDAwMDAwMDgxNjRFRTQyREIxNDFFQkFDOTYxNzAx
+NDlDNzQzOTYwMDAwMDAwRgo+ID4gPiA+IDEwOjE2OjA5LjA0MDg1NiBJUCAxMC4wLjAuMzAuMjA0
+OSA+IDEwLjAuMC40MC4yMjY0MzU0MDU0OiByZXBseSBvayAxODggZ2V0YXR0ciBSRUcgMiBpZHMg
+NS8wIHN6IDAKPiA+ID4gPiAxMDoxNjowOS4wNDE1OTAgSVAgMTAuMC4wLjQwLjIyODExMzEyNzAg
+PiAxMC4wLjAuMzAuMjA0OTogMTE2IGxvb2t1cCBmaCBVbmtub3duLzAxMDAwNzAwODEzODAxMDAw
+MDAwMDAwMDA4MTY0RUU0MkRCMTQxRUJBQzk2MTcwMTQ5Qzc0Mzk2MDAwMDAwMDQgImlzbzIiCj4g
+PiA+ID4gMTA6MTY6MDkuMDQxOTIwIElQIDEwLjAuMC4zMC4yMDQ5ID4gMTAuMC4wLjQwLjIyODEx
+MzEyNzA6IHJlcGx5IG9rIDIzMiBsb29rdXAgZmggVW5rbm93bi8wMTAwMDYwMDJBQUQ2RUE1QTA1
+RDQ0NDFCOTRDNDhFNkU1RDk5ODFFMDAwMDAwMDEwMDAwMDAwMjAwMDA0MUVECj4gPiA+ID4gMTA6
+MTY6MDkuMDQ5NjMzIElQIDEwLjAuMC40MC4yMjk3OTA4NDg2ID4gMTAuMC4wLjMwLjIwNDk6IDEw
+NCBnZXRhdHRyIGZoIFVua25vd24vMDEwMDA2MDAyQUFENkVBNUEwNUQ0NDQxQjk0QzQ4RTZFNUQ5
+OTgxRTAwMDAwMDBGNUZEQzg0NDU0MzI2RTE5Mwo+ID4gPiA+IDEwOjE2OjA5LjA0OTc4MSBJUCAx
+MC4wLjAuMzAuMjA0OSA+IDEwLjAuMC40MC4yMjk3OTA4NDg2OiByZXBseSBvayAxODggZ2V0YXR0
+ciBSRUcgMiBpZHMgNS8wIHN6IDAKPiA+ID4gPiAxMDoxNjowOS4wNjMyMTggSVAgMTAuMC4wLjQw
+LjIzMTQ2ODU3MDIgPiAxMC4wLjAuMzAuMjA0OTogMTI4IGdldGF0dHIgZmggVW5rbm93bi8wMTAw
+MDcwMjgxMzgwMTAwMDAwMDAwMDAwODE2NEVFNDJEQjE0MUVCQUM5NjE3MDE0OUM3NDM5NkU0NkQw
+NzAwCj4gPiA+ID4gMTA6MTY6MDkuMDcyNTA1IElQIDEwLjAuMC4zMC4yMDQ5ID4gMTAuMC4wLjQw
+LjIzMTQ2ODU3MDI6IHJlcGx5IG9rIDE4OCBnZXRhdHRyIFJFRyAxIGlkcyAxLzAgc3ogMAo+ID4g
+PiA+IDEwOjE2OjA5LjA5MTY5OCBJUCAxMC4wLjAuNDAuMjMzMTQ2MjkxOCA+IDEwLjAuMC4zMC4y
+MDQ5OiAxMjQgZ2V0YXR0ciBmaCBVbmtub3duLzAxMDAwNzAyODEzODAxMDAwMDAwMDAwMDA4MTY0
+RUU0MkRCMTQxRUJBQzk2MTcwMTQ5Qzc0Mzk2RTQ2RDA3MDAKPiA+ID4gPiAxMDoxNjowOS4wOTIw
+MjIgSVAgMTAuMC4wLjMwLjIwNDkgPiAxMC4wLjAuNDAuMjMzMTQ2MjkxODogcmVwbHkgb2sgMTE2
+IGdldGF0dHIgUkVHIDEwMDY0NCBpZHMgMC8wIHN6IDEwNDg1NzYKPiA+ID4gPiAxMDoxNjowOS4x
+Mjg5NzEgSVAgMTAuMC4wLjQwLjIzNDgyNDAxMzQgPiAxMC4wLjAuMzAuMjA0OTogMTI4IGdldGF0
+dHIgZmggVW5rbm93bi8wMTAwMDcwMjgxMzgwMTAwMDAwMDAwMDAwODE2NEVFNDJEQjE0MUVCQUM5
+NjE3MDE0OUM3NDM5NkUzNkQwNzAwCj4gPiA+ID4gMTA6MTY6MDkuMTI5MzA0IElQIDEwLjAuMC4z
+MC4yMDQ5ID4gMTAuMC4wLjQwLjIzNDgyNDAxMzQ6IHJlcGx5IG9rIDE4OCBnZXRhdHRyIFJFRyAx
+IGlkcyAxLzAgc3ogMAo+ID4gPiA+IDEwOjE2OjA5LjE4NDE1NSBJUCAxMC4wLjAuNDAuMjM2NTAx
+NzM1MCA+IDEwLjAuMC4zMC4yMDQ5OiAxMjQgZ2V0YXR0ciBmaCBVbmtub3duLzAxMDAwNzAyODEz
+ODAxMDAwMDAwMDAwMDA4MTY0RUU0MkRCMTQxRUJBQzk2MTcwMTQ5Qzc0Mzk2RTM2RDA3MDAKPiA+
+ID4gPiAxMDoxNjowOS4xODQ1ODIgSVAgMTAuMC4wLjMwLjIwNDkgPiAxMC4wLjAuNDAuMjM2NTAx
+NzM1MDogcmVwbHkgb2sgMTE2IGdldGF0dHIgUkVHIDEwMDY0NCBpZHMgMC8wIHN6IDEwNDg1NzYK
+PiA+ID4gPiAxMDoxNjowOS4xODkyMzQgSVAgMTAuMC4wLjQwLjIzODE3OTQ1NjYgPiAxMC4wLjAu
+MzAuMjA0OTogMTE2IGxvb2t1cCBmaCBVbmtub3duLzAxMDAwNzAwODEzODAxMDAwMDAwMDAwMDA4
+MTY0RUU0MkRCMTQxRUJBQzk2MTcwMTQ5Qzc0Mzk2MDAwMDAwMDQgImlzbzEiCj4gPiA+ID4gMTA6
+MTY6MDkuMTg5NDM1IElQIDEwLjAuMC4zMC4yMDQ5ID4gMTAuMC4wLjQwLjIzODE3OTQ1NjY6IHJl
+cGx5IG9rIDIzMiBsb29rdXAgZmggVW5rbm93bi8wMTAwMDYwMDJDNDlGRUYyQkE0NjQyOTM5QjJC
+RjJCODMyMkNDQkNCMDAwMDAwMDEwMDAwMDAwMjAwMDA0MUVECj4gPiA+ID4gMTA6MTY6MDkuMTkz
+NDc2IElQIDEwLjAuMC40MC4yMzk4NTcxNzgyID4gMTAuMC4wLjMwLjIwNDk6IDEwNCBnZXRhdHRy
+IGZoIFVua25vd24vMDEwMDA2MDAyQzQ5RkVGMkJBNDY0MjkzOUIyQkYyQjgzMjJDQ0JDQjAwMDAw
+MDBGNTg4OTZBODg0QTBDNjJCNwo+ID4gPiA+IDEwOjE2OjA5LjE5MzY1MiBJUCAxMC4wLjAuMzAu
+MjA0OSA+IDEwLjAuMC40MC4yMzk4NTcxNzgyOiByZXBseSBvayAxODggZ2V0YXR0ciBSRUcgMiBp
+ZHMgNS8wIHN6IDAKPiA+ID4gPiAxMDoxNjowOS4xOTQ5MzcgSVAgMTAuMC4wLjQwLjI0MTUzNDg5
+OTggPiAxMC4wLjAuMzAuMjA0OTogMTI4IGdldGF0dHIgZmggVW5rbm93bi8wMTAwMDcwMjgxMzgw
+MTAwMDAwMDAwMDAwODE2NEVFNDJEQjE0MUVCQUM5NjE3MDE0OUM3NDM5NkU3NkQwNzAwCj4gPiA+
+ID4gMTA6MTY6MDkuMTk1MDMzIElQIDEwLjAuMC4zMC4yMDQ5ID4gMTAuMC4wLjQwLjI0MTUzNDg5
+OTg6IHJlcGx5IG9rIDE4OCBnZXRhdHRyIFJFRyAxIGlkcyAxLzAgc3ogMAo+ID4gPiA+IDEwOjE2
+OjA5LjE5NTIzMCBJUCAxMC4wLjAuNDAuMjQzMjEyNjIxNCA+IDEwLjAuMC4zMC4yMDQ5OiAxMjgg
+Z2V0YXR0ciBmaCBVbmtub3duLzAxMDAwNzAyODEzODAxMDAwMDAwMDAwMDA4MTY0RUU0MkRCMTQx
+RUJBQzk2MTcwMTQ5Qzc0Mzk2RTg2RDA3MDAKPiA+ID4gPiAxMDoxNjowOS4zMjM2MzUgSVAgMTAu
+MC4wLjMwLjIwNDkgPiAxMC4wLjAuNDAuMTAyMjogLiBhY2sgMjU3MiB3aW4gNDE2IDxub3Asbm9w
+LHRpbWVzdGFtcCA3NTM2MjkgNzQ5NTY2Pgo+ID4gPiA+IDEwOjE2OjA5LjMyNDM0NSBJUCAxMC4w
+LjAuMzAuMjA0OSA+IDEwLjAuMC40MC4yNDMyMTI2MjE0OiByZXBseSBvayAxODggZ2V0YXR0ciBS
+RUcgMSBpZHMgMS8wIHN6IDAKPiA+ID4gPiAxMDoxNjowOS4zNDE0NzUgSVAgMTAuMC4wLjQwLjI0
+NDg5MDM0MzAgPiAxMC4wLjAuMzAuMjA0OTogMTI4IGdldGF0dHIgZmggVW5rbm93bi8wMTAwMDcw
+MjgxMzgwMTAwMDAwMDAwMDAwODE2NEVFNDJEQjE0MUVCQUM5NjE3MDE0OUM3NDM5NkUyNkQwNzAw
+Cj4gPiA+ID4gMTA6MTY6MDkuMzQxNTI0IElQIDEwLjAuMC4zMC4yMDQ5ID4gMTAuMC4wLjQwLjEw
+MjI6IC4gYWNrIDI3MDAgd2luIDQ0OSA8bm9wLG5vcCx0aW1lc3RhbXAgNzUzNjMyIDc0OTcwNz4K
+PiA+ID4gPiAxMDoxNjowOS4zNDE5MjggSVAgMTAuMC4wLjMwLjIwNDkgPiAxMC4wLjAuNDAuMjQ0
+ODkwMzQzMDogcmVwbHkgb2sgMTg4IGdldGF0dHIgUkVHIDEgaWRzIDEvMCBzeiAwCj4gPiA+ID4g
+MTA6MTY6MDkuMzQyMTE3IElQIDEwLjAuMC40MC4yNDY1NjgwNjQ2ID4gMTAuMC4wLjMwLjIwNDk6
+IDEyNCBnZXRhdHRyIGZoIFVua25vd24vMDEwMDA3MDI4MTM4MDEwMDAwMDAwMDAwMDgxNjRFRTQy
+REIxNDFFQkFDOTYxNzAxNDlDNzQzOTZFMjZEMDcwMAo+ID4gPiA+IDEwOjE2OjA5LjM0MzQwNCBJ
+UCAxMC4wLjAuMzAuMjA0OSA+IDEwLjAuMC40MC4yNDY1NjgwNjQ2OiByZXBseSBvayAxMTYgZ2V0
+YXR0ciBSRUcgMTAwNjQ0IGlkcyAwLzAgc3ogMTA0ODU3Ngo+ID4gPiA+IDEwOjE2OjA5LjM4OTMx
+NiBJUCAxMC4wLjAuNDAuMTAyMiA+IDEwLjAuMC4zMC4yMDQ5OiAuIGFjayA1NTczIHdpbiAyMTg0
+IDxub3Asbm9wLHRpbWVzdGFtcCA3NDk3NTEgNzUzNjMzPgo+ID4gPiA+IDEwOjE2OjEzLjQ0OTUx
+MyBJUCAxMC4wLjAuNDAuMjQ4MjQ1Nzg2MiA+IDEwLjAuMC4zMC4yMDQ5OiAxMDggZ2V0YXR0ciBm
+aCBVbmtub3duLzAxMDAwNzAwODEzODAxMDAwMDAwMDAwMDA4MTY0RUU0MkRCMTQxRUJBQzk2MTcw
+MTQ5Qzc0Mzk2NDcyMTlDQjUKPiA+ID4gPiAxMDoxNjoxMy40NDk4MTUgSVAgMTAuMC4wLjMwLjIw
+NDkgPiAxMC4wLjAuNDAuMjQ4MjQ1Nzg2MjogcmVwbHkgb2sgMTE2IGdldGF0dHIgRElSIDQwNzU1
+IGlkcyAwLzAgc3ogNDA5Ngo+ID4gPiA+IDEwOjE2OjEzLjQ1MjM0NCBJUCAxMC4wLjAuNDAuMTAy
+MiA+IDEwLjAuMC4zMC4yMDQ5OiAuIGFjayA1Njg5IHdpbiAyMTg0IDxub3Asbm9wLHRpbWVzdGFt
+cCA3NTM5NDMgNzU0NjYwPgo+ID4gPiA+IDEwOjE2OjEzLjQ1Mzk3MyBJUCAxMC4wLjAuNDAuMjQ5
+OTIzNTA3OCA+IDEwLjAuMC4zMC4yMDQ5OiAxMDAgZ2V0YXR0ciBmaCBVbmtub3duLzAxMDAwNjAw
+MkM0OUZFRjJCQTQ2NDI5MzlCMkJGMkI4MzIyQ0NCQ0I0NzIxOUM4QzAwMDAwMDAwNDcyMTlDOEMK
+PiA+ID4gPiAxMDoxNjoxMy40NTQxNTQgSVAgMTAuMC4wLjMwLjIwNDkgPiAxMC4wLjAuNDAuMjQ5
+OTIzNTA3ODogcmVwbHkgb2sgMTE2IGdldGF0dHIgRElSIDQwNzU1IGlkcyAwLzAgc3ogNDA5Ngo+
+ID4gPiA+IDEwOjE2OjEzLjQ1NjE5NCBJUCAxMC4wLjAuNDAuMjUxNjAxMjI5NCA+IDEwLjAuMC4z
+MC4yMDQ5OiAxMDggZ2V0YXR0ciBmaCBVbmtub3duLzAxMDAwNzAwODEzODAxMDAwMDAwMDAwMDA4
+MTY0RUU0MkRCMTQxRUJBQzk2MTcwMTQ5Qzc0Mzk2NDcyMTlDOEMKPiA+ID4gPiAxMDoxNjoxMy40
+NTYzNjEgSVAgMTAuMC4wLjMwLjIwNDkgPiAxMC4wLjAuNDAuMjUxNjAxMjI5NDogcmVwbHkgb2sg
+MTE2IGdldGF0dHIgRElSIDQwNzU1IGlkcyAwLzAgc3ogNDA5Ngo+ID4gPiA+IDEwOjE2OjEzLjQ1
+ODI4MiBJUCAxMC4wLjAuNDAuMjUzMjc4OTUxMCA+IDEwLjAuMC4zMC4yMDQ5OiAxMTYgbG9va3Vw
+IGZoIFVua25vd24vMDEwMDA3MDA4MTM4MDEwMDAwMDAwMDAwMDgxNjRFRTQyREIxNDFFQkFDOTYx
+NzAxNDlDNzQzOTYwMDAwMDAwNCAiaXNvMSIKPiA+ID4gPiAxMDoxNjoxMy40NTg0NjEgSVAgMTAu
+MC4wLjMwLjIwNDkgPiAxMC4wLjAuNDAuMjUzMjc4OTUxMDogcmVwbHkgb2sgMjMyIGxvb2t1cCBm
+aCBVbmtub3duLzAxMDAwNjAwMkM0OUZFRjJCQTQ2NDI5MzlCMkJGMkI4MzIyQ0NCQ0IwMDAwMDAw
+MTAwMDAwMDAyMDAwMDQxRUQKPiA+ID4gPiAxMDoxNjoxMy41MTA2MzcgSVAgMTAuMC4wLjQwLjEw
+MjIgPiAxMC4wLjAuMzAuMjA0OTogLiBhY2sgNjE1MyB3aW4gMjE4NCA8bm9wLG5vcCx0aW1lc3Rh
+bXAgNzUzOTg1IDc1NDY2Mj4KPiA+ID4gPiAxMDoxNjoxNC4wMzAxMTAgSVAgMTAuMC4wLjQwLjI1
+NDk1NjY3MjYgPiAxMC4wLjAuMzAuMjA0OTogMTEyIGFjY2VzcyBmaCBVbmtub3duLzAxMDAwNzAw
+ODEzODAxMDAwMDAwMDAwMDA4MTY0RUU0MkRCMTQxRUJBQzk2MTcwMTQ5Qzc0Mzk2MDAwMDAwMUYg
+MDAxZgo+ID4gPiA+IDEwOjE2OjE0LjAzMDkyNyBJUCAxMC4wLjAuMzAuMjA0OSA+IDEwLjAuMC40
+MC4yNTQ5NTY2NzI2OiByZXBseSBvayAxMjQgYWNjZXNzIGMgMDAwMwo+ID4gPiA+IDEwOjE2OjE0
+LjAzMzQzNiBJUCAxMC4wLjAuNDAuMTAyMiA+IDEwLjAuMC4zMC4yMDQ5OiAuIGFjayA2Mjc3IHdp
+biAyMTg0IDxub3Asbm9wLHRpbWVzdGFtcCA3NTQ1NDggNzU0ODA1Pgo+ID4gPiA+IDEwOjE2OjE0
+LjAzNDczMiBJUCAxMC4wLjAuNDAuMjU2NjM0Mzk0MiA+IDEwLjAuMC4zMC4yMDQ5OiAxMDggZ2V0
+YXR0ciBmaCBVbmtub3duLzAxMDAwNzAwODEzODAxMDAwMDAwMDAwMDA4MTY0RUU0MkRCMTQxRUJB
+Qzk2MTcwMTQ5Qzc0Mzk2MDAwMDAwMDAKPiA+ID4gPiAxMDoxNjoxNC4wMzQ5ODAgSVAgMTAuMC4w
+LjMwLjIwNDkgPiAxMC4wLjAuNDAuMjU2NjM0Mzk0MjogcmVwbHkgb2sgMTE2IGdldGF0dHIgRElS
+IDQwNzU1IGlkcyAwLzAgc3ogNDA5Ngo+ID4gPiA+IDEwOjE2OjE0LjAzNzMxOSBJUCAxMC4wLjAu
+NDAuMjU4MzEyMTE1OCA+IDEwLjAuMC4zMC4yMDQ5OiAxMTIgYWNjZXNzIGZoIFVua25vd24vMDEw
+MDA3MDA4MTM4MDEwMDAwMDAwMDAwMDgxNjRFRTQyREIxNDFFQkFDOTYxNzAxNDlDNzQzOTYwMDAw
+MDAxRiAwMDFmCj4gPiA+ID4gMTA6MTY6MTQuMDM3NDg2IElQIDEwLjAuMC4zMC4yMDQ5ID4gMTAu
+MC4wLjQwLjI1ODMxMjExNTg6IHJlcGx5IG9rIDEyNCBhY2Nlc3MgYyAwMDAzCj4gPiA+ID4gMTA6
+MTY6MTQuMDQwMzIzIElQIDEwLjAuMC40MC4yNTk5ODk4Mzc0ID4gMTAuMC4wLjMwLjIwNDk6IDEz
+MiByZWFkZGlycGx1cyBmaCBVbmtub3duLzAxMDAwNzAwODEzODAxMDAwMDAwMDAwMDA4MTY0RUU0
+MkRCMTQxRUJBQzk2MTcwMTQ5Qzc0Mzk2MDAwMDAwMDAgNTEyIGJ5dGVzIEAgMAo+ID4gPiA+IDEw
+OjE2OjE0LjA0MDU1NCBJUCAxMC4wLjAuMzAuMjA0OSA+IDEwLjAuMC40MC4yNTk5ODk4Mzc0OiBy
+ZXBseSBvayAxNDQ4IHJlYWRkaXJwbHVzCj4gPiA+ID4gMTA6MTY6MTQuMDQxMDIwIElQIDEwLjAu
+MC4zMC4yMDQ5ID4gMTAuMC4wLjQwLjE2ODQxMDgyODg6IHJlcGx5IFVua25vd24gcnBjIHJlc3Bv
+bnNlIGNvZGU9MjAyMTg1NTg2MSAzNDAKPiA+ID4gPiAxMDoxNjoxNC4wNDM1ODMgSVAgMTAuMC4w
+LjQwLjEwMjIgPiAxMC4wLjAuMzAuMjA0OTogLiBhY2sgODMwNSB3aW4gMjkwOCA8bm9wLG5vcCx0
+aW1lc3RhbXAgNzU0NTUwIDc1NDgwOD4KPiA+ID4gPiAxMDoxNjoxNC4wNDUxMDQgSVAgMTAuMC4w
+LjQwLjI2MTY2NzU1OTAgPiAxMC4wLjAuMzAuMjA0OTogMTEyIGFjY2VzcyBmaCBVbmtub3duLzAx
+MDAwNzAwODEzODAxMDAwMDAwMDAwMDA4MTY0RUU0MkRCMTQxRUJBQzk2MTcwMTQ5Qzc0Mzk2MDAw
+MDAwMUYgMDAxZgo+ID4gPiA+IDEwOjE2OjE0LjA0NTQwMiBJUCAxMC4wLjAuMzAuMjA0OSA+IDEw
+LjAuMC40MC4yNjE2Njc1NTkwOiByZXBseSBvayAxMjQgYWNjZXNzIGMgMDAwMwo+ID4gPiA+IDEw
+OjE2OjE0LjA0NzgzMCBJUCAxMC4wLjAuNDAuMjYzMzQ1MjgwNiA+IDEwLjAuMC4zMC4yMDQ5OiAx
+MTIgYWNjZXNzIGZoIFVua25vd24vMDEwMDA3MDA4MTM4MDEwMDAwMDAwMDAwMDgxNjRFRTQyREIx
+NDFFQkFDOTYxNzAxNDlDNzQzOTYwMDAwMDAxRiAwMDFmCj4gPiA+ID4gMTA6MTY6MTQuMDQ4MDM5
+IElQIDEwLjAuMC4zMC4yMDQ5ID4gMTAuMC4wLjQwLjI2MzM0NTI4MDY6IHJlcGx5IG9rIDEyNCBh
+Y2Nlc3MgYyAwMDAzCj4gPiA+ID4gMTA6MTY6MTQuMDk5Mzg1IElQIDEwLjAuMC40MC4xMDIyID4g
+MTAuMC4wLjMwLjIwNDk6IC4gYWNrIDg1NTMgd2luIDI5MDggPG5vcCxub3AsdGltZXN0YW1wIDc1
+NDU5MiA3NTQ4MTA+Cj4gPiA+ID4gMTA6MTY6MTQuMjkzNzE0IElQIDEwLjAuMC40MC4yNjUwMjMw
+MDIyID4gMTAuMC4wLjMwLjIwNDk6IDEwOCBnZXRhdHRyIGZoIFVua25vd24vMDEwMDA3MDA4MTM4
+MDEwMDAwMDAwMDAwMDgxNjRFRTQyREIxNDFFQkFDOTYxNzAxNDlDNzQzOTYwMDAwMDAwMAo+ID4g
+PiA+IDEwOjE2OjE0LjI5NDAxOSBJUCAxMC4wLjAuMzAuMjA0OSA+IDEwLjAuMC40MC4yNjUwMjMw
+MDIyOiByZXBseSBvayAxMTYgZ2V0YXR0ciBESVIgNDA3NTUgaWRzIDAvMCBzeiA0MDk2Cj4gPiA+
+ID4gMTA6MTY6MTQuMjk3MjYzIElQIDEwLjAuMC40MC4xMDIyID4gMTAuMC4wLjMwLjIwNDk6IC4g
+YWNrIDg2Njkgd2luIDI5MDggPG5vcCxub3AsdGltZXN0YW1wIDc1NDc2MyA3NTQ4NzE+Cj4gPiA+
+ID4gMTA6MTY6MTQuMjk3MjcyIElQIDEwLjAuMC40MC4yNjY3MDA3MjM4ID4gMTAuMC4wLjMwLjIw
+NDk6IDExMiBhY2Nlc3MgZmggVW5rbm93bi8wMTAwMDcwMDgxMzgwMTAwMDAwMDAwMDAwODE2NEVF
+NDJEQjE0MUVCQUM5NjE3MDE0OUM3NDM5NjAwMDAwMDFGIDAwMWYKPiA+ID4gPiAxMDoxNjoxNC4y
+OTc0NjYgSVAgMTAuMC4wLjMwLjIwNDkgPiAxMC4wLjAuNDAuMjY2NzAwNzIzODogcmVwbHkgb2sg
+MTI0IGFjY2VzcyBjIDAwMDMKPiA+ID4gPiAxMDoxNjoxNC4yOTc1ODYgSVAgMTAuMC4wLjQwLjI2
+ODM3ODQ0NTQgPiAxMC4wLjAuMzAuMjA0OTogMTEyIGFjY2VzcyBmaCBVbmtub3duLzAxMDAwNzAw
+ODEzODAxMDAwMDAwMDAwMDA4MTY0RUU0MkRCMTQxRUJBQzk2MTcwMTQ5Qzc0Mzk2MDAwMDAwMUYg
+MDAxZgo+ID4gPiA+IDEwOjE2OjE0LjI5Nzk4NyBJUCAxMC4wLjAuMzAuMjA0OSA+IDEwLjAuMC40
+MC4yNjgzNzg0NDU0OiByZXBseSBvayAxMjQgYWNjZXNzIGMgMDAwMwo+ID4gPiA+IDEwOjE2OjE0
+LjMwMTE2NSBJUCAxMC4wLjAuNDAuMjcwMDU2MTY3MCA+IDEwLjAuMC4zMC4yMDQ5OiAxMDQgYWNj
+ZXNzIGZoIFVua25vd24vMDEwMDA2MDAyQzQ5RkVGMkJBNDY0MjkzOUIyQkYyQjgzMjJDQ0JDQjAw
+MDAwMDFGNDcyMTlDOEMwMDAwMDAwMCAwMDFmCj4gPiA+ID4gMTA6MTY6MTQuMzAxNDA1IElQIDEw
+LjAuMC4zMC4yMDQ5ID4gMTAuMC4wLjQwLjI3MDA1NjE2NzA6IHJlcGx5IG9rIDEyNCBhY2Nlc3Mg
+YyAwMDAzCj4gPiA+ID4gMTA6MTY6MTQuMzUxMjI5IElQIDEwLjAuMC40MC4xMDIyID4gMTAuMC4w
+LjMwLjIwNDk6IC4gYWNrIDkwNDEgd2luIDI5MDggPG5vcCxub3AsdGltZXN0YW1wIDc1NDgxMCA3
+NTQ4NzM+Cj4gPiA+ID4gMTA6MTY6MTQuODQyNjMzIElQIDEwLjAuMC40MC4yNzE3MzM4ODg2ID4g
+MTAuMC4wLjMwLjIwNDk6IDEwMCBnZXRhdHRyIGZoIFVua25vd24vMDEwMDA2MDAyQzQ5RkVGMkJB
+NDY0MjkzOUIyQkYyQjgzMjJDQ0JDQjAwMDAwMDAwNDcyMTlDOEMwMDAwMDAwMAo+ID4gPiA+IDEw
+OjE2OjE0Ljg1MTcxMSBJUCAxMC4wLjAuMzAuMjA0OSA+IDEwLjAuMC40MC4yNzE3MzM4ODg2OiBy
+ZXBseSBvayAxMTYgZ2V0YXR0ciBESVIgNDA3NTUgaWRzIDAvMCBzeiA0MDk2Cj4gPiA+ID4gMTA6
+MTY6MTQuODU2ODQ2IElQIDEwLjAuMC40MC4xMDIyID4gMTAuMC4wLjMwLjIwNDk6IC4gYWNrIDkx
+NTcgd2luIDI5MDggPG5vcCxub3AsdGltZXN0YW1wIDc1NTI3MiA3NTUwMDg+Cj4gPiA+ID4gCj4g
+PiA+ID4gCj4gPiA+ID4gPiA+IGRvZXMgc29tZWJvZHkgaGF2ZSBzdWNoIHNldHVwIHVwIGFuZCBy
+dW5uaW5nIGFuZCBjYW4gdGVsbCBoaXMgZGlzdHJvIC8ga2VybmVsIGFuZCBuZnMtdXRpbHMgdmVy
+c2lvbiA/Cj4gPiA+ID4gPiA+IG1heWJlIGkgY2hhbmdlIGRpc3RybyB0aGVuLgo+ID4gPiA+ID4g
+Cj4gPiA+ID4gPiBJIGRvdWJ0IHRoYXQgaXQgaXMgYSBkaXN0cm8tc3BlY2lmaWMgdGhpbmcuICBB
+cyBsb25nIGFzIHlvdSBoYXZlCj4gPiA+ID4gPiBuZnMtdXRpbHMtMS4xLjAgaXQgc2hvdWxkIHdv
+cmsuICBJIGRvbid0IGhhdmUgYSAxMC4zIGJveAo+ID4gPiA+ID4gc2V0IHVwIHlldCwgYnV0IGl0
+IHdvcmtzIGZpbmUgb24gRGViaWFuL3Vuc3RhYmxlIGZvciBtZS4KPiA+ID4gPiAKPiA+ID4gPiBv
+aywgd2lsbCB0cnkgdGhpcyBvbiBkZWJpYW4uCj4gPiA+ID4gCj4gPiA+ID4gPiBNYXliZSB0cnkg
+YWRkaW5nIHRoZSAibm9fcm9vdF9zcXVhc2giIGV4cG9ydCBvcHRpb24uCj4gPiA+ID4gbm8gZGlm
+ZmVyZW5jZQo+ID4gPiA+IAo+ID4gPiA+ID4gV2hhdCBkb2VzICJscyAtbCAvZXhwb3J0IiBvbiB0
+aGUgc2VydmVyIHNob3c/Cj4gPiA+ID4gbm90aGluZyB1bnVzdWFsLiBubyBlcnJvcnMsIGp1c3Qg
+dGhlIGRpcnMvbW91bnRwb2ludHMKPiA+ID4gPiAKPiA+ID4gPiBUaGFua3MgZm9yIHlvdXIgaGVs
+cCEKPiA+ID4gPiAKPiA+ID4gPiByZWdhcmRzCj4gPiA+ID4gcm9sYW5kCj4gPiA+ID4gCj4gPiA+
+ID4gCj4gPiA+ID4gPiAKPiA+ID4gPiA+IE9uIFNhdHVyZGF5IE9jdG9iZXIgMjcsIGRldnplcm9A
+d2ViLmRlIHdyb3RlOgo+ID4gPiA+ID4gPiBIZWxsbyAhCj4gPiA+ID4gPiA+IAo+ID4gPiA+ID4g
+PiB3aXRoIDIuNi4yMiBpYG0gdHJ5aW5nIHRvIGV4cG9ydCBsb29wYmFjayBtb3VudGVkIGlzby1p
+bWFnZXMuCj4gPiA+ID4gPiA+IAo+ID4gPiA+ID4gPiB0aGlzIGlzIC9ldGMvZXhwb3J0czoKPiA+
+ID4gPiA+ID4gCj4gPiA+ID4gPiA+IC9leHBvcnQgKihybyxjcm9zc21udCxzdWJ0cmVlX2NoZWNr
+KQo+ID4gPiA+ID4gCj4gPiA+ID4gPiBJIHJlY29tbWVuZCByZXBsYWNpbmcgc3VidHJlZV9jaGVj
+ayB3aXRoIG5vX3N1YnRyZWVfY2hlY2ssIGJ1dCBpdAo+ID4gPiA+ID4gc2hvdWxkbid0IG1ha2Ug
+YW4gaW1wb3J0YW50IGRpZmZlcmVuY2UgaW4gdGhpcyBjYXNlLgo+ID4gPiA+ID4gCj4gPiA+ID4g
+PiAKPiA+ID4gPiA+IFRoaXMgc2hvdWxkIHdvcmsgd2l0aCBuZnMtdXRpbHMgMS4xLjAgb3IgbGF0
+ZXIuICBXaXRoIGVhcmxpZXIgcmVsZWFzZXMKPiA+ID4gPiA+IHlvdSBuZWVkIHRvIGV4cGxpY2l0
+bHkgZXhwb3J0IHRoZSBzdWJvcmRpbmF0ZSBmaWxlc3lzdGVtcyB0b28uCj4gPiA+ID4gPiAKPiA+
+ID4gPiA+ID4gCj4gPiA+ID4gPiA+IGluIC9leHBvcnQsIGkgaGF2ZSBsb29wYmFjayBtb3VudGVk
+IGlzby1pbWFnZXMKPiA+ID4gPiA+ID4gCj4gPiA+ID4gPiA+IGFmdGVyIG1vdW50aW5nIG9uIHRo
+ZSBjbGllbnQgc2lkZSB1bmRlciAvbW50ICh0cmllZCBvbmUgb2xkZXIgYW5kIG9uZSByZWNlbnQg
+c3lzdGVtKSAsIGlgbSBnZXR0aW5nOgo+ID4gPiA+ID4gPiAKPiA+ID4gPiA+ID4gdm1ob3N0Oi9t
+bnQgIyBscyAtbGEKPiA+ID4gPiA+ID4gL2Jpbi9sczogaXNvMTogSW5wdXQvb3V0cHV0IGVycm9y
+Cj4gPiA+ID4gPiA+IC9iaW4vbHM6IGlzbzIgIElucHV0L291dHB1dCBlcnJvcgo+ID4gPiA+ID4g
+PiAvYmluL2xzOiBpc28zOiBJbnB1dC9vdXRwdXQgZXJyb3IKPiA+ID4gPiA+ID4gdG90YWwgMTAx
+MjgKPiA+ID4gPiA+ID4gZHJ3eHJ3eHJ3dCAgIDE4IHJvb3Qgcm9vdCAgMjcwMzM2IE9jdCAyNiAw
+ODo0NSAuCj4gPiA+ID4gPiA+IGRyd3hyd3hyd3QgIDE4NiByb290IHJvb3QgICAyMDc2MCBPY3Qg
+MjcgMTc6NDUgLi4KPiA+ID4gPiA+ID4gZHJ3eHIteHIteCAgICAyIHJvb3Qgcm9vdCAgIDE2Mzg0
+IEphbiAgMSAgMTk3MCBpc28xCj4gPiA+ID4gPiA+IGRyd3hyLXhyLXggICAgMiByb290IHJvb3Qg
+ICAxNjM4NCBKYW4gIDEgIDE5NzAgaXNvMgo+ID4gPiA+ID4gPiBkcnd4ci14ci14ICAgIDIgcm9v
+dCByb290ICAgMTYzODQgSmFuICAxICAxOTcwIGlzbzMKPiA+ID4gPiA+ID4gCj4gPiA+ID4gPiA+
+IHZtaG9zdDovbW50L2lzbzEgIyBscwo+ID4gPiA+ID4gPiAvYmluL2xzOiAuOiBTdGFsZSBORlMg
+ZmlsZSBoYW5kbGUKPiA+ID4gPiA+ID4gdm1ob3N0Oi9tbnQvaXNvMSAjIGxzIC1sYQo+ID4gPiA+
+ID4gPiAvYmluL2xzOiAuOiBJbnB1dC9vdXRwdXQgZXJyb3IKPiA+ID4gPiA+IAo+ID4gPiA+ID4g
+SXQgaXMgYSBsaXR0bGUgb2RkIHRoYXQgdGhlIGVycm9ycyBhcmUgaW5jb25zaXN0ZW50Lgo+ID4g
+PiA+ID4gCj4gPiA+ID4gPiBDYW4geW91IGZpbmQgYW55IGxvZyBtZXNzYWdlcyBmcm9tIG1vdW50
+ZCBpbiBzeXNsb2c/ICBXaGF0IGRvIHRoZXkKPiA+ID4gPiA+IHNheT8KPiA+ID4gPiA+IEFsc28g
+d2hhdCBkb2VzCj4gPiA+ID4gPiAgICBjYXQgL3Byb2MvZnMvbmZzZC9leHBvcnRzCj4gPiA+ID4g
+PiAKPiA+ID4gPiA+IG9uIHRoZSBzZXJ2ZXIgc2hvdy4KPiA+ID4gPiA+IAo+ID4gPiA+ID4gRmlu
+YWxseSwgYSB0Y3BkdW1wOgo+ID4gPiA+ID4gCj4gPiA+ID4gPiAgIHRjcGR1bXAgLXMgMCAtdyAv
+dG1wL3RjcGR1bXAgcG9ydCAyMDQ5Cj4gPiA+ID4gPiAKPiA+ID4gPiA+IHdoaWxlIHlvdSBydW4g
+dGhlIGV4cGVyaW1lbnQgbWlnaHQgaGVscC4KPiA+ID4gPiA+IAo+ID4gPiA+ID4gPiAKPiA+ID4g
+PiA+ID4gaWBtIHVuc3VyZSBpZiBpIHNob3VsZCBibGFtZSBzdXNlIGhlcmUgKGl0YHMgYW4gb3Bl
+bnN1c2UgMTAuMyBib3ggd2hpY2ggc2VlbXMgdG8gaGF2ZSBuZnMtdXRpbHMgMS4xLjApCj4gPiA+
+ID4gPiA+IAo+ID4gPiA+ID4gPiBkb2VzIHNvbWVib2R5IGhhdmUgc3VjaCBzZXR1cCB1cCBhbmQg
+cnVubmluZyBhbmQgY2FuIHRlbGwgaGlzIGRpc3RybyAvIGtlcm5lbCBhbmQgbmZzLXV0aWxzIHZl
+cnNpb24gPwo+ID4gPiA+ID4gPiBtYXliZSBpIGNoYW5nZSBkaXN0cm8gdGhlbi4KPiA+ID4gPiA+
+IAo+ID4gPiA+ID4gSSBkb3VidCB0aGF0IGl0IGlzIGEgZGlzdHJvLXNwZWNpZmljIHRoaW5nLiAg
+QXMgbG9uZyBhcyB5b3UgaGF2ZQo+ID4gPiA+ID4gbmZzLXV0aWxzLTEuMS4wIGl0IHNob3VsZCB3
+b3JrLiAgSSBkb24ndCBoYXZlIGEgMTAuMyBib3gKPiA+ID4gPiA+IHNldCB1cCB5ZXQsIGJ1dCBp
+dCB3b3JrcyBmaW5lIG9uIERlYmlhbi91bnN0YWJsZSBmb3IgbWUuCj4gPiA+ID4gPiAKPiA+ID4g
+PiA+IE1heWJlIHRyeSBhZGRpbmcgdGhlICJub19yb290X3NxdWFzaCIgZXhwb3J0IG9wdGlvbi4K
+PiA+ID4gPiA+IFdoYXQgZG9lcyAibHMgLWwgL2V4cG9ydCIgb24gdGhlIHNlcnZlciBzaG93Pwo+
+ID4gPiA+ID4gCj4gPiA+ID4gPiBOZWlsQnJvd24KPiA+ID4gPiA+IAo+ID4gPiA+IAo+ID4gPiA+
+IAo+ID4gPiAKPiA+ID4gCj4gPiA+IF9fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
+X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fXwo+ID4gPiBEZXIgV0VCLkRFIFNtYXJ0
+U3VyZmVyIGhpbGZ0IGJpcyB6dSA3MCUgSWhyZXIgT25saW5la29zdGVuIHp1IHNwYXJlbiEKPiA+
+ID4gaHR0cDovL3NtYXJ0c3VyZmVyLndlYi5kZS8/bWM9MTAwMDcxJmRpc3RyaWJ1dGlvbmlkPTAw
+MDAwMDAwMDA2Ngo+ID4gPiAKPiA+ID4gCj4gPiA+IC0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0KPiA+ID4gVGhp
+cyBTRi5uZXQgZW1haWwgaXMgc3BvbnNvcmVkIGJ5OiBTcGx1bmsgSW5jLgo+ID4gPiBTdGlsbCBn
+cmVwcGluZyB0aHJvdWdoIGxvZyBmaWxlcyB0byBmaW5kIHByb2JsZW1zPyAgU3RvcC4KPiA+ID4g
+Tm93IFNlYXJjaCBsb2cgZXZlbnRzIGFuZCBjb25maWd1cmF0aW9uIGZpbGVzIHVzaW5nIEFKQVgg
+YW5kIGEgYnJvd3Nlci4KPiA+ID4gRG93bmxvYWQgeW91ciBGUkVFIGNvcHkgb2YgU3BsdW5rIG5v
+dyA+PiBodHRwOi8vZ2V0LnNwbHVuay5jb20vCj4gPiA+IF9fX19fX19fX19fX19fX19fX19fX19f
+X19fX19fX19fX19fX19fX19fX19fX19fCj4gPiA+IE5GUyBtYWlsbGlzdCAgLSAgTkZTQGxpc3Rz
+LnNvdXJjZWZvcmdlLm5ldAo+ID4gPiBodHRwczovL2xpc3RzLnNvdXJjZWZvcmdlLm5ldC9saXN0
+cy9saXN0aW5mby9uZnMKPiA+IAo+IAo+IAo+IF9fX19fX19fX19fX19fX19fX19fX19fX19fX19f
+X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fCj4gRXJ3ZWl0ZXJu
+IFNpZSBGcmVlTWFpbCB6dSBlaW5lbSBub2NoIGxlaXN0dW5nc3N0w6Rya2VyZW4gRS1NYWlsLVBv
+c3RmYWNoIQkJCj4gTWVociBJbmZvcyB1bnRlciBodHRwOi8vcHJvZHVrdGUud2ViLmRlL2NsdWIv
+P21jPTAyMTEzMQo+IAoKLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQpUaGlzIFNGLm5ldCBlbWFpbCBpcyBzcG9u
+c29yZWQgYnk6IFNwbHVuayBJbmMuClN0aWxsIGdyZXBwaW5nIHRocm91Z2ggbG9nIGZpbGVzIHRv
+IGZpbmQgcHJvYmxlbXM/ICBTdG9wLgpOb3cgU2VhcmNoIGxvZyBldmVudHMgYW5kIGNvbmZpZ3Vy
+YXRpb24gZmlsZXMgdXNpbmcgQUpBWCBhbmQgYSBicm93c2VyLgpEb3dubG9hZCB5b3VyIEZSRUUg
+Y29weSBvZiBTcGx1bmsgbm93ID4+IGh0dHA6Ly9nZXQuc3BsdW5rLmNvbS8KX19fX19fX19fX19f
+X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX18KTkZTIG1haWxsaXN0ICAtICBORlNA
+bGlzdHMuc291cmNlZm9yZ2UubmV0Cmh0dHBzOi8vbGlzdHMuc291cmNlZm9yZ2UubmV0L2xpc3Rz
+L2xpc3RpbmZvL25mcwo=
