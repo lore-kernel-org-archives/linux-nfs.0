@@ -1,18 +1,18 @@
 From: "Kautenberg Michael" <surnadalbud@brkw.com>
 Subject: Re: My darling.....
-Date: Wed, 31 Oct 2007 13:40:28 +0100
-Message-ID: <000b01c81bbb$3776dc70$fe7aa8c0@u.pppool.de>
+Date: Wed, 31 Oct 2007 13:40:26 +0100
+Message-ID: <000b01c81bbb$367a2cf0$fe7aa8c0@u.pppool.de>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1103725894=="
-To: "Leonard Christopher" <nfs@lists.sourceforge.net>
+Content-Type: multipart/mixed; boundary="===============1820105447=="
+To: "Leonard Christopher" <nfs@lists.sf.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1InCri-0000o6-VQ
+	id 1InCri-0000o5-VO
 	for nfs@lists.sourceforge.net; Wed, 31 Oct 2007 05:40:28 -0700
 Received: from u50a0.u.pppool.de ([89.56.80.160] helo=u.pppool.de)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1InCrg-0007jV-FB
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1InCre-0004qh-KY
 	for nfs@lists.sourceforge.net; Wed, 31 Oct 2007 05:40:16 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -28,17 +28,17 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 This is a multi-part message in MIME format.
 
---===============1103725894==
+--===============1820105447==
 Content-Type: multipart/related; type="multipart/alternative";
-	boundary="----=_NextPart_000_0007_01C81BBB.3776DC70"
+	boundary="----=_NextPart_000_0007_01C81BBB.367A2CF0"
 
 This is a multi-part message in MIME format.
 
-------=_NextPart_000_0007_01C81BBB.3776DC70
+------=_NextPart_000_0007_01C81BBB.367A2CF0
 Content-Type: multipart/alternative;
-	boundary="----=_NextPart_001_0008_01C81BBB.3776DC70"
+	boundary="----=_NextPart_001_0008_01C81BBB.367A2CF0"
 
-------=_NextPart_001_0008_01C81BBB.3776DC70
+------=_NextPart_001_0008_01C81BBB.367A2CF0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
 
@@ -48,7 +48,7 @@ let's say a word about it; will we?" said tender-heartedfor she was glad to see 
 "i think so, too," pet. mrs. march looked grave and grieved, and  narrative, from which the moral naturally flows,
 which, oh, be joyful!" said jo. "i was mortally         
 
-------=_NextPart_001_0008_01C81BBB.3776DC70
+------=_NextPart_001_0008_01C81BBB.367A2CF0
 Content-Type: text/html
 Content-Transfer-Encoding: quoted-printable
 
@@ -72,9 +72,9 @@ which, oh, be joyful!" said jo. "i was =
 mortally&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<BR>
 </DIV></BODY></HTML>
 
-------=_NextPart_001_0008_01C81BBB.3776DC70--
+------=_NextPart_001_0008_01C81BBB.367A2CF0--
 
-------=_NextPart_000_0007_01C81BBB.3776DC70
+------=_NextPart_000_0007_01C81BBB.367A2CF0
 Content-Type: image/gif;
 	name="2nBuDfd0Fp.gif"
 Content-Transfer-Encoding: base64
@@ -370,7 +370,7 @@ YNFjvWu1aK5bcLe7ZaX9WNgdA269vpmsvO0VbET83/a90amt3kNNtpB7u/3WukOUuwBA4Zg74RSO
 40E3XZSr4zsOyuQnbDJ440muGDau5E1OSE4O5Xsb5VMeDkxO5Vd+0liu5QSx5V1+B1bu5U6unmNO
 5mVu5meO5mmu5muO5iEAADs=
 
-------=_NextPart_000_0007_01C81BBB.3776DC70
+------=_NextPart_000_0007_01C81BBB.367A2CF0
 Content-Type: image/gif;
 	name="be2Qy64boW.gif"
 Content-Transfer-Encoding: base64
@@ -647,11 +647,11 @@ IHPtFmatacq6pqhyJ7OOqSNW4nsirM7WJ89eZ4QN28Yilc3mU5FKbJRCZj7WqtH+LEZK5129a08V
 rVjN7E/1a9MqQpxiqMIObXYJhA+4gNfGgUCUwNf6ANn6QBycLdmCrUCwbdm2bdjGrUCIHO3cyi3a
 2i3dvq3e5q0eeK3b/q3feq3e+oAYBAQAOw==
 
-------=_NextPart_000_0007_01C81BBB.3776DC70--
+------=_NextPart_000_0007_01C81BBB.367A2CF0--
 
 
 
---===============1103725894==
+--===============1820105447==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -662,7 +662,7 @@ This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >> http://get.splunk.com/
---===============1103725894==
+--===============1820105447==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -672,4 +672,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---===============1103725894==--
+--===============1820105447==--
