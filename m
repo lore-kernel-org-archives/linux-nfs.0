@@ -1,22 +1,19 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH] SUNRPC: Fix xdr_decode_string_inplace() mixed sign
-	comparison
-Date: Wed, 31 Oct 2007 12:50:45 -0400
-Message-ID: <20071031165045.5861.52308.stgit@manray.1015granger.net>
+From: "Black market" <skhalil22@aol.com>
+Subject: Black market
+Date: Wed, 31 Oct 2007 18:00:02 +0100
+Message-ID: <01c81be7$dc01f410$19cd5fc1@xqub>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: trond.myklebust@fys.uio.no
+To: <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1InGnF-0005WN-LH
-	for nfs@lists.sourceforge.net; Wed, 31 Oct 2007 09:51:49 -0700
-Received: from flpi185.sbcis.sbc.com ([207.115.20.187]
-	helo=flpi185.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1InGnJ-0003an-TW
-	for nfs@lists.sourceforge.net; Wed, 31 Oct 2007 09:51:55 -0700
+	id 1InGtQ-0006EQ-8T
+	for nfs@lists.sourceforge.net; Wed, 31 Oct 2007 09:58:12 -0700
+Received: from [193.95.205.25] (helo=BSN-95-205-25.dial-up.dsl.siol.net)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1InGtV-0001HC-4z
+	for nfs@lists.sourceforge.net; Wed, 31 Oct 2007 09:58:18 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,50 +26,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-xdr_decode_string_inplace() compares an incoming length to a maximum length
-allowed by the protocol.  Make sure both sides of the comparison have the
-same sign.
+Black market is online again !
 
-A better fix for this would be always to use unsigned 32-bit integers for
-string lengths.  To wit, RFC 4506 says:
+1. Heroin, in liquid and crystal form.
+2. Rocket fuel and Tomohawk rockets (serious enquiries only).
+3. Other rockets (Air-to-Air), orders in batches of 10.
+4. New shipment of cocaine has arrived, buy 9 grams and get 10th for free.
+5. We also offer gay-slaves for sale, we offer only such service on the NET,
+   you can choose the one you like, then get straight to business.
+6. Fake currencies, such as Euros and US dollars, prices would match competition.
+7. Also, as always, we offer widest range of child pornography and exclusive lolita
+   galleries, to keep out clients busy.
 
-4.2.  Unsigned Integer
+Everyone is welcome, be it in States or any other place worldwide.
 
-   An XDR unsigned integer is a 32-bit datum that encodes a non-negative
-   integer in the range [0,4294967295].
+ATTENTION. Clearance offer. Buy 30 grams of heroin, get 5 free. 
+Prepay your batch of rockets (air-to-air) and recieve a portable rocket-lacuncher.
 
- ...
-
-4.11.  String
-
-   The standard defines a string of n (numbered 0 through n-1) ASCII
-   bytes to be the number n encoded as an unsigned integer (as described
-   above), and followed by the n bytes of the string.
-
-This would mean fixing up the callers of xdr_decode_string_inplace, which
-include the NFS server's filename handling functions (including
-decode_filename, decode_pathname, and nfsd_lookup), and lockd's nlm_lock
-structure.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
- net/sunrpc/xdr.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
-
-diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
-index 3d1f7cd..db80a77 100644
---- a/net/sunrpc/xdr.c
-+++ b/net/sunrpc/xdr.c
-@@ -95,7 +95,7 @@ xdr_encode_string(__be32 *p, const char *string)
- __be32 *
- xdr_decode_string_inplace(__be32 *p, char **sp, int *lenp, int maxlen)
- {
--	unsigned int	len;
-+	int len;
- 
- 	if ((len = ntohl(*p++)) > maxlen)
- 		return NULL;
+For security reasons, please email me if you want to get address of our online shop.
+ skhalil22@aol.com
+  
 
 
 -------------------------------------------------------------------------
