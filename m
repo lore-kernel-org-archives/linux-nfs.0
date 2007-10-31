@@ -1,19 +1,24 @@
-From: "Black market" <skhalil22@aol.com>
-Subject: Black market
-Date: Wed, 31 Oct 2007 18:00:02 +0100
-Message-ID: <01c81be7$dc01f410$19cd5fc1@xqub>
+From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
+Subject: Re: [PATCH] SUNRPC: Fix xdr_decode_string_inplace() mixed
+ sign comparison
+Date: Wed, 31 Oct 2007 13:06:45 -0400
+Message-ID: <EXNANE01v6EybqfAj810000085a@exnane01.hq.netapp.com>
+References: <20071031165045.5861.52308.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: <nfs@lists.sourceforge.net>
+Cc: nfs@lists.sourceforge.net, trond.myklebust@fys.uio.no
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1InGtQ-0006EQ-8T
-	for nfs@lists.sourceforge.net; Wed, 31 Oct 2007 09:58:12 -0700
-Received: from [193.95.205.25] (helo=BSN-95-205-25.dial-up.dsl.siol.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1InGtV-0001HC-4z
-	for nfs@lists.sourceforge.net; Wed, 31 Oct 2007 09:58:18 -0700
+	id 1InH5k-0007in-4j
+	for nfs@lists.sourceforge.net; Wed, 31 Oct 2007 10:10:56 -0700
+Received: from mx2.netapp.com ([216.240.18.37])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1InH5n-0003NL-GY
+	for nfs@lists.sourceforge.net; Wed, 31 Oct 2007 10:11:01 -0700
+In-Reply-To: <20071031165045.5861.52308.stgit@manray.1015granger.net>
+References: <20071031165045.5861.52308.stgit@manray.1015granger.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,27 +31,67 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Black market is online again !
+This is a serious vunerability! A huge string length will always be
+accepted by this code, right? Security/integrity bug, not a minor
+sign cleanup IOW.
 
-1. Heroin, in liquid and crystal form.
-2. Rocket fuel and Tomohawk rockets (serious enquiries only).
-3. Other rockets (Air-to-Air), orders in batches of 10.
-4. New shipment of cocaine has arrived, buy 9 grams and get 10th for free.
-5. We also offer gay-slaves for sale, we offer only such service on the NET,
-   you can choose the one you like, then get straight to business.
-6. Fake currencies, such as Euros and US dollars, prices would match competition.
-7. Also, as always, we offer widest range of child pornography and exclusive lolita
-   galleries, to keep out clients busy.
+Tom.
 
-Everyone is welcome, be it in States or any other place worldwide.
-
-ATTENTION. Clearance offer. Buy 30 grams of heroin, get 5 free. 
-Prepay your batch of rockets (air-to-air) and recieve a portable rocket-lacuncher.
-
-For security reasons, please email me if you want to get address of our online shop.
- skhalil22@aol.com
-  
-
+At 12:50 PM 10/31/2007, Chuck Lever wrote:
+>xdr_decode_string_inplace() compares an incoming length to a maximum length
+>allowed by the protocol.  Make sure both sides of the comparison have the
+>same sign.
+>
+>A better fix for this would be always to use unsigned 32-bit integers for
+>string lengths.  To wit, RFC 4506 says:
+>
+>4.2.  Unsigned Integer
+>
+>   An XDR unsigned integer is a 32-bit datum that encodes a non-negative
+>   integer in the range [0,4294967295].
+>
+> ...
+>
+>4.11.  String
+>
+>   The standard defines a string of n (numbered 0 through n-1) ASCII
+>   bytes to be the number n encoded as an unsigned integer (as described
+>   above), and followed by the n bytes of the string.
+>
+>This would mean fixing up the callers of xdr_decode_string_inplace, which
+>include the NFS server's filename handling functions (including
+>decode_filename, decode_pathname, and nfsd_lookup), and lockd's nlm_lock
+>structure.
+>
+>Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>---
+>
+> net/sunrpc/xdr.c |    2 +-
+> 1 files changed, 1 insertions(+), 1 deletions(-)
+>
+>diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
+>index 3d1f7cd..db80a77 100644
+>--- a/net/sunrpc/xdr.c
+>+++ b/net/sunrpc/xdr.c
+>@@ -95,7 +95,7 @@ xdr_encode_string(__be32 *p, const char *string)
+> __be32 *
+> xdr_decode_string_inplace(__be32 *p, char **sp, int *lenp, int maxlen)
+> {
+>-	unsigned int	len;
+>+	int len;
+> 
+> 	if ((len = ntohl(*p++)) > maxlen)
+> 		return NULL;
+>
+>
+>-------------------------------------------------------------------------
+>This SF.net email is sponsored by: Splunk Inc.
+>Still grepping through log files to find problems?  Stop.
+>Now Search log events and configuration files using AJAX and a browser.
+>Download your FREE copy of Splunk now >> http://get.splunk.com/
+>_______________________________________________
+>NFS maillist  -  NFS@lists.sourceforge.net
+>https://lists.sourceforge.net/lists/listinfo/nfs
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
