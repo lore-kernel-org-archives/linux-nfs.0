@@ -1,25 +1,27 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH 7/7] SUNRPC: Rename xprt_disconnect()
-Date: Wed, 07 Nov 2007 19:01:10 -0500
-Message-ID: <1194480070.7962.11.camel@heimdal.trondhjem.org>
-References: <20071107003834.13713.73536.stgit@heimdal.trondhjem.org>
-	<20071107004011.13713.39834.stgit@heimdal.trondhjem.org>
-	<47324751.9050603@oracle.com>
-Mime-Version: 1.0
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH] SUNRPC: Fix xdr_decode_string_inplace() mixed
+	sign comparison
+Date: Wed, 31 Oct 2007 21:53:08 -0400
+Message-ID: <7D9707A4-3260-4ADA-9235-8DF945EA2EF9@oracle.com>
+References: <20071031165045.5861.52308.stgit@manray.1015granger.net>
+	<EXNANE01v6EybqfAj810000085a@exnane01.hq.netapp.com>
+	<1193857219.7454.70.camel@heimdal.trondhjem.org>
+Mime-Version: 1.0 (Apple Message framework v752.2)
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfsv4@linux-nfs.org, Tom Talpey <Thomas.Talpey@netapp.com>,
-	nfs@lists.sourceforge.net
-To: chuck.lever@oracle.com
+Cc: nfs@lists.sourceforge.net,
+	"Talpey, Thomas" <Thomas.Talpey@netapp.com>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IpunJ-0007uy-GY
-	for nfs@lists.sourceforge.net; Wed, 07 Nov 2007 15:58:49 -0800
-Received: from mx2.netapp.com ([216.240.18.37])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IpunP-0007kU-3N
-	for nfs@lists.sourceforge.net; Wed, 07 Nov 2007 15:58:55 -0800
-In-Reply-To: <47324751.9050603@oracle.com>
+	id 1InPG7-000191-RP
+	for nfs@lists.sourceforge.net; Wed, 31 Oct 2007 18:54:12 -0700
+Received: from agminet01.oracle.com ([141.146.126.228])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1InPGC-0001PO-4o
+	for nfs@lists.sourceforge.net; Wed, 31 Oct 2007 18:54:17 -0700
+In-Reply-To: <1193857219.7454.70.camel@heimdal.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,133 +34,140 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+On Oct 31, 2007, at 3:00 PM, Trond Myklebust wrote:
+> On Wed, 2007-10-31 at 13:06 -0400, Talpey, Thomas wrote:
+>> This is a serious vunerability! A huge string length will always be
+>> accepted by this code, right? Security/integrity bug, not a minor
+>> sign cleanup IOW.
+>
+> Wrong! The current code is quite correct.
+>
+> It trusts that the caller is setting a reasonable value for maxlen,  
+> and
+> assumes that 'len' is the untrusted value (since it comes from the
+> network).
+>
+> in the comparison
+>
+>   ((len = ntohl(*p++)) < maxlen)
+>
+> then the trusted value maxlen is the one that gets cast to an unsigned
+> value since 'len' and 'maxlen' are both integers of the same rank (see
+> the description of the usual binary conversions in section 6.3.4 in
+> Harbison and Steele).
 
-On Wed, 2007-11-07 at 18:16 -0500, Chuck Lever wrote:
-> Oops.  Looks like you did the rename in xs_tcp_read_fraghdr in this patch.
+Whatever H&S says, the compiler flags this as a mixed sign  
+comparison.  Thus something is not working the way you assume it is.
 
-I agree. That really should be part of patch 6. I'll respin these 2
-patches...
+[cel@ingres NFS_ALL]$ make net/sunrpc/xdr.o
+   Using /home/cel/src/linux/NFS_ALL as source for kernel
+   GEN     /u/cel/obj/Makefile
+   CHK     include/linux/version.h
+   CHK     include/linux/utsrelease.h
+   UPD     include/linux/utsrelease.h
+   CALL    /home/cel/src/linux/NFS_ALL/scripts/checksyscalls.sh
+   CC      net/sunrpc/xdr.o
+/home/cel/src/linux/NFS_ALL/net/sunrpc/xdr.c: In function  
+xdr_decode_string_inplace:
+/home/cel/src/linux/NFS_ALL/net/sunrpc/xdr.c:100: warning: comparison  
+between signed and unsigned
+[cel@ingres NFS_ALL]$
+
+Line 100 is precisely:
+
+	if ((len = ntohl(*p++)) > maxlen)
+
+My gcc is the latest available for Fedora 7:
+
+gcc version 4.1.2 20070925 (Red Hat 4.1.2-27)
+
+I rather prefer spelling this out completely so that neither the  
+compiler nor humans can mistake the intent of this logic.
+
+> Chuck's patch _introduces_ the bug, since it causes the above  
+> comparison
+> to become a signed comparison. In that case, you also need to test for
+> len<0.
+
+Yes, the second version of the patch is incorrect.
+
+> Trond
+>
+>> Tom.
+>>
+>> At 12:50 PM 10/31/2007, Chuck Lever wrote:
+>>> xdr_decode_string_inplace() compares an incoming length to a  
+>>> maximum length
+>>> allowed by the protocol.  Make sure both sides of the comparison  
+>>> have the
+>>> same sign.
+>>>
+>>> A better fix for this would be always to use unsigned 32-bit  
+>>> integers for
+>>> string lengths.  To wit, RFC 4506 says:
+>>>
+>>> 4.2.  Unsigned Integer
+>>>
+>>>   An XDR unsigned integer is a 32-bit datum that encodes a non- 
+>>> negative
+>>>   integer in the range [0,4294967295].
+>>>
+>>> ...
+>>>
+>>> 4.11.  String
+>>>
+>>>   The standard defines a string of n (numbered 0 through n-1) ASCII
+>>>   bytes to be the number n encoded as an unsigned integer (as  
+>>> described
+>>>   above), and followed by the n bytes of the string.
+>>>
+>>> This would mean fixing up the callers of  
+>>> xdr_decode_string_inplace, which
+>>> include the NFS server's filename handling functions (including
+>>> decode_filename, decode_pathname, and nfsd_lookup), and lockd's  
+>>> nlm_lock
+>>> structure.
+>>>
+>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>>> ---
+>>>
+>>> net/sunrpc/xdr.c |    2 +-
+>>> 1 files changed, 1 insertions(+), 1 deletions(-)
+>>>
+>>> diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
+>>> index 3d1f7cd..db80a77 100644
+>>> --- a/net/sunrpc/xdr.c
+>>> +++ b/net/sunrpc/xdr.c
+>>> @@ -95,7 +95,7 @@ xdr_encode_string(__be32 *p, const char *string)
+>>> __be32 *
+>>> xdr_decode_string_inplace(__be32 *p, char **sp, int *lenp, int  
+>>> maxlen)
+>>> {
+>>> -	unsigned int	len;
+>>> +	int len;
+>>>
+>>> 	if ((len = ntohl(*p++)) > maxlen)
+>>> 		return NULL;
+>>>
+>>>
+>>> -------------------------------------------------------------------- 
+>>> -----
+>>> This SF.net email is sponsored by: Splunk Inc.
+>>> Still grepping through log files to find problems?  Stop.
+>>> Now Search log events and configuration files using AJAX and a  
+>>> browser.
+>>> Download your FREE copy of Splunk now >> http://get.splunk.com/
+>>> _______________________________________________
+>>> NFS maillist  -  NFS@lists.sourceforge.net
+>>> https://lists.sourceforge.net/lists/listinfo/nfs
+>
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
 
-> Trond Myklebust wrote:
-> > From: Trond Myklebust <Trond.Myklebust@netapp.com>
-> > 
-> > xprt_disconnect() should really only be called when the transport shutdown
-> > is completed, and it is time to wake up any pending tasks. Rename it to
-> > xprt_disconnect_done() in order to reflect the semantical change.
-> > 
-> > Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> > ---
-> > 
-> >  include/linux/sunrpc/xprt.h     |    2 +-
-> >  net/sunrpc/xprt.c               |    6 +++---
-> >  net/sunrpc/xprtrdma/transport.c |    4 ++--
-> >  net/sunrpc/xprtsock.c           |    6 +++---
-> >  4 files changed, 9 insertions(+), 9 deletions(-)
-> > 
-> > diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-> > index afb9e6a..2554cd2 100644
-> > --- a/include/linux/sunrpc/xprt.h
-> > +++ b/include/linux/sunrpc/xprt.h
-> > @@ -245,7 +245,7 @@ void			xprt_adjust_cwnd(struct rpc_task *task, int result);
-> >  struct rpc_rqst *	xprt_lookup_rqst(struct rpc_xprt *xprt, __be32 xid);
-> >  void			xprt_complete_rqst(struct rpc_task *task, int copied);
-> >  void			xprt_release_rqst_cong(struct rpc_task *task);
-> > -void			xprt_disconnect(struct rpc_xprt *xprt);
-> > +void			xprt_disconnect_done(struct rpc_xprt *xprt);
-> >  void			xprt_force_disconnect(struct rpc_xprt *xprt);
-> >  
-> >  /*
-> > diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-> > index fcdc4b8..4d71152 100644
-> > --- a/net/sunrpc/xprt.c
-> > +++ b/net/sunrpc/xprt.c
-> > @@ -574,11 +574,11 @@ static void xprt_autoclose(struct work_struct *work)
-> >  }
-> >  
-> >  /**
-> > - * xprt_disconnect - mark a transport as disconnected
-> > + * xprt_disconnect_done - mark a transport as disconnected
-> >   * @xprt: transport to flag for disconnect
-> >   *
-> >   */
-> > -void xprt_disconnect(struct rpc_xprt *xprt)
-> > +void xprt_disconnect_done(struct rpc_xprt *xprt)
-> >  {
-> >  	dprintk("RPC:       disconnected transport %p\n", xprt);
-> >  	spin_lock_bh(&xprt->transport_lock);
-> > @@ -586,7 +586,7 @@ void xprt_disconnect(struct rpc_xprt *xprt)
-> >  	xprt_wake_pending_tasks(xprt, -ENOTCONN);
-> >  	spin_unlock_bh(&xprt->transport_lock);
-> >  }
-> > -EXPORT_SYMBOL_GPL(xprt_disconnect);
-> > +EXPORT_SYMBOL_GPL(xprt_disconnect_done);
-> >  
-> >  /**
-> >   * xprt_force_disconnect - force a transport to disconnect
-> > diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-> > index dc55cc9..06e8b50 100644
-> > --- a/net/sunrpc/xprtrdma/transport.c
-> > +++ b/net/sunrpc/xprtrdma/transport.c
-> > @@ -449,7 +449,7 @@ xprt_rdma_close(struct rpc_xprt *xprt)
-> >  	struct rpcrdma_xprt *r_xprt = rpcx_to_rdmax(xprt);
-> >  
-> >  	dprintk("RPC:       %s: closing\n", __func__);
-> > -	xprt_disconnect(xprt);
-> > +	xprt_disconnect_done(xprt);
-> >  	(void) rpcrdma_ep_disconnect(&r_xprt->rx_ep, &r_xprt->rx_ia);
-> >  }
-> >  
-> > @@ -682,7 +682,7 @@ xprt_rdma_send_request(struct rpc_task *task)
-> >  	}
-> >  
-> >  	if (rpcrdma_ep_post(&r_xprt->rx_ia, &r_xprt->rx_ep, req)) {
-> > -		xprt_disconnect(xprt);
-> > +		xprt_disconnect_done(xprt);
-> >  		return -ENOTCONN;	/* implies disconnect */
-> >  	}
-> >  
-> > diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-> > index c0aa2b4..a7d53d1 100644
-> > --- a/net/sunrpc/xprtsock.c
-> > +++ b/net/sunrpc/xprtsock.c
-> > @@ -789,7 +789,7 @@ clear_close_wait:
-> >  	clear_bit(XPRT_CLOSE_WAIT, &xprt->state);
-> >  	clear_bit(XPRT_CLOSING, &xprt->state);
-> >  	smp_mb__after_clear_bit();
-> > -	xprt_disconnect(xprt);
-> > +	xprt_disconnect_done(xprt);
-> >  }
-> >  
-> >  /**
-> > @@ -911,7 +911,7 @@ static inline void xs_tcp_read_fraghdr(struct rpc_xprt *xprt, struct xdr_skb_rea
-> >  	/* Sanity check of the record length */
-> >  	if (unlikely(transport->tcp_reclen < 4)) {
-> >  		dprintk("RPC:       invalid TCP record fragment length\n");
-> > -		xprt_disconnect(xprt);
-> > +		xprt_force_disconnect(xprt);
-> >  		return;
-> >  	}
-> >  	dprintk("RPC:       reading TCP record fragment of length %d\n",
-> > @@ -1160,7 +1160,7 @@ static void xs_tcp_state_change(struct sock *sk)
-> >  		break;
-> >  	case TCP_CLOSE:
-> >  		/* Mark transport as closed and wake up all pending tasks */
-> > -		xprt_disconnect(xprt);
-> > +		xprt_disconnect_done(xprt);
-> >  		clear_bit(XPRT_CLOSING, &xprt->state);
-> >  	}
-> >   out:
-> > 
-> > 
-> > -------------------------------------------------------------------------
-> > This SF.net email is sponsored by: Splunk Inc.
-> > Still grepping through log files to find problems?  Stop.
-> > Now Search log events and configuration files using AJAX and a browser.
-> > Download your FREE copy of Splunk now >> http://get.splunk.com/
-> > _______________________________________________
-> > NFS maillist  -  NFS@lists.sourceforge.net
-> > https://lists.sourceforge.net/lists/listinfo/nfs
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
