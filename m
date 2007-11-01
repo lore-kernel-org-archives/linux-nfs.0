@@ -1,22 +1,22 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 8/8] NFSD: Path name length signage in nfsd request
-	argument	structures
-Date: Thu, 01 Nov 2007 16:57:25 -0400
-Message-ID: <20071101205725.5503.56082.stgit@manray.1015granger.net>
+Subject: [PATCH 7/8] NFSD: Fix mixed sign comparison
+	in	nfs3svc_decode_symlinkargs
+Date: Thu, 01 Nov 2007 16:57:20 -0400
+Message-ID: <20071101205720.5503.61021.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 To: trond.myklebust@fys.uio.no, neilb@suse.de, bfields@fieldses.org
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Inh6g-0007iW-Is
-	for nfs@lists.sourceforge.net; Thu, 01 Nov 2007 13:57:38 -0700
+	id 1Inh71-0007in-GO
+	for nfs@lists.sourceforge.net; Thu, 01 Nov 2007 13:57:59 -0700
 Received: from flpi185.sbcis.sbc.com ([207.115.20.187]
 	helo=flpi185.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Inh6m-0005pM-5r
-	for nfs@lists.sourceforge.net; Thu, 01 Nov 2007 13:57:44 -0700
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Inh76-0002Fg-2s
+	for nfs@lists.sourceforge.net; Thu, 01 Nov 2007 13:58:05 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,42 +29,36 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Clean up: For consistency, store the length of path name strings in nfsd
-argument structures as unsigned integers.
-
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- include/linux/nfsd/xdr.h  |    2 +-
- include/linux/nfsd/xdr3.h |    2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
+ fs/nfsd/nfs3xdr.c |    6 +++---
+ 1 files changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/include/linux/nfsd/xdr.h b/include/linux/nfsd/xdr.h
-index 49ddf79..a0132ef 100644
---- a/include/linux/nfsd/xdr.h
-+++ b/include/linux/nfsd/xdr.h
-@@ -73,7 +73,7 @@ struct nfsd_symlinkargs {
- 	char *			fname;
- 	unsigned int		flen;
- 	char *			tname;
--	int			tlen;
-+	unsigned int		tlen;
- 	struct iattr		attrs;
- };
+diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
+index 6fed3f9..9aefa95 100644
+--- a/fs/nfsd/nfs3xdr.c
++++ b/fs/nfsd/nfs3xdr.c
+@@ -449,8 +449,7 @@ int
+ nfs3svc_decode_symlinkargs(struct svc_rqst *rqstp, __be32 *p,
+ 					struct nfsd3_symlinkargs *args)
+ {
+-	unsigned int len;
+-	int avail;
++	unsigned int len, avail;
+ 	char *old, *new;
+ 	struct kvec *vec;
  
-diff --git a/include/linux/nfsd/xdr3.h b/include/linux/nfsd/xdr3.h
-index 6fdb958..421eddd 100644
---- a/include/linux/nfsd/xdr3.h
-+++ b/include/linux/nfsd/xdr3.h
-@@ -89,7 +89,7 @@ struct nfsd3_symlinkargs {
- 	char *			fname;
- 	unsigned int		flen;
- 	char *			tname;
--	int			tlen;
-+	unsigned int		tlen;
- 	struct iattr		attrs;
- };
- 
+@@ -483,7 +482,8 @@ nfs3svc_decode_symlinkargs(struct svc_rqst *rqstp, __be32 *p,
+ 	/* now copy next page if there is one */
+ 	if (len && !avail && rqstp->rq_arg.page_len) {
+ 		avail = rqstp->rq_arg.page_len;
+-		if (avail > PAGE_SIZE) avail = PAGE_SIZE;
++		if (avail > PAGE_SIZE)
++			avail = PAGE_SIZE;
+ 		old = page_address(rqstp->rq_arg.pages[0]);
+ 	}
+ 	while (len && avail && *old) {
 
 
 -------------------------------------------------------------------------
