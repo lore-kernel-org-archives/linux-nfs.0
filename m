@@ -1,22 +1,24 @@
 From: Neil Brown <neilb@suse.de>
-Subject: [PATCH nfs-utils] probe_port should not try other versions in
-	a version was explicitly given.
-Date: Thu,  1 Nov 2007 16:26:54 +1100
-Message-ID: <1193894817-20622-1-git-send-email-neilb@suse.de>
+Subject: [PATCH nfs-utils 1/3] probe_port should not try other
+	versions in a version was explicitly given.
+Date: Thu,  1 Nov 2007 16:26:55 +1100
+Message-ID: <1193894817-20622-2-git-send-email-neilb@suse.de>
+References: <1193894817-20622-1-git-send-email-neilb@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net
 To: Steve Dickson <SteveD@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1InSa5-0004D8-Th
-	for nfs@lists.sourceforge.net; Wed, 31 Oct 2007 22:27:02 -0700
-Received: from ns1.suse.de ([195.135.220.2] helo=mx1.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1InSaB-000354-A5
+	id 1InSaB-0004HG-9T
 	for nfs@lists.sourceforge.net; Wed, 31 Oct 2007 22:27:07 -0700
+Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1InSaG-00044F-Lw
+	for nfs@lists.sourceforge.net; Wed, 31 Oct 2007 22:27:13 -0700
+In-Reply-To: <1193894817-20622-1-git-send-email-neilb@suse.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
