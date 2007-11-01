@@ -1,22 +1,19 @@
-From: Neil Brown <neilb@suse.de>
-Subject: kernel BUG at fs/nfs/namespace.c:108! - can be triggered by
- bad server
-Date: Thu, 1 Nov 2007 16:50:20 +1100
-Message-ID: <18217.26908.696010.781137@notabene.brown>
+From: Huang Xiong <huangxiong@uit.com.cn>
+Subject: Need more threads?
+Date: Thu, 1 Nov 2007 18:00:07 +0800
+Message-ID: <200711011800.08010.huangxiong@uit.com.cn>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1InSwh-0006PH-Oj
-	for nfs@lists.sourceforge.net; Wed, 31 Oct 2007 22:50:24 -0700
-Received: from ns.suse.de ([195.135.220.2] helo=mx1.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1InSwm-0001Q4-UO
-	for nfs@lists.sourceforge.net; Wed, 31 Oct 2007 22:50:29 -0700
+	id 1InWqt-0004xu-Ht
+	for nfs@lists.sourceforge.net; Thu, 01 Nov 2007 03:00:43 -0700
+Received: from [211.154.174.66] (helo=uit.com.cn)
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1InWqw-00081q-Ld
+	for nfs@lists.sourceforge.net; Thu, 01 Nov 2007 03:00:45 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,58 +26,42 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+Hello all,
 
-Hi Trond,
+I have to only open one nfsd thread in this special situation.
 
-I have discovered that the BUG_ON in nfs_follow_mountpoint:
+I do not understand the "th" line very clearly, and I find various comments in 
+the net . Please help me see the below two NFS server, do them need more 
+threads? and would you evaluate it for me?
 
-	BUG_ON(IS_ROOT(dentry));
+Thanks in advance.
+Phillip  
 
-can be triggered by a misbehaving server.
+--------------------------------------------------------
+[root@node1 ~]# cat /proc/net/rpc/nfsd
+rc 0 0 317
+fh 0 0 0 0 0
+io 0 0
+th 1 17 130.092 54.005 52.006 0.000 5.599 78.743 89.426 197.553 0.000 11.259
+ra 2 0 0 0 0 0 0 0 0 0 0 0
+net 317 83 230 81
+rpc 317 0 0 0 0
+proc2 18 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+proc3 22 5 113 0 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 87 110 0 0
+proc4 2 0 0
 
-What happens is the client does a lookup and discoveres that the named
-directory has a different fsid, so it initiates a mount.
-It then performs a GETATTR on the mounted directory and gets a
-different fsid again (due to a bug in the NFS server).
-This causes nfs_follow_mountpoint to be called on the newly mounted
-root, which triggers the BUG_ON.
 
-To duplicate this, have a directory which contains some mountpoints,
-and export that directory with the "crossmnt" flag using nfs-utils
-1.1.1 (or 1.1.0 I think)
+[root@node2 ~]# cat /proc/net/rpc/nfsd
+rc 0 0 550
+fh 0 0 0 0 0
+io 0 0
+th 1 137 80.840 5.479 0.000 0.000 0.000 0.000 0.000 0.000 0.000 50.640
+ra 2 0 0 0 0 0 0 0 0 0 0 0
+net 550 216 330 113
+rpc 550 0 0 0 0
+proc2 18 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+proc3 22 3 181 0 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 186 178 0 0
 
-The GETATTR on the root of the mounted filesystem will return the
-information for the top exportpoint, while a lookup will return the
-correct information.  This difference causes the NFS client to BUG.
-
-I think the best way to fix this is to trap this possibility early, so
-just before completing the mount in the NFS client, check that it isn't
-going to use nfs_mountpoint_inode_operations.
-As long as i_op will never change once set (is that true?), this
-should be adequately safe.
-
-The following patch shows a possible approach, and it works for me.
-i.e. when the NFS server is misbehaving, I get ESTALE on those
-mountpoints, while when the NFS server is working correctly, I get
-correct behaviour on the client.
-
-NeilBrown
-
-diff .prev/fs/nfs/super.c ./fs/nfs/super.c
---- .prev/fs/nfs/super.c	2007-11-01 16:30:49.000000000 +1100
-+++ ./fs/nfs/super.c	2007-11-01 16:32:24.000000000 +1100
-@@ -1474,6 +1474,11 @@ static int nfs_xdev_get_sb(struct file_s
- 		error = PTR_ERR(mntroot);
- 		goto error_splat_super;
- 	}
-+	if (mntroot->d_inode->i_op != nfs_dir_operations) {
-+		dput(mntroot);
-+		error = -ESTALE;
-+		goto error_splat_super;
-+	}
- 
- 	s->s_flags |= MS_ACTIVE;
- 	mnt->mnt_sb = s;
 
 
 -------------------------------------------------------------------------
