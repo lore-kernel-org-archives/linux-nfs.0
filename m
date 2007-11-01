@@ -1,24 +1,22 @@
 From: Neil Brown <neilb@suse.de>
-Subject: [PATCH nfs-utils 2/3] Correctly probe mount v2
-Date: Thu,  1 Nov 2007 16:26:56 +1100
-Message-ID: <1193894817-20622-3-git-send-email-neilb@suse.de>
-References: <1193894817-20622-1-git-send-email-neilb@suse.de>
-	<1193894817-20622-2-git-send-email-neilb@suse.de>
+Subject: [PATCH nfs-utils] probe_port should not try other versions in
+	a version was explicitly given.
+Date: Thu,  1 Nov 2007 16:26:54 +1100
+Message-ID: <1193894817-20622-1-git-send-email-neilb@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net
 To: Steve Dickson <SteveD@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1InSaG-0004HL-5i
-	for nfs@lists.sourceforge.net; Wed, 31 Oct 2007 22:27:12 -0700
-Received: from cantor.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	id 1InSa5-0004D8-Th
+	for nfs@lists.sourceforge.net; Wed, 31 Oct 2007 22:27:02 -0700
+Received: from ns1.suse.de ([195.135.220.2] helo=mx1.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1InSaK-00045o-B7
-	for nfs@lists.sourceforge.net; Wed, 31 Oct 2007 22:27:17 -0700
-In-Reply-To: <1193894817-20622-2-git-send-email-neilb@suse.de>
+	(Exim 4.44) id 1InSaB-000354-A5
+	for nfs@lists.sourceforge.net; Wed, 31 Oct 2007 22:27:07 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,40 +29,40 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-When following a list of mount versions to probe -
-e.g. probe_mnt1_first or probe_mnt3_first - probe_both will first
-probe the appropriate NFS version and then, if that succeeds, probe
-the actual mount version.  However instead of probing the target mount
-version, it probes the "most appropriate" mount version for the given NFS version.
-This results in it probing:
-  NFSv2, MOUNTv1
-twice rather than
-  NFSv2, MOUNTv1
-  NFSv2, MOUNTv2
+Currently if probe port is asked to probe for a specific version, and
+that version is not supported, it will probe other versions too.
+This means that if mountd is run with "--no-nfs-version 3",
+It will first probe for NFS version 3, which will succeed (assuming the
+kernel supported NFSv3), then it will check the matching mountd version (3)
+and probe_port on discovering that isn't supported will try other versions,
+find "1" is supported will succeed.
 
-as would be more correct.
+This leaves up using mount version 1 for an NFSv3 mount, which doesn't work
+and leads to a SIGSEGV
 
-This patch removes the "choose most correct" step and just use the
-current mouint version for the probe_vers array.
+There is no case where trying other versions is needed the request one is
+not supported, so simply remove that code.
 
 Signed-off-by: Neil Brown <neilb@suse.de>
 ---
- utils/mount/network.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ utils/mount/network.c |    4 ----
+ 1 files changed, 0 insertions(+), 4 deletions(-)
 
 diff --git a/utils/mount/network.c b/utils/mount/network.c
-index 2b09457..38d0135 100644
+index 63d5f5a..2b09457 100644
 --- a/utils/mount/network.c
 +++ b/utils/mount/network.c
-@@ -494,7 +494,7 @@ int probe_bothports(clnt_addr_t *mnt_server, clnt_addr_t *nfs_server)
- 	for (; *probe_vers; probe_vers++) {
- 		nfs_pmap->pm_vers = mntvers_to_nfs(*probe_vers);
- 		if ((res = probe_nfsport(nfs_server) != 0)) {
--			mnt_pmap->pm_vers = nfsvers_to_mnt(nfs_pmap->pm_vers);
-+			mnt_pmap->pm_vers = *probe_vers;
- 			if ((res = probe_mntport(mnt_server)) != 0)
- 				return 1;
- 			memcpy(mnt_pmap, &save_mnt, sizeof(*mnt_pmap));
+@@ -417,10 +417,6 @@ static int probe_port(clnt_addr_t *server, const unsigned long *versions,
+ 				continue;
+ 			p_prot = protos;
+ 		}
+-		if (vers == pmap->pm_vers) {
+-			p_vers = versions;
+-			vers = 0;
+-		}
+ 		if (vers || !*++p_vers)
+ 			break;
+ 	}
 -- 
 1.5.3.4
 
