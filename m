@@ -1,24 +1,28 @@
-From: "Kevin Coffman" <kwc@citi.umich.edu>
-Subject: Re: Linux NFSv4 Server and Client using Windows 2K3 AD/KDC
-Date: Wed, 31 Oct 2007 22:51:39 -0400
-Message-ID: <4d569c330710311951m70d57030qd69e0a0e4d02ba54@mail.gmail.com>
-References: <47293938.4010407@devrandom.org>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH] SUNRPC: Fix xdr_decode_string_inplace()
+	mixed	sign comparison
+Date: Wed, 31 Oct 2007 23:58:09 -0400
+Message-ID: <1193889489.7511.17.camel@heimdal.trondhjem.org>
+References: <20071031165045.5861.52308.stgit@manray.1015granger.net>
+	<EXNANE01v6EybqfAj810000085a@exnane01.hq.netapp.com>
+	<1193857219.7454.70.camel@heimdal.trondhjem.org>
+	<7D9707A4-3260-4ADA-9235-8DF945EA2EF9@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: "Jason D. McCormick" <jason@devrandom.org>
+Cc: nfs@lists.sourceforge.net,
+	"Talpey, Thomas" <Thomas.Talpey@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1InQ9h-0006WX-3H
-	for nfs@lists.sourceforge.net; Wed, 31 Oct 2007 19:51:39 -0700
-Received: from rv-out-0910.google.com ([209.85.198.186])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1InQ9l-00010T-0E
-	for nfs@lists.sourceforge.net; Wed, 31 Oct 2007 19:51:42 -0700
-Received: by rv-out-0910.google.com with SMTP id g11so1141798rvb
-	for <nfs@lists.sourceforge.net>; Wed, 31 Oct 2007 19:51:40 -0700 (PDT)
-In-Reply-To: <47293938.4010407@devrandom.org>
+	id 1InRBJ-0004BU-BB
+	for nfs@lists.sourceforge.net; Wed, 31 Oct 2007 20:57:21 -0700
+Received: from pat.uio.no ([129.240.10.15])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1InRBN-00044s-B9
+	for nfs@lists.sourceforge.net; Wed, 31 Oct 2007 20:57:27 -0700
+In-Reply-To: <7D9707A4-3260-4ADA-9235-8DF945EA2EF9@oracle.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,79 +35,65 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On 10/31/07, Jason D. McCormick <jason@devrandom.org> wrote:
-> Hello All,
->
->   I'm trying to setup a Linux NFSv4 server and client using Windows 2K3
-> AD as the KDC (Domain/Realm is AD.EXAMPLE.ORG).  I've successfully set
-> this up using MIT Kerberos before so the problems appear to be with the
-> Windows KDC portion of the setup.  I'm not sure this is supported with
-> Linux clients and servers -- most of the reading I see using Windows
-> KDCs is using NetApp filers.
->
->   When attempting to mount the NFS export with '-o sec=krb5', I get a
-> timeout and an eventual failure to mount.  Running the client's rpc.gssd
-> in the foreground with verbose logging yields:
->
-> WARNING: Failed to create krb5 context for user with uid 0 for server
-> nfs-server.example.com
-> WARNING: Failed to create krb5 context for user with uid 0 with
-> credentials cache FILE:/tmp/krb5cc_machine_AD.EXAMPLE.COM for server
-> nfs-server.example.com
-> WARNING: Failed to create krb5 context for user with uid 0 with any
-> credentials cache for server nfs-server.example.com
->
-> Running the server's rpc.svcgssd in the foreground with verbose logging
-> yields:
->
-> handling null request
-> WARNING: gss_accept_sec_context failed
-> ERROR: GSS-API: error in handle_nullreq: gss_accept_sec_context():
-> Miscellaneous failure - Key table entry not found
-> WARNING: failed to write message
->
-> I see it claims there's no key table entry found, but from looking at
-> the message output in '-vvvv' it appears to be asking for
-> nfs/nfs-server.example.com@AD.EXAMPLE.COM like I would expect.  I have
-> the domain_realm mappings configured correctly ({,.}example.com =
-> AD.EXAMPLE.COM), the nfs/host principals stashed correctly in
-> /etc/krb5.keytab, they are using des-cbc-crc and I can use them
-> perfectly with a 'kinit -k nfs/host@REALM' command.  On the server, for
-> example:
->
-> # klist -k -e
-> Keytab name: FILE:/etc/krb5.keytab
-> KVNO Principal
-> ---- -------------------------------------------------------------
->    3 host/nfs-server.example.com@AD.EXAMPLE.COM (DES cbc mode with
->      CRC-32)
->    3 nfs/nfs-server.example.com@AD.EXAMPLE.COM (DES cbc mode with
->      CRC-32)
->
-> I've read a lot of the usual places like Mike Eisler's blog and mailing
-> list and I've not found anything like what I'm experiencing (or else I'm
-> not searching on the right terms).
->
-> Anyone able to help?  I've tried a couple of different versions of
-> nfs-utils to see if there's an incompatibility and I've run into the
-> same problem with all of them.
->
-> Thanks.
->
-> -- Jason
 
-Two guesses:
+On Wed, 2007-10-31 at 21:53 -0400, Chuck Lever wrote:
+> On Oct 31, 2007, at 3:00 PM, Trond Myklebust wrote:
+> > On Wed, 2007-10-31 at 13:06 -0400, Talpey, Thomas wrote:
+> >> This is a serious vunerability! A huge string length will always be
+> >> accepted by this code, right? Security/integrity bug, not a minor
+> >> sign cleanup IOW.
+> >
+> > Wrong! The current code is quite correct.
+> >
+> > It trusts that the caller is setting a reasonable value for maxlen,  
+> > and
+> > assumes that 'len' is the untrusted value (since it comes from the
+> > network).
+> >
+> > in the comparison
+> >
+> >   ((len = ntohl(*p++)) < maxlen)
+> >
+> > then the trusted value maxlen is the one that gets cast to an unsigned
+> > value since 'len' and 'maxlen' are both integers of the same rank (see
+> > the description of the usual binary conversions in section 6.3.4 in
+> > Harbison and Steele).
+> 
+> Whatever H&S says, the compiler flags this as a mixed sign  
+> comparison.  Thus something is not working the way you assume it is.
+> 
+> [cel@ingres NFS_ALL]$ make net/sunrpc/xdr.o
+>    Using /home/cel/src/linux/NFS_ALL as source for kernel
+>    GEN     /u/cel/obj/Makefile
+>    CHK     include/linux/version.h
+>    CHK     include/linux/utsrelease.h
+>    UPD     include/linux/utsrelease.h
+>    CALL    /home/cel/src/linux/NFS_ALL/scripts/checksyscalls.sh
+>    CC      net/sunrpc/xdr.o
+> /home/cel/src/linux/NFS_ALL/net/sunrpc/xdr.c: In function  
+> xdr_decode_string_inplace:
+> /home/cel/src/linux/NFS_ALL/net/sunrpc/xdr.c:100: warning: comparison  
+> between signed and unsigned
+> [cel@ingres NFS_ALL]$
+> 
+> Line 100 is precisely:
+> 
+> 	if ((len = ntohl(*p++)) > maxlen)
 
-1) Are you sure the server's kernel has the necessary crypto compiled
-in, or modules loaded?
+Which is still correct according to both the old and new C standards. I
+know you've got that book at home...
 
-2) My other guess is that somehow the service ticket being presented
-to the server was encrypted with rc4-hmac or something, and it is
-looking for a key with that name and enctype in the keytab and not
-finding it.  A look at a packet trace would prove or disprove this
-guess.
+> My gcc is the latest available for Fedora 7:
+> 
+> gcc version 4.1.2 20070925 (Red Hat 4.1.2-27)
+> 
+> I rather prefer spelling this out completely so that neither the  
+> compiler nor humans can mistake the intent of this logic.
 
-K.C.
+That's fine, but please do not change the logic. The correct change is
+to replace the maxlen parameter with an unsigned int.
+
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
