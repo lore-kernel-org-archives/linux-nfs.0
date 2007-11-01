@@ -1,9 +1,11 @@
 From: Neil Brown <neilb@suse.de>
-Subject: [PATCH nfs-utils 1/3] probe_port should not try other
-	versions in a version was explicitly given.
-Date: Thu,  1 Nov 2007 16:26:55 +1100
-Message-ID: <1193894817-20622-2-git-send-email-neilb@suse.de>
+Subject: [PATCH nfs-utils 3/3] Fix bug in auto-exporting subordinate
+	mounts.
+Date: Thu,  1 Nov 2007 16:26:57 +1100
+Message-ID: <1193894817-20622-4-git-send-email-neilb@suse.de>
 References: <1193894817-20622-1-git-send-email-neilb@suse.de>
+	<1193894817-20622-2-git-send-email-neilb@suse.de>
+	<1193894817-20622-3-git-send-email-neilb@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net
@@ -12,13 +14,13 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1InSaB-0004HG-9T
-	for nfs@lists.sourceforge.net; Wed, 31 Oct 2007 22:27:07 -0700
-Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	id 1InSaL-0004HQ-2h
+	for nfs@lists.sourceforge.net; Wed, 31 Oct 2007 22:27:17 -0700
+Received: from mx2.suse.de ([195.135.220.15])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1InSaG-00044F-Lw
-	for nfs@lists.sourceforge.net; Wed, 31 Oct 2007 22:27:13 -0700
-In-Reply-To: <1193894817-20622-1-git-send-email-neilb@suse.de>
+	(Exim 4.44) id 1InSaQ-00047d-9c
+	for nfs@lists.sourceforge.net; Wed, 31 Oct 2007 22:27:22 -0700
+In-Reply-To: <1193894817-20622-3-git-send-email-neilb@suse.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,40 +33,33 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Currently if probe port is asked to probe for a specific version, and
-that version is not supported, it will probe other versions too.
-This means that if mountd is run with "--no-nfs-version 3",
-It will first probe for NFS version 3, which will succeed (assuming the
-kernel supported NFSv3), then it will check the matching mountd version (3)
-and probe_port on discovering that isn't supported will try other versions,
-find "1" is supported will succeed.
+When mountd gets a request to export a mountpoint which is not
+explicitly exported, but is below an export point that is flagged as
+"crossmnt", it passes the wrong path name to the kernel for the
+  "filehandle -> directory"
+mapping.
+This can badly confuse the NFS client, and is certainly wrong.
 
-This leaves up using mount version 1 for an NFSv3 mount, which doesn't work
-and leads to a SIGSEGV
-
-There is no case where trying other versions is needed the request one is
-not supported, so simply remove that code.
+So use the correct path names.
 
 Signed-off-by: Neil Brown <neilb@suse.de>
 ---
- utils/mount/network.c |    4 ----
- 1 files changed, 0 insertions(+), 4 deletions(-)
+ utils/mountd/cache.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/utils/mount/network.c b/utils/mount/network.c
-index 63d5f5a..2b09457 100644
---- a/utils/mount/network.c
-+++ b/utils/mount/network.c
-@@ -417,10 +417,6 @@ static int probe_port(clnt_addr_t *server, const unsigned long *versions,
- 				continue;
- 			p_prot = protos;
- 		}
--		if (vers == pmap->pm_vers) {
--			p_vers = versions;
--			vers = 0;
--		}
- 		if (vers || !*++p_vers)
- 			break;
- 	}
+diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+index ce1a5a9..fd317cd 100644
+--- a/utils/mountd/cache.c
++++ b/utils/mountd/cache.c
+@@ -508,7 +508,7 @@ void nfsd_fh(FILE *f)
+ 	 */
+ 	qword_printint(f, 0x7fffffff);
+ 	if (found)
+-		qword_print(f, found->e_path);
++		qword_print(f, found_path);
+ 	qword_eol(f);
+  out:
+ 	free(found_path);
 -- 
 1.5.3.4
 
