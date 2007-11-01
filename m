@@ -1,15 +1,24 @@
 From: Neil Brown <neilb@suse.de>
-Subject: Re: stale nfs file handle with exported loopback mounts
-Date: Thu, 1 Nov 2007 15:26:31 +1100
-Message-ID: <18217.21879.971746.530161@notabene.brown>
-References: <2058481856@web.de>
+Subject: [PATCH nfs-utils 2/3] Correctly probe mount v2
+Date: Thu,  1 Nov 2007 16:26:56 +1100
+Message-ID: <1193894817-20622-3-git-send-email-neilb@suse.de>
+References: <1193894817-20622-1-git-send-email-neilb@suse.de>
+	<1193894817-20622-2-git-send-email-neilb@suse.de>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============0548767508=="
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	NFS@lists.sourceforge.net
-To: devzero@web.de
+Content-Type: text/plain; charset="us-ascii"
+Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net
+To: Steve Dickson <SteveD@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-In-Reply-To: message from devzero@web.de on Wednesday October 31
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1InSaG-0004HL-5i
+	for nfs@lists.sourceforge.net; Wed, 31 Oct 2007 22:27:12 -0700
+Received: from cantor.suse.de ([195.135.220.2] helo=mx1.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1InSaK-00045o-B7
+	for nfs@lists.sourceforge.net; Wed, 31 Oct 2007 22:27:17 -0700
+In-Reply-To: <1193894817-20622-2-git-send-email-neilb@suse.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -22,80 +31,49 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============0548767508==
-Content-Type: text/plain; charset=unknown
-Content-Transfer-Encoding: quoted-printable
+When following a list of mount versions to probe -
+e.g. probe_mnt1_first or probe_mnt3_first - probe_both will first
+probe the appropriate NFS version and then, if that succeeds, probe
+the actual mount version.  However instead of probing the target mount
+version, it probes the "most appropriate" mount version for the given NFS version.
+This results in it probing:
+  NFSv2, MOUNTv1
+twice rather than
+  NFSv2, MOUNTv1
+  NFSv2, MOUNTv2
 
-On Wednesday October 31, devzero@web.de wrote:
-> ok, i just wanted to tell that this isn`t the right way to go imho.
->=20
-> some time ago i have tested exporting a parent dir containing
-> several loopback mounted iso images with some pre-1.1.0 nfs-utils
-> version and it worked - so =EC wonder why it now seems to have issues=
+as would be more correct.
 
-> as things should have gone stable.....=20
+This patch removes the "choose most correct" step and just use the
+current mouint version for the probe_vers array.
 
-We have a way of breaking things sometimes.... It's called
-"progress". :-)
+Signed-off-by: Neil Brown <neilb@suse.de>
+---
+ utils/mount/network.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-The short answer is that there is a bug in mountd which is fixed by
-this patch:
+diff --git a/utils/mount/network.c b/utils/mount/network.c
+index 2b09457..38d0135 100644
+--- a/utils/mount/network.c
++++ b/utils/mount/network.c
+@@ -494,7 +494,7 @@ int probe_bothports(clnt_addr_t *mnt_server, clnt_addr_t *nfs_server)
+ 	for (; *probe_vers; probe_vers++) {
+ 		nfs_pmap->pm_vers = mntvers_to_nfs(*probe_vers);
+ 		if ((res = probe_nfsport(nfs_server) != 0)) {
+-			mnt_pmap->pm_vers = nfsvers_to_mnt(nfs_pmap->pm_vers);
++			mnt_pmap->pm_vers = *probe_vers;
+ 			if ((res = probe_mntport(mnt_server)) != 0)
+ 				return 1;
+ 			memcpy(mnt_pmap, &save_mnt, sizeof(*mnt_pmap));
+-- 
+1.5.3.4
 
-diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-index ce1a5a9..fd317cd 100644
---- a/utils/mountd/cache.c
-+++ b/utils/mountd/cache.c
-@@ -508,7 +508,7 @@ void nfsd_fh(FILE *f)
- =09 */
- =09qword_printint(f, 0x7fffffff);
- =09if (found)
--=09=09qword_print(f, found->e_path);
-+=09=09qword_print(f, found_path);
- =09qword_eol(f);
-  out:
- =09free(found_path);
-
-
-The longer answer is that there is also a bug in "mount.nfs" which is
-unrelated but was slowing me down in chasing this bug, and there is
-also a bug in the NFS client which was causing my client oops and need
-a reboot every time I triggered this bug in mountd, which further
-slowed me down.
-
-The effect of this bug in mountd is that when the NFS client calls
-GETATTR on the root of the subordinate filesystem (e.g. your
-loop-mounted isos), it got attr information about the parent. ie. the
-top-level exported filesystem (/export in your case I think).
-This has a different 'fsid' than the nfs client was expecting and
-the NFS client got confused in various ways.
-
-Thanks for your problem report - it helped find 3 bugs!
-
-I'll get proper patches or bug report off to the relevant maintainers
-shortly.
-
-NeilBrown
-
-
---===============0548767508==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >> http://get.splunk.com/
---===============0548767508==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============0548767508==--
