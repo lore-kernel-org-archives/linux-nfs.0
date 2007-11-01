@@ -1,28 +1,15 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH] SUNRPC: Fix xdr_decode_string_inplace()
-	mixed	sign comparison
-Date: Wed, 31 Oct 2007 23:58:09 -0400
-Message-ID: <1193889489.7511.17.camel@heimdal.trondhjem.org>
-References: <20071031165045.5861.52308.stgit@manray.1015granger.net>
-	<EXNANE01v6EybqfAj810000085a@exnane01.hq.netapp.com>
-	<1193857219.7454.70.camel@heimdal.trondhjem.org>
-	<7D9707A4-3260-4ADA-9235-8DF945EA2EF9@oracle.com>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: stale nfs file handle with exported loopback mounts
+Date: Thu, 1 Nov 2007 15:26:31 +1100
+Message-ID: <18217.21879.971746.530161@notabene.brown>
+References: <2058481856@web.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net,
-	"Talpey, Thomas" <Thomas.Talpey@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: multipart/mixed; boundary="===============0548767508=="
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	NFS@lists.sourceforge.net
+To: devzero@web.de
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1InRBJ-0004BU-BB
-	for nfs@lists.sourceforge.net; Wed, 31 Oct 2007 20:57:21 -0700
-Received: from pat.uio.no ([129.240.10.15])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1InRBN-00044s-B9
-	for nfs@lists.sourceforge.net; Wed, 31 Oct 2007 20:57:27 -0700
-In-Reply-To: <7D9707A4-3260-4ADA-9235-8DF945EA2EF9@oracle.com>
+In-Reply-To: message from devzero@web.de on Wednesday October 31
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,71 +22,80 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+--===============0548767508==
+Content-Type: text/plain; charset=unknown
+Content-Transfer-Encoding: quoted-printable
 
-On Wed, 2007-10-31 at 21:53 -0400, Chuck Lever wrote:
-> On Oct 31, 2007, at 3:00 PM, Trond Myklebust wrote:
-> > On Wed, 2007-10-31 at 13:06 -0400, Talpey, Thomas wrote:
-> >> This is a serious vunerability! A huge string length will always be
-> >> accepted by this code, right? Security/integrity bug, not a minor
-> >> sign cleanup IOW.
-> >
-> > Wrong! The current code is quite correct.
-> >
-> > It trusts that the caller is setting a reasonable value for maxlen,  
-> > and
-> > assumes that 'len' is the untrusted value (since it comes from the
-> > network).
-> >
-> > in the comparison
-> >
-> >   ((len = ntohl(*p++)) < maxlen)
-> >
-> > then the trusted value maxlen is the one that gets cast to an unsigned
-> > value since 'len' and 'maxlen' are both integers of the same rank (see
-> > the description of the usual binary conversions in section 6.3.4 in
-> > Harbison and Steele).
-> 
-> Whatever H&S says, the compiler flags this as a mixed sign  
-> comparison.  Thus something is not working the way you assume it is.
-> 
-> [cel@ingres NFS_ALL]$ make net/sunrpc/xdr.o
->    Using /home/cel/src/linux/NFS_ALL as source for kernel
->    GEN     /u/cel/obj/Makefile
->    CHK     include/linux/version.h
->    CHK     include/linux/utsrelease.h
->    UPD     include/linux/utsrelease.h
->    CALL    /home/cel/src/linux/NFS_ALL/scripts/checksyscalls.sh
->    CC      net/sunrpc/xdr.o
-> /home/cel/src/linux/NFS_ALL/net/sunrpc/xdr.c: In function  
-> xdr_decode_string_inplace:
-> /home/cel/src/linux/NFS_ALL/net/sunrpc/xdr.c:100: warning: comparison  
-> between signed and unsigned
-> [cel@ingres NFS_ALL]$
-> 
-> Line 100 is precisely:
-> 
-> 	if ((len = ntohl(*p++)) > maxlen)
+On Wednesday October 31, devzero@web.de wrote:
+> ok, i just wanted to tell that this isn`t the right way to go imho.
+>=20
+> some time ago i have tested exporting a parent dir containing
+> several loopback mounted iso images with some pre-1.1.0 nfs-utils
+> version and it worked - so =EC wonder why it now seems to have issues=
 
-Which is still correct according to both the old and new C standards. I
-know you've got that book at home...
+> as things should have gone stable.....=20
 
-> My gcc is the latest available for Fedora 7:
-> 
-> gcc version 4.1.2 20070925 (Red Hat 4.1.2-27)
-> 
-> I rather prefer spelling this out completely so that neither the  
-> compiler nor humans can mistake the intent of this logic.
+We have a way of breaking things sometimes.... It's called
+"progress". :-)
 
-That's fine, but please do not change the logic. The correct change is
-to replace the maxlen parameter with an unsigned int.
+The short answer is that there is a bug in mountd which is fixed by
+this patch:
+
+diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+index ce1a5a9..fd317cd 100644
+--- a/utils/mountd/cache.c
++++ b/utils/mountd/cache.c
+@@ -508,7 +508,7 @@ void nfsd_fh(FILE *f)
+ =09 */
+ =09qword_printint(f, 0x7fffffff);
+ =09if (found)
+-=09=09qword_print(f, found->e_path);
++=09=09qword_print(f, found_path);
+ =09qword_eol(f);
+  out:
+ =09free(found_path);
 
 
+The longer answer is that there is also a bug in "mount.nfs" which is
+unrelated but was slowing me down in chasing this bug, and there is
+also a bug in the NFS client which was causing my client oops and need
+a reboot every time I triggered this bug in mountd, which further
+slowed me down.
+
+The effect of this bug in mountd is that when the NFS client calls
+GETATTR on the root of the subordinate filesystem (e.g. your
+loop-mounted isos), it got attr information about the parent. ie. the
+top-level exported filesystem (/export in your case I think).
+This has a different 'fsid' than the nfs client was expecting and
+the NFS client got confused in various ways.
+
+Thanks for your problem report - it helped find 3 bugs!
+
+I'll get proper patches or bug report off to the relevant maintainers
+shortly.
+
+NeilBrown
+
+
+--===============0548767508==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >> http://get.splunk.com/
+--===============0548767508==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============0548767508==--
