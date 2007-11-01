@@ -1,27 +1,26 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH] SUNRPC: Fix xdr_decode_string_inplace() mixed
-	sign comparison
-Date: Wed, 31 Oct 2007 21:53:08 -0400
-Message-ID: <7D9707A4-3260-4ADA-9235-8DF945EA2EF9@oracle.com>
-References: <20071031165045.5861.52308.stgit@manray.1015granger.net>
-	<EXNANE01v6EybqfAj810000085a@exnane01.hq.netapp.com>
-	<1193857219.7454.70.camel@heimdal.trondhjem.org>
-Mime-Version: 1.0 (Apple Message framework v752.2)
+From: "Jason D. McCormick" <jason@devrandom.org>
+Subject: Linux NFSv4 Server and Client using Windows 2K3 AD/KDC
+Date: Wed, 31 Oct 2007 22:26:00 -0400
+Message-ID: <47293938.4010407@devrandom.org>
+Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net,
-	"Talpey, Thomas" <Thomas.Talpey@netapp.com>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1InPG7-000191-RP
-	for nfs@lists.sourceforge.net; Wed, 31 Oct 2007 18:54:12 -0700
-Received: from agminet01.oracle.com ([141.146.126.228])
+	id 1InPkz-0004C3-Sk
+	for nfs@lists.sourceforge.net; Wed, 31 Oct 2007 19:26:06 -0700
+Received: from cork.devrandom.org ([70.62.199.237])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1InPGC-0001PO-4o
-	for nfs@lists.sourceforge.net; Wed, 31 Oct 2007 18:54:17 -0700
-In-Reply-To: <1193857219.7454.70.camel@heimdal.trondhjem.org>
+	(Exim 4.44) id 1InPl4-0001mW-7T
+	for nfs@lists.sourceforge.net; Wed, 31 Oct 2007 19:26:11 -0700
+Received: from [172.17.17.5] (dynamic-acs-24-154-249-203.zoominternet.net
+	[24.154.249.203])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by cork.devrandom.org (Postfix) with ESMTP id B127678247
+	for <nfs@lists.sourceforge.net>; Wed, 31 Oct 2007 22:26:01 -0400 (EDT)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,140 +33,65 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Oct 31, 2007, at 3:00 PM, Trond Myklebust wrote:
-> On Wed, 2007-10-31 at 13:06 -0400, Talpey, Thomas wrote:
->> This is a serious vunerability! A huge string length will always be
->> accepted by this code, right? Security/integrity bug, not a minor
->> sign cleanup IOW.
->
-> Wrong! The current code is quite correct.
->
-> It trusts that the caller is setting a reasonable value for maxlen,  
-> and
-> assumes that 'len' is the untrusted value (since it comes from the
-> network).
->
-> in the comparison
->
->   ((len = ntohl(*p++)) < maxlen)
->
-> then the trusted value maxlen is the one that gets cast to an unsigned
-> value since 'len' and 'maxlen' are both integers of the same rank (see
-> the description of the usual binary conversions in section 6.3.4 in
-> Harbison and Steele).
+Hello All,
 
-Whatever H&S says, the compiler flags this as a mixed sign  
-comparison.  Thus something is not working the way you assume it is.
+  I'm trying to setup a Linux NFSv4 server and client using Windows 2K3
+AD as the KDC (Domain/Realm is AD.EXAMPLE.ORG).  I've successfully set
+this up using MIT Kerberos before so the problems appear to be with the
+Windows KDC portion of the setup.  I'm not sure this is supported with
+Linux clients and servers -- most of the reading I see using Windows
+KDCs is using NetApp filers.
 
-[cel@ingres NFS_ALL]$ make net/sunrpc/xdr.o
-   Using /home/cel/src/linux/NFS_ALL as source for kernel
-   GEN     /u/cel/obj/Makefile
-   CHK     include/linux/version.h
-   CHK     include/linux/utsrelease.h
-   UPD     include/linux/utsrelease.h
-   CALL    /home/cel/src/linux/NFS_ALL/scripts/checksyscalls.sh
-   CC      net/sunrpc/xdr.o
-/home/cel/src/linux/NFS_ALL/net/sunrpc/xdr.c: In function  
-xdr_decode_string_inplace:
-/home/cel/src/linux/NFS_ALL/net/sunrpc/xdr.c:100: warning: comparison  
-between signed and unsigned
-[cel@ingres NFS_ALL]$
+  When attempting to mount the NFS export with '-o sec=krb5', I get a
+timeout and an eventual failure to mount.  Running the client's rpc.gssd
+in the foreground with verbose logging yields:
 
-Line 100 is precisely:
+WARNING: Failed to create krb5 context for user with uid 0 for server
+nfs-server.example.com
+WARNING: Failed to create krb5 context for user with uid 0 with
+credentials cache FILE:/tmp/krb5cc_machine_AD.EXAMPLE.COM for server
+nfs-server.example.com
+WARNING: Failed to create krb5 context for user with uid 0 with any
+credentials cache for server nfs-server.example.com
 
-	if ((len = ntohl(*p++)) > maxlen)
+Running the server's rpc.svcgssd in the foreground with verbose logging
+yields:
 
-My gcc is the latest available for Fedora 7:
+handling null request
+WARNING: gss_accept_sec_context failed
+ERROR: GSS-API: error in handle_nullreq: gss_accept_sec_context():
+Miscellaneous failure - Key table entry not found
+WARNING: failed to write message
 
-gcc version 4.1.2 20070925 (Red Hat 4.1.2-27)
+I see it claims there's no key table entry found, but from looking at
+the message output in '-vvvv' it appears to be asking for
+nfs/nfs-server.example.com@AD.EXAMPLE.COM like I would expect.  I have
+the domain_realm mappings configured correctly ({,.}example.com =
+AD.EXAMPLE.COM), the nfs/host principals stashed correctly in
+/etc/krb5.keytab, they are using des-cbc-crc and I can use them
+perfectly with a 'kinit -k nfs/host@REALM' command.  On the server, for
+example:
 
-I rather prefer spelling this out completely so that neither the  
-compiler nor humans can mistake the intent of this logic.
+# klist -k -e
+Keytab name: FILE:/etc/krb5.keytab
+KVNO Principal
+---- -------------------------------------------------------------
+   3 host/nfs-server.example.com@AD.EXAMPLE.COM (DES cbc mode with
+     CRC-32)
+   3 nfs/nfs-server.example.com@AD.EXAMPLE.COM (DES cbc mode with
+     CRC-32)
 
-> Chuck's patch _introduces_ the bug, since it causes the above  
-> comparison
-> to become a signed comparison. In that case, you also need to test for
-> len<0.
+I've read a lot of the usual places like Mike Eisler's blog and mailing
+list and I've not found anything like what I'm experiencing (or else I'm
+not searching on the right terms).
 
-Yes, the second version of the patch is incorrect.
+Anyone able to help?  I've tried a couple of different versions of
+nfs-utils to see if there's an incompatibility and I've run into the
+same problem with all of them.
 
-> Trond
->
->> Tom.
->>
->> At 12:50 PM 10/31/2007, Chuck Lever wrote:
->>> xdr_decode_string_inplace() compares an incoming length to a  
->>> maximum length
->>> allowed by the protocol.  Make sure both sides of the comparison  
->>> have the
->>> same sign.
->>>
->>> A better fix for this would be always to use unsigned 32-bit  
->>> integers for
->>> string lengths.  To wit, RFC 4506 says:
->>>
->>> 4.2.  Unsigned Integer
->>>
->>>   An XDR unsigned integer is a 32-bit datum that encodes a non- 
->>> negative
->>>   integer in the range [0,4294967295].
->>>
->>> ...
->>>
->>> 4.11.  String
->>>
->>>   The standard defines a string of n (numbered 0 through n-1) ASCII
->>>   bytes to be the number n encoded as an unsigned integer (as  
->>> described
->>>   above), and followed by the n bytes of the string.
->>>
->>> This would mean fixing up the callers of  
->>> xdr_decode_string_inplace, which
->>> include the NFS server's filename handling functions (including
->>> decode_filename, decode_pathname, and nfsd_lookup), and lockd's  
->>> nlm_lock
->>> structure.
->>>
->>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->>> ---
->>>
->>> net/sunrpc/xdr.c |    2 +-
->>> 1 files changed, 1 insertions(+), 1 deletions(-)
->>>
->>> diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
->>> index 3d1f7cd..db80a77 100644
->>> --- a/net/sunrpc/xdr.c
->>> +++ b/net/sunrpc/xdr.c
->>> @@ -95,7 +95,7 @@ xdr_encode_string(__be32 *p, const char *string)
->>> __be32 *
->>> xdr_decode_string_inplace(__be32 *p, char **sp, int *lenp, int  
->>> maxlen)
->>> {
->>> -	unsigned int	len;
->>> +	int len;
->>>
->>> 	if ((len = ntohl(*p++)) > maxlen)
->>> 		return NULL;
->>>
->>>
->>> -------------------------------------------------------------------- 
->>> -----
->>> This SF.net email is sponsored by: Splunk Inc.
->>> Still grepping through log files to find problems?  Stop.
->>> Now Search log events and configuration files using AJAX and a  
->>> browser.
->>> Download your FREE copy of Splunk now >> http://get.splunk.com/
->>> _______________________________________________
->>> NFS maillist  -  NFS@lists.sourceforge.net
->>> https://lists.sourceforge.net/lists/listinfo/nfs
->
+Thanks.
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+-- Jason
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
