@@ -1,26 +1,22 @@
 From: Neil Brown <neilb@suse.de>
-Subject: [PATCH nfs-utils 3/3] Fix bug in auto-exporting subordinate
-	mounts.
-Date: Thu,  1 Nov 2007 16:26:57 +1100
-Message-ID: <1193894817-20622-4-git-send-email-neilb@suse.de>
-References: <1193894817-20622-1-git-send-email-neilb@suse.de>
-	<1193894817-20622-2-git-send-email-neilb@suse.de>
-	<1193894817-20622-3-git-send-email-neilb@suse.de>
+Subject: kernel BUG at fs/nfs/namespace.c:108! - can be triggered by
+ bad server
+Date: Thu, 1 Nov 2007 16:50:20 +1100
+Message-ID: <18217.26908.696010.781137@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net
-To: Steve Dickson <SteveD@redhat.com>
+Cc: nfs@lists.sourceforge.net
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1InSaL-0004HQ-2h
-	for nfs@lists.sourceforge.net; Wed, 31 Oct 2007 22:27:17 -0700
-Received: from mx2.suse.de ([195.135.220.15])
+	id 1InSwh-0006PH-Oj
+	for nfs@lists.sourceforge.net; Wed, 31 Oct 2007 22:50:24 -0700
+Received: from ns.suse.de ([195.135.220.2] helo=mx1.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1InSaQ-00047d-9c
-	for nfs@lists.sourceforge.net; Wed, 31 Oct 2007 22:27:22 -0700
-In-Reply-To: <1193894817-20622-3-git-send-email-neilb@suse.de>
+	(Exim 4.44) id 1InSwm-0001Q4-UO
+	for nfs@lists.sourceforge.net; Wed, 31 Oct 2007 22:50:29 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,35 +29,58 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-When mountd gets a request to export a mountpoint which is not
-explicitly exported, but is below an export point that is flagged as
-"crossmnt", it passes the wrong path name to the kernel for the
-  "filehandle -> directory"
-mapping.
-This can badly confuse the NFS client, and is certainly wrong.
 
-So use the correct path names.
+Hi Trond,
 
-Signed-off-by: Neil Brown <neilb@suse.de>
----
- utils/mountd/cache.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+I have discovered that the BUG_ON in nfs_follow_mountpoint:
 
-diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-index ce1a5a9..fd317cd 100644
---- a/utils/mountd/cache.c
-+++ b/utils/mountd/cache.c
-@@ -508,7 +508,7 @@ void nfsd_fh(FILE *f)
- 	 */
- 	qword_printint(f, 0x7fffffff);
- 	if (found)
--		qword_print(f, found->e_path);
-+		qword_print(f, found_path);
- 	qword_eol(f);
-  out:
- 	free(found_path);
--- 
-1.5.3.4
+	BUG_ON(IS_ROOT(dentry));
+
+can be triggered by a misbehaving server.
+
+What happens is the client does a lookup and discoveres that the named
+directory has a different fsid, so it initiates a mount.
+It then performs a GETATTR on the mounted directory and gets a
+different fsid again (due to a bug in the NFS server).
+This causes nfs_follow_mountpoint to be called on the newly mounted
+root, which triggers the BUG_ON.
+
+To duplicate this, have a directory which contains some mountpoints,
+and export that directory with the "crossmnt" flag using nfs-utils
+1.1.1 (or 1.1.0 I think)
+
+The GETATTR on the root of the mounted filesystem will return the
+information for the top exportpoint, while a lookup will return the
+correct information.  This difference causes the NFS client to BUG.
+
+I think the best way to fix this is to trap this possibility early, so
+just before completing the mount in the NFS client, check that it isn't
+going to use nfs_mountpoint_inode_operations.
+As long as i_op will never change once set (is that true?), this
+should be adequately safe.
+
+The following patch shows a possible approach, and it works for me.
+i.e. when the NFS server is misbehaving, I get ESTALE on those
+mountpoints, while when the NFS server is working correctly, I get
+correct behaviour on the client.
+
+NeilBrown
+
+diff .prev/fs/nfs/super.c ./fs/nfs/super.c
+--- .prev/fs/nfs/super.c	2007-11-01 16:30:49.000000000 +1100
++++ ./fs/nfs/super.c	2007-11-01 16:32:24.000000000 +1100
+@@ -1474,6 +1474,11 @@ static int nfs_xdev_get_sb(struct file_s
+ 		error = PTR_ERR(mntroot);
+ 		goto error_splat_super;
+ 	}
++	if (mntroot->d_inode->i_op != nfs_dir_operations) {
++		dput(mntroot);
++		error = -ESTALE;
++		goto error_splat_super;
++	}
+ 
+ 	s->s_flags |= MS_ACTIVE;
+ 	mnt->mnt_sb = s;
 
 
 -------------------------------------------------------------------------
