@@ -1,15 +1,24 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: stale nfs file handle with exported loopback mounts
-Date: Fri, 2 Nov 2007 15:42:25 -0400
-Message-ID: <20071102194225.GH15595@fieldses.org>
-References: <2062533683@web.de>
+Subject: Re: [PATCH 0/8] XDR strings use an unsigned length
+Date: Fri, 2 Nov 2007 18:06:07 -0400
+Message-ID: <20071102220607.GO15595@fieldses.org>
+References: <20071101205057.5503.90636.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>, NFS@lists.sourceforge.net,
-	Andreas Gruenbacher <agruen@suse.de>
-To: devzero@web.de
+Cc: neilb@suse.de, nfs@lists.sourceforge.net,
+	trond.myklebust@fys.uio.no
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-In-Reply-To: <2062533683@web.de>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1Io4eh-0005sV-ON
+	for nfs@lists.sourceforge.net; Fri, 02 Nov 2007 15:06:23 -0700
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1Io4em-0006Hr-Rx
+	for nfs@lists.sourceforge.net; Fri, 02 Nov 2007 15:06:25 -0700
+In-Reply-To: <20071101205057.5503.90636.stgit@manray.1015granger.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -22,70 +31,37 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, Nov 02, 2007 at 08:37:12PM +0100, devzero@web.de wrote:
-> so, you mean this is a problem of the client or some "fix it at the
-> client end" ?
+On Thu, Nov 01, 2007 at 04:56:41PM -0400, Chuck Lever wrote:
+> Hi Trond, Neil, Bruce...
 > 
-> that would be bad, since it would mean i need to touch all our linux
-> systems which want to access our next-generation :) cd-rom server.... 
+> The following patch series replaces
+> 
+>    [PATCH 06/27] SUNRPC: Fix xdr_decode_string_inplace() argument signage
+> 
+> which I posted last week.
+> 
+> XDR variable length strings use an unsigned length.  This patch series
+> offers a series of clean ups to make the treatment of file names and path
+> names in the NFS and NLM server consistent with the XDR specification and
+> other areas of the NFS client.
 
-No, it's definitely a server-side problem.  Oh, I see, I miswrote the
-path; I meant fs/nfsd/nfs3acl.c, not fs/nfs/nfs3acl.c....
+I guess I'm a little worried about these patches.
 
-How about this?
+It's not inherently a bug to store a length in an int.
+
+So if the point is to track down the causes of signed/unsigned
+comparison warnings, so that they stand out more in the future and draw
+attention to particular bugs, that's fine.  But that's only helpful if
+we do actually analyze each such case carefully to determine whether
+there are bugs.
+
+So, for example, if we're going to change the nfsd_lookup arguments to
+take an unsigned int for a length, I'd be much reassured if that came
+with an argument as to what exactly happens currently when we recieve a
+"negative" length for the lookup argument off the wire.  Otherwise we're
+defeating the purpose of these warnings, aren't we?
 
 --b.
-
->From 7fc982f90d404003329934ae3b786c5e4efb0c0a Mon Sep 17 00:00:00 2001
-From: J. Bruce Fields <bfields@citi.umich.edu>
-Date: Fri, 2 Nov 2007 15:36:08 -0400
-Subject: [PATCH] knfsd: fix spurious EINVAL errors on first access of new filesystem
-
-The v2/v3 acl code in nfsd is translating any return from fh_verify() to
-nfserr_inval.  This is particularly unfortunate in the case of an
-nfserr_dropit return, which is an internal error meant to indicate to
-callers that this request has been deferred and should just be dropped
-pending the results of an upcall to mountd.
-
-Thanks to Roland <devzero@web.de> for bug report and data collection.
-
-Cc: Roland <devzero@web.de>
-Cc: Andreas Gruenbacher <agruen@suse.de>
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
----
- fs/nfsd/nfs2acl.c |    2 +-
- fs/nfsd/nfs3acl.c |    2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
-
-diff --git a/fs/nfsd/nfs2acl.c b/fs/nfsd/nfs2acl.c
-index bb3e188..d5fca59 100644
---- a/fs/nfsd/nfs2acl.c
-+++ b/fs/nfsd/nfs2acl.c
-@@ -41,7 +41,7 @@ static __be32 nfsacld_proc_getacl(struct svc_rqst * rqstp,
- 
- 	fh = fh_copy(&resp->fh, &argp->fh);
- 	if ((nfserr = fh_verify(rqstp, &resp->fh, 0, MAY_NOP)))
--		RETURN_STATUS(nfserr_inval);
-+		RETURN_STATUS(nfserr);
- 
- 	if (argp->mask & ~(NFS_ACL|NFS_ACLCNT|NFS_DFACL|NFS_DFACLCNT))
- 		RETURN_STATUS(nfserr_inval);
-diff --git a/fs/nfsd/nfs3acl.c b/fs/nfsd/nfs3acl.c
-index 3e3f2de..7cb39e7 100644
---- a/fs/nfsd/nfs3acl.c
-+++ b/fs/nfsd/nfs3acl.c
-@@ -40,7 +40,7 @@ static __be32 nfsd3_proc_getacl(struct svc_rqst * rqstp,
- 		RETURN_STATUS(nfserr_inval);
- 
- 	if (argp->mask & ~(NFS_ACL|NFS_ACLCNT|NFS_DFACL|NFS_DFACLCNT))
--		RETURN_STATUS(nfserr_inval);
-+		RETURN_STATUS(nfserr);
- 	resp->mask = argp->mask;
- 
- 	if (resp->mask & (NFS_ACL|NFS_ACLCNT)) {
--- 
-1.5.3.4.208.gc990
-
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
