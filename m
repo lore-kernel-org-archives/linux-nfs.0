@@ -1,27 +1,26 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 1/8] SUNRPC: Use unsigned string lengths
-	in	xdr_decode_string_inplace
-Date: Fri, 02 Nov 2007 12:58:50 -0400
-Message-ID: <472B574A.9040403@oracle.com>
-References: <20071101205647.5503.42569.stgit@manray.1015granger.net>
-	<18218.24424.760975.221813@notabene.brown>
+Subject: Re: [PATCH nfs-utils 1/3] probe_port should not try
+ other	versions in a version was explicitly given.
+Date: Fri, 02 Nov 2007 13:01:27 -0400
+Message-ID: <472B57E7.2060706@oracle.com>
+References: <1193894817-20622-1-git-send-email-neilb@suse.de>	<1193894817-20622-2-git-send-email-neilb@suse.de>	<4729FEF1.2070903@oracle.com>
+	<18218.34086.347685.663123@notabene.brown>
 Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------020304000904030405070404"
-Cc: bfields@fieldses.org, nfs@lists.sourceforge.net,
-	trond.myklebust@fys.uio.no
+Content-Type: multipart/mixed; boundary="------------060309010606030507030800"
+Cc: nfs@lists.sourceforge.net, Steve Dickson <SteveD@redhat.com>
 To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1InztW-0000VA-Rx
-	for nfs@lists.sourceforge.net; Fri, 02 Nov 2007 10:01:19 -0700
+	id 1Inzus-0000ca-LS
+	for nfs@lists.sourceforge.net; Fri, 02 Nov 2007 10:02:42 -0700
 Received: from agminet01.oracle.com ([141.146.126.228])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Inztb-0003sh-AC
-	for nfs@lists.sourceforge.net; Fri, 02 Nov 2007 10:01:24 -0700
-In-Reply-To: <18218.24424.760975.221813@notabene.brown>
+	(Exim 4.44) id 1Inzuv-0004aY-3J
+	for nfs@lists.sourceforge.net; Fri, 02 Nov 2007 10:02:48 -0700
+In-Reply-To: <18218.34086.347685.663123@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,41 +34,25 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
 This is a multi-part message in MIME format.
---------------020304000904030405070404
+--------------060309010606030507030800
 Content-Type: text/plain; charset=us-ascii; format=flowed
 Content-Transfer-Encoding: 7bit
 
 Neil Brown wrote:
-> Thanks Chuck.
-> This series all:
->    Acked-By: NeilBrown <neilb@suse.de>
+> On Thursday November 1, chuck.lever@oracle.com wrote:
+>> Time to add another case to our list of regression tests.
+>>
 > 
-> Just one question:
-> 
->> diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
->> index fdc5e6d..31bd346 100644
->> --- a/net/sunrpc/xdr.c
->> +++ b/net/sunrpc/xdr.c
->> @@ -93,11 +93,13 @@ xdr_encode_string(__be32 *p, const char *string)
->>  }
->>  
->>  __be32 *
->> -xdr_decode_string_inplace(__be32 *p, char **sp, int *lenp, int maxlen)
->> +xdr_decode_string_inplace(__be32 *p, char **sp,
->> +			  unsigned int *lenp, unsigned int maxlen)
->>  {
->> -	unsigned int	len;
->> +	u32 len;
-> 
-> What is the reason for making this a u32?  You seem to be happy with
-> "unsigned int" everywhere else.
-> 
-> It's not important, but I'm curious.
+> What! What a list of regression tests for nfs-utils (or even NFS in
+> general?).  That would be awesome.
 
-It boils down to documenting exactly what comes off the wire, 
-independent of what the local "unsigned int" is.
+I've started collecting them here:
 
---------------020304000904030405070404
+http://wiki.linux-nfs.org/wiki/index.php/NewMountDesignSpec#Test_Planning
+
+but they are just for mount.nfs at this point.
+
+--------------060309010606030507030800
 Content-Type: text/x-vcard; charset=utf-8;
  name="chuck.lever.vcf"
 Content-Transfer-Encoding: 7bit
@@ -88,7 +71,7 @@ version:2.1
 end:vcard
 
 
---------------020304000904030405070404
+--------------060309010606030507030800
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -99,7 +82,7 @@ This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >> http://get.splunk.com/
---------------020304000904030405070404
+--------------060309010606030507030800
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -109,4 +92,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---------------020304000904030405070404--
+--------------060309010606030507030800--
