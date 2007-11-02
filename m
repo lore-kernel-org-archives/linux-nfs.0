@@ -1,14 +1,14 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: Re: stale nfs file handle with exported loopback mounts
-Date: Fri, 2 Nov 2007 15:23:17 -0400
-Message-ID: <20071102192317.GF15595@fieldses.org>
-References: <2062344196@web.de>
+Date: Fri, 2 Nov 2007 15:24:43 -0400
+Message-ID: <20071102192443.GG15595@fieldses.org>
+References: <2062344196@web.de> <20071102192317.GF15595@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Neil Brown <neilb@suse.de>, NFS@lists.sourceforge.net
 To: devzero@web.de
 Return-path: <nfs-bounces@lists.sourceforge.net>
-In-Reply-To: <2062344196@web.de>
+In-Reply-To: <20071102192317.GF15595@fieldses.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -21,37 +21,42 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Fri, Nov 02, 2007 at 08:06:58PM +0100, devzero@web.de wrote:
-> hi!
+On Fri, Nov 02, 2007 at 03:23:17PM -0400, J. Bruce Fields wrote:
+> On Fri, Nov 02, 2007 at 08:06:58PM +0100, devzero@web.de wrote:
+> > hi!
+> > 
+> > it seems i was having weird mail problems with sending mails trough my webmailer - at least two followups with attachments seem to be lost on sending and are not in my sent folder anymore....
+> > 
+> > anyway - here is a second try, but probably worse than what i have written before :)
+> > 
+> > 
+> > first off, thanks for the patch Neil, things look _much_ better now and exporting loopback mounts now basiscally works again.
+> > nice to see that my posting helped finding bugs.
+> > 
+> > maybe i have two more bugs for you :)
+> > 
+> > i have loopback mounts on the server and exported the parent dir with crossmnt option.
+> > 
+> > after mounting for the first time on the client, i`m getting "Invalid argument" for each loopback-mounted dir, if i do an ls -la on /mnt.
+> > this only happens _once_ and seems to be a server problem, because i can reboot the client and remount , i never see that errors again.
 > 
-> it seems i was having weird mail problems with sending mails trough my webmailer - at least two followups with attachments seem to be lost on sending and are not in my sent folder anymore....
+> >From a quick look at the trace (thanks)--there's some getacl calls that
+> return EINVAL, then a few milliseconds later a second reply returns with
+> the original data.  That looks suspiciously like a reply being sent when
+> the request was also deferred pending the upcall to deal with the newly
+> encountered filesystem.  Sure enough, in
+> fs/nfs/nfs3acl.c:nfsd3_proc_getacl(), there's
 > 
-> anyway - here is a second try, but probably worse than what i have written before :)
+> 	 if ((nfserr = fh_verify(rqstp, &resp->fh, 0, MAY_NOP)))
+> 		RETURN_STATUS(nfserr_inval);
 > 
-> 
-> first off, thanks for the patch Neil, things look _much_ better now and exporting loopback mounts now basiscally works again.
-> nice to see that my posting helped finding bugs.
-> 
-> maybe i have two more bugs for you :)
-> 
-> i have loopback mounts on the server and exported the parent dir with crossmnt option.
-> 
-> after mounting for the first time on the client, i`m getting "Invalid argument" for each loopback-mounted dir, if i do an ls -la on /mnt.
-> this only happens _once_ and seems to be a server problem, because i can reboot the client and remount , i never see that errors again.
+> Change that nfserr_inval to an nfserr (here and in
+> fs/nfs/nfs2acl.c:nfsd_proc_getacl()), and maybe the problem will go
+> away.
 
->From a quick look at the trace (thanks)--there's some getacl calls that
-return EINVAL, then a few milliseconds later a second reply returns with
-the original data.  That looks suspiciously like a reply being sent when
-the request was also deferred pending the upcall to deal with the newly
-encountered filesystem.  Sure enough, in
-fs/nfs/nfs3acl.c:nfsd3_proc_getacl(), there's
-
-	 if ((nfserr = fh_verify(rqstp, &resp->fh, 0, MAY_NOP)))
-		RETURN_STATUS(nfserr_inval);
-
-Change that nfserr_inval to an nfserr (here and in
-fs/nfs/nfs2acl.c:nfsd_proc_getacl()), and maybe the problem will go
-away.
+(I've been seeing some odd spurious replayed replies in the nfsv4 case
+as well, by the way--I suspect it's a similar problem, but haven't had
+the chance to track it down yet....)
 
 --b.
 
