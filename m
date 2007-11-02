@@ -1,12 +1,15 @@
-From: devzero@web.de
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: Re: stale nfs file handle with exported loopback mounts
-Date: Fri, 02 Nov 2007 20:37:12 +0100
-Message-ID: <2062533683@web.de>
+Date: Fri, 2 Nov 2007 15:42:25 -0400
+Message-ID: <20071102194225.GH15595@fieldses.org>
+References: <2062533683@web.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-15"
-Cc: Neil Brown <neilb@suse.de>, NFS@lists.sourceforge.net
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset="us-ascii"
+Cc: Neil Brown <neilb@suse.de>, NFS@lists.sourceforge.net,
+	Andreas Gruenbacher <agruen@suse.de>
+To: devzero@web.de
 Return-path: <nfs-bounces@lists.sourceforge.net>
+In-Reply-To: <2062533683@web.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -19,102 +22,69 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-so, you mean this is a problem of the client or some "fix it at the client =
-end" ?
+On Fri, Nov 02, 2007 at 08:37:12PM +0100, devzero@web.de wrote:
+> so, you mean this is a problem of the client or some "fix it at the
+> client end" ?
+> 
+> that would be bad, since it would mean i need to touch all our linux
+> systems which want to access our next-generation :) cd-rom server.... 
 
-that would be bad, since it would mean i need to touch all our linux system=
-s which want to access our next-generation :) cd-rom server.... =
+No, it's definitely a server-side problem.  Oh, I see, I miswrote the
+path; I meant fs/nfsd/nfs3acl.c, not fs/nfs/nfs3acl.c....
 
+How about this?
 
-anyway =
+--b.
 
+>From 7fc982f90d404003329934ae3b786c5e4efb0c0a Mon Sep 17 00:00:00 2001
+From: J. Bruce Fields <bfields@citi.umich.edu>
+Date: Fri, 2 Nov 2007 15:36:08 -0400
+Subject: [PATCH] knfsd: fix spurious EINVAL errors on first access of new filesystem
 
-> > > after mounting for the first time on the client, i`m getting "Invalid=
- argument" for each loopback-mounted dir, if i do an ls -la on /mnt.
-> > > this only happens _once_ and seems to be a server problem, because i =
-can reboot the client and remount , i never see that errors again.
+The v2/v3 acl code in nfsd is translating any return from fh_verify() to
+nfserr_inval.  This is particularly unfortunate in the case of an
+nfserr_dropit return, which is an internal error meant to indicate to
+callers that this request has been deferred and should just be dropped
+pending the results of an upcall to mountd.
 
-wondering, why doesn`t it happen again, even if i reboot the client.....
+Thanks to Roland <devzero@web.de> for bug report and data collection.
 
-regards
-roland
+Cc: Roland <devzero@web.de>
+Cc: Andreas Gruenbacher <agruen@suse.de>
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+---
+ fs/nfsd/nfs2acl.c |    2 +-
+ fs/nfsd/nfs3acl.c |    2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-
-
-> -----Urspr=FCngliche Nachricht-----
-> Von: "J. Bruce Fields" <bfields@fieldses.org>
-> Gesendet: 02.11.07 20:24:52
-> An: devzero@web.de
-> CC: Neil Brown <neilb@suse.de>, NFS@lists.sourceforge.net
-> Betreff: Re: [NFS] stale nfs file handle with exported loopback mounts
-
-
-> =
-
-> On Fri, Nov 02, 2007 at 03:23:17PM -0400, J. Bruce Fields wrote:
-> > On Fri, Nov 02, 2007 at 08:06:58PM +0100, devzero@web.de wrote:
-> > > hi!
-> > > =
-
-> > > it seems i was having weird mail problems with sending mails trough m=
-y webmailer - at least two followups with attachments seem to be lost on se=
-nding and are not in my sent folder anymore....
-> > > =
-
-> > > anyway - here is a second try, but probably worse than what i have wr=
-itten before :)
-> > > =
-
-> > > =
-
-> > > first off, thanks for the patch Neil, things look _much_ better now a=
-nd exporting loopback mounts now basiscally works again.
-> > > nice to see that my posting helped finding bugs.
-> > > =
-
-> > > maybe i have two more bugs for you :)
-> > > =
-
-> > > i have loopback mounts on the server and exported the parent dir with=
- crossmnt option.
-> > > =
-
-> > > after mounting for the first time on the client, i`m getting "Invalid=
- argument" for each loopback-mounted dir, if i do an ls -la on /mnt.
-> > > this only happens _once_ and seems to be a server problem, because i =
-can reboot the client and remount , i never see that errors again.
-> > =
-
-> > >From a quick look at the trace (thanks)--there's some getacl calls that
-> > return EINVAL, then a few milliseconds later a second reply returns with
-> > the original data.  That looks suspiciously like a reply being sent when
-> > the request was also deferred pending the upcall to deal with the newly
-> > encountered filesystem.  Sure enough, in
-> > fs/nfs/nfs3acl.c:nfsd3_proc_getacl(), there's
-> > =
-
-> > 	 if ((nfserr =3D fh_verify(rqstp, &resp->fh, 0, MAY_NOP)))
-> > 		RETURN_STATUS(nfserr_inval);
-> > =
-
-> > Change that nfserr_inval to an nfserr (here and in
-> > fs/nfs/nfs2acl.c:nfsd_proc_getacl()), and maybe the problem will go
-> > away.
-> =
-
-> (I've been seeing some odd spurious replayed replies in the nfsv4 case
-> as well, by the way--I suspect it's a similar problem, but haven't had
-> the chance to track it down yet....)
-> =
-
-> --b.
-> =
-
-
-
-_____________________________________________________________________
-Der WEB.DE SmartSurfer hilft bis zu 70% Ihrer Onlinekosten zu sparen!
-http://smartsurfer.web.de/?mc=3D100071&distributionid=3D000000000066
+diff --git a/fs/nfsd/nfs2acl.c b/fs/nfsd/nfs2acl.c
+index bb3e188..d5fca59 100644
+--- a/fs/nfsd/nfs2acl.c
++++ b/fs/nfsd/nfs2acl.c
+@@ -41,7 +41,7 @@ static __be32 nfsacld_proc_getacl(struct svc_rqst * rqstp,
+ 
+ 	fh = fh_copy(&resp->fh, &argp->fh);
+ 	if ((nfserr = fh_verify(rqstp, &resp->fh, 0, MAY_NOP)))
+-		RETURN_STATUS(nfserr_inval);
++		RETURN_STATUS(nfserr);
+ 
+ 	if (argp->mask & ~(NFS_ACL|NFS_ACLCNT|NFS_DFACL|NFS_DFACLCNT))
+ 		RETURN_STATUS(nfserr_inval);
+diff --git a/fs/nfsd/nfs3acl.c b/fs/nfsd/nfs3acl.c
+index 3e3f2de..7cb39e7 100644
+--- a/fs/nfsd/nfs3acl.c
++++ b/fs/nfsd/nfs3acl.c
+@@ -40,7 +40,7 @@ static __be32 nfsd3_proc_getacl(struct svc_rqst * rqstp,
+ 		RETURN_STATUS(nfserr_inval);
+ 
+ 	if (argp->mask & ~(NFS_ACL|NFS_ACLCNT|NFS_DFACL|NFS_DFACLCNT))
+-		RETURN_STATUS(nfserr_inval);
++		RETURN_STATUS(nfserr);
+ 	resp->mask = argp->mask;
+ 
+ 	if (resp->mask & (NFS_ACL|NFS_ACLCNT)) {
+-- 
+1.5.3.4.208.gc990
 
 
 -------------------------------------------------------------------------
