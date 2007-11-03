@@ -1,24 +1,19 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 0/8] XDR strings use an unsigned length
-Date: Fri, 2 Nov 2007 18:06:07 -0400
-Message-ID: <20071102220607.GO15595@fieldses.org>
-References: <20071101205057.5503.90636.stgit@manray.1015granger.net>
+From: "Bvuej" <dhlptxa@aps.jahpul.com>
+Subject: =?GB2312?B?W7f+INewoaLQrCDDsSDG8yDStSC42iDOuyC/vCC6yyC8sCDQvSCz6l05NzIy?=
+Date: Sat, 3 Nov 2007 15:02:26 +0800
+Message-ID: <E1IoD1h-0000W8-Cp@mail.sourceforge.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: neilb@suse.de, nfs@lists.sourceforge.net,
-	trond.myklebust@fys.uio.no
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: multipart/mixed; boundary="===============2050643829=="
+To: "nfs" <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Io4eh-0005sV-ON
-	for nfs@lists.sourceforge.net; Fri, 02 Nov 2007 15:06:23 -0700
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Io4em-0006Hr-Rx
-	for nfs@lists.sourceforge.net; Fri, 02 Nov 2007 15:06:25 -0700
-In-Reply-To: <20071101205057.5503.90636.stgit@manray.1015granger.net>
+	id 1IoD1c-0003Hw-J8
+	for nfs@lists.sourceforge.net; Sat, 03 Nov 2007 00:02:36 -0700
+Received: from aps.jahpul.com ([205.150.254.10])
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1IoD1h-0000W8-Cp
+	for nfs@lists.sourceforge.net; Sat, 03 Nov 2007 00:02:38 -0700
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,43 +26,204 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, Nov 01, 2007 at 04:56:41PM -0400, Chuck Lever wrote:
-> Hi Trond, Neil, Bruce...
-> 
-> The following patch series replaces
-> 
->    [PATCH 06/27] SUNRPC: Fix xdr_decode_string_inplace() argument signage
-> 
-> which I posted last week.
-> 
-> XDR variable length strings use an unsigned length.  This patch series
-> offers a series of clean ups to make the treatment of file names and path
-> names in the NFS and NLM server consistent with the XDR specification and
-> other areas of the NFS client.
+--===============2050643829==
+Content-Type: text/plain
+Content-Transfer-Encoding: base64
 
-I guess I'm a little worried about these patches.
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tDQoNCsjnILK7INDoINKqIM/gILnYINDFIM+iIMfrILvYILi0IM3LILaoINPKIM/ko7py
+dXl0b3N3cWVAMTYzLmNvbQ0KDQotLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCg0KICANCiAgICC3/iDXsKGi0Kwgw7EgwOAgxvMg
+0rUgvqsgz7ggu68gyfogsvogwfcgs8wgueYgt7YgudwgwO0gDQoNCg0KLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQoNCiAgICAy
+MCAwNyDE6iAxMSDUwiAgOS0tMTAgyNUgIMnPILqjIC0tIL3wIMuuIM3lILTzIL7GILXqIA0KIA0K
+ICAgIDIwIDA3IMTqIDExINTCIDE2LS0xNyDI1SAgueMg1t0gLS0guv4gsfUgsfYgud0gDQoNCi0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLQ0KDQrKyi26zy221C3P86O6DQoNCrf+INewoaLQrCDDsSC8sCDP4CC52CDG8yDStSDJ+iCy
++iDX3CC84KGivq0gwO2horOnILOkoaKztSC85CDW9yANCrncoaKw4CDX6SCzpKGiyfogsvogxrcg
+1sogvfggtsgguPogtaUgUSBDoaLA7SC1pSDUsaGivdMgtaUg0rUgzvEgDQq4+iC1pSDUsaGiw+Yg
+uKggwc8gsskguboguPogtaUg1LEgtcgg1tAguN8gsuMgudwgwO0gyMsg1LGhoyANCg0KDQotLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0NCg0K0bXBt7W8yqajug0KDQogIMnyz8jJ+i0tLbn6xNrOqNK71eu21Lf+17ChotCsw7HG89K1
+xvPStdXvts+6zcXg0bW1xLncwO3XqLzSoaMgDQoNCi0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ0KDQrRtSDBtyCxsyC+sKO6IA0K
+DQoNCrWxx7C3/tewoaLQrMOxwODG89K1yfqy+rncwO2yu8G8z9bP8zoNCg0KMS4gtNOw4Nfps6Sh
+otb3udy1vbOns6S21Mn6svq5pNLV0qrH87TTsrvJ7sjr1MS2wbfWzvajrNfcysfKx7auDQq3x7au
+o6y21Mn6svq9+LbI19zKx7/azbfLtcu1o6zIsbemw/fPuLXEvt/M5bzGu66jrNf2tuDJ2cvjtuDJ
+2aGjDQqhsL6hwb/Xpb30obGhsLLusru24KGxobCyu7/JxNyhsaGwztLSssO709Cw7LeoobGzo7Oj
+udLU2tfssd/X986qDQrIzs7xzeqyu7PJtcTA7dPJoaMNCg0KMi4gsODX6bOkxrfWytLiyray7qOs
+wunEvte3x/Oy+sG/o6yyu7+qsvrHsLfWzva74crCx7DXvLG4vNPHv7/YDQrWxqOsw7+0ztfcyse1
+yM7KzOKz9s/WuvPIpbK5vsijrMO/zOzDptPaobC+yLvwobG5pNf3oaO5pNf3zt7Qp8LKo6wNCrSm
+wO3Oyszizt694bn7o6y0087e1ve2r7vYsai5pNf3tcS6w8+wud+how0KDQozLiC+rcDtoaKzp7Ok
+1ru74c/CtO/Izs7xo6y21Mjnus7V/ci31ri1vNSxuaTKtbzKstnX97K71/a31s720dANCr6/o6zP
+1rOhtKbA7c7KzOLX3MrHsruzubXXoaKyu7n7ts+ho9f2tb3Ex8Dvz+u1vcTHwO+jrLj5sb7Du9PQ
+08MNCtX9yLe1xLe9t6jIpdf21f3It7XEysKhow0KDQo0LiC52Lz8yrG/zLOns6ShorO1vOTW97nc
+yLG3ptb3tq/Q1Lywz9azoc2zs++hotfp1q/WuLvTxNzBpqOsDQrDv7TOs/a79dfcysfDpqGiwtKh
+orLuoaK07aGjDQoNCjUuIMa31sqz9sHLzsrM4rK7ysfPyL3ivvbOqr/so6y2+MrH1Nqw7LmrytLX
+t76/ttTWpKGis7bGpKGi1PC51qGiDQrC7sjLoaLM07Hcus3NxtP51PDIzqGjDQoNCjYuILK/w8XW
+rrzkzcW94dCt1/fS4sq2su6jrNfcysfS1NfUztLOqtbQ0MSjrLK7ucu0877Wo6y007K71ve2rw0K
+0+vL+8jLubXNqNCt1/ejrNDE0NjPwdWttcTJ9dbBuPi5pNf3yei2qNfowaahow0KDQo3LiC087bg
+yv2ztbzk1ve53KGi1+mzpM2os6PPsru2vbKjuqGwztK4+sv7y7W5/cHLobGhsNXmwum3s6GxDQqh
+sLLusru24L7N0NDBy6Gxsru4utTwyM61xLuwoaPGt9bKtdrSu7XE0uLKtsqut9bHs6GjDQoNCjgu
+ILOns6Shotb3udyhotfps6TIsbems8mxvrrLy+Ohosr919ahorrNse248bnmt7a53MDttcS4xcTu
+o6y00w0KsrvX9rnmt7a1xM/Ws6G8x8K8o6y21MH3wb+007K71qrI57rOv9jWxqOsu/3RubTzwb+w
+67PJxrez9rK7wcsNCrPJxrejrNfuuvPSu7TOvbu687XAtPPBv7vY0N6how0KDQo5LiCyv8PF1q68
+5Lmk1/eyu9CttfejrLjazrvWsNTwsrvH5aOsw7/M7Lmk1/fO3rzGu66hotDQtq/O3sS/seqhog0K
+stnX97mkyLG3ptTwyM640KGj0rXO8dSxoaKyybm61LGhory8yvXUscjL0+vIy9auoaKyv8PF1q68
+5Mixt6a5tQ0Kzai6zczWwtujrNfcyse5tNDEtre9x6GiwK2w773hxcmjrM/7vKu1obmko6zTsM/s
+zcW94aGjDQoNCjEwLiDP1rOhyfqy+sH3s8y53MDtsru55re2o6yzzNDyu+zC0s7ez8i686Os1+mz
+pLK7u+HQtLmk0PKhorLiuaQNCsqxo6y8xrz+uaS827K7us/A7aOs1OyzydSxuaTH6dD3u6+ho8O/
+tb3UwtbVt6K5pNfK19zT0NSxuaTE1rW9sOwNCrmrytK78tXSwM+w5c22y9+how0KDQoxMS7J+rL6
+uaTS1dfKwc+x4NC0uPHKvbzIsrux6te8u6/T1rK7uea3treit8WjrMqyw7TXysHPuMO3orj4y62j
+vw0Ky63J87rLo7/Xqr27uPjLraO/yOe6zrTmtbWx4LrF17C2qbXItcijrL+0yc/IpdfcysfC0tTj
+1OOjrNKq0bANCtK7t93XysHPuPzKx8TRyc/E0aGjv83Iy9Hpu/XKscn11sHBrNH50sK2vLvh1dKy
+u7W9oaMNCg0KMTIuIMPmuKjBz7LJubrO3r7fzOW8xruuo6y4+r34srvBpqOsuMO1vbXEw7u1vaOs
+sru4w7W9tcTPyLW9o6wNCtHP1tjTsM/syfqy+rK/w8W9+LbIus29u8baoaOy1r/it6K3xcqxytbQ
++LK7x+WjrLncwO3WxrbIsru9qMiro6wNCr6ts6PIsbz+ydnK/aGisrnK/aOsyfXWwbeitO24qMHP
+1OyzydHP1tjL8MqnoaMNCg0KMTMusr/Dxdb3udzIsbem0c+48bXE1+nWr7zNwsnQ1KOs1K3U8tDU
+srvHv6Os1rTQ0MGmsru5u6Os19TJ7Q0KtcTWsNK1tcC1wsvY0fi6zbCuuNq+tNK1tcTMrLbIvs3T
+0M7KzOKjrLj8zLiyu8nPyKW9zNP9z8LK9KGjDQoNCjE0LiDUsbmkyaLC/qOsvq2zo8frvNmjrLmk
+1/fQp8LKtc3PwqOs1fvM7LGn1Lm5pNfKtc2jrMjL1LHB97avDQrGtbexo6yztbzk19zKx7W9zrLG
+2rTzwb+9u7v1tb2687XAo6zRz9bYt7XQ3s7eyMvOyr3yo6zX7rrzzajP/A0K0rKyu8TcsLTKsb27
+u/WjrNTss8m/zbunzbbL36Giv9XUy6Giv9u/7qGjDQoNCjE1LiDN4reiuPq1pdSxzt7Q8rLZ1/ej
+rL6ts6O3orTtwc+jrNPrvNO5pLOns7bGpKOsudjPtb301cWho9bKDQrBv7/Y1sa4/MrH0rvNt87t
+y66jrLOj09C0+L/us/a79bXEysK8/reiyfqhow0KDQoxNi4guN+y48HstbzIsbem1fvM5bnmu67E
+3MGmus3X6davvczT/cTcwaajrNSxuaS2087p1fvM5cvY1sq9zA0K0/2hory8xNzF4NG1tcTBprbI
+sru5u8nuyOujrNK7uPbIsbemxvPStc7Eu6+1xMbz0rW+zbXI09rDu9PQDQrB6bvqo6zSsr7NuPzM
+uLK7yc/E/b7bwaa6zdbSs8+2yKGjDQqhoaGh0tTJz8quwfm49re9w+a3tNOzwcu3/tewoaLQrMOx
+wODG89K1xL/HsLXExNqyv7ncwO3P1te0o6wNCtKquMSx5L7NsdjQ6Lrcz8K+9tDEo6y008zhuN/I
+y7XEy9jWyr+qyryjrM2ouf3V67bU0NS1xMXg0bXAtA0KuMSx5LPCvsm1xMu8zqzEo8q9us2528Tu
+o6yyu7bPvdPK3NDCtcS53MDtwO3E7qGjDQoNCi0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ0KDQrF4KGh0bWhocTaoaHI3aGhvPKh
+ob3po7qhoSANCg0KDQq12tK7vbKjurf+17ChotCsw7G+q9Lmyfqy+sH3s8y55re2udzA7bv5tKEN
+Cr6rz7i7r8n6svq1xMzY1fe6zdf308PKx8qyw7Sjvw0K0ruhosbz0rXI57rO08W7r9fp1q+83Lm5
+o78NCrb+oaK+q8+4u6+53MDtLS0tLS0ttNO/xtGnuea3tsH3s8y/qsq8o78gDQoxLr6t06rLvMK3
+yOe6ztX9yLe2qM67o78NCjIuINOyILz+o7ogyOe6zrj5vt2y+sa3veG5uaOsv8bRp8Xk1sa6zbDa
+t8XJ6LG4o6zM4bjf0KfCyqO/DQozLiDI7SC8/qO6yOe6zsnovMa/xtGntcTJ+rL6stnX97ncwO3B
+97PMo79bwfezzLHtXSANCsj9oaLI57rOz7i7r7j3sr/DxaGiuNrOu7XEstnX97PM0PKjvw0KMS4g
+uea3ts/Ws6Gy2df3s8zQ8rXE1tjSqtf308Ojvw0KMi4guPeyv8PFstnX97PM0PLP6r3io79b0d3K
+vl0NCjMuILnmt7a53MDtzbyx7c7EtbWjrLHj09rR6bOnyfO6y6O/DQoNCrXatv69sqO6t/7XsKGi
+0KzDscbz0rW42s67v7y6y7yw0L2z6rfWxeS7+tbGyei2qA0Ky8Shoryo0Ke/vLrLyOe6ztPruNrO
+u9awxNy50rmzo78NCjEuILjazrvKpMjOxNzBpsSj0M21xL2owaKjvw0KMi4gyMvQ1Luvv7y6y9bG
+tsjT67jazrvWsMTcudK5s6O/DQozLiC8qNCnudzA7S0tLS3I57rOtr21vLrN1rTQ0NbGtsijvw0K
+zuWhosjnus7J6Laovt+8pMD4uabQp7XEvMa8/tC9s+q7+tbGo78NCjEuIMjnus6/xtGn1+m9qLTu
+xeSw4Nfps8nUsaO/DQoyLiDI57rOyei8xrykwPjQzbXEvMa8/rmk18rM5c+1o6zNuMP3oaK5q7+q
+vrrV+aO/DQozLiDI57rOv8bRp7Lwt9a5pNDyus2y4raouaS826O/DQo0LiDI57rOsNHO1bmkvNvU
+2tSxuaTQxMDtyc+1xMa9uuK146O/DQoNCrXayP29sqO6t/7XsKGi0KzDscbz0rXI57rOx7+7r8/W
+s6Gy2df3udzA7by8xNyjvw0KwfmhotfKwc+4+rWl1LGhorLJubq4+rWl1LHT67y8yvW53MDtyOe6
+ztCttffF5LrPo78NCjEuINfKwc/UsaGissm5urj6taXUsdPrvLzK9cjnus7QrbX3xeS6z8zhuN/Q
+p8LKo78NCjIuINbGsOWhorTy0fnHsMjnus7T67/Nu6fT0NCnubXNqL21tc2358/Vs8mxvqO/DQoz
+LiDWvdH5us3R+bDlserXvLuvstnX99Kqx/Ojvw0KNC4gtPLR+bmktcTX99PDus25psTcysfKssO0
+o7/I57rOstnX96O/DQo1LiDI57rOv8bRp7Hg0LS087v1yfqy+rmk0tW1paO/DQo2LiDWyrzsv8a1
+xNawxNzI57rOyei2qKO/DQrG36GissO89KGit+zWxsn6svqztbzkuaTQ8rfWzvYtLS3WysG/oaKy
++sG/obDSu7z9y6u18aGxDQoxLrLDtLLI57rO1/a6w7L6x7C31s72vLDWsMTct9a5pKO/DQoyLiCy
+w7SyyOe6ztPrs7W85MXkus+9tbXNy/C6xKOst/7O8bW9zrujvw0KMy637NbGyOe6zr340NBJRbmk
+0PKhormkyrG31s72us2y2df3t723qLfWzvajvw0KNC4gsvrHsLfWzva1xNKqtePT0MTE0KmjvyAN
+CjUuILLZ1/fK1srGuea3trXE0qq146O/DQo2LiDI57rO1MvTw7av1/e31s721K3U8rG21Pa5pNf3
+0KfCyqO/DQo3LiDGt9bKvOC/2LXEyq7Su7j21tjSqrK9vtu6zbe9t6ijvw0KOC4g1+mzpKGivOzR
+6aGiytW3osjnus7QrbX3xeS6z6O/DQo5LiDX6bOkz9azoba9tby1xMvEsr3W6KO/DQoxMC4gyfqy
++rOns6ShotbKvOy4+rWloaKztbzk1vfIzs/Ws6HI57rOtr21vKO/DQoxMS4gyOe6zsi3tqjI1bL6
+1rix6qO/DQoxMi4gyOe6zsXFyfqy+rzGu669+LbIse2jvw0KMTMuIMjnus7WxraouPbIy8S/seq2
+qLbuvPXH4bP2u/XRucGmo78NCjE0LiDI57rOv9jWxtOhoaLQ5buooaKzydLCyL7Jq6Giz7TLrsa3
+1sqjvw0KMTUuIMjnus6/7MvZ0bXBt9DC1LG5pKOszOHJ/cDP1LG5pLXEstnX97y8xNyjvw0KsMuh
+orrOvqvQxLLfu66hsLD817DDwMjdobHIw7/Nu6fC+tLiDQoxLiDI57rO1/a6w7rz1fvA7bL6x7C5
+pNDyt9bO9qO/DQoyLiDI57rO0bXBt9SxuaS55re2stnX98zhuN/Gt9bKvfi2yKO/DQozLiDI57rO
+zbPSu8a31sq87NHpserXvKO/DQo0LiDI57rOv9jWxrPJxrehoriowc+1xMvwusShosi3saOz9tTL
+yv3XvMi3o78NCjUuIL30vLGz9rv11ve53Mjnus7P1rOh1ri706O/DQo2LiDF482sv827p9Hpu/W1
+xLy8x8mhorLfwtSjvyANCr7FoaLN4reivNO5pLnmt7ay2df3wfezzLywxre/2Ly8xNwNCjEuIMjn
+us6998n30aHU8bzTuaS1pc67o78NCjIuIMjnus7T67zTuaS1pc6709DQp7m1zaijvw0KMy4gyOe6
+zrj6vfjN4reiw+a4qMHPo6y/2NbGy/DKp6O/DQo0LiDI57rO09DQp7/Y1sa37NbGxrfWyqOsvLDK
+sb3ivvbOyszio78NCjUuIMjnus64+r34uvPV+8H3s8yjrL/Y1sbGt9bKus29+LbIo6zK/b7d17zI
+t6O/DQo2LiDI57rO1/a6w8rVzrK5pNf3o78NCsquoaK3/tewoaLQrMOxxvPStc/Ws6E1U7ncwO0N
+CjEuIM7Sw8fKx8qyw7TR+bXExvPStQ0KMi4gNVPKx8qyw7QNCjMuIMq1yqk1U7rDtKYNCjQuIMjn
+us7NxtDQNVMNCjUuIDVTzcbQ0LK91ugxMbeoDQo2LiA1U83G0NCwy7Tz0qq+9g0KDQq12svEvbKj
+urf+17ChotCsw7HG89K1yfqy+s/Ws6G53MDt1d+53MDty9jWyszhyf0NCsqu0ruhosjnus7F4NH4
+uaTX99TwyM640A0KMS4g1PDIzrjQtcS2qNLlvLCx7c/W0M7KvQ0KMi4gxeDR+MX6xdDQ1Mu8v7zO
+yszio6y5tc2ovLC6z9f3xNzBpg0KMy4g0ae74dPQ0Ke31sXkyrG85KOsvOGz1rPM0PK7r7LZ1/fU
+rdTyDQo0LiC/7MvZ0afPsNDC1qrKtqOsycbT2rS00MK6zdOmseQNCjUuIMnG09rLvL+819y94aOs
+0fizybzHwrzJ+rL6uf2zzLXEz7C53w0KNi4gxeDR+Lu7zrvLvL+8us3Qzs/zse3K9rXExNzBpg0K
+Ny4gsNGhsNXmwum3s6GxobCyu7/JxNyhsaGwsu6yu7bgobG008jLyfq1xNfWteTW0LP9yKUNCjgu
+INLUysLKtc6q0sC+3aOssrvS1MaruMXIqw0Kyq62/qGiyOe6ztf20ru49sTcyMPUsbmk0MW3/rXE
+1ve53A0KMS6yu7bPzOHJ/dfUvLq1xLy8yvXWuLW8stnX98uuxr2jrNGnz7DQwtaqyrYNCjIuIMXg
+0fjX1NDFoaLX9sfp0Pe6zcqxvOS1xNb3yMsNCjMuIMXg0fjT79HUse2078TcwaajrMXg0bXUsbmk
+ubLNrLPJs6QNCjQuINfw1ti52NDEz8LK9KOsuNLT2rPQtaPU8MjODQo1LiC5q8a9oaK5q9X9oaK5
+q7+qtKbKws6qyMsNCjYuINPQ1ve8+7n7ts+jrNfp1q/WuLvTxNzBpse/DQrKrsj9oaLP1rOhudzA
+7bn9s8zW0LHY0Ou+37G4tcS8uNbWxNzBpg0KMS4gzbfE1Lfnsam3qC0tLdPD1f3It7XEyMu6zdX9
+yLe1xLe9t6jX9tX9yLe1xMrCDQoyLiDUpLLixNzBpi0tLdSkt8Cy2df3yqfO87XEy6uxo8/VDQoz
+LiC0tNTs0NTLvM6sxNzBpqOs1Nq52Lz8yrG/zLeiu9PSu8H3y67GvQ0KNC4gudzA7dXfyOe6zi0t
+LcPu08O5xMD4o6y8pLeix7HE3A0KNS4g1ve2r9PrzcW209Ct1/ehor/sy9m3tNOmoaK5+7bPveK+
+9s7KzOK1xMTcwaYNCjYuIMnG09q3os/WzsrM4r3ivva8sMqxo6y40tPas9C1o9TwyM61xMTcwaYN
+CjcuIL30vLGz9rv1yrHP1rOh1+nWr9a4u9OhorrF1dnBpg0KOC7B6bvu1MvTw1BEQ0HB97PMveK+
+9s7KzOINCsquy8ShosTjz+vX9tK7uPazybmmtcS53MDt1d/C8KO/DQoxLiDG89K1udzA7dXftcTK
+rs/uxre1wg0KMi4gxvPStbncwO3V37XEyq7LxM/uxNzBpg0KDQoNCi0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ0KDQogICDJ8sDP
+yqYtLS3Kx9K7zru008rCt8TWr7f+17ChotCsw7HG89K1vqvS5sn6svq53MDtvLzE3MXg0bWhog0K
+yfqy+s/fudzA7cjLssW8vMTcxeDRtaOoyfqy+r6twO2hosn6svqzp7OkoaKztbzk1ve53KGisODX
+6bOkoaLJ+g0KsvrGt9bKvfi2yLj6taVRQ6GiwO21pdSxoaK907Wl0rXO8bj6taXUsaGiw+a4qMHP
+ssm5urj6taXUsaOpoaLUsQ0KuaS42sewxeDRtaGit8TWr7f+17ChotCsw7HG89K1wfezzLjE1OzP
+7sS/18nRr6Git/7XsMa3xcazwsHQxeDRtaGiDQq3/tewxrfFxs/6ytu5tc2ovLzHycXg0bWhotDC
+s6e3v7nmu66yvL7Wyei8xrXI16jStdDUutzHv7XEudzA7dfJDQrRr8qmus3F4NG1vbLKpqOs0rLK
+x8S/x7C5+sTazqjSu9XrttS3xNavt/7XsKGi0KzDscbz0rXV77bPus3F4NG1DQq1xLncwO3XydGv
+16i80qGjDQqhocnywM/Kpi0tLTE5ODfE6sTPz8LJ7tvao6zPyLrzyM7J7tvao6jP47jbyc/K0Lmr
+y76jqbTvwPu8r83F1sYNCtLCs6dRQ6Giyfqy+tb3udyhorOns6TWsM67o7vP47jbuuPBprfE1q/G
+t9bG0sK8r83Fyfqy+rOns6Shosn6svoNCr6twO3Wrtawo6i1o8jOs6ezpMbavOTH19fU1+nWr7rN
+s++9qMHLtO/A+7mrw/ezp7rNtO/A+9K7t9azp6GiuuMNCsGmwfm31rOno6mju8jVsb7Swev41tLW
+6sq9u+HJ57nj1t231rmry763/tewwfezzLncwO3J6LzG19y84KGiz9YNCrOhstnX98H3s8y2vbW8
+o6i4utTwyKu5+s7lyq624LzSt/7XsMn6svrG89K1wfezzLncwO3F4NG1us28vMr11rgNCrW8o6mj
+u8nu29rA9r6n1sbSwryvzcXJ+rL6vq3A7aGixrfFxtOqz/qy37uu19y84LzmxNrRtb2yyqaju8/j
+uNsNCsfIsO63/srO09DP3rmry77X3L6twO21yNawoaMNCqGhyfLAz8qm07XT0LfhuLu1xMq11b25
+3MDtvq3R6brNvOHKtbXEvLzK9da4tby5prXXo6zF4NH4wcvSu7TzxfoNCtPF0OO1xMbz0rW53MDt
+yMuyxbrNz/rK276r06KjrMS/x7C31rK81NrJ7tvaoaK547aroaK9rdXjtdjH+LTz1tANCtDNt/7X
+sMbz0rWhow0KICDJ8sDPyqa1xL/Os8zU2rnjtquhor2t1eO12Mf4tcTN4sOzt/7XsKGixrfFxrf+
+17ChorzSvtPTw8a3oaLQrA0Kw7Ghos/ksPyhosTa0sKhorfE1q+hosLD087Tw8a3tcjJ+rL60M3G
+89K1tcO1vdK71sLIz82so6y+39PQ0ru2qA0KtcTTsM/swaajocXg0bWw4Nfps6TS1MnPudzA7cjL
+ssU1MDAwtuDIy7TOoaPU2rnjtquhosnu29qhor2t1eO3/g0K17DJ+rL6u/m12Nb3sOy5q7+qv86z
+zLDLyq624LOhtM6hozIwMDXE6rG71f3KvcrcxrjOqtbQufq5+rzKvbvB9w0KtNm9+Lvhz+O427fW
+u+HA7crCo7vP47jbt/7XsMnMu+G74dSxoaPP47jbyfqy+sGmtNm9+L7Wo7vP47jb1sbSwg0K0rXR
+tcG3vtbJ+rL6udzA7b/Os8y437y2vbLKpqO7z+O427n6vMrKsdew0afUur/N1/m9zMraoaOhoSAN
+Cg0KLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0NCg0KofEgu+EgzvEgsaggw/sNCiANCjEuILvhIM7xINfpINavo7ogssUgvq0g
+1tAgufoNCiANCjIuILfRICAgICAgINPDo7ogMiAwIDAgMCDUqi8gyMsgKLqsxeDRtbfRoaLO57LN
+t9GhotfKwc+30bXIKQ0KIA0KMy4gtecgICAgICAgu7CjuiAwNyA1NS0yIDggNSA4IDUyIDMgNSAg
+tKsg1eajujAgNyA1IDUtMiA4IDUgOCA1MiA1MA0KIA0KNC4gsaggw/sgt70gyr06ICC157uwtce8
+xy0tPrSr1ebIt8jPLS0+t6Kz9rvhzvHIt8jPuq8tLT7XqtXKsajD+w0KDQotLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ0KDQqo
+iKiIqIioiKiIqIioiKiIIMXgING1ILvYINa0ILHtIKOotMux7bi01sbT0NCno6moiKiIqIioiKiI
+qIioiKiIDQqhoaGhoaGhoaGhoaGhoaGhoaENCiAgICAgICAgICAgICAgICC0q9Xm1sGjujAgNyA1
+IDUtLTIgOCA1IDggNSAyIDUgMA0KDQrO0rWlzru5sqPfo9+j3yDIy7Gow/uyzrzTIKG2t/4g17Ch
+otCsIMOxIMDgIMbzINK1IL6rIM+4ILuvIMn6ILL6IA0Kwfcgs8wgueYgt7YgudwgwO2htw0KDQq1
+pc67w/uzxqO6o9+j36Pfo9+j36Pfo9+j36Pfo9+j36Pfo9+j36Pfo9+j36Pfo9+j36Pfo9+j36Pf
+o9+j36PfDQoNCsXg0bXBqs+1yMujuqPfo9+j36Pfo9+j37Xnu7CjuqPfo9+j36Pfo9+j36PftKvV
+5qO6o9+j36Pfo9+j36Pfo98NCg0K0sa2r7Xnu7CjuqPfo9+j36Pfo9+j36Pfo9+j36PfILXn19PT
+ys/ko7qj36Pfo9+j36Pfo9+j36Pfo9+j36Pfo98gDQoNCrLOvNPIy8r9o7qj36Pfo9+j36PfILfR
+08PX3LzGo7qj36Pfo9+j36Pfo98g1KoNCg0Kss4gu+EgyMujuqPfo9+j36Pfo9/L+cjO1rDO8aO6
+o9+j36Pfo9+j36Pf0sa2r7Xnu7CjuqPfo9+j36Pfo9+j36PfDQoNCrLOILvhIMjLo7qj36Pfo9+j
+36Pfy/nIztawzvGjuqPfo9+j36Pfo9+j39LGtq+157uwo7qj36Pfo9+j36Pfo9+j3yANCg0Kss4g
+u+EgyMujuqPfo9+j36Pfo9/L+cjO1rDO8aO6o9+j36Pfo9+j36Pf0sa2r7Xnu7CjuqPfo9+j36Pf
+o9+j36PfIA0KDQq74dLptdi146O6IKH1IMnPuqMgIKH1ILnj1t0gIA0KDQq4tr/ut73KvaO6IKH1
+MaGiz9a98CAgofUgIDKhoteq1coNCg0KLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCjc1NDk0Njk=
 
-It's not inherently a bug to store a length in an int.
 
-So if the point is to track down the causes of signed/unsigned
-comparison warnings, so that they stand out more in the future and draw
-attention to particular bugs, that's fine.  But that's only helpful if
-we do actually analyze each such case carefully to determine whether
-there are bugs.
-
-So, for example, if we're going to change the nfsd_lookup arguments to
-take an unsigned int for a length, I'd be much reassured if that came
-with an argument as to what exactly happens currently when we recieve a
-"negative" length for the lookup argument off the wire.  Otherwise we're
-defeating the purpose of these warnings, aren't we?
-
---b.
+--===============2050643829==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >> http://get.splunk.com/
+--===============2050643829==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============2050643829==--
