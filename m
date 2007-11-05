@@ -1,19 +1,20 @@
-From: "Cindy Margolis to Pose nude for Playboy" <sfwfofwew@sina.com.cn>
-Subject: Cindy Margolis to Pose nude for Playboy
-Date: Tue, 6 Nov 2007 03:05:49 +0800
-Message-ID: <E1Ip7Gf-0001RJ-A7@mail.sourceforge.net>
-Reply-To: sdfwefojwef@yahoo.com.cn.cn
-Content-Type: multipart/mixed; boundary="===============1987008563=="
-To: "nfs" <nfs@lists.sourceforge.net>
+From: k65rdc@hotmail.co.jp
+Subject: =?ISO-2022-JP?B?grOCv4KxgsWCt4H0lLuC6ILcgreCqYFIjGeR0YLJg4GDYoNagVuDV4LggueCpoLcgrmC8YKpgUg=?=
+Date: Mon,  5 Nov 2007 11:28:01 -0800 (PST)
+Message-ID: <45306.5450456508$1194290919@news.gmane.org>
+Mime-Version: 1.0
+Content-Type: multipart/mixed; boundary="===============1053433358=="
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Ip7Ga-0003Hi-EH
-	for nfs@lists.sourceforge.net; Mon, 05 Nov 2007 11:05:44 -0800
-Received: from [123.8.144.111] (helo=sina.com.cn)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Ip7Gf-0001RJ-A7
-	for nfs@lists.sourceforge.net; Mon, 05 Nov 2007 11:05:50 -0800
+	id 1Ip7c0-0005bF-Tu
+	for nfs@lists.sourceforge.net; Mon, 05 Nov 2007 11:27:52 -0800
+Received: from ppp-124.120.92.161.revip2.asianet.co.th ([124.120.92.161]
+	helo=ooo-superweb0010a11.goanet.co.th)
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1Ip7c6-0002g8-8R
+	for nfs@lists.sourceforge.net; Mon, 05 Nov 2007 11:27:58 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,37 +27,26 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============1987008563==
+--===============1053433358==
 Content-Type: text/plain;
-	charset="gb2312"
-Content-Transfer-Encoding: quoted-printable
+	charset="iso-2022-jp"
+Content-Transfer-Encoding: 7bit
 
-Cindy Margolis to Pose nude for Playboy =20
-
-http://ws11.ipowerweb.com/sohocerc/n860c57.aspx
-
-Sex Games To Please A Woman =20
-
-http://ws11.ipowerweb.com/sohocerc/n687c5.aspx
-
-LOCAL: Ugly Naked Guy dressed for Halloween  =20
-
-http://ws11.ipowerweb.com/sohocerc/n859c57.aspx
-
-Peeping Tom policeman spied on naked colleagues through hole in=20
-
-changing room wall   http://ws11.ipowerweb.com/sohocerc/n858c57.aspx
-
-They'll be paid 1m each to get their kit off  =20
-
-http://ws11.ipowerweb.com/sohocerc/n856c57.aspx
-
-Dad jailed for naked Twister with stepdaughters =20
-
-http://ws11.ipowerweb.com/sohocerc/n855c57.aspx
+このままパソコンで連絡を取り合っても大丈夫ですが、主人のパソコンですから余りにもリスクが大きいと思うんです。
+私が普段から使ってるお金が掛からないＷＥＢメール
+http://free.adultxyzmail.com/DIAMOND/
+から連絡ください♪パソコンでも携帯でもどちらでも使う事が出来ますので、安心して連絡を取り合うことが出来るんです。
+最初に約束した10万円は手渡しで渡させてくださいね。
+いつなら会えるのか、場所は何処にするか？など一緒に決めたいと思ってます。
+このメールを確認して頂けたら携帯にメールを頂けると嬉しいです。
+http://free.adultxyzmail.com/DIAMOND/
+ここから携帯にメールしてくださいね、携帯はいつでもマナーモードですから夜中でも大丈夫です。
+名前などを最初に教えてもらえるようでしたら、私の携帯番号も確認出来るようにしますね。
+私は今からでも会いたいです。すぐ連絡ほしいです。
 
 
---===============1987008563==
+
+--===============1053433358==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -67,7 +57,7 @@ This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >> http://get.splunk.com/
---===============1987008563==
+--===============1053433358==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -77,4 +67,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---===============1987008563==--
+--===============1053433358==--
