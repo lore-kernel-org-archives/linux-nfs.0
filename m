@@ -1,20 +1,14 @@
-From: k65rdc@hotmail.co.jp
-Subject: =?ISO-2022-JP?B?grOCv4KxgsWCt4H0lLuC6ILcgreCqYFIjGeR0YLJg4GDYoNagVuDV4LggueCpoLcgrmC8YKpgUg=?=
-Date: Mon,  5 Nov 2007 11:28:01 -0800 (PST)
-Message-ID: <45306.5450456508$1194290919@news.gmane.org>
+From: =?windows-1252?B?d3d3Lm55cWJ3LmNvbQ==?= <sfdghsghser@gmail.com>
+Subject: =?windows-1252?q?Good_quality_products=2E?=
+Date: Tue, 06 Nov 2007 03:46:08 +0800
+Message-ID: <2007110651833.63478@5AA64EB3F8FC423.net>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1053433358=="
-To: nfs@lists.sourceforge.net
+Content-Type: multipart/mixed; boundary="===============1201601033=="
+To: <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Ip7c0-0005bF-Tu
-	for nfs@lists.sourceforge.net; Mon, 05 Nov 2007 11:27:52 -0800
-Received: from ppp-124.120.92.161.revip2.asianet.co.th ([124.120.92.161]
-	helo=ooo-superweb0010a11.goanet.co.th)
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1Ip7c6-0002g8-8R
-	for nfs@lists.sourceforge.net; Mon, 05 Nov 2007 11:27:58 -0800
+Received: from vdbvkmlps5 (unknown [7.65.65.56])
+	by smtp38 (Coremail) with SMTP id 4jN27LMNOJNglLni.1
+	for <nfs@lists.sourceforge.net>; Tue, 06 Nov 2007 03:46:08 +0800 (CST)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,26 +21,63 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============1053433358==
+This is a multi-part message in MIME format.
+
+--===============1201601033==
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_001_0098_01C2BD9F.F52757B8"
+
+This is a multi-part message in MIME format.
+
+------=_NextPart_001_0098_01C2BD9F.F52757B8
 Content-Type: text/plain;
-	charset="iso-2022-jp"
-Content-Transfer-Encoding: 7bit
+	charset="windows-1252"
+Content-Transfer-Encoding: base64
 
-このままパソコンで連絡を取り合っても大丈夫ですが、主人のパソコンですから余りにもリスクが大きいと思うんです。
-私が普段から使ってるお金が掛からないＷＥＢメール
-http://free.adultxyzmail.com/DIAMOND/
-から連絡ください♪パソコンでも携帯でもどちらでも使う事が出来ますので、安心して連絡を取り合うことが出来るんです。
-最初に約束した10万円は手渡しで渡させてくださいね。
-いつなら会えるのか、場所は何処にするか？など一緒に決めたいと思ってます。
-このメールを確認して頂けたら携帯にメールを頂けると嬉しいです。
-http://free.adultxyzmail.com/DIAMOND/
-ここから携帯にメールしてくださいね、携帯はいつでもマナーモードですから夜中でも大丈夫です。
-名前などを最初に教えてもらえるようでしたら、私の携帯番号も確認出来るようにしますね。
-私は今からでも会いたいです。すぐ連絡ほしいです。
+KERlYXIgZnJpZW5kcywNClNvcnJ5IHRvIGJvdGhlciB5b3UuV2UgYXJlIGEgbGFyZ2Utc2NhbGUg
+bWVyY2hhbmRpc2Ugd2hvbGVzYWxlciBpbiBDaGluYSwNCk91ciBtZXJjaGFuZGlzZSBzdWNoIGFz
+LFR2LG5vdGVib29rcyxwaG9uZXMscHNwLHByb2plY3RvcnMsbW90b3JjeWNsZXMsbXVzaWNhbCBp
+bnN0cnVtZW50cyBlY3QuT3VyIHByb2R1Y3RzIGFyZSBpbiBnb29kIHF1YWxpdHksYnV0IGxvdyBw
+cmljZSxpdCB3aWxsIGludGVyZXN0IHlvdS5BdCB0aGUgc2FtZSB0aW1lLHdlIGNhbiBzdXBwbGUg
+eW91IHRoZSBkaXJlY3QgYW5kIHF1aWNrIHNlcnZpY2Uud2UgYXJlIGxlZ2FsIHNlbGxlcnMuICAN
+Ck91ciB3ZWJzaXRlIGlzIDogd3d3Lm55cWJ3LmNvbQ0KICAgICAgICAgICAgICAgIE1TTjogbnlx
+YndAaG90bWFpbC5jb20NCiAgICAgICAgICAgICAgRW1haWw6IG55cWJ3QGhvdG1haWwuY29tDQog
+ICAgICAgICAgICAgIHNreXBlOiBueXFidzENCiAgICAgICAgICAgICAgICBURUw6ICs4NiAzNzcg
+NjE4MjU5MDEgDQpJZiB5b3UgdGhpbmsgd2UgYXJlIGV4Y2VsbGVudCwgcGxlYXNlIGNvbnRhY3Qg
+dXMuV2Ugd2lsbCBzZXJ2ZSBmb3IgeW91IHdpbGwgYWxsIG91ciBlZmZvcnQuKT4=
+
+------=_NextPart_001_0098_01C2BD9F.F52757B8
+Content-Type: text/html;
+	charset="windows-1252"
+Content-Transfer-Encoding: base64
+
+PEhUTUw+PEhFQUQ+DQo8TUVUQSBjb250ZW50PSJNU0hUTUwgNi4wMC4yOTAwLjI5OTUiIG5hbWU9
+R0VORVJBVE9SPjwvSEVBRD4NCjxCT0RZPihEZWFyIGZyaWVuZHMsPEJSPlNvcnJ5IHRvIGJvdGhl
+ciB5b3UuV2UgYXJlIGEgbGFyZ2Utc2NhbGUgbWVyY2hhbmRpc2Ugd2hvbGVzYWxlciBpbiBDaGlu
+YSw8QlI+T3VyIG1lcmNoYW5kaXNlIHN1Y2ggYXMsVHYsbm90ZWJvb2tzLHBob25lcyxwc3AscHJv
+amVjdG9ycyxtb3RvcmN5Y2xlcyxtdXNpY2FsIGluc3RydW1lbnRzIGVjdC5PdXIgcHJvZHVjdHMg
+YXJlIGluIGdvb2QgcXVhbGl0eSxidXQgbG93IHByaWNlLGl0IHdpbGwgaW50ZXJlc3QgeW91LkF0
+IHRoZSBzYW1lIHRpbWUsd2UgY2FuIHN1cHBsZSB5b3UgdGhlIGRpcmVjdCBhbmQgcXVpY2sgc2Vy
+dmljZS53ZSBhcmUgbGVnYWwgc2VsbGVycy4mbmJzcDsgPEJSPk91ciB3ZWJzaXRlIGlzIDogPEEg
+aHJlZj0iaHR0cDovL3d3dy5ueXFidy5jb20iPnd3dy5ueXFidy5jb208L0E+PEJSPiZuYnNwOyZu
+YnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNw
+OyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyBNU046IDxBIGhyZWY9Im1haWx0bzpueXFid0Bob3Rt
+YWlsLmNvbSI+bnlxYndAaG90bWFpbC5jb208L0E+PEJSPiZuYnNwOyZuYnNwOyZuYnNwOyZuYnNw
+OyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyBF
+bWFpbDogPEEgaHJlZj0ibWFpbHRvOm55cWJ3QGhvdG1haWwuY29tIj5ueXFid0Bob3RtYWlsLmNv
+bTwvQT48QlI+Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7
+Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7IHNreXBlOiBueXFidzE8QlI+Jm5ic3A7Jm5i
+c3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7
+Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7IFRFTDogKzg2IDM3NyA2MTgyNTkwMSA8QlI+SWYgeW91
+IHRoaW5rIHdlIGFyZSBleGNlbGxlbnQsIHBsZWFzZSBjb250YWN0IHVzLldlIHdpbGwgc2VydmUg
+Zm9yIHlvdSB3aWxsIGFsbCBvdXIgZWZmb3J0Lik+PC9CT0RZPjwvSFRNTD4=
+
+------=_NextPart_001_0098_01C2BD9F.F52757B8--
 
 
 
---===============1053433358==
+
+--===============1201601033==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -57,7 +88,7 @@ This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >> http://get.splunk.com/
---===============1053433358==
+--===============1201601033==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -67,4 +98,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---===============1053433358==--
+--===============1201601033==--
