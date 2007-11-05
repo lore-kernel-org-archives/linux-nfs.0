@@ -1,19 +1,19 @@
 From: "Cindy Margolis to Pose nude for Playboy" <sfwfofwew@sina.com.cn>
 Subject: Cindy Margolis to Pose nude for Playboy
-Date: Tue, 6 Nov 2007 02:57:51 +0800
-Message-ID: <E1Ip78w-0007ch-V3@mail.sourceforge.net>
+Date: Tue, 6 Nov 2007 03:05:49 +0800
+Message-ID: <E1Ip7Gf-0001RJ-A7@mail.sourceforge.net>
 Reply-To: sdfwefojwef@yahoo.com.cn.cn
-Content-Type: multipart/mixed; boundary="===============1378742299=="
+Content-Type: multipart/mixed; boundary="===============1987008563=="
 To: "nfs" <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Ip78r-0002SR-Uo
-	for nfs@lists.sourceforge.net; Mon, 05 Nov 2007 10:57:45 -0800
+	id 1Ip7Ga-0003Hi-EH
+	for nfs@lists.sourceforge.net; Mon, 05 Nov 2007 11:05:44 -0800
 Received: from [123.8.144.111] (helo=sina.com.cn)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Ip78w-0007ch-V3
-	for nfs@lists.sourceforge.net; Mon, 05 Nov 2007 10:57:51 -0800
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Ip7Gf-0001RJ-A7
+	for nfs@lists.sourceforge.net; Mon, 05 Nov 2007 11:05:50 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,7 +26,7 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============1378742299==
+--===============1987008563==
 Content-Type: text/plain;
 	charset="gb2312"
 Content-Transfer-Encoding: quoted-printable
@@ -56,7 +56,7 @@ Dad jailed for naked Twister with stepdaughters =20
 http://ws11.ipowerweb.com/sohocerc/n855c57.aspx
 
 
---===============1378742299==
+--===============1987008563==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -67,7 +67,7 @@ This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >> http://get.splunk.com/
---===============1378742299==
+--===============1987008563==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -77,4 +77,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---===============1378742299==--
+--===============1987008563==--
