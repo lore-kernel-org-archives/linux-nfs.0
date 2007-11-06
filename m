@@ -1,21 +1,20 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 4/5] text-based mount.nfs: Remove support for nfsprog=
-	option
-Date: Mon, 05 Nov 2007 19:55:27 -0500
-Message-ID: <20071106005527.4721.16690.stgit@ellison.1015granger.net>
+Subject: [PATCH 1/5] mount.nfs: Fix "statd not running" error message
+Date: Mon, 05 Nov 2007 19:55:12 -0500
+Message-ID: <20071106005512.4721.24451.stgit@ellison.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 To: steved@redhat.com
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IpCj0-0003sp-OM
+	id 1IpCj0-0003sq-VF
 	for nfs@lists.sourceforge.net; Mon, 05 Nov 2007 16:55:26 -0800
 Received: from flpi185.sbcis.sbc.com ([207.115.20.187]
 	helo=flpi185.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IpCj6-00037S-B7
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IpCj5-0002B7-Rn
 	for nfs@lists.sourceforge.net; Mon, 05 Nov 2007 16:55:32 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -29,29 +28,28 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-The kernel hasn't supported the underlying parts needed for changing the
-NFS program number for a very long time.
+When mount.nfs reports that statd isn't running, it suggests using the "-o
+nolocks" option, which doesn't exist.  It should say "-o nolock".
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/mount/stropts.c |    3 ---
- 1 files changed, 0 insertions(+), 3 deletions(-)
+ utils/mount/nfsmount.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-index cf40313..31df51b 100644
---- a/utils/mount/stropts.c
-+++ b/utils/mount/stropts.c
-@@ -317,9 +317,6 @@ static struct mount_options *rewrite_mount_options(char *str)
- 		po_remove_all(options, "port");
- 	}
- 	nfs_server.pmap.pm_prog = NFS_PROGRAM;
--	option = po_get(options, "nfsprog");
--	if (option)
--		nfs_server.pmap.pm_prog = atoi(option);
- 
- 	option = po_get(options, "nfsvers");
- 	if (option) {
+diff --git a/utils/mount/nfsmount.c b/utils/mount/nfsmount.c
+index 23dd2f6..3d2ebb1 100644
+--- a/utils/mount/nfsmount.c
++++ b/utils/mount/nfsmount.c
+@@ -848,7 +848,7 @@ noauth_flavors:
+ 		if (!start_statd()) {
+ 			nfs_error(_("%s: rpc.statd is not running but is "
+ 				"required for remote locking.\n"
+-				"   Either use '-o nolocks' to keep "
++				"   Either use '-o nolock' to keep "
+ 				"locks local, or start statd."),
+ 					progname);
+ 			goto fail;
 
 
 -------------------------------------------------------------------------
