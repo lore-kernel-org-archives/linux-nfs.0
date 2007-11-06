@@ -1,23 +1,24 @@
-From: Ilya Ovchinnikov <ilya@prao.ru>
-Subject: BUG: TIFF files created by libtiff on NFS4 filesystem are
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: BUG: TIFF files created by libtiff on NFS4 filesystem	are
 	corrupted
-Date: Tue, 06 Nov 2007 16:00:54 +0300
-Message-ID: <47306586.6050802@prao.ru>
+Date: Tue, 06 Nov 2007 11:54:12 -0500
+Message-ID: <1194368052.17476.8.camel@heimdal.trondhjem.org>
+References: <47306586.6050802@prao.ru>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Ilya Ovchinnikov <ilya@prao.ru>,
-	Alexandr Zaitsev <sasha-z@psn.ru>
-To: nfs@lists.sourceforge.net
+Cc: Alexandr Zaitsev <sasha-z@psn.ru>, nfs@lists.sourceforge.net
+To: Ilya Ovchinnikov <ilya@prao.ru>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IpO3B-0005W1-Ci
-	for nfs@lists.sourceforge.net; Tue, 06 Nov 2007 05:01:01 -0800
-Received: from server.psn.ru ([194.149.67.134])
+	id 1IpRfP-0006KX-UP
+	for nfs@lists.sourceforge.net; Tue, 06 Nov 2007 08:52:43 -0800
+Received: from pat.uio.no ([129.240.10.15])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IpO3F-0004uC-Qv
-	for nfs@lists.sourceforge.net; Tue, 06 Nov 2007 05:01:07 -0800
+	(Exim 4.44) id 1IpRfS-0005zI-Mo
+	for nfs@lists.sourceforge.net; Tue, 06 Nov 2007 08:52:49 -0800
+In-Reply-To: <47306586.6050802@prao.ru>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,40 +31,50 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hello!
 
-I have found the following problem with NFS v4 filesystem:
-TIFF files written by libtiff are corrupted.
+On Tue, 2007-11-06 at 16:00 +0300, Ilya Ovchinnikov wrote:
+> Hello!
+> 
+> I have found the following problem with NFS v4 filesystem:
+> TIFF files written by libtiff are corrupted.
+> 
+> % mount
+> /home1/ilya/nfs on /home1/nfs4/ilya type none (rw,bind)
+> localhost:/ilya on /home/ilya/nfs type nfs4 (rw,addr=127.0.0.1)
+> 
+> % cd /home1/nfs4/ilya
+> % tifftopnm 1.tif | pnmtotiff > 1a.tif
+> % cd /home/ilya/nfs
+> % tifftopnm 1.tif | pnmtotiff > 1n.tif
+> % cmp 1.tif 1a.tif
+> % cmp 1.tif 1n.tif
+> 15315  10 ^H     0 ^@
+> 15317  10 ^H     0 ^@
+> 15319  10 ^H     0 ^@
+> 
+> 
+> NFS v3 does not have this problem.
+> 
+> Software versions:
+> 
+> Linux  2.6.23.1 #1 SMP Sun Nov 4 01:18:12 MSK 2007 i686 GNU/Linux
+> or
+> Linux  2.6.23 #1 SMP Fri Oct 12 16:36:16 MSD 2007 x86_64 GNU/Linux
+> 
+> libc6 2.3.6 or 2.6.1 (Debian etch or sid)
+> libtiff 3.8.2-7 (Debian etch)
+> netpbm 2:10.0-11 (Debiam etch)
+> 
+> With best regards,
+> Ilya Ovchinnikov
 
-% mount
-/home1/ilya/nfs on /home1/nfs4/ilya type none (rw,bind)
-localhost:/ilya on /home/ilya/nfs type nfs4 (rw,addr=127.0.0.1)
+Known issue with 2.6.23.
 
-% cd /home1/nfs4/ilya
-% tifftopnm 1.tif | pnmtotiff > 1a.tif
-% cd /home/ilya/nfs
-% tifftopnm 1.tif | pnmtotiff > 1n.tif
-% cmp 1.tif 1a.tif
-% cmp 1.tif 1n.tif
-15315  10 ^H     0 ^@
-15317  10 ^H     0 ^@
-15319  10 ^H     0 ^@
+See http://bugzilla.kernel.org/show_bug.cgi?id=9315
 
+Cheers
+  Trond
 
-NFS v3 does not have this problem.
-
-Software versions:
-
-Linux  2.6.23.1 #1 SMP Sun Nov 4 01:18:12 MSK 2007 i686 GNU/Linux
-or
-Linux  2.6.23 #1 SMP Fri Oct 12 16:36:16 MSD 2007 x86_64 GNU/Linux
-
-libc6 2.3.6 or 2.6.1 (Debian etch or sid)
-libtiff 3.8.2-7 (Debian etch)
-netpbm 2:10.0-11 (Debiam etch)
-
-With best regards,
-Ilya Ovchinnikov
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
