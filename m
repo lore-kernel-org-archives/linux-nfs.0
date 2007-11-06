@@ -1,8 +1,8 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 05/15] nfs(5) man page: Add new section for common nfs
-	and	nfs4 mount options
-Date: Mon, 05 Nov 2007 20:03:12 -0500
-Message-ID: <20071106010312.5037.56523.stgit@ellison.1015granger.net>
+Subject: [PATCH 06/15] nfs(5) man page: Add new section for -t nfs
+	mount	options
+Date: Mon, 05 Nov 2007 20:03:17 -0500
+Message-ID: <20071106010317.5037.47177.stgit@ellison.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
@@ -11,11 +11,11 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IpCqX-0004eh-SG
+	id 1IpCqY-0004em-A4
 	for nfs@lists.sourceforge.net; Mon, 05 Nov 2007 17:03:14 -0800
 Received: from flpi102.sbcis.sbc.com ([207.115.20.71] helo=flpi102.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IpCqd-0004Nt-7o
-	for nfs@lists.sourceforge.net; Mon, 05 Nov 2007 17:03:19 -0800
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IpCqd-0004PF-Dz
+	for nfs@lists.sourceforge.net; Mon, 05 Nov 2007 17:03:20 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,292 +28,469 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Collect common options in their own section, clarify the descriptions of
-each option, and use conventional man page typography.
+Collect mount options for the "nfs" file system type in their own
+section, clarify the descriptions of each option, and use conventional
+man page typography.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/mount/nfs.man |  268 +++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 268 insertions(+), 0 deletions(-)
+ utils/mount/nfs.man |  439 +++++++++++++++++++++++----------------------------
+ 1 files changed, 196 insertions(+), 243 deletions(-)
 
 diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
-index 45c6da1..666fd3e 100644
+index 666fd3e..98d282e 100644
 --- a/utils/mount/nfs.man
 +++ b/utils/mount/nfs.man
-@@ -84,6 +84,274 @@ generic option in
- .I /etc/fstab
- if you do not need to specify any mount options. 
- .DT
-+.SS "Valid options for either the nfs or nfs4 file system type"
-+These options are valid to use when mounting either
+@@ -351,254 +351,207 @@ is legacy caching behavior,
+ and is considered a data risk since multiple cached copies
+ of the same file on the same client can become out of sync
+ following an update of one of the copies.
+-.DT
+-.SS Options for the nfs file system type
+-.TP 1.5i
+-.I rsize=n
+-The number of bytes NFS uses when reading files from an NFS server.
+-The rsize is negotiated between the server and client to determine 
+-the largest block size that both can support.
+-The value specified by this option is the maximum size that could 
+-be used; however, the actual size used may be smaller.
+-Note: Setting this size to a value less than the largest supported
+-block size will adversely affect performance.
+-.TP 1.5i
+-.I wsize=n
+-The number of bytes NFS uses when writing files to an NFS server.
+-The wsize is negotiated between the server and client to determine 
+-the largest block size that both can support.
+-The value specified by this option is the maximum size that could 
+-be used; however, the actual size used may be smaller.
+-Note: Setting this size to a value less than the largest supported
+-block size will adversely affect performance.
+-.TP 1.5i
+-.I timeo=n
+-The value in tenths of a second before sending the
+-first retransmission after an RPC timeout.
+-The default value is 7 tenths of a second.  After the first timeout,
+-the timeout is doubled after each successive timeout until a maximum
+-timeout of 60 seconds is reached or the enough retransmissions
+-have occured to cause a major timeout.  Then, if the filesystem
+-is hard mounted, each new timeout cascade restarts at twice the
+-initial value of the previous cascade, again doubling at each
+-retransmission.  The maximum timeout is always 60 seconds.
+-Better overall performance may be achieved by increasing the
+-timeout when mounting on a busy network, to a slow server, or through
+-several routers or gateways.
+-.TP 1.5i
+-.I retrans=n
+-The number of minor timeouts and retransmissions that must occur before
+-a major timeout occurs.  The default is 3 timeouts.  When a major timeout
+-occurs, the file operation is either aborted or a "server not responding"
+-message is printed on the console.
+-.TP 1.5i
+-.I acregmin=n
+-The minimum time in seconds that attributes of a regular file should
+-be cached before requesting fresh information from a server.
+-The default is 3 seconds.
+-.TP 1.5i
+-.I acregmax=n
+-The maximum time in seconds that attributes of a regular file can
+-be cached before requesting fresh information from a server.
+-The default is 60 seconds.
+-.TP 1.5i
+-.I acdirmin=n
+-The minimum time in seconds that attributes of a directory should
+-be cached before requesting fresh information from a server.
+-The default is 30 seconds.
+-.TP 1.5i
+-.I acdirmax=n
+-The maximum time in seconds that attributes of a directory can
+-be cached before requesting fresh information from a server.
+-The default is 60 seconds.
+-.TP 1.5i
+-.I actimeo=n
+-Using actimeo sets all of
+-.I acregmin,
+-.I acregmax,
+-.I acdirmin,
+-and
+-.I acdirmax
+-to the same value.
+-There is no default value.
+-.TP 1.5i
+-.I retry=n
+-The number of minutes to retry an NFS mount operation
+-in the foreground or background before giving up.
+-The default value for forground mounts is 2 minutes.  
+-The default value for background mounts is 10000 minutes, 
+-which is roughly one week.
+-.TP 1.5i
+-.I namlen=n
+-When an NFS server does not support version two of the
+-RPC mount protocol, this option can be used to specify
+-the maximum length of a filename that is supported on
+-the remote filesystem.  This is used to support the
+-POSIX pathconf functions.  The default is 255 characters.
+-.TP 1.5i
+-.I port=n
+-The numeric value of the port to connect to the NFS server on.
+-If the port number is 0 (the default) then query the
+-remote host's portmapper for the port number to use.
+-If the remote host's NFS daemon is not registered with
+-its portmapper, the standard NFS port number 2049 is
+-used instead.
+-.TP 1.5i
+-.I mountport=n
+-The numeric value of the
+-.B mountd
+-port.
+-.TP 1.5i
+-.I mounthost=name
+-The name of the host running
+-.B mountd .
+-.TP 1.5i
+-.I mountprog=n
+-Use an alternate RPC program number to contact the
+-mount daemon on the remote host.  This option is useful
+-for hosts that can run multiple NFS servers.
+-The default value is 100005 which is the standard RPC
+-mount daemon program number.
+-.TP 1.5i
+-.I mountvers=n
+-Use an alternate RPC version number to contact the
+-mount daemon on the remote host.  This option is useful
+-for hosts that can run multiple NFS servers.
+-The default value depends on which kernel you are using.
+-.TP 1.5i
+-.I nfsprog=n
+-Use an alternate RPC program number to contact the
+-NFS daemon on the remote host.  This option is useful
+-for hosts that can run multiple NFS servers.
+-The default value is 100003 which is the standard RPC
+-NFS daemon program number.
+-.TP 1.5i
+-.I nfsvers=n
+-Use an alternate RPC version number to contact the
+-NFS daemon on the remote host.  This option is useful
+-for hosts that can run multiple NFS servers.
+-The default value depends on which kernel you are using.
+-.TP 1.5i
+-.I vers=n
+-vers is an alternative to nfsvers and is compatible with
+-many other operating systems.
+-.TP 1.5i
+-.I nolock
+-Disable NFS locking. Do not start lockd.
+-This is appropriate for mounting the root filesystem or
+-.B /usr
++.SS "Valid options for the nfs file system type"
++Use these options, along with the options in the above subsection,
++for mounting the
 +.B nfs
-+or
-+.B nfs4
-+file system types.
-+They imply the same behavior
-+and have the same default for both file system types.
++file system type.
 +.TP 1.5i
-+.BR soft " / " hard
-+Determines the recovery behavior of the RPC client
-+after an RPC request times out.
-+If neither option is specified,
-+or if the
-+.B hard
-+option is specified, RPC requests are retried indefinitely.
-+If the
-+.B soft
-+option is specified, then the RPC client fails an RPC request
-+after a major timeout occurs,
-+causing the NFS client to return an error
-+to the calling application.
-+.IP
-+.I NB:
-+A so-called "soft" timeout can cause
-+silent data corruption in certain cases,
-+so use the
-+.B soft
-+option only when client responsiveness
-+is more important than data integrity.
-+Using NFS over TCP or lengthening your retransmit timeout
-+via the
++.BI proto= netid
++The transport protocol used by the RPC client
++to transmit requests to the NFS server for this mount point.
++The value of
++.I netid
++can be either
++.B udp
+ or
+-.BR /var .
+-These filesystems are typically either read-only or not shared, and in
+-those cases, remote locking is not needed.
+-This also needs to be used with some old NFS servers
+-that don't support locking.
+-.br
+-Note that applications can still get locks on files, but the locks
+-only provide exclusion locally.  Other clients mounting the same
+-filesystem will not be able to detect the locks.
+-.TP 1.5i
+-.I bg
+-If the first NFS mount attempt times out, retry the mount
+-in the background.
+-After a mount operation is backgrounded, all subsequent mounts
+-on the same NFS server will be backgrounded immediately, without
+-first attempting the mount.
+-A missing mount point is treated as a timeout,
+-to allow for nested NFS mounts.
+-.TP 1.5i
+-.I fg
+-If the first NFS mount attempt times out, retry the mount
+-in the foreground.
+-This is the complement of the
+-.I bg
+-option, and also the default behavior.
+-.TP 1.5i
+-.I soft
+-If an NFS file operation has a major timeout then report an I/O error to
+-the calling program.
+-The default is to continue retrying NFS file operations indefinitely.
+-.TP 1.5i
+-.I hard
+-If an NFS file operation has a major timeout then report
+-"server not responding" on the console and continue retrying indefinitely.
+-This is the default.
+-.TP 1.5i
+-.I intr
+-If an NFS file operation has a major timeout and it is hard mounted,
+-then allow signals to interupt the file operation and cause it to
+-return EINTR to the calling program.  The default is to not
+-allow file operations to be interrupted.
+-.TP 1.5i
+-.I posix
+-Mount the NFS filesystem using POSIX semantics.  This allows
+-an NFS filesystem to properly support the POSIX pathconf
+-command by querying the mount server for the maximum length
+-of a filename.  To do this, the remote host must support version
+-two of the RPC mount protocol.  Many NFS servers support only
+-version one.
+-.TP 1.5i
+-.I nocto
+-Suppress the retrieval of new attributes when creating a file.
++.BR tcp .
++Each transport protocol uses different default
++.B retrans
++and
 +.B timeo
-+option may mitigate some of the risk of using the
-+.B soft
++settings.
++See the description of these two mount options for details.
++.IP
++This mount option controls both how the
++.BR mount (8)
++command communicates with the server's rpcbind and mountd services,
++and what transport protocol the NFS client uses to transmit requests
++to the server's NFS service.
++Specifying
++.B proto=tcp
++forces all traffic from the
++.BR mount (8)
++command and the NFS client to use TCP.
++Specifying
++.B proto=udp
++forces all traffic types to use UDP.
++.IP
++If the
++.B proto
++mount option is not specified, the
++.BR mount (8)
++command chooses a transport for each service.
++If the server doesn't support one or the other protocol, the
++.BR mount (8)
++command attempts to discover which protocol is supported
++and use that one.
++See the TRANSPORT METHODS section below for more details.
+ .TP 1.5i
+-.I noac
+-Disable all forms of attribute caching entirely.  This extracts a
+-significant performance penalty but it allows two different NFS clients
+-to get reasonable results when both clients are actively
+-writing to a common export on the server.
++.B udp
++The
++.B udp
++option is an alternative to specifying
++.BR proto=udp.
++It is included for compatibility with other operating systems.
+ .TP 1.5i
+-.I noacl
+-Disables Access Control List (ACL) processing.
++.B tcp
++The
++.B tcp
++option is an alternative to specifying
++.BR proto=tcp.
++It is included for compatibility with other operating systems.
++.TP 1.5i
++.BI port= n
++The numeric value of the server's NFS service port.
++If the server's NFS service is not available on the specified port,
++the mount request fails.
++If this option is not specified, or if the specified port value is 0,
++then the NFS client uses the NFS service port number
++advertised by the server's rpcbind service.
++If the server's rpcbind service is not available,
++the server's NFS service is not registered with its rpcbind service,
++or the server's NFS service is not available on the advertised port,
++the mount request fails.
++.TP 1.5i
++.BI namlen= n
++The maximum length of a pathname component on this mount.
++If this option is not specified, the maximum length is negotiated
++with the server and is usually 255 characters.
++.IP
++Some early versions of NFS did not support this negotiation.
++Using this option can ensure that
++.BR pathconf (3)
++reports the proper maximum component length to applications
++in this circumstance.
++.TP 1.5i
++.BI mountport= n
++The numeric value of the server's mountd port.
++If the server's mountd service is not available on the specified port,
++the mount request fails.
++If this option is not specified,
++or if the specified port value is 0, then the
++.BR mount (8)
++command uses the mountd service port number
++advertised by the server's rpcbind service.
++If the server's rpcbind service is not available,
++the server's mountd service is not registered with its rpcbind service,
++or the server's mountd service is not available on the advertised port,
++the mount request fails.
++.IP
++This option can be used when mounting an NFS server
++through a firewall that blocks the rpcbind protocol.
+ .TP 1.5i
+-.I sec=mode
+-Set the security flavor for this mount to "mode".
+-The default setting is \f3sec=sys\f1, which uses local
+-unix uids and gids to authenticate NFS operations (AUTH_SYS).
+-Other currently supported settings are:
+-\f3sec=krb5\f1, which uses Kerberos V5 instead of local unix uids
+-and gids to authenticate users;
+-\f3sec=krb5i\f1, which uses Kerberos V5 for user authentication
+-and performs integrity checking of NFS operations using secure
+-checksums to prevent data tampering; and
+-\f3sec=krb5p\f1, which uses Kerberos V5 for user authentication
+-and integrity checking, and encrypts NFS traffic to prevent
+-traffic sniffing (this is the most secure setting).
+-Note that there is a performance penalty when using integrity
+-or privacy.
+-.TP 1.5i
+-.I tcp
+-Mount the NFS filesystem using the TCP protocol.  This is the default
+-if it is supported by both client and server.  Many NFS servers only
+-support UDP.
+-.TP 1.5i
+-.I udp
+-Mount the NFS filesystem using the UDP protocol.
+-.TP 1.5i
+-.I nordirplus
+-Disables NFSv3 READDIRPLUS RPCs. Use this option when
+-mounting servers that don't support or have broken
+-READDIRPLUS implementations.
++.BI mounthost= name
++The hostname of the host running mountd.
++If this option is not specified, the
++.BR mount (8)
++command assumes that the mountd service runs
++on the same host as the NFS service.
++.TP 1.5i
++.BI mountvers= n
++The RPC version number used to contact the server's mountd.
++If this option is not specified, the client uses a version number
++appropriate to the requested NFS version.
++This option is useful when multiple NFS services
++are running on the same remote server host.
++.TP 1.5i
++.BI nfsvers= n
++The NFS protocol version number used to contact the server's NFS service.
++The Linux client supports version 2 and version 3 of the NFS protocol
++when using the
++.B nfs
++file system type.
++If the server does not support the requested version,
++the mount request fails.
++If this option is not specified, the client attempts to use version 3,
++but negotiates the NFS version with the server if version 3 support
++is not available.
++.TP 1.5i
++.BI vers= n
++This option is an alternative to the
++.B nfsvers
 +option.
++It is included for compatibility with other operating systems.
 +.TP 1.5i
-+.BI timeo= n
-+The value, in tenths of a second, before timing out an RPC request.
-+The default value is 600 (60 seconds) for NFS over TCP.
-+The
-+.B timeo
-+value defaults to 7 tenths of a second for NFS over UDP.
-+However, for NFS over UDP, the Linux RPC client uses an adaptive
-+algorithm to estimate the timeout value for frequently used
-+request types, such as READ and WRITE, and uses the
-+.B timeo
-+setting for infrequently used request types, such as FSINFO.
++.BR lock " / " nolock
++Selects whether to use the NLM sideband protocol to lock files on the server.
++If this option is not specified, the default is to use NLM locking
++for this mount point.
++When using the
++.B nolock
++option, applications can lock files,
++but such locks provide exclusion only against other applications
++running on the same client.
++Remote applications are not affected by these locks.
 +.IP
-+After each timeout, the RPC client may retransmit the timed out request,
-+or it may take some other action depending on the settings of the
-+.B hard
-+or
-+.B retrans
-+options.
-+.TP 1.5i
-+.BI retrans= n
-+The number of RPC timeouts that must occur before a major timeout occurs.
-+If the
-+.B retrans
-+option is not specified, a default of 3 timeouts for each request
-+is used.
-+.IP
-+The RPC client generates a "server not responding" message
-+after a major timeout.
-+Then, if the file system is mounted with the
-+.B hard
-+option,
-+it continues to retransmit the request.
-+If the file system is mounted with the
-+.B soft
-+mount option,
-+the RPC client abandons the request after a major timeout,
-+and causes NFS to return an error to the application.
-+.TP 1.5i
-+.BI rsize= n
-+The maximum number of bytes in each network READ request
-+that the NFS client can receive when reading data from a file
-+on an NFS server.
-+The actual data payload size of each NFS READ request is equal to
-+or smaller than the
-+.B rsize
-+setting.
-+.IP
-+The
-+.B rsize
-+value is a positive integral multiple of 1024,
-+and the largest value supported by the Linux NFS client
-+is 1,048,576 bytes.
-+Specified values outside of this range are rounded down
-+to the closest multiple of 1024, and specified values smaller
-+than 1024 are replaced with a default of 4096.
-+If an
-+.B rsize
-+value is not specified, or if a value is specified but is larger
-+than the maximums either the client or server support,
-+the client and server negotiate the largest
-+.B rsize
-+value that both support.
-+.IP
-+The
-+.B rsize
-+mount option as specified on the
-+.BR mount (8)
-+command line appears in the
-+.I /etc/mtab
-+file, but the effective
-+.B rsize
-+value negotiated by the client and server is reported in the
-+.I /proc/mounts
-+file.
-+.TP 1.5i
-+.BI wsize= n
-+The maximum number of bytes per network WRITE request
-+that the NFS client can send when writing data to a file
-+on an NFS server.
-+See the description of the
-+.B rsize
-+option for more details.
-+.TP 1.5i
-+.BI acregmin= n
-+The minimum time in seconds that the NFS client caches
-+attributes of a regular file before it requests
-+fresh attribute information from a server.
-+If this option is not specified, the NFS client uses
-+a 3 second minimum.
-+.TP 1.5i
-+.BI acregmax= n
-+The maximum time in seconds that the NFS client caches
-+attributes of a regular file before it requests
-+fresh attribute information from a server.
-+If this option is not specified, the NFS client uses
-+a 60 second maximum.
-+.TP 1.5i
-+.BI acdirmin= n
-+The minimum time in seconds that the NFS client caches
-+attributes of a directory before it requests
-+fresh attribute information from a server.
-+If this option is not specified, the NFS client uses
-+a 30 second minimum.
-+.TP 1.5i
-+.BI acdirmax= n
-+The maximum time in seconds that the NFS client caches
-+attributes of a directory before it requests
-+fresh attribute information from a server.
-+If this option is not specified, the NFS client uses
-+a 60 second maximum.
-+.TP 1.5i
-+.BI actimeo= n
-+Using
-+.B actimeo
-+sets all of
-+.BR acregmin ,
-+.BR acregmax ,
-+.BR acdirmin ,
-+and
-+.B acdirmax
-+to the same value.
-+If this option is not specified, the NFS client uses
-+the defaults for each of these options listed above.
-+.TP 1.5i
-+.BR ac " / " noac
-+Selects whether to attribute caching, and force synchronous writes.
-+The
-+.B noac
-+option is synonymous with using
-+.BR actimeo=0,sync .
-+If this option is not specified, the default behavior is
-+to cache attributes normally and write data asynchronously.
-+.IP
++NLM locking must be disabled with the
++.B nolock
++option when using NFS to mount
++.I /var
++because
++.I /var
++contains files used by the NLM implementation on Linux.
 +Using the
-+.B noac
-+option provides much greater cache coherency among NFS clients
-+accessing the same files,
-+but it extracts a significant performance penalty.
-+Judicious use of file locking is encouraged instead.
-+The DATA AND METADATA COHERENCY section contains a detailed discussion
-+of these trade-offs.
++.B nolock
++option is also required when mounting shares on NFS servers
++that do not support the NLM protocol.
 +.TP 1.5i
-+.BR bg " / " fg
-+Determines how the
-+.BR mount (8)
-+command behaves if an attempt to mount a remote share fails.
-+The
-+.B fg
-+option causes
-+.BR mount (8)
-+to exit with an error status if any part of the mount request
-+times out or fails outright.
-+This is called a "foreground" mount,
-+and is the default behavior if neither the
-+.B fg
-+nor
-+.B bg
-+mount option is specified.
++.BR intr " / " nointr
++Selects whether to allow signals to interrupt file operations
++on this mount point.
++When a system call is interrupted while an NFS operation is outstanding,
++the system call returns EINTR.
 +If the
-+.B bg
-+option is specified, a timeout or failure causes the
-+.BR mount (8)
-+command to fork a child which continues to attempt
-+to mount the remote share.
-+The parent immediately returns with a zero exit code.
-+This is known as a "background" mount.
-+.IP
-+If the local mount point directory is missing, the
-+.BR mount (8)
-+command acts as if the mount request timed out.
-+This permits nested NFS mounts specified in
-+.I /etc/fstab
-+to proceed in any order during system initialization,
-+even if some NFS servers are not yet available.
-+Alternatively these issues can be addressed
-+using an automounter (see
-+.BR automount (8)
-+for details).
++.B intr
++option is not specified,
++signals do not interrupt NFS file operations.
++Using the
++.B intr
++option is preferred to using the
++.B soft
++option because it is significantly less likely to result in data corruption.
+ .TP 1.5i
+-.I nosharecache
+-As of kernel 2.6.18, it is no longer possible to mount the same
+-same filesystem with different mount options to a new mountpoint.
+-It was deemed unsafe to do so, since cached data cannot be shared
+-between the two mountpoints. In consequence, files or directories
+-that were common to both mountpoint subtrees could often be seen to
+-be out of sync following an update.
+-.br
+-This option allows administrators to select the pre-2.6.18 behaviour,
+-permitting the same filesystem to be mounted with different mount
+-options.
+-.br
+-.B Beware:
+-Use of this option is not recommended unless you are certain that there
+-are no hard links or subtrees of this mountpoint that are mounted
+-elsewhere.
+-.P
+-All of the non-value options have corresponding nooption forms.
+-For example, nointr means don't allow file operations to be
+-interrupted.
++.BR cto " / " nocto
++Selects whether to use close-to-open cache coherency semantics.
++If this option is not specified, the default is to use close-to-open
++cache coherency semantics.
++Using the
++.B nocto
++option may improve performance for read-only mounts,
++but should be used only if the data on the server changes only occasionally.
++The DATA AND METADATA COHERENCY section discusses the behavior
++of this option in more detail.
 +.TP 1.5i
-+.BI retry= n
-+The number of minutes that the
-+.BR mount (8)
-+command retries an NFS mount operation
-+in the foreground or background before giving up.
-+If this option is not specified, the default value for foreground mounts
-+is 2 minutes, and the default value for background mounts is 10000 minutes,
-+which is roughly one week.
++.BR acl " / " noacl
++Selects whether to use the NFSACL sideband protocol on this mount point.
++The NFSACL sideband protocol is a proprietary protocol
++implemented in Solaris that manages Access Control Lists,
++and was never made a standard part of the NFS protocol specification.
++If this option is not specified,
++the NFS client negotiates with the server
++to see if the NFSACL protocol is supported,
++and uses it if the server supports it.
++Disabling the NFSACL sideband protocol may be necessary
++if the negotiation causes problems on the client or server.
++See the SECURITY CONSIDERATIONS section for more details.
 +.TP 1.5i
-+.BI sec= mode
-+The RPCGSS security flavor to use for accessing files on this mount point.
-+If the
-+.B sec
-+option is not specified, or if
-+.B sec=sys
-+is specified, the RPC client uses the AUTH_SYS security flavor
-+for all RPC operations on this mount point.
-+Valid security flavors are
-+.BR none ,
-+.BR sys ,
-+.BR krb5 ,
-+.BR krb5i ,
-+.BR krb5p ,
-+.BR lkey ,
-+.BR lkeyi ,
-+.BR lkeyp ,
-+.BR spkm ,
-+.BR spkmi ,
-+and
-+.BR spkmp .
-+See the SECURITY CONSIDERATIONS section for details.
-+.TP 1.5i
-+.BR sharecache " / " nosharecache
-+Determines how the client's data and attribute cache is shared
-+between mount points that mount the same remote share.
-+If neither option not specified, or the
-+.B sharecache
-+option is specified, then all mounts of the same remote share
-+on a client use the same data cache.
-+If the
-+.B nosharecache
-+option is specified, then files under that mount point
-+are cached separately from files under other mount points
-+that may be accessing the same remote share.
-+.IP
-+As of kernel 2.6.18, the behavior specified by
-+.B nosharecache
-+is legacy caching behavior,
-+and is considered a data risk since multiple cached copies
-+of the same file on the same client can become out of sync
-+following an update of one of the copies.
-+.DT
- .SS Options for the nfs file system type
++.BR rdirplus " / " nordirplus
++Selects whether to use NFS version 3 READDIRPLUS RPCs.
++If this option is not specified, the NFS client uses READDIRPLUS requests
++on NFS version 3 mounts to read small directories.
++Some applications perform better if the client uses only READDIR requests
++for all directories.  
+ .SS Options for the nfs4 file system type
  .TP 1.5i
  .I rsize=n
 
