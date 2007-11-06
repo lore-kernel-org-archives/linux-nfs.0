@@ -1,21 +1,20 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 02/15] nfs(5) man page: Adjust format of SYNOPSIS
-	section
-Date: Mon, 05 Nov 2007 20:02:57 -0500
-Message-ID: <20071106010256.5037.1780.stgit@ellison.1015granger.net>
+Subject: [PATCH 04/15] nfs(5) man page: Add a MOUNT OPTIONS section.
+Date: Mon, 05 Nov 2007 20:03:07 -0500
+Message-ID: <20071106010307.5037.77022.stgit@ellison.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 To: steved@redhat.com
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IpCqI-0004ZG-Pm
-	for nfs@lists.sourceforge.net; Mon, 05 Nov 2007 17:02:58 -0800
+	id 1IpCqT-0004eS-Cy
+	for nfs@lists.sourceforge.net; Mon, 05 Nov 2007 17:03:09 -0800
 Received: from flpi102.sbcis.sbc.com ([207.115.20.71] helo=flpi102.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IpCqN-0004GU-8L
-	for nfs@lists.sourceforge.net; Mon, 05 Nov 2007 17:03:04 -0800
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IpCqW-0005s9-2A
+	for nfs@lists.sourceforge.net; Mon, 05 Nov 2007 17:03:13 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,27 +27,33 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Conventionally italics are used here.
-
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/mount/nfs.man |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ utils/mount/nfs.man |   10 ++++++++++
+ 1 files changed, 10 insertions(+), 0 deletions(-)
 
 diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
-index 2d96c5c..6af39bd 100644
+index 06bd3be..45c6da1 100644
 --- a/utils/mount/nfs.man
 +++ b/utils/mount/nfs.man
-@@ -9,7 +9,7 @@ and
+@@ -73,6 +73,16 @@ and
  .B nfs4
- file systems
- .SH SYNOPSIS
--.B /etc/fstab
+ file system types share similar mount options,
+ which are described below. 
++.SH "MOUNT OPTIONS"
++See
++.BR mount (8)
++for a description of generic mount options
++available for all file systems.
++Use the
++.B defaults
++generic option in
 +.I /etc/fstab
- .SH DESCRIPTION
- The
- .I fstab
++if you do not need to specify any mount options. 
+ .DT
+ .SS Options for the nfs file system type
+ .TP 1.5i
 
 
 -------------------------------------------------------------------------
