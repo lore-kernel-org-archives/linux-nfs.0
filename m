@@ -1,14 +1,21 @@
-From: =?windows-1252?B?d3d3Lm55cWJ3LmNvbQ==?= <sfdghsghser@gmail.com>
-Subject: =?windows-1252?q?Good_quality_products=2E?=
-Date: Tue, 06 Nov 2007 03:46:08 +0800
-Message-ID: <2007110651833.63478@5AA64EB3F8FC423.net>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 0/5] mount.nfs bug fixes
+Date: Mon, 05 Nov 2007 19:55:06 -0500
+Message-ID: <20071106005338.4721.92807.stgit@ellison.1015granger.net>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1201601033=="
-To: <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
+To: steved@redhat.com
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from vdbvkmlps5 (unknown [7.65.65.56])
-	by smtp38 (Coremail) with SMTP id 4jN27LMNOJNglLni.1
-	for <nfs@lists.sourceforge.net>; Tue, 06 Nov 2007 03:46:08 +0800 (CST)
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1IpCiw-0003sf-Hg
+	for nfs@lists.sourceforge.net; Mon, 05 Nov 2007 16:55:22 -0800
+Received: from flpi185.sbcis.sbc.com ([207.115.20.187]
+	helo=flpi185.prodigy.net)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IpCj1-00032v-8y
+	for nfs@lists.sourceforge.net; Mon, 05 Nov 2007 16:55:28 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -21,81 +28,16 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
+Hi Steve-
 
---===============1201601033==
-Content-Type: multipart/alternative;
-	boundary="----=_NextPart_001_0098_01C2BD9F.F52757B8"
-
-This is a multi-part message in MIME format.
-
-------=_NextPart_001_0098_01C2BD9F.F52757B8
-Content-Type: text/plain;
-	charset="windows-1252"
-Content-Transfer-Encoding: base64
-
-KERlYXIgZnJpZW5kcywNClNvcnJ5IHRvIGJvdGhlciB5b3UuV2UgYXJlIGEgbGFyZ2Utc2NhbGUg
-bWVyY2hhbmRpc2Ugd2hvbGVzYWxlciBpbiBDaGluYSwNCk91ciBtZXJjaGFuZGlzZSBzdWNoIGFz
-LFR2LG5vdGVib29rcyxwaG9uZXMscHNwLHByb2plY3RvcnMsbW90b3JjeWNsZXMsbXVzaWNhbCBp
-bnN0cnVtZW50cyBlY3QuT3VyIHByb2R1Y3RzIGFyZSBpbiBnb29kIHF1YWxpdHksYnV0IGxvdyBw
-cmljZSxpdCB3aWxsIGludGVyZXN0IHlvdS5BdCB0aGUgc2FtZSB0aW1lLHdlIGNhbiBzdXBwbGUg
-eW91IHRoZSBkaXJlY3QgYW5kIHF1aWNrIHNlcnZpY2Uud2UgYXJlIGxlZ2FsIHNlbGxlcnMuICAN
-Ck91ciB3ZWJzaXRlIGlzIDogd3d3Lm55cWJ3LmNvbQ0KICAgICAgICAgICAgICAgIE1TTjogbnlx
-YndAaG90bWFpbC5jb20NCiAgICAgICAgICAgICAgRW1haWw6IG55cWJ3QGhvdG1haWwuY29tDQog
-ICAgICAgICAgICAgIHNreXBlOiBueXFidzENCiAgICAgICAgICAgICAgICBURUw6ICs4NiAzNzcg
-NjE4MjU5MDEgDQpJZiB5b3UgdGhpbmsgd2UgYXJlIGV4Y2VsbGVudCwgcGxlYXNlIGNvbnRhY3Qg
-dXMuV2Ugd2lsbCBzZXJ2ZSBmb3IgeW91IHdpbGwgYWxsIG91ciBlZmZvcnQuKT4=
-
-------=_NextPart_001_0098_01C2BD9F.F52757B8
-Content-Type: text/html;
-	charset="windows-1252"
-Content-Transfer-Encoding: base64
-
-PEhUTUw+PEhFQUQ+DQo8TUVUQSBjb250ZW50PSJNU0hUTUwgNi4wMC4yOTAwLjI5OTUiIG5hbWU9
-R0VORVJBVE9SPjwvSEVBRD4NCjxCT0RZPihEZWFyIGZyaWVuZHMsPEJSPlNvcnJ5IHRvIGJvdGhl
-ciB5b3UuV2UgYXJlIGEgbGFyZ2Utc2NhbGUgbWVyY2hhbmRpc2Ugd2hvbGVzYWxlciBpbiBDaGlu
-YSw8QlI+T3VyIG1lcmNoYW5kaXNlIHN1Y2ggYXMsVHYsbm90ZWJvb2tzLHBob25lcyxwc3AscHJv
-amVjdG9ycyxtb3RvcmN5Y2xlcyxtdXNpY2FsIGluc3RydW1lbnRzIGVjdC5PdXIgcHJvZHVjdHMg
-YXJlIGluIGdvb2QgcXVhbGl0eSxidXQgbG93IHByaWNlLGl0IHdpbGwgaW50ZXJlc3QgeW91LkF0
-IHRoZSBzYW1lIHRpbWUsd2UgY2FuIHN1cHBsZSB5b3UgdGhlIGRpcmVjdCBhbmQgcXVpY2sgc2Vy
-dmljZS53ZSBhcmUgbGVnYWwgc2VsbGVycy4mbmJzcDsgPEJSPk91ciB3ZWJzaXRlIGlzIDogPEEg
-aHJlZj0iaHR0cDovL3d3dy5ueXFidy5jb20iPnd3dy5ueXFidy5jb208L0E+PEJSPiZuYnNwOyZu
-YnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNw
-OyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyBNU046IDxBIGhyZWY9Im1haWx0bzpueXFid0Bob3Rt
-YWlsLmNvbSI+bnlxYndAaG90bWFpbC5jb208L0E+PEJSPiZuYnNwOyZuYnNwOyZuYnNwOyZuYnNw
-OyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyBF
-bWFpbDogPEEgaHJlZj0ibWFpbHRvOm55cWJ3QGhvdG1haWwuY29tIj5ueXFid0Bob3RtYWlsLmNv
-bTwvQT48QlI+Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7
-Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7IHNreXBlOiBueXFidzE8QlI+Jm5ic3A7Jm5i
-c3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7
-Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7IFRFTDogKzg2IDM3NyA2MTgyNTkwMSA8QlI+SWYgeW91
-IHRoaW5rIHdlIGFyZSBleGNlbGxlbnQsIHBsZWFzZSBjb250YWN0IHVzLldlIHdpbGwgc2VydmUg
-Zm9yIHlvdSB3aWxsIGFsbCBvdXIgZWZmb3J0Lik+PC9CT0RZPjwvSFRNTD4=
-
-------=_NextPart_001_0098_01C2BD9F.F52757B8--
-
-
-
-
---===============1201601033==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+Some bug fixes for mount.nfs and friends.  Will send the nfs(5) rewrite
+patches in a different series.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >> http://get.splunk.com/
---===============1201601033==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============1201601033==--
