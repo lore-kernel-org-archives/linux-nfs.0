@@ -1,20 +1,20 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 00/15] Rewrite nfs(5) man page
-Date: Mon, 05 Nov 2007 20:02:46 -0500
-Message-ID: <20071106005731.5037.57716.stgit@ellison.1015granger.net>
+Subject: [PATCH 01/15] nfs(5) man page: Update the NAME section
+Date: Mon, 05 Nov 2007 20:02:51 -0500
+Message-ID: <20071106010251.5037.29257.stgit@ellison.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 To: steved@redhat.com
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IpCqA-0004Yz-Df
-	for nfs@lists.sourceforge.net; Mon, 05 Nov 2007 17:02:50 -0800
+	id 1IpCqD-0004Z4-De
+	for nfs@lists.sourceforge.net; Mon, 05 Nov 2007 17:02:53 -0800
 Received: from flpi102.sbcis.sbc.com ([207.115.20.71] helo=flpi102.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IpCqD-0005ex-Tj
-	for nfs@lists.sourceforge.net; Mon, 05 Nov 2007 17:02:56 -0800
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IpCqI-0004FD-1Y
+	for nfs@lists.sourceforge.net; Mon, 05 Nov 2007 17:02:59 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,19 +27,30 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-As I was working on the new text-based mount.nfs command, I noticed a number
-of inaccuracies in the nfs(5) man page.  I decided to update the section that
-describes mount options to reflect what I believe to be implemented in the
-current legacy mount.nfs ABI and in the new text-based implementation.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-It also seemed prudent to provide some sections giving background about how
-the mount options are used, and how the NFS client works in general.
+ utils/mount/nfs.man |    6 +++++-
+ 1 files changed, 5 insertions(+), 1 deletions(-)
 
-This all ended up being a rather significant rewrite of nfs(5).
+diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
+index d92da19..2d96c5c 100644
+--- a/utils/mount/nfs.man
++++ b/utils/mount/nfs.man
+@@ -3,7 +3,11 @@
+ .\" patches. "
+ .TH NFS 5 "20 November 1993" "Linux 0.99" "Linux Programmer's Manual"
+ .SH NAME
+-nfs \- nfs and nfs4 fstab format and options
++nfs \- fstab format and options for the
++.B nfs
++and
++.B nfs4
++file systems
+ .SH SYNOPSIS
+ .B /etc/fstab
+ .SH DESCRIPTION
 
-At this point I think we're ready for further review, and then to tuck it
-into nfs-utils and have other people hack at it a bit more before the next
-nfs-utils release.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
