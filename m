@@ -1,20 +1,21 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 08/15] nfs(5) man page: Add new EXAMPLES section
-Date: Mon, 05 Nov 2007 20:03:28 -0500
-Message-ID: <20071106010328.5037.32407.stgit@ellison.1015granger.net>
+Subject: [PATCH 09/15] nfs(5) man page: Add new TRANSPORT METHODS
+	section
+Date: Mon, 05 Nov 2007 20:03:33 -0500
+Message-ID: <20071106010333.5037.89264.stgit@ellison.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 To: steved@redhat.com
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IpCqm-0004fK-RP
-	for nfs@lists.sourceforge.net; Mon, 05 Nov 2007 17:03:28 -0800
-Received: from flpi102.sbcis.sbc.com ([207.115.20.71] helo=flpi102.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IpCqs-0004R7-ES
+	id 1IpCqs-0004fR-3b
 	for nfs@lists.sourceforge.net; Mon, 05 Nov 2007 17:03:34 -0800
+Received: from flpi102.sbcis.sbc.com ([207.115.20.71] helo=flpi102.prodigy.net)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IpCqx-00062S-Lv
+	for nfs@lists.sourceforge.net; Mon, 05 Nov 2007 17:03:39 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,77 +28,79 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Add a section to nfs(5) that provides examples demonstrating how to specify
-NFS mount options in /etc/fstab.
+Add a section to nfs(5) that discusses the trade-offs between the UDP and
+TCP transports.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/mount/nfs.man |   54 +++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 54 insertions(+), 0 deletions(-)
+ utils/mount/nfs.man |   56 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 56 insertions(+), 0 deletions(-)
 
 diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
-index 9cb673a..10e5cd2 100644
+index 10e5cd2..0debdb0 100644
 --- a/utils/mount/nfs.man
 +++ b/utils/mount/nfs.man
-@@ -629,6 +629,60 @@ In the presence of multiple client network interfaces,
- special routing policies,
- or atypical network topologies,
- the exact address to use for callbacks may be nontrivial to determine. 
-+.SH EXAMPLES
-+To mount a remote share using NFS version 2,
-+use the
-+.B nfs
-+file system type and specify the
-+.B nfsvers=2
-+mount option.
-+To mount using NFS version 3,
-+use the
-+.B nfs
-+file system type and specify the
-+.B nfsvers=3
-+mount option.
-+To mount using NFS version 4,
-+use the
-+.B nfs4
-+file system type.
+@@ -683,6 +683,62 @@ This example can be used to mount /usr over NFS.
+ .TA 2.5i +0.7i +0.7i +.7i
+ 	server:/export/share	/usr	nfs	ro,nolock,nocto,actimeo=3600	0 0
+ .FI
++.SH "TRANSPORT METHODS"
++NFS clients send requests to NFS servers via
++Remote Procedure Calls, or
++.IR RPCs .
++The RPC client discovers remote service endpoints automatically,
++handles per-request authentication,
++adjusts request parameters for different byte endianness on client and server,
++and retransmits requests that may have been lost by the network or server.
++RPC requests and replies flow over a network transport.
++.P
 +The
-+.B nfsvers
-+mount option is not supported for the
-+.B nfs4
-+file system type.
++.BR mount (8)
++command, the NFS client, and the NFS server
++can usually automatically negotiate proper transport
++and data transfer size settings for a mount point.
++There are some cases, however, where it pays to specify
++these settings explicitly using mount options.
 +.P
-+The following example from an
-+.I /etc/fstab
-+file causes the mount command to negotiate
-+reasonable defaults for NFS behavior.
++TCP is the default transport for all modern NFS implementations.
++It performs well in almost every conceivable network environment
++and provides excellent guarantees against data corruption
++due to network unreliability.
++TCP is often a requirement for mounting a server through a network firewall.
 +.P
-+.NF
-+.TA 2.5i +0.7i +0.7i +.7i
-+	server:/export/share	/mnt	nfs	defaults	0 0
-+.FI
++The UDP transport has many limitations
++that prevent smooth operation and good performance
++in some common deployment environments.
++However, UDP can be quite effective in specialized settings
++where the network's MTU is large relative to NFS's data transfer size.
++This includes the use of jumbo Ethernet frames
++or high bandwidth local area networks.
++Thus, with UDP, trimming the
++.B rsize
++and
++.B wsize
++settings
++so that each NFS read or write request fits in just a few network frames,
++or even in a single frame, is advised.
++This reduces the probability that the loss of a single MTU-sized network frame
++results in the loss of an entire NFS request.
++TCP itself manages the reliability of network transmissions,
++thus
++.B rsize
++and
++.B wsize
++can safely be allowed to default to the largest settings
++supported by both client and server.
 +.P
-+Here is an example from an /etc/fstab file for an NFS version 2 mount over UDP.
-+.P
-+.NF
-+.TA 2.5i +0.7i +0.7i +.7i
-+	server:/export/share	/mnt	nfs	nfsvers=2,proto=udp	0 0
-+.FI
-+.P
-+Try this example to mount using NFS version 4 over TCP
-+with Kerberos 5 mutual authentication.
-+.P
-+.NF
-+.TA 2.5i +0.7i +0.7i +.7i
-+	server:/export/share	/mnt	nfs4	sec=krb5	0 0
-+.FI
-+.P
-+This example can be used to mount /usr over NFS.
-+.P
-+.NF
-+.TA 2.5i +0.7i +0.7i +.7i
-+	server:/export/share	/usr	nfs	ro,nolock,nocto,actimeo=3600	0 0
-+.FI
++Reasonable timeout and retransmit settings for NFS over TCP
++are in the one to several minute range
++because the TCP transport already manages network-related packet loss.
++For UDP, even an insignificant packet loss rate results in the loss of
++whole NFS requests,
++thus retransmit timeouts are usually in the subsecond range.
++The Linux RPC client employs an RTT estimator that
++dynamically manages the timeout settings for requests sent via UDP. 
  .SH FILES
  .I /etc/fstab
  .SH "SEE ALSO"
