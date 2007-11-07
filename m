@@ -1,24 +1,26 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 1/7] SUNRPC: Fix a race in xs_tcp_state_change()
-Date: Tue, 06 Nov 2007 19:39:40 -0500
-Message-ID: <20071107003940.13713.65472.stgit@heimdal.trondhjem.org>
-References: <20071107003834.13713.73536.stgit@heimdal.trondhjem.org>
+From: Narayan Desai <desai@mcs.anl.gov>
+Subject: odd kernel-nfs-server messages
+Date: Tue, 06 Nov 2007 22:21:25 -0600
+Message-ID: <87fxzi1y9m.fsf@mcs.anl.gov>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfsv4@linux-nfs.org, nfs@lists.sourceforge.net
-To: Chuck Lever <Chuck.Lever@oracle.com>,
-	Tom Talpey <Thomas.Talpey@netapp.com>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IpYw8-0002SS-VC
-	for nfs@lists.sourceforge.net; Tue, 06 Nov 2007 16:38:29 -0800
-Received: from c-69-242-210-120.hsd1.mi.comcast.net ([69.242.210.120]
-	helo=heimdal.trondhjem.org)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IpYwE-000512-Ew
-	for nfs@lists.sourceforge.net; Tue, 06 Nov 2007 16:38:34 -0800
-In-Reply-To: <20071107003834.13713.73536.stgit@heimdal.trondhjem.org>
+	id 1IpcPz-0005Se-Km
+	for nfs@lists.sourceforge.net; Tue, 06 Nov 2007 20:21:31 -0800
+Received: from mailgw.mcs.anl.gov ([140.221.9.4])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IpcQ3-0007mA-2c
+	for nfs@lists.sourceforge.net; Tue, 06 Nov 2007 20:21:37 -0800
+Received: from localhost (localhost [127.0.0.1])
+	by mailgw.mcs.anl.gov (Postfix) with ESMTP id 8A9F1348003
+	for <nfs@lists.sourceforge.net>; Tue,  6 Nov 2007 22:21:28 -0600 (CST)
+Received: from ubik.topaz.mcs.anl.gov (c-24-14-94-248.hsd1.il.comcast.net
+	[24.14.94.248])
+	by mailgw.mcs.anl.gov (Postfix) with ESMTP id 9982F348002
+	for <nfs@lists.sourceforge.net>; Tue,  6 Nov 2007 22:21:25 -0600 (CST)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,86 +33,70 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
+We are running into some kernel nfs server errors that we are having
+trouble deciphering. 
 
-When scheduling the autoclose RPC call, we want to ensure that we don't
-race against the test_bit() call in xprt_clear_locked().
+We are running a x86_64 nfs server. The server is running ubuntu
+feisty, with their 2.6.20-16-generic kernel. 
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
+The clients are also running linux (2.6.15 kernel; we are waiting on
+the system vendor to finish their port to a newer kernel) on mips64. 
 
- include/linux/sunrpc/xprt.h |    1 +
- net/sunrpc/xprt.c           |   20 ++++++++++++++++++++
- net/sunrpc/xprtsock.c       |    5 +----
- 3 files changed, 22 insertions(+), 4 deletions(-)
+Under fairly heavy load (400-800 clients, not a ton of reads and
+writes) we get the following messages:
 
-diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-index 30b17b3..6f524a9 100644
---- a/include/linux/sunrpc/xprt.h
-+++ b/include/linux/sunrpc/xprt.h
-@@ -246,6 +246,7 @@ struct rpc_rqst *	xprt_lookup_rqst(struct rpc_xprt *xprt, __be32 xid);
- void			xprt_complete_rqst(struct rpc_task *task, int copied);
- void			xprt_release_rqst_cong(struct rpc_task *task);
- void			xprt_disconnect(struct rpc_xprt *xprt);
-+void			xprt_force_disconnect(struct rpc_xprt *xprt);
- 
- /*
-  * Reserved bit positions in xprt->state
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index 282a9a2..48c5a8b 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -570,6 +570,7 @@ static void xprt_autoclose(struct work_struct *work)
- 
- 	xprt_disconnect(xprt);
- 	xprt->ops->close(xprt);
-+	clear_bit(XPRT_CLOSE_WAIT, &xprt->state);
- 	xprt_release_write(xprt, NULL);
- }
- 
-@@ -588,6 +589,25 @@ void xprt_disconnect(struct rpc_xprt *xprt)
- }
- EXPORT_SYMBOL_GPL(xprt_disconnect);
- 
-+/**
-+ * xprt_force_disconnect - force a transport to disconnect
-+ * @xprt: transport to disconnect
-+ *
-+ */
-+void xprt_force_disconnect(struct rpc_xprt *xprt)
-+{
-+	/* Don't race with the test_bit() in xprt_clear_locked() */
-+	spin_lock_bh(&xprt->transport_lock);
-+	set_bit(XPRT_CLOSE_WAIT, &xprt->state);
-+	/* Try to schedule an autoclose RPC call */
-+	if (test_and_set_bit(XPRT_LOCKED, &xprt->state) == 0)
-+		queue_work(rpciod_workqueue, &xprt->task_cleanup);
-+	else if (xprt->snd_task != NULL)
-+		rpc_wake_up_task(xprt->snd_task);
-+	spin_unlock_bh(&xprt->transport_lock);
-+}
-+EXPORT_SYMBOL_GPL(xprt_force_disconnect);
-+
- static void
- xprt_init_autodisconnect(unsigned long data)
- {
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 02298f5..322e4e2 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -1118,10 +1118,7 @@ static void xs_tcp_state_change(struct sock *sk)
- 	case TCP_SYN_RECV:
- 		break;
- 	case TCP_CLOSE_WAIT:
--		/* Try to schedule an autoclose RPC calls */
--		set_bit(XPRT_CLOSE_WAIT, &xprt->state);
--		if (test_and_set_bit(XPRT_LOCKED, &xprt->state) == 0)
--			queue_work(rpciod_workqueue, &xprt->task_cleanup);
-+		xprt_force_disconnect(xprt);
- 	default:
- 		xprt_disconnect(xprt);
- 	}
+[1724467.119033] RPC: bad TCP reclen 0x337e08af (large)
+[1738771.833213] RPC: bad TCP reclen 0x00000014 (non-terminal)
+[1738801.224098] RPC: bad TCP reclen 0x6d346e31 (non-terminal)
+[1738965.738860] RPC: bad TCP reclen 0x6d376e39 (non-terminal)
+[1739183.459936] RPC: bad TCP reclen 0x342e7363 (non-terminal)
+[1739295.006403] RPC: bad TCP reclen 0x73797374 (non-terminal)
+[1739383.784788] RPC: bad TCP reclen 0x00000003 (non-terminal)
+[1739554.244212] RPC: bad TCP reclen 0x00000001 (non-terminal)
+[1740372.230510] RPC: bad TCP reclen 0x3f010080 (non-terminal)
+[1740573.448297] RPC: bad TCP reclen 0x79737465 (non-terminal)
+[1740692.060794] RPC: bad TCP reclen 0x08190080 (large)
+[1740695.795910] RPC: bad TCP reclen 0x656d0000 (non-terminal)
+[1741125.251753] RPC: bad TCP reclen 0x000186a3 (non-terminal)
+[1741135.467912] RPC: bad TCP reclen 0x00000002 (non-terminal)
+[1741138.612606] RPC: bad TCP reclen 0x3f010080 (non-terminal)
+[1741170.087073] RPC: bad TCP reclen 0x00000000 (non-terminal)
+[1741529.390769] RPC: bad TCP reclen 0x20202049 (non-terminal)
+[1741765.178189] rpc-srv/tcp: nfsd: sent only 12420 when sending 32900 bytes - shutting down socket
+[1741929.170146] rpc-srv/tcp: nfsd: sent only 4228 when sending 32900 bytes - shutting down socket
+[1741929.170162] rpc-srv/tcp: nfsd: got error -32 when sending 32900 bytes - shutting down socket
+[1741929.172954] rpc-srv/tcp: nfsd: got error -32 when sending 32900 bytes - shutting down socket
+[1741929.172983] rpc-srv/tcp: nfsd: got error -32 when sending 32900 bytes - shutting down socket
+[1741993.882718] rpc-srv/tcp: nfsd: sent only 24708 when sending 32900 bytes - shutting down socket
+[1741993.882733] rpc-srv/tcp: nfsd: got error -32 when sending 32900 bytes - shutting down socket
+[1741993.882750] rpc-srv/tcp: nfsd: got error -32 when sending 32900 bytes - shutting down socket
+[1743013.356969] rpc-srv/tcp: nfsd: sent only 20612 when sending 32900 bytes - shutting down socket
+[1743013.356990] rpc-srv/tcp: nfsd: got error -32 when sending 32900 bytes - shutting down socket
+[1743013.357007] rpc-srv/tcp: nfsd: got error -32 when sending 32900 bytes - shutting down socket
+[1743132.799893] RPC: bad TCP reclen 0x20312e35 (non-terminal)
+[1743156.085226] RPC: bad TCP reclen 0x302e3030 (non-terminal)
+[1743178.527927] RPC: bad TCP reclen 0x30452b30 (non-terminal)
+[1743302.061768] RPC: bad TCP reclen 0x30303030 (non-terminal)
+[1743325.774782] rpc-srv/tcp: nfsd: sent only 25496 when sending 32900 bytes - shutting down socket
+[1743325.776326] rpc-srv/tcp: nfsd: got error -32 when sending 32900 bytes - shutting down socket
+[1743332.191913] RPC: bad TCP reclen 0x30303020 (non-terminal)
+[1743396.683214] rpc-srv/tcp: nfsd: sent only 16516 when sending 32900 bytes - shutting down socket
+[1743400.329696] rpc-srv/tcp: nfsd: sent only 12420 when sending 32900 bytes - shutting down socket
+[1743400.329715] rpc-srv/tcp: nfsd: got error -32 when sending 32900 bytes - shutting down socket
+[1743400.329741] rpc-srv/tcp: nfsd: got error -32 when sending 32900 bytes - shutting down socket
+[1743415.486338] rpc-srv/tcp: nfsd: sent only 24708 when sending 32900 bytes - shutting down socket
+[1743421.714057] svc: bad direction -2147483528, dropping request
+[1743421.763703] RPC: bad TCP reclen 0x001a8000 (non-terminal)
+[1743465.969286] rpc-srv/tcp: nfsd: sent only 20612 when sending 32900 bytes - shutting down socket
+[1743470.886759] rpc-srv/tcp: nfsd: sent only 16516 when sending 32900 bytes - shutting down socket
 
+The system is on the other side of a gigabit attached gateway, and we
+are only seeing between 20-30 mbps of traffic through the
+gateway. Also, we are mounting the filesystem with tcp,hard,intr.
+
+Can anyone explain what is going on here? 
+Thanks in advance.
+ -nld
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
