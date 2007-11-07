@@ -1,7 +1,8 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 7/7] SUNRPC: Rename xprt_disconnect()
-Date: Tue, 06 Nov 2007 19:40:11 -0500
-Message-ID: <20071107004011.13713.39834.stgit@heimdal.trondhjem.org>
+Subject: [PATCH 4/7] SUNRPC: Use shutdown() instead of close()
+	when	disconnecting a TCP socket
+Date: Tue, 06 Nov 2007 19:39:56 -0500
+Message-ID: <20071107003956.13713.51521.stgit@heimdal.trondhjem.org>
 References: <20071107003834.13713.73536.stgit@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -12,12 +13,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IpYvv-0002Ry-UX
-	for nfs@lists.sourceforge.net; Tue, 06 Nov 2007 16:38:15 -0800
+	id 1IpYvz-0002SA-DJ
+	for nfs@lists.sourceforge.net; Tue, 06 Nov 2007 16:38:19 -0800
 Received: from c-69-242-210-120.hsd1.mi.comcast.net ([69.242.210.120]
 	helo=heimdal.trondhjem.org)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IpYw0-0002dB-0k
-	for nfs@lists.sourceforge.net; Tue, 06 Nov 2007 16:38:21 -0800
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IpYw4-0002Rf-Ps
+	for nfs@lists.sourceforge.net; Tue, 06 Nov 2007 16:38:25 -0800
 In-Reply-To: <20071107003834.13713.73536.stgit@heimdal.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -33,112 +34,121 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-xprt_disconnect() should really only be called when the transport shutdown
-is completed, and it is time to wake up any pending tasks. Rename it to
-xprt_disconnect_done() in order to reflect the semantical change.
+By using shutdown() rather than close() we allow the RPC client to wait
+for the TCP close handshake to complete before we start trying to reconnect
+using the same port.
+We use shutdown(SHUT_WR) only instead of shutting down both directions,
+however we wait until the server has closed the connection on its side.
 
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- include/linux/sunrpc/xprt.h     |    2 +-
- net/sunrpc/xprt.c               |    6 +++---
- net/sunrpc/xprtrdma/transport.c |    4 ++--
- net/sunrpc/xprtsock.c           |    6 +++---
- 4 files changed, 9 insertions(+), 9 deletions(-)
+ net/sunrpc/xprtsock.c |   53 +++++++++++++++++++++++++++++++++++++++++++------
+ 1 files changed, 46 insertions(+), 7 deletions(-)
 
-diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-index afb9e6a..2554cd2 100644
---- a/include/linux/sunrpc/xprt.h
-+++ b/include/linux/sunrpc/xprt.h
-@@ -245,7 +245,7 @@ void			xprt_adjust_cwnd(struct rpc_task *task, int result);
- struct rpc_rqst *	xprt_lookup_rqst(struct rpc_xprt *xprt, __be32 xid);
- void			xprt_complete_rqst(struct rpc_task *task, int copied);
- void			xprt_release_rqst_cong(struct rpc_task *task);
--void			xprt_disconnect(struct rpc_xprt *xprt);
-+void			xprt_disconnect_done(struct rpc_xprt *xprt);
- void			xprt_force_disconnect(struct rpc_xprt *xprt);
- 
- /*
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index fcdc4b8..4d71152 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -574,11 +574,11 @@ static void xprt_autoclose(struct work_struct *work)
- }
- 
- /**
-- * xprt_disconnect - mark a transport as disconnected
-+ * xprt_disconnect_done - mark a transport as disconnected
-  * @xprt: transport to flag for disconnect
-  *
-  */
--void xprt_disconnect(struct rpc_xprt *xprt)
-+void xprt_disconnect_done(struct rpc_xprt *xprt)
- {
- 	dprintk("RPC:       disconnected transport %p\n", xprt);
- 	spin_lock_bh(&xprt->transport_lock);
-@@ -586,7 +586,7 @@ void xprt_disconnect(struct rpc_xprt *xprt)
- 	xprt_wake_pending_tasks(xprt, -ENOTCONN);
- 	spin_unlock_bh(&xprt->transport_lock);
- }
--EXPORT_SYMBOL_GPL(xprt_disconnect);
-+EXPORT_SYMBOL_GPL(xprt_disconnect_done);
- 
- /**
-  * xprt_force_disconnect - force a transport to disconnect
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index dc55cc9..06e8b50 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -449,7 +449,7 @@ xprt_rdma_close(struct rpc_xprt *xprt)
- 	struct rpcrdma_xprt *r_xprt = rpcx_to_rdmax(xprt);
- 
- 	dprintk("RPC:       %s: closing\n", __func__);
--	xprt_disconnect(xprt);
-+	xprt_disconnect_done(xprt);
- 	(void) rpcrdma_ep_disconnect(&r_xprt->rx_ep, &r_xprt->rx_ia);
- }
- 
-@@ -682,7 +682,7 @@ xprt_rdma_send_request(struct rpc_task *task)
- 	}
- 
- 	if (rpcrdma_ep_post(&r_xprt->rx_ia, &r_xprt->rx_ep, req)) {
--		xprt_disconnect(xprt);
-+		xprt_disconnect_done(xprt);
- 		return -ENOTCONN;	/* implies disconnect */
- 	}
- 
 diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index c0aa2b4..a7d53d1 100644
+index 99c0166..d610d28 100644
 --- a/net/sunrpc/xprtsock.c
 +++ b/net/sunrpc/xprtsock.c
-@@ -789,7 +789,7 @@ clear_close_wait:
- 	clear_bit(XPRT_CLOSE_WAIT, &xprt->state);
- 	clear_bit(XPRT_CLOSING, &xprt->state);
- 	smp_mb__after_clear_bit();
--	xprt_disconnect(xprt);
-+	xprt_disconnect_done(xprt);
+@@ -614,6 +614,34 @@ static int xs_udp_send_request(struct rpc_task *task)
+ 	return status;
  }
  
- /**
-@@ -911,7 +911,7 @@ static inline void xs_tcp_read_fraghdr(struct rpc_xprt *xprt, struct xdr_skb_rea
- 	/* Sanity check of the record length */
- 	if (unlikely(transport->tcp_reclen < 4)) {
- 		dprintk("RPC:       invalid TCP record fragment length\n");
++static int xs_shutdown(struct socket *sock, int how)
++{
++	/*
++	 * Note: 'how - 1' trick converts
++	 *        RCV_SHUTDOWN -> SHUT_RD = 0
++	 *        SEND_SHUTDOWN -> SHUT_WR = 1
++	 *        RCV_SHUTDOWN|SEND_SHUTDOWN -> SHUT_RDWR = 2
++	 */
++	return sock->ops->shutdown(sock, how - 1);
++}
++
++/**
++ * xs_tcp_shutdown - gracefully shut down a TCP socket
++ * @xprt: transport
++ *
++ * Initiates a graceful shutdown of the TCP socket by calling the
++ * equivalent of shutdown(SHUT_WR);
++ */
++static void xs_tcp_shutdown(struct rpc_xprt *xprt)
++{
++	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
++	struct socket *sock = transport->sock;
++
++	if (sock != NULL)
++		xs_shutdown(sock, SEND_SHUTDOWN);
++	clear_bit(XPRT_CLOSE_WAIT, &xprt->state);
++}
++
+ static inline void xs_encode_tcp_record_marker(struct xdr_buf *buf)
+ {
+ 	u32 reclen = buf->len - sizeof(rpc_fraghdr);
+@@ -691,7 +719,7 @@ static int xs_tcp_send_request(struct rpc_task *task)
+ 	default:
+ 		dprintk("RPC:       sendmsg returned unrecognized error %d\n",
+ 			-status);
 -		xprt_disconnect(xprt);
-+		xprt_force_disconnect(xprt);
- 		return;
- 	}
- 	dprintk("RPC:       reading TCP record fragment of length %d\n",
-@@ -1160,7 +1160,7 @@ static void xs_tcp_state_change(struct sock *sk)
++		xs_tcp_shutdown(xprt);
  		break;
- 	case TCP_CLOSE:
- 		/* Mark transport as closed and wake up all pending tasks */
--		xprt_disconnect(xprt);
-+		xprt_disconnect_done(xprt);
- 		clear_bit(XPRT_CLOSING, &xprt->state);
  	}
-  out:
+ 
+@@ -1627,8 +1655,7 @@ static void xs_tcp_connect_worker4(struct work_struct *work)
+ 				break;
+ 			default:
+ 				/* get rid of existing socket, and retry */
+-				xs_close(xprt);
+-				break;
++				xs_tcp_shutdown(xprt);
+ 		}
+ 	}
+ out:
+@@ -1687,8 +1714,7 @@ static void xs_tcp_connect_worker6(struct work_struct *work)
+ 				break;
+ 			default:
+ 				/* get rid of existing socket, and retry */
+-				xs_close(xprt);
+-				break;
++				xs_tcp_shutdown(xprt);
+ 		}
+ 	}
+ out:
+@@ -1735,6 +1761,19 @@ static void xs_connect(struct rpc_task *task)
+ 	}
+ }
+ 
++static void xs_tcp_connect(struct rpc_task *task)
++{
++	struct rpc_xprt *xprt = task->tk_xprt;
++
++	/* Initiate graceful shutdown of the socket if not already done */
++	if (!test_bit(XPRT_CONNECTING, &xprt->state))
++		xs_tcp_shutdown(xprt);
++	/* Exit if we need to wait for socket shutdown to complete */
++	if (test_bit(XPRT_CLOSING, &xprt->state))
++		return;
++	xs_connect(task);
++}
++
+ /**
+  * xs_udp_print_stats - display UDP socket-specifc stats
+  * @xprt: rpc_xprt struct containing statistics
+@@ -1805,12 +1844,12 @@ static struct rpc_xprt_ops xs_tcp_ops = {
+ 	.release_xprt		= xs_tcp_release_xprt,
+ 	.rpcbind		= rpcb_getport_async,
+ 	.set_port		= xs_set_port,
+-	.connect		= xs_connect,
++	.connect		= xs_tcp_connect,
+ 	.buf_alloc		= rpc_malloc,
+ 	.buf_free		= rpc_free,
+ 	.send_request		= xs_tcp_send_request,
+ 	.set_retrans_timeout	= xprt_set_retrans_timeout_def,
+-	.close			= xs_close,
++	.close			= xs_tcp_shutdown,
+ 	.destroy		= xs_destroy,
+ 	.print_stats		= xs_tcp_print_stats,
+ };
 
 
 -------------------------------------------------------------------------
