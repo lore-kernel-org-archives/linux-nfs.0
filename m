@@ -1,23 +1,20 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: odd kernel-nfs-server messages
-Date: Wed, 7 Nov 2007 15:56:44 +1100
-Message-ID: <18225.17804.342785.5822@notabene.brown>
-References: <87fxzi1y9m.fsf@mcs.anl.gov>
+From: "=?iso-8859-9?B?YXJkZW0gdGH+?=" <dagkent@gmail.com>
+Subject: =?iso-8859-9?q?5_dakikada_27_dolar_kazan=FDn?=
+Date: Wed, 7 Nov 2007 11:27:33 +0200
+Message-ID: <16ae8cbfb6c9d94a43fe06953336283a@gmail.com>
+Reply-To: dagkent@gmail.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Narayan Desai <desai@mcs.anl.gov>
+Content-Type: text/plain; charset="iso-8859-9"
+To: <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IpcyE-0000Eb-9b
-	for nfs@lists.sourceforge.net; Tue, 06 Nov 2007 20:56:54 -0800
-Received: from ns1.suse.de ([195.135.220.2] helo=mx1.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IpcyG-0006RH-MB
-	for nfs@lists.sourceforge.net; Tue, 06 Nov 2007 20:57:00 -0800
-In-Reply-To: message from Narayan Desai on Tuesday November 6
+	id 1IphDd-0000VQ-LO
+	for nfs@lists.sourceforge.net; Wed, 07 Nov 2007 01:29:05 -0800
+Received: from [78.161.86.213] (helo=esas2116-92f3d3.local)
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1IphDi-0007ej-Jk
+	for nfs@lists.sourceforge.net; Wed, 07 Nov 2007 01:29:11 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,45 +27,48 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tuesday November 6, desai@mcs.anl.gov wrote:
-> We are running into some kernel nfs server errors that we are having
-> trouble deciphering. 
-> 
-> We are running a x86_64 nfs server. The server is running ubuntu
-> feisty, with their 2.6.20-16-generic kernel. 
-> 
-> The clients are also running linux (2.6.15 kernel; we are waiting on
-> the system vendor to finish their port to a newer kernel) on mips64. 
+1 DAKIKADA UYE OLUN 5 DAKIKADA 27 DOLAR KAZANIN DENEMESI BILE KOLAY =DCYELI=
+K AKTIVASYONU FALAN YOK UYELIK KOLAY KAZANMAK KOLAY ALT =DCYE KAZANDIRIN ON=
+LARDAN DA 1.25 $ KAZANIN NE KADAR DA KOLAYMIS PARA KAZANMAK DEGILMI SITE SA=
+HIPLERI SIZDE KAZANABILIRSINIZ LINKE TIKLA KOLAYCA UYE OL TAM 27 DOLAR KAZA=
+N =
 
-This looks a lot like the bug fixed by commit
+ =
 
-   e0ab53deaa91293a7958d63d5a2cf4c5645ad6f0
-
-which was still present in 2.6.15 (fix in 2.6.18).
-
-http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git;a=commitdiff;h=e0ab53deaa91293a7958d63d5a2cf4c5645ad6f0
-
-
-If the client gets an error sending data (because there is no buffer
-space), the remainder of the packet is discard, but it keeps the same
-tcp connection open.  When it sends another packet, presumably when
-buffer space is available, it gets sent and appears to be part of the
-previous packet.  Confusion ensues.
-
-NeilBrown
+     Bu site en kolay ve en =E7ok kazand=FDran=FD. Yapman=FDz gereken sitey=
+e =FCye olduktan sonra a=E7=FDlan sayfada a=FEa=F0=FDdaki 6$ veya 4$ gibi o=
+lan linkleri t=FDklay=FDp a=E7=FDlan yerdeki bo=FEluklara yorum yazmak. Her=
+ a=E7=FDlan sayfada 1 veya 2 adet kutucuk g=F6rceksiniz. O bo=FEluklara tek=
+ tek yorum yaz=FDp alt=FDndaki butona t=FDklamak. Sonucunda hesab=FDn=FDza =
+dolarlar yat=FDyor. Bu kadar basit. =DCye olduktan sonra 15 dakikada hemen =
+27$ kazan=FDyorsunuz. =FCyelik i=E7in:
+   http://www.AWSurveys.com/HomeMain.cfm?RefID=3Dseckin30
+ =
 
 
-> 
-> Under fairly heavy load (400-800 clients, not a ton of reads and
-> writes) we get the following messages:
-> 
-> [1724467.119033] RPC: bad TCP reclen 0x337e08af (large)
-> [1738771.833213] RPC: bad TCP reclen 0x00000014 (non-terminal)
-> [1738801.224098] RPC: bad TCP reclen 0x6d346e31 (non-terminal)
-> [1738965.738860] RPC: bad TCP reclen 0x6d376e39 (non-terminal)
-> [1739183.459936] RPC: bad TCP reclen 0x342e7363 (non-terminal)
-> [1739295.006403] RPC: bad TCP reclen 0x73797374 (non-terminal)
-> [1739383.784788] RPC: bad TCP reclen 0x00000003 (non-terminal)
+Nas=FDl =DCye Olunur? Yukar=FDdaki daki =FCye olun linkine t=FDklad=FDktan =
+sonra a=E7=FDlacak sayfada sa=F0 =FCst k=F6=FEede Create A Free Account'a t=
+=FDklay=FDn. Daha sonra bo=FEluklara =FEunlar=FD yazacaks=FDn=FDz: =
+
+Username : Kullan=FDc=FD ad=FDn=FDz
+Password : 7-15 karakterli =FEifreniz
+First name : Ad=FDn=FDz =
+
+Last name : Soyad=FDn=FDz =
+
+Gender : Erkekler i=E7in Male, bayanlar i=E7in Female Age :
+Ya=FE=FDn=FDz Email Address :
+Email Adresiniz ve en son da kutucu=F0un i=E7ine resimde g=F6rd=FC=F0=FCn=
+=FCz karakterleri girip Create Free Account butonuna t=FDklay=FDn. =DD=FEte=
+ bu kadar kolay. =DDyi kazan=E7lar.... =
+
+
+  NOT: Ad=FDn=FDz ve Soyad=FDn=FDz=FD girerken T=DCRK=C7E karakter kullanma=
+y=FDn.... Not:Paray=FD =E7ekmek i=E7in sitede redeem b=F6l=FCm=FCne t=FDkla=
+man=FDz yeterli Sitelere girdikten sonra kutucuklara "Good site.I like it."=
+ gibi bir =FEey yazsan=FDz yeterli olcakt=FDr...
+
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
