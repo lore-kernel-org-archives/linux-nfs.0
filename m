@@ -1,8 +1,8 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 6/7] SUNRPC: Make call_status()/call_decode()
-	call	xprt_force_disconnect()
-Date: Tue, 06 Nov 2007 19:40:06 -0500
-Message-ID: <20071107004006.13713.47336.stgit@heimdal.trondhjem.org>
+Subject: [PATCH 5/7] SUNRPC: xprt_autoclose() should not call
+	xprt_disconnect()
+Date: Tue, 06 Nov 2007 19:40:01 -0500
+Message-ID: <20071107004001.13713.508.stgit@heimdal.trondhjem.org>
 References: <20071107003834.13713.73536.stgit@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -13,12 +13,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IpYvr-0002RU-6D
-	for nfs@lists.sourceforge.net; Tue, 06 Nov 2007 16:38:11 -0800
+	id 1IpYvk-0002Q6-PV
+	for nfs@lists.sourceforge.net; Tue, 06 Nov 2007 16:38:05 -0800
 Received: from c-69-242-210-120.hsd1.mi.comcast.net ([69.242.210.120]
 	helo=heimdal.trondhjem.org)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IpYvw-0005F6-QR
-	for nfs@lists.sourceforge.net; Tue, 06 Nov 2007 16:38:17 -0800
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IpYvp-0005E4-SJ
+	for nfs@lists.sourceforge.net; Tue, 06 Nov 2007 16:38:10 -0800
 In-Reply-To: <20071107003834.13713.73536.stgit@heimdal.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -34,38 +34,56 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-Move the calls to xprt_disconnect() over to xprt_force_disconnect() in
-order to enable the transport layer to manage the state of the
-XPRT_CONNECTED flag.
+The transport layer should do that itself whenever appropriate.
+
+Note that the RDMA transport already assumes that it needs to call
+xprt_disconnect in xprt_rdma_close().
+For TCP sockets, we want to call xprt_disconnect() only after the
+connection has been closed by both ends.
 
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- net/sunrpc/clnt.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+ net/sunrpc/xprt.c     |    1 -
+ net/sunrpc/xprtsock.c |    3 +--
+ 2 files changed, 1 insertions(+), 3 deletions(-)
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 76be83e..046d8f6 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -1137,7 +1137,7 @@ call_status(struct rpc_task *task)
- 	case -ETIMEDOUT:
- 		task->tk_action = call_timeout;
- 		if (task->tk_client->cl_discrtry)
--			xprt_disconnect(task->tk_xprt);
-+			xprt_force_disconnect(task->tk_xprt);
- 		break;
- 	case -ECONNREFUSED:
- 	case -ENOTCONN:
-@@ -1260,7 +1260,7 @@ out_retry:
- 	req->rq_received = req->rq_private_buf.len = 0;
- 	task->tk_status = 0;
- 	if (task->tk_client->cl_discrtry)
--		xprt_disconnect(task->tk_xprt);
-+		xprt_force_disconnect(task->tk_xprt);
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index 48c5a8b..fcdc4b8 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -568,7 +568,6 @@ static void xprt_autoclose(struct work_struct *work)
+ 	struct rpc_xprt *xprt =
+ 		container_of(work, struct rpc_xprt, task_cleanup);
+ 
+-	xprt_disconnect(xprt);
+ 	xprt->ops->close(xprt);
+ 	clear_bit(XPRT_CLOSE_WAIT, &xprt->state);
+ 	xprt_release_write(xprt, NULL);
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index d610d28..c0aa2b4 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -786,10 +786,10 @@ static void xs_close(struct rpc_xprt *xprt)
+ 	sock_release(sock);
+ clear_close_wait:
+ 	smp_mb__before_clear_bit();
+-	clear_bit(XPRT_CONNECTED, &xprt->state);
+ 	clear_bit(XPRT_CLOSE_WAIT, &xprt->state);
+ 	clear_bit(XPRT_CLOSING, &xprt->state);
+ 	smp_mb__after_clear_bit();
++	xprt_disconnect(xprt);
  }
  
- /*
+ /**
+@@ -805,7 +805,6 @@ static void xs_destroy(struct rpc_xprt *xprt)
+ 
+ 	cancel_rearming_delayed_work(&transport->connect_worker);
+ 
+-	xprt_disconnect(xprt);
+ 	xs_close(xprt);
+ 	xs_free_peer_addresses(xprt);
+ 	kfree(xprt->slot);
 
 
 -------------------------------------------------------------------------
