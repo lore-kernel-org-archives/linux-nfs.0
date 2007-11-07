@@ -1,25 +1,19 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 00/15] Rewrite nfs(5) man page
-Date: Wed, 07 Nov 2007 10:29:42 -0500
-Message-ID: <4731D9E6.5040405@oracle.com>
-References: <20071106005731.5037.57716.stgit@ellison.1015granger.net>
-	<EXNANE01xJagXTi8M19000008c3@exnane01.hq.netapp.com>
-Reply-To: chuck.lever@oracle.com
+From: "Bakaitis" <ming-hor@fcmail.com>
+Subject: FW[5]:
+Date: Wed, 07 Nov 2007 14:18:36 +0000
+Message-ID: <000501c82158$0205bf4d$12c06abd@ruxpk>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------010105060701080706020302"
-Cc: nfs@lists.sourceforge.net
-To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
+Content-Type: text/plain; charset="koi8-r"
+To: <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Ipmso-0003zY-Ae
-	for nfs@lists.sourceforge.net; Wed, 07 Nov 2007 07:31:58 -0800
-Received: from agminet01.oracle.com ([141.146.126.228])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Ipmsr-0006Pk-4H
-	for nfs@lists.sourceforge.net; Wed, 07 Nov 2007 07:32:03 -0800
-In-Reply-To: <EXNANE01xJagXTi8M19000008c3@exnane01.hq.netapp.com>
+	id 1IpnDo-0006Hv-QJ
+	for nfs@lists.sourceforge.net; Wed, 07 Nov 2007 07:53:41 -0800
+Received: from [189.142.22.179] (helo=dsl-189-142-22-179.prod-infinitum.com.mx)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IpnDr-0007bs-Nl
+	for nfs@lists.sourceforge.net; Wed, 07 Nov 2007 07:53:46 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,62 +26,15 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
---------------010105060701080706020302
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-
-Talpey, Thomas wrote:
-> Do you by any chance have a formatted rollup of these changes on
-> the web somewhere? Yes, I can merge them myself and view the
-> result but... :-)
-
-I recommend merging the patches yourself.  I made some significant 
-alterations as I created the patches from the web version.
-
-But you can look here:
-
-    http://wiki.linux-nfs.org/wiki/index.php/NewNfsManPage
-
---------------010105060701080706020302
-Content-Type: text/x-vcard; charset=utf-8;
- name="chuck.lever.vcf"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="chuck.lever.vcf"
-
-begin:vcard
-fn:Chuck Lever
-n:Lever;Chuck
-org:Oracle Corporation;Corporate Architecture: Linux Projects Group
-adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
-email;internet:chuck dot lever at nospam oracle dot com
-title:Principal Member of Staff
-tel;work:+1 248 614 5091
-x-mozilla-html:FALSE
-version:2.1
-end:vcard
-
-
---------------010105060701080706020302
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Splunk Inc.
-Still grepping through log files to find problems?  Stop.
-Now Search log events and configuration files using AJAX and a browser.
-Download your FREE copy of Splunk now >> http://get.splunk.com/
---------------010105060701080706020302
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-
---------------010105060701080706020302--
+RS1tYWlsINLFy8zBzcEgLSDT1MHS1CD3wdvFx88gwsnazsXTwSEg68HexdPU18XOzs8gz9Qg0NLP
+xsXT08nPzsHMz9cuCkPBzdnFINDPzM7ZxSDSxcfVzNHSzs8gz8LOz9fM0cXN2cUgwsHa2SAo7c/T
+y9fBLCDyz9PTydEsIPPu5ykgCkPBzc/FINPP19LFzcXOzs/FIM/Cz9LVxM/Xwc7JxSAK58HSwc7U
+ydEgy8HexdPU18EgySDP1N7F1CAK1MXMIPcgzc/Ty9fFOiAtIDY0OC02My04NAoKCi0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0KVGhpcyBTRi5uZXQgZW1haWwgaXMgc3BvbnNvcmVkIGJ5OiBTcGx1bmsgSW5jLgpT
+dGlsbCBncmVwcGluZyB0aHJvdWdoIGxvZyBmaWxlcyB0byBmaW5kIHByb2JsZW1zPyAgU3RvcC4K
+Tm93IFNlYXJjaCBsb2cgZXZlbnRzIGFuZCBjb25maWd1cmF0aW9uIGZpbGVzIHVzaW5nIEFKQVgg
+YW5kIGEgYnJvd3Nlci4KRG93bmxvYWQgeW91ciBGUkVFIGNvcHkgb2YgU3BsdW5rIG5vdyA+PiBo
+dHRwOi8vZ2V0LnNwbHVuay5jb20vCl9fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
+X19fX19fX19fX19fCk5GUyBtYWlsbGlzdCAgLSAgTkZTQGxpc3RzLnNvdXJjZWZvcmdlLm5ldApo
+dHRwczovL2xpc3RzLnNvdXJjZWZvcmdlLm5ldC9saXN0cy9saXN0aW5mby9uZnMK
