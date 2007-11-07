@@ -1,20 +1,20 @@
 From: "=?iso-8859-9?B?YXJkZW0gdGH+?=" <dagkent@gmail.com>
 Subject: =?iso-8859-9?q?5_dakikada_27_dolar_kazan=FDn?=
-Date: Wed, 7 Nov 2007 11:27:33 +0200
-Message-ID: <16ae8cbfb6c9d94a43fe06953336283a@gmail.com>
+Date: Wed, 7 Nov 2007 12:56:24 +0200
+Message-ID: <13428d15558808741189a4ec3ab8beef@gmail.com>
 Reply-To: dagkent@gmail.com
 Mime-Version: 1.0
 Content-Type: text/plain; charset="iso-8859-9"
 To: <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IphDd-0000VQ-LO
-	for nfs@lists.sourceforge.net; Wed, 07 Nov 2007 01:29:05 -0800
+	id 1Ipibi-00019i-Ba
+	for nfs@lists.sourceforge.net; Wed, 07 Nov 2007 02:58:02 -0800
 Received: from [78.161.86.213] (helo=esas2116-92f3d3.local)
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1IphDi-0007ej-Jk
-	for nfs@lists.sourceforge.net; Wed, 07 Nov 2007 01:29:11 -0800
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1Ipibn-0005Zx-CD
+	for nfs@lists.sourceforge.net; Wed, 07 Nov 2007 02:58:08 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
