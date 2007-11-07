@@ -1,20 +1,26 @@
-From: WorldArticles <admin@world-articles.000webhost.com>
-Subject: Articles & News - Writer's Resource Page
-Date: Thu, 8 Nov 2007 02:24:13 +0900
-Message-ID: <200711071724.lA7HOD110287@www.mousa.com>
-Content-Type: multipart/mixed; boundary="===============1299115921=="
-To: nfs@lists.sourceforge.net
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 1/7] SUNRPC: Fix a race in xs_tcp_state_change()
+Date: Wed, 07 Nov 2007 17:21:22 -0500
+Message-ID: <47323A62.9000803@oracle.com>
+References: <20071107003834.13713.73536.stgit@heimdal.trondhjem.org>
+	<20071107003940.13713.65472.stgit@heimdal.trondhjem.org>
+Reply-To: chuck.lever@oracle.com
+Mime-Version: 1.0
+Content-Type: multipart/mixed; boundary="------------000808000404040600050609"
+Cc: nfsv4@linux-nfs.org, Tom Talpey <Thomas.Talpey@netapp.com>,
+	nfs@lists.sourceforge.net
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Ipq5Q-00033R-JE
-	for nfs@lists.sourceforge.net; Wed, 07 Nov 2007 10:57:13 -0800
-Received: from unused-210-157-014-127.interq.or.jp ([210.157.14.127]
-	helo=www.mousa.com)
-	by mail.sourceforge.net with esmtps (TLSv1:DES-CBC3-SHA:168)
-	(Exim 4.44) id 1Ipq5U-0005gj-Qj
-	for nfs@lists.sourceforge.net; Wed, 07 Nov 2007 10:57:18 -0800
+	id 1IptHV-0006iH-Rf
+	for nfs@lists.sourceforge.net; Wed, 07 Nov 2007 14:21:53 -0800
+Received: from agminet01.oracle.com ([141.146.126.228])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IptHa-0005t4-Ai
+	for nfs@lists.sourceforge.net; Wed, 07 Nov 2007 14:21:59 -0800
+In-Reply-To: <20071107003940.13713.65472.stgit@heimdal.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,272 +33,123 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============1299115921==
-Content-Type: text/html
+This is a multi-part message in MIME format.
+--------------000808000404040600050609
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Transfer-Encoding: 7bit
+
+Trond Myklebust wrote:
+> From: Trond Myklebust <Trond.Myklebust@netapp.com>
+> 
+> When scheduling the autoclose RPC call, we want to ensure that we don't
+> race against the test_bit() call in xprt_clear_locked().
+> 
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> ---
+> 
+>  include/linux/sunrpc/xprt.h |    1 +
+>  net/sunrpc/xprt.c           |   20 ++++++++++++++++++++
+>  net/sunrpc/xprtsock.c       |    5 +----
+>  3 files changed, 22 insertions(+), 4 deletions(-)
+> 
+> diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+> index 30b17b3..6f524a9 100644
+> --- a/include/linux/sunrpc/xprt.h
+> +++ b/include/linux/sunrpc/xprt.h
+> @@ -246,6 +246,7 @@ struct rpc_rqst *	xprt_lookup_rqst(struct rpc_xprt *xprt, __be32 xid);
+>  void			xprt_complete_rqst(struct rpc_task *task, int copied);
+>  void			xprt_release_rqst_cong(struct rpc_task *task);
+>  void			xprt_disconnect(struct rpc_xprt *xprt);
+> +void			xprt_force_disconnect(struct rpc_xprt *xprt);
+>  
+>  /*
+>   * Reserved bit positions in xprt->state
+> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+> index 282a9a2..48c5a8b 100644
+> --- a/net/sunrpc/xprt.c
+> +++ b/net/sunrpc/xprt.c
+> @@ -570,6 +570,7 @@ static void xprt_autoclose(struct work_struct *work)
+>  
+>  	xprt_disconnect(xprt);
+>  	xprt->ops->close(xprt);
+> +	clear_bit(XPRT_CLOSE_WAIT, &xprt->state);
+
+xs_close already clears the CLOSE_WAIT bit, and so does xs_tcp_shutdown 
+(added in a later patch).  So this hunk appears to be unnecessary.
+
+But xprt_rdma_close doesn't clear CLOSE_WAIT, it appears.  Do we want to 
+copy (some of) the logic from the end of xs_close into xprt_rdma_close?
+
+>  	xprt_release_write(xprt, NULL);
+>  }
+>  
+> @@ -588,6 +589,25 @@ void xprt_disconnect(struct rpc_xprt *xprt)
+>  }
+>  EXPORT_SYMBOL_GPL(xprt_disconnect);
+>  
+> +/**
+> + * xprt_force_disconnect - force a transport to disconnect
+> + * @xprt: transport to disconnect
+> + *
+> + */
+> +void xprt_force_disconnect(struct rpc_xprt *xprt)
+> +{
+> +	/* Don't race with the test_bit() in xprt_clear_locked() */
+> +	spin_lock_bh(&xprt->transport_lock);
+> +	set_bit(XPRT_CLOSE_WAIT, &xprt->state);
+> +	/* Try to schedule an autoclose RPC call */
+> +	if (test_and_set_bit(XPRT_LOCKED, &xprt->state) == 0)
+> +		queue_work(rpciod_workqueue, &xprt->task_cleanup);
+
+> +	else if (xprt->snd_task != NULL)
+> +		rpc_wake_up_task(xprt->snd_task);
+
+What's this new bit of logic for?
+
+> +	spin_unlock_bh(&xprt->transport_lock);
+> +}
+> +EXPORT_SYMBOL_GPL(xprt_force_disconnect);
+> +
+>  static void
+>  xprt_init_autodisconnect(unsigned long data)
+>  {
+> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> index 02298f5..322e4e2 100644
+> --- a/net/sunrpc/xprtsock.c
+> +++ b/net/sunrpc/xprtsock.c
+> @@ -1118,10 +1118,7 @@ static void xs_tcp_state_change(struct sock *sk)
+>  	case TCP_SYN_RECV:
+>  		break;
+>  	case TCP_CLOSE_WAIT:
+> -		/* Try to schedule an autoclose RPC calls */
+> -		set_bit(XPRT_CLOSE_WAIT, &xprt->state);
+> -		if (test_and_set_bit(XPRT_LOCKED, &xprt->state) == 0)
+> -			queue_work(rpciod_workqueue, &xprt->task_cleanup);
+> +		xprt_force_disconnect(xprt);
+>  	default:
+>  		xprt_disconnect(xprt);
+>  	}
+
+--------------000808000404040600050609
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck.lever.vcf"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="chuck.lever.vcf"
+
+begin:vcard
+fn:Chuck Lever
+n:Lever;Chuck
+org:Oracle Corporation;Corporate Architecture: Linux Projects Group
+adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
+title:Principal Member of Staff
+tel;work:+1 248 614 5091
+x-mozilla-html:FALSE
+version:2.1
+end:vcard
 
 
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
-"http://www.w3.org/TR/html4/loose.dtd">
-<html>
-<head>
-<title>Articles &amp; News</title>
-<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
-<META NAME="keywords" CONTENT="blog, accounting, advertising, business, diabetes, domain, ecommerce, finance, management, marketing, mortgage, network, nutrition, prostate cancer, religion, security, software, travel, vacation, loss weight">
-<style type="text/css">
-<!--
-body {
-	background-color: #FFFFFF;
-}
-.style1 {
-	color: #0000FF;
-	font-size: 18px;
-}
--->
-</style>
-<base target="_blank">
-</head>
-
-<body>
-<div align="center">
-	<table border="1" width="709" height="596">
-		<tr>
-			<td colspan="3" height="35" style="border-style: solid; border-width: 1px" bgcolor="#800000">
-			<p align="center">
-			<font color="#FFFFFF">
-			<span style="font-size: larger;"><b>
-			<a href="http://world-articles.000webhost.com">
-			<font color="#00FF00">WorldArticles</font></a> - Writer's Resource Page 
-			(Articles &amp; News)</b></span></font></td>
-		</tr>
-		<tr>
-			<td width="693" style="border-style: solid; border-width: 1px" height="269" colspan="3" bgcolor="#FFFFCC">
-			<p align="left"><b>Dear Friend !</b></p>
-			<p align="left"><b>We're happy to announce you that we 
-			have made a new international
-			<a target="_blank" href="http://world-articles.000webhost.com">Articles &amp; News</a> 
-			webpage.</b></p>
-			<p align="left"><b>Authors and website owners work together providing content for 
-			the Internet. WorldArticles Website provides free content publication 
-			for authors and publishers.</b></p>
-			<p align="left"><b>We wanted to let you know about our new writer resource page. 
-			Please take a minute to visit. We have posted new articles on the 
-			page which we&nbsp;hope you will find useful. If you manage a directory 
-			or a zine, please consider including them.</b></p>
-			<p align="left">
-			<b>
-			<a target="_blank" onclick="return top.js.OpenExtLink(window,event,this)" href="http://world-articles.000webhost.com">Article and Author Resource Page</a></b></p>
-			<p align="left">
-			&nbsp;</p>
-			<p align="left">
-			<b>Best wishes,<br>
-			Administrator:
-			<font color="#FF0000">Robert Calota</font><br>
-			Website:
-			<a target="_blank" href="http://world-articles.000webhost.com">
-			<font color="#FF0000">http://world-articles.000webhost.com</font></a><br>
-			<em style="font-style: normal">Company: </em>
-			<font color="#FF0000">
-			<em>&quot;The Article Company&quot;</em></font></b></p></td>
-		</tr>
-		<tr>
-			<td width="693" style="border-left-style:solid; border-left-width:1px; border-top-style:solid; border-top-width:1px; border-bottom-style:solid; border-bottom-width:1px" height="23" colspan="3" bgcolor="#800000">
-			<p align="center"><b><font size="4" color="#FFFFFF">Categories</font></b></td>
-			</tr>
-		<tr>
-			<td width="223" style="border-style: solid; border-width: 1px" align="left" bgcolor="#FFFFCC">
-			<ul>
-				<li>
-				<b>
-				<a title="View all posts filed under Advertising" href="http://blog.exofire.net/category/advertising">
-				Advertising</a></b></li>
-				<li>
-				<b>
-				<a title="View all posts filed under Alternative Medicine" href="http://blog.exofire.net/category/alternative-medicine">
-				Alternative Medicine</a></b></li>
-				<li>
-				<b>
-				<a title="View all posts filed under Business" href="http://blog.exofire.net/category/business">
-				Business</a></b></li>
-				<li>
-				<b>
-				<a title="View all posts filed under Careers" href="http://blog.exofire.net/category/careers">
-				Careers</a></b></li>
-				<li>
-				<b>
-				<a title="View all posts filed under Colon Cancer" href="http://blog.exofire.net/category/colon-cancer">
-				Colon Cancer</a></b></li>
-				<li>
-				<b>
-				<a title="View all posts filed under Computer Certification" href="http://blog.exofire.net/category/computer-certification">
-				Computer Certification</a></b></li>
-				<li>
-				<b>
-				<a title="View all posts filed under Currency Trading" href="http://blog.exofire.net/category/currency-trading">
-				Currency Trading</a></b></li>
-				<li>
-				<b>
-				<a title="View all posts filed under Diabetes" href="http://blog.exofire.net/category/diabetes">
-				Diabetes</a></b></li>
-				<li>
-				<b>
-				<a title="View all posts filed under Digital Products" href="http://blog.exofire.net/category/digital-products">
-				Digital Products</a></b></li>
-				<li>
-				<b>
-				<a title="View all posts filed under Domains" href="http://blog.exofire.net/category/domains">
-				Domains</a></b></li>
-				<li>
-				<b>
-				<a title="View all posts filed under Ecommerce" href="http://blog.exofire.net/category/ecommerce">
-				Ecommerce</a></b></li>
-				<li>
-				<b>
-				<a title="View all posts filed under Extreme" href="http://blog.exofire.net/category/extreme">
-				Extreme</a></b></li>
-				<li>
-				<b>
-				<a title="View all posts filed under Fashion" href="http://blog.exofire.net/category/fashion">
-				Fashion</a></b></li>
-				<li>
-				<b>
-				<a title="View all posts filed under Finance" href="http://blog.exofire.net/category/finance">
-				Finance</a></b></li>
-			</ul>
-			</td>
-			<td width="243" style="border-left-style:solid; border-left-width:1px; border-right-style:solid; border-right-width:1px; border-bottom-style:solid; border-bottom-width:1px" align="left" bgcolor="#FFFFCC">
-			<ul>
-				<li>
-				<b>
-				<a title="View all posts filed under Fitness Equipment" href="http://blog.exofire.net/category/fitness-equipment">
-				Fitnes Equipment</a> </b> </li>
-				<li>
-				<b>
-				<a title="View all posts filed under Games" href="http://blog.exofire.net/category/games">
-				Games</a></b></li>
-				<li>
-				<b>
-				<a title="View all posts filed under Home Improvement" href="http://blog.exofire.net/category/home-improvement">
-				Home Improvement</a></b></li>
-				<li>
-				<b>
-				<a title="View all posts filed under Internet Business" href="http://blog.exofire.net/category/internet-business">
-				Internet Business</a></b></li>
-				<li>
-				<b>
-				<a title="View all posts filed under Management" href="http://blog.exofire.net/category/management">
-				Management</a></b></li>
-				<li>
-				<b>
-				<a title="View all posts filed under Marketing" href="http://blog.exofire.net/category/marketing">
-				Marketing</a></b></li>
-				<li>
-				<b>
-				<a title="View all posts filed under Martial Arts" href="http://blog.exofire.net/category/martial-arts">
-				Martial Arts</a></b></li>
-				<li>
-				<b>
-				<a title="View all posts filed under Mortgage" href="http://blog.exofire.net/category/mortgage">
-				Mortgage</a></b></li>
-				<li>
-				<b>
-				<a title="View all posts filed under Networks" href="http://blog.exofire.net/category/networks">
-				Networks</a></b></li>
-				<li>
-				<b>
-				<a title="View all posts filed under Nutrition" href="http://blog.exofire.net/category/nutrition">
-				Nutrition</a></b></li>
-				<li>
-				<b>
-				<a title="View all posts filed under Ovarian Cancer" href="http://blog.exofire.net/category/ovarian-cancer">
-				Ovarian Cancer</a></b></li>
-				<li>
-				<b>
-				<a title="View all posts filed under Personal Finance" href="http://blog.exofire.net/category/personal-finance">
-				Personal Finance</a></b></li>
-				<li>
-				<b>
-				<a title="View all posts filed under Ppc Advertising" href="http://blog.exofire.net/category/ppc-advertising">
-				Ppc Advertising</a></b></li>
-				<li>
-				<b>
-				<a title="View all posts filed under Prostate Cancer" href="http://blog.exofire.net/category/prostate-cancer">
-				Prostate Cancer</a></b></li>
-			</ul>
-			</td>
-			<td width="221" style="border-left-style:solid; border-left-width:1px; border-bottom-style:solid; border-bottom-width:1px" align="left" bgcolor="#FFFFCC">
-			<ul>
-				<li>
-				<b>
-				<a title="View all posts filed under Recreation &amp; Sports" href="http://blog.exofire.net/category/recreation-sports">
-				Recreation &amp; Sports</a></b></li>
-				<li>
-				<b>
-				<a title="View all posts filed under Religion" href="http://blog.exofire.net/category/religion">
-				Religion</a></b></li>
-				<li>
-				<b>
-				<a title="View all posts filed under Security" href="http://blog.exofire.net/category/security">
-				Security</a></b></li>
-				<li>
-				<b>
-				<a title="View all posts filed under Self Improvement" href="http://blog.exofire.net/category/self-improvement">
-				Self Improvement</a></b></li>
-				<li>
-				<b>
-				<a title="View all posts filed under Small Business" href="http://blog.exofire.net/category/small-business">
-				Small Business</a></b></li>
-				<li>
-				<b>
-				<a title="View all posts filed under Software" href="http://blog.exofire.net/category/software">
-				Software</a></b></li>
-				<li>
-				<b>
-				<a title="View all posts filed under Stock Market" href="http://blog.exofire.net/category/stock-market">
-				Stock Market</a></b></li>
-				<li>
-				<b>
-				<a title="View all posts filed under Travel &amp; Leisure" href="http://blog.exofire.net/category/travel-leisure">
-				Travel &amp; Leisure</a></b></li>
-				<li>
-				<b>
-				<a title="View all posts filed under Vacations" href="http://blog.exofire.net/category/vacations">
-				Vacations</a></b></li>
-				<li>
-				<b>
-				<a title="View all posts filed under Voip" href="http://blog.exofire.net/category/voip">
-				Voip</a></b></li>
-				<li>
-				<b>
-				<a title="View all posts filed under Web Design" href="http://blog.exofire.net/category/web-design">
-				Web Design</a></b></li>
-				<li>
-				<b>
-				<a title="View all posts filed under Web Hosting" href="http://blog.exofire.net/category/web-hosting">
-				Web Hosting</a></b></li>
-				<li>
-				<b>
-				<a title="View all posts filed under Weight Loss" href="http://blog.exofire.net/category/weight-loss">
-				Weight Loss</a></b></li>
-			</ul>
-			<p>&nbsp;</td>
-			</tr>
-		<tr>
-			<td width="687" style="border-style: solid; border-width: 1px" align="left" bgcolor="#FFFFCC" colspan="3">
-			<font color="#FF0000"><b>ATTENTION!</b></font><p>
-			<font color="#FF0000"><b>(This is NOT spam. It is one of the emails 
-			that you agreed to receive when you posted your message to our site. 
-			You will not receive another unless you post another message to our 
-			site)</b></font><p>
-			<font color="#FF0000"><b>If you wish to not receive emails from us 
-			anymore please contact Administrator: 
-			admin@world-articles.000webhost.com</b></font></td>
-			</tr>
-	</table>
-  </body>
-</html>
-
-
---===============1299115921==
+--------------000808000404040600050609
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -303,7 +160,7 @@ This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >> http://get.splunk.com/
---===============1299115921==
+--------------000808000404040600050609
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -313,4 +170,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---===============1299115921==--
+--------------000808000404040600050609--
