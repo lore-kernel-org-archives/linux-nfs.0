@@ -1,32 +1,30 @@
-From: Kumar Gala <galak@kernel.crashing.org>
-Subject: Re: LTP ustat01 test fails on NFSROOT
-Date: Thu, 8 Nov 2007 01:36:45 -0600
-Message-ID: <39F21091-B0FC-46D2-AA5B-19491053A8B8@kernel.crashing.org>
-References: <CBDE987B-0713-4D62-8122-054183E75410@kernel.crashing.org>
-	<1193188894.27073.20.camel@heimdal.trondhjem.org>
-	<1954B8FA-6E29-4FB7-86B0-EA43AF8F2AAF@kernel.crashing.org>
-	<2B2C1270-60FB-4830-A62C-D0357D2E1FB3@kernel.crashing.org>
-	<1193335168.7705.39.camel@heimdal.trondhjem.org>
-	<Pine.LNX.4.64.0711020927530.25341@blarg.am.freescale.net>
-Mime-Version: 1.0 (Apple Message framework v752.2)
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH] NFS: Stop sillyname renames and unmounts from
+	racing
+Date: Thu, 08 Nov 2007 04:05:04 -0500
+Message-ID: <4732D140.5030205@RedHat.com>
+References: <472C56E5.1040901@RedHat.com>
+	<20071105210636.2fc72e14.akpm@linux-foundation.org>
+	<20071106051532.GA5397@devserv.devel.redhat.com>
+Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Andrew Morton <akpm@osdl.org>, neilb@suse.de,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	bfields@fieldses.org, nfs@lists.sourceforge.net,
-	Linus Torvalds <torvalds@linux-foundation.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>,
+	Christoph Hellwig <hch@infradead.org>, nfs@lists.sourceforge.net,
+	linux-fsdevel@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>
+To: Alexander Viro <aviro@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Iq1x2-0008OS-3O
-	for nfs@lists.sourceforge.net; Wed, 07 Nov 2007 23:37:20 -0800
-Received: from gate.crashing.org ([63.228.1.57]
-	ident=[U2FsdGVkX1/fWy/8zYOx6hZhKj3d92e9u1v6dzh9Y6k=])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Iq1wy-00011m-Lk
-	for nfs@lists.sourceforge.net; Wed, 07 Nov 2007 23:37:26 -0800
-In-Reply-To: <Pine.LNX.4.64.0711020927530.25341@blarg.am.freescale.net>
+	id 1Iq3Op-0000QB-RG
+	for nfs@lists.sourceforge.net; Thu, 08 Nov 2007 01:10:08 -0800
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Iq3Ov-0004vO-7P
+	for nfs@lists.sourceforge.net; Thu, 08 Nov 2007 01:10:13 -0800
+In-Reply-To: <20071106051532.GA5397@devserv.devel.redhat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -39,187 +37,166 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+Alexander Viro wrote:
+> On Mon, Nov 05, 2007 at 09:06:36PM -0800, Andrew Morton wrote:
+>>> Any objections to exporting the inode_lock spin lock?
+>>> If so, how should modules _safely_ access the s_inode list?
+> 
+>> That's going to make hch unhappy.
+> 
+> That's going to make me just as unhappy, especially since it's pointless;
+> instead of the entire sorry mess we should just bump sb->s_active to pin
+> the superblock down (we know that it's active at that point, so it's just
+> an atomic_inc(); no games with locking, etc., are needed) and call
+> deactivate_super() on the way out.  And deactivate_super() is exported
+> already.
 
-On Nov 2, 2007, at 9:28 AM, Kumar Gala wrote:
+Even though Al suggestion did indeed fix the race and was incredibility 
+simple (adding two lines of code), it turns out calling deactivate_super()
+from the rpciod kernel daemon is not good, since it can cause deadlocks 
+with other async tasks.
 
-> On Thu, 25 Oct 2007, Trond Myklebust wrote:
->
->> Could you please try the following patch?
->>
->> Cheers
->>   Trond
->
-> Its a new month so I'll ping again about sending this fix upstream to
-> linus for 2.6.24 :) ?
->
-> - k
+Following a suggestion from Trond, I decided to go back to the original idea 
+of using put_super, but keeping all the changes inside the NFS client code.
 
-Trond,
+So the following patch adds an active/deactive mechanism to the 
+nfs_server structure (very similar to the s_active/deactivate_super()
+mechanism) that any async opt (in this case silly renames) can use
+to stop unmount for occurring before they are finished. 
 
-any update on sending this to Linus for 2.6.24?
+This means there is no need to expose any spin locks, no need for an
+O(n2) search and all the changes are contained inside the 
+NFS client code. 
 
-- k
+steved.
 
->> --------------------------------- CUT HERE  
->> -----------------------------
->> From: Trond Myklebust <Trond.Myklebust@netapp.com>
->> Date: Thu, 25 Oct 2007 13:56:10 -0400
->> NFS: Fix the ustat() regression
->>
->> Since 2.6.18, the superblock sb->s_root has been a dummy dentry  
->> with a
->> dummy inode. This breaks ustat(), which actually uses sb->s_root in a
->> vfstat() call.
->>
->> Fix this by making the s_root a dummy alias to the directory inode  
->> that was
->> used when creating the superblock.
->>
->> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
->> ---
->>
->>  fs/nfs/getroot.c |   81 +++++++++++++++++ 
->> +------------------------------------
->>  1 files changed, 27 insertions(+), 54 deletions(-)
->>
->> diff --git a/fs/nfs/getroot.c b/fs/nfs/getroot.c
->> index 522e5ad..0ee4384 100644
->> --- a/fs/nfs/getroot.c
->> +++ b/fs/nfs/getroot.c
->> @@ -43,6 +43,25 @@
->>  #define NFSDBG_FACILITY		NFSDBG_CLIENT
->>
->>  /*
->> + * Set the superblock root dentry.
->> + * Note that this function frees the inode in case of error.
->> + */
->> +static int nfs_superblock_set_dummy_root(struct super_block *sb,  
->> struct inode *inode)
->> +{
->> +	/* The mntroot acts as the dummy root dentry for this superblock */
->> +	if (sb->s_root == NULL) {
->> +		sb->s_root = d_alloc_root(inode);
->> +		if (sb->s_root == NULL) {
->> +			iput(inode);
->> +			return -ENOMEM;
->> +		}
->> +		/* Circumvent igrab(): we know the inode is not being freed */
->> +		atomic_inc(&inode->i_count);
->> +	}
->> +	return 0;
->> +}
->> +
->> +/*
->>   * get an NFS2/NFS3 root dentry from the root filehandle
->>   */
->>  struct dentry *nfs_get_root(struct super_block *sb, struct nfs_fh  
->> *mntfh)
->> @@ -54,33 +73,6 @@ struct dentry *nfs_get_root(struct super_block  
->> *sb, struct nfs_fh *mntfh)
->>  	struct inode *inode;
->>  	int error;
->>
->> -	/* create a dummy root dentry with dummy inode for this  
->> superblock */
->> -	if (!sb->s_root) {
->> -		struct nfs_fh dummyfh;
->> -		struct dentry *root;
->> -		struct inode *iroot;
->> -
->> -		memset(&dummyfh, 0, sizeof(dummyfh));
->> -		memset(&fattr, 0, sizeof(fattr));
->> -		nfs_fattr_init(&fattr);
->> -		fattr.valid = NFS_ATTR_FATTR;
->> -		fattr.type = NFDIR;
->> -		fattr.mode = S_IFDIR | S_IRUSR | S_IWUSR;
->> -		fattr.nlink = 2;
->> -
->> -		iroot = nfs_fhget(sb, &dummyfh, &fattr);
->> -		if (IS_ERR(iroot))
->> -			return ERR_PTR(PTR_ERR(iroot));
->> -
->> -		root = d_alloc_root(iroot);
->> -		if (!root) {
->> -			iput(iroot);
->> -			return ERR_PTR(-ENOMEM);
->> -		}
->> -
->> -		sb->s_root = root;
->> -	}
->> -
->>  	/* get the actual root for this mount */
->>  	fsinfo.fattr = &fattr;
->>
->> @@ -96,6 +88,10 @@ struct dentry *nfs_get_root(struct super_block  
->> *sb, struct nfs_fh *mntfh)
->>  		return ERR_PTR(PTR_ERR(inode));
->>  	}
->>
->> +	error = nfs_superblock_set_dummy_root(sb, inode);
->> +	if (error != 0)
->> +		return ERR_PTR(error);
->> +
->>  	/* root dentries normally start off anonymous and get spliced in  
->> later
->>  	 * if the dentry tree reaches them; however if the dentry already
->>  	 * exists, we'll pick it up at this point and use it as the root
->> @@ -241,33 +237,6 @@ struct dentry *nfs4_get_root(struct  
->> super_block *sb, struct nfs_fh *mntfh)
->>
->>  	dprintk("--> nfs4_get_root()\n");
->>
->> -	/* create a dummy root dentry with dummy inode for this  
->> superblock */
->> -	if (!sb->s_root) {
->> -		struct nfs_fh dummyfh;
->> -		struct dentry *root;
->> -		struct inode *iroot;
->> -
->> -		memset(&dummyfh, 0, sizeof(dummyfh));
->> -		memset(&fattr, 0, sizeof(fattr));
->> -		nfs_fattr_init(&fattr);
->> -		fattr.valid = NFS_ATTR_FATTR;
->> -		fattr.type = NFDIR;
->> -		fattr.mode = S_IFDIR | S_IRUSR | S_IWUSR;
->> -		fattr.nlink = 2;
->> -
->> -		iroot = nfs_fhget(sb, &dummyfh, &fattr);
->> -		if (IS_ERR(iroot))
->> -			return ERR_PTR(PTR_ERR(iroot));
->> -
->> -		root = d_alloc_root(iroot);
->> -		if (!root) {
->> -			iput(iroot);
->> -			return ERR_PTR(-ENOMEM);
->> -		}
->> -
->> -		sb->s_root = root;
->> -	}
->> -
->>  	/* get the info about the server and filesystem */
->>  	error = nfs4_server_capabilities(server, mntfh);
->>  	if (error < 0) {
->> @@ -289,6 +258,10 @@ struct dentry *nfs4_get_root(struct  
->> super_block *sb, struct nfs_fh *mntfh)
->>  		return ERR_PTR(PTR_ERR(inode));
->>  	}
->>
->> +	error = nfs_superblock_set_dummy_root(sb, inode);
->> +	if (error != 0)
->> +		return ERR_PTR(error);
->> +
->>  	/* root dentries normally start off anonymous and get spliced in  
->> later
->>  	 * if the dentry tree reaches them; however if the dentry already
->>  	 * exists, we'll pick it up at this point and use it as the root
->>
-> -
-> To unsubscribe from this list: send the line "unsubscribe linux- 
-> kernel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> Please read the FAQ at  http://www.tux.org/lkml/
+[Note: I did make the proposed corrections to my email client, so 
+hopefully space-stuffing will be fixed. ]
 
+Author: Steve Dickson <steved@redhat.com>
+
+    Added an active/deactive mechanism to the nfs_server structure
+    allowing async operations to hold off umount until the
+    operations are done.
+    
+    Signed-off-by: Steve Dickson <steved@redhat.com>
+
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 70587f3..2ecf726 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -593,6 +593,10 @@ static int nfs_init_server(struct nfs_server *server,
+ 	server->namelen  = data->namlen;
+ 	/* Create a client RPC handle for the NFSv3 ACL management interface */
+ 	nfs_init_server_aclclient(server);
++
++	init_waitqueue_head(&server->active_wq);
++	atomic_set(&server->active, 0);
++
+ 	dprintk("<-- nfs_init_server() = 0 [new %p]\n", clp);
+ 	return 0;
+ 
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index fa517ae..e07ac96 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -202,6 +202,7 @@ static int nfs_get_sb(struct file_system_type *, int, const char *, void *, stru
+ static int nfs_xdev_get_sb(struct file_system_type *fs_type,
+ 		int flags, const char *dev_name, void *raw_data, struct vfsmount *mnt);
+ static void nfs_kill_super(struct super_block *);
++static void nfs_put_super(struct super_block *);
+ 
+ static struct file_system_type nfs_fs_type = {
+ 	.owner		= THIS_MODULE,
+@@ -223,6 +224,7 @@ static const struct super_operations nfs_sops = {
+ 	.alloc_inode	= nfs_alloc_inode,
+ 	.destroy_inode	= nfs_destroy_inode,
+ 	.write_inode	= nfs_write_inode,
++	.put_super	= nfs_put_super,
+ 	.statfs		= nfs_statfs,
+ 	.clear_inode	= nfs_clear_inode,
+ 	.umount_begin	= nfs_umount_begin,
+@@ -1767,6 +1769,17 @@ static void nfs4_kill_super(struct super_block *sb)
+ 	nfs_free_server(server);
+ }
+ 
++static void nfs_put_super(struct super_block *sb)
++{
++	struct nfs_server *server = NFS_SB(sb);
++	/*
++	 * Make sure there are no outstanding ops to this server.
++	 * If so, wait for them to finish before allowing the
++	 * unmount to continue.
++	 */
++	wait_event(server->active_wq, atomic_read(&server->active) == 0);
++}
++
+ /*
+  * Clone an NFS4 server record on xdev traversal (FSID-change)
+  */
+diff --git a/fs/nfs/unlink.c b/fs/nfs/unlink.c
+index 233ad38..cf12a24 100644
+--- a/fs/nfs/unlink.c
++++ b/fs/nfs/unlink.c
+@@ -29,6 +29,7 @@ struct nfs_unlinkdata {
+ static void
+ nfs_free_unlinkdata(struct nfs_unlinkdata *data)
+ {
++	nfs_sb_deactive(NFS_SERVER(data->dir));
+ 	iput(data->dir);
+ 	put_rpccred(data->cred);
+ 	kfree(data->args.name.name);
+@@ -151,6 +152,7 @@ static int nfs_do_call_unlink(struct dentry *parent, struct inode *dir, struct n
+ 		nfs_dec_sillycount(dir);
+ 		return 0;
+ 	}
++	nfs_sb_active(NFS_SERVER(dir));
+ 	data->args.fh = NFS_FH(dir);
+ 	nfs_fattr_init(&data->res.dir_attr);
+ 
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 0cac49b..6ef3af8 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -4,6 +4,8 @@
+ #include <linux/list.h>
+ #include <linux/backing-dev.h>
+ 
++#include <asm/atomic.h>
++
+ struct nfs_iostats;
+ 
+ /*
+@@ -110,8 +112,23 @@ struct nfs_server {
+ 						   filesystem */
+ #endif
+ 	void (*destroy)(struct nfs_server *);
++
++	atomic_t active; /* Keep trace of any activity to this server */
++	wait_queue_head_t active_wq;  /* Wait for any activity to stop  */
+ };
+ 
++static inline void 
++nfs_sb_active(struct nfs_server *server)
++{
++	atomic_inc(&server->active);
++}
++static inline void 
++nfs_sb_deactive(struct nfs_server *server)
++{
++	if (atomic_dec_and_test(&server->active))
++		wake_up(&server->active_wq);
++}
++
+ /* Server capabilities */
+ #define NFS_CAP_READDIRPLUS	(1U << 0)
+ #define NFS_CAP_HARDLINKS	(1U << 1)
+
+
+
+
+
+ 
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
