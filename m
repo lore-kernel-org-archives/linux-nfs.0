@@ -1,25 +1,23 @@
-From: CJ Kucera <pez@apocalyptech.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: NFS Causing issues with Gimp XCF files?
-Date: Thu, 8 Nov 2007 16:31:33 -0600
-Message-ID: <20071108223133.GA9066@apocalyptech.com>
+Date: Thu, 08 Nov 2007 17:43:23 -0500
+Message-ID: <1194561803.7655.108.camel@heimdal.trondhjem.org>
 References: <20071108215404.GA8331@apocalyptech.com>
-	<20071108220234.GH1813@fieldses.org>
-	<20071108220722.GB8331@apocalyptech.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: "J. Bruce Fields" <bfields@fieldses.org>
+To: CJ Kucera <pez@apocalyptech.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IqFuQ-0001M2-HX
-	for nfs@lists.sourceforge.net; Thu, 08 Nov 2007 14:31:34 -0800
-Received: from mail.apocalyptech.com ([65.99.222.156])
+	id 1IqG3M-0002EW-3g
+	for nfs@lists.sourceforge.net; Thu, 08 Nov 2007 14:40:48 -0800
+Received: from pat.uio.no ([129.240.10.15])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IqFuV-0005Np-2P
-	for nfs@lists.sourceforge.net; Thu, 08 Nov 2007 14:31:40 -0800
-In-Reply-To: <20071108220722.GB8331@apocalyptech.com>
+	(Exim 4.44) id 1IqG3Q-0000RF-IL
+	for nfs@lists.sourceforge.net; Thu, 08 Nov 2007 14:40:54 -0800
+In-Reply-To: <20071108215404.GA8331@apocalyptech.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -32,25 +30,19 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-CJ Kucera wrote:
-> J. Bruce Fields wrote:
-> > Have you seen this?:
-> > 
-> > 	http://bugzilla.kernel.org/show_bug.cgi?id=9315
-> 
-> No, I hadn't - that certainly sounds just like what I was experiencing.
 
-Lo and behold, that was exactly it.  With that patch applied,
-everything's working as-expected.
+On Thu, 2007-11-08 at 15:54 -0600, CJ Kucera wrote:
+> Both the NFS server and my client machine (where I'm running gimp) are
+> running vanilla 2.6.23.1 kernels, and nfs-utils 1.1.0.  I'll upgrade to
+> 1.1.1 in a little bit, but I was observing the same problems with an
+> earlier version as well.  The kernel options are:
 
-Thanks a lot for the tip!
+See
+  http://bugzilla.kernel.org/show_bug.cgi?id=9315
 
--CJ
+Cheers
+  Trond
 
--- 
-WOW: Flemmy            |   "Happiness isn't good enough for me!  I
-pez@apocalyptech.com   |              demand euphoria!"
-24.24.2.3171           |                  - Calvin
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
