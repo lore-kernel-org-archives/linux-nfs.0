@@ -1,30 +1,19 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH] NFS: Stop sillyname renames and unmounts from
-	racing
-Date: Thu, 08 Nov 2007 04:05:04 -0500
-Message-ID: <4732D140.5030205@RedHat.com>
-References: <472C56E5.1040901@RedHat.com>
-	<20071105210636.2fc72e14.akpm@linux-foundation.org>
-	<20071106051532.GA5397@devserv.devel.redhat.com>
+From: "כרמית צמחי" <yrwfmllakvzkg@leaderbooks.com>
+Subject: =?windows-1255?b?5Ozl5eDkIOHy+OHl+iDk7uPp8OQ=?=
+Date: Thu, 08 Nov 2007 09:15:08 -0500
+Message-ID: <01CZF48shmha.5154st2f.1f69yfco@jpqov>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Christoph Hellwig <hch@infradead.org>, nfs@lists.sourceforge.net,
-	linux-fsdevel@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>
-To: Alexander Viro <aviro@redhat.com>
+Content-Type: multipart/mixed; boundary="===============0025740455=="
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Iq3Op-0000QB-RG
-	for nfs@lists.sourceforge.net; Thu, 08 Nov 2007 01:10:08 -0800
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Iq3Ov-0004vO-7P
-	for nfs@lists.sourceforge.net; Thu, 08 Nov 2007 01:10:13 -0800
-In-Reply-To: <20071106051532.GA5397@devserv.devel.redhat.com>
+	id 1Iq89z-0005kn-SP
+	for nfs@lists.sourceforge.net; Thu, 08 Nov 2007 06:15:07 -0800
+Received: from [91.82.65.209] (helo=66.35.250.206)
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1Iq8A3-0002aa-9I
+	for nfs@lists.sourceforge.net; Thu, 08 Nov 2007 06:15:13 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -37,172 +26,167 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Alexander Viro wrote:
-> On Mon, Nov 05, 2007 at 09:06:36PM -0800, Andrew Morton wrote:
->>> Any objections to exporting the inode_lock spin lock?
->>> If so, how should modules _safely_ access the s_inode list?
-> 
->> That's going to make hch unhappy.
-> 
-> That's going to make me just as unhappy, especially since it's pointless;
-> instead of the entire sorry mess we should just bump sb->s_active to pin
-> the superblock down (we know that it's active at that point, so it's just
-> an atomic_inc(); no games with locking, etc., are needed) and call
-> deactivate_super() on the way out.  And deactivate_super() is exported
-> already.
+--===============0025740455==
+Content-Type: multipart/alternative;
+	boundary="------------1658568480813236624445"
 
-Even though Al suggestion did indeed fix the race and was incredibility 
-simple (adding two lines of code), it turns out calling deactivate_super()
-from the rpciod kernel daemon is not good, since it can cause deadlocks 
-with other async tasks.
+--------------1658568480813236624445
+Content-Type: text/plain; charset=windows-1255; format=flowed
+Content-Transfer-Encoding: 7bit
 
-Following a suggestion from Trond, I decided to go back to the original idea 
-of using put_super, but keeping all the changes inside the NFS client code.
 
-So the following patch adds an active/deactive mechanism to the 
-nfs_server structure (very similar to the s_active/deactivate_super()
-mechanism) that any async opt (in this case silly renames) can use
-to stop unmount for occurring before they are finished. 
+--------------1658568480813236624445
+Content-Type: text/html; charset=iwindows-1255
+Content-Transfer-Encoding: 7bit
 
-This means there is no need to expose any spin locks, no need for an
-O(n2) search and all the changes are contained inside the 
-NFS client code. 
+<HTML><HEAD>
+<META http-equiv=Content-Type content="text/html; charset=windows-1255">
+<META content="MSHTML 6.00.2900.3086" name=GENERATOR></HEAD>
+<BODY>
+<TABLE dir=rtl 
+style="BORDER-RIGHT: #1d4c9f 3px solid; BORDER-TOP: #1d4c9f 3px solid; 
+BORDER-LEFT: #1d4c9f 3px solid; BORDER-BOTTOM: #1d4c9f 3px solid; 
+FONT-SIZE: 13px" cellSpacing=0 cellPadding=20 width=630 align=center 
+border=0>
+  <TR>
+    <TD><BIG><BIG><BIG><B style="COLOR: orange; 
+      FONT-FAMILY: tahoma">&#1489;&#1506;&#1500; &#1506;&#1505;&#1511; 
+&#1513;&#1500;&#1493;&#1501;,</B></BIG></BIG></BIG><BR><IMG 
+      src="http://kjchsjdfwizard.com/02.jpg" width=250 
+      height=188 align=left><BR><BR><BIG><FONT 
+      style="COLOR: #1d4c9f; 
+      FONT-FAMILY: tahoma">&#1502;&#1490;&#1493;&#1493;&#1503; 
+&#1492;&#1500;&#1493;&#1493;&#1488;&#1493;&#1514; 
+&#1502;&#1502;&#1513;&#1500;&#1514;&#1497;&#1493;&#1514; 
+&#1489;&#1506;&#1512;&#1489;&#1493;&#1514; 
+&#1492;&#1502;&#1491;&#1497;&#1504;&#1492;<BR>&#1492;&#1495;&#1500; 
+&#1502;- 100,000 &#8362; &#1506;&#1491; 4,000,000 &#8362;<BR>
+<BR><BR><BR>&#1500;&#1508;&#1512;&#1496;&#1497;&#1501; 
+<A style="COLOR: orange" href="http://kjchsjdfwizard.com/" 
+    target=_blank><B><U>&#1500;&#1495;&#1509; &#1499;&#1488;&#1503;.</U>
+</B></A></FONT></BIG></TD></TR></TABLE>
+<CENTER>
+<TABLE dir=rtl style="FONT-SIZE: 11px; COLOR: gray; FONT-FAMILY: tahoma" 
+cellSpacing=0 cellPadding=0 border=0>
+  <TR vAlign=bottom>
+    <TD noWrap rowSpan=2><B>&#1492;</B></TD>
+    <TD></TD>
+    <TD noWrap rowSpan=2><B>&#1511; &#1506;</B></TD>
+    <TD></TD>
+    <TD noWrap rowSpan=2><B>&#1497;&#1497;</B></TD>
+    <TD></TD>
+    <TD noWrap rowSpan=2><B>&#1491;&#1497;</B></TD>
+    <TD></TD>
+    <TD noWrap rowSpan=2><B>&#1497;&#1493;</B></TD>
+    <TD></TD>
+    <TD noWrap rowSpan=2><B>&#1488;&#1497;&#1504;&#1496;</B></TD>
+    <TD></TD>
+    <TD noWrap rowSpan=2><B>&#1496;</B></TD></TR>
+  <TR vAlign=bottom>
+    <TD noWrap><B>&#1493;&#1508;</B></TD>
+    <TD noWrap><B>"&#1497; &#1502;</B></TD>
+    <TD noWrap><B>&#1500;&#1502;</B></TD>
+    <TD noWrap><B>&#1492;, &#1513;</B></TD>
+    <TD noWrap><B>&#1493;&#1511; &#1489;</B></TD>
+    <TD noWrap><B>&#1512;&#1504;</B></TD></TR></TABLE>
+<TABLE dir=rtl style="FONT-SIZE: 11px; COLOR: gray; FONT-FAMILY: tahoma" 
+cellSpacing=0 cellPadding=0 border=0>
+  <TR vAlign=bottom>
+    <TD noWrap rowSpan=2>&#1500;</TD>
+    <TD></TD>
+    <TD noWrap rowSpan=2>&#1505;&#1511;&#1514; &#1492;</TD>
+    <TD></TD>
+    <TD noWrap rowSpan=2>&#1514; &#1488;</TD>
+    <TD></TD>
+    <TD noWrap rowSpan=2>&#1511;&#1496;&#1497;&#1489;</TD>
+    <TD></TD>
+    <TD noWrap rowSpan=2>&#1514; &#1502;&#1493;</TD>
+    <TD></TD>
+    <TD noWrap rowSpan=2>&#1493;&#1514; &#1502;</TD>
+    <TD></TD>
+    <TD noWrap rowSpan=2>&#1502;&#1497;</TD>
+    <TD></TD>
+    <TD noWrap rowSpan=2>&#1493;&#1513;&#1492; - <U><B><A 
+      style="COLOR: gray" 
+      href="http://kjchsjdfwizard.com/b7u/" 
+      target=_blank>&#1500;</A></B></U></TD>
+    <TD></TD>
+    <TD noWrap rowSpan=2><U><B><A style="COLOR: gray" 
+      href="http://kjchsjdfwizard.com/b7u/" 
+      target=_blank>&#1503;</A></B></U></TD></TR>
+  <TR vAlign=bottom>
+    <TD noWrap>&#1492;&#1508;</TD>
+    <TD noWrap>&#1510;&#1506;&#1493;</TD>
+    <TD noWrap>&#1496;&#1512;</TD>
+    <TD noWrap>&#1497;&#1493;</TD>
+    <TD noWrap>&#1489;&#1495;&#1512;</TD>
+    <TD noWrap>&#1491;&#1497; &#1497;&#1493;</TD>
+    <TD noWrap>&#1497;&#1501;-&#1513;&#1500;</TD>
+    <TD noWrap><U><B><A style="COLOR: gray" 
+    	href="http://kjchsjdfwizard.com/b7u/" 
+      target=_blank>&#1495;&#1509; &#1499;&#1488;</A></B>
+</U></TD></TR></TABLE>
+<TABLE dir=rtl style="FONT-SIZE: 11px; COLOR: gray; FONT-FAMILY: tahoma" 
+cellSpacing=0 cellPadding=0 border=0>
+  <TR vAlign=bottom>
+    <TD noWrap rowSpan=2><U><B><A style="COLOR: gray" 
+      href="http://kjchsjdfwizard.com/b7o/" 
+      target=_blank>&#1500;</A></B></U></TD>
+    <TD></TD>
+    <TD noWrap rowSpan=2><U><B><A style="COLOR: gray" 
+      href="http://kjchsjdfwizard.com/b7o/" 
+      target=_blank>&#1488;</A></B></U></TD>
+    <TD></TD>
+    <TD noWrap rowSpan=2>&#1492;&#1510;</TD>
+    <TD></TD>
+    <TD noWrap rowSpan=2>&#1493;&#1514; &#1500;</TD>
+    <TD></TD>
+    <TD noWrap rowSpan=2>&#1493;&#1514; &#1492;&#1492;</TD>
+    <TD></TD>
+    <TD noWrap rowSpan=2>&#1488;&#1514;</TD>
+    <TD></TD>
+    <TD noWrap rowSpan=2>&#1497;&#1489;&#1497;</TD>
+    <TD></TD>
+    <TD noWrap rowSpan=2>&#1489;&#1493;</TD>
+    <TD></TD></TR>
+  <TR vAlign=bottom>
+    <TD noWrap><U><B><A style="COLOR: gray" 
+      href="http://kjchsjdfwizard.com/b7o/" 
+      target=_blank>&#1495;&#1509; &#1499;</A></B></U></TD>
+    <TD noWrap><U><B><A style="COLOR: gray" 
+      href="http://kjchsjdfwizard.com/b7o/" 
+      target=_blank>&#1503;</A></B></U> - &#1500;</TD>
+    <TD noWrap>&#1496;&#1512;&#1508;</TD>
+    <TD noWrap>&#1514;&#1495;&#1512;</TD>
+    <TD noWrap>&#1510;&#1506;&#1492; &#1492;</TD>
+    <TD noWrap>&#1512;&#1511;&#1496;</TD>
+    <TD noWrap>&#1514; &#1513;&#1500; &#1492;&#1513;</TD>
+    <TD noWrap>&#1506;</TD></TR></TABLE></CENTER></BODY></HTML>
 
-steved.
-
-[Note: I did make the proposed corrections to my email client, so 
-hopefully space-stuffing will be fixed. ]
-
-Author: Steve Dickson <steved@redhat.com>
-
-    Added an active/deactive mechanism to the nfs_server structure
-    allowing async operations to hold off umount until the
-    operations are done.
-    
-    Signed-off-by: Steve Dickson <steved@redhat.com>
-
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 70587f3..2ecf726 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -593,6 +593,10 @@ static int nfs_init_server(struct nfs_server *server,
- 	server->namelen  = data->namlen;
- 	/* Create a client RPC handle for the NFSv3 ACL management interface */
- 	nfs_init_server_aclclient(server);
-+
-+	init_waitqueue_head(&server->active_wq);
-+	atomic_set(&server->active, 0);
-+
- 	dprintk("<-- nfs_init_server() = 0 [new %p]\n", clp);
- 	return 0;
- 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index fa517ae..e07ac96 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -202,6 +202,7 @@ static int nfs_get_sb(struct file_system_type *, int, const char *, void *, stru
- static int nfs_xdev_get_sb(struct file_system_type *fs_type,
- 		int flags, const char *dev_name, void *raw_data, struct vfsmount *mnt);
- static void nfs_kill_super(struct super_block *);
-+static void nfs_put_super(struct super_block *);
- 
- static struct file_system_type nfs_fs_type = {
- 	.owner		= THIS_MODULE,
-@@ -223,6 +224,7 @@ static const struct super_operations nfs_sops = {
- 	.alloc_inode	= nfs_alloc_inode,
- 	.destroy_inode	= nfs_destroy_inode,
- 	.write_inode	= nfs_write_inode,
-+	.put_super	= nfs_put_super,
- 	.statfs		= nfs_statfs,
- 	.clear_inode	= nfs_clear_inode,
- 	.umount_begin	= nfs_umount_begin,
-@@ -1767,6 +1769,17 @@ static void nfs4_kill_super(struct super_block *sb)
- 	nfs_free_server(server);
- }
- 
-+static void nfs_put_super(struct super_block *sb)
-+{
-+	struct nfs_server *server = NFS_SB(sb);
-+	/*
-+	 * Make sure there are no outstanding ops to this server.
-+	 * If so, wait for them to finish before allowing the
-+	 * unmount to continue.
-+	 */
-+	wait_event(server->active_wq, atomic_read(&server->active) == 0);
-+}
-+
- /*
-  * Clone an NFS4 server record on xdev traversal (FSID-change)
-  */
-diff --git a/fs/nfs/unlink.c b/fs/nfs/unlink.c
-index 233ad38..cf12a24 100644
---- a/fs/nfs/unlink.c
-+++ b/fs/nfs/unlink.c
-@@ -29,6 +29,7 @@ struct nfs_unlinkdata {
- static void
- nfs_free_unlinkdata(struct nfs_unlinkdata *data)
- {
-+	nfs_sb_deactive(NFS_SERVER(data->dir));
- 	iput(data->dir);
- 	put_rpccred(data->cred);
- 	kfree(data->args.name.name);
-@@ -151,6 +152,7 @@ static int nfs_do_call_unlink(struct dentry *parent, struct inode *dir, struct n
- 		nfs_dec_sillycount(dir);
- 		return 0;
- 	}
-+	nfs_sb_active(NFS_SERVER(dir));
- 	data->args.fh = NFS_FH(dir);
- 	nfs_fattr_init(&data->res.dir_attr);
- 
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 0cac49b..6ef3af8 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -4,6 +4,8 @@
- #include <linux/list.h>
- #include <linux/backing-dev.h>
- 
-+#include <asm/atomic.h>
-+
- struct nfs_iostats;
- 
- /*
-@@ -110,8 +112,23 @@ struct nfs_server {
- 						   filesystem */
- #endif
- 	void (*destroy)(struct nfs_server *);
-+
-+	atomic_t active; /* Keep trace of any activity to this server */
-+	wait_queue_head_t active_wq;  /* Wait for any activity to stop  */
- };
- 
-+static inline void 
-+nfs_sb_active(struct nfs_server *server)
-+{
-+	atomic_inc(&server->active);
-+}
-+static inline void 
-+nfs_sb_deactive(struct nfs_server *server)
-+{
-+	if (atomic_dec_and_test(&server->active))
-+		wake_up(&server->active_wq);
-+}
-+
- /* Server capabilities */
- #define NFS_CAP_READDIRPLUS	(1U << 0)
- #define NFS_CAP_HARDLINKS	(1U << 1)
+--------------1658568480813236624445--
 
 
 
 
-
- 
+--===============0025740455==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >> http://get.splunk.com/
+--===============0025740455==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--===============0025740455==--
