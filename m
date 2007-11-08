@@ -1,23 +1,24 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
+From: CJ Kucera <pez@apocalyptech.com>
 Subject: Re: NFS Causing issues with Gimp XCF files?
-Date: Thu, 8 Nov 2007 17:02:34 -0500
-Message-ID: <20071108220234.GH1813@fieldses.org>
+Date: Thu, 8 Nov 2007 16:07:22 -0600
+Message-ID: <20071108220722.GB8331@apocalyptech.com>
 References: <20071108215404.GA8331@apocalyptech.com>
+	<20071108220234.GH1813@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: CJ Kucera <pez@apocalyptech.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IqFSJ-0006uM-Nk
-	for nfs@lists.sourceforge.net; Thu, 08 Nov 2007 14:02:31 -0800
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
+	id 1IqFWv-0007Pe-TF
+	for nfs@lists.sourceforge.net; Thu, 08 Nov 2007 14:07:17 -0800
+Received: from mail.apocalyptech.com ([65.99.222.156])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IqFSO-0004Jm-WA
-	for nfs@lists.sourceforge.net; Thu, 08 Nov 2007 14:02:37 -0800
-In-Reply-To: <20071108215404.GA8331@apocalyptech.com>
+	(Exim 4.44) id 1IqFX1-0005y2-Cj
+	for nfs@lists.sourceforge.net; Thu, 08 Nov 2007 14:07:23 -0800
+In-Reply-To: <20071108220234.GH1813@fieldses.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,50 +31,23 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, Nov 08, 2007 at 03:54:04PM -0600, CJ Kucera wrote:
-> I've been encountering a problem on my Linux machine running Gimp 2.4.1 [1]
-> where XCF files that I save are occasionally corrupt, and can't be
-> loaded again into the same program.  I'm 99% sure that this is something
-> NFS-related, since this problem occurs only on my NFS shares, and never
-> when I'm saving to my local hard drive.  I noticed this problem in Gimp
-> 2.4.0 as well (it may have been happening in some of the 2.3 development
-> versions as well, though I didn't notice).
+J. Bruce Fields wrote:
+> Have you seen this?:
 > 
-> Mostly right now I'd just like to find somebody other than me who can
-> reproduce the problem.  I've put some files up at
-> http://apocalyptech.com/media/gimp/ -
-> 
->   * goinonboat.xcf - a Gimp file saved in an earlier version of Gimp
->   * goinonboat2.xcf - The same file, after I've saved to an NFS share
->   * dimension.png - The binary differences between the two files.
-> 
-> ... so if somebody has Gimp 2.4.0 or 2.4.1 available, would you mind
-> loading up goinonboat.xcf, saving it to an NFS share, and then try to
-> have Gimp re-open the image?
-> 
-> It's interesting (to me) to note that the differences are all in the
-> width/height/bpp values writen by gimp's xcf_save_hierarchy() function
-> from app/xcf/xcf-save.c.  [2] Instead of writing the correct
-> width/height/bpp values, it ends up being zeros when the file is finally
-> closed.  I've added in various debugging statements, and loaded up a
-> debug build of gimp into gdb to trace through, and in all cases, the
-> values being passed into the actual fwrite() calls are correct -
-> something ends up writing them inappropriately in the end, though.
-> 
-> There *is* some fseek()ing going on during that part of the save
-> process, and I've found that the situation improves (though not
-> completely) when I start throwing in fflush() statements - so far, with
-> liberal use of fflush() I've been able to make it so that only the
-> "width" parameter ends up being zero.
-> 
-> Both the NFS server and my client machine (where I'm running gimp) are
-> running vanilla 2.6.23.1 kernels, and nfs-utils 1.1.0.
+> 	http://bugzilla.kernel.org/show_bug.cgi?id=9315
 
-Have you seen this?:
+No, I hadn't - that certainly sounds just like what I was experiencing.
+I'll go see if I can reproduce their cpio/rsync case, and try and track
+down the patch they mention as well.
 
-	http://bugzilla.kernel.org/show_bug.cgi?id=9315
+Thanks for the info!  Hopefully this is exactly what I'm encountering.
 
---b.
+-CJ
+
+-- 
+WOW: Flemmy            |   "The ships hung in the sky in much the same
+pez@apocalyptech.com   |    way that bricks don't." - Douglas Adams,
+24.24.2.3171           |     _The Hitchhiker's Guide To The Galaxy_
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
