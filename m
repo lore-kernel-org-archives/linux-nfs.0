@@ -1,18 +1,19 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [NFS] [PATCH 4/7] SUNRPC: Use shutdown() instead of close()
-	when	disconnecting a TCP socket
-Date: Fri, 09 Nov 2007 08:51:34 -0500
-Message-ID: <1194616294.7459.18.camel@heimdal.trondhjem.org>
+From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
+Subject: Re: [NFS] [PATCH 5/7] SUNRPC: xprt_autoclose() should not call
+	xprt_disconnect()
+Date: Fri, 09 Nov 2007 08:56:35 -0500
+Message-ID: <EXNANE01sdAefpGtS79000008ff@exnane01.hq.netapp.com>
 References: <20071107003834.13713.73536.stgit@heimdal.trondhjem.org>
-	<20071107003956.13713.51521.stgit@heimdal.trondhjem.org>
-	<EXNANE01FapNuT1FM1J000008fe@exnane01.hq.netapp.com>
+	<20071107004001.13713.508.stgit@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, Chuck Lever <Chuck.Lever@oracle.com>,
-	nfsv4@linux-nfs.org
-To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
+Cc: nfsv4@linux-nfs.org, Chuck Lever <Chuck.Lever@oracle.com>,
+	nfs@lists.sourceforge.net
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <EXNANE01FapNuT1FM1J000008fe@exnane01.hq.netapp.com>
+In-Reply-To: <20071107004001.13713.508.stgit@heimdal.trondhjem.org>
+References: <20071107003834.13713.73536.stgit@heimdal.trondhjem.org>
+	<20071107004001.13713.508.stgit@heimdal.trondhjem.org>
 List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
 	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
 List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
@@ -24,51 +25,83 @@ Sender: nfsv4-bounces@linux-nfs.org
 Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <nfs.lists.sourceforge.net>
 
+At 07:40 PM 11/6/2007, Trond Myklebust wrote:
+>From: Trond Myklebust <Trond.Myklebust@netapp.com>
+>
+>The transport layer should do that itself whenever appropriate.
+>
+>Note that the RDMA transport already assumes that it needs to call
+>xprt_disconnect in xprt_rdma_close().
 
-On Fri, 2007-11-09 at 08:38 -0500, Talpey, Thomas wrote:
-> At 07:39 PM 11/6/2007, Trond Myklebust wrote:
-> >From: Trond Myklebust <Trond.Myklebust@netapp.com>
-> >
-> >By using shutdown() rather than close() we allow the RPC client to wait
-> >for the TCP close handshake to complete before we start trying to reconnect
-> >using the same port.
-> >We use shutdown(SHUT_WR) only instead of shutting down both directions,
-> >however we wait until the server has closed the connection on its side.
-> >
-> >Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> >---
-> >
-> > net/sunrpc/xprtsock.c |   53 +++++++++++++++++++++++++++++++++++++++++++------
-> > 1 files changed, 46 insertions(+), 7 deletions(-)
-> >
-> >diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-> >index 99c0166..d610d28 100644
-> >--- a/net/sunrpc/xprtsock.c
-> >+++ b/net/sunrpc/xprtsock.c
-> >@@ -614,6 +614,34 @@ static int xs_udp_send_request(struct rpc_task *task)
-> > 	return status;
-> > }
-> > 
-> >+static int xs_shutdown(struct socket *sock, int how)
-> >+{
-> >+	/*
-> >+	* Note: 'how - 1' trick converts
-> >+	*        RCV_SHUTDOWN -> SHUT_RD = 0
-> >+	*        SEND_SHUTDOWN -> SHUT_WR = 1
-> >+	*        RCV_SHUTDOWN|SEND_SHUTDOWN -> SHUT_RDWR = 2
-> >+	*/
-> >+	return sock->ops->shutdown(sock, how - 1);
+This was an interesting issue, IIRC. With RDMA, there is no way to
+cancel an individual RDMA that might be arrive later from the peer,
+you have to break the connection to do so. (Well, there are other
+ways but they're expensive and don't make sense when you're about
+to close anyway). But if the transport were to simply slam the connection
+closed, any other RPC tasks would potentially initiate recovery when
+the disconnect event bubbled up.
+
+So, the best solution turned out to be to close the RPC door and the
+transport door separately. Except for the order in which it's happening
+this is basically what you're coding here, so I'm glad to see it consistent
+now. 
+
+
+Tom.
+
+>For TCP sockets, we want to call xprt_disconnect() only after the
+>connection has been closed by both ends.
+>
+>Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+>---
+>
+> net/sunrpc/xprt.c     |    1 -
+> net/sunrpc/xprtsock.c |    3 +--
+> 2 files changed, 1 insertions(+), 3 deletions(-)
+>
+>diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+>index 48c5a8b..fcdc4b8 100644
+>--- a/net/sunrpc/xprt.c
+>+++ b/net/sunrpc/xprt.c
+>@@ -568,7 +568,6 @@ static void xprt_autoclose(struct work_struct *work)
+> 	struct rpc_xprt *xprt =
+> 		container_of(work, struct rpc_xprt, task_cleanup);
 > 
-> These #defines might be better if they had XPRT_ or RPCXPRT_ in front
-> of them to make it clear they're flags for an RPC API. All by themselves
-> they kind of look like a standard networking component.
-
-They're not #defines, but just a comment...
-
-However yesterday I did submit a patch to clean this up by providing the
-proper functionality in the networking layer. See
-
-   http://article.gmane.org/gmane.linux.network/77163
-
-Cheers
-  Trond
+>-	xprt_disconnect(xprt);
+> 	xprt->ops->close(xprt);
+> 	clear_bit(XPRT_CLOSE_WAIT, &xprt->state);
+> 	xprt_release_write(xprt, NULL);
+>diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+>index d610d28..c0aa2b4 100644
+>--- a/net/sunrpc/xprtsock.c
+>+++ b/net/sunrpc/xprtsock.c
+>@@ -786,10 +786,10 @@ static void xs_close(struct rpc_xprt *xprt)
+> 	sock_release(sock);
+> clear_close_wait:
+> 	smp_mb__before_clear_bit();
+>-	clear_bit(XPRT_CONNECTED, &xprt->state);
+> 	clear_bit(XPRT_CLOSE_WAIT, &xprt->state);
+> 	clear_bit(XPRT_CLOSING, &xprt->state);
+> 	smp_mb__after_clear_bit();
+>+	xprt_disconnect(xprt);
+> }
+> 
+> /**
+>@@ -805,7 +805,6 @@ static void xs_destroy(struct rpc_xprt *xprt)
+> 
+> 	cancel_rearming_delayed_work(&transport->connect_worker);
+> 
+>-	xprt_disconnect(xprt);
+> 	xs_close(xprt);
+> 	xs_free_peer_addresses(xprt);
+> 	kfree(xprt->slot);
+>
+>
+>-------------------------------------------------------------------------
+>This SF.net email is sponsored by: Splunk Inc.
+>Still grepping through log files to find problems?  Stop.
+>Now Search log events and configuration files using AJAX and a browser.
+>Download your FREE copy of Splunk now >> http://get.splunk.com/
+>_______________________________________________
+>NFS maillist  -  NFS@lists.sourceforge.net
+>https://lists.sourceforge.net/lists/listinfo/nfs
