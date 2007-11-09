@@ -1,99 +1,112 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH 3/7] SUNRPC: Allow the client to detect if the	TCP
-	connection	is closed
-Date: Fri, 09 Nov 2007 13:21:01 -0500
-Message-ID: <1194632461.7459.84.camel@heimdal.trondhjem.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: setclientid: string in use on NFS v4 share on Debian Etch &
+	hosts file "solution"
+Date: Fri, 9 Nov 2007 14:55:30 -0500
+Message-ID: <20071109195530.GH26826@fieldses.org>
 References: <20071107003834.13713.73536.stgit@heimdal.trondhjem.org>
-	<20071107003950.13713.24126.stgit@heimdal.trondhjem.org>
-	<EXNANE01OMyQlmLFQG100000900@exnane01.hq.netapp.com>
-	<1194618806.7459.44.camel@heimdal.trondhjem.org>
-	<EXNANE01prR0E6faZWZ00000903@exnane01.hq.netapp.com>
-	<1194619730.7459.48.camel@heimdal.trondhjem.org>
-	<EXNANE01CIFoPkG0rm300000904@exnane01.hq.netapp.com>
-	<1194622369.7459.52.camel@heimdal.trondhjem.org>
-	<EXNANE01rxUn3AkTR6000000905@exnane01.hq.netapp.com>
-	<1194629839.7459.61.camel@heimdal.trondhjem.org>
-	<EXNANE01IDT8zAJ95sZ00000909@exnane01.hq.netapp.com>
+	<20071107003940.13713.65472.stgit@heimdal.trondhjem.org>
+	<47323A62.9000803@oracle.com>
+	<1194474763.7504.57.camel@heimdal.trondhjem.org>
+	<47324E7C.4080808@u.washington.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, Chuck Lever <Chuck.Lever@oracle.com>,
-	nfsv4@linux-nfs.org
-To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IqYQX-00011I-MT
-	for nfs@lists.sourceforge.net; Fri, 09 Nov 2007 10:17:57 -0800
-Received: from mx2.netapp.com ([216.240.18.37])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IqYQc-00084M-8y
-	for nfs@lists.sourceforge.net; Fri, 09 Nov 2007 10:18:03 -0800
-In-Reply-To: <EXNANE01IDT8zAJ95sZ00000909@exnane01.hq.netapp.com>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net, nfsv4@linux-nfs.org
+To: Matt Weatherford <mbw@u.washington.edu>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <47324E7C.4080808@u.washington.edu>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
+List-ID: <nfs.lists.sourceforge.net>
 
-
-On Fri, 2007-11-09 at 12:52 -0500, Talpey, Thomas wrote:
-> At 12:37 PM 11/9/2007, Trond Myklebust wrote:
-> >> Correct. And even if were sent, the FINWAIT1 state does not mean the
-> >> peer has transitioned. You need to see the ACK (which often comes in
-> >> the same packet as the peer's FIN).
-> >
-> >That is really of no direct concern to the RPC client. The important
-> >thing for us is to clear the XPRT_CONNECTED flag in order to indicate
-> >that the socket will no longer accept further requests, and we want to
-> >set XPRT_CLOSING in order to tell anybody who tries to reconnect that
-> >they need to wait.
+On Wed, Nov 07, 2007 at 03:47:08PM -0800, Matt Weatherford wrote:
 > 
-> Well, my concern is that the XPRT_CLOSING bit set may be delayed due to
-> network issues. What happens if a second task discovers the client while
-> it's pending? That's all.
+> Hi,
 > 
-> >>  All this is a gawd-awful layering violation, you know. :-)
-> >
-> >I disagree. This is exactly the same thing as using poll() to monitor
-> >the state of the socket in userland.
+> Im not sure this is the right place to ask, but Im wondering if someone can 
+> illuminate what the following console messages means on my NFS v4 server....
 > 
-> But but but... poll() can't detect FIN_WAIT_1. It can only detect EOF,
-> i.e. CLOSE. I don't think this code could be implemented in userspace.
+> 
+> NFSD: setclientid: string in use by client(clientid 471c1b08/000003e9)
+> NFSD: setclientid: string in use by client(clientid 471c1b08/00000410)
+> nfs4_cb: server 10.11.12.221 not responding, timed out
+> nfs4_cb: server 10.11.12.222 not responding, timed out
+> NFSD: setclientid: string in use by client(clientid 471c1b08/0000043a)
+> NFSD: setclientid: string in use by client(clientid 471c1b08/0000043c)
+> NFSD: setclientid: string in use by client(clientid 471c1b08/00000447)
+> NFSD: setclientid: string in use by client(clientid 471c1b08/0000044d)
+> NFSD: setclientid: string in use by client(clientid 471c1b08/00000453)
+> nfs4_cb: server 10.11.12.221 not responding, timed out
 
-There is nothing to tell you explicitly that you are entering
-TCP_FIN_WAIT1, but once you do, POLLOUT will tell you that the socket is
-unavailable for writing.
+The "nfs4_cb: server not responding" mean the server is failing to open
+a connection back to the client to use for callbacks, which means it
+won't give out delegations.  That's not a fatal error at all, it's just
+a possible lost opportunity for a performance improvement.
 
-POLLRDHUP will tell you if the server has sent a FIN (i.e. if you are
-entering TCP_CLOSING).
+The "string in use" errors could be a sign that clients might fail to
+recover locks when the server reboots.  But if the clients aren't
+complaining, I wouldn't worry about it.  There have been changes to
+nfs-utils and the kernel to make those clientid collisions less likely,
+but I don't recall whether they went in before or after 2.6.18.
 
-Finally, POLLHUP will tell you that the socket has entered TCP_CLOSED.
+The "string in use" message is no longer logged by the server by default
+in recent kernels, and the "not responding" comment needs to be removed
+sometime too; I wouldn't worry about them.
 
-So yes, I could implement fully equivalent monitoring of the socket in
-userspace.
+> 
+> (and yes, those IPs (10.11.12.221, 222) are good)
+> 
+> 
+> I am on Debian Etch, on x86 hardware, using multiple NFS v4 clients with
+> all the latest package updates.
+> 
+> I have multiple other NFS clients which the server is not complaining about.
+> I am sharing NFSv4 shares on both (2) NIC's.
+> 
+> 
+> NFS v4 client:
+> 
+> client42:~# uname -a
+> Linux client42 2.6.18-5-686 #1 SMP Wed Oct 3 00:12:50 UTC 2007 i686 GNU/Linux
+> client42:~# apt-show-versions | grep nfs
+> libnfsidmap2/etch uptodate 0.18-0
+> nfs-common/etch uptodate 1:1.0.10-6+etch.1
+> client42:~#
+> 
+> 
+> mount
+> client42:~# mount
+> ...omittted non v4 shares...
+> yadda:/etch-llocal on /net/LLocal4 type nfs4 
+> (rw,hard,intr,rsize=32768,wsize=32768,addr=192.168.105.123)
+> client42:~>
+> 
+> 
+> 
+> 
+> NFS v4 server:
+> 
+> yadda:~# apt-show-versions | grep -i nfs
+> nfs-common/etch uptodate 1:1.0.10-6+etch.1
+> nfs-kernel-server/etch uptodate 1:1.0.10-6+etch.1
+> libnfsidmap2/etch uptodate 0.18-0
+> yadda:~#
+> 
+> 
+> Im not sure that this is the answer, but somewhere I saw a thread that I may 
+> need to name the host like this in my hosts table on my nfsv4 client:
+> 
+> 127.0.0.1       localhost
+> 127.0.1.1       client42
+> 
+> If this is the solution (is it?)
 
-> Here's my bottom line - if the RPC client is provably more correct with
-> this detail of the TCP state, then it's fine. I do think however that it's
-> unnecessary, i.e. the code can work without this, and simply set the
-> bits when the shutdown() is initiated.
+I suspect that'd be a step backwards.
 
-Sure, but why split this code into a million little pieces? Do it in the
-one spot where it is dead obvious what is going on (the socket's state
-change notifier), and where it is easy to maintain the code.
-
-Trond
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Splunk Inc.
-Still grepping through log files to find problems?  Stop.
-Now Search log events and configuration files using AJAX and a browser.
-Download your FREE copy of Splunk now >> http://get.splunk.com/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+--b.
