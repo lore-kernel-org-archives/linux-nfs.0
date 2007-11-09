@@ -1,100 +1,121 @@
 From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
-Subject: Re: [NFS] [PATCH 5/7] SUNRPC: xprt_autoclose() should not call
-	xprt_disconnect()
-Date: Fri, 09 Nov 2007 08:56:35 -0500
-Message-ID: <EXNANE01sdAefpGtS79000008ff@exnane01.hq.netapp.com>
+Subject: Re: [PATCH 3/7] SUNRPC: Allow the client to detect if the TCP
+ connection	is closed
+Date: Fri, 09 Nov 2007 09:04:04 -0500
+Message-ID: <EXNANE01OMyQlmLFQG100000900@exnane01.hq.netapp.com>
 References: <20071107003834.13713.73536.stgit@heimdal.trondhjem.org>
-	<20071107004001.13713.508.stgit@heimdal.trondhjem.org>
+	<20071107003950.13713.24126.stgit@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfsv4@linux-nfs.org, Chuck Lever <Chuck.Lever@oracle.com>,
-	nfs@lists.sourceforge.net
+	Tom Talpey <Thomas.Talpey@netapp.com>, nfs@lists.sourceforge.net
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <20071107004001.13713.508.stgit@heimdal.trondhjem.org>
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1IqUSs-0004Za-0u
+	for nfs@lists.sourceforge.net; Fri, 09 Nov 2007 06:04:06 -0800
+Received: from mx2.netapp.com ([216.240.18.37])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IqUSx-0005uE-E8
+	for nfs@lists.sourceforge.net; Fri, 09 Nov 2007 06:04:11 -0800
+In-Reply-To: <20071107003950.13713.24126.stgit@heimdal.trondhjem.org>
 References: <20071107003834.13713.73536.stgit@heimdal.trondhjem.org>
-	<20071107004001.13713.508.stgit@heimdal.trondhjem.org>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
-List-ID: <nfs.lists.sourceforge.net>
+	<20071107003950.13713.24126.stgit@heimdal.trondhjem.org>
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-At 07:40 PM 11/6/2007, Trond Myklebust wrote:
+At 07:39 PM 11/6/2007, Trond Myklebust wrote:
 >From: Trond Myklebust <Trond.Myklebust@netapp.com>
 >
->The transport layer should do that itself whenever appropriate.
->
->Note that the RDMA transport already assumes that it needs to call
->xprt_disconnect in xprt_rdma_close().
-
-This was an interesting issue, IIRC. With RDMA, there is no way to
-cancel an individual RDMA that might be arrive later from the peer,
-you have to break the connection to do so. (Well, there are other
-ways but they're expensive and don't make sense when you're about
-to close anyway). But if the transport were to simply slam the connection
-closed, any other RPC tasks would potentially initiate recovery when
-the disconnect event bubbled up.
-
-So, the best solution turned out to be to close the RPC door and the
-transport door separately. Except for the order in which it's happening
-this is basically what you're coding here, so I'm glad to see it consistent
-now. 
-
-
-Tom.
-
->For TCP sockets, we want to call xprt_disconnect() only after the
->connection has been closed by both ends.
+>Add an xprt->state bit to enable the TCP ->state_change() method to signal
+>whether or not the TCP connection is in the process of closing down.
+>This will to be used by the reconnection logic in a separate patch.
 >
 >Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 >---
 >
-> net/sunrpc/xprt.c     |    1 -
-> net/sunrpc/xprtsock.c |    3 +--
-> 2 files changed, 1 insertions(+), 3 deletions(-)
+> include/linux/sunrpc/xprt.h |    1 +
+> net/sunrpc/xprtsock.c       |   20 +++++++++++++++++---
+> 2 files changed, 18 insertions(+), 3 deletions(-)
 >
->diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
->index 48c5a8b..fcdc4b8 100644
->--- a/net/sunrpc/xprt.c
->+++ b/net/sunrpc/xprt.c
->@@ -568,7 +568,6 @@ static void xprt_autoclose(struct work_struct *work)
-> 	struct rpc_xprt *xprt =
-> 		container_of(work, struct rpc_xprt, task_cleanup);
+>diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+>index 6f524a9..afb9e6a 100644
+>--- a/include/linux/sunrpc/xprt.h
+>+++ b/include/linux/sunrpc/xprt.h
+>@@ -257,6 +257,7 @@ void			xprt_force_disconnect(struct rpc_xprt *xprt);
+> #define XPRT_CLOSE_WAIT		(3)
+> #define XPRT_BOUND		(4)
+> #define XPRT_BINDING		(5)
+>+#define XPRT_CLOSING		(6)
 > 
->-	xprt_disconnect(xprt);
-> 	xprt->ops->close(xprt);
-> 	clear_bit(XPRT_CLOSE_WAIT, &xprt->state);
-> 	xprt_release_write(xprt, NULL);
+> static inline void xprt_set_connected(struct rpc_xprt *xprt)
+> {
 >diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
->index d610d28..c0aa2b4 100644
+>index 5a83a40..99c0166 100644
 >--- a/net/sunrpc/xprtsock.c
 >+++ b/net/sunrpc/xprtsock.c
->@@ -786,10 +786,10 @@ static void xs_close(struct rpc_xprt *xprt)
+>@@ -758,7 +758,9 @@ static void xs_close(struct rpc_xprt *xprt)
 > 	sock_release(sock);
 > clear_close_wait:
 > 	smp_mb__before_clear_bit();
->-	clear_bit(XPRT_CONNECTED, &xprt->state);
+>+	clear_bit(XPRT_CONNECTED, &xprt->state);
 > 	clear_bit(XPRT_CLOSE_WAIT, &xprt->state);
-> 	clear_bit(XPRT_CLOSING, &xprt->state);
+>+	clear_bit(XPRT_CLOSING, &xprt->state);
 > 	smp_mb__after_clear_bit();
->+	xprt_disconnect(xprt);
 > }
 > 
-> /**
->@@ -805,7 +805,6 @@ static void xs_destroy(struct rpc_xprt *xprt)
-> 
-> 	cancel_rearming_delayed_work(&transport->connect_worker);
-> 
->-	xprt_disconnect(xprt);
-> 	xs_close(xprt);
-> 	xs_free_peer_addresses(xprt);
-> 	kfree(xprt->slot);
+>@@ -1114,13 +1116,25 @@ static void xs_tcp_state_change(struct sock *sk)
+> 		}
+> 		spin_unlock_bh(&xprt->transport_lock);
+> 		break;
+>-	case TCP_SYN_SENT:
+>-	case TCP_SYN_RECV:
+
+Why are you removing these states from the switch?
+
+>+	case TCP_FIN_WAIT1:
+>+		/* The client initiated a shutdown of the socket */
+
+If the client initiated this, why does the bit management need to wait
+for TCP to change state? I think what this means is that the client
+initiated a FIN, *and* the server has acked it. Both these bits could
+have been set when the FIN was sent, basically. Or is there some
+subtlety here, in which case the comment should say more.
+
+Tom.
+
+
+>+		set_bit(XPRT_CLOSING, &xprt->state);
+>+		smp_mb__before_clear_bit();
+>+		clear_bit(XPRT_CONNECTED, &xprt->state);
+>+		smp_mb__after_clear_bit();
+> 		break;
+> 	case TCP_CLOSE_WAIT:
+>+		/* The server initiated a shutdown of the socket */
+>+		set_bit(XPRT_CLOSING, &xprt->state);
+>+		smp_mb__before_clear_bit();
+>+		clear_bit(XPRT_CONNECTED, &xprt->state);
+>+		smp_mb__after_clear_bit();
+> 		xprt_force_disconnect(xprt);
+>-	default:
+>+		break;
+>+	case TCP_CLOSE:
+>+		/* Mark transport as closed and wake up all pending tasks */
+> 		xprt_disconnect(xprt);
+>+		clear_bit(XPRT_CLOSING, &xprt->state);
+> 	}
+>  out:
+> 	read_unlock(&sk->sk_callback_lock);
 >
 >
 >-------------------------------------------------------------------------
@@ -105,3 +126,12 @@ Tom.
 >_______________________________________________
 >NFS maillist  -  NFS@lists.sourceforge.net
 >https://lists.sourceforge.net/lists/listinfo/nfs
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Splunk Inc.
+Still grepping through log files to find problems?  Stop.
+Now Search log events and configuration files using AJAX and a browser.
+Download your FREE copy of Splunk now >> http://get.splunk.com/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
