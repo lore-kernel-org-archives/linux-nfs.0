@@ -1,24 +1,14 @@
-From: Right Opportunity To Invest <1timeinvestment.opportunities@gmail.com>
-Subject: Take Advantage of this LIMIT ED PROMO`TIONAL O`FFER Program
-Date: Fri, 09 Nov 2007 23:36:37 -0600
-Message-ID: <E1Iqj1J-0005CE-3J@ns9.trexhost.com>
-Reply-To: 1timeinvestment.opportunities@gmail.com
+From: =?windows-1252?B?d3d3Lm55cWJ3LmNvbQ==?= <thaogdglki@tom.com>
+Subject: =?windows-1252?q?Good_project!?=
+Date: Sat, 10 Nov 2007 16:20:38 +0800
+Message-ID: <2007111043435.55061@5AA64EB3F8FC423.net>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1295744181=="
-To: nfs@lists.sourceforge.net
+Content-Type: multipart/mixed; boundary="===============0332285138=="
+To: <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Iqj1J-0005aK-AB
-	for nfs@lists.sourceforge.net; Fri, 09 Nov 2007 21:36:42 -0800
-Received: from ns9.trexhost.com ([75.126.188.27])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Iqj1O-0006jx-QI
-	for nfs@lists.sourceforge.net; Fri, 09 Nov 2007 21:36:43 -0800
-Received: from nobody by ns9.trexhost.com with local (Exim 4.68)
-	(envelope-from <nobody@ns9.trexhost.com>) id 1Iqj1J-0005CE-3J
-	for nfs@lists.sourceforge.net; Fri, 09 Nov 2007 23:36:37 -0600
+Received: from nuesugnpxc9 (unknown [23.242.235.83])
+	by smtp3 (Coremail) with SMTP id JP5ZQbAhjQLmLNzT.1
+	for <nfs@lists.sourceforge.net>; Sat, 10 Nov 2007 16:20:38 +0800 (CST)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,111 +21,63 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============1295744181==
-Content-Type: text/html
-Content-Transfer-Encoding: quoted-printable
+This is a multi-part message in MIME format.
 
-<html><head></head><body><br><br>
+--===============0332285138==
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_001_0041_01CE2FFF.177BDEBE"
 
+This is a multi-part message in MIME format.
 
-<span style=3D"font-family: Tahoma,Verdana,Arial,Helvetica,Sans-serif,san=
-s-serif; font-size: 10pt;">
-<b>Dear Friends,</b><br><br></span>
+------=_NextPart_001_0041_01CE2FFF.177BDEBE
+Content-Type: text/plain;
+	charset="windows-1252"
+Content-Transfer-Encoding: base64
 
+KERlYXIgZnJpZW5kcywNClNvcnJ5IHRvIGJvdGhlciB5b3UuV2UgYXJlIGEgbGFyZ2Utc2NhbGUg
+bWVyY2hhbmRpc2Ugd2hvbGVzYWxlciBpbiBDaGluYSwNCk91ciBtZXJjaGFuZGlzZSBzdWNoIGFz
+LFR2LG5vdGVib29rcyxwaG9uZXMscHNwLHByb2plY3RvcnMsbW90b3JjeWNsZXMsbXVzaWNhbCBp
+bnN0cnVtZW50cyBlY3QuT3VyIHByb2R1Y3RzIGFyZSBpbiBnb29kIHF1YWxpdHksYnV0IGxvdyBw
+cmljZSxpdCB3aWxsIGludGVyZXN0IHlvdS5BdCB0aGUgc2FtZSB0aW1lLHdlIGNhbiBzdXBwbGUg
+eW91IHRoZSBkaXJlY3QgYW5kIHF1aWNrIHNlcnZpY2Uud2UgYXJlIGxlZ2FsIHNlbGxlcnMuICAN
+Ck91ciB3ZWJzaXRlIGlzIDogd3d3Lm55cWJ3LmNvbQ0KICAgICAgICAgICAgICAgIE1TTjogbnlx
+YndAaG90bWFpbC5jb20NCiAgICAgICAgICAgICAgRW1haWw6IG55cWJ3QGhvdG1haWwuY29tDQog
+ICAgICAgICAgICAgIHNreXBlOiBueXFidzENCiAgICAgICAgICAgICAgICBURUw6ICs4NiAzNzcg
+NjE4MjU5MDEgDQpJZiB5b3UgdGhpbmsgd2UgYXJlIGV4Y2VsbGVudCwgcGxlYXNlIGNvbnRhY3Qg
+dXMuV2Ugd2lsbCBzZXJ2ZSBmb3IgeW91IHdpbGwgYWxsIG91ciBlZmZvcnQuKS8v
 
-<span style=3D"font-family: Tahoma,Verdana,Arial,Helvetica,Sans-serif,san=
-s-serif; font-size: 10pt;">
-<br><b>Would you like to be able to make money on the Internet?<br>
-<font color=3D"#0000FF">
-YES, You can...</font> if you have the right information.</b><br>
-<br></span>
+------=_NextPart_001_0041_01CE2FFF.177BDEBE
+Content-Type: text/html;
+	charset="windows-1252"
+Content-Transfer-Encoding: base64
 
+PEhUTUw+PEhFQUQ+DQo8TUVUQSBjb250ZW50PSJNU0hUTUwgNi4wMC4yOTAwLjI5OTUiIG5hbWU9
+R0VORVJBVE9SPjwvSEVBRD4NCjxCT0RZPihEZWFyIGZyaWVuZHMsPEJSPlNvcnJ5IHRvIGJvdGhl
+ciB5b3UuV2UgYXJlIGEgbGFyZ2Utc2NhbGUgbWVyY2hhbmRpc2Ugd2hvbGVzYWxlciBpbiBDaGlu
+YSw8QlI+T3VyIG1lcmNoYW5kaXNlIHN1Y2ggYXMsVHYsbm90ZWJvb2tzLHBob25lcyxwc3AscHJv
+amVjdG9ycyxtb3RvcmN5Y2xlcyxtdXNpY2FsIGluc3RydW1lbnRzIGVjdC5PdXIgcHJvZHVjdHMg
+YXJlIGluIGdvb2QgcXVhbGl0eSxidXQgbG93IHByaWNlLGl0IHdpbGwgaW50ZXJlc3QgeW91LkF0
+IHRoZSBzYW1lIHRpbWUsd2UgY2FuIHN1cHBsZSB5b3UgdGhlIGRpcmVjdCBhbmQgcXVpY2sgc2Vy
+dmljZS53ZSBhcmUgbGVnYWwgc2VsbGVycy4mbmJzcDsgPEJSPk91ciB3ZWJzaXRlIGlzIDogPEEg
+aHJlZj0iaHR0cDovL3d3dy5ueXFidy5jb20iPnd3dy5ueXFidy5jb208L0E+PEJSPiZuYnNwOyZu
+YnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNw
+OyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyBNU046IDxBIGhyZWY9Im1haWx0bzpueXFid0Bob3Rt
+YWlsLmNvbSI+bnlxYndAaG90bWFpbC5jb208L0E+PEJSPiZuYnNwOyZuYnNwOyZuYnNwOyZuYnNw
+OyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyBF
+bWFpbDogPEEgaHJlZj0ibWFpbHRvOm55cWJ3QGhvdG1haWwuY29tIj5ueXFid0Bob3RtYWlsLmNv
+bTwvQT48QlI+Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7
+Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7IHNreXBlOiBueXFidzE8QlI+Jm5ic3A7Jm5i
+c3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7
+Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7IFRFTDogKzg2IDM3NyA2MTgyNTkwMSA8QlI+SWYgeW91
+IHRoaW5rIHdlIGFyZSBleGNlbGxlbnQsIHBsZWFzZSBjb250YWN0IHVzLldlIHdpbGwgc2VydmUg
+Zm9yIHlvdSB3aWxsIGFsbCBvdXIgZWZmb3J0LikvLzwvQk9EWT48L0hUTUw+
 
-<span style=3D"font-family: Tahoma,Verdana,Arial,Helvetica,Sans-serif,san=
-s-serif; font-size: 10pt;">
-<b>OK, Here is the info or a AFFORDABLE </span>
-
-<span style=3D"font-family: Tahoma, Verdana, Arial, Helvetica, Sans-serif=
-, sans-serif; font-size: 10pt">
-<font color=3D"#FF0000">
-"Pay Once, Earn Forever"</font> </span>  <br>
-
-<span style=3D"font-family: Tahoma,Verdana,Arial,Helvetica,Sans-serif,san=
-s-serif; font-size: 10pt;">
-opportunity program for a LIFETIME membership.</b><br>
-<br></span>
-
-
-<span style=3D"font-family: Tahoma,Verdana,Arial,Helvetica,Sans-serif,san=
-s-serif; font-size: 10pt;">
-<b>A program with <font color=3D"#FF0000">Multiple Streams of Income </fo=
-nt>which work fully legal, <br>
-anyone can do it and its the <font color=3D"#0000FF"> EASIEST way to make=
- legal money in the net.</b></font><br><br></span>
-
-
-<span style=3D"font-family: Tahoma,Verdana,Arial,Helvetica,Sans-serif,san=
-s-serif; font-size: 10pt;">
-<b>You can simply follow step by step guide<br>
-and work whenever you want for how long you want<br>
-
-and EASILY earn Extra or UNLIMITED MONEY everyday.</b><br><br></span>
-
-<span style=3D"font-family: Tahoma,Verdana,Arial,Helvetica,Sans-serif,san=
-s-serif; font-size: 10pt;">
-<b>You can START earning money anytime and avail this great<br>
-discount(Limited Special Offer) plus TONs of<br>=20
-GREAT BONUSES.</b><br><br></span>
-
-<span style=3D"font-family: Tahoma,Verdana,Arial,Helvetica,Sans-serif,san=
-s-serif; font-size: 10pt;">
-<b><font color=3D"#FF0000">Previously seen in CNN and FOX5, </font><font =
-color=3D"#0000FF">Take advantage of this <br>
-Promotional offer, as the price of this program will rolled up back <br>
-
-to its original price SOONER or LATER!...</font></b><br><br></span>
-
-
-
-<span style=3D"font-family: Tahoma,Verdana,Arial,Helvetica,Sans-serif,san=
-s-serif; font-size: 10pt;">
-<b>IF Interested, Please explore every inch of this and <br>
-<a href=3D"http://wapurl.co.uk/?26WZ1CW" target=3D"_blank">CLICK HERE</a>=
- for more accurate info.</b><br><br><br></span>
+------=_NextPart_001_0041_01CE2FFF.177BDEBE--
 
 
 
 
-
-<span style=3D"font-family: Tahoma,Verdana,Arial,Helvetica,Sans-serif,san=
-s-serif; font-size: 10pt;">
-<b>"Keep in mind, We have over thousands working members, <br>=20
-using a true system which can generate anyone a great<br>
-income working from home for simply working minimal<br>
-amount of time."</b><br><br><br></span>
-
-<span style=3D"font-family: Tahoma,Verdana,Arial,Helvetica,Sans-serif,san=
-s-serif; font-size: 10pt;">
-<b>Thank You and regards <br><br>Ma. Julia Paler</b><br><br><br><br><br><=
-br><br><br></span>
-
-<span style=3D"font-family: Tahoma,Verdana,Arial,Helvetica,Sans-serif,san=
-s-serif; font-size: 8pt;">
-To stop receiving my offers, please send an E-mail with<br>
-
-'Remove' as the subject to earn4ever.tnx@gmail.com<br>
-and i will honor your `opt out` requests...thank you in advance.<br><br><=
-br><br></span>
-
-
-
-</body></html>
-
-
-
-
-
---===============1295744181==
+--===============0332285138==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -146,7 +88,7 @@ This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >> http://get.splunk.com/
---===============1295744181==
+--===============0332285138==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -156,4 +98,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---===============1295744181==--
+--===============0332285138==--
