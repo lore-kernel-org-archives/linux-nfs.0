@@ -1,11 +1,23 @@
-From: devzero@web.de
-Subject: nfs exports & bind mounts
-Date: Sat, 10 Nov 2007 22:36:45 +0100
-Message-ID: <2077779951@web.de>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: nfs exports & bind mounts
+Date: Sat, 10 Nov 2007 17:29:56 -0500
+Message-ID: <1194733796.15122.27.camel@heimdal.trondhjem.org>
+References: <2077779951@web.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: NFS@lists.sourceforge.net
+Cc: NFS@lists.sourceforge.net
+To: devzero@web.de
 Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1IqymS-00007z-CD
+	for nfs@lists.sourceforge.net; Sat, 10 Nov 2007 14:26:21 -0800
+Received: from pat.uio.no ([129.240.10.15])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IqymX-000070-TQ
+	for nfs@lists.sourceforge.net; Sat, 10 Nov 2007 14:26:26 -0800
+In-Reply-To: <2077779951@web.de>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -18,28 +30,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi !
 
-i think everybody knows bind mounts.
+On Sat, 2007-11-10 at 22:36 +0100, devzero@web.de wrote:
+> Hi !
+> 
+> i think everybody knows bind mounts.
+> 
+> i can do:
+> 
+> touch /otherpath/dummyfile
+> mount -bind /path/file /otherpath/dummyfile
+> 
+> so /path/file becomes accessible via /otherpath/dummyfile - dummyfile has the same size as file after successful bind-mount
+> 
+> i can loopback-mount /otherpath/dummyfile to /otherpath/mnt if file/dummyfile contains a filesystem
+> 
+> when i export /otherpath via nfs (crossmnt), from the client side i can access the contents of the filesystem inside file/dummyfile via /otherpath/mnt  - but i cannot access the contents of dummyfile itself, i.e. the bind-mount seems to get lost on export.
+> 
+> can someone tell if this is expected behaviour or if this is a bug ?
 
-i can do:
+The NFS client will not cross a mount point unless the target is a
+directory. That is not a bug, it is expected behaviour.
 
-touch /otherpath/dummyfile
-mount -bind /path/file /otherpath/dummyfile
-
-so /path/file becomes accessible via /otherpath/dummyfile - dummyfile has the same size as file after successful bind-mount
-
-i can loopback-mount /otherpath/dummyfile to /otherpath/mnt if file/dummyfile contains a filesystem
-
-when i export /otherpath via nfs (crossmnt), from the client side i can access the contents of the filesystem inside file/dummyfile via /otherpath/mnt  - but i cannot access the contents of dummyfile itself, i.e. the bind-mount seems to get lost on export.
-
-can someone tell if this is expected behaviour or if this is a bug ?
-
-regards
-roland
-_____________________________________________________________________
-Der WEB.DE SmartSurfer hilft bis zu 70% Ihrer Onlinekosten zu sparen!
-http://smartsurfer.web.de/?mc=100071&distributionid=000000000066
+Trond
 
 
 -------------------------------------------------------------------------
