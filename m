@@ -1,254 +1,118 @@
-From: "=?WINDOWS-1255?B?8fDj+OXp?= =?WINDOWS-1255?B?+Ofs5CA=?=" <krrtk@londonetparis.com>
-Subject: =?windows-1255?b?7uvp+OX6IOTu5fDp5fo=?=
-Date: Sun, 11 Nov 2007 09:44:03 -0500
-Message-ID: <23RHT77vluum.7952zl4d.2r50mssm@ywfls>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: [Fwd: 2008 Linux Storage and Filesystem Workshop]
+Date: Sun, 11 Nov 2007 15:20:52 -0500
+Message-ID: <1194812452.16508.2.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1991498023=="
-To: nfs@lists.sourceforge.net
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IrE2X-00008Z-0n
-	for nfs@lists.sourceforge.net; Sun, 11 Nov 2007 06:43:57 -0800
-Received: from [59.15.181.15] (helo=66.35.250.206)
-	by mail.sourceforge.net with smtp (Exim 4.44) id 1IrE2b-0006R7-DJ
-	for nfs@lists.sourceforge.net; Sun, 11 Nov 2007 06:44:02 -0800
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: multipart/mixed; boundary="=-acFiKRG0jvBMKEMgwmrr"
+To: nfs@lists.sourceforge.net, nfsv4@linux-nfs.org
+Return-path: <nfsv4-bounces@linux-nfs.org>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
+List-ID: <nfs.lists.sourceforge.net>
 
---===============1991498023==
-Content-Type: multipart/alternative;
-	boundary="------------1095145195801199855884"
 
---------------1095145195801199855884
-Content-Type: text/plain; charset=windows-1255; format=flowed
+--=-acFiKRG0jvBMKEMgwmrr
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
 
 
---------------1095145195801199855884
-Content-Type: text/html; charset=iwindows-1255
-Content-Transfer-Encoding: 7bit
 
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD>
-<META http-equiv=Content-Language content=he>
-<META http-equiv=Content-Type content="text/html; charset=windows-1255">
-<META content="MSHTML 6.00.2900.3086" name=GENERATOR></HEAD>
-<BODY>
-<CENTER dir=rtl>
-<TABLE style="FONT-SIZE: 14px; COLOR: #3b548a; FONT-FAMILY: tahoma" 
-cellSpacing=10 cellPadding=0 border=0>
-  <TR>
-    <TD vAlign=center align=middle>
-      <CENTER><BIG><BIG><BIG><BIG><BIG><FONT 
-      style="FONT-FAMILY: arial">MAILMEDIA</FONT></BIG></BIG></BIG></BIG>
-      </CENTER></BIG></TD>
-    <TD width=4 bgColor=#cb1212></TD>
-    <TD vAlign=center><BIG>
-&#1492;&#1502;&#1511;&#1510;&#1493;&#1506;&#1497;&#1493;&#1514; 
-&#1513;&#1500;&#1504;&#1493; -<BR>&#1492;&#1502;&#1508;&#1514;&#1495; 
-&#1500;&#1492;&#1510;&#1500;&#1495;&#1492;
-&#1513;&#1500;&#1498;</BIG></TD></TR>
-  <TR>
-    <TD style="FONT-SIZE: 12px" align=middle colSpan=3><B>
-&#1508;&#1512;&#1505;&#1501; &#1488;&#1514; &#1492;&#1506;&#1505;&#1511; 
-&#1489;&#1495;&#1513;&#1497;&#1508;&#1492; 
-&#1488;&#1512;&#1510;&#1497;&#1514;, 
-&#1502;&#1502;&#1493;&#1489;&#1497;&#1500;&#1497; 
-&#1492;&#1513;&#1493;&#1511; 
-&#1492;&#1497;&#1513;&#1512;&#1488;&#1500;&#1497; 
-&#1489;&#1514;&#1495;&#1493;&#1501; 
-&#1492;&#1508;&#1512;&#1505;&#1493;&#1501; 
-&#1489;&#1491;&#1497;&#1493;&#1493;&#1512; 
-&#1488;&#1500;&#1511;&#1496;&#1512;&#1493;&#1504;&#1497; 
-&#1497;&#1513;&#1497;&#1512;</B></TD></TR></TABLE>
-<TABLE style="FONT-SIZE: 14px; COLOR: #3b548a; FONT-FAMILY: tahoma" 
-cellSpacing=0 cellPadding=10 border=0>
-  <TR>
-    <TD vAlign=top><BIG><FONT style="COLOR: #cb1212"><B>
-&#1502;&#1489;&#1510;&#1506; 
-&#1492;&#1497;&#1499;&#1512;&#1493;&#1514;:</FONT></BIG> 
-&#1514;&#1508;&#1493;&#1510;&#1492; 
-&#1500;&#1502;&#1497;&#1500;&#1497;&#1493;&#1503; &#1489; 
-300&euro; &#1489;&#1500;&#1489;&#1491;</B>.</BIG><BR><FONT 
-      style="FONT-SIZE: 14px">* 
-&#1492;&#1502;&#1489;&#1510;&#1506; &#1514;&#1511;&#1507; 
-&#1500;&#1514;&#1508;&#1493;&#1510;&#1492; &#1488;&#1495;&#1514; 
-&#1489;&#1500;&#1489;&#1491; 
-(<U>&#1500;&#1511;&#1493;&#1495;&#1493;&#1514; 
-&#1495;&#1491;&#1513;&#1497;&#1501; &#1489;&#1500;&#1489;&#1491;</U>) 
-&#1488;&#1513;&#1512; &#1513;&#1493;&#1500;&#1502;&#1492; 
-&#1500;&#1508;&#1504;&#1497; 29/11/2007<BR>* 
-&#1488;&#1495;&#1505;&#1493;&#1503; &#1511;&#1489;&#1510;&#1497; 
-&#1492;&#1508;&#1512;&#1505;&#1493;&#1502;&#1514; &#1506;&#1500; 
-&#1490;&#1489;&#1497; &#1513;&#1512;&#1514; &#1495;&#1505;&#1497;&#1503; 
-&#1514;&#1500;&#1493;&#1504;&#1493;&#1514; &#1513;&#1500;&#1504;&#1493; 
-&#1504;&#1497;&#1514;&#1503; &#1500;&#1513;&#1489;&#1493;&#1506; 
-&#1500;&#1500;&#1488; &#1514;&#1513;&#1500;&#1493;&#1501; 
-(&#1500;&#1497;&#1504;&#1493;&#1511;&#1505;, PHP, 
-PERL)</FONT></TD></TR></TABLE>
-<TABLE style="FONT-SIZE: 14px; COLOR: #3b548a; FONT-FAMILY: tahoma" 
-cellSpacing=5 cellPadding=10 border=0>
-  <TR>
-    <TD align=middle height=90><B><BIG><BIG><BIG>&#1502;&#1492; 
-&#1488;&#1514;&#1492; &#1512;&#1493;&#1510;&#1492; 
-&#1500;&#1506;&#1513;&#1493;&#1514; &#1492;&#1497;&#1493;&#1501; 
-      ?</BIG></BIG></BIG><BR></B></TD></TR>
-  <TR>
-    <TD 
-    style="BORDER-RIGHT: gray 1px solid; BORDER-TOP: gray 1px solid; 
-    BORDER-LEFT: gray 1px solid; BORDER-BOTTOM: gray 1px solid" 
-    bgColor=#f3f3f4><BIG><BIG><B><FONT 
-      style="COLOR: #cb1212">&#1500;&#1489;&#1513;&#1512;</FONT></BIG> 
-&#1500;&#1499;&#1500; &#1506;&#1501; &#1497;&#1513;&#1512;&#1488;&#1500; 
-&#1488;&#1514; &#1492;&#1502;&#1505;&#1512; &#1513;&#1500;&#1498; 
-&#1514;&#1493;&#1498; &#1500;&#1497;&#1500;&#1492; 
-      (&#1514;&#1508;&#1493;&#1510;&#1492;)<BR>
-      <BLOCKQUOTE><FONT style="FONT-SIZE: 14px">&#1502;&#1495;&#1512; 
-&#1489;&#1489;&#1493;&#1511;&#1512; 1,000,000 &#1488;&#1497;&#1513; 
-&#1497;&#1511;&#1489;&#1500;&#1493; &#1500;&#1514;&#1497;&#1489;&#1514; 
-&#1491;&#1493;&#1488;"&#1500; &#1513;&#1500;&#1492;&#1501; &#1488;&#1514; 
-&#1492;&#1502;&#1505;&#1512; &#1513;&#1500;&#1498;</FONT><BR><FONT 
-        style="FONT-SIZE: 14px"><SPAN style="COLOR: #ce1212">300&euro; 
-&#1500;&#1502;&#1497;&#1500;&#1497;&#1493;&#1503; 
-        &#1489;&#1502;&#1489;&#1510;&#1506;</SPAN></B>, 
-&#1500;&#1488;&#1495;&#1512; &#1492;&#1502;&#1489;&#1510;&#1506; - 
-500&euro; &#1500;&#1502;&#1497;&#1500;&#1497;&#1493;&#1503;, 
-&#1512;&#1513;&#1497;&#1502;&#1492; &#1502;&#1500;&#1488;&#1492; - 10 
-&#1502;&#1497;&#1500;&#1497;&#1493;&#1503;, <BR>
-&#1492;&#1504;&#1495;&#1493;&#1514; 
-&#1489;&#1492;&#1494;&#1502;&#1504;&#1493;&#1514; 
-&#1490;&#1491;&#1493;&#1500;&#1493;&#1514;, &#1504;&#1497;&#1514;&#1503; 
-&#1500;&#1506;&#1489;&#1493;&#1491; &#1490;&#1501; 
-&#1500;&#1495;&#1493;"&#1500;, &#1490;&#1501; &#1506;&#1500; 
-&#1512;&#1513;&#1497;&#1502;&#1493;&#1514; 
-&#1513;&#1500;&#1499;&#1501;.<BR>&#1499;&#1493;&#1500;&#1500; 
-&#1500;&#1497;&#1504;&#1511; &#1500;&#1492;&#1505;&#1512;&#1492;, 
-&#1505;&#1496;&#1496;&#1497;&#1505;&#1496;&#1497;&#1511;&#1492;, 
-&#1512;&#1513;&#1497;&#1502;&#1493;&#1514; 
-&#1506;&#1491;&#1499;&#1504;&#1497;&#1493;&#1514;, <B 
-        style="COLOR: #ce1212">&#1506;&#1511;&#1497;&#1508;&#1514; 
-&#1499;&#1500; 
-&#1492;&#1508;&#1497;&#1500;&#1496;&#1512;&#1497;&#1501;!</B></FONT>
-</BLOCKQUOTE></BIG></BIG></TD></TR>
-  <TR>
-    <TD 
-    style="BORDER-RIGHT: gray 1px solid; BORDER-TOP: gray 1px solid; 
-    BORDER-LEFT: gray 1px solid; BORDER-BOTTOM: gray 1px solid" 
-    bgColor=#ebebeb><BIG><BIG><B><SPAN 
-      style="COLOR: #cb1212">&#1500;&#1492;&#1493;&#1505;&#1497;&#1507;
-</SPAN></BIG> &#1499;&#1502;&#1493;&#1514; 
-&#1490;&#1491;&#1493;&#1500;&#1492; &#1513;&#1500; 
-&#1500;&#1511;&#1493;&#1495;&#1493;&#1514; 
-&#1495;&#1491;&#1513;&#1497;&#1501; &#1506;&#1491; 
-&#1492;&#1511;&#1493;&#1508;&#1492; 
-(&#1500;&#1497;&#1491;&#1497;&#1501;)</BIG></BIG><BR>
-      <BLOCKQUOTE><FONT style="FONT-SIZE: 14px">
-&#1514;&#1514;&#1499;&#1493;&#1504;&#1503; 
-&#1500;&#1505;&#1490;&#1493;&#1512; 400/200/100/... 
-&#1506;&#1505;&#1511;&#1488;&#1493;&#1514; &#1506;&#1491; 
-&#1502;&#1495;&#1512; 
-&#1489;&#1510;&#1492;&#1512;&#1497;&#1497;&#1501;,<BR>&#1499;&#1497; 
-&#1488;&#1495;&#1512;&#1514; &#1492;&#1502;&#1514;&#1495;&#1512;&#1492; 
-&#1513;&#1500;&#1498; &#1497;&#1506;&#1513;&#1492; &#1488;&#1514; 
-&#1494;&#1492; !</B><BR>&#1489;&#1502;&#1495;&#1497;&#1512; 
-&#1492;&#1495;&#1500; &#1502; 10&euro; 
-&#1500;&#1508;&#1504;&#1497;&#1492; 
-&#1500;&#1504;&#1493;&#1513;&#1488;&#1497;&#1501; &#1513;&#1500;&#1488; 
-&#1508;&#1493;&#1512;&#1505;&#1502;&#1493; 
-&#1489;&#1502;&#1497;&#1497;&#1500;&#1497;&#1501; &#1506;&#1491; 
-&#1492;&#1497;&#1493;&#1501;,<BR>
-&#1500;&#1504;&#1493;&#1513;&#1488;&#1497;&#1501; 
-&#1489;&#1506;&#1500;&#1497; &#1504;&#1497;&#1505;&#1497;&#1493;&#1503; 
-&#1493;&#1492;&#1502;&#1500;&#1510;&#1493;&#1514; - 
-&#1502;&#1495;&#1497;&#1512;&#1497;&#1501; 
-&#1490;&#1502;&#1497;&#1513;&#1497;&#1501;. 
-&#1500;&#1497;&#1491;&#1497;&#1501; &#1500;&#1488; 
-&#1514;&#1511;&#1497;&#1504;&#1497;&#1501; - &#1500;&#1488; 
-&#1500;&#1514;&#1513;&#1500;&#1493;&#1501;*!</FONT></BLOCKQUOTE></TD></TR>
-  <TR>
-    <TD 
-    style="BORDER-RIGHT: gray 1px solid; BORDER-TOP: gray 1px solid; 
-    BORDER-LEFT: gray 1px solid; BORDER-BOTTOM: gray 1px solid" 
-    bgColor=#e3e3e4><BIG><BIG><B><FONT 
-      style="COLOR: #cb1212">&#1500;&#1502;&#1499;&#1493;&#1512;</FONT>
-      </BIG> &#1499;&#1502;&#1493;&#1514; 
-&#1490;&#1491;&#1493;&#1500;&#1492; &#1513;&#1500; 
-&#1502;&#1493;&#1510;&#1512;&#1497;&#1501;, &#1493;&#1502;&#1492;&#1512; 
-(&#1488;&#1495;&#1493;&#1494;&#1497;&#1501;/
-&#1513;&#1497;&#1500;&#1493;&#1489;&#1497;&#1501;)</BIG></BIG><BR>
-      <BLOCKQUOTE><FONT style="FONT-SIZE: 14px">&#1497;&#1513; 
-&#1500;&#1498; &#1506;&#1493;&#1491;&#1508;&#1497;&#1501; ? 
-&#1502;&#1500;&#1488;&#1497; &#1513;&#1500;&#1488; &#1494;&#1494; ? 
-&#1488;&#1493; &#1513;&#1500;&#1488; &#1494;&#1494; 
-&#1502;&#1505;&#1508;&#1497;&#1511; &#1502;&#1492;&#1512; 
-?</B><BR><FONT 
-	style="FONT-SIZE: 14px">&#1495;&#1497;&#1513;&#1493;&#1489; 
-&#1492;&#1488;&#1495;&#1493;&#1494;&#1497;&#1501;/
-&#1514;&#1488;&#1512;&#1497;&#1499;&#1497;&#1501;/
-&#1508;&#1512;&#1496;&#1497;&#1501; &#1488;&#1495;&#1512;&#1497;&#1501; 
-&#1497;&#1506;&#1513;&#1492; &#1489;&#1506;&#1514; 
-&#1492;&#1513;&#1497;&#1495;&#1492; &#1502;&#1493;&#1500; 
-&#1488;&#1497;&#1513; 
-&#1492;&#1502;&#1499;&#1497;&#1512;&#1493;&#1514;<BR>* 
-&#1489;&#1500;&#1497; &#1502;&#1499;&#1497;&#1512;&#1493;&#1514; 
-&#1496;&#1500;&#1508;&#1493;&#1504;&#1497;&#1493;&#1514; - &#1512;&#1511; 
-&#1505;&#1500;&#1497;&#1511;&#1492; &#1488;&#1493;&#1503; - 
-&#1500;&#1497;&#1497;&#1503;<BR>* &#1512;&#1511; 
-&#1500;&#1488;&#1495;&#1512; &#1489;&#1491;&#1497;&#1511;&#1514; 
-&#1489;&#1497;&#1511;&#1493;&#1513; - &#1502;&#1513;&#1500;&#1493;&#1495; 
-&#1504;&#1497;&#1505;&#1497;&#1493;&#1504;&#1497; &#1500;&#1508;&#1497; 
-&#1499;&#1502;&#1493;&#1514; &#1502;&#1497;&#1497;&#1500;&#1497;&#1501; 
-&#1500;&#1508;&#1497; &#1502;&#1495;&#1497;&#1512;&#1497;&#1501; 
-&#1505;&#1496;&#1504;&#1491;&#1512;&#1496;&#1497;&#1497;&#1501;</FONT> 
-  </BLOCKQUOTE></FONT></TD></TR></TABLE><FONT dir=ltr 
-style="FONT-SIZE: 14px; COLOR: #cb1212; FONT-FAMILY: wingdings"><BR>
-<BIG><BIG><BIG><BIG>
-	&#139;&#144;&#139;&#144;&#141;&#147;&#140;&#148;&#146;&#147;
-	</BIG></BIG></BIG></BIG><BR><FONT 
-style="FONT-FAMILY: tahoma">&#1489;&#1502;&#1497;&#1491;&#1506; 
-&#1493;&#1492;&#1502;&#1505;&#1508;&#1512; &#1514;&#1508;&#1493;&#1505;, 
-&#1504;&#1488; &#1500;&#1492;&#1513;&#1488;&#1497;&#1512; &#1488;&#1514; 
-&#1502;&#1505;&#1508;&#1512;&#1499;&#1501; 
-&#1489;&#1492;&#1493;&#1491;&#1506;&#1492; 
-&#1493;&#1504;&#1495;&#1494;&#1493;&#1512; 
-&#1488;&#1500;&#1497;&#1499;&#1501; &#1489;&#1492;&#1511;&#1491;&#1501; 
-&#1492;&#1488;&#1508;&#1513;&#1512;&#1497;<BR>
-<BR></FONT></CENTER></FONT></BODY></HTML>
-
---------------1095145195801199855884--
-
-
-
---===============1991498023==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
+--=-acFiKRG0jvBMKEMgwmrr
 Content-Disposition: inline
+Content-Description: Forwarded message - 2008 Linux Storage and Filesystem
+	Workshop
+Content-Type: message/rfc822
 
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Splunk Inc.
-Still grepping through log files to find problems?  Stop.
-Now Search log events and configuration files using AJAX and a browser.
-Download your FREE copy of Splunk now >> http://get.splunk.com/
---===============1991498023==
+Return-Path: <linux-fsdevel-owner@vger.kernel.org>
+Received: from mail-imap2.uio.no ([unix socket]) by mail-imap2.uio.no
+	(Cyrus v2.2.12) with LMTPA; Mon, 05 Nov 2007 16:18:29 +0100
+X-Sieve: CMU Sieve 2.2
+Delivery-date: Mon, 05 Nov 2007 16:18:29 +0100
+Received: from mail-mx4.uio.no ([129.240.10.45]) by mail-imap2.uio.no with
+	esmtp (Exim 4.67) (envelope-from <linux-fsdevel-owner@vger.kernel.org>) id
+	1Ip3if-0001Yr-If for trond.myklebust@fys.uio.no; Mon, 05 Nov 2007 16:18:29
+	+0100
+Received: from vger.kernel.org ([209.132.176.167]) by mail-mx4.uio.no with
+	esmtp (Exim 4.67) (envelope-from <linux-fsdevel-owner@vger.kernel.org>) id
+	1Ip3iO-0007fI-Fj for trond.myklebust@fys.uio.no; Mon, 05 Nov 2007 16:18:29
+	+0100
+Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand id
+	S1751832AbXKEPSK (ORCPT <rfc822;trond.myklebust@fys.uio.no>); Mon, 5 Nov
+	2007 10:18:10 -0500
+Received: (majordomo@vger.kernel.org) by vger.kernel.org id
+	S1752111AbXKEPSK (ORCPT <rfc822;linux-fsdevel-outgoing>); Mon, 5 Nov 2007
+	10:18:10 -0500
+Received: from agminet01.oracle.com ([141.146.126.228]:13873 "EHLO
+	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with
+	ESMTP id S1751832AbXKEPSJ (ORCPT <rfc822;linux-fsdevel@vger.kernel.org>);
+	Mon, 5 Nov 2007 10:18:09 -0500
+Received: from agmgw2.us.oracle.com (agmgw2.us.oracle.com [152.68.180.213])
+	by agminet01.oracle.com (Switch-3.2.4/Switch-3.1.7) with ESMTP id
+	lA5FI2Wn009969; Mon, 5 Nov 2007 09:18:04 -0600
+Received: from acsmt358.oracle.com (acsmt358.oracle.com [141.146.40.158])
+	by agmgw2.us.oracle.com (Switch-3.2.0/Switch-3.2.0) with ESMTP id
+	lA53Ac9x023246; Mon, 5 Nov 2007 08:18:02 -0700
+Received: from cpe-72-225-43-119.rochester.res.rr.com by
+	acsmt359.oracle.com with ESMTP id 5602849601194275869; Mon, 05 Nov 2007
+	09:17:49 -0600
+Date: Mon, 5 Nov 2007 10:17:40 -0500
+From: Chris Mason <chris.mason@oracle.com>
+To: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Subject: 2008 Linux Storage and Filesystem Workshop
+Message-ID: <20071105101740.574927c6@think.oraclecorp.com>
+X-Mailer: Claws Mail 3.0.2 (GTK+ 2.12.0; i486-pc-linux-gnu)
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+X-Brightmail-Tracker: AAAAAQAAAAI=
+X-Brightmail-Tracker: AAAAAQAAAAI=
+X-Whitelist: TRUE
+X-Whitelist: TRUE
+Sender: linux-fsdevel-owner@vger.kernel.org
+Precedence: bulk
+X-Mailing-List: linux-fsdevel@vger.kernel.org
+X-UiO-MailScanner: No virus found
+X-UiO-ClamAV-Virus: No
+X-UiO-Spam-info: not spam, SpamAssassin (score=-6.9, required=12.0,
+	autolearn=disabled, AWL=0.093,RCVD_IN_DNSWL_MED=-4,UIO_VGER=-3)
+X-UiO-Scanned: 3DB7048DF051784D6EBABFB41B021A9DB4C45727
+X-UiO-SPAM-Test: remote_host: 209.132.176.167 spam_score: -68 maxlevel 60
+	minaction 1 bait 0 mail/h: 38 total 669263 max/h 813 blacklist 0 greylist 0
+	ratelimit 0
+Content-Transfer-Encoding: 7bit
+
+
+Hello everyone,
+
+The position statement submission system for the 2008 storage and
+filesystem workshop is now online.  This is how you let us know you're
+interested in attending and what topics are most important for
+discussion.
+
+For all the details, please see:
+
+http://www.usenix.org/events/lsf08/
+
+-chris
+-
+To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--=-acFiKRG0jvBMKEMgwmrr
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
 Content-Disposition: inline
 
 _______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============1991498023==--
+NFSv4 mailing list
+NFSv4@linux-nfs.org
+http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
+--=-acFiKRG0jvBMKEMgwmrr--
