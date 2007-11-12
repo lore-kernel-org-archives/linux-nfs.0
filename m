@@ -1,81 +1,78 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: nfsd bugfixes
-Date: Mon, 12 Nov 2007 18:17:03 -0500
-Message-ID: <20071112231703.GD2645@fieldses.org>
-References: <1194901503-23105-1-git-send-email-bfields@citi.umich.edu>
-	<18232.52970.213438.902011@notabene.brown>
-	<20071112221349.GA2645@fieldses.org>
-	<18232.54549.271030.214405@notabene.brown>
+From: Alex Riesen <raa.lkml@gmail.com>
+Subject: Re: git 1.5.3.5 error over NFS
+Date: Tue, 13 Nov 2007 00:31:03 +0100
+Message-ID: <20071112233103.GH2918@steel.home>
+References: <18228.32091.865519.312011@lisa.zopyra.com> <20071109232106.GA3435@steel.home> <18232.29603.856766.275854@lisa.zopyra.com>
+Reply-To: Alex Riesen <raa.lkml@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
-To: Neil Brown <neilb@suse.de>
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IriWj-0000rK-3r
-	for nfs@lists.sourceforge.net; Mon, 12 Nov 2007 15:17:09 -0800
-Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IriWm-0004dC-Tj
-	for nfs@lists.sourceforge.net; Mon, 12 Nov 2007 15:17:15 -0800
-In-Reply-To: <18232.54549.271030.214405@notabene.brown>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: git@vger.kernel.org, nfs@lists.sourceforge.net,
+	linux-kernel <linux-kernel@vger.kernel.org>
+To: Bill Lear <rael@zopyra.com>
+Return-path: <git-owner@vger.kernel.org>
+In-Reply-To: <18232.29603.856766.275854@lisa.zopyra.com>
+Sender: git-owner@vger.kernel.org
+List-ID: <nfs.lists.sourceforge.net>
 
-On Tue, Nov 13, 2007 at 09:35:01AM +1100, Neil Brown wrote:
+Bill Lear, Mon, Nov 12, 2007 16:39:15 +0100:
+> On Saturday, November 10, 2007 at 00:21:06 (+0100) Alex Riesen writes:
+> >Bill Lear, Fri, Nov 09, 2007 16:31:39 +0100:
+> >> I've brought this up before, but I don't recall a resolution to it.
+> >> 
+> >> We have an NFS-mounted filesystem, and git pull is choking on it.
+> >> 
+> >> % uname -a
+> >> Linux uhlr.zopyra.com 2.6.9-42.0.2.ELsmp #1 SMP Wed Aug 23 13:38:27 BST 2006 x86_64 x86_64 x86_64 GNU/Linux
+
+It is a really old kernel... Maybe you could try with some of the
+recent ones?
+
+> >> % git --version
+> >> git version 1.5.3.5
+> >> 
+> >> % git pull
+> >> remote: Generating pack...
+> >> remote: Done counting 998 objects.
+> >> remote: Result has 836 objects.
+> >> remote: Deltifying 836 objects.
+> >> remote:  100% (836/836) done
+> >> Indexing 836 objects...
+> >> remote: Total 836 (delta 526), reused 688 (delta 380)
+> >>   100% (836/836) done
+> >> Resolving 526 deltas...
+> >> fatal: cannot pread pack file: No such file or directory
+> >
+> >Could you please strace it? With strace -ff?
+> >
+> >> fatal: index-pack died with error code 128
+> >> fatal: Fetch failure: git://source/repo
+> >> 
+> >> I looked through the archives of this list and did not see a final
+> >> resolution, other than a suspected bug in the OS NFS code.
+> >
+> >Strace, just to be on the safe side
 > 
-> (CC: trimmed - as Bruce says: separate discussion)
+> Ok, I've done the strace -ff.  It has generated 176 strace.out.<pid>
+> files.  I have placed a tarball of these files on my home server:
 > 
-> On Monday November 12, bfields@fieldses.org wrote:
-> > On Tue, Nov 13, 2007 at 09:08:42AM +1100, Neil Brown wrote:
-> > > Calling nfsd_setuser an extra time does open us up for a very tiny
-> > > possibility of an ENOMEM at an awkward time.
-> > 
-> > Hm.  Could you give an example of possible consequences?
+>   http://www.zopyra.com/~rael/git/git-trace.tar.bz2
 > 
-> Just that you could get an ENOMEM in the middle of a NFSv4 COMPOUND.
-> I guess that should result in NFSERR_RESOURCE and we just hope the
-> client is able to cope and resend the remainder of the compound.
-> Though looking at the code, ENOMEM becomes nfserr_dropit... does that
-> mean the we would drop the whole request and the client would need to
-> resend, possibly duplicating non-idempotent portions?
+> The file strace.out.25526 has, at the very end:
+> 
 
-Yeah, OK, that's another one for my list of compound processing problems
-to worry about.  (Others:
+Yes, this is the file.
 
-	- a deferral for an export upcall can similarly lead to
-	  incorrect behavior on nonidempotent operations; if we could
-	  fix this we could also eliminate the nfs4idmap.c special case,
-	  which would probably enable some other cleanup.  I've made a
-	  couple half-hearted attempts to fix this but don't have
-	  anything finished yet.
+I extend the part you quoted. The file is opened here:
 
-	- We've still got the reply cache turned off for nfsv4!  I think
-	  it was originally turned off just because whoever did it
-	  didn't want to figure out which compounds to cache.  That's
-	  probably not hard to fix, but last I checked I didn't think
-	  our reply cache actually helped much in the tcp case (the only
-	  case we care about).  So that needs to be fixed first.  I've
-	  done no work on this yet.
+open(".git/objects/pack_awOTNW", O_RDWR|O_CREAT|O_EXCL, 0600) = 3
+write(3, "PACK\0\0\0\2\0\0\3r", 12)     = 12
+... lots of data. Counted writes: 488538...
+write(3, "v\351\247V\325\362\327/\240\265\211\211\322,\261\210\301"..., 4096) = 4096
+write(3, "\202\202g\232Bf\211Bf\261Bb\36X\22\4\364\365\25\22\223"..., 1114) = 1114
+write(3, "M", 1)                        = 1
 
-)--b.
+> write(2, "Resolving 551 deltas.\n", 22)                               = 22
+> pread64(3, "", 242, 541) = 0
 
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Splunk Inc.
-Still grepping through log files to find problems?  Stop.
-Now Search log events and configuration files using AJAX and a browser.
-Download your FREE copy of Splunk now >> http://get.splunk.com/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+That's the problem.  Hmm... May I kindly suggest moving the topic to
+linux-nfs (cc-ed along with lk)?
