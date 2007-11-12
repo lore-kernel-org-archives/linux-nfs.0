@@ -1,7 +1,8 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 0/4] NFS: Support multi-segment direct I/O
-Date: Mon, 12 Nov 2007 12:16:41 -0500
-Message-ID: <20071112171404.3053.3536.stgit@localhost.localdomain>
+Subject: [PATCH 1/4] NFS: Introduce iovec I/O helpers to
+	fs/nfs/direct.c
+Date: Mon, 12 Nov 2007 12:16:47 -0500
+Message-ID: <20071112171647.3053.70179.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
@@ -10,12 +11,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Ircuu-0006tN-HW
-	for nfs@lists.sourceforge.net; Mon, 12 Nov 2007 09:17:47 -0800
+	id 1Ircun-0006t2-Qx
+	for nfs@lists.sourceforge.net; Mon, 12 Nov 2007 09:17:38 -0800
 Received: from flpi185.sbcis.sbc.com ([207.115.20.187]
 	helo=flpi185.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Ircuz-0001Hx-AV
-	for nfs@lists.sourceforge.net; Mon, 12 Nov 2007 09:17:50 -0800
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Ircut-0001Iw-6g
+	for nfs@lists.sourceforge.net; Mon, 12 Nov 2007 09:17:43 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,13 +29,107 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi Trond-
+Add helpers that iterate over multi-segment iovecs.  These will
+be used to support multi-segment scatter/gather direct I/O in a
+later patch.
 
-Here are four patches that add support for multi-segment iovecs in the NFS
-client's direct I/O engine.  Would like to see these in 2.6.25.  Thanks!
+Signed-off-by: Chuck Lever <cel@netapp.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
--- 
-corporate:    <chuck dot lever at oracle dot com>
+ fs/nfs/direct.c |   71 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 71 insertions(+), 0 deletions(-)
+
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index afcab00..e30d928 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -355,6 +355,41 @@ static ssize_t nfs_direct_read_schedule(struct nfs_direct_req *dreq, unsigned lo
+ 	return result < 0 ? (ssize_t) result : -EFAULT;
+ }
+ 
++static ssize_t nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
++					      const struct iovec *iov,
++					      unsigned long nr_segs,
++					      loff_t pos)
++{
++	ssize_t result = -EINVAL;
++	size_t requested_bytes = 0;
++	unsigned long seg;
++
++	get_dreq(dreq);
++
++	for (seg = 0; seg < nr_segs; seg++) {
++		const struct iovec *vec = &iov[seg];
++		result = nfs_direct_read_schedule(dreq,
++					(unsigned long)vec->iov_base,
++						  vec->iov_len, pos);
++		if (result < 0)
++			break;
++		requested_bytes += result;
++		if ((size_t)result < vec->iov_len)
++			break;
++		pos += vec->iov_len;
++	}
++
++	if (put_dreq(dreq))
++		nfs_direct_complete(dreq);
++
++	if (requested_bytes != 0)
++		return 0;
++
++	if (result < 0)
++		return result;
++	return -EIO;
++}
++
+ static ssize_t nfs_direct_read(struct kiocb *iocb, unsigned long user_addr, size_t count, loff_t pos)
+ {
+ 	ssize_t result = 0;
+@@ -697,6 +732,42 @@ static ssize_t nfs_direct_write_schedule(struct nfs_direct_req *dreq, unsigned l
+ 	return result < 0 ? (ssize_t) result : -EFAULT;
+ }
+ 
++static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
++					       const struct iovec *iov,
++					       unsigned long nr_segs,
++					       loff_t pos, int sync)
++{
++	ssize_t result = 0;
++	size_t requested_bytes = 0;
++	unsigned long seg;
++
++	get_dreq(dreq);
++
++	for (seg = 0; seg < nr_segs; seg++) {
++		const struct iovec *vec = &iov[seg];
++		result = nfs_direct_write_schedule(dreq,
++					(unsigned long)vec->iov_base,
++						   vec->iov_len,
++						   pos, sync);
++		if (result < 0)
++			break;
++		requested_bytes += result;
++		if ((size_t)result < vec->iov_len)
++			break;
++		pos += vec->iov_len;
++	}
++
++	if (put_dreq(dreq))
++		nfs_direct_write_complete(dreq, dreq->inode);
++
++	if (requested_bytes != 0)
++		return 0;
++
++	if (result < 0)
++		return result;
++	return -EIO;
++}
++
+ static ssize_t nfs_direct_write(struct kiocb *iocb, unsigned long user_addr, size_t count, loff_t pos)
+ {
+ 	ssize_t result = 0;
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
