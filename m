@@ -1,8 +1,7 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 1/4] NFS: Introduce iovec I/O helpers to
-	fs/nfs/direct.c
-Date: Mon, 12 Nov 2007 12:16:47 -0500
-Message-ID: <20071112171647.3053.70179.stgit@localhost.localdomain>
+Subject: [PATCH 4/4] NFS: Clean up new multi-segment direct I/O changes
+Date: Mon, 12 Nov 2007 12:17:03 -0500
+Message-ID: <20071112171703.3053.4101.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
@@ -11,12 +10,12 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Ircun-0006t2-Qx
-	for nfs@lists.sourceforge.net; Mon, 12 Nov 2007 09:17:38 -0800
+	id 1Ircw0-00070c-0I
+	for nfs@lists.sourceforge.net; Mon, 12 Nov 2007 09:18:53 -0800
 Received: from flpi185.sbcis.sbc.com ([207.115.20.187]
 	helo=flpi185.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Ircut-0001Iw-6g
-	for nfs@lists.sourceforge.net; Mon, 12 Nov 2007 09:17:43 -0800
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Ircw5-0001T6-NE
+	for nfs@lists.sourceforge.net; Mon, 12 Nov 2007 09:18:57 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,106 +28,75 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Add helpers that iterate over multi-segment iovecs.  These will
-be used to support multi-segment scatter/gather direct I/O in a
-later patch.
+Simplify calling sequence of nfs_direct_{read,write}_schedule(), and
+rename them to reflect their new role.
 
-Signed-off-by: Chuck Lever <cel@netapp.com>
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfs/direct.c |   71 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 71 insertions(+), 0 deletions(-)
+ fs/nfs/direct.c |   22 +++++++++++++---------
+ 1 files changed, 13 insertions(+), 9 deletions(-)
 
 diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index afcab00..e30d928 100644
+index 4d726e9..5e8d82f 100644
 --- a/fs/nfs/direct.c
 +++ b/fs/nfs/direct.c
-@@ -355,6 +355,41 @@ static ssize_t nfs_direct_read_schedule(struct nfs_direct_req *dreq, unsigned lo
- 	return result < 0 ? (ssize_t) result : -EFAULT;
- }
- 
-+static ssize_t nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
-+					      const struct iovec *iov,
-+					      unsigned long nr_segs,
-+					      loff_t pos)
-+{
-+	ssize_t result = -EINVAL;
-+	size_t requested_bytes = 0;
-+	unsigned long seg;
-+
-+	get_dreq(dreq);
-+
-+	for (seg = 0; seg < nr_segs; seg++) {
-+		const struct iovec *vec = &iov[seg];
-+		result = nfs_direct_read_schedule(dreq,
-+					(unsigned long)vec->iov_base,
-+						  vec->iov_len, pos);
-+		if (result < 0)
-+			break;
-+		requested_bytes += result;
-+		if ((size_t)result < vec->iov_len)
-+			break;
-+		pos += vec->iov_len;
-+	}
-+
-+	if (put_dreq(dreq))
-+		nfs_direct_complete(dreq);
-+
-+	if (requested_bytes != 0)
-+		return 0;
-+
-+	if (result < 0)
-+		return result;
-+	return -EIO;
-+}
-+
- static ssize_t nfs_direct_read(struct kiocb *iocb, unsigned long user_addr, size_t count, loff_t pos)
+@@ -263,10 +263,14 @@ static const struct rpc_call_ops nfs_read_direct_ops = {
+  * handled automatically by nfs_direct_read_result().  Otherwise, if
+  * no requests have been sent, just return an error.
+  */
+-static ssize_t nfs_direct_read_schedule(struct nfs_direct_req *dreq, unsigned long user_addr, size_t count, loff_t pos)
++static ssize_t nfs_direct_read_schedule_segment(struct nfs_direct_req *dreq,
++						const struct iovec *iov,
++						loff_t pos)
  {
- 	ssize_t result = 0;
-@@ -697,6 +732,42 @@ static ssize_t nfs_direct_write_schedule(struct nfs_direct_req *dreq, unsigned l
- 	return result < 0 ? (ssize_t) result : -EFAULT;
- }
+ 	struct nfs_open_context *ctx = dreq->ctx;
+ 	struct inode *inode = ctx->path.dentry->d_inode;
++	unsigned long user_addr = (unsigned long)iov->iov_base;
++	size_t count = iov->iov_len;
+ 	size_t rsize = NFS_SERVER(inode)->rsize;
+ 	unsigned int pgbase;
+ 	int result;
+@@ -363,9 +367,7 @@ static ssize_t nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
  
-+static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
-+					       const struct iovec *iov,
-+					       unsigned long nr_segs,
-+					       loff_t pos, int sync)
-+{
-+	ssize_t result = 0;
-+	size_t requested_bytes = 0;
-+	unsigned long seg;
-+
-+	get_dreq(dreq);
-+
-+	for (seg = 0; seg < nr_segs; seg++) {
-+		const struct iovec *vec = &iov[seg];
-+		result = nfs_direct_write_schedule(dreq,
-+					(unsigned long)vec->iov_base,
-+						   vec->iov_len,
-+						   pos, sync);
-+		if (result < 0)
-+			break;
-+		requested_bytes += result;
-+		if ((size_t)result < vec->iov_len)
-+			break;
-+		pos += vec->iov_len;
-+	}
-+
-+	if (put_dreq(dreq))
-+		nfs_direct_write_complete(dreq, dreq->inode);
-+
-+	if (requested_bytes != 0)
-+		return 0;
-+
-+	if (result < 0)
-+		return result;
-+	return -EIO;
-+}
-+
- static ssize_t nfs_direct_write(struct kiocb *iocb, unsigned long user_addr, size_t count, loff_t pos)
+ 	for (seg = 0; seg < nr_segs; seg++) {
+ 		const struct iovec *vec = &iov[seg];
+-		result = nfs_direct_read_schedule(dreq,
+-					(unsigned long)vec->iov_base,
+-						  vec->iov_len, pos);
++		result = nfs_direct_read_schedule_segment(dreq, vec, pos);
+ 		if (result < 0)
+ 			break;
+ 		requested_bytes += result;
+@@ -631,10 +633,14 @@ static const struct rpc_call_ops nfs_write_direct_ops = {
+  * handled automatically by nfs_direct_write_result().  Otherwise, if
+  * no requests have been sent, just return an error.
+  */
+-static ssize_t nfs_direct_write_schedule(struct nfs_direct_req *dreq, unsigned long user_addr, size_t count, loff_t pos, int sync)
++static ssize_t nfs_direct_write_schedule_segment(struct nfs_direct_req *dreq,
++						 const struct iovec *iov,
++						 loff_t pos, int sync)
  {
- 	ssize_t result = 0;
+ 	struct nfs_open_context *ctx = dreq->ctx;
+ 	struct inode *inode = ctx->path.dentry->d_inode;
++	unsigned long user_addr = (unsigned long)iov->iov_base;
++	size_t count = iov->iov_len;
+ 	size_t wsize = NFS_SERVER(inode)->wsize;
+ 	unsigned int pgbase;
+ 	int result;
+@@ -735,10 +741,8 @@ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
+ 
+ 	for (seg = 0; seg < nr_segs; seg++) {
+ 		const struct iovec *vec = &iov[seg];
+-		result = nfs_direct_write_schedule(dreq,
+-					(unsigned long)vec->iov_base,
+-						   vec->iov_len,
+-						   pos, sync);
++		result = nfs_direct_write_schedule_segment(dreq, vec,
++							   pos, sync);
+ 		if (result < 0)
+ 			break;
+ 		requested_bytes += result;
 
 
 -------------------------------------------------------------------------
