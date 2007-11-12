@@ -1,20 +1,20 @@
 From: "Doug" <asabbyedg@elektro.com.br>
 Subject: Did you know
 Date: Mon, 12 Nov 2007 06:10:43 +0100
-Message-ID: <000b01c824ea$6053c8f0$14b2a8c0@dip0.t-ipconnect.de>
+Message-ID: <000b01c824ea$604f3510$14b2a8c0@dip0.t-ipconnect.de>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1924050102=="
-To: "klemens mark" <nfs@lists.sf.net>
+Content-Type: multipart/mixed; boundary="===============0296667085=="
+To: "klemens mark" <nfs@lists.sourceforge.net>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IrRZk-0007uO-QE
+	id 1IrRZk-0007uN-QF
 	for nfs@lists.sourceforge.net; Sun, 11 Nov 2007 21:11:08 -0800
 Received: from p5494b8ae.dip0.t-ipconnect.de ([84.148.184.174]
 	helo=dip0.t-ipconnect.de)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IrRZj-0001bL-6S
-	for nfs@lists.sourceforge.net; Sun, 11 Nov 2007 21:11:14 -0800
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IrRZj-0001d1-6G
+	for nfs@lists.sourceforge.net; Sun, 11 Nov 2007 21:11:13 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,17 +29,17 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 
 This is a multi-part message in MIME format.
 
---===============1924050102==
+--===============0296667085==
 Content-Type: multipart/related; type="multipart/alternative";
-	boundary="----=_NextPart_000_0007_01C824EA.6053C8F0"
+	boundary="----=_NextPart_000_0007_01C824EA.604F3510"
 
 This is a multi-part message in MIME format.
 
-------=_NextPart_000_0007_01C824EA.6053C8F0
+------=_NextPart_000_0007_01C824EA.604F3510
 Content-Type: multipart/alternative;
-	boundary="----=_NextPart_001_0008_01C824EA.6053C8F0"
+	boundary="----=_NextPart_001_0008_01C824EA.604F3510"
 
-------=_NextPart_001_0008_01C824EA.6053C8F0
+------=_NextPart_001_0008_01C824EA.604F3510
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
 
@@ -49,7 +49,7 @@ Content-Transfer-Encoding: 7bit
 molly ran races to see who would fill and empty me and made me feel that i was quite an important  ben, feeling mean while he proposed what
 tom, laughing.         
 
-------=_NextPart_001_0008_01C824EA.6053C8F0
+------=_NextPart_001_0008_01C824EA.604F3510
 Content-Type: text/html
 Content-Transfer-Encoding: quoted-printable
 
@@ -72,9 +72,9 @@ proposed what<BR>
 tom, laughing.&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<BR>
 </DIV></BODY></HTML>
 
-------=_NextPart_001_0008_01C824EA.6053C8F0--
+------=_NextPart_001_0008_01C824EA.604F3510--
 
-------=_NextPart_000_0007_01C824EA.6053C8F0
+------=_NextPart_000_0007_01C824EA.604F3510
 Content-Type: image/gif;
 	name="jxRjZKQApO.gif"
 Content-Transfer-Encoding: base64
@@ -361,7 +361,7 @@ AsWy3Mlw88vLq79mrL/+0r8FjAP6u8OpnMzHa1WHlb7SzGpgFb8yVgPqC7+iTMnVvHNlBb7VVQOu
 YgM5W8Hk7M60/M7xPM7xLL3zTM/Oa8/3vLz5rM/Hy8/9PLz/DNC/C7sFbdAHjdAJrdALzdAN7dCs
 GwIAOw==
 
-------=_NextPart_000_0007_01C824EA.6053C8F0
+------=_NextPart_000_0007_01C824EA.604F3510
 Content-Type: image/gif;
 	name="dnMswVSsSG.gif"
 Content-Transfer-Encoding: base64
@@ -652,11 +652,11 @@ H/yl20OlFlHmlJYCtZoeaXvRKXNCVE4zV5u25ZyyH0NFtYJi6X5dKE0h7AnXrpZiolL/ZkZxpnju
 VH9VaHl2qHB2qzzNLTynIoICVehbJ6iY+gBdu4APlEBd9wFd+0AclEAc0LUe7LUL4DVd//Vd8/Vh
 +8BgCzZjF/ZeG7ZiJ3aKloAGlIBdFzZh4/Vi1zVhK3ZnQ7ZdE/Ziu4ABEJcYBAQAOw==
 
-------=_NextPart_000_0007_01C824EA.6053C8F0--
+------=_NextPart_000_0007_01C824EA.604F3510--
 
 
 
---===============1924050102==
+--===============0296667085==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -667,7 +667,7 @@ This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >> http://get.splunk.com/
---===============1924050102==
+--===============0296667085==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -677,4 +677,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---===============1924050102==--
+--===============0296667085==--
