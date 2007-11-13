@@ -1,21 +1,20 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 20/25] NFS: Set default port for NFSv4,
-	with support for AF_INET6
-Date: Tue, 13 Nov 2007 13:32:46 -0500
-Message-ID: <20071113183246.5087.36926.stgit@manray.1015granger.net>
+Subject: [PATCH 25/25] NFS: Verify IPv6 addresses properly
+Date: Tue, 13 Nov 2007 13:33:12 -0500
+Message-ID: <20071113183312.5087.80253.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: netdev@vger.kernel.org
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Is0Z5-0000X4-3U
-	for nfs@lists.sourceforge.net; Tue, 13 Nov 2007 10:32:49 -0800
+	id 1Is0ZX-0000dS-5j
+	for nfs@lists.sourceforge.net; Tue, 13 Nov 2007 10:33:15 -0800
 Received: from flpi101.sbcis.sbc.com ([207.115.20.70] helo=flpi101.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Is0ZA-0000Iu-JY
-	for nfs@lists.sourceforge.net; Tue, 13 Nov 2007 10:32:52 -0800
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Is0Za-0007R4-UB
+	for nfs@lists.sourceforge.net; Tue, 13 Nov 2007 10:33:21 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,86 +27,49 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Move more address family dependencies to a helper function.
+Add support to nfs_verify_server_address for recognizing AF_INET6 addresses.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Cc: Aurelien Charbon <aurelien.charbon@ext.bull.net>
 ---
 
- fs/nfs/super.c |   40 ++++++++++++++++++++++++++++++++--------
- 1 files changed, 32 insertions(+), 8 deletions(-)
+ fs/nfs/super.c |   15 ++++++++-------
+ 1 files changed, 8 insertions(+), 7 deletions(-)
 
 diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 7dc56ce..1831394 100644
+index c066016..f0af79b 100644
 --- a/fs/nfs/super.c
 +++ b/fs/nfs/super.c
-@@ -1573,6 +1573,31 @@ static void nfs4_fill_super(struct super_block *sb)
- }
- 
- /*
-+ * If the user didn't specify a port, set the port number to
-+ * the NFS version 4 default port.
-+ */
-+static int nfs4_default_port(struct sockaddr *sap)
-+{
-+	switch (sap->sa_family) {
-+	case AF_INET: {
-+		struct sockaddr_in *ap = (struct sockaddr_in *)sap;
-+		if (ap->sin_port == 0)
-+			ap->sin_port = htons(NFS_PORT);
-+		return 0;
+@@ -46,6 +46,7 @@
+ #include <linux/vfs.h>
+ #include <linux/inet.h>
+ #include <linux/in6.h>
++#include <net/ipv6.h>
+ #include <linux/nfs_xdr.h>
+ #include <linux/magic.h>
+ #include <linux/parser.h>
+@@ -601,14 +602,14 @@ static int nfs_set_address_port(struct sockaddr *sap, unsigned short port)
+  */
+ static int nfs_verify_server_address(struct sockaddr_storage *ssp)
+ {
+-	struct sockaddr *addr = (struct sockaddr *)ssp;
+-
+-	switch (addr->sa_family) {
++	switch (ssp->ss_family) {
+ 	case AF_INET: {
+-		struct sockaddr_in *sa = (struct sockaddr_in *) addr;
+-		if (sa->sin_addr.s_addr != INADDR_ANY)
+-			return 1;
+-		break;
++		struct sockaddr_in *sa = (struct sockaddr_in *)ssp;
++		return sa->sin_addr.s_addr != INADDR_ANY;
 +	}
 +	case AF_INET6: {
-+		struct sockaddr_in6 *ap = (struct sockaddr_in6 *)sap;
-+		if (ap->sin6_port == 0)
-+			ap->sin6_port = htons(NFS_PORT);
-+		return 0;
-+	}
-+	default:
-+		dfprintk(MOUNT, "NFS: unrecognized address family\n");
-+		return -EAFNOSUPPORT;
-+	}
-+}
-+
-+/*
-  * Validate NFSv4 mount options
-  */
- static int nfs4_validate_mount_data(void *options,
-@@ -1580,6 +1605,7 @@ static int nfs4_validate_mount_data(void *options,
- 				    const char *dev_name)
- {
- 	struct nfs4_mount_data *data = (struct nfs4_mount_data *)options;
-+	struct sockaddr *sap = (struct sockaddr *)&args->nfs_server.address;
- 	char *c;
++		struct in6_addr *sa = &((struct sockaddr_in6 *)ssp)->sin6_addr;
++		return !ipv6_addr_any(sa);
+ 	}
+ 	}
  
- 	if (data == NULL)
-@@ -1604,10 +1630,9 @@ static int nfs4_validate_mount_data(void *options,
- 				   data->host_addr,
- 				   sizeof(args->nfs_server.address)))
- 			return -EFAULT;
--		if (args->nfs_server.address.sin_port == 0)
--			args->nfs_server.address.sin_port = htons(NFS_PORT);
--		if (!nfs_verify_server_address((struct sockaddr *)
--						&args->nfs_server.address))
-+		if (nfs4_default_port(sap))
-+			goto out_no_address;
-+		if (!nfs_verify_server_address(sap))
- 			goto out_no_address;
- 
- 		switch (data->auth_flavourlen) {
-@@ -1663,10 +1688,9 @@ static int nfs4_validate_mount_data(void *options,
- 		if (nfs_parse_mount_options((char *)options, args) == 0)
- 			return -EINVAL;
- 
--		if (args->nfs_server.address.sin_port == 0)
--			args->nfs_server.address.sin_port = htons(NFS_PORT);
--		if (!nfs_verify_server_address((struct sockaddr *)
--						&args->nfs_server.address))
-+		if (nfs4_default_port(sap))
-+			return -EINVAL;
-+		if (!nfs_verify_server_address(sap))
- 			return -EINVAL;
- 
- 		switch (args->auth_flavor_len) {
 
 
 -------------------------------------------------------------------------
