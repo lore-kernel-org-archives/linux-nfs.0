@@ -1,23 +1,22 @@
-From: Erez Zadok <ezk@cs.sunysb.edu>
-Subject: [PATCH] NFSD: fix wrong mnt_writer count in rename (MMOTM
-	2007-11-10-19-05)
-Date: Mon, 12 Nov 2007 20:15:11 -0500
-Message-ID: <200711130115.lAD1FBfG015626@agora.fsl.cs.sunysb.edu>
+From: Gerd Bavendiek <gerd.bavendiek@googlemail.com>
+Subject: Differences between 2.6.5 und 2.6.16: getattr with actimeo=0
+ and O_DIRECT
+Date: Tue, 13 Nov 2007 10:03:42 +0100
+Message-ID: <4739686E.8080501@googlemail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
-To: bfields@fieldses.org, Dave Hansen <haveblue@us.ibm.com>,
-	Andrew Morton <akpm@linux-foundation.org>
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IrkQ4-0003VG-7I
-	for nfs@lists.sourceforge.net; Mon, 12 Nov 2007 17:18:28 -0800
-Received: from filer.fsl.cs.sunysb.edu ([130.245.126.2])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IrkQ7-00042C-PQ
-	for nfs@lists.sourceforge.net; Mon, 12 Nov 2007 17:18:30 -0800
+	id 1IrrgP-0005VG-H4
+	for nfs@lists.sourceforge.net; Tue, 13 Nov 2007 01:03:45 -0800
+Received: from ug-out-1314.google.com ([66.249.92.174])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IrrgV-0005d4-3a
+	for nfs@lists.sourceforge.net; Tue, 13 Nov 2007 01:03:51 -0800
+Received: by ug-out-1314.google.com with SMTP id m2so50845uge
+	for <nfs@lists.sourceforge.net>; Tue, 13 Nov 2007 01:03:48 -0800 (PST)
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,35 +29,35 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-NFSD forgets to call mnt_drop_write after a successful rename.  Here's a
-fix.  (Ah, the curse of a stackable file system developer: you have to debug
-everyone else's too. :-)
+Hi,
 
-One thing I wasn't sure is whether I could move the mnt_drop_write line a
-little above, just after the call to vfs_rename.  If we can drop the ref
-earlier, it could improve scalability/performance just a bit, no? (i.e.,
-what are the ramifications of holding on to this mnt writer ref longer than
-needed?)
+analyzing performance issues with Oracle databases on an NFS client
+running on SLES9 SP3 and NetApp as NFS server, I found that in SLES9
+SP3 each write call is followed by an getattr. This is not the case
+with SLES10 SP1.
 
-Cheers,
-Erez.
+Mount options in use are:
 
+rw,v3,rsize=32768,wsize=32768,acregmin=0,acregmax=0,acdirmin=0,acdirmax=0,hard,lock,proto=tcp,addr=172.18.131.134
 
+I do
 
-Signed-off-by: Erez Zadok <ezk@cs.sunysb.edu>
+dd if=/dev/zero of=/mnt/qqq oflag=direct bs=8k count=100000
 
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 7dfde65..47aec49 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -1693,6 +1693,7 @@ nfsd_rename(struct svc_rqst *rqstp, struct svc_fh *ffhp, char *fname, int flen,
- 		if (!host_err)
- 			host_err = nfsd_sync_dir(fdentry);
- 	}
-+	mnt_drop_write(ffhp->fh_export->ex_path.mnt);
- 
-  out_dput_new:
- 	dput(ndentry);
+and using tcpdump (BTW, is there an easier way ?) I see with SLES9 SP3
+(i.e. 2.6.5-7.244) each single 8k write followed by an getattr (which
+comes at some cost).
+
+Using SLES10 SP1 (2.6.16.46-0.12) there is only one getattr when dd
+closes the file.
+
+Is there anything I can do to avoid the getattr calls in SLES9 SP3
+(no, sorry, can't update to SLES10 SP1) ?
+
+Thanks
+
+Gerd
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
