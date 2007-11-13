@@ -1,21 +1,21 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 08/25] NFS: Expand server address storage in
-	nfs_client struct
-Date: Tue, 13 Nov 2007 13:31:42 -0500
-Message-ID: <20071113183142.5087.5236.stgit@manray.1015granger.net>
+Subject: [PATCH 04/25] NFS: Enable NFS client to generate CLIENTID
+	strings	with IPv6 addresses
+Date: Tue, 13 Nov 2007 13:31:21 -0500
+Message-ID: <20071113183121.5087.71482.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: netdev@vger.kernel.org
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Is0Y3-0000NY-Sn
-	for nfs@lists.sourceforge.net; Tue, 13 Nov 2007 10:31:44 -0800
+	id 1Is0Xz-0000NM-8f
+	for nfs@lists.sourceforge.net; Tue, 13 Nov 2007 10:31:39 -0800
 Received: from flpi101.sbcis.sbc.com ([207.115.20.70] helo=flpi101.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Is0Y9-0007wT-84
-	for nfs@lists.sourceforge.net; Tue, 13 Nov 2007 10:31:49 -0800
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Is0Y5-0005YA-1x
+	for nfs@lists.sourceforge.net; Tue, 13 Nov 2007 10:31:45 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,99 +28,45 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Prepare for managing larger addresses in the NFS client by widening the
-nfs_client struct's cl_addr field and adding a field to store the address's
-length.
+We recently added methods to RPC transports that provide string versions of
+the remote peer address information.  Convert the NFSv4 SETCLIENTID
+procedure to use those methods instead of building the client ID out of
+whole cloth.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Cc: Aurelien Charbon <aurelien.charbon@ext.bull.net>
 ---
 
- fs/nfs/client.c           |   11 +++++++----
- fs/nfs/super.c            |    9 ++++++---
- include/linux/nfs_fs_sb.h |    3 ++-
- 3 files changed, 15 insertions(+), 8 deletions(-)
+ fs/nfs/nfs4proc.c |   12 ++++++++----
+ 1 files changed, 8 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 5ab1ca1..53bf8ab 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -117,7 +117,8 @@ static struct nfs_client *nfs_alloc_client(const char *hostname,
- 	atomic_set(&clp->cl_count, 1);
- 	clp->cl_cons_state = NFS_CS_INITING;
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index f03d9d5..ec58d1e 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2912,14 +2912,18 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program, unsigned short po
  
--	memcpy(&clp->cl_addr, addr, sizeof(clp->cl_addr));
-+	clp->cl_addrlen = sizeof(*addr);	/* for now */
-+	memcpy(&clp->cl_addr, addr, clp->cl_addrlen);
+ 	for(;;) {
+ 		setclientid.sc_name_len = scnprintf(setclientid.sc_name,
+-				sizeof(setclientid.sc_name), "%s/%u.%u.%u.%u %s %u",
+-				clp->cl_ipaddr, NIPQUAD(clp->cl_addr.sin_addr),
++				sizeof(setclientid.sc_name), "%s/%s %s %u",
++				clp->cl_ipaddr,
++				rpc_peeraddr2str(clp->cl_rpcclient,
++							RPC_DISPLAY_ADDR),
+ 				cred->cr_ops->cr_name,
+ 				clp->cl_id_uniquifier);
+ 		setclientid.sc_netid_len = scnprintf(setclientid.sc_netid,
+-				sizeof(setclientid.sc_netid), "tcp");
++				sizeof(setclientid.sc_netid),
++				rpc_peeraddr2str(clp->cl_rpcclient,
++							RPC_DISPLAY_NETID));
+ 		setclientid.sc_uaddr_len = scnprintf(setclientid.sc_uaddr,
+-				sizeof(setclientid.sc_uaddr), "%s.%d.%d",
++				sizeof(setclientid.sc_uaddr), "%s.%u.%u",
+ 				clp->cl_ipaddr, port >> 8, port & 255);
  
- 	if (hostname) {
- 		clp->cl_hostname = kstrdup(hostname, GFP_KERNEL);
-@@ -214,6 +215,8 @@ static struct nfs_client *__nfs_find_client(const struct sockaddr_in *addr,
- 	struct nfs_client *clp;
- 
- 	list_for_each_entry(clp, &nfs_client_list, cl_share_link) {
-+		struct sockaddr_in *clap = (struct sockaddr_in *)&clp->cl_addr;
-+
- 		/* Don't match clients that failed to initialise properly */
- 		if (clp->cl_cons_state < 0)
- 			continue;
-@@ -222,10 +225,10 @@ static struct nfs_client *__nfs_find_client(const struct sockaddr_in *addr,
- 		if (clp->rpc_ops->version != nfsversion)
- 			continue;
- 
--		if (clp->cl_addr.sin_addr.s_addr != addr->sin_addr.s_addr)
-+		if (clap->sin_addr.s_addr != addr->sin_addr.s_addr)
- 			continue;
- 
--		if (!match_port || clp->cl_addr.sin_port == addr->sin_port)
-+		if (!match_port || clap->sin_port == addr->sin_port)
- 			goto found;
- 	}
- 
-@@ -380,7 +383,7 @@ static int nfs_create_rpc_client(struct nfs_client *clp, int proto,
- 	struct rpc_create_args args = {
- 		.protocol	= proto,
- 		.address	= (struct sockaddr *)&clp->cl_addr,
--		.addrsize	= sizeof(clp->cl_addr),
-+		.addrsize	= clp->cl_addrlen,
- 		.timeout	= &timeparms,
- 		.servername	= clp->cl_hostname,
- 		.program	= &nfs_program,
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 5a742a8..6258a19 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -1332,10 +1332,13 @@ static int nfs_compare_super(struct super_block *sb, void *data)
- 	struct nfs_server *server = sb_mntdata->server, *old = NFS_SB(sb);
- 	int mntflags = sb_mntdata->mntflags;
- 
--	if (memcmp(&old->nfs_client->cl_addr,
--				&server->nfs_client->cl_addr,
--				sizeof(old->nfs_client->cl_addr)) != 0)
-+	/* Check family, address, and port */
-+	if (old->nfs_client->cl_addrlen != server->nfs_client->cl_addrlen)
- 		return 0;
-+	if (memcmp(&old->nfs_client->cl_addr, &server->nfs_client->cl_addr,
-+		   old->nfs_client->cl_addrlen) != 0)
-+		return 0;
-+
- 	/* Note: NFS_MOUNT_UNSHARED == NFS4_MOUNT_UNSHARED */
- 	if (old->flags & NFS_MOUNT_UNSHARED)
- 		return 0;
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index f2a0f20..5e3a43b 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -20,7 +20,8 @@ struct nfs_client {
- #define NFS_CS_IDMAP		2		/* - idmap started */
- #define NFS_CS_RENEWD		3		/* - renewd started */
- 
--	struct sockaddr_in	cl_addr;	/* server identifier */
-+	struct sockaddr_storage	cl_addr;	/* server identifier */
-+	size_t			cl_addrlen;
- 	char *			cl_hostname;	/* hostname of server */
- 	struct list_head	cl_share_link;	/* link in global client list */
- 	struct list_head	cl_superblocks;	/* List of nfs_server structs */
+ 		status = rpc_call_sync(clp->cl_rpcclient, &msg, 0);
 
 
 -------------------------------------------------------------------------
