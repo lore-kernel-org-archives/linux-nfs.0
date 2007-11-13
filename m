@@ -1,78 +1,70 @@
-From: Alex Riesen <raa.lkml@gmail.com>
-Subject: Re: git 1.5.3.5 error over NFS
-Date: Tue, 13 Nov 2007 00:31:03 +0100
-Message-ID: <20071112233103.GH2918@steel.home>
-References: <18228.32091.865519.312011@lisa.zopyra.com> <20071109232106.GA3435@steel.home> <18232.29603.856766.275854@lisa.zopyra.com>
-Reply-To: Alex Riesen <raa.lkml@gmail.com>
+From: Erez Zadok <ezk@cs.sunysb.edu>
+Subject: [PATCH] NFSD: fix wrong mnt_writer count in rename (MMOTM
+	2007-11-10-19-05)
+Date: Mon, 12 Nov 2007 20:15:11 -0500
+Message-ID: <200711130115.lAD1FBfG015626@agora.fsl.cs.sunysb.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: git@vger.kernel.org, nfs@lists.sourceforge.net,
-	linux-kernel <linux-kernel@vger.kernel.org>
-To: Bill Lear <rael@zopyra.com>
-Return-path: <git-owner@vger.kernel.org>
-In-Reply-To: <18232.29603.856766.275854@lisa.zopyra.com>
-Sender: git-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org
+To: bfields@fieldses.org, Dave Hansen <haveblue@us.ibm.com>,
+	Andrew Morton <akpm@linux-foundation.org>
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1IrkQ4-0003VG-7I
+	for nfs@lists.sourceforge.net; Mon, 12 Nov 2007 17:18:28 -0800
+Received: from filer.fsl.cs.sunysb.edu ([130.245.126.2])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IrkQ7-00042C-PQ
+	for nfs@lists.sourceforge.net; Mon, 12 Nov 2007 17:18:30 -0800
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-Bill Lear, Mon, Nov 12, 2007 16:39:15 +0100:
-> On Saturday, November 10, 2007 at 00:21:06 (+0100) Alex Riesen writes:
-> >Bill Lear, Fri, Nov 09, 2007 16:31:39 +0100:
-> >> I've brought this up before, but I don't recall a resolution to it.
-> >> 
-> >> We have an NFS-mounted filesystem, and git pull is choking on it.
-> >> 
-> >> % uname -a
-> >> Linux uhlr.zopyra.com 2.6.9-42.0.2.ELsmp #1 SMP Wed Aug 23 13:38:27 BST 2006 x86_64 x86_64 x86_64 GNU/Linux
+NFSD forgets to call mnt_drop_write after a successful rename.  Here's a
+fix.  (Ah, the curse of a stackable file system developer: you have to debug
+everyone else's too. :-)
 
-It is a really old kernel... Maybe you could try with some of the
-recent ones?
+One thing I wasn't sure is whether I could move the mnt_drop_write line a
+little above, just after the call to vfs_rename.  If we can drop the ref
+earlier, it could improve scalability/performance just a bit, no? (i.e.,
+what are the ramifications of holding on to this mnt writer ref longer than
+needed?)
 
-> >> % git --version
-> >> git version 1.5.3.5
-> >> 
-> >> % git pull
-> >> remote: Generating pack...
-> >> remote: Done counting 998 objects.
-> >> remote: Result has 836 objects.
-> >> remote: Deltifying 836 objects.
-> >> remote:  100% (836/836) done
-> >> Indexing 836 objects...
-> >> remote: Total 836 (delta 526), reused 688 (delta 380)
-> >>   100% (836/836) done
-> >> Resolving 526 deltas...
-> >> fatal: cannot pread pack file: No such file or directory
-> >
-> >Could you please strace it? With strace -ff?
-> >
-> >> fatal: index-pack died with error code 128
-> >> fatal: Fetch failure: git://source/repo
-> >> 
-> >> I looked through the archives of this list and did not see a final
-> >> resolution, other than a suspected bug in the OS NFS code.
-> >
-> >Strace, just to be on the safe side
-> 
-> Ok, I've done the strace -ff.  It has generated 176 strace.out.<pid>
-> files.  I have placed a tarball of these files on my home server:
-> 
->   http://www.zopyra.com/~rael/git/git-trace.tar.bz2
-> 
-> The file strace.out.25526 has, at the very end:
-> 
+Cheers,
+Erez.
 
-Yes, this is the file.
 
-I extend the part you quoted. The file is opened here:
 
-open(".git/objects/pack_awOTNW", O_RDWR|O_CREAT|O_EXCL, 0600) = 3
-write(3, "PACK\0\0\0\2\0\0\3r", 12)     = 12
-... lots of data. Counted writes: 488538...
-write(3, "v\351\247V\325\362\327/\240\265\211\211\322,\261\210\301"..., 4096) = 4096
-write(3, "\202\202g\232Bf\211Bf\261Bb\36X\22\4\364\365\25\22\223"..., 1114) = 1114
-write(3, "M", 1)                        = 1
+Signed-off-by: Erez Zadok <ezk@cs.sunysb.edu>
 
-> write(2, "Resolving 551 deltas.\n", 22)                               = 22
-> pread64(3, "", 242, 541) = 0
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 7dfde65..47aec49 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -1693,6 +1693,7 @@ nfsd_rename(struct svc_rqst *rqstp, struct svc_fh *ffhp, char *fname, int flen,
+ 		if (!host_err)
+ 			host_err = nfsd_sync_dir(fdentry);
+ 	}
++	mnt_drop_write(ffhp->fh_export->ex_path.mnt);
+ 
+  out_dput_new:
+ 	dput(ndentry);
 
-That's the problem.  Hmm... May I kindly suggest moving the topic to
-linux-nfs (cc-ed along with lk)?
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Splunk Inc.
+Still grepping through log files to find problems?  Stop.
+Now Search log events and configuration files using AJAX and a browser.
+Download your FREE copy of Splunk now >> http://get.splunk.com/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
