@@ -1,7 +1,8 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 18/25] NFS: Remove the NIPQUAD from nfs_try_mount
-Date: Tue, 13 Nov 2007 13:32:35 -0500
-Message-ID: <20071113183235.5087.90897.stgit@manray.1015granger.net>
+Subject: [PATCH 17/25] NFS: Change nfs4_set_client() to accept
+	(sockaddr *, len)
+Date: Tue, 13 Nov 2007 13:32:30 -0500
+Message-ID: <20071113183230.5087.65127.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: netdev@vger.kernel.org
@@ -10,11 +11,11 @@ Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Is0Yu-0000WN-Bh
-	for nfs@lists.sourceforge.net; Tue, 13 Nov 2007 10:32:37 -0800
+	id 1Is0Yq-0000W5-2z
+	for nfs@lists.sourceforge.net; Tue, 13 Nov 2007 10:32:32 -0800
 Received: from flpi101.sbcis.sbc.com ([207.115.20.70] helo=flpi101.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Is0Z0-0000Dn-1k
-	for nfs@lists.sourceforge.net; Tue, 13 Nov 2007 10:32:42 -0800
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Is0Yu-00008v-Pz
+	for nfs@lists.sourceforge.net; Tue, 13 Nov 2007 10:32:38 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,100 +28,62 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-In the name of address family compatibility, we can't have the NIP_FMT and
-NIPQUAD macros in nfs_try_mount().  Instead, we can make use of an unused
-mount option to display the mount server's hostname.
+Adjust the arguments and callers of nfs4_set_client() to pass a "struct
+sockaddr *" and a length instead of a "struct sockaddr_in *" to support
+non-IPv4 addresses in the NFS client.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Cc: Aurelien Charbon <aurelien.charbon@ext.bull.net>
 ---
 
- fs/nfs/super.c |   23 ++++++++++++++++++-----
- 1 files changed, 18 insertions(+), 5 deletions(-)
+ fs/nfs/client.c |   13 ++++++++-----
+ 1 files changed, 8 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 6258a19..262adb4 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -87,7 +87,7 @@ enum {
- 	Opt_nfsvers,
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 5e53892..37b63a6 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -914,7 +914,9 @@ error:
+  * Set up an NFS4 client
+  */
+ static int nfs4_set_client(struct nfs_server *server,
+-		const char *hostname, const struct sockaddr_in *addr,
++		const char *hostname,
++		const struct sockaddr *addr,
++		const size_t addrlen,
+ 		const char *ip_addr,
+ 		rpc_authflavor_t authflavour,
+ 		int proto, int timeo, int retrans)
+@@ -925,8 +927,7 @@ static int nfs4_set_client(struct nfs_server *server,
+ 	dprintk("--> nfs4_set_client()\n");
  
- 	/* Mount options that take string arguments */
--	Opt_sec, Opt_proto, Opt_mountproto,
-+	Opt_sec, Opt_proto, Opt_mountproto, Opt_mounthost,
- 	Opt_addr, Opt_mountaddr, Opt_clientaddr,
- 
- 	/* Mount options that are ignored */
-@@ -146,7 +146,7 @@ static match_table_t nfs_mount_option_tokens = {
- 	{ Opt_mountproto, "mountproto=%s" },
- 	{ Opt_addr, "addr=%s" },
- 	{ Opt_clientaddr, "clientaddr=%s" },
--	{ Opt_userspace, "mounthost=%s" },
-+	{ Opt_mounthost, "mounthost=%s" },
- 	{ Opt_mountaddr, "mountaddr=%s" },
- 
- 	{ Opt_err, NULL }
-@@ -953,6 +953,12 @@ static int nfs_parse_mount_options(char *raw,
- 				goto out_nomem;
- 			mnt->client_address = string;
- 			break;
-+		case Opt_mounthost:
-+			string = match_strdup(args);
-+			if (string == NULL)
-+				goto out_nomem;
-+			mnt->mount_server.hostname = string;
-+			break;
- 		case Opt_mountaddr:
- 			string = match_strdup(args);
- 			if (string == NULL)
-@@ -1000,6 +1006,7 @@ static int nfs_try_mount(struct nfs_parsed_mount_data *args,
- {
- 	struct sockaddr_in sin;
- 	int status;
-+	char *hostname;
- 
- 	if (args->mount_server.version == 0) {
- 		if (args->flags & NFS_MOUNT_VER3)
-@@ -1008,6 +1015,11 @@ static int nfs_try_mount(struct nfs_parsed_mount_data *args,
- 			args->mount_server.version = NFS_MNT_VERSION;
- 	}
- 
-+	if (args->mount_server.hostname)
-+		hostname = args->mount_server.hostname;
-+	else
-+		hostname = args->nfs_server.hostname;
-+
- 	/*
- 	 * Construct the mount server's address.
- 	 */
-@@ -1026,7 +1038,7 @@ static int nfs_try_mount(struct nfs_parsed_mount_data *args,
- 	 */
- 	status = nfs_mount((struct sockaddr *) &sin,
- 			   sizeof(sin),
--			   args->nfs_server.hostname,
-+			   hostname,
- 			   args->nfs_server.export_path,
- 			   args->mount_server.version,
- 			   args->mount_server.protocol,
-@@ -1034,8 +1046,8 @@ static int nfs_try_mount(struct nfs_parsed_mount_data *args,
- 	if (status == 0)
- 		return 0;
- 
--	dfprintk(MOUNT, "NFS: unable to mount server " NIPQUAD_FMT
--			", error %d\n", NIPQUAD(sin.sin_addr.s_addr), status);
-+	dfprintk(MOUNT, "NFS: unable to mount server %s, error %d",
-+			hostname, status);
- 	return status;
- }
- 
-@@ -1407,6 +1419,7 @@ static int nfs_get_sb(struct file_system_type *fs_type,
- 
- out:
- 	kfree(data.nfs_server.hostname);
-+	kfree(data.mount_server.hostname);
- 	return error;
- 
- out_err_nosb:
+ 	/* Allocate or find a client reference we can use */
+-	clp = nfs_get_client(hostname, (struct sockaddr *)addr,
+-				sizeof(*addr), 4);
++	clp = nfs_get_client(hostname, addr, addrlen, 4);
+ 	if (IS_ERR(clp)) {
+ 		error = PTR_ERR(clp);
+ 		goto error;
+@@ -997,7 +998,8 @@ struct nfs_server *nfs4_create_server(const struct nfs_parsed_mount_data *data,
+ 	/* Get a client record */
+ 	error = nfs4_set_client(server,
+ 			data->nfs_server.hostname,
+-			&data->nfs_server.address,
++			(struct sockaddr *)&data->nfs_server.address,
++			sizeof(data->nfs_server.address),
+ 			data->client_address,
+ 			data->auth_flavors[0],
+ 			data->nfs_server.protocol,
+@@ -1073,7 +1075,8 @@ struct nfs_server *nfs4_create_referral_server(struct nfs_clone_mount *data,
+ 	/* Get a client representation.
+ 	 * Note: NFSv4 always uses TCP, */
+ 	error = nfs4_set_client(server, data->hostname,
+-			(struct sockaddr_in *)data->addr,
++			data->addr,
++			sizeof(*data->addr),
+ 			parent_client->cl_ipaddr,
+ 			data->authflavor,
+ 			parent_server->client->cl_xprt->prot,
 
 
 -------------------------------------------------------------------------
