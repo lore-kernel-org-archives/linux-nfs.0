@@ -1,21 +1,21 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 15/25] NFS: Change nfs_get_client() to take (sockaddr
-	*, len)
-Date: Tue, 13 Nov 2007 13:32:19 -0500
-Message-ID: <20071113183219.5087.82892.stgit@manray.1015granger.net>
+Subject: [PATCH 16/25] NFS: Adjust nfs_clone_mount structure to store
+	"struct	sockaddr *"
+Date: Tue, 13 Nov 2007 13:32:25 -0500
+Message-ID: <20071113183225.5087.84047.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: netdev@vger.kernel.org
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Is0Ye-0000VL-HO
-	for nfs@lists.sourceforge.net; Tue, 13 Nov 2007 10:32:20 -0800
+	id 1Is0Ym-0000Vp-O8
+	for nfs@lists.sourceforge.net; Tue, 13 Nov 2007 10:32:28 -0800
 Received: from flpi101.sbcis.sbc.com ([207.115.20.70] helo=flpi101.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Is0Yk-0006fx-A7
-	for nfs@lists.sourceforge.net; Tue, 13 Nov 2007 10:32:26 -0800
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Is0Yp-0008Q4-GU
+	for nfs@lists.sourceforge.net; Tue, 13 Nov 2007 10:32:34 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -28,80 +28,81 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Adjust arguments and callers of nfs_get_client() to pass a
-"struct sockaddr *" and length instead of "struct sockaddr_in *" to support
-non-IPv4 addresses.
+Change the addr field in the nfs_clone_mount structure to store a "struct
+sockaddr *" to support non-IPv4 addresses in the NFS client.
+
+Note this is mostly a cosmetic change, and does not actually allow
+referrals using IPv6 addresses.  The existing referral code assumes that
+the server returns a string that represents an IPv4 address.  This code
+needs to support hostnames and IPv6 addresses as well as IPv4 addresses,
+thus it will need to be restructured in order to handle DNS resolution in
+user space.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Cc: Aurelien Charbon <aurelien.charbon@ext.bull.net>
 ---
 
- fs/nfs/client.c |   21 +++++++++++----------
- 1 files changed, 11 insertions(+), 10 deletions(-)
+ fs/nfs/client.c        |    3 ++-
+ fs/nfs/internal.h      |    2 +-
+ fs/nfs/nfs4namespace.c |   11 ++++++-----
+ 3 files changed, 9 insertions(+), 7 deletions(-)
 
 diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 7b45ed0..f03a742 100644
+index f03a742..5e53892 100644
 --- a/fs/nfs/client.c
 +++ b/fs/nfs/client.c
-@@ -288,21 +288,21 @@ struct nfs_client *nfs_find_client(const struct sockaddr *addr,
-  * - creates a new record if one doesn't yet exist
-  */
- static struct nfs_client *nfs_get_client(const char *hostname,
--					 const struct sockaddr_in *addr,
-+					 const struct sockaddr *addr,
-+					 size_t addrlen,
- 					 unsigned int nfsversion)
- {
- 	struct nfs_client *clp, *new = NULL;
- 	int error;
+@@ -1072,7 +1072,8 @@ struct nfs_server *nfs4_create_referral_server(struct nfs_clone_mount *data,
  
--	dprintk("--> nfs_get_client(%s,"NIPQUAD_FMT":%d,%u)\n",
--		hostname ?: "", NIPQUAD(addr->sin_addr),
--		addr->sin_port, nfsversion);
-+	dprintk("--> nfs_get_client(%s,v%u)\n",
-+		hostname ?: "", nfsversion);
+ 	/* Get a client representation.
+ 	 * Note: NFSv4 always uses TCP, */
+-	error = nfs4_set_client(server, data->hostname, data->addr,
++	error = nfs4_set_client(server, data->hostname,
++			(struct sockaddr_in *)data->addr,
+ 			parent_client->cl_ipaddr,
+ 			data->authflavor,
+ 			parent_server->client->cl_xprt->prot,
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index ef40539..40f2619 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -21,7 +21,7 @@ struct nfs_clone_mount {
+ 	struct nfs_fattr *fattr;
+ 	char *hostname;
+ 	char *mnt_path;
+-	struct sockaddr_in *addr;
++	struct sockaddr *addr;
+ 	rpc_authflavor_t authflavor;
+ };
  
- 	/* see if the client already exists */
- 	do {
- 		spin_lock(&nfs_client_lock);
+diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
+index bd1b161..65dcbfd 100644
+--- a/fs/nfs/nfs4namespace.c
++++ b/fs/nfs/nfs4namespace.c
+@@ -172,7 +172,10 @@ static struct vfsmount *nfs_follow_referral(const struct vfsmount *mnt_parent,
  
--		clp = __nfs_find_client((struct sockaddr *)addr, nfsversion, 1);
-+		clp = __nfs_find_client(addr, nfsversion, 1);
- 		if (clp)
- 			goto found_client;
- 		if (new)
-@@ -310,9 +310,7 @@ static struct nfs_client *nfs_get_client(const char *hostname,
+ 		s = 0;
+ 		while (s < location->nservers) {
+-			struct sockaddr_in addr = {};
++			struct sockaddr_in addr = {
++				.sin_family	= AF_INET,
++				.sin_port	= htons(NFS_PORT),
++			};
  
- 		spin_unlock(&nfs_client_lock);
+ 			if (location->servers[s].len <= 0 ||
+ 			    valid_ipaddr4(location->servers[s].data) < 0) {
+@@ -181,10 +184,8 @@ static struct vfsmount *nfs_follow_referral(const struct vfsmount *mnt_parent,
+ 			}
  
--		new = nfs_alloc_client(hostname,
--				       (const struct sockaddr *)addr,
--				       sizeof(*addr), nfsversion);
-+		new = nfs_alloc_client(hostname, addr, addrlen, nfsversion);
- 	} while (new);
+ 			mountdata.hostname = location->servers[s].data;
+-			addr.sin_addr.s_addr = in_aton(mountdata.hostname);
+-			addr.sin_family = AF_INET;
+-			addr.sin_port = htons(NFS_PORT);
+-			mountdata.addr = &addr;
++			addr.sin_addr.s_addr = in_aton(mountdata.hostname),
++			mountdata.addr = (struct sockaddr *)&addr;
  
- 	return ERR_PTR(-ENOMEM);
-@@ -588,7 +586,9 @@ static int nfs_init_server(struct nfs_server *server,
- 
- 	/* Allocate or find a client reference we can use */
- 	clp = nfs_get_client(data->nfs_server.hostname,
--				&data->nfs_server.address, nfsvers);
-+				(struct sockaddr *)&data->nfs_server.address,
-+				sizeof(data->nfs_server.address),
-+				nfsvers);
- 	if (IS_ERR(clp)) {
- 		dprintk("<-- nfs_init_server() = error %ld\n", PTR_ERR(clp));
- 		return PTR_ERR(clp);
-@@ -925,7 +925,8 @@ static int nfs4_set_client(struct nfs_server *server,
- 	dprintk("--> nfs4_set_client()\n");
- 
- 	/* Allocate or find a client reference we can use */
--	clp = nfs_get_client(hostname, addr, 4);
-+	clp = nfs_get_client(hostname, (struct sockaddr *)addr,
-+				sizeof(*addr), 4);
- 	if (IS_ERR(clp)) {
- 		error = PTR_ERR(clp);
- 		goto error;
+ 			snprintf(page, PAGE_SIZE, "%s:%s",
+ 					mountdata.hostname,
 
 
 -------------------------------------------------------------------------
