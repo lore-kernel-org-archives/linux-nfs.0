@@ -1,20 +1,21 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 25/25] NFS: Verify IPv6 addresses properly
-Date: Tue, 13 Nov 2007 13:33:12 -0500
-Message-ID: <20071113183312.5087.80253.stgit@manray.1015granger.net>
+Subject: [PATCH 24/25] NFS: Parse IPv6 addresses in
+	nfs_parse_server_address
+Date: Tue, 13 Nov 2007 13:33:07 -0500
+Message-ID: <20071113183307.5087.96750.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: netdev@vger.kernel.org
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Is0ZX-0000dS-5j
-	for nfs@lists.sourceforge.net; Tue, 13 Nov 2007 10:33:15 -0800
+	id 1Is0ZQ-0000d2-AV
+	for nfs@lists.sourceforge.net; Tue, 13 Nov 2007 10:33:08 -0800
 Received: from flpi101.sbcis.sbc.com ([207.115.20.70] helo=flpi101.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Is0Za-0007R4-UB
-	for nfs@lists.sourceforge.net; Tue, 13 Nov 2007 10:33:21 -0800
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Is0ZV-0000Yu-MY
+	for nfs@lists.sourceforge.net; Tue, 13 Nov 2007 10:33:14 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -27,49 +28,51 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Add support to nfs_verify_server_address for recognizing AF_INET6 addresses.
+Add the ability to parse IPv6 addresses passed in via the 'addr=' and
+'mountaddr=' mount options.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Cc: Aurelien Charbon <aurelien.charbon@ext.bull.net>
 ---
 
- fs/nfs/super.c |   15 ++++++++-------
- 1 files changed, 8 insertions(+), 7 deletions(-)
+ fs/nfs/super.c |   24 +++++++++++++++++++-----
+ 1 files changed, 19 insertions(+), 5 deletions(-)
 
 diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index c066016..f0af79b 100644
+index 2abef88..c066016 100644
 --- a/fs/nfs/super.c
 +++ b/fs/nfs/super.c
-@@ -46,6 +46,7 @@
- #include <linux/vfs.h>
- #include <linux/inet.h>
- #include <linux/in6.h>
-+#include <net/ipv6.h>
- #include <linux/nfs_xdr.h>
- #include <linux/magic.h>
- #include <linux/parser.h>
-@@ -601,14 +602,14 @@ static int nfs_set_address_port(struct sockaddr *sap, unsigned short port)
-  */
- static int nfs_verify_server_address(struct sockaddr_storage *ssp)
+@@ -622,11 +622,25 @@ static void nfs_parse_server_address(char *value,
+ 				     struct sockaddr_storage *ssp,
+ 				     size_t *len)
  {
--	struct sockaddr *addr = (struct sockaddr *)ssp;
+-	struct sockaddr_in *ap = (struct sockaddr_in *)ssp;
 -
--	switch (addr->sa_family) {
-+	switch (ssp->ss_family) {
- 	case AF_INET: {
--		struct sockaddr_in *sa = (struct sockaddr_in *) addr;
--		if (sa->sin_addr.s_addr != INADDR_ANY)
--			return 1;
--		break;
-+		struct sockaddr_in *sa = (struct sockaddr_in *)ssp;
-+		return sa->sin_addr.s_addr != INADDR_ANY;
+-	ap->sin_family = AF_INET;
+-	ap->sin_addr.s_addr = in_aton(value);
+-	*len = sizeof(*ap);
++	if (strchr(value, ':') == NULL) {
++		struct sockaddr_in *ap = (struct sockaddr_in *)ssp;
++		u8 buf[4];
++
++		if (in4_pton(value, -1, buf, '\0', NULL)) {
++			ap->sin_family = AF_INET;
++			memcpy(&ap->sin_addr.s_addr, buf, sizeof(buf));
++			*len = sizeof(*ap);
++		}
++	} else {
++		struct sockaddr_in6 *ap = (struct sockaddr_in6 *)ssp;
++		u8 buf[16];
++
++		if (in6_pton(value, -1, buf, '\0', NULL)) {
++			ap->sin6_family = AF_INET6;
++			memcpy(&ap->sin6_addr.in6_u, buf, sizeof(buf));
++			*len = sizeof(*ap);
++		}
 +	}
-+	case AF_INET6: {
-+		struct in6_addr *sa = &((struct sockaddr_in6 *)ssp)->sin6_addr;
-+		return !ipv6_addr_any(sa);
- 	}
- 	}
+ }
  
+ /*
 
 
 -------------------------------------------------------------------------
