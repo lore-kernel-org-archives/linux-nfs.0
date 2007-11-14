@@ -1,22 +1,24 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: Oops in rpciod when building procmail from an NFS client
-Date: Wed, 14 Nov 2007 03:59:55 -0500
-Message-ID: <20071114035955.35517bb9@tleilax.poochiereds.net>
-References: <83FE585A3944624683D9A3F69BA108EB0224B633@PUN2K3EXCL01.symphonysv.com>
+From: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
+Subject: Re: [PATCH 00/25] RFC: AF_INET6 family support for the
+	NFS	client
+Date: Wed, 14 Nov 2007 10:19:05 +0100
+Message-ID: <20071114091905.GB23499@uio.no>
+References: <20071113182226.5087.77009.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: "Yogesh Pahilwan" <Yogesh.Pahilwan@symphonysv.com>
+Cc: netdev@vger.kernel.org, nfs@lists.sourceforge.net
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IsE6O-0008Ne-A5
-	for nfs@lists.sourceforge.net; Wed, 14 Nov 2007 01:00:04 -0800
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IsE6T-0006X8-15
-	for nfs@lists.sourceforge.net; Wed, 14 Nov 2007 01:00:10 -0800
-In-Reply-To: <83FE585A3944624683D9A3F69BA108EB0224B633@PUN2K3EXCL01.symphonysv.com>
+	id 1IsEOz-0001pa-Dy
+	for nfs@lists.sourceforge.net; Wed, 14 Nov 2007 01:19:17 -0800
+Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IsEP0-0000ZU-AD
+	for nfs@lists.sourceforge.net; Wed, 14 Nov 2007 01:19:19 -0800
+In-Reply-To: <20071113182226.5087.77009.stgit@manray.1015granger.net>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -29,18 +31,18 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wed, 14 Nov 2007 11:59:15 +0530
-"Yogesh Pahilwan" <Yogesh.Pahilwan@symphonysv.com> wrote:
+On Tue, Nov 13, 2007 at 01:30:59PM -0500, Chuck Lever wrote:
+> These 25 patches add support for AF_INET6 addresses to the NFS client.
+> This is a request for review of the proposed changes.
+> 
+> This series does not add support for AF_INET6 addresses to the Linux
+> NLM or NSM implementations, nor does it add support in the NFS server.
 
-> NFS client configuration: kernel version - 2.6.11-1.1369_FC4
+This is awesome. I can't wait for the server support :-)
 
-The oops you posted doesn't look familiar to me, but this kernel is
-truly ancient. Fedora Core 4 is well past its end of life. I'd suggest
-updating to Fedora 7 or 8 and seeing if your problem is still
-reproducible.
-
+/* Steinar */
 -- 
-Jeff Layton <jlayton@redhat.com>
+Homepage: http://www.sesse.net/
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
