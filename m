@@ -1,24 +1,24 @@
-From: YOSHIFUJI Hideaki / =?iso-2022-jp?B?GyRCNUhGIzFRTEAbKEI=?= <yoshfuji@linux-ipv6.org>
-Subject: Re: [PATCH 05/25] NFS: eliminate
-	NIPQUAD(clp->cl_addr.sin_addr)
-Date: Wed, 14 Nov 2007 10:45:33 +0900 (JST)
-Message-ID: <20071114.104533.127429382.yoshfuji@linux-ipv6.org>
-References: <20071113183126.5087.27810.stgit@manray.1015granger.net>
+From: Joe Perches <joe@perches.com>
+Subject: [PATCH] - [9/15] - remove defconfig ptr comparisons to 0 -
+	fs/nfsd
+Date: Tue, 13 Nov 2007 18:05:25 -0800
+Message-ID: <1195005925.5163.95.camel@localhost>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: yoshfuji@linux-ipv6.org, netdev@vger.kernel.org,
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	Neil Brown <neilb@suse.de>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
 	nfs@lists.sourceforge.net
-To: chuck.lever@oracle.com
+To: linux-kernel <linux-kernel@vger.kernel.org>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Is7Jx-000239-Qo
-	for nfs@lists.sourceforge.net; Tue, 13 Nov 2007 17:45:38 -0800
-Received: from yue.linux-ipv6.org ([203.178.140.15] helo=yue.st-paulia.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Is7K2-0005JI-Fj
-	for nfs@lists.sourceforge.net; Tue, 13 Nov 2007 17:45:43 -0800
-In-Reply-To: <20071113183126.5087.27810.stgit@manray.1015granger.net>
+	id 1Is7dP-0003vS-Ar
+	for nfs@lists.sourceforge.net; Tue, 13 Nov 2007 18:05:43 -0800
+Received: from dsl022.labridge.com ([206.117.136.22] helo=perches.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Is7dT-0004FY-Tl
+	for nfs@lists.sourceforge.net; Tue, 13 Nov 2007 18:05:49 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,18 +31,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-In article <20071113183126.5087.27810.stgit@manray.1015granger.net> (at Tue, 13 Nov 2007 13:31:27 -0500), Chuck Lever <chuck.lever@oracle.com> says:
+Remove defconfig ptr comparison to 0
 
->  		   clp->rpc_ops->version,
-> -		   NIPQUAD(clp->cl_addr.sin_addr),
-> -		   ntohs(clp->cl_addr.sin_port),
-> +		   rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_HEX_ADDR),
-> +		   rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_HEX_PORT),
->  		   atomic_read(&clp->cl_count),
+Remove sparse warning: Using plain integer as NULL pointer
 
-Is this really safe?
+Signed-off-by: Joe Perches <joe@perches.com>
 
---yoshfuji
+---
+
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index d019918..07b38cf 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -987,7 +987,7 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
+ 	 * flushing the data to disk is handled separately below.
+ 	 */
+ 
+-	if (file->f_op->fsync == 0) {/* COMMIT3 cannot work */
++	if (!file->f_op->fsync) {/* COMMIT3 cannot work */
+ 	       stable = 2;
+ 	       *stablep = 2; /* FILE_SYNC */
+ 	}
+
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
