@@ -1,19 +1,23 @@
-From: "RONNI joslyn" <RONNIjoslyn@azarkgraphics.com>
-Subject: teigware
-Date: Wed, 14 Nov 2007 19:33:11 +0100
-Message-ID: <000501c826ec$cf90a680$85d30c4e@pc1>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: Use of delayed request information in nlmsvc_lookup_host
+Date: Wed, 14 Nov 2007 13:43:18 -0500
+Message-ID: <1195065798.7584.37.camel@heimdal.trondhjem.org>
+References: <473B3D0B.3060204@oracle.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============2096516270=="
-To: <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net
+To: chuck.lever@oracle.com
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IsN2y-0002l8-5s
-	for nfs@lists.sourceforge.net; Wed, 14 Nov 2007 10:33:08 -0800
-Received: from host-78-12-211-133.cust-adsl.tiscali.it ([78.12.211.133])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IsN33-0007Z7-BY
-	for nfs@lists.sourceforge.net; Wed, 14 Nov 2007 10:33:14 -0800
+	id 1IsNCw-0003rJ-Ow
+	for nfs@lists.sourceforge.net; Wed, 14 Nov 2007 10:43:26 -0800
+Received: from pat.uio.no ([129.240.10.15])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IsND1-0004zp-Cv
+	for nfs@lists.sourceforge.net; Wed, 14 Nov 2007 10:43:32 -0800
+In-Reply-To: <473B3D0B.3060204@oracle.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -26,63 +30,49 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
---===============2096516270==
-Content-Type: multipart/alternative;
-	boundary="----=_NextPart_000_0006_01C826F5.31550E80"
 
-------=_NextPart_000_0006_01C826F5.31550E80
-Content-Type: text/plain;
-	charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
+On Wed, 2007-11-14 at 13:23 -0500, Chuck Lever wrote:
+> Hi-
+> 
+> Historical question here.
+> 
+> nlmsvc_lookup_host() has this:
+> 
+> struct nlm_host *
+> nlmsvc_lookup_host(struct svc_rqst *rqstp,
+>                          const char *hostname, unsigned int hostname_len)
+> {
+>          struct sockaddr_in ssin = {0};
+> 
+>  >>>     ssin.sin_addr = rqstp->rq_daddr.addr;
+>          return nlm_lookup_host(1, svc_addr_in(rqstp),
+>                                 rqstp->rq_prot, rqstp->rq_vers,
+>                                 hostname, hostname_len, &ssin);
+> }
+> 
+> Why is it using rq_daddr to construct the lookup target?
+> 
+> The problem here is that rq_daddr isn't a full address.  It doesn't have 
+> address family information.  So nlmsvc_lookup_host() just assumes that 
+> what's stored in rq_daddr is always AF_INET.
 
-if you have a fat pocket, you need a fat cock... do it with this
+Why can't rq_daddr hold address family information? AFAICS there is
+nothing stopping you from setting that in svc_recvfrom() and in
+svc_udp_get_dest_address().
 
-Christi friel
-http://aeames.com/
-------=_NextPart_000_0006_01C826F5.31550E80
-Content-Type: text/html;
-	charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
+In fact, why isn't rq_daddr defined to be a sockaddr_storage so that it
+can be safely cast into either a sockaddr_in or a sockaddr_in6 after
+checking the ss_family field?
 
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML><HEAD>
-<META http-equiv=3DContent-Type content=3D"text/html; charset=3Diso-8859-1">
-<META content=3D"MSHTML 6.00.2900.3059" name=3DGENERATOR>
-<STYLE></STYLE>
-</HEAD>
-<BODY bgColor=3D#ffffff>
-<DIV><FONT Arial size=3D2>if you have a fat pocket, you need a fat =
-cock... do it=20
-with this</FONT></DIV>
-<DIV><FONT Arial size=3D2></FONT></DIV>
-<DIV><FONT Arial size=3D2>Christi friel</FONT></DIV>
-<DIV><FONT Arial size=3D2><A=20
-HREF=3D"http://aeames.com/">http://aeames.com/</A></FONT></DIV></BODY></H=
-TML>
+Cheers
+  Trond
 
-------=_NextPart_000_0006_01C826F5.31550E80--
-
-
-
---===============2096516270==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >> http://get.splunk.com/
---===============2096516270==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---===============2096516270==--
