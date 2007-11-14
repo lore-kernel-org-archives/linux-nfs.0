@@ -1,25 +1,26 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Chuck Lever <chuck.lever@oracle.com>
 Subject: Re: Use of delayed request information in nlmsvc_lookup_host
-Date: Wed, 14 Nov 2007 14:50:57 -0500
-Message-ID: <1195069857.7584.58.camel@heimdal.trondhjem.org>
-References: <473B3D0B.3060204@oracle.com>
-	<1195065798.7584.37.camel@heimdal.trondhjem.org>
+Date: Wed, 14 Nov 2007 14:54:32 -0500
+Message-ID: <473B5278.7090408@oracle.com>
+References: <473B3D0B.3060204@oracle.com>	
+	<1195065798.7584.37.camel@heimdal.trondhjem.org>	
 	<473B45C9.4060708@oracle.com>
 	<1195069262.7584.54.camel@heimdal.trondhjem.org>
+Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: multipart/mixed; boundary="------------020804070805060407040709"
 Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net
-To: chuck.lever@oracle.com
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IsOGH-0002LC-Eh
-	for nfs@lists.sourceforge.net; Wed, 14 Nov 2007 11:50:57 -0800
-Received: from pat.uio.no ([129.240.10.15])
+	id 1IsOKn-0002rQ-Ol
+	for nfs@lists.sourceforge.net; Wed, 14 Nov 2007 11:55:37 -0800
+Received: from agminet01.oracle.com ([141.146.126.228])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IsOGM-00007F-R4
-	for nfs@lists.sourceforge.net; Wed, 14 Nov 2007 11:51:03 -0800
+	(Exim 4.44) id 1IsOKr-0003TC-EN
+	for nfs@lists.sourceforge.net; Wed, 14 Nov 2007 11:55:43 -0800
 In-Reply-To: <1195069262.7584.54.camel@heimdal.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -33,14 +34,18 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
+This is a multi-part message in MIME format.
+--------------020804070805060407040709
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-On Wed, 2007-11-14 at 14:41 -0500, Trond Myklebust wrote:
+Trond Myklebust wrote:
 > On Wed, 2007-11-14 at 14:00 -0500, Chuck Lever wrote:
-> > That's correct.  I'm just trying to understand why, historically, 
-> > rq_daddr was just the 32-bit address and not a full sockaddr to begin 
-> > with.  There may be something we're missing, like "we didn't want to add 
-> > another large field to this structure due to memory alignment or 
-> > allocation efficiency concerns".  :-)
+>> That's correct.  I'm just trying to understand why, historically, 
+>> rq_daddr was just the 32-bit address and not a full sockaddr to begin 
+>> with.  There may be something we're missing, like "we didn't want to add 
+>> another large field to this structure due to memory alignment or 
+>> allocation efficiency concerns".  :-)
 > 
 > Actually, rq_daddr by definition pretty much has to be of the same
 > address family as rq_addr, since they are the two endpoints for the same
@@ -50,20 +55,47 @@ On Wed, 2007-11-14 at 14:41 -0500, Trond Myklebust wrote:
 > That is sort of worrying given that it is used among other things by the
 > nfsd duplicate reply cache...
 
-Gah. Never mind... The wretched thing is wrapped by a useful svc_addr()
-'helper' that returns its address.
+That's the other half of my question.  Why isn't nlmsvc_lookup_host 
+using rq_addr (without the d)?
 
-Problem solved, then. Use the sa_family from rq_addr in order to figure
-out how to interpret rq_daddr.
+--------------020804070805060407040709
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck.lever.vcf"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="chuck.lever.vcf"
 
-Trond
+begin:vcard
+fn:Chuck Lever
+n:Lever;Chuck
+org:Oracle Corporation;Corporate Architecture: Linux Projects Group
+adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
+title:Principal Member of Staff
+tel;work:+1 248 614 5091
+x-mozilla-html:FALSE
+version:2.1
+end:vcard
 
+
+--------------020804070805060407040709
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >> http://get.splunk.com/
+--------------020804070805060407040709
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--------------020804070805060407040709--
