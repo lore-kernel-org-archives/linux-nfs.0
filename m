@@ -1,26 +1,27 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: Use of delayed request information in nlmsvc_lookup_host
-Date: Thu, 15 Nov 2007 08:55:46 -0500
-Message-ID: <473C4FE2.1090402@oracle.com>
-References: <473B3D0B.3060204@oracle.com>	<1195065798.7584.37.camel@heimdal.trondhjem.org>	<473B45C9.4060708@oracle.com>	<1195069262.7584.54.camel@heimdal.trondhjem.org>	<473B5278.7090408@oracle.com>
-	<18235.41907.383911.722103@notabene.brown>
-Reply-To: chuck.lever@oracle.com
+From: "Kevin Coffman" <kwc@citi.umich.edu>
+Subject: Re: libnfsidmap
+Date: Thu, 15 Nov 2007 09:12:12 -0500
+Message-ID: <4d569c330711150612n57d4f4deud19532569b2214d8@mail.gmail.com>
+References: <1193136846.5620.504.camel@serendib.melbourne.sgi.com>
+	<1195024312.19850.130.camel@serendib.melbourne.sgi.com>
+	<4d569c330711140659q2ba19b03n481c3360a9373991@mail.gmail.com>
+	<1195122558.19850.146.camel@serendib.melbourne.sgi.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------060608040400010904040204"
-Cc: nfs@lists.sourceforge.net,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Neil Brown <neilb@suse.de>
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
+To: Harshula <harshula@sgi.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IsfEh-0006GM-Mh
-	for nfs@lists.sourceforge.net; Thu, 15 Nov 2007 05:58:32 -0800
-Received: from rgminet01.oracle.com ([148.87.113.118])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IsfEl-00012F-Cf
-	for nfs@lists.sourceforge.net; Thu, 15 Nov 2007 05:58:33 -0800
-In-Reply-To: <18235.41907.383911.722103@notabene.brown>
+	id 1IsfS6-0007kZ-B5
+	for nfs@lists.sourceforge.net; Thu, 15 Nov 2007 06:12:19 -0800
+Received: from rv-out-0910.google.com ([209.85.198.184])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IsfSB-0003S7-3n
+	for nfs@lists.sourceforge.net; Thu, 15 Nov 2007 06:12:24 -0800
+Received: by rv-out-0910.google.com with SMTP id g11so1798513rvb
+	for <nfs@lists.sourceforge.net>; Thu, 15 Nov 2007 06:12:12 -0800 (PST)
+In-Reply-To: <1195122558.19850.146.camel@serendib.melbourne.sgi.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,106 +34,27 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
---------------060608040400010904040204
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Transfer-Encoding: 7bit
+On Nov 15, 2007 5:29 AM, Harshula <harshula@sgi.com> wrote:
+> Hi Kevin,
+>
+> On Wed, 2007-11-14 at 09:59 -0500, Kevin Coffman wrote:
+>
+> > 1) this doesn't account for other cases where there is no mapping.
+>
+> In practise, what are the "other cases" where a failed
+> nfs4_gss_princ_to_ids() lookup needs to be mapped to 'nobody'?
 
-Neil Brown wrote:
-> On Wednesday November 14, chuck.lever@oracle.com wrote:
->> Trond Myklebust wrote:
->>> On Wed, 2007-11-14 at 14:00 -0500, Chuck Lever wrote:
->>>> That's correct.  I'm just trying to understand why, historically, 
->>>> rq_daddr was just the 32-bit address and not a full sockaddr to begin 
->>>> with.  There may be something we're missing, like "we didn't want to add 
->>>> another large field to this structure due to memory alignment or 
->>>> allocation efficiency concerns".  :-)
->>> Actually, rq_daddr by definition pretty much has to be of the same
->>> address family as rq_addr, since they are the two endpoints for the same
->>> socket. 
->>>
->>> However I can't see where rq_addr is being initialised for UDP sockets.
->>> That is sort of worrying given that it is used among other things by the
->>> nfsd duplicate reply cache...
->> That's the other half of my question.  Why isn't nlmsvc_lookup_host 
->> using rq_addr (without the d)?
-> 
-> Git is your friend.
-> 
-> commit c98451bdb2f3e6d6cc1e03adad641e9497512b49
-> Author: Frank van Maarseveen <frankvm@frankvm.com>
-> Date:   Mon Jul 9 22:25:29 2007 +0200
-> 
->     NLM: fix source address of callback to client
->     
->     Use the destination address of the original NLM request as the
->     source address in callbacks to the client.
->     
->     Signed-off-by: Frank van Maarseveen <frankvm@frankvm.com>
->     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+You have cross-realm Kerberos trusts set up.  A user from a different
+Kerberos realm comes to your server and you have no local mapping for
+that user.
 
-Silly me.  I had assumed that it had always been that way, and thus git 
-would not be helpful (git's history truncates at 2.6.12).
-
-Unfortunately Frank's patch description doesn't explain *why* this 
-change was made.  I assume this fixes a bug with multi-homed servers?
-
-> Also, other places that need to interpret rq_daddr use:
-> 
-> 	struct svc_sock *svsk =
-> 		container_of(rqstp->rq_xprt, struct svc_sock, sk_xprt);
-> 	switch (svsk->sk_sk->sk_family) {
-> 	case AF_INET:...
->         case AF_INET6: ....
-> 
-> (see svcsock.c).
-> 
-> Why wouldn't that work here?
-
-Should lockd be poking around in network layer data structures?  I would 
-argue "no" especially because that would make lockd transport-dependent. 
-  This approach wouldn't work at all for, say, RDMA transports.
-
-What do you think of changing the rq_daddr field to be a sockaddr_storage?
-
---------------060608040400010904040204
-Content-Type: text/x-vcard; charset=utf-8;
- name="chuck.lever.vcf"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="chuck.lever.vcf"
-
-begin:vcard
-fn:Chuck Lever
-n:Lever;Chuck
-org:Oracle Corporation;Corporate Architecture: Linux Projects Group
-adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
-title:Principal Member of Staff
-tel;work:+1 248 614 5091
-x-mozilla-html:FALSE
-version:2.1
-end:vcard
-
-
---------------060608040400010904040204
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+A new local user is created, but has not yet been placed in the mappings.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >> http://get.splunk.com/
---------------060608040400010904040204
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---------------060608040400010904040204--
