@@ -1,23 +1,18 @@
 From: Neil Brown <neilb@suse.de>
-Subject: Re: Oops in rpciod when building procmail from an NFS client
-Date: Thu, 15 Nov 2007 15:04:57 +1100
-Message-ID: <18235.50537.220883.815864@notabene.brown>
-References: <83FE585A3944624683D9A3F69BA108EB0224B633@PUN2K3EXCL01.symphonysv.com>
+Subject: Re:
+ =?iso-8859-15?q?uuid/blkid_performance_problem_with_large_n?=
+ =?iso-8859-15?q?umber_of_mounts_-_was=3A_Re=3A__stale_nfs_file_handle_wit?=
+ =?iso-8859-15?q?h_exported_loopback_mounts?=
+Date: Thu, 15 Nov 2007 16:26:53 +1100
+Message-ID: <18235.55453.531532.593443@notabene.brown>
+References: <2083621400@web.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: "Yogesh Pahilwan" <Yogesh.Pahilwan@symphonysv.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	NFS@lists.sourceforge.net
+To: devzero@web.de
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IsVyP-0007nj-II
-	for nfs@lists.sourceforge.net; Wed, 14 Nov 2007 20:05:01 -0800
-Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IsVyT-0008Kp-Uw
-	for nfs@lists.sourceforge.net; Wed, 14 Nov 2007 20:05:07 -0800
-In-Reply-To: message from Yogesh Pahilwan on Wednesday November 14
+In-Reply-To: message from devzero@web.de on Tuesday November 13
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,32 +25,25 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wednesday November 14, Yogesh.Pahilwan@symphonysv.com wrote:
-> Hi Folks,
+On Tuesday November 13, devzero@web.de wrote:
+> since i posted 2 problems in one mail - and one problem is solved now, for the second problem i have opened a ticket at 
 > 
->  
+> http://sourceforge.net/tracker/index.php?func=detail&aid=1831403&group_id=14&atid=100014  
+> ( uuid/blkid performance problem with large number of mounts )
 > 
-> I am getting following oops while building procmail utility from the NFS
-> mounted share when build from the NFS client.
-> 
-> The NFS server oopses in rpciod during the "Benchmarking your system's
-> strstr () implementation" step.
-> 
->  
-> 
-> I am using the following configurations for NFS client and server:
-> 
-> NFS client configuration: kernel version - 2.6.11-1.1369_FC4
+> so this won`t get lost.
 
-This is a very old kernel.  It is very possible that there is a patch
-since then, but it is also possible that it was so long ago that
-no-one has a clear memory of it and no-one feels like hunting it down
-for you.
+Unfortuantely that is a bit like saying "I've placed in the nice round
+filling cabinet so it won't get lost", not realising that the nice
+round filing cabinet is actually a garbage be.
 
-I recommend upgrading to a more recent kernel - 2.6.20 at least, and
-if the problem persists, report again.
+No one (that I know of) looks at the issue tracker on sourceforge at
+all.
 
-Thanks,
+I have it on my personal "list of things to look at one day", so maybe
+it won't get forgotten.
+
+thanks,
 NeilBrown
 
 -------------------------------------------------------------------------
