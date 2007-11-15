@@ -1,29 +1,31 @@
-From: Frank van Maarseveen <frankvm@frankvm.com>
+From: Chuck Lever <chuck.lever@oracle.com>
 Subject: Re: Use of delayed request information in nlmsvc_lookup_host
-Date: Thu, 15 Nov 2007 17:00:36 +0100
-Message-ID: <20071115160036.GA18544@janus>
-References: <473B3D0B.3060204@oracle.com>
-	<1195065798.7584.37.camel@heimdal.trondhjem.org>
-	<473B45C9.4060708@oracle.com>
-	<1195069262.7584.54.camel@heimdal.trondhjem.org>
+Date: Thu, 15 Nov 2007 11:26:44 -0500
+Message-ID: <473C7344.5090705@oracle.com>
+References: <473B3D0B.3060204@oracle.com>	
+	<1195065798.7584.37.camel@heimdal.trondhjem.org>	
+	<473B45C9.4060708@oracle.com>	
+	<1195069262.7584.54.camel@heimdal.trondhjem.org>	
 	<473B5278.7090408@oracle.com>
-	<18235.41907.383911.722103@notabene.brown>
+	<18235.41907.383911.722103@notabene.brown>	
 	<473C4FE2.1090402@oracle.com>
+	<1195142050.7506.13.camel@heimdal.trondhjem.org>
+Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: multipart/mixed; boundary="------------050509000905050307000408"
+Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Ish8y-0002JJ-SQ
-	for nfs@lists.sourceforge.net; Thu, 15 Nov 2007 08:00:40 -0800
-Received: from frankvm.xs4all.nl ([80.126.170.174] helo=janus.localdomain)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Ish92-0002wW-8y
-	for nfs@lists.sourceforge.net; Thu, 15 Nov 2007 08:00:46 -0800
-In-Reply-To: <473C4FE2.1090402@oracle.com>
+	id 1IshdL-0006P2-6n
+	for nfs@lists.sourceforge.net; Thu, 15 Nov 2007 08:32:03 -0800
+Received: from rgminet01.oracle.com ([148.87.113.118])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1Isha2-0002xA-8r
+	for nfs@lists.sourceforge.net; Thu, 15 Nov 2007 08:28:38 -0800
+In-Reply-To: <1195142050.7506.13.camel@heimdal.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -36,73 +38,67 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Thu, Nov 15, 2007 at 08:55:46AM -0500, Chuck Lever wrote:
-> Neil Brown wrote:
-> >On Wednesday November 14, chuck.lever@oracle.com wrote:
-> >>Trond Myklebust wrote:
-> >>>On Wed, 2007-11-14 at 14:00 -0500, Chuck Lever wrote:
-> >>>>That's correct.  I'm just trying to understand why, historically, 
-> >>>>rq_daddr was just the 32-bit address and not a full sockaddr to begin 
-> >>>>with.  There may be something we're missing, like "we didn't want to 
-> >>>>add another large field to this structure due to memory alignment or 
-> >>>>allocation efficiency concerns".  :-)
-> >>>Actually, rq_daddr by definition pretty much has to be of the same
-> >>>address family as rq_addr, since they are the two endpoints for the same
-> >>>socket. 
-> >>>
-> >>>However I can't see where rq_addr is being initialised for UDP sockets.
-> >>>That is sort of worrying given that it is used among other things by the
-> >>>nfsd duplicate reply cache...
-> >>That's the other half of my question.  Why isn't nlmsvc_lookup_host 
-> >>using rq_addr (without the d)?
-> >
-> >Git is your friend.
-> >
-> >commit c98451bdb2f3e6d6cc1e03adad641e9497512b49
-> >Author: Frank van Maarseveen <frankvm@frankvm.com>
-> >Date:   Mon Jul 9 22:25:29 2007 +0200
-> >
-> >    NLM: fix source address of callback to client
-> >    
-> >    Use the destination address of the original NLM request as the
-> >    source address in callbacks to the client.
-> >    
-> >    Signed-off-by: Frank van Maarseveen <frankvm@frankvm.com>
-> >    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+This is a multi-part message in MIME format.
+--------------050509000905050307000408
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+
+Trond Myklebust wrote:
+> On Thu, 2007-11-15 at 08:55 -0500, Chuck Lever wrote:
 > 
-> Silly me.  I had assumed that it had always been that way, and thus git 
-> would not be helpful (git's history truncates at 2.6.12).
+>> What do you think of changing the rq_daddr field to be a sockaddr_storage?
 > 
-> Unfortunately Frank's patch description doesn't explain *why* this 
-> change was made.  I assume this fixes a bug with multi-homed servers?
+> Why? You've already got rq_addr.
 
-Almost: Multiple NICs are probably not a problem (kernel should fill in
-correct src address depending on outgoing interface) but for multiple
-IP addresses on the same interface it definately is a problem.
+rq_daddr stores raw address bits, but nlm_host stores a whole sockaddr 
+for the source address.  Should we change nlm_host to store just the raw 
+address bits as well (svc_addr_u)?  AFAICS the only place that needs to 
+construct a whole sockaddr out of the source address is nlm_bind_host.
 
-When NFS clients A and B are contending for a lock the server needs
-to do a callback to client B when the lock is released by client
-A. Without above fix the kernel would pick an arbitrary source address
-for callbacks. And (at least) the linux NFS client verifies the source
-address of an NLM callback, see nlmclnt_grant().
+In addition, NSM_NOTIFY gets a 4-byte address off the wire, and assumes 
+it's AF_INET.  Should we store this in an in_addr/in_addr6 union as well?
 
-IP aliases are very useful for virtualizing NFS servers (we run about
-70 of them on 4 physical machines).
+I haven't looked closely at NSM_NOTIFY... is it even possible to send a 
+non-AF_INET address with this procedure?
 
-> What do you think of changing the rq_daddr field to be a sockaddr_storage?
+--------------050509000905050307000408
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck.lever.vcf"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="chuck.lever.vcf"
 
-One thing which still worries me is the sockaddr_storage size: this thing
-is a bit large due to AF_UNIX support. AF_UNIX isn't used for NFS AFAIK.
-Anyway, changing that is a separate issue.
+begin:vcard
+fn:Chuck Lever
+n:Lever;Chuck
+org:Oracle Corporation;Corporate Architecture: Linux Projects Group
+adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
+title:Principal Member of Staff
+tel;work:+1 248 614 5091
+x-mozilla-html:FALSE
+version:2.1
+end:vcard
 
--- 
-Frank
+
+--------------050509000905050307000408
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >> http://get.splunk.com/
+--------------050509000905050307000408
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
+
+--------------050509000905050307000408--
