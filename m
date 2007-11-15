@@ -1,27 +1,29 @@
-From: "Kevin Coffman" <kwc@citi.umich.edu>
-Subject: Re: libnfsidmap
-Date: Thu, 15 Nov 2007 09:12:12 -0500
-Message-ID: <4d569c330711150612n57d4f4deud19532569b2214d8@mail.gmail.com>
-References: <1193136846.5620.504.camel@serendib.melbourne.sgi.com>
-	<1195024312.19850.130.camel@serendib.melbourne.sgi.com>
-	<4d569c330711140659q2ba19b03n481c3360a9373991@mail.gmail.com>
-	<1195122558.19850.146.camel@serendib.melbourne.sgi.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: Use of delayed request information in nlmsvc_lookup_host
+Date: Thu, 15 Nov 2007 10:54:10 -0500
+Message-ID: <1195142050.7506.13.camel@heimdal.trondhjem.org>
+References: <473B3D0B.3060204@oracle.com>
+	<1195065798.7584.37.camel@heimdal.trondhjem.org>
+	<473B45C9.4060708@oracle.com>
+	<1195069262.7584.54.camel@heimdal.trondhjem.org>
+	<473B5278.7090408@oracle.com>
+	<18235.41907.383911.722103@notabene.brown>
+	<473C4FE2.1090402@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Harshula <harshula@sgi.com>
+Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net
+To: chuck.lever@oracle.com
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IsfS6-0007kZ-B5
-	for nfs@lists.sourceforge.net; Thu, 15 Nov 2007 06:12:19 -0800
-Received: from rv-out-0910.google.com ([209.85.198.184])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IsfSB-0003S7-3n
-	for nfs@lists.sourceforge.net; Thu, 15 Nov 2007 06:12:24 -0800
-Received: by rv-out-0910.google.com with SMTP id g11so1798513rvb
-	for <nfs@lists.sourceforge.net>; Thu, 15 Nov 2007 06:12:12 -0800 (PST)
-In-Reply-To: <1195122558.19850.146.camel@serendib.melbourne.sgi.com>
+	id 1Ish2r-0001fw-Hv
+	for nfs@lists.sourceforge.net; Thu, 15 Nov 2007 07:54:21 -0800
+Received: from pat.uio.no ([129.240.10.15])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1Ish2u-0000qz-IH
+	for nfs@lists.sourceforge.net; Thu, 15 Nov 2007 07:54:27 -0800
+In-Reply-To: <473C4FE2.1090402@oracle.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,21 +36,15 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Nov 15, 2007 5:29 AM, Harshula <harshula@sgi.com> wrote:
-> Hi Kevin,
->
-> On Wed, 2007-11-14 at 09:59 -0500, Kevin Coffman wrote:
->
-> > 1) this doesn't account for other cases where there is no mapping.
->
-> In practise, what are the "other cases" where a failed
-> nfs4_gss_princ_to_ids() lookup needs to be mapped to 'nobody'?
 
-You have cross-realm Kerberos trusts set up.  A user from a different
-Kerberos realm comes to your server and you have no local mapping for
-that user.
+On Thu, 2007-11-15 at 08:55 -0500, Chuck Lever wrote:
 
-A new local user is created, but has not yet been placed in the mappings.
+> What do you think of changing the rq_daddr field to be a sockaddr_storage?
+
+Why? You've already got rq_addr.
+
+Trond
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
