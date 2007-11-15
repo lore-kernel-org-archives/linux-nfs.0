@@ -1,31 +1,19 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: Use of delayed request information in nlmsvc_lookup_host
-Date: Thu, 15 Nov 2007 11:26:44 -0500
-Message-ID: <473C7344.5090705@oracle.com>
-References: <473B3D0B.3060204@oracle.com>	
-	<1195065798.7584.37.camel@heimdal.trondhjem.org>	
-	<473B45C9.4060708@oracle.com>	
-	<1195069262.7584.54.camel@heimdal.trondhjem.org>	
-	<473B5278.7090408@oracle.com>
-	<18235.41907.383911.722103@notabene.brown>	
-	<473C4FE2.1090402@oracle.com>
-	<1195142050.7506.13.camel@heimdal.trondhjem.org>
-Reply-To: chuck.lever@oracle.com
-Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------050509000905050307000408"
-Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: =?GB2312?B?t9u67NH9vKc=?= <jow.7cv@163.com>
+Subject: =?GB2312?B?sK678NK7tKW8tMi8o6xoaWdo1Nq2rNK5?=
+Date: Fri, 16 Nov 2007 00:47:55 +0800
+Message-ID: <E1Ishsi-0008N2-Bm@mail.sourceforge.net>
+Reply-To: jow.7cv@163.com
+Content-Type: multipart/mixed; boundary="===============0273249977=="
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IshdL-0006P2-6n
-	for nfs@lists.sourceforge.net; Thu, 15 Nov 2007 08:32:03 -0800
-Received: from rgminet01.oracle.com ([148.87.113.118])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Isha2-0002xA-8r
-	for nfs@lists.sourceforge.net; Thu, 15 Nov 2007 08:28:38 -0800
-In-Reply-To: <1195142050.7506.13.camel@heimdal.trondhjem.org>
+	id 1Ishsg-0008D8-MC
+	for nfs@lists.sourceforge.net; Thu, 15 Nov 2007 08:47:55 -0800
+Received: from [125.40.48.197] (helo=163.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Ishsi-0008N2-Bm
+	for nfs@lists.sourceforge.net; Thu, 15 Nov 2007 08:48:00 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -38,49 +26,50 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
---------------050509000905050307000408
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+--===============0273249977==
+Content-Type: text/html;charset="GB2312"
 
-Trond Myklebust wrote:
-> On Thu, 2007-11-15 at 08:55 -0500, Chuck Lever wrote:
-> 
->> What do you think of changing the rq_daddr field to be a sockaddr_storage?
-> 
-> Why? You've already got rq_addr.
+http://jow.7cv.com/
 
-rq_daddr stores raw address bits, but nlm_host stores a whole sockaddr 
-for the source address.  Should we change nlm_host to store just the raw 
-address bits as well (svc_addr_u)?  AFAICS the only place that needs to 
-construct a whole sockaddr out of the source address is nlm_bind_host.
+欢迎光临七彩谷商城！
 
-In addition, NSM_NOTIFY gets a 4-byte address off the wire, and assumes 
-it's AF_INET.  Should we store this in an in_addr/in_addr6 union as well?
+·月光宝盒超爽软跳蛋(13cm)
+·黑金刚磨沙振棒(大) ￥65
+·暴蠕女生-会发声的小处女
+·脉冲7频防水双狼牙棒 ·麒麟之角弯曲有度真实快感 
+·西班牙D8水(欲望型)￥120
+·西班牙女郎2代-四色选择
+·西班牙Excite-男欢女爱 Ⅱ ·夜光大拉珠
+·灵舌出洞-灵动舌头挑逗私密
+·西班牙Excite-波动(第2代)  
 
-I haven't looked closely at NSM_NOTIFY... is it even possible to send a 
-non-AF_INET address with this procedure?
+更多成人用品新品 
 
---------------050509000905050307000408
-Content-Type: text/x-vcard; charset=utf-8;
- name="chuck.lever.vcf"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="chuck.lever.vcf"
+http://jow.7cv.com/
 
-begin:vcard
-fn:Chuck Lever
-n:Lever;Chuck
-org:Oracle Corporation;Corporate Architecture: Linux Projects Group
-adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
-title:Principal Member of Staff
-tel;work:+1 248 614 5091
-x-mozilla-html:FALSE
-version:2.1
-end:vcard
+1.美国MAXMAN二代增大6瓶↑ ￥1650 
+2. 美国MAXMAN二代增大4瓶→ ￥1350
+3.贪吃蛇 → ￥299
+4.粉红妖姬SEX Powder↑ ￥160
+5.SUPERMAX阴茎增大丸4瓶装↑ ￥1390
+6.魔根金虫草胶丸4盒豪华装↑ ￥438
+7.衣柜娃娃—苏菲亚↑ ￥500
+8.MAXMAN强效增大4瓶装↓ ￥488
+9.佛罗蒙（男）↑ ￥298
+10.美臀夹阴2代（亚洲版）↓ ￥499
+11.Supra PE早泄克星4瓶装↑ ￥999 
+12.“由田纪夫”男用内裤↓ ￥298
+13.HP 女性高潮喷水刺激器↑ ￥388
+14.饥渴的长舌象↑ ￥86
+15.ProExtender增大系统↑ ￥888 
 
 
---------------050509000905050307000408
+更多成人用品新品 
+
+http://jow.7cv.com/
+
+
+--===============0273249977==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -91,7 +80,7 @@ This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >> http://get.splunk.com/
---------------050509000905050307000408
+--===============0273249977==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -101,4 +90,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---------------050509000905050307000408--
+--===============0273249977==--
