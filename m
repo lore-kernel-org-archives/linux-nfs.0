@@ -1,32 +1,26 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: Use of delayed request information in nlmsvc_lookup_host
-Date: Thu, 15 Nov 2007 12:00:59 -0500
-Message-ID: <473C7B4B.4060402@oracle.com>
-References: <473B3D0B.3060204@oracle.com>	
-	<1195065798.7584.37.camel@heimdal.trondhjem.org>	
-	<473B45C9.4060708@oracle.com>	
-	<1195069262.7584.54.camel@heimdal.trondhjem.org>	
-	<473B5278.7090408@oracle.com>
-	<18235.41907.383911.722103@notabene.brown>	
-	<473C4FE2.1090402@oracle.com>
-	<1195142050.7506.13.camel@heimdal.trondhjem.org>
-	<473C7344.5090705@oracle.com>
-Reply-To: chuck.lever@oracle.com
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: uuid/blkid performance problem with large number
+	of	mounts - was: Re: stale nfs file handle with exported
+	loopback mounts
+Date: Thu, 15 Nov 2007 12:23:38 -0500
+Message-ID: <1195147418.7673.7.camel@heimdal.trondhjem.org>
+References: <2083621400@web.de>  <18235.55453.531532.593443@notabene.brown>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------090107050305060208000509"
-Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: text/plain; charset="us-ascii"
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, devzero@web.de,
+	NFS@lists.sourceforge.net
+To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Isi7O-0002VV-G2
-	for nfs@lists.sourceforge.net; Thu, 15 Nov 2007 09:03:06 -0800
-Received: from rgminet01.oracle.com ([148.87.113.118])
+	id 1IsiRU-0004ow-1x
+	for nfs@lists.sourceforge.net; Thu, 15 Nov 2007 09:23:52 -0800
+Received: from pat.uio.no ([129.240.10.15])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Isi7T-0000KI-3A
-	for nfs@lists.sourceforge.net; Thu, 15 Nov 2007 09:03:12 -0800
-In-Reply-To: <473C7344.5090705@oracle.com>
+	(Exim 4.44) id 1IsiRY-00045b-ED
+	for nfs@lists.sourceforge.net; Thu, 15 Nov 2007 09:23:58 -0800
+In-Reply-To: <18235.55453.531532.593443@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -39,71 +33,41 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
---------------090107050305060208000509
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
 
-
-
-Chuck Lever wrote:
-> Trond Myklebust wrote:
->> On Thu, 2007-11-15 at 08:55 -0500, Chuck Lever wrote:
->>
->>> What do you think of changing the rq_daddr field to be a 
->>> sockaddr_storage?
->>
->> Why? You've already got rq_addr.
+On Thu, 2007-11-15 at 16:26 +1100, Neil Brown wrote:
+> On Tuesday November 13, devzero@web.de wrote:
+> > since i posted 2 problems in one mail - and one problem is solved now, for the second problem i have opened a ticket at 
+> > 
+> > http://sourceforge.net/tracker/index.php?func=detail&aid=1831403&group_id=14&atid=100014  
+> > ( uuid/blkid performance problem with large number of mounts )
+> > 
+> > so this won`t get lost.
 > 
-> rq_daddr stores raw address bits, but nlm_host stores a whole sockaddr 
-> for the source address.  Should we change nlm_host to store just the raw 
-> address bits as well (svc_addr_u)?  AFAICS the only place that needs to 
-> construct a whole sockaddr out of the source address is nlm_bind_host.
+> Unfortuantely that is a bit like saying "I've placed in the nice round
+> filling cabinet so it won't get lost", not realising that the nice
+> round filing cabinet is actually a garbage be.
+> 
+> No one (that I know of) looks at the issue tracker on sourceforge at
+> all.
+> 
+> I have it on my personal "list of things to look at one day", so maybe
+> it won't get forgotten.
 
-I'll answer my own e-mail question.
+Is it possible to turn this feature off on sourceforge? It is rather
+unfortunate that people take the time to type these things up, without
+realising that the tracker is unmonitored. It would be even better if we
+could display a message saying "please submit this to the mailing lists
+and/or bugzilla".
 
-nlm_host{} has to store a full address because nlm_lookup_host() uses 
-nlm_cmp_addr() to compare the source addresses.  nlm_cmp_addr() has to 
-be address-family-aware.
+Cheers
+  Trond
 
---------------090107050305060208000509
-Content-Type: text/x-vcard; charset=utf-8;
- name="chuck.lever.vcf"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="chuck.lever.vcf"
-
-begin:vcard
-fn:Chuck Lever
-n:Lever;Chuck
-org:Oracle Corporation;Corporate Architecture: Linux Projects Group
-adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
-title:Principal Member of Staff
-tel;work:+1 248 614 5091
-x-mozilla-html:FALSE
-version:2.1
-end:vcard
-
-
---------------090107050305060208000509
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >> http://get.splunk.com/
---------------090107050305060208000509
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---------------090107050305060208000509--
