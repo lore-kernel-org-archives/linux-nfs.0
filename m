@@ -1,33 +1,19 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: Use of delayed request information in nlmsvc_lookup_host
-Date: Thu, 15 Nov 2007 13:02:23 -0500
-Message-ID: <473C89AF.8020707@oracle.com>
-References: <473B3D0B.3060204@oracle.com>	
-	<1195065798.7584.37.camel@heimdal.trondhjem.org>	
-	<473B45C9.4060708@oracle.com>	
-	<1195069262.7584.54.camel@heimdal.trondhjem.org>	
-	<473B5278.7090408@oracle.com>
-	<18235.41907.383911.722103@notabene.brown>	
-	<473C4FE2.1090402@oracle.com>	
-	<1195142050.7506.13.camel@heimdal.trondhjem.org>	
-	<473C80A2.1020204@oracle.com>
-	<1195148262.7673.11.camel@heimdal.trondhjem.org>
-Reply-To: chuck.lever@oracle.com
-Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------020205010000000009080409"
-Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: =?GB2312?B?t9u67NH9vKc=?= <jow.7cv@163.com>
+Subject: =?GB2312?B?sK678NK7tKW8tMi8o6xoaWdo1Nq2rNK5?=
+Date: Fri, 16 Nov 2007 03:02:12 +0800
+Message-ID: <E1Isjyf-0008Ci-TJ@mail.sourceforge.net>
+Reply-To: jow.7cv@163.com
+Content-Type: multipart/mixed; boundary="===============0145378687=="
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Isj3d-00013k-0h
-	for nfs@lists.sourceforge.net; Thu, 15 Nov 2007 10:03:17 -0800
-Received: from agminet01.oracle.com ([141.146.126.228])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Isj3f-00028o-Jd
-	for nfs@lists.sourceforge.net; Thu, 15 Nov 2007 10:03:22 -0800
-In-Reply-To: <1195148262.7673.11.camel@heimdal.trondhjem.org>
+	id 1Isjya-0007OO-Kw
+	for nfs@lists.sourceforge.net; Thu, 15 Nov 2007 11:02:08 -0800
+Received: from [125.40.48.197] (helo=163.com)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Isjyf-0008Ci-TJ
+	for nfs@lists.sourceforge.net; Thu, 15 Nov 2007 11:02:14 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -40,98 +26,60 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
---------------020205010000000009080409
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+--===============0145378687==
+Content-Type: text/html;charset="GB2312"
 
-Trond Myklebust wrote:
-> On Thu, 2007-11-15 at 12:23 -0500, Chuck Lever wrote:
->> Trond Myklebust wrote:
->>> On Thu, 2007-11-15 at 08:55 -0500, Chuck Lever wrote:
->>>
->>>> What do you think of changing the rq_daddr field to be a sockaddr_storage?
->>> Why? You've already got rq_addr.
->> OK, here's what I've ended up with.  I think this is what you and Neil 
->> have been suggesting.  Comments?
->>
->> /*
->>   * Find an NLM client handle in the cache. If there is none, create it.
->>   *
->>   * Manufacture a specific source address in case we're using multiple
->>   * IP addresses on a single NIC.  NB: the family of the address in
->>   * rq_daddr is guaranteed to be the same as the family of rq_addr.
->>   */
->> struct nlm_host *
->> nlmsvc_lookup_host(struct svc_rqst *rqstp,
->> 			const char *hostname, unsigned int hostname_len)
->> {
->> 	struct sockaddr_in6 source = {
->> 		.sin6_family	= AF_INET6,
->> 	};
->>
->> 	switch(svc_addr(rqstp)->sa_family) {
->> 	case AF_INET: {
->> 		struct sockaddr_in *sin = (struct sockaddr_in *)&source;
->> 		sin->sin_family = AF_INET;
->> 		sin->sin_addr.s_addr = rqstp->rq_daddr.addr.s_addr;
->> 		break;
->> 	}
->> 	case AF_INET6:
->> 		ipv6_addr_copy(&source.sin6_addr,
->>                                 &rqstp->rq_daddr.addr6);
->> 		break;
->> 	}
->>
->> 	return nlm_lookup_host(1, svc_addr_in(rqstp),
->> 			       rqstp->rq_prot, rqstp->rq_vers,
->> 			       hostname, hostname_len,
->> 			       (struct sockaddr *)&source);
->> }
-> 
-> That works for me. Technically, I suppose we should really pass a
-> source_len to nlm_lookup_host() if only to ensure that the comparisons
-> don't overrun memory, however in practice I doubt this is a problem. We
-> always know that the kernel allocates enough space.
+http://jow.7cv.com/
 
-My IPv6-aware version of nlm_cmp_addr takes a pair of sockaddr *'s; no 
-lengths are needed for the comparison of either AF_INET or AF_INET6 
-addresses.
+欢迎光临七彩谷商城！
 
-In fact, in most cases, it appears that the address length is unneeded 
-for us.  Both INET families use fixed-size addresses.
+·月光宝盒超爽软跳蛋(13cm)
+·黑金刚磨沙振棒(大) ￥65
+·暴蠕女生-会发声的小处女
+·脉冲7频防水双狼牙棒 ·麒麟之角弯曲有度真实快感 
+·西班牙D8水(欲望型)￥120
+·西班牙女郎2代-四色选择
+·西班牙Excite-男欢女爱 Ⅱ ·夜光大拉珠
+·灵舌出洞-灵动舌头挑逗私密
+·西班牙Excite-波动(第2代)  
 
---------------020205010000000009080409
-Content-Type: text/x-vcard; charset=utf-8;
- name="chuck.lever.vcf"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="chuck.lever.vcf"
+更多成人用品新品 
 
-begin:vcard
-fn:Chuck Lever
-n:Lever;Chuck
-org:Oracle Corporation;Corporate Architecture: Linux Projects Group
-adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
-title:Principal Member of Staff
-tel;work:+1 248 614 5091
-x-mozilla-html:FALSE
-version:2.1
-end:vcard
+http://jow.7cv.com/
+
+1.美国MAXMAN二代增大6瓶↑ ￥1650 
+2. 美国MAXMAN二代增大4瓶→ ￥1350
+3.贪吃蛇 → ￥299
+4.粉红妖姬SEX Powder↑ ￥160
+5.SUPERMAX阴茎增大丸4瓶装↑ ￥1390
+6.魔根金虫草胶丸4盒豪华装↑ ￥438
+7.衣柜娃娃—苏菲亚↑ ￥500
+8.MAXMAN强效增大4瓶装↓ ￥488
+9.佛罗蒙（男）↑ ￥298
+10.美臀夹阴2代（亚洲版）↓ ￥499
+11.Supra PE早泄克星4瓶装↑ ￥999 
+12.“由田纪夫”男用内裤↓ ￥298
+13.HP 女性高潮喷水刺激器↑ ￥388
+14.饥渴的长舌象↑ ￥86
+15.ProExtender增大系统↑ ￥888 
 
 
---------------020205010000000009080409
+更多成人用品新品 
+
+http://jow.7cv.com/
+
+
+--===============0145378687==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
 Content-Disposition: inline
 
 -------------------------------------------------------------------------
-This SF.net email is sponsored by: Splunk Inc.
-Still grepping through log files to find problems?  Stop.
-Now Search log events and configuration files using AJAX and a browser.
-Download your FREE copy of Splunk now >> http://get.splunk.com/
---------------020205010000000009080409
+This SF.net email is sponsored by: Microsoft
+Defy all challenges. Microsoft(R) Visual Studio 2005.
+http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+--===============0145378687==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -141,4 +89,4 @@ _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
 
---------------020205010000000009080409--
+--===============0145378687==--
