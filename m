@@ -1,27 +1,28 @@
-From: Chuck Lever <chuck.lever@oracle.com>
+From: Neil Brown <neilb@suse.de>
 Subject: Re: Use of delayed request information in nlmsvc_lookup_host
-Date: Wed, 14 Nov 2007 14:54:32 -0500
-Message-ID: <473B5278.7090408@oracle.com>
-References: <473B3D0B.3060204@oracle.com>	
-	<1195065798.7584.37.camel@heimdal.trondhjem.org>	
+Date: Thu, 15 Nov 2007 12:41:07 +1100
+Message-ID: <18235.41907.383911.722103@notabene.brown>
+References: <473B3D0B.3060204@oracle.com>
+	<1195065798.7584.37.camel@heimdal.trondhjem.org>
 	<473B45C9.4060708@oracle.com>
 	<1195069262.7584.54.camel@heimdal.trondhjem.org>
-Reply-To: chuck.lever@oracle.com
+	<473B5278.7090408@oracle.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------020804070805060407040709"
-Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net,
+	Trond Myklebust <trond.myklebust@fys.uio.no>
+To: chuck.lever@oracle.com
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IsOKn-0002rQ-Ol
-	for nfs@lists.sourceforge.net; Wed, 14 Nov 2007 11:55:37 -0800
-Received: from agminet01.oracle.com ([141.146.126.228])
+	id 1IsTjK-0002ic-Mt
+	for nfs@lists.sourceforge.net; Wed, 14 Nov 2007 17:41:18 -0800
+Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IsOKr-0003TC-EN
-	for nfs@lists.sourceforge.net; Wed, 14 Nov 2007 11:55:43 -0800
-In-Reply-To: <1195069262.7584.54.camel@heimdal.trondhjem.org>
+	(Exim 4.44) id 1IsTjQ-0002et-5Q
+	for nfs@lists.sourceforge.net; Wed, 14 Nov 2007 17:41:24 -0800
+In-Reply-To: message from Chuck Lever on Wednesday November 14
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -34,68 +35,62 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
---------------020804070805060407040709
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-
-Trond Myklebust wrote:
-> On Wed, 2007-11-14 at 14:00 -0500, Chuck Lever wrote:
->> That's correct.  I'm just trying to understand why, historically, 
->> rq_daddr was just the 32-bit address and not a full sockaddr to begin 
->> with.  There may be something we're missing, like "we didn't want to add 
->> another large field to this structure due to memory alignment or 
->> allocation efficiency concerns".  :-)
+On Wednesday November 14, chuck.lever@oracle.com wrote:
+> Trond Myklebust wrote:
+> > On Wed, 2007-11-14 at 14:00 -0500, Chuck Lever wrote:
+> >> That's correct.  I'm just trying to understand why, historically, 
+> >> rq_daddr was just the 32-bit address and not a full sockaddr to begin 
+> >> with.  There may be something we're missing, like "we didn't want to add 
+> >> another large field to this structure due to memory alignment or 
+> >> allocation efficiency concerns".  :-)
+> > 
+> > Actually, rq_daddr by definition pretty much has to be of the same
+> > address family as rq_addr, since they are the two endpoints for the same
+> > socket. 
+> > 
+> > However I can't see where rq_addr is being initialised for UDP sockets.
+> > That is sort of worrying given that it is used among other things by the
+> > nfsd duplicate reply cache...
 > 
-> Actually, rq_daddr by definition pretty much has to be of the same
-> address family as rq_addr, since they are the two endpoints for the same
-> socket. 
-> 
-> However I can't see where rq_addr is being initialised for UDP sockets.
-> That is sort of worrying given that it is used among other things by the
-> nfsd duplicate reply cache...
+> That's the other half of my question.  Why isn't nlmsvc_lookup_host 
+> using rq_addr (without the d)?
 
-That's the other half of my question.  Why isn't nlmsvc_lookup_host 
-using rq_addr (without the d)?
+Git is your friend.
 
---------------020804070805060407040709
-Content-Type: text/x-vcard; charset=utf-8;
- name="chuck.lever.vcf"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="chuck.lever.vcf"
+commit c98451bdb2f3e6d6cc1e03adad641e9497512b49
+Author: Frank van Maarseveen <frankvm@frankvm.com>
+Date:   Mon Jul 9 22:25:29 2007 +0200
 
-begin:vcard
-fn:Chuck Lever
-n:Lever;Chuck
-org:Oracle Corporation;Corporate Architecture: Linux Projects Group
-adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
-title:Principal Member of Staff
-tel;work:+1 248 614 5091
-x-mozilla-html:FALSE
-version:2.1
-end:vcard
+    NLM: fix source address of callback to client
+    
+    Use the destination address of the original NLM request as the
+    source address in callbacks to the client.
+    
+    Signed-off-by: Frank van Maarseveen <frankvm@frankvm.com>
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
 
---------------020804070805060407040709
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+Also, other places that need to interpret rq_daddr use:
+
+	struct svc_sock *svsk =
+		container_of(rqstp->rq_xprt, struct svc_sock, sk_xprt);
+	switch (svsk->sk_sk->sk_family) {
+	case AF_INET:...
+        case AF_INET6: ....
+
+(see svcsock.c).
+
+Why wouldn't that work here?
+
+
+NeilBrown
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
 Still grepping through log files to find problems?  Stop.
 Now Search log events and configuration files using AJAX and a browser.
 Download your FREE copy of Splunk now >> http://get.splunk.com/
---------------020804070805060407040709
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
-
---------------020804070805060407040709--
