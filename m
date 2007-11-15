@@ -1,28 +1,23 @@
 From: Neil Brown <neilb@suse.de>
-Subject: Re: Use of delayed request information in nlmsvc_lookup_host
-Date: Thu, 15 Nov 2007 12:41:07 +1100
-Message-ID: <18235.41907.383911.722103@notabene.brown>
-References: <473B3D0B.3060204@oracle.com>
-	<1195065798.7584.37.camel@heimdal.trondhjem.org>
-	<473B45C9.4060708@oracle.com>
-	<1195069262.7584.54.camel@heimdal.trondhjem.org>
-	<473B5278.7090408@oracle.com>
+Subject: Re: Oops in rpciod when building procmail from an NFS client
+Date: Thu, 15 Nov 2007 15:04:57 +1100
+Message-ID: <18235.50537.220883.815864@notabene.brown>
+References: <83FE585A3944624683D9A3F69BA108EB0224B633@PUN2K3EXCL01.symphonysv.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
-To: chuck.lever@oracle.com
+Cc: nfs@lists.sourceforge.net
+To: "Yogesh Pahilwan" <Yogesh.Pahilwan@symphonysv.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IsTjK-0002ic-Mt
-	for nfs@lists.sourceforge.net; Wed, 14 Nov 2007 17:41:18 -0800
+	id 1IsVyP-0007nj-II
+	for nfs@lists.sourceforge.net; Wed, 14 Nov 2007 20:05:01 -0800
 Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IsTjQ-0002et-5Q
-	for nfs@lists.sourceforge.net; Wed, 14 Nov 2007 17:41:24 -0800
-In-Reply-To: message from Chuck Lever on Wednesday November 14
+	(Exim 4.44) id 1IsVyT-0008Kp-Uw
+	for nfs@lists.sourceforge.net; Wed, 14 Nov 2007 20:05:07 -0800
+In-Reply-To: message from Yogesh Pahilwan on Wednesday November 14
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -35,56 +30,33 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Wednesday November 14, chuck.lever@oracle.com wrote:
-> Trond Myklebust wrote:
-> > On Wed, 2007-11-14 at 14:00 -0500, Chuck Lever wrote:
-> >> That's correct.  I'm just trying to understand why, historically, 
-> >> rq_daddr was just the 32-bit address and not a full sockaddr to begin 
-> >> with.  There may be something we're missing, like "we didn't want to add 
-> >> another large field to this structure due to memory alignment or 
-> >> allocation efficiency concerns".  :-)
-> > 
-> > Actually, rq_daddr by definition pretty much has to be of the same
-> > address family as rq_addr, since they are the two endpoints for the same
-> > socket. 
-> > 
-> > However I can't see where rq_addr is being initialised for UDP sockets.
-> > That is sort of worrying given that it is used among other things by the
-> > nfsd duplicate reply cache...
+On Wednesday November 14, Yogesh.Pahilwan@symphonysv.com wrote:
+> Hi Folks,
 > 
-> That's the other half of my question.  Why isn't nlmsvc_lookup_host 
-> using rq_addr (without the d)?
+>  
+> 
+> I am getting following oops while building procmail utility from the NFS
+> mounted share when build from the NFS client.
+> 
+> The NFS server oopses in rpciod during the "Benchmarking your system's
+> strstr () implementation" step.
+> 
+>  
+> 
+> I am using the following configurations for NFS client and server:
+> 
+> NFS client configuration: kernel version - 2.6.11-1.1369_FC4
 
-Git is your friend.
+This is a very old kernel.  It is very possible that there is a patch
+since then, but it is also possible that it was so long ago that
+no-one has a clear memory of it and no-one feels like hunting it down
+for you.
 
-commit c98451bdb2f3e6d6cc1e03adad641e9497512b49
-Author: Frank van Maarseveen <frankvm@frankvm.com>
-Date:   Mon Jul 9 22:25:29 2007 +0200
+I recommend upgrading to a more recent kernel - 2.6.20 at least, and
+if the problem persists, report again.
 
-    NLM: fix source address of callback to client
-    
-    Use the destination address of the original NLM request as the
-    source address in callbacks to the client.
-    
-    Signed-off-by: Frank van Maarseveen <frankvm@frankvm.com>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-
-Also, other places that need to interpret rq_daddr use:
-
-	struct svc_sock *svsk =
-		container_of(rqstp->rq_xprt, struct svc_sock, sk_xprt);
-	switch (svsk->sk_sk->sk_family) {
-	case AF_INET:...
-        case AF_INET6: ....
-
-(see svcsock.c).
-
-Why wouldn't that work here?
-
-
+Thanks,
 NeilBrown
-
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
