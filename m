@@ -1,18 +1,16 @@
-From: Neil Brown <neilb@suse.de>
+From: devzero@web.de
 Subject: Re:
  =?iso-8859-15?q?uuid/blkid_performance_problem_with_large_n?=
  =?iso-8859-15?q?umber_of_mounts_-_was=3A_Re=3A__stale_nfs_file_handle_wit?=
  =?iso-8859-15?q?h_exported_loopback_mounts?=
-Date: Thu, 15 Nov 2007 16:26:53 +1100
-Message-ID: <18235.55453.531532.593443@notabene.brown>
-References: <2083621400@web.de>
+Date: Thu, 15 Nov 2007 08:54:24 +0100
+Message-ID: <2086127644@web.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset="iso-8859-15"
 Cc: "J. Bruce Fields" <bfields@fieldses.org>,
 	NFS@lists.sourceforge.net
-To: devzero@web.de
+To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-In-Reply-To: message from devzero@web.de on Tuesday November 13
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -25,26 +23,78 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-On Tuesday November 13, devzero@web.de wrote:
-> since i posted 2 problems in one mail - and one problem is solved now, for the second problem i have opened a ticket at 
-> 
-> http://sourceforge.net/tracker/index.php?func=detail&aid=1831403&group_id=14&atid=100014  
-> ( uuid/blkid performance problem with large number of mounts )
-> 
-> so this won`t get lost.
+> No one (that I know of) looks at the issue tracker on sourceforge at all.
+ah -ok, sorry - i didn`t know. since there were recent  entries  from octob=
+er, i thought it was an official way to report bugs.
 
-Unfortuantely that is a bit like saying "I've placed in the nice round
-filling cabinet so it won't get lost", not realising that the nice
-round filing cabinet is actually a garbage be.
+> I have it on my personal "list of things to look at one day", so maybe
+> it won't get forgotten.
+thanks. =
 
-No one (that I know of) looks at the issue tracker on sourceforge at
-all.
+if i`m allowed to add a comment:
+a public bugtracker has one advantage: others can easily see that this or a=
+nother bug exists and maybe they can provide (parts of) a solution or don`t=
+ need to ask for such.
+i`m just too used to open source having open bugtrackers, so i thought it w=
+as the right way to go.  =
 
-I have it on my personal "list of things to look at one day", so maybe
-it won't get forgotten.
 
-thanks,
-NeilBrown
+if bugs not being tracked there and and you explicitly discourage using it =
+- what about disabling the bugtracker entirely ?
+
+roland
+
+
+
+> -----Urspr=FCngliche Nachricht-----
+> Von: Neil Brown <neilb@suse.de>
+> Gesendet: 15.11.07 06:27:07
+> An: devzero@web.de
+> CC: "J. Bruce Fields" <bfields@fieldses.org>, NFS@lists.sourceforge.net
+> Betreff: Re: [NFS] uuid/blkid performance problem with large number of mo=
+unts - was: Re:  stale nfs file handle with exported loopback mounts
+
+
+> =
+
+> On Tuesday November 13, devzero@web.de wrote:
+> > since i posted 2 problems in one mail - and one problem is solved now, =
+for the second problem i have opened a ticket at =
+
+> > =
+
+> > http://sourceforge.net/tracker/index.php?func=3Ddetail&aid=3D1831403&gr=
+oup_id=3D14&atid=3D100014  =
+
+> > ( uuid/blkid performance problem with large number of mounts )
+> > =
+
+> > so this won`t get lost.
+> =
+
+> Unfortuantely that is a bit like saying "I've placed in the nice round
+> filling cabinet so it won't get lost", not realising that the nice
+> round filing cabinet is actually a garbage be.
+> =
+
+> No one (that I know of) looks at the issue tracker on sourceforge at
+> all.
+> =
+
+> I have it on my personal "list of things to look at one day", so maybe
+> it won't get forgotten.
+> =
+
+> thanks,
+> NeilBrown
+> =
+
+
+
+_____________________________________________________________________
+Der WEB.DE SmartSurfer hilft bis zu 70% Ihrer Onlinekosten zu sparen!
+http://smartsurfer.web.de/?mc=3D100071&distributionid=3D000000000066
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Splunk Inc.
