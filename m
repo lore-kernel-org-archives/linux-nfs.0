@@ -1,20 +1,21 @@
 From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH] nfsd: select CONFIG_PROC_FS in nfsv4 and gss server
-	cases
-Date: Thu, 15 Nov 2007 16:57:00 -0500
-Message-ID: <1195163823-24609-6-git-send-email-bfields@citi.umich.edu>
+Subject: [PATCH] nfsd: fail init on /proc/fs/nfs/exports creation
+	failure
+Date: Thu, 15 Nov 2007 16:57:01 -0500
+Message-ID: <1195163823-24609-7-git-send-email-bfields@citi.umich.edu>
 References: <1195163823-24609-1-git-send-email-bfields@citi.umich.edu>
 	<1195163823-24609-2-git-send-email-bfields@citi.umich.edu>
 	<1195163823-24609-3-git-send-email-bfields@citi.umich.edu>
 	<1195163823-24609-4-git-send-email-bfields@citi.umich.edu>
 	<1195163823-24609-5-git-send-email-bfields@citi.umich.edu>
+	<1195163823-24609-6-git-send-email-bfields@citi.umich.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: linux-nfs@vger.kernel.org, nfs@lists.sourceforge.net,
 	"J. Bruce Fields" <bfields@citi.umich.edu>
 To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-In-Reply-To: <1195163823-24609-5-git-send-email-bfields@citi.umich.edu>
+In-Reply-To: <1195163823-24609-6-git-send-email-bfields@citi.umich.edu>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
@@ -26,26 +27,80 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 List-ID: <linux-nfs.vger.kernel.org>
 
-The server depends on upcalls under /proc to support nfsv4 and gss.
+I assume the reason failure of creation was ignored here was just to
+continue support embedded systems that want nfsd but not proc.
+
+However, in cases where proc is supported it would be clearer to fail
+entirely than to come up with some features disabled.
 
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
- fs/Kconfig |    2 ++
- 1 files changed, 2 insertions(+), 0 deletions(-)
+ fs/nfsd/nfsctl.c |   37 ++++++++++++++++++++++++++++---------
+ 1 files changed, 28 insertions(+), 9 deletions(-)
 
-diff --git a/fs/Kconfig b/fs/Kconfig
-index 429a002..340b233 100644
---- a/fs/Kconfig
-+++ b/fs/Kconfig
-@@ -1670,6 +1670,8 @@ config NFSD
- 	select CRYPTO_MD5 if NFSD_V4
- 	select CRYPTO if NFSD_V4
- 	select FS_POSIX_ACL if NFSD_V4
-+	select PROC_FS if NFSD_V4
-+	select PROC_FS if SUNRPC_GSS
- 	help
- 	  If you want your Linux box to act as an NFS *server*, so that other
- 	  computers on your local network which support NFS can access certain
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index 2bfda9b..63d8075 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -674,6 +674,27 @@ static struct file_system_type nfsd_fs_type = {
+ 	.kill_sb	= kill_litter_super,
+ };
+ 
++#ifdef CONFIG_PROC_FS
++static inline int create_proc_exports_entry(void)
++{
++	struct proc_dir_entry *entry;
++
++	entry = proc_mkdir("fs/nfs", NULL);
++	if (!entry)
++		return -ENOMEM;
++	entry = create_proc_entry("fs/nfs/exports", 0, NULL);
++	if (!entry)
++		return -ENOMEM;
++	entry->proc_fops =  &exports_operations;
++	return 0;
++}
++#else /* CONFIG_PROC_FS */
++static inline int create_proc_exports_entry(void)
++{
++	return 0;
++}
++#endif
++
+ static int __init init_nfsd(void)
+ {
+ 	int retval;
+@@ -689,23 +710,21 @@ static int __init init_nfsd(void)
+ 	nfsd_export_init();	/* Exports table */
+ 	nfsd_lockd_init();	/* lockd->nfsd callbacks */
+ 	nfsd_idmap_init();      /* Name to ID mapping */
+-	if (proc_mkdir("fs/nfs", NULL)) {
+-		struct proc_dir_entry *entry;
+-		entry = create_proc_entry("fs/nfs/exports", 0, NULL);
+-		if (entry)
+-			entry->proc_fops =  &exports_operations;
+-	}
++	retval = create_proc_exports_entry();
++	if (retval)
++		goto out_free_idmap;
+ 	retval = register_filesystem(&nfsd_fs_type);
+ 	if (retval)
+ 		goto out_free_all;
+ 	return 0;
+ out_free_all:
+-	nfsd_idmap_shutdown();
+-	nfsd_export_shutdown();
+-	nfsd_reply_cache_shutdown();
+ 	remove_proc_entry("fs/nfs/exports", NULL);
+ 	remove_proc_entry("fs/nfs", NULL);
++	nfsd_idmap_shutdown();
++out_free_idmap:
+ 	nfsd_lockd_shutdown();
++	nfsd_export_shutdown();
++	nfsd_reply_cache_shutdown();
+ out_free_stat:
+ 	nfsd_stat_shutdown();
+ 	nfsd4_free_slabs();
 -- 
 1.5.3.5.561.g140d
 
