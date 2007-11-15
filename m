@@ -1,17 +1,22 @@
 From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH] nfsd: fail module init on reply cache init failure
-Date: Thu, 15 Nov 2007 16:56:58 -0500
-Message-ID: <1195163823-24609-4-git-send-email-bfields@citi.umich.edu>
+Subject: [PATCH] knfsd: allow cache_register to return error on failure
+Date: Thu, 15 Nov 2007 16:57:03 -0500
+Message-ID: <1195163823-24609-9-git-send-email-bfields@citi.umich.edu>
 References: <1195163823-24609-1-git-send-email-bfields@citi.umich.edu>
 	<1195163823-24609-2-git-send-email-bfields@citi.umich.edu>
 	<1195163823-24609-3-git-send-email-bfields@citi.umich.edu>
+	<1195163823-24609-4-git-send-email-bfields@citi.umich.edu>
+	<1195163823-24609-5-git-send-email-bfields@citi.umich.edu>
+	<1195163823-24609-6-git-send-email-bfields@citi.umich.edu>
+	<1195163823-24609-7-git-send-email-bfields@citi.umich.edu>
+	<1195163823-24609-8-git-send-email-bfields@citi.umich.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: linux-nfs@vger.kernel.org, nfs@lists.sourceforge.net,
 	"J. Bruce Fields" <bfields@citi.umich.edu>
 To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-In-Reply-To: <1195163823-24609-3-git-send-email-bfields@citi.umich.edu>
+In-Reply-To: <1195163823-24609-8-git-send-email-bfields@citi.umich.edu>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
@@ -23,139 +28,260 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 List-ID: <linux-nfs.vger.kernel.org>
 
-If the reply cache initialization fails due to a kmalloc failure,
-currently we try to soldier on with a reduced (or nonexistant) reply
-cache.
-
-Better to just fail immediately: the failure is then much easier to
-understand and debug, and it could save us complexity in some later
-code.  (But actually, it doesn't help currently because the cache is
-also turned off in some odd failure cases; we should probably find a
-better way to handle those failure cases some day.)
-
-Fix some minor style problems while we're at it, and rename
-nfsd_cache_init() to remove the need for a comment describing it.
+Newer server features such as nfsv4 and gss depend on proc to work, so a
+failure to initialize the proc files they need should be treated as
+fatal.
 
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
- fs/nfsd/nfscache.c         |   28 +++++++++++++---------------
- fs/nfsd/nfsctl.c           |   11 +++++++----
- include/linux/nfsd/cache.h |    4 ++--
- 3 files changed, 22 insertions(+), 21 deletions(-)
+ fs/nfsd/export.c                  |   12 +++++++++---
+ fs/nfsd/nfs4idmap.c               |   13 ++++++++++---
+ fs/nfsd/nfsctl.c                  |   12 +++++++++---
+ include/linux/nfsd/export.h       |    2 +-
+ include/linux/nfsd_idmap.h        |    4 ++--
+ include/linux/sunrpc/cache.h      |    2 +-
+ net/sunrpc/auth_gss/svcauth_gss.c |   17 +++++++++++++----
+ net/sunrpc/cache.c                |   30 +++++++++++++++++++++++-------
+ 8 files changed, 68 insertions(+), 24 deletions(-)
 
-diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-index 578f2c9..92cb5ae 100644
---- a/fs/nfsd/nfscache.c
-+++ b/fs/nfsd/nfscache.c
-@@ -44,17 +44,18 @@ static int	nfsd_cache_append(struct svc_rqst *rqstp, struct kvec *vec);
+diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+index d29b70a..cbbc594 100644
+--- a/fs/nfsd/export.c
++++ b/fs/nfsd/export.c
+@@ -1637,13 +1637,19 @@ exp_verify_string(char *cp, int max)
+ /*
+  * Initialize the exports module.
   */
- static DEFINE_SPINLOCK(cache_lock);
+-void
++int
+ nfsd_export_init(void)
+ {
++	int rv;
+ 	dprintk("nfsd: initializing export module.\n");
+ 
+-	cache_register(&svc_export_cache);
+-	cache_register(&svc_expkey_cache);
++	rv = cache_register(&svc_export_cache);
++	if (rv)
++		return rv;
++	rv = cache_register(&svc_expkey_cache);
++	if (rv)
++		cache_unregister(&svc_export_cache);
++	return rv;
+ 
+ }
+ 
+diff --git a/fs/nfsd/nfs4idmap.c b/fs/nfsd/nfs4idmap.c
+index ef22179..996bd88 100644
+--- a/fs/nfsd/nfs4idmap.c
++++ b/fs/nfsd/nfs4idmap.c
+@@ -464,11 +464,18 @@ nametoid_update(struct ent *new, struct ent *old)
+  * Exported API
+  */
  
 -void
--nfsd_cache_init(void)
 +int
-+nfsd_reply_cache_init(void)
+ nfsd_idmap_init(void)
  {
- 	struct svc_cacherep	*rp;
- 	int			i;
- 
- 	INIT_LIST_HEAD(&lru_head);
- 	i = CACHESIZE;
--	while(i) {
-+	while (i) {
- 		rp = kmalloc(sizeof(*rp), GFP_KERNEL);
--		if (!rp) break;
-+		if (!rp)
-+			goto out_nomem;
- 		list_add(&rp->c_lru, &lru_head);
- 		rp->c_state = RC_UNUSED;
- 		rp->c_type = RC_NOCACHE;
-@@ -62,23 +63,20 @@ nfsd_cache_init(void)
- 		i--;
- 	}
- 
--	if (i)
--		printk (KERN_ERR "nfsd: cannot allocate all %d cache entries, only got %d\n",
--			CACHESIZE, CACHESIZE-i);
--
- 	hash_list = kcalloc (HASHSIZE, sizeof(struct hlist_head), GFP_KERNEL);
--	if (!hash_list) {
--		nfsd_cache_shutdown();
--		printk (KERN_ERR "nfsd: cannot allocate %Zd bytes for hash list\n",
--			HASHSIZE * sizeof(struct hlist_head));
--		return;
--	}
-+	if (!hash_list)
-+		goto out_nomem;
- 
- 	cache_disabled = 0;
-+	return 0;
-+out_nomem:
-+	printk(KERN_ERR "nfsd: failed to allocate reply cache\n");
-+	nfsd_reply_cache_shutdown();
-+	return -ENOMEM;
+-	cache_register(&idtoname_cache);
+-	cache_register(&nametoid_cache);
++	int rv;
++
++	rv = cache_register(&idtoname_cache);
++	if (rv)
++		return rv;
++	rv = cache_register(&nametoid_cache);
++	if (rv)
++		cache_unregister(&idtoname_cache);
++	return rv;
  }
  
  void
--nfsd_cache_shutdown(void)
-+nfsd_reply_cache_shutdown(void)
- {
- 	struct svc_cacherep	*rp;
- 
 diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index ecf3779..2bfda9b 100644
+index 63d8075..e307972 100644
 --- a/fs/nfsd/nfsctl.c
 +++ b/fs/nfsd/nfsctl.c
-@@ -683,7 +683,9 @@ static int __init init_nfsd(void)
+@@ -707,9 +707,13 @@ static int __init init_nfsd(void)
+ 	retval = nfsd_reply_cache_init();
  	if (retval)
- 		return retval;
- 	nfsd_stat_init();	/* Statistics */
--	nfsd_cache_init();	/* RPC reply cache */
-+	retval = nfsd_reply_cache_init();
+ 		goto out_free_stat;
+-	nfsd_export_init();	/* Exports table */
++	retval = nfsd_export_init();
 +	if (retval)
-+		goto out_free_stat;
- 	nfsd_export_init();	/* Exports table */
++		goto out_free_cache;
  	nfsd_lockd_init();	/* lockd->nfsd callbacks */
- 	nfsd_idmap_init();      /* Name to ID mapping */
-@@ -700,11 +702,12 @@ static int __init init_nfsd(void)
+-	nfsd_idmap_init();      /* Name to ID mapping */
++	retval = nfsd_idmap_init();
++	if (retval)
++		goto out_free_lockd;
+ 	retval = create_proc_exports_entry();
+ 	if (retval)
+ 		goto out_free_idmap;
+@@ -720,10 +724,12 @@ static int __init init_nfsd(void)
  out_free_all:
- 	nfsd_idmap_shutdown();
- 	nfsd_export_shutdown();
--	nfsd_cache_shutdown();
-+	nfsd_reply_cache_shutdown();
  	remove_proc_entry("fs/nfs/exports", NULL);
  	remove_proc_entry("fs/nfs", NULL);
--	nfsd_stat_shutdown();
+-	nfsd_idmap_shutdown();
+ out_free_idmap:
++	nfsd_idmap_shutdown();
++out_free_lockd:
  	nfsd_lockd_shutdown();
-+out_free_stat:
-+	nfsd_stat_shutdown();
- 	nfsd4_free_slabs();
- 	return retval;
- }
-@@ -712,7 +715,7 @@ out_free_all:
- static void __exit exit_nfsd(void)
- {
  	nfsd_export_shutdown();
--	nfsd_cache_shutdown();
-+	nfsd_reply_cache_shutdown();
- 	remove_proc_entry("fs/nfs/exports", NULL);
- 	remove_proc_entry("fs/nfs", NULL);
++out_free_cache:
+ 	nfsd_reply_cache_shutdown();
+ out_free_stat:
  	nfsd_stat_shutdown();
-diff --git a/include/linux/nfsd/cache.h b/include/linux/nfsd/cache.h
-index 007480c..7b5d784 100644
---- a/include/linux/nfsd/cache.h
-+++ b/include/linux/nfsd/cache.h
-@@ -72,8 +72,8 @@ enum {
+diff --git a/include/linux/nfsd/export.h b/include/linux/nfsd/export.h
+index bcb7aba..3a16872 100644
+--- a/include/linux/nfsd/export.h
++++ b/include/linux/nfsd/export.h
+@@ -122,7 +122,7 @@ __be32 check_nfsd_access(struct svc_export *exp, struct svc_rqst *rqstp);
+ /*
+  * Function declarations
   */
- #define RC_DELAY		(HZ/5)
+-void			nfsd_export_init(void);
++int			nfsd_export_init(void);
+ void			nfsd_export_shutdown(void);
+ void			nfsd_export_flush(void);
+ void			exp_readlock(void);
+diff --git a/include/linux/nfsd_idmap.h b/include/linux/nfsd_idmap.h
+index e82746f..f5dd037 100644
+--- a/include/linux/nfsd_idmap.h
++++ b/include/linux/nfsd_idmap.h
+@@ -44,10 +44,10 @@
+ #define IDMAP_NAMESZ 128
  
--void	nfsd_cache_init(void);
--void	nfsd_cache_shutdown(void);
-+int	nfsd_reply_cache_init(void);
-+void	nfsd_reply_cache_shutdown(void);
- int	nfsd_cache_lookup(struct svc_rqst *, int);
- void	nfsd_cache_update(struct svc_rqst *, int, __be32 *);
+ #ifdef CONFIG_NFSD_V4
+-void nfsd_idmap_init(void);
++int nfsd_idmap_init(void);
+ void nfsd_idmap_shutdown(void);
+ #else
+-static inline void nfsd_idmap_init(void) {};
++static inline int nfsd_idmap_init(void) {};
+ static inline void nfsd_idmap_shutdown(void) {};
+ #endif
  
+diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
+index b683b5d..03547d6 100644
+--- a/include/linux/sunrpc/cache.h
++++ b/include/linux/sunrpc/cache.h
+@@ -169,7 +169,7 @@ extern int cache_check(struct cache_detail *detail,
+ extern void cache_flush(void);
+ extern void cache_purge(struct cache_detail *detail);
+ #define NEVER (0x7FFFFFFF)
+-extern void cache_register(struct cache_detail *cd);
++extern int cache_register(struct cache_detail *cd);
+ extern void cache_unregister(struct cache_detail *cd);
+ 
+ extern void qword_add(char **bpp, int *lp, char *str);
+diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+index d329a12..aa790bb 100644
+--- a/net/sunrpc/auth_gss/svcauth_gss.c
++++ b/net/sunrpc/auth_gss/svcauth_gss.c
+@@ -1386,10 +1386,19 @@ int
+ gss_svc_init(void)
+ {
+ 	int rv = svc_auth_register(RPC_AUTH_GSS, &svcauthops_gss);
+-	if (rv == 0) {
+-		cache_register(&rsc_cache);
+-		cache_register(&rsi_cache);
+-	}
++	if (rv)
++		return rv;
++	rv = cache_register(&rsc_cache);
++	if (rv)
++		goto out1;
++	rv = cache_register(&rsi_cache);
++	if (rv)
++		goto out2;
++	return 0;
++out2:
++	cache_unregister(&rsc_cache);
++out1:
++	svc_auth_unregister(RPC_AUTH_GSS);
+ 	return rv;
+ }
+ 
+diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+index 504b4e8..d41fe3c 100644
+--- a/net/sunrpc/cache.c
++++ b/net/sunrpc/cache.c
+@@ -304,20 +304,21 @@ void remove_cache_proc_entries(struct cache_detail *cd)
+ 	remove_proc_entry(cd->name, proc_net_rpc);
+ }
+ 
+-void create_cache_proc_entries(struct cache_detail *cd)
++#ifdef CONFIG_PROC_FS
++int create_cache_proc_entries(struct cache_detail *cd)
+ {
+ 	struct proc_dir_entry *p;
+ 
+ 	cd->proc_ent = proc_mkdir(cd->name, proc_net_rpc);
+ 	if (cd->proc_ent == NULL)
+-		return;
++		goto out_nomem;
+ 	cd->proc_ent->owner = cd->owner;
+ 	cd->channel_ent = cd->content_ent = NULL;
+ 
+ 	p = create_proc_entry("flush", S_IFREG|S_IRUSR|S_IWUSR, cd->proc_ent);
+ 	cd->flush_ent = p;
+ 	if (p == NULL)
+-		return;
++		goto out_nomem;
+ 	p->proc_fops = &cache_flush_operations;
+ 	p->owner = cd->owner;
+ 	p->data = cd;
+@@ -327,7 +328,7 @@ void create_cache_proc_entries(struct cache_detail *cd)
+ 				      cd->proc_ent);
+ 		cd->channel_ent = p;
+ 		if (p == NULL)
+-			return;
++			goto out_nomem;
+ 		p->proc_fops = &cache_file_operations;
+ 		p->owner = cd->owner;
+ 		p->data = cd;
+@@ -337,16 +338,30 @@ void create_cache_proc_entries(struct cache_detail *cd)
+ 				      cd->proc_ent);
+ 		cd->content_ent = p;
+ 		if (p == NULL)
+-			return;
++			goto out_nomem;
+ 		p->proc_fops = &content_file_operations;
+ 		p->owner = cd->owner;
+ 		p->data = cd;
+ 	}
++	return 0;
++out_nomem:
++	remove_cache_proc_entries(cd);
++	return -ENOMEM;
+ }
++#else /* CONFIG_PROC_FS */
++int create_cache_proc_entries(struct cache_detail *cd)
++{
++	return 0;
++}
++#endif
+ 
+-void cache_register(struct cache_detail *cd)
++int cache_register(struct cache_detail *cd)
+ {
+-	create_cache_proc_entries(cd);
++	int ret;
++
++	ret = create_cache_proc_entries(cd);
++	if (ret)
++		return ret;
+ 	rwlock_init(&cd->hash_lock);
+ 	INIT_LIST_HEAD(&cd->queue);
+ 	spin_lock(&cache_list_lock);
+@@ -360,6 +375,7 @@ void cache_register(struct cache_detail *cd)
+ 
+ 	/* start the cleaning process */
+ 	schedule_delayed_work(&cache_cleaner, 0);
++	return 0;
+ }
+ 
+ void cache_unregister(struct cache_detail *cd)
 -- 
 1.5.3.5.561.g140d
 
