@@ -1,16 +1,19 @@
-From: devzero@web.de
-Subject: Re:
- =?iso-8859-15?q?uuid/blkid_performance_problem_with_large_n?=
- =?iso-8859-15?q?umber_of_mounts_-_was=3A_Re=3A__stale_nfs_file_handle_wit?=
- =?iso-8859-15?q?h_exported_loopback_mounts?=
-Date: Thu, 15 Nov 2007 08:54:24 +0100
-Message-ID: <2086127644@web.de>
+From: <wegener@fibunet.de>
+Subject: HPGI Finds Gold
+Date: Thu, 15 Nov 2007 12:00:24 +0200
+Message-ID: <473C18B8.4030608@fibunet.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-15"
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	NFS@lists.sourceforge.net
-To: Neil Brown <neilb@suse.de>
+Content-Type: text/plain; charset="iso-8859-1"
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1IsbWL-0008Mv-La
+	for nfs@lists.sourceforge.net; Thu, 15 Nov 2007 02:00:25 -0800
+Received: from [88.224.140.65] (helo=dsl88-244-35905.ttnet.net.tr)
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1IsbWQ-0001St-Uk
+	for nfs@lists.sourceforge.net; Thu, 15 Nov 2007 02:00:31 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -23,77 +26,44 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-> No one (that I know of) looks at the issue tracker on sourceforge at all.
-ah -ok, sorry - i didn`t know. since there were recent  entries  from octob=
-er, i thought it was an official way to report bugs.
+Gold Resource Newsletter
+Hemisphere Gold is Climbing Hard. UP 20%
 
-> I have it on my personal "list of things to look at one day", so maybe
-> it won't get forgotten.
-thanks. =
+Hemisphere Gold (HPGI) $1.20 UP 20%
 
-if i`m allowed to add a comment:
-a public bugtracker has one advantage: others can easily see that this or a=
-nother bug exists and maybe they can provide (parts of) a solution or don`t=
- need to ask for such.
-i`m just too used to open source having open bugtrackers, so i thought it w=
-as the right way to go.  =
+Banks and investors are holding on to gold reserves as the US dollar
+continues to drop. Gold prices continue to rise and have now broken $800
+per ounce; a price w did not expect to see till later next year.
 
+Cutting edge technology has opened the way for advanced exploration of
+new areas. Recent findings of huge deposits in Suriname have created a
+literal gold rush.
 
-if bugs not being tracked there and and you explicitly discourage using it =
-- what about disabling the bugtracker entirely ?
+Hemisphere Gold Inc. has properties sitting right in the middle of
+largest mines in what is now known as the Suriname Gold Belt. Advance
+stages of exploration have already show rich gold deposits as high as
+3.55 ounces/ton.
 
-roland
+Important Points To Remember
 
+1. Depletion in supplies has caused Gold to climb from $600 to over $800
+an once since January.
+2. Demand for Gold supplies is at a n all time high. Analysts believe
+these demands and not only holding but increasing in many areas.
+3. Stock has been trading steadily and share prices have increased over
+120% due to recent news on gold findings.
+4. Suriname is one of the largest gold rushes in the world right now.
+HPGI's claim is in the middle of some of the largest producing mines in
+the Suriname Gold Belt.
+5. The current gold rush in Suriname is already known and a large
+marketing campaign scheduled to launch later this week will bring HPGI
+into the lime light.
 
-
-> -----Urspr=FCngliche Nachricht-----
-> Von: Neil Brown <neilb@suse.de>
-> Gesendet: 15.11.07 06:27:07
-> An: devzero@web.de
-> CC: "J. Bruce Fields" <bfields@fieldses.org>, NFS@lists.sourceforge.net
-> Betreff: Re: [NFS] uuid/blkid performance problem with large number of mo=
-unts - was: Re:  stale nfs file handle with exported loopback mounts
-
-
-> =
-
-> On Tuesday November 13, devzero@web.de wrote:
-> > since i posted 2 problems in one mail - and one problem is solved now, =
-for the second problem i have opened a ticket at =
-
-> > =
-
-> > http://sourceforge.net/tracker/index.php?func=3Ddetail&aid=3D1831403&gr=
-oup_id=3D14&atid=3D100014  =
-
-> > ( uuid/blkid performance problem with large number of mounts )
-> > =
-
-> > so this won`t get lost.
-> =
-
-> Unfortuantely that is a bit like saying "I've placed in the nice round
-> filling cabinet so it won't get lost", not realising that the nice
-> round filing cabinet is actually a garbage be.
-> =
-
-> No one (that I know of) looks at the issue tracker on sourceforge at
-> all.
-> =
-
-> I have it on my personal "list of things to look at one day", so maybe
-> it won't get forgotten.
-> =
-
-> thanks,
-> NeilBrown
-> =
-
-
-
-_____________________________________________________________________
-Der WEB.DE SmartSurfer hilft bis zu 70% Ihrer Onlinekosten zu sparen!
-http://smartsurfer.web.de/?mc=3D100071&distributionid=3D000000000066
+The decisions you make in the current market need to be wise and
+precise. HPGI is the type of company that could very well be a great
+safe haven during the current troubled market. Take the time to review
+their website and the profiles on =93Stockguru=94. It could be the best
+decision you make this year.
 
 
 -------------------------------------------------------------------------
