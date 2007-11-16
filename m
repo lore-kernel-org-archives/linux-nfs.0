@@ -1,85 +1,61 @@
-From: =?UTF-8?Q?Peter_=C3=85strand?= <astrand-+4tYiAq3b6azQB+pC5nmwQ@public.gmane.org>
-Subject: Re: [NFS] access gives ENOENT on existing file
-Date: Thu, 29 Nov 2007 21:13:49 +0100 (CET)
-Message-ID: <Pine.LNX.4.64.0711292104130.956@maggie.lkpg.cendio.se>
-References: <Pine.LNX.4.64.0711292001110.32427@maggie.lkpg.cendio.se>
-	<1196364589.7808.28.camel@heimdal.trondhjem.org>
-	<Pine.LNX.4.64.0711292038300.473@maggie.lkpg.cendio.se>
-	<1196365811.19682.4.camel@heimdal.trondhjem.org>
+From: Fabio Olive Leite <fleite@redhat.com>
+Subject: osync-on-error getting upstream?
+Date: Fri, 16 Nov 2007 15:13:37 -0200
+Message-ID: <20071116171337.GA3864@sleipnir.redhat.com>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="789237761-839436394-1196366676=:956"
-Cc: nfs@lists.sourceforge.net
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Content-Type: text/plain; charset="iso-8859-1"
+To: nfs@lists.sourceforge.net
+Return-path: <nfs-bounces@lists.sourceforge.net>
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Ixpli-0004wX-Fl
-	for nfs@lists.sourceforge.net; Thu, 29 Nov 2007 12:13:56 -0800
-Received: from mail.cendio.se ([193.12.253.69])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Ixpll-0003oG-A0
-	for nfs@lists.sourceforge.net; Thu, 29 Nov 2007 12:13:59 -0800
-In-Reply-To: <1196365811.19682.4.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
-List-ID: <nfs.lists.sourceforge.net>
+	id 1It4lF-00042e-CN
+	for nfs@lists.sourceforge.net; Fri, 16 Nov 2007 09:13:45 -0800
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1It4lJ-0008Hz-4B
+	for nfs@lists.sourceforge.net; Fri, 16 Nov 2007 09:13:50 -0800
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com
+	[172.16.52.254])
+	by mx1.redhat.com (8.13.8/8.13.1) with ESMTP id lAGHDgIF020531
+	for <nfs@lists.sourceforge.net>; Fri, 16 Nov 2007 12:13:42 -0500
+Received: from pobox-2.corp.redhat.com (pobox-2.corp.redhat.com [10.11.255.15])
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id lAGHDgl8017093
+	for <nfs@lists.sourceforge.net>; Fri, 16 Nov 2007 12:13:42 -0500
+Received: from sleipnir.redhat.com (vpn-4-159.str.redhat.com [10.32.4.159])
+	by pobox-2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id lAGHDdv4006879
+	for <nfs@lists.sourceforge.net>; Fri, 16 Nov 2007 12:13:41 -0500
+Received: from sleipnir.redhat.com (localhost.localdomain [127.0.0.1])
+	by sleipnir.redhat.com (8.13.8/8.13.7) with ESMTP id lAGHDdKx004697
+	for <nfs@lists.sourceforge.net>; Fri, 16 Nov 2007 15:13:41 -0200
+Received: (from fleite@localhost)
+	by sleipnir.redhat.com (8.13.8/8.13.8/Submit) id lAGHDcpI004696
+	for nfs@lists.sourceforge.net; Fri, 16 Nov 2007 15:13:38 -0200
+List-Id: "Discussion of NFS under Linux development, interoperability,
+	and testing." <nfs.lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
+List-Post: <mailto:nfs@lists.sourceforge.net>
+List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
+	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
+Sender: nfs-bounces@lists.sourceforge.net
+Errors-To: nfs-bounces@lists.sourceforge.net
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+Hi all,
 
---789237761-839436394-1196366676=:956
-Content-Type: TEXT/PLAIN; CHARSET=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Content-ID: <Pine.LNX.4.64.0711292105501.956-K9BqGu7AvB3wj5YHdwD3Ga2PxDmRETKR@public.gmane.org>
+When can we expect the osync-on-error patch to get upstream?
 
-On Thu, 29 Nov 2007, Trond Myklebust wrote:
+Thanks!
+F=E1bio
+-- =
 
-> > http://www.cendio.com/~astrand/nfs1/repoview.cap
-> >=20
->=20
-> According to that, the NFS client appears to be looking up the directory
-> 'i386\315\204', which does not exist.
-
-Oh.=20
-
-> Can you check again in the 'strace' output whether or not the access()
-> syscall is being called with the correct pathname? I suspect a locale
-> error or something like that...
-
-You are correct, there's some garbage in the path. After unsetting LANG,=20
-the problem remains, but "less" now views:
-
-access("/import/mirrors/fedora/updates/8/i386<CD><84>/repodata/repomd.xml",=
- R_OK) =3D -1 ENOENT (No such file or directory)
-
-I think I've found the problem. Somehow, the incorrect path managed to get=
-=20
-into my Bash history. I also tried copy-paste from the strace log (which=20
-was also "infected"). Gosh.=20
-
-
-Thanks for the help,=20
----
-Peter =C3=85strand=09=09ThinLinc Chief Developer
-Cendio AB=09=09http://www.cendio.se
-Wallenbergs gata 4
-583 30 Link=C3=B6ping=09Phone: +46-13-21 46 00
---789237761-839436394-1196366676=:956
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+ex sed lex awk yacc, e pluribus unix, amem
 
 -------------------------------------------------------------------------
-SF.Net email is sponsored by: The Future of Linux Business White Paper
-from Novell.  From the desktop to the data center, Linux is going
-mainstream.  Let it simplify your IT future.
-http://altfarm.mediaplex.com/ad/ck/8857-50307-18918-4
---789237761-839436394-1196366676=:956
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
+This SF.net email is sponsored by: Microsoft
+Defy all challenges. Microsoft(R) Visual Studio 2005.
+http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
@@ -87,7 +63,3 @@ _______________________________________________
 Please note that nfs@lists.sourceforge.net is being discontinued.
 Please subscribe to linux-nfs@vger.kernel.org instead.
     http://vger.kernel.org/vger-lists.html#linux-nfs
-
---789237761-839436394-1196366676=:956--
-
-
