@@ -1,26 +1,18 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Neil Brown <neilb@suse.de>
 Subject: Re: uuid/blkid performance problem with large number
 	of	mounts - was: Re: stale nfs file handle with exported
 	loopback mounts
-Date: Thu, 15 Nov 2007 15:12:29 -0500
-Message-ID: <1195157549.8905.30.camel@heimdal.trondhjem.org>
+Date: Fri, 16 Nov 2007 12:10:25 +1100
+Message-ID: <18236.60929.411884.287787@notabene.brown>
 References: <2087477778@web.de>
+	<1195157549.8905.30.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>, bfields@fieldses.org,
-	NFS@lists.sourceforge.net
-To: devzero@web.de
+Cc: bfields@fieldses.org, devzero@web.de, NFS@lists.sourceforge.net,
+	Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Isl4q-0006Fs-7Z
-	for nfs@lists.sourceforge.net; Thu, 15 Nov 2007 12:12:40 -0800
-Received: from pat.uio.no ([129.240.10.15])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Isl4v-0004aI-PW
-	for nfs@lists.sourceforge.net; Thu, 15 Nov 2007 12:12:46 -0800
-In-Reply-To: <2087477778@web.de>
+In-Reply-To: message from Trond Myklebust on Thursday November 15
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -33,22 +25,43 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-
-On Thu, 2007-11-15 at 21:07 +0100, devzero@web.de wrote:
-> > Is it possible to turn this feature off on sourceforge? I
+On Thursday November 15, trond.myklebust@fys.uio.no wrote:
 > 
-> yes - iirc, i have seen projects without  a tracker or without other
-> option, being on by default.
+> On Thu, 2007-11-15 at 21:07 +0100, devzero@web.de wrote:
+> > > Is it possible to turn this feature off on sourceforge? I
+> > 
+> > yes - iirc, i have seen projects without  a tracker or without other
+> > option, being on by default.
+> > 
+> > if you want to disable it, maybe this one helps:
+> > 
+> > https://sourceforge.net/docs/G03/en/#tracker
 > 
-> if you want to disable it, maybe this one helps:
-> 
-> https://sourceforge.net/docs/G03/en/#tracker
+> That would have to be up to Neil since he is the only one with
+> administrator rights on that list.
 
-That would have to be up to Neil since he is the only one with
-administrator rights on that list.
+Actually there are several people with admin rights, some of which I
+haven't heard from for ages.
+  Chip Salzenberg
+  H.J. Lu
+  Jay Weber
+  Marc Merlin
+  Neil Brown
+  steved
 
-Trond
+Anyway, I have made the 4 trackers (bugs, patches, support requests,
+feature requests) visible to group members only.  I suspect it would
+be good for someone to go through at least the more recent ones.
+There is one with patches for man page typos, one with a patch to use
+netlink instead of ioctl to get list of local interfaces, one
+reporting that nfsstat doesn't match the man page (--mounts or
+--mounted)  etc.
 
+If anyone would like to dig through it and post the things that still
+seem relevant, I'd be happy to make you a member of the group (if you
+aren't already).
+
+NeilBrown
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
