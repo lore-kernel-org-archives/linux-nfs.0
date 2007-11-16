@@ -1,12 +1,11 @@
 From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH 1/2] nfsd: move nfsd/auth.h into fs/nfsd
-Date: Fri, 16 Nov 2007 11:31:05 +1100
-Message-ID: <18236.58569.175370.275493@notabene.brown>
-References: <1195167232-30238-1-git-send-email-bfields@citi.umich.edu>
+Subject: Re: 8 patches cleaning up nfsd initialization
+Date: Fri, 16 Nov 2007 11:41:09 +1100
+Message-ID: <18236.59173.34694.832163@notabene.brown>
+References: <1195163823-24609-1-git-send-email-bfields@citi.umich.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs@vger.kernel.org,
-	"Robert P. J. Day" <rpjday@crashcourse.ca>, nfs@lists.sourceforge.net
+Cc: linux-nfs@vger.kernel.org, nfs@lists.sourceforge.net
 To: "J. Bruce Fields" <bfields@citi.umich.edu>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 In-Reply-To: message from J. Bruce Fields on Thursday November 15
@@ -22,24 +21,32 @@ Errors-To: nfs-bounces@lists.sourceforge.net
 List-ID: <linux-nfs.vger.kernel.org>
 
 On Thursday November 15, bfields@citi.umich.edu wrote:
-> This header is used only in a few places in fs/nfsd, so there seems to
-> be little point to having it in include/.  (Thanks to Robert Day for
-> pointing this out.)
+> While working on something unrelated I noticed nfsd tends to ignore a
+> lot of memory allocation failures on initialization.  I don't think
+> we'eve seen a bug report here--such failures are probably nearly
+> nonexistant.  But still it seems a minor bug in most cases not to catch
+> such failures.
 > 
-> Cc: Robert P. J. Day <rpjday@crashcourse.ca>
-> Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+> My guess is that one of the motivations for the current behavior, in the
+> case of failures to create /proc entries, was to continue to allow nfsd
+> to function in kernels with no proc support whatsoever.
+> 
+> However in kernels that do have proc support failure to create such
+> entries should be treated as fatal.  So, I add some #ifdef's to handle
+> this case explicitly.
+> 
+> I also add "select PROC_FS" when nfsv4 or gss are selected, since those
+> newer features don't function at all without proc.
+> 
+> Look reasonable?
 
+Yes, all Acked-by: NeilBrown <neilb@suse.de>
 
-Yes, good.
+The cleanup of the cache_unregister call sites is very nice.  It is a
+pity that the cache_register sites become more ugly, but I think it is
+the right thing to do.
 
- Acked-by: NeilBrown <neilb@suse.de>
-
-But it does beg the question: what other include files could/should be
-moved?
- cache.h and xdr*.h all seem like good candidates.
-
-Is it worth doing?
-
+Thanks,
 NeilBrown
 
 -------------------------------------------------------------------------
