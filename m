@@ -1,16 +1,17 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: Re: [PATCH 1/2] nfsd: move nfsd/auth.h into fs/nfsd
-Date: Thu, 15 Nov 2007 22:32:41 -0500
-Message-ID: <20071116033241.GC18909@fieldses.org>
+Date: Thu, 15 Nov 2007 22:51:05 -0500
+Message-ID: <20071116035105.GE18909@fieldses.org>
 References: <1195167232-30238-1-git-send-email-bfields@citi.umich.edu>
 	<18236.58569.175370.275493@notabene.brown>
+	<20071116033241.GC18909@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: linux-nfs@vger.kernel.org,
 	"Robert P. J. Day" <rpjday@crashcourse.ca>, nfs@lists.sourceforge.net
 To: Neil Brown <neilb@suse.de>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-In-Reply-To: <18236.58569.175370.275493@notabene.brown>
+In-Reply-To: <20071116033241.GC18909@fieldses.org>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
@@ -22,29 +23,16 @@ Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Nov 16, 2007 at 11:31:05AM +1100, Neil Brown wrote:
-> On Thursday November 15, bfields@citi.umich.edu wrote:
-> > This header is used only in a few places in fs/nfsd, so there seems to
-> > be little point to having it in include/.  (Thanks to Robert Day for
-> > pointing this out.)
-> > 
-> > Cc: Robert P. J. Day <rpjday@crashcourse.ca>
-> > Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+On Thu, Nov 15, 2007 at 10:32:41PM -0500, bfields wrote:
+> Yup.
 > 
+> > Is it worth doing?
 > 
-> Yes, good.
-> 
->  Acked-by: NeilBrown <neilb@suse.de>
-> 
-> But it does beg the question: what other include files could/should be
-> moved?
->  cache.h and xdr*.h all seem like good candidates.
+> I think I'll leave it alone for now....
 
-Yup.
+But I've added it to the "To do" list at
 
-> Is it worth doing?
-
-I think I'll leave it alone for now....
+	http://wiki.linux-nfs.org/wiki/index.php/To_do
 
 --b.
 
