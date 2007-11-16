@@ -1,14 +1,29 @@
-From: =?windows-1252?B?d3d3LnFxeXdqLmNvbQ==?= <thaogdglki@tom.com>
-Subject: =?windows-1252?q?Good_project!?=
-Date: Fri, 16 Nov 2007 16:35:42 +0800
-Message-ID: <2007111635781.47326@5AA64EB3F8FC423.net>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [ADMIN] Please transfer your subscription
+	from	nfs@lists.sourceforge.net to linux-nfs@vger.kernel.org
+Date: Fri, 16 Nov 2007 20:36:05 +1100
+Message-ID: <18237.25733.114115.389497@notabene.brown>
+References: <18237.9398.845711.226261@notabene.brown>
+	<18237.14529.800462.665570@notabene.brown>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============0861413055=="
-To: <nfs@lists.sourceforge.net>
+Content-Type: text/plain; charset="us-ascii"
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from teaax4 (unknown [127.45.72.49])
-	by smtp30 (Coremail) with SMTP id qOtSXcjcS6rLbb1P.1
-	for <nfs@lists.sourceforge.net>; Fri, 16 Nov 2007 16:35:42 +0800 (CST)
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+	helo=mail.sourceforge.net)
+	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
+	id 1IsxcS-0006JW-OO
+	for nfs@lists.sourceforge.net; Fri, 16 Nov 2007 01:36:12 -0800
+Received: from cantor2.suse.de ([195.135.220.15] helo=mx2.suse.de)
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IsxcY-0001L7-Ds
+	for nfs@lists.sourceforge.net; Fri, 16 Nov 2007 01:36:18 -0800
+Received: from Relay2.suse.de (mail2.suse.de [195.135.221.8])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by mx2.suse.de (Postfix) with ESMTP id 406942BE5D
+	for <nfs@lists.sourceforge.net>; Fri, 16 Nov 2007 10:36:12 +0100 (CET)
+In-Reply-To: message from Neil Brown on Friday November 16
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -21,78 +36,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-This is a multi-part message in MIME format.
+On Friday November 16, neilb@suse.de wrote:
+> On Friday November 16, neilb@suse.de wrote:
+> > 
+> >   All mail to nfs@lists.sourceforge.net will before forwarded to
+> >   linux-nfs for at least the rest of this year (but probably not much
+> >   beyond that).  So you won't miss anything.
+> > 
+> 
+> The forwarding of nfs to linux-nfs hit a snag, so maybe don't
+> unsubscribe from nfs@lists.sourceforge.net just yet - say tuned.
 
---===============0861413055==
-Content-Type: multipart/alternative;
-	boundary="----=_NextPart_001_00AE_01C79D14.0899AEB9"
+Ok, I've fixed that.  Mail is being successfully forwarded from
+sourceforge to vger now.
 
-This is a multi-part message in MIME format.
+sourceforge subscriptions: 631, down from 638
+vger subscriptions: 30, up from 21.
 
-------=_NextPart_001_00AE_01C79D14.0899AEB9
-Content-Type: text/plain;
-	charset="windows-1252"
-Content-Transfer-Encoding: base64
-
-PERlYXIgZnJpZW5kcywNClNvcnJ5IHRvIGJvdGhlciB5b3UuV2UgYXJlIGEgbGFyZ2Utc2NhbGUg
-bWVyY2hhbmRpc2Ugd2hvbGVzYWxlciBpbiBDaGluYSwNCk91ciBtZXJjaGFuZGlzZSBzdWNoIGFz
-LFR2LG5vdGVib29rcyxwaG9uZXMscHNwLHByb2plY3RvcnMsbW90b3JjeWNsZXMsbXVzaWNhbCBp
-bnN0cnVtZW50cyBlY3QuT3VyIHByb2R1Y3RzIGFyZSBpbiBnb29kIHF1YWxpdHksYnV0IGxvdyBw
-cmljZSxpdCB3aWxsIGludGVyZXN0IHlvdS5BdCB0aGUgc2FtZSB0aW1lLHdlIGNhbiBzdXBwbGUg
-eW91IHRoZSBkaXJlY3QgYW5kIHF1aWNrIHNlcnZpY2Uud2UgYXJlIGxlZ2FsIHNlbGxlcnMuICAN
-Ck91ciB3ZWJzaXRlIGlzIDogd3d3LnFxeXdqLmNvbQ0KICAgICAgICAgICAgICAgIE1TTjogcXF5
-d2oxQGhvdG1haWwuY29tDQogICAgICAgICAgICAgIEVtYWlsOiBxcXl3ajFAaG90bWFpbC5jb20N
-CiAgICAgICAgICAgICAgc2t5cGU6IHFxeXdqMQ0KICAgICAgICAgICAgICAgIFRFTDogKzg2IDE1
-OTM4ODI5NDI1DQpJZiB5b3UgdGhpbmsgd2UgYXJlIGV4Y2VsbGVudCwgcGxlYXNlIGNvbnRhY3Qg
-dXMuV2Ugd2lsbCBzZXJ2ZSBmb3IgeW91IHdpbGwgYWxsIG91ciBlZmZvcnQuPnt7ew==
-
-------=_NextPart_001_00AE_01C79D14.0899AEB9
-Content-Type: text/html;
-	charset="windows-1252"
-Content-Transfer-Encoding: base64
-
-PEhUTUw+PEhFQUQ+DQo8TUVUQSBjb250ZW50PSJNU0hUTUwgNi4wMC4yOTAwLjI5OTUiIG5hbWU9
-R0VORVJBVE9SPjwvSEVBRD4NCjxCT0RZPiZsdDtEZWFyIGZyaWVuZHMsPEJSPlNvcnJ5IHRvIGJv
-dGhlciB5b3UuV2UgYXJlIGEgbGFyZ2Utc2NhbGUgbWVyY2hhbmRpc2Ugd2hvbGVzYWxlciBpbiBD
-aGluYSw8QlI+T3VyIG1lcmNoYW5kaXNlIHN1Y2ggYXMsVHYsbm90ZWJvb2tzLHBob25lcyxwc3As
-cHJvamVjdG9ycyxtb3RvcmN5Y2xlcyxtdXNpY2FsIGluc3RydW1lbnRzIGVjdC5PdXIgcHJvZHVj
-dHMgYXJlIGluIGdvb2QgcXVhbGl0eSxidXQgbG93IHByaWNlLGl0IHdpbGwgaW50ZXJlc3QgeW91
-LkF0IHRoZSBzYW1lIHRpbWUsd2UgY2FuIHN1cHBsZSB5b3UgdGhlIGRpcmVjdCBhbmQgcXVpY2sg
-c2VydmljZS53ZSBhcmUgbGVnYWwgc2VsbGVycy4mbmJzcDsgPEJSPk91ciB3ZWJzaXRlIGlzIDog
-PEEgaHJlZj0iaHR0cDovL3d3dy5xcXl3ai5jb20iPnd3dy5xcXl3ai5jb208L0E+PEJSPiZuYnNw
-OyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZu
-YnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyBNU046IDxBIGhyZWY9Im1haWx0bzpxcXl3ajFA
-aG90bWFpbC5jb20iPnFxeXdqMUBob3RtYWlsLmNvbTwvQT48QlI+Jm5ic3A7Jm5ic3A7Jm5ic3A7
-Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5ic3A7Jm5i
-c3A7IEVtYWlsOiA8QSBocmVmPSJtYWlsdG86cXF5d2oxQGhvdG1haWwuY29tIj5xcXl3ajFAaG90
-bWFpbC5jb208L0E+PEJSPiZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNw
-OyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyBza3lwZTogcXF5d2oxPEJSPiZu
-YnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNw
-OyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyZuYnNwOyBURUw6ICs4NiAxNTkzODgyOTQyNTxCUj5J
-ZiB5b3UgdGhpbmsgd2UgYXJlIGV4Y2VsbGVudCwgcGxlYXNlIGNvbnRhY3QgdXMuV2Ugd2lsbCBz
-ZXJ2ZSBmb3IgeW91IHdpbGwgYWxsIG91ciBlZmZvcnQuJmd0O3t7ezwvQk9EWT48L0hUTUw+
-
-------=_NextPart_001_00AE_01C79D14.0899AEB9--
-
-
-
-
---===============0861413055==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+NeilBrown
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
 Defy all challenges. Microsoft(R) Visual Studio 2005.
 http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
---===============0861413055==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
@@ -100,5 +66,3 @@ _______________________________________________
 Please note that nfs@lists.sourceforge.net is being discontinued.
 Please subscribe to linux-nfs@vger.kernel.org instead.
     http://vger.kernel.org/vger-lists.html#linux-nfs
-
---===============0861413055==--
