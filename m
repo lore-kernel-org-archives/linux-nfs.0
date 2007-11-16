@@ -1,28 +1,19 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: Re: uuid/blkid performance problem with large number
 	of	mounts - was: Re: stale nfs file handle with exported
-	loopback mounts
-Date: Thu, 15 Nov 2007 20:58:40 -0500
-Message-ID: <1195178320.8905.75.camel@heimdal.trondhjem.org>
+	loopback	mounts
+Date: Thu, 15 Nov 2007 22:18:47 -0500
+Message-ID: <20071116031847.GA18909@fieldses.org>
 References: <2087477778@web.de>
 	<1195157549.8905.30.camel@heimdal.trondhjem.org>
 	<18236.60929.411884.287787@notabene.brown>
 	<1195178268.8905.73.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: bfields@fieldses.org, devzero@web.de, NFS@lists.sourceforge.net,
-	Steve Dickson <SteveD@redhat.com>
-To: Neil Brown <neilb@suse.de>
+Cc: Neil Brown <neilb@suse.de>, devzero@web.de,
+	NFS@lists.sourceforge.net, Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IsqTl-0005v4-A2
-	for nfs@lists.sourceforge.net; Thu, 15 Nov 2007 17:58:46 -0800
-Received: from pat.uio.no ([129.240.10.15])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IsqTq-0007C5-Q2
-	for nfs@lists.sourceforge.net; Thu, 15 Nov 2007 17:58:51 -0800
 In-Reply-To: <1195178268.8905.73.camel@heimdal.trondhjem.org>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
@@ -36,8 +27,8 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-
-On Thu, 2007-11-15 at 20:57 -0500, Trond Myklebust wrote:
+On Thu, Nov 15, 2007 at 08:57:48PM -0500, Trond Myklebust wrote:
+> 
 > On Fri, 2007-11-16 at 12:10 +1100, Neil Brown wrote:
 > 
 > > If anyone would like to dig through it and post the things that still
@@ -51,8 +42,11 @@ On Thu, 2007-11-15 at 20:57 -0500, Trond Myklebust wrote:
 > few days, but if you make me a member, I'll try to scan through the
 > stuff some time in the non-too-distant future.
 
-Oh... My sourceforge username is still 'trondmy'
+I probably won't do anything with it anytime soon either, but if you
+could add me too (I seem to have an account under "jbfields") if you
+think it might help.
 
+--b.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
