@@ -1,23 +1,31 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: osync-on-error getting upstream?
-Date: Fri, 16 Nov 2007 12:25:08 -0500
-Message-ID: <1195233908.7653.64.camel@heimdal.trondhjem.org>
-References: <20071116171337.GA3864@sleipnir.redhat.com>
+From: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
+Subject: Re: [ADMIN] Please transfer your subscription
+	from	nfs@lists.sourceforge.net to linux-nfs@vger.kernel.org
+Date: Fri, 16 Nov 2007 18:33:29 +0100
+Message-ID: <20071116173329.GA3699@uio.no>
+References: <18237.9398.845711.226261@notabene.brown>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: nfs@lists.sourceforge.net
-To: Fabio Olive Leite <fleite@redhat.com>
+Content-Type: text/plain; charset="us-ascii"
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1It4wL-0005Dn-2s
-	for nfs@lists.sourceforge.net; Fri, 16 Nov 2007 09:25:13 -0800
-Received: from pat.uio.no ([129.240.10.15])
+	id 1It54M-00061f-Rk
+	for nfs@lists.sourceforge.net; Fri, 16 Nov 2007 09:33:30 -0800
+Received: from cassarossa.samfundet.no ([129.241.93.19] ident=Debian-exim)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1It4wK-0004W9-GY
-	for nfs@lists.sourceforge.net; Fri, 16 Nov 2007 09:25:14 -0800
-In-Reply-To: <20071116171337.GA3864@sleipnir.redhat.com>
+	(Exim 4.44) id 1It54R-0000GV-Gs
+	for nfs@lists.sourceforge.net; Fri, 16 Nov 2007 09:33:36 -0800
+Received: from trofast.ipv6.sesse.net ([2001:700:300:1803:20e:cff:fe36:a766]
+	helo=trofast.sesse.net) by cassarossa.samfundet.no with esmtps
+	(TLS-1.0:RSA_AES_256_CBC_SHA1:32) (Exim 4.63)
+	(envelope-from <sesse@samfundet.no>) id 1It54M-0001R6-6i
+	for nfs@lists.sourceforge.net; Fri, 16 Nov 2007 18:33:30 +0100
+Received: from root by trofast.sesse.net with local (Exim 4.68)
+	(envelope-from <sesse@samfundet.no>) id 1It54L-0000yC-LR
+	for nfs@lists.sourceforge.net; Fri, 16 Nov 2007 18:33:29 +0100
+In-Reply-To: <18237.9398.845711.226261@notabene.brown>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -30,29 +38,25 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Ck9uIEZyaSwgMjAwNy0xMS0xNiBhdCAxNToxMyAtMDIwMCwgRmFiaW8gT2xpdmUgTGVpdGUgd3Jv
-dGU6Cj4gSGkgYWxsLAo+IAo+IFdoZW4gY2FuIHdlIGV4cGVjdCB0aGUgb3N5bmMtb24tZXJyb3Ig
-cGF0Y2ggdG8gZ2V0IHVwc3RyZWFtPwo+IAo+IFRoYW5rcyEKPiBGw6FiaW8KCkknZCBzYXksIHJv
-dWdobHksIGEgY291cGxlIG9mIHdlZWtzIGFnby4uLiA6LSkKCnRyb25kbXlAaGVpbWRhbDp+L3Jl
-cG9zL2dpdC9saW51eC0yLjYkIGdpdCBsb2cgN2IxNTlmYzE4ZDQxNzk4MGY1N2FlZjY0Y2FiMzQx
-N2VlNmFmNzBmOApBdXRob3I6IFRyb25kIE15a2xlYnVzdCA8VHJvbmQuTXlrbGVidXN0QG5ldGFw
-cC5jb20+CkRhdGU6ICAgV2VkIEp1bCAyNSAxNDowOTo1NCAyMDA3IC0wNDAwCgogICAgTkZTOiBG
-YWxsIGJhY2sgdG8gc3luY2hyb25vdXMgd3JpdGVzIHdoZW4gYSBiYWNrZ3JvdW5kIHdyaXRlIGVy
-cm9ycy4uLgogICAgCiAgICBUaGlzIGhlbHBzIHByZXZlbnQgaHVnZSBxdWV1ZXMgb2YgYmFja2dy
-b3VuZCB3cml0ZXMgZnJvbSBidWlsZGluZyB1cAogICAgd2hlbmV2ZXIgdGhlIHNlcnZlciBydW5z
-IG91dCBvZiBkaXNrIG9yIHF1b3RhIHNwYWNlLCBvciBpZiBzb21lb25lIGNoYW5nZXMKICAgIHRo
-ZSBmaWxlIGFjY2VzcyBtb2RlcyBiZWhpbmQgb3VyIGJhY2tzLgogICAgCiAgICBTaWduZWQtb2Zm
-LWJ5OiBUcm9uZCBNeWtsZWJ1c3QgPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPgoKdHJvbmRt
-eUBoZWltZGFsOn4vcmVwb3MvZ2l0L2xpbnV4LTIuNiQgZ2l0IGRlc2NyaWJlIDdiMTU5ZmMxOGQ0
-MTc5ODBmNTdhZWY2NGNhYjM0MTdlZTZhZjcwZjgKdjIuNi4yMy03LWc3YjE1OWZjCgpDaGVlcnMK
-ICBUcm9uZAoKCi0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0KVGhpcyBTRi5uZXQgZW1haWwgaXMgc3BvbnNvcmVk
-IGJ5OiBNaWNyb3NvZnQKRGVmeSBhbGwgY2hhbGxlbmdlcy4gTWljcm9zb2Z0KFIpIFZpc3VhbCBT
-dHVkaW8gMjAwNS4KaHR0cDovL2Nsay5hdGRtdC5jb20vTVJUL2dvL3ZzZTAxMjAwMDAwNzBtcnQv
-ZGlyZWN0LzAxLwpfX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
-XwpORlMgbWFpbGxpc3QgIC0gIE5GU0BsaXN0cy5zb3VyY2Vmb3JnZS5uZXQKaHR0cHM6Ly9saXN0
-cy5zb3VyY2Vmb3JnZS5uZXQvbGlzdHMvbGlzdGluZm8vbmZzCl9fX19fX19fX19fX19fX19fX19f
-X19fX19fX19fX19fX19fX19fX19fX19fX19fClBsZWFzZSBub3RlIHRoYXQgbmZzQGxpc3RzLnNv
-dXJjZWZvcmdlLm5ldCBpcyBiZWluZyBkaXNjb250aW51ZWQuClBsZWFzZSBzdWJzY3JpYmUgdG8g
-bGludXgtbmZzQHZnZXIua2VybmVsLm9yZyBpbnN0ZWFkLgogICAgaHR0cDovL3ZnZXIua2VybmVs
-Lm9yZy92Z2VyLWxpc3RzLmh0bWwjbGludXgtbmZzCg==
+On Fri, Nov 16, 2007 at 04:03:50PM +1100, Neil Brown wrote:
+>   1/ subscribe to linux-nfs@vger.kernel.org
+> 
+>     See linux-nfs@vger.kernel.org  for details
+
+Perhaps there should be an URL here instead?
+
+/* Steinar */
+-- 
+Homepage: http://www.sesse.net/
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Microsoft
+Defy all challenges. Microsoft(R) Visual Studio 2005.
+http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
