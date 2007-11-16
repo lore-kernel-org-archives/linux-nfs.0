@@ -1,24 +1,19 @@
-From: Dr.Philip Norman. <sccps.icb_norman@rediffmail.com>
-Subject: Swift Credit Card Payment System
-Date: Fri, 16 Nov 2007 09:27:13 -0500
-Message-ID: <E1It2A5-0007rn-4f@eta.xisto.com>
-Reply-To: sccps.icb_norman@rediffmail.com
+From: <er_singhmandeep@kccc.org>
+Subject: Market projects look negative and investors look for shelter.
+Date: Fri, 16 Nov 2007 15:53:50 +0100
+Message-ID: <473DAEFE.5070002@kccc.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1It29o-0000fK-JI
-	for nfs@lists.sourceforge.net; Fri, 16 Nov 2007 06:26:56 -0800
-Received: from eta.xisto.com ([216.240.154.188])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1It29q-0004Yz-5e
-	for nfs@lists.sourceforge.net; Fri, 16 Nov 2007 06:27:00 -0800
-Received: from nobody by eta.xisto.com with local (Exim 4.68)
-	(envelope-from <nobody@eta.xisto.com>) id 1It2A5-0007rn-4f
-	for nfs@lists.sourceforge.net; Fri, 16 Nov 2007 09:27:13 -0500
+	id 1It2ZZ-0003Lx-DY
+	for nfs@lists.sourceforge.net; Fri, 16 Nov 2007 06:53:33 -0800
+Received: from 0x5731928b.rdnxx4.adsl-dhcp.tele.dk ([87.49.146.139])
+	by mail.sourceforge.net with smtp (Exim 4.44) id 1It2Zd-0002sl-TX
+	for nfs@lists.sourceforge.net; Fri, 16 Nov 2007 06:53:39 -0800
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -31,49 +26,31 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Swift Credit Card Payment System
-Presidential Committee On Foreign Payments
-Foreign Remittance Department
-International Commercial Bank {ICB}
+Midas News
+Market analysis expects gold to continue rising to all time highs.
 
+Hemisphere Gold Inc (HPGI)
+$1.14
 
-Attention:Honorable Beneficiary.
-Going by series of petition received from International Body on the way your 
-inheritance fund was handled by our correspondence office.After Extensive close 
-door meeting with Board of Directors and other Stake holders in the Government, 
-Subcommittees of the House Of Assembly and the House of Rep , republic of Ghana.
+"Bullish gold," said Zachary Oxman, a senior trader at Wisdom Financial.
+"I think the Fed had a choice, housing or inflation, and they chose
+housing. As such, you've got inflationary pressures running rampant
+despite what the government tells us.... I'd peg real inflation at over
+6% and I think that will continue to put pressure on the dollar and
+increase gold and crude prices," the gold market continues to flourish
+in the current economic turmoil. More investors are turning to gold for
+stability in there investment dollars.
 
-It was Resolved and Agreed upon that your inheritance Fund would be released on a 
-special method of payment, which tag Name Reads SWIFT CREDIT CARD.This method of payment is designed by the Government to avert fraud perpetration or stoppage of fund by Some Agencies.Either Through Anti Terrorist Certificate or other certificates.This Swift Credit Card would be issued to you upon meeting with the Bank Requirement.This office, has Been Mandated to take charge of the Issuance of the SWIFT CREDIT CARD .And that your inheritance payment file should be passed to my desk for clarification .
+Hemisphere Gold Inc. continues to release information on it recent
+findings of rich gold deposits in the Suriname Gold Belt. This is
+certainly drawing attention as share prices have increased over 115% in
+the last 30 days.
 
-Upon Certification that your file is ok.This Office would Direct you on how to receive your over Due inheritance fund via SWIFT CREDIT CARD.The SWIFT CREDIT CARD would be delivered to you via Courier.
-
-In the light of this aforementioned, You are required to furnish this office with the following information.
-    Your Name.
-    Address.
-    median Name.
-    Your Next of Kin Name and your date of Birth.
-    Your telephone number and fax.
-
-This Informations would be used in opening of an account here .It is from here 
-that the ATM would be used in issuance of The SWIFT CREDITS CARD in your favor 
-with the Credit card Number and all your information inserted into the card. Upon 
-completion of this issuance of the Credit Card,It would be send to you via courier to your residential Address.
-
-Urgently furnish this office with your Contact information in order to reconfirm if it's in line with the one contained in our payment data. Be informed that your fund has been called back and it's now in a suspense Account here in Our Bank.
-A new Account has to be opened in your Name Before The Swift Credit
-Card is issued.
-
-Waiting for an urgent response.
-Yours Faithfully
-Dr.Philip Norman.
-Swift Credit Card Payment System
-Presidential Committee On Foreign Payments
-Foreign Remittance Department
-International Commercial Bank {ICB}
-
-
-
+Hemisphere is planning the release of a large marketing campaign to make
+investors aware of the growing potential of HPGI and the latest results
+of there gold findings during the advanced stages of exploration. it is
+becoming more apparent that early investors will find gold in there
+investment next week as this campaign takes off.
 
 
 -------------------------------------------------------------------------
