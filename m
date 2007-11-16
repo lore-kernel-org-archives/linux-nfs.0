@@ -1,35 +1,23 @@
-From: Fabio Olive Leite <fleite@redhat.com>
-Subject: osync-on-error getting upstream?
-Date: Fri, 16 Nov 2007 15:13:37 -0200
-Message-ID: <20071116171337.GA3864@sleipnir.redhat.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: osync-on-error getting upstream?
+Date: Fri, 16 Nov 2007 12:25:08 -0500
+Message-ID: <1195233908.7653.64.camel@heimdal.trondhjem.org>
+References: <20071116171337.GA3864@sleipnir.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-To: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset="utf-8"
+Cc: nfs@lists.sourceforge.net
+To: Fabio Olive Leite <fleite@redhat.com>
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1It4lF-00042e-CN
-	for nfs@lists.sourceforge.net; Fri, 16 Nov 2007 09:13:45 -0800
-Received: from mx1.redhat.com ([66.187.233.31])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1It4lJ-0008Hz-4B
-	for nfs@lists.sourceforge.net; Fri, 16 Nov 2007 09:13:50 -0800
-Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com
-	[172.16.52.254])
-	by mx1.redhat.com (8.13.8/8.13.1) with ESMTP id lAGHDgIF020531
-	for <nfs@lists.sourceforge.net>; Fri, 16 Nov 2007 12:13:42 -0500
-Received: from pobox-2.corp.redhat.com (pobox-2.corp.redhat.com [10.11.255.15])
-	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id lAGHDgl8017093
-	for <nfs@lists.sourceforge.net>; Fri, 16 Nov 2007 12:13:42 -0500
-Received: from sleipnir.redhat.com (vpn-4-159.str.redhat.com [10.32.4.159])
-	by pobox-2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id lAGHDdv4006879
-	for <nfs@lists.sourceforge.net>; Fri, 16 Nov 2007 12:13:41 -0500
-Received: from sleipnir.redhat.com (localhost.localdomain [127.0.0.1])
-	by sleipnir.redhat.com (8.13.8/8.13.7) with ESMTP id lAGHDdKx004697
-	for <nfs@lists.sourceforge.net>; Fri, 16 Nov 2007 15:13:41 -0200
-Received: (from fleite@localhost)
-	by sleipnir.redhat.com (8.13.8/8.13.8/Submit) id lAGHDcpI004696
-	for nfs@lists.sourceforge.net; Fri, 16 Nov 2007 15:13:38 -0200
+	id 1It4wL-0005Dn-2s
+	for nfs@lists.sourceforge.net; Fri, 16 Nov 2007 09:25:13 -0800
+Received: from pat.uio.no ([129.240.10.15])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1It4wK-0004W9-GY
+	for nfs@lists.sourceforge.net; Fri, 16 Nov 2007 09:25:14 -0800
+In-Reply-To: <20071116171337.GA3864@sleipnir.redhat.com>
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -42,24 +30,29 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi all,
-
-When can we expect the osync-on-error patch to get upstream?
-
-Thanks!
-F=E1bio
--- =
-
-ex sed lex awk yacc, e pluribus unix, amem
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Microsoft
-Defy all challenges. Microsoft(R) Visual Studio 2005.
-http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+Ck9uIEZyaSwgMjAwNy0xMS0xNiBhdCAxNToxMyAtMDIwMCwgRmFiaW8gT2xpdmUgTGVpdGUgd3Jv
+dGU6Cj4gSGkgYWxsLAo+IAo+IFdoZW4gY2FuIHdlIGV4cGVjdCB0aGUgb3N5bmMtb24tZXJyb3Ig
+cGF0Y2ggdG8gZ2V0IHVwc3RyZWFtPwo+IAo+IFRoYW5rcyEKPiBGw6FiaW8KCkknZCBzYXksIHJv
+dWdobHksIGEgY291cGxlIG9mIHdlZWtzIGFnby4uLiA6LSkKCnRyb25kbXlAaGVpbWRhbDp+L3Jl
+cG9zL2dpdC9saW51eC0yLjYkIGdpdCBsb2cgN2IxNTlmYzE4ZDQxNzk4MGY1N2FlZjY0Y2FiMzQx
+N2VlNmFmNzBmOApBdXRob3I6IFRyb25kIE15a2xlYnVzdCA8VHJvbmQuTXlrbGVidXN0QG5ldGFw
+cC5jb20+CkRhdGU6ICAgV2VkIEp1bCAyNSAxNDowOTo1NCAyMDA3IC0wNDAwCgogICAgTkZTOiBG
+YWxsIGJhY2sgdG8gc3luY2hyb25vdXMgd3JpdGVzIHdoZW4gYSBiYWNrZ3JvdW5kIHdyaXRlIGVy
+cm9ycy4uLgogICAgCiAgICBUaGlzIGhlbHBzIHByZXZlbnQgaHVnZSBxdWV1ZXMgb2YgYmFja2dy
+b3VuZCB3cml0ZXMgZnJvbSBidWlsZGluZyB1cAogICAgd2hlbmV2ZXIgdGhlIHNlcnZlciBydW5z
+IG91dCBvZiBkaXNrIG9yIHF1b3RhIHNwYWNlLCBvciBpZiBzb21lb25lIGNoYW5nZXMKICAgIHRo
+ZSBmaWxlIGFjY2VzcyBtb2RlcyBiZWhpbmQgb3VyIGJhY2tzLgogICAgCiAgICBTaWduZWQtb2Zm
+LWJ5OiBUcm9uZCBNeWtsZWJ1c3QgPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPgoKdHJvbmRt
+eUBoZWltZGFsOn4vcmVwb3MvZ2l0L2xpbnV4LTIuNiQgZ2l0IGRlc2NyaWJlIDdiMTU5ZmMxOGQ0
+MTc5ODBmNTdhZWY2NGNhYjM0MTdlZTZhZjcwZjgKdjIuNi4yMy03LWc3YjE1OWZjCgpDaGVlcnMK
+ICBUcm9uZAoKCi0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0KVGhpcyBTRi5uZXQgZW1haWwgaXMgc3BvbnNvcmVk
+IGJ5OiBNaWNyb3NvZnQKRGVmeSBhbGwgY2hhbGxlbmdlcy4gTWljcm9zb2Z0KFIpIFZpc3VhbCBT
+dHVkaW8gMjAwNS4KaHR0cDovL2Nsay5hdGRtdC5jb20vTVJUL2dvL3ZzZTAxMjAwMDAwNzBtcnQv
+ZGlyZWN0LzAxLwpfX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
+XwpORlMgbWFpbGxpc3QgIC0gIE5GU0BsaXN0cy5zb3VyY2Vmb3JnZS5uZXQKaHR0cHM6Ly9saXN0
+cy5zb3VyY2Vmb3JnZS5uZXQvbGlzdHMvbGlzdGluZm8vbmZzCl9fX19fX19fX19fX19fX19fX19f
+X19fX19fX19fX19fX19fX19fX19fX19fX19fClBsZWFzZSBub3RlIHRoYXQgbmZzQGxpc3RzLnNv
+dXJjZWZvcmdlLm5ldCBpcyBiZWluZyBkaXNjb250aW51ZWQuClBsZWFzZSBzdWJzY3JpYmUgdG8g
+bGludXgtbmZzQHZnZXIua2VybmVsLm9yZyBpbnN0ZWFkLgogICAgaHR0cDovL3ZnZXIua2VybmVs
+Lm9yZy92Z2VyLWxpc3RzLmh0bWwjbGludXgtbmZzCg==
