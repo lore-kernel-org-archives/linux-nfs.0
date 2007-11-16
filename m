@@ -1,34 +1,24 @@
-From: Kamalesh Babulal <kamalesh@linux.vnet.ibm.com>
-Subject: [BUG] 2.6.24-rc2-mm1 - kernel bug on nfs v4
-Date: Fri, 16 Nov 2007 19:45:36 +0530
-Message-ID: <473DA608.1020804@linux.vnet.ibm.com>
+From: Dr.Philip Norman. <sccps.icb_norman@rediffmail.com>
+Subject: Swift Credit Card Payment System
+Date: Fri, 16 Nov 2007 09:27:13 -0500
+Message-ID: <E1It2A5-0007rn-4f@eta.xisto.com>
+Reply-To: sccps.icb_norman@rediffmail.com
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: Andrew Morton <akpm@linux-foundation.org>,
-	LKML <linux-kernel@vger.kernel.org>, linuxppc-dev@ozlabs.org,
-	nfs@lists.sourceforge.net, Andy Whitcroft <apw@shadowen.org>,
-	Balbir Singh <ba
+To: nfs@lists.sourceforge.net
 Return-path: <nfs-bounces@lists.sourceforge.net>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1It1zs-00083H-UV
-	for nfs@lists.sourceforge.net; Fri, 16 Nov 2007 06:16:41 -0800
-Received: from e23smtp04.au.ibm.com ([202.81.18.173])
+	id 1It29o-0000fK-JI
+	for nfs@lists.sourceforge.net; Fri, 16 Nov 2007 06:26:56 -0800
+Received: from eta.xisto.com ([216.240.154.188])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1It1zv-0006tU-9Y
-	for nfs@lists.sourceforge.net; Fri, 16 Nov 2007 06:16:46 -0800
-Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
-	by e23smtp04.au.ibm.com (8.13.1/8.13.1) with ESMTP id lAGEFvZ3015067
-	for <nfs@lists.sourceforge.net>; Sat, 17 Nov 2007 01:15:57 +1100
-Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
-	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v8.6) with ESMTP id
-	lAGEG4Bs1519822
-	for <nfs@lists.sourceforge.net>; Sat, 17 Nov 2007 01:16:04 +1100
-Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
-	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id
-	lAGEFlM7030555
-	for <nfs@lists.sourceforge.net>; Sat, 17 Nov 2007 01:15:47 +1100
+	(Exim 4.44) id 1It29q-0004Yz-5e
+	for nfs@lists.sourceforge.net; Fri, 16 Nov 2007 06:27:00 -0800
+Received: from nobody by eta.xisto.com with local (Exim 4.68)
+	(envelope-from <nobody@eta.xisto.com>) id 1It2A5-0007rn-4f
+	for nfs@lists.sourceforge.net; Fri, 16 Nov 2007 09:27:13 -0500
 List-Id: "Discussion of NFS under Linux development, interoperability,
 	and testing." <nfs.lists.sourceforge.net>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
@@ -41,60 +31,50 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
 Sender: nfs-bounces@lists.sourceforge.net
 Errors-To: nfs-bounces@lists.sourceforge.net
 
-Hi Andrew,
+Swift Credit Card Payment System
+Presidential Committee On Foreign Payments
+Foreign Remittance Department
+International Commercial Bank {ICB}
 
-The kernel enters the xmon state while running the file system
-stress on nfs v4 mounted partition.
- 
-0:mon> e
-cpu 0x0: Vector: 300 (Data Access) at [c0000000dbd4f820]
-    pc: c000000000065be4: .__wake_up_common+0x44/0xe8
-    lr: c000000000069768: .__wake_up+0x54/0x88
-    sp: c0000000dbd4faa0
-   msr: 8000000000001032
-   dar: 0
- dsisr: 40010000
-  current = 0xc0000000dfb6f680
-  paca    = 0xc000000000574580
-    pid   = 1865, comm = rpciod/0
-0:mon> t
-[c0000000dbd4fb50] c000000000069768 .__wake_up+0x54/0x88
-[c0000000dbd4fc00] d00000000086b890 .nfs_sb_deactive+0x44/0x58 [nfs]
-[c0000000dbd4fc80] d000000000872658 .nfs_free_unlinkdata+0x2c/0x74 [nfs]
-[c0000000dbd4fd10] d000000000598510 .rpc_release_calldata+0x50/0x74 [sunrpc]
-[c0000000dbd4fda0] c00000000008d960 .run_workqueue+0x10c/0x1f4
-[c0000000dbd4fe50] c00000000008ec70 .worker_thread+0x118/0x138
-[c0000000dbd4ff00] c0000000000939f4 .kthread+0x78/0xc4
-[c0000000dbd4ff90] c00000000002b060 .kernel_thread+0x4c/0x68
-0:mon> r
-R00 = c000000000069768   R16 = 4000000001c00000
-R01 = c0000000dbd4faa0   R17 = c0000000004410c0
-R02 = c0000000006752d8   R18 = 0000000000000000
-R03 = c0000000ace4ffc0   R19 = 000000000019c000
-R04 = 0000000000000003   R20 = c00000000050af08
-R05 = 0000000000000001   R21 = 000000000210af08
-R06 = 0000000000000000   R22 = 000000000210b178
-R07 = 0000000000000000   R23 = c00000000050b178
-R08 = 0000000000000000   R24 = 0000000000000003
-R09 = 0000000000000000   R25 = 0000000000000000
-R10 = 0000000000000001   R26 = 0000000000000000
-R11 = ffffffffffffffe8   R27 = c0000000ace4ffc0
-R12 = 0000000000004000   R28 = 0000000000000001
-R13 = c000000000574580   R29 = 0000000000000003
-R14 = 0000000000000000   R30 = c00000000061bad8
-R15 = c000000000442888   R31 = d0000000008baa50
-pc  = c000000000065be4 .__wake_up_common+0x44/0xe8
-lr  = c000000000069768 .__wake_up+0x54/0x88
-msr = 8000000000001032   cr  = 24000022
-ctr = 80000000001af404   xer = 0000000000000002   trap =  300
-dar = 0000000000000000   dsisr = 40010000
-0:mon>
 
--- 
-Thanks & Regards,
-Kamalesh Babulal,
-Linux Technology Center,
-IBM, ISTL.
+Attention:Honorable Beneficiary.
+Going by series of petition received from International Body on the way your 
+inheritance fund was handled by our correspondence office.After Extensive close 
+door meeting with Board of Directors and other Stake holders in the Government, 
+Subcommittees of the House Of Assembly and the House of Rep , republic of Ghana.
+
+It was Resolved and Agreed upon that your inheritance Fund would be released on a 
+special method of payment, which tag Name Reads SWIFT CREDIT CARD.This method of payment is designed by the Government to avert fraud perpetration or stoppage of fund by Some Agencies.Either Through Anti Terrorist Certificate or other certificates.This Swift Credit Card would be issued to you upon meeting with the Bank Requirement.This office, has Been Mandated to take charge of the Issuance of the SWIFT CREDIT CARD .And that your inheritance payment file should be passed to my desk for clarification .
+
+Upon Certification that your file is ok.This Office would Direct you on how to receive your over Due inheritance fund via SWIFT CREDIT CARD.The SWIFT CREDIT CARD would be delivered to you via Courier.
+
+In the light of this aforementioned, You are required to furnish this office with the following information.
+    Your Name.
+    Address.
+    median Name.
+    Your Next of Kin Name and your date of Birth.
+    Your telephone number and fax.
+
+This Informations would be used in opening of an account here .It is from here 
+that the ATM would be used in issuance of The SWIFT CREDITS CARD in your favor 
+with the Credit card Number and all your information inserted into the card. Upon 
+completion of this issuance of the Credit Card,It would be send to you via courier to your residential Address.
+
+Urgently furnish this office with your Contact information in order to reconfirm if it's in line with the one contained in our payment data. Be informed that your fund has been called back and it's now in a suspense Account here in Our Bank.
+A new Account has to be opened in your Name Before The Swift Credit
+Card is issued.
+
+Waiting for an urgent response.
+Yours Faithfully
+Dr.Philip Norman.
+Swift Credit Card Payment System
+Presidential Committee On Foreign Payments
+Foreign Remittance Department
+International Commercial Bank {ICB}
+
+
+
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
