@@ -1,66 +1,47 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [NFS] Cache flushing
-Date: Sat, 17 Nov 2007 15:41:02 -0500
-Message-ID: <1195332062.6999.20.camel@localhost.localdomain>
-References: <1195258291.6039.189.camel@hurina>
-	<1195328785.6999.5.camel@localhost.localdomain>
-	<600549E3-82CF-44EB-8394-E57A3BB41118@iki.fi>
+From: Ingo Molnar <mingo@elte.hu>
+Subject: Re: [NFS] [BUG] 2.6.24-rc2-mm1 - kernel bug on nfs v4
+Date: Sat, 17 Nov 2007 19:09:46 +0100
+Message-ID: <20071117180946.GA14055__2723.12460369921$1195332536$gmane$org@elte.hu>
+References: <473DA608.1020804@linux.vnet.ibm.com>
+	<64bb37e0711170953p67d1be49lf4eaa190d662e2b4@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Timo Sirainen <tss@iki.fi>
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	Peter Zijlstra <a.p.zijlstra@chello.nl>,
+	LKML <linux-kernel@vger.kernel.org>,
+	Kamalesh Babulal <kamalesh@linux.vnet.ibm.com>,
+	linuxppc-dev-mnsaURCQ41sdnm+yROfE0A@public.gmane.org, nfs@lists.sourceforge.net,
+	Andy Whitcroft <apw-26w3C0LaAnFg9hUCZPvPmw@public.gmane.org>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Jan Blunck <jblunck@suse.de>,
+	Balbir Singh <balbir@linux.vnet.ibm.com>
+To: Torsten Kaiser <just.for.lkml@googlemail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1ItUTS-0000cU-1L
-	for nfs@lists.sourceforge.net; Sat, 17 Nov 2007 12:41:06 -0800
-Received: from pat.uio.no ([129.240.10.15])
+	id 1ItS7R-0003I6-Ry
+	for nfs@lists.sourceforge.net; Sat, 17 Nov 2007 10:10:13 -0800
+Received: from mx3.mail.elte.hu ([157.181.1.138])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1ItUTW-0004QK-9Y
-	for nfs@lists.sourceforge.net; Sat, 17 Nov 2007 12:41:12 -0800
-In-Reply-To: <600549E3-82CF-44EB-8394-E57A3BB41118@iki.fi>
+	(Exim 4.44) id 1ItS7V-0000Og-8Q
+	for nfs@lists.sourceforge.net; Sat, 17 Nov 2007 10:10:19 -0800
+In-Reply-To: <64bb37e0711170953p67d1be49lf4eaa190d662e2b4-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <nfs.lists.sourceforge.net>
 
 
-On Sat, 2007-11-17 at 22:12 +0200, Timo Sirainen wrote:
-> On 17.11.2007, at 21.46, Trond Myklebust wrote:
-> > Why is this needed?
-> 
-> Do you mean why is flushing attribute cache needed, or why is this  
-> particular way to flush it needed?
-> 
-> I need to be able to find out if a file has changed, so I need to get  
-> its attribute cache flushed. fchown()ing to -1, -1 would work safely  
-> in all situations because it's guaranteed not to change the file in  
-> any way.
+* Torsten Kaiser <just.for.lkml@googlemail.com> wrote:
 
-Why can't you simply close(), and then re-open() the file? That is _the_
-standard way to force an attribute cache revalidation on all NFS
-versions. The close-to-open caching model, which is implemented on most
-NFS clients guarantees this.
+> Sadly lockdep does not work for me, as it gets turned off early:
+> [   39.851594] ---------------------------------
+> [   39.855963] inconsistent {softirq-on-W} -> {in-softirq-W} usage.
+> [   39.861981] swapper/0 [HC0[0]:SC1[1]:HE0:SE0] takes:
+> [   39.866963]  (&n->list_lock){-+..}, at: [<ffffffff802935c1>]
 
-> Also O_DIRECT is a bit too much for my use case. I do want the file  
-> to be cached for the most part, but there are times occationally when  
-> parts of it can be overwritten, and I need to make sure that in those  
-> situations the newest data is read.
-> 
-> If you want a wider description of what I'm trying to do: I'm  
-> developing Dovecot IMAP server. A lot of people store mails on NFS  
-> and want to have multiple IMAP servers be able to access the mails.  
-> Dovecot uses somewhat complex index files to speed up accessing the  
-> mailboxes, and it's mainly for these index files that I need this  
-> explicit control over caching. If two servers are accessing the same  
-> mailbox at the same time, the index files get easily corrupted if I  
-> can't control the caching.
+hey, that means it found a bug - which is not sad at all :-)
 
-So how are you ensuring that both servers don't try writing to the same
-locations? You must have some form of synchronisation scheme for this to
-work.
-
-Trond
-
+	Ingo
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
