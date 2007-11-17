@@ -1,73 +1,78 @@
-From: "Torsten Kaiser" <just.for.lkml@googlemail.com>
-Subject: Re: [NFS] [BUG] 2.6.24-rc2-mm1 - kernel bug on nfs v4
-Date: Sat, 17 Nov 2007 20:18:49 +0100
-Message-ID: <64bb37e0711171118t73a7c619p1117a5b150f369b7__36412.4718624682$1195327174$gmane$org@mail.gmail.com>
-References: <473DA608.1020804@linux.vnet.ibm.com>
-	<64bb37e0711170953p67d1be49lf4eaa190d662e2b4@mail.gmail.com>
-	<1195325920.7484.1.camel@localhost.localdomain>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [NFS] Cache flushing
+Date: Sat, 17 Nov 2007 14:46:25 -0500
+Message-ID: <1195328785.6999.5.camel@localhost.localdomain>
+References: <1195258291.6039.189.camel@hurina>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: LKML <linux-kernel@vger.kernel.org>,
-	Kamalesh Babulal <kamalesh@linux.vnet.ibm.com>,
-	linuxppc-dev-mnsaURCQ41sdnm+yROfE0A@public.gmane.org, nfs@lists.sourceforge.net,
-	Andy Whitcroft <apw-26w3C0LaAnFg9hUCZPvPmw@public.gmane.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Jan Blunck <jblunck@suse.de>,
-	Balbir Singh <balbir@linux.vnet.ibm.com>
-To: "Trond Myklebust" <trond.myklebust@fys.uio.no>
+Cc: nfs@lists.sourceforge.net
+To: Timo Sirainen <tss@iki.fi>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1ItTBq-0001Gf-DM
-	for nfs@lists.sourceforge.net; Sat, 17 Nov 2007 11:18:50 -0800
-Received: from py-out-1112.google.com ([64.233.166.182])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1ItTBv-0002Pb-48
-	for nfs@lists.sourceforge.net; Sat, 17 Nov 2007 11:18:56 -0800
-Received: by py-out-1112.google.com with SMTP id a25so1946027pyi
-	for <nfs@lists.sourceforge.net>; Sat, 17 Nov 2007 11:18:50 -0800 (PST)
-In-Reply-To: <1195325920.7484.1.camel-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
+	id 1ItTcf-0003sa-Sp
+	for nfs@lists.sourceforge.net; Sat, 17 Nov 2007 11:46:36 -0800
+Received: from pat.uio.no ([129.240.10.15])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1ItTcl-0003jN-Ba
+	for nfs@lists.sourceforge.net; Sat, 17 Nov 2007 11:46:39 -0800
+In-Reply-To: <1195258291.6039.189.camel@hurina>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <nfs.lists.sourceforge.net>
 
-On Nov 17, 2007 7:58 PM, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
->
-> On Sat, 2007-11-17 at 18:53 +0100, Torsten Kaiser wrote:
-> > On Nov 16, 2007 3:15 PM, Kamalesh Babulal <kamalesh@linux.vnet.ibm.com> wrote:
-> > > Hi Andrew,
-> > >
-> > > The kernel enters the xmon state while running the file system
-> > > stress on nfs v4 mounted partition.
-> > [snip]
-> > > 0:mon> t
-> > > [c0000000dbd4fb50] c000000000069768 .__wake_up+0x54/0x88
-> > > [c0000000dbd4fc00] d00000000086b890 .nfs_sb_deactive+0x44/0x58 [nfs]
-> > > [c0000000dbd4fc80] d000000000872658 .nfs_free_unlinkdata+0x2c/0x74 [nfs]
-> > > [c0000000dbd4fd10] d000000000598510 .rpc_release_calldata+0x50/0x74 [sunrpc]
-> > > [c0000000dbd4fda0] c00000000008d960 .run_workqueue+0x10c/0x1f4
-> > > [c0000000dbd4fe50] c00000000008ec70 .worker_thread+0x118/0x138
-> > > [c0000000dbd4ff00] c0000000000939f4 .kthread+0x78/0xc4
-> > > [c0000000dbd4ff90] c00000000002b060 .kernel_thread+0x4c/0x68
->
-> Could you try with the attached patch.
-[snip]
-> Fix is to move the call to nfs_sb_deactive() into
-> nfs_async_unlink_release().
 
-I realley doubt that will fix it.
+On Sat, 2007-11-17 at 02:11 +0200, Timo Sirainen wrote:
+> Solaris and BSDs support flushing attribute cache safely using
+> fchown(fd, (uid_t)-1, (gid_t)-1). Could Linux be changed to support this
+> as well? If I'm looking at the sources right, this might work
+> (completely untested):
+> 
+> --- inode.c.old 2007-11-16 22:18:46.000000000 +0200
+> +++ inode.c     2007-11-16 22:19:44.000000000 +0200
+> @@ -322,6 +322,7 @@
+>  nfs_setattr(struct dentry *dentry, struct iattr *attr)
+>  {
+>         struct inode *inode = dentry->d_inode;
+> +       struct nfs_inode *nfsi = NFS_I(inode);
+>         struct nfs_fattr fattr;
+>         int error;
+>  
+> @@ -334,8 +335,10 @@
+>  
+>         /* Optimization: if the end result is no change, don't RPC */
+>         attr->ia_valid &= NFS_VALID_ATTRS;
+> -       if (attr->ia_valid == 0)
+> +       if (attr->ia_valid == 0) {
+> +               nfsi->cache_validity |= NFS_INO_INVALID_ATTR;
+>                 return 0;
+> +       }
+>  
+>         lock_kernel();
+>         nfs_begin_data_update(inode);
 
-My stacktrace was like:
-run_workqueue
-called: rpc_async_schedule
-  that called: rpc_release_calldata
-    which points to: nfs_async_unlink_release
-       that called: nfs_free_unlinkdata
+Why is this needed?
 
-So it does not matter for me if nfs_sb_deactive is called one step earlier.
+> Another problem I have is that it's difficult to get a file's data cache
+> flushed. The only way I found was to successfully fcntl() lock the file.
+> This is pretty bad from performance point of view since often I don't
+> want/need to lock the file.
+> 
+> Solaris and BSDs invalidate also a file's data cache when its attribute
+> cache is invalidated. It would be nicer if there was a separate way, but
+> I'd settle for fchown(fd, (uid_t)-1, (gid_t)-1) invalidating data cache
+> as well.
+> 
+> Actually I did also look at posix_fadvise(fd, 0, 0,
+> POSIX_FADVN_DONTNEED). It appears to work, but I'm a bit worried about
+> race conditions that causes pages to randomly not get dropped because
+> invalidate_mapping_pages() doesn't drop locked pages.
 
-Currently building with SLAB instead SLUB to see if lockdep tells something...
+Again, why do you need this level of data cache invalidation? If you
+don't want cached i/o, then use O_DIRECT.
 
-Torsten
+Trond
+
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
