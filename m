@@ -1,74 +1,61 @@
-From: "Torsten Kaiser" <just.for.lkml@googlemail.com>
-Subject: Re: [NFS] [BUG] 2.6.24-rc2-mm1 - kernel bug on nfs v4
-Date: Sat, 17 Nov 2007 21:10:44 +0100
-Message-ID: <64bb37e0711171210x40dd500ap31e4ea4f8535349d__36553.2147036449$1195332542$gmane$org@mail.gmail.com>
-References: <473DA608.1020804@linux.vnet.ibm.com>
-	<64bb37e0711170953p67d1be49lf4eaa190d662e2b4@mail.gmail.com>
-	<20071117100507.912c5e5c.akpm@linux-foundation.org>
-	<Pine.LNX.4.64.0711171128530.7986@schroedinger.engr.sgi.com>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [NFS] [ADMIN] Please transfer your
+	subscription	from	nfs@lists.sourceforge.net to
+	linux-nfs@vger.kernel.org
+Date: Sun, 18 Nov 2007 07:52:23 +1100
+Message-ID: <18239.21639.421617.773022@notabene.brown>
+References: <18237.9398.845711.226261@notabene.brown>
+	<20071116173329.GA3699@uio.no>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	LKML <linux-kernel@vger.kernel.org>,
-	Kamalesh Babulal <kamalesh@linux.vnet.ibm.com>,
-	linuxppc-dev-mnsaURCQ41sdnm+yROfE0A@public.gmane.org, nfs@lists.sourceforge.net,
-	Andy Whitcroft <apw-26w3C0LaAnFg9hUCZPvPmw@public.gmane.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Jan Blunck <jblunck@suse.de>,
-	Balbir Singh <balbir@linux.vnet.ibm.com>
-To: "Christoph Lameter" <clameter@sgi.com>
+Cc: nfs@lists.sourceforge.net
+To: "Steinar H. Gunderson" <sgunderson-jG/AHqQBv7lBDgjK7y7TUQ@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1ItU0O-00069g-N0
-	for nfs@lists.sourceforge.net; Sat, 17 Nov 2007 12:11:05 -0800
-Received: from py-out-1112.google.com ([64.233.166.183])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1ItU0U-00048a-FH
-	for nfs@lists.sourceforge.net; Sat, 17 Nov 2007 12:11:10 -0800
-Received: by py-out-1112.google.com with SMTP id a25so1965950pyi
-	for <nfs@lists.sourceforge.net>; Sat, 17 Nov 2007 12:10:48 -0800 (PST)
-In-Reply-To: <Pine.LNX.4.64.0711171128530.7986-RYO/mD75kfhx2SFC9UQUAuF7EQX82lMiAL8bYrjMMd8@public.gmane.org>
+	id 1ItUeV-0001eP-GR
+	for nfs@lists.sourceforge.net; Sat, 17 Nov 2007 12:52:34 -0800
+Received: from mx2.suse.de ([195.135.220.15])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1ItUeb-0007VK-60
+	for nfs@lists.sourceforge.net; Sat, 17 Nov 2007 12:52:37 -0800
+In-Reply-To: message from Steinar H. Gunderson on Friday November 16
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <nfs.lists.sourceforge.net>
 
-On Nov 17, 2007 8:33 PM, Christoph Lameter <clameter@sgi.com> wrote:
-> On Sat, 17 Nov 2007, Andrew Morton wrote:
->
-> > That's slub.  It appears that list_lock is being taken from process context
-> > in one place and from softirq in another.
->
-> I kicked out some weird interrupt disable code in mm that was only run during
-> NUMA bootstrap.
+On Friday November 16, sgunderson-jG/AHqQBv7lBDgjK7y7TUQ@public.gmane.org wrote:
+> On Fri, Nov 16, 2007 at 04:03:50PM +1100, Neil Brown wrote:
+> >   1/ subscribe to linux-nfs@vger.kernel.org
+> > 
+> >     See linux-nfs@vger.kernel.org  for details
+> 
+> Perhaps there should be an URL here instead?
+> 
 
-I'm using NUMA (Opteron), so this indeed fixes it.
+Did I do that?  How lame.
 
-A kernel complied with SLUB now outputs the same message as the SLAB
-one, that lockdep annotations are needed at the place where nfs hangs.
+I meant
+   http://vger.kernel.org/vger-lists.html#linux-nfs
+   
+though that isn't terribly helpful.
 
-> This should fix it but isnt there some mechanism to convince lockdep that
-> it is okay to do these things during bootstrap?
->
-> ---
->  mm/slub.c |    2 ++
->  1 file changed, 2 insertions(+)
->
-> Index: linux-2.6/mm/slub.c
-> ===================================================================
-> --- linux-2.6.orig/mm/slub.c    2007-11-17 11:31:21.044136631 -0800
-> +++ linux-2.6/mm/slub.c 2007-11-17 11:32:17.364386560 -0800
-> @@ -2044,7 +2044,9 @@ static struct kmem_cache_node *early_kme
->  #endif
->         init_kmem_cache_node(n);
->         atomic_long_inc(&n->nr_slabs);
-> +       local_irq_disable();
->         add_partial(kmalloc_caches, page, 0);
-> +       local_irq_enable();
->         return n;
->  }
->
->
->
+For anyone who isn't sure how to subscribe:
+
+  To subscribe to linux-nfs@vger.kernel.org, send mail
+  to
+         majordomo@vger.kernel.org
+  with the line
+         subscribe linux-nfs
+  in the body of the mail message.
+
+  You will get a reply.  Read it carefully and do what is says.
+
+Thanks
+NeilBrown
+
+linux-nfs@vger:  44
+nfs@sourceforge:612
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
