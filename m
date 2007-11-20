@@ -1,11 +1,13 @@
 From: Greg Kroah-Hartman <gregkh@suse.de>
-Subject: [NFS] [patch 08/29] nfsd4: recheck for secure ports in fh_verify
-Date: Tue, 20 Nov 2007 10:23:26 -0800
-Message-ID: <20071120182326.GI28611__39677.769286982$1195592404$gmane$org@kroah.com>
+Subject: [NFS] [patch 07/29] knfsd: fix spurious EINVAL errors on first
+	access of	new filesystem
+Date: Tue, 20 Nov 2007 10:23:23 -0800
+Message-ID: <20071120182323.GH28611__12811.639373149$1195592413$gmane$org@kroah.com>
 References: <20071120181733.702234406@mini.kroah.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, Theodore Ts'o <tytso@mit.edu>,
+Cc: nfs@lists.sourceforge.net, Roland <devzero-S0/GAf8tV78@public.gmane.org>,
+	Theodore Ts'o <tytso@mit.edu>,
 	Zwane Mwaikambo <zwane@arm.linux.org.uk>,
 	Neil Brown <neilb@suse.de>,
 	"J. Bruce Fields" <bfields@citi.umich.edu>,
@@ -17,19 +19,20 @@ Cc: nfs@lists.sourceforge.net, Theodore Ts'o <tytso@mit.edu>,
 	Chuck Ebbert <cebbert@redhat.com>,
 	Dave Jones <davej@redhat.com>,
 	Chuck Wolber <chuckw-lrwSPXAIdEw7YuNMryXyOw@public.gmane.org>,
-	akpm@linux-foundation.org, alan@lxorguk.ukuu.org.uk
+	akpm@linux-foundation.org, alan@lxorguk.ukuu.org.uk,
+	Andreas Gruenbacher <agruen@suse.de>
 To: linux-kernel@vger.kernel.org, stable@kernel.org,
 	Linus Torvalds <torvalds@linux-foundation.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IuXnx-0005aB-Qa
-	for nfs@lists.sourceforge.net; Tue, 20 Nov 2007 10:26:37 -0800
+	id 1IuXnv-0005Zq-8e
+	for nfs@lists.sourceforge.net; Tue, 20 Nov 2007 10:26:35 -0800
 Received: from pentafluge.infradead.org ([213.146.154.40])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IuXo3-0005sO-7Z
-	for nfs@lists.sourceforge.net; Tue, 20 Nov 2007 10:26:44 -0800
+	(Exim 4.44) id 1IuXo0-0005r8-Mf
+	for nfs@lists.sourceforge.net; Tue, 20 Nov 2007 10:26:41 -0800
 In-Reply-To: <20071120182248.GA28611@kroah.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <nfs.lists.sourceforge.net>
@@ -40,107 +43,50 @@ know.
 ------------------
 From: J. Bruce Fields <bfields@citi.umich.edu>
 
-patch 6fa02839bf9412e18e773d04e96182b4cd0b5d57 in mainline.
+patch ac8587dcb58e40dd336d99d60f852041e06cc3dd in mainline.
 
-As with
+The v2/v3 acl code in nfsd is translating any return from fh_verify() to
+nfserr_inval.  This is particularly unfortunate in the case of an
+nfserr_dropit return, which is an internal error meant to indicate to
+callers that this request has been deferred and should just be dropped
+pending the results of an upcall to mountd.
 
-	7fc90ec93a5eb71f4b08... "call nfsd_setuser() on fh_compose()..."
+Thanks to Roland <devzero-S0/GAf8tV78@public.gmane.org> for bug report and data collection.
 
-this is a case where we need to redo a security check in fh_verify()
-even though the filehandle already has an associated dentry--if the
-filehandle was created by fh_compose() in an earlier operation of the
-nfsv4 compound, then we may not have done these checks yet.
-
-Without this fix it is possible, for example, to traverse from an export
-without the secure ports requirement to one with it in a single
-compound, and bypass the secure port check on the new export.
-
-While we're here, fix up some minor style problems and change a printk()
-to a dprintk(), to make it harder for random unprivileged users to spam
-the logs.
-
+Cc: Roland <devzero-S0/GAf8tV78@public.gmane.org>
+Acked-by: Andreas Gruenbacher <agruen@suse.de>
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Reviewed-By: NeilBrown <neilb@suse.de>
 Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
 Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 
 ---
- fs/nfsd/nfsfh.c |   43 ++++++++++++++++++++++++++-----------------
- 1 file changed, 26 insertions(+), 17 deletions(-)
+ fs/nfsd/nfs2acl.c |    2 +-
+ fs/nfsd/nfs3acl.c |    2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
---- a/fs/nfsd/nfsfh.c
-+++ b/fs/nfsd/nfsfh.c
-@@ -95,6 +95,22 @@ nfsd_mode_check(struct svc_rqst *rqstp, 
- 	return 0;
- }
+--- a/fs/nfsd/nfs2acl.c
++++ b/fs/nfsd/nfs2acl.c
+@@ -41,7 +41,7 @@ static __be32 nfsacld_proc_getacl(struct
  
-+static __be32 nfsd_setuser_and_check_port(struct svc_rqst *rqstp,
-+					  struct svc_export *exp)
-+{
-+	/* Check if the request originated from a secure port. */
-+	if (!rqstp->rq_secure && EX_SECURE(exp)) {
-+		char buf[RPC_MAX_ADDRBUFLEN];
-+		dprintk(KERN_WARNING
-+		       "nfsd: request from insecure port %s!\n",
-+		       svc_print_addr(rqstp, buf, sizeof(buf)));
-+		return nfserr_perm;
-+	}
-+
-+	/* Set user creds for this exportpoint */
-+	return nfserrno(nfsd_setuser(rqstp, exp));
-+}
-+
- /*
-  * Perform sanity checks on the dentry in a client's file handle.
-  *
-@@ -167,18 +183,7 @@ fh_verify(struct svc_rqst *rqstp, struct
- 			goto out;
- 		}
+ 	fh = fh_copy(&resp->fh, &argp->fh);
+ 	if ((nfserr = fh_verify(rqstp, &resp->fh, 0, MAY_NOP)))
+-		RETURN_STATUS(nfserr_inval);
++		RETURN_STATUS(nfserr);
  
--		/* Check if the request originated from a secure port. */
--		error = nfserr_perm;
--		if (!rqstp->rq_secure && EX_SECURE(exp)) {
--			char buf[RPC_MAX_ADDRBUFLEN];
--			printk(KERN_WARNING
--			       "nfsd: request from insecure port %s!\n",
--			       svc_print_addr(rqstp, buf, sizeof(buf)));
--			goto out;
--		}
--
--		/* Set user creds for this exportpoint */
--		error = nfserrno(nfsd_setuser(rqstp, exp));
-+		error = nfsd_setuser_and_check_port(rqstp, exp);
- 		if (error)
- 			goto out;
+ 	if (argp->mask & ~(NFS_ACL|NFS_ACLCNT|NFS_DFACL|NFS_DFACLCNT))
+ 		RETURN_STATUS(nfserr_inval);
+--- a/fs/nfsd/nfs3acl.c
++++ b/fs/nfsd/nfs3acl.c
+@@ -37,7 +37,7 @@ static __be32 nfsd3_proc_getacl(struct s
  
-@@ -227,18 +232,22 @@ fh_verify(struct svc_rqst *rqstp, struct
- 		fhp->fh_export = exp;
- 		nfsd_nr_verified++;
- 	} else {
--		/* just rechecking permissions
--		 * (e.g. nfsproc_create calls fh_verify, then nfsd_create does as well)
-+		/*
-+		 * just rechecking permissions
-+		 * (e.g. nfsproc_create calls fh_verify, then nfsd_create
-+		 * does as well)
- 		 */
- 		dprintk("nfsd: fh_verify - just checking\n");
- 		dentry = fhp->fh_dentry;
- 		exp = fhp->fh_export;
--		/* Set user creds for this exportpoint; necessary even
-+		/*
-+		 * Set user creds for this exportpoint; necessary even
- 		 * in the "just checking" case because this may be a
- 		 * filehandle that was created by fh_compose, and that
- 		 * is about to be used in another nfsv4 compound
--		 * operation */
--		error = nfserrno(nfsd_setuser(rqstp, exp));
-+		 * operation.
-+		 */
-+		error = nfsd_setuser_and_check_port(rqstp, exp);
- 		if (error)
- 			goto out;
- 	}
+ 	fh = fh_copy(&resp->fh, &argp->fh);
+ 	if ((nfserr = fh_verify(rqstp, &resp->fh, 0, MAY_NOP)))
+-		RETURN_STATUS(nfserr_inval);
++		RETURN_STATUS(nfserr);
+ 
+ 	if (argp->mask & ~(NFS_ACL|NFS_ACLCNT|NFS_DFACL|NFS_DFACLCNT))
+ 		RETURN_STATUS(nfserr_inval);
 
 -- 
 
