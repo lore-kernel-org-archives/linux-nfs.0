@@ -1,98 +1,94 @@
-From: Wendy Cheng <s_wendy_cheng@hotmail.com>
-Subject: Re: [NFS] NFS Digest, Vol 18, Issue 70 (NFS performance problems)
-Date: Tue, 20 Nov 2007 20:22:37 +0000
-Message-ID: <BAY104-W43766F661E50E7FFCDA8EBA7F0@phx.gbl>
-References: <mailman.194659.1195581701.26582.nfs@lists.sourceforge.net>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [NFS] mm snapshot broken-out-2007-11-20-01-45.tar.gz -- powerpc
+	panic
+Date: Tue, 20 Nov 2007 12:35:59 -0800
+Message-ID: <20071120123559.d970db9e.akpm@linux-foundation.org>
+References: <200711200953.lAK9qxjO030444@imap1.linux-foundation.org>
+	<20071120144659.GC12066@shadowen.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, wcheng@redhat.com
-To: <rps-G7wE2RHCdwNeoWH0uzbU5w@public.gmane.org>
+Cc: Alexey Dobriyan <adobriyan@gmail.com>,
+	"Eric W. Biederman" <ebiederm@xmission.com>,
+	nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org,
+	kamalesh@linux.vnet.ibm.com
+To: Andy Whitcroft <apw-26w3C0LaAnFg9hUCZPvPmw@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IuZcf-0001Ws-2c
-	for nfs@lists.sourceforge.net; Tue, 20 Nov 2007 12:23:05 -0800
-Received: from bay0-omc1-s26.bay0.hotmail.com ([65.54.246.98])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IuZcj-00037N-VS
-	for nfs@lists.sourceforge.net; Tue, 20 Nov 2007 12:23:11 -0800
-In-Reply-To: <mailman.194659.1195581701.26582.nfs@lists.sourceforge.net>
+	id 1IuZvC-0003dK-T0
+	for nfs@lists.sourceforge.net; Tue, 20 Nov 2007 12:42:15 -0800
+Received: from smtp2.linux-foundation.org ([207.189.120.14])
+	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.44) id 1IuZvB-0003RA-Ln
+	for nfs@lists.sourceforge.net; Tue, 20 Nov 2007 12:42:15 -0800
+In-Reply-To: <20071120144659.GC12066-26w3C0LaAnFg9hUCZPvPmw@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <nfs.lists.sourceforge.net>
 
+On Tue, 20 Nov 2007 14:46:59 +0000
+Andy Whitcroft <apw-26w3C0LaAnFg9hUCZPvPmw@public.gmane.org> wrote:
 
+> I have one powerpc machine which managed to compile this snapshot!  It
+> paniced on boot as below, might be nfs so copied them.  General results
+> are popping out on TKO.
+> 
+> -apw
+> 
+> Freeing initrd memory: 1224k freed
+> Installing knfsd (copyright (C) 1996 okir-pn4DOG8n3UYbFoVRYvo4fw@public.gmane.org).
+> Unable to handle kernel paging request for data at address 0x00000050
+> Faulting instruction address: 0xc000000000113b64
+> Oops: Kernel access of bad area, sig: 11 [#1]
+> SMP NR_CPUS=32 NUMA pSeries
+> Modules linked in:
+> NIP: c000000000113b64 LR: c000000000113b44 CTR: 0000000000000000
+> REGS: C00000077E0679D0 TRAP: 0300   Not tainted  (2.6.24-rc3-mm1-autokern1)
+> MSR: 8000000000009032 <EE,ME,IR,DR>  CR: 24004044  XER: 20000000
+> DAR: 0000000000000050, DSISR: 0000000040000000
+> TASK = C00000077E062000[1] 'swapper' THREAD: C00000077E064000 CPU: 0
+> GPR00: 0000000000000000 c00000077e067c50 c0000000006c5650 0000000000000001 
+> GPR04: c00000077e625bdc 0000000000000005 c000000000501ad4 c000000000731d18 
+> GPR08: 0000000000000000 0000000000000000 c00000077e625b40 0000000000000001 
+> GPR12: 0000000024004044 c0000000005fd000 0000000000000000 0000000000000000 
+> GPR16: 0000000000000000 0000000000000000 0000000000000000 0000000000000000 
+> GPR20: 4000000003a00000 0000000004300000 0000000003fb94a8 0000000000132000 
+> GPR24: 0000000003fb9718 0000000000000000 c0000000005b6e70 0000000000000000 
+> GPR28: 0000000000000005 c00000077e625b40 c000000000652e48 c00000077e625c50 
+> NIP [c000000000113b64] .remove_proc_entry+0xac/0x234
+> LR [c000000000113b44] .remove_proc_entry+0x8c/0x234
+> Call Trace:
+> [c00000077e067c50] [c000000000113b44] .remove_proc_entry+0x8c/0x234 (unreliable)
+> [c00000077e067d10] [c00000000048bf28] .cache_unregister+0x108/0x1b4
+> [c00000077e067d90] [c0000000001ca988] .nfsd_export_shutdown+0x50/0xa4
+> [c00000077e067e10] [c0000000005a712c] .init_nfsd+0x108/0x13c
+> [c00000077e067ea0] [c000000000582438] .kernel_init+0x224/0x3fc
+> [c00000077e067f90] [c000000000026204] .kernel_thread+0x4c/0x68
+> Instruction dump:
+> e8bf0000 e8810090 7f83e378 4bfffd25 2f830000 419e0018 ebbf0000 e81d0050 
+> f81f0000 38000000 f81d0050 e93f0000 <e8090050> 3be90050 2fa00000 409effc4 
+> Kernel panic - not syncing: Attempted to kill init!
 
-> 
-> top - 15:50:56 up 20 days,  1:33,  9 users,  load average: 3.42, 2.95, 2.38
-> 
-> 19200 geo0501   15   0 75076 5224 3480 S    2  0.1   0:07.94 smbd               
->  2336 root      10  -5     0    0    0 S    1  0.0  57:07.70 kjournald          
->  2334 root      10  -5     0    0    0 S    1  0.0  33:19.89 kjournald          
->  2279 root      10  -5     0    0    0 S    0  0.0  15:10.98 md0_raid1          
->  2283 root      10  -5     0    0    0 S    0  0.0  24:45.79 md1_raid1          
->  3935 root      15   0     0    0    0 S    0  0.0  14:04.25 nfsd               
->  3943 root      15   0     0    0    0 S    0  0.0  14:18.43 nfsd               
->  3947 root      15   0     0    0    0 S    0  0.0  13:57.06 nfsd               
->  8325 ed0127    15   0 75044 4812 3264 S    0  0.1   0:01.29 smbd            
+Various people have been mucking with procfs core:
 
-Intuitively (based on ext3's journal threads info above) I would suspect this is due to the change of the export default option from "async" to "sync" between 2.6.9 and 2.6.18 kernels.  So go to your /etc/exports file and explicitly set the export option to "async" to see whether you can get the performance back.
+proc-remove-module_license.patch
+proc-less-lock-operations-during-lookup.patch
+proc-simplify-function-prototypes.patch
+proc-remove-useless-check-on-symlink-removal.patch
+proc-remove-useless-checks-in-proc_register.patch
+proc-detect-duplicate-names-on-registration.patch
+proc-detect-duplicate-names-on-registration-fix.patch
+proc-simplify-remove_proc_entry-wrt-locking.patch
+proc-simplify-remove_proc_entry-wrt-locking-checkpatch-fixes.patch
+proc-implement-proc_single_file_operations.patch
+proc-rewrite-do_task_stat-to-correctly-handle-pid-namespaces.patch
+proc-seqfile-convert-proc_pid_statm.patch
+proc-proper-pidns-handling-for-proc-self.patch
 
-e.g. changes "/server *(rw)" to "/server *(async, rw)".
+And I had to skip a couple of patches due to conflicts.
 
--- Wendy
+I'll see if it happens on any of my test machines.
 
-
-> 
-> This server  was installed with Suse 9.1 (linux 2.6.4-52, nfs-utils-1.0.6-103)
-> and worked well for a couple of years.
-> Then I had to upgrade it (since 9.1 was no longer being updated) and I
-> installed 10.1 (linux 2.6.18.8-0.7, nfs-utils-1.0.10-22).
-> 
-> This upgrade caused some serious performance problem (I suspect related
-> to locks).  The most obvious problem is that it can take a long time
-> for a KDE user to login (5 minutes or more !), when a number of users
-> login at the same time (e.g. a classroom with 16 students). KDE seems
-> to spend that time writing and rewriting files in ~/.kde/share/ .
-> 
-> I know that the problem is related to the change of version, because
-> I could boot the old system (it is still installed in another partition)
-> and than it worked well again. Samba doesn't seem to be affected, since
-> the windows users don't complain.
-> 
-> I tried to ask on the suse mailing list and newsgroup if someone else
-> had the same problem, or if someone had a similar setup working well,
-> but I didn't get any useful answer. 
-> 
-> 
-> I don't know what to do about this. Things I thought of trying:
-> 
->  - install 10.2 (from scratch)
-> 
-> I did this, and not only it did not solve the problem, but also, now 
-> I can't boot the 9.1 version, because fsck complains that the file
-> systems are using features that it doesn't understand.
-> 
->  - downgrade to 10.0
-> 
->  - downgrade to 9.3 or 9.1 (but since these are no longer being updated,
->    I have to put the server in a private network, close ssh, etc. and
->    even then it is somewhat dangerous.)
-> 
-> 
-> I also installed another PC with all these versions and I tried to
-> check which versions have problems. But the tests I did with this
-> computer were not conclusive. Maybe because it is not the same
-> hardware (32-bit version) or because I can't duplicate the same load.
-> 
->  
-> 
-> Thanks in advance for any suggestions
-> 
-> -- 
-> rps
-> 
-> 
-> 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
 Defy all challenges. Microsoft(R) Visual Studio 2005.
