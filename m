@@ -1,23 +1,23 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: "david m. richter" <richterd@citi.umich.edu>
 Subject: Re: Files getting out of sync between client/server
-Date: Tue, 20 Nov 2007 16:45:49 -0500
-Message-ID: <1195595149.7234.48.camel@heimdal.trondhjem.org>
+Date: Tue, 20 Nov 2007 16:25:48 -0500 (EST)
+Message-ID: <Pine.BSO.4.64.0711201620090.28050@citi.umich.edu>
 References: <d29a314c0711201313u4e986db3j27b3da95df2bd718@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Cc: linux-nfs@vger.kernel.org
 To: Stefanovich <sklopp@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from pat.uio.no ([129.240.10.15]:47041 "EHLO pat.uio.no"
+Received: from citi.umich.edu ([141.211.133.111]:1992 "EHLO citi.umich.edu"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752824AbXKTVpN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 Nov 2007 16:45:13 -0500
+	id S1758514AbXKTVvs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 Nov 2007 16:51:48 -0500
 In-Reply-To: <d29a314c0711201313u4e986db3j27b3da95df2bd718-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Tue, 20 Nov 2007, Stefanovich wrote:
 
-On Tue, 2007-11-20 at 13:13 -0800, Stefanovich wrote:
 > Hi,
 > 
 > I have a problem that when uploading files to our NFS server. The
@@ -31,11 +31,15 @@ On Tue, 2007-11-20 at 13:13 -0800, Stefanovich wrote:
 > why this might be happening, and any idea on a fix or what I am doing
 > wrong?
 
-Does the new file keep the same inode number as the previous one? If so,
-then the problem is likely to be because you are keeping the file open
-while the other client is writing to it. That is forbidden in the
-close-to-open cache consistency model that most NFS clients implement.
+	the client usually caches data for about 30 seconds, IIRC, so one 
+would expect the potential for some sort of window, but unmounting and 
+remounting should invalidate all of the client's caches.  what happens if 
+the client waits for "a while" -- can you see the data then?  and what 
+happens if the client touches the file and then rereads it, maybe (lame, i 
+know)?  but, regardless, i don't understand the unmount/remount thing at 
+all.
 
-Cheers
-  Trond
+	what kernel version(s) are you using?
 
+	d
+	.
