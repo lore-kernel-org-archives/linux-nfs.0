@@ -1,36 +1,39 @@
-From: David Miller <davem@davemloft.net>
-Subject: Re: [NFS] [PATCH 56/59] net/sunrpc: Add missing "space"
-Date: Mon, 19 Nov 2007 23:49:10 -0800 (PST)
-Message-ID: <20071119.234910.162277715.davem__45141.2515053109$1195545251$gmane$org@davemloft.net>
-References: <1195523627-15389-13-git-send-email-joe@perches.com>
-	<ee1678e1bc8b80b7ae420059fffc7241486ea91a.1195454434.git.joe@perches.com>
-	<1195523627-15389-14-git-send-email-joe@perches.com>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [NFS] rpc.statd
+Date: Tue, 20 Nov 2007 05:39:29 -0500
+Message-ID: <20071120053929.6099a595@tleilax.poochiereds.net>
+References: <1b378070711191506o14ce99feo37c2a75bfdc4e47e@mail.gmail.com>
+	<20071119202308.3f2430ec@tleilax.poochiereds.net>
+	<1b378070711191806v55fb915fnb2949a8aca03c52@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: neilb@suse.de, netdev@vger.kernel.org,
-	linux-kernel@vger.kernel.org, trond.myklebust@fys.uio.no,
-	bfields@fieldses.org, nfs@lists.sourceforge.net
-To: joe@perches.com
+Cc: nfs@lists.sourceforge.net
+To: "Shiney James" <shineyjames@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IuNqz-0002m4-VB
-	for nfs@lists.sourceforge.net; Mon, 19 Nov 2007 23:50:13 -0800
-Received: from [74.93.104.97] (helo=sunset.davemloft.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IuNr5-0003Y3-RO
-	for nfs@lists.sourceforge.net; Mon, 19 Nov 2007 23:49:12 -0800
-In-Reply-To: <1195523627-15389-14-git-send-email-joe@perches.com>
+	id 1IuQVs-0003Qs-2w
+	for nfs@lists.sourceforge.net; Tue, 20 Nov 2007 02:39:28 -0800
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IuQVx-0007aZ-TY
+	for nfs@lists.sourceforge.net; Tue, 20 Nov 2007 02:39:34 -0800
+In-Reply-To: <1b378070711191806v55fb915fnb2949a8aca03c52-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <nfs.lists.sourceforge.net>
 
-From: Joe Perches <joe@perches.com>
-Date: Mon, 19 Nov 2007 17:53:43 -0800
+On Mon, 19 Nov 2007 18:06:53 -0800
+"Shiney James" <shineyjames@gmail.com> wrote:
 
+> Thanks a lot for the information. I would like to know if there is a
+> way to configure this port?
+> Can a port already specified in /etc/services be used for the purpose?
 > 
-> Signed-off-by: Joe Perches <joe@perches.com>
 
-Applied.
+I don't think so. I think it just uses bindresvport to find the first
+available port that's not designated for a service.
+-- 
+Jeff Layton <jlayton@redhat.com>
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
