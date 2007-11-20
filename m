@@ -1,94 +1,55 @@
-From: Greg Kroah-Hartman <gregkh@suse.de>
-Subject: [NFS] [patch 07/29] knfsd: fix spurious EINVAL errors on first
-	access of	new filesystem
-Date: Tue, 20 Nov 2007 10:23:23 -0800
-Message-ID: <20071120182323.GH28611__12811.639373149$1195592413$gmane$org@kroah.com>
-References: <20071120181733.702234406@mini.kroah.org>
+From: Peter Staubach <staubach@redhat.com>
+Subject: Re: [NFS] NFS Digest, Vol 18, Issue 70 (NFS performance problems)
+Date: Tue, 20 Nov 2007 16:17:11 -0500
+Message-ID: <47434ED7.4010100@redhat.com>
+References: <mailman.194659.1195581701.26582.nfs@lists.sourceforge.net>
+	<BAY104-W43766F661E50E7FFCDA8EBA7F0@phx.gbl>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, Roland <devzero-S0/GAf8tV78@public.gmane.org>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Zwane Mwaikambo <zwane@arm.linux.org.uk>,
-	Neil Brown <neilb@suse.de>,
-	"J. Bruce Fields" <bfields@citi.umich.edu>,
-	Justin Forbes <jmforbes-a5Mqy2EUIFVAfugRpC6u6w@public.gmane.org>,
-	Domenico Andreoli <cavokz@gmail.com>,
-	Chris Wedgwood <reviews-vFB7bnJMxjixIvdkapsUdQ@public.gmane.org>,
-	Randy Dunlap <rdunlap@xenotime.net>,
-	Michael Krufky <mkrufky-dJidKbW2IEtAfugRpC6u6w@public.gmane.org>,
-	Chuck Ebbert <cebbert@redhat.com>,
-	Dave Jones <davej@redhat.com>,
-	Chuck Wolber <chuckw-lrwSPXAIdEw7YuNMryXyOw@public.gmane.org>,
-	akpm@linux-foundation.org, alan@lxorguk.ukuu.org.uk,
-	Andreas Gruenbacher <agruen@suse.de>
-To: linux-kernel@vger.kernel.org, stable@kernel.org,
-	Linus Torvalds <torvalds@linux-foundation.org>
+Cc: nfs@lists.sourceforge.net, wcheng@redhat.com
+To: Wendy Cheng <s_wendy_cheng@hotmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
+Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IuXnv-0005Zq-8e
-	for nfs@lists.sourceforge.net; Tue, 20 Nov 2007 10:26:35 -0800
-Received: from pentafluge.infradead.org ([213.146.154.40])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IuXo0-0005r8-Mf
-	for nfs@lists.sourceforge.net; Tue, 20 Nov 2007 10:26:41 -0800
-In-Reply-To: <20071120182248.GA28611@kroah.com>
+	id 1IuaT4-0007N5-1O
+	for nfs@lists.sourceforge.net; Tue, 20 Nov 2007 13:17:14 -0800
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IuaT9-0005XU-NH
+	for nfs@lists.sourceforge.net; Tue, 20 Nov 2007 13:17:20 -0800
+In-Reply-To: <BAY104-W43766F661E50E7FFCDA8EBA7F0-MsuGFMq8XAE@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <nfs.lists.sourceforge.net>
 
-2.6.23-stable review patch.  If anyone has any objections, please let us
-know.
+Wendy Cheng wrote:
+>   
+>> top - 15:50:56 up 20 days,  1:33,  9 users,  load average: 3.42, 2.95, 2.38
+>>
+>> 19200 geo0501   15   0 75076 5224 3480 S    2  0.1   0:07.94 smbd               
+>>  2336 root      10  -5     0    0    0 S    1  0.0  57:07.70 kjournald          
+>>  2334 root      10  -5     0    0    0 S    1  0.0  33:19.89 kjournald          
+>>  2279 root      10  -5     0    0    0 S    0  0.0  15:10.98 md0_raid1          
+>>  2283 root      10  -5     0    0    0 S    0  0.0  24:45.79 md1_raid1          
+>>  3935 root      15   0     0    0    0 S    0  0.0  14:04.25 nfsd               
+>>  3943 root      15   0     0    0    0 S    0  0.0  14:18.43 nfsd               
+>>  3947 root      15   0     0    0    0 S    0  0.0  13:57.06 nfsd               
+>>  8325 ed0127    15   0 75044 4812 3264 S    0  0.1   0:01.29 smbd            
+>>     
+>
+> Intuitively (based on ext3's journal threads info above) I would suspect this is due to the change of the export default option from "async" to "sync" between 2.6.9 and 2.6.18 kernels.  So go to your /etc/exports file and explicitly set the export option to "async" to see whether you can get the performance back.
+>
+> e.g. changes "/server *(rw)" to "/server *(async, rw)".
 
-------------------
-From: J. Bruce Fields <bfields@citi.umich.edu>
+While this may or may not restore your performance aspects, it
+is not safe to make this change.  The change was made for a
+reason.
 
-patch ac8587dcb58e40dd336d99d60f852041e06cc3dd in mainline.
+Please any and all other possibilities before making this change.
+It is not free.
 
-The v2/v3 acl code in nfsd is translating any return from fh_verify() to
-nfserr_inval.  This is particularly unfortunate in the case of an
-nfserr_dropit return, which is an internal error meant to indicate to
-callers that this request has been deferred and should just be dropped
-pending the results of an upcall to mountd.
+    Thanx...
 
-Thanks to Roland <devzero-S0/GAf8tV78@public.gmane.org> for bug report and data collection.
-
-Cc: Roland <devzero-S0/GAf8tV78@public.gmane.org>
-Acked-by: Andreas Gruenbacher <agruen@suse.de>
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
-Reviewed-By: NeilBrown <neilb@suse.de>
-Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
-Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
-
----
- fs/nfsd/nfs2acl.c |    2 +-
- fs/nfsd/nfs3acl.c |    2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
-
---- a/fs/nfsd/nfs2acl.c
-+++ b/fs/nfsd/nfs2acl.c
-@@ -41,7 +41,7 @@ static __be32 nfsacld_proc_getacl(struct
- 
- 	fh = fh_copy(&resp->fh, &argp->fh);
- 	if ((nfserr = fh_verify(rqstp, &resp->fh, 0, MAY_NOP)))
--		RETURN_STATUS(nfserr_inval);
-+		RETURN_STATUS(nfserr);
- 
- 	if (argp->mask & ~(NFS_ACL|NFS_ACLCNT|NFS_DFACL|NFS_DFACLCNT))
- 		RETURN_STATUS(nfserr_inval);
---- a/fs/nfsd/nfs3acl.c
-+++ b/fs/nfsd/nfs3acl.c
-@@ -37,7 +37,7 @@ static __be32 nfsd3_proc_getacl(struct s
- 
- 	fh = fh_copy(&resp->fh, &argp->fh);
- 	if ((nfserr = fh_verify(rqstp, &resp->fh, 0, MAY_NOP)))
--		RETURN_STATUS(nfserr_inval);
-+		RETURN_STATUS(nfserr);
- 
- 	if (argp->mask & ~(NFS_ACL|NFS_ACLCNT|NFS_DFACL|NFS_DFACLCNT))
- 		RETURN_STATUS(nfserr_inval);
-
--- 
+       ps
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
