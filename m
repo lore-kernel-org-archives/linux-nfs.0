@@ -1,80 +1,29 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] nfsd: fail module init on reply cache init	failure
-Date: Fri, 16 Nov 2007 11:27:18 -0500
-Message-ID: <20071116162718.GI31958@fieldses.org>
-References: <1195163823-24609-1-git-send-email-bfields@citi.umich.edu>
-	<1195163823-24609-2-git-send-email-bfields@citi.umich.edu>
-	<1195163823-24609-3-git-send-email-bfields@citi.umich.edu>
-	<1195163823-24609-4-git-send-email-bfields@citi.umich.edu>
-	<473DA941.4050101@redhat.com> <20071116153036.GG31958@fieldses.org>
-	<473DB987.7090807@redhat.com> <20071116160119.GH31958@fieldses.org>
-	<473DC3C0.5080302@redhat.com>
+From: Stefanovich <sklopp@gmail.com>
+Subject: Files getting out of sync between client/server
+Date: Tue, 20 Nov 2007 13:13:34 -0800
+Message-ID: <d29a314c0711201313u4e986db3j27b3da95df2bd718@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org,
-	nfs@lists.sourceforge.net
-To: Peter Staubach <staubach@redhat.com>
-Return-path: <nfs-bounces@lists.sourceforge.net>
-In-Reply-To: <473DC3C0.5080302@redhat.com>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-1
+To: linux-nfs@vger.kernel.org
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from nz-out-0506.google.com ([64.233.162.235]:7790 "EHLO
+	nz-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753312AbXKTVNn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Nov 2007 16:13:43 -0500
+Received: by nz-out-0506.google.com with SMTP id s18so1727088nze
+        for <linux-nfs@vger.kernel.org>; Tue, 20 Nov 2007 13:13:34 -0800 (PST)
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Nov 16, 2007 at 11:22:24AM -0500, Peter Staubach wrote:
-> J. Bruce Fields wrote:
->> On Fri, Nov 16, 2007 at 10:38:47AM -0500, Peter Staubach wrote:
->>   
->>> J. Bruce Fields wrote:
->>>     
->>>> On Fri, Nov 16, 2007 at 09:29:21AM -0500, Peter Staubach wrote:
->>>>         
->>>>> J. Bruce Fields wrote:
->>>>>             
->>>>>> +	printk(KERN_ERR "nfsd: failed to allocate reply cache\n");
->>>>>>                   
->>>>> I was thinking that it might be nice to have something which
->>>>> better explains what the ramifications of this failure might
->>>>> be.  This explains _precisely_ what happened, but not what
->>>>> will happen in the future.
->>>>>             
->>>> The module will fail to load (or, I suppose, the kernel will fail to
->>>> boot?).  So the failure will be pretty obvious.
->>>>
->>>>         
->>> The module will fail to load, but I suspect that that won't cause
->>> the system to fail to boot.
->>>     
->>
->> OK, but I was thinking of the case where nfsd was built in.
->>
->>   
->
-> Ahh.  Sorry, didn't think about that.
->
-> This seems a little strong, doesn't it?  To cause the system
-> to fail to boot?
+Hi,
 
-Yeah, and I was confused: it's init/main.c:do_initcalls() that does
-this, and it just keeps going regardless (and doesn't even log the error
-unless debugging is turned on).  That makes more sense.
-
---b.
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Microsoft
-Defy all challenges. Microsoft(R) Visual Studio 2005.
-http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+I have a problem that when uploading files to our NFS server. The
+problem occurs when we overwrite a file using ftp. What happens is
+that on the server the file is uploaded and updated correctly, however
+on our nfs clients the file itself doesn't update, it actually retains
+the information from the previous version of the file. I have tried to
+remount the clients when this occurs but that doesn't fix the problem.
+So far the only way I have found to correct this issue is to
+physically reboot the client machines. Just wondering if anyone knows
+why this might be happening, and any idea on a fix or what I am doing
+wrong?
