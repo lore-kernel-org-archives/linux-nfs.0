@@ -1,79 +1,97 @@
-From: "Shiney James" <shineyjames@gmail.com>
-Subject: Re: [NFS] rpc.statd
-Date: Mon, 19 Nov 2007 18:06:53 -0800
-Message-ID: <1b378070711191806v55fb915fnb2949a8aca03c52@mail.gmail.com>
-References: <1b378070711191506o14ce99feo37c2a75bfdc4e47e@mail.gmail.com>
-	<20071119202308.3f2430ec@tleilax.poochiereds.net>
+From: Timo Sirainen <tss@iki.fi>
+Subject: Re: [NFS] Cache flushing
+Date: Tue, 20 Nov 2007 04:14:50 +0200
+Message-ID: <1195524890.6039.315.camel@hurina>
+References: <1195258291.6039.189.camel@hurina>
+	<1195328785.6999.5.camel@localhost.localdomain>
+	<600549E3-82CF-44EB-8394-E57A3BB41118@iki.fi>
+	<1195332062.6999.20.camel@localhost.localdomain>
+	<1195337516.6039.239.camel@hurina>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: multipart/mixed; boundary="===============0471855515=="
 Cc: nfs@lists.sourceforge.net
-To: "Jeff Layton" <jlayton@redhat.com>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IuIVm-0003RE-77
-	for nfs@lists.sourceforge.net; Mon, 19 Nov 2007 18:06:50 -0800
-Received: from nf-out-0910.google.com ([64.233.182.186])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IuIVr-0000Kj-U1
-	for nfs@lists.sourceforge.net; Mon, 19 Nov 2007 18:06:56 -0800
-Received: by nf-out-0910.google.com with SMTP id 4so5515817nfv
-	for <nfs@lists.sourceforge.net>; Mon, 19 Nov 2007 18:06:53 -0800 (PST)
-In-Reply-To: <20071119202308.3f2430ec-RtJpwOs3+0O+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
+	id 1IuIda-0004Bp-A1
+	for nfs@lists.sourceforge.net; Mon, 19 Nov 2007 18:14:54 -0800
+Received: from dovecot.org ([82.118.211.50])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IuIde-0002Wd-UP
+	for nfs@lists.sourceforge.net; Mon, 19 Nov 2007 18:15:00 -0800
+In-Reply-To: <1195337516.6039.239.camel@hurina>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <nfs.lists.sourceforge.net>
 
-Thanks a lot for the information. I would like to know if there is a
-way to configure this port?
-Can a port already specified in /etc/services be used for the purpose?
 
-On Nov 19, 2007 5:23 PM, Jeff Layton <jlayton@redhat.com> wrote:
->
-> On Mon, 19 Nov 2007 15:06:44 -0800
-> "Shiney James" <shineyjames@gmail.com> wrote:
->
-> > Hi,
-> >
-> > I would greatly appreciate if someone could help me regarding the
-> > following..
-> >
-> > >From the manuals it is understood that rpc.statd can configured to
-> > listen on a particular port for  incoming request and a port for
-> > outgoing request. This can be done by setting STATD_PORT and
-> > STATD_OUTGOING_PORT. But even after setting these I find that there is
-> > a port opened other than the above.
-> >
-> > netstat -anop | grep rpc.statd output is pasted below.
-> >
-> > [root@fs01 root]# netstat -anop | grep rpc.statd
-> > tcp        0      0 0.0.0.0:48000         0.0.0.0:*
-> > LISTEN      4334/rpc.statd      off (0.00/0/0)
-> > udp        0      0 0.0.0.0:48000           0.0.0.0:*
-> >          4334/rpc.statd      off (0.00/0/0)
-> > udp        0      0 0.0.0.0:694             0.0.0.0:*
-> >          4334/rpc.statd      off (0.00/0/0)
-> > unix  2      [ ]         DGRAM                    5378
-> > 4334/rpc.statd
-> >
-> > I have set STATD_PORT as 48000 as is seen. But I am not sure why port
-> > 694 is also being used?
-> > Any idea?
-> >
-> > Thanks
-> > Shiney
-> >
->
-> It's for statd to make downcalls to the local lockd. The kernel
-> requires a privileged port for that...
->
-> --
-> Jeff Layton <jlayton@redhat.com>
->
+--===============0471855515==
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature";
+	boundary="=-FMumx+QeOBJKoPFYkuVd"
+
+
+--=-FMumx+QeOBJKoPFYkuVd
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
+
+On Sun, 2007-11-18 at 00:11 +0200, Timo Sirainen wrote:
+> > Why can't you simply close(), and then re-open() the file? That is _the=
+_
+> > standard way to force an attribute cache revalidation on all NFS
+> > versions. The close-to-open caching model, which is implemented on most
+> > NFS clients guarantees this.
+..
+> close()+open() would have been difficult to handle because open() can
+> fail, but looks like opening another file descriptor and closing it
+> works just as well. Also looks like it works for flushing directories'
+> attribute cache (which doesn't seem to work with FreeBSD though).
+
+Actually it works for flushing a directory's attribute cache in
+v2.6.17-rc2, but not in v2.6.22. chown() works in v2.6.22 also. Is there
+a reason for this change? I guess it anyway means that I'm back to using
+chown() for flushing a directory's attribute cache.
+
+The reason for flushing a directory's attribute cache is so that I can
+see with stat() if an open file under it has been replaced (if its inode
+has changed).
+
+http://dovecot.org/tools/nfstest.c can be used to easily test what works
+and what doesn't for cache flushes.
+
+
+--=-FMumx+QeOBJKoPFYkuVd
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Description: This is a digitally signed message part
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.6 (GNU/Linux)
+
+iD8DBQBHQkMayUhSUUBViskRAgvnAKCH8uYTYg5/EXJrBDIxEize+cO+FgCdE88K
+gbNOJdn79EFW8u1cZHy+cns=
+=aqe1
+-----END PGP SIGNATURE-----
+
+--=-FMumx+QeOBJKoPFYkuVd--
+
+
+
+--===============0471855515==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
 Defy all challenges. Microsoft(R) Visual Studio 2005.
 http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+--===============0471855515==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
@@ -81,4 +99,8 @@ _______________________________________________
 Please note that nfs@lists.sourceforge.net is being discontinued.
 Please subscribe to linux-nfs@vger.kernel.org instead.
     http://vger.kernel.org/vger-lists.html#linux-nfs
+
+--===============0471855515==--
+
+
 
