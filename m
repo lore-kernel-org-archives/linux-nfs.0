@@ -1,93 +1,148 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [NFS] mm snapshot broken-out-2007-11-20-01-45.tar.gz -- powerpc
-	panic
-Date: Tue, 20 Nov 2007 12:35:59 -0800
-Message-ID: <20071120123559.d970db9e.akpm@linux-foundation.org>
-References: <200711200953.lAK9qxjO030444@imap1.linux-foundation.org>
-	<20071120144659.GC12066@shadowen.org>
+From: Greg Kroah-Hartman <gregkh@suse.de>
+Subject: [NFS] [patch 08/29] nfsd4: recheck for secure ports in fh_verify
+Date: Tue, 20 Nov 2007 10:23:26 -0800
+Message-ID: <20071120182326.GI28611__39677.769286982$1195592404$gmane$org@kroah.com>
+References: <20071120181733.702234406@mini.kroah.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Alexey Dobriyan <adobriyan@gmail.com>,
-	"Eric W. Biederman" <ebiederm@xmission.com>,
-	nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org,
-	kamalesh@linux.vnet.ibm.com
-To: Andy Whitcroft <apw-26w3C0LaAnFg9hUCZPvPmw@public.gmane.org>
+Cc: nfs@lists.sourceforge.net, Theodore Ts'o <tytso@mit.edu>,
+	Zwane Mwaikambo <zwane@arm.linux.org.uk>,
+	Neil Brown <neilb@suse.de>,
+	"J. Bruce Fields" <bfields@citi.umich.edu>,
+	Justin Forbes <jmforbes-a5Mqy2EUIFVAfugRpC6u6w@public.gmane.org>,
+	Domenico Andreoli <cavokz@gmail.com>,
+	Chris Wedgwood <reviews-vFB7bnJMxjixIvdkapsUdQ@public.gmane.org>,
+	Randy Dunlap <rdunlap@xenotime.net>,
+	Michael Krufky <mkrufky-dJidKbW2IEtAfugRpC6u6w@public.gmane.org>,
+	Chuck Ebbert <cebbert@redhat.com>,
+	Dave Jones <davej@redhat.com>,
+	Chuck Wolber <chuckw-lrwSPXAIdEw7YuNMryXyOw@public.gmane.org>,
+	akpm@linux-foundation.org, alan@lxorguk.ukuu.org.uk
+To: linux-kernel@vger.kernel.org, stable@kernel.org,
+	Linus Torvalds <torvalds@linux-foundation.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IuZvC-0003dK-T0
-	for nfs@lists.sourceforge.net; Tue, 20 Nov 2007 12:42:15 -0800
-Received: from smtp2.linux-foundation.org ([207.189.120.14])
+	id 1IuXnx-0005aB-Qa
+	for nfs@lists.sourceforge.net; Tue, 20 Nov 2007 10:26:37 -0800
+Received: from pentafluge.infradead.org ([213.146.154.40])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IuZvB-0003RA-Ln
-	for nfs@lists.sourceforge.net; Tue, 20 Nov 2007 12:42:15 -0800
-In-Reply-To: <20071120144659.GC12066-26w3C0LaAnFg9hUCZPvPmw@public.gmane.org>
+	(Exim 4.44) id 1IuXo3-0005sO-7Z
+	for nfs@lists.sourceforge.net; Tue, 20 Nov 2007 10:26:44 -0800
+In-Reply-To: <20071120182248.GA28611@kroah.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <nfs.lists.sourceforge.net>
 
-On Tue, 20 Nov 2007 14:46:59 +0000
-Andy Whitcroft <apw-26w3C0LaAnFg9hUCZPvPmw@public.gmane.org> wrote:
+2.6.23-stable review patch.  If anyone has any objections, please let us
+know.
 
-> I have one powerpc machine which managed to compile this snapshot!  It
-> paniced on boot as below, might be nfs so copied them.  General results
-> are popping out on TKO.
-> 
-> -apw
-> 
-> Freeing initrd memory: 1224k freed
-> Installing knfsd (copyright (C) 1996 okir-pn4DOG8n3UYbFoVRYvo4fw@public.gmane.org).
-> Unable to handle kernel paging request for data at address 0x00000050
-> Faulting instruction address: 0xc000000000113b64
-> Oops: Kernel access of bad area, sig: 11 [#1]
-> SMP NR_CPUS=32 NUMA pSeries
-> Modules linked in:
-> NIP: c000000000113b64 LR: c000000000113b44 CTR: 0000000000000000
-> REGS: C00000077E0679D0 TRAP: 0300   Not tainted  (2.6.24-rc3-mm1-autokern1)
-> MSR: 8000000000009032 <EE,ME,IR,DR>  CR: 24004044  XER: 20000000
-> DAR: 0000000000000050, DSISR: 0000000040000000
-> TASK = C00000077E062000[1] 'swapper' THREAD: C00000077E064000 CPU: 0
-> GPR00: 0000000000000000 c00000077e067c50 c0000000006c5650 0000000000000001 
-> GPR04: c00000077e625bdc 0000000000000005 c000000000501ad4 c000000000731d18 
-> GPR08: 0000000000000000 0000000000000000 c00000077e625b40 0000000000000001 
-> GPR12: 0000000024004044 c0000000005fd000 0000000000000000 0000000000000000 
-> GPR16: 0000000000000000 0000000000000000 0000000000000000 0000000000000000 
-> GPR20: 4000000003a00000 0000000004300000 0000000003fb94a8 0000000000132000 
-> GPR24: 0000000003fb9718 0000000000000000 c0000000005b6e70 0000000000000000 
-> GPR28: 0000000000000005 c00000077e625b40 c000000000652e48 c00000077e625c50 
-> NIP [c000000000113b64] .remove_proc_entry+0xac/0x234
-> LR [c000000000113b44] .remove_proc_entry+0x8c/0x234
-> Call Trace:
-> [c00000077e067c50] [c000000000113b44] .remove_proc_entry+0x8c/0x234 (unreliable)
-> [c00000077e067d10] [c00000000048bf28] .cache_unregister+0x108/0x1b4
-> [c00000077e067d90] [c0000000001ca988] .nfsd_export_shutdown+0x50/0xa4
-> [c00000077e067e10] [c0000000005a712c] .init_nfsd+0x108/0x13c
-> [c00000077e067ea0] [c000000000582438] .kernel_init+0x224/0x3fc
-> [c00000077e067f90] [c000000000026204] .kernel_thread+0x4c/0x68
-> Instruction dump:
-> e8bf0000 e8810090 7f83e378 4bfffd25 2f830000 419e0018 ebbf0000 e81d0050 
-> f81f0000 38000000 f81d0050 e93f0000 <e8090050> 3be90050 2fa00000 409effc4 
-> Kernel panic - not syncing: Attempted to kill init!
+------------------
+From: J. Bruce Fields <bfields@citi.umich.edu>
 
-Various people have been mucking with procfs core:
+patch 6fa02839bf9412e18e773d04e96182b4cd0b5d57 in mainline.
 
-proc-remove-module_license.patch
-proc-less-lock-operations-during-lookup.patch
-proc-simplify-function-prototypes.patch
-proc-remove-useless-check-on-symlink-removal.patch
-proc-remove-useless-checks-in-proc_register.patch
-proc-detect-duplicate-names-on-registration.patch
-proc-detect-duplicate-names-on-registration-fix.patch
-proc-simplify-remove_proc_entry-wrt-locking.patch
-proc-simplify-remove_proc_entry-wrt-locking-checkpatch-fixes.patch
-proc-implement-proc_single_file_operations.patch
-proc-rewrite-do_task_stat-to-correctly-handle-pid-namespaces.patch
-proc-seqfile-convert-proc_pid_statm.patch
-proc-proper-pidns-handling-for-proc-self.patch
+As with
 
-And I had to skip a couple of patches due to conflicts.
+	7fc90ec93a5eb71f4b08... "call nfsd_setuser() on fh_compose()..."
 
-I'll see if it happens on any of my test machines.
+this is a case where we need to redo a security check in fh_verify()
+even though the filehandle already has an associated dentry--if the
+filehandle was created by fh_compose() in an earlier operation of the
+nfsv4 compound, then we may not have done these checks yet.
+
+Without this fix it is possible, for example, to traverse from an export
+without the secure ports requirement to one with it in a single
+compound, and bypass the secure port check on the new export.
+
+While we're here, fix up some minor style problems and change a printk()
+to a dprintk(), to make it harder for random unprivileged users to spam
+the logs.
+
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+Reviewed-By: NeilBrown <neilb@suse.de>
+Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
+Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
+
+---
+ fs/nfsd/nfsfh.c |   43 ++++++++++++++++++++++++++-----------------
+ 1 file changed, 26 insertions(+), 17 deletions(-)
+
+--- a/fs/nfsd/nfsfh.c
++++ b/fs/nfsd/nfsfh.c
+@@ -95,6 +95,22 @@ nfsd_mode_check(struct svc_rqst *rqstp, 
+ 	return 0;
+ }
+ 
++static __be32 nfsd_setuser_and_check_port(struct svc_rqst *rqstp,
++					  struct svc_export *exp)
++{
++	/* Check if the request originated from a secure port. */
++	if (!rqstp->rq_secure && EX_SECURE(exp)) {
++		char buf[RPC_MAX_ADDRBUFLEN];
++		dprintk(KERN_WARNING
++		       "nfsd: request from insecure port %s!\n",
++		       svc_print_addr(rqstp, buf, sizeof(buf)));
++		return nfserr_perm;
++	}
++
++	/* Set user creds for this exportpoint */
++	return nfserrno(nfsd_setuser(rqstp, exp));
++}
++
+ /*
+  * Perform sanity checks on the dentry in a client's file handle.
+  *
+@@ -167,18 +183,7 @@ fh_verify(struct svc_rqst *rqstp, struct
+ 			goto out;
+ 		}
+ 
+-		/* Check if the request originated from a secure port. */
+-		error = nfserr_perm;
+-		if (!rqstp->rq_secure && EX_SECURE(exp)) {
+-			char buf[RPC_MAX_ADDRBUFLEN];
+-			printk(KERN_WARNING
+-			       "nfsd: request from insecure port %s!\n",
+-			       svc_print_addr(rqstp, buf, sizeof(buf)));
+-			goto out;
+-		}
+-
+-		/* Set user creds for this exportpoint */
+-		error = nfserrno(nfsd_setuser(rqstp, exp));
++		error = nfsd_setuser_and_check_port(rqstp, exp);
+ 		if (error)
+ 			goto out;
+ 
+@@ -227,18 +232,22 @@ fh_verify(struct svc_rqst *rqstp, struct
+ 		fhp->fh_export = exp;
+ 		nfsd_nr_verified++;
+ 	} else {
+-		/* just rechecking permissions
+-		 * (e.g. nfsproc_create calls fh_verify, then nfsd_create does as well)
++		/*
++		 * just rechecking permissions
++		 * (e.g. nfsproc_create calls fh_verify, then nfsd_create
++		 * does as well)
+ 		 */
+ 		dprintk("nfsd: fh_verify - just checking\n");
+ 		dentry = fhp->fh_dentry;
+ 		exp = fhp->fh_export;
+-		/* Set user creds for this exportpoint; necessary even
++		/*
++		 * Set user creds for this exportpoint; necessary even
+ 		 * in the "just checking" case because this may be a
+ 		 * filehandle that was created by fh_compose, and that
+ 		 * is about to be used in another nfsv4 compound
+-		 * operation */
+-		error = nfserrno(nfsd_setuser(rqstp, exp));
++		 * operation.
++		 */
++		error = nfsd_setuser_and_check_port(rqstp, exp);
+ 		if (error)
+ 			goto out;
+ 	}
+
+-- 
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
