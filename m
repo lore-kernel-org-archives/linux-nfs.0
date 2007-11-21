@@ -1,52 +1,49 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [NFS] Cache flushing
-Date: Tue, 20 Nov 2007 18:47:34 -0500
-Message-ID: <1195602454.7234.100.camel@heimdal.trondhjem.org>
-References: <1195258291.6039.189.camel@hurina>
-	<1195328785.6999.5.camel@localhost.localdomain>
-	<600549E3-82CF-44EB-8394-E57A3BB41118@iki.fi>
-	<1195332062.6999.20.camel@localhost.localdomain>
-	<1195337516.6039.239.camel@hurina> <1195524890.6039.315.camel@hurina>
+From: Harshula <harshula@sgi.com>
+Subject: Re: [NFS] libnfsidmap
+Date: Wed, 21 Nov 2007 22:32:46 +1100
+Message-ID: <1195644766.19850.252.camel@serendib.melbourne.sgi.com>
+References: <1193136846.5620.504.camel@serendib.melbourne.sgi.com>
+	<1195024312.19850.130.camel@serendib.melbourne.sgi.com>
+	<4d569c330711140659q2ba19b03n481c3360a9373991@mail.gmail.com>
+	<1195122558.19850.146.camel@serendib.melbourne.sgi.com>
+	<4d569c330711150612n57d4f4deud19532569b2214d8@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
-To: Timo Sirainen <tss@iki.fi>
+To: Kevin Coffman <kwc@citi.umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Iucny-0005BI-P1
-	for nfs@lists.sourceforge.net; Tue, 20 Nov 2007 15:46:59 -0800
-Received: from pat.uio.no ([129.240.10.15])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Iuco2-0007ie-88
-	for nfs@lists.sourceforge.net; Tue, 20 Nov 2007 15:47:04 -0800
-In-Reply-To: <1195524890.6039.315.camel@hurina>
+	id 1Iunpo-0007GW-1B
+	for nfs@lists.sourceforge.net; Wed, 21 Nov 2007 03:33:36 -0800
+Received: from netops-testserver-3-out.sgi.com
+	([192.48.171.28] helo=relay.sgi.com
+	ident=[U2FsdGVkX18mNg6K4NG1iV0cm8znsSS0KhUPjqM9luw=])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Iunpr-0006NO-SS
+	for nfs@lists.sourceforge.net; Wed, 21 Nov 2007 03:33:42 -0800
+In-Reply-To: <4d569c330711150612n57d4f4deud19532569b2214d8-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <nfs.lists.sourceforge.net>
 
+On Thu, 2007-11-15 at 09:12 -0500, Kevin Coffman wrote:
+> On Nov 15, 2007 5:29 AM, Harshula <harshula@sgi.com> wrote:
 
-On Tue, 2007-11-20 at 04:14 +0200, Timo Sirainen wrote:
-> On Sun, 2007-11-18 at 00:11 +0200, Timo Sirainen wrote:
-> > > Why can't you simply close(), and then re-open() the file? That is _the_
-> > > standard way to force an attribute cache revalidation on all NFS
-> > > versions. The close-to-open caching model, which is implemented on most
-> > > NFS clients guarantees this.
-> ..
-> > close()+open() would have been difficult to handle because open() can
-> > fail, but looks like opening another file descriptor and closing it
-> > works just as well. Also looks like it works for flushing directories'
-> > attribute cache (which doesn't seem to work with FreeBSD though).
+> > In practise, what are the "other cases" where a failed
+> > nfs4_gss_princ_to_ids() lookup needs to be mapped to 'nobody'?
 > 
-> Actually it works for flushing a directory's attribute cache in
-> v2.6.17-rc2, but not in v2.6.22. chown() works in v2.6.22 also. Is there
-> a reason for this change? I guess it anyway means that I'm back to using
-> chown() for flushing a directory's attribute cache.
+> You have cross-realm Kerberos trusts set up.  A user from a different
+> Kerberos realm comes to your server and you have no local mapping for
+> that user.
 
-close-to-open caching works fine for me in v2.6.22. It does indeed send
-a GETATTR and revalidate the inode.
+Can the KDCs be setup to handle this case?
 
-Trond
+> A new local user is created, but has not yet been placed in the mappings.
+
+This case should fail.
+
+cya,
+#
 
 
 -------------------------------------------------------------------------
