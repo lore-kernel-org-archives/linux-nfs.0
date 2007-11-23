@@ -1,97 +1,68 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [NFS] nfs-utils crossmnt/fsid bug
-Date: Fri, 23 Nov 2007 13:50:29 +1100
-Message-ID: <18246.16373.177320.570040@notabene.brown>
-References: <20070905204628.GD29582@fieldses.org>
+From: Harshula <harshula@sgi.com>
+Subject: Re: [NFS] libnfsidmap
+Date: Fri, 23 Nov 2007 15:00:49 +1100
+Message-ID: <1195790449.5730.12.camel@serendib.melbourne.sgi.com>
+References: <1193136846.5620.504.camel@serendib.melbourne.sgi.com>
+	<1195024312.19850.130.camel@serendib.melbourne.sgi.com>
+	<4d569c330711140659q2ba19b03n481c3360a9373991@mail.gmail.com>
+	<1195122558.19850.146.camel@serendib.melbourne.sgi.com>
+	<4d569c330711150612n57d4f4deud19532569b2214d8@mail.gmail.com>
+	<1195644766.19850.252.camel@serendib.melbourne.sgi.com>
+	<4d569c330711210511x3f06562cp1a5886eaeaaea953@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, Steve Dickson <SteveD@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: nfs@lists.sourceforge.net
+To: Kevin Coffman <kwc@citi.umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IvOcl-0002mV-Ty
-	for nfs@lists.sourceforge.net; Thu, 22 Nov 2007 18:50:36 -0800
-Received: from ns2.suse.de ([195.135.220.15] helo=mx2.suse.de)
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IvOcq-0005MZ-Gs
-	for nfs@lists.sourceforge.net; Thu, 22 Nov 2007 18:50:42 -0800
-In-Reply-To: message from J. Bruce Fields on Wednesday September 5
+	id 1IvPir-0000cJ-SM
+	for nfs@lists.sourceforge.net; Thu, 22 Nov 2007 20:00:58 -0800
+Received: from netops-testserver-3-out.sgi.com
+	([192.48.171.28] helo=relay.sgi.com
+	ident=[U2FsdGVkX19x24KObIHiZaVHrnDcK1x93fhKJOqMXSU=])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IvPiw-0004UW-N5
+	for nfs@lists.sourceforge.net; Thu, 22 Nov 2007 20:01:03 -0800
+In-Reply-To: <4d569c330711210511x3f06562cp1a5886eaeaaea953-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <nfs.lists.sourceforge.net>
 
-On Wednesday September 5, bfields@fieldses.org wrote:
-> With an exports entry like
+Hi Kevin,
+
+On Wed, 2007-11-21 at 08:11 -0500, Kevin Coffman wrote:
+> On Nov 21, 2007 6:32 AM, Harshula <harshula@sgi.com> wrote:
+> > On Thu, 2007-11-15 at 09:12 -0500, Kevin Coffman wrote:
+
+> > > You have cross-realm Kerberos trusts set up.  A user from a different
+> > > Kerberos realm comes to your server and you have no local mapping for
+> > > that user.
+> >
+> > Can the KDCs be setup to handle this case?
 > 
-> 	/exports *.citi.umich.edu(rw,crossmnt,fsid=0)
+> If you are asking if the KDC can be configured to not give such users
+> a ticket, the answer is no.
+
+No, I was referring to cross-realm authentication:
+http://www.faqs.org/faqs/kerberos-faq/general/section-18.html
+
+> > > A new local user is created, but has not yet been placed in the mappings.
+> >
+> > This case should fail.
 > 
-> and some other stuff mounted under /exports, I get an odd situation
-> where listing /exports/submnt/ shows me the contents of /exports/.
-> 
-> I looks to me like what's happening is that the new code to
-> automatically export filesystems under crossmnt exports is exporting
-> those directories with the fsid option turned on, with the result that
-> the root of each of those subdirectories ends up with the same
-> filehandle as the root of /exports, and the hilarity ensues.  But I
-> haven't tried a patch yet.
-> 
-> Does that make sense?  I assume we should just clear the fsid flag on
-> submounts, as it's never going to make sense, and leave the logic
-> otherwise intact.
-> 
-> --b.
+> My opinion is that they have successfully authenticated, and should
+> not be denied all access because there is no mapping.  This should
+> probably be a configurable option.
 
-Thanks for noticing and reporting this.
+If it is going to be configurable, I hope the default will be the
+'secure' option of disallowing users without mappings. If a new local
+user is created and there is no mapping, then it's either a
+misconfiguration or intentional. We should not be catering for the
+misconfiguration.
 
-Does this (untested, but it compiles) patch seem right?
+cya,
+#
 
-NeilBrown
-
---------
-When exported a filesystems with option inherited (by the crossmnt
-option) from a higherlevel filesystem, ignore filesystem specific
-options like FSID and explicit UUID.
-
-Signed-off-by: NeilBrown <neilb@suse.de>
-
-diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-index fd317cd..ff56b9f 100644
---- a/utils/mountd/cache.c
-+++ b/utils/mountd/cache.c
-@@ -565,20 +565,29 @@ static int dump_to_cache(FILE *f, char *domain, char *path, struct exportent *ex
- 	qword_print(f, path);
- 	qword_printint(f, time(0)+30*60);
- 	if (exp) {
--		qword_printint(f, exp->e_flags);
-+		int different_fs = 0;
-+		struct stat stb1, stb2;
-+		if (stat(path, &stb1) == 0 &&
-+		    stat(exp->e_path, &stb2) == 0 &&
-+		    stb1.st_dev != stb2.st_dev)
-+			different_fs = 1;
-+		if (different_fs)
-+			qword_printint(f, exp->e_flags & ~NFSEXP_FSID);
-+		else
-+			qword_printint(f, exp->e_flags);
- 		qword_printint(f, exp->e_anonuid);
- 		qword_printint(f, exp->e_anongid);
- 		qword_printint(f, exp->e_fsid);
- 		write_fsloc(f, exp, path);
- 		write_secinfo(f, exp);
- #if USE_BLKID
-- 		if (exp->e_uuid == NULL) {
-+ 		if (exp->e_uuid == NULL || different_fs) {
-  			char u[16];
-  			if (get_uuid(path, NULL, 16, u)) {
-  				qword_print(f, "uuid");
-  				qword_printhex(f, u, 16);
-  			}
-- 		} else if (exp->e_uuid) {
-+ 		} else {
-  			qword_print(f, "uuid");
-  			qword_printhex(f, exp->e_uuid, 16);
-  		}
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
