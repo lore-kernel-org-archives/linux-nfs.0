@@ -1,73 +1,102 @@
-From: Harshula <harshula@sgi.com>
-Subject: Re: [NFS] libnfsidmap
-Date: Fri, 23 Nov 2007 15:00:49 +1100
-Message-ID: <1195790449.5730.12.camel@serendib.melbourne.sgi.com>
-References: <1193136846.5620.504.camel@serendib.melbourne.sgi.com>
-	<1195024312.19850.130.camel@serendib.melbourne.sgi.com>
-	<4d569c330711140659q2ba19b03n481c3360a9373991@mail.gmail.com>
-	<1195122558.19850.146.camel@serendib.melbourne.sgi.com>
-	<4d569c330711150612n57d4f4deud19532569b2214d8@mail.gmail.com>
-	<1195644766.19850.252.camel@serendib.melbourne.sgi.com>
-	<4d569c330711210511x3f06562cp1a5886eaeaaea953@mail.gmail.com>
+From: Timo Sirainen <tss@iki.fi>
+Subject: [NFS] NFSv4 close-to-open attr cache flushing broken in 2.6.23
+Date: Fri, 23 Nov 2007 10:30:51 +0200
+Message-ID: <1195806651.5532.12.camel@hurina>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Kevin Coffman <kwc@citi.umich.edu>
+Content-Type: multipart/mixed; boundary="===============1245478498=="
+To: nfs@lists.sourceforge.net
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IvPir-0000cJ-SM
-	for nfs@lists.sourceforge.net; Thu, 22 Nov 2007 20:00:58 -0800
-Received: from netops-testserver-3-out.sgi.com
-	([192.48.171.28] helo=relay.sgi.com
-	ident=[U2FsdGVkX19x24KObIHiZaVHrnDcK1x93fhKJOqMXSU=])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IvPiw-0004UW-N5
-	for nfs@lists.sourceforge.net; Thu, 22 Nov 2007 20:01:03 -0800
-In-Reply-To: <4d569c330711210511x3f06562cp1a5886eaeaaea953-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+	id 1IvTw6-0008L2-Pd
+	for nfs@lists.sourceforge.net; Fri, 23 Nov 2007 00:30:54 -0800
+Received: from dovecot.org ([82.118.211.50])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IvTwC-0003T6-Fo
+	for nfs@lists.sourceforge.net; Fri, 23 Nov 2007 00:31:00 -0800
+Received: from [192.168.10.2] (82-203-162-146.dsl.gohome.fi [82.203.162.146])
+	by dovecot.org (Postfix) with ESMTP id 8533116471E5
+	for <nfs@lists.sourceforge.net>; Fri, 23 Nov 2007 10:30:52 +0200 (EET)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <nfs.lists.sourceforge.net>
 
-Hi Kevin,
 
-On Wed, 2007-11-21 at 08:11 -0500, Kevin Coffman wrote:
-> On Nov 21, 2007 6:32 AM, Harshula <harshula@sgi.com> wrote:
-> > On Thu, 2007-11-15 at 09:12 -0500, Kevin Coffman wrote:
+--===============1245478498==
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature";
+	boundary="=-p6E26Oh82S64OtTPfeX0"
 
-> > > You have cross-realm Kerberos trusts set up.  A user from a different
-> > > Kerberos realm comes to your server and you have no local mapping for
-> > > that user.
-> >
-> > Can the KDCs be setup to handle this case?
-> 
-> If you are asking if the KDC can be configured to not give such users
-> a ticket, the answer is no.
 
-No, I was referring to cross-realm authentication:
-http://www.faqs.org/faqs/kerberos-faq/general/section-18.html
+--=-p6E26Oh82S64OtTPfeX0
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-> > > A new local user is created, but has not yet been placed in the mappings.
-> >
-> > This case should fail.
-> 
-> My opinion is that they have successfully authenticated, and should
-> not be denied all access because there is no mapping.  This should
-> probably be a configurable option.
+In v2.6.23 (but not in v2.6.22) a file's attribute cache doesn't get
+flushed with close()+open() if the file is open in any process on the
+same server. Test program below demonstrates it.
 
-If it is going to be configurable, I hope the default will be the
-'secure' option of disallowing users without mappings. If a new local
-user is created and there is no mapping, then it's either a
-misconfiguration or intentional. We should not be catering for the
-misconfiguration.
+BTW. I thought delegations were supposed to fix most of these caching
+issues automatically? I don't see any difference in caching behavior
+compared to NFSv3 (Linux 2.6.23 as NFS server).
 
-cya,
-#
+#include <stdio.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/stat.h>
 
+int main(void)
+{
+	int fd =3D open("foo", O_RDWR | O_CREAT, 0600);
+	int fd2 =3D open("foo", O_RDWR);
+	struct stat st;
+	char buf[1024];
+
+	if (fstat(fd2, &st) < 0) perror("fstat()");
+	printf("mtime before =3D %ld\n", st.st_mtime);
+
+	printf("now modify the file on server\n");
+	fgets(buf, sizeof(buf), stdin);
+
+	close(fd2);
+	fd2 =3D open("foo", O_RDWR);
+	if (fstat(fd2, &st) < 0) perror("fstat()");
+	printf("mtime after =3D %ld\n", st.st_mtime);
+	return 0;
+}
+
+
+--=-p6E26Oh82S64OtTPfeX0
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Description: This is a digitally signed message part
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.6 (GNU/Linux)
+
+iD8DBQBHRo+6yUhSUUBViskRAhSRAJ4ugxxt/300UaJv49oaPgDCknzonQCeO1ml
+D25AI3n2cTYKGwsNPeUxST0=
+=+hLN
+-----END PGP SIGNATURE-----
+
+--=-p6E26Oh82S64OtTPfeX0--
+
+
+
+--===============1245478498==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
 Defy all challenges. Microsoft(R) Visual Studio 2005.
 http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+--===============1245478498==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
@@ -75,4 +104,8 @@ _______________________________________________
 Please note that nfs@lists.sourceforge.net is being discontinued.
 Please subscribe to linux-nfs@vger.kernel.org instead.
     http://vger.kernel.org/vger-lists.html#linux-nfs
+
+--===============1245478498==--
+
+
 
