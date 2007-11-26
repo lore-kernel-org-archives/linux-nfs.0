@@ -1,60 +1,45 @@
-From: "Steinar H. Gunderson" <sesse@debian.org>
-Subject: [PATCH] Fix nfsstat help and man page
-Date: Sat, 24 Nov 2007 18:14:18 +0100
-Message-ID: <20071124171418.GA6361@uio.no>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [Fwd: Reminder: Linux Storage and Filesystem Workshop]
+Date: Mon, 26 Nov 2007 12:16:21 -0500
+Message-ID: <1196097381.7716.11.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-To: linux-nfs@vger.kernel.org
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cassarossa.samfundet.no ([129.241.93.19]:33646 "EHLO
-	cassarossa.samfundet.no" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753635AbXKXSGd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 24 Nov 2007 13:06:33 -0500
-Received: from trofast.ipv6.sesse.net ([2001:700:300:1803:20e:cff:fe36:a766] helo=trofast.sesse.net)
-	by cassarossa.samfundet.no with esmtps (TLS-1.0:RSA_AES_256_CBC_SHA1:32)
-	(Exim 4.63)
-	(envelope-from <sesse-BrfabpQBY5qlHtIdYg32fQ@public.gmane.org>)
-	id 1IvyaB-0005aX-20
-	for linux-nfs@vger.kernel.org; Sat, 24 Nov 2007 18:14:21 +0100
-Received: from root by trofast.sesse.net with local (Exim 4.68)
-	(envelope-from <sesse-BrfabpQBY5qlHtIdYg32fQ@public.gmane.org>)
-	id 1IvyaA-0001fK-Io
-	for linux-nfs@vger.kernel.org; Sat, 24 Nov 2007 18:14:18 +0100
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="utf-8"
+To: nfsv4@linux-nfs.org, linux-nfs@vger.kernel.org
+Return-path: <nfsv4-bounces@linux-nfs.org>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Fix nfsstat help and man page to say --mounts, instead of --mounted (which is
-wrong).
-
-Signed-off-by: Steinar H. Gunderson <sesse@debian.org>
-
-Index: nfs-utils-1.1.1/utils/nfsstat/nfsstat.c
-===================================================================
---- nfs-utils-1.1.1.orig/utils/nfsstat/nfsstat.c        2007-11-19 21:57:59.000000000 +0100
-+++ nfs-utils-1.1.1/utils/nfsstat/nfsstat.c     2007-11-19 21:58:13.000000000 +0100
-@@ -207,7 +207,7 @@
- {
-        printf("Usage: %s [OPTION]...\n\
- \n\
--  -m, --mounted\t\tShow statistics on mounted NFS filesystems\n\
-+  -m, --mounts\t\tShow statistics on mounted NFS filesystems\n\
-   -c, --client\t\tShow NFS client statistics\n\
-   -s, --server\t\tShow NFS server statistics\n\
-   -2\t\t\tShow NFS version 2 statistics\n\
-Index: nfs-utils-1.1.1/utils/nfsstat/nfsstat.man
-===================================================================
---- nfs-utils-1.1.1.orig/utils/nfsstat/nfsstat.man      2007-11-19 21:58:16.000000000 +0100
-+++ nfs-utils-1.1.1/utils/nfsstat/nfsstat.man   2007-11-19 21:58:48.000000000 +0100
-@@ -35,7 +35,7 @@
- .B \-4
- Print only NFS v4 statistics.
- .TP
--.B \-m, \-\-mounted
-+.B \-m, \-\-mounts
- Print information about each of the mounted \fBNFS\fR file systems.
-
- If this option is used, all other options are ignored.
-
-/* Steinar */
--- 
-Homepage: http://www.sesse.net/
+Ci0tLS0tLS0tIEZvcndhcmRlZCBNZXNzYWdlIC0tLS0tLS0tCkZyb206IENocmlzIE1hc29uIDxj
+aHJpcy5tYXNvbkBvcmFjbGUuY29tPgpUbzogbGludXgta2VybmVsQHZnZXIua2VybmVsLm9yZywg
+bGludXgtZnNkZXZlbEB2Z2VyLmtlcm5lbC5vcmcKU3ViamVjdDogUmVtaW5kZXI6IExpbnV4IFN0
+b3JhZ2UgYW5kIEZpbGVzeXN0ZW0gV29ya3Nob3AKRGF0ZTogCU1vbiwgMjYgTm92IDIwMDcgMTA6
+NDc6MjAgLTA1MDAKCkhlbGxvIGV2ZXJ5b25lLAoKVGhlIGRlYWRsaW5lIGZvciBwb3NpdGlvbiBz
+dGF0ZW1lbnRzIHRvIHRoZSBMaW51eCBTdG9yYWdlIGFuZApGaWxlc3lzdGVtIFdvcmtzaG9wIGlz
+IHF1aWNrbHkgYXBwcm9hY2hpbmcuICBUaGUgcG9zaXRpb24gc3RhdGVtZW50cwphcmUgYW4gZWFz
+eSB3YXkgZm9yIHlvdSB0byB0ZWxsIHRoZSBvcmdhbml6ZXJzIHRoYXQgeW91IHdvdWxkIGxpa2Ug
+dG8KYXR0ZW5kLCBhbmQgd2hpY2ggdG9waWNzIHlvdSBhcmUgbW9zdCBpbnRlcmVzdGluZyBpbi4K
+CllvdSBjYW4gZmluZCBhbGwgdGhlIGRldGFpbHMgYWJvdXQgdGhlIHdvcmtzaG9wIGhlcmU6Cgpo
+dHRwOi8vd3d3LnVzZW5peC5vcmcvZXZlbnRzL2xzZjA4LwoKVGhlIExpbnV4IFN0b3JhZ2UgYW5k
+IEZpbGVzeXN0ZW0gV29ya3Nob3AgaXMgYSBzbWFsbCwgdGlnaHRseSBmb2N1c2VkLApieS1pbnZp
+dGF0aW9uIHdvcmtzaG9wLiBJdCBpcyBpbnRlbmRlZCB0byBicmluZyB0b2dldGhlciBkZXZlbG9w
+ZXJzIGFuZApyZXNlYXJjaGVycyBpbnRlcmVzdGVkIGluIGltcGxlbWVudGluZyBpbXByb3ZlbWVu
+dHMgaW4gdGhlIExpbnV4CmZpbGVzeXN0ZW0gYW5kIHN0b3JhZ2Ugc3Vic3lzdGVtcyB0aGF0IGNh
+biBmaW5kIHRoZWlyIHdheSBpbnRvIHRoZQptYWlubGluZSBrZXJuZWwgYW5kIGludG8gTGludXgg
+ZGlzdHJpYnV0aW9ucyBpbiB0aGUgMeKAkzIgeWVhciB0aW1lZnJhbWUuClRoZSB3b3Jrc2hvcCB3
+aWxsIGJlIHR3byBkYXlzIGFuZCB3aWxsIGJlIHNlcGFyYXRlZCBpbnRvIHN0b3JhZ2UgYW5kCmZp
+bGVzeXN0ZW0gdHJhY2tzLCB3aXRoIHNvbWUgY29tYmluZWQgcGxlbmFyeSBzZXNzaW9ucy4KClRo
+ZSB3b3Jrc2hvcCB3aWxsIGJlIGhlbGQgRmViIDI1IGFuZCAyNiBpbiBTYW4gSm9zZS4KCi1jaHJp
+cwotClRvIHVuc3Vic2NyaWJlIGZyb20gdGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1YnNj
+cmliZSBsaW51eC1mc2RldmVsIiBpbgp0aGUgYm9keSBvZiBhIG1lc3NhZ2UgdG8gbWFqb3Jkb21v
+QHZnZXIua2VybmVsLm9yZwpNb3JlIG1ham9yZG9tbyBpbmZvIGF0ICBodHRwOi8vdmdlci5rZXJu
+ZWwub3JnL21ham9yZG9tby1pbmZvLmh0bWwKX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
+X19fX19fX19fX19fX19fX18KTkZTdjQgbWFpbGluZyBsaXN0Ck5GU3Y0QGxpbnV4LW5mcy5vcmcK
+aHR0cDovL2xpbnV4LW5mcy5vcmcvY2dpLWJpbi9tYWlsbWFuL2xpc3RpbmZvL25mc3Y0
