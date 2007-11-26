@@ -1,45 +1,92 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [Fwd: Reminder: Linux Storage and Filesystem Workshop]
-Date: Mon, 26 Nov 2007 12:16:21 -0500
-Message-ID: <1196097381.7716.11.camel@heimdal.trondhjem.org>
+From: James Lentini <jlentini@netapp.com>
+Subject: [PATCH] remove NFS/RDMA client's binary sysctls
+Date: Mon, 26 Nov 2007 12:42:44 -0500 (EST)
+Message-ID: <Pine.LNX.4.64.0711261234400.7142@jlentini-linux.nane.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-To: nfsv4@linux-nfs.org, linux-nfs@vger.kernel.org
-Return-path: <nfsv4-bounces@linux-nfs.org>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Thomas Talpey <talpey@netapp.com>, nfs@lists.sourceforge.net,
+	linux-nfs@vger.kernel.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx2.netapp.com ([216.240.18.37]:7416 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752064AbXKZRms (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 26 Nov 2007 12:42:48 -0500
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ci0tLS0tLS0tIEZvcndhcmRlZCBNZXNzYWdlIC0tLS0tLS0tCkZyb206IENocmlzIE1hc29uIDxj
-aHJpcy5tYXNvbkBvcmFjbGUuY29tPgpUbzogbGludXgta2VybmVsQHZnZXIua2VybmVsLm9yZywg
-bGludXgtZnNkZXZlbEB2Z2VyLmtlcm5lbC5vcmcKU3ViamVjdDogUmVtaW5kZXI6IExpbnV4IFN0
-b3JhZ2UgYW5kIEZpbGVzeXN0ZW0gV29ya3Nob3AKRGF0ZTogCU1vbiwgMjYgTm92IDIwMDcgMTA6
-NDc6MjAgLTA1MDAKCkhlbGxvIGV2ZXJ5b25lLAoKVGhlIGRlYWRsaW5lIGZvciBwb3NpdGlvbiBz
-dGF0ZW1lbnRzIHRvIHRoZSBMaW51eCBTdG9yYWdlIGFuZApGaWxlc3lzdGVtIFdvcmtzaG9wIGlz
-IHF1aWNrbHkgYXBwcm9hY2hpbmcuICBUaGUgcG9zaXRpb24gc3RhdGVtZW50cwphcmUgYW4gZWFz
-eSB3YXkgZm9yIHlvdSB0byB0ZWxsIHRoZSBvcmdhbml6ZXJzIHRoYXQgeW91IHdvdWxkIGxpa2Ug
-dG8KYXR0ZW5kLCBhbmQgd2hpY2ggdG9waWNzIHlvdSBhcmUgbW9zdCBpbnRlcmVzdGluZyBpbi4K
-CllvdSBjYW4gZmluZCBhbGwgdGhlIGRldGFpbHMgYWJvdXQgdGhlIHdvcmtzaG9wIGhlcmU6Cgpo
-dHRwOi8vd3d3LnVzZW5peC5vcmcvZXZlbnRzL2xzZjA4LwoKVGhlIExpbnV4IFN0b3JhZ2UgYW5k
-IEZpbGVzeXN0ZW0gV29ya3Nob3AgaXMgYSBzbWFsbCwgdGlnaHRseSBmb2N1c2VkLApieS1pbnZp
-dGF0aW9uIHdvcmtzaG9wLiBJdCBpcyBpbnRlbmRlZCB0byBicmluZyB0b2dldGhlciBkZXZlbG9w
-ZXJzIGFuZApyZXNlYXJjaGVycyBpbnRlcmVzdGVkIGluIGltcGxlbWVudGluZyBpbXByb3ZlbWVu
-dHMgaW4gdGhlIExpbnV4CmZpbGVzeXN0ZW0gYW5kIHN0b3JhZ2Ugc3Vic3lzdGVtcyB0aGF0IGNh
-biBmaW5kIHRoZWlyIHdheSBpbnRvIHRoZQptYWlubGluZSBrZXJuZWwgYW5kIGludG8gTGludXgg
-ZGlzdHJpYnV0aW9ucyBpbiB0aGUgMeKAkzIgeWVhciB0aW1lZnJhbWUuClRoZSB3b3Jrc2hvcCB3
-aWxsIGJlIHR3byBkYXlzIGFuZCB3aWxsIGJlIHNlcGFyYXRlZCBpbnRvIHN0b3JhZ2UgYW5kCmZp
-bGVzeXN0ZW0gdHJhY2tzLCB3aXRoIHNvbWUgY29tYmluZWQgcGxlbmFyeSBzZXNzaW9ucy4KClRo
-ZSB3b3Jrc2hvcCB3aWxsIGJlIGhlbGQgRmViIDI1IGFuZCAyNiBpbiBTYW4gSm9zZS4KCi1jaHJp
-cwotClRvIHVuc3Vic2NyaWJlIGZyb20gdGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1YnNj
-cmliZSBsaW51eC1mc2RldmVsIiBpbgp0aGUgYm9keSBvZiBhIG1lc3NhZ2UgdG8gbWFqb3Jkb21v
-QHZnZXIua2VybmVsLm9yZwpNb3JlIG1ham9yZG9tbyBpbmZvIGF0ICBodHRwOi8vdmdlci5rZXJu
-ZWwub3JnL21ham9yZG9tby1pbmZvLmh0bWwKX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
-X19fX19fX19fX19fX19fX18KTkZTdjQgbWFpbGluZyBsaXN0Ck5GU3Y0QGxpbnV4LW5mcy5vcmcK
-aHR0cDovL2xpbnV4LW5mcy5vcmcvY2dpLWJpbi9tYWlsbWFuL2xpc3RpbmZvL25mc3Y0
+
+Support for binary sysctls is being deprecated in 2.6.24. Since there 
+are no applications using the NFS/RDMA client's binary sysctls, it 
+makes sense to remove them. The patch below does this while leaving 
+the /proc/sys interface unchanged.
+
+Please consider this for 2.6.24.
+
+Signed-off-by: James Lentini <jlentini@netapp.com>
+
+ include/linux/sunrpc/debug.h    |    5 -----
+ net/sunrpc/xprtrdma/transport.c |   10 +++++-----
+ 2 files changed, 5 insertions(+), 10 deletions(-)
+
+--- a/include/linux/sunrpc/debug.h
++++ b/include/linux/sunrpc/debug.h
+@@ -88,11 +88,6 @@
+ 	CTL_SLOTTABLE_TCP,
+ 	CTL_MIN_RESVPORT,
+ 	CTL_MAX_RESVPORT,
+-	CTL_SLOTTABLE_RDMA,
+-	CTL_RDMA_MAXINLINEREAD,
+-	CTL_RDMA_MAXINLINEWRITE,
+-	CTL_RDMA_WRITEPADDING,
+-	CTL_RDMA_MEMREG,
+ };
+ 
+ #endif /* _LINUX_SUNRPC_DEBUG_H_ */
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -89,7 +89,7 @@
+ 
+ static ctl_table xr_tunables_table[] = {
+ 	{
+-		.ctl_name	= CTL_SLOTTABLE_RDMA,
++		.ctl_name       = CTL_UNNUMBERED,
+ 		.procname	= "rdma_slot_table_entries",
+ 		.data		= &xprt_rdma_slot_table_entries,
+ 		.maxlen		= sizeof(unsigned int),
+@@ -100,7 +100,7 @@
+ 		.extra2		= &max_slot_table_size
+ 	},
+ 	{
+-		.ctl_name	= CTL_RDMA_MAXINLINEREAD,
++		.ctl_name       = CTL_UNNUMBERED,
+ 		.procname	= "rdma_max_inline_read",
+ 		.data		= &xprt_rdma_max_inline_read,
+ 		.maxlen		= sizeof(unsigned int),
+@@ -109,7 +109,7 @@
+ 		.strategy	= &sysctl_intvec,
+ 	},
+ 	{
+-		.ctl_name	= CTL_RDMA_MAXINLINEWRITE,
++		.ctl_name       = CTL_UNNUMBERED,
+ 		.procname	= "rdma_max_inline_write",
+ 		.data		= &xprt_rdma_max_inline_write,
+ 		.maxlen		= sizeof(unsigned int),
+@@ -118,7 +118,7 @@
+ 		.strategy	= &sysctl_intvec,
+ 	},
+ 	{
+-		.ctl_name	= CTL_RDMA_WRITEPADDING,
++		.ctl_name       = CTL_UNNUMBERED,
+ 		.procname	= "rdma_inline_write_padding",
+ 		.data		= &xprt_rdma_inline_write_padding,
+ 		.maxlen		= sizeof(unsigned int),
+@@ -129,7 +129,7 @@
+ 		.extra2		= &max_padding,
+ 	},
+ 	{
+-		.ctl_name	= CTL_RDMA_MEMREG,
++		.ctl_name       = CTL_UNNUMBERED,
+ 		.procname	= "rdma_memreg_strategy",
+ 		.data		= &xprt_rdma_memreg_strategy,
+ 		.maxlen		= sizeof(unsigned int),
