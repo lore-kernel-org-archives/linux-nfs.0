@@ -1,31 +1,44 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: Re: [NFS] NFS Digest, Vol 18, Issue 70 (NFS performance problems)
-Date: Sun, 25 Nov 2007 23:41:49 -0500
-Message-ID: <1196052109.7804.7.camel@heimdal.trondhjem.org>
+Date: Mon, 26 Nov 2007 05:02:30 +0000
+Message-ID: <20071126050230.GD21120@fieldses.org>
 References: <mailman.194659.1195581701.26582.nfs@lists.sourceforge.net>
-	<BAY104-W43766F661E50E7FFCDA8EBA7F0@phx.gbl>	<47434ED7.4010100@redhat.com>
-	<47435049.1010800@redhat.com> <47445727.5090705@oracle.com>
-	<474A3D6B.2060208@redhat.com>
+	<BAY104-W43766F661E50E7FFCDA8EBA7F0@phx.gbl>
+	<47434ED7.4010100@redhat.com> <47435049.1010800@redhat.com>
+	<47445727.5090705@oracle.com> <474A3D6B.2060208@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: chuck.lever@oracle.com, nfs@lists.sourceforge.net
-To: wcheng@redhat.com
+To: Wendy Cheng <wcheng@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IwVnK-00079g-F0
-	for nfs@lists.sourceforge.net; Sun, 25 Nov 2007 20:42:06 -0800
-Received: from pat.uio.no ([129.240.10.15])
+	id 1IwW7A-0008D8-SR
+	for nfs@lists.sourceforge.net; Sun, 25 Nov 2007 21:02:36 -0800
+Received: from mail.fieldses.org ([66.93.2.214] helo=fieldses.org)
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IwVnQ-0003QF-2n
-	for nfs@lists.sourceforge.net; Sun, 25 Nov 2007 20:42:12 -0800
+	(Exim 4.44) id 1IwW7G-0003Zk-Kw
+	for nfs@lists.sourceforge.net; Sun, 25 Nov 2007 21:02:43 -0800
 In-Reply-To: <474A3D6B.2060208@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <nfs.lists.sourceforge.net>
 
-
-On Sun, 2007-11-25 at 22:28 -0500, Wendy Cheng wrote:
+On Sun, Nov 25, 2007 at 10:28:43PM -0500, Wendy Cheng wrote:
+> Chuck Lever wrote:
+> 
+> > Hi Wendy-
+> >
+> > That means his old system would have been exposed to data corruption 
+> > issues if it crashes (panic, power outage, etc).  Using "sync" became 
+> > default because async is inherently careless about data integrity.  
+> > The data loss is often entirely silent.
+> >
+> > This is explained in the Linux NFS FAQ, question B6.
+> >
+> > See http://nfs.sourceforge.net/index.php#faq_b6
+> 
+> 
 > Setting aside NFS for a moment...  for a locally mounted filesystem, the 
 > file data stays in the cache until write-back occurs. Upon crashing, 
 > there are always possibilities that the data could be lost. Journaling 
@@ -35,27 +48,26 @@ On Sun, 2007-11-25 at 22:28 -0500, Wendy Cheng wrote:
 > the filesystems are hardly mounted with "sync" option. Applications 
 > normally understand the problem and whenever required, fsync() and/or 
 > similar mechanisms are applied.
-> 
-> For Linux NFS servers to deviate from this common practice, by reading 
-> the FAQ, I assume something has been done (particularly from client 
-> ends) to alleviate the performance hit ? Could you elaborate more about 
-> this ?
-> 
-> Again, I'm not trying to argue and/or start a flamewar. I have a need to 
-> understand more about this issue. The "sync" operation is very expensive 
-> for us (cluster filesystem) and I'm under the gun to improve our NFS 
-> file serving performance at this moment.
 
-You've got it wrong. The 'async' option was the Linux-specific option
-that violates the NFS spec, not 'sync'.
+As far as I know, even an explicit fsync() is ineffective in the case of
+NFSv2 when the async export option is set.  (With v3 and v4 I think it
+still works, since (from a quick check of the code) it does respect the
+stable flag even on async exports.)
 
-Please read the RFCs: NFS has always imposed strict requirements on the
-server w.r.t. data integrity. 'async' violates those requirements
-because it allows the server to cache data in circumstances where the
-client is under the belief that the data is on permanent storage.
+An application on a local disk goes down when the system goes down,
+whereas an NFS server can reboot without the applications using it
+exiting.
 
-Trond
+So while a well-designed application might be built to deal with the
+situation where a mkdir() that a previous instance performed is no
+longer there when it starts up again, it may not be ready to deal with a
+directory it just created simply diseappearing out from under it while
+it's running.
 
+(Stupid question: what would it take to give NFS the equivalent to
+COMMIT for directory operations?)
+
+--b.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
