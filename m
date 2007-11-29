@@ -1,128 +1,85 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [RFC,PATCH 29/38] svc: Move common create logic to common code
-Date: Thu, 29 Nov 2007 16:40:54 -0600
-Message-ID: <20071129224054.14563.29841.stgit@dell3.ogc.int>
+Subject: [RFC,PATCH 31/38] svc: Make svc_check_conn_limits xprt independent
+Date: Thu, 29 Nov 2007 16:40:58 -0600
+Message-ID: <20071129224058.14563.36443.stgit@dell3.ogc.int>
 References: <20071129223917.14563.77633.stgit@dell3.ogc.int>
 Content-Type: text/plain; charset=utf-8; format=fixed
 Cc: linux-nfs@vger.kernel.org
 To: bfields-ag9A2Eb6PFsgsBAKwltoeQ@public.gmane.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:48889 "EHLO
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:48903 "EHLO
 	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S933704AbXK2XDl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2007 18:03:41 -0500
+	by vger.kernel.org with ESMTP id S934237AbXK2XDp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2007 18:03:45 -0500
 In-Reply-To: <20071129223917.14563.77633.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-Move the code that adds a transport instance to the sv_tempsocks and
-sv_permsocks lists out of the transport specific functions and into core
-logic. 
+The svc_check_conn_limits function only manipulates xprt fields. Change references
+to svc_sock->sk_xprt to svc_xprt directly.
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- net/sunrpc/svc_xprt.c |    9 ++++++++-
- net/sunrpc/svcsock.c  |   39 +++++++++++++++++++--------------------
- 2 files changed, 27 insertions(+), 21 deletions(-)
+ net/sunrpc/svcsock.c |   31 +++++++++++++++----------------
+ 1 files changed, 15 insertions(+), 16 deletions(-)
 
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index d0cbfe0..924df63 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -145,8 +145,15 @@ int svc_create_xprt(struct svc_serv *serv, char *xprt_name, unsigned short port,
- 				if (IS_ERR(newxprt)) {
- 					module_put(xcl->xcl_owner);
- 					ret = PTR_ERR(newxprt);
--				} else
-+				} else {
-+					clear_bit(XPT_TEMP,
-+						  &newxprt->xpt_flags);
-+					spin_lock_bh(&serv->sv_lock);
-+					list_add(&newxprt->xpt_list,
-+						 &serv->sv_permsocks);
-+					spin_unlock_bh(&serv->sv_lock);
- 					ret = svc_xprt_local_port(newxprt);
-+				}
- 			}
- 			goto out;
- 		}
 diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index e4e2b2f..8f0ceef 100644
+index c4b2a5e..53288cc 100644
 --- a/net/sunrpc/svcsock.c
 +++ b/net/sunrpc/svcsock.c
-@@ -94,6 +94,7 @@ static int svc_deferred_recv(struct svc_rqst *rqstp);
- static struct cache_deferred_req *svc_defer(struct cache_req *req);
- static struct svc_xprt *
- svc_create_socket(struct svc_serv *, int, struct sockaddr *, int, int);
-+static void svc_age_temp_xprts(unsigned long closure);
- 
- /* apparently the "standard" is that clients close
-  * idle connections after 5 minutes, servers after
-@@ -1588,7 +1589,20 @@ svc_recv(struct svc_rqst *rqstp, long timeout)
- 			 * listener holds a reference too
+@@ -1457,38 +1457,37 @@ svc_check_conn_limits(struct svc_serv *serv)
+ 	 * seconds. An attacker can easily beat that.
+ 	 *
+ 	 * The only somewhat efficient mechanism would be if drop
+-	 * old connections from the same IP first. But right now
+-	 * we don't even record the client IP in svc_sock.
++	 * old connections from the same IP first.
+ 	 */
+ 	if (serv->sv_tmpcnt > (serv->sv_nrthreads+3)*20) {
+-		struct svc_sock *svsk = NULL;
++		struct svc_xprt *xprt = NULL;
+ 		spin_lock_bh(&serv->sv_lock);
+ 		if (!list_empty(&serv->sv_tempsocks)) {
+ 			if (net_ratelimit()) {
+ 				/* Try to help the admin */
+-				printk(KERN_NOTICE "%s: too many open TCP "
+-					"sockets, consider increasing the "
++				printk(KERN_NOTICE "%s: too many open  "
++					"connections, consider increasing the "
+ 					"number of nfsd threads\n",
+-						   serv->sv_name);
++				       serv->sv_name);
+ 				printk(KERN_NOTICE
+-				       "%s: last TCP connect from %s\n",
++				       "%s: last connection from %s\n",
+ 				       serv->sv_name, buf);
+ 			}
+ 			/*
+-			 * Always select the oldest socket. It's not fair,
++			 * Always select the oldest connection. It's not fair,
+ 			 * but so is life
  			 */
- 			__module_get(newxpt->xpt_class->xcl_owner);
--			svc_check_conn_limits(svsk->sk_xprt.xpt_server);
-+			svc_check_conn_limits(xprt->xpt_server);
-+			spin_lock_bh(&serv->sv_lock);
-+			set_bit(XPT_TEMP, &newxpt->xpt_flags);
-+			list_add(&newxpt->xpt_list, &serv->sv_tempsocks);
-+			serv->sv_tmpcnt++;
-+			if (serv->sv_temptimer.function == NULL) {
-+				/* setup timer to age temp sockets */
-+				setup_timer(&serv->sv_temptimer,
-+					    svc_age_temp_xprts,
-+					    (unsigned long)serv);
-+				mod_timer(&serv->sv_temptimer,
-+					  jiffies + svc_conn_age_period * HZ);
-+			}
-+			spin_unlock_bh(&serv->sv_lock);
- 			svc_xprt_received(newxpt);
+-			svsk = list_entry(serv->sv_tempsocks.prev,
+-					  struct svc_sock,
+-					  sk_xprt.xpt_list);
+-			set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
+-			svc_xprt_get(&svsk->sk_xprt);
++			xprt = list_entry(serv->sv_tempsocks.prev,
++					  struct svc_xprt,
++					  xpt_list);
++			set_bit(XPT_CLOSE, &xprt->xpt_flags);
++			svc_xprt_get(xprt);
  		}
- 		svc_xprt_received(xprt);
-@@ -1733,7 +1747,6 @@ static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
- 	struct svc_sock	*svsk;
- 	struct sock	*inet;
- 	int		pmap_register = !(flags & SVC_SOCK_ANONYMOUS);
--	int		is_temporary = flags & SVC_SOCK_TEMPORARY;
+ 		spin_unlock_bh(&serv->sv_lock);
  
- 	dprintk("svc: svc_setup_socket %p\n", sock);
- 	if (!(svsk = kzalloc(sizeof(*svsk), GFP_KERNEL))) {
-@@ -1767,24 +1780,6 @@ static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
- 	else
- 		svc_tcp_init(svsk, serv);
- 
--	spin_lock_bh(&serv->sv_lock);
--	if (is_temporary) {
--		set_bit(XPT_TEMP, &svsk->sk_xprt.xpt_flags);
--		list_add(&svsk->sk_xprt.xpt_list, &serv->sv_tempsocks);
--		serv->sv_tmpcnt++;
--		if (serv->sv_temptimer.function == NULL) {
--			/* setup timer to age temp sockets */
--			setup_timer(&serv->sv_temptimer, svc_age_temp_xprts,
--					(unsigned long)serv);
--			mod_timer(&serv->sv_temptimer,
--					jiffies + svc_conn_age_period * HZ);
--		}
--	} else {
--		clear_bit(XPT_TEMP, &svsk->sk_xprt.xpt_flags);
--		list_add(&svsk->sk_xprt.xpt_list, &serv->sv_permsocks);
--	}
--	spin_unlock_bh(&serv->sv_lock);
--
- 	dprintk("svc: svc_setup_socket created %p (inet %p)\n",
- 				svsk, svsk->sk_sk);
- 
-@@ -1820,6 +1815,10 @@ int svc_addsock(struct svc_serv *serv,
- 			svc_xprt_received(&svsk->sk_xprt);
- 			err = 0;
+-		if (svsk) {
+-			svc_xprt_enqueue(&svsk->sk_xprt);
+-			svc_xprt_put(&svsk->sk_xprt);
++		if (xprt) {
++			svc_xprt_enqueue(xprt);
++			svc_xprt_put(xprt);
  		}
-+		clear_bit(XPT_TEMP, &svsk->sk_xprt.xpt_flags);
-+		spin_lock_bh(&serv->sv_lock);
-+		list_add(&svsk->sk_xprt.xpt_list, &serv->sv_permsocks);
-+		spin_unlock_bh(&serv->sv_lock);
  	}
- 	if (err) {
- 		sockfd_put(so);
+ }
