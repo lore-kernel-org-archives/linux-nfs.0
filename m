@@ -1,142 +1,128 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [RFC,PATCH 34/38] svc: Add /proc/sys/sunrpc/transport files
-Date: Thu, 29 Nov 2007 16:54:46 -0600
-Message-ID: <20071129225446.15107.74778.stgit@dell3.ogc.int>
-References: <20071129225142.15107.46200.stgit@dell3.ogc.int>
+Subject: [RFC,PATCH 29/38] svc: Move common create logic to common code
+Date: Thu, 29 Nov 2007 16:56:39 -0600
+Message-ID: <20071129225639.15275.93716.stgit@dell3.ogc.int>
+References: <20071129225510.15275.82660.stgit@dell3.ogc.int>
 Content-Type: text/plain; charset=utf-8; format=fixed
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:47405 "EHLO
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:47421 "EHLO
 	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1763551AbXK2XUW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2007 18:20:22 -0500
-In-Reply-To: <20071129225142.15107.46200.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
+	by vger.kernel.org with ESMTP id S1763660AbXK2XUZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2007 18:20:25 -0500
+In-Reply-To: <20071129225510.15275.82660.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-Add a file that when read lists the set of registered svc
-transports.
+Move the code that adds a transport instance to the sv_tempsocks and
+sv_permsocks lists out of the transport specific functions and into core
+logic. 
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- include/linux/sunrpc/svc_xprt.h |    2 ++
- net/sunrpc/svc_xprt.c           |   28 ++++++++++++++++++++++++++++
- net/sunrpc/sysctl.c             |   31 +++++++++++++++++++++++++++++++
- 3 files changed, 61 insertions(+), 0 deletions(-)
+ net/sunrpc/svc_xprt.c |    9 ++++++++-
+ net/sunrpc/svcsock.c  |   39 +++++++++++++++++++--------------------
+ 2 files changed, 27 insertions(+), 21 deletions(-)
 
-diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index 36f8b09..c2fa41d 100644
---- a/include/linux/sunrpc/svc_xprt.h
-+++ b/include/linux/sunrpc/svc_xprt.h
-@@ -79,11 +79,13 @@ void	svc_xprt_copy_addrs(struct svc_rqst *rqstp, struct svc_xprt *xprt);
- void	svc_xprt_enqueue(struct svc_xprt *xprt);
- int	svc_port_is_privileged(struct sockaddr *sin);
- void	svc_delete_xprt(struct svc_xprt *xprt);
-+int	svc_print_xprts(char *buf, int maxlen);
- 
- static inline void svc_xprt_get(struct svc_xprt *xprt)
- {
- 	kref_get(&xprt->xpt_ref);
- }
-+
- static inline void svc_xprt_set_local(struct svc_xprt *xprt,
- 				      struct sockaddr *sa, int salen)
- {
 diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index b31ba0e..7416e66 100644
+index d0cbfe0..924df63 100644
 --- a/net/sunrpc/svc_xprt.c
 +++ b/net/sunrpc/svc_xprt.c
-@@ -93,6 +93,34 @@ int svc_unreg_xprt_class(struct svc_xprt_class *xcl)
- }
- EXPORT_SYMBOL_GPL(svc_unreg_xprt_class);
+@@ -145,8 +145,15 @@ int svc_create_xprt(struct svc_serv *serv, char *xprt_name, unsigned short port,
+ 				if (IS_ERR(newxprt)) {
+ 					module_put(xcl->xcl_owner);
+ 					ret = PTR_ERR(newxprt);
+-				} else
++				} else {
++					clear_bit(XPT_TEMP,
++						  &newxprt->xpt_flags);
++					spin_lock_bh(&serv->sv_lock);
++					list_add(&newxprt->xpt_list,
++						 &serv->sv_permsocks);
++					spin_unlock_bh(&serv->sv_lock);
+ 					ret = svc_xprt_local_port(newxprt);
++				}
+ 			}
+ 			goto out;
+ 		}
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index e4e2b2f..8f0ceef 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -94,6 +94,7 @@ static int svc_deferred_recv(struct svc_rqst *rqstp);
+ static struct cache_deferred_req *svc_defer(struct cache_req *req);
+ static struct svc_xprt *
+ svc_create_socket(struct svc_serv *, int, struct sockaddr *, int, int);
++static void svc_age_temp_xprts(unsigned long closure);
  
-+/*
-+ * Format the transport list for printing
-+ */
-+int svc_print_xprts(char *buf, int maxlen)
-+{
-+	struct list_head *le;
-+	char tmpstr[80];
-+	int len = 0;
-+	buf[0] = '\0';
-+
-+	spin_lock(&svc_xprt_class_lock);
-+	list_for_each(le, &svc_xprt_class_list) {
-+		int slen;
-+		struct svc_xprt_class *xcl =
-+			list_entry(le, struct svc_xprt_class, xcl_list);
-+
-+		sprintf(tmpstr, "%s %d\n", xcl->xcl_name, xcl->xcl_max_payload);
-+		slen = strlen(tmpstr);
-+		if (len + slen > maxlen)
-+			break;
-+		len += slen;
-+		strcat(buf, tmpstr);
-+	}
-+	spin_unlock(&svc_xprt_class_lock);
-+
-+	return len;
-+}
-+
- static void svc_xprt_free(struct kref *kref)
- {
- 	struct svc_xprt *xprt =
-diff --git a/net/sunrpc/sysctl.c b/net/sunrpc/sysctl.c
-index 2be714e..fd7cf59 100644
---- a/net/sunrpc/sysctl.c
-+++ b/net/sunrpc/sysctl.c
-@@ -18,6 +18,7 @@
- #include <linux/sunrpc/types.h>
- #include <linux/sunrpc/sched.h>
- #include <linux/sunrpc/stats.h>
-+#include <linux/sunrpc/svc_xprt.h>
+ /* apparently the "standard" is that clients close
+  * idle connections after 5 minutes, servers after
+@@ -1588,7 +1589,20 @@ svc_recv(struct svc_rqst *rqstp, long timeout)
+ 			 * listener holds a reference too
+ 			 */
+ 			__module_get(newxpt->xpt_class->xcl_owner);
+-			svc_check_conn_limits(svsk->sk_xprt.xpt_server);
++			svc_check_conn_limits(xprt->xpt_server);
++			spin_lock_bh(&serv->sv_lock);
++			set_bit(XPT_TEMP, &newxpt->xpt_flags);
++			list_add(&newxpt->xpt_list, &serv->sv_tempsocks);
++			serv->sv_tmpcnt++;
++			if (serv->sv_temptimer.function == NULL) {
++				/* setup timer to age temp sockets */
++				setup_timer(&serv->sv_temptimer,
++					    svc_age_temp_xprts,
++					    (unsigned long)serv);
++				mod_timer(&serv->sv_temptimer,
++					  jiffies + svc_conn_age_period * HZ);
++			}
++			spin_unlock_bh(&serv->sv_lock);
+ 			svc_xprt_received(newxpt);
+ 		}
+ 		svc_xprt_received(xprt);
+@@ -1733,7 +1747,6 @@ static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
+ 	struct svc_sock	*svsk;
+ 	struct sock	*inet;
+ 	int		pmap_register = !(flags & SVC_SOCK_ANONYMOUS);
+-	int		is_temporary = flags & SVC_SOCK_TEMPORARY;
  
- /*
-  * Declare the debug flags here
-@@ -48,6 +49,30 @@ rpc_unregister_sysctl(void)
+ 	dprintk("svc: svc_setup_socket %p\n", sock);
+ 	if (!(svsk = kzalloc(sizeof(*svsk), GFP_KERNEL))) {
+@@ -1767,24 +1780,6 @@ static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
+ 	else
+ 		svc_tcp_init(svsk, serv);
+ 
+-	spin_lock_bh(&serv->sv_lock);
+-	if (is_temporary) {
+-		set_bit(XPT_TEMP, &svsk->sk_xprt.xpt_flags);
+-		list_add(&svsk->sk_xprt.xpt_list, &serv->sv_tempsocks);
+-		serv->sv_tmpcnt++;
+-		if (serv->sv_temptimer.function == NULL) {
+-			/* setup timer to age temp sockets */
+-			setup_timer(&serv->sv_temptimer, svc_age_temp_xprts,
+-					(unsigned long)serv);
+-			mod_timer(&serv->sv_temptimer,
+-					jiffies + svc_conn_age_period * HZ);
+-		}
+-	} else {
+-		clear_bit(XPT_TEMP, &svsk->sk_xprt.xpt_flags);
+-		list_add(&svsk->sk_xprt.xpt_list, &serv->sv_permsocks);
+-	}
+-	spin_unlock_bh(&serv->sv_lock);
+-
+ 	dprintk("svc: svc_setup_socket created %p (inet %p)\n",
+ 				svsk, svsk->sk_sk);
+ 
+@@ -1820,6 +1815,10 @@ int svc_addsock(struct svc_serv *serv,
+ 			svc_xprt_received(&svsk->sk_xprt);
+ 			err = 0;
+ 		}
++		clear_bit(XPT_TEMP, &svsk->sk_xprt.xpt_flags);
++		spin_lock_bh(&serv->sv_lock);
++		list_add(&svsk->sk_xprt.xpt_list, &serv->sv_permsocks);
++		spin_unlock_bh(&serv->sv_lock);
  	}
- }
- 
-+static int proc_do_xprt(ctl_table *table, int write, struct file *file,
-+			void __user *buffer, size_t *lenp, loff_t *ppos)
-+{
-+	char tmpbuf[256];
-+	int len;
-+	if ((*ppos && !write) || !*lenp) {
-+		*lenp = 0;
-+		return 0;
-+	}
-+	if (write)
-+		return -EINVAL;
-+	else {
-+		len = svc_print_xprts(tmpbuf, sizeof(tmpbuf));
-+		if (!access_ok(VERIFY_WRITE, buffer, len))
-+			return -EFAULT;
-+
-+		if (__copy_to_user(buffer, tmpbuf, len))
-+			return -EFAULT;
-+	}
-+	*lenp -= len;
-+	*ppos += len;
-+	return 0;
-+}
-+
- static int
- proc_dodebug(ctl_table *table, int write, struct file *file,
- 				void __user *buffer, size_t *lenp, loff_t *ppos)
-@@ -140,6 +165,12 @@ static ctl_table debug_table[] = {
- 		.mode		= 0644,
- 		.proc_handler	= &proc_dodebug
- 	},
-+	{
-+		.procname	= "transports",
-+		.maxlen		= 256,
-+		.mode		= 0444,
-+		.proc_handler	= &proc_do_xprt,
-+	},
- 	{ .ctl_name = 0 }
- };
- 
+ 	if (err) {
+ 		sockfd_put(so);
