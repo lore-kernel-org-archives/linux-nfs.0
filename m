@@ -1,151 +1,78 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [RFC,PATCH 09/38] svc: Add a transport function that checks for write space
-Date: Thu, 29 Nov 2007 16:55:57 -0600
-Message-ID: <20071129225557.15275.12304.stgit@dell3.ogc.int>
-References: <20071129225510.15275.82660.stgit@dell3.ogc.int>
+Subject: [RFC,PATCH 04/38] svc: Add a max payload value to the transport
+Date: Thu, 29 Nov 2007 16:53:39 -0600
+Message-ID: <20071129225339.15107.22530.stgit@dell3.ogc.int>
+References: <20071129225142.15107.46200.stgit@dell3.ogc.int>
 Content-Type: text/plain; charset=utf-8; format=fixed
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:47416 "EHLO
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:47423 "EHLO
 	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1763303AbXK2XUQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2007 18:20:16 -0500
-In-Reply-To: <20071129225510.15275.82660.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
+	by vger.kernel.org with ESMTP id S1763482AbXK2XUV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2007 18:20:21 -0500
+In-Reply-To: <20071129225142.15107.46200.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-In order to avoid blocking a service thread, the receive side checks
-to see if there is sufficient write space to reply to the request.
-Each transport has a different mechanism for determining if there is
-enough write space to reply.
-
-The code that checked for white space was coupled with code that 
-checked for CLOSE and CONN. These checks have been broken out into 
-separate statements to make the code easier to read.
+The svc_max_payload function currently looks at the socket type
+to determine the max payload. Add a max payload value to svc_xprt_class
+so it can be returned directly. 
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
  include/linux/sunrpc/svc_xprt.h |    1 +
- net/sunrpc/svcsock.c            |   60 +++++++++++++++++++++++++++++++++------
- 2 files changed, 51 insertions(+), 10 deletions(-)
+ net/sunrpc/svc.c                |    4 +---
+ net/sunrpc/svcsock.c            |    2 ++
+ 3 files changed, 4 insertions(+), 3 deletions(-)
 
 diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index 8501115..3adc8f3 100644
+index a8b1da8..b4ce054 100644
 --- a/include/linux/sunrpc/svc_xprt.h
 +++ b/include/linux/sunrpc/svc_xprt.h
-@@ -10,6 +10,7 @@
- #include <linux/sunrpc/svc.h>
+@@ -17,6 +17,7 @@ struct svc_xprt_class {
+ 	struct module		*xcl_owner;
+ 	struct svc_xprt_ops	*xcl_ops;
+ 	struct list_head	xcl_list;
++	u32			xcl_max_payload;
+ };
  
- struct svc_xprt_ops {
-+	int		(*xpo_has_wspace)(struct svc_xprt *);
- 	int		(*xpo_recvfrom)(struct svc_rqst *);
- 	void		(*xpo_prep_reply_hdr)(struct svc_rqst *);
- 	int		(*xpo_sendto)(struct svc_rqst *);
+ struct svc_xprt {
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index a4a6bf7..ce59044 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -1054,10 +1054,8 @@ err_bad:
+  */
+ u32 svc_max_payload(const struct svc_rqst *rqstp)
+ {
+-	int max = RPCSVC_MAXPAYLOAD_TCP;
++	int max = rqstp->rq_xprt->xpt_class->xcl_max_payload;
+ 
+-	if (rqstp->rq_sock->sk_sock->type == SOCK_DGRAM)
+-		max = RPCSVC_MAXPAYLOAD_UDP;
+ 	if (rqstp->rq_server->sv_max_payload < max)
+ 		max = rqstp->rq_server->sv_max_payload;
+ 	return max;
 diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 510ad45..b796244 100644
+index 4755467..ca9b8d8 100644
 --- a/net/sunrpc/svcsock.c
 +++ b/net/sunrpc/svcsock.c
-@@ -269,22 +269,24 @@ svc_sock_enqueue(struct svc_sock *svsk)
- 	BUG_ON(svsk->sk_pool != NULL);
- 	svsk->sk_pool = pool;
- 
--	set_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
--	if (((atomic_read(&svsk->sk_reserved) + serv->sv_max_mesg)*2
--	     > svc_sock_wspace(svsk))
--	    && !test_bit(SK_CLOSE, &svsk->sk_flags)
--	    && !test_bit(SK_CONN, &svsk->sk_flags)) {
-+	/* Handle pending connection */
-+	if (test_bit(SK_CONN, &svsk->sk_flags))
-+		goto process;
-+
-+	/* Handle close in-progress */
-+	if (test_bit(SK_CLOSE, &svsk->sk_flags))
-+		goto process;
-+
-+	/* Check if we have space to reply to a request */
-+	if (!svsk->sk_xprt.xpt_ops->xpo_has_wspace(&svsk->sk_xprt)) {
- 		/* Don't enqueue while not enough space for reply */
--		dprintk("svc: socket %p  no space, %d*2 > %ld, not enqueued\n",
--			svsk->sk_sk, atomic_read(&svsk->sk_reserved)+serv->sv_max_mesg,
--			svc_sock_wspace(svsk));
-+		dprintk("svc: no write space, socket %p  not enqueued\n", svsk);
- 		svsk->sk_pool = NULL;
- 		clear_bit(SK_BUSY, &svsk->sk_flags);
- 		goto out_unlock;
- 	}
--	clear_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
--
- 
-+ process:
- 	if (!list_empty(&pool->sp_threads)) {
- 		rqstp = list_entry(pool->sp_threads.next,
- 				   struct svc_rqst,
-@@ -897,6 +899,24 @@ static void svc_udp_prep_reply_hdr(struct svc_rqst *rqstp)
- {
- }
- 
-+static int svc_udp_has_wspace(struct svc_xprt *xprt)
-+{
-+	struct svc_sock *svsk = container_of(xprt, struct svc_sock, sk_xprt);
-+	struct svc_serv	*serv = svsk->sk_server;
-+	int required;
-+
-+	/*
-+	 * Set the SOCK_NOSPACE flag before checking the available
-+	 * sock space.
-+	 */
-+	set_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
-+	required = atomic_read(&svsk->sk_reserved) + serv->sv_max_mesg;
-+	if (required*2 > sock_wspace(svsk->sk_sk))
-+		return 0;
-+	clear_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
-+	return 1;
-+}
-+
- static struct svc_xprt_ops svc_udp_ops = {
- 	.xpo_recvfrom = svc_udp_recvfrom,
- 	.xpo_sendto = svc_udp_sendto,
-@@ -904,6 +924,7 @@ static struct svc_xprt_ops svc_udp_ops = {
- 	.xpo_detach = svc_sock_detach,
- 	.xpo_free = svc_sock_free,
- 	.xpo_prep_reply_hdr = svc_udp_prep_reply_hdr,
-+	.xpo_has_wspace = svc_udp_has_wspace,
- };
- 
+@@ -906,6 +906,7 @@ static struct svc_xprt_ops svc_udp_ops = {
  static struct svc_xprt_class svc_udp_class = {
-@@ -1366,6 +1387,24 @@ static void svc_tcp_prep_reply_hdr(struct svc_rqst *rqstp)
- 	svc_putnl(resv, 0);
- }
- 
-+static int svc_tcp_has_wspace(struct svc_xprt *xprt)
-+{
-+	struct svc_sock *svsk = container_of(xprt, struct svc_sock, sk_xprt);
-+	struct svc_serv	*serv = svsk->sk_server;
-+	int required;
-+
-+	/*
-+	 * Set the SOCK_NOSPACE flag before checking the available
-+	 * sock space.
-+	 */
-+	set_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
-+	required = atomic_read(&svsk->sk_reserved) + serv->sv_max_mesg;
-+	if (required*2 > sk_stream_wspace(svsk->sk_sk))
-+		return 0;
-+	clear_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
-+	return 1;
-+}
-+
- static struct svc_xprt_ops svc_tcp_ops = {
- 	.xpo_recvfrom = svc_tcp_recvfrom,
- 	.xpo_sendto = svc_tcp_sendto,
-@@ -1373,6 +1412,7 @@ static struct svc_xprt_ops svc_tcp_ops = {
- 	.xpo_detach = svc_sock_detach,
- 	.xpo_free = svc_sock_free,
- 	.xpo_prep_reply_hdr = svc_tcp_prep_reply_hdr,
-+	.xpo_has_wspace = svc_tcp_has_wspace,
+ 	.xcl_name = "udp",
+ 	.xcl_ops = &svc_udp_ops,
++	.xcl_max_payload = RPCSVC_MAXPAYLOAD_UDP,
  };
  
+ static void
+@@ -1359,6 +1360,7 @@ static struct svc_xprt_ops svc_tcp_ops = {
  static struct svc_xprt_class svc_tcp_class = {
+ 	.xcl_name = "tcp",
+ 	.xcl_ops = &svc_tcp_ops,
++	.xcl_max_payload = RPCSVC_MAXPAYLOAD_TCP,
+ };
+ 
+ void svc_init_xprt_sock(void)
