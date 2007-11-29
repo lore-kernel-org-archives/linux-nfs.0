@@ -1,8 +1,8 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [NFS] [PATCH 07/29] NFS: Enable NFS client to generate CLIENTID
-	strings	with IPv6 addresses
-Date: Thu, 29 Nov 2007 14:40:29 -0500
-Message-ID: <20071129194029.4170.65168.stgit@picasso.1015granger.net>
+Subject: [NFS] [PATCH 04/29] SUNRPC: Move universal address definitions to
+	global	header
+Date: Thu, 29 Nov 2007 14:40:13 -0500
+Message-ID: <20071129194012.4170.77861.stgit@picasso.1015granger.net>
 References: <20071129193153.4170.29598.stgit@picasso.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -12,55 +12,154 @@ Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IxpGD-0001Ur-Gd
-	for nfs@lists.sourceforge.net; Thu, 29 Nov 2007 11:41:21 -0800
+	id 1IxpGH-0001UC-IY
+	for nfs@lists.sourceforge.net; Thu, 29 Nov 2007 11:41:26 -0800
 Received: from flpi195.sbcis.sbc.com ([207.115.20.197]
 	helo=flpi195.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IxpGI-0002Ip-HJ
-	for nfs@lists.sourceforge.net; Thu, 29 Nov 2007 11:41:27 -0800
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IxpGD-00028C-BN
+	for nfs@lists.sourceforge.net; Thu, 29 Nov 2007 11:41:21 -0800
 In-Reply-To: <20071129193153.4170.29598.stgit-uiCyzNpeAnB9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <nfs.lists.sourceforge.net>
 
-We recently added methods to RPC transports that provide string versions of
-the remote peer address information.  Convert the NFSv4 SETCLIENTID
-procedure to use those methods instead of building the client ID out of
-whole cloth.
+Universal addresses are defined in RFC 1833 and clarified in RFC 3530.  We
+need to use them in several places in the NFS and RPC clients, so move the
+relevant definition and block comment to an appropriate global include
+file.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Cc: Aurelien Charbon <aurelien.charbon-Z51IpKcfGtLk1uMJSBkQmQ@public.gmane.org>
 ---
 
- fs/nfs/nfs4proc.c |   12 ++++++++----
- 1 files changed, 8 insertions(+), 4 deletions(-)
+ include/linux/sunrpc/msg_prot.h |   39 ++++++++++++++++++++++++++++++++++
+ net/sunrpc/rpcb_clnt.c          |   45 +++------------------------------------
+ 2 files changed, 42 insertions(+), 42 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index f03d9d5..ec58d1e 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2912,14 +2912,18 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program, unsigned short po
+diff --git a/include/linux/sunrpc/msg_prot.h b/include/linux/sunrpc/msg_prot.h
+index c4beb57..70df4f1 100644
+--- a/include/linux/sunrpc/msg_prot.h
++++ b/include/linux/sunrpc/msg_prot.h
+@@ -152,5 +152,44 @@ typedef __be32	rpc_fraghdr;
+  */
+ #define RPCBIND_MAXNETIDLEN	(4u)
  
- 	for(;;) {
- 		setclientid.sc_name_len = scnprintf(setclientid.sc_name,
--				sizeof(setclientid.sc_name), "%s/%u.%u.%u.%u %s %u",
--				clp->cl_ipaddr, NIPQUAD(clp->cl_addr.sin_addr),
-+				sizeof(setclientid.sc_name), "%s/%s %s %u",
-+				clp->cl_ipaddr,
-+				rpc_peeraddr2str(clp->cl_rpcclient,
-+							RPC_DISPLAY_ADDR),
- 				cred->cr_ops->cr_name,
- 				clp->cl_id_uniquifier);
- 		setclientid.sc_netid_len = scnprintf(setclientid.sc_netid,
--				sizeof(setclientid.sc_netid), "tcp");
-+				sizeof(setclientid.sc_netid),
-+				rpc_peeraddr2str(clp->cl_rpcclient,
-+							RPC_DISPLAY_NETID));
- 		setclientid.sc_uaddr_len = scnprintf(setclientid.sc_uaddr,
--				sizeof(setclientid.sc_uaddr), "%s.%d.%d",
-+				sizeof(setclientid.sc_uaddr), "%s.%u.%u",
- 				clp->cl_ipaddr, port >> 8, port & 255);
++/*
++ * Universal addresses are introduced in RFC 1833 and further spelled
++ * out in RFC 3530.  RPCBIND_MAXUADDRLEN defines a maximum byte length
++ * of a universal address for use in allocating buffers and character
++ * arrays.
++ *
++ * Quoting RFC 3530, section 2.2:
++ *
++ * For TCP over IPv4 and for UDP over IPv4, the format of r_addr is the
++ * US-ASCII string:
++ *
++ *	h1.h2.h3.h4.p1.p2
++ *
++ * The prefix, "h1.h2.h3.h4", is the standard textual form for
++ * representing an IPv4 address, which is always four octets long.
++ * Assuming big-endian ordering, h1, h2, h3, and h4, are respectively,
++ * the first through fourth octets each converted to ASCII-decimal.
++ * Assuming big-endian ordering, p1 and p2 are, respectively, the first
++ * and second octets each converted to ASCII-decimal.  For example, if a
++ * host, in big-endian order, has an address of 0x0A010307 and there is
++ * a service listening on, in big endian order, port 0x020F (decimal
++ * 527), then the complete universal address is "10.1.3.7.2.15".
++ *
++ * ...
++ *
++ * For TCP over IPv6 and for UDP over IPv6, the format of r_addr is the
++ * US-ASCII string:
++ *
++ *	x1:x2:x3:x4:x5:x6:x7:x8.p1.p2
++ *
++ * The suffix "p1.p2" is the service port, and is computed the same way
++ * as with universal addresses for TCP and UDP over IPv4.  The prefix,
++ * "x1:x2:x3:x4:x5:x6:x7:x8", is the standard textual form for
++ * representing an IPv6 address as defined in Section 2.2 of [RFC2373].
++ * Additionally, the two alternative forms specified in Section 2.2 of
++ * [RFC2373] are also acceptable.
++ */
++#define RPCBIND_MAXUADDRLEN	(56u)
++
+ #endif /* __KERNEL__ */
+ #endif /* _LINUX_SUNRPC_MSGPROT_H_ */
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index e69c0d2..838862f 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -55,45 +55,6 @@ enum {
+ #define RPCB_HIGHPROC_4		RPCBPROC_GETSTAT
  
- 		status = rpc_call_sync(clp->cl_rpcclient, &msg, 0);
+ /*
+- * r_addr
+- *
+- * Quoting RFC 3530, section 2.2:
+- *
+- * For TCP over IPv4 and for UDP over IPv4, the format of r_addr is the
+- * US-ASCII string:
+- *
+- *	h1.h2.h3.h4.p1.p2
+- *
+- * The prefix, "h1.h2.h3.h4", is the standard textual form for
+- * representing an IPv4 address, which is always four octets long.
+- * Assuming big-endian ordering, h1, h2, h3, and h4, are respectively,
+- * the first through fourth octets each converted to ASCII-decimal.
+- * Assuming big-endian ordering, p1 and p2 are, respectively, the first
+- * and second octets each converted to ASCII-decimal.  For example, if a
+- * host, in big-endian order, has an address of 0x0A010307 and there is
+- * a service listening on, in big endian order, port 0x020F (decimal
+- * 527), then the complete universal address is "10.1.3.7.2.15".
+- *
+- * ...
+- *
+- * For TCP over IPv6 and for UDP over IPv6, the format of r_addr is the
+- * US-ASCII string:
+- *
+- *	x1:x2:x3:x4:x5:x6:x7:x8.p1.p2
+- *
+- * The suffix "p1.p2" is the service port, and is computed the same way
+- * as with universal addresses for TCP and UDP over IPv4.  The prefix,
+- * "x1:x2:x3:x4:x5:x6:x7:x8", is the standard textual form for
+- * representing an IPv6 address as defined in Section 2.2 of [RFC2373].
+- * Additionally, the two alternative forms specified in Section 2.2 of
+- * [RFC2373] are also acceptable.
+- *
+- * XXX: Currently this implementation does not explicitly convert the
+- *      stored address to US-ASCII on non-ASCII systems.
+- */
+-#define RPCB_MAXADDRLEN		(128u)
+-
+-/*
+  * r_owner
+  *
+  * The "owner" is allowed to unset a service in the rpcbind database.
+@@ -113,7 +74,7 @@ struct rpcbind_args {
+ 	u32			r_prot;
+ 	unsigned short		r_port;
+ 	char *			r_netid;
+-	char			r_addr[RPCB_MAXADDRLEN];
++	char			r_addr[RPCBIND_MAXUADDRLEN];
+ 	char *			r_owner;
+ };
+ 
+@@ -522,7 +483,7 @@ static int rpcb_decode_getaddr(struct rpc_rqst *req, __be32 *p,
+ 	 * Simple sanity check.  The smallest possible universal
+ 	 * address is an IPv4 address string containing 11 bytes.
+ 	 */
+-	if (addr_len < 11 || addr_len > RPCB_MAXADDRLEN)
++	if (addr_len < 11 || addr_len > RPCBIND_MAXUADDRLEN)
+ 		goto out_err;
+ 
+ 	/*
+@@ -573,7 +534,7 @@ out_err:
+ #define RPCB_boolean_sz		(1u)
+ 
+ #define RPCB_netid_sz		(1+XDR_QUADLEN(RPCBIND_MAXNETIDLEN))
+-#define RPCB_addr_sz		(1+XDR_QUADLEN(RPCB_MAXADDRLEN))
++#define RPCB_addr_sz		(1+XDR_QUADLEN(RPCBIND_MAXUADDRLEN))
+ #define RPCB_ownerstring_sz	(1+XDR_QUADLEN(RPCB_MAXOWNERLEN))
+ 
+ #define RPCB_mappingargs_sz	RPCB_program_sz+RPCB_version_sz+	\
 
 
 -------------------------------------------------------------------------
