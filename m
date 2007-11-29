@@ -1,295 +1,299 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [RFC,PATCH 19/38] svc: Make the enqueue service transport neutral and export it.
-Date: Thu, 29 Nov 2007 16:40:33 -0600
-Message-ID: <20071129224033.14563.94082.stgit@dell3.ogc.int>
-References: <20071129223917.14563.77633.stgit@dell3.ogc.int>
+Subject: [RFC,PATCH 2/8] rdma: SVCRDMA Transport Module
+Date: Thu, 29 Nov 2007 16:45:02 -0600
+Message-ID: <20071129224502.14887.262.stgit@dell3.ogc.int>
+References: <20071129224412.14887.14136.stgit@dell3.ogc.int>
 Content-Type: text/plain; charset=utf-8; format=fixed
 Cc: linux-nfs@vger.kernel.org
 To: bfields-ag9A2Eb6PFsgsBAKwltoeQ@public.gmane.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:48888 "EHLO
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:48905 "EHLO
 	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S933687AbXK2XDl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2007 18:03:41 -0500
-In-Reply-To: <20071129223917.14563.77633.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
+	by vger.kernel.org with ESMTP id S934142AbXK2XDk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2007 18:03:40 -0500
+In-Reply-To: <20071129224412.14887.14136.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-The svc_sock_enqueue function is now transport independent since all of
-the fields it touches have been moved to the transport independent svc_xprt
-structure. Change the function to use the svc_xprt structure directly
-instead of the transport specific svc_sock structure.
-
-Transport specific data-ready handlers need to call this function, so
-export it.
+This file implements the RDMA transport module initialization and
+termination logic and registers the transport sysctl variables.
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- net/sunrpc/svcsock.c |   97 ++++++++++++++++++++++++++------------------------
- 1 files changed, 50 insertions(+), 47 deletions(-)
+ net/sunrpc/svc_rdma.c |  266 +++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 266 insertions(+), 0 deletions(-)
 
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 19d0dee..17feb4b 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -5,7 +5,7 @@
-  *
-  * The server scheduling algorithm does not always distribute the load
-  * evenly when servicing a single client. May need to modify the
-- * svc_sock_enqueue procedure...
-+ * svc_xprt_enqueue procedure...
-  *
-  * TCP support is largely untested and may be a little slow. The problem
-  * is that we currently do two separate recvfrom's, one for the 4-byte
-@@ -63,7 +63,7 @@
-  *	providing that certain rules are followed:
-  *
-  *	XPT_CONN, XPT_DATA, can be set or cleared at any time.
-- *		after a set, svc_sock_enqueue must be called.
-+ *		after a set, svc_xprt_enqueue must be called.
-  *		after a clear, the socket must be read/accepted
-  *		 if this succeeds, it must be set again.
-  *	XPT_CLOSE can set at any time. It is never cleared.
-@@ -228,22 +228,22 @@ svc_sock_wspace(struct svc_sock *svsk)
-  * processes, wake 'em up.
-  *
-  */
--static void
--svc_sock_enqueue(struct svc_sock *svsk)
-+void
-+svc_xprt_enqueue(struct svc_xprt *xprt)
- {
--	struct svc_serv	*serv = svsk->sk_xprt.xpt_server;
-+	struct svc_serv	*serv = xprt->xpt_server;
- 	struct svc_pool *pool;
- 	struct svc_rqst	*rqstp;
- 	int cpu;
- 
--	if (!(svsk->sk_xprt.xpt_flags &
-+	if (!(xprt->xpt_flags &
- 	      ((1<<XPT_CONN)|(1<<XPT_DATA)|(1<<XPT_CLOSE)|(1<<XPT_DEFERRED))))
- 		return;
--	if (test_bit(XPT_DEAD, &svsk->sk_xprt.xpt_flags))
-+	if (test_bit(XPT_DEAD, &xprt->xpt_flags))
- 		return;
- 
- 	cpu = get_cpu();
--	pool = svc_pool_for_cpu(svsk->sk_xprt.xpt_server, cpu);
-+	pool = svc_pool_for_cpu(xprt->xpt_server, cpu);
- 	put_cpu();
- 
- 	spin_lock_bh(&pool->sp_lock);
-@@ -251,11 +251,12 @@ svc_sock_enqueue(struct svc_sock *svsk)
- 	if (!list_empty(&pool->sp_threads) &&
- 	    !list_empty(&pool->sp_sockets))
- 		printk(KERN_ERR
--			"svc_sock_enqueue: threads and sockets both waiting??\n");
-+		       "svc_xprt_enqueue: "
-+		       "threads and transports both waiting??\n");
- 
--	if (test_bit(XPT_DEAD, &svsk->sk_xprt.xpt_flags)) {
-+	if (test_bit(XPT_DEAD, &xprt->xpt_flags)) {
- 		/* Don't enqueue dead sockets */
--		dprintk("svc: socket %p is dead, not enqueued\n", svsk->sk_sk);
-+		dprintk("svc: transport %p is dead, not enqueued\n", xprt);
- 		goto out_unlock;
- 	}
- 
-@@ -264,28 +265,29 @@ svc_sock_enqueue(struct svc_sock *svsk)
- 	 * on the idle list.  We update XPT_BUSY atomically because
- 	 * it also guards against trying to enqueue the svc_sock twice.
- 	 */
--	if (test_and_set_bit(XPT_BUSY, &svsk->sk_xprt.xpt_flags)) {
-+	if (test_and_set_bit(XPT_BUSY, &xprt->xpt_flags)) {
- 		/* Don't enqueue socket while already enqueued */
--		dprintk("svc: socket %p busy, not enqueued\n", svsk->sk_sk);
-+		dprintk("svc: transport %p busy, not enqueued\n", xprt);
- 		goto out_unlock;
- 	}
--	BUG_ON(svsk->sk_xprt.xpt_pool != NULL);
--	svsk->sk_xprt.xpt_pool = pool;
-+	BUG_ON(xprt->xpt_pool != NULL);
-+	xprt->xpt_pool = pool;
- 
- 	/* Handle pending connection */
--	if (test_bit(XPT_CONN, &svsk->sk_xprt.xpt_flags))
-+	if (test_bit(XPT_CONN, &xprt->xpt_flags))
- 		goto process;
- 
- 	/* Handle close in-progress */
--	if (test_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags))
-+	if (test_bit(XPT_CLOSE, &xprt->xpt_flags))
- 		goto process;
- 
- 	/* Check if we have space to reply to a request */
--	if (!svsk->sk_xprt.xpt_ops->xpo_has_wspace(&svsk->sk_xprt)) {
-+	if (!xprt->xpt_ops->xpo_has_wspace(xprt)) {
- 		/* Don't enqueue while not enough space for reply */
--		dprintk("svc: no write space, socket %p  not enqueued\n", svsk);
--		svsk->sk_xprt.xpt_pool = NULL;
--		clear_bit(XPT_BUSY, &svsk->sk_xprt.xpt_flags);
-+		dprintk("svc: no write space, transport %p  not enqueued\n",
-+			xprt);
-+		xprt->xpt_pool = NULL;
-+		clear_bit(XPT_BUSY, &xprt->xpt_flags);
- 		goto out_unlock;
- 	}
- 
-@@ -294,28 +296,29 @@ svc_sock_enqueue(struct svc_sock *svsk)
- 		rqstp = list_entry(pool->sp_threads.next,
- 				   struct svc_rqst,
- 				   rq_list);
--		dprintk("svc: socket %p served by daemon %p\n",
--			svsk->sk_sk, rqstp);
-+		dprintk("svc: transport %p served by daemon %p\n",
-+			xprt, rqstp);
- 		svc_thread_dequeue(pool, rqstp);
--		if (rqstp->rq_sock)
-+		if (rqstp->rq_xprt)
- 			printk(KERN_ERR
--				"svc_sock_enqueue: server %p, rq_sock=%p!\n",
--				rqstp, rqstp->rq_sock);
--		rqstp->rq_sock = svsk;
--		svc_xprt_get(&svsk->sk_xprt);
-+				"svc_xprt_enqueue: server %p, rq_xprt=%p!\n",
-+				rqstp, rqstp->rq_xprt);
-+		rqstp->rq_xprt = xprt;
-+		svc_xprt_get(xprt);
- 		rqstp->rq_reserved = serv->sv_max_mesg;
--		atomic_add(rqstp->rq_reserved, &svsk->sk_xprt.xpt_reserved);
--		BUG_ON(svsk->sk_xprt.xpt_pool != pool);
-+		atomic_add(rqstp->rq_reserved, &xprt->xpt_reserved);
-+		BUG_ON(xprt->xpt_pool != pool);
- 		wake_up(&rqstp->rq_wait);
- 	} else {
--		dprintk("svc: socket %p put into queue\n", svsk->sk_sk);
--		list_add_tail(&svsk->sk_xprt.xpt_ready, &pool->sp_sockets);
--		BUG_ON(svsk->sk_xprt.xpt_pool != pool);
-+		dprintk("svc: transport %p put into queue\n", xprt);
-+		list_add_tail(&xprt->xpt_ready, &pool->sp_sockets);
-+		BUG_ON(xprt->xpt_pool != pool);
- 	}
- 
- out_unlock:
- 	spin_unlock_bh(&pool->sp_lock);
- }
-+EXPORT_SYMBOL_GPL(svc_xprt_enqueue);
- 
- /*
-  * Dequeue the first socket.  Must be called with the pool->sp_lock held.
-@@ -349,7 +352,7 @@ svc_sock_received(struct svc_sock *svsk)
- {
- 	svsk->sk_xprt.xpt_pool = NULL;
- 	clear_bit(XPT_BUSY, &svsk->sk_xprt.xpt_flags);
--	svc_sock_enqueue(svsk);
-+	svc_xprt_enqueue(&svsk->sk_xprt);
- }
- 
- 
-@@ -368,11 +371,11 @@ void svc_reserve(struct svc_rqst *rqstp, int space)
- 	space += rqstp->rq_res.head[0].iov_len;
- 
- 	if (space < rqstp->rq_reserved) {
--		struct svc_sock *svsk = rqstp->rq_sock;
--		atomic_sub((rqstp->rq_reserved - space), &svsk->sk_xprt.xpt_reserved);
-+		struct svc_xprt *xprt = rqstp->rq_xprt;
-+		atomic_sub((rqstp->rq_reserved - space), &xprt->xpt_reserved);
- 		rqstp->rq_reserved = space;
- 
--		svc_sock_enqueue(svsk);
-+		svc_xprt_enqueue(xprt);
- 	}
- }
- 
-@@ -700,7 +703,7 @@ svc_udp_data_ready(struct sock *sk, int count)
- 			svsk, sk, count,
- 			test_bit(XPT_BUSY, &svsk->sk_xprt.xpt_flags));
- 		set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
--		svc_sock_enqueue(svsk);
-+		svc_xprt_enqueue(&svsk->sk_xprt);
- 	}
- 	if (sk->sk_sleep && waitqueue_active(sk->sk_sleep))
- 		wake_up_interruptible(sk->sk_sleep);
-@@ -717,7 +720,7 @@ svc_write_space(struct sock *sk)
- 	if (svsk) {
- 		dprintk("svc: socket %p(inet %p), write_space busy=%d\n",
- 			svsk, sk, test_bit(XPT_BUSY, &svsk->sk_xprt.xpt_flags));
--		svc_sock_enqueue(svsk);
-+		svc_xprt_enqueue(&svsk->sk_xprt);
- 	}
- 
- 	if (sk->sk_sleep && waitqueue_active(sk->sk_sleep)) {
-@@ -989,7 +992,7 @@ svc_tcp_listen_data_ready(struct sock *sk, int count_unused)
- 	if (sk->sk_state == TCP_LISTEN) {
- 		if (svsk) {
- 			set_bit(XPT_CONN, &svsk->sk_xprt.xpt_flags);
--			svc_sock_enqueue(svsk);
-+			svc_xprt_enqueue(&svsk->sk_xprt);
- 		} else
- 			printk("svc: socket %p: no user data\n", sk);
- 	}
-@@ -1013,7 +1016,7 @@ svc_tcp_state_change(struct sock *sk)
- 		printk("svc: socket %p: no user data\n", sk);
- 	else {
- 		set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
--		svc_sock_enqueue(svsk);
-+		svc_xprt_enqueue(&svsk->sk_xprt);
- 	}
- 	if (sk->sk_sleep && waitqueue_active(sk->sk_sleep))
- 		wake_up_interruptible_all(sk->sk_sleep);
-@@ -1028,7 +1031,7 @@ svc_tcp_data_ready(struct sock *sk, int count)
- 		sk, sk->sk_user_data);
- 	if (svsk) {
- 		set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
--		svc_sock_enqueue(svsk);
-+		svc_xprt_enqueue(&svsk->sk_xprt);
- 	}
- 	if (sk->sk_sleep && waitqueue_active(sk->sk_sleep))
- 		wake_up_interruptible(sk->sk_sleep);
-@@ -1080,7 +1083,7 @@ static struct svc_xprt *svc_tcp_accept(struct svc_xprt *xprt)
- 	}
- 
- 	set_bit(XPT_CONN, &svsk->sk_xprt.xpt_flags);
--	svc_sock_enqueue(svsk);
-+	svc_xprt_enqueue(&svsk->sk_xprt);
- 
- 	err = kernel_getpeername(newsock, sin, &slen);
- 	if (err < 0) {
-@@ -1316,7 +1319,7 @@ svc_tcp_sendto(struct svc_rqst *rqstp)
- 		       (sent<0)?"got error":"sent only",
- 		       sent, xbufp->len);
- 		set_bit(XPT_CLOSE, &rqstp->rq_sock->sk_xprt.xpt_flags);
--		svc_sock_enqueue(rqstp->rq_sock);
-+		svc_xprt_enqueue(rqstp->rq_xprt);
- 		sent = -EAGAIN;
- 	}
- 	return sent;
-@@ -1493,7 +1496,7 @@ svc_check_conn_limits(struct svc_serv *serv)
- 		spin_unlock_bh(&serv->sv_lock);
- 
- 		if (svsk) {
--			svc_sock_enqueue(svsk);
-+			svc_xprt_enqueue(&svsk->sk_xprt);
- 			svc_xprt_put(&svsk->sk_xprt);
- 		}
- 	}
-@@ -1726,7 +1729,7 @@ svc_age_temp_sockets(unsigned long closure)
- 			svsk, get_seconds() - svsk->sk_lastrecv);
- 
- 		/* a thread will dequeue and close it soon */
--		svc_sock_enqueue(svsk);
-+		svc_xprt_enqueue(&svsk->sk_xprt);
- 		svc_xprt_put(&svsk->sk_xprt);
- 	}
- 
-@@ -2008,7 +2011,7 @@ static void svc_revisit(struct cache_deferred_req *dreq, int too_many)
- 	list_add(&dr->handle.recent, &svsk->sk_deferred);
- 	spin_unlock(&svsk->sk_lock);
- 	set_bit(XPT_DEFERRED, &svsk->sk_xprt.xpt_flags);
--	svc_sock_enqueue(svsk);
-+	svc_xprt_enqueue(&svsk->sk_xprt);
- 	svc_xprt_put(&svsk->sk_xprt);
- }
- 
+diff --git a/net/sunrpc/svc_rdma.c b/net/sunrpc/svc_rdma.c
+new file mode 100644
+index 0000000..c718891
+--- /dev/null
++++ b/net/sunrpc/svc_rdma.c
+@@ -0,0 +1,266 @@
++/*
++ * Copyright (c) 2005-2006 Network Appliance, Inc. All rights reserved.
++ *
++ * This software is available to you under a choice of one of two
++ * licenses.  You may choose to be licensed under the terms of the GNU
++ * General Public License (GPL) Version 2, available from the file
++ * COPYING in the main directory of this source tree, or the BSD-type
++ * license below:
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ *
++ *      Redistributions of source code must retain the above copyright
++ *      notice, this list of conditions and the following disclaimer.
++ *
++ *      Redistributions in binary form must reproduce the above
++ *      copyright notice, this list of conditions and the following
++ *      disclaimer in the documentation and/or other materials provided
++ *      with the distribution.
++ *
++ *      Neither the name of the Network Appliance, Inc. nor the names of
++ *      its contributors may be used to endorse or promote products
++ *      derived from this software without specific prior written
++ *      permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
++ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
++ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
++ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
++ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
++ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
++ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
++ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
++ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
++ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
++ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ *
++ * Author: Tom Tucker <tom@opengridcomputing.com>
++ */
++#include <linux/module.h>
++#include <linux/init.h>
++#include <linux/fs.h>
++#include <linux/sysctl.h>
++#include <linux/sunrpc/clnt.h>
++#include <linux/sunrpc/sched.h>
++#include <linux/sunrpc/svc_rdma.h>
++
++#define RPCDBG_FACILITY	RPCDBG_SVCXPRT
++
++/* RPC/RDMA parameters */
++unsigned int svcrdma_ord = RPCRDMA_ORD;
++static unsigned int min_ord = 1;
++static unsigned int max_ord = 4096;
++unsigned int svcrdma_max_requests = RPCRDMA_MAX_REQUESTS;
++static unsigned int min_max_requests = 4;
++static unsigned int max_max_requests = 16384;
++unsigned int svcrdma_max_req_size = RPCRDMA_MAX_REQ_SIZE;
++static unsigned int min_max_inline = 4096;
++static unsigned int max_max_inline = 65536;
++
++atomic_t rdma_stat_recv;
++atomic_t rdma_stat_read;
++atomic_t rdma_stat_write;
++atomic_t rdma_stat_sq_starve;
++atomic_t rdma_stat_rq_starve;
++atomic_t rdma_stat_rq_poll;
++atomic_t rdma_stat_rq_prod;
++atomic_t rdma_stat_sq_poll;
++atomic_t rdma_stat_sq_prod;
++
++/*
++ * This function implements reading and resetting an atomic_t stat
++ * variable through read/write to a proc file. Any write to the file
++ * resets the associated statistic to zero. Any read returns it's
++ * current value.
++ */
++static int read_reset_stat(ctl_table *table, int write,
++			   struct file *filp, void __user *buffer, size_t *lenp,
++			   loff_t *ppos)
++{
++	atomic_t *stat = (atomic_t *)table->data;
++
++	if (!stat)
++		return -EINVAL;
++
++	if (write)
++		atomic_set(stat, 0);
++	else {
++		char str_buf[32];
++		char *data;
++		int len = snprintf(str_buf, 32, "%d\n", atomic_read(stat));
++		if (len >= 32)
++			return -EFAULT;
++		len = strlen(str_buf);
++		if (*ppos > len) {
++			*lenp = 0;
++			return 0;
++		}
++		data = &str_buf[*ppos];
++		len -= *ppos;
++		if (len > *lenp)
++			len = *lenp;
++		if (len && copy_to_user(buffer, str_buf, len))
++			return -EFAULT;
++		*lenp = len;
++		*ppos += len;
++	}
++	return 0;
++}
++
++static struct ctl_table_header *svcrdma_table_header;
++static ctl_table svcrdma_parm_table[] = {
++	{
++		.procname	= "max_requests",
++		.data		= &svcrdma_max_requests,
++		.maxlen		= sizeof(unsigned int),
++		.mode		= 0644,
++		.proc_handler	= &proc_dointvec_minmax,
++		.strategy	= &sysctl_intvec,
++		.extra1		= &min_max_requests,
++		.extra2		= &max_max_requests
++	},
++	{
++		.procname	= "max_req_size",
++		.data		= &svcrdma_max_req_size,
++		.maxlen		= sizeof(unsigned int),
++		.mode		= 0644,
++		.proc_handler	= &proc_dointvec_minmax,
++		.strategy	= &sysctl_intvec,
++		.extra1		= &min_max_inline,
++		.extra2		= &max_max_inline
++	},
++	{
++		.procname	= "max_outbound_read_requests",
++		.data		= &svcrdma_ord,
++		.maxlen		= sizeof(unsigned int),
++		.mode		= 0644,
++		.proc_handler	= &proc_dointvec_minmax,
++		.strategy	= &sysctl_intvec,
++		.extra1		= &min_ord,
++		.extra2		= &max_ord,
++	},
++
++	{
++		.procname	= "rdma_stat_read",
++		.data		= &rdma_stat_read,
++		.maxlen		= sizeof(atomic_t),
++		.mode		= 0644,
++		.proc_handler	= &read_reset_stat,
++	},
++	{
++		.procname	= "rdma_stat_recv",
++		.data		= &rdma_stat_recv,
++		.maxlen		= sizeof(atomic_t),
++		.mode		= 0644,
++		.proc_handler	= &read_reset_stat,
++	},
++	{
++		.procname	= "rdma_stat_write",
++		.data		= &rdma_stat_write,
++		.maxlen		= sizeof(atomic_t),
++		.mode		= 0644,
++		.proc_handler	= &read_reset_stat,
++	},
++	{
++		.procname	= "rdma_stat_sq_starve",
++		.data		= &rdma_stat_sq_starve,
++		.maxlen		= sizeof(atomic_t),
++		.mode		= 0644,
++		.proc_handler	= &read_reset_stat,
++	},
++	{
++		.procname	= "rdma_stat_rq_starve",
++		.data		= &rdma_stat_rq_starve,
++		.maxlen		= sizeof(atomic_t),
++		.mode		= 0644,
++		.proc_handler	= &read_reset_stat,
++	},
++	{
++		.procname	= "rdma_stat_rq_poll",
++		.data		= &rdma_stat_rq_poll,
++		.maxlen		= sizeof(atomic_t),
++		.mode		= 0644,
++		.proc_handler	= &read_reset_stat,
++	},
++	{
++		.procname	= "rdma_stat_rq_prod",
++		.data		= &rdma_stat_rq_prod,
++		.maxlen		= sizeof(atomic_t),
++		.mode		= 0644,
++		.proc_handler	= &read_reset_stat,
++	},
++	{
++		.procname	= "rdma_stat_sq_poll",
++		.data		= &rdma_stat_sq_poll,
++		.maxlen		= sizeof(atomic_t),
++		.mode		= 0644,
++		.proc_handler	= &read_reset_stat,
++	},
++	{
++		.procname	= "rdma_stat_sq_prod",
++		.data		= &rdma_stat_sq_prod,
++		.maxlen		= sizeof(atomic_t),
++		.mode		= 0644,
++		.proc_handler	= &read_reset_stat,
++	},
++	{
++		/* terminate table */
++	},
++};
++
++static ctl_table svcrdma_table[] = {
++	{
++		.procname	= "svc_rdma",
++		.mode		= 0555,
++		.child		= svcrdma_parm_table
++	},
++	{
++		.ctl_name = 0,
++	},
++};
++
++static ctl_table svcrdma_root_table[] = {
++	{
++		.ctl_name	= CTL_SUNRPC,
++		.procname	= "sunrpc",
++		.mode		= 0555,
++		.child		= svcrdma_table
++	},
++	{
++		.ctl_name = 0,
++	},
++};
++
++void svc_rdma_cleanup(void)
++{
++	dprintk("SVCRDMA Module Removed, deregister RPC RDMA transport\n");
++	if (svcrdma_table_header) {
++		unregister_sysctl_table(svcrdma_table_header);
++		svcrdma_table_header = NULL;
++	}
++	svc_unreg_xprt_class(&svc_rdma_class);
++}
++
++int svc_rdma_init(void)
++{
++	dprintk("SVCRDMA Module Init, register RPC RDMA transport\n");
++	dprintk("\tsvcrdma_ord      : %d\n", svcrdma_ord);
++	dprintk("\tmax_requests     : %d\n", svcrdma_max_requests);
++	dprintk("\tsq_depth         : %d\n",
++		svcrdma_max_requests * RPCRDMA_SQ_DEPTH_MULT);
++	dprintk("\tmax_inline       : %d\n", svcrdma_max_req_size);
++	if (!svcrdma_table_header)
++		svcrdma_table_header =
++			register_sysctl_table(svcrdma_root_table);
++
++	/* Register RDMA with the SVC transport switch */
++	svc_reg_xprt_class(&svc_rdma_class);
++	return 0;
++}
++MODULE_AUTHOR("Tom Tucker <tom@opengridcomputing.com>");
++MODULE_DESCRIPTION("SVC RDMA Transport");
++MODULE_LICENSE("Dual BSD/GPL");
++module_init(svc_rdma_init);
++module_exit(svc_rdma_cleanup);
