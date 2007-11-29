@@ -1,180 +1,142 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [RFC,PATCH 30/38] svc: Removing remaining references to rq_sock in rqstp
-Date: Thu, 29 Nov 2007 16:56:41 -0600
-Message-ID: <20071129225641.15275.51031.stgit@dell3.ogc.int>
+Subject: [RFC,PATCH 34/38] svc: Add /proc/sys/sunrpc/transport files
+Date: Thu, 29 Nov 2007 16:56:49 -0600
+Message-ID: <20071129225649.15275.28112.stgit@dell3.ogc.int>
 References: <20071129225510.15275.82660.stgit@dell3.ogc.int>
 Content-Type: text/plain; charset=utf-8; format=fixed
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:47422 "EHLO
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:47418 "EHLO
 	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1763179AbXK2XUO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2007 18:20:14 -0500
+	by vger.kernel.org with ESMTP id S1763373AbXK2XUS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2007 18:20:18 -0500
 In-Reply-To: <20071129225510.15275.82660.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-This functionally empty patch removes rq_sock and unamed union 
-from rqstp structure. 
+Add a file that when read lists the set of registered svc
+transports.
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- include/linux/sunrpc/svc.h |    5 +----
- net/sunrpc/svcsock.c       |   38 ++++++++++++++++++++++++--------------
- 2 files changed, 25 insertions(+), 18 deletions(-)
+ include/linux/sunrpc/svc_xprt.h |    2 ++
+ net/sunrpc/svc_xprt.c           |   28 ++++++++++++++++++++++++++++
+ net/sunrpc/sysctl.c             |   31 +++++++++++++++++++++++++++++++
+ 3 files changed, 61 insertions(+), 0 deletions(-)
 
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 40adc9d..04eb20e 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -204,10 +204,7 @@ union svc_addr_u {
- struct svc_rqst {
- 	struct list_head	rq_list;	/* idle list */
- 	struct list_head	rq_all;		/* all threads list */
--	union {
--		struct svc_xprt *	rq_xprt;	/* transport ptr */
--		struct svc_sock *	rq_sock; 	/* socket ptr */
--	};
-+	struct svc_xprt *	rq_xprt;	/* transport ptr */
- 	struct sockaddr_storage	rq_addr;	/* peer address */
- 	size_t			rq_addrlen;
+diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+index 36f8b09..c2fa41d 100644
+--- a/include/linux/sunrpc/svc_xprt.h
++++ b/include/linux/sunrpc/svc_xprt.h
+@@ -79,11 +79,13 @@ void	svc_xprt_copy_addrs(struct svc_rqst *rqstp, struct svc_xprt *xprt);
+ void	svc_xprt_enqueue(struct svc_xprt *xprt);
+ int	svc_port_is_privileged(struct sockaddr *sin);
+ void	svc_delete_xprt(struct svc_xprt *xprt);
++int	svc_print_xprts(char *buf, int maxlen);
  
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 8f0ceef..c4b2a5e 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -201,10 +201,12 @@ static void svc_release_skb(struct svc_rqst *rqstp)
- 	struct svc_deferred_req *dr = rqstp->rq_deferred;
- 
- 	if (skb) {
-+		struct svc_sock *svsk =
-+			container_of(rqstp->rq_xprt, struct svc_sock, sk_xprt);
- 		rqstp->rq_xprt_ctxt = NULL;
- 
- 		dprintk("svc: service %p, releasing skb %p\n", rqstp, skb);
--		skb_free_datagram(rqstp->rq_sock->sk_sk, skb);
-+		skb_free_datagram(svsk->sk_sk, skb);
- 	}
- 	if (dr) {
- 		rqstp->rq_deferred = NULL;
-@@ -433,7 +435,7 @@ svc_wake_up(struct svc_serv *serv)
- 			dprintk("svc: daemon %p woken up.\n", rqstp);
- 			/*
- 			svc_thread_dequeue(pool, rqstp);
--			rqstp->rq_sock = NULL;
-+			rqstp->rq_xprt = NULL;
- 			 */
- 			wake_up(&rqstp->rq_wait);
- 		}
-@@ -450,7 +452,9 @@ union svc_pktinfo_u {
- 
- static void svc_set_cmsg_data(struct svc_rqst *rqstp, struct cmsghdr *cmh)
+ static inline void svc_xprt_get(struct svc_xprt *xprt)
  {
--	switch (rqstp->rq_sock->sk_sk->sk_family) {
-+	struct svc_sock *svsk =
-+		container_of(rqstp->rq_xprt, struct svc_sock, sk_xprt);
-+	switch (svsk->sk_sk->sk_family) {
- 	case AF_INET: {
- 			struct in_pktinfo *pki = CMSG_DATA(cmh);
- 
-@@ -483,7 +487,8 @@ static void svc_set_cmsg_data(struct svc_rqst *rqstp, struct cmsghdr *cmh)
- static int
- svc_sendto(struct svc_rqst *rqstp, struct xdr_buf *xdr)
- {
--	struct svc_sock	*svsk = rqstp->rq_sock;
-+	struct svc_sock	*svsk =
-+		container_of(rqstp->rq_xprt, struct svc_sock, sk_xprt);
- 	struct socket	*sock = svsk->sk_sock;
- 	int		slen;
- 	union {
-@@ -556,7 +561,7 @@ svc_sendto(struct svc_rqst *rqstp, struct xdr_buf *xdr)
- 	}
- out:
- 	dprintk("svc: socket %p sendto([%p %Zu... ], %d) = %d (addr %s)\n",
--		rqstp->rq_sock, xdr->head[0].iov_base, xdr->head[0].iov_len,
-+		svsk, xdr->head[0].iov_base, xdr->head[0].iov_len,
- 		xdr->len, len, svc_print_addr(rqstp, buf, sizeof(buf)));
- 
- 	return len;
-@@ -632,7 +637,8 @@ svc_recv_available(struct svc_sock *svsk)
- static int
- svc_recvfrom(struct svc_rqst *rqstp, struct kvec *iov, int nr, int buflen)
- {
--	struct svc_sock *svsk = rqstp->rq_sock;
-+	struct svc_sock *svsk =
-+		container_of(rqstp->rq_xprt, struct svc_sock, sk_xprt);
- 	struct msghdr msg = {
- 		.msg_flags	= MSG_DONTWAIT,
- 	};
-@@ -722,7 +728,9 @@ svc_write_space(struct sock *sk)
- static void svc_udp_get_dest_address(struct svc_rqst *rqstp,
- 				     struct cmsghdr *cmh)
- {
--	switch (rqstp->rq_sock->sk_sk->sk_family) {
-+	struct svc_sock *svsk =
-+		container_of(rqstp->rq_xprt, struct svc_sock, sk_xprt);
-+	switch (svsk->sk_sk->sk_family) {
- 	case AF_INET: {
- 		struct in_pktinfo *pki = CMSG_DATA(cmh);
- 		rqstp->rq_daddr.addr.s_addr = pki->ipi_spec_dst.s_addr;
-@@ -742,7 +750,8 @@ static void svc_udp_get_dest_address(struct svc_rqst *rqstp,
- static int
- svc_udp_recvfrom(struct svc_rqst *rqstp)
- {
--	struct svc_sock	*svsk = rqstp->rq_sock;
-+	struct svc_sock	*svsk =
-+		container_of(rqstp->rq_xprt, struct svc_sock, sk_xprt);
- 	struct svc_serv	*serv = svsk->sk_xprt.xpt_server;
- 	struct sk_buff	*skb;
- 	union {
-@@ -1126,7 +1135,8 @@ failed:
- static int
- svc_tcp_recvfrom(struct svc_rqst *rqstp)
- {
--	struct svc_sock	*svsk = rqstp->rq_sock;
-+	struct svc_sock	*svsk =
-+		container_of(rqstp->rq_xprt, struct svc_sock, sk_xprt);
- 	struct svc_serv	*serv = svsk->sk_xprt.xpt_server;
- 	int		len;
- 	struct kvec *vec;
-@@ -1290,16 +1300,16 @@ svc_tcp_sendto(struct svc_rqst *rqstp)
- 	reclen = htonl(0x80000000|((xbufp->len ) - 4));
- 	memcpy(xbufp->head[0].iov_base, &reclen, 4);
- 
--	if (test_bit(XPT_DEAD, &rqstp->rq_sock->sk_xprt.xpt_flags))
-+	if (test_bit(XPT_DEAD, &rqstp->rq_xprt->xpt_flags))
- 		return -ENOTCONN;
- 
- 	sent = svc_sendto(rqstp, &rqstp->rq_res);
- 	if (sent != xbufp->len) {
- 		printk(KERN_NOTICE "rpc-srv/tcp: %s: %s %d when sending %d bytes - shutting down socket\n",
--		       rqstp->rq_sock->sk_xprt.xpt_server->sv_name,
-+		       rqstp->rq_xprt->xpt_server->sv_name,
- 		       (sent<0)?"got error":"sent only",
- 		       sent, xbufp->len);
--		set_bit(XPT_CLOSE, &rqstp->rq_sock->sk_xprt.xpt_flags);
-+		set_bit(XPT_CLOSE, &rqstp->rq_xprt->xpt_flags);
- 		svc_xprt_enqueue(rqstp->rq_xprt);
- 		sent = -EAGAIN;
- 	}
-@@ -1319,7 +1329,7 @@ static void svc_tcp_prep_reply_hdr(struct svc_rqst *rqstp)
- 
- static int svc_tcp_has_wspace(struct svc_xprt *xprt)
- {
--	struct svc_sock *svsk = container_of(xprt, struct svc_sock, sk_xprt);
-+	struct svc_sock *svsk =	container_of(xprt, struct svc_sock, sk_xprt);
- 	struct svc_serv	*serv = svsk->sk_xprt.xpt_server;
- 	int required;
- 
-@@ -1641,7 +1651,7 @@ svc_recv(struct svc_rqst *rqstp, long timeout)
- void
- svc_drop(struct svc_rqst *rqstp)
- {
--	dprintk("svc: socket %p dropped request\n", rqstp->rq_sock);
-+	dprintk("svc: xprt %p dropped request\n", rqstp->rq_xprt);
- 	svc_xprt_release(rqstp);
+ 	kref_get(&xprt->xpt_ref);
  }
++
+ static inline void svc_xprt_set_local(struct svc_xprt *xprt,
+ 				      struct sockaddr *sa, int salen)
+ {
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index b31ba0e..7416e66 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -93,6 +93,34 @@ int svc_unreg_xprt_class(struct svc_xprt_class *xcl)
+ }
+ EXPORT_SYMBOL_GPL(svc_unreg_xprt_class);
+ 
++/*
++ * Format the transport list for printing
++ */
++int svc_print_xprts(char *buf, int maxlen)
++{
++	struct list_head *le;
++	char tmpstr[80];
++	int len = 0;
++	buf[0] = '\0';
++
++	spin_lock(&svc_xprt_class_lock);
++	list_for_each(le, &svc_xprt_class_list) {
++		int slen;
++		struct svc_xprt_class *xcl =
++			list_entry(le, struct svc_xprt_class, xcl_list);
++
++		sprintf(tmpstr, "%s %d\n", xcl->xcl_name, xcl->xcl_max_payload);
++		slen = strlen(tmpstr);
++		if (len + slen > maxlen)
++			break;
++		len += slen;
++		strcat(buf, tmpstr);
++	}
++	spin_unlock(&svc_xprt_class_lock);
++
++	return len;
++}
++
+ static void svc_xprt_free(struct kref *kref)
+ {
+ 	struct svc_xprt *xprt =
+diff --git a/net/sunrpc/sysctl.c b/net/sunrpc/sysctl.c
+index 2be714e..fd7cf59 100644
+--- a/net/sunrpc/sysctl.c
++++ b/net/sunrpc/sysctl.c
+@@ -18,6 +18,7 @@
+ #include <linux/sunrpc/types.h>
+ #include <linux/sunrpc/sched.h>
+ #include <linux/sunrpc/stats.h>
++#include <linux/sunrpc/svc_xprt.h>
+ 
+ /*
+  * Declare the debug flags here
+@@ -48,6 +49,30 @@ rpc_unregister_sysctl(void)
+ 	}
+ }
+ 
++static int proc_do_xprt(ctl_table *table, int write, struct file *file,
++			void __user *buffer, size_t *lenp, loff_t *ppos)
++{
++	char tmpbuf[256];
++	int len;
++	if ((*ppos && !write) || !*lenp) {
++		*lenp = 0;
++		return 0;
++	}
++	if (write)
++		return -EINVAL;
++	else {
++		len = svc_print_xprts(tmpbuf, sizeof(tmpbuf));
++		if (!access_ok(VERIFY_WRITE, buffer, len))
++			return -EFAULT;
++
++		if (__copy_to_user(buffer, tmpbuf, len))
++			return -EFAULT;
++	}
++	*lenp -= len;
++	*ppos += len;
++	return 0;
++}
++
+ static int
+ proc_dodebug(ctl_table *table, int write, struct file *file,
+ 				void __user *buffer, size_t *lenp, loff_t *ppos)
+@@ -140,6 +165,12 @@ static ctl_table debug_table[] = {
+ 		.mode		= 0644,
+ 		.proc_handler	= &proc_dodebug
+ 	},
++	{
++		.procname	= "transports",
++		.maxlen		= 256,
++		.mode		= 0444,
++		.proc_handler	= &proc_do_xprt,
++	},
+ 	{ .ctl_name = 0 }
+ };
  
