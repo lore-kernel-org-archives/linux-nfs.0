@@ -1,147 +1,180 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [RFC,PATCH 07/38] svc: Add per-transport delete functions
-Date: Thu, 29 Nov 2007 16:40:08 -0600
-Message-ID: <20071129224008.14563.51120.stgit@dell3.ogc.int>
+Subject: [RFC,PATCH 30/38] svc: Removing remaining references to rq_sock in rqstp
+Date: Thu, 29 Nov 2007 16:40:56 -0600
+Message-ID: <20071129224056.14563.88556.stgit@dell3.ogc.int>
 References: <20071129223917.14563.77633.stgit@dell3.ogc.int>
 Content-Type: text/plain; charset=utf-8; format=fixed
 Cc: linux-nfs@vger.kernel.org
 To: bfields-ag9A2Eb6PFsgsBAKwltoeQ@public.gmane.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:48898 "EHLO
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:48892 "EHLO
 	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S933965AbXK2XDf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2007 18:03:35 -0500
+	by vger.kernel.org with ESMTP id S933703AbXK2XDj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2007 18:03:39 -0500
 In-Reply-To: <20071129223917.14563.77633.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-Add transport specific xpo_detach and xpo_free functions. The xpo_detach
-function causes the transport to stop delivering data-ready events 
-and enqueing the transport for I/O.
-
-The xpo_free function frees all resources associated with the particular 
-transport instance.
+This functionally empty patch removes rq_sock and unamed union 
+from rqstp structure. 
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- include/linux/sunrpc/svc_xprt.h |    2 +
- net/sunrpc/svcsock.c            |   56 ++++++++++++++++++++++++++++++---------
- 2 files changed, 45 insertions(+), 13 deletions(-)
+ include/linux/sunrpc/svc.h |    5 +----
+ net/sunrpc/svcsock.c       |   38 ++++++++++++++++++++++++--------------
+ 2 files changed, 25 insertions(+), 18 deletions(-)
 
-diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index e3bd7b1..5d7b2a6 100644
---- a/include/linux/sunrpc/svc_xprt.h
-+++ b/include/linux/sunrpc/svc_xprt.h
-@@ -13,6 +13,8 @@ struct svc_xprt_ops {
- 	int		(*xpo_recvfrom)(struct svc_rqst *);
- 	int		(*xpo_sendto)(struct svc_rqst *);
- 	void		(*xpo_release_rqst)(struct svc_rqst *);
-+	void		(*xpo_detach)(struct svc_xprt *);
-+	void		(*xpo_free)(struct svc_xprt *);
- };
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 40adc9d..04eb20e 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -204,10 +204,7 @@ union svc_addr_u {
+ struct svc_rqst {
+ 	struct list_head	rq_list;	/* idle list */
+ 	struct list_head	rq_all;		/* all threads list */
+-	union {
+-		struct svc_xprt *	rq_xprt;	/* transport ptr */
+-		struct svc_sock *	rq_sock; 	/* socket ptr */
+-	};
++	struct svc_xprt *	rq_xprt;	/* transport ptr */
+ 	struct sockaddr_storage	rq_addr;	/* peer address */
+ 	size_t			rq_addrlen;
  
- struct svc_xprt_class {
 diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index b24c084..478fa33 100644
+index 8f0ceef..c4b2a5e 100644
 --- a/net/sunrpc/svcsock.c
 +++ b/net/sunrpc/svcsock.c
-@@ -85,6 +85,8 @@ static void		svc_udp_data_ready(struct sock *, int);
- static int		svc_udp_recvfrom(struct svc_rqst *);
- static int		svc_udp_sendto(struct svc_rqst *);
- static void		svc_close_socket(struct svc_sock *svsk);
-+static void		svc_sock_detach(struct svc_xprt *);
-+static void		svc_sock_free(struct svc_xprt *);
+@@ -201,10 +201,12 @@ static void svc_release_skb(struct svc_rqst *rqstp)
+ 	struct svc_deferred_req *dr = rqstp->rq_deferred;
  
- static struct svc_deferred_req *svc_deferred_dequeue(struct svc_sock *svsk);
- static int svc_deferred_recv(struct svc_rqst *rqstp);
-@@ -376,16 +378,8 @@ static inline void
- svc_sock_put(struct svc_sock *svsk)
- {
- 	if (atomic_dec_and_test(&svsk->sk_inuse)) {
--		BUG_ON(! test_bit(SK_DEAD, &svsk->sk_flags));
--
--		dprintk("svc: releasing dead socket\n");
--		if (svsk->sk_sock->file)
--			sockfd_put(svsk->sk_sock);
--		else
--			sock_release(svsk->sk_sock);
--		if (svsk->sk_info_authunix != NULL)
--			svcauth_unix_info_release(svsk->sk_info_authunix);
--		kfree(svsk);
-+		BUG_ON(!test_bit(SK_DEAD, &svsk->sk_flags));
-+		svsk->sk_xprt.xpt_ops->xpo_free(&svsk->sk_xprt);
+ 	if (skb) {
++		struct svc_sock *svsk =
++			container_of(rqstp->rq_xprt, struct svc_sock, sk_xprt);
+ 		rqstp->rq_xprt_ctxt = NULL;
+ 
+ 		dprintk("svc: service %p, releasing skb %p\n", rqstp, skb);
+-		skb_free_datagram(rqstp->rq_sock->sk_sk, skb);
++		skb_free_datagram(svsk->sk_sk, skb);
  	}
+ 	if (dr) {
+ 		rqstp->rq_deferred = NULL;
+@@ -433,7 +435,7 @@ svc_wake_up(struct svc_serv *serv)
+ 			dprintk("svc: daemon %p woken up.\n", rqstp);
+ 			/*
+ 			svc_thread_dequeue(pool, rqstp);
+-			rqstp->rq_sock = NULL;
++			rqstp->rq_xprt = NULL;
+ 			 */
+ 			wake_up(&rqstp->rq_wait);
+ 		}
+@@ -450,7 +452,9 @@ union svc_pktinfo_u {
+ 
+ static void svc_set_cmsg_data(struct svc_rqst *rqstp, struct cmsghdr *cmh)
+ {
+-	switch (rqstp->rq_sock->sk_sk->sk_family) {
++	struct svc_sock *svsk =
++		container_of(rqstp->rq_xprt, struct svc_sock, sk_xprt);
++	switch (svsk->sk_sk->sk_family) {
+ 	case AF_INET: {
+ 			struct in_pktinfo *pki = CMSG_DATA(cmh);
+ 
+@@ -483,7 +487,8 @@ static void svc_set_cmsg_data(struct svc_rqst *rqstp, struct cmsghdr *cmh)
+ static int
+ svc_sendto(struct svc_rqst *rqstp, struct xdr_buf *xdr)
+ {
+-	struct svc_sock	*svsk = rqstp->rq_sock;
++	struct svc_sock	*svsk =
++		container_of(rqstp->rq_xprt, struct svc_sock, sk_xprt);
+ 	struct socket	*sock = svsk->sk_sock;
+ 	int		slen;
+ 	union {
+@@ -556,7 +561,7 @@ svc_sendto(struct svc_rqst *rqstp, struct xdr_buf *xdr)
+ 	}
+ out:
+ 	dprintk("svc: socket %p sendto([%p %Zu... ], %d) = %d (addr %s)\n",
+-		rqstp->rq_sock, xdr->head[0].iov_base, xdr->head[0].iov_len,
++		svsk, xdr->head[0].iov_base, xdr->head[0].iov_len,
+ 		xdr->len, len, svc_print_addr(rqstp, buf, sizeof(buf)));
+ 
+ 	return len;
+@@ -632,7 +637,8 @@ svc_recv_available(struct svc_sock *svsk)
+ static int
+ svc_recvfrom(struct svc_rqst *rqstp, struct kvec *iov, int nr, int buflen)
+ {
+-	struct svc_sock *svsk = rqstp->rq_sock;
++	struct svc_sock *svsk =
++		container_of(rqstp->rq_xprt, struct svc_sock, sk_xprt);
+ 	struct msghdr msg = {
+ 		.msg_flags	= MSG_DONTWAIT,
+ 	};
+@@ -722,7 +728,9 @@ svc_write_space(struct sock *sk)
+ static void svc_udp_get_dest_address(struct svc_rqst *rqstp,
+ 				     struct cmsghdr *cmh)
+ {
+-	switch (rqstp->rq_sock->sk_sk->sk_family) {
++	struct svc_sock *svsk =
++		container_of(rqstp->rq_xprt, struct svc_sock, sk_xprt);
++	switch (svsk->sk_sk->sk_family) {
+ 	case AF_INET: {
+ 		struct in_pktinfo *pki = CMSG_DATA(cmh);
+ 		rqstp->rq_daddr.addr.s_addr = pki->ipi_spec_dst.s_addr;
+@@ -742,7 +750,8 @@ static void svc_udp_get_dest_address(struct svc_rqst *rqstp,
+ static int
+ svc_udp_recvfrom(struct svc_rqst *rqstp)
+ {
+-	struct svc_sock	*svsk = rqstp->rq_sock;
++	struct svc_sock	*svsk =
++		container_of(rqstp->rq_xprt, struct svc_sock, sk_xprt);
+ 	struct svc_serv	*serv = svsk->sk_xprt.xpt_server;
+ 	struct sk_buff	*skb;
+ 	union {
+@@ -1126,7 +1135,8 @@ failed:
+ static int
+ svc_tcp_recvfrom(struct svc_rqst *rqstp)
+ {
+-	struct svc_sock	*svsk = rqstp->rq_sock;
++	struct svc_sock	*svsk =
++		container_of(rqstp->rq_xprt, struct svc_sock, sk_xprt);
+ 	struct svc_serv	*serv = svsk->sk_xprt.xpt_server;
+ 	int		len;
+ 	struct kvec *vec;
+@@ -1290,16 +1300,16 @@ svc_tcp_sendto(struct svc_rqst *rqstp)
+ 	reclen = htonl(0x80000000|((xbufp->len ) - 4));
+ 	memcpy(xbufp->head[0].iov_base, &reclen, 4);
+ 
+-	if (test_bit(XPT_DEAD, &rqstp->rq_sock->sk_xprt.xpt_flags))
++	if (test_bit(XPT_DEAD, &rqstp->rq_xprt->xpt_flags))
+ 		return -ENOTCONN;
+ 
+ 	sent = svc_sendto(rqstp, &rqstp->rq_res);
+ 	if (sent != xbufp->len) {
+ 		printk(KERN_NOTICE "rpc-srv/tcp: %s: %s %d when sending %d bytes - shutting down socket\n",
+-		       rqstp->rq_sock->sk_xprt.xpt_server->sv_name,
++		       rqstp->rq_xprt->xpt_server->sv_name,
+ 		       (sent<0)?"got error":"sent only",
+ 		       sent, xbufp->len);
+-		set_bit(XPT_CLOSE, &rqstp->rq_sock->sk_xprt.xpt_flags);
++		set_bit(XPT_CLOSE, &rqstp->rq_xprt->xpt_flags);
+ 		svc_xprt_enqueue(rqstp->rq_xprt);
+ 		sent = -EAGAIN;
+ 	}
+@@ -1319,7 +1329,7 @@ static void svc_tcp_prep_reply_hdr(struct svc_rqst *rqstp)
+ 
+ static int svc_tcp_has_wspace(struct svc_xprt *xprt)
+ {
+-	struct svc_sock *svsk = container_of(xprt, struct svc_sock, sk_xprt);
++	struct svc_sock *svsk =	container_of(xprt, struct svc_sock, sk_xprt);
+ 	struct svc_serv	*serv = svsk->sk_xprt.xpt_server;
+ 	int required;
+ 
+@@ -1641,7 +1651,7 @@ svc_recv(struct svc_rqst *rqstp, long timeout)
+ void
+ svc_drop(struct svc_rqst *rqstp)
+ {
+-	dprintk("svc: socket %p dropped request\n", rqstp->rq_sock);
++	dprintk("svc: xprt %p dropped request\n", rqstp->rq_xprt);
+ 	svc_xprt_release(rqstp);
  }
- 
-@@ -903,6 +897,8 @@ static struct svc_xprt_ops svc_udp_ops = {
- 	.xpo_recvfrom = svc_udp_recvfrom,
- 	.xpo_sendto = svc_udp_sendto,
- 	.xpo_release_rqst = svc_release_skb,
-+	.xpo_detach = svc_sock_detach,
-+	.xpo_free = svc_sock_free,
- };
- 
- static struct svc_xprt_class svc_udp_class = {
-@@ -1358,6 +1354,8 @@ static struct svc_xprt_ops svc_tcp_ops = {
- 	.xpo_recvfrom = svc_tcp_recvfrom,
- 	.xpo_sendto = svc_tcp_sendto,
- 	.xpo_release_rqst = svc_release_skb,
-+	.xpo_detach = svc_sock_detach,
-+	.xpo_free = svc_sock_free,
- };
- 
- static struct svc_xprt_class svc_tcp_class = {
-@@ -1815,6 +1813,40 @@ bummer:
- }
- 
- /*
-+ * Detach the svc_sock from the socket so that no
-+ * more callbacks occur.
-+ */
-+static void svc_sock_detach(struct svc_xprt *xprt)
-+{
-+	struct svc_sock *svsk = container_of(xprt, struct svc_sock, sk_xprt);
-+	struct sock *sk = svsk->sk_sk;
-+
-+	dprintk("svc: svc_sock_detach(%p)\n", svsk);
-+
-+	/* put back the old socket callbacks */
-+	sk->sk_state_change = svsk->sk_ostate;
-+	sk->sk_data_ready = svsk->sk_odata;
-+	sk->sk_write_space = svsk->sk_owspace;
-+}
-+
-+/*
-+ * Free the svc_sock's socket resources and the svc_sock itself.
-+ */
-+static void svc_sock_free(struct svc_xprt *xprt)
-+{
-+	struct svc_sock *svsk = container_of(xprt, struct svc_sock, sk_xprt);
-+	dprintk("svc: svc_sock_free(%p)\n", svsk);
-+
-+	if (svsk->sk_info_authunix != NULL)
-+		svcauth_unix_info_release(svsk->sk_info_authunix);
-+	if (svsk->sk_sock->file)
-+		sockfd_put(svsk->sk_sock);
-+	else
-+		sock_release(svsk->sk_sock);
-+	kfree(svsk);
-+}
-+
-+/*
-  * Remove a dead socket
-  */
- static void
-@@ -1828,9 +1860,7 @@ svc_delete_socket(struct svc_sock *svsk)
- 	serv = svsk->sk_server;
- 	sk = svsk->sk_sk;
- 
--	sk->sk_state_change = svsk->sk_ostate;
--	sk->sk_data_ready = svsk->sk_odata;
--	sk->sk_write_space = svsk->sk_owspace;
-+	svsk->sk_xprt.xpt_ops->xpo_detach(&svsk->sk_xprt);
- 
- 	spin_lock_bh(&serv->sv_lock);
  
