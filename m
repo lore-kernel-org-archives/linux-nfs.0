@@ -1,74 +1,77 @@
-From: =?UTF-8?Q?Peter_=C3=85strand?= <astrand-+4tYiAq3b6azQB+pC5nmwQ@public.gmane.org>
-Subject: Re: [NFS] access gives ENOENT on existing file
-Date: Thu, 29 Nov 2007 20:39:04 +0100 (CET)
-Message-ID: <Pine.LNX.4.64.0711292038300.473@maggie.lkpg.cendio.se>
-References: <Pine.LNX.4.64.0711292001110.32427@maggie.lkpg.cendio.se>
-	<1196364589.7808.28.camel@heimdal.trondhjem.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [NFS] [PATCH 01/29] SUNRPC: Use default address length based on
+	address	family
+Date: Thu, 29 Nov 2007 14:39:56 -0500
+Message-ID: <20071129193956.4170.68884.stgit@picasso.1015granger.net>
+References: <20071129193153.4170.29598.stgit@picasso.1015granger.net>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="789237761-1277855456-1196365144=:473"
-Cc: nfs@lists.sourceforge.net
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net, aurelien.charbon-Z51IpKcfGtLk1uMJSBkQmQ@public.gmane.org
+To: trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IxpE3-0001Gv-NW
-	for nfs@lists.sourceforge.net; Thu, 29 Nov 2007 11:39:07 -0800
-Received: from mail.cendio.se ([193.12.253.69])
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IxpE8-0006pz-2k
-	for nfs@lists.sourceforge.net; Thu, 29 Nov 2007 11:39:13 -0800
-In-Reply-To: <1196364589.7808.28.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+	id 1IxpFw-0001RZ-Fd
+	for nfs@lists.sourceforge.net; Thu, 29 Nov 2007 11:41:04 -0800
+Received: from flpi195.sbcis.sbc.com ([207.115.20.197]
+	helo=flpi195.prodigy.net)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IxpG0-0007SL-Fc
+	for nfs@lists.sourceforge.net; Thu, 29 Nov 2007 11:41:10 -0800
+In-Reply-To: <20071129193153.4170.29598.stgit-uiCyzNpeAnB9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <nfs.lists.sourceforge.net>
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+If the address length passed to rpc_create is zero, have it use a default
+length based on the address family of the passed in address.
 
---789237761-1277855456-1196365144=:473
-Content-Type: TEXT/PLAIN; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-
-On Thu, 29 Nov 2007, Trond Myklebust wrote:
-
-
-> > With my own "access" command, the access system call also succeeds:
-> >=20
-> > access("/import/mirrors/fedora/updates/8/i386/repodata/repomd.xml", R_O=
-K) =3D 0
-> >=20
-> > Also, on another machine running Fedora 7, repoview works correctly,=20
-> > against the same NFS server.=20
-> >=20
-> > Any ideas?
->=20
-> tcpdump?
-
-http://www.cendio.com/~astrand/nfs1/repoview.cap
-
-
-Best regards,=20
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
-Peter =C3=85strand=09=09ThinLinc Chief Developer
-Cendio AB=09=09http://www.cendio.se
-Wallenbergs gata 4
-583 30 Link=C3=B6ping=09Phone: +46-13-21 46 00
---789237761-1277855456-1196365144=:473
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+
+ net/sunrpc/clnt.c |   16 ++++++++++++++++
+ 1 files changed, 16 insertions(+), 0 deletions(-)
+
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 76be83e..efa7890 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -30,6 +30,7 @@
+ #include <linux/smp_lock.h>
+ #include <linux/utsname.h>
+ #include <linux/workqueue.h>
++#include <linux/in6.h>
+ 
+ #include <linux/sunrpc/clnt.h>
+ #include <linux/sunrpc/rpc_pipe_fs.h>
+@@ -249,6 +250,21 @@ struct rpc_clnt *rpc_create(struct rpc_create_args *args)
+ 	};
+ 	char servername[20];
+ 
++	if (args->addrsize == 0) {
++		switch (args->address->sa_family) {
++		case AF_INET:
++			xprtargs.addrlen = sizeof(struct sockaddr_in);
++			break;
++		case AF_INET6:
++			xprtargs.addrlen = sizeof(struct sockaddr_in6);
++			break;
++		default:
++			/* caller wants default address length, but
++			 * address family isn't recognized. */
++			return ERR_PTR(-EINVAL);
++		}
++	}
++
+ 	xprt = xprt_create_transport(&xprtargs);
+ 	if (IS_ERR(xprt))
+ 		return (struct rpc_clnt *)xprt;
+
 
 -------------------------------------------------------------------------
 SF.Net email is sponsored by: The Future of Linux Business White Paper
 from Novell.  From the desktop to the data center, Linux is going
 mainstream.  Let it simplify your IT future.
 http://altfarm.mediaplex.com/ad/ck/8857-50307-18918-4
---789237761-1277855456-1196365144=:473
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
@@ -76,7 +79,4 @@ _______________________________________________
 Please note that nfs@lists.sourceforge.net is being discontinued.
 Please subscribe to linux-nfs@vger.kernel.org instead.
     http://vger.kernel.org/vger-lists.html#linux-nfs
-
---789237761-1277855456-1196365144=:473--
-
 
