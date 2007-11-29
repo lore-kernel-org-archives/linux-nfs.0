@@ -1,129 +1,180 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [RFC,PATCH 06/38] svc: Add transport specific xpo_release function
-Date: Thu, 29 Nov 2007 16:53:43 -0600
-Message-ID: <20071129225343.15107.80518.stgit@dell3.ogc.int>
-References: <20071129225142.15107.46200.stgit@dell3.ogc.int>
+Subject: [RFC,PATCH 30/38] svc: Removing remaining references to rq_sock in rqstp
+Date: Thu, 29 Nov 2007 16:56:41 -0600
+Message-ID: <20071129225641.15275.51031.stgit@dell3.ogc.int>
+References: <20071129225510.15275.82660.stgit@dell3.ogc.int>
 Content-Type: text/plain; charset=utf-8; format=fixed
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:47411 "EHLO
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:47422 "EHLO
 	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1763396AbXK2XUS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2007 18:20:18 -0500
-In-Reply-To: <20071129225142.15107.46200.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
+	by vger.kernel.org with ESMTP id S1763179AbXK2XUO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2007 18:20:14 -0500
+In-Reply-To: <20071129225510.15275.82660.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-The svc_sock_release function releases pages allocated to a thread. For
-UDP, this also returns the receive skb to the stack. For RDMA it will 
-post a receive WR and bump the client credit count. 
+This functionally empty patch removes rq_sock and unamed union 
+from rqstp structure. 
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- include/linux/sunrpc/svc.h      |    2 +-
- include/linux/sunrpc/svc_xprt.h |    1 +
- net/sunrpc/svcsock.c            |   17 +++++++++--------
- 3 files changed, 11 insertions(+), 9 deletions(-)
+ include/linux/sunrpc/svc.h |    5 +----
+ net/sunrpc/svcsock.c       |   38 ++++++++++++++++++++++++--------------
+ 2 files changed, 25 insertions(+), 18 deletions(-)
 
 diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 37f7448..cfb2652 100644
+index 40adc9d..04eb20e 100644
 --- a/include/linux/sunrpc/svc.h
 +++ b/include/linux/sunrpc/svc.h
-@@ -217,7 +217,7 @@ struct svc_rqst {
- 	struct auth_ops *	rq_authop;	/* authentication flavour */
- 	u32			rq_flavor;	/* pseudoflavor */
- 	struct svc_cred		rq_cred;	/* auth info */
--	struct sk_buff *	rq_skbuff;	/* fast recv inet buffer */
-+	void *			rq_xprt_ctxt;	/* transport specific context ptr */
- 	struct svc_deferred_req*rq_deferred;	/* deferred request we are replaying */
+@@ -204,10 +204,7 @@ union svc_addr_u {
+ struct svc_rqst {
+ 	struct list_head	rq_list;	/* idle list */
+ 	struct list_head	rq_all;		/* all threads list */
+-	union {
+-		struct svc_xprt *	rq_xprt;	/* transport ptr */
+-		struct svc_sock *	rq_sock; 	/* socket ptr */
+-	};
++	struct svc_xprt *	rq_xprt;	/* transport ptr */
+ 	struct sockaddr_storage	rq_addr;	/* peer address */
+ 	size_t			rq_addrlen;
  
- 	struct xdr_buf		rq_arg;
-diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index 81daa39..e3bd7b1 100644
---- a/include/linux/sunrpc/svc_xprt.h
-+++ b/include/linux/sunrpc/svc_xprt.h
-@@ -12,6 +12,7 @@
- struct svc_xprt_ops {
- 	int		(*xpo_recvfrom)(struct svc_rqst *);
- 	int		(*xpo_sendto)(struct svc_rqst *);
-+	void		(*xpo_release_rqst)(struct svc_rqst *);
- };
- 
- struct svc_xprt_class {
 diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 9c06b15..b24c084 100644
+index 8f0ceef..c4b2a5e 100644
 --- a/net/sunrpc/svcsock.c
 +++ b/net/sunrpc/svcsock.c
-@@ -185,14 +185,13 @@ svc_thread_dequeue(struct svc_pool *pool, struct svc_rqst *rqstp)
- /*
-  * Release an skbuff after use
-  */
--static inline void
--svc_release_skb(struct svc_rqst *rqstp)
-+static void svc_release_skb(struct svc_rqst *rqstp)
- {
--	struct sk_buff *skb = rqstp->rq_skbuff;
-+	struct sk_buff *skb = rqstp->rq_xprt_ctxt;
+@@ -201,10 +201,12 @@ static void svc_release_skb(struct svc_rqst *rqstp)
  	struct svc_deferred_req *dr = rqstp->rq_deferred;
  
  	if (skb) {
--		rqstp->rq_skbuff = NULL;
-+		rqstp->rq_xprt_ctxt = NULL;
++		struct svc_sock *svsk =
++			container_of(rqstp->rq_xprt, struct svc_sock, sk_xprt);
+ 		rqstp->rq_xprt_ctxt = NULL;
  
  		dprintk("svc: service %p, releasing skb %p\n", rqstp, skb);
- 		skb_free_datagram(rqstp->rq_sock->sk_sk, skb);
-@@ -395,7 +394,7 @@ svc_sock_release(struct svc_rqst *rqstp)
- {
- 	struct svc_sock	*svsk = rqstp->rq_sock;
- 
--	svc_release_skb(rqstp);
-+	rqstp->rq_xprt->xpt_ops->xpo_release_rqst(rqstp);
- 
- 	svc_free_res_pages(rqstp);
- 	rqstp->rq_res.page_len = 0;
-@@ -867,7 +866,7 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
- 			skb_free_datagram(svsk->sk_sk, skb);
- 			return 0;
+-		skb_free_datagram(rqstp->rq_sock->sk_sk, skb);
++		skb_free_datagram(svsk->sk_sk, skb);
+ 	}
+ 	if (dr) {
+ 		rqstp->rq_deferred = NULL;
+@@ -433,7 +435,7 @@ svc_wake_up(struct svc_serv *serv)
+ 			dprintk("svc: daemon %p woken up.\n", rqstp);
+ 			/*
+ 			svc_thread_dequeue(pool, rqstp);
+-			rqstp->rq_sock = NULL;
++			rqstp->rq_xprt = NULL;
+ 			 */
+ 			wake_up(&rqstp->rq_wait);
  		}
--		rqstp->rq_skbuff = skb;
-+		rqstp->rq_xprt_ctxt = skb;
+@@ -450,7 +452,9 @@ union svc_pktinfo_u {
+ 
+ static void svc_set_cmsg_data(struct svc_rqst *rqstp, struct cmsghdr *cmh)
+ {
+-	switch (rqstp->rq_sock->sk_sk->sk_family) {
++	struct svc_sock *svsk =
++		container_of(rqstp->rq_xprt, struct svc_sock, sk_xprt);
++	switch (svsk->sk_sk->sk_family) {
+ 	case AF_INET: {
+ 			struct in_pktinfo *pki = CMSG_DATA(cmh);
+ 
+@@ -483,7 +487,8 @@ static void svc_set_cmsg_data(struct svc_rqst *rqstp, struct cmsghdr *cmh)
+ static int
+ svc_sendto(struct svc_rqst *rqstp, struct xdr_buf *xdr)
+ {
+-	struct svc_sock	*svsk = rqstp->rq_sock;
++	struct svc_sock	*svsk =
++		container_of(rqstp->rq_xprt, struct svc_sock, sk_xprt);
+ 	struct socket	*sock = svsk->sk_sock;
+ 	int		slen;
+ 	union {
+@@ -556,7 +561,7 @@ svc_sendto(struct svc_rqst *rqstp, struct xdr_buf *xdr)
  	}
+ out:
+ 	dprintk("svc: socket %p sendto([%p %Zu... ], %d) = %d (addr %s)\n",
+-		rqstp->rq_sock, xdr->head[0].iov_base, xdr->head[0].iov_len,
++		svsk, xdr->head[0].iov_base, xdr->head[0].iov_len,
+ 		xdr->len, len, svc_print_addr(rqstp, buf, sizeof(buf)));
  
- 	rqstp->rq_arg.page_base = 0;
-@@ -903,6 +902,7 @@ svc_udp_sendto(struct svc_rqst *rqstp)
- static struct svc_xprt_ops svc_udp_ops = {
- 	.xpo_recvfrom = svc_udp_recvfrom,
- 	.xpo_sendto = svc_udp_sendto,
-+	.xpo_release_rqst = svc_release_skb,
- };
+ 	return len;
+@@ -632,7 +637,8 @@ svc_recv_available(struct svc_sock *svsk)
+ static int
+ svc_recvfrom(struct svc_rqst *rqstp, struct kvec *iov, int nr, int buflen)
+ {
+-	struct svc_sock *svsk = rqstp->rq_sock;
++	struct svc_sock *svsk =
++		container_of(rqstp->rq_xprt, struct svc_sock, sk_xprt);
+ 	struct msghdr msg = {
+ 		.msg_flags	= MSG_DONTWAIT,
+ 	};
+@@ -722,7 +728,9 @@ svc_write_space(struct sock *sk)
+ static void svc_udp_get_dest_address(struct svc_rqst *rqstp,
+ 				     struct cmsghdr *cmh)
+ {
+-	switch (rqstp->rq_sock->sk_sk->sk_family) {
++	struct svc_sock *svsk =
++		container_of(rqstp->rq_xprt, struct svc_sock, sk_xprt);
++	switch (svsk->sk_sk->sk_family) {
+ 	case AF_INET: {
+ 		struct in_pktinfo *pki = CMSG_DATA(cmh);
+ 		rqstp->rq_daddr.addr.s_addr = pki->ipi_spec_dst.s_addr;
+@@ -742,7 +750,8 @@ static void svc_udp_get_dest_address(struct svc_rqst *rqstp,
+ static int
+ svc_udp_recvfrom(struct svc_rqst *rqstp)
+ {
+-	struct svc_sock	*svsk = rqstp->rq_sock;
++	struct svc_sock	*svsk =
++		container_of(rqstp->rq_xprt, struct svc_sock, sk_xprt);
+ 	struct svc_serv	*serv = svsk->sk_xprt.xpt_server;
+ 	struct sk_buff	*skb;
+ 	union {
+@@ -1126,7 +1135,8 @@ failed:
+ static int
+ svc_tcp_recvfrom(struct svc_rqst *rqstp)
+ {
+-	struct svc_sock	*svsk = rqstp->rq_sock;
++	struct svc_sock	*svsk =
++		container_of(rqstp->rq_xprt, struct svc_sock, sk_xprt);
+ 	struct svc_serv	*serv = svsk->sk_xprt.xpt_server;
+ 	int		len;
+ 	struct kvec *vec;
+@@ -1290,16 +1300,16 @@ svc_tcp_sendto(struct svc_rqst *rqstp)
+ 	reclen = htonl(0x80000000|((xbufp->len ) - 4));
+ 	memcpy(xbufp->head[0].iov_base, &reclen, 4);
  
- static struct svc_xprt_class svc_udp_class = {
-@@ -1291,7 +1291,7 @@ svc_tcp_recvfrom(struct svc_rqst *rqstp)
- 		rqstp->rq_arg.page_len = len - rqstp->rq_arg.head[0].iov_len;
+-	if (test_bit(XPT_DEAD, &rqstp->rq_sock->sk_xprt.xpt_flags))
++	if (test_bit(XPT_DEAD, &rqstp->rq_xprt->xpt_flags))
+ 		return -ENOTCONN;
+ 
+ 	sent = svc_sendto(rqstp, &rqstp->rq_res);
+ 	if (sent != xbufp->len) {
+ 		printk(KERN_NOTICE "rpc-srv/tcp: %s: %s %d when sending %d bytes - shutting down socket\n",
+-		       rqstp->rq_sock->sk_xprt.xpt_server->sv_name,
++		       rqstp->rq_xprt->xpt_server->sv_name,
+ 		       (sent<0)?"got error":"sent only",
+ 		       sent, xbufp->len);
+-		set_bit(XPT_CLOSE, &rqstp->rq_sock->sk_xprt.xpt_flags);
++		set_bit(XPT_CLOSE, &rqstp->rq_xprt->xpt_flags);
+ 		svc_xprt_enqueue(rqstp->rq_xprt);
+ 		sent = -EAGAIN;
  	}
+@@ -1319,7 +1329,7 @@ static void svc_tcp_prep_reply_hdr(struct svc_rqst *rqstp)
  
--	rqstp->rq_skbuff      = NULL;
-+	rqstp->rq_xprt_ctxt   = NULL;
- 	rqstp->rq_prot	      = IPPROTO_TCP;
+ static int svc_tcp_has_wspace(struct svc_xprt *xprt)
+ {
+-	struct svc_sock *svsk = container_of(xprt, struct svc_sock, sk_xprt);
++	struct svc_sock *svsk =	container_of(xprt, struct svc_sock, sk_xprt);
+ 	struct svc_serv	*serv = svsk->sk_xprt.xpt_server;
+ 	int required;
  
- 	/* Reset TCP read info */
-@@ -1357,6 +1357,7 @@ svc_tcp_sendto(struct svc_rqst *rqstp)
- static struct svc_xprt_ops svc_tcp_ops = {
- 	.xpo_recvfrom = svc_tcp_recvfrom,
- 	.xpo_sendto = svc_tcp_sendto,
-+	.xpo_release_rqst = svc_release_skb,
- };
+@@ -1641,7 +1651,7 @@ svc_recv(struct svc_rqst *rqstp, long timeout)
+ void
+ svc_drop(struct svc_rqst *rqstp)
+ {
+-	dprintk("svc: socket %p dropped request\n", rqstp->rq_sock);
++	dprintk("svc: xprt %p dropped request\n", rqstp->rq_xprt);
+ 	svc_xprt_release(rqstp);
+ }
  
- static struct svc_xprt_class svc_tcp_class = {
-@@ -1578,7 +1579,7 @@ svc_send(struct svc_rqst *rqstp)
- 	}
- 
- 	/* release the receive skb before sending the reply */
--	svc_release_skb(rqstp);
-+	rqstp->rq_xprt->xpt_ops->xpo_release_rqst(rqstp);
- 
- 	/* calculate over-all length */
- 	xb = & rqstp->rq_res;
