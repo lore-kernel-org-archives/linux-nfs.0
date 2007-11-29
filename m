@@ -1,92 +1,168 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [RFC,PATCH 26/38] svc: Make svc_sock_release svc_xprt_release
-Date: Thu, 29 Nov 2007 16:40:48 -0600
-Message-ID: <20071129224048.14563.84561.stgit@dell3.ogc.int>
+Subject: [RFC,PATCH 02/38] svc: Make svc_sock the tcp/udp transport
+Date: Thu, 29 Nov 2007 16:39:58 -0600
+Message-ID: <20071129223957.14563.94559.stgit@dell3.ogc.int>
 References: <20071129223917.14563.77633.stgit@dell3.ogc.int>
 Content-Type: text/plain; charset=utf-8; format=fixed
 Cc: linux-nfs@vger.kernel.org
 To: bfields-ag9A2Eb6PFsgsBAKwltoeQ@public.gmane.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:48882 "EHLO
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:48886 "EHLO
 	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S933792AbXK2XD3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2007 18:03:29 -0500
+	by vger.kernel.org with ESMTP id S933701AbXK2XD2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2007 18:03:28 -0500
 In-Reply-To: <20071129223917.14563.77633.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-The svc_sock_release function only touches transport independent fields.
-Change the function to manipulate svc_xprt directly instead of the transport
-dependent svc_sock structure. 
+Make TCP and UDP svc_sock transports, and register them
+with the svc transport core. 
+
+A transport type (svc_sock) has an svc_xprt as its first member, 
+and calls svc_xprt_init to initialize this field.
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- net/sunrpc/svcsock.c |   16 +++++++---------
- 1 files changed, 7 insertions(+), 9 deletions(-)
+ include/linux/sunrpc/debug.h   |    1 -
+ include/linux/sunrpc/svcsock.h |    4 ++++
+ net/sunrpc/sunrpc_syms.c       |    4 +++-
+ net/sunrpc/svcsock.c           |   33 ++++++++++++++++++++++++++++++++-
+ 4 files changed, 39 insertions(+), 3 deletions(-)
 
+diff --git a/include/linux/sunrpc/debug.h b/include/linux/sunrpc/debug.h
+index 1456a0b..3482a38 100644
+--- a/include/linux/sunrpc/debug.h
++++ b/include/linux/sunrpc/debug.h
+@@ -20,7 +20,6 @@
+ #define RPCDBG_BIND		0x0020
+ #define RPCDBG_SCHED		0x0040
+ #define RPCDBG_TRANS		0x0080
+-#define RPCDBG_SVCSOCK		0x0100
+ #define RPCDBG_SVCXPRT		0x0100
+ #define RPCDBG_SVCDSP		0x0200
+ #define RPCDBG_MISC		0x0400
+diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
+index a53e0fa..1878cbe 100644
+--- a/include/linux/sunrpc/svcsock.h
++++ b/include/linux/sunrpc/svcsock.h
+@@ -10,11 +10,13 @@
+ #define SUNRPC_SVCSOCK_H
+ 
+ #include <linux/sunrpc/svc.h>
++#include <linux/sunrpc/svc_xprt.h>
+ 
+ /*
+  * RPC server socket.
+  */
+ struct svc_sock {
++	struct svc_xprt		sk_xprt;
+ 	struct list_head	sk_ready;	/* list of ready sockets */
+ 	struct list_head	sk_list;	/* list of all sockets */
+ 	struct socket *		sk_sock;	/* berkeley socket layer */
+@@ -78,6 +80,8 @@ int		svc_addsock(struct svc_serv *serv,
+ 			    int fd,
+ 			    char *name_return,
+ 			    int *proto);
++void		svc_init_xprt_sock(void);
++void		svc_cleanup_xprt_sock(void);
+ 
+ /*
+  * svc_makesock socket characteristics
+diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
+index 33d89e8..79ea05f 100644
+--- a/net/sunrpc/sunrpc_syms.c
++++ b/net/sunrpc/sunrpc_syms.c
+@@ -151,7 +151,8 @@ init_sunrpc(void)
+ #endif
+ 	cache_register(&ip_map_cache);
+ 	cache_register(&unix_gid_cache);
+-	init_socket_xprt();
++	svc_init_xprt_sock();	/* svc sock transport */
++	init_socket_xprt();	/* clnt sock transport */
+ 	rpcauth_init_module();
+ out:
+ 	return err;
+@@ -162,6 +163,7 @@ cleanup_sunrpc(void)
+ {
+ 	rpcauth_remove_module();
+ 	cleanup_socket_xprt();
++	svc_cleanup_xprt_sock();
+ 	unregister_rpc_pipefs();
+ 	rpc_destroy_mempool();
+ 	if (cache_unregister(&ip_map_cache))
 diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index e8cfeeb..36fc59c 100644
+index c75bffe..4755467 100644
 --- a/net/sunrpc/svcsock.c
 +++ b/net/sunrpc/svcsock.c
-@@ -383,10 +383,9 @@ void svc_reserve(struct svc_rqst *rqstp, int space)
- 	}
+@@ -75,7 +75,7 @@
+  *
+  */
+ 
+-#define RPCDBG_FACILITY	RPCDBG_SVCSOCK
++#define RPCDBG_FACILITY	RPCDBG_SVCXPRT
+ 
+ 
+ static struct svc_sock *svc_setup_socket(struct svc_serv *, struct socket *,
+@@ -900,12 +900,21 @@ svc_udp_sendto(struct svc_rqst *rqstp)
+ 	return error;
  }
  
--static void
--svc_sock_release(struct svc_rqst *rqstp)
-+static void svc_xprt_release(struct svc_rqst *rqstp)
++static struct svc_xprt_ops svc_udp_ops = {
++};
++
++static struct svc_xprt_class svc_udp_class = {
++	.xcl_name = "udp",
++	.xcl_ops = &svc_udp_ops,
++};
++
+ static void
+ svc_udp_init(struct svc_sock *svsk)
  {
--	struct svc_sock	*svsk = rqstp->rq_sock;
-+	struct svc_xprt	*xprt = rqstp->rq_xprt;
+ 	int one = 1;
+ 	mm_segment_t oldfs;
  
- 	rqstp->rq_xprt->xpt_ops->xpo_release_rqst(rqstp);
- 
-@@ -394,7 +393,6 @@ svc_sock_release(struct svc_rqst *rqstp)
- 	rqstp->rq_res.page_len = 0;
- 	rqstp->rq_res.page_base = 0;
- 
--
- 	/* Reset response buffer and release
- 	 * the reservation.
- 	 * But first, check that enough space was reserved
-@@ -407,9 +405,9 @@ svc_sock_release(struct svc_rqst *rqstp)
- 
- 	rqstp->rq_res.head[0].iov_len = 0;
- 	svc_reserve(rqstp, 0);
--	rqstp->rq_sock = NULL;
-+	rqstp->rq_xprt = NULL;
- 
--	svc_xprt_put(&svsk->sk_xprt);
-+	svc_xprt_put(xprt);
++	svc_xprt_init(&svc_udp_class, &svsk->sk_xprt);
+ 	svsk->sk_sk->sk_data_ready = svc_udp_data_ready;
+ 	svsk->sk_sk->sk_write_space = svc_write_space;
+ 	svsk->sk_recvfrom = svc_udp_recvfrom;
+@@ -1344,12 +1353,33 @@ svc_tcp_sendto(struct svc_rqst *rqstp)
+ 	return sent;
  }
  
- /*
-@@ -1609,7 +1607,7 @@ svc_recv(struct svc_rqst *rqstp, long timeout)
- 	/* No data, incomplete (TCP) read, or accept() */
- 	if (len == 0 || len == -EAGAIN) {
- 		rqstp->rq_res.len = 0;
--		svc_sock_release(rqstp);
-+		svc_xprt_release(rqstp);
- 		return -EAGAIN;
- 	}
- 	clear_bit(XPT_OLD, &svsk->sk_xprt.xpt_flags);
-@@ -1629,7 +1627,7 @@ void
- svc_drop(struct svc_rqst *rqstp)
++static struct svc_xprt_ops svc_tcp_ops = {
++};
++
++static struct svc_xprt_class svc_tcp_class = {
++	.xcl_name = "tcp",
++	.xcl_ops = &svc_tcp_ops,
++};
++
++void svc_init_xprt_sock(void)
++{
++	svc_reg_xprt_class(&svc_tcp_class);
++	svc_reg_xprt_class(&svc_udp_class);
++}
++
++void svc_cleanup_xprt_sock(void)
++{
++	svc_unreg_xprt_class(&svc_tcp_class);
++	svc_unreg_xprt_class(&svc_udp_class);
++}
++
+ static void
+ svc_tcp_init(struct svc_sock *svsk)
  {
- 	dprintk("svc: socket %p dropped request\n", rqstp->rq_sock);
--	svc_sock_release(rqstp);
-+	svc_xprt_release(rqstp);
+ 	struct sock	*sk = svsk->sk_sk;
+ 	struct tcp_sock *tp = tcp_sk(sk);
+ 
++	svc_xprt_init(&svc_tcp_class, &svsk->sk_xprt);
+ 	svsk->sk_recvfrom = svc_tcp_recvfrom;
+ 	svsk->sk_sendto = svc_tcp_sendto;
+ 
+@@ -1965,3 +1995,4 @@ static struct svc_deferred_req *svc_deferred_dequeue(struct svc_sock *svsk)
+ 	spin_unlock(&svsk->sk_lock);
+ 	return dr;
  }
- 
- /*
-@@ -1662,7 +1660,7 @@ svc_send(struct svc_rqst *rqstp)
- 	else
- 		len = xprt->xpt_ops->xpo_sendto(rqstp);
- 	mutex_unlock(&xprt->xpt_mutex);
--	svc_sock_release(rqstp);
-+	svc_xprt_release(rqstp);
- 
- 	if (len == -ECONNREFUSED || len == -ENOTCONN || len == -EAGAIN)
- 		return 0;
++
