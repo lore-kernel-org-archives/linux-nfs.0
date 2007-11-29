@@ -1,180 +1,206 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [RFC,PATCH 30/38] svc: Removing remaining references to rq_sock in rqstp
-Date: Thu, 29 Nov 2007 16:40:56 -0600
-Message-ID: <20071129224056.14563.88556.stgit@dell3.ogc.int>
+Subject: [RFC,PATCH 01/38] svc: Add an svc transport class
+Date: Thu, 29 Nov 2007 16:39:55 -0600
+Message-ID: <20071129223955.14563.44824.stgit@dell3.ogc.int>
 References: <20071129223917.14563.77633.stgit@dell3.ogc.int>
 Content-Type: text/plain; charset=utf-8; format=fixed
 Cc: linux-nfs@vger.kernel.org
 To: bfields-ag9A2Eb6PFsgsBAKwltoeQ@public.gmane.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:48892 "EHLO
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:48891 "EHLO
 	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S933703AbXK2XDj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2007 18:03:39 -0500
+	by vger.kernel.org with ESMTP id S934103AbXK2XDi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2007 18:03:38 -0500
 In-Reply-To: <20071129223917.14563.77633.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-This functionally empty patch removes rq_sock and unamed union 
-from rqstp structure. 
+The transport class (svc_xprt_class) represents a type of transport, e.g. 
+udp, tcp, rdma.  A transport class has a unique name and a set of transport 
+operations kept in the svc_xprt_ops structure.
+
+A transport class can be dynamically registered and unregisterd. The 
+svc_xprt_class represents the module that implements the transport
+type and keeps reference counts on the module to avoid unloading while
+there are active users.
+
+The endpoint (svc_xprt) is a generic, transport independent endpoint that can 
+be used to send and receive data for an RPC service. It inherits it's 
+operations from the transport class. 
+
+A transport driver module registers and unregisters itself with svc sunrpc
+by calling svc_reg_xprt_class, and svc_unreg_xprt_class respectively. 
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- include/linux/sunrpc/svc.h |    5 +----
- net/sunrpc/svcsock.c       |   38 ++++++++++++++++++++++++--------------
- 2 files changed, 25 insertions(+), 18 deletions(-)
+ include/linux/sunrpc/debug.h    |    1 
+ include/linux/sunrpc/svc_xprt.h |   31 +++++++++++++
+ net/sunrpc/Makefile             |    3 +
+ net/sunrpc/svc_xprt.c           |   95 +++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 129 insertions(+), 1 deletions(-)
 
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 40adc9d..04eb20e 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -204,10 +204,7 @@ union svc_addr_u {
- struct svc_rqst {
- 	struct list_head	rq_list;	/* idle list */
- 	struct list_head	rq_all;		/* all threads list */
--	union {
--		struct svc_xprt *	rq_xprt;	/* transport ptr */
--		struct svc_sock *	rq_sock; 	/* socket ptr */
--	};
-+	struct svc_xprt *	rq_xprt;	/* transport ptr */
- 	struct sockaddr_storage	rq_addr;	/* peer address */
- 	size_t			rq_addrlen;
- 
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 8f0ceef..c4b2a5e 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -201,10 +201,12 @@ static void svc_release_skb(struct svc_rqst *rqstp)
- 	struct svc_deferred_req *dr = rqstp->rq_deferred;
- 
- 	if (skb) {
-+		struct svc_sock *svsk =
-+			container_of(rqstp->rq_xprt, struct svc_sock, sk_xprt);
- 		rqstp->rq_xprt_ctxt = NULL;
- 
- 		dprintk("svc: service %p, releasing skb %p\n", rqstp, skb);
--		skb_free_datagram(rqstp->rq_sock->sk_sk, skb);
-+		skb_free_datagram(svsk->sk_sk, skb);
- 	}
- 	if (dr) {
- 		rqstp->rq_deferred = NULL;
-@@ -433,7 +435,7 @@ svc_wake_up(struct svc_serv *serv)
- 			dprintk("svc: daemon %p woken up.\n", rqstp);
- 			/*
- 			svc_thread_dequeue(pool, rqstp);
--			rqstp->rq_sock = NULL;
-+			rqstp->rq_xprt = NULL;
- 			 */
- 			wake_up(&rqstp->rq_wait);
- 		}
-@@ -450,7 +452,9 @@ union svc_pktinfo_u {
- 
- static void svc_set_cmsg_data(struct svc_rqst *rqstp, struct cmsghdr *cmh)
- {
--	switch (rqstp->rq_sock->sk_sk->sk_family) {
-+	struct svc_sock *svsk =
-+		container_of(rqstp->rq_xprt, struct svc_sock, sk_xprt);
-+	switch (svsk->sk_sk->sk_family) {
- 	case AF_INET: {
- 			struct in_pktinfo *pki = CMSG_DATA(cmh);
- 
-@@ -483,7 +487,8 @@ static void svc_set_cmsg_data(struct svc_rqst *rqstp, struct cmsghdr *cmh)
- static int
- svc_sendto(struct svc_rqst *rqstp, struct xdr_buf *xdr)
- {
--	struct svc_sock	*svsk = rqstp->rq_sock;
-+	struct svc_sock	*svsk =
-+		container_of(rqstp->rq_xprt, struct svc_sock, sk_xprt);
- 	struct socket	*sock = svsk->sk_sock;
- 	int		slen;
- 	union {
-@@ -556,7 +561,7 @@ svc_sendto(struct svc_rqst *rqstp, struct xdr_buf *xdr)
- 	}
- out:
- 	dprintk("svc: socket %p sendto([%p %Zu... ], %d) = %d (addr %s)\n",
--		rqstp->rq_sock, xdr->head[0].iov_base, xdr->head[0].iov_len,
-+		svsk, xdr->head[0].iov_base, xdr->head[0].iov_len,
- 		xdr->len, len, svc_print_addr(rqstp, buf, sizeof(buf)));
- 
- 	return len;
-@@ -632,7 +637,8 @@ svc_recv_available(struct svc_sock *svsk)
- static int
- svc_recvfrom(struct svc_rqst *rqstp, struct kvec *iov, int nr, int buflen)
- {
--	struct svc_sock *svsk = rqstp->rq_sock;
-+	struct svc_sock *svsk =
-+		container_of(rqstp->rq_xprt, struct svc_sock, sk_xprt);
- 	struct msghdr msg = {
- 		.msg_flags	= MSG_DONTWAIT,
- 	};
-@@ -722,7 +728,9 @@ svc_write_space(struct sock *sk)
- static void svc_udp_get_dest_address(struct svc_rqst *rqstp,
- 				     struct cmsghdr *cmh)
- {
--	switch (rqstp->rq_sock->sk_sk->sk_family) {
-+	struct svc_sock *svsk =
-+		container_of(rqstp->rq_xprt, struct svc_sock, sk_xprt);
-+	switch (svsk->sk_sk->sk_family) {
- 	case AF_INET: {
- 		struct in_pktinfo *pki = CMSG_DATA(cmh);
- 		rqstp->rq_daddr.addr.s_addr = pki->ipi_spec_dst.s_addr;
-@@ -742,7 +750,8 @@ static void svc_udp_get_dest_address(struct svc_rqst *rqstp,
- static int
- svc_udp_recvfrom(struct svc_rqst *rqstp)
- {
--	struct svc_sock	*svsk = rqstp->rq_sock;
-+	struct svc_sock	*svsk =
-+		container_of(rqstp->rq_xprt, struct svc_sock, sk_xprt);
- 	struct svc_serv	*serv = svsk->sk_xprt.xpt_server;
- 	struct sk_buff	*skb;
- 	union {
-@@ -1126,7 +1135,8 @@ failed:
- static int
- svc_tcp_recvfrom(struct svc_rqst *rqstp)
- {
--	struct svc_sock	*svsk = rqstp->rq_sock;
-+	struct svc_sock	*svsk =
-+		container_of(rqstp->rq_xprt, struct svc_sock, sk_xprt);
- 	struct svc_serv	*serv = svsk->sk_xprt.xpt_server;
- 	int		len;
- 	struct kvec *vec;
-@@ -1290,16 +1300,16 @@ svc_tcp_sendto(struct svc_rqst *rqstp)
- 	reclen = htonl(0x80000000|((xbufp->len ) - 4));
- 	memcpy(xbufp->head[0].iov_base, &reclen, 4);
- 
--	if (test_bit(XPT_DEAD, &rqstp->rq_sock->sk_xprt.xpt_flags))
-+	if (test_bit(XPT_DEAD, &rqstp->rq_xprt->xpt_flags))
- 		return -ENOTCONN;
- 
- 	sent = svc_sendto(rqstp, &rqstp->rq_res);
- 	if (sent != xbufp->len) {
- 		printk(KERN_NOTICE "rpc-srv/tcp: %s: %s %d when sending %d bytes - shutting down socket\n",
--		       rqstp->rq_sock->sk_xprt.xpt_server->sv_name,
-+		       rqstp->rq_xprt->xpt_server->sv_name,
- 		       (sent<0)?"got error":"sent only",
- 		       sent, xbufp->len);
--		set_bit(XPT_CLOSE, &rqstp->rq_sock->sk_xprt.xpt_flags);
-+		set_bit(XPT_CLOSE, &rqstp->rq_xprt->xpt_flags);
- 		svc_xprt_enqueue(rqstp->rq_xprt);
- 		sent = -EAGAIN;
- 	}
-@@ -1319,7 +1329,7 @@ static void svc_tcp_prep_reply_hdr(struct svc_rqst *rqstp)
- 
- static int svc_tcp_has_wspace(struct svc_xprt *xprt)
- {
--	struct svc_sock *svsk = container_of(xprt, struct svc_sock, sk_xprt);
-+	struct svc_sock *svsk =	container_of(xprt, struct svc_sock, sk_xprt);
- 	struct svc_serv	*serv = svsk->sk_xprt.xpt_server;
- 	int required;
- 
-@@ -1641,7 +1651,7 @@ svc_recv(struct svc_rqst *rqstp, long timeout)
- void
- svc_drop(struct svc_rqst *rqstp)
- {
--	dprintk("svc: socket %p dropped request\n", rqstp->rq_sock);
-+	dprintk("svc: xprt %p dropped request\n", rqstp->rq_xprt);
- 	svc_xprt_release(rqstp);
- }
- 
+diff --git a/include/linux/sunrpc/debug.h b/include/linux/sunrpc/debug.h
+index 3347c72..1456a0b 100644
+--- a/include/linux/sunrpc/debug.h
++++ b/include/linux/sunrpc/debug.h
+@@ -21,6 +21,7 @@
+ #define RPCDBG_SCHED		0x0040
+ #define RPCDBG_TRANS		0x0080
+ #define RPCDBG_SVCSOCK		0x0100
++#define RPCDBG_SVCXPRT		0x0100
+ #define RPCDBG_SVCDSP		0x0200
+ #define RPCDBG_MISC		0x0400
+ #define RPCDBG_CACHE		0x0800
+diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+new file mode 100644
+index 0000000..a8b1da8
+--- /dev/null
++++ b/include/linux/sunrpc/svc_xprt.h
+@@ -0,0 +1,31 @@
++/*
++ * linux/include/linux/sunrpc/svc_xprt.h
++ *
++ * RPC server transport I/O
++ */
++
++#ifndef SUNRPC_SVC_XPRT_H
++#define SUNRPC_SVC_XPRT_H
++
++#include <linux/sunrpc/svc.h>
++
++struct svc_xprt_ops {
++};
++
++struct svc_xprt_class {
++	const char		*xcl_name;
++	struct module		*xcl_owner;
++	struct svc_xprt_ops	*xcl_ops;
++	struct list_head	xcl_list;
++};
++
++struct svc_xprt {
++	struct svc_xprt_class	*xpt_class;
++	struct svc_xprt_ops	*xpt_ops;
++};
++
++int	svc_reg_xprt_class(struct svc_xprt_class *);
++int	svc_unreg_xprt_class(struct svc_xprt_class *);
++void	svc_xprt_init(struct svc_xprt_class *, struct svc_xprt *);
++
++#endif /* SUNRPC_SVC_XPRT_H */
+diff --git a/net/sunrpc/Makefile b/net/sunrpc/Makefile
+index 5c69a72..92e1dbe 100644
+--- a/net/sunrpc/Makefile
++++ b/net/sunrpc/Makefile
+@@ -11,6 +11,7 @@ sunrpc-y := clnt.o xprt.o socklib.o xprtsock.o sched.o \
+ 	    auth.o auth_null.o auth_unix.o \
+ 	    svc.o svcsock.o svcauth.o svcauth_unix.o \
+ 	    rpcb_clnt.o timer.o xdr.o \
+-	    sunrpc_syms.o cache.o rpc_pipe.o
++	    sunrpc_syms.o cache.o rpc_pipe.o \
++	    svc_xprt.o
+ sunrpc-$(CONFIG_PROC_FS) += stats.o
+ sunrpc-$(CONFIG_SYSCTL) += sysctl.o
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+new file mode 100644
+index 0000000..92ea85b
+--- /dev/null
++++ b/net/sunrpc/svc_xprt.c
+@@ -0,0 +1,95 @@
++/*
++ * linux/net/sunrpc/svc_xprt.c
++ *
++ * Author: Tom Tucker <tom@opengridcomputing.com>
++ */
++
++#include <linux/sched.h>
++#include <linux/errno.h>
++#include <linux/fcntl.h>
++#include <linux/net.h>
++#include <linux/in.h>
++#include <linux/inet.h>
++#include <linux/udp.h>
++#include <linux/tcp.h>
++#include <linux/unistd.h>
++#include <linux/slab.h>
++#include <linux/netdevice.h>
++#include <linux/skbuff.h>
++#include <linux/file.h>
++#include <linux/freezer.h>
++#include <net/sock.h>
++#include <net/checksum.h>
++#include <net/ip.h>
++#include <net/ipv6.h>
++#include <net/tcp_states.h>
++#include <linux/uaccess.h>
++#include <asm/ioctls.h>
++
++#include <linux/sunrpc/types.h>
++#include <linux/sunrpc/clnt.h>
++#include <linux/sunrpc/xdr.h>
++#include <linux/sunrpc/svcsock.h>
++#include <linux/sunrpc/stats.h>
++#include <linux/sunrpc/svc_xprt.h>
++
++#define RPCDBG_FACILITY	RPCDBG_SVCXPRT
++
++/* List of registered transport classes */
++static DEFINE_SPINLOCK(svc_xprt_class_lock);
++static LIST_HEAD(svc_xprt_class_list);
++
++int svc_reg_xprt_class(struct svc_xprt_class *xcl)
++{
++	struct svc_xprt_class *cl;
++	int res = -EEXIST;
++
++	dprintk("svc: Adding svc transport class '%s'\n",
++		xcl->xcl_name);
++
++	INIT_LIST_HEAD(&xcl->xcl_list);
++	spin_lock(&svc_xprt_class_lock);
++	list_for_each_entry(cl, &svc_xprt_class_list, xcl_list) {
++		if (xcl == cl)
++			goto out;
++	}
++	list_add_tail(&xcl->xcl_list, &svc_xprt_class_list);
++	res = 0;
++out:
++	spin_unlock(&svc_xprt_class_lock);
++	return res;
++}
++EXPORT_SYMBOL_GPL(svc_reg_xprt_class);
++
++int svc_unreg_xprt_class(struct svc_xprt_class *xcl)
++{
++	struct svc_xprt_class *cl;
++	int res = 0;
++
++	dprintk("svc: Removing svc transport class '%s'\n", xcl->xcl_name);
++
++	spin_lock(&svc_xprt_class_lock);
++	list_for_each_entry(cl, &svc_xprt_class_list, xcl_list) {
++		if (xcl == cl) {
++			list_del_init(&cl->xcl_list);
++			goto out;
++		}
++	}
++	res = -ENOENT;
++ out:
++	spin_unlock(&svc_xprt_class_lock);
++	return res;
++}
++EXPORT_SYMBOL_GPL(svc_unreg_xprt_class);
++
++/*
++ * Called by transport drivers to initialize the transport independent
++ * portion of the transport instance.
++ */
++void svc_xprt_init(struct svc_xprt_class *xcl, struct svc_xprt *xprt)
++{
++	memset(xprt, 0, sizeof(*xprt));
++	xprt->xpt_class = xcl;
++	xprt->xpt_ops = xcl->xcl_ops;
++}
++EXPORT_SYMBOL_GPL(svc_xprt_init);
