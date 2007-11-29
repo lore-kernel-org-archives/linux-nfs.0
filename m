@@ -1,115 +1,151 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [RFC,PATCH 05/38] svc: Move sk_sendto and sk_recvfrom to svc_xprt_class
-Date: Thu, 29 Nov 2007 16:53:41 -0600
-Message-ID: <20071129225341.15107.63681.stgit@dell3.ogc.int>
+Subject: [RFC,PATCH 09/38] svc: Add a transport function that checks for write space
+Date: Thu, 29 Nov 2007 16:53:50 -0600
+Message-ID: <20071129225350.15107.67090.stgit@dell3.ogc.int>
 References: <20071129225142.15107.46200.stgit@dell3.ogc.int>
 Content-Type: text/plain; charset=utf-8; format=fixed
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:47412 "EHLO
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:47422 "EHLO
 	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1763696AbXK2XUZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2007 18:20:25 -0500
+	by vger.kernel.org with ESMTP id S1763725AbXK2XU0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2007 18:20:26 -0500
 In-Reply-To: <20071129225142.15107.46200.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-The sk_sendto and sk_recvfrom are function pointers that allow svc_sock
-to be used for both UDP and TCP. Move these function pointers to the 
-svc_xprt_ops structure.
+In order to avoid blocking a service thread, the receive side checks
+to see if there is sufficient write space to reply to the request.
+Each transport has a different mechanism for determining if there is
+enough write space to reply.
+
+The code that checked for white space was coupled with code that 
+checked for CLOSE and CONN. These checks have been broken out into 
+separate statements to make the code easier to read.
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- include/linux/sunrpc/svc_xprt.h |    2 ++
- include/linux/sunrpc/svcsock.h  |    3 ---
- net/sunrpc/svcsock.c            |   12 ++++++------
- 3 files changed, 8 insertions(+), 9 deletions(-)
+ include/linux/sunrpc/svc_xprt.h |    1 +
+ net/sunrpc/svcsock.c            |   60 +++++++++++++++++++++++++++++++++------
+ 2 files changed, 51 insertions(+), 10 deletions(-)
 
 diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index b4ce054..81daa39 100644
+index 8501115..3adc8f3 100644
 --- a/include/linux/sunrpc/svc_xprt.h
 +++ b/include/linux/sunrpc/svc_xprt.h
-@@ -10,6 +10,8 @@
+@@ -10,6 +10,7 @@
  #include <linux/sunrpc/svc.h>
  
  struct svc_xprt_ops {
-+	int		(*xpo_recvfrom)(struct svc_rqst *);
-+	int		(*xpo_sendto)(struct svc_rqst *);
- };
- 
- struct svc_xprt_class {
-diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
-index 1878cbe..08e78d0 100644
---- a/include/linux/sunrpc/svcsock.h
-+++ b/include/linux/sunrpc/svcsock.h
-@@ -45,9 +45,6 @@ struct svc_sock {
- 						 * be revisted */
- 	struct mutex		sk_mutex;	/* to serialize sending data */
- 
--	int			(*sk_recvfrom)(struct svc_rqst *rqstp);
--	int			(*sk_sendto)(struct svc_rqst *rqstp);
--
- 	/* We keep the old state_change and data_ready CB's here */
- 	void			(*sk_ostate)(struct sock *);
- 	void			(*sk_odata)(struct sock *, int bytes);
++	int		(*xpo_has_wspace)(struct svc_xprt *);
+ 	int		(*xpo_recvfrom)(struct svc_rqst *);
+ 	void		(*xpo_prep_reply_hdr)(struct svc_rqst *);
+ 	int		(*xpo_sendto)(struct svc_rqst *);
 diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index ca9b8d8..9c06b15 100644
+index 510ad45..b796244 100644
 --- a/net/sunrpc/svcsock.c
 +++ b/net/sunrpc/svcsock.c
-@@ -901,6 +901,8 @@ svc_udp_sendto(struct svc_rqst *rqstp)
+@@ -269,22 +269,24 @@ svc_sock_enqueue(struct svc_sock *svsk)
+ 	BUG_ON(svsk->sk_pool != NULL);
+ 	svsk->sk_pool = pool;
+ 
+-	set_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
+-	if (((atomic_read(&svsk->sk_reserved) + serv->sv_max_mesg)*2
+-	     > svc_sock_wspace(svsk))
+-	    && !test_bit(SK_CLOSE, &svsk->sk_flags)
+-	    && !test_bit(SK_CONN, &svsk->sk_flags)) {
++	/* Handle pending connection */
++	if (test_bit(SK_CONN, &svsk->sk_flags))
++		goto process;
++
++	/* Handle close in-progress */
++	if (test_bit(SK_CLOSE, &svsk->sk_flags))
++		goto process;
++
++	/* Check if we have space to reply to a request */
++	if (!svsk->sk_xprt.xpt_ops->xpo_has_wspace(&svsk->sk_xprt)) {
+ 		/* Don't enqueue while not enough space for reply */
+-		dprintk("svc: socket %p  no space, %d*2 > %ld, not enqueued\n",
+-			svsk->sk_sk, atomic_read(&svsk->sk_reserved)+serv->sv_max_mesg,
+-			svc_sock_wspace(svsk));
++		dprintk("svc: no write space, socket %p  not enqueued\n", svsk);
+ 		svsk->sk_pool = NULL;
+ 		clear_bit(SK_BUSY, &svsk->sk_flags);
+ 		goto out_unlock;
+ 	}
+-	clear_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
+-
+ 
++ process:
+ 	if (!list_empty(&pool->sp_threads)) {
+ 		rqstp = list_entry(pool->sp_threads.next,
+ 				   struct svc_rqst,
+@@ -897,6 +899,24 @@ static void svc_udp_prep_reply_hdr(struct svc_rqst *rqstp)
+ {
  }
  
++static int svc_udp_has_wspace(struct svc_xprt *xprt)
++{
++	struct svc_sock *svsk = container_of(xprt, struct svc_sock, sk_xprt);
++	struct svc_serv	*serv = svsk->sk_server;
++	int required;
++
++	/*
++	 * Set the SOCK_NOSPACE flag before checking the available
++	 * sock space.
++	 */
++	set_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
++	required = atomic_read(&svsk->sk_reserved) + serv->sv_max_mesg;
++	if (required*2 > sock_wspace(svsk->sk_sk))
++		return 0;
++	clear_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
++	return 1;
++}
++
  static struct svc_xprt_ops svc_udp_ops = {
-+	.xpo_recvfrom = svc_udp_recvfrom,
-+	.xpo_sendto = svc_udp_sendto,
+ 	.xpo_recvfrom = svc_udp_recvfrom,
+ 	.xpo_sendto = svc_udp_sendto,
+@@ -904,6 +924,7 @@ static struct svc_xprt_ops svc_udp_ops = {
+ 	.xpo_detach = svc_sock_detach,
+ 	.xpo_free = svc_sock_free,
+ 	.xpo_prep_reply_hdr = svc_udp_prep_reply_hdr,
++	.xpo_has_wspace = svc_udp_has_wspace,
  };
  
  static struct svc_xprt_class svc_udp_class = {
-@@ -918,8 +920,6 @@ svc_udp_init(struct svc_sock *svsk)
- 	svc_xprt_init(&svc_udp_class, &svsk->sk_xprt);
- 	svsk->sk_sk->sk_data_ready = svc_udp_data_ready;
- 	svsk->sk_sk->sk_write_space = svc_write_space;
--	svsk->sk_recvfrom = svc_udp_recvfrom;
--	svsk->sk_sendto = svc_udp_sendto;
- 
- 	/* initialise setting must have enough space to
- 	 * receive and respond to one request.
-@@ -1355,6 +1355,8 @@ svc_tcp_sendto(struct svc_rqst *rqstp)
+@@ -1366,6 +1387,24 @@ static void svc_tcp_prep_reply_hdr(struct svc_rqst *rqstp)
+ 	svc_putnl(resv, 0);
  }
  
++static int svc_tcp_has_wspace(struct svc_xprt *xprt)
++{
++	struct svc_sock *svsk = container_of(xprt, struct svc_sock, sk_xprt);
++	struct svc_serv	*serv = svsk->sk_server;
++	int required;
++
++	/*
++	 * Set the SOCK_NOSPACE flag before checking the available
++	 * sock space.
++	 */
++	set_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
++	required = atomic_read(&svsk->sk_reserved) + serv->sv_max_mesg;
++	if (required*2 > sk_stream_wspace(svsk->sk_sk))
++		return 0;
++	clear_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
++	return 1;
++}
++
  static struct svc_xprt_ops svc_tcp_ops = {
-+	.xpo_recvfrom = svc_tcp_recvfrom,
-+	.xpo_sendto = svc_tcp_sendto,
+ 	.xpo_recvfrom = svc_tcp_recvfrom,
+ 	.xpo_sendto = svc_tcp_sendto,
+@@ -1373,6 +1412,7 @@ static struct svc_xprt_ops svc_tcp_ops = {
+ 	.xpo_detach = svc_sock_detach,
+ 	.xpo_free = svc_sock_free,
+ 	.xpo_prep_reply_hdr = svc_tcp_prep_reply_hdr,
++	.xpo_has_wspace = svc_tcp_has_wspace,
  };
  
  static struct svc_xprt_class svc_tcp_class = {
-@@ -1382,8 +1384,6 @@ svc_tcp_init(struct svc_sock *svsk)
- 	struct tcp_sock *tp = tcp_sk(sk);
- 
- 	svc_xprt_init(&svc_tcp_class, &svsk->sk_xprt);
--	svsk->sk_recvfrom = svc_tcp_recvfrom;
--	svsk->sk_sendto = svc_tcp_sendto;
- 
- 	if (sk->sk_state == TCP_LISTEN) {
- 		dprintk("setting up TCP socket for listening\n");
-@@ -1531,7 +1531,7 @@ svc_recv(struct svc_rqst *rqstp, long timeout)
- 
- 	dprintk("svc: server %p, pool %u, socket %p, inuse=%d\n",
- 		 rqstp, pool->sp_id, svsk, atomic_read(&svsk->sk_inuse));
--	len = svsk->sk_recvfrom(rqstp);
-+	len = svsk->sk_xprt.xpt_ops->xpo_recvfrom(rqstp);
- 	dprintk("svc: got len=%d\n", len);
- 
- 	/* No data, incomplete (TCP) read, or accept() */
-@@ -1591,7 +1591,7 @@ svc_send(struct svc_rqst *rqstp)
- 	if (test_bit(SK_DEAD, &svsk->sk_flags))
- 		len = -ENOTCONN;
- 	else
--		len = svsk->sk_sendto(rqstp);
-+		len = svsk->sk_xprt.xpt_ops->xpo_sendto(rqstp);
- 	mutex_unlock(&svsk->sk_mutex);
- 	svc_sock_release(rqstp);
- 
