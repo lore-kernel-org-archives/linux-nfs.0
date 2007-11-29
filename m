@@ -1,77 +1,85 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [RFC,PATCH 10/38] svc: Move close processing to a single place
-Date: Thu, 29 Nov 2007 16:55:59 -0600
-Message-ID: <20071129225559.15275.43716.stgit@dell3.ogc.int>
+Subject: [RFC,PATCH 31/38] svc: Make svc_check_conn_limits xprt independent
+Date: Thu, 29 Nov 2007 16:56:43 -0600
+Message-ID: <20071129225643.15275.43520.stgit@dell3.ogc.int>
 References: <20071129225510.15275.82660.stgit@dell3.ogc.int>
 Content-Type: text/plain; charset=utf-8; format=fixed
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:47417 "EHLO
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:47405 "EHLO
 	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1763587AbXK2XUW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2007 18:20:22 -0500
+	by vger.kernel.org with ESMTP id S1763792AbXK2XU2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2007 18:20:28 -0500
 In-Reply-To: <20071129225510.15275.82660.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-Close handling was duplicated in the UDP and TCP recvfrom 
-methods. This code has been moved to the transport independent
-svc_recv function.
+The svc_check_conn_limits function only manipulates xprt fields. Change references
+to svc_sock->sk_xprt to svc_xprt directly.
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- net/sunrpc/svcsock.c |   24 ++++++++++--------------
- 1 files changed, 10 insertions(+), 14 deletions(-)
+ net/sunrpc/svcsock.c |   31 +++++++++++++++----------------
+ 1 files changed, 15 insertions(+), 16 deletions(-)
 
 diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index b796244..38ecdd1 100644
+index c4b2a5e..53288cc 100644
 --- a/net/sunrpc/svcsock.c
 +++ b/net/sunrpc/svcsock.c
-@@ -792,11 +792,6 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
- 		return svc_deferred_recv(rqstp);
+@@ -1457,38 +1457,37 @@ svc_check_conn_limits(struct svc_serv *serv)
+ 	 * seconds. An attacker can easily beat that.
+ 	 *
+ 	 * The only somewhat efficient mechanism would be if drop
+-	 * old connections from the same IP first. But right now
+-	 * we don't even record the client IP in svc_sock.
++	 * old connections from the same IP first.
+ 	 */
+ 	if (serv->sv_tmpcnt > (serv->sv_nrthreads+3)*20) {
+-		struct svc_sock *svsk = NULL;
++		struct svc_xprt *xprt = NULL;
+ 		spin_lock_bh(&serv->sv_lock);
+ 		if (!list_empty(&serv->sv_tempsocks)) {
+ 			if (net_ratelimit()) {
+ 				/* Try to help the admin */
+-				printk(KERN_NOTICE "%s: too many open TCP "
+-					"sockets, consider increasing the "
++				printk(KERN_NOTICE "%s: too many open  "
++					"connections, consider increasing the "
+ 					"number of nfsd threads\n",
+-						   serv->sv_name);
++				       serv->sv_name);
+ 				printk(KERN_NOTICE
+-				       "%s: last TCP connect from %s\n",
++				       "%s: last connection from %s\n",
+ 				       serv->sv_name, buf);
+ 			}
+ 			/*
+-			 * Always select the oldest socket. It's not fair,
++			 * Always select the oldest connection. It's not fair,
+ 			 * but so is life
+ 			 */
+-			svsk = list_entry(serv->sv_tempsocks.prev,
+-					  struct svc_sock,
+-					  sk_xprt.xpt_list);
+-			set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
+-			svc_xprt_get(&svsk->sk_xprt);
++			xprt = list_entry(serv->sv_tempsocks.prev,
++					  struct svc_xprt,
++					  xpt_list);
++			set_bit(XPT_CLOSE, &xprt->xpt_flags);
++			svc_xprt_get(xprt);
+ 		}
+ 		spin_unlock_bh(&serv->sv_lock);
+ 
+-		if (svsk) {
+-			svc_xprt_enqueue(&svsk->sk_xprt);
+-			svc_xprt_put(&svsk->sk_xprt);
++		if (xprt) {
++			svc_xprt_enqueue(xprt);
++			svc_xprt_put(xprt);
+ 		}
  	}
- 
--	if (test_bit(SK_CLOSE, &svsk->sk_flags)) {
--		svc_delete_socket(svsk);
--		return 0;
--	}
--
- 	clear_bit(SK_DATA, &svsk->sk_flags);
- 	skb = NULL;
- 	err = kernel_recvmsg(svsk->sk_sock, &msg, NULL,
-@@ -1197,11 +1192,6 @@ svc_tcp_recvfrom(struct svc_rqst *rqstp)
- 		return svc_deferred_recv(rqstp);
- 	}
- 
--	if (test_bit(SK_CLOSE, &svsk->sk_flags)) {
--		svc_delete_socket(svsk);
--		return 0;
--	}
--
- 	if (svsk->sk_sk->sk_state == TCP_LISTEN) {
- 		svc_tcp_accept(svsk);
- 		svc_sock_received(svsk);
-@@ -1585,10 +1575,16 @@ svc_recv(struct svc_rqst *rqstp, long timeout)
- 	}
- 	spin_unlock_bh(&pool->sp_lock);
- 
--	dprintk("svc: server %p, pool %u, socket %p, inuse=%d\n",
--		 rqstp, pool->sp_id, svsk, atomic_read(&svsk->sk_inuse));
--	len = svsk->sk_xprt.xpt_ops->xpo_recvfrom(rqstp);
--	dprintk("svc: got len=%d\n", len);
-+	len = 0;
-+	if (test_bit(SK_CLOSE, &svsk->sk_flags)) {
-+		dprintk("svc_recv: found SK_CLOSE\n");
-+		svc_delete_socket(svsk);
-+	} else {
-+		dprintk("svc: server %p, pool %u, socket %p, inuse=%d\n",
-+			rqstp, pool->sp_id, svsk, atomic_read(&svsk->sk_inuse));
-+		len = svsk->sk_xprt.xpt_ops->xpo_recvfrom(rqstp);
-+		dprintk("svc: got len=%d\n", len);
-+	}
- 
- 	/* No data, incomplete (TCP) read, or accept() */
- 	if (len == 0 || len == -EAGAIN) {
+ }
