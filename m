@@ -1,142 +1,44 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [RFC,PATCH 34/38] svc: Add /proc/sys/sunrpc/transport files
-Date: Thu, 29 Nov 2007 16:41:05 -0600
-Message-ID: <20071129224105.14563.48684.stgit@dell3.ogc.int>
-References: <20071129223917.14563.77633.stgit@dell3.ogc.int>
+Subject: [RFC,PATCH 8/8] rdma: Kconfig
+Date: Thu, 29 Nov 2007 16:45:15 -0600
+Message-ID: <20071129224515.14887.46052.stgit@dell3.ogc.int>
+References: <20071129224412.14887.14136.stgit@dell3.ogc.int>
 Content-Type: text/plain; charset=utf-8; format=fixed
 Cc: linux-nfs@vger.kernel.org
 To: bfields-ag9A2Eb6PFsgsBAKwltoeQ@public.gmane.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:48897 "EHLO
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:48887 "EHLO
 	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S934148AbXK2XDk (ORCPT
+	by vger.kernel.org with ESMTP id S934147AbXK2XDk (ORCPT
 	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2007 18:03:40 -0500
-In-Reply-To: <20071129223917.14563.77633.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
+In-Reply-To: <20071129224412.14887.14136.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-Add a file that when read lists the set of registered svc
-transports.
+Add NFS_RDMA as an option to the Kconfig file.
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- include/linux/sunrpc/svc_xprt.h |    2 ++
- net/sunrpc/svc_xprt.c           |   28 ++++++++++++++++++++++++++++
- net/sunrpc/sysctl.c             |   31 +++++++++++++++++++++++++++++++
- 3 files changed, 61 insertions(+), 0 deletions(-)
+ fs/Kconfig |    7 +++++++
+ 1 files changed, 7 insertions(+), 0 deletions(-)
 
-diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index 36f8b09..c2fa41d 100644
---- a/include/linux/sunrpc/svc_xprt.h
-+++ b/include/linux/sunrpc/svc_xprt.h
-@@ -79,11 +79,13 @@ void	svc_xprt_copy_addrs(struct svc_rqst *rqstp, struct svc_xprt *xprt);
- void	svc_xprt_enqueue(struct svc_xprt *xprt);
- int	svc_port_is_privileged(struct sockaddr *sin);
- void	svc_delete_xprt(struct svc_xprt *xprt);
-+int	svc_print_xprts(char *buf, int maxlen);
+diff --git a/fs/Kconfig b/fs/Kconfig
+index 429a002..13d00b9 100644
+--- a/fs/Kconfig
++++ b/fs/Kconfig
+@@ -1693,6 +1693,13 @@ config NFSD
+ 	  To compile the NFS server support as a module, choose M here: the
+ 	  module will be called nfsd.  If unsure, say N.
  
- static inline void svc_xprt_get(struct svc_xprt *xprt)
- {
- 	kref_get(&xprt->xpt_ref);
- }
++config NFSD_RDMA
++	tristate "Provide NFS server over RDMA support (EXPERIMENTAL)"
++	depends on SUNRPC && NFSD && INFINIBAND && EXPERIMENTAL
++	help
++	  If you want your NFS server to support RDMA connections, 
++	  say M or Y here. If unsure, say N.
 +
- static inline void svc_xprt_set_local(struct svc_xprt *xprt,
- 				      struct sockaddr *sa, int salen)
- {
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index b31ba0e..7416e66 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -93,6 +93,34 @@ int svc_unreg_xprt_class(struct svc_xprt_class *xcl)
- }
- EXPORT_SYMBOL_GPL(svc_unreg_xprt_class);
- 
-+/*
-+ * Format the transport list for printing
-+ */
-+int svc_print_xprts(char *buf, int maxlen)
-+{
-+	struct list_head *le;
-+	char tmpstr[80];
-+	int len = 0;
-+	buf[0] = '\0';
-+
-+	spin_lock(&svc_xprt_class_lock);
-+	list_for_each(le, &svc_xprt_class_list) {
-+		int slen;
-+		struct svc_xprt_class *xcl =
-+			list_entry(le, struct svc_xprt_class, xcl_list);
-+
-+		sprintf(tmpstr, "%s %d\n", xcl->xcl_name, xcl->xcl_max_payload);
-+		slen = strlen(tmpstr);
-+		if (len + slen > maxlen)
-+			break;
-+		len += slen;
-+		strcat(buf, tmpstr);
-+	}
-+	spin_unlock(&svc_xprt_class_lock);
-+
-+	return len;
-+}
-+
- static void svc_xprt_free(struct kref *kref)
- {
- 	struct svc_xprt *xprt =
-diff --git a/net/sunrpc/sysctl.c b/net/sunrpc/sysctl.c
-index 2be714e..fd7cf59 100644
---- a/net/sunrpc/sysctl.c
-+++ b/net/sunrpc/sysctl.c
-@@ -18,6 +18,7 @@
- #include <linux/sunrpc/types.h>
- #include <linux/sunrpc/sched.h>
- #include <linux/sunrpc/stats.h>
-+#include <linux/sunrpc/svc_xprt.h>
- 
- /*
-  * Declare the debug flags here
-@@ -48,6 +49,30 @@ rpc_unregister_sysctl(void)
- 	}
- }
- 
-+static int proc_do_xprt(ctl_table *table, int write, struct file *file,
-+			void __user *buffer, size_t *lenp, loff_t *ppos)
-+{
-+	char tmpbuf[256];
-+	int len;
-+	if ((*ppos && !write) || !*lenp) {
-+		*lenp = 0;
-+		return 0;
-+	}
-+	if (write)
-+		return -EINVAL;
-+	else {
-+		len = svc_print_xprts(tmpbuf, sizeof(tmpbuf));
-+		if (!access_ok(VERIFY_WRITE, buffer, len))
-+			return -EFAULT;
-+
-+		if (__copy_to_user(buffer, tmpbuf, len))
-+			return -EFAULT;
-+	}
-+	*lenp -= len;
-+	*ppos += len;
-+	return 0;
-+}
-+
- static int
- proc_dodebug(ctl_table *table, int write, struct file *file,
- 				void __user *buffer, size_t *lenp, loff_t *ppos)
-@@ -140,6 +165,12 @@ static ctl_table debug_table[] = {
- 		.mode		= 0644,
- 		.proc_handler	= &proc_dodebug
- 	},
-+	{
-+		.procname	= "transports",
-+		.maxlen		= 256,
-+		.mode		= 0444,
-+		.proc_handler	= &proc_do_xprt,
-+	},
- 	{ .ctl_name = 0 }
- };
- 
+ config NFSD_V2_ACL
+ 	bool
+ 	depends on NFSD
