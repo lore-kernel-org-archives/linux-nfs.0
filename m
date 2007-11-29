@@ -1,37 +1,81 @@
-From: Eric Paris <eparis@redhat.com>
-Subject: Re: 2.6.24-rc3 unable to mount something which should use nohide
-Date: Thu, 29 Nov 2007 13:03:13 -0500
-Message-ID: <1196359393.2912.61.camel@localhost.localdomain>
-References: <1196354699.2912.57.camel@localhost.localdomain>
-	 <1196358095.7808.24.camel@heimdal.trondhjem.org>
+From: James Lentini <jlentini@netapp.com>
+Subject: [PATCH] xprtrdma: fix XDR tail buf marshalling for all ops
+Date: Thu, 29 Nov 2007 15:46:40 -0500 (EST)
+Message-ID: <Pine.LNX.4.64.0711291521010.7142@jlentini-linux.nane.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Tom Tucker <tom@opengridcomputing.com>,
+	Thomas Talpey <talpey@netapp.com>, linux-nfs@vger.kernel.org,
+	nfs@lists.sourceforge.net
 To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:58424 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:30745 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1763553AbXK2SDZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 29 Nov 2007 13:03:25 -0500
-In-Reply-To: <1196358095.7808.24.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+	id S1761354AbXK2UrN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 29 Nov 2007 15:47:13 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2007-11-29 at 12:41 -0500, Trond Myklebust wrote:
-> On Thu, 2007-11-29 at 11:44 -0500, Eric Paris wrote:
-> > 
-> > [root@dhcp231-145 ~]# mount paris:/export/storage/kernel /storage/kernel
-> > mount.nfs: Stale NFS file handle
-> > 
-> > Same thing.  Nothing in dmesg or /var/log/messages.  I know this worked
-> > not long ago....
-> 
-> Yep. I think the following patch ought to fix it.
-> 
-> Cheers
->   Trond
 
-Worked like a charm, thanks!
+In some instances, the code in rpcrdma_convert_iovs was failing to 
+include a chunk for the xdr tail. This was caused by defensive code 
+that checked if the current xdr pos was greater than the total xdr 
+length before encoding the tail. However, the xdr->len is 0 for 
+non-write operations, and therefore this check was invalid for such 
+operations.
 
--Eric
+With this change, the tail will always be marshaled when present. This 
+makes the maintenance of the pos index unnecessary. The test of 
+xdrbuf->len to decide if a message should be logged is also incorrect.
 
+This fixes an observed problem when reading certain file sizes over 
+NFS/RDMA. Please consider this for 2.6.24.
+
+Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+Signed-off-by: Tom Talpey <talpey@netapp.com>
+Signed-off-by: James Lentini <jlentini@netapp.com>
+
+---
+ net/sunrpc/xprtrdma/rpc_rdma.c |    9 +--------
+ 1 file changed, 1 insertion(+), 8 deletions(-)
+
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -92,7 +92,6 @@
+ 		seg[n].mr_page = NULL;
+ 		seg[n].mr_offset = xdrbuf->head[0].iov_base;
+ 		seg[n].mr_len = xdrbuf->head[0].iov_len;
+-		pos += xdrbuf->head[0].iov_len;
+ 		++n;
+ 	}
+ 
+@@ -104,7 +103,6 @@
+ 		seg[n].mr_len = min_t(u32,
+ 			PAGE_SIZE - xdrbuf->page_base, xdrbuf->page_len);
+ 		len = xdrbuf->page_len - seg[n].mr_len;
+-		pos += len;
+ 		++n;
+ 		p = 1;
+ 		while (len > 0) {
+@@ -119,20 +117,15 @@
+ 		}
+ 	}
+ 
+-	if (pos < xdrbuf->len && xdrbuf->tail[0].iov_len) {
++	if (xdrbuf->tail[0].iov_len) {
+ 		if (n == nsegs)
+ 			return 0;
+ 		seg[n].mr_page = NULL;
+ 		seg[n].mr_offset = xdrbuf->tail[0].iov_base;
+ 		seg[n].mr_len = xdrbuf->tail[0].iov_len;
+-		pos += xdrbuf->tail[0].iov_len;
+ 		++n;
+ 	}
+ 
+-	if (pos < xdrbuf->len)
+-		dprintk("RPC:       %s: marshaled only %d of %d\n",
+-				__func__, pos, xdrbuf->len);
+-
+ 	return n;
+ }
+ 
