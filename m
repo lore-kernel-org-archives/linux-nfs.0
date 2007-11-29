@@ -1,107 +1,147 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [RFC,PATCH 37/38] knfsd: Modify write_ports to use svc_find_xprt service
-Date: Thu, 29 Nov 2007 16:54:52 -0600
-Message-ID: <20071129225452.15107.50747.stgit@dell3.ogc.int>
-References: <20071129225142.15107.46200.stgit@dell3.ogc.int>
+Subject: [RFC,PATCH 07/38] svc: Add per-transport delete functions
+Date: Thu, 29 Nov 2007 16:55:52 -0600
+Message-ID: <20071129225552.15275.35557.stgit@dell3.ogc.int>
+References: <20071129225510.15275.82660.stgit@dell3.ogc.int>
 Content-Type: text/plain; charset=utf-8; format=fixed
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:47421 "EHLO
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:47408 "EHLO
 	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1763421AbXK2XUT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2007 18:20:19 -0500
-In-Reply-To: <20071129225142.15107.46200.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
+	by vger.kernel.org with ESMTP id S1763325AbXK2XUR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2007 18:20:17 -0500
+In-Reply-To: <20071129225510.15275.82660.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-This patch enhances the write_ports function as follows:
+Add transport specific xpo_detach and xpo_free functions. The xpo_detach
+function causes the transport to stop delivering data-ready events 
+and enqueing the transport for I/O.
 
-- Check if a server transport instance already exists before attempting to 
-  create a new one, and 
-
-- Implement the ability to remove a previously created server transport
-  instance. 
+The xpo_free function frees all resources associated with the particular 
+transport instance.
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- fs/nfsd/nfsctl.c      |   36 +++++++++++++++++++++++++++++++++---
- net/sunrpc/svc_xprt.c |    1 +
- 2 files changed, 34 insertions(+), 3 deletions(-)
+ include/linux/sunrpc/svc_xprt.h |    2 +
+ net/sunrpc/svcsock.c            |   56 ++++++++++++++++++++++++++++++---------
+ 2 files changed, 45 insertions(+), 13 deletions(-)
 
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 1f998c0..e0e53e1 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -540,7 +540,7 @@ static ssize_t write_ports(struct file *file, char *buf, size_t size)
- 		}
- 		return err < 0 ? err : 0;
- 	}
--	if (buf[0] == '-') {
-+	if (buf[0] == '-' && isdigit(buf[1])) {
- 		char *toclose = kstrdup(buf+1, GFP_KERNEL);
- 		int len = 0;
- 		if (!toclose)
-@@ -557,16 +557,46 @@ static ssize_t write_ports(struct file *file, char *buf, size_t size)
- 	/*
- 	 * Add a transport listener by writing it's transport name
- 	 */
--	if (isalnum(buf[0])) {
-+	if (isalpha(buf[0])) {
- 		int err;
- 		char transport[16];
- 		int port;
- 		if (sscanf(buf, "%15s %4d", transport, &port) == 2) {
- 			err = nfsd_create_serv();
--			if (!err)
-+			if (!err) {
-+				if (svc_find_xprt(nfsd_serv, transport,
-+						  AF_UNSPEC, port))
-+					return -EADDRINUSE;
-+
- 				err = svc_create_xprt(nfsd_serv,
- 						      transport, port,
- 						      SVC_SOCK_ANONYMOUS);
-+			}
-+			return err < 0 ? err : 0;
-+		}
-+	}
-+	/*
-+	 * Remove a transport by writing it's transport name and port number
-+	 */
-+	if (buf[0] == '-' && isalpha(buf[1])) {
-+		struct svc_xprt *xprt;
-+		int err = -EINVAL;
-+		char transport[16];
-+		int port;
-+		if (sscanf(&buf[1], "%15s %4d", transport, &port) == 2) {
-+			if (port == 0)
-+				return -EINVAL;
-+			lock_kernel();
-+			if (nfsd_serv) {
-+				xprt = svc_find_xprt(nfsd_serv, transport,
-+						     AF_UNSPEC, port);
-+				if (xprt) {
-+					svc_close_xprt(xprt);
-+					err = 0;
-+				} else
-+					err = -ENOENT;
-+			}
-+			unlock_kernel();
- 			return err < 0 ? err : 0;
- 		}
- 	}
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 247f0fb..57d50db 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -810,6 +810,7 @@ void svc_close_xprt(struct svc_xprt *xprt)
- 	clear_bit(XPT_BUSY, &xprt->xpt_flags);
- 	svc_xprt_put(xprt);
- }
-+EXPORT_SYMBOL_GPL(svc_close_xprt);
+diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+index e3bd7b1..5d7b2a6 100644
+--- a/include/linux/sunrpc/svc_xprt.h
++++ b/include/linux/sunrpc/svc_xprt.h
+@@ -13,6 +13,8 @@ struct svc_xprt_ops {
+ 	int		(*xpo_recvfrom)(struct svc_rqst *);
+ 	int		(*xpo_sendto)(struct svc_rqst *);
+ 	void		(*xpo_release_rqst)(struct svc_rqst *);
++	void		(*xpo_detach)(struct svc_xprt *);
++	void		(*xpo_free)(struct svc_xprt *);
+ };
  
- void svc_close_all(struct list_head *xprt_list)
+ struct svc_xprt_class {
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index b24c084..478fa33 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -85,6 +85,8 @@ static void		svc_udp_data_ready(struct sock *, int);
+ static int		svc_udp_recvfrom(struct svc_rqst *);
+ static int		svc_udp_sendto(struct svc_rqst *);
+ static void		svc_close_socket(struct svc_sock *svsk);
++static void		svc_sock_detach(struct svc_xprt *);
++static void		svc_sock_free(struct svc_xprt *);
+ 
+ static struct svc_deferred_req *svc_deferred_dequeue(struct svc_sock *svsk);
+ static int svc_deferred_recv(struct svc_rqst *rqstp);
+@@ -376,16 +378,8 @@ static inline void
+ svc_sock_put(struct svc_sock *svsk)
  {
+ 	if (atomic_dec_and_test(&svsk->sk_inuse)) {
+-		BUG_ON(! test_bit(SK_DEAD, &svsk->sk_flags));
+-
+-		dprintk("svc: releasing dead socket\n");
+-		if (svsk->sk_sock->file)
+-			sockfd_put(svsk->sk_sock);
+-		else
+-			sock_release(svsk->sk_sock);
+-		if (svsk->sk_info_authunix != NULL)
+-			svcauth_unix_info_release(svsk->sk_info_authunix);
+-		kfree(svsk);
++		BUG_ON(!test_bit(SK_DEAD, &svsk->sk_flags));
++		svsk->sk_xprt.xpt_ops->xpo_free(&svsk->sk_xprt);
+ 	}
+ }
+ 
+@@ -903,6 +897,8 @@ static struct svc_xprt_ops svc_udp_ops = {
+ 	.xpo_recvfrom = svc_udp_recvfrom,
+ 	.xpo_sendto = svc_udp_sendto,
+ 	.xpo_release_rqst = svc_release_skb,
++	.xpo_detach = svc_sock_detach,
++	.xpo_free = svc_sock_free,
+ };
+ 
+ static struct svc_xprt_class svc_udp_class = {
+@@ -1358,6 +1354,8 @@ static struct svc_xprt_ops svc_tcp_ops = {
+ 	.xpo_recvfrom = svc_tcp_recvfrom,
+ 	.xpo_sendto = svc_tcp_sendto,
+ 	.xpo_release_rqst = svc_release_skb,
++	.xpo_detach = svc_sock_detach,
++	.xpo_free = svc_sock_free,
+ };
+ 
+ static struct svc_xprt_class svc_tcp_class = {
+@@ -1815,6 +1813,40 @@ bummer:
+ }
+ 
+ /*
++ * Detach the svc_sock from the socket so that no
++ * more callbacks occur.
++ */
++static void svc_sock_detach(struct svc_xprt *xprt)
++{
++	struct svc_sock *svsk = container_of(xprt, struct svc_sock, sk_xprt);
++	struct sock *sk = svsk->sk_sk;
++
++	dprintk("svc: svc_sock_detach(%p)\n", svsk);
++
++	/* put back the old socket callbacks */
++	sk->sk_state_change = svsk->sk_ostate;
++	sk->sk_data_ready = svsk->sk_odata;
++	sk->sk_write_space = svsk->sk_owspace;
++}
++
++/*
++ * Free the svc_sock's socket resources and the svc_sock itself.
++ */
++static void svc_sock_free(struct svc_xprt *xprt)
++{
++	struct svc_sock *svsk = container_of(xprt, struct svc_sock, sk_xprt);
++	dprintk("svc: svc_sock_free(%p)\n", svsk);
++
++	if (svsk->sk_info_authunix != NULL)
++		svcauth_unix_info_release(svsk->sk_info_authunix);
++	if (svsk->sk_sock->file)
++		sockfd_put(svsk->sk_sock);
++	else
++		sock_release(svsk->sk_sock);
++	kfree(svsk);
++}
++
++/*
+  * Remove a dead socket
+  */
+ static void
+@@ -1828,9 +1860,7 @@ svc_delete_socket(struct svc_sock *svsk)
+ 	serv = svsk->sk_server;
+ 	sk = svsk->sk_sk;
+ 
+-	sk->sk_state_change = svsk->sk_ostate;
+-	sk->sk_data_ready = svsk->sk_odata;
+-	sk->sk_write_space = svsk->sk_owspace;
++	svsk->sk_xprt.xpt_ops->xpo_detach(&svsk->sk_xprt);
+ 
+ 	spin_lock_bh(&serv->sv_lock);
+ 
