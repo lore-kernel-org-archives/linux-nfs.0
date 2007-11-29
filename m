@@ -1,28 +1,77 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [RFC,PATCH 00/38] RPC Transport Switch
-Date: Thu, 29 Nov 2007 16:55:10 -0600
-Message-ID: <20071129225510.15275.82660.stgit@dell3.ogc.int>
+Subject: [RFC,PATCH 10/38] svc: Move close processing to a single place
+Date: Thu, 29 Nov 2007 16:53:52 -0600
+Message-ID: <20071129225352.15107.21879.stgit@dell3.ogc.int>
+References: <20071129225142.15107.46200.stgit@dell3.ogc.int>
 Content-Type: text/plain; charset=utf-8; format=fixed
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:47417 "EHLO
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:47412 "EHLO
 	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1762916AbXK2XUM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2007 18:20:12 -0500
+	by vger.kernel.org with ESMTP id S1762796AbXK2XUK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2007 18:20:10 -0500
+In-Reply-To: <20071129225142.15107.46200.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patchset implements the RDMA Transport Driver for the 
-SVC Transport Switch. This patchset has been tested with iozone
-and Connectathon over NFS v3.
 
-This patchset is against 2.6.24-rc3.
+Close handling was duplicated in the UDP and TCP recvfrom 
+methods. This code has been moved to the transport independent
+svc_recv function.
 
-This patchset along with the SVC transport switch and client
-side marshalling fix are also available in this git tree:
-
-git://linux-nfs.org/~tomtucker/nfs-rdma-dev-2.6.git
-
--- 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+---
+
+ net/sunrpc/svcsock.c |   24 ++++++++++--------------
+ 1 files changed, 10 insertions(+), 14 deletions(-)
+
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index b796244..38ecdd1 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -792,11 +792,6 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
+ 		return svc_deferred_recv(rqstp);
+ 	}
+ 
+-	if (test_bit(SK_CLOSE, &svsk->sk_flags)) {
+-		svc_delete_socket(svsk);
+-		return 0;
+-	}
+-
+ 	clear_bit(SK_DATA, &svsk->sk_flags);
+ 	skb = NULL;
+ 	err = kernel_recvmsg(svsk->sk_sock, &msg, NULL,
+@@ -1197,11 +1192,6 @@ svc_tcp_recvfrom(struct svc_rqst *rqstp)
+ 		return svc_deferred_recv(rqstp);
+ 	}
+ 
+-	if (test_bit(SK_CLOSE, &svsk->sk_flags)) {
+-		svc_delete_socket(svsk);
+-		return 0;
+-	}
+-
+ 	if (svsk->sk_sk->sk_state == TCP_LISTEN) {
+ 		svc_tcp_accept(svsk);
+ 		svc_sock_received(svsk);
+@@ -1585,10 +1575,16 @@ svc_recv(struct svc_rqst *rqstp, long timeout)
+ 	}
+ 	spin_unlock_bh(&pool->sp_lock);
+ 
+-	dprintk("svc: server %p, pool %u, socket %p, inuse=%d\n",
+-		 rqstp, pool->sp_id, svsk, atomic_read(&svsk->sk_inuse));
+-	len = svsk->sk_xprt.xpt_ops->xpo_recvfrom(rqstp);
+-	dprintk("svc: got len=%d\n", len);
++	len = 0;
++	if (test_bit(SK_CLOSE, &svsk->sk_flags)) {
++		dprintk("svc_recv: found SK_CLOSE\n");
++		svc_delete_socket(svsk);
++	} else {
++		dprintk("svc: server %p, pool %u, socket %p, inuse=%d\n",
++			rqstp, pool->sp_id, svsk, atomic_read(&svsk->sk_inuse));
++		len = svsk->sk_xprt.xpt_ops->xpo_recvfrom(rqstp);
++		dprintk("svc: got len=%d\n", len);
++	}
+ 
+ 	/* No data, incomplete (TCP) read, or accept() */
+ 	if (len == 0 || len == -EAGAIN) {
