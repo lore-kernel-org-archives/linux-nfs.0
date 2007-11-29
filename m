@@ -1,8 +1,8 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [NFS] [PATCH 19/29] NFS: Make nfs_alloc_client() take (sockaddr,
-	len) instead of sockaddr_in
-Date: Thu, 29 Nov 2007 14:41:34 -0500
-Message-ID: <20071129194134.4170.39410.stgit@picasso.1015granger.net>
+Subject: [NFS] [PATCH 22/29] NFS: Change nfs4_set_client() to accept struct
+	sockaddr	*
+Date: Thu, 29 Nov 2007 14:41:50 -0500
+Message-ID: <20071129194150.4170.84402.stgit@picasso.1015granger.net>
 References: <20071129193153.4170.29598.stgit@picasso.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -12,70 +12,68 @@ Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IxpHZ-0001gI-Q9
-	for nfs@lists.sourceforge.net; Thu, 29 Nov 2007 11:42:46 -0800
+	id 1IxpHW-0001fy-6M
+	for nfs@lists.sourceforge.net; Thu, 29 Nov 2007 11:42:42 -0800
 Received: from flpi195.sbcis.sbc.com ([207.115.20.197]
 	helo=flpi195.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IxpHf-0008KR-Po
-	for nfs@lists.sourceforge.net; Thu, 29 Nov 2007 11:42:51 -0800
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IxpHa-0008IX-6J
+	for nfs@lists.sourceforge.net; Thu, 29 Nov 2007 11:42:48 -0800
 In-Reply-To: <20071129193153.4170.29598.stgit-uiCyzNpeAnB9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <nfs.lists.sourceforge.net>
 
-To support non-IPv4 addresses, adjust the arguments and callers of
-nfs_alloc_client() to pass in a "struct sockaddr *" instead of a
-"struct sockaddr_in *".
+Adjust the arguments and callers of nfs4_set_client() to pass a "struct
+sockaddr *" instead of a "struct sockaddr_in *" to support non-IPv4
+addresses in the NFS client.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Cc: Aurelien Charbon <aurelien.charbon-Z51IpKcfGtLk1uMJSBkQmQ@public.gmane.org>
 ---
 
- fs/nfs/client.c |   18 +++++++++++++++---
- 1 files changed, 15 insertions(+), 3 deletions(-)
+ fs/nfs/client.c |    9 +++++----
+ 1 files changed, 5 insertions(+), 4 deletions(-)
 
 diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 1bfbd4f..011f912 100644
+index dc69d88..346e4ca 100644
 --- a/fs/nfs/client.c
 +++ b/fs/nfs/client.c
-@@ -102,7 +102,7 @@ struct rpc_program		nfsacl_program = {
-  * bother putting them in a slab cache...
+@@ -917,7 +917,8 @@ error:
+  * Set up an NFS4 client
   */
- static struct nfs_client *nfs_alloc_client(const char *hostname,
--					   const struct sockaddr_in *addr,
-+					   const struct sockaddr *addr,
- 					   unsigned int nfsversion)
- {
- 	struct nfs_client *clp;
-@@ -119,7 +119,17 @@ static struct nfs_client *nfs_alloc_client(const char *hostname,
- 	atomic_set(&clp->cl_count, 1);
- 	clp->cl_cons_state = NFS_CS_INITING;
+ static int nfs4_set_client(struct nfs_server *server,
+-		const char *hostname, const struct sockaddr_in *addr,
++		const char *hostname,
++		const struct sockaddr *addr,
+ 		const char *ip_addr,
+ 		rpc_authflavor_t authflavour,
+ 		int proto, int timeo, int retrans)
+@@ -928,7 +929,7 @@ static int nfs4_set_client(struct nfs_server *server,
+ 	dprintk("--> nfs4_set_client()\n");
  
--	memcpy(&clp->cl_addr, addr, sizeof(*addr));
-+	switch (addr->sa_family) {
-+	case AF_INET:
-+		memcpy(&clp->cl_addr, addr, sizeof(struct sockaddr_in));
-+		break;
-+	case AF_INET6:
-+		memcpy(&clp->cl_addr, addr, sizeof(struct sockaddr_in6));
-+		break;
-+	default:
-+		printk(KERN_ERR "NFS: server address family not supported\n");
-+		goto error_2;
-+	}
+ 	/* Allocate or find a client reference we can use */
+-	clp = nfs_get_client(hostname, (void *)addr, 4);
++	clp = nfs_get_client(hostname, addr, 4);
+ 	if (IS_ERR(clp)) {
+ 		error = PTR_ERR(clp);
+ 		goto error;
+@@ -999,7 +1000,7 @@ struct nfs_server *nfs4_create_server(const struct nfs_parsed_mount_data *data,
+ 	/* Get a client record */
+ 	error = nfs4_set_client(server,
+ 			data->nfs_server.hostname,
+-			&data->nfs_server.address,
++			(struct sockaddr *)&data->nfs_server.address,
+ 			data->client_address,
+ 			data->auth_flavors[0],
+ 			data->nfs_server.protocol,
+@@ -1074,7 +1075,7 @@ struct nfs_server *nfs4_create_referral_server(struct nfs_clone_mount *data,
  
- 	if (hostname) {
- 		clp->cl_hostname = kstrdup(hostname, GFP_KERNEL);
-@@ -306,7 +316,9 @@ static struct nfs_client *nfs_get_client(const char *hostname,
- 
- 		spin_unlock(&nfs_client_lock);
- 
--		new = nfs_alloc_client(hostname, addr, nfsversion);
-+		new = nfs_alloc_client(hostname,
-+				       (const void *)addr,
-+				       nfsversion);
- 	} while (new);
- 
- 	return ERR_PTR(-ENOMEM);
+ 	/* Get a client representation.
+ 	 * Note: NFSv4 always uses TCP, */
+-	error = nfs4_set_client(server, data->hostname, data->addr,
++	error = nfs4_set_client(server, data->hostname, (void *)data->addr,
+ 			parent_client->cl_ipaddr,
+ 			data->authflavor,
+ 			parent_server->client->cl_xprt->prot,
 
 
 -------------------------------------------------------------------------
