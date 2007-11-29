@@ -1,299 +1,142 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [RFC,PATCH 2/8] rdma: SVCRDMA Transport Module
-Date: Thu, 29 Nov 2007 16:45:02 -0600
-Message-ID: <20071129224502.14887.262.stgit@dell3.ogc.int>
-References: <20071129224412.14887.14136.stgit@dell3.ogc.int>
+Subject: [RFC,PATCH 34/38] svc: Add /proc/sys/sunrpc/transport files
+Date: Thu, 29 Nov 2007 16:41:05 -0600
+Message-ID: <20071129224105.14563.48684.stgit@dell3.ogc.int>
+References: <20071129223917.14563.77633.stgit@dell3.ogc.int>
 Content-Type: text/plain; charset=utf-8; format=fixed
 Cc: linux-nfs@vger.kernel.org
 To: bfields-ag9A2Eb6PFsgsBAKwltoeQ@public.gmane.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:48905 "EHLO
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:48897 "EHLO
 	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S934142AbXK2XDk (ORCPT
+	by vger.kernel.org with ESMTP id S934148AbXK2XDk (ORCPT
 	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2007 18:03:40 -0500
-In-Reply-To: <20071129224412.14887.14136.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
+In-Reply-To: <20071129223917.14563.77633.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-This file implements the RDMA transport module initialization and
-termination logic and registers the transport sysctl variables.
+Add a file that when read lists the set of registered svc
+transports.
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- net/sunrpc/svc_rdma.c |  266 +++++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 266 insertions(+), 0 deletions(-)
+ include/linux/sunrpc/svc_xprt.h |    2 ++
+ net/sunrpc/svc_xprt.c           |   28 ++++++++++++++++++++++++++++
+ net/sunrpc/sysctl.c             |   31 +++++++++++++++++++++++++++++++
+ 3 files changed, 61 insertions(+), 0 deletions(-)
 
-diff --git a/net/sunrpc/svc_rdma.c b/net/sunrpc/svc_rdma.c
-new file mode 100644
-index 0000000..c718891
---- /dev/null
-+++ b/net/sunrpc/svc_rdma.c
-@@ -0,0 +1,266 @@
+diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+index 36f8b09..c2fa41d 100644
+--- a/include/linux/sunrpc/svc_xprt.h
++++ b/include/linux/sunrpc/svc_xprt.h
+@@ -79,11 +79,13 @@ void	svc_xprt_copy_addrs(struct svc_rqst *rqstp, struct svc_xprt *xprt);
+ void	svc_xprt_enqueue(struct svc_xprt *xprt);
+ int	svc_port_is_privileged(struct sockaddr *sin);
+ void	svc_delete_xprt(struct svc_xprt *xprt);
++int	svc_print_xprts(char *buf, int maxlen);
+ 
+ static inline void svc_xprt_get(struct svc_xprt *xprt)
+ {
+ 	kref_get(&xprt->xpt_ref);
+ }
++
+ static inline void svc_xprt_set_local(struct svc_xprt *xprt,
+ 				      struct sockaddr *sa, int salen)
+ {
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index b31ba0e..7416e66 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -93,6 +93,34 @@ int svc_unreg_xprt_class(struct svc_xprt_class *xcl)
+ }
+ EXPORT_SYMBOL_GPL(svc_unreg_xprt_class);
+ 
 +/*
-+ * Copyright (c) 2005-2006 Network Appliance, Inc. All rights reserved.
-+ *
-+ * This software is available to you under a choice of one of two
-+ * licenses.  You may choose to be licensed under the terms of the GNU
-+ * General Public License (GPL) Version 2, available from the file
-+ * COPYING in the main directory of this source tree, or the BSD-type
-+ * license below:
-+ *
-+ * Redistribution and use in source and binary forms, with or without
-+ * modification, are permitted provided that the following conditions
-+ * are met:
-+ *
-+ *      Redistributions of source code must retain the above copyright
-+ *      notice, this list of conditions and the following disclaimer.
-+ *
-+ *      Redistributions in binary form must reproduce the above
-+ *      copyright notice, this list of conditions and the following
-+ *      disclaimer in the documentation and/or other materials provided
-+ *      with the distribution.
-+ *
-+ *      Neither the name of the Network Appliance, Inc. nor the names of
-+ *      its contributors may be used to endorse or promote products
-+ *      derived from this software without specific prior written
-+ *      permission.
-+ *
-+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-+ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-+ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-+ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-+ *
-+ * Author: Tom Tucker <tom@opengridcomputing.com>
++ * Format the transport list for printing
 + */
-+#include <linux/module.h>
-+#include <linux/init.h>
-+#include <linux/fs.h>
-+#include <linux/sysctl.h>
-+#include <linux/sunrpc/clnt.h>
-+#include <linux/sunrpc/sched.h>
-+#include <linux/sunrpc/svc_rdma.h>
-+
-+#define RPCDBG_FACILITY	RPCDBG_SVCXPRT
-+
-+/* RPC/RDMA parameters */
-+unsigned int svcrdma_ord = RPCRDMA_ORD;
-+static unsigned int min_ord = 1;
-+static unsigned int max_ord = 4096;
-+unsigned int svcrdma_max_requests = RPCRDMA_MAX_REQUESTS;
-+static unsigned int min_max_requests = 4;
-+static unsigned int max_max_requests = 16384;
-+unsigned int svcrdma_max_req_size = RPCRDMA_MAX_REQ_SIZE;
-+static unsigned int min_max_inline = 4096;
-+static unsigned int max_max_inline = 65536;
-+
-+atomic_t rdma_stat_recv;
-+atomic_t rdma_stat_read;
-+atomic_t rdma_stat_write;
-+atomic_t rdma_stat_sq_starve;
-+atomic_t rdma_stat_rq_starve;
-+atomic_t rdma_stat_rq_poll;
-+atomic_t rdma_stat_rq_prod;
-+atomic_t rdma_stat_sq_poll;
-+atomic_t rdma_stat_sq_prod;
-+
-+/*
-+ * This function implements reading and resetting an atomic_t stat
-+ * variable through read/write to a proc file. Any write to the file
-+ * resets the associated statistic to zero. Any read returns it's
-+ * current value.
-+ */
-+static int read_reset_stat(ctl_table *table, int write,
-+			   struct file *filp, void __user *buffer, size_t *lenp,
-+			   loff_t *ppos)
++int svc_print_xprts(char *buf, int maxlen)
 +{
-+	atomic_t *stat = (atomic_t *)table->data;
++	struct list_head *le;
++	char tmpstr[80];
++	int len = 0;
++	buf[0] = '\0';
 +
-+	if (!stat)
-+		return -EINVAL;
++	spin_lock(&svc_xprt_class_lock);
++	list_for_each(le, &svc_xprt_class_list) {
++		int slen;
++		struct svc_xprt_class *xcl =
++			list_entry(le, struct svc_xprt_class, xcl_list);
 +
++		sprintf(tmpstr, "%s %d\n", xcl->xcl_name, xcl->xcl_max_payload);
++		slen = strlen(tmpstr);
++		if (len + slen > maxlen)
++			break;
++		len += slen;
++		strcat(buf, tmpstr);
++	}
++	spin_unlock(&svc_xprt_class_lock);
++
++	return len;
++}
++
+ static void svc_xprt_free(struct kref *kref)
+ {
+ 	struct svc_xprt *xprt =
+diff --git a/net/sunrpc/sysctl.c b/net/sunrpc/sysctl.c
+index 2be714e..fd7cf59 100644
+--- a/net/sunrpc/sysctl.c
++++ b/net/sunrpc/sysctl.c
+@@ -18,6 +18,7 @@
+ #include <linux/sunrpc/types.h>
+ #include <linux/sunrpc/sched.h>
+ #include <linux/sunrpc/stats.h>
++#include <linux/sunrpc/svc_xprt.h>
+ 
+ /*
+  * Declare the debug flags here
+@@ -48,6 +49,30 @@ rpc_unregister_sysctl(void)
+ 	}
+ }
+ 
++static int proc_do_xprt(ctl_table *table, int write, struct file *file,
++			void __user *buffer, size_t *lenp, loff_t *ppos)
++{
++	char tmpbuf[256];
++	int len;
++	if ((*ppos && !write) || !*lenp) {
++		*lenp = 0;
++		return 0;
++	}
 +	if (write)
-+		atomic_set(stat, 0);
++		return -EINVAL;
 +	else {
-+		char str_buf[32];
-+		char *data;
-+		int len = snprintf(str_buf, 32, "%d\n", atomic_read(stat));
-+		if (len >= 32)
++		len = svc_print_xprts(tmpbuf, sizeof(tmpbuf));
++		if (!access_ok(VERIFY_WRITE, buffer, len))
 +			return -EFAULT;
-+		len = strlen(str_buf);
-+		if (*ppos > len) {
-+			*lenp = 0;
-+			return 0;
-+		}
-+		data = &str_buf[*ppos];
-+		len -= *ppos;
-+		if (len > *lenp)
-+			len = *lenp;
-+		if (len && copy_to_user(buffer, str_buf, len))
++
++		if (__copy_to_user(buffer, tmpbuf, len))
 +			return -EFAULT;
-+		*lenp = len;
-+		*ppos += len;
 +	}
++	*lenp -= len;
++	*ppos += len;
 +	return 0;
 +}
 +
-+static struct ctl_table_header *svcrdma_table_header;
-+static ctl_table svcrdma_parm_table[] = {
+ static int
+ proc_dodebug(ctl_table *table, int write, struct file *file,
+ 				void __user *buffer, size_t *lenp, loff_t *ppos)
+@@ -140,6 +165,12 @@ static ctl_table debug_table[] = {
+ 		.mode		= 0644,
+ 		.proc_handler	= &proc_dodebug
+ 	},
 +	{
-+		.procname	= "max_requests",
-+		.data		= &svcrdma_max_requests,
-+		.maxlen		= sizeof(unsigned int),
-+		.mode		= 0644,
-+		.proc_handler	= &proc_dointvec_minmax,
-+		.strategy	= &sysctl_intvec,
-+		.extra1		= &min_max_requests,
-+		.extra2		= &max_max_requests
++		.procname	= "transports",
++		.maxlen		= 256,
++		.mode		= 0444,
++		.proc_handler	= &proc_do_xprt,
 +	},
-+	{
-+		.procname	= "max_req_size",
-+		.data		= &svcrdma_max_req_size,
-+		.maxlen		= sizeof(unsigned int),
-+		.mode		= 0644,
-+		.proc_handler	= &proc_dointvec_minmax,
-+		.strategy	= &sysctl_intvec,
-+		.extra1		= &min_max_inline,
-+		.extra2		= &max_max_inline
-+	},
-+	{
-+		.procname	= "max_outbound_read_requests",
-+		.data		= &svcrdma_ord,
-+		.maxlen		= sizeof(unsigned int),
-+		.mode		= 0644,
-+		.proc_handler	= &proc_dointvec_minmax,
-+		.strategy	= &sysctl_intvec,
-+		.extra1		= &min_ord,
-+		.extra2		= &max_ord,
-+	},
-+
-+	{
-+		.procname	= "rdma_stat_read",
-+		.data		= &rdma_stat_read,
-+		.maxlen		= sizeof(atomic_t),
-+		.mode		= 0644,
-+		.proc_handler	= &read_reset_stat,
-+	},
-+	{
-+		.procname	= "rdma_stat_recv",
-+		.data		= &rdma_stat_recv,
-+		.maxlen		= sizeof(atomic_t),
-+		.mode		= 0644,
-+		.proc_handler	= &read_reset_stat,
-+	},
-+	{
-+		.procname	= "rdma_stat_write",
-+		.data		= &rdma_stat_write,
-+		.maxlen		= sizeof(atomic_t),
-+		.mode		= 0644,
-+		.proc_handler	= &read_reset_stat,
-+	},
-+	{
-+		.procname	= "rdma_stat_sq_starve",
-+		.data		= &rdma_stat_sq_starve,
-+		.maxlen		= sizeof(atomic_t),
-+		.mode		= 0644,
-+		.proc_handler	= &read_reset_stat,
-+	},
-+	{
-+		.procname	= "rdma_stat_rq_starve",
-+		.data		= &rdma_stat_rq_starve,
-+		.maxlen		= sizeof(atomic_t),
-+		.mode		= 0644,
-+		.proc_handler	= &read_reset_stat,
-+	},
-+	{
-+		.procname	= "rdma_stat_rq_poll",
-+		.data		= &rdma_stat_rq_poll,
-+		.maxlen		= sizeof(atomic_t),
-+		.mode		= 0644,
-+		.proc_handler	= &read_reset_stat,
-+	},
-+	{
-+		.procname	= "rdma_stat_rq_prod",
-+		.data		= &rdma_stat_rq_prod,
-+		.maxlen		= sizeof(atomic_t),
-+		.mode		= 0644,
-+		.proc_handler	= &read_reset_stat,
-+	},
-+	{
-+		.procname	= "rdma_stat_sq_poll",
-+		.data		= &rdma_stat_sq_poll,
-+		.maxlen		= sizeof(atomic_t),
-+		.mode		= 0644,
-+		.proc_handler	= &read_reset_stat,
-+	},
-+	{
-+		.procname	= "rdma_stat_sq_prod",
-+		.data		= &rdma_stat_sq_prod,
-+		.maxlen		= sizeof(atomic_t),
-+		.mode		= 0644,
-+		.proc_handler	= &read_reset_stat,
-+	},
-+	{
-+		/* terminate table */
-+	},
-+};
-+
-+static ctl_table svcrdma_table[] = {
-+	{
-+		.procname	= "svc_rdma",
-+		.mode		= 0555,
-+		.child		= svcrdma_parm_table
-+	},
-+	{
-+		.ctl_name = 0,
-+	},
-+};
-+
-+static ctl_table svcrdma_root_table[] = {
-+	{
-+		.ctl_name	= CTL_SUNRPC,
-+		.procname	= "sunrpc",
-+		.mode		= 0555,
-+		.child		= svcrdma_table
-+	},
-+	{
-+		.ctl_name = 0,
-+	},
-+};
-+
-+void svc_rdma_cleanup(void)
-+{
-+	dprintk("SVCRDMA Module Removed, deregister RPC RDMA transport\n");
-+	if (svcrdma_table_header) {
-+		unregister_sysctl_table(svcrdma_table_header);
-+		svcrdma_table_header = NULL;
-+	}
-+	svc_unreg_xprt_class(&svc_rdma_class);
-+}
-+
-+int svc_rdma_init(void)
-+{
-+	dprintk("SVCRDMA Module Init, register RPC RDMA transport\n");
-+	dprintk("\tsvcrdma_ord      : %d\n", svcrdma_ord);
-+	dprintk("\tmax_requests     : %d\n", svcrdma_max_requests);
-+	dprintk("\tsq_depth         : %d\n",
-+		svcrdma_max_requests * RPCRDMA_SQ_DEPTH_MULT);
-+	dprintk("\tmax_inline       : %d\n", svcrdma_max_req_size);
-+	if (!svcrdma_table_header)
-+		svcrdma_table_header =
-+			register_sysctl_table(svcrdma_root_table);
-+
-+	/* Register RDMA with the SVC transport switch */
-+	svc_reg_xprt_class(&svc_rdma_class);
-+	return 0;
-+}
-+MODULE_AUTHOR("Tom Tucker <tom@opengridcomputing.com>");
-+MODULE_DESCRIPTION("SVC RDMA Transport");
-+MODULE_LICENSE("Dual BSD/GPL");
-+module_init(svc_rdma_init);
-+module_exit(svc_rdma_cleanup);
+ 	{ .ctl_name = 0 }
+ };
+ 
