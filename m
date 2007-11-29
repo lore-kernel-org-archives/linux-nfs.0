@@ -1,92 +1,99 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [RFC,PATCH 26/38] svc: Make svc_sock_release svc_xprt_release
-Date: Thu, 29 Nov 2007 16:56:33 -0600
-Message-ID: <20071129225633.15275.67282.stgit@dell3.ogc.int>
+Subject: [RFC,PATCH 38/38] svc: Add svc_xprt_names service to replace svc_sock_names
+Date: Thu, 29 Nov 2007 16:56:58 -0600
+Message-ID: <20071129225658.15275.9760.stgit@dell3.ogc.int>
 References: <20071129225510.15275.82660.stgit@dell3.ogc.int>
 Content-Type: text/plain; charset=utf-8; format=fixed
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:47417 "EHLO
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:47406 "EHLO
 	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1760302AbXK2XUR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2007 18:20:17 -0500
+	by vger.kernel.org with ESMTP id S1758743AbXK2XUW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2007 18:20:22 -0500
 In-Reply-To: <20071129225510.15275.82660.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-The svc_sock_release function only touches transport independent fields.
-Change the function to manipulate svc_xprt directly instead of the transport
-dependent svc_sock structure. 
+Create a transport independent version of the svc_sock_names function.
+
+The toclose capability of the svc_sock_names service can be implemented
+using the svc_xprt_find and svc_xprt_close services.
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- net/sunrpc/svcsock.c |   16 +++++++---------
- 1 files changed, 7 insertions(+), 9 deletions(-)
+ fs/nfsd/nfsctl.c                |    2 +-
+ include/linux/sunrpc/svc_xprt.h |    1 +
+ net/sunrpc/svc_xprt.c           |   35 +++++++++++++++++++++++++++++++++++
+ 3 files changed, 37 insertions(+), 1 deletions(-)
 
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index e8cfeeb..36fc59c 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -383,10 +383,9 @@ void svc_reserve(struct svc_rqst *rqstp, int space)
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index e0e53e1..f6f68fa 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -503,7 +503,7 @@ static ssize_t write_ports(struct file *file, char *buf, size_t size)
+ 		int len = 0;
+ 		lock_kernel();
+ 		if (nfsd_serv)
+-			len = svc_sock_names(buf, nfsd_serv, NULL);
++			len = svc_xprt_names(nfsd_serv, buf, 0);
+ 		unlock_kernel();
+ 		return len;
  	}
+diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+index 30fcc82..d19c91e 100644
+--- a/include/linux/sunrpc/svc_xprt.h
++++ b/include/linux/sunrpc/svc_xprt.h
+@@ -80,6 +80,7 @@ void	svc_xprt_enqueue(struct svc_xprt *xprt);
+ int	svc_port_is_privileged(struct sockaddr *sin);
+ void	svc_delete_xprt(struct svc_xprt *xprt);
+ int	svc_print_xprts(char *buf, int maxlen);
++int	svc_xprt_names(struct svc_serv *serv, char *buf, int buflen);
+ struct svc_xprt *
+ svc_find_xprt(struct svc_serv *serv, char *xprt_class, int af, int port);
+ 
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index 57d50db..68ef65e 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -977,3 +977,38 @@ struct svc_xprt *svc_find_xprt(struct svc_serv *serv, char *xcl_name,
+ 	return found;
  }
- 
--static void
--svc_sock_release(struct svc_rqst *rqstp)
-+static void svc_xprt_release(struct svc_rqst *rqstp)
- {
--	struct svc_sock	*svsk = rqstp->rq_sock;
-+	struct svc_xprt	*xprt = rqstp->rq_xprt;
- 
- 	rqstp->rq_xprt->xpt_ops->xpo_release_rqst(rqstp);
- 
-@@ -394,7 +393,6 @@ svc_sock_release(struct svc_rqst *rqstp)
- 	rqstp->rq_res.page_len = 0;
- 	rqstp->rq_res.page_base = 0;
- 
--
- 	/* Reset response buffer and release
- 	 * the reservation.
- 	 * But first, check that enough space was reserved
-@@ -407,9 +405,9 @@ svc_sock_release(struct svc_rqst *rqstp)
- 
- 	rqstp->rq_res.head[0].iov_len = 0;
- 	svc_reserve(rqstp, 0);
--	rqstp->rq_sock = NULL;
-+	rqstp->rq_xprt = NULL;
- 
--	svc_xprt_put(&svsk->sk_xprt);
-+	svc_xprt_put(xprt);
- }
- 
- /*
-@@ -1609,7 +1607,7 @@ svc_recv(struct svc_rqst *rqstp, long timeout)
- 	/* No data, incomplete (TCP) read, or accept() */
- 	if (len == 0 || len == -EAGAIN) {
- 		rqstp->rq_res.len = 0;
--		svc_sock_release(rqstp);
-+		svc_xprt_release(rqstp);
- 		return -EAGAIN;
- 	}
- 	clear_bit(XPT_OLD, &svsk->sk_xprt.xpt_flags);
-@@ -1629,7 +1627,7 @@ void
- svc_drop(struct svc_rqst *rqstp)
- {
- 	dprintk("svc: socket %p dropped request\n", rqstp->rq_sock);
--	svc_sock_release(rqstp);
-+	svc_xprt_release(rqstp);
- }
- 
- /*
-@@ -1662,7 +1660,7 @@ svc_send(struct svc_rqst *rqstp)
- 	else
- 		len = xprt->xpt_ops->xpo_sendto(rqstp);
- 	mutex_unlock(&xprt->xpt_mutex);
--	svc_sock_release(rqstp);
-+	svc_xprt_release(rqstp);
- 
- 	if (len == -ECONNREFUSED || len == -ENOTCONN || len == -EAGAIN)
- 		return 0;
+ EXPORT_SYMBOL_GPL(svc_find_xprt);
++
++/*
++ * Format a buffer with a list of the active transports. A zero for
++ * the buflen parameter disables target buffer overflow checking.
++ */
++int svc_xprt_names(struct svc_serv *serv, char *buf, int buflen)
++{
++	struct svc_xprt *xprt;
++	char xprt_str[64];
++	int totlen = 0;
++	int len;
++
++	/* Sanity check args */
++	if (!serv)
++		return 0;
++
++	spin_lock_bh(&serv->sv_lock);
++	list_for_each_entry(xprt, &serv->sv_permsocks, xpt_list) {
++		len = snprintf(xprt_str, sizeof(xprt_str),
++			       "%s %d\n", xprt->xpt_class->xcl_name,
++			       svc_xprt_local_port(xprt));
++		/* If the string was truncated, replace with error string */
++		if (len >= sizeof(xprt_str))
++			strcpy(xprt_str, "name-too-long\n");
++		/* Don't overflow buffer */
++		len = strlen(xprt_str);
++		if (buflen && (len + totlen >= buflen))
++			break;
++		strcpy(buf+totlen, xprt_str);
++		totlen += len;
++	}
++	spin_unlock_bh(&serv->sv_lock);
++	return totlen;
++}
++EXPORT_SYMBOL_GPL(svc_xprt_names);
