@@ -1,1120 +1,334 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [RFC,PATCH 3/8] rdma: SVCRDMA Core Transport Services
-Date: Thu, 29 Nov 2007 16:45:04 -0600
-Message-ID: <20071129224504.14887.13932.stgit@dell3.ogc.int>
-References: <20071129224412.14887.14136.stgit@dell3.ogc.int>
+Subject: [RFC,PATCH 25/38] svc: Move the sockaddr information to svc_xprt
+Date: Thu, 29 Nov 2007 16:40:46 -0600
+Message-ID: <20071129224046.14563.59353.stgit@dell3.ogc.int>
+References: <20071129223917.14563.77633.stgit@dell3.ogc.int>
 Content-Type: text/plain; charset=utf-8; format=fixed
 Cc: linux-nfs@vger.kernel.org
 To: bfields-ag9A2Eb6PFsgsBAKwltoeQ@public.gmane.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:48894 "EHLO
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:48898 "EHLO
 	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S934210AbXK2XDo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2007 18:03:44 -0500
-In-Reply-To: <20071129224412.14887.14136.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
+	by vger.kernel.org with ESMTP id S934124AbXK2XDm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2007 18:03:42 -0500
+In-Reply-To: <20071129223917.14563.77633.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-This file implements the core transport data management and I/O
-path. The I/O path for RDMA involves receiving callbacks on interrupt
-context. Since all the svc transport locks are _bh locks we enqueue the
-transport on a list, schedule a tasklet to dequeue data indications from
-the RDMA completion queue. The tasklet in turn takes _bh locks to
-enqueue receive data indications on a list for the transport. The
-svc_rdma_recvfrom transport function dequeues data from this list in an
-NFSD thread context.
+This patch moves the transport sockaddr to the svc_xprt
+structure.  Convenience functions are added to set and
+get the local and remote addresses of a transport from
+the transport provider as well as determine the length
+of a sockaddr.
+
+A transport is responsible for setting the xpt_local
+and xpt_remote addresses in the svc_xprt structure as
+part of transport creation and xpo_accept processing. This
+cannot be done in a generic way and in fact varies
+between TCP, UDP and RDMA. A set of xpo_ functions
+(e.g. getlocalname, getremotename) could have been
+added but this would have resulted in additional
+caching and copying of the addresses around.  Note that
+the xpt_local address should also be set on listening
+endpoints; for TCP/RDMA this is done as part of
+endpoint creation.
+
+For connected transports like TCP and RDMA, the addresses
+never change and can be set once and copied into the
+rqstp structure for each request. For UDP, however, the
+local and remote addresses may change for each request. In
+this case, the address information is obtained from the
+UDP recvmsg info and copied into the rqstp structure from
+there. 
+
+A svc_xprt_local_port function was also added that returns
+the local port given a transport. This is used by
+svc_create_xprt when returning the port associated with
+a newly created transport, and later when creating a
+generic find transport service to check if a service is
+already listening on a given port.
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- net/sunrpc/svc_rdma_transport.c | 1081 +++++++++++++++++++++++++++++++++++++++
- 1 files changed, 1081 insertions(+), 0 deletions(-)
+ include/linux/sunrpc/svc_xprt.h |   51 ++++++++++++++++++++++++++++++++++++
+ include/linux/sunrpc/svcsock.h  |    4 ---
+ net/sunrpc/svc_xprt.c           |   31 ++++++++++++++++++++--
+ net/sunrpc/svcsock.c            |   56 +++++++++++++++++++++------------------
+ 4 files changed, 110 insertions(+), 32 deletions(-)
 
-diff --git a/net/sunrpc/svc_rdma_transport.c b/net/sunrpc/svc_rdma_transport.c
-new file mode 100644
-index 0000000..83b239e
---- /dev/null
-+++ b/net/sunrpc/svc_rdma_transport.c
-@@ -0,0 +1,1081 @@
-+/*
-+ * Copyright (c) 2005-2007 Network Appliance, Inc. All rights reserved.
-+ *
-+ * This software is available to you under a choice of one of two
-+ * licenses.  You may choose to be licensed under the terms of the GNU
-+ * General Public License (GPL) Version 2, available from the file
-+ * COPYING in the main directory of this source tree, or the BSD-type
-+ * license below:
-+ *
-+ * Redistribution and use in source and binary forms, with or without
-+ * modification, are permitted provided that the following conditions
-+ * are met:
-+ *
-+ *      Redistributions of source code must retain the above copyright
-+ *      notice, this list of conditions and the following disclaimer.
-+ *
-+ *      Redistributions in binary form must reproduce the above
-+ *      copyright notice, this list of conditions and the following
-+ *      disclaimer in the documentation and/or other materials provided
-+ *      with the distribution.
-+ *
-+ *      Neither the name of the Network Appliance, Inc. nor the names of
-+ *      its contributors may be used to endorse or promote products
-+ *      derived from this software without specific prior written
-+ *      permission.
-+ *
-+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-+ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-+ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-+ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-+ *
-+ * Author: Tom Tucker <tom@opengridcomputing.com>
-+ */
-+
-+#include <linux/sunrpc/svc_xprt.h>
-+#include <linux/sunrpc/debug.h>
-+#include <linux/sunrpc/rpc_rdma.h>
-+#include <linux/spinlock.h>
-+#include <rdma/ib_verbs.h>
-+#include <rdma/rdma_cm.h>
-+#include <linux/sunrpc/svc_rdma.h>
-+
-+#define RPCDBG_FACILITY	RPCDBG_SVCXPRT
-+
-+static struct svc_xprt *svc_rdma_create(struct svc_serv *serv,
-+					struct sockaddr *sa, int salen,
-+					int flags);
-+static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt);
-+static void svc_rdma_release_rqst(struct svc_rqst *);
-+static void rdma_destroy_xprt(struct svcxprt_rdma *xprt);
-+static void dto_tasklet_func(unsigned long data);
-+static void svc_rdma_detach(struct svc_xprt *xprt);
-+static void svc_rdma_free(struct svc_xprt *xprt);
-+static int svc_rdma_has_wspace(struct svc_xprt *xprt);
-+static void rq_cq_reap(struct svcxprt_rdma *xprt);
-+static void sq_cq_reap(struct svcxprt_rdma *xprt);
-+
-+DECLARE_TASKLET(dto_tasklet, dto_tasklet_func, 0UL);
-+static DEFINE_SPINLOCK(dto_lock);
-+static LIST_HEAD(dto_xprt_q);
-+
-+static struct svc_xprt_ops svc_rdma_ops = {
-+	.xpo_create = svc_rdma_create,
-+	.xpo_recvfrom = svc_rdma_recvfrom,
-+	.xpo_sendto = svc_rdma_sendto,
-+	.xpo_release_rqst = svc_rdma_release_rqst,
-+	.xpo_detach = svc_rdma_detach,
-+	.xpo_free = svc_rdma_free,
-+	.xpo_prep_reply_hdr = svc_rdma_prep_reply_hdr,
-+	.xpo_has_wspace = svc_rdma_has_wspace,
-+	.xpo_accept = svc_rdma_accept,
-+};
-+
-+struct svc_xprt_class svc_rdma_class = {
-+	.xcl_name = "rdma",
-+	.xcl_owner = THIS_MODULE,
-+	.xcl_ops = &svc_rdma_ops,
-+	.xcl_max_payload = RPCSVC_MAXPAYLOAD_TCP,
-+};
-+
-+static int rdma_bump_context_cache(struct svcxprt_rdma *xprt)
+diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+index d93ae27..60bdffc 100644
+--- a/include/linux/sunrpc/svc_xprt.h
++++ b/include/linux/sunrpc/svc_xprt.h
+@@ -61,6 +61,10 @@ struct svc_xprt {
+ 	void			*xpt_auth_cache;/* auth cache */
+ 	struct list_head	xpt_deferred;	/* deferred requests that need
+ 						 * to be revisted */
++	struct sockaddr_storage	xpt_local;	/* local address */
++	int			xpt_locallen;	/* length of address */
++	struct sockaddr_storage	xpt_remote;	/* remote peer's address */
++	int			xpt_remotelen;	/* length of address */
+ };
+ 
+ int	svc_reg_xprt_class(struct svc_xprt_class *);
+@@ -70,9 +74,56 @@ void	svc_xprt_init(struct svc_xprt_class *, struct svc_xprt *,
+ int	svc_create_xprt(struct svc_serv *, char *, unsigned short, int);
+ void	svc_xprt_received(struct svc_xprt *);
+ void	svc_xprt_put(struct svc_xprt *xprt);
++void	svc_xprt_copy_addrs(struct svc_rqst *rqstp, struct svc_xprt *xprt);
+ static inline void svc_xprt_get(struct svc_xprt *xprt)
+ {
+ 	kref_get(&xprt->xpt_ref);
+ }
++static inline void svc_xprt_set_local(struct svc_xprt *xprt,
++				      struct sockaddr *sa, int salen)
 +{
-+	int target;
-+	int at_least_one = 0;
-+	struct svc_rdma_op_ctxt *ctxt;
-+
-+	target = min(xprt->sc_ctxt_cnt + xprt->sc_ctxt_bump,
-+		     xprt->sc_ctxt_max);
-+
-+	spin_lock_bh(&xprt->sc_ctxt_lock);
-+	while (xprt->sc_ctxt_cnt < target) {
-+		xprt->sc_ctxt_cnt++;
-+		spin_unlock_bh(&xprt->sc_ctxt_lock);
-+
-+		ctxt = kmalloc(sizeof(*ctxt), GFP_KERNEL);
-+
-+		spin_lock_bh(&xprt->sc_ctxt_lock);
-+		if (ctxt) {
-+			at_least_one = 1;
-+			ctxt->next = xprt->sc_ctxt_head;
-+			xprt->sc_ctxt_head = ctxt;
-+		} else {
-+			/* kmalloc failed...give up for now */
-+			xprt->sc_ctxt_cnt--;
-+			break;
-+		}
-+	}
-+	spin_unlock_bh(&xprt->sc_ctxt_lock);
-+	dprintk("svcrdma: sc_ctxt_max=%d, sc_ctxt_cnt=%d\n",
-+		xprt->sc_ctxt_max, xprt->sc_ctxt_cnt);
-+	return at_least_one;
++	memcpy(&xprt->xpt_local, sa, salen);
++	xprt->xpt_locallen = salen;
 +}
-+
-+struct svc_rdma_op_ctxt *svc_rdma_get_context(struct svcxprt_rdma *xprt)
++static inline void svc_xprt_set_remote(struct svc_xprt *xprt,
++				       struct sockaddr *sa, int salen)
 +{
-+	struct svc_rdma_op_ctxt *ctxt;
-+
-+	while (1) {
-+		spin_lock_bh(&xprt->sc_ctxt_lock);
-+		if (unlikely(xprt->sc_ctxt_head == NULL)) {
-+			/* Try to bump my cache. */
-+			spin_unlock_bh(&xprt->sc_ctxt_lock);
-+
-+			if (rdma_bump_context_cache(xprt))
-+				continue;
-+
-+			printk(KERN_INFO "svcrdma: sleeping waiting for "
-+			       "context memory on xprt=%p\n",
-+			       xprt);
-+			schedule_timeout_uninterruptible(msecs_to_jiffies(500));
-+			continue;
-+		}
-+		ctxt = xprt->sc_ctxt_head;
-+		xprt->sc_ctxt_head = ctxt->next;
-+		spin_unlock_bh(&xprt->sc_ctxt_lock);
-+		ctxt->xprt = xprt;
-+		INIT_LIST_HEAD(&ctxt->dto_q);
-+		ctxt->count = 0;
++	memcpy(&xprt->xpt_remote, sa, salen);
++	xprt->xpt_remotelen = salen;
++}
++static inline int svc_addr_port(struct sockaddr *sa)
++{
++	int ret = -1;
++	switch (sa->sa_family) {
++	case AF_INET:
++		ret = ntohs(((struct sockaddr_in *)sa)->sin_port);
 +		break;
-+	}
-+	return ctxt;
-+}
-+
-+void svc_rdma_put_context(struct svc_rdma_op_ctxt *ctxt, int free_pages)
-+{
-+	struct svcxprt_rdma *xprt;
-+	int i;
-+
-+	BUG_ON(!ctxt);
-+	xprt = ctxt->xprt;
-+	if (free_pages)
-+		for (i = 0; i < ctxt->count; i++)
-+			put_page(ctxt->pages[i]);
-+
-+	for (i = 0; i < ctxt->count; i++)
-+		dma_unmap_single(xprt->sc_cm_id->device->dma_device,
-+				 ctxt->sge[i].addr,
-+				 ctxt->sge[i].length,
-+				 ctxt->direction);
-+	spin_lock_bh(&xprt->sc_ctxt_lock);
-+	ctxt->next = xprt->sc_ctxt_head;
-+	xprt->sc_ctxt_head = ctxt;
-+	spin_unlock_bh(&xprt->sc_ctxt_lock);
-+}
-+
-+/* ib_cq event handler */
-+static void cq_event_handler(struct ib_event *event, void *context)
-+{
-+	struct svc_xprt *xprt = context;
-+	dprintk("svcrdma: received CQ event id=%d, context=%p\n",
-+		event->event, context);
-+	set_bit(XPT_CLOSE, &xprt->xpt_flags);
-+}
-+
-+/* QP event handler */
-+static void qp_event_handler(struct ib_event *event, void *context)
-+{
-+	struct svc_xprt *xprt = context;
-+
-+	switch (event->event) {
-+	/* These are considered benign events */
-+	case IB_EVENT_PATH_MIG:
-+	case IB_EVENT_COMM_EST:
-+	case IB_EVENT_SQ_DRAINED:
-+	case IB_EVENT_QP_LAST_WQE_REACHED:
-+		dprintk("svcrdma: QP event %d received for QP=%p\n",
-+			event->event, event->element.qp);
-+		break;
-+	/* These are considered fatal events */
-+	case IB_EVENT_PATH_MIG_ERR:
-+	case IB_EVENT_QP_FATAL:
-+	case IB_EVENT_QP_REQ_ERR:
-+	case IB_EVENT_QP_ACCESS_ERR:
-+	case IB_EVENT_DEVICE_FATAL:
-+	default:
-+		dprintk("svcrdma: QP ERROR event %d received for QP=%p, "
-+			"closing transport\n",
-+			event->event, event->element.qp);
-+		set_bit(XPT_CLOSE, &xprt->xpt_flags);
-+		break;
-+	}
-+}
-+
-+/*
-+ * Data Transfer Operation Tasklet
-+ *
-+ * Walks a list of transports with I/O pending, removing entries as
-+ * they are added to the server's I/O pending list. Two bits indicate
-+ * if SQ, RQ, or both have I/O pending. The dto_lock is an irqsave
-+ * spinlock that serializes access to the transport list with the RQ
-+ * and SQ interrupt handlers.
-+ */
-+static void dto_tasklet_func(unsigned long data)
-+{
-+	struct svcxprt_rdma *xprt;
-+	unsigned long flags;
-+
-+	spin_lock_irqsave(&dto_lock, flags);
-+	while (!list_empty(&dto_xprt_q)) {
-+		xprt = list_entry(dto_xprt_q.next,
-+				  struct svcxprt_rdma, sc_dto_q);
-+		list_del_init(&xprt->sc_dto_q);
-+		spin_unlock_irqrestore(&dto_lock, flags);
-+
-+		if (test_and_clear_bit(RDMAXPRT_RQ_PENDING, &xprt->sc_flags)) {
-+			ib_req_notify_cq(xprt->sc_rq_cq, IB_CQ_NEXT_COMP);
-+			rq_cq_reap(xprt);
-+			set_bit(XPT_DATA, &xprt->sc_xprt.xpt_flags);
-+			/*
-+			 * If data arrived before established event,
-+			 * don't enqueue. This defers RPC I/O until the
-+			 * RDMA connection is complete.
-+			 */
-+			if (!test_bit(RDMAXPRT_CONN_PENDING, &xprt->sc_flags))
-+				svc_xprt_enqueue(&xprt->sc_xprt);
-+		}
-+
-+		if (test_and_clear_bit(RDMAXPRT_SQ_PENDING, &xprt->sc_flags)) {
-+			ib_req_notify_cq(xprt->sc_sq_cq, IB_CQ_NEXT_COMP);
-+			sq_cq_reap(xprt);
-+		}
-+
-+		spin_lock_irqsave(&dto_lock, flags);
-+	}
-+	spin_unlock_irqrestore(&dto_lock, flags);
-+}
-+
-+/*
-+ * Receive Queue Completion Handler
-+ *
-+ * Since an RQ completion handler is called on interrupt context, we
-+ * need to defer the handling of the I/O to a tasklet
-+ */
-+static void rq_comp_handler(struct ib_cq *cq, void *cq_context)
-+{
-+	struct svcxprt_rdma *xprt = cq_context;
-+	unsigned long flags;
-+
-+	/*
-+	 * Set the bit regardless of whether or not it's on the list
-+	 * because it may be on the list already due to an SQ
-+	 * completion.
-+	*/
-+	set_bit(RDMAXPRT_RQ_PENDING, &xprt->sc_flags);
-+
-+	/*
-+	 * If this transport is not already on the DTO transport queue,
-+	 * add it
-+	 */
-+	spin_lock_irqsave(&dto_lock, flags);
-+	if (list_empty(&xprt->sc_dto_q))
-+		list_add_tail(&xprt->sc_dto_q, &dto_xprt_q);
-+	spin_unlock_irqrestore(&dto_lock, flags);
-+
-+	/* Tasklet does all the work to avoid irqsave locks. */
-+	tasklet_schedule(&dto_tasklet);
-+}
-+
-+/*
-+ * rq_cq_reap - Process the RQ CQ.
-+ *
-+ * Take all completing WC off the CQE and enqueue the associated DTO
-+ * context on the dto_q for the transport.
-+ */
-+static void rq_cq_reap(struct svcxprt_rdma *xprt)
-+{
-+	int ret;
-+	struct ib_wc wc;
-+	struct svc_rdma_op_ctxt *ctxt = NULL;
-+
-+	atomic_inc(&rdma_stat_rq_poll);
-+
-+	spin_lock_bh(&xprt->sc_rq_dto_lock);
-+	while ((ret = ib_poll_cq(xprt->sc_rq_cq, 1, &wc)) > 0) {
-+		ctxt = (struct svc_rdma_op_ctxt *)(unsigned long)wc.wr_id;
-+		ctxt->wc_status = wc.status;
-+		ctxt->byte_len = wc.byte_len;
-+		if (wc.status != IB_WC_SUCCESS) {
-+			/* Close the transport */
-+			set_bit(XPT_CLOSE, &xprt->sc_xprt.xpt_flags);
-+			svc_rdma_put_context(ctxt, 1);
-+			continue;
-+		}
-+		list_add_tail(&ctxt->dto_q, &xprt->sc_rq_dto_q);
-+	}
-+	spin_unlock_bh(&xprt->sc_rq_dto_lock);
-+
-+	if (ctxt)
-+		atomic_inc(&rdma_stat_rq_prod);
-+}
-+
-+/*
-+ * Send Queue Completion Handler - potentially called on interrupt context.
-+ */
-+static void sq_cq_reap(struct svcxprt_rdma *xprt)
-+{
-+	struct svc_rdma_op_ctxt *ctxt = NULL;
-+	struct ib_wc wc;
-+	struct ib_cq *cq = xprt->sc_sq_cq;
-+	int ret;
-+
-+	atomic_inc(&rdma_stat_sq_poll);
-+	while ((ret = ib_poll_cq(cq, 1, &wc)) > 0) {
-+		ctxt = (struct svc_rdma_op_ctxt *)(unsigned long)wc.wr_id;
-+		xprt = ctxt->xprt;
-+
-+		if (wc.status != IB_WC_SUCCESS)
-+			/* Close the transport */
-+			set_bit(XPT_CLOSE, &xprt->sc_xprt.xpt_flags);
-+
-+		/* Decrement used SQ WR count */
-+		atomic_dec(&xprt->sc_sq_count);
-+		wake_up(&xprt->sc_send_wait);
-+
-+		switch (ctxt->wr_op) {
-+		case IB_WR_SEND:
-+		case IB_WR_RDMA_WRITE:
-+			svc_rdma_put_context(ctxt, 1);
-+			break;
-+
-+		case IB_WR_RDMA_READ:
-+			if (test_bit(RDMACTXT_F_LAST_CTXT, &ctxt->flags)) {
-+				set_bit(XPT_DATA, &xprt->sc_xprt.xpt_flags);
-+				set_bit(RDMACTXT_F_READ_DONE, &ctxt->flags);
-+				spin_lock_bh(&xprt->sc_read_complete_lock);
-+				list_add_tail(&ctxt->dto_q,
-+					      &xprt->sc_read_complete_q);
-+				spin_unlock_bh(&xprt->sc_read_complete_lock);
-+				svc_xprt_enqueue(&xprt->sc_xprt);
-+			}
-+			break;
-+
-+		default:
-+			printk(KERN_ERR "svcrdma: unexpected completion type, "
-+			       "opcode=%d, status=%d\n",
-+			       wc.opcode, wc.status);
-+			break;
-+		}
-+	}
-+
-+	if (ctxt)
-+		atomic_inc(&rdma_stat_sq_prod);
-+}
-+
-+static void sq_comp_handler(struct ib_cq *cq, void *cq_context)
-+{
-+	struct svcxprt_rdma *xprt = cq_context;
-+	unsigned long flags;
-+
-+	/*
-+	 * Set the bit regardless of whether or not it's on the list
-+	 * because it may be on the list already due to an RQ
-+	 * completion.
-+	*/
-+	set_bit(RDMAXPRT_SQ_PENDING, &xprt->sc_flags);
-+
-+	/*
-+	 * If this transport is not already on the DTO transport queue,
-+	 * add it
-+	 */
-+	spin_lock_irqsave(&dto_lock, flags);
-+	if (list_empty(&xprt->sc_dto_q))
-+		list_add_tail(&xprt->sc_dto_q, &dto_xprt_q);
-+	spin_unlock_irqrestore(&dto_lock, flags);
-+
-+	/* Tasklet does all the work to avoid irqsave locks. */
-+	tasklet_schedule(&dto_tasklet);
-+}
-+
-+static void create_context_cache(struct svcxprt_rdma *xprt,
-+				 int ctxt_count, int ctxt_bump, int ctxt_max)
-+{
-+	struct svc_rdma_op_ctxt *ctxt;
-+	int i;
-+
-+	xprt->sc_ctxt_max = ctxt_max;
-+	xprt->sc_ctxt_bump = ctxt_bump;
-+	xprt->sc_ctxt_cnt = 0;
-+	xprt->sc_ctxt_head = NULL;
-+	for (i = 0; i < ctxt_count; i++) {
-+		ctxt = kmalloc(sizeof(*ctxt), GFP_KERNEL);
-+		if (ctxt) {
-+			ctxt->next = xprt->sc_ctxt_head;
-+			xprt->sc_ctxt_head = ctxt;
-+			xprt->sc_ctxt_cnt++;
-+		}
-+	}
-+}
-+
-+static void destroy_context_cache(struct svc_rdma_op_ctxt *ctxt)
-+{
-+	struct svc_rdma_op_ctxt *next;
-+	if (!ctxt)
-+		return;
-+
-+	do {
-+		next = ctxt->next;
-+		kfree(ctxt);
-+		ctxt = next;
-+	} while (next);
-+}
-+
-+static struct svcxprt_rdma *rdma_create_xprt(struct svc_serv *serv,
-+					     int listener)
-+{
-+	struct svcxprt_rdma *cma_xprt = kzalloc(sizeof *cma_xprt, GFP_KERNEL);
-+
-+	if (!cma_xprt)
-+		return NULL;
-+	svc_xprt_init(&svc_rdma_class, &cma_xprt->sc_xprt, serv);
-+	INIT_LIST_HEAD(&cma_xprt->sc_accept_q);
-+	INIT_LIST_HEAD(&cma_xprt->sc_dto_q);
-+	INIT_LIST_HEAD(&cma_xprt->sc_rq_dto_q);
-+	INIT_LIST_HEAD(&cma_xprt->sc_read_complete_q);
-+	init_waitqueue_head(&cma_xprt->sc_send_wait);
-+
-+	spin_lock_init(&cma_xprt->sc_lock);
-+	spin_lock_init(&cma_xprt->sc_read_complete_lock);
-+	spin_lock_init(&cma_xprt->sc_ctxt_lock);
-+	spin_lock_init(&cma_xprt->sc_rq_dto_lock);
-+
-+	cma_xprt->sc_ord = svcrdma_ord;
-+
-+	cma_xprt->sc_max_req_size = svcrdma_max_req_size;
-+	cma_xprt->sc_max_requests = svcrdma_max_requests;
-+	cma_xprt->sc_sq_depth = svcrdma_max_requests * RPCRDMA_SQ_DEPTH_MULT;
-+	atomic_set(&cma_xprt->sc_sq_count, 0);
-+
-+	if (!listener) {
-+		int reqs = cma_xprt->sc_max_requests;
-+		create_context_cache(cma_xprt,
-+				     reqs << 1, /* starting size */
-+				     reqs,	/* bump amount */
-+				     reqs +
-+				     cma_xprt->sc_sq_depth +
-+				     RPCRDMA_MAX_THREADS + 1); /* max */
-+		if (!cma_xprt->sc_ctxt_head) {
-+			kfree(cma_xprt);
-+			return NULL;
-+		}
-+		clear_bit(XPT_LISTENER, &cma_xprt->sc_xprt.xpt_flags);
-+	} else
-+		set_bit(XPT_LISTENER, &cma_xprt->sc_xprt.xpt_flags);
-+
-+	return cma_xprt;
-+}
-+
-+struct page *svc_rdma_get_page(void)
-+{
-+	struct page *page;
-+
-+	while ((page = alloc_page(GFP_KERNEL)) == NULL) {
-+		/* If we can't get memory, wait a bit and try again */
-+		printk(KERN_INFO "svcrdma: out of memory...retrying in 1000 "
-+		       "jiffies.\n");
-+		schedule_timeout_uninterruptible(msecs_to_jiffies(1000));
-+	}
-+	return page;
-+}
-+
-+int svc_rdma_post_recv(struct svcxprt_rdma *xprt)
-+{
-+	struct ib_recv_wr recv_wr, *bad_recv_wr;
-+	struct svc_rdma_op_ctxt *ctxt;
-+	struct page *page;
-+	unsigned long pa;
-+	int sge_no;
-+	int buflen;
-+	int ret;
-+
-+	ctxt = svc_rdma_get_context(xprt);
-+	buflen = 0;
-+	ctxt->direction = DMA_FROM_DEVICE;
-+	for (sge_no = 0; buflen < xprt->sc_max_req_size; sge_no++) {
-+		BUG_ON(sge_no >= xprt->sc_max_sge);
-+		page = svc_rdma_get_page();
-+		ctxt->pages[sge_no] = page;
-+		pa = ib_dma_map_page(xprt->sc_cm_id->device,
-+				     page, 0, PAGE_SIZE,
-+				     DMA_FROM_DEVICE);
-+		ctxt->sge[sge_no].addr = pa;
-+		ctxt->sge[sge_no].length = PAGE_SIZE;
-+		ctxt->sge[sge_no].lkey = xprt->sc_phys_mr->lkey;
-+		buflen += PAGE_SIZE;
-+	}
-+	ctxt->count = sge_no;
-+	recv_wr.next = NULL;
-+	recv_wr.sg_list = &ctxt->sge[0];
-+	recv_wr.num_sge = ctxt->count;
-+	recv_wr.wr_id = (u64)(unsigned long)ctxt;
-+
-+	ret = ib_post_recv(xprt->sc_qp, &recv_wr, &bad_recv_wr);
-+	return ret;
-+}
-+
-+/*
-+ * This function handles the CONNECT_REQUEST event on a listening
-+ * endpoint. It is passed the cma_id for the _new_ connection. The context in
-+ * this cma_id is inherited from the listening cma_id and is the svc_xprt
-+ * structure for the listening endpoint.
-+ *
-+ * This function creates a new xprt for the new connection and enqueues it on
-+ * the accept queue for the listent xprt. When the listen thread is kicked, it
-+ * will call the recvfrom method on the listen xprt which will accept the new
-+ * connection.
-+ */
-+static void handle_connect_req(struct rdma_cm_id *new_cma_id)
-+{
-+	struct svcxprt_rdma *listen_xprt = new_cma_id->context;
-+	struct svcxprt_rdma *newxprt;
-+
-+	/* Create a new transport */
-+	newxprt = rdma_create_xprt(listen_xprt->sc_xprt.xpt_server, 0);
-+	if (!newxprt) {
-+		dprintk("svcrdma: failed to create new transport\n");
-+		return;
-+	}
-+	newxprt->sc_cm_id = new_cma_id;
-+	new_cma_id->context = newxprt;
-+	dprintk("svcrdma: Creating newxprt=%p, cm_id=%p, listenxprt=%p\n",
-+		newxprt, newxprt->sc_cm_id, listen_xprt);
-+
-+	/*
-+	 * Enqueue the new transport on the accept queue of the listening
-+	 * transport
-+	 */
-+	spin_lock_bh(&listen_xprt->sc_lock);
-+	list_add_tail(&newxprt->sc_accept_q, &listen_xprt->sc_accept_q);
-+	spin_unlock_bh(&listen_xprt->sc_lock);
-+
-+	/*
-+	 * Can't use svc_xprt_received here because we are not on a
-+	 * rqstp thread
-+	*/
-+	set_bit(XPT_CONN, &listen_xprt->sc_xprt.xpt_flags);
-+	listen_xprt->sc_xprt.xpt_pool = NULL;
-+	svc_xprt_enqueue(&listen_xprt->sc_xprt);
-+}
-+
-+/*
-+ * Handles events generated on the listening endpoint. These events will be
-+ * either be incoming connect requests or adapter removal  events.
-+ */
-+static int rdma_listen_handler(struct rdma_cm_id *cma_id,
-+			       struct rdma_cm_event *event)
-+{
-+	struct svcxprt_rdma *xprt = cma_id->context;
-+	int ret = 0;
-+
-+	switch (event->event) {
-+	case RDMA_CM_EVENT_CONNECT_REQUEST:
-+		dprintk("svcrdma: Connect request on cma_id=%p, xprt = %p, "
-+			"event=%d\n", cma_id, cma_id->context, event->event);
-+		handle_connect_req(cma_id);
-+		break;
-+
-+	case RDMA_CM_EVENT_ESTABLISHED:
-+		/* Accept complete */
-+		dprintk("svcrdma: Connection completed on LISTEN xprt=%p, "
-+			"cm_id=%p\n", xprt, cma_id);
-+		break;
-+
-+	case RDMA_CM_EVENT_DEVICE_REMOVAL:
-+		dprintk("svcrdma: Device removal xprt=%p, cm_id=%p\n",
-+			xprt, cma_id);
-+		if (xprt)
-+			set_bit(XPT_CLOSE, &xprt->sc_xprt.xpt_flags);
-+		break;
-+
-+	default:
-+		dprintk("svcrdma: Unexpected event on listening endpoint %p, "
-+			"event=%d\n", cma_id, event->event);
-+		break;
-+	}
-+
-+	return ret;
-+}
-+
-+static int rdma_cma_handler(struct rdma_cm_id *cma_id,
-+			    struct rdma_cm_event *event)
-+{
-+	struct svc_xprt *xprt = cma_id->context;
-+	struct svcxprt_rdma *rdma =
-+		container_of(xprt, struct svcxprt_rdma, sc_xprt);
-+	switch (event->event) {
-+	case RDMA_CM_EVENT_ESTABLISHED:
-+		/* Accept complete */
-+		dprintk("svcrdma: Connection completed on DTO xprt=%p, "
-+			"cm_id=%p\n", xprt, cma_id);
-+		clear_bit(RDMAXPRT_CONN_PENDING, &rdma->sc_flags);
-+		svc_xprt_enqueue(xprt);
-+		break;
-+	case RDMA_CM_EVENT_DISCONNECTED:
-+		dprintk("svcrdma: Disconnect on DTO xprt=%p, cm_id=%p\n",
-+			xprt, cma_id);
-+		if (xprt) {
-+			set_bit(XPT_CLOSE, &xprt->xpt_flags);
-+			svc_xprt_enqueue(xprt);
-+		}
-+		break;
-+	case RDMA_CM_EVENT_DEVICE_REMOVAL:
-+		dprintk("svcrdma: Device removal cma_id=%p, xprt = %p, "
-+			"event=%d\n", cma_id, xprt, event->event);
-+		if (xprt) {
-+			set_bit(XPT_CLOSE, &xprt->xpt_flags);
-+			svc_xprt_enqueue(xprt);
-+		}
-+		break;
-+	default:
-+		dprintk("svcrdma: Unexpected event on DTO endpoint %p, "
-+			"event=%d\n", cma_id, event->event);
-+		break;
-+	}
-+	return 0;
-+}
-+
-+/*
-+ * Create a listening RDMA service endpoint.
-+ */
-+static struct svc_xprt *svc_rdma_create(struct svc_serv *serv,
-+					struct sockaddr *sa, int salen,
-+					int flags)
-+{
-+	struct rdma_cm_id *listen_id;
-+	struct svcxprt_rdma *cma_xprt;
-+	struct svc_xprt *xprt;
-+	int ret;
-+
-+	dprintk("svcrdma: Creating RDMA socket\n");
-+
-+	cma_xprt = rdma_create_xprt(serv, 1);
-+	if (!cma_xprt)
-+		return ERR_PTR(ENOMEM);
-+	xprt = &cma_xprt->sc_xprt;
-+
-+	listen_id = rdma_create_id(rdma_listen_handler, cma_xprt, RDMA_PS_TCP);
-+	if (IS_ERR(listen_id)) {
-+		rdma_destroy_xprt(cma_xprt);
-+		dprintk("svcrdma: rdma_create_id failed = %ld\n",
-+			PTR_ERR(listen_id));
-+		return (void *)listen_id;
-+	}
-+	ret = rdma_bind_addr(listen_id, sa);
-+	if (ret) {
-+		rdma_destroy_xprt(cma_xprt);
-+		rdma_destroy_id(listen_id);
-+		dprintk("svcrdma: rdma_bind_addr failed = %d\n", ret);
-+		return ERR_PTR(ret);
-+	}
-+	cma_xprt->sc_cm_id = listen_id;
-+
-+	ret = rdma_listen(listen_id, RPCRDMA_LISTEN_BACKLOG);
-+	if (ret) {
-+		rdma_destroy_id(listen_id);
-+		rdma_destroy_xprt(cma_xprt);
-+		dprintk("svcrdma: rdma_listen failed = %d\n", ret);
-+	}
-+
-+	/*
-+	 * We need to use the address from the cm_id in case the
-+	 * caller specified 0 for the port number.
-+	 */
-+	sa = (struct sockaddr *)&cma_xprt->sc_cm_id->route.addr.src_addr;
-+	svc_xprt_set_local(&cma_xprt->sc_xprt, sa, salen);
-+
-+	return &cma_xprt->sc_xprt;
-+}
-+
-+/*
-+ * This is the xpo_recvfrom function for listening endpoints. Its
-+ * purpose is to accept incoming connections. The CMA callback handler
-+ * has already created a new transport and attached it to the new CMA
-+ * ID.
-+ *
-+ * There is a queue of pending connections hung on the listening
-+ * transport. This queue contains the new svc_xprt structure. This
-+ * function takes svc_xprt structures off the accept_q and completes
-+ * the connection.
-+ */
-+static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
-+{
-+	struct svcxprt_rdma *listen_rdma;
-+	struct svcxprt_rdma *newxprt = NULL;
-+	struct rdma_conn_param conn_param;
-+	struct ib_qp_init_attr qp_attr;
-+	struct ib_device_attr devattr;
-+	struct sockaddr *sa;
-+	int ret;
-+	int i;
-+
-+	listen_rdma = container_of(xprt, struct svcxprt_rdma, sc_xprt);
-+	clear_bit(XPT_CONN, &xprt->xpt_flags);
-+	/* Get the next entry off the accept list */
-+	spin_lock_bh(&listen_rdma->sc_lock);
-+	if (!list_empty(&listen_rdma->sc_accept_q)) {
-+		newxprt = list_entry(listen_rdma->sc_accept_q.next,
-+				     struct svcxprt_rdma, sc_accept_q);
-+		list_del_init(&newxprt->sc_accept_q);
-+	}
-+	if (!list_empty(&listen_rdma->sc_accept_q))
-+		set_bit(XPT_CONN, &listen_rdma->sc_xprt.xpt_flags);
-+	spin_unlock_bh(&listen_rdma->sc_lock);
-+	if (!newxprt)
-+		return NULL;
-+
-+	dprintk("svcrdma: newxprt from accept queue = %p, cm_id=%p\n",
-+		newxprt, newxprt->sc_cm_id);
-+
-+	ret = ib_query_device(newxprt->sc_cm_id->device, &devattr);
-+	if (ret) {
-+		dprintk("svcrdma: could not query device attributes on "
-+			"device %p, rc=%d\n", newxprt->sc_cm_id->device, ret);
-+		goto errout;
-+	}
-+
-+	/* Qualify the transport resource defaults with the
-+	 * capabilities of this particular device */
-+	newxprt->sc_max_sge = min((size_t)devattr.max_sge,
-+				  (size_t)RPCSVC_MAXPAGES);
-+	newxprt->sc_max_requests = min((size_t)devattr.max_qp_wr,
-+				   (size_t)svcrdma_max_requests);
-+	newxprt->sc_sq_depth = RPCRDMA_SQ_DEPTH_MULT * newxprt->sc_max_requests;
-+
-+	newxprt->sc_ord =  min((size_t)devattr.max_qp_rd_atom,
-+			       (size_t)svcrdma_ord);
-+
-+	newxprt->sc_pd = ib_alloc_pd(newxprt->sc_cm_id->device);
-+	if (IS_ERR(newxprt->sc_pd)) {
-+		dprintk("svcrdma: error creating PD for connect request\n");
-+		goto errout;
-+	}
-+	newxprt->sc_sq_cq = ib_create_cq(newxprt->sc_cm_id->device,
-+					 sq_comp_handler,
-+					 cq_event_handler,
-+					 newxprt,
-+					 newxprt->sc_sq_depth,
-+					 0);
-+	if (IS_ERR(newxprt->sc_sq_cq)) {
-+		dprintk("svcrdma: error creating SQ CQ for connect request\n");
-+		goto errout;
-+	}
-+	newxprt->sc_rq_cq = ib_create_cq(newxprt->sc_cm_id->device,
-+					 rq_comp_handler,
-+					 cq_event_handler,
-+					 newxprt,
-+					 newxprt->sc_max_requests,
-+					 0);
-+	if (IS_ERR(newxprt->sc_rq_cq)) {
-+		dprintk("svcrdma: error creating RQ CQ for connect request\n");
-+		goto errout;
-+	}
-+
-+	memset(&qp_attr, 0, sizeof qp_attr);
-+	qp_attr.event_handler = qp_event_handler;
-+	qp_attr.qp_context = &newxprt->sc_xprt;
-+	qp_attr.cap.max_send_wr = newxprt->sc_sq_depth;
-+	qp_attr.cap.max_recv_wr = newxprt->sc_max_requests;
-+	qp_attr.cap.max_send_sge = newxprt->sc_max_sge;
-+	qp_attr.cap.max_recv_sge = newxprt->sc_max_sge;
-+	qp_attr.sq_sig_type = IB_SIGNAL_REQ_WR;
-+	qp_attr.qp_type = IB_QPT_RC;
-+	qp_attr.send_cq = newxprt->sc_sq_cq;
-+	qp_attr.recv_cq = newxprt->sc_rq_cq;
-+	dprintk("svcrdma: newxprt->sc_cm_id=%p, newxprt->sc_pd=%p\n"
-+		"    cm_id->device=%p, sc_pd->device=%p\n"
-+		"    cap.max_send_wr = %d\n"
-+		"    cap.max_recv_wr = %d\n"
-+		"    cap.max_send_sge = %d\n"
-+		"    cap.max_recv_sge = %d\n",
-+		newxprt->sc_cm_id, newxprt->sc_pd,
-+		newxprt->sc_cm_id->device, newxprt->sc_pd->device,
-+		qp_attr.cap.max_send_wr,
-+		qp_attr.cap.max_recv_wr,
-+		qp_attr.cap.max_send_sge,
-+		qp_attr.cap.max_recv_sge);
-+
-+	ret = rdma_create_qp(newxprt->sc_cm_id, newxprt->sc_pd, &qp_attr);
-+	if (ret) {
-+		/*
-+		 * XXX: This is a hack. We need a xx_request_qp interface
-+		 * that will adjust the qp_attr's with a best-effort
-+		 * number
-+		 */
-+		qp_attr.cap.max_send_sge -= 2;
-+		qp_attr.cap.max_recv_sge -= 2;
-+		ret = rdma_create_qp(newxprt->sc_cm_id, newxprt->sc_pd,
-+				     &qp_attr);
-+		if (ret) {
-+			dprintk("svcrdma: failed to create QP, ret=%d\n", ret);
-+			goto errout;
-+		}
-+		newxprt->sc_max_sge = qp_attr.cap.max_send_sge;
-+		newxprt->sc_max_sge = qp_attr.cap.max_recv_sge;
-+		newxprt->sc_sq_depth = qp_attr.cap.max_send_wr;
-+		newxprt->sc_max_requests = qp_attr.cap.max_recv_wr;
-+	}
-+	newxprt->sc_qp = newxprt->sc_cm_id->qp;
-+
-+	/* Register all of physical memory */
-+	newxprt->sc_phys_mr = ib_get_dma_mr(newxprt->sc_pd,
-+					    IB_ACCESS_LOCAL_WRITE |
-+					    IB_ACCESS_REMOTE_WRITE);
-+	if (IS_ERR(newxprt->sc_phys_mr)) {
-+		dprintk("svcrdma: Failed to create DMA MR ret=%d\n", ret);
-+		goto errout;
-+	}
-+
-+	/* Post receive buffers */
-+	for (i = 0; i < newxprt->sc_max_requests; i++) {
-+		ret = svc_rdma_post_recv(newxprt);
-+		if (ret) {
-+			dprintk("svcrdma: failure posting receive buffers\n");
-+			goto errout;
-+		}
-+	}
-+
-+	/* Swap out the handler */
-+	newxprt->sc_cm_id->event_handler = rdma_cma_handler;
-+
-+	/* Accept Connection */
-+	set_bit(RDMAXPRT_CONN_PENDING, &newxprt->sc_flags);
-+	memset(&conn_param, 0, sizeof conn_param);
-+	conn_param.responder_resources = 0;
-+	conn_param.initiator_depth = newxprt->sc_ord;
-+	ret = rdma_accept(newxprt->sc_cm_id, &conn_param);
-+	if (ret) {
-+		dprintk("svcrdma: failed to accept new connection, ret=%d\n",
-+		       ret);
-+		goto errout;
-+	}
-+
-+	dprintk("svcrdma: new connection %p accepted with the following "
-+		"attributes:\n"
-+		"    local_ip        : %d.%d.%d.%d\n"
-+		"    local_port	     : %d\n"
-+		"    remote_ip       : %d.%d.%d.%d\n"
-+		"    remote_port     : %d\n"
-+		"    max_sge         : %d\n"
-+		"    sq_depth        : %d\n"
-+		"    max_requests    : %d\n"
-+		"    ord             : %d\n",
-+		newxprt,
-+		NIPQUAD(((struct sockaddr_in *)&newxprt->sc_cm_id->
-+			 route.addr.src_addr)->sin_addr.s_addr),
-+		ntohs(((struct sockaddr_in *)&newxprt->sc_cm_id->
-+		       route.addr.src_addr)->sin_port),
-+		NIPQUAD(((struct sockaddr_in *)&newxprt->sc_cm_id->
-+			 route.addr.dst_addr)->sin_addr.s_addr),
-+		ntohs(((struct sockaddr_in *)&newxprt->sc_cm_id->
-+		       route.addr.dst_addr)->sin_port),
-+		newxprt->sc_max_sge,
-+		newxprt->sc_sq_depth,
-+		newxprt->sc_max_requests,
-+		newxprt->sc_ord);
-+
-+	/* Set the local and remote addresses in the transport */
-+	sa = (struct sockaddr *)&newxprt->sc_cm_id->route.addr.dst_addr;
-+	svc_xprt_set_remote(&newxprt->sc_xprt, sa, svc_addr_len(sa));
-+	sa = (struct sockaddr *)&newxprt->sc_cm_id->route.addr.src_addr;
-+	svc_xprt_set_local(&newxprt->sc_xprt, sa, svc_addr_len(sa));
-+
-+	ib_req_notify_cq(newxprt->sc_sq_cq, IB_CQ_NEXT_COMP);
-+	ib_req_notify_cq(newxprt->sc_rq_cq, IB_CQ_NEXT_COMP);
-+	return &newxprt->sc_xprt;
-+
-+ errout:
-+	dprintk("svcrdma: failure accepting new connection rc=%d.\n", ret);
-+	rdma_destroy_id(newxprt->sc_cm_id);
-+	rdma_destroy_xprt(newxprt);
-+	return NULL;
-+}
-+
-+/*
-+ * Post an RQ WQE to the RQ when the rqst is being released. This
-+ * effectively returns an RQ credit to the client. The rq_xprt_ctxt
-+ * will be null if the request is deferred due to an RDMA_READ or the
-+ * transport had no data ready (EAGAIN). Note that an RPC deferred in
-+ * svc_process will still return the credit, this is because the data
-+ * is copied and no longer consume a WQE/WC.
-+ */
-+static void svc_rdma_release_rqst(struct svc_rqst *rqstp)
-+{
-+	int err;
-+	struct svcxprt_rdma *rdma =
-+		container_of(rqstp->rq_xprt, struct svcxprt_rdma, sc_xprt);
-+	if (rqstp->rq_xprt_ctxt) {
-+		BUG_ON(rqstp->rq_xprt_ctxt != rdma);
-+		err = svc_rdma_post_recv(rdma);
-+		if (err)
-+			dprintk("svcrdma: failed to post an RQ WQE error=%d\n",
-+				err);
-+	}
-+	rqstp->rq_xprt_ctxt = NULL;
-+}
-+
-+/* Disable data ready events for this connection */
-+static void svc_rdma_detach(struct svc_xprt *xprt)
-+{
-+	struct svcxprt_rdma *rdma =
-+		container_of(xprt, struct svcxprt_rdma, sc_xprt);
-+	unsigned long flags;
-+
-+	dprintk("svc: svc_rdma_detach(%p)\n", xprt);
-+	/*
-+	 * Shutdown the connection. This will ensure we don't get any
-+	 * more events from the provider.
-+	 */
-+	rdma_disconnect(rdma->sc_cm_id);
-+	rdma_destroy_id(rdma->sc_cm_id);
-+
-+	/* We may already be on the DTO list */
-+	spin_lock_irqsave(&dto_lock, flags);
-+	if (!list_empty(&rdma->sc_dto_q))
-+		list_del_init(&rdma->sc_dto_q);
-+	spin_unlock_irqrestore(&dto_lock, flags);
-+}
-+
-+static void svc_rdma_free(struct svc_xprt *xprt)
-+{
-+	struct svcxprt_rdma *rdma = (struct svcxprt_rdma *)xprt;
-+	dprintk("svcrdma: svc_rdma_free(%p)\n", rdma);
-+	rdma_destroy_xprt(rdma);
-+	kfree(rdma);
-+}
-+
-+static void rdma_destroy_xprt(struct svcxprt_rdma *xprt)
-+{
-+	if (xprt->sc_qp && !IS_ERR(xprt->sc_qp))
-+		ib_destroy_qp(xprt->sc_qp);
-+
-+	if (xprt->sc_sq_cq && !IS_ERR(xprt->sc_sq_cq))
-+		ib_destroy_cq(xprt->sc_sq_cq);
-+
-+	if (xprt->sc_rq_cq && !IS_ERR(xprt->sc_rq_cq))
-+		ib_destroy_cq(xprt->sc_rq_cq);
-+
-+	if (xprt->sc_phys_mr && !IS_ERR(xprt->sc_phys_mr))
-+		ib_dereg_mr(xprt->sc_phys_mr);
-+
-+	if (xprt->sc_pd && !IS_ERR(xprt->sc_pd))
-+		ib_dealloc_pd(xprt->sc_pd);
-+
-+	destroy_context_cache(xprt->sc_ctxt_head);
-+}
-+
-+static int svc_rdma_has_wspace(struct svc_xprt *xprt)
-+{
-+	struct svcxprt_rdma *rdma =
-+		container_of(xprt, struct svcxprt_rdma, sc_xprt);
-+
-+	/*
-+	 * If there are fewer SQ WR available than required to send a
-+	 * simple response, return false.
-+	 */
-+	if ((rdma->sc_sq_depth - atomic_read(&rdma->sc_sq_count) < 3))
-+		return 0;
-+
-+	/*
-+	 * ...or there are already waiters on the SQ,
-+	 * return false.
-+	 */
-+	if (waitqueue_active(&rdma->sc_send_wait))
-+		return 0;
-+
-+	/* Otherwise return true. */
-+	return 1;
-+}
-+
-+int svc_rdma_send(struct svcxprt_rdma *xprt, struct ib_send_wr *wr)
-+{
-+	struct ib_send_wr *bad_wr;
-+	int ret;
-+
-+	if (test_bit(XPT_CLOSE, &xprt->sc_xprt.xpt_flags))
-+		return 0;
-+
-+	BUG_ON(wr->send_flags != IB_SEND_SIGNALED);
-+	BUG_ON(((struct svc_rdma_op_ctxt *)(unsigned long)wr->wr_id)->wr_op !=
-+		wr->opcode);
-+	/* If the SQ is full, wait until an SQ entry is available */
-+	while (1) {
-+		spin_lock_bh(&xprt->sc_lock);
-+		if (xprt->sc_sq_depth == atomic_read(&xprt->sc_sq_count)) {
-+			spin_unlock_bh(&xprt->sc_lock);
-+			atomic_inc(&rdma_stat_sq_starve);
-+			/* See if we can reap some SQ WR */
-+			sq_cq_reap(xprt);
-+
-+			/* Wait until SQ WR available if SQ still full */
-+			wait_event(xprt->sc_send_wait,
-+				   atomic_read(&xprt->sc_sq_count) <
-+				   xprt->sc_sq_depth);
-+			continue;
-+		}
-+		/* Bumped used SQ WR count and post */
-+		ret = ib_post_send(xprt->sc_qp, wr, &bad_wr);
-+		if (!ret)
-+			atomic_inc(&xprt->sc_sq_count);
-+		else
-+			dprintk("svcrdma: failed to post SQ WR rc=%d, "
-+			       "sc_sq_count=%d, sc_sq_depth=%d\n",
-+			       ret, atomic_read(&xprt->sc_sq_count),
-+			       xprt->sc_sq_depth);
-+		spin_unlock_bh(&xprt->sc_lock);
++	case AF_INET6:
++		ret = ntohs(((struct sockaddr_in6 *)sa)->sin6_port);
 +		break;
 +	}
 +	return ret;
 +}
 +
-+int svc_rdma_send_error(struct svcxprt_rdma *xprt, struct rpcrdma_msg *rmsgp,
-+			enum rpcrdma_errcode err)
++static inline int svc_addr_len(struct sockaddr *sa)
 +{
-+	struct ib_send_wr err_wr;
-+	struct ib_sge sge;
-+	struct page *p;
-+	struct svc_rdma_op_ctxt *ctxt;
-+	u32 *va;
-+	int length;
-+	int ret;
-+
-+	p = svc_rdma_get_page();
-+	va = page_address(p);
-+
-+	/* XDR encode error */
-+	length = svc_rdma_xdr_encode_error(xprt, rmsgp, err, va);
-+
-+	/* Prepare SGE for local address */
-+	sge.addr = ib_dma_map_page(xprt->sc_cm_id->device,
-+				   p, 0, PAGE_SIZE, DMA_FROM_DEVICE);
-+	sge.lkey = xprt->sc_phys_mr->lkey;
-+	sge.length = length;
-+
-+	ctxt = svc_rdma_get_context(xprt);
-+	ctxt->count = 1;
-+	ctxt->pages[0] = p;
-+
-+	/* Prepare SEND WR */
-+	memset(&err_wr, 0, sizeof err_wr);
-+	ctxt->wr_op = IB_WR_SEND;
-+	err_wr.wr_id = (unsigned long)ctxt;
-+	err_wr.sg_list = &sge;
-+	err_wr.num_sge = 1;
-+	err_wr.opcode = IB_WR_SEND;
-+	err_wr.send_flags = IB_SEND_SIGNALED;
-+
-+	/* Post It */
-+	ret = svc_rdma_send(xprt, &err_wr);
-+	if (ret) {
-+		dprintk("svcrdma: Error posting send = %d\n", ret);
-+		svc_rdma_put_context(ctxt, 1);
++	switch (sa->sa_family) {
++	case AF_INET:
++		return sizeof(struct sockaddr_in);
++	case AF_INET6:
++		return sizeof(struct sockaddr_in6);
 +	}
-+
-+	return ret;
++	return -ENOTSUPP;
 +}
++
++static inline int svc_xprt_local_port(struct svc_xprt *xprt)
++{
++	return svc_addr_port((struct sockaddr *)&xprt->xpt_local);
++}
++
++static inline int svc_xprt_remote_port(struct svc_xprt *xprt)
++{
++	return svc_addr_port((struct sockaddr *)&xprt->xpt_remote);
++}
+ 
+ #endif /* SUNRPC_SVC_XPRT_H */
+diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
+index 96a229e..206f092 100644
+--- a/include/linux/sunrpc/svcsock.h
++++ b/include/linux/sunrpc/svcsock.h
+@@ -28,10 +28,6 @@ struct svc_sock {
+ 	/* private TCP part */
+ 	int			sk_reclen;	/* length of record */
+ 	int			sk_tcplen;	/* current read length */
+-
+-	struct sockaddr_storage	sk_local;	/* local address */
+-	struct sockaddr_storage	sk_remote;	/* remote peer's address */
+-	int			sk_remotelen;	/* length of address */
+ };
+ 
+ /*
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index fdf0d8c..d0cbfe0 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -138,7 +138,6 @@ int svc_create_xprt(struct svc_serv *serv, char *xprt_name, unsigned short port,
+ 			spin_unlock(&svc_xprt_class_lock);
+ 			if (try_module_get(xcl->xcl_owner)) {
+ 				struct svc_xprt *newxprt;
+-				ret = 0;
+ 				newxprt = xcl->xcl_ops->xpo_create
+ 					(serv,
+ 					 (struct sockaddr *)&sin, sizeof(sin),
+@@ -146,7 +145,8 @@ int svc_create_xprt(struct svc_serv *serv, char *xprt_name, unsigned short port,
+ 				if (IS_ERR(newxprt)) {
+ 					module_put(xcl->xcl_owner);
+ 					ret = PTR_ERR(newxprt);
+-				}
++				} else
++					ret = svc_xprt_local_port(newxprt);
+ 			}
+ 			goto out;
+ 		}
+@@ -157,3 +157,30 @@ int svc_create_xprt(struct svc_serv *serv, char *xprt_name, unsigned short port,
+ 	return ret;
+ }
+ EXPORT_SYMBOL_GPL(svc_create_xprt);
++
++/*
++ * Copy the local and remote xprt addresses to the rqstp structure
++ */
++void svc_xprt_copy_addrs(struct svc_rqst *rqstp, struct svc_xprt *xprt)
++{
++	struct sockaddr *sin;
++
++	memcpy(&rqstp->rq_addr, &xprt->xpt_remote, xprt->xpt_remotelen);
++	rqstp->rq_addrlen = xprt->xpt_remotelen;
++
++	/*
++	 * Destination address in request is needed for binding the
++	 * source address in RPC replies/callbacks later.
++	 */
++	sin = (struct sockaddr *)&xprt->xpt_local;
++	switch (sin->sa_family) {
++	case AF_INET:
++		rqstp->rq_daddr.addr = ((struct sockaddr_in *)sin)->sin_addr;
++		break;
++	case AF_INET6:
++		rqstp->rq_daddr.addr6 = ((struct sockaddr_in6 *)sin)->sin6_addr;
++		break;
++	}
++}
++EXPORT_SYMBOL_GPL(svc_xprt_copy_addrs);
++
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 62b5225..e8cfeeb 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -638,33 +638,13 @@ svc_recvfrom(struct svc_rqst *rqstp, struct kvec *iov, int nr, int buflen)
+ 	struct msghdr msg = {
+ 		.msg_flags	= MSG_DONTWAIT,
+ 	};
+-	struct sockaddr *sin;
+ 	int len;
+ 
+ 	len = kernel_recvmsg(svsk->sk_sock, &msg, iov, nr, buflen,
+ 				msg.msg_flags);
+ 
+-	/* sock_recvmsg doesn't fill in the name/namelen, so we must..
+-	 */
+-	memcpy(&rqstp->rq_addr, &svsk->sk_remote, svsk->sk_remotelen);
+-	rqstp->rq_addrlen = svsk->sk_remotelen;
+-
+-	/* Destination address in request is needed for binding the
+-	 * source address in RPC callbacks later.
+-	 */
+-	sin = (struct sockaddr *)&svsk->sk_local;
+-	switch (sin->sa_family) {
+-	case AF_INET:
+-		rqstp->rq_daddr.addr = ((struct sockaddr_in *)sin)->sin_addr;
+-		break;
+-	case AF_INET6:
+-		rqstp->rq_daddr.addr6 = ((struct sockaddr_in6 *)sin)->sin6_addr;
+-		break;
+-	}
+-
+ 	dprintk("svc: socket %p recvfrom(%p, %Zu) = %d\n",
+ 		svsk, iov[0].iov_base, iov[0].iov_len, len);
+-
+ 	return len;
+ }
+ 
+@@ -734,8 +714,15 @@ svc_write_space(struct sock *sk)
+ 	}
+ }
+ 
+-static inline void svc_udp_get_dest_address(struct svc_rqst *rqstp,
+-					    struct cmsghdr *cmh)
++/*
++ * Copy the UDP datagram's destination address to the rqstp structure.
++ * The 'destination' address in this case is the address to which the
++ * peer sent the datagram, i.e. our local address. For multihomed
++ * hosts, this can change from msg to msg. Note that only the IP
++ * address changes, the port number should remain the same.
++ */
++static void svc_udp_get_dest_address(struct svc_rqst *rqstp,
++				     struct cmsghdr *cmh)
+ {
+ 	switch (rqstp->rq_sock->sk_sk->sk_family) {
+ 	case AF_INET: {
+@@ -802,7 +789,10 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
+ 		svc_xprt_received(&svsk->sk_xprt);
+ 		return -EAGAIN;
+ 	}
+-	rqstp->rq_addrlen = sizeof(rqstp->rq_addr);
++	len = svc_addr_len(svc_addr(rqstp));
++	if (len < 0)
++		return len;
++	rqstp->rq_addrlen = len;
+ 	if (skb->tstamp.tv64 == 0) {
+ 		skb->tstamp = ktime_get_real();
+ 		/* Don't enable netstamp, sunrpc doesn't
+@@ -1114,14 +1104,13 @@ static struct svc_xprt *svc_tcp_accept(struct svc_xprt *xprt)
+ 	if (!(newsvsk = svc_setup_socket(serv, newsock, &err,
+ 				 (SVC_SOCK_ANONYMOUS | SVC_SOCK_TEMPORARY))))
+ 		goto failed;
+-	memcpy(&newsvsk->sk_remote, sin, slen);
+-	newsvsk->sk_remotelen = slen;
++	svc_xprt_set_remote(&newsvsk->sk_xprt, sin, slen);
+ 	err = kernel_getsockname(newsock, sin, &slen);
+ 	if (unlikely(err < 0)) {
+ 		dprintk("svc_tcp_accept: kernel_getsockname error %d\n", -err);
+ 		slen = offsetof(struct sockaddr, sa_data);
+ 	}
+-	memcpy(&newsvsk->sk_local, sin, slen);
++	svc_xprt_set_local(&newsvsk->sk_xprt, sin, slen);
+ 
+ 	if (serv->sv_stats)
+ 		serv->sv_stats->nettcpconn++;
+@@ -1262,6 +1251,7 @@ svc_tcp_recvfrom(struct svc_rqst *rqstp)
+ 	svsk->sk_reclen = 0;
+ 	svsk->sk_tcplen = 0;
+ 
++	svc_xprt_copy_addrs(rqstp, &svsk->sk_xprt);
+ 	svc_xprt_received(&svsk->sk_xprt);
+ 	if (serv->sv_stats)
+ 		serv->sv_stats->nettcpcnt++;
+@@ -1821,6 +1811,11 @@ int svc_addsock(struct svc_serv *serv,
+ 	else {
+ 		svsk = svc_setup_socket(serv, so, &err, SVC_SOCK_DEFAULTS);
+ 		if (svsk) {
++			struct sockaddr_storage addr;
++			struct sockaddr *sin = (struct sockaddr *)&addr;
++			int salen;
++			if (kernel_getsockname(svsk->sk_sock, sin, &salen) == 0)
++				svc_xprt_set_local(&svsk->sk_xprt, sin, salen);
+ 			svc_xprt_received(&svsk->sk_xprt);
+ 			err = 0;
+ 		}
+@@ -1846,6 +1841,9 @@ svc_create_socket(struct svc_serv *serv, int protocol,
+ 	int		error;
+ 	int		type;
+ 	char		buf[RPC_MAX_ADDRBUFLEN];
++	struct sockaddr_storage addr;
++	struct sockaddr *newsin = (struct sockaddr *)&addr;
++	int		newlen;
+ 
+ 	dprintk("svc: svc_create_socket(%s, %d, %s)\n",
+ 			serv->sv_program->pg_name, protocol,
+@@ -1870,12 +1868,18 @@ svc_create_socket(struct svc_serv *serv, int protocol,
+ 	if (error < 0)
+ 		goto bummer;
+ 
++	newlen = len;
++	error = kernel_getsockname(sock, newsin, &newlen);
++	if (error < 0)
++		goto bummer;
++
+ 	if (protocol == IPPROTO_TCP) {
+ 		if ((error = kernel_listen(sock, 64)) < 0)
+ 			goto bummer;
+ 	}
+ 
+ 	if ((svsk = svc_setup_socket(serv, sock, &error, flags)) != NULL) {
++		svc_xprt_set_local(&svsk->sk_xprt, newsin, newlen);
+ 		svc_xprt_received(&svsk->sk_xprt);
+ 		return (struct svc_xprt *)svsk;
+ 	}
