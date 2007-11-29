@@ -1,131 +1,397 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [RFC,
-	PATCH 28/35] svc: Make svc_age_temp_sockets svc_age_temp_transports
-Date: Mon, 01 Oct 2007 14:28:32 -0500
-Message-ID: <20071001192832.3250.56430.stgit@dell3.ogc.int>
-References: <20071001191426.3250.15371.stgit@dell3.ogc.int>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: neilb@suse.de, bfields@fieldses.org, gnb@sgi.com
-To: nfs@lists.sourceforge.net
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IcQwO-0005dt-36
-	for nfs@lists.sourceforge.net; Mon, 01 Oct 2007 12:28:28 -0700
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]
-	helo=smtp.opengridcomputing.com)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IcQwS-0007So-Jb
-	for nfs@lists.sourceforge.net; Mon, 01 Oct 2007 12:28:33 -0700
-In-Reply-To: <20071001191426.3250.15371.stgit@dell3.ogc.int>
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Subject: [RFC,PATCH 17/38] svc: Make close transport independent
+Date: Thu, 29 Nov 2007 16:56:14 -0600
+Message-ID: <20071129225614.15275.27030.stgit@dell3.ogc.int>
+References: <20071129225510.15275.82660.stgit@dell3.ogc.int>
+Content-Type: text/plain; charset=utf-8; format=fixed
+Cc: linux-nfs@vger.kernel.org
+To: bfields@fieldses.org
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:47408 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1762945AbXK2XUM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2007 18:20:12 -0500
+In-Reply-To: <20071129225510.15275.82660.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
+List-ID: <linux-nfs.vger.kernel.org>
 
 
-This function is transport independent. Change it to use svc_xprt directly
-and change it's name to reflect this.
+Move sk_list and sk_ready to svc_xprt. This involves close because these
+lists are walked by svcs when closing all their transports. So I combined
+the moving of these lists to svc_xprt with making close transport independent.
+
+The svc_force_sock_close has been changed to svc_close_all and takes a list
+as an argument. This removes some svc internals knowledge from the svcs. 
+
+This code races with module removal and transport addition. 
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- net/sunrpc/svcsock.c |   36 +++++++++++++++++++-----------------
- 1 files changed, 19 insertions(+), 17 deletions(-)
+ fs/lockd/svc.c                  |    6 +-
+ fs/nfsd/nfssvc.c                |    4 +
+ include/linux/sunrpc/svc_xprt.h |    2 +
+ include/linux/sunrpc/svcsock.h  |    4 -
+ net/sunrpc/svc.c                |    9 +--
+ net/sunrpc/svc_xprt.c           |    2 +
+ net/sunrpc/svcsock.c            |  105 +++++++++++++++++++--------------------
+ 7 files changed, 63 insertions(+), 69 deletions(-)
 
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 573792f..d6f3c02 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -1690,48 +1690,50 @@ svc_send(struct svc_rqst *rqstp)
-  * a mark-and-sweep algorithm.
-  */
- static void
--svc_age_temp_sockets(unsigned long closure)
-+svc_age_temp_xprts(unsigned long closure)
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index 8686915..a8e79a9 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -221,10 +221,10 @@ lockd(struct svc_rqst *rqstp)
+ 
+ static int find_xprt(struct svc_serv *serv, char *proto)
  {
- 	struct svc_serv *serv = (struct svc_serv *)closure;
 -	struct svc_sock *svsk;
 +	struct svc_xprt *xprt;
- 	struct list_head *le, *next;
- 	LIST_HEAD(to_be_aged);
+ 	int found = 0;
+-	list_for_each_entry(svsk, &serv->sv_permsocks, sk_list)
+-		if (strcmp(svsk->sk_xprt.xpt_class->xcl_name, proto) == 0) {
++	list_for_each_entry(xprt, &serv->sv_permsocks, xpt_list)
++		if (strcmp(xprt->xpt_class->xcl_name, proto) == 0) {
+ 			found = 1;
+ 			break;
+ 		}
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index a828b0b..9647b0f 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -155,8 +155,8 @@ static int killsig;	/* signal that was used to kill last nfsd */
+ static void nfsd_last_thread(struct svc_serv *serv)
+ {
+ 	/* When last nfsd thread exits we need to do some clean-up */
+-	struct svc_sock *svsk;
+-	list_for_each_entry(svsk, &serv->sv_permsocks, sk_list)
++	struct svc_xprt *xprt;
++	list_for_each_entry(xprt, &serv->sv_permsocks, xpt_list)
+ 		lockd_down();
+ 	nfsd_serv = NULL;
+ 	nfsd_racache_shutdown();
+diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+index 4f7dbbc..21fa6ad 100644
+--- a/include/linux/sunrpc/svc_xprt.h
++++ b/include/linux/sunrpc/svc_xprt.h
+@@ -36,6 +36,8 @@ struct svc_xprt {
+ 	struct svc_xprt_class	*xpt_class;
+ 	struct svc_xprt_ops	*xpt_ops;
+ 	struct kref		xpt_ref;
++	struct list_head	xpt_list;
++	struct list_head	xpt_ready;
+ 	unsigned long		xpt_flags;
+ #define	XPT_BUSY	0		/* enqueued/receiving */
+ #define	XPT_CONN	1		/* conn pending */
+diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
+index 92d4cc9..060508b 100644
+--- a/include/linux/sunrpc/svcsock.h
++++ b/include/linux/sunrpc/svcsock.h
+@@ -17,8 +17,6 @@
+  */
+ struct svc_sock {
+ 	struct svc_xprt		sk_xprt;
+-	struct list_head	sk_ready;	/* list of ready sockets */
+-	struct list_head	sk_list;	/* list of all sockets */
+ 	struct socket *		sk_sock;	/* berkeley socket layer */
+ 	struct sock *		sk_sk;		/* INET layer */
  
--	dprintk("svc_age_temp_sockets\n");
-+	dprintk("svc_age_temp_xprts\n");
+@@ -51,7 +49,7 @@ struct svc_sock {
+ /*
+  * Function prototypes.
+  */
+-void		svc_force_close_socket(struct svc_sock *);
++void		svc_close_all(struct list_head *);
+ int		svc_recv(struct svc_rqst *, long);
+ int		svc_send(struct svc_rqst *);
+ void		svc_drop(struct svc_rqst *);
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index 4e084a2..07c9d8a 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -458,9 +458,6 @@ svc_create_pooled(struct svc_program *prog, unsigned int bufsize,
+ void
+ svc_destroy(struct svc_serv *serv)
+ {
+-	struct svc_sock	*svsk;
+-	struct svc_sock *tmp;
+-
+ 	dprintk("svc: svc_destroy(%s, %d)\n",
+ 				serv->sv_program->pg_name,
+ 				serv->sv_nrthreads);
+@@ -475,14 +472,12 @@ svc_destroy(struct svc_serv *serv)
  
- 	if (!spin_trylock_bh(&serv->sv_lock)) {
- 		/* busy, try again 1 sec later */
--		dprintk("svc_age_temp_sockets: busy\n");
-+		dprintk("svc_age_temp_xprts: busy\n");
- 		mod_timer(&serv->sv_temptimer, jiffies + HZ);
- 		return;
+ 	del_timer_sync(&serv->sv_temptimer);
+ 
+-	list_for_each_entry_safe(svsk, tmp, &serv->sv_tempsocks, sk_list)
+-		svc_force_close_socket(svsk);
++	svc_close_all(&serv->sv_tempsocks);
+ 
+ 	if (serv->sv_shutdown)
+ 		serv->sv_shutdown(serv);
+ 
+-	list_for_each_entry_safe(svsk, tmp, &serv->sv_permsocks, sk_list)
+-		svc_force_close_socket(svsk);
++	svc_close_all(&serv->sv_permsocks);
+ 
+ 	BUG_ON(!list_empty(&serv->sv_permsocks));
+ 	BUG_ON(!list_empty(&serv->sv_tempsocks));
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index e366add..bbdada7 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -110,6 +110,8 @@ void svc_xprt_init(struct svc_xprt_class *xcl, struct svc_xprt *xprt,
+ 	xprt->xpt_ops = xcl->xcl_ops;
+ 	kref_init(&xprt->xpt_ref);
+ 	xprt->xpt_server = serv;
++	INIT_LIST_HEAD(&xprt->xpt_list);
++	INIT_LIST_HEAD(&xprt->xpt_ready);
+ }
+ EXPORT_SYMBOL_GPL(svc_xprt_init);
+ 
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 3da7933..14f72c0 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -81,11 +81,11 @@
+ 
+ static struct svc_sock *svc_setup_socket(struct svc_serv *, struct socket *,
+ 					 int *errp, int flags);
+-static void		svc_delete_socket(struct svc_sock *svsk);
++static void		svc_delete_xprt(struct svc_xprt *xprt);
+ static void		svc_udp_data_ready(struct sock *, int);
+ static int		svc_udp_recvfrom(struct svc_rqst *);
+ static int		svc_udp_sendto(struct svc_rqst *);
+-static void		svc_close_socket(struct svc_sock *svsk);
++static void		svc_close_xprt(struct svc_xprt *xprt);
+ static void		svc_sock_detach(struct svc_xprt *);
+ static void		svc_sock_free(struct svc_xprt *);
+ 
+@@ -309,7 +309,7 @@ svc_sock_enqueue(struct svc_sock *svsk)
+ 		wake_up(&rqstp->rq_wait);
+ 	} else {
+ 		dprintk("svc: socket %p put into queue\n", svsk->sk_sk);
+-		list_add_tail(&svsk->sk_ready, &pool->sp_sockets);
++		list_add_tail(&svsk->sk_xprt.xpt_ready, &pool->sp_sockets);
+ 		BUG_ON(svsk->sk_xprt.xpt_pool != pool);
+ 	}
+ 
+@@ -329,8 +329,8 @@ svc_sock_dequeue(struct svc_pool *pool)
+ 		return NULL;
+ 
+ 	svsk = list_entry(pool->sp_sockets.next,
+-			  struct svc_sock, sk_ready);
+-	list_del_init(&svsk->sk_ready);
++			  struct svc_sock, sk_xprt.xpt_ready);
++	list_del_init(&svsk->sk_xprt.xpt_ready);
+ 
+ 	dprintk("svc: socket %p dequeued, inuse=%d\n",
+ 		svsk->sk_sk, atomic_read(&svsk->sk_xprt.xpt_ref.refcount));
+@@ -588,7 +588,7 @@ svc_sock_names(char *buf, struct svc_serv *serv, char *toclose)
+ 	if (!serv)
+ 		return 0;
+ 	spin_lock_bh(&serv->sv_lock);
+-	list_for_each_entry(svsk, &serv->sv_permsocks, sk_list) {
++	list_for_each_entry(svsk, &serv->sv_permsocks, sk_xprt.xpt_list) {
+ 		int onelen = one_sock_name(buf+len, svsk);
+ 		if (toclose && strcmp(toclose, buf+len) == 0)
+ 			closesk = svsk;
+@@ -600,7 +600,7 @@ svc_sock_names(char *buf, struct svc_serv *serv, char *toclose)
+ 		/* Should unregister with portmap, but you cannot
+ 		 * unregister just one protocol...
+ 		 */
+-		svc_close_socket(closesk);
++		svc_close_xprt(&closesk->sk_xprt);
+ 	else if (toclose)
+ 		return -ENOENT;
+ 	return len;
+@@ -1273,7 +1273,7 @@ svc_tcp_recvfrom(struct svc_rqst *rqstp)
+ 	return len;
+ 
+  err_delete:
+-	svc_delete_socket(svsk);
++	svc_delete_xprt(&svsk->sk_xprt);
+ 	return -EAGAIN;
+ 
+  error:
+@@ -1439,12 +1439,12 @@ svc_sock_update_bufs(struct svc_serv *serv)
+ 	spin_lock_bh(&serv->sv_lock);
+ 	list_for_each(le, &serv->sv_permsocks) {
+ 		struct svc_sock *svsk =
+-			list_entry(le, struct svc_sock, sk_list);
++			list_entry(le, struct svc_sock, sk_xprt.xpt_list);
+ 		set_bit(XPT_CHNGBUF, &svsk->sk_xprt.xpt_flags);
+ 	}
+ 	list_for_each(le, &serv->sv_tempsocks) {
+ 		struct svc_sock *svsk =
+-			list_entry(le, struct svc_sock, sk_list);
++			list_entry(le, struct svc_sock, sk_xprt.xpt_list);
+ 		set_bit(XPT_CHNGBUF, &svsk->sk_xprt.xpt_flags);
+ 	}
+ 	spin_unlock_bh(&serv->sv_lock);
+@@ -1486,7 +1486,7 @@ svc_check_conn_limits(struct svc_serv *serv)
+ 			 */
+ 			svsk = list_entry(serv->sv_tempsocks.prev,
+ 					  struct svc_sock,
+-					  sk_list);
++					  sk_xprt.xpt_list);
+ 			set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
+ 			svc_xprt_get(&svsk->sk_xprt);
+ 		}
+@@ -1593,7 +1593,7 @@ svc_recv(struct svc_rqst *rqstp, long timeout)
+ 	len = 0;
+ 	if (test_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags)) {
+ 		dprintk("svc_recv: found XPT_CLOSE\n");
+-		svc_delete_socket(svsk);
++		svc_delete_xprt(&svsk->sk_xprt);
+ 	} else if (test_bit(XPT_LISTENER, &svsk->sk_xprt.xpt_flags)) {
+ 		struct svc_xprt *newxpt;
+ 		newxpt = svsk->sk_xprt.xpt_ops->xpo_accept(&svsk->sk_xprt);
+@@ -1702,7 +1702,7 @@ svc_age_temp_sockets(unsigned long closure)
  	}
  
  	list_for_each_safe(le, next, &serv->sv_tempsocks) {
--		svsk = list_entry(le, struct svc_sock, sk_xprt.xpt_list);
-+		xprt = list_entry(le, struct svc_xprt, xpt_list);
+-		svsk = list_entry(le, struct svc_sock, sk_list);
++		svsk = list_entry(le, struct svc_sock, sk_xprt.xpt_list);
  
--		if (!test_and_set_bit(XPT_OLD, &svsk->sk_xprt.xpt_flags))
-+		/* First time through, just mark it OLD. Second time
-+		 * through, close it. */
-+		if (!test_and_set_bit(XPT_OLD, &xprt->xpt_flags))
+ 		if (!test_and_set_bit(XPT_OLD, &svsk->sk_xprt.xpt_flags))
  			continue;
--		if (atomic_read(&svsk->sk_xprt.xpt_ref.refcount) > 1
--		    || test_bit(XPT_BUSY, &svsk->sk_xprt.xpt_flags))
-+		if (atomic_read(&xprt->xpt_ref.refcount) > 1
-+		    || test_bit(XPT_BUSY, &xprt->xpt_flags))
- 			continue;
--		svc_xprt_get(&svsk->sk_xprt);
-+		svc_xprt_get(xprt);
- 		list_move(le, &to_be_aged);
--		set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
--		set_bit(XPT_DETACHED, &svsk->sk_xprt.xpt_flags);
-+		set_bit(XPT_CLOSE, &xprt->xpt_flags);
-+		set_bit(XPT_DETACHED, &xprt->xpt_flags);
- 	}
- 	spin_unlock_bh(&serv->sv_lock);
+@@ -1718,9 +1718,9 @@ svc_age_temp_sockets(unsigned long closure)
  
  	while (!list_empty(&to_be_aged)) {
  		le = to_be_aged.next;
--		/* fiddling the sk_xprt.xpt_list node is safe 'cos we're XPT_DETACHED */
-+		/* fiddling the xpt_list node is safe 'cos we're XPT_DETACHED */
+-		/* fiddling the sk_list node is safe 'cos we're XPT_DETACHED */
++		/* fiddling the sk_xprt.xpt_list node is safe 'cos we're XPT_DETACHED */
  		list_del_init(le);
--		svsk = list_entry(le, struct svc_sock, sk_xprt.xpt_list);
-+		xprt = list_entry(le, struct svc_xprt, xpt_list);
+-		svsk = list_entry(le, struct svc_sock, sk_list);
++		svsk = list_entry(le, struct svc_sock, sk_xprt.xpt_list);
  
--		dprintk("queuing svsk %p for closing\n", svsk);
-+		dprintk("queuing xprt %p for closing\n", xprt);
+ 		dprintk("queuing svsk %p for closing, %lu seconds old\n",
+ 			svsk, get_seconds() - svsk->sk_lastrecv);
+@@ -1774,7 +1774,6 @@ static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
+ 	svsk->sk_lastrecv = get_seconds();
+ 	spin_lock_init(&svsk->sk_lock);
+ 	INIT_LIST_HEAD(&svsk->sk_deferred);
+-	INIT_LIST_HEAD(&svsk->sk_ready);
+ 	mutex_init(&svsk->sk_mutex);
  
- 		/* a thread will dequeue and close it soon */
--		svc_xprt_enqueue(&svsk->sk_xprt);
--		svc_xprt_put(&svsk->sk_xprt);
-+		svc_xprt_enqueue(xprt);
-+		svc_xprt_put(xprt);
- 	}
- 
- 	mod_timer(&serv->sv_temptimer, jiffies + svc_conn_age_period * HZ);
-@@ -1789,7 +1791,7 @@ static struct svc_sock *svc_setup_socket
+ 	/* Initialize the socket */
+@@ -1786,7 +1785,7 @@ static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
+ 	spin_lock_bh(&serv->sv_lock);
+ 	if (is_temporary) {
+ 		set_bit(XPT_TEMP, &svsk->sk_xprt.xpt_flags);
+-		list_add(&svsk->sk_list, &serv->sv_tempsocks);
++		list_add(&svsk->sk_xprt.xpt_list, &serv->sv_tempsocks);
  		serv->sv_tmpcnt++;
  		if (serv->sv_temptimer.function == NULL) {
  			/* setup timer to age temp sockets */
--			setup_timer(&serv->sv_temptimer, svc_age_temp_sockets,
-+			setup_timer(&serv->sv_temptimer, svc_age_temp_xprts,
- 					(unsigned long)serv);
- 			mod_timer(&serv->sv_temptimer,
- 					jiffies + svc_conn_age_period * HZ);
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Microsoft
-Defy all challenges. Microsoft(R) Visual Studio 2005.
-http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+@@ -1797,7 +1796,7 @@ static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
+ 		}
+ 	} else {
+ 		clear_bit(XPT_TEMP, &svsk->sk_xprt.xpt_flags);
+-		list_add(&svsk->sk_list, &serv->sv_permsocks);
++		list_add(&svsk->sk_xprt.xpt_list, &serv->sv_permsocks);
+ 	}
+ 	spin_unlock_bh(&serv->sv_lock);
+ 
+@@ -1928,66 +1927,64 @@ static void svc_sock_free(struct svc_xprt *xprt)
+ }
+ 
+ /*
+- * Remove a dead socket
++ * Remove a dead transport
+  */
+ static void
+-svc_delete_socket(struct svc_sock *svsk)
++svc_delete_xprt(struct svc_xprt *xprt)
+ {
+-	struct svc_serv	*serv;
+-	struct sock	*sk;
++	struct svc_serv	*serv = xprt->xpt_server;
+ 
+-	dprintk("svc: svc_delete_socket(%p)\n", svsk);
+-
+-	serv = svsk->sk_xprt.xpt_server;
+-	sk = svsk->sk_sk;
+-
+-	svsk->sk_xprt.xpt_ops->xpo_detach(&svsk->sk_xprt);
++	dprintk("svc: svc_delete_xprt(%p)\n", xprt);
++	xprt->xpt_ops->xpo_detach(xprt);
+ 
+ 	spin_lock_bh(&serv->sv_lock);
+-
+-	if (!test_and_set_bit(XPT_DETACHED, &svsk->sk_xprt.xpt_flags))
+-		list_del_init(&svsk->sk_list);
++	if (!test_and_set_bit(XPT_DETACHED, &xprt->xpt_flags))
++		list_del_init(&xprt->xpt_list);
+ 	/*
+-	 * We used to delete the svc_sock from whichever list
+-	 * it's sk_ready node was on, but we don't actually
++	 * We used to delete the transport from whichever list
++	 * it's sk_xprt.xpt_ready node was on, but we don't actually
+ 	 * need to.  This is because the only time we're called
+ 	 * while still attached to a queue, the queue itself
+ 	 * is about to be destroyed (in svc_destroy).
+ 	 */
+-	if (!test_and_set_bit(XPT_DEAD, &svsk->sk_xprt.xpt_flags)) {
+-		BUG_ON(atomic_read(&svsk->sk_xprt.xpt_ref.refcount) < 2);
+-		svc_xprt_put(&svsk->sk_xprt);
+-		if (test_bit(XPT_TEMP, &svsk->sk_xprt.xpt_flags))
++	if (!test_and_set_bit(XPT_DEAD, &xprt->xpt_flags)) {
++		BUG_ON(atomic_read(&xprt->xpt_ref.refcount) < 2);
++		svc_xprt_put(xprt);
++		if (test_bit(XPT_TEMP, &xprt->xpt_flags))
+ 			serv->sv_tmpcnt--;
+ 	}
+-
+ 	spin_unlock_bh(&serv->sv_lock);
+ }
+ 
+-static void svc_close_socket(struct svc_sock *svsk)
++static void svc_close_xprt(struct svc_xprt *xprt)
+ {
+-	set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
+-	if (test_and_set_bit(XPT_BUSY, &svsk->sk_xprt.xpt_flags))
++	set_bit(XPT_CLOSE, &xprt->xpt_flags);
++	if (test_and_set_bit(XPT_BUSY, &xprt->xpt_flags))
+ 		/* someone else will have to effect the close */
+ 		return;
+ 
+-	svc_xprt_get(&svsk->sk_xprt);
+-	svc_delete_socket(svsk);
+-	clear_bit(XPT_BUSY, &svsk->sk_xprt.xpt_flags);
+-	svc_xprt_put(&svsk->sk_xprt);
++	svc_xprt_get(xprt);
++	svc_delete_xprt(xprt);
++	clear_bit(XPT_BUSY, &xprt->xpt_flags);
++	svc_xprt_put(xprt);
+ }
+ 
+-void svc_force_close_socket(struct svc_sock *svsk)
++void svc_close_all(struct list_head *xprt_list)
+ {
+-	set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
+-	if (test_bit(XPT_BUSY, &svsk->sk_xprt.xpt_flags)) {
+-		/* Waiting to be processed, but no threads left,
+-		 * So just remove it from the waiting list
+-		 */
+-		list_del_init(&svsk->sk_ready);
+-		clear_bit(XPT_BUSY, &svsk->sk_xprt.xpt_flags);
++	struct svc_xprt *xprt;
++	struct svc_xprt *tmp;
++
++	list_for_each_entry_safe(xprt, tmp, xprt_list, xpt_list) {
++		set_bit(XPT_CLOSE, &xprt->xpt_flags);
++		if (test_bit(XPT_BUSY, &xprt->xpt_flags)) {
++			/* Waiting to be processed, but no threads left,
++			 * So just remove it from the waiting list
++			 */
++			list_del_init(&xprt->xpt_ready);
++			clear_bit(XPT_BUSY, &xprt->xpt_flags);
++		}
++		svc_close_xprt(xprt);
+ 	}
+-	svc_close_socket(svsk);
+ }
+ 
+ /*
