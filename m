@@ -1,70 +1,129 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [RFC,PATCH 22/38] svc: Remove sk_lastrecv
-Date: Thu, 29 Nov 2007 16:54:19 -0600
-Message-ID: <20071129225419.15107.29434.stgit@dell3.ogc.int>
+Subject: [RFC,PATCH 06/38] svc: Add transport specific xpo_release function
+Date: Thu, 29 Nov 2007 16:53:43 -0600
+Message-ID: <20071129225343.15107.80518.stgit@dell3.ogc.int>
 References: <20071129225142.15107.46200.stgit@dell3.ogc.int>
 Content-Type: text/plain; charset=utf-8; format=fixed
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:47420 "EHLO
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:47411 "EHLO
 	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1763307AbXK2XUS (ORCPT
+	by vger.kernel.org with ESMTP id S1763396AbXK2XUS (ORCPT
 	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2007 18:20:18 -0500
 In-Reply-To: <20071129225142.15107.46200.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-With the implementation of the new mark and sweep algorithm for shutting
-down old connections, the sk_lastrecv field is no longer needed.
+The svc_sock_release function releases pages allocated to a thread. For
+UDP, this also returns the receive skb to the stack. For RDMA it will 
+post a receive WR and bump the client credit count. 
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- include/linux/sunrpc/svcsock.h |    1 -
- net/sunrpc/svcsock.c           |    5 +----
- 2 files changed, 1 insertions(+), 5 deletions(-)
+ include/linux/sunrpc/svc.h      |    2 +-
+ include/linux/sunrpc/svc_xprt.h |    1 +
+ net/sunrpc/svcsock.c            |   17 +++++++++--------
+ 3 files changed, 11 insertions(+), 9 deletions(-)
 
-diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
-index 41c2dfa..406d003 100644
---- a/include/linux/sunrpc/svcsock.h
-+++ b/include/linux/sunrpc/svcsock.h
-@@ -33,7 +33,6 @@ struct svc_sock {
- 	/* private TCP part */
- 	int			sk_reclen;	/* length of record */
- 	int			sk_tcplen;	/* current read length */
--	time_t			sk_lastrecv;	/* time of last received request */
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 37f7448..cfb2652 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -217,7 +217,7 @@ struct svc_rqst {
+ 	struct auth_ops *	rq_authop;	/* authentication flavour */
+ 	u32			rq_flavor;	/* pseudoflavor */
+ 	struct svc_cred		rq_cred;	/* auth info */
+-	struct sk_buff *	rq_skbuff;	/* fast recv inet buffer */
++	void *			rq_xprt_ctxt;	/* transport specific context ptr */
+ 	struct svc_deferred_req*rq_deferred;	/* deferred request we are replaying */
  
- 	/* cache of various info for TCP sockets */
- 	void			*sk_info_authunix;
+ 	struct xdr_buf		rq_arg;
+diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+index 81daa39..e3bd7b1 100644
+--- a/include/linux/sunrpc/svc_xprt.h
++++ b/include/linux/sunrpc/svc_xprt.h
+@@ -12,6 +12,7 @@
+ struct svc_xprt_ops {
+ 	int		(*xpo_recvfrom)(struct svc_rqst *);
+ 	int		(*xpo_sendto)(struct svc_rqst *);
++	void		(*xpo_release_rqst)(struct svc_rqst *);
+ };
+ 
+ struct svc_xprt_class {
 diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 0015839..a1e8c1a 100644
+index 9c06b15..b24c084 100644
 --- a/net/sunrpc/svcsock.c
 +++ b/net/sunrpc/svcsock.c
-@@ -1622,7 +1622,6 @@ svc_recv(struct svc_rqst *rqstp, long timeout)
- 		svc_sock_release(rqstp);
- 		return -EAGAIN;
+@@ -185,14 +185,13 @@ svc_thread_dequeue(struct svc_pool *pool, struct svc_rqst *rqstp)
+ /*
+  * Release an skbuff after use
+  */
+-static inline void
+-svc_release_skb(struct svc_rqst *rqstp)
++static void svc_release_skb(struct svc_rqst *rqstp)
+ {
+-	struct sk_buff *skb = rqstp->rq_skbuff;
++	struct sk_buff *skb = rqstp->rq_xprt_ctxt;
+ 	struct svc_deferred_req *dr = rqstp->rq_deferred;
+ 
+ 	if (skb) {
+-		rqstp->rq_skbuff = NULL;
++		rqstp->rq_xprt_ctxt = NULL;
+ 
+ 		dprintk("svc: service %p, releasing skb %p\n", rqstp, skb);
+ 		skb_free_datagram(rqstp->rq_sock->sk_sk, skb);
+@@ -395,7 +394,7 @@ svc_sock_release(struct svc_rqst *rqstp)
+ {
+ 	struct svc_sock	*svsk = rqstp->rq_sock;
+ 
+-	svc_release_skb(rqstp);
++	rqstp->rq_xprt->xpt_ops->xpo_release_rqst(rqstp);
+ 
+ 	svc_free_res_pages(rqstp);
+ 	rqstp->rq_res.page_len = 0;
+@@ -867,7 +866,7 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
+ 			skb_free_datagram(svsk->sk_sk, skb);
+ 			return 0;
+ 		}
+-		rqstp->rq_skbuff = skb;
++		rqstp->rq_xprt_ctxt = skb;
  	}
--	svsk->sk_lastrecv = get_seconds();
- 	clear_bit(XPT_OLD, &svsk->sk_xprt.xpt_flags);
  
- 	rqstp->rq_secure = svc_port_is_privileged(svc_addr(rqstp));
-@@ -1722,8 +1721,7 @@ svc_age_temp_sockets(unsigned long closure)
- 		list_del_init(le);
- 		svsk = list_entry(le, struct svc_sock, sk_xprt.xpt_list);
+ 	rqstp->rq_arg.page_base = 0;
+@@ -903,6 +902,7 @@ svc_udp_sendto(struct svc_rqst *rqstp)
+ static struct svc_xprt_ops svc_udp_ops = {
+ 	.xpo_recvfrom = svc_udp_recvfrom,
+ 	.xpo_sendto = svc_udp_sendto,
++	.xpo_release_rqst = svc_release_skb,
+ };
  
--		dprintk("queuing svsk %p for closing, %lu seconds old\n",
--			svsk, get_seconds() - svsk->sk_lastrecv);
-+		dprintk("queuing svsk %p for closing\n", svsk);
+ static struct svc_xprt_class svc_udp_class = {
+@@ -1291,7 +1291,7 @@ svc_tcp_recvfrom(struct svc_rqst *rqstp)
+ 		rqstp->rq_arg.page_len = len - rqstp->rq_arg.head[0].iov_len;
+ 	}
  
- 		/* a thread will dequeue and close it soon */
- 		svc_xprt_enqueue(&svsk->sk_xprt);
-@@ -1771,7 +1769,6 @@ static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
- 	svsk->sk_ostate = inet->sk_state_change;
- 	svsk->sk_odata = inet->sk_data_ready;
- 	svsk->sk_owspace = inet->sk_write_space;
--	svsk->sk_lastrecv = get_seconds();
- 	spin_lock_init(&svsk->sk_lock);
- 	INIT_LIST_HEAD(&svsk->sk_deferred);
+-	rqstp->rq_skbuff      = NULL;
++	rqstp->rq_xprt_ctxt   = NULL;
+ 	rqstp->rq_prot	      = IPPROTO_TCP;
  
+ 	/* Reset TCP read info */
+@@ -1357,6 +1357,7 @@ svc_tcp_sendto(struct svc_rqst *rqstp)
+ static struct svc_xprt_ops svc_tcp_ops = {
+ 	.xpo_recvfrom = svc_tcp_recvfrom,
+ 	.xpo_sendto = svc_tcp_sendto,
++	.xpo_release_rqst = svc_release_skb,
+ };
+ 
+ static struct svc_xprt_class svc_tcp_class = {
+@@ -1578,7 +1579,7 @@ svc_send(struct svc_rqst *rqstp)
+ 	}
+ 
+ 	/* release the receive skb before sending the reply */
+-	svc_release_skb(rqstp);
++	rqstp->rq_xprt->xpt_ops->xpo_release_rqst(rqstp);
+ 
+ 	/* calculate over-all length */
+ 	xb = & rqstp->rq_res;
