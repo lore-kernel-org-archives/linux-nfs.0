@@ -1,51 +1,103 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: Re: [RFC,PATCH 00/38] SVC Transport Switch
-Date: Thu, 29 Nov 2007 17:18:48 -0600
-Message-ID: <1196378328.16169.35.camel@trinity.ogc.int>
-References: <20071129223917.14563.77633.stgit@dell3.ogc.int>
-Mime-Version: 1.0
-Content-Type: text/plain
+Subject: [RFC,PATCH 18/38] svc: Move sk_reserved to svc_xprt
+Date: Thu, 29 Nov 2007 16:54:11 -0600
+Message-ID: <20071129225410.15107.77007.stgit@dell3.ogc.int>
+References: <20071129225142.15107.46200.stgit@dell3.ogc.int>
+Content-Type: text/plain; charset=utf-8; format=fixed
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:45788 "EHLO
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:47401 "EHLO
 	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1761184AbXK2XOr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2007 18:14:47 -0500
-In-Reply-To: <20071129223917.14563.77633.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
+	by vger.kernel.org with ESMTP id S1760905AbXK2XUI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2007 18:20:08 -0500
+In-Reply-To: <20071129225142.15107.46200.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-I finger fumbled Bruce's address in the first set. I sent another one
-because I wanted people to be able to reply and get Bruce's correct 
-address information in the reply. 
+This functionally trivial patch moves the sk_reserved field to the 
+transport independent svc_xprt structure. 
 
-Please forgive me for the clutter I've caused. 
-Tom
+Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+---
 
-On Thu, 2007-11-29 at 16:39 -0600, Tom Tucker wrote:
-> The following series implements a pluggable transport switch for
-> RPC servers. This patchset is a rollup of the original
-> plus incremental patches.
-> 
-> In addition to the incremental change rollup:
-> 
-> - The address management logic in svc_xprt was cleaned up a
->   based on feedback from Chuck Lever,
-> 
-> - A race was fixed whereby UDP RPC from different clients in parallel
->   could corrupt each other's addresses.
-> 
-> - Changes were made to the sysctl implementation to comply 
->   with the new 2.6.24 requirements regarding sysctl ids.
-> 
-> The following testing was done:
-> 
-> - Connectathon on V3 and V4 on TCP, UDP and RDMA mounts
-> 
-> - Kernel build on V3 RDMA mount.
-> 
-> This patchset is against the 2.6.24-rc3 kernel tree.
-> 
+ include/linux/sunrpc/svc_xprt.h |    1 +
+ include/linux/sunrpc/svcsock.h  |    2 --
+ net/sunrpc/svcsock.c            |   10 +++++-----
+ 3 files changed, 6 insertions(+), 7 deletions(-)
 
+diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+index 21fa6ad..c9892d5 100644
+--- a/include/linux/sunrpc/svc_xprt.h
++++ b/include/linux/sunrpc/svc_xprt.h
+@@ -53,6 +53,7 @@ struct svc_xprt {
+ 
+ 	struct svc_pool		*xpt_pool;	/* current pool iff queued */
+ 	struct svc_serv		*xpt_server;	/* service for transport */
++	atomic_t    	    	xpt_reserved;	/* space on outq that is rsvd */
+ };
+ 
+ int	svc_reg_xprt_class(struct svc_xprt_class *);
+diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
+index 060508b..ba41f11 100644
+--- a/include/linux/sunrpc/svcsock.h
++++ b/include/linux/sunrpc/svcsock.h
+@@ -20,8 +20,6 @@ struct svc_sock {
+ 	struct socket *		sk_sock;	/* berkeley socket layer */
+ 	struct sock *		sk_sk;		/* INET layer */
+ 
+-	atomic_t    	    	sk_reserved;	/* space on outq that is reserved */
+-
+ 	spinlock_t		sk_lock;	/* protects sk_deferred and
+ 						 * sk_info_authunix */
+ 	struct list_head	sk_deferred;	/* deferred requests that need to
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 14f72c0..19d0dee 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -304,7 +304,7 @@ svc_sock_enqueue(struct svc_sock *svsk)
+ 		rqstp->rq_sock = svsk;
+ 		svc_xprt_get(&svsk->sk_xprt);
+ 		rqstp->rq_reserved = serv->sv_max_mesg;
+-		atomic_add(rqstp->rq_reserved, &svsk->sk_reserved);
++		atomic_add(rqstp->rq_reserved, &svsk->sk_xprt.xpt_reserved);
+ 		BUG_ON(svsk->sk_xprt.xpt_pool != pool);
+ 		wake_up(&rqstp->rq_wait);
+ 	} else {
+@@ -369,7 +369,7 @@ void svc_reserve(struct svc_rqst *rqstp, int space)
+ 
+ 	if (space < rqstp->rq_reserved) {
+ 		struct svc_sock *svsk = rqstp->rq_sock;
+-		atomic_sub((rqstp->rq_reserved - space), &svsk->sk_reserved);
++		atomic_sub((rqstp->rq_reserved - space), &svsk->sk_xprt.xpt_reserved);
+ 		rqstp->rq_reserved = space;
+ 
+ 		svc_sock_enqueue(svsk);
+@@ -897,7 +897,7 @@ static int svc_udp_has_wspace(struct svc_xprt *xprt)
+ 	 * sock space.
+ 	 */
+ 	set_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
+-	required = atomic_read(&svsk->sk_reserved) + serv->sv_max_mesg;
++	required = atomic_read(&svsk->sk_xprt.xpt_reserved) + serv->sv_max_mesg;
+ 	if (required*2 > sock_wspace(svsk->sk_sk))
+ 		return 0;
+ 	clear_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
+@@ -1344,7 +1344,7 @@ static int svc_tcp_has_wspace(struct svc_xprt *xprt)
+ 	 * sock space.
+ 	 */
+ 	set_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
+-	required = atomic_read(&svsk->sk_reserved) + serv->sv_max_mesg;
++	required = atomic_read(&svsk->sk_xprt.xpt_reserved) + serv->sv_max_mesg;
+ 	if (required*2 > sk_stream_wspace(svsk->sk_sk))
+ 		return 0;
+ 	clear_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
+@@ -1561,7 +1561,7 @@ svc_recv(struct svc_rqst *rqstp, long timeout)
+ 		rqstp->rq_sock = svsk;
+ 		svc_xprt_get(&svsk->sk_xprt);
+ 		rqstp->rq_reserved = serv->sv_max_mesg;
+-		atomic_add(rqstp->rq_reserved, &svsk->sk_reserved);
++		atomic_add(rqstp->rq_reserved, &svsk->sk_xprt.xpt_reserved);
+ 	} else {
+ 		/* No data pending. Go to sleep */
+ 		svc_thread_enqueue(pool, rqstp);
