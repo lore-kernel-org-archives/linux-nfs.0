@@ -1,168 +1,124 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [RFC,PATCH 02/38] svc: Make svc_sock the tcp/udp transport
-Date: Thu, 29 Nov 2007 16:39:58 -0600
-Message-ID: <20071129223957.14563.94559.stgit@dell3.ogc.int>
+Subject: [RFC,PATCH 36/38] svc: Add svc API that queries for a transport instance
+Date: Thu, 29 Nov 2007 16:41:09 -0600
+Message-ID: <20071129224109.14563.34563.stgit@dell3.ogc.int>
 References: <20071129223917.14563.77633.stgit@dell3.ogc.int>
 Content-Type: text/plain; charset=utf-8; format=fixed
 Cc: linux-nfs@vger.kernel.org
 To: bfields-ag9A2Eb6PFsgsBAKwltoeQ@public.gmane.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:48886 "EHLO
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:48883 "EHLO
 	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S933701AbXK2XD2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2007 18:03:28 -0500
+	by vger.kernel.org with ESMTP id S933687AbXK2XD3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2007 18:03:29 -0500
 In-Reply-To: <20071129223917.14563.77633.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-Make TCP and UDP svc_sock transports, and register them
-with the svc transport core. 
+Add a new svc function that allows a service to query whether a 
+transport instance has already been created. This is used in lockd 
+to determine whether or not a transport needs to be created when
+a lockd instance is brought up. 
 
-A transport type (svc_sock) has an svc_xprt as its first member, 
-and calls svc_xprt_init to initialize this field.
+Specifying 0 for the address family or port is effectively a wild-card,
+and will result in matching the first transport in the service's list
+that has a matching class name.
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- include/linux/sunrpc/debug.h   |    1 -
- include/linux/sunrpc/svcsock.h |    4 ++++
- net/sunrpc/sunrpc_syms.c       |    4 +++-
- net/sunrpc/svcsock.c           |   33 ++++++++++++++++++++++++++++++++-
- 4 files changed, 39 insertions(+), 3 deletions(-)
+ fs/lockd/svc.c                  |   16 ++--------------
+ include/linux/sunrpc/svc_xprt.h |    2 ++
+ net/sunrpc/svc_xprt.c           |   31 +++++++++++++++++++++++++++++++
+ 3 files changed, 35 insertions(+), 14 deletions(-)
 
-diff --git a/include/linux/sunrpc/debug.h b/include/linux/sunrpc/debug.h
-index 1456a0b..3482a38 100644
---- a/include/linux/sunrpc/debug.h
-+++ b/include/linux/sunrpc/debug.h
-@@ -20,7 +20,6 @@
- #define RPCDBG_BIND		0x0020
- #define RPCDBG_SCHED		0x0040
- #define RPCDBG_TRANS		0x0080
--#define RPCDBG_SVCSOCK		0x0100
- #define RPCDBG_SVCXPRT		0x0100
- #define RPCDBG_SVCDSP		0x0200
- #define RPCDBG_MISC		0x0400
-diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
-index a53e0fa..1878cbe 100644
---- a/include/linux/sunrpc/svcsock.h
-+++ b/include/linux/sunrpc/svcsock.h
-@@ -10,11 +10,13 @@
- #define SUNRPC_SVCSOCK_H
- 
- #include <linux/sunrpc/svc.h>
-+#include <linux/sunrpc/svc_xprt.h>
- 
- /*
-  * RPC server socket.
-  */
- struct svc_sock {
-+	struct svc_xprt		sk_xprt;
- 	struct list_head	sk_ready;	/* list of ready sockets */
- 	struct list_head	sk_list;	/* list of all sockets */
- 	struct socket *		sk_sock;	/* berkeley socket layer */
-@@ -78,6 +80,8 @@ int		svc_addsock(struct svc_serv *serv,
- 			    int fd,
- 			    char *name_return,
- 			    int *proto);
-+void		svc_init_xprt_sock(void);
-+void		svc_cleanup_xprt_sock(void);
- 
- /*
-  * svc_makesock socket characteristics
-diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
-index 33d89e8..79ea05f 100644
---- a/net/sunrpc/sunrpc_syms.c
-+++ b/net/sunrpc/sunrpc_syms.c
-@@ -151,7 +151,8 @@ init_sunrpc(void)
- #endif
- 	cache_register(&ip_map_cache);
- 	cache_register(&unix_gid_cache);
--	init_socket_xprt();
-+	svc_init_xprt_sock();	/* svc sock transport */
-+	init_socket_xprt();	/* clnt sock transport */
- 	rpcauth_init_module();
- out:
- 	return err;
-@@ -162,6 +163,7 @@ cleanup_sunrpc(void)
- {
- 	rpcauth_remove_module();
- 	cleanup_socket_xprt();
-+	svc_cleanup_xprt_sock();
- 	unregister_rpc_pipefs();
- 	rpc_destroy_mempool();
- 	if (cache_unregister(&ip_map_cache))
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index c75bffe..4755467 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -75,7 +75,7 @@
-  *
-  */
- 
--#define RPCDBG_FACILITY	RPCDBG_SVCSOCK
-+#define RPCDBG_FACILITY	RPCDBG_SVCXPRT
- 
- 
- static struct svc_sock *svc_setup_socket(struct svc_serv *, struct socket *,
-@@ -900,12 +900,21 @@ svc_udp_sendto(struct svc_rqst *rqstp)
- 	return error;
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index a8e79a9..470af01 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -219,18 +219,6 @@ lockd(struct svc_rqst *rqstp)
+ 	module_put_and_exit(0);
  }
  
-+static struct svc_xprt_ops svc_udp_ops = {
-+};
-+
-+static struct svc_xprt_class svc_udp_class = {
-+	.xcl_name = "udp",
-+	.xcl_ops = &svc_udp_ops,
-+};
-+
- static void
- svc_udp_init(struct svc_sock *svsk)
+-static int find_xprt(struct svc_serv *serv, char *proto)
+-{
+-	struct svc_xprt *xprt;
+-	int found = 0;
+-	list_for_each_entry(xprt, &serv->sv_permsocks, xpt_list)
+-		if (strcmp(xprt->xpt_class->xcl_name, proto) == 0) {
+-			found = 1;
+-			break;
+-		}
+-	return found;
+-}
+-
+ /*
+  * Make any sockets that are needed but not present.
+  * If nlm_udpport or nlm_tcpport were set as module
+@@ -242,11 +230,11 @@ static int make_socks(struct svc_serv *serv, int proto)
+ 	int err = 0;
+ 
+ 	if (proto == IPPROTO_UDP || nlm_udpport)
+-		if (!find_xprt(serv, "udp"))
++		if (!svc_find_xprt(serv, "udp", 0, 0))
+ 			err = svc_create_xprt(serv, "udp", nlm_udpport,
+ 					      SVC_SOCK_DEFAULTS);
+ 	if (err >= 0 && (proto == IPPROTO_TCP || nlm_tcpport))
+-		if (!find_xprt(serv, "tcp"))
++		if (!svc_find_xprt(serv, "tcp", 0, 0))
+ 			err = svc_create_xprt(serv, "tcp", nlm_tcpport,
+ 					      SVC_SOCK_DEFAULTS);
+ 
+diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+index c2fa41d..30fcc82 100644
+--- a/include/linux/sunrpc/svc_xprt.h
++++ b/include/linux/sunrpc/svc_xprt.h
+@@ -80,6 +80,8 @@ void	svc_xprt_enqueue(struct svc_xprt *xprt);
+ int	svc_port_is_privileged(struct sockaddr *sin);
+ void	svc_delete_xprt(struct svc_xprt *xprt);
+ int	svc_print_xprts(char *buf, int maxlen);
++struct svc_xprt *
++svc_find_xprt(struct svc_serv *serv, char *xprt_class, int af, int port);
+ 
+ static inline void svc_xprt_get(struct svc_xprt *xprt)
  {
- 	int one = 1;
- 	mm_segment_t oldfs;
- 
-+	svc_xprt_init(&svc_udp_class, &svsk->sk_xprt);
- 	svsk->sk_sk->sk_data_ready = svc_udp_data_ready;
- 	svsk->sk_sk->sk_write_space = svc_write_space;
- 	svsk->sk_recvfrom = svc_udp_recvfrom;
-@@ -1344,12 +1353,33 @@ svc_tcp_sendto(struct svc_rqst *rqstp)
- 	return sent;
- }
- 
-+static struct svc_xprt_ops svc_tcp_ops = {
-+};
-+
-+static struct svc_xprt_class svc_tcp_class = {
-+	.xcl_name = "tcp",
-+	.xcl_ops = &svc_tcp_ops,
-+};
-+
-+void svc_init_xprt_sock(void)
-+{
-+	svc_reg_xprt_class(&svc_tcp_class);
-+	svc_reg_xprt_class(&svc_udp_class);
-+}
-+
-+void svc_cleanup_xprt_sock(void)
-+{
-+	svc_unreg_xprt_class(&svc_tcp_class);
-+	svc_unreg_xprt_class(&svc_udp_class);
-+}
-+
- static void
- svc_tcp_init(struct svc_sock *svsk)
- {
- 	struct sock	*sk = svsk->sk_sk;
- 	struct tcp_sock *tp = tcp_sk(sk);
- 
-+	svc_xprt_init(&svc_tcp_class, &svsk->sk_xprt);
- 	svsk->sk_recvfrom = svc_tcp_recvfrom;
- 	svsk->sk_sendto = svc_tcp_sendto;
- 
-@@ -1965,3 +1995,4 @@ static struct svc_deferred_req *svc_deferred_dequeue(struct svc_sock *svsk)
- 	spin_unlock(&svsk->sk_lock);
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index 7416e66..247f0fb 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -945,3 +945,34 @@ static struct svc_deferred_req *svc_deferred_dequeue(struct svc_xprt *xprt)
+ 	spin_unlock(&xprt->xpt_lock);
  	return dr;
  }
 +
++/*
++ * Return the transport instance pointer for the endpoint accepting
++ * connections/peer traffic from the specified transport class,
++ * address family and port.
++ */
++struct svc_xprt *svc_find_xprt(struct svc_serv *serv, char *xcl_name,
++			       int af, int port)
++{
++	struct svc_xprt *xprt;
++	struct svc_xprt *found = NULL;
++
++	/* Sanity check the args */
++	if (!serv || !xcl_name)
++		return found;
++
++	spin_lock_bh(&serv->sv_lock);
++	list_for_each_entry(xprt, &serv->sv_permsocks, xpt_list) {
++		if (strcmp(xprt->xpt_class->xcl_name, xcl_name))
++			continue;
++		if (af != AF_UNSPEC && af != xprt->xpt_local.ss_family)
++			continue;
++		if (port && port != svc_xprt_local_port(xprt))
++			continue;
++		found = xprt;
++		break;
++	}
++	spin_unlock_bh(&serv->sv_lock);
++	return found;
++}
++EXPORT_SYMBOL_GPL(svc_find_xprt);
