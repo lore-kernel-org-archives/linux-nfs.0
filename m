@@ -1,8 +1,8 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [NFS] [PATCH 10/29] NFS: Address a couple of nits in
-	nfs_follow_referral()
-Date: Thu, 29 Nov 2007 14:40:46 -0500
-Message-ID: <20071129194046.4170.91463.stgit@picasso.1015granger.net>
+Subject: [NFS] [PATCH 14/29] NFS: Set default port for NFSv4,
+	with support for AF_INET6
+Date: Thu, 29 Nov 2007 14:41:07 -0500
+Message-ID: <20071129194107.4170.56000.stgit@picasso.1015granger.net>
 References: <20071129193153.4170.29598.stgit@picasso.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -12,51 +12,87 @@ Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IxpGj-0001WS-Qx
-	for nfs@lists.sourceforge.net; Thu, 29 Nov 2007 11:41:53 -0800
+	id 1IxpGp-0001Wy-Te
+	for nfs@lists.sourceforge.net; Thu, 29 Nov 2007 11:41:59 -0800
 Received: from flpi195.sbcis.sbc.com ([207.115.20.197]
 	helo=flpi195.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IxpGo-0007vy-P6
-	for nfs@lists.sourceforge.net; Thu, 29 Nov 2007 11:42:00 -0800
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IxpGv-00081D-F0
+	for nfs@lists.sourceforge.net; Thu, 29 Nov 2007 11:42:06 -0800
 In-Reply-To: <20071129193153.4170.29598.stgit-uiCyzNpeAnB9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <nfs.lists.sourceforge.net>
 
-Clean up: fix an outdated block comment, and address a comparison
-between a signed and unsigned integer.
+Move more address family dependencies to a helper function.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfs/nfs4namespace.c |    8 +++-----
- 1 files changed, 3 insertions(+), 5 deletions(-)
+ fs/nfs/super.c |   30 ++++++++++++++++++++++++++----
+ 1 files changed, 26 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
-index dd5fef2..bd1b161 100644
---- a/fs/nfs/nfs4namespace.c
-+++ b/fs/nfs/nfs4namespace.c
-@@ -114,10 +114,7 @@ static inline int valid_ipaddr4(const char *buf)
-  * nfs_follow_referral - set up mountpoint when hitting a referral on moved error
-  * @mnt_parent - mountpoint of parent directory
-  * @dentry - parent directory
-- * @fspath - fs path returned in fs_locations
-- * @mntpath - mount path to new server
-- * @hostname - hostname of new server
-- * @addr - host addr of new server
-+ * @locations - array of NFSv4 server location information
-  *
-  */
- static struct vfsmount *nfs_follow_referral(const struct vfsmount *mnt_parent,
-@@ -131,7 +128,8 @@ static struct vfsmount *nfs_follow_referral(const struct vfsmount *mnt_parent,
- 		.authflavor = NFS_SB(mnt_parent->mnt_sb)->client->cl_auth->au_flavor,
- 	};
- 	char *page = NULL, *page2 = NULL;
--	int loc, s, error;
-+	unsigned int s;
-+	int loc, error;
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 6377098..6a9192f 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -1570,6 +1570,28 @@ static void nfs4_fill_super(struct super_block *sb)
+ }
  
- 	if (locations == NULL || locations->nlocations <= 0)
- 		goto out;
+ /*
++ * If the user didn't specify a port, set the port number to
++ * the NFS version 4 default port.
++ */
++static void nfs4_default_port(struct sockaddr_storage *ssp)
++{
++	switch (ssp->ss_family) {
++	case AF_INET: {
++		struct sockaddr_in *ap = (struct sockaddr_in *)ssp;
++		if (ap->sin_port == 0)
++			ap->sin_port = htons(NFS_PORT);
++		break;
++	}
++	case AF_INET6: {
++		struct sockaddr_in6 *ap = (struct sockaddr_in6 *)ssp;
++		if (ap->sin6_port == 0)
++			ap->sin6_port = htons(NFS_PORT);
++		break;
++	}
++	}
++}
++
++/*
+  * Validate NFSv4 mount options
+  */
+ static int nfs4_validate_mount_data(void *options,
+@@ -1602,12 +1624,12 @@ static int nfs4_validate_mount_data(void *options,
+ 				   data->host_addr,
+ 				   sizeof(args->nfs_server.address)))
+ 			return -EFAULT;
+-		if (args->nfs_server.address.sin_port == 0)
+-			args->nfs_server.address.sin_port = htons(NFS_PORT);
+ 		if (!nfs_verify_server_address((void *)
+ 						&args->nfs_server.address))
+ 			goto out_no_address;
+ 
++		nfs4_default_port((void *)&args->nfs_server.address);
++
+ 		switch (data->auth_flavourlen) {
+ 		case 0:
+ 			args->auth_flavors[0] = RPC_AUTH_UNIX;
+@@ -1661,12 +1683,12 @@ static int nfs4_validate_mount_data(void *options,
+ 		if (nfs_parse_mount_options((char *)options, args) == 0)
+ 			return -EINVAL;
+ 
+-		if (args->nfs_server.address.sin_port == 0)
+-			args->nfs_server.address.sin_port = htons(NFS_PORT);
+ 		if (!nfs_verify_server_address((void *)
+ 						&args->nfs_server.address))
+ 			return -EINVAL;
+ 
++		nfs4_default_port((void *)&args->nfs_server.address);
++
+ 		switch (args->auth_flavor_len) {
+ 		case 0:
+ 			args->auth_flavors[0] = RPC_AUTH_UNIX;
 
 
 -------------------------------------------------------------------------
