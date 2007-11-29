@@ -1,253 +1,151 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [RFC,PATCH 12/38] svc: Add a generic transport svc_create_xprt function
-Date: Thu, 29 Nov 2007 16:56:03 -0600
-Message-ID: <20071129225603.15275.54556.stgit@dell3.ogc.int>
-References: <20071129225510.15275.82660.stgit@dell3.ogc.int>
+Subject: [RFC,PATCH 33/38] svc: Add transport hdr size for defer/revisit
+Date: Thu, 29 Nov 2007 16:54:44 -0600
+Message-ID: <20071129225443.15107.21546.stgit@dell3.ogc.int>
+References: <20071129225142.15107.46200.stgit@dell3.ogc.int>
 Content-Type: text/plain; charset=utf-8; format=fixed
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:47402 "EHLO
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:47406 "EHLO
 	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1761032AbXK2XUI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2007 18:20:08 -0500
-In-Reply-To: <20071129225510.15275.82660.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
+	by vger.kernel.org with ESMTP id S1761394AbXK2XUJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2007 18:20:09 -0500
+In-Reply-To: <20071129225142.15107.46200.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-The svc_create_xprt function is a transport independent version
-of the svc_makesock function. 
-
-Since transport instance creation contains transport dependent and 
-independent components, add an xpo_create transport function. The 
-transport implementation of this function allocates the memory for the 
-endpoint, implements the transport dependent initialization logic, and
-calls svc_xprt_init to initialize the transport independent field (svc_xprt) 
-in it's data structure.
+Some transports have a header in front of the RPC header. The current
+defer/revisit processing considers only the iov_len and arg_len to 
+determine how much to back up when saving the original request
+to revisit. Add a field to the rqstp structure to save the size
+of the transport header so svc_defer can correctly compute
+the start of a request. 
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- include/linux/sunrpc/svc_xprt.h |    4 +++
- net/sunrpc/svc_xprt.c           |   37 ++++++++++++++++++++++++++
- net/sunrpc/svcsock.c            |   56 +++++++++++++++++++++++++++++----------
- 3 files changed, 82 insertions(+), 15 deletions(-)
+ include/linux/sunrpc/svc.h |    2 ++
+ net/sunrpc/svc_xprt.c      |   36 +++++++++++++++++++++++++++---------
+ net/sunrpc/svcsock.c       |    2 ++
+ 3 files changed, 31 insertions(+), 9 deletions(-)
 
-diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index 1527ff1..3f4a1df 100644
---- a/include/linux/sunrpc/svc_xprt.h
-+++ b/include/linux/sunrpc/svc_xprt.h
-@@ -10,6 +10,9 @@
- #include <linux/sunrpc/svc.h>
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 04eb20e..f2ada2a 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -217,6 +217,7 @@ struct svc_rqst {
+ 	void *			rq_xprt_ctxt;	/* transport specific context ptr */
+ 	struct svc_deferred_req*rq_deferred;	/* deferred request we are replaying */
  
- struct svc_xprt_ops {
-+	struct svc_xprt	*(*xpo_create)(struct svc_serv *,
-+				       struct sockaddr *, int,
-+				       int);
- 	struct svc_xprt	*(*xpo_accept)(struct svc_xprt *);
- 	int		(*xpo_has_wspace)(struct svc_xprt *);
- 	int		(*xpo_recvfrom)(struct svc_rqst *);
-@@ -36,5 +39,6 @@ struct svc_xprt {
- int	svc_reg_xprt_class(struct svc_xprt_class *);
- int	svc_unreg_xprt_class(struct svc_xprt_class *);
- void	svc_xprt_init(struct svc_xprt_class *, struct svc_xprt *);
-+int	svc_create_xprt(struct svc_serv *, char *, unsigned short, int);
- 
- #endif /* SUNRPC_SVC_XPRT_H */
++	size_t			rq_xprt_hlen;	/* xprt header len */
+ 	struct xdr_buf		rq_arg;
+ 	struct xdr_buf		rq_res;
+ 	struct page *		rq_pages[RPCSVC_MAXPAGES];
+@@ -322,6 +323,7 @@ struct svc_deferred_req {
+ 	size_t			addrlen;
+ 	union svc_addr_u	daddr;	/* where reply must come from */
+ 	struct cache_deferred_req handle;
++	int			xprt_hlen;
+ 	int			argslen;
+ 	__be32			args[0];
+ };
 diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 92ea85b..9136da4 100644
+index 56204e9..b31ba0e 100644
 --- a/net/sunrpc/svc_xprt.c
 +++ b/net/sunrpc/svc_xprt.c
-@@ -93,3 +93,40 @@ void svc_xprt_init(struct svc_xprt_class *xcl, struct svc_xprt *xprt)
- 	xprt->xpt_ops = xcl->xcl_ops;
+@@ -29,7 +29,6 @@
+ #include <linux/sunrpc/types.h>
+ #include <linux/sunrpc/clnt.h>
+ #include <linux/sunrpc/xdr.h>
+-#include <linux/sunrpc/svcsock.h>
+ #include <linux/sunrpc/stats.h>
+ #include <linux/sunrpc/svc_xprt.h>
+ 
+@@ -827,10 +826,18 @@ static void svc_revisit(struct cache_deferred_req *dreq, int too_many)
+ 	svc_xprt_put(xprt);
  }
- EXPORT_SYMBOL_GPL(svc_xprt_init);
+ 
++/*
++ * Save the request off for later processing. The request buffer looks
++ * like this:
++ *
++ * <xprt-header><rpc-header><rpc-pagelist><rpc-tail>
++ *
++ * This code can only handle requests that consist of an xprt-header
++ * and rpc-header.
++ */
+ static struct cache_deferred_req *svc_defer(struct cache_req *req)
+ {
+ 	struct svc_rqst *rqstp = container_of(req, struct svc_rqst, rq_chandle);
+-	int size = sizeof(struct svc_deferred_req) + (rqstp->rq_arg.len);
+ 	struct svc_deferred_req *dr;
+ 
+ 	if (rqstp->rq_arg.page_len)
+@@ -839,8 +846,10 @@ static struct cache_deferred_req *svc_defer(struct cache_req *req)
+ 		dr = rqstp->rq_deferred;
+ 		rqstp->rq_deferred = NULL;
+ 	} else {
+-		int skip  = rqstp->rq_arg.len - rqstp->rq_arg.head[0].iov_len;
++		int skip;
++		int size;
+ 		/* FIXME maybe discard if size too large */
++		size = sizeof(struct svc_deferred_req) + rqstp->rq_arg.len;
+ 		dr = kmalloc(size, GFP_KERNEL);
+ 		if (dr == NULL)
+ 			return NULL;
+@@ -851,8 +860,12 @@ static struct cache_deferred_req *svc_defer(struct cache_req *req)
+ 		dr->addrlen = rqstp->rq_addrlen;
+ 		dr->daddr = rqstp->rq_daddr;
+ 		dr->argslen = rqstp->rq_arg.len >> 2;
+-		memcpy(dr->args, rqstp->rq_arg.head[0].iov_base-skip,
+-		       dr->argslen<<2);
++		dr->xprt_hlen = rqstp->rq_xprt_hlen;
 +
-+int svc_create_xprt(struct svc_serv *serv, char *xprt_name, unsigned short port,
-+		    int flags)
-+{
-+	struct svc_xprt_class *xcl;
-+	int ret = -ENOENT;
-+	struct sockaddr_in sin = {
-+		.sin_family		= AF_INET,
-+		.sin_addr.s_addr	= INADDR_ANY,
-+		.sin_port		= htons(port),
-+	};
-+	dprintk("svc: creating transport %s[%d]\n", xprt_name, port);
-+	spin_lock(&svc_xprt_class_lock);
-+	list_for_each_entry(xcl, &svc_xprt_class_list, xcl_list) {
-+		if (strcmp(xprt_name, xcl->xcl_name) == 0) {
-+			spin_unlock(&svc_xprt_class_lock);
-+			if (try_module_get(xcl->xcl_owner)) {
-+				struct svc_xprt *newxprt;
-+				ret = 0;
-+				newxprt = xcl->xcl_ops->xpo_create
-+					(serv,
-+					 (struct sockaddr *)&sin, sizeof(sin),
-+					 flags);
-+				if (IS_ERR(newxprt)) {
-+					module_put(xcl->xcl_owner);
-+					ret = PTR_ERR(newxprt);
-+				}
-+			}
-+			goto out;
-+		}
-+	}
-+	spin_unlock(&svc_xprt_class_lock);
-+	dprintk("svc: transport %s not found\n", xprt_name);
-+ out:
-+	return ret;
-+}
-+EXPORT_SYMBOL_GPL(svc_create_xprt);
++		/* back up head to the start of the buffer and copy */
++		skip = rqstp->rq_arg.len - rqstp->rq_arg.head[0].iov_len;
++		memcpy(dr->args, rqstp->rq_arg.head[0].iov_base - skip,
++		       dr->argslen << 2);
+ 	}
+ 	svc_xprt_get(rqstp->rq_xprt);
+ 	dr->xprt = rqstp->rq_xprt;
+@@ -868,16 +881,21 @@ static int svc_deferred_recv(struct svc_rqst *rqstp)
+ {
+ 	struct svc_deferred_req *dr = rqstp->rq_deferred;
+ 
+-	rqstp->rq_arg.head[0].iov_base = dr->args;
+-	rqstp->rq_arg.head[0].iov_len = dr->argslen<<2;
++	/* setup iov_base past transport header */
++	rqstp->rq_arg.head[0].iov_base = dr->args + (dr->xprt_hlen>>2);
++	/* The iov_len does not include the transport header bytes */
++	rqstp->rq_arg.head[0].iov_len = (dr->argslen<<2) - dr->xprt_hlen;
+ 	rqstp->rq_arg.page_len = 0;
+-	rqstp->rq_arg.len = dr->argslen<<2;
++	/* The rq_arg.len includes the transport header bytes */
++	rqstp->rq_arg.len     = dr->argslen<<2;
+ 	rqstp->rq_prot        = dr->prot;
+ 	memcpy(&rqstp->rq_addr, &dr->addr, dr->addrlen);
+ 	rqstp->rq_addrlen     = dr->addrlen;
++	/* Save off transport header len in case we get deferred again */
++	rqstp->rq_xprt_hlen   = dr->xprt_hlen;
+ 	rqstp->rq_daddr       = dr->daddr;
+ 	rqstp->rq_respages    = rqstp->rq_pages;
+-	return dr->argslen<<2;
++	return (dr->argslen<<2) - dr->xprt_hlen;
+ }
+ 
+ 
 diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 661162b..0bfffbc 100644
+index 23a2ab6..03207c9 100644
 --- a/net/sunrpc/svcsock.c
 +++ b/net/sunrpc/svcsock.c
-@@ -91,6 +91,8 @@ static void		svc_sock_free(struct svc_xprt *);
- static struct svc_deferred_req *svc_deferred_dequeue(struct svc_sock *svsk);
- static int svc_deferred_recv(struct svc_rqst *rqstp);
- static struct cache_deferred_req *svc_defer(struct cache_req *req);
-+static struct svc_xprt *
-+svc_create_socket(struct svc_serv *, int, struct sockaddr *, int, int);
+@@ -397,6 +397,8 @@ svc_recvfrom(struct svc_rqst *rqstp, struct kvec *iov, int nr, int buflen)
+ 	};
+ 	int len;
  
- /* apparently the "standard" is that clients close
-  * idle connections after 5 minutes, servers after
-@@ -381,6 +383,7 @@ svc_sock_put(struct svc_sock *svsk)
- {
- 	if (atomic_dec_and_test(&svsk->sk_inuse)) {
- 		BUG_ON(!test_bit(SK_DEAD, &svsk->sk_flags));
-+		module_put(svsk->sk_xprt.xpt_class->xcl_owner);
- 		svsk->sk_xprt.xpt_ops->xpo_free(&svsk->sk_xprt);
- 	}
- }
-@@ -918,7 +921,14 @@ static struct svc_xprt *svc_udp_accept(struct svc_xprt *xprt)
- 	return NULL;
- }
- 
-+static struct svc_xprt *
-+svc_udp_create(struct svc_serv *serv, struct sockaddr *sa, int salen, int flags)
-+{
-+	return svc_create_socket(serv, IPPROTO_UDP, sa, salen, flags);
-+}
++	rqstp->rq_xprt_hlen = 0;
 +
- static struct svc_xprt_ops svc_udp_ops = {
-+	.xpo_create = svc_udp_create,
- 	.xpo_recvfrom = svc_udp_recvfrom,
- 	.xpo_sendto = svc_udp_sendto,
- 	.xpo_release_rqst = svc_release_skb,
-@@ -931,6 +941,7 @@ static struct svc_xprt_ops svc_udp_ops = {
+ 	len = kernel_recvmsg(svsk->sk_sock, &msg, iov, nr, buflen,
+ 				msg.msg_flags);
  
- static struct svc_xprt_class svc_udp_class = {
- 	.xcl_name = "udp",
-+	.xcl_owner = THIS_MODULE,
- 	.xcl_ops = &svc_udp_ops,
- 	.xcl_max_payload = RPCSVC_MAXPAYLOAD_UDP,
- };
-@@ -1351,7 +1362,14 @@ static int svc_tcp_has_wspace(struct svc_xprt *xprt)
- 	return 1;
- }
- 
-+static struct svc_xprt *
-+svc_tcp_create(struct svc_serv *serv, struct sockaddr *sa, int salen, int flags)
-+{
-+	return svc_create_socket(serv, IPPROTO_TCP, sa, salen, flags);
-+}
-+
- static struct svc_xprt_ops svc_tcp_ops = {
-+	.xpo_create = svc_tcp_create,
- 	.xpo_recvfrom = svc_tcp_recvfrom,
- 	.xpo_sendto = svc_tcp_sendto,
- 	.xpo_release_rqst = svc_release_skb,
-@@ -1364,6 +1382,7 @@ static struct svc_xprt_ops svc_tcp_ops = {
- 
- static struct svc_xprt_class svc_tcp_class = {
- 	.xcl_name = "tcp",
-+	.xcl_owner = THIS_MODULE,
- 	.xcl_ops = &svc_tcp_ops,
- 	.xcl_max_payload = RPCSVC_MAXPAYLOAD_TCP,
- };
-@@ -1589,8 +1608,14 @@ svc_recv(struct svc_rqst *rqstp, long timeout)
- 	} else if (test_bit(SK_LISTENER, &svsk->sk_flags)) {
- 		struct svc_xprt *newxpt;
- 		newxpt = svsk->sk_xprt.xpt_ops->xpo_accept(&svsk->sk_xprt);
--		if (newxpt)
-+		if (newxpt) {
-+			/*
-+			 * We know this module_get will succeed because the
-+			 * listener holds a reference too
-+			 */
-+			__module_get(newxpt->xpt_class->xcl_owner);
- 			svc_check_conn_limits(svsk->sk_server);
-+		}
- 		svc_sock_received(svsk);
- 	} else {
- 		dprintk("svc: server %p, pool %u, socket %p, inuse=%d\n",
-@@ -1830,8 +1855,9 @@ EXPORT_SYMBOL_GPL(svc_addsock);
- /*
-  * Create socket for RPC service.
-  */
--static int svc_create_socket(struct svc_serv *serv, int protocol,
--				struct sockaddr *sin, int len, int flags)
-+static struct svc_xprt *
-+svc_create_socket(struct svc_serv *serv, int protocol,
-+		  struct sockaddr *sin, int len, int flags)
- {
- 	struct svc_sock	*svsk;
- 	struct socket	*sock;
-@@ -1846,13 +1872,13 @@ static int svc_create_socket(struct svc_serv *serv, int protocol,
- 	if (protocol != IPPROTO_UDP && protocol != IPPROTO_TCP) {
- 		printk(KERN_WARNING "svc: only UDP and TCP "
- 				"sockets supported\n");
--		return -EINVAL;
-+		return ERR_PTR(-EINVAL);
- 	}
- 	type = (protocol == IPPROTO_UDP)? SOCK_DGRAM : SOCK_STREAM;
- 
- 	error = sock_create_kern(sin->sa_family, type, protocol, &sock);
- 	if (error < 0)
--		return error;
-+		return ERR_PTR(error);
- 
- 	svc_reclassify_socket(sock);
- 
-@@ -1869,13 +1895,13 @@ static int svc_create_socket(struct svc_serv *serv, int protocol,
- 
- 	if ((svsk = svc_setup_socket(serv, sock, &error, flags)) != NULL) {
- 		svc_sock_received(svsk);
--		return ntohs(inet_sk(svsk->sk_sk)->sport);
-+		return (struct svc_xprt *)svsk;
- 	}
- 
- bummer:
- 	dprintk("svc: svc_create_socket error = %d\n", -error);
- 	sock_release(sock);
--	return error;
-+	return ERR_PTR(error);
- }
- 
- /*
-@@ -1986,15 +2012,15 @@ void svc_force_close_socket(struct svc_sock *svsk)
- int svc_makesock(struct svc_serv *serv, int protocol, unsigned short port,
- 			int flags)
- {
--	struct sockaddr_in sin = {
--		.sin_family		= AF_INET,
--		.sin_addr.s_addr	= INADDR_ANY,
--		.sin_port		= htons(port),
--	};
--
- 	dprintk("svc: creating socket proto = %d\n", protocol);
--	return svc_create_socket(serv, protocol, (struct sockaddr *) &sin,
--							sizeof(sin), flags);
-+	switch (protocol) {
-+	case IPPROTO_TCP:
-+		return svc_create_xprt(serv, "tcp", port, flags);
-+	case IPPROTO_UDP:
-+		return svc_create_xprt(serv, "udp", port, flags);
-+	default:
-+		return -EINVAL;
-+	}
- }
- 
- /*
