@@ -1,17 +1,17 @@
 From: Tom Tucker <tom@opengridcomputing.com>
 Subject: [RFC,PATCH 07/38] svc: Add per-transport delete functions
-Date: Thu, 29 Nov 2007 16:55:52 -0600
-Message-ID: <20071129225552.15275.35557.stgit@dell3.ogc.int>
-References: <20071129225510.15275.82660.stgit@dell3.ogc.int>
+Date: Thu, 29 Nov 2007 16:53:46 -0600
+Message-ID: <20071129225345.15107.81340.stgit@dell3.ogc.int>
+References: <20071129225142.15107.46200.stgit@dell3.ogc.int>
 Content-Type: text/plain; charset=utf-8; format=fixed
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:47408 "EHLO
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:47425 "EHLO
 	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1763325AbXK2XUR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2007 18:20:17 -0500
-In-Reply-To: <20071129225510.15275.82660.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
+	by vger.kernel.org with ESMTP id S1758765AbXK2XUQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2007 18:20:16 -0500
+In-Reply-To: <20071129225142.15107.46200.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
