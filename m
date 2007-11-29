@@ -1,81 +1,92 @@
-From: James Lentini <jlentini@netapp.com>
-Subject: [PATCH] xprtrdma: fix XDR tail buf marshalling for all ops
-Date: Thu, 29 Nov 2007 15:46:40 -0500 (EST)
-Message-ID: <Pine.LNX.4.64.0711291521010.7142@jlentini-linux.nane.netapp.com>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Tom Tucker <tom@opengridcomputing.com>,
-	Thomas Talpey <talpey@netapp.com>, linux-nfs@vger.kernel.org,
-	nfs@lists.sourceforge.net
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Tom Tucker <tom@opengridcomputing.com>
+Subject: [RFC,PATCH 26/38] svc: Make svc_sock_release svc_xprt_release
+Date: Thu, 29 Nov 2007 16:40:48 -0600
+Message-ID: <20071129224048.14563.84561.stgit@dell3.ogc.int>
+References: <20071129223917.14563.77633.stgit@dell3.ogc.int>
+Content-Type: text/plain; charset=utf-8; format=fixed
+Cc: linux-nfs@vger.kernel.org
+To: bfields-ag9A2Eb6PFsgsBAKwltoeQ@public.gmane.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:30745 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761354AbXK2UrN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 29 Nov 2007 15:47:13 -0500
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:48882 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S933792AbXK2XD3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2007 18:03:29 -0500
+In-Reply-To: <20071129223917.14563.77633.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-In some instances, the code in rpcrdma_convert_iovs was failing to 
-include a chunk for the xdr tail. This was caused by defensive code 
-that checked if the current xdr pos was greater than the total xdr 
-length before encoding the tail. However, the xdr->len is 0 for 
-non-write operations, and therefore this check was invalid for such 
-operations.
-
-With this change, the tail will always be marshaled when present. This 
-makes the maintenance of the pos index unnecessary. The test of 
-xdrbuf->len to decide if a message should be logged is also incorrect.
-
-This fixes an observed problem when reading certain file sizes over 
-NFS/RDMA. Please consider this for 2.6.24.
+The svc_sock_release function only touches transport independent fields.
+Change the function to manipulate svc_xprt directly instead of the transport
+dependent svc_sock structure. 
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
-Signed-off-by: Tom Talpey <talpey@netapp.com>
-Signed-off-by: James Lentini <jlentini@netapp.com>
-
 ---
- net/sunrpc/xprtrdma/rpc_rdma.c |    9 +--------
- 1 file changed, 1 insertion(+), 8 deletions(-)
 
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -92,7 +92,6 @@
- 		seg[n].mr_page = NULL;
- 		seg[n].mr_offset = xdrbuf->head[0].iov_base;
- 		seg[n].mr_len = xdrbuf->head[0].iov_len;
--		pos += xdrbuf->head[0].iov_len;
- 		++n;
+ net/sunrpc/svcsock.c |   16 +++++++---------
+ 1 files changed, 7 insertions(+), 9 deletions(-)
+
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index e8cfeeb..36fc59c 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -383,10 +383,9 @@ void svc_reserve(struct svc_rqst *rqstp, int space)
  	}
- 
-@@ -104,7 +103,6 @@
- 		seg[n].mr_len = min_t(u32,
- 			PAGE_SIZE - xdrbuf->page_base, xdrbuf->page_len);
- 		len = xdrbuf->page_len - seg[n].mr_len;
--		pos += len;
- 		++n;
- 		p = 1;
- 		while (len > 0) {
-@@ -119,20 +117,15 @@
- 		}
- 	}
- 
--	if (pos < xdrbuf->len && xdrbuf->tail[0].iov_len) {
-+	if (xdrbuf->tail[0].iov_len) {
- 		if (n == nsegs)
- 			return 0;
- 		seg[n].mr_page = NULL;
- 		seg[n].mr_offset = xdrbuf->tail[0].iov_base;
- 		seg[n].mr_len = xdrbuf->tail[0].iov_len;
--		pos += xdrbuf->tail[0].iov_len;
- 		++n;
- 	}
- 
--	if (pos < xdrbuf->len)
--		dprintk("RPC:       %s: marshaled only %d of %d\n",
--				__func__, pos, xdrbuf->len);
--
- 	return n;
  }
  
+-static void
+-svc_sock_release(struct svc_rqst *rqstp)
++static void svc_xprt_release(struct svc_rqst *rqstp)
+ {
+-	struct svc_sock	*svsk = rqstp->rq_sock;
++	struct svc_xprt	*xprt = rqstp->rq_xprt;
+ 
+ 	rqstp->rq_xprt->xpt_ops->xpo_release_rqst(rqstp);
+ 
+@@ -394,7 +393,6 @@ svc_sock_release(struct svc_rqst *rqstp)
+ 	rqstp->rq_res.page_len = 0;
+ 	rqstp->rq_res.page_base = 0;
+ 
+-
+ 	/* Reset response buffer and release
+ 	 * the reservation.
+ 	 * But first, check that enough space was reserved
+@@ -407,9 +405,9 @@ svc_sock_release(struct svc_rqst *rqstp)
+ 
+ 	rqstp->rq_res.head[0].iov_len = 0;
+ 	svc_reserve(rqstp, 0);
+-	rqstp->rq_sock = NULL;
++	rqstp->rq_xprt = NULL;
+ 
+-	svc_xprt_put(&svsk->sk_xprt);
++	svc_xprt_put(xprt);
+ }
+ 
+ /*
+@@ -1609,7 +1607,7 @@ svc_recv(struct svc_rqst *rqstp, long timeout)
+ 	/* No data, incomplete (TCP) read, or accept() */
+ 	if (len == 0 || len == -EAGAIN) {
+ 		rqstp->rq_res.len = 0;
+-		svc_sock_release(rqstp);
++		svc_xprt_release(rqstp);
+ 		return -EAGAIN;
+ 	}
+ 	clear_bit(XPT_OLD, &svsk->sk_xprt.xpt_flags);
+@@ -1629,7 +1627,7 @@ void
+ svc_drop(struct svc_rqst *rqstp)
+ {
+ 	dprintk("svc: socket %p dropped request\n", rqstp->rq_sock);
+-	svc_sock_release(rqstp);
++	svc_xprt_release(rqstp);
+ }
+ 
+ /*
+@@ -1662,7 +1660,7 @@ svc_send(struct svc_rqst *rqstp)
+ 	else
+ 		len = xprt->xpt_ops->xpo_sendto(rqstp);
+ 	mutex_unlock(&xprt->xpt_mutex);
+-	svc_sock_release(rqstp);
++	svc_xprt_release(rqstp);
+ 
+ 	if (len == -ECONNREFUSED || len == -ENOTCONN || len == -EAGAIN)
+ 		return 0;
