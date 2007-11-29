@@ -1,70 +1,106 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [RFC,PATCH 22/38] svc: Remove sk_lastrecv
-Date: Thu, 29 Nov 2007 16:56:24 -0600
-Message-ID: <20071129225624.15275.62076.stgit@dell3.ogc.int>
+Subject: [RFC,PATCH 08/38] svc: Add xpo_prep_reply_hdr
+Date: Thu, 29 Nov 2007 16:55:55 -0600
+Message-ID: <20071129225555.15275.21048.stgit@dell3.ogc.int>
 References: <20071129225510.15275.82660.stgit@dell3.ogc.int>
 Content-Type: text/plain; charset=utf-8; format=fixed
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:47414 "EHLO
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:47409 "EHLO
 	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1762819AbXK2XUK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2007 18:20:10 -0500
+	by vger.kernel.org with ESMTP id S1762153AbXK2XUJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2007 18:20:09 -0500
 In-Reply-To: <20071129225510.15275.82660.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-With the implementation of the new mark and sweep algorithm for shutting
-down old connections, the sk_lastrecv field is no longer needed.
+Some transports add fields to the RPC header for replies, e.g. the TCP
+record length. This function is called when preparing the reply header
+to allow each transport to add whatever fields it requires.
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- include/linux/sunrpc/svcsock.h |    1 -
- net/sunrpc/svcsock.c           |    5 +----
- 2 files changed, 1 insertions(+), 5 deletions(-)
+ include/linux/sunrpc/svc_xprt.h |    1 +
+ net/sunrpc/svc.c                |    6 +++---
+ net/sunrpc/svcsock.c            |   17 +++++++++++++++++
+ 3 files changed, 21 insertions(+), 3 deletions(-)
 
-diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
-index 41c2dfa..406d003 100644
---- a/include/linux/sunrpc/svcsock.h
-+++ b/include/linux/sunrpc/svcsock.h
-@@ -33,7 +33,6 @@ struct svc_sock {
- 	/* private TCP part */
- 	int			sk_reclen;	/* length of record */
- 	int			sk_tcplen;	/* current read length */
--	time_t			sk_lastrecv;	/* time of last received request */
+diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+index 5d7b2a6..8501115 100644
+--- a/include/linux/sunrpc/svc_xprt.h
++++ b/include/linux/sunrpc/svc_xprt.h
+@@ -11,6 +11,7 @@
  
- 	/* cache of various info for TCP sockets */
- 	void			*sk_info_authunix;
+ struct svc_xprt_ops {
+ 	int		(*xpo_recvfrom)(struct svc_rqst *);
++	void		(*xpo_prep_reply_hdr)(struct svc_rqst *);
+ 	int		(*xpo_sendto)(struct svc_rqst *);
+ 	void		(*xpo_release_rqst)(struct svc_rqst *);
+ 	void		(*xpo_detach)(struct svc_xprt *);
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index ce59044..4e084a2 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -839,9 +839,9 @@ svc_process(struct svc_rqst *rqstp)
+ 	rqstp->rq_res.tail[0].iov_len = 0;
+ 	/* Will be turned off only in gss privacy case: */
+ 	rqstp->rq_splice_ok = 1;
+-	/* tcp needs a space for the record length... */
+-	if (rqstp->rq_prot == IPPROTO_TCP)
+-		svc_putnl(resv, 0);
++
++	/* Setup reply header */
++	rqstp->rq_xprt->xpt_ops->xpo_prep_reply_hdr(rqstp);
+ 
+ 	rqstp->rq_xid = svc_getu32(argv);
+ 	svc_putu32(resv, rqstp->rq_xid);
 diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 0015839..a1e8c1a 100644
+index 478fa33..510ad45 100644
 --- a/net/sunrpc/svcsock.c
 +++ b/net/sunrpc/svcsock.c
-@@ -1622,7 +1622,6 @@ svc_recv(struct svc_rqst *rqstp, long timeout)
- 		svc_sock_release(rqstp);
- 		return -EAGAIN;
- 	}
--	svsk->sk_lastrecv = get_seconds();
- 	clear_bit(XPT_OLD, &svsk->sk_xprt.xpt_flags);
+@@ -893,12 +893,17 @@ svc_udp_sendto(struct svc_rqst *rqstp)
+ 	return error;
+ }
  
- 	rqstp->rq_secure = svc_port_is_privileged(svc_addr(rqstp));
-@@ -1722,8 +1721,7 @@ svc_age_temp_sockets(unsigned long closure)
- 		list_del_init(le);
- 		svsk = list_entry(le, struct svc_sock, sk_xprt.xpt_list);
++static void svc_udp_prep_reply_hdr(struct svc_rqst *rqstp)
++{
++}
++
+ static struct svc_xprt_ops svc_udp_ops = {
+ 	.xpo_recvfrom = svc_udp_recvfrom,
+ 	.xpo_sendto = svc_udp_sendto,
+ 	.xpo_release_rqst = svc_release_skb,
+ 	.xpo_detach = svc_sock_detach,
+ 	.xpo_free = svc_sock_free,
++	.xpo_prep_reply_hdr = svc_udp_prep_reply_hdr,
+ };
  
--		dprintk("queuing svsk %p for closing, %lu seconds old\n",
--			svsk, get_seconds() - svsk->sk_lastrecv);
-+		dprintk("queuing svsk %p for closing\n", svsk);
+ static struct svc_xprt_class svc_udp_class = {
+@@ -1350,12 +1355,24 @@ svc_tcp_sendto(struct svc_rqst *rqstp)
+ 	return sent;
+ }
  
- 		/* a thread will dequeue and close it soon */
- 		svc_xprt_enqueue(&svsk->sk_xprt);
-@@ -1771,7 +1769,6 @@ static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
- 	svsk->sk_ostate = inet->sk_state_change;
- 	svsk->sk_odata = inet->sk_data_ready;
- 	svsk->sk_owspace = inet->sk_write_space;
--	svsk->sk_lastrecv = get_seconds();
- 	spin_lock_init(&svsk->sk_lock);
- 	INIT_LIST_HEAD(&svsk->sk_deferred);
++/*
++ * Setup response header. TCP has a 4B record length field.
++ */
++static void svc_tcp_prep_reply_hdr(struct svc_rqst *rqstp)
++{
++	struct kvec *resv = &rqstp->rq_res.head[0];
++
++	/* tcp needs a space for the record length... */
++	svc_putnl(resv, 0);
++}
++
+ static struct svc_xprt_ops svc_tcp_ops = {
+ 	.xpo_recvfrom = svc_tcp_recvfrom,
+ 	.xpo_sendto = svc_tcp_sendto,
+ 	.xpo_release_rqst = svc_release_skb,
+ 	.xpo_detach = svc_sock_detach,
+ 	.xpo_free = svc_sock_free,
++	.xpo_prep_reply_hdr = svc_tcp_prep_reply_hdr,
+ };
  
+ static struct svc_xprt_class svc_tcp_class = {
