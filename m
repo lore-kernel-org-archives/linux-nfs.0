@@ -1,168 +1,295 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [RFC,PATCH 02/38] svc: Make svc_sock the tcp/udp transport
-Date: Thu, 29 Nov 2007 16:53:34 -0600
-Message-ID: <20071129225334.15107.93391.stgit@dell3.ogc.int>
+Subject: [RFC,PATCH 19/38] svc: Make the enqueue service transport neutral and export it.
+Date: Thu, 29 Nov 2007 16:54:13 -0600
+Message-ID: <20071129225413.15107.44000.stgit@dell3.ogc.int>
 References: <20071129225142.15107.46200.stgit@dell3.ogc.int>
 Content-Type: text/plain; charset=utf-8; format=fixed
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:47419 "EHLO
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:47406 "EHLO
 	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1762984AbXK2XUN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2007 18:20:13 -0500
+	by vger.kernel.org with ESMTP id S1762894AbXK2XUM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2007 18:20:12 -0500
 In-Reply-To: <20071129225142.15107.46200.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-Make TCP and UDP svc_sock transports, and register them
-with the svc transport core. 
+The svc_sock_enqueue function is now transport independent since all of
+the fields it touches have been moved to the transport independent svc_xprt
+structure. Change the function to use the svc_xprt structure directly
+instead of the transport specific svc_sock structure.
 
-A transport type (svc_sock) has an svc_xprt as its first member, 
-and calls svc_xprt_init to initialize this field.
+Transport specific data-ready handlers need to call this function, so
+export it.
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- include/linux/sunrpc/debug.h   |    1 -
- include/linux/sunrpc/svcsock.h |    4 ++++
- net/sunrpc/sunrpc_syms.c       |    4 +++-
- net/sunrpc/svcsock.c           |   33 ++++++++++++++++++++++++++++++++-
- 4 files changed, 39 insertions(+), 3 deletions(-)
+ net/sunrpc/svcsock.c |   97 ++++++++++++++++++++++++++------------------------
+ 1 files changed, 50 insertions(+), 47 deletions(-)
 
-diff --git a/include/linux/sunrpc/debug.h b/include/linux/sunrpc/debug.h
-index 1456a0b..3482a38 100644
---- a/include/linux/sunrpc/debug.h
-+++ b/include/linux/sunrpc/debug.h
-@@ -20,7 +20,6 @@
- #define RPCDBG_BIND		0x0020
- #define RPCDBG_SCHED		0x0040
- #define RPCDBG_TRANS		0x0080
--#define RPCDBG_SVCSOCK		0x0100
- #define RPCDBG_SVCXPRT		0x0100
- #define RPCDBG_SVCDSP		0x0200
- #define RPCDBG_MISC		0x0400
-diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
-index a53e0fa..1878cbe 100644
---- a/include/linux/sunrpc/svcsock.h
-+++ b/include/linux/sunrpc/svcsock.h
-@@ -10,11 +10,13 @@
- #define SUNRPC_SVCSOCK_H
- 
- #include <linux/sunrpc/svc.h>
-+#include <linux/sunrpc/svc_xprt.h>
- 
- /*
-  * RPC server socket.
-  */
- struct svc_sock {
-+	struct svc_xprt		sk_xprt;
- 	struct list_head	sk_ready;	/* list of ready sockets */
- 	struct list_head	sk_list;	/* list of all sockets */
- 	struct socket *		sk_sock;	/* berkeley socket layer */
-@@ -78,6 +80,8 @@ int		svc_addsock(struct svc_serv *serv,
- 			    int fd,
- 			    char *name_return,
- 			    int *proto);
-+void		svc_init_xprt_sock(void);
-+void		svc_cleanup_xprt_sock(void);
- 
- /*
-  * svc_makesock socket characteristics
-diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
-index 33d89e8..79ea05f 100644
---- a/net/sunrpc/sunrpc_syms.c
-+++ b/net/sunrpc/sunrpc_syms.c
-@@ -151,7 +151,8 @@ init_sunrpc(void)
- #endif
- 	cache_register(&ip_map_cache);
- 	cache_register(&unix_gid_cache);
--	init_socket_xprt();
-+	svc_init_xprt_sock();	/* svc sock transport */
-+	init_socket_xprt();	/* clnt sock transport */
- 	rpcauth_init_module();
- out:
- 	return err;
-@@ -162,6 +163,7 @@ cleanup_sunrpc(void)
- {
- 	rpcauth_remove_module();
- 	cleanup_socket_xprt();
-+	svc_cleanup_xprt_sock();
- 	unregister_rpc_pipefs();
- 	rpc_destroy_mempool();
- 	if (cache_unregister(&ip_map_cache))
 diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index c75bffe..4755467 100644
+index 19d0dee..17feb4b 100644
 --- a/net/sunrpc/svcsock.c
 +++ b/net/sunrpc/svcsock.c
-@@ -75,7 +75,7 @@
+@@ -5,7 +5,7 @@
+  *
+  * The server scheduling algorithm does not always distribute the load
+  * evenly when servicing a single client. May need to modify the
+- * svc_sock_enqueue procedure...
++ * svc_xprt_enqueue procedure...
+  *
+  * TCP support is largely untested and may be a little slow. The problem
+  * is that we currently do two separate recvfrom's, one for the 4-byte
+@@ -63,7 +63,7 @@
+  *	providing that certain rules are followed:
+  *
+  *	XPT_CONN, XPT_DATA, can be set or cleared at any time.
+- *		after a set, svc_sock_enqueue must be called.
++ *		after a set, svc_xprt_enqueue must be called.
+  *		after a clear, the socket must be read/accepted
+  *		 if this succeeds, it must be set again.
+  *	XPT_CLOSE can set at any time. It is never cleared.
+@@ -228,22 +228,22 @@ svc_sock_wspace(struct svc_sock *svsk)
+  * processes, wake 'em up.
   *
   */
+-static void
+-svc_sock_enqueue(struct svc_sock *svsk)
++void
++svc_xprt_enqueue(struct svc_xprt *xprt)
+ {
+-	struct svc_serv	*serv = svsk->sk_xprt.xpt_server;
++	struct svc_serv	*serv = xprt->xpt_server;
+ 	struct svc_pool *pool;
+ 	struct svc_rqst	*rqstp;
+ 	int cpu;
  
--#define RPCDBG_FACILITY	RPCDBG_SVCSOCK
-+#define RPCDBG_FACILITY	RPCDBG_SVCXPRT
+-	if (!(svsk->sk_xprt.xpt_flags &
++	if (!(xprt->xpt_flags &
+ 	      ((1<<XPT_CONN)|(1<<XPT_DATA)|(1<<XPT_CLOSE)|(1<<XPT_DEFERRED))))
+ 		return;
+-	if (test_bit(XPT_DEAD, &svsk->sk_xprt.xpt_flags))
++	if (test_bit(XPT_DEAD, &xprt->xpt_flags))
+ 		return;
  
+ 	cpu = get_cpu();
+-	pool = svc_pool_for_cpu(svsk->sk_xprt.xpt_server, cpu);
++	pool = svc_pool_for_cpu(xprt->xpt_server, cpu);
+ 	put_cpu();
  
- static struct svc_sock *svc_setup_socket(struct svc_serv *, struct socket *,
-@@ -900,12 +900,21 @@ svc_udp_sendto(struct svc_rqst *rqstp)
- 	return error;
+ 	spin_lock_bh(&pool->sp_lock);
+@@ -251,11 +251,12 @@ svc_sock_enqueue(struct svc_sock *svsk)
+ 	if (!list_empty(&pool->sp_threads) &&
+ 	    !list_empty(&pool->sp_sockets))
+ 		printk(KERN_ERR
+-			"svc_sock_enqueue: threads and sockets both waiting??\n");
++		       "svc_xprt_enqueue: "
++		       "threads and transports both waiting??\n");
+ 
+-	if (test_bit(XPT_DEAD, &svsk->sk_xprt.xpt_flags)) {
++	if (test_bit(XPT_DEAD, &xprt->xpt_flags)) {
+ 		/* Don't enqueue dead sockets */
+-		dprintk("svc: socket %p is dead, not enqueued\n", svsk->sk_sk);
++		dprintk("svc: transport %p is dead, not enqueued\n", xprt);
+ 		goto out_unlock;
+ 	}
+ 
+@@ -264,28 +265,29 @@ svc_sock_enqueue(struct svc_sock *svsk)
+ 	 * on the idle list.  We update XPT_BUSY atomically because
+ 	 * it also guards against trying to enqueue the svc_sock twice.
+ 	 */
+-	if (test_and_set_bit(XPT_BUSY, &svsk->sk_xprt.xpt_flags)) {
++	if (test_and_set_bit(XPT_BUSY, &xprt->xpt_flags)) {
+ 		/* Don't enqueue socket while already enqueued */
+-		dprintk("svc: socket %p busy, not enqueued\n", svsk->sk_sk);
++		dprintk("svc: transport %p busy, not enqueued\n", xprt);
+ 		goto out_unlock;
+ 	}
+-	BUG_ON(svsk->sk_xprt.xpt_pool != NULL);
+-	svsk->sk_xprt.xpt_pool = pool;
++	BUG_ON(xprt->xpt_pool != NULL);
++	xprt->xpt_pool = pool;
+ 
+ 	/* Handle pending connection */
+-	if (test_bit(XPT_CONN, &svsk->sk_xprt.xpt_flags))
++	if (test_bit(XPT_CONN, &xprt->xpt_flags))
+ 		goto process;
+ 
+ 	/* Handle close in-progress */
+-	if (test_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags))
++	if (test_bit(XPT_CLOSE, &xprt->xpt_flags))
+ 		goto process;
+ 
+ 	/* Check if we have space to reply to a request */
+-	if (!svsk->sk_xprt.xpt_ops->xpo_has_wspace(&svsk->sk_xprt)) {
++	if (!xprt->xpt_ops->xpo_has_wspace(xprt)) {
+ 		/* Don't enqueue while not enough space for reply */
+-		dprintk("svc: no write space, socket %p  not enqueued\n", svsk);
+-		svsk->sk_xprt.xpt_pool = NULL;
+-		clear_bit(XPT_BUSY, &svsk->sk_xprt.xpt_flags);
++		dprintk("svc: no write space, transport %p  not enqueued\n",
++			xprt);
++		xprt->xpt_pool = NULL;
++		clear_bit(XPT_BUSY, &xprt->xpt_flags);
+ 		goto out_unlock;
+ 	}
+ 
+@@ -294,28 +296,29 @@ svc_sock_enqueue(struct svc_sock *svsk)
+ 		rqstp = list_entry(pool->sp_threads.next,
+ 				   struct svc_rqst,
+ 				   rq_list);
+-		dprintk("svc: socket %p served by daemon %p\n",
+-			svsk->sk_sk, rqstp);
++		dprintk("svc: transport %p served by daemon %p\n",
++			xprt, rqstp);
+ 		svc_thread_dequeue(pool, rqstp);
+-		if (rqstp->rq_sock)
++		if (rqstp->rq_xprt)
+ 			printk(KERN_ERR
+-				"svc_sock_enqueue: server %p, rq_sock=%p!\n",
+-				rqstp, rqstp->rq_sock);
+-		rqstp->rq_sock = svsk;
+-		svc_xprt_get(&svsk->sk_xprt);
++				"svc_xprt_enqueue: server %p, rq_xprt=%p!\n",
++				rqstp, rqstp->rq_xprt);
++		rqstp->rq_xprt = xprt;
++		svc_xprt_get(xprt);
+ 		rqstp->rq_reserved = serv->sv_max_mesg;
+-		atomic_add(rqstp->rq_reserved, &svsk->sk_xprt.xpt_reserved);
+-		BUG_ON(svsk->sk_xprt.xpt_pool != pool);
++		atomic_add(rqstp->rq_reserved, &xprt->xpt_reserved);
++		BUG_ON(xprt->xpt_pool != pool);
+ 		wake_up(&rqstp->rq_wait);
+ 	} else {
+-		dprintk("svc: socket %p put into queue\n", svsk->sk_sk);
+-		list_add_tail(&svsk->sk_xprt.xpt_ready, &pool->sp_sockets);
+-		BUG_ON(svsk->sk_xprt.xpt_pool != pool);
++		dprintk("svc: transport %p put into queue\n", xprt);
++		list_add_tail(&xprt->xpt_ready, &pool->sp_sockets);
++		BUG_ON(xprt->xpt_pool != pool);
+ 	}
+ 
+ out_unlock:
+ 	spin_unlock_bh(&pool->sp_lock);
+ }
++EXPORT_SYMBOL_GPL(svc_xprt_enqueue);
+ 
+ /*
+  * Dequeue the first socket.  Must be called with the pool->sp_lock held.
+@@ -349,7 +352,7 @@ svc_sock_received(struct svc_sock *svsk)
+ {
+ 	svsk->sk_xprt.xpt_pool = NULL;
+ 	clear_bit(XPT_BUSY, &svsk->sk_xprt.xpt_flags);
+-	svc_sock_enqueue(svsk);
++	svc_xprt_enqueue(&svsk->sk_xprt);
  }
  
-+static struct svc_xprt_ops svc_udp_ops = {
-+};
-+
-+static struct svc_xprt_class svc_udp_class = {
-+	.xcl_name = "udp",
-+	.xcl_ops = &svc_udp_ops,
-+};
-+
- static void
- svc_udp_init(struct svc_sock *svsk)
- {
- 	int one = 1;
- 	mm_segment_t oldfs;
  
-+	svc_xprt_init(&svc_udp_class, &svsk->sk_xprt);
- 	svsk->sk_sk->sk_data_ready = svc_udp_data_ready;
- 	svsk->sk_sk->sk_write_space = svc_write_space;
- 	svsk->sk_recvfrom = svc_udp_recvfrom;
-@@ -1344,12 +1353,33 @@ svc_tcp_sendto(struct svc_rqst *rqstp)
+@@ -368,11 +371,11 @@ void svc_reserve(struct svc_rqst *rqstp, int space)
+ 	space += rqstp->rq_res.head[0].iov_len;
+ 
+ 	if (space < rqstp->rq_reserved) {
+-		struct svc_sock *svsk = rqstp->rq_sock;
+-		atomic_sub((rqstp->rq_reserved - space), &svsk->sk_xprt.xpt_reserved);
++		struct svc_xprt *xprt = rqstp->rq_xprt;
++		atomic_sub((rqstp->rq_reserved - space), &xprt->xpt_reserved);
+ 		rqstp->rq_reserved = space;
+ 
+-		svc_sock_enqueue(svsk);
++		svc_xprt_enqueue(xprt);
+ 	}
+ }
+ 
+@@ -700,7 +703,7 @@ svc_udp_data_ready(struct sock *sk, int count)
+ 			svsk, sk, count,
+ 			test_bit(XPT_BUSY, &svsk->sk_xprt.xpt_flags));
+ 		set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
+-		svc_sock_enqueue(svsk);
++		svc_xprt_enqueue(&svsk->sk_xprt);
+ 	}
+ 	if (sk->sk_sleep && waitqueue_active(sk->sk_sleep))
+ 		wake_up_interruptible(sk->sk_sleep);
+@@ -717,7 +720,7 @@ svc_write_space(struct sock *sk)
+ 	if (svsk) {
+ 		dprintk("svc: socket %p(inet %p), write_space busy=%d\n",
+ 			svsk, sk, test_bit(XPT_BUSY, &svsk->sk_xprt.xpt_flags));
+-		svc_sock_enqueue(svsk);
++		svc_xprt_enqueue(&svsk->sk_xprt);
+ 	}
+ 
+ 	if (sk->sk_sleep && waitqueue_active(sk->sk_sleep)) {
+@@ -989,7 +992,7 @@ svc_tcp_listen_data_ready(struct sock *sk, int count_unused)
+ 	if (sk->sk_state == TCP_LISTEN) {
+ 		if (svsk) {
+ 			set_bit(XPT_CONN, &svsk->sk_xprt.xpt_flags);
+-			svc_sock_enqueue(svsk);
++			svc_xprt_enqueue(&svsk->sk_xprt);
+ 		} else
+ 			printk("svc: socket %p: no user data\n", sk);
+ 	}
+@@ -1013,7 +1016,7 @@ svc_tcp_state_change(struct sock *sk)
+ 		printk("svc: socket %p: no user data\n", sk);
+ 	else {
+ 		set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
+-		svc_sock_enqueue(svsk);
++		svc_xprt_enqueue(&svsk->sk_xprt);
+ 	}
+ 	if (sk->sk_sleep && waitqueue_active(sk->sk_sleep))
+ 		wake_up_interruptible_all(sk->sk_sleep);
+@@ -1028,7 +1031,7 @@ svc_tcp_data_ready(struct sock *sk, int count)
+ 		sk, sk->sk_user_data);
+ 	if (svsk) {
+ 		set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
+-		svc_sock_enqueue(svsk);
++		svc_xprt_enqueue(&svsk->sk_xprt);
+ 	}
+ 	if (sk->sk_sleep && waitqueue_active(sk->sk_sleep))
+ 		wake_up_interruptible(sk->sk_sleep);
+@@ -1080,7 +1083,7 @@ static struct svc_xprt *svc_tcp_accept(struct svc_xprt *xprt)
+ 	}
+ 
+ 	set_bit(XPT_CONN, &svsk->sk_xprt.xpt_flags);
+-	svc_sock_enqueue(svsk);
++	svc_xprt_enqueue(&svsk->sk_xprt);
+ 
+ 	err = kernel_getpeername(newsock, sin, &slen);
+ 	if (err < 0) {
+@@ -1316,7 +1319,7 @@ svc_tcp_sendto(struct svc_rqst *rqstp)
+ 		       (sent<0)?"got error":"sent only",
+ 		       sent, xbufp->len);
+ 		set_bit(XPT_CLOSE, &rqstp->rq_sock->sk_xprt.xpt_flags);
+-		svc_sock_enqueue(rqstp->rq_sock);
++		svc_xprt_enqueue(rqstp->rq_xprt);
+ 		sent = -EAGAIN;
+ 	}
  	return sent;
- }
+@@ -1493,7 +1496,7 @@ svc_check_conn_limits(struct svc_serv *serv)
+ 		spin_unlock_bh(&serv->sv_lock);
  
-+static struct svc_xprt_ops svc_tcp_ops = {
-+};
-+
-+static struct svc_xprt_class svc_tcp_class = {
-+	.xcl_name = "tcp",
-+	.xcl_ops = &svc_tcp_ops,
-+};
-+
-+void svc_init_xprt_sock(void)
-+{
-+	svc_reg_xprt_class(&svc_tcp_class);
-+	svc_reg_xprt_class(&svc_udp_class);
-+}
-+
-+void svc_cleanup_xprt_sock(void)
-+{
-+	svc_unreg_xprt_class(&svc_tcp_class);
-+	svc_unreg_xprt_class(&svc_udp_class);
-+}
-+
- static void
- svc_tcp_init(struct svc_sock *svsk)
- {
- 	struct sock	*sk = svsk->sk_sk;
- 	struct tcp_sock *tp = tcp_sk(sk);
+ 		if (svsk) {
+-			svc_sock_enqueue(svsk);
++			svc_xprt_enqueue(&svsk->sk_xprt);
+ 			svc_xprt_put(&svsk->sk_xprt);
+ 		}
+ 	}
+@@ -1726,7 +1729,7 @@ svc_age_temp_sockets(unsigned long closure)
+ 			svsk, get_seconds() - svsk->sk_lastrecv);
  
-+	svc_xprt_init(&svc_tcp_class, &svsk->sk_xprt);
- 	svsk->sk_recvfrom = svc_tcp_recvfrom;
- 	svsk->sk_sendto = svc_tcp_sendto;
+ 		/* a thread will dequeue and close it soon */
+-		svc_sock_enqueue(svsk);
++		svc_xprt_enqueue(&svsk->sk_xprt);
+ 		svc_xprt_put(&svsk->sk_xprt);
+ 	}
  
-@@ -1965,3 +1995,4 @@ static struct svc_deferred_req *svc_deferred_dequeue(struct svc_sock *svsk)
+@@ -2008,7 +2011,7 @@ static void svc_revisit(struct cache_deferred_req *dreq, int too_many)
+ 	list_add(&dr->handle.recent, &svsk->sk_deferred);
  	spin_unlock(&svsk->sk_lock);
- 	return dr;
+ 	set_bit(XPT_DEFERRED, &svsk->sk_xprt.xpt_flags);
+-	svc_sock_enqueue(svsk);
++	svc_xprt_enqueue(&svsk->sk_xprt);
+ 	svc_xprt_put(&svsk->sk_xprt);
  }
-+
+ 
