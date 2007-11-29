@@ -1,165 +1,92 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [RFC,PATCH 13/38] svc: Change services to use new svc_create_xprt service
-Date: Thu, 29 Nov 2007 16:56:05 -0600
-Message-ID: <20071129225605.15275.58161.stgit@dell3.ogc.int>
-References: <20071129225510.15275.82660.stgit@dell3.ogc.int>
+Subject: [RFC,PATCH 26/38] svc: Make svc_sock_release svc_xprt_release
+Date: Thu, 29 Nov 2007 16:54:28 -0600
+Message-ID: <20071129225428.15107.16073.stgit@dell3.ogc.int>
+References: <20071129225142.15107.46200.stgit@dell3.ogc.int>
 Content-Type: text/plain; charset=utf-8; format=fixed
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:47425 "EHLO
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:47409 "EHLO
 	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1763790AbXK2XU1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2007 18:20:27 -0500
-In-Reply-To: <20071129225510.15275.82660.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
+	by vger.kernel.org with ESMTP id S1763615AbXK2XUX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2007 18:20:23 -0500
+In-Reply-To: <20071129225142.15107.46200.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-Modify the various kernel RPC svcs to use the svc_create_xprt service.
+The svc_sock_release function only touches transport independent fields.
+Change the function to manipulate svc_xprt directly instead of the transport
+dependent svc_sock structure. 
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- fs/lockd/svc.c                 |   17 ++++++++---------
- fs/nfs/callback.c              |    4 ++--
- fs/nfsd/nfssvc.c               |    4 ++--
- include/linux/sunrpc/svcsock.h |    1 -
- net/sunrpc/sunrpc_syms.c       |    1 -
- net/sunrpc/svcsock.c           |   22 ----------------------
- 6 files changed, 12 insertions(+), 37 deletions(-)
+ net/sunrpc/svcsock.c |   16 +++++++---------
+ 1 files changed, 7 insertions(+), 9 deletions(-)
 
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index 82e2192..8686915 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -219,13 +219,12 @@ lockd(struct svc_rqst *rqstp)
- 	module_put_and_exit(0);
- }
- 
--
--static int find_socket(struct svc_serv *serv, int proto)
-+static int find_xprt(struct svc_serv *serv, char *proto)
- {
- 	struct svc_sock *svsk;
- 	int found = 0;
- 	list_for_each_entry(svsk, &serv->sv_permsocks, sk_list)
--		if (svsk->sk_sk->sk_protocol == proto) {
-+		if (strcmp(svsk->sk_xprt.xpt_class->xcl_name, proto) == 0) {
- 			found = 1;
- 			break;
- 		}
-@@ -243,13 +242,13 @@ static int make_socks(struct svc_serv *serv, int proto)
- 	int err = 0;
- 
- 	if (proto == IPPROTO_UDP || nlm_udpport)
--		if (!find_socket(serv, IPPROTO_UDP))
--			err = svc_makesock(serv, IPPROTO_UDP, nlm_udpport,
--						SVC_SOCK_DEFAULTS);
-+		if (!find_xprt(serv, "udp"))
-+			err = svc_create_xprt(serv, "udp", nlm_udpport,
-+					      SVC_SOCK_DEFAULTS);
- 	if (err >= 0 && (proto == IPPROTO_TCP || nlm_tcpport))
--		if (!find_socket(serv, IPPROTO_TCP))
--			err = svc_makesock(serv, IPPROTO_TCP, nlm_tcpport,
--						SVC_SOCK_DEFAULTS);
-+		if (!find_xprt(serv, "tcp"))
-+			err = svc_create_xprt(serv, "tcp", nlm_tcpport,
-+					      SVC_SOCK_DEFAULTS);
- 
- 	if (err >= 0) {
- 		warned = 0;
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index a796be5..e27ca14 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -123,8 +123,8 @@ int nfs_callback_up(void)
- 	if (!serv)
- 		goto out_err;
- 
--	ret = svc_makesock(serv, IPPROTO_TCP, nfs_callback_set_tcpport,
--							SVC_SOCK_ANONYMOUS);
-+	ret = svc_create_xprt(serv, "tcp", nfs_callback_set_tcpport,
-+			      SVC_SOCK_ANONYMOUS);
- 	if (ret <= 0)
- 		goto out_destroy;
- 	nfs_callback_tcpport = ret;
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 1190aea..a828b0b 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -236,7 +236,7 @@ static int nfsd_init_socks(int port)
- 
- 	error = lockd_up(IPPROTO_UDP);
- 	if (error >= 0) {
--		error = svc_makesock(nfsd_serv, IPPROTO_UDP, port,
-+		error = svc_create_xprt(nfsd_serv, "udp", port,
- 					SVC_SOCK_DEFAULTS);
- 		if (error < 0)
- 			lockd_down();
-@@ -247,7 +247,7 @@ static int nfsd_init_socks(int port)
- #ifdef CONFIG_NFSD_TCP
- 	error = lockd_up(IPPROTO_TCP);
- 	if (error >= 0) {
--		error = svc_makesock(nfsd_serv, IPPROTO_TCP, port,
-+		error = svc_create_xprt(nfsd_serv, "tcp", port,
- 					SVC_SOCK_DEFAULTS);
- 		if (error < 0)
- 			lockd_down();
-diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
-index 9882ce0..3181d9d 100644
---- a/include/linux/sunrpc/svcsock.h
-+++ b/include/linux/sunrpc/svcsock.h
-@@ -67,7 +67,6 @@ struct svc_sock {
- /*
-  * Function prototypes.
-  */
--int		svc_makesock(struct svc_serv *, int, unsigned short, int flags);
- void		svc_force_close_socket(struct svc_sock *);
- int		svc_recv(struct svc_rqst *, long);
- int		svc_send(struct svc_rqst *);
-diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
-index 79ea05f..52eea54 100644
---- a/net/sunrpc/sunrpc_syms.c
-+++ b/net/sunrpc/sunrpc_syms.c
-@@ -72,7 +72,6 @@ EXPORT_SYMBOL(svc_drop);
- EXPORT_SYMBOL(svc_process);
- EXPORT_SYMBOL(svc_recv);
- EXPORT_SYMBOL(svc_wake_up);
--EXPORT_SYMBOL(svc_makesock);
- EXPORT_SYMBOL(svc_reserve);
- EXPORT_SYMBOL(svc_auth_register);
- EXPORT_SYMBOL(auth_domain_lookup);
 diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 0bfffbc..574cdbe 100644
+index e8cfeeb..36fc59c 100644
 --- a/net/sunrpc/svcsock.c
 +++ b/net/sunrpc/svcsock.c
-@@ -2001,28 +2001,6 @@ void svc_force_close_socket(struct svc_sock *svsk)
- 	svc_close_socket(svsk);
+@@ -383,10 +383,9 @@ void svc_reserve(struct svc_rqst *rqstp, int space)
+ 	}
  }
  
--/**
-- * svc_makesock - Make a socket for nfsd and lockd
-- * @serv: RPC server structure
-- * @protocol: transport protocol to use
-- * @port: port to use
-- * @flags: requested socket characteristics
-- *
-- */
--int svc_makesock(struct svc_serv *serv, int protocol, unsigned short port,
--			int flags)
--{
--	dprintk("svc: creating socket proto = %d\n", protocol);
--	switch (protocol) {
--	case IPPROTO_TCP:
--		return svc_create_xprt(serv, "tcp", port, flags);
--	case IPPROTO_UDP:
--		return svc_create_xprt(serv, "udp", port, flags);
--	default:
--		return -EINVAL;
--	}
--}
+-static void
+-svc_sock_release(struct svc_rqst *rqstp)
++static void svc_xprt_release(struct svc_rqst *rqstp)
+ {
+-	struct svc_sock	*svsk = rqstp->rq_sock;
++	struct svc_xprt	*xprt = rqstp->rq_xprt;
+ 
+ 	rqstp->rq_xprt->xpt_ops->xpo_release_rqst(rqstp);
+ 
+@@ -394,7 +393,6 @@ svc_sock_release(struct svc_rqst *rqstp)
+ 	rqstp->rq_res.page_len = 0;
+ 	rqstp->rq_res.page_base = 0;
+ 
 -
+ 	/* Reset response buffer and release
+ 	 * the reservation.
+ 	 * But first, check that enough space was reserved
+@@ -407,9 +405,9 @@ svc_sock_release(struct svc_rqst *rqstp)
+ 
+ 	rqstp->rq_res.head[0].iov_len = 0;
+ 	svc_reserve(rqstp, 0);
+-	rqstp->rq_sock = NULL;
++	rqstp->rq_xprt = NULL;
+ 
+-	svc_xprt_put(&svsk->sk_xprt);
++	svc_xprt_put(xprt);
+ }
+ 
  /*
-  * Handle defer and revisit of requests
-  */
+@@ -1609,7 +1607,7 @@ svc_recv(struct svc_rqst *rqstp, long timeout)
+ 	/* No data, incomplete (TCP) read, or accept() */
+ 	if (len == 0 || len == -EAGAIN) {
+ 		rqstp->rq_res.len = 0;
+-		svc_sock_release(rqstp);
++		svc_xprt_release(rqstp);
+ 		return -EAGAIN;
+ 	}
+ 	clear_bit(XPT_OLD, &svsk->sk_xprt.xpt_flags);
+@@ -1629,7 +1627,7 @@ void
+ svc_drop(struct svc_rqst *rqstp)
+ {
+ 	dprintk("svc: socket %p dropped request\n", rqstp->rq_sock);
+-	svc_sock_release(rqstp);
++	svc_xprt_release(rqstp);
+ }
+ 
+ /*
+@@ -1662,7 +1660,7 @@ svc_send(struct svc_rqst *rqstp)
+ 	else
+ 		len = xprt->xpt_ops->xpo_sendto(rqstp);
+ 	mutex_unlock(&xprt->xpt_mutex);
+-	svc_sock_release(rqstp);
++	svc_xprt_release(rqstp);
+ 
+ 	if (len == -ECONNREFUSED || len == -ENOTCONN || len == -EAGAIN)
+ 		return 0;
