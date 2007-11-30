@@ -1,294 +1,105 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [RFC,PATCH 01/08] rdma: SVCRMDA Header File REPOST
-Date: Fri, 30 Nov 2007 09:27:50 -0600
-Message-ID: <20071130152750.21999.11733.stgit@dell3.ogc.int>
-Content-Type: text/plain; charset=utf-8; format=fixed
+Subject: Re: [RFC,PATCH 0/8] RDMA Transport Provider
+Date: Fri, 30 Nov 2007 09:59:28 -0600
+Message-ID: <1196438368.5432.10.camel@trinity.ogc.int>
+References: <20071129224412.14887.14136.stgit@dell3.ogc.int>
+	 <20071130044553.GA29851@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8
 Cc: linux-nfs@vger.kernel.org
-To: bfields@fieldses.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:54544 "EHLO
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:59348 "EHLO
 	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1762458AbXK3P1v (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Nov 2007 10:27:51 -0500
+	by vger.kernel.org with ESMTP id S935273AbXK3PzZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Nov 2007 10:55:25 -0500
+In-Reply-To: <20071130044553.GA29851@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-This file defines the data types used by the SVCRDMA transport module.
-The principle data structure is the transport specific extension to 
-the svcxprt structure.
+On Thu, 2007-11-29 at 23:45 -0500, J. Bruce Fields wrote:
+> On Thu, Nov 29, 2007 at 04:44:12PM -0600, Tom Tucker wrote:
+> > This patchset implements the RDMA Transport Driver for the=20
+[...snip...]
 
-Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
----
+I resent the two offending patches with fixes as required.
 
- include/linux/sunrpc/svc_rdma.h |  262 +++++++++++++++++++++++++++++++++++++++
- 1 files changed, 262 insertions(+), 0 deletions(-)
+> I still need the following to get it to compile.  Also, I'm getting
+> these warnings:
+>=20
+> net/sunrpc/svc_rdma_transport.c: In function =E2=80=98dto_tasklet_fun=
+c=E2=80=99:
+> net/sunrpc/svc_rdma_transport.c:232: warning: passing argument 2 of =E2=
+=80=98test_and_clear_bit=E2=80=99 from incompatible pointer type
+> net/sunrpc/svc_rdma_transport.c:241: warning: passing argument 2 of =E2=
+=80=98constant_test_bit=E2=80=99 from incompatible pointer type
+> net/sunrpc/svc_rdma_transport.c:241: warning: passing argument 2 of =E2=
+=80=98variable_test_bit=E2=80=99 from incompatible pointer type
+> net/sunrpc/svc_rdma_transport.c:245: warning: passing argument 2 of =E2=
+=80=98test_and_clear_bit=E2=80=99 from incompatible pointer type
+> net/sunrpc/svc_rdma_transport.c: In function =E2=80=98rq_comp_handler=
+=E2=80=99:
+> net/sunrpc/svc_rdma_transport.c:271: warning: passing argument 2 of =E2=
+=80=98set_bit=E2=80=99 from incompatible pointer type
+> net/sunrpc/svc_rdma_transport.c: In function =E2=80=98sq_comp_handler=
+=E2=80=99:
+> net/sunrpc/svc_rdma_transport.c:382: warning: passing argument 2 of =E2=
+=80=98set_bit=E2=80=99 from incompatible pointer type
+> net/sunrpc/svc_rdma_transport.c: In function =E2=80=98rdma_cma_handle=
+r=E2=80=99:
+> net/sunrpc/svc_rdma_transport.c:617: warning: passing argument 2 of =E2=
+=80=98clear_bit=E2=80=99 from incompatible pointer type
+> net/sunrpc/svc_rdma_transport.c: In function =E2=80=98svc_rdma_accept=
+=E2=80=99:
+> net/sunrpc/svc_rdma_transport.c:848: warning: passing argument 2 of =E2=
+=80=98set_bit=E2=80=99 from incompatible pointer type
+>=20
 
-diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
-new file mode 100644
-index 0000000..c11bbcc
---- /dev/null
-+++ b/include/linux/sunrpc/svc_rdma.h
-@@ -0,0 +1,262 @@
-+/*
-+ * Copyright (c) 2005-2006 Network Appliance, Inc. All rights reserved.
-+ *
-+ * This software is available to you under a choice of one of two
-+ * licenses.  You may choose to be licensed under the terms of the GNU
-+ * General Public License (GPL) Version 2, available from the file
-+ * COPYING in the main directory of this source tree, or the BSD-type
-+ * license below:
-+ *
-+ * Redistribution and use in source and binary forms, with or without
-+ * modification, are permitted provided that the following conditions
-+ * are met:
-+ *
-+ *      Redistributions of source code must retain the above copyright
-+ *      notice, this list of conditions and the following disclaimer.
-+ *
-+ *      Redistributions in binary form must reproduce the above
-+ *      copyright notice, this list of conditions and the following
-+ *      disclaimer in the documentation and/or other materials provided
-+ *      with the distribution.
-+ *
-+ *      Neither the name of the Network Appliance, Inc. nor the names of
-+ *      its contributors may be used to endorse or promote products
-+ *      derived from this software without specific prior written
-+ *      permission.
-+ *
-+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-+ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-+ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-+ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-+ *
-+ * Author: Tom Tucker <tom@opengridcomputing.com>
-+ */
-+
-+#ifndef SVC_RDMA_H
-+#define SVC_RDMA_H
-+#include <linux/sunrpc/xdr.h>
-+#include <linux/sunrpc/svcsock.h>
-+#include <linux/sunrpc/rpc_rdma.h>
-+#include <rdma/ib_verbs.h>
-+#include <rdma/rdma_cm.h>
-+#define SVCRDMA_DEBUG
-+
-+/* RPC/RDMA parameters and stats */
-+extern unsigned int svcrdma_ord;
-+extern unsigned int svcrdma_max_requests;
-+extern unsigned int svcrdma_max_req_size;
-+
-+extern atomic_t rdma_stat_recv;
-+extern atomic_t rdma_stat_read;
-+extern atomic_t rdma_stat_write;
-+extern atomic_t rdma_stat_sq_starve;
-+extern atomic_t rdma_stat_rq_starve;
-+extern atomic_t rdma_stat_rq_poll;
-+extern atomic_t rdma_stat_rq_prod;
-+extern atomic_t rdma_stat_sq_poll;
-+extern atomic_t rdma_stat_sq_prod;
-+
-+#define RPCRDMA_VERSION 1
-+
-+/*
-+ * Contexts are built when an RDMA request is created and are a
-+ * record of the resources that can be recovered when the request
-+ * completes.
-+ */
-+struct svc_rdma_op_ctxt {
-+	struct svc_rdma_op_ctxt *next;
-+	struct xdr_buf arg;
-+	struct list_head dto_q;
-+	enum ib_wr_opcode wr_op;
-+	enum ib_wc_status wc_status;
-+	u32 byte_len;
-+	struct svcxprt_rdma *xprt;
-+	unsigned long flags;
-+	enum dma_data_direction direction;
-+	int count;
-+	struct ib_sge sge[RPCSVC_MAXPAGES];
-+	struct page *pages[RPCSVC_MAXPAGES];
-+};
-+
-+#define RDMACTXT_F_READ_DONE	1
-+#define RDMACTXT_F_LAST_CTXT	2
-+
-+struct svcxprt_rdma {
-+	struct svc_xprt      sc_xprt;		/* SVC transport structure */
-+	struct rdma_cm_id    *sc_cm_id;		/* RDMA connection id */
-+	struct list_head     sc_accept_q;	/* Conn. waiting accept */
-+	int		     sc_ord;		/* RDMA read limit */
-+	wait_queue_head_t    sc_read_wait;
-+	int                  sc_max_sge;
-+
-+	int                  sc_sq_depth;	/* Depth of SQ */
-+	atomic_t             sc_sq_count;	/* Number of SQ WR on queue */
-+
-+	int                  sc_max_requests;	/* Depth of RQ */
-+	int                  sc_max_req_size;	/* Size of each RQ WR buf */
-+
-+	struct ib_pd         *sc_pd;
-+
-+	struct svc_rdma_op_ctxt  *sc_ctxt_head;
-+	int		     sc_ctxt_cnt;
-+	int		     sc_ctxt_bump;
-+	int		     sc_ctxt_max;
-+	spinlock_t	     sc_ctxt_lock;
-+	struct list_head     sc_rq_dto_q;
-+	spinlock_t	     sc_rq_dto_lock;
-+	struct ib_qp         *sc_qp;
-+	struct ib_cq         *sc_rq_cq;
-+	struct ib_cq         *sc_sq_cq;
-+	struct ib_mr         *sc_phys_mr;	/* MR for server memory */
-+
-+	spinlock_t	     sc_lock;		/* transport lock */
-+
-+	wait_queue_head_t    sc_send_wait;	/* SQ exhaustion waitlist */
-+	unsigned long	     sc_flags;
-+	struct list_head     sc_dto_q;		/* DTO tasklet I/O pending Q */
-+	struct list_head     sc_read_complete_q;
-+	spinlock_t           sc_read_complete_lock;
-+};
-+/* sc_flags */
-+#define RDMAXPRT_RQ_PENDING	1
-+#define RDMAXPRT_SQ_PENDING	2
-+#define RDMAXPRT_CONN_PENDING	3
-+
-+#define RPCRDMA_LISTEN_BACKLOG  10
-+/* The default ORD value is based on two outstanding full-size writes with a
-+ * page size of 4k, or 32k * 2 ops / 4k = 16 outstanding RDMA_READ.  */
-+#define RPCRDMA_ORD             (64/4)
-+#define RPCRDMA_SQ_DEPTH_MULT   8
-+#define RPCRDMA_MAX_THREADS     16
-+#define RPCRDMA_MAX_REQUESTS    16
-+#define RPCRDMA_MAX_REQ_SIZE    4096
-+
-+/* svc_rdma_marshal.c */
-+extern void svc_rdma_rcl_chunk_counts(struct rpcrdma_read_chunk *,
-+				      int *, int *);
-+extern int svc_rdma_xdr_decode_req(struct rpcrdma_msg **, struct svc_rqst *);
-+extern int svc_rdma_xdr_decode_deferred_req(struct svc_rqst *);
-+extern int svc_rdma_xdr_encode_error(struct svcxprt_rdma *,
-+				     struct rpcrdma_msg *,
-+				     enum rpcrdma_errcode, u32 *);
-+extern void svc_rdma_xdr_encode_write_list(struct rpcrdma_msg *, int);
-+extern void svc_rdma_xdr_encode_reply_array(struct rpcrdma_write_array *, int);
-+extern void svc_rdma_xdr_encode_array_chunk(struct rpcrdma_write_array *, int,
-+					    u32, u64, u32);
-+extern void svc_rdma_xdr_encode_reply_header(struct svcxprt_rdma *,
-+					     struct rpcrdma_msg *,
-+					     struct rpcrdma_msg *,
-+					     enum rpcrdma_proc);
-+extern int svc_rdma_xdr_get_reply_hdr_len(struct rpcrdma_msg *);
-+
-+/* svc_rdma_recvfrom.c */
-+extern int svc_rdma_recvfrom(struct svc_rqst *);
-+
-+/* svc_rdma_sendto.c */
-+extern int svc_rdma_sendto(struct svc_rqst *);
-+
-+/* svc_rdma_transport.c */
-+extern int svc_rdma_send(struct svcxprt_rdma *, struct ib_send_wr *);
-+extern int svc_rdma_send_error(struct svcxprt_rdma *, struct rpcrdma_msg *,
-+			       enum rpcrdma_errcode);
-+struct page *svc_rdma_get_page(void);
-+extern int svc_rdma_post_recv(struct svcxprt_rdma *);
-+extern int svc_rdma_create_listen(struct svc_serv *, int, struct sockaddr *);
-+extern struct svc_rdma_op_ctxt *svc_rdma_get_context(struct svcxprt_rdma *);
-+extern void svc_rdma_put_context(struct svc_rdma_op_ctxt *, int);
-+extern void svc_sq_reap(struct svcxprt_rdma *);
-+extern void svc_rq_reap(struct svcxprt_rdma *);
-+extern struct svc_xprt_class svc_rdma_class;
-+extern void svc_rdma_prep_reply_hdr(struct svc_rqst *);
-+
-+/* svc_rdma.c */
-+extern int svc_rdma_init(void);
-+extern void svc_rdma_cleanup(void);
-+
-+/*
-+ * Returns the address of the first read chunk or <nul> if no read chunk is
-+ * present
-+ */
-+static inline struct rpcrdma_read_chunk *
-+svc_rdma_get_read_chunk(struct rpcrdma_msg *rmsgp)
-+{
-+	struct rpcrdma_read_chunk *ch =
-+		(struct rpcrdma_read_chunk *)&rmsgp->rm_body.rm_chunks[0];
-+
-+	if (ch->rc_discrim == 0)
-+		return NULL;
-+
-+	return ch;
-+}
-+
-+/*
-+ * Returns the address of the first read write array element or <nul> if no
-+ * write array list is present
-+ */
-+static inline struct rpcrdma_write_array *
-+svc_rdma_get_write_array(struct rpcrdma_msg *rmsgp)
-+{
-+	if (rmsgp->rm_body.rm_chunks[0] != 0
-+	    || rmsgp->rm_body.rm_chunks[1] == 0)
-+		return NULL;
-+
-+	return (struct rpcrdma_write_array *)&rmsgp->rm_body.rm_chunks[1];
-+}
-+
-+/*
-+ * Returns the address of the first reply array element or <nul> if no
-+ * reply array is present
-+ */
-+static inline struct rpcrdma_write_array *
-+svc_rdma_get_reply_array(struct rpcrdma_msg *rmsgp)
-+{
-+	struct rpcrdma_read_chunk *rch;
-+	struct rpcrdma_write_array *wr_ary;
-+	struct rpcrdma_write_array *rp_ary;
-+
-+	/* XXX: Need to fix when reply list may occur with read-list and/or
-+	 * write list */
-+	if (rmsgp->rm_body.rm_chunks[0] != 0 ||
-+	    rmsgp->rm_body.rm_chunks[1] != 0)
-+		return NULL;
-+
-+	rch = svc_rdma_get_read_chunk(rmsgp);
-+	if (rch) {
-+		while (rch->rc_discrim)
-+			rch++;
-+
-+		/* The reply list follows an empty write array located
-+		 * at 'rc_position' here. The reply array is at rc_target.
-+		 */
-+		rp_ary = (struct rpcrdma_write_array *)&rch->rc_target;
-+
-+		goto found_it;
-+	}
-+
-+	wr_ary = svc_rdma_get_write_array(rmsgp);
-+	if (wr_ary) {
-+		rp_ary = (struct rpcrdma_write_array *)
-+			&wr_ary->
-+			wc_array[wr_ary->wc_nchunks].wc_target.rs_length;
-+
-+		goto found_it;
-+	}
-+
-+	/* No read list, no write list */
-+	rp_ary = (struct rpcrdma_write_array *)
-+		&rmsgp->rm_body.rm_chunks[2];
-+
-+ found_it:
-+	if (rp_ary->wc_discrim == 0)
-+		return NULL;
-+
-+	return rp_ary;
-+}
-+#endif
+I'm mystified as to why I didn't get these warnings. I built on a 64 bi=
+t
+machine. It seems like that would give the warning since unsigned long
+isn't even the same size as int.
+
+> --b.
+>=20
+>=20
+> commit d128e461892e6aa5332e1b87d0f94eba4728ee90
+> Author: akpm@linux-foundation.org <akpm@linux-foundation.org>
+> Date:   Tue Nov 20 01:10:43 2007 -0800
+>=20
+>     git-nfsd build fix
+>    =20
+>     From: Andrew Morton <akpm@linux-foundation.org>
+>    =20
+>     net/sunrpc/svcsock.c: In function 'svc_reclassify_socket':
+>     net/sunrpc/svcsock.c:100: error: 'struct sock' has no member name=
+d 'sk_xprt'
+>    =20
+>     Cc: "J. Bruce Fields" <bfields@fieldses.org>
+>     Cc: Neil Brown <neilb@suse.de>
+>     Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+>=20
+> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+> index 03207c9..2d0405a 100644
+> --- a/net/sunrpc/svcsock.c
+> +++ b/net/sunrpc/svcsock.c
+> @@ -97,7 +97,6 @@ static struct lock_class_key svc_slock_key[2];
+>  static inline void svc_reclassify_socket(struct socket *sock)
+>  {
+>  	struct sock *sk =3D sock->sk;
+> -	BUG_ON(sk->sk_xprt.xpt_lock.owner !=3D NULL);
+
+Somehow when I merged up to 2.6.24, this got merged incorrectly. The ne=
+w
+version still has the bug_on, but with the original argument.
+
+>  	switch (sk->sk_family) {
+>  	case AF_INET:
+>  		sock_lock_init_class_and_name(sk, "slock-AF_INET-NFSD",
+> -
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
+in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
