@@ -1,10 +1,11 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [NFS] [PATCH 12/29] NFS: Verify IPv6 addresses properly
-Date: Fri, 30 Nov 2007 13:56:00 -0500
-Message-ID: <B4C13ADB-D97B-4EB2-BD2D-9C39BD77CD10@oracle.com>
+Subject: Re: [NFS] [PATCH 05/29] NFS: Ensure NFSv4 SETCLIENTID send buffer
+	is large enough
+Date: Fri, 30 Nov 2007 14:06:13 -0500
+Message-ID: <762258BA-DCB8-4CD9-9FA2-B3026DAEB239@oracle.com>
 References: <20071129193153.4170.29598.stgit@picasso.1015granger.net>
-	<20071129194056.4170.67521.stgit@picasso.1015granger.net>
-	<1196384006.20292.124.camel@heimdal.trondhjem.org>
+	<20071129194018.4170.16357.stgit@picasso.1015granger.net>
+	<1196382722.20292.118.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0 (Apple Message framework v752.2)
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net, aurelien.charbon-Z51IpKcfGtLk1uMJSBkQmQ@public.gmane.org
@@ -13,136 +14,90 @@ Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IyB3F-0005ID-Tl
-	for nfs@lists.sourceforge.net; Fri, 30 Nov 2007 10:57:25 -0800
+	id 1IyBDV-0006IS-Aa
+	for nfs@lists.sourceforge.net; Fri, 30 Nov 2007 11:08:01 -0800
 Received: from agminet01.oracle.com ([141.146.126.228])
 	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IyB3L-0001Fy-Q0
-	for nfs@lists.sourceforge.net; Fri, 30 Nov 2007 10:57:32 -0800
-In-Reply-To: <1196384006.20292.124.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+	(Exim 4.44) id 1IyBDa-0000Bn-4x
+	for nfs@lists.sourceforge.net; Fri, 30 Nov 2007 11:08:07 -0800
+In-Reply-To: <1196382722.20292.118.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <nfs.lists.sourceforge.net>
 
-On Nov 29, 2007, at 7:53 PM, Trond Myklebust wrote:
+On Nov 29, 2007, at 7:32 PM, Trond Myklebust wrote:
 > On Thu, 2007-11-29 at 14:40 -0500, Chuck Lever wrote:
->> Add support to nfs_verify_server_address for recognizing AF_INET6
->> addresses.
+>> Ensure that the RPC buffer size specified for NFSv4 SETCLIENTID  
+>> procedures
+>> matches what we are encoding into the buffer.  See the definition of
+>> struct nfs4_setclientid {} and the encode_setclientid() function.
 >>
 >> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 >> ---
 >>
->>  fs/nfs/super.c |   27 ++++++++++++++++-----------
->>  1 files changed, 16 insertions(+), 11 deletions(-)
+>>  fs/nfs/nfs4xdr.c        |   10 ++++++----
+>>  include/linux/nfs_xdr.h |   13 +++++++------
+>>  2 files changed, 13 insertions(+), 10 deletions(-)
 >>
->> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
->> index e5646a9..ed0b5f1 100644
->> --- a/fs/nfs/super.c
->> +++ b/fs/nfs/super.c
->> @@ -576,16 +576,21 @@ static void nfs_umount_begin(struct vfsmount  
->> *vfsmnt, int flags)
->>  }
+>> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+>> index eae46f0..cb7a835 100644
+>> --- a/fs/nfs/nfs4xdr.c
+>> +++ b/fs/nfs/nfs4xdr.c
+>> @@ -116,10 +116,12 @@ static int nfs4_stat_to_errno(int);
+>>  #define decode_renew_maxsz	(op_decode_hdr_maxsz)
+>>  #define encode_setclientid_maxsz \
+>>  				(op_encode_hdr_maxsz + \
+>> -				4 /*server->ip_addr*/ + \
+>> -				1 /*Netid*/ + \
+>> -				6 /*uaddr*/ + \
+>> -				6 + (NFS4_VERIFIER_SIZE >> 2))
+>> +				XDR_QUADLEN(NFS4_VERIFIER_SIZE) + \
+>> +				XDR_QUADLEN(48) /* sc_name */ + \
+>> +				1 /* sc_prog */ + \
+>> +				XDR_QUADLEN(RPCBIND_MAXNETIDLEN) + \
+>> +				XDR_QUADLEN(RPCBIND_MAXUADDRLEN) + \
+>> +				1) /* sc_cb_ident */
+>>  #define decode_setclientid_maxsz \
+>>  				(op_decode_hdr_maxsz + \
+>>  				2 + \
+>> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+>> index 58751f3..d740dfa 100644
+>> --- a/include/linux/nfs_xdr.h
+>> +++ b/include/linux/nfs_xdr.h
+>> @@ -666,16 +666,17 @@ struct nfs4_rename_res {
+>>  	struct nfs_fattr *		new_fattr;
+>>  };
 >>
->>  /*
->> - * Sanity-check a server address provided by the mount command
->> + * Sanity-check a server address provided by the mount command.
->> + *
->> + * Address family must be initialized, and address must not be
->> + * the ANY address for that family.
->>   */
->> -static int nfs_verify_server_address(struct sockaddr *addr)
->> +static int nfs_verify_server_address(struct sockaddr_storage *ssp)
+>> +#define NFS4_SETCLIENTID_NAMELEN	(48)
+>>  struct nfs4_setclientid {
+>> -	const nfs4_verifier *		sc_verifier;      /* request */
+>> +	const nfs4_verifier *		sc_verifier;
+>>  	unsigned int			sc_name_len;
+>> -	char				sc_name[48];	  /* request */
+>> -	u32				sc_prog;          /* request */
+>> +	char				sc_name[NFS4_SETCLIENTID_NAMELEN];
+>> +	u32				sc_prog;
+>>  	unsigned int			sc_netid_len;
+>> -	char				sc_netid[4];	  /* request */
+>> +	char				sc_netid[RPCBIND_MAXNETIDLEN];
+>>  	unsigned int			sc_uaddr_len;
+>> -	char				sc_uaddr[24];     /* request */
+>> -	u32				sc_cb_ident;      /* request */
+>> +	char				sc_uaddr[RPCBIND_MAXUADDRLEN];
+>> +	u32				sc_cb_ident;
+>>  };
+>>
+>>  struct nfs4_statfs_arg {
 >
-> Hmm... This looks wrong. We should never be using a type 'pointer to
-> sockaddr_storage'. Particularly not when all the callers have to cast.
-> Please convert to a generic 'struct sockaddr *'.
->
-> Ditto in the other cases (nfs4_default_port(),
-> nfs_parse_server_address() etc.).
+> Hmm... This one looks a little odd. On the one hand you've replaced
+> sc_name[48] by sc_name[NFS4_SETCLIENTID_NAMELEN], but in
+> encode_setclientid_maxsz you've hard-coded the 48 again...
 
-I've found instances of using "struct sockaddr_storage *" in other  
-parts of the kernel.  Take a look at fs/dlm/* for example.
 
-I assume by now you've seen the whole patch series, and see that  
-indeed, the type casts (including the "void *"s I added, which are  
-temporary) aren't needed by the time we're finished, and are removed  
-by the last patch.
+Your causality is backwards.  I fixed encode_setclientid_maxsz first,  
+then forgot to update it later when I added the  
+NFS4_SETCLIENTID_NAMELEN macro.
 
-Using "struct sockaddr_storage *" for these internal helpers means we  
-don't need any type casts when passing the nfs_server.address field.   
-Using "struct sockaddr *" means we have to cast the  
-nfs_server.address field every time one of these is called.  I use  
-"struct sockaddr_storage *" only for internal (ie static) functions,  
-not ever as part of an exported interface.
-
-Take a look at fs/nfs/super.c after the last patch is applied and you  
-will see my point.
-
-> BTW: did I miss [Patch 11/29]? I can't find it in my inbox...
-
-Looks like I didn't get 11 via the mailing list either, so it must  
-have been dropped somewhere.  I'll resend it.
-
-> Trond
->
->>  {
->> -	switch (addr->sa_family) {
->> +	switch (ssp->ss_family) {
->>  	case AF_INET: {
->> -		struct sockaddr_in *sa = (struct sockaddr_in *) addr;
->> -		if (sa->sin_addr.s_addr != INADDR_ANY)
->> -			return 1;
->> -		break;
->> +		struct sockaddr_in *sa = (struct sockaddr_in *)ssp;
->> +		return sa->sin_addr.s_addr != INADDR_ANY;
->> +	}
->> +	case AF_INET6: {
->> +		struct in6_addr *sa = &((struct sockaddr_in6 *)ssp)->sin6_addr;
->> +		return !ipv6_addr_any(sa);
->>  	}
->>  	}
->>
->> @@ -1084,7 +1089,7 @@ static int nfs_validate_mount_data(void  
->> *options,
->>  			memset(mntfh->data + mntfh->size, 0,
->>  			       sizeof(mntfh->data) - mntfh->size);
->>
->> -		if (!nfs_verify_server_address((struct sockaddr *) &data->addr))
->> +		if (!nfs_verify_server_address((void *)&data->addr))
->>  			goto out_no_address;
->>
->>  		/*
->> @@ -1118,7 +1123,7 @@ static int nfs_validate_mount_data(void  
->> *options,
->>  		if (nfs_parse_mount_options((char *)options, args) == 0)
->>  			return -EINVAL;
->>
->> -		if (!nfs_verify_server_address((struct sockaddr *)
->> +		if (!nfs_verify_server_address((void *)
->>  						&args->nfs_server.address))
->>  			goto out_no_address;
->>
->> @@ -1577,7 +1582,7 @@ static int nfs4_validate_mount_data(void  
->> *options,
->>  			return -EFAULT;
->>  		if (args->nfs_server.address.sin_port == 0)
->>  			args->nfs_server.address.sin_port = htons(NFS_PORT);
->> -		if (!nfs_verify_server_address((struct sockaddr *)
->> +		if (!nfs_verify_server_address((void *)
->>  						&args->nfs_server.address))
->>  			goto out_no_address;
->>
->> @@ -1636,7 +1641,7 @@ static int nfs4_validate_mount_data(void  
->> *options,
->>
->>  		if (args->nfs_server.address.sin_port == 0)
->>  			args->nfs_server.address.sin_port = htons(NFS_PORT);
->> -		if (!nfs_verify_server_address((struct sockaddr *)
->> +		if (!nfs_verify_server_address((void *)
->>  						&args->nfs_server.address))
->>  			return -EINVAL;
->>
->>
->
+I'll fix this and resend.
 
 --
 Chuck Lever
