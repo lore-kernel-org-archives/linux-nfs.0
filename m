@@ -1,109 +1,107 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [NFS] [PATCH 05/29] NFS: Ensure NFSv4 SETCLIENTID send buffer
-	is large enough
-Date: Fri, 30 Nov 2007 14:06:13 -0500
-Message-ID: <762258BA-DCB8-4CD9-9FA2-B3026DAEB239@oracle.com>
-References: <20071129193153.4170.29598.stgit@picasso.1015granger.net>
-	<20071129194018.4170.16357.stgit@picasso.1015granger.net>
-	<1196382722.20292.118.camel@heimdal.trondhjem.org>
-Mime-Version: 1.0 (Apple Message framework v752.2)
+Subject: [NFS] [PATCH] NFS: Add support for AF_INET6 addresses in
+	nfs_compare_super()
+Date: Fri, 30 Nov 2007 14:12:37 -0500
+Message-ID: <20071130191237.3431.12598.stgit@picasso.1015granger.net>
+Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net, aurelien.charbon-Z51IpKcfGtLk1uMJSBkQmQ@public.gmane.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
+Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1IyBDV-0006IS-Aa
-	for nfs@lists.sourceforge.net; Fri, 30 Nov 2007 11:08:01 -0800
-Received: from agminet01.oracle.com ([141.146.126.228])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1IyBDa-0000Bn-4x
-	for nfs@lists.sourceforge.net; Fri, 30 Nov 2007 11:08:07 -0800
-In-Reply-To: <1196382722.20292.118.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+	id 1IyBIz-0006sh-9L
+	for nfs@lists.sourceforge.net; Fri, 30 Nov 2007 11:13:41 -0800
+Received: from flpi195.sbcis.sbc.com ([207.115.20.197]
+	helo=flpi195.prodigy.net)
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1IyBJ4-0004za-81
+	for nfs@lists.sourceforge.net; Fri, 30 Nov 2007 11:13:47 -0800
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <nfs.lists.sourceforge.net>
 
-On Nov 29, 2007, at 7:32 PM, Trond Myklebust wrote:
-> On Thu, 2007-11-29 at 14:40 -0500, Chuck Lever wrote:
->> Ensure that the RPC buffer size specified for NFSv4 SETCLIENTID  
->> procedures
->> matches what we are encoding into the buffer.  See the definition of
->> struct nfs4_setclientid {} and the encode_setclientid() function.
->>
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> ---
->>
->>  fs/nfs/nfs4xdr.c        |   10 ++++++----
->>  include/linux/nfs_xdr.h |   13 +++++++------
->>  2 files changed, 13 insertions(+), 10 deletions(-)
->>
->> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
->> index eae46f0..cb7a835 100644
->> --- a/fs/nfs/nfs4xdr.c
->> +++ b/fs/nfs/nfs4xdr.c
->> @@ -116,10 +116,12 @@ static int nfs4_stat_to_errno(int);
->>  #define decode_renew_maxsz	(op_decode_hdr_maxsz)
->>  #define encode_setclientid_maxsz \
->>  				(op_encode_hdr_maxsz + \
->> -				4 /*server->ip_addr*/ + \
->> -				1 /*Netid*/ + \
->> -				6 /*uaddr*/ + \
->> -				6 + (NFS4_VERIFIER_SIZE >> 2))
->> +				XDR_QUADLEN(NFS4_VERIFIER_SIZE) + \
->> +				XDR_QUADLEN(48) /* sc_name */ + \
->> +				1 /* sc_prog */ + \
->> +				XDR_QUADLEN(RPCBIND_MAXNETIDLEN) + \
->> +				XDR_QUADLEN(RPCBIND_MAXUADDRLEN) + \
->> +				1) /* sc_cb_ident */
->>  #define decode_setclientid_maxsz \
->>  				(op_decode_hdr_maxsz + \
->>  				2 + \
->> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
->> index 58751f3..d740dfa 100644
->> --- a/include/linux/nfs_xdr.h
->> +++ b/include/linux/nfs_xdr.h
->> @@ -666,16 +666,17 @@ struct nfs4_rename_res {
->>  	struct nfs_fattr *		new_fattr;
->>  };
->>
->> +#define NFS4_SETCLIENTID_NAMELEN	(48)
->>  struct nfs4_setclientid {
->> -	const nfs4_verifier *		sc_verifier;      /* request */
->> +	const nfs4_verifier *		sc_verifier;
->>  	unsigned int			sc_name_len;
->> -	char				sc_name[48];	  /* request */
->> -	u32				sc_prog;          /* request */
->> +	char				sc_name[NFS4_SETCLIENTID_NAMELEN];
->> +	u32				sc_prog;
->>  	unsigned int			sc_netid_len;
->> -	char				sc_netid[4];	  /* request */
->> +	char				sc_netid[RPCBIND_MAXNETIDLEN];
->>  	unsigned int			sc_uaddr_len;
->> -	char				sc_uaddr[24];     /* request */
->> -	u32				sc_cb_ident;      /* request */
->> +	char				sc_uaddr[RPCBIND_MAXUADDRLEN];
->> +	u32				sc_cb_ident;
->>  };
->>
->>  struct nfs4_statfs_arg {
->
-> Hmm... This one looks a little odd. On the one hand you've replaced
-> sc_name[48] by sc_name[NFS4_SETCLIENTID_NAMELEN], but in
-> encode_setclientid_maxsz you've hard-coded the 48 again...
+Refactor nfs_compare_super() and add AF_INET6 support.
 
+Replace the generic memcmp() to document explicitly what parts of the
+addresses must match in this check, and make the comparison independent
+of the lengths of both addresses.
 
-Your causality is backwards.  I fixed encode_setclientid_maxsz first,  
-then forgot to update it later when I added the  
-NFS4_SETCLIENTID_NAMELEN macro.
+A side benefit is both tests are more computationally efficient than a
+memcmp().
 
-I'll fix this and resend.
+Note the "void *" casts are temporary.
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
+ fs/nfs/super.c |   41 ++++++++++++++++++++++++++++++++++++++---
+ 1 files changed, 38 insertions(+), 3 deletions(-)
 
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 6b004d8..e5646a9 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -45,6 +45,8 @@
+ #include <linux/nfs_idmap.h>
+ #include <linux/vfs.h>
+ #include <linux/inet.h>
++#include <linux/in6.h>
++#include <net/ipv6.h>
+ #include <linux/nfs_xdr.h>
+ #include <linux/magic.h>
+ #include <linux/parser.h>
+@@ -1302,15 +1304,48 @@ static int nfs_set_super(struct super_block *s, void *data)
+ 	return ret;
+ }
+ 
++static int nfs_compare_super_address(struct nfs_server *server1,
++				     struct nfs_server *server2)
++{
++	struct sockaddr_storage *ssp1 = (void *)&server1->nfs_client->cl_addr;
++	struct sockaddr_storage *ssp2 = (void *)&server2->nfs_client->cl_addr;
++
++	if (ssp1->ss_family != ssp2->ss_family)
++		return 0;
++
++	switch (ssp1->ss_family) {
++	case AF_INET: {
++		struct sockaddr_in *sin1 = (struct sockaddr_in *)ssp1;
++		struct sockaddr_in *sin2 = (struct sockaddr_in *)ssp2;
++		if (sin1->sin_addr.s_addr != sin2->sin_addr.s_addr)
++			return 0;
++		if (sin1->sin_port != sin2->sin_port)
++			return 0;
++		break;
++	}
++	case AF_INET6: {
++		struct sockaddr_in6 *sin1 = (struct sockaddr_in6 *)ssp1;
++		struct sockaddr_in6 *sin2 = (struct sockaddr_in6 *)ssp2;
++		if (!ipv6_addr_equal(&sin1->sin6_addr, &sin2->sin6_addr))
++			return 0;
++		if (sin1->sin6_port != sin2->sin6_port)
++			return 0;
++		break;
++	}
++	default:
++		return 0;
++	}
++
++	return 1;
++}
++
+ static int nfs_compare_super(struct super_block *sb, void *data)
+ {
+ 	struct nfs_sb_mountdata *sb_mntdata = data;
+ 	struct nfs_server *server = sb_mntdata->server, *old = NFS_SB(sb);
+ 	int mntflags = sb_mntdata->mntflags;
+ 
+-	if (memcmp(&old->nfs_client->cl_addr,
+-				&server->nfs_client->cl_addr,
+-				sizeof(old->nfs_client->cl_addr)) != 0)
++	if (!nfs_compare_super_address(old, server))
+ 		return 0;
+ 	/* Note: NFS_MOUNT_UNSHARED == NFS4_MOUNT_UNSHARED */
+ 	if (old->flags & NFS_MOUNT_UNSHARED)
 
 
 -------------------------------------------------------------------------
