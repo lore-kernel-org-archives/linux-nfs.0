@@ -1,78 +1,294 @@
-From: dawid-g7DOKF3l0ejVItvQsEIGlw@public.gmane.org
-Subject: [NFS] Strange NFS behaviour
-Date: Fri, 30 Nov 2007 09:30:00 +0100 (CET)
-Message-ID: <31796.194.237.142.6.1196411400.squirrel@www.active24.pl>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-To: linux-nfs@vger.kernel.org
+From: Tom Tucker <tom@opengridcomputing.com>
+Subject: [RFC,PATCH 01/08] rdma: SVCRMDA Header File REPOST
+Date: Fri, 30 Nov 2007 09:27:50 -0600
+Message-ID: <20071130152750.21999.11733.stgit@dell3.ogc.int>
+Content-Type: text/plain; charset=utf-8; format=fixed
+Cc: linux-nfs@vger.kernel.org
+To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from kurier1.active24.pl ([195.78.67.20]:46486 "EHLO
-	kurier1.active24.pl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751220AbXK3IzH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Nov 2007 03:55:07 -0500
-Received: from localhost (localhost [127.0.0.1])
-	by kurier1.active24.pl (Postfix) with ESMTP id B26434F5D3
-	for <linux-nfs@vger.kernel.org>; Fri, 30 Nov 2007 09:30:00 +0100 (CET)
-Received: from www.active24.pl (unknown [192.168.111.78])
-	by kurier1.active24.pl (Postfix) with ESMTP id 857CD4D846
-	for <linux-nfs@vger.kernel.org>; Fri, 30 Nov 2007 09:30:00 +0100 (CET)
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:54544 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1762458AbXK3P1v (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Nov 2007 10:27:51 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi!
 
-I have an NFS resource mounted from a dedicated machine NetApp FAS3050
-using NFS v3 over TCP.
-The NFS client works on SuSe Linux Enterprise Server 10 SP1, kernel ver
-2.6.16.46-0.14-smp.
+This file defines the data types used by the SVCRDMA transport module.
+The principle data structure is the transport specific extension to 
+the svcxprt structure.
 
-When the NFS is idle for few hours, the NFS resources sometimes become
-inaccessible. Every process accessing such resource hangs.
+Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+---
 
-I have sniffed the NFS connection and found an interesting behaviour of
-the NFS client/server:
+ include/linux/sunrpc/svc_rdma.h |  262 +++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 262 insertions(+), 0 deletions(-)
 
-time          src    dest    proto port numbers content
-
-16692.276474  client server  TCP   1023 > 2049  [SYN]
-16692.277171  server client  TCP   2049 > 1023  [SYN, ACK]
-16692.277189  client server  TCP   1023 > 2049  [ACK]
-16692.277197  client server  NFS   1023 > 2049  V3 ACCESS Call, FH:0x30ed5a16
-16692.378613  server client  TCP   2049 > 1023  [ACK]
-16701.285748  server client  TCP   2049 > 1023  [FIN, ACK]
-16701.285764  client server  TCP   1023 > 2049  [FIN, ACK]
-16701.285790  client server  TCP   1022 > 2049  [SYN]
-16701.286497  server client  TCP   2049 > 1022  [SYN, ACK]
-16701.286506  client server  TCP   1022 > 2049  [ACK]
-16701.286508  server client  TCP   2049 > 1023  [ACK]
-16701.286512  client server  TCP   1022 > 2049  V3 ACCESS Call, FH:0x30ed5a16
-16701.287247  server client  TCP   2049 > 1022  [FIN, ACK]
-16701.287257  client server  TCP   1022 > 2049  [FIN, ACK]
-16701.287271  client server  TCP   1021 > 2049  [SYN]
-
-
-Since there was no active TCP connection to the NFS server, it has been
-established. Then, an NFS ACCESS command was sent to the server. The
-server did not answer the NFS query, but initialised the TCP connection
-close instead.
-
-After receiving [FIN, ACK] the client reconnected immediately, but this
-time on port 1002 (since 1023 is still in use at this point). Again, the
-server closed the TCP connection and another attempt was made on a new
-port number.
-
-This is not on the log, but the NFS client keeps repeating this on each of
-the port numbers in range <1023,664>. When port number 664 is reached, the
-NFS server stops answering the TCP SYN packets.
-
-This started to happen ater ugrading linux from SuSe Linux 10.1
-2.6.16.21-0.25-smp. Another thing is that there are also VxWorks clients
-using that NFS server which work fine.
-
-Do you have any idea of what is the reason for such behaviour?
-
-Thanks in advance.
-
-Regards,
-Dawid Pawlata
-
+diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
+new file mode 100644
+index 0000000..c11bbcc
+--- /dev/null
++++ b/include/linux/sunrpc/svc_rdma.h
+@@ -0,0 +1,262 @@
++/*
++ * Copyright (c) 2005-2006 Network Appliance, Inc. All rights reserved.
++ *
++ * This software is available to you under a choice of one of two
++ * licenses.  You may choose to be licensed under the terms of the GNU
++ * General Public License (GPL) Version 2, available from the file
++ * COPYING in the main directory of this source tree, or the BSD-type
++ * license below:
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ *
++ *      Redistributions of source code must retain the above copyright
++ *      notice, this list of conditions and the following disclaimer.
++ *
++ *      Redistributions in binary form must reproduce the above
++ *      copyright notice, this list of conditions and the following
++ *      disclaimer in the documentation and/or other materials provided
++ *      with the distribution.
++ *
++ *      Neither the name of the Network Appliance, Inc. nor the names of
++ *      its contributors may be used to endorse or promote products
++ *      derived from this software without specific prior written
++ *      permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
++ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
++ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
++ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
++ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
++ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
++ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
++ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
++ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
++ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
++ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ *
++ * Author: Tom Tucker <tom@opengridcomputing.com>
++ */
++
++#ifndef SVC_RDMA_H
++#define SVC_RDMA_H
++#include <linux/sunrpc/xdr.h>
++#include <linux/sunrpc/svcsock.h>
++#include <linux/sunrpc/rpc_rdma.h>
++#include <rdma/ib_verbs.h>
++#include <rdma/rdma_cm.h>
++#define SVCRDMA_DEBUG
++
++/* RPC/RDMA parameters and stats */
++extern unsigned int svcrdma_ord;
++extern unsigned int svcrdma_max_requests;
++extern unsigned int svcrdma_max_req_size;
++
++extern atomic_t rdma_stat_recv;
++extern atomic_t rdma_stat_read;
++extern atomic_t rdma_stat_write;
++extern atomic_t rdma_stat_sq_starve;
++extern atomic_t rdma_stat_rq_starve;
++extern atomic_t rdma_stat_rq_poll;
++extern atomic_t rdma_stat_rq_prod;
++extern atomic_t rdma_stat_sq_poll;
++extern atomic_t rdma_stat_sq_prod;
++
++#define RPCRDMA_VERSION 1
++
++/*
++ * Contexts are built when an RDMA request is created and are a
++ * record of the resources that can be recovered when the request
++ * completes.
++ */
++struct svc_rdma_op_ctxt {
++	struct svc_rdma_op_ctxt *next;
++	struct xdr_buf arg;
++	struct list_head dto_q;
++	enum ib_wr_opcode wr_op;
++	enum ib_wc_status wc_status;
++	u32 byte_len;
++	struct svcxprt_rdma *xprt;
++	unsigned long flags;
++	enum dma_data_direction direction;
++	int count;
++	struct ib_sge sge[RPCSVC_MAXPAGES];
++	struct page *pages[RPCSVC_MAXPAGES];
++};
++
++#define RDMACTXT_F_READ_DONE	1
++#define RDMACTXT_F_LAST_CTXT	2
++
++struct svcxprt_rdma {
++	struct svc_xprt      sc_xprt;		/* SVC transport structure */
++	struct rdma_cm_id    *sc_cm_id;		/* RDMA connection id */
++	struct list_head     sc_accept_q;	/* Conn. waiting accept */
++	int		     sc_ord;		/* RDMA read limit */
++	wait_queue_head_t    sc_read_wait;
++	int                  sc_max_sge;
++
++	int                  sc_sq_depth;	/* Depth of SQ */
++	atomic_t             sc_sq_count;	/* Number of SQ WR on queue */
++
++	int                  sc_max_requests;	/* Depth of RQ */
++	int                  sc_max_req_size;	/* Size of each RQ WR buf */
++
++	struct ib_pd         *sc_pd;
++
++	struct svc_rdma_op_ctxt  *sc_ctxt_head;
++	int		     sc_ctxt_cnt;
++	int		     sc_ctxt_bump;
++	int		     sc_ctxt_max;
++	spinlock_t	     sc_ctxt_lock;
++	struct list_head     sc_rq_dto_q;
++	spinlock_t	     sc_rq_dto_lock;
++	struct ib_qp         *sc_qp;
++	struct ib_cq         *sc_rq_cq;
++	struct ib_cq         *sc_sq_cq;
++	struct ib_mr         *sc_phys_mr;	/* MR for server memory */
++
++	spinlock_t	     sc_lock;		/* transport lock */
++
++	wait_queue_head_t    sc_send_wait;	/* SQ exhaustion waitlist */
++	unsigned long	     sc_flags;
++	struct list_head     sc_dto_q;		/* DTO tasklet I/O pending Q */
++	struct list_head     sc_read_complete_q;
++	spinlock_t           sc_read_complete_lock;
++};
++/* sc_flags */
++#define RDMAXPRT_RQ_PENDING	1
++#define RDMAXPRT_SQ_PENDING	2
++#define RDMAXPRT_CONN_PENDING	3
++
++#define RPCRDMA_LISTEN_BACKLOG  10
++/* The default ORD value is based on two outstanding full-size writes with a
++ * page size of 4k, or 32k * 2 ops / 4k = 16 outstanding RDMA_READ.  */
++#define RPCRDMA_ORD             (64/4)
++#define RPCRDMA_SQ_DEPTH_MULT   8
++#define RPCRDMA_MAX_THREADS     16
++#define RPCRDMA_MAX_REQUESTS    16
++#define RPCRDMA_MAX_REQ_SIZE    4096
++
++/* svc_rdma_marshal.c */
++extern void svc_rdma_rcl_chunk_counts(struct rpcrdma_read_chunk *,
++				      int *, int *);
++extern int svc_rdma_xdr_decode_req(struct rpcrdma_msg **, struct svc_rqst *);
++extern int svc_rdma_xdr_decode_deferred_req(struct svc_rqst *);
++extern int svc_rdma_xdr_encode_error(struct svcxprt_rdma *,
++				     struct rpcrdma_msg *,
++				     enum rpcrdma_errcode, u32 *);
++extern void svc_rdma_xdr_encode_write_list(struct rpcrdma_msg *, int);
++extern void svc_rdma_xdr_encode_reply_array(struct rpcrdma_write_array *, int);
++extern void svc_rdma_xdr_encode_array_chunk(struct rpcrdma_write_array *, int,
++					    u32, u64, u32);
++extern void svc_rdma_xdr_encode_reply_header(struct svcxprt_rdma *,
++					     struct rpcrdma_msg *,
++					     struct rpcrdma_msg *,
++					     enum rpcrdma_proc);
++extern int svc_rdma_xdr_get_reply_hdr_len(struct rpcrdma_msg *);
++
++/* svc_rdma_recvfrom.c */
++extern int svc_rdma_recvfrom(struct svc_rqst *);
++
++/* svc_rdma_sendto.c */
++extern int svc_rdma_sendto(struct svc_rqst *);
++
++/* svc_rdma_transport.c */
++extern int svc_rdma_send(struct svcxprt_rdma *, struct ib_send_wr *);
++extern int svc_rdma_send_error(struct svcxprt_rdma *, struct rpcrdma_msg *,
++			       enum rpcrdma_errcode);
++struct page *svc_rdma_get_page(void);
++extern int svc_rdma_post_recv(struct svcxprt_rdma *);
++extern int svc_rdma_create_listen(struct svc_serv *, int, struct sockaddr *);
++extern struct svc_rdma_op_ctxt *svc_rdma_get_context(struct svcxprt_rdma *);
++extern void svc_rdma_put_context(struct svc_rdma_op_ctxt *, int);
++extern void svc_sq_reap(struct svcxprt_rdma *);
++extern void svc_rq_reap(struct svcxprt_rdma *);
++extern struct svc_xprt_class svc_rdma_class;
++extern void svc_rdma_prep_reply_hdr(struct svc_rqst *);
++
++/* svc_rdma.c */
++extern int svc_rdma_init(void);
++extern void svc_rdma_cleanup(void);
++
++/*
++ * Returns the address of the first read chunk or <nul> if no read chunk is
++ * present
++ */
++static inline struct rpcrdma_read_chunk *
++svc_rdma_get_read_chunk(struct rpcrdma_msg *rmsgp)
++{
++	struct rpcrdma_read_chunk *ch =
++		(struct rpcrdma_read_chunk *)&rmsgp->rm_body.rm_chunks[0];
++
++	if (ch->rc_discrim == 0)
++		return NULL;
++
++	return ch;
++}
++
++/*
++ * Returns the address of the first read write array element or <nul> if no
++ * write array list is present
++ */
++static inline struct rpcrdma_write_array *
++svc_rdma_get_write_array(struct rpcrdma_msg *rmsgp)
++{
++	if (rmsgp->rm_body.rm_chunks[0] != 0
++	    || rmsgp->rm_body.rm_chunks[1] == 0)
++		return NULL;
++
++	return (struct rpcrdma_write_array *)&rmsgp->rm_body.rm_chunks[1];
++}
++
++/*
++ * Returns the address of the first reply array element or <nul> if no
++ * reply array is present
++ */
++static inline struct rpcrdma_write_array *
++svc_rdma_get_reply_array(struct rpcrdma_msg *rmsgp)
++{
++	struct rpcrdma_read_chunk *rch;
++	struct rpcrdma_write_array *wr_ary;
++	struct rpcrdma_write_array *rp_ary;
++
++	/* XXX: Need to fix when reply list may occur with read-list and/or
++	 * write list */
++	if (rmsgp->rm_body.rm_chunks[0] != 0 ||
++	    rmsgp->rm_body.rm_chunks[1] != 0)
++		return NULL;
++
++	rch = svc_rdma_get_read_chunk(rmsgp);
++	if (rch) {
++		while (rch->rc_discrim)
++			rch++;
++
++		/* The reply list follows an empty write array located
++		 * at 'rc_position' here. The reply array is at rc_target.
++		 */
++		rp_ary = (struct rpcrdma_write_array *)&rch->rc_target;
++
++		goto found_it;
++	}
++
++	wr_ary = svc_rdma_get_write_array(rmsgp);
++	if (wr_ary) {
++		rp_ary = (struct rpcrdma_write_array *)
++			&wr_ary->
++			wc_array[wr_ary->wc_nchunks].wc_target.rs_length;
++
++		goto found_it;
++	}
++
++	/* No read list, no write list */
++	rp_ary = (struct rpcrdma_write_array *)
++		&rmsgp->rm_body.rm_chunks[2];
++
++ found_it:
++	if (rp_ary->wc_discrim == 0)
++		return NULL;
++
++	return rp_ary;
++}
++#endif
