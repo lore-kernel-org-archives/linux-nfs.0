@@ -1,103 +1,53 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [NFS] [PATCH 14/29] NFS: Set default port for NFSv4,
-	with support	for AF_INET6
-Date: Thu, 29 Nov 2007 20:22:41 -0500
-Message-ID: <1196385761.20292.147.camel@heimdal.trondhjem.org>
-References: <20071129193153.4170.29598.stgit@picasso.1015granger.net>
-	<20071129194107.4170.56000.stgit@picasso.1015granger.net>
+From: Wendy Cheng <wcheng@redhat.com>
+Subject: Re: [NFS] NFS Digest, Vol 18, Issue 70 (NFS performance problems)
+Date: Fri, 30 Nov 2007 11:27:16 -0500
+Message-ID: <475039E4.5070903@redhat.com>
+References: <mailman.194659.1195581701.26582.nfs@lists.sourceforge.net>	
+	<BAY104-W43766F661E50E7FFCDA8EBA7F0@phx.gbl>
+	<47434ED7.4010100@redhat.com>	 <47435049.1010800@redhat.com>
+	<47445727.5090705@oracle.com>	 <474A3D6B.2060208@redhat.com>
+	<20071126050230.GD21120@fieldses.org>	
+	<18254.19187.470275.538680@notabene.brown>
+	<1196314230.7950.42.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, aurelien.charbon-Z51IpKcfGtLk1uMJSBkQmQ@public.gmane.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, chuck.lever@oracle.com,
+	nfs@lists.sourceforge.net, NeilBrown <neilb-YbfuJp6tym7X/JP9YwkgDA@public.gmane.org>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from sc8-sf-mx1-b.sourceforge.net ([10.3.1.91]
 	helo=mail.sourceforge.net)
 	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Ixuao-0001Db-SC
-	for nfs@lists.sourceforge.net; Thu, 29 Nov 2007 17:22:59 -0800
-Received: from pat.uio.no ([129.240.10.15])
-	by mail.sourceforge.net with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.44) id 1Ixuaq-0000wy-NJ
-	for nfs@lists.sourceforge.net; Thu, 29 Nov 2007 17:23:05 -0800
-In-Reply-To: <20071129194107.4170.56000.stgit-uiCyzNpeAnB9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
+	id 1Iy8ls-0006WB-SD
+	for nfs@lists.sourceforge.net; Fri, 30 Nov 2007 08:31:20 -0800
+Received: from mx1.redhat.com ([66.187.233.31])
+	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Iy8ly-0003aM-Gq
+	for nfs@lists.sourceforge.net; Fri, 30 Nov 2007 08:31:26 -0800
+In-Reply-To: <1196314230.7950.42.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <nfs.lists.sourceforge.net>
 
+Trond Myklebust wrote:
+> Actually, the real problem would be dealing with something like
+> unlink('foo') followed by open('foo', O_CREAT|O_EXCL). How do you ensure
+> that a replay of those actions following a reboot is fully consistent in
+> the face of some other client attempting an open('foo', O_CREAT) at the
+> same time?
+>
+> The problem is that a number of directory operations involve exclusive
+> semantics, and so cannot be replayed. The solution to this sort of
+> problem is going to have to involve exclusive (i.e. write) directory
+> delegations to ensure that whatever transactions one client performs
+> cannot interfere with the transactions performed by another.
+>
+>   
 
-On Thu, 2007-11-29 at 14:41 -0500, Chuck Lever wrote:
-> Move more address family dependencies to a helper function.
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
-> 
->  fs/nfs/super.c |   30 ++++++++++++++++++++++++++----
->  1 files changed, 26 insertions(+), 4 deletions(-)
-> 
-> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-> index 6377098..6a9192f 100644
-> --- a/fs/nfs/super.c
-> +++ b/fs/nfs/super.c
-> @@ -1570,6 +1570,28 @@ static void nfs4_fill_super(struct super_block *sb)
->  }
->  
->  /*
-> + * If the user didn't specify a port, set the port number to
-> + * the NFS version 4 default port.
-> + */
-> +static void nfs4_default_port(struct sockaddr_storage *ssp)
-> +{
-> +	switch (ssp->ss_family) {
-> +	case AF_INET: {
-> +		struct sockaddr_in *ap = (struct sockaddr_in *)ssp;
-> +		if (ap->sin_port == 0)
-> +			ap->sin_port = htons(NFS_PORT);
-> +		break;
-> +	}
-> +	case AF_INET6: {
-> +		struct sockaddr_in6 *ap = (struct sockaddr_in6 *)ssp;
-> +		if (ap->sin6_port == 0)
-> +			ap->sin6_port = htons(NFS_PORT);
-> +		break;
-> +	}
-> +	}
-> +}
-> +
-> +/*
->   * Validate NFSv4 mount options
->   */
->  static int nfs4_validate_mount_data(void *options,
-> @@ -1602,12 +1624,12 @@ static int nfs4_validate_mount_data(void *options,
->  				   data->host_addr,
->  				   sizeof(args->nfs_server.address)))
->  			return -EFAULT;
-> -		if (args->nfs_server.address.sin_port == 0)
-> -			args->nfs_server.address.sin_port = htons(NFS_PORT);
->  		if (!nfs_verify_server_address((void *)
->  						&args->nfs_server.address))
->  			goto out_no_address;
->  
-> +		nfs4_default_port((void *)&args->nfs_server.address);
-                                    ^^^^^^^^ Eeeewwwww
-> +
->  		switch (data->auth_flavourlen) {
->  		case 0:
->  			args->auth_flavors[0] = RPC_AUTH_UNIX;
-> @@ -1661,12 +1683,12 @@ static int nfs4_validate_mount_data(void *options,
->  		if (nfs_parse_mount_options((char *)options, args) == 0)
->  			return -EINVAL;
->  
-> -		if (args->nfs_server.address.sin_port == 0)
-> -			args->nfs_server.address.sin_port = htons(NFS_PORT);
->  		if (!nfs_verify_server_address((void *)
->  						&args->nfs_server.address))
->  			return -EINVAL;
->  
-> +		nfs4_default_port((void *)&args->nfs_server.address);
-> +
->  		switch (args->auth_flavor_len) {
->  		case 0:
->  			args->auth_flavors[0] = RPC_AUTH_UNIX;
-> 
+Well, a dumb question from me (borrowing Bruce's line :) ) ... even with 
+"sync" in place, when server rebooted, the RPC reply cache is gone. How 
+does linux server handle re-transmitted non-idempotent requests ?
+
+-- Wendy
+
 
 
 -------------------------------------------------------------------------
