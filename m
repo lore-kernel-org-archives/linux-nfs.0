@@ -1,241 +1,366 @@
-From: Tom Tucker <tom@opengridcomputing.com>
-Subject: Re: [RFC,PATCH 21/38] svc: Change svc_sock_received to
-	svc_xprt_received and export it
-Date: Fri, 30 Nov 2007 17:17:14 -0600
-Message-ID: <1196464634.5432.68.camel@trinity.ogc.int>
-References: <20071129223917.14563.77633.stgit@dell3.ogc.int>
-	 <20071129224037.14563.69171.stgit@dell3.ogc.int>
-	 <7E88BE3B-F35C-44B1-AE84-E5DE62E4EFA5@oracle.com>
-Mime-Version: 1.0
-Content-Type: text/plain
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [RFC,PATCH 25/38] svc: Move the sockaddr information to svc_xprt
+Date: Fri, 30 Nov 2007 18:20:27 -0500
+Message-ID: <CA520C87-591B-4D9A-84C2-3541C52D53C8@oracle.com>
+References: <20071129223917.14563.77633.stgit@dell3.ogc.int> <20071129224046.14563.59353.stgit@dell3.ogc.int>
+Mime-Version: 1.0 (Apple Message framework v752.2)
+Content-Type: text/plain; charset=US-ASCII; delsp=yes; format=flowed
 Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:60659 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754489AbXK3XNJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Nov 2007 18:13:09 -0500
-In-Reply-To: <7E88BE3B-F35C-44B1-AE84-E5DE62E4EFA5@oracle.com>
+Received: from agminet01.oracle.com ([141.146.126.228]:38682 "EHLO
+	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754741AbXK3XVM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Nov 2007 18:21:12 -0500
+In-Reply-To: <20071129224046.14563.59353.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+A few minor quibbles below.
 
-On Fri, 2007-11-30 at 16:33 -0500, Chuck Lever wrote:
-> On Nov 29, 2007, at 5:40 PM, Tom Tucker wrote:
-> > All fields touched by svc_sock_received are now transport independent.
-> > Change it to use svc_xprt directly. This function is called from
-> > transport dependent code, so export it.
-> >
-> > Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
-> > ---
-> >
-> >  include/linux/sunrpc/svc_xprt.h |    2 +-
-> >  net/sunrpc/svcsock.c            |   37 +++++++++++++++++ 
-> > +-------------------
-> >  2 files changed, 19 insertions(+), 20 deletions(-)
-> >
-> > diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/ 
-> > svc_xprt.h
-> > index d5ef902..c416d05 100644
-> > --- a/include/linux/sunrpc/svc_xprt.h
-> > +++ b/include/linux/sunrpc/svc_xprt.h
-> > @@ -62,8 +62,8 @@ int	svc_unreg_xprt_class(struct svc_xprt_class *);
-> >  void	svc_xprt_init(struct svc_xprt_class *, struct svc_xprt *,
-> >  		      struct svc_serv *);
-> >  int	svc_create_xprt(struct svc_serv *, char *, unsigned short, int);
-> > +void	svc_xprt_received(struct svc_xprt *);
-> >  void	svc_xprt_put(struct svc_xprt *xprt);
-> > -
-> >  static inline void svc_xprt_get(struct svc_xprt *xprt)
-> >  {
-> >  	kref_get(&xprt->xpt_ref);
-> > diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-> > index 5666541..0015839 100644
-> > --- a/net/sunrpc/svcsock.c
-> > +++ b/net/sunrpc/svcsock.c
-> > @@ -347,14 +347,14 @@ svc_sock_dequeue(struct svc_pool *pool)
-> >   * Note: XPT_DATA only gets cleared when a read-attempt finds
-> >   * no (or insufficient) data.
-> >   */
-> > -static inline void
-> > -svc_sock_received(struct svc_sock *svsk)
-> > +void
-> > +svc_xprt_received(struct svc_xprt *xprt)
-> 
-> Style police again.  I notice several of these patches add new  
-> functions with the return value split onto a separate line.
+On Nov 29, 2007, at 5:40 PM, Tom Tucker wrote:
+> This patch moves the transport sockaddr to the svc_xprt
+> structure.  Convenience functions are added to set and
+> get the local and remote addresses of a transport from
+> the transport provider as well as determine the length
+> of a sockaddr.
+>
+> A transport is responsible for setting the xpt_local
+> and xpt_remote addresses in the svc_xprt structure as
+> part of transport creation and xpo_accept processing. This
+> cannot be done in a generic way and in fact varies
+> between TCP, UDP and RDMA. A set of xpo_ functions
+> (e.g. getlocalname, getremotename) could have been
+> added but this would have resulted in additional
+> caching and copying of the addresses around.  Note that
+> the xpt_local address should also be set on listening
+> endpoints; for TCP/RDMA this is done as part of
+> endpoint creation.
+>
+> For connected transports like TCP and RDMA, the addresses
+> never change and can be set once and copied into the
+> rqstp structure for each request. For UDP, however, the
+> local and remote addresses may change for each request. In
+> this case, the address information is obtained from the
+> UDP recvmsg info and copied into the rqstp structure from
+> there.
+>
+> A svc_xprt_local_port function was also added that returns
+> the local port given a transport. This is used by
+> svc_create_xprt when returning the port associated with
+> a newly created transport, and later when creating a
+> generic find transport service to check if a service is
+> already listening on a given port.
+>
+> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+> ---
+>
+>  include/linux/sunrpc/svc_xprt.h |   51 ++++++++++++++++++++++++++++ 
+> ++++++++
+>  include/linux/sunrpc/svcsock.h  |    4 ---
+>  net/sunrpc/svc_xprt.c           |   31 ++++++++++++++++++++--
+>  net/sunrpc/svcsock.c            |   56 ++++++++++++++++++++ 
+> +------------------
+>  4 files changed, 110 insertions(+), 32 deletions(-)
+>
+> diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/ 
+> svc_xprt.h
+> index d93ae27..60bdffc 100644
+> --- a/include/linux/sunrpc/svc_xprt.h
+> +++ b/include/linux/sunrpc/svc_xprt.h
+> @@ -61,6 +61,10 @@ struct svc_xprt {
+>  	void			*xpt_auth_cache;/* auth cache */
+>  	struct list_head	xpt_deferred;	/* deferred requests that need
+>  						 * to be revisted */
+> +	struct sockaddr_storage	xpt_local;	/* local address */
+> +	int			xpt_locallen;	/* length of address */
+> +	struct sockaddr_storage	xpt_remote;	/* remote peer's address */
+> +	int			xpt_remotelen;	/* length of address */
+>  };
+>
+>  int	svc_reg_xprt_class(struct svc_xprt_class *);
+> @@ -70,9 +74,56 @@ void	svc_xprt_init(struct svc_xprt_class *,  
+> struct svc_xprt *,
+>  int	svc_create_xprt(struct svc_serv *, char *, unsigned short, int);
+>  void	svc_xprt_received(struct svc_xprt *);
+>  void	svc_xprt_put(struct svc_xprt *xprt);
+> +void	svc_xprt_copy_addrs(struct svc_rqst *rqstp, struct svc_xprt  
+> *xprt);
+>  static inline void svc_xprt_get(struct svc_xprt *xprt)
+>  {
+>  	kref_get(&xprt->xpt_ref);
+>  }
+> +static inline void svc_xprt_set_local(struct svc_xprt *xprt,
+> +				      struct sockaddr *sa, int salen)
+> +{
+> +	memcpy(&xprt->xpt_local, sa, salen);
+> +	xprt->xpt_locallen = salen;
+> +}
+> +static inline void svc_xprt_set_remote(struct svc_xprt *xprt,
+> +				       struct sockaddr *sa, int salen)
+> +{
+> +	memcpy(&xprt->xpt_remote, sa, salen);
+> +	xprt->xpt_remotelen = salen;
+> +}
+> +static inline int svc_addr_port(struct sockaddr *sa)
+> +{
+> +	int ret = -1;
+> +	switch (sa->sa_family) {
+> +	case AF_INET:
+> +		ret = ntohs(((struct sockaddr_in *)sa)->sin_port);
+> +		break;
+> +	case AF_INET6:
+> +		ret = ntohs(((struct sockaddr_in6 *)sa)->sin6_port);
+> +		break;
+> +	}
+> +	return ret;
+> +}
+> +
+> +static inline int svc_addr_len(struct sockaddr *sa)
+> +{
+> +	switch (sa->sa_family) {
+> +	case AF_INET:
+> +		return sizeof(struct sockaddr_in);
+> +	case AF_INET6:
+> +		return sizeof(struct sockaddr_in6);
+> +	}
+> +	return -ENOTSUPP;
+> +}
 
-The policy I used was if I didn't change the function signature, I left
-it like it was. If I copied it to svc_xprt, I fixed the formatting of
-the signature to conform. I didn't do that for this one. I'll check for
-others.
+Address lengths should be size_t.  I shouldn't have used "int".
 
-> 
-> >  {
-> > -	svsk->sk_xprt.xpt_pool = NULL;
-> > -	clear_bit(XPT_BUSY, &svsk->sk_xprt.xpt_flags);
-> > -	svc_xprt_enqueue(&svsk->sk_xprt);
-> > +	xprt->xpt_pool = NULL;
-> > +	clear_bit(XPT_BUSY, &xprt->xpt_flags);
-> > +	svc_xprt_enqueue(xprt);
-> >  }
-> > -
-> > +EXPORT_SYMBOL_GPL(svc_xprt_received);
-> 
-> When I submitted the RPC client-side transport switch, Trond  
-> suggested we add the EXPORTs later when it was clear why they are  
-> needed.  This may be a personal preference of the server maintainer,  
-> but I just thought I'd mention the possibility; it seems to make  
-> sense here too.
+For unrecognized address families, you could return zero here instead  
+of a negative number.
 
-Sure, but we already have a server side provider that helps accelerate
-the proving process. The svcrdma module won't build without this being
-exported.
+> +
+> +static inline int svc_xprt_local_port(struct svc_xprt *xprt)
+> +{
+> +	return svc_addr_port((struct sockaddr *)&xprt->xpt_local);
+> +}
+> +
+> +static inline int svc_xprt_remote_port(struct svc_xprt *xprt)
+> +{
+> +	return svc_addr_port((struct sockaddr *)&xprt->xpt_remote);
+> +}
+>
+>  #endif /* SUNRPC_SVC_XPRT_H */
 
-> 
-> >  /**
-> >   * svc_reserve - change the space reserved for the reply to a  
-> > request.
-> > @@ -783,7 +783,7 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
-> >  				(serv->sv_nrthreads+3) * serv->sv_max_mesg);
-> >
-> >  	if ((rqstp->rq_deferred = svc_deferred_dequeue(svsk))) {
-> > -		svc_sock_received(svsk);
-> > +		svc_xprt_received(&svsk->sk_xprt);
-> >  		return svc_deferred_recv(rqstp);
-> >  	}
-> >
-> > @@ -800,7 +800,7 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
-> >  			dprintk("svc: recvfrom returned error %d\n", -err);
-> >  			set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
-> >  		}
-> > -		svc_sock_received(svsk);
-> > +		svc_xprt_received(&svsk->sk_xprt);
-> >  		return -EAGAIN;
-> >  	}
-> >  	rqstp->rq_addrlen = sizeof(rqstp->rq_addr);
-> > @@ -815,7 +815,7 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
-> >  	/*
-> >  	 * Maybe more packets - kick another thread ASAP.
-> >  	 */
-> > -	svc_sock_received(svsk);
-> > +	svc_xprt_received(&svsk->sk_xprt);
-> >
-> >  	len  = skb->len - sizeof(struct udphdr);
-> >  	rqstp->rq_arg.len = len;
-> > @@ -1123,8 +1123,6 @@ static struct svc_xprt *svc_tcp_accept(struct  
-> > svc_xprt *xprt)
-> >  	}
-> >  	memcpy(&newsvsk->sk_local, sin, slen);
-> >
-> > -	svc_sock_received(newsvsk);
-> > -
-> 
-> I assume it's OK to remove svc_sock_received() here (rather than  
-> replacing it with svc_xprt_received()) because you are adding a call  
-> to xvs_xprt_received() below in svc_recv().
-> 
-> I think this is a non-trivial change amongst a whole bunch of trivial  
-> ones in this patch.  Thus it would be nicer if we did this in a  
-> separate patch so you can document your rationale for this change.   
-> (Yeah, I think we went over this in e-mail some time ago, but still...)
-> 
+Ports in native endianness should be "unsigned short."
 
-Yeah, this is probably a good idea. I toyed with removing
-svc_xprt_received from the provider all-together and putting it in the
-common logic which would remove 10s of calls to svc_xprt_received and
-avoid potential races caused by calling it without the BUSY bit held.
-The reason I didn't do it was because it means that the xpo_receive
-function must complete before queuing the transport back for more I/O,
-and this is suboptimal from an MP perspective since some transports can
-release the transport early (e.g. RDMA) while it parses the transport
-header and does other business.
-
-> >  	if (serv->sv_stats)
-> >  		serv->sv_stats->nettcpconn++;
-> >
-> > @@ -1153,7 +1151,7 @@ svc_tcp_recvfrom(struct svc_rqst *rqstp)
-> >  		test_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags));
-> >
-> >  	if ((rqstp->rq_deferred = svc_deferred_dequeue(svsk))) {
-> > -		svc_sock_received(svsk);
-> > +		svc_xprt_received(&svsk->sk_xprt);
-> >  		return svc_deferred_recv(rqstp);
-> >  	}
-> >
-> > @@ -1193,7 +1191,7 @@ svc_tcp_recvfrom(struct svc_rqst *rqstp)
-> >  		if (len < want) {
-> >  			dprintk("svc: short recvfrom while reading record length (%d of  
-> > %lu)\n",
-> >  				len, want);
-> > -			svc_sock_received(svsk);
-> > +			svc_xprt_received(&svsk->sk_xprt);
-> >  			return -EAGAIN; /* record header not complete */
-> >  		}
-> >
-> > @@ -1229,7 +1227,7 @@ svc_tcp_recvfrom(struct svc_rqst *rqstp)
-> >  	if (len < svsk->sk_reclen) {
-> >  		dprintk("svc: incomplete TCP record (%d of %d)\n",
-> >  			len, svsk->sk_reclen);
-> > -		svc_sock_received(svsk);
-> > +		svc_xprt_received(&svsk->sk_xprt);
-> >  		return -EAGAIN;	/* record not complete */
-> >  	}
-> >  	len = svsk->sk_reclen;
-> > @@ -1269,7 +1267,7 @@ svc_tcp_recvfrom(struct svc_rqst *rqstp)
-> >  	svsk->sk_reclen = 0;
-> >  	svsk->sk_tcplen = 0;
-> >
-> > -	svc_sock_received(svsk);
-> > +	svc_xprt_received(&svsk->sk_xprt);
-> >  	if (serv->sv_stats)
-> >  		serv->sv_stats->nettcpcnt++;
-> >
-> > @@ -1282,7 +1280,7 @@ svc_tcp_recvfrom(struct svc_rqst *rqstp)
-> >   error:
-> >  	if (len == -EAGAIN) {
-> >  		dprintk("RPC: TCP recvfrom got EAGAIN\n");
-> > -		svc_sock_received(svsk);
-> > +		svc_xprt_received(&svsk->sk_xprt);
-> >  	} else {
-> >  		printk(KERN_NOTICE "%s: recvfrom returned errno %d\n",
-> >  		       svsk->sk_xprt.xpt_server->sv_name, -len);
-> > @@ -1607,8 +1605,9 @@ svc_recv(struct svc_rqst *rqstp, long timeout)
-> >  			 */
-> >  			__module_get(newxpt->xpt_class->xcl_owner);
-> >  			svc_check_conn_limits(svsk->sk_xprt.xpt_server);
-> > +			svc_xprt_received(newxpt);
-> >  		}
-> > -		svc_sock_received(svsk);
-> > +		svc_xprt_received(&svsk->sk_xprt);
-> >  	} else {
-> >  		dprintk("svc: server %p, pool %u, socket %p, inuse=%d\n",
-> >  			rqstp, pool->sp_id, svsk,
-> > @@ -1827,7 +1826,7 @@ int svc_addsock(struct svc_serv *serv,
-> >  	else {
-> >  		svsk = svc_setup_socket(serv, so, &err, SVC_SOCK_DEFAULTS);
-> >  		if (svsk) {
-> > -			svc_sock_received(svsk);
-> > +			svc_xprt_received(&svsk->sk_xprt);
-> >  			err = 0;
-> >  		}
-> >  	}
-> > @@ -1882,7 +1881,7 @@ svc_create_socket(struct svc_serv *serv, int  
-> > protocol,
-> >  	}
-> >
-> >  	if ((svsk = svc_setup_socket(serv, sock, &error, flags)) != NULL) {
-> > -		svc_sock_received(svsk);
-> > +		svc_xprt_received(&svsk->sk_xprt);
-> >  		return (struct svc_xprt *)svsk;
-> >  	}
-> >
-> 
-> --
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
+> diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/ 
+> svcsock.h
+> index 96a229e..206f092 100644
+> --- a/include/linux/sunrpc/svcsock.h
+> +++ b/include/linux/sunrpc/svcsock.h
+> @@ -28,10 +28,6 @@ struct svc_sock {
+>  	/* private TCP part */
+>  	int			sk_reclen;	/* length of record */
+>  	int			sk_tcplen;	/* current read length */
 > -
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> -	struct sockaddr_storage	sk_local;	/* local address */
+> -	struct sockaddr_storage	sk_remote;	/* remote peer's address */
+> -	int			sk_remotelen;	/* length of address */
+>  };
+>
+>  /*
+> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+> index fdf0d8c..d0cbfe0 100644
+> --- a/net/sunrpc/svc_xprt.c
+> +++ b/net/sunrpc/svc_xprt.c
+> @@ -138,7 +138,6 @@ int svc_create_xprt(struct svc_serv *serv, char  
+> *xprt_name, unsigned short port,
+>  			spin_unlock(&svc_xprt_class_lock);
+>  			if (try_module_get(xcl->xcl_owner)) {
+>  				struct svc_xprt *newxprt;
+> -				ret = 0;
+>  				newxprt = xcl->xcl_ops->xpo_create
+>  					(serv,
+>  					 (struct sockaddr *)&sin, sizeof(sin),
+> @@ -146,7 +145,8 @@ int svc_create_xprt(struct svc_serv *serv, char  
+> *xprt_name, unsigned short port,
+>  				if (IS_ERR(newxprt)) {
+>  					module_put(xcl->xcl_owner);
+>  					ret = PTR_ERR(newxprt);
+> -				}
+> +				} else
+> +					ret = svc_xprt_local_port(newxprt);
+>  			}
+>  			goto out;
+>  		}
+> @@ -157,3 +157,30 @@ int svc_create_xprt(struct svc_serv *serv,  
+> char *xprt_name, unsigned short port,
+>  	return ret;
+>  }
+>  EXPORT_SYMBOL_GPL(svc_create_xprt);
+> +
+> +/*
+> + * Copy the local and remote xprt addresses to the rqstp structure
+> + */
+> +void svc_xprt_copy_addrs(struct svc_rqst *rqstp, struct svc_xprt  
+> *xprt)
+> +{
+> +	struct sockaddr *sin;
+> +
+> +	memcpy(&rqstp->rq_addr, &xprt->xpt_remote, xprt->xpt_remotelen);
+> +	rqstp->rq_addrlen = xprt->xpt_remotelen;
+> +
+> +	/*
+> +	 * Destination address in request is needed for binding the
+> +	 * source address in RPC replies/callbacks later.
+> +	 */
+> +	sin = (struct sockaddr *)&xprt->xpt_local;
+> +	switch (sin->sa_family) {
+> +	case AF_INET:
+> +		rqstp->rq_daddr.addr = ((struct sockaddr_in *)sin)->sin_addr;
+> +		break;
+> +	case AF_INET6:
+> +		rqstp->rq_daddr.addr6 = ((struct sockaddr_in6 *)sin)->sin6_addr;
+> +		break;
+> +	}
+> +}
+> +EXPORT_SYMBOL_GPL(svc_xprt_copy_addrs);
+> +
+> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+> index 62b5225..e8cfeeb 100644
+> --- a/net/sunrpc/svcsock.c
+> +++ b/net/sunrpc/svcsock.c
+> @@ -638,33 +638,13 @@ svc_recvfrom(struct svc_rqst *rqstp, struct  
+> kvec *iov, int nr, int buflen)
+>  	struct msghdr msg = {
+>  		.msg_flags	= MSG_DONTWAIT,
+>  	};
+> -	struct sockaddr *sin;
+>  	int len;
+>
+>  	len = kernel_recvmsg(svsk->sk_sock, &msg, iov, nr, buflen,
+>  				msg.msg_flags);
+>
+> -	/* sock_recvmsg doesn't fill in the name/namelen, so we must..
+> -	 */
+> -	memcpy(&rqstp->rq_addr, &svsk->sk_remote, svsk->sk_remotelen);
+> -	rqstp->rq_addrlen = svsk->sk_remotelen;
+> -
+> -	/* Destination address in request is needed for binding the
+> -	 * source address in RPC callbacks later.
+> -	 */
+> -	sin = (struct sockaddr *)&svsk->sk_local;
+> -	switch (sin->sa_family) {
+> -	case AF_INET:
+> -		rqstp->rq_daddr.addr = ((struct sockaddr_in *)sin)->sin_addr;
+> -		break;
+> -	case AF_INET6:
+> -		rqstp->rq_daddr.addr6 = ((struct sockaddr_in6 *)sin)->sin6_addr;
+> -		break;
+> -	}
+> -
+>  	dprintk("svc: socket %p recvfrom(%p, %Zu) = %d\n",
+>  		svsk, iov[0].iov_base, iov[0].iov_len, len);
+> -
+>  	return len;
+>  }
+>
+> @@ -734,8 +714,15 @@ svc_write_space(struct sock *sk)
+>  	}
+>  }
+>
+> -static inline void svc_udp_get_dest_address(struct svc_rqst *rqstp,
+> -					    struct cmsghdr *cmh)
+> +/*
+> + * Copy the UDP datagram's destination address to the rqstp  
+> structure.
+> + * The 'destination' address in this case is the address to which the
+> + * peer sent the datagram, i.e. our local address. For multihomed
+> + * hosts, this can change from msg to msg. Note that only the IP
+> + * address changes, the port number should remain the same.
+> + */
+> +static void svc_udp_get_dest_address(struct svc_rqst *rqstp,
+> +				     struct cmsghdr *cmh)
+>  {
+>  	switch (rqstp->rq_sock->sk_sk->sk_family) {
+>  	case AF_INET: {
+> @@ -802,7 +789,10 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
+>  		svc_xprt_received(&svsk->sk_xprt);
+>  		return -EAGAIN;
+>  	}
+> -	rqstp->rq_addrlen = sizeof(rqstp->rq_addr);
+> +	len = svc_addr_len(svc_addr(rqstp));
+> +	if (len < 0)
+> +		return len;
+> +	rqstp->rq_addrlen = len;
+>  	if (skb->tstamp.tv64 == 0) {
+>  		skb->tstamp = ktime_get_real();
+>  		/* Don't enable netstamp, sunrpc doesn't
+> @@ -1114,14 +1104,13 @@ static struct svc_xprt *svc_tcp_accept 
+> (struct svc_xprt *xprt)
+>  	if (!(newsvsk = svc_setup_socket(serv, newsock, &err,
+>  				 (SVC_SOCK_ANONYMOUS | SVC_SOCK_TEMPORARY))))
+>  		goto failed;
+> -	memcpy(&newsvsk->sk_remote, sin, slen);
+> -	newsvsk->sk_remotelen = slen;
+> +	svc_xprt_set_remote(&newsvsk->sk_xprt, sin, slen);
+>  	err = kernel_getsockname(newsock, sin, &slen);
+>  	if (unlikely(err < 0)) {
+>  		dprintk("svc_tcp_accept: kernel_getsockname error %d\n", -err);
+>  		slen = offsetof(struct sockaddr, sa_data);
+>  	}
+> -	memcpy(&newsvsk->sk_local, sin, slen);
+> +	svc_xprt_set_local(&newsvsk->sk_xprt, sin, slen);
+>
+>  	if (serv->sv_stats)
+>  		serv->sv_stats->nettcpconn++;
+> @@ -1262,6 +1251,7 @@ svc_tcp_recvfrom(struct svc_rqst *rqstp)
+>  	svsk->sk_reclen = 0;
+>  	svsk->sk_tcplen = 0;
+>
+> +	svc_xprt_copy_addrs(rqstp, &svsk->sk_xprt);
+>  	svc_xprt_received(&svsk->sk_xprt);
+>  	if (serv->sv_stats)
+>  		serv->sv_stats->nettcpcnt++;
+> @@ -1821,6 +1811,11 @@ int svc_addsock(struct svc_serv *serv,
+>  	else {
+>  		svsk = svc_setup_socket(serv, so, &err, SVC_SOCK_DEFAULTS);
+>  		if (svsk) {
+> +			struct sockaddr_storage addr;
+> +			struct sockaddr *sin = (struct sockaddr *)&addr;
+> +			int salen;
+> +			if (kernel_getsockname(svsk->sk_sock, sin, &salen) == 0)
+> +				svc_xprt_set_local(&svsk->sk_xprt, sin, salen);
+>  			svc_xprt_received(&svsk->sk_xprt);
+>  			err = 0;
+>  		}
+> @@ -1846,6 +1841,9 @@ svc_create_socket(struct svc_serv *serv, int  
+> protocol,
+>  	int		error;
+>  	int		type;
+>  	char		buf[RPC_MAX_ADDRBUFLEN];
+> +	struct sockaddr_storage addr;
+> +	struct sockaddr *newsin = (struct sockaddr *)&addr;
+> +	int		newlen;
+>
+>  	dprintk("svc: svc_create_socket(%s, %d, %s)\n",
+>  			serv->sv_program->pg_name, protocol,
+> @@ -1870,12 +1868,18 @@ svc_create_socket(struct svc_serv *serv,  
+> int protocol,
+>  	if (error < 0)
+>  		goto bummer;
+>
+> +	newlen = len;
+> +	error = kernel_getsockname(sock, newsin, &newlen);
+> +	if (error < 0)
+> +		goto bummer;
+> +
+>  	if (protocol == IPPROTO_TCP) {
+>  		if ((error = kernel_listen(sock, 64)) < 0)
+>  			goto bummer;
+>  	}
+>
+>  	if ((svsk = svc_setup_socket(serv, sock, &error, flags)) != NULL) {
+> +		svc_xprt_set_local(&svsk->sk_xprt, newsin, newlen);
+>  		svc_xprt_received(&svsk->sk_xprt);
+>  		return (struct svc_xprt *)svsk;
+>  	}
 
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
