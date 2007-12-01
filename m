@@ -1,145 +1,64 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [RFC,PATCH 36/38] svc: Add svc API that queries for a transport instance
-Date: Fri, 30 Nov 2007 19:00:48 -0500
-Message-ID: <5C0AF7AE-C0F7-47BD-B22F-C2C17A6AAD80@oracle.com>
-References: <20071129223917.14563.77633.stgit@dell3.ogc.int> <20071129224109.14563.34563.stgit@dell3.ogc.int>
-Mime-Version: 1.0 (Apple Message framework v752.2)
-Content-Type: text/plain; charset=US-ASCII; delsp=yes; format=flowed
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-To: Tom Tucker <tom@opengridcomputing.com>
+From: "Roger Willcocks" <roger-nMHR1cC4sak0YOejwGmHqw@public.gmane.org>
+Subject: Re: [NFS] nfsd bug: create file with specific uid/gid
+Date: Sat, 1 Dec 2007 11:36:18 -0000
+Message-ID: <01bf01c8340e$63e90060$6501a8c0__35787.0381245904$1196509079$gmane$org@BODDINGTON>
+References: <475042FB.8020106@filmlight.ltd.uk>
+	<20071130220127.GJ24887@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net,
+	linux-kernel@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:50571 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757328AbXLAACI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Nov 2007 19:02:08 -0500
-In-Reply-To: <20071129224109.14563.34563.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
+Received: from neil.brown.name ([220.233.11.133]:40807 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752731AbXLALhF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 1 Dec 2007 06:37:05 -0500
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1IyQeY-0007p2-GH
+	for linux-nfs@vger.kernel.org; Sat, 01 Dec 2007 22:36:58 +1100
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Nov 29, 2007, at 5:41 PM, Tom Tucker wrote:
-> Add a new svc function that allows a service to query whether a
-> transport instance has already been created. This is used in lockd
-> to determine whether or not a transport needs to be created when
-> a lockd instance is brought up.
->
-> Specifying 0 for the address family or port is effectively a wild- 
-> card,
-> and will result in matching the first transport in the service's list
-> that has a matching class name.
+J. Bruce Fields wrote:
 
-Suggestion: this paragraph ^^^ would be good documentation to add to  
-the block comment in front of svc_find_xprt().
+> On Fri, Nov 30, 2007 at 05:06:03PM +0000, Roger Willcocks wrote:
+>> nfsd/vfs.c:nfsd_create (the v2 version of create) says:
+>>
+>> "Set file attributes. Mode has already been set and
+>> setting uid/gid works only for root"
+>>
+>> but it doesn't actually test for root-ness
+...
+> Assignments (especially with things like &=) inside of conditionals
+> always make my head hurt for some reason.  So maybe something like the
+> below?
 
-> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
-> ---
->
->  fs/lockd/svc.c                  |   16 ++--------------
->  include/linux/sunrpc/svc_xprt.h |    2 ++
->  net/sunrpc/svc_xprt.c           |   31 ++++++++++++++++++++++++++++ 
-> +++
->  3 files changed, 35 insertions(+), 14 deletions(-)
->
-> diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-> index a8e79a9..470af01 100644
-> --- a/fs/lockd/svc.c
-> +++ b/fs/lockd/svc.c
-> @@ -219,18 +219,6 @@ lockd(struct svc_rqst *rqstp)
->  	module_put_and_exit(0);
->  }
->
-> -static int find_xprt(struct svc_serv *serv, char *proto)
-> -{
-> -	struct svc_xprt *xprt;
-> -	int found = 0;
-> -	list_for_each_entry(xprt, &serv->sv_permsocks, xpt_list)
-> -		if (strcmp(xprt->xpt_class->xcl_name, proto) == 0) {
-> -			found = 1;
-> -			break;
-> -		}
-> -	return found;
-> -}
-> -
->  /*
->   * Make any sockets that are needed but not present.
->   * If nlm_udpport or nlm_tcpport were set as module
-> @@ -242,11 +230,11 @@ static int make_socks(struct svc_serv *serv,  
-> int proto)
->  	int err = 0;
->
->  	if (proto == IPPROTO_UDP || nlm_udpport)
-> -		if (!find_xprt(serv, "udp"))
-> +		if (!svc_find_xprt(serv, "udp", 0, 0))
->  			err = svc_create_xprt(serv, "udp", nlm_udpport,
->  					      SVC_SOCK_DEFAULTS);
->  	if (err >= 0 && (proto == IPPROTO_TCP || nlm_tcpport))
-> -		if (!find_xprt(serv, "tcp"))
-> +		if (!svc_find_xprt(serv, "tcp", 0, 0))
->  			err = svc_create_xprt(serv, "tcp", nlm_tcpport,
->  					      SVC_SOCK_DEFAULTS);
->
-> diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/ 
-> svc_xprt.h
-> index c2fa41d..30fcc82 100644
-> --- a/include/linux/sunrpc/svc_xprt.h
-> +++ b/include/linux/sunrpc/svc_xprt.h
-> @@ -80,6 +80,8 @@ void	svc_xprt_enqueue(struct svc_xprt *xprt);
->  int	svc_port_is_privileged(struct sockaddr *sin);
->  void	svc_delete_xprt(struct svc_xprt *xprt);
->  int	svc_print_xprts(char *buf, int maxlen);
-> +struct svc_xprt *
-> +svc_find_xprt(struct svc_serv *serv, char *xprt_class, int af, int  
-> port);
+The patch looks fine to me, note that nfsd_create_v3 needs fixing too.
 
-Nit: usually
+>
+> Thanks for the bug report!  (And, by the way, how did you run across
+> this?)
+>
 
-struct svc_xprt *svc_find_xprt(struct svc_serv *serv,
-							char *xprt_class, int af, int port);
-
-is preferred instead for forward declarations.
-
->  static inline void svc_xprt_get(struct svc_xprt *xprt)
->  {
-> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-> index 7416e66..247f0fb 100644
-> --- a/net/sunrpc/svc_xprt.c
-> +++ b/net/sunrpc/svc_xprt.c
-> @@ -945,3 +945,34 @@ static struct svc_deferred_req  
-> *svc_deferred_dequeue(struct svc_xprt *xprt)
->  	spin_unlock(&xprt->xpt_lock);
->  	return dr;
->  }
-> +
-> +/*
-> + * Return the transport instance pointer for the endpoint accepting
-> + * connections/peer traffic from the specified transport class,
-> + * address family and port.
-> + */
-> +struct svc_xprt *svc_find_xprt(struct svc_serv *serv, char *xcl_name,
-> +			       int af, int port)
-> +{
-> +	struct svc_xprt *xprt;
-> +	struct svc_xprt *found = NULL;
-> +
-> +	/* Sanity check the args */
-> +	if (!serv || !xcl_name)
-> +		return found;
-> +
-> +	spin_lock_bh(&serv->sv_lock);
-> +	list_for_each_entry(xprt, &serv->sv_permsocks, xpt_list) {
-> +		if (strcmp(xprt->xpt_class->xcl_name, xcl_name))
-> +			continue;
-> +		if (af != AF_UNSPEC && af != xprt->xpt_local.ss_family)
-> +			continue;
-> +		if (port && port != svc_xprt_local_port(xprt))
-> +			continue;
-> +		found = xprt;
-> +		break;
-> +	}
-> +	spin_unlock_bh(&serv->sv_lock);
-> +	return found;
-> +}
-> +EXPORT_SYMBOL_GPL(svc_find_xprt);
+I'm working on an NFSp-like server for our clustered file system and my data 
+file creates were not working as expected.
 
 --
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+Roger
+
+
+-------------------------------------------------------------------------
+SF.Net email is sponsored by: The Future of Linux Business White Paper
+from Novell.  From the desktop to the data center, Linux is going
+mainstream.  Let it simplify your IT future.
+http://altfarm.mediaplex.com/ad/ck/8857-50307-18918-4
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
+
