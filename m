@@ -1,187 +1,160 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [NFS] nfsd bug: create file with specific uid/gid
-Date: Mon, 3 Dec 2007 11:17:39 -0500
-Message-ID: <20071203161739.GC16422__46777.2290729501$1196698753$gmane$org@fieldses.org>
-References: <475042FB.8020106@filmlight.ltd.uk>
-	<20071130220127.GJ24887@fieldses.org>
-	<01bf01c8340e$63e90060$6501a8c0@BODDINGTON>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net,
-	linux-kernel@vger.kernel.org
-To: Roger Willcocks <roger-nMHR1cC4sak0YOejwGmHqw@public.gmane.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [RFC,PATCH 34/38] svc: Add /proc/sys/sunrpc/transport files
+Date: Mon, 3 Dec 2007 11:44:15 -0500
+Message-ID: <C3F9B0D5-6CBD-4BBC-B00E-DCA16DD78EBF@oracle.com>
+References: <20071129223917.14563.77633.stgit@dell3.ogc.int> <20071129224105.14563.48684.stgit@dell3.ogc.int>
+Mime-Version: 1.0 (Apple Message framework v752.2)
+Content-Type: text/plain; charset=US-ASCII; delsp=yes; format=flowed
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:59481 "EHLO neil.brown.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753285AbXLCQSV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 3 Dec 2007 11:18:21 -0500
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1IzDzu-0006xc-38
-	for linux-nfs@vger.kernel.org; Tue, 04 Dec 2007 03:18:18 +1100
-In-Reply-To: <01bf01c8340e$63e90060$6501a8c0@BODDINGTON>
+Received: from agminet01.oracle.com ([141.146.126.228]:53241 "EHLO
+	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750962AbXLCQob (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Dec 2007 11:44:31 -0500
+In-Reply-To: <20071129224105.14563.48684.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Dec 01, 2007 at 11:36:18AM -0000, Roger Willcocks wrote:
-> J. Bruce Fields wrote:
+On Nov 29, 2007, at 5:41 PM, Tom Tucker wrote:
+> Add a file that when read lists the set of registered svc
+> transports.
 >
->> On Fri, Nov 30, 2007 at 05:06:03PM +0000, Roger Willcocks wrote:
->>> nfsd/vfs.c:nfsd_create (the v2 version of create) says:
->>>
->>> "Set file attributes. Mode has already been set and
->>> setting uid/gid works only for root"
->>>
->>> but it doesn't actually test for root-ness
-> ...
->> Assignments (especially with things like &=) inside of conditionals
->> always make my head hurt for some reason.  So maybe something like the
->> below?
+> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+> ---
 >
-> The patch looks fine to me, note that nfsd_create_v3 needs fixing too.
-
-Whoops.  OK, in that case we should be call the same logic from both
-places.  New (compile-tested only) patch appended.
-
->> Thanks for the bug report!  (And, by the way, how did you run across
->> this?)
->>
+>  include/linux/sunrpc/svc_xprt.h |    2 ++
+>  net/sunrpc/svc_xprt.c           |   28 ++++++++++++++++++++++++++++
+>  net/sunrpc/sysctl.c             |   31 ++++++++++++++++++++++++++++ 
+> +++
+>  3 files changed, 61 insertions(+), 0 deletions(-)
 >
-> I'm working on an NFSp-like server for our clustered file system and my 
-> data file creates were not working as expected.
+> diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/ 
+> svc_xprt.h
+> index 36f8b09..c2fa41d 100644
+> --- a/include/linux/sunrpc/svc_xprt.h
+> +++ b/include/linux/sunrpc/svc_xprt.h
+> @@ -79,11 +79,13 @@ void	svc_xprt_copy_addrs(struct svc_rqst  
+> *rqstp, struct svc_xprt *xprt);
+>  void	svc_xprt_enqueue(struct svc_xprt *xprt);
+>  int	svc_port_is_privileged(struct sockaddr *sin);
+>  void	svc_delete_xprt(struct svc_xprt *xprt);
+> +int	svc_print_xprts(char *buf, int maxlen);
+>
+>  static inline void svc_xprt_get(struct svc_xprt *xprt)
+>  {
+>  	kref_get(&xprt->xpt_ref);
+>  }
+> +
+>  static inline void svc_xprt_set_local(struct svc_xprt *xprt,
+>  				      struct sockaddr *sa, int salen)
+>  {
+> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+> index b31ba0e..7416e66 100644
+> --- a/net/sunrpc/svc_xprt.c
+> +++ b/net/sunrpc/svc_xprt.c
+> @@ -93,6 +93,34 @@ int svc_unreg_xprt_class(struct svc_xprt_class  
+> *xcl)
+>  }
+>  EXPORT_SYMBOL_GPL(svc_unreg_xprt_class);
+>
+> +/*
+> + * Format the transport list for printing
+> + */
+> +int svc_print_xprts(char *buf, int maxlen)
 
-OK, thanks.  (Might be interesting to hear more about the architecture
-if there's a description published someplace.)
+One last one, then I will crawl back into my hole.
 
---b.
+Arguments and variables that handle string lengths should be of type  
+size_t (or at the very least, should be unsigned).
 
->From 7eed8a82a42e7a1c1e63c3cbc70be7321e69d9ff Mon Sep 17 00:00:00 2001
-From: J. Bruce Fields <bfields@citi.umich.edu>
-Date: Fri, 30 Nov 2007 16:55:23 -0500
-Subject: [PATCH] nfsd: allow root to set uid and gid on create
+Otherwise, I don't see any architectural problems with the patch series.
 
-The server silently ignores attempts to set the uid and gid on create.
-Based on the comment, this appears to have been done to prevent some
-overly-clever IRIX client from causing itself problems.
-
-Perhaps we should remove that hack completely.  For now, at least, it
-makes sense to allow root (when no_root_squash is set) to set uid and
-gid.
-
-While we're there, since nfsd_create and nfsd_create_v3 share the same
-logic, pull that out into a separate function.  And spell out the
-individual modifications of ia_valid instead of doing them both at once
-inside a conditional.
-
-Thanks to Roger Willcocks <roger-nMHR1cC4sak0YOejwGmHqw@public.gmane.org> for the bug report
-and original patch on which this is based.
-
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
----
- fs/nfsd/vfs.c |   47 ++++++++++++++++++++++++++++-------------------
- 1 files changed, 28 insertions(+), 19 deletions(-)
-
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 755ba43..cc75e4f 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -1151,6 +1151,26 @@ nfsd_commit(struct svc_rqst *rqstp, struct svc_fh *fhp,
- }
- #endif /* CONFIG_NFSD_V3 */
- 
-+__be32
-+nfsd_create_setattr(struct svc_rqst *rqstp, struct svc_fh *resfhp,
-+			struct iattr *iap)
-+{
-+	/*
-+	 * Mode has already been set earlier in create:
-+	 */
-+	iap->ia_valid &= ~ATTR_MODE;
-+	/*
-+	 * Setting uid/gid works only for root.  Irix appears to
-+	 * send along the gid on create when it tries to implement
-+	 * setgid directories via NFS:
-+	 */
-+	if (current->fsuid != 0)
-+		iap->ia_valid &= ~(ATTR_UID|ATTR_GID);
-+	if (iap->ia_valid)
-+		return nfsd_setattr(rqstp, resfhp, iap, 0, (time_t)0);
-+	return 0;
-+}
-+
- /*
-  * Create a file (regular, directory, device, fifo); UNIX sockets 
-  * not yet implemented.
-@@ -1167,6 +1187,7 @@ nfsd_create(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	struct dentry	*dentry, *dchild = NULL;
- 	struct inode	*dirp;
- 	__be32		err;
-+	__be32		err2;
- 	int		host_err;
- 
- 	err = nfserr_perm;
-@@ -1257,16 +1278,9 @@ nfsd_create(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	}
- 
- 
--	/* Set file attributes. Mode has already been set and
--	 * setting uid/gid works only for root. Irix appears to
--	 * send along the gid when it tries to implement setgid
--	 * directories via NFS.
--	 */
--	if ((iap->ia_valid &= ~(ATTR_UID|ATTR_GID|ATTR_MODE)) != 0) {
--		__be32 err2 = nfsd_setattr(rqstp, resfhp, iap, 0, (time_t)0);
--		if (err2)
--			err = err2;
--	}
-+	err2 = nfsd_create_setattr(rqstp, resfhp, iap);
-+	if (err2)
-+		err = err2;
- 	/*
- 	 * Update the file handle to get the new inode info.
- 	 */
-@@ -1295,6 +1309,7 @@ nfsd_create_v3(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	struct dentry	*dentry, *dchild = NULL;
- 	struct inode	*dirp;
- 	__be32		err;
-+	__be32		err2;
- 	int		host_err;
- 	__u32		v_mtime=0, v_atime=0;
- 
-@@ -1399,16 +1414,10 @@ nfsd_create_v3(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 		iap->ia_atime.tv_nsec = 0;
- 	}
- 
--	/* Set file attributes.
--	 * Irix appears to send along the gid when it tries to
--	 * implement setgid directories via NFS. Clear out all that cruft.
--	 */
-  set_attr:
--	if ((iap->ia_valid &= ~(ATTR_UID|ATTR_GID|ATTR_MODE)) != 0) {
-- 		__be32 err2 = nfsd_setattr(rqstp, resfhp, iap, 0, (time_t)0);
--		if (err2)
--			err = err2;
--	}
-+	err2 = nfsd_create_setattr(rqstp, resfhp, iap);
-+	if (err2)
-+		err = err2;
- 
- 	/*
- 	 * Update the filehandle to get the new inode info.
--- 
-1.5.3.5.561.g140d
+> +{
+> +	struct list_head *le;
+> +	char tmpstr[80];
+> +	int len = 0;
+> +	buf[0] = '\0';
+> +
+> +	spin_lock(&svc_xprt_class_lock);
+> +	list_for_each(le, &svc_xprt_class_list) {
+> +		int slen;
+> +		struct svc_xprt_class *xcl =
+> +			list_entry(le, struct svc_xprt_class, xcl_list);
+> +
+> +		sprintf(tmpstr, "%s %d\n", xcl->xcl_name, xcl->xcl_max_payload);
+> +		slen = strlen(tmpstr);
+> +		if (len + slen > maxlen)
+> +			break;
+> +		len += slen;
+> +		strcat(buf, tmpstr);
+> +	}
+> +	spin_unlock(&svc_xprt_class_lock);
+> +
+> +	return len;
+> +}
+> +
+>  static void svc_xprt_free(struct kref *kref)
+>  {
+>  	struct svc_xprt *xprt =
+> diff --git a/net/sunrpc/sysctl.c b/net/sunrpc/sysctl.c
+> index 2be714e..fd7cf59 100644
+> --- a/net/sunrpc/sysctl.c
+> +++ b/net/sunrpc/sysctl.c
+> @@ -18,6 +18,7 @@
+>  #include <linux/sunrpc/types.h>
+>  #include <linux/sunrpc/sched.h>
+>  #include <linux/sunrpc/stats.h>
+> +#include <linux/sunrpc/svc_xprt.h>
+>
+>  /*
+>   * Declare the debug flags here
+> @@ -48,6 +49,30 @@ rpc_unregister_sysctl(void)
+>  	}
+>  }
+>
+> +static int proc_do_xprt(ctl_table *table, int write, struct file  
+> *file,
+> +			void __user *buffer, size_t *lenp, loff_t *ppos)
+> +{
+> +	char tmpbuf[256];
+> +	int len;
+> +	if ((*ppos && !write) || !*lenp) {
+> +		*lenp = 0;
+> +		return 0;
+> +	}
+> +	if (write)
+> +		return -EINVAL;
+> +	else {
+> +		len = svc_print_xprts(tmpbuf, sizeof(tmpbuf));
+> +		if (!access_ok(VERIFY_WRITE, buffer, len))
+> +			return -EFAULT;
+> +
+> +		if (__copy_to_user(buffer, tmpbuf, len))
+> +			return -EFAULT;
+> +	}
+> +	*lenp -= len;
+> +	*ppos += len;
+> +	return 0;
+> +}
+> +
+>  static int
+>  proc_dodebug(ctl_table *table, int write, struct file *file,
+>  				void __user *buffer, size_t *lenp, loff_t *ppos)
+> @@ -140,6 +165,12 @@ static ctl_table debug_table[] = {
+>  		.mode		= 0644,
+>  		.proc_handler	= &proc_dodebug
+>  	},
+> +	{
+> +		.procname	= "transports",
+> +		.maxlen		= 256,
+> +		.mode		= 0444,
+> +		.proc_handler	= &proc_do_xprt,
+> +	},
+>  	{ .ctl_name = 0 }
+>  };
 
 
--------------------------------------------------------------------------
-SF.Net email is sponsored by: The Future of Linux Business White Paper
-from Novell.  From the desktop to the data center, Linux is going
-mainstream.  Let it simplify your IT future.
-http://altfarm.mediaplex.com/ad/ck/8857-50307-18918-4
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
-
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
