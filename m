@@ -1,84 +1,101 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [NFS] NFS Digest, Vol 18, Issue 70 (NFS performance problems)
-Date: Mon, 3 Dec 2007 17:07:37 -0500
-Message-ID: <20071203220737.GJ28201@fieldses.org>
-References: <47445727.5090705@oracle.com> <474A3D6B.2060208@redhat.com>
-	<20071126050230.GD21120@fieldses.org>
-	<18254.19187.470275.538680@notabene.brown>
-	<1196314230.7950.42.camel@heimdal.trondhjem.org>
-	<475039E4.5070903@redhat.com> <20071203203139.GF28201@fieldses.org>
-	<4754715E.9050400@redhat.com> <20071203213004.GH28201@fieldses.org>
-	<475479F6.70101@redhat.com>
+From: James Lentini <jlentini@netapp.com>
+Subject: Re: [RFC,PATCH 7/8] rdma: makefile (second thread)
+Date: Mon, 3 Dec 2007 17:29:54 -0500 (EST)
+Message-ID: <Pine.LNX.4.64.0712031656150.7142@jlentini-linux.nane.netapp.com>
+References: <20071129224412.14887.14136.stgit@dell3.ogc.int>
+ <20071129224513.14887.8074.stgit@dell3.ogc.int> <2E823541-6441-4605-8F15-440954CED454@oracle.com>
+ <Pine.LNX.4.64.0712031524250.7142@jlentini-linux.nane.netapp.com>
+ <D770E4F7-53C3-4853-B3B5-9E5B3A1FF40D@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: chuck.lever@oracle.com, nfs@lists.sourceforge.net,
-	NeilBrown <neilb-YbfuJp6tym7X/JP9YwkgDA@public.gmane.org>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Wendy Cheng <wcheng@redhat.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Tom Tucker <tom@opengridcomputing.com>,
+	"J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:58089 "EHLO neil.brown.name"
+Received: from mx2.netapp.com ([216.240.18.37]:49920 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750944AbXLCWIN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 3 Dec 2007 17:08:13 -0500
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1IzJSV-0007WB-1S
-	for linux-nfs@vger.kernel.org; Tue, 04 Dec 2007 09:08:11 +1100
-In-Reply-To: <475479F6.70101@redhat.com>
+	id S1750723AbXLCW35 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 3 Dec 2007 17:29:57 -0500
+In-Reply-To: <D770E4F7-53C3-4853-B3B5-9E5B3A1FF40D@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Dec 03, 2007 at 04:49:42PM -0500, Wendy Cheng wrote:
-> J. Bruce Fields wrote:
->> On Mon, Dec 03, 2007 at 04:13:02PM -0500, Wendy Cheng wrote:
->>   
->>> Or use cluster (a backup server is quite affordable nowadays) ? Was about 
->>> to kick off a new discussion about this ...
->>>
->>> I did a prototype about 4 years ago on 2.4 kernel where the RPC reply 
->>> cache (slightly modified to include raw NFS request packets) was mirrored 
->>> by backup server (in memory). The reply was delayed to go back to client 
->>> until the mirrored reply cache entry was acknowledged by the backup 
->>> server. Upon crash, the backup server piggybacked its logic on ext3's 
->>> journal recovery code. For reply cache entries not replayed or not 
->>> recognized by jbd, nfsd resent the NFS raw requests down to filesystem 
->>> just like any new arrived requested. The prototype code was able to gain 
->>> at least 70% of the async mode performance without losing the data.
->>>
->>> One of other issues with our current linux-based NFS cluster failover is 
->>> also right in this arena - that is, upon failover, the non-idempotent 
->>> could introduce stale filehandle errors that have been causing headaches 
->>> with some of the applications.
->>>     
->>
->> How exactly do the stale filehandles happen?
->>   
->
-> Unless someone has fixed it .. last time we looked .. one of the causes was 
-> like this:
->
-> A "delete" was successfully executed on one server but before replying to 
-> client, failover occurred. The retransmitted request was sent to take-over 
-> server that subsequently couldn't find the file (since the file had gone). 
-> A stale filehandle (or maybe an EACCESS or EPERM, forgot the details 
-> though) was returned.
 
-OK, makes sense.  But the REMOVE operation takes a filehandle (for a
-parent) and a name (the name of the thing to remove), so if it's already
-been removed you'd expect something like ENOENT.
 
---b.
+On Mon, 3 Dec 2007, Chuck Lever wrote:
 
--------------------------------------------------------------------------
-SF.Net email is sponsored by: The Future of Linux Business White Paper
-from Novell.  From the desktop to the data center, Linux is going
-mainstream.  Let it simplify your IT future.
-http://altfarm.mediaplex.com/ad/ck/8857-50307-18918-4
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+> On Dec 3, 2007, at 3:29 PM, James Lentini wrote:
+> > On Mon, 3 Dec 2007, Chuck Lever wrote:
+> > 
+> > > On Nov 29, 2007, at 5:45 PM, Tom Tucker wrote:
+> > > > Add the NFSD_RDMA module to the sunrpc makefile.
+> > > > 
+> > > > Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+> > > > ---
+> > > > 
+> > > > net/sunrpc/Makefile |    4 ++++
+> > > > 1 files changed, 4 insertions(+), 0 deletions(-)
+> > > > 
+> > > > diff --git a/net/sunrpc/Makefile b/net/sunrpc/Makefile
+> > > > index 92e1dbe..6d03dbf 100644
+> > > > --- a/net/sunrpc/Makefile
+> > > > +++ b/net/sunrpc/Makefile
+> > > > @@ -15,3 +15,7 @@ sunrpc-y := clnt.o xprt.o socklib.o xprtsock.o sched.o
+> > > > \
+> > > > 	    svc_xprt.o
+> > > > sunrpc-$(CONFIG_PROC_FS) += stats.o
+> > > > sunrpc-$(CONFIG_SYSCTL) += sysctl.o
+> > > > +
+> > > > +obj-$(CONFIG_NFSD_RDMA) += svcrdma.o
+> > > > +svcrdma-y := svc_rdma.o svc_rdma_transport.o \
+> > > > +	svc_rdma_marshal.o svc_rdma_sendto.o svc_rdma_recvfrom.o
+> > > 
+> > > 
+> > > Maybe it would be better to enable server-side RPC RDMA provider support
+> > > with
+> > > a separate config option, like the client side does it, then build the NFS
+> > > server dependency on that, instead of adding it here in the RPC makefile.
+> > > 
+> > > If the client-side and server-side providers are merged, then they could
+> > > both
+> > > be enabled via CONFIG_SUNRPC_XPRT_RDMA.
+> > > 
+> > > Comments?
+> > 
+> > I vote for keeping the client and server sources and builds separate.
+> > I'd keep the sources separate because the interfaces defined in the
+> > xprtrdma files are only used by the client and the interfaces defined
+> > in svc_rdma_* files are only used by the server.
+> 
+> That's just a design choice.  There's no real reason the two can't be merged
+> at some later point.
+> 
+> I understand that the two sides were developed separately... but it seems like
+> poor software engineering practice that there is so little code reuse between
+> the client and server-side RDMA transport providers.  It continues an
+> unfortunate tradition in the Linux RPC implementation.
 
+I believe the differences are the result of (1) the asymmetry in the 
+NFS/RDMA protocol, only the RPC responder (NFS server) is allowed to 
+launch RDMA operations which results in different memory managements, 
+etc. and (2) the interfaces they plug into are different. Both 
+implementations do share common definitions when possible (e.g. wire 
+formats).
+
+> > I'd keep keep the build configuration separate because often 
+> > someone will want to an NFS client but not an NFS server or vice 
+> > versa.
+> 
+> You need both server and client providers to support NFSv4 
+> callbacks, right?
+
+You're right. I should have been more precise above.
+
+> I still think it's useful to not add "CONFIG_NFSD_RDMA" to the 
+> sunrpc Makefile, and would like to see that changed.
+
+I understand where you are coming from but when I look at the current 
+config options (e.g. separate options for enabling the v3/v4 in the 
+client and server) it seems natural to me to have these be separate as 
+well. Regardless of whether one config option or two are exposed, I 
+still believe that it makes sense to build the modules separately.
