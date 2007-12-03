@@ -1,7 +1,7 @@
 From: Tom Tucker <tom@opengridcomputing.com>
 Subject: Re: [RFC,PATCH 7/8] rdma: makefile
-Date: Mon, 03 Dec 2007 11:24:59 -0600
-Message-ID: <1196702699.5811.0.camel@trinity.ogc.int>
+Date: Mon, 03 Dec 2007 11:26:19 -0600
+Message-ID: <1196702779.5811.3.camel@trinity.ogc.int>
 References: <20071129224412.14887.14136.stgit@dell3.ogc.int>
 	 <20071129224513.14887.8074.stgit@dell3.ogc.int>
 	 <2F4C0A61-33B5-4D2D-9349-657EC856A8B2@oracle.com>
@@ -10,17 +10,14 @@ Content-Type: text/plain
 Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
 To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:54903 "EHLO
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:51117 "EHLO
 	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751143AbXLCRUi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Dec 2007 12:20:38 -0500
+	by vger.kernel.org with ESMTP id S1751125AbXLCRV5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Dec 2007 12:21:57 -0500
 In-Reply-To: <2F4C0A61-33B5-4D2D-9349-657EC856A8B2@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I don't know that it adds much, but perhaps for consistency? In fact, if
-we were to move it, would we move it to the same directory as the
-client?
 
 On Mon, 2007-12-03 at 12:00 -0500, Chuck Lever wrote:
 > On Nov 29, 2007, at 5:45 PM, Tom Tucker wrote:
@@ -31,6 +28,11 @@ On Mon, 2007-12-03 at 12:00 -0500, Chuck Lever wrote:
 > net/sunrpc.  Should the server side provider also live in that  
 > directory?  Should these two be glued together into a single module?
 > 
+
+I don't think so because the client and server are truly independent and
+of course, you will often mount over RDMA, but not serve over RDMA.
+What's the fan-out 20-1?
+
 > > Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 > > ---
 > >
@@ -55,4 +57,8 @@ On Mon, 2007-12-03 at 12:00 -0500, Chuck Lever wrote:
 > --
 > Chuck Lever
 > chuck[dot]lever[at]oracle[dot]com
+> -
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
