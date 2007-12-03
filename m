@@ -1,75 +1,86 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [NFS] NFS Digest, Vol 18, Issue 70 (NFS performance problems)
-Date: Mon, 3 Dec 2007 15:31:39 -0500
-Message-ID: <20071203203139.GF28201@fieldses.org>
-References: <mailman.194659.1195581701.26582.nfs@lists.sourceforge.net>
-	<BAY104-W43766F661E50E7FFCDA8EBA7F0@phx.gbl>
-	<47434ED7.4010100@redhat.com> <47435049.1010800@redhat.com>
-	<47445727.5090705@oracle.com> <474A3D6B.2060208@redhat.com>
-	<20071126050230.GD21120@fieldses.org>
-	<18254.19187.470275.538680@notabene.brown>
-	<1196314230.7950.42.camel@heimdal.trondhjem.org>
-	<475039E4.5070903@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: chuck.lever@oracle.com, nfs@lists.sourceforge.net,
-	NeilBrown <neilb-YbfuJp6tym7X/JP9YwkgDA@public.gmane.org>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Wendy Cheng <wcheng@redhat.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [RFC,PATCH 7/8] rdma: makefile (second thread)
+Date: Mon, 3 Dec 2007 15:52:59 -0500
+Message-ID: <D770E4F7-53C3-4853-B3B5-9E5B3A1FF40D@oracle.com>
+References: <20071129224412.14887.14136.stgit@dell3.ogc.int> <20071129224513.14887.8074.stgit@dell3.ogc.int> <2E823541-6441-4605-8F15-440954CED454@oracle.com> <Pine.LNX.4.64.0712031524250.7142@jlentini-linux.nane.netapp.com>
+Mime-Version: 1.0 (Apple Message framework v752.2)
+Content-Type: text/plain; charset=US-ASCII; delsp=yes; format=flowed
+Cc: Tom Tucker <tom@opengridcomputing.com>,
+	"J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+To: James Lentini <jlentini@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:51124 "EHLO neil.brown.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750818AbXLCUcT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 3 Dec 2007 15:32:19 -0500
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1IzHxh-0007O6-6T
-	for linux-nfs@vger.kernel.org; Tue, 04 Dec 2007 07:32:17 +1100
-In-Reply-To: <475039E4.5070903@redhat.com>
+Received: from rgminet01.oracle.com ([148.87.113.118]:63684 "EHLO
+	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750808AbXLCVKm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Dec 2007 16:10:42 -0500
+In-Reply-To: <Pine.LNX.4.64.0712031524250.7142-5zmYZXM8ymTNoO61VEKW3MYxy48AqY0ZOQ4dku92ua4@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Nov 30, 2007 at 11:27:16AM -0500, Wendy Cheng wrote:
-> Trond Myklebust wrote:
->> Actually, the real problem would be dealing with something like
->> unlink('foo') followed by open('foo', O_CREAT|O_EXCL). How do you ensure
->> that a replay of those actions following a reboot is fully consistent in
->> the face of some other client attempting an open('foo', O_CREAT) at the
->> same time?
->>
->> The problem is that a number of directory operations involve exclusive
->> semantics, and so cannot be replayed. The solution to this sort of
->> problem is going to have to involve exclusive (i.e. write) directory
->> delegations to ensure that whatever transactions one client performs
->> cannot interfere with the transactions performed by another.
->>
->>   
+On Dec 3, 2007, at 3:29 PM, James Lentini wrote:
+> On Mon, 3 Dec 2007, Chuck Lever wrote:
 >
-> Well, a dumb question from me (borrowing Bruce's line :) ) ... even with 
-> "sync" in place, when server rebooted, the RPC reply cache is gone. How 
-> does linux server handle re-transmitted non-idempotent requests ?
+>> On Nov 29, 2007, at 5:45 PM, Tom Tucker wrote:
+>>> Add the NFSD_RDMA module to the sunrpc makefile.
+>>>
+>>> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+>>> ---
+>>>
+>>> net/sunrpc/Makefile |    4 ++++
+>>> 1 files changed, 4 insertions(+), 0 deletions(-)
+>>>
+>>> diff --git a/net/sunrpc/Makefile b/net/sunrpc/Makefile
+>>> index 92e1dbe..6d03dbf 100644
+>>> --- a/net/sunrpc/Makefile
+>>> +++ b/net/sunrpc/Makefile
+>>> @@ -15,3 +15,7 @@ sunrpc-y := clnt.o xprt.o socklib.o xprtsock.o  
+>>> sched.o \
+>>> 	    svc_xprt.o
+>>> sunrpc-$(CONFIG_PROC_FS) += stats.o
+>>> sunrpc-$(CONFIG_SYSCTL) += sysctl.o
+>>> +
+>>> +obj-$(CONFIG_NFSD_RDMA) += svcrdma.o
+>>> +svcrdma-y := svc_rdma.o svc_rdma_transport.o \
+>>> +	svc_rdma_marshal.o svc_rdma_sendto.o svc_rdma_recvfrom.o
+>>
+>>
+>> Maybe it would be better to enable server-side RPC RDMA provider  
+>> support with
+>> a separate config option, like the client side does it, then build  
+>> the NFS
+>> server dependency on that, instead of adding it here in the RPC  
+>> makefile.
+>>
+>> If the client-side and server-side providers are merged, then they  
+>> could both
+>> be enabled via CONFIG_SUNRPC_XPRT_RDMA.
+>>
+>> Comments?
+>
+> I vote for keeping the client and server sources and builds separate.
+> I'd keep the sources separate because the interfaces defined in the
+> xprtrdma files are only used by the client and the interfaces defined
+> in svc_rdma_* files are only used by the server.
 
-Badly!
+That's just a design choice.  There's no real reason the two can't be  
+merged at some later point.
 
-Somebody should figure out whether it would be possible for us to
-implement persistent sessions in v4.1:
+I understand that the two sides were developed separately... but it  
+seems like poor software engineering practice that there is so little  
+code reuse between the client and server-side RDMA transport  
+providers.  It continues an unfortunate tradition in the Linux RPC  
+implementation.
 
-	http://www.nfsv4-editor.org/draft-17/draft-ietf-nfsv4-minorversion1-17.html#Persistence
+> I'd keep keep the
+> build configuration separate because often someone will want to an NFS
+> client but not an NFS server or vice versa.
 
-It looks hard!
+You need both server and client providers to support NFSv4 callbacks,  
+right?
 
---b.
+I still think it's useful to not add "CONFIG_NFSD_RDMA" to the sunrpc  
+Makefile, and would like to see that changed.
 
--------------------------------------------------------------------------
-SF.Net email is sponsored by: The Future of Linux Business White Paper
-from Novell.  From the desktop to the data center, Linux is going
-mainstream.  Let it simplify your IT future.
-http://altfarm.mediaplex.com/ad/ck/8857-50307-18918-4
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
-
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
