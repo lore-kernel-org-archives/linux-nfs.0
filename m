@@ -1,101 +1,85 @@
-From: James Lentini <jlentini@netapp.com>
-Subject: Re: [RFC,PATCH 7/8] rdma: makefile (second thread)
-Date: Mon, 3 Dec 2007 17:29:54 -0500 (EST)
-Message-ID: <Pine.LNX.4.64.0712031656150.7142@jlentini-linux.nane.netapp.com>
-References: <20071129224412.14887.14136.stgit@dell3.ogc.int>
- <20071129224513.14887.8074.stgit@dell3.ogc.int> <2E823541-6441-4605-8F15-440954CED454@oracle.com>
- <Pine.LNX.4.64.0712031524250.7142@jlentini-linux.nane.netapp.com>
- <D770E4F7-53C3-4853-B3B5-9E5B3A1FF40D@oracle.com>
+From: Frank Filz <ffilzlnx@us.ibm.com>
+Subject: Re: [NFS] nfs-utils crossmnt/fsid bug
+Date: Mon, 03 Dec 2007 14:51:02 -0800
+Message-ID: <1196722262.1215.5.camel@dyn9047022153>
+References: <20070905204628.GD29582@fieldses.org>
+	<18246.16373.177320.570040@notabene.brown>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Tom Tucker <tom@opengridcomputing.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset="us-ascii"
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, ffilz@us.ibm.com,
+	nfs@lists.sourceforge.net, Steve Dickson <SteveD@redhat.com>
+To: Neil Brown <neilb@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:49920 "EHLO mx2.netapp.com"
+Received: from neil.brown.name ([220.233.11.133]:41316 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750723AbXLCW35 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 3 Dec 2007 17:29:57 -0500
-In-Reply-To: <D770E4F7-53C3-4853-B3B5-9E5B3A1FF40D@oracle.com>
+	id S1751333AbXLCXN0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 3 Dec 2007 18:13:26 -0500
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1IzKTb-0007av-Ac
+	for linux-nfs@vger.kernel.org; Tue, 04 Dec 2007 10:13:23 +1100
+In-Reply-To: <18246.16373.177320.570040-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On Mon, 3 Dec 2007, Chuck Lever wrote:
-
-> On Dec 3, 2007, at 3:29 PM, James Lentini wrote:
-> > On Mon, 3 Dec 2007, Chuck Lever wrote:
+On Fri, 2007-11-23 at 13:50 +1100, Neil Brown wrote:
+> On Wednesday September 5, bfields@fieldses.org wrote:
+> > With an exports entry like
 > > 
-> > > On Nov 29, 2007, at 5:45 PM, Tom Tucker wrote:
-> > > > Add the NFSD_RDMA module to the sunrpc makefile.
-> > > > 
-> > > > Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
-> > > > ---
-> > > > 
-> > > > net/sunrpc/Makefile |    4 ++++
-> > > > 1 files changed, 4 insertions(+), 0 deletions(-)
-> > > > 
-> > > > diff --git a/net/sunrpc/Makefile b/net/sunrpc/Makefile
-> > > > index 92e1dbe..6d03dbf 100644
-> > > > --- a/net/sunrpc/Makefile
-> > > > +++ b/net/sunrpc/Makefile
-> > > > @@ -15,3 +15,7 @@ sunrpc-y := clnt.o xprt.o socklib.o xprtsock.o sched.o
-> > > > \
-> > > > 	    svc_xprt.o
-> > > > sunrpc-$(CONFIG_PROC_FS) += stats.o
-> > > > sunrpc-$(CONFIG_SYSCTL) += sysctl.o
-> > > > +
-> > > > +obj-$(CONFIG_NFSD_RDMA) += svcrdma.o
-> > > > +svcrdma-y := svc_rdma.o svc_rdma_transport.o \
-> > > > +	svc_rdma_marshal.o svc_rdma_sendto.o svc_rdma_recvfrom.o
-> > > 
-> > > 
-> > > Maybe it would be better to enable server-side RPC RDMA provider support
-> > > with
-> > > a separate config option, like the client side does it, then build the NFS
-> > > server dependency on that, instead of adding it here in the RPC makefile.
-> > > 
-> > > If the client-side and server-side providers are merged, then they could
-> > > both
-> > > be enabled via CONFIG_SUNRPC_XPRT_RDMA.
-> > > 
-> > > Comments?
+> > 	/exports *.citi.umich.edu(rw,crossmnt,fsid=0)
 > > 
-> > I vote for keeping the client and server sources and builds separate.
-> > I'd keep the sources separate because the interfaces defined in the
-> > xprtrdma files are only used by the client and the interfaces defined
-> > in svc_rdma_* files are only used by the server.
+> > and some other stuff mounted under /exports, I get an odd situation
+> > where listing /exports/submnt/ shows me the contents of /exports/.
+> > 
+> > I looks to me like what's happening is that the new code to
+> > automatically export filesystems under crossmnt exports is exporting
+> > those directories with the fsid option turned on, with the result that
+> > the root of each of those subdirectories ends up with the same
+> > filehandle as the root of /exports, and the hilarity ensues.  But I
+> > haven't tried a patch yet.
+> > 
+> > Does that make sense?  I assume we should just clear the fsid flag on
+> > submounts, as it's never going to make sense, and leave the logic
+> > otherwise intact.
+> > 
+> > --b.
 > 
-> That's just a design choice.  There's no real reason the two can't be merged
-> at some later point.
+> Thanks for noticing and reporting this.
 > 
-> I understand that the two sides were developed separately... but it seems like
-> poor software engineering practice that there is so little code reuse between
-> the client and server-side RDMA transport providers.  It continues an
-> unfortunate tradition in the Linux RPC implementation.
+> Does this (untested, but it compiles) patch seem right?
 
-I believe the differences are the result of (1) the asymmetry in the 
-NFS/RDMA protocol, only the RPC responder (NFS server) is allowed to 
-launch RDMA operations which results in different memory managements, 
-etc. and (2) the interfaces they plug into are different. Both 
-implementations do share common definitions when possible (e.g. wire 
-formats).
+In testing security negotiation, I ran into this problem. I've tried
+this patch and it doesn't seem to be working right. My exports file is:
 
-> > I'd keep keep the build configuration separate because often 
-> > someone will want to an NFS client but not an NFS server or vice 
-> > versa.
-> 
-> You need both server and client providers to support NFSv4 
-> callbacks, right?
+/export/home    gss/krb5i(nohide,insecure,no_subtree_check,no_root_squash,async,rw)
+/export/home    gss/krb5p(nohide,insecure,no_subtree_check,no_root_squash,async,rw)
+/export         gss/krb5(fsid=0,insecure,no_subtree_check,no_root_squash,async,rw,crossmnt)
+/export         gss/krb5i(fsid=0,insecure,no_subtree_check,no_root_squash,async,rw,crossmnt)
 
-You're right. I should have been more precise above.
+>From the client I execute:
 
-> I still think it's useful to not add "CONFIG_NFSD_RDMA" to the 
-> sunrpc Makefile, and would like to see that changed.
+mount -overs=4,sec=krb5 elm3a19.beaverton.ibm.com:/ /mnt 
+ls -l /mnt/home
 
-I understand where you are coming from but when I look at the current 
-config options (e.g. separate options for enabling the v3/v4 in the 
-client and server) it seems natural to me to have these be separate as 
-well. Regardless of whether one config option or two are exposed, I 
-still believe that it makes sense to build the modules separately.
+I added some debug logging, and I see the different_fs path being taken
+on the /export/home. I'm wondering, could there be a kernel part to this
+also?
+
+Thanks
+
+Frank Filz
+
+
+-------------------------------------------------------------------------
+SF.Net email is sponsored by: The Future of Linux Business White Paper
+from Novell.  From the desktop to the data center, Linux is going
+mainstream.  Let it simplify your IT future.
+http://altfarm.mediaplex.com/ad/ck/8857-50307-18918-4
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
+
