@@ -1,66 +1,125 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [NFS] nfs-utils crossmnt/fsid bug
-Date: Tue, 4 Dec 2007 12:09:26 +1100
-Message-ID: <18260.43206.943331.889058@notabene.brown>
-References: <20070905204628.GD29582@fieldses.org>
-	<18246.16373.177320.570040@notabene.brown>
-	<1196722262.1215.5.camel@dyn9047022153>
+From: Tom Tucker <tom@opengridcomputing.com>
+Subject: Re: [RFC,PATCH 34/38] svc: Add /proc/sys/sunrpc/transport files
+Date: Mon, 03 Dec 2007 18:45:07 -0600
+Message-ID: <C379FF33.20E40%tom@opengridcomputing.com>
+References: <3F7E5DF2-0F8E-4C84-9F3B-0AD0985321B2@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, ffilz@us.ibm.com,
-	nfs@lists.sourceforge.net, Steve Dickson <SteveD@redhat.com>
-To: Frank Filz <ffilzlnx@us.ibm.com>
+Content-Type: text/plain;
+	charset="US-ASCII"
+Cc: <linux-nfs@vger.kernel.org>, Greg Banks <gnb@sgi.com>
+To: Chuck Lever <chuck.lever@oracle.com>,
+	"J. Bruce Fields" <bfields@fieldses.org>, NeilBrown <neilb@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:48748 "EHLO neil.brown.name"
+Received: from mail.es335.com ([67.65.19.105]:5588 "EHLO mail.es335.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751008AbXLDBJs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 3 Dec 2007 20:09:48 -0500
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1IzMIE-0007k5-7q
-	for linux-nfs@vger.kernel.org; Tue, 04 Dec 2007 12:09:46 +1100
-In-Reply-To: message from Frank Filz on Monday December 3
+	id S1751235AbXLDBQF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 3 Dec 2007 20:16:05 -0500
+In-Reply-To: <3F7E5DF2-0F8E-4C84-9F3B-0AD0985321B2@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Monday December 3, ffilzlnx@us.ibm.com wrote:
-> On Fri, 2007-11-23 at 13:50 +1100, Neil Brown wrote:
-> > Does this (untested, but it compiles) patch seem right?
-> 
-> In testing security negotiation, I ran into this problem. I've tried
-> this patch and it doesn't seem to be working right. My exports file is:
-> 
-> /export/home    gss/krb5i(nohide,insecure,no_subtree_check,no_root_squash,async,rw)
-> /export/home    gss/krb5p(nohide,insecure,no_subtree_check,no_root_squash,async,rw)
-> /export         gss/krb5(fsid=0,insecure,no_subtree_check,no_root_squash,async,rw,crossmnt)
-> /export         gss/krb5i(fsid=0,insecure,no_subtree_check,no_root_squash,async,rw,crossmnt)
 
-You don't need the patch for this exports file.  It is only relevant
-when the underlying filesystem is not explicitly exported, so the
-export flags a deduced implicitly.
 
-So - this is a separate issue.
+
+On 12/3/07 2:36 PM, "Chuck Lever" <chuck.lever@oracle.com> wrote:
+
+> On Dec 3, 2007, at 2:10 PM, Tom Tucker wrote:
+>> On Mon, 2007-12-03 at 13:30 -0500, Chuck Lever wrote:
+>>> On Dec 3, 2007, at 11:58 AM, J. Bruce Fields wrote:
+>>>> On Mon, Dec 03, 2007 at 11:44:15AM -0500, Chuck Lever wrote:
+>> 
+>> Could you be more specific on what these problems are?
+
+[...snip...]
 
 > 
-> From the client I execute:
+> The problems we discussed on Friday about svc_tcp_has_wspace(),
+> introduced in 9/38.
 > 
-> mount -overs=4,sec=krb5 elm3a19.beaverton.ibm.com:/ /mnt 
-> ls -l /mnt/home
+> The mess is hidden by implicit type casts in the write space check,
+> replaced by 9/38, in svc_sock_enqueue().   The return type of
+> svc_sock_wspace() is unsigned long, which means the other side of the
+> comparison in svc_sock_enqueue() (the sum that becomes "required" in
+> your patch) is implicitly promoted to unsigned long before the
+> comparison is done.
+> 
+> Your patch misses the implicit cast at least by making "required" an
+> int in the new callback functions.  "required" should be an unsigned
+> long in both the UDP and TCP callback to preserve the semantics of
+> the existing logic.
+> 
+> It's also the case that sk_stream_wspace() can return a negative
+> value if sk_wmem_queued somehow becomes larger than sk_sndbuf.
+> However, in the existing svc_sock_enqueue() logic, a negative result
+> from sk_stream_wspace() is converted to an unsigned long, making it a
+> large positive number.  The server then thinks it may continue
+> writing to a socket whose buffer is already full.
+> 
+> I'm also worried about whether sk_reserved, which is an int and is
+> incremented and decremented without a check to see if it has gone
+> negative, can go negative during normal operation -- and if it does,
+> what does that do to the value of "required" and the result of the
+> write space check, in either the UDP or TCP case?
+> 
+> In addition, the server's TCP write space check is missing a
+> comparison that every other TCP write space callback in the kernel
+> has (comparing sk_stream_wspace and sk_stream_min_wspace).  If we
+> don't include it here, then we need some testing to validate that it
+> isn't needed, and a comment to explain why this write space callback
+> is different from the others.
+> 
+> I was hoping for some comment from Neil or Bruce.
 
-... and what happens?
+Ok, cool. I just didn't get the map from "refactoring" to this. These
+changes are straightforward. I have already modified the patch to resolve
+the type promotion issue and added a check for negative.  I planned on
+reposting the whole series with the updates after we get the build issues
+hammered out.
 
-NeilBrown
+Thanks,
+Tom
 
--------------------------------------------------------------------------
-SF.Net email is sponsored by: The Future of Linux Business White Paper
-from Novell.  From the desktop to the data center, Linux is going
-mainstream.  Let it simplify your IT future.
-http://altfarm.mediaplex.com/ad/ck/8857-50307-18918-4
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+> 
+>  From Friday's post:
+>> If sk_reserved goes negative, it will be converted to unsigned, and
+>> become a very large positive number.  The result of the sum will be
+>> recast back to an int when it's assigned to "required," and we
+>> probably get a reasonable result.  I doubt an explicit cast will
+>> change things at all.
+>> 
+>> Instead, perhaps we should add an explicit check to ensure
+>> sk_reserved is a reasonable positive value before doing any other
+>> checks.  (Likewise in the UDP case as well).
+>> 
+>> I wonder if this is really the correct write space check to use for
+>> TCP, though.  I remember fixing a similar issue in the RPC client a
+>> long time ago -- both UDP and TCP used the same wspace check.  It
+>> resulted in the sk_write_space callback hammering on the RPC
+>> client, and forward progress on TCP socket writes would slow to a
+>> crawl.
+>> 
+>> You probably want something like this instead:
+>> 
+>> set_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
+>> 
+>> required = atomic_read(&svsk->sk_reserved) + serv->sv_max_mesg;
+>> wspace = sk_stream_wspace(svsk->sk_sk);
+>> 
+>> if (wspace < sk_stream_min_wspace(svsk->sk_sk))
+>> return 0;
+>> if (required * 2 > wspace)
+>> return 0;
+>> 
+>> clear_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
+>> return 1;
+>> 
+>> The first test mimics sk_stream_write_space() and xs_tcp_write_space
+>> ().  I'm still unsure what to do about the possibility of one of
+>> these signed integers going negative on us.
+> 
+> 
+> --
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+
 
