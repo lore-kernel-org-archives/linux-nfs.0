@@ -1,52 +1,62 @@
-From: Greg Banks <gnb@sgi.com>
-Subject: Re: [RFC,PATCH 34/38] svc: Add /proc/sys/sunrpc/transport files
-Date: Wed, 5 Dec 2007 19:44:27 +1100
-Message-ID: <20071205084427.GM26759@sgi.com>
-References: <20071129223917.14563.77633.stgit@dell3.ogc.int> <20071129224105.14563.48684.stgit@dell3.ogc.int> <C3F9B0D5-6CBD-4BBC-B00E-DCA16DD78EBF@oracle.com> <20071203165853.GE16422@fieldses.org>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: Invisible files and input/output errors
+Date: Thu, 6 Dec 2007 10:31:17 +1100
+Message-ID: <18263.13509.397157.489566@notabene.brown>
+References: <200712040037.36598.bartoschek@or.uni-bonn.de>
+	<18260.40472.276614.78174@notabene.brown>
+	<200712041106.56189.bartoschek@or.uni-bonn.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-	Tom Tucker <tom@opengridcomputing.com>,
-	linux-nfs@vger.kernel.org, Neil Brown <neilb@suse.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+To: Christoph Bartoschek <bartoschek-eefaeeawk+jFLWzOrOlZPg@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from netops-testserver-3-out.sgi.com ([192.48.171.28]:55386 "EHLO
-	relay.sgi.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751714AbXLEIhb (ORCPT
-	<rfc822;@relay.sgi.com:linux-nfs@vger.kernel.org>);
-	Wed, 5 Dec 2007 03:37:31 -0500
-In-Reply-To: <20071203165853.GE16422@fieldses.org>
+Received: from cantor2.suse.de ([195.135.220.15]:51645 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751216AbXLEXbX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Dec 2007 18:31:23 -0500
+In-Reply-To: message from Christoph Bartoschek on Tuesday December 4
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Dec 03, 2007 at 11:58:53AM -0500, J. Bruce Fields wrote:
-> On Mon, Dec 03, 2007 at 11:44:15AM -0500, Chuck Lever wrote:
-> > One last one, then I will crawl back into my hole.
+On Tuesday December 4, bartoschek-eefaeeawk+jFLWzOrOlZPg@public.gmane.org wrote:
 > 
-> By the way, based on who I recall making a lot of comments, I'm planning
-> on just adding:
+> > Sounds a lot like directory cookie problems.
+> >
+> > Can you get a network trace of the NFS packets.
+> > Something like
+> >
+> >     tcpdump -s 0 -w /tmp/trace host NAME-OF-SERVER
+> >
+> > then cause the failure while that is running.
+> > Either compress and attach the result to an Email, or if it is too
+> > big, stick it on a website somewhere.
 > 
-> 	Acked-by: Neil Brown <neilb@suse.de>
-> 	Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
-> 	Reviewed-by: Greg Banks <gnb@sgi.com>
-> 
-> to all of the server transport-switch and rdma patches.  Does that sound
-> right?
+> I have attached a trace of a "ls" that does not show some directories.
 
-For the server transport switch patches: yes please.
+There is one interesting feature of this trace.
 
-For the server RDMA patches: I've not had a chance to read the latest
-versions (a long-running drama has been sucking up all my time for some
-weeks now), but after all the discussion I'm not expecting any nasty
-surprises.  I'll get back to you in a few days.
+The 'cookie' assigned to each directory entry normally is 32 more than
+the previous entry, though in some places the gap is 64 or another
+large multiple of 32.
 
-> And I'm assuming there are no objections to submitting this come the
-> next merge window.
+The whole directory is fetched in three requests - each request
+sending the cookie from the last name in the previous reply.
 
-Agreed.
+For the last request, the cookie for the first entry returned is 992
+more than that last cookie in the previous reply.
+This is by far that largest gap, and that fact that it aligns with a
+break between two requests seems a little suspicious.
 
-Greg.
--- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-Apparently, I'm Bedevere.  Which MPHG character are you?
-I don't speak for SGI.
+It might be interesting to remove some of the files that appear early
+in the list, e.g.
+
+ COUNT8SF manga.tcl test-run tanga.tcl flex sopec mopec thumper 
+
+and see how that affects the returned list of files.
+
+In any case, it looks from the trace that the Linux client so doing
+the right thing based on the information returned, so I would
+suggested reporting this to whoever provided your NFS-DFS gateway.
+
+NeilBrown
+
