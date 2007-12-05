@@ -1,109 +1,52 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [RFC,PATCH 7/8] rdma: makefile (second thread)
-Date: Tue, 4 Dec 2007 22:08:14 -0500
-Message-ID: <783CD96D-DFB4-439D-B726-DD4432FEF705@oracle.com>
-References: <20071129224412.14887.14136.stgit@dell3.ogc.int> <20071129224513.14887.8074.stgit@dell3.ogc.int> <2E823541-6441-4605-8F15-440954CED454@oracle.com> <Pine.LNX.4.64.0712031524250.7142@jlentini-linux.nane.netapp.com> <D770E4F7-53C3-4853-B3B5-9E5B3A1FF40D@oracle.com> <Pine.LNX.4.64.0712031656150.7142@jlentini-linux.nane.netapp.com> <F73D3904-0849-43DF-87FC-A5032F6671AF@oracle.com> <Pine.LNX.4.64.0712041800270.7142@jlentini-linux.nane.netapp.com>
-Mime-Version: 1.0 (Apple Message framework v752.2)
-Content-Type: text/plain; charset=US-ASCII; delsp=yes; format=flowed
-Cc: Tom Tucker <tom@opengridcomputing.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-To: James Lentini <jlentini@netapp.com>
+From: Greg Banks <gnb@sgi.com>
+Subject: Re: [RFC,PATCH 34/38] svc: Add /proc/sys/sunrpc/transport files
+Date: Wed, 5 Dec 2007 19:44:27 +1100
+Message-ID: <20071205084427.GM26759@sgi.com>
+References: <20071129223917.14563.77633.stgit@dell3.ogc.int> <20071129224105.14563.48684.stgit@dell3.ogc.int> <C3F9B0D5-6CBD-4BBC-B00E-DCA16DD78EBF@oracle.com> <20071203165853.GE16422@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+	Tom Tucker <tom@opengridcomputing.com>,
+	linux-nfs@vger.kernel.org, Neil Brown <neilb@suse.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:49541 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750954AbXLEDLD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Dec 2007 22:11:03 -0500
-In-Reply-To: <Pine.LNX.4.64.0712041800270.7142-5zmYZXM8ymTNoO61VEKW3MYxy48AqY0ZOQ4dku92ua4@public.gmane.org>
+Received: from netops-testserver-3-out.sgi.com ([192.48.171.28]:55386 "EHLO
+	relay.sgi.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751714AbXLEIhb (ORCPT
+	<rfc822;@relay.sgi.com:linux-nfs@vger.kernel.org>);
+	Wed, 5 Dec 2007 03:37:31 -0500
+In-Reply-To: <20071203165853.GE16422@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Dec 4, 2007, at 6:04 PM, James Lentini wrote:
-> On Mon, 3 Dec 2007, Chuck Lever wrote:
-> <snip>
->> My sense is that the preferred way to express the dependency between
->> the NFS layer and the RDMA transport provider is to create a CONFIG
->> option to enable the transport, then add a SELECT clause in
->> fs/Kconfig in each NFS section where it's required.
->>
->> Users who want NFS in their kernels don't select SUNRPC as well, for
->> example. CONFIG_SUNRPC itself is in fact a hidden CONFIG option, and
->> it's selected by the upper layer protocols that depend on it.
->>
->> So, you have a CONFIG option that enables RDMA support in the NFS
->> client, and one for the NFS server.  Both of those options would
->> select the (possibly hidden) RPC RDMA transport provider option they
->> want.  Instead of coding CONFIG_NFSD_RDMA in the
->> net/sunrpc/Makefile, you code the hidden sunrpc config option that
->> enables the desired RPC RDMA transport provider.
->>
->> Something like this:
->>
->> config NFS_RDMA
->> 	bool "NFS client support for NFSoRDMA"
->> 	depends on NFS_FS
->> 	select SUNRPC_XPRT_RDMA
->> 	default n
->> 	help
->> 	  Help me
->>
->> and
->>
->> config NFSD_RDMA
->> 	bool "NFS server support for NFSoRDMA"
->> 	depends on NFSD
->> 	select SUNRPC_XPRT_RDMA
->> 	default n
->> 	help
->> 	  Somebody
->>
->> Make the existing SUNRPC_XPRT_RDMA option hidden, just like SUNRPC
->> and SUNRPC_GSS are already.
->>
->> The net/sunrpc/Makefile file already contains:
->>
->> obj-${CONFIG_SUNRPC_XPRT_RDMA) += xprtrdma/
->>
->> Add all the needed dependencies to net/sunrpc/xprtrdma/Makefile for
->> both the client and server side transport provider.  It can even
->> build separate modules, and the kernel can load just one if only one
->> direction is needed on that host.
->>
->> The advantage is that all the dependencies for NFS over RDMA go into
->> the NFS sections of Kconfig, not into the Makefiles.
->>
->> Since the feature is called "NFS over RDMA" the NFS section of
->> Kconfig is where users will start looking to enable the feature.
->>
->> And, if some other ULP comes along that needs RPC over RDMA, it can
->> code that dependency in a Kconfig somewhere as well; we don't need
->> to add anything else in net/sunrpc/Makefile to make it work.
->>
->> I know this arrangement doesn't quite reflect the reality of the
->> source code -- that is, that the NFS server and client
->> implementation haven't actually been changed to support RDMA, for
->> the most part -- most of the work is done in the RPC layer.  My
->> sense, though, is that users will look for NFSoRDMA support in the
->> config sections for NFS, not in the config sections for RPC;
->> especially since SUNRPC is already a hidden config option.
->
-> Ok, Tom (Tucker), Tom (Talpey), and I will put this organization
-> together and included it with Tom Tucker's next release of the
-> NFS/RDMA server patchset.
->
-> One question, are you recommending that all the source files be
-> located in the xprtrdma directory?
+On Mon, Dec 03, 2007 at 11:58:53AM -0500, J. Bruce Fields wrote:
+> On Mon, Dec 03, 2007 at 11:44:15AM -0500, Chuck Lever wrote:
+> > One last one, then I will crawl back into my hole.
+> 
+> By the way, based on who I recall making a lot of comments, I'm planning
+> on just adding:
+> 
+> 	Acked-by: Neil Brown <neilb@suse.de>
+> 	Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
+> 	Reviewed-by: Greg Banks <gnb@sgi.com>
+> 
+> to all of the server transport-switch and rdma patches.  Does that sound
+> right?
 
+For the server transport switch patches: yes please.
 
-In general, putting the transport providers in subdirectories is  
-cleaner source organization, but both don't have to share the same  
-subdirectory (though that would be my preference, fwiw).
+For the server RDMA patches: I've not had a chance to read the latest
+versions (a long-running drama has been sucking up all my time for some
+weeks now), but after all the discussion I'm not expecting any nasty
+surprises.  I'll get back to you in a few days.
 
-It also helps because that source build module(s) separate from  
-sunrpc, just like the GSS code, which is also in a subdirectory.
+> And I'm assuming there are no objections to submitting this come the
+> next merge window.
 
-The socket transport provider could also be in a subdirectory, but it  
-will always be included in the sunrpc module itself.
+Agreed.
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+Greg.
+-- 
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+Apparently, I'm Bedevere.  Which MPHG character are you?
+I don't speak for SGI.
