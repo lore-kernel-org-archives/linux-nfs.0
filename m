@@ -1,62 +1,93 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: Invisible files and input/output errors
-Date: Thu, 6 Dec 2007 10:31:17 +1100
-Message-ID: <18263.13509.397157.489566@notabene.brown>
-References: <200712040037.36598.bartoschek@or.uni-bonn.de>
-	<18260.40472.276614.78174@notabene.brown>
-	<200712041106.56189.bartoschek@or.uni-bonn.de>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH] xprtrdma: fix XDR tail buf marshalling for all ops
+Date: Wed, 05 Dec 2007 19:56:47 -0500
+Message-ID: <1196902607.17724.2.camel@heimdal.trondhjem.org>
+References: <Pine.LNX.4.64.0711291521010.7142@jlentini-linux.nane.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Christoph Bartoschek <bartoschek-eefaeeawk+jFLWzOrOlZPg@public.gmane.org>
+Content-Type: text/plain
+Cc: Tom Tucker <tom@opengridcomputing.com>,
+	Thomas Talpey <talpey@netapp.com>, linux-nfs@vger.kernel.org,
+	nfs@lists.sourceforge.net
+To: James Lentini <jlentini@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:51645 "EHLO mx2.suse.de"
+Received: from pat.uio.no ([129.240.10.15]:49470 "EHLO pat.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751216AbXLEXbX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Dec 2007 18:31:23 -0500
-In-Reply-To: message from Christoph Bartoschek on Tuesday December 4
+	id S1750954AbXLFA5r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Dec 2007 19:57:47 -0500
+In-Reply-To: <Pine.LNX.4.64.0711291521010.7142-5zmYZXM8ymTNoO61VEKW3MYxy48AqY0ZOQ4dku92ua4@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tuesday December 4, bartoschek-eefaeeawk+jFLWzOrOlZPg@public.gmane.org wrote:
+
+On Thu, 2007-11-29 at 15:46 -0500, James Lentini wrote:
+> In some instances, the code in rpcrdma_convert_iovs was failing to 
+> include a chunk for the xdr tail. This was caused by defensive code 
+> that checked if the current xdr pos was greater than the total xdr 
+> length before encoding the tail. However, the xdr->len is 0 for 
+> non-write operations, and therefore this check was invalid for such 
+> operations.
+
+Huh? xdr->page_len is 0 for non-write operations, but xdr->len had
+better not be 0...
+
+> With this change, the tail will always be marshaled when present. This 
+> makes the maintenance of the pos index unnecessary. The test of 
+> xdrbuf->len to decide if a message should be logged is also incorrect.
 > 
-> > Sounds a lot like directory cookie problems.
-> >
-> > Can you get a network trace of the NFS packets.
-> > Something like
-> >
-> >     tcpdump -s 0 -w /tmp/trace host NAME-OF-SERVER
-> >
-> > then cause the failure while that is running.
-> > Either compress and attach the result to an Email, or if it is too
-> > big, stick it on a website somewhere.
+> This fixes an observed problem when reading certain file sizes over 
+> NFS/RDMA. Please consider this for 2.6.24.
 > 
-> I have attached a trace of a "ls" that does not show some directories.
+> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+> Signed-off-by: Tom Talpey <talpey@netapp.com>
+> Signed-off-by: James Lentini <jlentini@netapp.com>
+> 
+> ---
+>  net/sunrpc/xprtrdma/rpc_rdma.c |    9 +--------
+>  1 file changed, 1 insertion(+), 8 deletions(-)
+> 
+> --- a/net/sunrpc/xprtrdma/rpc_rdma.c
+> +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+> @@ -92,7 +92,6 @@
+>  		seg[n].mr_page = NULL;
+>  		seg[n].mr_offset = xdrbuf->head[0].iov_base;
+>  		seg[n].mr_len = xdrbuf->head[0].iov_len;
+> -		pos += xdrbuf->head[0].iov_len;
+>  		++n;
+>  	}
+>  
+> @@ -104,7 +103,6 @@
+>  		seg[n].mr_len = min_t(u32,
+>  			PAGE_SIZE - xdrbuf->page_base, xdrbuf->page_len);
+>  		len = xdrbuf->page_len - seg[n].mr_len;
+> -		pos += len;
 
-There is one interesting feature of this trace.
+Alternatively, just a single line fix should fix the bug AFAICS:
+-		pos += len;
++		pos += xdrbuf->page_len
 
-The 'cookie' assigned to each directory entry normally is 32 more than
-the previous entry, though in some places the gap is 64 or another
-large multiple of 32.
-
-The whole directory is fetched in three requests - each request
-sending the cookie from the last name in the previous reply.
-
-For the last request, the cookie for the first entry returned is 992
-more than that last cookie in the previous reply.
-This is by far that largest gap, and that fact that it aligns with a
-break between two requests seems a little suspicious.
-
-It might be interesting to remove some of the files that appear early
-in the list, e.g.
-
- COUNT8SF manga.tcl test-run tanga.tcl flex sopec mopec thumper 
-
-and see how that affects the returned list of files.
-
-In any case, it looks from the trace that the Linux client so doing
-the right thing based on the information returned, so I would
-suggested reporting this to whoever provided your NFS-DFS gateway.
-
-NeilBrown
+>  		++n;
+>  		p = 1;
+>  		while (len > 0) {
+> @@ -119,20 +117,15 @@
+>  		}
+>  	}
+>  
+> -	if (pos < xdrbuf->len && xdrbuf->tail[0].iov_len) {
+> +	if (xdrbuf->tail[0].iov_len) {
+>  		if (n == nsegs)
+>  			return 0;
+>  		seg[n].mr_page = NULL;
+>  		seg[n].mr_offset = xdrbuf->tail[0].iov_base;
+>  		seg[n].mr_len = xdrbuf->tail[0].iov_len;
+> -		pos += xdrbuf->tail[0].iov_len;
+>  		++n;
+>  	}
+>  
+> -	if (pos < xdrbuf->len)
+> -		dprintk("RPC:       %s: marshaled only %d of %d\n",
+> -				__func__, pos, xdrbuf->len);
+> -
+>  	return n;
+>  }
+>  
 
