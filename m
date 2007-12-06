@@ -1,40 +1,36 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH] xprtrdma: fix XDR tail buf marshalling for all ops
-Date: Thu, 06 Dec 2007 02:23:36 -0500
-Message-ID: <1196925817.7663.1.camel@heimdal.trondhjem.org>
-References: <Pine.LNX.4.64.0711291521010.7142@jlentini-linux.nane.netapp.com>
-	 <1196902607.17724.2.camel@heimdal.trondhjem.org>
-	 <1196916625.25528.43.camel@trinity.ogc.int>
+From: Le Rouzic <aime.le-rouzic@bull.net>
+Subject: Results of a Robustness Regression tests campaign with RHEL5.1 Gold
+ and linux-2.6.24-rc2-CITI_NFS4_ALL-1
+Date: Thu, 06 Dec 2007 11:45:09 +0100
+Message-ID: <4757D2B5.4070800@bull.net>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: James Lentini <jlentini@netapp.com>,
-	Thomas Talpey <talpey@netapp.com>, linux-nfs@vger.kernel.org,
-	nfs@lists.sourceforge.net
-To: Tom Tucker <tom@opengridcomputing.com>
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: linux-nfs@vger.kernel.org, nfs@lists.sourceforge.net
+To: nfsv4 <nfsv4@linux-nfs.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from pat.uio.no ([129.240.10.15]:41901 "EHLO pat.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752329AbXLFHZl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 6 Dec 2007 02:25:41 -0500
-In-Reply-To: <1196916625.25528.43.camel-SMNkleLxa3ZimH42XvhXlA@public.gmane.org>
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:53680 "EHLO
+	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752755AbXLFKoh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Dec 2007 05:44:37 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi,
 
-On Wed, 2007-12-05 at 22:50 -0600, Tom Tucker wrote:
-> xdr->len is 0
+I have done a Robustness Regression tests campaign using RHEL5.1 Public 
+Gold (2.6.18-53.el5)
+in front of a Fedora Core with linux-2.6.24-rc2-CITI_NFS4_ALL-1 
+including kerberos on X86_64 Intel machines.
+Results are available at : http://nfsv4.bullopensource.org/
 
-Mind explaining where we're missing a call to xdr_adjust_iovec?
+Best regards
 
-> > Alternatively, just a single line fix should fix the bug AFAICS:
-> > -		pos += len;
-> > +		pos += xdrbuf->page_len
-> 
-> xdr->len notwithstanding, for the purpose of this code, the pos
-> manipulation isn't necessary because the condition being checked (no
-> tail) can be trivially determined just by looking at tail[0].iov_len.
-
-I know that, but we're in an -rc4 release.
-
-Trond
+-----------------------------------------------------------------
+Company : Bull, Architect of an Open World TM (www.bull.com)
+Name    : Aime Le Rouzic 
+Mail    : Bull - BP 208 - 38432 Echirolles Cedex - France
+E-Mail  : aime.le-rouzic@bull.net
+Phone   : 33 (4) 76.29.75.51
+Fax     : 33 (4) 76.29.75.18
+----------------------------------------------------------------- 
 
