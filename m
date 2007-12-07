@@ -1,122 +1,90 @@
-From: Frank Filz <ffilzlnx@us.ibm.com>
-Subject: Re: [NFS] nfs-utils crossmnt/fsid bug
-Date: Fri, 07 Dec 2007 11:05:15 -0800
-Message-ID: <1197054315.1215.21.camel@dyn9047022153>
-References: <20070905204628.GD29582@fieldses.org>
-	<18246.16373.177320.570040@notabene.brown>
-	<1196722262.1215.5.camel@dyn9047022153>
-	<18260.43206.943331.889058@notabene.brown>
-	<1196790164.1215.9.camel@dyn9047022153>
+From: Erez Zadok <ezk-EX0cT3Az47bauI2f2gSDlQ@public.gmane.org>
+Subject: Re: [NFS] NFSv2/3 broken exporting/mounting (permission denied) in
+	2.6.24-rc4
+Date: Fri, 7 Dec 2007 15:05:12 -0500
+Message-ID: <200712072005.lB7K5Cre013747__12305.7092576802$1197058026$gmane$org@agora.fsl.cs.sunysb.edu>
+References: <20071207025504.GA3070@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, ffilz@us.ibm.com,
-	nfs@lists.sourceforge.net, Steve Dickson <SteveD@redhat.com>
-To: Neil Brown <neilb@suse.de>
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	Erez Zadok <ezk-EX0cT3Az47bauI2f2gSDlQ@public.gmane.org>, nfs@lists.sourceforge.net,
+	linux-kernel@vger.kernel.org,
+	"Eric W. Biederman" <ebiederm@xmission.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:59554 "EHLO neil.brown.name"
+Received: from neil.brown.name ([220.233.11.133]:38933 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757292AbXLGTHR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 7 Dec 2007 14:07:17 -0500
+	id S1757708AbXLGUFk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 7 Dec 2007 15:05:40 -0500
 Received: from brown by neil.brown.name with local (Exim 4.63)
 	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1J0iXa-0007OT-Og
-	for linux-nfs@vger.kernel.org; Sat, 08 Dec 2007 06:07:14 +1100
-In-Reply-To: <1196790164.1215.9.camel@dyn9047022153>
+	id 1J0jS5-0007aQ-SL
+	for linux-nfs@vger.kernel.org; Sat, 08 Dec 2007 07:05:37 +1100
+In-reply-to: Your message of "Thu, 06 Dec 2007 21:55:04 EST."
+	<20071207025504.GA3070@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I've done some more exploration, I think the exports are getting set
-wrong. First, here is the working case with the new exports format (cut
-from an annotated /var/log/messages):
+In message <20071207025504.GA3070@fieldses.org>, "J. Bruce Fields" writes:
+> On Thu, Dec 06, 2007 at 09:20:41PM -0500, Erez Zadok wrote:
+> > I get a "permission denied" when trying to mount a localhost nfsv2/3
+> > exported volume, on v2.6.24-rc4-124-gf194d13.  It works w/ nfsv4 mounting.
+> > It worked fine in 2.6.24-rc3.  Here's a sequence of ops I tried:
+> > 
+> > # mount -t ext2 /dev/hdb1 /n/lower/b0
+> > # exportfs -o no_root_squash,rw localhost:/n/lower/b0
+> > # mount -t nfs -o nfsvers=3 localhost:/n/lower/b0 /mnt
+> 
+> What do you see if you watch the network traffic in ethereal?
+> 
+> --b.
 
-START======================================================
-======= cat /etc/exports
-/export		*(sec=krb5,fsid=0,insecure,no_subtree_check,no_root_squash,async)
-/export/home	*(sec=krb5,nohide,insecure,no_subtree_check,no_root_squash,async)
-======= mount -overs=4,sec=krb5 elm3a19.beaverton.ibm.com:/ /mnt
-Dec  7 10:47:20 elm3a19 mountd[4691]: cache_export_ent domain=*, exp path=/export, path=/export 
-Dec  7 10:47:20 elm3a19 mountd[4691]: dump_to_cache path=/export, exp path=/export 
-======= ls -l /mnt
-Dec  7 10:47:22 elm3a19 mountd[4691]: nfsd_export domain=*, path=/export/home, exp path=/export/home 
-Dec  7 10:47:22 elm3a19 mountd[4691]: dump_to_cache path=/export/home, exp path=/export/home 
-Dec  7 10:47:23 elm3a19 mountd[4691]: cache_export_ent domain=*, exp path=/export/home, path=/export/home 
-Dec  7 10:47:23 elm3a19 mountd[4691]: dump_to_cache path=/export/home, exp path=/export/home 
-======= umount /mnt
-==========================
-Dec  7 10:47:28 elm3a19 rpc.idmapd[2471]: nfsdcb: authbuf=gss/krb5 authtype=user
-Dec  7 10:47:28 elm3a19 rpc.idmapd[2471]: nfsdcb: authbuf=gss/krb5 authtype=group
-======= ls -l /mnt/home
-======= umount /mnt
-END=======================================================
+Bruce, I'm using nfs-utils-1.0.10-14.fc6 on an FC6 system with all latest
+FC6 patches.  Using git-bisect I was able to find the patch which broke it:
 
+commit 2b1e300a9dfc3196ccddf6f1d74b91b7af55e416
+Author: Eric W. Biederman <ebiederm@xmission.com>
+Date:   Sun Dec 2 00:33:17 2007 +1100
 
-And then here is the non-working form with the old exports format:
+    [NETNS]: Fix /proc/net breakage
+    
+    Well I clearly goofed when I added the initial network namespace support
+    for /proc/net.  Currently things work but there are odd details visible to
+    user space, even when we have a single network namespace.
+    
+    Since we do not cache proc_dir_entry dentries at the moment we can just
+    modify ->lookup to return a different directory inode depending on the
+    network namespace of the process looking at /proc/net, replacing the
+    current technique of using a magic and fragile follow_link method.
+    
+    To accomplish that this patch:
+    - introduces a shadow_proc method to allow different dentries to
+      be returned from proc_lookup.
+    - Removes the old /proc/net follow_link magic
+    - Fixes a weakness in our not caching of proc generic dentries.
+    
+    As shadow_proc uses a task struct to decided which dentry to return we can
+    go back later and fix the proc generic caching without modifying any code
+    that uses the shadow_proc method.
+    
+    Signed-off-by: Eric W. Biederman <ebiederm@xmission.com>
+    Cc: "Rafael J. Wysocki" <rjw@sisk.pl>
+    Cc: Pavel Machek <pavel@ucw.cz>
+    Cc: Pavel Emelyanov <xemul@openvz.org>
+    Cc: "David S. Miller" <davem@davemloft.net>
+    Cc: Ingo Molnar <mingo@elte.hu>
+    Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+    Signed-off-by: Herbert Xu <herbert-lOAM2aK0SrRLBo1qDEOMRrpzq4S04n8Q@public.gmane.org>
 
-START======================================================
-======= cat /etc/exports
-/export/home	gss/krb5i(nohide,insecure,no_subtree_check,no_root_squash,async,rw)
-/export/home	gss/krb5p(nohide,insecure,no_subtree_check,no_root_squash,async,rw)
-/export         gss/krb5(fsid=0,insecure,no_subtree_check,no_root_squash,async,rw,crossmnt)
-/export         gss/krb5i(fsid=0,insecure,no_subtree_check,no_root_squash,async,rw,crossmnt)
+With the above patch, rpc.mountd is unable to open /proc/fs/nfsd/filehandle.
+Strace shows:
 
-======= mount -overs=4,sec=krb5 elm3a19.beaverton.ibm.com:/ /mnt
-Dec  7 10:46:53 elm3a19 mountd[4691]: cache_export_ent domain=gss/krb5, exp path=/export, path=/export 
-Dec  7 10:46:53 elm3a19 mountd[4691]: dump_to_cache path=/export, exp path=/export 
-======= ls -l /mnt
-Dec  7 10:46:55 elm3a19 mountd[4691]: nfsd_export domain=gss/krb5, path=/export/home, exp path=/export 
-Dec  7 10:46:55 elm3a19 mountd[4691]: dump_to_cache path=/export/home, exp path=/export 
-Dec  7 10:46:56 elm3a19 mountd[4691]: cache_export_ent domain=gss/krb5, exp path=/export, path=/export/home 
-Dec  7 10:46:56 elm3a19 mountd[4691]: dump_to_cache path=/export, exp path=/export 
-Dec  7 10:46:56 elm3a19 mountd[4691]: dump_to_cache path=/export/home, exp path=/export 
-======= umount /mnt
-==========================
-======= ls -l /mnt/home
-======= umount /mnt
-END=======================================================
+open("/proc/fs/nfsd/filehandle", O_RDWR|O_LARGEFILE) = -1 ENOENT (No such file or directory)
 
-I see that the way mountd caches the /exports/home export is different
-between the two cases, with the non-working old exports format case
-caching a path of /export/home but using the /export export.
+Without the above patch, /proc/fs/nfsd is populated with a number of files,
+including "filehandle".
 
-p.s. I am using nfs-utils-1.1.1 for this, and applied the previously
-mentioned crossmount patch.
-
-Oh, and just for completeness, here is implicit exporting via crossmnt,
-with the same result:
-
-START======================================================
-======= cat /etc/exports
-/export
-gss/krb5(fsid=0,insecure,no_subtree_check,no_root_squash,async,rw,crossmnt)
-/export
-gss/krb5i(fsid=0,insecure,no_subtree_check,no_root_squash,async,rw,crossmnt)
-
-======= mount -overs=4,sec=krb5 elm3a19.beaverton.ibm.com:/ /mnt
-Dec  7 11:00:22 elm3a19 mountd[4691]: cache_export_ent domain=gss/krb5, exp path=/export, path=/export 
-Dec  7 11:00:22 elm3a19 mountd[4691]: dump_to_cache path=/export, exp path=/export 
-Dec  7 11:00:22 elm3a19 rpc.idmapd[2471]: nfsdcb: authbuf=gss/krb5 authtype=user
-Dec  7 11:00:22 elm3a19 rpc.idmapd[2471]: nfsdcb: authbuf=gss/krb5 authtype=group
-======= ls -l /mnt
-Dec  7 11:00:24 elm3a19 mountd[4691]: nfsd_export domain=gss/krb5, path=/export/home, exp path=/export 
-Dec  7 11:00:24 elm3a19 mountd[4691]: dump_to_cache path=/export/home, exp path=/export 
-Dec  7 11:00:25 elm3a19 mountd[4691]: cache_export_ent domain=gss/krb5, exp path=/export, path=/export/home 
-Dec  7 11:00:25 elm3a19 mountd[4691]: dump_to_cache path=/export, exp path=/export 
-Dec  7 11:00:25 elm3a19 mountd[4691]: dump_to_cache path=/export/home, exp path=/export 
-======= umount /mnt
-==========================
-======= ls -l /mnt/home
-======= umount /mnt
-END=======================================================
-
-Looks the same as with the explicit exporting.
-
-Any suggestions or thoughts?
-
-Thanks
-
-Frank Filz
-
-
+Erez.
 
 -------------------------------------------------------------------------
 SF.Net email is sponsored by:
