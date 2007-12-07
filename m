@@ -1,64 +1,134 @@
-From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
-Subject: Re: [PATCH] xprtrdma: fix XDR tail buf marshalling for all ops
-Date: Fri, 07 Dec 2007 12:02:20 -0500
-Message-ID: <EXNANE01G5aYY61LEdy00000ae1@exnane01.hq.netapp.com>
-References: <Pine.LNX.4.64.0711291521010.7142@jlentini-linux.nane.netapp.com>
- <1196902607.17724.2.camel@heimdal.trondhjem.org>
- <Pine.LNX.4.64.0712061255200.12638@jlentini-linux.nane.netapp.com>
- <1196969392.7990.9.camel@localhost.localdomain>
- <Pine.LNX.4.64.0712061803240.12638@jlentini-linux.nane.netapp.com> <Pine.LNX.4.64.0712061803240.12638@jlentini-linux.nane.neta
- pp.com>
+From: Frank Filz <ffilzlnx@us.ibm.com>
+Subject: Re: [NFS] nfs-utils crossmnt/fsid bug
+Date: Fri, 07 Dec 2007 11:05:15 -0800
+Message-ID: <1197054315.1215.21.camel@dyn9047022153>
+References: <20070905204628.GD29582@fieldses.org>
+	<18246.16373.177320.570040@notabene.brown>
+	<1196722262.1215.5.camel@dyn9047022153>
+	<18260.43206.943331.889058@notabene.brown>
+	<1196790164.1215.9.camel@dyn9047022153>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs@vger.kernel.org, nfs@lists.sourceforge.net
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, ffilz@us.ibm.com,
+	nfs@lists.sourceforge.net, Steve Dickson <SteveD@redhat.com>
+To: Neil Brown <neilb@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:63602 "EHLO mx2.netapp.com"
+Received: from neil.brown.name ([220.233.11.133]:59554 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753409AbXLGRCj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 7 Dec 2007 12:02:39 -0500
-In-Reply-To: <Pine.LNX.4.64.0712061803240.12638-5zmYZXM8ymTNoO61VEKW3MYxy48AqY0Z@public.gmane.org
- pp.com>
-References: <Pine.LNX.4.64.0711291521010.7142-5zmYZXM8ymTNoO61VEKW3MYxy48AqY0ZOQ4dku92ua4@public.gmane.org>
- <1196902607.17724.2.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
- <Pine.LNX.4.64.0712061255200.12638-5zmYZXM8ymTNoO61VEKW3MYxy48AqY0ZOQ4dku92ua4@public.gmane.org>
- <1196969392.7990.9.camel-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
- <Pine.LNX.4.64.0712061803240.12638-5zmYZXM8ymTNoO61VEKW3MYxy48AqY0ZOQ4dku92ua4@public.gmane.org>
+	id S1757292AbXLGTHR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 7 Dec 2007 14:07:17 -0500
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1J0iXa-0007OT-Og
+	for linux-nfs@vger.kernel.org; Sat, 08 Dec 2007 06:07:14 +1100
+In-Reply-To: <1196790164.1215.9.camel@dyn9047022153>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-At 06:11 PM 12/6/2007, James Lentini wrote:
->On Thu, 6 Dec 2007, Trond Myklebust wrote:
->> Eeewwww.... What an unholy mess!
->> 
->> Why are you trying to shoehorn reading and writing into 
->> rpcrdma_create_chunks()? The way every action is split into 'if 
->> (read) {} else {}' should be an obvious hint that none of this 
->> belongs together. Please split this up for 2.6.25.
->
->ok.
+I've done some more exploration, I think the exports are getting set
+wrong. First, here is the working case with the new exports format (cut
+from an annotated /var/log/messages):
 
-Agreed - well except for the "unholy mess" part. This code has been
-in the nfs/rdma client basically since it was written (for 2.4.18). The
-split version introduces quite a bit of redundancy, but clarity is good
-too. I'll split it willingly.
+START======================================================
+======= cat /etc/exports
+/export		*(sec=krb5,fsid=0,insecure,no_subtree_check,no_root_squash,async)
+/export/home	*(sec=krb5,nohide,insecure,no_subtree_check,no_root_squash,async)
+======= mount -overs=4,sec=krb5 elm3a19.beaverton.ibm.com:/ /mnt
+Dec  7 10:47:20 elm3a19 mountd[4691]: cache_export_ent domain=*, exp path=/export, path=/export 
+Dec  7 10:47:20 elm3a19 mountd[4691]: dump_to_cache path=/export, exp path=/export 
+======= ls -l /mnt
+Dec  7 10:47:22 elm3a19 mountd[4691]: nfsd_export domain=*, path=/export/home, exp path=/export/home 
+Dec  7 10:47:22 elm3a19 mountd[4691]: dump_to_cache path=/export/home, exp path=/export/home 
+Dec  7 10:47:23 elm3a19 mountd[4691]: cache_export_ent domain=*, exp path=/export/home, path=/export/home 
+Dec  7 10:47:23 elm3a19 mountd[4691]: dump_to_cache path=/export/home, exp path=/export/home 
+======= umount /mnt
+==========================
+Dec  7 10:47:28 elm3a19 rpc.idmapd[2471]: nfsdcb: authbuf=gss/krb5 authtype=user
+Dec  7 10:47:28 elm3a19 rpc.idmapd[2471]: nfsdcb: authbuf=gss/krb5 authtype=group
+======= ls -l /mnt/home
+======= umount /mnt
+END=======================================================
 
->> So yes, for read buffers, you should be looking at the storage 
->> buffer length (xdr_buf->buflen) since the message length is 
->> obviously going to be zero.
->
->Agreed. This is why we removed the incorrect references to len in the 
->patch.
->
->What is your opinion on including the fix in 2.6.24? It addresses an 
->observed problem for certain I/Os over NFS/RDMA. Would you like me to 
->resend the patch with a revised description?
 
-The patch basically removes a debug-only assertion (the "failed to marshal"
-message), but the single line that tested for buflen > pos has the side
-effect of failing to marshal the tail buffer. So that one line is the key which
-introduces the issue, and it should be removed for 2.6.24.
+And then here is the non-working form with the old exports format:
 
-The other stuff is harmless, if wrong, and can be removed later.
+START======================================================
+======= cat /etc/exports
+/export/home	gss/krb5i(nohide,insecure,no_subtree_check,no_root_squash,async,rw)
+/export/home	gss/krb5p(nohide,insecure,no_subtree_check,no_root_squash,async,rw)
+/export         gss/krb5(fsid=0,insecure,no_subtree_check,no_root_squash,async,rw,crossmnt)
+/export         gss/krb5i(fsid=0,insecure,no_subtree_check,no_root_squash,async,rw,crossmnt)
 
-Tom.
+======= mount -overs=4,sec=krb5 elm3a19.beaverton.ibm.com:/ /mnt
+Dec  7 10:46:53 elm3a19 mountd[4691]: cache_export_ent domain=gss/krb5, exp path=/export, path=/export 
+Dec  7 10:46:53 elm3a19 mountd[4691]: dump_to_cache path=/export, exp path=/export 
+======= ls -l /mnt
+Dec  7 10:46:55 elm3a19 mountd[4691]: nfsd_export domain=gss/krb5, path=/export/home, exp path=/export 
+Dec  7 10:46:55 elm3a19 mountd[4691]: dump_to_cache path=/export/home, exp path=/export 
+Dec  7 10:46:56 elm3a19 mountd[4691]: cache_export_ent domain=gss/krb5, exp path=/export, path=/export/home 
+Dec  7 10:46:56 elm3a19 mountd[4691]: dump_to_cache path=/export, exp path=/export 
+Dec  7 10:46:56 elm3a19 mountd[4691]: dump_to_cache path=/export/home, exp path=/export 
+======= umount /mnt
+==========================
+======= ls -l /mnt/home
+======= umount /mnt
+END=======================================================
+
+I see that the way mountd caches the /exports/home export is different
+between the two cases, with the non-working old exports format case
+caching a path of /export/home but using the /export export.
+
+p.s. I am using nfs-utils-1.1.1 for this, and applied the previously
+mentioned crossmount patch.
+
+Oh, and just for completeness, here is implicit exporting via crossmnt,
+with the same result:
+
+START======================================================
+======= cat /etc/exports
+/export
+gss/krb5(fsid=0,insecure,no_subtree_check,no_root_squash,async,rw,crossmnt)
+/export
+gss/krb5i(fsid=0,insecure,no_subtree_check,no_root_squash,async,rw,crossmnt)
+
+======= mount -overs=4,sec=krb5 elm3a19.beaverton.ibm.com:/ /mnt
+Dec  7 11:00:22 elm3a19 mountd[4691]: cache_export_ent domain=gss/krb5, exp path=/export, path=/export 
+Dec  7 11:00:22 elm3a19 mountd[4691]: dump_to_cache path=/export, exp path=/export 
+Dec  7 11:00:22 elm3a19 rpc.idmapd[2471]: nfsdcb: authbuf=gss/krb5 authtype=user
+Dec  7 11:00:22 elm3a19 rpc.idmapd[2471]: nfsdcb: authbuf=gss/krb5 authtype=group
+======= ls -l /mnt
+Dec  7 11:00:24 elm3a19 mountd[4691]: nfsd_export domain=gss/krb5, path=/export/home, exp path=/export 
+Dec  7 11:00:24 elm3a19 mountd[4691]: dump_to_cache path=/export/home, exp path=/export 
+Dec  7 11:00:25 elm3a19 mountd[4691]: cache_export_ent domain=gss/krb5, exp path=/export, path=/export/home 
+Dec  7 11:00:25 elm3a19 mountd[4691]: dump_to_cache path=/export, exp path=/export 
+Dec  7 11:00:25 elm3a19 mountd[4691]: dump_to_cache path=/export/home, exp path=/export 
+======= umount /mnt
+==========================
+======= ls -l /mnt/home
+======= umount /mnt
+END=======================================================
+
+Looks the same as with the explicit exporting.
+
+Any suggestions or thoughts?
+
+Thanks
+
+Frank Filz
+
+
+
+-------------------------------------------------------------------------
+SF.Net email is sponsored by:
+Check out the new SourceForge.net Marketplace.
+It's the best place to buy or sell services for
+just about anything Open Source.
+http://sourceforge.net/services/buy/index.php
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
+
