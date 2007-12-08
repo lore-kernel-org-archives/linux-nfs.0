@@ -1,136 +1,104 @@
-From: Bruce Guenter <bruce@untroubled.org>
-Subject: PROBLEM: Duplicated entries in large NFS shared directory
-Date: Sat, 8 Dec 2007 08:12:51 -0600
-Message-ID: <20071208141251.GA18235@untroubled.org>
+From: dawid-g7DOKF3l0ejVItvQsEIGlw@public.gmane.org
+Subject: Re: [NFS] Strange NFS behaviour
+Date: Sun, 9 Dec 2007 00:36:50 +0100 (CET)
+Message-ID: <62339.91.149.209.2.1197157010.squirrel@www.active24.pl>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="EVF5PPMfhYS0aIcm"
+Content-Type: text/plain; charset=US-ASCII
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from zak.futurequest.net ([69.5.6.152]:56904 "HELO
-	zak.futurequest.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1751111AbXLHOTf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 8 Dec 2007 09:19:35 -0500
+Received: from kurier1.active24.pl ([195.78.67.20]:56300 "EHLO
+	kurier1.active24.pl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752346AbXLHXgy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 8 Dec 2007 18:36:54 -0500
+Received: from localhost (localhost [127.0.0.1])
+	by kurier1.active24.pl (Postfix) with ESMTP id 6A13C55592
+	for <linux-nfs@vger.kernel.org>; Sun,  9 Dec 2007 00:36:51 +0100 (CET)
+Received: from www.active24.pl (unknown [192.168.111.78])
+	by kurier1.active24.pl (Postfix) with ESMTP id 49FE54FF19
+	for <linux-nfs@vger.kernel.org>; Sun,  9 Dec 2007 00:36:51 +0100 (CET)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi!
 
---EVF5PPMfhYS0aIcm
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+It looks like there is a way to workaround this problem. One can simply
+list the mounted directory before the TCP connection times out (which
+takes place after 4 minutes by default). Simple ls command on the mounted
+path every minute should make the problem gone.
 
-Hi.
+I still wonder what is the real cause of the problem and is it the client
+or the server that is buggy. This problem is really annoying.
 
-I have a large directory (almost 40,000 entries) on an ext3 filesystem
-that is shared over NFS.  I discovered recently when listing the
-directory on the client, one of the files appears twice.  The same file
-does not appear twice on the server.
+I have been trying to use settings described in "Technical Report: Using
+the Linux NFS Client with Network Appliance Storage"
+(www.netapp.com/tech_library/ftp/3183.pdf) with no success.
 
-I did a capture using WireShark, and discovered that the offending file
-name is being sent twice -- once as the last entry in a readdir reply
-packet and then again as the first entry in the next readdir reply.
+Best Regards
+Dawid
 
-If I'm reading the trace right, the readdir call sends the cookie for
-the last entry in the previous readdir reply and the server responds
-with the next set of entries.  In this case, the server responds with
-the entry containing the same cookie again.
+> Hi!
+>
+> I have an NFS resource mounted from a dedicated machine NetApp FAS3050
+> using NFS v3 over TCP.
+> The NFS client works on SuSe Linux Enterprise Server 10 SP1, kernel ver
+> 2.6.16.46-0.14-smp.
+>
+> When the NFS is idle for few hours, the NFS resources sometimes become
+> inaccessible. Every process accessing such resource hangs.
+>
+> I have sniffed the NFS connection and found an interesting behaviour of
+> the NFS client/server:
+>
+> time          src    dest    proto port numbers content
+>
+> 16692.276474  client server  TCP   1023 > 2049  [SYN]
+> 16692.277171  server client  TCP   2049 > 1023  [SYN, ACK]
+> 16692.277189  client server  TCP   1023 > 2049  [ACK]
+> 16692.277197  client server  NFS   1023 > 2049  V3 ACCESS Call,
+> FH:0x30ed5a16
+> 16692.378613  server client  TCP   2049 > 1023  [ACK]
+> 16701.285748  server client  TCP   2049 > 1023  [FIN, ACK]
+> 16701.285764  client server  TCP   1023 > 2049  [FIN, ACK]
+> 16701.285790  client server  TCP   1022 > 2049  [SYN]
+> 16701.286497  server client  TCP   2049 > 1022  [SYN, ACK]
+> 16701.286506  client server  TCP   1022 > 2049  [ACK]
+> 16701.286508  server client  TCP   2049 > 1023  [ACK]
+> 16701.286512  client server  TCP   1022 > 2049  V3 ACCESS Call,
+> FH:0x30ed5a16
+> 16701.287247  server client  TCP   2049 > 1022  [FIN, ACK]
+> 16701.287257  client server  TCP   1022 > 2049  [FIN, ACK]
+> 16701.287271  client server  TCP   1021 > 2049  [SYN]
+>
+>
+> Since there was no active TCP connection to the NFS server, it has been
+> established. Then, an NFS ACCESS command was sent to the server. The
+> server did not answer the NFS query, but initialised the TCP connection
+> close instead.
+>
+> After receiving [FIN, ACK] the client reconnected immediately, but this
+> time on port 1002 (since 1023 is still in use at this point). Again, the
+> server closed the TCP connection and another attempt was made on a new
+> port number.
+>
+> This is not on the log, but the NFS client keeps repeating this on each of
+> the port numbers in range <1023,664>. When port number 664 is reached, the
+> NFS server stops answering the TCP SYN packets.
+>
+> This started to happen after upgrading linux from SuSe Linux 10.1
+> 2.6.16.21-0.25-smp. Another thing is that there are also VxWorks clients
+> using that NFS server which work fine.
+>
+> Do you have any idea of what is the reason for such behavior?
+>
+> Thanks in advance.
+>
+> Regards,
+> Dawid Pawlata
+>
+> -
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
 
-The server is running vanilla 2.6.23.8.  I would be happy to provide any
-further information that would help resolve this bug.
 
-Linux ivanova 2.6.23.8 #2 Thu Dec 6 20:32:17 CST 2007 i686 AMD Athlon(TM)Pr=
-ocessor AuthenticAMD GNU/Linux
-=20
-Gnu C                  3.4.6
-Gnu make               3.81
-binutils               Binutils
-util-linux             2.12r
-mount                  2.12r
-module-init-tools      3.4
-e2fsprogs              1.40.2
-reiserfsprogs          3.6.19
-Linux C Library        6.1
-Dynamic linker (ldd)   2.6.1
-Procps                 3.2.7
-Net-tools              1.60
-Kbd                    1.13
-Sh-utils               6.9
-udev                   115
-Modules Loaded         ide_generic ide_core via686a eeprom lm80 i2c_viapro =
-i2c_core nfsd exportfs lockd sunrpc iptable_nat nf_nat ipt_REJECT ipt_LOG n=
-f_conntrack_ipv4 xt_connbytes nf_conntrack nfnetlink xt_tcpudp iptable_filt=
-er ip_tables x_tables tulip uhci_hcd ehci_hcd sg ohci_hcd usbcore ext3 jbd
-
-processor	: 0
-vendor_id	: AuthenticAMD
-cpu family	: 6
-model		: 4
-model name	: AMD Athlon(TM)Processor
-stepping	: 4
-cpu MHz		: 1399.972
-cache size	: 256 KB
-fdiv_bug	: no
-hlt_bug		: no
-f00f_bug	: no
-coma_bug	: no
-fpu		: yes
-fpu_exception	: yes
-cpuid level	: 1
-wp		: yes
-flags		: fpu vme de pse tsc msr pae mce cx8 sep mtrr pge mca
-cmov pat pse36 mmx fxsr syscall mmxext 3dnowext 3dnow
-bogomips	: 2801.40
-clflush size	: 32
-
-ide_generic 1152 0 [permanent], Live 0xf8955000
-ide_core 119572 1 ide_generic, Live 0xf8a0e000
-via686a 14608 0 - Live 0xf89bf000
-eeprom 7584 0 - Live 0xf8963000
-lm80 17312 0 - Live 0xf896a000
-i2c_viapro 8732 0 - Live 0xf892c000
-i2c_core 25104 3 eeprom,lm80,i2c_viapro, Live 0xf89b7000
-nfsd 98152 13 - Live 0xf89d5000
-exportfs 5760 1 nfsd, Live 0xf8950000
-lockd 69224 2 nfsd, Live 0xf8973000
-sunrpc 171868 5 nfsd,lockd, Live 0xf898c000
-iptable_nat 7620 1 - Live 0xf893c000
-nf_nat 19692 1 iptable_nat, Live 0xf8957000
-ipt_REJECT 4480 1 - Live 0xf8939000
-ipt_LOG 6144 2 - Live 0xf8930000
-nf_conntrack_ipv4 17864 3 iptable_nat, Live 0xf8933000
-xt_connbytes 2944 1 - Live 0xf889e000
-nf_conntrack 61028 4 iptable_nat,nf_nat,nf_conntrack_ipv4,xt_connbytes,
-Live 0xf8940000
-nfnetlink 6104 3 nf_nat,nf_conntrack_ipv4,nf_conntrack, Live 0xf8899000
-xt_tcpudp 3392 4 - Live 0xf889c000
-iptable_filter 2884 1 - Live 0xf8891000
-ip_tables 13848 2 iptable_nat,iptable_filter, Live 0xf8894000
-x_tables 15172 6
-iptable_nat,ipt_REJECT,ipt_LOG,xt_connbytes,xt_tcpudp,ip_tables, Live
-0xf8807000
-tulip 52128 0 - Live 0xf88a0000
-uhci_hcd 25556 0 - Live 0xf8886000
-ehci_hcd 32536 0 - Live 0xf887d000
-sg 32168 0 - Live 0xf8874000
-ohci_hcd 21900 0 - Live 0xf880f000
-usbcore 138780 4 uhci_hcd,ehci_hcd,ohci_hcd, Live 0xf8828000
-ext3 117960 1 - Live 0xf884b000
-jbd 54632 1 ext3, Live 0xf8819000
-
---=20
-Bruce Guenter <bruce@untroubled.org>                http://untroubled.org/
-
---EVF5PPMfhYS0aIcm
-Content-Type: application/pgp-signature
-Content-Disposition: inline
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.7 (GNU/Linux)
-
-iD8DBQFHWqZj6W+y3GmZgOgRAvg2AKCTvXZYHlKcF4ViuWg/+rc864zMMACdFqtr
-2vaKTJUvhj5l/TCCFi0E6+4=
-=M1om
------END PGP SIGNATURE-----
-
---EVF5PPMfhYS0aIcm--
