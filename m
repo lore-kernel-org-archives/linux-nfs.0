@@ -1,97 +1,74 @@
-From: Maxim Levitsky <maximlevitsky@gmail.com>
-Subject: Re: 2.6.24-rc3-git4 NFS crossmnt regression
-Date: Mon, 10 Dec 2007 20:22:00 +0200
-Message-ID: <200712102022.00803.maximlevitsky@gmail.com>
-References: <fa4052ef0712062045o743a2666u3562a3569c1aa989@mail.gmail.com> <200712101705.30428.maximlevitsky@gmail.com> <20071210154747.GB17209@fieldses.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [NFS] [PATCH] knfsd: Change mailing list for nfsd in MAINTAINERS
+Date: Mon, 10 Dec 2007 13:38:13 -0500
+Message-ID: <20071210183813.GC28557__15658.2331787378$1197311975$gmane$org@fieldses.org>
+References: <20071210161353.11987.patches@notabene>
+	<1071210051440.12083@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
-Cc: Neil Brown <neilb@suse.de>, "Rafael J. Wysocki" <rjw@sisk.pl>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	gnome42@gmail.com, linux-kernel@vger.kernel.org,
-	"Eric W. Biederman" <ebiederm@xmission.com>,
-	"Denis V. Lunev" <den@openvz.org>, linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset="us-ascii"
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	nfs@lists.sourceforge.net, linux-kernel@vger.kernel.org,
+	Trond Myklebust <trond.myklebust@fys.uio.no>
+To: NeilBrown <neilb@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from ug-out-1314.google.com ([66.249.92.175]:56574 "EHLO
-	ug-out-1314.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753519AbXLJSWa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Dec 2007 13:22:30 -0500
-Received: by ug-out-1314.google.com with SMTP id z38so1602978ugc
-        for <linux-nfs@vger.kernel.org>; Mon, 10 Dec 2007 10:22:28 -0800 (PST)
-In-Reply-To: <20071210154747.GB17209@fieldses.org>
+Received: from neil.brown.name ([220.233.11.133]:32973 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753653AbXLJSir (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 10 Dec 2007 13:38:47 -0500
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1J1nWf-0003pj-AE
+	for linux-nfs@vger.kernel.org; Tue, 11 Dec 2007 05:38:45 +1100
+In-Reply-To: <1071210051440.12083@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Monday 10 December 2007 17:47:47 J. Bruce Fields wrote:
-> On Mon, Dec 10, 2007 at 05:05:30PM +0200, Maxim Levitsky wrote:
-> > On Monday 10 December 2007 16:36:09 J. Bruce Fields wrote:
-> > > On Mon, Dec 10, 2007 at 04:19:12PM +0200, Maxim Levitsky wrote:
-> > > > ...
-> > > > > It is best not to use nohide - we should probably mark it as
-> > > > > 'legacy'.
-> > > > > 
-> > > > > Simply export the top level mountpoint as 'crossmnt'  and everything
-> > > > > below there will be exported.
-> > > > > 
-> > > > > > Where should I put those options in root file-system export or in submount export?
-> > > > > 
-> > > > > crossmnt goes at the top.  nohide goes in the submount.  Both have
-> > > > > the same general effect though with subtle differences.
-> > > > > You don't need both (though that doesn't hurt).
-> > > > > Just use crossmnt at the top,  Then you don't need to mention the
-> > > > > lower level filesystems at all.
-> > > > > 
-> > > > > > 
-> > > > ...
-> > > > > > (I decided to switch to NFS4 only due to the lack of ability to see underlying mounts)
-> > > > > > 
-> > > > > 
-> > > > > All of this should work fine with v3.  Once you have the right patch
-> > > > > for the crossmnt bug applied, if you have further problems post them
-> > > > > to linux-nfs-u79uwXL29TaiAVqoAR/hOA@public.gmane.org
-> > > > > 
-> > > > > NeilBrown
-> > > > > 
-> > > > 
-> > > > Big thanks,
-> > > > 
-> > > > Still NFS server just don't want to accept the connection
-> > > > I noticed that if I first mount with
-> > > > -tnfs, unmount,  and then mount with -tnfs4, it works
-> > > 
-> > > OK, in that case, that's definitely the bug Eric sent out the patch for;
-> > > you may want to try applying his patch.
-> > You mean
-> > "[PATCH 2.6.24-rc4] proc: Remove/Fix proc generic d_revalidate" ?
-> > 
-> > I did apply it (on both kernel and server), and it doesn't help.
-> > Best regards,
-> > 	Maxim Levitsky
-> > 
-> > PS: I am unfamiliar with nfs/nfs4, so this could be just a 
-> > configuration/compilation issue.
+On Mon, Dec 10, 2007 at 04:14:40PM +1100, NeilBrown wrote:
 > 
-> What do
-> 	ls /proc/fs/nfs
-> 	ls /proc/fs/nfsd
+> nfs@lists.sourceforge.net is being decommissioned.
+
+OK by me, thanks.
+
 > 
-> report?
+> I wonder if the website should be changed to linux-nfs.org ...
+
+Probably.
+
+--b.
+
 > 
-> --b.
+> Cc: "J. Bruce Fields" <bfields@fieldses.org>
+> Cc: Trond Myklebust <trond.myklebust@fys.uio.no>
+> Signed-off-by: Neil Brown <neilb@suse.de>
 > 
+> ### Diffstat output
+>  ./MAINTAINERS |    2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff .prev/MAINTAINERS ./MAINTAINERS
+> --- .prev/MAINTAINERS	2007-12-10 16:03:52.000000000 +1100
+> +++ ./MAINTAINERS	2007-12-10 16:04:07.000000000 +1100
+> @@ -2259,7 +2259,7 @@ P:	J. Bruce Fields
+>  M:	bfields@fieldses.org
+>  P:	Neil Brown
+>  M:	neilb@suse.de
+> -L:	nfs@lists.sourceforge.net
+> +L:	linux-nfs@vger.kernel.org
+>  W:	http://nfs.sourceforge.net/
+>  S:	Supported
+>  
 
-On both client and server:
-
-maxim [~]$ ls /proc/fs/nfs
-exports
-maxim [~]$ ls /proc/fs/nfsd
-exports     max_block_size  nfsv4recoverydir  portlist  versions
-filehandle  nfsv4leasetime  pool_threads      threads
-maxim [~]$
-
-
-Best regards,
-	Maxim Levitsky
+-------------------------------------------------------------------------
+SF.Net email is sponsored by:
+Check out the new SourceForge.net Marketplace.
+It's the best place to buy or sell services for
+just about anything Open Source.
+http://sourceforge.net/services/buy/index.php
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
