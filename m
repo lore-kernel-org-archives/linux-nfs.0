@@ -1,77 +1,87 @@
-From: Maxim Levitsky <maximlevitsky@gmail.com>
-Subject: Re: 2.6.24-rc3-git4 NFS crossmnt regression
-Date: Mon, 10 Dec 2007 17:05:30 +0200
-Message-ID: <200712101705.30428.maximlevitsky@gmail.com>
-References: <fa4052ef0712062045o743a2666u3562a3569c1aa989@mail.gmail.com> <200712101619.12522.maximlevitsky@gmail.com> <20071210143609.GF2138@fieldses.org>
+From: Tom Tucker <tom@opengridcomputing.com>
+Subject: Re: [NFS] [PATCH] xprtrdma: fix XDR tail buf marshalling for all
+	ops
+Date: Mon, 10 Dec 2007 09:34:57 -0600
+Message-ID: <1197300897.21931.9.camel@trinity.ogc.int>
+References: <Pine.LNX.4.64.0711291521010.7142@jlentini-linux.nane.netapp.com>
+	 <1196902607.17724.2.camel@heimdal.trondhjem.org>
+	 <Pine.LNX.4.64.0712061255200.12638@jlentini-linux.nane.netapp.com>
+	 <1196969392.7990.9.camel@localhost.localdomain>
+	 <Pine.LNX.4.64.0712061803240.12638@jlentini-linux.nane.netapp.com>
+	 <EXNANE01G5aYY61LEdy00000ae1@exnane01.hq.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
-Cc: Neil Brown <neilb@suse.de>, "Rafael J. Wysocki" <rjw@sisk.pl>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	gnome42@gmail.com, linux-kernel@vger.kernel.org,
-	"Eric W. Biederman" <ebiederm@xmission.com>,
-	"Denis V. Lunev" <den@openvz.org>, linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	linux-nfs@vger.kernel.org, nfs@lists.sourceforge.net
+To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from ug-out-1314.google.com ([66.249.92.173]:11298 "EHLO
-	ug-out-1314.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753826AbXLJPGA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Dec 2007 10:06:00 -0500
-Received: by ug-out-1314.google.com with SMTP id z38so1542990ugc
-        for <linux-nfs@vger.kernel.org>; Mon, 10 Dec 2007 07:05:58 -0800 (PST)
-In-Reply-To: <20071210143609.GF2138@fieldses.org>
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:39669 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750893AbXLJPaG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Dec 2007 10:30:06 -0500
+In-Reply-To: <EXNANE01G5aYY61LEdy00000ae1-kboziUmgGqYSZCGxjG3uujkOHZLvdrmu@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Monday 10 December 2007 16:36:09 J. Bruce Fields wrote:
-> On Mon, Dec 10, 2007 at 04:19:12PM +0200, Maxim Levitsky wrote:
-> > ...
-> > > It is best not to use nohide - we should probably mark it as
-> > > 'legacy'.
-> > > 
-> > > Simply export the top level mountpoint as 'crossmnt'  and everything
-> > > below there will be exported.
-> > > 
-> > > > Where should I put those options in root file-system export or in submount export?
-> > > 
-> > > crossmnt goes at the top.  nohide goes in the submount.  Both have
-> > > the same general effect though with subtle differences.
-> > > You don't need both (though that doesn't hurt).
-> > > Just use crossmnt at the top,  Then you don't need to mention the
-> > > lower level filesystems at all.
-> > > 
-> > > > 
-> > ...
-> > > > (I decided to switch to NFS4 only due to the lack of ability to see underlying mounts)
-> > > > 
-> > > 
-> > > All of this should work fine with v3.  Once you have the right patch
-> > > for the crossmnt bug applied, if you have further problems post them
-> > > to linux-nfs-u79uwXL29TaiAVqoAR/hOA@public.gmane.org
-> > > 
-> > > NeilBrown
-> > > 
-> > 
-> > Big thanks,
-> > 
-> > Still NFS server just don't want to accept the connection
-> > I noticed that if I first mount with
-> > -tnfs, unmount,  and then mount with -tnfs4, it works
-> 
-> OK, in that case, that's definitely the bug Eric sent out the patch for;
-> you may want to try applying his patch.
-You mean
-"[PATCH 2.6.24-rc4] proc: Remove/Fix proc generic d_revalidate" ?
 
-I did apply it (on both kernel and server), and it doesn't help.
-Best regards,
-	Maxim Levitsky
-
-PS: I am unfamiliar with nfs/nfs4, so this could be just a 
-configuration/compilation issue.
+On Fri, 2007-12-07 at 12:02 -0500, Talpey, Thomas wrote:
+> At 06:11 PM 12/6/2007, James Lentini wrote:
+> >On Thu, 6 Dec 2007, Trond Myklebust wrote:
+> >> Eeewwww.... What an unholy mess!
+> >> 
+> >> Why are you trying to shoehorn reading and writing into 
+> >> rpcrdma_create_chunks()? The way every action is split into 'if 
+> >> (read) {} else {}' should be an obvious hint that none of this 
+> >> belongs together. Please split this up for 2.6.25.
+> >
+> >ok.
 > 
-> --b.
+> Agreed - well except for the "unholy mess" part. This code has been
+> in the nfs/rdma client basically since it was written (for 2.4.18). The
+> split version introduces quite a bit of redundancy, but clarity is good
+> too. I'll split it willingly.
 > 
 
+Hmm. I guess I disagree. I don't see how consolidating similar logic is
+an unholy mess. The purpose of the function is singular, i.e. preparing
+the chunk list contained in the request sent to the server. Although it
+is true that the chunklist encodes memory in the response (for read
+requests), the chunk list itself is a single entity. Splitting it up may
+be more confusing than combining and will certainly introduce copied
+logic.
+
+
+> >> So yes, for read buffers, you should be looking at the storage 
+> >> buffer length (xdr_buf->buflen) since the message length is 
+> >> obviously going to be zero.
+> >
+> >Agreed. This is why we removed the incorrect references to len in the 
+> >patch.
+> >
+> >What is your opinion on including the fix in 2.6.24? It addresses an 
+> >observed problem for certain I/Os over NFS/RDMA. Would you like me to 
+> >resend the patch with a revised description?
+> 
+> The patch basically removes a debug-only assertion (the "failed to marshal"
+> message), but the single line that tested for buflen > pos has the side
+> effect of failing to marshal the tail buffer. So that one line is the key which
+> introduces the issue, and it should be removed for 2.6.24.
+> 
+> The other stuff is harmless, if wrong, and can be removed later.
+> 
+> Tom.
+> 
+> -------------------------------------------------------------------------
+> SF.Net email is sponsored by:
+> Check out the new SourceForge.net Marketplace.
+> It's the best place to buy or sell services for
+> just about anything Open Source.
+> http://sourceforge.net/services/buy/index.php
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
+> _______________________________________________
+> Please note that nfs@lists.sourceforge.net is being discontinued.
+> Please subscribe to linux-nfs@vger.kernel.org instead.
+>     http://vger.kernel.org/vger-lists.html#linux-nfs
 
