@@ -1,110 +1,138 @@
-From: Tom Tucker <tom@opengridcomputing.com>
-Subject: Re: [RFC,PATCH 09/38] svc: Add a transport function that checks
-	for write space
-Date: Mon, 10 Dec 2007 14:43:54 -0600
-Message-ID: <1197319434.21931.31.camel@trinity.ogc.int>
-References: <20071129223917.14563.77633.stgit@dell3.ogc.int>
-	 <20071129224012.14563.23130.stgit@dell3.ogc.int>
-	 <2F76C3FF-923D-4C36-ADBE-E3F9F645F20E@oracle.com>
-	 <1196458764.5432.52.camel@trinity.ogc.int>
-	 <84F74F37-5C1D-4B71-B144-37486C55D9E1@oracle.com>
+From: Peter Staubach <staubach@redhat.com>
+Subject: Re: [PATCH 01/27] SUNRPC: rpc_create() default hostname should support
+ AF_INET6 addresses
+Date: Mon, 10 Dec 2007 15:55:31 -0500
+Message-ID: <475DA7C3.1050703@redhat.com>
+References: <20071210195106.2823.43884.stgit@manray.1015granger.net> <20071210195623.2823.13011.stgit@manray.1015granger.net> <475DA054.7010002@redhat.com> <E7A6950F-9651-42A0-A89D-F561C434CD42@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: trond.myklebust@fys.uio.no, aurelien.charbon-Z51IpKcfGtLk1uMJSBkQmQ@public.gmane.org,
+	linux-nfs@vger.kernel.org
 To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:47535 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752670AbXLJUjF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Dec 2007 15:39:05 -0500
-In-Reply-To: <84F74F37-5C1D-4B71-B144-37486C55D9E1@oracle.com>
+Received: from mx1.redhat.com ([66.187.233.31]:39998 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753548AbXLJU5P (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 10 Dec 2007 15:57:15 -0500
+In-Reply-To: <E7A6950F-9651-42A0-A89D-F561C434CD42@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Chuck Lever wrote:
+> On Dec 10, 2007, at 3:23 PM, Peter Staubach wrote:
+>> Chuck Lever wrote:
+>>> If the ULP doesn't pass a hostname string to rpc_create(), it 
+>>> manufactures
+>>> one based on the passed-in address.  Be smart enough to handle an 
+>>> AF_INET6
+>>> address properly in this case.
+>>>
+>>> Move the default servername logic before the xprt_create_transport() 
+>>> call
+>>> to simplify error handling in rpc_create().
+>>>
+>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>>> ---
+>>>
+>>>  net/sunrpc/clnt.c |   32 +++++++++++++++++++++++++++-----
+>>>  1 files changed, 27 insertions(+), 5 deletions(-)
+>>>
+>>> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+>>> index 76be83e..c297161 100644
+>>> --- a/net/sunrpc/clnt.c
+>>> +++ b/net/sunrpc/clnt.c
+>>> @@ -30,6 +30,7 @@
+>>>  #include <linux/smp_lock.h>
+>>>  #include <linux/utsname.h>
+>>>  #include <linux/workqueue.h>
+>>> +#include <linux/in6.h>
+>>>   #include <linux/sunrpc/clnt.h>
+>>>  #include <linux/sunrpc/rpc_pipe_fs.h>
+>>> @@ -247,7 +248,7 @@ struct rpc_clnt *rpc_create(struct 
+>>> rpc_create_args *args)
+>>>          .addrlen = args->addrsize,
+>>>          .timeout = args->timeout
+>>>      };
+>>> -    char servername[20];
+>>> +    char servername[48];
+>>>
+>>>
+>>
+>> Just out of curiosity, how or why was 48 chosen?
+>
+> It's a multiple of 16 bytes for cache alignment, and it is just a bit 
+> larger than the largest size of a meaningful IPv6 address string 
+> (which is 46 bytes, I believe).
+>
+> If there's an appropriate pre-defined buffer size, I would gladly 
+> replace the naked integer with that.  It would be nice if there was 
+> one defined along with the NIPQUAD/NIP6 macros.
+>
 
-On Fri, 2007-11-30 at 17:43 -0500, Chuck Lever wrote:
-> On Nov 30, 2007, at 4:39 PM, Tom Tucker wrote:
+Yes, it would be nice if there was a symbolic constant which would
+make this a little more understandable.
 
-[...snip...]
+It appears to me, from the definitions of NIP6 and NIP6_FMT,
+that the maximum that the string will ever hold will be 40 bytes,
+8 shorts printed as 4 byte hex values plus 7 intermediate ':'
+characters plus the '\0' string terminator, so 48 should be
+enough, currently.  I think that we might run into a problem
+if NIP6 or NIP6_FMT were ever changed to allow more bytes.
 
-> >
-> > For this one, let's leave required signed and add an explicit cast to
-> > serv->sv_max_mesg. Sound ok?
-> 
-> If sk_reserved goes negative, it will be converted to unsigned, and  
-> become a very large positive number.  The result of the sum will be  
-> recast back to an int when it's assigned to "required," and we  
-> probably get a reasonable result.  I doubt an explicit cast will  
-> change things at all.
-> 
-> Instead, perhaps we should add an explicit check to ensure  
-> sk_reserved is a reasonable positive value before doing any other  
-> checks.  (Likewise in the UDP case as well).
-> 
-> I wonder if this is really the correct write space check to use for  
-> TCP, though.  I remember fixing a similar issue in the RPC client a  
-> long time ago -- both UDP and TCP used the same wspace check.  It  
-> resulted in the sk_write_space callback hammering on the RPC client,  
-> and forward progress on TCP socket writes would slow to a crawl.
+Having the symbolic constant defined near to NIP6 and NIP6_FMT
+would eliminate this invisible dependency.
 
-For the server, the callback function is svc_write_space. Does the
-sk_stream_wspace() < sk_stream_min_wspace() check belong in there as
-well? I think this callback gets invoked whenever productive acks are
-received for the connection. In other words, I don't see how it avoids
-"hammering" the callback, rather it avoids fruitlessly waking up (i.e.
-calling svc_xprt_enqueue) a transport.
+    Thanx...
 
-I'm going to optimistically add it. Please let me know if there are
-objections.
+       ps
 
-> 
-> You probably want something like this instead:
-> 
-> 	set_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
-> 
-> 	required = atomic_read(&svsk->sk_reserved) + serv->sv_max_mesg;
-> 	wspace = sk_stream_wspace(svsk->sk_sk);
-> 
-> 	if (wspace < sk_stream_min_wspace(svsk->sk_sk))
-> 		return 0;
-> 	if (required * 2 > wspace)
-> 		return 0;
-> 
-> 	clear_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
-> 	return 1;
-> 
-
-I think this is good stuff and will add it unless someone has an
-objection.
-
-> The first test mimics sk_stream_write_space() and xs_tcp_write_space 
-> ().  I'm still unsure what to do about the possibility of one of  
-> these signed integers going negative on us.
-> 
-> Bruce?  Neil?  What sayest thou?
-> 
-> >>> +	clear_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
-> >>> +	return 1;
-> >>> +}
-> >>> +
-> >>>  static struct svc_xprt_ops svc_tcp_ops = {
-> >>>  	.xpo_recvfrom = svc_tcp_recvfrom,
-> >>>  	.xpo_sendto = svc_tcp_sendto,
-> >>> @@ -1373,6 +1412,7 @@ static struct svc_xprt_ops svc_tcp_ops = {
-> >>>  	.xpo_detach = svc_sock_detach,
-> >>>  	.xpo_free = svc_sock_free,
-> >>>  	.xpo_prep_reply_hdr = svc_tcp_prep_reply_hdr,
-> >>> +	.xpo_has_wspace = svc_tcp_has_wspace,
-> >>>  };
-> >>>
-> >>>  static struct svc_xprt_class svc_tcp_class = {
-> 
-> --
+>>>      xprt = xprt_create_transport(&xprtargs);
+>>>      if (IS_ERR(xprt))
+>>> @@ -258,13 +259,34 @@ struct rpc_clnt *rpc_create(struct 
+>>> rpc_create_args *args)
+>>>       * up a string representation of the passed-in address.
+>>>       */
+>>>      if (args->servername == NULL) {
+>>> -        struct sockaddr_in *addr =
+>>> -                    (struct sockaddr_in *) args->address;
+>>> -        snprintf(servername, sizeof(servername), NIPQUAD_FMT,
+>>> -            NIPQUAD(addr->sin_addr.s_addr));
+>>> +        servername[0] = '\0';
+>>> +        switch (args->address->sa_family) {
+>>> +        case AF_INET: {
+>>> +            struct sockaddr_in *sin =
+>>> +                    (struct sockaddr_in *)args->address;
+>>> +            snprintf(servername, sizeof(servername), NIPQUAD_FMT,
+>>> +                 NIPQUAD(sin->sin_addr.s_addr));
+>>> +            break;
+>>> +        }
+>>> +        case AF_INET6: {
+>>> +            struct sockaddr_in6 *sin =
+>>> +                    (struct sockaddr_in6 *)args->address;
+>>> +            snprintf(servername, sizeof(servername), NIP6_FMT,
+>>> +                 NIP6(sin->sin6_addr));
+>>> +            break;
+>>> +        }
+>>> +        default:
+>>> +            /* caller wants default server name, but
+>>> +             * address family isn't recognized. */
+>>> +            return ERR_PTR(-EINVAL);
+>>> +        }
+>>>          args->servername = servername;
+>>>      }
+>>>  +    xprt = xprt_create_transport(&xprtargs);
+>>> +    if (IS_ERR(xprt))
+>>> +        return (struct rpc_clnt *)xprt;
+>>> +
+>>>      /*
+>>>       * By default, kernel RPC client connects from a reserved port.
+>>>       * CAP_NET_BIND_SERVICE will not be set for unprivileged 
+>>> requesters,
+>
+> -- 
 > Chuck Lever
 > chuck[dot]lever[at]oracle[dot]com
-> -
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+>
+>
 
