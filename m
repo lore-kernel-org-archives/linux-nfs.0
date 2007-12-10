@@ -1,77 +1,112 @@
-From: Shane <gnome42@gmail.com>
-Subject: Re: 2.6.24-rc3-git4 NFS crossmnt regression
-Date: Mon, 10 Dec 2007 14:51:46 -0500
-Message-ID: <fa4052ef0712101151ka962076q24d1bd624f2373f5@mail.gmail.com>
-References: <fa4052ef0712062045o743a2666u3562a3569c1aa989@mail.gmail.com>
-	 <200712090220.44543.maximlevitsky@gmail.com>
-	 <18268.51342.353887.178014@notabene.brown>
-	 <200712101619.12522.maximlevitsky@gmail.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 15/27] NFS: Add support for AF_INET6 addresses in
+	__nfs_find_client()
+Date: Mon, 10 Dec 2007 14:58:07 -0500
+Message-ID: <20071210195807.2823.4778.stgit@manray.1015granger.net>
+References: <20071210195106.2823.43884.stgit@manray.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: "Neil Brown" <neilb@suse.de>, "Rafael J. Wysocki" <rjw@sisk.pl>,
-	"Andrew Morton" <akpm@linux-foundation.org>,
-	"Trond Myklebust" <trond.myklebust@fys.uio.no>,
-	linux-kernel@vger.kernel.org, bfields@fieldses.org,
-	"Eric W. Biederman" <ebiederm@xmission.com>,
-	"Denis V. Lunev" <den@openvz.org>, linux-nfs@vger.kernel.org
-To: "Maxim Levitsky" <maximlevitsky@gmail.com>
+Content-Type: text/plain; charset="utf-8"
+Cc: aurelien.charbon-Z51IpKcfGtLk1uMJSBkQmQ@public.gmane.org, linux-nfs@vger.kernel.org
+To: trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from wa-out-1112.google.com ([209.85.146.183]:25146 "EHLO
-	wa-out-1112.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752500AbXLJTvs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Dec 2007 14:51:48 -0500
-Received: by wa-out-1112.google.com with SMTP id v27so3532153wah
-        for <linux-nfs@vger.kernel.org>; Mon, 10 Dec 2007 11:51:47 -0800 (PST)
-In-Reply-To: <200712101619.12522.maximlevitsky@gmail.com>
+Received: from flpi102.sbcis.sbc.com ([207.115.20.71]:33047 "EHLO
+	flpi102.prodigy.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751657AbXLJUCI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Dec 2007 15:02:08 -0500
+In-Reply-To: <20071210195106.2823.43884.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Dec 10, 2007 9:19 AM, Maxim Levitsky <maximlevitsky@gmail.com> wrote:
-> ...
-> > It is best not to use nohide - we should probably mark it as
-> > 'legacy'.
-> >
-> > Simply export the top level mountpoint as 'crossmnt'  and everything
-> > below there will be exported.
-> >
-> > > Where should I put those options in root file-system export or in submount export?
-> >
-> > crossmnt goes at the top.  nohide goes in the submount.  Both have
-> > the same general effect though with subtle differences.
-> > You don't need both (though that doesn't hurt).
-> > Just use crossmnt at the top,  Then you don't need to mention the
-> > lower level filesystems at all.
-> >
-> > >
-> ...
-> > > (I decided to switch to NFS4 only due to the lack of ability to see underlying mounts)
-> > >
-> >
-> > All of this should work fine with v3.  Once you have the right patch
-> > for the crossmnt bug applied, if you have further problems post them
-> > to linux-nfs-u79uwXL29TaiAVqoAR/hOA@public.gmane.org
-> >
-> > NeilBrown
-> >
->
-> Big thanks,
->
-> Still NFS server just don't want to accept the connection
-> I noticed that if I first mount with
-> -tnfs, unmount,  and then mount with -tnfs4, it works
->
->
-> Assuming that
-> [PATCH 2.6.24-rc4] proc: Remove/Fix proc generic d_revalidate
-> is the fix for crossmnt bug, I applied it to both client and server,
-> but no luck.
+Introduce AF_INET6-specific address checking to __nfs_find_client().
 
-I'm using NFSv3, but I applied two patches. The one you mention
-from Eric and the patch Trond posted in this thread.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Cc: Aurelien Charbon <aurelien.charbon-Z51IpKcfGtLk1uMJSBkQmQ@public.gmane.org>
+---
 
->
-> Still see empty folders.
+ fs/nfs/client.c |   36 ++++++++++++++++++++++++++++++------
+ 1 files changed, 30 insertions(+), 6 deletions(-)
 
-That was the symptom I had without Trond's patch.
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 5ab1ca1..a37f01a 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -34,6 +34,8 @@
+ #include <linux/nfs_idmap.h>
+ #include <linux/vfs.h>
+ #include <linux/inet.h>
++#include <linux/in6.h>
++#include <net/ipv6.h>
+ #include <linux/nfs_xdr.h>
+ 
+ #include <asm/system.h>
+@@ -207,13 +209,15 @@ void nfs_put_client(struct nfs_client *clp)
+  * Find a client by address
+  * - caller must hold nfs_client_lock
+  */
+-static struct nfs_client *__nfs_find_client(const struct sockaddr_in *addr,
++static struct nfs_client *__nfs_find_client(const struct sockaddr *addr,
+ 					    unsigned int nfsversion,
+ 					    int match_port)
+ {
+ 	struct nfs_client *clp;
+ 
+ 	list_for_each_entry(clp, &nfs_client_list, cl_share_link) {
++		struct sockaddr *clap = (struct sockaddr *)&clp->cl_addr;
++
+ 		/* Don't match clients that failed to initialise properly */
+ 		if (clp->cl_cons_state < 0)
+ 			continue;
+@@ -222,11 +226,31 @@ static struct nfs_client *__nfs_find_client(const struct sockaddr_in *addr,
+ 		if (clp->rpc_ops->version != nfsversion)
+ 			continue;
+ 
+-		if (clp->cl_addr.sin_addr.s_addr != addr->sin_addr.s_addr)
++		if (clap->sa_family != addr->sa_family)
+ 			continue;
+ 
+-		if (!match_port || clp->cl_addr.sin_port == addr->sin_port)
+-			goto found;
++		switch (addr->sa_family) {
++		case AF_INET: {
++			struct sockaddr_in *sap = (struct sockaddr_in *)clap;
++			struct sockaddr_in *ap = (struct sockaddr_in *)addr;
++			if (sap->sin_addr.s_addr != ap->sin_addr.s_addr)
++				continue;
++			if (!match_port || sap->sin_port == ap->sin_port)
++				goto found;
++			continue;
++		}
++		case AF_INET6: {
++			struct sockaddr_in6 *sap = (struct sockaddr_in6 *)clap;
++			struct sockaddr_in6 *ap = (struct sockaddr_in6 *)addr;
++			if (!ipv6_addr_equal(&sap->sin6_addr, &ap->sin6_addr))
++				continue;
++			if (!match_port || sap->sin6_port == ap->sin6_port)
++				goto found;
++			continue;
++		}
++		default:
++			BUG();
++		}
+ 	}
+ 
+ 	return NULL;
+@@ -246,7 +270,7 @@ struct nfs_client *nfs_find_client(const struct sockaddr_in *addr,
+ 	struct nfs_client *clp;
+ 
+ 	spin_lock(&nfs_client_lock);
+-	clp = __nfs_find_client(addr, nfsversion, 0);
++	clp = __nfs_find_client((struct sockaddr *)addr, nfsversion, 0);
+ 	spin_unlock(&nfs_client_lock);
+ 	if (clp != NULL && clp->cl_cons_state != NFS_CS_READY) {
+ 		nfs_put_client(clp);
+@@ -274,7 +298,7 @@ static struct nfs_client *nfs_get_client(const char *hostname,
+ 	do {
+ 		spin_lock(&nfs_client_lock);
+ 
+-		clp = __nfs_find_client(addr, nfsversion, 1);
++		clp = __nfs_find_client((struct sockaddr *)addr, nfsversion, 1);
+ 		if (clp)
+ 			goto found_client;
+ 		if (new)
 
-Shane
