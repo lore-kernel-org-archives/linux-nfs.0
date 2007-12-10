@@ -1,8 +1,8 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 18/27] NFS: Change cb_recallargs to pass "struct sockaddr *"
-	instead of sockaddr_in
-Date: Mon, 10 Dec 2007 14:58:29 -0500
-Message-ID: <20071210195829.2823.44609.stgit@manray.1015granger.net>
+Subject: [PATCH 04/27] SUNRPC: Move universal address definitions to global
+	header
+Date: Mon, 10 Dec 2007 14:56:46 -0500
+Message-ID: <20071210195646.2823.19898.stgit@manray.1015granger.net>
 References: <20071210195106.2823.43884.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -11,61 +11,148 @@ To: trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from flpi102.sbcis.sbc.com ([207.115.20.71]:39761 "EHLO
 	flpi102.prodigy.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755839AbXLJUEq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Dec 2007 15:04:46 -0500
+	with ESMTP id S1756321AbXLJUEu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Dec 2007 15:04:50 -0500
 In-Reply-To: <20071210195106.2823.43884.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Change the addr field in the cb_recallargs struct to a "struct sockaddr *"
-to support non-IPv4 addresses.
+Universal addresses are defined in RFC 1833 and clarified in RFC 3530.  We
+need to use them in several places in the NFS and RPC clients, so move the
+relevant definition and block comment to an appropriate global include
+file.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Cc: Aurelien Charbon <aurelien.charbon-Z51IpKcfGtLk1uMJSBkQmQ@public.gmane.org>
 ---
 
- fs/nfs/callback.h      |    2 +-
- fs/nfs/callback_proc.c |    2 +-
- fs/nfs/callback_xdr.c  |    2 +-
- 3 files changed, 3 insertions(+), 3 deletions(-)
+ include/linux/sunrpc/msg_prot.h |   39 ++++++++++++++++++++++++++++++++++
+ net/sunrpc/rpcb_clnt.c          |   45 +++------------------------------------
+ 2 files changed, 42 insertions(+), 42 deletions(-)
 
-diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
-index ec0ffd9..bb25d21 100644
---- a/fs/nfs/callback.h
-+++ b/fs/nfs/callback.h
-@@ -53,7 +53,7 @@ struct cb_getattrres {
+diff --git a/include/linux/sunrpc/msg_prot.h b/include/linux/sunrpc/msg_prot.h
+index c4beb57..70df4f1 100644
+--- a/include/linux/sunrpc/msg_prot.h
++++ b/include/linux/sunrpc/msg_prot.h
+@@ -152,5 +152,44 @@ typedef __be32	rpc_fraghdr;
+  */
+ #define RPCBIND_MAXNETIDLEN	(4u)
+ 
++/*
++ * Universal addresses are introduced in RFC 1833 and further spelled
++ * out in RFC 3530.  RPCBIND_MAXUADDRLEN defines a maximum byte length
++ * of a universal address for use in allocating buffers and character
++ * arrays.
++ *
++ * Quoting RFC 3530, section 2.2:
++ *
++ * For TCP over IPv4 and for UDP over IPv4, the format of r_addr is the
++ * US-ASCII string:
++ *
++ *	h1.h2.h3.h4.p1.p2
++ *
++ * The prefix, "h1.h2.h3.h4", is the standard textual form for
++ * representing an IPv4 address, which is always four octets long.
++ * Assuming big-endian ordering, h1, h2, h3, and h4, are respectively,
++ * the first through fourth octets each converted to ASCII-decimal.
++ * Assuming big-endian ordering, p1 and p2 are, respectively, the first
++ * and second octets each converted to ASCII-decimal.  For example, if a
++ * host, in big-endian order, has an address of 0x0A010307 and there is
++ * a service listening on, in big endian order, port 0x020F (decimal
++ * 527), then the complete universal address is "10.1.3.7.2.15".
++ *
++ * ...
++ *
++ * For TCP over IPv6 and for UDP over IPv6, the format of r_addr is the
++ * US-ASCII string:
++ *
++ *	x1:x2:x3:x4:x5:x6:x7:x8.p1.p2
++ *
++ * The suffix "p1.p2" is the service port, and is computed the same way
++ * as with universal addresses for TCP and UDP over IPv4.  The prefix,
++ * "x1:x2:x3:x4:x5:x6:x7:x8", is the standard textual form for
++ * representing an IPv6 address as defined in Section 2.2 of [RFC2373].
++ * Additionally, the two alternative forms specified in Section 2.2 of
++ * [RFC2373] are also acceptable.
++ */
++#define RPCBIND_MAXUADDRLEN	(56u)
++
+ #endif /* __KERNEL__ */
+ #endif /* _LINUX_SUNRPC_MSGPROT_H_ */
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index 39844b7..c56fb50 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -55,45 +55,6 @@ enum {
+ #define RPCB_HIGHPROC_4		RPCBPROC_GETSTAT
+ 
+ /*
+- * r_addr
+- *
+- * Quoting RFC 3530, section 2.2:
+- *
+- * For TCP over IPv4 and for UDP over IPv4, the format of r_addr is the
+- * US-ASCII string:
+- *
+- *	h1.h2.h3.h4.p1.p2
+- *
+- * The prefix, "h1.h2.h3.h4", is the standard textual form for
+- * representing an IPv4 address, which is always four octets long.
+- * Assuming big-endian ordering, h1, h2, h3, and h4, are respectively,
+- * the first through fourth octets each converted to ASCII-decimal.
+- * Assuming big-endian ordering, p1 and p2 are, respectively, the first
+- * and second octets each converted to ASCII-decimal.  For example, if a
+- * host, in big-endian order, has an address of 0x0A010307 and there is
+- * a service listening on, in big endian order, port 0x020F (decimal
+- * 527), then the complete universal address is "10.1.3.7.2.15".
+- *
+- * ...
+- *
+- * For TCP over IPv6 and for UDP over IPv6, the format of r_addr is the
+- * US-ASCII string:
+- *
+- *	x1:x2:x3:x4:x5:x6:x7:x8.p1.p2
+- *
+- * The suffix "p1.p2" is the service port, and is computed the same way
+- * as with universal addresses for TCP and UDP over IPv4.  The prefix,
+- * "x1:x2:x3:x4:x5:x6:x7:x8", is the standard textual form for
+- * representing an IPv6 address as defined in Section 2.2 of [RFC2373].
+- * Additionally, the two alternative forms specified in Section 2.2 of
+- * [RFC2373] are also acceptable.
+- *
+- * XXX: Currently this implementation does not explicitly convert the
+- *      stored address to US-ASCII on non-ASCII systems.
+- */
+-#define RPCB_MAXADDRLEN		(128u)
+-
+-/*
+  * r_owner
+  *
+  * The "owner" is allowed to unset a service in the rpcbind database.
+@@ -113,7 +74,7 @@ struct rpcbind_args {
+ 	u32			r_prot;
+ 	unsigned short		r_port;
+ 	char *			r_netid;
+-	char			r_addr[RPCB_MAXADDRLEN];
++	char			r_addr[RPCBIND_MAXUADDRLEN];
+ 	char *			r_owner;
  };
  
- struct cb_recallargs {
--	struct sockaddr_in *addr;
-+	struct sockaddr *addr;
- 	struct nfs_fh fh;
- 	nfs4_stateid stateid;
- 	uint32_t truncate;
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 32f0df0..fa9586d 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -68,7 +68,7 @@ __be32 nfs4_callback_recall(struct cb_recallargs *args, void *dummy)
- 	__be32 res;
- 	
- 	res = htonl(NFS4ERR_BADHANDLE);
--	clp = nfs_find_client(args->addr, 4);
-+	clp = nfs_find_client((struct sockaddr_in *)args->addr, 4);
- 	if (clp == NULL)
- 		goto out;
+@@ -522,7 +483,7 @@ static int rpcb_decode_getaddr(struct rpc_rqst *req, __be32 *p,
+ 	 * Simple sanity check.  The smallest possible universal
+ 	 * address is an IPv4 address string containing 11 bytes.
+ 	 */
+-	if (addr_len < 11 || addr_len > RPCB_MAXADDRLEN)
++	if (addr_len < 11 || addr_len > RPCBIND_MAXUADDRLEN)
+ 		goto out_err;
  
-diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-index 3eda1bc..c63eb72 100644
---- a/fs/nfs/callback_xdr.c
-+++ b/fs/nfs/callback_xdr.c
-@@ -188,7 +188,7 @@ static __be32 decode_recall_args(struct svc_rqst *rqstp, struct xdr_stream *xdr,
- 	__be32 *p;
- 	__be32 status;
+ 	/*
+@@ -573,7 +534,7 @@ out_err:
+ #define RPCB_boolean_sz		(1u)
  
--	args->addr = svc_addr_in(rqstp);
-+	args->addr = svc_addr(rqstp);
- 	status = decode_stateid(xdr, &args->stateid);
- 	if (unlikely(status != 0))
- 		goto out;
+ #define RPCB_netid_sz		(1+XDR_QUADLEN(RPCBIND_MAXNETIDLEN))
+-#define RPCB_addr_sz		(1+XDR_QUADLEN(RPCB_MAXADDRLEN))
++#define RPCB_addr_sz		(1+XDR_QUADLEN(RPCBIND_MAXUADDRLEN))
+ #define RPCB_ownerstring_sz	(1+XDR_QUADLEN(RPCB_MAXOWNERLEN))
+ 
+ #define RPCB_mappingargs_sz	RPCB_program_sz+RPCB_version_sz+	\
 
