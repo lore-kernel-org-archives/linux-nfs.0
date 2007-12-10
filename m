@@ -1,100 +1,77 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: [PATCH] nfs-utils: sm-notify does not remove its pid file.
-Date: Mon, 10 Dec 2007 14:21:29 -0500
-Message-ID: <475D91B9.4070405@RedHat.com>
+From: Shane <gnome42@gmail.com>
+Subject: Re: 2.6.24-rc3-git4 NFS crossmnt regression
+Date: Mon, 10 Dec 2007 14:51:46 -0500
+Message-ID: <fa4052ef0712101151ka962076q24d1bd624f2373f5@mail.gmail.com>
+References: <fa4052ef0712062045o743a2666u3562a3569c1aa989@mail.gmail.com>
+	 <200712090220.44543.maximlevitsky@gmail.com>
+	 <18268.51342.353887.178014@notabene.brown>
+	 <200712101619.12522.maximlevitsky@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Cc: "Neil Brown" <neilb@suse.de>, "Rafael J. Wysocki" <rjw@sisk.pl>,
+	"Andrew Morton" <akpm@linux-foundation.org>,
+	"Trond Myklebust" <trond.myklebust@fys.uio.no>,
+	linux-kernel@vger.kernel.org, bfields@fieldses.org,
+	"Eric W. Biederman" <ebiederm@xmission.com>,
+	"Denis V. Lunev" <den@openvz.org>, linux-nfs@vger.kernel.org
+To: "Maxim Levitsky" <maximlevitsky@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:48097 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752076AbXLJTZz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 10 Dec 2007 14:25:55 -0500
-Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
-	by mx1.redhat.com (8.13.8/8.13.1) with ESMTP id lBAJPsIg026200
-	for <linux-nfs@vger.kernel.org>; Mon, 10 Dec 2007 14:25:54 -0500
-Received: from lacrosse.corp.redhat.com (lacrosse.corp.redhat.com [172.16.52.154])
-	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id lBAJPsje023375
-	for <linux-nfs@vger.kernel.org>; Mon, 10 Dec 2007 14:25:54 -0500
-Received: from [10.13.248.24] (vpn-248-24.boston.redhat.com [10.13.248.24])
-	by lacrosse.corp.redhat.com (8.12.11.20060308/8.11.6) with ESMTP id lBAJPro5005554
-	for <linux-nfs@vger.kernel.org>; Mon, 10 Dec 2007 14:25:53 -0500
+Received: from wa-out-1112.google.com ([209.85.146.183]:25146 "EHLO
+	wa-out-1112.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752500AbXLJTvs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Dec 2007 14:51:48 -0500
+Received: by wa-out-1112.google.com with SMTP id v27so3532153wah
+        for <linux-nfs@vger.kernel.org>; Mon, 10 Dec 2007 11:51:47 -0800 (PST)
+In-Reply-To: <200712101619.12522.maximlevitsky@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It turns out that the sm-notify command, used to notify clients that
-they need to reclaim their locks because the server just changed
-state, does not clean up its pid file. The pid file is used to ensure
-only one instance of the process is running. This results in sm-notify 
-exiting before notifying any clients on the second reboot.
+On Dec 10, 2007 9:19 AM, Maxim Levitsky <maximlevitsky@gmail.com> wrote:
+> ...
+> > It is best not to use nohide - we should probably mark it as
+> > 'legacy'.
+> >
+> > Simply export the top level mountpoint as 'crossmnt'  and everything
+> > below there will be exported.
+> >
+> > > Where should I put those options in root file-system export or in submount export?
+> >
+> > crossmnt goes at the top.  nohide goes in the submount.  Both have
+> > the same general effect though with subtle differences.
+> > You don't need both (though that doesn't hurt).
+> > Just use crossmnt at the top,  Then you don't need to mention the
+> > lower level filesystems at all.
+> >
+> > >
+> ...
+> > > (I decided to switch to NFS4 only due to the lack of ability to see underlying mounts)
+> > >
+> >
+> > All of this should work fine with v3.  Once you have the right patch
+> > for the crossmnt bug applied, if you have further problems post them
+> > to linux-nfs-u79uwXL29TaiAVqoAR/hOA@public.gmane.org
+> >
+> > NeilBrown
+> >
+>
+> Big thanks,
+>
+> Still NFS server just don't want to accept the connection
+> I noticed that if I first mount with
+> -tnfs, unmount,  and then mount with -tnfs4, it works
+>
+>
+> Assuming that
+> [PATCH 2.6.24-rc4] proc: Remove/Fix proc generic d_revalidate
+> is the fix for crossmnt bug, I applied it to both client and server,
+> but no luck.
 
-I also changed the directory in which the pid file is created from
-/var/run into BASEDIR so the file can be removed after the after the 
-user id is changed to a non-root uid.
+I'm using NFSv3, but I applied two patches. The one you mention
+from Eric and the patch Trond posted in this thread.
 
-steved.
+>
+> Still see empty folders.
 
+That was the symptom I had without Trond's patch.
 
-commit 72e24403c298b7991eb04dd68ed2e9fcbe4baf70
-Author: Steve Dickson <steved@redhat.com>
-Date:   Mon Dec 10 12:17:29 2007 -0500
-
-    Make sure sm-notify's pid file is removed when the process
-    exits. Also moved the pid file from /var/run into BASEDIR
-    so the file can be removed after the user id is changed
-    to a non-root uid.
-    
-    Signed-off-by: Steve Dickson <steved@redhat.com>
-
-diff --git a/utils/statd/sm-notify.c b/utils/statd/sm-notify.c
-index bb67c37..3f80e04 100644
---- a/utils/statd/sm-notify.c
-+++ b/utils/statd/sm-notify.c
-@@ -32,6 +32,10 @@
- # endif
- #endif
- 
-+#ifndef PIDFILE
-+#define PIDFILE  BASEDIR "/sm-notify.pid"
-+#endif
-+
- #define DEFAULT_SM_STATE_PATH	BASEDIR "/state"
- #define	DEFAULT_SM_DIR_PATH	BASEDIR "/sm"
- #define	DEFAULT_SM_BAK_PATH	DEFAULT_SM_DIR_PATH ".bak"
-@@ -89,6 +93,7 @@ void			nsm_log(int fac, const char *fmt, ...);
- static int		record_pid(void);
- static void		drop_privs(void);
- static void set_kernel_nsm_state(int state);
-+static void remove_pid(void);
- 
- static struct nsm_host *	hosts = NULL;
- 
-@@ -155,6 +160,7 @@ usage:		fprintf(stderr,
- 			/* already run, don't try again */
- 			exit(0);
- 	}
-+	atexit(remove_pid);
- 
- 	if (opt_srcaddr) {
- 		strncpy(nsm_hostname, opt_srcaddr, sizeof(nsm_hostname)-1);
-@@ -736,13 +742,19 @@ static int record_pid(void)
- 	int fd;
- 
- 	snprintf(pid, 20, "%d\n", getpid());
--	fd = open("/var/run/sm-notify.pid", O_CREAT|O_EXCL|O_WRONLY, 0600);
-+	fd = open(PIDFILE, O_CREAT|O_EXCL|O_WRONLY, 0600);
- 	if (fd < 0)
- 		return 0;
- 	write(fd, pid, strlen(pid));
- 	close(fd);
- 	return 1;
- }
-+static void remove_pid()
-+{
-+	if (unlink(PIDFILE) < 0)
-+		nsm_log(LOG_WARNING,
-+			"Unable to remove %s: %s", PIDFILE, strerror(errno));
-+}
- 
- /* Drop privileges to match owner of state-directory
-  * (in case a reply triggers some unknown bug).
+Shane
