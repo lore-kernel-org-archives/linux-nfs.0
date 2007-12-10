@@ -1,138 +1,275 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: [PATCH 01/27] SUNRPC: rpc_create() default hostname should support
- AF_INET6 addresses
-Date: Mon, 10 Dec 2007 15:55:31 -0500
-Message-ID: <475DA7C3.1050703@redhat.com>
-References: <20071210195106.2823.43884.stgit@manray.1015granger.net> <20071210195623.2823.13011.stgit@manray.1015granger.net> <475DA054.7010002@redhat.com> <E7A6950F-9651-42A0-A89D-F561C434CD42@oracle.com>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: 2.6.24-rc3-git4 NFS crossmnt regression
+Date: Mon, 10 Dec 2007 13:03:05 -0800
+Message-ID: <20071210130305.d8983fdc.akpm@linux-foundation.org>
+References: <fa4052ef0712062045o743a2666u3562a3569c1aa989@mail.gmail.com>
+	<200712101619.12522.maximlevitsky@gmail.com>
+	<20071210143609.GF2138@fieldses.org>
+	<200712101705.30428.maximlevitsky@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: trond.myklebust@fys.uio.no, aurelien.charbon-Z51IpKcfGtLk1uMJSBkQmQ@public.gmane.org,
-	linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=US-ASCII
+Cc: bfields@fieldses.org, neilb@suse.de, rjw@sisk.pl,
+	trond.myklebust@fys.uio.no, gnome42@gmail.com,
+	linux-kernel@vger.kernel.org, ebiederm@xmission.com,
+	den@openvz.org, linux-nfs@vger.kernel.org
+To: Maxim Levitsky <maximlevitsky@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:39998 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753548AbXLJU5P (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 10 Dec 2007 15:57:15 -0500
-In-Reply-To: <E7A6950F-9651-42A0-A89D-F561C434CD42@oracle.com>
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:52836 "EHLO
+	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752688AbXLJVEc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Dec 2007 16:04:32 -0500
+In-Reply-To: <200712101705.30428.maximlevitsky@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Chuck Lever wrote:
-> On Dec 10, 2007, at 3:23 PM, Peter Staubach wrote:
->> Chuck Lever wrote:
->>> If the ULP doesn't pass a hostname string to rpc_create(), it 
->>> manufactures
->>> one based on the passed-in address.  Be smart enough to handle an 
->>> AF_INET6
->>> address properly in this case.
->>>
->>> Move the default servername logic before the xprt_create_transport() 
->>> call
->>> to simplify error handling in rpc_create().
->>>
->>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->>> ---
->>>
->>>  net/sunrpc/clnt.c |   32 +++++++++++++++++++++++++++-----
->>>  1 files changed, 27 insertions(+), 5 deletions(-)
->>>
->>> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
->>> index 76be83e..c297161 100644
->>> --- a/net/sunrpc/clnt.c
->>> +++ b/net/sunrpc/clnt.c
->>> @@ -30,6 +30,7 @@
->>>  #include <linux/smp_lock.h>
->>>  #include <linux/utsname.h>
->>>  #include <linux/workqueue.h>
->>> +#include <linux/in6.h>
->>>   #include <linux/sunrpc/clnt.h>
->>>  #include <linux/sunrpc/rpc_pipe_fs.h>
->>> @@ -247,7 +248,7 @@ struct rpc_clnt *rpc_create(struct 
->>> rpc_create_args *args)
->>>          .addrlen = args->addrsize,
->>>          .timeout = args->timeout
->>>      };
->>> -    char servername[20];
->>> +    char servername[48];
->>>
->>>
->>
->> Just out of curiosity, how or why was 48 chosen?
->
-> It's a multiple of 16 bytes for cache alignment, and it is just a bit 
-> larger than the largest size of a meaningful IPv6 address string 
-> (which is 46 bytes, I believe).
->
-> If there's an appropriate pre-defined buffer size, I would gladly 
-> replace the naked integer with that.  It would be nice if there was 
-> one defined along with the NIPQUAD/NIP6 macros.
->
+On Mon, 10 Dec 2007 17:05:30 +0200
+Maxim Levitsky <maximlevitsky@gmail.com> wrote:
 
-Yes, it would be nice if there was a symbolic constant which would
-make this a little more understandable.
+> On Monday 10 December 2007 16:36:09 J. Bruce Fields wrote:
+> > On Mon, Dec 10, 2007 at 04:19:12PM +0200, Maxim Levitsky wrote:
+> > > ...
+> > > > It is best not to use nohide - we should probably mark it as
+> > > > 'legacy'.
+> > > > 
+> > > > Simply export the top level mountpoint as 'crossmnt'  and everything
+> > > > below there will be exported.
+> > > > 
+> > > > > Where should I put those options in root file-system export or in submount export?
+> > > > 
+> > > > crossmnt goes at the top.  nohide goes in the submount.  Both have
+> > > > the same general effect though with subtle differences.
+> > > > You don't need both (though that doesn't hurt).
+> > > > Just use crossmnt at the top,  Then you don't need to mention the
+> > > > lower level filesystems at all.
+> > > > 
+> > > > > 
+> > > ...
+> > > > > (I decided to switch to NFS4 only due to the lack of ability to see underlying mounts)
+> > > > > 
+> > > > 
+> > > > All of this should work fine with v3.  Once you have the right patch
+> > > > for the crossmnt bug applied, if you have further problems post them
+> > > > to linux-nfs-u79uwXL29TaiAVqoAR/hOA@public.gmane.org
+> > > > 
+> > > > NeilBrown
+> > > > 
+> > > 
+> > > Big thanks,
+> > > 
+> > > Still NFS server just don't want to accept the connection
+> > > I noticed that if I first mount with
+> > > -tnfs, unmount,  and then mount with -tnfs4, it works
+> > 
+> > OK, in that case, that's definitely the bug Eric sent out the patch for;
+> > you may want to try applying his patch.
+> You mean
+> "[PATCH 2.6.24-rc4] proc: Remove/Fix proc generic d_revalidate" ?
+> 
+> I did apply it (on both kernel and server), and it doesn't help.
 
-It appears to me, from the definitions of NIP6 and NIP6_FMT,
-that the maximum that the string will ever hold will be 40 bytes,
-8 shorts printed as 4 byte hex values plus 7 intermediate ':'
-characters plus the '\0' string terminator, so 48 should be
-enough, currently.  I think that we might run into a problem
-if NIP6 or NIP6_FMT were ever changed to allow more bytes.
+argh, this is getting bad.
 
-Having the symbolic constant defined near to NIP6 and NIP6_FMT
-would eliminate this invisible dependency.
+Can you please test the below patch asap? Against 2.6.24-rc4 or latest-linus.
 
-    Thanx...
 
-       ps
+From: Andrew Morton <akpm@linux-foundation.org>
 
->>>      xprt = xprt_create_transport(&xprtargs);
->>>      if (IS_ERR(xprt))
->>> @@ -258,13 +259,34 @@ struct rpc_clnt *rpc_create(struct 
->>> rpc_create_args *args)
->>>       * up a string representation of the passed-in address.
->>>       */
->>>      if (args->servername == NULL) {
->>> -        struct sockaddr_in *addr =
->>> -                    (struct sockaddr_in *) args->address;
->>> -        snprintf(servername, sizeof(servername), NIPQUAD_FMT,
->>> -            NIPQUAD(addr->sin_addr.s_addr));
->>> +        servername[0] = '\0';
->>> +        switch (args->address->sa_family) {
->>> +        case AF_INET: {
->>> +            struct sockaddr_in *sin =
->>> +                    (struct sockaddr_in *)args->address;
->>> +            snprintf(servername, sizeof(servername), NIPQUAD_FMT,
->>> +                 NIPQUAD(sin->sin_addr.s_addr));
->>> +            break;
->>> +        }
->>> +        case AF_INET6: {
->>> +            struct sockaddr_in6 *sin =
->>> +                    (struct sockaddr_in6 *)args->address;
->>> +            snprintf(servername, sizeof(servername), NIP6_FMT,
->>> +                 NIP6(sin->sin6_addr));
->>> +            break;
->>> +        }
->>> +        default:
->>> +            /* caller wants default server name, but
->>> +             * address family isn't recognized. */
->>> +            return ERR_PTR(-EINVAL);
->>> +        }
->>>          args->servername = servername;
->>>      }
->>>  +    xprt = xprt_create_transport(&xprtargs);
->>> +    if (IS_ERR(xprt))
->>> +        return (struct rpc_clnt *)xprt;
->>> +
->>>      /*
->>>       * By default, kernel RPC client connects from a reserved port.
->>>       * CAP_NET_BIND_SERVICE will not be set for unprivileged 
->>> requesters,
->
-> -- 
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
->
->
->
+Revert
+
+    commit 2b1e300a9dfc3196ccddf6f1d74b91b7af55e416
+    Author: Eric W. Biederman <ebiederm@xmission.com>
+    Date:   Sun Dec 2 00:33:17 2007 +1100
+
+        [NETNS]: Fix /proc/net breakage
+
+It has caused all sorts of procfs mayhem.
+
+Reverting this will reintroduce
+
+    "Currently things work but there are odd details visible to user
+     space, even when we have a single network namespace."
+
+Where "details" was never elaborated upon.
+
+Cc: Eric W. Biederman <ebiederm@xmission.com>
+Cc: "Rafael J. Wysocki" <rjw@sisk.pl>
+Cc: Pavel Machek <pavel@ucw.cz>
+Cc: Pavel Emelyanov <xemul@openvz.org>
+Cc: "David S. Miller" <davem@davemloft.net>
+Cc: Ingo Molnar <mingo@elte.hu>
+Cc: Herbert Xu <herbert-lOAM2aK0SrRLBo1qDEOMRrpzq4S04n8Q@public.gmane.org>
+Cc: Alexey Dobriyan <adobriyan@gmail.com>
+Cc: "Rafael J. Wysocki" <rjw@sisk.pl>
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: "Denis V. Lunev" <den@openvz.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
+
+ fs/proc/generic.c       |   12 -----
+ fs/proc/proc_net.c      |   86 +++++++++++++++++++++++++++++++++++---
+ include/linux/proc_fs.h |    3 -
+ 3 files changed, 82 insertions(+), 19 deletions(-)
+
+diff -puN fs/proc/generic.c~revert-fix-proc-net-breakage fs/proc/generic.c
+--- a/fs/proc/generic.c~revert-fix-proc-net-breakage
++++ a/fs/proc/generic.c
+@@ -374,16 +374,9 @@ static int proc_delete_dentry(struct den
+ 	return 1;
+ }
+ 
+-static int proc_revalidate_dentry(struct dentry *dentry, struct nameidata *nd)
+-{
+-	d_drop(dentry);
+-	return 0;
+-}
+-
+ static struct dentry_operations proc_dentry_operations =
+ {
+ 	.d_delete	= proc_delete_dentry,
+-	.d_revalidate	= proc_revalidate_dentry,
+ };
+ 
+ /*
+@@ -404,11 +397,8 @@ struct dentry *proc_lookup(struct inode 
+ 			if (de->namelen != dentry->d_name.len)
+ 				continue;
+ 			if (!memcmp(dentry->d_name.name, de->name, de->namelen)) {
+-				unsigned int ino;
++				unsigned int ino = de->low_ino;
+ 
+-				if (de->shadow_proc)
+-					de = de->shadow_proc(current, de);
+-				ino = de->low_ino;
+ 				de_get(de);
+ 				spin_unlock(&proc_subdir_lock);
+ 				error = -EINVAL;
+diff -puN fs/proc/proc_net.c~revert-fix-proc-net-breakage fs/proc/proc_net.c
+--- a/fs/proc/proc_net.c~revert-fix-proc-net-breakage
++++ a/fs/proc/proc_net.c
+@@ -50,14 +50,89 @@ struct net *get_proc_net(const struct in
+ }
+ EXPORT_SYMBOL_GPL(get_proc_net);
+ 
+-static struct proc_dir_entry *shadow_pde;
++static struct proc_dir_entry *proc_net_shadow;
+ 
+-static struct proc_dir_entry *proc_net_shadow(struct task_struct *task,
++static struct dentry *proc_net_shadow_dentry(struct dentry *parent,
+ 						struct proc_dir_entry *de)
+ {
+-	return task->nsproxy->net_ns->proc_net;
++	struct dentry *shadow = NULL;
++	struct inode *inode;
++	if (!de)
++		goto out;
++	de_get(de);
++	inode = proc_get_inode(parent->d_inode->i_sb, de->low_ino, de);
++	if (!inode)
++		goto out_de_put;
++	shadow = d_alloc_name(parent, de->name);
++	if (!shadow)
++		goto out_iput;
++	shadow->d_op = parent->d_op; /* proc_dentry_operations */
++	d_instantiate(shadow, inode);
++out:
++	return shadow;
++out_iput:
++	iput(inode);
++out_de_put:
++	de_put(de);
++	goto out;
++}
++
++static void *proc_net_follow_link(struct dentry *parent, struct nameidata *nd)
++{
++	struct net *net = current->nsproxy->net_ns;
++	struct dentry *shadow;
++	shadow = proc_net_shadow_dentry(parent, net->proc_net);
++	if (!shadow)
++		return ERR_PTR(-ENOENT);
++
++	dput(nd->dentry);
++	/* My dentry count is 1 and that should be enough as the
++	 * shadow dentry is thrown away immediately.
++	 */
++	nd->dentry = shadow;
++	return NULL;
+ }
+ 
++static struct dentry *proc_net_lookup(struct inode *dir, struct dentry *dentry,
++				      struct nameidata *nd)
++{
++	struct net *net = current->nsproxy->net_ns;
++	struct dentry *shadow;
++
++	shadow = proc_net_shadow_dentry(nd->dentry, net->proc_net);
++	if (!shadow)
++		return ERR_PTR(-ENOENT);
++
++	dput(nd->dentry);
++	nd->dentry = shadow;
++
++	return shadow->d_inode->i_op->lookup(shadow->d_inode, dentry, nd);
++}
++
++static int proc_net_setattr(struct dentry *dentry, struct iattr *iattr)
++{
++	struct net *net = current->nsproxy->net_ns;
++	struct dentry *shadow;
++	int ret;
++
++	shadow = proc_net_shadow_dentry(dentry->d_parent, net->proc_net);
++	if (!shadow)
++		return -ENOENT;
++	ret = shadow->d_inode->i_op->setattr(shadow, iattr);
++	dput(shadow);
++	return ret;
++}
++
++static const struct file_operations proc_net_dir_operations = {
++	.read			= generic_read_dir,
++};
++
++static struct inode_operations proc_net_dir_inode_operations = {
++	.follow_link	= proc_net_follow_link,
++	.lookup		= proc_net_lookup,
++	.setattr	= proc_net_setattr,
++};
++
+ static __net_init int proc_net_ns_init(struct net *net)
+ {
+ 	struct proc_dir_entry *root, *netd, *net_statd;
+@@ -110,8 +185,9 @@ static struct pernet_operations __net_in
+ 
+ int __init proc_net_init(void)
+ {
+-	shadow_pde = proc_mkdir("net", NULL);
+-	shadow_pde->shadow_proc = proc_net_shadow;
++	proc_net_shadow = proc_mkdir("net", NULL);
++	proc_net_shadow->proc_iops = &proc_net_dir_inode_operations;
++	proc_net_shadow->proc_fops = &proc_net_dir_operations;
+ 
+ 	return register_pernet_subsys(&proc_net_ns_ops);
+ }
+diff -puN include/linux/proc_fs.h~revert-fix-proc-net-breakage include/linux/proc_fs.h
+--- a/include/linux/proc_fs.h~revert-fix-proc-net-breakage
++++ a/include/linux/proc_fs.h
+@@ -48,8 +48,6 @@ typedef	int (read_proc_t)(char *page, ch
+ typedef	int (write_proc_t)(struct file *file, const char __user *buffer,
+ 			   unsigned long count, void *data);
+ typedef int (get_info_t)(char *, char **, off_t, int);
+-typedef struct proc_dir_entry *(shadow_proc_t)(struct task_struct *task,
+-						struct proc_dir_entry *pde);
+ 
+ struct proc_dir_entry {
+ 	unsigned int low_ino;
+@@ -80,7 +78,6 @@ struct proc_dir_entry {
+ 	int pde_users;	/* number of callers into module in progress */
+ 	spinlock_t pde_unload_lock; /* proc_fops checks and pde_users bumps */
+ 	struct completion *pde_unload_completion;
+-	shadow_proc_t *shadow_proc;
+ };
+ 
+ struct kcore_list {
+_
 
