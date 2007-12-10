@@ -1,78 +1,59 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: 2.6.24-rc3-git4 NFS crossmnt regression
-Date: Mon, 10 Dec 2007 10:47:47 -0500
-Message-ID: <20071210154747.GB17209@fieldses.org>
-References: <fa4052ef0712062045o743a2666u3562a3569c1aa989@mail.gmail.com> <200712101619.12522.maximlevitsky@gmail.com> <20071210143609.GF2138@fieldses.org> <200712101705.30428.maximlevitsky@gmail.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [NFS] [PATCH] xprtrdma: fix XDR tail buf marshalling for all
+	ops
+Date: Mon, 10 Dec 2007 11:23:55 -0500
+Message-ID: <1197303835.10573.3.camel@heimdal.trondhjem.org>
+References: <Pine.LNX.4.64.0711291521010.7142@jlentini-linux.nane.netapp.com>
+	 <1196902607.17724.2.camel@heimdal.trondhjem.org>
+	 <Pine.LNX.4.64.0712061255200.12638@jlentini-linux.nane.netapp.com>
+	 <1196969392.7990.9.camel@localhost.localdomain>
+	 <Pine.LNX.4.64.0712061803240.12638@jlentini-linux.nane.netapp.com>
+	 <EXNANE01G5aYY61LEdy00000ae1@exnane01.hq.netapp.com>
+	 <1197300897.21931.9.camel@trinity.ogc.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Neil Brown <neilb@suse.de>, "Rafael J. Wysocki" <rjw@sisk.pl>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	gnome42@gmail.com, linux-kernel@vger.kernel.org,
-	"Eric W. Biederman" <ebiederm@xmission.com>,
-	"Denis V. Lunev" <den@openvz.org>, linux-nfs@vger.kernel.org
-To: Maxim Levitsky <maximlevitsky@gmail.com>
+Content-Type: text/plain
+Cc: "Talpey, Thomas" <Thomas.Talpey@netapp.com>,
+	linux-nfs@vger.kernel.org, nfs@lists.sourceforge.net
+To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:53914 "EHLO fieldses.org"
+Received: from pat.uio.no ([129.240.10.15]:48326 "EHLO pat.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754447AbXLJPsN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 10 Dec 2007 10:48:13 -0500
-In-Reply-To: <200712101705.30428.maximlevitsky@gmail.com>
+	id S1752670AbXLJQYD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 10 Dec 2007 11:24:03 -0500
+In-Reply-To: <1197300897.21931.9.camel-SMNkleLxa3ZimH42XvhXlA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Dec 10, 2007 at 05:05:30PM +0200, Maxim Levitsky wrote:
-> On Monday 10 December 2007 16:36:09 J. Bruce Fields wrote:
-> > On Mon, Dec 10, 2007 at 04:19:12PM +0200, Maxim Levitsky wrote:
-> > > ...
-> > > > It is best not to use nohide - we should probably mark it as
-> > > > 'legacy'.
-> > > > 
-> > > > Simply export the top level mountpoint as 'crossmnt'  and everything
-> > > > below there will be exported.
-> > > > 
-> > > > > Where should I put those options in root file-system export or in submount export?
-> > > > 
-> > > > crossmnt goes at the top.  nohide goes in the submount.  Both have
-> > > > the same general effect though with subtle differences.
-> > > > You don't need both (though that doesn't hurt).
-> > > > Just use crossmnt at the top,  Then you don't need to mention the
-> > > > lower level filesystems at all.
-> > > > 
-> > > > > 
-> > > ...
-> > > > > (I decided to switch to NFS4 only due to the lack of ability to see underlying mounts)
-> > > > > 
-> > > > 
-> > > > All of this should work fine with v3.  Once you have the right patch
-> > > > for the crossmnt bug applied, if you have further problems post them
-> > > > to linux-nfs-u79uwXL29TaiAVqoAR/hOA@public.gmane.org
-> > > > 
-> > > > NeilBrown
-> > > > 
-> > > 
-> > > Big thanks,
-> > > 
-> > > Still NFS server just don't want to accept the connection
-> > > I noticed that if I first mount with
-> > > -tnfs, unmount,  and then mount with -tnfs4, it works
+
+On Mon, 2007-12-10 at 09:34 -0600, Tom Tucker wrote:
+> On Fri, 2007-12-07 at 12:02 -0500, Talpey, Thomas wrote:
+> > At 06:11 PM 12/6/2007, James Lentini wrote:
+> > >On Thu, 6 Dec 2007, Trond Myklebust wrote:
+> > >> Eeewwww.... What an unholy mess!
+> > >> 
+> > >> Why are you trying to shoehorn reading and writing into 
+> > >> rpcrdma_create_chunks()? The way every action is split into 'if 
+> > >> (read) {} else {}' should be an obvious hint that none of this 
+> > >> belongs together. Please split this up for 2.6.25.
+> > >
+> > >ok.
 > > 
-> > OK, in that case, that's definitely the bug Eric sent out the patch for;
-> > you may want to try applying his patch.
-> You mean
-> "[PATCH 2.6.24-rc4] proc: Remove/Fix proc generic d_revalidate" ?
+> > Agreed - well except for the "unholy mess" part. This code has been
+> > in the nfs/rdma client basically since it was written (for 2.4.18). The
+> > split version introduces quite a bit of redundancy, but clarity is good
+> > too. I'll split it willingly.
+> > 
 > 
-> I did apply it (on both kernel and server), and it doesn't help.
-> Best regards,
-> 	Maxim Levitsky
-> 
-> PS: I am unfamiliar with nfs/nfs4, so this could be just a 
-> configuration/compilation issue.
+> Hmm. I guess I disagree. I don't see how consolidating similar logic is
+> an unholy mess. The purpose of the function is singular, i.e. preparing
+> the chunk list contained in the request sent to the server. Although it
+> is true that the chunklist encodes memory in the response (for read
+> requests), the chunk list itself is a single entity. Splitting it up may
+> be more confusing than combining and will certainly introduce copied
+> logic.
 
-What do
-	ls /proc/fs/nfs
-	ls /proc/fs/nfsd
+Look at the damned thing. _Every_ chunk in it has an 'if (read)' else.
+It that is 'similar logic' then I'm a duck.
 
-report?
+Trond
 
---b.
