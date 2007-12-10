@@ -1,7 +1,7 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 24/27] NFS: Remove the NIPQUAD from nfs_try_mount
-Date: Mon, 10 Dec 2007 14:59:13 -0500
-Message-ID: <20071210195913.2823.32186.stgit@manray.1015granger.net>
+Subject: [PATCH 08/27] NFS: eliminate NIPQUAD(clp->cl_addr.sin_addr)
+Date: Mon, 10 Dec 2007 14:57:16 -0500
+Message-ID: <20071210195716.2823.83484.stgit@manray.1015granger.net>
 References: <20071210195106.2823.43884.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -10,104 +10,128 @@ To: trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from flpi102.sbcis.sbc.com ([207.115.20.71]:35301 "EHLO
 	flpi102.prodigy.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752482AbXLJUDJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Dec 2007 15:03:09 -0500
+	with ESMTP id S1752567AbXLJUDL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Dec 2007 15:03:11 -0500
 In-Reply-To: <20071210195106.2823.43884.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In the name of address family compatibility, we can't have the NIP_FMT and
-NIPQUAD macros in nfs_try_mount().  Instead, we can make use of an unused
-mount option to display the mount server's hostname.
+To ensure the NFS client displays IPv6 addresses properly, replace
+address family-specific NIPQUAD() invocations with a call to the RPC
+client to get a formatted string representing the remote peer's
+address.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Cc: Aurelien Charbon <aurelien.charbon-Z51IpKcfGtLk1uMJSBkQmQ@public.gmane.org>
 ---
 
- fs/nfs/super.c |   23 ++++++++++++++++++-----
- 1 files changed, 18 insertions(+), 5 deletions(-)
+ fs/nfs/client.c     |   12 ++++++------
+ fs/nfs/delegation.c |   10 ++++++----
+ fs/nfs/nfs4state.c  |    9 +++++----
+ fs/nfs/super.c      |    5 +++--
+ 4 files changed, 20 insertions(+), 16 deletions(-)
 
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index b24b6db..5ab1ca1 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -1265,10 +1265,10 @@ static int nfs_server_list_show(struct seq_file *m, void *v)
+ 	/* display one transport per line on subsequent lines */
+ 	clp = list_entry(v, struct nfs_client, cl_share_link);
+ 
+-	seq_printf(m, "v%u %02x%02x%02x%02x %4hx %3d %s\n",
++	seq_printf(m, "v%u %s %s %3d %s\n",
+ 		   clp->rpc_ops->version,
+-		   NIPQUAD(clp->cl_addr.sin_addr),
+-		   ntohs(clp->cl_addr.sin_port),
++		   rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_HEX_ADDR),
++		   rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_HEX_PORT),
+ 		   atomic_read(&clp->cl_count),
+ 		   clp->cl_hostname);
+ 
+@@ -1344,10 +1344,10 @@ static int nfs_volume_list_show(struct seq_file *m, void *v)
+ 		 (unsigned long long) server->fsid.major,
+ 		 (unsigned long long) server->fsid.minor);
+ 
+-	seq_printf(m, "v%u %02x%02x%02x%02x %4hx %-7s %-17s\n",
++	seq_printf(m, "v%u %s %s %-7s %-17s\n",
+ 		   clp->rpc_ops->version,
+-		   NIPQUAD(clp->cl_addr.sin_addr),
+-		   ntohs(clp->cl_addr.sin_port),
++		   rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_HEX_ADDR),
++		   rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_HEX_PORT),
+ 		   dev,
+ 		   fsid);
+ 
+diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+index 11833f4..b03dcd8 100644
+--- a/fs/nfs/delegation.c
++++ b/fs/nfs/delegation.c
+@@ -156,8 +156,9 @@ int nfs_inode_set_delegation(struct inode *inode, struct rpc_cred *cred, struct
+ 		if (memcmp(&delegation->stateid, &nfsi->delegation->stateid,
+ 					sizeof(delegation->stateid)) != 0 ||
+ 				delegation->type != nfsi->delegation->type) {
+-			printk("%s: server %u.%u.%u.%u, handed out a duplicate delegation!\n",
+-					__FUNCTION__, NIPQUAD(clp->cl_addr.sin_addr));
++			printk(KERN_WARNING "%s: server %s handed out "
++					"a duplicate delegation!\n",
++					__FUNCTION__, clp->cl_hostname);
+ 			status = -EIO;
+ 		}
+ 	}
+@@ -314,8 +315,9 @@ void nfs_expire_all_delegations(struct nfs_client *clp)
+ 	__module_get(THIS_MODULE);
+ 	atomic_inc(&clp->cl_count);
+ 	task = kthread_run(nfs_do_expire_all_delegations, clp,
+-			"%u.%u.%u.%u-delegreturn",
+-			NIPQUAD(clp->cl_addr.sin_addr));
++				"%s-delegreturn",
++				rpc_peeraddr2str(clp->cl_rpcclient,
++							RPC_DISPLAY_ADDR));
+ 	if (!IS_ERR(task))
+ 		return;
+ 	nfs_put_client(clp);
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 23a9a36..86f95d4 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -755,8 +755,9 @@ static void nfs4_recover_state(struct nfs_client *clp)
+ 
+ 	__module_get(THIS_MODULE);
+ 	atomic_inc(&clp->cl_count);
+-	task = kthread_run(reclaimer, clp, "%u.%u.%u.%u-reclaim",
+-			NIPQUAD(clp->cl_addr.sin_addr));
++	task = kthread_run(reclaimer, clp, "%s-reclaim",
++				rpc_peeraddr2str(clp->cl_rpcclient,
++							RPC_DISPLAY_ADDR));
+ 	if (!IS_ERR(task))
+ 		return;
+ 	nfs4_clear_recover_bit(clp);
+@@ -967,8 +968,8 @@ out:
+ 	module_put_and_exit(0);
+ 	return 0;
+ out_error:
+-	printk(KERN_WARNING "Error: state recovery failed on NFSv4 server %u.%u.%u.%u with error %d\n",
+-				NIPQUAD(clp->cl_addr.sin_addr), -status);
++	printk(KERN_WARNING "Error: state recovery failed on NFSv4 server %s"
++			" with error %d\n", clp->cl_hostname, -status);
+ 	set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state);
+ 	goto out;
+ }
 diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 62ba379..4a3a5c0 100644
+index 4fed577..6b004d8 100644
 --- a/fs/nfs/super.c
 +++ b/fs/nfs/super.c
-@@ -89,7 +89,7 @@ enum {
- 	Opt_nfsvers,
+@@ -467,8 +467,9 @@ static int nfs_show_options(struct seq_file *m, struct vfsmount *mnt)
  
- 	/* Mount options that take string arguments */
--	Opt_sec, Opt_proto, Opt_mountproto,
-+	Opt_sec, Opt_proto, Opt_mountproto, Opt_mounthost,
- 	Opt_addr, Opt_mountaddr, Opt_clientaddr,
+ 	nfs_show_mount_options(m, nfss, 0);
  
- 	/* Mount options that are ignored */
-@@ -148,7 +148,7 @@ static match_table_t nfs_mount_option_tokens = {
- 	{ Opt_mountproto, "mountproto=%s" },
- 	{ Opt_addr, "addr=%s" },
- 	{ Opt_clientaddr, "clientaddr=%s" },
--	{ Opt_userspace, "mounthost=%s" },
-+	{ Opt_mounthost, "mounthost=%s" },
- 	{ Opt_mountaddr, "mountaddr=%s" },
+-	seq_printf(m, ",addr="NIPQUAD_FMT,
+-		NIPQUAD(nfss->nfs_client->cl_addr.sin_addr));
++	seq_printf(m, ",addr=%s",
++			rpc_peeraddr2str(nfss->nfs_client->cl_rpcclient,
++							RPC_DISPLAY_ADDR));
  
- 	{ Opt_err, NULL }
-@@ -950,6 +950,12 @@ static int nfs_parse_mount_options(char *raw,
- 				goto out_nomem;
- 			mnt->client_address = string;
- 			break;
-+		case Opt_mounthost:
-+			string = match_strdup(args);
-+			if (string == NULL)
-+				goto out_nomem;
-+			mnt->mount_server.hostname = string;
-+			break;
- 		case Opt_mountaddr:
- 			string = match_strdup(args);
- 			if (string == NULL)
-@@ -1003,6 +1009,7 @@ static int nfs_try_mount(struct nfs_parsed_mount_data *args,
- {
- 	struct sockaddr_in sin;
- 	int status;
-+	char *hostname;
- 
- 	if (args->mount_server.version == 0) {
- 		if (args->flags & NFS_MOUNT_VER3)
-@@ -1011,6 +1018,11 @@ static int nfs_try_mount(struct nfs_parsed_mount_data *args,
- 			args->mount_server.version = NFS_MNT_VERSION;
- 	}
- 
-+	if (args->mount_server.hostname)
-+		hostname = args->mount_server.hostname;
-+	else
-+		hostname = args->nfs_server.hostname;
-+
- 	/*
- 	 * Construct the mount server's address.
- 	 */
-@@ -1029,7 +1041,7 @@ static int nfs_try_mount(struct nfs_parsed_mount_data *args,
- 	 */
- 	status = nfs_mount((struct sockaddr *) &sin,
- 			   sizeof(sin),
--			   args->nfs_server.hostname,
-+			   hostname,
- 			   args->nfs_server.export_path,
- 			   args->mount_server.version,
- 			   args->mount_server.protocol,
-@@ -1037,8 +1049,8 @@ static int nfs_try_mount(struct nfs_parsed_mount_data *args,
- 	if (status == 0)
- 		return 0;
- 
--	dfprintk(MOUNT, "NFS: unable to mount server " NIPQUAD_FMT
--			", error %d\n", NIPQUAD(sin.sin_addr.s_addr), status);
-+	dfprintk(MOUNT, "NFS: unable to mount server %s, error %d",
-+			hostname, status);
- 	return status;
+ 	return 0;
  }
- 
-@@ -1444,6 +1456,7 @@ static int nfs_get_sb(struct file_system_type *fs_type,
- 
- out:
- 	kfree(data.nfs_server.hostname);
-+	kfree(data.mount_server.hostname);
- 	return error;
- 
- out_err_nosb:
 
