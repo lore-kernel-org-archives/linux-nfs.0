@@ -1,67 +1,113 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 16/27] NFS: Expand server address storage in nfs_client struct
-Date: Mon, 10 Dec 2007 14:58:15 -0500
-Message-ID: <20071210195815.2823.77445.stgit@manray.1015granger.net>
+Subject: [PATCH 24/27] NFS: Remove the NIPQUAD from nfs_try_mount
+Date: Mon, 10 Dec 2007 14:59:13 -0500
+Message-ID: <20071210195913.2823.32186.stgit@manray.1015granger.net>
 References: <20071210195106.2823.43884.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: aurelien.charbon-Z51IpKcfGtLk1uMJSBkQmQ@public.gmane.org, linux-nfs@vger.kernel.org
 To: trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from flpi102.sbcis.sbc.com ([207.115.20.71]:34026 "EHLO
+Received: from flpi102.sbcis.sbc.com ([207.115.20.71]:35301 "EHLO
 	flpi102.prodigy.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751342AbXLJUCh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Dec 2007 15:02:37 -0500
+	with ESMTP id S1752482AbXLJUDJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Dec 2007 15:03:09 -0500
 In-Reply-To: <20071210195106.2823.43884.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Prepare for managing larger addresses in the NFS client by widening the
-nfs_client struct's cl_addr field.
+In the name of address family compatibility, we can't have the NIP_FMT and
+NIPQUAD macros in nfs_try_mount().  Instead, we can make use of an unused
+mount option to display the mount server's hostname.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Cc: Aurelien Charbon <aurelien.charbon-Z51IpKcfGtLk1uMJSBkQmQ@public.gmane.org>
 ---
 
- fs/nfs/client.c           |    5 +++--
- include/linux/nfs_fs_sb.h |    3 ++-
- 2 files changed, 5 insertions(+), 3 deletions(-)
+ fs/nfs/super.c |   23 ++++++++++++++++++-----
+ 1 files changed, 18 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index a37f01a..4da1014 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -119,7 +119,8 @@ static struct nfs_client *nfs_alloc_client(const char *hostname,
- 	atomic_set(&clp->cl_count, 1);
- 	clp->cl_cons_state = NFS_CS_INITING;
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 62ba379..4a3a5c0 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -89,7 +89,7 @@ enum {
+ 	Opt_nfsvers,
  
--	memcpy(&clp->cl_addr, addr, sizeof(clp->cl_addr));
-+	memcpy(&clp->cl_addr, addr, sizeof(*addr));
-+	clp->cl_addrlen = sizeof(*addr);
+ 	/* Mount options that take string arguments */
+-	Opt_sec, Opt_proto, Opt_mountproto,
++	Opt_sec, Opt_proto, Opt_mountproto, Opt_mounthost,
+ 	Opt_addr, Opt_mountaddr, Opt_clientaddr,
  
- 	if (hostname) {
- 		clp->cl_hostname = kstrdup(hostname, GFP_KERNEL);
-@@ -404,7 +405,7 @@ static int nfs_create_rpc_client(struct nfs_client *clp, int proto,
- 	struct rpc_create_args args = {
- 		.protocol	= proto,
- 		.address	= (struct sockaddr *)&clp->cl_addr,
--		.addrsize	= sizeof(clp->cl_addr),
-+		.addrsize	= clp->cl_addrlen,
- 		.timeout	= &timeparms,
- 		.servername	= clp->cl_hostname,
- 		.program	= &nfs_program,
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index c64773f..383abe0 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -20,7 +20,8 @@ struct nfs_client {
- #define NFS_CS_IDMAP		2		/* - idmap started */
- #define NFS_CS_RENEWD		3		/* - renewd started */
+ 	/* Mount options that are ignored */
+@@ -148,7 +148,7 @@ static match_table_t nfs_mount_option_tokens = {
+ 	{ Opt_mountproto, "mountproto=%s" },
+ 	{ Opt_addr, "addr=%s" },
+ 	{ Opt_clientaddr, "clientaddr=%s" },
+-	{ Opt_userspace, "mounthost=%s" },
++	{ Opt_mounthost, "mounthost=%s" },
+ 	{ Opt_mountaddr, "mountaddr=%s" },
  
--	struct sockaddr_in	cl_addr;	/* server identifier */
-+	struct sockaddr_storage	cl_addr;	/* server identifier */
-+	size_t			cl_addrlen;
- 	char *			cl_hostname;	/* hostname of server */
- 	struct list_head	cl_share_link;	/* link in global client list */
- 	struct list_head	cl_superblocks;	/* List of nfs_server structs */
+ 	{ Opt_err, NULL }
+@@ -950,6 +950,12 @@ static int nfs_parse_mount_options(char *raw,
+ 				goto out_nomem;
+ 			mnt->client_address = string;
+ 			break;
++		case Opt_mounthost:
++			string = match_strdup(args);
++			if (string == NULL)
++				goto out_nomem;
++			mnt->mount_server.hostname = string;
++			break;
+ 		case Opt_mountaddr:
+ 			string = match_strdup(args);
+ 			if (string == NULL)
+@@ -1003,6 +1009,7 @@ static int nfs_try_mount(struct nfs_parsed_mount_data *args,
+ {
+ 	struct sockaddr_in sin;
+ 	int status;
++	char *hostname;
+ 
+ 	if (args->mount_server.version == 0) {
+ 		if (args->flags & NFS_MOUNT_VER3)
+@@ -1011,6 +1018,11 @@ static int nfs_try_mount(struct nfs_parsed_mount_data *args,
+ 			args->mount_server.version = NFS_MNT_VERSION;
+ 	}
+ 
++	if (args->mount_server.hostname)
++		hostname = args->mount_server.hostname;
++	else
++		hostname = args->nfs_server.hostname;
++
+ 	/*
+ 	 * Construct the mount server's address.
+ 	 */
+@@ -1029,7 +1041,7 @@ static int nfs_try_mount(struct nfs_parsed_mount_data *args,
+ 	 */
+ 	status = nfs_mount((struct sockaddr *) &sin,
+ 			   sizeof(sin),
+-			   args->nfs_server.hostname,
++			   hostname,
+ 			   args->nfs_server.export_path,
+ 			   args->mount_server.version,
+ 			   args->mount_server.protocol,
+@@ -1037,8 +1049,8 @@ static int nfs_try_mount(struct nfs_parsed_mount_data *args,
+ 	if (status == 0)
+ 		return 0;
+ 
+-	dfprintk(MOUNT, "NFS: unable to mount server " NIPQUAD_FMT
+-			", error %d\n", NIPQUAD(sin.sin_addr.s_addr), status);
++	dfprintk(MOUNT, "NFS: unable to mount server %s, error %d",
++			hostname, status);
+ 	return status;
+ }
+ 
+@@ -1444,6 +1456,7 @@ static int nfs_get_sb(struct file_system_type *fs_type,
+ 
+ out:
+ 	kfree(data.nfs_server.hostname);
++	kfree(data.mount_server.hostname);
+ 	return error;
+ 
+ out_err_nosb:
 
