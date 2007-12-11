@@ -1,41 +1,52 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: Client performance questions
-Date: Mon, 10 Dec 2007 18:26:11 -0500
-Message-ID: <20071210182611.56cdc01b@tleilax.poochiereds.net>
-References: <0a15723c4b267d4eb8b5ad05800315c0@swip.net>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH] nfs-utils: sm-notify does not remove its pid file.
+Date: Mon, 10 Dec 2007 20:21:49 -0500
+Message-ID: <475DE62D.7020305@RedHat.com>
+References: <475D91B9.4070405@RedHat.com> <18269.49269.575546.943037@notabene.brown>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-To: "Fredrik Lindgren" <fli-FpffG6+3qsA@public.gmane.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+To: Neil Brown <neilb@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:37985 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([66.187.233.31]:47082 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751798AbXLJX0R (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 10 Dec 2007 18:26:17 -0500
-In-Reply-To: <0a15723c4b267d4eb8b5ad05800315c0-FpffG6+3qsA@public.gmane.org>
+	id S1751633AbXLKB0T (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 10 Dec 2007 20:26:19 -0500
+In-Reply-To: <18269.49269.575546.943037-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 10 Dec 2007 22:52:51 +0100
-"Fredrik Lindgren" <fli-FpffG6+3qsA@public.gmane.org> wrote:
+Neil Brown wrote:
+> I was under the impression that /var/run was always cleaned out on
+> reboot, so this shouldn't be a problem.  Is my impression wrong?
+I don't think there are any guarantees about this. I was under
+the impression that the individual init scripts were suppose 
+to clean those up and I know I fixed a few bugs in that area. ;-)
 
-> Hello
 > 
-> We have a mail-application running on a set of Linux machines using
-> NFS for the storage. Recently iowait on the machines has started to
-> become a problem, and it seems that they can't quite keep up. Iowait
-> figures of 50% or above are not uncommon during peak hours.
+> And I think the point of the lock file was the sm-notify would only
+> run once per reboot.  
+Why impose a limit? Why not recover lock at any point?
+
+> But I think that removing the lock file when sm-notify completes is
+> wrong.
+A side effect of all this is if rpc.statd is restarted and that
+file is not cleaned up the client will never even try to recover any locks. 
+That's definitely not a good thing... imho... 
+
 > 
+> Note the comment in sm-notify.c:
+> 
+> /*
+>  * Record pid in /var/run/sm-notify.pid
+>  * This file should remain until a reboot, even if the
+>  * program exits.
+>  * If file already exists, fail.
+>  */
+I guess I just don't understand why a pid file need to exist after a 
+process is gone. Especially if its going to cause the next existence 
+to imminently exit (potentially causing data corruption). 
+That just does not seem very robust... 
 
-High iowait numbers are not a problem in and of themselves. A high
-iowait number is just indicative that the machine is spending a lot of
-its time waiting for I/O. On a busy NFS client, that may be expected
-particularly if the machine isn't doing much else CPU-wise.
+steved.
 
-The big question is whether you're getting enough throughput for your
-applications. iowait percentages can't tell you that. That's not to say
-that you don't have a performance issue, but you'll probably need to
-get some better metrics than iowait figures to track it down.
-
--- 
-Jeff Layton <jlayton@redhat.com>
