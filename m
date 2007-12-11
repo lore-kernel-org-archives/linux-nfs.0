@@ -1,99 +1,126 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [PATCH 38/38] svc: Add svc_xprt_names service to replace svc_sock_names
-Date: Tue, 11 Dec 2007 17:33:18 -0600
-Message-ID: <20071211233318.15718.11614.stgit@dell3.ogc.int>
+Subject: [PATCH 36/38] svc: Add svc API that queries for a transport instance
+Date: Tue, 11 Dec 2007 17:33:14 -0600
+Message-ID: <20071211233314.15718.9660.stgit@dell3.ogc.int>
 References: <20071211233150.15718.40579.stgit@dell3.ogc.int>
 Content-Type: text/plain; charset=utf-8; format=fixed
 Cc: neilb@suse.de, linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:35487 "EHLO
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:35479 "EHLO
 	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754889AbXLKXdT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Dec 2007 18:33:19 -0500
+	by vger.kernel.org with ESMTP id S1757305AbXLKXdO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Dec 2007 18:33:14 -0500
 In-Reply-To: <20071211233150.15718.40579.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-Create a transport independent version of the svc_sock_names function.
+Add a new svc function that allows a service to query whether a 
+transport instance has already been created. This is used in lockd 
+to determine whether or not a transport needs to be created when
+a lockd instance is brought up. 
 
-The toclose capability of the svc_sock_names service can be implemented
-using the svc_xprt_find and svc_xprt_close services.
+Specifying 0 for the address family or port is effectively a wild-card,
+and will result in matching the first transport in the service's list
+that has a matching class name.
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- fs/nfsd/nfsctl.c                |    2 +-
+ fs/lockd/svc.c                  |   16 ++--------------
  include/linux/sunrpc/svc_xprt.h |    1 +
- net/sunrpc/svc_xprt.c           |   35 +++++++++++++++++++++++++++++++++++
- 3 files changed, 37 insertions(+), 1 deletions(-)
+ net/sunrpc/svc_xprt.c           |   34 ++++++++++++++++++++++++++++++++++
+ 3 files changed, 37 insertions(+), 14 deletions(-)
 
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 5b9ed0e..86d084e 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -503,7 +503,7 @@ static ssize_t write_ports(struct file *file, char *buf, size_t size)
- 		int len = 0;
- 		lock_kernel();
- 		if (nfsd_serv)
--			len = svc_sock_names(buf, nfsd_serv, NULL);
-+			len = svc_xprt_names(nfsd_serv, buf, 0);
- 		unlock_kernel();
- 		return len;
- 	}
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index a8e79a9..470af01 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -219,18 +219,6 @@ lockd(struct svc_rqst *rqstp)
+ 	module_put_and_exit(0);
+ }
+ 
+-static int find_xprt(struct svc_serv *serv, char *proto)
+-{
+-	struct svc_xprt *xprt;
+-	int found = 0;
+-	list_for_each_entry(xprt, &serv->sv_permsocks, xpt_list)
+-		if (strcmp(xprt->xpt_class->xcl_name, proto) == 0) {
+-			found = 1;
+-			break;
+-		}
+-	return found;
+-}
+-
+ /*
+  * Make any sockets that are needed but not present.
+  * If nlm_udpport or nlm_tcpport were set as module
+@@ -242,11 +230,11 @@ static int make_socks(struct svc_serv *serv, int proto)
+ 	int err = 0;
+ 
+ 	if (proto == IPPROTO_UDP || nlm_udpport)
+-		if (!find_xprt(serv, "udp"))
++		if (!svc_find_xprt(serv, "udp", 0, 0))
+ 			err = svc_create_xprt(serv, "udp", nlm_udpport,
+ 					      SVC_SOCK_DEFAULTS);
+ 	if (err >= 0 && (proto == IPPROTO_TCP || nlm_tcpport))
+-		if (!find_xprt(serv, "tcp"))
++		if (!svc_find_xprt(serv, "tcp", 0, 0))
+ 			err = svc_create_xprt(serv, "tcp", nlm_tcpport,
+ 					      SVC_SOCK_DEFAULTS);
+ 
 diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index 840b5c4..ed9791a 100644
+index e60e8f8..840b5c4 100644
 --- a/include/linux/sunrpc/svc_xprt.h
 +++ b/include/linux/sunrpc/svc_xprt.h
-@@ -81,6 +81,7 @@ void	svc_delete_xprt(struct svc_xprt *xprt);
+@@ -80,6 +80,7 @@ void	svc_close_xprt(struct svc_xprt *xprt);
+ void	svc_delete_xprt(struct svc_xprt *xprt);
  int	svc_port_is_privileged(struct sockaddr *sin);
  int	svc_print_xprts(char *buf, int maxlen);
- struct	svc_xprt *svc_find_xprt(struct svc_serv *, char *, int, int);
-+int	svc_xprt_names(struct svc_serv *serv, char *buf, int buflen);
++struct	svc_xprt *svc_find_xprt(struct svc_serv *, char *, int, int);
  static inline void svc_xprt_get(struct svc_xprt *xprt)
  {
  	kref_get(&xprt->xpt_ref);
 diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 6708aa2..2e3a672 100644
+index dc3a3fc..9815c6f 100644
 --- a/net/sunrpc/svc_xprt.c
 +++ b/net/sunrpc/svc_xprt.c
-@@ -998,3 +998,38 @@ struct svc_xprt *svc_find_xprt(struct svc_serv *serv, char *xcl_name,
- 	return found;
+@@ -963,3 +963,37 @@ static struct svc_deferred_req *svc_deferred_dequeue(struct svc_xprt *xprt)
+ 	return dr;
  }
- EXPORT_SYMBOL_GPL(svc_find_xprt);
-+
+ 
 +/*
-+ * Format a buffer with a list of the active transports. A zero for
-+ * the buflen parameter disables target buffer overflow checking.
++ * Return the transport instance pointer for the endpoint accepting
++ * connections/peer traffic from the specified transport class,
++ * address family and port.
++ *
++ * Specifying 0 for the address family or port is effectively a
++ * wild-card, and will result in matching the first transport in the
++ * service's list that has a matching class name.
 + */
-+int svc_xprt_names(struct svc_serv *serv, char *buf, int buflen)
++struct svc_xprt *svc_find_xprt(struct svc_serv *serv, char *xcl_name,
++			       int af, int port)
 +{
 +	struct svc_xprt *xprt;
-+	char xprt_str[64];
-+	int totlen = 0;
-+	int len;
++	struct svc_xprt *found = NULL;
 +
-+	/* Sanity check args */
-+	if (!serv)
-+		return 0;
++	/* Sanity check the args */
++	if (!serv || !xcl_name)
++		return found;
 +
 +	spin_lock_bh(&serv->sv_lock);
 +	list_for_each_entry(xprt, &serv->sv_permsocks, xpt_list) {
-+		len = snprintf(xprt_str, sizeof(xprt_str),
-+			       "%s %d\n", xprt->xpt_class->xcl_name,
-+			       svc_xprt_local_port(xprt));
-+		/* If the string was truncated, replace with error string */
-+		if (len >= sizeof(xprt_str))
-+			strcpy(xprt_str, "name-too-long\n");
-+		/* Don't overflow buffer */
-+		len = strlen(xprt_str);
-+		if (buflen && (len + totlen >= buflen))
-+			break;
-+		strcpy(buf+totlen, xprt_str);
-+		totlen += len;
++		if (strcmp(xprt->xpt_class->xcl_name, xcl_name))
++			continue;
++		if (af != AF_UNSPEC && af != xprt->xpt_local.ss_family)
++			continue;
++		if (port && port != svc_xprt_local_port(xprt))
++			continue;
++		found = xprt;
++		break;
 +	}
 +	spin_unlock_bh(&serv->sv_lock);
-+	return totlen;
++	return found;
 +}
-+EXPORT_SYMBOL_GPL(svc_xprt_names);
++EXPORT_SYMBOL_GPL(svc_find_xprt);
