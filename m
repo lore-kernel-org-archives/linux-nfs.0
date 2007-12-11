@@ -1,126 +1,151 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [PATCH 36/38] svc: Add svc API that queries for a transport instance
-Date: Tue, 11 Dec 2007 17:33:14 -0600
-Message-ID: <20071211233314.15718.9660.stgit@dell3.ogc.int>
+Subject: [PATCH 34/38] svc: Add transport hdr size for defer/revisit
+Date: Tue, 11 Dec 2007 17:33:09 -0600
+Message-ID: <20071211233309.15718.84852.stgit@dell3.ogc.int>
 References: <20071211233150.15718.40579.stgit@dell3.ogc.int>
 Content-Type: text/plain; charset=utf-8; format=fixed
 Cc: neilb@suse.de, linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:35479 "EHLO
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:35472 "EHLO
 	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1757305AbXLKXdO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Dec 2007 18:33:14 -0500
+	by vger.kernel.org with ESMTP id S1754910AbXLKXdK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Dec 2007 18:33:10 -0500
 In-Reply-To: <20071211233150.15718.40579.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-Add a new svc function that allows a service to query whether a 
-transport instance has already been created. This is used in lockd 
-to determine whether or not a transport needs to be created when
-a lockd instance is brought up. 
-
-Specifying 0 for the address family or port is effectively a wild-card,
-and will result in matching the first transport in the service's list
-that has a matching class name.
+Some transports have a header in front of the RPC header. The current
+defer/revisit processing considers only the iov_len and arg_len to 
+determine how much to back up when saving the original request
+to revisit. Add a field to the rqstp structure to save the size
+of the transport header so svc_defer can correctly compute
+the start of a request. 
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- fs/lockd/svc.c                  |   16 ++--------------
- include/linux/sunrpc/svc_xprt.h |    1 +
- net/sunrpc/svc_xprt.c           |   34 ++++++++++++++++++++++++++++++++++
- 3 files changed, 37 insertions(+), 14 deletions(-)
+ include/linux/sunrpc/svc.h |    2 ++
+ net/sunrpc/svc_xprt.c      |   36 +++++++++++++++++++++++++++---------
+ net/sunrpc/svcsock.c       |    2 ++
+ 3 files changed, 31 insertions(+), 9 deletions(-)
 
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index a8e79a9..470af01 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -219,18 +219,6 @@ lockd(struct svc_rqst *rqstp)
- 	module_put_and_exit(0);
- }
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 04eb20e..742ab46 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -217,6 +217,7 @@ struct svc_rqst {
+ 	void *			rq_xprt_ctxt;	/* transport specific context ptr */
+ 	struct svc_deferred_req*rq_deferred;	/* deferred request we are replaying */
  
--static int find_xprt(struct svc_serv *serv, char *proto)
--{
--	struct svc_xprt *xprt;
--	int found = 0;
--	list_for_each_entry(xprt, &serv->sv_permsocks, xpt_list)
--		if (strcmp(xprt->xpt_class->xcl_name, proto) == 0) {
--			found = 1;
--			break;
--		}
--	return found;
--}
--
- /*
-  * Make any sockets that are needed but not present.
-  * If nlm_udpport or nlm_tcpport were set as module
-@@ -242,11 +230,11 @@ static int make_socks(struct svc_serv *serv, int proto)
- 	int err = 0;
- 
- 	if (proto == IPPROTO_UDP || nlm_udpport)
--		if (!find_xprt(serv, "udp"))
-+		if (!svc_find_xprt(serv, "udp", 0, 0))
- 			err = svc_create_xprt(serv, "udp", nlm_udpport,
- 					      SVC_SOCK_DEFAULTS);
- 	if (err >= 0 && (proto == IPPROTO_TCP || nlm_tcpport))
--		if (!find_xprt(serv, "tcp"))
-+		if (!svc_find_xprt(serv, "tcp", 0, 0))
- 			err = svc_create_xprt(serv, "tcp", nlm_tcpport,
- 					      SVC_SOCK_DEFAULTS);
- 
-diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index e60e8f8..840b5c4 100644
---- a/include/linux/sunrpc/svc_xprt.h
-+++ b/include/linux/sunrpc/svc_xprt.h
-@@ -80,6 +80,7 @@ void	svc_close_xprt(struct svc_xprt *xprt);
- void	svc_delete_xprt(struct svc_xprt *xprt);
- int	svc_port_is_privileged(struct sockaddr *sin);
- int	svc_print_xprts(char *buf, int maxlen);
-+struct	svc_xprt *svc_find_xprt(struct svc_serv *, char *, int, int);
- static inline void svc_xprt_get(struct svc_xprt *xprt)
- {
- 	kref_get(&xprt->xpt_ref);
++	size_t			rq_xprt_hlen;	/* xprt header len */
+ 	struct xdr_buf		rq_arg;
+ 	struct xdr_buf		rq_res;
+ 	struct page *		rq_pages[RPCSVC_MAXPAGES];
+@@ -322,6 +323,7 @@ struct svc_deferred_req {
+ 	size_t			addrlen;
+ 	union svc_addr_u	daddr;	/* where reply must come from */
+ 	struct cache_deferred_req handle;
++	size_t			xprt_hlen;
+ 	int			argslen;
+ 	__be32			args[0];
+ };
 diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index dc3a3fc..9815c6f 100644
+index a477883..fdaac77 100644
 --- a/net/sunrpc/svc_xprt.c
 +++ b/net/sunrpc/svc_xprt.c
-@@ -963,3 +963,37 @@ static struct svc_deferred_req *svc_deferred_dequeue(struct svc_xprt *xprt)
- 	return dr;
+@@ -29,7 +29,6 @@
+ #include <linux/sunrpc/types.h>
+ #include <linux/sunrpc/clnt.h>
+ #include <linux/sunrpc/xdr.h>
+-#include <linux/sunrpc/svcsock.h>
+ #include <linux/sunrpc/stats.h>
+ #include <linux/sunrpc/svc_xprt.h>
+ 
+@@ -844,10 +843,18 @@ static void svc_revisit(struct cache_deferred_req *dreq, int too_many)
+ 	svc_xprt_put(xprt);
  }
  
 +/*
-+ * Return the transport instance pointer for the endpoint accepting
-+ * connections/peer traffic from the specified transport class,
-+ * address family and port.
++ * Save the request off for later processing. The request buffer looks
++ * like this:
 + *
-+ * Specifying 0 for the address family or port is effectively a
-+ * wild-card, and will result in matching the first transport in the
-+ * service's list that has a matching class name.
++ * <xprt-header><rpc-header><rpc-pagelist><rpc-tail>
++ *
++ * This code can only handle requests that consist of an xprt-header
++ * and rpc-header.
 + */
-+struct svc_xprt *svc_find_xprt(struct svc_serv *serv, char *xcl_name,
-+			       int af, int port)
-+{
-+	struct svc_xprt *xprt;
-+	struct svc_xprt *found = NULL;
+ static struct cache_deferred_req *svc_defer(struct cache_req *req)
+ {
+ 	struct svc_rqst *rqstp = container_of(req, struct svc_rqst, rq_chandle);
+-	int size = sizeof(struct svc_deferred_req) + (rqstp->rq_arg.len);
+ 	struct svc_deferred_req *dr;
+ 
+ 	if (rqstp->rq_arg.page_len)
+@@ -856,8 +863,10 @@ static struct cache_deferred_req *svc_defer(struct cache_req *req)
+ 		dr = rqstp->rq_deferred;
+ 		rqstp->rq_deferred = NULL;
+ 	} else {
+-		int skip  = rqstp->rq_arg.len - rqstp->rq_arg.head[0].iov_len;
++		size_t skip;
++		size_t size;
+ 		/* FIXME maybe discard if size too large */
++		size = sizeof(struct svc_deferred_req) + rqstp->rq_arg.len;
+ 		dr = kmalloc(size, GFP_KERNEL);
+ 		if (dr == NULL)
+ 			return NULL;
+@@ -868,8 +877,12 @@ static struct cache_deferred_req *svc_defer(struct cache_req *req)
+ 		dr->addrlen = rqstp->rq_addrlen;
+ 		dr->daddr = rqstp->rq_daddr;
+ 		dr->argslen = rqstp->rq_arg.len >> 2;
+-		memcpy(dr->args, rqstp->rq_arg.head[0].iov_base-skip,
+-		       dr->argslen<<2);
++		dr->xprt_hlen = rqstp->rq_xprt_hlen;
 +
-+	/* Sanity check the args */
-+	if (!serv || !xcl_name)
-+		return found;
++		/* back up head to the start of the buffer and copy */
++		skip = rqstp->rq_arg.len - rqstp->rq_arg.head[0].iov_len;
++		memcpy(dr->args, rqstp->rq_arg.head[0].iov_base - skip,
++		       dr->argslen << 2);
+ 	}
+ 	svc_xprt_get(rqstp->rq_xprt);
+ 	dr->xprt = rqstp->rq_xprt;
+@@ -885,16 +898,21 @@ static int svc_deferred_recv(struct svc_rqst *rqstp)
+ {
+ 	struct svc_deferred_req *dr = rqstp->rq_deferred;
+ 
+-	rqstp->rq_arg.head[0].iov_base = dr->args;
+-	rqstp->rq_arg.head[0].iov_len = dr->argslen<<2;
++	/* setup iov_base past transport header */
++	rqstp->rq_arg.head[0].iov_base = dr->args + (dr->xprt_hlen>>2);
++	/* The iov_len does not include the transport header bytes */
++	rqstp->rq_arg.head[0].iov_len = (dr->argslen<<2) - dr->xprt_hlen;
+ 	rqstp->rq_arg.page_len = 0;
+-	rqstp->rq_arg.len = dr->argslen<<2;
++	/* The rq_arg.len includes the transport header bytes */
++	rqstp->rq_arg.len     = dr->argslen<<2;
+ 	rqstp->rq_prot        = dr->prot;
+ 	memcpy(&rqstp->rq_addr, &dr->addr, dr->addrlen);
+ 	rqstp->rq_addrlen     = dr->addrlen;
++	/* Save off transport header len in case we get deferred again */
++	rqstp->rq_xprt_hlen   = dr->xprt_hlen;
+ 	rqstp->rq_daddr       = dr->daddr;
+ 	rqstp->rq_respages    = rqstp->rq_pages;
+-	return dr->argslen<<2;
++	return (dr->argslen<<2) - dr->xprt_hlen;
+ }
+ 
+ 
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 0ab68f1..ac9eea9 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -343,6 +343,8 @@ static int svc_recvfrom(struct svc_rqst *rqstp, struct kvec *iov, int nr,
+ 	};
+ 	int len;
+ 
++	rqstp->rq_xprt_hlen = 0;
 +
-+	spin_lock_bh(&serv->sv_lock);
-+	list_for_each_entry(xprt, &serv->sv_permsocks, xpt_list) {
-+		if (strcmp(xprt->xpt_class->xcl_name, xcl_name))
-+			continue;
-+		if (af != AF_UNSPEC && af != xprt->xpt_local.ss_family)
-+			continue;
-+		if (port && port != svc_xprt_local_port(xprt))
-+			continue;
-+		found = xprt;
-+		break;
-+	}
-+	spin_unlock_bh(&serv->sv_lock);
-+	return found;
-+}
-+EXPORT_SYMBOL_GPL(svc_find_xprt);
+ 	len = kernel_recvmsg(svsk->sk_sock, &msg, iov, nr, buflen,
+ 				msg.msg_flags);
+ 
