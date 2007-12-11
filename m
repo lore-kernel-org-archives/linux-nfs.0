@@ -1,91 +1,58 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH] memory leak when mounting and unmounting -onolock
-	filesystems
-Date: Wed, 12 Dec 2007 07:31:07 +1100
-Message-ID: <18270.62347.651214.371477@notabene.brown>
-References: <18270.6332.188836.995133@notabene.brown>
-	<1197389369.11967.2.camel@heimdal.trondhjem.org>
+From: Frank Filz <ffilzlnx@us.ibm.com>
+Subject: Re: [NFS] nfs-utils crossmnt/fsid bug
+Date: Tue, 11 Dec 2007 13:20:37 -0800
+Message-ID: <1197408037.1215.31.camel@dyn9047022153>
+References: <20070905204628.GD29582@fieldses.org>
+	<18246.16373.177320.570040@notabene.brown>
+	<1196722262.1215.5.camel@dyn9047022153>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: text/plain; charset="us-ascii"
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, ffilz@us.ibm.com,
+	nfs@lists.sourceforge.net, Steve Dickson <SteveD@redhat.com>
+To: Neil Brown <neilb@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:57182 "EHLO mx2.suse.de"
+Received: from neil.brown.name ([220.233.11.133]:54362 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754546AbXLKUbN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 11 Dec 2007 15:31:13 -0500
-In-Reply-To: message from Trond Myklebust on Tuesday December 11
+	id S1751984AbXLKVsP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 11 Dec 2007 16:48:15 -0500
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1J2CxZ-0008MT-9T
+	for linux-nfs@vger.kernel.org; Wed, 12 Dec 2007 08:48:13 +1100
+In-Reply-To: <1196722262.1215.5.camel@dyn9047022153>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tuesday December 11, trond.myklebust@fys.uio.no wrote:
-> On Tue, 2007-12-11 at 15:57 +1100, Neil Brown wrote:
-> > The problem is that if NFS_MOUNT_NONLM is set, nfs_start_lockd doesn't
-> > set server->destroy, so when the filesystem is unmounted, the
-> > ->client_acl is not shutdown, and so several resources are still
-> > held.  Multiple mount/umount cycles will slowly eat away memory
-> > several pages at a time.
-> 
-> Hi Neil,
-> 
-> How about the following alternative for 2.6.24, and then we plan on
-> getting rid of ->destroy() altogether in 2.6.25?
-> 
+Ok, I've looked at this issue some more. The crossmnt and nohide options
+work correctly so long as security negotiation isn't required to cross
+the mount point (whether the mount command provides the correct set of
+security flavors or not). If the crossmnt export option is provided in
+this case (whether or not nohide is specified on the child export), an
+ls of the /mnt/home ends up with the results from an ls of /mnt. If the
+crossmnt option is not specified on the parent but nohide is specified
+on the child, an ls -l of /mnt results in slightly different contents
+while an ls -l of /mnt/home results in the contents of the hidden
+directory on the parent export.
 
-Yep, that looks good.  Thanks.
+These behaviors seem undesirable, but perhaps not worth eliminating
+since they do represent something unsupported by the old format which is
+deprecated in favor of the new format where everything works just fine.
 
-Acked-by: NeilBrown <neilb@suse.de>
+Frank Filz
 
-NeilBrown
 
-> Cheers
->   Trond
-> ---------------------------------------------------
-> commit 2c29e75b2908f760c45bbf934f81b8a8af867770
-> Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Date:   Tue Dec 11 11:05:19 2007 -0500
-> 
->     NFSv2/v3: Fix a memory leak when using -onolock
->     
->     Neil Brown said:
->     > Hi Trond,
->     >
->     > We found that a machine which made moderately heavy use of
->     > 'automount' was leaking some nfs data structures - particularly the
->     > 4K allocated by rpc_alloc_iostats.
->     > It turns out that this only happens with filesystems with -onolock
->     > set.
->     
->     > The problem is that if NFS_MOUNT_NONLM is set, nfs_start_lockd doesn't
->     > set server->destroy, so when the filesystem is unmounted, the
->     > ->client_acl is not shutdown, and so several resources are still
->     > held.  Multiple mount/umount cycles will slowly eat away memory
->     > several pages at a time.
->     
->     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> 
-> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-> index 70587f3..a6f6254 100644
-> --- a/fs/nfs/client.c
-> +++ b/fs/nfs/client.c
-> @@ -410,9 +410,6 @@ static int nfs_create_rpc_client(struct nfs_client *clp, int proto,
->   */
->  static void nfs_destroy_server(struct nfs_server *server)
->  {
-> -	if (!IS_ERR(server->client_acl))
-> -		rpc_shutdown_client(server->client_acl);
-> -
->  	if (!(server->flags & NFS_MOUNT_NONLM))
->  		lockd_down();	/* release rpc.lockd */
->  }
-> @@ -755,6 +752,9 @@ void nfs_free_server(struct nfs_server *server)
->  
->  	if (server->destroy != NULL)
->  		server->destroy(server);
-> +
-> +	if (!IS_ERR(server->client_acl))
-> +		rpc_shutdown_client(server->client_acl);
->  	if (!IS_ERR(server->client))
->  		rpc_shutdown_client(server->client);
->  
-> 
+
+-------------------------------------------------------------------------
+SF.Net email is sponsored by:
+Check out the new SourceForge.net Marketplace.
+It's the best place to buy or sell services for
+just about anything Open Source.
+http://sourceforge.net/services/buy/index.php
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
+
