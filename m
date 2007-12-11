@@ -1,136 +1,134 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [PATCH 35/38] svc: Add /proc/sys/sunrpc/transport files
-Date: Tue, 11 Dec 2007 17:33:12 -0600
-Message-ID: <20071211233312.15718.20845.stgit@dell3.ogc.int>
+Subject: [PATCH 37/38] knfsd: Support adding transports by writing portlist file
+Date: Tue, 11 Dec 2007 17:33:16 -0600
+Message-ID: <20071211233316.15718.85089.stgit@dell3.ogc.int>
 References: <20071211233150.15718.40579.stgit@dell3.ogc.int>
 Content-Type: text/plain; charset=utf-8; format=fixed
 Cc: neilb@suse.de, linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:35476 "EHLO
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:35484 "EHLO
 	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1757257AbXLKXdM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Dec 2007 18:33:12 -0500
+	by vger.kernel.org with ESMTP id S1755286AbXLKXdR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Dec 2007 18:33:17 -0500
 In-Reply-To: <20071211233150.15718.40579.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-Add a file that when read lists the set of registered svc
-transports.
+Update the write handler for the portlist file to allow creating new
+listening endpoints on a transport. The general form of the string is:
+
+<transport_name><space><port number>
+
+For example:
+
+echo "tcp 2049" > /proc/fs/nfsd/portlist
+
+This is intended to support the creation of a listening endpoint for
+RDMA transports without adding #ifdef code to the nfssvc.c file.
+
+Transports can also be removed as follows:
+
+'-'<transport_name><space><port number>
+
+For example:
+
+echo "-tcp 2049" > /proc/fs/nfsd/portlist
+
+Attempting to add a listener with an invalid transport string results
+in EPROTONOSUPPORT and a perror string of "Protocol not supported". 
+
+Attempting to remove an non-existent listener (.e.g. bad proto or port)
+results in ENOTCONN and a perror string of 
+"Transport endpoint is not connected"
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- include/linux/sunrpc/svc_xprt.h |    1 +
- net/sunrpc/svc_xprt.c           |   28 ++++++++++++++++++++++++++++
- net/sunrpc/sysctl.c             |   31 +++++++++++++++++++++++++++++++
- 3 files changed, 60 insertions(+), 0 deletions(-)
+ fs/nfsd/nfsctl.c      |   52 ++++++++++++++++++++++++++++++++++++++++++++++++-
+ net/sunrpc/svc_xprt.c |    1 +
+ 2 files changed, 52 insertions(+), 1 deletions(-)
 
-diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index db8bcf5..e60e8f8 100644
---- a/include/linux/sunrpc/svc_xprt.h
-+++ b/include/linux/sunrpc/svc_xprt.h
-@@ -79,6 +79,7 @@ void	svc_xprt_copy_addrs(struct svc_rqst *rqstp, struct svc_xprt *xprt);
- void	svc_close_xprt(struct svc_xprt *xprt);
- void	svc_delete_xprt(struct svc_xprt *xprt);
- int	svc_port_is_privileged(struct sockaddr *sin);
-+int	svc_print_xprts(char *buf, int maxlen);
- static inline void svc_xprt_get(struct svc_xprt *xprt)
- {
- 	kref_get(&xprt->xpt_ref);
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index 77dc989..5b9ed0e 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -540,7 +540,7 @@ static ssize_t write_ports(struct file *file, char *buf, size_t size)
+ 		}
+ 		return err < 0 ? err : 0;
+ 	}
+-	if (buf[0] == '-') {
++	if (buf[0] == '-' && isdigit(buf[1])) {
+ 		char *toclose = kstrdup(buf+1, GFP_KERNEL);
+ 		int len = 0;
+ 		if (!toclose)
+@@ -554,6 +554,56 @@ static ssize_t write_ports(struct file *file, char *buf, size_t size)
+ 		kfree(toclose);
+ 		return len;
+ 	}
++	/*
++	 * Add a transport listener by writing it's transport name
++	 */
++	if (isalpha(buf[0])) {
++		int err;
++		char transport[16];
++		int port;
++		if (sscanf(buf, "%15s %4d", transport, &port) == 2) {
++			err = nfsd_create_serv();
++			if (!err) {
++				if (svc_find_xprt(nfsd_serv, transport,
++						  AF_UNSPEC, port))
++					return -EADDRINUSE;
++
++				err = svc_create_xprt(nfsd_serv,
++						      transport, port,
++						      SVC_SOCK_ANONYMOUS);
++				if (err == -ENOENT)
++					/* Give a reasonable perror msg for
++					 * bad transport string */
++					err = -EPROTONOSUPPORT;
++			}
++			return err < 0 ? err : 0;
++		}
++	}
++	/*
++	 * Remove a transport by writing it's transport name and port number
++	 */
++	if (buf[0] == '-' && isalpha(buf[1])) {
++		struct svc_xprt *xprt;
++		int err = -EINVAL;
++		char transport[16];
++		int port;
++		if (sscanf(&buf[1], "%15s %4d", transport, &port) == 2) {
++			if (port == 0)
++				return -EINVAL;
++			lock_kernel();
++			if (nfsd_serv) {
++				xprt = svc_find_xprt(nfsd_serv, transport,
++						     AF_UNSPEC, port);
++				if (xprt) {
++					svc_close_xprt(xprt);
++					err = 0;
++				} else
++					err = -ENOTCONN;
++			}
++			unlock_kernel();
++			return err < 0 ? err : 0;
++		}
++	}
+ 	return -EINVAL;
+ }
+ 
 diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index fdaac77..dc3a3fc 100644
+index 9815c6f..6708aa2 100644
 --- a/net/sunrpc/svc_xprt.c
 +++ b/net/sunrpc/svc_xprt.c
-@@ -93,6 +93,34 @@ int svc_unreg_xprt_class(struct svc_xprt_class *xcl)
+@@ -827,6 +827,7 @@ void svc_close_xprt(struct svc_xprt *xprt)
+ 	clear_bit(XPT_BUSY, &xprt->xpt_flags);
+ 	svc_xprt_put(xprt);
  }
- EXPORT_SYMBOL_GPL(svc_unreg_xprt_class);
++EXPORT_SYMBOL_GPL(svc_close_xprt);
  
-+/*
-+ * Format the transport list for printing
-+ */
-+int svc_print_xprts(char *buf, int maxlen)
-+{
-+	struct list_head *le;
-+	char tmpstr[80];
-+	int len = 0;
-+	buf[0] = '\0';
-+
-+	spin_lock(&svc_xprt_class_lock);
-+	list_for_each(le, &svc_xprt_class_list) {
-+		int slen;
-+		struct svc_xprt_class *xcl =
-+			list_entry(le, struct svc_xprt_class, xcl_list);
-+
-+		sprintf(tmpstr, "%s %d\n", xcl->xcl_name, xcl->xcl_max_payload);
-+		slen = strlen(tmpstr);
-+		if (len + slen > maxlen)
-+			break;
-+		len += slen;
-+		strcat(buf, tmpstr);
-+	}
-+	spin_unlock(&svc_xprt_class_lock);
-+
-+	return len;
-+}
-+
- static void svc_xprt_free(struct kref *kref)
+ void svc_close_all(struct list_head *xprt_list)
  {
- 	struct svc_xprt *xprt =
-diff --git a/net/sunrpc/sysctl.c b/net/sunrpc/sysctl.c
-index 2be714e..fd7cf59 100644
---- a/net/sunrpc/sysctl.c
-+++ b/net/sunrpc/sysctl.c
-@@ -18,6 +18,7 @@
- #include <linux/sunrpc/types.h>
- #include <linux/sunrpc/sched.h>
- #include <linux/sunrpc/stats.h>
-+#include <linux/sunrpc/svc_xprt.h>
- 
- /*
-  * Declare the debug flags here
-@@ -48,6 +49,30 @@ rpc_unregister_sysctl(void)
- 	}
- }
- 
-+static int proc_do_xprt(ctl_table *table, int write, struct file *file,
-+			void __user *buffer, size_t *lenp, loff_t *ppos)
-+{
-+	char tmpbuf[256];
-+	int len;
-+	if ((*ppos && !write) || !*lenp) {
-+		*lenp = 0;
-+		return 0;
-+	}
-+	if (write)
-+		return -EINVAL;
-+	else {
-+		len = svc_print_xprts(tmpbuf, sizeof(tmpbuf));
-+		if (!access_ok(VERIFY_WRITE, buffer, len))
-+			return -EFAULT;
-+
-+		if (__copy_to_user(buffer, tmpbuf, len))
-+			return -EFAULT;
-+	}
-+	*lenp -= len;
-+	*ppos += len;
-+	return 0;
-+}
-+
- static int
- proc_dodebug(ctl_table *table, int write, struct file *file,
- 				void __user *buffer, size_t *lenp, loff_t *ppos)
-@@ -140,6 +165,12 @@ static ctl_table debug_table[] = {
- 		.mode		= 0644,
- 		.proc_handler	= &proc_dodebug
- 	},
-+	{
-+		.procname	= "transports",
-+		.maxlen		= 256,
-+		.mode		= 0444,
-+		.proc_handler	= &proc_do_xprt,
-+	},
- 	{ .ctl_name = 0 }
- };
- 
