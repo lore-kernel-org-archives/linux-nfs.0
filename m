@@ -1,37 +1,36 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [PATCH 1/7] rdma: SVCRMDA Header File
-Date: Wed, 12 Dec 2007 16:13:17 -0600
-Message-ID: <20071212221316.12650.88658.stgit@dell3.ogc.int>
+Subject: [PATCH 2/7] rdma: SVCRDMA Transport Module
+Date: Wed, 12 Dec 2007 16:13:19 -0600
+Message-ID: <20071212221319.12650.43278.stgit@dell3.ogc.int>
 References: <20071212221314.12650.69032.stgit@dell3.ogc.int>
 Content-Type: text/plain; charset=utf-8; format=fixed
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:50845 "EHLO
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:50848 "EHLO
 	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752247AbXLLWNR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Dec 2007 17:13:17 -0500
+	by vger.kernel.org with ESMTP id S1752319AbXLLWNT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Dec 2007 17:13:19 -0500
 In-Reply-To: <20071212221314.12650.69032.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-This file defines the data types used by the SVCRDMA transport module.
-The principle data structure is the transport specific extension to 
-the svcxprt structure.
+This file implements the RDMA transport module initialization and
+termination logic and registers the transport sysctl variables.
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- include/linux/sunrpc/svc_rdma.h |  262 +++++++++++++++++++++++++++++++++++++++
- 1 files changed, 262 insertions(+), 0 deletions(-)
+ net/sunrpc/xprtrdma/svc_rdma.c |  266 ++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 266 insertions(+), 0 deletions(-)
 
-diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
+diff --git a/net/sunrpc/xprtrdma/svc_rdma.c b/net/sunrpc/xprtrdma/svc_rdma.c
 new file mode 100644
-index 0000000..c11bbcc
+index 0000000..88c0ca2
 --- /dev/null
-+++ b/include/linux/sunrpc/svc_rdma.h
-@@ -0,0 +1,262 @@
++++ b/net/sunrpc/xprtrdma/svc_rdma.c
+@@ -0,0 +1,266 @@
 +/*
 + * Copyright (c) 2005-2006 Network Appliance, Inc. All rights reserved.
 + *
@@ -72,225 +71,229 @@ index 0000000..c11bbcc
 + *
 + * Author: Tom Tucker <tom@opengridcomputing.com>
 + */
++#include <linux/module.h>
++#include <linux/init.h>
++#include <linux/fs.h>
++#include <linux/sysctl.h>
++#include <linux/sunrpc/clnt.h>
++#include <linux/sunrpc/sched.h>
++#include <linux/sunrpc/svc_rdma.h>
 +
-+#ifndef SVC_RDMA_H
-+#define SVC_RDMA_H
-+#include <linux/sunrpc/xdr.h>
-+#include <linux/sunrpc/svcsock.h>
-+#include <linux/sunrpc/rpc_rdma.h>
-+#include <rdma/ib_verbs.h>
-+#include <rdma/rdma_cm.h>
-+#define SVCRDMA_DEBUG
++#define RPCDBG_FACILITY	RPCDBG_SVCXPRT
 +
-+/* RPC/RDMA parameters and stats */
-+extern unsigned int svcrdma_ord;
-+extern unsigned int svcrdma_max_requests;
-+extern unsigned int svcrdma_max_req_size;
++/* RPC/RDMA parameters */
++unsigned int svcrdma_ord = RPCRDMA_ORD;
++static unsigned int min_ord = 1;
++static unsigned int max_ord = 4096;
++unsigned int svcrdma_max_requests = RPCRDMA_MAX_REQUESTS;
++static unsigned int min_max_requests = 4;
++static unsigned int max_max_requests = 16384;
++unsigned int svcrdma_max_req_size = RPCRDMA_MAX_REQ_SIZE;
++static unsigned int min_max_inline = 4096;
++static unsigned int max_max_inline = 65536;
 +
-+extern atomic_t rdma_stat_recv;
-+extern atomic_t rdma_stat_read;
-+extern atomic_t rdma_stat_write;
-+extern atomic_t rdma_stat_sq_starve;
-+extern atomic_t rdma_stat_rq_starve;
-+extern atomic_t rdma_stat_rq_poll;
-+extern atomic_t rdma_stat_rq_prod;
-+extern atomic_t rdma_stat_sq_poll;
-+extern atomic_t rdma_stat_sq_prod;
-+
-+#define RPCRDMA_VERSION 1
++atomic_t rdma_stat_recv;
++atomic_t rdma_stat_read;
++atomic_t rdma_stat_write;
++atomic_t rdma_stat_sq_starve;
++atomic_t rdma_stat_rq_starve;
++atomic_t rdma_stat_rq_poll;
++atomic_t rdma_stat_rq_prod;
++atomic_t rdma_stat_sq_poll;
++atomic_t rdma_stat_sq_prod;
 +
 +/*
-+ * Contexts are built when an RDMA request is created and are a
-+ * record of the resources that can be recovered when the request
-+ * completes.
++ * This function implements reading and resetting an atomic_t stat
++ * variable through read/write to a proc file. Any write to the file
++ * resets the associated statistic to zero. Any read returns it's
++ * current value.
 + */
-+struct svc_rdma_op_ctxt {
-+	struct svc_rdma_op_ctxt *next;
-+	struct xdr_buf arg;
-+	struct list_head dto_q;
-+	enum ib_wr_opcode wr_op;
-+	enum ib_wc_status wc_status;
-+	u32 byte_len;
-+	struct svcxprt_rdma *xprt;
-+	unsigned long flags;
-+	enum dma_data_direction direction;
-+	int count;
-+	struct ib_sge sge[RPCSVC_MAXPAGES];
-+	struct page *pages[RPCSVC_MAXPAGES];
++static int read_reset_stat(ctl_table *table, int write,
++			   struct file *filp, void __user *buffer, size_t *lenp,
++			   loff_t *ppos)
++{
++	atomic_t *stat = (atomic_t *)table->data;
++
++	if (!stat)
++		return -EINVAL;
++
++	if (write)
++		atomic_set(stat, 0);
++	else {
++		char str_buf[32];
++		char *data;
++		int len = snprintf(str_buf, 32, "%d\n", atomic_read(stat));
++		if (len >= 32)
++			return -EFAULT;
++		len = strlen(str_buf);
++		if (*ppos > len) {
++			*lenp = 0;
++			return 0;
++		}
++		data = &str_buf[*ppos];
++		len -= *ppos;
++		if (len > *lenp)
++			len = *lenp;
++		if (len && copy_to_user(buffer, str_buf, len))
++			return -EFAULT;
++		*lenp = len;
++		*ppos += len;
++	}
++	return 0;
++}
++
++static struct ctl_table_header *svcrdma_table_header;
++static ctl_table svcrdma_parm_table[] = {
++	{
++		.procname	= "max_requests",
++		.data		= &svcrdma_max_requests,
++		.maxlen		= sizeof(unsigned int),
++		.mode		= 0644,
++		.proc_handler	= &proc_dointvec_minmax,
++		.strategy	= &sysctl_intvec,
++		.extra1		= &min_max_requests,
++		.extra2		= &max_max_requests
++	},
++	{
++		.procname	= "max_req_size",
++		.data		= &svcrdma_max_req_size,
++		.maxlen		= sizeof(unsigned int),
++		.mode		= 0644,
++		.proc_handler	= &proc_dointvec_minmax,
++		.strategy	= &sysctl_intvec,
++		.extra1		= &min_max_inline,
++		.extra2		= &max_max_inline
++	},
++	{
++		.procname	= "max_outbound_read_requests",
++		.data		= &svcrdma_ord,
++		.maxlen		= sizeof(unsigned int),
++		.mode		= 0644,
++		.proc_handler	= &proc_dointvec_minmax,
++		.strategy	= &sysctl_intvec,
++		.extra1		= &min_ord,
++		.extra2		= &max_ord,
++	},
++
++	{
++		.procname	= "rdma_stat_read",
++		.data		= &rdma_stat_read,
++		.maxlen		= sizeof(atomic_t),
++		.mode		= 0644,
++		.proc_handler	= &read_reset_stat,
++	},
++	{
++		.procname	= "rdma_stat_recv",
++		.data		= &rdma_stat_recv,
++		.maxlen		= sizeof(atomic_t),
++		.mode		= 0644,
++		.proc_handler	= &read_reset_stat,
++	},
++	{
++		.procname	= "rdma_stat_write",
++		.data		= &rdma_stat_write,
++		.maxlen		= sizeof(atomic_t),
++		.mode		= 0644,
++		.proc_handler	= &read_reset_stat,
++	},
++	{
++		.procname	= "rdma_stat_sq_starve",
++		.data		= &rdma_stat_sq_starve,
++		.maxlen		= sizeof(atomic_t),
++		.mode		= 0644,
++		.proc_handler	= &read_reset_stat,
++	},
++	{
++		.procname	= "rdma_stat_rq_starve",
++		.data		= &rdma_stat_rq_starve,
++		.maxlen		= sizeof(atomic_t),
++		.mode		= 0644,
++		.proc_handler	= &read_reset_stat,
++	},
++	{
++		.procname	= "rdma_stat_rq_poll",
++		.data		= &rdma_stat_rq_poll,
++		.maxlen		= sizeof(atomic_t),
++		.mode		= 0644,
++		.proc_handler	= &read_reset_stat,
++	},
++	{
++		.procname	= "rdma_stat_rq_prod",
++		.data		= &rdma_stat_rq_prod,
++		.maxlen		= sizeof(atomic_t),
++		.mode		= 0644,
++		.proc_handler	= &read_reset_stat,
++	},
++	{
++		.procname	= "rdma_stat_sq_poll",
++		.data		= &rdma_stat_sq_poll,
++		.maxlen		= sizeof(atomic_t),
++		.mode		= 0644,
++		.proc_handler	= &read_reset_stat,
++	},
++	{
++		.procname	= "rdma_stat_sq_prod",
++		.data		= &rdma_stat_sq_prod,
++		.maxlen		= sizeof(atomic_t),
++		.mode		= 0644,
++		.proc_handler	= &read_reset_stat,
++	},
++	{
++		.ctl_name = 0,
++	},
 +};
 +
-+#define RDMACTXT_F_READ_DONE	1
-+#define RDMACTXT_F_LAST_CTXT	2
-+
-+struct svcxprt_rdma {
-+	struct svc_xprt      sc_xprt;		/* SVC transport structure */
-+	struct rdma_cm_id    *sc_cm_id;		/* RDMA connection id */
-+	struct list_head     sc_accept_q;	/* Conn. waiting accept */
-+	int		     sc_ord;		/* RDMA read limit */
-+	wait_queue_head_t    sc_read_wait;
-+	int                  sc_max_sge;
-+
-+	int                  sc_sq_depth;	/* Depth of SQ */
-+	atomic_t             sc_sq_count;	/* Number of SQ WR on queue */
-+
-+	int                  sc_max_requests;	/* Depth of RQ */
-+	int                  sc_max_req_size;	/* Size of each RQ WR buf */
-+
-+	struct ib_pd         *sc_pd;
-+
-+	struct svc_rdma_op_ctxt  *sc_ctxt_head;
-+	int		     sc_ctxt_cnt;
-+	int		     sc_ctxt_bump;
-+	int		     sc_ctxt_max;
-+	spinlock_t	     sc_ctxt_lock;
-+	struct list_head     sc_rq_dto_q;
-+	spinlock_t	     sc_rq_dto_lock;
-+	struct ib_qp         *sc_qp;
-+	struct ib_cq         *sc_rq_cq;
-+	struct ib_cq         *sc_sq_cq;
-+	struct ib_mr         *sc_phys_mr;	/* MR for server memory */
-+
-+	spinlock_t	     sc_lock;		/* transport lock */
-+
-+	wait_queue_head_t    sc_send_wait;	/* SQ exhaustion waitlist */
-+	unsigned long	     sc_flags;
-+	struct list_head     sc_dto_q;		/* DTO tasklet I/O pending Q */
-+	struct list_head     sc_read_complete_q;
-+	spinlock_t           sc_read_complete_lock;
++static ctl_table svcrdma_table[] = {
++	{
++		.procname	= "svc_rdma",
++		.mode		= 0555,
++		.child		= svcrdma_parm_table
++	},
++	{
++		.ctl_name = 0,
++	},
 +};
-+/* sc_flags */
-+#define RDMAXPRT_RQ_PENDING	1
-+#define RDMAXPRT_SQ_PENDING	2
-+#define RDMAXPRT_CONN_PENDING	3
 +
-+#define RPCRDMA_LISTEN_BACKLOG  10
-+/* The default ORD value is based on two outstanding full-size writes with a
-+ * page size of 4k, or 32k * 2 ops / 4k = 16 outstanding RDMA_READ.  */
-+#define RPCRDMA_ORD             (64/4)
-+#define RPCRDMA_SQ_DEPTH_MULT   8
-+#define RPCRDMA_MAX_THREADS     16
-+#define RPCRDMA_MAX_REQUESTS    16
-+#define RPCRDMA_MAX_REQ_SIZE    4096
++static ctl_table svcrdma_root_table[] = {
++	{
++		.ctl_name	= CTL_SUNRPC,
++		.procname	= "sunrpc",
++		.mode		= 0555,
++		.child		= svcrdma_table
++	},
++	{
++		.ctl_name = 0,
++	},
++};
 +
-+/* svc_rdma_marshal.c */
-+extern void svc_rdma_rcl_chunk_counts(struct rpcrdma_read_chunk *,
-+				      int *, int *);
-+extern int svc_rdma_xdr_decode_req(struct rpcrdma_msg **, struct svc_rqst *);
-+extern int svc_rdma_xdr_decode_deferred_req(struct svc_rqst *);
-+extern int svc_rdma_xdr_encode_error(struct svcxprt_rdma *,
-+				     struct rpcrdma_msg *,
-+				     enum rpcrdma_errcode, u32 *);
-+extern void svc_rdma_xdr_encode_write_list(struct rpcrdma_msg *, int);
-+extern void svc_rdma_xdr_encode_reply_array(struct rpcrdma_write_array *, int);
-+extern void svc_rdma_xdr_encode_array_chunk(struct rpcrdma_write_array *, int,
-+					    u32, u64, u32);
-+extern void svc_rdma_xdr_encode_reply_header(struct svcxprt_rdma *,
-+					     struct rpcrdma_msg *,
-+					     struct rpcrdma_msg *,
-+					     enum rpcrdma_proc);
-+extern int svc_rdma_xdr_get_reply_hdr_len(struct rpcrdma_msg *);
-+
-+/* svc_rdma_recvfrom.c */
-+extern int svc_rdma_recvfrom(struct svc_rqst *);
-+
-+/* svc_rdma_sendto.c */
-+extern int svc_rdma_sendto(struct svc_rqst *);
-+
-+/* svc_rdma_transport.c */
-+extern int svc_rdma_send(struct svcxprt_rdma *, struct ib_send_wr *);
-+extern int svc_rdma_send_error(struct svcxprt_rdma *, struct rpcrdma_msg *,
-+			       enum rpcrdma_errcode);
-+struct page *svc_rdma_get_page(void);
-+extern int svc_rdma_post_recv(struct svcxprt_rdma *);
-+extern int svc_rdma_create_listen(struct svc_serv *, int, struct sockaddr *);
-+extern struct svc_rdma_op_ctxt *svc_rdma_get_context(struct svcxprt_rdma *);
-+extern void svc_rdma_put_context(struct svc_rdma_op_ctxt *, int);
-+extern void svc_sq_reap(struct svcxprt_rdma *);
-+extern void svc_rq_reap(struct svcxprt_rdma *);
-+extern struct svc_xprt_class svc_rdma_class;
-+extern void svc_rdma_prep_reply_hdr(struct svc_rqst *);
-+
-+/* svc_rdma.c */
-+extern int svc_rdma_init(void);
-+extern void svc_rdma_cleanup(void);
-+
-+/*
-+ * Returns the address of the first read chunk or <nul> if no read chunk is
-+ * present
-+ */
-+static inline struct rpcrdma_read_chunk *
-+svc_rdma_get_read_chunk(struct rpcrdma_msg *rmsgp)
++void svc_rdma_cleanup(void)
 +{
-+	struct rpcrdma_read_chunk *ch =
-+		(struct rpcrdma_read_chunk *)&rmsgp->rm_body.rm_chunks[0];
-+
-+	if (ch->rc_discrim == 0)
-+		return NULL;
-+
-+	return ch;
-+}
-+
-+/*
-+ * Returns the address of the first read write array element or <nul> if no
-+ * write array list is present
-+ */
-+static inline struct rpcrdma_write_array *
-+svc_rdma_get_write_array(struct rpcrdma_msg *rmsgp)
-+{
-+	if (rmsgp->rm_body.rm_chunks[0] != 0
-+	    || rmsgp->rm_body.rm_chunks[1] == 0)
-+		return NULL;
-+
-+	return (struct rpcrdma_write_array *)&rmsgp->rm_body.rm_chunks[1];
-+}
-+
-+/*
-+ * Returns the address of the first reply array element or <nul> if no
-+ * reply array is present
-+ */
-+static inline struct rpcrdma_write_array *
-+svc_rdma_get_reply_array(struct rpcrdma_msg *rmsgp)
-+{
-+	struct rpcrdma_read_chunk *rch;
-+	struct rpcrdma_write_array *wr_ary;
-+	struct rpcrdma_write_array *rp_ary;
-+
-+	/* XXX: Need to fix when reply list may occur with read-list and/or
-+	 * write list */
-+	if (rmsgp->rm_body.rm_chunks[0] != 0 ||
-+	    rmsgp->rm_body.rm_chunks[1] != 0)
-+		return NULL;
-+
-+	rch = svc_rdma_get_read_chunk(rmsgp);
-+	if (rch) {
-+		while (rch->rc_discrim)
-+			rch++;
-+
-+		/* The reply list follows an empty write array located
-+		 * at 'rc_position' here. The reply array is at rc_target.
-+		 */
-+		rp_ary = (struct rpcrdma_write_array *)&rch->rc_target;
-+
-+		goto found_it;
++	dprintk("SVCRDMA Module Removed, deregister RPC RDMA transport\n");
++	if (svcrdma_table_header) {
++		unregister_sysctl_table(svcrdma_table_header);
++		svcrdma_table_header = NULL;
 +	}
-+
-+	wr_ary = svc_rdma_get_write_array(rmsgp);
-+	if (wr_ary) {
-+		rp_ary = (struct rpcrdma_write_array *)
-+			&wr_ary->
-+			wc_array[wr_ary->wc_nchunks].wc_target.rs_length;
-+
-+		goto found_it;
-+	}
-+
-+	/* No read list, no write list */
-+	rp_ary = (struct rpcrdma_write_array *)
-+		&rmsgp->rm_body.rm_chunks[2];
-+
-+ found_it:
-+	if (rp_ary->wc_discrim == 0)
-+		return NULL;
-+
-+	return rp_ary;
++	svc_unreg_xprt_class(&svc_rdma_class);
 +}
-+#endif
++
++int svc_rdma_init(void)
++{
++	dprintk("SVCRDMA Module Init, register RPC RDMA transport\n");
++	dprintk("\tsvcrdma_ord      : %d\n", svcrdma_ord);
++	dprintk("\tmax_requests     : %d\n", svcrdma_max_requests);
++	dprintk("\tsq_depth         : %d\n",
++		svcrdma_max_requests * RPCRDMA_SQ_DEPTH_MULT);
++	dprintk("\tmax_inline       : %d\n", svcrdma_max_req_size);
++	if (!svcrdma_table_header)
++		svcrdma_table_header =
++			register_sysctl_table(svcrdma_root_table);
++
++	/* Register RDMA with the SVC transport switch */
++	svc_reg_xprt_class(&svc_rdma_class);
++	return 0;
++}
++MODULE_AUTHOR("Tom Tucker <tom@opengridcomputing.com>");
++MODULE_DESCRIPTION("SVC RDMA Transport");
++MODULE_LICENSE("Dual BSD/GPL");
++module_init(svc_rdma_init);
++module_exit(svc_rdma_cleanup);
