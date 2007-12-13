@@ -1,35 +1,47 @@
-From: "Jerrold Matte" <Mattelzjtm-SubILM9u0R7ipdimI+k5b9BPR1lH4CV8@public.gmane.org>
-Subject: [NFS] e-pitted
-Date: Thu, 13 Dec 2007 08:02:52 +0100
-Message-ID: <347D6959.ED84D3FC@dettenrockcity.com>
+From: Suresh Jayaraman <sjayaraman@suse.de>
+Subject: Better error/warning message while exporting ramfs
+Date: Thu, 13 Dec 2007 18:22:56 +0530
+Message-ID: <47612B28.4040103@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-1
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:33986 "EHLO neil.brown.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1763284AbXLMHDE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 13 Dec 2007 02:03:04 -0500
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1J2i60-00039a-Dw
-	for linux-nfs@vger.kernel.org; Thu, 13 Dec 2007 18:03:00 +1100
+Received: from victor.provo.novell.com ([137.65.250.26]:56169 "EHLO
+	victor.provo.novell.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759873AbXLMMqr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Dec 2007 07:46:47 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-make it much bigger so she can find the fucken thing! http://djtimetk.com/
+While trying to export non-device filesystems like tmpfs and ramfs,
+nfs-utils version < 1.1.0 didn't report any error or warning message. So
+the users were left clueless by the "Permission denied" message on the
+Client, though it was possible to export tmpfs by setting
+'fsid=<somenum>' option.
 
--------------------------------------------------------------------------
-SF.Net email is sponsored by:
-Check out the new SourceForge.net Marketplace.
-It's the best place to buy or sell services
-for just about anything Open Source.
-http://ad.doubleclick.net/clk;164216239;13503038;w?http://sf.net/marketplace
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+nfs-utils 1.1.0 and greater reported a much better warning:
 
+"exportfs: Warning: /mnt/js requires fsid= for NFS export"
+
+However, this warning message is reported only while exporting tmpfs and
+not while exporting ramfs.
+
+#mount -t ramfs ramfs /mnt/js
+#exportfs -v -o rw,sync,no_subtree_check localhost:/mnt/js
+exporting localhost:/mnt/js
+exportfs: Warning: /mnt/js does not support NFS export.."
+
+I think this is because trail export '-test-client-' with fsid 1 fails
+in case of ramfs. Iam not sure about the differences between ramfs and
+tmpfs but, "df -h" lists the tmpfs mounts while listing ramfs one. Not
+sure whether this has something to do with this behaviour.
+
+It would help if we report the same warning message while exporting
+ramfs also.
+
+Also, http://nfs.sourceforge.net/#faq_c6 needs an update?
+
+Thanks,
+
+-- 
+Suresh Jayaraman
