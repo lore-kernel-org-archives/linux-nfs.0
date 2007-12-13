@@ -1,47 +1,49 @@
-From: Suresh Jayaraman <sjayaraman@suse.de>
-Subject: Better error/warning message while exporting ramfs
-Date: Thu, 13 Dec 2007 18:22:56 +0530
-Message-ID: <47612B28.4040103@suse.de>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH] NLM: Add lockd reference counting and clean up lockd
+	startup and shutdown
+Date: Thu, 13 Dec 2007 09:40:09 -0500
+Message-ID: <20071213094009.7a7e1923@tleilax.poochiereds.net>
+References: <1197118932-4512-1-git-send-email-jlayton@redhat.com>
+	<20071208140747.GA11675@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: linux-nfs@vger.kernel.org
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from victor.provo.novell.com ([137.65.250.26]:56169 "EHLO
-	victor.provo.novell.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759873AbXLMMqr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Dec 2007 07:46:47 -0500
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org,
+	linux-kernel@vger.kernel.org
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <20071208140747.GA11675@infradead.org>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-While trying to export non-device filesystems like tmpfs and ramfs,
-nfs-utils version < 1.1.0 didn't report any error or warning message. So
-the users were left clueless by the "Permission denied" message on the
-Client, though it was possible to export tmpfs by setting
-'fsid=<somenum>' option.
+On Sat, 8 Dec 2007 14:07:47 +0000
+Christoph Hellwig <hch@infradead.org> wrote:
 
-nfs-utils 1.1.0 and greater reported a much better warning:
+> > +	mutex_lock(&nlmsvc_mutex);
+> > +	while (atomic_read(&nlmsvc_ref) != 0) {
+> 
+> might be better to do the refcounting outside the thread and use the
+> kthread api, which is something we still need to do for lockd anyway.
+> 
 
-"exportfs: Warning: /mnt/js requires fsid= for NFS export"
+I took a swipe at doing this, and have a set of patches that make lockd
+use kthreads. It works well, but there's a problem once I add in the
+reference counting.
 
-However, this warning message is reported only while exporting tmpfs and
-not while exporting ramfs.
+In the situation that prompted this whole thing, the last nlmsvc_ref
+gets put by lockd itself. A kthread can't call kthread_stop on itself
+since it will deadlock.
 
-#mount -t ramfs ramfs /mnt/js
-#exportfs -v -o rw,sync,no_subtree_check localhost:/mnt/js
-exporting localhost:/mnt/js
-exportfs: Warning: /mnt/js does not support NFS export.."
-
-I think this is because trail export '-test-client-' with fsid 1 fails
-in case of ramfs. Iam not sure about the differences between ramfs and
-tmpfs but, "df -h" lists the tmpfs mounts while listing ramfs one. Not
-sure whether this has something to do with this behaviour.
-
-It would help if we report the same warning message while exporting
-ramfs also.
-
-Also, http://nfs.sourceforge.net/#faq_c6 needs an update?
-
-Thanks,
+Is there a way to gracefully allow a kthread to shut itself down?
+Alternately, I suppose I could schedule_work() the kthread_stop, though
+that seems sort of ugly...
 
 -- 
-Suresh Jayaraman
+Jeff Layton <jlayton@redhat.com>
