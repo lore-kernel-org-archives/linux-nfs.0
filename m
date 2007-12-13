@@ -1,34 +1,43 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 0/6] Intro: convert lockd to kthread and fix use-after-free
-Date: Thu, 13 Dec 2007 15:40:22 -0500
-Message-ID: <1197578428-26815-1-git-send-email-jlayton@redhat.com>
+Subject: [PATCH 3/6] NLM: Initialize completion variable in lockd_up
+Date: Thu, 13 Dec 2007 15:40:25 -0500
+Message-ID: <1197578428-26815-4-git-send-email-jlayton@redhat.com>
+References: <1197578428-26815-1-git-send-email-jlayton@redhat.com>
+ <1197578428-26815-2-git-send-email-jlayton@redhat.com>
+ <1197578428-26815-3-git-send-email-jlayton@redhat.com>
 Cc: linux-kernel@vger.kernel.org, nfsv4@linux-nfs.org
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:37462 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([66.187.233.31]:37466 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755947AbXLMUka (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 13 Dec 2007 15:40:30 -0500
+	id S1757520AbXLMUkb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 13 Dec 2007 15:40:31 -0500
+In-Reply-To: <1197578428-26815-3-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The only reply that I got to my last patchset to fix the use-after-free
-problem in lockd was from Christoph Hellwig, who said:
-
-> might be better to do the refcounting outside the thread and use the
-> kthread api, which is something we still need to do for lockd anyway.
-
-This patchset is an attempt to implement that suggestion. The first
-two patches add a new svc_create_kthread() function that works like
-svc_create_thread, but uses the kthread API under the covers. The rest
-of the patches convert lockd to use this function (and fix a couple of
-lockd bugs). The final patch adds reference counting that's needed
-to fix the original problem.
-
-Unfortunately, moving the refcounting outside of the thread altogether
-isn't feasible for reasons outlined in description of the 6th patch.
-
-Comments and suggestions appreciated...
+lockd_start_done is a global var that can be reused if lockd is
+restarted, but it's never reinitialized. On all but the first use,
+wait_for_completion isn't actually waiting on it since it has
+already completed once.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/lockd/svc.c |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
+
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index 82e2192..0f4148a 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -300,6 +300,7 @@ lockd_up(int proto) /* Maybe add a 'family' option when IPv6 is supported ?? */
+ 	/*
+ 	 * Create the kernel thread and wait for it to start.
+ 	 */
++	init_completion(&lockd_start_done);
+ 	error = svc_create_thread(lockd, serv);
+ 	if (error) {
+ 		printk(KERN_WARNING
+-- 
+1.5.3.3
 
