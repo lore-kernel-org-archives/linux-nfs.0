@@ -1,56 +1,100 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH] NLM: Add lockd reference counting and clean up lockd
-	startup and shutdown
-Date: Thu, 13 Dec 2007 10:24:49 -0500
-Message-ID: <1197559489.11586.1.camel@heimdal.trondhjem.org>
-References: <1197118932-4512-1-git-send-email-jlayton@redhat.com>
-	<20071208140747.GA11675@infradead.org>
-	<20071213094009.7a7e1923@tleilax.poochiereds.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 01/38] svc: Add an svc transport class
+Date: Thu, 13 Dec 2007 13:45:06 -0500
+Message-ID: <20071213184506.GA29496@fieldses.org>
+References: <20071211233150.15718.40579.stgit@dell3.ogc.int> <20071211233152.15718.44241.stgit@dell3.ogc.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org,
-	linux-kernel@vger.kernel.org
-To: Jeff Layton <jlayton@redhat.com>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <20071213094009.7a7e1923@tleilax.poochiereds.net>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: text/plain; charset=us-ascii
+Cc: neilb@suse.de, linux-nfs@vger.kernel.org
+To: Tom Tucker <tom@opengridcomputing.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail.fieldses.org ([66.93.2.214]:33720 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1760654AbXLMSpK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 13 Dec 2007 13:45:10 -0500
+In-Reply-To: <20071211233152.15718.44241.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Sorry for joining in a little late....
 
-On Thu, 2007-12-13 at 09:40 -0500, Jeff Layton wrote:
-> On Sat, 8 Dec 2007 14:07:47 +0000
-> Christoph Hellwig <hch@infradead.org> wrote:
-> 
-> > > +	mutex_lock(&nlmsvc_mutex);
-> > > +	while (atomic_read(&nlmsvc_ref) != 0) {
-> > 
-> > might be better to do the refcounting outside the thread and use the
-> > kthread api, which is something we still need to do for lockd anyway.
-> > 
-> 
-> I took a swipe at doing this, and have a set of patches that make lockd
-> use kthreads. It works well, but there's a problem once I add in the
-> reference counting.
-> 
-> In the situation that prompted this whole thing, the last nlmsvc_ref
-> gets put by lockd itself. A kthread can't call kthread_stop on itself
-> since it will deadlock.
-> 
-> Is there a way to gracefully allow a kthread to shut itself down?
-> Alternately, I suppose I could schedule_work() the kthread_stop, though
-> that seems sort of ugly...
+On Tue, Dec 11, 2007 at 05:31:54PM -0600, Tom Tucker wrote:
+> +int svc_reg_xprt_class(struct svc_xprt_class *xcl)
 
-How about just 'return'? :-)
+None of the callers appear to check the return value, so this should
+probably be a void return.
 
-You shouldn't need to signal yourself to stop.
+> +{
+> +	struct svc_xprt_class *cl;
+> +	int res = -EEXIST;
+> +
+> +	dprintk("svc: Adding svc transport class '%s'\n",
+> +		xcl->xcl_name);
+> +
+> +	INIT_LIST_HEAD(&xcl->xcl_list);
 
-Cheers
-  Trond
+Unless we care how xcl_list is set in the error case, this is
+unnecessary.
+
+> +	spin_lock(&svc_xprt_class_lock);
+> +	list_for_each_entry(cl, &svc_xprt_class_list, xcl_list) {
+> +		if (xcl == cl)
+> +			goto out;
+
+Is this even worth checking?  Accidentally registering the identical
+struct svc_xprt_class * seems an unlikely mistake for a transport-class
+coder to make, given that they only need call this function once per
+transport, in the module initialization.  Maybe make this a BUG()?  Or
+check for duplicate xcl_name's if that seems a more likely error?
+
+> +	}
+> +	list_add_tail(&xcl->xcl_list, &svc_xprt_class_list);
+> +	res = 0;
+> +out:
+> +	spin_unlock(&svc_xprt_class_lock);
+> +	return res;
+> +}
+> +EXPORT_SYMBOL_GPL(svc_reg_xprt_class);
+> +
+> +int svc_unreg_xprt_class(struct svc_xprt_class *xcl)
+> +{
+> +	struct svc_xprt_class *cl;
+> +	int res = 0;
+> +
+> +	dprintk("svc: Removing svc transport class '%s'\n", xcl->xcl_name);
+> +
+> +	spin_lock(&svc_xprt_class_lock);
+> +	list_for_each_entry(cl, &svc_xprt_class_list, xcl_list) {
+> +		if (xcl == cl) {
+> +			list_del_init(&cl->xcl_list);
+> +			goto out;
+> +		}
+> +	}
+> +	res = -ENOENT;
+
+Again, nobody checks this error return, and it seems like an unlikely
+programmer error anyway. If we really need the check I'd be inclined
+just to ditche the for loop and BUG_ON(list_empty(&cl->xcl_list)), which
+will catch double-unregistrations (thanks to the list_del_init()).
+
+> + out:
+> +	spin_unlock(&svc_xprt_class_lock);
+> +	return res;
+> +}
+> +EXPORT_SYMBOL_GPL(svc_unreg_xprt_class);
+> +
+> +/*
+> + * Called by transport drivers to initialize the transport independent
+> + * portion of the transport instance.
+> + */
+> +void svc_xprt_init(struct svc_xprt_class *xcl, struct svc_xprt *xprt)
+> +{
+> +	memset(xprt, 0, sizeof(*xprt));
+> +	xprt->xpt_class = xcl;
+> +	xprt->xpt_ops = xcl->xcl_ops;
+> +}
+> +EXPORT_SYMBOL_GPL(svc_xprt_init);
+
+Seems fine otherwise.
+
+--b.
