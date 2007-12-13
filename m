@@ -1,206 +1,298 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH] nfs-utils: sm-notify does not remove its pid file.
-Date: Thu, 13 Dec 2007 10:11:37 +1100
-Message-ID: <18272.27305.262875.253732@notabene.brown>
-References: <475D91B9.4070405@RedHat.com>
-	<18269.49269.575546.943037@notabene.brown>
-	<475DE62D.7020305@RedHat.com>
-	<18270.992.262485.318331@notabene.brown>
-	<475E9E8B.2060109@RedHat.com>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [GIT] NFS client fixes against 2.6.24-rc5
+Date: Wed, 12 Dec 2007 20:22:31 -0500
+Message-ID: <1197508951.8554.11.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-To: Steve Dickson <SteveD@redhat.com>
+Content-Type: text/plain
+Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+	nfs@lists.sourceforge.net
+To: Linus Torvalds <torvalds@linux-foundation.org>,
+	Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from ns1.suse.de ([195.135.220.2]:51202 "EHLO mx1.suse.de"
+Received: from mx2.netapp.com ([216.240.18.37]:56608 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759733AbXLLXLm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 12 Dec 2007 18:11:42 -0500
-In-Reply-To: message from Steve Dickson on Tuesday December 11
+	id S1752062AbXLMBWt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 12 Dec 2007 20:22:49 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tuesday December 11, SteveD@redhat.com wrote:
-> Neil Brown wrote:
-> > Debian has /etc/init.d/bootclean which contains:
-> > 
-> > 	cd /var/run ; .....
-> > 	....
-> >         find . ! -xtype d ! -name utmp ! -name innd.pid \
-> >                 -print0 | xargs -0r rm -f -- \
-> > 		|| ....
-> > 
-> > so any files except a select few are removed.
-> > 
-> > SLES has /etc/init.d/boot.cleanup which has
-> >             find /var/run /var/lock -type f -print0 | xargs -0 -r rm -f 2>/dev/null
-> > 
-> > so again, all files get removed.
-> > 
-> > You seem to be saying that Redhat requires everything in /var/run to
-> > be explicitly cleaned up ???  Aren't standards wonderful :-)
-> That appears to be the case... on both Fedora and RHEL... 
+Hi Linus,
 
-So after a crash and reboot there are lots of .pid file lying around
-from processes that obviously don't exist any more.  That's sad.
+Please pull from the repository at
 
-What about /var/lock?  That is arguably a better place to put it
-anyway.
-Does /var/lock get cleaned of old files at reboot?
+   git pull git://git.linux-nfs.org/pub/linux/nfs-2.6.git
 
+This will update the following files through the appended changesets.
 
-> 
-> > 
-> > 
-> >>> And I think the point of the lock file was the sm-notify would only
-> >>> run once per reboot.  
-> >> Why impose a limit? Why not recover lock at any point?
-> > 
-> > You only want to recover locks when they have been lost.  Boot time is
-> > that time.
-> 99.9% of time, I agree. But there are times when services are 
-> restarted without reboots.  
+  Cheers,
+    Trond
 
-True.  We need to make sure that when lockd is restarted, the
-sm-notify lock file is removed.  It's a shame that everyone roles
-their own init.d files so we cannot usefully distribute something in
-nfs-utils.
+----
+ MAINTAINERS                    |    6 ++++--
+ fs/nfs/client.c                |    6 +++---
+ fs/nfs/direct.c                |    2 --
+ fs/nfs/getroot.c               |   11 +++++++++++
+ fs/nfs/super.c                 |    2 +-
+ net/sunrpc/xprtrdma/rpc_rdma.c |    9 +--------
+ 6 files changed, 20 insertions(+), 16 deletions(-)
 
+commit 78f5815368837ae7e3a0d3709c9f95f74e4d8537
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Wed Dec 12 20:16:06 2007 -0500
 
-> 
-> > 
-> > The particular situation I wanted to handle was that I wanted it to be
-> > OK to start statd at any time.   And I wanted sm-notify to run at boot
-> > time if possible, but also to be run when statd was started if it
-> > hadn't run already.
-> > An 'I have run already' file in /var/run seemed the obvious solution.
-> I now do see the logical... But the fact that a file does or does
-> not exist so should not be the deciding factor of whether a lock is 
-> or is not recovered.  Shouldn't be the existence (or non-existence) 
-> of a lock that governs whether a lock is or is not recovered? 
+    MAINTAINERS: update the NFS CLIENT entry
+    
+    Add in the new NFS mailing list on vger, website, and git tree info, and
+    update my email address to reflect the fact that I've been working for
+    netapp for the past 2 years.
+    
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-Maybe... let's think it through.
+commit a10db50a4ae813fcb2f431f2fb039933c109a925
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Wed Dec 12 11:12:15 2007 -0500
 
-sm-notify meets to needs.
- 1/ It tells clients that the server has lost locks, and that they
-    could recover them.
- 2/ It tells servers that the client has dropped locks, and it should
-    drop all locks from that server too.
+    NFS: Fix an Oops in NFS unmount
+    
+    Ensure that the dummy 'root dentry' is invisible to d_find_alias(). If not,
+    then it may be spliced into the tree if a parent directory from the same
+    filesystem gets mounted at a later time.
+    
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-For '1', it is probably safe to ask a client to reclaim locks at any
-time.  I cannot see an obvious problem, but I would want to test it to
-be sure.  I think this it is possible for a server to tell if a given
-client is currently holding locks or not.
+commit a5576cfa5cd8d8aa874bd4ee500dc8a2e7cbad18
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Wed Dec 12 11:08:33 2007 -0500
 
-For '2', it is only safe to tell a server to drop locks if you are
-certain you don't currently hold any locks on that server.  I cannot
-think how you would manage that.  I don't think there is anything in
-/proc/locks that would tell you.
+    Revert "NFS: Ensure we return zero if applications attempt to write zero bytes"
+    
+    This reverts commit b9148c6b80d802dbc2a7530b29915a80432e50c7.
+    
+    On Wed, 12 Dec 2007 10:57:30 -0500, Chuck Lever wrote
+    > commit b9148c6b should be reverted.  It was recently forward-ported
+    > from some years-old patches, and is clearly not needed now.
+    >
+    > On Dec 11, 2007, at 5:21 PM, Adrian Bunk wrote:
+    >
+    >> This code became dead after commit
+    >> b9148c6b80d802dbc2a7530b29915a80432e50c7
+    >> (which BTW doesn't seem to have changed any behaviour) and can
+    >> therefore
+    >> be removed.
+    >>
+    >> Spotted by the Coverity checker.
+    >>
+    >> Signed-off-by: Adrian Bunk <bunk@kernel.org>
+    >>
+    >> ---
+    >> --- linux-2.6/fs/nfs/direct.c.old     2007-12-02 21:54:53.000000000 +0100
+    >> +++ linux-2.6/fs/nfs/direct.c 2007-12-02 21:55:10.000000000 +0100
+    >> @@ -897,15 +897,12 @@ ssize_t nfs_file_direct_write(struct kio
+    >>       if (!count)
+    >>               goto out;       /* return 0 */
+    >>
+    >>       retval = -EINVAL;
+    >>       if ((ssize_t) count < 0)
+    >>               goto out;
+    >> -     retval = 0;
+    >> -     if (!count)
+    >> -             goto out;
+    >>
+    >>       retval = nfs_sync_mapping(mapping);
+    >>       if (retval)
+    >>               goto out;
+    >>
+    >>       retval = nfs_direct_write(iocb, iov, nr_segs, pos, count);
+    >>
+    
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-If you want a more direct connection between lockd being restarted and
-sm-notify running, I think you would need to get lockd to record when
-it restarted and make that information available somewhere.  And
-sm-notify would record when it last ran.  And you would compare those
-times somehow.
+commit 50e1092b3a119bb4660bb6bd2e1749dc2d8ac62e
+Author: James Lentini <jlentini@netapp.com>
+Date:   Mon Dec 10 11:24:48 2007 -0500
 
-> 
-> 
-> >>> But I think that removing the lock file when sm-notify completes is
-> >>> wrong.
-> >> A side effect of all this is if rpc.statd is restarted and that
-> >> file is not cleaned up the client will never even try to recover any locks. 
-> >> That's definitely not a good thing... imho... 
-> > 
-> > There is no need for a client to recover locks if statd is restarted
-> > (is there).  I think statd now stores all state in /var/lib/nfs/* so
-> > if it is killed and restarted, it should pick up exactly where it left
-> > off.
-> But if the 'nfslock' service is restarted (i.e. service nfslock restart), 
-> at least in Fedora and RHEL, the locks need to be reclaimed. 
-> Of course the init script can arbitrary remove the pid file, but isn't
-> there (very small) chance that a sm-notify process could be 
-> still running, hung up in some type of network issue?
+    SUNRPC xprtrdma: fix XDR tail buf marshalling for all ops
+    
+    rpcrdma_convert_iovs is passed an xdr_buf representing either an RPC
+    request or an RPC reply. In the case of a request, several
+    calculations and tests involving pos are unnecessary. In the case of a
+    reply, several calculations and tests involving pos are incorrect (the
+    code tests pos against the reply xdr buf's len field, which is always
+    0 at the time rpcrdma_convert_iovs is executed). This change removes
+    the incorrect/unnecessary calculations and tests involving pos.
+    
+    This fixes an observed problem when reading certain file sizes over
+    NFS/RDMA.
+    
+    Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+    Signed-off-by: Tom Talpey <talpey@netapp.com>
+    Signed-off-by: James Lentini <jlentini@netapp.com>
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-I don't think that would matter.  Having two "sm-notify"s running at
-the same time isn't really the problem.  The problem is moving things
-from sm to sm.bak or updating 'state' when that is not appropriate.
+commit 5cef338b30c110daf547fb13d99f0c77f2a79fbc
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Tue Dec 11 22:01:56 2007 -0500
 
->  
-> > 
-> > The time that you need to notify clients is when *lockd* is
-> > restarted.  Or more significantly, when lockd arbitrarily drops it's
-> > locks. 
-> > i.e. if you "kill -9" lockd, then you need to do something with
-> > sm-notify and I acknowledge that isn't well documented nor is there an
-> > automatic procedure to make it happen.  So there is room for
-> > improvement, but I don't think that running sm-notify every time that
-> > statd is started is an improvement.
-> Well, today, sm-notify is run every time statd is started. It just that
-> sm-notify exits when the pid file exists. Instead maybe what should happen
-> is sm-notify should exit when there is no work to be done (i.e. no locks
-> to recover). 
+    NFSv2/v3: Fix a memory leak when using -onolock
+    
+    Neil Brown said:
+    > Hi Trond,
+    >
+    > We found that a machine which made moderately heavy use of
+    > 'automount' was leaking some nfs data structures - particularly the
+    > 4K allocated by rpc_alloc_iostats.
+    > It turns out that this only happens with filesystems with -onolock
+    > set.
+    
+    > The problem is that if NFS_MOUNT_NONLM is set, nfs_start_lockd doesn't
+    > set server->destroy, so when the filesystem is unmounted, the
+    > ->client_acl is not shutdown, and so several resources are still
+    > held.  Multiple mount/umount cycles will slowly eat away memory
+    > several pages at a time.
+    
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+    Acked-by: NeilBrown <neilb@suse.de>
 
-How would you measure whether there are locks to recover or not?
+commit 4584f520e1f773082ef44ff4f8969a5d992b16ec
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Tue Dec 11 19:01:45 2007 -0500
 
-> 
-> Of course this runs the risk of causing clients to unnecessarily 
-> reclaiming there locks, but, imho, that's okay! Its the price of
-> restarted the nfslock service, something that should not happen
-> too often anyways.
-> 
-> Also shouldn't there be some type of synchronization between 
-> statd and sm-notify? Meaning should statd wait until sm-notify 
-> is done doing its work (or at least creating the backup directory)?
+    NFS: Fix NFS mountpoint crossing...
+    
+    The check that was added to nfs_xdev_get_sb() to work around broken
+    servers, works fine for NFSv2, but causes mountpoint crossing on NFSv3 to
+    always return ESTALE.
+    
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-There is.  sm-notify moves stuff to the backup directory, then forks
-and exits.  statd waits until sm-notify forks.
-I guess that if sm-notify is run separately from statd there could be
-a race, though if sm-notify is configured to run separately you would
-expect that is because statd won't be run for a while.... maybe there
-is room for improvement there.
-
-> 
-> 
-> > 
-> >>> Note the comment in sm-notify.c:
-> >>>
-> >>> /*
-> >>>  * Record pid in /var/run/sm-notify.pid
-> >>>  * This file should remain until a reboot, even if the
-> >>>  * program exits.
-> >>>  * If file already exists, fail.
-> >>>  */
-> >> I guess I just don't understand why a pid file need to exist after a 
-> >> process is gone. Especially if its going to cause the next existence 
-> >> to imminently exit (potentially causing data corruption). 
-> >> That just does not seem very robust... 
-> > 
-> > Maybe making look like a pid file was a mistake.  I'd be OK with
-> > changing the name to /var/run/sm-notify-has-run or similar.  If we
-> > could store in the file some reflection of the state of lockd, that
-> > would be even better, but I don't think such a value is available at
-> > the moment.
-> Its just a pet peeve of mine for processes not to clean up after themselves. 
-> Leaving things around for other process to clean up just never seemed
-> like a good idea to me.
-
-Don't think of it as needing clean up.  Think of it as recording
-state.  We often use files for one program to record state that
-another program might want to access.
-
-> 
-> > 
-> > What potential for data corruption do you see?
-> The nfslock service  is restarted, the client locks are lost
-> and no notification is sent out (because the existence of a
-> pid file).  This was what I was seeing when I started this thread.
-
-So "service nfslock restart" should ensure to remove the pid file when
-it sends "kill -9" to lockd?
-
-> 
-> steved.
-> 
-> 
-
-NeilBrown
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 9507b42..94143d7 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -2751,8 +2751,10 @@ S:	Maintained
+ 
+ NFS CLIENT
+ P:	Trond Myklebust
+-M:	trond.myklebust@fys.uio.no
+-L:	linux-kernel@vger.kernel.org
++M:	Trond.Myklebust@netapp.com
++L:	linux-nfs@vger.kernel.org
++W:	http://client.linux-nfs.org
++T:	git git://git.linux-nfs.org/pub/linux/nfs-2.6.git
+ S:	Maintained
+ 
+ NI5010 NETWORK DRIVER
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 70587f3..a6f6254 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -410,9 +410,6 @@ static int nfs_create_rpc_client(struct nfs_client *clp, int proto,
+  */
+ static void nfs_destroy_server(struct nfs_server *server)
+ {
+-	if (!IS_ERR(server->client_acl))
+-		rpc_shutdown_client(server->client_acl);
+-
+ 	if (!(server->flags & NFS_MOUNT_NONLM))
+ 		lockd_down();	/* release rpc.lockd */
+ }
+@@ -755,6 +752,9 @@ void nfs_free_server(struct nfs_server *server)
+ 
+ 	if (server->destroy != NULL)
+ 		server->destroy(server);
++
++	if (!IS_ERR(server->client_acl))
++		rpc_shutdown_client(server->client_acl);
+ 	if (!IS_ERR(server->client))
+ 		rpc_shutdown_client(server->client);
+ 
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 5e8d82f..3c9d16b 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -894,8 +894,6 @@ ssize_t nfs_file_direct_write(struct kiocb *iocb, const struct iovec *iov,
+ 	retval = generic_write_checks(file, &pos, &count, 0);
+ 	if (retval)
+ 		goto out;
+-	if (!count)
+-		goto out;	/* return 0 */
+ 
+ 	retval = -EINVAL;
+ 	if ((ssize_t) count < 0)
+diff --git a/fs/nfs/getroot.c b/fs/nfs/getroot.c
+index 0ee4384..e6242cd 100644
+--- a/fs/nfs/getroot.c
++++ b/fs/nfs/getroot.c
+@@ -57,6 +57,17 @@ static int nfs_superblock_set_dummy_root(struct super_block *sb, struct inode *i
+ 		}
+ 		/* Circumvent igrab(): we know the inode is not being freed */
+ 		atomic_inc(&inode->i_count);
++		/*
++		 * Ensure that this dentry is invisible to d_find_alias().
++		 * Otherwise, it may be spliced into the tree by
++		 * d_materialise_unique if a parent directory from the same
++		 * filesystem gets mounted at a later time.
++		 * This again causes shrink_dcache_for_umount_subtree() to
++		 * Oops, since the test for IS_ROOT() will fail.
++		 */
++		spin_lock(&dcache_lock);
++		list_del_init(&sb->s_root->d_alias);
++		spin_unlock(&dcache_lock);
+ 	}
+ 	return 0;
+ }
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 2426e71..ea92920 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -1475,7 +1475,7 @@ static int nfs_xdev_get_sb(struct file_system_type *fs_type, int flags,
+ 		error = PTR_ERR(mntroot);
+ 		goto error_splat_super;
+ 	}
+-	if (mntroot->d_inode->i_op != &nfs_dir_inode_operations) {
++	if (mntroot->d_inode->i_op != server->nfs_client->rpc_ops->dir_inode_ops) {
+ 		dput(mntroot);
+ 		error = -ESTALE;
+ 		goto error_splat_super;
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index 9e11ce7..ee8de7a 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -92,7 +92,6 @@ rpcrdma_convert_iovs(struct xdr_buf *xdrbuf, int pos,
+ 		seg[n].mr_page = NULL;
+ 		seg[n].mr_offset = xdrbuf->head[0].iov_base;
+ 		seg[n].mr_len = xdrbuf->head[0].iov_len;
+-		pos += xdrbuf->head[0].iov_len;
+ 		++n;
+ 	}
+ 
+@@ -104,7 +103,6 @@ rpcrdma_convert_iovs(struct xdr_buf *xdrbuf, int pos,
+ 		seg[n].mr_len = min_t(u32,
+ 			PAGE_SIZE - xdrbuf->page_base, xdrbuf->page_len);
+ 		len = xdrbuf->page_len - seg[n].mr_len;
+-		pos += len;
+ 		++n;
+ 		p = 1;
+ 		while (len > 0) {
+@@ -119,20 +117,15 @@ rpcrdma_convert_iovs(struct xdr_buf *xdrbuf, int pos,
+ 		}
+ 	}
+ 
+-	if (pos < xdrbuf->len && xdrbuf->tail[0].iov_len) {
++	if (xdrbuf->tail[0].iov_len) {
+ 		if (n == nsegs)
+ 			return 0;
+ 		seg[n].mr_page = NULL;
+ 		seg[n].mr_offset = xdrbuf->tail[0].iov_base;
+ 		seg[n].mr_len = xdrbuf->tail[0].iov_len;
+-		pos += xdrbuf->tail[0].iov_len;
+ 		++n;
+ 	}
+ 
+-	if (pos < xdrbuf->len)
+-		dprintk("RPC:       %s: marshaled only %d of %d\n",
+-				__func__, pos, xdrbuf->len);
+-
+ 	return n;
+ }
+ 
