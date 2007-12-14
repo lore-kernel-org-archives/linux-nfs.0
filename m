@@ -1,90 +1,35 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 30/38] svc: Move common create logic to common code
-Date: Fri, 14 Dec 2007 18:19:13 -0500
-Message-ID: <20071214231913.GK23121@fieldses.org>
-References: <20071211233150.15718.40579.stgit@dell3.ogc.int> <20071211233300.15718.30136.stgit@dell3.ogc.int>
+Subject: Re: [PATCH 34/38] svc: Add transport hdr size for defer/revisit
+Date: Fri, 14 Dec 2007 18:37:17 -0500
+Message-ID: <20071214233717.GM23121@fieldses.org>
+References: <20071211233150.15718.40579.stgit@dell3.ogc.int> <20071211233309.15718.84852.stgit@dell3.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: neilb@suse.de, linux-nfs@vger.kernel.org
 To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:58264 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:37650 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934626AbXLNXTR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 14 Dec 2007 18:19:17 -0500
-In-Reply-To: <20071211233300.15718.30136.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
+	id S1756162AbXLNXhV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 14 Dec 2007 18:37:21 -0500
+In-Reply-To: <20071211233309.15718.84852.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Dec 11, 2007 at 05:33:00PM -0600, Tom Tucker wrote:
+On Tue, Dec 11, 2007 at 05:33:09PM -0600, Tom Tucker wrote:
 > 
-> Move the code that adds a transport instance to the sv_tempsocks and
-> sv_permsocks lists out of the transport specific functions and into core
-> logic. 
-> 
-> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
-> ---
-> 
->  net/sunrpc/svc_xprt.c |    9 ++++++++-
->  net/sunrpc/svcsock.c  |   39 +++++++++++++++++++--------------------
->  2 files changed, 27 insertions(+), 21 deletions(-)
-> 
-> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-> index d0cbfe0..924df63 100644
-> --- a/net/sunrpc/svc_xprt.c
-> +++ b/net/sunrpc/svc_xprt.c
-> @@ -145,8 +145,15 @@ int svc_create_xprt(struct svc_serv *serv, char *xprt_name, unsigned short port,
->  				if (IS_ERR(newxprt)) {
->  					module_put(xcl->xcl_owner);
->  					ret = PTR_ERR(newxprt);
-> -				} else
-> +				} else {
-> +					clear_bit(XPT_TEMP,
-> +						  &newxprt->xpt_flags);
-> +					spin_lock_bh(&serv->sv_lock);
-> +					list_add(&newxprt->xpt_list,
-> +						 &serv->sv_permsocks);
-> +					spin_unlock_bh(&serv->sv_lock);
->  					ret = svc_xprt_local_port(newxprt);
-> +				}
->  			}
->  			goto out;
->  		}
+> Some transports have a header in front of the RPC header. The current
+> defer/revisit processing considers only the iov_len and arg_len to 
+> determine how much to back up when saving the original request
+> to revisit. Add a field to the rqstp structure to save the size
+> of the transport header so svc_defer can correctly compute
+> the start of a request. 
 
-The nesting here is getting kind of deep.
+I know I asked before, and can't remember what happened: has this been
+tested with krb5p?  (I know nobody cares much whether krb5p/rdma works,
+I just want to make sure krb5p/rdma doesn't oops, and that
+krb5p/{tcp,udp} are unchanged.)
 
-A bit more idiomatic for kernel code would be (untested) something like:
-
-	list_for_each_entry(xcl, &svc_xprt_class_list, xcl_list) {
-		struct svc_xprt *newxprt;
-
-		if (strcmp(xprt_name, xcl->xcl_name) != 0)
-			continue;
-		spin_unlock(&svc_xprt_class_lock);
-		if (!try_module_get(xcl->xcl_owner))
-			goto out;
-		# (assuming that's the right order)
-		newxprt = xcl->xcl_ops->xpo_create (serv,
-				 (struct sockaddr *)&sin, sizeof(sin), flags);
-		if (IS_ERR(newxprt)) {
-			module_put(xcl->xcl_owner);
-			ret = PTR_ERR(newxprt);
-			goto out;
-		}
-		clear_bit(XPT_TEMP, &newxprt->xpt_flags);
-		spin_lock_bh(&serv->sv_lock);
-		list_add(&newxprt->xpt_list, &serv->sv_permsocks);
-		spin_unlock_bh(&serv->sv_lock);
-		ret = svc_xprt_local_port(newxprt);
-		goto out;
-	}
-
-At least to my eyes, that also makes it a lot easier to see what the
-important (succesful) case is, since that's the code that stays
-unindented all the way to the end.
-
-I'd also be inclined to replace those "got out"'s by "returns".  I don't
-really see the point of the label when it's leads to something that's
-literally just a return.
+I'll try it eventually if you don't....
 
 --b.
