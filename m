@@ -1,110 +1,124 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 38/38] svc: Add svc_xprt_names service to replace
-	svc_sock_names
-Date: Fri, 14 Dec 2007 19:03:28 -0500
-Message-ID: <20071215000328.GP23121@fieldses.org>
-References: <20071211233150.15718.40579.stgit@dell3.ogc.int> <20071211233318.15718.11614.stgit@dell3.ogc.int>
+Subject: Re: Kernel Bug with 2.6.24-rc2-CITI_NFS4-ALL-1  in
+	net/sunrpc/svc_xprt.c
+Date: Fri, 14 Dec 2007 19:12:11 -0500
+Message-ID: <20071215001211.GQ23121@fieldses.org>
+References: <4757D2B5.4070800@bull.net> <475FF4DD.6010700@bull.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: neilb@suse.de, linux-nfs@vger.kernel.org
-To: Tom Tucker <tom@opengridcomputing.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:35909 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750821AbXLOADb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 14 Dec 2007 19:03:31 -0500
-In-Reply-To: <20071211233318.15718.11614.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: linux-nfs@vger.kernel.org, nfsv4 <nfsv4@linux-nfs.org>,
+	Tom Tucker <tom@opengridcomputing.com>
+To: Le Rouzic <aime.le-rouzic@bull.net>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <475FF4DD.6010700@bull.net>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Dec 11, 2007 at 05:33:18PM -0600, Tom Tucker wrote:
+On Wed, Dec 12, 2007 at 03:49:01PM +0100, Le Rouzic wrote:
+> hi,
+> Running as client RHEL5.1 Public Gold on a X86_64 bi-ways and
+> as server 2.6.24-rc2-CITI_NFS4_ALL-1 on a X86_64 bi-ways,
+> I get the following Oops on the server when on the client I run
+> in a infinite loop iozone with -U option:
 > 
-> Create a transport independent version of the svc_sock_names function.
+> while true
+> do
+> ./iozone -+q 30 -ace -r 64 -i 0 -i 1 -i 2 -f /mnt/nosec/nfs4_gb -U 
+> /mnt/nosec
+> date
+> sleep 30
+> done
 > 
-> The toclose capability of the svc_sock_names service can be implemented
-> using the svc_xprt_find and svc_xprt_close services.
+> =============================================================================
+> Fedora Core release 6 (Zod)
+> Kernel 2.6.24-rc2-CITI_NFS4_ALL-1 on an x86_64
+> 
+> nfs4gb login: ------------[ cut here ]------------
+> kernel BUG at net/sunrpc/svc_xprt.c:323!
 
-Should we delete the toclose checks from svc_sock_names(), then, under
-the assumption it's always called with toclose non-NULL now?
+This is the BUG_ON() in svc_xprt_enqueue(), here:
 
-And why can't we just completely replace svc_sock_names() at this point?
+ process:
+        if (!list_empty(&pool->sp_threads)) {
+                rqstp = list_entry(pool->sp_threads.next,
+                                   struct svc_rqst,
+                                   rq_list);
+                dprintk("svc: transport %p served by daemon %p\n",
+                        xprt, rqstp);
+                svc_thread_dequeue(pool, rqstp);
+                if (rqstp->rq_xprt)
+                        printk(KERN_ERR
+                                "svc_xprt_enqueue: server %p, rq_xprt=%p!\n",
+                                rqstp, rqstp->rq_xprt);
+                rqstp->rq_xprt = xprt;
+                svc_xprt_get(xprt);
+                rqstp->rq_reserved = serv->sv_max_mesg;
+                atomic_add(rqstp->rq_reserved, &xprt->xpt_reserved);
+                BUG_ON(xprt->xpt_pool != pool);
+                wake_up(&rqstp->rq_wait);
+        } else {
+
+(Tom, you can get that particular version from my git tree if you want to take
+a look--there's a tag for 2.6.24-rc2-CITI_NFS4_ALL-1.  It appears to be a
+version of the transport switch from mid-october?)
 
 --b.
 
+> invalid opcode: 0000 [1] SMP
+> Entering kdb (current=0xffff8100031e6080, pid 3227) on processor 1 Oops: 
+> <NULL>
+> due to oops @ 0xffffffff805bfef1
+>      r15 = 0x0000000000001000      r14 = 0xffff810006cfc000
+>      r13 = 0xffff8100035363c0      r12 = 0xffff810004c30bc0
+>      rbp = 0xffff810007df4000      rbx = 0xffff810006994000
+>      r11 = 0xffff8100098c1d80      r10 = 0x0000000000007d2b
+>       r9 = 0x0000000000000004       r8 = 0xffff810004df9180
+>      rax = 0x0000000000041000      rcx = 0x0000000000000001
+>      rdx = 0x0000000000000000      rsi = 0x0000000000000001
+>      rdi = 0xffff810006994010 orig_rax = 0xffffffffffffffff
+>      rip = 0xffffffff805bfef1       cs = 0x0000000000000010
+>   eflags = 0x0000000000010203      rsp = 0xffff810007d73d90
+>       ss = 0x0000000000000018 &regs = 0xffff810007d73cf8
+> [1]kdb>
+> [1]kdb> bt
+> Stack traceback for pid 3227
+> 0xffff8100031e6080     3227        2  1    1   R  0xffff8100031e63a0 *nfsd
+> rsp                rip                Function (args)
+> 0xffff810007d73d78 0xffffffff805bfef1 svc_xprt_enqueue+0x19a 
+> (0xffff810006994000)
+> 0xffff810007d73dc8 0xffffffff805b9198 svc_tcp_recvfrom+0x367 
+> (0xffff810006cfc000)
+> 0xffff810007d73e48 0xffffffff805c0db8 svc_recv+0x62d 
+> (0xffff810006cfc000, 0xdbba0)
+> 0xffff810007d73f08 0xffffffff803329db nfsd+0xdb (0xffff810006cfc000)
+> 0xffff810007d73f48 0xffffffff8020cbf8 child_rip+0xa (invalid, invalid)
+> [1]kdb>
 > 
-> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
-> ---
+> More at:
+> Bug:  http://bugzilla.linux-nfs.org/show_bug.cgi?id=155
 > 
->  fs/nfsd/nfsctl.c                |    2 +-
->  include/linux/sunrpc/svc_xprt.h |    1 +
->  net/sunrpc/svc_xprt.c           |   35 +++++++++++++++++++++++++++++++++++
->  3 files changed, 37 insertions(+), 1 deletions(-)
+> Regards
 > 
-> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-> index 5b9ed0e..86d084e 100644
-> --- a/fs/nfsd/nfsctl.c
-> +++ b/fs/nfsd/nfsctl.c
-> @@ -503,7 +503,7 @@ static ssize_t write_ports(struct file *file, char *buf, size_t size)
->  		int len = 0;
->  		lock_kernel();
->  		if (nfsd_serv)
-> -			len = svc_sock_names(buf, nfsd_serv, NULL);
-> +			len = svc_xprt_names(nfsd_serv, buf, 0);
->  		unlock_kernel();
->  		return len;
->  	}
-> diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-> index 840b5c4..ed9791a 100644
-> --- a/include/linux/sunrpc/svc_xprt.h
-> +++ b/include/linux/sunrpc/svc_xprt.h
-> @@ -81,6 +81,7 @@ void	svc_delete_xprt(struct svc_xprt *xprt);
->  int	svc_port_is_privileged(struct sockaddr *sin);
->  int	svc_print_xprts(char *buf, int maxlen);
->  struct	svc_xprt *svc_find_xprt(struct svc_serv *, char *, int, int);
-> +int	svc_xprt_names(struct svc_serv *serv, char *buf, int buflen);
->  static inline void svc_xprt_get(struct svc_xprt *xprt)
->  {
->  	kref_get(&xprt->xpt_ref);
-> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-> index 6708aa2..2e3a672 100644
-> --- a/net/sunrpc/svc_xprt.c
-> +++ b/net/sunrpc/svc_xprt.c
-> @@ -998,3 +998,38 @@ struct svc_xprt *svc_find_xprt(struct svc_serv *serv, char *xcl_name,
->  	return found;
->  }
->  EXPORT_SYMBOL_GPL(svc_find_xprt);
-> +
-> +/*
-> + * Format a buffer with a list of the active transports. A zero for
-> + * the buflen parameter disables target buffer overflow checking.
-> + */
-> +int svc_xprt_names(struct svc_serv *serv, char *buf, int buflen)
-> +{
-> +	struct svc_xprt *xprt;
-> +	char xprt_str[64];
-> +	int totlen = 0;
-> +	int len;
-> +
-> +	/* Sanity check args */
-> +	if (!serv)
-> +		return 0;
-> +
-> +	spin_lock_bh(&serv->sv_lock);
-> +	list_for_each_entry(xprt, &serv->sv_permsocks, xpt_list) {
-> +		len = snprintf(xprt_str, sizeof(xprt_str),
-> +			       "%s %d\n", xprt->xpt_class->xcl_name,
-> +			       svc_xprt_local_port(xprt));
-> +		/* If the string was truncated, replace with error string */
-> +		if (len >= sizeof(xprt_str))
-> +			strcpy(xprt_str, "name-too-long\n");
-> +		/* Don't overflow buffer */
-> +		len = strlen(xprt_str);
-> +		if (buflen && (len + totlen >= buflen))
-> +			break;
-> +		strcpy(buf+totlen, xprt_str);
-> +		totlen += len;
-> +	}
-> +	spin_unlock_bh(&serv->sv_lock);
-> +	return totlen;
-> +}
-> +EXPORT_SYMBOL_GPL(svc_xprt_names);
+> 
+> -- 
+> -----------------------------------------------------------------
+> Company : Bull, Architect of an Open World TM (www.bull.com)
+> Name    : Aime Le Rouzic 
+> Mail    : Bull - BP 208 - 38432 Echirolles Cedex - France
+> E-Mail  : aime.le-rouzic@bull.net
+> Phone   : 33 (4) 76.29.75.51
+> Fax     : 33 (4) 76.29.75.18
+> ----------------------------------------------------------------- 
+> 
+> _______________________________________________
+> NFSv4 mailing list
+> NFSv4@linux-nfs.org
+> http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
