@@ -1,107 +1,107 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: Re: [PATCH 14/38] svc: Change sk_inuse to a kref
-Date: Sat, 15 Dec 2007 14:28:03 -0600
-Message-ID: <1197750483.13463.0.camel@trinity.ogc.int>
-References: <20071211233150.15718.40579.stgit@dell3.ogc.int>
-	 <20071211233224.15718.91339.stgit@dell3.ogc.int>
-	 <20071214205226.GG23121@fieldses.org>
+Subject: Re: [PATCH 30/38] svc: Move common create logic to common code
+Date: Sat, 15 Dec 2007 16:14:15 -0600
+Message-ID: <C389ADD7.22A00%tom@opengridcomputing.com>
+References: <20071214231913.GK23121@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: neilb@suse.de, linux-nfs@vger.kernel.org
+Content-Type: text/plain;
+	charset="US-ASCII"
+Cc: NeilBrown <neilb@suse.de>, <linux-nfs@vger.kernel.org>
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:44622 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751933AbXLOUWy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 15 Dec 2007 15:22:54 -0500
-In-Reply-To: <20071214205226.GG23121@fieldses.org>
+Received: from mail.es335.com ([67.65.19.105]:26504 "EHLO mail.es335.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753230AbXLOWOd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 15 Dec 2007 17:14:33 -0500
+In-Reply-To: <20071214231913.GK23121@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Fri, 2007-12-14 at 15:52 -0500, J. Bruce Fields wrote:
-> On Tue, Dec 11, 2007 at 05:32:25PM -0600, Tom Tucker wrote:
-> > 
-> > Change the atomic_t reference count to a kref and move it to the 
-> > transport indepenent svc_xprt structure. Change the reference count
-> > wrapper names to be generic.
-> > 
-> > Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
-> > ---
-> > 
-> >  include/linux/sunrpc/svc_xprt.h |    8 ++++++
-> >  include/linux/sunrpc/svcsock.h  |    1 -
-> >  net/sunrpc/svc_xprt.c           |   17 ++++++++++++
-> >  net/sunrpc/svcsock.c            |   54 +++++++++++++++------------------------
-> >  4 files changed, 46 insertions(+), 34 deletions(-)
-> > 
-> > diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-> > index 3f4a1df..eb801ad 100644
-> > --- a/include/linux/sunrpc/svc_xprt.h
-> > +++ b/include/linux/sunrpc/svc_xprt.h
-> > @@ -8,6 +8,7 @@
-> >  #define SUNRPC_SVC_XPRT_H
-> >  
-> >  #include <linux/sunrpc/svc.h>
-> > +#include <linux/module.h>
-> >  
-> >  struct svc_xprt_ops {
-> >  	struct svc_xprt	*(*xpo_create)(struct svc_serv *,
-> > @@ -34,11 +35,18 @@ struct svc_xprt_class {
-> >  struct svc_xprt {
-> >  	struct svc_xprt_class	*xpt_class;
-> >  	struct svc_xprt_ops	*xpt_ops;
-> > +	struct kref		xpt_ref;
-> >  };
-> >  
-> >  int	svc_reg_xprt_class(struct svc_xprt_class *);
-> >  int	svc_unreg_xprt_class(struct svc_xprt_class *);
-> >  void	svc_xprt_init(struct svc_xprt_class *, struct svc_xprt *);
-> >  int	svc_create_xprt(struct svc_serv *, char *, unsigned short, int);
-> > +void	svc_xprt_put(struct svc_xprt *xprt);
-> > +
-> > +static inline void svc_xprt_get(struct svc_xprt *xprt)
-> > +{
-> > +	kref_get(&xprt->xpt_ref);
-> > +}
-> >  
-> >  #endif /* SUNRPC_SVC_XPRT_H */
-> > diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
-> > index 3181d9d..ba07d50 100644
-> > --- a/include/linux/sunrpc/svcsock.h
-> > +++ b/include/linux/sunrpc/svcsock.h
-> > @@ -24,7 +24,6 @@ struct svc_sock {
-> >  
-> >  	struct svc_pool *	sk_pool;	/* current pool iff queued */
-> >  	struct svc_serv *	sk_server;	/* service for this socket */
-> > -	atomic_t		sk_inuse;	/* use count */
-> >  	unsigned long		sk_flags;
-> >  #define	SK_BUSY		0			/* enqueued/receiving */
-> >  #define	SK_CONN		1			/* conn pending */
-> > diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-> > index 9136da4..43418cf 100644
-> > --- a/net/sunrpc/svc_xprt.c
-> > +++ b/net/sunrpc/svc_xprt.c
-> > @@ -82,6 +82,22 @@ int svc_unreg_xprt_class(struct svc_xprt_class *xcl)
-> >  }
-> >  EXPORT_SYMBOL_GPL(svc_unreg_xprt_class);
-> >  
-> > +static void svc_xprt_free(struct kref *kref)
-> > +{
-> > +	struct svc_xprt *xprt =
-> > +		container_of(kref, struct svc_xprt, xpt_ref);
-> > +	struct module *owner = xprt->xpt_class->xcl_owner;
-> > +	BUG_ON(atomic_read(&kref->refcount));
-> 
-> All this BUG_ON() is doing is checking for what looks like a bizarrely
-> unlikely bug in kref_put().  The BUG_ON from the original code is:
-> 
-> 	BUG_ON(!test_bit(SK_DEAD, &svsk->sk_flags));
-> 
-> But I don't have any strong feelings as to whether that's necessary.
-> 
 
-It's not. 
 
+On 12/14/07 5:19 PM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+
+> On Tue, Dec 11, 2007 at 05:33:00PM -0600, Tom Tucker wrote:
+>> 
+>> Move the code that adds a transport instance to the sv_tempsocks and
+>> sv_permsocks lists out of the transport specific functions and into core
+>> logic. 
+>> 
+>> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+>> ---
+>> 
+>>  net/sunrpc/svc_xprt.c |    9 ++++++++-
+>>  net/sunrpc/svcsock.c  |   39 +++++++++++++++++++--------------------
+>>  2 files changed, 27 insertions(+), 21 deletions(-)
+>> 
+>> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+>> index d0cbfe0..924df63 100644
+>> --- a/net/sunrpc/svc_xprt.c
+>> +++ b/net/sunrpc/svc_xprt.c
+>> @@ -145,8 +145,15 @@ int svc_create_xprt(struct svc_serv *serv, char
+>> *xprt_name, unsigned short port,
+>> if (IS_ERR(newxprt)) {
+>> module_put(xcl->xcl_owner);
+>> ret = PTR_ERR(newxprt);
+>> -    } else
+>> +    } else {
+>> +     clear_bit(XPT_TEMP,
+>> +        &newxprt->xpt_flags);
+>> +     spin_lock_bh(&serv->sv_lock);
+>> +     list_add(&newxprt->xpt_list,
+>> +       &serv->sv_permsocks);
+>> +     spin_unlock_bh(&serv->sv_lock);
+>> ret = svc_xprt_local_port(newxprt);
+>> +    }
+>> }
+>> goto out;
+>> }
+> 
+> The nesting here is getting kind of deep.
+> 
+> A bit more idiomatic for kernel code would be (untested) something like:
+>
+
+I agree. I'll look at refactoring this.
+ 
+ 
+> list_for_each_entry(xcl, &svc_xprt_class_list, xcl_list) {
+> struct svc_xprt *newxprt;
+> 
+> if (strcmp(xprt_name, xcl->xcl_name) != 0)
+> continue;
+> spin_unlock(&svc_xprt_class_lock);
+> if (!try_module_get(xcl->xcl_owner))
+> goto out;
+> # (assuming that's the right order)
+> newxprt = xcl->xcl_ops->xpo_create (serv,
+> (struct sockaddr *)&sin, sizeof(sin), flags);
+> if (IS_ERR(newxprt)) {
+> module_put(xcl->xcl_owner);
+> ret = PTR_ERR(newxprt);
+> goto out;
+> }
+> clear_bit(XPT_TEMP, &newxprt->xpt_flags);
+> spin_lock_bh(&serv->sv_lock);
+> list_add(&newxprt->xpt_list, &serv->sv_permsocks);
+> spin_unlock_bh(&serv->sv_lock);
+> ret = svc_xprt_local_port(newxprt);
+> goto out;
+> }
+> 
+> At least to my eyes, that also makes it a lot easier to see what the
+> important (succesful) case is, since that's the code that stays
+> unindented all the way to the end.
+> 
+> I'd also be inclined to replace those "got out"'s by "returns".  I don't
+> really see the point of the label when it's leads to something that's
+> literally just a return.
+> 
 > --b.
+> -
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
 
