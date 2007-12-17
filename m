@@ -1,106 +1,41 @@
-From: Tom Tucker <tom@opengridcomputing.com>
-Subject: Re: [PATCH 30/38] svc: Move common create logic to common code
-Date: Mon, 17 Dec 2007 09:27:45 -0600
-Message-ID: <C38BF191.23487%tom@opengridcomputing.com>
-References: <20071214231913.GK23121@fieldses.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 01/38] svc: Add an svc transport class
+Date: Mon, 17 Dec 2007 12:45:35 -0500
+Message-ID: <20071217174535.GA13515@fieldses.org>
+References: <20071213184506.GA29496@fieldses.org> <C38BA039.233C0%tom@opengridcomputing.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="US-ASCII"
-Cc: NeilBrown <neilb@suse.de>, <linux-nfs@vger.kernel.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: NeilBrown <neilb@suse.de>, linux-nfs@vger.kernel.org
+To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.es335.com ([67.65.19.105]:7920 "EHLO mail.es335.com"
+Received: from mail.fieldses.org ([66.93.2.214]:57401 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758326AbXLQP2H (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 17 Dec 2007 10:28:07 -0500
-In-Reply-To: <20071214231913.GK23121@fieldses.org>
+	id S1754902AbXLQRpi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 17 Dec 2007 12:45:38 -0500
+In-Reply-To: <C38BA039.233C0%tom@opengridcomputing.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-
-On 12/14/07 5:19 PM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-
-> On Tue, Dec 11, 2007 at 05:33:00PM -0600, Tom Tucker wrote:
->> 
->> Move the code that adds a transport instance to the sv_tempsocks and
->> sv_permsocks lists out of the transport specific functions and into core
->> logic. 
->> 
->> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
->> ---
->> 
->>  net/sunrpc/svc_xprt.c |    9 ++++++++-
->>  net/sunrpc/svcsock.c  |   39 +++++++++++++++++++--------------------
->>  2 files changed, 27 insertions(+), 21 deletions(-)
->> 
->> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
->> index d0cbfe0..924df63 100644
->> --- a/net/sunrpc/svc_xprt.c
->> +++ b/net/sunrpc/svc_xprt.c
->> @@ -145,8 +145,15 @@ int svc_create_xprt(struct svc_serv *serv, char
->> *xprt_name, unsigned short port,
->> if (IS_ERR(newxprt)) {
->> module_put(xcl->xcl_owner);
->> ret = PTR_ERR(newxprt);
->> -    } else
->> +    } else {
->> +     clear_bit(XPT_TEMP,
->> +        &newxprt->xpt_flags);
->> +     spin_lock_bh(&serv->sv_lock);
->> +     list_add(&newxprt->xpt_list,
->> +       &serv->sv_permsocks);
->> +     spin_unlock_bh(&serv->sv_lock);
->> ret = svc_xprt_local_port(newxprt);
->> +    }
->> }
->> goto out;
->> }
+On Mon, Dec 17, 2007 at 03:40:41AM -0600, Tom Tucker wrote:
 > 
-> The nesting here is getting kind of deep.
 > 
-> A bit more idiomatic for kernel code would be (untested) something like:
 > 
-> list_for_each_entry(xcl, &svc_xprt_class_list, xcl_list) {
-> struct svc_xprt *newxprt;
+> On 12/13/07 12:45 PM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
 > 
-> if (strcmp(xprt_name, xcl->xcl_name) != 0)
-> continue;
-> spin_unlock(&svc_xprt_class_lock);
-> if (!try_module_get(xcl->xcl_owner))
-> goto out;
-> # (assuming that's the right order)
-> newxprt = xcl->xcl_ops->xpo_create (serv,
-> (struct sockaddr *)&sin, sizeof(sin), flags);
-> if (IS_ERR(newxprt)) {
-> module_put(xcl->xcl_owner);
-> ret = PTR_ERR(newxprt);
-> goto out;
-> }
-> clear_bit(XPT_TEMP, &newxprt->xpt_flags);
-> spin_lock_bh(&serv->sv_lock);
-> list_add(&newxprt->xpt_list, &serv->sv_permsocks);
-> spin_unlock_bh(&serv->sv_lock);
-> ret = svc_xprt_local_port(newxprt);
-> goto out;
-> }
+> > Sorry for joining in a little late....
+> > 
+> > On Tue, Dec 11, 2007 at 05:31:54PM -0600, Tom Tucker wrote:
+> >> +int svc_reg_xprt_class(struct svc_xprt_class *xcl)
+> > 
+> > None of the callers appear to check the return value, so this should
+> > probably be a void return.
+> >
 > 
-> At least to my eyes, that also makes it a lot easier to see what the
-> important (succesful) case is, since that's the code that stays
-> unindented all the way to the end.
-> 
-> I'd also be inclined to replace those "got out"'s by "returns".  I don't
-> really see the point of the label when it's leads to something that's
-> literally just a return.
-> 
+> I don't feel strongly about this, but what I was trying to catch was two
+> different transports accidentally colliding on the same name. I doubt there
+> will be a run on new transports, but it would at least fail the module load
+> with a reasonable error.
 
-Agree. Fixed.
+Sounds fine.
 
-> --b.
-> -
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-
+Thanks!--b.
