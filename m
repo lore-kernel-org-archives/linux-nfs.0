@@ -1,107 +1,127 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: Re: [PATCH 30/38] svc: Move common create logic to common code
-Date: Sat, 15 Dec 2007 16:14:15 -0600
-Message-ID: <C389ADD7.22A00%tom@opengridcomputing.com>
-References: <20071214231913.GK23121@fieldses.org>
+Subject: Re: [PATCH 01/38] svc: Add an svc transport class
+Date: Mon, 17 Dec 2007 03:40:41 -0600
+Message-ID: <C38BA039.233C0%tom@opengridcomputing.com>
+References: <20071213184506.GA29496@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain;
 	charset="US-ASCII"
 Cc: NeilBrown <neilb@suse.de>, <linux-nfs@vger.kernel.org>
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.es335.com ([67.65.19.105]:26504 "EHLO mail.es335.com"
+Received: from mail.es335.com ([67.65.19.105]:8257 "EHLO mail.es335.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753230AbXLOWOd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 15 Dec 2007 17:14:33 -0500
-In-Reply-To: <20071214231913.GK23121@fieldses.org>
+	id S1754859AbXLQJlE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 17 Dec 2007 04:41:04 -0500
+In-Reply-To: <20071213184506.GA29496@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
 
-On 12/14/07 5:19 PM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+On 12/13/07 12:45 PM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-> On Tue, Dec 11, 2007 at 05:33:00PM -0600, Tom Tucker wrote:
->> 
->> Move the code that adds a transport instance to the sv_tempsocks and
->> sv_permsocks lists out of the transport specific functions and into core
->> logic. 
->> 
->> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
->> ---
->> 
->>  net/sunrpc/svc_xprt.c |    9 ++++++++-
->>  net/sunrpc/svcsock.c  |   39 +++++++++++++++++++--------------------
->>  2 files changed, 27 insertions(+), 21 deletions(-)
->> 
->> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
->> index d0cbfe0..924df63 100644
->> --- a/net/sunrpc/svc_xprt.c
->> +++ b/net/sunrpc/svc_xprt.c
->> @@ -145,8 +145,15 @@ int svc_create_xprt(struct svc_serv *serv, char
->> *xprt_name, unsigned short port,
->> if (IS_ERR(newxprt)) {
->> module_put(xcl->xcl_owner);
->> ret = PTR_ERR(newxprt);
->> -    } else
->> +    } else {
->> +     clear_bit(XPT_TEMP,
->> +        &newxprt->xpt_flags);
->> +     spin_lock_bh(&serv->sv_lock);
->> +     list_add(&newxprt->xpt_list,
->> +       &serv->sv_permsocks);
->> +     spin_unlock_bh(&serv->sv_lock);
->> ret = svc_xprt_local_port(newxprt);
->> +    }
->> }
->> goto out;
->> }
+> Sorry for joining in a little late....
 > 
-> The nesting here is getting kind of deep.
+> On Tue, Dec 11, 2007 at 05:31:54PM -0600, Tom Tucker wrote:
+>> +int svc_reg_xprt_class(struct svc_xprt_class *xcl)
 > 
-> A bit more idiomatic for kernel code would be (untested) something like:
+> None of the callers appear to check the return value, so this should
+> probably be a void return.
 >
 
-I agree. I'll look at refactoring this.
+I don't feel strongly about this, but what I was trying to catch was two
+different transports accidentally colliding on the same name. I doubt there
+will be a run on new transports, but it would at least fail the module load
+with a reasonable error.
+
+>> +{
+>> + struct svc_xprt_class *cl;
+>> + int res = -EEXIST;
+>> +
+>> + dprintk("svc: Adding svc transport class '%s'\n",
+>> +  xcl->xcl_name);
+>> +
+>> + INIT_LIST_HEAD(&xcl->xcl_list);
+> 
+> Unless we care how xcl_list is set in the error case, this is
+> unnecessary.
+>
+
+I'll leave this and clean up the un-register path as you suggest below.
+
  
- 
-> list_for_each_entry(xcl, &svc_xprt_class_list, xcl_list) {
-> struct svc_xprt *newxprt;
+>> + spin_lock(&svc_xprt_class_lock);
+>> + list_for_each_entry(cl, &svc_xprt_class_list, xcl_list) {
+>> +  if (xcl == cl)
+>> +   goto out;
 > 
-> if (strcmp(xprt_name, xcl->xcl_name) != 0)
-> continue;
-> spin_unlock(&svc_xprt_class_lock);
-> if (!try_module_get(xcl->xcl_owner))
-> goto out;
-> # (assuming that's the right order)
-> newxprt = xcl->xcl_ops->xpo_create (serv,
-> (struct sockaddr *)&sin, sizeof(sin), flags);
-> if (IS_ERR(newxprt)) {
-> module_put(xcl->xcl_owner);
-> ret = PTR_ERR(newxprt);
-> goto out;
-> }
-> clear_bit(XPT_TEMP, &newxprt->xpt_flags);
-> spin_lock_bh(&serv->sv_lock);
-> list_add(&newxprt->xpt_list, &serv->sv_permsocks);
-> spin_unlock_bh(&serv->sv_lock);
-> ret = svc_xprt_local_port(newxprt);
-> goto out;
-> }
+> Is this even worth checking?  Accidentally registering the identical
+> struct svc_xprt_class * seems an unlikely mistake for a transport-class
+> coder to make, given that they only need call this function once per
+> transport, in the module initialization.  Maybe make this a BUG()?  Or
+> check for duplicate xcl_name's if that seems a more likely error?
+
+What I really wanted to check was name == name, not necessarily ptr == ptr.
+I should fix this to fail if strcmp(xcl->name, cl->name)==0.
+
 > 
-> At least to my eyes, that also makes it a lot easier to see what the
-> important (succesful) case is, since that's the code that stays
-> unindented all the way to the end.
+>> + }
+>> + list_add_tail(&xcl->xcl_list, &svc_xprt_class_list);
+>> + res = 0;
+>> +out:
+>> + spin_unlock(&svc_xprt_class_lock);
+>> + return res;
+>> +}
+>> +EXPORT_SYMBOL_GPL(svc_reg_xprt_class);
+>> +
+>> +int svc_unreg_xprt_class(struct svc_xprt_class *xcl)
+>> +{
+>> + struct svc_xprt_class *cl;
+>> + int res = 0;
+>> +
+>> + dprintk("svc: Removing svc transport class '%s'\n", xcl->xcl_name);
+>> +
+>> + spin_lock(&svc_xprt_class_lock);
+>> + list_for_each_entry(cl, &svc_xprt_class_list, xcl_list) {
+>> +  if (xcl == cl) {
+>> +   list_del_init(&cl->xcl_list);
+>> +   goto out;
+>> +  }
+>> + }
+>> + res = -ENOENT;
 > 
-> I'd also be inclined to replace those "got out"'s by "returns".  I don't
-> really see the point of the label when it's leads to something that's
-> literally just a return.
+> Again, nobody checks this error return, and it seems like an unlikely
+> programmer error anyway. If we really need the check I'd be inclined
+> just to ditche the for loop and BUG_ON(list_empty(&cl->xcl_list)), which
+> will catch double-unregistrations (thanks to the list_del_init()).
+>
+
+Yeah, the loop is dumb. I agree with your error assessment, how about if I
+change the return type to void and list_del_init(...) sans loop.
+
+
+>> + out:
+>> + spin_unlock(&svc_xprt_class_lock);
+>> + return res;
+>> +}
+>> +EXPORT_SYMBOL_GPL(svc_unreg_xprt_class);
+>> +
+>> +/*
+>> + * Called by transport drivers to initialize the transport independent
+>> + * portion of the transport instance.
+>> + */
+>> +void svc_xprt_init(struct svc_xprt_class *xcl, struct svc_xprt *xprt)
+>> +{
+>> + memset(xprt, 0, sizeof(*xprt));
+>> + xprt->xpt_class = xcl;
+>> + xprt->xpt_ops = xcl->xcl_ops;
+>> +}
+>> +EXPORT_SYMBOL_GPL(svc_xprt_init);
+> 
+> Seems fine otherwise.
 > 
 > --b.
-> -
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
 
