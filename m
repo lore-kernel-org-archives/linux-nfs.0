@@ -1,47 +1,127 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 01/38] svc: Add an svc transport class
-Date: Tue, 18 Dec 2007 10:01:43 -0500
-Message-ID: <20071218150143.GE14783@fieldses.org>
-References: <20071213184506.GA29496@fieldses.org> <C38BA039.233C0%tom@opengridcomputing.com> <20071217174535.GA13515@fieldses.org> <1197937584.13463.44.camel@trinity.ogc.int> <20071218145419.GC14783@fieldses.org> <1197990256.13463.54.camel@trinity.ogc.int>
+From: "Dawid Pawlata" <dawid-g7DOKF3l0ejVItvQsEIGlw@public.gmane.org>
+Subject: Re: [NFS] Strange NFS behaviour
+Date: Tue, 18 Dec 2007 16:37:27 +0100 (CET)
+Message-ID: <1351.194.237.142.6.1197992247.squirrel@www.active24.pl>
+Reply-To: dawid-g7DOKF3l0ejVItvQsEIGlw@public.gmane.org
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: NeilBrown <neilb@suse.de>, linux-nfs@vger.kernel.org
-To: Tom Tucker <tom@opengridcomputing.com>
+Content-Type: text/plain; charset=US-ASCII
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:58837 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755662AbXLRPBw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 18 Dec 2007 10:01:52 -0500
-In-Reply-To: <1197990256.13463.54.camel-SMNkleLxa3ZimH42XvhXlA@public.gmane.org>
+Received: from kurier1.active24.pl ([195.78.67.20]:33706 "EHLO
+	kurier1.active24.pl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757035AbXLRPha (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Dec 2007 10:37:30 -0500
+Received: from localhost (localhost [127.0.0.1])
+	by kurier1.active24.pl (Postfix) with ESMTP id 5293C54090
+	for <linux-nfs@vger.kernel.org>; Tue, 18 Dec 2007 16:37:29 +0100 (CET)
+Received: from www.active24.pl (unknown [192.168.111.78])
+	by kurier1.active24.pl (Postfix) with ESMTP id B02FD5408A
+	for <linux-nfs@vger.kernel.org>; Tue, 18 Dec 2007 16:37:27 +0100 (CET)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Dec 18, 2007 at 09:04:16AM -0600, Tom Tucker wrote:
-> 
-> On Tue, 2007-12-18 at 09:54 -0500, J. Bruce Fields wrote:
-> > On Mon, Dec 17, 2007 at 06:26:24PM -0600, Tom Tucker wrote:
-> > > I've coded all of the changes that you suggested and built a new
-> > > patchset. Besides the tests I outlined in my "test matrix" are there any
-> > > other tests you would like to see performed?
-> > 
-> > krb5p testing might still be interesting.
-> > 
-> 
-> I'll add it to my matrix. It will take some time to set up though since
-> I don't have a KDC or anything set up. Are we under any time
-> constraints?
+Hi!
 
-For krb5p, I don't think it's terifically urgent.
+In case that someone has similar problem I just want to say that this was
+NFS server side problem. The NIS service was sometimes unavailable and NFS
+server could not contact it.
 
-> > > I could not reproduce the BUG_ON from Bull. I'm wondering if it's a PPC
-> > > issue :-\ 
-> > 
-> > Hm, too bad, I'd like to understand that one.
-> > 
-> 
-> Yeah, and I'm having a hard time believing it's PPC related. I think I'm
-> missing something, I'll keep looking.
+BR
+Dawid
 
-Thanks!
+> Hi!
+>
+> It looks like there is a way to workaround this problem. One can simply
+> list the mounted directory before the TCP connection times out (which
+> takes place after 4 minutes by default). Simple ls command on the mounted
+> path every minute should make the problem gone.
+>
+> I still wonder what is the real cause of the problem and is it the client
+> or the server that is buggy. This problem is really annoying.
+>
+> I have been trying to use settings described in "Technical Report: Using
+> the Linux NFS Client with Network Appliance Storage"
+> (www.netapp.com/tech_library/ftp/3183.pdf) with no success.
+>
+> Best Regards
+> Dawid
+>
+>> Hi!
+>>
+>> I have an NFS resource mounted from a dedicated machine NetApp FAS3050
+>> using NFS v3 over TCP.
+>> The NFS client works on SuSe Linux Enterprise Server 10 SP1, kernel ver
+>> 2.6.16.46-0.14-smp.
+>>
+>> When the NFS is idle for few hours, the NFS resources sometimes become
+>> inaccessible. Every process accessing such resource hangs.
+>>
+>> I have sniffed the NFS connection and found an interesting behaviour of
+>> the NFS client/server:
+>>
+>> time          src    dest    proto port numbers content
+>>
+>> 16692.276474  client server  TCP   1023 > 2049  [SYN]
+>> 16692.277171  server client  TCP   2049 > 1023  [SYN, ACK]
+>> 16692.277189  client server  TCP   1023 > 2049  [ACK]
+>> 16692.277197  client server  NFS   1023 > 2049  V3 ACCESS Call,
+>> FH:0x30ed5a16
+>> 16692.378613  server client  TCP   2049 > 1023  [ACK]
+>> 16701.285748  server client  TCP   2049 > 1023  [FIN, ACK]
+>> 16701.285764  client server  TCP   1023 > 2049  [FIN, ACK]
+>> 16701.285790  client server  TCP   1022 > 2049  [SYN]
+>> 16701.286497  server client  TCP   2049 > 1022  [SYN, ACK]
+>> 16701.286506  client server  TCP   1022 > 2049  [ACK]
+>> 16701.286508  server client  TCP   2049 > 1023  [ACK]
+>> 16701.286512  client server  TCP   1022 > 2049  V3 ACCESS Call,
+>> FH:0x30ed5a16
+>> 16701.287247  server client  TCP   2049 > 1022  [FIN, ACK]
+>> 16701.287257  client server  TCP   1022 > 2049  [FIN, ACK]
+>> 16701.287271  client server  TCP   1021 > 2049  [SYN]
+>>
+>>
+>> Since there was no active TCP connection to the NFS server, it has been
+>> established. Then, an NFS ACCESS command was sent to the server. The
+>> server did not answer the NFS query, but initialised the TCP connection
+>> close instead.
+>>
+>> After receiving [FIN, ACK] the client reconnected immediately, but this
+>> time on port 1002 (since 1023 is still in use at this point). Again, the
+>> server closed the TCP connection and another attempt was made on a new
+>> port number.
+>>
+>> This is not on the log, but the NFS client keeps repeating this on each
+>> of
+>> the port numbers in range <1023,664>. When port number 664 is reached,
+>> the
+>> NFS server stops answering the TCP SYN packets.
+>>
+>> This started to happen after upgrading linux from SuSe Linux 10.1
+>> 2.6.16.21-0.25-smp. Another thing is that there are also VxWorks clients
+>> using that NFS server which work fine.
+>>
+>> Do you have any idea of what is the reason for such behavior?
+>>
+>> Thanks in advance.
+>>
+>> Regards,
+>> Dawid Pawlata
+>>
+>> -
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
+>
+>
+> -
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
 
---b.
+
+-- 
+pozdro
+Dawid
+
