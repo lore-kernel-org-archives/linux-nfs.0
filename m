@@ -1,50 +1,26 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 5/7] NLM: Have lockd call try_to_freeze
-Date: Tue, 18 Dec 2007 11:42:37 -0500
-Message-ID: <1197996159-20799-6-git-send-email-jlayton@redhat.com>
-References: <1197996159-20799-1-git-send-email-jlayton@redhat.com>
-	<1197996159-20799-2-git-send-email-jlayton@redhat.com>
-	<1197996159-20799-3-git-send-email-jlayton@redhat.com>
-	<1197996159-20799-4-git-send-email-jlayton@redhat.com>
-	<1197996159-20799-5-git-send-email-jlayton@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfsv4@linux-nfs.org, linux-kernel@vger.kernel.org
+Subject: [PATCH 0/7] Intro: convert lockd to kthread and fix use-after-free (try #2)
+Date: Tue, 18 Dec 2007 11:42:32 -0500
+Message-ID: <1197996159-20799-1-git-send-email-jlayton@redhat.com>
+Cc: linux-kernel@vger.kernel.org, nfsv4@linux-nfs.org
 To: linux-nfs@vger.kernel.org
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <1197996159-20799-5-git-send-email-jlayton@redhat.com>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([66.187.233.31]:42120 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757008AbXLRQxH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 18 Dec 2007 11:53:07 -0500
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-lockd makes itself freezable, but never calls try_to_freeze(). Have it
-call try_to_freeze() within the main loop.
+This is the second patchset to fix the use-after-free problem in lockd,
+and to convert lockd to use the kthread API instead of kernel_thread.
+The main change from the last patchset is that svc_prepare_thread is
+now exported and svc_create_kthread no longer calls it. The caller of
+svc_create_kthread must now call it (or do the equivalent to set up
+the svc_rqst.
+
+Tested against the reproducer I have for the main issue (detailed in
+patch #7). As always, comments and suggestions are appreciated.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/lockd/svc.c |    3 +++
- 1 files changed, 3 insertions(+), 0 deletions(-)
 
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index 0f4148a..03a83a0 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -155,6 +155,9 @@ lockd(struct svc_rqst *rqstp)
- 		long timeout = MAX_SCHEDULE_TIMEOUT;
- 		char buf[RPC_MAX_ADDRBUFLEN];
- 
-+		if (try_to_freeze())
-+			continue;
-+
- 		if (signalled()) {
- 			flush_signals(current);
- 			if (nlmsvc_ops) {
--- 
-1.5.3.3
