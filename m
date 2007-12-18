@@ -1,26 +1,122 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 0/7] Intro: convert lockd to kthread and fix use-after-free (try #2)
-Date: Tue, 18 Dec 2007 11:42:32 -0500
-Message-ID: <1197996159-20799-1-git-send-email-jlayton@redhat.com>
+Subject: [PATCH 2/7] SUNRPC: spin svc_rqst initialization to its own function
+Date: Tue, 18 Dec 2007 11:42:34 -0500
+Message-ID: <1197996159-20799-3-git-send-email-jlayton@redhat.com>
+References: <1197996159-20799-1-git-send-email-jlayton@redhat.com>
+ <1197996159-20799-2-git-send-email-jlayton@redhat.com>
 Cc: linux-kernel@vger.kernel.org, nfsv4@linux-nfs.org
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:42120 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([66.187.233.31]:42129 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757008AbXLRQxH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 18 Dec 2007 11:53:07 -0500
+	id S1758438AbXLRQxN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 18 Dec 2007 11:53:13 -0500
+In-Reply-To: <1197996159-20799-2-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is the second patchset to fix the use-after-free problem in lockd,
-and to convert lockd to use the kthread API instead of kernel_thread.
-The main change from the last patchset is that svc_prepare_thread is
-now exported and svc_create_kthread no longer calls it. The caller of
-svc_create_kthread must now call it (or do the equivalent to set up
-the svc_rqst.
-
-Tested against the reproducer I have for the main issue (detailed in
-patch #7). As always, comments and suggestions are appreciated.
+Move the initialzation in __svc_create_thread that happens prior to
+thread creation to a new function. Export the function so that when
+we replace __svc_create_thread with a kthread version, callers will
+have complete control over this initialization.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ include/linux/sunrpc/svc.h |    2 ++
+ net/sunrpc/sunrpc_syms.c   |    1 +
+ net/sunrpc/svc.c           |   42 ++++++++++++++++++++++++++++++------------
+ 3 files changed, 33 insertions(+), 12 deletions(-)
+
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 8531a70..19483fe 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -382,6 +382,8 @@ struct svc_procedure {
+  */
+ struct svc_serv *  svc_create(struct svc_program *, unsigned int,
+ 			      void (*shutdown)(struct svc_serv*));
++struct svc_rqst *  svc_prepare_thread(struct svc_serv *serv,
++					struct svc_pool *pool);
+ int		   svc_create_thread(svc_thread_fn, struct svc_serv *);
+ void		   svc_exit_thread(struct svc_rqst *);
+ struct svc_serv *  svc_create_pooled(struct svc_program *, unsigned int,
+diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
+index 33d89e8..27bb185 100644
+--- a/net/sunrpc/sunrpc_syms.c
++++ b/net/sunrpc/sunrpc_syms.c
+@@ -63,6 +63,7 @@ EXPORT_SYMBOL(put_rpccred);
+ 
+ /* RPC server stuff */
+ EXPORT_SYMBOL(svc_create);
++EXPORT_SYMBOL(svc_prepare_thread);
+ EXPORT_SYMBOL(svc_create_thread);
+ EXPORT_SYMBOL(svc_create_pooled);
+ EXPORT_SYMBOL(svc_set_num_threads);
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index 9696ae7..854e8ec 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -538,23 +538,14 @@ svc_release_buffer(struct svc_rqst *rqstp)
+ 			put_page(rqstp->rq_pages[i]);
+ }
+ 
+-/*
+- * Create a thread in the given pool.  Caller must hold BKL.
+- * On a NUMA or SMP machine, with a multi-pool serv, the thread
+- * will be restricted to run on the cpus belonging to the pool.
+- */
+-static int
+-__svc_create_thread(svc_thread_fn func, struct svc_serv *serv,
+-		    struct svc_pool *pool)
++struct svc_rqst *
++svc_prepare_thread(struct svc_serv *serv, struct svc_pool *pool)
+ {
+ 	struct svc_rqst	*rqstp;
+-	int		error = -ENOMEM;
+-	int		have_oldmask = 0;
+-	cpumask_t	oldmask;
+ 
+ 	rqstp = kzalloc(sizeof(*rqstp), GFP_KERNEL);
+ 	if (!rqstp)
+-		goto out;
++		goto out_enomem;
+ 
+ 	init_waitqueue_head(&rqstp->rq_wait);
+ 
+@@ -570,6 +561,33 @@ __svc_create_thread(svc_thread_fn func, struct svc_serv *serv,
+ 	spin_unlock_bh(&pool->sp_lock);
+ 	rqstp->rq_server = serv;
+ 	rqstp->rq_pool = pool;
++	return rqstp;
++
++out_thread:
++	svc_exit_thread(rqstp);
++out_enomem:
++	return ERR_PTR(-ENOMEM);
++}
++
++/*
++ * Create a thread in the given pool.  Caller must hold BKL.
++ * On a NUMA or SMP machine, with a multi-pool serv, the thread
++ * will be restricted to run on the cpus belonging to the pool.
++ */
++static int
++__svc_create_thread(svc_thread_fn func, struct svc_serv *serv,
++		    struct svc_pool *pool)
++{
++	struct svc_rqst	*rqstp;
++	int		error = -ENOMEM;
++	int		have_oldmask = 0;
++	cpumask_t	oldmask;
++
++	rqstp = svc_prepare_thread(serv, pool);
++	if (IS_ERR(rqstp)) {
++		error = PTR_ERR(rqstp);
++		goto out;
++	}
+ 
+ 	if (serv->sv_nrpools > 1)
+ 		have_oldmask = svc_pool_map_set_cpumask(current, pool->sp_id,
+-- 
+1.5.3.3
 
