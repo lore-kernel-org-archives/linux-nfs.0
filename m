@@ -1,52 +1,33 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 01/38] svc: Add an svc transport class
-Date: Tue, 18 Dec 2007 14:28:20 -0500
-Message-ID: <20071218192820.GU14783@fieldses.org>
-References: <20071213184506.GA29496@fieldses.org> <C38BA039.233C0%tom@opengridcomputing.com> <20071217174535.GA13515@fieldses.org> <1197937584.13463.44.camel@trinity.ogc.int> <20071218145419.GC14783@fieldses.org> <1197990256.13463.54.camel@trinity.ogc.int> <1198006238.13463.79.camel@trinity.ogc.int>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH 0/7] Intro: convert lockd to kthread and fix use-after-free
+	(try #3)
+Date: Tue, 18 Dec 2007 15:19:35 -0500
+Message-ID: <1198009182-27895-1-git-send-email-jlayton@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: NeilBrown <neilb@suse.de>, linux-nfs@vger.kernel.org
-To: Tom Tucker <tom@opengridcomputing.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:54799 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750738AbXLRT2X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 18 Dec 2007 14:28:23 -0500
-In-Reply-To: <1198006238.13463.79.camel-SMNkleLxa3ZimH42XvhXlA@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfsv4@linux-nfs.org, linux-kernel@vger.kernel.org
+To: linux-nfs@vger.kernel.org
+Return-path: <nfsv4-bounces@linux-nfs.org>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Dec 18, 2007 at 01:30:38PM -0600, Tom Tucker wrote:
-> 
-> On Tue, 2007-12-18 at 09:04 -0600, Tom Tucker wrote:
-> > On Tue, 2007-12-18 at 09:54 -0500, J. Bruce Fields wrote:
-> > > On Mon, Dec 17, 2007 at 06:26:24PM -0600, Tom Tucker wrote:
-> > > > I've coded all of the changes that you suggested and built a new
-> > > > patchset. Besides the tests I outlined in my "test matrix" are there any
-> > > > other tests you would like to see performed?
-> > > 
-> > > krb5p testing might still be interesting.
-> > > 
-> > 
-> > I'll add it to my matrix. It will take some time to set up though since
-> > I don't have a KDC or anything set up. Are we under any time
-> > constraints?
-> > 
-> > > > 
-> > > > I could not reproduce the BUG_ON from Bull. I'm wondering if it's a PPC
-> > > > issue :-\ 
-> > > 
-> > > Hm, too bad, I'd like to understand that one.
-> > > 
-> 
-> FYI, I have now reproduced this bug on an AMD64 box with the
-> CITI_NFS4_ALL-1 tree. 
-> 
-> I am regression testing it on the new build have been running it about
-> 2hrs without failure.
+This is the third patchset to fix the use-after-free problem in lockd,
+and to convert lockd to use the kthread API instead of kernel_thread.
+The main change from the last patchset is the elimination of the
+svc_create_kthread helper function, and having lockd_up call kthread_run
+directly. I've also made some changes to the function prototype for
+the lockd function to eliminate the need for casting the function
+pointer.
 
-OK, so probably either something got fixed in the server-xprt-switch
-patches since then, or something got fixed in mainline, or the problem
-was in one of the other CITI_NFS4_ALL patches.  Hm.
+Tested against the reproducer I have for the main issue (detailed in
+patch #7). As always, comments and suggestions are appreciated.
 
---b.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
