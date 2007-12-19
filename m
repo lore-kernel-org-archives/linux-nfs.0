@@ -1,65 +1,48 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: constrained lockd error handling semantics when lock request
-	processing is deferred?
-Date: Wed, 19 Dec 2007 00:45:02 -0500
-Message-ID: <20071219054502.GB2836@fieldses.org>
-References: <170fa0d20712182003n6819645cwc1560b35da210895@mail.gmail.com>
+From: =?ISO-8859-2?Q?Tomasz_K=B3oczko?= <kloczek@rudy.mif.pg.gda.pl>
+Subject: Re: [PATCH 0/7] Intro: convert lockd to kthread and fix use-after-free
+ (try #3)
+Date: Wed, 19 Dec 2007 20:15:43 +0100 (CET)
+Message-ID: <Pine.BSO.4.63.0712192004140.3875@rudy.mif.pg.gda.pl>
+References: <1198009182-27895-1-git-send-email-jlayton@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Mike Snitzer <snitzer@gmail.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:60863 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751134AbXLSFpE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 19 Dec 2007 00:45:04 -0500
-In-Reply-To: <170fa0d20712182003n6819645cwc1560b35da210895-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: MULTIPART/MIXED; BOUNDARY="0-563880963-1198091743=:3875"
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	nfsv4@linux-nfs.org
+To: Jeff Layton <jlayton@redhat.com>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1755478AbXLSTQA@vger.kernel.org>
+In-Reply-To: <1198009182-27895-1-git-send-email-jlayton@redhat.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Dec 18, 2007 at 11:03:01PM -0500, Mike Snitzer wrote:
-> I could be missing something blatantly obvious so please be kind...
-> 
-> I would like to understand how one _should_ implement ->lock() for a
-> filesystem that can't immediately determine that the request would
-> result in -EDEADLK or -ENOLCK.  Particularly for deferred SETLKW
-> requests.
-> 
-> That is, the filesystem's ->lock() initially responds with
-> -EINPROGRESS but later goes on to fail the request with -EDEADLK or
-> -ENOLCK.  The filesystem's call to ->fl_grant() will be made with an
-> unsupported 'result'.
-> 
-> Having reviewed the code in fs/lockd/svclock.c it would seem that it
-> was never designed to allow EDEADLK or ENOLCK _after_ nlmsvc_lock()'s
-> initial call to vfs_lock_file().
-> 
-> nlmsvc_grant_deferred() properly handles deferred SETLKW processing
-> IFF the result is 0 (aka granted).
-> nlmsvc_grant_deferred()'s SETLK processing will at least return
-> failures (but they are assumed to be B_TIMED_OUT).
-> In the end the real 'result' gets dropped on the floor.
-> 
-> Why must ->lock() immediately return error (e.g. EDEADLK), otherwise
-> it is assumed the request will complete successfully (or timeout in
-> the B_QUEUED/SETLK case)?  Seems overly constrained (painfully so for
-> SETLKW) when you consider that the whole point of deferred processing
-> (via EINPROGRESS and ->fl_grant) is to accomodate filesystems that
-> can't respond to a lock request immediately.
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-Yeah, the assuumption was that we only needed to deal with non-blocking
-requests first, under the theory that the blocking case could always be
-handled with a deny followed by an eventual grant.  Which, as you point
-out, may not ever be coming in the EDEALK or ENOLCK cases.  I'm inclined
-to agree it's ugly.
+--0-563880963-1198091743=:3875
+Content-Type: TEXT/PLAIN; charset=ISO-8859-2; format=flowed
+Content-Transfer-Encoding: 8BIT
 
-That said, I find it hard to care about the EDEADLK case--deadlock
-detection just isn't going to be reliable in the presence of nfs clients
-anyway.  And are there really a lot of cases where ENOLCK has to be
-returned and where the local filesystem doesn't know that immediately?
+On Tue, 18 Dec 2007, Jeff Layton wrote:
 
-But it should probably be rethought anyway.  I'm grateful for any
-suggestions (but probably won't be working on this seriously until the
-new year).
+> This is the third patchset to fix the use-after-free problem in lockd,
+> and to convert lockd to use the kthread API instead of kernel_thread.
+> The main change from the last patchset is the elimination of the
+> svc_create_kthread helper function, and having lockd_up call kthread_run
+> directly. I've also made some changes to the function prototype for
+> the lockd function to eliminate the need for casting the function
+> pointer.
 
---b.
+BTW kernel, NFS and lockd: SuSE kernel IIRC is distributed with patch 
+which adds kernel-based status monitor (statd).
+
+Q to NFS people: any plans about merge this in main kernel tree ?
+
+And another question related to NFS: any progress on add clear NFS 
+statistics in kernel (nfsstat -z) ?
+
+kloczek
+-- 
+-----------------------------------------------------------
+*Ludzie nie maj± problemów, tylko sobie sami je stwarzaj±*
+-----------------------------------------------------------
+Tomasz K³oczko | *e-mail: kloczek@rudy.mif.pg.gda.pl*
+--0-563880963-1198091743=:3875--
