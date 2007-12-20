@@ -1,96 +1,63 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 3/4] NFS: Invoke nlmclnt_init during NFS mount processing
-Date: Thu, 20 Dec 2007 15:04:12 -0500
-Message-ID: <20071220200412.3358.36945.stgit@manray.1015granger.net>
+Subject: [PATCH 2/4] NLM: Introduce completion function to match nlmclnt_init
+Date: Thu, 20 Dec 2007 15:04:05 -0500
+Message-ID: <20071220200405.3358.54150.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from flpi101.sbcis.sbc.com ([207.115.20.70]:1385 "EHLO
+Received: from flpi101.sbcis.sbc.com ([207.115.20.70]:1337 "EHLO
 	flpi101.prodigy.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754686AbXLTUEW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Dec 2007 15:04:22 -0500
+	with ESMTP id S1754489AbXLTUET (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Dec 2007 15:04:19 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Cache an appropriate nlm_host structure in the NFS client's mount point
-metadata for later use.
+Introduce the other book-end for nlmclnt_init(). This function is invoked
+by the NFS client during unmount processing to release the nlm_host struct
+that was pinned by nlmclnt_init() during mount processing.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfs/client.c           |   25 ++++++++++++++++++-------
- include/linux/nfs_fs_sb.h |    2 ++
- 2 files changed, 20 insertions(+), 7 deletions(-)
+ fs/lockd/clntlock.c        |   12 ++++++++++++
+ include/linux/lockd/bind.h |    1 +
+ 2 files changed, 13 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 33a5678..1d7d606 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -439,7 +439,7 @@ static int nfs_create_rpc_client(struct nfs_client *clp, int proto,
- static void nfs_destroy_server(struct nfs_server *server)
- {
- 	if (!(server->flags & NFS_MOUNT_NONLM))
--		lockd_down();	/* release rpc.lockd */
-+		nlmclnt_done(server->nlm_host);
+diff --git a/fs/lockd/clntlock.c b/fs/lockd/clntlock.c
+index 9aeea53..0c99aee 100644
+--- a/fs/lockd/clntlock.c
++++ b/fs/lockd/clntlock.c
+@@ -86,6 +86,18 @@ struct nlm_host *nlmclnt_init(struct sockaddr *server_address,
  }
+ EXPORT_SYMBOL(nlmclnt_init);
  
++/**
++ * nlmclnt_done - Release resources allocated by nlmclnt_init()
++ * @host: nlm_host structure reserved by nlmclnt_init()
++ *
++ */
++void nlmclnt_done(struct nlm_host *host)
++{
++	nlm_release_host(host);
++	lockd_down();
++}
++EXPORT_SYMBOL(nlmclnt_done);
++
  /*
-@@ -447,18 +447,29 @@ static void nfs_destroy_server(struct nfs_server *server)
+  * Queue up a lock for blocking so that the GRANTED request can see it
   */
- static int nfs_start_lockd(struct nfs_server *server)
- {
-+	struct nfs_client *clp = server->nfs_client;
-+	u32 nfs_version = clp->rpc_ops->version;
-+	unsigned short protocol;
-+	struct nlm_host *host;
- 	int error = 0;
+diff --git a/include/linux/lockd/bind.h b/include/linux/lockd/bind.h
+index d8b7149..372c8df 100644
+--- a/include/linux/lockd/bind.h
++++ b/include/linux/lockd/bind.h
+@@ -40,6 +40,7 @@ extern struct nlm_host *nlmclnt_init(struct sockaddr *server_address,
+ 					char *server_name,
+ 					u32 nfs_version,
+ 					unsigned short protocol);
++extern void	nlmclnt_done(struct nlm_host *host);
  
--	if (server->nfs_client->rpc_ops->version > 3)
-+	if (nfs_version > 3)
- 		goto out;
- 	if (server->flags & NFS_MOUNT_NONLM)
- 		goto out;
--	error = lockd_up((server->flags & NFS_MOUNT_TCP) ?
--			IPPROTO_TCP : IPPROTO_UDP);
--	if (error < 0)
-+
-+	protocol = server->flags & NFS_MOUNT_TCP ?  IPPROTO_TCP : IPPROTO_UDP;
-+	host = nlmclnt_init((struct sockaddr *)&clp->cl_addr, clp->cl_addrlen,
-+			    clp->cl_hostname, nfs_version, protocol);
-+	if (IS_ERR(host)) {
-+		error = PTR_ERR(host);
- 		server->flags |= NFS_MOUNT_NONLM;
--	else
--		server->destroy = nfs_destroy_server;
-+		goto out;
-+	}
-+
-+	server->nlm_host = host;
-+	server->destroy = nfs_destroy_server;
-+
- out:
- 	return error;
- }
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 383abe0..d75cf0a 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -5,6 +5,7 @@
- #include <linux/backing-dev.h>
- 
- struct nfs_iostats;
-+struct nlm_host;
- 
- /*
-  * The nfs_client identifies our client state to the server.
-@@ -80,6 +81,7 @@ struct nfs_server {
- 	struct list_head	master_link;	/* link in master servers list */
- 	struct rpc_clnt *	client;		/* RPC client handle */
- 	struct rpc_clnt *	client_acl;	/* ACL RPC client handle */
-+	struct nlm_host		*nlm_host;	/* NLM client handle */
- 	struct nfs_iostats *	io_stats;	/* I/O statistics */
- 	struct backing_dev_info	backing_dev_info;
- 	atomic_long_t		writeback;	/* number of writeback pages */
+ extern int	nlmclnt_proc(struct inode *, int, struct file_lock *);
+ extern int	lockd_up(int proto);
 
