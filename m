@@ -1,63 +1,81 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 2/4] NLM: Introduce completion function to match nlmclnt_init
-Date: Thu, 20 Dec 2007 15:04:05 -0500
-Message-ID: <20071220200405.3358.54150.stgit@manray.1015granger.net>
+Subject: [PATCH 4/4] NFS: Use cached nlm_host when calling nlmclnt_proc()
+Date: Thu, 20 Dec 2007 15:04:20 -0500
+Message-ID: <20071220200420.3358.66424.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from flpi101.sbcis.sbc.com ([207.115.20.70]:1337 "EHLO
+Received: from flpi101.sbcis.sbc.com ([207.115.20.70]:1524 "EHLO
 	flpi101.prodigy.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754489AbXLTUET (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Dec 2007 15:04:19 -0500
+	with ESMTP id S1755590AbXLTUE3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Dec 2007 15:04:29 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Introduce the other book-end for nlmclnt_init(). This function is invoked
-by the NFS client during unmount processing to release the nlm_host struct
-that was pinned by nlmclnt_init() during mount processing.
+Now that each NFS mount point caches its own nlm_host structure, it can be
+passed to nlmclnt_proc() for each lock request.
+
+By pinning an nlm_host for each mount point, we trade the overhead of
+looking up or creating a fresh nlm_host struct during every NLM procedure
+call for a little extra memory.
+
+Note that nlm_lookup_host() (just removed from the client's per-request
+NLM processing) could also trigger an nlm_host garbage collection.  Now
+client-side nlm_host garbage collection occurs only during NFS mount
+processing.  Since the NFS client holds a reference on these nlm_host
+structures, they wouldn't have been affected by garbage collection
+anyway.
+
+Given that nlm_lookup_host() reorders the nlm_host chain after every
+successful lookup, and that a garbage collection could be triggered during
+the call, we've removed a significant amount of per-NLM-request CPU
+processing overhead.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/lockd/clntlock.c        |   12 ++++++++++++
- include/linux/lockd/bind.h |    1 +
- 2 files changed, 13 insertions(+), 0 deletions(-)
+ fs/lockd/clntproc.c |   21 ++++-----------------
+ 1 files changed, 4 insertions(+), 17 deletions(-)
 
-diff --git a/fs/lockd/clntlock.c b/fs/lockd/clntlock.c
-index 9aeea53..0c99aee 100644
---- a/fs/lockd/clntlock.c
-+++ b/fs/lockd/clntlock.c
-@@ -86,6 +86,18 @@ struct nlm_host *nlmclnt_init(struct sockaddr *server_address,
- }
- EXPORT_SYMBOL(nlmclnt_init);
- 
-+/**
-+ * nlmclnt_done - Release resources allocated by nlmclnt_init()
-+ * @host: nlm_host structure reserved by nlmclnt_init()
-+ *
-+ */
-+void nlmclnt_done(struct nlm_host *host)
-+{
-+	nlm_release_host(host);
-+	lockd_down();
-+}
-+EXPORT_SYMBOL(nlmclnt_done);
-+
+diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
+index a10343b..e31d10c 100644
+--- a/fs/lockd/clntproc.c
++++ b/fs/lockd/clntproc.c
+@@ -148,30 +148,17 @@ static void nlmclnt_release_lockargs(struct nlm_rqst *req)
  /*
-  * Queue up a lock for blocking so that the GRANTED request can see it
+  * This is the main entry point for the NLM client.
   */
-diff --git a/include/linux/lockd/bind.h b/include/linux/lockd/bind.h
-index d8b7149..372c8df 100644
---- a/include/linux/lockd/bind.h
-+++ b/include/linux/lockd/bind.h
-@@ -40,6 +40,7 @@ extern struct nlm_host *nlmclnt_init(struct sockaddr *server_address,
- 					char *server_name,
- 					u32 nfs_version,
- 					unsigned short protocol);
-+extern void	nlmclnt_done(struct nlm_host *host);
+-int
+-nlmclnt_proc(struct inode *inode, int cmd, struct file_lock *fl)
++int nlmclnt_proc(struct inode *inode, int cmd, struct file_lock *fl)
+ {
+-	struct rpc_clnt		*client = NFS_CLIENT(inode);
+-	struct sockaddr_in	addr;
+-	struct nfs_server	*nfssrv = NFS_SERVER(inode);
+-	struct nlm_host		*host;
++	struct nlm_host		*host = NFS_SERVER(inode)->nlm_host;
+ 	struct nlm_rqst		*call;
+ 	sigset_t		oldset;
+ 	unsigned long		flags;
+-	int			status, vers;
+-
+-	vers = (NFS_PROTO(inode)->version == 3) ? 4 : 1;
+-	if (NFS_PROTO(inode)->version > 3) {
+-		printk(KERN_NOTICE "NFSv4 file locking not implemented!\n");
+-		return -ENOLCK;
+-	}
++	int			status;
  
- extern int	nlmclnt_proc(struct inode *, int, struct file_lock *);
- extern int	lockd_up(int proto);
+-	rpc_peeraddr(client, (struct sockaddr *) &addr, sizeof(addr));
+-	host = nlmclnt_lookup_host(&addr, client->cl_xprt->prot, vers,
+-				   nfssrv->nfs_client->cl_hostname,
+-				   strlen(nfssrv->nfs_client->cl_hostname));
+ 	if (host == NULL)
+ 		return -ENOLCK;
++	nlm_get_host(host);
+ 
+ 	call = nlm_alloc_call(host);
+ 	if (call == NULL)
 
