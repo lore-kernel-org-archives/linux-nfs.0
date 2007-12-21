@@ -1,107 +1,281 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 6/6] NLM: Add reference counting to lockd
-Date: Fri, 21 Dec 2007 12:51:25 -0500
-Message-ID: <58F4CCD3-1E95-4B53-8FF3-F979B984D533@oracle.com>
-References: <1198250890-25571-1-git-send-email-jlayton@redhat.com> <1198250890-25571-2-git-send-email-jlayton@redhat.com> <1198250890-25571-3-git-send-email-jlayton@redhat.com> <1198250890-25571-4-git-send-email-jlayton@redhat.com> <1198250890-25571-5-git-send-email-jlayton@redhat.com> <1198250890-25571-6-git-send-email-jlayton@redhat.com> <1198250890-25571-7-git-send-email-jlayton@redhat.com> <213379F3-BB83-47CB-9488-436D246026B5@oracle.com> <20071221120215.03beada0@tleilax.poochiereds.net>
-Mime-Version: 1.0 (Apple Message framework v752.2)
-Content-Type: text/plain; charset=US-ASCII; delsp=yes; format=flowed
-Cc: trond.myklebust@fys.uio.no, linux-nfs@vger.kernel.org
-To: Jeff Layton <jlayton@redhat.com>
+From: Tom Tucker <tom@opengridcomputing.com>
+Subject: Re: [RFC,PATCH 12/38] svc: Add a generic transport svc_create_xprt
+	function
+Date: Fri, 21 Dec 2007 12:18:37 -0600
+Message-ID: <1198261117.14237.47.camel@trinity.ogc.int>
+References: <20071129225510.15275.82660.stgit@dell3.ogc.int>
+	 <20071129225603.15275.54556.stgit@dell3.ogc.int>
+	 <20071214230523.GI23121@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain
+Cc: linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:51635 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753233AbXLURxA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Dec 2007 12:53:00 -0500
-In-Reply-To: <20071221120215.03beada0-RtJpwOs3+0O+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:54353 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752086AbXLUSNH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Dec 2007 13:13:07 -0500
+In-Reply-To: <20071214230523.GI23121@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Dec 21, 2007, at 12:02 PM, Jeff Layton wrote:
-> On Fri, 21 Dec 2007 11:43:20 -0500
-> Chuck Lever <chuck.lever@oracle.com> wrote:
->
->> Hi Jeff-
->>
->> On Dec 21, 2007, at 10:28 AM, Jeff Layton wrote:
->>> ...and only have lockd exit when the last reference is dropped.
->>>
->>> The problem is this:
->>>
->>> When a lock that a client is blocking on comes free, lockd does
->>> this in
->>> nlmsvc_grant_blocked():
->>>
->>>     nlm_async_call(block->b_call, NLMPROC_GRANTED_MSG,
->>> &nlmsvc_grant_ops);
->>>
->>> the callback from this call is nlmsvc_grant_callback(). That
->>> function does this at the end to wake up lockd:
->>>
->>>     svc_wake_up(block->b_daemon);
->>>
->>> However there is no guarantee that lockd will be up when this
->>> happens. If someone shuts down or restarts lockd before the async
->>> call completes,
->>> then the b_daemon pointer will point to freed memory and the
->>> kernel may
->>> oops.
->>
->> Here is perhaps a naive question.
->>
->> If there is a network partition between client and server while one
->> of these async requests is outstanding, and someone does a lockd_down
->> () during the partition, will lockd hang until the network is
->> restored?
->
-> Yes. lockd stays up indefinitely.
 
-But it's still responsive, yes?  So this isn't a livelock hang in  
-that situation.
+On Fri, 2007-12-14 at 18:05 -0500, J. Bruce Fields wrote:
+> On Thu, Nov 29, 2007 at 04:56:03PM -0600, Tom Tucker wrote:
+> > 
+> > The svc_create_xprt function is a transport independent version
+> > of the svc_makesock function. 
+> > 
+> > Since transport instance creation contains transport dependent and 
+> > independent components, add an xpo_create transport function. The 
+> > transport implementation of this function allocates the memory for the 
+> > endpoint, implements the transport dependent initialization logic, and
+> > calls svc_xprt_init to initialize the transport independent field (svc_xprt) 
+> > in it's data structure.
+> > 
+> > Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+> > ---
+> > 
+> >  include/linux/sunrpc/svc_xprt.h |    4 +++
+> >  net/sunrpc/svc_xprt.c           |   37 ++++++++++++++++++++++++++
+> >  net/sunrpc/svcsock.c            |   56 +++++++++++++++++++++++++++++----------
+> >  3 files changed, 82 insertions(+), 15 deletions(-)
+> > 
+> > diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+> > index 1527ff1..3f4a1df 100644
+> > --- a/include/linux/sunrpc/svc_xprt.h
+> > +++ b/include/linux/sunrpc/svc_xprt.h
+> > @@ -10,6 +10,9 @@
+> >  #include <linux/sunrpc/svc.h>
+> >  
+> >  struct svc_xprt_ops {
+> > +	struct svc_xprt	*(*xpo_create)(struct svc_serv *,
+> > +				       struct sockaddr *, int,
+> > +				       int);
+> >  	struct svc_xprt	*(*xpo_accept)(struct svc_xprt *);
+> >  	int		(*xpo_has_wspace)(struct svc_xprt *);
+> >  	int		(*xpo_recvfrom)(struct svc_rqst *);
+> > @@ -36,5 +39,6 @@ struct svc_xprt {
+> >  int	svc_reg_xprt_class(struct svc_xprt_class *);
+> >  int	svc_unreg_xprt_class(struct svc_xprt_class *);
+> >  void	svc_xprt_init(struct svc_xprt_class *, struct svc_xprt *);
+> > +int	svc_create_xprt(struct svc_serv *, char *, unsigned short, int);
+> >  
+> >  #endif /* SUNRPC_SVC_XPRT_H */
+> > diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+> > index 92ea85b..9136da4 100644
+> > --- a/net/sunrpc/svc_xprt.c
+> > +++ b/net/sunrpc/svc_xprt.c
+> > @@ -93,3 +93,40 @@ void svc_xprt_init(struct svc_xprt_class *xcl, struct svc_xprt *xprt)
+> >  	xprt->xpt_ops = xcl->xcl_ops;
+> >  }
+> >  EXPORT_SYMBOL_GPL(svc_xprt_init);
+> > +
+> > +int svc_create_xprt(struct svc_serv *serv, char *xprt_name, unsigned short port,
+> > +		    int flags)
+> > +{
+> > +	struct svc_xprt_class *xcl;
+> > +	int ret = -ENOENT;
+> > +	struct sockaddr_in sin = {
+> > +		.sin_family		= AF_INET,
+> > +		.sin_addr.s_addr	= INADDR_ANY,
+> > +		.sin_port		= htons(port),
+> > +	};
+> > +	dprintk("svc: creating transport %s[%d]\n", xprt_name, port);
+> > +	spin_lock(&svc_xprt_class_lock);
+> > +	list_for_each_entry(xcl, &svc_xprt_class_list, xcl_list) {
+> > +		if (strcmp(xprt_name, xcl->xcl_name) == 0) {
+> > +			spin_unlock(&svc_xprt_class_lock);
+> > +			if (try_module_get(xcl->xcl_owner)) {
+> 
+> 
+> Hm.  I wonder if this is right.  Don't you need to do the try_module_get
+> while still under the svc_xprt_class_lock?
+> 
 
->> If it does, is there any indication to administrators or
->> users what may be causing the hang?
->>
->
-> No, though that's a good point. Perhaps there should be. I'll think
-> about how we could add a notification.
+Hmm. This is an interesting question. I'm was assuming that the
+unregister call from the transport provider comes from the module_exit
+function. If it doesn't then you are correct you could have an active
+reference to a module that is not present in the transport class list. 
 
-You could easily post a message to the kernel log that says "lockd  
-was signaled to stop, but is waiting for outstanding requests to  
-complete."
+I didn't really want to hold a spin lock across a call like this, but
+looking at try_module_lock, I don't think it can sleep.
 
->> Current behavior is either a crash or a clean lockd restart, yes?
->> Would the new behavior be a hang?
->
-> Current behavior is a crash period (well, a crash if memory poisoning
-> is on, otherwise YMMV). If lockd is restarted the svc_wake_up still
-> wakes up a non-existent b_daemon.
->
-> The new behavior is not a "hang" per-se. lockd will just stay up and
-> processing until nlmsvc_ref goes to 0, which will never happen if
-> there's a network partition. If the partition is removed, the callback
-> will complete and lockd will go down. If a lockd_up is done before the
-> callback completes, then the existing lockd will just stay up,  
-> though it
-> will have been signalled and will have dropped all of its existing
-> locks.
->
-> My original patch for this changed the svc_wake_up() call to a call to
-> wake up whatever lockd happened to be up at the time. Trond seemed to
-> think that lockd should just stay up in this situation, and this
-> patchset is an attempt to implement that.
+> --b.
+> 
+> > +				struct svc_xprt *newxprt;
+> > +				ret = 0;
+> > +				newxprt = xcl->xcl_ops->xpo_create
+> > +					(serv,
+> > +					 (struct sockaddr *)&sin, sizeof(sin),
+> > +					 flags);
+> > +				if (IS_ERR(newxprt)) {
+> > +					module_put(xcl->xcl_owner);
+> > +					ret = PTR_ERR(newxprt);
+> > +				}
+> > +			}
+> > +			goto out;
+> > +		}
+> > +	}
+> > +	spin_unlock(&svc_xprt_class_lock);
+> > +	dprintk("svc: transport %s not found\n", xprt_name);
+> > + out:
+> > +	return ret;
+> > +}
+> > +EXPORT_SYMBOL_GPL(svc_create_xprt);
+> > diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+> > index 661162b..0bfffbc 100644
+> > --- a/net/sunrpc/svcsock.c
+> > +++ b/net/sunrpc/svcsock.c
+> > @@ -91,6 +91,8 @@ static void		svc_sock_free(struct svc_xprt *);
+> >  static struct svc_deferred_req *svc_deferred_dequeue(struct svc_sock *svsk);
+> >  static int svc_deferred_recv(struct svc_rqst *rqstp);
+> >  static struct cache_deferred_req *svc_defer(struct cache_req *req);
+> > +static struct svc_xprt *
+> > +svc_create_socket(struct svc_serv *, int, struct sockaddr *, int, int);
+> >  
+> >  /* apparently the "standard" is that clients close
+> >   * idle connections after 5 minutes, servers after
+> > @@ -381,6 +383,7 @@ svc_sock_put(struct svc_sock *svsk)
+> >  {
+> >  	if (atomic_dec_and_test(&svsk->sk_inuse)) {
+> >  		BUG_ON(!test_bit(SK_DEAD, &svsk->sk_flags));
+> > +		module_put(svsk->sk_xprt.xpt_class->xcl_owner);
+> >  		svsk->sk_xprt.xpt_ops->xpo_free(&svsk->sk_xprt);
+> >  	}
+> >  }
+> > @@ -918,7 +921,14 @@ static struct svc_xprt *svc_udp_accept(struct svc_xprt *xprt)
+> >  	return NULL;
+> >  }
+> >  
+> > +static struct svc_xprt *
+> > +svc_udp_create(struct svc_serv *serv, struct sockaddr *sa, int salen, int flags)
+> > +{
+> > +	return svc_create_socket(serv, IPPROTO_UDP, sa, salen, flags);
+> > +}
+> > +
+> >  static struct svc_xprt_ops svc_udp_ops = {
+> > +	.xpo_create = svc_udp_create,
+> >  	.xpo_recvfrom = svc_udp_recvfrom,
+> >  	.xpo_sendto = svc_udp_sendto,
+> >  	.xpo_release_rqst = svc_release_skb,
+> > @@ -931,6 +941,7 @@ static struct svc_xprt_ops svc_udp_ops = {
+> >  
+> >  static struct svc_xprt_class svc_udp_class = {
+> >  	.xcl_name = "udp",
+> > +	.xcl_owner = THIS_MODULE,
+> >  	.xcl_ops = &svc_udp_ops,
+> >  	.xcl_max_payload = RPCSVC_MAXPAYLOAD_UDP,
+> >  };
+> > @@ -1351,7 +1362,14 @@ static int svc_tcp_has_wspace(struct svc_xprt *xprt)
+> >  	return 1;
+> >  }
+> >  
+> > +static struct svc_xprt *
+> > +svc_tcp_create(struct svc_serv *serv, struct sockaddr *sa, int salen, int flags)
+> > +{
+> > +	return svc_create_socket(serv, IPPROTO_TCP, sa, salen, flags);
+> > +}
+> > +
+> >  static struct svc_xprt_ops svc_tcp_ops = {
+> > +	.xpo_create = svc_tcp_create,
+> >  	.xpo_recvfrom = svc_tcp_recvfrom,
+> >  	.xpo_sendto = svc_tcp_sendto,
+> >  	.xpo_release_rqst = svc_release_skb,
+> > @@ -1364,6 +1382,7 @@ static struct svc_xprt_ops svc_tcp_ops = {
+> >  
+> >  static struct svc_xprt_class svc_tcp_class = {
+> >  	.xcl_name = "tcp",
+> > +	.xcl_owner = THIS_MODULE,
+> >  	.xcl_ops = &svc_tcp_ops,
+> >  	.xcl_max_payload = RPCSVC_MAXPAYLOAD_TCP,
+> >  };
+> > @@ -1589,8 +1608,14 @@ svc_recv(struct svc_rqst *rqstp, long timeout)
+> >  	} else if (test_bit(SK_LISTENER, &svsk->sk_flags)) {
+> >  		struct svc_xprt *newxpt;
+> >  		newxpt = svsk->sk_xprt.xpt_ops->xpo_accept(&svsk->sk_xprt);
+> > -		if (newxpt)
+> > +		if (newxpt) {
+> > +			/*
+> > +			 * We know this module_get will succeed because the
+> > +			 * listener holds a reference too
+> > +			 */
+> > +			__module_get(newxpt->xpt_class->xcl_owner);
+> >  			svc_check_conn_limits(svsk->sk_server);
+> > +		}
+> >  		svc_sock_received(svsk);
+> >  	} else {
+> >  		dprintk("svc: server %p, pool %u, socket %p, inuse=%d\n",
+> > @@ -1830,8 +1855,9 @@ EXPORT_SYMBOL_GPL(svc_addsock);
+> >  /*
+> >   * Create socket for RPC service.
+> >   */
+> > -static int svc_create_socket(struct svc_serv *serv, int protocol,
+> > -				struct sockaddr *sin, int len, int flags)
+> > +static struct svc_xprt *
+> > +svc_create_socket(struct svc_serv *serv, int protocol,
+> > +		  struct sockaddr *sin, int len, int flags)
+> >  {
+> >  	struct svc_sock	*svsk;
+> >  	struct socket	*sock;
+> > @@ -1846,13 +1872,13 @@ static int svc_create_socket(struct svc_serv *serv, int protocol,
+> >  	if (protocol != IPPROTO_UDP && protocol != IPPROTO_TCP) {
+> >  		printk(KERN_WARNING "svc: only UDP and TCP "
+> >  				"sockets supported\n");
+> > -		return -EINVAL;
+> > +		return ERR_PTR(-EINVAL);
+> >  	}
+> >  	type = (protocol == IPPROTO_UDP)? SOCK_DGRAM : SOCK_STREAM;
+> >  
+> >  	error = sock_create_kern(sin->sa_family, type, protocol, &sock);
+> >  	if (error < 0)
+> > -		return error;
+> > +		return ERR_PTR(error);
+> >  
+> >  	svc_reclassify_socket(sock);
+> >  
+> > @@ -1869,13 +1895,13 @@ static int svc_create_socket(struct svc_serv *serv, int protocol,
+> >  
+> >  	if ((svsk = svc_setup_socket(serv, sock, &error, flags)) != NULL) {
+> >  		svc_sock_received(svsk);
+> > -		return ntohs(inet_sk(svsk->sk_sk)->sport);
+> > +		return (struct svc_xprt *)svsk;
+> >  	}
+> >  
+> >  bummer:
+> >  	dprintk("svc: svc_create_socket error = %d\n", -error);
+> >  	sock_release(sock);
+> > -	return error;
+> > +	return ERR_PTR(error);
+> >  }
+> >  
+> >  /*
+> > @@ -1986,15 +2012,15 @@ void svc_force_close_socket(struct svc_sock *svsk)
+> >  int svc_makesock(struct svc_serv *serv, int protocol, unsigned short port,
+> >  			int flags)
+> >  {
+> > -	struct sockaddr_in sin = {
+> > -		.sin_family		= AF_INET,
+> > -		.sin_addr.s_addr	= INADDR_ANY,
+> > -		.sin_port		= htons(port),
+> > -	};
+> > -
+> >  	dprintk("svc: creating socket proto = %d\n", protocol);
+> > -	return svc_create_socket(serv, protocol, (struct sockaddr *) &sin,
+> > -							sizeof(sin), flags);
+> > +	switch (protocol) {
+> > +	case IPPROTO_TCP:
+> > +		return svc_create_xprt(serv, "tcp", port, flags);
+> > +	case IPPROTO_UDP:
+> > +		return svc_create_xprt(serv, "udp", port, flags);
+> > +	default:
+> > +		return -EINVAL;
+> > +	}
+> >  }
+> >  
+> >  /*
+> > -
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-Appropriate shutdown processing and not dropping requests in progress  
-may have conflicting purposes here.  :-)
-
-Continuing to operate makes sense if there's another lockd waiting to  
-start up; but during system shutdown processing, we may just want to  
-pull the rug out.
-
-Would it make sense to time out the requests so lockd could shutdown  
-in an orderly fashion?  Or perhaps somehow teach lockd to distinguish  
-between a daemon restart and a system shutdown?  Maybe it's not worth  
-the effort.
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
