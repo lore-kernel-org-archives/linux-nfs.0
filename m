@@ -1,179 +1,249 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 2/8] NLM: Fix sign of length of NLM variable length
-	strings
-Date: Thu, 01 Nov 2007 16:56:53 -0400
-Message-ID: <20071101205653.5503.91811.stgit@manray.1015granger.net>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH 6/6] NLM: Add reference counting to lockd
+Date: Fri, 21 Dec 2007 15:46:05 -0500
+Message-ID: <20071221154605.5c852a8b@tleilax.poochiereds.net>
+References: <1198250890-25571-1-git-send-email-jlayton@redhat.com>
+	<1198250890-25571-2-git-send-email-jlayton@redhat.com>
+	<1198250890-25571-3-git-send-email-jlayton@redhat.com>
+	<1198250890-25571-4-git-send-email-jlayton@redhat.com>
+	<1198250890-25571-5-git-send-email-jlayton@redhat.com>
+	<1198250890-25571-6-git-send-email-jlayton@redhat.com>
+	<1198250890-25571-7-git-send-email-jlayton@redhat.com>
+	<213379F3-BB83-47CB-9488-436D246026B5@oracle.com>
+	<20071221120215.03beada0@tleilax.poochiereds.net>
+	<58F4CCD3-1E95-4B53-8FF3-F979B984D533@oracle.com>
+	<20071221145456.122174d0@tleilax.poochiereds.net>
+	<B71A85B3-25A5-4B90-A447-C0C063AD1E66@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: trond.myklebust@fys.uio.no, neilb@suse.de, bfields@fieldses.org
-Return-path: <nfs-bounces@lists.sourceforge.net>
-Received: from sc8-sf-mx2-b.sourceforge.net ([10.3.1.92]
-	helo=mail.sourceforge.net)
-	by sc8-sf-list2-new.sourceforge.net with esmtp (Exim 4.43)
-	id 1Inh7k-0007pC-1Q
-	for nfs@lists.sourceforge.net; Thu, 01 Nov 2007 13:58:44 -0700
-Received: from flpi185.sbcis.sbc.com ([207.115.20.187]
-	helo=flpi185.prodigy.net)
-	by mail.sourceforge.net with esmtp (Exim 4.44) id 1Inh7p-00023s-IG
-	for nfs@lists.sourceforge.net; Thu, 01 Nov 2007 13:58:49 -0700
-List-Id: "Discussion of NFS under Linux development, interoperability,
-	and testing." <nfs.lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=nfs>
-List-Post: <mailto:nfs@lists.sourceforge.net>
-List-Help: <mailto:nfs-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/nfs>,
-	<mailto:nfs-request@lists.sourceforge.net?subject=subscribe>
-Sender: nfs-bounces@lists.sourceforge.net
-Errors-To: nfs-bounces@lists.sourceforge.net
+Content-Type: text/plain; charset=US-ASCII
+Cc: trond.myklebust@fys.uio.no, linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([66.187.233.31]:37952 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752870AbXLUUrO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 21 Dec 2007 15:47:14 -0500
+In-Reply-To: <B71A85B3-25A5-4B90-A447-C0C063AD1E66@oracle.com>
+Sender: linux-nfs-owner@vger.kernel.org
+List-ID: <linux-nfs.vger.kernel.org>
 
-According to The Open Group's NLM specification, NLM callers are variable
-length strings.  XDR variable length strings use an unsigned 32 bit length.
-And internally, negative string lengths are not meaningful for the Linux
-NLM implementation.
+On Fri, 21 Dec 2007 15:25:29 -0500
+Chuck Lever <chuck.lever@oracle.com> wrote:
 
-Clean up: Make nlm_lock.len and nlm_reboot.len unsigned integers.  This
-makes the sign of NLM string lengths consistent with the sign of xdr_netobj
-lengths.
+> On Dec 21, 2007, at 2:54 PM, Jeff Layton wrote:
+> > On Fri, 21 Dec 2007 12:51:25 -0500
+> > Chuck Lever <chuck.lever@oracle.com> wrote:
+> >
+> >> You could easily post a message to the kernel log that says "lockd
+> >> was signaled to stop, but is waiting for outstanding requests to
+> >> complete."
+> >
+> > Here's a respun patch 6 that contains the warning message suggested
+> > by Chuck.
+> >
+> > Thoughts?
+> >
+> > ------------[snip]--------------
+> >
+> > NLM: Add reference counting to lockd
+> >
+> > ...and only have lockd exit when the last reference is dropped.
+> >
+> > The problem is this:
+> >
+> > When a lock that a client is blocking on comes free, lockd does  
+> > this in
+> > nlmsvc_grant_blocked():
+> >
+> >     nlm_async_call(block->b_call, NLMPROC_GRANTED_MSG,  
+> > &nlmsvc_grant_ops);
+> >
+> > the callback from this call is nlmsvc_grant_callback(). That
+> > function does this at the end to wake up lockd:
+> >
+> >     svc_wake_up(block->b_daemon);
+> >
+> > However there is no guarantee that lockd will be up when this
+> > happens. If someone shuts down or restarts lockd before the async
+> > call completes,
+> > then the b_daemon pointer will point to freed memory and the
+> > kernel may
+> > oops.
+> >
+> > I first noticed this on older kernels and had mistakenly thought
+> > that newer kernels weren't susceptible, but that's not correct.
+> > There's a bit
+> > of a race to make sure that the nlm_host is bound when the async  
+> > call is
+> > done, but I can now reproduce this at will on current kernels.
+> >
+> > This patch is based on Trond's suggestion to add a new reference  
+> > counter
+> > to lockd, and only allows lockd to go down when it reaches 0. With  
+> > this
+> > change we can't use kthread_stop here. nlmsvc_unlink_block is  
+> > called by
+> > lockd and a kthread can't call kthread_stop on itself. So the patch
+> > changes lockd to check the refcount itself and to return if it goes
+> > to 0. We do the checking and exit while holding the nlmsvc_mutex to
+> > make sure that a new lockd is not started until the old one is down.
+> >
+> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > ---
+> >  fs/lockd/svc.c              |   52
+> > ++++++++++++++++++++++++++++++++ +---------
+> >  fs/lockd/svclock.c          |    5 ++++
+> >  include/linux/lockd/lockd.h |    1 +
+> >  3 files changed, 47 insertions(+), 11 deletions(-)
+> >
+> > diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+> > index d7209ea..71a4f65 100644
+> > --- a/fs/lockd/svc.c
+> > +++ b/fs/lockd/svc.c
+> > @@ -51,6 +51,7 @@ static DEFINE_MUTEX(nlmsvc_mutex);
+> >  static unsigned int		nlmsvc_users;
+> >  static struct task_struct	*nlmsvc_task;
+> >  static struct svc_serv		*nlmsvc_serv;
+> > +atomic_t			nlmsvc_ref = ATOMIC_INIT(0);
+> >  int				nlmsvc_grace_period;
+> >  unsigned long			nlmsvc_timeout;
+> >
+> > @@ -134,7 +135,10 @@ lockd(void *vrqstp)
+> >
+> >  	set_freezable();
+> >
+> > -	/* Process request with signals blocked, but allow
+> > SIGKILL.  */
+> > +	/*
+> > +	 * Process request with signals blocked, but allow SIGKILL
+> > which
+> > +	 * signifies that lockd should drop all of its locks.
+> > +	 */
+> >  	allow_signal(SIGKILL);
+> >
+> >  	dprintk("NFS locking service started (ver " LOCKD_VERSION
+> > ").\n"); @@ -147,15 +151,19 @@ lockd(void *vrqstp)
+> >
+> >  	/*
+> >  	 * The main request loop. We don't terminate until the last
+> > -	 * NFS mount or NFS daemon has gone away, and we've been
+> > sent a
+> > -	 * signal, or else another process has taken over our job.
+> > +	 * NFS mount or NFS daemon has gone away, and the
+> > nlm_blocked
+> > +	 * list is empty. The nlmsvc_mutex ensures that we prevent
+> > a
+> > +	 * new lockd from being started before the old one is down.
+> >  	 */
+> > -	while (!kthread_should_stop()) {
+> > +	mutex_lock(&nlmsvc_mutex);
+> > +	while (atomic_read(&nlmsvc_ref) != 0) {
+> >  		long timeout = MAX_SCHEDULE_TIMEOUT;
+> >  		char buf[RPC_MAX_ADDRBUFLEN];
+> >
+> > +		mutex_unlock(&nlmsvc_mutex);
+> > +
+> >  		if (try_to_freeze())
+> > -			continue;
+> > +			goto again;
+> >
+> >  		if (signalled()) {
+> >  			flush_signals(current);
+> > @@ -182,11 +190,12 @@ lockd(void *vrqstp)
+> >  		 */
+> >  		err = svc_recv(rqstp, timeout);
+> >  		if (err == -EAGAIN || err == -EINTR)
+> > -			continue;
+> > +			goto again;
+> >  		if (err < 0) {
+> >  			printk(KERN_WARNING
+> >  			       "lockd: terminating on error %d\n",
+> >  			       -err);
+> > +			mutex_lock(&nlmsvc_mutex);
+> >  			break;
+> >  		}
+> >
+> > @@ -194,19 +203,22 @@ lockd(void *vrqstp)
+> >  				svc_print_addr(rqstp, buf,
+> > sizeof(buf)));
+> >
+> >  		svc_process(rqstp);
+> > +again:
+> > +		mutex_lock(&nlmsvc_mutex);
+> >  	}
+> >
+> > -	flush_signals(current);
+> > -
+> >  	/*
+> > -	 * Check whether there's a new lockd process before
+> > -	 * shutting down the hosts and clearing the slot.
+> > +	 * at this point lockd is committed to going down. We hold
+> > the
+> > +	 * nlmsvc_mutex until just before exit to prevent a new one
+> > +	 * from starting before it's down.
+> >  	 */
+> > +	flush_signals(current);
+> >  	if (nlmsvc_ops)
+> >  		nlmsvc_invalidate_all();
+> >  	nlm_shutdown_hosts();
+> >  	nlmsvc_task = NULL;
+> >  	nlmsvc_serv = NULL;
+> > +	mutex_unlock(&nlmsvc_mutex);
+> >
+> >  	/* Exit the RPC thread */
+> >  	svc_exit_thread(rqstp);
+> > @@ -269,6 +281,10 @@ lockd_up(int proto) /* Maybe add a 'family'  
+> > option when IPv6 is supported ?? */
+> >  	int		error = 0;
+> >
+> >  	mutex_lock(&nlmsvc_mutex);
+> > +
+> > +	if (!nlmsvc_users)
+> > +		atomic_inc(&nlmsvc_ref);
+> > +
+> >  	/*
+> >  	 * Check whether we're already up and running.
+> >  	 */
+> > @@ -328,6 +344,8 @@ lockd_up(int proto) /* Maybe add a 'family'  
+> > option when IPv6 is supported ?? */
+> >  destroy_and_out:
+> >  	svc_destroy(serv);
+> >  out:
+> > +	if (!nlmsvc_users && error)
+> > +		atomic_dec(&nlmsvc_ref);
+> >  	if (!error)
+> >  		nlmsvc_users++;
+> >  	mutex_unlock(&nlmsvc_mutex);
+> > @@ -357,7 +375,19 @@ lockd_down(void)
+> >  		goto out;
+> >  	}
+> >  	warned = 0;
+> > -	kthread_stop(nlmsvc_task);
+> > +	if (atomic_sub_return(1, &nlmsvc_ref) != 0)
+> > +		printk(KERN_WARNING "lockd_down: lockd signalled
+> > to go down, "
+> > +			"but is waiting for outstanding requests
+> > to "
+> > +			"complete.\n");
+> 
+> We could quibble about the proper spelling of "signaled".
+> 
+> "lockd_down: lockd is waiting for outstanding requests to complete  
+> before exiting."
+> 
+> might be less awkward.
+> 
+> Otherwise, I think this is helpful.
+> 
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+m-w.com says either form is correct, though you're probably right that
+your later suggestion is less awkward (and also more correct since
+lockd technically hasn't been sent a signal at that point).
 
- fs/lockd/host.c             |   19 +++++++++++--------
- include/linux/lockd/lockd.h |    9 ++++++---
- include/linux/lockd/xdr.h   |    4 ++--
- 3 files changed, 19 insertions(+), 13 deletions(-)
+I'll plan to let this sit for a day or two and see if anyone else has
+comments on the set. If not, then I'll respin with a clarified warning
+message.
 
-diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-index 572601e..ebec009 100644
---- a/fs/lockd/host.c
-+++ b/fs/lockd/host.c
-@@ -34,10 +34,10 @@ static DEFINE_MUTEX(nlm_host_mutex);
- 
- static void			nlm_gc_hosts(void);
- static struct nsm_handle *	__nsm_find(const struct sockaddr_in *,
--					const char *, int, int);
-+					const char *, unsigned int, int);
- static struct nsm_handle *	nsm_find(const struct sockaddr_in *sin,
- 					 const char *hostname,
--					 int hostname_len);
-+					 unsigned int hostname_len);
- 
- /*
-  * Common host lookup routine for server & client
-@@ -45,7 +45,8 @@ static struct nsm_handle *	nsm_find(const struct sockaddr_in *sin,
- static struct nlm_host *
- nlm_lookup_host(int server, const struct sockaddr_in *sin,
- 		int proto, int version, const char *hostname,
--		int hostname_len, const struct sockaddr_in *ssin)
-+		unsigned int hostname_len,
-+		const struct sockaddr_in *ssin)
- {
- 	struct hlist_head *chain;
- 	struct hlist_node *pos;
-@@ -176,7 +177,7 @@ nlm_destroy_host(struct nlm_host *host)
-  */
- struct nlm_host *
- nlmclnt_lookup_host(const struct sockaddr_in *sin, int proto, int version,
--			const char *hostname, int hostname_len)
-+			const char *hostname, unsigned int hostname_len)
- {
- 	struct sockaddr_in ssin = {0};
- 
-@@ -189,7 +190,7 @@ nlmclnt_lookup_host(const struct sockaddr_in *sin, int proto, int version,
-  */
- struct nlm_host *
- nlmsvc_lookup_host(struct svc_rqst *rqstp,
--			const char *hostname, int hostname_len)
-+			const char *hostname, unsigned int hostname_len)
- {
- 	struct sockaddr_in ssin = {0};
- 
-@@ -307,7 +308,8 @@ void nlm_release_host(struct nlm_host *host)
-  * Release all resources held by that peer.
-  */
- void nlm_host_rebooted(const struct sockaddr_in *sin,
--				const char *hostname, int hostname_len,
-+				const char *hostname,
-+				unsigned int hostname_len,
- 				u32 new_state)
- {
- 	struct hlist_head *chain;
-@@ -449,7 +451,7 @@ static DEFINE_MUTEX(nsm_mutex);
- 
- static struct nsm_handle *
- __nsm_find(const struct sockaddr_in *sin,
--		const char *hostname, int hostname_len,
-+		const char *hostname, unsigned int hostname_len,
- 		int create)
- {
- 	struct nsm_handle *nsm = NULL;
-@@ -503,7 +505,8 @@ out:
- }
- 
- static struct nsm_handle *
--nsm_find(const struct sockaddr_in *sin, const char *hostname, int hostname_len)
-+nsm_find(const struct sockaddr_in *sin, const char *hostname,
-+	 unsigned int hostname_len)
- {
- 	return __nsm_find(sin, hostname, hostname_len, 1);
- }
-diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
-index e2d1ce3..4babb2a 100644
---- a/include/linux/lockd/lockd.h
-+++ b/include/linux/lockd/lockd.h
-@@ -173,14 +173,17 @@ void		  nlmclnt_next_cookie(struct nlm_cookie *);
- /*
-  * Host cache
-  */
--struct nlm_host * nlmclnt_lookup_host(const struct sockaddr_in *, int, int, const char *, int);
--struct nlm_host * nlmsvc_lookup_host(struct svc_rqst *, const char *, int);
-+struct nlm_host  *nlmclnt_lookup_host(const struct sockaddr_in *, int, int,
-+					const char *, unsigned int);
-+struct nlm_host  *nlmsvc_lookup_host(struct svc_rqst *, const char *,
-+					unsigned int);
- struct rpc_clnt * nlm_bind_host(struct nlm_host *);
- void		  nlm_rebind_host(struct nlm_host *);
- struct nlm_host * nlm_get_host(struct nlm_host *);
- void		  nlm_release_host(struct nlm_host *);
- void		  nlm_shutdown_hosts(void);
--extern void	  nlm_host_rebooted(const struct sockaddr_in *, const char *, int, u32);
-+extern void	  nlm_host_rebooted(const struct sockaddr_in *, const char *,
-+					unsigned int, u32);
- void		  nsm_release(struct nsm_handle *);
- 
- 
-diff --git a/include/linux/lockd/xdr.h b/include/linux/lockd/xdr.h
-index 83a1f9f..df18fa0 100644
---- a/include/linux/lockd/xdr.h
-+++ b/include/linux/lockd/xdr.h
-@@ -29,7 +29,7 @@ struct svc_rqst;
- /* Lock info passed via NLM */
- struct nlm_lock {
- 	char *			caller;
--	int			len; 	/* length of "caller" */
-+	unsigned int		len; 	/* length of "caller" */
- 	struct nfs_fh		fh;
- 	struct xdr_netobj	oh;
- 	u32			svid;
-@@ -78,7 +78,7 @@ struct nlm_res {
-  */
- struct nlm_reboot {
- 	char *		mon;
--	int		len;
-+	unsigned int	len;
- 	u32		state;
- 	__be32		addr;
- 	__be32		vers;
-
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Splunk Inc.
-Still grepping through log files to find problems?  Stop.
-Now Search log events and configuration files using AJAX and a browser.
-Download your FREE copy of Splunk now >> http://get.splunk.com/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
+Thanks for the review,
+-- 
+Jeff Layton <jlayton@redhat.com>
