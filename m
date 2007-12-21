@@ -1,81 +1,48 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 4/4] NFS: Use cached nlm_host when calling nlmclnt_proc()
-Date: Thu, 20 Dec 2007 15:04:20 -0500
-Message-ID: <20071220200420.3358.66424.stgit@manray.1015granger.net>
+From: Le Rouzic <aime.le-rouzic@bull.net>
+Subject: Kerberized NFS SetUp Tutorial and Commands  Version 3
+Date: Fri, 21 Dec 2007 15:05:26 +0100
+Message-ID: <476BC826.6070805@bull.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset="us-ascii"
 Cc: linux-nfs@vger.kernel.org
-To: trond.myklebust@fys.uio.no
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from flpi101.sbcis.sbc.com ([207.115.20.70]:1524 "EHLO
-	flpi101.prodigy.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755590AbXLTUE3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Dec 2007 15:04:29 -0500
-Sender: linux-nfs-owner@vger.kernel.org
+To: nfsv4 <nfsv4@linux-nfs.org>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Now that each NFS mount point caches its own nlm_host structure, it can be
-passed to nlmclnt_proc() for each lock request.
+Hi,
 
-By pinning an nlm_host for each mount point, we trade the overhead of
-looking up or creating a fresh nlm_host struct during every NLM procedure
-call for a little extra memory.
+You will find at http://nfsv4.bullopensource.org/ the Version 3 of the 
+set of three commands which facilitate and
+control the setup of a linux kerberized NFSV4 environmment:
+- krbkdcsv to setup a Kerberos KDC and a Kerberos administration Server
+- krbnfssv to setup a Kerberos NFS Server
+- krbnfscl to setup a Kerberos NFS Client
 
-Note that nlm_lookup_host() (just removed from the client's per-request
-NLM processing) could also trigger an nlm_host garbage collection.  Now
-client-side nlm_host garbage collection occurs only during NFS mount
-processing.  Since the NFS client holds a reference on these nlm_host
-structures, they wouldn't have been affected by garbage collection
-anyway.
+Joined the Version 3 of a tutorial which tries to gather all what need 
+NFSV4 administrators
+and end-users to easily configure NFSV4 within a secure Kerberos 
+environment.
 
-Given that nlm_lookup_host() reorders the nlm_host chain after every
-successful lookup, and that a garbage collection could be triggered during
-the call, we've removed a significant amount of per-NLM-request CPU
-processing overhead.
+Those commands have been tested in FEDORA CORE (with the CITI Kerberos 
+NFSV4 components) and RHEL5.1 environments.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+Regards
 
- fs/lockd/clntproc.c |   21 ++++-----------------
- 1 files changed, 4 insertions(+), 17 deletions(-)
-
-diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
-index a10343b..e31d10c 100644
---- a/fs/lockd/clntproc.c
-+++ b/fs/lockd/clntproc.c
-@@ -148,30 +148,17 @@ static void nlmclnt_release_lockargs(struct nlm_rqst *req)
- /*
-  * This is the main entry point for the NLM client.
-  */
--int
--nlmclnt_proc(struct inode *inode, int cmd, struct file_lock *fl)
-+int nlmclnt_proc(struct inode *inode, int cmd, struct file_lock *fl)
- {
--	struct rpc_clnt		*client = NFS_CLIENT(inode);
--	struct sockaddr_in	addr;
--	struct nfs_server	*nfssrv = NFS_SERVER(inode);
--	struct nlm_host		*host;
-+	struct nlm_host		*host = NFS_SERVER(inode)->nlm_host;
- 	struct nlm_rqst		*call;
- 	sigset_t		oldset;
- 	unsigned long		flags;
--	int			status, vers;
--
--	vers = (NFS_PROTO(inode)->version == 3) ? 4 : 1;
--	if (NFS_PROTO(inode)->version > 3) {
--		printk(KERN_NOTICE "NFSv4 file locking not implemented!\n");
--		return -ENOLCK;
--	}
-+	int			status;
- 
--	rpc_peeraddr(client, (struct sockaddr *) &addr, sizeof(addr));
--	host = nlmclnt_lookup_host(&addr, client->cl_xprt->prot, vers,
--				   nfssrv->nfs_client->cl_hostname,
--				   strlen(nfssrv->nfs_client->cl_hostname));
- 	if (host == NULL)
- 		return -ENOLCK;
-+	nlm_get_host(host);
- 
- 	call = nlm_alloc_call(host);
- 	if (call == NULL)
-
+-- 
+-----------------------------------------------------------------
+Company : Bull, Architect of an Open World TM (www.bull.com)
+Name    : Aime Le Rouzic 
+Mail    : Bull - BP 208 - 38432 Echirolles Cedex - France
+E-Mail  : aime.le-rouzic@bull.net
+Phone   : 33 (4) 76.29.75.51
+Fax     : 33 (4) 76.29.75.18
+----------------------------------------------------------------- 
