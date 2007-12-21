@@ -1,94 +1,129 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH 6/6] NLM: Add reference counting to lockd
-Date: Fri, 21 Dec 2007 12:02:15 -0500
-Message-ID: <20071221120215.03beada0@tleilax.poochiereds.net>
-References: <1198250890-25571-1-git-send-email-jlayton@redhat.com>
-	<1198250890-25571-2-git-send-email-jlayton@redhat.com>
-	<1198250890-25571-3-git-send-email-jlayton@redhat.com>
-	<1198250890-25571-4-git-send-email-jlayton@redhat.com>
-	<1198250890-25571-5-git-send-email-jlayton@redhat.com>
-	<1198250890-25571-6-git-send-email-jlayton@redhat.com>
-	<1198250890-25571-7-git-send-email-jlayton@redhat.com>
-	<213379F3-BB83-47CB-9488-436D246026B5@oracle.com>
+From: Tom Tucker <tom@opengridcomputing.com>
+Subject: Re: [PATCH 38/38] svc: Add svc_xprt_names service to replace
+	svc_sock_names
+Date: Fri, 21 Dec 2007 11:51:47 -0600
+Message-ID: <1198259507.14237.31.camel@trinity.ogc.int>
+References: <20071211233150.15718.40579.stgit@dell3.ogc.int>
+	 <20071211233318.15718.11614.stgit@dell3.ogc.int>
+	 <20071215000328.GP23121@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: trond.myklebust@fys.uio.no, linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain
+Cc: neilb@suse.de, linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:42152 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750736AbXLURCo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 21 Dec 2007 12:02:44 -0500
-In-Reply-To: <213379F3-BB83-47CB-9488-436D246026B5@oracle.com>
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:48406 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751402AbXLURqQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Dec 2007 12:46:16 -0500
+In-Reply-To: <20071215000328.GP23121@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 21 Dec 2007 11:43:20 -0500
-Chuck Lever <chuck.lever@oracle.com> wrote:
 
-> Hi Jeff-
+On Fri, 2007-12-14 at 19:03 -0500, J. Bruce Fields wrote:
+> On Tue, Dec 11, 2007 at 05:33:18PM -0600, Tom Tucker wrote:
+> > 
+> > Create a transport independent version of the svc_sock_names function.
+> > 
+> > The toclose capability of the svc_sock_names service can be implemented
+> > using the svc_xprt_find and svc_xprt_close services.
 > 
-> On Dec 21, 2007, at 10:28 AM, Jeff Layton wrote:
-> > ...and only have lockd exit when the last reference is dropped.
-> >
-> > The problem is this:
-> >
-> > When a lock that a client is blocking on comes free, lockd does  
-> > this in
-> > nlmsvc_grant_blocked():
-> >
-> >     nlm_async_call(block->b_call, NLMPROC_GRANTED_MSG,  
-> > &nlmsvc_grant_ops);
-> >
-> > the callback from this call is nlmsvc_grant_callback(). That
-> > function does this at the end to wake up lockd:
-> >
-> >     svc_wake_up(block->b_daemon);
-> >
-> > However there is no guarantee that lockd will be up when this
-> > happens. If someone shuts down or restarts lockd before the async
-> > call completes,
-> > then the b_daemon pointer will point to freed memory and the
-> > kernel may
-> > oops.
+> Should we delete the toclose checks from svc_sock_names(), then, under
+> the assumption it's always called with toclose non-NULL now?
 > 
-> Here is perhaps a naive question.
-> 
-> If there is a network partition between client and server while one  
-> of these async requests is outstanding, and someone does a lockd_down 
-> () during the partition, will lockd hang until the network is  
-> restored? 
-
-Yes. lockd stays up indefinitely.
-
-> If it does, is there any indication to administrators or  
-> users what may be causing the hang?
+> And why can't we just completely replace svc_sock_names() at this point?
 > 
 
-No, though that's a good point. Perhaps there should be. I'll think
-about how we could add a notification.
+IMO we could, but there is currently a difference in behavior between
+svc_sock_names and svc_find_xprt/close. svc_find_xprt doesn't care what
+the IP address is, it only compares transport name, address family and
+port. 
 
-> Current behavior is either a crash or a clean lockd restart, yes?   
-> Would the new behavior be a hang?
+Presently in NFS, we only ever listen on zero, but you can destroy an
+endpoint on a particular interface (IP address). Can anyone shed some
+light on why this is? 
+
+> --b.
 > 
+> > 
+> > Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+> > ---
+> > 
+> >  fs/nfsd/nfsctl.c                |    2 +-
+> >  include/linux/sunrpc/svc_xprt.h |    1 +
+> >  net/sunrpc/svc_xprt.c           |   35 +++++++++++++++++++++++++++++++++++
+> >  3 files changed, 37 insertions(+), 1 deletions(-)
+> > 
+> > diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+> > index 5b9ed0e..86d084e 100644
+> > --- a/fs/nfsd/nfsctl.c
+> > +++ b/fs/nfsd/nfsctl.c
+> > @@ -503,7 +503,7 @@ static ssize_t write_ports(struct file *file, char *buf, size_t size)
+> >  		int len = 0;
+> >  		lock_kernel();
+> >  		if (nfsd_serv)
+> > -			len = svc_sock_names(buf, nfsd_serv, NULL);
+> > +			len = svc_xprt_names(nfsd_serv, buf, 0);
+> >  		unlock_kernel();
+> >  		return len;
+> >  	}
+> > diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+> > index 840b5c4..ed9791a 100644
+> > --- a/include/linux/sunrpc/svc_xprt.h
+> > +++ b/include/linux/sunrpc/svc_xprt.h
+> > @@ -81,6 +81,7 @@ void	svc_delete_xprt(struct svc_xprt *xprt);
+> >  int	svc_port_is_privileged(struct sockaddr *sin);
+> >  int	svc_print_xprts(char *buf, int maxlen);
+> >  struct	svc_xprt *svc_find_xprt(struct svc_serv *, char *, int, int);
+> > +int	svc_xprt_names(struct svc_serv *serv, char *buf, int buflen);
+> >  static inline void svc_xprt_get(struct svc_xprt *xprt)
+> >  {
+> >  	kref_get(&xprt->xpt_ref);
+> > diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+> > index 6708aa2..2e3a672 100644
+> > --- a/net/sunrpc/svc_xprt.c
+> > +++ b/net/sunrpc/svc_xprt.c
+> > @@ -998,3 +998,38 @@ struct svc_xprt *svc_find_xprt(struct svc_serv *serv, char *xcl_name,
+> >  	return found;
+> >  }
+> >  EXPORT_SYMBOL_GPL(svc_find_xprt);
+> > +
+> > +/*
+> > + * Format a buffer with a list of the active transports. A zero for
+> > + * the buflen parameter disables target buffer overflow checking.
+> > + */
+> > +int svc_xprt_names(struct svc_serv *serv, char *buf, int buflen)
+> > +{
+> > +	struct svc_xprt *xprt;
+> > +	char xprt_str[64];
+> > +	int totlen = 0;
+> > +	int len;
+> > +
+> > +	/* Sanity check args */
+> > +	if (!serv)
+> > +		return 0;
+> > +
+> > +	spin_lock_bh(&serv->sv_lock);
+> > +	list_for_each_entry(xprt, &serv->sv_permsocks, xpt_list) {
+> > +		len = snprintf(xprt_str, sizeof(xprt_str),
+> > +			       "%s %d\n", xprt->xpt_class->xcl_name,
+> > +			       svc_xprt_local_port(xprt));
+> > +		/* If the string was truncated, replace with error string */
+> > +		if (len >= sizeof(xprt_str))
+> > +			strcpy(xprt_str, "name-too-long\n");
+> > +		/* Don't overflow buffer */
+> > +		len = strlen(xprt_str);
+> > +		if (buflen && (len + totlen >= buflen))
+> > +			break;
+> > +		strcpy(buf+totlen, xprt_str);
+> > +		totlen += len;
+> > +	}
+> > +	spin_unlock_bh(&serv->sv_lock);
+> > +	return totlen;
+> > +}
+> > +EXPORT_SYMBOL_GPL(svc_xprt_names);
+> -
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-Current behavior is a crash period (well, a crash if memory poisoning
-is on, otherwise YMMV). If lockd is restarted the svc_wake_up still
-wakes up a non-existent b_daemon.
-
-The new behavior is not a "hang" per-se. lockd will just stay up and
-processing until nlmsvc_ref goes to 0, which will never happen if
-there's a network partition. If the partition is removed, the callback
-will complete and lockd will go down. If a lockd_up is done before the
-callback completes, then the existing lockd will just stay up, though it
-will have been signalled and will have dropped all of its existing
-locks.
-
-My original patch for this changed the svc_wake_up() call to a call to
-wake up whatever lockd happened to be up at the time. Trond seemed to
-think that lockd should just stay up in this situation, and this
-patchset is an attempt to implement that.
-
-Thanks,
--- 
-Jeff Layton <jlayton@redhat.com>
