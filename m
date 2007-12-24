@@ -1,170 +1,113 @@
-From: Fabian Steiner <lists-A1xC5SIKT5unwkN7LPkuEg@public.gmane.org>
-Subject: [NFS] Attempting to mount a large number of directories
-Date: Mon, 24 Dec 2007 12:00:08 +0100
-Message-ID: <200712241200.08410.lists@fabis-site.net>
+From: Erez Zadok <ezk-EX0cT3Az47bauI2f2gSDlQ@public.gmane.org>
+Subject: [NFS] lockdep warnings in nfs4 (v2.6.24-rc6-125-g5356f66)
+Date: Mon, 24 Dec 2007 15:40:44 -0500
+Message-ID: <200712242040.lBOKeiFA003845@agora.fsl.cs.sunysb.edu>
 Mime-Version: 1.0
-Content-Type: Multipart/Mixed;
-  boundary="Boundary-00=_4E5bH6ZaPcz9an9"
+Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:56070 "EHLO neil.brown.name"
+Received: from neil.brown.name ([220.233.11.133]:56073 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751806AbXL1ITb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 28 Dec 2007 03:19:31 -0500
+	id S1751828AbXL1ITn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 28 Dec 2007 03:19:43 -0500
 Received: from brown by neil.brown.name with local (Exim 4.63)
 	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1J8ARG-0004Vg-I5
-	for linux-nfs@vger.kernel.org; Fri, 28 Dec 2007 19:19:30 +1100
+	id 1J8ARS-0004WD-Im
+	for linux-nfs@vger.kernel.org; Fri, 28 Dec 2007 19:19:42 +1100
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Boundary-00=_4E5bH6ZaPcz9an9
-Content-Type: text/plain;
-  charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+My setup: ext2 partition, exported to localhost; nfs4 mounted on localhost;
+unionfs mounted on top of nfs4 mount.  Issuing assorted regression tests via
+the union.  Kernel compiled with lockdep.  Four of my tests (rmdir, readdir,
+rename, and rename with whiteouts), trigger the same lockdep warning when
+unmounting nfs4.  It doesn't happen when unionfs is mounted on top of
+anything else, including nfs2 and nfs3.
 
-Hello!
+I've not tried to reproduce it w/o unionfs, but the lockdep warning below
+appears to be unrelated to unionfs.  If you'd like me to try and reproduce
+it w/o unionfs, let me know.
 
-After having finished the migration to our new setup (user home directories 
-are mounted automatically using autofs [4.1.4-8ubuntu1] and NFSv3) we are 
-experiencing some problems which use to occur whenever many users attempt to 
-access their directories. If such an issue appears the following messages 
-will be seen in /var/log/syslog of the server:
+Cheers,
+Erez.
 
-Dec 23 18:38:00 ubuntu1 mountd[8995]: refused mount request from client 
-for /exports/dir157 (/exports): illegal port 59537
+=======================================================
+[ INFO: possible circular locking dependency detected ]
+2.6.24-rc6-unionfs2 #80
+-------------------------------------------------------
+umount.nfs4/4017 is trying to acquire lock:
+ (&(&clp->cl_renewd)->work){--..}, at: [<c0223e53>] __cancel_work_timer+0x83/0x17f
 
-At first we thought it would be an autofs problem but after having tried to 
-reproduce the problem employing normal nfs mounts we encountered the same 
-issues. The attached scripts might help you to reproduce it.
+but task is already holding lock:
+ (&clp->cl_sem){----}, at: [<f8879897>] nfs4_kill_renewd+0x17/0x29 [nfs]
 
-Running these scripts reveal that mounting 105 directories work, the 106th 
-fails, however, resulting in the following error: 
-
-[...]
-Working on dir 105 ...nfs bindresvport: Address already in use
-OK
-Working on dir 106 ...mount: 192.168.0.46:/exports/dir106: can't read 
-superblock
-OK
-[...]
-
-At next, I added the "insecure" option to my /etc/exports file and increased 
-the value of /proc/sys/sunrpc/max_resvport from 1023 to 5000. Now 139 
-directories can be mounted without any single error, then "nfs bindresvport: 
-Address already in use" appears again and mounting 141-172 also works fine. 
-Afterwards all the other mount attempts are failing.
-
-Could you explain this behaviour? What does "nfs bindresvport: Address already 
-in use" try to tell me? Generally speaking both the server as well as the 
-client should run out of open ports.
-
-Merry Christmas and relaxing holidays,
-Fabian :-)
+which lock already depends on the new lock.
 
 
+the existing dependency chain (in reverse order) is:
 
+-> #1 (&clp->cl_sem){----}:
+       [<c0230699>] __lock_acquire+0x9cc/0xb95
+       [<c0230c39>] lock_acquire+0x5f/0x78
+       [<c0397cb8>] down_read+0x3a/0x4c
+       [<f88798e6>] nfs4_renew_state+0x1c/0x1b8 [nfs]
+       [<c0223821>] run_workqueue+0xd9/0x1ac
+       [<c0224220>] worker_thread+0x7a/0x86
+       [<c0226b49>] kthread+0x3b/0x62
+       [<c02033a3>] kernel_thread_helper+0x7/0x10
+       [<ffffffff>] 0xffffffff
 
+-> #0 (&(&clp->cl_renewd)->work){--..}:
+       [<c0230589>] __lock_acquire+0x8bc/0xb95
+       [<c0230c39>] lock_acquire+0x5f/0x78
+       [<c0223e87>] __cancel_work_timer+0xb7/0x17f
+       [<c0223f5a>] cancel_delayed_work_sync+0xb/0xd
+       [<f887989e>] nfs4_kill_renewd+0x1e/0x29 [nfs]
+       [<f885a8f6>] nfs_free_client+0x37/0x9e [nfs]
+       [<f885ab20>] nfs_put_client+0x5d/0x62 [nfs]
+       [<f885ab9a>] nfs_free_server+0x75/0xae [nfs]
+       [<f8862672>] nfs4_kill_super+0x27/0x2b [nfs]
+       [<c0258aab>] deactivate_super+0x3f/0x51
+       [<c0269668>] mntput_no_expire+0x42/0x67
+       [<c025d0e4>] path_release_on_umount+0x15/0x18
+       [<c0269d30>] sys_umount+0x1a3/0x1cb
+       [<c0269d71>] sys_oldumount+0x19/0x1b
+       [<c02026ca>] sysenter_past_esp+0x5f/0xa5
+       [<ffffffff>] 0xffffffff
 
+other info that might help us debug this:
 
+1 lock held by umount.nfs4/4017:
+ #0:  (&clp->cl_sem){----}, at: [<f8879897>] nfs4_kill_renewd+0x17/0x29 [nfs]
 
+stack backtrace:
+Pid: 4017, comm: umount.nfs4 Not tainted 2.6.24-rc6-unionfs2 #80
+ [<c020371f>] show_trace_log_lvl+0x1a/0x2f
+ [<c02040a8>] show_trace+0x12/0x14
+ [<c020497f>] dump_stack+0x6c/0x72
+ [<c022eca5>] print_circular_bug_tail+0x5f/0x68
+ [<c0230589>] __lock_acquire+0x8bc/0xb95
+ [<c0230c39>] lock_acquire+0x5f/0x78
+ [<c0223e87>] __cancel_work_timer+0xb7/0x17f
+ [<c0223f5a>] cancel_delayed_work_sync+0xb/0xd
+ [<f887989e>] nfs4_kill_renewd+0x1e/0x29 [nfs]
+ [<f885a8f6>] nfs_free_client+0x37/0x9e [nfs]
+ [<f885ab20>] nfs_put_client+0x5d/0x62 [nfs]
+ [<f885ab9a>] nfs_free_server+0x75/0xae [nfs]
+ [<f8862672>] nfs4_kill_super+0x27/0x2b [nfs]
+ [<c0258aab>] deactivate_super+0x3f/0x51
+ [<c0269668>] mntput_no_expire+0x42/0x67
+ [<c025d0e4>] path_release_on_umount+0x15/0x18
+ [<c0269d30>] sys_umount+0x1a3/0x1cb
+ [<c0269d71>] sys_oldumount+0x19/0x1b
+ [<c02026ca>] sysenter_past_esp+0x5f/0xa5
+ =======================
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
---Boundary-00=_4E5bH6ZaPcz9an9
-Content-Type: text/plain;
-  charset="us-ascii";
-  name="CONSTANTS"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename="CONSTANTS"
-
-SERVER="192.168.0.46"
-SERVER_BASE="/exports"
-
-CLIENT_BASE="/nfs-mounts"
-
---Boundary-00=_4E5bH6ZaPcz9an9
-Content-Type: application/x-shellscript;
-  name="create_dirs.sh"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename="create_dirs.sh"
-
-#!/bin/bash
-
-if [[ -z $1 ]]; then
-    echo "Specify the number of dirs to be created."
-    exit 1
-fi
-
-NUM=$1
-BASE="/exports/"
-
-for i in `seq 0 $NUM`; do
-    mkdir "${BASE}/dir${i}"
-done
---Boundary-00=_4E5bH6ZaPcz9an9
-Content-Type: application/x-shellscript;
-  name="mount_all.sh"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename="mount_all.sh"
-
-#!/bin/bash
-
-if [[ -z $1 ]]; then
-    echo "Specify the number of dirs to be mounted"
-    exit 1
-fi
-
-if [[ ! -e CONSTANTS ]]; then
-    echo "CONSTANTS file couldn't be found."
-    exit 1
-else
-    source CONSTANTS
-fi
-
-NUM=$1
-
-for i in `seq 0 $NUM`; do
-    echo -n "Working on dir ${i} ..."
-    mkdir "${CLIENT_BASE}/dir${i}"
-    mount -t nfs -o rw,hard,intr,nodev,nosuid,exec "${SERVER}:${SERVER_BASE}/dir${i}" "${CLIENT_BASE}/dir${i}"
-    echo "OK"
-done
-
---Boundary-00=_4E5bH6ZaPcz9an9
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
 Defy all challenges. Microsoft(R) Visual Studio 2005.
 http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
---Boundary-00=_4E5bH6ZaPcz9an9
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
@@ -172,7 +115,4 @@ _______________________________________________
 Please note that nfs@lists.sourceforge.net is being discontinued.
 Please subscribe to linux-nfs@vger.kernel.org instead.
     http://vger.kernel.org/vger-lists.html#linux-nfs
-
---Boundary-00=_4E5bH6ZaPcz9an9--
-
 
