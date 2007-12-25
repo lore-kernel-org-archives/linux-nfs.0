@@ -1,116 +1,126 @@
-From: Jeff Garzik <jeff@garzik.org>
-Subject: Re: Linux client misses lack of open-confirm?
-Date: Sat, 22 Dec 2007 21:05:44 -0500
-Message-ID: <476DC278.7090309@garzik.org>
-References: <476C8F4F.7080100@garzik.org> <1198337249.7741.52.camel@heimdal.trondhjem.org>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: NFS EINVAL on open(... | O_TRUNC) on 2.6.23.9
+Date: Tue, 25 Dec 2007 14:04:31 -0800
+Message-ID: <20071225140431.9264970a.akpm@linux-foundation.org>
+References: <476CEC5E.9070002@abinetworks.biz>
+	<838DE9A2-59B2-49FA-B3E8-89B26368B1CF@bluecamel.eml.cc>
+	<476E47F5.4090807@abinetworks.biz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: NFS list <linux-nfs@vger.kernel.org>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: text/plain; charset=US-ASCII
+Cc: Scott <linux-kernel-ZTkj/XXJm+4Yk/GtTgyLaw@public.gmane.org>,
+	linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
+To: Gianluca Alberici <gianluca-I6s3FmifXcAEdjjp4vwUeA@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from srv5.dvmed.net ([207.36.208.214]:35793 "EHLO mail.dvmed.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751200AbXLWCFr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 22 Dec 2007 21:05:47 -0500
-In-Reply-To: <1198337249.7741.52.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:51301 "EHLO
+	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752138AbXLYWFw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Dec 2007 17:05:52 -0500
+In-Reply-To: <476E47F5.4090807-I6s3FmifXcAEdjjp4vwUeA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Trond Myklebust wrote:
-> On Fri, 2007-12-21 at 23:15 -0500, Jeff Garzik wrote:
->> While debugging my NFS server, I may have caught a Linux client bug.
->>
->> My server is currently buggy, in that, it never sets the 
->> OPEN4_RESULT_CONFIRM bit after an OPEN with a new owner.  Shockingly, I 
->> can pass ~530 pynfs tests, fsx-linux [Linux v4 client], and build a 
->> kernel [Linux v4 client] even with such brokenness.  ;-)
->>
->> Anyway, the Linux NFSv4 client (2.6.24-rc6) seems quite happy with this 
->> state of affairs, right until CLOSE time, when it passes "seqid + 2" to 
->> my server rather than the expected "seqid + 1".
->>
->> Though I am quite happy that Linux managed to workaround my stupid 
->> server and store data successfully _anyway_, I thought it was worth 
->> commenting.  I was assuming either
->>
->> 	a) Linux would notice the lack of OPEN4_RESULT_CONFIRM and
->> 	   complain accordingly, or,
->>
->> 	b) Linux would generate a correct seqid, taking into account
->> 	   the fact that it did not issue OPEN_CONFIRM.
->>
->> As you can see from the wireshark-0.99.7-2.fc8 binary dump at
->>
->> 	http://gtf.org/garzik/misc/dump.bz2 (33k compressed)
->>
->> we see many examples of
->>
->> 	C:	OPEN	(seqid == 0)
->> 	S:	NFS4_OK
->>
->> 	C:	[perhaps some intervening READ or WRITE or *ATTR]
->> 	S:	[replies as expected]
->>
->> 	C:	CLOSE	(seqid == 2)
->> 	S:	NFS4ERR_BAD_SEQID
->>
->> If you feel this behavior is fine given a broken server, that's cool... 
->>   I just figured I would post in case somebody cared about this data point.
+On Sun, 23 Dec 2007 12:35:17 +0100 Gianluca Alberici <gianluca-I6s3FmifXcAEdjjp4vwUeA@public.gmane.org> wrote:
+
+> Hello,
 > 
-> Hmm... That's not good. It is perfectly legal for a server to not
-> request OPEN4_RESULT_CONFIRM (although it is probably not a very good
-> idea), and the client should be able to cope with that.
-
-If you want to reproduce, my server is open (though largely unannounced, 
-since its still in initial coding phase): 
-git://git.kernel.org/pub/scm/daemon/nfs/nfs4-ram.git
-
-Commit b3f602203ab023aa559c4db5449448b9c7044f36 (HEAD~2 currently) can 
-reproduce the behavior nicely.
-
-The server is currently a zero-configuration-file RAM server, so its 
-easy to test: just build and run (./nfs4_ramd).  It binds to port 2049 
-with an empty filesystem, each time it is started.  (--help for 
-alternate port or other options)
-
-
-> I'll have a look at what is going on there.
+> I can do better. I have investigated a bit the problem:
 > 
->> P.S.  I really really hate stateid/seqids at this point.  RFC 
->> nonwithstanding, they are basically undocumented.  I am reduced to 
->> poking through NFSv4 WG archives and Linux kernel code to find out what 
->> my server should be doing.  pynfs is no help here, either.
+> 1) The problem arises only with the userspace nfsd (Universal nfsd 2.2). 
+> I have realized that the latest patches introduced in 2.6.22 have 
+> changed a lot of things into NFS.
 > 
-> The primary function of seqids is to allow the server to distinguish
-> replayed non-idempotent RPC requests from new requests, so their
-> properties are really quite simple:
+> 2) The following code has been debugged with sunrpc.rpc_debug and 
+> sunrpc.nfs_debug
 > 
->       * If the seqid presented by the client is in sequence, then the
->         server is supposed to handle the request.
->       * If the seqid matches that of the last request, then the server
->         is supposed to replay the reply.
->       * If the seqid is completely out of sequence, then the server
->         should return the BAD_SEQID error.
+> #include <sys/types.h>
+> #include <sys/stat.h>
+> #include <fcntl.h>
+> #include <errno.h>
+> #include <stdio.h>
 > 
-> As for stateids, their purpose is to allow the server to figure out to
-> which client it is talking, and to track what state the client thinks it
-> is holding. Apart from the seqid field (which is there in order to track
-> the ordering of OPEN requests), a stateid is an opaque structure.
-> The only really important requirement here is that you need to be able
-> to distinguish stale state from valid state so that you can fence off
-> RPC requests that refer to stale locks.
+> int main(int argc, char *argv[]) {
+>         int fp;
+>         if ((fp=open("/mnt/tmp/test",O_WRONLY | O_CREAT | O_TRUNC, S_IRWXU )) == -1) printf("ERR: %d\n",errno);
+>         else {
+>                 write(fp, argv[1], strlen(argv[1]));
+>                 printf("OK\n");
+>                 close(fp);
+>         };
+> }
+> 
+> 
+> 2b) The output
+> 
+> [...]
+> 
+> <8>NFS call  setattr
+> <8>RPC:       new task initialized, procpid 18656
+> <8>RPC:       allocated task f7bec500
+> <8>RPC:     0 looking up UNIX cred
+> <8>RPC:   740 __rpc_execute flags=0x480
+> <8>RPC:   740 call_start nfs2 proc 2 (sync)
+> <8>RPC:   740 call_reserve (status 0)
+> <8>RPC:   740 reserved req f1416000 xid 643f3c42
+> <8>RPC:   740 call_reserveresult (status 0)
+> <8>RPC:   740 call_allocate (status 0)
+> <8>RPC:   740 allocated buffer of size 528 at e627b800
+> <8>RPC:   740 call_bind (status 0)
+> <8>RPC:   740 call_connect xprt f70d4000 is connected
+> <8>RPC:   740 call_transmit (status 0)
+> <8>RPC:   740 xprt_prepare_transmit
+> <8>RPC:   740 xprt_cwnd_limited cong = 0 cwnd = 512
+> <8>RPC:   740 call_encode (status 0)
+> <8>RPC:   740 marshaling UNIX cred f4efcb40
+> <8>RPC:   740 using AUTH_UNIX cred f4efcb40 to wrap rpc data
+> <8>RPC:   740 xprt_transmit(148)
+> <8>RPC:       xs_udp_data_ready...
+> <8>RPC:       cong 256, cwnd was 512, now 512
+> <8>RPC:   740 xid 643f3c42 complete (28 bytes received)
+> <8>RPC:       xs_udp_send_request(148) = 148
+> <8>RPC:   740 xmit complete
+> <8>RPC:       wake_up_next(f70d4114 "xprt_resend")
+> <8>RPC:       wake_up_next(f70d40e4 "xprt_sending")
+> <8>RPC:   740 call_status (status 28)
+> <8>RPC:   740 call_decode (status 28)
+> <8>RPC:   740 validating UNIX cred f4efcb40
+> <8>RPC:   740 using AUTH_UNIX cred f4efcb40 to unwrap rpc data
+> <8>RPC:   740 call_decode result -22
+> <8>RPC:   740 return 0, status -22
+> <8>RPC:   740 release task
+> <8>RPC:       freeing buffer of size 528 at e627b800
+> <8>RPC:   740 release request f1416000
+> <8>RPC:       wake_up_next(f70d4174 "xprt_backlog")
+> <8>RPC:   740 releasing UNIX cred f4efcb40
+> <8>RPC:       rpc_release_client(f6f1f880)
+> <8>NFS reply setattr: -22
+> 
+> [...]
+> 
+> 3) It turns out the following:
+> 
+> - setattr returns EINVAL due to...
+> - RPC call_decode returns status 22
+> 
+> 4) In conclusion in my understanding:
+> 
+> - At present linux nfs filesystem support is not anymore compatible with 
+> old userspace servers like universal nfsd and crypto filesystems as cfsd 
+> (which is an nfs server pretty old fashioned).
+> - This problem makes UNFSD and CFSD unusable on 2.6.22 and up (this 
+> doesnt sound good to me)
+> 
+> The question are:
+> 
+> - Is this wanted or is a bug ?
+> - Can this be solved with some backwards compat stuff into the kernel or 
+> all the old packages as UNFSD have to be
+> bugfixed/upgraded
+> - I have found other strange behaviors of the new NFS filesystem support 
+> that i am investigating. All are bound to the user of
+> old userspace servers onto the new NFS (since 2.6.22). What to do ?
+> 
 
-Yeah I figured out the purpose pretty quickly.  The thing I missed was 
-that the seqid is per-lockowner, and not per-openfile.  No surprise 
-things got weird, when I coded a server following that logic...
+I'm not sure what the NFS client's policy is regarding support for
+userspace servers.  But I'd certainly hope that it is "don't break them".
 
-Plus there are a ton of undocumented -ordering- constraints you must 
-follow, with regards to validating seqid/stateid and then returning the 
-correct error.
-
-Thanks for the response!  Hope my buggy server helps you track down 
-client problems ;-)
-
-	Jeff
-
-
+Which would make this an NFS client regression.
