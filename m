@@ -1,21 +1,17 @@
-From: Fengguang Wu <wfg-fOMaevN1BEbsJZF79Ady7g@public.gmane.org>
+From: Fengguang Wu <wfg@mail.ustc.edu.cn>
 Subject: Re: read-ahead in NFS server
 Date: Fri, 28 Dec 2007 10:33:21 +0800
-Message-ID: <398809213.08803@ustc.edu.cn>
+Message-ID: <E1J852H-0002K7-P1__18698.7322209918$1198809252$gmane$org@localhost>
 References: <c70ff3ad0712260351i6583aa8dpbf16ed606a634b1f@mail.gmail.com> <47730F2F.3080900@garzik.org> <c70ff3ad0712270050u134616d1q459ed073c586dcec@mail.gmail.com> <47739288.7000308@garzik.org> <c70ff3ad0712270700h6336b194r7c21834423aeb331@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Jeff Garzik <jeff@garzik.org>, linux-kernel@vger.kernel.org,
 	NFS list <linux-nfs@vger.kernel.org>
 To: saeed bishara <saeed.bishara@gmail.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.ustc.edu.cn ([202.38.64.16]:41600 "HELO ustc.edu.cn"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with SMTP
-	id S1753708AbXL1Cd0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 27 Dec 2007 21:33:26 -0500
-In-Reply-To: <c70ff3ad0712270700h6336b194r7c21834423aeb331-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1754837AbXL1Cdg@vger.kernel.org>
+In-Reply-To: <c70ff3ad0712270700h6336b194r7c21834423aeb331@mail.gmail.com>
 Message-Id: <E1J852H-0002K7-P1@localhost>
-Sender: linux-nfs-owner@vger.kernel.org
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 On Thu, Dec 27, 2007 at 05:00:12PM +0200, saeed bishara wrote:
