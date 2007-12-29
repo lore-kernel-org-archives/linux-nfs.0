@@ -1,17 +1,17 @@
 From: Martin Knoblauch <spamtrap-Ys4E+72pFW0hFhg+JK9F0w@public.gmane.org>
 Subject: Re: Strange NFS write performance Linux->Solaris-10/VXFS, maybe VW related
-Date: Sat, 29 Dec 2007 01:59:00 -0800 (PST)
-Message-ID: <701839.48516.qm@web32607.mail.mud.yahoo.com>
+Date: Sat, 29 Dec 2007 03:11:08 -0800 (PST)
+Message-ID: <86290.88050.qm@web32604.mail.mud.yahoo.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
 	spam trap <spamtrap-Ys4E+72pFW0hFhg+JK9F0w@public.gmane.org>
 To: Chris Snook <csnook@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from web32607.mail.mud.yahoo.com ([68.142.207.234]:39035 "HELO
-	web32607.mail.mud.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1752265AbXL2J7B (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 29 Dec 2007 04:59:01 -0500
+Received: from web32604.mail.mud.yahoo.com ([68.142.207.231]:36781 "HELO
+	web32604.mail.mud.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1751931AbXL2LLJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 29 Dec 2007 06:11:09 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
@@ -26,86 +26,124 @@ List-ID: <linux-nfs.vger.kernel.org>
 > > Hi,
 > > 
 > > currently I am tracking down an "interesting" effect when writing
-> to
-> 
- a
-> > Solars-10/Sparc based server. The server exports two filesystems.
-> One
-> 
- UFS,
-> > one VXFS. The filesystems are mounted NFS3/TCP, no special
-> options.
-> 
- Linux
-> > kernel in question is 2.6.24-rc6, but it happens with earlier kernels
-> > (2.6.19.2, 2.6.22.6) as well. The client is x86_64 with 8 GB of ram.
-> > 
-> > The problem: when writing to the VXFS based filesystem,
-> performance
-> 
- drops
-> > dramatically when the the filesize reaches or exceeds
-> "dirty_ratio".
-> 
- For a
-> > dirty_ratio of 10% (about 800MB) files below 750 MB are
-> transfered
-> 
- with about
-> > 30 MB/sec. Anything above 770 MB drops down to below 10 MB/sec. If
-> I
-> 
- perform
-> > the same tests on the UFS based FS, performance stays at about
-> 30
-> 
- MB/sec
-> > until 3GB and likely larger (I just stopped at 3 GB).
-> > 
-> > Any ideas what could cause this difference? Any suggestions
-> on
-> 
- debugging it?
-> 
-> 1) Try normal NFS tuning, such as rsize/wsize tuning.
->
 
-  rsize/wsize only have minimal effect. The negotiated  size seems to be optimal.
-
-> 2) You're entering synchronous writeback mode, so you can delay the
-> 
- problem by raising dirty_ratio to 100, or reduce the size of the problem
-> by lowering  dirty_ratio to 1.  Either one could help.
+> 3) It sounds like the bottleneck is the vxfs filesystem.  It
+> only *appears* on  the client side because writes up until dirty_ratio
+> get buffered on the client. 
+>   If you can confirm that the server is actually writing stuff to
+> disk slower  when the client is in writeback mode, then it's possible
+> the Linux NFSclient is  doing something inefficient in writeback mode.
 > 
 
- For experiments, sure. But I do not think that I want to have 8 GB of dirty pages [potentially] laying around. Are you sure that 1% is a useful value for dirty_ratio? Looking at the code, it seems a minimum of 5% is  enforced  in "page-writeback.c:get_dirty_limits":
+so, is the output of "iostat -d -l1 d111" during two runs. The first run is with 750 MB, the second with 850MB.
 
-        dirty_ratio = vm_dirty_ratio;
-        if (dirty_ratio > unmapped_ratio / 2)
-                dirty_ratio = unmapped_ratio / 2;
+// 750MB
+$ iostat -d -l 1 md111 2
+   md111
+kps tps serv
+ 22   0   14
+  0   0    0
+  0   0   13
+29347 468   12
+37040 593   17
+30938 492   25
+30421 491   25
+41626 676   16
+42913 703   14
+39890 647   15
+9009 141    7
+8963 141    7
+5143  81    7
+34814 547   10
+49323 775   12
+28624 451    6
+ 22   1    6
+#### finish
+  0   0    0
+  0   0    0
 
-        if (dirty_ratio < 5)
-                dirty_ratio = 5;
+ Here it seems that the disk is writing for 26-28 seconds with avg. 29 MB/sec. Fine.
 
+// 850MB
+$ iostat -d -l 1 md111 2
+   md111
+kps tps serv
+  0   0    0
+11275 180   10
+39874 635   14
+37403 587   17
+24341 392   30
+25989 423   26
+22464 375   30
+21922 361   32
+27924 450   26
+21507 342   21
+9217 153   15
+9260 150   15
+9544 155   15
+9298 150   14
+10118 162   11
+15505 250   12
+27513 448   14
+26698 436   15
+26144 431   15
+25201 412   14
+#### 38 seconds in run
+  0   0    0
+  0   0    0
+579  17   12
+  0   0    0
+  0   0    0
+  0   0    0
+  0   0    0
+518   9   16
+485   8    6
+  9   1    7
+514   9    7
+  0   0    0
+  0   0    0
+541   9    8
+532  10    6
+  0   0    0
+  0   0    0
+650  12    7
+  0   0    0
+242   8    9
+1023  18    5
+304   5    6
+418   8    7
+283   5    5
+303   5    8
+527  10    6
+  0   0    0
+  0   0    0
+  0   0    0
+  5   1   13
+  0   0    0
+  0   0    0
+  0   0    0
+  0   0    0
+  0   0    0
+  0   0   11
+  0   0    0
+  0   0    0
+  0   0    0
+  1   0   15
+  0   0    0
+ 96   2   15
+138   3   10
+11057 175    6
+17549 280    6
+351   8    5
+  0   0    0
+##### 218 seconds in run, finish.
 
-> 3) It sounds like the bottleneck is the vxfs filesystem.  It only
-> 
- *appears* on  the client side because writes up until dirty_ratio get buffered on
-> the client. 
+ So, for the first 38 seconds everything looks similar to the 750 MB case. For the next about 180 seconds most time nothing happens. Averaging 4.1 MB/sec.
 
- Sure, the fact that a UFS (or SAM-FS) based FS behaves well in the same situation points in that direction.
-
->   If you can confirm that the server is actually writing stuff to disk
-> 
- slower  when the client is in writeback mode, then it's possible the Linux
-> NFS client is  doing something inefficient in writeback mode.
-> 
-
- I will try to get an iostat trace from the Sun side. Thanks for the suggestion.
+Maybe it is time to capture the traffic. What are the best tcpdump parameters for NFS? I always forget :-(
 
 Cheers
 Martin
-PS: Happy Year 2008 to all Kernel Hackers and their families
 
 
 
