@@ -1,68 +1,72 @@
 From: Mike Frysinger <vapier@gentoo.org>
-Subject: [NFS] exportfs -r: segfault with sec= option
-Date: Sun, 30 Dec 2007 12:59:29 -0500
-Message-ID: <200712301259.29484.vapier@gentoo.org>
+Subject: Re: [NFS] exportfs -r: segfault with sec= option
+Date: Sun, 30 Dec 2007 15:16:34 -0500
+Message-ID: <200712301516.35053.vapier@gentoo.org>
+References: <200712301259.29484.vapier@gentoo.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1107983184=="
+Content-Type: multipart/mixed; boundary="===============1360050915=="
 To: nfs@lists.sourceforge.net
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:49820 "EHLO neil.brown.name"
+Received: from neil.brown.name ([220.233.11.133]:36850 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755787AbXLaAPu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 30 Dec 2007 19:15:50 -0500
+	id S1754933AbXLaBFq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 30 Dec 2007 20:05:46 -0500
 Received: from brown by neil.brown.name with local (Exim 4.63)
 	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1J98Jl-00022R-7M
-	for linux-nfs@vger.kernel.org; Mon, 31 Dec 2007 11:15:45 +1100
+	id 1J9967-00025v-Vf
+	for linux-nfs@vger.kernel.org; Mon, 31 Dec 2007 12:05:44 +1100
+In-Reply-To: <200712301259.29484.vapier@gentoo.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---===============1107983184==
-Content-Type: multipart/signed; boundary="nextPart3781365.UoL4j1ekIS";
+--===============1360050915==
+Content-Type: multipart/signed; boundary="nextPart5548183.xIAFmlZkz3";
 	protocol="application/pgp-signature"; micalg=pgp-sha1
 Content-Transfer-Encoding: 7bit
 
---nextPart3781365.UoL4j1ekIS
+--nextPart5548183.xIAFmlZkz3
 Content-Type: text/plain;
-  charset="us-ascii"
-Content-Transfer-Encoding: quoted-printable
+  charset="iso-8859-6"
+Content-Transfer-Encoding: 7bit
 Content-Disposition: inline
 
-while testing other things, i was toying with /etc/exports and inserting bo=
-gus=20
-lines.  i found that this simple one makes exportfs segfault:
-/mnt 192.168.0.0(sec=3D)
-then just run `exportfs -r`
+On Sunday 30 December 2007, Mike Frysinger wrote:
+> while testing other things, i was toying with /etc/exports and inserting
+> bogus lines.  i found that this simple one makes exportfs segfault:
+> /mnt 192.168.0.0(sec=)
+> then just run `exportfs -r`
+>
+> this version of nfs-utils has gss disabled ...
 
-this version of nfs-utils has gss disabled ...
-=2Dmike
+scratch this ... i needed the post-1.1.1 fix for segfaults on amd64 with xlog
+-mike
 
---nextPart3781365.UoL4j1ekIS
+--nextPart5548183.xIAFmlZkz3
 Content-Type: application/pgp-signature; name=signature.asc 
 Content-Description: This is a digitally signed message part.
 
 -----BEGIN PGP SIGNATURE-----
 Version: GnuPG v2.0.8 (GNU/Linux)
 
-iQIcBAABAgAGBQJHd9yBAAoJEEFjO5/oN/WBpOIQAMzncx1LSPCIjwk8cZF3xzrM
-dC5aT2XtqKJcYjZGS4z/2qbse8DPi5xJWnYoBijO/FaFSwtFt3s47tyVQU1crri3
-rwaBmm0JQql5MF4fF3t3iisRV/C7SzS2iSyJQTZiR7m7dI0EKHN2PDxF2hlhxBzm
-rUzH8xwja/lpS+zMDr928Sv6XxpoSYhty4eP8c14OtHRklWJkC+eUAnRDChra3W5
-pin2fwTNh0Zui6TwNp36UvNVfG1mTfkmDTzY6aImlbr/JLVPjaSjwCEvEOd2WWnL
-cHkwgf0AD+8ttgnR4QxAx6VjDFkaSuiukVIHoijh6gDrzOfeKJcNwHi1lT3OGdDA
-6kGjDtr9wbF4WFL1xof1uGYWBF13IAIkdyKFKtxeocey/a1GYY0y8lNx0+wlLY8q
-QSkhQFCukCW4lRZDvFkfcPdsv3owwqyUgDjaN7CmtpuWsfhVRo6pdeKntDHEinQ4
-l+MBOPBtQodjF1v6ftX0Nf2CTD7HkM/n4xBq/vZ2cDL7PZXekSDYWlCYSxoOChZ7
-CelhG7QVYtxiwHdRfwdBi9fsA4crHPCspX4wQgRXPU9v374/sSjzk/eyD7SBnDJU
-ZGQAqG9Fx5MgN8shpMYx2vdtMPZvA1V0wj4uZkg9M89IEP8GiO5CYfJu46g0nhOy
-0z3ZfTChvSkGI6Byurar
-=ybtz
+iQIcBAABAgAGBQJHd/yiAAoJEEFjO5/oN/WBTqYP/A2K1hva4jUEqTK8lfrJmrQ6
+Lx1CXCQkNUNht5eZhL17226PnvRC4gxEOB1EBruxmzhVZJrcURDs0n85dBLMAhUr
+FMg1ebOkacbwJ9/eS3QnoULzkN5A7jR6Py7XCSUxdECMEUCiqpGMLKaICI8N+BPD
+3+/SLu7T/58mwEPfPEyewU3TiXXx5tNrjk/aoU+R3JUAXPIB07QeeIhBThTuuMkv
+gmY4jimD+Y9b1TzkqcranklXW78YhKxw44rn9cN6TFtTgOlWrr81/WbB8teR/j0Z
++0r4BNG51nX8cjDg3qutxn9Pcfd/i36QsLqKGoOnAUmMum9aIbenrar8LKmfdIjf
+dO2oyiHh0HSqNINhemDuWHKAHpEuFqZ+cnnRlyfzw21jZDdUGUCjx5imtrVm1gyJ
+QSSqtBNmI/aHn4VmY3LpkwhBp3vRYueanBer5Uy0v1HvifAaXoeTYK4I3tdby34F
+QWzCjLpWbwgsTiG2CS7NxgLNODJjUjl1CFAmvwa8PqPY0/WU6Zfe59oWRWvDwk//
+FqsG4RVz+puXMyMZWQWT7A1V/Ds4terNo1ZQjXVxe3tRm8BCx3gfvtZJsanq6GGp
+Aj9IkF6HFscgNWNqd3rQzVVgbYxtMzce+pkJC6smSpTdCdL8SfYGHf396dPVa5dZ
+bU6XwoCSVjrWsc8ShWSi
+=wLap
 -----END PGP SIGNATURE-----
 
---nextPart3781365.UoL4j1ekIS--
+--nextPart5548183.xIAFmlZkz3--
 
 
---===============1107983184==
+--===============1360050915==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -72,7 +76,7 @@ Content-Disposition: inline
 This SF.net email is sponsored by: Microsoft
 Defy all challenges. Microsoft(R) Visual Studio 2005.
 http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
---===============1107983184==
+--===============1360050915==
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
@@ -86,6 +90,6 @@ Please note that nfs@lists.sourceforge.net is being discontinued.
 Please subscribe to linux-nfs@vger.kernel.org instead.
     http://vger.kernel.org/vger-lists.html#linux-nfs
 
---===============1107983184==--
+--===============1360050915==--
 
 
