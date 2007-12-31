@@ -1,108 +1,75 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [PATCH 31/40] svc: Make svc_age_temp_sockets svc_age_temp_transports
-Date: Sun, 30 Dec 2007 21:08:18 -0600
-Message-ID: <20071231030818.8430.64674.stgit@dell3.ogc.int>
+Subject: [PATCH 34/40] svc: Make svc_check_conn_limits xprt independent
+Date: Sun, 30 Dec 2007 21:08:25 -0600
+Message-ID: <20071231030824.8430.45757.stgit@dell3.ogc.int>
 References: <20071231030712.8430.45576.stgit@dell3.ogc.int>
 Content-Type: text/plain; charset=utf-8; format=fixed
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:41577 "EHLO
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:41589 "EHLO
 	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752961AbXLaDIT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 30 Dec 2007 22:08:19 -0500
+	by vger.kernel.org with ESMTP id S1753070AbXLaDIZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 30 Dec 2007 22:08:25 -0500
 In-Reply-To: <20071231030712.8430.45576.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-This function is transport independent. Change it to use svc_xprt directly
-and change it's name to reflect this.
+The svc_check_conn_limits function only manipulates xprt fields. Change references
+to svc_sock->sk_xprt to svc_xprt directly.
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- net/sunrpc/svcsock.c |   37 +++++++++++++++++++------------------
- 1 files changed, 19 insertions(+), 18 deletions(-)
+ net/sunrpc/svcsock.c |   24 ++++++++++++------------
+ 1 files changed, 12 insertions(+), 12 deletions(-)
 
 diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index b3a64bf..822ccb6 100644
+index 03aa392..4d03e87 100644
 --- a/net/sunrpc/svcsock.c
 +++ b/net/sunrpc/svcsock.c
-@@ -1656,49 +1656,50 @@ svc_send(struct svc_rqst *rqstp)
-  * Timer function to close old temporary sockets, using
-  * a mark-and-sweep algorithm.
-  */
--static void
--svc_age_temp_sockets(unsigned long closure)
-+static void svc_age_temp_xprts(unsigned long closure)
+@@ -1448,31 +1448,31 @@ svc_sock_update_bufs(struct svc_serv *serv)
+ static void svc_check_conn_limits(struct svc_serv *serv)
  {
- 	struct svc_serv *serv = (struct svc_serv *)closure;
--	struct svc_sock *svsk;
-+	struct svc_xprt *xprt;
- 	struct list_head *le, *next;
- 	LIST_HEAD(to_be_aged);
+ 	if (serv->sv_tmpcnt > (serv->sv_nrthreads+3)*20) {
+-		struct svc_sock *svsk = NULL;
++		struct svc_xprt *xprt = NULL;
+ 		spin_lock_bh(&serv->sv_lock);
+ 		if (!list_empty(&serv->sv_tempsocks)) {
+ 			if (net_ratelimit()) {
+ 				/* Try to help the admin */
+-				printk(KERN_NOTICE "%s: too many open TCP "
+-				       "sockets, consider increasing the "
++				printk(KERN_NOTICE "%s: too many open  "
++				       "connections, consider increasing the "
+ 				       "number of nfsd threads\n",
+ 				       serv->sv_name);
+ 			}
+ 			/*
+-			 * Always select the oldest socket. It's not fair,
++			 * Always select the oldest connection. It's not fair,
+ 			 * but so is life
+ 			 */
+-			svsk = list_entry(serv->sv_tempsocks.prev,
+-					  struct svc_sock,
+-					  sk_xprt.xpt_list);
+-			set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
+-			svc_xprt_get(&svsk->sk_xprt);
++			xprt = list_entry(serv->sv_tempsocks.prev,
++					  struct svc_xprt,
++					  xpt_list);
++			set_bit(XPT_CLOSE, &xprt->xpt_flags);
++			svc_xprt_get(xprt);
+ 		}
+ 		spin_unlock_bh(&serv->sv_lock);
  
--	dprintk("svc_age_temp_sockets\n");
-+	dprintk("svc_age_temp_xprts\n");
- 
- 	if (!spin_trylock_bh(&serv->sv_lock)) {
- 		/* busy, try again 1 sec later */
--		dprintk("svc_age_temp_sockets: busy\n");
-+		dprintk("svc_age_temp_xprts: busy\n");
- 		mod_timer(&serv->sv_temptimer, jiffies + HZ);
- 		return;
+-		if (svsk) {
+-			svc_xprt_enqueue(&svsk->sk_xprt);
+-			svc_xprt_put(&svsk->sk_xprt);
++		if (xprt) {
++			svc_xprt_enqueue(xprt);
++			svc_xprt_put(xprt);
+ 		}
  	}
- 
- 	list_for_each_safe(le, next, &serv->sv_tempsocks) {
--		svsk = list_entry(le, struct svc_sock, sk_xprt.xpt_list);
-+		xprt = list_entry(le, struct svc_xprt, xpt_list);
- 
--		if (!test_and_set_bit(XPT_OLD, &svsk->sk_xprt.xpt_flags))
-+		/* First time through, just mark it OLD. Second time
-+		 * through, close it. */
-+		if (!test_and_set_bit(XPT_OLD, &xprt->xpt_flags))
- 			continue;
--		if (atomic_read(&svsk->sk_xprt.xpt_ref.refcount) > 1
--		    || test_bit(XPT_BUSY, &svsk->sk_xprt.xpt_flags))
-+		if (atomic_read(&xprt->xpt_ref.refcount) > 1
-+		    || test_bit(XPT_BUSY, &xprt->xpt_flags))
- 			continue;
--		svc_xprt_get(&svsk->sk_xprt);
-+		svc_xprt_get(xprt);
- 		list_move(le, &to_be_aged);
--		set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
--		set_bit(XPT_DETACHED, &svsk->sk_xprt.xpt_flags);
-+		set_bit(XPT_CLOSE, &xprt->xpt_flags);
-+		set_bit(XPT_DETACHED, &xprt->xpt_flags);
- 	}
- 	spin_unlock_bh(&serv->sv_lock);
- 
- 	while (!list_empty(&to_be_aged)) {
- 		le = to_be_aged.next;
--		/* fiddling the sk_xprt.xpt_list node is safe 'cos we're XPT_DETACHED */
-+		/* fiddling the xpt_list node is safe 'cos we're XPT_DETACHED */
- 		list_del_init(le);
--		svsk = list_entry(le, struct svc_sock, sk_xprt.xpt_list);
-+		xprt = list_entry(le, struct svc_xprt, xpt_list);
- 
--		dprintk("queuing svsk %p for closing\n", svsk);
-+		dprintk("queuing xprt %p for closing\n", xprt);
- 
- 		/* a thread will dequeue and close it soon */
--		svc_xprt_enqueue(&svsk->sk_xprt);
--		svc_xprt_put(&svsk->sk_xprt);
-+		svc_xprt_enqueue(xprt);
-+		svc_xprt_put(xprt);
- 	}
- 
- 	mod_timer(&serv->sv_temptimer, jiffies + svc_conn_age_period * HZ);
-@@ -1756,7 +1757,7 @@ static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
- 		serv->sv_tmpcnt++;
- 		if (serv->sv_temptimer.function == NULL) {
- 			/* setup timer to age temp sockets */
--			setup_timer(&serv->sv_temptimer, svc_age_temp_sockets,
-+			setup_timer(&serv->sv_temptimer, svc_age_temp_xprts,
- 					(unsigned long)serv);
- 			mod_timer(&serv->sv_temptimer,
- 					jiffies + svc_conn_age_period * HZ);
+ }
