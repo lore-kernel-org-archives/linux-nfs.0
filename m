@@ -1,215 +1,49 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [PATCH 27/40] svc: Make deferral processing xprt independent
-Date: Sun, 30 Dec 2007 21:08:10 -0600
-Message-ID: <20071231030810.8430.66503.stgit@dell3.ogc.int>
+Subject: [PATCH 24/40] svc: Move accept call to svc_xprt_received to common code
+Date: Sun, 30 Dec 2007 21:08:03 -0600
+Message-ID: <20071231030803.8430.49604.stgit@dell3.ogc.int>
 References: <20071231030712.8430.45576.stgit@dell3.ogc.int>
 Content-Type: text/plain; charset=utf-8; format=fixed
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:41562 "EHLO
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:41550 "EHLO
 	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752874AbXLaDIK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 30 Dec 2007 22:08:10 -0500
+	by vger.kernel.org with ESMTP id S1752775AbXLaDIE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 30 Dec 2007 22:08:04 -0500
 In-Reply-To: <20071231030712.8430.45576.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-This patch moves the transport independent sk_deferred list to the svc_xprt
-structure and updates the svc_deferred_req structure to keep pointers to
-svc_xprt's directly. The deferral processing code is also moved out of the
-transport dependent recvfrom functions and into the generic svc_recv path.
+Now that the svc_xprt_received function handles transports, the call
+to svc_xprt_received in the xpo_tcp_accept function can be moved to
+common code.
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- include/linux/sunrpc/svc.h      |    2 +
- include/linux/sunrpc/svc_xprt.h |    2 +
- include/linux/sunrpc/svcsock.h  |    3 --
- net/sunrpc/svc_xprt.c           |    1 +
- net/sunrpc/svcsock.c            |   57 +++++++++++++++++----------------------
- 5 files changed, 29 insertions(+), 36 deletions(-)
+ net/sunrpc/svcsock.c |    3 +--
+ 1 files changed, 1 insertions(+), 2 deletions(-)
 
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index cfb2652..40adc9d 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -320,7 +320,7 @@ static inline void svc_free_res_pages(struct svc_rqst *rqstp)
- 
- struct svc_deferred_req {
- 	u32			prot;	/* protocol (UDP or TCP) */
--	struct svc_sock		*svsk;
-+	struct svc_xprt		*xprt;
- 	struct sockaddr_storage	addr;	/* where reply must go */
- 	size_t			addrlen;
- 	union svc_addr_u	daddr;	/* where reply must come from */
-diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index 1b5da39..6a8445b 100644
---- a/include/linux/sunrpc/svc_xprt.h
-+++ b/include/linux/sunrpc/svc_xprt.h
-@@ -59,6 +59,8 @@ struct svc_xprt {
- 	spinlock_t		xpt_lock;	/* protects sk_deferred
- 						 * and xpt_auth_cache */
- 	void			*xpt_auth_cache;/* auth cache */
-+	struct list_head	xpt_deferred;	/* deferred requests that need
-+						 * to be revisted */
- };
- 
- int	svc_reg_xprt_class(struct svc_xprt_class *);
-diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
-index f2ed6a2..96a229e 100644
---- a/include/linux/sunrpc/svcsock.h
-+++ b/include/linux/sunrpc/svcsock.h
-@@ -20,9 +20,6 @@ struct svc_sock {
- 	struct socket *		sk_sock;	/* berkeley socket layer */
- 	struct sock *		sk_sk;		/* INET layer */
- 
--	struct list_head	sk_deferred;	/* deferred requests that need to
--						 * be revisted */
--
- 	/* We keep the old state_change and data_ready CB's here */
- 	void			(*sk_ostate)(struct sock *);
- 	void			(*sk_odata)(struct sock *, int bytes);
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index d2ac130..023aeb0 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -102,6 +102,7 @@ void svc_xprt_init(struct svc_xprt_class *xcl, struct svc_xprt *xprt,
- 	xprt->xpt_server = serv;
- 	INIT_LIST_HEAD(&xprt->xpt_list);
- 	INIT_LIST_HEAD(&xprt->xpt_ready);
-+	INIT_LIST_HEAD(&xprt->xpt_deferred);
- 	mutex_init(&xprt->xpt_mutex);
- 	spin_lock_init(&xprt->xpt_lock);
- }
 diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 073e832..4d51098 100644
+index 201217f..1d48784 100644
 --- a/net/sunrpc/svcsock.c
 +++ b/net/sunrpc/svcsock.c
-@@ -89,7 +89,7 @@ static void		svc_close_xprt(struct svc_xprt *xprt);
- static void		svc_sock_detach(struct svc_xprt *);
- static void		svc_sock_free(struct svc_xprt *);
+@@ -1106,8 +1106,6 @@ static struct svc_xprt *svc_tcp_accept(struct svc_xprt *xprt)
+ 	}
+ 	memcpy(&newsvsk->sk_local, sin, slen);
  
--static struct svc_deferred_req *svc_deferred_dequeue(struct svc_sock *svsk);
-+static struct svc_deferred_req *svc_deferred_dequeue(struct svc_xprt *xprt);
- static int svc_deferred_recv(struct svc_rqst *rqstp);
- static struct cache_deferred_req *svc_defer(struct cache_req *req);
- static struct svc_xprt *svc_create_socket(struct svc_serv *, int,
-@@ -771,11 +771,6 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
- 				(serv->sv_nrthreads+3) * serv->sv_max_mesg,
- 				(serv->sv_nrthreads+3) * serv->sv_max_mesg);
- 
--	if ((rqstp->rq_deferred = svc_deferred_dequeue(svsk))) {
--		svc_xprt_received(&svsk->sk_xprt);
--		return svc_deferred_recv(rqstp);
--	}
+-	svc_xprt_received(&newsvsk->sk_xprt);
 -
- 	clear_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
- 	skb = NULL;
- 	err = kernel_recvmsg(svsk->sk_sock, &msg, NULL,
-@@ -1138,11 +1133,6 @@ svc_tcp_recvfrom(struct svc_rqst *rqstp)
- 		test_bit(XPT_CONN, &svsk->sk_xprt.xpt_flags),
- 		test_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags));
+ 	if (serv->sv_stats)
+ 		serv->sv_stats->nettcpconn++;
  
--	if ((rqstp->rq_deferred = svc_deferred_dequeue(svsk))) {
--		svc_xprt_received(&svsk->sk_xprt);
--		return svc_deferred_recv(rqstp);
--	}
--
- 	if (test_and_clear_bit(XPT_CHNGBUF, &svsk->sk_xprt.xpt_flags))
- 		/* sndbuf needs to have room for one request
- 		 * per thread, otherwise we can stall even when the
-@@ -1601,7 +1591,12 @@ svc_recv(struct svc_rqst *rqstp, long timeout)
- 		dprintk("svc: server %p, pool %u, socket %p, inuse=%d\n",
- 			rqstp, pool->sp_id, svsk,
- 			atomic_read(&svsk->sk_xprt.xpt_ref.refcount));
--		len = svsk->sk_xprt.xpt_ops->xpo_recvfrom(rqstp);
-+		rqstp->rq_deferred = svc_deferred_dequeue(&svsk->sk_xprt);
-+		if (rqstp->rq_deferred) {
-+			svc_xprt_received(&svsk->sk_xprt);
-+			len = svc_deferred_recv(rqstp);
-+		} else
-+			len = svsk->sk_xprt.xpt_ops->xpo_recvfrom(rqstp);
- 		dprintk("svc: got len=%d\n", len);
- 	}
- 
-@@ -1758,7 +1753,6 @@ static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
- 	svsk->sk_ostate = inet->sk_state_change;
- 	svsk->sk_odata = inet->sk_data_ready;
- 	svsk->sk_owspace = inet->sk_write_space;
--	INIT_LIST_HEAD(&svsk->sk_deferred);
- 
- 	/* Initialize the socket */
- 	if (sock->type == SOCK_DGRAM)
-@@ -1976,22 +1970,21 @@ void svc_close_all(struct list_head *xprt_list)
- static void svc_revisit(struct cache_deferred_req *dreq, int too_many)
- {
- 	struct svc_deferred_req *dr = container_of(dreq, struct svc_deferred_req, handle);
--	struct svc_sock *svsk;
-+	struct svc_xprt *xprt = dr->xprt;
- 
- 	if (too_many) {
--		svc_xprt_put(&dr->svsk->sk_xprt);
-+		svc_xprt_put(xprt);
- 		kfree(dr);
- 		return;
- 	}
- 	dprintk("revisit queued\n");
--	svsk = dr->svsk;
--	dr->svsk = NULL;
--	spin_lock(&svsk->sk_xprt.xpt_lock);
--	list_add(&dr->handle.recent, &svsk->sk_deferred);
--	spin_unlock(&svsk->sk_xprt.xpt_lock);
--	set_bit(XPT_DEFERRED, &svsk->sk_xprt.xpt_flags);
--	svc_xprt_enqueue(&svsk->sk_xprt);
--	svc_xprt_put(&svsk->sk_xprt);
-+	dr->xprt = NULL;
-+	spin_lock(&xprt->xpt_lock);
-+	list_add(&dr->handle.recent, &xprt->xpt_deferred);
-+	spin_unlock(&xprt->xpt_lock);
-+	set_bit(XPT_DEFERRED, &xprt->xpt_flags);
-+	svc_xprt_enqueue(xprt);
-+	svc_xprt_put(xprt);
- }
- 
- static struct cache_deferred_req *
-@@ -2022,7 +2015,7 @@ svc_defer(struct cache_req *req)
- 		memcpy(dr->args, rqstp->rq_arg.head[0].iov_base-skip, dr->argslen<<2);
- 	}
- 	svc_xprt_get(rqstp->rq_xprt);
--	dr->svsk = rqstp->rq_sock;
-+	dr->xprt = rqstp->rq_xprt;
- 
- 	dr->handle.revisit = svc_revisit;
- 	return &dr->handle;
-@@ -2048,21 +2041,21 @@ static int svc_deferred_recv(struct svc_rqst *rqstp)
- }
- 
- 
--static struct svc_deferred_req *svc_deferred_dequeue(struct svc_sock *svsk)
-+static struct svc_deferred_req *svc_deferred_dequeue(struct svc_xprt *xprt)
- {
- 	struct svc_deferred_req *dr = NULL;
- 
--	if (!test_bit(XPT_DEFERRED, &svsk->sk_xprt.xpt_flags))
-+	if (!test_bit(XPT_DEFERRED, &xprt->xpt_flags))
- 		return NULL;
--	spin_lock(&svsk->sk_xprt.xpt_lock);
--	clear_bit(XPT_DEFERRED, &svsk->sk_xprt.xpt_flags);
--	if (!list_empty(&svsk->sk_deferred)) {
--		dr = list_entry(svsk->sk_deferred.next,
-+	spin_lock(&xprt->xpt_lock);
-+	clear_bit(XPT_DEFERRED, &xprt->xpt_flags);
-+	if (!list_empty(&xprt->xpt_deferred)) {
-+		dr = list_entry(xprt->xpt_deferred.next,
- 				struct svc_deferred_req,
- 				handle.recent);
- 		list_del_init(&dr->handle.recent);
--		set_bit(XPT_DEFERRED, &svsk->sk_xprt.xpt_flags);
-+		set_bit(XPT_DEFERRED, &xprt->xpt_flags);
- 	}
--	spin_unlock(&svsk->sk_xprt.xpt_lock);
-+	spin_unlock(&xprt->xpt_lock);
- 	return dr;
- }
+@@ -1591,6 +1589,7 @@ svc_recv(struct svc_rqst *rqstp, long timeout)
+ 			 */
+ 			__module_get(newxpt->xpt_class->xcl_owner);
+ 			svc_check_conn_limits(svsk->sk_xprt.xpt_server);
++			svc_xprt_received(newxpt);
+ 		}
+ 		svc_xprt_received(&svsk->sk_xprt);
+ 	} else {
