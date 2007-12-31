@@ -1,49 +1,70 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [PATCH 24/40] svc: Move accept call to svc_xprt_received to common code
-Date: Sun, 30 Dec 2007 21:08:03 -0600
-Message-ID: <20071231030803.8430.49604.stgit@dell3.ogc.int>
+Subject: [PATCH 25/40] svc: Remove sk_lastrecv
+Date: Sun, 30 Dec 2007 21:08:05 -0600
+Message-ID: <20071231030805.8430.85368.stgit@dell3.ogc.int>
 References: <20071231030712.8430.45576.stgit@dell3.ogc.int>
 Content-Type: text/plain; charset=utf-8; format=fixed
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:41550 "EHLO
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:41555 "EHLO
 	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752775AbXLaDIE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 30 Dec 2007 22:08:04 -0500
+	by vger.kernel.org with ESMTP id S1752813AbXLaDIG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 30 Dec 2007 22:08:06 -0500
 In-Reply-To: <20071231030712.8430.45576.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-Now that the svc_xprt_received function handles transports, the call
-to svc_xprt_received in the xpo_tcp_accept function can be moved to
-common code.
+With the implementation of the new mark and sweep algorithm for shutting
+down old connections, the sk_lastrecv field is no longer needed.
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- net/sunrpc/svcsock.c |    3 +--
- 1 files changed, 1 insertions(+), 2 deletions(-)
+ include/linux/sunrpc/svcsock.h |    1 -
+ net/sunrpc/svcsock.c           |    5 +----
+ 2 files changed, 1 insertions(+), 5 deletions(-)
 
+diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
+index 41c2dfa..406d003 100644
+--- a/include/linux/sunrpc/svcsock.h
++++ b/include/linux/sunrpc/svcsock.h
+@@ -33,7 +33,6 @@ struct svc_sock {
+ 	/* private TCP part */
+ 	int			sk_reclen;	/* length of record */
+ 	int			sk_tcplen;	/* current read length */
+-	time_t			sk_lastrecv;	/* time of last received request */
+ 
+ 	/* cache of various info for TCP sockets */
+ 	void			*sk_info_authunix;
 diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 201217f..1d48784 100644
+index 1d48784..e98ea4d 100644
 --- a/net/sunrpc/svcsock.c
 +++ b/net/sunrpc/svcsock.c
-@@ -1106,8 +1106,6 @@ static struct svc_xprt *svc_tcp_accept(struct svc_xprt *xprt)
+@@ -1606,7 +1606,6 @@ svc_recv(struct svc_rqst *rqstp, long timeout)
+ 		svc_sock_release(rqstp);
+ 		return -EAGAIN;
  	}
- 	memcpy(&newsvsk->sk_local, sin, slen);
+-	svsk->sk_lastrecv = get_seconds();
+ 	clear_bit(XPT_OLD, &svsk->sk_xprt.xpt_flags);
  
--	svc_xprt_received(&newsvsk->sk_xprt);
--
- 	if (serv->sv_stats)
- 		serv->sv_stats->nettcpconn++;
+ 	rqstp->rq_secure = svc_port_is_privileged(svc_addr(rqstp));
+@@ -1706,8 +1705,7 @@ svc_age_temp_sockets(unsigned long closure)
+ 		list_del_init(le);
+ 		svsk = list_entry(le, struct svc_sock, sk_xprt.xpt_list);
  
-@@ -1591,6 +1589,7 @@ svc_recv(struct svc_rqst *rqstp, long timeout)
- 			 */
- 			__module_get(newxpt->xpt_class->xcl_owner);
- 			svc_check_conn_limits(svsk->sk_xprt.xpt_server);
-+			svc_xprt_received(newxpt);
- 		}
- 		svc_xprt_received(&svsk->sk_xprt);
- 	} else {
+-		dprintk("queuing svsk %p for closing, %lu seconds old\n",
+-			svsk, get_seconds() - svsk->sk_lastrecv);
++		dprintk("queuing svsk %p for closing\n", svsk);
+ 
+ 		/* a thread will dequeue and close it soon */
+ 		svc_xprt_enqueue(&svsk->sk_xprt);
+@@ -1755,7 +1753,6 @@ static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
+ 	svsk->sk_ostate = inet->sk_state_change;
+ 	svsk->sk_odata = inet->sk_data_ready;
+ 	svsk->sk_owspace = inet->sk_write_space;
+-	svsk->sk_lastrecv = get_seconds();
+ 	spin_lock_init(&svsk->sk_lock);
+ 	INIT_LIST_HEAD(&svsk->sk_deferred);
+ 
