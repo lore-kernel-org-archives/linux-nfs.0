@@ -1,95 +1,65 @@
-From: Mike Frysinger <vapier@gentoo.org>
-Subject: Re: [NFS] exportfs -r: segfault with sec= option
-Date: Sun, 30 Dec 2007 15:16:34 -0500
-Message-ID: <200712301516.35053.vapier@gentoo.org>
-References: <200712301259.29484.vapier@gentoo.org>
-Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1360050915=="
-To: nfs@lists.sourceforge.net
+From: Tom Tucker <tom@opengridcomputing.com>
+Subject: [PATCH 00/40] svc: SVC Transport Switch
+Date: Sun, 30 Dec 2007 21:07:12 -0600
+Message-ID: <20071231030712.8430.45576.stgit@dell3.ogc.int>
+Content-Type: text/plain; charset=utf-8; format=fixed
+Cc: linux-nfs@vger.kernel.org
+To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:36850 "EHLO neil.brown.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754933AbXLaBFq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 30 Dec 2007 20:05:46 -0500
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1J9967-00025v-Vf
-	for linux-nfs@vger.kernel.org; Mon, 31 Dec 2007 12:05:44 +1100
-In-Reply-To: <200712301259.29484.vapier@gentoo.org>
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:41460 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751276AbXLaDHN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 30 Dec 2007 22:07:13 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---===============1360050915==
-Content-Type: multipart/signed; boundary="nextPart5548183.xIAFmlZkz3";
-	protocol="application/pgp-signature"; micalg=pgp-sha1
-Content-Transfer-Encoding: 7bit
 
---nextPart5548183.xIAFmlZkz3
-Content-Type: text/plain;
-  charset="iso-8859-6"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+The Server Side Transport switch implements a pluggable transport
+provider layer for RPC servers. This allows network transport drivers
+to be dynamically loaded and registered, thereby extending the set of
+transports that can carry RPC. This patchset includes a transport
+provider driver for TCP and UDP sockets.
 
-On Sunday 30 December 2007, Mike Frysinger wrote:
-> while testing other things, i was toying with /etc/exports and inserting
-> bogus lines.  i found that this simple one makes exportfs segfault:
-> /mnt 192.168.0.0(sec=)
-> then just run `exportfs -r`
->
-> this version of nfs-utils has gss disabled ...
+This version of the patchset is functionally equivalent to the
+preceding patchset and includes the following improvements:
 
-scratch this ... i needed the post-1.1.1 fix for segfaults on amd64 with xlog
--mike
+- Fixed a bug in svc_create_socket that resulted in svc_xprt_received
+  being called without holding the XPT_BUSY bit.
 
---nextPart5548183.xIAFmlZkz3
-Content-Type: application/pgp-signature; name=signature.asc 
-Content-Description: This is a digitally signed message part.
+- Added a BUG_ON in svc_xprt_received to catch providers calling
+  svc_xprt_received without holding the XPT_BUSY bit.
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.8 (GNU/Linux)
+- Removed code setting the XPT_BUSY bit in the create path and moved
+  this logic to common code.
 
-iQIcBAABAgAGBQJHd/yiAAoJEEFjO5/oN/WBTqYP/A2K1hva4jUEqTK8lfrJmrQ6
-Lx1CXCQkNUNht5eZhL17226PnvRC4gxEOB1EBruxmzhVZJrcURDs0n85dBLMAhUr
-FMg1ebOkacbwJ9/eS3QnoULzkN5A7jR6Py7XCSUxdECMEUCiqpGMLKaICI8N+BPD
-3+/SLu7T/58mwEPfPEyewU3TiXXx5tNrjk/aoU+R3JUAXPIB07QeeIhBThTuuMkv
-gmY4jimD+Y9b1TzkqcranklXW78YhKxw44rn9cN6TFtTgOlWrr81/WbB8teR/j0Z
-+0r4BNG51nX8cjDg3qutxn9Pcfd/i36QsLqKGoOnAUmMum9aIbenrar8LKmfdIjf
-dO2oyiHh0HSqNINhemDuWHKAHpEuFqZ+cnnRlyfzw21jZDdUGUCjx5imtrVm1gyJ
-QSSqtBNmI/aHn4VmY3LpkwhBp3vRYueanBer5Uy0v1HvifAaXoeTYK4I3tdby34F
-QWzCjLpWbwgsTiG2CS7NxgLNODJjUjl1CFAmvwa8PqPY0/WU6Zfe59oWRWvDwk//
-FqsG4RVz+puXMyMZWQWT7A1V/Ds4terNo1ZQjXVxe3tRm8BCx3gfvtZJsanq6GGp
-Aj9IkF6HFscgNWNqd3rQzVVgbYxtMzce+pkJC6smSpTdCdL8SfYGHf396dPVa5dZ
-bU6XwoCSVjrWsc8ShWSi
-=wLap
------END PGP SIGNATURE-----
+- Cleaned up the SMP locking strategy comment and moved it to
+  svc_xprt.c
 
---nextPart5548183.xIAFmlZkz3--
+- Changed return type of svc_unreg_xprt_class to void
 
+- Simplified transport class removal logic
 
---===============1360050915==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+- Fixed a white-space abuse issue
+  
+- Made some style changes to the patch comments
 
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Microsoft
-Defy all challenges. Microsoft(R) Visual Studio 2005.
-http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
---===============1360050915==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+- Created a separate patch that moves the connection limit code to
+  generic logic
 
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+- Created a separate patch that moves the call to svc_xprt_received
+  out of tcp_accept and into common logic
 
---===============1360050915==--
+- Created a separate patch for removal of unnecessary call to
+  svc_sock_enqueue in svc_tcp_accept function
 
+- Removed silly BUG_ON from kref svc_xprt_free callback function
+  
+- Moved unlock of svc_xprt_class list to after the try_module_lock
+  call.
 
+- Refactored svc_create_xprt logic
+
+- Removed unnecessary call to svc_find_xprt in portlist code
+
+-- 
+Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
