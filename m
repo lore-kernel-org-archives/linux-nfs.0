@@ -1,56 +1,75 @@
-From: "saeed bishara" <saeed.bishara@gmail.com>
-Subject: Re: [NFS] read-ahead in NFS server
-Date: Mon, 31 Dec 2007 15:43:10 +0200
-Message-ID: <c70ff3ad0712310543n6f4f7562g355582c5f101b0e7@mail.gmail.com>
-References: <c70ff3ad0712250734u2f9512f8j1e04f1179a4e2616@mail.gmail.com>
-	<47787129.7060809@gmail.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 00/40] svc: SVC Transport Switch
+Date: Mon, 31 Dec 2007 17:13:36 -0500
+Message-ID: <20071231221336.GA26470@fieldses.org>
+References: <20071231030712.8430.45576.stgit@dell3.ogc.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: "Dean Hildebrand" <seattleplus@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:43256 "EHLO neil.brown.name"
+Received: from mail.fieldses.org ([66.93.2.214]:41273 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751153AbXLaNnX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 31 Dec 2007 08:43:23 -0500
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1J9KvI-0008WR-Ro
-	for linux-nfs@vger.kernel.org; Tue, 01 Jan 2008 00:43:20 +1100
-In-Reply-To: <47787129.7060809@gmail.com>
+	id S1752225AbXLaWNh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 31 Dec 2007 17:13:37 -0500
+In-Reply-To: <20071231030712.8430.45576.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Sun, Dec 30, 2007 at 09:07:12PM -0600, Tom Tucker wrote:
+> 
+> The Server Side Transport switch implements a pluggable transport
+> provider layer for RPC servers. This allows network transport drivers
+> to be dynamically loaded and registered, thereby extending the set of
+> transports that can carry RPC. This patchset includes a transport
+> provider driver for TCP and UDP sockets.
 >
-> I believe ext3 uses the standard linux readahead mechanism, so readahead
-> should be occurring.  How are you determining on the server that ext3 is
-> only issuing 32KB requests to the disks?
-I use sar -du to see the actual requests average size that handled by
-the sata driver.
+> 
+> This version of the patchset is functionally equivalent to the
+> preceding patchset and includes the following improvements:
 
- I bet that the nfs server is
-> passing 32 KB requests to ext3, which in turn is issuing larger requests
-> to the disks.
->
-> Another thing to do is on linux you can increase the rsize to 1 MB to
-> get larger chunks out of the disks.
-it seems this is known issue with NFSv3 that is resolved in version 4,
-please see my commit to the linux kernel mailing list:
+Thanks!  Got it.
 
-http://lkml.org/lkml/2007/12/27/172
+--b.
 
-thanks
-saeed
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Microsoft
-Defy all challenges. Microsoft(R) Visual Studio 2005.
-http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
-
+> 
+> - Fixed a bug in svc_create_socket that resulted in svc_xprt_received
+>   being called without holding the XPT_BUSY bit.
+> 
+> - Added a BUG_ON in svc_xprt_received to catch providers calling
+>   svc_xprt_received without holding the XPT_BUSY bit.
+> 
+> - Removed code setting the XPT_BUSY bit in the create path and moved
+>   this logic to common code.
+> 
+> - Cleaned up the SMP locking strategy comment and moved it to
+>   svc_xprt.c
+> 
+> - Changed return type of svc_unreg_xprt_class to void
+> 
+> - Simplified transport class removal logic
+> 
+> - Fixed a white-space abuse issue
+>   
+> - Made some style changes to the patch comments
+> 
+> - Created a separate patch that moves the connection limit code to
+>   generic logic
+> 
+> - Created a separate patch that moves the call to svc_xprt_received
+>   out of tcp_accept and into common logic
+> 
+> - Created a separate patch for removal of unnecessary call to
+>   svc_sock_enqueue in svc_tcp_accept function
+> 
+> - Removed silly BUG_ON from kref svc_xprt_free callback function
+>   
+> - Moved unlock of svc_xprt_class list to after the try_module_lock
+>   call.
+> 
+> - Refactored svc_create_xprt logic
+> 
+> - Removed unnecessary call to svc_find_xprt in portlist code
+> 
+> -- 
+> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
