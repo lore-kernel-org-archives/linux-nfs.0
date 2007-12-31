@@ -1,130 +1,99 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [PATCH 39/40] knfsd: Support adding transports by writing portlist file
-Date: Sun, 30 Dec 2007 21:08:35 -0600
-Message-ID: <20071231030835.8430.17330.stgit@dell3.ogc.int>
+Subject: [PATCH 40/40] svc: Add svc_xprt_names service to replace svc_sock_names
+Date: Sun, 30 Dec 2007 21:08:37 -0600
+Message-ID: <20071231030837.8430.35769.stgit@dell3.ogc.int>
 References: <20071231030712.8430.45576.stgit@dell3.ogc.int>
 Content-Type: text/plain; charset=utf-8; format=fixed
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:41606 "EHLO
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:41610 "EHLO
 	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753169AbXLaDIf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 30 Dec 2007 22:08:35 -0500
+	by vger.kernel.org with ESMTP id S1753122AbXLaDIi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 30 Dec 2007 22:08:38 -0500
 In-Reply-To: <20071231030712.8430.45576.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-Update the write handler for the portlist file to allow creating new
-listening endpoints on a transport. The general form of the string is:
+Create a transport independent version of the svc_sock_names function.
 
-<transport_name><space><port number>
-
-For example:
-
-echo "tcp 2049" > /proc/fs/nfsd/portlist
-
-This is intended to support the creation of a listening endpoint for
-RDMA transports without adding #ifdef code to the nfssvc.c file.
-
-Transports can also be removed as follows:
-
-'-'<transport_name><space><port number>
-
-For example:
-
-echo "-tcp 2049" > /proc/fs/nfsd/portlist
-
-Attempting to add a listener with an invalid transport string results
-in EPROTONOSUPPORT and a perror string of "Protocol not supported". 
-
-Attempting to remove an non-existent listener (.e.g. bad proto or port)
-results in ENOTCONN and a perror string of 
-"Transport endpoint is not connected"
+The toclose capability of the svc_sock_names service can be implemented
+using the svc_xprt_find and svc_xprt_close services.
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- fs/nfsd/nfsctl.c      |   48 +++++++++++++++++++++++++++++++++++++++++++++++-
- net/sunrpc/svc_xprt.c |    1 +
- 2 files changed, 48 insertions(+), 1 deletions(-)
+ fs/nfsd/nfsctl.c                |    2 +-
+ include/linux/sunrpc/svc_xprt.h |    1 +
+ net/sunrpc/svc_xprt.c           |   35 +++++++++++++++++++++++++++++++++++
+ 3 files changed, 37 insertions(+), 1 deletions(-)
 
 diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 77dc989..2e4e6ff 100644
+index 2e4e6ff..10c13ed 100644
 --- a/fs/nfsd/nfsctl.c
 +++ b/fs/nfsd/nfsctl.c
-@@ -540,7 +540,7 @@ static ssize_t write_ports(struct file *file, char *buf, size_t size)
- 		}
- 		return err < 0 ? err : 0;
- 	}
--	if (buf[0] == '-') {
-+	if (buf[0] == '-' && isdigit(buf[1])) {
- 		char *toclose = kstrdup(buf+1, GFP_KERNEL);
+@@ -503,7 +503,7 @@ static ssize_t write_ports(struct file *file, char *buf, size_t size)
  		int len = 0;
- 		if (!toclose)
-@@ -554,6 +554,52 @@ static ssize_t write_ports(struct file *file, char *buf, size_t size)
- 		kfree(toclose);
+ 		lock_kernel();
+ 		if (nfsd_serv)
+-			len = svc_sock_names(buf, nfsd_serv, NULL);
++			len = svc_xprt_names(nfsd_serv, buf, 0);
+ 		unlock_kernel();
  		return len;
  	}
-+	/*
-+	 * Add a transport listener by writing it's transport name
-+	 */
-+	if (isalpha(buf[0])) {
-+		int err;
-+		char transport[16];
-+		int port;
-+		if (sscanf(buf, "%15s %4d", transport, &port) == 2) {
-+			err = nfsd_create_serv();
-+			if (!err) {
-+				err = svc_create_xprt(nfsd_serv,
-+						      transport, port,
-+						      SVC_SOCK_ANONYMOUS);
-+				if (err == -ENOENT)
-+					/* Give a reasonable perror msg for
-+					 * bad transport string */
-+					err = -EPROTONOSUPPORT;
-+			}
-+			return err < 0 ? err : 0;
-+		}
-+	}
-+	/*
-+	 * Remove a transport by writing it's transport name and port number
-+	 */
-+	if (buf[0] == '-' && isalpha(buf[1])) {
-+		struct svc_xprt *xprt;
-+		int err = -EINVAL;
-+		char transport[16];
-+		int port;
-+		if (sscanf(&buf[1], "%15s %4d", transport, &port) == 2) {
-+			if (port == 0)
-+				return -EINVAL;
-+			lock_kernel();
-+			if (nfsd_serv) {
-+				xprt = svc_find_xprt(nfsd_serv, transport,
-+						     AF_UNSPEC, port);
-+				if (xprt) {
-+					svc_close_xprt(xprt);
-+					err = 0;
-+				} else
-+					err = -ENOTCONN;
-+			}
-+			unlock_kernel();
-+			return err < 0 ? err : 0;
-+		}
-+	}
- 	return -EINVAL;
- }
+diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+index 68862d5..6fd7b01 100644
+--- a/include/linux/sunrpc/svc_xprt.h
++++ b/include/linux/sunrpc/svc_xprt.h
+@@ -81,6 +81,7 @@ void	svc_delete_xprt(struct svc_xprt *xprt);
+ int	svc_port_is_privileged(struct sockaddr *sin);
+ int	svc_print_xprts(char *buf, int maxlen);
+ struct	svc_xprt *svc_find_xprt(struct svc_serv *, char *, int, int);
++int	svc_xprt_names(struct svc_serv *serv, char *buf, int buflen);
  
+ static inline void svc_xprt_get(struct svc_xprt *xprt)
+ {
 diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 512c10f..f239928 100644
+index f239928..5545c1e 100644
 --- a/net/sunrpc/svc_xprt.c
 +++ b/net/sunrpc/svc_xprt.c
-@@ -842,6 +842,7 @@ void svc_close_xprt(struct svc_xprt *xprt)
- 	clear_bit(XPT_BUSY, &xprt->xpt_flags);
- 	svc_xprt_put(xprt);
+@@ -1013,3 +1013,38 @@ struct svc_xprt *svc_find_xprt(struct svc_serv *serv, char *xcl_name,
+ 	return found;
  }
-+EXPORT_SYMBOL_GPL(svc_close_xprt);
- 
- void svc_close_all(struct list_head *xprt_list)
- {
+ EXPORT_SYMBOL_GPL(svc_find_xprt);
++
++/*
++ * Format a buffer with a list of the active transports. A zero for
++ * the buflen parameter disables target buffer overflow checking.
++ */
++int svc_xprt_names(struct svc_serv *serv, char *buf, int buflen)
++{
++	struct svc_xprt *xprt;
++	char xprt_str[64];
++	int totlen = 0;
++	int len;
++
++	/* Sanity check args */
++	if (!serv)
++		return 0;
++
++	spin_lock_bh(&serv->sv_lock);
++	list_for_each_entry(xprt, &serv->sv_permsocks, xpt_list) {
++		len = snprintf(xprt_str, sizeof(xprt_str),
++			       "%s %d\n", xprt->xpt_class->xcl_name,
++			       svc_xprt_local_port(xprt));
++		/* If the string was truncated, replace with error string */
++		if (len >= sizeof(xprt_str))
++			strcpy(xprt_str, "name-too-long\n");
++		/* Don't overflow buffer */
++		len = strlen(xprt_str);
++		if (buflen && (len + totlen >= buflen))
++			break;
++		strcpy(buf+totlen, xprt_str);
++		totlen += len;
++	}
++	spin_unlock_bh(&serv->sv_lock);
++	return totlen;
++}
++EXPORT_SYMBOL_GPL(svc_xprt_names);
