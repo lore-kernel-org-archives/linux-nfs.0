@@ -1,63 +1,70 @@
-From: Ingo Molnar <mingo@elte.hu>
-Subject: Re: [GIT] More NFS client fixes for 2.6.24-rc6
-Date: Thu, 3 Jan 2008 10:30:48 +0100
-Message-ID: <20080103093048.GA16803@elte.hu>
-References: <1199329417.28241.3.camel@heimdal.trondhjem.org>
+From: Jeff Garzik <jeff@garzik.org>
+Subject: A new NFSv4 server...
+Date: Thu, 03 Jan 2008 07:16:49 -0500
+Message-ID: <477CD231.30603@garzik.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+To: nfsv4@linux-nfs.org, NFS list <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx3.mail.elte.hu ([157.181.1.138]:56100 "EHLO mx3.mail.elte.hu"
+Received: from srv5.dvmed.net ([207.36.208.214]:46685 "EHLO mail.dvmed.net"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753934AbYACJbF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 Jan 2008 04:31:05 -0500
-In-Reply-To: <1199329417.28241.3.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+	id S1751986AbYACMQx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 3 Jan 2008 07:16:53 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+In case some developers are interested...  I'm poking at a from-scratch 
+userland NFSv4 server, as a side project.
 
-* Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+In my personal opinion, version 4 of NFS is a quantum-leap improvement 
+over previous versions.  While I used NFS v3 extensively, I always felt 
+it was a crappy protocol, and unworthy of serious development effort. 
+That changed with v4.
 
-> commit 53478daff2c8b494d2af1ede6611f166f81bc393
-> Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Date:   Wed Jan 2 13:28:57 2008 -0500
-> 
->     NFS: Fix a possible Oops in fs/nfs/super.c
->     
->     Sigh... commit 4584f520e1f773082ef44ff4f8969a5d992b16ec (NFS: Fix NFS
->     mountpoint crossing...) had a slight flaw: server can be NULL if sget()
->     returned an existing superblock.
->     
->     Fix the fix by dereferencing s->s_fs_info.
->     
->     Also add in the same namespace Oops fix for NFSv4 in both the mountpoint
->     crossing case, and the referral case.
->     
->     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+I chose to use NFSv4 as the basis for experiments (hopefully yielding 
+production software) that I've long wanted to do in reliable 
+filesystems, distributed filesystems, and other fun areas.
 
-shouldnt this commit have included the full credit of the bugfix:
+In the first step down this long path, I've created an NFSv4 userland 
+server from scratch.  Currently it merely serves data straight from RAM, 
+but the long term goal is to permit modular storage backends.  Thus you 
+could implement a simple RAM backend, an sqlite-based backend or a 
+complex distributed storage backend.
 
-  http://bugzilla.kernel.org/show_bug.cgi?id=9647
+As this is a first-mention developer-only announcement, I didn't bother 
+to create source tarballs.  Here is the git repo:
+	git://git.kernel.org/pub/scm/daemon/nfs/nfs4-ram.git
 
-  ------------>
-  Description From Adrian Bunk 2007-12-27 12:36
+This is the home page, but it's mainly a stub pointing to the git repo:
+	http://linux.yyz.us/projects/nfsv4.html
 
-  The Coverity checker spotted that commit
-  4584f520e1f773082ef44ff4f8969a5d992b16ec introduced the following NULL
-  dereference in 2.6.24-rc6:
+The server will
+* serve data from RAM, with NFSv4 persistent filehandles and FILE_SYNC4
+* destroy all data, when the process exits
+* pass 97% of the useful pynfs tests (cvs latest)
+* pass fsx-linux stress testing, with Linux NFSv4 client (2.6.recent)
+* pass kernel build stress testing, with Linux NFSv4 client (2.6.recent)
 
-  <--  snip  -->
-         if (s->s_fs_info != server) {
-                 nfs_free_server(server);
-                 server = NULL;     <---------------
-         }
+It will not, at the present time,
+* store any data or metadata in stable storage
+* do RPCSEC_GSS (thus, not yet RFC-compliant)
+* do delegations (thus, with reduced caching and increased 
+revalidations, can be slower than disk-based storage)
 
-  ------- Comment #1 From Adrian Bunk 2007-12-27 12:37:42 -------
-  The NULL dereference is at the 
-  server->nfs_client->rpc_ops->dir_inode_ops.
-  <--------------
+At this point, I'm quite interested to hear feedback on how the server 
+works with other NFSv4 clients.  I'm interested in making sure the 
+server is portable to FreeBSD and other OS's, even though it was 
+developed and tested only on Linux.  I also intend to use some 
+Linux-specific syscalls, most notably sync_file_range(2) and 
+sendfile/tee/splice/vmsplice, so that will have to be glossed over by 
+portability code.
 
-	Ingo
+Finally, this is a spare time project, something I've mostly been poking 
+at while having idle time on a not-Internet-connected laptop. 
+Technically its sponsored by Red Hat, since RH pays my salary for all my 
+open source work, but this is largely a personal project done for 
+personal reasons.  I just hope others find it interesting or useful, as 
+it progresses.
+
+	Jeff
+
