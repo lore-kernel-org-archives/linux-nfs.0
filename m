@@ -1,75 +1,38 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [GIT] More NFS client fixes for 2.6.24-rc6
-Date: Thu, 03 Jan 2008 09:45:57 -0500
-Message-ID: <1199371557.7357.14.camel@heimdal.trondhjem.org>
-References: <1199329417.28241.3.camel@heimdal.trondhjem.org>
-	 <20080103093048.GA16803@elte.hu>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: A new NFSv4 server...
+Date: Thu, 3 Jan 2008 11:32:00 -0500
+Message-ID: <20080103163200.GB30029@fieldses.org>
+References: <477CD231.30603@garzik.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-To: Ingo Molnar <mingo@elte.hu>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:29418 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751212AbYACOqE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 Jan 2008 09:46:04 -0500
-In-Reply-To: <20080103093048.GA16803@elte.hu>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: NFS list <linux-nfs@vger.kernel.org>, nfsv4@linux-nfs.org
+To: Jeff Garzik <jeff@garzik.org>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <477CD231.30603@garzik.org>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, Jan 03, 2008 at 07:16:49AM -0500, Jeff Garzik wrote:
+> At this point, I'm quite interested to hear feedback on how the server 
+> works with other NFSv4 clients.
 
-On Thu, 2008-01-03 at 10:30 +0100, Ingo Molnar wrote:
-> * Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
-> 
-> > commit 53478daff2c8b494d2af1ede6611f166f81bc393
-> > Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-> > Date:   Wed Jan 2 13:28:57 2008 -0500
-> > 
-> >     NFS: Fix a possible Oops in fs/nfs/super.c
-> >     
-> >     Sigh... commit 4584f520e1f773082ef44ff4f8969a5d992b16ec (NFS: Fix NFS
-> >     mountpoint crossing...) had a slight flaw: server can be NULL if sget()
-> >     returned an existing superblock.
-> >     
-> >     Fix the fix by dereferencing s->s_fs_info.
-> >     
-> >     Also add in the same namespace Oops fix for NFSv4 in both the mountpoint
-> >     crossing case, and the referral case.
-> >     
-> >     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> 
-> shouldnt this commit have included the full credit of the bugfix:
-> 
->   http://bugzilla.kernel.org/show_bug.cgi?id=9647
-> 
->   ------------>
->   Description From Adrian Bunk 2007-12-27 12:36
-> 
->   The Coverity checker spotted that commit
->   4584f520e1f773082ef44ff4f8969a5d992b16ec introduced the following NULL
->   dereference in 2.6.24-rc6:
+Any possibility of making Connectathon in May?:
 
-Point taken, however I assume that a reference to the bugzilla report
-should suffice. I've therefore updated the commit changelog to read as
-follows:
+	http://www.connectathon.org/
 
-    NFS: Fix a possible Oops in fs/nfs/super.c
-    
-    Sigh... commit 4584f520e1f773082ef44ff4f8969a5d992b16ec (NFS: Fix NFS
-    mountpoint crossing...) had a slight flaw: server can be NULL if sget()
-    returned an existing superblock.
-    
-    Fix the fix by dereferencing s->s_fs_info.
-    
-    Thanks to Coverity/Adrian Bunk and Frank Filz for spotting the bug.
-    (See http://bugzilla.kernel.org/show_bug.cgi?id=9647)
-    
-    Also add in the same namespace Oops fix for NFSv4 in both the mountpoint
-    crossing case, and the referral case.
-    
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+The major NFSv4 implementors normally have their clients there, so it's
+usually the quickest way to find and solve any interoperability
+problems.  Almost all the work will probably be on sessions and pNFS,
+but people should be willing to do basic 4.0 testing too.
 
-Cheers
-  Trond
+Glad to hear you're still working on this--it sounds interesting.
+
+--b.
