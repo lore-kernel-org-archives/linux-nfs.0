@@ -1,322 +1,63 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [GIT] More NFS client fixes for 2.6.24-rc6
-Date: Wed, 02 Jan 2008 22:03:36 -0500
-Message-ID: <1199329417.28241.3.camel@heimdal.trondhjem.org>
+From: Ingo Molnar <mingo@elte.hu>
+Subject: Re: [GIT] More NFS client fixes for 2.6.24-rc6
+Date: Thu, 3 Jan 2008 10:30:48 +0100
+Message-ID: <20080103093048.GA16803@elte.hu>
+References: <1199329417.28241.3.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>,
-	Andrew Morton <akpm@linux-foundation.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:2610 "EHLO mx2.netapp.com"
+Received: from mx3.mail.elte.hu ([157.181.1.138]:56100 "EHLO mx3.mail.elte.hu"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754423AbYACDDm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 Jan 2008 22:03:42 -0500
+	id S1753934AbYACJbF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 3 Jan 2008 04:31:05 -0500
+In-Reply-To: <1199329417.28241.3.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Linus,
 
-Please pull from the repository at
+* Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
 
-   git pull git://git.linux-nfs.org/pub/linux/nfs-2.6.git
+> commit 53478daff2c8b494d2af1ede6611f166f81bc393
+> Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+> Date:   Wed Jan 2 13:28:57 2008 -0500
+> 
+>     NFS: Fix a possible Oops in fs/nfs/super.c
+>     
+>     Sigh... commit 4584f520e1f773082ef44ff4f8969a5d992b16ec (NFS: Fix NFS
+>     mountpoint crossing...) had a slight flaw: server can be NULL if sget()
+>     returned an existing superblock.
+>     
+>     Fix the fix by dereferencing s->s_fs_info.
+>     
+>     Also add in the same namespace Oops fix for NFSv4 in both the mountpoint
+>     crossing case, and the referral case.
+>     
+>     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-This will update the following files through the appended changesets.
+shouldnt this commit have included the full credit of the bugfix:
 
-  Cheers,
-    Trond
+  http://bugzilla.kernel.org/show_bug.cgi?id=9647
 
-----
- fs/nfs/nfs4proc.c              |   34 ++++++++++++++++++++--------------
- fs/nfs/nfs4renewd.c            |    2 --
- fs/nfs/super.c                 |   12 +++++++++++-
- net/sunrpc/auth_gss/auth_gss.c |    2 +-
- 4 files changed, 32 insertions(+), 18 deletions(-)
+  ------------>
+  Description From Adrian Bunk 2007-12-27 12:36
 
-commit 361562e89f02db8fdca32a2dfc546a74f5d883d9
-Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date:   Wed Jan 2 16:27:16 2008 -0500
+  The Coverity checker spotted that commit
+  4584f520e1f773082ef44ff4f8969a5d992b16ec introduced the following NULL
+  dereference in 2.6.24-rc6:
 
-    NFSv4: Fix open_to_lock_owner sequenceid allocation...
-    
-    NFSv4 file locking is currently completely broken since it doesn't respect
-    the OPEN sequencing when it is given an unconfirmed lock_owner and needs to
-    do an open_to_lock_owner. Worse: it breaks the sunrpc rules by doing a
-    GFP_KERNEL allocation inside an rpciod callback.
-    
-    Fix is to preallocate the open seqid structure in nfs4_alloc_lockdata if we
-    see that the lock_owner is unconfirmed.
-    Then, in nfs4_lock_prepare() we wait for either the open_seqid, if
-    the lock_owner is still unconfirmed, or else fall back to waiting on the
-    standard lock_seqid.
-    
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+  <--  snip  -->
+         if (s->s_fs_info != server) {
+                 nfs_free_server(server);
+                 server = NULL;     <---------------
+         }
 
-commit 9073a07d1d987f8d2c919c900ea18ff57d156a34
-Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date:   Wed Jan 2 15:19:18 2008 -0500
+  ------- Comment #1 From Adrian Bunk 2007-12-27 12:37:42 -------
+  The NULL dereference is at the 
+  server->nfs_client->rpc_ops->dir_inode_ops.
+  <--------------
 
-    NFSv4: nfs4_open_confirm must not set the open_owner as confirmed on error
-    
-    RFC3530 states that the open_owner is confirmed if and only if the client
-    sends an OPEN_CONFIRM request with the appropriate sequence id and stateid
-    within the lease period.
-    
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit 812f85c5715310583459acc4b35e918914e96060
-Author: James Morris <jmorris@namei.org>
-Date:   Wed Dec 26 11:20:43 2007 +1100
-
-    NFS: add newline to kernel warning message in auth_gss code
-    
-    Add newline to kernel warning message in gss_create().
-    
-    Signed-off-by: James Morris <jmorris@namei.org>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit 72d740f5d660bb422bab5f72da56678ca2c82d81
-Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date:   Wed Jan 2 13:52:03 2008 -0500
-
-    NFSv4: Fix circular locking dependency in nfs4_kill_renewd
-    
-    Erez Zadok reports:
-    
-    =======================================================
-    [ INFO: possible circular locking dependency detected ]
-    2.6.24-rc6-unionfs2 #80
-    -------------------------------------------------------
-    umount.nfs4/4017 is trying to acquire lock:
-     (&(&clp->cl_renewd)->work){--..}, at: [<c0223e53>]
-    __cancel_work_timer+0x83/0x17f
-    
-    but task is already holding lock:
-     (&clp->cl_sem){----}, at: [<f8879897>] nfs4_kill_renewd+0x17/0x29 [nfs]
-    
-    which lock already depends on the new lock.
-    
-    
-    the existing dependency chain (in reverse order) is:
-    
-    -> #1 (&clp->cl_sem){----}:
-           [<c0230699>] __lock_acquire+0x9cc/0xb95
-           [<c0230c39>] lock_acquire+0x5f/0x78
-           [<c0397cb8>] down_read+0x3a/0x4c
-           [<f88798e6>] nfs4_renew_state+0x1c/0x1b8 [nfs]
-           [<c0223821>] run_workqueue+0xd9/0x1ac
-           [<c0224220>] worker_thread+0x7a/0x86
-           [<c0226b49>] kthread+0x3b/0x62
-           [<c02033a3>] kernel_thread_helper+0x7/0x10
-           [<ffffffff>] 0xffffffff
-    
-    -> #0 (&(&clp->cl_renewd)->work){--..}:
-           [<c0230589>] __lock_acquire+0x8bc/0xb95
-           [<c0230c39>] lock_acquire+0x5f/0x78
-           [<c0223e87>] __cancel_work_timer+0xb7/0x17f
-           [<c0223f5a>] cancel_delayed_work_sync+0xb/0xd
-           [<f887989e>] nfs4_kill_renewd+0x1e/0x29 [nfs]
-           [<f885a8f6>] nfs_free_client+0x37/0x9e [nfs]
-           [<f885ab20>] nfs_put_client+0x5d/0x62 [nfs]
-           [<f885ab9a>] nfs_free_server+0x75/0xae [nfs]
-           [<f8862672>] nfs4_kill_super+0x27/0x2b [nfs]
-           [<c0258aab>] deactivate_super+0x3f/0x51
-           [<c0269668>] mntput_no_expire+0x42/0x67
-           [<c025d0e4>] path_release_on_umount+0x15/0x18
-           [<c0269d30>] sys_umount+0x1a3/0x1cb
-           [<c0269d71>] sys_oldumount+0x19/0x1b
-           [<c02026ca>] sysenter_past_esp+0x5f/0xa5
-           [<ffffffff>] 0xffffffff
-    
-    Looking at the code, it would seem that taking the clp->cl_sem in
-    nfs4_kill_renewd is completely redundant, since we're already guaranteed to
-    have exclusive access to the nfs_client (we're shutting down).
-    
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit 53478daff2c8b494d2af1ede6611f166f81bc393
-Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date:   Wed Jan 2 13:28:57 2008 -0500
-
-    NFS: Fix a possible Oops in fs/nfs/super.c
-    
-    Sigh... commit 4584f520e1f773082ef44ff4f8969a5d992b16ec (NFS: Fix NFS
-    mountpoint crossing...) had a slight flaw: server can be NULL if sget()
-    returned an existing superblock.
-    
-    Fix the fix by dereferencing s->s_fs_info.
-    
-    Also add in the same namespace Oops fix for NFSv4 in both the mountpoint
-    crossing case, and the referral case.
-    
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index f03d9d5..9e2e1c7 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -741,10 +741,10 @@ static void nfs4_open_confirm_done(struct rpc_task *task, void *calldata)
- 	if (data->rpc_status == 0) {
- 		memcpy(data->o_res.stateid.data, data->c_res.stateid.data,
- 				sizeof(data->o_res.stateid.data));
-+		nfs_confirm_seqid(&data->owner->so_seqid, 0);
- 		renew_lease(data->o_res.server, data->timestamp);
- 		data->rpc_done = 1;
- 	}
--	nfs_confirm_seqid(&data->owner->so_seqid, data->rpc_status);
- 	nfs_increment_open_seqid(data->rpc_status, data->c_arg.seqid);
- }
- 
-@@ -759,7 +759,6 @@ static void nfs4_open_confirm_release(void *calldata)
- 	/* In case of error, no cleanup! */
- 	if (!data->rpc_done)
- 		goto out_free;
--	nfs_confirm_seqid(&data->owner->so_seqid, 0);
- 	state = nfs4_opendata_to_nfs4_state(data);
- 	if (!IS_ERR(state))
- 		nfs4_close_state(&data->path, state, data->o_arg.open_flags);
-@@ -886,7 +885,6 @@ static void nfs4_open_release(void *calldata)
- 	/* In case we need an open_confirm, no cleanup! */
- 	if (data->o_res.rflags & NFS4_OPEN_RESULT_CONFIRM)
- 		goto out_free;
--	nfs_confirm_seqid(&data->owner->so_seqid, 0);
- 	state = nfs4_opendata_to_nfs4_state(data);
- 	if (!IS_ERR(state))
- 		nfs4_close_state(&data->path, state, data->o_arg.open_flags);
-@@ -3333,6 +3331,12 @@ static struct nfs4_lockdata *nfs4_alloc_lockdata(struct file_lock *fl,
- 
- 	p->arg.fh = NFS_FH(inode);
- 	p->arg.fl = &p->fl;
-+	if (!(lsp->ls_seqid.flags & NFS_SEQID_CONFIRMED)) {
-+		p->arg.open_seqid = nfs_alloc_seqid(&lsp->ls_state->owner->so_seqid);
-+		if (p->arg.open_seqid == NULL)
-+			goto out_free;
-+
-+	}
- 	p->arg.lock_seqid = nfs_alloc_seqid(&lsp->ls_seqid);
- 	if (p->arg.lock_seqid == NULL)
- 		goto out_free;
-@@ -3345,6 +3349,8 @@ static struct nfs4_lockdata *nfs4_alloc_lockdata(struct file_lock *fl,
- 	memcpy(&p->fl, fl, sizeof(p->fl));
- 	return p;
- out_free:
-+	if (p->arg.open_seqid != NULL)
-+		nfs_free_seqid(p->arg.open_seqid);
- 	kfree(p);
- 	return NULL;
- }
-@@ -3361,23 +3367,23 @@ static void nfs4_lock_prepare(struct rpc_task *task, void *calldata)
- 		.rpc_cred = sp->so_cred,
- 	};
- 
--	if (nfs_wait_on_sequence(data->arg.lock_seqid, task) != 0)
--		return;
- 	dprintk("%s: begin!\n", __FUNCTION__);
- 	/* Do we need to do an open_to_lock_owner? */
- 	if (!(data->arg.lock_seqid->sequence->flags & NFS_SEQID_CONFIRMED)) {
--		data->arg.open_seqid = nfs_alloc_seqid(&sp->so_seqid);
--		if (data->arg.open_seqid == NULL) {
--			data->rpc_status = -ENOMEM;
--			task->tk_action = NULL;
--			goto out;
--		}
-+		if (nfs_wait_on_sequence(data->arg.open_seqid, task) != 0)
-+			return;
- 		data->arg.open_stateid = &state->stateid;
- 		data->arg.new_lock_owner = 1;
-+		/* Retest in case we raced... */
-+		if (!(data->arg.lock_seqid->sequence->flags & NFS_SEQID_CONFIRMED))
-+			goto do_rpc;
- 	}
-+	if (nfs_wait_on_sequence(data->arg.lock_seqid, task) != 0)
-+		return;
-+	data->arg.new_lock_owner = 0;
-+do_rpc:	
- 	data->timestamp = jiffies;
- 	rpc_call_setup(task, &msg, 0);
--out:
- 	dprintk("%s: done!, ret = %d\n", __FUNCTION__, data->rpc_status);
- }
- 
-@@ -3413,8 +3419,6 @@ static void nfs4_lock_release(void *calldata)
- 	struct nfs4_lockdata *data = calldata;
- 
- 	dprintk("%s: begin!\n", __FUNCTION__);
--	if (data->arg.open_seqid != NULL)
--		nfs_free_seqid(data->arg.open_seqid);
- 	if (data->cancelled != 0) {
- 		struct rpc_task *task;
- 		task = nfs4_do_unlck(&data->fl, data->ctx, data->lsp,
-@@ -3424,6 +3428,8 @@ static void nfs4_lock_release(void *calldata)
- 		dprintk("%s: cancelling lock!\n", __FUNCTION__);
- 	} else
- 		nfs_free_seqid(data->arg.lock_seqid);
-+	if (data->arg.open_seqid != NULL)
-+		nfs_free_seqid(data->arg.open_seqid);
- 	nfs4_put_lock_state(data->lsp);
- 	put_nfs_open_context(data->ctx);
- 	kfree(data);
-diff --git a/fs/nfs/nfs4renewd.c b/fs/nfs/nfs4renewd.c
-index 3ea352d..5e2e4af 100644
---- a/fs/nfs/nfs4renewd.c
-+++ b/fs/nfs/nfs4renewd.c
-@@ -133,9 +133,7 @@ nfs4_renewd_prepare_shutdown(struct nfs_server *server)
- void
- nfs4_kill_renewd(struct nfs_client *clp)
- {
--	down_read(&clp->cl_sem);
- 	cancel_delayed_work_sync(&clp->cl_renewd);
--	up_read(&clp->cl_sem);
- }
- 
- /*
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index ea92920..0b0c72a 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -1475,7 +1475,7 @@ static int nfs_xdev_get_sb(struct file_system_type *fs_type, int flags,
- 		error = PTR_ERR(mntroot);
- 		goto error_splat_super;
- 	}
--	if (mntroot->d_inode->i_op != server->nfs_client->rpc_ops->dir_inode_ops) {
-+	if (mntroot->d_inode->i_op != NFS_SB(s)->nfs_client->rpc_ops->dir_inode_ops) {
- 		dput(mntroot);
- 		error = -ESTALE;
- 		goto error_splat_super;
-@@ -1826,6 +1826,11 @@ static int nfs4_xdev_get_sb(struct file_system_type *fs_type, int flags,
- 		error = PTR_ERR(mntroot);
- 		goto error_splat_super;
- 	}
-+	if (mntroot->d_inode->i_op != NFS_SB(s)->nfs_client->rpc_ops->dir_inode_ops) {
-+		dput(mntroot);
-+		error = -ESTALE;
-+		goto error_splat_super;
-+	}
- 
- 	s->s_flags |= MS_ACTIVE;
- 	mnt->mnt_sb = s;
-@@ -1900,6 +1905,11 @@ static int nfs4_referral_get_sb(struct file_system_type *fs_type, int flags,
- 		error = PTR_ERR(mntroot);
- 		goto error_splat_super;
- 	}
-+	if (mntroot->d_inode->i_op != NFS_SB(s)->nfs_client->rpc_ops->dir_inode_ops) {
-+		dput(mntroot);
-+		error = -ESTALE;
-+		goto error_splat_super;
-+	}
- 
- 	s->s_flags |= MS_ACTIVE;
- 	mnt->mnt_sb = s;
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index a6e57d1..1f2d85e 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -625,7 +625,7 @@ gss_create(struct rpc_clnt *clnt, rpc_authflavor_t flavor)
- 	err = -EINVAL;
- 	gss_auth->mech = gss_mech_get_by_pseudoflavor(flavor);
- 	if (!gss_auth->mech) {
--		printk(KERN_WARNING "%s: Pseudoflavor %d not found!",
-+		printk(KERN_WARNING "%s: Pseudoflavor %d not found!\n",
- 				__FUNCTION__, flavor);
- 		goto err_free;
- 	}
+	Ingo
