@@ -1,121 +1,79 @@
-From: "Muntz, Daniel" <Dan.Muntz@netapp.com>
-Subject: RE: A new NFSv4 server...
-Date: Fri, 4 Jan 2008 12:31:03 -0800
-Message-ID: <01AE8AF878612047A442668306EAEB05016D509C@SACEXMV01.hq.netapp.com>
-References: <477CD231.30603@garzik.org>
-	<20080103163200.GB30029@fieldses.org><477DC501.3060104@garzik.org>
-	<477DD11B.40909@melbourne.sgi.com><477DDA86.6020100@garzik.org>
-	<Pine.LNX.4.64.0801040954070.5004@maggie.lkpg.cendio.se>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: Man page update for timeo= and retrans= options.
+Date: Fri, 04 Jan 2008 16:31:00 -0500
+Message-ID: <1199482261.11632.12.camel@heimdal.trondhjem.org>
+References: <18301.39633.368089.130622@notabene.brown>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Cc: NFS list <linux-nfs@vger.kernel.org>, nfsv4@linux-nfs.org
-To: =?iso-8859-1?Q?Peter_=C5strand?= <astrand@cendio.se>,
-	"Jeff Garzik" <jeff@garzik.org>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-reply-to: <Pine.LNX.4.64.0801040954070.5004@maggie.lkpg.cendio.se>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: text/plain
+Cc: linux-nfs@vger.kernel.org
+To: Neil Brown <neilb@suse.de>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from pat.uio.no ([129.240.10.15]:50804 "EHLO pat.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753351AbYADVbF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Jan 2008 16:31:05 -0500
+In-Reply-To: <18301.39633.368089.130622-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I like it.  NFS 3.5.  Drop pNFS into the v3 protocol (a greatly simplified =
-pNFS compared to what we ended up with in 4.1), and you'd have yourself a s=
-weet little distributed fs.  The important part is that any such effort be =
-called "NFS x.y".  Naming is important, or we'd be running AFS/DFS instead =
-of NFS 4.0 (please, try to resist flaming me on the hyperbole).
 
-  -Dan
+On Fri, 2008-01-04 at 13:32 +1100, Neil Brown wrote:
+> I've been trying to understand exactly how timeouts work in the NFS
+> client and find that the man page in nfs-utils is not correct.
+> 
+> In particular, the implementation differentiates between TCP and UDP,
+> while the man page does not make that distinction.
+> 
+> I have attempted an update to the man page as you can see below.  It
+> is entirely possible that I have not got it completely correct (or
+> comprehensible) so I'm asking for people to check that what I have
+> written is correct and clear.
+> 
+> This I would particularly like comment on:
+> 
+> 1/ I have left
+> 
+>  Better overall performance may be achieved by increasing the
+>  timeout when mounting on a busy network, to a slow server, or through
+>  several routers or gateways.
+> 
+>  unchanged.  Is it still a reasonable thing to say?
 
------Original Message-----
-From: Peter =C5strand [mailto:astrand@cendio.se] =
+I suppose so, however it might be worth stating that a better solution
+is to use TCP.
 
-Sent: Friday, January 04, 2008 1:15 AM
-To: Jeff Garzik
-Cc: NFS list; nfsv4@linux-nfs.org
-Subject: Re: A new NFSv4 server...
+It is also worth pointing out that for TCP, the timeo mount option is
+deprecated.
 
+> 2/ I have moved the documentation about major timeouts into the retrans=
+>    section.  Does that break the description up too much?
 
-[About v4]
+No, that sounds like a good idea.
 
+> 3/ the old text seems to say that after the first major-timeout, a
+>   slightly different sequence of timeouts are used.  I couldn't find
+>   evidence of this in the code.  Did I miss something, or is my text
+>   correct?
 
-On Fri, 4 Jan 2008, Jeff Garzik wrote:
+The text stating that 'each new  timeout  cascade  restarts at twice the
+initial value of the previous cascade' is wrong. AFAIK, we restart at
+the initial value...
 
-> > > I really wish the entire wire protocol were scrapped and replaced =
+> 4/ Did this change in some ancient kernel version, and should the
+>   version number of the change be documented?  e.g. is it a 2.4 / 2.6
+>   difference?
 
-> > > with something more sane, and easier to parse.
-> > You had me worried there for a moment, I thought you might be the =
+I'd have to check.
 
-> > first person to admit to liking the NFS4 protocol design.
+> 5/ As the behaviour is quite different for UDP and TCP, should we
+>   introduce a major_timeo= option which calculates an appropriate
+>   retrans= based on the actual timeo= and proto= used.
 
-Couldn't agree more. =
+No. We should deprecate use of retrans/timeo altogether for TCP except
+possibly for the case of 'soft' mounts (and even then you need to be
+careful). It is far too easy to flood the server with redundant RPC
+requests...
 
+Cheers
+  Trond
 
-
-
-> In my personal opinion, version 4 of NFS is a quantum-leap improvement =
-
-> over previous versions.  While I used NFS v3 extensively, I always =
-
-> felt it was a crappy protocol, and unworthy of serious development =
-
-> effort. That changed with v4.
-...
-> > > It's tempting to see what would arise from a clean-slate wire =
-
-> > > protocol effort, something that is otherwise compatible with NFS =
-
-> > > 4.x operations, objects, and data model.
-> =
-
-> It's more like v4 is a vast relative improvement over prior NFS.  =
-
-> Given the huge number of NFS users and sites, IMO v4 is a huge =
-
-> improvement for Unix file sharing overall.
-
-Many years ago, before NFSv4 was finished, I felt the same. I was waiting f=
-or v4 and thought that everything would be so much better. I wanted to help=
- and started the "pynfs" project. Today, I have a different opinion. I thin=
-k v3 is a fairly good protocol, if you use it correctly. For example, many =
-people don't realize that you don't need the portmapper, that you can use a=
- single well-known TCP port, that you can use RPCSEC_GSS and so forth, even=
- with v3. =
-
-
-
-I think v4 has a few valuable improvements, but it comes with a very high p=
-rice. v3 has a minimalistic beauty which v4 lacks. For example, take a look=
- at the OPEN operation with 7 arguments, of which many are complex data str=
-uctures:
-
-    (cfh), seqid, share_access, share_deny, owner, openhow, claim ->
-    (cfh), stateid, cinfo, rflags, open_confirm, attrset delegation
-
-Not pretty...  =
-
-
-
-
-> Oh, certainly.  I was mainly thinking a replacement of the wire =
-
-> protocol would be an easier step for people to swallow than a new protoco=
-l.
-
-I've been thinking of trying to put together something like NFS v3.5. Some =
-parts of v4 are nice, but the complexity is too high. =
-
-
-
-Regards, =
-
----
-Peter =C5strand		ThinLinc Chief Developer
-Cendio AB		http://www.cendio.se
-Wallenbergs gata 4
-583 30 Link=F6ping	Phone: +46-13-21 46 00
