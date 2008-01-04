@@ -1,18 +1,18 @@
-From: =?UTF-8?Q?Peter_=C3=85strand?= <astrand@cendio.se>
-Subject: Re: A new NFSv4 server...
-Date: Fri, 4 Jan 2008 21:03:01 +0100 (CET)
-Message-ID: <Pine.LNX.4.64.0801042030380.18738@maggie.lkpg.cendio.se>
-References: <477CD231.30603@garzik.org> <20080103163200.GB30029@fieldses.org>
-	<477DC501.3060104@garzik.org> <477DD11B.40909@melbourne.sgi.com>
-	<477DDA86.6020100@garzik.org>
+From: "Muntz, Daniel" <Dan.Muntz@netapp.com>
+Subject: RE: A new NFSv4 server...
+Date: Fri, 4 Jan 2008 12:31:03 -0800
+Message-ID: <01AE8AF878612047A442668306EAEB05016D509C@SACEXMV01.hq.netapp.com>
+References: <477CD231.30603@garzik.org>
+	<20080103163200.GB30029@fieldses.org><477DC501.3060104@garzik.org>
+	<477DD11B.40909@melbourne.sgi.com><477DDA86.6020100@garzik.org>
 	<Pine.LNX.4.64.0801040954070.5004@maggie.lkpg.cendio.se>
-	<477E61D3.4030408@garzik.org>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="789237761-59745507-1199475791=:18738"
+Content-Type: text/plain; charset="iso-8859-1"
 Cc: NFS list <linux-nfs@vger.kernel.org>, nfsv4@linux-nfs.org
-To: Jeff Garzik <jeff@garzik.org>
+To: =?iso-8859-1?Q?Peter_=C5strand?= <astrand@cendio.se>,
+	"Jeff Garzik" <jeff@garzik.org>
 Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <477E61D3.4030408@garzik.org>
+In-reply-to: <Pine.LNX.4.64.0801040954070.5004@maggie.lkpg.cendio.se>
 List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
 	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
 List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
@@ -24,87 +24,98 @@ Sender: nfsv4-bounces@linux-nfs.org
 Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+I like it.  NFS 3.5.  Drop pNFS into the v3 protocol (a greatly simplified =
+pNFS compared to what we ended up with in 4.1), and you'd have yourself a s=
+weet little distributed fs.  The important part is that any such effort be =
+called "NFS x.y".  Naming is important, or we'd be running AFS/DFS instead =
+of NFS 4.0 (please, try to resist flaming me on the hyperbole).
 
---789237761-59745507-1199475791=:18738
-Content-Type: TEXT/PLAIN; CHARSET=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Content-ID: <Pine.LNX.4.64.0801042058241.18738@maggie.lkpg.cendio.se>
+  -Dan
 
+-----Original Message-----
+From: Peter =C5strand [mailto:astrand@cendio.se] =
 
-> > think v3 is a fairly good protocol, if you use it correctly. For exampl=
-e,
-> > many people don't realize that you don't need the portmapper, that you =
-can
-> > use a single well-known TCP port, that you can use RPCSEC_GSS and so fo=
-rth,
-> > even with v3.=20
->=20
-> Absolutely...  But still, I think integrated mount protocol (aka pseudo
-> filesystem namespace) and integrated locking were big steps forward. You
-> really shouldn't need more than one protocol.
-
-I don't think the mount protocol is a big problem. Either you can continue=
-=20
-to use the mount protocol and just have one export (/) and export all file=
-=20
-systems below it ("nohide"). Modern clients (such as modern Linux kernels)=
-=20
-will automatically create "sub mounts" when traversing and discovering new=
-=20
-fsids.
-
-Or, you can get rid of the mount protocol by using WebNFS and the public=20
-filehandle.=20
+Sent: Friday, January 04, 2008 1:15 AM
+To: Jeff Garzik
+Cc: NFS list; nfsv4@linux-nfs.org
+Subject: Re: A new NFSv4 server...
 
 
-File locking support is harder, though.=20
+[About v4]
 
 
-> Authentication and security should be simple, tough to screw up.  I would=
- tend
-> to prefer an ASCII-based authentication/security negotiation at the start=
- of a
-> [SCTP|TCP] stream.
->=20
-> Use TLS to give most people what they want:  AUTH_SYS with encryption. GS=
-SAPI
-> is fine as a "required option" but you shouldn't need GSSAPI to do simple=
- wire
-> encryption between IP-authenticated hosts.
+On Fri, 4 Jan 2008, Jeff Garzik wrote:
 
-SSH is another option if you just want encryption, but my impression is=20
-that AUTH_SYS is a very big problem as well.=20
+> > > I really wish the entire wire protocol were scrapped and replaced =
+
+> > > with something more sane, and easier to parse.
+> > You had me worried there for a moment, I thought you might be the =
+
+> > first person to admit to liking the NFS4 protocol design.
+
+Couldn't agree more. =
 
 
-> heh, tell me about it.  First I started out using rpcgen, then rewrote
-> everything to do raw XDR decoding.  OPEN is huge.
->=20
-> IMO, OPEN should be split into multiple operations, probably one for each
-> "OPEN arm".  It's not like new opcode numbers are expensive.
->=20
-> Or, hope of hopes, simplify OPEN in some other manner, like delegating ta=
-sks
-> to other operations.
 
-Or perhaps aiming for something less than perfect. Remember, the perfect=20
-is the enemy of the good.=20
 
-Regards,=20
+> In my personal opinion, version 4 of NFS is a quantum-leap improvement =
+
+> over previous versions.  While I used NFS v3 extensively, I always =
+
+> felt it was a crappy protocol, and unworthy of serious development =
+
+> effort. That changed with v4.
+...
+> > > It's tempting to see what would arise from a clean-slate wire =
+
+> > > protocol effort, something that is otherwise compatible with NFS =
+
+> > > 4.x operations, objects, and data model.
+> =
+
+> It's more like v4 is a vast relative improvement over prior NFS.  =
+
+> Given the huge number of NFS users and sites, IMO v4 is a huge =
+
+> improvement for Unix file sharing overall.
+
+Many years ago, before NFSv4 was finished, I felt the same. I was waiting f=
+or v4 and thought that everything would be so much better. I wanted to help=
+ and started the "pynfs" project. Today, I have a different opinion. I thin=
+k v3 is a fairly good protocol, if you use it correctly. For example, many =
+people don't realize that you don't need the portmapper, that you can use a=
+ single well-known TCP port, that you can use RPCSEC_GSS and so forth, even=
+ with v3. =
+
+
+
+I think v4 has a few valuable improvements, but it comes with a very high p=
+rice. v3 has a minimalistic beauty which v4 lacks. For example, take a look=
+ at the OPEN operation with 7 arguments, of which many are complex data str=
+uctures:
+
+    (cfh), seqid, share_access, share_deny, owner, openhow, claim ->
+    (cfh), stateid, cinfo, rflags, open_confirm, attrset delegation
+
+Not pretty...  =
+
+
+
+
+> Oh, certainly.  I was mainly thinking a replacement of the wire =
+
+> protocol would be an easier step for people to swallow than a new protoco=
+l.
+
+I've been thinking of trying to put together something like NFS v3.5. Some =
+parts of v4 are nice, but the complexity is too high. =
+
+
+
+Regards, =
+
 ---
-Peter =C3=85strand=09=09ThinLinc Chief Developer
-Cendio AB=09=09http://www.cendio.se
+Peter =C5strand		ThinLinc Chief Developer
+Cendio AB		http://www.cendio.se
 Wallenbergs gata 4
-583 30 Link=C3=B6ping=09Phone: +46-13-21 46 00
---789237761-59745507-1199475791=:18738
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
-_______________________________________________
-NFSv4 mailing list
-NFSv4@linux-nfs.org
-http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
---789237761-59745507-1199475791=:18738--
+583 30 Link=F6ping	Phone: +46-13-21 46 00
