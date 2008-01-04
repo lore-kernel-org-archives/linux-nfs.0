@@ -1,31 +1,53 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
+From: Tom Haynes <tdh@excfb.com>
 Subject: Re: A new NFSv4 server...
-Date: Fri, 4 Jan 2008 12:47:46 -0500
-Message-ID: <20080104174746.GH17112@fieldses.org>
-References: <477CD231.30603@garzik.org> <20080103163200.GB30029@fieldses.org> <477DC501.3060104@garzik.org> <477DD11B.40909@melbourne.sgi.com> <477DDA86.6020100@garzik.org> <477DF761.8040306@panasas.com>
+Date: Fri, 04 Jan 2008 12:03:54 -0600
+Message-ID: <477E750A.2030905@excfb.com>
+References: <200801041528.KAA18776@snowhite.cis.uoguelph.ca>
+	<20080104172142.GD17112@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jeff Garzik <jeff@garzik.org>,
-	NFS list <linux-nfs@vger.kernel.org>, nfsv4@linux-nfs.org,
-	Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
-To: Benny Halevy <bhalevy@panasas.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:43819 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752035AbYADRr4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 Jan 2008 12:47:56 -0500
-In-Reply-To: <477DF761.8040306@panasas.com>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <20080104172142.GD17112@fieldses.org>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jan 04, 2008 at 11:07:45AM +0200, Benny Halevy wrote:
-> Jeff, taking into account the amount of effort people and different
-> organizations have already put into NFSv4 and NFSv4.1 I wish you could
-> tunnel your inventive energy into making NFSv4.1 better rather than
-> trying to reinvent NFS/RPC/XDR.
+J. Bruce Fields wrote:
+> Ditto.  I think it'd be great to have a variety of client and server
+> implementations available over the net, but I've had no luck talking
+> anybody else into it.
+>
+> --b.
+> _______________________________________________
+> NFSv4 mailing list
+> NFSv4@linux-nfs.org
+> http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
+>   
 
-It's also important to have fun.  Imagining what you could do from a
-clean slate is, if nothing else, a fun exercise.  And it may end up with
-ideas that turn out to be implementable without starting from scratch.
 
---b.
+I suspect that the explosion of virtual servers has
+probably killed this type of effort. It appears much
+easier for me to give you an image than to expose
+a machine on the network.
+
+Sun actually has a set of test machines the public can
+use to regression test OpenSolaris fixes. I'm not sure
+if it can accommodate foreign OSes just yet.
+
+And to add to Rick's story, we've got the pNFS enabled
+bits available for download. We've only gotten feedback
+from one person. So either our code is really great and
+we are not getting feedback, or people are just waiting
+for the pNFS implementations to mature.
+
+We did get a request to make the bits available as a
+VMware image. :->
