@@ -1,40 +1,39 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
+From: Rick Macklem <rick@snowhite.cis.uoguelph.ca>
 Subject: Re: A new NFSv4 server...
-Date: Fri, 4 Jan 2008 12:21:42 -0500
-Message-ID: <20080104172142.GD17112@fieldses.org>
-References: <200801041528.KAA18776@snowhite.cis.uoguelph.ca>
+Date: Fri, 4 Jan 2008 12:28:26 -0500 (EST)
+Message-ID: <200801041728.MAA19743@snowhite.cis.uoguelph.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: jeff@garzik.org, linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-To: Rick Macklem <rick-bYVALtacgsT800Iu1Vt84J3p9npsUQCG@public.gmane.org>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:47040 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753388AbYADRVs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 Jan 2008 12:21:48 -0500
-In-Reply-To: <200801041528.KAA18776-bYVALtacgsT800Iu1Vt84J3p9npsUQCG@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org, gnb@melbourne.sgi.com
+To: bfields@fieldses.org
+Return-path: <nfsv4-bounces@linux-nfs.org>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jan 04, 2008 at 10:28:10AM -0500, Rick Macklem wrote:
-> > Plus, surely in this day and age, we can figure out something better 
-> > than waiting for face-to-face events to test something.  Maybe somebody 
-> > could arrange a donation of some slice of a grid (Amazon EC2?), make 
-> > various OS images available, and give engineers some way to request a 
-> > selection of tests, with a selection of OS images?
+> As long as they persist while you have an open (or a delegation), it
+> shouldn't be so hard to implement, should it?  If a filehandle expires,
+> then you throw away any cache associated with it, but as long as no
+> applications hold file descriptors for it, that's not a catastrophe.
 > 
-> I tried putting a server up accessible over the internet and only ever
-> got one person testing on it once (or maybe it was just a hacker:-). I
-> did test my client against a server at CITI once, after signing a
-> bakeathon NDA. But, I agree, and I don't really think it even needs
-> a central site. I don't see why vendors couldn't put up servers
-> (production software or whatever they are comfortable having internet
->  accessible) that clients can test against. I'll be happy to put my
-> server up and I'd be happy to test against internet accessible servers
-> with my client.
+> But I'm a little confused whether rfc 3530's 4.2.3 gives a way for the
+> server to express that guarantee.
 
-Ditto.  I think it'd be great to have a variety of client and server
-implementations available over the net, but I've had no luck talking
-anybody else into it.
+Agreed, but I've always assumed the server can return NFS4ERR_FHEXPIRED
+at any time. (It's listed as a error for many Ops, such as Read and Write.)
+Also, what does a client do after a server reboot. It can't use
+Open/Claim_previous for recovery.
 
---b.
+Even if there is a "don't expire while Open" guarantee, it's still a pita
+for the client to hang onto pathnames for directories and such, so that
+they can re-lookup the fh. (And if that re-lookup happens to fail or end
+up in a different place?)
+
+rick
