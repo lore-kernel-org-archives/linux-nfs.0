@@ -1,93 +1,63 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 4/4] NFS: Use cached nlm_host when calling
-	nlmclnt_proc()
-Date: Thu, 03 Jan 2008 16:59:58 -0500
-Message-ID: <1199397599.1913.22.camel@heimdal.trondhjem.org>
-References: <20071220200420.3358.66424.stgit@manray.1015granger.net>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH 38/38] svc: Add svc_xprt_names service to replace
+	svc_sock_names
+Date: Fri, 4 Jan 2008 11:47:22 +1100
+Message-ID: <18301.33306.486417.193770@notabene.brown>
+References: <20071211233150.15718.40579.stgit@dell3.ogc.int>
+	<20071211233318.15718.11614.stgit@dell3.ogc.int>
+	<20071215000328.GP23121@fieldses.org>
+	<1198259507.14237.31.camel@trinity.ogc.int>
+	<20080103211405.GG15354@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Tom Tucker <tom@opengridcomputing.com>, linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from pat.uio.no ([129.240.10.15]:46208 "EHLO pat.uio.no"
+Received: from mx2.suse.de ([195.135.220.15]:46712 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752911AbYACWAD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 Jan 2008 17:00:03 -0500
-In-Reply-To: <20071220200420.3358.66424.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+	id S1752774AbYADAra (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 3 Jan 2008 19:47:30 -0500
+In-Reply-To: message from J. Bruce Fields on Thursday January 3
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thursday January 3, bfields@fieldses.org wrote:
+> On Fri, Dec 21, 2007 at 11:51:47AM -0600, Tom Tucker wrote:
+> > 
+> > On Fri, 2007-12-14 at 19:03 -0500, J. Bruce Fields wrote:
+> > > On Tue, Dec 11, 2007 at 05:33:18PM -0600, Tom Tucker wrote:
+> > > > 
+> > > > Create a transport independent version of the svc_sock_names function.
+> > > > 
+> > > > The toclose capability of the svc_sock_names service can be implemented
+> > > > using the svc_xprt_find and svc_xprt_close services.
+> > > 
+> > > Should we delete the toclose checks from svc_sock_names(), then, under
+> > > the assumption it's always called with toclose non-NULL now?
+> > > 
+> > > And why can't we just completely replace svc_sock_names() at this point?
+> > > 
+> > 
+> > IMO we could, but there is currently a difference in behavior between
+> > svc_sock_names and svc_find_xprt/close. svc_find_xprt doesn't care what
+> > the IP address is, it only compares transport name, address family and
+> > port. 
+> > 
+> > Presently in NFS, we only ever listen on zero, but you can destroy an
+> > endpoint on a particular interface (IP address). Can anyone shed some
+> > light on why this is? 
+> 
+> Dunno.  Neil?
 
-On Thu, 2007-12-20 at 15:04 -0500, Chuck Lever wrote:
-> Now that each NFS mount point caches its own nlm_host structure, it can be
-> passed to nlmclnt_proc() for each lock request.
-> 
-> By pinning an nlm_host for each mount point, we trade the overhead of
-> looking up or creating a fresh nlm_host struct during every NLM procedure
-> call for a little extra memory.
-> 
-> Note that nlm_lookup_host() (just removed from the client's per-request
-> NLM processing) could also trigger an nlm_host garbage collection.  Now
-> client-side nlm_host garbage collection occurs only during NFS mount
-> processing.  Since the NFS client holds a reference on these nlm_host
-> structures, they wouldn't have been affected by garbage collection
-> anyway.
-> 
-> Given that nlm_lookup_host() reorders the nlm_host chain after every
-> successful lookup, and that a garbage collection could be triggered during
-> the call, we've removed a significant amount of per-NLM-request CPU
-> processing overhead.
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
-> 
->  fs/lockd/clntproc.c |   21 ++++-----------------
->  1 files changed, 4 insertions(+), 17 deletions(-)
-> 
-> diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
-> index a10343b..e31d10c 100644
-> --- a/fs/lockd/clntproc.c
-> +++ b/fs/lockd/clntproc.c
-> @@ -148,30 +148,17 @@ static void nlmclnt_release_lockargs(struct nlm_rqst *req)
->  /*
->   * This is the main entry point for the NLM client.
->   */
-> -int
-> -nlmclnt_proc(struct inode *inode, int cmd, struct file_lock *fl)
-> +int nlmclnt_proc(struct inode *inode, int cmd, struct file_lock *fl)
->  {
-> -	struct rpc_clnt		*client = NFS_CLIENT(inode);
-> -	struct sockaddr_in	addr;
-> -	struct nfs_server	*nfssrv = NFS_SERVER(inode);
-> -	struct nlm_host		*host;
-> +	struct nlm_host		*host = NFS_SERVER(inode)->nlm_host;
+The "-H" option to "rpc.nfsd" allow you to bind nfsd to a specific
+interface.
+I don't think any user-space tools current allow you to unbind a
+specific interface, but I wouldn't want to lose that functionality.
 
-I'm not overly happy to have the NLM code poke around in the internals
-of the nfs_inode. Could we please pass the nlm_host as a parameter to
-nlmclnt_proc, and then make a note to chase down the other existing
-(ab)uses?
+Why are we changing this.  Clear the toclose functionality of the
+svc_sock_names service can *NOT* be impletemented using svc_xprt_find
+and svc_xprt_close as _find_ doesn't check the port - so just leave
+things the way they are??? I haven't really been following this update
+much so maybe there is something I'm missing....
 
->  	struct nlm_rqst		*call;
->  	sigset_t		oldset;
->  	unsigned long		flags;
-> -	int			status, vers;
-> -
-> -	vers = (NFS_PROTO(inode)->version == 3) ? 4 : 1;
-> -	if (NFS_PROTO(inode)->version > 3) {
-> -		printk(KERN_NOTICE "NFSv4 file locking not implemented!\n");
-> -		return -ENOLCK;
-> -	}
-> +	int			status;
->  
-> -	rpc_peeraddr(client, (struct sockaddr *) &addr, sizeof(addr));
-> -	host = nlmclnt_lookup_host(&addr, client->cl_xprt->prot, vers,
-> -				   nfssrv->nfs_client->cl_hostname,
-> -				   strlen(nfssrv->nfs_client->cl_hostname));
->  	if (host == NULL)
->  		return -ENOLCK;
-> +	nlm_get_host(host);
->  
->  	call = nlm_alloc_call(host);
->  	if (call == NULL)
-> 
-
+NeilBrown
