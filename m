@@ -1,79 +1,75 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Man page update for timeo= and retrans= options.
-Date: Fri, 04 Jan 2008 16:31:00 -0500
-Message-ID: <1199482261.11632.12.camel@heimdal.trondhjem.org>
-References: <18301.39633.368089.130622@notabene.brown>
+From: Wendy Cheng <wcheng@redhat.com>
+Subject: [PATCH] Fix NLM reference count panic
+Date: Fri, 04 Jan 2008 17:48:49 -0500
+Message-ID: <477EB7D1.9030303@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org
-To: Neil Brown <neilb@suse.de>
+Content-Type: multipart/mixed;
+ boundary="------------040108010804020300040508"
+To: NFS list <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from pat.uio.no ([129.240.10.15]:50804 "EHLO pat.uio.no"
+Received: from mx1.redhat.com ([66.187.233.31]:44861 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753351AbYADVbF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 Jan 2008 16:31:05 -0500
-In-Reply-To: <18301.39633.368089.130622-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
+	id S1752873AbYADWvR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Jan 2008 17:51:17 -0500
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id m04MpFQn031464
+	for <linux-nfs@vger.kernel.org>; Fri, 4 Jan 2008 17:51:15 -0500
+Received: from lacrosse.corp.redhat.com (lacrosse.corp.redhat.com [172.16.52.154])
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m04MpEhu021707
+	for <linux-nfs@vger.kernel.org>; Fri, 4 Jan 2008 17:51:14 -0500
+Received: from [172.16.59.29] (wendyc-t.rdu.redhat.com [172.16.59.29])
+	by lacrosse.corp.redhat.com (8.12.11.20060308/8.11.6) with ESMTP id m04MpE2p016405
+	for <linux-nfs@vger.kernel.org>; Fri, 4 Jan 2008 17:51:14 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+This is a multi-part message in MIME format.
+--------------040108010804020300040508
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-On Fri, 2008-01-04 at 13:32 +1100, Neil Brown wrote:
-> I've been trying to understand exactly how timeouts work in the NFS
-> client and find that the man page in nfs-utils is not correct.
-> 
-> In particular, the implementation differentiates between TCP and UDP,
-> while the man page does not make that distinction.
-> 
-> I have attempted an update to the man page as you can see below.  It
-> is entirely possible that I have not got it completely correct (or
-> comprehensible) so I'm asking for people to check that what I have
-> written is correct and clear.
-> 
-> This I would particularly like comment on:
-> 
-> 1/ I have left
-> 
->  Better overall performance may be achieved by increasing the
->  timeout when mounting on a busy network, to a slow server, or through
->  several routers or gateways.
-> 
->  unchanged.  Is it still a reasonable thing to say?
+This is not exciting as Jeff Garzik's new NFSv4 server but a painful 
+chore needs to be done. Will start to push the patches for NLM lock 
+failover code next week. However, instead of doing large amount of 
+patches all at once, would like to do it one by one, if they can be 
+functionally separated. This is to avoid the tedious re-base works I 
+have been doing for the past, (oh no), two years ??!!!
 
-I suppose so, however it might be worth stating that a better solution
-is to use TCP.
+First one should be simple enough without too much explanation ....
 
-It is also worth pointing out that for TCP, the timeo mount option is
-deprecated.
+-- Wendy
 
-> 2/ I have moved the documentation about major timeouts into the retrans=
->    section.  Does that break the description up too much?
 
-No, that sounds like a good idea.
 
-> 3/ the old text seems to say that after the first major-timeout, a
->   slightly different sequence of timeouts are used.  I couldn't find
->   evidence of this in the code.  Did I miss something, or is my text
->   correct?
 
-The text stating that 'each new  timeout  cascade  restarts at twice the
-initial value of the previous cascade' is wrong. AFAIK, we restart at
-the initial value...
+--------------040108010804020300040508
+Content-Type: text/x-patch;
+ name="001-nlm_f_count.patch"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline;
+ filename="001-nlm_f_count.patch"
 
-> 4/ Did this change in some ancient kernel version, and should the
->   version number of the change be documented?  e.g. is it a 2.4 / 2.6
->   difference?
+This fixes the incorrect fclose call inside nlm_traverse_files() where 
+a posix lock could still be held by NFS client. Problem was found in a
+kernel panic inside locks_remove_flock() (fs/locks.c:2034) as part of 
+the fclose call due to NFS-NLM locks still hanging on inode->i_flock list. 
 
-I'd have to check.
+Also see: http://people.redhat.com/wcheng/Patches/NFS/NLM/001.txt
 
-> 5/ As the behaviour is quite different for UDP and TCP, should we
->   introduce a major_timeo= option which calculates an appropriate
->   retrans= based on the actual timeo= and proto= used.
+ svcsubs.c |    3 +--
+ 1 files changed, 1 insertion(+), 2 deletions(-)
 
-No. We should deprecate use of retrans/timeo altogether for TCP except
-possibly for the case of 'soft' mounts (and even then you need to be
-careful). It is far too easy to flood the server with redundant RPC
-requests...
+--- gfs2-nmw/fs/lockd/svcsubs.c	2007-04-10 11:59:09.000000000 -0400
++++ linux/fs/lockd/svcsubs.c	2007-04-18 10:01:23.000000000 -0400
+@@ -250,8 +250,7 @@ nlm_traverse_files(struct nlm_host *host
+ 			mutex_lock(&nlm_file_mutex);
+ 			file->f_count--;
+ 			/* No more references to this file. Let go of it. */
+-			if (list_empty(&file->f_blocks) && !file->f_locks
+-			 && !file->f_shares && !file->f_count) {
++			if (!nlm_file_inuse(file)) {
+ 				hlist_del(&file->f_list);
+ 				nlmsvc_ops->fclose(file->f_file);
+ 				kfree(file);
 
-Cheers
-  Trond
-
+--------------040108010804020300040508--
