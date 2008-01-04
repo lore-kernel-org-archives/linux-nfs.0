@@ -1,45 +1,54 @@
-From: Benny Halevy <bhalevy@panasas.com>
+From: =?UTF-8?Q?Peter_=C3=85strand?= <astrand-+4tYiAq3b6azQB+pC5nmwQ@public.gmane.org>
 Subject: Re: A new NFSv4 server...
-Date: Fri, 04 Jan 2008 21:55:53 +0200
-Message-ID: <477E8F49.3080002@panasas.com>
-References: <477CD231.30603@garzik.org> <20080103163200.GB30029@fieldses.org>
-	<477DC501.3060104@garzik.org> <477DD11B.40909@melbourne.sgi.com>
-	<477DDA86.6020100@garzik.org> <477DF761.8040306@panasas.com>
-	<20080104174746.GH17112@fieldses.org>
+Date: Fri, 4 Jan 2008 20:57:33 +0100 (CET)
+Message-ID: <Pine.LNX.4.64.0801042055490.18738@maggie.lkpg.cendio.se>
+References: <200801041528.KAA18776@snowhite.cis.uoguelph.ca>
+ <20080104172142.GD17112@fieldses.org> <477E8E1C.9090205@garzik.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: NFS list <linux-nfs@vger.kernel.org>, nfsv4@linux-nfs.org,
-	Greg Banks <gnb@melbourne.sgi.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <20080104174746.GH17112@fieldses.org>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: MULTIPART/MIXED; BOUNDARY="789237761-1463249351-1199476653=:18738"
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+To: Jeff Garzik <jeff@garzik.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail.cendio.se ([193.12.253.69]:63006 "EHLO mail.cendio.se"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753304AbYADT5f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Jan 2008 14:57:35 -0500
+In-Reply-To: <477E8E1C.9090205@garzik.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-J. Bruce Fields wrote:
-> On Fri, Jan 04, 2008 at 11:07:45AM +0200, Benny Halevy wrote:
->   
->> Jeff, taking into account the amount of effort people and different
->> organizations have already put into NFSv4 and NFSv4.1 I wish you could
->> tunnel your inventive energy into making NFSv4.1 better rather than
->> trying to reinvent NFS/RPC/XDR.
->>     
->
-> It's also important to have fun.  Imagining what you could do from a
-> clean slate is, if nothing else, a fun exercise.  And it may end up with
-> ideas that turn out to be implementable without starting from scratch.
->
-> --b.
->   
-Absolutely :)
-And I certainly hope it will benefit all of us.
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-Benny
+--789237761-1463249351-1199476653=:18738
+Content-Type: TEXT/PLAIN; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+
+On Fri, 4 Jan 2008, Jeff Garzik wrote:
+
+> > Ditto.  I think it'd be great to have a variety of client and server
+> > implementations available over the net, but I've had no luck talking
+> > anybody else into it.
+>=20
+> I think blanket public access wouldn't be as effective as passworded acce=
+ss to
+> a cluster, much like how people get accounts on kernel.org (which is an
+> excellent model for shared-interest services).
+>=20
+> On the test cluster, I would want to be able to really stress my software=
+,
+> which to any normal firewall or casual observer would look like a DoS att=
+empt.
+
+I'm not afraid of stress-tests that looks like DoS attempts. What worries=
+=20
+me is that a writable export will be used for sharing warez or something=20
+like that.=20
+
+Rgds,=20
+---
+Peter =C3=85strand=09=09ThinLinc Chief Developer
+Cendio AB=09=09http://www.cendio.se
+Wallenbergs gata 4
+583 30 Link=C3=B6ping=09Phone: +46-13-21 46 00
+--789237761-1463249351-1199476653=:18738--
