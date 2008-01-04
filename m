@@ -1,76 +1,100 @@
-From: Frank van Maarseveen <frankvm@frankvm.com>
+From: Jeff Garzik <jeff@garzik.org>
 Subject: Re: A new NFSv4 server...
-Date: Fri, 4 Jan 2008 14:50:48 +0100
-Message-ID: <20080104135048.GA27131@janus>
-References: <477CD231.30603@garzik.org> <20080103163200.GB30029@fieldses.org> <477DC501.3060104@garzik.org> <477DD11B.40909@melbourne.sgi.com> <477DDA86.6020100@garzik.org> <Pine.LNX.4.64.0801040954070.5004@maggie.lkpg.cendio.se>
+Date: Fri, 04 Jan 2008 10:49:16 -0500
+Message-ID: <477E557C.3000104@garzik.org>
+References: <477CD231.30603@garzik.org>
+	<20080103163200.GB30029@fieldses.org>	<477DC501.3060104@garzik.org>
+	<477DD11B.40909@melbourne.sgi.com>
+	<477DDA86.6020100@garzik.org> <477DF761.8040306@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15
-Cc: Jeff Garzik <jeff@garzik.org>,
-	NFS list <linux-nfs@vger.kernel.org>, nfsv4@linux-nfs.org
-To: Peter =?iso-8859-15?Q?=C5strand?= <astrand-+4tYiAq3b6azQB+pC5nmwQ@public.gmane.org>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from frankvm.xs4all.nl ([80.126.170.174]:54441 "EHLO
-	janus.localdomain" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752035AbYADNuu convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Jan 2008 08:50:50 -0500
-In-Reply-To: <Pine.LNX.4.64.0801040954070.5004-K9BqGu7AvB3wj5YHdwD3Ga2PxDmRETKR@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: NFS list <linux-nfs@vger.kernel.org>, nfsv4@linux-nfs.org,
+	Greg Banks <gnb@melbourne.sgi.com>
+To: Benny Halevy <bhalevy@panasas.com>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <477DF761.8040306@panasas.com>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jan 04, 2008 at 10:15:00AM +0100, Peter =C5strand wrote:
->=20
-> [About v4]
->=20
->=20
-> On Fri, 4 Jan 2008, Jeff Garzik wrote:
->=20
-> > > > I really wish the entire wire protocol were scrapped and replac=
-ed with
-> > > > something more sane, and easier to parse.=20
-> > > You had me worried there for a moment, I thought you might be the=
- first
-> > > person to admit to liking the NFS4 protocol design.
->=20
-> Couldn't agree more.=20
->=20
->=20
->=20
-> > In my personal opinion, version 4 of NFS is a quantum-leap improvem=
-ent over
-> > previous versions.  While I used NFS v3 extensively, I always felt =
-it was a
-> > crappy protocol, and unworthy of serious development effort. That c=
-hanged with
-> > v4.
-> ...
-> > > > It's tempting to see what would arise from a clean-slate wire p=
-rotocol
-> > > > effort, something that is otherwise compatible with NFS 4.x ope=
-rations,
-> > > > objects, and data model.
-> >=20
-> > It's more like v4 is a vast relative improvement over prior NFS.  G=
-iven the
-> > huge number of NFS users and sites, IMO v4 is a huge improvement fo=
-r Unix file
-> > sharing overall.
->=20
-> Many years ago, before NFSv4 was finished, I felt the same. I was wai=
-ting=20
-> for v4 and thought that everything would be so much better. I wanted =
-to=20
-> help and started the "pynfs" project. Today, I have a different opini=
-on. I=20
-> think v3 is a fairly good protocol, if you use it correctly. For exam=
-ple,=20
-> many people don't realize that you don't need the portmapper, that yo=
-u can=20
-> use a single well-known TCP port, that you can use RPCSEC_GSS and so=20
-> forth, even with v3.=20
+Benny Halevy wrote:
+> Jeff, taking into account the amount of effort people and different
+> organizations have already put into NFSv4 and NFSv4.1 I wish you could
+> tunnel your inventive energy into making NFSv4.1 better rather than
+> trying to reinvent NFS/RPC/XDR.
+> 
+> Although It's rather late in the process since the NFSv4 working group
+> is close to putting the NFSv4.1 Internet-draft up for last
+> call, we would certainly appreciate more implementation feedback.
 
-Somehow this reminds me of IPv4 vs. IPv6. IIRC some protocol features h=
-ave
-in a sense been "backported" to IPv4.
 
---=20
-=46rank
+I am more than happy to give feedback, though (as you say) it is 
+probably too late for substantial feedback to have any large effect.
+
+My general engineering opinions of pNFS:
+
+* Fills an obvious need:  eliminating the need to copy data through the 
+metadata interface to backend storage.  Many clear, tangible benefits here.
+
+
+* pNFS major issue #1:  client storage protocol
+
+Storing and retrieving blobs over the network, with strong 
+authentication/integrity/security, is a solved problem.
+
+Pick ONE client storage protocol (HTTP? iSCSI OSD2?), and stick to it. 
+Or maybe HTTP|SCSI but nothing more.  Heck, even BitTorrent w/ auth 
+extensions would be better than yet another protocol for similar 
+purposes (not that I'm advocating BT, just saying...).
+
+Maximize reuse of existing software and mindshare.
+
+
+* pNFS major issue #2:  abandons NFS's "one true generic" path
+
+I believe pNFS violates the "spirit of NFS" by deviating from a defacto 
+assumption found in earlier versions:  data transfer is simple, 
+arbitrary blobs, addressed in the same manner, and sent via the same 
+protocol.
+
+Pick ONE layout type, and stick to it.  Banish all other layout types to 
+other software layers.
+
+Protocol conversion servers, firmware, and other softwares can easily 
+convert from a generic layout to something more exotic like OSD or 
+[insert site specific protocol here].
+
+NFS itself should not be delving into low-level storage details like 
+this.  Clients should not need to know low-level details (like stripe 
+sizes).  In Linux, we call this a layering violation.
+
+Working on kernel storage drivers as I do, I can see the attraction of 
+wanting to do things this way...  but we invented layering and 
+abstraction in computer science for good reasons :)
+
+
+* pNFS major issue #3: no longer a "closed loop" protocol
+
+By permitting multiple layout types, and in particular undefined 
+(site-specific) layout types, it is by definition _impossible_ for 
+anyone to claim full protocol interoperability with other implementations.
+
+The number of possible combinations approaches infinity, with obvious 
+consequences on testing, and production software quality.
+
+And when a marketing department advertises "fully NFSv4.1 compliant!" on 
+ther company's appliance, it is trivial for any engineer to construct 
+another "fully NFSv4.1 compliant" setup -- with equivalent 
+authentication, metadata and data sets -- that is not interoperable 
+except via the fallback case (copy through the metadata server).
+
+Such interoperability breakdowns are IMO not in the spirit of NFS.
+
+	Jeff
