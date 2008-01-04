@@ -1,48 +1,34 @@
-From: Rick Macklem <rick@snowhite.cis.uoguelph.ca>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: Re: A new NFSv4 server...
-Date: Fri, 4 Jan 2008 12:11:58 -0500 (EST)
-Message-ID: <200801041711.MAA19577@snowhite.cis.uoguelph.ca>
+Date: Fri, 4 Jan 2008 12:15:40 -0500
+Message-ID: <20080104171540.GC17112@fieldses.org>
+References: <200801041548.KAA18953@snowhite.cis.uoguelph.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-To: jeff@garzik.org
-Return-path: <nfsv4-bounces@linux-nfs.org>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: text/plain; charset=us-ascii
+Cc: gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org, jeff@garzik.org, linux-nfs@vger.kernel.org,
+	nfsv4@linux-nfs.org
+To: Rick Macklem <rick-bYVALtacgsT800Iu1Vt84J3p9npsUQCG@public.gmane.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail.fieldses.org ([66.93.2.214]:49271 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752129AbYADRPs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Jan 2008 12:15:48 -0500
+In-Reply-To: <200801041548.KAA18953-bYVALtacgsT800Iu1Vt84J3p9npsUQCG@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> heh, tell me about it.  First I started out using rpcgen, then rewrote 
-> everything to do raw XDR decoding.  OPEN is huge.
-> 
-> IMO, OPEN should be split into multiple operations, probably one for 
-> each "OPEN arm".  It's not like new opcode numbers are expensive.
+On Fri, Jan 04, 2008 at 10:48:39AM -0500, Rick Macklem wrote:
+> Sounds like a server implementor's perspective. From a client implementor's
+> point of view, a T-stable file handle is a wonderful thing. I have no idea
+> how to correctly implement client side support for the volatile file
+> handles allowed in NFSv4. My client doesn't support them.
 
-As I hinted at, Open is the way it is, since Windows requires one Op
-so that Open/Share locks can be implemented correctly. Anything else
-would not have satisfied a Win client's requirements.
+As long as they persist while you have an open (or a delegation), it
+shouldn't be so hard to implement, should it?  If a filehandle expires,
+then you throw away any cache associated with it, but as long as no
+applications hold file descriptors for it, that's not a catastrophe.
 
-> One of my personal desires is for a high level of cache coherence 
-> throughout the system for all clients (though perhaps an admin could 
-> optionally relax this requirement).  I'm a fan of Google's "Chubby", a 
-> distributed reliable filesystem that stalls client writes until cache 
-> invalidations for the associated byte range are processed for all 
-> interested clients.
+But I'm a little confused whether rfc 3530's 4.2.3 gives a way for the
+server to express that guarantee.
 
-Delegations provide cache coherency "in a sense". When a client has a
-delegation, it knows that no-one else is writing the file. Unfortunately,
-as soon as a client gets an Open without a delegation, in no longer
-gets the conherency guarantee (and servers are completely free to not
-issue delegations if they don't feel like doing so). A client can
-re-open a file when it gets an Open without a delegation, but if the
-server still doesn't give it a delegation, it can't do anything more.
-(The re-open trick is useful for an Open that requires confirmation, since
- the server can't issue a delegation for that case.)
-
-rick
+--b.
