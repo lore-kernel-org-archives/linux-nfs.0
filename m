@@ -1,70 +1,87 @@
-From: Jeff Garzik <jeff@garzik.org>
+From: Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
 Subject: Re: A new NFSv4 server...
-Date: Fri, 04 Jan 2008 00:32:49 -0500
-Message-ID: <477DC501.3060104@garzik.org>
-References: <477CD231.30603@garzik.org> <20080103163200.GB30029@fieldses.org>
+Date: Fri, 04 Jan 2008 17:24:27 +1100
+Message-ID: <477DD11B.40909@melbourne.sgi.com>
+References: <477CD231.30603@garzik.org> <20080103163200.GB30029@fieldses.org> <477DC501.3060104@garzik.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: nfsv4@linux-nfs.org, NFS list <linux-nfs@vger.kernel.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	NFS list <linux-nfs@vger.kernel.org>, nfsv4@linux-nfs.org
+To: Jeff Garzik <jeff@garzik.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from srv5.dvmed.net ([207.36.208.214]:46642 "EHLO mail.dvmed.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751755AbYADFcx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 Jan 2008 00:32:53 -0500
-In-Reply-To: <20080103163200.GB30029@fieldses.org>
+Received: from netops-testserver-3-out.sgi.com ([192.48.171.28]:56929 "EHLO
+	relay.sgi.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753346AbYADGQ0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Jan 2008 01:16:26 -0500
+In-Reply-To: <477DC501.3060104@garzik.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-J. Bruce Fields wrote:
-> On Thu, Jan 03, 2008 at 07:16:49AM -0500, Jeff Garzik wrote:
->> At this point, I'm quite interested to hear feedback on how the server 
->> works with other NFSv4 clients.
-> 
-> Any possibility of making Connectathon in May?:
-> 
-> 	http://www.connectathon.org/
-> 
-> The major NFSv4 implementors normally have their clients there, so it's
-> usually the quickest way to find and solve any interoperability
-> problems.  Almost all the work will probably be on sessions and pNFS,
-> but people should be willing to do basic 4.0 testing too.
+Jeff Garzik wrote:
+> J. Bruce Fields wrote:
+>>
+>> 	http://www.connectathon.org/
+>>
+>>     
+> As this isn't an official RH project, I would probably have to pay my 
+> own way, which makes it doubtful :)
+>   
 
-As this isn't an official RH project, I would probably have to pay my 
-own way, which makes it doubtful :)
+It's entirely possible someone might run your server code on a spare
+machine,
+given functioning install packages and easy instructions.
+> Plus, surely in this day and age, we can figure out something better 
+> than waiting for face-to-face events to test something.  Maybe somebody 
+> could arrange a donation of some slice of a grid (Amazon EC2?), make 
+> various OS images available, and give engineers some way to request a 
+> selection of tests, with a selection of OS images?
+>   
+Vendors turn up to cthon with proprietary and unreleased software and
+hardware
+which they most certainly are not going to let anyone else run for
+them.  Also,
+being in the same hall with all those vendors' technical folks tends to
+make bugs
+shallow.  It's a very valuable exercise for any organisation making a
+living from
+NFS.
 
-Plus, surely in this day and age, we can figure out something better 
-than waiting for face-to-face events to test something.  Maybe somebody 
-could arrange a donation of some slice of a grid (Amazon EC2?), make 
-various OS images available, and give engineers some way to request a 
-selection of tests, with a selection of OS images?
+> I really wish the entire wire protocol were scrapped and replaced with 
+> something more sane, and easier to parse. 
+You had me worried there for a moment, I thought you might be the first
+person to admit to liking the NFS4 protocol design.
 
+> It's tempting to see what would arise from a clean-slate wire protocol 
+> effort, something that is otherwise compatible with NFS 4.x operations, 
+> objects, and data model.
+>   
 
-> Glad to hear you're still working on this--it sounds interesting.
+Much like the old phone system, the primary value of protocols like NFS
+is the
+widespread presence of reliable conformant implementations.  Most of the
+rest of
+the NFS is problematic.  I would argue that some aspects of the NFS
+operations,
+objects, and data model is rather more busted than the XDR encoding.
 
-Certainly pNFS parallels some of the work I want to do...  NFSv4.1 is so 
-darned complex though.  I am torn as to whether or not I want to take my 
-server down that path.
+The classic persistent file handles, for example, could be considered a
+major
+design flaw.  Firstly it makes the inode# -> dentry lookup a performance
+path
+for the underlying filesystem, which it isn't in any local load. 
+Secondly, it's
+inherently insecure if you export anything less than an entire
+filesystem, unless
+you use a slow, buggy, and non-conformant hack like subtree_check.
 
-I really wish the entire wire protocol were scrapped and replaced with 
-something more sane, and easier to parse.  The variable-length 
-structures passed to PCI hardware these days [as seen in the kernel 
-drivers I hack on, IOW] are just as compact, if not more so, but are 
-designed to be parsed quickly in large chunks, rather than the "next XDR 
-may be your last!" approach :)
+Another major flaw is putting the client in control of when unstable data is
+written to disk, but not providing any way for the client to find out how to
+do that optimally.
 
-Sessions are IMO a tad overdone, too...  largely due to necessities 
-forced upon NFSv4.1 by the legacy RPC protocol assumptions.  If you 
-simply /assume/ basic properties of TCP or SCTP, it's a lot easier to do 
-multi-channel or multi-homed messaging.  Multi-channel _isn't_ really 
-that hard, and we've been doing it since the earliest days of NNTP and 
-the Usenet Top 1000 pissing contest, if not longer.
+Then there's the NFS4 approach to extended attributes.
 
-It's tempting to see what would arise from a clean-slate wire protocol 
-effort, something that is otherwise compatible with NFS 4.x operations, 
-objects, and data model.
-
-	Jeff
-
-
+-- 
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+The cake is *not* a lie.
+I don't speak for SGI.
 
