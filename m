@@ -1,55 +1,52 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
+From: Jeff Garzik <jeff@garzik.org>
 Subject: Re: A new NFSv4 server...
-Date: Fri, 4 Jan 2008 13:21:13 -0500
-Message-ID: <20080104182113.GI17112@fieldses.org>
-References: <200801041528.KAA18776@snowhite.cis.uoguelph.ca> <20080104172142.GD17112@fieldses.org> <477E750A.2030905@excfb.com>
+Date: Fri, 04 Jan 2008 14:50:52 -0500
+Message-ID: <477E8E1C.9090205@garzik.org>
+References: <200801041528.KAA18776@snowhite.cis.uoguelph.ca> <20080104172142.GD17112@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Cc: Rick Macklem <rick-bYVALtacgsT800Iu1Vt84J3p9npsUQCG@public.gmane.org>,
 	linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-To: Tom Haynes <tdh-8AdZ+HgO7noAvxtiuMwx3w@public.gmane.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:42167 "EHLO fieldses.org"
+Received: from srv5.dvmed.net ([207.36.208.214]:47626 "EHLO mail.dvmed.net"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751002AbYADSVR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 Jan 2008 13:21:17 -0500
-In-Reply-To: <477E750A.2030905-8AdZ+HgO7noAvxtiuMwx3w@public.gmane.org>
+	id S1753354AbYADTvA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Jan 2008 14:51:00 -0500
+In-Reply-To: <20080104172142.GD17112@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jan 04, 2008 at 12:03:54PM -0600, Tom Haynes wrote:
-> I suspect that the explosion of virtual servers has
-> probably killed this type of effort. It appears much
-> easier for me to give you an image than to expose
-> a machine on the network.
+J. Bruce Fields wrote:
+> On Fri, Jan 04, 2008 at 10:28:10AM -0500, Rick Macklem wrote:
+>>> Plus, surely in this day and age, we can figure out something better 
+>>> than waiting for face-to-face events to test something.  Maybe somebody 
+>>> could arrange a donation of some slice of a grid (Amazon EC2?), make 
+>>> various OS images available, and give engineers some way to request a 
+>>> selection of tests, with a selection of OS images?
+>> I tried putting a server up accessible over the internet and only ever
+>> got one person testing on it once (or maybe it was just a hacker:-). I
+>> did test my client against a server at CITI once, after signing a
+>> bakeathon NDA. But, I agree, and I don't really think it even needs
+>> a central site. I don't see why vendors couldn't put up servers
+>> (production software or whatever they are comfortable having internet
+>>  accessible) that clients can test against. I'll be happy to put my
+>> server up and I'd be happy to test against internet accessible servers
+>> with my client.
+> 
+> Ditto.  I think it'd be great to have a variety of client and server
+> implementations available over the net, but I've had no luck talking
+> anybody else into it.
 
-Each little bit you can take away from the overhead will make people
-much more likely to test.  The connectathon experience is just:
+I think blanket public access wouldn't be as effective as passworded 
+access to a cluster, much like how people get accounts on kernel.org 
+(which is an excellent model for shared-interest services).
 
-	- Look up server's name.
-	- mount servername:/ /mnt/
-	- run test
+On the test cluster, I would want to be able to really stress my 
+software, which to any normal firewall or casual observer would look 
+like a DoS attempt.
 
-The virtual server image approach requires at least getting the server
-image and probably doing some configuration too, and then remembering to
-get updates occasionally.
+	Jeff
 
-> Sun actually has a set of test machines the public can
-> use to regression test OpenSolaris fixes. I'm not sure
-> if it can accommodate foreign OSes just yet.
->
-> And to add to Rick's story, we've got the pNFS enabled
-> bits available for download. We've only gotten feedback
-> from one person. So either our code is really great and
-> we are not getting feedback, or people are just waiting
-> for the pNFS implementations to mature.
 
-Or it got released just before the holidays....
 
->
-> We did get a request to make the bits available as a
-> VMware image. :->
-
-Hah.
-
---b.
