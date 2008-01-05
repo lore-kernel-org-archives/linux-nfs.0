@@ -1,69 +1,71 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] Fix NLM reference count panic
-Date: Sat, 5 Jan 2008 01:05:09 -0500
-Message-ID: <20080105060509.GA29020@fieldses.org>
-References: <477EB7D1.9030303@redhat.com> <20080104232422.GF14827@fieldses.org> <477F0F8B.9020706@redhat.com>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: A new NFSv4 server...
+Date: Sat, 05 Jan 2008 09:56:03 +0200
+Message-ID: <477F3813.70204@panasas.com>
+References: <477CD231.30603@garzik.org>
+	<20080103163200.GB30029@fieldses.org>	<477DC501.3060104@garzik.org>
+	<477DD11B.40909@melbourne.sgi.com>
+	<477DDA86.6020100@garzik.org> <477DF761.8040306@panasas.com>
+	<477E557C.3000104@garzik.org> <477EE182.6020108@melbourne.sgi.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: NFS list <linux-nfs@vger.kernel.org>
-To: Wendy Cheng <wcheng@redhat.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:54182 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751770AbYAEGFM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 5 Jan 2008 01:05:12 -0500
-In-Reply-To: <477F0F8B.9020706@redhat.com>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: NFS list <linux-nfs@vger.kernel.org>, nfsv4@linux-nfs.org
+To: Greg Banks <gnb@melbourne.sgi.com>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <477EE182.6020108@melbourne.sgi.com>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Jan 05, 2008 at 12:03:07AM -0500, Wendy Cheng wrote:
-> J. Bruce Fields wrote:
+Greg Banks wrote:
+> Strongly agreed with all the above.  It's difficult to avoid the
+> conclusion that the current pNFS spec is designed to allow the
+> existing parallel filesystem vendors to sell "standards compliant"
+> solutions that only work with their client software and where all
+> the MDS and DS machines need to be bought from the same vendor.
+> If the spec defined a single layout type, and all three protocols
+> involved were variants of NFSv4.1 and were defined in the spec,
+> we would have a true open standard.
 >
->> On Fri, Jan 04, 2008 at 05:48:49PM -0500, Wendy Cheng wrote:
->> This just replaces the file->f_locks check by a search of the inode's
->> lock list.
->>
->> What confuses me here is that the nlm_inspect_file() call just above
->> already did that search, and set file->f_locks accordingly.  The only
->> difference is that now we've acquired the nlm_file_mutex.  I don't
->> understand yet how that makes a difference.
->>
->>  
-> You're right. I got the patch sequence wrong. It will cause panic only when 
-> we selectively unlock nlm locks under my "unlock" patch as the following. 
-> See how it returns without doing nlm_traverse_locks() below ... Let's 
-> combine this patch into the big unlock patch so we won't have any 
-> confusion. The unlock patch will submitted on Monday after this weekend's 
-> sanity check test run. In short, I withdraw this patch... Wendy
+>   
+Greg, I'm afraid your conclusion is just wrong.  What exactly is it 
+based on?
+I'd appreciate if you could look again at the current Internet Drafts 
+comprising
+NFSv4.1 and layout types and please raise any issues you see in the specs
+that would jeopardize interoperability between different client software 
+vendors
+and different server / storage vendors.
 
-OK.  I'll admit to still being a little confused--but with luck it'll
-all make sense when I see the whole thing.  Have a good weekend!
+http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion1
+http://tools.ietf.org/html/draft-ietf-nfsv4-pnfs-obj
+http://tools.ietf.org/html/draft-ietf-nfsv4-pnfs-block
 
---b.
+There is indeed a third protocol in the overall architecture used by the 
+MDS to manage
+the storage devices and this protocol is outside the scope of NFSv4.1.  
+This may lead
+to non-interoperable implementations of server/storage systems but that 
+definitely was
+not the intent of the design decision to leave the storage management 
+protocol unspecified
+in NFSv4.1.
 
-> nlm_inspect_file(struct nlm_host *host, struct nlm_file *file, 
-> nlm_host_match_fn_t match)
-> {
-> + /* Cluster failover has timing constraints. There is a slight
-> + * performance hit if nlm_fo_unlock_match() is implemented as
-> + * a match fn (since it will be invoked for each block, share,
-> + * and lock later when the lists are traversed). Instead, we
-> + * add path-matching logic into the following unlikely clause.
-> + * If matches, the dummy nlmsvc_fo_match will always return
-> + * true.
-> + */
-> + dprintk("nlm_inspect_files: file=%p\n", file);
-> + if (unlikely(match == nlmsvc_fo_match)) {
-> + if (!nlmsvc_fo_unlock_match((void *)host, file))
-> + return 0;
-> + fo_printk("nlm_fo find lock file entry (0x%p)\n", file);
-> + }
-> +
-> nlmsvc_traverse_blocks(host, file, match);
-> nlmsvc_traverse_shares(host, file, match);
-> return nlm_traverse_locks(host, file, match);
-> @@ -369,3 +451,35 @@ nlmsvc_invalidate_all(void)
-> */
-> nlm_traverse_files(NULL, nlmsvc_is_client);
-> }
->
+The object-based layout type. for example. is based on using the 
+standard OSD protocol
+between the MDS and the OSDs for control as well as between the clients 
+and the OSDs
+for data transfer.  How does that preclude interoperability between 
+different client, MDS,
+and DS vendors if the MDS, OSDs, and clients comply with T-10 OSD and 
+MDS and
+client comply with NFSv4.1 and the pnfs-obj RFC (when it becomes one)?
+
+Benny
