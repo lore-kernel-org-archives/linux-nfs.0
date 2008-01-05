@@ -1,71 +1,108 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: A new NFSv4 server...
-Date: Sat, 05 Jan 2008 09:56:03 +0200
-Message-ID: <477F3813.70204@panasas.com>
-References: <477CD231.30603@garzik.org>
-	<20080103163200.GB30029@fieldses.org>	<477DC501.3060104@garzik.org>
-	<477DD11B.40909@melbourne.sgi.com>
-	<477DDA86.6020100@garzik.org> <477DF761.8040306@panasas.com>
-	<477E557C.3000104@garzik.org> <477EE182.6020108@melbourne.sgi.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: NFS list <linux-nfs@vger.kernel.org>, nfsv4@linux-nfs.org
-To: Greg Banks <gnb@melbourne.sgi.com>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <477EE182.6020108@melbourne.sgi.com>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+From: Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH 1/6] SUNRPC: spin svc_rqst initialization to its own function
+Date: Sat,  5 Jan 2008 07:02:17 -0500
+Message-ID: <1199534542-3384-2-git-send-email-jlayton@redhat.com>
+References: <1199534542-3384-1-git-send-email-jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+To: akpm@linux-foundation.org
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([66.187.233.31]:38373 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753561AbYAEMC5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 5 Jan 2008 07:02:57 -0500
+In-Reply-To: <1199534542-3384-1-git-send-email-jlayton@redhat.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Greg Banks wrote:
-> Strongly agreed with all the above.  It's difficult to avoid the
-> conclusion that the current pNFS spec is designed to allow the
-> existing parallel filesystem vendors to sell "standards compliant"
-> solutions that only work with their client software and where all
-> the MDS and DS machines need to be bought from the same vendor.
-> If the spec defined a single layout type, and all three protocols
-> involved were variants of NFSv4.1 and were defined in the spec,
-> we would have a true open standard.
->
->   
-Greg, I'm afraid your conclusion is just wrong.  What exactly is it 
-based on?
-I'd appreciate if you could look again at the current Internet Drafts 
-comprising
-NFSv4.1 and layout types and please raise any issues you see in the specs
-that would jeopardize interoperability between different client software 
-vendors
-and different server / storage vendors.
+Move the initialzation in __svc_create_thread that happens prior to
+thread creation to a new function. Export the function to allow
+services to have better control over the svc_rqst structs.
 
-http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion1
-http://tools.ietf.org/html/draft-ietf-nfsv4-pnfs-obj
-http://tools.ietf.org/html/draft-ietf-nfsv4-pnfs-block
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ include/linux/sunrpc/svc.h |    2 ++
+ net/sunrpc/svc.c           |   43 +++++++++++++++++++++++++++++++------------
+ 2 files changed, 33 insertions(+), 12 deletions(-)
 
-There is indeed a third protocol in the overall architecture used by the 
-MDS to manage
-the storage devices and this protocol is outside the scope of NFSv4.1.  
-This may lead
-to non-interoperable implementations of server/storage systems but that 
-definitely was
-not the intent of the design decision to leave the storage management 
-protocol unspecified
-in NFSv4.1.
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 8531a70..5f07300 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -382,6 +382,8 @@ struct svc_procedure {
+  */
+ struct svc_serv *  svc_create(struct svc_program *, unsigned int,
+ 			      void (*shutdown)(struct svc_serv*));
++struct svc_rqst *svc_prepare_thread(struct svc_serv *serv,
++					struct svc_pool *pool);
+ int		   svc_create_thread(svc_thread_fn, struct svc_serv *);
+ void		   svc_exit_thread(struct svc_rqst *);
+ struct svc_serv *  svc_create_pooled(struct svc_program *, unsigned int,
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index fca17d0..b29ed43 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -538,23 +538,14 @@ svc_release_buffer(struct svc_rqst *rqstp)
+ 			put_page(rqstp->rq_pages[i]);
+ }
+ 
+-/*
+- * Create a thread in the given pool.  Caller must hold BKL.
+- * On a NUMA or SMP machine, with a multi-pool serv, the thread
+- * will be restricted to run on the cpus belonging to the pool.
+- */
+-static int
+-__svc_create_thread(svc_thread_fn func, struct svc_serv *serv,
+-		    struct svc_pool *pool)
++struct svc_rqst *
++svc_prepare_thread(struct svc_serv *serv, struct svc_pool *pool)
+ {
+ 	struct svc_rqst	*rqstp;
+-	int		error = -ENOMEM;
+-	int		have_oldmask = 0;
+-	cpumask_t	oldmask;
+ 
+ 	rqstp = kzalloc(sizeof(*rqstp), GFP_KERNEL);
+ 	if (!rqstp)
+-		goto out;
++		goto out_enomem;
+ 
+ 	init_waitqueue_head(&rqstp->rq_wait);
+ 
+@@ -570,6 +561,34 @@ __svc_create_thread(svc_thread_fn func, struct svc_serv *serv,
+ 	spin_unlock_bh(&pool->sp_lock);
+ 	rqstp->rq_server = serv;
+ 	rqstp->rq_pool = pool;
++	return rqstp;
++
++out_thread:
++	svc_exit_thread(rqstp);
++out_enomem:
++	return ERR_PTR(-ENOMEM);
++}
++EXPORT_SYMBOL(svc_prepare_thread);
++
++/*
++ * Create a thread in the given pool.  Caller must hold BKL.
++ * On a NUMA or SMP machine, with a multi-pool serv, the thread
++ * will be restricted to run on the cpus belonging to the pool.
++ */
++static int
++__svc_create_thread(svc_thread_fn func, struct svc_serv *serv,
++		    struct svc_pool *pool)
++{
++	struct svc_rqst	*rqstp;
++	int		error = -ENOMEM;
++	int		have_oldmask = 0;
++	cpumask_t	oldmask;
++
++	rqstp = svc_prepare_thread(serv, pool);
++	if (IS_ERR(rqstp)) {
++		error = PTR_ERR(rqstp);
++		goto out;
++	}
+ 
+ 	if (serv->sv_nrpools > 1)
+ 		have_oldmask = svc_pool_map_set_cpumask(pool->sp_id, &oldmask);
+-- 
+1.5.3.6
 
-The object-based layout type. for example. is based on using the 
-standard OSD protocol
-between the MDS and the OSDs for control as well as between the clients 
-and the OSDs
-for data transfer.  How does that preclude interoperability between 
-different client, MDS,
-and DS vendors if the MDS, OSDs, and clients comply with T-10 OSD and 
-MDS and
-client comply with NFSv4.1 and the pnfs-obj RFC (when it becomes one)?
-
-Benny
