@@ -1,209 +1,51 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 5/6] NLM: Convert lockd to use kthreads
-Date: Sat,  5 Jan 2008 07:02:21 -0500
-Message-ID: <1199534542-3384-6-git-send-email-jlayton@redhat.com>
-References: <1199534542-3384-1-git-send-email-jlayton@redhat.com>
- <1199534542-3384-2-git-send-email-jlayton@redhat.com>
- <1199534542-3384-3-git-send-email-jlayton@redhat.com>
- <1199534542-3384-4-git-send-email-jlayton@redhat.com>
- <1199534542-3384-5-git-send-email-jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-To: akpm@linux-foundation.org
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 0/7] Intro: convert lockd to kthread and fix
+	use-after-free (try #3)
+Date: Sat, 5 Jan 2008 11:44:03 -0500
+Message-ID: <20080105164403.GA12928@fieldses.org>
+References: <1198009182-27895-1-git-send-email-jlayton@redhat.com> <Pine.BSO.4.63.0712192004140.3875@rudy.mif.pg.gda.pl>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org,
+	nfsv4@linux-nfs.org, linux-kernel@vger.kernel.org,
+	richterd@citi.umich.edu
+To: Tomasz =?utf-8?Q?K=C5=82oczko?= <kloczek-HJEY2/a9Cdz90TmaoATp/9Ui29CwQgaX@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:38379 "EHLO mx1.redhat.com"
+Received: from mail.fieldses.org ([66.93.2.214]:36307 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754081AbYAEMDE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 5 Jan 2008 07:03:04 -0500
-In-Reply-To: <1199534542-3384-5-git-send-email-jlayton@redhat.com>
+	id S1755449AbYAEQoa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 5 Jan 2008 11:44:30 -0500
+In-Reply-To: <Pine.BSO.4.63.0712192004140.3875-HJEY2/a9Cdz90TmaoATp/9Ui29CwQgaX@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Have lockd_up start lockd using kthread_run. With this change,
-lockd_down now blocks until lockd actually exits, so there's no longer
-need for the waitqueue code at the end of lockd_down. This also means
-that only one lockd can be running at a time which simplifies the code
-within lockd's main loop.
+On Wed, Dec 19, 2007 at 08:15:43PM +0100, Tomasz K=C5=82oczko wrote:
+> On Tue, 18 Dec 2007, Jeff Layton wrote:
+>
+>> This is the third patchset to fix the use-after-free problem in lock=
+d,
+>> and to convert lockd to use the kthread API instead of kernel_thread=
+=2E
+>> The main change from the last patchset is the elimination of the
+>> svc_create_kthread helper function, and having lockd_up call kthread=
+_run
+>> directly. I've also made some changes to the function prototype for
+>> the lockd function to eliminate the need for casting the function
+>> pointer.
+>
+> BTW kernel, NFS and lockd: SuSE kernel IIRC is distributed with patch=
+ which=20
+> adds kernel-based status monitor (statd).
+>
+> Q to NFS people: any plans about merge this in main kernel tree ?
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/lockd/svc.c |   79 ++++++++++++++++++++++++++-----------------------------
- 1 files changed, 37 insertions(+), 42 deletions(-)
+No.  There was opposition to the idea.  I can't remember the argument,
+though, and a quick google search isn't turning it up.
 
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index 03a83a0..d7209ea 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -25,6 +25,7 @@
- #include <linux/smp.h>
- #include <linux/smp_lock.h>
- #include <linux/mutex.h>
-+#include <linux/kthread.h>
- #include <linux/freezer.h>
- 
- #include <linux/sunrpc/types.h>
-@@ -48,13 +49,12 @@ EXPORT_SYMBOL(nlmsvc_ops);
- 
- static DEFINE_MUTEX(nlmsvc_mutex);
- static unsigned int		nlmsvc_users;
--static pid_t			nlmsvc_pid;
-+static struct task_struct	*nlmsvc_task;
- static struct svc_serv		*nlmsvc_serv;
- int				nlmsvc_grace_period;
- unsigned long			nlmsvc_timeout;
- 
- static DECLARE_COMPLETION(lockd_start_done);
--static DECLARE_WAIT_QUEUE_HEAD(lockd_exit);
- 
- /*
-  * These can be set at insmod time (useful for NFS as root filesystem),
-@@ -111,10 +111,11 @@ static inline void clear_grace_period(void)
- /*
-  * This is the lockd kernel thread
-  */
--static void
--lockd(struct svc_rqst *rqstp)
-+static int
-+lockd(void *vrqstp)
- {
- 	int		err = 0;
-+	struct svc_rqst *rqstp = vrqstp;
- 	unsigned long grace_period_expire;
- 
- 	/* Lock module and set up kernel thread */
-@@ -128,11 +129,9 @@ lockd(struct svc_rqst *rqstp)
- 	/*
- 	 * Let our maker know we're running.
- 	 */
--	nlmsvc_pid = current->pid;
- 	nlmsvc_serv = rqstp->rq_server;
- 	complete(&lockd_start_done);
- 
--	daemonize("lockd");
- 	set_freezable();
- 
- 	/* Process request with signals blocked, but allow SIGKILL.  */
-@@ -151,7 +150,7 @@ lockd(struct svc_rqst *rqstp)
- 	 * NFS mount or NFS daemon has gone away, and we've been sent a
- 	 * signal, or else another process has taken over our job.
- 	 */
--	while ((nlmsvc_users || !signalled()) && nlmsvc_pid == current->pid) {
-+	while (!kthread_should_stop()) {
- 		long timeout = MAX_SCHEDULE_TIMEOUT;
- 		char buf[RPC_MAX_ADDRBUFLEN];
- 
-@@ -203,23 +202,19 @@ lockd(struct svc_rqst *rqstp)
- 	 * Check whether there's a new lockd process before
- 	 * shutting down the hosts and clearing the slot.
- 	 */
--	if (!nlmsvc_pid || current->pid == nlmsvc_pid) {
--		if (nlmsvc_ops)
--			nlmsvc_invalidate_all();
--		nlm_shutdown_hosts();
--		nlmsvc_pid = 0;
--		nlmsvc_serv = NULL;
--	} else
--		printk(KERN_DEBUG
--			"lockd: new process, skipping host shutdown\n");
--	wake_up(&lockd_exit);
-+	if (nlmsvc_ops)
-+		nlmsvc_invalidate_all();
-+	nlm_shutdown_hosts();
-+	nlmsvc_task = NULL;
-+	nlmsvc_serv = NULL;
- 
- 	/* Exit the RPC thread */
- 	svc_exit_thread(rqstp);
- 
- 	/* Release module */
- 	unlock_kernel();
--	module_put_and_exit(0);
-+	module_put(THIS_MODULE);
-+	return 0;
- }
- 
- 
-@@ -269,14 +264,15 @@ static int make_socks(struct svc_serv *serv, int proto)
- int
- lockd_up(int proto) /* Maybe add a 'family' option when IPv6 is supported ?? */
- {
--	struct svc_serv *	serv;
--	int			error = 0;
-+	struct svc_serv *serv;
-+	struct svc_rqst *rqstp;
-+	int		error = 0;
- 
- 	mutex_lock(&nlmsvc_mutex);
- 	/*
- 	 * Check whether we're already up and running.
- 	 */
--	if (nlmsvc_pid) {
-+	if (nlmsvc_task) {
- 		if (proto)
- 			error = make_socks(nlmsvc_serv, proto);
- 		goto out;
-@@ -303,11 +299,24 @@ lockd_up(int proto) /* Maybe add a 'family' option when IPv6 is supported ?? */
- 	/*
- 	 * Create the kernel thread and wait for it to start.
- 	 */
-+	rqstp = svc_prepare_thread(serv, &serv->sv_pools[0]);
-+	if (IS_ERR(rqstp)) {
-+		error = PTR_ERR(rqstp);
-+		printk(KERN_WARNING
-+			"lockd_up: svc_rqst allocation failed, error=%d\n",
-+			error);
-+		goto destroy_and_out;
-+	}
-+
-+	svc_sock_update_bufs(serv);
- 	init_completion(&lockd_start_done);
--	error = svc_create_thread(lockd, serv);
--	if (error) {
-+	nlmsvc_task = kthread_run(lockd, rqstp, serv->sv_name);
-+	if (IS_ERR(nlmsvc_task)) {
-+		error = PTR_ERR(nlmsvc_task);
-+		nlmsvc_task = NULL;
- 		printk(KERN_WARNING
--			"lockd_up: create thread failed, error=%d\n", error);
-+			"lockd_up: kthread_run failed, error=%d\n", error);
-+		svc_exit_thread(rqstp);
- 		goto destroy_and_out;
- 	}
- 	wait_for_completion(&lockd_start_done);
-@@ -339,30 +348,16 @@ lockd_down(void)
- 		if (--nlmsvc_users)
- 			goto out;
- 	} else
--		printk(KERN_WARNING "lockd_down: no users! pid=%d\n", nlmsvc_pid);
-+		printk(KERN_WARNING "lockd_down: no users! task=%p\n",
-+			nlmsvc_task);
- 
--	if (!nlmsvc_pid) {
-+	if (!nlmsvc_task) {
- 		if (warned++ == 0)
- 			printk(KERN_WARNING "lockd_down: no lockd running.\n"); 
- 		goto out;
- 	}
- 	warned = 0;
--
--	kill_proc(nlmsvc_pid, SIGKILL, 1);
--	/*
--	 * Wait for the lockd process to exit, but since we're holding
--	 * the lockd semaphore, we can't wait around forever ...
--	 */
--	clear_thread_flag(TIF_SIGPENDING);
--	interruptible_sleep_on_timeout(&lockd_exit, HZ);
--	if (nlmsvc_pid) {
--		printk(KERN_WARNING 
--			"lockd_down: lockd failed to exit, clearing pid\n");
--		nlmsvc_pid = 0;
--	}
--	spin_lock_irq(&current->sighand->siglock);
--	recalc_sigpending();
--	spin_unlock_irq(&current->sighand->siglock);
-+	kthread_stop(nlmsvc_task);
- out:
- 	mutex_unlock(&nlmsvc_mutex);
- }
--- 
-1.5.3.6
+> And another question related to NFS: any progress on add clear NFS=20
+> statistics in kernel (nfsstat -z) ?
 
+No.  We do have some patches that add roughly equivalent functionality
+in userspace.
+
+--b.
