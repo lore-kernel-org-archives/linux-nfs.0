@@ -1,53 +1,58 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 8/8] SUNRPC: fewer conditionals in the format_ip_address routines
-Date: Mon, 7 Jan 2008 16:14:57 -0500
-Message-ID: <D8111BA1-9189-4D53-AFFC-F232EA9D116E@oracle.com>
-References: <20071220195518.3280.91282.stgit@manray.1015granger.net> <1199396736.1913.7.camel@heimdal.trondhjem.org>
-Mime-Version: 1.0 (Apple Message framework v753)
-Content-Type: text/plain; charset=US-ASCII; delsp=yes; format=flowed
-Cc: linux-nfs@vger.kernel.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Fabian Steiner <lists-A1xC5SIKT5unwkN7LPkuEg@public.gmane.org>
+Subject: Re: [NFS] Attempting to mount a large number of directories
+Date: Mon, 7 Jan 2008 22:28:58 +0100
+Message-ID: <200801072228.58507.lists@fabis-site.net>
+References: <200712241200.08410.lists@fabis-site.net> <1199695504.3156.69.camel@raven.themaw.net>
+Mime-Version: 1.0
+Content-Type: text/plain;
+  charset="iso-8859-1"
+Cc: Ian Kent <raven@themaw.net>
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:30777 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754118AbYAGVPM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Jan 2008 16:15:12 -0500
-In-Reply-To: <1199396736.1913.7.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from zucker.schokokeks.org ([85.10.204.247]:58906 "EHLO
+	zucker.schokokeks.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752556AbYAGV27 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Jan 2008 16:28:59 -0500
+In-Reply-To: <1199695504.3156.69.camel-J+SFD3YVfrQ/gntp4R1GGQ@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond-
+Ian Kent wrote:
+>> [...]
+> I see no-one else wanted to buy into this.
+> I'm not really surprised.
 
-On Jan 3, 2008, at 4:45 PM, Trond Myklebust wrote:
-> On Thu, 2007-12-20 at 14:55 -0500, Chuck Lever wrote:
->> Clean up: have the set up routines explicitly pass the strings to  
->> be used
->> for the transport name and NETID.  This removes a number of  
->> conditionals
->> and dependencies on rpc_xprt.prot, which is overloaded.
->>
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> ---
+Thanks a lot for your explainations! Now it is much easier to understand how 
+things work on the low-level area.
+
+> Judging by your attempt to use the insecure option I assume you actually
+> know that you're running out of port space on the client. The server, of
+> course, consumes only a few ports, like ports for mountd, portmap (or
+> rpcbind) and NFS and because it's a server and it reuses the same port
+> since the different port used on the client makes the tupple
+> clientaddr,clientport,serveraddr,serverport unique. Point is that port
+> space is consumed on the client not the server.
 >
-> NACK to this one. This whole premise of doing a kstrdup() on a  
-> bunch of
-> constants is silly. It's not as if we need to rewrite the contents of
-> address_strings[FOO] every 2 seconds.
+> So running out of port space is a client problem and the reason it
+> happens is that autofs and mount probe to see if the server is up and
+> what version of NFS is available etc. before doing the mount. This can
+> result in as many a 9 ports consumed for each mount and the ports that
+> aren't continuing to be used can't be reused before a timeout has
+> passed. I think it's about 60 seconds, and is required for the TCP
+> implementation to function properly. So you run out of available ports
+> fairly quickly if you issue many mount requests at once.
 >
-> If you're going to clean this up, then please do so by making
-> address_strings be an array of 'const char *', and just have these
-> entries point to the constants "udp", "udp6", "tcp", "tcp6" (just like
-> RDMA already does).
+> Quite a bit of work has been done to reduce the port usage over time and
+> I think it has been included in recent nfs-utils releases so perhaps a
+> later nfs-utils will help.
+
+On the affected machines nfs-utils-1.0.7 has been installed so far. Picking up 
+your hint we forced an upgrade from Ubuntu Dapper to Ubuntu Gutsy with 
+version 1.1.1~git-20070709 being installed and obviously this solved the 
+majority number of problems. Now approx. 400 directories can be mounted. Of 
+course, the entire issue requires further investigation; we are quite content 
+about the current situation, though.
+
+Fabian
 
 
-Mixing statically and dynamically allocated strings in a char * array  
-is poor coding practice.  In general, having more than one way to  
-deallocate all the objects in an array of pointers is an invitation  
-for problems down the road.
-
-However, I will send you a version of this patch with the requested  
-corrections later today.
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
