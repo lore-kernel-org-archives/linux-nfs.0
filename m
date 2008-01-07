@@ -1,103 +1,155 @@
-From: Ian Kent <raven@themaw.net>
-Subject: Re: [NFS] Attempting to mount a large number of directories
-Date: Mon, 07 Jan 2008 17:45:04 +0900
-Message-ID: <1199695504.3156.69.camel@raven.themaw.net>
-References: <200712241200.08410.lists@fabis-site.net>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Fabian Steiner <lists-A1xC5SIKT5unwkN7LPkuEg@public.gmane.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: Man page update for timeo= and retrans= options.
+Date: Mon, 7 Jan 2008 13:15:14 -0500
+Message-ID: <BA93E30A-817B-49B9-9703-FC77C2640BA5@oracle.com>
+References: <18301.39633.368089.130622@notabene.brown>
+Mime-Version: 1.0 (Apple Message framework v753)
+Content-Type: text/plain; charset=US-ASCII; delsp=yes; format=flowed
+Cc: linux-nfs@vger.kernel.org
+To: Neil Brown <neilb@suse.de>, Steve Dickson <SteveD@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:59939 "EHLO neil.brown.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752908AbYAGJJw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 7 Jan 2008 04:09:52 -0500
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1JBnzO-00050A-94
-	for linux-nfs@vger.kernel.org; Mon, 07 Jan 2008 20:09:46 +1100
-In-Reply-To: <200712241200.08410.lists-A1xC5SIKT5unwkN7LPkuEg@public.gmane.org>
+Received: from rgminet01.oracle.com ([148.87.113.118]:11530 "EHLO
+	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754180AbYAGSRH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Jan 2008 13:17:07 -0500
+In-Reply-To: <18301.39633.368089.130622-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi Neil-
 
-On Mon, 2007-12-24 at 12:00 +0100, Fabian Steiner wrote:
-> Hello!
-> 
-> After having finished the migration to our new setup (user home directories 
-> are mounted automatically using autofs [4.1.4-8ubuntu1] and NFSv3) we are 
-> experiencing some problems which use to occur whenever many users attempt to 
-> access their directories. If such an issue appears the following messages 
-> will be seen in /var/log/syslog of the server:
-> 
-> Dec 23 18:38:00 ubuntu1 mountd[8995]: refused mount request from client 
-> for /exports/dir157 (/exports): illegal port 59537
-> 
-> At first we thought it would be an autofs problem but after having tried to 
-> reproduce the problem employing normal nfs mounts we encountered the same 
-> issues. The attached scripts might help you to reproduce it.
-> 
-> Running these scripts reveal that mounting 105 directories work, the 106th 
-> fails, however, resulting in the following error: 
-> 
-> [...]
-> Working on dir 105 ...nfs bindresvport: Address already in use
-> OK
-> Working on dir 106 ...mount: 192.168.0.46:/exports/dir106: can't read 
-> superblock
-> OK
-> [...]
-> 
-> At next, I added the "insecure" option to my /etc/exports file and increased 
-> the value of /proc/sys/sunrpc/max_resvport from 1023 to 5000. Now 139 
-> directories can be mounted without any single error, then "nfs bindresvport: 
-> Address already in use" appears again and mounting 141-172 also works fine. 
-> Afterwards all the other mount attempts are failing.
-> 
-> Could you explain this behaviour? What does "nfs bindresvport: Address already 
-> in use" try to tell me? Generally speaking both the server as well as the 
-> client should run out of open ports.
+I just spent two months and rewrote all of nfs(5).  It should appear  
+in the next release of nfs-utils.  Steve, when can we expect to see  
+the updated man page?
 
-I see no-one else wanted to buy into this.
-I'm not really surprised.
+On Jan 3, 2008, at 9:32 PM, Neil Brown wrote:
 
-Judging by your attempt to use the insecure option I assume you actually
-know that you're running out of port space on the client. The server, of
-course, consumes only a few ports, like ports for mountd, portmap (or
-rpcbind) and NFS and because it's a server and it reuses the same port
-since the different port used on the client makes the tupple
-clientaddr,clientport,serveraddr,serverport unique. Point is that port
-space is consumed on the client not the server.
+>
+> I've been trying to understand exactly how timeouts work in the NFS
+> client and find that the man page in nfs-utils is not correct.
+>
+> In particular, the implementation differentiates between TCP and UDP,
+> while the man page does not make that distinction.
+>
+> I have attempted an update to the man page as you can see below.  It
+> is entirely possible that I have not got it completely correct (or
+> comprehensible) so I'm asking for people to check that what I have
+> written is correct and clear.
+>
+> This I would particularly like comment on:
+>
+> 1/ I have left
+>
+>  Better overall performance may be achieved by increasing the
+>  timeout when mounting on a busy network, to a slow server, or through
+>  several routers or gateways.
+>
+>  unchanged.  Is it still a reasonable thing to say?
+>
+> 2/ I have moved the documentation about major timeouts into the  
+> retrans=
+>    section.  Does that break the description up too much?
+>
+> 3/ the old text seems to say that after the first major-timeout, a
+>   slightly different sequence of timeouts are used.  I couldn't find
+>   evidence of this in the code.  Did I miss something, or is my text
+>   correct?
+>
+> 4/ Did this change in some ancient kernel version, and should the
+>   version number of the change be documented?  e.g. is it a 2.4 / 2.6
+>   difference?
+>
+> 5/ As the behaviour is quite different for UDP and TCP, should we
+>   introduce a major_timeo= option which calculates an appropriate
+>   retrans= based on the actual timeo= and proto= used.
+>
+> and anything else that occurs to anyone.
+>
+> Thanks,
+> NeilBrown
+>
+> diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
+> index d92da19..0142075 100644
+> --- a/utils/mount/nfs.man
+> +++ b/utils/mount/nfs.man
+> @@ -83,24 +83,50 @@ Note: Setting this size to a value less than  
+> the largest supported
+>  block size will adversely affect performance.
+>  .TP 1.5i
+>  .I timeo=n
+> -The value in tenths of a second before sending the
+> -first retransmission after an RPC timeout.
+> -The default value is 7 tenths of a second.  After the first timeout,
+> -the timeout is doubled after each successive timeout until a maximum
+> -timeout of 60 seconds is reached or the enough retransmissions
+> -have occured to cause a major timeout.  Then, if the filesystem
+> -is hard mounted, each new timeout cascade restarts at twice the
+> -initial value of the previous cascade, again doubling at each
+> -retransmission.  The maximum timeout is always 60 seconds.
+> +The value in tenths of a second for the first RPC timeout.  If no
+> +reply has been received in this much time, the message is
+> +retransmitted.
+> +Further timeouts are handled differently depending on the connection
+> +type.
+> +
+> +For UDP (which is unreliable and lacks congestion control),
+> +each successive timeout is twice the previous timeout.  As the  
+> default
+> +is 11 tenths of a seconds, the timeouts used if
+> +.I timeo=
+> +is not specified are 1.1, 2.2, 4.4, 8.8,... seconds.  The timeout for
+> +each retransmission is limited to 60 seconds, so the next few numbers
+> +in the above sequence would be 17.6, 35.2, 60, 60.
+> +
+> +For reliable protocols such as TCP and RDMA, the successive timeouts
+> +grow linearly rather than exponentially to a maximum of 10 minutes.
+> +The default is 1 minute, so the default successive timeout are 1,
+> +2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 10 minutes.
+> +
+> +It is unwise to set
+> +.I timeo=
+> +explicitly without also setting the protocol to use, as it has a
+> +significantly different effect depending on protocol.
+> +
+>  Better overall performance may be achieved by increasing the
+>  timeout when mounting on a busy network, to a slow server, or through
+>  several routers or gateways.
+>  .TP 1.5i
+>  .I retrans=n
+>  The number of minor timeouts and retransmissions that must occur  
+> before
+> -a major timeout occurs.  The default is 3 timeouts.  When a major  
+> timeout
+> -occurs, the file operation is either aborted or a "server not  
+> responding"
+> -message is printed on the console.
+> +a major timeout occurs.  The default is 2 yielding a total of 3
+> +attempts (1 transmission and 2 retransmissions).  When a major  
+> timeout
+> +occurs the behaviour depends on whether the filesystem was mounted
+> +.I hard
+> +or
+> +.IR soft .
+> +In the case of a
+> +.I soft
+> +mount, the operation will abort and typically return an IO error to
+> +the application.  In the case of a
+> +.I hard
+> +mount a "server not responding" message will be printed on the
+> +console, and the request will be retried with the original series of
+> +timeouts.
+>  .TP 1.5i
+>  .I acregmin=n
+>  The minimum time in seconds that attributes of a regular file should
+> -
+> To unsubscribe from this list: send the line "unsubscribe linux- 
+> nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-So running out of port space is a client problem and the reason it
-happens is that autofs and mount probe to see if the server is up and
-what version of NFS is available etc. before doing the mount. This can
-result in as many a 9 ports consumed for each mount and the ports that
-aren't continuing to be used can't be reused before a timeout has
-passed. I think it's about 60 seconds, and is required for the TCP
-implementation to function properly. So you run out of available ports
-fairly quickly if you issue many mount requests at once.
-
-Quite a bit of work has been done to reduce the port usage over time and
-I think it has been included in recent nfs-utils releases so perhaps a
-later nfs-utils will help.
-
-Really, the main problem here is that socket pooling for RPC would be
-really hard to do in user space, if it can be done at all.
-
-Ian
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
 
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Microsoft
-Defy all challenges. Microsoft(R) Visual Studio 2005.
-http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
 
