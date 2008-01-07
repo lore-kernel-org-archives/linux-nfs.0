@@ -1,58 +1,38 @@
-From: Fabian Steiner <lists-A1xC5SIKT5unwkN7LPkuEg@public.gmane.org>
-Subject: Re: [NFS] Attempting to mount a large number of directories
-Date: Mon, 7 Jan 2008 22:28:58 +0100
-Message-ID: <200801072228.58507.lists@fabis-site.net>
-References: <200712241200.08410.lists@fabis-site.net> <1199695504.3156.69.camel@raven.themaw.net>
-Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
-Cc: Ian Kent <raven@themaw.net>
-To: linux-nfs@vger.kernel.org
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 2/4] NLM: Introduce completion function to match nlmclnt_init
+Date: Mon, 7 Jan 2008 18:04:03 -0500
+Message-ID: <AB3076F8-4E4F-4862-A47E-5917BFBB702B@oracle.com>
+References: <20071220200405.3358.54150.stgit@manray.1015granger.net> <1199397248.1913.15.camel@heimdal.trondhjem.org>
+Mime-Version: 1.0 (Apple Message framework v753)
+Content-Type: text/plain; charset=US-ASCII; delsp=yes; format=flowed
+Cc: linux-nfs@vger.kernel.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from zucker.schokokeks.org ([85.10.204.247]:58906 "EHLO
-	zucker.schokokeks.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752556AbYAGV27 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Jan 2008 16:28:59 -0500
-In-Reply-To: <1199695504.3156.69.camel-J+SFD3YVfrQ/gntp4R1GGQ@public.gmane.org>
+Received: from agminet01.oracle.com ([141.146.126.228]:23159 "EHLO
+	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753928AbYAGXE4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Jan 2008 18:04:56 -0500
+In-Reply-To: <1199397248.1913.15.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ian Kent wrote:
->> [...]
-> I see no-one else wanted to buy into this.
-> I'm not really surprised.
+Hi Trond-
 
-Thanks a lot for your explainations! Now it is much easier to understand how 
-things work on the low-level area.
-
-> Judging by your attempt to use the insecure option I assume you actually
-> know that you're running out of port space on the client. The server, of
-> course, consumes only a few ports, like ports for mountd, portmap (or
-> rpcbind) and NFS and because it's a server and it reuses the same port
-> since the different port used on the client makes the tupple
-> clientaddr,clientport,serveraddr,serverport unique. Point is that port
-> space is consumed on the client not the server.
+On Jan 3, 2008, at 4:54 PM, Trond Myklebust wrote:
+> On Thu, 2007-12-20 at 15:04 -0500, Chuck Lever wrote:
+>> Introduce the other book-end for nlmclnt_init(). This function is  
+>> invoked
+>> by the NFS client during unmount processing to release the  
+>> nlm_host struct
+>> that was pinned by nlmclnt_init() during mount processing.
 >
-> So running out of port space is a client problem and the reason it
-> happens is that autofs and mount probe to see if the server is up and
-> what version of NFS is available etc. before doing the mount. This can
-> result in as many a 9 ports consumed for each mount and the ports that
-> aren't continuing to be used can't be reused before a timeout has
-> passed. I think it's about 60 seconds, and is required for the TCP
-> implementation to function properly. So you run out of available ports
-> fairly quickly if you issue many mount requests at once.
+> Does this really need to be a separate patch from the nlmclnt_init?
 >
-> Quite a bit of work has been done to reduce the port usage over time and
-> I think it has been included in recent nfs-utils releases so perhaps a
-> later nfs-utils will help.
+> Furthermore, those EXPORT_SYMBOL() should really be EXPORT_SYMBOL_GPL.
+> We don't want to make this an official ABI.
 
-On the affected machines nfs-utils-1.0.7 has been installed so far. Picking up 
-your hint we forced an upgrade from Ubuntu Dapper to Ubuntu Gutsy with 
-version 1.1.1~git-20070709 being installed and obviously this solved the 
-majority number of problems. Now approx. 400 directories can be mounted. Of 
-course, the entire issue requires further investigation; we are quite content 
-about the current situation, though.
+Should I change nlmclnt_proc() to use EXPORT_SYMBOL_GPL then?
 
-Fabian
-
-
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
