@@ -1,81 +1,142 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: Man page update for timeo= and retrans= options.
-Date: Tue, 8 Jan 2008 07:38:49 -0500
-Message-ID: <8C656D7A-B20A-4583-9D56-07EECB4BFFEF@oracle.com>
-References: <18301.39633.368089.130622@notabene.brown> <BA93E30A-817B-49B9-9703-FC77C2640BA5@oracle.com> <18306.53954.61368.902438@notabene.brown>
-Mime-Version: 1.0 (Apple Message framework v753)
-Content-Type: text/plain; charset=US-ASCII; delsp=yes; format=flowed
-Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH 6/6] NLM: Add reference counting to lockd
+Date: Tue, 8 Jan 2008 08:26:03 -0500
+Message-ID: <20080108082603.089718fc@tleilax.poochiereds.net>
+References: <1199534542-3384-1-git-send-email-jlayton@redhat.com>
+	<1199534542-3384-2-git-send-email-jlayton@redhat.com>
+	<1199534542-3384-3-git-send-email-jlayton@redhat.com>
+	<1199534542-3384-4-git-send-email-jlayton@redhat.com>
+	<1199534542-3384-5-git-send-email-jlayton@redhat.com>
+	<1199534542-3384-6-git-send-email-jlayton@redhat.com>
+	<1199534542-3384-7-git-send-email-jlayton@redhat.com>
+	<18307.7241.831689.998668@notabene.brown>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Cc: akpm@linux-foundation.org, linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org
 To: Neil Brown <neilb@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:41014 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750737AbYAHMlS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jan 2008 07:41:18 -0500
-In-Reply-To: <18306.53954.61368.902438-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
+Received: from mx1.redhat.com ([66.187.233.31]:50686 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751827AbYAHN0N (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Jan 2008 08:26:13 -0500
+In-Reply-To: <18307.7241.831689.998668-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Neil-
+On Tue, 8 Jan 2008 17:46:33 +1100
+Neil Brown <neilb@suse.de> wrote:
 
-On Jan 7, 2008, at 8:32 PM, Neil Brown wrote:
-> On Monday January 7, chuck.lever@oracle.com wrote:
->> Hi Neil-
->>
->> I just spent two months and rewrote all of nfs(5).  It should appear
->> in the next release of nfs-utils.  Steve, when can we expect to see
->> the updated man page?
->
-> I thought I had seem some rewrite go past, but it wasn't in my inbox
-> any more and also not it Steve's git so I just went ahead...
+The comments about patch 5/6 seem sane. I'll plan to incorporate them
+in the respin...
 
-> I see it is in the .git now (as of Friday).
+> On Saturday January 5, jlayton@redhat.com wrote:
+> > @@ -357,7 +375,18 @@ lockd_down(void)
+> >  		goto out;
+> >  	}
+> >  	warned = 0;
+> > -	kthread_stop(nlmsvc_task);
+> > +	if (atomic_sub_return(1, &nlmsvc_ref) != 0)
+> > +		printk(KERN_WARNING "lockd_down: lockd is waiting
+> > for "
+> > +			"outstanding requests to complete before
+> > exiting.\n");
+> 
+> Why not "atomic_dec_and_test" ??
+> 
 
-Good.  I hope others will also have a chance to look it over.  And  
-thanks for your scrutiny, btw.
+Temporary amnesia? :-) I'll change that, atomic_dec_and_test will be
+clearer.
 
-> Comments:
->  - It says UDP defaults to 7/10 of a second, but
->       nfs_init_timeout_values()
->    says:
-> 		if (!to->to_initval)
-> 			to->to_initval = 11 * HZ / 10;
->
->    which suggests 11/10 of a second.
+> > +
+> > +	/*
+> > +	 * Sending a signal is necessary here. If we get to this
+> > point and
+> > +	 * nlm_blocked isn't empty then lockd may be held hostage
+> > by clients
+> > +	 * that are still blocking. Sending the signal makes sure
+> > that lockd
+> > +	 * invalidates all of its locks so that it's just waiting
+> > on RPC
+> > +	 * callbacks to complete
+> > +	 */
+> > +	kill_proc(nlmsvc_task->pid, SIGKILL, 1);
+> 
+> The previous patch removes a kill_proc(... SIGKILL),  this one adds it
+> back.
+> That makes me wonder if the intermediate state is 'correct'.
+> 
+> But I also wonder what "correct" means.
+> Do we want all locks to be dropped when the last nfsd thread dies?
+> The answer is presumably either "yes" or "no".
+> If "yes", then we don't have that because if there are any NFS mounts
+> active, lockd will not be killed.
+> If "no", then we don't want this kill_proc here.
+> 
+> The comment in lockd() which currently reads:
+> 
+> 	/*
+> 	 * The main request loop. We don't terminate until the last
+> 	 * NFS mount or NFS daemon has gone away, and we've been sent
+> a
+> 	 * signal, or else another process has taken over our job.
+> 	 */
+> 
+> suggests that someone once thought that lockd could hang around after
+> all nfsd threads and nfs mounts had gone, but I don't think it does.
+> 
+> We really should think this through and get it right, because if lockd
+> ever drops it's locks, then we really need to make sure sm_notify gets
+> run.  So it needs to be a well defined event.
+> 
+> Thoughts?
+> 
 
-Yup.  I forgot about that code change, which I believe was to make  
-UDP on Linux work more like Solaris does.
+This is the part I've been struggling with the most -- defining what
+proper behavior should be when lockd is restarted. As you point out,
+restarting lockd without doing a sm_notify could be bad news for data
+integrity.
 
->  - It says
->     If the retrans option is not specified, the NFS client retries
->     each request three times.
->
->   but nfs_init_timeout_values() says
->
-> 	if (!to->to_retries)
-> 		to->to_retries = 2;
->
->    which suggests it retries 2 time (or tries 3 times).
+Then again, we'd like someone to be able to shut down the NFS "service"
+and be able to unmount underlying filesystems without jumping through
+special hoops....
 
-Yes, nfs(5) should be changed to say "tries each request 3 times."
+Overall, I think I'd vote "yes". We need to drop locks when the last
+nfsd goes down. If userspace brings down nfsd, then it's userspace's
+responsibility to make sure that a sm_notify is sent when nfsd and lockd
+are restarted.
 
->  - It says:
->       After each retransmission, the NFS client doubles the timeout
->       for that request, up to a maximum timeout length of 60 seconds.
->
->    but doesn't (to me) make it clear that only applies to UDP.
+As a side note, I'm not thrilled with this design that mixes signals
+and kthreads, but didn't see another way to do this. I'm open to
+suggestions if anyone has them...
 
-It follows "However, for NFS over UDP" .... But perhaps the UDP part  
-can be wholly split into a separate paragraph to make the distinction  
-more clear.
+> Also, it is sad that the inc/dec of nlmsvc_ref is called in somewhat
+> non-obvious ways.
+> e.g.
+> 
+> > +	if (!nlmsvc_users && error)
+> > +		atomic_dec(&nlmsvc_ref);
+> 
+> and
+> 
+> > +	if (list_empty(&nlm_blocked))
+> > +		atomic_inc(&nlmsvc_ref);
+> > +
+> >  	if (list_empty(&block->b_list)) {
+> >  		kref_get(&block->b_count);
+> >  	} else {
+> 
+> where if we moved the atomic_inc a little bit later next to the
+> "list_add_tail" (which seems to make more sense) it would actually be
+> wrong... But I think that code is correct as it is - just non-obvious.
+> 
 
-I'll post a patch with these updates to nfs(5).
+The nlmsvc_ref logic is pretty convoluted, unfortunately. I'll plan to
+add some comments to clarify what I'm doing there.
 
->   For TCP, the timeouts appear to increase linearly up to 600 seconds.
+Thanks for the review, Neil. I'll see if I can get a new patchset done
+in the next few days.
 
-The TCP RTT should not change after a timeout.  At least that was the  
-way it worked when I modified it a few years ago.
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+Cheers,
+-- 
+Jeff Layton <jlayton@redhat.com>
