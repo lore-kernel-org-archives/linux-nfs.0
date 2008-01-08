@@ -1,29 +1,40 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: Man page update for timeo= and retrans= options.
-Date: Tue, 08 Jan 2008 13:54:07 -0500
-Message-ID: <4783C6CF.3080600@RedHat.com>
-References: <18301.39633.368089.130622@notabene.brown> <BA93E30A-817B-49B9-9703-FC77C2640BA5@oracle.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-To: Chuck Lever <chuck.lever@oracle.com>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH 2/6] SUNRPC: export svc_sock_update_bufs
+Date: Tue,  8 Jan 2008 14:33:14 -0500
+Message-ID: <1199820798-5289-3-git-send-email-jlayton@redhat.com>
+References: <1199820798-5289-1-git-send-email-jlayton@redhat.com>
+ <1199820798-5289-2-git-send-email-jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+To: akpm@linux-foundation.org, neilb@suse.de
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:50955 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([66.187.233.31]:36797 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753213AbYAHSzb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Jan 2008 13:55:31 -0500
-In-Reply-To: <BA93E30A-817B-49B9-9703-FC77C2640BA5@oracle.com>
+	id S1757289AbYAHTdc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Jan 2008 14:33:32 -0500
+In-Reply-To: <1199820798-5289-2-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Needed since the plan is to not have a svc_create_thread helper and to
+have current users of that function just call kthread_run directly.
 
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ net/sunrpc/svcsock.c |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
 
-Chuck Lever wrote:
-> Hi Neil-
-> 
-> I just spent two months and rewrote all of nfs(5).  It should appear in
-> the next release of nfs-utils.  Steve, when can we expect to see the
-> updated man page?
-I committed the update a few days ago...
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 057c870..f2bef16 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -1407,6 +1407,7 @@ svc_sock_update_bufs(struct svc_serv *serv)
+ 	}
+ 	spin_unlock_bh(&serv->sv_lock);
+ }
++EXPORT_SYMBOL(svc_sock_update_bufs);
+ 
+ /*
+  * Receive the next request on any socket.  This code is carefully
+-- 
+1.5.3.3
 
-steved.
