@@ -1,67 +1,64 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [NFS] [PATCH] nfs4, special files, and set/listxattr asymmetry
-Date: Mon, 07 Jan 2008 22:34:04 -0500
-Message-ID: <1199763245.21371.6.camel@heimdal.trondhjem.org>
-References: <200801080314.m083EVbb011378@agora.fsl.cs.sunysb.edu>
+From: Ian Kent <raven@themaw.net>
+Subject: Re: [NFS] Attempting to mount a large number of directories
+Date: Tue, 08 Jan 2008 12:07:43 +0900
+Message-ID: <1199761663.3155.17.camel@raven.themaw.net>
+References: <200712241200.08410.lists@fabis-site.net>
+	 <1199695504.3156.69.camel@raven.themaw.net>
+	 <200801072228.58507.lists@fabis-site.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Erez Zadok <ezk-EX0cT3Az47bauI2f2gSDlQ@public.gmane.org>,
-	"Dr. J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain
+Cc: linux-nfs@vger.kernel.org
+To: Fabian Steiner <lists-A1xC5SIKT5unwkN7LPkuEg@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:54319 "EHLO neil.brown.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752777AbYAHDfJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 7 Jan 2008 22:35:09 -0500
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1JC5F4-0006Vn-Q4
-	for linux-nfs@vger.kernel.org; Tue, 08 Jan 2008 14:35:06 +1100
-In-Reply-To: <200801080314.m083EVbb011378-zop+azHP2WsZjdeEBZXbMidm6ipF23ct@public.gmane.org>
+Received: from out5.smtp.messagingengine.com ([66.111.4.29]:33264 "EHLO
+	out5.smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751902AbYAHDf6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Jan 2008 22:35:58 -0500
+In-Reply-To: <200801072228.58507.lists-A1xC5SIKT5unwkN7LPkuEg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Mon, 2008-01-07 at 22:14 -0500, Erez Zadok wrote:
-> Trond, I've discovered an asymmetry in how nfs4 (in v2.6.24-rc7) handles
-> listxattr vs. setxattr for special files.  I caught this with Unionfs when
-> testing a copyup of a character device from a readonly nfs4 mount to a
-> writable nfs4 mount.
+On Mon, 2008-01-07 at 22:28 +0100, Fabian Steiner wrote:
+> Ian Kent wrote:
+> >> [...]
+> > I see no-one else wanted to buy into this.
+> > I'm not really surprised.
 > 
-> nfs4_setxattr returns -EPERM if the inode isn't a regular file or a (sticky)
-> dir.  However, nfs4_listxattr returns XATTR_NAME_NFSV4_ACL (16 bytes,
-> "system.nfs4_acl") regardless of the type of the inode.  So during copyup, I
-> can ->listxattr fine from the source inode, but I get EPERM trying to
-> ->setxattr on the destination branch of of the copyup.  (I already handle
-> the case when copying-up from a f/s which supports xattr's to one which
-> doesn't, but when both file systems are the same and mounted the same, there
-> typically should not be difference).
+> Thanks a lot for your explainations! Now it is much easier to understand how 
+> things work on the low-level area.
 > 
-> Assuming that the original intent of the EPERM check in nfs4_setxattr was to
-> prevent setting xattrs over nfs4 for non-files/dirs, then I "fixed" this by
-> adding a similar check in nfs4_listxattr, which returns an empty xattr list
-> for those.  I've included a patch below for your consideration/review.
+> > Judging by your attempt to use the insecure option I assume you actually
+> > know that you're running out of port space on the client. The server, of
+> > course, consumes only a few ports, like ports for mountd, portmap (or
+> > rpcbind) and NFS and because it's a server and it reuses the same port
+> > since the different port used on the client makes the tupple
+> > clientaddr,clientport,serveraddr,serverport unique. Point is that port
+> > space is consumed on the client not the server.
+> >
+> > So running out of port space is a client problem and the reason it
+> > happens is that autofs and mount probe to see if the server is up and
+> > what version of NFS is available etc. before doing the mount. This can
+> > result in as many a 9 ports consumed for each mount and the ports that
+> > aren't continuing to be used can't be reused before a timeout has
+> > passed. I think it's about 60 seconds, and is required for the TCP
+> > implementation to function properly. So you run out of available ports
+> > fairly quickly if you issue many mount requests at once.
+> >
+> > Quite a bit of work has been done to reduce the port usage over time and
+> > I think it has been included in recent nfs-utils releases so perhaps a
+> > later nfs-utils will help.
+> 
+> On the affected machines nfs-utils-1.0.7 has been installed so far. Picking up 
+> your hint we forced an upgrade from Ubuntu Dapper to Ubuntu Gutsy with 
+> version 1.1.1~git-20070709 being installed and obviously this solved the 
+> majority number of problems. Now approx. 400 directories can be mounted. Of 
+> course, the entire issue requires further investigation; we are quite content 
+> about the current situation, though.
 
-I can see no reason in the RFC why you shouldn't be able to set an NFSv4
-ACL on a special file. AFAICS this is a bug in the nfs4_setxattr code,
-which is probably due to some improper cut n' pasting from the posix acl
-code.
+Great, you may also find that specifying the protocol as a mount option,
+proto=tcp for example, will reduce the overhead further.
 
-Bruce?
+Ian
 
-Cheers
-  Trond
-
--------------------------------------------------------------------------
-Check out the new SourceForge.net Marketplace.
-It's the best place to buy or sell services for
-just about anything Open Source.
-http://ad.doubleclick.net/clk;164216239;13503038;w?http://sf.net/marketplace
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
 
