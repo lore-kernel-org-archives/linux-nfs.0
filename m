@@ -1,296 +1,109 @@
-From: Wendy Cheng <wcheng@redhat.com>
-Subject: Re: [PATCH 1/2] NLM failover unlock commands
-Date: Tue, 08 Jan 2008 15:57:45 -0500
-Message-ID: <4783E3C9.3040803@redhat.com>
-References: <4781BB0D.90706@redhat.com> <20080108170220.GA21401@infradead.org>
-	<20080108174958.GA25025@infradead.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [NFS] [PATCH] nfs4, special files, and set/listxattr asymmetry
+Date: Tue, 8 Jan 2008 12:46:45 -0500
+Message-ID: <20080108174645.GH22155@fieldses.org>
+References: <200801080314.m083EVbb011378@agora.fsl.cs.sunysb.edu>
+	<1199763245.21371.6.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: cluster-devel@redhat.com, NFS list <linux-nfs@vger.kernel.org>
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <cluster-devel-bounces@redhat.com>
-In-Reply-To: <20080108174958.GA25025@infradead.org>
-List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
-List-Archive: <https://www.redhat.com/archives/cluster-devel>
-List-Post: <mailto:cluster-devel@redhat.com>
-List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
-List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
-Sender: cluster-devel-bounces@redhat.com
-Errors-To: cluster-devel-bounces@redhat.com
+Content-Type: text/plain; charset="us-ascii"
+Cc: Erez Zadok <ezk-EX0cT3Az47bauI2f2gSDlQ@public.gmane.org>, nfs@lists.sourceforge.net
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from neil.brown.name ([220.233.11.133]:53498 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756995AbYAHVOE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Jan 2008 16:14:04 -0500
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1JCLlo-00006q-7d
+	for linux-nfs@vger.kernel.org; Wed, 09 Jan 2008 08:14:00 +1100
+In-Reply-To: <1199763245.21371.6.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Christoph Hellwig wrote:
-> Ok, I played around with this and cleaned up the ip/path codepathes to
-> be entirely setup which helped the code quite a bit.  Also a few other
->   
-Thanks for doing this :) . In the middle of running it with our cluster 
-test - if passed, will repost it. Get your "signed-off" line ready ?
+On Mon, Jan 07, 2008 at 10:34:04PM -0500, Trond Myklebust wrote:
+> 
+> On Mon, 2008-01-07 at 22:14 -0500, Erez Zadok wrote:
+> > Trond, I've discovered an asymmetry in how nfs4 (in v2.6.24-rc7) handles
+> > listxattr vs. setxattr for special files.  I caught this with Unionfs when
+> > testing a copyup of a character device from a readonly nfs4 mount to a
+> > writable nfs4 mount.
+> > 
+> > nfs4_setxattr returns -EPERM if the inode isn't a regular file or a (sticky)
+> > dir.  However, nfs4_listxattr returns XATTR_NAME_NFSV4_ACL (16 bytes,
+> > "system.nfs4_acl") regardless of the type of the inode.  So during copyup, I
+> > can ->listxattr fine from the source inode, but I get EPERM trying to
+> > ->setxattr on the destination branch of of the copyup.  (I already handle
+> > the case when copying-up from a f/s which supports xattr's to one which
+> > doesn't, but when both file systems are the same and mounted the same, there
+> > typically should not be difference).
+> > 
+> > Assuming that the original intent of the EPERM check in nfs4_setxattr was to
+> > prevent setting xattrs over nfs4 for non-files/dirs, then I "fixed" this by
+> > adding a similar check in nfs4_listxattr, which returns an empty xattr list
+> > for those.  I've included a patch below for your consideration/review.
+> 
+> I can see no reason in the RFC why you shouldn't be able to set an NFSv4
+> ACL on a special file. AFAICS this is a bug in the nfs4_setxattr code,
+> which is probably due to some improper cut n' pasting from the posix acl
+> code.
+> 
+> Bruce?
 
--- Wendy
-> cleanups and two bugfixes (postive error code returned and missing
-> path_release) fell out of it.  I still don't like what's going on in
-> fs/lockd/svcsubs.c, it would be much better if the cluster unlock code
-> simply didn't use nlm_traverse_files but did it's own loop over
-> the nlm hosts.  That should also absolete the second patch.
->   
->
-> Index: linux-2.6/fs/nfsd/nfsctl.c
-> ===================================================================
-> --- linux-2.6.orig/fs/nfsd/nfsctl.c	2008-01-08 18:36:37.000000000 +0100
-> +++ linux-2.6/fs/nfsd/nfsctl.c	2008-01-08 18:45:55.000000000 +0100
-> @@ -22,6 +22,7 @@
->  #include <linux/seq_file.h>
->  #include <linux/pagemap.h>
->  #include <linux/init.h>
-> +#include <linux/inet.h>
->  #include <linux/string.h>
->  #include <linux/smp_lock.h>
->  #include <linux/ctype.h>
-> @@ -35,6 +36,7 @@
->  #include <linux/nfsd/cache.h>
->  #include <linux/nfsd/xdr.h>
->  #include <linux/nfsd/syscall.h>
-> +#include <linux/lockd/lockd.h>
->  
->  #include <asm/uaccess.h>
->  
-> @@ -52,6 +54,8 @@ enum {
->  	NFSD_Getfs,
->  	NFSD_List,
->  	NFSD_Fh,
-> +	NFSD_FO_UnlockIP,
-> +	NFSD_FO_UnlockFS,
->  	NFSD_Threads,
->  	NFSD_Pool_Threads,
->  	NFSD_Versions,
-> @@ -88,6 +92,9 @@ static ssize_t write_leasetime(struct fi
->  static ssize_t write_recoverydir(struct file *file, char *buf, size_t size);
->  #endif
->  
-> +static ssize_t failover_unlock_ip(struct file *file, char *buf, size_t size);
-> +static ssize_t failover_unlock_fs(struct file *file, char *buf, size_t size);
-> +
->  static ssize_t (*write_op[])(struct file *, char *, size_t) = {
->  	[NFSD_Svc] = write_svc,
->  	[NFSD_Add] = write_add,
-> @@ -97,6 +104,8 @@ static ssize_t (*write_op[])(struct file
->  	[NFSD_Getfd] = write_getfd,
->  	[NFSD_Getfs] = write_getfs,
->  	[NFSD_Fh] = write_filehandle,
-> +	[NFSD_FO_UnlockIP] = failover_unlock_ip,
-> +	[NFSD_FO_UnlockFS] = failover_unlock_fs,
->  	[NFSD_Threads] = write_threads,
->  	[NFSD_Pool_Threads] = write_pool_threads,
->  	[NFSD_Versions] = write_versions,
-> @@ -288,6 +297,55 @@ static ssize_t write_getfd(struct file *
->  	return err;
->  }
->  
-> +static ssize_t failover_unlock_ip(struct file *file, char *buf, size_t size)
-> +{
-> +	__be32 server_ip;
-> +	char *fo_path;
-> +	char *mesg;
-> +
-> +	/* sanity check */
-> +	if (size <= 0)
-> +		return -EINVAL;
-> +
-> +	if (buf[size-1] == '\n')
-> +		buf[size-1] = 0;
-> +
-> +	fo_path = mesg = buf;
-> +	if (qword_get(&mesg, fo_path, size) < 0)
-> +		return -EINVAL;
-> +
-> +	server_ip = in_aton(fo_path);
-> +	return nlmsvc_failover_ip(server_ip[0]);
-> +}
-> +
-> +static ssize_t failover_unlock_fs(struct file *file, char *buf, size_t size)
-> +{
-> +	struct nameidata nd;
-> +	char *fo_path;
-> +	char *mesg;
-> +	int error;
-> +
-> +	/* sanity check */
-> +	if (size <= 0)
-> +		return -EINVAL;
-> +
-> +	if (buf[size-1] == '\n')
-> +		buf[size-1] = 0;
-> +
-> +	fo_path = mesg = buf;
-> +	if (qword_get(&mesg, fo_path, size) < 0)
-> +		return -EINVAL;
-> +
-> +	error = path_lookup(fo_path, 0, &nd);
-> +	if (error)
-> +		return error;
-> +
-> +	error = nlmsvc_failover_path(&nd);
-> +
-> +	path_release(&nd);
-> +	return error;
-> +}
-> +
->  static ssize_t write_filehandle(struct file *file, char *buf, size_t size)
->  {
->  	/* request is:
-> @@ -646,6 +704,8 @@ static int nfsd_fill_super(struct super_
->  		[NFSD_Getfd] = {".getfd", &transaction_ops, S_IWUSR|S_IRUSR},
->  		[NFSD_Getfs] = {".getfs", &transaction_ops, S_IWUSR|S_IRUSR},
->  		[NFSD_List] = {"exports", &exports_operations, S_IRUGO},
-> +		[NFSD_FO_UnlockIP] = {"unlock_ip", &transaction_ops, S_IWUSR|S_IRUSR},
-> +		[NFSD_FO_UnlockFS] = {"unlock_filesystem", &transaction_ops, S_IWUSR|S_IRUSR},
->  		[NFSD_Fh] = {"filehandle", &transaction_ops, S_IWUSR|S_IRUSR},
->  		[NFSD_Threads] = {"threads", &transaction_ops, S_IWUSR|S_IRUSR},
->  		[NFSD_Pool_Threads] = {"pool_threads", &transaction_ops, S_IWUSR|S_IRUSR},
-> Index: linux-2.6/fs/lockd/svcsubs.c
-> ===================================================================
-> --- linux-2.6.orig/fs/lockd/svcsubs.c	2008-01-08 18:36:37.000000000 +0100
-> +++ linux-2.6/fs/lockd/svcsubs.c	2008-01-08 18:44:11.000000000 +0100
-> @@ -18,6 +18,8 @@
->  #include <linux/lockd/lockd.h>
->  #include <linux/lockd/share.h>
->  #include <linux/lockd/sm_inter.h>
-> +#include <linux/module.h>
-> +#include <linux/mount.h>
->  
->  #define NLMDBG_FACILITY		NLMDBG_SVCSUBS
->  
-> @@ -87,7 +89,7 @@ nlm_lookup_file(struct svc_rqst *rqstp, 
->  	unsigned int	hash;
->  	__be32		nfserr;
->  
-> -	nlm_debug_print_fh("nlm_file_lookup", f);
-> +	nlm_debug_print_fh("nlm_lookup_file", f);
->  
->  	hash = file_hash(f);
->  
-> @@ -123,6 +125,9 @@ nlm_lookup_file(struct svc_rqst *rqstp, 
->  
->  	hlist_add_head(&file->f_list, &nlm_files[hash]);
->  
-> +	/* fill in f_iaddr for nlm lock failover */
-> +	file->f_iaddr = rqstp->rq_daddr;
-> +
->  found:
->  	dprintk("lockd: found file %p (count %d)\n", file, file->f_count);
->  	*result = file;
-> @@ -194,12 +199,63 @@ again:
->  	return 0;
->  }
->  
-> +static int
-> +nlmsvc_fo_unlock_match_path(void *datap, struct nlm_file *file)
-> +{
-> +	struct nameidata *nd = datap;
-> +	return nd->mnt == file->f_file->f_path.mnt;
-> +}
-> +
-> +static int
-> +nlmsvc_fo_unlock_match_ip(void *datap, struct nlm_file *file)
-> +{
-> +	struct in_addr *in = datap;
-> +
-> +	return file->f_iaddr.addr.s_addr == in->s_addr;
-> +}
-> +
-> +/*
-> + * To fit the logic into current lockd code structure, we add a
-> + * little wrapper function here. The real matching task should be
-> + * carried out by nlm_fo_check_fsid().
-> + */
-> +
-> +static int nlmsvc_fo_match_path(struct nlm_host *dummy1,
-> +		struct nlm_host *dummy2)
-> +{
-> +        return 1;
-> +}
-> +
-> +static int nlmsvc_fo_match_ip(struct nlm_host *dummy1, struct nlm_host *dummy2)
-> +{
-> +        return 1;
-> +}
-> +
->  /*
->   * Inspect a single file
->   */
->  static inline int
->  nlm_inspect_file(struct nlm_host *host, struct nlm_file *file, nlm_host_match_fn_t match)
->  {
-> +	/*
-> +	 * Cluster failover has timing constraints. There is a slight
-> +	 * performance hit if nlm_fo_unlock_match() is implemented as
-> +	 * a match fn (since it will be invoked for each block, share,
-> +	 * and lock later when the lists are traversed). Instead, we
-> +	 * add path-matching logic into the following unlikely clause.
-> +	 * If matches, the dummy nlmsvc_fo_match will always return
-> +	 * true.
-> +	 */
-> +	dprintk("nlm_inspect_files: file=%p\n", file);
-> +	if (unlikely(match == nlmsvc_fo_match_path)) {
-> +		if (!nlmsvc_fo_unlock_match_path(host, file))
-> +			return 0;
-> +	}
-> +	if (unlikely(match == nlmsvc_fo_match_ip)) {
-> +		if (!nlmsvc_fo_unlock_match_ip(host, file))
-> +			return 0;
-> +	}
-> +
->  	nlmsvc_traverse_blocks(host, file, match);
->  	nlmsvc_traverse_shares(host, file, match);
->  	return nlm_traverse_locks(host, file, match);
-> @@ -370,3 +426,22 @@ nlmsvc_invalidate_all(void)
->  	 */
->  	nlm_traverse_files(NULL, nlmsvc_is_client);
->  }
-> +
-> +/*
-> + * Release locks associated with an export fsid upon failover
-> + *      invoked via nfsd nfsctl call (write_fo_unlock).
-> + */
-> +int
-> +nlmsvc_failover_path(struct nameidata *nd)
-> +{
-> +	return nlm_traverse_files((struct nlm_host*)nd, nlmsvc_fo_match_path);
-> +}
-> +EXPORT_SYMBOL_GPL(nlmsvc_failover_path);
-> +
-> +int
-> +nlmsvc_failover_ip(__be32 server_addr)
-> +{
-> +	return nlm_traverse_files((struct nlm_host *)&server_addr,
-> +				nlmsvc_fo_match_ip);
-> +}
-> +EXPORT_SYMBOL_GPL(nlmsvc_failover_ip);
-> Index: linux-2.6/include/linux/lockd/lockd.h
-> ===================================================================
-> --- linux-2.6.orig/include/linux/lockd/lockd.h	2008-01-08 18:36:37.000000000 +0100
-> +++ linux-2.6/include/linux/lockd/lockd.h	2008-01-08 18:44:44.000000000 +0100
-> @@ -113,6 +113,7 @@ struct nlm_file {
->  	unsigned int		f_locks;	/* guesstimate # of locks */
->  	unsigned int		f_count;	/* reference count */
->  	struct mutex		f_mutex;	/* avoid concurrent access */
-> +	union svc_addr_u	f_iaddr;	/* server ip for failover */
->  };
->  
->  /*
-> @@ -214,6 +215,12 @@ void		  nlmsvc_mark_resources(void);
->  void		  nlmsvc_free_host_resources(struct nlm_host *);
->  void		  nlmsvc_invalidate_all(void);
->  
-> +/*
-> + * Cluster failover support
-> + */
-> +int           nlmsvc_failover_path(struct nameidata *nd);
-> +int           nlmsvc_failover_ip(__be32 server_addr);
-> +
->  static __inline__ struct inode *
->  nlmsvc_file_inode(struct nlm_file *file)
->  {
->   
+I think you're right.
+
+I'm also mystified by this rule that the sticky bit prevents non-owners
+from writing a directory's extended attributes.  (See fs/xattr.c.)  Any
+idea what the source of that is?  Anyway, I don't see why the client
+should enforce such a rule in this case.
+
+Erez, does just removing this check solve your problem?
+
+--b.
+
+>From 9fa16668ed09b212ec0325786d91ac65734336ea Mon Sep 17 00:00:00 2001
+From: J. Bruce Fields <bfields@citi.umich.edu>
+Date: Tue, 8 Jan 2008 12:41:41 -0500
+Subject: [PATCH] nfs4: allow nfsv4 acls on non-regular-files
+
+The rfc doesn't give any reason it shouldn't be possible to set an
+attribute on a non-regular file.  And if the server supports it, then it
+shouldn't be up to us to prevent it.
+
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+---
+ fs/nfs/nfs4proc.c |    4 ----
+ 1 files changed, 0 insertions(+), 4 deletions(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index f03d9d5..e9b9903 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -3625,10 +3625,6 @@ int nfs4_setxattr(struct dentry *dentry, const char *key, const void *buf,
+ 	if (strcmp(key, XATTR_NAME_NFSV4_ACL) != 0)
+ 		return -EOPNOTSUPP;
+ 
+-	if (!S_ISREG(inode->i_mode) &&
+-	    (!S_ISDIR(inode->i_mode) || inode->i_mode & S_ISVTX))
+-		return -EPERM;
+-
+ 	return nfs4_proc_set_acl(inode, buf, buflen);
+ }
+ 
+-- 
+1.5.4.rc2.60.gb2e62
+
+
+-------------------------------------------------------------------------
+Check out the new SourceForge.net Marketplace.
+It's the best place to buy or sell services for
+just about anything Open Source.
+http://ad.doubleclick.net/clk;164216239;13503038;w?http://sf.net/marketplace
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
+
