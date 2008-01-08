@@ -1,154 +1,101 @@
 From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH 1/2] NLM failover unlock commands
-Date: Tue, 8 Jan 2008 16:18:05 +1100
-Message-ID: <18307.1933.159410.677626@notabene.brown>
-References: <4781BB0D.90706@redhat.com>
+Subject: Re: [PATCH 2/2] Fix lockd panic
+Date: Tue, 8 Jan 2008 16:31:49 +1100
+Message-ID: <18307.2757.579354.785142@notabene.brown>
+References: <4781BE72.7050404@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: NFS list <linux-nfs@vger.kernel.org>, cluster-devel@redhat.com
 To: wcheng@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:58491 "EHLO mx2.suse.de"
+Received: from mail.suse.de ([195.135.220.2]:35442 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750718AbYAHFSN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Jan 2008 00:18:13 -0500
+	id S1750695AbYAHFb6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Jan 2008 00:31:58 -0500
 In-Reply-To: message from Wendy Cheng on Monday January 7
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 On Monday January 7, wcheng@redhat.com wrote:
-> We've implemented two new NFSD procfs files:
+> This small patch has not been changed since our last discussion:
+> http://www.opensubscriber.com/message/nfs@lists.sourceforge.net/6348912.html
 > 
-> o /proc/fs/nfsd/unlock_ip
-> o /proc/fs/nfsd/unlock_filesystem
+> To recap the issue, a client could ask for a posix lock that invokes:
 > 
-> They are intended to allow admin or user mode script to release NLM 
-> locks based on either a path name or a server in-bound ip address (ipv4 
-> for now)
-> as;
+>  >>>     server calls nlm4svc_proc_lock() ->
+>  >>>         * server lookup file (f_count++)
+>  >>>         * server lock the file
+>  >>>         * server calls nlm_release_host
+>  >>>         * server calls nlm_release_file (f_count--)
+>  >>>         * server return to client with status 0
+>  >>>
 > 
-> shell> echo 10.1.1.2 > /proc/fs/nfsd/unlock_ip
-> shell> echo /mnt/sfs1 > /proc/fs/nfsd/unlock_filesystem
+> As part of the lookup file, the lock stays on vfs inode->i_flock list 
+> with zero f_count. Any call into nlm_traverse_files() will BUG() in 
+> locks_remove_flock() (fs/locks.c:2034) during fclose(), if that file 
+> happens to be of no interest to that particular search. Since after 
+> nlm_inspect_file(), the logic unconditionally checks for possible 
+> removing of the file. As the file is not blocked, nothing to do with 
+> shares, and f_count is zero, it will get removed from hash and fclose() 
+> invoked with the posix lock hanging on i_flock list.
 
-I'm happy with this interface and the code looks credible, so 
-  Acked-by: NeilBrown <neilb@suse.de>
+If I'm reading this correctly, this bug is introduced by your previous
+patch.
 
-however......
-	
+The important difference between the old code and the new code here is
+that the old code tests "file->f_locks" while the new code iterates
+through i_flock to see if there are any lockd locks.
 
-> --- linux-o/fs/nfsd/nfsctl.c	2008-01-04 10:01:08.000000000 -0500
-> +++ linux/fs/nfsd/nfsctl.c	2008-01-06 15:27:34.000000000 -0500
-> @@ -288,6 +295,56 @@ static ssize_t write_getfd(struct file *
->  	return err;
->  }
->  
-> +extern __u32 in_aton(const char *str);
+f_locks is set to a count of lockd locks in nlm_traverse_locks which
+*was* always called by nlm_inspect_file which is called immediately
+before the code you are changing.
+But since your patch, nlm_inspect_file does not always call
+nlm_traverse_locks, so there is a chance that f_locks is wrong.
 
-Bad.  It is "__be32" in linux/inet.h, and the difference an be
-important.
-Can you just #include <linux/inet.h> ???
+With this patch, f_locks it not used at all any more.
 
-> +
-> +static
-> +ssize_t failover_parse(int where, struct file *file, char *buf, size_t size)
-> +{
-> +	char *fo_path, *mesg;
-> +	__be32 server_ip[4];
+Introducing a bug in one patch and fixing in the next is bad style.
 
-Why '4' ???
+Some options:
 
-Also, fo_path is only sometimes a path, so the name choice could be
-confusing.  You use "data" in the formal parameters for nfsd_fo_cmd,
-which is more idiomatic at least.
-Maybe we should have a 
-union unlock_args {
-	char *path;
-	__be32 IPv4;
-};
-and pass around a pointer to such a union?
-If you don't like that I would be happy with a 'void*', but not with a
-'char *' called path.
+ Have an initial patch which removes all references to f_locks and
+ includes the change in this patch.  With that in place your main
+ patch won't introduce a bug.  If you do this, you should attempt to
+ understand and justify the performance impact (does nlm_traverse_files
+ become quadratic in number of locks.  Is that acceptable?).
 
-> @@ -717,7 +776,6 @@ static void __exit exit_nfsd(void)
->  	nfsd4_free_slabs();
->  	unregister_filesystem(&nfsd_fs_type);
->  }
-> -
->  MODULE_AUTHOR("Olaf Kirch <okir-pn4DOG8n3UYbFoVRYvo4fw@public.gmane.org>");
->  MODULE_LICENSE("GPL");
->  module_init(init_nfsd)
+ Change the first patch to explicitly update f_count if you bypass the
+ call to nlm_inspect_file.
 
-Any good reason for removing this blank line?
+ something else???
 
-
-> +int nlmsvc_fo_match(struct nlm_host *dummy1, struct nlm_host *dummy2)
-> +{
-> +        return 1;
-> +}
-
-White space damage.  Did you run checkpatch.pl??
-
-> +int
-> +nlmsvc_fo_cmd(int cmd, void *datap, int grace_time)
-> +{
-> +	nlm_fo_cmd fo_cmd;
-> +	int rc=-EINVAL;
-> +
-> +	fo_printk("lockd: nlmsvc_fo_cmd enter, cmd=%d, datap=0x%p, gp=%d\n",
-> +		cmd, datap, grace_time);
-> +
-> +	fo_cmd.cmd   = cmd;
-> +	fo_cmd.stat  = 0;
-> +	fo_cmd.gp    = 0;
-> +	fo_cmd.datap = datap;
-> +
-> +	/* "if" place holder for NFSD_FO_RESUME */
-> +	{
-> +		/* fo_start */
-> +		rc = nlm_traverse_files((struct nlm_host*) &fo_cmd, 
-> +					nlmsvc_fo_match);
-> +		fo_printk("nlmsvc_fo_cmd rc=%d, stat=%d\n", rc, fo_cmd.stat);
-> +	} 
-> +
-> +	return rc;
-> +}
-> +
-> +EXPORT_SYMBOL(nlmsvc_fo_cmd);
-
-I think today's convention it to not have a blank line before
-EXPORT_SYMBOL.  checkpatch.pl should pick this up for you.
-
-> --- linux-o/include/linux/lockd/lockd.h	2008-01-04 10:01:08.000000000 -0500
-> +++ linux/include/linux/lockd/lockd.h	2008-01-06 15:14:55.000000000 -0500
-> @@ -39,7 +39,7 @@
->  struct nlm_host {
->  	struct hlist_node	h_hash;		/* doubly linked list */
->  	struct sockaddr_in	h_addr;		/* peer address */
-> -	struct sockaddr_in	h_saddr;	/* our address (optional) */
-> +	struct sockaddr_in      h_saddr;        /* our address (optional) */
->  	struct rpc_clnt	*	h_rpcclnt;	/* RPC client to talk to peer */
->  	char *			h_name;		/* remote hostname */
->  	u32			h_version;	/* interface version */
-
-This change is purely white-space breakage.
-
-
-> @@ -214,6 +215,17 @@ void		  nlmsvc_mark_resources(void);
->  void		  nlmsvc_free_host_resources(struct nlm_host *);
->  void		  nlmsvc_invalidate_all(void);
->  
-> +/* cluster failover support */
-> +
-> +typedef struct {
-> +	int     cmd;
-> +	int     stat;
-> +	int     gp;
-> +	void    *datap;
-> +} nlm_fo_cmd;
-
-gp???  I guess that means 'grace period'.  It isn't used at all in
-this patch.  Ideally it should only be introduce in the patch which
-uses it, but it definitely needs a better name - and preferably a
-comment.
+So NAK for this one in it's current form... unless I've misunderstood
+something.
 
 NeilBrown
+
+> 
+> -- Wendy
+> 
+> This fixes the incorrect fclose call inside nlm_traverse_files() where
+> a posix lock could still be held by NFS client. Problem was found in a
+> kernel panic inside locks_remove_flock() (fs/locks.c:2034) as part of
+> the fclose call due to NFS-NLM locks still hanging on inode->i_flock list.
+> 
+> Signed-off-by: S. Wendy Cheng <wcheng@redhat.com>
+> 
+>  svcsubs.c |    3 +--
+>  1 files changed, 1 insertion(+), 2 deletions(-)
+> 
+> --- linux-nlm-1/fs/lockd/svcsubs.c	2008-01-06 18:23:20.000000000 -0500
+> +++ linux/fs/lockd/svcsubs.c	2008-01-06 18:24:12.000000000 -0500
+> @@ -332,8 +332,7 @@ nlm_traverse_files(struct nlm_host *host
+>  			mutex_lock(&nlm_file_mutex);
+>  			file->f_count--;
+>  			/* No more references to this file. Let go of it. */
+> -			if (list_empty(&file->f_blocks) && !file->f_locks
+> -			 && !file->f_shares && !file->f_count) {
+> +			if (!nlm_file_inuse(file)) {
+>  				hlist_del(&file->f_list);
+>  				nlmsvc_ops->fclose(file->f_file);
+>  				kfree(file);
