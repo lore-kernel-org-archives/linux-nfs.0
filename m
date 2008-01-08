@@ -1,97 +1,114 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH 6/6] NLM: Add reference counting to lockd
-Date: Tue, 8 Jan 2008 17:46:33 +1100
-Message-ID: <18307.7241.831689.998668@notabene.brown>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH 1/6] SUNRPC: spin svc_rqst initialization to its own
+ function
+Date: Tue, 8 Jan 2008 07:11:22 -0500
+Message-ID: <20080108071122.3a386a57@tleilax.poochiereds.net>
 References: <1199534542-3384-1-git-send-email-jlayton@redhat.com>
 	<1199534542-3384-2-git-send-email-jlayton@redhat.com>
-	<1199534542-3384-3-git-send-email-jlayton@redhat.com>
-	<1199534542-3384-4-git-send-email-jlayton@redhat.com>
-	<1199534542-3384-5-git-send-email-jlayton@redhat.com>
-	<1199534542-3384-6-git-send-email-jlayton@redhat.com>
-	<1199534542-3384-7-git-send-email-jlayton@redhat.com>
+	<18307.4037.415675.519239@notabene.brown>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=US-ASCII
 Cc: akpm@linux-foundation.org, linux-nfs@vger.kernel.org,
 	linux-kernel@vger.kernel.org
-To: Jeff Layton <jlayton@redhat.com>
+To: Neil Brown <neilb@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.suse.de ([195.135.220.2]:42164 "EHLO mx1.suse.de"
+Received: from mx1.redhat.com ([66.187.233.31]:54672 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751428AbYAHGqm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Jan 2008 01:46:42 -0500
-In-Reply-To: message from Jeff Layton on Saturday January 5
+	id S1751445AbYAHML3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Jan 2008 07:11:29 -0500
+In-Reply-To: <18307.4037.415675.519239-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Saturday January 5, jlayton@redhat.com wrote:
-> @@ -357,7 +375,18 @@ lockd_down(void)
->  		goto out;
->  	}
->  	warned = 0;
-> -	kthread_stop(nlmsvc_task);
-> +	if (atomic_sub_return(1, &nlmsvc_ref) != 0)
-> +		printk(KERN_WARNING "lockd_down: lockd is waiting for "
-> +			"outstanding requests to complete before exiting.\n");
+On Tue, 8 Jan 2008 16:53:09 +1100
+Neil Brown <neilb@suse.de> wrote:
 
-Why not "atomic_dec_and_test" ??
+> On Saturday January 5, jlayton@redhat.com wrote:
+> > Move the initialzation in __svc_create_thread that happens prior to
+> > thread creation to a new function. Export the function to allow
+> > services to have better control over the svc_rqst structs.
+> > 
+> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > ---
+> >  include/linux/sunrpc/svc.h |    2 ++
+> >  net/sunrpc/svc.c           |   43
+> > +++++++++++++++++++++++++++++++------------ 2 files changed, 33
+> > insertions(+), 12 deletions(-)
+> > 
+> > diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+> > index 8531a70..5f07300 100644
+> > --- a/include/linux/sunrpc/svc.h
+> > +++ b/include/linux/sunrpc/svc.h
+> > @@ -382,6 +382,8 @@ struct svc_procedure {
+> >   */
+> >  struct svc_serv *  svc_create(struct svc_program *, unsigned int,
+> >  			      void (*shutdown)(struct svc_serv*));
+> > +struct svc_rqst *svc_prepare_thread(struct svc_serv *serv,
+> > +					struct svc_pool *pool);
+> >  int		   svc_create_thread(svc_thread_fn, struct
+> > svc_serv *); void		   svc_exit_thread(struct svc_rqst
+> > *); struct svc_serv *  svc_create_pooled(struct svc_program *,
+> > unsigned int, diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+> > index fca17d0..b29ed43 100644
+> > --- a/net/sunrpc/svc.c
+> > +++ b/net/sunrpc/svc.c
+> > @@ -538,23 +538,14 @@ svc_release_buffer(struct svc_rqst *rqstp)
+> >  			put_page(rqstp->rq_pages[i]);
+> >  }
+> >  
+> > -/*
+> > - * Create a thread in the given pool.  Caller must hold BKL.
+> > - * On a NUMA or SMP machine, with a multi-pool serv, the thread
+> > - * will be restricted to run on the cpus belonging to the pool.
+> > - */
+> > -static int
+> > -__svc_create_thread(svc_thread_fn func, struct svc_serv *serv,
+> > -		    struct svc_pool *pool)
+> > +struct svc_rqst *
+> > +svc_prepare_thread(struct svc_serv *serv, struct svc_pool *pool)
+> >  {
+> >  	struct svc_rqst	*rqstp;
+> > -	int		error = -ENOMEM;
+> > -	int		have_oldmask = 0;
+> > -	cpumask_t	oldmask;
+> >  
+> >  	rqstp = kzalloc(sizeof(*rqstp), GFP_KERNEL);
+> >  	if (!rqstp)
+> > -		goto out;
+> > +		goto out_enomem;
+> >  
+> >  	init_waitqueue_head(&rqstp->rq_wait);
+> >  
+> > @@ -570,6 +561,34 @@ __svc_create_thread(svc_thread_fn func, struct
+> > svc_serv *serv, spin_unlock_bh(&pool->sp_lock);
+> >  	rqstp->rq_server = serv;
+> >  	rqstp->rq_pool = pool;
+> > +	return rqstp;
+> > +
+> > +out_thread:
+> > +	svc_exit_thread(rqstp);
+> 
+> I realise that the bug existed before your change, but calling
+> svc_exit_thread at this point is not good.
+> The 'goto out_thread' is *before* "pool->sp_nrthreads++", but
+> svc_exit_thread does "pool->sp_nrthreads--;".  Not good.
+> 
+> As you are playing is this code, do you feel like fixing that error
+> path??
+> 
+> 
+> Otherwise, patch looks good.
+> Acked-By: NeilBrown <neilb@suse.de>
+> 
+> Thanks,
+> NeilBrown
 
-> +
-> +	/*
-> +	 * Sending a signal is necessary here. If we get to this point and
-> +	 * nlm_blocked isn't empty then lockd may be held hostage by clients
-> +	 * that are still blocking. Sending the signal makes sure that lockd
-> +	 * invalidates all of its locks so that it's just waiting on RPC
-> +	 * callbacks to complete
-> +	 */
-> +	kill_proc(nlmsvc_task->pid, SIGKILL, 1);
+Good catch. That bug will be a NULL pointer dereference since
+rqstp->rq_pool isn't even set yet. There's a similar bug with
+serv->sv_nrthreads too.
 
-The previous patch removes a kill_proc(... SIGKILL),  this one adds it
-back.
-That makes me wonder if the intermediate state is 'correct'.
+Still looking over your other comments, but I'll plan to post an
+updated patchset that includes a fix for that.
 
-But I also wonder what "correct" means.
-Do we want all locks to be dropped when the last nfsd thread dies?
-The answer is presumably either "yes" or "no".
-If "yes", then we don't have that because if there are any NFS mounts
-active, lockd will not be killed.
-If "no", then we don't want this kill_proc here.
-
-The comment in lockd() which currently reads:
-
-	/*
-	 * The main request loop. We don't terminate until the last
-	 * NFS mount or NFS daemon has gone away, and we've been sent a
-	 * signal, or else another process has taken over our job.
-	 */
-
-suggests that someone once thought that lockd could hang around after
-all nfsd threads and nfs mounts had gone, but I don't think it does.
-
-We really should think this through and get it right, because if lockd
-ever drops it's locks, then we really need to make sure sm_notify gets
-run.  So it needs to be a well defined event.
-
-Thoughts?
-
-Also, it is sad that the inc/dec of nlmsvc_ref is called in somewhat
-non-obvious ways.
-e.g.
-
-> +	if (!nlmsvc_users && error)
-> +		atomic_dec(&nlmsvc_ref);
-
-and
-
-> +	if (list_empty(&nlm_blocked))
-> +		atomic_inc(&nlmsvc_ref);
-> +
->  	if (list_empty(&block->b_list)) {
->  		kref_get(&block->b_count);
->  	} else {
-
-where if we moved the atomic_inc a little bit later next to the
-"list_add_tail" (which seems to make more sense) it would actually be
-wrong... But I think that code is correct as it is - just non-obvious.
-
-NeilBrown
-
+-- 
+Jeff Layton <jlayton@redhat.com>
