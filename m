@@ -1,144 +1,96 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 3/3] NFS: Use cached nlm_host when calling nlmclnt_proc()
-Date: Tue, 08 Jan 2008 10:32:22 -0500
-Message-ID: <20080108153221.20097.13404.stgit@manray.1015granger.net>
+Subject: [PATCH 2/3] NFS: Invoke nlmclnt_init during NFS mount processing
+Date: Tue, 08 Jan 2008 10:32:14 -0500
+Message-ID: <20080108153214.20097.21923.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from flpi102.sbcis.sbc.com ([207.115.20.71]:23062 "EHLO
+Received: from flpi102.sbcis.sbc.com ([207.115.20.71]:22714 "EHLO
 	flpi102.prodigy.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753767AbYAHPcc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jan 2008 10:32:32 -0500
+	with ESMTP id S1750844AbYAHPcV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jan 2008 10:32:21 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Now that each NFS mount point caches its own nlm_host structure, it can be
-passed to nlmclnt_proc() for each lock request.  By pinning an nlm_host for
-each mount point, we trade the overhead of looking up or creating a fresh
-nlm_host struct during every NLM procedure call for a little extra memory.
-
-We also restrict the nlmclnt_proc symbol to limit the use of this call to
-in-tree modules.
-
-Note that nlm_lookup_host() (just removed from the client's per-request
-NLM processing) could also trigger an nlm_host garbage collection.  Now
-client-side nlm_host garbage collection occurs only during NFS mount
-processing.  Since the NFS client now holds a reference on these nlm_host
-structures, they wouldn't have been affected by garbage collection
-anyway.
-
-Given that nlm_lookup_host() reorders the global nlm_host chain after
-every successful lookup, and that a garbage collection could be triggered
-during the call, we've removed a significant amount of per-NLM-request
-CPU processing overhead.
-
-Sidebar: there are only a few remaining references to the internals of
-NFS inodes in the client-side NLM code.  The only references I found are
-related to extracting or comparing the inode's file handle via NFS_FH().
-One is in nlmclnt_grant(); the other is in nlmclnt_setlockargs().
+Cache an appropriate nlm_host structure in the NFS client's mount point
+metadata for later use.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/lockd/clntproc.c        |   22 ++++------------------
- fs/nfs/nfs3proc.c          |    5 ++++-
- fs/nfs/proc.c              |    5 ++++-
- include/linux/lockd/bind.h |    3 ++-
- 4 files changed, 14 insertions(+), 21 deletions(-)
+ fs/nfs/client.c           |   25 ++++++++++++++++++-------
+ include/linux/nfs_fs_sb.h |    2 ++
+ 2 files changed, 20 insertions(+), 7 deletions(-)
 
-diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
-index a10343b..40d498b 100644
---- a/fs/lockd/clntproc.c
-+++ b/fs/lockd/clntproc.c
-@@ -148,30 +148,16 @@ static void nlmclnt_release_lockargs(struct nlm_rqst *req)
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 33a5678..1d7d606 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -439,7 +439,7 @@ static int nfs_create_rpc_client(struct nfs_client *clp, int proto,
+ static void nfs_destroy_server(struct nfs_server *server)
+ {
+ 	if (!(server->flags & NFS_MOUNT_NONLM))
+-		lockd_down();	/* release rpc.lockd */
++		nlmclnt_done(server->nlm_host);
+ }
+ 
  /*
-  * This is the main entry point for the NLM client.
+@@ -447,18 +447,29 @@ static void nfs_destroy_server(struct nfs_server *server)
   */
--int
--nlmclnt_proc(struct inode *inode, int cmd, struct file_lock *fl)
-+int nlmclnt_proc(struct nlm_host *host, int cmd, struct file_lock *fl)
+ static int nfs_start_lockd(struct nfs_server *server)
  {
--	struct rpc_clnt		*client = NFS_CLIENT(inode);
--	struct sockaddr_in	addr;
--	struct nfs_server	*nfssrv = NFS_SERVER(inode);
--	struct nlm_host		*host;
- 	struct nlm_rqst		*call;
- 	sigset_t		oldset;
- 	unsigned long		flags;
--	int			status, vers;
--
--	vers = (NFS_PROTO(inode)->version == 3) ? 4 : 1;
--	if (NFS_PROTO(inode)->version > 3) {
--		printk(KERN_NOTICE "NFSv4 file locking not implemented!\n");
--		return -ENOLCK;
--	}
-+	int			status;
++	struct nfs_client *clp = server->nfs_client;
++	u32 nfs_version = clp->rpc_ops->version;
++	unsigned short protocol;
++	struct nlm_host *host;
+ 	int error = 0;
  
--	rpc_peeraddr(client, (struct sockaddr *) &addr, sizeof(addr));
--	host = nlmclnt_lookup_host(&addr, client->cl_xprt->prot, vers,
--				   nfssrv->nfs_client->cl_hostname,
--				   strlen(nfssrv->nfs_client->cl_hostname));
- 	if (host == NULL)
- 		return -ENOLCK;
-+	nlm_get_host(host);
- 
- 	call = nlm_alloc_call(host);
- 	if (call == NULL)
-@@ -219,7 +205,7 @@ nlmclnt_proc(struct inode *inode, int cmd, struct file_lock *fl)
- 	dprintk("lockd: clnt proc returns %d\n", status);
- 	return status;
+-	if (server->nfs_client->rpc_ops->version > 3)
++	if (nfs_version > 3)
+ 		goto out;
+ 	if (server->flags & NFS_MOUNT_NONLM)
+ 		goto out;
+-	error = lockd_up((server->flags & NFS_MOUNT_TCP) ?
+-			IPPROTO_TCP : IPPROTO_UDP);
+-	if (error < 0)
++
++	protocol = server->flags & NFS_MOUNT_TCP ?  IPPROTO_TCP : IPPROTO_UDP;
++	host = nlmclnt_init((struct sockaddr *)&clp->cl_addr, clp->cl_addrlen,
++			    clp->cl_hostname, nfs_version, protocol);
++	if (IS_ERR(host)) {
++		error = PTR_ERR(host);
+ 		server->flags |= NFS_MOUNT_NONLM;
+-	else
+-		server->destroy = nfs_destroy_server;
++		goto out;
++	}
++
++	server->nlm_host = host;
++	server->destroy = nfs_destroy_server;
++
+ out:
+ 	return error;
  }
--EXPORT_SYMBOL(nlmclnt_proc);
-+EXPORT_SYMBOL_GPL(nlmclnt_proc);
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 383abe0..d75cf0a 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -5,6 +5,7 @@
+ #include <linux/backing-dev.h>
+ 
+ struct nfs_iostats;
++struct nlm_host;
  
  /*
-  * Allocate an NLM RPC call struct
-diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
-index 4cdc236..f07b8d7 100644
---- a/fs/nfs/nfs3proc.c
-+++ b/fs/nfs/nfs3proc.c
-@@ -796,7 +796,10 @@ static void nfs3_proc_commit_setup(struct nfs_write_data *data, int how)
- static int
- nfs3_proc_lock(struct file *filp, int cmd, struct file_lock *fl)
- {
--	return nlmclnt_proc(filp->f_path.dentry->d_inode, cmd, fl);
-+	struct inode *inode = filp->f_path.dentry->d_inode;
-+	struct nlm_host *host = NFS_SERVER(inode)->nlm_host;
-+
-+	return nlmclnt_proc(host, cmd, fl);
- }
- 
- const struct nfs_rpc_ops nfs_v3_clientops = {
-diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
-index 4f80d88..50cac6a 100644
---- a/fs/nfs/proc.c
-+++ b/fs/nfs/proc.c
-@@ -609,7 +609,10 @@ nfs_proc_commit_setup(struct nfs_write_data *data, int how)
- static int
- nfs_proc_lock(struct file *filp, int cmd, struct file_lock *fl)
- {
--	return nlmclnt_proc(filp->f_path.dentry->d_inode, cmd, fl);
-+	struct inode *inode = filp->f_path.dentry->d_inode;
-+	struct nlm_host *host = NFS_SERVER(inode)->nlm_host;
-+
-+	return nlmclnt_proc(host, cmd, fl);
- }
- 
- 
-diff --git a/include/linux/lockd/bind.h b/include/linux/lockd/bind.h
-index 372c8df..59d51f1 100644
---- a/include/linux/lockd/bind.h
-+++ b/include/linux/lockd/bind.h
-@@ -42,7 +42,8 @@ extern struct nlm_host *nlmclnt_init(struct sockaddr *server_address,
- 					unsigned short protocol);
- extern void	nlmclnt_done(struct nlm_host *host);
- 
--extern int	nlmclnt_proc(struct inode *, int, struct file_lock *);
-+extern int	nlmclnt_proc(struct nlm_host *host, int cmd,
-+					struct file_lock *fl);
- extern int	lockd_up(int proto);
- extern void	lockd_down(void);
- 
+  * The nfs_client identifies our client state to the server.
+@@ -80,6 +81,7 @@ struct nfs_server {
+ 	struct list_head	master_link;	/* link in master servers list */
+ 	struct rpc_clnt *	client;		/* RPC client handle */
+ 	struct rpc_clnt *	client_acl;	/* ACL RPC client handle */
++	struct nlm_host		*nlm_host;	/* NLM client handle */
+ 	struct nfs_iostats *	io_stats;	/* I/O statistics */
+ 	struct backing_dev_info	backing_dev_info;
+ 	atomic_long_t		writeback;	/* number of writeback pages */
 
