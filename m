@@ -1,64 +1,154 @@
-From: Ian Kent <raven@themaw.net>
-Subject: Re: [NFS] Attempting to mount a large number of directories
-Date: Tue, 08 Jan 2008 12:07:43 +0900
-Message-ID: <1199761663.3155.17.camel@raven.themaw.net>
-References: <200712241200.08410.lists@fabis-site.net>
-	 <1199695504.3156.69.camel@raven.themaw.net>
-	 <200801072228.58507.lists@fabis-site.net>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH 1/2] NLM failover unlock commands
+Date: Tue, 8 Jan 2008 16:18:05 +1100
+Message-ID: <18307.1933.159410.677626@notabene.brown>
+References: <4781BB0D.90706@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org
-To: Fabian Steiner <lists-A1xC5SIKT5unwkN7LPkuEg@public.gmane.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: NFS list <linux-nfs@vger.kernel.org>, cluster-devel@redhat.com
+To: wcheng@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from out5.smtp.messagingengine.com ([66.111.4.29]:33264 "EHLO
-	out5.smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751902AbYAHDf6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Jan 2008 22:35:58 -0500
-In-Reply-To: <200801072228.58507.lists-A1xC5SIKT5unwkN7LPkuEg@public.gmane.org>
+Received: from cantor2.suse.de ([195.135.220.15]:58491 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750718AbYAHFSN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Jan 2008 00:18:13 -0500
+In-Reply-To: message from Wendy Cheng on Monday January 7
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Mon, 2008-01-07 at 22:28 +0100, Fabian Steiner wrote:
-> Ian Kent wrote:
-> >> [...]
-> > I see no-one else wanted to buy into this.
-> > I'm not really surprised.
+On Monday January 7, wcheng@redhat.com wrote:
+> We've implemented two new NFSD procfs files:
 > 
-> Thanks a lot for your explainations! Now it is much easier to understand how 
-> things work on the low-level area.
+> o /proc/fs/nfsd/unlock_ip
+> o /proc/fs/nfsd/unlock_filesystem
 > 
-> > Judging by your attempt to use the insecure option I assume you actually
-> > know that you're running out of port space on the client. The server, of
-> > course, consumes only a few ports, like ports for mountd, portmap (or
-> > rpcbind) and NFS and because it's a server and it reuses the same port
-> > since the different port used on the client makes the tupple
-> > clientaddr,clientport,serveraddr,serverport unique. Point is that port
-> > space is consumed on the client not the server.
-> >
-> > So running out of port space is a client problem and the reason it
-> > happens is that autofs and mount probe to see if the server is up and
-> > what version of NFS is available etc. before doing the mount. This can
-> > result in as many a 9 ports consumed for each mount and the ports that
-> > aren't continuing to be used can't be reused before a timeout has
-> > passed. I think it's about 60 seconds, and is required for the TCP
-> > implementation to function properly. So you run out of available ports
-> > fairly quickly if you issue many mount requests at once.
-> >
-> > Quite a bit of work has been done to reduce the port usage over time and
-> > I think it has been included in recent nfs-utils releases so perhaps a
-> > later nfs-utils will help.
+> They are intended to allow admin or user mode script to release NLM 
+> locks based on either a path name or a server in-bound ip address (ipv4 
+> for now)
+> as;
 > 
-> On the affected machines nfs-utils-1.0.7 has been installed so far. Picking up 
-> your hint we forced an upgrade from Ubuntu Dapper to Ubuntu Gutsy with 
-> version 1.1.1~git-20070709 being installed and obviously this solved the 
-> majority number of problems. Now approx. 400 directories can be mounted. Of 
-> course, the entire issue requires further investigation; we are quite content 
-> about the current situation, though.
+> shell> echo 10.1.1.2 > /proc/fs/nfsd/unlock_ip
+> shell> echo /mnt/sfs1 > /proc/fs/nfsd/unlock_filesystem
 
-Great, you may also find that specifying the protocol as a mount option,
-proto=tcp for example, will reduce the overhead further.
+I'm happy with this interface and the code looks credible, so 
+  Acked-by: NeilBrown <neilb@suse.de>
 
-Ian
+however......
+	
+
+> --- linux-o/fs/nfsd/nfsctl.c	2008-01-04 10:01:08.000000000 -0500
+> +++ linux/fs/nfsd/nfsctl.c	2008-01-06 15:27:34.000000000 -0500
+> @@ -288,6 +295,56 @@ static ssize_t write_getfd(struct file *
+>  	return err;
+>  }
+>  
+> +extern __u32 in_aton(const char *str);
+
+Bad.  It is "__be32" in linux/inet.h, and the difference an be
+important.
+Can you just #include <linux/inet.h> ???
+
+> +
+> +static
+> +ssize_t failover_parse(int where, struct file *file, char *buf, size_t size)
+> +{
+> +	char *fo_path, *mesg;
+> +	__be32 server_ip[4];
+
+Why '4' ???
+
+Also, fo_path is only sometimes a path, so the name choice could be
+confusing.  You use "data" in the formal parameters for nfsd_fo_cmd,
+which is more idiomatic at least.
+Maybe we should have a 
+union unlock_args {
+	char *path;
+	__be32 IPv4;
+};
+and pass around a pointer to such a union?
+If you don't like that I would be happy with a 'void*', but not with a
+'char *' called path.
+
+> @@ -717,7 +776,6 @@ static void __exit exit_nfsd(void)
+>  	nfsd4_free_slabs();
+>  	unregister_filesystem(&nfsd_fs_type);
+>  }
+> -
+>  MODULE_AUTHOR("Olaf Kirch <okir-pn4DOG8n3UYbFoVRYvo4fw@public.gmane.org>");
+>  MODULE_LICENSE("GPL");
+>  module_init(init_nfsd)
+
+Any good reason for removing this blank line?
 
 
+> +int nlmsvc_fo_match(struct nlm_host *dummy1, struct nlm_host *dummy2)
+> +{
+> +        return 1;
+> +}
+
+White space damage.  Did you run checkpatch.pl??
+
+> +int
+> +nlmsvc_fo_cmd(int cmd, void *datap, int grace_time)
+> +{
+> +	nlm_fo_cmd fo_cmd;
+> +	int rc=-EINVAL;
+> +
+> +	fo_printk("lockd: nlmsvc_fo_cmd enter, cmd=%d, datap=0x%p, gp=%d\n",
+> +		cmd, datap, grace_time);
+> +
+> +	fo_cmd.cmd   = cmd;
+> +	fo_cmd.stat  = 0;
+> +	fo_cmd.gp    = 0;
+> +	fo_cmd.datap = datap;
+> +
+> +	/* "if" place holder for NFSD_FO_RESUME */
+> +	{
+> +		/* fo_start */
+> +		rc = nlm_traverse_files((struct nlm_host*) &fo_cmd, 
+> +					nlmsvc_fo_match);
+> +		fo_printk("nlmsvc_fo_cmd rc=%d, stat=%d\n", rc, fo_cmd.stat);
+> +	} 
+> +
+> +	return rc;
+> +}
+> +
+> +EXPORT_SYMBOL(nlmsvc_fo_cmd);
+
+I think today's convention it to not have a blank line before
+EXPORT_SYMBOL.  checkpatch.pl should pick this up for you.
+
+> --- linux-o/include/linux/lockd/lockd.h	2008-01-04 10:01:08.000000000 -0500
+> +++ linux/include/linux/lockd/lockd.h	2008-01-06 15:14:55.000000000 -0500
+> @@ -39,7 +39,7 @@
+>  struct nlm_host {
+>  	struct hlist_node	h_hash;		/* doubly linked list */
+>  	struct sockaddr_in	h_addr;		/* peer address */
+> -	struct sockaddr_in	h_saddr;	/* our address (optional) */
+> +	struct sockaddr_in      h_saddr;        /* our address (optional) */
+>  	struct rpc_clnt	*	h_rpcclnt;	/* RPC client to talk to peer */
+>  	char *			h_name;		/* remote hostname */
+>  	u32			h_version;	/* interface version */
+
+This change is purely white-space breakage.
+
+
+> @@ -214,6 +215,17 @@ void		  nlmsvc_mark_resources(void);
+>  void		  nlmsvc_free_host_resources(struct nlm_host *);
+>  void		  nlmsvc_invalidate_all(void);
+>  
+> +/* cluster failover support */
+> +
+> +typedef struct {
+> +	int     cmd;
+> +	int     stat;
+> +	int     gp;
+> +	void    *datap;
+> +} nlm_fo_cmd;
+
+gp???  I guess that means 'grace period'.  It isn't used at all in
+this patch.  Ideally it should only be introduce in the patch which
+uses it, but it definitely needs a better name - and preferably a
+comment.
+
+NeilBrown
