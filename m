@@ -1,38 +1,61 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 2/4] NLM: Introduce completion function to match nlmclnt_init
-Date: Mon, 7 Jan 2008 18:04:03 -0500
-Message-ID: <AB3076F8-4E4F-4862-A47E-5917BFBB702B@oracle.com>
-References: <20071220200405.3358.54150.stgit@manray.1015granger.net> <1199397248.1913.15.camel@heimdal.trondhjem.org>
-Mime-Version: 1.0 (Apple Message framework v753)
-Content-Type: text/plain; charset=US-ASCII; delsp=yes; format=flowed
-Cc: linux-nfs@vger.kernel.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: Man page update for timeo= and retrans= options.
+Date: Tue, 8 Jan 2008 12:32:50 +1100
+Message-ID: <18306.53954.61368.902438@notabene.brown>
+References: <18301.39633.368089.130622@notabene.brown>
+	<BA93E30A-817B-49B9-9703-FC77C2640BA5@oracle.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:23159 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753928AbYAGXE4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Jan 2008 18:04:56 -0500
-In-Reply-To: <1199397248.1913.15.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from cantor2.suse.de ([195.135.220.15]:45299 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753025AbYAHBc6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 7 Jan 2008 20:32:58 -0500
+In-Reply-To: message from Chuck Lever on Monday January 7
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond-
+On Monday January 7, chuck.lever@oracle.com wrote:
+> Hi Neil-
+> 
+> I just spent two months and rewrote all of nfs(5).  It should appear  
+> in the next release of nfs-utils.  Steve, when can we expect to see  
+> the updated man page?
 
-On Jan 3, 2008, at 4:54 PM, Trond Myklebust wrote:
-> On Thu, 2007-12-20 at 15:04 -0500, Chuck Lever wrote:
->> Introduce the other book-end for nlmclnt_init(). This function is  
->> invoked
->> by the NFS client during unmount processing to release the  
->> nlm_host struct
->> that was pinned by nlmclnt_init() during mount processing.
->
-> Does this really need to be a separate patch from the nlmclnt_init?
->
-> Furthermore, those EXPORT_SYMBOL() should really be EXPORT_SYMBOL_GPL.
-> We don't want to make this an official ABI.
+I thought I had seem some rewrite go past, but it wasn't in my inbox
+any more and also not it Steve's git so I just went ahead...
 
-Should I change nlmclnt_proc() to use EXPORT_SYMBOL_GPL then?
+I see it is in the .git now (as of Friday).
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+Comments:
+ - It says UDP defaults to 7/10 of a second, but
+      nfs_init_timeout_values()
+   says:
+		if (!to->to_initval)
+			to->to_initval = 11 * HZ / 10;
+
+   which suggests 11/10 of a second.
+
+ - It says 
+    If the retrans option is not specified, the NFS client retries
+    each request three times.
+
+  but nfs_init_timeout_values() says
+
+	if (!to->to_retries)
+		to->to_retries = 2;
+
+   which suggests it retries 2 time (or tries 3 times).
+
+
+ - It says:
+      After each retransmission, the NFS client doubles the timeout
+      for that request, up to a maximum timeout length of 60 seconds.
+
+   but doesn't (to me) make it clear that only applies to UDP.  For
+   TCP, the timeouts appear to increase linearly up to 600 seconds.
+
+Thanks,
+NeilBrown
