@@ -1,58 +1,48 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: atimes not updated over NFS
-Date: Wed, 09 Jan 2008 10:27:16 -0500
-Message-ID: <1199892437.11141.2.camel@heimdal.trondhjem.org>
-References: <20080109101313.GG9212@aym.net2.nerim.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 1/2] NLM failover unlock commands
+Date: Wed, 9 Jan 2008 11:13:37 -0500
+Message-ID: <20080109161337.GA9628@fieldses.org>
+References: <4781BB0D.90706@redhat.com> <20080108170220.GA21401@infradead.org>
+	<4784443D.4070801@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org
-To: Andre Majorel <aym-xunil-Bi/FLWfhfolQFI55V6+gNQ@public.gmane.org>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from pat.uio.no ([129.240.10.15]:39613 "EHLO pat.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752184AbYAIP1V (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 9 Jan 2008 10:27:21 -0500
-In-Reply-To: <20080109101313.GG9212-956IwFboN44acnK+F/IuxqxOck334EZe@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Christoph Hellwig <hch@infradead.org>, cluster-devel@redhat.com,
+	NFS list <linux-nfs@vger.kernel.org>
+To: Wendy Cheng <wcheng@redhat.com>
+Return-path: <cluster-devel-bounces@redhat.com>
+In-Reply-To: <4784443D.4070801@redhat.com>
+List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
+	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
+List-Archive: <https://www.redhat.com/archives/cluster-devel>
+List-Post: <mailto:cluster-devel@redhat.com>
+List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
+List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
+	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
+Sender: cluster-devel-bounces@redhat.com
+Errors-To: cluster-devel-bounces@redhat.com
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Tue, Jan 08, 2008 at 10:49:17PM -0500, Wendy Cheng wrote:
+> Christoph Hellwig wrote:
+>
+>>> +/* cluster failover support */
+>>> +
+>>> +typedef struct {
+>>> +	int     cmd;
+>>> +	int     stat;
+>>> +	int     gp;
+>>> +	void    *datap;
+>>> +} nlm_fo_cmd;
+>>>    
+>>>
+>>
+>> please don't introduce typedefs for struct types.
+>>  
+>>
+>
+> I don't do much community version of linux code so its coding standard  
+> is new to me. Any reason for this (not doing typedefs) ?
 
-On Wed, 2008-01-09 at 11:13 +0100, Andre Majorel wrote:
-> After upgrading an NFS server from kernel 2.6.12 to 2.6.23, the
-> atime of files is not updated any more when clients read them :
-> 
->   client$ ll -u --time-style +%Y-%m-%d_%H:%M:%S /nfsmnt/zz
->   -rw-r--r-- 1 xxx xxx 0 2007-12-21_14:58:11 /nfsmnt/zz
->   client$ md5sum /nfsmnt/zz
->   d41d8cd98f00b204e9800998ecf8427e  /nfsmnt/zz
->   client$ date +%Y-%m-%d_%H:%M:%S
->   2007-12-21_15:00:28
->   client$ ll -u --time-style +%Y-%m-%d_%H:%M:%S /nfsmnt/zz
->   -rw-r--r-- 1 xxx xxx 0 2007-12-21_14:58:11 /nfsmnt/zz
-> 
-> Reading the file locally, i.e. on the NFS server, does update the
-> atime :
-> 
->   server$ ll -u --time-style +%Y-%m-%d_%H:%M:%S /nfsmnt/zz
->   -rw-r--r-- 1 xxx xxx 0 2007-12-21_14:58:11 /nfsmnt/zz
->   serveur$ md5sum /nfsmnt/zz
->   d41d8cd98f00b204e9800998ecf8427e  /nfsmnt/zz
->   serveur$ date +%Y-%m-%d_%H:%M:%S
->   2007-12-21_15:04:00
->   serveur$ ll -u --time-style +%Y-%m-%d_%H:%M:%S /nfsmnt/zz
->   -rw-r--r-- 1 xxx xxx 0 2007-12-21_15:03:57 /nfsmnt/zz
-> 
-> /nfsmnt is mounted with options :
-> - server : rw,noexec,nosuid,nodev,nodiratime
-> - client : rw,user=root,nosuid,nodev,nodiratime,intr,rsize=8192,wsize=8192
-> 
-> Any ideas ?
+The argument is in "Chapter 5: Typdefs" of Documentation/CodingStyle.
 
-The file is probably entirely in cache on the client. When this happens,
-no READ rpc calls need to be made to the server and so the atime will
-not change either.
-
-This has always been the case, BTW...
-
-Trond
-
+--b.
