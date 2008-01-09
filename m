@@ -1,68 +1,51 @@
-From: Terry Spaulding <spauld@us.ibm.com>
-Subject: [NFS] SLES10 SP1 NFS setting ports .....
-Date: Wed, 9 Jan 2008 11:23:56 -0500
-Message-ID: <OFD7C84CE4.BF64E3AC-ON852573CB.005625AE-852573CB.005A14F9@us.ibm.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 0/3] Remove per-lock-operation nlm_lookup_host() call
+Date: Wed, 09 Jan 2008 12:20:03 -0500
+Message-ID: <20080109171834.7067.54266.stgit@manray.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>
-To: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org
+To: trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:35656 "EHLO neil.brown.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750720AbYAIQXn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 9 Jan 2008 11:23:43 -0500
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1JCdiO-0002Bj-Gk
-	for linux-nfs@vger.kernel.org; Thu, 10 Jan 2008 03:23:40 +1100
+Received: from flpi195.sbcis.sbc.com ([207.115.20.197]:43531 "EHLO
+	flpi195.prodigy.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752129AbYAIRUQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Jan 2008 12:20:16 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi Trond-
 
-List,
+Re-post with Christoph's comments addressed.
 
-I have a newly installed SLES10 SP1 system with kernel 2.16.46.-0.12 and
-nfs-utils-1.0.7-36.21.
+Calling nlm_lookup_host() during each NLM operation is a lot of overhead.
+The nlm_lookup_host() function grabs the nlm_host_mutex, serializing
+NLM operations and generating extra CPU invalidations on SMP systems.
 
-I assume that this version of nfs-utils is NFS v4 ?
+The nlm_lookup_host() function can also trigger nlm_host garbage
+collection, and reorders the global nlm_host chain after every successful
+nlm_host lookup, resulting in extraneous memory write traffic.
 
-This SLES10 SP1 system is a NFS Client. The current NFS server is a SLES9
-system.
+In addition, nlmclnt_proc() pokes around in the NFS inode and in the
+NFS client's rpc_xprt struct, both of which are layering violations that
+we can and should avoid.
 
-I have been able to set specific ports for lockd on SLES8 and SLES9 thanks
-to Neil Brown assistance but I see that with SLES10 it looks like the NFS
-version is newer and it does not like the kernel parms lockd_nlm.tcpport
-and lockd_nlm.udpport used in SLES9.
+The new architecture pins an nlm_host structure to each NFS client
+superblock that has the "lock" mount option set.  The client passes
+in the pinned nlm_host structure during each call to nlmclnt_proc().  NFS
+client unmount processing "puts" the nlm_host so it can be garbage-
+collected later.
 
-I receive:  'Unknown boot option 'lockd_nlm.tcpport=xxxx' : ignoring
-            'Unknown boot option 'lockd_nlm.udpport=xxxx' : ignoring
+By pinning an nlm_host for each mount point, we trade the overhead of
+looking up or creating a fresh nlm_host struct during every NLM procedure
+call for a little extra memory space utilization.
 
-I have not been successful in finding out what the kernel parameters would
-be to implement specific ports for lockd on SLES10 SP1.
+Please consider these patches for 2.6.25.
 
-Can anyone give me an example of the kernel parm needed to set a specific
-lockd port on SLES10 SP1 ?
+Sidebar: there are only a few remaining references to the internals of
+NFS inodes in the client-side NLM code.  The only references I found are
+related to extracting or comparing the inode's file handle via NFS_FH().
+One is in nlmclnt_grant(); the other is in nlmclnt_setlockargs().
 
-This is required to get thru the Firewalls.
-
-TIA .........................
-
-Regards,
-Terry L. Spaulding
-IBM ITS
-spauld@us.ibm.com
-
-
--------------------------------------------------------------------------
-Check out the new SourceForge.net Marketplace.
-It's the best place to buy or sell services for
-just about anything Open Source.
-http://ad.doubleclick.net/clk;164216239;13503038;w?http://sf.net/marketplace
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
-
+-- 
+corporate:    <chuck dot lever at oracle dot com>
