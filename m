@@ -1,65 +1,68 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH 6/6] NLM: Add reference counting to lockd
-Date: Wed, 9 Jan 2008 13:59:20 -0500
-Message-ID: <20080109135920.70eb82cb@tleilax.poochiereds.net>
-References: <1199820798-5289-1-git-send-email-jlayton@redhat.com>
-	<1199820798-5289-2-git-send-email-jlayton@redhat.com>
-	<1199820798-5289-3-git-send-email-jlayton@redhat.com>
-	<1199820798-5289-4-git-send-email-jlayton@redhat.com>
-	<1199820798-5289-5-git-send-email-jlayton@redhat.com>
-	<1199820798-5289-6-git-send-email-jlayton@redhat.com>
-	<1199820798-5289-7-git-send-email-jlayton@redhat.com>
-	<20080109174707.GC30523@infradead.org>
-	<20080109133621.72f611ec@tleilax.poochiereds.net>
-	<20080109184814.GA1562@infradead.org>
+From: Terry Spaulding <spauld@us.ibm.com>
+Subject: Re: [NFS] SLES10 SP1 NFS setting ports .....
+Date: Wed, 9 Jan 2008 14:43:08 -0500
+Message-ID: <OF4E152CB5.D994BC83-ON852573CB.006BCCFA-852573CB.006C51E9@us.ibm.com>
+References: <1199903975.7433.22.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: akpm@linux-foundation.org, neilb@suse.de,
-	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
+Content-Type: text/plain; charset="us-ascii"
+Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:44364 "EHLO mx1.redhat.com"
+Received: from neil.brown.name ([220.233.11.133]:44604 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752033AbYAIS7f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 9 Jan 2008 13:59:35 -0500
-In-Reply-To: <20080109184814.GA1562@infradead.org>
+	id S1752234AbYAITnJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 9 Jan 2008 14:43:09 -0500
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1JCgpP-0002sU-H8
+	for linux-nfs@vger.kernel.org; Thu, 10 Jan 2008 06:43:07 +1100
+In-Reply-To: <1199903975.7433.22.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 9 Jan 2008 18:48:14 +0000
-Christoph Hellwig <hch@infradead.org> wrote:
+Yes, If I mount and NFS filesystem on the client and issue rpcinfo -p I see
+random ports for udp and tcp assigned to the nlockmngr.
 
-> On Wed, Jan 09, 2008 at 01:36:21PM -0500, Jeff Layton wrote:
-> > I don't see a good alternative though. We need to be able to drop
-> > the and check the refcount in nlmsvc_unlink_block. That function is
-> > called from lockd, and we can't have lockd call kthread_stop on
-> > itself.
-> > 
-> > If you see a better way to do this, I'm certainly open to
-> > suggestions.
-> > 
-> > I'll note that my first stab at fixing this problem was to change
-> > the svc_wake_up() call in the rpc callback to a routine to wake up
-> > any lockd on the box that happened to be up. That sidesteps this
-> > entire problem of having to make sure lockd stays up. If we decided
-> > that was the right approach we could dump the last patch in this
-> > series altogether.
-> > 
-> > That said there could be other use after free bugs lurking in the
-> > lockd code so maybe keeping lockd up until nlm_blocked is empty is
-> > the right thing to do.
-> 
-> What about just not exiting from lockd as long as nlm_blocked is not
-> empty?  lockd_down still simply calls kthread_stop, but lockd only
-> honours it when nlm_blocked is empty?
+I am using the supplied kernel.
 
-lockd can basically block forever in this situation if the client
-goes away for good. With the current kthread implementation,
-kthread_stops are serialized and I don't think we want to monopolize
-the kthread_stop queue.
+How can I tell the module was compiled as lockd ? I assume it is setup
+similar to how SLES9 and SLES8 was where the lockd is compiled in the
+kernel
+and requires the kernel parms in /etc/zipl.conf if you want to force it to
+use specific ports for firewall purposes.
 
-If kthread_stops could occur in parallel, that would be a different
-situation :-)
+Thanks .................
 
--- 
-Jeff Layton <jlayton@redhat.com>
+------------------------------------------------------------------------------------------------------------------------------------------
+Trond responds:
+
+Hmm. I don't have a copy of SLES10 with which to test, but I assume that
+lockd is compiled as a module, named 'lockd' right? I'm wondering if the
+above message just means that the kernel doesn't parse the options
+because the module isn't loaded yet.
+
+What happens when you do load the lockd module, and then start nfsd or
+mount an nfs partition? Does 'rpcinfo -p' show lockd listening on any
+other ports.
+------------------------------------------------------------------------------------------------------------------------------------------
+
+
+Regards,
+Terry L. Spaulding
+IBM ITS
+spauld@us.ibm.com
+
+
+-------------------------------------------------------------------------
+Check out the new SourceForge.net Marketplace.
+It's the best place to buy or sell services for
+just about anything Open Source.
+http://ad.doubleclick.net/clk;164216239;13503038;w?http://sf.net/marketplace
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
+
