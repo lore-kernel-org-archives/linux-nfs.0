@@ -1,91 +1,66 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH 6/6] NLM: Add reference counting to lockd
-Date: Wed, 9 Jan 2008 13:36:21 -0500
-Message-ID: <20080109133621.72f611ec@tleilax.poochiereds.net>
-References: <1199820798-5289-1-git-send-email-jlayton@redhat.com>
-	<1199820798-5289-2-git-send-email-jlayton@redhat.com>
-	<1199820798-5289-3-git-send-email-jlayton@redhat.com>
-	<1199820798-5289-4-git-send-email-jlayton@redhat.com>
-	<1199820798-5289-5-git-send-email-jlayton@redhat.com>
-	<1199820798-5289-6-git-send-email-jlayton@redhat.com>
-	<1199820798-5289-7-git-send-email-jlayton@redhat.com>
-	<20080109174707.GC30523@infradead.org>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [NFS] SLES10 SP1 NFS setting ports .....
+Date: Wed, 09 Jan 2008 13:39:35 -0500
+Message-ID: <1199903975.7433.22.camel@heimdal.trondhjem.org>
+References: <OFE438506B.9A02939C-ON852573CB.00640EAA-852573CB.00656E45@us.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: akpm@linux-foundation.org, neilb@suse.de,
-	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
+Content-Type: text/plain; charset="us-ascii"
+Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net
+To: Terry Spaulding <spauld@us.ibm.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:46795 "EHLO mx1.redhat.com"
+Received: from neil.brown.name ([220.233.11.133]:44280 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752145AbYAISgm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 9 Jan 2008 13:36:42 -0500
-In-Reply-To: <20080109174707.GC30523@infradead.org>
+	id S1753919AbYAISj7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 9 Jan 2008 13:39:59 -0500
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1JCfqG-0002OI-AA
+	for linux-nfs@vger.kernel.org; Thu, 10 Jan 2008 05:39:56 +1100
+In-Reply-To: <OFE438506B.9A02939C-ON852573CB.00640EAA-852573CB.00656E45@us.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 9 Jan 2008 17:47:07 +0000
-Christoph Hellwig <hch@infradead.org> wrote:
 
-> On Tue, Jan 08, 2008 at 02:33:18PM -0500, Jeff Layton wrote:
-> > ...and only have lockd exit when the last reference is dropped.
-> > 
-> > The problem is this:
-> > 
-> > When a lock that a client is blocking on comes free, lockd does
-> > this in nlmsvc_grant_blocked():
-> > 
-> >     nlm_async_call(block->b_call, NLMPROC_GRANTED_MSG,
-> > &nlmsvc_grant_ops);
-> > 
-> > the callback from this call is nlmsvc_grant_callback(). That
-> > function does this at the end to wake up lockd:
-> > 
-> >     svc_wake_up(block->b_daemon);
-> > 
-> > However there is no guarantee that lockd will be up when this
-> > happens. If someone shuts down or restarts lockd before the async
-> > call completes, then the b_daemon pointer will point to freed
-> > memory and the kernel may oops.
-> > 
-> > I first noticed this on older kernels and had mistakenly thought
-> > that newer kernels weren't susceptible, but that's not correct.
-> > There's a bit of a race to make sure that the nlm_host is bound
-> > when the async call is done, but I can now reproduce this at will
-> > on current kernels.
-> > 
-> > This patch is based on Trond's suggestion to add a new reference
-> > counter to lockd, and only allows lockd to go down when it reaches
-> > 0. With this change we can't use kthread_stop here.
-> > nlmsvc_unlink_block is called by lockd and a kthread can't call
-> > kthread_stop on itself. So the patch changes lockd to check the
-> > refcount itself and to return if it goes to 0. We do the checking
-> > and exit while holding the nlmsvc_mutex to make sure that a new
-> > lockd is not started until the old one is down.
+On Wed, 2008-01-09 at 13:27 -0500, Terry Spaulding wrote:
+> Trond,
 > 
-> I don't like this signals/kthread mixture at all.  Why can't we simply
-> call kthread_stop when the refcount hits zero and keep all the nice
-> kthread helpers?
+> My bad here. I had the  .  and  _  incorrectly specified. I see the
+> kernel-parameters doc. Thanks .......
 > 
+> I made the changes to /etc/zipl.conf, reran zipl and rebooted. I still get
+> these messages at Linux IPL:
+> 
+> Kernel command line:
+> root=/dev/disk/by-id/scsi-360050768018180762800000000000328-part1 TERM=dumb
+> elevator=noop lockd.nlm_tcpport=2051 lockd.nlm_udpport=2051 BOOT_IMAGE=0
+> Unknown boot option `lockd.nlm_tcpport=2051': ignoring
+> Unknown boot option `lockd.nlm_udpport=2051': ignoring
+> 
+> Any suggestions here ????
 
-As I stated in an earlier email, I'm not fond of this either :-)
+Hmm. I don't have a copy of SLES10 with which to test, but I assume that
+lockd is compiled as a module, named 'lockd' right? I'm wondering if the
+above message just means that the kernel doesn't parse the options
+because the module isn't loaded yet.
 
-I don't see a good alternative though. We need to be able to drop the
-and check the refcount in nlmsvc_unlink_block. That function is called
-from lockd, and we can't have lockd call kthread_stop on itself.
+What happens when you do load the lockd module, and then start nfsd or
+mount an nfs partition? Does 'rpcinfo -p' show lockd listening on any
+other ports.
 
-If you see a better way to do this, I'm certainly open to suggestions.
+Cheers
+  Trond
 
-I'll note that my first stab at fixing this problem was to change the
-svc_wake_up() call in the rpc callback to a routine to wake up any
-lockd on the box that happened to be up. That sidesteps this entire
-problem of having to make sure lockd stays up. If we decided that was
-the right approach we could dump the last patch in this series
-altogether.
 
-That said there could be other use after free bugs lurking in the lockd
-code so maybe keeping lockd up until nlm_blocked is empty is the right
-thing to do.
+-------------------------------------------------------------------------
+Check out the new SourceForge.net Marketplace.
+It's the best place to buy or sell services for
+just about anything Open Source.
+http://ad.doubleclick.net/clk;164216239;13503038;w?http://sf.net/marketplace
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
--- 
-Jeff Layton <jlayton@redhat.com>
