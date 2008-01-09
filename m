@@ -1,67 +1,29 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [NFS] SLES10 SP1 NFS setting ports .....
-Date: Wed, 09 Jan 2008 12:32:30 -0500
-Message-ID: <1199899950.7433.3.camel@heimdal.trondhjem.org>
-References: <OFD7C84CE4.BF64E3AC-ON852573CB.005625AE-852573CB.005A14F9@us.ibm.com>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH 3/6] NLM: Initialize completion variable in lockd_up
+Date: Wed, 9 Jan 2008 17:35:42 +0000
+Message-ID: <20080109173542.GA30523@infradead.org>
+References: <1199820798-5289-1-git-send-email-jlayton@redhat.com> <1199820798-5289-2-git-send-email-jlayton@redhat.com> <1199820798-5289-3-git-send-email-jlayton@redhat.com> <1199820798-5289-4-git-send-email-jlayton@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net
-To: Terry Spaulding <spauld@us.ibm.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: akpm@linux-foundation.org, neilb@suse.de,
+	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:35646 "EHLO neil.brown.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753567AbYAIRcw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 9 Jan 2008 12:32:52 -0500
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1JCenK-0002GK-AT
-	for linux-nfs@vger.kernel.org; Thu, 10 Jan 2008 04:32:50 +1100
-In-Reply-To: <OFD7C84CE4.BF64E3AC-ON852573CB.005625AE-852573CB.005A14F9@us.ibm.com>
+Received: from pentafluge.infradead.org ([213.146.154.40]:41450 "EHLO
+	pentafluge.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752188AbYAIRgG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Jan 2008 12:36:06 -0500
+In-Reply-To: <1199820798-5289-4-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Tue, Jan 08, 2008 at 02:33:15PM -0500, Jeff Layton wrote:
+> lockd_start_done is a global var that can be reused if lockd is
+> restarted, but it's never reinitialized. On all but the first use,
+> wait_for_completion isn't actually waiting on it since it has
+> already completed once.
 
-On Wed, 2008-01-09 at 11:23 -0500, Terry Spaulding wrote:
-> List,
-> 
-> I have a newly installed SLES10 SP1 system with kernel 2.16.46.-0.12 and
-> nfs-utils-1.0.7-36.21.
-> 
-> I assume that this version of nfs-utils is NFS v4 ?
-> 
-> This SLES10 SP1 system is a NFS Client. The current NFS server is a SLES9
-> system.
-> 
-> I have been able to set specific ports for lockd on SLES8 and SLES9 thanks
-> to Neil Brown assistance but I see that with SLES10 it looks like the NFS
-> version is newer and it does not like the kernel parms lockd_nlm.tcpport
-> and lockd_nlm.udpport used in SLES9.
-> 
-> I receive:  'Unknown boot option 'lockd_nlm.tcpport=xxxx' : ignoring
->             'Unknown boot option 'lockd_nlm.udpport=xxxx' : ignoring
-
-The parameter names are
-
-                lockd.nlm_tcpport
-                lockd.nlm_udpport
-
-See Documentation/kernel-parameters.txt for more information (and the
-full list parameters that are supported).
-
-Cheers
-  Trond
-
-
--------------------------------------------------------------------------
-Check out the new SourceForge.net Marketplace.
-It's the best place to buy or sell services for
-just about anything Open Source.
-http://ad.doubleclick.net/clk;164216239;13503038;w?http://sf.net/marketplace
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+I don't think we'll need lockd_start_done anymore after the kthread
+conversion.  When kthread_run returns the thread it created is
+guaranteed to have run until it scheduled away.
 
