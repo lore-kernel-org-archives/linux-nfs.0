@@ -1,29 +1,81 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 3/6] NLM: Initialize completion variable in lockd_up
-Date: Wed, 9 Jan 2008 18:14:56 +0000
-Message-ID: <20080109181456.GA32432@infradead.org>
-References: <1199820798-5289-1-git-send-email-jlayton@redhat.com> <1199820798-5289-2-git-send-email-jlayton@redhat.com> <1199820798-5289-3-git-send-email-jlayton@redhat.com> <1199820798-5289-4-git-send-email-jlayton@redhat.com> <20080109173542.GA30523@infradead.org> <20080109130554.550ccde5@tleilax.poochiereds.net>
+From: Terry Spaulding <spauld@us.ibm.com>
+Subject: Re: [NFS] SLES10 SP1 NFS setting ports .....
+Date: Wed, 9 Jan 2008 13:27:53 -0500
+Message-ID: <OFE438506B.9A02939C-ON852573CB.00640EAA-852573CB.00656E45@us.ibm.com>
+References: <1199899950.7433.3.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>, akpm@linux-foundation.org,
-	neilb@suse.de, linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: Jeff Layton <jlayton@redhat.com>
+Content-Type: text/plain; charset="us-ascii"
+Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from pentafluge.infradead.org ([213.146.154.40]:53502 "EHLO
-	pentafluge.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752408AbYAISPB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Jan 2008 13:15:01 -0500
-In-Reply-To: <20080109130554.550ccde5-RtJpwOs3+0O+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
+Received: from neil.brown.name ([220.233.11.133]:58721 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752335AbYAIS1r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 9 Jan 2008 13:27:47 -0500
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1JCfeT-0002Kw-3v
+	for linux-nfs@vger.kernel.org; Thu, 10 Jan 2008 05:27:45 +1100
+In-Reply-To: <1199899950.7433.3.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jan 09, 2008 at 01:05:54PM -0500, Jeff Layton wrote:
-> Makes sense. My only concern is that we make sure this is behavior we
-> can count on in the future and not just an artifact of the current
-> kthread implementation. If that's the case, then I'll plan to remove it
-> on the next respin.
+Trond,
 
-It's absolutely intentional and one of the reasons why the kthread
-infrastructure is so much nicer than plain kthread_create :)
+My bad here. I had the  .  and  _  incorrectly specified. I see the
+kernel-parameters doc. Thanks .......
+
+I made the changes to /etc/zipl.conf, reran zipl and rebooted. I still get
+these messages at Linux IPL:
+
+Kernel command line:
+root=/dev/disk/by-id/scsi-360050768018180762800000000000328-part1 TERM=dumb
+elevator=noop lockd.nlm_tcpport=2051 lockd.nlm_udpport=2051 BOOT_IMAGE=0
+Unknown boot option `lockd.nlm_tcpport=2051': ignoring
+Unknown boot option `lockd.nlm_udpport=2051': ignoring
+
+Any suggestions here ????
+
+TIA .....................
+
+-----------------------------------------------------------------------------------------------------------------------------------
+Trond responded:
+
+The parameter names are
+
+                lockd.nlm_tcpport
+                lockd.nlm_udpport
+
+See Documentation/kernel-parameters.txt for more information (and the
+full list parameters that are supported).
+--------------------------------------------------------------------------------------------------------------------------------------
+> I have been able to set specific ports for lockd on SLES8 and SLES9
+thanks
+> to Neil Brown assistance but I see that with SLES10 it looks like the NFS
+> version is newer and it does not like the kernel parms lockd_nlm.tcpport
+> and lockd_nlm.udpport used in SLES9.
+>
+> I receive:  'Unknown boot option 'lockd_nlm.tcpport=xxxx' : ignoring
+>             'Unknown boot option 'lockd_nlm.udpport=xxxx' : ignoring
+-------------------------------------------------------------------------------------------------------------------------------------------
+
+
+Regards,
+Terry L. Spaulding
+IBM ITS
+spauld@us.ibm.com
+
+
+-------------------------------------------------------------------------
+Check out the new SourceForge.net Marketplace.
+It's the best place to buy or sell services for
+just about anything Open Source.
+http://ad.doubleclick.net/clk;164216239;13503038;w?http://sf.net/marketplace
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
