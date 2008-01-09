@@ -1,152 +1,67 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 3/3] NLM/NFS: Use cached nlm_host when calling nlmclnt_proc()
-Date: Wed, 09 Jan 2008 12:20:25 -0500
-Message-ID: <20080109172025.7067.59204.stgit@manray.1015granger.net>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [NFS] SLES10 SP1 NFS setting ports .....
+Date: Wed, 09 Jan 2008 12:32:30 -0500
+Message-ID: <1199899950.7433.3.camel@heimdal.trondhjem.org>
+References: <OFD7C84CE4.BF64E3AC-ON852573CB.005625AE-852573CB.005A14F9@us.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: linux-nfs@vger.kernel.org
-To: trond.myklebust@fys.uio.no
+Content-Type: text/plain; charset="us-ascii"
+Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net
+To: Terry Spaulding <spauld@us.ibm.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from flpi195.sbcis.sbc.com ([207.115.20.197]:44177 "EHLO
-	flpi195.prodigy.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752810AbYAIRUb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Jan 2008 12:20:31 -0500
+Received: from neil.brown.name ([220.233.11.133]:35646 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753567AbYAIRcw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 9 Jan 2008 12:32:52 -0500
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1JCenK-0002GK-AT
+	for linux-nfs@vger.kernel.org; Thu, 10 Jan 2008 04:32:50 +1100
+In-Reply-To: <OFD7C84CE4.BF64E3AC-ON852573CB.005625AE-852573CB.005A14F9@us.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Now that each NFS mount point caches its own nlm_host structure, it can be
-passed to nlmclnt_proc() for each lock request.  By pinning an nlm_host for
-each mount point, we trade the overhead of looking up or creating a fresh
-nlm_host struct during every NLM procedure call for a little extra memory.
 
-We also restrict the nlmclnt_proc symbol to limit the use of this call to
-in-tree modules.
+On Wed, 2008-01-09 at 11:23 -0500, Terry Spaulding wrote:
+> List,
+> 
+> I have a newly installed SLES10 SP1 system with kernel 2.16.46.-0.12 and
+> nfs-utils-1.0.7-36.21.
+> 
+> I assume that this version of nfs-utils is NFS v4 ?
+> 
+> This SLES10 SP1 system is a NFS Client. The current NFS server is a SLES9
+> system.
+> 
+> I have been able to set specific ports for lockd on SLES8 and SLES9 thanks
+> to Neil Brown assistance but I see that with SLES10 it looks like the NFS
+> version is newer and it does not like the kernel parms lockd_nlm.tcpport
+> and lockd_nlm.udpport used in SLES9.
+> 
+> I receive:  'Unknown boot option 'lockd_nlm.tcpport=xxxx' : ignoring
+>             'Unknown boot option 'lockd_nlm.udpport=xxxx' : ignoring
 
-Note that nlm_lookup_host() (just removed from the client's per-request
-NLM processing) could also trigger an nlm_host garbage collection.  Now
-client-side nlm_host garbage collection occurs only during NFS mount
-processing.  Since the NFS client now holds a reference on these nlm_host
-structures, they wouldn't have been affected by garbage collection
-anyway.
+The parameter names are
 
-Given that nlm_lookup_host() reorders the global nlm_host chain after
-every successful lookup, and that a garbage collection could be triggered
-during the call, we've removed a significant amount of per-NLM-request
-CPU processing overhead.
+                lockd.nlm_tcpport
+                lockd.nlm_udpport
 
-Sidebar: there are only a few remaining references to the internals of
-NFS inodes in the client-side NLM code.  The only references I found are
-related to extracting or comparing the inode's file handle via NFS_FH().
-One is in nlmclnt_grant(); the other is in nlmclnt_setlockargs().
+See Documentation/kernel-parameters.txt for more information (and the
+full list parameters that are supported).
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+Cheers
+  Trond
 
- fs/lockd/clntproc.c        |   33 ++++++++++-----------------------
- fs/nfs/nfs3proc.c          |    4 +++-
- fs/nfs/proc.c              |    4 +++-
- include/linux/lockd/bind.h |    3 ++-
- 4 files changed, 18 insertions(+), 26 deletions(-)
 
-diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
-index a10343b..b1a4dba 100644
---- a/fs/lockd/clntproc.c
-+++ b/fs/lockd/clntproc.c
-@@ -145,34 +145,21 @@ static void nlmclnt_release_lockargs(struct nlm_rqst *req)
- 	BUG_ON(req->a_args.lock.fl.fl_ops != NULL);
- }
- 
--/*
-- * This is the main entry point for the NLM client.
-+/**
-+ * nlmclnt_proc - Perform a single client-side lock request
-+ * @host: address of a valid nlm_host context representing the NLM server
-+ * @cmd: fcntl-style file lock operation to perform
-+ * @fl: address of arguments for the lock operation
-+ *
-  */
--int
--nlmclnt_proc(struct inode *inode, int cmd, struct file_lock *fl)
-+int nlmclnt_proc(struct nlm_host *host, int cmd, struct file_lock *fl)
- {
--	struct rpc_clnt		*client = NFS_CLIENT(inode);
--	struct sockaddr_in	addr;
--	struct nfs_server	*nfssrv = NFS_SERVER(inode);
--	struct nlm_host		*host;
- 	struct nlm_rqst		*call;
- 	sigset_t		oldset;
- 	unsigned long		flags;
--	int			status, vers;
--
--	vers = (NFS_PROTO(inode)->version == 3) ? 4 : 1;
--	if (NFS_PROTO(inode)->version > 3) {
--		printk(KERN_NOTICE "NFSv4 file locking not implemented!\n");
--		return -ENOLCK;
--	}
--
--	rpc_peeraddr(client, (struct sockaddr *) &addr, sizeof(addr));
--	host = nlmclnt_lookup_host(&addr, client->cl_xprt->prot, vers,
--				   nfssrv->nfs_client->cl_hostname,
--				   strlen(nfssrv->nfs_client->cl_hostname));
--	if (host == NULL)
--		return -ENOLCK;
-+	int			status;
- 
-+	nlm_get_host(host);
- 	call = nlm_alloc_call(host);
- 	if (call == NULL)
- 		return -ENOMEM;
-@@ -219,7 +206,7 @@ nlmclnt_proc(struct inode *inode, int cmd, struct file_lock *fl)
- 	dprintk("lockd: clnt proc returns %d\n", status);
- 	return status;
- }
--EXPORT_SYMBOL(nlmclnt_proc);
-+EXPORT_SYMBOL_GPL(nlmclnt_proc);
- 
- /*
-  * Allocate an NLM RPC call struct
-diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
-index 4cdc236..c11bb6a 100644
---- a/fs/nfs/nfs3proc.c
-+++ b/fs/nfs/nfs3proc.c
-@@ -796,7 +796,9 @@ static void nfs3_proc_commit_setup(struct nfs_write_data *data, int how)
- static int
- nfs3_proc_lock(struct file *filp, int cmd, struct file_lock *fl)
- {
--	return nlmclnt_proc(filp->f_path.dentry->d_inode, cmd, fl);
-+	struct inode *inode = filp->f_path.dentry->d_inode;
-+
-+	return nlmclnt_proc(NFS_SERVER(inode)->nlm_host, cmd, fl);
- }
- 
- const struct nfs_rpc_ops nfs_v3_clientops = {
-diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
-index 4f80d88..c3fe1bc 100644
---- a/fs/nfs/proc.c
-+++ b/fs/nfs/proc.c
-@@ -609,7 +609,9 @@ nfs_proc_commit_setup(struct nfs_write_data *data, int how)
- static int
- nfs_proc_lock(struct file *filp, int cmd, struct file_lock *fl)
- {
--	return nlmclnt_proc(filp->f_path.dentry->d_inode, cmd, fl);
-+	struct inode *inode = filp->f_path.dentry->d_inode;
-+
-+	return nlmclnt_proc(NFS_SERVER(inode)->nlm_host, cmd, fl);
- }
- 
- 
-diff --git a/include/linux/lockd/bind.h b/include/linux/lockd/bind.h
-index 372c8df..59d51f1 100644
---- a/include/linux/lockd/bind.h
-+++ b/include/linux/lockd/bind.h
-@@ -42,7 +42,8 @@ extern struct nlm_host *nlmclnt_init(struct sockaddr *server_address,
- 					unsigned short protocol);
- extern void	nlmclnt_done(struct nlm_host *host);
- 
--extern int	nlmclnt_proc(struct inode *, int, struct file_lock *);
-+extern int	nlmclnt_proc(struct nlm_host *host, int cmd,
-+					struct file_lock *fl);
- extern int	lockd_up(int proto);
- extern void	lockd_down(void);
- 
+-------------------------------------------------------------------------
+Check out the new SourceForge.net Marketplace.
+It's the best place to buy or sell services for
+just about anything Open Source.
+http://ad.doubleclick.net/clk;164216239;13503038;w?http://sf.net/marketplace
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
