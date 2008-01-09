@@ -1,60 +1,37 @@
-From: Terry Spaulding <spauld@us.ibm.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: [NFS] SLES10 SP1 NFS setting ports .....
-Date: Wed, 9 Jan 2008 14:56:26 -0500
-Message-ID: <OF8E5CF9B2.F07234A5-ON852573CB.006D6181-852573CB.006D89C2@us.ibm.com>
-References: <1199903975.7433.22.camel@heimdal.trondhjem.org>
+Date: Wed, 09 Jan 2008 15:22:45 -0500
+Message-ID: <1199910165.10701.3.camel@heimdal.trondhjem.org>
+References: <OF8E5CF9B2.F07234A5-ON852573CB.006D6181-852573CB.006D89C2@us.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Terry Spaulding <spauld@us.ibm.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:33958 "EHLO neil.brown.name"
+Received: from neil.brown.name ([220.233.11.133]:59040 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751026AbYAITz7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 9 Jan 2008 14:55:59 -0500
+	id S1755394AbYAIUXR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 9 Jan 2008 15:23:17 -0500
 Received: from brown by neil.brown.name with local (Exim 4.63)
 	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1JCh1p-0002xo-8v
-	for linux-nfs@vger.kernel.org; Thu, 10 Jan 2008 06:55:57 +1100
-In-Reply-To: <1199903975.7433.22.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+	id 1JChSE-0003C3-Oh
+	for linux-nfs@vger.kernel.org; Thu, 10 Jan 2008 07:23:14 +1100
+In-Reply-To: <OF8E5CF9B2.F07234A5-ON852573CB.006D6181-852573CB.006D89C2@us.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-ps.
 
-I did an lsmod while the NFS filesystem is mounted on the Client and I see
-the lockd module loaded
+On Wed, 2008-01-09 at 14:56 -0500, Terry Spaulding wrote:
+> ps.
+> 
+> I did an lsmod while the NFS filesystem is mounted on the Client and I see
+> the lockd module loaded
 
------------------------------------------------------------------------------------------------------------------------------------------------------
-Yes, If I mount and NFS filesystem on the client and issue rpcinfo -p I see
-random ports for udp and tcp assigned to the nlockmngr.
+What does 'modinfo lockd' say?
 
-I am using the supplied kernel.
+Cheers
+  Trond
 
-How can I tell the module was compiled as lockd ? I assume it is setup
-similar to how SLES9 and SLES8 was where the lockd is compiled in the
-kernel
-and requires the kernel parms in /etc/zipl.conf if you want to force it to
-use specific ports for firewall purposes.
-
-Thanks .................
-------------------------------------------------------------------------------------------------------------------------------------------
-Trond responds:
-
-Hmm. I don't have a copy of SLES10 with which to test, but I assume that
-lockd is compiled as a module, named 'lockd' right? I'm wondering if the
-above message just means that the kernel doesn't parse the options
-because the module isn't loaded yet.
-
-What happens when you do load the lockd module, and then start nfsd or
-mount an nfs partition? Does 'rpcinfo -p' show lockd listening on any
-other ports.
-------------------------------------------------------------------------------------------------------------------------------------------
-
-Regards,
-Terry L. Spaulding
-IBM ITS
-spauld@us.ibm.com
 
 
 -------------------------------------------------------------------------
