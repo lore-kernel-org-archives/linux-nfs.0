@@ -1,63 +1,66 @@
-From: Terry Spaulding <spauld@us.ibm.com>
-Subject: Re: [NFS] SLES10 SP1 NFS setting ports .....
-Date: Thu, 10 Jan 2008 08:29:23 -0500
-Message-ID: <OFFA3F71BE.9EFD6CBE-ON852573CC.0049CD1E-852573CC.004A1A2A@us.ibm.com>
-References: <18309.18942.424543.639785@notabene.brown>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Neil Brown <neilb@suse.de>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH 5/5] NLM: have nlm_shutdown_hosts kill off all NLM RPC tasks
+Date: Thu, 10 Jan 2008 13:01:36 -0500
+Message-ID: <1199988096-19700-6-git-send-email-jlayton@redhat.com>
+References: <1199988096-19700-1-git-send-email-jlayton@redhat.com>
+ <1199988096-19700-2-git-send-email-jlayton@redhat.com>
+ <1199988096-19700-3-git-send-email-jlayton@redhat.com>
+ <1199988096-19700-4-git-send-email-jlayton@redhat.com>
+ <1199988096-19700-5-git-send-email-jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+To: akpm@linux-foundation.org, neilb@suse.de
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:55459 "EHLO neil.brown.name"
+Received: from mx1.redhat.com ([66.187.233.31]:42079 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754266AbYAJNaO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 10 Jan 2008 08:30:14 -0500
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1JCxU1-0004gP-Iv
-	for linux-nfs@vger.kernel.org; Fri, 11 Jan 2008 00:30:09 +1100
-In-Reply-To: <18309.18942.424543.639785-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
+	id S1755491AbYAJSCV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 Jan 2008 13:02:21 -0500
+In-Reply-To: <1199988096-19700-5-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Neil,
+The main problem is this:
 
-That did the trick. The lockd.nlm_tcpport and lockd.nlm_udpport are not
-required on the zipl.conf parameters
-for SLES10. I created the file as shown and now the nlockmgr shows the
-specified ports for tcp and udp.
+When a lock that a client is blocking on comes free, lockd does this in
+nlmsvc_grant_blocked():
 
-Thanks again for your assistance ............
+    nlm_async_call(block->b_call, NLMPROC_GRANTED_MSG, &nlmsvc_grant_ops);
 
-----------------------------------------------------------------------------------------------
-Neil Brown responded:
-Create a file
-   /etc/modprobe.d/lockd
+the callback from this call is nlmsvc_grant_callback(). That function
+does this at the end to wake up lockd:
 
-in it put the line
+    svc_wake_up(block->b_daemon);
 
-   options lockd nlm.tcpport=2051 nlm_udpport=2051
+However there is no guarantee that lockd will be up when this happens.
+If someone shuts down or restarts lockd before the async call completes,
+then the b_daemon pointer will point to freed memory and the kernel may
+oops.
 
-then when modprobe loads the lockd module, it will set these options.
-------------------------------------------------
+If we're shutting down all the nlm_hosts anyway, then it doesn't make
+sense to allow RPC calls to linger. Allowing them to do so can mean
+that the RPC calls can outlive the currently running lockd and can lead
+to the above use after free situation and possibly others.
 
-Regards,
-Terry L. Spaulding
-IBM ITS
-spauld@us.ibm.com
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/lockd/host.c |    4 +++-
+ 1 files changed, 3 insertions(+), 1 deletions(-)
 
-
--------------------------------------------------------------------------
-Check out the new SourceForge.net Marketplace.
-It's the best place to buy or sell services for
-just about anything Open Source.
-http://ad.doubleclick.net/clk;164216239;13503038;w?http://sf.net/marketplace
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+index 572601e..8771484 100644
+--- a/fs/lockd/host.c
++++ b/fs/lockd/host.c
+@@ -377,8 +377,10 @@ nlm_shutdown_hosts(void)
+ 	/* First, make all hosts eligible for gc */
+ 	dprintk("lockd: nuking all hosts...\n");
+ 	for (chain = nlm_hosts; chain < nlm_hosts + NLM_HOST_NRHASH; ++chain) {
+-		hlist_for_each_entry(host, pos, chain, h_hash)
++		hlist_for_each_entry(host, pos, chain, h_hash) {
+ 			host->h_expires = jiffies - 1;
++			rpc_killall_tasks(host->h_rpcclnt);
++		}
+ 	}
+ 
+ 	/* Then, perform a garbage collection pass */
+-- 
+1.5.3.7
 
