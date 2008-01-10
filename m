@@ -1,240 +1,40 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 4/5] NLM: Convert lockd to use kthreads
-Date: Thu, 10 Jan 2008 13:01:35 -0500
-Message-ID: <1199988096-19700-5-git-send-email-jlayton@redhat.com>
+Subject: [PATCH 2/5] SUNRPC: export svc_sock_update_bufs
+Date: Thu, 10 Jan 2008 13:01:33 -0500
+Message-ID: <1199988096-19700-3-git-send-email-jlayton@redhat.com>
 References: <1199988096-19700-1-git-send-email-jlayton@redhat.com>
  <1199988096-19700-2-git-send-email-jlayton@redhat.com>
- <1199988096-19700-3-git-send-email-jlayton@redhat.com>
- <1199988096-19700-4-git-send-email-jlayton@redhat.com>
 Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
 To: akpm@linux-foundation.org, neilb@suse.de
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:42095 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([66.187.233.31]:42100 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757096AbYAJSCb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 10 Jan 2008 13:02:31 -0500
-In-Reply-To: <1199988096-19700-4-git-send-email-jlayton@redhat.com>
+	id S1758607AbYAJSCc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 Jan 2008 13:02:32 -0500
+In-Reply-To: <1199988096-19700-2-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Have lockd_up start lockd using kthread_run. With this change,
-lockd_down now blocks until lockd actually exits, so there's no longer
-need for the waitqueue code at the end of lockd_down. This also means
-that only one lockd can be running at a time which simplifies the code
-within lockd's main loop.
+Needed since the plan is to not have a svc_create_thread helper and to
+have current users of that function just call kthread_run directly.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/lockd/svc.c |  113 +++++++++++++++++++++----------------------------------
- 1 files changed, 43 insertions(+), 70 deletions(-)
+ net/sunrpc/svcsock.c |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
 
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index 6ee8bed..1ecf551 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -25,6 +25,7 @@
- #include <linux/smp.h>
- #include <linux/smp_lock.h>
- #include <linux/mutex.h>
-+#include <linux/kthread.h>
- #include <linux/freezer.h>
- 
- #include <linux/sunrpc/types.h>
-@@ -48,14 +49,11 @@ EXPORT_SYMBOL(nlmsvc_ops);
- 
- static DEFINE_MUTEX(nlmsvc_mutex);
- static unsigned int		nlmsvc_users;
--static pid_t			nlmsvc_pid;
-+static struct task_struct	*nlmsvc_task;
- static struct svc_serv		*nlmsvc_serv;
- int				nlmsvc_grace_period;
- unsigned long			nlmsvc_timeout;
- 
--static DECLARE_COMPLETION(lockd_start_done);
--static DECLARE_WAIT_QUEUE_HEAD(lockd_exit);
--
- /*
-  * These can be set at insmod time (useful for NFS as root filesystem),
-  * and also changed through the sysctl interface.  -- Jamie Lokier, Aug 2003
-@@ -111,31 +109,19 @@ static inline void clear_grace_period(void)
- /*
-  * This is the lockd kernel thread
-  */
--static void
--lockd(struct svc_rqst *rqstp)
-+static int
-+lockd(void *vrqstp)
- {
- 	int		err = 0;
-+	struct svc_rqst *rqstp = vrqstp;
- 	unsigned long grace_period_expire;
- 
--	/* Lock module and set up kernel thread */
--	/* lockd_up is waiting for us to startup, so will
--	 * be holding a reference to this module, so it
--	 * is safe to just claim another reference
--	 */
--	__module_get(THIS_MODULE);
-+	/* set up kernel thread */
- 	lock_kernel();
--
--	/*
--	 * Let our maker know we're running.
--	 */
--	nlmsvc_pid = current->pid;
- 	nlmsvc_serv = rqstp->rq_server;
--	complete(&lockd_start_done);
--
--	daemonize("lockd");
- 	set_freezable();
- 
--	/* Process request with signals blocked, but allow SIGKILL.  */
-+	/* Allow SIGKILL to tell lockd to drop all of its locks */
- 	allow_signal(SIGKILL);
- 
- 	dprintk("NFS locking service started (ver " LOCKD_VERSION ").\n");
-@@ -148,10 +134,9 @@ lockd(struct svc_rqst *rqstp)
- 
- 	/*
- 	 * The main request loop. We don't terminate until the last
--	 * NFS mount or NFS daemon has gone away, and we've been sent a
--	 * signal, or else another process has taken over our job.
-+	 * NFS mount or NFS daemon has gone away.
- 	 */
--	while ((nlmsvc_users || !signalled()) && nlmsvc_pid == current->pid) {
-+	while (!kthread_should_stop()) {
- 		long timeout = MAX_SCHEDULE_TIMEOUT;
- 		char buf[RPC_MAX_ADDRBUFLEN];
- 
-@@ -199,27 +184,18 @@ lockd(struct svc_rqst *rqstp)
- 
- 	flush_signals(current);
- 
--	/*
--	 * Check whether there's a new lockd process before
--	 * shutting down the hosts and clearing the slot.
--	 */
--	if (!nlmsvc_pid || current->pid == nlmsvc_pid) {
--		if (nlmsvc_ops)
--			nlmsvc_invalidate_all();
--		nlm_shutdown_hosts();
--		nlmsvc_pid = 0;
--		nlmsvc_serv = NULL;
--	} else
--		printk(KERN_DEBUG
--			"lockd: new process, skipping host shutdown\n");
--	wake_up(&lockd_exit);
-+	if (nlmsvc_ops)
-+		nlmsvc_invalidate_all();
-+	nlm_shutdown_hosts();
-+	nlmsvc_task = NULL;
-+	nlmsvc_serv = NULL;
- 
- 	/* Exit the RPC thread */
- 	svc_exit_thread(rqstp);
- 
- 	/* Release module */
- 	unlock_kernel();
--	module_put_and_exit(0);
-+	return 0;
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 057c870..f2bef16 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -1407,6 +1407,7 @@ svc_sock_update_bufs(struct svc_serv *serv)
+ 	}
+ 	spin_unlock_bh(&serv->sv_lock);
  }
++EXPORT_SYMBOL(svc_sock_update_bufs);
  
- 
-@@ -269,14 +245,15 @@ static int make_socks(struct svc_serv *serv, int proto)
- int
- lockd_up(int proto) /* Maybe add a 'family' option when IPv6 is supported ?? */
- {
--	struct svc_serv *	serv;
--	int			error = 0;
-+	struct svc_serv *serv;
-+	struct svc_rqst *rqstp;
-+	int		error = 0;
- 
- 	mutex_lock(&nlmsvc_mutex);
- 	/*
- 	 * Check whether we're already up and running.
- 	 */
--	if (nlmsvc_pid) {
-+	if (nlmsvc_task) {
- 		if (proto)
- 			error = make_socks(nlmsvc_serv, proto);
- 		goto out;
-@@ -303,13 +280,25 @@ lockd_up(int proto) /* Maybe add a 'family' option when IPv6 is supported ?? */
- 	/*
- 	 * Create the kernel thread and wait for it to start.
- 	 */
--	error = svc_create_thread(lockd, serv);
--	if (error) {
-+	rqstp = svc_prepare_thread(serv, &serv->sv_pools[0]);
-+	if (IS_ERR(rqstp)) {
-+		error = PTR_ERR(rqstp);
- 		printk(KERN_WARNING
--			"lockd_up: create thread failed, error=%d\n", error);
-+			"lockd_up: svc_rqst allocation failed, error=%d\n",
-+			error);
-+		goto destroy_and_out;
-+	}
-+
-+	svc_sock_update_bufs(serv);
-+	nlmsvc_task = kthread_run(lockd, rqstp, serv->sv_name);
-+	if (IS_ERR(nlmsvc_task)) {
-+		error = PTR_ERR(nlmsvc_task);
-+		nlmsvc_task = NULL;
-+		printk(KERN_WARNING
-+			"lockd_up: kthread_run failed, error=%d\n", error);
-+		svc_exit_thread(rqstp);
- 		goto destroy_and_out;
- 	}
--	wait_for_completion(&lockd_start_done);
- 
- 	/*
- 	 * Note: svc_serv structures have an initial use count of 1,
-@@ -331,37 +320,21 @@ EXPORT_SYMBOL(lockd_up);
- void
- lockd_down(void)
- {
--	static int warned;
--
- 	mutex_lock(&nlmsvc_mutex);
- 	if (nlmsvc_users) {
- 		if (--nlmsvc_users)
- 			goto out;
--	} else
--		printk(KERN_WARNING "lockd_down: no users! pid=%d\n", nlmsvc_pid);
--
--	if (!nlmsvc_pid) {
--		if (warned++ == 0)
--			printk(KERN_WARNING "lockd_down: no lockd running.\n"); 
--		goto out;
-+	} else {
-+		printk(KERN_ERR "lockd_down: no users! task=%p\n",
-+			nlmsvc_task);
-+		BUG();
- 	}
--	warned = 0;
- 
--	kill_proc(nlmsvc_pid, SIGKILL, 1);
--	/*
--	 * Wait for the lockd process to exit, but since we're holding
--	 * the lockd semaphore, we can't wait around forever ...
--	 */
--	clear_thread_flag(TIF_SIGPENDING);
--	interruptible_sleep_on_timeout(&lockd_exit, HZ);
--	if (nlmsvc_pid) {
--		printk(KERN_WARNING 
--			"lockd_down: lockd failed to exit, clearing pid\n");
--		nlmsvc_pid = 0;
-+	if (!nlmsvc_task) {
-+		printk(KERN_ERR "lockd_down: no lockd running.\n");
-+		BUG();
- 	}
--	spin_lock_irq(&current->sighand->siglock);
--	recalc_sigpending();
--	spin_unlock_irq(&current->sighand->siglock);
-+	kthread_stop(nlmsvc_task);
- out:
- 	mutex_unlock(&nlmsvc_mutex);
- }
+ /*
+  * Receive the next request on any socket.  This code is carefully
 -- 
 1.5.3.7
 
