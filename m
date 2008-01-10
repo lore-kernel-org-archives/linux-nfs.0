@@ -1,43 +1,71 @@
-From: Andre Majorel <aym-xunil-Bi/FLWfhfolQFI55V6+gNQ@public.gmane.org>
-Subject: Re: atimes not updated over NFS
-Date: Thu, 10 Jan 2008 00:51:53 +0100
-Message-ID: <20080109235153.GI9212@aym.net2.nerim.net>
-References: <20080109101313.GG9212@aym.net2.nerim.net> <1199892437.11141.2.camel@heimdal.trondhjem.org> <20080109223748.GH9212@aym.net2.nerim.net> <1199920996.7638.3.camel@heimdal.trondhjem.org>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH 6/6] NLM: Add reference counting to lockd
+Date: Thu, 10 Jan 2008 14:29:22 +1100
+Message-ID: <18309.37138.207880.305870@notabene.brown>
+References: <1199820798-5289-1-git-send-email-jlayton@redhat.com>
+	<1199820798-5289-2-git-send-email-jlayton@redhat.com>
+	<1199820798-5289-3-git-send-email-jlayton@redhat.com>
+	<1199820798-5289-4-git-send-email-jlayton@redhat.com>
+	<1199820798-5289-5-git-send-email-jlayton@redhat.com>
+	<1199820798-5289-6-git-send-email-jlayton@redhat.com>
+	<1199820798-5289-7-git-send-email-jlayton@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-To: linux-nfs@vger.kernel.org,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: text/plain; charset=us-ascii
+Cc: akpm@linux-foundation.org, linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-dmz-233-wednesday.dmz.nerim.net ([195.5.254.233]:53880
-	"EHLO kellthuzad.dmz.nerim.net" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1753126AbYAIXx7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Jan 2008 18:53:59 -0500
-Received: from kraid.nerim.net (smtp-103-wednesday.nerim.net [62.4.16.103])
-	by kellthuzad.dmz.nerim.net (Postfix) with ESMTP id 9E36115E45
-	for <linux-nfs@vger.kernel.org>; Thu, 10 Jan 2008 00:53:47 +0100 (CET)
-In-Reply-To: <1199920996.7638.3.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from cantor2.suse.de ([195.135.220.15]:37487 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753255AbYAJD3a (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 9 Jan 2008 22:29:30 -0500
+In-Reply-To: message from Jeff Layton on Tuesday January 8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2008-01-09 18:23 -0500, Trond Myklebust wrote:
-> On Wed, 2008-01-09 at 23:37 +0100, Andre Majorel wrote:
->
-> > I'll take your word for it. However, let me assure you that atimes
-> > somehow used to work over NFS, even for files small enough to fit
-> > in the cache. Had they been broken, I would have known. I use Mutt.
->=20
-> How would the server know to update the atime? If the file is in cach=
-e
-> we don't READ.
+On Tuesday January 8, jlayton@redhat.com wrote:
+> ...and only have lockd exit when the last reference is dropped.
+> 
+> The problem is this:
+> 
+> When a lock that a client is blocking on comes free, lockd does this in
+> nlmsvc_grant_blocked():
+> 
+>     nlm_async_call(block->b_call, NLMPROC_GRANTED_MSG, &nlmsvc_grant_ops);
+> 
+> the callback from this call is nlmsvc_grant_callback(). That function
+> does this at the end to wake up lockd:
+> 
+>     svc_wake_up(block->b_daemon);
 
-You tell me. All I can tell you is that Mutt used to work so
-atimes were updated one way or another.
+Uhmmm... Maybe there is an easier way.
 
-As of 2.6.23, access times are never updated, even for files that
-are too big to fit in the cache. I'm willing to run tests if that
-helps.
+block->b_daemon will always be nlmsvc_serv, so can we simply make this
 
---=20
-Andr=E9 Majorel <URL:http://www.teaser.fr/~amajorel/>
-Do not use this account for regular correspondence.
-See the URL above for contact information.
+	svc_wake_up(nlmsvc_serv);
+with a little locking to make sure nlmsvc_serv is valid?
+
+Actually svc_wake_up is only called from lockd and goes through
+various hoops to find the right rqstp, which we could have known in
+advance.
+So store the rqstp in some global wrapped in a spinlock so we can
+access it safely and just:
+
+   spin_lock(whatever)
+   if (nlmsvc_rqstp)
+	wake_up(&nlmsvc_rqstp->rq_wait)
+   spin_unlock(whatever)
+
+
+That seems a somewhat simpler way of avoiding the particular problem.
+
+
+Hmmm.... I guess that nlmsvc_grant_callback could then be run after
+the 'lockd' module had been unloaded.
+Maybe nlm_shutdown_hosts could call rpc_killall_tasks(host->h_rpcclnt)
+on each host.  That should ensure the callback wont happen afterwards.
+
+Maybe?
+
+NeilBrown
+
