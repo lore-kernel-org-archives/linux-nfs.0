@@ -1,44 +1,46 @@
 From: Terry Spaulding <spauld@us.ibm.com>
 Subject: Re: [NFS] SLES10 SP1 NFS setting ports .....
-Date: Thu, 10 Jan 2008 08:14:12 -0500
-Message-ID: <OF0E7BA2A6.74525B0C-ON852573CC.0048882B-852573CC.0048B652@us.ibm.com>
-References: <1199910165.10701.3.camel@heimdal.trondhjem.org>
+Date: Thu, 10 Jan 2008 08:29:23 -0500
+Message-ID: <OFFA3F71BE.9EFD6CBE-ON852573CC.0049CD1E-852573CC.004A1A2A@us.ibm.com>
+References: <18309.18942.424543.639785@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Neil Brown <neilb@suse.de>, nfs@lists.sourceforge.net
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: nfs@lists.sourceforge.net,
+	Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Neil Brown <neilb@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:37903 "EHLO neil.brown.name"
+Received: from neil.brown.name ([220.233.11.133]:55459 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753461AbYAJNOT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 10 Jan 2008 08:14:19 -0500
+	id S1754266AbYAJNaO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 Jan 2008 08:30:14 -0500
 Received: from brown by neil.brown.name with local (Exim 4.63)
 	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1JCxEf-0004fB-9i
-	for linux-nfs@vger.kernel.org; Fri, 11 Jan 2008 00:14:17 +1100
-In-Reply-To: <1199910165.10701.3.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+	id 1JCxU1-0004gP-Iv
+	for linux-nfs@vger.kernel.org; Fri, 11 Jan 2008 00:30:09 +1100
+In-Reply-To: <18309.18942.424543.639785-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-modinfo lockd
+Neil,
 
-filename:
-/lib/modules/2.6.16.46-0.12-default/kernel/fs/lockd/lockd.ko
-license:        GPL
-description:    NFS file locking service version 0.5.
-author:         Olaf Kirch <okir-pn4DOG8n3UYbFoVRYvo4fw@public.gmane.org>
-srcversion:     08AEA65F1243B999D0019C9
-depends:        sunrpc
-supported:      yes
-vermagic:       2.6.16.46-0.12-default SMP gcc-4.1
-parm:           nsm_use_kstatd:int
+That did the trick. The lockd.nlm_tcpport and lockd.nlm_udpport are not
+required on the zipl.conf parameters
+for SLES10. I created the file as shown and now the nlockmgr shows the
+specified ports for tcp and udp.
 
--------------------------------------------------------------
-Trond responded:
-What does 'modinfo lockd' say?
--------------------------------------------------------------
+Thanks again for your assistance ............
 
-Thanks ...............
+----------------------------------------------------------------------------------------------
+Neil Brown responded:
+Create a file
+   /etc/modprobe.d/lockd
+
+in it put the line
+
+   options lockd nlm.tcpport=2051 nlm_udpport=2051
+
+then when modprobe loads the lockd module, it will set these options.
+------------------------------------------------
 
 Regards,
 Terry L. Spaulding
