@@ -1,127 +1,98 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 1/3] NLM: Introduce external nlm_host set-up and
-	tear-down functions
-Date: Fri, 11 Jan 2008 14:59:16 -0500
-Message-ID: <1200081556.11581.12.camel@heimdal.trondhjem.org>
-References: <20080109172010.7067.94797.stgit@manray.1015granger.net>
+From: "J. Bruce Fields" <bfields@citi.umich.edu>
+Subject: [NFS] [PATCH] knfsd: Allow NFSv2/3 WRITE calls to succeed when
+	krb5i etc is used.
+Date: Fri, 11 Jan 2008 17:06:52 -0500
+Message-ID: <1200089212-12204-1-git-send-email-bfields@citi.umich.edu>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset="us-ascii"
+Cc: NeilBrown <neilb@suse.de>, Peter Staubach <staubach@redhat.com>,
+	"J. Bruce Fields" <bfields@citi.umich.edu>,
+	nfs@lists.sourceforge.net, stable@kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from pat.uio.no ([129.240.10.15]:57926 "EHLO pat.uio.no"
+Received: from neil.brown.name ([220.233.11.133]:39497 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759264AbYAKT7W (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Jan 2008 14:59:22 -0500
-In-Reply-To: <20080109172010.7067.94797.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+	id S1762951AbYAKWcK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Jan 2008 17:32:10 -0500
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1JDSQ3-00088G-E0
+	for linux-nfs@vger.kernel.org; Sat, 12 Jan 2008 09:32:07 +1100
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: NeilBrown <neilb@suse.de>
 
-On Wed, 2008-01-09 at 12:20 -0500, Chuck Lever wrote:
-> We would like to remove the per-lock-operation nlm_lookup_host() call from
-> nlmclnt_proc().
-> 
-> The new architecture pins an nlm_host structure to each NFS client
-> superblock that has the "lock" mount option set.  The NFS client passes
-> in the pinned nlm_host structure during each call to nlmclnt_proc().  NFS
-> client unmount processing "puts" the nlm_host so it can be garbage-
-> collected later.
-> 
-> This patch introduces externally callable NLM functions that handle
-> mount-time nlm_host set up and tear-down.
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
-> 
->  fs/lockd/clntlock.c        |   48 ++++++++++++++++++++++++++++++++++++++++++++
->  include/linux/lockd/bind.h |    7 ++++++
->  2 files changed, 55 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/lockd/clntlock.c b/fs/lockd/clntlock.c
-> index d070b18..3e76f79 100644
-> --- a/fs/lockd/clntlock.c
-> +++ b/fs/lockd/clntlock.c
-> @@ -41,6 +41,54 @@ struct nlm_wait {
->  
->  static LIST_HEAD(nlm_blocked);
->  
-> +/**
-> + * nlmclnt_init - Set up per-NFS mount point lockd data structures
-> + * @server_address: server's network address
-> + * @server_addrlen: length of server's address
-> + * @server_name: server's hostname
-> + * @nfs_version: NFS protocol version for this mount point
-> + * @protocol: transport protocol lockd should use
-> + *
-> + * Returns pointer to an appropriate nlm_host struct,
-> + * or an ERR_PTR value.
-> + */
-> +struct nlm_host *nlmclnt_init(struct sockaddr *server_address,
-> +			      size_t server_addrlen,
-> +			      char *server_name, u32 nfs_version,
-> +			      unsigned short protocol)
+When RPCSEC/GSS and krb5i is used, requests are padded, typically to a multiple
+of 8 bytes.  This can make the request look slightly longer than it
+really is.
 
-Minor nit: that 'protocol' argument looks so lonely and forlorn. How
-about grouping it together with the other socket arguments?
+As of
 
-In fact, since we have 5 arguments here, perhaps we might consider just
-using a structure argument? IIRC gcc is supposed to deal better with
-that.
+	f34b95689d2ce001c "The NFSv2/NFSv3 server does not handle zero
+		length WRITE request correctly",
 
-> +{
-> +	struct nlm_host *host;
-> +	u32 nlm_version = (nfs_version == 2) ? 1 : 4;
-> +	int status;
-> +
-> +	status = lockd_up(protocol);
-> +	if (status < 0)
-> +		return ERR_PTR(status);
-> +
-> +	host = nlmclnt_lookup_host((struct sockaddr_in *)server_address,
-> +				   protocol, nlm_version,
-> +				   server_name, strlen(server_name));
-> +	if (host == NULL) {
-> +		lockd_down();
-> +		return ERR_PTR(-ENOLCK);
-> +	}
-> +
-> +	return host;
-> +}
-> +EXPORT_SYMBOL_GPL(nlmclnt_init);
-> +
-> +/**
-> + * nlmclnt_done - Release resources allocated by nlmclnt_init()
-> + * @host: nlm_host structure reserved by nlmclnt_init()
-> + *
-> + */
-> +void nlmclnt_done(struct nlm_host *host)
-> +{
-> +	nlm_release_host(host);
-> +	lockd_down();
-> +}
-> +EXPORT_SYMBOL_GPL(nlmclnt_done);
-> +
->  /*
->   * Queue up a lock for blocking so that the GRANTED request can see it
->   */
-> diff --git a/include/linux/lockd/bind.h b/include/linux/lockd/bind.h
-> index 6f1637c..372c8df 100644
-> --- a/include/linux/lockd/bind.h
-> +++ b/include/linux/lockd/bind.h
-> @@ -35,6 +35,13 @@ extern struct nlmsvc_binding *	nlmsvc_ops;
->  /*
->   * Functions exported by the lockd module
->   */
-> +extern struct nlm_host *nlmclnt_init(struct sockaddr *server_address,
-> +					size_t server_addrlen,
-> +					char *server_name,
-> +					u32 nfs_version,
-> +					unsigned short protocol);
-> +extern void	nlmclnt_done(struct nlm_host *host);
-> +
->  extern int	nlmclnt_proc(struct inode *, int, struct file_lock *);
->  extern int	lockd_up(int proto);
->  extern void	lockd_down(void);
-> 
+the xdr decode routines for NFSv2 and NFSv3 reject requests that aren't
+the right length, so krb5i (for example) WRITE requests can get lost.
+
+This patch relaxes the appropriate test and enhances the related comment.
+
+Signed-off-by: Neil Brown <neilb@suse.de>
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+Cc: Peter Staubach <staubach@redhat.com>
+---
+ fs/nfsd/nfs3xdr.c |    5 ++++-
+ fs/nfsd/nfsxdr.c  |    5 ++++-
+ 2 files changed, 8 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
+index 3231387..d7647f7 100644
+--- a/fs/nfsd/nfs3xdr.c
++++ b/fs/nfsd/nfs3xdr.c
+@@ -389,8 +389,11 @@ nfs3svc_decode_writeargs(struct svc_rqst *rqstp, __be32 *p,
+ 	 * Round the length of the data which was specified up to
+ 	 * the next multiple of XDR units and then compare that
+ 	 * against the length which was actually received.
++	 * Note that when RPCSEC/GSS (for example) is used, the
++	 * data buffer can be padded so dlen might be larger
++	 * than required.  It must never be smaller.
+ 	 */
+-	if (dlen != XDR_QUADLEN(len)*4)
++	if (dlen < XDR_QUADLEN(len)*4)
+ 		return 0;
+ 
+ 	if (args->count > max_blocksize) {
+diff --git a/fs/nfsd/nfsxdr.c b/fs/nfsd/nfsxdr.c
+index 383d6d2..61ad617 100644
+--- a/fs/nfsd/nfsxdr.c
++++ b/fs/nfsd/nfsxdr.c
+@@ -314,8 +314,11 @@ nfssvc_decode_writeargs(struct svc_rqst *rqstp, __be32 *p,
+ 	 * Round the length of the data which was specified up to
+ 	 * the next multiple of XDR units and then compare that
+ 	 * against the length which was actually received.
++	 * Note that when RPCSEC/GSS (for example) is used, the
++	 * data buffer can be padded so dlen might be larger
++	 * than required.  It must never be smaller.
+ 	 */
+-	if (dlen != XDR_QUADLEN(len)*4)
++	if (dlen < XDR_QUADLEN(len)*4)
+ 		return 0;
+ 
+ 	rqstp->rq_vec[0].iov_base = (void*)p;
+-- 
+1.5.4.rc2.60.gb2e62
+
+
+-------------------------------------------------------------------------
+Check out the new SourceForge.net Marketplace.
+It's the best place to buy or sell services for
+just about anything Open Source.
+http://ad.doubleclick.net/clk;164216239;13503038;w?http://sf.net/marketplace
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
