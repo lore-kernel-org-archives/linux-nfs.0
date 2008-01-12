@@ -1,35 +1,41 @@
-From: Bob Bell <b_linuxnfs-Y/+76LoPTq9wBoktGHYdvgC/G2K4zDHf@public.gmane.org>
-Subject: Re: EBADCOOKIE problem?
-Date: Fri, 11 Jan 2008 20:17:48 -0500
-Message-ID: <20080112011746.GA8148@newbie.thebellsplace.net>
-References: <20080111045951.GA20079@newbie.thebellsplace.net>
+From: Wendy Cheng <wcheng@redhat.com>
+Subject: Re: [PATCH 2/2] Fix lockd panic
+Date: Sat, 12 Jan 2008 01:51:30 -0500
+Message-ID: <47886372.7020709@redhat.com>
+References: <4781BE72.7050404@redhat.com> <18307.2757.579354.785142@notabene.brown> <47843957.9060208@redhat.com> <478450EA.7030608@redhat.com> <478559C5.5020608@redhat.com>
+Reply-To: wcheng@redhat.com
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii; format=flowed
-To: linux-nfs@vger.kernel.org
+Cc: Neil Brown <neilb@suse.de>, NFS list <linux-nfs@vger.kernel.org>,
+	cluster-devel@redhat.com
+To: Wendy Cheng <wcheng@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from srv03.macroped.com ([74.52.9.226]:44494 "EHLO
-	srv03.macroped.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751317AbYALBRu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Jan 2008 20:17:50 -0500
-Received: from newbie (c-75-67-251-249.hsd1.nh.comcast.net [75.67.251.249])
-	(authenticated bits=0)
-	by srv03.macroped.com (8.13.8/8.13.8) with ESMTP id m0C1JbB9023234
-	for <linux-nfs@vger.kernel.org>; Fri, 11 Jan 2008 20:19:37 -0500
-In-Reply-To: <20080111045951.GA20079-y89O8yXFYpDSsb2jM9SCN5/hYUUxywnI@public.gmane.org>
+Received: from mx1.redhat.com ([66.187.233.31]:53348 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755840AbYALGeU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 12 Jan 2008 01:34:20 -0500
+In-Reply-To: <478559C5.5020608@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jan 10, 2008 at 11:59:51PM -0500, Bob Bell wrote:
->In testing, we're seeing a problem where an ls of a directory over NFSv3 
->reports "File not found" for one of the sub-directories.  With some 
->tracing turned on, I can see that there is an -EBADCOOKIE error returned 
->from find_dirent().  The error is persistent; it doesn't go away with 
->time.  I do have one report that says that by adding another file to the 
->directory, the error went away.
->...
+Wendy Cheng wrote:
 
-My apologies, apparently EBADCOOKIE has nothing to do with this.  The 
-problem is the caching model and ext3's full-second timestamp 
-granularity.  I've already discussed the issue with Trond.
+> The point here is "with this patch, f_locks it not used at all any 
+> more." Note that we have a nice inline function "nlm_file_inuse", why 
+> should we use f_locks (that I assume people agree that it is awkward) 
+> ? Could we simply drop f_locks all together in this section of code?
+>
+Start to have a second thought about this ....
 
--- Bob
+Removing f_locks does make the code much more readable. However, if 
+inode->i_flock list is long, e.g. large amount of (clients) hosts and/or 
+processes from other hosts competing for the same lock, we don't want to 
+do the list walk twice within nlm_traverse_files(). Intuitively this is 
+unlikely but I prefer not changing the current behavior. As the result, 
+I'm withdrawing the patch all together.
+
+The first patch will handle the issue correctly. Will submit it after 
+this post.
+
+-- Wendy
+
