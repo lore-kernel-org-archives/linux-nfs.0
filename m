@@ -1,48 +1,56 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 1/2] NLM failover unlock commands
-Date: Sat, 12 Jan 2008 09:38:10 +0000
-Message-ID: <20080112093810.GB9059@infradead.org>
-References: <4781BB0D.90706@redhat.com> <20080108170220.GA21401@infradead.org> <20080108174958.GA25025@infradead.org> <4783E3C9.3040803@redhat.com> <20080109180214.GA31071@infradead.org> <20080110075959.GA9623@infradead.org> <4788665B.4020405@redhat.com>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH 3/5] NLM: Have lockd call try_to_freeze
+Date: Sun, 13 Jan 2008 06:54:53 -0500
+Message-ID: <20080113065453.4774f8dd@tleilax.poochiereds.net>
+References: <1199988096-19700-1-git-send-email-jlayton@redhat.com>
+	<1199988096-19700-2-git-send-email-jlayton@redhat.com>
+	<1199988096-19700-3-git-send-email-jlayton@redhat.com>
+	<1199988096-19700-4-git-send-email-jlayton@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>, NeilBrown <neilb@suse.de>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	NFS list <linux-nfs@vger.kernel.org>, cluster-devel@redhat.com
-To: Wendy Cheng <wcheng@redhat.com>
+Content-Type: text/plain; charset=US-ASCII
+Cc: akpm@linux-foundation.org, neilb@suse.de,
+	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from pentafluge.infradead.org ([213.146.154.40]:46372 "EHLO
-	pentafluge.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759362AbYALJiQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 12 Jan 2008 04:38:16 -0500
-In-Reply-To: <4788665B.4020405@redhat.com>
+Received: from mx1.redhat.com ([66.187.233.31]:38968 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750818AbYAMLzA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 13 Jan 2008 06:55:00 -0500
+In-Reply-To: <1199988096-19700-4-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Jan 12, 2008 at 02:03:55AM -0500, Wendy Cheng wrote:
-> This is a combined patch that has:
->
-> * changes made by Christoph Hellwig
-> * code segment that handles f_locks so we would not walk inode->i_flock 
-> list twice.
->
-> If agreed, please re-add your "ack-by" and "signed-off" lines respectively. 
-> Thanks ...
->
-> -- Wendy
+On Thu, 10 Jan 2008 13:01:34 -0500
+Jeff Layton <jlayton@redhat.com> wrote:
 
-> Two new NFSD procfs files are added:
->   /proc/fs/nfsd/unlock_ip
->   /proc/fs/nfsd/unlock_filesystem
+> lockd makes itself freezable, but never calls try_to_freeze(). Have it
+> call try_to_freeze() within the main loop.
 > 
-> They are intended to allow admin or user mode script to release NLM locks
-> based on either a path name or a server in-bound ip address (ipv4 for now)
-> as;
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  fs/lockd/svc.c |    3 +++
+>  1 files changed, 3 insertions(+), 0 deletions(-)
 > 
-> shell> echo 10.1.1.2 > /proc/fs/nfsd/unlock_ip
-> shell> echo /mnt/sfs1 > /proc/fs/nfsd/unlock_filesystem
-> 
-> Signed-off-by: S. Wendy Cheng <wcheng@redhat.com>
-> Signed-off-by: Lon Hohberger  <lhh@redhat.com>
+> diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+> index 82e2192..6ee8bed 100644
+> --- a/fs/lockd/svc.c
+> +++ b/fs/lockd/svc.c
+> @@ -155,6 +155,9 @@ lockd(struct svc_rqst *rqstp)
+>  		long timeout = MAX_SCHEDULE_TIMEOUT;
+>  		char buf[RPC_MAX_ADDRBUFLEN];
+>  
+> +		if (try_to_freeze())
+> +			continue;
+> +
+>  		if (signalled()) {
+>  			flush_signals(current);
+>  			if (nlmsvc_ops) {
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
 
+I was looking over svc_recv today and noticed that it calls
+try_to_freeze a couple of times. Given that, the above patch may be
+unnecessary. I don't think it hurts anything though. Should we keep
+this patch or drop it?
+
+-- 
+Jeff Layton <jlayton@redhat.com>
