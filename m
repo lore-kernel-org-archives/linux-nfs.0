@@ -1,49 +1,86 @@
-From: Frank van Maarseveen <frankvm@frankvm.com>
-Subject: Re: atimes not updated over NFS
-Date: Mon, 14 Jan 2008 09:34:35 +0100
-Message-ID: <20080114083435.GA24215@janus>
-References: <20080109101313.GG9212@aym.net2.nerim.net> <1199892437.11141.2.camel@heimdal.trondhjem.org> <20080109223748.GH9212@aym.net2.nerim.net> <1199920996.7638.3.camel@heimdal.trondhjem.org> <20080109235153.GI9212@aym.net2.nerim.net>
+From: Tom Tucker <tom@opengridcomputing.com>
+Subject: Re: [PATCH 38/38] svc: Add svc_xprt_names service to replace
+ svc_sock_names
+Date: Mon, 14 Jan 2008 07:27:26 -0600
+Message-ID: <C3B0BF5E.2B2AE%tom@opengridcomputing.com>
+References: <18301.33306.486417.193770@notabene.brown>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Andre Majorel <aym-xunil-Bi/FLWfhfolQFI55V6+gNQ@public.gmane.org>
+Content-Type: text/plain;
+	charset="US-ASCII"
+Cc: <linux-nfs@vger.kernel.org>
+To: NeilBrown <neilb@suse.de>, "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from frankvm.xs4all.nl ([80.126.170.174]:34136 "EHLO
-	janus.localdomain" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753132AbYANIeh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Jan 2008 03:34:37 -0500
-In-Reply-To: <20080109235153.GI9212-956IwFboN44acnK+F/IuxqxOck334EZe@public.gmane.org>
+Received: from mail.es335.com ([67.65.19.105]:18351 "EHLO mail.es335.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750708AbYANN1l (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 14 Jan 2008 08:27:41 -0500
+In-Reply-To: <18301.33306.486417.193770-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jan 10, 2008 at 12:51:53AM +0100, Andre Majorel wrote:
-> On 2008-01-09 18:23 -0500, Trond Myklebust wrote:
-> > On Wed, 2008-01-09 at 23:37 +0100, Andre Majorel wrote:
-> >
-> > > I'll take your word for it. However, let me assure you that atimes
-> > > somehow used to work over NFS, even for files small enough to fit
-> > > in the cache. Had they been broken, I would have known. I use Mutt.
-> > 
-> > How would the server know to update the atime? If the file is in cache
-> > we don't READ.
+
+Sorry for the delay...
+
+On 1/3/08 6:47 PM, "Neil Brown" <neilb@suse.de> wrote:
+
+> On Thursday January 3, bfields@fieldses.org wrote:
+>> On Fri, Dec 21, 2007 at 11:51:47AM -0600, Tom Tucker wrote:
+>>> 
+>>> On Fri, 2007-12-14 at 19:03 -0500, J. Bruce Fields wrote:
+>>>> On Tue, Dec 11, 2007 at 05:33:18PM -0600, Tom Tucker wrote:
+>>>>> 
+>>>>> Create a transport independent version of the svc_sock_names function.
+>>>>> 
+>>>>> The toclose capability of the svc_sock_names service can be implemented
+>>>>> using the svc_xprt_find and svc_xprt_close services.
+>>>> 
+>>>> Should we delete the toclose checks from svc_sock_names(), then, under
+>>>> the assumption it's always called with toclose non-NULL now?
+>>>> 
+>>>> And why can't we just completely replace svc_sock_names() at this point?
+>>>> 
+>>> 
+>>> IMO we could, but there is currently a difference in behavior between
+>>> svc_sock_names and svc_find_xprt/close. svc_find_xprt doesn't care what
+>>> the IP address is, it only compares transport name, address family and
+>>> port. 
+>>> 
+>>> Presently in NFS, we only ever listen on zero, but you can destroy an
+>>> endpoint on a particular interface (IP address). Can anyone shed some
+>>> light on why this is?
+>> 
+>> Dunno.  Neil?
 > 
-> You tell me. All I can tell you is that Mutt used to work so
-> atimes were updated one way or another.
+> The "-H" option to "rpc.nfsd" allow you to bind nfsd to a specific
+> interface.
+> I don't think any user-space tools current allow you to unbind a
+> specific interface, but I wouldn't want to lose that functionality.
+> 
+> Why are we changing this.  Clear the toclose functionality of the
+> svc_sock_names service can *NOT* be impletemented using svc_xprt_find
+> and svc_xprt_close as _find_ doesn't check the port - so just leave
+> things the way they are???
 
-I think 2.6.22 introduced this regression. On 2.6.22.10, reading a file
-on NFS does not affect atime according to stat(), not on the client and
-not on the server. This breaks several programs.
+I think you mean check the IP address ... Correct?
 
-Commands to reproduce this problem on the client:
+> I haven't really been following this update
+> much so maybe there is something I'm missing....
 
-	dd </dev/zero >testfile count=1
-	ls -l --time=atime --full-time testfile
-	sleep 2
-	wc testfile
-	ls -l --time=atime --full-time testfile
-		(same atime, not good)
+I don't think you're missing anything, however, I think there are two pieces
+to this: a) what should the new API support, and b) should we move the
+existing code to the new API.
+
+The new API (svc_xprt_find) does not currently search based on IP address
+and therefore cannot be used for b). I think it should, however, since
+svc_xprt_create can be used to create a listener on a specific IP
+address/interface. 
+
+ 
+> 
+> NeilBrown
+> -
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
 
--- 
-Frank
