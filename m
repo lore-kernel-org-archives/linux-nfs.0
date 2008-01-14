@@ -1,86 +1,130 @@
-From: Tom Tucker <tom@opengridcomputing.com>
-Subject: Re: [PATCH 38/38] svc: Add svc_xprt_names service to replace
- svc_sock_names
-Date: Mon, 14 Jan 2008 07:27:26 -0600
-Message-ID: <C3B0BF5E.2B2AE%tom@opengridcomputing.com>
-References: <18301.33306.486417.193770@notabene.brown>
-Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="US-ASCII"
-Cc: <linux-nfs@vger.kernel.org>
-To: NeilBrown <neilb@suse.de>, "J. Bruce Fields" <bfields@fieldses.org>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH 1/4] SUNRPC: spin svc_rqst initialization to its own function
+Date: Mon, 14 Jan 2008 09:05:15 -0500
+Message-ID: <1200319518-22422-2-git-send-email-jlayton@redhat.com>
+References: <1200319518-22422-1-git-send-email-jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+To: neilb@suse.de
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.es335.com ([67.65.19.105]:18351 "EHLO mail.es335.com"
+Received: from mx1.redhat.com ([66.187.233.31]:57407 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750708AbYANN1l (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 14 Jan 2008 08:27:41 -0500
-In-Reply-To: <18301.33306.486417.193770-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
+	id S1751206AbYANOFV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 14 Jan 2008 09:05:21 -0500
+In-Reply-To: <1200319518-22422-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Move the initialzation in __svc_create_thread that happens prior to
+thread creation to a new function. Export the function to allow
+services to have better control over the svc_rqst structs.
 
-Sorry for the delay...
+Also rearrange the rqstp initialization to prevent NULL pointer
+dereferences in svc_exit_thread in case allocations fail.
 
-On 1/3/08 6:47 PM, "Neil Brown" <neilb@suse.de> wrote:
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ include/linux/sunrpc/svc.h |    2 +
+ net/sunrpc/svc.c           |   59 +++++++++++++++++++++++++++++++------------
+ 2 files changed, 44 insertions(+), 17 deletions(-)
 
-> On Thursday January 3, bfields@fieldses.org wrote:
->> On Fri, Dec 21, 2007 at 11:51:47AM -0600, Tom Tucker wrote:
->>> 
->>> On Fri, 2007-12-14 at 19:03 -0500, J. Bruce Fields wrote:
->>>> On Tue, Dec 11, 2007 at 05:33:18PM -0600, Tom Tucker wrote:
->>>>> 
->>>>> Create a transport independent version of the svc_sock_names function.
->>>>> 
->>>>> The toclose capability of the svc_sock_names service can be implemented
->>>>> using the svc_xprt_find and svc_xprt_close services.
->>>> 
->>>> Should we delete the toclose checks from svc_sock_names(), then, under
->>>> the assumption it's always called with toclose non-NULL now?
->>>> 
->>>> And why can't we just completely replace svc_sock_names() at this point?
->>>> 
->>> 
->>> IMO we could, but there is currently a difference in behavior between
->>> svc_sock_names and svc_find_xprt/close. svc_find_xprt doesn't care what
->>> the IP address is, it only compares transport name, address family and
->>> port. 
->>> 
->>> Presently in NFS, we only ever listen on zero, but you can destroy an
->>> endpoint on a particular interface (IP address). Can anyone shed some
->>> light on why this is?
->> 
->> Dunno.  Neil?
-> 
-> The "-H" option to "rpc.nfsd" allow you to bind nfsd to a specific
-> interface.
-> I don't think any user-space tools current allow you to unbind a
-> specific interface, but I wouldn't want to lose that functionality.
-> 
-> Why are we changing this.  Clear the toclose functionality of the
-> svc_sock_names service can *NOT* be impletemented using svc_xprt_find
-> and svc_xprt_close as _find_ doesn't check the port - so just leave
-> things the way they are???
-
-I think you mean check the IP address ... Correct?
-
-> I haven't really been following this update
-> much so maybe there is something I'm missing....
-
-I don't think you're missing anything, however, I think there are two pieces
-to this: a) what should the new API support, and b) should we move the
-existing code to the new API.
-
-The new API (svc_xprt_find) does not currently search based on IP address
-and therefore cannot be used for b). I think it should, however, since
-svc_xprt_create can be used to create a listener on a specific IP
-address/interface. 
-
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 8531a70..5f07300 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -382,6 +382,8 @@ struct svc_procedure {
+  */
+ struct svc_serv *  svc_create(struct svc_program *, unsigned int,
+ 			      void (*shutdown)(struct svc_serv*));
++struct svc_rqst *svc_prepare_thread(struct svc_serv *serv,
++					struct svc_pool *pool);
+ int		   svc_create_thread(svc_thread_fn, struct svc_serv *);
+ void		   svc_exit_thread(struct svc_rqst *);
+ struct svc_serv *  svc_create_pooled(struct svc_program *, unsigned int,
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index fca17d0..f9636bf 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -538,31 +538,17 @@ svc_release_buffer(struct svc_rqst *rqstp)
+ 			put_page(rqstp->rq_pages[i]);
+ }
  
-> 
-> NeilBrown
-> -
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+-/*
+- * Create a thread in the given pool.  Caller must hold BKL.
+- * On a NUMA or SMP machine, with a multi-pool serv, the thread
+- * will be restricted to run on the cpus belonging to the pool.
+- */
+-static int
+-__svc_create_thread(svc_thread_fn func, struct svc_serv *serv,
+-		    struct svc_pool *pool)
++struct svc_rqst *
++svc_prepare_thread(struct svc_serv *serv, struct svc_pool *pool)
+ {
+ 	struct svc_rqst	*rqstp;
+-	int		error = -ENOMEM;
+-	int		have_oldmask = 0;
+-	cpumask_t	oldmask;
+ 
+ 	rqstp = kzalloc(sizeof(*rqstp), GFP_KERNEL);
+ 	if (!rqstp)
+-		goto out;
++		goto out_enomem;
+ 
+ 	init_waitqueue_head(&rqstp->rq_wait);
+ 
+-	if (!(rqstp->rq_argp = kmalloc(serv->sv_xdrsize, GFP_KERNEL))
+-	 || !(rqstp->rq_resp = kmalloc(serv->sv_xdrsize, GFP_KERNEL))
+-	 || !svc_init_buffer(rqstp, serv->sv_max_mesg))
+-		goto out_thread;
+-
+ 	serv->sv_nrthreads++;
+ 	spin_lock_bh(&pool->sp_lock);
+ 	pool->sp_nrthreads++;
+@@ -571,6 +557,45 @@ __svc_create_thread(svc_thread_fn func, struct svc_serv *serv,
+ 	rqstp->rq_server = serv;
+ 	rqstp->rq_pool = pool;
+ 
++	rqstp->rq_argp = kmalloc(serv->sv_xdrsize, GFP_KERNEL);
++	if (!rqstp->rq_argp)
++		goto out_thread;
++
++	rqstp->rq_resp = kmalloc(serv->sv_xdrsize, GFP_KERNEL);
++	if (!rqstp->rq_resp)
++		goto out_thread;
++
++	if (!svc_init_buffer(rqstp, serv->sv_max_mesg))
++		goto out_thread;
++
++	return rqstp;
++out_thread:
++	svc_exit_thread(rqstp);
++out_enomem:
++	return ERR_PTR(-ENOMEM);
++}
++EXPORT_SYMBOL(svc_prepare_thread);
++
++/*
++ * Create a thread in the given pool.  Caller must hold BKL.
++ * On a NUMA or SMP machine, with a multi-pool serv, the thread
++ * will be restricted to run on the cpus belonging to the pool.
++ */
++static int
++__svc_create_thread(svc_thread_fn func, struct svc_serv *serv,
++		    struct svc_pool *pool)
++{
++	struct svc_rqst	*rqstp;
++	int		error = -ENOMEM;
++	int		have_oldmask = 0;
++	cpumask_t	oldmask;
++
++	rqstp = svc_prepare_thread(serv, pool);
++	if (IS_ERR(rqstp)) {
++		error = PTR_ERR(rqstp);
++		goto out;
++	}
++
+ 	if (serv->sv_nrpools > 1)
+ 		have_oldmask = svc_pool_map_set_cpumask(pool->sp_id, &oldmask);
+ 
+-- 
+1.5.3.7
 
