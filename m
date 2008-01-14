@@ -1,7 +1,7 @@
 From: Neil Brown <neilb@suse.de>
 Subject: Re: [PATCH 1/2] NLM failover unlock commands
-Date: Tue, 15 Jan 2008 10:31:18 +1100
-Message-ID: <18315.61638.14133.308991@notabene.brown>
+Date: Tue, 15 Jan 2008 10:52:29 +1100
+Message-ID: <18315.62909.330258.83038@notabene.brown>
 References: <4781BB0D.90706@redhat.com>
 	<20080108170220.GA21401@infradead.org>
 	<20080108174958.GA25025@infradead.org>
@@ -9,85 +9,97 @@ References: <4781BB0D.90706@redhat.com>
 	<20080109180214.GA31071@infradead.org>
 	<20080110075959.GA9623@infradead.org>
 	<4788665B.4020405@redhat.com>
-	<20080114230742.GA16975@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Wendy Cheng <wcheng@redhat.com>,
-	Christoph Hellwig <hch@infradead.org>,
+Cc: Christoph Hellwig <hch@infradead.org>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
 	NFS list <linux-nfs@vger.kernel.org>, cluster-devel@redhat.com
-To: "J. Bruce Fields" <bfields@fieldses.org>
+To: wcheng@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.suse.de ([195.135.220.2]:48211 "EHLO mx1.suse.de"
+Received: from mail.suse.de ([195.135.220.2]:49860 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751667AbYANXbZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 14 Jan 2008 18:31:25 -0500
-In-Reply-To: message from J. Bruce Fields on Monday January 14
+	id S1751547AbYANXwh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 14 Jan 2008 18:52:37 -0500
+In-Reply-To: message from Wendy Cheng on Saturday January 12
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Monday January 14, bfields@fieldses.org wrote:
-> >  
-> > +static ssize_t failover_unlock_ip(struct file *file, char *buf, size_t size)
-> > +{
-> > +	__be32 server_ip;
-> > +	char *fo_path;
-> > +	char *mesg;
-> > +
-> > +	/* sanity check */
-> > +	if (size <= 0)
-> > +		return -EINVAL;
+On Saturday January 12, wcheng@redhat.com wrote:
+> This is a combined patch that has:
 > 
-> Not only is size never negative, it's actually an unsigned type here, so
-> this is a no-op.
+> * changes made by Christoph Hellwig
+> * code segment that handles f_locks so we would not walk inode->i_flock 
+> list twice.
+> 
+> If agreed, please re-add your "ack-by" and "signed-off" lines 
+> respectively. Thanks ...
+> 
 
-No,  It it equivalent to
-          if (size == 0)
+> -	int i, ret = 0;
+> +	int i, ret = 0, inspect_file;
+>  
+>  	mutex_lock(&nlm_file_mutex);
+>  	for (i = 0; i < FILE_NRHASH; i++) {
+>  		hlist_for_each_entry_safe(file, pos, next, &nlm_files[i], f_list) {
+>  			file->f_count++;
+>  			mutex_unlock(&nlm_file_mutex);
+> +			inspect_file = 1;
+>  
+>  			/* Traverse locks, blocks and shares of this file
+>  			 * and update file->f_locks count */
+> -			if (nlm_inspect_file(host, file, match))
+> +
+> +			if (unlikely(failover)) {
+> +				if (!failover(data, file)) {
+> +					inspect_file = 0;
+> +					file->f_locks = nlm_file_inuse(file);
+> +				}
+> +			}
+> +
+> +			if (inspect_file && nlm_inspect_file(data, file, match))
+>  				ret = 1;
 
-which alternative is clearer and more maintainable is debatable.
+if (unlikely(failover) &&
+    !failover(data, file))
+	file->f_locks = nlm_file_inuse(file);
+else if (nlm_inspect_file(data, file, match))
+	ret = 1;
 
-> 
-> > +
-> > +	if (buf[size-1] == '\n')
-> > +		buf[size-1] = 0;
-> 
-> The other write methods in this file actually just do
-> 
-> 	if (buf[size-1] != '\n')
-> 		return -EINVAL;
+Though the logic still isn't very clear... maybe:
 
-and those which don't check for size == 0 are underflowing an array.
-That should probably be fixed.
+if (likely(failover == NULL) ||
+    failover(data, file))
+	ret |= nlm_inspect_file(data, file, match);
+else
+    file->f_locks = nlm_file_inuse(file);
 
-> 
-> I don't know why.  But absent some reason, I'd rather these two new
-> files behaved the same as existing ones.
-> 
-> > +
-> > +	fo_path = mesg = buf;
-> > +	if (qword_get(&mesg, fo_path, size) < 0)
-> > +		return -EINVAL;
-> 
-> "mesg" is unneeded here, right?  You can just do:
-> 
-> 	fo_path = buf;
-> 	if (qword_get(&buf, buf, size) < 0)
-> 
-> > +
-> > +	server_ip = in_aton(fo_path);
-> 
-> It'd be nice if we could sanity-check this.  (Is there code already in
-> the kernel someplace to do this?)
+Actually I would like to make nlm_inspect_file return 'void'.
+The returned value of '1' is ultimately either ignored or it triggers
+a BUG().  And the case where it triggers a BUG is the "host != NULL"
+case.  (I think - if someone could check, that would be good).
+So putting BUG_ON(host) in nlm_traverse_locks (along with a nice big
+comment) would mean we can discard the return value from
+nlm_traverse_locks and nlm_inspect_file and nlm_traverse_files.
 
-In ip_map_parse we do:
+Also, if we could change the function name 'failover' to some sort of
+verb like "is_failover" or "is_failover_file", then the above could be
 
-	if (sscanf(buf, "%u.%u.%u.%u%c", &b1, &b2, &b3, &b4, &c) != 4)
-		return -EINVAL;
-	...
-	addr.s_addr =
-		htonl((((((b1<<8)|b2)<<8)|b3)<<8)|b4);
+  if (likely(is_failover_file == NULL) ||
+      is_failover_file(data, file))
+	/* note nlm_inspect_file updates f_locks */
+	nlm_inspect_file(data, file, match);
+  else
+	file->f_locks = nlm_file_inuse(file);
 
-I suspect that would fit in an inline function somewhere quite
-nicely. but where?
+
+>  
+>  			mutex_lock(&nlm_file_mutex);
+>  			file->f_count--;
+>  			/* No more references to this file. Let go of it. */
+> -			if (list_empty(&file->f_blocks) && !file->f_locks
+> +			if (!file->f_locks && list_empty(&file->f_blocks)
+
+Is this change actually achieving something?  or is it just noise?
 
 
 NeilBrown
