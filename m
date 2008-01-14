@@ -1,182 +1,49 @@
-From: Martin Knoblauch <spamtrap-Ys4E+72pFW0hFhg+JK9F0w@public.gmane.org>
-Subject: Re: Strange NFS write performance Linux->Solaris-10/VXFS, maybe VW related
-Date: Mon, 14 Jan 2008 00:01:09 -0800 (PST)
-Message-ID: <211041.82276.qm@web32601.mail.mud.yahoo.com>
+From: Frank van Maarseveen <frankvm@frankvm.com>
+Subject: Re: atimes not updated over NFS
+Date: Mon, 14 Jan 2008 09:34:35 +0100
+Message-ID: <20080114083435.GA24215@janus>
+References: <20080109101313.GG9212@aym.net2.nerim.net> <1199892437.11141.2.camel@heimdal.trondhjem.org> <20080109223748.GH9212@aym.net2.nerim.net> <1199920996.7638.3.camel@heimdal.trondhjem.org> <20080109235153.GI9212@aym.net2.nerim.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-To: Martin Knoblauch <spamtrap-Ys4E+72pFW0hFhg+JK9F0w@public.gmane.org>,
-	Chris Snook <csnook@redhat.com>
+Cc: linux-nfs@vger.kernel.org,
+	Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Andre Majorel <aym-xunil-Bi/FLWfhfolQFI55V6+gNQ@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from web32601.mail.mud.yahoo.com ([68.142.207.228]:26135 "HELO
-	web32601.mail.mud.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1751403AbYANIBK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Jan 2008 03:01:10 -0500
+Received: from frankvm.xs4all.nl ([80.126.170.174]:34136 "EHLO
+	janus.localdomain" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753132AbYANIeh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Jan 2008 03:34:37 -0500
+In-Reply-To: <20080109235153.GI9212-956IwFboN44acnK+F/IuxqxOck334EZe@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
------ Original Message ----
-> From: Martin Knoblauch <spamtrap-Ys4E+72pFW0hFhg+JK9F0w@public.gmane.org>
-> To: Chris Snook <csnook@redhat.com>
-> Cc: linux-kernel@vger.kernel.org; linux-nfs@vger.kernel.org; spam trap <spamtrap-Ys4E+72pFW0hFhg+JK9F0w@public.gmane.org>
-> Sent: Saturday, December 29, 2007 12:11:08 PM
-> Subject: Re: Strange NFS write performance Linux->Solaris-10/VXFS, maybe VW related
-> 
-> ----- Original Message ----
-> > From: Chris Snook 
-> > To: Martin Knoblauch 
-> > Cc: linux-kernel@vger.kernel.org; linux-nfs@vger.kernel.org
-> > Sent: Friday, December 28, 2007 7:45:13 PM
-> > Subject: Re: Strange NFS write performance
-> Linux->Solaris-10/VXFS,
-> 
- maybe VW related
+On Thu, Jan 10, 2008 at 12:51:53AM +0100, Andre Majorel wrote:
+> On 2008-01-09 18:23 -0500, Trond Myklebust wrote:
+> > On Wed, 2008-01-09 at 23:37 +0100, Andre Majorel wrote:
+> >
+> > > I'll take your word for it. However, let me assure you that atimes
+> > > somehow used to work over NFS, even for files small enough to fit
+> > > in the cache. Had they been broken, I would have known. I use Mutt.
 > > 
-> > Martin Knoblauch wrote:
-> > > Hi,
-> > > 
-> > > currently I am tracking down an "interesting" effect when writing
+> > How would the server know to update the atime? If the file is in cache
+> > we don't READ.
 > 
-> > 3) It sounds like the bottleneck is the vxfs filesystem.  It
-> > only *appears* on  the client side because writes up
-> until
-> 
- dirty_ratio
-> > get buffered on the client. 
-> >   If you can confirm that the server is actually writing stuff to
-> > disk slower  when the client is in writeback mode, then it's possible
-> > the Linux NFSclient is  doing something inefficient in
-> writeback
-> 
- mode.
-> > 
-> 
-> so, is the output of "iostat -d -l1 d111" during two runs. The
-> first
-> 
- run is with 750 MB, the second with 850MB.
-> 
-> // 750MB
-> $ iostat -d -l 1 md111 2
->    md111
-> kps tps serv
->  22   0   14
->   0   0    0
->   0   0   13
-> 29347 468   12
-> 37040 593   17
-> 30938 492   25
-> 30421 491   25
-> 41626 676   16
-> 42913 703   14
-> 39890 647   15
-> 9009 141    7
-> 8963 141    7
-> 5143  81    7
-> 34814 547   10
-> 49323 775   12
-> 28624 451    6
->  22   1    6
-> #### finish
->   0   0    0
->   0   0    0
-> 
->  Here it seems that the disk is writing for 26-28 seconds with avg.
-> 29
-> 
- MB/sec. Fine.
-> 
-> // 850MB
-> $ iostat -d -l 1 md111 2
->    md111
-> kps tps serv
->   0   0    0
-> 11275 180   10
-> 39874 635   14
-> 37403 587   17
-> 24341 392   30
-> 25989 423   26
-> 22464 375   30
-> 21922 361   32
-> 27924 450   26
-> 21507 342   21
-> 9217 153   15
-> 9260 150   15
-> 9544 155   15
-> 9298 150   14
-> 10118 162   11
-> 15505 250   12
-> 27513 448   14
-> 26698 436   15
-> 26144 431   15
-> 25201 412   14
-> #### 38 seconds in run
->   0   0    0
->   0   0    0
-> 579  17   12
->   0   0    0
->   0   0    0
->   0   0    0
->   0   0    0
-> 518   9   16
-> 485   8    6
->   9   1    7
-> 514   9    7
->   0   0    0
->   0   0    0
-> 541   9    8
-> 532  10    6
->   0   0    0
->   0   0    0
-> 650  12    7
->   0   0    0
-> 242   8    9
-> 1023  18    5
-> 304   5    6
-> 418   8    7
-> 283   5    5
-> 303   5    8
-> 527  10    6
->   0   0    0
->   0   0    0
->   0   0    0
->   5   1   13
->   0   0    0
->   0   0    0
->   0   0    0
->   0   0    0
->   0   0    0
->   0   0   11
->   0   0    0
->   0   0    0
->   0   0    0
->   1   0   15
->   0   0    0
->  96   2   15
-> 138   3   10
-> 11057 175    6
-> 17549 280    6
-> 351   8    5
->   0   0    0
-> ##### 218 seconds in run, finish.
-> 
->  So, for the first 38 seconds everything looks similar to the 750
-> MB case. For the next about 180 seconds most time nothing happens.
-> Averaging 4.1 MB/sec.
-> 
-> Maybe it is time to capture the traffic. What are the best
-> tcpdump parameters for NFS? I always forget :-(
-> 
-> Cheers
-> Martin
-> 
-> 
-Hi,
+> You tell me. All I can tell you is that Mutt used to work so
+> atimes were updated one way or another.
 
- now that the seasonal festivities are over - Happy New Year btw. - any comments/suggestions on my problem?
+I think 2.6.22 introduced this regression. On 2.6.22.10, reading a file
+on NFS does not affect atime according to stat(), not on the client and
+not on the server. This breaks several programs.
 
-Cheers
-Martin
+Commands to reproduce this problem on the client:
+
+	dd </dev/zero >testfile count=1
+	ls -l --time=atime --full-time testfile
+	sleep 2
+	wc testfile
+	ls -l --time=atime --full-time testfile
+		(same atime, not good)
 
 
-
+-- 
+Frank
