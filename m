@@ -1,54 +1,109 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [NFS] Status of NFS/RDMA in mainline kernel?
-Date: Tue, 15 Jan 2008 15:08:38 -0500
-Message-ID: <1200427718.12663.10.camel@heimdal.trondhjem.org>
-References: <478D0747.1050301@charter.net>  <478D0AA1.6020603@charter.net>
+From: Wendy Cheng <wcheng@redhat.com>
+Subject: Re: [PATCH 1/2] NLM failover unlock commands
+Date: Tue, 15 Jan 2008 15:17:09 -0500
+Message-ID: <478D14C5.1000804@redhat.com>
+References: <4781BB0D.90706@redhat.com>	<20080108170220.GA21401@infradead.org>	<20080108174958.GA25025@infradead.org>	<4783E3C9.3040803@redhat.com>	<20080109180214.GA31071@infradead.org>	<20080110075959.GA9623@infradead.org>	<4788665B.4020405@redhat.com>
+	<18315.62909.330258.83038@notabene.brown>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: laytonjb-xwVYE8SWAR3R7s880joybQ@public.gmane.org
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:44405 "EHLO neil.brown.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750940AbYAOUJR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 15 Jan 2008 15:09:17 -0500
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1JEs5v-0003xs-0r
-	for linux-nfs@vger.kernel.org; Wed, 16 Jan 2008 07:09:11 +1100
-In-Reply-To: <478D0AA1.6020603-xwVYE8SWAR3R7s880joybQ@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: Christoph Hellwig <hch@infradead.org>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	NFS list <linux-nfs@vger.kernel.org>, cluster-devel@redhat.com
+To: Neil Brown <neilb@suse.de>
+Return-path: <cluster-devel-bounces@redhat.com>
+In-Reply-To: <18315.62909.330258.83038@notabene.brown>
+List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
+	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
+List-Archive: <https://www.redhat.com/archives/cluster-devel>
+List-Post: <mailto:cluster-devel@redhat.com>
+List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
+List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
+	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
+Sender: cluster-devel-bounces@redhat.com
+Errors-To: cluster-devel-bounces@redhat.com
 List-ID: <linux-nfs.vger.kernel.org>
 
+Neil Brown wrote:
+> On Saturday January 12, wcheng@redhat.com wrote:
+>   
+>> This is a combined patch that has:
+>>
+>> * changes made by Christoph Hellwig
+>> * code segment that handles f_locks so we would not walk inode->i_flock 
+>> list twice.
+>>
+>>     
+.....
+>
+> if (unlikely(failover) &&
+>     !failover(data, file))
+> 	file->f_locks = nlm_file_inuse(file);
+> else if (nlm_inspect_file(data, file, match))
+> 	ret = 1;
+>
+> Though the logic still isn't very clear... maybe:
+>
+> if (likely(failover == NULL) ||
+>     failover(data, file))
+> 	ret |= nlm_inspect_file(data, file, match);
+> else
+>     file->f_locks = nlm_file_inuse(file);
+>
+> Actually I would like to make nlm_inspect_file return 'void'.
+> The returned value of '1' is ultimately either ignored or it triggers
+> a BUG().  And the case where it triggers a BUG is the "host != NULL"
+> case.  (I think - if someone could check, that would be good).
+> So putting BUG_ON(host) in nlm_traverse_locks (along with a nice big
+> comment) would mean we can discard the return value from
+> nlm_traverse_locks and nlm_inspect_file and nlm_traverse_files.
+>   
 
-On Tue, 2008-01-15 at 14:33 -0500, Jeffrey B. Layton wrote:
-> Jeffrey B. Layton wrote:
-> > I haven't seen anything about NFS over RDMA lately. What's the current
-> > status of this on both the server and client side?
-> >   
-> Sorry - I was thinking NFSv3 support, but I wouldn't mind learning
-> about NFSv4 as well.
+Current logic BUG() when:
 
-The client side support has already been merged into Linus' mainline
-tree. It will be part of 2.6.24.
+1. host is not NULL; and
+2. nlm_traverse_locks() somehow can't unlock the file.
 
-Server side support is lacking, so the client NFSv4 callback channels,
-and NFSv3 sideband services like NLM and the MOUNT protocol will go over
-standard tcp channels.
+I don't feel comfortable to change the existing code structure, 
+especially a BUG() statement. It would be better to separate lock 
+failover function away from lockd code clean-up. This is to make it 
+easier for problem isolations (just in case).
 
-Cheers
-  Trond
+On the other hand, if we view "ret" as a file count that tells us how 
+many files fail to get unlocked, it would be great for debugging 
+purpose. So the changes I made (currently in the middle of cluster 
+testing) end up like this:
+
+if (likely(is_failover_file == NULL) ||
+is_failover_file(data, file)) {
+/*
+* Note that nlm_inspect_file updates f_locks
+* and ret is the number of files that can't
+* be unlocked.
+*/
+ret += nlm_inspect_file(data, file, match);
+} else
+file->f_locks = nlm_file_inuse(file);
 
 
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Microsoft
-Defy all challenges. Microsoft(R) Visual Studio 2008.
-http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+>
+>
+>
+>   
+>>  
+>>  			mutex_lock(&nlm_file_mutex);
+>>  			file->f_count--;
+>>  			/* No more references to this file. Let go of it. */
+>> -			if (list_empty(&file->f_blocks) && !file->f_locks
+>> +			if (!file->f_locks && list_empty(&file->f_blocks)
+>>     
+>
+> Is this change actually achieving something?  or is it just noise?
+>   
+Not really - but I thought checking for f_locks would be faster (tiny 
+bit of optimization :))
 
+-- Wendy
+>
+> NeilBrown
+>
+>   
