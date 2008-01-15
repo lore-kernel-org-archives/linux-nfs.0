@@ -1,45 +1,82 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 2/3] NFS: Add NFS_MOUNT_NONEGDE flag to avoid caching
-	negative dentries
-Date: Tue, 15 Jan 2008 12:14:23 -0500
-Message-ID: <1200417263.8937.8.camel@heimdal.trondhjem.org>
-References: <20080115163013.GC18911@newbie.thebellsplace.net>
-	 <1200415972.7702.7.camel@heimdal.trondhjem.org>
-	 <CB3B3B75-ECE5-4A46-BEA5-7DEDA8DB7DCA@oracle.com>
+From: "Chris Fanning" <christopher.fanning@gmail.com>
+Subject: Re: [NFS] fd cache inconsistency!
+Date: Tue, 15 Jan 2008 18:15:26 +0100
+Message-ID: <215ff4410801150915g6142b65ch2fc55f2cd332a333@mail.gmail.com>
+References: <215ff4410801150718o28118bc8me7d344b303e00306@mail.gmail.com>
+	<20080115164440.GC17937@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Bob Bell <b_linuxnfs-Y/+76LoPTq9wBoktGHYdvgC/G2K4zDHf@public.gmane.org>,
-	NFS list <linux-nfs@vger.kernel.org>
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from pat.uio.no ([129.240.10.15]:40747 "EHLO pat.uio.no"
+Received: from neil.brown.name ([220.233.11.133]:54171 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751140AbYAORO2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 15 Jan 2008 12:14:28 -0500
-In-Reply-To: <CB3B3B75-ECE5-4A46-BEA5-7DEDA8DB7DCA@oracle.com>
+	id S1751422AbYAORPn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 Jan 2008 12:15:43 -0500
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1JEpO1-0003Oi-Ab
+	for linux-nfs@vger.kernel.org; Wed, 16 Jan 2008 04:15:41 +1100
+In-Reply-To: <20080115164440.GC17937@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Jan 15, 2008 5:44 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+>
+> On Tue, Jan 15, 2008 at 04:18:10PM +0100, Chris Fanning wrote:
+> > Hi all,
+> >
+> > In my syslog I'm getting lots of these.
+> >
+> > nfsd[1926]: fd cache inconsistency!
+> > last message repeated 31 times
+> >
+> > Does anyone know what it means?
+>
+> No.  In fact, I can't find that message in the current kernel or
+> nfs-utils.  What versions of those are you using?
 
-On Tue, 2008-01-15 at 12:04 -0500, Chuck Lever wrote:
-> 
-> I suspect system administrators have no idea what a "negative dentry"  
-> is, and it would probably be beyond the scope of nfs(5) to explain  
-> it.  So I vote for something that describes the behavior as observed  
-> by a "lay person" rather than something that names the kernel  
-> mechanisms involved.
+/usr/sbin/rpc.nfsd -v
+Universal NFS Server 2.2beta47
 
-The concept of a 'dentry' is in any case very Linux-specific. The more
-generic term would be a 'negative lookup'.
+uname -r
+2.6.16-xen
 
-That said, if someone can find a better name, I'd be all for it.
+Is that what you're looking for?
 
-> You might consider tying this behavior to "noac" as well.  In other  
-> words, make "noac" equivalent to "sync,actimeo=0,nonegde" .
+I'm using this same xen image at four different sites and only get
+this error (warning) at one of them.
+The only difference (that I can think of) betwwen this site and the
+other three, it that here I share the same export to two different ip
+ranges. At the other sites the share is only exported to one range.
 
-I'd be open for that idea, however that should definitely be a separate
-patch.
+/opt/ltsp-4.2u4       192.168.178.0/255.255.255.0(ro,no_root_squash,sync)
+/opt/ltsp-4.2u4       10.200.61.0/255.255.255.0(ro,no_root_squash,sync)
 
-Cheers
-  Trond
+I thought the xen image may have become corrupted so I replaced it
+today. It hasn't helped.
+
+What else may I consider?
+
+Thanks.
+Chris.
+
+
+>  You may want to
+> report this to your distro.
+>
+> --b.
+>
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Microsoft
+Defy all challenges. Microsoft(R) Visual Studio 2008.
+http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
