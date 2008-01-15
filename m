@@ -1,81 +1,68 @@
-From: Wendy Cheng <wcheng@redhat.com>
-Subject: Re: [PATCH 1/2] NLM failover unlock commands
-Date: Tue, 15 Jan 2008 15:56:53 -0500
-Message-ID: <478D1E15.9010205@redhat.com>
-References: <4781BB0D.90706@redhat.com>	<20080108170220.GA21401@infradead.org>	<20080108174958.GA25025@infradead.org>	<4783E3C9.3040803@redhat.com>	<20080109180214.GA31071@infradead.org>	<20080110075959.GA9623@infradead.org>	<4788665B.4020405@redhat.com>	<18315.62909.330258.83038@notabene.brown>	<478D14C5.1000804@redhat.com>
-	<18317.7319.443532.62244@notabene.brown>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: [NFS] [PATCH] nfs4: allow nfsv4 acls on non-regular-files
+Date: Tue, 15 Jan 2008 16:43:19 -0500
+Message-ID: <20080115214319.GC5028@fieldses.org>
+References: <20080108174645.GH22155@fieldses.org>
+	<200801082126.m08LQTZm021972@agora.fsl.cs.sunysb.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: Christoph Hellwig <hch@infradead.org>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	NFS list <linux-nfs@vger.kernel.org>, cluster-devel@redhat.com
-To: Neil Brown <neilb@suse.de>
-Return-path: <cluster-devel-bounces@redhat.com>
-In-Reply-To: <18317.7319.443532.62244@notabene.brown>
-List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
-List-Archive: <https://www.redhat.com/archives/cluster-devel>
-List-Post: <mailto:cluster-devel@redhat.com>
-List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
-List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
-Sender: cluster-devel-bounces@redhat.com
-Errors-To: cluster-devel-bounces@redhat.com
+Content-Type: text/plain; charset="us-ascii"
+Cc: Erez Zadok <ezk-EX0cT3Az47bauI2f2gSDlQ@public.gmane.org>, nfs@lists.sourceforge.net
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from neil.brown.name ([220.233.11.133]:60339 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755995AbYAOVnh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 Jan 2008 16:43:37 -0500
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1JEtZH-0004Dh-55
+	for linux-nfs@vger.kernel.org; Wed, 16 Jan 2008 08:43:35 +1100
+In-Reply-To: <200801082126.m08LQTZm021972-zop+azHP2WsZjdeEBZXbMidm6ipF23ct@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Neil Brown wrote:
-> On Tuesday January 15, wcheng@redhat.com wrote:
->   
->> I don't feel comfortable to change the existing code structure, 
->> especially a BUG() statement. It would be better to separate lock 
->> failover function away from lockd code clean-up. This is to make it 
->> easier for problem isolations (just in case).
->>     
->
-> Fair enough.
->
->   
->> On the other hand, if we view "ret" as a file count that tells us how 
->> many files fail to get unlocked, it would be great for debugging 
->> purpose. So the changes I made (currently in the middle of cluster 
->> testing) end up like this:
->>
->> if (likely(is_failover_file == NULL) ||
->> is_failover_file(data, file)) {
->> /*
->> * Note that nlm_inspect_file updates f_locks
->> * and ret is the number of files that can't
->> * be unlocked.
->> */
->> ret += nlm_inspect_file(data, file, match);
->> } else
->> file->f_locks = nlm_file_inuse(file);
->>     
->
-> Looks good.
->
->   
->>>>  			mutex_lock(&nlm_file_mutex);
->>>>  			file->f_count--;
->>>>  			/* No more references to this file. Let go of it. */
->>>> -			if (list_empty(&file->f_blocks) && !file->f_locks
->>>> +			if (!file->f_locks && list_empty(&file->f_blocks)
->>>>     
->>>>         
->>> Is this change actually achieving something?  or is it just noise?
->>>   
->>>       
->> Not really - but I thought checking for f_locks would be faster (tiny 
->> bit of optimization :))
->>     
->
-> You don't want to put the fastest operation first.  You want the one
-> that is most likely to fail (as it is an '&&' where failure aborts the
-> sequence).
-> So you would need some argument (preferably with measurements) to say
-> which of the conditions will fail most often, before rearranging as an
-> optimisation.
->
->
->   
-yep .. really think about it, my bad. Have reset it back ... Wendy
+From: J. Bruce Fields <bfields@citi.umich.edu>
+
+The rfc doesn't give any reason it shouldn't be possible to set an
+attribute on a non-regular file.  And if the server supports it, then it
+shouldn't be up to us to prevent it.
+
+Thanks to Erez for the report and Trond for further analysis.
+
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+Tested-by: Erez Zadok <ezk-EX0cT3Az47bauI2f2gSDlQ@public.gmane.org>
+---
+ fs/nfs/nfs4proc.c |    4 ----
+ 1 files changed, 0 insertions(+), 4 deletions(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 92bfbcb..ffe5584 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -3621,10 +3621,6 @@ int nfs4_setxattr(struct dentry *dentry, const char *key, const void *buf,
+ 	if (strcmp(key, XATTR_NAME_NFSV4_ACL) != 0)
+ 		return -EOPNOTSUPP;
+ 
+-	if (!S_ISREG(inode->i_mode) &&
+-	    (!S_ISDIR(inode->i_mode) || inode->i_mode & S_ISVTX))
+-		return -EPERM;
+-
+ 	return nfs4_proc_set_acl(inode, buf, buflen);
+ }
+ 
+-- 
+1.5.4.rc2.60.gb2e62
+
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Microsoft
+Defy all challenges. Microsoft(R) Visual Studio 2008.
+http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
+
