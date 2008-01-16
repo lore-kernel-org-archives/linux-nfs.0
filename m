@@ -1,70 +1,67 @@
-From: "Chris Fanning" <christopher.fanning@gmail.com>
-Subject: Re: [NFS] fd cache inconsistency!
-Date: Wed, 16 Jan 2008 18:12:04 +0100
-Message-ID: <215ff4410801160912h7c995672xd856c86fbfaf431d@mail.gmail.com>
-References: <215ff4410801150718o28118bc8me7d344b303e00306@mail.gmail.com>
-	<20080115164440.GC17937@fieldses.org>
-	<215ff4410801150915g6142b65ch2fc55f2cd332a333@mail.gmail.com>
-	<20080115172243.GH17937@fieldses.org>
+From: "david m. richter" <richterd@citi.umich.edu>
+Subject: Re: [PATCH 0/3] Intro: Better handling coarse-grained timestamps
+Date: Wed, 16 Jan 2008 12:16:08 -0500 (EST)
+Message-ID: <Pine.BSO.4.64.0801161211340.25972@citi.umich.edu>
+References: <20080115162658.GA18911@newbie.thebellsplace.net>
+ <20080116015526.GC26010@newbie.thebellsplace.net>
+ <1200449912.28088.22.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Bob Bell <b_linuxnfs-Y/+76LoPTq9wBoktGHYdvgC/G2K4zDHf@public.gmane.org>, linux-nfs@vger.kernel.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:44856 "EHLO neil.brown.name"
+Received: from citi.umich.edu ([141.211.133.111]:7951 "EHLO citi.umich.edu"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757421AbYAPRMZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Jan 2008 12:12:25 -0500
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1JFBoM-0007pi-V8
-	for linux-nfs@vger.kernel.org; Thu, 17 Jan 2008 04:12:23 +1100
-In-Reply-To: <20080115172243.GH17937@fieldses.org>
+	id S1751500AbYAPRrm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Jan 2008 12:47:42 -0500
+In-Reply-To: <1200449912.28088.22.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Jan 15, 2008 6:22 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> On Tue, Jan 15, 2008 at 06:15:26PM +0100, Chris Fanning wrote:
-> > On Jan 15, 2008 5:44 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > >
-> > > On Tue, Jan 15, 2008 at 04:18:10PM +0100, Chris Fanning wrote:
-> > > > Hi all,
-> > > >
-> > > > In my syslog I'm getting lots of these.
-> > > >
-> > > > nfsd[1926]: fd cache inconsistency!
-> > > > last message repeated 31 times
-> > > >
-> > > > Does anyone know what it means?
-> > >
-> > > No.  In fact, I can't find that message in the current kernel or
-> > > nfs-utils.  What versions of those are you using?
-> >
-> > /usr/sbin/rpc.nfsd -v
-> > Universal NFS Server 2.2beta47
+On Tue, 15 Jan 2008, Trond Myklebust wrote:
 >
-> Oh.  My understanding is that that's not maintained very much.
->
-> So I'd recommend reporting the problem to your distributor's bug
-> database and considering using the kernel's nfs server instead.
->
+> On Tue, 2008-01-15 at 20:55 -0500, Bob Bell wrote:
+> > On Tue, Jan 15, 2008 at 11:27:01AM -0500, Bob Bell wrote:
+> > >Secondly, a modification to the kernel has been made to disable the 
+> > >caching of negative dentries when the NFS_MOUNT_NONEGDE flag is set.  
+> > >Note that this does nothing to address outdated information being 
+> > >returned by readdir().  However, it does allow a file to be open()ed or 
+> > >lstat()ed if the filename is known.  Because this has a potential 
+> > >performance impact, it is left as an option for the user to select.
+> > 
+> > Someone pointed me to this page on NFSv4.1 directory delegations: 
+> > http://wiki.linux-nfs.org/wiki/index.php/NFSv4.1_Directory_Delegations
+> > 
+> > I found the following quotes intriguing:
+> > 
+> > "Even though the directories along the path are cached, [without 
+> > directory delegations] negative dentry caching is not allowed because it 
+> > potentially violates close-to-open consistency semantics."
+> 
+> Negative dentry caching has nothing whatsoever to do with close-to-open
+> semantics.
+> 
+> > "Close-to-open consistency currently requires that even in a case where 
+> > previous LOOKUPs or OPENs for a given file have recently and repeatedly 
+> > failed, subsequent LOOKUPs and OPENs must nevertheless be sent to the 
+> > server (i.e., negative caching provides no benefit in those cases)."
+> 
+> Nope. All close-to-open cache consistency requires is that the client
+> revalidate the file/directory cached data upon an open()/opendir() call
+> by checking the inode mtime and/or change attribute (NFSv4 only).
+> 
+> I think we need to revisit that wiki entry...
 
-ok. I'll do that. thanks.
+	so then, would it instead be correct to say that the negative 
+dentry caching on the client afforded by the delegation is beneficial 
+insofar as it obviates the client's need to revalidate the file/directory 
+in question?  if so, i understand the flawed CTO wording and will fix the 
+wiki.
 
-Chris.
+	thanks,
 
-> --b.
->
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Microsoft
-Defy all challenges. Microsoft(R) Visual Studio 2008.
-http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+	d
+	.
+> 
+> Trond
 
