@@ -1,47 +1,62 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 2/3] NFS: Add NFS_MOUNT_NONEGDE flag to avoid caching
-	negative dentries
-Date: Tue, 15 Jan 2008 21:42:30 -0500
-Message-ID: <1200451350.28088.43.camel@heimdal.trondhjem.org>
-References: <20080115163013.GC18911@newbie.thebellsplace.net>
-	 <1200415972.7702.7.camel@heimdal.trondhjem.org>
-	 <CB3B3B75-ECE5-4A46-BEA5-7DEDA8DB7DCA@oracle.com>
-	 <20080116012209.GB26010@newbie.thebellsplace.net>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH 1/2] NLM failover unlock commands
+Date: Wed, 16 Jan 2008 15:19:17 +1100
+Message-ID: <18317.34245.222866.193544@notabene.brown>
+References: <4781BB0D.90706@redhat.com>
+	<20080108170220.GA21401@infradead.org>
+	<20080108174958.GA25025@infradead.org>
+	<4783E3C9.3040803@redhat.com>
+	<20080109180214.GA31071@infradead.org>
+	<20080110075959.GA9623@infradead.org>
+	<4788665B.4020405@redhat.com>
+	<18315.62909.330258.83038@notabene.brown>
+	<478D14C5.1000804@redhat.com>
+	<18317.7319.443532.62244@notabene.brown>
+	<478D3820.9080402@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-	NFS list <linux-nfs@vger.kernel.org>
-To: Bob Bell <b_linuxnfs-Y/+76LoPTq9wBoktGHYdvgC/G2K4zDHf@public.gmane.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	Christoph Hellwig <hch@infradead.org>,
+	NFS list <linux-nfs@vger.kernel.org>, cluster-devel@redhat.com
+To: Wendy Cheng <wcheng@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from pat.uio.no ([129.240.10.15]:41397 "EHLO pat.uio.no"
+Received: from mx1.suse.de ([195.135.220.2]:49605 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758719AbYAPCmg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 15 Jan 2008 21:42:36 -0500
-In-Reply-To: <20080116012209.GB26010-y89O8yXFYpDSsb2jM9SCN5/hYUUxywnI@public.gmane.org>
+	id S1753186AbYAPETZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 Jan 2008 23:19:25 -0500
+In-Reply-To: message from Wendy Cheng on Tuesday January 15
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Tue, 2008-01-15 at 20:22 -0500, Bob Bell wrote:
-> >>How about something like 'cacheneglookup' 'nocacheneglookup'? Better
-> >>suggestions, anyone?
+On Tuesday January 15, wcheng@redhat.com wrote:
+> Revised version of the patch:
 > 
-> As long as no one objects to the length, I'll go with "nocacheneglookup" 
-> (and NFS_MOUNT_NOCACHENEGLOOKUP, I suppose) for round 2.
+> * based on comment from Neil Brown, use sscanf() to parse IP address (a 
+> cool idea imo).
+> * the "ret" inside nlm_traverse_files() is now the file count that can't 
+> be unlocked.
+> * other minor changes from latest round of review.
+> 
+> Thanks to all for the review !
+> 
+> -- Wendy
+> 
+> Two new NFSD procfs files are added:
+>   /proc/fs/nfsd/unlock_ip
+>   /proc/fs/nfsd/unlock_filesystem
+> 
+> They are intended to allow admin or user mode script to release NLM locks
+> based on either a path name or a server in-bound ip address (ipv4 for now)
+> as;
+> 
+> shell> echo 10.1.1.2 > /proc/fs/nfsd/unlock_ip
+> shell> echo /mnt/sfs1 > /proc/fs/nfsd/unlock_filesystem
+> 
+> Signed-off-by: S. Wendy Cheng <wcheng@redhat.com>
+> Signed-off-by: Lon Hohberger  <lhh@redhat.com>
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
+Reviewed-By: NeilBrown <neilb@suse.de>
 
-I'm still not happy with that name. What do people think about
-introducing a generic 'cache' option that can be used for fine control
-of caching options?
+Thanks.
 
-I'm thinking somewhat along the lines of
-
-	-ocache=lookup_all		/* Cache all dentries */
-	-ocache=lookup_positive		/* Cache positive dentries */
-	-ocache=lookup_none		/* Force all lookups */
-
-...and then possibly adding other 'cache=' options later if we find out
-that we need them?
-
-Cheers
-  Trond
-
+NeilBrown
