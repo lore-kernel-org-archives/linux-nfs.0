@@ -1,82 +1,50 @@
 From: Bob Bell <b_linuxnfs-Y/+76LoPTq9wBoktGHYdvgC/G2K4zDHf@public.gmane.org>
-Subject: Re: [PATCH 3/3] nfs-utils: Add nonegde mount option
-Date: Tue, 15 Jan 2008 20:13:05 -0500
-Message-ID: <20080116011305.GA26010@newbie.thebellsplace.net>
-References: <20080115163130.GD18911@newbie.thebellsplace.net> <243A7D1D-E2DB-4669-8E19-6D07D03144FF@oracle.com>
+Subject: Re: [PATCH 2/3] NFS: Add NFS_MOUNT_NONEGDE flag to avoid caching negative dentries
+Date: Tue, 15 Jan 2008 20:22:10 -0500
+Message-ID: <20080116012209.GB26010@newbie.thebellsplace.net>
+References: <20080115163013.GC18911@newbie.thebellsplace.net> <1200415972.7702.7.camel@heimdal.trondhjem.org> <CB3B3B75-ECE5-4A46-BEA5-7DEDA8DB7DCA@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: linux-nfs@vger.kernel.org
+Cc: NFS list <linux-nfs@vger.kernel.org>
 To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from srv03.macroped.com ([74.52.9.226]:39240 "EHLO
+Received: from srv03.macroped.com ([74.52.9.226]:54465 "EHLO
 	srv03.macroped.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750968AbYAPBNQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Jan 2008 20:13:16 -0500
-In-Reply-To: <243A7D1D-E2DB-4669-8E19-6D07D03144FF@oracle.com>
+	with ESMTP id S1751263AbYAPBWT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Jan 2008 20:22:19 -0500
+In-Reply-To: <CB3B3B75-ECE5-4A46-BEA5-7DEDA8DB7DCA@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jan 15, 2008 at 11:42:54AM -0500, Chuck Lever wrote:
->On Jan 15, 2008, at 11:31 AM, Bob Bell wrote:
->>diff --git a/utils/mount/nfs_mount.h b/utils/mount/nfs_mount.h
->>index 7df8fb2..2deca87 100644
->>--- a/utils/mount/nfs_mount.h
->>+++ b/utils/mount/nfs_mount.h
->>@@ -50,21 +50,22 @@ struct nfs_mount_data {
->>/* bits in the flags field */
->>-#define NFS_MOUNT_SOFT		0x0001	/* 1 */
->>-#define NFS_MOUNT_INTR		0x0002	/* 1 */
->>-#define NFS_MOUNT_SECURE	0x0004	/* 1 */
->>-#define NFS_MOUNT_POSIX		0x0008	/* 1 */
->>-#define NFS_MOUNT_NOCTO		0x0010	/* 1 */
->>-#define NFS_MOUNT_NOAC		0x0020	/* 1 */
->>-#define NFS_MOUNT_TCP		0x0040	/* 2 */
->>-#define NFS_MOUNT_VER3		0x0080	/* 3 */
->>-#define NFS_MOUNT_KERBEROS	0x0100	/* 3 */
->>-#define NFS_MOUNT_NONLM		0x0200	/* 3 */
->>-#define NFS_MOUNT_BROKEN_SUID	0x0400	/* 4 */
->>-#define NFS_MOUNT_NOACL     0x0800  /* 4 */
->>-#define NFS_MOUNT_SECFLAVOUR	0x2000	/* 5 */
->>-#define NFS_MOUNT_NORDIRPLUS	0x4000	/* 5 */
->>-#define NFS_MOUNT_UNSHARED	0x8000	/* 5 */
->>+#define NFS_MOUNT_SOFT		0x00001	/* 1 */
->>+#define NFS_MOUNT_INTR		0x00002	/* 1 */
->>+#define NFS_MOUNT_SECURE	0x00004	/* 1 */
->>+#define NFS_MOUNT_POSIX		0x00008	/* 1 */
->>+#define NFS_MOUNT_NOCTO		0x00010	/* 1 */
->>+#define NFS_MOUNT_NOAC		0x00020	/* 1 */
->>+#define NFS_MOUNT_TCP		0x00040	/* 2 */
->>+#define NFS_MOUNT_VER3		0x00080	/* 3 */
->>+#define NFS_MOUNT_KERBEROS	0x00100	/* 3 */
->>+#define NFS_MOUNT_NONLM		0x00200	/* 3 */
->>+#define NFS_MOUNT_BROKEN_SUID	0x00400	/* 4 */
->>+#define NFS_MOUNT_NOACL		0x00800	/* 4 */
->>+#define NFS_MOUNT_SECFLAVOUR	0x02000	/* 5 */
->>+#define NFS_MOUNT_NORDIRPLUS	0x04000	/* 5 */
->>+#define NFS_MOUNT_UNSHARED	0x08000	/* 5 */
->>+#define NFS_MOUNT_NONEGDE	0x10000	/* 5 */
+On Tue, Jan 15, 2008 at 12:04:50PM -0500, Chuck Lever wrote:
+>On Jan 15, 2008, at 11:52 AM, Trond Myklebust wrote:
+>>The patch itself looks OK. My only gripe is the two names 'negde' and
+>>'nonegde'. Can we find something that rolls a bit more smoothly off  
+>>the
+>>tongue?
 >
->Why is the patch replacing all the flag definitions?  Did you check  
->for inadvertent white space damage?
+>Yeah, actually I thought it was spelled "non edge" until I looked  
+>closer.
 
-Actually, I fixed one bit of erroneous whitespace I found (spaces 
-instead of tab).  The reason the definitions all change is because 
-a leading 0.  The existing flags were 0x0001 through 0x8000.  The new 
-flag is 0x10000.  I thought would be nice to make the flags all 5 digits 
-so that they visually lined up.  I don't have to do that; it does make 
-the patch uglier, but IMHO I think the resulting file is nicer.
+Heh -- I mentioned the same thing at the bottom of my (admittedly 
+verbose) intro the patch.  In fact, I've mistyped it "nonedge" myself 
+a few times, which I figured was a strong hint it needed renaming.
 
->As I understand it, we aren't adding new options to the legacy part  of 
->the nfs-utils mount command any longer.  Instead, add support for  the 
->option in the kernel's NFS mount option parser in fs/nfs/super.c.
+I was going for the terseness I saw in the rest of the options, and 
+"nonegde" was the best my limited creativity could come up with.
 
-Oh, perhaps I didn't fully investigate the context.  I was just 
-following the pattern I saw.  I can see if it still works without that 
-one snippet (I believe I already updated fs/nfs/super.c appropriately).  
-I presume updating the man page is still appropriate though, correct?  
-What about defining the flag?  If it's not going to be used, should it 
-still be defined as a placeholder?  I'll default to "yes" unless I hear 
-otherwise.
+>>How about something like 'cacheneglookup' 'nocacheneglookup'? Better
+>>suggestions, anyone?
+
+As long as no one objects to the length, I'll go with "nocacheneglookup" 
+(and NFS_MOUNT_NOCACHENEGLOOKUP, I suppose) for round 2.
+
+>You might consider tying this behavior to "noac" as well.  In other  
+>words, make "noac" equivalent to "sync,actimeo=0,nonegde" .
+
+I'll provide this as a separate patch in the patch set, as Trond 
+indicated he would prefer.  This might make sense, as this is probably 
+the set of options we'll used.
 
 -- 
 Bob Bell
