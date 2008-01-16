@@ -1,46 +1,95 @@
-From: "david m. richter" <richterd@citi.umich.edu>
-Subject: Re: [PATCH 0/3] Intro: Better handling coarse-grained timestamps
-Date: Wed, 16 Jan 2008 15:09:45 -0500 (EST)
-Message-ID: <Pine.BSO.4.64.0801161505200.25972@citi.umich.edu>
-References: <20080115162658.GA18911@newbie.thebellsplace.net>
- <20080116015526.GC26010@newbie.thebellsplace.net>
- <1200449912.28088.22.camel@heimdal.trondhjem.org>
- <Pine.BSO.4.64.0801161211340.25972@citi.umich.edu>
- <1200512872.6932.8.camel@heimdal.trondhjem.org>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: RE: [PATCH 2/3] NFS: Add NFS_MOUNT_NONEGDE flag to avoid caching
+	negative dentries
+Date: Wed, 16 Jan 2008 15:43:39 -0500
+Message-ID: <1200516219.6932.22.camel@heimdal.trondhjem.org>
+References: <20080115163013.GC18911@newbie.thebellsplace.net>
+	 <1200415972.7702.7.camel@heimdal.trondhjem.org>
+	 <CB3B3B75-ECE5-4A46-BEA5-7DEDA8DB7DCA@oracle.com>
+	 <20080116012209.GB26010@newbie.thebellsplace.net>
+	 <1200451350.28088.43.camel@heimdal.trondhjem.org>
+	 <478DFD5A.1040501@RedHat.com>
+	 <01AE8AF878612047A442668306EAEB05018178E7@SACEXMV01.hq.netapp.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Bob Bell <b_linuxnfs-Y/+76LoPTq9wBoktGHYdvgC/G2K4zDHf@public.gmane.org>, linux-nfs@vger.kernel.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: text/plain
+Cc: Steve Dickson <SteveD@redhat.com>,
+	Bob Bell <b_linuxnfs-Y/+76LoPTq9wBoktGHYdvgC/G2K4zDHf@public.gmane.org>,
+	Chuck Lever <chuck.lever@oracle.com>,
+	NFS list <linux-nfs@vger.kernel.org>
+To: "Muntz, Daniel" <Dan.Muntz@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from citi.umich.edu ([141.211.133.111]:21949 "EHLO citi.umich.edu"
+Received: from pat.uio.no ([129.240.10.15]:60844 "EHLO pat.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751248AbYAPUJq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Jan 2008 15:09:46 -0500
-In-Reply-To: <1200512872.6932.8.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+	id S1750894AbYAPUoQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Jan 2008 15:44:16 -0500
+In-Reply-To: <01AE8AF878612047A442668306EAEB05018178E7-Ye0EzW0T4yEQ4vjYWPuN5KYtpRd4g51m@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 16 Jan 2008, Trond Myklebust wrote:
-> 
-> On Wed, 2008-01-16 at 12:16 -0500, david m. richter wrote:
-> > 	so then, would it instead be correct to say that the negative 
-> > dentry caching on the client afforded by the delegation is beneficial 
-> > insofar as it obviates the client's need to revalidate the file/directory 
-> > in question?  if so, i understand the flawed CTO wording and will fix the 
-> > wiki.
-> 
-> Delegations give you a guarantee that the directory contents (i.e. the
-> readdir() information) have not changed, and so the client no longer
-> needs to poll the directory for change information.
-> 
-> IOW: specifically they allow the client to optimise away the GETATTR
-> call in opendir(), and they allow it to optimise away most of
-> nfs_lookup_revalidate().
-> 
-> Cheers
->   Trond
 
-	good, i'm on the same page as you here.  thanks, trond,
+On Wed, 2008-01-16 at 11:43 -0800, Muntz, Daniel wrote:
+> My $.02
+> 
+>  -odircache=on
+>  -odircache=hitsonly (or positive, or hits, or ?)
+>  -odircache=off
 
-	d
-	.
+
+I like the 'dircache' bit, but to me 'on/off' suggests a binary switch:
+they don't mix well with a third state.
+
+How about
+
+        -odircache=aggr[essive]	/* Full caching */
+        -odircache=noneg[ative]	/* Positive lookups only */
+        -odircache=off		/* strict lookup revalidation */
+
+?
+
+
+> -----Original Message-----
+> From: Steve Dickson [mailto:SteveD@redhat.com] 
+> Sent: Wednesday, January 16, 2008 4:50 AM
+> To: Trond Myklebust
+> Cc: Bob Bell; Chuck Lever; NFS list
+> Subject: Re: [PATCH 2/3] NFS: Add NFS_MOUNT_NONEGDE flag to avoid
+> caching negative dentries
+> 
+> Trond Myklebust wrote:
+> > On Tue, 2008-01-15 at 20:22 -0500, Bob Bell wrote:
+> >>>> How about something like 'cacheneglookup' 'nocacheneglookup'? 
+> >>>> Better suggestions, anyone?
+> >> As long as no one objects to the length, I'll go with
+> "nocacheneglookup" 
+> >> (and NFS_MOUNT_NOCACHENEGLOOKUP, I suppose) for round 2.
+> > 
+> > I'm still not happy with that name. What do people think about 
+> > introducing a generic 'cache' option that can be used for fine control
+> 
+> > of caching options?
+> > 
+> > I'm thinking somewhat along the lines of
+> > 
+> > 	-ocache=lookup_all		/* Cache all dentries */
+> > 	-ocache=lookup_positive		/* Cache positive dentries */
+> > 	-ocache=lookup_none		/* Force all lookups */
+> Maybe we should define the type of cache were are controlling, in case
+> we want to add controls for other caches. So how about:
+> 
+>         -olpcache=all        /* Cache all directory entries */
+>         -olpcache=found      /* Cache only directory entires that are
+> found */
+>         -olpcache=off        /* Turn off the caching of directory
+> entries */ 
+> 
+> 
+> steved.
+> -
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org More majordomo info
+> at  http://vger.kernel.org/majordomo-info.html
+> -
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
