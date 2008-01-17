@@ -1,110 +1,34 @@
-From: Wendy Cheng <wcheng@redhat.com>
-Subject: Re: [PATCH 1/2] NLM failover unlock commands
-Date: Thu, 17 Jan 2008 13:07:02 -0500
-Message-ID: <478F9946.9010601@redhat.com>
-References: <20080110075959.GA9623@infradead.org> <4788665B.4020405@redhat.com>
-	<18315.62909.330258.83038@notabene.brown>
-	<478D14C5.1000804@redhat.com>
-	<18317.7319.443532.62244@notabene.brown>
-	<478D3820.9080402@redhat.com> <20080117151007.GB16581@fieldses.org>
-	<478F78E8.40601@redhat.com> <20080117163105.GG16581@fieldses.org>
-	<478F82DA.4060709@redhat.com> <20080117164002.GH16581@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: Neil Brown <neilb@suse.de>,
-	Christoph Hellwig <hch@infradead.org>,
-	NFS list <linux-nfs@vger.kernel.org>, cluster-devel@redhat.com
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Return-path: <cluster-devel-bounces@redhat.com>
-In-Reply-To: <20080117164002.GH16581@fieldses.org>
-List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
-List-Archive: <https://www.redhat.com/archives/cluster-devel>
-List-Post: <mailto:cluster-devel@redhat.com>
-List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
-List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
-Sender: cluster-devel-bounces@redhat.com
-Errors-To: cluster-devel-bounces@redhat.com
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: whither bindresvport6() ?
+Date: Thu, 17 Jan 2008 15:02:08 -0500
+Message-ID: <8E814A5D-6806-49CB-9C56-CC398847F5E1@oracle.com>
+Mime-Version: 1.0 (Apple Message framework v753)
+Content-Type: text/plain; charset=US-ASCII; delsp=yes; format=flowed
+To: NFS list <linux-nfs@vger.kernel.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from agminet01.oracle.com ([141.146.126.228]:32417 "EHLO
+	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751634AbYAQUCb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jan 2008 15:02:31 -0500
+Received: from rgmgw2.us.oracle.com (rgmgw2.us.oracle.com [138.1.186.111])
+	by agminet01.oracle.com (Switch-3.2.4/Switch-3.1.7) with ESMTP id m0HK2PJd009237
+	for <linux-nfs@vger.kernel.org>; Thu, 17 Jan 2008 14:02:26 -0600
+Received: from acsmt357.oracle.com (acsmt357.oracle.com [141.146.40.157])
+	by rgmgw2.us.oracle.com (Switch-3.2.4/Switch-3.2.4) with ESMTP id m0HK2ONC029415
+	for <linux-nfs@vger.kernel.org>; Thu, 17 Jan 2008 13:02:24 -0700
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-J. Bruce Fields wrote:
-> On Thu, Jan 17, 2008 at 11:31:22AM -0500, Wendy Cheng wrote:
->   
->> J. Bruce Fields wrote:
->>     
->>> On Thu, Jan 17, 2008 at 10:48:56AM -0500, Wendy Cheng wrote:
->>>   
->>>       
->>>> J. Bruce Fields wrote:
->>>>     
->>>>         
->>>>> Remind me: why do we need both per-ip and per-filesystem methods?  In
->>>>> practice, I assume that we'll always do *both*?
->>>>>         
->>>>>           
->>>> Failover normally is done via virtual IP address - so per-ip base 
->>>> method  should be the core routine. However, for non-cluster 
->>>> filesystem such as  ext3/4, changing server also implies umount. If 
->>>> there are clients not  following rule and obtaining locks via 
->>>> different ip interfaces, umount  would fail that ends up aborting the 
->>>> failover process. That's the place  we need the per-filesystem 
->>>> method.
->>>>
->>>> ServerA:
->>>> 1. Tear down the IP address
->>>> 2. Unexport the path
->>>> 3. Write IP to /proc/fs/nfsd/unlock_ip to unlock files
->>>> 4. If unmount required,
->>>> write path name to /proc/fs/nfsd/unlock_filesystem, then unmount.
->>>> 5. Signal peer to begin take-over.
->>>>
->>>> Sometime ago we were looking at "export name" as the core method (so  
->>>> per-filesystem method is a subset of that). Unfortunately, the 
->>>> prototype  efforts showed the code would be too intrusive (if 
->>>> filesystem sub-tree  is exported).
->>>>     
->>>>         
->>>>> We're migrating clients by moving a server ip address from one node to
->>>>> another.  And I assume we're permitting at most one node to export each
->>>>> filesystem at a time.  So it *should* be the case that the set of locks
->>>>> held on the filesystem(s) that are moving are the same as the set of
->>>>> locks held by the virtual ip that is moving.
->>>>>         
->>>>>           
->>>> This is true for non-cluster filesystem. But a cluster filesystem can 
->>>> be  exported from multiple servers.
->>>>     
->>>>         
->>> But that last sentence:
->>>
->>> 	it *should* be the case that the set of locks held on the
->>> 	filesystem(s) that are moving are the same as the set of locks
->>> 	held by the virtual ip that is moving.
->>>
->>> is still true in the cluster filesystem case, right?
->>>
->>> --b.
->>>   
->>>       
->> Yes .... Wendy
->>     
->
-> In one situations (buggy client?  Weird network failure?) could that
-> fail to be the case?
->
-> Would there be any advantage to enforcing that requirement in the
-> server?  (For example, teaching nlm to reject any locking request for a
-> certain filesystem that wasn't sent to a certain server IP.)
->
-> --b.
->   
-It is doable... could be added into the "resume" patch that is currently 
-being tested (since the logic is so similar to the per-ip base grace 
-period) that should be out for review no later than next Monday.
+I'm filling in the IPv6 blanks in the mount command, and have run  
+into a little problem.  netinet/in.h suggests I need to use  
+bindresvport6() for IPv6 addresses, but it doesn't appear in the  
+standard libraries on Fedora 7.
 
-However, as any new code added into the system, there are trade-off(s). 
-I'm not sure we want to keep enhancing this too much though. Remember, 
-locking is about latency. Adding more checking will hurt latency.
+Anyone happen to know where this function resides in a late model glibc?
 
--- Wendy
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
