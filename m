@@ -1,172 +1,37 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: [PATCH 0/3] enhanced ESTALE error handling
-Date: Fri, 18 Jan 2008 13:12:03 -0500
-Message-ID: <4790EBF3.4060707@redhat.com>
-References: <4790C756.2040704@redhat.com> <63F84201-9D38-4588-B237-A15138E94C5A@oracle.com> <4790D9F3.2070503@redhat.com> <451AC300-674E-4DBE-869F-08A9184051B3@oracle.com> <4790E227.506@redhat.com> <D4189D74-D4AB-42CA-A788-40A50518E7DA@oracle.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	linux-nfs@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <D4189D74-D4AB-42CA-A788-40A50518E7DA@oracle.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+From: Chuck Lever <Chuck.Lever@oracle.com>
+Subject: Re: Understanding iostat-ms output
+Date: Fri, 18 Jan 2008 13:11:25 -0500
+Message-ID: <004A35A1-29F1-4C3E-AD1A-B42EEF5B8C22@oracle.com>
+References: <2a29d0a3c209d9488b0a3e8263c53e38@swip.net> <1200675753.7781.32.camel@heimdal.trondhjem.org> <6FBCD100-A02A-4CA5-8329-A801846B14BC@oracle.com> <1200679596.7781.37.camel@heimdal.trondhjem.org>
+Mime-Version: 1.0 (Apple Message framework v753)
+Content-Type: text/plain; charset=US-ASCII; delsp=yes; format=flowed
+Cc: "linux-nfs@vger.kernel.org list" <linux-nfs@vger.kernel.org>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from agminet01.oracle.com ([141.146.126.228]:37569 "EHLO
+	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1761198AbYARSNd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jan 2008 13:13:33 -0500
+In-Reply-To: <1200679596.7781.37.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Chuck Lever wrote:
-> On Jan 18, 2008, at 12:30 PM, Peter Staubach wrote:
->> Chuck Lever wrote:
->>> On Jan 18, 2008, at 11:55 AM, Peter Staubach wrote:
->>>> Chuck Lever wrote:
->>>>> Hi Peter-
->>>>>
->>>>> On Jan 18, 2008, at 10:35 AM, Peter Staubach wrote:
->>>>>> Hi.
->>>>>>
->>>>>> Here is a patch set which modifies the system to enhance the
->>>>>> ESTALE error handling for system calls which take pathnames
->>>>>> as arguments.
->>>>>
->>>>> The VFS already handles ESTALE.
->>>>>
->>>>> If a pathname resolution encounters an ESTALE at any point, the 
->>>>> resolution is restarted exactly once, and an additional flag is 
->>>>> passed to the file system during each lookup that forces each 
->>>>> component in the path to be revalidated on the server.  This has 
->>>>> no possibility of causing an infinite loop.
->>>>>
->>>>> Is there some part of this logic that is no longer working?
->>>>
->>>> The VFS does not fully handle ESTALE.  An ESTALE error can occur
->>>> during the second pathname resolution attempt.
->>>
->>> If an ESTALE occurs during the second resolution attempt, we should 
->>> give up.  When I addressed this issue two years ago, the two-try 
->>> logic was the only acceptable solution because there's no way to 
->>> guarantee the pathname resolution will ever finish unless we put a 
->>> hard limit on it.
->>>
+On Jan 18, 2008, at 1:06 PM, Trond Myklebust wrote:
+> On Fri, 2008-01-18 at 12:37 -0500, Chuck Lever wrote:
+>> I've applied Trond's patch, and patches from NetApp to support RDMA
+>> statistics to these two scripts, and posted fresh versions here:
 >>
->> I can probably imagine a situation where the pathname resolution
->> would never finish, but I am not sure that it could ever happen
->> in nature.
+>>    http://oss.oracle.com/~cel/linux-2.6/2.6.24/
 >
-> Unless someone is doing something malicious.  Or if the server is 
-> repeatedly returning ESTALE for some reason.
->
-
-If the server is repeatedly returning ESTALE, then the pathname
-resolution will fail to make progress and give up, return ENOENT
-to the user level.
-
-A malicious user on the network can cause so many other problems
-than just something like this too.  But, in this case, the user
-would have to predict why and when the client was issuing a
-specific operation and know whether or not to return ESTALE.
-This seems quite far fetched and quite unlikely to me.
-
->>>> There are lots of
->>>> reasons, some of which are the 1 second resolution from some file
->>>> systems on the server
->>>
->>> Which is a server bug, AFAICS.  It's simply impossible to close all 
->>> the windows that result from sloppy file time stamps without 
->>> completely disabling client-side caching.  The NFS protocol relies 
->>> on file time stamps to manage cache coherence.  If the server is 
->>> lying about time stamps, there's no way the client can cache 
->>> coherently.
->>>
->>
->> Server bug or not, it is something that the client has to live
->> with.  We can't get the server file system fixed, so it is
->> something that we should find a way to live with.  This support
->> can help.
->
-> We haven't identified a server-side solution yet, but that doesn't 
-> mean it doesn't exist.
->
-
-No, it doesn't and I, and most everyone else, would also like to
-see such a solution.  That said, I am pretty sure that we are not
-going to get a fix for ext3 and forcing everyone to move away from
-ext3 is not a good solution either.
-
-> If we address the time stamp problem in the client, should we also go 
-> to lengths to address it in every other corner of the NFS client?  
-> Should we also address every other server bug we discover with a 
-> client side fix?
->
-
-These aren't asked seriously, are they?
-
-When possible, we get the server bug fixed.  When not possible,
-such as the time stamp issue with ext3, we attempt work around
-it as best as possible.
+> Any chance you could put this in a git repository on git.linux-nfs.org
+> so that we can track changes?
 
 
->>>> Also, there was no support for ESTALE errors which occur during
->>>> subsequent operations to the pathname resolution process.  For
->>>> example, during a mkdir(2) operation, the ESTALE can occur from
->>>> the over the wire MKDIR operation after the LOOKUP operations
->>>> have all succeeded.
->>>
->>> If the final operation fails after a pathname resolution, then it's 
->>> a real error.  Is there a fixed and valid recovery script for the 
->>> client in this case that will allow the mkdir to proceed?
->>>
->>
->> Why do you think that it is an error?
->
-> Because this is a problem that sometimes requires application-level 
-> recovery.  Can we guarantee that retrying the mkdir is the right thing 
-> to do every time?
->
+The plan is to include these scripts in nfs-utils during 2CQ08, after  
+the IPv6 work is complete.  There is some additional work to be done,  
+such as composing man pages for both scripts, adding appropriate  
+dependency information in the nfs-utils build scripts, and so on.
 
-When would not retrying the MKDIR be the right thing to do?
-When doing a mkdir("a/b"), the user can not tell nor cares
-which instance of directory "a" is the one that gets "b" created
-in it.
-
-Which cases are the ones that you see that require user
-level recovery?
-
->> It can easily occur if the directory in which the new directory
->> is to be created disppears after it is looked up and before the
->> MKDIR is issued.
->>
->> The recovery is to perform the lookup again.
->
-> Have you tried this client against a file server when you unexport the 
-> filesystem under test?  The server returns ESTALE no matter what the 
-> client does.  Should the client continue to retry the request if the 
-> file system has been permanently taken offline?
->
-
-Since the NFS client supports "intr", then why not continue to
-retry the request?  It certainly won't hurt the network, trying
-at most once every acdirmin timeout seconds.  This, by default,
-would be once every 30 seconds.
-
-This would alleviate a long standing complaint that when an
-admin uses a poor administrative procedure that users become
-completely hosed.
-
->>> Admittedly, the NFS client could recover more cleanly from some of 
->>> these problems, but given the architecture of the Linux VFS, it will 
->>> be difficult to address some of the corner cases.
->>
->> Could you outline some of these corner cases that this proposal
->> would not address, please?
->
-> I think we have one right here: should the client retry a mkdir if 
-> gets an ESTALE? 
-
-Yes.  Why not?  Please describe more specifically why you think
-that it should not.
-
-    Thanx...
-
-       ps
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
