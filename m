@@ -1,64 +1,99 @@
-From: "Muntz, Daniel" <Dan.Muntz@netapp.com>
-Subject: RE: [PATCH 2/3] NFS: Add NFS_MOUNT_NONEGDE flag to avoid caching negative dentries
-Date: Fri, 18 Jan 2008 12:00:38 -0800
-Message-ID: <01AE8AF878612047A442668306EAEB0501817BA4@SACEXMV01.hq.netapp.com>
-References: <20080115163013.GC18911@newbie.thebellsplace.net> <1200415972.7702.7.camel@heimdal.trondhjem.org> <CB3B3B75-ECE5-4A46-BEA5-7DEDA8DB7DCA@oracle.com> <20080116012209.GB26010@newbie.thebellsplace.net> <1200451350.28088.43.camel@heimdal.trondhjem.org> <478DFD5A.1040501@RedHat.com> <01AE8AF878612047A442668306EAEB05018178E7@SACEXMV01.hq.netapp.com> <1200516219.6932.22.camel@heimdal.trondhjem.org> <C8097339-F9C5-4350-823E-A99945F4600E@oracle.com> <20080118152902.GF7128@newbie.thebellsplace.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] svc: Modify svc_find_xprt to take a reference
+Date: Fri, 18 Jan 2008 15:17:06 -0500
+Message-ID: <20080118201706.GJ15158@fieldses.org>
+References: <20080118165121.9787.8399.stgit@dell3.ogc.int>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Cc: "Trond Myklebust" <trond.myklebust@fys.uio.no>,
-	"Steve Dickson" <SteveD@redhat.com>,
-	"NFS list" <linux-nfs@vger.kernel.org>
-To: "Bob Bell" <b_linuxnfs-Y/+76LoPTq9wBoktGHYdvgC/G2K4zDHf@public.gmane.org>,
-	"Chuck Lever" <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:22598 "EHLO mx2.netapp.com"
+Received: from mail.fieldses.org ([66.93.2.214]:41438 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1764843AbYARUBR convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jan 2008 15:01:17 -0500
-In-reply-to: <20080118152902.GF7128-y89O8yXFYpDSsb2jM9SCN5/hYUUxywnI@public.gmane.org>
+	id S1757679AbYARURH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 18 Jan 2008 15:17:07 -0500
+In-Reply-To: <20080118165121.9787.8399.stgit-gUwIgmpLGaKNDNWfRnPdfg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-How about "all" instead of "full" ("all" being the opposite of "none")?
-A cache being "full", although not making sense in this context, does
-have another meaning. 
+On Fri, Jan 18, 2008 at 10:51:21AM -0600, Tom Tucker wrote:
+> 
+> Modify svc_find_xprt to acquire a reference on a transport if it is found.
+> This fixes a race where the transport is found, but removed immediately
+> afterward leaving the caller with a pointer to a dead transport.
 
------Original Message-----
-From: Bob Bell [mailto:b_linuxnfs-Y/+76LoPTq9wBoktGHYdvgC/G2K4zDHf@public.gmane.org] 
-Sent: Friday, January 18, 2008 7:29 AM
-To: Chuck Lever
-Cc: Trond Myklebust; Muntz, Daniel; Steve Dickson; NFS list
-Subject: Re: [PATCH 2/3] NFS: Add NFS_MOUNT_NONEGDE flag to avoid
-caching negative dentries
+OK.  Applied (and folded in with "knfsd: Support adding transports by
+writing portlist file"); result included in
 
-On Wed, Jan 16, 2008 at 03:49:20PM -0500, Chuck Lever wrote:
->On Jan 16, 2008, at 3:43 PM, Trond Myklebust wrote:
->>How about
->>         -odircache=aggr[essive]	/* Full caching */
->>         -odircache=noneg[ative]	/* Positive lookups only */
->>         -odircache=off		/* strict lookup revalidation */
->
->  "-olookupcache=" would be even more specific, if not more verbose.   
->dircache=off implies that not even readdir results are cached.
->
->	-olookupcache=full
->	-olookupcache=pos[itive]
->	-olookupcache=strict
+	git://linux-nfs.org/~bfields/linux.git nfs-server-stable
 
-I think that "lookupcache" is a little more accurate, and perhaps worth
-the verbosity.  "dircache" could be misinterpreted to imply that
-directory listings are being cached -- which, incidentally, I'm start to
-receive complaints is a problem for us, too...
+--b.
 
-Converstation on this seems to have died down, and I'm ready to revisit
-the patch.  I'm inclined to go with:
-    -o lookupcache=full
-    -o lookupcache=pos[itive]
-    -o lookupcache=none
-
-If you have a strong (enough) opinion otherwise, please speak up now and
-save me the trouble of an extra pass at the patch...
-
---
-Bob Bell
+> 
+> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+> ---
+> 
+>  fs/lockd/svc.c        |   18 +++++++++++++-----
+>  fs/nfsd/nfsctl.c      |    1 +
+>  net/sunrpc/svc_xprt.c |    1 +
+>  3 files changed, 15 insertions(+), 5 deletions(-)
+> 
+> diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+> index 470af01..0822646 100644
+> --- a/fs/lockd/svc.c
+> +++ b/fs/lockd/svc.c
+> @@ -227,17 +227,25 @@ lockd(struct svc_rqst *rqstp)
+>  static int make_socks(struct svc_serv *serv, int proto)
+>  {
+>  	static int warned;
+> +	struct svc_xprt *xprt;
+>  	int err = 0;
+>  
+> -	if (proto == IPPROTO_UDP || nlm_udpport)
+> -		if (!svc_find_xprt(serv, "udp", 0, 0))
+> +	if (proto == IPPROTO_UDP || nlm_udpport) {
+> +		xprt = svc_find_xprt(serv, "udp", 0, 0);
+> +		if (!xprt)
+>  			err = svc_create_xprt(serv, "udp", nlm_udpport,
+>  					      SVC_SOCK_DEFAULTS);
+> -	if (err >= 0 && (proto == IPPROTO_TCP || nlm_tcpport))
+> -		if (!svc_find_xprt(serv, "tcp", 0, 0))
+> +		else
+> +			svc_xprt_put(xprt);
+> +	}
+> +	if (err >= 0 && (proto == IPPROTO_TCP || nlm_tcpport)) {
+> +		xprt = svc_find_xprt(serv, "tcp", 0, 0);
+> +		if (!xprt)
+>  			err = svc_create_xprt(serv, "tcp", nlm_tcpport,
+>  					      SVC_SOCK_DEFAULTS);
+> -
+> +		else
+> +			svc_xprt_put(xprt);
+> +	}
+>  	if (err >= 0) {
+>  		warned = 0;
+>  		err = 0;
+> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+> index 10c13ed..d22bc45 100644
+> --- a/fs/nfsd/nfsctl.c
+> +++ b/fs/nfsd/nfsctl.c
+> @@ -592,6 +592,7 @@ static ssize_t write_ports(struct file *file, char *buf, size_t size)
+>  						     AF_UNSPEC, port);
+>  				if (xprt) {
+>  					svc_close_xprt(xprt);
+> +					svc_xprt_put(xprt);
+>  					err = 0;
+>  				} else
+>  					err = -ENOTCONN;
+> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+> index 5545c1e..c3fb367 100644
+> --- a/net/sunrpc/svc_xprt.c
+> +++ b/net/sunrpc/svc_xprt.c
+> @@ -1007,6 +1007,7 @@ struct svc_xprt *svc_find_xprt(struct svc_serv *serv, char *xcl_name,
+>  		if (port && port != svc_xprt_local_port(xprt))
+>  			continue;
+>  		found = xprt;
+> +		svc_xprt_get(xprt);
+>  		break;
+>  	}
+>  	spin_unlock_bh(&serv->sv_lock);
