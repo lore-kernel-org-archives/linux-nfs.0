@@ -1,106 +1,91 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: [PATCH 1/3] enhanced ESTALE error handling
-Date: Fri, 18 Jan 2008 12:32:05 -0500
-Message-ID: <4790E295.6010301@redhat.com>
-References: <4790C761.1010603@redhat.com> <20080118161443.GB20490@parisc-linux.org> <4790D7C0.30402@redhat.com> <20080118171805.GA15158@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: Matthew Wilcox <matthew@wil.cx>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	linux-nfs@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1764538AbYARRcq@vger.kernel.org>
-In-Reply-To: <20080118171805.GA15158@fieldses.org>
-Sender: linux-kernel-owner@vger.kernel.org
+From: Chuck Lever <Chuck.Lever@oracle.com>
+Subject: Re: Understanding iostat-ms output
+Date: Fri, 18 Jan 2008 12:37:35 -0500
+Message-ID: <6FBCD100-A02A-4CA5-8329-A801846B14BC@oracle.com>
+References: <2a29d0a3c209d9488b0a3e8263c53e38@swip.net> <1200675753.7781.32.camel@heimdal.trondhjem.org>
+Mime-Version: 1.0 (Apple Message framework v753)
+Content-Type: text/plain; charset=US-ASCII; delsp=yes; format=flowed
+To: "linux-nfs@vger.kernel.org list" <linux-nfs@vger.kernel.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from agminet01.oracle.com ([141.146.126.228]:24128 "EHLO
+	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1764472AbYARRhk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jan 2008 12:37:40 -0500
+Received: from agmgw1.us.oracle.com (agmgw1.us.oracle.com [152.68.180.212])
+	by agminet01.oracle.com (Switch-3.2.4/Switch-3.1.7) with ESMTP id m0IHbcCh031741
+	for <linux-nfs@vger.kernel.org>; Fri, 18 Jan 2008 11:37:38 -0600
+Received: from acsmt358.oracle.com (acsmt358.oracle.com [141.146.40.158])
+	by agmgw1.us.oracle.com (Switch-3.2.0/Switch-3.2.0) with ESMTP id m0IHPppZ024558
+	for <linux-nfs@vger.kernel.org>; Fri, 18 Jan 2008 10:37:37 -0700
+In-Reply-To: <1200675753.7781.32.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-J. Bruce Fields wrote:
-> On Fri, Jan 18, 2008 at 11:45:52AM -0500, Peter Staubach wrote:
->   
->> Matthew Wilcox wrote:
->>     
->>> On Fri, Jan 18, 2008 at 10:36:01AM -0500, Peter Staubach wrote:
->>>       
->>>>  static int path_lookup_create(int dfd, const char *name,
->>>> -			      unsigned int lookup_flags, struct nameidata *nd,
->>>> -			      int open_flags, int create_mode)
->>>> +		unsigned int lookup_flags, struct nameidata *nd,
->>>> +		int open_flags, int create_mode)
->>>>     
->>>>         
->>> Gratuitous reformatting?
->>>
->>>   
->>>       
->> Elimination of an overly long line?
->>     
->
-> I usually try to gather any coding style, comment grammar, etc., fixes
-> into a single patch or two at the beginning of a series.  That keeps the
-> substantive patches (the hardest to understand) shorter.
->
->   
-
-That's probably great advice.  I can easily enough undo the change
-since it does not affect the functionality of the patch.  It was
-made while I was doing the analysis for the patch and to make the
-style better match the style used in other surrounding routines.
-
-    Thanx...
-
-       ps
-
-> --b.
->
->   
->>>> @@ -1712,7 +1729,10 @@ int open_namei(int dfd, const char *path
->>>>  	int acc_mode, error;
->>>>  	struct path path;
->>>>  	struct dentry *dir;
->>>> -	int count = 0;
->>>> +	int count;
->>>> +
->>>> +top:
->>>> +	count = 0;
->>>>   	acc_mode = ACC_MODE(flag);
->>>>  @@ -1739,7 +1759,8 @@ int open_namei(int dfd, const char *path
->>>>  	/*
->>>>  	 * Create - we need to know the parent.
->>>>  	 */
->>>> -	error = path_lookup_create(dfd,pathname,LOOKUP_PARENT,nd,flag,mode);
->>>> +	error = path_lookup_create(dfd, pathname, LOOKUP_PARENT, nd,
->>>> +				flag, mode);
->>>>  	if (error)
->>>>  		return error;
->>>>  @@ -1812,10 +1833,17 @@ ok:
->>>>  	return 0;
->>>>   exit_dput:
->>>> +	if (error == -ESTALE)
->>>> +		d_drop(path.dentry);
->>>>  	dput_path(&path, nd);
->>>>  exit:
->>>>  	if (!IS_ERR(nd->intent.open.file))
->>>>  		release_open_intent(nd);
->>>> +	if (error == -ESTALE) {
->>>> +		d_drop(nd->dentry);
->>>> +		path_release(nd);
->>>> +		goto top;
->>>> +	}
->>>>     
->>>>         
->>> I wonder if a tail-call might not work better here.
->>>       
->> "Tail-call"?
+On Jan 18, 2008, at 12:02 PM, Trond Myklebust wrote:
+> On Fri, 2008-01-18 at 10:37 +0100, Fredrik Lindgren wrote:
+>> Hello,
 >>
->>    Thanx...
+>> I have been messing around with the excellent "iostat-ms" tool in
+>> an effort to understand what is going on with our machines that are
+>> showing lots of IOwait.
 >>
->>       ps
->> -
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>     
+>> Below are two 15 second samples, the first one is taken during peak
+>> and the second one during the night. The obvious difference is in the
+>> "exe" field. Please excuse my ignorance, but what does this field  
+>> mean?
+>> Where is this additional time spent? On the filer or in the NFS stack
+>> on the host?
+>>
+>> stbnas1:/foo mounted on /misc/foo:
+>>
+>>    op/s         rpc bklog
+>> 2364.60            0.96
+>> read:             ops/s            Kb/s           Kb/op          
+>> retrans         avg RTT (ms)    avg exe (ms)
+>>                  43.267         659.624          15.246        0  
+>> (0.0%)          17.066         293.880
+>> write:            ops/s            Kb/s           Kb/op          
+>> retrans         avg RTT (ms)    avg exe (ms)
+>>                  16.133          60.314           3.738        0  
+>> (0.0%)           3.868         255.074
+>>
+>> stbnas1:/foo mounted on /misc/foo:
+>>
+>>    op/s         rpc bklog
+>> 1446.07            0.26
+>> read:             ops/s            Kb/s           Kb/op          
+>> retrans         avg RTT (ms)    avg exe (ms)
+>>                 105.200         189.155           1.798        0  
+>> (0.0%)           8.264           8.702
+>> write:            ops/s            Kb/s           Kb/op          
+>> retrans         avg RTT (ms)    avg exe (ms)
+>>                 105.067         297.774           2.834        0  
+>> (0.0%)           1.048           1.310
+>
+> AFAICS the RTT (i.e. round trip time) is being reported as being of  
+> the
+> order of milliseconds in both cases, so the filer would not appear  
+> to be
+> responsible. The discrepancy has to be on the client side.
+>
+> It would be interesting to see the 'rpc bklog' parameter in order to
+> confirm if the requests are being held up in the backlog queue.
+> Unfortunately, there appears to be a bug in iostat-ms: it appears  
+> to be
+> reading the 'number of requests in flight' where it should be reading
+> the 'length of backlog queue' parameter.
+> See if the attached patch doesn't help... (it also fixes a minor issue
+> of storing unsigned long long counters in the wrong type)
+
+
+I've applied Trond's patch, and patches from NetApp to support RDMA  
+statistics to these two scripts, and posted fresh versions here:
+
+   http://oss.oracle.com/~cel/linux-2.6/2.6.24/
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
 
