@@ -1,108 +1,100 @@
-From: Matthew Wilcox <matthew@wil.cx>
-Subject: Re: [PATCH 1/3] enhanced ESTALE error handling
-Date: Fri, 18 Jan 2008 09:14:44 -0700
-Message-ID: <20080118161443.GB20490@parisc-linux.org>
-References: <4790C761.1010603@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	linux-nfs@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>
-To: Peter Staubach <staubach@redhat.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <4790C761.1010603@redhat.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: Understanding iostat-ms output
+Date: Fri, 18 Jan 2008 11:34:25 -0500
+Message-ID: <0D40CC74-A3E1-472C-ACC2-3827E51B469D@oracle.com>
+References: <2a29d0a3c209d9488b0a3e8263c53e38@swip.net>
+Mime-Version: 1.0 (Apple Message framework v753)
+Content-Type: text/plain; charset=US-ASCII; delsp=yes; format=flowed
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+To: "Fredrik Lindgren" <fli-FpffG6+3qsA@public.gmane.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from rgminet01.oracle.com ([148.87.113.118]:32158 "EHLO
+	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1761237AbYARQgU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jan 2008 11:36:20 -0500
+In-Reply-To: <2a29d0a3c209d9488b0a3e8263c53e38-FpffG6+3qsA@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jan 18, 2008 at 10:36:01AM -0500, Peter Staubach wrote:
-> @@ -1025,12 +1027,27 @@ static int fastcall link_path_walk(const
->  	mntget(save.mnt);
->  
->  	result = __link_path_walk(name, nd);
-> -	if (result == -ESTALE) {
-> +	while (result == -ESTALE) {
-> +		/*
-> +		 * If no progress was made looking up the pathname,
-> +		 * then stop and return ENOENT instead of ESTALE.
-> +		 */
-> +		if (nd->dentry == save.dentry) {
-> +			result = -ENOENT;
-> +			break;
-> +		}
->  		*nd = save;
->  		dget(nd->dentry);
->  		mntget(nd->mnt);
->  		nd->flags |= LOOKUP_REVAL;
->  		result = __link_path_walk(name, nd);
-> +		/*
-> +		 * If no progress was made this time, then return
-> +		 * ENOENT instead of ESTALE because no recovery
-> +		 * is possible to recover the stale file handle.
-> +		 */
-> +		if (result == -ESTALE && nd->dentry == save.dentry)
-> +			result = -ENOENT;
->  	}
->  
->  	dput(save.dentry);
+On Jan 18, 2008, at 4:37 AM, Fredrik Lindgren wrote:
+> I have been messing around with the excellent "iostat-ms" tool in
+> an effort to understand what is going on with our machines that are
+> showing lots of IOwait.
+>
+> Below are two 15 second samples, the first one is taken during peak
+> and the second one during the night. The obvious difference is in the
+> "exe" field. Please excuse my ignorance, but what does this field  
+> mean?
+> Where is this additional time spent? On the filer or in the NFS stack
+> on the host?
 
-Why do you need both of these tests?  The first one should be enough,
-surely?
+RTT is the time from when the kernel RPC client sends the RPC request  
+to the time it receives the reply; RTT includes network transit time  
+and server execution time.
 
-> @@ -1268,8 +1285,8 @@ int path_lookup_open(int dfd, const char
->   * @create_mode: create intent flags
->   */
->  static int path_lookup_create(int dfd, const char *name,
-> -			      unsigned int lookup_flags, struct nameidata *nd,
-> -			      int open_flags, int create_mode)
-> +		unsigned int lookup_flags, struct nameidata *nd,
-> +		int open_flags, int create_mode)
+"exe" is the time from when the NFS client dispatches the RPC request  
+to the kernel RPC client to the time the RPC request is complete;  
+"exe" includes RTT, and RPC client queuing and processing time.
 
-Gratuitous reformatting?
+So, even though the server turns your requests around in under  
+20msec, the RPC client is taking almost a quarter second, on average,  
+to process an RPC request.
 
-> @@ -1712,7 +1729,10 @@ int open_namei(int dfd, const char *path
->  	int acc_mode, error;
->  	struct path path;
->  	struct dentry *dir;
-> -	int count = 0;
-> +	int count;
-> +
-> +top:
-> +	count = 0;
->  
->  	acc_mode = ACC_MODE(flag);
->  
-> @@ -1739,7 +1759,8 @@ int open_namei(int dfd, const char *path
->  	/*
->  	 * Create - we need to know the parent.
->  	 */
-> -	error = path_lookup_create(dfd,pathname,LOOKUP_PARENT,nd,flag,mode);
-> +	error = path_lookup_create(dfd, pathname, LOOKUP_PARENT, nd,
-> +				flag, mode);
->  	if (error)
->  		return error;
->  
-> @@ -1812,10 +1833,17 @@ ok:
->  	return 0;
->  
->  exit_dput:
-> +	if (error == -ESTALE)
-> +		d_drop(path.dentry);
->  	dput_path(&path, nd);
->  exit:
->  	if (!IS_ERR(nd->intent.open.file))
->  		release_open_intent(nd);
-> +	if (error == -ESTALE) {
-> +		d_drop(nd->dentry);
-> +		path_release(nd);
-> +		goto top;
-> +	}
+The RPC client, by default, can process up to 16 requests  
+concurrently.  Once this limit is exceeded, the RPC client queues  
+requests coming from the NFS client in a backlog queue.  Average  
+execution time "exe" goes up if the requests have to wait in the  
+backlog queue.
 
-I wonder if a tail-call might not work better here.
+Since your retransmit rate is zero, I'll assume you are using TCP.   
+Try increasing the default slot table size of the RPC client:
 
--- 
-Intel are signing my paycheques ... these opinions are still mine
-"Bill, look, we understand that you're interested in selling us this
-operating system, but compare it to ours.  We can't possibly take such
-a retrograde step."
+   sudo sysctl -w sunrpc.tcp_slot_table_entries=64
+
+then remounting your NFS file systems.
+
+> stbnas1:/foo mounted on /misc/foo:
+>
+>    op/s         rpc bklog
+> 2364.60            0.96
+> read:             ops/s            Kb/s           Kb/op          
+> retrans         avg RTT (ms)    avg exe (ms)
+>                  43.267         659.624          15.246        0  
+> (0.0%)          17.066         293.880
+> write:            ops/s            Kb/s           Kb/op          
+> retrans         avg RTT (ms)    avg exe (ms)
+>                  16.133          60.314           3.738        0  
+> (0.0%)           3.868         255.074
+>
+> stbnas1:/foo mounted on /misc/foo:
+>
+>    op/s         rpc bklog
+> 1446.07            0.26
+> read:             ops/s            Kb/s           Kb/op          
+> retrans         avg RTT (ms)    avg exe (ms)
+>                 105.200         189.155           1.798        0  
+> (0.0%)           8.264           8.702
+> write:            ops/s            Kb/s           Kb/op          
+> retrans         avg RTT (ms)    avg exe (ms)
+>                 105.067         297.774           2.834        0  
+> (0.0%)           1.048           1.310
+>
+>
+> Regards,
+>   Fredrik Lindgren
+>
+>
+>
+>
+> -
+> To unsubscribe from this list: send the line "unsubscribe linux- 
+> nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
