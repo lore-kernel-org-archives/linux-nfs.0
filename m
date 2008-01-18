@@ -1,54 +1,51 @@
-From: Wendy Cheng <wcheng@redhat.com>
-Subject: Re: [PATCH 1/2] NLM failover unlock commands
-Date: Fri, 18 Jan 2008 10:00:00 -0500
-Message-ID: <4790BEF0.1020507@redhat.com>
-References: <20080110075959.GA9623@infradead.org> <4788665B.4020405@redhat.com>
-	<18315.62909.330258.83038@notabene.brown>
-	<478D14C5.1000804@redhat.com>
-	<18317.7319.443532.62244@notabene.brown>
-	<478D3820.9080402@redhat.com> <20080117151007.GB16581@fieldses.org>
-	<478F78E8.40601@redhat.com> <478F7D96.1060602@redhat.com>
-	<478F7DE4.30404@redhat.com> <20080118102107.GB26106@janus>
+From: Bob Bell <b_linuxnfs-Y/+76LoPTq9wBoktGHYdvgC/G2K4zDHf@public.gmane.org>
+Subject: Re: [PATCH 2/3] NFS: Add NFS_MOUNT_NONEGDE flag to avoid caching negative dentries
+Date: Fri, 18 Jan 2008 10:29:03 -0500
+Message-ID: <20080118152902.GF7128@newbie.thebellsplace.net>
+References: <20080115163013.GC18911@newbie.thebellsplace.net> <1200415972.7702.7.camel@heimdal.trondhjem.org> <CB3B3B75-ECE5-4A46-BEA5-7DEDA8DB7DCA@oracle.com> <20080116012209.GB26010@newbie.thebellsplace.net> <1200451350.28088.43.camel@heimdal.trondhjem.org> <478DFD5A.1040501@RedHat.com> <01AE8AF878612047A442668306EAEB05018178E7@SACEXMV01.hq.netapp.com> <1200516219.6932.22.camel@heimdal.trondhjem.org> <C8097339-F9C5-4350-823E-A99945F4600E@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Neil Brown <neilb@suse.de>, NFS list <linux-nfs@vger.kernel.org>,
-	cluster-devel@redhat.com, Christoph Hellwig <hch@infradead.org>
-To: Frank van Maarseveen <frankvm@frankvm.com>
-Return-path: <cluster-devel-bounces@redhat.com>
-In-Reply-To: <20080118102107.GB26106@janus>
-List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
-List-Archive: <https://www.redhat.com/archives/cluster-devel>
-List-Post: <mailto:cluster-devel@redhat.com>
-List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
-List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
-Sender: cluster-devel-bounces@redhat.com
-Errors-To: cluster-devel-bounces@redhat.com
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	"Muntz, Daniel" <Dan.Muntz@netapp.com>,
+	Steve Dickson <SteveD@redhat.com>,
+	NFS list <linux-nfs@vger.kernel.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from srv03.macroped.com ([74.52.9.226]:53346 "EHLO
+	srv03.macroped.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754812AbYARPaP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jan 2008 10:30:15 -0500
+In-Reply-To: <C8097339-F9C5-4350-823E-A99945F4600E@oracle.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Frank van Maarseveen wrote:
->> shell> echo 10.1.1.2 > /proc/fs/nfsd/unlock_ip
->> shell> echo /mnt/sfs1 > /proc/fs/nfsd/unlock_filesystem
->>
->> The expected sequence of events can be:
->> 1. Tear down the IP address
->>     
+On Wed, Jan 16, 2008 at 03:49:20PM -0500, Chuck Lever wrote:
+>On Jan 16, 2008, at 3:43 PM, Trond Myklebust wrote:
+>>How about
+>>         -odircache=aggr[essive]	/* Full caching */
+>>         -odircache=noneg[ative]	/* Positive lookups only */
+>>         -odircache=off		/* strict lookup revalidation */
 >
-> You might consider using iptables at this point for dropping outgoing
-> packets with that source IP address to catch any packet still in
-> flight. It fixed ESTALE problems for me IIRC (NFSv3, UDP).
->   
+>  "-olookupcache=" would be even more specific, if not more verbose.   
+>dircache=off implies that not even readdir results are cached.
+>
+>	-olookupcache=full
+>	-olookupcache=pos[itive]
+>	-olookupcache=strict
 
-ok, thanks ... Wendy
->   
->> 2. Unexport the path
->> 3. Write IP to /proc/fs/nfsd/unlock_ip to unlock files
->> 4. If unmount required, write path name to
->>    /proc/fs/nfsd/unlock_filesystem, then unmount.
->> 5. Signal peer to begin take-over.
->>
->>     
->
->   
+I think that "lookupcache" is a little more accurate, and perhaps worth 
+the verbosity.  "dircache" could be misinterpreted to imply that 
+directory listings are being cached -- which, incidentally, I'm start to 
+receive complaints is a problem for us, too...
+
+Converstation on this seems to have died down, and I'm ready to revisit 
+the patch.  I'm inclined to go with:
+    -o lookupcache=full
+    -o lookupcache=pos[itive]
+    -o lookupcache=none
+
+If you have a strong (enough) opinion otherwise, please speak up now and 
+save me the trouble of an extra pass at the patch...
+
+-- 
+Bob Bell
