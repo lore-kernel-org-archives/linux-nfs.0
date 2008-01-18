@@ -1,551 +1,939 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: [PATCH 3/3] enhanced ESTALE error handling
-Date: Fri, 18 Jan 2008 10:36:15 -0500
-Message-ID: <4790C76F.2050105@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 0/3] enhanced ESTALE error handling
+Date: Fri, 18 Jan 2008 10:46:07 -0500
+Message-ID: <20080118154607.GA4976@fieldses.org>
+References: <4790C756.2040704@redhat.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------050401010405080305060902"
-Cc: linux-nfs@vger.kernel.org,
+Content-Type: text/plain; charset=us-ascii
+Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	linux-nfs@vger.kernel.org,
 	Andrew Morton <akpm@linux-foundation.org>,
 	Trond Myklebust <trond.myklebust@fys.uio.no>,
 	linux-fsdevel <linux-fsdevel@vger.kernel.org>
-To: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+To: Peter Staubach <staubach@redhat.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail.fieldses.org ([66.93.2.214]:33679 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1760150AbYARPqf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 18 Jan 2008 10:46:35 -0500
+In-Reply-To: <4790C756.2040704@redhat.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a multi-part message in MIME format.
---------------050401010405080305060902
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+On Fri, Jan 18, 2008 at 10:35:50AM -0500, Peter Staubach wrote:
+> Hi.
+>
+> Here is a patch set which modifies the system to enhance the
+> ESTALE error handling for system calls which take pathnames
+> as arguments.
 
-Hi.
+I think your cover letter may be bigger than any of the actual
+patches....  I'm not complaining!  But would it be worth adding this
+explanation and test code to Documentation/filesystems/ just to keep it
+around?
 
-The patch enhanced the ESTALE error handling for NFS mounted
-file systems.  It expands the number of places that the NFS
-client checks for ESTALE returns from the server.
+--b.
 
-It also enhances the ESTALE handling for directories by
-occasionally retrying revalidation to check to see whether the
-directory becomes valid again.  This sounds odd, but can occur
-when a systems administrator, accidently or unknowingly,
-unexports a file system which is in use.  All active
-non-directory files become permanently inaccessible, but
-directories can be become accessible again after the
-administrator re-exports the file system.  This is a situation
-that users have been complaining about for years and this
-support can help to alleviate their situations.
+>
+> The error, ESTALE, was originally introduced to handle the
+> situation where a file handle, which NFS uses to uniquely
+> identify a file on the server, no longer refers to a valid file
+> on the server.  This can happen when the file is removed on the
+> server, either by an application on the server, some other
+> client accessing the server, or sometimes even by another
+> mounted file system from the same client.  It can also happen
+> when the file resides upon a file system which is no longer
+> exported.
+>
+> The error, ESTALE, is usually seen when cached directory
+> information is used to convert a pathname to a dentry/inode pair.
+> The information is discovered to be out of date or stale when a
+> subsequent operation is sent to the NFS server.  This can easily
+> happen in system calls such as stat(2) when the pathname is
+> converted a dentry/inode pair using cached information, but then
+> a subsequent GETATTR call to the server discovers that the file
+> handle is no longer valid.
+>
+> System calls which take pathnames as arguments should never see
+> ESTALE errors from situations like this.  These system calls
+> should either fail with an ENOENT error if the pathname can not
+> be successfully be translated to a dentry/inode pair or succeed
+> or fail based on their own semantics.
+>
+> ESTALE errors which occur during the lookup process can be
+> handled by dropping the dentry which refers to the non-existent
+> file from the dcache and then restarting the lookup process.
+> Care can be taken to ensure that forward progress is always
+> being made in order to avoiding infinite loops.
+>
+> ESTALE errors which occur during operations subsequent to the
+> lookup process can be handled by unwinding appropriately and
+> then performing the lookup process again.  Eventually, either
+> the lookup process will succeed or fail correctly or the
+> subsequent operation will succeed or fail on its own merits.
+>
+> This support is desired in order to tighten up recovery from
+> discovering stale resources due to the loose cache consistency
+> semantics that file systems such as NFS employ.  In particular,
+> there are several large Red Hat customers, converting from
+> Solaris to Linux, who desire this support in order that their
+> applications environments continue to work.
+>
+> Please note that system calls which do not take pathnames as
+> arguments or perhaps use file descriptors to identify the
+> file to be manipulated may still fail with ESTALE errors.
+> There is no recovery possible with these systems calls like
+> there is with system calls which take pathnames as arguments.
+>
+> This support was tested using the attached programs and
+> running multiple copies on mounted file systems which do not
+> share superblocks.  When two or more copies of this program
+> are running, many ESTALE errors can be seen over the network.
+>
+> Comments?
+>
+>    Thanx...
+>
+>       ps
 
-    Thanx...
+> #
+> #define _XOPEN_SOURCE 500
+> #define _LARGEFILE64_SOURCE
+> #include <sys/types.h>
+> #include <sys/stat.h>
+> #include <sys/statfs.h>
+> #include <sys/inotify.h>
+> #include <errno.h>
+> #include <fcntl.h>
+> #include <stdio.h>
+> #include <stdlib.h>
+> #include <unistd.h>
+> #include <signal.h>
+> 
+> void mkdir_test(void);
+> void link_test(void);
+> void open_test(void);
+> void access_test(void);
+> void chmod_test(void);
+> void chown_test(void);
+> void readlink_test(void);
+> void utimes_test(void);
+> void chdir_test(void);
+> void chroot_test(void);
+> void rename_test(void);
+> void exec_test(void);
+> void mknod_test(void);
+> void statfs_test(void);
+> void truncate_test(void);
+> void xattr_test(void);
+> void inotify_test(void);
+> 
+> struct tests {
+> 	void (*test)(void);
+> };
+> 
+> struct tests tests[] = {
+> 	mkdir_test,
+> 	link_test,
+> 	open_test,
+> 	access_test,
+> 	chmod_test,
+> 	chown_test,
+> 	readlink_test,
+> 	utimes_test,
+> 	chdir_test,
+> 	chroot_test,
+> 	rename_test,
+> 	exec_test,
+> 	mknod_test,
+> 	statfs_test,
+> 	truncate_test,
+> 	xattr_test,
+> 	inotify_test
+> };
+> 
+> pid_t test_pids[sizeof(tests) / sizeof(tests[0])];
+> 
+> pid_t parent_pid;
+> 
+> void kill_tests(int);
+> 
+> int
+> main(int argc, char *argv[])
+> {
+> 	int i;
+> 
+> 	parent_pid = getpid();
+> 
+> 	sigset(SIGINT, kill_tests);
+> 
+> 	sighold(SIGINT);
+> 
+> 	for (i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
+> 		test_pids[i] = fork();
+> 		if (test_pids[i] == 0) {
+> 			for (;;)
+> 				(*tests[i].test)();
+> 			/* NOTREACHED */
+> 		}
+> 	}
+> 
+> 	sigrelse(SIGINT);
+> 
+> 	pause();
+> }
+> 
+> void
+> kill_tests(int sig)
+> {
+> 	int i;
+> 
+> 	for (i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
+> 		if (test_pids[i] != -1) {
+> 			if (kill(test_pids[i], SIGTERM) < 0)
+> 				perror("kill");
+> 		}
+> 	}
+> 
+> 	exit(0);
+> }
+> 
+> void
+> check_error(int error, char *operation)
+> {
+> 
+> 	if (error < 0 && errno == ESTALE) {
+> 		perror(operation);
+> 		kill(parent_pid, SIGINT);
+> 		pause();
+> 	}
+> }
+> 
+> void
+> check_error_child(int error, char *operation)
+> {
+> 
+> 	if (error < 0 && errno == ESTALE) {
+> 		perror(operation);
+> 		kill(parent_pid, SIGINT);
+> 		exit(1);
+> 	}
+> }
+> 
+> void
+> do_stats(char *file)
+> {
+> 	int error;
+> 	struct stat stbuf;
+> 	struct stat64 stbuf64;
+> 
+> 	error = stat(file, &stbuf);
+> 	check_error(error, "stat");
+> 
+> 	error = stat64(file, &stbuf64);
+> 	check_error(error, "stat64");
+> 
+> 	error = lstat(file, &stbuf);
+> 	check_error(error, "lstat");
+> 
+> 	error = lstat64(file, &stbuf64);
+> 	check_error(error, "lstat64");
+> }
+> 
+> void
+> do_stats_child(char *file)
+> {
+> 	int error;
+> 	struct stat stbuf;
+> 	struct stat64 stbuf64;
+> 
+> 	error = stat(file, &stbuf);
+> 	check_error_child(error, "stat");
+> 
+> 	error = stat64(file, &stbuf64);
+> 	check_error_child(error, "stat64");
+> 
+> 	error = lstat(file, &stbuf);
+> 	check_error_child(error, "lstat");
+> 
+> 	error = lstat64(file, &stbuf64);
+> 	check_error_child(error, "lstat64");
+> }
+> 
+> char *mkdir_dirs[] = {
+> 	"mkdir/a",
+> 	"mkdir/a/b",
+> 	"mkdir/a/b/c",
+> 	"mkdir/a/b/c/d",
+> 	"mkdir/a/b/c/d/e",
+> 	"mkdir/a/b/c/d/e/f",
+> 	"mkdir/a/b/c/d/e/f/g",
+> 	"mkdir/a/b/c/d/e/f/g/h",
+> 	"mkdir/a/b/c/d/e/f/g/h/i",
+> 	"mkdir/a/b/c/d/e/f/g/h/i/j",
+> 	"mkdir/a/b/c/d/e/f/g/h/i/j/k",
+> 	"mkdir/a/b/c/d/e/f/g/h/i/j/k/l",
+> 	"mkdir/a/b/c/d/e/f/g/h/i/j/k/l/m",
+> 	"mkdir/a/b/c/d/e/f/g/h/i/j/k/l/m/n",
+> 	"mkdir/a/b/c/d/e/f/g/h/i/j/k/l/m/n/o",
+> 	"mkdir/a/b/c/d/e/f/g/h/i/j/k/l/m/n/o/p",
+> 	"mkdir/a/b/c/d/e/f/g/h/i/j/k/l/m/n/o/p/q",
+> 	"mkdir/a/b/c/d/e/f/g/h/i/j/k/l/m/n/o/p/q/r",
+> 	"mkdir/a/b/c/d/e/f/g/h/i/j/k/l/m/n/o/p/q/r/s",
+> 	"mkdir/a/b/c/d/e/f/g/h/i/j/k/l/m/n/o/p/q/r/s/t",
+> 	"mkdir/a/b/c/d/e/f/g/h/i/j/k/l/m/n/o/p/q/r/s/t/u",
+> 	"mkdir/a/b/c/d/e/f/g/h/i/j/k/l/m/n/o/p/q/r/s/t/u/v",
+> 	"mkdir/a/b/c/d/e/f/g/h/i/j/k/l/m/n/o/p/q/r/s/t/u/v/w",
+> 	"mkdir/a/b/c/d/e/f/g/h/i/j/k/l/m/n/o/p/q/r/s/t/u/v/w/x",
+> 	"mkdir/a/b/c/d/e/f/g/h/i/j/k/l/m/n/o/p/q/r/s/t/u/v/w/x/y",
+> 	"mkdir/a/b/c/d/e/f/g/h/i/j/k/l/m/n/o/p/q/r/s/t/u/v/w/x/y/z",
+> 	NULL
+> };
+> 
+> void
+> mkdir_test()
+> {
+> 	int i;
+> 	int error;
+> 
+> 	error = mkdir("mkdir", 0755);
+> 	check_error(error, "mkdir");
+> 
+> 	for (i = 0; mkdir_dirs[i] != NULL; i++) {
+> 		error = mkdir(mkdir_dirs[i], 0755);
+> 		check_error(error, "mkdir");
+> 		do_stats(mkdir_dirs[i]);
+> 	}
+> 
+> 	while (--i >= 0) {
+> 		do_stats(mkdir_dirs[i]);
+> 		error = rmdir(mkdir_dirs[i]);
+> 		check_error(error, "rmdir");
+> 	}
+> 
+> 	error = rmdir("mkdir");
+> 	check_error(error, "rmdir");
+> }
+> 
+> char *link_file_a = "link/a";
+> char *link_file_b = "link/b";
+> 
+> void
+> link_test()
+> {
+> 	int error;
+> 	int fd;
+> 
+> 	error = mkdir("link", 0755);
+> 	check_error(error, "mkdir");
+> 
+> 	fd = open(link_file_a, O_CREAT, 0644);
+> 	check_error(fd, "open");
+> 
+> 	(void) close(fd);
+> 
+> 	do_stats(link_file_a);
+> 
+> 	error = link(link_file_a, link_file_b);
+> 	check_error(error, "link");
+> 	do_stats(link_file_a);
+> 	do_stats(link_file_b);
+> 
+> 	error = unlink(link_file_a);
+> 	check_error(error, "unlink");
+> 	do_stats(link_file_a);
+> 	do_stats(link_file_b);
+> 
+> 	error = link(link_file_b, link_file_a);
+> 	check_error(error, "link");
+> 	do_stats(link_file_a);
+> 	do_stats(link_file_b);
+> 
+> 	error = unlink(link_file_b);
+> 	check_error(error, "unlink");
+> 	do_stats(link_file_a);
+> 	do_stats(link_file_b);
+> 
+> 	error = unlink(link_file_a);
+> 	check_error(error, "unlink");
+> 	do_stats(link_file_a);
+> 	do_stats(link_file_b);
+> 
+> 	error = rmdir("link");
+> 	check_error(error, "rmdir");
+> }
+> 
+> char *open_file = "open/a";
+> 
+> void
+> open_test()
+> {
+> 	int error;
+> 	int fd;
+> 
+> 	error = mkdir("open", 0755);
+> 	check_error(error, "mkdir");
+> 
+> 	fd = open(open_file, O_CREAT | O_RDWR, 0644);
+> 	check_error(fd, "open: O_CREAT");
+> 
+> 	(void) close(fd);
+> 
+> 	do_stats(open_file);
+> 
+> 	fd = open(open_file, O_RDWR);
+> 	check_error(fd, "open: O_RDWR");
+> 
+> 	(void) close(fd);
+> 
+> 	do_stats(open_file);
+> 
+> 	error = unlink(open_file);
+> 	check_error(error, "unlink");
+> 
+> 	error = rmdir("open");
+> 	check_error(error, "rmdir");
+> }
+> 
+> char *access_file = "access/a";
+> 
+> void
+> access_test()
+> {
+> 	int error;
+> 	int fd;
+> 
+> 	error = mkdir("access", 0755);
+> 	check_error(error, "mkdir");
+> 
+> 	fd = open(access_file, O_CREAT | O_RDWR, 0644);
+> 	check_error(fd, "open: O_CREAT");
+> 
+> 	(void) close(fd);
+> 
+> 	do_stats(access_file);
+> 
+> 	error = access(access_file, F_OK);
+> 	check_error(error, "access");
+> 
+> 	do_stats(access_file);
+> 
+> 	error = unlink(access_file);
+> 	check_error(error, "unlink");
+> 
+> 	error = rmdir("access");
+> 	check_error(error, "rmdir");
+> }
+> 
+> char *chmod_file = "chmod/a";
+> 
+> void
+> chmod_test()
+> {
+> 	int error;
+> 	int fd;
+> 
+> 	error = mkdir("chmod", 0755);
+> 	check_error(error, "mkdir");
+> 
+> 	fd = open(chmod_file, O_CREAT | O_RDWR, 0644);
+> 	check_error(fd, "open: O_CREAT");
+> 
+> 	(void) close(fd);
+> 
+> 	do_stats(chmod_file);
+> 
+> 	error = chmod(chmod_file, 0600);
+> 	check_error(error, "chmod");
+> 
+> 	do_stats(chmod_file);
+> 
+> 	error = unlink(chmod_file);
+> 	check_error(error, "unlink");
+> 
+> 	error = rmdir("chmod");
+> 	check_error(error, "rmdir");
+> }
+> 
+> char *chown_file = "chown/a";
+> 
+> void
+> chown_test()
+> {
+> 	int error;
+> 	int fd;
+> 
+> 	error = mkdir("chown", 0755);
+> 	check_error(error, "mkdir");
+> 
+> 	fd = open(chown_file, O_CREAT | O_RDWR, 0644);
+> 	check_error(fd, "open: O_CREAT");
+> 
+> 	(void) close(fd);
+> 
+> 	do_stats(chown_file);
+> 
+> 	error = chown(chown_file, 4597, 4597);
+> 	check_error(error, "chown");
+> 
+> 	do_stats(chown_file);
+> 
+> 	error = lchown(chown_file, 4596, 4596);
+> 	check_error(error, "lchown");
+> 
+> 	do_stats(chown_file);
+> 
+> 	error = unlink(chown_file);
+> 	check_error(error, "unlink");
+> 
+> 	error = rmdir("chown");
+> 	check_error(error, "rmdir");
+> }
+> 
+> char *readlink_file = "readlink/a";
+> 
+> void
+> readlink_test()
+> {
+> 	int error;
+> 	char buf[BUFSIZ];
+> 
+> 	error = mkdir("readlink", 0755);
+> 	check_error(error, "mkdir");
+> 
+> 	error = symlink("b", readlink_file);
+> 	check_error(error, "symlink");
+> 
+> 	do_stats(readlink_file);
+> 
+> 	error = readlink(readlink_file, buf, sizeof(buf));
+> 	check_error(error, "readlink");
+> 
+> 	do_stats(readlink_file);
+> 
+> 	error = unlink(readlink_file);
+> 	check_error(error, "unlink");
+> 
+> 	error = rmdir("readlink");
+> 	check_error(error, "rmdir");
+> }
+> 
+> char *utimes_file = "utimes/a";
+> 
+> void
+> utimes_test()
+> {
+> 	int error;
+> 	int fd;
+> 
+> 	error = mkdir("utimes", 0755);
+> 	check_error(error, "mkdir");
+> 
+> 	fd = open(utimes_file, O_CREAT | O_RDWR, 0644);
+> 	check_error(fd, "open: O_CREAT");
+> 
+> 	(void) close(fd);
+> 
+> 	do_stats(utimes_file);
+> 
+> 	error = utime(utimes_file, NULL);
+> 	check_error(error, "utime");
+> 
+> 	do_stats(utimes_file);
+> 
+> 	error = utimes(utimes_file, NULL);
+> 	check_error(error, "utimes");
+> 
+> 	do_stats(utimes_file);
+> 
+> 	error = unlink(utimes_file);
+> 	check_error(error, "unlink");
+> 
+> 	error = rmdir("utimes");
+> 	check_error(error, "rmdir");
+> }
+> 
+> char *chdir_dir = "chdir/dir";
+> 
+> void
+> chdir_test()
+> {
+> 	int error;
+> 	int pid;
+> 	int status;
+> 
+> 	error = mkdir("chdir", 0755);
+> 	check_error(error, "mkdir");
+> 
+> 	pid = fork();
+> 	if (pid == 0) {
+> 		error = mkdir(chdir_dir, 0755);
+> 		check_error_child(error, "mkdir");
+> 
+> 		do_stats_child(chdir_dir);
+> 
+> 		error = chdir(chdir_dir);
+> 		check_error_child(error, "chdir");
+> 
+> 		do_stats_child(chdir_dir);
+> 
+> 		exit(0);
+> 	}
+> 
+> 	(void) wait(&status);
+> 
+> 	do_stats(chdir_dir);
+> 
+> 	error = rmdir(chdir_dir);
+> 	check_error(error, "rmdir");
+> 
+> 	error = rmdir("chdir");
+> 	check_error(error, "rmdir");
+> }
+> 
+> char *chroot_dir = "chroot/dir";
+> 
+> void
+> chroot_test()
+> {
+> 	int error;
+> 	int pid;
+> 	int status;
+> 
+> 	error = mkdir("chroot", 0755);
+> 	check_error(error, "mkdir");
+> 
+> 	pid = fork();
+> 	if (pid == 0) {
+> 		error = mkdir(chroot_dir, 0755);
+> 		check_error_child(error, "mkdir");
+> 
+> 		do_stats_child(chroot_dir);
+> 
+> 		error = chroot(chroot_dir);
+> 		check_error_child(error, "chroot");
+> 
+> 		do_stats_child(chroot_dir);
+> 
+> 		exit(0);
+> 	}
+> 
+> 	(void) wait(&status);
+> 
+> 	do_stats(chroot_dir);
+> 
+> 	error = rmdir(chroot_dir);
+> 	check_error(error, "rmdir");
+> 
+> 	error = rmdir("chroot");
+> 	check_error(error, "rmdir");
+> }
+> 
+> char *rename_file_a = "rename/a";
+> char *rename_file_b = "rename/b";
+> 
+> void
+> rename_test()
+> {
+> 	int error;
+> 	int fd;
+> 
+> 	error = mkdir("rename", 0755);
+> 	check_error(error, "mkdir");
+> 
+> 	fd = open(rename_file_a, O_CREAT, 0644);
+> 	check_error(fd, "open");
+> 
+> 	(void) close(fd);
+> 
+> 	do_stats(rename_file_a);
+> 
+> 	error = rename(rename_file_a, rename_file_b);
+> 	check_error(error, "rename");
+> 
+> 	do_stats(rename_file_a);
+> 	do_stats(rename_file_b);
+> 
+> 	error = rename(rename_file_b, rename_file_a);
+> 	check_error(error, "rename");
+> 
+> 	do_stats(rename_file_a);
+> 	do_stats(rename_file_b);
+> 
+> 	error = unlink(rename_file_a);
+> 	check_error(error, "unlink");
+> 
+> 	error = rmdir("rename");
+> 	check_error(error, "rmdir");
+> }
+> 
+> char *exec_file = "exec/a";
+> char *exec_source_file = "exec_test";
+> 
+> void
+> exec_test()
+> {
+> 	int error;
+> 	int pid;
+> 	int status;
+> 
+> 	error = mkdir("exec", 0755);
+> 	check_error(error, "mkdir");
+> 
+> 	error = link(exec_source_file, exec_file);
+> 	check_error(error, "link");
+> 	do_stats(exec_file);
+> 
+> 	pid = fork();
+> 	if (pid == 0) {
+> 		error = execl(exec_file, exec_file, NULL);
+> 		check_error_child(error, "execl");
+> 
+> 		exit(1);
+> 	}
+> 
+> 	wait(&status);
+> 
+> 	do_stats(exec_file);
+> 
+> 	error = unlink(exec_file);
+> 	check_error(error, "unlink");
+> 
+> 	error = rmdir("exec");
+> 	check_error(error, "rmdir");
+> }
+> 
+> char *mknod_file = "mknod/a";
+> 
+> void
+> mknod_test()
+> {
+> 	int error;
+> 
+> 	error = mkdir("mknod", 0755);
+> 	check_error(error, "mkdir");
+> 
+> 	error = mknod(mknod_file, S_IFCHR | 0644, 0);
+> 	check_error(error, "mknod");
+> 
+> 	do_stats(mknod_file);
+> 
+> 	error = unlink(mknod_file);
+> 	check_error(error, "unlink");
+> 
+> 	error = rmdir("mknod");
+> 	check_error(error, "rmdir");
+> }
+> 
+> void
+> statfs_test()
+> {
+> 	int error;
+> 	struct statfs stbuf;
+> 	struct statfs64 stbuf64;
+> 
+> 	error = mkdir("statfs", 0755);
+> 	check_error(error, "mkdir");
+> 
+> 	do_stats("statfs");
+> 
+> 	error = statfs("statfs", &stbuf);
+> 	check_error(error, "statfs");
+> 
+> 	error = statfs64("statfs", &stbuf64);
+> 	check_error(error, "statfs64");
+> 
+> 	error = rmdir("statfs");
+> 	check_error(error, "rmdir");
+> }
+> 
+> char *truncate_file = "truncate/a";
+> 
+> void
+> truncate_test()
+> {
+> 	int error;
+> 	int fd;
+> 
+> 	error = mkdir("truncate", 0755);
+> 	check_error(error, "mkdir");
+> 
+> 	fd = open(truncate_file, O_CREAT | O_RDWR, 0644);
+> 	check_error(fd, "open: O_CREAT");
+> 
+> 	(void) close(fd);
+> 
+> 	do_stats(truncate_file);
+> 
+> 	error = truncate(truncate_file, 1024);
+> 	check_error(error, "truncate");
+> 
+> 	do_stats(truncate_file);
+> 
+> 	error = unlink(truncate_file);
+> 	check_error(error, "unlink");
+> 
+> 	error = rmdir("truncate");
+> 	check_error(error, "rmdir");
+> }
+> 
+> char *xattr_file = "xattr/a";
+> 
+> #define ACL_USER_OBJ	(0x01)
+> #define ACL_USER	(0x02)
+> #define ACL_GROUP_OBJ	(0x04)
+> #define ACL_MASK	(0x10)
+> #define ACL_OTHER	(0x20)
+> 
+> struct posix_acl_xattr_entry {
+> 	unsigned short e_tag;
+> 	unsigned short e_perm;
+> 	unsigned int e_id;
+> };
+> 
+> #define POSIX_ACL_XATTR_VERSION	0x0002
+> 
+> struct posix_acl_xattr_header {
+> 	unsigned int a_version;
+> 	struct posix_acl_xattr_entry a_entries[5];
+> };
+> 
+> void
+> xattr_test()
+> {
+> 	int error;
+> 	int fd;
+> 	char buf[1024];
+> 	struct posix_acl_xattr_header ents;
+> 
+> 	error = mkdir("xattr", 0755);
+> 	check_error(error, "mkdir");
+> 
+> 	fd = open(xattr_file, O_CREAT | O_RDWR, 0444);
+> 	check_error(fd, "open: O_CREAT");
+> 
+> 	(void) close(fd);
+> 
+> 	do_stats(xattr_file);
+> 
+> 	error = getxattr(xattr_file, "system.posix_acl_access", buf,
+> 			sizeof (buf));
+> 	check_error(error, "getxattr");
+> 	error = lgetxattr(xattr_file, "system.posix_acl_access", buf,
+> 			sizeof (buf));
+> 	check_error(error, "lgetxattr");
+> 
+> 	ents.a_version = POSIX_ACL_XATTR_VERSION;
+> 	ents.a_entries[0].e_tag = ACL_USER_OBJ;
+> 	ents.a_entries[0].e_perm = 06;
+> 	ents.a_entries[0].e_id = -1;
+> 	ents.a_entries[1].e_tag = ACL_USER;
+> 	ents.a_entries[1].e_perm = 06;
+> 	ents.a_entries[1].e_id = 10;
+> 	ents.a_entries[2].e_tag = ACL_GROUP_OBJ;
+> 	ents.a_entries[2].e_perm = 06;
+> 	ents.a_entries[2].e_id = -1;
+> 	ents.a_entries[3].e_tag = ACL_MASK;
+> 	ents.a_entries[3].e_perm = 06;
+> 	ents.a_entries[3].e_id = -1;
+> 	ents.a_entries[4].e_tag = ACL_OTHER;
+> 	ents.a_entries[4].e_perm = 06;
+> 	ents.a_entries[4].e_id = -1;
+> 
+> 	error = setxattr(xattr_file, "system.posix_acl_access",
+> 			&ents, sizeof (ents), 0);
+> 	check_error(error, "setxattr");
+> 
+> 	do_stats(xattr_file);
+> 
+> 	error = lsetxattr(xattr_file, "system.posix_acl_access",
+> 			&ents, sizeof (ents), 0);
+> 	check_error(error, "lsetxattr");
+> 
+> 	do_stats(xattr_file);
+> 
+> 	error = getxattr(xattr_file, "system.posix_acl_access", buf,
+> 			sizeof (buf));
+> 	check_error(error, "getxattr");
+> 	error = lgetxattr(xattr_file, "system.posix_acl_access", buf,
+> 			sizeof (buf));
+> 	check_error(error, "lgetxattr");
+> 
+> 	error = listxattr(xattr_file, buf, sizeof (buf));
+> 	check_error(error, "listxattr");
+> 	error = llistxattr(xattr_file, buf, sizeof (buf));
+> 	check_error(error, "llistxattr");
+> 
+> 	error = removexattr(xattr_file, "system.posix_acl_access");
+> 	check_error(error, "removexattr");
+> 
+> 	do_stats(xattr_file);
+> 
+> 	error = setxattr(xattr_file, "system.posix_acl_access",
+> 			&ents, sizeof (ents), 0);
+> 	check_error(error, "setxattr");
+> 
+> 	do_stats(xattr_file);
+> 
+> 	error = lremovexattr(xattr_file, "system.posix_acl_access");
+> 	check_error(error, "lremovexattr");
+> 
+> 	do_stats(xattr_file);
+> 
+> 	error = unlink(xattr_file);
+> 	check_error(error, "unlink");
+> 
+> 	error = rmdir("xattr");
+> 	check_error(error, "rmdir");
+> }
+> 
+> char *inotify_file = "inotify/a";
+> 
+> void
+> inotify_test()
+> {
+> 	int error;
+> 	int fd;
+> 	int wd;
+> 
+> 	error = mkdir("inotify", 0755);
+> 	check_error(error, "mkdir");
+> 
+> 	fd = open(inotify_file, O_CREAT | O_RDWR, 0644);
+> 	check_error(fd, "open: O_CREAT");
+> 
+> 	(void) close(fd);
+> 
+> 	do_stats(inotify_file);
+> 
+> 	fd = inotify_init();
+> 	check_error(error, "inotify_init");
+> 
+> 	do_stats(inotify_file);
+> 
+> 	wd = inotify_add_watch(fd, inotify_file, IN_ALL_EVENTS);
+> 	check_error(wd, "inotify_add_watch");
+> 
+> 	do_stats(inotify_file);
+> 
+> 	error = inotify_rm_watch(fd, wd);
+> 	check_error(error, "inotify_rm_watch");
+> 
+> 	(void) close(fd);
+> 
+> 	do_stats(inotify_file);
+> 
+> 	error = unlink(inotify_file);
+> 	check_error(error, "unlink");
+> 
+> 	error = rmdir("inotify");
+> 	check_error(error, "rmdir");
+> }
 
-       ps
+> #include <stdlib.h>
+> 
+> main()
+> {
+> 	exit(0);
+> }
 
-Signed-off-by: Peter Staubach <staubach@redhat.com>
-
---------------050401010405080305060902
-Content-Type: text/plain;
- name="estale.nfs"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline;
- filename="estale.nfs"
-
---- linux-2.6.23.i686/fs/nfs/inode.c.org
-+++ linux-2.6.23.i686/fs/nfs/inode.c
-@@ -192,7 +192,7 @@ void nfs_invalidate_atime(struct inode *
-  */
- static void nfs_invalidate_inode(struct inode *inode)
- {
--	set_bit(NFS_INO_STALE, &NFS_FLAGS(inode));
-+	nfs_handle_estale(-ESTALE, inode);
- 	nfs_zap_caches_locked(inode);
- }
- 
-@@ -385,6 +385,8 @@ nfs_setattr(struct dentry *dentry, struc
- 	error = NFS_PROTO(inode)->setattr(dentry, &fattr, attr);
- 	if (error == 0)
- 		nfs_refresh_inode(inode, &fattr);
-+	else
-+		nfs_handle_estale(error, inode);
- 	unlock_kernel();
- 	return error;
- }
-@@ -629,7 +631,7 @@ int nfs_release(struct inode *inode, str
- int
- __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
- {
--	int		 status = -ESTALE;
-+	int status = -ESTALE;
- 	struct nfs_fattr fattr;
- 	struct nfs_inode *nfsi = NFS_I(inode);
- 
-@@ -640,15 +642,25 @@ __nfs_revalidate_inode(struct nfs_server
- 	lock_kernel();
- 	if (is_bad_inode(inode))
-  		goto out_nowait;
--	if (NFS_STALE(inode))
-+	if (NFS_STALE(inode) && !S_ISDIR(inode->i_mode))
-  		goto out_nowait;
- 
- 	status = nfs_wait_on_inode(inode);
- 	if (status < 0)
- 		goto out;
- 
-+	/*
-+	 * Do we believe that the file handle is still stale?
-+	 * For non-directories, once stale, always stale.
-+	 * For directories, believe the stale status for the
-+	 * attribute cache timeout period, and then try again.
-+	 * This will help to address the problem of the server
-+	 * admin "accidently" unexporting a file system without
-+	 * stopping the NFS server first.
-+	 */
- 	status = -ESTALE;
--	if (NFS_STALE(inode))
-+	if (NFS_STALE(inode) &&
-+	    (!S_ISDIR(inode->i_mode) || !nfs_attribute_timeout(inode)))
- 		goto out;
- 
- 	status = NFS_PROTO(inode)->getattr(server, NFS_FH(inode), &fattr);
-@@ -656,11 +668,9 @@ __nfs_revalidate_inode(struct nfs_server
- 		dfprintk(PAGECACHE, "nfs_revalidate_inode: (%s/%Ld) getattr failed, error=%d\n",
- 			 inode->i_sb->s_id,
- 			 (long long)NFS_FILEID(inode), status);
--		if (status == -ESTALE) {
-+		nfs_handle_estale(status, inode);
-+		if (status == -ESTALE)
- 			nfs_zap_caches(inode);
--			if (!S_ISDIR(inode->i_mode))
--				set_bit(NFS_INO_STALE, &NFS_FLAGS(inode));
--		}
- 		goto out;
- 	}
- 
-@@ -986,14 +996,28 @@ static int nfs_update_inode(struct inode
- 			__FUNCTION__, inode->i_sb->s_id, inode->i_ino,
- 			atomic_read(&inode->i_count), fattr->valid);
- 
--	if (nfsi->fileid != fattr->fileid)
--		goto out_fileid;
-+	if (nfsi->fileid != fattr->fileid) {
-+		printk(KERN_ERR "NFS: server %s error: fileid changed\n"
-+			"fsid %s: expected fileid 0x%Lx, got 0x%Lx\n",
-+			NFS_SERVER(inode)->nfs_client->cl_hostname,
-+			inode->i_sb->s_id,
-+			(long long)nfsi->fileid, (long long)fattr->fileid);
-+		goto out_err;
-+	}
- 
- 	/*
- 	 * Make sure the inode's type hasn't changed.
- 	 */
--	if ((inode->i_mode & S_IFMT) != (fattr->mode & S_IFMT))
--		goto out_changed;
-+	if ((inode->i_mode & S_IFMT) != (fattr->mode & S_IFMT)) {
-+		/*
-+		 * Big trouble! The inode has become a different object.
-+		 */
-+		printk(KERN_DEBUG "%s: inode %ld mode changed, %07o to %07o\n",
-+			__FUNCTION__, inode->i_ino, inode->i_mode, fattr->mode);
-+		goto out_err;
-+	}
-+
-+	nfs_clear_estale(inode);
- 
- 	server = NFS_SERVER(inode);
- 	/* Update the fsid? */
-@@ -1099,12 +1123,7 @@ static int nfs_update_inode(struct inode
- 	nfsi->cache_validity &= ~NFS_INO_REVAL_FORCED;
- 
- 	return 0;
-- out_changed:
--	/*
--	 * Big trouble! The inode has become a different object.
--	 */
--	printk(KERN_DEBUG "%s: inode %ld mode changed, %07o to %07o\n",
--			__FUNCTION__, inode->i_ino, inode->i_mode, fattr->mode);
-+
-  out_err:
- 	/*
- 	 * No need to worry about unhashing the dentry, as the
-@@ -1113,13 +1132,6 @@ static int nfs_update_inode(struct inode
- 	 */
- 	nfs_invalidate_inode(inode);
- 	return -ESTALE;
--
-- out_fileid:
--	printk(KERN_ERR "NFS: server %s error: fileid changed\n"
--		"fsid %s: expected fileid 0x%Lx, got 0x%Lx\n",
--		NFS_SERVER(inode)->nfs_client->cl_hostname, inode->i_sb->s_id,
--		(long long)nfsi->fileid, (long long)fattr->fileid);
--	goto out_err;
- }
- 
- 
---- linux-2.6.23.i686/fs/nfs/dir.c.org
-+++ linux-2.6.23.i686/fs/nfs/dir.c
-@@ -186,8 +186,9 @@ int nfs_readdir_filler(nfs_readdir_descr
- 
-  again:
- 	timestamp = jiffies;
--	error = NFS_PROTO(inode)->readdir(file->f_path.dentry, cred, desc->entry->cookie, page,
--					  NFS_SERVER(inode)->dtsize, desc->plus);
-+	error = NFS_PROTO(inode)->readdir(file->f_path.dentry, cred,
-+			desc->entry->cookie, page,
-+			NFS_SERVER(inode)->dtsize, desc->plus);
- 	if (error < 0) {
- 		/* We requested READDIRPLUS, but the server doesn't grok it */
- 		if (error == -ENOTSUPP && desc->plus) {
-@@ -213,6 +214,7 @@ int nfs_readdir_filler(nfs_readdir_descr
- 	return 0;
-  error:
- 	unlock_page(page);
-+	nfs_handle_estale(error, inode);
- 	desc->error = error;
- 	return -EIO;
- }
-@@ -494,8 +496,10 @@ int uncached_readdir(nfs_readdir_descrip
- 		desc->timestamp_valid = 1;
- 		if ((status = dir_decode(desc)) == 0)
- 			desc->entry->prev_cookie = *desc->dir_cookie;
--	} else
-+	} else {
-+		nfs_handle_estale(desc->error, inode);
- 		status = -EIO;
-+	}
- 	if (status < 0)
- 		goto out_release;
- 
-@@ -748,7 +752,7 @@ static int nfs_lookup_revalidate(struct 
- 	struct inode *dir;
- 	struct inode *inode;
- 	struct dentry *parent;
--	int error;
-+	int error = 0;
- 	struct nfs_fh fhandle;
- 	struct nfs_fattr fattr;
- 
-@@ -779,13 +783,16 @@ static int nfs_lookup_revalidate(struct 
- 	}
- 
- 	if (NFS_STALE(inode))
--		goto out_bad;
-+		goto out_zap_parent;
- 
- 	error = NFS_PROTO(dir)->lookup(dir, &dentry->d_name, &fhandle, &fattr);
--	if (error)
-+	if (error) {
-+		if (error == -ESTALE)
-+			goto out_zap_parent;
- 		goto out_bad;
-+	}
- 	if (nfs_compare_fh(NFS_FH(inode), &fhandle))
--		goto out_bad;
-+		goto out_zap_parent;
- 	if ((error = nfs_refresh_inode(inode, &fattr)) != 0)
- 		goto out_bad;
- 
-@@ -800,6 +807,7 @@ static int nfs_lookup_revalidate(struct 
- out_zap_parent:
- 	nfs_zap_caches(dir);
-  out_bad:
-+	nfs_handle_estale(error, dir);
- 	nfs_mark_for_revalidate(dir);
- 	if (inode && S_ISDIR(inode->i_mode)) {
- 		/* Purge readdir caches. */
-@@ -883,7 +891,10 @@ static struct dentry *nfs_lookup(struct 
- 	if (dentry->d_name.len > NFS_SERVER(dir)->namelen)
- 		goto out;
- 
--	res = ERR_PTR(-ENOMEM);
-+	res = ERR_PTR(-ESTALE);
-+	if (NFS_STALE(dir))
-+		goto out;
-+
- 	dentry->d_op = NFS_PROTO(dir)->dentry_ops;
- 
- 	lock_kernel();
-@@ -902,9 +913,10 @@ static struct dentry *nfs_lookup(struct 
- 	/* Protect against concurrent sillydeletes */
- 	nfs_block_sillyrename(parent);
- 	error = NFS_PROTO(dir)->lookup(dir, &dentry->d_name, &fhandle, &fattr);
--	if (error == -ENOENT)
--		goto no_entry;
- 	if (error < 0) {
-+		if (error == -ENOENT)
-+			goto no_entry;
-+		nfs_handle_estale(error, dir);
- 		res = ERR_PTR(error);
- 		goto out_unblock_sillyrename;
- 	}
-@@ -1154,8 +1166,10 @@ int nfs_instantiate(struct dentry *dentr
- 		goto out;
- 	if (fhandle->size == 0) {
- 		error = NFS_PROTO(dir)->lookup(dir, &dentry->d_name, fhandle, fattr);
--		if (error)
-+		if (error) {
-+			nfs_handle_estale(error, dir);
- 			goto out_error;
-+		}
- 	}
- 	nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
- 	if (!(fattr->valid & NFS_ATTR_FATTR)) {
-@@ -1207,6 +1221,7 @@ static int nfs_create(struct inode *dir,
- 	unlock_kernel();
- 	return 0;
- out_err:
-+	nfs_handle_estale(error, dir);
- 	unlock_kernel();
- 	d_drop(dentry);
- 	return error;
-@@ -1237,6 +1252,7 @@ nfs_mknod(struct inode *dir, struct dent
- 	unlock_kernel();
- 	return 0;
- out_err:
-+	nfs_handle_estale(status, dir);
- 	unlock_kernel();
- 	d_drop(dentry);
- 	return status;
-@@ -1263,6 +1279,7 @@ static int nfs_mkdir(struct inode *dir, 
- 	unlock_kernel();
- 	return 0;
- out_err:
-+	nfs_handle_estale(error, dir);
- 	d_drop(dentry);
- 	unlock_kernel();
- 	return error;
-@@ -1280,6 +1297,7 @@ static int nfs_rmdir(struct inode *dir, 
- 	/* Ensure the VFS deletes this inode */
- 	if (error == 0 && dentry->d_inode != NULL)
- 		clear_nlink(dentry->d_inode);
-+	nfs_handle_estale(error, dir);
- 	unlock_kernel();
- 
- 	return error;
-@@ -1349,7 +1367,8 @@ static int nfs_sillyrename(struct inode 
- 		d_move(dentry, sdentry);
- 		error = nfs_async_unlink(dir, dentry);
-  		/* If we return 0 we don't unlink */
--	}
-+	} else
-+		nfs_handle_estale(error, dir);
- 	dput(sdentry);
- out:
- 	return error;
-@@ -1386,6 +1405,7 @@ static int nfs_safe_remove(struct dentry
- 		nfs_mark_for_revalidate(inode);
- 	} else
- 		error = NFS_PROTO(dir)->remove(dir, &dentry->d_name);
-+	nfs_handle_estale(error, dir);
- out:
- 	return error;
- }
-@@ -1482,6 +1502,7 @@ static int nfs_symlink(struct inode *dir
- 		dfprintk(VFS, "NFS: symlink(%s/%ld, %s, %s) error %d\n",
- 			dir->i_sb->s_id, dir->i_ino,
- 			dentry->d_name.name, symname, error);
-+		nfs_handle_estale(error, dir);
- 		d_drop(dentry);
- 		__free_page(page);
- 		unlock_kernel();
-@@ -1866,8 +1887,10 @@ static int nfs_do_access(struct inode *i
- 	cache.cred = cred;
- 	cache.jiffies = jiffies;
- 	status = NFS_PROTO(inode)->access(inode, &cache);
--	if (status != 0)
-+	if (status != 0) {
-+		nfs_handle_estale(status, inode);
- 		return status;
-+	}
- 	nfs_access_add_cache(inode, &cache);
- out:
- 	if ((cache.mask & mask) == mask)
---- linux-2.6.23.i686/fs/nfs/nfs4proc.c.org
-+++ linux-2.6.23.i686/fs/nfs/nfs4proc.c
-@@ -3627,6 +3627,7 @@ int nfs4_setxattr(struct dentry *dentry,
- 		size_t buflen, int flags)
- {
- 	struct inode *inode = dentry->d_inode;
-+	int error;
- 
- 	if (strcmp(key, XATTR_NAME_NFSV4_ACL) != 0)
- 		return -EOPNOTSUPP;
-@@ -3635,7 +3636,9 @@ int nfs4_setxattr(struct dentry *dentry,
- 	    (!S_ISDIR(inode->i_mode) || inode->i_mode & S_ISVTX))
- 		return -EPERM;
- 
--	return nfs4_proc_set_acl(inode, buf, buflen);
-+	error = nfs4_proc_set_acl(inode, buf, buflen);
-+	nfs_handle_estale(error, inode);
-+	return error;
- }
- 
- /* The getxattr man page suggests returning -ENODATA for unknown attributes,
-@@ -3646,11 +3649,14 @@ ssize_t nfs4_getxattr(struct dentry *den
- 		size_t buflen)
- {
- 	struct inode *inode = dentry->d_inode;
-+	int error;
- 
- 	if (strcmp(key, XATTR_NAME_NFSV4_ACL) != 0)
- 		return -EOPNOTSUPP;
- 
--	return nfs4_proc_get_acl(inode, buf, buflen);
-+	error = nfs4_proc_get_acl(inode, buf, buflen);
-+	nfs_handle_estale(error, inode);
-+	return error;
- }
- 
- ssize_t nfs4_listxattr(struct dentry *dentry, char *buf, size_t buflen)
---- linux-2.6.23.i686/fs/nfs/namespace.c.org
-+++ linux-2.6.23.i686/fs/nfs/namespace.c
-@@ -115,6 +115,7 @@ static void * nfs_follow_mountpoint(stru
- 	err = server->nfs_client->rpc_ops->lookup(parent->d_inode,
- 						  &nd->dentry->d_name,
- 						  &fh, &fattr);
-+	nfs_handle_estale(err, parent->d_inode);
- 	dput(parent);
- 	if (err != 0)
- 		goto out_err;
---- linux-2.6.23.i686/fs/nfs/symlink.c.org
-+++ linux-2.6.23.i686/fs/nfs/symlink.c
-@@ -40,6 +40,7 @@ static int nfs_symlink_filler(struct ino
- 	return 0;
- 
- error:
-+	nfs_handle_estale(error, inode);
- 	SetPageError(page);
- 	unlock_page(page);
- 	return -EIO;
---- linux-2.6.23.i686/fs/nfs/nfs3acl.c.org
-+++ linux-2.6.23.i686/fs/nfs/nfs3acl.c
-@@ -22,8 +22,10 @@ ssize_t nfs3_listxattr(struct dentry *de
- 		} while(0)
- 
- 	acl = nfs3_proc_getacl(inode, ACL_TYPE_ACCESS);
--	if (IS_ERR(acl))
-+	if (IS_ERR(acl)) {
-+		nfs_handle_estale(PTR_ERR(acl), inode);
- 		return PTR_ERR(acl);
-+	}
- 	if (acl) {
- 		output("system.posix_acl_access");
- 		posix_acl_release(acl);
-@@ -31,8 +33,10 @@ ssize_t nfs3_listxattr(struct dentry *de
- 
- 	if (S_ISDIR(inode->i_mode)) {
- 		acl = nfs3_proc_getacl(inode, ACL_TYPE_DEFAULT);
--		if (IS_ERR(acl))
-+		if (IS_ERR(acl)) {
-+			nfs_handle_estale(PTR_ERR(acl), inode);
- 			return PTR_ERR(acl);
-+		}
- 		if (acl) {
- 			output("system.posix_acl_default");
- 			posix_acl_release(acl);
-@@ -61,9 +65,11 @@ ssize_t nfs3_getxattr(struct dentry *den
- 		return -EOPNOTSUPP;
- 
- 	acl = nfs3_proc_getacl(inode, type);
--	if (IS_ERR(acl))
-+	if (IS_ERR(acl)) {
-+		nfs_handle_estale(PTR_ERR(acl), inode);
- 		return PTR_ERR(acl);
--	else if (acl) {
-+	}
-+	if (acl) {
- 		if (type == ACL_TYPE_ACCESS && acl->a_count == 0)
- 			error = -ENODATA;
- 		else
-@@ -92,6 +98,7 @@ int nfs3_setxattr(struct dentry *dentry,
- 	acl = posix_acl_from_xattr(value, size);
- 	if (IS_ERR(acl))
- 		return PTR_ERR(acl);
-+
- 	error = nfs3_proc_setacl(inode, type, acl);
- 	posix_acl_release(acl);
- 
-@@ -355,16 +362,22 @@ int nfs3_proc_setacl(struct inode *inode
- 			case ACL_TYPE_ACCESS:
- 				alloc = dfacl = nfs3_proc_getacl(inode,
- 						ACL_TYPE_DEFAULT);
--				if (IS_ERR(alloc))
-+				if (IS_ERR(alloc)) {
-+					nfs_handle_estale(PTR_ERR(alloc),
-+							inode);
- 					goto fail;
-+				}
- 				break;
- 
- 			case ACL_TYPE_DEFAULT:
- 				dfacl = acl;
- 				alloc = acl = nfs3_proc_getacl(inode,
- 						ACL_TYPE_ACCESS);
--				if (IS_ERR(alloc))
-+				if (IS_ERR(alloc)) {
-+					nfs_handle_estale(PTR_ERR(alloc),
-+							inode);
- 					goto fail;
-+				}
- 				break;
- 
- 			default:
-@@ -380,6 +393,7 @@ int nfs3_proc_setacl(struct inode *inode
- 	}
- 	status = nfs3_proc_setacls(inode, acl, dfacl);
- 	posix_acl_release(alloc);
-+	nfs_handle_estale(status, inode);
- 	return status;
- 
- fail:
-@@ -395,6 +409,7 @@ int nfs3_proc_set_default_acl(struct ino
- 	dfacl = nfs3_proc_getacl(dir, ACL_TYPE_DEFAULT);
- 	if (IS_ERR(dfacl)) {
- 		error = PTR_ERR(dfacl);
-+		nfs_handle_estale(error, dir);
- 		return (error == -EOPNOTSUPP) ? 0 : error;
- 	}
- 	if (!dfacl)
-@@ -408,6 +423,7 @@ int nfs3_proc_set_default_acl(struct ino
- 		goto out_release_acl;
- 	error = nfs3_proc_setacls(inode, acl, S_ISDIR(inode->i_mode) ?
- 						      dfacl : NULL);
-+	nfs_handle_estale(error, inode);
- out_release_acl:
- 	posix_acl_release(acl);
- out_release_dfacl:
---- linux-2.6.23.i686/include/linux/nfs_fs.h.org
-+++ linux-2.6.23.i686/include/linux/nfs_fs.h
-@@ -219,6 +219,31 @@ static inline struct nfs_inode *NFS_I(st
- 
- #define NFS_FILEID(inode)		(NFS_I(inode)->fileid)
- 
-+static inline void nfs_handle_estale(int error, struct inode *inode)
-+{
-+	struct nfs_inode *nfsi = NFS_I(inode);
-+
-+	if (error == -ESTALE) {
-+		if (!NFS_STALE(inode))
-+			set_bit(NFS_INO_STALE, &NFS_FLAGS(inode));
-+		/*
-+		 * If a directory is being marked as stale, then
-+		 * reset the attribute cache timeout.  This controls
-+		 * the duration that the stale condition is believed
-+		 * before being verified again with another call to
-+		 * the server.
-+		 */
-+		if (S_ISDIR(inode->i_mode))
-+			nfsi->read_cache_jiffies = jiffies;
-+	}
-+}
-+
-+static inline void nfs_clear_estale(struct inode *inode)
-+{
-+	if (NFS_STALE(inode))
-+		clear_bit(NFS_INO_STALE, &NFS_FLAGS(inode));
-+}
-+
- static inline void nfs_mark_for_revalidate(struct inode *inode)
- {
- 	struct nfs_inode *nfsi = NFS_I(inode);
-
---------------050401010405080305060902--
