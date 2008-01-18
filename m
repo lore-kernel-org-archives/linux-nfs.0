@@ -1,86 +1,88 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 0/3] enhanced ESTALE error handling
-Date: Fri, 18 Jan 2008 12:17:25 -0500
-Message-ID: <451AC300-674E-4DBE-869F-08A9184051B3@oracle.com>
-References: <4790C756.2040704@redhat.com> <63F84201-9D38-4588-B237-A15138E94C5A@oracle.com> <4790D9F3.2070503@redhat.com>
-Mime-Version: 1.0 (Apple Message framework v753)
-Content-Type: text/plain; charset=US-ASCII; delsp=yes; format=flowed
-Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 1/3] enhanced ESTALE error handling
+Date: Fri, 18 Jan 2008 12:18:05 -0500
+Message-ID: <20080118171805.GA15158@fieldses.org>
+References: <4790C761.1010603@redhat.com> <20080118161443.GB20490@parisc-linux.org> <4790D7C0.30402@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Matthew Wilcox <matthew@wil.cx>,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
 	linux-nfs@vger.kernel.org,
 	Andrew Morton <akpm@linux-foundation.org>,
 	Trond Myklebust <trond.myklebust@fys.uio.no>,
 	linux-fsdevel <linux-fsdevel@vger.kernel.org>
 To: Peter Staubach <staubach@redhat.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:55818 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758780AbYARRSw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jan 2008 12:18:52 -0500
-In-Reply-To: <4790D9F3.2070503@redhat.com>
-Sender: linux-nfs-owner@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <4790D7C0.30402@redhat.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Jan 18, 2008, at 11:55 AM, Peter Staubach wrote:
-> Chuck Lever wrote:
->> Hi Peter-
+On Fri, Jan 18, 2008 at 11:45:52AM -0500, Peter Staubach wrote:
+> Matthew Wilcox wrote:
+>> On Fri, Jan 18, 2008 at 10:36:01AM -0500, Peter Staubach wrote:
+>>>  static int path_lookup_create(int dfd, const char *name,
+>>> -			      unsigned int lookup_flags, struct nameidata *nd,
+>>> -			      int open_flags, int create_mode)
+>>> +		unsigned int lookup_flags, struct nameidata *nd,
+>>> +		int open_flags, int create_mode)
+>>>     
 >>
->> On Jan 18, 2008, at 10:35 AM, Peter Staubach wrote:
->>> Hi.
->>>
->>> Here is a patch set which modifies the system to enhance the
->>> ESTALE error handling for system calls which take pathnames
->>> as arguments.
+>> Gratuitous reformatting?
 >>
->> The VFS already handles ESTALE.
->>
->> If a pathname resolution encounters an ESTALE at any point, the  
->> resolution is restarted exactly once, and an additional flag is  
->> passed to the file system during each lookup that forces each  
->> component in the path to be revalidated on the server.  This has  
->> no possibility of causing an infinite loop.
->>
->> Is there some part of this logic that is no longer working?
+>>   
 >
-> The VFS does not fully handle ESTALE.  An ESTALE error can occur
-> during the second pathname resolution attempt.
+> Elimination of an overly long line?
 
-If an ESTALE occurs during the second resolution attempt, we should  
-give up.  When I addressed this issue two years ago, the two-try  
-logic was the only acceptable solution because there's no way to  
-guarantee the pathname resolution will ever finish unless we put a  
-hard limit on it.
+I usually try to gather any coding style, comment grammar, etc., fixes
+into a single patch or two at the beginning of a series.  That keeps the
+substantive patches (the hardest to understand) shorter.
 
-> There are lots of
-> reasons, some of which are the 1 second resolution from some file
-> systems on the server
+--b.
 
-Which is a server bug, AFAICS.  It's simply impossible to close all  
-the windows that result from sloppy file time stamps without  
-completely disabling client-side caching.  The NFS protocol relies on  
-file time stamps to manage cache coherence.  If the server is lying  
-about time stamps, there's no way the client can cache coherently.
-
-> and the window in between the revalidation
-> and the actual use of the file handle associated with each
-> dentry/inode pair.
-
-A use case or two would be useful to explore (on linux-nfs or linux- 
-fsdevel, rather than lkml).
-
-> Also, there was no support for ESTALE errors which occur during
-> subsequent operations to the pathname resolution process.  For
-> example, during a mkdir(2) operation, the ESTALE can occur from
-> the over the wire MKDIR operation after the LOOKUP operations
-> have all succeeded.
-
-If the final operation fails after a pathname resolution, then it's a  
-real error.  Is there a fixed and valid recovery script for the  
-client in this case that will allow the mkdir to proceed?
-
-Admittedly, the NFS client could recover more cleanly from some of  
-these problems, but given the architecture of the Linux VFS, it will  
-be difficult to address some of the corner cases.
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+>
+>>> @@ -1712,7 +1729,10 @@ int open_namei(int dfd, const char *path
+>>>  	int acc_mode, error;
+>>>  	struct path path;
+>>>  	struct dentry *dir;
+>>> -	int count = 0;
+>>> +	int count;
+>>> +
+>>> +top:
+>>> +	count = 0;
+>>>   	acc_mode = ACC_MODE(flag);
+>>>  @@ -1739,7 +1759,8 @@ int open_namei(int dfd, const char *path
+>>>  	/*
+>>>  	 * Create - we need to know the parent.
+>>>  	 */
+>>> -	error = path_lookup_create(dfd,pathname,LOOKUP_PARENT,nd,flag,mode);
+>>> +	error = path_lookup_create(dfd, pathname, LOOKUP_PARENT, nd,
+>>> +				flag, mode);
+>>>  	if (error)
+>>>  		return error;
+>>>  @@ -1812,10 +1833,17 @@ ok:
+>>>  	return 0;
+>>>   exit_dput:
+>>> +	if (error == -ESTALE)
+>>> +		d_drop(path.dentry);
+>>>  	dput_path(&path, nd);
+>>>  exit:
+>>>  	if (!IS_ERR(nd->intent.open.file))
+>>>  		release_open_intent(nd);
+>>> +	if (error == -ESTALE) {
+>>> +		d_drop(nd->dentry);
+>>> +		path_release(nd);
+>>> +		goto top;
+>>> +	}
+>>>     
+>>
+>> I wonder if a tail-call might not work better here.
+>
+> "Tail-call"?
+>
+>    Thanx...
+>
+>       ps
+> -
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
