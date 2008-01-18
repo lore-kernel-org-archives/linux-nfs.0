@@ -1,56 +1,42 @@
-From: "Fredrik Lindgren" <fli-FpffG6+3qsA@public.gmane.org>
-Subject: Understanding iostat-ms output
-Date: Fri, 18 Jan 2008 10:37:55 +0100
-Message-ID: <2a29d0a3c209d9488b0a3e8263c53e38@swip.net>
+From: Wendy Cheng <wcheng@redhat.com>
+Subject: Re: [PATCH 1/2] NLM failover unlock commands
+Date: Fri, 18 Jan 2008 09:56:38 -0500
+Message-ID: <4790BE26.30304@redhat.com>
+References: <478D14C5.1000804@redhat.com> <18317.7319.443532.62244@notabene.brown> <478D3820.9080402@redhat.com> <20080117151007.GB16581@fieldses.org> <478F78E8.40601@redhat.com> <20080117163105.GG16581@fieldses.org> <478F82DA.4060709@redhat.com> <20080117164002.GH16581@fieldses.org> <478F9946.9010601@redhat.com> <20080117202342.GA6416@fieldses.org> <20080118100308.GA26106@janus>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	Neil Brown <neilb@suse.de>,
+	Christoph Hellwig <hch@infradead.org>,
+	NFS list <linux-nfs@vger.kernel.org>, cluster-devel@redhat.com
+To: Frank van Maarseveen <frankvm@frankvm.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailfe11.swip.net ([212.247.155.65]:40013 "EHLO swip.net"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1751017AbYARKiA convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jan 2008 05:38:00 -0500
-Received: from [192.71.219.1] (account fli-FpffG6+3qsA@public.gmane.org)
-  by mailbe03.swip.net (CommuniGate Pro IMAP 5.1.13)
-  with XMIT id 90184203 for linux-nfs@vger.kernel.org; Fri, 18 Jan 2008 10:37:56 +0100
+Received: from mx1.redhat.com ([66.187.233.31]:54372 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755240AbYARPAo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 18 Jan 2008 10:00:44 -0500
+In-Reply-To: <20080118100308.GA26106@janus>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+Frank van Maarseveen wrote:
+>
+>> 	- We want to be able to move an export to a node with an already
+>> 	  active nfs server.  Currently that requires restarting all of
+>> 	  nfsd on the target node.  This is what I understand your next
+>> 	  patch fixes.
+>>     
+>
+> Maybe a silly question but what about using "exportfs -r" for this?
+>   
 
-I have been messing around with the excellent "iostat-ms" tool in
-an effort to understand what is going on with our machines that are
-showing lots of IOwait.
+/me prays we won't go back to our *old* export failover proposal (about 
+two years ago) :) ...
 
-Below are two 15 second samples, the first one is taken during peak
-and the second one during the night. The obvious difference is in the
-"exe" field. Please excuse my ignorance, but what does this field mean?
-Where is this additional time spent? On the filer or in the NFS stack
-on the host?
+Anyway, re-export is part of the required steps that take-over server 
+needs to do. It, however, doesn't handle lockd grace period so we will 
+have the possibility that other client will steal the locks away. That's 
+why Bruce and I are working on the second "resume" patch at this moment.
 
-stbnas1:/foo mounted on /misc/foo:
-
-   op/s         rpc bklog
-2364.60            0.96
-read:             ops/s            Kb/s           Kb/op         retrans         avg RTT (ms)    avg exe (ms)
-                 43.267         659.624          15.246        0 (0.0%)          17.066         293.880
-write:            ops/s            Kb/s           Kb/op         retrans         avg RTT (ms)    avg exe (ms)
-                 16.133          60.314           3.738        0 (0.0%)           3.868         255.074
-
-stbnas1:/foo mounted on /misc/foo:
-
-   op/s         rpc bklog
-1446.07            0.26
-read:             ops/s            Kb/s           Kb/op         retrans         avg RTT (ms)    avg exe (ms)
-                105.200         189.155           1.798        0 (0.0%)           8.264           8.702
-write:            ops/s            Kb/s           Kb/op         retrans         avg RTT (ms)    avg exe (ms)
-                105.067         297.774           2.834        0 (0.0%)           1.048           1.310
-
-
-Regards,
-  Fredrik Lindgren
-
-
-
+-- Wendy
 
