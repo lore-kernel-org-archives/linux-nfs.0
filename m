@@ -1,10 +1,10 @@
 From: Peter Staubach <staubach@redhat.com>
-Subject: [PATCH 2/3] enhanced ESTALE error handling
-Date: Fri, 18 Jan 2008 10:36:08 -0500
-Message-ID: <4790C768.4080207@redhat.com>
+Subject: [PATCH 3/3] enhanced ESTALE error handling
+Date: Fri, 18 Jan 2008 10:36:15 -0500
+Message-ID: <4790C76F.2050105@redhat.com>
 Mime-Version: 1.0
 Content-Type: multipart/mixed;
- boundary="------------090600050007020308080002"
+ boundary="------------050401010405080305060902"
 Cc: linux-nfs@vger.kernel.org,
 	Andrew Morton <akpm@linux-foundation.org>,
 	Trond Myklebust <trond.myklebust@fys.uio.no>,
@@ -15,27 +15,26 @@ Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 This is a multi-part message in MIME format.
---------------090600050007020308080002
+--------------050401010405080305060902
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
 
 Hi.
 
-This patch adds handling for the error, ESTALE, to the system
-calls which take pathnames as arguments.  The algorithm used
-is to detect that an ESTALE error has occurred during an
-operation subsequent to the lookup process and then to unwind
-appropriately and then to perform the lookup process again.
-Eventually, either the lookup process will return an error
-or a valid dentry/inode combination and then operation can
-succeed or fail based on its own merits.
+The patch enhanced the ESTALE error handling for NFS mounted
+file systems.  It expands the number of places that the NFS
+client checks for ESTALE returns from the server.
 
-A partial list of the updated system calls are stat, stat64,
-lstat, lstat64, mkdir, link, open, access, chmod, chown,
-readlink, utime, utimes, chdir, chroot, rename, exec, mknod,
-statfs, inotify, setxattr, getxattr, and listxattr.  Due to
-common code factoring, other system calls may have been
-included too, but were not explicitly tested.
+It also enhances the ESTALE handling for directories by
+occasionally retrying revalidation to check to see whether the
+directory becomes valid again.  This sounds odd, but can occur
+when a systems administrator, accidently or unknowingly,
+unexports a file system which is in use.  All active
+non-directory files become permanently inaccessible, but
+directories can be become accessible again after the
+administrator re-exports the file system.  This is a situation
+that users have been complaining about for years and this
+support can help to alleviate their situations.
 
     Thanx...
 
@@ -43,696 +42,510 @@ included too, but were not explicitly tested.
 
 Signed-off-by: Peter Staubach <staubach@redhat.com>
 
---------------090600050007020308080002
+--------------050401010405080305060902
 Content-Type: text/plain;
- name="estale.syscall"
+ name="estale.nfs"
 Content-Transfer-Encoding: 7bit
 Content-Disposition: inline;
- filename="estale.syscall"
+ filename="estale.nfs"
 
---- linux-2.6.23.i686/fs/namei.c.org
-+++ linux-2.6.23.i686/fs/namei.c
-@@ -1956,6 +1986,7 @@ asmlinkage long sys_mknodat(int dfd, con
- 	if (IS_ERR(tmp))
- 		return PTR_ERR(tmp);
- 
-+top:
- 	error = do_path_lookup(dfd, tmp, LOOKUP_PARENT, &nd);
- 	if (error)
- 		goto out;
-@@ -1986,6 +2017,8 @@ asmlinkage long sys_mknodat(int dfd, con
- 	}
- 	mutex_unlock(&nd.dentry->d_inode->i_mutex);
- 	path_release(&nd);
-+	if (error == -ESTALE)
-+		goto top;
- out:
- 	putname(tmp);
- 
-@@ -2021,8 +2054,8 @@ int vfs_mkdir(struct inode *dir, struct 
- 
- asmlinkage long sys_mkdirat(int dfd, const char __user *pathname, int mode)
+--- linux-2.6.23.i686/fs/nfs/inode.c.org
++++ linux-2.6.23.i686/fs/nfs/inode.c
+@@ -192,7 +192,7 @@ void nfs_invalidate_atime(struct inode *
+  */
+ static void nfs_invalidate_inode(struct inode *inode)
  {
--	int error = 0;
--	char * tmp;
-+	int error;
-+	char *tmp;
- 	struct dentry *dentry;
- 	struct nameidata nd;
+-	set_bit(NFS_INO_STALE, &NFS_FLAGS(inode));
++	nfs_handle_estale(-ESTALE, inode);
+ 	nfs_zap_caches_locked(inode);
+ }
  
-@@ -2031,6 +2064,7 @@ asmlinkage long sys_mkdirat(int dfd, con
- 	if (IS_ERR(tmp))
- 		goto out_err;
- 
-+top:
- 	error = do_path_lookup(dfd, tmp, LOOKUP_PARENT, &nd);
- 	if (error)
- 		goto out;
-@@ -2046,6 +2080,8 @@ asmlinkage long sys_mkdirat(int dfd, con
- out_unlock:
- 	mutex_unlock(&nd.dentry->d_inode->i_mutex);
- 	path_release(&nd);
-+	if (error == -ESTALE)
-+		goto top;
- out:
- 	putname(tmp);
- out_err:
-@@ -2125,23 +2161,24 @@ static long do_rmdir(int dfd, const char
- 	struct nameidata nd;
- 
- 	name = getname(pathname);
--	if(IS_ERR(name))
-+	if (IS_ERR(name))
- 		return PTR_ERR(name);
- 
-+top:
- 	error = do_path_lookup(dfd, name, LOOKUP_PARENT, &nd);
- 	if (error)
- 		goto exit;
- 
--	switch(nd.last_type) {
--		case LAST_DOTDOT:
--			error = -ENOTEMPTY;
--			goto exit1;
--		case LAST_DOT:
--			error = -EINVAL;
--			goto exit1;
--		case LAST_ROOT:
--			error = -EBUSY;
--			goto exit1;
-+	switch (nd.last_type) {
-+	case LAST_DOTDOT:
-+		error = -ENOTEMPTY;
-+		goto exit1;
-+	case LAST_DOT:
-+		error = -EINVAL;
-+		goto exit1;
-+	case LAST_ROOT:
-+		error = -EBUSY;
-+		goto exit1;
- 	}
- 	mutex_lock_nested(&nd.dentry->d_inode->i_mutex, I_MUTEX_PARENT);
- 	dentry = lookup_hash(&nd);
-@@ -2154,6 +2191,8 @@ exit2:
- 	mutex_unlock(&nd.dentry->d_inode->i_mutex);
- exit1:
- 	path_release(&nd);
-+	if (error == -ESTALE)
-+		goto top;
- exit:
- 	putname(name);
- 	return error;
-@@ -2206,12 +2245,14 @@ static long do_unlinkat(int dfd, const c
- 	char * name;
- 	struct dentry *dentry;
- 	struct nameidata nd;
--	struct inode *inode = NULL;
-+	struct inode *inode;
- 
- 	name = getname(pathname);
- 	if(IS_ERR(name))
- 		return PTR_ERR(name);
- 
-+top:
-+	inode = NULL;
- 	error = do_path_lookup(dfd, name, LOOKUP_PARENT, &nd);
- 	if (error)
- 		goto exit;
-@@ -2237,6 +2278,8 @@ static long do_unlinkat(int dfd, const c
- 		iput(inode);	/* truncate the inode here */
- exit1:
- 	path_release(&nd);
-+	if (error == -ESTALE)
-+		goto top;
- exit:
- 	putname(name);
- 	return error;
-@@ -2301,6 +2344,7 @@ asmlinkage long sys_symlinkat(const char
- 	if (IS_ERR(to))
- 		goto out_putname;
- 
-+top:
- 	error = do_path_lookup(newdfd, to, LOOKUP_PARENT, &nd);
- 	if (error)
- 		goto out;
-@@ -2314,6 +2358,8 @@ asmlinkage long sys_symlinkat(const char
- out_unlock:
- 	mutex_unlock(&nd.dentry->d_inode->i_mutex);
- 	path_release(&nd);
-+	if (error == -ESTALE)
-+		goto top;
- out:
- 	putname(to);
- out_putname:
-@@ -2389,6 +2435,7 @@ asmlinkage long sys_linkat(int olddfd, c
- 	if (IS_ERR(to))
- 		return PTR_ERR(to);
- 
-+top:
- 	error = __user_walk_fd(olddfd, oldname,
- 			       flags & AT_SYMLINK_FOLLOW ? LOOKUP_FOLLOW : 0,
- 			       &old_nd);
-@@ -2408,6 +2455,11 @@ asmlinkage long sys_linkat(int olddfd, c
- 	dput(new_dentry);
- out_unlock:
- 	mutex_unlock(&nd.dentry->d_inode->i_mutex);
-+	if (error == -ESTALE) {
-+		path_release(&nd);
-+		path_release(&old_nd);
-+		goto top;
-+	}
- out_release:
- 	path_release(&nd);
- out:
-@@ -2578,6 +2630,7 @@ static int do_rename(int olddfd, const c
- 	struct dentry * trap;
- 	struct nameidata oldnd, newnd;
- 
-+top:
- 	error = do_path_lookup(olddfd, oldname, LOOKUP_PARENT, &oldnd);
- 	if (error)
- 		goto exit;
-@@ -2638,6 +2691,11 @@ exit4:
- 	dput(old_dentry);
- exit3:
- 	unlock_rename(new_dir, old_dir);
-+	if (error == -ESTALE) {
-+		path_release(&newnd);
-+		path_release(&oldnd);
-+		goto top;
-+	}
- exit2:
- 	path_release(&newnd);
- exit1:
---- linux-2.6.23.i686/fs/open.c.org
-+++ linux-2.6.23.i686/fs/open.c
-@@ -124,6 +124,7 @@ asmlinkage long sys_statfs(const char __
- 	struct nameidata nd;
- 	int error;
- 
-+top:
- 	error = user_path_walk(path, &nd);
- 	if (!error) {
- 		struct statfs tmp;
-@@ -131,6 +132,8 @@ asmlinkage long sys_statfs(const char __
- 		if (!error && copy_to_user(buf, &tmp, sizeof(tmp)))
- 			error = -EFAULT;
- 		path_release(&nd);
-+		if (error == -ESTALE)
-+			goto top;
- 	}
+@@ -385,6 +385,8 @@ nfs_setattr(struct dentry *dentry, struc
+ 	error = NFS_PROTO(inode)->setattr(dentry, &fattr, attr);
+ 	if (error == 0)
+ 		nfs_refresh_inode(inode, &fattr);
++	else
++		nfs_handle_estale(error, inode);
+ 	unlock_kernel();
  	return error;
  }
-@@ -143,6 +146,7 @@ asmlinkage long sys_statfs64(const char 
- 
- 	if (sz != sizeof(*buf))
- 		return -EINVAL;
-+top:
- 	error = user_path_walk(path, &nd);
- 	if (!error) {
- 		struct statfs64 tmp;
-@@ -150,6 +154,8 @@ asmlinkage long sys_statfs64(const char 
- 		if (!error && copy_to_user(buf, &tmp, sizeof(tmp)))
- 			error = -EFAULT;
- 		path_release(&nd);
-+		if (error == -ESTALE)
-+			goto top;
- 	}
- 	return error;
- }
-@@ -230,6 +236,7 @@ static long do_sys_truncate(const char _
- 	if (length < 0)	/* sorry, but loff_t says... */
- 		goto out;
- 
-+top:
- 	error = user_path_walk(path, &nd);
- 	if (error)
- 		goto out;
-@@ -278,6 +285,8 @@ put_write_and_out:
- 	put_write_access(inode);
- dput_and_out:
- 	path_release(&nd);
-+	if (error == -ESTALE)
-+		goto top;
- out:
- 	return error;
- }
-@@ -448,21 +457,24 @@ asmlinkage long sys_faccessat(int dfd, c
- 	else
- 		current->cap_effective = current->cap_permitted;
- 
-+top:
- 	res = __user_walk_fd(dfd, filename, LOOKUP_FOLLOW|LOOKUP_ACCESS, &nd);
- 	if (res)
- 		goto out;
- 
- 	res = vfs_permission(&nd, mode);
- 	/* SuS v2 requires we report a read only fs too */
--	if(res || !(mode & S_IWOTH) ||
-+	if (res || !(mode & S_IWOTH) ||
- 	   special_file(nd.dentry->d_inode->i_mode))
- 		goto out_path_release;
- 
--	if(IS_RDONLY(nd.dentry->d_inode))
-+	if (IS_RDONLY(nd.dentry->d_inode))
- 		res = -EROFS;
- 
- out_path_release:
- 	path_release(&nd);
-+	if (res == -ESTALE)
-+		goto top;
- out:
- 	current->fsuid = old_fsuid;
- 	current->fsgid = old_fsgid;
-@@ -481,6 +493,7 @@ asmlinkage long sys_chdir(const char __u
- 	struct nameidata nd;
- 	int error;
- 
-+top:
- 	error = __user_walk(filename,
- 			    LOOKUP_FOLLOW|LOOKUP_DIRECTORY|LOOKUP_CHDIR, &nd);
- 	if (error)
-@@ -494,6 +507,8 @@ asmlinkage long sys_chdir(const char __u
- 
- dput_and_out:
- 	path_release(&nd);
-+	if (error == -ESTALE)
-+		goto top;
- out:
- 	return error;
- }
-@@ -533,6 +548,7 @@ asmlinkage long sys_chroot(const char __
- 	struct nameidata nd;
- 	int error;
- 
-+top:
- 	error = __user_walk(filename, LOOKUP_FOLLOW | LOOKUP_DIRECTORY | LOOKUP_NOALT, &nd);
- 	if (error)
- 		goto out;
-@@ -550,6 +566,8 @@ asmlinkage long sys_chroot(const char __
- 	error = 0;
- dput_and_out:
- 	path_release(&nd);
-+	if (error == -ESTALE)
-+		goto top;
- out:
- 	return error;
- }
-@@ -599,6 +617,7 @@ asmlinkage long sys_fchmodat(int dfd, co
- 	int error;
- 	struct iattr newattrs;
- 
-+top:
- 	error = __user_walk_fd(dfd, filename, LOOKUP_FOLLOW, &nd);
- 	if (error)
- 		goto out;
-@@ -622,6 +641,8 @@ asmlinkage long sys_fchmodat(int dfd, co
- 
- dput_and_out:
- 	path_release(&nd);
-+	if (error == -ESTALE)
-+		goto top;
- out:
- 	return error;
- }
-@@ -672,11 +693,14 @@ asmlinkage long sys_chown(const char __u
- 	struct nameidata nd;
- 	int error;
- 
-+top:
- 	error = user_path_walk(filename, &nd);
- 	if (error)
- 		goto out;
- 	error = chown_common(nd.dentry, user, group);
- 	path_release(&nd);
-+	if (error == -ESTALE)
-+		goto top;
- out:
- 	return error;
- }
-@@ -692,11 +716,14 @@ asmlinkage long sys_fchownat(int dfd, co
- 		goto out;
- 
- 	follow = (flag & AT_SYMLINK_NOFOLLOW) ? 0 : LOOKUP_FOLLOW;
-+top:
- 	error = __user_walk_fd(dfd, filename, follow, &nd);
- 	if (error)
- 		goto out;
- 	error = chown_common(nd.dentry, user, group);
- 	path_release(&nd);
-+	if (error == -ESTALE)
-+		goto top;
- out:
- 	return error;
- }
-@@ -706,11 +733,14 @@ asmlinkage long sys_lchown(const char __
- 	struct nameidata nd;
- 	int error;
- 
-+top:
- 	error = user_path_walk_link(filename, &nd);
- 	if (error)
- 		goto out;
- 	error = chown_common(nd.dentry, user, group);
- 	path_release(&nd);
-+	if (error == -ESTALE)
-+		goto top;
- out:
- 	return error;
- }
-@@ -819,16 +849,22 @@ static struct file *do_filp_open(int dfd
+@@ -629,7 +631,7 @@ int nfs_release(struct inode *inode, str
+ int
+ __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
  {
- 	int namei_flags, error;
- 	struct nameidata nd;
-+	struct file *res;
+-	int		 status = -ESTALE;
++	int status = -ESTALE;
+ 	struct nfs_fattr fattr;
+ 	struct nfs_inode *nfsi = NFS_I(inode);
  
-+top:
- 	namei_flags = flags;
- 	if ((namei_flags+1) & O_ACCMODE)
- 		namei_flags++;
+@@ -640,15 +642,25 @@ __nfs_revalidate_inode(struct nfs_server
+ 	lock_kernel();
+ 	if (is_bad_inode(inode))
+  		goto out_nowait;
+-	if (NFS_STALE(inode))
++	if (NFS_STALE(inode) && !S_ISDIR(inode->i_mode))
+  		goto out_nowait;
  
- 	error = open_namei(dfd, filename, namei_flags, mode, &nd);
--	if (!error)
--		return nameidata_to_filp(&nd, flags);
-+	if (error)
-+		return ERR_PTR(error);
+ 	status = nfs_wait_on_inode(inode);
+ 	if (status < 0)
+ 		goto out;
+ 
++	/*
++	 * Do we believe that the file handle is still stale?
++	 * For non-directories, once stale, always stale.
++	 * For directories, believe the stale status for the
++	 * attribute cache timeout period, and then try again.
++	 * This will help to address the problem of the server
++	 * admin "accidently" unexporting a file system without
++	 * stopping the NFS server first.
++	 */
+ 	status = -ESTALE;
+-	if (NFS_STALE(inode))
++	if (NFS_STALE(inode) &&
++	    (!S_ISDIR(inode->i_mode) || !nfs_attribute_timeout(inode)))
+ 		goto out;
+ 
+ 	status = NFS_PROTO(inode)->getattr(server, NFS_FH(inode), &fattr);
+@@ -656,11 +668,9 @@ __nfs_revalidate_inode(struct nfs_server
+ 		dfprintk(PAGECACHE, "nfs_revalidate_inode: (%s/%Ld) getattr failed, error=%d\n",
+ 			 inode->i_sb->s_id,
+ 			 (long long)NFS_FILEID(inode), status);
+-		if (status == -ESTALE) {
++		nfs_handle_estale(status, inode);
++		if (status == -ESTALE)
+ 			nfs_zap_caches(inode);
+-			if (!S_ISDIR(inode->i_mode))
+-				set_bit(NFS_INO_STALE, &NFS_FLAGS(inode));
+-		}
+ 		goto out;
+ 	}
+ 
+@@ -986,14 +996,28 @@ static int nfs_update_inode(struct inode
+ 			__FUNCTION__, inode->i_sb->s_id, inode->i_ino,
+ 			atomic_read(&inode->i_count), fattr->valid);
+ 
+-	if (nfsi->fileid != fattr->fileid)
+-		goto out_fileid;
++	if (nfsi->fileid != fattr->fileid) {
++		printk(KERN_ERR "NFS: server %s error: fileid changed\n"
++			"fsid %s: expected fileid 0x%Lx, got 0x%Lx\n",
++			NFS_SERVER(inode)->nfs_client->cl_hostname,
++			inode->i_sb->s_id,
++			(long long)nfsi->fileid, (long long)fattr->fileid);
++		goto out_err;
++	}
+ 
+ 	/*
+ 	 * Make sure the inode's type hasn't changed.
+ 	 */
+-	if ((inode->i_mode & S_IFMT) != (fattr->mode & S_IFMT))
+-		goto out_changed;
++	if ((inode->i_mode & S_IFMT) != (fattr->mode & S_IFMT)) {
++		/*
++		 * Big trouble! The inode has become a different object.
++		 */
++		printk(KERN_DEBUG "%s: inode %ld mode changed, %07o to %07o\n",
++			__FUNCTION__, inode->i_ino, inode->i_mode, fattr->mode);
++		goto out_err;
++	}
 +
-+	res = nameidata_to_filp(&nd, flags);
-+	if (IS_ERR(res) && res == ERR_PTR(-ESTALE))
-+		goto top;
-+	return res;
++	nfs_clear_estale(inode);
  
--	return ERR_PTR(error);
+ 	server = NFS_SERVER(inode);
+ 	/* Update the fsid? */
+@@ -1099,12 +1123,7 @@ static int nfs_update_inode(struct inode
+ 	nfsi->cache_validity &= ~NFS_INO_REVAL_FORCED;
+ 
+ 	return 0;
+- out_changed:
+-	/*
+-	 * Big trouble! The inode has become a different object.
+-	 */
+-	printk(KERN_DEBUG "%s: inode %ld mode changed, %07o to %07o\n",
+-			__FUNCTION__, inode->i_ino, inode->i_mode, fattr->mode);
++
+  out_err:
+ 	/*
+ 	 * No need to worry about unhashing the dentry, as the
+@@ -1113,13 +1132,6 @@ static int nfs_update_inode(struct inode
+ 	 */
+ 	nfs_invalidate_inode(inode);
+ 	return -ESTALE;
+-
+- out_fileid:
+-	printk(KERN_ERR "NFS: server %s error: fileid changed\n"
+-		"fsid %s: expected fileid 0x%Lx, got 0x%Lx\n",
+-		NFS_SERVER(inode)->nfs_client->cl_hostname, inode->i_sb->s_id,
+-		(long long)nfsi->fileid, (long long)fattr->fileid);
+-	goto out_err;
  }
  
- struct file *filp_open(const char *filename, int flags, int mode)
---- linux-2.6.23.i686/fs/inotify_user.c.org
-+++ linux-2.6.23.i686/fs/inotify_user.c
-@@ -346,13 +346,17 @@ static int find_inode(const char __user 
- {
- 	int error;
  
-+top:
- 	error = __user_walk(dirname, flags, nd);
- 	if (error)
- 		return error;
- 	/* you can only watch an inode if you have read permissions on it */
- 	error = vfs_permission(nd, MAY_READ);
+--- linux-2.6.23.i686/fs/nfs/dir.c.org
++++ linux-2.6.23.i686/fs/nfs/dir.c
+@@ -186,8 +186,9 @@ int nfs_readdir_filler(nfs_readdir_descr
+ 
+  again:
+ 	timestamp = jiffies;
+-	error = NFS_PROTO(inode)->readdir(file->f_path.dentry, cred, desc->entry->cookie, page,
+-					  NFS_SERVER(inode)->dtsize, desc->plus);
++	error = NFS_PROTO(inode)->readdir(file->f_path.dentry, cred,
++			desc->entry->cookie, page,
++			NFS_SERVER(inode)->dtsize, desc->plus);
+ 	if (error < 0) {
+ 		/* We requested READDIRPLUS, but the server doesn't grok it */
+ 		if (error == -ENOTSUPP && desc->plus) {
+@@ -213,6 +214,7 @@ int nfs_readdir_filler(nfs_readdir_descr
+ 	return 0;
+  error:
+ 	unlock_page(page);
++	nfs_handle_estale(error, inode);
+ 	desc->error = error;
+ 	return -EIO;
+ }
+@@ -494,8 +496,10 @@ int uncached_readdir(nfs_readdir_descrip
+ 		desc->timestamp_valid = 1;
+ 		if ((status = dir_decode(desc)) == 0)
+ 			desc->entry->prev_cookie = *desc->dir_cookie;
+-	} else
++	} else {
++		nfs_handle_estale(desc->error, inode);
+ 		status = -EIO;
++	}
+ 	if (status < 0)
+ 		goto out_release;
+ 
+@@ -748,7 +752,7 @@ static int nfs_lookup_revalidate(struct 
+ 	struct inode *dir;
+ 	struct inode *inode;
+ 	struct dentry *parent;
+-	int error;
++	int error = 0;
+ 	struct nfs_fh fhandle;
+ 	struct nfs_fattr fattr;
+ 
+@@ -779,13 +783,16 @@ static int nfs_lookup_revalidate(struct 
+ 	}
+ 
+ 	if (NFS_STALE(inode))
+-		goto out_bad;
++		goto out_zap_parent;
+ 
+ 	error = NFS_PROTO(dir)->lookup(dir, &dentry->d_name, &fhandle, &fattr);
 -	if (error)
 +	if (error) {
- 		path_release(nd);
 +		if (error == -ESTALE)
-+			goto top;
++			goto out_zap_parent;
+ 		goto out_bad;
 +	}
- 	return error;
- }
+ 	if (nfs_compare_fh(NFS_FH(inode), &fhandle))
+-		goto out_bad;
++		goto out_zap_parent;
+ 	if ((error = nfs_refresh_inode(inode, &fattr)) != 0)
+ 		goto out_bad;
  
---- linux-2.6.23.i686/fs/stat.c.org
-+++ linux-2.6.23.i686/fs/stat.c
-@@ -60,10 +60,13 @@ int vfs_stat_fd(int dfd, char __user *na
- 	struct nameidata nd;
- 	int error;
- 
-+top:
- 	error = __user_walk_fd(dfd, name, LOOKUP_FOLLOW, &nd);
- 	if (!error) {
- 		error = vfs_getattr(nd.mnt, nd.dentry, stat);
- 		path_release(&nd);
-+		if (error == -ESTALE)
-+			goto top;
- 	}
- 	return error;
- }
-@@ -80,10 +83,13 @@ int vfs_lstat_fd(int dfd, char __user *n
- 	struct nameidata nd;
- 	int error;
- 
-+top:
- 	error = __user_walk_fd(dfd, name, 0, &nd);
- 	if (!error) {
- 		error = vfs_getattr(nd.mnt, nd.dentry, stat);
- 		path_release(&nd);
-+		if (error == -ESTALE)
-+			goto top;
- 	}
- 	return error;
- }
-@@ -300,6 +306,7 @@ asmlinkage long sys_readlinkat(int dfd, 
- 	if (bufsiz <= 0)
- 		return -EINVAL;
- 
-+top:
- 	error = __user_walk_fd(dfd, path, 0, &nd);
- 	if (!error) {
- 		struct inode * inode = nd.dentry->d_inode;
-@@ -313,6 +320,8 @@ asmlinkage long sys_readlinkat(int dfd, 
- 			}
- 		}
- 		path_release(&nd);
-+		if (error == -ESTALE)
-+			goto top;
- 	}
- 	return error;
- }
---- linux-2.6.23.i686/fs/exec.c.org
-+++ linux-2.6.23.i686/fs/exec.c
-@@ -107,6 +107,7 @@ asmlinkage long sys_uselib(const char __
- 	struct nameidata nd;
- 	int error;
- 
-+top:
- 	error = __user_path_lookup_open(library, LOOKUP_FOLLOW, &nd, FMODE_READ|FMODE_EXEC);
- 	if (error)
+@@ -800,6 +807,7 @@ static int nfs_lookup_revalidate(struct 
+ out_zap_parent:
+ 	nfs_zap_caches(dir);
+  out_bad:
++	nfs_handle_estale(error, dir);
+ 	nfs_mark_for_revalidate(dir);
+ 	if (inode && S_ISDIR(inode->i_mode)) {
+ 		/* Purge readdir caches. */
+@@ -883,7 +891,10 @@ static struct dentry *nfs_lookup(struct 
+ 	if (dentry->d_name.len > NFS_SERVER(dir)->namelen)
  		goto out;
-@@ -149,6 +150,8 @@ out:
- exit:
- 	release_open_intent(&nd);
- 	path_release(&nd);
-+	if (error == -ESTALE)
-+		goto top;
- 	goto out;
- }
  
-@@ -648,14 +651,16 @@ struct file *open_exec(const char *name)
- 	int err;
- 	struct file *file;
+-	res = ERR_PTR(-ENOMEM);
++	res = ERR_PTR(-ESTALE);
++	if (NFS_STALE(dir))
++		goto out;
++
+ 	dentry->d_op = NFS_PROTO(dir)->dentry_ops;
  
--	err = path_lookup_open(AT_FDCWD, name, LOOKUP_FOLLOW, &nd, FMODE_READ|FMODE_EXEC);
-+top:
-+	err = path_lookup_open(AT_FDCWD, name, LOOKUP_FOLLOW, &nd,
-+				FMODE_READ|FMODE_EXEC);
- 	file = ERR_PTR(err);
- 
- 	if (!err) {
- 		struct inode *inode = nd.dentry->d_inode;
- 		file = ERR_PTR(-EACCES);
- 		if (S_ISREG(inode->i_mode)) {
--			int err = vfs_permission(&nd, MAY_EXEC);
-+			err = vfs_permission(&nd, MAY_EXEC);
- 			file = ERR_PTR(err);
- 			if (!err) {
- 				file = nameidata_to_filp(&nd, O_RDONLY);
-@@ -665,15 +670,17 @@ struct file *open_exec(const char *name)
- 						fput(file);
- 						file = ERR_PTR(err);
- 					}
--				}
--out:
-+				} else if (file == ERR_PTR(-ESTALE))
-+					goto top;
- 				return file;
- 			}
- 		}
- 		release_open_intent(&nd);
- 		path_release(&nd);
-+		if (err == -ESTALE)
-+			goto top;
+ 	lock_kernel();
+@@ -902,9 +913,10 @@ static struct dentry *nfs_lookup(struct 
+ 	/* Protect against concurrent sillydeletes */
+ 	nfs_block_sillyrename(parent);
+ 	error = NFS_PROTO(dir)->lookup(dir, &dentry->d_name, &fhandle, &fattr);
+-	if (error == -ENOENT)
+-		goto no_entry;
+ 	if (error < 0) {
++		if (error == -ENOENT)
++			goto no_entry;
++		nfs_handle_estale(error, dir);
+ 		res = ERR_PTR(error);
+ 		goto out_unblock_sillyrename;
  	}
--	goto out;
-+	return file;
- }
+@@ -1154,8 +1166,10 @@ int nfs_instantiate(struct dentry *dentr
+ 		goto out;
+ 	if (fhandle->size == 0) {
+ 		error = NFS_PROTO(dir)->lookup(dir, &dentry->d_name, fhandle, fattr);
+-		if (error)
++		if (error) {
++			nfs_handle_estale(error, dir);
+ 			goto out_error;
++		}
+ 	}
+ 	nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
+ 	if (!(fattr->valid & NFS_ATTR_FATTR)) {
+@@ -1207,6 +1221,7 @@ static int nfs_create(struct inode *dir,
+ 	unlock_kernel();
+ 	return 0;
+ out_err:
++	nfs_handle_estale(error, dir);
+ 	unlock_kernel();
+ 	d_drop(dentry);
+ 	return error;
+@@ -1237,6 +1252,7 @@ nfs_mknod(struct inode *dir, struct dent
+ 	unlock_kernel();
+ 	return 0;
+ out_err:
++	nfs_handle_estale(status, dir);
+ 	unlock_kernel();
+ 	d_drop(dentry);
+ 	return status;
+@@ -1263,6 +1279,7 @@ static int nfs_mkdir(struct inode *dir, 
+ 	unlock_kernel();
+ 	return 0;
+ out_err:
++	nfs_handle_estale(error, dir);
+ 	d_drop(dentry);
+ 	unlock_kernel();
+ 	return error;
+@@ -1280,6 +1297,7 @@ static int nfs_rmdir(struct inode *dir, 
+ 	/* Ensure the VFS deletes this inode */
+ 	if (error == 0 && dentry->d_inode != NULL)
+ 		clear_nlink(dentry->d_inode);
++	nfs_handle_estale(error, dir);
+ 	unlock_kernel();
  
- EXPORT_SYMBOL(open_exec);
---- linux-2.6.23.i686/fs/utimes.c.org
-+++ linux-2.6.23.i686/fs/utimes.c
-@@ -79,6 +79,7 @@ long do_utimes(int dfd, char __user *fil
- 			goto out;
- 		dentry = f->f_path.dentry;
- 	} else {
-+top:
- 		error = __user_walk_fd(dfd, filename, (flags & AT_SYMLINK_NOFOLLOW) ? 0 : LOOKUP_FOLLOW, &nd);
- 		if (error)
- 			goto out;
-@@ -136,8 +137,11 @@ long do_utimes(int dfd, char __user *fil
- dput_and_out:
- 	if (f)
- 		fput(f);
--	else
-+	else {
- 		path_release(&nd);
-+		if (error == -ESTALE)
-+			goto top;
-+	}
+ 	return error;
+@@ -1349,7 +1367,8 @@ static int nfs_sillyrename(struct inode 
+ 		d_move(dentry, sdentry);
+ 		error = nfs_async_unlink(dir, dentry);
+  		/* If we return 0 we don't unlink */
+-	}
++	} else
++		nfs_handle_estale(error, dir);
+ 	dput(sdentry);
+ out:
+ 	return error;
+@@ -1386,6 +1405,7 @@ static int nfs_safe_remove(struct dentry
+ 		nfs_mark_for_revalidate(inode);
+ 	} else
+ 		error = NFS_PROTO(dir)->remove(dir, &dentry->d_name);
++	nfs_handle_estale(error, dir);
  out:
  	return error;
  }
---- linux-2.6.23.i686/fs/compat.c.org
-+++ linux-2.6.23.i686/fs/compat.c
-@@ -238,6 +238,7 @@ asmlinkage long compat_sys_statfs(const 
- 	struct nameidata nd;
- 	int error;
+@@ -1482,6 +1502,7 @@ static int nfs_symlink(struct inode *dir
+ 		dfprintk(VFS, "NFS: symlink(%s/%ld, %s, %s) error %d\n",
+ 			dir->i_sb->s_id, dir->i_ino,
+ 			dentry->d_name.name, symname, error);
++		nfs_handle_estale(error, dir);
+ 		d_drop(dentry);
+ 		__free_page(page);
+ 		unlock_kernel();
+@@ -1866,8 +1887,10 @@ static int nfs_do_access(struct inode *i
+ 	cache.cred = cred;
+ 	cache.jiffies = jiffies;
+ 	status = NFS_PROTO(inode)->access(inode, &cache);
+-	if (status != 0)
++	if (status != 0) {
++		nfs_handle_estale(status, inode);
+ 		return status;
++	}
+ 	nfs_access_add_cache(inode, &cache);
+ out:
+ 	if ((cache.mask & mask) == mask)
+--- linux-2.6.23.i686/fs/nfs/nfs4proc.c.org
++++ linux-2.6.23.i686/fs/nfs/nfs4proc.c
+@@ -3627,6 +3627,7 @@ int nfs4_setxattr(struct dentry *dentry,
+ 		size_t buflen, int flags)
+ {
+ 	struct inode *inode = dentry->d_inode;
++	int error;
  
-+top:
- 	error = user_path_walk(path, &nd);
- 	if (!error) {
- 		struct kstatfs tmp;
-@@ -245,6 +246,8 @@ asmlinkage long compat_sys_statfs(const 
- 		if (!error)
- 			error = put_compat_statfs(buf, &tmp);
- 		path_release(&nd);
-+		if (error == -ESTALE)
-+			goto top;
+ 	if (strcmp(key, XATTR_NAME_NFSV4_ACL) != 0)
+ 		return -EOPNOTSUPP;
+@@ -3635,7 +3636,9 @@ int nfs4_setxattr(struct dentry *dentry,
+ 	    (!S_ISDIR(inode->i_mode) || inode->i_mode & S_ISVTX))
+ 		return -EPERM;
+ 
+-	return nfs4_proc_set_acl(inode, buf, buflen);
++	error = nfs4_proc_set_acl(inode, buf, buflen);
++	nfs_handle_estale(error, inode);
++	return error;
+ }
+ 
+ /* The getxattr man page suggests returning -ENODATA for unknown attributes,
+@@ -3646,11 +3649,14 @@ ssize_t nfs4_getxattr(struct dentry *den
+ 		size_t buflen)
+ {
+ 	struct inode *inode = dentry->d_inode;
++	int error;
+ 
+ 	if (strcmp(key, XATTR_NAME_NFSV4_ACL) != 0)
+ 		return -EOPNOTSUPP;
+ 
+-	return nfs4_proc_get_acl(inode, buf, buflen);
++	error = nfs4_proc_get_acl(inode, buf, buflen);
++	nfs_handle_estale(error, inode);
++	return error;
+ }
+ 
+ ssize_t nfs4_listxattr(struct dentry *dentry, char *buf, size_t buflen)
+--- linux-2.6.23.i686/fs/nfs/namespace.c.org
++++ linux-2.6.23.i686/fs/nfs/namespace.c
+@@ -115,6 +115,7 @@ static void * nfs_follow_mountpoint(stru
+ 	err = server->nfs_client->rpc_ops->lookup(parent->d_inode,
+ 						  &nd->dentry->d_name,
+ 						  &fh, &fattr);
++	nfs_handle_estale(err, parent->d_inode);
+ 	dput(parent);
+ 	if (err != 0)
+ 		goto out_err;
+--- linux-2.6.23.i686/fs/nfs/symlink.c.org
++++ linux-2.6.23.i686/fs/nfs/symlink.c
+@@ -40,6 +40,7 @@ static int nfs_symlink_filler(struct ino
+ 	return 0;
+ 
+ error:
++	nfs_handle_estale(error, inode);
+ 	SetPageError(page);
+ 	unlock_page(page);
+ 	return -EIO;
+--- linux-2.6.23.i686/fs/nfs/nfs3acl.c.org
++++ linux-2.6.23.i686/fs/nfs/nfs3acl.c
+@@ -22,8 +22,10 @@ ssize_t nfs3_listxattr(struct dentry *de
+ 		} while(0)
+ 
+ 	acl = nfs3_proc_getacl(inode, ACL_TYPE_ACCESS);
+-	if (IS_ERR(acl))
++	if (IS_ERR(acl)) {
++		nfs_handle_estale(PTR_ERR(acl), inode);
+ 		return PTR_ERR(acl);
++	}
+ 	if (acl) {
+ 		output("system.posix_acl_access");
+ 		posix_acl_release(acl);
+@@ -31,8 +33,10 @@ ssize_t nfs3_listxattr(struct dentry *de
+ 
+ 	if (S_ISDIR(inode->i_mode)) {
+ 		acl = nfs3_proc_getacl(inode, ACL_TYPE_DEFAULT);
+-		if (IS_ERR(acl))
++		if (IS_ERR(acl)) {
++			nfs_handle_estale(PTR_ERR(acl), inode);
+ 			return PTR_ERR(acl);
++		}
+ 		if (acl) {
+ 			output("system.posix_acl_default");
+ 			posix_acl_release(acl);
+@@ -61,9 +65,11 @@ ssize_t nfs3_getxattr(struct dentry *den
+ 		return -EOPNOTSUPP;
+ 
+ 	acl = nfs3_proc_getacl(inode, type);
+-	if (IS_ERR(acl))
++	if (IS_ERR(acl)) {
++		nfs_handle_estale(PTR_ERR(acl), inode);
+ 		return PTR_ERR(acl);
+-	else if (acl) {
++	}
++	if (acl) {
+ 		if (type == ACL_TYPE_ACCESS && acl->a_count == 0)
+ 			error = -ENODATA;
+ 		else
+@@ -92,6 +98,7 @@ int nfs3_setxattr(struct dentry *dentry,
+ 	acl = posix_acl_from_xattr(value, size);
+ 	if (IS_ERR(acl))
+ 		return PTR_ERR(acl);
++
+ 	error = nfs3_proc_setacl(inode, type, acl);
+ 	posix_acl_release(acl);
+ 
+@@ -355,16 +362,22 @@ int nfs3_proc_setacl(struct inode *inode
+ 			case ACL_TYPE_ACCESS:
+ 				alloc = dfacl = nfs3_proc_getacl(inode,
+ 						ACL_TYPE_DEFAULT);
+-				if (IS_ERR(alloc))
++				if (IS_ERR(alloc)) {
++					nfs_handle_estale(PTR_ERR(alloc),
++							inode);
+ 					goto fail;
++				}
+ 				break;
+ 
+ 			case ACL_TYPE_DEFAULT:
+ 				dfacl = acl;
+ 				alloc = acl = nfs3_proc_getacl(inode,
+ 						ACL_TYPE_ACCESS);
+-				if (IS_ERR(alloc))
++				if (IS_ERR(alloc)) {
++					nfs_handle_estale(PTR_ERR(alloc),
++							inode);
+ 					goto fail;
++				}
+ 				break;
+ 
+ 			default:
+@@ -380,6 +393,7 @@ int nfs3_proc_setacl(struct inode *inode
  	}
- 	return error;
- }
-@@ -306,6 +309,7 @@ asmlinkage long compat_sys_statfs64(cons
- 	if (sz != sizeof(*buf))
- 		return -EINVAL;
+ 	status = nfs3_proc_setacls(inode, acl, dfacl);
+ 	posix_acl_release(alloc);
++	nfs_handle_estale(status, inode);
+ 	return status;
  
-+top:
- 	error = user_path_walk(path, &nd);
- 	if (!error) {
- 		struct kstatfs tmp;
-@@ -313,6 +317,8 @@ asmlinkage long compat_sys_statfs64(cons
- 		if (!error)
- 			error = put_compat_statfs64(buf, &tmp);
- 		path_release(&nd);
-+		if (error == -ESTALE)
-+			goto top;
+ fail:
+@@ -395,6 +409,7 @@ int nfs3_proc_set_default_acl(struct ino
+ 	dfacl = nfs3_proc_getacl(dir, ACL_TYPE_DEFAULT);
+ 	if (IS_ERR(dfacl)) {
+ 		error = PTR_ERR(dfacl);
++		nfs_handle_estale(error, dir);
+ 		return (error == -EOPNOTSUPP) ? 0 : error;
  	}
- 	return error;
- }
---- linux-2.6.23.i686/fs/xattr.c.org
-+++ linux-2.6.23.i686/fs/xattr.c
-@@ -232,11 +232,14 @@ sys_setxattr(char __user *path, char __u
- 	struct nameidata nd;
- 	int error;
+ 	if (!dfacl)
+@@ -408,6 +423,7 @@ int nfs3_proc_set_default_acl(struct ino
+ 		goto out_release_acl;
+ 	error = nfs3_proc_setacls(inode, acl, S_ISDIR(inode->i_mode) ?
+ 						      dfacl : NULL);
++	nfs_handle_estale(error, inode);
+ out_release_acl:
+ 	posix_acl_release(acl);
+ out_release_dfacl:
+--- linux-2.6.23.i686/include/linux/nfs_fs.h.org
++++ linux-2.6.23.i686/include/linux/nfs_fs.h
+@@ -219,6 +219,31 @@ static inline struct nfs_inode *NFS_I(st
  
-+top:
- 	error = user_path_walk(path, &nd);
- 	if (error)
- 		return error;
- 	error = setxattr(nd.dentry, name, value, size, flags);
- 	path_release(&nd);
-+	if (error == -ESTALE)
-+		goto top;
- 	return error;
- }
+ #define NFS_FILEID(inode)		(NFS_I(inode)->fileid)
  
-@@ -247,11 +250,14 @@ sys_lsetxattr(char __user *path, char __
- 	struct nameidata nd;
- 	int error;
- 
-+top:
- 	error = user_path_walk_link(path, &nd);
- 	if (error)
- 		return error;
- 	error = setxattr(nd.dentry, name, value, size, flags);
- 	path_release(&nd);
-+	if (error == -ESTALE)
-+		goto top;
- 	return error;
- }
- 
-@@ -317,11 +323,14 @@ sys_getxattr(char __user *path, char __u
- 	struct nameidata nd;
- 	ssize_t error;
- 
-+top:
- 	error = user_path_walk(path, &nd);
- 	if (error)
- 		return error;
- 	error = getxattr(nd.dentry, name, value, size);
- 	path_release(&nd);
-+	if (error == -ESTALE)
-+		goto top;
- 	return error;
- }
- 
-@@ -332,11 +341,14 @@ sys_lgetxattr(char __user *path, char __
- 	struct nameidata nd;
- 	ssize_t error;
- 
-+top:
- 	error = user_path_walk_link(path, &nd);
- 	if (error)
- 		return error;
- 	error = getxattr(nd.dentry, name, value, size);
- 	path_release(&nd);
-+	if (error == -ESTALE)
-+		goto top;
- 	return error;
- }
- 
-@@ -391,11 +403,14 @@ sys_listxattr(char __user *path, char __
- 	struct nameidata nd;
- 	ssize_t error;
- 
-+top:
- 	error = user_path_walk(path, &nd);
- 	if (error)
- 		return error;
- 	error = listxattr(nd.dentry, list, size);
- 	path_release(&nd);
-+	if (error == -ESTALE)
-+		goto top;
- 	return error;
- }
- 
-@@ -405,11 +420,14 @@ sys_llistxattr(char __user *path, char _
- 	struct nameidata nd;
- 	ssize_t error;
- 
-+top:
- 	error = user_path_walk_link(path, &nd);
- 	if (error)
- 		return error;
- 	error = listxattr(nd.dentry, list, size);
- 	path_release(&nd);
-+	if (error == -ESTALE)
-+		goto top;
- 	return error;
- }
- 
-@@ -452,11 +470,14 @@ sys_removexattr(char __user *path, char 
- 	struct nameidata nd;
- 	int error;
- 
-+top:
- 	error = user_path_walk(path, &nd);
- 	if (error)
- 		return error;
- 	error = removexattr(nd.dentry, name);
- 	path_release(&nd);
-+	if (error == -ESTALE)
-+		goto top;
- 	return error;
- }
- 
-@@ -466,11 +487,14 @@ sys_lremovexattr(char __user *path, char
- 	struct nameidata nd;
- 	int error;
- 
-+top:
- 	error = user_path_walk_link(path, &nd);
- 	if (error)
- 		return error;
- 	error = removexattr(nd.dentry, name);
- 	path_release(&nd);
-+	if (error == -ESTALE)
-+		goto top;
- 	return error;
- }
- 
++static inline void nfs_handle_estale(int error, struct inode *inode)
++{
++	struct nfs_inode *nfsi = NFS_I(inode);
++
++	if (error == -ESTALE) {
++		if (!NFS_STALE(inode))
++			set_bit(NFS_INO_STALE, &NFS_FLAGS(inode));
++		/*
++		 * If a directory is being marked as stale, then
++		 * reset the attribute cache timeout.  This controls
++		 * the duration that the stale condition is believed
++		 * before being verified again with another call to
++		 * the server.
++		 */
++		if (S_ISDIR(inode->i_mode))
++			nfsi->read_cache_jiffies = jiffies;
++	}
++}
++
++static inline void nfs_clear_estale(struct inode *inode)
++{
++	if (NFS_STALE(inode))
++		clear_bit(NFS_INO_STALE, &NFS_FLAGS(inode));
++}
++
+ static inline void nfs_mark_for_revalidate(struct inode *inode)
+ {
+ 	struct nfs_inode *nfsi = NFS_I(inode);
 
---------------090600050007020308080002--
+--------------050401010405080305060902--
