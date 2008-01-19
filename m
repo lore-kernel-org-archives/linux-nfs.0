@@ -1,69 +1,66 @@
 From: Gianluca Alberici <gianluca-I6s3FmifXcAEdjjp4vwUeA@public.gmane.org>
 Subject: Re: NFS EINVAL on open(... | O_TRUNC) on 2.6.23.9
-Date: Sat, 19 Jan 2008 12:29:12 +0100
-Message-ID: <4791DF08.8010505@abinetworks.biz>
+Date: Sat, 19 Jan 2008 12:39:31 +0100
+Message-ID: <4791E173.70906@abinetworks.biz>
 References: <476CEC5E.9070002@abinetworks.biz> <838DE9A2-59B2-49FA-B3E8-89B26368B1CF@bluecamel.eml.cc> <476E47F5.4090807@abinetworks.biz> <20071225140431.9264970a.akpm@linux-foundation.org> <199BEBA7-E46E-4B1F-9D36-91BB43331B75@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII; format=flowed
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Scott <linux-kernel-ZTkj/XXJm+4Yk/GtTgyLaw@public.gmane.org>,
-	linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from ns4.abinetworks.biz ([216.218.212.66]:49587 "EHLO
+Received: from ns4.abinetworks.biz ([216.218.212.66]:49635 "EHLO
 	ns4.abinetworks.biz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753001AbYASLcK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 19 Jan 2008 06:32:10 -0500
+	with ESMTP id S1750826AbYASLm0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 19 Jan 2008 06:42:26 -0500
 In-Reply-To: <199BEBA7-E46E-4B1F-9D36-91BB43331B75@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 Hello all,
 
-Sorry for being down for so long but i have decided to test the latest 
-2.6.24 kernel because of the huge number of NFS patches (especially at 
-RPC UDP protocol level) introduced mainly by Netapp people (Trond 
-Myklebust et al.), hoping that maybe the problem would have magically 
+Sorry for being down for so long but i have decided to test the latest
+2.6.24 kernel because of the huge number of NFS patches (especially at
+RPC UDP protocol level) introduced mainly by Netapp people (Trond
+Myklebust et al.), hoping that maybe the problem would have magically
 disappeared, but...
 
 On kernel 2.6.24 rc7:
 
-- Debian nfs-user-server (v2) is giving the very same problem i reported 
+- Debian nfs-user-server (v2) is giving the very same problem i reported
 last times: EINVAL on open() syscall with O|TRUNC on existing file
 - CFSD, same as debian nfs-user-server (v2)
 
 To answer Chuck's questions:
 
-i have already straced all the applications, which puts in evidence that 
-the problem is into the open() syscall with O|TRUNC on existing files, 
+i have already straced all the applications, which puts in evidence that
+the problem is into the open() syscall with O|TRUNC on existing files,
 always.
-I prepared that very basic piece of c code to rise the problem, as you 
+I prepared that very basic piece of c code to rise the problem, as you
 can see it just 'syscalls' open(), and that is enough.
 NFS version is 2, no options (for CFSD [ -oport=3049,intr ] as i ever did)
 
-When im done with this email i will work on finding where exactly the 
-problem arises, for now i can say that 2.6.21.7 is working so well, and 
+When im done with this email i will work on finding where exactly the
+problem arises, for now i can say that 2.6.21.7 is working so well, and
 2.6.22.16 is not working exactly as 2.6.24rc7 does.
 
-I am really interested in finding out whats wrong with NFSD/CFSD and if 
-it was a problem of NFS compliance i would really be glad to find out 
-what to do to patch those servers, but im really far to be able to do it 
+I am really interested in finding out whats wrong with NFSD/CFSD and if
+it was a problem of NFS compliance i would really be glad to find out
+what to do to patch those servers, but im really far to be able to do it
 alone.
-But: dont you think that we should find out that the problem is surely 
-into the userspace servers before saying that everything is alright with 
+But: dont you think that we should find out that the problem is surely
+into the userspace servers before saying that everything is alright with
 linux kernel ?
 
-I propose to anybody interested to test cfsd or nfs-user-server 
-2.2beta47-23 (from debian etch) on any kernel >= 2.6.23. You ca use 
+I propose to anybody interested to test cfsd or nfs-user-server
+2.2beta47-23 (from debian etch) on any kernel >= 2.6.23. You ca use
 something like the piece of code included in this email, or you can simply:
 
 echo "Hello" > /mnt/nfsmount/test
 
-which is gonna fail after the first time (the first it creates a new 
+which is gonna fail after the first time (the first it creates a new
 file and it works) with EINVAL.
 
-Now as i already said the problem is an RPC call_decode which fails, 
-this is evident from an RPC debug. I have noticed a different number of 
+Now as i already said the problem is an RPC call_decode which fails,
+this is evident from an RPC debug. I have noticed a different number of
 bytes in the response from knfsd to userspace (28 instead of 96).
 
 Somebody can help ?
@@ -247,5 +244,6 @@ Chuck Lever wrote:
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at http://vger.kernel.org/majordomo-info.html
 > Please read the FAQ at http://www.tux.org/lkml/
+
 
 
