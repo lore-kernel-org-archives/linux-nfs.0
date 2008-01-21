@@ -1,127 +1,182 @@
-From: Erez Zadok <ezk-EX0cT3Az47bauI2f2gSDlQ@public.gmane.org>
-Subject: [NFS] nfs2/3 ESTALE bug on mount point (v2.6.24-rc8)
-Date: Mon, 21 Jan 2008 13:19:30 -0500
-Message-ID: <200801211819.m0LIJU6Y017173@agora.fsl.cs.sunysb.edu>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: Mutex Hang on GC in lockd for 2.6.22-14
+Date: Mon, 21 Jan 2008 13:31:21 -0500
+Message-ID: <20080121183121.GJ17468@fieldses.org>
+References: <479427C5.8020203@spiderfan.org> <18324.11227.8442.938224@notabene.brown> <47942CA4.1060700@spiderfan.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs@vger.kernel.org, nfs@lists.sourceforge.net
-To: Trond.Myklebust@netapp.com, bfields@fieldses.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Jonathan Couper <jonathan-3c88B9b11vOEi8DpZVb4nw@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:57127 "EHLO neil.brown.name"
+Received: from mail.fieldses.org ([66.93.2.214]:34569 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751403AbYAUSUH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 21 Jan 2008 13:20:07 -0500
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1JH1Fc-0006mI-Aq
-	for linux-nfs@vger.kernel.org; Tue, 22 Jan 2008 05:20:04 +1100
+	id S1751947AbYAUSbX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 21 Jan 2008 13:31:23 -0500
+In-Reply-To: <47942CA4.1060700-3c88B9b11vOEi8DpZVb4nw@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Since around 2.6.24-rc5 or so I've had an occasional problem: I get an
-ESTALE error on the mount point after setting up a localhost exported mount
-point, and trying to mkdir something there (this is part of my setup scripts
-prior to running unionfs regression tests).
+On Mon, Jan 21, 2008 at 06:24:52PM +1300, Jonathan Couper wrote:
+> Heya NFS Experts,
+>
+> 	I'm pretty darn sure I've found (and am currently testing a fix for) a  
+> mutex bug in lockd that hangs NFS server pretty reliably.  I have no  
+> idea how this bug has gone unnoticed for so long, since this is the
+> current Gutsy Gibbon kernel!
+>
+> 	That makes me think that maybe I'm mistaken.  But my system definitely  
+> hangs, and the code definitely appears to attempt to lock twice on a  
+> non-recursive mutex.
+>
+> 	All the details are:
+>
+> https://bugs.launchpad.net/ubuntu/+source/linux-source-2.6.22/+bug/181996	
 
-I'm CC'ing both client and server maintainers/list, b/c I'm not certain
-where the problem is.  The problem doesn't exist in 2.6.23 or earlier stable
-kernels.  It doesn't appear in nfs4 either, only nfs2 and nfs3.
+Hm; from:
 
-The problem is seen intermittently, and is probably some form of a race.  I
-was finally able to narrow it down a bit.  I was able to write a shell
-script that for me reproduces the problem within a few minutes (I tried it
-on v2.6.24-rc8-74-ga7da60f and several different machine configurations).
+	https://bugs.launchpad.net/ubuntu/+source/linux-source-2.6.22/+bug/181996/comments/2
 
-I've included the shell script below.  Hopefully you can use it to track the
-problem down.  The mkdir command in the middle of the script is that one
-that'll eventually cause an ESTALE error and cause the script to abort; you
-can run "df" afterward to see the stale mount points.
+	"...and on the server side I will now see TWO "[lockd]"
+	processes where before I saw one."
 
-Notes: the one anecdotal factor that seems to make the bug appear sooner is
-if you increase the number of total mounts that the script below creates
-($MAX in the script).
+That at least should be prevented by Jeff Layton's recent patches, which
+you can get from
 
-Hope this helps.
+	git://linux-nfs.org/~bfields/linux.git nfs-server-stable
 
-Thanks,
-Erez.
+(Quick git tutorial; you can get that with
 
+	apt-get install git-core
+	git clone git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux-2.6.git
+	cd linux-2.6
+	git remote add bfields git://linux-nfs.org/~bfields/linux.git
+	git fetch bfields
+	git checkout bfields/nfs-server-stable
 
-#!/bin/sh
-# script to tickle a "stale filehandle" mount-point bug in nfs2/3
-# Erez Zadok.
+)
 
-# mount flags
-FLAGS=no_root_squash,rw,async
-# max no. of nfs mounts (each using a loop device)
-MAX=6
-# total no. of times to try test
-COUNT=1000
+But, hm, I'm confused by your description in:
 
-function runcmd
-{
-    echo "CMD: $@"
-    $@
-    ret=$?
-    test $ret -ne 0 && exit $ret
-}
+	https://bugs.launchpad.net/ubuntu/+source/linux-source-2.6.22/+bug/181996/comments/10
 
-function doit
-{
-    for c in `seq 0 $MAX`; do
-	runcmd dd if=/dev/zero of=/tmp/fs.$$.$c bs=1024k count=1 seek=100
-	runcmd losetup /dev/loop$c /tmp/fs.$$.$c
-	runcmd mkfs -t ext2 -q /dev/loop$c
-	runcmd mkdir -p /n/export/b$c
-	runcmd mount -t ext2 /dev/loop$c /n/export/b$c
-	runcmd exportfs -o $FLAGS localhost:/n/export/b$c
-	runcmd mkdir -p /n/lower/b$c
-	runcmd mount -t nfs -o nfsvers=3 localhost:/n/export/b$c /n/lower/b$c
-    done
+The double-lock you're identifying is from:
 
-    # this mkdir command will eventually cause an ESTALE error on the mnt pt
-    for c in `seq 0 $MAX`; do
-	runcmd mkdir -p /n/lower/b$c/dir
-    done
+	nlmsvc_lock() taking f_mutex, then calling
+		nlmsvc_create_block(), which calls
+			nlmsvc_lookup_host()
 
-    # check if "df" prints" "stale file handle"
-    for i in `seq 1 10` ; do
-	sleep 0.1
-	echo -n "."
-	if test -n "`df 2>&1 | grep -i stale`" ; then
-	    df
-	    exit 123
-	fi
-    done
-    echo
+but nlmsvc_create_block() doesn't call nlmsvc_lookup_host().  Oh, I
+see--it used to in v2.6.22; the commit below fixed it.  (And note if you
+apply that you should also apply
+a6d85430424d44e946e0946bfaad607115510989 "NLM: Fix a memory leak in
+nlmsvc_testlock"
 
-    for c in `seq 0 $MAX`; do
-	runcmd umount /n/lower/b$c
-	runcmd exportfs -u localhost:/n/export/b$c
-	runcmd umount /n/export/b$c
-	runcmd losetup -d /dev/loop$c
-	runcmd rm -f /tmp/fs.$$.$c
-    done
-}
+> 	I'd LOVE to get my name into the Linux Kernel.  Please tell me I've  
+> found a real bug!
 
-count=$COUNT
-while test $count -gt 0 ; do
-    echo "------------------------------------------------------------------"
-    echo "COUNT $count"
-    doit
-    let count=count-1
-done
-##############################################################################
+Alas!  So the secret is to test the most recent kernels, as those have
+the most unfound bugs....
 
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Microsoft
-Defy all challenges. Microsoft(R) Visual Studio 2008.
-http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+--b.
 
+commit 255129d1e9ca0ed3d69d5517fae3e03d7ab4b806
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Tue Sep 25 15:55:03 2007 -0400
+
+    NLM: Fix a circular lock dependency in lockd
+    
+    The problem is that the garbage collector for the 'host' structures
+    nlm_gc_hosts(), holds nlm_host_mutex while calling down to
+    nlmsvc_mark_resources, which, eventually takes the file->f_mutex.
+    
+    We cannot therefore call nlmsvc_lookup_host() from within
+    nlmsvc_create_block, since the caller will already hold file->f_mutex, so
+    the attempt to grab nlm_host_mutex may deadlock.
+    
+    Fix the problem by calling nlmsvc_lookup_host() outside the file->f_mutex.
+    
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+    Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
+
+diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
+index a21e4bc..d098c7a 100644
+--- a/fs/lockd/svclock.c
++++ b/fs/lockd/svclock.c
+@@ -171,19 +171,14 @@ found:
+  * GRANTED_RES message by cookie, without having to rely on the client's IP
+  * address. --okir
+  */
+-static inline struct nlm_block *
+-nlmsvc_create_block(struct svc_rqst *rqstp, struct nlm_file *file,
+-		struct nlm_lock *lock, struct nlm_cookie *cookie)
++static struct nlm_block *
++nlmsvc_create_block(struct svc_rqst *rqstp, struct nlm_host *host,
++		    struct nlm_file *file, struct nlm_lock *lock,
++		    struct nlm_cookie *cookie)
+ {
+ 	struct nlm_block	*block;
+-	struct nlm_host		*host;
+ 	struct nlm_rqst		*call = NULL;
+ 
+-	/* Create host handle for callback */
+-	host = nlmsvc_lookup_host(rqstp, lock->caller, lock->len);
+-	if (host == NULL)
+-		return NULL;
+-
+ 	call = nlm_alloc_call(host);
+ 	if (call == NULL)
+ 		return NULL;
+@@ -366,6 +361,7 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file *file,
+ 			struct nlm_lock *lock, int wait, struct nlm_cookie *cookie)
+ {
+ 	struct nlm_block	*block = NULL;
++	struct nlm_host		*host;
+ 	int			error;
+ 	__be32			ret;
+ 
+@@ -377,6 +373,10 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file *file,
+ 				(long long)lock->fl.fl_end,
+ 				wait);
+ 
++	/* Create host handle for callback */
++	host = nlmsvc_lookup_host(rqstp, lock->caller, lock->len);
++	if (host == NULL)
++		return nlm_lck_denied_nolocks;
+ 
+ 	/* Lock file against concurrent access */
+ 	mutex_lock(&file->f_mutex);
+@@ -385,7 +385,8 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file *file,
+ 	 */
+ 	block = nlmsvc_lookup_block(file, lock);
+ 	if (block == NULL) {
+-		block = nlmsvc_create_block(rqstp, file, lock, cookie);
++		block = nlmsvc_create_block(rqstp, nlm_get_host(host), file,
++				lock, cookie);
+ 		ret = nlm_lck_denied_nolocks;
+ 		if (block == NULL)
+ 			goto out;
+@@ -449,6 +450,7 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file *file,
+ out:
+ 	mutex_unlock(&file->f_mutex);
+ 	nlmsvc_release_block(block);
++	nlm_release_host(host);
+ 	dprintk("lockd: nlmsvc_lock returned %u\n", ret);
+ 	return ret;
+ }
+@@ -477,10 +479,15 @@ nlmsvc_testlock(struct svc_rqst *rqstp, struct nlm_file *file,
+ 
+ 	if (block == NULL) {
+ 		struct file_lock *conf = kzalloc(sizeof(*conf), GFP_KERNEL);
++		struct nlm_host	*host;
+ 
+ 		if (conf == NULL)
+ 			return nlm_granted;
+-		block = nlmsvc_create_block(rqstp, file, lock, cookie);
++		/* Create host handle for callback */
++		host = nlmsvc_lookup_host(rqstp, lock->caller, lock->len);
++		if (host == NULL)
++			return nlm_lck_denied_nolocks;
++		block = nlmsvc_create_block(rqstp, host, file, lock, cookie);
+ 		if (block == NULL) {
+ 			kfree(conf);
+ 			return nlm_granted;
