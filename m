@@ -1,182 +1,57 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: Mutex Hang on GC in lockd for 2.6.22-14
-Date: Mon, 21 Jan 2008 13:31:21 -0500
-Message-ID: <20080121183121.GJ17468@fieldses.org>
-References: <479427C5.8020203@spiderfan.org> <18324.11227.8442.938224@notabene.brown> <47942CA4.1060700@spiderfan.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Jonathan Couper <jonathan-3c88B9b11vOEi8DpZVb4nw@public.gmane.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [RFC,PATCH] svc: Modify svc_xprt_create to take a sockaddr
+Date: Mon, 21 Jan 2008 13:30:41 -0500
+Message-ID: <FD665904-E655-48E9-8508-D9E118762C84@oracle.com>
+References: <20080121171105.29028.61809.stgit@dell3.ogc.int> <9ECEB764-A93C-4DF2-BB6E-273C33C02B6E@oracle.com> <1200938366.25562.14.camel@heimdal.trondhjem.org>
+Mime-Version: 1.0 (Apple Message framework v753)
+Content-Type: text/plain; charset=US-ASCII; delsp=yes; format=flowed
+Cc: NFS list <linux-nfs@vger.kernel.org>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:34569 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751947AbYAUSbX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 21 Jan 2008 13:31:23 -0500
-In-Reply-To: <47942CA4.1060700-3c88B9b11vOEi8DpZVb4nw@public.gmane.org>
+Received: from rgminet01.oracle.com ([148.87.113.118]:33714 "EHLO
+	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751539AbYAUScQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jan 2008 13:32:16 -0500
+In-Reply-To: <1200938366.25562.14.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jan 21, 2008 at 06:24:52PM +1300, Jonathan Couper wrote:
-> Heya NFS Experts,
+Hi Trond-
+
+On Jan 21, 2008, at 12:59 PM, Trond Myklebust wrote:
+> On Mon, 2008-01-21 at 12:47 -0500, Chuck Lever wrote:
+>> This is sort of a generic question.
+>>
+>> The server-side interface appears to be using strings to identify
+>> transports ("tcp"), but the client-side is still using numbers
+>> (XPRT_TRANSPORT_TCP).  There are one or two sticky issues to fix
+>> before the client-side can use strings, but...
 >
-> 	I'm pretty darn sure I've found (and am currently testing a fix for) a  
-> mutex bug in lockd that hangs NFS server pretty reliably.  I have no  
-> idea how this bug has gone unnoticed for so long, since this is the
-> current Gutsy Gibbon kernel!
->
-> 	That makes me think that maybe I'm mistaken.  But my system definitely  
-> hangs, and the code definitely appears to attempt to lock twice on a  
-> non-recursive mutex.
->
-> 	All the details are:
->
-> https://bugs.launchpad.net/ubuntu/+source/linux-source-2.6.22/+bug/181996	
+> We already have to parse the mount string in the NFS code. Why on  
+> earth
+> would we want to have a second parser for the same thing in the RPC
+> code?
 
-Hm; from:
 
-	https://bugs.launchpad.net/ubuntu/+source/linux-source-2.6.22/+bug/181996/comments/2
+Not sure what you are getting at here.
 
-	"...and on the server side I will now see TWO "[lockd]"
-	processes where before I saw one."
+The goal of using string transport identifiers in the RPC client is  
+that the value of "proto=" could be passed directly to the RPC  
+client.  The way it works today, we have to add support in the NFS  
+mount option parser for any new RPC transport capability.
 
-That at least should be prevented by Jeff Layton's recent patches, which
-you can get from
+One of the goals of the client-side transport switch has always been  
+to allow new transport capabilities to be dynamically loaded without  
+needing to make code changes to the NFS client to support them.
 
-	git://linux-nfs.org/~bfields/linux.git nfs-server-stable
+For example, it would be nice to have an SCTP transport capability,  
+or a single-socket-per-client UDP transport capability, in addition  
+to the default socket-based transports we have now.  With the current  
+arrangement, we'll have to add code in the NFS mount option parser to  
+allow users to select these.  If the proto= value were simply passed  
+through, it would be simple for the RPC client to match the value to  
+an identifier string specified by the new transport.
 
-(Quick git tutorial; you can get that with
-
-	apt-get install git-core
-	git clone git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux-2.6.git
-	cd linux-2.6
-	git remote add bfields git://linux-nfs.org/~bfields/linux.git
-	git fetch bfields
-	git checkout bfields/nfs-server-stable
-
-)
-
-But, hm, I'm confused by your description in:
-
-	https://bugs.launchpad.net/ubuntu/+source/linux-source-2.6.22/+bug/181996/comments/10
-
-The double-lock you're identifying is from:
-
-	nlmsvc_lock() taking f_mutex, then calling
-		nlmsvc_create_block(), which calls
-			nlmsvc_lookup_host()
-
-but nlmsvc_create_block() doesn't call nlmsvc_lookup_host().  Oh, I
-see--it used to in v2.6.22; the commit below fixed it.  (And note if you
-apply that you should also apply
-a6d85430424d44e946e0946bfaad607115510989 "NLM: Fix a memory leak in
-nlmsvc_testlock"
-
-> 	I'd LOVE to get my name into the Linux Kernel.  Please tell me I've  
-> found a real bug!
-
-Alas!  So the secret is to test the most recent kernels, as those have
-the most unfound bugs....
-
---b.
-
-commit 255129d1e9ca0ed3d69d5517fae3e03d7ab4b806
-Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date:   Tue Sep 25 15:55:03 2007 -0400
-
-    NLM: Fix a circular lock dependency in lockd
-    
-    The problem is that the garbage collector for the 'host' structures
-    nlm_gc_hosts(), holds nlm_host_mutex while calling down to
-    nlmsvc_mark_resources, which, eventually takes the file->f_mutex.
-    
-    We cannot therefore call nlmsvc_lookup_host() from within
-    nlmsvc_create_block, since the caller will already hold file->f_mutex, so
-    the attempt to grab nlm_host_mutex may deadlock.
-    
-    Fix the problem by calling nlmsvc_lookup_host() outside the file->f_mutex.
-    
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-    Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
-
-diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-index a21e4bc..d098c7a 100644
---- a/fs/lockd/svclock.c
-+++ b/fs/lockd/svclock.c
-@@ -171,19 +171,14 @@ found:
-  * GRANTED_RES message by cookie, without having to rely on the client's IP
-  * address. --okir
-  */
--static inline struct nlm_block *
--nlmsvc_create_block(struct svc_rqst *rqstp, struct nlm_file *file,
--		struct nlm_lock *lock, struct nlm_cookie *cookie)
-+static struct nlm_block *
-+nlmsvc_create_block(struct svc_rqst *rqstp, struct nlm_host *host,
-+		    struct nlm_file *file, struct nlm_lock *lock,
-+		    struct nlm_cookie *cookie)
- {
- 	struct nlm_block	*block;
--	struct nlm_host		*host;
- 	struct nlm_rqst		*call = NULL;
- 
--	/* Create host handle for callback */
--	host = nlmsvc_lookup_host(rqstp, lock->caller, lock->len);
--	if (host == NULL)
--		return NULL;
--
- 	call = nlm_alloc_call(host);
- 	if (call == NULL)
- 		return NULL;
-@@ -366,6 +361,7 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file *file,
- 			struct nlm_lock *lock, int wait, struct nlm_cookie *cookie)
- {
- 	struct nlm_block	*block = NULL;
-+	struct nlm_host		*host;
- 	int			error;
- 	__be32			ret;
- 
-@@ -377,6 +373,10 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file *file,
- 				(long long)lock->fl.fl_end,
- 				wait);
- 
-+	/* Create host handle for callback */
-+	host = nlmsvc_lookup_host(rqstp, lock->caller, lock->len);
-+	if (host == NULL)
-+		return nlm_lck_denied_nolocks;
- 
- 	/* Lock file against concurrent access */
- 	mutex_lock(&file->f_mutex);
-@@ -385,7 +385,8 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file *file,
- 	 */
- 	block = nlmsvc_lookup_block(file, lock);
- 	if (block == NULL) {
--		block = nlmsvc_create_block(rqstp, file, lock, cookie);
-+		block = nlmsvc_create_block(rqstp, nlm_get_host(host), file,
-+				lock, cookie);
- 		ret = nlm_lck_denied_nolocks;
- 		if (block == NULL)
- 			goto out;
-@@ -449,6 +450,7 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file *file,
- out:
- 	mutex_unlock(&file->f_mutex);
- 	nlmsvc_release_block(block);
-+	nlm_release_host(host);
- 	dprintk("lockd: nlmsvc_lock returned %u\n", ret);
- 	return ret;
- }
-@@ -477,10 +479,15 @@ nlmsvc_testlock(struct svc_rqst *rqstp, struct nlm_file *file,
- 
- 	if (block == NULL) {
- 		struct file_lock *conf = kzalloc(sizeof(*conf), GFP_KERNEL);
-+		struct nlm_host	*host;
- 
- 		if (conf == NULL)
- 			return nlm_granted;
--		block = nlmsvc_create_block(rqstp, file, lock, cookie);
-+		/* Create host handle for callback */
-+		host = nlmsvc_lookup_host(rqstp, lock->caller, lock->len);
-+		if (host == NULL)
-+			return nlm_lck_denied_nolocks;
-+		block = nlmsvc_create_block(rqstp, host, file, lock, cookie);
- 		if (block == NULL) {
- 			kfree(conf);
- 			return nlm_granted;
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
