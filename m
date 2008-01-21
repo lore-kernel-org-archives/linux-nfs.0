@@ -1,125 +1,74 @@
-From: Erez Zadok <ezk-EX0cT3Az47bauI2f2gSDlQ@public.gmane.org>
-Subject: [NFS] nfs2/3 ESTALE bug on mount point (v2.6.24-rc8)
-Date: Sun, 20 Jan 2008 22:27:02 -0500
-Message-ID: <200801210327.m0L3R2MW025309@agora.fsl.cs.sunysb.edu>
+From: Jonathan Couper <jonathan-3c88B9b11vOEi8DpZVb4nw@public.gmane.org>
+Subject: Mutex Hang on GC in lockd for 2.6.22-14
+Date: Mon, 21 Jan 2008 18:24:52 +1300
+Message-ID: <47942CA4.1060700@spiderfan.org>
+References: <479427C5.8020203@spiderfan.org>
+ <18324.11227.8442.938224@notabene.brown>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:42725 "EHLO neil.brown.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755036AbYAUD1X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 20 Jan 2008 22:27:23 -0500
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1JGnJg-000435-7K
-	for linux-nfs@vger.kernel.org; Mon, 21 Jan 2008 14:27:20 +1100
+Received: from smtp4.clear.net.nz ([203.97.37.64]:37152 "EHLO
+	smtp4.clear.net.nz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751998AbYAUFj4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jan 2008 00:39:56 -0500
+Received: from [192.168.1.210]
+ (121-72-86-24.dsl.telstraclear.net [121.72.86.24])
+ by smtp4.clear.net.nz (CLEAR Net Mail)
+ with ESMTP id <0JUZ0003VB1GTY20-ik10VMwhufF/PQoK6HpaanTaI6DYlTYJ@public.gmane.org> for
+ linux-nfs@vger.kernel.org; Mon, 21 Jan 2008 18:24:54 +1300 (NZDT)
+In-reply-to: <18324.11227.8442.938224-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Since around 2.6.24-rc5 or so I've had an occasional problem: I get an
-ESTALE error on the mount point after setting up a localhost exported mount
-point, and trying to mkdir something there (this is part of my setup scripts
-prior to running unionfs regression tests).
+Heya NFS Experts,
 
-The problem doesn't exist in 2.6.23 or earlier stable kernels.  It doesn't
-appear in nfs4 either, only nfs2 and nfs3.
+	I'm pretty darn sure I've found (and am currently testing a fix for) a 
+mutex bug in lockd that hangs NFS server pretty reliably.  I have no 
+idea how this bug has gone unnoticed for so long, since this is the
+current Gutsy Gibbon kernel!
 
-The problem is seen intermittently, and is probably some form of a race.  I
-was finally able to narrow it down a bit.  I was able to write a shell
-script that for me reproduces the problem within a few minutes (I tried it
-on v2.6.24-rc8-74-ga7da60f and several different machine configurations).
+	That makes me think that maybe I'm mistaken.  But my system definitely 
+hangs, and the code definitely appears to attempt to lock twice on a 
+non-recursive mutex.
 
-I've included the shell script below.  Hopefully you can use it to track the
-problem down.  The mkdir command in the middle of the script is that one
-that'll eventually cause an ESTALE error and cause the script to abort; you
-can run "df" afterward to see the stale mount points.
+	All the details are:
 
-Notes: the one anecdotal factor that seems to make the bug appear sooner is
-if you increase the number of total mounts that the script below creates
-($MAX in the script).
+https://bugs.launchpad.net/ubuntu/+source/linux-source-2.6.22/+bug/181996	
 
-Hope this helps.
+	I'd LOVE to get my name into the Linux Kernel.  Please tell me I've 
+found a real bug!
 
-Thanks,
-Erez.
+	J.
 
-
-#!/bin/sh
-# script to tickle a "stale filehandle" mount-point bug in nfs2/3
-# Erez Zadok.
-
-# mount flags
-FLAGS=no_root_squash,rw,async
-# max no. of nfs mounts (each using a loop device)
-MAX=6
-# total no. of times to try test
-COUNT=1000
-
-function runcmd
-{
-    echo "CMD: $@"
-    $@
-    ret=$?
-    test $ret -ne 0 && exit $ret
-}
-
-function doit
-{
-    for c in `seq 0 $MAX`; do
-	runcmd dd if=/dev/zero of=/tmp/fs.$$.$c bs=1024k count=1 seek=100
-	runcmd losetup /dev/loop$c /tmp/fs.$$.$c
-	runcmd mkfs -t ext2 -q /dev/loop$c
-	runcmd mkdir -p /n/export/b$c
-	runcmd mount -t ext2 /dev/loop$c /n/export/b$c
-	runcmd exportfs -o $FLAGS localhost:/n/export/b$c
-	runcmd mkdir -p /n/lower/b$c
-	runcmd mount -t nfs -o nfsvers=3 localhost:/n/export/b$c /n/lower/b$c
-    done
-
-    # this mkdir command will eventually cause an ESTALE error on the mnt pt
-    for c in `seq 0 $MAX`; do
-	runcmd mkdir -p /n/lower/b$c/dir
-    done
-
-    # check if "df" prints" "stale file handle"
-    for i in `seq 1 10` ; do
-	sleep 0.1
-	echo -n "."
-	if test -n "`df 2>&1 | grep -i stale`" ; then
-	    df
-	    exit 123
-	fi
-    done
-    echo
-
-    for c in `seq 0 $MAX`; do
-	runcmd umount /n/lower/b$c
-	runcmd exportfs -u localhost:/n/export/b$c
-	runcmd umount /n/export/b$c
-	runcmd losetup -d /dev/loop$c
-	runcmd rm -f /tmp/fs.$$.$c
-    done
-}
-
-count=$COUNT
-while test $count -gt 0 ; do
-    echo "------------------------------------------------------------------"
-    echo "COUNT $count"
-    doit
-    let count=count-1
-done
-##############################################################################
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Microsoft
-Defy all challenges. Microsoft(R) Visual Studio 2008.
-http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+Neil Brown wrote:
+> On Monday January 21, jonathan-3c88B9b11vOEi8DpZVb4nw@public.gmane.org wrote:
+>> Heya,
+>>
+>> 	I'm pretty darn sure I've found (and am currently testing a fix for) a 
+>> mutex bug in lockd that hangs NFS server pretty reliably.  I have no 
+>> idea how this bug has gone unnoticed for so long, since this is the 
+>> current Gutsy Gibbon kernel!
+>>
+>> 	That makes me think that maybe I'm mistaken.  But my system definitely 
+>> hangs, and the code definitely appears to attempt to lock twice on a 
+>> non-recursive mutex.
+>>
+>> 	All the details are:
+>>
+>> https://bugs.launchpad.net/ubuntu/+source/linux-source-2.6.22/+bug/181996	
+>>
+>> 	I'd LOVE to get my name into the Linux Kernel.  Please tell me I've 
+>> found a real bug!
+>>
+>> 	J.
+> 
+> I'll probably have a look, but please post this to
+>    linux-nfs@vger.kernel.org
+> 
+> other people have interest in, and knowledge of, lockd.  Not just me.
+> 
+> Thanks,
+> NeilBrown
+> 
 
