@@ -1,62 +1,130 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: atimes not updated over NFS
-Date: Mon, 21 Jan 2008 14:31:05 -0500
-Message-ID: <1200943865.25562.56.camel@heimdal.trondhjem.org>
-References: <20080109101313.GG9212@aym.net2.nerim.net>
-	 <1199892437.11141.2.camel@heimdal.trondhjem.org>
-	 <20080109223748.GH9212@aym.net2.nerim.net>
-	 <1199920996.7638.3.camel@heimdal.trondhjem.org>
-	 <20080109235153.GI9212@aym.net2.nerim.net> <20080114083435.GA24215@janus>
-	 <1200325393.7470.6.camel@heimdal.trondhjem.org>
-	 <20080114175122.GB2768@janus>  <20080121190638.GL17468@fieldses.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: nfs2/3 ESTALE bug on mount point (v2.6.24-rc8)
+Date: Mon, 21 Jan 2008 14:31:16 -0500
+Message-ID: <20080121193116.GM17468@fieldses.org>
+References: <200801211819.m0LIJU6Y017173@agora.fsl.cs.sunysb.edu>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Frank van Maarseveen <frankvm@frankvm.com>,
-	Andre Majorel <aym-xunil-Bi/FLWfhfolQFI55V6+gNQ@public.gmane.org>, linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org,
+	nfs@lists.sourceforge.net
+To: Erez Zadok <ezk-EX0cT3Az47bauI2f2gSDlQ@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from pat.uio.no ([129.240.10.15]:59031 "EHLO pat.uio.no"
+Received: from mail.fieldses.org ([66.93.2.214]:55941 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751096AbYAUTbS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 21 Jan 2008 14:31:18 -0500
-In-Reply-To: <20080121190638.GL17468@fieldses.org>
+	id S1751740AbYAUTbY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 21 Jan 2008 14:31:24 -0500
+In-Reply-To: <200801211819.m0LIJU6Y017173-zop+azHP2WsZjdeEBZXbMidm6ipF23ct@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Mon, 2008-01-21 at 14:06 -0500, J. Bruce Fields wrote:
-> > > > Commands to reproduce this problem on the client:
-> > > > 
-> > > > 	dd </dev/zero >testfile count=1
-> > > > 	ls -l --time=atime --full-time testfile
-> > > > 	sleep 2
-> > > > 	wc testfile
-> > > > 	ls -l --time=atime --full-time testfile
-> > > > 		(same atime, not good)
-> > > 
-> > > Can you confirm that it does not change on the server? If so, then we
-> > > need to look at the server for a fix. The client should only be
-> > > mirroring the server's idea of the correct atime.
-> > 
-> > It doesn't change on the server (2.6.23.12)
+On Mon, Jan 21, 2008 at 01:19:30PM -0500, Erez Zadok wrote:
+> Since around 2.6.24-rc5 or so I've had an occasional problem: I get an
+> ESTALE error on the mount point after setting up a localhost exported mount
+> point, and trying to mkdir something there (this is part of my setup scripts
+> prior to running unionfs regression tests).
 > 
-> That still leaves open the question as to whether this is due to changes
-> in the client that are causing it not to issue a read to the server when
-> it would have before, or whether the server is just refusing to update
-> the atime on read for some reason....
+> I'm CC'ing both client and server maintainers/list, b/c I'm not certain
+> where the problem is.  The problem doesn't exist in 2.6.23 or earlier stable
+> kernels.  It doesn't appear in nfs4 either, only nfs2 and nfs3.
+> 
+> The problem is seen intermittently, and is probably some form of a race.  I
+> was finally able to narrow it down a bit.  I was able to write a shell
+> script that for me reproduces the problem within a few minutes (I tried it
+> on v2.6.24-rc8-74-ga7da60f and several different machine configurations).
+> 
+> I've included the shell script below.  Hopefully you can use it to track the
+> problem down.  The mkdir command in the middle of the script is that one
+> that'll eventually cause an ESTALE error and cause the script to abort; you
+> can run "df" afterward to see the stale mount points.
+> 
+> Notes: the one anecdotal factor that seems to make the bug appear sooner is
+> if you increase the number of total mounts that the script below creates
+> ($MAX in the script).
 
-A script of the form
+OK, so to summarize:
 
-                ssh server 'dd </dev/zero >testfile count=1; ls -l --time=atime --full-time testfile'
-                
-                cat testfile >/dev/null
-                
-                ssh server 'ls -l --time=atime --full-time testfile'
-                ls -l --time=atime --full-time testfile
+	1. create $MAX ext2 filesystem images, loopback-mount them, and export
+	   the result.
+	2. nfs-mount each of those $MAX exports.
+	3. create a directory under each of those nfs-mounts.
+	4. unmount and unexport
 
-should normally force the client to read the file, and should tell if
-the atime is being updates correctly on both server and client.
+Repeat that a thousand times, and eventually get you ESTALE at step 3?
 
-Cheers
-  Trond
+I guess one step would be to see if it's possible to get a network trace
+showing what happened in the bad case....
 
+--b.
+
+> 
+> Hope this helps.
+> 
+> Thanks,
+> Erez.
+> 
+> 
+> #!/bin/sh
+> # script to tickle a "stale filehandle" mount-point bug in nfs2/3
+> # Erez Zadok.
+> 
+> # mount flags
+> FLAGS=no_root_squash,rw,async
+> # max no. of nfs mounts (each using a loop device)
+> MAX=6
+> # total no. of times to try test
+> COUNT=1000
+> 
+> function runcmd
+> {
+>     echo "CMD: $@"
+>     $@
+>     ret=$?
+>     test $ret -ne 0 && exit $ret
+> }
+> 
+> function doit
+> {
+>     for c in `seq 0 $MAX`; do
+> 	runcmd dd if=/dev/zero of=/tmp/fs.$$.$c bs=1024k count=1 seek=100
+> 	runcmd losetup /dev/loop$c /tmp/fs.$$.$c
+> 	runcmd mkfs -t ext2 -q /dev/loop$c
+> 	runcmd mkdir -p /n/export/b$c
+> 	runcmd mount -t ext2 /dev/loop$c /n/export/b$c
+> 	runcmd exportfs -o $FLAGS localhost:/n/export/b$c
+> 	runcmd mkdir -p /n/lower/b$c
+> 	runcmd mount -t nfs -o nfsvers=3 localhost:/n/export/b$c /n/lower/b$c
+>     done
+> 
+>     # this mkdir command will eventually cause an ESTALE error on the mnt pt
+>     for c in `seq 0 $MAX`; do
+> 	runcmd mkdir -p /n/lower/b$c/dir
+>     done
+> 
+>     # check if "df" prints" "stale file handle"
+>     for i in `seq 1 10` ; do
+> 	sleep 0.1
+> 	echo -n "."
+> 	if test -n "`df 2>&1 | grep -i stale`" ; then
+> 	    df
+> 	    exit 123
+> 	fi
+>     done
+>     echo
+> 
+>     for c in `seq 0 $MAX`; do
+> 	runcmd umount /n/lower/b$c
+> 	runcmd exportfs -u localhost:/n/export/b$c
+> 	runcmd umount /n/export/b$c
+> 	runcmd losetup -d /dev/loop$c
+> 	runcmd rm -f /tmp/fs.$$.$c
+>     done
+> }
+> 
+> count=$COUNT
+> while test $count -gt 0 ; do
+>     echo "------------------------------------------------------------------"
+>     echo "COUNT $count"
+>     doit
+>     let count=count-1
+> done
+> ##############################################################################
