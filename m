@@ -1,74 +1,57 @@
-From: Jonathan Couper <jonathan-3c88B9b11vOEi8DpZVb4nw@public.gmane.org>
-Subject: Mutex Hang on GC in lockd for 2.6.22-14
-Date: Mon, 21 Jan 2008 18:24:52 +1300
-Message-ID: <47942CA4.1060700@spiderfan.org>
-References: <479427C5.8020203@spiderfan.org>
- <18324.11227.8442.938224@notabene.brown>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-To: linux-nfs@vger.kernel.org
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: NFS EINVAL on open(... | O_TRUNC) on 2.6.23.9
+Date: Mon, 21 Jan 2008 11:55:53 -0500
+Message-ID: <5FD6714F-EF9A-4F07-B2B6-D6F6CC911936@oracle.com>
+References: <476CEC5E.9070002@abinetworks.biz> <838DE9A2-59B2-49FA-B3E8-89B26368B1CF@bluecamel.eml.cc> <476E47F5.4090807@abinetworks.biz> <20071225140431.9264970a.akpm@linux-foundation.org> <199BEBA7-E46E-4B1F-9D36-91BB43331B75@oracle.com> <4791EE99.3030802@abinetworks.biz>
+Mime-Version: 1.0 (Apple Message framework v753)
+Content-Type: text/plain; charset=US-ASCII; delsp=yes; format=flowed
+Cc: NFS list <linux-nfs@vger.kernel.org>
+To: Gianluca Alberici <gianluca-I6s3FmifXcAEdjjp4vwUeA@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp4.clear.net.nz ([203.97.37.64]:37152 "EHLO
-	smtp4.clear.net.nz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751998AbYAUFj4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jan 2008 00:39:56 -0500
-Received: from [192.168.1.210]
- (121-72-86-24.dsl.telstraclear.net [121.72.86.24])
- by smtp4.clear.net.nz (CLEAR Net Mail)
- with ESMTP id <0JUZ0003VB1GTY20-ik10VMwhufF/PQoK6HpaanTaI6DYlTYJ@public.gmane.org> for
- linux-nfs@vger.kernel.org; Mon, 21 Jan 2008 18:24:54 +1300 (NZDT)
-In-reply-to: <18324.11227.8442.938224-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
+Received: from rgminet01.oracle.com ([148.87.113.118]:55090 "EHLO
+	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751403AbYAUQ5z (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jan 2008 11:57:55 -0500
+In-Reply-To: <4791EE99.3030802-I6s3FmifXcAEdjjp4vwUeA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Heya NFS Experts,
+Hi Gianluca-
 
-	I'm pretty darn sure I've found (and am currently testing a fix for) a 
-mutex bug in lockd that hangs NFS server pretty reliably.  I have no 
-idea how this bug has gone unnoticed for so long, since this is the
-current Gutsy Gibbon kernel!
+On Jan 19, 2008, at 7:35 AM, Gianluca Alberici wrote:
+> Hello Chuck,
+>
+> As you requested i have finally found out that the problem was  
+> introduced in 2.6.22 (2.6.21.7 works, after 2.6.21.7 theres 2.6.22)
+>
+> I have also examined the changeslogs: 2.6.22 introduce a certain  
+> number of patches into NFS client. Many of them are yours and Trond's.
+>
+> Pls can you help with this ?
 
-	That makes me think that maybe I'm mistaken.  But my system definitely 
-hangs, and the code definitely appears to attempt to lock twice on a 
-non-recursive mutex.
 
-	All the details are:
+[ I trimmed the Linux kernel mailing list because this is an NFS  
+specific problem.  No need to add more noise on lkml. ]
 
-https://bugs.launchpad.net/ubuntu/+source/linux-source-2.6.22/+bug/181996	
+The first thing to do is to capture a network trace during the  
+failing operation.  Capturing a trace with a working kernel, and one  
+with a failing kernel, would let us see how the behavior changes  
+between the two.
 
-	I'd LOVE to get my name into the Linux Kernel.  Please tell me I've 
-found a real bug!
+To capture a network trace, you can use "tcpdump" on your client:
 
-	J.
+   sudo tcpdump -s0 -w /tmp/dumpfile hostname-of-server
 
-Neil Brown wrote:
-> On Monday January 21, jonathan-3c88B9b11vOEi8DpZVb4nw@public.gmane.org wrote:
->> Heya,
->>
->> 	I'm pretty darn sure I've found (and am currently testing a fix for) a 
->> mutex bug in lockd that hangs NFS server pretty reliably.  I have no 
->> idea how this bug has gone unnoticed for so long, since this is the 
->> current Gutsy Gibbon kernel!
->>
->> 	That makes me think that maybe I'm mistaken.  But my system definitely 
->> hangs, and the code definitely appears to attempt to lock twice on a 
->> non-recursive mutex.
->>
->> 	All the details are:
->>
->> https://bugs.launchpad.net/ubuntu/+source/linux-source-2.6.22/+bug/181996	
->>
->> 	I'd LOVE to get my name into the Linux Kernel.  Please tell me I've 
->> found a real bug!
->>
->> 	J.
-> 
-> I'll probably have a look, but please post this to
->    linux-nfs@vger.kernel.org
-> 
-> other people have interest in, and knowledge of, lockd.  Not just me.
-> 
-> Thanks,
-> NeilBrown
-> 
+Substitute the fully-qualified domain name of your server for  
+"hostname-of-server".
+
+Try this with a working client and a broken client.  The /tmp/ 
+dumpfile will be a binary file.  You can post it on a convenient web  
+site, or attach it to e-mail.
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
 
