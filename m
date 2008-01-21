@@ -1,62 +1,124 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: atimes not updated over NFS
-Date: Mon, 21 Jan 2008 14:06:38 -0500
-Message-ID: <20080121190638.GL17468@fieldses.org>
-References: <20080109101313.GG9212@aym.net2.nerim.net> <1199892437.11141.2.camel@heimdal.trondhjem.org> <20080109223748.GH9212@aym.net2.nerim.net> <1199920996.7638.3.camel@heimdal.trondhjem.org> <20080109235153.GI9212@aym.net2.nerim.net> <20080114083435.GA24215@janus> <1200325393.7470.6.camel@heimdal.trondhjem.org> <20080114175122.GB2768@janus>
+From: Tom Tucker <tom@opengridcomputing.com>
+Subject: Re: [RFC,PATCH] svc: Modify svc_xprt_create to take a sockaddr
+Date: Mon, 21 Jan 2008 13:15:24 -0600
+Message-ID: <1200942924.11003.58.camel@trinity.ogc.int>
+References: <20080121171105.29028.61809.stgit@dell3.ogc.int>
+	 <9ECEB764-A93C-4DF2-BB6E-273C33C02B6E@oracle.com>
+	 <20080121183557.GK17468@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Andre Majorel <aym-xunil-Bi/FLWfhfolQFI55V6+gNQ@public.gmane.org>, linux-nfs@vger.kernel.org
-To: Frank van Maarseveen <frankvm@frankvm.com>
+Content-Type: text/plain
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:41738 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751804AbYAUTGp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 21 Jan 2008 14:06:45 -0500
-In-Reply-To: <20080114175122.GB2768@janus>
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:59162 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752086AbYAUTIA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jan 2008 14:08:00 -0500
+In-Reply-To: <20080121183557.GK17468@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jan 14, 2008 at 06:51:23PM +0100, Frank van Maarseveen wrote:
-> On Mon, Jan 14, 2008 at 10:43:12AM -0500, Trond Myklebust wrote:
-> > 
-> > On Mon, 2008-01-14 at 09:34 +0100, Frank van Maarseveen wrote:
-> > > On Thu, Jan 10, 2008 at 12:51:53AM +0100, Andre Majorel wrote:
-> > > > On 2008-01-09 18:23 -0500, Trond Myklebust wrote:
-> > > > > On Wed, 2008-01-09 at 23:37 +0100, Andre Majorel wrote:
-> > > > >
-> > > > > > I'll take your word for it. However, let me assure you that atimes
-> > > > > > somehow used to work over NFS, even for files small enough to fit
-> > > > > > in the cache. Had they been broken, I would have known. I use Mutt.
-> > > > > 
-> > > > > How would the server know to update the atime? If the file is in cache
-> > > > > we don't READ.
-> > > > 
-> > > > You tell me. All I can tell you is that Mutt used to work so
-> > > > atimes were updated one way or another.
-> > > 
-> > > I think 2.6.22 introduced this regression. On 2.6.22.10, reading a file
-> > > on NFS does not affect atime according to stat(), not on the client and
-> > > not on the server. This breaks several programs.
-> > > 
-> > > Commands to reproduce this problem on the client:
-> > > 
-> > > 	dd </dev/zero >testfile count=1
-> > > 	ls -l --time=atime --full-time testfile
-> > > 	sleep 2
-> > > 	wc testfile
-> > > 	ls -l --time=atime --full-time testfile
-> > > 		(same atime, not good)
-> > 
-> > Can you confirm that it does not change on the server? If so, then we
-> > need to look at the server for a fix. The client should only be
-> > mirroring the server's idea of the correct atime.
+
+On Mon, 2008-01-21 at 13:35 -0500, J. Bruce Fields wrote:
+> On Mon, Jan 21, 2008 at 12:47:08PM -0500, Chuck Lever wrote:
+> > Hi Tom-
+> >
+> > On Jan 21, 2008, at 12:11 PM, Tom Tucker wrote:
+> >> Modify the svc_create_xprt function to take a sockaddr instead of just
+> >> a port. This approach allows a single transport class,
+> >> "tcp" for example, to support both IPv4 and IPv6 connections since
+> >> this information is now provided in the sockaddr when the endpoint
+> >> is created.  This also allows RPC servers to create listening  
+> >> endpoints
+> >> on a specific interface.
+> >
+> > I assume this goes along with the server-side rpcb_register_v3 patches I 
+> > proposed last week?
+> >
+> >> Also modify the svc_xprt_find function to search based on sockaddr so
+> >> interface specific endpoints can be searched for.
+> >>
+> >> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+> >> ---
+> >>
+> >>  fs/lockd/svc.c                  |   16 +++--
+> >>  fs/nfs/callback.c               |    8 ++
+> >>  fs/nfsd/nfsctl.c                |  135 ++++++++++++++++++++++++++++ 
+> >> +----------
+> >>  fs/nfsd/nfssvc.c                |   11 +++
+> >>  include/linux/sunrpc/svc_xprt.h |    4 +
+> >>  net/sunrpc/svc_xprt.c           |   96 ++++++++++++++++++++++------
+> >>  6 files changed, 206 insertions(+), 64 deletions(-)
+> >>
+> >> diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+> >> index 0822646..89e40fb 100644
+> >> --- a/fs/lockd/svc.c
+> >> +++ b/fs/lockd/svc.c
+> >> @@ -229,19 +229,27 @@ static int make_socks(struct svc_serv *serv, int 
+> >> proto)
+> >>  	static int warned;
+> >>  	struct svc_xprt *xprt;
+> >>  	int err = 0;
+> >> +	struct sockaddr_in sin = {
+> >> +		.sin_family = AF_INET,
+> >> +		.sin_addr = { INADDR_ANY }
+> >> +	};
+> >>
+> >>  	if (proto == IPPROTO_UDP || nlm_udpport) {
+> >> -		xprt = svc_find_xprt(serv, "udp", 0, 0);
+> >> +		sin.sin_port = htons(nlm_udpport);
+> >> +		xprt = svc_find_xprt(serv, "udp", NULL);
+> >>  		if (!xprt)
+> >> -			err = svc_create_xprt(serv, "udp", nlm_udpport,
+> >> +			err = svc_create_xprt(serv, "udp",
+> >> +					      (struct sockaddr *)&sin,
+> >>  					      SVC_SOCK_DEFAULTS);
+> >>  		else
+> >>  			svc_xprt_put(xprt);
+> >>  	}
+> >>  	if (err >= 0 && (proto == IPPROTO_TCP || nlm_tcpport)) {
+> >> -		xprt = svc_find_xprt(serv, "tcp", 0, 0);
+> >> +		sin.sin_port = htons(nlm_tcpport);
+> >> +		xprt = svc_find_xprt(serv, "tcp", NULL);
+> >>  		if (!xprt)
+> >> -			err = svc_create_xprt(serv, "tcp", nlm_tcpport,
+> >> +			err = svc_create_xprt(serv, "tcp",
+> >> +					      (struct sockaddr *)&sin,
+> >>  					      SVC_SOCK_DEFAULTS);
+> >>  		else
+> >>  			svc_xprt_put(xprt);
+> >
+> > This is sort of a generic question.
+> >
+> > The server-side interface appears to be using strings to identify  
+> > transports ("tcp"), but the client-side is still using numbers  
+> > (XPRT_TRANSPORT_TCP).  There are one or two sticky issues to fix before 
+> > the client-side can use strings, but...
+> >
+> > Should the server-side use netids instead of arbitrary strings?  I guess 
+> > that would be a little awkward because you'd need to use "udp6" for UDP 
+> > on IPv6, and so on.
+> >
+> > In any event, should we use macros for these instead of open-coded  
+> > strings?
 > 
-> It doesn't change on the server (2.6.23.12)
+> If you're proposing something like
+> 
+> 	#define TCP "tcp"
+> 
+> I think that's unnecessary obfuscation.
 
-That still leaves open the question as to whether this is due to changes
-in the client that are causing it not to issue a read to the server when
-it would have before, or whether the server is just refusing to update
-the atime on read for some reason....
+I think the idea was that these strings may change when we normalize the
+client and server side, so placing them in a header where they could be
+shared might be a good thing.
 
---b.
+The name would likely be something like SVC_TCP_CLASS or something. If
+we don't ever do that, then yes ... it just obfuscation.
+
+> 
+> --b.
+> -
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
