@@ -1,84 +1,43 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: nfs2/3 ESTALE bug on mount point (v2.6.24-rc8)
-Date: Mon, 21 Jan 2008 17:08:28 -0500
-Message-ID: <20080121220828.GR17468@fieldses.org>
-References: <20080121193116.GM17468@fieldses.org> <200801212028.m0LKSpwA002924@agora.fsl.cs.sunysb.edu>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [RFC,PATCH] svc: Modify svc_xprt_create to take a sockaddr
+Date: Mon, 21 Jan 2008 17:42:51 -0500
+Message-ID: <1200955371.27963.28.camel@heimdal.trondhjem.org>
+References: <20080121171105.29028.61809.stgit@dell3.ogc.int>
+	 <9ECEB764-A93C-4DF2-BB6E-273C33C02B6E@oracle.com>
+	 <1200938366.25562.14.camel@heimdal.trondhjem.org>
+	 <FD665904-E655-48E9-8508-D9E118762C84@oracle.com>
+	 <1200943495.25562.52.camel@heimdal.trondhjem.org>
+	 <1200948494.11003.71.camel@trinity.ogc.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org,
-	nfs@lists.sourceforge.net
-To: Erez Zadok <ezk-EX0cT3Az47bauI2f2gSDlQ@public.gmane.org>
+Content-Type: text/plain
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+	NFS list <linux-nfs@vger.kernel.org>
+To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:48632 "EHLO fieldses.org"
+Received: from pat.uio.no ([129.240.10.15]:40271 "EHLO pat.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752410AbYAUWIf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 21 Jan 2008 17:08:35 -0500
-In-Reply-To: <200801212028.m0LKSpwA002924-zop+azHP2WsZjdeEBZXbMidm6ipF23ct@public.gmane.org>
+	id S1754849AbYAUWm5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 21 Jan 2008 17:42:57 -0500
+In-Reply-To: <1200948494.11003.71.camel-SMNkleLxa3ZimH42XvhXlA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jan 21, 2008 at 03:28:51PM -0500, Erez Zadok wrote:
-> In message <20080121193116.GM17468@fieldses.org>, "J. Bruce Fields" writes:
-> > On Mon, Jan 21, 2008 at 01:19:30PM -0500, Erez Zadok wrote:
-> > > Since around 2.6.24-rc5 or so I've had an occasional problem: I get an
-> > > ESTALE error on the mount point after setting up a localhost exported mount
-> > > point, and trying to mkdir something there (this is part of my setup scripts
-> > > prior to running unionfs regression tests).
-> > > 
-> > > I'm CC'ing both client and server maintainers/list, b/c I'm not certain
-> > > where the problem is.  The problem doesn't exist in 2.6.23 or earlier stable
-> > > kernels.  It doesn't appear in nfs4 either, only nfs2 and nfs3.
-> > > 
-> > > The problem is seen intermittently, and is probably some form of a race.  I
-> > > was finally able to narrow it down a bit.  I was able to write a shell
-> > > script that for me reproduces the problem within a few minutes (I tried it
-> > > on v2.6.24-rc8-74-ga7da60f and several different machine configurations).
-> > > 
-> > > I've included the shell script below.  Hopefully you can use it to track the
-> > > problem down.  The mkdir command in the middle of the script is that one
-> > > that'll eventually cause an ESTALE error and cause the script to abort; you
-> > > can run "df" afterward to see the stale mount points.
-> > > 
-> > > Notes: the one anecdotal factor that seems to make the bug appear sooner is
-> > > if you increase the number of total mounts that the script below creates
-> > > ($MAX in the script).
-> > 
-> > OK, so to summarize:
-> > 
-> > 	1. create $MAX ext2 filesystem images, loopback-mount them, and export
-> > 	   the result.
-> > 	2. nfs-mount each of those $MAX exports.
-> > 	3. create a directory under each of those nfs-mounts.
-> > 	4. unmount and unexport
-> > 
-> > Repeat that a thousand times, and eventually get you ESTALE at step 3?
-> 
-> Your description is correct.
-> 
-> > I guess one step would be to see if it's possible to get a network trace
-> > showing what happened in the bad case....
-> 
-> Here you go.  See the tcpdump in here:
-> 
-> 	http://agora.fsl.cs.sunysb.edu/tmp/nfs/
-> 
-> I captured it on an x86_64 machine using
-> 
-> 	tcpdump -s 0 -i lo -w tcpdump2
-> 
-> And it shows near the very end the ESTALE error.
 
-Yep, thanks!  So frame 107855 has the MNT reply that returns the
-filehandle in question, which is used in an ACCESS call in frame 107855
-that gets an ESTALE.  Looks like an unhappy server!
+On Mon, 2008-01-21 at 14:48 -0600, Tom Tucker wrote:
 
-> Do you think this could be related to nfs-utils?  I find that I can easily
-> trigger this problem on an FC7 machine with nfs-utils-1.1.0-4.fc7 (within
-> 10-30 runs of the above loop); but so far I cannot trigger the problem on an
-> FC6 machine with nfs-utils-1.0.10-14.fc6 (even after 300+ runs of the above
-> loop).
+> modprobe my_favorite_transport
+> 
+> mount .... -o proto="my_favorite_transport_id_string"
+> 
+> and it works...
+> 
+> Maybe I'm being naive, but that seems flexible and secure provided that
+> the transport layer code is not broken.
 
-Yes, it's quite likely, though on a quick skim through the git logs I
-don't see an obviously related commit....
+You misunderstood me. I have no problems with passing the 'proto=' value
+down once it has been parsed. My concern is that people are assuming
+that we will allow these modules to have their own private mount
+parameters (i.e. private user interfaces).
 
---b.
+  Trond
+
