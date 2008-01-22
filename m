@@ -1,93 +1,49 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: atimes not updated over NFS
-Date: Tue, 22 Jan 2008 12:17:17 -0500
-Message-ID: <20080122171717.GD24697@fieldses.org>
-References: <20080109223748.GH9212@aym.net2.nerim.net> <1199920996.7638.3.camel@heimdal.trondhjem.org> <20080109235153.GI9212@aym.net2.nerim.net> <20080114083435.GA24215@janus> <1200325393.7470.6.camel@heimdal.trondhjem.org> <20080114175122.GB2768@janus> <20080121190638.GL17468@fieldses.org> <1200943865.25562.56.camel@heimdal.trondhjem.org> <20080121210230.GA22046@janus> <20080121210925.GQ17468@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Andre Majorel <aym-xunil-Bi/FLWfhfolQFI55V6+gNQ@public.gmane.org>, linux-nfs@vger.kernel.org
-To: Frank van Maarseveen <frankvm@frankvm.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [RFC,PATCH] svc: Modify svc_xprt_create to take a sockaddr
+Date: Tue, 22 Jan 2008 12:52:53 -0500
+Message-ID: <E4AF6F9C-A890-439C-9DD9-B0F6819FF7F2@oracle.com>
+References: <20080121171105.29028.61809.stgit@dell3.ogc.int> <9ECEB764-A93C-4DF2-BB6E-273C33C02B6E@oracle.com> <1200938366.25562.14.camel@heimdal.trondhjem.org> <FD665904-E655-48E9-8508-D9E118762C84@oracle.com> <1200943495.25562.52.camel@heimdal.trondhjem.org> <1200948494.11003.71.camel@trinity.ogc.int> <1200955371.27963.28.camel@heimdal.trondhjem.org>
+Mime-Version: 1.0 (Apple Message framework v753)
+Content-Type: text/plain; charset=US-ASCII; delsp=yes; format=flowed
+Cc: Tom Tucker <tom@opengridcomputing.com>,
+	NFS list <linux-nfs@vger.kernel.org>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:47912 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752161AbYAVRR1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 Jan 2008 12:17:27 -0500
-In-Reply-To: <20080121210925.GQ17468@fieldses.org>
+Received: from agminet01.oracle.com ([141.146.126.228]:38131 "EHLO
+	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752035AbYAVRyo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jan 2008 12:54:44 -0500
+In-Reply-To: <1200955371.27963.28.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jan 21, 2008 at 04:09:25PM -0500, bfields wrote:
-> On Mon, Jan 21, 2008 at 10:02:30PM +0100, Frank van Maarseveen wrote:
-> > "rm -f testfile" and at least one "touch ." in advance to get deterministic behavior.
-> > 
-> > > 
-> > >                 ssh server 'dd </dev/zero >testfile count=1; ls -l --time=atime --full-time testfile'
-> > 
-> > put a sleep 2 here.
-> > 
-> > >                 
-> > >                 cat testfile >/dev/null
-> > 
-> > put a sleep 2 here just in case we would race with something in flight
-> > 
-> > >                 
-> > >                 ssh server 'ls -l --time=atime --full-time testfile'
-> > >                 ls -l --time=atime --full-time testfile
-> > > 
-> > 
-> > I tried some kernels (same on client and server). There are three atimes
-> > after each experiment.
-> > 
-> > 2.6.21.7:
-> > 	t
-> > 	t + 2
-> > 	t + 2
-> > 
-> > This seems to work but it doesn't: only the first "cat testfile" will
-> > update the atime. Subsequent cat commands will not update atime unless
-> > "cat" is executed on the server.
-> 
-> I think that's just the expected result of client caching, so all you
-> can do in that case is add "set check_mbox_size=yes" to your .muttrc or
-> something.....
-> 
-> > 
-> > 2.6.22.10:
-> > 	t
-> > 	t + 2
-> > 	t + 2
-> > 
-> > (same behavior)
-> > 
-> > 2.6.23.12:
-> > 	t
-> > 	t
-> > 	t
-> > 
-> > definately not good. "cat" on the server updates atime again.
-> 
-> Yes, that looks like a server bug, and this:...
-> 
-> > 
-> > 
-> > Trying a different combination of kernels:
-> > 
-> > server 2.6.23.12, client 2.6.22.10:
-> > 	t
-> > 	t
-> > 	t
-> > 
-> > server 2.6.22.10, client 2.6.23.12:
-> > 	t
-> > 	t + 2
-> > 	t + 2
-> 
-> ...confirms that since the results appear to depend only on the server
-> version, not on the client version.
+On Jan 21, 2008, at 5:42 PM, Trond Myklebust wrote:
+> On Mon, 2008-01-21 at 14:48 -0600, Tom Tucker wrote:
+>> modprobe my_favorite_transport
+>>
+>> mount .... -o proto="my_favorite_transport_id_string"
+>>
+>> and it works...
+>>
+>> Maybe I'm being naive, but that seems flexible and secure provided  
+>> that
+>> the transport layer code is not broken.
+>
+> You misunderstood me. I have no problems with passing the 'proto='  
+> value
+> down once it has been parsed. My concern is that people are assuming
+> that we will allow these modules to have their own private mount
+> parameters (i.e. private user interfaces).
 
-And I can confirm this here on 2.6.24-rc8 (+ a few patches).
-Unfortunately, I don't have any suggestion better right now than
-bisecting....
 
---b.
+To be clear, I'm referring only to passing the "proto=" value to  
+xprt_create_transport.
+
+For new and unsupported transport capabilities, I'm perfectly fine  
+with having transport capability-specific options be supported as  
+module parameters, or adding new mount options to the NFS mount  
+option parser at a later time.
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
