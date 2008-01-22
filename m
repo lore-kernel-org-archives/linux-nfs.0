@@ -1,43 +1,46 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [RFC,PATCH] svc: Modify svc_xprt_create to take a sockaddr
-Date: Mon, 21 Jan 2008 17:42:51 -0500
-Message-ID: <1200955371.27963.28.camel@heimdal.trondhjem.org>
-References: <20080121171105.29028.61809.stgit@dell3.ogc.int>
-	 <9ECEB764-A93C-4DF2-BB6E-273C33C02B6E@oracle.com>
-	 <1200938366.25562.14.camel@heimdal.trondhjem.org>
-	 <FD665904-E655-48E9-8508-D9E118762C84@oracle.com>
-	 <1200943495.25562.52.camel@heimdal.trondhjem.org>
-	 <1200948494.11003.71.camel@trinity.ogc.int>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH] nfs: parenthesize NFS_*(inode) parameters
+Date: Tue, 22 Jan 2008 16:28:03 +0200
+Message-ID: <1201012083-9860-1-git-send-email-bhalevy@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-	NFS list <linux-nfs@vger.kernel.org>
-To: Tom Tucker <tom@opengridcomputing.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from pat.uio.no ([129.240.10.15]:40271 "EHLO pat.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754849AbYAUWm5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 21 Jan 2008 17:42:57 -0500
-In-Reply-To: <1200948494.11003.71.camel-SMNkleLxa3ZimH42XvhXlA@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: linux-nfs@vger.kernel.org, NFSv4@linux-nfs.org
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Otherwise e.g., NFS_SERVER(&nfsi->vfs_inode) does not compile.
 
-On Mon, 2008-01-21 at 14:48 -0600, Tom Tucker wrote:
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ include/linux/nfs_fs.h |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
-> modprobe my_favorite_transport
-> 
-> mount .... -o proto="my_favorite_transport_id_string"
-> 
-> and it works...
-> 
-> Maybe I'm being naive, but that seems flexible and secure provided that
-> the transport layer code is not broken.
-
-You misunderstood me. I have no problems with passing the 'proto=' value
-down once it has been parsed. My concern is that people are assuming
-that we will allow these modules to have their own private mount
-parameters (i.e. private user interfaces).
-
-  Trond
-
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 0477a4c..5a5d3fe 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -221,10 +221,10 @@ static inline struct nfs_inode *NFS_I(struct inode *inode)
+ {
+ 	return container_of(inode, struct nfs_inode, vfs_inode);
+ }
+-#define NFS_SB(s)		((struct nfs_server *)(s->s_fs_info))
++#define NFS_SB(s)		((struct nfs_server *)((s)->s_fs_info))
+ 
+ #define NFS_FH(inode)			(&NFS_I(inode)->fh)
+-#define NFS_SERVER(inode)		(NFS_SB(inode->i_sb))
++#define NFS_SERVER(inode)		(NFS_SB((inode)->i_sb))
+ #define NFS_CLIENT(inode)		(NFS_SERVER(inode)->client)
+ #define NFS_PROTO(inode)		(NFS_SERVER(inode)->nfs_client->rpc_ops)
+ #define NFS_COOKIEVERF(inode)		(NFS_I(inode)->cookieverf)
+-- 
+1.5.3.3
