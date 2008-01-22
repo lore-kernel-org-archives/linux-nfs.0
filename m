@@ -1,88 +1,48 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH] nfs: parenthesize NFS_*(inode) parameters
-Date: Tue, 22 Jan 2008 13:58:21 -0500
-Message-ID: <1201028301.30335.39.camel@heimdal.trondhjem.org>
-References: <1201012083-9860-1-git-send-email-bhalevy@panasas.com>
-	 <1201013438.30335.5.camel@heimdal.trondhjem.org>
-	 <47960DA7.1010203@panasas.com>
-	 <126C1947-AB76-4C93-95F7-2787081DBEC3@oracle.com>
-	 <1201025443.30335.29.camel@heimdal.trondhjem.org>
-	 <47963649.9020502@panasas.com>
+From: Jan Engelhardt <jengelh-bdq14YP6qtRlEiWPh9xO2Q@public.gmane.org>
+Subject: [PATCH] [NFS]: constify function pointer tables
+Date: Tue, 22 Jan 2008 20:48:31 +0100 (CET)
+Message-ID: <Pine.LNX.4.64.0801222048130.5722@fbirervta.pbzchgretzou.qr>
+References: <54038cd4f87a03884e4f59f8f3697889dfb63c54.1201030614.git.jengelh@computergmbh.de>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org, NFSv4@linux-nfs.org
-To: Benny Halevy <bhalevy@panasas.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-nfs@vger.kernel.org
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:29318 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752681AbYAVS6Y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 Jan 2008 13:58:24 -0500
-In-Reply-To: <47963649.9020502@panasas.com>
+Received: from sovereign.computergmbh.de ([85.214.69.204]:33215 "EHLO
+	sovereign.computergmbh.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751858AbYAVTsc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jan 2008 14:48:32 -0500
+In-Reply-To: <54038cd4f87a03884e4f59f8f3697889dfb63c54.1201030614.git.jengelh-bdq14YP6qtRlEiWPh9xO2Q@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Signed-off-by: Jan Engelhardt <jengelh-bdq14YP6qtRlEiWPh9xO2Q@public.gmane.org>
+---
+ fs/nfs/client.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
-On Tue, 2008-01-22 at 20:30 +0200, Benny Halevy wrote:
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index a6f6254..b4832d9 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -1168,7 +1168,7 @@ static void *nfs_server_list_next(struct seq_file *p, void *v, loff_t *pos);
+ static void nfs_server_list_stop(struct seq_file *p, void *v);
+ static int nfs_server_list_show(struct seq_file *m, void *v);
+ 
+-static struct seq_operations nfs_server_list_ops = {
++static const struct seq_operations nfs_server_list_ops = {
+ 	.start	= nfs_server_list_start,
+ 	.next	= nfs_server_list_next,
+ 	.stop	= nfs_server_list_stop,
+@@ -1188,7 +1188,7 @@ static void *nfs_volume_list_next(struct seq_file *p, void *v, loff_t *pos);
+ static void nfs_volume_list_stop(struct seq_file *p, void *v);
+ static int nfs_volume_list_show(struct seq_file *m, void *v);
+ 
+-static struct seq_operations nfs_volume_list_ops = {
++static const struct seq_operations nfs_volume_list_ops = {
+ 	.start	= nfs_volume_list_start,
+ 	.next	= nfs_volume_list_next,
+ 	.stop	= nfs_volume_list_stop,
+-- 
+1.5.3.4
 
-> > Ideally, we should get rid of NFS_FLAGS()/NFS_FLAGSP(). That too is just
-> > obfuscating the code for no good reason.
-> 
-> I completely agree that NFS_FLAGSP is ugly.
-> Initially I thought of changing &NFS_FLAGS(inode) to &NFS_I(inode)->flags
-> and get rid of NFS_FLAGS, but I deferred to the most minimal change.
-> Let me know if you want me to do that.
-
-If you want to get rid of NFS_FLAGS(), then that would be great. Please
-make that a separate patch, though.
-
-> > 
-> >>>  static void nfs_invalidate_inode(struct inode *inode)
-> >>>  {
-> >>> -	set_bit(NFS_INO_STALE, &NFS_FLAGS(inode));
-> >>> +	set_bit(NFS_INO_STALE, NFS_FLAGSP(inode));
-> >> Likewise for NFS_INO_STALE... A separate inline for setting  
-> >> NFS_INO_STALE might be a little nicer.
-> > 
-> > Not an inline. Just convert the existing nfs_invalidate_inode() into an
-> > nfs_invalidate_inode_locked(), and add a version that takes the lock.
-> 
-> I'm not sure I follow you...  All it does is setting the NFS_INO_STALE
-> bit and calling nfs_zap_caches_locked.  What use case is there for 
-> the unlocked case?
-
-The current version _is_ an 'unlocked' version. nfs_update_inode() uses
-it, since the caller already holds the spinlock.
-
-> > 
-> >>>  	nfs_zap_caches_locked(inode);
-> >>>  }
-> >>>
-> >>> @@ -229,7 +229,7 @@ nfs_init_locked(struct inode *inode, void *opaque)
-> >>>  	struct nfs_find_desc	*desc = (struct nfs_find_desc *)opaque;
-> >>>  	struct nfs_fattr	*fattr = desc->fattr;
-> >>>
-> >>> -	NFS_FILEID(inode) = fattr->fileid;
-> >>> +	set_nfs_fileid(inode, fattr->fileid);
-> >>>  	nfs_copy_fh(NFS_FH(inode), desc->fh);
-> >>>  	return 0;
-> >>>  }
-> >>> @@ -291,7 +291,7 @@ nfs_fhget(struct super_block *sb, struct nfs_fh  
-> >>> *fh, struct nfs_fattr *fattr)
-> >>>  			inode->i_fop = &nfs_dir_operations;
-> >>>  			if (nfs_server_capable(inode, NFS_CAP_READDIRPLUS)
-> >>>  			    && fattr->size <= NFS_LIMIT_READDIRPLUS)
-> >>> -				set_bit(NFS_INO_ADVISE_RDPLUS, &NFS_FLAGS(inode));
-> >>> +				set_bit(NFS_INO_ADVISE_RDPLUS, NFS_FLAGSP(inode));
-> >> And for setting NFS_INO_ADVISE_RDPLUS.
-> > 
-> > Again, why?
-> 
-> The only good reason I can think of is abstracting the API to allow a different
-> implementation in the future, but I see little benefits as for style or readability.
-
-Even if we were planning on changing the implementation, the idea of
-abstracting the API is a bit far-fetched: this bit is set in 1 location
-and cleared in 2. Tracking those 3 lines of code is hardly a major
-problem.
-
-Trond
