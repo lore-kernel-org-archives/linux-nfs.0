@@ -1,81 +1,55 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH] nfs-utils: update mailing list address
-Date: Wed, 23 Jan 2008 15:27:56 -0500
-Message-ID: <20080123202755.11688.91905.stgit@manray.1015granger.net>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [NFS] nfs_statfs: statfs error = 512 ?
+Date: Wed, 23 Jan 2008 15:37:38 -0500
+Message-ID: <4797A592.4080903@RedHat.com>
+References: <479763EC.3090601@bnl.gov> <4797699C.2020100@RedHat.com>
+	<47976B05.60408@bnl.gov>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: linux-nfs@vger.kernel.org
-To: steved@redhat.com
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
+To: Sev Binello <sev-IGkKxAqZmp0@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from flpi195.sbcis.sbc.com ([207.115.20.197]:62385 "EHLO
-	flpi195.prodigy.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751810AbYAWU2s (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Jan 2008 15:28:48 -0500
+Received: from neil.brown.name ([220.233.11.133]:43736 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751764AbYAWUh5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 Jan 2008 15:37:57 -0500
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1JHmM6-000863-BQ
+	for linux-nfs@vger.kernel.org; Thu, 24 Jan 2008 07:37:54 +1100
+In-Reply-To: <47976B05.60408-IGkKxAqZmp0@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-As part of migrating from nfs-TtF/mJH4Jtrk1uMJSBkQmQ@public.gmane.org to linux-nfs@vger.kernel.org,
-update the mailing list address used to report bugs in nfs-utils.
-
-I removed the BUGS section in the mount.nfs and umount.nfs man pages since
-they weren't consistent with the contents of the BUGS sections in others
-in nfs-utils.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
- README                     |    2 +-
- configure.ac               |    2 +-
- utils/mount/mount.nfs.man  |    3 ---
- utils/mount/umount.nfs.man |    3 ---
- 4 files changed, 2 insertions(+), 8 deletions(-)
-
-diff --git a/README b/README
-index e2196da..e7588cf 100644
---- a/README
-+++ b/README
-@@ -162,4 +162,4 @@ scripts can be written to work correctly.
- Share And Enjoy!
+Sev Binello wrote:
+> The problem doesn't seem to occur on WS3 clients,  but does on  WS4
+> clients ?
+Again, I'm pretty sure this problem was identified and fixed in
+an later update release... you could try updating to the latest 
+and greatest (U7).
  
-     --	the nfs-utils developers
--	<nfs@lists.sourceforge.net>
-+	<linux-nfs@vger.kernel.org>
-diff --git a/configure.ac b/configure.ac
-index 68c02f3..ab3198a 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -1,6 +1,6 @@
- dnl Process this file with autoconf to produce a configure script.
- dnl
--AC_INIT([linux nfs-utils],[1.1.1],[nfs-TtF/mJH4Jtrk1uMJSBkQmQ@public.gmane.org],[nfs-utils])
-+AC_INIT([linux nfs-utils],[1.1.1],[linux-nfs@vger.kernel.org],[nfs-utils])
- AC_CANONICAL_BUILD([])
- AC_CANONICAL_HOST([])
- AC_CONFIG_MACRO_DIR(aclocal)
-diff --git a/utils/mount/mount.nfs.man b/utils/mount/mount.nfs.man
-index 624358c..1a4561b 100644
---- a/utils/mount/mount.nfs.man
-+++ b/utils/mount/mount.nfs.man
-@@ -82,8 +82,5 @@ table of mounted file systems
- .BR nfs (5),
- .BR mount (8),
- 
--.SH "BUGS"
--Please notify nfs@lists.sourceforge.net of any bugs found in this software.
--
- .SH "AUTHOR"
- Amit Gud <agud@redhat.com>
-diff --git a/utils/mount/umount.nfs.man b/utils/mount/umount.nfs.man
-index ee4cdaf..15addfa 100644
---- a/utils/mount/umount.nfs.man
-+++ b/utils/mount/umount.nfs.man
-@@ -66,8 +66,5 @@ table of mounted file systems
- .BR nfs (5),
- .BR umount (8),
- 
--.SH "BUGS"
--Please notify nfs@lists.sourceforge.net of any bugs found in this software.
--
- .SH "AUTHOR"
- Amit Gud <agud@redhat.com>
+> Can you provide any more details ?
+An a bzip2 tethereal network trace something similar to
+    tethereal -w /tmp/data.pcap host <server> and host <server;
+    bzip2 /tmp/data.pcap
+
+should shed some light on whats going on... 
+
+Note: so as not to fill up everybody's inbox with tethereal
+data, either open a bug report on bugzilla.redhat.com or
+set the data to me in a private email.
+
+steved.
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Microsoft
+Defy all challenges. Microsoft(R) Visual Studio 2008.
+http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
