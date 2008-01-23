@@ -1,100 +1,141 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 1/2] NLM failover unlock commands
-Date: Tue, 22 Jan 2008 17:53:12 -0500
-Message-ID: <20080122225312.GO24697@fieldses.org>
-References: <4781BB0D.90706@redhat.com> <20080108170220.GA21401@infradead.org> <20080108174958.GA25025@infradead.org> <4783E3C9.3040803@redhat.com> <20080109180214.GA31071@infradead.org> <20080110075959.GA9623@infradead.org> <4788665B.4020405@redhat.com> <20080114230742.GA16975@fieldses.org> <18315.61638.14133.308991@notabene.brown>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH 1/2] nfs: obliterate NFS_FLAGS macro
+Date: Wed, 23 Jan 2008 08:58:59 +0200
+Message-ID: <1201071539-25479-1-git-send-email-bhalevy@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Wendy Cheng <wcheng@redhat.com>,
-	Christoph Hellwig <hch@infradead.org>,
-	NFS list <linux-nfs@vger.kernel.org>, cluster-devel@redhat.com
-To: Neil Brown <neilb@suse.de>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:56085 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753883AbYAVWxR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 Jan 2008 17:53:17 -0500
-In-Reply-To: <18315.61638.14133.308991-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: linux-nfs@vger.kernel.org, NFSv4@linux-nfs.org
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: 1201028301.30335.39.camel@heimdal.trondhjem.org
+References: 1201028301.30335.39.camel@heimdal.trondhjem.org
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jan 15, 2008 at 10:31:18AM +1100, Neil Brown wrote:
-> On Monday January 14, bfields@fieldses.org wrote:
-> > >  
-> > > +static ssize_t failover_unlock_ip(struct file *file, char *buf, size_t size)
-> > > +{
-> > > +	__be32 server_ip;
-> > > +	char *fo_path;
-> > > +	char *mesg;
-> > > +
-> > > +	/* sanity check */
-> > > +	if (size <= 0)
-> > > +		return -EINVAL;
-> > 
-> > Not only is size never negative, it's actually an unsigned type here, so
-> > this is a no-op.
-> 
-> No,  It it equivalent to
->           if (size == 0)
-> 
-> which alternative is clearer and more maintainable is debatable.
-> 
-> > 
-> > > +
-> > > +	if (buf[size-1] == '\n')
-> > > +		buf[size-1] = 0;
-> > 
-> > The other write methods in this file actually just do
-> > 
-> > 	if (buf[size-1] != '\n')
-> > 		return -EINVAL;
-> 
-> and those which don't check for size == 0 are underflowing an array.
-> That should probably be fixed.
+use NFS_I(inode)->flags instead
 
-?
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/dir.c           |    8 ++++----
+ fs/nfs/inode.c         |    6 +++---
+ fs/nfs/read.c          |    2 +-
+ include/linux/nfs_fs.h |    5 ++---
+ 4 files changed, 10 insertions(+), 11 deletions(-)
 
---b.
-
-commit 6685389d610950126f700d25f3d010c7049441c3
-Author: J. Bruce Fields <bfields@citi.umich.edu>
-Date:   Tue Jan 22 17:40:42 2008 -0500
-
-    nfsd: more careful input validation in nfsctl write methods
-    
-    Neil Brown points out that we're checking buf[size-1] in a couple places
-    without first checking whether size is zero.
-    
-    Actually, given the implementation of simple_transaction_get(), buf[-1]
-    is zero, so in both of these cases the subsequent check of the value of
-    buf[size-1] will catch this case.
-    
-    But it seems fragile to depend on that, so add explicit checks for this
-    case.
-    
-    Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
-    Cc: Neil Brown <neilb@suse.de>
-
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 61015cf..9ed2a2b 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -304,6 +304,9 @@ static ssize_t write_filehandle(struct file *file, char *buf, size_t size)
- 	struct auth_domain *dom;
- 	struct knfsd_fh fh;
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index f697b5c..30c1614 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -192,7 +192,7 @@ int nfs_readdir_filler(nfs_readdir_descriptor_t *desc, struct page *page)
+ 		/* We requested READDIRPLUS, but the server doesn't grok it */
+ 		if (error == -ENOTSUPP && desc->plus) {
+ 			NFS_SERVER(inode)->caps &= ~NFS_CAP_READDIRPLUS;
+-			clear_bit(NFS_INO_ADVISE_RDPLUS, &NFS_FLAGS(inode));
++			clear_bit(NFS_INO_ADVISE_RDPLUS, &NFS_I(inode)->flags);
+ 			desc->plus = 0;
+ 			goto again;
+ 		}
+@@ -579,7 +579,7 @@ static int nfs_readdir(struct file *filp, void *dirent, filldir_t filldir)
+ 			break;
+ 		}
+ 		if (res == -ETOOSMALL && desc->plus) {
+-			clear_bit(NFS_INO_ADVISE_RDPLUS, &NFS_FLAGS(inode));
++			clear_bit(NFS_INO_ADVISE_RDPLUS, &NFS_I(inode)->flags);
+ 			nfs_zap_caches(inode);
+ 			desc->plus = 0;
+ 			desc->entry->eof = 0;
+@@ -1731,7 +1731,7 @@ static void __nfs_access_zap_cache(struct inode *inode)
+ void nfs_access_zap_cache(struct inode *inode)
+ {
+ 	/* Remove from global LRU init */
+-	if (test_and_clear_bit(NFS_INO_ACL_LRU_SET, &NFS_FLAGS(inode))) {
++	if (test_and_clear_bit(NFS_INO_ACL_LRU_SET, &NFS_I(inode)->flags)) {
+ 		spin_lock(&nfs_access_lru_lock);
+ 		list_del_init(&NFS_I(inode)->access_cache_inode_lru);
+ 		spin_unlock(&nfs_access_lru_lock);
+@@ -1845,7 +1845,7 @@ static void nfs_access_add_cache(struct inode *inode, struct nfs_access_entry *s
+ 	smp_mb__after_atomic_inc();
  
-+	if (size == 0)
-+		return -EINVAL;
-+
- 	if (buf[size-1] != '\n')
- 		return -EINVAL;
- 	buf[size-1] = 0;
-@@ -663,7 +666,7 @@ static ssize_t write_recoverydir(struct file *file, char *buf, size_t size)
- 	char *recdir;
- 	int len, status;
+ 	/* Add inode to global LRU list */
+-	if (!test_and_set_bit(NFS_INO_ACL_LRU_SET, &NFS_FLAGS(inode))) {
++	if (!test_and_set_bit(NFS_INO_ACL_LRU_SET, &NFS_I(inode)->flags)) {
+ 		spin_lock(&nfs_access_lru_lock);
+ 		list_add_tail(&NFS_I(inode)->access_cache_inode_lru, &nfs_access_lru_list);
+ 		spin_unlock(&nfs_access_lru_lock);
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index db5d96d..e790d6e 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -192,7 +192,7 @@ void nfs_invalidate_atime(struct inode *inode)
+  */
+ static void nfs_invalidate_inode(struct inode *inode)
+ {
+-	set_bit(NFS_INO_STALE, &NFS_FLAGS(inode));
++	set_bit(NFS_INO_STALE, &NFS_I(inode)->flags);
+ 	nfs_zap_caches_locked(inode);
+ }
  
--	if (size > PATH_MAX || buf[size-1] != '\n')
-+	if (size == 0 || size > PATH_MAX || buf[size-1] != '\n')
- 		return -EINVAL;
- 	buf[size-1] = 0;
+@@ -291,7 +291,7 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
+ 			inode->i_fop = &nfs_dir_operations;
+ 			if (nfs_server_capable(inode, NFS_CAP_READDIRPLUS)
+ 			    && fattr->size <= NFS_LIMIT_READDIRPLUS)
+-				set_bit(NFS_INO_ADVISE_RDPLUS, &NFS_FLAGS(inode));
++				set_bit(NFS_INO_ADVISE_RDPLUS, &NFS_I(inode)->flags);
+ 			/* Deal with crossing mountpoints */
+ 			if (!nfs_fsid_equal(&NFS_SB(sb)->fsid, &fattr->fsid)) {
+ 				if (fattr->valid & NFS_ATTR_FATTR_V4_REFERRAL)
+@@ -659,7 +659,7 @@ __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
+ 		if (status == -ESTALE) {
+ 			nfs_zap_caches(inode);
+ 			if (!S_ISDIR(inode->i_mode))
+-				set_bit(NFS_INO_STALE, &NFS_FLAGS(inode));
++				set_bit(NFS_INO_STALE, &NFS_I(inode)->flags);
+ 		}
+ 		goto out;
+ 	}
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index 4587a86..a6c9f23 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -338,7 +338,7 @@ int nfs_readpage_result(struct rpc_task *task, struct nfs_read_data *data)
+ 	nfs_add_stats(data->inode, NFSIOS_SERVERREADBYTES, data->res.count);
  
+ 	if (task->tk_status == -ESTALE) {
+-		set_bit(NFS_INO_STALE, &NFS_FLAGS(data->inode));
++		set_bit(NFS_INO_STALE, &NFS_I(data->inode)->flags);
+ 		nfs_mark_for_revalidate(data->inode);
+ 	}
+ 	return 0;
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 2d15d4a..e53b091 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -214,8 +214,7 @@ static inline struct nfs_inode *NFS_I(struct inode *inode)
+ 	(S_ISDIR(inode->i_mode)? NFS_SERVER(inode)->acdirmax \
+ 			       : NFS_SERVER(inode)->acregmax)
+ 
+-#define NFS_FLAGS(inode)		(NFS_I(inode)->flags)
+-#define NFS_STALE(inode)		(test_bit(NFS_INO_STALE, &NFS_FLAGS(inode)))
++#define NFS_STALE(inode)		(test_bit(NFS_INO_STALE, &NFS_I(inode)->flags))
+ 
+ #define NFS_FILEID(inode)		(NFS_I(inode)->fileid)
+ 
+@@ -237,7 +236,7 @@ static inline int nfs_server_capable(struct inode *inode, int cap)
+ 
+ static inline int NFS_USE_READDIRPLUS(struct inode *inode)
+ {
+-	return test_bit(NFS_INO_ADVISE_RDPLUS, &NFS_FLAGS(inode));
++	return test_bit(NFS_INO_ADVISE_RDPLUS, &NFS_I(inode)->flags);
+ }
+ 
+ static inline void nfs_set_verifier(struct dentry * dentry, unsigned long verf)
+-- 
+1.5.3.3
