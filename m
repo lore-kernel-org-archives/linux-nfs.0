@@ -1,60 +1,134 @@
-From: Neil Brown <neilb@suse.de>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: Re: [PATCH 1/2] NLM failover unlock commands
-Date: Thu, 24 Jan 2008 15:02:02 +1100
-Message-ID: <18328.3514.149058.653547@notabene.brown>
-References: <4781BB0D.90706@redhat.com>
-	<20080108170220.GA21401@infradead.org>
-	<20080108174958.GA25025@infradead.org>
-	<4783E3C9.3040803@redhat.com>
-	<20080109180214.GA31071@infradead.org>
-	<20080110075959.GA9623@infradead.org>
-	<4788665B.4020405@redhat.com>
-	<20080114230742.GA16975@fieldses.org>
-	<18315.61638.14133.308991@notabene.brown>
-	<20080122225312.GO24697@fieldses.org>
+Date: Thu, 24 Jan 2008 11:00:30 -0500
+Message-ID: <20080124160030.GB26164@fieldses.org>
+References: <478D14C5.1000804@redhat.com>
+	<18317.7319.443532.62244@notabene.brown>
+	<478D3820.9080402@redhat.com> <20080117151007.GB16581@fieldses.org>
+	<478F78E8.40601@redhat.com> <20080117163105.GG16581@fieldses.org>
+	<478F82DA.4060709@redhat.com> <20080117164002.GH16581@fieldses.org>
+	<478F9946.9010601@redhat.com> <20080117202342.GA6416@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Neil Brown <neilb@suse.de>, Wendy Cheng <wcheng@redhat.com>,
+Cc: Neil Brown <neilb@suse.de>,
 	Christoph Hellwig <hch@infradead.org>,
 	NFS list <linux-nfs@vger.kernel.org>, cluster-devel@redhat.com
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:39571 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752825AbYAXECM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 Jan 2008 23:02:12 -0500
-In-Reply-To: message from J. Bruce Fields on Tuesday January 22
-Sender: linux-nfs-owner@vger.kernel.org
+To: Wendy Cheng <wcheng@redhat.com>
+Return-path: <cluster-devel-bounces@redhat.com>
+In-Reply-To: <20080117202342.GA6416@fieldses.org>
+List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
+	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
+List-Archive: <https://www.redhat.com/archives/cluster-devel>
+List-Post: <mailto:cluster-devel@redhat.com>
+List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
+List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
+	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
+Sender: cluster-devel-bounces@redhat.com
+Errors-To: cluster-devel-bounces@redhat.com
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tuesday January 22, bfields@fieldses.org wrote:
+On Thu, Jan 17, 2008 at 03:23:42PM -0500, J. Bruce Fields wrote:
+> To summarize a phone conversation from today:
 > 
-> ?
-
-!
-
-(i.e. Acked-By: NeilBrown <neilb@suse.de>)
-
-tnx.NB
-
+> On Thu, Jan 17, 2008 at 01:07:02PM -0500, Wendy Cheng wrote:
+> > J. Bruce Fields wrote:
+> >> Would there be any advantage to enforcing that requirement in the
+> >> server?  (For example, teaching nlm to reject any locking request for a
+> >> certain filesystem that wasn't sent to a certain server IP.)
+> >>
+> >> --b.
+> >>   
+> > It is doable... could be added into the "resume" patch that is currently  
+> > being tested (since the logic is so similar to the per-ip base grace  
+> > period) that should be out for review no later than next Monday.
+> >
+> > However, as any new code added into the system, there are trade-off(s).  
+> > I'm not sure we want to keep enhancing this too much though.
 > 
-> --b.
+> Sure.  And I don't want to make this terribly complicated.  The patch
+> looks good, and solves a clear problem.  That said, there are a few
+> related problems we'd like to solve:
 > 
-> commit 6685389d610950126f700d25f3d010c7049441c3
-> Author: J. Bruce Fields <bfields@citi.umich.edu>
-> Date:   Tue Jan 22 17:40:42 2008 -0500
+> 	- We want to be able to move an export to a node with an already
+> 	  active nfs server.  Currently that requires restarting all of
+> 	  nfsd on the target node.  This is what I understand your next
+> 	  patch fixes.
+> 	- In the case of a filesystem that may be mounted from multiple
+> 	  nodes at once, we need to make sure we're not leaving a window
+> 	  allowing other applications to claim locks that nfs clients
+> 	  haven't recovered yet.
+> 	- Ideally we'd like this to be possible without making the
+> 	  filesystem block all lock requests during a 90-second grace
+> 	  period; instead it should only have to block those requests
+> 	  that conflict with to-be-recovered locks.
+> 	- All this should work for nfsv4, where we want to eventually
+> 	  also allow migration of individual clients, and
+> 	  client-initiated failover.
 > 
->     nfsd: more careful input validation in nfsctl write methods
->     
->     Neil Brown points out that we're checking buf[size-1] in a couple places
->     without first checking whether size is zero.
->     
->     Actually, given the implementation of simple_transaction_get(), buf[-1]
->     is zero, so in both of these cases the subsequent check of the value of
->     buf[size-1] will catch this case.
->     
->     But it seems fragile to depend on that, so add explicit checks for this
->     case.
->     
->     Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
->     Cc: Neil Brown <neilb@suse.de>
+> I absolutely don't want to delay solving this particular problem until
+> all the above is figured out, but I would like to be reasonably
+> confident that the new user-interface can be extended naturally to
+> handle the above cases; or at least that it won't unnecessarily
+> complicate their implementation.
+> 
+> I'll try to sketch an implementation of most of the above in the next
+> week.
+
+Bah.  Apologies, this is taking me longer than it should to figure
+out--I've only barely started writing patches.
+
+The basic idea, though:
+
+In practice, it seems that both the unlock_ip and unlock_pathname
+methods that revoke locks are going to be called together.  The two
+separate calls therefore seem a little redundant.  The reason we *need*
+both is that it's possible that a misconfigured client could grab locks
+for a (server ip, export) combination that it isn't supposed to.
+
+So it makes sense to me to restrict locking from the beginning to
+prevent that from happening.  Therefore I'd like to add a call at the
+beginning like:
+
+	echo "192.168.1.1 /exports/example" > /proc/fs/nfsd/start_grace
+
+before any exports are set up, which both starts a grace period, and
+tells nfs to allow locks on the filesystem /exports/example only if
+they're addressed to the server ip 192.168.1.1.  Then on shutdown,
+
+	echo "192.168.1.1" >/proc/fs/nfsd/unlock_ip
+
+should be sufficient to guarantee that nfsd/lockd no longer holds locks
+on /exports/example.
+
+(I think Wendy's pretty close to that api already after adding the
+second method to start grace?)
+
+The other advantage to having the server-ip from the start is that at
+the time we make lock requests to the cluster filesystem, we can tell it
+that the locks associated with 192.168.1.1 are special: they may migrate
+as a group to another node, and on node failure they should (if
+possible) be held to give a chance for another node to take them over.
+
+Internally I'd like to have an object like
+
+	struct lock_manager {
+		char *lm_name;
+		...
+	}
+
+for each server ip address.  A pointer to this structure would be passed
+with each lock request, allowing the filesystem to associate locks to
+lock_manager's.  The name would be a string derived from the server ip
+address that the cluster can compare to match reclaim requests with the
+locks that they're reclaiming from another node.
+
+(And in the NFSv4 case we would eventually also allow lock_managers with
+single nfsv4 client (as opposed to server-ip) granularity.)
+
+Does that seem sane?
+
+But it's taking me longer than I'd like to get patches that implement
+this.  Hopefully by next week I can get working code together for people
+to look at....
+
+--b.
