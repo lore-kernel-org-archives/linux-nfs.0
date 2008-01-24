@@ -1,148 +1,70 @@
-From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 056/100] svc: Move close processing to a single place
-Date: Fri, 25 Jan 2008 18:16:36 -0500
-Message-ID: <1201303040-7779-56-git-send-email-bfields@citi.umich.edu>
-References: <20080125231521.GG25141@fieldses.org>
- <1201303040-7779-1-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-2-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-3-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-4-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-5-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-6-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-7-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-8-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-9-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-10-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-11-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-12-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-13-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-14-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-15-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-16-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-17-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-18-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-19-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-20-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-21-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-22-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-23-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-24-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-25-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-26-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-27-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-28-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-29-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-30-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-31-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-32-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-33-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-34-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-35-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-36-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-37-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-38-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-39-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-40-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-41-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-42-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-43-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-44-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-45-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-46-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-47-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-48-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-49-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-50-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-51-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-52-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-53-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-54-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-55-git-send-email-bfields@citi.umich.edu>
-Cc: Tom Tucker <tom@opengridcomputing.com>,
-	"J. Bruce Fields" <bfields@citi.umich.edu>
-To: linux-nfs@vger.kernel.org
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:47440 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932107AbYAYXRs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Jan 2008 18:17:48 -0500
-In-Reply-To: <1201303040-7779-55-git-send-email-bfields@citi.umich.edu>
-Sender: linux-nfs-owner@vger.kernel.org
+From: Wendy Cheng <wcheng@redhat.com>
+Subject: Re: [PATCH 1/2] NLM failover unlock commands
+Date: Thu, 24 Jan 2008 16:49:53 -0500
+Message-ID: <47990801.6050703@redhat.com>
+References: <478F78E8.40601@redhat.com> <20080117163105.GG16581@fieldses.org>
+	<478F82DA.4060709@redhat.com> <20080117164002.GH16581@fieldses.org>
+	<478F9946.9010601@redhat.com> <20080117202342.GA6416@fieldses.org>
+	<20080124160030.GB26164@fieldses.org> <4798EAE1.2000707@redhat.com>
+	<20080124201910.GF26164@fieldses.org> <4798FDE9.4040406@redhat.com>
+	<20080124214029.GK26164@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: Neil Brown <neilb@suse.de>,
+	Christoph Hellwig <hch@infradead.org>,
+	NFS list <linux-nfs@vger.kernel.org>, cluster-devel@redhat.com
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <cluster-devel-bounces@redhat.com>
+In-Reply-To: <20080124214029.GK26164@fieldses.org>
+List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
+	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
+List-Archive: <https://www.redhat.com/archives/cluster-devel>
+List-Post: <mailto:cluster-devel@redhat.com>
+List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
+List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
+	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
+Sender: cluster-devel-bounces@redhat.com
+Errors-To: cluster-devel-bounces@redhat.com
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Tom Tucker <tom@opengridcomputing.com>
-
-Close handling was duplicated in the UDP and TCP recvfrom
-methods. This code has been moved to the transport independent
-svc_recv function.
-
-Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
-Acked-by: Neil Brown <neilb@suse.de>
-Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
-Reviewed-by: Greg Banks <gnb@sgi.com>
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
----
- net/sunrpc/svcsock.c |   26 +++++++++++---------------
- 1 files changed, 11 insertions(+), 15 deletions(-)
-
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 2007881..603db98 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -776,11 +776,6 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
- 		return svc_deferred_recv(rqstp);
- 	}
- 
--	if (test_bit(SK_CLOSE, &svsk->sk_flags)) {
--		svc_delete_socket(svsk);
--		return 0;
--	}
--
- 	clear_bit(SK_DATA, &svsk->sk_flags);
- 	skb = NULL;
- 	err = kernel_recvmsg(svsk->sk_sock, &msg, NULL,
-@@ -1181,11 +1176,6 @@ svc_tcp_recvfrom(struct svc_rqst *rqstp)
- 		return svc_deferred_recv(rqstp);
- 	}
- 
--	if (test_bit(SK_CLOSE, &svsk->sk_flags)) {
--		svc_delete_socket(svsk);
--		return 0;
--	}
--
- 	if (svsk->sk_sk->sk_state == TCP_LISTEN) {
- 		svc_tcp_accept(svsk);
- 		svc_sock_received(svsk);
-@@ -1311,7 +1301,7 @@ svc_tcp_recvfrom(struct svc_rqst *rqstp)
- 	return len;
- 
-  err_delete:
--	svc_delete_socket(svsk);
-+	set_bit(SK_CLOSE, &svsk->sk_flags);
- 	return -EAGAIN;
- 
-  error:
-@@ -1575,10 +1565,16 @@ svc_recv(struct svc_rqst *rqstp, long timeout)
- 	}
- 	spin_unlock_bh(&pool->sp_lock);
- 
--	dprintk("svc: server %p, pool %u, socket %p, inuse=%d\n",
--		 rqstp, pool->sp_id, svsk, atomic_read(&svsk->sk_inuse));
--	len = svsk->sk_xprt.xpt_ops->xpo_recvfrom(rqstp);
--	dprintk("svc: got len=%d\n", len);
-+	len = 0;
-+	if (test_bit(SK_CLOSE, &svsk->sk_flags)) {
-+		dprintk("svc_recv: found SK_CLOSE\n");
-+		svc_delete_socket(svsk);
-+	} else {
-+		dprintk("svc: server %p, pool %u, socket %p, inuse=%d\n",
-+			rqstp, pool->sp_id, svsk, atomic_read(&svsk->sk_inuse));
-+		len = svsk->sk_xprt.xpt_ops->xpo_recvfrom(rqstp);
-+		dprintk("svc: got len=%d\n", len);
-+	}
- 
- 	/* No data, incomplete (TCP) read, or accept() */
- 	if (len == 0 || len == -EAGAIN) {
--- 
-1.5.4.rc2.60.gb2e62
-
+J. Bruce Fields wrote:
+> On Thu, Jan 24, 2008 at 04:06:49PM -0500, Wendy Cheng wrote:
+>   
+>> J. Bruce Fields wrote:
+>>     
+>>> On Thu, Jan 24, 2008 at 02:45:37PM -0500, Wendy Cheng wrote:
+>>>   
+>>>       
+>>>> J. Bruce Fields wrote:
+>>>>     
+>>>>         
+>>>>> In practice, it seems that both the unlock_ip and unlock_pathname
+>>>>> methods that revoke locks are going to be called together.  The two
+>>>>> separate calls therefore seem a little redundant.  The reason we *need*
+>>>>> both is that it's possible that a misconfigured client could grab locks
+>>>>> for a (server ip, export) combination that it isn't supposed to.
+>>>>>         
+>>>>>           
+>>>> That is not a correct assumption. The two commands (unlock_ip and   
+>>>> unlock_pathname) are not necessarily called together. It is ok for 
+>>>> local  filesystem (ext3) but not for cluster filesystem where the 
+>>>> very same  filesystem (or subtree) can be exported from multiple 
+>>>> servers using  different subtrees.
+>>>>     
+>>>>         
+>>> Ouch.  Are people really doing that, and why?  What happens if the
+>>> subtrees share files (because of hard links) that are locked from both
+>>> nodes?
+>>>   
+>>>       
+>> It is *more* common than you would expect - say server1 exports  
+>> "/mnt/gfs/maildir/namea-j" and server2 exports 
+>> "/mnt/gfs/maildir/namek-z".
+>>     
+>
+> I believe it, but how hard would it be for them to just set those up as
+> separate partitions?
+>
+>   
+The answers that I normally hear is that "then why would I bother to use 
+a cluster filesystem ?" .... Wendy
