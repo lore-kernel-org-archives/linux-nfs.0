@@ -1,81 +1,60 @@
-From: Sev Binello <sev-IGkKxAqZmp0@public.gmane.org>
-Subject: Re: [NFS] nfs_statfs: statfs error = 512 ?
-Date: Wed, 23 Jan 2008 16:10:00 -0500
-Message-ID: <4797AD28.8020306@bnl.gov>
-References: <479763EC.3090601@bnl.gov> <4797699C.2020100@RedHat.com>
-	<47976B05.60408@bnl.gov> <4797A592.4080903@RedHat.com>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH 1/2] NLM failover unlock commands
+Date: Thu, 24 Jan 2008 15:02:02 +1100
+Message-ID: <18328.3514.149058.653547@notabene.brown>
+References: <4781BB0D.90706@redhat.com>
+	<20080108170220.GA21401@infradead.org>
+	<20080108174958.GA25025@infradead.org>
+	<4783E3C9.3040803@redhat.com>
+	<20080109180214.GA31071@infradead.org>
+	<20080110075959.GA9623@infradead.org>
+	<4788665B.4020405@redhat.com>
+	<20080114230742.GA16975@fieldses.org>
+	<18315.61638.14133.308991@notabene.brown>
+	<20080122225312.GO24697@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Steve Dickson <SteveD@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Neil Brown <neilb@suse.de>, Wendy Cheng <wcheng@redhat.com>,
+	Christoph Hellwig <hch@infradead.org>,
+	NFS list <linux-nfs@vger.kernel.org>, cluster-devel@redhat.com
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:50630 "EHLO neil.brown.name"
+Received: from mx2.suse.de ([195.135.220.15]:39571 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752038AbYAWVLI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 Jan 2008 16:11:08 -0500
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1JHmsE-0000lS-9d
-	for linux-nfs@vger.kernel.org; Thu, 24 Jan 2008 08:11:06 +1100
-In-Reply-To: <4797A592.4080903-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+	id S1752825AbYAXECM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 Jan 2008 23:02:12 -0500
+In-Reply-To: message from J. Bruce Fields on Tuesday January 22
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Steve Dickson wrote:
-> Sev Binello wrote:
->   
->> The problem doesn't seem to occur on WS3 clients,  but does on  WS4
->> clients ?
->>     
-> Again, I'm pretty sure this problem was identified and fixed in
-> an later update release... you could try updating to the latest 
-> and greatest (U7).
->   
-I just want to make sure I'm clear on this point...
-The problem *appears on the * *WS4 U5* clients running2.6.9-55.0.9.ELsmp
-*NOT* with the *WS3 U8* servers.
-Are you saying a problem on WS3 servers is causing this error to appear 
-on the WS4 clients,
-but not on the WS3 clients ?
->> Can you provide any more details ?
->>     
-> An a bzip2 tethereal network trace something similar to
->     tethereal -w /tmp/data.pcap host <server> and host <server;
->     bzip2 /tmp/data.pcap
->
-> should shed some light on whats going on... 
->
-> Note: so as not to fill up everybody's inbox with tethereal
-> data, either open a bug report on bugzilla.redhat.com or
-> set the data to me in a private email.
->
->   
-Okay will do thanks
+On Tuesday January 22, bfields@fieldses.org wrote:
+> 
+> ?
 
--Sev
+!
 
-> steved.
->   
+(i.e. Acked-By: NeilBrown <neilb@suse.de>)
 
+tnx.NB
 
--- 
-
-Sev Binello
-Brookhaven National Laboratory
-Upton, New York
-631-344-5647
-sev-IGkKxAqZmp0@public.gmane.org
-
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Microsoft
-Defy all challenges. Microsoft(R) Visual Studio 2008.
-http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
-
+> 
+> --b.
+> 
+> commit 6685389d610950126f700d25f3d010c7049441c3
+> Author: J. Bruce Fields <bfields@citi.umich.edu>
+> Date:   Tue Jan 22 17:40:42 2008 -0500
+> 
+>     nfsd: more careful input validation in nfsctl write methods
+>     
+>     Neil Brown points out that we're checking buf[size-1] in a couple places
+>     without first checking whether size is zero.
+>     
+>     Actually, given the implementation of simple_transaction_get(), buf[-1]
+>     is zero, so in both of these cases the subsequent check of the value of
+>     buf[size-1] will catch this case.
+>     
+>     But it seems fragile to depend on that, so add explicit checks for this
+>     case.
+>     
+>     Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+>     Cc: Neil Brown <neilb@suse.de>
