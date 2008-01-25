@@ -1,7 +1,7 @@
 From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 049/100] svc: Change the svc_sock in the rqstp structure to a transport
-Date: Fri, 25 Jan 2008 18:16:29 -0500
-Message-ID: <1201303040-7779-49-git-send-email-bfields@citi.umich.edu>
+Subject: [PATCH 039/100] lockd: fix a leak in nlmsvc_testlock asynchronous request handling
+Date: Fri, 25 Jan 2008 18:16:19 -0500
+Message-ID: <1201303040-7779-39-git-send-email-bfields@citi.umich.edu>
 References: <20080125231521.GG25141@fieldses.org>
  <1201303040-7779-1-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-2-git-send-email-bfields@citi.umich.edu>
@@ -41,62 +41,73 @@ References: <20080125231521.GG25141@fieldses.org>
  <1201303040-7779-36-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-37-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-38-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-39-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-40-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-41-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-42-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-43-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-44-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-45-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-46-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-47-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-48-git-send-email-bfields@citi.umich.edu>
-Cc: Tom Tucker <tom@opengridcomputing.com>,
+Cc: Oleg Drokin <Oleg.Drokin-UdXhSnd/wVw@public.gmane.org>,
 	"J. Bruce Fields" <bfields@citi.umich.edu>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:47415 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:47406 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932083AbYAYXRn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Jan 2008 18:17:43 -0500
-In-Reply-To: <1201303040-7779-48-git-send-email-bfields@citi.umich.edu>
+	id S932072AbYAYXRl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Jan 2008 18:17:41 -0500
+In-Reply-To: <1201303040-7779-38-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Tom Tucker <tom@opengridcomputing.com>
+From: Oleg Drokin <Oleg.Drokin-UdXhSnd/wVw@public.gmane.org>
 
-The rqstp structure contains a pointer to the transport for the
-RPC request. This functionaly trivial patch adds an unamed union
-with pointers to both svc_sock and svc_xprt. Ultimately the
-union will be removed and only the rq_xprt field will remain. This
-allows incrementally extracting transport independent interfaces without
-one gigundo patch.
+Without the patch, there is a leakage of nlmblock structure refcount
+that holds a reference nlmfile structure, that holds a reference to
+struct file, when async GETFL is used (-EINPROGRESS return from
+file_ops->lock()), and also in some error cases.
 
-Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
-Acked-by: Neil Brown <neilb@suse.de>
-Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
-Reviewed-by: Greg Banks <gnb@sgi.com>
+Fix up a style nit while we're here.
+
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
- include/linux/sunrpc/svc.h |    5 ++++-
- 1 files changed, 4 insertions(+), 1 deletions(-)
+ fs/lockd/svclock.c |   18 +++++++++++-------
+ 1 files changed, 11 insertions(+), 7 deletions(-)
 
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 8531a70..37f7448 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -204,7 +204,10 @@ union svc_addr_u {
- struct svc_rqst {
- 	struct list_head	rq_list;	/* idle list */
- 	struct list_head	rq_all;		/* all threads list */
--	struct svc_sock *	rq_sock;	/* socket */
-+	union {
-+		struct svc_xprt *	rq_xprt;	/* transport ptr */
-+		struct svc_sock *	rq_sock; 	/* socket ptr */
-+	};
- 	struct sockaddr_storage	rq_addr;	/* peer address */
- 	size_t			rq_addrlen;
+diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
+index d120ec3..84c4d5e 100644
+--- a/fs/lockd/svclock.c
++++ b/fs/lockd/svclock.c
+@@ -501,25 +501,29 @@ nlmsvc_testlock(struct svc_rqst *rqstp, struct nlm_file *file,
+ 			block, block->b_flags, block->b_fl);
+ 		if (block->b_flags & B_TIMED_OUT) {
+ 			nlmsvc_unlink_block(block);
+-			return nlm_lck_denied;
++			ret = nlm_lck_denied;
++			goto out;
+ 		}
+ 		if (block->b_flags & B_GOT_CALLBACK) {
+ 			if (block->b_fl != NULL
+ 					&& block->b_fl->fl_type != F_UNLCK) {
+ 				lock->fl = *block->b_fl;
+ 				goto conf_lock;
+-			}
+-			else {
++			} else {
+ 				nlmsvc_unlink_block(block);
+-				return nlm_granted;
++				ret = nlm_granted;
++				goto out;
+ 			}
+ 		}
+-		return nlm_drop_reply;
++		ret = nlm_drop_reply;
++		goto out;
+ 	}
  
+ 	error = vfs_test_lock(file->f_file, &lock->fl);
+-	if (error == -EINPROGRESS)
+-		return nlmsvc_defer_lock_rqst(rqstp, block);
++	if (error == -EINPROGRESS) {
++		ret = nlmsvc_defer_lock_rqst(rqstp, block);
++		goto out;
++	}
+ 	if (error) {
+ 		ret = nlm_lck_denied_nolocks;
+ 		goto out;
 -- 
 1.5.4.rc2.60.gb2e62
 
