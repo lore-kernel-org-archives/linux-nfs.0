@@ -1,8 +1,7 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 075/112] NFS: Refactor mount option address parsing into
-	separate function
-Date: Fri, 25 Jan 2008 11:37:50 -0500
-Message-ID: <20080125163749.31887.35676.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
+Subject: [PATCH 040/112] NFS: Change sign of some loop indices in nfs4xdr.c
+Date: Fri, 25 Jan 2008 11:37:35 -0500
+Message-ID: <20080125163735.31887.26192.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
 References: <20080125163723.31887.68074.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -10,86 +9,73 @@ To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:14355 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755542AbYAYRAB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Jan 2008 12:00:01 -0500
+	id S1755185AbYAYQ74 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Jan 2008 11:59:56 -0500
 Received: from svlexrs02.hq.netapp.com (svlexrs02.corp.netapp.com [10.57.156.154])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id m0PGxsei010226
-	for <linux-nfs@vger.kernel.org>; Fri, 25 Jan 2008 09:00:00 -0800 (PST)
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id m0PGxseQ010226
+	for <linux-nfs@vger.kernel.org>; Fri, 25 Jan 2008 08:59:55 -0800 (PST)
 In-Reply-To: <20080125163723.31887.68074.stgit-KPEdlmqt5P7XOazzY/2fV4TcuzvYVacciM950cveMlzk1uMJSBkQmQ@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Chuck Lever <chuck.lever@oracle.com>
 
-Refactor the logic to parse incoming text-based IP addresses.  Use the
-in4_pton() function instead of the older in_aton(), following the lead
-of the in-kernel CIFS client.
-
-Later we'll add IPv6 address parsing using the matching in6_pton()
-function.  For now we can't allow IPv6 address parsing: we must expand
-the size of the address storage fields in the nfs_parsed_mount_options
-struct before we can parse and store IPv6 addresses.
+Nit: Eliminate some mixed sign comparisons in loop indices.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Cc: Aurelien Charbon <aurelien.charbon-Z51IpKcfGtLk1uMJSBkQmQ@public.gmane.org>
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- fs/nfs/super.c |   30 ++++++++++++++++++++++++------
- 1 files changed, 24 insertions(+), 6 deletions(-)
+ fs/nfs/nfs4xdr.c |   16 ++++++++--------
+ 1 files changed, 8 insertions(+), 8 deletions(-)
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index f120be4..041fe9e 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -641,6 +641,26 @@ static int nfs_verify_server_address(struct sockaddr *addr)
- }
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 2e1fe17..eae46f0 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -2515,14 +2515,12 @@ static int decode_attr_files_total(struct xdr_stream *xdr, uint32_t *bitmap, uin
  
- /*
-+ * Parse string addresses passed in via a mount option,
-+ * and construct a sockaddr based on the result.
-+ *
-+ * If address parsing fails, set the sockaddr's address
-+ * family to AF_UNSPEC to force nfs_verify_server_address()
-+ * to punt the mount.
-+ */
-+static void nfs_parse_server_address(char *value,
-+				     struct sockaddr *sap)
-+{
-+	struct sockaddr_in *ap = (void *)sap;
-+
-+	ap->sin_family = AF_INET;
-+	if (in4_pton(value, -1, (u8 *)&ap->sin_addr.s_addr, '\0', NULL))
-+		return;
-+
-+	sap->sa_family = AF_UNSPEC;
-+}
-+
-+/*
-  * Error-check and convert a string of mount options from user space into
-  * a data structure
-  */
-@@ -963,9 +983,8 @@ static int nfs_parse_mount_options(char *raw,
- 			string = match_strdup(args);
- 			if (string == NULL)
- 				goto out_nomem;
--			mnt->nfs_server.address.sin_family = AF_INET;
--			mnt->nfs_server.address.sin_addr.s_addr =
--							in_aton(string);
-+			nfs_parse_server_address(string, (struct sockaddr *)
-+						 &mnt->nfs_server.address);
- 			kfree(string);
- 			break;
- 		case Opt_clientaddr:
-@@ -984,9 +1003,8 @@ static int nfs_parse_mount_options(char *raw,
- 			string = match_strdup(args);
- 			if (string == NULL)
- 				goto out_nomem;
--			mnt->mount_server.address.sin_family = AF_INET;
--			mnt->mount_server.address.sin_addr.s_addr =
--							in_aton(string);
-+			nfs_parse_server_address(string, (struct sockaddr *)
-+						 &mnt->mount_server.address);
- 			kfree(string);
- 			break;
+ static int decode_pathname(struct xdr_stream *xdr, struct nfs4_pathname *path)
+ {
+-	int n;
++	u32 n;
+ 	__be32 *p;
+ 	int status = 0;
  
+ 	READ_BUF(4);
+ 	READ32(n);
+-	if (n < 0)
+-		goto out_eio;
+ 	if (n == 0)
+ 		goto root_path;
+ 	dprintk("path ");
+@@ -2579,13 +2577,11 @@ static int decode_attr_fs_locations(struct xdr_stream *xdr, uint32_t *bitmap, st
+ 		goto out_eio;
+ 	res->nlocations = 0;
+ 	while (res->nlocations < n) {
+-		int m;
++		u32 m;
+ 		struct nfs4_fs_location *loc = &res->locations[res->nlocations];
+ 
+ 		READ_BUF(4);
+ 		READ32(m);
+-		if (m <= 0)
+-			goto out_eio;
+ 
+ 		loc->nservers = 0;
+ 		dprintk("%s: servers ", __FUNCTION__);
+@@ -2598,8 +2594,12 @@ static int decode_attr_fs_locations(struct xdr_stream *xdr, uint32_t *bitmap, st
+ 			if (loc->nservers < NFS4_FS_LOCATION_MAXSERVERS)
+ 				loc->nservers++;
+ 			else {
+-				int i;
+-				dprintk("%s: using first %d of %d servers returned for location %d\n", __FUNCTION__, NFS4_FS_LOCATION_MAXSERVERS, m, res->nlocations);
++				unsigned int i;
++				dprintk("%s: using first %u of %u servers "
++					"returned for location %u\n",
++						__FUNCTION__,
++						NFS4_FS_LOCATION_MAXSERVERS,
++						m, res->nlocations);
+ 				for (i = loc->nservers; i < m; i++) {
+ 					unsigned int len;
+ 					char *data;
