@@ -1,180 +1,233 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 003/112] NFSv4: Clean up the OPEN/CLOSE serialisation code
-Date: Fri, 25 Jan 2008 11:37:24 -0500
-Message-ID: <20080125163724.31887.25280.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
+Subject: [PATCH 092/112] SUNRPC: fewer conditionals in the
+	format_ip_address routines
+Date: Fri, 25 Jan 2008 11:37:56 -0500
+Message-ID: <20080125163756.31887.25589.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
 References: <20080125163723.31887.68074.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:14411 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:14396 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756330AbYAYRAZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Jan 2008 12:00:25 -0500
+	id S1755735AbYAYRAT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Jan 2008 12:00:19 -0500
 Received: from svlexrs02.hq.netapp.com (svlexrs02.corp.netapp.com [10.57.156.154])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id m0PH0Lmg010494
-	for <linux-nfs@vger.kernel.org>; Fri, 25 Jan 2008 09:00:23 -0800 (PST)
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id m0PH04Hm010310
+	for <linux-nfs@vger.kernel.org>; Fri, 25 Jan 2008 09:00:17 -0800 (PST)
 In-Reply-To: <20080125163723.31887.68074.stgit-KPEdlmqt5P7XOazzY/2fV4TcuzvYVacciM950cveMlzk1uMJSBkQmQ@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Reduce the time spent locking the rpc_sequence structure by queuing the
-nfs_seqid only when we are ready to take the lock (when calling
-nfs_wait_on_sequence).
+From: Chuck Lever <chuck.lever@oracle.com>
 
+Clean up: have the set up routines explicitly pass the strings to be used
+for the transport name and NETID.  This removes a number of conditionals
+and dependencies on rpc_xprt.prot, which is overloaded.
+
+Tighten up type checking on the address_strings array while we're at it.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- fs/nfs/nfs4proc.c  |   30 +++++++++++-------------------
- fs/nfs/nfs4state.c |   32 ++++++++++++++++----------------
- 2 files changed, 27 insertions(+), 35 deletions(-)
+ include/linux/sunrpc/clnt.h |    2 +-
+ include/linux/sunrpc/xprt.h |    2 +-
+ net/sunrpc/clnt.c           |    3 ++
+ net/sunrpc/rpcb_clnt.c      |    2 +-
+ net/sunrpc/xprtsock.c       |   56 +++++++++++++++++--------------------------
+ 5 files changed, 27 insertions(+), 38 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 9e2e1c7..a51a753 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3331,15 +3331,12 @@ static struct nfs4_lockdata *nfs4_alloc_lockdata(struct file_lock *fl,
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index 51a3381..5a13da2 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -143,7 +143,7 @@ void		rpc_setbufsize(struct rpc_clnt *, unsigned int, unsigned int);
+ size_t		rpc_max_payload(struct rpc_clnt *);
+ void		rpc_force_rebind(struct rpc_clnt *);
+ size_t		rpc_peeraddr(struct rpc_clnt *, struct sockaddr *, size_t);
+-char *		rpc_peeraddr2str(struct rpc_clnt *, enum rpc_display_format_t);
++const char	*rpc_peeraddr2str(struct rpc_clnt *, enum rpc_display_format_t);
  
- 	p->arg.fh = NFS_FH(inode);
- 	p->arg.fl = &p->fl;
--	if (!(lsp->ls_seqid.flags & NFS_SEQID_CONFIRMED)) {
--		p->arg.open_seqid = nfs_alloc_seqid(&lsp->ls_state->owner->so_seqid);
--		if (p->arg.open_seqid == NULL)
--			goto out_free;
--
--	}
-+	p->arg.open_seqid = nfs_alloc_seqid(&lsp->ls_state->owner->so_seqid);
-+	if (p->arg.open_seqid == NULL)
-+		goto out_free;
- 	p->arg.lock_seqid = nfs_alloc_seqid(&lsp->ls_seqid);
- 	if (p->arg.lock_seqid == NULL)
--		goto out_free;
-+		goto out_free_seqid;
- 	p->arg.lock_stateid = &lsp->ls_stateid;
- 	p->arg.lock_owner.clientid = server->nfs_client->cl_clientid;
- 	p->arg.lock_owner.id = lsp->ls_id.id;
-@@ -3348,9 +3345,9 @@ static struct nfs4_lockdata *nfs4_alloc_lockdata(struct file_lock *fl,
- 	p->ctx = get_nfs_open_context(ctx);
- 	memcpy(&p->fl, fl, sizeof(p->fl));
- 	return p;
-+out_free_seqid:
-+	nfs_free_seqid(p->arg.open_seqid);
- out_free:
--	if (p->arg.open_seqid != NULL)
--		nfs_free_seqid(p->arg.open_seqid);
- 	kfree(p);
- 	return NULL;
- }
-@@ -3368,20 +3365,16 @@ static void nfs4_lock_prepare(struct rpc_task *task, void *calldata)
- 	};
+ #endif /* __KERNEL__ */
+ #endif /* _LINUX_SUNRPC_CLNT_H */
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index c3364d8..b3ff9a8 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -183,7 +183,7 @@ struct rpc_xprt {
+ 					bklog_u;	/* backlog queue utilization */
+ 	} stat;
  
- 	dprintk("%s: begin!\n", __FUNCTION__);
-+	if (nfs_wait_on_sequence(data->arg.lock_seqid, task) != 0)
-+		return;
- 	/* Do we need to do an open_to_lock_owner? */
- 	if (!(data->arg.lock_seqid->sequence->flags & NFS_SEQID_CONFIRMED)) {
- 		if (nfs_wait_on_sequence(data->arg.open_seqid, task) != 0)
- 			return;
- 		data->arg.open_stateid = &state->stateid;
- 		data->arg.new_lock_owner = 1;
--		/* Retest in case we raced... */
--		if (!(data->arg.lock_seqid->sequence->flags & NFS_SEQID_CONFIRMED))
--			goto do_rpc;
--	}
--	if (nfs_wait_on_sequence(data->arg.lock_seqid, task) != 0)
--		return;
--	data->arg.new_lock_owner = 0;
--do_rpc:	
-+	} else
-+		data->arg.new_lock_owner = 0;
- 	data->timestamp = jiffies;
- 	rpc_call_setup(task, &msg, 0);
- 	dprintk("%s: done!, ret = %d\n", __FUNCTION__, data->rpc_status);
-@@ -3419,6 +3412,7 @@ static void nfs4_lock_release(void *calldata)
- 	struct nfs4_lockdata *data = calldata;
+-	char *			address_strings[RPC_DISPLAY_MAX];
++	const char		*address_strings[RPC_DISPLAY_MAX];
+ };
  
- 	dprintk("%s: begin!\n", __FUNCTION__);
-+	nfs_free_seqid(data->arg.open_seqid);
- 	if (data->cancelled != 0) {
- 		struct rpc_task *task;
- 		task = nfs4_do_unlck(&data->fl, data->ctx, data->lsp,
-@@ -3428,8 +3422,6 @@ static void nfs4_lock_release(void *calldata)
- 		dprintk("%s: cancelling lock!\n", __FUNCTION__);
- 	} else
- 		nfs_free_seqid(data->arg.lock_seqid);
--	if (data->arg.open_seqid != NULL)
--		nfs_free_seqid(data->arg.open_seqid);
- 	nfs4_put_lock_state(data->lsp);
- 	put_nfs_open_context(data->ctx);
- 	kfree(data);
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 5a39c6f..bf94c6e 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -644,27 +644,26 @@ void nfs4_copy_stateid(nfs4_stateid *dst, struct nfs4_state *state, fl_owner_t f
- 
- struct nfs_seqid *nfs_alloc_seqid(struct nfs_seqid_counter *counter)
- {
--	struct rpc_sequence *sequence = counter->sequence;
- 	struct nfs_seqid *new;
- 
- 	new = kmalloc(sizeof(*new), GFP_KERNEL);
- 	if (new != NULL) {
- 		new->sequence = counter;
--		spin_lock(&sequence->lock);
--		list_add_tail(&new->list, &sequence->list);
--		spin_unlock(&sequence->lock);
-+		INIT_LIST_HEAD(&new->list);
- 	}
- 	return new;
- }
- 
- void nfs_free_seqid(struct nfs_seqid *seqid)
- {
--	struct rpc_sequence *sequence = seqid->sequence->sequence;
-+	if (!list_empty(&seqid->list)) {
-+		struct rpc_sequence *sequence = seqid->sequence->sequence;
- 
--	spin_lock(&sequence->lock);
--	list_del(&seqid->list);
--	spin_unlock(&sequence->lock);
--	rpc_wake_up(&sequence->wait);
-+		spin_lock(&sequence->lock);
-+		list_del(&seqid->list);
-+		spin_unlock(&sequence->lock);
-+		rpc_wake_up(&sequence->wait);
-+	}
- 	kfree(seqid);
- }
- 
-@@ -675,6 +674,7 @@ void nfs_free_seqid(struct nfs_seqid *seqid)
+ struct xprt_create {
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index a3c00da..e775ca7 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -679,7 +679,8 @@ EXPORT_SYMBOL_GPL(rpc_peeraddr);
+  * @format: address format
+  *
   */
- static void nfs_increment_seqid(int status, struct nfs_seqid *seqid)
+-char *rpc_peeraddr2str(struct rpc_clnt *clnt, enum rpc_display_format_t format)
++const char *rpc_peeraddr2str(struct rpc_clnt *clnt,
++			     enum rpc_display_format_t format)
  {
-+	BUG_ON(list_first_entry(&seqid->sequence->sequence->list, struct nfs_seqid, list) != seqid);
- 	switch (status) {
- 		case 0:
- 			break;
-@@ -726,15 +726,15 @@ int nfs_wait_on_sequence(struct nfs_seqid *seqid, struct rpc_task *task)
- 	struct rpc_sequence *sequence = seqid->sequence->sequence;
- 	int status = 0;
+ 	struct rpc_xprt *xprt = clnt->cl_xprt;
  
--	if (sequence->list.next == &seqid->list)
--		goto out;
- 	spin_lock(&sequence->lock);
--	if (sequence->list.next != &seqid->list) {
--		rpc_sleep_on(&sequence->wait, task, NULL, NULL);
--		status = -EAGAIN;
--	}
-+	if (list_empty(&seqid->list))
-+		list_add_tail(&seqid->list, &sequence->list);
-+	if (list_first_entry(&sequence->list, struct nfs_seqid, list) == seqid)
-+		goto unlock;
-+	rpc_sleep_on(&sequence->wait, task, NULL, NULL);
-+	status = -EAGAIN;
-+unlock:
- 	spin_unlock(&sequence->lock);
--out:
- 	return status;
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index f494e58..b60fa92 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -358,7 +358,7 @@ void rpcb_getport_async(struct rpc_task *task)
+ 	map->r_prot = xprt->prot;
+ 	map->r_port = 0;
+ 	map->r_xprt = xprt_get(xprt);
+-	map->r_netid = rpc_peeraddr2str(clnt, RPC_DISPLAY_NETID);
++	map->r_netid = (char *)rpc_peeraddr2str(clnt, RPC_DISPLAY_NETID);
+ 	memcpy(map->r_addr,
+ 	       rpc_peeraddr2str(rpcb_clnt, RPC_DISPLAY_UNIVERSAL_ADDR),
+ 	       sizeof(map->r_addr));
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index bb30510..17e1721 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -280,7 +280,9 @@ static inline struct sockaddr_in6 *xs_addr_in6(struct rpc_xprt *xprt)
+ 	return (struct sockaddr_in6 *) &xprt->addr;
  }
  
+-static void xs_format_ipv4_peer_addresses(struct rpc_xprt *xprt)
++static void xs_format_ipv4_peer_addresses(struct rpc_xprt *xprt,
++					  const char *protocol,
++					  const char *netid)
+ {
+ 	struct sockaddr_in *addr = xs_addr_in(xprt);
+ 	char *buf;
+@@ -299,21 +301,14 @@ static void xs_format_ipv4_peer_addresses(struct rpc_xprt *xprt)
+ 	}
+ 	xprt->address_strings[RPC_DISPLAY_PORT] = buf;
+ 
+-	buf = kzalloc(8, GFP_KERNEL);
+-	if (buf) {
+-		if (xprt->prot == IPPROTO_UDP)
+-			snprintf(buf, 8, "udp");
+-		else
+-			snprintf(buf, 8, "tcp");
+-	}
+-	xprt->address_strings[RPC_DISPLAY_PROTO] = buf;
++	xprt->address_strings[RPC_DISPLAY_PROTO] = protocol;
+ 
+ 	buf = kzalloc(48, GFP_KERNEL);
+ 	if (buf) {
+ 		snprintf(buf, 48, "addr="NIPQUAD_FMT" port=%u proto=%s",
+ 			NIPQUAD(addr->sin_addr.s_addr),
+ 			ntohs(addr->sin_port),
+-			xprt->prot == IPPROTO_UDP ? "udp" : "tcp");
++			protocol);
+ 	}
+ 	xprt->address_strings[RPC_DISPLAY_ALL] = buf;
+ 
+@@ -340,12 +335,12 @@ static void xs_format_ipv4_peer_addresses(struct rpc_xprt *xprt)
+ 	}
+ 	xprt->address_strings[RPC_DISPLAY_UNIVERSAL_ADDR] = buf;
+ 
+-	xprt->address_strings[RPC_DISPLAY_NETID] =
+-		kstrdup(xprt->prot == IPPROTO_UDP ?
+-			RPCBIND_NETID_UDP : RPCBIND_NETID_TCP, GFP_KERNEL);
++	xprt->address_strings[RPC_DISPLAY_NETID] = netid;
+ }
+ 
+-static void xs_format_ipv6_peer_addresses(struct rpc_xprt *xprt)
++static void xs_format_ipv6_peer_addresses(struct rpc_xprt *xprt,
++					  const char *protocol,
++					  const char *netid)
+ {
+ 	struct sockaddr_in6 *addr = xs_addr_in6(xprt);
+ 	char *buf;
+@@ -364,21 +359,14 @@ static void xs_format_ipv6_peer_addresses(struct rpc_xprt *xprt)
+ 	}
+ 	xprt->address_strings[RPC_DISPLAY_PORT] = buf;
+ 
+-	buf = kzalloc(8, GFP_KERNEL);
+-	if (buf) {
+-		if (xprt->prot == IPPROTO_UDP)
+-			snprintf(buf, 8, "udp");
+-		else
+-			snprintf(buf, 8, "tcp");
+-	}
+-	xprt->address_strings[RPC_DISPLAY_PROTO] = buf;
++	xprt->address_strings[RPC_DISPLAY_PROTO] = protocol;
+ 
+ 	buf = kzalloc(64, GFP_KERNEL);
+ 	if (buf) {
+ 		snprintf(buf, 64, "addr="NIP6_FMT" port=%u proto=%s",
+ 				NIP6(addr->sin6_addr),
+ 				ntohs(addr->sin6_port),
+-				xprt->prot == IPPROTO_UDP ? "udp" : "tcp");
++				protocol);
+ 	}
+ 	xprt->address_strings[RPC_DISPLAY_ALL] = buf;
+ 
+@@ -405,17 +393,17 @@ static void xs_format_ipv6_peer_addresses(struct rpc_xprt *xprt)
+ 	}
+ 	xprt->address_strings[RPC_DISPLAY_UNIVERSAL_ADDR] = buf;
+ 
+-	xprt->address_strings[RPC_DISPLAY_NETID] =
+-		kstrdup(xprt->prot == IPPROTO_UDP ?
+-			RPCBIND_NETID_UDP6 : RPCBIND_NETID_TCP6, GFP_KERNEL);
++	xprt->address_strings[RPC_DISPLAY_NETID] = netid;
+ }
+ 
+ static void xs_free_peer_addresses(struct rpc_xprt *xprt)
+ {
+-	int i;
+-
+-	for (i = 0; i < RPC_DISPLAY_MAX; i++)
+-		kfree(xprt->address_strings[i]);
++	kfree(xprt->address_strings[RPC_DISPLAY_ADDR]);
++	kfree(xprt->address_strings[RPC_DISPLAY_PORT]);
++	kfree(xprt->address_strings[RPC_DISPLAY_ALL]);
++	kfree(xprt->address_strings[RPC_DISPLAY_HEX_ADDR]);
++	kfree(xprt->address_strings[RPC_DISPLAY_HEX_PORT]);
++	kfree(xprt->address_strings[RPC_DISPLAY_UNIVERSAL_ADDR]);
+ }
+ 
+ #define XS_SENDMSG_FLAGS	(MSG_DONTWAIT | MSG_NOSIGNAL)
+@@ -1935,7 +1923,7 @@ static struct rpc_xprt *xs_setup_udp(struct xprt_create *args)
+ 
+ 		INIT_DELAYED_WORK(&transport->connect_worker,
+ 					xs_udp_connect_worker4);
+-		xs_format_ipv4_peer_addresses(xprt);
++		xs_format_ipv4_peer_addresses(xprt, "udp", RPCBIND_NETID_UDP);
+ 		break;
+ 	case AF_INET6:
+ 		if (((struct sockaddr_in6 *)addr)->sin6_port != htons(0))
+@@ -1943,7 +1931,7 @@ static struct rpc_xprt *xs_setup_udp(struct xprt_create *args)
+ 
+ 		INIT_DELAYED_WORK(&transport->connect_worker,
+ 					xs_udp_connect_worker6);
+-		xs_format_ipv6_peer_addresses(xprt);
++		xs_format_ipv6_peer_addresses(xprt, "udp", RPCBIND_NETID_UDP6);
+ 		break;
+ 	default:
+ 		kfree(xprt);
+@@ -2001,14 +1989,14 @@ static struct rpc_xprt *xs_setup_tcp(struct xprt_create *args)
+ 			xprt_set_bound(xprt);
+ 
+ 		INIT_DELAYED_WORK(&transport->connect_worker, xs_tcp_connect_worker4);
+-		xs_format_ipv4_peer_addresses(xprt);
++		xs_format_ipv4_peer_addresses(xprt, "tcp", RPCBIND_NETID_TCP);
+ 		break;
+ 	case AF_INET6:
+ 		if (((struct sockaddr_in6 *)addr)->sin6_port != htons(0))
+ 			xprt_set_bound(xprt);
+ 
+ 		INIT_DELAYED_WORK(&transport->connect_worker, xs_tcp_connect_worker6);
+-		xs_format_ipv6_peer_addresses(xprt);
++		xs_format_ipv6_peer_addresses(xprt, "tcp", RPCBIND_NETID_TCP6);
+ 		break;
+ 	default:
+ 		kfree(xprt);
