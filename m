@@ -1,7 +1,7 @@
 From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 091/100] rdma: SVCRDMA sendto
-Date: Fri, 25 Jan 2008 18:17:11 -0500
-Message-ID: <1201303040-7779-91-git-send-email-bfields@citi.umich.edu>
+Subject: [PATCH 053/100] svc: Add per-transport delete functions
+Date: Fri, 25 Jan 2008 18:16:33 -0500
+Message-ID: <1201303040-7779-53-git-send-email-bfields@citi.umich.edu>
 References: <20080125231521.GG25141@fieldses.org>
  <1201303040-7779-1-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-2-git-send-email-bfields@citi.umich.edu>
@@ -55,604 +55,152 @@ References: <20080125231521.GG25141@fieldses.org>
  <1201303040-7779-50-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-51-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-52-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-53-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-54-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-55-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-56-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-57-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-58-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-59-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-60-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-61-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-62-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-63-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-64-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-65-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-66-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-67-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-68-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-69-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-70-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-71-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-72-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-73-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-74-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-75-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-76-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-77-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-78-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-79-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-80-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-81-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-82-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-83-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-84-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-85-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-86-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-87-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-88-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-89-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-90-git-send-email-bfields@citi.umich.edu>
 Cc: Tom Tucker <tom@opengridcomputing.com>,
 	"J. Bruce Fields" <bfields@citi.umich.edu>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:47558 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:47429 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1762198AbYAYXSm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Jan 2008 18:18:42 -0500
-In-Reply-To: <1201303040-7779-90-git-send-email-bfields@citi.umich.edu>
+	id S932097AbYAYXRq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Jan 2008 18:17:46 -0500
+In-Reply-To: <1201303040-7779-52-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Tom Tucker <tom@opengridcomputing.com>
 
-This file implements the RDMA transport sendto function. A RPC reply
-on an RDMA transport consists of some number of RDMA_WRITE requests
-followed by an RDMA_SEND request. The sendto function parses the
-ONCRPC RDMA reply header to determine how to send the reply back to
-the client. The send queue is sized so as to be able to send complete
-replies for requests in most cases.  In the event that there are not
-enough SQ WR slots to reply, e.g.  big data, the send will block the
-NFSD thread. The I/O callback functions in svc_rdma_transport.c that
-reap WR completions wake any waiters blocked on the SQ. In general,
-the goal is not to block NFSD threads and the has_wspace method
-stall requests when the SQ is nearly full.
+Add transport specific xpo_detach and xpo_free functions. The xpo_detach
+function causes the transport to stop delivering data-ready events
+and enqueing the transport for I/O.
+
+The xpo_free function frees all resources associated with the particular
+transport instance.
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 Acked-by: Neil Brown <neilb@suse.de>
+Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
+Reviewed-by: Greg Banks <gnb@sgi.com>
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
- net/sunrpc/xprtrdma/svc_rdma_sendto.c |  520 +++++++++++++++++++++++++++++++++
- 1 files changed, 520 insertions(+), 0 deletions(-)
- create mode 100644 net/sunrpc/xprtrdma/svc_rdma_sendto.c
+ include/linux/sunrpc/svc_xprt.h |    2 +
+ net/sunrpc/svcsock.c            |   56 ++++++++++++++++++++++++++++++---------
+ 2 files changed, 45 insertions(+), 13 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-new file mode 100644
-index 0000000..3e32194
---- /dev/null
-+++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-@@ -0,0 +1,520 @@
-+/*
-+ * Copyright (c) 2005-2006 Network Appliance, Inc. All rights reserved.
-+ *
-+ * This software is available to you under a choice of one of two
-+ * licenses.  You may choose to be licensed under the terms of the GNU
-+ * General Public License (GPL) Version 2, available from the file
-+ * COPYING in the main directory of this source tree, or the BSD-type
-+ * license below:
-+ *
-+ * Redistribution and use in source and binary forms, with or without
-+ * modification, are permitted provided that the following conditions
-+ * are met:
-+ *
-+ *      Redistributions of source code must retain the above copyright
-+ *      notice, this list of conditions and the following disclaimer.
-+ *
-+ *      Redistributions in binary form must reproduce the above
-+ *      copyright notice, this list of conditions and the following
-+ *      disclaimer in the documentation and/or other materials provided
-+ *      with the distribution.
-+ *
-+ *      Neither the name of the Network Appliance, Inc. nor the names of
-+ *      its contributors may be used to endorse or promote products
-+ *      derived from this software without specific prior written
-+ *      permission.
-+ *
-+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-+ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-+ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-+ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-+ *
-+ * Author: Tom Tucker <tom@opengridcomputing.com>
+diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+index 01ee7bc..f032fb6 100644
+--- a/include/linux/sunrpc/svc_xprt.h
++++ b/include/linux/sunrpc/svc_xprt.h
+@@ -13,6 +13,8 @@ struct svc_xprt_ops {
+ 	int		(*xpo_recvfrom)(struct svc_rqst *);
+ 	int		(*xpo_sendto)(struct svc_rqst *);
+ 	void		(*xpo_release_rqst)(struct svc_rqst *);
++	void		(*xpo_detach)(struct svc_xprt *);
++	void		(*xpo_free)(struct svc_xprt *);
+ };
+ 
+ struct svc_xprt_class {
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index d46abc8..44a729d 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -85,6 +85,8 @@ static void		svc_udp_data_ready(struct sock *, int);
+ static int		svc_udp_recvfrom(struct svc_rqst *);
+ static int		svc_udp_sendto(struct svc_rqst *);
+ static void		svc_close_socket(struct svc_sock *svsk);
++static void		svc_sock_detach(struct svc_xprt *);
++static void		svc_sock_free(struct svc_xprt *);
+ 
+ static struct svc_deferred_req *svc_deferred_dequeue(struct svc_sock *svsk);
+ static int svc_deferred_recv(struct svc_rqst *rqstp);
+@@ -376,16 +378,8 @@ static inline void
+ svc_sock_put(struct svc_sock *svsk)
+ {
+ 	if (atomic_dec_and_test(&svsk->sk_inuse)) {
+-		BUG_ON(! test_bit(SK_DEAD, &svsk->sk_flags));
+-
+-		dprintk("svc: releasing dead socket\n");
+-		if (svsk->sk_sock->file)
+-			sockfd_put(svsk->sk_sock);
+-		else
+-			sock_release(svsk->sk_sock);
+-		if (svsk->sk_info_authunix != NULL)
+-			svcauth_unix_info_release(svsk->sk_info_authunix);
+-		kfree(svsk);
++		BUG_ON(!test_bit(SK_DEAD, &svsk->sk_flags));
++		svsk->sk_xprt.xpt_ops->xpo_free(&svsk->sk_xprt);
+ 	}
+ }
+ 
+@@ -903,6 +897,8 @@ static struct svc_xprt_ops svc_udp_ops = {
+ 	.xpo_recvfrom = svc_udp_recvfrom,
+ 	.xpo_sendto = svc_udp_sendto,
+ 	.xpo_release_rqst = svc_release_skb,
++	.xpo_detach = svc_sock_detach,
++	.xpo_free = svc_sock_free,
+ };
+ 
+ static struct svc_xprt_class svc_udp_class = {
+@@ -1358,6 +1354,8 @@ static struct svc_xprt_ops svc_tcp_ops = {
+ 	.xpo_recvfrom = svc_tcp_recvfrom,
+ 	.xpo_sendto = svc_tcp_sendto,
+ 	.xpo_release_rqst = svc_release_skb,
++	.xpo_detach = svc_sock_detach,
++	.xpo_free = svc_sock_free,
+ };
+ 
+ static struct svc_xprt_class svc_tcp_class = {
+@@ -1815,6 +1813,40 @@ bummer:
+ }
+ 
+ /*
++ * Detach the svc_sock from the socket so that no
++ * more callbacks occur.
 + */
-+
-+#include <linux/sunrpc/debug.h>
-+#include <linux/sunrpc/rpc_rdma.h>
-+#include <linux/spinlock.h>
-+#include <asm/unaligned.h>
-+#include <rdma/ib_verbs.h>
-+#include <rdma/rdma_cm.h>
-+#include <linux/sunrpc/svc_rdma.h>
-+
-+#define RPCDBG_FACILITY	RPCDBG_SVCXPRT
-+
-+/* Encode an XDR as an array of IB SGE
-+ *
-+ * Assumptions:
-+ * - head[0] is physically contiguous.
-+ * - tail[0] is physically contiguous.
-+ * - pages[] is not physically or virtually contigous and consists of
-+ *   PAGE_SIZE elements.
-+ *
-+ * Output:
-+ * SGE[0]              reserved for RCPRDMA header
-+ * SGE[1]              data from xdr->head[]
-+ * SGE[2..sge_count-2] data from xdr->pages[]
-+ * SGE[sge_count-1]    data from xdr->tail.
-+ *
-+ */
-+static struct ib_sge *xdr_to_sge(struct svcxprt_rdma *xprt,
-+				 struct xdr_buf *xdr,
-+				 struct ib_sge *sge,
-+				 int *sge_count)
++static void svc_sock_detach(struct svc_xprt *xprt)
 +{
-+	/* Max we need is the length of the XDR / pagesize + one for
-+	 * head + one for tail + one for RPCRDMA header
-+	 */
-+	int sge_max = (xdr->len+PAGE_SIZE-1) / PAGE_SIZE + 3;
-+	int sge_no;
-+	u32 byte_count = xdr->len;
-+	u32 sge_bytes;
-+	u32 page_bytes;
-+	int page_off;
-+	int page_no;
++	struct svc_sock *svsk = container_of(xprt, struct svc_sock, sk_xprt);
++	struct sock *sk = svsk->sk_sk;
 +
-+	/* Skip the first sge, this is for the RPCRDMA header */
-+	sge_no = 1;
++	dprintk("svc: svc_sock_detach(%p)\n", svsk);
 +
-+	/* Head SGE */
-+	sge[sge_no].addr = ib_dma_map_single(xprt->sc_cm_id->device,
-+					     xdr->head[0].iov_base,
-+					     xdr->head[0].iov_len,
-+					     DMA_TO_DEVICE);
-+	sge_bytes = min_t(u32, byte_count, xdr->head[0].iov_len);
-+	byte_count -= sge_bytes;
-+	sge[sge_no].length = sge_bytes;
-+	sge[sge_no].lkey = xprt->sc_phys_mr->lkey;
-+	sge_no++;
-+
-+	/* pages SGE */
-+	page_no = 0;
-+	page_bytes = xdr->page_len;
-+	page_off = xdr->page_base;
-+	while (byte_count && page_bytes) {
-+		sge_bytes = min_t(u32, byte_count, (PAGE_SIZE-page_off));
-+		sge[sge_no].addr =
-+			ib_dma_map_page(xprt->sc_cm_id->device,
-+					xdr->pages[page_no], page_off,
-+					sge_bytes, DMA_TO_DEVICE);
-+		sge_bytes = min(sge_bytes, page_bytes);
-+		byte_count -= sge_bytes;
-+		page_bytes -= sge_bytes;
-+		sge[sge_no].length = sge_bytes;
-+		sge[sge_no].lkey = xprt->sc_phys_mr->lkey;
-+
-+		sge_no++;
-+		page_no++;
-+		page_off = 0; /* reset for next time through loop */
-+	}
-+
-+	/* Tail SGE */
-+	if (byte_count && xdr->tail[0].iov_len) {
-+		sge[sge_no].addr =
-+			ib_dma_map_single(xprt->sc_cm_id->device,
-+					  xdr->tail[0].iov_base,
-+					  xdr->tail[0].iov_len,
-+					  DMA_TO_DEVICE);
-+		sge_bytes = min_t(u32, byte_count, xdr->tail[0].iov_len);
-+		byte_count -= sge_bytes;
-+		sge[sge_no].length = sge_bytes;
-+		sge[sge_no].lkey = xprt->sc_phys_mr->lkey;
-+		sge_no++;
-+	}
-+
-+	BUG_ON(sge_no > sge_max);
-+	BUG_ON(byte_count != 0);
-+
-+	*sge_count = sge_no;
-+	return sge;
-+}
-+
-+
-+/* Assumptions:
-+ * - The specified write_len can be represented in sc_max_sge * PAGE_SIZE
-+ */
-+static int send_write(struct svcxprt_rdma *xprt, struct svc_rqst *rqstp,
-+		      u32 rmr, u64 to,
-+		      u32 xdr_off, int write_len,
-+		      struct ib_sge *xdr_sge, int sge_count)
-+{
-+	struct svc_rdma_op_ctxt *tmp_sge_ctxt;
-+	struct ib_send_wr write_wr;
-+	struct ib_sge *sge;
-+	int xdr_sge_no;
-+	int sge_no;
-+	int sge_bytes;
-+	int sge_off;
-+	int bc;
-+	struct svc_rdma_op_ctxt *ctxt;
-+	int ret = 0;
-+
-+	BUG_ON(sge_count >= 32);
-+	dprintk("svcrdma: RDMA_WRITE rmr=%x, to=%llx, xdr_off=%d, "
-+		"write_len=%d, xdr_sge=%p, sge_count=%d\n",
-+		rmr, to, xdr_off, write_len, xdr_sge, sge_count);
-+
-+	ctxt = svc_rdma_get_context(xprt);
-+	ctxt->count = 0;
-+	tmp_sge_ctxt = svc_rdma_get_context(xprt);
-+	sge = tmp_sge_ctxt->sge;
-+
-+	/* Find the SGE associated with xdr_off */
-+	for (bc = xdr_off, xdr_sge_no = 1; bc && xdr_sge_no < sge_count;
-+	     xdr_sge_no++) {
-+		if (xdr_sge[xdr_sge_no].length > bc)
-+			break;
-+		bc -= xdr_sge[xdr_sge_no].length;
-+	}
-+
-+	sge_off = bc;
-+	bc = write_len;
-+	sge_no = 0;
-+
-+	/* Copy the remaining SGE */
-+	while (bc != 0 && xdr_sge_no < sge_count) {
-+		sge[sge_no].addr = xdr_sge[xdr_sge_no].addr + sge_off;
-+		sge[sge_no].lkey = xdr_sge[xdr_sge_no].lkey;
-+		sge_bytes = min((size_t)bc,
-+				(size_t)(xdr_sge[xdr_sge_no].length-sge_off));
-+		sge[sge_no].length = sge_bytes;
-+
-+		sge_off = 0;
-+		sge_no++;
-+		xdr_sge_no++;
-+		bc -= sge_bytes;
-+	}
-+
-+	BUG_ON(bc != 0);
-+	BUG_ON(xdr_sge_no > sge_count);
-+
-+	/* Prepare WRITE WR */
-+	memset(&write_wr, 0, sizeof write_wr);
-+	ctxt->wr_op = IB_WR_RDMA_WRITE;
-+	write_wr.wr_id = (unsigned long)ctxt;
-+	write_wr.sg_list = &sge[0];
-+	write_wr.num_sge = sge_no;
-+	write_wr.opcode = IB_WR_RDMA_WRITE;
-+	write_wr.send_flags = IB_SEND_SIGNALED;
-+	write_wr.wr.rdma.rkey = rmr;
-+	write_wr.wr.rdma.remote_addr = to;
-+
-+	/* Post It */
-+	atomic_inc(&rdma_stat_write);
-+	if (svc_rdma_send(xprt, &write_wr)) {
-+		svc_rdma_put_context(ctxt, 1);
-+		/* Fatal error, close transport */
-+		ret = -EIO;
-+	}
-+	svc_rdma_put_context(tmp_sge_ctxt, 0);
-+	return ret;
-+}
-+
-+static int send_write_chunks(struct svcxprt_rdma *xprt,
-+			     struct rpcrdma_msg *rdma_argp,
-+			     struct rpcrdma_msg *rdma_resp,
-+			     struct svc_rqst *rqstp,
-+			     struct ib_sge *sge,
-+			     int sge_count)
-+{
-+	u32 xfer_len = rqstp->rq_res.page_len + rqstp->rq_res.tail[0].iov_len;
-+	int write_len;
-+	int max_write;
-+	u32 xdr_off;
-+	int chunk_off;
-+	int chunk_no;
-+	struct rpcrdma_write_array *arg_ary;
-+	struct rpcrdma_write_array *res_ary;
-+	int ret;
-+
-+	arg_ary = svc_rdma_get_write_array(rdma_argp);
-+	if (!arg_ary)
-+		return 0;
-+	res_ary = (struct rpcrdma_write_array *)
-+		&rdma_resp->rm_body.rm_chunks[1];
-+
-+	max_write = xprt->sc_max_sge * PAGE_SIZE;
-+
-+	/* Write chunks start at the pagelist */
-+	for (xdr_off = rqstp->rq_res.head[0].iov_len, chunk_no = 0;
-+	     xfer_len && chunk_no < arg_ary->wc_nchunks;
-+	     chunk_no++) {
-+		struct rpcrdma_segment *arg_ch;
-+		u64 rs_offset;
-+
-+		arg_ch = &arg_ary->wc_array[chunk_no].wc_target;
-+		write_len = min(xfer_len, arg_ch->rs_length);
-+
-+		/* Prepare the response chunk given the length actually
-+		 * written */
-+		rs_offset = get_unaligned(&(arg_ch->rs_offset));
-+		svc_rdma_xdr_encode_array_chunk(res_ary, chunk_no,
-+					    arg_ch->rs_handle,
-+					    rs_offset,
-+					    write_len);
-+		chunk_off = 0;
-+		while (write_len) {
-+			int this_write;
-+			this_write = min(write_len, max_write);
-+			ret = send_write(xprt, rqstp,
-+					 arg_ch->rs_handle,
-+					 rs_offset + chunk_off,
-+					 xdr_off,
-+					 this_write,
-+					 sge,
-+					 sge_count);
-+			if (ret) {
-+				dprintk("svcrdma: RDMA_WRITE failed, ret=%d\n",
-+					ret);
-+				return -EIO;
-+			}
-+			chunk_off += this_write;
-+			xdr_off += this_write;
-+			xfer_len -= this_write;
-+			write_len -= this_write;
-+		}
-+	}
-+	/* Update the req with the number of chunks actually used */
-+	svc_rdma_xdr_encode_write_list(rdma_resp, chunk_no);
-+
-+	return rqstp->rq_res.page_len + rqstp->rq_res.tail[0].iov_len;
-+}
-+
-+static int send_reply_chunks(struct svcxprt_rdma *xprt,
-+			     struct rpcrdma_msg *rdma_argp,
-+			     struct rpcrdma_msg *rdma_resp,
-+			     struct svc_rqst *rqstp,
-+			     struct ib_sge *sge,
-+			     int sge_count)
-+{
-+	u32 xfer_len = rqstp->rq_res.len;
-+	int write_len;
-+	int max_write;
-+	u32 xdr_off;
-+	int chunk_no;
-+	int chunk_off;
-+	struct rpcrdma_segment *ch;
-+	struct rpcrdma_write_array *arg_ary;
-+	struct rpcrdma_write_array *res_ary;
-+	int ret;
-+
-+	arg_ary = svc_rdma_get_reply_array(rdma_argp);
-+	if (!arg_ary)
-+		return 0;
-+	/* XXX: need to fix when reply lists occur with read-list and or
-+	 * write-list */
-+	res_ary = (struct rpcrdma_write_array *)
-+		&rdma_resp->rm_body.rm_chunks[2];
-+
-+	max_write = xprt->sc_max_sge * PAGE_SIZE;
-+
-+	/* xdr offset starts at RPC message */
-+	for (xdr_off = 0, chunk_no = 0;
-+	     xfer_len && chunk_no < arg_ary->wc_nchunks;
-+	     chunk_no++) {
-+		u64 rs_offset;
-+		ch = &arg_ary->wc_array[chunk_no].wc_target;
-+		write_len = min(xfer_len, ch->rs_length);
-+
-+
-+		/* Prepare the reply chunk given the length actually
-+		 * written */
-+		rs_offset = get_unaligned(&(ch->rs_offset));
-+		svc_rdma_xdr_encode_array_chunk(res_ary, chunk_no,
-+					    ch->rs_handle, rs_offset,
-+					    write_len);
-+		chunk_off = 0;
-+		while (write_len) {
-+			int this_write;
-+
-+			this_write = min(write_len, max_write);
-+			ret = send_write(xprt, rqstp,
-+					 ch->rs_handle,
-+					 rs_offset + chunk_off,
-+					 xdr_off,
-+					 this_write,
-+					 sge,
-+					 sge_count);
-+			if (ret) {
-+				dprintk("svcrdma: RDMA_WRITE failed, ret=%d\n",
-+					ret);
-+				return -EIO;
-+			}
-+			chunk_off += this_write;
-+			xdr_off += this_write;
-+			xfer_len -= this_write;
-+			write_len -= this_write;
-+		}
-+	}
-+	/* Update the req with the number of chunks actually used */
-+	svc_rdma_xdr_encode_reply_array(res_ary, chunk_no);
-+
-+	return rqstp->rq_res.len;
-+}
-+
-+/* This function prepares the portion of the RPCRDMA message to be
-+ * sent in the RDMA_SEND. This function is called after data sent via
-+ * RDMA has already been transmitted. There are three cases:
-+ * - The RPCRDMA header, RPC header, and payload are all sent in a
-+ *   single RDMA_SEND. This is the "inline" case.
-+ * - The RPCRDMA header and some portion of the RPC header and data
-+ *   are sent via this RDMA_SEND and another portion of the data is
-+ *   sent via RDMA.
-+ * - The RPCRDMA header [NOMSG] is sent in this RDMA_SEND and the RPC
-+ *   header and data are all transmitted via RDMA.
-+ * In all three cases, this function prepares the RPCRDMA header in
-+ * sge[0], the 'type' parameter indicates the type to place in the
-+ * RPCRDMA header, and the 'byte_count' field indicates how much of
-+ * the XDR to include in this RDMA_SEND.
-+ */
-+static int send_reply(struct svcxprt_rdma *rdma,
-+		      struct svc_rqst *rqstp,
-+		      struct page *page,
-+		      struct rpcrdma_msg *rdma_resp,
-+		      struct svc_rdma_op_ctxt *ctxt,
-+		      int sge_count,
-+		      int byte_count)
-+{
-+	struct ib_send_wr send_wr;
-+	int sge_no;
-+	int sge_bytes;
-+	int page_no;
-+	int ret;
-+
-+	/* Prepare the context */
-+	ctxt->pages[0] = page;
-+	ctxt->count = 1;
-+
-+	/* Prepare the SGE for the RPCRDMA Header */
-+	ctxt->sge[0].addr =
-+		ib_dma_map_page(rdma->sc_cm_id->device,
-+				page, 0, PAGE_SIZE, DMA_TO_DEVICE);
-+	ctxt->direction = DMA_TO_DEVICE;
-+	ctxt->sge[0].length = svc_rdma_xdr_get_reply_hdr_len(rdma_resp);
-+	ctxt->sge[0].lkey = rdma->sc_phys_mr->lkey;
-+
-+	/* Determine how many of our SGE are to be transmitted */
-+	for (sge_no = 1; byte_count && sge_no < sge_count; sge_no++) {
-+		sge_bytes = min((size_t)ctxt->sge[sge_no].length,
-+				(size_t)byte_count);
-+		byte_count -= sge_bytes;
-+	}
-+	BUG_ON(byte_count != 0);
-+
-+	/* Save all respages in the ctxt and remove them from the
-+	 * respages array. They are our pages until the I/O
-+	 * completes.
-+	 */
-+	for (page_no = 0; page_no < rqstp->rq_resused; page_no++) {
-+		ctxt->pages[page_no+1] = rqstp->rq_respages[page_no];
-+		ctxt->count++;
-+		rqstp->rq_respages[page_no] = NULL;
-+	}
-+
-+	BUG_ON(sge_no > rdma->sc_max_sge);
-+	memset(&send_wr, 0, sizeof send_wr);
-+	ctxt->wr_op = IB_WR_SEND;
-+	send_wr.wr_id = (unsigned long)ctxt;
-+	send_wr.sg_list = ctxt->sge;
-+	send_wr.num_sge = sge_no;
-+	send_wr.opcode = IB_WR_SEND;
-+	send_wr.send_flags =  IB_SEND_SIGNALED;
-+
-+	ret = svc_rdma_send(rdma, &send_wr);
-+	if (ret)
-+		svc_rdma_put_context(ctxt, 1);
-+
-+	return ret;
-+}
-+
-+void svc_rdma_prep_reply_hdr(struct svc_rqst *rqstp)
-+{
++	/* put back the old socket callbacks */
++	sk->sk_state_change = svsk->sk_ostate;
++	sk->sk_data_ready = svsk->sk_odata;
++	sk->sk_write_space = svsk->sk_owspace;
 +}
 +
 +/*
-+ * Return the start of an xdr buffer.
++ * Free the svc_sock's socket resources and the svc_sock itself.
 + */
-+static void *xdr_start(struct xdr_buf *xdr)
++static void svc_sock_free(struct svc_xprt *xprt)
 +{
-+	return xdr->head[0].iov_base -
-+		(xdr->len -
-+		 xdr->page_len -
-+		 xdr->tail[0].iov_len -
-+		 xdr->head[0].iov_len);
-+}
++	struct svc_sock *svsk = container_of(xprt, struct svc_sock, sk_xprt);
++	dprintk("svc: svc_sock_free(%p)\n", svsk);
 +
-+int svc_rdma_sendto(struct svc_rqst *rqstp)
-+{
-+	struct svc_xprt *xprt = rqstp->rq_xprt;
-+	struct svcxprt_rdma *rdma =
-+		container_of(xprt, struct svcxprt_rdma, sc_xprt);
-+	struct rpcrdma_msg *rdma_argp;
-+	struct rpcrdma_msg *rdma_resp;
-+	struct rpcrdma_write_array *reply_ary;
-+	enum rpcrdma_proc reply_type;
-+	int ret;
-+	int inline_bytes;
-+	struct ib_sge *sge;
-+	int sge_count = 0;
-+	struct page *res_page;
-+	struct svc_rdma_op_ctxt *ctxt;
-+
-+	dprintk("svcrdma: sending response for rqstp=%p\n", rqstp);
-+
-+	/* Get the RDMA request header. */
-+	rdma_argp = xdr_start(&rqstp->rq_arg);
-+
-+	/* Build an SGE for the XDR */
-+	ctxt = svc_rdma_get_context(rdma);
-+	ctxt->direction = DMA_TO_DEVICE;
-+	sge = xdr_to_sge(rdma, &rqstp->rq_res, ctxt->sge, &sge_count);
-+
-+	inline_bytes = rqstp->rq_res.len;
-+
-+	/* Create the RDMA response header */
-+	res_page = svc_rdma_get_page();
-+	rdma_resp = page_address(res_page);
-+	reply_ary = svc_rdma_get_reply_array(rdma_argp);
-+	if (reply_ary)
-+		reply_type = RDMA_NOMSG;
++	if (svsk->sk_info_authunix != NULL)
++		svcauth_unix_info_release(svsk->sk_info_authunix);
++	if (svsk->sk_sock->file)
++		sockfd_put(svsk->sk_sock);
 +	else
-+		reply_type = RDMA_MSG;
-+	svc_rdma_xdr_encode_reply_header(rdma, rdma_argp,
-+					 rdma_resp, reply_type);
-+
-+	/* Send any write-chunk data and build resp write-list */
-+	ret = send_write_chunks(rdma, rdma_argp, rdma_resp,
-+				rqstp, sge, sge_count);
-+	if (ret < 0) {
-+		printk(KERN_ERR "svcrdma: failed to send write chunks, rc=%d\n",
-+		       ret);
-+		goto error;
-+	}
-+	inline_bytes -= ret;
-+
-+	/* Send any reply-list data and update resp reply-list */
-+	ret = send_reply_chunks(rdma, rdma_argp, rdma_resp,
-+				rqstp, sge, sge_count);
-+	if (ret < 0) {
-+		printk(KERN_ERR "svcrdma: failed to send reply chunks, rc=%d\n",
-+		       ret);
-+		goto error;
-+	}
-+	inline_bytes -= ret;
-+
-+	ret = send_reply(rdma, rqstp, res_page, rdma_resp, ctxt, sge_count,
-+			 inline_bytes);
-+	dprintk("svcrdma: send_reply returns %d\n", ret);
-+	return ret;
-+ error:
-+	svc_rdma_put_context(ctxt, 0);
-+	put_page(res_page);
-+	return ret;
++		sock_release(svsk->sk_sock);
++	kfree(svsk);
 +}
++
++/*
+  * Remove a dead socket
+  */
+ static void
+@@ -1828,9 +1860,7 @@ svc_delete_socket(struct svc_sock *svsk)
+ 	serv = svsk->sk_server;
+ 	sk = svsk->sk_sk;
+ 
+-	sk->sk_state_change = svsk->sk_ostate;
+-	sk->sk_data_ready = svsk->sk_odata;
+-	sk->sk_write_space = svsk->sk_owspace;
++	svsk->sk_xprt.xpt_ops->xpo_detach(&svsk->sk_xprt);
+ 
+ 	spin_lock_bh(&serv->sv_lock);
+ 
 -- 
 1.5.4.rc2.60.gb2e62
 
