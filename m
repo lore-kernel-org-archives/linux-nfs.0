@@ -1,45 +1,246 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 000/112] What's in the NFS queue for linux-2.6.25
-Date: Fri, 25 Jan 2008 13:34:55 -0500
-Message-ID: <4A2005C9-DD9B-4F3E-AF89-B24EDBEB2EBF@oracle.com>
-References: <1201280354.24283.70.camel@heimdal.trondhjem.org> <20080125173537.GA22782@uio.no> <1201285561.24283.109.camel@heimdal.trondhjem.org>
-Mime-Version: 1.0 (Apple Message framework v753)
-Content-Type: text/plain; charset=US-ASCII; delsp=yes; format=flowed
-Cc: NFS list <linux-nfs@vger.kernel.org>
-To: "Steinar H. Gunderson" <sgunderson-jG/AHqQBv7lBDgjK7y7TUQ@public.gmane.org>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH 111/112] NFS: Add an asynchronous delegreturn operation
+	for use in nfs_clear_inode
+Date: Fri, 25 Jan 2008 17:12:42 -0500
+Message-ID: <1201299162.4150.12.camel@heimdal.trondhjem.org>
+References: <20080125163723.31887.68074.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
+	 <20080125163803.31887.55930.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
+	 <1201285218.24283.101.camel@heimdal.trondhjem.org>
+Mime-Version: 1.0
+Content-Type: text/plain
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:60547 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755366AbYAYSgi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Jan 2008 13:36:38 -0500
-In-Reply-To: <1201285561.24283.109.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from pat.uio.no ([129.240.10.15]:49934 "EHLO pat.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753152AbYAYWMw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Jan 2008 17:12:52 -0500
+Received: from mail-mx3.uio.no ([129.240.10.44])
+	by pat.uio.no with esmtp (Exim 4.67)
+	(envelope-from <trond.myklebust@fys.uio.no>)
+	id 1JIWn4-0005U8-LI
+	for linux-nfs@vger.kernel.org; Fri, 25 Jan 2008 23:12:50 +0100
+Received: from smtp.uio.no ([129.240.10.9] helo=mail-mx3.uio.no)
+	by mail-mx3.uio.no with esmtp (Exim 4.67)
+	(envelope-from <trond.myklebust@fys.uio.no>)
+	id 1JIWn3-00063v-UM
+	for linux-nfs@vger.kernel.org; Fri, 25 Jan 2008 23:12:50 +0100
+Received: from c-69-242-210-120.hsd1.mi.comcast.net ([69.242.210.120] helo=[192.168.0.101])
+	by mail-mx3.uio.no with esmtpsa (SSLv3:AES256-SHA:256)
+	(Exim 4.67)
+	(envelope-from <trond.myklebust@fys.uio.no>)
+	id 1JIWn3-00063d-7D
+	for linux-nfs@vger.kernel.org; Fri, 25 Jan 2008 23:12:49 +0100
+In-Reply-To: <1201285218.24283.101.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Jan 25, 2008, at 1:26 PM, Trond Myklebust wrote:
-> On Fri, 2008-01-25 at 18:35 +0100, Steinar H. Gunderson wrote:
->> On Fri, Jan 25, 2008 at 11:59:13AM -0500, Trond Myklebust wrote:
->>>       * More IPv6 cleanups from Chuck. NFSv4 support for IPv6  
->>> should now
->>>         almost be complete (IPv6 callback support is still not  
->>> ready).
->>
->> Does this mean we can start beta testing these features out in the
->> distributions now? Is nfs-utils (in particular nfsd/mountd) ready?
->
-> No. I'm talking about the kernel client support only. Server  
-> support is
-> a different matter...
->
-> I believe Chuck still has to make a change to the nfs-utils 'mount' in
-> order to make it capable of resolving IPv6 DNS lookups.
+
+On Fri, 2008-01-25 at 13:20 -0500, Trond Myklebust wrote:
+> On Fri, 2008-01-25 at 11:38 -0500, Trond Myklebust wrote:
+> > Otherwise, there is a potential deadlock if the last dput() from an NFSv4
+> > close() or other asynchronous operation leads to nfs_clear_inode calling
+> > the synchronous delegreturn.
+> 
+> Full marks to any of you who noticed that I got the 'issync' parameters
+> in all the calls to nfs_do_return_delegation() wrong.
+> 
+> Sigh,..
+
+...and here is the final version. With one more change: we have to
+remove the delegation return in nfs_dentry_iput, which also deadlocks
+rpciod.
+
+Thanks to Peter Staubach for his help in pointing out the problem and
+testing the fix!
+
+Cheers
+  Trond
+
+-------------------------------------------------------------------
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date: Thu, 24 Jan 2008 18:14:34 -0500
+NFS: Add an asynchronous delegreturn operation for use in nfs_clear_inode
+
+Otherwise, there is a potential deadlock if the last dput() from an NFSv4
+close() or other asynchronous operation leads to nfs_clear_inode calling
+the synchronous delegreturn.
+
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+
+ fs/nfs/delegation.c |   29 +++++++++++++++++++++++++----
+ fs/nfs/delegation.h |    3 ++-
+ fs/nfs/dir.c        |    1 -
+ fs/nfs/inode.c      |    2 +-
+ fs/nfs/nfs4proc.c   |   22 +++++++++++++---------
+ 5 files changed, 41 insertions(+), 16 deletions(-)
+
+diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+index b03dcd8..2dead8d 100644
+--- a/fs/nfs/delegation.c
++++ b/fs/nfs/delegation.c
+@@ -174,11 +174,11 @@ int nfs_inode_set_delegation(struct inode *inode, struct rpc_cred *cred, struct
+ 	return status;
+ }
+ 
+-static int nfs_do_return_delegation(struct inode *inode, struct nfs_delegation *delegation)
++static int nfs_do_return_delegation(struct inode *inode, struct nfs_delegation *delegation, int issync)
+ {
+ 	int res = 0;
+ 
+-	res = nfs4_proc_delegreturn(inode, delegation->cred, &delegation->stateid);
++	res = nfs4_proc_delegreturn(inode, delegation->cred, &delegation->stateid, issync);
+ 	nfs_free_delegation(delegation);
+ 	return res;
+ }
+@@ -208,7 +208,7 @@ static int __nfs_inode_return_delegation(struct inode *inode, struct nfs_delegat
+ 	up_read(&clp->cl_sem);
+ 	nfs_msync_inode(inode);
+ 
+-	return nfs_do_return_delegation(inode, delegation);
++	return nfs_do_return_delegation(inode, delegation, 1);
+ }
+ 
+ static struct nfs_delegation *nfs_detach_delegation_locked(struct nfs_inode *nfsi, const nfs4_stateid *stateid)
+@@ -228,6 +228,27 @@ nomatch:
+ 	return NULL;
+ }
+ 
++/*
++ * This function returns the delegation without reclaiming opens
++ * or protecting against delegation reclaims.
++ * It is therefore really only safe to be called from
++ * nfs4_clear_inode()
++ */
++void nfs_inode_return_delegation_noreclaim(struct inode *inode)
++{
++	struct nfs_client *clp = NFS_SERVER(inode)->nfs_client;
++	struct nfs_inode *nfsi = NFS_I(inode);
++	struct nfs_delegation *delegation;
++
++	if (rcu_dereference(nfsi->delegation) != NULL) {
++		spin_lock(&clp->cl_lock);
++		delegation = nfs_detach_delegation_locked(nfsi, NULL);
++		spin_unlock(&clp->cl_lock);
++		if (delegation != NULL)
++			nfs_do_return_delegation(inode, delegation, 0);
++	}
++}
++
+ int nfs_inode_return_delegation(struct inode *inode)
+ {
+ 	struct nfs_client *clp = NFS_SERVER(inode)->nfs_client;
+@@ -388,7 +409,7 @@ static int recall_thread(void *data)
+ 	nfs_msync_inode(inode);
+ 
+ 	if (delegation != NULL)
+-		nfs_do_return_delegation(inode, delegation);
++		nfs_do_return_delegation(inode, delegation, 1);
+ 	iput(inode);
+ 	module_put_and_exit(0);
+ }
+diff --git a/fs/nfs/delegation.h b/fs/nfs/delegation.h
+index 5874ce7..f1c5e2a 100644
+--- a/fs/nfs/delegation.h
++++ b/fs/nfs/delegation.h
+@@ -29,6 +29,7 @@ int nfs_inode_set_delegation(struct inode *inode, struct rpc_cred *cred, struct
+ void nfs_inode_reclaim_delegation(struct inode *inode, struct rpc_cred *cred, struct nfs_openres *res);
+ int nfs_inode_return_delegation(struct inode *inode);
+ int nfs_async_inode_return_delegation(struct inode *inode, const nfs4_stateid *stateid);
++void nfs_inode_return_delegation_noreclaim(struct inode *inode);
+ 
+ struct inode *nfs_delegation_find_inode(struct nfs_client *clp, const struct nfs_fh *fhandle);
+ void nfs_return_all_delegations(struct super_block *sb);
+@@ -39,7 +40,7 @@ void nfs_delegation_mark_reclaim(struct nfs_client *clp);
+ void nfs_delegation_reap_unclaimed(struct nfs_client *clp);
+ 
+ /* NFSv4 delegation-related procedures */
+-int nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, const nfs4_stateid *stateid);
++int nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, const nfs4_stateid *stateid, int issync);
+ int nfs4_open_delegation_recall(struct nfs_open_context *ctx, struct nfs4_state *state, const nfs4_stateid *stateid);
+ int nfs4_lock_delegation_recall(struct nfs4_state *state, struct file_lock *fl);
+ int nfs4_copy_delegation_stateid(nfs4_stateid *dst, struct inode *inode);
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index ab06b0b..e72d427 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -861,7 +861,6 @@ static int nfs_dentry_delete(struct dentry *dentry)
+  */
+ static void nfs_dentry_iput(struct dentry *dentry, struct inode *inode)
+ {
+-	nfs_inode_return_delegation(inode);
+ 	if (S_ISDIR(inode->i_mode))
+ 		/* drop any readdir cache as it could easily be old */
+ 		NFS_I(inode)->cache_validity |= NFS_INO_INVALID_DATA;
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 5d381cf..3f332e5 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -1145,7 +1145,7 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+ void nfs4_clear_inode(struct inode *inode)
+ {
+ 	/* If we are holding a delegation, return it! */
+-	nfs_inode_return_delegation(inode);
++	nfs_inode_return_delegation_noreclaim(inode);
+ 	/* First call standard NFS clear_inode() code */
+ 	nfs_clear_inode(inode);
+ }
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index ffe5584..90392a2 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2995,7 +2995,7 @@ static const struct rpc_call_ops nfs4_delegreturn_ops = {
+ 	.rpc_release = nfs4_delegreturn_release,
+ };
+ 
+-static int _nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, const nfs4_stateid *stateid)
++static int _nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, const nfs4_stateid *stateid, int issync)
+ {
+ 	struct nfs4_delegreturndata *data;
+ 	struct nfs_server *server = NFS_SERVER(inode);
+@@ -3009,7 +3009,7 @@ static int _nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, co
+ 		.callback_ops = &nfs4_delegreturn_ops,
+ 		.flags = RPC_TASK_ASYNC,
+ 	};
+-	int status;
++	int status = 0;
+ 
+ 	data = kmalloc(sizeof(*data), GFP_KERNEL);
+ 	if (data == NULL)
+@@ -3032,23 +3032,27 @@ static int _nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, co
+ 	task = rpc_run_task(&task_setup_data);
+ 	if (IS_ERR(task))
+ 		return PTR_ERR(task);
++	if (!issync)
++		goto out;
+ 	status = nfs4_wait_for_completion_rpc_task(task);
+-	if (status == 0) {
+-		status = data->rpc_status;
+-		if (status == 0)
+-			nfs_refresh_inode(inode, &data->fattr);
+-	}
++	if (status != 0)
++		goto out;
++	status = data->rpc_status;
++	if (status != 0)
++		goto out;
++	nfs_refresh_inode(inode, &data->fattr);
++out:
+ 	rpc_put_task(task);
+ 	return status;
+ }
+ 
+-int nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, const nfs4_stateid *stateid)
++int nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, const nfs4_stateid *stateid, int issync)
+ {
+ 	struct nfs_server *server = NFS_SERVER(inode);
+ 	struct nfs4_exception exception = { };
+ 	int err;
+ 	do {
+-		err = _nfs4_proc_delegreturn(inode, cred, stateid);
++		err = _nfs4_proc_delegreturn(inode, cred, stateid, issync);
+ 		switch (err) {
+ 			case -NFS4ERR_STALE_STATEID:
+ 			case -NFS4ERR_EXPIRED:
 
 
-There are some missing glibc/tirpc pieces required for the mount  
-command to support binding IPv6 sockets.  I'm still sorting things  
-out, but I expect to have something available for testing Linux NFSv4  
-mounting against IPv6-enabled servers (Solaris, at least) soon.
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
