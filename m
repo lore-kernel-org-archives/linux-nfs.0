@@ -1,7 +1,7 @@
 From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 036/100] lockd: fix reference count leaks in async locking case
-Date: Fri, 25 Jan 2008 18:16:16 -0500
-Message-ID: <1201303040-7779-36-git-send-email-bfields@citi.umich.edu>
+Subject: [PATCH 044/100] nfsd4: clean up access_valid, deny_valid checks.
+Date: Fri, 25 Jan 2008 18:16:24 -0500
+Message-ID: <1201303040-7779-44-git-send-email-bfields@citi.umich.edu>
 References: <20080125231521.GG25141@fieldses.org>
  <1201303040-7779-1-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-2-git-send-email-bfields@citi.umich.edu>
@@ -38,179 +38,64 @@ References: <20080125231521.GG25141@fieldses.org>
  <1201303040-7779-33-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-34-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-35-git-send-email-bfields@citi.umich.edu>
-Cc: Oleg Drokin <green-SOTZviwpzew/JUsKyNonYw@public.gmane.org>,
-	"J. Bruce Fields" <bfields@citi.umich.edu>
+ <1201303040-7779-36-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-37-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-38-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-39-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-40-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-41-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-42-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-43-git-send-email-bfields@citi.umich.edu>
+Cc: "J. Bruce Fields" <bfields@citi.umich.edu>,
+	Neil Brown <neilb@suse.de>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:47391 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:47404 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757893AbYAYXRi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Jan 2008 18:17:38 -0500
-In-Reply-To: <1201303040-7779-35-git-send-email-bfields@citi.umich.edu>
+	id S932069AbYAYXRl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Jan 2008 18:17:41 -0500
+In-Reply-To: <1201303040-7779-43-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Oleg Drokin <green-SOTZviwpzew/JUsKyNonYw@public.gmane.org>
-
-In a number of places where we wish only to translate nlm_drop_reply to
-rpc_drop_reply errors we instead return early with rpc_drop_reply,
-skipping some important end-of-function cleanup.
-
-This results in reference count leaks when lockd is doing posix locking
-on GFS2.
+Document these checks a little better and inline, as suggested by Neil
+Brown (note both functions have two callers).  Remove an obviously bogus
+check while we're there (checking whether unsigned value is negative).
 
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+Cc: Neil Brown <neilb@suse.de>
 ---
- fs/lockd/svc4proc.c |   20 ++++++++++++--------
- fs/lockd/svcproc.c  |   22 +++++++++++++---------
- 2 files changed, 25 insertions(+), 17 deletions(-)
+ fs/nfsd/nfs4state.c |   13 +++++++++----
+ 1 files changed, 9 insertions(+), 4 deletions(-)
 
-diff --git a/fs/lockd/svc4proc.c b/fs/lockd/svc4proc.c
-index bf27b6c..225304d 100644
---- a/fs/lockd/svc4proc.c
-+++ b/fs/lockd/svc4proc.c
-@@ -84,6 +84,7 @@ nlm4svc_proc_test(struct svc_rqst *rqstp, struct nlm_args *argp,
- {
- 	struct nlm_host	*host;
- 	struct nlm_file	*file;
-+	int rc = rpc_success;
- 
- 	dprintk("lockd: TEST4        called\n");
- 	resp->cookie = argp->cookie;
-@@ -91,7 +92,7 @@ nlm4svc_proc_test(struct svc_rqst *rqstp, struct nlm_args *argp,
- 	/* Don't accept test requests during grace period */
- 	if (nlmsvc_grace_period) {
- 		resp->status = nlm_lck_denied_grace_period;
--		return rpc_success;
-+		return rc;
- 	}
- 
- 	/* Obtain client and file */
-@@ -101,12 +102,13 @@ nlm4svc_proc_test(struct svc_rqst *rqstp, struct nlm_args *argp,
- 	/* Now check for conflicting locks */
- 	resp->status = nlmsvc_testlock(rqstp, file, &argp->lock, &resp->lock, &resp->cookie);
- 	if (resp->status == nlm_drop_reply)
--		return rpc_drop_reply;
-+		rc = rpc_drop_reply;
-+        else
-+                dprintk("lockd: TEST4        status %d\n", ntohl(resp->status));
- 
--	dprintk("lockd: TEST4          status %d\n", ntohl(resp->status));
- 	nlm_release_host(host);
- 	nlm_release_file(file);
--	return rpc_success;
-+	return rc;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 9320b7f..663bb35 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1157,14 +1157,19 @@ find_file(struct inode *ino)
+ 	return NULL;
  }
  
- static __be32
-@@ -115,6 +117,7 @@ nlm4svc_proc_lock(struct svc_rqst *rqstp, struct nlm_args *argp,
+-static int access_valid(u32 x)
++static inline int access_valid(u32 x)
  {
- 	struct nlm_host	*host;
- 	struct nlm_file	*file;
-+	int rc = rpc_success;
- 
- 	dprintk("lockd: LOCK          called\n");
- 
-@@ -123,7 +126,7 @@ nlm4svc_proc_lock(struct svc_rqst *rqstp, struct nlm_args *argp,
- 	/* Don't accept new lock requests during grace period */
- 	if (nlmsvc_grace_period && !argp->reclaim) {
- 		resp->status = nlm_lck_denied_grace_period;
--		return rpc_success;
-+		return rc;
- 	}
- 
- 	/* Obtain client and file */
-@@ -146,12 +149,13 @@ nlm4svc_proc_lock(struct svc_rqst *rqstp, struct nlm_args *argp,
- 	resp->status = nlmsvc_lock(rqstp, file, &argp->lock,
- 					argp->block, &argp->cookie);
- 	if (resp->status == nlm_drop_reply)
--		return rpc_drop_reply;
-+		rc = rpc_drop_reply;
-+        else
-+                dprintk("lockd: LOCK         status %d\n", ntohl(resp->status));
- 
--	dprintk("lockd: LOCK          status %d\n", ntohl(resp->status));
- 	nlm_release_host(host);
- 	nlm_release_file(file);
--	return rpc_success;
-+	return rc;
+-	return (x > 0 && x < 4);
++	if (x < NFS4_SHARE_ACCESS_READ)
++		return 0;
++	if (x > NFS4_SHARE_ACCESS_BOTH)
++		return 0;
++	return 1;
  }
  
- static __be32
-diff --git a/fs/lockd/svcproc.c b/fs/lockd/svcproc.c
-index 9cd5c8b..1a2b10c 100644
---- a/fs/lockd/svcproc.c
-+++ b/fs/lockd/svcproc.c
-@@ -113,6 +113,7 @@ nlmsvc_proc_test(struct svc_rqst *rqstp, struct nlm_args *argp,
+-static int deny_valid(u32 x)
++static inline int deny_valid(u32 x)
  {
- 	struct nlm_host	*host;
- 	struct nlm_file	*file;
-+	int rc = rpc_success;
- 
- 	dprintk("lockd: TEST          called\n");
- 	resp->cookie = argp->cookie;
-@@ -120,7 +121,7 @@ nlmsvc_proc_test(struct svc_rqst *rqstp, struct nlm_args *argp,
- 	/* Don't accept test requests during grace period */
- 	if (nlmsvc_grace_period) {
- 		resp->status = nlm_lck_denied_grace_period;
--		return rpc_success;
-+		return rc;
- 	}
- 
- 	/* Obtain client and file */
-@@ -130,13 +131,14 @@ nlmsvc_proc_test(struct svc_rqst *rqstp, struct nlm_args *argp,
- 	/* Now check for conflicting locks */
- 	resp->status = cast_status(nlmsvc_testlock(rqstp, file, &argp->lock, &resp->lock, &resp->cookie));
- 	if (resp->status == nlm_drop_reply)
--		return rpc_drop_reply;
-+		rc = rpc_drop_reply;
-+        else
-+                dprintk("lockd: TEST          status %d vers %d\n",
-+                        ntohl(resp->status), rqstp->rq_vers);
- 
--	dprintk("lockd: TEST          status %d vers %d\n",
--		ntohl(resp->status), rqstp->rq_vers);
- 	nlm_release_host(host);
- 	nlm_release_file(file);
--	return rpc_success;
-+	return rc;
+-	return (x >= 0 && x < 5);
++	/* Note: unlike access bits, deny bits may be zero. */
++	return x <= NFS4_SHARE_DENY_BOTH;
  }
  
- static __be32
-@@ -145,6 +147,7 @@ nlmsvc_proc_lock(struct svc_rqst *rqstp, struct nlm_args *argp,
- {
- 	struct nlm_host	*host;
- 	struct nlm_file	*file;
-+	int rc = rpc_success;
- 
- 	dprintk("lockd: LOCK          called\n");
- 
-@@ -153,7 +156,7 @@ nlmsvc_proc_lock(struct svc_rqst *rqstp, struct nlm_args *argp,
- 	/* Don't accept new lock requests during grace period */
- 	if (nlmsvc_grace_period && !argp->reclaim) {
- 		resp->status = nlm_lck_denied_grace_period;
--		return rpc_success;
-+		return rc;
- 	}
- 
- 	/* Obtain client and file */
-@@ -176,12 +179,13 @@ nlmsvc_proc_lock(struct svc_rqst *rqstp, struct nlm_args *argp,
- 	resp->status = cast_status(nlmsvc_lock(rqstp, file, &argp->lock,
- 					       argp->block, &argp->cookie));
- 	if (resp->status == nlm_drop_reply)
--		return rpc_drop_reply;
-+		rc = rpc_drop_reply;
-+        else
-+                dprintk("lockd: LOCK         status %d\n", ntohl(resp->status));
- 
--	dprintk("lockd: LOCK          status %d\n", ntohl(resp->status));
- 	nlm_release_host(host);
- 	nlm_release_file(file);
--	return rpc_success;
-+	return rc;
- }
- 
- static __be32
+ static void
 -- 
 1.5.4.rc2.60.gb2e62
 
