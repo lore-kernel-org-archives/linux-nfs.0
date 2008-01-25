@@ -1,7 +1,7 @@
 From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 084/100] svc: Add svc API that queries for a transport instance
-Date: Fri, 25 Jan 2008 18:17:04 -0500
-Message-ID: <1201303040-7779-84-git-send-email-bfields@citi.umich.edu>
+Subject: [PATCH 051/100] svc: Move sk_sendto and sk_recvfrom to svc_xprt_class
+Date: Fri, 25 Jan 2008 18:16:31 -0500
+Message-ID: <1201303040-7779-51-git-send-email-bfields@citi.umich.edu>
 References: <20080125231521.GG25141@fieldses.org>
  <1201303040-7779-1-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-2-git-send-email-bfields@citi.umich.edu>
@@ -53,61 +53,23 @@ References: <20080125231521.GG25141@fieldses.org>
  <1201303040-7779-48-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-49-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-50-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-51-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-52-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-53-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-54-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-55-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-56-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-57-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-58-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-59-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-60-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-61-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-62-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-63-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-64-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-65-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-66-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-67-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-68-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-69-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-70-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-71-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-72-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-73-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-74-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-75-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-76-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-77-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-78-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-79-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-80-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-81-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-82-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-83-git-send-email-bfields@citi.umich.edu>
 Cc: Tom Tucker <tom@opengridcomputing.com>,
 	"J. Bruce Fields" <bfields@citi.umich.edu>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:47538 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:47422 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1762180AbYAYXSX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Jan 2008 18:18:23 -0500
-In-Reply-To: <1201303040-7779-83-git-send-email-bfields@citi.umich.edu>
+	id S932082AbYAYXRo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Jan 2008 18:17:44 -0500
+In-Reply-To: <1201303040-7779-50-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Tom Tucker <tom@opengridcomputing.com>
 
-Add a new svc function that allows a service to query whether a
-transport instance has already been created. This is used in lockd
-to determine whether or not a transport needs to be created when
-a lockd instance is brought up.
-
-Specifying 0 for the address family or port is effectively a wild-card,
-and will result in matching the first transport in the service's list
-that has a matching class name.
+The sk_sendto and sk_recvfrom are function pointers that allow svc_sock
+to be used for both UDP and TCP. Move these function pointers to the
+svc_xprt_ops structure.
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 Acked-by: Neil Brown <neilb@suse.de>
@@ -115,103 +77,96 @@ Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
 Reviewed-by: Greg Banks <gnb@sgi.com>
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
- fs/lockd/svc.c                  |   16 ++--------------
- include/linux/sunrpc/svc_xprt.h |    1 +
- net/sunrpc/svc_xprt.c           |   35 +++++++++++++++++++++++++++++++++++
- 3 files changed, 38 insertions(+), 14 deletions(-)
+ include/linux/sunrpc/svc_xprt.h |    2 ++
+ include/linux/sunrpc/svcsock.h  |    3 ---
+ net/sunrpc/svcsock.c            |   12 ++++++------
+ 3 files changed, 8 insertions(+), 9 deletions(-)
 
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index a8e79a9..470af01 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -219,18 +219,6 @@ lockd(struct svc_rqst *rqstp)
- 	module_put_and_exit(0);
- }
- 
--static int find_xprt(struct svc_serv *serv, char *proto)
--{
--	struct svc_xprt *xprt;
--	int found = 0;
--	list_for_each_entry(xprt, &serv->sv_permsocks, xpt_list)
--		if (strcmp(xprt->xpt_class->xcl_name, proto) == 0) {
--			found = 1;
--			break;
--		}
--	return found;
--}
--
- /*
-  * Make any sockets that are needed but not present.
-  * If nlm_udpport or nlm_tcpport were set as module
-@@ -242,11 +230,11 @@ static int make_socks(struct svc_serv *serv, int proto)
- 	int err = 0;
- 
- 	if (proto == IPPROTO_UDP || nlm_udpport)
--		if (!find_xprt(serv, "udp"))
-+		if (!svc_find_xprt(serv, "udp", 0, 0))
- 			err = svc_create_xprt(serv, "udp", nlm_udpport,
- 					      SVC_SOCK_DEFAULTS);
- 	if (err >= 0 && (proto == IPPROTO_TCP || nlm_tcpport))
--		if (!find_xprt(serv, "tcp"))
-+		if (!svc_find_xprt(serv, "tcp", 0, 0))
- 			err = svc_create_xprt(serv, "tcp", nlm_tcpport,
- 					      SVC_SOCK_DEFAULTS);
- 
 diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index 01e71b7..68862d5 100644
+index 187dc4e..7ae6c85 100644
 --- a/include/linux/sunrpc/svc_xprt.h
 +++ b/include/linux/sunrpc/svc_xprt.h
-@@ -80,6 +80,7 @@ void	svc_close_xprt(struct svc_xprt *xprt);
- void	svc_delete_xprt(struct svc_xprt *xprt);
- int	svc_port_is_privileged(struct sockaddr *sin);
- int	svc_print_xprts(char *buf, int maxlen);
-+struct	svc_xprt *svc_find_xprt(struct svc_serv *, char *, int, int);
+@@ -10,6 +10,8 @@
+ #include <linux/sunrpc/svc.h>
  
- static inline void svc_xprt_get(struct svc_xprt *xprt)
- {
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 2e5b92a..512c10f 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -977,3 +977,38 @@ static struct svc_deferred_req *svc_deferred_dequeue(struct svc_xprt *xprt)
- 	spin_unlock(&xprt->xpt_lock);
- 	return dr;
+ struct svc_xprt_ops {
++	int		(*xpo_recvfrom)(struct svc_rqst *);
++	int		(*xpo_sendto)(struct svc_rqst *);
+ };
+ 
+ struct svc_xprt_class {
+diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
+index 1878cbe..08e78d0 100644
+--- a/include/linux/sunrpc/svcsock.h
++++ b/include/linux/sunrpc/svcsock.h
+@@ -45,9 +45,6 @@ struct svc_sock {
+ 						 * be revisted */
+ 	struct mutex		sk_mutex;	/* to serialize sending data */
+ 
+-	int			(*sk_recvfrom)(struct svc_rqst *rqstp);
+-	int			(*sk_sendto)(struct svc_rqst *rqstp);
+-
+ 	/* We keep the old state_change and data_ready CB's here */
+ 	void			(*sk_ostate)(struct sock *);
+ 	void			(*sk_odata)(struct sock *, int bytes);
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index c507f6f..7817c7e 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -901,6 +901,8 @@ svc_udp_sendto(struct svc_rqst *rqstp)
  }
-+
-+/*
-+ * Return the transport instance pointer for the endpoint accepting
-+ * connections/peer traffic from the specified transport class,
-+ * address family and port.
-+ *
-+ * Specifying 0 for the address family or port is effectively a
-+ * wild-card, and will result in matching the first transport in the
-+ * service's list that has a matching class name.
-+ */
-+struct svc_xprt *svc_find_xprt(struct svc_serv *serv, char *xcl_name,
-+			       int af, int port)
-+{
-+	struct svc_xprt *xprt;
-+	struct svc_xprt *found = NULL;
-+
-+	/* Sanity check the args */
-+	if (!serv || !xcl_name)
-+		return found;
-+
-+	spin_lock_bh(&serv->sv_lock);
-+	list_for_each_entry(xprt, &serv->sv_permsocks, xpt_list) {
-+		if (strcmp(xprt->xpt_class->xcl_name, xcl_name))
-+			continue;
-+		if (af != AF_UNSPEC && af != xprt->xpt_local.ss_family)
-+			continue;
-+		if (port && port != svc_xprt_local_port(xprt))
-+			continue;
-+		found = xprt;
-+		break;
-+	}
-+	spin_unlock_bh(&serv->sv_lock);
-+	return found;
-+}
-+EXPORT_SYMBOL_GPL(svc_find_xprt);
+ 
+ static struct svc_xprt_ops svc_udp_ops = {
++	.xpo_recvfrom = svc_udp_recvfrom,
++	.xpo_sendto = svc_udp_sendto,
+ };
+ 
+ static struct svc_xprt_class svc_udp_class = {
+@@ -918,8 +920,6 @@ svc_udp_init(struct svc_sock *svsk)
+ 	svc_xprt_init(&svc_udp_class, &svsk->sk_xprt);
+ 	svsk->sk_sk->sk_data_ready = svc_udp_data_ready;
+ 	svsk->sk_sk->sk_write_space = svc_write_space;
+-	svsk->sk_recvfrom = svc_udp_recvfrom;
+-	svsk->sk_sendto = svc_udp_sendto;
+ 
+ 	/* initialise setting must have enough space to
+ 	 * receive and respond to one request.
+@@ -1355,6 +1355,8 @@ svc_tcp_sendto(struct svc_rqst *rqstp)
+ }
+ 
+ static struct svc_xprt_ops svc_tcp_ops = {
++	.xpo_recvfrom = svc_tcp_recvfrom,
++	.xpo_sendto = svc_tcp_sendto,
+ };
+ 
+ static struct svc_xprt_class svc_tcp_class = {
+@@ -1382,8 +1384,6 @@ svc_tcp_init(struct svc_sock *svsk)
+ 	struct tcp_sock *tp = tcp_sk(sk);
+ 
+ 	svc_xprt_init(&svc_tcp_class, &svsk->sk_xprt);
+-	svsk->sk_recvfrom = svc_tcp_recvfrom;
+-	svsk->sk_sendto = svc_tcp_sendto;
+ 
+ 	if (sk->sk_state == TCP_LISTEN) {
+ 		dprintk("setting up TCP socket for listening\n");
+@@ -1531,7 +1531,7 @@ svc_recv(struct svc_rqst *rqstp, long timeout)
+ 
+ 	dprintk("svc: server %p, pool %u, socket %p, inuse=%d\n",
+ 		 rqstp, pool->sp_id, svsk, atomic_read(&svsk->sk_inuse));
+-	len = svsk->sk_recvfrom(rqstp);
++	len = svsk->sk_xprt.xpt_ops->xpo_recvfrom(rqstp);
+ 	dprintk("svc: got len=%d\n", len);
+ 
+ 	/* No data, incomplete (TCP) read, or accept() */
+@@ -1591,7 +1591,7 @@ svc_send(struct svc_rqst *rqstp)
+ 	if (test_bit(SK_DEAD, &svsk->sk_flags))
+ 		len = -ENOTCONN;
+ 	else
+-		len = svsk->sk_sendto(rqstp);
++		len = svsk->sk_xprt.xpt_ops->xpo_sendto(rqstp);
+ 	mutex_unlock(&svsk->sk_mutex);
+ 	svc_sock_release(rqstp);
+ 
 -- 
 1.5.4.rc2.60.gb2e62
 
