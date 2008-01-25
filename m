@@ -1,8 +1,7 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 038/112] NFS: Use unsigned intermediates for manipulating
-	header lengths (NFSv3 XDR)
-Date: Fri, 25 Jan 2008 11:37:34 -0500
-Message-ID: <20080125163734.31887.81053.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
+Subject: [PATCH 014/112] sunrpc: document the rpc_pipefs kernel api
+Date: Fri, 25 Jan 2008 11:37:27 -0500
+Message-ID: <20080125163726.31887.33234.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
 References: <20080125163723.31887.68074.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -10,133 +9,114 @@ To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:52364 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757080AbYAYRCF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Jan 2008 12:02:05 -0500
+	id S1757072AbYAYRCE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Jan 2008 12:02:04 -0500
 Received: from svlexrs01.hq.netapp.com (svlexrs01.corp.netapp.com [10.57.156.158])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id m0PH0WPd020490
-	for <linux-nfs@vger.kernel.org>; Fri, 25 Jan 2008 09:01:52 -0800 (PST)
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id m0PH1H9w020978
+	for <linux-nfs@vger.kernel.org>; Fri, 25 Jan 2008 09:01:51 -0800 (PST)
 In-Reply-To: <20080125163723.31887.68074.stgit-KPEdlmqt5P7XOazzY/2fV4TcuzvYVacciM950cveMlzk1uMJSBkQmQ@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Chuck Lever <chuck.lever@oracle.com>
+From: J. Bruce Fields <bfields@citi.umich.edu>
 
-Clean up: prevent length underflow and mixed sign comparisons when
-unmarshalling NFS version 3 read, readdir, and readlink replies.
+Add kerneldoc comments for the rpc_pipefs.c functions that are exported.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- fs/nfs/nfs3xdr.c |   27 +++++++++++++++------------
- 1 files changed, 15 insertions(+), 12 deletions(-)
+ net/sunrpc/rpc_pipe.c |   52 ++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 files changed, 51 insertions(+), 1 deletions(-)
 
-diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
-index 616d326..3917e2f 100644
---- a/fs/nfs/nfs3xdr.c
-+++ b/fs/nfs/nfs3xdr.c
-@@ -506,9 +506,9 @@ nfs3_xdr_readdirres(struct rpc_rqst *req, __be32 *p, struct nfs3_readdirres *res
- 	struct xdr_buf *rcvbuf = &req->rq_rcv_buf;
- 	struct kvec *iov = rcvbuf->head;
- 	struct page **page;
--	int hdrlen, recvd;
-+	size_t hdrlen;
-+	u32 len, recvd, pglen;
- 	int status, nr;
--	unsigned int len, pglen;
- 	__be32 *entry, *end, *kaddr;
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index c59f3ca..5364e2e 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -76,6 +76,16 @@ rpc_timeout_upcall_queue(struct work_struct *work)
+ 	rpc_purge_list(rpci, &free_list, destroy_msg, -ETIMEDOUT);
+ }
  
- 	status = ntohl(*p++);
-@@ -527,7 +527,7 @@ nfs3_xdr_readdirres(struct rpc_rqst *req, __be32 *p, struct nfs3_readdirres *res
- 	hdrlen = (u8 *) p - (u8 *) iov->iov_base;
- 	if (iov->iov_len < hdrlen) {
- 		dprintk("NFS: READDIR reply header overflowed:"
--				"length %d > %Zu\n", hdrlen, iov->iov_len);
-+				"length %Zu > %Zu\n", hdrlen, iov->iov_len);
- 		return -errno_NFSERR_IO;
- 	} else if (iov->iov_len != hdrlen) {
- 		dprintk("NFS: READDIR header is short. iovec will be shifted.\n");
-@@ -549,7 +549,7 @@ nfs3_xdr_readdirres(struct rpc_rqst *req, __be32 *p, struct nfs3_readdirres *res
- 		len = ntohl(*p++);		/* string length */
- 		p += XDR_QUADLEN(len) + 2;	/* name + cookie */
- 		if (len > NFS3_MAXNAMLEN) {
--			dprintk("NFS: giant filename in readdir (len %x)!\n",
-+			dprintk("NFS: giant filename in readdir (len 0x%x)!\n",
- 						len);
- 			goto err_unmap;
- 		}
-@@ -570,7 +570,7 @@ nfs3_xdr_readdirres(struct rpc_rqst *req, __be32 *p, struct nfs3_readdirres *res
- 				len = ntohl(*p++);
- 				if (len > NFS3_FHSIZE) {
- 					dprintk("NFS: giant filehandle in "
--						"readdir (len %x)!\n", len);
-+						"readdir (len 0x%x)!\n", len);
- 					goto err_unmap;
- 				}
- 				p += XDR_QUADLEN(len);
-@@ -815,7 +815,8 @@ nfs3_xdr_readlinkres(struct rpc_rqst *req, __be32 *p, struct nfs_fattr *fattr)
++/**
++ * rpc_queue_upcall
++ * @inode: inode of upcall pipe on which to queue given message
++ * @msg: message to queue
++ *
++ * Call with an @inode created by rpc_mkpipe() to queue an upcall.
++ * A userspace process may then later read the upcall by performing a
++ * read on an open file for this inode.  It is up to the caller to
++ * initialize the fields of @msg (other than @msg->list) appropriately.
++ */
+ int
+ rpc_queue_upcall(struct inode *inode, struct rpc_pipe_msg *msg)
  {
- 	struct xdr_buf *rcvbuf = &req->rq_rcv_buf;
- 	struct kvec *iov = rcvbuf->head;
--	int hdrlen, len, recvd;
-+	size_t hdrlen;
-+	u32 len, recvd;
- 	char	*kaddr;
- 	int	status;
+@@ -663,7 +673,16 @@ rpc_lookup_negative(char *path, struct nameidata *nd)
+ 	return dentry;
+ }
  
-@@ -827,7 +828,7 @@ nfs3_xdr_readlinkres(struct rpc_rqst *req, __be32 *p, struct nfs_fattr *fattr)
- 
- 	/* Convert length of symlink */
- 	len = ntohl(*p++);
--	if (len >= rcvbuf->page_len || len <= 0) {
-+	if (len >= rcvbuf->page_len) {
- 		dprintk("nfs: server returned giant symlink!\n");
- 		return -ENAMETOOLONG;
- 	}
-@@ -835,7 +836,7 @@ nfs3_xdr_readlinkres(struct rpc_rqst *req, __be32 *p, struct nfs_fattr *fattr)
- 	hdrlen = (u8 *) p - (u8 *) iov->iov_base;
- 	if (iov->iov_len < hdrlen) {
- 		dprintk("NFS: READLINK reply header overflowed:"
--				"length %d > %Zu\n", hdrlen, iov->iov_len);
-+				"length %Zu > %Zu\n", hdrlen, iov->iov_len);
- 		return -errno_NFSERR_IO;
- 	} else if (iov->iov_len != hdrlen) {
- 		dprintk("NFS: READLINK header is short. "
-@@ -863,7 +864,9 @@ static int
- nfs3_xdr_readres(struct rpc_rqst *req, __be32 *p, struct nfs_readres *res)
+-
++/**
++ * rpc_mkdir - Create a new directory in rpc_pipefs
++ * @path: path from the rpc_pipefs root to the new directory
++ * @rpc_clnt: rpc client to associate with this directory
++ *
++ * This creates a directory at the given @path associated with
++ * @rpc_clnt, which will contain a file named "info" with some basic
++ * information about the client, together with any "pipes" that may
++ * later be created using rpc_mkpipe().
++ */
+ struct dentry *
+ rpc_mkdir(char *path, struct rpc_clnt *rpc_client)
  {
- 	struct kvec *iov = req->rq_rcv_buf.head;
--	int	status, count, ocount, recvd, hdrlen;
-+	size_t hdrlen;
-+	u32 count, ocount, recvd;
-+	int status;
+@@ -699,6 +718,10 @@ err_dput:
+ 	goto out;
+ }
  
- 	status = ntohl(*p++);
- 	p = xdr_decode_post_op_attr(p, res->fattr);
-@@ -871,7 +874,7 @@ nfs3_xdr_readres(struct rpc_rqst *req, __be32 *p, struct nfs_readres *res)
- 	if (status != 0)
- 		return -nfs_stat_to_errno(status);
++/**
++ * rpc_rmdir - Remove a directory created with rpc_mkdir()
++ * @dentry: directory to remove
++ */
+ int
+ rpc_rmdir(struct dentry *dentry)
+ {
+@@ -717,6 +740,25 @@ rpc_rmdir(struct dentry *dentry)
+ 	return error;
+ }
  
--	/* Decode reply could and EOF flag. NFSv3 is somewhat redundant
-+	/* Decode reply count and EOF flag. NFSv3 is somewhat redundant
- 	 * in that it puts the count both in the res struct and in the
- 	 * opaque data count. */
- 	count    = ntohl(*p++);
-@@ -886,7 +889,7 @@ nfs3_xdr_readres(struct rpc_rqst *req, __be32 *p, struct nfs_readres *res)
- 	hdrlen = (u8 *) p - (u8 *) iov->iov_base;
- 	if (iov->iov_len < hdrlen) {
- 		dprintk("NFS: READ reply header overflowed:"
--				"length %d > %Zu\n", hdrlen, iov->iov_len);
-+				"length %Zu > %Zu\n", hdrlen, iov->iov_len);
-        		return -errno_NFSERR_IO;
- 	} else if (iov->iov_len != hdrlen) {
- 		dprintk("NFS: READ header is short. iovec will be shifted.\n");
-@@ -896,7 +899,7 @@ nfs3_xdr_readres(struct rpc_rqst *req, __be32 *p, struct nfs_readres *res)
- 	recvd = req->rq_rcv_buf.len - hdrlen;
- 	if (count > recvd) {
- 		dprintk("NFS: server cheating in read reply: "
--			"count %d > recvd %d\n", count, recvd);
-+			"count %u > recvd %u\n", count, recvd);
- 		count = recvd;
- 		res->eof = 0;
- 	}
++/**
++ * rpc_mkpipe - make an rpc_pipefs file for kernel<->userspace communication
++ * @parent: dentry of directory to create new "pipe" in
++ * @name: name of pipe
++ * @private: private data to associate with the pipe, for the caller's use
++ * @ops: operations defining the behavior of the pipe: upcall, downcall,
++ *	release_pipe, and destroy_msg.
++ *
++ * Data is made available for userspace to read by calls to
++ * rpc_queue_upcall().  The actual reads will result in calls to
++ * @ops->upcall, which will be called with the file pointer,
++ * message, and userspace buffer to copy to.
++ *
++ * Writes can come at any time, and do not necessarily have to be
++ * responses to upcalls.  They will result in calls to @msg->downcall.
++ *
++ * The @private argument passed here will be available to all these methods
++ * from the file pointer, via RPC_I(file->f_dentry->d_inode)->private.
++ */
+ struct dentry *
+ rpc_mkpipe(struct dentry *parent, const char *name, void *private, struct rpc_pipe_ops *ops, int flags)
+ {
+@@ -764,6 +806,14 @@ err_dput:
+ 	goto out;
+ }
+ 
++/**
++ * rpc_unlink - remove a pipe
++ * @dentry: dentry for the pipe, as returned from rpc_mkpipe
++ *
++ * After this call, lookups will no longer find the pipe, and any
++ * attempts to read or write using preexisting opens of the pipe will
++ * return -EPIPE.
++ */
+ int
+ rpc_unlink(struct dentry *dentry)
+ {
