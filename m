@@ -1,7 +1,7 @@
 From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 093/100] rdma: makefile
-Date: Fri, 25 Jan 2008 18:17:13 -0500
-Message-ID: <1201303040-7779-93-git-send-email-bfields@citi.umich.edu>
+Subject: [PATCH 100/100] nfsd: more careful input validation in nfsctl write methods
+Date: Fri, 25 Jan 2008 18:17:20 -0500
+Message-ID: <1201303040-7779-100-git-send-email-bfields@citi.umich.edu>
 References: <20080125231521.GG25141@fieldses.org>
  <1201303040-7779-1-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-2-git-send-email-bfields@citi.umich.edu>
@@ -95,42 +95,63 @@ References: <20080125231521.GG25141@fieldses.org>
  <1201303040-7779-90-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-91-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-92-git-send-email-bfields@citi.umich.edu>
-Cc: Tom Tucker <tom@opengridcomputing.com>,
-	"J. Bruce Fields" <bfields@citi.umich.edu>
+ <1201303040-7779-93-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-94-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-95-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-96-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-97-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-98-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-99-git-send-email-bfields@citi.umich.edu>
+Cc: "J. Bruce Fields" <bfields@citi.umich.edu>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:47577 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:47582 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757696AbYAYXSl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1758549AbYAYXSl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Fri, 25 Jan 2008 18:18:41 -0500
-In-Reply-To: <1201303040-7779-92-git-send-email-bfields@citi.umich.edu>
+In-Reply-To: <1201303040-7779-99-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Tom Tucker <tom@opengridcomputing.com>
+Neil Brown points out that we're checking buf[size-1] in a couple places
+without first checking whether size is zero.
 
-Add the svcrdma module to the xprtrdma makefile.
+Actually, given the implementation of simple_transaction_get(), buf[-1]
+is zero, so in both of these cases the subsequent check of the value of
+buf[size-1] will catch this case.
 
-Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
-Acked-by: Neil Brown <neilb@suse.de>
+But it seems fragile to depend on that, so add explicit checks for this
+case.
+
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+Acked-by: NeilBrown <neilb@suse.de>
 ---
- net/sunrpc/xprtrdma/Makefile |    5 +++++
- 1 files changed, 5 insertions(+), 0 deletions(-)
+ fs/nfsd/nfsctl.c |    5 ++++-
+ 1 files changed, 4 insertions(+), 1 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/Makefile b/net/sunrpc/xprtrdma/Makefile
-index 264f0fe..5a8f268 100644
---- a/net/sunrpc/xprtrdma/Makefile
-+++ b/net/sunrpc/xprtrdma/Makefile
-@@ -1,3 +1,8 @@
- obj-$(CONFIG_SUNRPC_XPRT_RDMA) += xprtrdma.o
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index 61015cf..9ed2a2b 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -304,6 +304,9 @@ static ssize_t write_filehandle(struct file *file, char *buf, size_t size)
+ 	struct auth_domain *dom;
+ 	struct knfsd_fh fh;
  
- xprtrdma-y := transport.o rpc_rdma.o verbs.o
++	if (size == 0)
++		return -EINVAL;
 +
-+obj-$(CONFIG_SUNRPC_XPRT_RDMA) += svcrdma.o
-+
-+svcrdma-y := svc_rdma.o svc_rdma_transport.o \
-+	svc_rdma_marshal.o svc_rdma_sendto.o svc_rdma_recvfrom.o
+ 	if (buf[size-1] != '\n')
+ 		return -EINVAL;
+ 	buf[size-1] = 0;
+@@ -663,7 +666,7 @@ static ssize_t write_recoverydir(struct file *file, char *buf, size_t size)
+ 	char *recdir;
+ 	int len, status;
+ 
+-	if (size > PATH_MAX || buf[size-1] != '\n')
++	if (size == 0 || size > PATH_MAX || buf[size-1] != '\n')
+ 		return -EINVAL;
+ 	buf[size-1] = 0;
+ 
 -- 
 1.5.4.rc2.60.gb2e62
 
