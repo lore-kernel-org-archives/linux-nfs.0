@@ -1,7 +1,7 @@
 From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 051/100] svc: Move sk_sendto and sk_recvfrom to svc_xprt_class
-Date: Fri, 25 Jan 2008 18:16:31 -0500
-Message-ID: <1201303040-7779-51-git-send-email-bfields@citi.umich.edu>
+Subject: [PATCH 094/100] SUNRPC: spin svc_rqst initialization to its own function
+Date: Fri, 25 Jan 2008 18:17:14 -0500
+Message-ID: <1201303040-7779-94-git-send-email-bfields@citi.umich.edu>
 References: <20080125231521.GG25141@fieldses.org>
  <1201303040-7779-1-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-2-git-send-email-bfields@citi.umich.edu>
@@ -53,119 +53,175 @@ References: <20080125231521.GG25141@fieldses.org>
  <1201303040-7779-48-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-49-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-50-git-send-email-bfields@citi.umich.edu>
-Cc: Tom Tucker <tom@opengridcomputing.com>,
+ <1201303040-7779-51-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-52-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-53-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-54-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-55-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-56-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-57-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-58-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-59-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-60-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-61-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-62-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-63-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-64-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-65-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-66-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-67-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-68-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-69-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-70-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-71-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-72-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-73-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-74-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-75-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-76-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-77-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-78-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-79-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-80-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-81-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-82-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-83-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-84-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-85-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-86-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-87-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-88-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-89-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-90-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-91-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-92-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-93-git-send-email-bfields@citi.umich.edu>
+Cc: Jeff Layton <jlayton@redhat.com>,
 	"J. Bruce Fields" <bfields@citi.umich.edu>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:47422 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:47567 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932082AbYAYXRo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Jan 2008 18:17:44 -0500
-In-Reply-To: <1201303040-7779-50-git-send-email-bfields@citi.umich.edu>
+	id S1762062AbYAYXSh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Jan 2008 18:18:37 -0500
+In-Reply-To: <1201303040-7779-93-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Tom Tucker <tom@opengridcomputing.com>
+From: Jeff Layton <jlayton@redhat.com>
 
-The sk_sendto and sk_recvfrom are function pointers that allow svc_sock
-to be used for both UDP and TCP. Move these function pointers to the
-svc_xprt_ops structure.
+Move the initialzation in __svc_create_thread that happens prior to
+thread creation to a new function. Export the function to allow
+services to have better control over the svc_rqst structs.
 
-Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
-Acked-by: Neil Brown <neilb@suse.de>
-Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
-Reviewed-by: Greg Banks <gnb@sgi.com>
+Also rearrange the rqstp initialization to prevent NULL pointer
+dereferences in svc_exit_thread in case allocations fail.
+
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Reviewed-by: NeilBrown <neilb@suse.de>
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
- include/linux/sunrpc/svc_xprt.h |    2 ++
- include/linux/sunrpc/svcsock.h  |    3 ---
- net/sunrpc/svcsock.c            |   12 ++++++------
- 3 files changed, 8 insertions(+), 9 deletions(-)
+ include/linux/sunrpc/svc.h |    2 +
+ net/sunrpc/svc.c           |   59 +++++++++++++++++++++++++++++++------------
+ 2 files changed, 44 insertions(+), 17 deletions(-)
 
-diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index 187dc4e..7ae6c85 100644
---- a/include/linux/sunrpc/svc_xprt.h
-+++ b/include/linux/sunrpc/svc_xprt.h
-@@ -10,6 +10,8 @@
- #include <linux/sunrpc/svc.h>
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 742ab46..64c7710 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -384,6 +384,8 @@ struct svc_procedure {
+  */
+ struct svc_serv *  svc_create(struct svc_program *, unsigned int,
+ 			      void (*shutdown)(struct svc_serv*));
++struct svc_rqst *svc_prepare_thread(struct svc_serv *serv,
++					struct svc_pool *pool);
+ int		   svc_create_thread(svc_thread_fn, struct svc_serv *);
+ void		   svc_exit_thread(struct svc_rqst *);
+ struct svc_serv *  svc_create_pooled(struct svc_program *, unsigned int,
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index be18734..fec82f8 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -530,31 +530,17 @@ svc_release_buffer(struct svc_rqst *rqstp)
+ 			put_page(rqstp->rq_pages[i]);
+ }
  
- struct svc_xprt_ops {
-+	int		(*xpo_recvfrom)(struct svc_rqst *);
-+	int		(*xpo_sendto)(struct svc_rqst *);
- };
+-/*
+- * Create a thread in the given pool.  Caller must hold BKL.
+- * On a NUMA or SMP machine, with a multi-pool serv, the thread
+- * will be restricted to run on the cpus belonging to the pool.
+- */
+-static int
+-__svc_create_thread(svc_thread_fn func, struct svc_serv *serv,
+-		    struct svc_pool *pool)
++struct svc_rqst *
++svc_prepare_thread(struct svc_serv *serv, struct svc_pool *pool)
+ {
+ 	struct svc_rqst	*rqstp;
+-	int		error = -ENOMEM;
+-	int		have_oldmask = 0;
+-	cpumask_t	oldmask;
  
- struct svc_xprt_class {
-diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
-index 1878cbe..08e78d0 100644
---- a/include/linux/sunrpc/svcsock.h
-+++ b/include/linux/sunrpc/svcsock.h
-@@ -45,9 +45,6 @@ struct svc_sock {
- 						 * be revisted */
- 	struct mutex		sk_mutex;	/* to serialize sending data */
+ 	rqstp = kzalloc(sizeof(*rqstp), GFP_KERNEL);
+ 	if (!rqstp)
+-		goto out;
++		goto out_enomem;
  
--	int			(*sk_recvfrom)(struct svc_rqst *rqstp);
--	int			(*sk_sendto)(struct svc_rqst *rqstp);
+ 	init_waitqueue_head(&rqstp->rq_wait);
+ 
+-	if (!(rqstp->rq_argp = kmalloc(serv->sv_xdrsize, GFP_KERNEL))
+-	 || !(rqstp->rq_resp = kmalloc(serv->sv_xdrsize, GFP_KERNEL))
+-	 || !svc_init_buffer(rqstp, serv->sv_max_mesg))
+-		goto out_thread;
 -
- 	/* We keep the old state_change and data_ready CB's here */
- 	void			(*sk_ostate)(struct sock *);
- 	void			(*sk_odata)(struct sock *, int bytes);
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index c507f6f..7817c7e 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -901,6 +901,8 @@ svc_udp_sendto(struct svc_rqst *rqstp)
- }
+ 	serv->sv_nrthreads++;
+ 	spin_lock_bh(&pool->sp_lock);
+ 	pool->sp_nrthreads++;
+@@ -563,6 +549,45 @@ __svc_create_thread(svc_thread_fn func, struct svc_serv *serv,
+ 	rqstp->rq_server = serv;
+ 	rqstp->rq_pool = pool;
  
- static struct svc_xprt_ops svc_udp_ops = {
-+	.xpo_recvfrom = svc_udp_recvfrom,
-+	.xpo_sendto = svc_udp_sendto,
- };
- 
- static struct svc_xprt_class svc_udp_class = {
-@@ -918,8 +920,6 @@ svc_udp_init(struct svc_sock *svsk)
- 	svc_xprt_init(&svc_udp_class, &svsk->sk_xprt);
- 	svsk->sk_sk->sk_data_ready = svc_udp_data_ready;
- 	svsk->sk_sk->sk_write_space = svc_write_space;
--	svsk->sk_recvfrom = svc_udp_recvfrom;
--	svsk->sk_sendto = svc_udp_sendto;
- 
- 	/* initialise setting must have enough space to
- 	 * receive and respond to one request.
-@@ -1355,6 +1355,8 @@ svc_tcp_sendto(struct svc_rqst *rqstp)
- }
- 
- static struct svc_xprt_ops svc_tcp_ops = {
-+	.xpo_recvfrom = svc_tcp_recvfrom,
-+	.xpo_sendto = svc_tcp_sendto,
- };
- 
- static struct svc_xprt_class svc_tcp_class = {
-@@ -1382,8 +1384,6 @@ svc_tcp_init(struct svc_sock *svsk)
- 	struct tcp_sock *tp = tcp_sk(sk);
- 
- 	svc_xprt_init(&svc_tcp_class, &svsk->sk_xprt);
--	svsk->sk_recvfrom = svc_tcp_recvfrom;
--	svsk->sk_sendto = svc_tcp_sendto;
- 
- 	if (sk->sk_state == TCP_LISTEN) {
- 		dprintk("setting up TCP socket for listening\n");
-@@ -1531,7 +1531,7 @@ svc_recv(struct svc_rqst *rqstp, long timeout)
- 
- 	dprintk("svc: server %p, pool %u, socket %p, inuse=%d\n",
- 		 rqstp, pool->sp_id, svsk, atomic_read(&svsk->sk_inuse));
--	len = svsk->sk_recvfrom(rqstp);
-+	len = svsk->sk_xprt.xpt_ops->xpo_recvfrom(rqstp);
- 	dprintk("svc: got len=%d\n", len);
- 
- 	/* No data, incomplete (TCP) read, or accept() */
-@@ -1591,7 +1591,7 @@ svc_send(struct svc_rqst *rqstp)
- 	if (test_bit(SK_DEAD, &svsk->sk_flags))
- 		len = -ENOTCONN;
- 	else
--		len = svsk->sk_sendto(rqstp);
-+		len = svsk->sk_xprt.xpt_ops->xpo_sendto(rqstp);
- 	mutex_unlock(&svsk->sk_mutex);
- 	svc_sock_release(rqstp);
++	rqstp->rq_argp = kmalloc(serv->sv_xdrsize, GFP_KERNEL);
++	if (!rqstp->rq_argp)
++		goto out_thread;
++
++	rqstp->rq_resp = kmalloc(serv->sv_xdrsize, GFP_KERNEL);
++	if (!rqstp->rq_resp)
++		goto out_thread;
++
++	if (!svc_init_buffer(rqstp, serv->sv_max_mesg))
++		goto out_thread;
++
++	return rqstp;
++out_thread:
++	svc_exit_thread(rqstp);
++out_enomem:
++	return ERR_PTR(-ENOMEM);
++}
++EXPORT_SYMBOL(svc_prepare_thread);
++
++/*
++ * Create a thread in the given pool.  Caller must hold BKL.
++ * On a NUMA or SMP machine, with a multi-pool serv, the thread
++ * will be restricted to run on the cpus belonging to the pool.
++ */
++static int
++__svc_create_thread(svc_thread_fn func, struct svc_serv *serv,
++		    struct svc_pool *pool)
++{
++	struct svc_rqst	*rqstp;
++	int		error = -ENOMEM;
++	int		have_oldmask = 0;
++	cpumask_t	oldmask;
++
++	rqstp = svc_prepare_thread(serv, pool);
++	if (IS_ERR(rqstp)) {
++		error = PTR_ERR(rqstp);
++		goto out;
++	}
++
+ 	if (serv->sv_nrpools > 1)
+ 		have_oldmask = svc_pool_map_set_cpumask(pool->sp_id, &oldmask);
  
 -- 
 1.5.4.rc2.60.gb2e62
