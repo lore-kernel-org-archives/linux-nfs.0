@@ -1,7 +1,7 @@
 From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 025/100] nfsd: minor fs/nfsd/auth.h cleanup
-Date: Fri, 25 Jan 2008 18:16:05 -0500
-Message-ID: <1201303040-7779-25-git-send-email-bfields@citi.umich.edu>
+Subject: [PATCH 009/100] NFSD: File name length signage in nfsd request argument structures
+Date: Fri, 25 Jan 2008 18:15:49 -0500
+Message-ID: <1201303040-7779-9-git-send-email-bfields@citi.umich.edu>
 References: <20080125231521.GG25141@fieldses.org>
  <1201303040-7779-1-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-2-git-send-email-bfields@citi.umich.edu>
@@ -11,68 +11,142 @@ References: <20080125231521.GG25141@fieldses.org>
  <1201303040-7779-6-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-7-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-8-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-9-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-10-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-11-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-12-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-13-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-14-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-15-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-16-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-17-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-18-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-19-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-20-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-21-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-22-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-23-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-24-git-send-email-bfields@citi.umich.edu>
-Cc: "J. Bruce Fields" <bfields@citi.umich.edu>
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+	"J. Bruce Fields" <bfields@citi.umich.edu>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:47355 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:47318 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1762096AbYAYXR3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Jan 2008 18:17:29 -0500
-In-Reply-To: <1201303040-7779-24-git-send-email-bfields@citi.umich.edu>
+	id S1762032AbYAYXRZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Jan 2008 18:17:25 -0500
+In-Reply-To: <1201303040-7779-8-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-While we're here, let's remove the redundant (and now wrong) pathname in
-the comment, and the #ifdef __KERNEL__'s.
+From: Chuck Lever <chuck.lever@oracle.com>
 
-Acked-by: NeilBrown <neilb@suse.de>
+Clean up: For consistency, store the length of file name strings in nfsd
+argument structures as unsigned integers.  This matches the XDR routines
+and client argument structures for the same operation types.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Acked-By: NeilBrown <neilb@suse.de>
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
- fs/nfsd/auth.h |    5 -----
- 1 files changed, 0 insertions(+), 5 deletions(-)
+ include/linux/nfsd/xdr.h  |   12 ++++++------
+ include/linux/nfsd/xdr3.h |   14 +++++++-------
+ 2 files changed, 13 insertions(+), 13 deletions(-)
 
-diff --git a/fs/nfsd/auth.h b/fs/nfsd/auth.h
-index 0fb9f72..78b3c0e 100644
---- a/fs/nfsd/auth.h
-+++ b/fs/nfsd/auth.h
-@@ -1,6 +1,4 @@
- /*
-- * include/linux/nfsd/auth.h
-- *
-  * nfsd-specific authentication stuff.
-  * uid/gid mapping not yet implemented.
-  *
-@@ -10,8 +8,6 @@
- #ifndef LINUX_NFSD_AUTH_H
- #define LINUX_NFSD_AUTH_H
+diff --git a/include/linux/nfsd/xdr.h b/include/linux/nfsd/xdr.h
+index 67885d5..49ddf79 100644
+--- a/include/linux/nfsd/xdr.h
++++ b/include/linux/nfsd/xdr.h
+@@ -23,7 +23,7 @@ struct nfsd_sattrargs {
+ struct nfsd_diropargs {
+ 	struct svc_fh		fh;
+ 	char *			name;
+-	int			len;
++	unsigned int		len;
+ };
  
--#ifdef __KERNEL__
--
- #define nfsd_luid(rq, uid)	((u32)(uid))
- #define nfsd_lgid(rq, gid)	((u32)(gid))
- #define nfsd_ruid(rq, uid)	((u32)(uid))
-@@ -23,5 +19,4 @@
-  */
- int nfsd_setuser(struct svc_rqst *, struct svc_export *);
+ struct nfsd_readargs {
+@@ -43,17 +43,17 @@ struct nfsd_writeargs {
+ struct nfsd_createargs {
+ 	struct svc_fh		fh;
+ 	char *			name;
+-	int			len;
++	unsigned int		len;
+ 	struct iattr		attrs;
+ };
  
--#endif /* __KERNEL__ */
- #endif /* LINUX_NFSD_AUTH_H */
+ struct nfsd_renameargs {
+ 	struct svc_fh		ffh;
+ 	char *			fname;
+-	int			flen;
++	unsigned int		flen;
+ 	struct svc_fh		tfh;
+ 	char *			tname;
+-	int			tlen;
++	unsigned int		tlen;
+ };
+ 
+ struct nfsd_readlinkargs {
+@@ -65,13 +65,13 @@ struct nfsd_linkargs {
+ 	struct svc_fh		ffh;
+ 	struct svc_fh		tfh;
+ 	char *			tname;
+-	int			tlen;
++	unsigned int		tlen;
+ };
+ 
+ struct nfsd_symlinkargs {
+ 	struct svc_fh		ffh;
+ 	char *			fname;
+-	int			flen;
++	unsigned int		flen;
+ 	char *			tname;
+ 	int			tlen;
+ 	struct iattr		attrs;
+diff --git a/include/linux/nfsd/xdr3.h b/include/linux/nfsd/xdr3.h
+index 89d9d60..6fdb958 100644
+--- a/include/linux/nfsd/xdr3.h
++++ b/include/linux/nfsd/xdr3.h
+@@ -21,7 +21,7 @@ struct nfsd3_sattrargs {
+ struct nfsd3_diropargs {
+ 	struct svc_fh		fh;
+ 	char *			name;
+-	int			len;
++	unsigned int		len;
+ };
+ 
+ struct nfsd3_accessargs {
+@@ -48,7 +48,7 @@ struct nfsd3_writeargs {
+ struct nfsd3_createargs {
+ 	struct svc_fh		fh;
+ 	char *			name;
+-	int			len;
++	unsigned int		len;
+ 	int			createmode;
+ 	struct iattr		attrs;
+ 	__be32 *		verf;
+@@ -57,7 +57,7 @@ struct nfsd3_createargs {
+ struct nfsd3_mknodargs {
+ 	struct svc_fh		fh;
+ 	char *			name;
+-	int			len;
++	unsigned int		len;
+ 	__u32			ftype;
+ 	__u32			major, minor;
+ 	struct iattr		attrs;
+@@ -66,10 +66,10 @@ struct nfsd3_mknodargs {
+ struct nfsd3_renameargs {
+ 	struct svc_fh		ffh;
+ 	char *			fname;
+-	int			flen;
++	unsigned int		flen;
+ 	struct svc_fh		tfh;
+ 	char *			tname;
+-	int			tlen;
++	unsigned int		tlen;
+ };
+ 
+ struct nfsd3_readlinkargs {
+@@ -81,13 +81,13 @@ struct nfsd3_linkargs {
+ 	struct svc_fh		ffh;
+ 	struct svc_fh		tfh;
+ 	char *			tname;
+-	int			tlen;
++	unsigned int		tlen;
+ };
+ 
+ struct nfsd3_symlinkargs {
+ 	struct svc_fh		ffh;
+ 	char *			fname;
+-	int			flen;
++	unsigned int		flen;
+ 	char *			tname;
+ 	int			tlen;
+ 	struct iattr		attrs;
 -- 
 1.5.4.rc2.60.gb2e62
 
