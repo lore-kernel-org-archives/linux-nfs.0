@@ -1,7 +1,7 @@
 From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 074/100] svc: Move the sockaddr information to svc_xprt
-Date: Fri, 25 Jan 2008 18:16:54 -0500
-Message-ID: <1201303040-7779-74-git-send-email-bfields@citi.umich.edu>
+Subject: [PATCH 057/100] svc: Add xpo_accept transport function
+Date: Fri, 25 Jan 2008 18:16:37 -0500
+Message-ID: <1201303040-7779-57-git-send-email-bfields@citi.umich.edu>
 References: <20080125231521.GG25141@fieldses.org>
  <1201303040-7779-1-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-2-git-send-email-bfields@citi.umich.edu>
@@ -59,69 +59,37 @@ References: <20080125231521.GG25141@fieldses.org>
  <1201303040-7779-54-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-55-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-56-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-57-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-58-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-59-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-60-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-61-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-62-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-63-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-64-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-65-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-66-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-67-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-68-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-69-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-70-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-71-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-72-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-73-git-send-email-bfields@citi.umich.edu>
 Cc: Tom Tucker <tom@opengridcomputing.com>,
 	"J. Bruce Fields" <bfields@citi.umich.edu>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:47514 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:47442 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1762132AbYAYXSN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Jan 2008 18:18:13 -0500
-In-Reply-To: <1201303040-7779-73-git-send-email-bfields@citi.umich.edu>
+	id S1762020AbYAYXRt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Jan 2008 18:17:49 -0500
+In-Reply-To: <1201303040-7779-56-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Tom Tucker <tom@opengridcomputing.com>
 
-This patch moves the transport sockaddr to the svc_xprt
-structure.  Convenience functions are added to set and
-get the local and remote addresses of a transport from
-the transport provider as well as determine the length
-of a sockaddr.
+Previously, the accept logic looked into the socket state to determine
+whether to call accept or recv when data-ready was indicated on an endpoint.
+Since some transports don't use sockets, this logic now uses a flag
+bit (SK_LISTENER) to identify listening endpoints. A transport function
+(xpo_accept) allows each transport to define its own accept processing.
+A transport's initialization logic is reponsible for setting the
+SK_LISTENER bit. I didn't see any way to do this in transport independent
+logic since the passive side of a UDP connection doesn't listen and
+always recv's.
 
-A transport is responsible for setting the xpt_local
-and xpt_remote addresses in the svc_xprt structure as
-part of transport creation and xpo_accept processing. This
-cannot be done in a generic way and in fact varies
-between TCP, UDP and RDMA. A set of xpo_ functions
-(e.g. getlocalname, getremotename) could have been
-added but this would have resulted in additional
-caching and copying of the addresses around.  Note that
-the xpt_local address should also be set on listening
-endpoints; for TCP/RDMA this is done as part of
-endpoint creation.
+In the svc_recv function, if the SK_LISTENER bit is set, the transport
+xpo_accept function is called to handle accept processing.
 
-For connected transports like TCP and RDMA, the addresses
-never change and can be set once and copied into the
-rqstp structure for each request. For UDP, however, the
-local and remote addresses may change for each request. In
-this case, the address information is obtained from the
-UDP recvmsg info and copied into the rqstp structure from
-there.
-
-A svc_xprt_local_port function was also added that returns
-the local port given a transport. This is used by
-svc_create_xprt when returning the port associated with
-a newly created transport, and later when creating a
-generic find transport service to check if a service is
-already listening on a given port.
+Note that all functions are defined even if they don't make sense
+for a given transport. For example, accept doesn't mean anything for
+UDP. The function is defined anyway and bug checks if called. The
+UDP transport should never set the SK_LISTENER bit.
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 Acked-by: Neil Brown <neilb@suse.de>
@@ -129,286 +97,144 @@ Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
 Reviewed-by: Greg Banks <gnb@sgi.com>
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
- include/linux/sunrpc/svc_xprt.h |   51 +++++++++++++++++++++++++++++++++++
- include/linux/sunrpc/svcsock.h  |    4 ---
- net/sunrpc/svc_xprt.c           |   31 ++++++++++++++++++++-
- net/sunrpc/svcsock.c            |   56 +++++++++++++++++++++------------------
- 4 files changed, 110 insertions(+), 32 deletions(-)
+ include/linux/sunrpc/svc_xprt.h |    1 +
+ include/linux/sunrpc/svcsock.h  |    1 +
+ net/sunrpc/svcsock.c            |   31 +++++++++++++++++++------------
+ 3 files changed, 21 insertions(+), 12 deletions(-)
 
 diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index 6a8445b..09de12b 100644
+index 85df97a..31a44f4 100644
 --- a/include/linux/sunrpc/svc_xprt.h
 +++ b/include/linux/sunrpc/svc_xprt.h
-@@ -61,6 +61,10 @@ struct svc_xprt {
- 	void			*xpt_auth_cache;/* auth cache */
- 	struct list_head	xpt_deferred;	/* deferred requests that need
- 						 * to be revisted */
-+	struct sockaddr_storage	xpt_local;	/* local address */
-+	size_t			xpt_locallen;	/* length of address */
-+	struct sockaddr_storage	xpt_remote;	/* remote peer's address */
-+	size_t			xpt_remotelen;	/* length of address */
- };
+@@ -10,6 +10,7 @@
+ #include <linux/sunrpc/svc.h>
  
- int	svc_reg_xprt_class(struct svc_xprt_class *);
-@@ -70,9 +74,56 @@ void	svc_xprt_init(struct svc_xprt_class *, struct svc_xprt *,
- int	svc_create_xprt(struct svc_serv *, char *, unsigned short, int);
- void	svc_xprt_received(struct svc_xprt *);
- void	svc_xprt_put(struct svc_xprt *xprt);
-+void	svc_xprt_copy_addrs(struct svc_rqst *rqstp, struct svc_xprt *xprt);
- static inline void svc_xprt_get(struct svc_xprt *xprt)
- {
- 	kref_get(&xprt->xpt_ref);
- }
-+static inline void svc_xprt_set_local(struct svc_xprt *xprt,
-+				      struct sockaddr *sa, int salen)
-+{
-+	memcpy(&xprt->xpt_local, sa, salen);
-+	xprt->xpt_locallen = salen;
-+}
-+static inline void svc_xprt_set_remote(struct svc_xprt *xprt,
-+				       struct sockaddr *sa, int salen)
-+{
-+	memcpy(&xprt->xpt_remote, sa, salen);
-+	xprt->xpt_remotelen = salen;
-+}
-+static inline unsigned short svc_addr_port(struct sockaddr *sa)
-+{
-+	unsigned short ret = 0;
-+	switch (sa->sa_family) {
-+	case AF_INET:
-+		ret = ntohs(((struct sockaddr_in *)sa)->sin_port);
-+		break;
-+	case AF_INET6:
-+		ret = ntohs(((struct sockaddr_in6 *)sa)->sin6_port);
-+		break;
-+	}
-+	return ret;
-+}
-+
-+static inline size_t svc_addr_len(struct sockaddr *sa)
-+{
-+	switch (sa->sa_family) {
-+	case AF_INET:
-+		return sizeof(struct sockaddr_in);
-+	case AF_INET6:
-+		return sizeof(struct sockaddr_in6);
-+	}
-+	return -EAFNOSUPPORT;
-+}
-+
-+static inline unsigned short svc_xprt_local_port(struct svc_xprt *xprt)
-+{
-+	return svc_addr_port((struct sockaddr *)&xprt->xpt_local);
-+}
-+
-+static inline unsigned short svc_xprt_remote_port(struct svc_xprt *xprt)
-+{
-+	return svc_addr_port((struct sockaddr *)&xprt->xpt_remote);
-+}
- 
- #endif /* SUNRPC_SVC_XPRT_H */
+ struct svc_xprt_ops {
++	struct svc_xprt	*(*xpo_accept)(struct svc_xprt *);
+ 	int		(*xpo_has_wspace)(struct svc_xprt *);
+ 	int		(*xpo_recvfrom)(struct svc_rqst *);
+ 	void		(*xpo_prep_reply_hdr)(struct svc_rqst *);
 diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
-index 96a229e..206f092 100644
+index 08e78d0..9882ce0 100644
 --- a/include/linux/sunrpc/svcsock.h
 +++ b/include/linux/sunrpc/svcsock.h
-@@ -28,10 +28,6 @@ struct svc_sock {
- 	/* private TCP part */
- 	int			sk_reclen;	/* length of record */
- 	int			sk_tcplen;	/* current read length */
--
--	struct sockaddr_storage	sk_local;	/* local address */
--	struct sockaddr_storage	sk_remote;	/* remote peer's address */
--	int			sk_remotelen;	/* length of address */
- };
+@@ -36,6 +36,7 @@ struct svc_sock {
+ #define	SK_DEFERRED	8			/* request on sk_deferred */
+ #define	SK_OLD		9			/* used for temp socket aging mark+sweep */
+ #define	SK_DETACHED	10			/* detached from tempsocks list */
++#define SK_LISTENER	11			/* listening endpoint */
  
- /*
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 023aeb0..eb650af 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -125,7 +125,6 @@ int svc_create_xprt(struct svc_serv *serv, char *xprt_name, unsigned short port,
- 			spin_unlock(&svc_xprt_class_lock);
- 			if (try_module_get(xcl->xcl_owner)) {
- 				struct svc_xprt *newxprt;
--				ret = 0;
- 				newxprt = xcl->xcl_ops->xpo_create
- 					(serv,
- 					 (struct sockaddr *)&sin, sizeof(sin),
-@@ -133,7 +132,8 @@ int svc_create_xprt(struct svc_serv *serv, char *xprt_name, unsigned short port,
- 				if (IS_ERR(newxprt)) {
- 					module_put(xcl->xcl_owner);
- 					ret = PTR_ERR(newxprt);
--				}
-+				} else
-+					ret = svc_xprt_local_port(newxprt);
- 			}
- 			goto out;
- 		}
-@@ -144,3 +144,30 @@ int svc_create_xprt(struct svc_serv *serv, char *xprt_name, unsigned short port,
- 	return ret;
- }
- EXPORT_SYMBOL_GPL(svc_create_xprt);
-+
-+/*
-+ * Copy the local and remote xprt addresses to the rqstp structure
-+ */
-+void svc_xprt_copy_addrs(struct svc_rqst *rqstp, struct svc_xprt *xprt)
-+{
-+	struct sockaddr *sin;
-+
-+	memcpy(&rqstp->rq_addr, &xprt->xpt_remote, xprt->xpt_remotelen);
-+	rqstp->rq_addrlen = xprt->xpt_remotelen;
-+
-+	/*
-+	 * Destination address in request is needed for binding the
-+	 * source address in RPC replies/callbacks later.
-+	 */
-+	sin = (struct sockaddr *)&xprt->xpt_local;
-+	switch (sin->sa_family) {
-+	case AF_INET:
-+		rqstp->rq_daddr.addr = ((struct sockaddr_in *)sin)->sin_addr;
-+		break;
-+	case AF_INET6:
-+		rqstp->rq_daddr.addr6 = ((struct sockaddr_in6 *)sin)->sin6_addr;
-+		break;
-+	}
-+}
-+EXPORT_SYMBOL_GPL(svc_xprt_copy_addrs);
-+
+ 	atomic_t    	    	sk_reserved;	/* space on outq that is reserved */
+ 
 diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 4d51098..298c95e 100644
+index 603db98..41d1f81 100644
 --- a/net/sunrpc/svcsock.c
 +++ b/net/sunrpc/svcsock.c
-@@ -623,33 +623,13 @@ svc_recvfrom(struct svc_rqst *rqstp, struct kvec *iov, int nr, int buflen)
- 	struct msghdr msg = {
- 		.msg_flags	= MSG_DONTWAIT,
- 	};
--	struct sockaddr *sin;
- 	int len;
- 
- 	len = kernel_recvmsg(svsk->sk_sock, &msg, iov, nr, buflen,
- 				msg.msg_flags);
- 
--	/* sock_recvmsg doesn't fill in the name/namelen, so we must..
--	 */
--	memcpy(&rqstp->rq_addr, &svsk->sk_remote, svsk->sk_remotelen);
--	rqstp->rq_addrlen = svsk->sk_remotelen;
--
--	/* Destination address in request is needed for binding the
--	 * source address in RPC callbacks later.
--	 */
--	sin = (struct sockaddr *)&svsk->sk_local;
--	switch (sin->sa_family) {
--	case AF_INET:
--		rqstp->rq_daddr.addr = ((struct sockaddr_in *)sin)->sin_addr;
--		break;
--	case AF_INET6:
--		rqstp->rq_daddr.addr6 = ((struct sockaddr_in6 *)sin)->sin6_addr;
--		break;
--	}
--
- 	dprintk("svc: socket %p recvfrom(%p, %Zu) = %d\n",
- 		svsk, iov[0].iov_base, iov[0].iov_len, len);
--
- 	return len;
+@@ -896,6 +896,12 @@ static int svc_udp_has_wspace(struct svc_xprt *xprt)
+ 	return 1;
  }
  
-@@ -719,8 +699,15 @@ svc_write_space(struct sock *sk)
- 	}
- }
++static struct svc_xprt *svc_udp_accept(struct svc_xprt *xprt)
++{
++	BUG();
++	return NULL;
++}
++
+ static struct svc_xprt_ops svc_udp_ops = {
+ 	.xpo_recvfrom = svc_udp_recvfrom,
+ 	.xpo_sendto = svc_udp_sendto,
+@@ -904,6 +910,7 @@ static struct svc_xprt_ops svc_udp_ops = {
+ 	.xpo_free = svc_sock_free,
+ 	.xpo_prep_reply_hdr = svc_udp_prep_reply_hdr,
+ 	.xpo_has_wspace = svc_udp_has_wspace,
++	.xpo_accept = svc_udp_accept,
+ };
  
--static inline void svc_udp_get_dest_address(struct svc_rqst *rqstp,
--					    struct cmsghdr *cmh)
-+/*
-+ * Copy the UDP datagram's destination address to the rqstp structure.
-+ * The 'destination' address in this case is the address to which the
-+ * peer sent the datagram, i.e. our local address. For multihomed
-+ * hosts, this can change from msg to msg. Note that only the IP
-+ * address changes, the port number should remain the same.
-+ */
-+static void svc_udp_get_dest_address(struct svc_rqst *rqstp,
-+				     struct cmsghdr *cmh)
+ static struct svc_xprt_class svc_udp_class = {
+@@ -1028,9 +1035,9 @@ static inline int svc_port_is_privileged(struct sockaddr *sin)
+ /*
+  * Accept a TCP connection
+  */
+-static void
+-svc_tcp_accept(struct svc_sock *svsk)
++static struct svc_xprt *svc_tcp_accept(struct svc_xprt *xprt)
  {
- 	switch (rqstp->rq_sock->sk_sk->sk_family) {
- 	case AF_INET: {
-@@ -787,7 +774,10 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
- 		svc_xprt_received(&svsk->sk_xprt);
- 		return -EAGAIN;
- 	}
--	rqstp->rq_addrlen = sizeof(rqstp->rq_addr);
-+	len = svc_addr_len(svc_addr(rqstp));
-+	if (len < 0)
-+		return len;
-+	rqstp->rq_addrlen = len;
- 	if (skb->tstamp.tv64 == 0) {
- 		skb->tstamp = ktime_get_real();
- 		/* Don't enable netstamp, sunrpc doesn't
-@@ -1097,14 +1087,13 @@ static struct svc_xprt *svc_tcp_accept(struct svc_xprt *xprt)
- 	if (!(newsvsk = svc_setup_socket(serv, newsock, &err,
- 				 (SVC_SOCK_ANONYMOUS | SVC_SOCK_TEMPORARY))))
- 		goto failed;
--	memcpy(&newsvsk->sk_remote, sin, slen);
--	newsvsk->sk_remotelen = slen;
-+	svc_xprt_set_remote(&newsvsk->sk_xprt, sin, slen);
- 	err = kernel_getsockname(newsock, sin, &slen);
- 	if (unlikely(err < 0)) {
- 		dprintk("svc_tcp_accept: kernel_getsockname error %d\n", -err);
- 		slen = offsetof(struct sockaddr, sa_data);
- 	}
--	memcpy(&newsvsk->sk_local, sin, slen);
-+	svc_xprt_set_local(&newsvsk->sk_xprt, sin, slen);
++	struct svc_sock *svsk = container_of(xprt, struct svc_sock, sk_xprt);
+ 	struct sockaddr_storage addr;
+ 	struct sockaddr	*sin = (struct sockaddr *) &addr;
+ 	struct svc_serv	*serv = svsk->sk_server;
+@@ -1042,7 +1049,7 @@ svc_tcp_accept(struct svc_sock *svsk)
  
+ 	dprintk("svc: tcp_accept %p sock %p\n", svsk, sock);
+ 	if (!sock)
+-		return;
++		return NULL;
+ 
+ 	clear_bit(SK_CONN, &svsk->sk_flags);
+ 	err = kernel_accept(sock, &newsock, O_NONBLOCK);
+@@ -1053,7 +1060,7 @@ svc_tcp_accept(struct svc_sock *svsk)
+ 		else if (err != -EAGAIN && net_ratelimit())
+ 			printk(KERN_WARNING "%s: accept failed (err %d)!\n",
+ 				   serv->sv_name, -err);
+-		return;
++		return NULL;
+ 	}
+ 
+ 	set_bit(SK_CONN, &svsk->sk_flags);
+@@ -1147,11 +1154,11 @@ svc_tcp_accept(struct svc_sock *svsk)
  	if (serv->sv_stats)
  		serv->sv_stats->nettcpconn++;
-@@ -1245,6 +1234,7 @@ svc_tcp_recvfrom(struct svc_rqst *rqstp)
- 	svsk->sk_reclen = 0;
- 	svsk->sk_tcplen = 0;
  
-+	svc_xprt_copy_addrs(rqstp, &svsk->sk_xprt);
- 	svc_xprt_received(&svsk->sk_xprt);
- 	if (serv->sv_stats)
- 		serv->sv_stats->nettcpcnt++;
-@@ -1805,6 +1795,11 @@ int svc_addsock(struct svc_serv *serv,
- 	else {
- 		svsk = svc_setup_socket(serv, so, &err, SVC_SOCK_DEFAULTS);
- 		if (svsk) {
-+			struct sockaddr_storage addr;
-+			struct sockaddr *sin = (struct sockaddr *)&addr;
-+			int salen;
-+			if (kernel_getsockname(svsk->sk_sock, sin, &salen) == 0)
-+				svc_xprt_set_local(&svsk->sk_xprt, sin, salen);
- 			svc_xprt_received(&svsk->sk_xprt);
- 			err = 0;
- 		}
-@@ -1831,6 +1826,9 @@ static struct svc_xprt *svc_create_socket(struct svc_serv *serv,
- 	int		error;
- 	int		type;
- 	char		buf[RPC_MAX_ADDRBUFLEN];
-+	struct sockaddr_storage addr;
-+	struct sockaddr *newsin = (struct sockaddr *)&addr;
-+	int		newlen;
+-	return;
++	return &newsvsk->sk_xprt;
  
- 	dprintk("svc: svc_create_socket(%s, %d, %s)\n",
- 			serv->sv_program->pg_name, protocol,
-@@ -1855,12 +1853,18 @@ static struct svc_xprt *svc_create_socket(struct svc_serv *serv,
- 	if (error < 0)
- 		goto bummer;
+ failed:
+ 	sock_release(newsock);
+-	return;
++	return NULL;
+ }
  
-+	newlen = len;
-+	error = kernel_getsockname(sock, newsin, &newlen);
-+	if (error < 0)
-+		goto bummer;
-+
- 	if (protocol == IPPROTO_TCP) {
- 		if ((error = kernel_listen(sock, 64)) < 0)
- 			goto bummer;
+ /*
+@@ -1176,12 +1183,6 @@ svc_tcp_recvfrom(struct svc_rqst *rqstp)
+ 		return svc_deferred_recv(rqstp);
  	}
  
- 	if ((svsk = svc_setup_socket(serv, sock, &error, flags)) != NULL) {
-+		svc_xprt_set_local(&svsk->sk_xprt, newsin, newlen);
- 		svc_xprt_received(&svsk->sk_xprt);
- 		return (struct svc_xprt *)svsk;
- 	}
+-	if (svsk->sk_sk->sk_state == TCP_LISTEN) {
+-		svc_tcp_accept(svsk);
+-		svc_sock_received(svsk);
+-		return 0;
+-	}
+-
+ 	if (test_and_clear_bit(SK_CHNGBUF, &svsk->sk_flags))
+ 		/* sndbuf needs to have room for one request
+ 		 * per thread, otherwise we can stall even when the
+@@ -1393,6 +1394,7 @@ static struct svc_xprt_ops svc_tcp_ops = {
+ 	.xpo_free = svc_sock_free,
+ 	.xpo_prep_reply_hdr = svc_tcp_prep_reply_hdr,
+ 	.xpo_has_wspace = svc_tcp_has_wspace,
++	.xpo_accept = svc_tcp_accept,
+ };
+ 
+ static struct svc_xprt_class svc_tcp_class = {
+@@ -1423,6 +1425,7 @@ svc_tcp_init(struct svc_sock *svsk)
+ 
+ 	if (sk->sk_state == TCP_LISTEN) {
+ 		dprintk("setting up TCP socket for listening\n");
++		set_bit(SK_LISTENER, &svsk->sk_flags);
+ 		sk->sk_data_ready = svc_tcp_listen_data_ready;
+ 		set_bit(SK_CONN, &svsk->sk_flags);
+ 	} else {
+@@ -1569,6 +1572,10 @@ svc_recv(struct svc_rqst *rqstp, long timeout)
+ 	if (test_bit(SK_CLOSE, &svsk->sk_flags)) {
+ 		dprintk("svc_recv: found SK_CLOSE\n");
+ 		svc_delete_socket(svsk);
++	} else if (test_bit(SK_LISTENER, &svsk->sk_flags)) {
++		struct svc_xprt *newxpt;
++		newxpt = svsk->sk_xprt.xpt_ops->xpo_accept(&svsk->sk_xprt);
++		svc_sock_received(svsk);
+ 	} else {
+ 		dprintk("svc: server %p, pool %u, socket %p, inuse=%d\n",
+ 			rqstp, pool->sp_id, svsk, atomic_read(&svsk->sk_inuse));
 -- 
 1.5.4.rc2.60.gb2e62
 
