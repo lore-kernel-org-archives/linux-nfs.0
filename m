@@ -1,7 +1,7 @@
 From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 009/100] NFSD: File name length signage in nfsd request argument structures
-Date: Fri, 25 Jan 2008 18:15:49 -0500
-Message-ID: <1201303040-7779-9-git-send-email-bfields@citi.umich.edu>
+Subject: [PATCH 022/100] nfsd: move cache proc (un)registration to separate function
+Date: Fri, 25 Jan 2008 18:16:02 -0500
+Message-ID: <1201303040-7779-22-git-send-email-bfields@citi.umich.edu>
 References: <20080125231521.GG25141@fieldses.org>
  <1201303040-7779-1-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-2-git-send-email-bfields@citi.umich.edu>
@@ -11,142 +11,162 @@ References: <20080125231521.GG25141@fieldses.org>
  <1201303040-7779-6-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-7-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-8-git-send-email-bfields@citi.umich.edu>
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-	"J. Bruce Fields" <bfields@citi.umich.edu>
+ <1201303040-7779-9-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-10-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-11-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-12-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-13-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-14-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-15-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-16-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-17-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-18-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-19-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-20-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-21-git-send-email-bfields@citi.umich.edu>
+Cc: "J. Bruce Fields" <bfields@citi.umich.edu>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:47318 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:47351 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1762032AbYAYXRZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Jan 2008 18:17:25 -0500
-In-Reply-To: <1201303040-7779-8-git-send-email-bfields@citi.umich.edu>
+	id S1762133AbYAYXR2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Jan 2008 18:17:28 -0500
+In-Reply-To: <1201303040-7779-21-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Chuck Lever <chuck.lever@oracle.com>
+Just some minor cleanup.
 
-Clean up: For consistency, store the length of file name strings in nfsd
-argument structures as unsigned integers.  This matches the XDR routines
-and client argument structures for the same operation types.
+Also I don't see much point in trying to register further proc entries
+if initial entries fail; so just stop trying in that case.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Acked-By: NeilBrown <neilb@suse.de>
+Acked-by: NeilBrown <neilb@suse.de>
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
- include/linux/nfsd/xdr.h  |   12 ++++++------
- include/linux/nfsd/xdr3.h |   14 +++++++-------
- 2 files changed, 13 insertions(+), 13 deletions(-)
+ net/sunrpc/cache.c |   99 ++++++++++++++++++++++++++++-----------------------
+ 1 files changed, 54 insertions(+), 45 deletions(-)
 
-diff --git a/include/linux/nfsd/xdr.h b/include/linux/nfsd/xdr.h
-index 67885d5..49ddf79 100644
---- a/include/linux/nfsd/xdr.h
-+++ b/include/linux/nfsd/xdr.h
-@@ -23,7 +23,7 @@ struct nfsd_sattrargs {
- struct nfsd_diropargs {
- 	struct svc_fh		fh;
- 	char *			name;
--	int			len;
-+	unsigned int		len;
- };
+diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+index d05ea16..504b4e8 100644
+--- a/net/sunrpc/cache.c
++++ b/net/sunrpc/cache.c
+@@ -290,44 +290,63 @@ static const struct file_operations cache_flush_operations;
+ static void do_cache_clean(struct work_struct *work);
+ static DECLARE_DELAYED_WORK(cache_cleaner, do_cache_clean);
  
- struct nfsd_readargs {
-@@ -43,17 +43,17 @@ struct nfsd_writeargs {
- struct nfsd_createargs {
- 	struct svc_fh		fh;
- 	char *			name;
--	int			len;
-+	unsigned int		len;
- 	struct iattr		attrs;
- };
+-void cache_register(struct cache_detail *cd)
++void remove_cache_proc_entries(struct cache_detail *cd)
+ {
+-	cd->proc_ent = proc_mkdir(cd->name, proc_net_rpc);
+-	if (cd->proc_ent) {
+-		struct proc_dir_entry *p;
+-		cd->proc_ent->owner = cd->owner;
+-		cd->channel_ent = cd->content_ent = NULL;
++	if (cd->proc_ent == NULL)
++		return;
++	if (cd->flush_ent)
++		remove_proc_entry("flush", cd->proc_ent);
++	if (cd->channel_ent)
++		remove_proc_entry("channel", cd->proc_ent);
++	if (cd->content_ent)
++		remove_proc_entry("content", cd->proc_ent);
++	cd->proc_ent = NULL;
++	remove_proc_entry(cd->name, proc_net_rpc);
++}
  
- struct nfsd_renameargs {
- 	struct svc_fh		ffh;
- 	char *			fname;
--	int			flen;
-+	unsigned int		flen;
- 	struct svc_fh		tfh;
- 	char *			tname;
--	int			tlen;
-+	unsigned int		tlen;
- };
+-		p = create_proc_entry("flush", S_IFREG|S_IRUSR|S_IWUSR,
+-				      cd->proc_ent);
+-		cd->flush_ent =  p;
+-		if (p) {
+-			p->proc_fops = &cache_flush_operations;
+-			p->owner = cd->owner;
+-			p->data = cd;
+-		}
++void create_cache_proc_entries(struct cache_detail *cd)
++{
++	struct proc_dir_entry *p;
  
- struct nfsd_readlinkargs {
-@@ -65,13 +65,13 @@ struct nfsd_linkargs {
- 	struct svc_fh		ffh;
- 	struct svc_fh		tfh;
- 	char *			tname;
--	int			tlen;
-+	unsigned int		tlen;
- };
- 
- struct nfsd_symlinkargs {
- 	struct svc_fh		ffh;
- 	char *			fname;
--	int			flen;
-+	unsigned int		flen;
- 	char *			tname;
- 	int			tlen;
- 	struct iattr		attrs;
-diff --git a/include/linux/nfsd/xdr3.h b/include/linux/nfsd/xdr3.h
-index 89d9d60..6fdb958 100644
---- a/include/linux/nfsd/xdr3.h
-+++ b/include/linux/nfsd/xdr3.h
-@@ -21,7 +21,7 @@ struct nfsd3_sattrargs {
- struct nfsd3_diropargs {
- 	struct svc_fh		fh;
- 	char *			name;
--	int			len;
-+	unsigned int		len;
- };
- 
- struct nfsd3_accessargs {
-@@ -48,7 +48,7 @@ struct nfsd3_writeargs {
- struct nfsd3_createargs {
- 	struct svc_fh		fh;
- 	char *			name;
--	int			len;
-+	unsigned int		len;
- 	int			createmode;
- 	struct iattr		attrs;
- 	__be32 *		verf;
-@@ -57,7 +57,7 @@ struct nfsd3_createargs {
- struct nfsd3_mknodargs {
- 	struct svc_fh		fh;
- 	char *			name;
--	int			len;
-+	unsigned int		len;
- 	__u32			ftype;
- 	__u32			major, minor;
- 	struct iattr		attrs;
-@@ -66,10 +66,10 @@ struct nfsd3_mknodargs {
- struct nfsd3_renameargs {
- 	struct svc_fh		ffh;
- 	char *			fname;
--	int			flen;
-+	unsigned int		flen;
- 	struct svc_fh		tfh;
- 	char *			tname;
--	int			tlen;
-+	unsigned int		tlen;
- };
- 
- struct nfsd3_readlinkargs {
-@@ -81,13 +81,13 @@ struct nfsd3_linkargs {
- 	struct svc_fh		ffh;
- 	struct svc_fh		tfh;
- 	char *			tname;
--	int			tlen;
-+	unsigned int		tlen;
- };
- 
- struct nfsd3_symlinkargs {
- 	struct svc_fh		ffh;
- 	char *			fname;
--	int			flen;
-+	unsigned int		flen;
- 	char *			tname;
- 	int			tlen;
- 	struct iattr		attrs;
+-		if (cd->cache_request || cd->cache_parse) {
+-			p = create_proc_entry("channel", S_IFREG|S_IRUSR|S_IWUSR,
+-					      cd->proc_ent);
+-			cd->channel_ent = p;
+-			if (p) {
+-				p->proc_fops = &cache_file_operations;
+-				p->owner = cd->owner;
+-				p->data = cd;
+-			}
+-		}
+-		if (cd->cache_show) {
+-			p = create_proc_entry("content", S_IFREG|S_IRUSR|S_IWUSR,
+-					      cd->proc_ent);
+-			cd->content_ent = p;
+-			if (p) {
+-				p->proc_fops = &content_file_operations;
+-				p->owner = cd->owner;
+-				p->data = cd;
+-			}
+-		}
++	cd->proc_ent = proc_mkdir(cd->name, proc_net_rpc);
++	if (cd->proc_ent == NULL)
++		return;
++	cd->proc_ent->owner = cd->owner;
++	cd->channel_ent = cd->content_ent = NULL;
++
++	p = create_proc_entry("flush", S_IFREG|S_IRUSR|S_IWUSR, cd->proc_ent);
++	cd->flush_ent = p;
++	if (p == NULL)
++		return;
++	p->proc_fops = &cache_flush_operations;
++	p->owner = cd->owner;
++	p->data = cd;
++
++	if (cd->cache_request || cd->cache_parse) {
++		p = create_proc_entry("channel", S_IFREG|S_IRUSR|S_IWUSR,
++				      cd->proc_ent);
++		cd->channel_ent = p;
++		if (p == NULL)
++			return;
++		p->proc_fops = &cache_file_operations;
++		p->owner = cd->owner;
++		p->data = cd;
++	}
++	if (cd->cache_show) {
++		p = create_proc_entry("content", S_IFREG|S_IRUSR|S_IWUSR,
++				      cd->proc_ent);
++		cd->content_ent = p;
++		if (p == NULL)
++			return;
++		p->proc_fops = &content_file_operations;
++		p->owner = cd->owner;
++		p->data = cd;
+ 	}
++}
++
++void cache_register(struct cache_detail *cd)
++{
++	create_cache_proc_entries(cd);
+ 	rwlock_init(&cd->hash_lock);
+ 	INIT_LIST_HEAD(&cd->queue);
+ 	spin_lock(&cache_list_lock);
+@@ -358,17 +377,7 @@ void cache_unregister(struct cache_detail *cd)
+ 	list_del_init(&cd->others);
+ 	write_unlock(&cd->hash_lock);
+ 	spin_unlock(&cache_list_lock);
+-	if (cd->proc_ent) {
+-		if (cd->flush_ent)
+-			remove_proc_entry("flush", cd->proc_ent);
+-		if (cd->channel_ent)
+-			remove_proc_entry("channel", cd->proc_ent);
+-		if (cd->content_ent)
+-			remove_proc_entry("content", cd->proc_ent);
+-
+-		cd->proc_ent = NULL;
+-		remove_proc_entry(cd->name, proc_net_rpc);
+-	}
++	remove_cache_proc_entries(cd);
+ 	if (list_empty(&cache_list)) {
+ 		/* module must be being unloaded so its safe to kill the worker */
+ 		cancel_delayed_work_sync(&cache_cleaner);
 -- 
 1.5.4.rc2.60.gb2e62
 
