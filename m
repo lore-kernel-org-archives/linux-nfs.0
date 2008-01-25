@@ -1,7 +1,7 @@
 From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 043/100] sunrpc: gss: simplify rsi_parse logic
-Date: Fri, 25 Jan 2008 18:16:23 -0500
-Message-ID: <1201303040-7779-43-git-send-email-bfields@citi.umich.edu>
+Subject: [PATCH 030/100] nfsd4: remove unnecessary cl_verifier check from setclientid_confirm
+Date: Fri, 25 Jan 2008 18:16:10 -0500
+Message-ID: <1201303040-7779-30-git-send-email-bfields@citi.umich.edu>
 References: <20080125231521.GG25141@fieldses.org>
  <1201303040-7779-1-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-2-git-send-email-bfields@citi.umich.edu>
@@ -32,105 +32,49 @@ References: <20080125231521.GG25141@fieldses.org>
  <1201303040-7779-27-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-28-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-29-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-30-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-31-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-32-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-33-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-34-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-35-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-36-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-37-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-38-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-39-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-40-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-41-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-42-git-send-email-bfields@citi.umich.edu>
 Cc: "J. Bruce Fields" <bfields@citi.umich.edu>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:47399 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:47368 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761637AbYAYXRj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Jan 2008 18:17:39 -0500
-In-Reply-To: <1201303040-7779-42-git-send-email-bfields@citi.umich.edu>
+	id S1756214AbYAYXRb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Jan 2008 18:17:31 -0500
+In-Reply-To: <1201303040-7779-29-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Make an obvious simplification that removes a few lines and some
-unnecessary indentation; no change in behavior.
+Again, the only way conf and unconf can have the same clientid is if
+they were created in the "probable callback update" case of setclientid,
+in which case we already know that the cl_verifier fields must agree.
 
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
- net/sunrpc/auth_gss/svcauth_gss.c |   52 +++++++++++++++++--------------------
- 1 files changed, 24 insertions(+), 28 deletions(-)
+ fs/nfsd/nfs4state.c |    5 +----
+ 1 files changed, 1 insertions(+), 4 deletions(-)
 
-diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-index 688cc31..e8ed848 100644
---- a/net/sunrpc/auth_gss/svcauth_gss.c
-+++ b/net/sunrpc/auth_gss/svcauth_gss.c
-@@ -224,38 +224,34 @@ static int rsi_parse(struct cache_detail *cd,
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index d026c24..c6c270b 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -837,7 +837,6 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
+ 	 */
+ 	if ((conf && unconf) && 
+ 	    (same_verf(&unconf->cl_confirm, &confirm)) &&
+-	    (same_verf(&conf->cl_verifier, &unconf->cl_verifier)) &&
+ 	    (!same_verf(&conf->cl_confirm, &unconf->cl_confirm))) {
+ 		/*
+ 		 * RFC 3530 14.2.34 CASE 1:
+@@ -855,9 +854,7 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
+ 			status = nfs_ok;
  
- 	/* major/minor */
- 	len = qword_get(&mesg, buf, mlen);
--	if (len < 0)
-+	if (len <= 0)
- 		goto out;
--	if (len == 0) {
-+	rsii.major_status = simple_strtoul(buf, &ep, 10);
-+	if (*ep)
-+		goto out;
-+	len = qword_get(&mesg, buf, mlen);
-+	if (len <= 0)
-+		goto out;
-+	rsii.minor_status = simple_strtoul(buf, &ep, 10);
-+	if (*ep)
- 		goto out;
--	} else {
--		rsii.major_status = simple_strtoul(buf, &ep, 10);
--		if (*ep)
--			goto out;
--		len = qword_get(&mesg, buf, mlen);
--		if (len <= 0)
--			goto out;
--		rsii.minor_status = simple_strtoul(buf, &ep, 10);
--		if (*ep)
--			goto out;
- 
--		/* out_handle */
--		len = qword_get(&mesg, buf, mlen);
--		if (len < 0)
--			goto out;
--		status = -ENOMEM;
--		if (dup_to_netobj(&rsii.out_handle, buf, len))
--			goto out;
-+	/* out_handle */
-+	len = qword_get(&mesg, buf, mlen);
-+	if (len < 0)
-+		goto out;
-+	status = -ENOMEM;
-+	if (dup_to_netobj(&rsii.out_handle, buf, len))
-+		goto out;
- 
--		/* out_token */
--		len = qword_get(&mesg, buf, mlen);
--		status = -EINVAL;
--		if (len < 0)
--			goto out;
--		status = -ENOMEM;
--		if (dup_to_netobj(&rsii.out_token, buf, len))
--			goto out;
--	}
-+	/* out_token */
-+	len = qword_get(&mesg, buf, mlen);
-+	status = -EINVAL;
-+	if (len < 0)
-+		goto out;
-+	status = -ENOMEM;
-+	if (dup_to_netobj(&rsii.out_token, buf, len))
-+		goto out;
- 	rsii.h.expiry_time = expiry;
- 	rsip = rsi_update(&rsii, rsip);
- 	status = 0;
+ 		}
+-	} else if ((conf && !unconf) ||
+-	    ((conf && unconf) && 
+-	     !same_verf(&conf->cl_verifier, &unconf->cl_verifier)) {
++	} else if (conf && !unconf) {
+ 		/*
+ 		 * RFC 3530 14.2.34 CASE 2:
+ 		 * probable retransmitted request; play it safe and
 -- 
 1.5.4.rc2.60.gb2e62
 
