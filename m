@@ -1,67 +1,91 @@
 From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 001/100] nfsd4: probe callback channel only once
-Date: Fri, 25 Jan 2008 18:15:41 -0500
-Message-ID: <1201303040-7779-1-git-send-email-bfields@citi.umich.edu>
+Subject: [PATCH 006/100] SUNRPC: Use unsigned string lengths in xdr_decode_string_inplace
+Date: Fri, 25 Jan 2008 18:15:46 -0500
+Message-ID: <1201303040-7779-6-git-send-email-bfields@citi.umich.edu>
 References: <20080125231521.GG25141@fieldses.org>
-Cc: "J. Bruce Fields" <bfields@citi.umich.edu>
+ <1201303040-7779-1-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-2-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-3-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-4-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-5-git-send-email-bfields@citi.umich.edu>
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+	"J. Bruce Fields" <bfields@citi.umich.edu>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:47305 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:47312 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758613AbYAYXRV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Jan 2008 18:17:21 -0500
-In-Reply-To: <20080125231521.GG25141@fieldses.org>
+	id S1759612AbYAYXRX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Jan 2008 18:17:23 -0500
+In-Reply-To: <1201303040-7779-5-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Our callback code doesn't actually handle concurrent attempts to probe
-the callback channel.  Some rethinking of the locking may be required.
-However, we can also just move the callback probing to this case.  Since
-this is the only time a client is "confirmed" (and since that can only
-happen once in the lifetime of a client), this ensures we only probe
-once.
+From: Chuck Lever <chuck.lever@oracle.com>
 
+XDR strings, opaques, and net objects should all use unsigned lengths.
+To wit, RFC 4506 says:
+
+4.2.  Unsigned Integer
+
+   An XDR unsigned integer is a 32-bit datum that encodes a non-negative
+   integer in the range [0,4294967295].
+
+ ...
+
+4.11.  String
+
+   The standard defines a string of n (numbered 0 through n-1) ASCII
+   bytes to be the number n encoded as an unsigned integer (as described
+   above), and followed by the n bytes of the string.
+
+After this patch, xdr_decode_string_inplace now matches the other XDR
+string and array helpers that take a string length argument.  See:
+
+xdr_encode_opaque_fixed, xdr_encode_opaque, xdr_encode_array
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Acked-By: NeilBrown <neilb@suse.de>
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
- fs/nfsd/nfs4callback.c |    3 +--
- fs/nfsd/nfs4state.c    |    3 +--
- 2 files changed, 2 insertions(+), 4 deletions(-)
+ include/linux/sunrpc/xdr.h |    3 ++-
+ net/sunrpc/xdr.c           |    8 +++++---
+ 2 files changed, 7 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 9d536a8..a9735a6 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -395,8 +395,7 @@ nfsd4_probe_callback(struct nfs4_client *clp)
- 	};
- 	struct task_struct *t;
+diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
+index 0751c94..e4057d7 100644
+--- a/include/linux/sunrpc/xdr.h
++++ b/include/linux/sunrpc/xdr.h
+@@ -112,7 +112,8 @@ struct xdr_buf {
+ __be32 *xdr_encode_opaque_fixed(__be32 *p, const void *ptr, unsigned int len);
+ __be32 *xdr_encode_opaque(__be32 *p, const void *ptr, unsigned int len);
+ __be32 *xdr_encode_string(__be32 *p, const char *s);
+-__be32 *xdr_decode_string_inplace(__be32 *p, char **sp, int *lenp, int maxlen);
++__be32 *xdr_decode_string_inplace(__be32 *p, char **sp, unsigned int *lenp,
++			unsigned int maxlen);
+ __be32 *xdr_encode_netobj(__be32 *p, const struct xdr_netobj *);
+ __be32 *xdr_decode_netobj(__be32 *p, struct xdr_netobj *);
  
--	if (atomic_read(&cb->cb_set))
--		return;
-+	BUG_ON(atomic_read(&clp->cl_callback.cb_set));
- 
- 	/* Initialize address */
- 	memset(&addr, 0, sizeof(addr));
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 31673cd..9d81c71 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -948,6 +948,7 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
- 			}
- 			move_to_confirmed(unconf);
- 			conf = unconf;
-+			nfsd4_probe_callback(conf);
- 			status = nfs_ok;
- 		}
- 	} else if ((!conf || (conf && !same_verf(&conf->cl_confirm, &confirm)))
-@@ -965,8 +966,6 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
- 		status = nfserr_clid_inuse;
- 	}
- out:
--	if (!status)
--		nfsd4_probe_callback(conf);
- 	nfs4_unlock_state();
- 	return status;
+diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
+index fdc5e6d..31bd346 100644
+--- a/net/sunrpc/xdr.c
++++ b/net/sunrpc/xdr.c
+@@ -93,11 +93,13 @@ xdr_encode_string(__be32 *p, const char *string)
  }
+ 
+ __be32 *
+-xdr_decode_string_inplace(__be32 *p, char **sp, int *lenp, int maxlen)
++xdr_decode_string_inplace(__be32 *p, char **sp,
++			  unsigned int *lenp, unsigned int maxlen)
+ {
+-	unsigned int	len;
++	u32 len;
+ 
+-	if ((len = ntohl(*p++)) > maxlen)
++	len = ntohl(*p++);
++	if (len > maxlen)
+ 		return NULL;
+ 	*lenp = len;
+ 	*sp = (char *) p;
 -- 
 1.5.4.rc2.60.gb2e62
 
