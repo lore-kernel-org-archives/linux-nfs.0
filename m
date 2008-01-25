@@ -1,121 +1,102 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 050/112] NFS: Clean up the nfs_find_client function.
-Date: Fri, 25 Jan 2008 11:37:39 -0500
-Message-ID: <20080125163739.31887.79578.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
+Subject: [PATCH 073/112] NFS: Adjust nfs_clone_mount structure to store
+	"struct sockaddr *"
+Date: Fri, 25 Jan 2008 11:37:49 -0500
+Message-ID: <20080125163748.31887.7250.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
 References: <20080125163723.31887.68074.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:33369 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:14334 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753852AbYAYQ7m (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Jan 2008 11:59:42 -0500
-Received: from svlexrs02.hq.netapp.com (svlexrs02.corp.netapp.com [10.57.156.154])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id m0PGxcEs010113
-	for <linux-nfs@vger.kernel.org>; Fri, 25 Jan 2008 08:59:38 -0800 (PST)
+	id S1754930AbYAYQ7r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Jan 2008 11:59:47 -0500
+Received: from svlexrs01.hq.netapp.com (svlexrs01.corp.netapp.com [10.57.156.158])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id m0PGxk1m010174
+	for <linux-nfs@vger.kernel.org>; Fri, 25 Jan 2008 08:59:47 -0800 (PST)
 In-Reply-To: <20080125163723.31887.68074.stgit-KPEdlmqt5P7XOazzY/2fV4TcuzvYVacciM950cveMlzk1uMJSBkQmQ@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: Chuck Lever <chuck.lever@oracle.com>
+
+Change the addr field in the nfs_clone_mount structure to store a "struct
+sockaddr *" to support non-IPv4 addresses in the NFS client.
+
+Note this is mostly a cosmetic change, and does not actually allow
+referrals using IPv6 addresses.  The existing referral code assumes that
+the server returns a string that represents an IPv4 address.  This code
+needs to support hostnames and IPv6 addresses as well as IPv4 addresses,
+thus it will need to be reorganized completely (to handle DNS resolution
+in user space).
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Cc: Aurelien Charbon <aurelien.charbon-Z51IpKcfGtLk1uMJSBkQmQ@public.gmane.org>
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- fs/nfs/client.c |   52 ++++++++++++++++++++++++++++++----------------------
- 1 files changed, 30 insertions(+), 22 deletions(-)
+ fs/nfs/client.c        |    4 ++--
+ fs/nfs/internal.h      |    3 ++-
+ fs/nfs/nfs4namespace.c |   12 +++++++-----
+ 3 files changed, 11 insertions(+), 8 deletions(-)
 
 diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index d7f6d50..ff778ec 100644
+index 1138060..ba114fa 100644
 --- a/fs/nfs/client.c
 +++ b/fs/nfs/client.c
-@@ -208,52 +208,60 @@ void nfs_put_client(struct nfs_client *clp)
- }
+@@ -1094,8 +1094,8 @@ struct nfs_server *nfs4_create_referral_server(struct nfs_clone_mount *data,
+ 	/* Get a client representation.
+ 	 * Note: NFSv4 always uses TCP, */
+ 	error = nfs4_set_client(server, data->hostname,
+-				(struct sockaddr *)data->addr,
+-				sizeof(*data->addr),
++				data->addr,
++				data->addrlen,
+ 				parent_client->cl_ipaddr,
+ 				data->authflavor,
+ 				parent_server->client->cl_xprt->prot,
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index c8458b1..75dd4e2 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -21,7 +21,8 @@ struct nfs_clone_mount {
+ 	struct nfs_fattr *fattr;
+ 	char *hostname;
+ 	char *mnt_path;
+-	struct sockaddr_in *addr;
++	struct sockaddr *addr;
++	size_t addrlen;
+ 	rpc_authflavor_t authflavor;
+ };
  
- /*
-- * Find a client by address
-- * - caller must hold nfs_client_lock
-+ * Find a client by IP address and protocol version
-+ * - returns NULL if no such client
-  */
--static struct nfs_client *__nfs_find_client(const struct sockaddr_in *addr, int nfsversion, int match_port)
-+struct nfs_client *nfs_find_client(const struct sockaddr_in *addr, int nfsversion)
- {
- 	struct nfs_client *clp;
+diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
+index bd1b161..5f9ba41 100644
+--- a/fs/nfs/nfs4namespace.c
++++ b/fs/nfs/nfs4namespace.c
+@@ -172,7 +172,10 @@ static struct vfsmount *nfs_follow_referral(const struct vfsmount *mnt_parent,
  
-+	spin_lock(&nfs_client_lock);
- 	list_for_each_entry(clp, &nfs_client_list, cl_share_link) {
- 		/* Don't match clients that failed to initialise properly */
--		if (clp->cl_cons_state < 0)
-+		if (clp->cl_cons_state != NFS_CS_READY)
- 			continue;
+ 		s = 0;
+ 		while (s < location->nservers) {
+-			struct sockaddr_in addr = {};
++			struct sockaddr_in addr = {
++				.sin_family	= AF_INET,
++				.sin_port	= htons(NFS_PORT),
++			};
  
- 		/* Different NFS versions cannot share the same nfs_client */
- 		if (clp->cl_nfsversion != nfsversion)
- 			continue;
+ 			if (location->servers[s].len <= 0 ||
+ 			    valid_ipaddr4(location->servers[s].data) < 0) {
+@@ -181,10 +184,9 @@ static struct vfsmount *nfs_follow_referral(const struct vfsmount *mnt_parent,
+ 			}
  
-+		/* Match only the IP address, not the port number */
- 		if (clp->cl_addr.sin_addr.s_addr != addr->sin_addr.s_addr)
- 			continue;
+ 			mountdata.hostname = location->servers[s].data;
+-			addr.sin_addr.s_addr = in_aton(mountdata.hostname);
+-			addr.sin_family = AF_INET;
+-			addr.sin_port = htons(NFS_PORT);
+-			mountdata.addr = &addr;
++			addr.sin_addr.s_addr = in_aton(mountdata.hostname),
++			mountdata.addr = (struct sockaddr *)&addr;
++			mountdata.addrlen = sizeof(addr);
  
--		if (!match_port || clp->cl_addr.sin_port == addr->sin_port)
--			goto found;
-+		atomic_inc(&clp->cl_count);
-+		spin_unlock(&nfs_client_lock);
-+		return clp;
- 	}
--
-+	spin_unlock(&nfs_client_lock);
- 	return NULL;
--
--found:
--	atomic_inc(&clp->cl_count);
--	return clp;
- }
- 
- /*
-- * Find a client by IP address and protocol version
-- * - returns NULL if no such client
-+ * Find an nfs_client on the list that matches the initialisation data
-+ * that is supplied.
-  */
--struct nfs_client *nfs_find_client(const struct sockaddr_in *addr, int nfsversion)
-+static struct nfs_client *nfs_match_client(const struct nfs_client_initdata *data)
- {
- 	struct nfs_client *clp;
- 
--	spin_lock(&nfs_client_lock);
--	clp = __nfs_find_client(addr, nfsversion, 0);
--	spin_unlock(&nfs_client_lock);
--	if (clp != NULL && clp->cl_cons_state != NFS_CS_READY) {
--		nfs_put_client(clp);
--		clp = NULL;
-+	list_for_each_entry(clp, &nfs_client_list, cl_share_link) {
-+		/* Don't match clients that failed to initialise properly */
-+		if (clp->cl_cons_state < 0)
-+			continue;
-+
-+		/* Different NFS versions cannot share the same nfs_client */
-+		if (clp->cl_nfsversion != data->version)
-+			continue;
-+
-+		/* Match the full socket address */
-+		if (memcmp(&clp->cl_addr, data->addr, sizeof(clp->cl_addr)) != 0)
-+			continue;
-+
-+		atomic_inc(&clp->cl_count);
-+		return clp;
- 	}
--	return clp;
-+	return NULL;
- }
- 
- /*
-@@ -273,7 +281,7 @@ static struct nfs_client *nfs_get_client(const struct nfs_client_initdata *cl_in
- 	do {
- 		spin_lock(&nfs_client_lock);
- 
--		clp = __nfs_find_client(cl_init->addr, cl_init->version, 1);
-+		clp = nfs_match_client(cl_init);
- 		if (clp)
- 			goto found_client;
- 		if (new)
+ 			snprintf(page, PAGE_SIZE, "%s:%s",
+ 					mountdata.hostname,
