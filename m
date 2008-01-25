@@ -1,7 +1,7 @@
 From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 066/100] svc: Move sk_reserved to svc_xprt
-Date: Fri, 25 Jan 2008 18:16:46 -0500
-Message-ID: <1201303040-7779-66-git-send-email-bfields@citi.umich.edu>
+Subject: [PATCH 068/100] svc: Make svc_send transport neutral
+Date: Fri, 25 Jan 2008 18:16:48 -0500
+Message-ID: <1201303040-7779-68-git-send-email-bfields@citi.umich.edu>
 References: <20080125231521.GG25141@fieldses.org>
  <1201303040-7779-1-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-2-git-send-email-bfields@citi.umich.edu>
@@ -68,22 +68,26 @@ References: <20080125231521.GG25141@fieldses.org>
  <1201303040-7779-63-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-64-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-65-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-66-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-67-git-send-email-bfields@citi.umich.edu>
 Cc: Tom Tucker <tom@opengridcomputing.com>,
 	"J. Bruce Fields" <bfields@citi.umich.edu>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:47487 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:47493 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761979AbYAYXSF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Jan 2008 18:18:05 -0500
-In-Reply-To: <1201303040-7779-65-git-send-email-bfields@citi.umich.edu>
+	id S932174AbYAYXSH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Jan 2008 18:18:07 -0500
+In-Reply-To: <1201303040-7779-67-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Tom Tucker <tom@opengridcomputing.com>
 
-This functionally trivial patch moves the sk_reserved field to the
-transport independent svc_xprt structure.
+Move the sk_mutex field to the transport independent svc_xprt structure.
+Now all the fields that svc_send touches are transport neutral. Change the
+svc_send function to use the transport independent svc_xprt directly instead
+of the transport dependent svc_sock structure.
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 Acked-by: Neil Brown <neilb@suse.de>
@@ -92,84 +96,97 @@ Reviewed-by: Greg Banks <gnb@sgi.com>
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
  include/linux/sunrpc/svc_xprt.h |    1 +
- include/linux/sunrpc/svcsock.h  |    2 --
- net/sunrpc/svcsock.c            |   10 +++++-----
- 3 files changed, 6 insertions(+), 7 deletions(-)
+ include/linux/sunrpc/svcsock.h  |    1 -
+ net/sunrpc/svc_xprt.c           |    1 +
+ net/sunrpc/svcsock.c            |   19 ++++++++-----------
+ 4 files changed, 10 insertions(+), 12 deletions(-)
 
 diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index 0a3e09b..0b8ee06 100644
+index 0b8ee06..1b8c596 100644
 --- a/include/linux/sunrpc/svc_xprt.h
 +++ b/include/linux/sunrpc/svc_xprt.h
-@@ -53,6 +53,7 @@ struct svc_xprt {
- 
+@@ -54,6 +54,7 @@ struct svc_xprt {
  	struct svc_pool		*xpt_pool;	/* current pool iff queued */
  	struct svc_serv		*xpt_server;	/* service for transport */
-+	atomic_t    	    	xpt_reserved;	/* space on outq that is rsvd */
+ 	atomic_t    	    	xpt_reserved;	/* space on outq that is rsvd */
++	struct mutex		xpt_mutex;	/* to serialize sending data */
  };
  
  int	svc_reg_xprt_class(struct svc_xprt_class *);
 diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
-index 060508b..ba41f11 100644
+index ba41f11..41c2dfa 100644
 --- a/include/linux/sunrpc/svcsock.h
 +++ b/include/linux/sunrpc/svcsock.h
-@@ -20,8 +20,6 @@ struct svc_sock {
- 	struct socket *		sk_sock;	/* berkeley socket layer */
- 	struct sock *		sk_sk;		/* INET layer */
- 
--	atomic_t    	    	sk_reserved;	/* space on outq that is reserved */
--
- 	spinlock_t		sk_lock;	/* protects sk_deferred and
+@@ -24,7 +24,6 @@ struct svc_sock {
  						 * sk_info_authunix */
  	struct list_head	sk_deferred;	/* deferred requests that need to
+ 						 * be revisted */
+-	struct mutex		sk_mutex;	/* to serialize sending data */
+ 
+ 	/* We keep the old state_change and data_ready CB's here */
+ 	void			(*sk_ostate)(struct sock *);
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index 95186b5..3e6a1c8 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -99,6 +99,7 @@ void svc_xprt_init(struct svc_xprt_class *xcl, struct svc_xprt *xprt,
+ 	xprt->xpt_server = serv;
+ 	INIT_LIST_HEAD(&xprt->xpt_list);
+ 	INIT_LIST_HEAD(&xprt->xpt_ready);
++	mutex_init(&xprt->xpt_mutex);
+ }
+ EXPORT_SYMBOL_GPL(svc_xprt_init);
+ 
 diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 6dffdda..ec5ad81 100644
+index f356c02..7f6ee48 100644
 --- a/net/sunrpc/svcsock.c
 +++ b/net/sunrpc/svcsock.c
-@@ -288,7 +288,7 @@ svc_sock_enqueue(struct svc_sock *svsk)
- 		rqstp->rq_sock = svsk;
- 		svc_xprt_get(&svsk->sk_xprt);
- 		rqstp->rq_reserved = serv->sv_max_mesg;
--		atomic_add(rqstp->rq_reserved, &svsk->sk_reserved);
-+		atomic_add(rqstp->rq_reserved, &svsk->sk_xprt.xpt_reserved);
- 		BUG_ON(svsk->sk_xprt.xpt_pool != pool);
- 		wake_up(&rqstp->rq_wait);
- 	} else {
-@@ -353,7 +353,7 @@ void svc_reserve(struct svc_rqst *rqstp, int space)
+@@ -1632,15 +1632,13 @@ svc_drop(struct svc_rqst *rqstp)
+ int
+ svc_send(struct svc_rqst *rqstp)
+ {
+-	struct svc_sock	*svsk;
++	struct svc_xprt	*xprt;
+ 	int		len;
+ 	struct xdr_buf	*xb;
  
- 	if (space < rqstp->rq_reserved) {
- 		struct svc_sock *svsk = rqstp->rq_sock;
--		atomic_sub((rqstp->rq_reserved - space), &svsk->sk_reserved);
-+		atomic_sub((rqstp->rq_reserved - space), &svsk->sk_xprt.xpt_reserved);
- 		rqstp->rq_reserved = space;
+-	if ((svsk = rqstp->rq_sock) == NULL) {
+-		printk(KERN_WARNING "NULL socket pointer in %s:%d\n",
+-				__FILE__, __LINE__);
++	xprt = rqstp->rq_xprt;
++	if (!xprt)
+ 		return -EFAULT;
+-	}
  
- 		svc_sock_enqueue(svsk);
-@@ -881,7 +881,7 @@ static int svc_udp_has_wspace(struct svc_xprt *xprt)
- 	 * sock space.
- 	 */
- 	set_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
--	required = atomic_read(&svsk->sk_reserved) + serv->sv_max_mesg;
-+	required = atomic_read(&svsk->sk_xprt.xpt_reserved) + serv->sv_max_mesg;
- 	if (required*2 > sock_wspace(svsk->sk_sk))
- 		return 0;
- 	clear_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
-@@ -1327,7 +1327,7 @@ static int svc_tcp_has_wspace(struct svc_xprt *xprt)
- 	 * sock space.
- 	 */
- 	set_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
--	required = atomic_read(&svsk->sk_reserved) + serv->sv_max_mesg;
-+	required = atomic_read(&svsk->sk_xprt.xpt_reserved) + serv->sv_max_mesg;
- 	wspace = sk_stream_wspace(svsk->sk_sk);
+ 	/* release the receive skb before sending the reply */
+ 	rqstp->rq_xprt->xpt_ops->xpo_release_rqst(rqstp);
+@@ -1651,13 +1649,13 @@ svc_send(struct svc_rqst *rqstp)
+ 		xb->page_len +
+ 		xb->tail[0].iov_len;
  
- 	if (wspace < sk_stream_min_wspace(svsk->sk_sk))
-@@ -1544,7 +1544,7 @@ svc_recv(struct svc_rqst *rqstp, long timeout)
- 		rqstp->rq_sock = svsk;
- 		svc_xprt_get(&svsk->sk_xprt);
- 		rqstp->rq_reserved = serv->sv_max_mesg;
--		atomic_add(rqstp->rq_reserved, &svsk->sk_reserved);
-+		atomic_add(rqstp->rq_reserved, &svsk->sk_xprt.xpt_reserved);
- 	} else {
- 		/* No data pending. Go to sleep */
- 		svc_thread_enqueue(pool, rqstp);
+-	/* Grab svsk->sk_mutex to serialize outgoing data. */
+-	mutex_lock(&svsk->sk_mutex);
+-	if (test_bit(XPT_DEAD, &svsk->sk_xprt.xpt_flags))
++	/* Grab mutex to serialize outgoing data. */
++	mutex_lock(&xprt->xpt_mutex);
++	if (test_bit(XPT_DEAD, &xprt->xpt_flags))
+ 		len = -ENOTCONN;
+ 	else
+-		len = svsk->sk_xprt.xpt_ops->xpo_sendto(rqstp);
+-	mutex_unlock(&svsk->sk_mutex);
++		len = xprt->xpt_ops->xpo_sendto(rqstp);
++	mutex_unlock(&xprt->xpt_mutex);
+ 	svc_sock_release(rqstp);
+ 
+ 	if (len == -ECONNREFUSED || len == -ENOTCONN || len == -EAGAIN)
+@@ -1759,7 +1757,6 @@ static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
+ 	svsk->sk_lastrecv = get_seconds();
+ 	spin_lock_init(&svsk->sk_lock);
+ 	INIT_LIST_HEAD(&svsk->sk_deferred);
+-	mutex_init(&svsk->sk_mutex);
+ 
+ 	/* Initialize the socket */
+ 	if (sock->type == SOCK_DGRAM)
 -- 
 1.5.4.rc2.60.gb2e62
 
