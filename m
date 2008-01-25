@@ -1,7 +1,7 @@
 From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 092/100] rdma: ONCRPC RDMA protocol marshalling
-Date: Fri, 25 Jan 2008 18:17:12 -0500
-Message-ID: <1201303040-7779-92-git-send-email-bfields@citi.umich.edu>
+Subject: [PATCH 096/100] NLM: Convert lockd to use kthreads
+Date: Fri, 25 Jan 2008 18:17:16 -0500
+Message-ID: <1201303040-7779-96-git-send-email-bfields@citi.umich.edu>
 References: <20080125231521.GG25141@fieldses.org>
  <1201303040-7779-1-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-2-git-send-email-bfields@citi.umich.edu>
@@ -94,450 +94,263 @@ References: <20080125231521.GG25141@fieldses.org>
  <1201303040-7779-89-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-90-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-91-git-send-email-bfields@citi.umich.edu>
-Cc: Tom Tucker <tom@opengridcomputing.com>,
+ <1201303040-7779-92-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-93-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-94-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-95-git-send-email-bfields@citi.umich.edu>
+Cc: Jeff Layton <jlayton@redhat.com>,
 	"J. Bruce Fields" <bfields@citi.umich.edu>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:47561 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:47575 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1762002AbYAYXSc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Jan 2008 18:18:32 -0500
-In-Reply-To: <1201303040-7779-91-git-send-email-bfields@citi.umich.edu>
+	id S1762001AbYAYXSj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Jan 2008 18:18:39 -0500
+In-Reply-To: <1201303040-7779-95-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Tom Tucker <tom@opengridcomputing.com>
+From: Jeff Layton <jlayton@redhat.com>
 
-This logic parses the ONCRDMA protocol headers that
-precede the actual RPC header. It is placed in a separate
-file to keep all protocol aware code in a single place.
+Have lockd_up start lockd using kthread_run. With this change,
+lockd_down now blocks until lockd actually exits, so there's no longer
+need for the waitqueue code at the end of lockd_down. This also means
+that only one lockd can be running at a time which simplifies the code
+within lockd's main loop.
 
-Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
-Acked-by: Neil Brown <neilb@suse.de>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Reviewed-by: NeilBrown <neilb@suse.de>
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
- net/sunrpc/xprtrdma/svc_rdma_marshal.c |  412 ++++++++++++++++++++++++++++++++
- 1 files changed, 412 insertions(+), 0 deletions(-)
- create mode 100644 net/sunrpc/xprtrdma/svc_rdma_marshal.c
+ fs/lockd/svc.c |  131 ++++++++++++++++++++++++-------------------------------
+ 1 files changed, 57 insertions(+), 74 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_marshal.c b/net/sunrpc/xprtrdma/svc_rdma_marshal.c
-new file mode 100644
-index 0000000..9530ef2
---- /dev/null
-+++ b/net/sunrpc/xprtrdma/svc_rdma_marshal.c
-@@ -0,0 +1,412 @@
-+/*
-+ * Copyright (c) 2005-2006 Network Appliance, Inc. All rights reserved.
-+ *
-+ * This software is available to you under a choice of one of two
-+ * licenses.  You may choose to be licensed under the terms of the GNU
-+ * General Public License (GPL) Version 2, available from the file
-+ * COPYING in the main directory of this source tree, or the BSD-type
-+ * license below:
-+ *
-+ * Redistribution and use in source and binary forms, with or without
-+ * modification, are permitted provided that the following conditions
-+ * are met:
-+ *
-+ *      Redistributions of source code must retain the above copyright
-+ *      notice, this list of conditions and the following disclaimer.
-+ *
-+ *      Redistributions in binary form must reproduce the above
-+ *      copyright notice, this list of conditions and the following
-+ *      disclaimer in the documentation and/or other materials provided
-+ *      with the distribution.
-+ *
-+ *      Neither the name of the Network Appliance, Inc. nor the names of
-+ *      its contributors may be used to endorse or promote products
-+ *      derived from this software without specific prior written
-+ *      permission.
-+ *
-+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-+ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-+ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-+ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-+ *
-+ * Author: Tom Tucker <tom@opengridcomputing.com>
-+ */
-+
-+#include <linux/sunrpc/xdr.h>
-+#include <linux/sunrpc/debug.h>
-+#include <asm/unaligned.h>
-+#include <linux/sunrpc/rpc_rdma.h>
-+#include <linux/sunrpc/svc_rdma.h>
-+
-+#define RPCDBG_FACILITY	RPCDBG_SVCXPRT
-+
-+/*
-+ * Decodes a read chunk list. The expected format is as follows:
-+ *    descrim  : xdr_one
-+ *    position : u32 offset into XDR stream
-+ *    handle   : u32 RKEY
-+ *    . . .
-+ *  end-of-list: xdr_zero
-+ */
-+static u32 *decode_read_list(u32 *va, u32 *vaend)
-+{
-+	struct rpcrdma_read_chunk *ch = (struct rpcrdma_read_chunk *)va;
-+
-+	while (ch->rc_discrim != xdr_zero) {
-+		u64 ch_offset;
-+
-+		if (((unsigned long)ch + sizeof(struct rpcrdma_read_chunk)) >
-+		    (unsigned long)vaend) {
-+			dprintk("svcrdma: vaend=%p, ch=%p\n", vaend, ch);
-+			return NULL;
-+		}
-+
-+		ch->rc_discrim = ntohl(ch->rc_discrim);
-+		ch->rc_position = ntohl(ch->rc_position);
-+		ch->rc_target.rs_handle = ntohl(ch->rc_target.rs_handle);
-+		ch->rc_target.rs_length = ntohl(ch->rc_target.rs_length);
-+		va = (u32 *)&ch->rc_target.rs_offset;
-+		xdr_decode_hyper(va, &ch_offset);
-+		put_unaligned(ch_offset, (u64 *)va);
-+		ch++;
-+	}
-+	return (u32 *)&ch->rc_position;
-+}
-+
-+/*
-+ * Determine number of chunks and total bytes in chunk list. The chunk
-+ * list has already been verified to fit within the RPCRDMA header.
-+ */
-+void svc_rdma_rcl_chunk_counts(struct rpcrdma_read_chunk *ch,
-+			       int *ch_count, int *byte_count)
-+{
-+	/* compute the number of bytes represented by read chunks */
-+	*byte_count = 0;
-+	*ch_count = 0;
-+	for (; ch->rc_discrim != 0; ch++) {
-+		*byte_count = *byte_count + ch->rc_target.rs_length;
-+		*ch_count = *ch_count + 1;
-+	}
-+}
-+
-+/*
-+ * Decodes a write chunk list. The expected format is as follows:
-+ *    descrim  : xdr_one
-+ *    nchunks  : <count>
-+ *       handle   : u32 RKEY              ---+
-+ *       length   : u32 <len of segment>     |
-+ *       offset   : remove va                + <count>
-+ *       . . .                               |
-+ *                                        ---+
-+ */
-+static u32 *decode_write_list(u32 *va, u32 *vaend)
-+{
-+	int ch_no;
-+	struct rpcrdma_write_array *ary =
-+		(struct rpcrdma_write_array *)va;
-+
-+	/* Check for not write-array */
-+	if (ary->wc_discrim == xdr_zero)
-+		return (u32 *)&ary->wc_nchunks;
-+
-+	if ((unsigned long)ary + sizeof(struct rpcrdma_write_array) >
-+	    (unsigned long)vaend) {
-+		dprintk("svcrdma: ary=%p, vaend=%p\n", ary, vaend);
-+		return NULL;
-+	}
-+	ary->wc_discrim = ntohl(ary->wc_discrim);
-+	ary->wc_nchunks = ntohl(ary->wc_nchunks);
-+	if (((unsigned long)&ary->wc_array[0] +
-+	     (sizeof(struct rpcrdma_write_chunk) * ary->wc_nchunks)) >
-+	    (unsigned long)vaend) {
-+		dprintk("svcrdma: ary=%p, wc_nchunks=%d, vaend=%p\n",
-+			ary, ary->wc_nchunks, vaend);
-+		return NULL;
-+	}
-+	for (ch_no = 0; ch_no < ary->wc_nchunks; ch_no++) {
-+		u64 ch_offset;
-+
-+		ary->wc_array[ch_no].wc_target.rs_handle =
-+			ntohl(ary->wc_array[ch_no].wc_target.rs_handle);
-+		ary->wc_array[ch_no].wc_target.rs_length =
-+			ntohl(ary->wc_array[ch_no].wc_target.rs_length);
-+		va = (u32 *)&ary->wc_array[ch_no].wc_target.rs_offset;
-+		xdr_decode_hyper(va, &ch_offset);
-+		put_unaligned(ch_offset, (u64 *)va);
-+	}
-+
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index 0822646..5752e1b 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -25,6 +25,7 @@
+ #include <linux/smp.h>
+ #include <linux/smp_lock.h>
+ #include <linux/mutex.h>
++#include <linux/kthread.h>
+ #include <linux/freezer.h>
+ 
+ #include <linux/sunrpc/types.h>
+@@ -48,14 +49,11 @@ EXPORT_SYMBOL(nlmsvc_ops);
+ 
+ static DEFINE_MUTEX(nlmsvc_mutex);
+ static unsigned int		nlmsvc_users;
+-static pid_t			nlmsvc_pid;
++static struct task_struct	*nlmsvc_task;
+ static struct svc_serv		*nlmsvc_serv;
+ int				nlmsvc_grace_period;
+ unsigned long			nlmsvc_timeout;
+ 
+-static DECLARE_COMPLETION(lockd_start_done);
+-static DECLARE_WAIT_QUEUE_HEAD(lockd_exit);
+-
+ /*
+  * These can be set at insmod time (useful for NFS as root filesystem),
+  * and also changed through the sysctl interface.  -- Jamie Lokier, Aug 2003
+@@ -111,35 +109,30 @@ static inline void clear_grace_period(void)
+ /*
+  * This is the lockd kernel thread
+  */
+-static void
+-lockd(struct svc_rqst *rqstp)
++static int
++lockd(void *vrqstp)
+ {
+ 	int		err = 0;
++	struct svc_rqst *rqstp = vrqstp;
+ 	unsigned long grace_period_expire;
+ 
+-	/* Lock module and set up kernel thread */
+-	/* lockd_up is waiting for us to startup, so will
+-	 * be holding a reference to this module, so it
+-	 * is safe to just claim another reference
+-	 */
+-	__module_get(THIS_MODULE);
+-	lock_kernel();
+-
+-	/*
+-	 * Let our maker know we're running.
+-	 */
+-	nlmsvc_pid = current->pid;
+-	nlmsvc_serv = rqstp->rq_server;
+-	complete(&lockd_start_done);
+-
+-	daemonize("lockd");
++	/* try_to_freeze() is called from svc_recv() */
+ 	set_freezable();
+ 
+-	/* Process request with signals blocked, but allow SIGKILL.  */
++	/* Allow SIGKILL to tell lockd to drop all of its locks */
+ 	allow_signal(SIGKILL);
+ 
+ 	dprintk("NFS locking service started (ver " LOCKD_VERSION ").\n");
+ 
 +	/*
-+	 * rs_length is the 2nd 4B field in wc_target and taking its
-+	 * address skips the list terminator
++	 * FIXME: it would be nice if lockd didn't spend its entire life
++	 * running under the BKL. At the very least, it would be good to
++	 * have someone clarify what it's intended to protect here. I've
++	 * seen some handwavy posts about posix locking needing to be
++	 * done under the BKL, but it's far from clear.
 +	 */
-+	return (u32 *)&ary->wc_array[ch_no].wc_target.rs_length;
-+}
++	lock_kernel();
 +
-+static u32 *decode_reply_array(u32 *va, u32 *vaend)
-+{
-+	int ch_no;
-+	struct rpcrdma_write_array *ary =
-+		(struct rpcrdma_write_array *)va;
+ 	if (!nlm_timeout)
+ 		nlm_timeout = LOCKD_DFLT_TIMEO;
+ 	nlmsvc_timeout = nlm_timeout * HZ;
+@@ -148,10 +141,9 @@ lockd(struct svc_rqst *rqstp)
+ 
+ 	/*
+ 	 * The main request loop. We don't terminate until the last
+-	 * NFS mount or NFS daemon has gone away, and we've been sent a
+-	 * signal, or else another process has taken over our job.
++	 * NFS mount or NFS daemon has gone away.
+ 	 */
+-	while ((nlmsvc_users || !signalled()) && nlmsvc_pid == current->pid) {
++	while (!kthread_should_stop()) {
+ 		long timeout = MAX_SCHEDULE_TIMEOUT;
+ 		char buf[RPC_MAX_ADDRBUFLEN];
+ 
+@@ -195,28 +187,19 @@ lockd(struct svc_rqst *rqstp)
+ 	}
+ 
+ 	flush_signals(current);
++	if (nlmsvc_ops)
++		nlmsvc_invalidate_all();
++	nlm_shutdown_hosts();
+ 
+-	/*
+-	 * Check whether there's a new lockd process before
+-	 * shutting down the hosts and clearing the slot.
+-	 */
+-	if (!nlmsvc_pid || current->pid == nlmsvc_pid) {
+-		if (nlmsvc_ops)
+-			nlmsvc_invalidate_all();
+-		nlm_shutdown_hosts();
+-		nlmsvc_pid = 0;
+-		nlmsvc_serv = NULL;
+-	} else
+-		printk(KERN_DEBUG
+-			"lockd: new process, skipping host shutdown\n");
+-	wake_up(&lockd_exit);
++	unlock_kernel();
 +
-+	/* Check for no reply-array */
-+	if (ary->wc_discrim == xdr_zero)
-+		return (u32 *)&ary->wc_nchunks;
-+
-+	if ((unsigned long)ary + sizeof(struct rpcrdma_write_array) >
-+	    (unsigned long)vaend) {
-+		dprintk("svcrdma: ary=%p, vaend=%p\n", ary, vaend);
-+		return NULL;
-+	}
-+	ary->wc_discrim = ntohl(ary->wc_discrim);
-+	ary->wc_nchunks = ntohl(ary->wc_nchunks);
-+	if (((unsigned long)&ary->wc_array[0] +
-+	     (sizeof(struct rpcrdma_write_chunk) * ary->wc_nchunks)) >
-+	    (unsigned long)vaend) {
-+		dprintk("svcrdma: ary=%p, wc_nchunks=%d, vaend=%p\n",
-+			ary, ary->wc_nchunks, vaend);
-+		return NULL;
-+	}
-+	for (ch_no = 0; ch_no < ary->wc_nchunks; ch_no++) {
-+		u64 ch_offset;
-+
-+		ary->wc_array[ch_no].wc_target.rs_handle =
-+			ntohl(ary->wc_array[ch_no].wc_target.rs_handle);
-+		ary->wc_array[ch_no].wc_target.rs_length =
-+			ntohl(ary->wc_array[ch_no].wc_target.rs_length);
-+		va = (u32 *)&ary->wc_array[ch_no].wc_target.rs_offset;
-+		xdr_decode_hyper(va, &ch_offset);
-+		put_unaligned(ch_offset, (u64 *)va);
-+	}
-+
-+	return (u32 *)&ary->wc_array[ch_no];
-+}
-+
-+int svc_rdma_xdr_decode_req(struct rpcrdma_msg **rdma_req,
-+			    struct svc_rqst *rqstp)
-+{
-+	struct rpcrdma_msg *rmsgp = NULL;
-+	u32 *va;
-+	u32 *vaend;
-+	u32 hdr_len;
-+
-+	rmsgp = (struct rpcrdma_msg *)rqstp->rq_arg.head[0].iov_base;
-+
-+	/* Verify that there's enough bytes for header + something */
-+	if (rqstp->rq_arg.len <= RPCRDMA_HDRLEN_MIN) {
-+		dprintk("svcrdma: header too short = %d\n",
-+			rqstp->rq_arg.len);
-+		return -EINVAL;
-+	}
-+
-+	/* Decode the header */
-+	rmsgp->rm_xid = ntohl(rmsgp->rm_xid);
-+	rmsgp->rm_vers = ntohl(rmsgp->rm_vers);
-+	rmsgp->rm_credit = ntohl(rmsgp->rm_credit);
-+	rmsgp->rm_type = ntohl(rmsgp->rm_type);
-+
-+	if (rmsgp->rm_vers != RPCRDMA_VERSION)
-+		return -ENOSYS;
-+
-+	/* Pull in the extra for the padded case and bump our pointer */
-+	if (rmsgp->rm_type == RDMA_MSGP) {
-+		int hdrlen;
-+		rmsgp->rm_body.rm_padded.rm_align =
-+			ntohl(rmsgp->rm_body.rm_padded.rm_align);
-+		rmsgp->rm_body.rm_padded.rm_thresh =
-+			ntohl(rmsgp->rm_body.rm_padded.rm_thresh);
-+
-+		va = &rmsgp->rm_body.rm_padded.rm_pempty[4];
-+		rqstp->rq_arg.head[0].iov_base = va;
-+		hdrlen = (u32)((unsigned long)va - (unsigned long)rmsgp);
-+		rqstp->rq_arg.head[0].iov_len -= hdrlen;
-+		if (hdrlen > rqstp->rq_arg.len)
-+			return -EINVAL;
-+		return hdrlen;
-+	}
-+
-+	/* The chunk list may contain either a read chunk list or a write
-+	 * chunk list and a reply chunk list.
-+	 */
-+	va = &rmsgp->rm_body.rm_chunks[0];
-+	vaend = (u32 *)((unsigned long)rmsgp + rqstp->rq_arg.len);
-+	va = decode_read_list(va, vaend);
-+	if (!va)
-+		return -EINVAL;
-+	va = decode_write_list(va, vaend);
-+	if (!va)
-+		return -EINVAL;
-+	va = decode_reply_array(va, vaend);
-+	if (!va)
-+		return -EINVAL;
-+
-+	rqstp->rq_arg.head[0].iov_base = va;
-+	hdr_len = (unsigned long)va - (unsigned long)rmsgp;
-+	rqstp->rq_arg.head[0].iov_len -= hdr_len;
-+
-+	*rdma_req = rmsgp;
-+	return hdr_len;
-+}
-+
-+int svc_rdma_xdr_decode_deferred_req(struct svc_rqst *rqstp)
-+{
-+	struct rpcrdma_msg *rmsgp = NULL;
-+	struct rpcrdma_read_chunk *ch;
-+	struct rpcrdma_write_array *ary;
-+	u32 *va;
-+	u32 hdrlen;
-+
-+	dprintk("svcrdma: processing deferred RDMA header on rqstp=%p\n",
-+		rqstp);
-+	rmsgp = (struct rpcrdma_msg *)rqstp->rq_arg.head[0].iov_base;
-+
-+	/* Pull in the extra for the padded case and bump our pointer */
-+	if (rmsgp->rm_type == RDMA_MSGP) {
-+		va = &rmsgp->rm_body.rm_padded.rm_pempty[4];
-+		rqstp->rq_arg.head[0].iov_base = va;
-+		hdrlen = (u32)((unsigned long)va - (unsigned long)rmsgp);
-+		rqstp->rq_arg.head[0].iov_len -= hdrlen;
-+		return hdrlen;
++	nlmsvc_task = NULL;
++	nlmsvc_serv = NULL;
+ 
+ 	/* Exit the RPC thread */
+ 	svc_exit_thread(rqstp);
+ 
+-	/* Release module */
+-	unlock_kernel();
+-	module_put_and_exit(0);
++	return 0;
+ }
+ 
+ /*
+@@ -261,14 +244,15 @@ static int make_socks(struct svc_serv *serv, int proto)
+ int
+ lockd_up(int proto) /* Maybe add a 'family' option when IPv6 is supported ?? */
+ {
+-	struct svc_serv *	serv;
+-	int			error = 0;
++	struct svc_serv *serv;
++	struct svc_rqst *rqstp;
++	int		error = 0;
+ 
+ 	mutex_lock(&nlmsvc_mutex);
+ 	/*
+ 	 * Check whether we're already up and running.
+ 	 */
+-	if (nlmsvc_pid) {
++	if (nlmsvc_serv) {
+ 		if (proto)
+ 			error = make_socks(nlmsvc_serv, proto);
+ 		goto out;
+@@ -295,13 +279,28 @@ lockd_up(int proto) /* Maybe add a 'family' option when IPv6 is supported ?? */
+ 	/*
+ 	 * Create the kernel thread and wait for it to start.
+ 	 */
+-	error = svc_create_thread(lockd, serv);
+-	if (error) {
++	rqstp = svc_prepare_thread(serv, &serv->sv_pools[0]);
++	if (IS_ERR(rqstp)) {
++		error = PTR_ERR(rqstp);
++		printk(KERN_WARNING
++			"lockd_up: svc_rqst allocation failed, error=%d\n",
++			error);
++		goto destroy_and_out;
 +	}
 +
-+	/*
-+	 * Skip all chunks to find RPC msg. These were previously processed
-+	 */
-+	va = &rmsgp->rm_body.rm_chunks[0];
++	svc_sock_update_bufs(serv);
++	nlmsvc_serv = rqstp->rq_server;
 +
-+	/* Skip read-list */
-+	for (ch = (struct rpcrdma_read_chunk *)va;
-+	     ch->rc_discrim != xdr_zero; ch++);
-+	va = (u32 *)&ch->rc_position;
-+
-+	/* Skip write-list */
-+	ary = (struct rpcrdma_write_array *)va;
-+	if (ary->wc_discrim == xdr_zero)
-+		va = (u32 *)&ary->wc_nchunks;
-+	else
-+		/*
-+		 * rs_length is the 2nd 4B field in wc_target and taking its
-+		 * address skips the list terminator
-+		 */
-+		va = (u32 *)&ary->wc_array[ary->wc_nchunks].wc_target.rs_length;
-+
-+	/* Skip reply-array */
-+	ary = (struct rpcrdma_write_array *)va;
-+	if (ary->wc_discrim == xdr_zero)
-+		va = (u32 *)&ary->wc_nchunks;
-+	else
-+		va = (u32 *)&ary->wc_array[ary->wc_nchunks];
-+
-+	rqstp->rq_arg.head[0].iov_base = va;
-+	hdrlen = (unsigned long)va - (unsigned long)rmsgp;
-+	rqstp->rq_arg.head[0].iov_len -= hdrlen;
-+
-+	return hdrlen;
-+}
-+
-+int svc_rdma_xdr_encode_error(struct svcxprt_rdma *xprt,
-+			      struct rpcrdma_msg *rmsgp,
-+			      enum rpcrdma_errcode err, u32 *va)
-+{
-+	u32 *startp = va;
-+
-+	*va++ = htonl(rmsgp->rm_xid);
-+	*va++ = htonl(rmsgp->rm_vers);
-+	*va++ = htonl(xprt->sc_max_requests);
-+	*va++ = htonl(RDMA_ERROR);
-+	*va++ = htonl(err);
-+	if (err == ERR_VERS) {
-+		*va++ = htonl(RPCRDMA_VERSION);
-+		*va++ = htonl(RPCRDMA_VERSION);
-+	}
-+
-+	return (int)((unsigned long)va - (unsigned long)startp);
-+}
-+
-+int svc_rdma_xdr_get_reply_hdr_len(struct rpcrdma_msg *rmsgp)
-+{
-+	struct rpcrdma_write_array *wr_ary;
-+
-+	/* There is no read-list in a reply */
-+
-+	/* skip write list */
-+	wr_ary = (struct rpcrdma_write_array *)
-+		&rmsgp->rm_body.rm_chunks[1];
-+	if (wr_ary->wc_discrim)
-+		wr_ary = (struct rpcrdma_write_array *)
-+			&wr_ary->wc_array[ntohl(wr_ary->wc_nchunks)].
-+			wc_target.rs_length;
-+	else
-+		wr_ary = (struct rpcrdma_write_array *)
-+			&wr_ary->wc_nchunks;
-+
-+	/* skip reply array */
-+	if (wr_ary->wc_discrim)
-+		wr_ary = (struct rpcrdma_write_array *)
-+			&wr_ary->wc_array[ntohl(wr_ary->wc_nchunks)];
-+	else
-+		wr_ary = (struct rpcrdma_write_array *)
-+			&wr_ary->wc_nchunks;
-+
-+	return (unsigned long) wr_ary - (unsigned long) rmsgp;
-+}
-+
-+void svc_rdma_xdr_encode_write_list(struct rpcrdma_msg *rmsgp, int chunks)
-+{
-+	struct rpcrdma_write_array *ary;
-+
-+	/* no read-list */
-+	rmsgp->rm_body.rm_chunks[0] = xdr_zero;
-+
-+	/* write-array discrim */
-+	ary = (struct rpcrdma_write_array *)
-+		&rmsgp->rm_body.rm_chunks[1];
-+	ary->wc_discrim = xdr_one;
-+	ary->wc_nchunks = htonl(chunks);
-+
-+	/* write-list terminator */
-+	ary->wc_array[chunks].wc_target.rs_handle = xdr_zero;
-+
-+	/* reply-array discriminator */
-+	ary->wc_array[chunks].wc_target.rs_length = xdr_zero;
-+}
-+
-+void svc_rdma_xdr_encode_reply_array(struct rpcrdma_write_array *ary,
-+				 int chunks)
-+{
-+	ary->wc_discrim = xdr_one;
-+	ary->wc_nchunks = htonl(chunks);
-+}
-+
-+void svc_rdma_xdr_encode_array_chunk(struct rpcrdma_write_array *ary,
-+				     int chunk_no,
-+				     u32 rs_handle, u64 rs_offset,
-+				     u32 write_len)
-+{
-+	struct rpcrdma_segment *seg = &ary->wc_array[chunk_no].wc_target;
-+	seg->rs_handle = htonl(rs_handle);
-+	seg->rs_length = htonl(write_len);
-+	xdr_encode_hyper((u32 *) &seg->rs_offset, rs_offset);
-+}
-+
-+void svc_rdma_xdr_encode_reply_header(struct svcxprt_rdma *xprt,
-+				  struct rpcrdma_msg *rdma_argp,
-+				  struct rpcrdma_msg *rdma_resp,
-+				  enum rpcrdma_proc rdma_type)
-+{
-+	rdma_resp->rm_xid = htonl(rdma_argp->rm_xid);
-+	rdma_resp->rm_vers = htonl(rdma_argp->rm_vers);
-+	rdma_resp->rm_credit = htonl(xprt->sc_max_requests);
-+	rdma_resp->rm_type = htonl(rdma_type);
-+
-+	/* Encode <nul> chunks lists */
-+	rdma_resp->rm_body.rm_chunks[0] = xdr_zero;
-+	rdma_resp->rm_body.rm_chunks[1] = xdr_zero;
-+	rdma_resp->rm_body.rm_chunks[2] = xdr_zero;
-+}
++	nlmsvc_task = kthread_run(lockd, rqstp, serv->sv_name);
++	if (IS_ERR(nlmsvc_task)) {
++		error = PTR_ERR(nlmsvc_task);
++		nlmsvc_task = NULL;
++		nlmsvc_serv = NULL;
+ 		printk(KERN_WARNING
+-			"lockd_up: create thread failed, error=%d\n", error);
++			"lockd_up: kthread_run failed, error=%d\n", error);
++		svc_exit_thread(rqstp);
+ 		goto destroy_and_out;
+ 	}
+-	wait_for_completion(&lockd_start_done);
+ 
+ 	/*
+ 	 * Note: svc_serv structures have an initial use count of 1,
+@@ -323,37 +322,21 @@ EXPORT_SYMBOL(lockd_up);
+ void
+ lockd_down(void)
+ {
+-	static int warned;
+-
+ 	mutex_lock(&nlmsvc_mutex);
+ 	if (nlmsvc_users) {
+ 		if (--nlmsvc_users)
+ 			goto out;
+-	} else
+-		printk(KERN_WARNING "lockd_down: no users! pid=%d\n", nlmsvc_pid);
+-
+-	if (!nlmsvc_pid) {
+-		if (warned++ == 0)
+-			printk(KERN_WARNING "lockd_down: no lockd running.\n"); 
+-		goto out;
++	} else {
++		printk(KERN_ERR "lockd_down: no users! task=%p\n",
++			nlmsvc_task);
++		BUG();
+ 	}
+-	warned = 0;
+ 
+-	kill_proc(nlmsvc_pid, SIGKILL, 1);
+-	/*
+-	 * Wait for the lockd process to exit, but since we're holding
+-	 * the lockd semaphore, we can't wait around forever ...
+-	 */
+-	clear_thread_flag(TIF_SIGPENDING);
+-	interruptible_sleep_on_timeout(&lockd_exit, HZ);
+-	if (nlmsvc_pid) {
+-		printk(KERN_WARNING 
+-			"lockd_down: lockd failed to exit, clearing pid\n");
+-		nlmsvc_pid = 0;
++	if (!nlmsvc_task) {
++		printk(KERN_ERR "lockd_down: no lockd running.\n");
++		BUG();
+ 	}
+-	spin_lock_irq(&current->sighand->siglock);
+-	recalc_sigpending();
+-	spin_unlock_irq(&current->sighand->siglock);
++	kthread_stop(nlmsvc_task);
+ out:
+ 	mutex_unlock(&nlmsvc_mutex);
+ }
 -- 
 1.5.4.rc2.60.gb2e62
 
