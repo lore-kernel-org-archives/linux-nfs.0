@@ -1,437 +1,182 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 016/112] SUNRPC: Restrict sunrpc client exports
-Date: Fri, 25 Jan 2008 11:37:27 -0500
-Message-ID: <20080125163727.31887.37493.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
+Subject: [PATCH 002/112] NFS: Clean up the write request locking.
+Date: Fri, 25 Jan 2008 11:37:24 -0500
+Message-ID: <20080125163723.31887.57302.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
 References: <20080125163723.31887.68074.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:35399 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:14368 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756804AbYAYRBX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Jan 2008 12:01:23 -0500
-Received: from svlexrs01.hq.netapp.com (svlexrs01.corp.netapp.com [10.57.156.158])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id m0PH0WP7020490
-	for <linux-nfs@vger.kernel.org>; Fri, 25 Jan 2008 09:00:56 -0800 (PST)
+	id S1755933AbYAYRAH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Jan 2008 12:00:07 -0500
+Received: from svlexrs02.hq.netapp.com (svlexrs02.corp.netapp.com [10.57.156.154])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id m0PGxsf0010226
+	for <linux-nfs@vger.kernel.org>; Fri, 25 Jan 2008 09:00:03 -0800 (PST)
 In-Reply-To: <20080125163723.31887.68074.stgit-KPEdlmqt5P7XOazzY/2fV4TcuzvYVacciM950cveMlzk1uMJSBkQmQ@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The sunrpc client exports are not meant to be part of any official kernel
-API: they can change at the drop of a hat. Mark them as internal functions
-using EXPORT_SYMBOL_GPL.
+Ensure that we set/clear NFS_PAGE_TAG_LOCKED when the nfs_page is hashed.
 
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- net/sunrpc/auth.c   |   18 +++++++++---------
- net/sunrpc/clnt.c   |   24 ++++++++++++------------
- net/sunrpc/sched.c  |   26 +++++++++++++-------------
- net/sunrpc/stats.c  |   10 +++++-----
- net/sunrpc/sysctl.c |    8 ++++----
- net/sunrpc/xprt.c   |    2 +-
- 6 files changed, 44 insertions(+), 44 deletions(-)
+ fs/nfs/pagelist.c        |   13 ++++++++-----
+ fs/nfs/write.c           |   16 +++++++---------
+ include/linux/nfs_page.h |   13 +------------
+ 3 files changed, 16 insertions(+), 26 deletions(-)
 
-diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
-index 1025a0e..eca941c 100644
---- a/net/sunrpc/auth.c
-+++ b/net/sunrpc/auth.c
-@@ -51,7 +51,7 @@ rpcauth_register(const struct rpc_authops *ops)
- 	spin_unlock(&rpc_authflavor_lock);
- 	return ret;
- }
--EXPORT_SYMBOL(rpcauth_register);
-+EXPORT_SYMBOL_GPL(rpcauth_register);
- 
- int
- rpcauth_unregister(const struct rpc_authops *ops)
-@@ -69,7 +69,7 @@ rpcauth_unregister(const struct rpc_authops *ops)
- 	spin_unlock(&rpc_authflavor_lock);
- 	return ret;
- }
--EXPORT_SYMBOL(rpcauth_unregister);
-+EXPORT_SYMBOL_GPL(rpcauth_unregister);
- 
- struct rpc_auth *
- rpcauth_create(rpc_authflavor_t pseudoflavor, struct rpc_clnt *clnt)
-@@ -104,7 +104,7 @@ rpcauth_create(rpc_authflavor_t pseudoflavor, struct rpc_clnt *clnt)
- out:
- 	return auth;
- }
--EXPORT_SYMBOL(rpcauth_create);
-+EXPORT_SYMBOL_GPL(rpcauth_create);
- 
- void
- rpcauth_release(struct rpc_auth *auth)
-@@ -154,7 +154,7 @@ rpcauth_init_credcache(struct rpc_auth *auth)
- 	auth->au_credcache = new;
- 	return 0;
- }
--EXPORT_SYMBOL(rpcauth_init_credcache);
-+EXPORT_SYMBOL_GPL(rpcauth_init_credcache);
- 
- /*
-  * Destroy a list of credentials
-@@ -217,7 +217,7 @@ rpcauth_destroy_credcache(struct rpc_auth *auth)
- 		kfree(cache);
- 	}
- }
--EXPORT_SYMBOL(rpcauth_destroy_credcache);
-+EXPORT_SYMBOL_GPL(rpcauth_destroy_credcache);
- 
- /*
-  * Remove stale credentials. Avoid sleeping inside the loop.
-@@ -337,7 +337,7 @@ found:
- out:
- 	return cred;
- }
--EXPORT_SYMBOL(rpcauth_lookup_credcache);
-+EXPORT_SYMBOL_GPL(rpcauth_lookup_credcache);
- 
- struct rpc_cred *
- rpcauth_lookupcred(struct rpc_auth *auth, int flags)
-@@ -356,7 +356,7 @@ rpcauth_lookupcred(struct rpc_auth *auth, int flags)
- 	put_group_info(acred.group_info);
- 	return ret;
- }
--EXPORT_SYMBOL(rpcauth_lookupcred);
-+EXPORT_SYMBOL_GPL(rpcauth_lookupcred);
- 
- void
- rpcauth_init_cred(struct rpc_cred *cred, const struct auth_cred *acred,
-@@ -373,7 +373,7 @@ rpcauth_init_cred(struct rpc_cred *cred, const struct auth_cred *acred,
- #endif
- 	cred->cr_uid = acred->uid;
- }
--EXPORT_SYMBOL(rpcauth_init_cred);
-+EXPORT_SYMBOL_GPL(rpcauth_init_cred);
- 
- struct rpc_cred *
- rpcauth_bindcred(struct rpc_task *task)
-@@ -442,7 +442,7 @@ need_lock:
- out_destroy:
- 	cred->cr_ops->crdestroy(cred);
- }
--EXPORT_SYMBOL(put_rpccred);
-+EXPORT_SYMBOL_GPL(put_rpccred);
- 
- void
- rpcauth_unbindcred(struct rpc_task *task)
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 5b561f9..22092b9 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -345,7 +345,7 @@ out_no_clnt:
- 	dprintk("RPC:       %s: returned error %d\n", __FUNCTION__, err);
- 	return ERR_PTR(err);
- }
--EXPORT_SYMBOL(rpc_clone_client);
-+EXPORT_SYMBOL_GPL(rpc_clone_client);
- 
- /*
-  * Properly shut down an RPC client, terminating all outstanding
-@@ -364,7 +364,7 @@ void rpc_shutdown_client(struct rpc_clnt *clnt)
- 
- 	rpc_release_client(clnt);
- }
--EXPORT_SYMBOL(rpc_shutdown_client);
-+EXPORT_SYMBOL_GPL(rpc_shutdown_client);
- 
- /*
-  * Free an RPC client
-@@ -469,7 +469,7 @@ struct rpc_clnt *rpc_bind_new_program(struct rpc_clnt *old,
- out:
- 	return clnt;
- }
--EXPORT_SYMBOL(rpc_bind_new_program);
-+EXPORT_SYMBOL_GPL(rpc_bind_new_program);
- 
- /*
-  * Default callback for async RPC calls
-@@ -515,13 +515,13 @@ void rpc_clnt_sigmask(struct rpc_clnt *clnt, sigset_t *oldset)
- {
- 	rpc_save_sigmask(oldset, clnt->cl_intr);
- }
--EXPORT_SYMBOL(rpc_clnt_sigmask);
-+EXPORT_SYMBOL_GPL(rpc_clnt_sigmask);
- 
- void rpc_clnt_sigunmask(struct rpc_clnt *clnt, sigset_t *oldset)
- {
- 	rpc_restore_sigmask(oldset);
- }
--EXPORT_SYMBOL(rpc_clnt_sigunmask);
-+EXPORT_SYMBOL_GPL(rpc_clnt_sigunmask);
- 
- static
- struct rpc_task *rpc_do_run_task(struct rpc_clnt *clnt,
-@@ -577,7 +577,7 @@ int rpc_call_sync(struct rpc_clnt *clnt, struct rpc_message *msg, int flags)
- 	rpc_put_task(task);
- 	return status;
- }
--EXPORT_SYMBOL(rpc_call_sync);
-+EXPORT_SYMBOL_GPL(rpc_call_sync);
- 
- /**
-  * rpc_call_async - Perform an asynchronous RPC call
-@@ -599,7 +599,7 @@ rpc_call_async(struct rpc_clnt *clnt, struct rpc_message *msg, int flags,
- 	rpc_put_task(task);
- 	return 0;
- }
--EXPORT_SYMBOL(rpc_call_async);
-+EXPORT_SYMBOL_GPL(rpc_call_async);
- 
- /**
-  * rpc_run_task - Allocate a new RPC task, then run rpc_execute against it
-@@ -614,7 +614,7 @@ struct rpc_task *rpc_run_task(struct rpc_clnt *clnt, int flags,
- {
- 	return rpc_do_run_task(clnt, NULL, flags, tk_ops, data);
- }
--EXPORT_SYMBOL(rpc_run_task);
-+EXPORT_SYMBOL_GPL(rpc_run_task);
- 
- void
- rpc_call_setup(struct rpc_task *task, struct rpc_message *msg, int flags)
-@@ -632,7 +632,7 @@ rpc_call_setup(struct rpc_task *task, struct rpc_message *msg, int flags)
- 	else
- 		task->tk_action = rpc_exit_task;
- }
--EXPORT_SYMBOL(rpc_call_setup);
-+EXPORT_SYMBOL_GPL(rpc_call_setup);
- 
- /**
-  * rpc_peeraddr - extract remote peer address from clnt's xprt
-@@ -679,7 +679,7 @@ rpc_setbufsize(struct rpc_clnt *clnt, unsigned int sndsize, unsigned int rcvsize
- 	if (xprt->ops->set_buffer_size)
- 		xprt->ops->set_buffer_size(xprt, sndsize, rcvsize);
- }
--EXPORT_SYMBOL(rpc_setbufsize);
-+EXPORT_SYMBOL_GPL(rpc_setbufsize);
- 
- /*
-  * Return size of largest payload RPC client can support, in bytes
-@@ -719,7 +719,7 @@ rpc_restart_call(struct rpc_task *task)
- 
- 	task->tk_action = call_start;
- }
--EXPORT_SYMBOL(rpc_restart_call);
-+EXPORT_SYMBOL_GPL(rpc_restart_call);
- 
- /*
-  * 0.  Initial state
-@@ -1529,7 +1529,7 @@ struct rpc_task *rpc_call_null(struct rpc_clnt *clnt, struct rpc_cred *cred, int
- 	};
- 	return rpc_do_run_task(clnt, &msg, flags, &rpc_default_ops, NULL);
- }
--EXPORT_SYMBOL(rpc_call_null);
-+EXPORT_SYMBOL_GPL(rpc_call_null);
- 
- #ifdef RPC_DEBUG
- void rpc_show_tasks(void)
-diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-index 44aa9d6..583a78c 100644
---- a/net/sunrpc/sched.c
-+++ b/net/sunrpc/sched.c
-@@ -243,7 +243,7 @@ void rpc_init_wait_queue(struct rpc_wait_queue *queue, const char *qname)
- {
- 	__rpc_init_priority_wait_queue(queue, qname, 0);
- }
--EXPORT_SYMBOL(rpc_init_wait_queue);
-+EXPORT_SYMBOL_GPL(rpc_init_wait_queue);
- 
- static int rpc_wait_bit_interruptible(void *word)
- {
-@@ -303,7 +303,7 @@ int __rpc_wait_for_completion_task(struct rpc_task *task, int (*action)(void *))
- 	return wait_on_bit(&task->tk_runstate, RPC_TASK_ACTIVE,
- 			action, TASK_INTERRUPTIBLE);
- }
--EXPORT_SYMBOL(__rpc_wait_for_completion_task);
-+EXPORT_SYMBOL_GPL(__rpc_wait_for_completion_task);
- 
- /*
-  * Make an RPC task runnable.
-@@ -373,7 +373,7 @@ void rpc_sleep_on(struct rpc_wait_queue *q, struct rpc_task *task,
- 	__rpc_sleep_on(q, task, action, timer);
- 	spin_unlock_bh(&q->lock);
- }
--EXPORT_SYMBOL(rpc_sleep_on);
-+EXPORT_SYMBOL_GPL(rpc_sleep_on);
- 
- /**
-  * __rpc_do_wake_up_task - wake up a single rpc_task
-@@ -445,7 +445,7 @@ void rpc_wake_up_task(struct rpc_task *task)
- 	}
- 	rcu_read_unlock_bh();
- }
--EXPORT_SYMBOL(rpc_wake_up_task);
-+EXPORT_SYMBOL_GPL(rpc_wake_up_task);
- 
- /*
-  * Wake up the next task on a priority queue.
-@@ -521,7 +521,7 @@ struct rpc_task * rpc_wake_up_next(struct rpc_wait_queue *queue)
- 
- 	return task;
- }
--EXPORT_SYMBOL(rpc_wake_up_next);
-+EXPORT_SYMBOL_GPL(rpc_wake_up_next);
- 
- /**
-  * rpc_wake_up - wake up all rpc_tasks
-@@ -547,7 +547,7 @@ void rpc_wake_up(struct rpc_wait_queue *queue)
- 	spin_unlock(&queue->lock);
- 	rcu_read_unlock_bh();
- }
--EXPORT_SYMBOL(rpc_wake_up);
-+EXPORT_SYMBOL_GPL(rpc_wake_up);
- 
- /**
-  * rpc_wake_up_status - wake up all rpc_tasks and set their status value.
-@@ -576,7 +576,7 @@ void rpc_wake_up_status(struct rpc_wait_queue *queue, int status)
- 	spin_unlock(&queue->lock);
- 	rcu_read_unlock_bh();
- }
--EXPORT_SYMBOL(rpc_wake_up_status);
-+EXPORT_SYMBOL_GPL(rpc_wake_up_status);
- 
- static void __rpc_atrun(struct rpc_task *task)
- {
-@@ -591,7 +591,7 @@ void rpc_delay(struct rpc_task *task, unsigned long delay)
- 	task->tk_timeout = delay;
- 	rpc_sleep_on(&delay_queue, task, NULL, __rpc_atrun);
- }
--EXPORT_SYMBOL(rpc_delay);
-+EXPORT_SYMBOL_GPL(rpc_delay);
- 
- /*
-  * Helper to call task->tk_ops->rpc_call_prepare
-@@ -620,7 +620,7 @@ void rpc_exit_task(struct rpc_task *task)
- 		}
- 	}
- }
--EXPORT_SYMBOL(rpc_exit_task);
-+EXPORT_SYMBOL_GPL(rpc_exit_task);
- 
- void rpc_release_calldata(const struct rpc_call_ops *ops, void *calldata)
- {
-@@ -737,7 +737,7 @@ void rpc_execute(struct rpc_task *task)
- 	rpc_set_running(task);
- 	__rpc_execute(task);
- }
--EXPORT_SYMBOL(rpc_execute);
-+EXPORT_SYMBOL_GPL(rpc_execute);
- 
- static void rpc_async_schedule(struct work_struct *work)
- {
-@@ -856,7 +856,7 @@ void rpc_init_task(struct rpc_task *task, struct rpc_clnt *clnt, int flags, cons
- 	dprintk("RPC:       new task initialized, procpid %u\n",
- 				task_pid_nr(current));
- }
--EXPORT_SYMBOL(rpc_init_task);
-+EXPORT_SYMBOL_GPL(rpc_init_task);
- 
- static struct rpc_task *
- rpc_alloc_task(void)
-@@ -911,7 +911,7 @@ void rpc_put_task(struct rpc_task *task)
- 		call_rcu_bh(&task->u.tk_rcu, rpc_free_task);
- 	rpc_release_calldata(tk_ops, calldata);
- }
--EXPORT_SYMBOL(rpc_put_task);
-+EXPORT_SYMBOL_GPL(rpc_put_task);
- 
- static void rpc_release_task(struct rpc_task *task)
- {
-@@ -968,7 +968,7 @@ void rpc_killall_tasks(struct rpc_clnt *clnt)
- 	}
- 	spin_unlock(&clnt->cl_lock);
- }
--EXPORT_SYMBOL(rpc_killall_tasks);
-+EXPORT_SYMBOL_GPL(rpc_killall_tasks);
- 
- int rpciod_up(void)
- {
-diff --git a/net/sunrpc/stats.c b/net/sunrpc/stats.c
-index fd97a49..74df2d3 100644
---- a/net/sunrpc/stats.c
-+++ b/net/sunrpc/stats.c
-@@ -118,7 +118,7 @@ struct rpc_iostats *rpc_alloc_iostats(struct rpc_clnt *clnt)
- 	new = kcalloc(clnt->cl_maxproc, sizeof(struct rpc_iostats), GFP_KERNEL);
- 	return new;
- }
--EXPORT_SYMBOL(rpc_alloc_iostats);
-+EXPORT_SYMBOL_GPL(rpc_alloc_iostats);
- 
- /**
-  * rpc_free_iostats - release an rpc_iostats structure
-@@ -129,7 +129,7 @@ void rpc_free_iostats(struct rpc_iostats *stats)
- {
- 	kfree(stats);
- }
--EXPORT_SYMBOL(rpc_free_iostats);
-+EXPORT_SYMBOL_GPL(rpc_free_iostats);
- 
- /**
-  * rpc_count_iostats - tally up per-task stats
-@@ -215,7 +215,7 @@ void rpc_print_iostats(struct seq_file *seq, struct rpc_clnt *clnt)
- 				metrics->om_execute * MILLISECS_PER_JIFFY);
- 	}
- }
--EXPORT_SYMBOL(rpc_print_iostats);
-+EXPORT_SYMBOL_GPL(rpc_print_iostats);
- 
- /*
-  * Register/unregister RPC proc files
-@@ -241,14 +241,14 @@ rpc_proc_register(struct rpc_stat *statp)
- {
- 	return do_register(statp->program->name, statp, &rpc_proc_fops);
- }
--EXPORT_SYMBOL(rpc_proc_register);
-+EXPORT_SYMBOL_GPL(rpc_proc_register);
- 
- void
- rpc_proc_unregister(const char *name)
- {
- 	remove_proc_entry(name, proc_net_rpc);
- }
--EXPORT_SYMBOL(rpc_proc_unregister);
-+EXPORT_SYMBOL_GPL(rpc_proc_unregister);
- 
- struct proc_dir_entry *
- svc_proc_register(struct svc_stat *statp, const struct file_operations *fops)
-diff --git a/net/sunrpc/sysctl.c b/net/sunrpc/sysctl.c
-index c879732..bada7de 100644
---- a/net/sunrpc/sysctl.c
-+++ b/net/sunrpc/sysctl.c
-@@ -23,16 +23,16 @@
-  * Declare the debug flags here
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index 345bb9b..3b3dbb9 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -111,13 +111,14 @@ void nfs_unlock_request(struct nfs_page *req)
+  * nfs_set_page_tag_locked - Tag a request as locked
+  * @req:
   */
- unsigned int	rpc_debug;
--EXPORT_SYMBOL(rpc_debug);
-+EXPORT_SYMBOL_GPL(rpc_debug);
+-static int nfs_set_page_tag_locked(struct nfs_page *req)
++int nfs_set_page_tag_locked(struct nfs_page *req)
+ {
+ 	struct nfs_inode *nfsi = NFS_I(req->wb_context->path.dentry->d_inode);
  
- unsigned int	nfs_debug;
--EXPORT_SYMBOL(nfs_debug);
-+EXPORT_SYMBOL_GPL(nfs_debug);
- 
- unsigned int	nfsd_debug;
--EXPORT_SYMBOL(nfsd_debug);
-+EXPORT_SYMBOL_GPL(nfsd_debug);
- 
- unsigned int	nlm_debug;
--EXPORT_SYMBOL(nlm_debug);
-+EXPORT_SYMBOL_GPL(nlm_debug);
- 
- #ifdef RPC_DEBUG
- 
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index 21ea94b..e28c4b9 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -992,7 +992,7 @@ void xprt_set_timeout(struct rpc_timeout *to, unsigned int retr, unsigned long i
- 	to->to_retries   = retr;
- 	to->to_exponential = 0;
+-	if (!nfs_lock_request(req))
++	if (!nfs_lock_request_dontget(req))
+ 		return 0;
+-	radix_tree_tag_set(&nfsi->nfs_page_tree, req->wb_index, NFS_PAGE_TAG_LOCKED);
++	if (req->wb_page != NULL)
++		radix_tree_tag_set(&nfsi->nfs_page_tree, req->wb_index, NFS_PAGE_TAG_LOCKED);
+ 	return 1;
  }
--EXPORT_SYMBOL(xprt_set_timeout);
-+EXPORT_SYMBOL_GPL(xprt_set_timeout);
+ 
+@@ -132,9 +133,10 @@ void nfs_clear_page_tag_locked(struct nfs_page *req)
+ 	if (req->wb_page != NULL) {
+ 		spin_lock(&inode->i_lock);
+ 		radix_tree_tag_clear(&nfsi->nfs_page_tree, req->wb_index, NFS_PAGE_TAG_LOCKED);
++		nfs_unlock_request(req);
+ 		spin_unlock(&inode->i_lock);
+-	}
+-	nfs_unlock_request(req);
++	} else
++		nfs_unlock_request(req);
+ }
  
  /**
-  * xprt_create_transport - create an RPC transport
+@@ -421,6 +423,7 @@ int nfs_scan_list(struct nfs_inode *nfsi,
+ 				goto out;
+ 			idx_start = req->wb_index + 1;
+ 			if (nfs_set_page_tag_locked(req)) {
++				kref_get(&req->wb_kref);
+ 				nfs_list_remove_request(req);
+ 				radix_tree_tag_clear(&nfsi->nfs_page_tree,
+ 						req->wb_index, tag);
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 51cc1bd..092e79c 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -196,7 +196,7 @@ static int nfs_writepage_setup(struct nfs_open_context *ctx, struct page *page,
+ 	}
+ 	/* Update file length */
+ 	nfs_grow_file(page, offset, count);
+-	nfs_unlock_request(req);
++	nfs_clear_page_tag_locked(req);
+ 	return 0;
+ }
+ 
+@@ -252,7 +252,6 @@ static int nfs_page_async_flush(struct nfs_pageio_descriptor *pgio,
+ 				struct page *page)
+ {
+ 	struct inode *inode = page->mapping->host;
+-	struct nfs_inode *nfsi = NFS_I(inode);
+ 	struct nfs_page *req;
+ 	int ret;
+ 
+@@ -263,10 +262,10 @@ static int nfs_page_async_flush(struct nfs_pageio_descriptor *pgio,
+ 			spin_unlock(&inode->i_lock);
+ 			return 0;
+ 		}
+-		if (nfs_lock_request_dontget(req))
++		if (nfs_set_page_tag_locked(req))
+ 			break;
+ 		/* Note: If we hold the page lock, as is the case in nfs_writepage,
+-		 *	 then the call to nfs_lock_request_dontget() will always
++		 *	 then the call to nfs_set_page_tag_locked() will always
+ 		 *	 succeed provided that someone hasn't already marked the
+ 		 *	 request as dirty (in which case we don't care).
+ 		 */
+@@ -280,7 +279,7 @@ static int nfs_page_async_flush(struct nfs_pageio_descriptor *pgio,
+ 	if (test_bit(PG_NEED_COMMIT, &req->wb_flags)) {
+ 		/* This request is marked for commit */
+ 		spin_unlock(&inode->i_lock);
+-		nfs_unlock_request(req);
++		nfs_clear_page_tag_locked(req);
+ 		nfs_pageio_complete(pgio);
+ 		return 0;
+ 	}
+@@ -288,8 +287,6 @@ static int nfs_page_async_flush(struct nfs_pageio_descriptor *pgio,
+ 		spin_unlock(&inode->i_lock);
+ 		BUG();
+ 	}
+-	radix_tree_tag_set(&nfsi->nfs_page_tree, req->wb_index,
+-			NFS_PAGE_TAG_LOCKED);
+ 	spin_unlock(&inode->i_lock);
+ 	nfs_pageio_add_request(pgio, req);
+ 	return 0;
+@@ -381,6 +378,7 @@ static int nfs_inode_add_request(struct inode *inode, struct nfs_page *req)
+ 	set_page_private(req->wb_page, (unsigned long)req);
+ 	nfsi->npages++;
+ 	kref_get(&req->wb_kref);
++	radix_tree_tag_set(&nfsi->nfs_page_tree, req->wb_index, NFS_PAGE_TAG_LOCKED);
+ 	return 0;
+ }
+ 
+@@ -596,7 +594,7 @@ static struct nfs_page * nfs_update_request(struct nfs_open_context* ctx,
+ 		spin_lock(&inode->i_lock);
+ 		req = nfs_page_find_request_locked(page);
+ 		if (req) {
+-			if (!nfs_lock_request_dontget(req)) {
++			if (!nfs_set_page_tag_locked(req)) {
+ 				int error;
+ 
+ 				spin_unlock(&inode->i_lock);
+@@ -646,7 +644,7 @@ static struct nfs_page * nfs_update_request(struct nfs_open_context* ctx,
+ 	    || req->wb_page != page
+ 	    || !nfs_dirty_request(req)
+ 	    || offset > rqend || end < req->wb_offset) {
+-		nfs_unlock_request(req);
++		nfs_clear_page_tag_locked(req);
+ 		return ERR_PTR(-EBUSY);
+ 	}
+ 
+diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
+index 30dbcc1..a1676e1 100644
+--- a/include/linux/nfs_page.h
++++ b/include/linux/nfs_page.h
+@@ -83,6 +83,7 @@ extern	void nfs_pageio_complete(struct nfs_pageio_descriptor *desc);
+ extern	void nfs_pageio_cond_complete(struct nfs_pageio_descriptor *, pgoff_t);
+ extern  int nfs_wait_on_request(struct nfs_page *);
+ extern	void nfs_unlock_request(struct nfs_page *req);
++extern	int nfs_set_page_tag_locked(struct nfs_page *req);
+ extern  void nfs_clear_page_tag_locked(struct nfs_page *req);
+ 
+ 
+@@ -95,18 +96,6 @@ nfs_lock_request_dontget(struct nfs_page *req)
+ 	return !test_and_set_bit(PG_BUSY, &req->wb_flags);
+ }
+ 
+-/*
+- * Lock the page of an asynchronous request and take a reference
+- */
+-static inline int
+-nfs_lock_request(struct nfs_page *req)
+-{
+-	if (test_and_set_bit(PG_BUSY, &req->wb_flags))
+-		return 0;
+-	kref_get(&req->wb_kref);
+-	return 1;
+-}
+-
+ /**
+  * nfs_list_add_request - Insert a request into a list
+  * @req: request
