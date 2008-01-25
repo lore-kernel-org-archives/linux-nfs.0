@@ -1,8 +1,8 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 042/112] NFS: Ensure that NFS version 4 mounts use NFS_PORT
-	if nfsport wasn't set
-Date: Fri, 25 Jan 2008 11:37:36 -0500
-Message-ID: <20080125163736.31887.95780.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
+Subject: [PATCH 029/112] SUNRPC: Cleanup to remove the last users of the
+	RPC_WAITQ declaration
+Date: Fri, 25 Jan 2008 11:37:31 -0500
+Message-ID: <20080125163731.31887.32569.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
 References: <20080125163723.31887.68074.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -10,43 +10,43 @@ To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:50284 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754502AbYAYRCL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Jan 2008 12:02:11 -0500
-Received: from svlexrs02.hq.netapp.com (svlexrs02.corp.netapp.com [10.57.156.154])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id m0PH22tu011015
-	for <linux-nfs@vger.kernel.org>; Fri, 25 Jan 2008 09:02:02 -0800 (PST)
+	id S1757112AbYAYRCR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Jan 2008 12:02:17 -0500
+Received: from svlexrs01.hq.netapp.com (svlexrs01.corp.netapp.com [10.57.156.158])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id m0PH1HAC020978
+	for <linux-nfs@vger.kernel.org>; Fri, 25 Jan 2008 09:02:04 -0800 (PST)
 In-Reply-To: <20080125163723.31887.68074.stgit-KPEdlmqt5P7XOazzY/2fV4TcuzvYVacciM950cveMlzk1uMJSBkQmQ@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Chuck Lever <chuck.lever@oracle.com>
-
-Text-based mount option parsing introduced a minor regression in the
-behavior of NFS version 4 mounts.  NFS version 4 is not supposed to require
-a running rpcbind service on the server in order for a mount to succeed.
-
-In other words, if the mount options don't specify a port number, the port
-number is supposed to default to 2049.  For earlier versions of NFS, the
-default port number was zero in order to cause the RPC client to autobind
-to the server's NFS service.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- fs/nfs/super.c |    2 ++
- 1 files changed, 2 insertions(+), 0 deletions(-)
+ net/sunrpc/sched.c |    7 ++++++-
+ 1 files changed, 6 insertions(+), 1 deletions(-)
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index fda1635..7d84d94 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -1643,6 +1643,8 @@ static int nfs4_validate_mount_data(void *options,
- 		if (nfs_parse_mount_options((char *)options, args) == 0)
- 			return -EINVAL;
+diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+index 96f4fdd..fb6d30f 100644
+--- a/net/sunrpc/sched.c
++++ b/net/sunrpc/sched.c
+@@ -45,7 +45,7 @@ static void			 rpc_release_task(struct rpc_task *task);
+ /*
+  * RPC tasks sit here while waiting for conditions to improve.
+  */
+-static RPC_WAITQ(delay_queue, "delayq");
++static struct rpc_wait_queue delay_queue;
  
-+		if (args->nfs_server.address.sin_port == 0)
-+			args->nfs_server.address.sin_port = htons(NFS_PORT);
- 		if (!nfs_verify_server_address((struct sockaddr *)
- 						&args->nfs_server.address))
- 			return -EINVAL;
+ /*
+  * rpciod-related stuff
+@@ -1060,6 +1060,11 @@ rpc_init_mempool(void)
+ 		goto err_nomem;
+ 	if (!rpciod_start())
+ 		goto err_nomem;
++	/*
++	 * The following is not strictly a mempool initialisation,
++	 * but there is no harm in doing it here
++	 */
++	rpc_init_wait_queue(&delay_queue, "delayq");
+ 	return 0;
+ err_nomem:
+ 	rpc_destroy_mempool();
