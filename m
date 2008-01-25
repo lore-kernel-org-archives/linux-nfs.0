@@ -1,117 +1,71 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 012/112] SUNRPC: Rename xprt_disconnect()
+Subject: [PATCH 010/112] SUNRPC: xprt_autoclose() should not call
+	xprt_disconnect()
 Date: Fri, 25 Jan 2008 11:37:26 -0500
-Message-ID: <20080125163726.31887.78991.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
+Message-ID: <20080125163725.31887.72688.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
 References: <20080125163723.31887.68074.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:14364 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:14393 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755004AbYAYRAG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Jan 2008 12:00:06 -0500
+	id S1755544AbYAYRAS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Jan 2008 12:00:18 -0500
 Received: from svlexrs02.hq.netapp.com (svlexrs02.corp.netapp.com [10.57.156.154])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id m0PGxses010226
-	for <linux-nfs@vger.kernel.org>; Fri, 25 Jan 2008 09:00:02 -0800 (PST)
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id m0PH04Hi010310
+	for <linux-nfs@vger.kernel.org>; Fri, 25 Jan 2008 09:00:16 -0800 (PST)
 In-Reply-To: <20080125163723.31887.68074.stgit-KPEdlmqt5P7XOazzY/2fV4TcuzvYVacciM950cveMlzk1uMJSBkQmQ@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-xprt_disconnect() should really only be called when the transport shutdown
-is completed, and it is time to wake up any pending tasks. Rename it to
-xprt_disconnect_done() in order to reflect the semantical change.
+The transport layer should do that itself whenever appropriate.
+
+Note that the RDMA transport already assumes that it needs to call
+xprt_disconnect in xprt_rdma_close().
+For TCP sockets, we want to call xprt_disconnect() only after the
+connection has been closed by both ends.
 
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- include/linux/sunrpc/xprt.h     |    2 +-
- net/sunrpc/xprt.c               |    6 +++---
- net/sunrpc/xprtrdma/transport.c |    4 ++--
- net/sunrpc/xprtsock.c           |    4 ++--
- 4 files changed, 8 insertions(+), 8 deletions(-)
+ net/sunrpc/xprt.c     |    1 -
+ net/sunrpc/xprtsock.c |    3 +--
+ 2 files changed, 1 insertions(+), 3 deletions(-)
 
-diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-index afb9e6a..2554cd2 100644
---- a/include/linux/sunrpc/xprt.h
-+++ b/include/linux/sunrpc/xprt.h
-@@ -245,7 +245,7 @@ void			xprt_adjust_cwnd(struct rpc_task *task, int result);
- struct rpc_rqst *	xprt_lookup_rqst(struct rpc_xprt *xprt, __be32 xid);
- void			xprt_complete_rqst(struct rpc_task *task, int copied);
- void			xprt_release_rqst_cong(struct rpc_task *task);
--void			xprt_disconnect(struct rpc_xprt *xprt);
-+void			xprt_disconnect_done(struct rpc_xprt *xprt);
- void			xprt_force_disconnect(struct rpc_xprt *xprt);
- 
- /*
 diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index 8799b64..a9101d4 100644
+index 8575bf4..8799b64 100644
 --- a/net/sunrpc/xprt.c
 +++ b/net/sunrpc/xprt.c
-@@ -574,11 +574,11 @@ static void xprt_autoclose(struct work_struct *work)
- }
+@@ -568,7 +568,6 @@ static void xprt_autoclose(struct work_struct *work)
+ 	struct rpc_xprt *xprt =
+ 		container_of(work, struct rpc_xprt, task_cleanup);
  
- /**
-- * xprt_disconnect - mark a transport as disconnected
-+ * xprt_disconnect_done - mark a transport as disconnected
-  * @xprt: transport to flag for disconnect
-  *
-  */
--void xprt_disconnect(struct rpc_xprt *xprt)
-+void xprt_disconnect_done(struct rpc_xprt *xprt)
- {
- 	dprintk("RPC:       disconnected transport %p\n", xprt);
- 	spin_lock_bh(&xprt->transport_lock);
-@@ -586,7 +586,7 @@ void xprt_disconnect(struct rpc_xprt *xprt)
- 	xprt_wake_pending_tasks(xprt, -ENOTCONN);
- 	spin_unlock_bh(&xprt->transport_lock);
- }
--EXPORT_SYMBOL_GPL(xprt_disconnect);
-+EXPORT_SYMBOL_GPL(xprt_disconnect_done);
- 
- /**
-  * xprt_force_disconnect - force a transport to disconnect
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 6f2112d..73033d8 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -449,7 +449,7 @@ xprt_rdma_close(struct rpc_xprt *xprt)
- 	struct rpcrdma_xprt *r_xprt = rpcx_to_rdmax(xprt);
- 
- 	dprintk("RPC:       %s: closing\n", __func__);
 -	xprt_disconnect(xprt);
-+	xprt_disconnect_done(xprt);
- 	(void) rpcrdma_ep_disconnect(&r_xprt->rx_ep, &r_xprt->rx_ia);
- }
- 
-@@ -682,7 +682,7 @@ xprt_rdma_send_request(struct rpc_task *task)
- 	}
- 
- 	if (rpcrdma_ep_post(&r_xprt->rx_ia, &r_xprt->rx_ep, req)) {
--		xprt_disconnect(xprt);
-+		xprt_disconnect_done(xprt);
- 		return -ENOTCONN;	/* implies disconnect */
- 	}
- 
+ 	xprt->ops->close(xprt);
+ 	clear_bit(XPRT_CLOSE_WAIT, &xprt->state);
+ 	xprt_release_write(xprt, NULL);
 diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 9b85bf4..5f2bbe6 100644
+index d2151a9..5d0444d 100644
 --- a/net/sunrpc/xprtsock.c
 +++ b/net/sunrpc/xprtsock.c
-@@ -777,7 +777,7 @@ clear_close_wait:
+@@ -774,10 +774,10 @@ static void xs_close(struct rpc_xprt *xprt)
+ 	sock_release(sock);
+ clear_close_wait:
+ 	smp_mb__before_clear_bit();
+-	clear_bit(XPRT_CONNECTED, &xprt->state);
  	clear_bit(XPRT_CLOSE_WAIT, &xprt->state);
  	clear_bit(XPRT_CLOSING, &xprt->state);
  	smp_mb__after_clear_bit();
--	xprt_disconnect(xprt);
-+	xprt_disconnect_done(xprt);
++	xprt_disconnect(xprt);
  }
  
  /**
-@@ -1155,7 +1155,7 @@ static void xs_tcp_state_change(struct sock *sk)
- 		clear_bit(XPRT_CLOSING, &xprt->state);
- 		smp_mb__after_clear_bit();
- 		/* Mark transport as closed and wake up all pending tasks */
--		xprt_disconnect(xprt);
-+		xprt_disconnect_done(xprt);
- 	}
-  out:
- 	read_unlock(&sk->sk_callback_lock);
+@@ -793,7 +793,6 @@ static void xs_destroy(struct rpc_xprt *xprt)
+ 
+ 	cancel_rearming_delayed_work(&transport->connect_worker);
+ 
+-	xprt_disconnect(xprt);
+ 	xs_close(xprt);
+ 	xs_free_peer_addresses(xprt);
+ 	kfree(xprt->slot);
