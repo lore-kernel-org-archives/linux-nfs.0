@@ -1,101 +1,85 @@
-From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 044/100] nfsd4: clean up access_valid, deny_valid checks.
-Date: Fri, 25 Jan 2008 18:16:24 -0500
-Message-ID: <1201303040-7779-44-git-send-email-bfields@citi.umich.edu>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH 097/100] NLM: have nlm_shutdown_hosts kill off all NLM
+ RPC tasks
+Date: Fri, 25 Jan 2008 18:55:48 -0500
+Message-ID: <20080125185548.5363f046@tleilax.poochiereds.net>
 References: <20080125231521.GG25141@fieldses.org>
- <1201303040-7779-1-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-2-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-3-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-4-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-5-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-6-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-7-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-8-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-9-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-10-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-11-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-12-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-13-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-14-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-15-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-16-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-17-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-18-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-19-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-20-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-21-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-22-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-23-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-24-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-25-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-26-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-27-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-28-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-29-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-30-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-31-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-32-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-33-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-34-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-35-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-36-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-37-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-38-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-39-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-40-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-41-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-42-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-43-git-send-email-bfields@citi.umich.edu>
-Cc: "J. Bruce Fields" <bfields@citi.umich.edu>,
-	Neil Brown <neilb@suse.de>
-To: linux-nfs@vger.kernel.org
+	<1201303040-7779-83-git-send-email-bfields@citi.umich.edu>
+	<1201303040-7779-84-git-send-email-bfields@citi.umich.edu>
+	<1201303040-7779-85-git-send-email-bfields@citi.umich.edu>
+	<1201303040-7779-86-git-send-email-bfields@citi.umich.edu>
+	<1201303040-7779-87-git-send-email-bfields@citi.umich.edu>
+	<1201303040-7779-88-git-send-email-bfields@citi.umich.edu>
+	<1201303040-7779-89-git-send-email-bfields@citi.umich.edu>
+	<1201303040-7779-90-git-send-email-bfields@citi.umich.edu>
+	<1201303040-7779-91-git-send-email-bfields@citi.umich.edu>
+	<1201303040-7779-92-git-send-email-bfields@citi.umich.edu>
+	<1201303040-7779-93-git-send-email-bfields@citi.umich.edu>
+	<1201303040-7779-94-git-send-email-bfields@citi.umich.edu>
+	<1201303040-7779-95-git-send-email-bfields@citi.umich.edu>
+	<1201303040-7779-96-git-send-email-bfields@citi.umich.edu>
+	<1201303040-7779-97-git-send-email-bfields@citi.umich.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Cc: linux-nfs@vger.kernel.org,
+	"J. Bruce Fields" <bfields@citi.umich.edu>
+To: "J. Bruce Fields" <bfields@citi.umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:47404 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([66.187.233.31]:53212 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932069AbYAYXRl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Jan 2008 18:17:41 -0500
-In-Reply-To: <1201303040-7779-43-git-send-email-bfields@citi.umich.edu>
+	id S1752439AbYAYXzy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Jan 2008 18:55:54 -0500
+In-Reply-To: <1201303040-7779-97-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Document these checks a little better and inline, as suggested by Neil
-Brown (note both functions have two callers).  Remove an obviously bogus
-check while we're there (checking whether unsigned value is negative).
+On Fri, 25 Jan 2008 18:17:17 -0500
+"J. Bruce Fields" <bfields@citi.umich.edu> wrote:
 
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
-Cc: Neil Brown <neilb@suse.de>
----
- fs/nfsd/nfs4state.c |   13 +++++++++----
- 1 files changed, 9 insertions(+), 4 deletions(-)
+> From: Jeff Layton <jlayton@redhat.com>
+> 
+> If we're shutting down all the nlm_hosts anyway, then it doesn't make
+> sense to allow RPC calls to linger. Allowing them to do so can mean
+> that the RPC calls can outlive the currently running lockd and can
+> lead to a use after free situation.
+> 
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> Reviewed-by: NeilBrown <neilb@suse.de>
+> Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+> ---
+>  fs/lockd/host.c |    4 +++-
+>  1 files changed, 3 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+> index ebec009..76e4bf5 100644
+> --- a/fs/lockd/host.c
+> +++ b/fs/lockd/host.c
+> @@ -379,8 +379,10 @@ nlm_shutdown_hosts(void)
+>  	/* First, make all hosts eligible for gc */
+>  	dprintk("lockd: nuking all hosts...\n");
+>  	for (chain = nlm_hosts; chain < nlm_hosts + NLM_HOST_NRHASH;
+> ++chain) {
+> -		hlist_for_each_entry(host, pos, chain, h_hash)
+> +		hlist_for_each_entry(host, pos, chain, h_hash) {
+>  			host->h_expires = jiffies - 1;
+> +			rpc_killall_tasks(host->h_rpcclnt);
+> +		}
+>  	}
+>  
+>  	/* Then, perform a garbage collection pass */
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 9320b7f..663bb35 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1157,14 +1157,19 @@ find_file(struct inode *ino)
- 	return NULL;
- }
- 
--static int access_valid(u32 x)
-+static inline int access_valid(u32 x)
- {
--	return (x > 0 && x < 4);
-+	if (x < NFS4_SHARE_ACCESS_READ)
-+		return 0;
-+	if (x > NFS4_SHARE_ACCESS_BOTH)
-+		return 0;
-+	return 1;
- }
- 
--static int deny_valid(u32 x)
-+static inline int deny_valid(u32 x)
- {
--	return (x >= 0 && x < 5);
-+	/* Note: unlike access bits, deny bits may be zero. */
-+	return x <= NFS4_SHARE_DENY_BOTH;
- }
- 
- static void
+I was doing some more testing today, and noticed that the original
+problem that this patch is intended to fix resurfaced. I think this
+patch just changes the timing on the race somehow, but I haven't tracked
+it down completely yet.
+
+There's also another problem -- it's possible for host->h_rpcclnt to be
+NULL, and that has special meaning for rpc_killall_tasks. For now, I
+suggest that we drop this patch until I have a chance to work on it
+further.
+
+The other related patches in this series should be OK, however.
+
+Thanks,
 -- 
-1.5.4.rc2.60.gb2e62
-
+Jeff Layton <jlayton@redhat.com>
