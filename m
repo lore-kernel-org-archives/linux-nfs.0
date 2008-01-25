@@ -1,7 +1,7 @@
 From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 038/100] nfsd: Allow AIX client to read dir containing mountpoints
-Date: Fri, 25 Jan 2008 18:16:18 -0500
-Message-ID: <1201303040-7779-38-git-send-email-bfields@citi.umich.edu>
+Subject: [PATCH 060/100] svc: Add a generic transport svc_create_xprt function
+Date: Fri, 25 Jan 2008 18:16:40 -0500
+Message-ID: <1201303040-7779-60-git-send-email-bfields@citi.umich.edu>
 References: <20080125231521.GG25141@fieldses.org>
  <1201303040-7779-1-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-2-git-send-email-bfields@citi.umich.edu>
@@ -40,158 +40,283 @@ References: <20080125231521.GG25141@fieldses.org>
  <1201303040-7779-35-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-36-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-37-git-send-email-bfields@citi.umich.edu>
-Cc: Frank Filz <ffilzlnx@us.ibm.com>,
+ <1201303040-7779-38-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-39-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-40-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-41-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-42-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-43-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-44-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-45-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-46-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-47-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-48-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-49-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-50-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-51-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-52-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-53-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-54-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-55-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-56-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-57-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-58-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-59-git-send-email-bfields@citi.umich.edu>
+Cc: Tom Tucker <tom@opengridcomputing.com>,
 	"J. Bruce Fields" <bfields@citi.umich.edu>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:47430 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:47457 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932101AbYAYXRr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Jan 2008 18:17:47 -0500
-In-Reply-To: <1201303040-7779-37-git-send-email-bfields@citi.umich.edu>
+	id S1762051AbYAYXRw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Jan 2008 18:17:52 -0500
+In-Reply-To: <1201303040-7779-59-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Frank Filz <ffilzlnx@us.ibm.com>
+From: Tom Tucker <tom@opengridcomputing.com>
 
-This patch addresses a compatibility issue with a Linux NFS server and
-AIX NFS client.
+The svc_create_xprt function is a transport independent version
+of the svc_makesock function.
 
-I have exported /export as fsid=0 with sec=krb5:krb5i
-I have mount --bind /home onto /export/home
-I have exported /export/home with sec=krb5i
+Since transport instance creation contains transport dependent and
+independent components, add an xpo_create transport function. The
+transport implementation of this function allocates the memory for the
+endpoint, implements the transport dependent initialization logic, and
+calls svc_xprt_init to initialize the transport independent field (svc_xprt)
+in it's data structure.
 
-The AIX client mounts / -o sec=krb5:krb5i onto /mnt
-
-If I do an ls /mnt, the AIX client gets a permission error. Looking at
-the network traceIwe see a READDIR looking for attributes
-FATTR4_RDATTR_ERROR and FATTR4_MOUNTED_ON_FILEID. The response gives a
-NFS4ERR_WRONGSEC which the AIX client is not expecting.
-
-Since the AIX client is only asking for an attribute that is an
-attribute of the parent file system (pseudo root in my example), it
-seems reasonable that there should not be an error.
-
-In discussing this issue with Bruce Fields, I initially proposed
-ignoring the error in nfsd4_encode_dirent_fattr() if all that was being
-asked for was FATTR4_RDATTR_ERROR and FATTR4_MOUNTED_ON_FILEID, however,
-Bruce suggested that we avoid calling cross_mnt() if only these
-attributes are requested.
-
-The following patch implements bypassing cross_mnt() if only
-FATTR4_RDATTR_ERROR and FATTR4_MOUNTED_ON_FILEID are called. Since there
-is some complexity in the code in nfsd4_encode_fattr(), I didn't want to
-duplicate code (and introduce a maintenance nightmare), so I added a
-parameter to nfsd4_encode_fattr() that indicates whether it should
-ignore cross mounts and simply fill in the attribute using the passed in
-dentry as opposed to it's parent.
-
-Signed-off-by: Frank Filz <ffilzlnx@us.ibm.com>
+Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+Acked-by: Neil Brown <neilb@suse.de>
+Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
+Reviewed-by: Greg Banks <gnb@sgi.com>
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
- fs/nfsd/nfs4proc.c        |    2 +-
- fs/nfsd/nfs4xdr.c         |   27 ++++++++++++++++++++++-----
- include/linux/nfsd/xdr4.h |    2 +-
- 3 files changed, 24 insertions(+), 7 deletions(-)
+ include/linux/sunrpc/svc_xprt.h |    4 ++
+ net/sunrpc/svc_xprt.c           |   37 ++++++++++++++++++++++++
+ net/sunrpc/svcsock.c            |   59 +++++++++++++++++++++++++++++----------
+ 3 files changed, 85 insertions(+), 15 deletions(-)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 18ead17..c593db0 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -750,7 +750,7 @@ _nfsd4_verify(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 				    cstate->current_fh.fh_export,
- 				    cstate->current_fh.fh_dentry, buf,
- 				    &count, verify->ve_bmval,
--				    rqstp);
-+				    rqstp, 0);
+diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+index 31a44f4..986a5a0 100644
+--- a/include/linux/sunrpc/svc_xprt.h
++++ b/include/linux/sunrpc/svc_xprt.h
+@@ -10,6 +10,9 @@
+ #include <linux/sunrpc/svc.h>
  
- 	/* this means that nfsd4_encode_fattr() ran out of space */
- 	if (status == nfserr_resource && count == 0)
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 25c7ae2..2d94b9b 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1453,7 +1453,7 @@ static __be32 fattr_handle_absent_fs(u32 *bmval0, u32 *bmval1, u32 *rdattr_err)
- __be32
- nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
- 		struct dentry *dentry, __be32 *buffer, int *countp, u32 *bmval,
--		struct svc_rqst *rqstp)
-+		struct svc_rqst *rqstp, int ignore_crossmnt)
+ struct svc_xprt_ops {
++	struct svc_xprt	*(*xpo_create)(struct svc_serv *,
++				       struct sockaddr *, int,
++				       int);
+ 	struct svc_xprt	*(*xpo_accept)(struct svc_xprt *);
+ 	int		(*xpo_has_wspace)(struct svc_xprt *);
+ 	int		(*xpo_recvfrom)(struct svc_rqst *);
+@@ -36,5 +39,6 @@ struct svc_xprt {
+ int	svc_reg_xprt_class(struct svc_xprt_class *);
+ void	svc_unreg_xprt_class(struct svc_xprt_class *);
+ void	svc_xprt_init(struct svc_xprt_class *, struct svc_xprt *);
++int	svc_create_xprt(struct svc_serv *, char *, unsigned short, int);
+ 
+ #endif /* SUNRPC_SVC_XPRT_H */
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index fe5270f..6ff5ca7 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -81,3 +81,40 @@ void svc_xprt_init(struct svc_xprt_class *xcl, struct svc_xprt *xprt)
+ 	xprt->xpt_ops = xcl->xcl_ops;
+ }
+ EXPORT_SYMBOL_GPL(svc_xprt_init);
++
++int svc_create_xprt(struct svc_serv *serv, char *xprt_name, unsigned short port,
++		    int flags)
++{
++	struct svc_xprt_class *xcl;
++	int ret = -ENOENT;
++	struct sockaddr_in sin = {
++		.sin_family		= AF_INET,
++		.sin_addr.s_addr	= INADDR_ANY,
++		.sin_port		= htons(port),
++	};
++	dprintk("svc: creating transport %s[%d]\n", xprt_name, port);
++	spin_lock(&svc_xprt_class_lock);
++	list_for_each_entry(xcl, &svc_xprt_class_list, xcl_list) {
++		if (strcmp(xprt_name, xcl->xcl_name) == 0) {
++			spin_unlock(&svc_xprt_class_lock);
++			if (try_module_get(xcl->xcl_owner)) {
++				struct svc_xprt *newxprt;
++				ret = 0;
++				newxprt = xcl->xcl_ops->xpo_create
++					(serv,
++					 (struct sockaddr *)&sin, sizeof(sin),
++					 flags);
++				if (IS_ERR(newxprt)) {
++					module_put(xcl->xcl_owner);
++					ret = PTR_ERR(newxprt);
++				}
++			}
++			goto out;
++		}
++	}
++	spin_unlock(&svc_xprt_class_lock);
++	dprintk("svc: transport %s not found\n", xprt_name);
++ out:
++	return ret;
++}
++EXPORT_SYMBOL_GPL(svc_create_xprt);
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 6e9dc8f..9f0f6d0 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -91,6 +91,8 @@ static void		svc_sock_free(struct svc_xprt *);
+ static struct svc_deferred_req *svc_deferred_dequeue(struct svc_sock *svsk);
+ static int svc_deferred_recv(struct svc_rqst *rqstp);
+ static struct cache_deferred_req *svc_defer(struct cache_req *req);
++static struct svc_xprt *svc_create_socket(struct svc_serv *, int,
++					  struct sockaddr *, int, int);
+ 
+ /* apparently the "standard" is that clients close
+  * idle connections after 5 minutes, servers after
+@@ -365,6 +367,7 @@ svc_sock_put(struct svc_sock *svsk)
  {
- 	u32 bmval0 = bmval[0];
- 	u32 bmval1 = bmval[1];
-@@ -1833,7 +1833,12 @@ out_acl:
- 	if (bmval1 & FATTR4_WORD1_MOUNTED_ON_FILEID) {
- 		if ((buflen -= 8) < 0)
-                 	goto out_resource;
--		if (exp->ex_mnt->mnt_root->d_inode == dentry->d_inode) {
-+                /*
-+                 * Get parent's attributes if not ignoring crossmount
-+                 * and this is the root of a cross-mounted filesystem.
-+                 */
-+                if (ignore_crossmnt == 0 &&
-+		    exp->ex_mnt->mnt_root->d_inode == dentry->d_inode) {
- 			err = vfs_getattr(exp->ex_mnt->mnt_parent,
- 				exp->ex_mnt->mnt_mountpoint, &stat);
- 			if (err)
-@@ -1869,13 +1874,25 @@ nfsd4_encode_dirent_fattr(struct nfsd4_readdir *cd,
- 	struct svc_export *exp = cd->rd_fhp->fh_export;
- 	struct dentry *dentry;
- 	__be32 nfserr;
-+	int    ignore_crossmnt = 0;
- 
- 	dentry = lookup_one_len(name, cd->rd_fhp->fh_dentry, namlen);
- 	if (IS_ERR(dentry))
- 		return nfserrno(PTR_ERR(dentry));
- 
- 	exp_get(exp);
--	if (d_mountpoint(dentry)) {
-+	/*
-+	 * In the case of a mountpoint, the client may be asking for
-+	 * attributes that are only properties of the underlying filesystem
-+	 * as opposed to the cross-mounted file system. In such a case,
-+	 * we will not follow the cross mount and will fill the attribtutes
-+	 * directly from the mountpoint dentry.
-+	 */
-+	if (d_mountpoint(dentry) &&
-+	    (cd->rd_bmval[0] & ~FATTR4_WORD0_RDATTR_ERROR) == 0 &&
-+	    (cd->rd_bmval[1] & ~FATTR4_WORD1_MOUNTED_ON_FILEID) == 0)
-+		ignore_crossmnt = 1;
-+	else if (d_mountpoint(dentry)) {
- 		int err;
- 
- 		/*
-@@ -1894,7 +1911,7 @@ nfsd4_encode_dirent_fattr(struct nfsd4_readdir *cd,
- 
+ 	if (atomic_dec_and_test(&svsk->sk_inuse)) {
+ 		BUG_ON(!test_bit(SK_DEAD, &svsk->sk_flags));
++		module_put(svsk->sk_xprt.xpt_class->xcl_owner);
+ 		svsk->sk_xprt.xpt_ops->xpo_free(&svsk->sk_xprt);
  	}
- 	nfserr = nfsd4_encode_fattr(NULL, exp, dentry, p, buflen, cd->rd_bmval,
--					cd->rd_rqstp);
-+					cd->rd_rqstp, ignore_crossmnt);
- out_put:
- 	dput(dentry);
- 	exp_put(exp);
-@@ -2048,7 +2065,7 @@ nfsd4_encode_getattr(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
- 	buflen = resp->end - resp->p - (COMPOUND_ERR_SLACK_SPACE >> 2);
- 	nfserr = nfsd4_encode_fattr(fhp, fhp->fh_export, fhp->fh_dentry,
- 				    resp->p, &buflen, getattr->ga_bmval,
--				    resp->rqstp);
-+				    resp->rqstp, 0);
- 	if (!nfserr)
- 		resp->p += buflen;
- 	return nfserr;
-diff --git a/include/linux/nfsd/xdr4.h b/include/linux/nfsd/xdr4.h
-index b0ddfb4..27bd3e3 100644
---- a/include/linux/nfsd/xdr4.h
-+++ b/include/linux/nfsd/xdr4.h
-@@ -441,7 +441,7 @@ void nfsd4_encode_operation(struct nfsd4_compoundres *, struct nfsd4_op *);
- void nfsd4_encode_replay(struct nfsd4_compoundres *resp, struct nfsd4_op *op);
- __be32 nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
- 		       struct dentry *dentry, __be32 *buffer, int *countp,
--		       u32 *bmval, struct svc_rqst *);
-+		       u32 *bmval, struct svc_rqst *, int ignore_crossmnt);
- extern __be32 nfsd4_setclientid(struct svc_rqst *rqstp,
- 		struct nfsd4_compound_state *,
- 		struct nfsd4_setclientid *setclid);
+ }
+@@ -902,7 +905,15 @@ static struct svc_xprt *svc_udp_accept(struct svc_xprt *xprt)
+ 	return NULL;
+ }
+ 
++static struct svc_xprt *svc_udp_create(struct svc_serv *serv,
++				       struct sockaddr *sa, int salen,
++				       int flags)
++{
++	return svc_create_socket(serv, IPPROTO_UDP, sa, salen, flags);
++}
++
+ static struct svc_xprt_ops svc_udp_ops = {
++	.xpo_create = svc_udp_create,
+ 	.xpo_recvfrom = svc_udp_recvfrom,
+ 	.xpo_sendto = svc_udp_sendto,
+ 	.xpo_release_rqst = svc_release_skb,
+@@ -915,6 +926,7 @@ static struct svc_xprt_ops svc_udp_ops = {
+ 
+ static struct svc_xprt_class svc_udp_class = {
+ 	.xcl_name = "udp",
++	.xcl_owner = THIS_MODULE,
+ 	.xcl_ops = &svc_udp_ops,
+ 	.xcl_max_payload = RPCSVC_MAXPAYLOAD_UDP,
+ };
+@@ -1384,7 +1396,15 @@ static int svc_tcp_has_wspace(struct svc_xprt *xprt)
+ 	return 1;
+ }
+ 
++static struct svc_xprt *svc_tcp_create(struct svc_serv *serv,
++				       struct sockaddr *sa, int salen,
++				       int flags)
++{
++	return svc_create_socket(serv, IPPROTO_TCP, sa, salen, flags);
++}
++
+ static struct svc_xprt_ops svc_tcp_ops = {
++	.xpo_create = svc_tcp_create,
+ 	.xpo_recvfrom = svc_tcp_recvfrom,
+ 	.xpo_sendto = svc_tcp_sendto,
+ 	.xpo_release_rqst = svc_release_skb,
+@@ -1397,6 +1417,7 @@ static struct svc_xprt_ops svc_tcp_ops = {
+ 
+ static struct svc_xprt_class svc_tcp_class = {
+ 	.xcl_name = "tcp",
++	.xcl_owner = THIS_MODULE,
+ 	.xcl_ops = &svc_tcp_ops,
+ 	.xcl_max_payload = RPCSVC_MAXPAYLOAD_TCP,
+ };
+@@ -1573,8 +1594,14 @@ svc_recv(struct svc_rqst *rqstp, long timeout)
+ 	} else if (test_bit(SK_LISTENER, &svsk->sk_flags)) {
+ 		struct svc_xprt *newxpt;
+ 		newxpt = svsk->sk_xprt.xpt_ops->xpo_accept(&svsk->sk_xprt);
+-		if (newxpt)
++		if (newxpt) {
++			/*
++			 * We know this module_get will succeed because the
++			 * listener holds a reference too
++			 */
++			__module_get(newxpt->xpt_class->xcl_owner);
+ 			svc_check_conn_limits(svsk->sk_server);
++		}
+ 		svc_sock_received(svsk);
+ 	} else {
+ 		dprintk("svc: server %p, pool %u, socket %p, inuse=%d\n",
+@@ -1814,8 +1841,10 @@ EXPORT_SYMBOL_GPL(svc_addsock);
+ /*
+  * Create socket for RPC service.
+  */
+-static int svc_create_socket(struct svc_serv *serv, int protocol,
+-				struct sockaddr *sin, int len, int flags)
++static struct svc_xprt *svc_create_socket(struct svc_serv *serv,
++					  int protocol,
++					  struct sockaddr *sin, int len,
++					  int flags)
+ {
+ 	struct svc_sock	*svsk;
+ 	struct socket	*sock;
+@@ -1830,13 +1859,13 @@ static int svc_create_socket(struct svc_serv *serv, int protocol,
+ 	if (protocol != IPPROTO_UDP && protocol != IPPROTO_TCP) {
+ 		printk(KERN_WARNING "svc: only UDP and TCP "
+ 				"sockets supported\n");
+-		return -EINVAL;
++		return ERR_PTR(-EINVAL);
+ 	}
+ 	type = (protocol == IPPROTO_UDP)? SOCK_DGRAM : SOCK_STREAM;
+ 
+ 	error = sock_create_kern(sin->sa_family, type, protocol, &sock);
+ 	if (error < 0)
+-		return error;
++		return ERR_PTR(error);
+ 
+ 	svc_reclassify_socket(sock);
+ 
+@@ -1853,13 +1882,13 @@ static int svc_create_socket(struct svc_serv *serv, int protocol,
+ 
+ 	if ((svsk = svc_setup_socket(serv, sock, &error, flags)) != NULL) {
+ 		svc_sock_received(svsk);
+-		return ntohs(inet_sk(svsk->sk_sk)->sport);
++		return (struct svc_xprt *)svsk;
+ 	}
+ 
+ bummer:
+ 	dprintk("svc: svc_create_socket error = %d\n", -error);
+ 	sock_release(sock);
+-	return error;
++	return ERR_PTR(error);
+ }
+ 
+ /*
+@@ -1970,15 +1999,15 @@ void svc_force_close_socket(struct svc_sock *svsk)
+ int svc_makesock(struct svc_serv *serv, int protocol, unsigned short port,
+ 			int flags)
+ {
+-	struct sockaddr_in sin = {
+-		.sin_family		= AF_INET,
+-		.sin_addr.s_addr	= INADDR_ANY,
+-		.sin_port		= htons(port),
+-	};
+-
+ 	dprintk("svc: creating socket proto = %d\n", protocol);
+-	return svc_create_socket(serv, protocol, (struct sockaddr *) &sin,
+-							sizeof(sin), flags);
++	switch (protocol) {
++	case IPPROTO_TCP:
++		return svc_create_xprt(serv, "tcp", port, flags);
++	case IPPROTO_UDP:
++		return svc_create_xprt(serv, "udp", port, flags);
++	default:
++		return -EINVAL;
++	}
+ }
+ 
+ /*
 -- 
 1.5.4.rc2.60.gb2e62
 
