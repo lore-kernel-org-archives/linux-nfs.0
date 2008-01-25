@@ -1,63 +1,59 @@
 From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 005/100] SUNRPC: Prevent length underflow in read_flush()
-Date: Fri, 25 Jan 2008 18:15:45 -0500
-Message-ID: <1201303040-7779-5-git-send-email-bfields@citi.umich.edu>
+Subject: [PATCH 011/100] NFSD: Use unsigned length argument for decode_pathname
+Date: Fri, 25 Jan 2008 18:15:51 -0500
+Message-ID: <1201303040-7779-11-git-send-email-bfields@citi.umich.edu>
 References: <20080125231521.GG25141@fieldses.org>
  <1201303040-7779-1-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-2-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-3-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-4-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-5-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-6-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-7-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-8-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-9-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-10-git-send-email-bfields@citi.umich.edu>
 Cc: Chuck Lever <chuck.lever@oracle.com>,
 	"J. Bruce Fields" <bfields@citi.umich.edu>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:47309 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:47325 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759082AbYAYXRX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Jan 2008 18:17:23 -0500
-In-Reply-To: <1201303040-7779-4-git-send-email-bfields@citi.umich.edu>
+	id S1762048AbYAYXRY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Jan 2008 18:17:24 -0500
+In-Reply-To: <1201303040-7779-10-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Chuck Lever <chuck.lever@oracle.com>
 
-Make sure we compare an unsigned length to an unsigned count in
-read_flush().
+Clean up: path name lengths are unsigned on the wire, negative lengths
+are not meaningful natively either.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Acked-By: NeilBrown <neilb@suse.de>
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
- net/sunrpc/cache.c |   10 +++++-----
- 1 files changed, 5 insertions(+), 5 deletions(-)
+ fs/nfsd/nfsxdr.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index 8e05557..578084f 100644
---- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -1242,18 +1242,18 @@ static ssize_t read_flush(struct file *file, char __user *buf,
- 	struct cache_detail *cd = PDE(file->f_path.dentry->d_inode)->data;
- 	char tbuf[20];
- 	unsigned long p = *ppos;
--	int len;
-+	size_t len;
- 
- 	sprintf(tbuf, "%lu\n", cd->flush_time);
- 	len = strlen(tbuf);
- 	if (p >= len)
- 		return 0;
- 	len -= p;
--	if (len > count) len = count;
-+	if (len > count)
-+		len = count;
- 	if (copy_to_user(buf, (void*)(tbuf+p), len))
--		len = -EFAULT;
--	else
--		*ppos += len;
-+		return -EFAULT;
-+	*ppos += len;
- 	return len;
+diff --git a/fs/nfsd/nfsxdr.c b/fs/nfsd/nfsxdr.c
+index 50bd618..7003c31 100644
+--- a/fs/nfsd/nfsxdr.c
++++ b/fs/nfsd/nfsxdr.c
+@@ -78,10 +78,10 @@ decode_filename(__be32 *p, char **namp, unsigned int *lenp)
  }
  
+ static __be32 *
+-decode_pathname(__be32 *p, char **namp, int *lenp)
++decode_pathname(__be32 *p, char **namp, unsigned int *lenp)
+ {
+ 	char		*name;
+-	int		i;
++	unsigned int	i;
+ 
+ 	if ((p = xdr_decode_string_inplace(p, namp, lenp, NFS_MAXPATHLEN)) != NULL) {
+ 		for (i = 0, name = *namp; i < *lenp; i++, name++) {
 -- 
 1.5.4.rc2.60.gb2e62
 
