@@ -1,120 +1,120 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 037/112] NFS: Use unsigned intermediates for manipulating
-	header lengths (NFSv2 XDR)
-Date: Fri, 25 Jan 2008 11:37:34 -0500
-Message-ID: <20080125163733.31887.78660.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
+Subject: [PATCH 070/112] NFS: Change nfs_find_client() to take "struct
+	sockaddr *"
+Date: Fri, 25 Jan 2008 11:37:47 -0500
+Message-ID: <20080125163747.31887.12743.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
 References: <20080125163723.31887.68074.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:14406 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:63573 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755200AbYAYRAV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Jan 2008 12:00:21 -0500
+	id S1755495AbYAYRAe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Jan 2008 12:00:34 -0500
 Received: from svlexrs02.hq.netapp.com (svlexrs02.corp.netapp.com [10.57.156.154])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id m0PH04Ht010310
-	for <linux-nfs@vger.kernel.org>; Fri, 25 Jan 2008 09:00:20 -0800 (PST)
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id m0PH0Ln0010494
+	for <linux-nfs@vger.kernel.org>; Fri, 25 Jan 2008 09:00:31 -0800 (PST)
 In-Reply-To: <20080125163723.31887.68074.stgit-KPEdlmqt5P7XOazzY/2fV4TcuzvYVacciM950cveMlzk1uMJSBkQmQ@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Chuck Lever <chuck.lever@oracle.com>
 
-Clean up: prevent length underflow and mixed sign comparisons when
-unmarshalling NFS version 2 read, readdir, and readlink replies.
+Adjust arguments and callers of nfs_find_client() to pass a
+"struct sockaddr *" instead of "struct sockaddr_in *" to support non-IPv4
+addresses.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Cc: Aurelien Charbon <aurelien.charbon-Z51IpKcfGtLk1uMJSBkQmQ@public.gmane.org>
+
+Trond: Also fix up protocol version number argument in nfs_find_client() to
+use the correct u32 type.
+
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- fs/nfs/nfs2xdr.c |   24 ++++++++++++++----------
- 1 files changed, 14 insertions(+), 10 deletions(-)
+ fs/nfs/callback.c      |    3 +--
+ fs/nfs/callback_proc.c |    4 ++--
+ fs/nfs/client.c        |    7 +------
+ fs/nfs/internal.h      |    2 +-
+ 4 files changed, 5 insertions(+), 11 deletions(-)
 
-diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
-index 668ab96..1f7ea67 100644
---- a/fs/nfs/nfs2xdr.c
-+++ b/fs/nfs/nfs2xdr.c
-@@ -262,7 +262,9 @@ static int
- nfs_xdr_readres(struct rpc_rqst *req, __be32 *p, struct nfs_readres *res)
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index bbf67f1..9b6bbf1 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -164,12 +164,11 @@ void nfs_callback_down(void)
+ 
+ static int nfs_callback_authenticate(struct svc_rqst *rqstp)
  {
- 	struct kvec *iov = req->rq_rcv_buf.head;
--	int	status, count, recvd, hdrlen;
-+	size_t hdrlen;
-+	u32 count, recvd;
-+	int status;
+-	struct sockaddr_in *addr = svc_addr_in(rqstp);
+ 	struct nfs_client *clp;
+ 	char buf[RPC_MAX_ADDRBUFLEN];
  
- 	if ((status = ntohl(*p++)))
- 		return -nfs_stat_to_errno(status);
-@@ -273,7 +275,7 @@ nfs_xdr_readres(struct rpc_rqst *req, __be32 *p, struct nfs_readres *res)
- 	hdrlen = (u8 *) p - (u8 *) iov->iov_base;
- 	if (iov->iov_len < hdrlen) {
- 		dprintk("NFS: READ reply header overflowed:"
--				"length %d > %Zu\n", hdrlen, iov->iov_len);
-+				"length %Zu > %Zu\n", hdrlen, iov->iov_len);
- 		return -errno_NFSERR_IO;
- 	} else if (iov->iov_len != hdrlen) {
- 		dprintk("NFS: READ header is short. iovec will be shifted.\n");
-@@ -283,11 +285,11 @@ nfs_xdr_readres(struct rpc_rqst *req, __be32 *p, struct nfs_readres *res)
- 	recvd = req->rq_rcv_buf.len - hdrlen;
- 	if (count > recvd) {
- 		dprintk("NFS: server cheating in read reply: "
--			"count %d > recvd %d\n", count, recvd);
-+			"count %u > recvd %u\n", count, recvd);
- 		count = recvd;
- 	}
+ 	/* Don't talk to strangers */
+-	clp = nfs_find_client(addr, 4);
++	clp = nfs_find_client(svc_addr(rqstp), 4);
+ 	if (clp == NULL)
+ 		return SVC_DROP;
  
--	dprintk("RPC:      readres OK count %d\n", count);
-+	dprintk("RPC:      readres OK count %u\n", count);
- 	if (count < res->count)
- 		res->count = count;
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index fa9586d..e89a900 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -25,7 +25,7 @@ __be32 nfs4_callback_getattr(struct cb_getattrargs *args, struct cb_getattrres *
  
-@@ -423,9 +425,10 @@ nfs_xdr_readdirres(struct rpc_rqst *req, __be32 *p, void *dummy)
- 	struct xdr_buf *rcvbuf = &req->rq_rcv_buf;
- 	struct kvec *iov = rcvbuf->head;
- 	struct page **page;
--	int hdrlen, recvd;
-+	size_t hdrlen;
-+	unsigned int pglen, recvd;
-+	u32 len;
- 	int status, nr;
--	unsigned int len, pglen;
- 	__be32 *end, *entry, *kaddr;
+ 	res->bitmap[0] = res->bitmap[1] = 0;
+ 	res->status = htonl(NFS4ERR_BADHANDLE);
+-	clp = nfs_find_client((struct sockaddr_in *)args->addr, 4);
++	clp = nfs_find_client(args->addr, 4);
+ 	if (clp == NULL)
+ 		goto out;
  
- 	if ((status = ntohl(*p++)))
-@@ -434,7 +437,7 @@ nfs_xdr_readdirres(struct rpc_rqst *req, __be32 *p, void *dummy)
- 	hdrlen = (u8 *) p - (u8 *) iov->iov_base;
- 	if (iov->iov_len < hdrlen) {
- 		dprintk("NFS: READDIR reply header overflowed:"
--				"length %d > %Zu\n", hdrlen, iov->iov_len);
-+				"length %Zu > %Zu\n", hdrlen, iov->iov_len);
- 		return -errno_NFSERR_IO;
- 	} else if (iov->iov_len != hdrlen) {
- 		dprintk("NFS: READDIR header is short. iovec will be shifted.\n");
-@@ -576,7 +579,8 @@ nfs_xdr_readlinkres(struct rpc_rqst *req, __be32 *p, void *dummy)
+@@ -68,7 +68,7 @@ __be32 nfs4_callback_recall(struct cb_recallargs *args, void *dummy)
+ 	__be32 res;
+ 	
+ 	res = htonl(NFS4ERR_BADHANDLE);
+-	clp = nfs_find_client((struct sockaddr_in *)args->addr, 4);
++	clp = nfs_find_client(args->addr, 4);
+ 	if (clp == NULL)
+ 		goto out;
+ 
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 44fe7fd..73bf4ec 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -242,7 +242,7 @@ static int nfs_sockaddr_match_ipaddr(const struct sockaddr *sa1,
+  * Find a client by IP address and protocol version
+  * - returns NULL if no such client
+  */
+-struct nfs_client *_nfs_find_client(const struct sockaddr *addr, int nfsversion)
++struct nfs_client *nfs_find_client(const struct sockaddr *addr, u32 nfsversion)
  {
- 	struct xdr_buf *rcvbuf = &req->rq_rcv_buf;
- 	struct kvec *iov = rcvbuf->head;
--	int hdrlen, len, recvd;
-+	size_t hdrlen;
-+	u32 len, recvd;
- 	char	*kaddr;
- 	int	status;
+ 	struct nfs_client *clp;
  
-@@ -584,14 +588,14 @@ nfs_xdr_readlinkres(struct rpc_rqst *req, __be32 *p, void *dummy)
- 		return -nfs_stat_to_errno(status);
- 	/* Convert length of symlink */
- 	len = ntohl(*p++);
--	if (len >= rcvbuf->page_len || len <= 0) {
-+	if (len >= rcvbuf->page_len) {
- 		dprintk("nfs: server returned giant symlink!\n");
- 		return -ENAMETOOLONG;
- 	}
- 	hdrlen = (u8 *) p - (u8 *) iov->iov_base;
- 	if (iov->iov_len < hdrlen) {
- 		dprintk("NFS: READLINK reply header overflowed:"
--				"length %d > %Zu\n", hdrlen, iov->iov_len);
-+				"length %Zu > %Zu\n", hdrlen, iov->iov_len);
- 		return -errno_NFSERR_IO;
- 	} else if (iov->iov_len != hdrlen) {
- 		dprintk("NFS: READLINK header is short. iovec will be shifted.\n");
+@@ -272,11 +272,6 @@ struct nfs_client *_nfs_find_client(const struct sockaddr *addr, int nfsversion)
+ 	return NULL;
+ }
+ 
+-struct nfs_client *nfs_find_client(const struct sockaddr_in *addr, int nfsversion)
+-{
+-	return _nfs_find_client((const struct sockaddr *)addr, nfsversion);
+-}
+-
+ /*
+  * Find an nfs_client on the list that matches the initialisation data
+  * that is supplied.
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 058d503..c8458b1 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -60,7 +60,7 @@ struct nfs_parsed_mount_data {
+ extern struct rpc_program nfs_program;
+ 
+ extern void nfs_put_client(struct nfs_client *);
+-extern struct nfs_client *nfs_find_client(const struct sockaddr_in *, int);
++extern struct nfs_client *nfs_find_client(const struct sockaddr *, u32);
+ extern struct nfs_server *nfs_create_server(
+ 					const struct nfs_parsed_mount_data *,
+ 					struct nfs_fh *);
