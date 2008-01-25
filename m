@@ -1,58 +1,162 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 033/112] SUNRPC: Check a return result
-Date: Fri, 25 Jan 2008 11:37:32 -0500
-Message-ID: <20080125163732.31887.43707.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
+Subject: [PATCH 055/112] SUNRPC: Move universal address definitions to
+	global header
+Date: Fri, 25 Jan 2008 11:37:41 -0500
+Message-ID: <20080125163741.31887.18088.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
 References: <20080125163723.31887.68074.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:52364 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:53166 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756887AbYAYRCG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Jan 2008 12:02:06 -0500
+	id S1757165AbYAYRCR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Jan 2008 12:02:17 -0500
 Received: from svlexrs01.hq.netapp.com (svlexrs01.corp.netapp.com [10.57.156.158])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id m0PH0WPf020490
-	for <linux-nfs@vger.kernel.org>; Fri, 25 Jan 2008 09:01:56 -0800 (PST)
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id m0PH1HAE020978
+	for <linux-nfs@vger.kernel.org>; Fri, 25 Jan 2008 09:02:04 -0800 (PST)
 In-Reply-To: <20080125163723.31887.68074.stgit-KPEdlmqt5P7XOazzY/2fV4TcuzvYVacciM950cveMlzk1uMJSBkQmQ@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Chuck Lever <chuck.lever@oracle.com>
 
-Minor: Replace an empty if statement with a debugging dprintk.
+Universal addresses are defined in RFC 1833 and clarified in RFC 3530.  We
+need to use them in several places in the NFS and RPC clients, so move the
+relevant definition and block comment to an appropriate global include
+file.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Cc: Thomas Talpey <Thomas.Talpey@netapp.com>
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- net/sunrpc/xprtrdma/verbs.c |    8 +++++---
- 1 files changed, 5 insertions(+), 3 deletions(-)
+ include/linux/sunrpc/msg_prot.h |   39 ++++++++++++++++++++++++++++++++++
+ net/sunrpc/rpcb_clnt.c          |   45 +++------------------------------------
+ 2 files changed, 42 insertions(+), 42 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 44b0fb9..ffbf22a 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -522,7 +522,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
- 				struct rpcrdma_create_data_internal *cdata)
- {
- 	struct ib_device_attr devattr;
--	int rc;
-+	int rc, err;
+diff --git a/include/linux/sunrpc/msg_prot.h b/include/linux/sunrpc/msg_prot.h
+index c4beb57..70df4f1 100644
+--- a/include/linux/sunrpc/msg_prot.h
++++ b/include/linux/sunrpc/msg_prot.h
+@@ -152,5 +152,44 @@ typedef __be32	rpc_fraghdr;
+  */
+ #define RPCBIND_MAXNETIDLEN	(4u)
  
- 	rc = ib_query_device(ia->ri_id->device, &devattr);
- 	if (rc) {
-@@ -648,8 +648,10 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
- 	return 0;
++/*
++ * Universal addresses are introduced in RFC 1833 and further spelled
++ * out in RFC 3530.  RPCBIND_MAXUADDRLEN defines a maximum byte length
++ * of a universal address for use in allocating buffers and character
++ * arrays.
++ *
++ * Quoting RFC 3530, section 2.2:
++ *
++ * For TCP over IPv4 and for UDP over IPv4, the format of r_addr is the
++ * US-ASCII string:
++ *
++ *	h1.h2.h3.h4.p1.p2
++ *
++ * The prefix, "h1.h2.h3.h4", is the standard textual form for
++ * representing an IPv4 address, which is always four octets long.
++ * Assuming big-endian ordering, h1, h2, h3, and h4, are respectively,
++ * the first through fourth octets each converted to ASCII-decimal.
++ * Assuming big-endian ordering, p1 and p2 are, respectively, the first
++ * and second octets each converted to ASCII-decimal.  For example, if a
++ * host, in big-endian order, has an address of 0x0A010307 and there is
++ * a service listening on, in big endian order, port 0x020F (decimal
++ * 527), then the complete universal address is "10.1.3.7.2.15".
++ *
++ * ...
++ *
++ * For TCP over IPv6 and for UDP over IPv6, the format of r_addr is the
++ * US-ASCII string:
++ *
++ *	x1:x2:x3:x4:x5:x6:x7:x8.p1.p2
++ *
++ * The suffix "p1.p2" is the service port, and is computed the same way
++ * as with universal addresses for TCP and UDP over IPv4.  The prefix,
++ * "x1:x2:x3:x4:x5:x6:x7:x8", is the standard textual form for
++ * representing an IPv6 address as defined in Section 2.2 of [RFC2373].
++ * Additionally, the two alternative forms specified in Section 2.2 of
++ * [RFC2373] are also acceptable.
++ */
++#define RPCBIND_MAXUADDRLEN	(56u)
++
+ #endif /* __KERNEL__ */
+ #endif /* _LINUX_SUNRPC_MSGPROT_H_ */
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index 9696b51..f494e58 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -55,45 +55,6 @@ enum {
+ #define RPCB_HIGHPROC_4		RPCBPROC_GETSTAT
  
- out2:
--	if (ib_destroy_cq(ep->rep_cq))
--		;
-+	err = ib_destroy_cq(ep->rep_cq);
-+	if (err)
-+		dprintk("RPC:       %s: ib_destroy_cq returned %i\n",
-+			__func__, err);
- out1:
- 	return rc;
- }
+ /*
+- * r_addr
+- *
+- * Quoting RFC 3530, section 2.2:
+- *
+- * For TCP over IPv4 and for UDP over IPv4, the format of r_addr is the
+- * US-ASCII string:
+- *
+- *	h1.h2.h3.h4.p1.p2
+- *
+- * The prefix, "h1.h2.h3.h4", is the standard textual form for
+- * representing an IPv4 address, which is always four octets long.
+- * Assuming big-endian ordering, h1, h2, h3, and h4, are respectively,
+- * the first through fourth octets each converted to ASCII-decimal.
+- * Assuming big-endian ordering, p1 and p2 are, respectively, the first
+- * and second octets each converted to ASCII-decimal.  For example, if a
+- * host, in big-endian order, has an address of 0x0A010307 and there is
+- * a service listening on, in big endian order, port 0x020F (decimal
+- * 527), then the complete universal address is "10.1.3.7.2.15".
+- *
+- * ...
+- *
+- * For TCP over IPv6 and for UDP over IPv6, the format of r_addr is the
+- * US-ASCII string:
+- *
+- *	x1:x2:x3:x4:x5:x6:x7:x8.p1.p2
+- *
+- * The suffix "p1.p2" is the service port, and is computed the same way
+- * as with universal addresses for TCP and UDP over IPv4.  The prefix,
+- * "x1:x2:x3:x4:x5:x6:x7:x8", is the standard textual form for
+- * representing an IPv6 address as defined in Section 2.2 of [RFC2373].
+- * Additionally, the two alternative forms specified in Section 2.2 of
+- * [RFC2373] are also acceptable.
+- *
+- * XXX: Currently this implementation does not explicitly convert the
+- *      stored address to US-ASCII on non-ASCII systems.
+- */
+-#define RPCB_MAXADDRLEN		(128u)
+-
+-/*
+  * r_owner
+  *
+  * The "owner" is allowed to unset a service in the rpcbind database.
+@@ -113,7 +74,7 @@ struct rpcbind_args {
+ 	u32			r_prot;
+ 	unsigned short		r_port;
+ 	char *			r_netid;
+-	char			r_addr[RPCB_MAXADDRLEN];
++	char			r_addr[RPCBIND_MAXUADDRLEN];
+ 	char *			r_owner;
+ };
+ 
+@@ -526,7 +487,7 @@ static int rpcb_decode_getaddr(struct rpc_rqst *req, __be32 *p,
+ 	 * Simple sanity check.  The smallest possible universal
+ 	 * address is an IPv4 address string containing 11 bytes.
+ 	 */
+-	if (addr_len < 11 || addr_len > RPCB_MAXADDRLEN)
++	if (addr_len < 11 || addr_len > RPCBIND_MAXUADDRLEN)
+ 		goto out_err;
+ 
+ 	/*
+@@ -577,7 +538,7 @@ out_err:
+ #define RPCB_boolean_sz		(1u)
+ 
+ #define RPCB_netid_sz		(1+XDR_QUADLEN(RPCBIND_MAXNETIDLEN))
+-#define RPCB_addr_sz		(1+XDR_QUADLEN(RPCB_MAXADDRLEN))
++#define RPCB_addr_sz		(1+XDR_QUADLEN(RPCBIND_MAXUADDRLEN))
+ #define RPCB_ownerstring_sz	(1+XDR_QUADLEN(RPCB_MAXOWNERLEN))
+ 
+ #define RPCB_mappingargs_sz	RPCB_program_sz+RPCB_version_sz+	\
