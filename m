@@ -1,7 +1,7 @@
 From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 078/100] svc: Move create logic to common code
-Date: Fri, 25 Jan 2008 18:16:58 -0500
-Message-ID: <1201303040-7779-78-git-send-email-bfields@citi.umich.edu>
+Subject: [PATCH 072/100] svc: Move the authinfo cache to svc_xprt.
+Date: Fri, 25 Jan 2008 18:16:52 -0500
+Message-ID: <1201303040-7779-72-git-send-email-bfields@citi.umich.edu>
 References: <20080125231521.GG25141@fieldses.org>
  <1201303040-7779-1-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-2-git-send-email-bfields@citi.umich.edu>
@@ -74,31 +74,27 @@ References: <20080125231521.GG25141@fieldses.org>
  <1201303040-7779-69-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-70-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-71-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-72-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-73-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-74-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-75-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-76-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-77-git-send-email-bfields@citi.umich.edu>
 Cc: Tom Tucker <tom@opengridcomputing.com>,
 	"J. Bruce Fields" <bfields@citi.umich.edu>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:47523 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:47504 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1762090AbYAYXSU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Jan 2008 18:18:20 -0500
-In-Reply-To: <1201303040-7779-77-git-send-email-bfields@citi.umich.edu>
+	id S1761990AbYAYXSL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Jan 2008 18:18:11 -0500
+In-Reply-To: <1201303040-7779-71-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Tom Tucker <tom@opengridcomputing.com>
 
-Move the svc transport list logic into common transport creation code.
-Refactor this code path to make the flow of control easier to read.
+Move the authinfo cache to svc_xprt. This allows both the TCP and RDMA
+transports to share this logic. A flag bit is used to determine if
+auth information is to be cached or not. Previously, this code looked
+at the transport protocol.
 
-Move the setting and clearing of the BUSY_BIT during transport creation
-to common code.
+I've also changed the spin_lock/unlock logic so that a lock is not taken for
+transports that are not caching auth info.
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 Acked-by: Neil Brown <neilb@suse.de>
@@ -106,176 +102,239 @@ Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
 Reviewed-by: Greg Banks <gnb@sgi.com>
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
- net/sunrpc/svc_xprt.c |   43 +++++++++++++++++++++++++------------------
- net/sunrpc/svcsock.c  |   41 +++++++++++++++++++----------------------
- 2 files changed, 44 insertions(+), 40 deletions(-)
+ include/linux/sunrpc/svc_xprt.h |    4 +++
+ include/linux/sunrpc/svcsock.h  |    5 ---
+ net/sunrpc/svc_xprt.c           |    4 +++
+ net/sunrpc/svcauth_unix.c       |   56 +++++++++++++++++++++------------------
+ net/sunrpc/svcsock.c            |   22 ++++++++-------
+ 5 files changed, 50 insertions(+), 41 deletions(-)
 
+diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+index 936e0dc..1b5da39 100644
+--- a/include/linux/sunrpc/svc_xprt.h
++++ b/include/linux/sunrpc/svc_xprt.h
+@@ -50,11 +50,15 @@ struct svc_xprt {
+ #define	XPT_OLD		9		/* used for xprt aging mark+sweep */
+ #define	XPT_DETACHED	10		/* detached from tempsocks list */
+ #define XPT_LISTENER	11		/* listening endpoint */
++#define XPT_CACHE_AUTH	12		/* cache auth info */
+ 
+ 	struct svc_pool		*xpt_pool;	/* current pool iff queued */
+ 	struct svc_serv		*xpt_server;	/* service for transport */
+ 	atomic_t    	    	xpt_reserved;	/* space on outq that is rsvd */
+ 	struct mutex		xpt_mutex;	/* to serialize sending data */
++	spinlock_t		xpt_lock;	/* protects sk_deferred
++						 * and xpt_auth_cache */
++	void			*xpt_auth_cache;/* auth cache */
+ };
+ 
+ int	svc_reg_xprt_class(struct svc_xprt_class *);
+diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
+index 406d003..f2ed6a2 100644
+--- a/include/linux/sunrpc/svcsock.h
++++ b/include/linux/sunrpc/svcsock.h
+@@ -20,8 +20,6 @@ struct svc_sock {
+ 	struct socket *		sk_sock;	/* berkeley socket layer */
+ 	struct sock *		sk_sk;		/* INET layer */
+ 
+-	spinlock_t		sk_lock;	/* protects sk_deferred and
+-						 * sk_info_authunix */
+ 	struct list_head	sk_deferred;	/* deferred requests that need to
+ 						 * be revisted */
+ 
+@@ -34,9 +32,6 @@ struct svc_sock {
+ 	int			sk_reclen;	/* length of record */
+ 	int			sk_tcplen;	/* current read length */
+ 
+-	/* cache of various info for TCP sockets */
+-	void			*sk_info_authunix;
+-
+ 	struct sockaddr_storage	sk_local;	/* local address */
+ 	struct sockaddr_storage	sk_remote;	/* remote peer's address */
+ 	int			sk_remotelen;	/* length of address */
 diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index eb650af..271467c 100644
+index 3e6a1c8..d2ac130 100644
 --- a/net/sunrpc/svc_xprt.c
 +++ b/net/sunrpc/svc_xprt.c
-@@ -105,6 +105,7 @@ void svc_xprt_init(struct svc_xprt_class *xcl, struct svc_xprt *xprt,
- 	INIT_LIST_HEAD(&xprt->xpt_deferred);
+@@ -75,6 +75,9 @@ static void svc_xprt_free(struct kref *kref)
+ 	struct svc_xprt *xprt =
+ 		container_of(kref, struct svc_xprt, xpt_ref);
+ 	struct module *owner = xprt->xpt_class->xcl_owner;
++	if (test_bit(XPT_CACHE_AUTH, &xprt->xpt_flags)
++	    && xprt->xpt_auth_cache != NULL)
++		svcauth_unix_info_release(xprt->xpt_auth_cache);
+ 	xprt->xpt_ops->xpo_free(xprt);
+ 	module_put(owner);
+ }
+@@ -100,6 +103,7 @@ void svc_xprt_init(struct svc_xprt_class *xcl, struct svc_xprt *xprt,
+ 	INIT_LIST_HEAD(&xprt->xpt_list);
+ 	INIT_LIST_HEAD(&xprt->xpt_ready);
  	mutex_init(&xprt->xpt_mutex);
- 	spin_lock_init(&xprt->xpt_lock);
-+	set_bit(XPT_BUSY, &xprt->xpt_flags);
++	spin_lock_init(&xprt->xpt_lock);
  }
  EXPORT_SYMBOL_GPL(svc_xprt_init);
  
-@@ -112,7 +113,6 @@ int svc_create_xprt(struct svc_serv *serv, char *xprt_name, unsigned short port,
- 		    int flags)
+diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
+index 4114794..6815157 100644
+--- a/net/sunrpc/svcauth_unix.c
++++ b/net/sunrpc/svcauth_unix.c
+@@ -384,41 +384,45 @@ void svcauth_unix_purge(void)
+ static inline struct ip_map *
+ ip_map_cached_get(struct svc_rqst *rqstp)
  {
- 	struct svc_xprt_class *xcl;
--	int ret = -ENOENT;
- 	struct sockaddr_in sin = {
- 		.sin_family		= AF_INET,
- 		.sin_addr.s_addr	= INADDR_ANY,
-@@ -121,27 +121,34 @@ int svc_create_xprt(struct svc_serv *serv, char *xprt_name, unsigned short port,
- 	dprintk("svc: creating transport %s[%d]\n", xprt_name, port);
- 	spin_lock(&svc_xprt_class_lock);
- 	list_for_each_entry(xcl, &svc_xprt_class_list, xcl_list) {
--		if (strcmp(xprt_name, xcl->xcl_name) == 0) {
--			spin_unlock(&svc_xprt_class_lock);
--			if (try_module_get(xcl->xcl_owner)) {
--				struct svc_xprt *newxprt;
--				newxprt = xcl->xcl_ops->xpo_create
--					(serv,
--					 (struct sockaddr *)&sin, sizeof(sin),
--					 flags);
--				if (IS_ERR(newxprt)) {
--					module_put(xcl->xcl_owner);
--					ret = PTR_ERR(newxprt);
--				} else
--					ret = svc_xprt_local_port(newxprt);
--			}
--			goto out;
-+		struct svc_xprt *newxprt;
+-	struct ip_map *ipm;
+-	struct svc_sock *svsk = rqstp->rq_sock;
+-	spin_lock(&svsk->sk_lock);
+-	ipm = svsk->sk_info_authunix;
+-	if (ipm != NULL) {
+-		if (!cache_valid(&ipm->h)) {
+-			/*
+-			 * The entry has been invalidated since it was
+-			 * remembered, e.g. by a second mount from the
+-			 * same IP address.
+-			 */
+-			svsk->sk_info_authunix = NULL;
+-			spin_unlock(&svsk->sk_lock);
+-			cache_put(&ipm->h, &ip_map_cache);
+-			return NULL;
++	struct ip_map *ipm = NULL;
++	struct svc_xprt *xprt = rqstp->rq_xprt;
 +
-+		if (strcmp(xprt_name, xcl->xcl_name))
-+			continue;
-+
-+		if (!try_module_get(xcl->xcl_owner))
-+			goto err;
-+
-+		spin_unlock(&svc_xprt_class_lock);
-+		newxprt = xcl->xcl_ops->
-+			xpo_create(serv, (struct sockaddr *)&sin, sizeof(sin),
-+				   flags);
-+		if (IS_ERR(newxprt)) {
-+			module_put(xcl->xcl_owner);
-+			return PTR_ERR(newxprt);
++	if (test_bit(XPT_CACHE_AUTH, &xprt->xpt_flags)) {
++		spin_lock(&xprt->xpt_lock);
++		ipm = xprt->xpt_auth_cache;
++		if (ipm != NULL) {
++			if (!cache_valid(&ipm->h)) {
++				/*
++				 * The entry has been invalidated since it was
++				 * remembered, e.g. by a second mount from the
++				 * same IP address.
++				 */
++				xprt->xpt_auth_cache = NULL;
++				spin_unlock(&xprt->xpt_lock);
++				cache_put(&ipm->h, &ip_map_cache);
++				return NULL;
++			}
++			cache_get(&ipm->h);
  		}
-+
-+		clear_bit(XPT_TEMP, &newxprt->xpt_flags);
-+		spin_lock_bh(&serv->sv_lock);
-+		list_add(&newxprt->xpt_list, &serv->sv_permsocks);
-+		spin_unlock_bh(&serv->sv_lock);
-+		clear_bit(XPT_BUSY, &newxprt->xpt_flags);
-+		return svc_xprt_local_port(newxprt);
+-		cache_get(&ipm->h);
++		spin_unlock(&xprt->xpt_lock);
  	}
-+ err:
- 	spin_unlock(&svc_xprt_class_lock);
- 	dprintk("svc: transport %s not found\n", xprt_name);
-- out:
--	return ret;
-+	return -ENOENT;
+-	spin_unlock(&svsk->sk_lock);
+ 	return ipm;
  }
- EXPORT_SYMBOL_GPL(svc_create_xprt);
  
+ static inline void
+ ip_map_cached_put(struct svc_rqst *rqstp, struct ip_map *ipm)
+ {
+-	struct svc_sock *svsk = rqstp->rq_sock;
++	struct svc_xprt *xprt = rqstp->rq_xprt;
+ 
+-	spin_lock(&svsk->sk_lock);
+-	if (svsk->sk_sock->type == SOCK_STREAM &&
+-	    svsk->sk_info_authunix == NULL) {
+-		/* newly cached, keep the reference */
+-		svsk->sk_info_authunix = ipm;
+-		ipm = NULL;
++	if (test_bit(XPT_CACHE_AUTH, &xprt->xpt_flags)) {
++		spin_lock(&xprt->xpt_lock);
++		if (xprt->xpt_auth_cache == NULL) {
++			/* newly cached, keep the reference */
++			xprt->xpt_auth_cache = ipm;
++			ipm = NULL;
++		}
++		spin_unlock(&xprt->xpt_lock);
+ 	}
+-	spin_unlock(&svsk->sk_lock);
+ 	if (ipm)
+ 		cache_put(&ipm->h, &ip_map_cache);
+ }
 diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 822ccb6..db9a541 100644
+index e98ea4d..073e832 100644
 --- a/net/sunrpc/svcsock.c
 +++ b/net/sunrpc/svcsock.c
-@@ -94,6 +94,7 @@ static int svc_deferred_recv(struct svc_rqst *rqstp);
- static struct cache_deferred_req *svc_defer(struct cache_req *req);
- static struct svc_xprt *svc_create_socket(struct svc_serv *, int,
- 					  struct sockaddr *, int, int);
-+static void svc_age_temp_xprts(unsigned long closure);
+@@ -113,12 +113,16 @@ static inline void svc_reclassify_socket(struct socket *sock)
+ 	switch (sk->sk_family) {
+ 	case AF_INET:
+ 		sock_lock_init_class_and_name(sk, "slock-AF_INET-NFSD",
+-		    &svc_slock_key[0], "sk_lock-AF_INET-NFSD", &svc_key[0]);
++					      &svc_slock_key[0],
++					      "sk_xprt.xpt_lock-AF_INET-NFSD",
++					      &svc_key[0]);
+ 		break;
  
- /* apparently the "standard" is that clients close
-  * idle connections after 5 minutes, servers after
-@@ -1572,7 +1573,20 @@ svc_recv(struct svc_rqst *rqstp, long timeout)
- 			 * listener holds a reference too
- 			 */
- 			__module_get(newxpt->xpt_class->xcl_owner);
--			svc_check_conn_limits(svsk->sk_xprt.xpt_server);
-+			svc_check_conn_limits(xprt->xpt_server);
-+			spin_lock_bh(&serv->sv_lock);
-+			set_bit(XPT_TEMP, &newxpt->xpt_flags);
-+			list_add(&newxpt->xpt_list, &serv->sv_tempsocks);
-+			serv->sv_tmpcnt++;
-+			if (serv->sv_temptimer.function == NULL) {
-+				/* setup timer to age temp sockets */
-+				setup_timer(&serv->sv_temptimer,
-+					    svc_age_temp_xprts,
-+					    (unsigned long)serv);
-+				mod_timer(&serv->sv_temptimer,
-+					  jiffies + svc_conn_age_period * HZ);
-+			}
-+			spin_unlock_bh(&serv->sv_lock);
- 			svc_xprt_received(newxpt);
- 		}
- 		svc_xprt_received(xprt);
-@@ -1716,7 +1730,6 @@ static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
- 	struct svc_sock	*svsk;
- 	struct sock	*inet;
- 	int		pmap_register = !(flags & SVC_SOCK_ANONYMOUS);
--	int		is_temporary = flags & SVC_SOCK_TEMPORARY;
+ 	case AF_INET6:
+ 		sock_lock_init_class_and_name(sk, "slock-AF_INET6-NFSD",
+-		    &svc_slock_key[1], "sk_lock-AF_INET6-NFSD", &svc_key[1]);
++					      &svc_slock_key[1],
++					      "sk_xprt.xpt_lock-AF_INET6-NFSD",
++					      &svc_key[1]);
+ 		break;
  
- 	dprintk("svc: svc_setup_socket %p\n", sock);
- 	if (!(svsk = kzalloc(sizeof(*svsk), GFP_KERNEL))) {
-@@ -1736,7 +1749,6 @@ static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
- 		return NULL;
- 	}
+ 	default:
+@@ -930,6 +934,7 @@ static void svc_udp_init(struct svc_sock *svsk, struct svc_serv *serv)
+ 	mm_segment_t oldfs;
  
--	set_bit(XPT_BUSY, &svsk->sk_xprt.xpt_flags);
- 	inet->sk_user_data = svsk;
- 	svsk->sk_sock = sock;
- 	svsk->sk_sk = inet;
-@@ -1750,24 +1762,6 @@ static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
- 	else
- 		svc_tcp_init(svsk, serv);
+ 	svc_xprt_init(&svc_udp_class, &svsk->sk_xprt, serv);
++	clear_bit(XPT_CACHE_AUTH, &svsk->sk_xprt.xpt_flags);
+ 	svsk->sk_sk->sk_data_ready = svc_udp_data_ready;
+ 	svsk->sk_sk->sk_write_space = svc_write_space;
  
--	spin_lock_bh(&serv->sv_lock);
--	if (is_temporary) {
--		set_bit(XPT_TEMP, &svsk->sk_xprt.xpt_flags);
--		list_add(&svsk->sk_xprt.xpt_list, &serv->sv_tempsocks);
--		serv->sv_tmpcnt++;
--		if (serv->sv_temptimer.function == NULL) {
--			/* setup timer to age temp sockets */
--			setup_timer(&serv->sv_temptimer, svc_age_temp_xprts,
--					(unsigned long)serv);
--			mod_timer(&serv->sv_temptimer,
--					jiffies + svc_conn_age_period * HZ);
--		}
--	} else {
--		clear_bit(XPT_TEMP, &svsk->sk_xprt.xpt_flags);
--		list_add(&svsk->sk_xprt.xpt_list, &serv->sv_permsocks);
--	}
--	spin_unlock_bh(&serv->sv_lock);
+@@ -1385,7 +1390,7 @@ static void svc_tcp_init(struct svc_sock *svsk, struct svc_serv *serv)
+ 	struct tcp_sock *tp = tcp_sk(sk);
+ 
+ 	svc_xprt_init(&svc_tcp_class, &svsk->sk_xprt, serv);
 -
- 	dprintk("svc: svc_setup_socket created %p (inet %p)\n",
- 				svsk, svsk->sk_sk);
++	set_bit(XPT_CACHE_AUTH, &svsk->sk_xprt.xpt_flags);
+ 	if (sk->sk_state == TCP_LISTEN) {
+ 		dprintk("setting up TCP socket for listening\n");
+ 		set_bit(XPT_LISTENER, &svsk->sk_xprt.xpt_flags);
+@@ -1753,7 +1758,6 @@ static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
+ 	svsk->sk_ostate = inet->sk_state_change;
+ 	svsk->sk_odata = inet->sk_data_ready;
+ 	svsk->sk_owspace = inet->sk_write_space;
+-	spin_lock_init(&svsk->sk_lock);
+ 	INIT_LIST_HEAD(&svsk->sk_deferred);
  
-@@ -1800,6 +1794,10 @@ int svc_addsock(struct svc_serv *serv,
- 			int salen;
- 			if (kernel_getsockname(svsk->sk_sock, sin, &salen) == 0)
- 				svc_xprt_set_local(&svsk->sk_xprt, sin, salen);
-+			clear_bit(XPT_TEMP, &svsk->sk_xprt.xpt_flags);
-+			spin_lock_bh(&serv->sv_lock);
-+			list_add(&svsk->sk_xprt.xpt_list, &serv->sv_permsocks);
-+			spin_unlock_bh(&serv->sv_lock);
- 			svc_xprt_received(&svsk->sk_xprt);
- 			err = 0;
- 		}
-@@ -1865,7 +1863,6 @@ static struct svc_xprt *svc_create_socket(struct svc_serv *serv,
+ 	/* Initialize the socket */
+@@ -1898,8 +1902,6 @@ static void svc_sock_free(struct svc_xprt *xprt)
+ 	struct svc_sock *svsk = container_of(xprt, struct svc_sock, sk_xprt);
+ 	dprintk("svc: svc_sock_free(%p)\n", svsk);
  
- 	if ((svsk = svc_setup_socket(serv, sock, &error, flags)) != NULL) {
- 		svc_xprt_set_local(&svsk->sk_xprt, newsin, newlen);
--		svc_xprt_received(&svsk->sk_xprt);
- 		return (struct svc_xprt *)svsk;
+-	if (svsk->sk_info_authunix != NULL)
+-		svcauth_unix_info_release(svsk->sk_info_authunix);
+ 	if (svsk->sk_sock->file)
+ 		sockfd_put(svsk->sk_sock);
+ 	else
+@@ -1984,9 +1986,9 @@ static void svc_revisit(struct cache_deferred_req *dreq, int too_many)
+ 	dprintk("revisit queued\n");
+ 	svsk = dr->svsk;
+ 	dr->svsk = NULL;
+-	spin_lock(&svsk->sk_lock);
++	spin_lock(&svsk->sk_xprt.xpt_lock);
+ 	list_add(&dr->handle.recent, &svsk->sk_deferred);
+-	spin_unlock(&svsk->sk_lock);
++	spin_unlock(&svsk->sk_xprt.xpt_lock);
+ 	set_bit(XPT_DEFERRED, &svsk->sk_xprt.xpt_flags);
+ 	svc_xprt_enqueue(&svsk->sk_xprt);
+ 	svc_xprt_put(&svsk->sk_xprt);
+@@ -2052,7 +2054,7 @@ static struct svc_deferred_req *svc_deferred_dequeue(struct svc_sock *svsk)
+ 
+ 	if (!test_bit(XPT_DEFERRED, &svsk->sk_xprt.xpt_flags))
+ 		return NULL;
+-	spin_lock(&svsk->sk_lock);
++	spin_lock(&svsk->sk_xprt.xpt_lock);
+ 	clear_bit(XPT_DEFERRED, &svsk->sk_xprt.xpt_flags);
+ 	if (!list_empty(&svsk->sk_deferred)) {
+ 		dr = list_entry(svsk->sk_deferred.next,
+@@ -2061,6 +2063,6 @@ static struct svc_deferred_req *svc_deferred_dequeue(struct svc_sock *svsk)
+ 		list_del_init(&dr->handle.recent);
+ 		set_bit(XPT_DEFERRED, &svsk->sk_xprt.xpt_flags);
  	}
- 
+-	spin_unlock(&svsk->sk_lock);
++	spin_unlock(&svsk->sk_xprt.xpt_lock);
+ 	return dr;
+ }
 -- 
 1.5.4.rc2.60.gb2e62
 
