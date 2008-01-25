@@ -1,246 +1,151 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 111/112] NFS: Add an asynchronous delegreturn operation
-	for use in nfs_clear_inode
-Date: Fri, 25 Jan 2008 17:12:42 -0500
-Message-ID: <1201299162.4150.12.camel@heimdal.trondhjem.org>
-References: <20080125163723.31887.68074.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
-	 <20080125163803.31887.55930.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
-	 <1201285218.24283.101.camel@heimdal.trondhjem.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: nfs server patches for 2.6.25
+Date: Fri, 25 Jan 2008 18:15:21 -0500
+Message-ID: <20080125231521.GG25141@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-To: linux-nfs@vger.kernel.org
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from pat.uio.no ([129.240.10.15]:49934 "EHLO pat.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753152AbYAYWMw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Jan 2008 17:12:52 -0500
-Received: from mail-mx3.uio.no ([129.240.10.44])
-	by pat.uio.no with esmtp (Exim 4.67)
-	(envelope-from <trond.myklebust@fys.uio.no>)
-	id 1JIWn4-0005U8-LI
-	for linux-nfs@vger.kernel.org; Fri, 25 Jan 2008 23:12:50 +0100
-Received: from smtp.uio.no ([129.240.10.9] helo=mail-mx3.uio.no)
-	by mail-mx3.uio.no with esmtp (Exim 4.67)
-	(envelope-from <trond.myklebust@fys.uio.no>)
-	id 1JIWn3-00063v-UM
-	for linux-nfs@vger.kernel.org; Fri, 25 Jan 2008 23:12:50 +0100
-Received: from c-69-242-210-120.hsd1.mi.comcast.net ([69.242.210.120] helo=[192.168.0.101])
-	by mail-mx3.uio.no with esmtpsa (SSLv3:AES256-SHA:256)
-	(Exim 4.67)
-	(envelope-from <trond.myklebust@fys.uio.no>)
-	id 1JIWn3-00063d-7D
-	for linux-nfs@vger.kernel.org; Fri, 25 Jan 2008 23:12:49 +0100
-In-Reply-To: <1201285218.24283.101.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: linux-kernel@vger.kernel.org
+To: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+Return-path: <nfsv4-bounces@linux-nfs.org>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Below is a summary of the nfs server patches which I expect to submit
+(any day now) for 2.6.25; please let me know if you notice anything
+wrong or missing.  I'll follow up to linux-nfs@vger.kernel.org with the
+full list of patches.
 
-On Fri, 2008-01-25 at 13:20 -0500, Trond Myklebust wrote:
-> On Fri, 2008-01-25 at 11:38 -0500, Trond Myklebust wrote:
-> > Otherwise, there is a potential deadlock if the last dput() from an NFSv4
-> > close() or other asynchronous operation leads to nfs_clear_inode calling
-> > the synchronous delegreturn.
-> 
-> Full marks to any of you who noticed that I got the 'issync' parameters
-> in all the calls to nfs_do_return_delegation() wrong.
-> 
-> Sigh,..
+The biggest changes come from Tom Tucker's rdma and server transport
+switch patches, which Chuck Lever, Greg Banks, Neil Brown, and others
+helped review (thanks!).  The rest is mostly bug fixes and cleanup.
 
-...and here is the final version. With one more change: we have to
-remove the delegation return in nfs_dentry_iput, which also deadlocks
-rpciod.
+As a reminder, you can see the patches I've got queued up any time from
+the nfs-server-stable branch at:
 
-Thanks to Peter Staubach for his help in pointing out the problem and
-testing the fix!
+	git://linux-nfs.org/~bfields/linux.git nfs-server-stable
 
-Cheers
-  Trond
+--b.
 
--------------------------------------------------------------------
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date: Thu, 24 Jan 2008 18:14:34 -0500
-NFS: Add an asynchronous delegreturn operation for use in nfs_clear_inode
+Chuck Lever (9):
+      SUNRPC: Prevent length underflow in read_flush()
+      SUNRPC: Use unsigned string lengths in xdr_decode_string_inplace
+      NLM: Fix sign of length of NLM variable length strings
+      NFSD: Use unsigned length argument for decode_filename
+      NFSD: File name length signage in nfsd request argument structures
+      NFSD: Adjust filename length argument of nfsd_lookup
+      NFSD: Use unsigned length argument for decode_pathname
+      NFSD: Fix mixed sign comparison in nfs3svc_decode_symlinkargs
+      NFSD: Path name length signage in nfsd request argument structures
 
-Otherwise, there is a potential deadlock if the last dput() from an NFSv4
-close() or other asynchronous operation leads to nfs_clear_inode calling
-the synchronous delegreturn.
+Frank Filz (1):
+      nfsd: Allow AIX client to read dir containing mountpoints
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
+J. Bruce Fields (34):
+      nfsd4: probe callback channel only once
+      nfsd: move callback rpc_client creation into separate thread
+      knfsd: fix broken length check in nfs4idmap.c
+      knfsd: fix cache.c comment
+      nfsd: Fix handling of negative lengths in read_buf()
+      knfsd: cleanup nfsd4 properly on module init failure
+      nfsd: cleanup nfsd module initialization cleanup
+      nfsd: fail module init on reply cache init failure
+      knfsd: cache unregistration needn't return error
+      nfsd: select CONFIG_PROC_FS in nfsv4 and gss server cases
+      nfsd: fail init on /proc/fs/nfs/exports creation failure
+      nfsd: move cache proc (un)registration to separate function
+      knfsd: allow cache_register to return error on failure
+      nfsd: move nfsd/auth.h into fs/nfsd
+      nfsd: minor fs/nfsd/auth.h cleanup
+      nfsd4: kill some unneeded setclientid comments
+      nfsd: eliminate final bogus case from setclientid logic
+      nfsd: uniquify cl_confirm values
+      nfsd4: kill unnecessary same_name() in setclientid_confirm
+      nfsd4: remove unnecessary cl_verifier check from setclientid_confirm
+      nfsd4: kill unneeded cl_confirm check
+      nfsd: fix encode_entryplus_baggage() indentation
+      nfsd4: make current_clientid local
+      nfsd4: miscellaneous nfs4state.c style fixes
+      nfsd4: recognize callback channel failure earlier
+      nfsd4: fix bad seqid on lock request incompatible with open mode
+      nfsd: allow root to set uid and gid on create
+      nfsd: fix rsi_cache reference count leak
+      sunrpc: gss: simplify rsi_parse logic
+      nfsd4: clean up access_valid, deny_valid checks.
+      svcrpc: ensure gss DESTROY tokens free contexts from cache
+      knfsd: don't bother mapping putrootfh enoent to eperm
+      lockd: minor log message fix
+      nfsd: more careful input validation in nfsctl write methods
 
- fs/nfs/delegation.c |   29 +++++++++++++++++++++++++----
- fs/nfs/delegation.h |    3 ++-
- fs/nfs/dir.c        |    1 -
- fs/nfs/inode.c      |    2 +-
- fs/nfs/nfs4proc.c   |   22 +++++++++++++---------
- 5 files changed, 41 insertions(+), 16 deletions(-)
+Jeff Layton (4):
+      SUNRPC: spin svc_rqst initialization to its own function
+      SUNRPC: export svc_sock_update_bufs
+      NLM: Convert lockd to use kthreads
+      NLM: have nlm_shutdown_hosts kill off all NLM RPC tasks
 
-diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-index b03dcd8..2dead8d 100644
---- a/fs/nfs/delegation.c
-+++ b/fs/nfs/delegation.c
-@@ -174,11 +174,11 @@ int nfs_inode_set_delegation(struct inode *inode, struct rpc_cred *cred, struct
- 	return status;
- }
- 
--static int nfs_do_return_delegation(struct inode *inode, struct nfs_delegation *delegation)
-+static int nfs_do_return_delegation(struct inode *inode, struct nfs_delegation *delegation, int issync)
- {
- 	int res = 0;
- 
--	res = nfs4_proc_delegreturn(inode, delegation->cred, &delegation->stateid);
-+	res = nfs4_proc_delegreturn(inode, delegation->cred, &delegation->stateid, issync);
- 	nfs_free_delegation(delegation);
- 	return res;
- }
-@@ -208,7 +208,7 @@ static int __nfs_inode_return_delegation(struct inode *inode, struct nfs_delegat
- 	up_read(&clp->cl_sem);
- 	nfs_msync_inode(inode);
- 
--	return nfs_do_return_delegation(inode, delegation);
-+	return nfs_do_return_delegation(inode, delegation, 1);
- }
- 
- static struct nfs_delegation *nfs_detach_delegation_locked(struct nfs_inode *nfsi, const nfs4_stateid *stateid)
-@@ -228,6 +228,27 @@ nomatch:
- 	return NULL;
- }
- 
-+/*
-+ * This function returns the delegation without reclaiming opens
-+ * or protecting against delegation reclaims.
-+ * It is therefore really only safe to be called from
-+ * nfs4_clear_inode()
-+ */
-+void nfs_inode_return_delegation_noreclaim(struct inode *inode)
-+{
-+	struct nfs_client *clp = NFS_SERVER(inode)->nfs_client;
-+	struct nfs_inode *nfsi = NFS_I(inode);
-+	struct nfs_delegation *delegation;
-+
-+	if (rcu_dereference(nfsi->delegation) != NULL) {
-+		spin_lock(&clp->cl_lock);
-+		delegation = nfs_detach_delegation_locked(nfsi, NULL);
-+		spin_unlock(&clp->cl_lock);
-+		if (delegation != NULL)
-+			nfs_do_return_delegation(inode, delegation, 0);
-+	}
-+}
-+
- int nfs_inode_return_delegation(struct inode *inode)
- {
- 	struct nfs_client *clp = NFS_SERVER(inode)->nfs_client;
-@@ -388,7 +409,7 @@ static int recall_thread(void *data)
- 	nfs_msync_inode(inode);
- 
- 	if (delegation != NULL)
--		nfs_do_return_delegation(inode, delegation);
-+		nfs_do_return_delegation(inode, delegation, 1);
- 	iput(inode);
- 	module_put_and_exit(0);
- }
-diff --git a/fs/nfs/delegation.h b/fs/nfs/delegation.h
-index 5874ce7..f1c5e2a 100644
---- a/fs/nfs/delegation.h
-+++ b/fs/nfs/delegation.h
-@@ -29,6 +29,7 @@ int nfs_inode_set_delegation(struct inode *inode, struct rpc_cred *cred, struct
- void nfs_inode_reclaim_delegation(struct inode *inode, struct rpc_cred *cred, struct nfs_openres *res);
- int nfs_inode_return_delegation(struct inode *inode);
- int nfs_async_inode_return_delegation(struct inode *inode, const nfs4_stateid *stateid);
-+void nfs_inode_return_delegation_noreclaim(struct inode *inode);
- 
- struct inode *nfs_delegation_find_inode(struct nfs_client *clp, const struct nfs_fh *fhandle);
- void nfs_return_all_delegations(struct super_block *sb);
-@@ -39,7 +40,7 @@ void nfs_delegation_mark_reclaim(struct nfs_client *clp);
- void nfs_delegation_reap_unclaimed(struct nfs_client *clp);
- 
- /* NFSv4 delegation-related procedures */
--int nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, const nfs4_stateid *stateid);
-+int nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, const nfs4_stateid *stateid, int issync);
- int nfs4_open_delegation_recall(struct nfs_open_context *ctx, struct nfs4_state *state, const nfs4_stateid *stateid);
- int nfs4_lock_delegation_recall(struct nfs4_state *state, struct file_lock *fl);
- int nfs4_copy_delegation_stateid(nfs4_stateid *dst, struct inode *inode);
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index ab06b0b..e72d427 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -861,7 +861,6 @@ static int nfs_dentry_delete(struct dentry *dentry)
-  */
- static void nfs_dentry_iput(struct dentry *dentry, struct inode *inode)
- {
--	nfs_inode_return_delegation(inode);
- 	if (S_ISDIR(inode->i_mode))
- 		/* drop any readdir cache as it could easily be old */
- 		NFS_I(inode)->cache_validity |= NFS_INO_INVALID_DATA;
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 5d381cf..3f332e5 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -1145,7 +1145,7 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- void nfs4_clear_inode(struct inode *inode)
- {
- 	/* If we are holding a delegation, return it! */
--	nfs_inode_return_delegation(inode);
-+	nfs_inode_return_delegation_noreclaim(inode);
- 	/* First call standard NFS clear_inode() code */
- 	nfs_clear_inode(inode);
- }
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index ffe5584..90392a2 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2995,7 +2995,7 @@ static const struct rpc_call_ops nfs4_delegreturn_ops = {
- 	.rpc_release = nfs4_delegreturn_release,
- };
- 
--static int _nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, const nfs4_stateid *stateid)
-+static int _nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, const nfs4_stateid *stateid, int issync)
- {
- 	struct nfs4_delegreturndata *data;
- 	struct nfs_server *server = NFS_SERVER(inode);
-@@ -3009,7 +3009,7 @@ static int _nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, co
- 		.callback_ops = &nfs4_delegreturn_ops,
- 		.flags = RPC_TASK_ASYNC,
- 	};
--	int status;
-+	int status = 0;
- 
- 	data = kmalloc(sizeof(*data), GFP_KERNEL);
- 	if (data == NULL)
-@@ -3032,23 +3032,27 @@ static int _nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, co
- 	task = rpc_run_task(&task_setup_data);
- 	if (IS_ERR(task))
- 		return PTR_ERR(task);
-+	if (!issync)
-+		goto out;
- 	status = nfs4_wait_for_completion_rpc_task(task);
--	if (status == 0) {
--		status = data->rpc_status;
--		if (status == 0)
--			nfs_refresh_inode(inode, &data->fattr);
--	}
-+	if (status != 0)
-+		goto out;
-+	status = data->rpc_status;
-+	if (status != 0)
-+		goto out;
-+	nfs_refresh_inode(inode, &data->fattr);
-+out:
- 	rpc_put_task(task);
- 	return status;
- }
- 
--int nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, const nfs4_stateid *stateid)
-+int nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, const nfs4_stateid *stateid, int issync)
- {
- 	struct nfs_server *server = NFS_SERVER(inode);
- 	struct nfs4_exception exception = { };
- 	int err;
- 	do {
--		err = _nfs4_proc_delegreturn(inode, cred, stateid);
-+		err = _nfs4_proc_delegreturn(inode, cred, stateid, issync);
- 		switch (err) {
- 			case -NFS4ERR_STALE_STATEID:
- 			case -NFS4ERR_EXPIRED:
+Neil Brown (1):
+      knfsd: change mailing list for nfsd in MAINTAINERS
 
+Oleg Drokin (3):
+      lockd: fix reference count leaks in async locking case
+      lockd: fix a leak in nlmsvc_testlock asynchronous request handling
+      Leak in nlmsvc_testlock for async GETFL case
 
+Prasad P (1):
+      Fix incorrect assignment
+
+Tom Tucker (47):
+      svc: Add an svc transport class
+      svc: Make svc_sock the tcp/udp transport
+      svc: Change the svc_sock in the rqstp structure to a transport
+      svc: Add a max payload value to the transport
+      svc: Move sk_sendto and sk_recvfrom to svc_xprt_class
+      svc: Add transport specific xpo_release function
+      svc: Add per-transport delete functions
+      svc: Add xpo_prep_reply_hdr
+      svc: Add a transport function that checks for write space
+      svc: Move close processing to a single place
+      svc: Add xpo_accept transport function
+      svc: Remove unnecessary call to svc_sock_enqueue
+      svc: Move connection limit checking to its own function
+      svc: Add a generic transport svc_create_xprt function
+      svc: Change services to use new svc_create_xprt service
+      svc: Change sk_inuse to a kref
+      svc: Move sk_flags to the svc_xprt structure
+      svc: Move sk_server and sk_pool to svc_xprt
+      svc: Make close transport independent
+      svc: Move sk_reserved to svc_xprt
+      svc: Make the enqueue service transport neutral and export it.
+      svc: Make svc_send transport neutral
+      svc: Change svc_sock_received to svc_xprt_received and export it
+      svc: Move accept call to svc_xprt_received to common code
+      svc: Remove sk_lastrecv
+      svc: Move the authinfo cache to svc_xprt.
+      svc: Make deferral processing xprt independent
+      svc: Move the sockaddr information to svc_xprt
+      svc: Make svc_sock_release svc_xprt_release
+      svc: Make svc_recv transport neutral
+      svc: Make svc_age_temp_sockets svc_age_temp_transports
+      svc: Move create logic to common code
+      svc: Removing remaining references to rq_sock in rqstp
+      svc: Make svc_check_conn_limits xprt independent
+      svc: Move the xprt independent code to the svc_xprt.c file
+      svc: Add transport hdr size for defer/revisit
+      svc: Add /proc/sys/sunrpc/transport files
+      svc: Add svc API that queries for a transport instance
+      knfsd: Support adding transports by writing portlist file
+      svc: Add svc_xprt_names service to replace svc_sock_names
+      rdma: SVCRMDA Header File
+      rdma: SVCRDMA Transport Module
+      rdma: SVCRDMA Core Transport Services
+      rdma: SVCRDMA recvfrom
+      rdma: SVCRDMA sendto
+      rdma: ONCRPC RDMA protocol marshalling
+      rdma: makefile
