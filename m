@@ -1,117 +1,143 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 074/112] NFS: Remove the NIPQUAD from nfs_try_mount
-Date: Fri, 25 Jan 2008 11:37:49 -0500
-Message-ID: <20080125163749.31887.52823.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
+Subject: [PATCH 084/112] NFS: Fix the 'proto=' mount option
+Date: Fri, 25 Jan 2008 11:37:54 -0500
+Message-ID: <20080125163753.31887.10102.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
 References: <20080125163723.31887.68074.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:14411 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:14371 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755711AbYAYRA0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Jan 2008 12:00:26 -0500
-Received: from svlexrs01.hq.netapp.com (svlexrs01.corp.netapp.com [10.57.156.158])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id m0PH09Ua010371
-	for <linux-nfs@vger.kernel.org>; Fri, 25 Jan 2008 09:00:23 -0800 (PST)
+	id S1755704AbYAYRAE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Jan 2008 12:00:04 -0500
+Received: from svlexrs02.hq.netapp.com (svlexrs02.corp.netapp.com [10.57.156.154])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id m0PGxseo010226
+	for <linux-nfs@vger.kernel.org>; Fri, 25 Jan 2008 09:00:01 -0800 (PST)
 In-Reply-To: <20080125163723.31887.68074.stgit-KPEdlmqt5P7XOazzY/2fV4TcuzvYVacciM950cveMlzk1uMJSBkQmQ@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Chuck Lever <chuck.lever@oracle.com>
+Currently, if you have a server mounted using networking protocol, you
+cannot specify a different value using the 'proto=' option on another
+mountpoint.
 
-In the name of address family compatibility, we can't have the NIP_FMT and
-NIPQUAD macros in nfs_try_mount().  Instead, we can make use of an unused
-mount option to display the mount server's hostname.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Cc: Aurelien Charbon <aurelien.charbon-Z51IpKcfGtLk1uMJSBkQmQ@public.gmane.org>
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- fs/nfs/super.c |   23 ++++++++++++++++++-----
- 1 files changed, 18 insertions(+), 5 deletions(-)
+ fs/nfs/client.c           |   20 +++++++++++++-------
+ include/linux/nfs_fs_sb.h |    1 +
+ 2 files changed, 14 insertions(+), 7 deletions(-)
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index a88697f..f120be4 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -89,7 +89,7 @@ enum {
- 	Opt_nfsvers,
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 03d9bed..18fcb05 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -100,6 +100,7 @@ struct nfs_client_initdata {
+ 	const struct sockaddr *addr;
+ 	size_t addrlen;
+ 	const struct nfs_rpc_ops *rpc_ops;
++	int proto;
+ };
  
- 	/* Mount options that take string arguments */
--	Opt_sec, Opt_proto, Opt_mountproto,
-+	Opt_sec, Opt_proto, Opt_mountproto, Opt_mounthost,
- 	Opt_addr, Opt_mountaddr, Opt_clientaddr,
+ /*
+@@ -138,6 +139,8 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
+ 	INIT_LIST_HEAD(&clp->cl_superblocks);
+ 	clp->cl_rpcclient = ERR_PTR(-EINVAL);
  
- 	/* Mount options that are ignored */
-@@ -148,7 +148,7 @@ static match_table_t nfs_mount_option_tokens = {
- 	{ Opt_mountproto, "mountproto=%s" },
- 	{ Opt_addr, "addr=%s" },
- 	{ Opt_clientaddr, "clientaddr=%s" },
--	{ Opt_userspace, "mounthost=%s" },
-+	{ Opt_mounthost, "mounthost=%s" },
- 	{ Opt_mountaddr, "mountaddr=%s" },
- 
- 	{ Opt_err, NULL }
-@@ -974,6 +974,12 @@ static int nfs_parse_mount_options(char *raw,
- 				goto out_nomem;
- 			mnt->client_address = string;
- 			break;
-+		case Opt_mounthost:
-+			string = match_strdup(args);
-+			if (string == NULL)
-+				goto out_nomem;
-+			mnt->mount_server.hostname = string;
-+			break;
- 		case Opt_mountaddr:
- 			string = match_strdup(args);
- 			if (string == NULL)
-@@ -1027,6 +1033,7 @@ static int nfs_try_mount(struct nfs_parsed_mount_data *args,
- {
- 	struct sockaddr_in sin;
- 	int status;
-+	char *hostname;
- 
- 	if (args->mount_server.version == 0) {
- 		if (args->flags & NFS_MOUNT_VER3)
-@@ -1035,6 +1042,11 @@ static int nfs_try_mount(struct nfs_parsed_mount_data *args,
- 			args->mount_server.version = NFS_MNT_VERSION;
- 	}
- 
-+	if (args->mount_server.hostname)
-+		hostname = args->mount_server.hostname;
-+	else
-+		hostname = args->nfs_server.hostname;
++	clp->cl_proto = cl_init->proto;
 +
- 	/*
- 	 * Construct the mount server's address.
+ #ifdef CONFIG_NFS_V4
+ 	init_rwsem(&clp->cl_sem);
+ 	INIT_LIST_HEAD(&clp->cl_delegations);
+@@ -289,6 +292,9 @@ static struct nfs_client *nfs_match_client(const struct nfs_client_initdata *dat
+ 		if (clp->rpc_ops != data->rpc_ops)
+ 			continue;
+ 
++		if (clp->cl_proto != data->proto)
++			continue;
++
+ 		/* Match the full socket address */
+ 		if (memcmp(&clp->cl_addr, data->addr, sizeof(clp->cl_addr)) != 0)
+ 			continue;
+@@ -414,14 +420,14 @@ static void nfs_init_timeout_values(struct rpc_timeout *to, int proto,
+ /*
+  * Create an RPC client handle
+  */
+-static int nfs_create_rpc_client(struct nfs_client *clp, int proto,
++static int nfs_create_rpc_client(struct nfs_client *clp,
+ 				 const struct rpc_timeout *timeparms,
+ 				 rpc_authflavor_t flavor,
+ 				 int flags)
+ {
+ 	struct rpc_clnt		*clnt = NULL;
+ 	struct rpc_create_args args = {
+-		.protocol	= proto,
++		.protocol	= clp->cl_proto,
+ 		.address	= (struct sockaddr *)&clp->cl_addr,
+ 		.addrsize	= clp->cl_addrlen,
+ 		.timeout	= timeparms,
+@@ -565,8 +571,7 @@ static int nfs_init_client(struct nfs_client *clp,
+ 	 * Create a client RPC handle for doing FSSTAT with UNIX auth only
+ 	 * - RFC 2623, sec 2.3.2
  	 */
-@@ -1053,7 +1065,7 @@ static int nfs_try_mount(struct nfs_parsed_mount_data *args,
- 	 */
- 	status = nfs_mount((struct sockaddr *) &sin,
- 			   sizeof(sin),
--			   args->nfs_server.hostname,
-+			   hostname,
- 			   args->nfs_server.export_path,
- 			   args->mount_server.version,
- 			   args->mount_server.protocol,
-@@ -1061,8 +1073,8 @@ static int nfs_try_mount(struct nfs_parsed_mount_data *args,
- 	if (status == 0)
- 		return 0;
+-	error = nfs_create_rpc_client(clp, data->nfs_server.protocol,
+-				timeparms, RPC_AUTH_UNIX, 0);
++	error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_UNIX, 0);
+ 	if (error < 0)
+ 		goto error;
+ 	nfs_mark_client_ready(clp, NFS_CS_READY);
+@@ -589,6 +594,7 @@ static int nfs_init_server(struct nfs_server *server,
+ 		.addr = (const struct sockaddr *)&data->nfs_server.address,
+ 		.addrlen = data->nfs_server.addrlen,
+ 		.rpc_ops = &nfs_v2_clientops,
++		.proto = data->nfs_server.protocol,
+ 	};
+ 	struct rpc_timeout timeparms;
+ 	struct nfs_client *clp;
+@@ -894,7 +900,6 @@ error:
+  * Initialise an NFS4 client record
+  */
+ static int nfs4_init_client(struct nfs_client *clp,
+-		int proto,
+ 		const struct rpc_timeout *timeparms,
+ 		const char *ip_addr,
+ 		rpc_authflavor_t authflavour)
+@@ -910,7 +915,7 @@ static int nfs4_init_client(struct nfs_client *clp,
+ 	/* Check NFS protocol revision and initialize RPC op vector */
+ 	clp->rpc_ops = &nfs_v4_clientops;
  
--	dfprintk(MOUNT, "NFS: unable to mount server " NIPQUAD_FMT
--			", error %d\n", NIPQUAD(sin.sin_addr.s_addr), status);
-+	dfprintk(MOUNT, "NFS: unable to mount server %s, error %d",
-+			hostname, status);
- 	return status;
- }
+-	error = nfs_create_rpc_client(clp, proto, timeparms, authflavour,
++	error = nfs_create_rpc_client(clp, timeparms, authflavour,
+ 					RPC_CLNT_CREATE_DISCRTRY);
+ 	if (error < 0)
+ 		goto error;
+@@ -949,6 +954,7 @@ static int nfs4_set_client(struct nfs_server *server,
+ 		.addr = addr,
+ 		.addrlen = addrlen,
+ 		.rpc_ops = &nfs_v4_clientops,
++		.proto = proto,
+ 	};
+ 	struct nfs_client *clp;
+ 	int error;
+@@ -961,7 +967,7 @@ static int nfs4_set_client(struct nfs_server *server,
+ 		error = PTR_ERR(clp);
+ 		goto error;
+ 	}
+-	error = nfs4_init_client(clp, proto, timeparms, ip_addr, authflavour);
++	error = nfs4_init_client(clp, timeparms, ip_addr, authflavour);
+ 	if (error < 0)
+ 		goto error_put;
  
-@@ -1468,6 +1480,7 @@ static int nfs_get_sb(struct file_system_type *fs_type,
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index d15c948..b5ba5f7 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -29,6 +29,7 @@ struct nfs_client {
  
- out:
- 	kfree(data.nfs_server.hostname);
-+	kfree(data.mount_server.hostname);
- 	return error;
+ 	struct rpc_clnt *	cl_rpcclient;
+ 	const struct nfs_rpc_ops *rpc_ops;	/* NFS protocol vector */
++	int			cl_proto;	/* Network transport protocol */
  
- out_err_nosb:
+ #ifdef CONFIG_NFS_V4
+ 	u64			cl_clientid;	/* constant */
