@@ -1,7 +1,7 @@
 From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 050/100] svc: Add a max payload value to the transport
-Date: Fri, 25 Jan 2008 18:16:30 -0500
-Message-ID: <1201303040-7779-50-git-send-email-bfields@citi.umich.edu>
+Subject: [PATCH 049/100] svc: Change the svc_sock in the rqstp structure to a transport
+Date: Fri, 25 Jan 2008 18:16:29 -0500
+Message-ID: <1201303040-7779-49-git-send-email-bfields@citi.umich.edu>
 References: <20080125231521.GG25141@fieldses.org>
  <1201303040-7779-1-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-2-git-send-email-bfields@citi.umich.edu>
@@ -51,24 +51,26 @@ References: <20080125231521.GG25141@fieldses.org>
  <1201303040-7779-46-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-47-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-48-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-49-git-send-email-bfields@citi.umich.edu>
 Cc: Tom Tucker <tom@opengridcomputing.com>,
 	"J. Bruce Fields" <bfields@citi.umich.edu>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:47416 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:47415 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759584AbYAYXRo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Jan 2008 18:17:44 -0500
-In-Reply-To: <1201303040-7779-49-git-send-email-bfields@citi.umich.edu>
+	id S932083AbYAYXRn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Jan 2008 18:17:43 -0500
+In-Reply-To: <1201303040-7779-48-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Tom Tucker <tom@opengridcomputing.com>
 
-The svc_max_payload function currently looks at the socket type
-to determine the max payload. Add a max payload value to svc_xprt_class
-so it can be returned directly.
+The rqstp structure contains a pointer to the transport for the
+RPC request. This functionaly trivial patch adds an unamed union
+with pointers to both svc_sock and svc_xprt. Ultimately the
+union will be removed and only the rq_xprt field will remain. This
+allows incrementally extracting transport independent interfaces without
+one gigundo patch.
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 Acked-by: Neil Brown <neilb@suse.de>
@@ -76,59 +78,25 @@ Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
 Reviewed-by: Greg Banks <gnb@sgi.com>
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
- include/linux/sunrpc/svc_xprt.h |    1 +
- net/sunrpc/svc.c                |    4 +---
- net/sunrpc/svcsock.c            |    2 ++
- 3 files changed, 4 insertions(+), 3 deletions(-)
+ include/linux/sunrpc/svc.h |    5 ++++-
+ 1 files changed, 4 insertions(+), 1 deletions(-)
 
-diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index fe8e787..187dc4e 100644
---- a/include/linux/sunrpc/svc_xprt.h
-+++ b/include/linux/sunrpc/svc_xprt.h
-@@ -17,6 +17,7 @@ struct svc_xprt_class {
- 	struct module		*xcl_owner;
- 	struct svc_xprt_ops	*xcl_ops;
- 	struct list_head	xcl_list;
-+	u32			xcl_max_payload;
- };
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 8531a70..37f7448 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -204,7 +204,10 @@ union svc_addr_u {
+ struct svc_rqst {
+ 	struct list_head	rq_list;	/* idle list */
+ 	struct list_head	rq_all;		/* all threads list */
+-	struct svc_sock *	rq_sock;	/* socket */
++	union {
++		struct svc_xprt *	rq_xprt;	/* transport ptr */
++		struct svc_sock *	rq_sock; 	/* socket ptr */
++	};
+ 	struct sockaddr_storage	rq_addr;	/* peer address */
+ 	size_t			rq_addrlen;
  
- struct svc_xprt {
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index a4a6bf7..ea3fa86 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -1054,10 +1054,8 @@ err_bad:
-  */
- u32 svc_max_payload(const struct svc_rqst *rqstp)
- {
--	int max = RPCSVC_MAXPAYLOAD_TCP;
-+	u32 max = rqstp->rq_xprt->xpt_class->xcl_max_payload;
- 
--	if (rqstp->rq_sock->sk_sock->type == SOCK_DGRAM)
--		max = RPCSVC_MAXPAYLOAD_UDP;
- 	if (rqstp->rq_server->sv_max_payload < max)
- 		max = rqstp->rq_server->sv_max_payload;
- 	return max;
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 54f1b3d..c507f6f 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -906,6 +906,7 @@ static struct svc_xprt_ops svc_udp_ops = {
- static struct svc_xprt_class svc_udp_class = {
- 	.xcl_name = "udp",
- 	.xcl_ops = &svc_udp_ops,
-+	.xcl_max_payload = RPCSVC_MAXPAYLOAD_UDP,
- };
- 
- static void
-@@ -1359,6 +1360,7 @@ static struct svc_xprt_ops svc_tcp_ops = {
- static struct svc_xprt_class svc_tcp_class = {
- 	.xcl_name = "tcp",
- 	.xcl_ops = &svc_tcp_ops,
-+	.xcl_max_payload = RPCSVC_MAXPAYLOAD_TCP,
- };
- 
- void svc_init_xprt_sock(void)
 -- 
 1.5.4.rc2.60.gb2e62
 
