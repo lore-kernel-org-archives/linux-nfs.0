@@ -1,7 +1,7 @@
 From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 057/100] svc: Add xpo_accept transport function
-Date: Fri, 25 Jan 2008 18:16:37 -0500
-Message-ID: <1201303040-7779-57-git-send-email-bfields@citi.umich.edu>
+Subject: [PATCH 075/100] svc: Make svc_sock_release svc_xprt_release
+Date: Fri, 25 Jan 2008 18:16:55 -0500
+Message-ID: <1201303040-7779-75-git-send-email-bfields@citi.umich.edu>
 References: <20080125231521.GG25141@fieldses.org>
  <1201303040-7779-1-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-2-git-send-email-bfields@citi.umich.edu>
@@ -59,37 +59,41 @@ References: <20080125231521.GG25141@fieldses.org>
  <1201303040-7779-54-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-55-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-56-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-57-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-58-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-59-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-60-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-61-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-62-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-63-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-64-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-65-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-66-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-67-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-68-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-69-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-70-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-71-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-72-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-73-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-74-git-send-email-bfields@citi.umich.edu>
 Cc: Tom Tucker <tom@opengridcomputing.com>,
 	"J. Bruce Fields" <bfields@citi.umich.edu>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:47442 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:47517 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1762020AbYAYXRt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Jan 2008 18:17:49 -0500
-In-Reply-To: <1201303040-7779-56-git-send-email-bfields@citi.umich.edu>
+	id S932191AbYAYXSO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Jan 2008 18:18:14 -0500
+In-Reply-To: <1201303040-7779-74-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Tom Tucker <tom@opengridcomputing.com>
 
-Previously, the accept logic looked into the socket state to determine
-whether to call accept or recv when data-ready was indicated on an endpoint.
-Since some transports don't use sockets, this logic now uses a flag
-bit (SK_LISTENER) to identify listening endpoints. A transport function
-(xpo_accept) allows each transport to define its own accept processing.
-A transport's initialization logic is reponsible for setting the
-SK_LISTENER bit. I didn't see any way to do this in transport independent
-logic since the passive side of a UDP connection doesn't listen and
-always recv's.
-
-In the svc_recv function, if the SK_LISTENER bit is set, the transport
-xpo_accept function is called to handle accept processing.
-
-Note that all functions are defined even if they don't make sense
-for a given transport. For example, accept doesn't mean anything for
-UDP. The function is defined anyway and bug checks if called. The
-UDP transport should never set the SK_LISTENER bit.
+The svc_sock_release function only touches transport independent fields.
+Change the function to manipulate svc_xprt directly instead of the transport
+dependent svc_sock structure.
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 Acked-by: Neil Brown <neilb@suse.de>
@@ -97,144 +101,73 @@ Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
 Reviewed-by: Greg Banks <gnb@sgi.com>
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
- include/linux/sunrpc/svc_xprt.h |    1 +
- include/linux/sunrpc/svcsock.h  |    1 +
- net/sunrpc/svcsock.c            |   31 +++++++++++++++++++------------
- 3 files changed, 21 insertions(+), 12 deletions(-)
+ net/sunrpc/svcsock.c |   16 +++++++---------
+ 1 files changed, 7 insertions(+), 9 deletions(-)
 
-diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index 85df97a..31a44f4 100644
---- a/include/linux/sunrpc/svc_xprt.h
-+++ b/include/linux/sunrpc/svc_xprt.h
-@@ -10,6 +10,7 @@
- #include <linux/sunrpc/svc.h>
- 
- struct svc_xprt_ops {
-+	struct svc_xprt	*(*xpo_accept)(struct svc_xprt *);
- 	int		(*xpo_has_wspace)(struct svc_xprt *);
- 	int		(*xpo_recvfrom)(struct svc_rqst *);
- 	void		(*xpo_prep_reply_hdr)(struct svc_rqst *);
-diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
-index 08e78d0..9882ce0 100644
---- a/include/linux/sunrpc/svcsock.h
-+++ b/include/linux/sunrpc/svcsock.h
-@@ -36,6 +36,7 @@ struct svc_sock {
- #define	SK_DEFERRED	8			/* request on sk_deferred */
- #define	SK_OLD		9			/* used for temp socket aging mark+sweep */
- #define	SK_DETACHED	10			/* detached from tempsocks list */
-+#define SK_LISTENER	11			/* listening endpoint */
- 
- 	atomic_t    	    	sk_reserved;	/* space on outq that is reserved */
- 
 diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 603db98..41d1f81 100644
+index 298c95e..505336e 100644
 --- a/net/sunrpc/svcsock.c
 +++ b/net/sunrpc/svcsock.c
-@@ -896,6 +896,12 @@ static int svc_udp_has_wspace(struct svc_xprt *xprt)
- 	return 1;
+@@ -368,10 +368,9 @@ void svc_reserve(struct svc_rqst *rqstp, int space)
+ 	}
  }
  
-+static struct svc_xprt *svc_udp_accept(struct svc_xprt *xprt)
-+{
-+	BUG();
-+	return NULL;
-+}
-+
- static struct svc_xprt_ops svc_udp_ops = {
- 	.xpo_recvfrom = svc_udp_recvfrom,
- 	.xpo_sendto = svc_udp_sendto,
-@@ -904,6 +910,7 @@ static struct svc_xprt_ops svc_udp_ops = {
- 	.xpo_free = svc_sock_free,
- 	.xpo_prep_reply_hdr = svc_udp_prep_reply_hdr,
- 	.xpo_has_wspace = svc_udp_has_wspace,
-+	.xpo_accept = svc_udp_accept,
- };
- 
- static struct svc_xprt_class svc_udp_class = {
-@@ -1028,9 +1035,9 @@ static inline int svc_port_is_privileged(struct sockaddr *sin)
- /*
-  * Accept a TCP connection
-  */
 -static void
--svc_tcp_accept(struct svc_sock *svsk)
-+static struct svc_xprt *svc_tcp_accept(struct svc_xprt *xprt)
+-svc_sock_release(struct svc_rqst *rqstp)
++static void svc_xprt_release(struct svc_rqst *rqstp)
  {
-+	struct svc_sock *svsk = container_of(xprt, struct svc_sock, sk_xprt);
- 	struct sockaddr_storage addr;
- 	struct sockaddr	*sin = (struct sockaddr *) &addr;
- 	struct svc_serv	*serv = svsk->sk_server;
-@@ -1042,7 +1049,7 @@ svc_tcp_accept(struct svc_sock *svsk)
+-	struct svc_sock	*svsk = rqstp->rq_sock;
++	struct svc_xprt	*xprt = rqstp->rq_xprt;
  
- 	dprintk("svc: tcp_accept %p sock %p\n", svsk, sock);
- 	if (!sock)
--		return;
-+		return NULL;
+ 	rqstp->rq_xprt->xpt_ops->xpo_release_rqst(rqstp);
  
- 	clear_bit(SK_CONN, &svsk->sk_flags);
- 	err = kernel_accept(sock, &newsock, O_NONBLOCK);
-@@ -1053,7 +1060,7 @@ svc_tcp_accept(struct svc_sock *svsk)
- 		else if (err != -EAGAIN && net_ratelimit())
- 			printk(KERN_WARNING "%s: accept failed (err %d)!\n",
- 				   serv->sv_name, -err);
--		return;
-+		return NULL;
- 	}
+@@ -379,7 +378,6 @@ svc_sock_release(struct svc_rqst *rqstp)
+ 	rqstp->rq_res.page_len = 0;
+ 	rqstp->rq_res.page_base = 0;
  
- 	set_bit(SK_CONN, &svsk->sk_flags);
-@@ -1147,11 +1154,11 @@ svc_tcp_accept(struct svc_sock *svsk)
- 	if (serv->sv_stats)
- 		serv->sv_stats->nettcpconn++;
+-
+ 	/* Reset response buffer and release
+ 	 * the reservation.
+ 	 * But first, check that enough space was reserved
+@@ -392,9 +390,9 @@ svc_sock_release(struct svc_rqst *rqstp)
  
--	return;
-+	return &newsvsk->sk_xprt;
+ 	rqstp->rq_res.head[0].iov_len = 0;
+ 	svc_reserve(rqstp, 0);
+-	rqstp->rq_sock = NULL;
++	rqstp->rq_xprt = NULL;
  
- failed:
- 	sock_release(newsock);
--	return;
-+	return NULL;
+-	svc_xprt_put(&svsk->sk_xprt);
++	svc_xprt_put(xprt);
  }
  
  /*
-@@ -1176,12 +1183,6 @@ svc_tcp_recvfrom(struct svc_rqst *rqstp)
- 		return svc_deferred_recv(rqstp);
+@@ -1593,7 +1591,7 @@ svc_recv(struct svc_rqst *rqstp, long timeout)
+ 	/* No data, incomplete (TCP) read, or accept() */
+ 	if (len == 0 || len == -EAGAIN) {
+ 		rqstp->rq_res.len = 0;
+-		svc_sock_release(rqstp);
++		svc_xprt_release(rqstp);
+ 		return -EAGAIN;
  	}
+ 	clear_bit(XPT_OLD, &svsk->sk_xprt.xpt_flags);
+@@ -1613,7 +1611,7 @@ void
+ svc_drop(struct svc_rqst *rqstp)
+ {
+ 	dprintk("svc: socket %p dropped request\n", rqstp->rq_sock);
+-	svc_sock_release(rqstp);
++	svc_xprt_release(rqstp);
+ }
  
--	if (svsk->sk_sk->sk_state == TCP_LISTEN) {
--		svc_tcp_accept(svsk);
--		svc_sock_received(svsk);
--		return 0;
--	}
--
- 	if (test_and_clear_bit(SK_CHNGBUF, &svsk->sk_flags))
- 		/* sndbuf needs to have room for one request
- 		 * per thread, otherwise we can stall even when the
-@@ -1393,6 +1394,7 @@ static struct svc_xprt_ops svc_tcp_ops = {
- 	.xpo_free = svc_sock_free,
- 	.xpo_prep_reply_hdr = svc_tcp_prep_reply_hdr,
- 	.xpo_has_wspace = svc_tcp_has_wspace,
-+	.xpo_accept = svc_tcp_accept,
- };
+ /*
+@@ -1646,7 +1644,7 @@ svc_send(struct svc_rqst *rqstp)
+ 	else
+ 		len = xprt->xpt_ops->xpo_sendto(rqstp);
+ 	mutex_unlock(&xprt->xpt_mutex);
+-	svc_sock_release(rqstp);
++	svc_xprt_release(rqstp);
  
- static struct svc_xprt_class svc_tcp_class = {
-@@ -1423,6 +1425,7 @@ svc_tcp_init(struct svc_sock *svsk)
- 
- 	if (sk->sk_state == TCP_LISTEN) {
- 		dprintk("setting up TCP socket for listening\n");
-+		set_bit(SK_LISTENER, &svsk->sk_flags);
- 		sk->sk_data_ready = svc_tcp_listen_data_ready;
- 		set_bit(SK_CONN, &svsk->sk_flags);
- 	} else {
-@@ -1569,6 +1572,10 @@ svc_recv(struct svc_rqst *rqstp, long timeout)
- 	if (test_bit(SK_CLOSE, &svsk->sk_flags)) {
- 		dprintk("svc_recv: found SK_CLOSE\n");
- 		svc_delete_socket(svsk);
-+	} else if (test_bit(SK_LISTENER, &svsk->sk_flags)) {
-+		struct svc_xprt *newxpt;
-+		newxpt = svsk->sk_xprt.xpt_ops->xpo_accept(&svsk->sk_xprt);
-+		svc_sock_received(svsk);
- 	} else {
- 		dprintk("svc: server %p, pool %u, socket %p, inuse=%d\n",
- 			rqstp, pool->sp_id, svsk, atomic_read(&svsk->sk_inuse));
+ 	if (len == -ECONNREFUSED || len == -ENOTCONN || len == -EAGAIN)
+ 		return 0;
 -- 
 1.5.4.rc2.60.gb2e62
 
