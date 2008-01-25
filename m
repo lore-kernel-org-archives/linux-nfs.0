@@ -1,7 +1,7 @@
 From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 018/100] nfsd: fail module init on reply cache init failure
-Date: Fri, 25 Jan 2008 18:15:58 -0500
-Message-ID: <1201303040-7779-18-git-send-email-bfields@citi.umich.edu>
+Subject: [PATCH 034/100] nfsd4: miscellaneous nfs4state.c style fixes
+Date: Fri, 25 Jan 2008 18:16:14 -0500
+Message-ID: <1201303040-7779-34-git-send-email-bfields@citi.umich.edu>
 References: <20080125231521.GG25141@fieldses.org>
  <1201303040-7779-1-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-2-git-send-email-bfields@citi.umich.edu>
@@ -20,151 +20,148 @@ References: <20080125231521.GG25141@fieldses.org>
  <1201303040-7779-15-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-16-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-17-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-18-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-19-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-20-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-21-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-22-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-23-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-24-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-25-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-26-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-27-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-28-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-29-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-30-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-31-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-32-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-33-git-send-email-bfields@citi.umich.edu>
 Cc: "J. Bruce Fields" <bfields@citi.umich.edu>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:47336 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:47383 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758613AbYAYXR0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Jan 2008 18:17:26 -0500
-In-Reply-To: <1201303040-7779-17-git-send-email-bfields@citi.umich.edu>
+	id S1762147AbYAYXRf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Jan 2008 18:17:35 -0500
+In-Reply-To: <1201303040-7779-33-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If the reply cache initialization fails due to a kmalloc failure,
-currently we try to soldier on with a reduced (or nonexistant) reply
-cache.
+Fix various minor style violations.
 
-Better to just fail immediately: the failure is then much easier to
-understand and debug, and it could save us complexity in some later
-code.  (But actually, it doesn't help currently because the cache is
-also turned off in some odd failure cases; we should probably find a
-better way to handle those failure cases some day.)
-
-Fix some minor style problems while we're at it, and rename
-nfsd_cache_init() to remove the need for a comment describing it.
-
-Acked-by: NeilBrown <neilb@suse.de>
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
- fs/nfsd/nfscache.c         |   28 +++++++++++++---------------
- fs/nfsd/nfsctl.c           |   11 +++++++----
- include/linux/nfsd/cache.h |    4 ++--
- 3 files changed, 22 insertions(+), 21 deletions(-)
+ fs/nfsd/nfs4state.c |   55 ++++++++++++++++++++++++--------------------------
+ 1 files changed, 26 insertions(+), 29 deletions(-)
 
-diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-index 578f2c9..92cb5ae 100644
---- a/fs/nfsd/nfscache.c
-+++ b/fs/nfsd/nfscache.c
-@@ -44,17 +44,18 @@ static int	nfsd_cache_append(struct svc_rqst *rqstp, struct kvec *vec);
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 6efce99..1c72b23 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -339,21 +339,20 @@ STALE_CLIENTID(clientid_t *clid)
+  * This type of memory management is somewhat inefficient, but we use it
+  * anyway since SETCLIENTID is not a common operation.
   */
- static DEFINE_SPINLOCK(cache_lock);
- 
--void
--nfsd_cache_init(void)
-+int
-+nfsd_reply_cache_init(void)
+-static inline struct nfs4_client *
+-alloc_client(struct xdr_netobj name)
++static inline struct nfs4_client * alloc_client(struct xdr_netobj name)
  {
- 	struct svc_cacherep	*rp;
- 	int			i;
+ 	struct nfs4_client *clp;
  
- 	INIT_LIST_HEAD(&lru_head);
- 	i = CACHESIZE;
--	while(i) {
-+	while (i) {
- 		rp = kmalloc(sizeof(*rp), GFP_KERNEL);
--		if (!rp) break;
-+		if (!rp)
-+			goto out_nomem;
- 		list_add(&rp->c_lru, &lru_head);
- 		rp->c_state = RC_UNUSED;
- 		rp->c_type = RC_NOCACHE;
-@@ -62,23 +63,20 @@ nfsd_cache_init(void)
- 		i--;
+-	if ((clp = kzalloc(sizeof(struct nfs4_client), GFP_KERNEL))!= NULL) {
+-		if ((clp->cl_name.data = kmalloc(name.len, GFP_KERNEL)) != NULL) {
+-			memcpy(clp->cl_name.data, name.data, name.len);
+-			clp->cl_name.len = name.len;
+-		}
+-		else {
+-			kfree(clp);
+-			clp = NULL;
+-		}
++	clp = kzalloc(sizeof(struct nfs4_client), GFP_KERNEL);
++	if (clp == NULL)
++		return NULL;
++	clp->cl_name.data = kmalloc(name.len, GFP_KERNEL);
++	if (clp->cl_name.data == NULL) {
++		kfree(clp);
++		return NULL;
  	}
++	memcpy(clp->cl_name.data, name.data, name.len);
++	clp->cl_name.len = name.len;
+ 	return clp;
+ }
  
--	if (i)
--		printk (KERN_ERR "nfsd: cannot allocate all %d cache entries, only got %d\n",
--			CACHESIZE, CACHESIZE-i);
+@@ -421,12 +420,13 @@ expire_client(struct nfs4_client *clp)
+ 	put_nfs4_client(clp);
+ }
+ 
+-static struct nfs4_client *
+-create_client(struct xdr_netobj name, char *recdir) {
++static struct nfs4_client * create_client(struct xdr_netobj name, char *recdir)
++{
+ 	struct nfs4_client *clp;
+ 
+-	if (!(clp = alloc_client(name)))
+-		goto out;
++	clp = alloc_client(name);
++	if (clp == NULL)
++		return NULL;
+ 	memcpy(clp->cl_recdir, recdir, HEXDIR_LEN);
+ 	atomic_set(&clp->cl_count, 1);
+ 	atomic_set(&clp->cl_callback.cb_set, 0);
+@@ -435,32 +435,30 @@ create_client(struct xdr_netobj name, char *recdir) {
+ 	INIT_LIST_HEAD(&clp->cl_openowners);
+ 	INIT_LIST_HEAD(&clp->cl_delegations);
+ 	INIT_LIST_HEAD(&clp->cl_lru);
+-out:
+ 	return clp;
+ }
+ 
+-static void
+-copy_verf(struct nfs4_client *target, nfs4_verifier *source) {
+-	memcpy(target->cl_verifier.data, source->data, sizeof(target->cl_verifier.data));
++static void copy_verf(struct nfs4_client *target, nfs4_verifier *source)
++{
++	memcpy(target->cl_verifier.data, source->data,
++			sizeof(target->cl_verifier.data));
+ }
+ 
+-static void
+-copy_clid(struct nfs4_client *target, struct nfs4_client *source) {
++static void copy_clid(struct nfs4_client *target, struct nfs4_client *source)
++{
+ 	target->cl_clientid.cl_boot = source->cl_clientid.cl_boot; 
+ 	target->cl_clientid.cl_id = source->cl_clientid.cl_id; 
+ }
+ 
+-static void
+-copy_cred(struct svc_cred *target, struct svc_cred *source) {
 -
- 	hash_list = kcalloc (HASHSIZE, sizeof(struct hlist_head), GFP_KERNEL);
--	if (!hash_list) {
--		nfsd_cache_shutdown();
--		printk (KERN_ERR "nfsd: cannot allocate %Zd bytes for hash list\n",
--			HASHSIZE * sizeof(struct hlist_head));
--		return;
--	}
-+	if (!hash_list)
-+		goto out_nomem;
- 
- 	cache_disabled = 0;
-+	return 0;
-+out_nomem:
-+	printk(KERN_ERR "nfsd: failed to allocate reply cache\n");
-+	nfsd_reply_cache_shutdown();
-+	return -ENOMEM;
++static void copy_cred(struct svc_cred *target, struct svc_cred *source)
++{
+ 	target->cr_uid = source->cr_uid;
+ 	target->cr_gid = source->cr_gid;
+ 	target->cr_group_info = source->cr_group_info;
+ 	get_group_info(target->cr_group_info);
  }
  
- void
--nfsd_cache_shutdown(void)
-+nfsd_reply_cache_shutdown(void)
+-static inline int
+-same_name(const char *n1, const char *n2)
++static inline int same_name(const char *n1, const char *n2)
  {
- 	struct svc_cacherep	*rp;
- 
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index ecf3779..2bfda9b 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -683,7 +683,9 @@ static int __init init_nfsd(void)
- 	if (retval)
- 		return retval;
- 	nfsd_stat_init();	/* Statistics */
--	nfsd_cache_init();	/* RPC reply cache */
-+	retval = nfsd_reply_cache_init();
-+	if (retval)
-+		goto out_free_stat;
- 	nfsd_export_init();	/* Exports table */
- 	nfsd_lockd_init();	/* lockd->nfsd callbacks */
- 	nfsd_idmap_init();      /* Name to ID mapping */
-@@ -700,11 +702,12 @@ static int __init init_nfsd(void)
- out_free_all:
- 	nfsd_idmap_shutdown();
- 	nfsd_export_shutdown();
--	nfsd_cache_shutdown();
-+	nfsd_reply_cache_shutdown();
- 	remove_proc_entry("fs/nfs/exports", NULL);
- 	remove_proc_entry("fs/nfs", NULL);
--	nfsd_stat_shutdown();
- 	nfsd_lockd_shutdown();
-+out_free_stat:
-+	nfsd_stat_shutdown();
- 	nfsd4_free_slabs();
- 	return retval;
+ 	return 0 == memcmp(n1, n2, HEXDIR_LEN);
  }
-@@ -712,7 +715,7 @@ out_free_all:
- static void __exit exit_nfsd(void)
- {
- 	nfsd_export_shutdown();
--	nfsd_cache_shutdown();
-+	nfsd_reply_cache_shutdown();
- 	remove_proc_entry("fs/nfs/exports", NULL);
- 	remove_proc_entry("fs/nfs", NULL);
- 	nfsd_stat_shutdown();
-diff --git a/include/linux/nfsd/cache.h b/include/linux/nfsd/cache.h
-index 007480c..7b5d784 100644
---- a/include/linux/nfsd/cache.h
-+++ b/include/linux/nfsd/cache.h
-@@ -72,8 +72,8 @@ enum {
-  */
- #define RC_DELAY		(HZ/5)
+@@ -502,9 +500,8 @@ static void gen_confirm(struct nfs4_client *clp)
+ 	*p++ = i++;
+ }
  
--void	nfsd_cache_init(void);
--void	nfsd_cache_shutdown(void);
-+int	nfsd_reply_cache_init(void);
-+void	nfsd_reply_cache_shutdown(void);
- int	nfsd_cache_lookup(struct svc_rqst *, int);
- void	nfsd_cache_update(struct svc_rqst *, int, __be32 *);
- 
+-static int
+-check_name(struct xdr_netobj name) {
+-
++static int check_name(struct xdr_netobj name)
++{
+ 	if (name.len == 0) 
+ 		return 0;
+ 	if (name.len > NFS4_OPAQUE_LIMIT) {
 -- 
 1.5.4.rc2.60.gb2e62
 
