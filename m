@@ -1,89 +1,98 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 100/112] SUNRPC: Clean up functions that free
-	address_strings array
-Date: Fri, 25 Jan 2008 11:38:00 -0500
-Message-ID: <20080125163759.31887.1374.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
+Subject: [PATCH 067/112] NFS: Expand server address storage in nfs_client
+	struct
+Date: Fri, 25 Jan 2008 11:37:46 -0500
+Message-ID: <20080125163746.31887.98755.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
 References: <20080125163723.31887.68074.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:14342 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:14355 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753687AbYAYQ7u (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Jan 2008 11:59:50 -0500
+	id S1755294AbYAYRAA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Jan 2008 12:00:00 -0500
 Received: from svlexrs01.hq.netapp.com (svlexrs01.corp.netapp.com [10.57.156.158])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id m0PGxlnn019995
-	for <linux-nfs@vger.kernel.org>; Fri, 25 Jan 2008 08:59:49 -0800 (PST)
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id m0PGxlo1019995
+	for <linux-nfs@vger.kernel.org>; Fri, 25 Jan 2008 08:59:58 -0800 (PST)
 In-Reply-To: <20080125163723.31887.68074.stgit-KPEdlmqt5P7XOazzY/2fV4TcuzvYVacciM950cveMlzk1uMJSBkQmQ@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Chuck Lever <chuck.lever@oracle.com>
 
-Clean up: document the rule (kfree) and the exceptions
-(RPC_DISPLAY_PROTO and RPC_DISPLAY_NETID) when freeing the objects in
-a transport's address_strings array.
+Prepare for managing larger addresses in the NFS client by widening the
+nfs_client struct's cl_addr field.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Cc: Aurelien Charbon <aurelien.charbon-Z51IpKcfGtLk1uMJSBkQmQ@public.gmane.org>
+
+(Modified to work with the new parameters for nfs_alloc_client)
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- net/sunrpc/xprtrdma/transport.c |   16 ++++++++++------
- net/sunrpc/xprtsock.c           |   16 ++++++++++------
- 2 files changed, 20 insertions(+), 12 deletions(-)
+ fs/nfs/client.c           |    8 ++++++--
+ include/linux/nfs_fs_sb.h |    3 ++-
+ 2 files changed, 8 insertions(+), 3 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index d1389af..02c522c 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -212,12 +212,16 @@ xprt_rdma_format_addresses(struct rpc_xprt *xprt)
- static void
- xprt_rdma_free_addresses(struct rpc_xprt *xprt)
- {
--	kfree(xprt->address_strings[RPC_DISPLAY_ADDR]);
--	kfree(xprt->address_strings[RPC_DISPLAY_PORT]);
--	kfree(xprt->address_strings[RPC_DISPLAY_ALL]);
--	kfree(xprt->address_strings[RPC_DISPLAY_HEX_ADDR]);
--	kfree(xprt->address_strings[RPC_DISPLAY_HEX_PORT]);
--	kfree(xprt->address_strings[RPC_DISPLAY_UNIVERSAL_ADDR]);
-+	unsigned int i;
-+
-+	for (i = 0; i < RPC_DISPLAY_MAX; i++)
-+		switch (i) {
-+		case RPC_DISPLAY_PROTO:
-+		case RPC_DISPLAY_NETID:
-+			continue;
-+		default:
-+			kfree(xprt->address_strings[i]);
-+		}
- }
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 876162c..44fe7fd 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -98,6 +98,7 @@ struct rpc_program		nfsacl_program = {
+ struct nfs_client_initdata {
+ 	const char *hostname;
+ 	const struct sockaddr_in *addr;
++	size_t addrlen;
+ 	const struct nfs_rpc_ops *rpc_ops;
+ };
  
- static void
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 17e1721..7f1e686 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -398,12 +398,16 @@ static void xs_format_ipv6_peer_addresses(struct rpc_xprt *xprt,
+@@ -125,7 +126,8 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
+ 	atomic_set(&clp->cl_count, 1);
+ 	clp->cl_cons_state = NFS_CS_INITING;
  
- static void xs_free_peer_addresses(struct rpc_xprt *xprt)
- {
--	kfree(xprt->address_strings[RPC_DISPLAY_ADDR]);
--	kfree(xprt->address_strings[RPC_DISPLAY_PORT]);
--	kfree(xprt->address_strings[RPC_DISPLAY_ALL]);
--	kfree(xprt->address_strings[RPC_DISPLAY_HEX_ADDR]);
--	kfree(xprt->address_strings[RPC_DISPLAY_HEX_PORT]);
--	kfree(xprt->address_strings[RPC_DISPLAY_UNIVERSAL_ADDR]);
-+	unsigned int i;
-+
-+	for (i = 0; i < RPC_DISPLAY_MAX; i++)
-+		switch (i) {
-+		case RPC_DISPLAY_PROTO:
-+		case RPC_DISPLAY_NETID:
-+			continue;
-+		default:
-+			kfree(xprt->address_strings[i]);
-+		}
- }
+-	memcpy(&clp->cl_addr, cl_init->addr, sizeof(clp->cl_addr));
++	memcpy(&clp->cl_addr, cl_init->addr, cl_init->addrlen);
++	clp->cl_addrlen = cl_init->addrlen;
  
- #define XS_SENDMSG_FLAGS	(MSG_DONTWAIT | MSG_NOSIGNAL)
+ 	if (cl_init->hostname) {
+ 		clp->cl_hostname = kstrdup(cl_init->hostname, GFP_KERNEL);
+@@ -425,7 +427,7 @@ static int nfs_create_rpc_client(struct nfs_client *clp, int proto,
+ 	struct rpc_create_args args = {
+ 		.protocol	= proto,
+ 		.address	= (struct sockaddr *)&clp->cl_addr,
+-		.addrsize	= sizeof(clp->cl_addr),
++		.addrsize	= clp->cl_addrlen,
+ 		.timeout	= &timeparms,
+ 		.servername	= clp->cl_hostname,
+ 		.program	= &nfs_program,
+@@ -585,6 +587,7 @@ static int nfs_init_server(struct nfs_server *server,
+ 	struct nfs_client_initdata cl_init = {
+ 		.hostname = data->nfs_server.hostname,
+ 		.addr = &data->nfs_server.address,
++		.addrlen = sizeof(data->nfs_server.address),
+ 		.rpc_ops = &nfs_v2_clientops,
+ 	};
+ 	struct nfs_client *clp;
+@@ -938,6 +941,7 @@ static int nfs4_set_client(struct nfs_server *server,
+ 	struct nfs_client_initdata cl_init = {
+ 		.hostname = hostname,
+ 		.addr = addr,
++		.addrlen = sizeof(*addr),
+ 		.rpc_ops = &nfs_v4_clientops,
+ 	};
+ 	struct nfs_client *clp;
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 0b3dcba..912cfe8 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -21,7 +21,8 @@ struct nfs_client {
+ #define NFS_CS_CALLBACK		1		/* - callback started */
+ #define NFS_CS_IDMAP		2		/* - idmap started */
+ #define NFS_CS_RENEWD		3		/* - renewd started */
+-	struct sockaddr_in	cl_addr;	/* server identifier */
++	struct sockaddr_storage	cl_addr;	/* server identifier */
++	size_t			cl_addrlen;
+ 	char *			cl_hostname;	/* hostname of server */
+ 	struct list_head	cl_share_link;	/* link in global client list */
+ 	struct list_head	cl_superblocks;	/* List of nfs_server structs */
