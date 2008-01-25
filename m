@@ -1,7 +1,7 @@
 From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 095/100] SUNRPC: export svc_sock_update_bufs
-Date: Fri, 25 Jan 2008 18:17:15 -0500
-Message-ID: <1201303040-7779-95-git-send-email-bfields@citi.umich.edu>
+Subject: [PATCH 056/100] svc: Move close processing to a single place
+Date: Fri, 25 Jan 2008 18:16:36 -0500
+Message-ID: <1201303040-7779-56-git-send-email-bfields@citi.umich.edu>
 References: <20080125231521.GG25141@fieldses.org>
  <1201303040-7779-1-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-2-git-send-email-bfields@citi.umich.edu>
@@ -58,81 +58,91 @@ References: <20080125231521.GG25141@fieldses.org>
  <1201303040-7779-53-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-54-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-55-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-56-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-57-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-58-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-59-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-60-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-61-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-62-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-63-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-64-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-65-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-66-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-67-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-68-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-69-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-70-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-71-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-72-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-73-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-74-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-75-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-76-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-77-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-78-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-79-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-80-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-81-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-82-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-83-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-84-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-85-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-86-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-87-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-88-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-89-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-90-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-91-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-92-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-93-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-94-git-send-email-bfields@citi.umich.edu>
-Cc: Jeff Layton <jlayton@redhat.com>,
+Cc: Tom Tucker <tom@opengridcomputing.com>,
 	"J. Bruce Fields" <bfields@citi.umich.edu>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:47571 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:47440 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1762092AbYAYXSh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Jan 2008 18:18:37 -0500
-In-Reply-To: <1201303040-7779-94-git-send-email-bfields@citi.umich.edu>
+	id S932107AbYAYXRs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Jan 2008 18:17:48 -0500
+In-Reply-To: <1201303040-7779-55-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Jeff Layton <jlayton@redhat.com>
+From: Tom Tucker <tom@opengridcomputing.com>
 
-Needed since the plan is to not have a svc_create_thread helper and to
-have current users of that function just call kthread_run directly.
+Close handling was duplicated in the UDP and TCP recvfrom
+methods. This code has been moved to the transport independent
+svc_recv function.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
-Reviewed-by: NeilBrown <neilb@suse.de>
+Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+Acked-by: Neil Brown <neilb@suse.de>
+Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
+Reviewed-by: Greg Banks <gnb@sgi.com>
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
- net/sunrpc/svcsock.c |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
+ net/sunrpc/svcsock.c |   26 +++++++++++---------------
+ 1 files changed, 11 insertions(+), 15 deletions(-)
 
 diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 1d3e5fc..b73a92a 100644
+index 2007881..603db98 100644
 --- a/net/sunrpc/svcsock.c
 +++ b/net/sunrpc/svcsock.c
-@@ -1101,6 +1101,7 @@ void svc_sock_update_bufs(struct svc_serv *serv)
+@@ -776,11 +776,6 @@ svc_udp_recvfrom(struct svc_rqst *rqstp)
+ 		return svc_deferred_recv(rqstp);
  	}
- 	spin_unlock_bh(&serv->sv_lock);
- }
-+EXPORT_SYMBOL(svc_sock_update_bufs);
  
- /*
-  * Initialize socket for RPC use and create svc_sock struct
+-	if (test_bit(SK_CLOSE, &svsk->sk_flags)) {
+-		svc_delete_socket(svsk);
+-		return 0;
+-	}
+-
+ 	clear_bit(SK_DATA, &svsk->sk_flags);
+ 	skb = NULL;
+ 	err = kernel_recvmsg(svsk->sk_sock, &msg, NULL,
+@@ -1181,11 +1176,6 @@ svc_tcp_recvfrom(struct svc_rqst *rqstp)
+ 		return svc_deferred_recv(rqstp);
+ 	}
+ 
+-	if (test_bit(SK_CLOSE, &svsk->sk_flags)) {
+-		svc_delete_socket(svsk);
+-		return 0;
+-	}
+-
+ 	if (svsk->sk_sk->sk_state == TCP_LISTEN) {
+ 		svc_tcp_accept(svsk);
+ 		svc_sock_received(svsk);
+@@ -1311,7 +1301,7 @@ svc_tcp_recvfrom(struct svc_rqst *rqstp)
+ 	return len;
+ 
+  err_delete:
+-	svc_delete_socket(svsk);
++	set_bit(SK_CLOSE, &svsk->sk_flags);
+ 	return -EAGAIN;
+ 
+  error:
+@@ -1575,10 +1565,16 @@ svc_recv(struct svc_rqst *rqstp, long timeout)
+ 	}
+ 	spin_unlock_bh(&pool->sp_lock);
+ 
+-	dprintk("svc: server %p, pool %u, socket %p, inuse=%d\n",
+-		 rqstp, pool->sp_id, svsk, atomic_read(&svsk->sk_inuse));
+-	len = svsk->sk_xprt.xpt_ops->xpo_recvfrom(rqstp);
+-	dprintk("svc: got len=%d\n", len);
++	len = 0;
++	if (test_bit(SK_CLOSE, &svsk->sk_flags)) {
++		dprintk("svc_recv: found SK_CLOSE\n");
++		svc_delete_socket(svsk);
++	} else {
++		dprintk("svc: server %p, pool %u, socket %p, inuse=%d\n",
++			rqstp, pool->sp_id, svsk, atomic_read(&svsk->sk_inuse));
++		len = svsk->sk_xprt.xpt_ops->xpo_recvfrom(rqstp);
++		dprintk("svc: got len=%d\n", len);
++	}
+ 
+ 	/* No data, incomplete (TCP) read, or accept() */
+ 	if (len == 0 || len == -EAGAIN) {
 -- 
 1.5.4.rc2.60.gb2e62
 
