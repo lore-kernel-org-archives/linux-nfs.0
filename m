@@ -1,7 +1,7 @@
 From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 083/100] svc: Add /proc/sys/sunrpc/transport files
-Date: Fri, 25 Jan 2008 18:17:03 -0500
-Message-ID: <1201303040-7779-83-git-send-email-bfields@citi.umich.edu>
+Subject: [PATCH 086/100] svc: Add svc_xprt_names service to replace svc_sock_names
+Date: Fri, 25 Jan 2008 18:17:06 -0500
+Message-ID: <1201303040-7779-86-git-send-email-bfields@citi.umich.edu>
 References: <20080125231521.GG25141@fieldses.org>
  <1201303040-7779-1-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-2-git-send-email-bfields@citi.umich.edu>
@@ -85,22 +85,27 @@ References: <20080125231521.GG25141@fieldses.org>
  <1201303040-7779-80-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-81-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-82-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-83-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-84-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-85-git-send-email-bfields@citi.umich.edu>
 Cc: Tom Tucker <tom@opengridcomputing.com>,
 	"J. Bruce Fields" <bfields@citi.umich.edu>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:47534 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:47542 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1762179AbYAYXSW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Jan 2008 18:18:22 -0500
-In-Reply-To: <1201303040-7779-82-git-send-email-bfields@citi.umich.edu>
+	id S1762185AbYAYXSZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Jan 2008 18:18:25 -0500
+In-Reply-To: <1201303040-7779-85-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Tom Tucker <tom@opengridcomputing.com>
 
-Add a file that when read lists the set of registered svc
-transports.
+Create a transport independent version of the svc_sock_names function.
+
+The toclose capability of the svc_sock_names service can be implemented
+using the svc_xprt_find and svc_xprt_close services.
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 Acked-by: Neil Brown <neilb@suse.de>
@@ -108,118 +113,79 @@ Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
 Reviewed-by: Greg Banks <gnb@sgi.com>
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
+ fs/nfsd/nfsctl.c                |    2 +-
  include/linux/sunrpc/svc_xprt.h |    1 +
- net/sunrpc/svc_xprt.c           |   28 ++++++++++++++++++++++++++++
- net/sunrpc/sysctl.c             |   31 +++++++++++++++++++++++++++++++
- 3 files changed, 60 insertions(+), 0 deletions(-)
+ net/sunrpc/svc_xprt.c           |   35 +++++++++++++++++++++++++++++++++++
+ 3 files changed, 37 insertions(+), 1 deletions(-)
 
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index 02c94b9..61015cf 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -503,7 +503,7 @@ static ssize_t write_ports(struct file *file, char *buf, size_t size)
+ 		int len = 0;
+ 		lock_kernel();
+ 		if (nfsd_serv)
+-			len = svc_sock_names(buf, nfsd_serv, NULL);
++			len = svc_xprt_names(nfsd_serv, buf, 0);
+ 		unlock_kernel();
+ 		return len;
+ 	}
 diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index 405281e..01e71b7 100644
+index 68862d5..6fd7b01 100644
 --- a/include/linux/sunrpc/svc_xprt.h
 +++ b/include/linux/sunrpc/svc_xprt.h
-@@ -79,6 +79,7 @@ void	svc_xprt_copy_addrs(struct svc_rqst *rqstp, struct svc_xprt *xprt);
- void	svc_close_xprt(struct svc_xprt *xprt);
- void	svc_delete_xprt(struct svc_xprt *xprt);
+@@ -81,6 +81,7 @@ void	svc_delete_xprt(struct svc_xprt *xprt);
  int	svc_port_is_privileged(struct sockaddr *sin);
-+int	svc_print_xprts(char *buf, int maxlen);
+ int	svc_print_xprts(char *buf, int maxlen);
+ struct	svc_xprt *svc_find_xprt(struct svc_serv *, char *, int, int);
++int	svc_xprt_names(struct svc_serv *serv, char *buf, int buflen);
  
  static inline void svc_xprt_get(struct svc_xprt *xprt)
  {
 diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 000c7dc..2e5b92a 100644
+index 7835973..c3fb367 100644
 --- a/net/sunrpc/svc_xprt.c
 +++ b/net/sunrpc/svc_xprt.c
-@@ -112,6 +112,34 @@ void svc_unreg_xprt_class(struct svc_xprt_class *xcl)
+@@ -1014,3 +1014,38 @@ struct svc_xprt *svc_find_xprt(struct svc_serv *serv, char *xcl_name,
+ 	return found;
  }
- EXPORT_SYMBOL_GPL(svc_unreg_xprt_class);
- 
+ EXPORT_SYMBOL_GPL(svc_find_xprt);
++
 +/*
-+ * Format the transport list for printing
++ * Format a buffer with a list of the active transports. A zero for
++ * the buflen parameter disables target buffer overflow checking.
 + */
-+int svc_print_xprts(char *buf, int maxlen)
++int svc_xprt_names(struct svc_serv *serv, char *buf, int buflen)
 +{
-+	struct list_head *le;
-+	char tmpstr[80];
-+	int len = 0;
-+	buf[0] = '\0';
-+
-+	spin_lock(&svc_xprt_class_lock);
-+	list_for_each(le, &svc_xprt_class_list) {
-+		int slen;
-+		struct svc_xprt_class *xcl =
-+			list_entry(le, struct svc_xprt_class, xcl_list);
-+
-+		sprintf(tmpstr, "%s %d\n", xcl->xcl_name, xcl->xcl_max_payload);
-+		slen = strlen(tmpstr);
-+		if (len + slen > maxlen)
-+			break;
-+		len += slen;
-+		strcat(buf, tmpstr);
-+	}
-+	spin_unlock(&svc_xprt_class_lock);
-+
-+	return len;
-+}
-+
- static void svc_xprt_free(struct kref *kref)
- {
- 	struct svc_xprt *xprt =
-diff --git a/net/sunrpc/sysctl.c b/net/sunrpc/sysctl.c
-index 2be714e..fd7cf59 100644
---- a/net/sunrpc/sysctl.c
-+++ b/net/sunrpc/sysctl.c
-@@ -18,6 +18,7 @@
- #include <linux/sunrpc/types.h>
- #include <linux/sunrpc/sched.h>
- #include <linux/sunrpc/stats.h>
-+#include <linux/sunrpc/svc_xprt.h>
- 
- /*
-  * Declare the debug flags here
-@@ -48,6 +49,30 @@ rpc_unregister_sysctl(void)
- 	}
- }
- 
-+static int proc_do_xprt(ctl_table *table, int write, struct file *file,
-+			void __user *buffer, size_t *lenp, loff_t *ppos)
-+{
-+	char tmpbuf[256];
++	struct svc_xprt *xprt;
++	char xprt_str[64];
++	int totlen = 0;
 +	int len;
-+	if ((*ppos && !write) || !*lenp) {
-+		*lenp = 0;
++
++	/* Sanity check args */
++	if (!serv)
 +		return 0;
-+	}
-+	if (write)
-+		return -EINVAL;
-+	else {
-+		len = svc_print_xprts(tmpbuf, sizeof(tmpbuf));
-+		if (!access_ok(VERIFY_WRITE, buffer, len))
-+			return -EFAULT;
 +
-+		if (__copy_to_user(buffer, tmpbuf, len))
-+			return -EFAULT;
++	spin_lock_bh(&serv->sv_lock);
++	list_for_each_entry(xprt, &serv->sv_permsocks, xpt_list) {
++		len = snprintf(xprt_str, sizeof(xprt_str),
++			       "%s %d\n", xprt->xpt_class->xcl_name,
++			       svc_xprt_local_port(xprt));
++		/* If the string was truncated, replace with error string */
++		if (len >= sizeof(xprt_str))
++			strcpy(xprt_str, "name-too-long\n");
++		/* Don't overflow buffer */
++		len = strlen(xprt_str);
++		if (buflen && (len + totlen >= buflen))
++			break;
++		strcpy(buf+totlen, xprt_str);
++		totlen += len;
 +	}
-+	*lenp -= len;
-+	*ppos += len;
-+	return 0;
++	spin_unlock_bh(&serv->sv_lock);
++	return totlen;
 +}
-+
- static int
- proc_dodebug(ctl_table *table, int write, struct file *file,
- 				void __user *buffer, size_t *lenp, loff_t *ppos)
-@@ -140,6 +165,12 @@ static ctl_table debug_table[] = {
- 		.mode		= 0644,
- 		.proc_handler	= &proc_dodebug
- 	},
-+	{
-+		.procname	= "transports",
-+		.maxlen		= 256,
-+		.mode		= 0444,
-+		.proc_handler	= &proc_do_xprt,
-+	},
- 	{ .ctl_name = 0 }
- };
- 
++EXPORT_SYMBOL_GPL(svc_xprt_names);
 -- 
 1.5.4.rc2.60.gb2e62
 
