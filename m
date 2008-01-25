@@ -1,7 +1,7 @@
 From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 024/100] nfsd: move nfsd/auth.h into fs/nfsd
-Date: Fri, 25 Jan 2008 18:16:04 -0500
-Message-ID: <1201303040-7779-24-git-send-email-bfields@citi.umich.edu>
+Subject: [PATCH 018/100] nfsd: fail module init on reply cache init failure
+Date: Fri, 25 Jan 2008 18:15:58 -0500
+Message-ID: <1201303040-7779-18-git-send-email-bfields@citi.umich.edu>
 References: <20080125231521.GG25141@fieldses.org>
  <1201303040-7779-1-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-2-git-send-email-bfields@citi.umich.edu>
@@ -20,179 +20,151 @@ References: <20080125231521.GG25141@fieldses.org>
  <1201303040-7779-15-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-16-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-17-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-18-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-19-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-20-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-21-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-22-git-send-email-bfields@citi.umich.edu>
- <1201303040-7779-23-git-send-email-bfields@citi.umich.edu>
-Cc: "J. Bruce Fields" <bfields@citi.umich.edu>,
-	"Robert P. J. Day" <rpjday-L09J2beyid0N/H6P543EQg@public.gmane.org>
+Cc: "J. Bruce Fields" <bfields@citi.umich.edu>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:47376 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:47336 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1762135AbYAYXRe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Jan 2008 18:17:34 -0500
-In-Reply-To: <1201303040-7779-23-git-send-email-bfields@citi.umich.edu>
+	id S1758613AbYAYXR0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Jan 2008 18:17:26 -0500
+In-Reply-To: <1201303040-7779-17-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This header is used only in a few places in fs/nfsd, so there seems to
-be little point to having it in include/.  (Thanks to Robert Day for
-pointing this out.)
+If the reply cache initialization fails due to a kmalloc failure,
+currently we try to soldier on with a reduced (or nonexistant) reply
+cache.
 
-Cc: Robert P. J. Day <rpjday-L09J2beyid0N/H6P543EQg@public.gmane.org>
+Better to just fail immediately: the failure is then much easier to
+understand and debug, and it could save us complexity in some later
+code.  (But actually, it doesn't help currently because the cache is
+also turned off in some odd failure cases; we should probably find a
+better way to handle those failure cases some day.)
+
+Fix some minor style problems while we're at it, and rename
+nfsd_cache_init() to remove the need for a comment describing it.
+
 Acked-by: NeilBrown <neilb@suse.de>
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
- fs/nfsd/auth.h               |   27 +++++++++++++++++++++++++++
- fs/nfsd/nfs3xdr.c            |    1 +
- fs/nfsd/nfsfh.c              |    1 +
- fs/nfsd/nfsxdr.c             |    1 +
- include/linux/nfsd/Kbuild    |    1 -
- include/linux/nfsd/auth.h    |   27 ---------------------------
- include/linux/nfsd/nfsd.h    |    1 -
- include/linux/nfsd/syscall.h |    1 -
- 8 files changed, 30 insertions(+), 30 deletions(-)
- create mode 100644 fs/nfsd/auth.h
- delete mode 100644 include/linux/nfsd/auth.h
+ fs/nfsd/nfscache.c         |   28 +++++++++++++---------------
+ fs/nfsd/nfsctl.c           |   11 +++++++----
+ include/linux/nfsd/cache.h |    4 ++--
+ 3 files changed, 22 insertions(+), 21 deletions(-)
 
-diff --git a/fs/nfsd/auth.h b/fs/nfsd/auth.h
-new file mode 100644
-index 0000000..0fb9f72
---- /dev/null
-+++ b/fs/nfsd/auth.h
-@@ -0,0 +1,27 @@
-+/*
-+ * include/linux/nfsd/auth.h
-+ *
-+ * nfsd-specific authentication stuff.
-+ * uid/gid mapping not yet implemented.
-+ *
-+ * Copyright (C) 1995, 1996 Olaf Kirch <okir-pn4DOG8n3UYbFoVRYvo4fw@public.gmane.org>
-+ */
-+
-+#ifndef LINUX_NFSD_AUTH_H
-+#define LINUX_NFSD_AUTH_H
-+
-+#ifdef __KERNEL__
-+
-+#define nfsd_luid(rq, uid)	((u32)(uid))
-+#define nfsd_lgid(rq, gid)	((u32)(gid))
-+#define nfsd_ruid(rq, uid)	((u32)(uid))
-+#define nfsd_rgid(rq, gid)	((u32)(gid))
-+
-+/*
-+ * Set the current process's fsuid/fsgid etc to those of the NFS
-+ * client user
-+ */
-+int nfsd_setuser(struct svc_rqst *, struct svc_export *);
-+
-+#endif /* __KERNEL__ */
-+#endif /* LINUX_NFSD_AUTH_H */
-diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
-index be515c5..4b1ffe3 100644
---- a/fs/nfsd/nfs3xdr.c
-+++ b/fs/nfsd/nfs3xdr.c
-@@ -21,6 +21,7 @@
- #include <linux/sunrpc/svc.h>
- #include <linux/nfsd/nfsd.h>
- #include <linux/nfsd/xdr3.h>
-+#include "auth.h"
+diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
+index 578f2c9..92cb5ae 100644
+--- a/fs/nfsd/nfscache.c
++++ b/fs/nfsd/nfscache.c
+@@ -44,17 +44,18 @@ static int	nfsd_cache_append(struct svc_rqst *rqstp, struct kvec *vec);
+  */
+ static DEFINE_SPINLOCK(cache_lock);
  
- #define NFSDDBG_FACILITY		NFSDDBG_XDR
+-void
+-nfsd_cache_init(void)
++int
++nfsd_reply_cache_init(void)
+ {
+ 	struct svc_cacherep	*rp;
+ 	int			i;
  
-diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
-index 468f17a..8fbd2dc 100644
---- a/fs/nfsd/nfsfh.c
-+++ b/fs/nfsd/nfsfh.c
-@@ -22,6 +22,7 @@
- #include <linux/sunrpc/svc.h>
- #include <linux/sunrpc/svcauth_gss.h>
- #include <linux/nfsd/nfsd.h>
-+#include "auth.h"
+ 	INIT_LIST_HEAD(&lru_head);
+ 	i = CACHESIZE;
+-	while(i) {
++	while (i) {
+ 		rp = kmalloc(sizeof(*rp), GFP_KERNEL);
+-		if (!rp) break;
++		if (!rp)
++			goto out_nomem;
+ 		list_add(&rp->c_lru, &lru_head);
+ 		rp->c_state = RC_UNUSED;
+ 		rp->c_type = RC_NOCACHE;
+@@ -62,23 +63,20 @@ nfsd_cache_init(void)
+ 		i--;
+ 	}
  
- #define NFSDDBG_FACILITY		NFSDDBG_FH
- 
-diff --git a/fs/nfsd/nfsxdr.c b/fs/nfsd/nfsxdr.c
-index 7003c31..61ad617 100644
---- a/fs/nfsd/nfsxdr.c
-+++ b/fs/nfsd/nfsxdr.c
-@@ -15,6 +15,7 @@
- #include <linux/nfsd/nfsd.h>
- #include <linux/nfsd/xdr.h>
- #include <linux/mm.h>
-+#include "auth.h"
- 
- #define NFSDDBG_FACILITY		NFSDDBG_XDR
- 
-diff --git a/include/linux/nfsd/Kbuild b/include/linux/nfsd/Kbuild
-index d9c5455..e726fc3 100644
---- a/include/linux/nfsd/Kbuild
-+++ b/include/linux/nfsd/Kbuild
-@@ -4,4 +4,3 @@ unifdef-y += stats.h
- unifdef-y += syscall.h
- unifdef-y += nfsfh.h
- unifdef-y += debug.h
--unifdef-y += auth.h
-diff --git a/include/linux/nfsd/auth.h b/include/linux/nfsd/auth.h
-deleted file mode 100644
-index 0fb9f72..0000000
---- a/include/linux/nfsd/auth.h
-+++ /dev/null
-@@ -1,27 +0,0 @@
--/*
-- * include/linux/nfsd/auth.h
-- *
-- * nfsd-specific authentication stuff.
-- * uid/gid mapping not yet implemented.
-- *
-- * Copyright (C) 1995, 1996 Olaf Kirch <okir-pn4DOG8n3UYbFoVRYvo4fw@public.gmane.org>
-- */
+-	if (i)
+-		printk (KERN_ERR "nfsd: cannot allocate all %d cache entries, only got %d\n",
+-			CACHESIZE, CACHESIZE-i);
 -
--#ifndef LINUX_NFSD_AUTH_H
--#define LINUX_NFSD_AUTH_H
--
--#ifdef __KERNEL__
--
--#define nfsd_luid(rq, uid)	((u32)(uid))
--#define nfsd_lgid(rq, gid)	((u32)(gid))
--#define nfsd_ruid(rq, uid)	((u32)(uid))
--#define nfsd_rgid(rq, gid)	((u32)(gid))
--
--/*
-- * Set the current process's fsuid/fsgid etc to those of the NFS
-- * client user
-- */
--int nfsd_setuser(struct svc_rqst *, struct svc_export *);
--
--#endif /* __KERNEL__ */
--#endif /* LINUX_NFSD_AUTH_H */
-diff --git a/include/linux/nfsd/nfsd.h b/include/linux/nfsd/nfsd.h
-index a51a30f..8caf4c4 100644
---- a/include/linux/nfsd/nfsd.h
-+++ b/include/linux/nfsd/nfsd.h
-@@ -20,7 +20,6 @@
- #include <linux/nfsd/debug.h>
- #include <linux/nfsd/nfsfh.h>
- #include <linux/nfsd/export.h>
--#include <linux/nfsd/auth.h>
- #include <linux/nfsd/stats.h>
- /*
-  * nfsd version
-diff --git a/include/linux/nfsd/syscall.h b/include/linux/nfsd/syscall.h
-index 8bcddcc..4e43976 100644
---- a/include/linux/nfsd/syscall.h
-+++ b/include/linux/nfsd/syscall.h
-@@ -18,7 +18,6 @@
- #include <linux/nfsd/const.h>
- #include <linux/nfsd/export.h>
- #include <linux/nfsd/nfsfh.h>
--#include <linux/nfsd/auth.h>
+ 	hash_list = kcalloc (HASHSIZE, sizeof(struct hlist_head), GFP_KERNEL);
+-	if (!hash_list) {
+-		nfsd_cache_shutdown();
+-		printk (KERN_ERR "nfsd: cannot allocate %Zd bytes for hash list\n",
+-			HASHSIZE * sizeof(struct hlist_head));
+-		return;
+-	}
++	if (!hash_list)
++		goto out_nomem;
  
- /*
-  * Version of the syscall interface
+ 	cache_disabled = 0;
++	return 0;
++out_nomem:
++	printk(KERN_ERR "nfsd: failed to allocate reply cache\n");
++	nfsd_reply_cache_shutdown();
++	return -ENOMEM;
+ }
+ 
+ void
+-nfsd_cache_shutdown(void)
++nfsd_reply_cache_shutdown(void)
+ {
+ 	struct svc_cacherep	*rp;
+ 
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index ecf3779..2bfda9b 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -683,7 +683,9 @@ static int __init init_nfsd(void)
+ 	if (retval)
+ 		return retval;
+ 	nfsd_stat_init();	/* Statistics */
+-	nfsd_cache_init();	/* RPC reply cache */
++	retval = nfsd_reply_cache_init();
++	if (retval)
++		goto out_free_stat;
+ 	nfsd_export_init();	/* Exports table */
+ 	nfsd_lockd_init();	/* lockd->nfsd callbacks */
+ 	nfsd_idmap_init();      /* Name to ID mapping */
+@@ -700,11 +702,12 @@ static int __init init_nfsd(void)
+ out_free_all:
+ 	nfsd_idmap_shutdown();
+ 	nfsd_export_shutdown();
+-	nfsd_cache_shutdown();
++	nfsd_reply_cache_shutdown();
+ 	remove_proc_entry("fs/nfs/exports", NULL);
+ 	remove_proc_entry("fs/nfs", NULL);
+-	nfsd_stat_shutdown();
+ 	nfsd_lockd_shutdown();
++out_free_stat:
++	nfsd_stat_shutdown();
+ 	nfsd4_free_slabs();
+ 	return retval;
+ }
+@@ -712,7 +715,7 @@ out_free_all:
+ static void __exit exit_nfsd(void)
+ {
+ 	nfsd_export_shutdown();
+-	nfsd_cache_shutdown();
++	nfsd_reply_cache_shutdown();
+ 	remove_proc_entry("fs/nfs/exports", NULL);
+ 	remove_proc_entry("fs/nfs", NULL);
+ 	nfsd_stat_shutdown();
+diff --git a/include/linux/nfsd/cache.h b/include/linux/nfsd/cache.h
+index 007480c..7b5d784 100644
+--- a/include/linux/nfsd/cache.h
++++ b/include/linux/nfsd/cache.h
+@@ -72,8 +72,8 @@ enum {
+  */
+ #define RC_DELAY		(HZ/5)
+ 
+-void	nfsd_cache_init(void);
+-void	nfsd_cache_shutdown(void);
++int	nfsd_reply_cache_init(void);
++void	nfsd_reply_cache_shutdown(void);
+ int	nfsd_cache_lookup(struct svc_rqst *, int);
+ void	nfsd_cache_update(struct svc_rqst *, int, __be32 *);
+ 
 -- 
 1.5.4.rc2.60.gb2e62
 
