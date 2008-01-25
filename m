@@ -1,7 +1,7 @@
 From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 040/100] nfsd: allow root to set uid and gid on create
-Date: Fri, 25 Jan 2008 18:16:20 -0500
-Message-ID: <1201303040-7779-40-git-send-email-bfields@citi.umich.edu>
+Subject: [PATCH 043/100] sunrpc: gss: simplify rsi_parse logic
+Date: Fri, 25 Jan 2008 18:16:23 -0500
+Message-ID: <1201303040-7779-43-git-send-email-bfields@citi.umich.edu>
 References: <20080125231521.GG25141@fieldses.org>
  <1201303040-7779-1-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-2-git-send-email-bfields@citi.umich.edu>
@@ -42,125 +42,95 @@ References: <20080125231521.GG25141@fieldses.org>
  <1201303040-7779-37-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-38-git-send-email-bfields@citi.umich.edu>
  <1201303040-7779-39-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-40-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-41-git-send-email-bfields@citi.umich.edu>
+ <1201303040-7779-42-git-send-email-bfields@citi.umich.edu>
 Cc: "J. Bruce Fields" <bfields@citi.umich.edu>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:47393 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:47399 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761861AbYAYXRi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Jan 2008 18:17:38 -0500
-In-Reply-To: <1201303040-7779-39-git-send-email-bfields@citi.umich.edu>
+	id S1761637AbYAYXRj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Jan 2008 18:17:39 -0500
+In-Reply-To: <1201303040-7779-42-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The server silently ignores attempts to set the uid and gid on create.
-Based on the comment, this appears to have been done to prevent some
-overly-clever IRIX client from causing itself problems.
-
-Perhaps we should remove that hack completely.  For now, at least, it
-makes sense to allow root (when no_root_squash is set) to set uid and
-gid.
-
-While we're there, since nfsd_create and nfsd_create_v3 share the same
-logic, pull that out into a separate function.  And spell out the
-individual modifications of ia_valid instead of doing them both at once
-inside a conditional.
-
-Thanks to Roger Willcocks <roger-nMHR1cC4sak0YOejwGmHqw@public.gmane.org> for the bug report
-and original patch on which this is based.
+Make an obvious simplification that removes a few lines and some
+unnecessary indentation; no change in behavior.
 
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
- fs/nfsd/vfs.c |   47 ++++++++++++++++++++++++++++-------------------
- 1 files changed, 28 insertions(+), 19 deletions(-)
+ net/sunrpc/auth_gss/svcauth_gss.c |   52 +++++++++++++++++--------------------
+ 1 files changed, 24 insertions(+), 28 deletions(-)
 
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 755ba43..cc75e4f 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -1151,6 +1151,26 @@ nfsd_commit(struct svc_rqst *rqstp, struct svc_fh *fhp,
- }
- #endif /* CONFIG_NFSD_V3 */
+diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+index 688cc31..e8ed848 100644
+--- a/net/sunrpc/auth_gss/svcauth_gss.c
++++ b/net/sunrpc/auth_gss/svcauth_gss.c
+@@ -224,38 +224,34 @@ static int rsi_parse(struct cache_detail *cd,
  
-+__be32
-+nfsd_create_setattr(struct svc_rqst *rqstp, struct svc_fh *resfhp,
-+			struct iattr *iap)
-+{
-+	/*
-+	 * Mode has already been set earlier in create:
-+	 */
-+	iap->ia_valid &= ~ATTR_MODE;
-+	/*
-+	 * Setting uid/gid works only for root.  Irix appears to
-+	 * send along the gid on create when it tries to implement
-+	 * setgid directories via NFS:
-+	 */
-+	if (current->fsuid != 0)
-+		iap->ia_valid &= ~(ATTR_UID|ATTR_GID);
-+	if (iap->ia_valid)
-+		return nfsd_setattr(rqstp, resfhp, iap, 0, (time_t)0);
-+	return 0;
-+}
-+
- /*
-  * Create a file (regular, directory, device, fifo); UNIX sockets 
-  * not yet implemented.
-@@ -1167,6 +1187,7 @@ nfsd_create(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	struct dentry	*dentry, *dchild = NULL;
- 	struct inode	*dirp;
- 	__be32		err;
-+	__be32		err2;
- 	int		host_err;
+ 	/* major/minor */
+ 	len = qword_get(&mesg, buf, mlen);
+-	if (len < 0)
++	if (len <= 0)
+ 		goto out;
+-	if (len == 0) {
++	rsii.major_status = simple_strtoul(buf, &ep, 10);
++	if (*ep)
++		goto out;
++	len = qword_get(&mesg, buf, mlen);
++	if (len <= 0)
++		goto out;
++	rsii.minor_status = simple_strtoul(buf, &ep, 10);
++	if (*ep)
+ 		goto out;
+-	} else {
+-		rsii.major_status = simple_strtoul(buf, &ep, 10);
+-		if (*ep)
+-			goto out;
+-		len = qword_get(&mesg, buf, mlen);
+-		if (len <= 0)
+-			goto out;
+-		rsii.minor_status = simple_strtoul(buf, &ep, 10);
+-		if (*ep)
+-			goto out;
  
- 	err = nfserr_perm;
-@@ -1257,16 +1278,9 @@ nfsd_create(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	}
+-		/* out_handle */
+-		len = qword_get(&mesg, buf, mlen);
+-		if (len < 0)
+-			goto out;
+-		status = -ENOMEM;
+-		if (dup_to_netobj(&rsii.out_handle, buf, len))
+-			goto out;
++	/* out_handle */
++	len = qword_get(&mesg, buf, mlen);
++	if (len < 0)
++		goto out;
++	status = -ENOMEM;
++	if (dup_to_netobj(&rsii.out_handle, buf, len))
++		goto out;
  
- 
--	/* Set file attributes. Mode has already been set and
--	 * setting uid/gid works only for root. Irix appears to
--	 * send along the gid when it tries to implement setgid
--	 * directories via NFS.
--	 */
--	if ((iap->ia_valid &= ~(ATTR_UID|ATTR_GID|ATTR_MODE)) != 0) {
--		__be32 err2 = nfsd_setattr(rqstp, resfhp, iap, 0, (time_t)0);
--		if (err2)
--			err = err2;
+-		/* out_token */
+-		len = qword_get(&mesg, buf, mlen);
+-		status = -EINVAL;
+-		if (len < 0)
+-			goto out;
+-		status = -ENOMEM;
+-		if (dup_to_netobj(&rsii.out_token, buf, len))
+-			goto out;
 -	}
-+	err2 = nfsd_create_setattr(rqstp, resfhp, iap);
-+	if (err2)
-+		err = err2;
- 	/*
- 	 * Update the file handle to get the new inode info.
- 	 */
-@@ -1295,6 +1309,7 @@ nfsd_create_v3(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	struct dentry	*dentry, *dchild = NULL;
- 	struct inode	*dirp;
- 	__be32		err;
-+	__be32		err2;
- 	int		host_err;
- 	__u32		v_mtime=0, v_atime=0;
- 
-@@ -1399,16 +1414,10 @@ nfsd_create_v3(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 		iap->ia_atime.tv_nsec = 0;
- 	}
- 
--	/* Set file attributes.
--	 * Irix appears to send along the gid when it tries to
--	 * implement setgid directories via NFS. Clear out all that cruft.
--	 */
-  set_attr:
--	if ((iap->ia_valid &= ~(ATTR_UID|ATTR_GID|ATTR_MODE)) != 0) {
-- 		__be32 err2 = nfsd_setattr(rqstp, resfhp, iap, 0, (time_t)0);
--		if (err2)
--			err = err2;
--	}
-+	err2 = nfsd_create_setattr(rqstp, resfhp, iap);
-+	if (err2)
-+		err = err2;
- 
- 	/*
- 	 * Update the filehandle to get the new inode info.
++	/* out_token */
++	len = qword_get(&mesg, buf, mlen);
++	status = -EINVAL;
++	if (len < 0)
++		goto out;
++	status = -ENOMEM;
++	if (dup_to_netobj(&rsii.out_token, buf, len))
++		goto out;
+ 	rsii.h.expiry_time = expiry;
+ 	rsip = rsi_update(&rsii, rsip);
+ 	status = 0;
 -- 
 1.5.4.rc2.60.gb2e62
 
