@@ -1,73 +1,65 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 097/100] NLM: have nlm_shutdown_hosts kill off all NLM
-	RPC tasks
-Date: Fri, 25 Jan 2008 19:31:56 -0500
-Message-ID: <20080126003156.GK25141@fieldses.org>
-References: <1201303040-7779-89-git-send-email-bfields@citi.umich.edu> <1201303040-7779-90-git-send-email-bfields@citi.umich.edu> <1201303040-7779-91-git-send-email-bfields@citi.umich.edu> <1201303040-7779-92-git-send-email-bfields@citi.umich.edu> <1201303040-7779-93-git-send-email-bfields@citi.umich.edu> <1201303040-7779-94-git-send-email-bfields@citi.umich.edu> <1201303040-7779-95-git-send-email-bfields@citi.umich.edu> <1201303040-7779-96-git-send-email-bfields@citi.umich.edu> <1201303040-7779-97-git-send-email-bfields@citi.umich.edu> <20080125185548.5363f046@tleilax.poochiereds.net>
+From: "Paul B. Henson" <henson@acm.org>
+Subject: NFS over TCP idle timeout
+Date: Fri, 25 Jan 2008 16:41:00 -0800 (PST)
+Message-ID: <Pine.GSO.4.55.0801251516550.21@loogie.intranet.csupomona.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Jeff Layton <jlayton@redhat.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:52306 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753352AbYAZAb6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Jan 2008 19:31:58 -0500
-In-Reply-To: <20080125185548.5363f046-RtJpwOs3+0O+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
+Received: from sparky.unx.csupomona.edu ([134.71.247.19]:54682 "EHLO
+	sparky.unx.csupomona.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752490AbYAZAtn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Jan 2008 19:49:43 -0500
+Received: from localhost (localhost [127.0.0.1])
+	by sparky.unx.csupomona.edu (Postfix) with ESMTP id 06FE1DC0CF
+	for <linux-nfs@vger.kernel.org>; Fri, 25 Jan 2008 16:41:06 -0800 (PST)
+Received: from sparky.unx.csupomona.edu ([127.0.0.1])
+	by localhost (sparky.unx.csupomona.edu [127.0.0.1]) (amavisd-new, port 10024)
+	with ESMTP id mydaUzn2plgw for <linux-nfs@vger.kernel.org>;
+	Fri, 25 Jan 2008 16:41:05 -0800 (PST)
+Received: from loogie.intranet.csupomona.edu (loogie.intranet.csupomona.edu [134.71.184.48])
+	(using TLSv1 with cipher EDH-RSA-DES-CBC3-SHA (168/168 bits))
+	(No client certificate requested)
+	by sparky.unx.csupomona.edu (Postfix) with ESMTP id D56D0DC0B5
+	for <linux-nfs@vger.kernel.org>; Fri, 25 Jan 2008 16:41:00 -0800 (PST)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jan 25, 2008 at 06:55:48PM -0500, Jeff Layton wrote:
-> On Fri, 25 Jan 2008 18:17:17 -0500
-> "J. Bruce Fields" <bfields@citi.umich.edu> wrote:
-> 
-> > From: Jeff Layton <jlayton@redhat.com>
-> > 
-> > If we're shutting down all the nlm_hosts anyway, then it doesn't make
-> > sense to allow RPC calls to linger. Allowing them to do so can mean
-> > that the RPC calls can outlive the currently running lockd and can
-> > lead to a use after free situation.
-> > 
-> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > Reviewed-by: NeilBrown <neilb@suse.de>
-> > Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
-> > ---
-> >  fs/lockd/host.c |    4 +++-
-> >  1 files changed, 3 insertions(+), 1 deletions(-)
-> > 
-> > diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-> > index ebec009..76e4bf5 100644
-> > --- a/fs/lockd/host.c
-> > +++ b/fs/lockd/host.c
-> > @@ -379,8 +379,10 @@ nlm_shutdown_hosts(void)
-> >  	/* First, make all hosts eligible for gc */
-> >  	dprintk("lockd: nuking all hosts...\n");
-> >  	for (chain = nlm_hosts; chain < nlm_hosts + NLM_HOST_NRHASH;
-> > ++chain) {
-> > -		hlist_for_each_entry(host, pos, chain, h_hash)
-> > +		hlist_for_each_entry(host, pos, chain, h_hash) {
-> >  			host->h_expires = jiffies - 1;
-> > +			rpc_killall_tasks(host->h_rpcclnt);
-> > +		}
-> >  	}
-> >  
-> >  	/* Then, perform a garbage collection pass */
-> 
-> I was doing some more testing today, and noticed that the original
-> problem that this patch is intended to fix resurfaced. I think this
-> patch just changes the timing on the race somehow, but I haven't tracked
-> it down completely yet.
 
-Hm.  So you're getting oopses that look like the rpc code attempting to
-make calls with an rpc_client that's been freed?
+Does the Linux server implementation of NFS over TCP implement an idle
+timeout that automatically disconnects clients after some amount of
+inactivity?
 
-> There's also another problem -- it's possible for host->h_rpcclnt to be
-> NULL, and that has special meaning for rpc_killall_tasks. For now, I
-> suggest that we drop this patch until I have a chance to work on it
-> further.
-> 
-> The other related patches in this series should be OK, however.
+I was testing NFSv4 from a Solaris 10 client to a Linux server (Gentoo,
+2.6.20). The Solaris client does not tear down the TCP connection upon
+system shutdown, which leaves an orphaned established TCP connection on the
+server. The connection remained in the established state for days.
 
-OK!  Dropped.  Let me know what you find out.
+Sun support indicates their server automatically disconnects idle clients,
+and don't consider not closing the client connection upon shutdown a bug.
 
---b.
+I didn't find any documentation regarding the Linux implementation and idle
+timeouts, although I did find the following code in net/sunrpc/svcsock.c:
+
+-----
+/* apparently the "standard" is that clients close
+ * idle connections after 5 minutes, servers after
+ * 6 minutes
+ *   http://www.connectathon.org/talks96/nfstcp.pdf
+ */
+static int svc_conn_age_period = 6*60;
+-----
+
+that would seem to indicate it should close the connection after some
+amount of idle time? However, empirically that doesn't seem to happen.
+
+Should idle connections automatically be closed? Are there any tunables or
+switches that need to be touched to enable that?
+
+Thanks...
+
+
+-- 
+Paul B. Henson  |  (909) 979-6361  |  http://www.csupomona.edu/~henson/
+Operating Systems and Network Analyst  |  henson@csupomona.edu
+California State Polytechnic University  |  Pomona CA 91768
