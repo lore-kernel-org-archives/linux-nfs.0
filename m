@@ -1,70 +1,73 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: nfs server patches not in 2.6.25
-Date: Fri, 25 Jan 2008 19:15:10 -0500
-Message-ID: <20080126001510.GH25141@fieldses.org>
-References: <20080125231521.GG25141@fieldses.org>
+Subject: Re: [PATCH 097/100] NLM: have nlm_shutdown_hosts kill off all NLM
+	RPC tasks
+Date: Fri, 25 Jan 2008 19:31:56 -0500
+Message-ID: <20080126003156.GK25141@fieldses.org>
+References: <1201303040-7779-89-git-send-email-bfields@citi.umich.edu> <1201303040-7779-90-git-send-email-bfields@citi.umich.edu> <1201303040-7779-91-git-send-email-bfields@citi.umich.edu> <1201303040-7779-92-git-send-email-bfields@citi.umich.edu> <1201303040-7779-93-git-send-email-bfields@citi.umich.edu> <1201303040-7779-94-git-send-email-bfields@citi.umich.edu> <1201303040-7779-95-git-send-email-bfields@citi.umich.edu> <1201303040-7779-96-git-send-email-bfields@citi.umich.edu> <1201303040-7779-97-git-send-email-bfields@citi.umich.edu> <20080125185548.5363f046@tleilax.poochiereds.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: linux-kernel@vger.kernel.org
-To: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <20080125231521.GG25141@fieldses.org>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Jeff Layton <jlayton@redhat.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail.fieldses.org ([66.93.2.214]:52306 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753352AbYAZAb6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Jan 2008 19:31:58 -0500
+In-Reply-To: <20080125185548.5363f046-RtJpwOs3+0O+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-SnVzdCBzb21lIGlkZWEgd2hhdCB3ZSBtaWdodCBiZSB3b3JraW5nIG9uIGZvciAyLjYuMjYsIGJl
-c2lkZXMgY29udGludWVkCmJ1Zy1maXhpbmcgYW5kIGNsZWFudXA6CgpXb3JrIHRoYXQgd2UgYWxy
-ZWFkeSBoYXZlIHBhdGNoZXMgZm9yIGFuZCB0aGF0IEkgZXhwZWN0IHRvIGJlIGluY2x1ZGVkCmlu
-IHdob2xlIG9yIGluIDIuNi4yNjoKCgktIGlwdjY6IEF1csOpbGllbiBDaGFyYm9uJ3MgcGF0Y2gg
-dG8gYWRkIGlwdjYgc3VwcG9ydCB0byB0aGUKCSAgc2VydmVyJ3MgZXhwb3J0IGludGVyZmFjZSBp
-cyByZWFkeS4gIEknbSBub3QgY2xlYXIgd2hhdCBlbHNlCgkgIHJlbWFpbnMgZm9yIGZ1bGwgaXB2
-NiBzdXBwb3J0LgoJLSBmYWlsb3ZlciBhbmQgbWlncmF0aW9uOiBXZW5keSBDaGVuZydzIHBhdGNo
-ZXMgYXBwZWFyIHRvIGJlIGluCgkgIGdvb2Qgc2hhcGUsIHNvIEkgZXhwZWN0IHRoZW0gb3Igc29t
-ZXRoaW5nIHdpdGggZXF1aXZhbGVudAoJICBmdW5jdGlvbmFsaXR5IHRvIGJlIGluIDIuNi4yNi4K
-CS0gZ3NzIGNhbGxiYWNrczogV2UgaGF2ZSBwYXRjaGVzIHRvIGFkZCBzdXBwb3J0IGZvciBycGNz
-ZWNfZ3NzCgkgIG9uIE5GU3Y0J3MgY2FsbGJhY2sgY2hhbm5lbCAoYWxsb3dpbmcgdXMgdG8gc3Vw
-cG9ydAoJICBkZWxlZ2F0aW9ucyBvbiBrZXJiZXJvcyBtb3VudHMpLCBidXQgdGhleSd2ZSBiZWVu
-IHB1dCBvbiBob2xkCgkgIHBlbmRpbmcgaW1wcm92ZW1lbnRzIHRvIHRoZSBjbGllbnQncyBnc3Nk
-IHVwY2FsbC4gIEkgaG9wZSB0bwoJICBnZXQgYmFjayB0byB0aGF0IHdvcmsgaW4gdGhlIG5leHQg
-ZmV3IHdlZWtzLgoKQWxzbyBpbiBwcm9ncmVzczoKCgktIHNwa20zIGFuZCBmdXR1cmUgZ3NzIG1l
-Y2hhbmlzbXMgbWF5IGdlbmVyYXRlIGNvbnRleHQKCSAgaW5pdGlhdGlvbiBycGMncyB0aGF0IGFy
-ZSB2ZXJ5IGxhcmdlLiAgT2xnYSBLb3JuaWV2c2thaWEgYW5kIEkKCSAgaGF2ZSBiZWVuIHdvcmtp
-bmcgb24gZml4aW5nIHRoZSBzZXJ2ZXIgZ3NzZCBpbnRlcmZhY2VzIHRvCgkgIHBlcm1pdCB0aGlz
-LgoKCS0gVGhlcmUgYXJlIHNvbWUgbWlzbWF0Y2hlcyBiZXR3ZWVuIHRoZSBzZW1hbnRpY3MgcmVx
-dWlyZWQgZm9yCgkgIG5mc3Y0IGRlbGVnYXRpb25zIGFuZCB3aGF0IExpbnV4J3MgbGVhc2Ugc3Vi
-c3lzdGVtIHByb3ZpZGVzCgkgIHVzLiAgRGF2aWQgUmljaHRlciBhbmQgSSBoYXZlIGRvbmUgYSBs
-aXR0bGUgd29yayBvbiB0aGlzLiAgV2UKCSAgbmVlZCB0byBzdGFydCBzdWJtaXR0aW5nIGl0LgoK
-VGhyZWUgaXRlbXMgSSBpZGVudGlmaWVkIHByZXZpb3VzbHkgYXMgaXNzdWVzIEknZCBsaWtlIGZp
-eGVkIGJlZm9yZSB3ZQpyZW1vdmVkIHRoZSBkZXBlbmRlbmN5IG9mIENPTkZJR19ORlNEX1Y0IG9u
-IENPTkZJR19FWFBFUklNRU5UQUw6CgoJaHR0cDovL2xpbnV4LW5mcy5vcmcvcGlwZXJtYWlsL25m
-c3Y0LzIwMDYtRGVjZW1iZXIvMDA1NDk3Lmh0bWwKCgktIGV4cG9ydCBwYXRocyBjb25zaXN0ZW50
-IGJldHdlZW4gdjIvdjMvdjQ6ICBXZSBoYXZlIHNvbWUgY29kZQoJICB0aGF0IGZpeGVzIHRoaXMg
-ZW50aXJlbHkgaW4gdXNlcnNwYWNlLiAgVGhhdCBhcHByb2FjaCBkb2Vzbid0CgkgIHByb3ZpZGUg
-c3RhYmxlIGZpbGVoYW5kbGVzIGluIHRoZSBORlN2NCBwc2V1ZG9maWxlc3lzdGVtLCBhbmQKCSAg
-dGhlcmUgc2VlbXMgdG8gYmUgYSBnZW5lcmFsIHNlbnRpbWVudCB0aGF0IGl0J3Mgb3Zlcmx5Cgkg
-IGNvbXBsaWNhdGVkLiAgSXQgaGFzIHRoZSBvbmUgYWR2YW50YWdlIHRoYXQgd2UgZG9uJ3QgaGF2
-ZSB0bwoJICBjb21taXQgdG8gaXQsIHNpbmNlIGl0IHVzZXMgb25seSBleGlzdGluZyBrZXJuZWwg
-aW50ZXJmYWNlcy4KCSAgU28gSSB0aGluayB3ZSdyZSBwcm9iYWJseSBnb2luZyB0byBhcHBseSB0
-aGF0IHRvIG5mcy11dGlscyBhcwoJICBhIHN0b3BnYXAgbWVhc3VyZSBhbmQgc3RhcnQgd29yayBv
-biBmaXhpbmcgdGhpcyBpbiB0aGUga2VybmVsCgkgIGF0IHRoZSBzYW1lIHRpbWUuLi4uCgoJLSBy
-ZWJvb3QgcmVjb3Zlcnk6IHRoZXJlIGhhdmUgYmVlbiBjb21wbGFpbnRzIGFib3V0IHRoZQoJICBz
-ZXJ2ZXItc2lkZSBuZnN2NCByZWJvb3QgcmVjb3ZlcnkgY29kZSBmb3IgYSB3aGlsZSwgd2UndmUg
-aGFkCgkgIGNvZGUgdGhhdCB0cmllcyB0byBmaXggaXQgZm9yIGEgd2hpbGUsIGFuZCBpdCBqdXN0
-IGhhc24ndAoJICBoYXBwZW5lZC4gIEknbSBob3Bpbmcgd2UgY2FuIGZpbmFsbHkgZ2V0IHRoaXMg
-cmVhZHkgZm9yCgkgIDIuNi4yNi4KCgktIGV4cG9ydCBzZWN1cml0eTogdGhpcyB3YXMgZmluaXNo
-ZWQgaW4gMi42LjIzOyB3ZSBub3cgc3VwcG9ydAoJICBleHBvcnQgb3B0aW9ucyBsaWtlIHNlYz1r
-cmI1OmtyYjVpOmtyYjVwLCB3aGljaCBoYXZlIGEgZmV3CgkgIGFkdmFudGFnZXMgb3ZlciB0aGUg
-c3BlY2lhbCBnc3Mva3JiNSBjbGllbnQgbmFtZXMuICBUaGlzIGNvdWxkCgkgIGJlIGJldHRlciBk
-b2N1bWVudGVkLCB0aG91Z2guCgpJJ3ZlIHByb2JhYmx5IGxlZnQgYSBsb3Qgb3V0LiAgTGV0IG1l
-IGtub3cgb2Ygb25nb2luZyBwcm9qZWN0cyBhbmQKdG9kbydzIHRoYXQgSSd2ZSBmb3Jnb3R0ZW4u
-Li4uCgotLWIuCl9fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
-Ck5GU3Y0IG1haWxpbmcgbGlzdApORlN2NEBsaW51eC1uZnMub3JnCmh0dHA6Ly9saW51eC1uZnMu
-b3JnL2NnaS1iaW4vbWFpbG1hbi9saXN0aW5mby9uZnN2NA==
+On Fri, Jan 25, 2008 at 06:55:48PM -0500, Jeff Layton wrote:
+> On Fri, 25 Jan 2008 18:17:17 -0500
+> "J. Bruce Fields" <bfields@citi.umich.edu> wrote:
+> 
+> > From: Jeff Layton <jlayton@redhat.com>
+> > 
+> > If we're shutting down all the nlm_hosts anyway, then it doesn't make
+> > sense to allow RPC calls to linger. Allowing them to do so can mean
+> > that the RPC calls can outlive the currently running lockd and can
+> > lead to a use after free situation.
+> > 
+> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > Reviewed-by: NeilBrown <neilb@suse.de>
+> > Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+> > ---
+> >  fs/lockd/host.c |    4 +++-
+> >  1 files changed, 3 insertions(+), 1 deletions(-)
+> > 
+> > diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+> > index ebec009..76e4bf5 100644
+> > --- a/fs/lockd/host.c
+> > +++ b/fs/lockd/host.c
+> > @@ -379,8 +379,10 @@ nlm_shutdown_hosts(void)
+> >  	/* First, make all hosts eligible for gc */
+> >  	dprintk("lockd: nuking all hosts...\n");
+> >  	for (chain = nlm_hosts; chain < nlm_hosts + NLM_HOST_NRHASH;
+> > ++chain) {
+> > -		hlist_for_each_entry(host, pos, chain, h_hash)
+> > +		hlist_for_each_entry(host, pos, chain, h_hash) {
+> >  			host->h_expires = jiffies - 1;
+> > +			rpc_killall_tasks(host->h_rpcclnt);
+> > +		}
+> >  	}
+> >  
+> >  	/* Then, perform a garbage collection pass */
+> 
+> I was doing some more testing today, and noticed that the original
+> problem that this patch is intended to fix resurfaced. I think this
+> patch just changes the timing on the race somehow, but I haven't tracked
+> it down completely yet.
+
+Hm.  So you're getting oopses that look like the rpc code attempting to
+make calls with an rpc_client that's been freed?
+
+> There's also another problem -- it's possible for host->h_rpcclnt to be
+> NULL, and that has special meaning for rpc_killall_tasks. For now, I
+> suggest that we drop this patch until I have a chance to work on it
+> further.
+> 
+> The other related patches in this series should be OK, however.
+
+OK!  Dropped.  Let me know what you find out.
+
+--b.
