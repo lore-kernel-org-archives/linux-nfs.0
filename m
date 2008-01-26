@@ -1,96 +1,48 @@
-From: Jeff Layton <jlayton@redhat.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: [PATCH 097/100] NLM: have nlm_shutdown_hosts kill off all NLM
- RPC tasks
-Date: Fri, 25 Jan 2008 20:02:25 -0500
-Message-ID: <20080125200225.32ae60ef@tupile.poochiereds.net>
-References: <1201303040-7779-89-git-send-email-bfields@citi.umich.edu>
-	<1201303040-7779-90-git-send-email-bfields@citi.umich.edu>
-	<1201303040-7779-91-git-send-email-bfields@citi.umich.edu>
-	<1201303040-7779-92-git-send-email-bfields@citi.umich.edu>
-	<1201303040-7779-93-git-send-email-bfields@citi.umich.edu>
-	<1201303040-7779-94-git-send-email-bfields@citi.umich.edu>
-	<1201303040-7779-95-git-send-email-bfields@citi.umich.edu>
-	<1201303040-7779-96-git-send-email-bfields@citi.umich.edu>
-	<1201303040-7779-97-git-send-email-bfields@citi.umich.edu>
-	<20080125185548.5363f046@tleilax.poochiereds.net>
-	<20080126003156.GK25141@fieldses.org>
+	RPC tasks
+Date: Fri, 25 Jan 2008 20:19:47 -0500
+Message-ID: <1201310387.4150.21.camel@heimdal.trondhjem.org>
+References: <20080125231521.GG25141@fieldses.org>
+	 <1201303040-7779-83-git-send-email-bfields@citi.umich.edu>
+	 <1201303040-7779-84-git-send-email-bfields@citi.umich.edu>
+	 <1201303040-7779-85-git-send-email-bfields@citi.umich.edu>
+	 <1201303040-7779-86-git-send-email-bfields@citi.umich.edu>
+	 <1201303040-7779-87-git-send-email-bfields@citi.umich.edu>
+	 <1201303040-7779-88-git-send-email-bfields@citi.umich.edu>
+	 <1201303040-7779-89-git-send-email-bfields@citi.umich.edu>
+	 <1201303040-7779-90-git-send-email-bfields@citi.umich.edu>
+	 <1201303040-7779-91-git-send-email-bfields@citi.umich.edu>
+	 <1201303040-7779-92-git-send-email-bfields@citi.umich.edu>
+	 <1201303040-7779-93-git-send-email-bfields@citi.umich.edu>
+	 <1201303040-7779-94-git-send-email-bfields@citi.umich.edu>
+	 <1201303040-7779-95-git-send-email-bfields@citi.umich.edu>
+	 <1201303040-7779-96-git-send-email-bfields@citi.umich.edu>
+	 <1201303040-7779-97-git-send-email-bfields@citi.umich.edu>
+	 <20080125185548.5363f046@tleilax.poochiereds.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain
+Cc: "J. Bruce Fields" <bfields@citi.umich.edu>,
+	linux-nfs@vger.kernel.org
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:47234 "EHLO mx1.redhat.com"
+Received: from pat.uio.no ([129.240.10.15]:36224 "EHLO pat.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752978AbYAZBDc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Jan 2008 20:03:32 -0500
-In-Reply-To: <20080126003156.GK25141@fieldses.org>
+	id S1754459AbYAZBTx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Jan 2008 20:19:53 -0500
+In-Reply-To: <20080125185548.5363f046-RtJpwOs3+0O+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 25 Jan 2008 19:31:56 -0500
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-> On Fri, Jan 25, 2008 at 06:55:48PM -0500, Jeff Layton wrote:
-> > On Fri, 25 Jan 2008 18:17:17 -0500
-> > "J. Bruce Fields" <bfields@citi.umich.edu> wrote:
-> > 
-> > > From: Jeff Layton <jlayton@redhat.com>
-> > > 
-> > > If we're shutting down all the nlm_hosts anyway, then it doesn't make
-> > > sense to allow RPC calls to linger. Allowing them to do so can mean
-> > > that the RPC calls can outlive the currently running lockd and can
-> > > lead to a use after free situation.
-> > > 
-> > > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > > Reviewed-by: NeilBrown <neilb@suse.de>
-> > > Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
-> > > ---
-> > >  fs/lockd/host.c |    4 +++-
-> > >  1 files changed, 3 insertions(+), 1 deletions(-)
-> > > 
-> > > diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-> > > index ebec009..76e4bf5 100644
-> > > --- a/fs/lockd/host.c
-> > > +++ b/fs/lockd/host.c
-> > > @@ -379,8 +379,10 @@ nlm_shutdown_hosts(void)
-> > >  	/* First, make all hosts eligible for gc */
-> > >  	dprintk("lockd: nuking all hosts...\n");
-> > >  	for (chain = nlm_hosts; chain < nlm_hosts + NLM_HOST_NRHASH;
-> > > ++chain) {
-> > > -		hlist_for_each_entry(host, pos, chain, h_hash)
-> > > +		hlist_for_each_entry(host, pos, chain, h_hash) {
-> > >  			host->h_expires = jiffies - 1;
-> > > +			rpc_killall_tasks(host->h_rpcclnt);
-> > > +		}
-> > >  	}
-> > >  
-> > >  	/* Then, perform a garbage collection pass */
-> > 
-> > I was doing some more testing today, and noticed that the original
-> > problem that this patch is intended to fix resurfaced. I think this
-> > patch just changes the timing on the race somehow, but I haven't tracked
-> > it down completely yet.
-> 
-> Hm.  So you're getting oopses that look like the rpc code attempting to
-> make calls with an rpc_client that's been freed?
-> 
+On Fri, 2008-01-25 at 18:55 -0500, Jeff Layton wrote:
+> There's also another problem -- it's possible for host->h_rpcclnt to be
+> NULL, and that has special meaning for rpc_killall_tasks. For now, I
+> suggest that we drop this patch until I have a chance to work on it
+> further.
 
-Right. The situation to reproduce this is a bit contrived and tricky,
-but I've been able to reproduce the same panics that I was originally
-seeing. The timing seems to be a bit tighter now, but I can still make
-it happen.
+We really ought to create _separate_ lists for the client and server
+uses of struct nlm_host.
 
-> > There's also another problem -- it's possible for host->h_rpcclnt to be
-> > NULL, and that has special meaning for rpc_killall_tasks. For now, I
-> > suggest that we drop this patch until I have a chance to work on it
-> > further.
-> > 
-> > The other related patches in this series should be OK, however.
-> 
-> OK!  Dropped.  Let me know what you find out.
-> 
+Trond
 
-Will do, thanks!
-
--- 
-Jeff Layton <jlayton@redhat.com>
