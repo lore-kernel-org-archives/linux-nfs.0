@@ -1,111 +1,96 @@
-From: Simon Holm =?ISO-8859-1?Q?Th=F8gersen?= <odie@cs.aau.dk>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: Re: nfs server patches for 2.6.25
-Date: Sun, 27 Jan 2008 21:42:23 +0100
-Message-ID: <1201466543.5006.21.camel@odie.local>
+Date: Sun, 27 Jan 2008 17:10:17 -0500
+Message-ID: <20080127221017.GC597@fieldses.org>
 References: <20080125231521.GG25141@fieldses.org>
+	<1201466543.5006.21.camel@odie.local>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org,
-	linux-kernel@vger.kernel.org, Neil Brown <neilb@suse.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-	Tom Tucker <tom@opengridcomputing.com>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1756485AbYA0UhT@vger.kernel.org>
-In-Reply-To: <20080125231521.GG25141@fieldses.org>
-Sender: linux-kernel-owner@vger.kernel.org
+	linux-kernel@vger.kernel.org, Tom Tucker <tom@opengridcomputing.com>
+To: Simon Holm =?utf-8?Q?Th=C3=B8gersen?= <odie@cs.aau.dk>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <1201466543.5006.21.camel@odie.local>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-fre, 25 01 2008 kl. 18:15 -0500, skrev J. Bruce Fields:=20
-> Below is a summary of the nfs server patches which I expect to submit
-> (any day now) for 2.6.25; please let me know if you notice anything
-> wrong or missing.  I'll follow up to linux-nfs@vger.kernel.org with t=
-he
-> full list of patches.
-
-There are at least two patches that don't compile and break
-bisectability. The errors should be obvious, just checkout and make
-6f310df and 23b4e2e (patch no. 29 and 65 from the posting of the patch
-set on linux-nfs).
-
-[...]=20
-> J. Bruce Fields (34):
->       nfsd4: kill unnecessary same_name() in setclientid_confirm
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 508b256..d026c24 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -858,8 +857,7 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
-                }
-        } else if ((conf && !unconf) ||
-            ((conf && unconf) &&=20
--            (!same_verf(&conf->cl_verifier, &unconf->cl_verifier) ||
--             !same_name(conf->cl_recdir, unconf->cl_recdir)))) {
-+            !same_verf(&conf->cl_verifier, &unconf->cl_verifier)) {
-missing ending parenthesis ---------------------------------------^
-
-
-[...]=20
-> Tom Tucker (47):
->       svc: Make close transport independent
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index f86538e..6dffdda 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -1912,66 +1911,63 @@ static void svc_sock_free(struct svc_xprt *xprt=
-)
- }
-=20
- /*
-- * Remove a dead socket
-+ * Remove a dead transport
-  */
--static void
--svc_delete_socket(struct svc_sock *svsk)
-+static void svc_delete_xprt(struct svc_xprt *xprt)
- {
--       struct svc_serv *serv;
--       struct sock     *sk;
--
--       dprintk("svc: svc_delete_socket(%p)\n", svsk);
--
--       serv =3D svsk->sk_xprt.xpt_server;
--       sk =3D svsk->sk_sk;
-+       struct svc_serv *serv =3D xprt->xpt_server;
-=20
--       svsk->sk_xprt.xpt_ops->xpo_detach(&svsk->sk_xprt);
-+       dprintk("svc: svc_delete_xprt(%p)\n", xprt);
-+       xprt->xpt_ops->xpo_detach(xprt);
-=20
-        spin_lock_bh(&serv->sv_lock);
--
--       if (!test_and_set_bit(XPT_DETACHED, &svsk->sk_xprt.xpt_flags))
--               list_del_init(&svsk->sk_list);
-+       if (!test_and_set_bit(XPT_DETACHED, &xprt->xpt_flags))
-+               list_del_init(&xprt->xpt_list);
-        /*
--        * We used to delete the svc_sock from whichever list
--        * it's sk_ready node was on, but we don't actually
-+        * We used to delete the transport from whichever list
-+        * it's sk_xprt.xpt_ready node was on, but we don't actually
-         * need to.  This is because the only time we're called
-         * while still attached to a queue, the queue itself
-         * is about to be destroyed (in svc_destroy).
-         */
--       if (!test_and_set_bit(XPT_DEAD, &svsk->sk_xprt.xpt_flags)) {
--               BUG_ON(atomic_read(&svsk->sk_xprt.xpt_ref.refcount) <
-2);
--               if (test_bit(XPT_TEMP, &svsk->sk_xprt.xpt_flags))
-+       if (!test_and_set_bit(XPT_DEAD, &xprt->xpt_flags)) {
-+               BUG_ON(atomic_read(&xprt->xpt_ref.refcount) < 2);
-+               if (test_bit(XPT_TEMP, &xprt->xpt_flags))
-                        serv->sv_tmpcnt--;
-                svc_xprt_put(&svsk->sk_xprt);
-should have been
-                svc_xprt_put(&xprt);
-
-There might be more errors in the next 15 patches or so; I didn't test
-them with this error corrected.
-
-
-
-Simon Holm Th=C3=B8gersen
+T24gU3VuLCBKYW4gMjcsIDIwMDggYXQgMDk6NDI6MjNQTSArMDEwMCwgU2ltb24gSG9sbSBUaMO4
+Z2Vyc2VuIHdyb3RlOgo+IAo+IGZyZSwgMjUgMDEgMjAwOCBrbC4gMTg6MTUgLTA1MDAsIHNrcmV2
+IEouIEJydWNlIEZpZWxkczogCj4gPiBCZWxvdyBpcyBhIHN1bW1hcnkgb2YgdGhlIG5mcyBzZXJ2
+ZXIgcGF0Y2hlcyB3aGljaCBJIGV4cGVjdCB0byBzdWJtaXQKPiA+IChhbnkgZGF5IG5vdykgZm9y
+IDIuNi4yNTsgcGxlYXNlIGxldCBtZSBrbm93IGlmIHlvdSBub3RpY2UgYW55dGhpbmcKPiA+IHdy
+b25nIG9yIG1pc3NpbmcuICBJJ2xsIGZvbGxvdyB1cCB0byBsaW51eC1uZnNAdmdlci5rZXJuZWwu
+b3JnIHdpdGggdGhlCj4gPiBmdWxsIGxpc3Qgb2YgcGF0Y2hlcy4KPiAKPiBUaGVyZSBhcmUgYXQg
+bGVhc3QgdHdvIHBhdGNoZXMgdGhhdCBkb24ndCBjb21waWxlIGFuZCBicmVhawo+IGJpc2VjdGFi
+aWxpdHkuIFRoZSBlcnJvcnMgc2hvdWxkIGJlIG9idmlvdXMsIGp1c3QgY2hlY2tvdXQgYW5kIG1h
+a2UKPiA2ZjMxMGRmIGFuZCAyM2I0ZTJlIChwYXRjaCBuby4gMjkgYW5kIDY1IGZyb20gdGhlIHBv
+c3Rpbmcgb2YgdGhlIHBhdGNoCj4gc2V0IG9uIGxpbnV4LW5mcykuCgpXaG9vcHMsIHRoYW5rcyBm
+b3IgZmluZGluZyBib3RoIG9mIHRob3NlLgoKPiAKPiBbLi4uXSAKPiA+IEouIEJydWNlIEZpZWxk
+cyAoMzQpOgo+ID4gICAgICAgbmZzZDQ6IGtpbGwgdW5uZWNlc3Nhcnkgc2FtZV9uYW1lKCkgaW4g
+c2V0Y2xpZW50aWRfY29uZmlybQo+IGRpZmYgLS1naXQgYS9mcy9uZnNkL25mczRzdGF0ZS5jIGIv
+ZnMvbmZzZC9uZnM0c3RhdGUuYwo+IGluZGV4IDUwOGIyNTYuLmQwMjZjMjQgMTAwNjQ0Cj4gLS0t
+IGEvZnMvbmZzZC9uZnM0c3RhdGUuYwo+ICsrKyBiL2ZzL25mc2QvbmZzNHN0YXRlLmMKPiBAQCAt
+ODU4LDggKzg1Nyw3IEBAIG5mc2Q0X3NldGNsaWVudGlkX2NvbmZpcm0oc3RydWN0IHN2Y19ycXN0
+ICpycXN0cCwKPiAgICAgICAgICAgICAgICAgfQo+ICAgICAgICAgfSBlbHNlIGlmICgoY29uZiAm
+JiAhdW5jb25mKSB8fAo+ICAgICAgICAgICAgICgoY29uZiAmJiB1bmNvbmYpICYmIAo+IC0gICAg
+ICAgICAgICAoIXNhbWVfdmVyZigmY29uZi0+Y2xfdmVyaWZpZXIsICZ1bmNvbmYtPmNsX3Zlcmlm
+aWVyKSB8fAo+IC0gICAgICAgICAgICAgIXNhbWVfbmFtZShjb25mLT5jbF9yZWNkaXIsIHVuY29u
+Zi0+Y2xfcmVjZGlyKSkpKSB7Cj4gKyAgICAgICAgICAgICFzYW1lX3ZlcmYoJmNvbmYtPmNsX3Zl
+cmlmaWVyLCAmdW5jb25mLT5jbF92ZXJpZmllcikpIHsKPiBtaXNzaW5nIGVuZGluZyBwYXJlbnRo
+ZXNpcyAtLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS1eCgpZZXA7IGZpeGVk
+LgoKPiAKPiAKPiBbLi4uXSAKPiA+IFRvbSBUdWNrZXIgKDQ3KToKPiA+ICAgICAgIHN2YzogTWFr
+ZSBjbG9zZSB0cmFuc3BvcnQgaW5kZXBlbmRlbnQKPiBkaWZmIC0tZ2l0IGEvbmV0L3N1bnJwYy9z
+dmNzb2NrLmMgYi9uZXQvc3VucnBjL3N2Y3NvY2suYwo+IGluZGV4IGY4NjUzOGUuLjZkZmZkZGEg
+MTAwNjQ0Cj4gLS0tIGEvbmV0L3N1bnJwYy9zdmNzb2NrLmMKPiArKysgYi9uZXQvc3VucnBjL3N2
+Y3NvY2suYwo+IEBAIC0xOTEyLDY2ICsxOTExLDYzIEBAIHN0YXRpYyB2b2lkIHN2Y19zb2NrX2Zy
+ZWUoc3RydWN0IHN2Y194cHJ0ICp4cHJ0KQo+ICB9Cj4gIAo+ICAvKgo+IC0gKiBSZW1vdmUgYSBk
+ZWFkIHNvY2tldAo+ICsgKiBSZW1vdmUgYSBkZWFkIHRyYW5zcG9ydAo+ICAgKi8KPiAtc3RhdGlj
+IHZvaWQKPiAtc3ZjX2RlbGV0ZV9zb2NrZXQoc3RydWN0IHN2Y19zb2NrICpzdnNrKQo+ICtzdGF0
+aWMgdm9pZCBzdmNfZGVsZXRlX3hwcnQoc3RydWN0IHN2Y194cHJ0ICp4cHJ0KQo+ICB7Cj4gLSAg
+ICAgICBzdHJ1Y3Qgc3ZjX3NlcnYgKnNlcnY7Cj4gLSAgICAgICBzdHJ1Y3Qgc29jayAgICAgKnNr
+Owo+IC0KPiAtICAgICAgIGRwcmludGsoInN2Yzogc3ZjX2RlbGV0ZV9zb2NrZXQoJXApXG4iLCBz
+dnNrKTsKPiAtCj4gLSAgICAgICBzZXJ2ID0gc3Zzay0+c2tfeHBydC54cHRfc2VydmVyOwo+IC0g
+ICAgICAgc2sgPSBzdnNrLT5za19zazsKPiArICAgICAgIHN0cnVjdCBzdmNfc2VydiAqc2VydiA9
+IHhwcnQtPnhwdF9zZXJ2ZXI7Cj4gIAo+IC0gICAgICAgc3Zzay0+c2tfeHBydC54cHRfb3BzLT54
+cG9fZGV0YWNoKCZzdnNrLT5za194cHJ0KTsKPiArICAgICAgIGRwcmludGsoInN2Yzogc3ZjX2Rl
+bGV0ZV94cHJ0KCVwKVxuIiwgeHBydCk7Cj4gKyAgICAgICB4cHJ0LT54cHRfb3BzLT54cG9fZGV0
+YWNoKHhwcnQpOwo+ICAKPiAgICAgICAgIHNwaW5fbG9ja19iaCgmc2Vydi0+c3ZfbG9jayk7Cj4g
+LQo+IC0gICAgICAgaWYgKCF0ZXN0X2FuZF9zZXRfYml0KFhQVF9ERVRBQ0hFRCwgJnN2c2stPnNr
+X3hwcnQueHB0X2ZsYWdzKSkKPiAtICAgICAgICAgICAgICAgbGlzdF9kZWxfaW5pdCgmc3Zzay0+
+c2tfbGlzdCk7Cj4gKyAgICAgICBpZiAoIXRlc3RfYW5kX3NldF9iaXQoWFBUX0RFVEFDSEVELCAm
+eHBydC0+eHB0X2ZsYWdzKSkKPiArICAgICAgICAgICAgICAgbGlzdF9kZWxfaW5pdCgmeHBydC0+
+eHB0X2xpc3QpOwo+ICAgICAgICAgLyoKPiAtICAgICAgICAqIFdlIHVzZWQgdG8gZGVsZXRlIHRo
+ZSBzdmNfc29jayBmcm9tIHdoaWNoZXZlciBsaXN0Cj4gLSAgICAgICAgKiBpdCdzIHNrX3JlYWR5
+IG5vZGUgd2FzIG9uLCBidXQgd2UgZG9uJ3QgYWN0dWFsbHkKPiArICAgICAgICAqIFdlIHVzZWQg
+dG8gZGVsZXRlIHRoZSB0cmFuc3BvcnQgZnJvbSB3aGljaGV2ZXIgbGlzdAo+ICsgICAgICAgICog
+aXQncyBza194cHJ0LnhwdF9yZWFkeSBub2RlIHdhcyBvbiwgYnV0IHdlIGRvbid0IGFjdHVhbGx5
+Cj4gICAgICAgICAgKiBuZWVkIHRvLiAgVGhpcyBpcyBiZWNhdXNlIHRoZSBvbmx5IHRpbWUgd2Un
+cmUgY2FsbGVkCj4gICAgICAgICAgKiB3aGlsZSBzdGlsbCBhdHRhY2hlZCB0byBhIHF1ZXVlLCB0
+aGUgcXVldWUgaXRzZWxmCj4gICAgICAgICAgKiBpcyBhYm91dCB0byBiZSBkZXN0cm95ZWQgKGlu
+IHN2Y19kZXN0cm95KS4KPiAgICAgICAgICAqLwo+IC0gICAgICAgaWYgKCF0ZXN0X2FuZF9zZXRf
+Yml0KFhQVF9ERUFELCAmc3Zzay0+c2tfeHBydC54cHRfZmxhZ3MpKSB7Cj4gLSAgICAgICAgICAg
+ICAgIEJVR19PTihhdG9taWNfcmVhZCgmc3Zzay0+c2tfeHBydC54cHRfcmVmLnJlZmNvdW50KSA8
+Cj4gMik7Cj4gLSAgICAgICAgICAgICAgIGlmICh0ZXN0X2JpdChYUFRfVEVNUCwgJnN2c2stPnNr
+X3hwcnQueHB0X2ZsYWdzKSkKPiArICAgICAgIGlmICghdGVzdF9hbmRfc2V0X2JpdChYUFRfREVB
+RCwgJnhwcnQtPnhwdF9mbGFncykpIHsKPiArICAgICAgICAgICAgICAgQlVHX09OKGF0b21pY19y
+ZWFkKCZ4cHJ0LT54cHRfcmVmLnJlZmNvdW50KSA8IDIpOwo+ICsgICAgICAgICAgICAgICBpZiAo
+dGVzdF9iaXQoWFBUX1RFTVAsICZ4cHJ0LT54cHRfZmxhZ3MpKQo+ICAgICAgICAgICAgICAgICAg
+ICAgICAgIHNlcnYtPnN2X3RtcGNudC0tOwo+ICAgICAgICAgICAgICAgICBzdmNfeHBydF9wdXQo
+JnN2c2stPnNrX3hwcnQpOwo+IHNob3VsZCBoYXZlIGJlZW4KPiAgICAgICAgICAgICAgICAgc3Zj
+X3hwcnRfcHV0KCZ4cHJ0KTsKCkFjdHVhbGx5IGxvb2tzIGxpa2UgaXQgc2hvdWxkIGJlIHN2Y194
+cHJ0X3B1dCh4cHJ0KTsgZml4ZWQuCgo+IFRoZXJlIG1pZ2h0IGJlIG1vcmUgZXJyb3JzIGluIHRo
+ZSBuZXh0IDE1IHBhdGNoZXMgb3Igc287IEkgZGlkbid0IHRlc3QKPiB0aGVtIHdpdGggdGhpcyBl
+cnJvciBjb3JyZWN0ZWQuCgpPSy4gIEkndmUgZ290IGEgbWFjaGluZSBydW5uaW5nCgoJZm9yIGMg
+aW4gJChnaXQgcmV2LWxpc3Qgb3JpZ2luLi5saW51eC1uZnMvbmZzLXNlcnZlci1zdGFibGVeKTsg
+ZG8KCQlnaXQgY2hlY2tvdXQgJGMKCQltYWtlIC1zIC1qNAoJZG9uZQoKbm93IGp1c3QgdG8gbWFr
+ZSBzdXJlLi4uLiAgVGhhbmtzIGFnYWluIQoKLS1iLgpfX19fX19fX19fX19fX19fX19fX19fX19f
+X19fX19fX19fX19fX19fX19fX19fXwpORlN2NCBtYWlsaW5nIGxpc3QKTkZTdjRAbGludXgtbmZz
+Lm9yZwpodHRwOi8vbGludXgtbmZzLm9yZy9jZ2ktYmluL21haWxtYW4vbGlzdGluZm8vbmZzdjQ=
