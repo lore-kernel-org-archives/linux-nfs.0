@@ -1,81 +1,49 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 2/2] NLM: break out of nlmsvc_retry_blocked if lockd is coming down
-Date: Mon, 28 Jan 2008 14:29:11 -0500
-Message-ID: <1201548551-23592-3-git-send-email-jlayton@redhat.com>
+Subject: [PATCH 1/2] NLM: tear down RPC clients in nlm_shutdown_hosts
+Date: Mon, 28 Jan 2008 14:29:10 -0500
+Message-ID: <1201548551-23592-2-git-send-email-jlayton@redhat.com>
 References: <1201548551-23592-1-git-send-email-jlayton@redhat.com>
- <1201548551-23592-2-git-send-email-jlayton@redhat.com>
 Cc: linux-nfs@vger.kernel.org
 To: bfields@citi.umich.edu, neilb@suse.de
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:48739 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([66.187.233.31]:48738 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752543AbYA1T3R (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1750967AbYA1T3R (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Mon, 28 Jan 2008 14:29:17 -0500
-In-Reply-To: <1201548551-23592-2-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1201548551-23592-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It's possible to end up continually looping in nlmsvc_retry_blocked()
-even when the lockd kthread has been requested to come down. I've been
-able to reproduce this fairly easily by having an RPC grant callback
-queued up to an RPC client that's not bound. If the other host is
-unresponsive, then the block never gets taken off the list, and lockd
-continually respawns new RPC's.
-
-If lockd is going down anyway, we don't want to keep retrying the
-blocks, so allow it to break out of this loop. Additionally, in that
-situation kthread_stop will have already woken lockd, so when
-nlmsvc_retry_blocked returns, have lockd check for kthread_stop() so
-that it doesn't end up calling svc_recv and waiting for a long time.
-
-This patch prevents this continual looping and allows lockd to
-eventually come down, but this can quite some time since lockd
-won't check the condition in the nlmsvc_retry_blocked while loop
-until nlmsvc_grant_blocked returns. That won't happen until
-all of the portmap requests time out.
+It's possible for a RPC to outlive the lockd daemon that created it, so
+we need to make sure that all RPC's are killed when lockd is coming
+down. When nlm_shutdown_hosts is called, kill off all RPC tasks
+associated with the host. Since we need to wait until they have all gone
+away, we might as well just shut down the RPC client altogether.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/lockd/svc.c     |    4 ++++
- fs/lockd/svclock.c |    3 ++-
- 2 files changed, 6 insertions(+), 1 deletions(-)
+ fs/lockd/host.c |    7 ++++++-
+ 1 files changed, 6 insertions(+), 1 deletions(-)
 
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index 5752e1b..a0e5318 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -166,6 +166,10 @@ lockd(void *vrqstp)
- 		} else if (time_before(grace_period_expire, jiffies))
- 			clear_grace_period();
+diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+index ebec009..ca6b16f 100644
+--- a/fs/lockd/host.c
++++ b/fs/lockd/host.c
+@@ -379,8 +379,13 @@ nlm_shutdown_hosts(void)
+ 	/* First, make all hosts eligible for gc */
+ 	dprintk("lockd: nuking all hosts...\n");
+ 	for (chain = nlm_hosts; chain < nlm_hosts + NLM_HOST_NRHASH; ++chain) {
+-		hlist_for_each_entry(host, pos, chain, h_hash)
++		hlist_for_each_entry(host, pos, chain, h_hash) {
+ 			host->h_expires = jiffies - 1;
++			if (host->h_rpcclnt) {
++				rpc_shutdown_client(host->h_rpcclnt);
++				host->h_rpcclnt = NULL;
++			}
++		}
+ 	}
  
-+		/* nlmsvc_retry_blocked can block, so check for kthread_stop */
-+		if (kthread_should_stop())
-+			break;
-+
- 		/*
- 		 * Find a socket with data available and call its
- 		 * recvfrom routine.
-diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-index 2f4d8fa..d8324b6 100644
---- a/fs/lockd/svclock.c
-+++ b/fs/lockd/svclock.c
-@@ -29,6 +29,7 @@
- #include <linux/sunrpc/svc.h>
- #include <linux/lockd/nlm.h>
- #include <linux/lockd/lockd.h>
-+#include <linux/kthread.h>
- 
- #define NLMDBG_FACILITY		NLMDBG_SVCLOCK
- 
-@@ -867,7 +868,7 @@ nlmsvc_retry_blocked(void)
- 	unsigned long	timeout = MAX_SCHEDULE_TIMEOUT;
- 	struct nlm_block *block;
- 
--	while (!list_empty(&nlm_blocked)) {
-+	while (!list_empty(&nlm_blocked) && !kthread_should_stop()) {
- 		block = list_entry(nlm_blocked.next, struct nlm_block, b_list);
- 
- 		if (block->b_when == NLM_NEVER)
+ 	/* Then, perform a garbage collection pass */
 -- 
 1.5.3.7
 
