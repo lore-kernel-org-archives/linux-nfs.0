@@ -1,47 +1,94 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 021/100] nfsd: fail init on /proc/fs/nfs/exports
-	creation failure
-Date: Mon, 28 Jan 2008 16:20:16 -0500
-Message-ID: <20080128212016.GL16785@fieldses.org>
-References: <1201303040-7779-13-git-send-email-bfields@citi.umich.edu> <1201303040-7779-14-git-send-email-bfields@citi.umich.edu> <1201303040-7779-15-git-send-email-bfields@citi.umich.edu> <1201303040-7779-16-git-send-email-bfields@citi.umich.edu> <120!1303040-7779-17-git-send-email-bfields@citi.umich.edu> <1201303040-7779-18-git-send-email-bfields@citi.umich.edu> <1201303040-7779-19-git-send-email-bfields@citi.umich.edu> <1201303040-7779-20-git-send-email-bfields@citi.umich.edu> <1201303040-7779-21-git-send-email-bfields@citi.umich.edu> <B595219E-9D7E-4544-8E1C-422D2DC7D996@oracle.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 003/100] Fix incorrect assignment
+Date: Mon, 28 Jan 2008 16:22:13 -0500
+Message-ID: <0F0DDB0C-2A50-4232-849B-96781D6DBDEA@oracle.com>
+References: <20080125231521.GG25141@fieldses.org> <1201303040-7779-1-git-send-email-bfields@citi.umich.edu> <1201303040-7779-2-git-send-email-bfields@citi.umich.edu> <1201303040-7779-3-git-send-email-bfields@citi.umich.edu> <6BE49033-E0B1-48CF-866C-030F5E28B10D@oracle.com> <20080128200747.GF16785@fieldses.org>
+Mime-Version: 1.0 (Apple Message framework v753)
+Content-Type: text/plain; charset=US-ASCII; delsp=yes; format=flowed
+Cc: linux-nfs@vger.kernel.org, Prasad P <pvp@us.ibm.com>,
+	Steve French <smfltc@us.ibm.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:60789 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751538AbYA1VUS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 28 Jan 2008 16:20:18 -0500
-In-Reply-To: <B595219E-9D7E-4544-8E1C-422D2DC7D996@oracle.com>
+Received: from agminet01.oracle.com ([141.146.126.228]:59139 "EHLO
+	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1762267AbYA1VWm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Jan 2008 16:22:42 -0500
+In-Reply-To: <20080128200747.GF16785@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jan 28, 2008 at 02:40:20PM -0500, Chuck Lever wrote:
-> On Jan 25, 2008, at 6:16 PM, J. Bruce Fields wrote:
->> I assume the reason failure of creation was ignored here was just to
->> continue support embedded systems that want nfsd but not proc.
+On Jan 28, 2008, at 3:07 PM, J. Bruce Fields wrote:
+> On Mon, Jan 28, 2008 at 12:40:33PM -0500, Chuck Lever wrote:
+>> On Jan 25, 2008, at 6:15 PM, J. Bruce Fields wrote:
+>>> From: Prasad P <pvp@us.ibm.com>
+>>>
+>>> Dereferenced pointer "dentry" without checking and assigned to inode
+>>> in the declaration.
+>>>
+>>> (We could just delete the NULL checks that follow instead, as we  
+>>> never
+>>> get to the encode function in this particular case.  But it takes a
+>>> little detective work to verify that fact, so it's probably safer to
+>>> leave the checks in place.)
 >>
->> However, in cases where proc is supported it would be clearer to fail
->> entirely than to come up with some features disabled.
->>
->> Acked-by: NeilBrown <neilb@suse.de>
->> Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
->> ---
->>  fs/nfsd/nfsctl.c |   37 ++++++++++++++++++++++++++++---------
->>  1 files changed, 28 insertions(+), 9 deletions(-)
->>
->> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
->> index 2bfda9b..63d8075 100644
->> --- a/fs/nfsd/nfsctl.c
->> +++ b/fs/nfsd/nfsctl.c
->> @@ -674,6 +674,27 @@ static struct file_system_type nfsd_fs_type = {
->>  	.kill_sb	= kill_litter_super,
->>  };
->>
->> +#ifdef CONFIG_PROC_FS
->> +static inline int create_proc_exports_entry(void)
+>> I think adding a comment to this effect before the "dentry == NULL"
+>> check would be beneficial.
 >
-> Nit: "inline" is probably not needed here.
+> OK.  How about this?
+>
+> --b.
+>
+> commit edd084f0dc22316bff9f4a25fc1fd8cccfbe82bd
+> Author: Prasad P <pvp@us.ibm.com>
+> Date:   Wed Oct 24 15:14:32 2007 -0500
+>
+>     nfsd: Fix inconsistent assignment
+>
+>     Dereferenced pointer "dentry" without checking and assigned to  
+> inode
+>     in the declaration.
+>
+>     (We could just delete the NULL checks that follow instead, as  
+> we never
+>     get to the encode function in this particular case.  But it  
+> takes a
+>     little detective work to verify that fact, so it's probably  
+> safer to
+>     leave the checks in place.)
+>
+>     Cc: Steve French <smfltc@us.ibm.com>
+>     Signed-off-by: Prasad V Potluri <pvp@us.ibm.com>
+>     Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+>
+> diff --git a/fs/nfsd/nfs2acl.c b/fs/nfsd/nfs2acl.c
+> index 0e5fa11..1c3b765 100644
+> --- a/fs/nfsd/nfs2acl.c
+> +++ b/fs/nfsd/nfs2acl.c
+> @@ -221,12 +221,17 @@ static int nfsaclsvc_encode_getaclres(struct  
+> svc_rqst *rqstp, __be32 *p,
+>  		struct nfsd3_getaclres *resp)
+>  {
+>  	struct dentry *dentry = resp->fh.fh_dentry;
+> -	struct inode *inode = dentry->d_inode;
+> +	struct inode *inode;
+>  	struct kvec *head = rqstp->rq_res.head;
+>  	unsigned int base;
+>  	int n;
+>  	int w;
+>
+> +	/*
+> +	 * Since this is version 2, the check for nfserr in
+> +	 * nfsd_dispatch actually ensures the following cannot happen.
+> +	 * However, it seems fragile to depend on that.
+> +	 */
+>  	if (dentry == NULL || dentry->d_inode == NULL)
+>  		return 0;
+>  	inode = dentry->d_inode;
 
-OK, fixed.--b.
+If that's truly the case, then letting an oops occur is probably more  
+appropriate, if I understand what Trond has been trying to tell me  
+for the past 5 years.
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
