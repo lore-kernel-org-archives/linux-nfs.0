@@ -1,34 +1,81 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 001/100] nfsd4: probe callback channel only once
-Date: Mon, 28 Jan 2008 13:48:07 -0500
-Message-ID: <20080128184807.GE16785@fieldses.org>
-References: <20080125231521.GG25141@fieldses.org> <1201303040-7779-1-git-send-email-bfields@citi.umich.edu> <68314FDD-D9D1-4DAA-9BC1-423612F05907@oracle.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+From: Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH 2/2] NLM: break out of nlmsvc_retry_blocked if lockd is coming down
+Date: Mon, 28 Jan 2008 14:29:11 -0500
+Message-ID: <1201548551-23592-3-git-send-email-jlayton@redhat.com>
+References: <1201548551-23592-1-git-send-email-jlayton@redhat.com>
+ <1201548551-23592-2-git-send-email-jlayton@redhat.com>
 Cc: linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+To: bfields@citi.umich.edu, neilb@suse.de
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:54549 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([66.187.233.31]:48739 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752646AbYA1SsI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 28 Jan 2008 13:48:08 -0500
-In-Reply-To: <68314FDD-D9D1-4DAA-9BC1-423612F05907@oracle.com>
+	id S1752543AbYA1T3R (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 28 Jan 2008 14:29:17 -0500
+In-Reply-To: <1201548551-23592-2-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jan 28, 2008 at 12:35:48PM -0500, Chuck Lever wrote:
-> On Jan 25, 2008, at 6:15 PM, J. Bruce Fields wrote:
->> Our callback code doesn't actually handle concurrent attempts to probe
->> the callback channel.  Some rethinking of the locking may be required.
->> However, we can also just move the callback probing to this case.   
->> Since
->> this is the only time a client is "confirmed" (and since that can only
->> happen once in the lifetime of a client), this ensures we only probe
->> once.
->
-> Applying 001/100 without applying 002/100 will probably break  
-> bisectability.
+It's possible to end up continually looping in nlmsvc_retry_blocked()
+even when the lockd kthread has been requested to come down. I've been
+able to reproduce this fairly easily by having an RPC grant callback
+queued up to an RPC client that's not bound. If the other host is
+unresponsive, then the block never gets taken off the list, and lockd
+continually respawns new RPC's.
 
-You lost me here.  Why?  I'm probably just missing something obvious.
+If lockd is going down anyway, we don't want to keep retrying the
+blocks, so allow it to break out of this loop. Additionally, in that
+situation kthread_stop will have already woken lockd, so when
+nlmsvc_retry_blocked returns, have lockd check for kthread_stop() so
+that it doesn't end up calling svc_recv and waiting for a long time.
 
---b.
+This patch prevents this continual looping and allows lockd to
+eventually come down, but this can quite some time since lockd
+won't check the condition in the nlmsvc_retry_blocked while loop
+until nlmsvc_grant_blocked returns. That won't happen until
+all of the portmap requests time out.
+
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/lockd/svc.c     |    4 ++++
+ fs/lockd/svclock.c |    3 ++-
+ 2 files changed, 6 insertions(+), 1 deletions(-)
+
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index 5752e1b..a0e5318 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -166,6 +166,10 @@ lockd(void *vrqstp)
+ 		} else if (time_before(grace_period_expire, jiffies))
+ 			clear_grace_period();
+ 
++		/* nlmsvc_retry_blocked can block, so check for kthread_stop */
++		if (kthread_should_stop())
++			break;
++
+ 		/*
+ 		 * Find a socket with data available and call its
+ 		 * recvfrom routine.
+diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
+index 2f4d8fa..d8324b6 100644
+--- a/fs/lockd/svclock.c
++++ b/fs/lockd/svclock.c
+@@ -29,6 +29,7 @@
+ #include <linux/sunrpc/svc.h>
+ #include <linux/lockd/nlm.h>
+ #include <linux/lockd/lockd.h>
++#include <linux/kthread.h>
+ 
+ #define NLMDBG_FACILITY		NLMDBG_SVCLOCK
+ 
+@@ -867,7 +868,7 @@ nlmsvc_retry_blocked(void)
+ 	unsigned long	timeout = MAX_SCHEDULE_TIMEOUT;
+ 	struct nlm_block *block;
+ 
+-	while (!list_empty(&nlm_blocked)) {
++	while (!list_empty(&nlm_blocked) && !kthread_should_stop()) {
+ 		block = list_entry(nlm_blocked.next, struct nlm_block, b_list);
+ 
+ 		if (block->b_when == NLM_NEVER)
+-- 
+1.5.3.7
+
