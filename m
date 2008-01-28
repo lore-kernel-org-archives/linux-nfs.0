@@ -1,96 +1,157 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 039/100] lockd: fix a leak in nlmsvc_testlock asynchronous request handling
-Date: Mon, 28 Jan 2008 15:17:48 -0500
-Message-ID: <416FFE80-EC89-43DD-A385-5BBE873FF469@oracle.com>
-References: <20080125231521.GG25141@fieldses.org> <1201303040-7779-1-git-send-email-bfields@citi.umich.edu> <1201303040-7779-2-git-send-email-bfields@citi.umich.edu> <1201303040-7779-3-git-send-email-bfields@citi.umich.edu> <1201303040-7779-4-git-send-email-bfields@citi.umich.edu> <1201303040-7779-5-git-send-email-bfields@citi.umich.edu> <1201303040-7779-6-git-send-email-bfields@citi.umich.edu> <1201303040-7779-7-git-send-email-bfields@citi.umich.edu> <1201303040-7779-8-git-send-email-bfields@citi.umich.edu> <1201303040-7779-9-git-send-email-bfields@citi.umich.edu> <1201303040-7779-10-git-send-email-bfields@citi.umich.edu> <1201303040-7779-11-git-send-email-bfields@citi.umich.edu> <1201303040-7779-12-git-send-email-bfields@citi.umich.edu> <1201303040-7779-13-git-send-email-bfields@citi.umi
- ch.edu> <1201303040-7779-14-git-send-email-bfields@citi.umich.edu> <1201303040-7779-15-git-send-email-bfields@citi.umich.edu> <1201303040-7779-16-git-send-email-bfields@citi.umich.edu> <120!
- 1303040-7779-17-git-send-email-bfields@citi.umich.edu> <1201303040-7779-18-git-send-email-bfields@citi.umich.edu> <1201303040-7779-19-git-send-email-bfields@citi.umich.edu> <1201303040-7779-20-git-send-email-bfields@citi.umich.edu> <1201303040-7779-21-git-send-email-bfields@citi.umich.edu> <1201303040-7779-22-git-send-email-bfields@citi.umich.edu> <1201303040-7779-23-git-send-email-bfields@citi.umich.edu> <1201303040-7779-24-git-send-email-bfields@citi.umich.edu> <1201303040-7779-25-git-send-email-bfields@citi.umich.edu> <1201303040-7779-26-git-send-email-bfields@citi.umich.edu> <1201303040-7779-27-git-send-email-bfields@citi.umich.edu> <1201303040-7779-28-git-send-email-bfields@citi.umich.edu> <1201303040-7779-29-git-send-email-bfields@citi.umich.edu> <1201303040-7779-30-git-send-email-b
- fields@citi.umich.edu> <1201303040-7779-31-git-send-email-bfields@citi.umich.edu> <1201303040-7779-32-git-send-email-bfields@citi.umich.edu> <1201303040-7779-33-git-send-email-bfields@citi.!
- umich.edu> <1201303040-7779-34-git-send-email-bfields@citi.umi!
- ch.edu> <1201303040-7779-35-git-send-email-bfields@citi.umich.edu> <1201303040-7779-36-git-send-email-bfields@citi.umich.edu> <1201303040-7779-37-git-send-email-bfields@citi.umich.edu> <1201303040-7779-38-git-send-email-bfields@citi.umich.edu> <1201303040-7779-39-
-Mime-Version: 1.0 (Apple Message framework v753)
-Content-Type: text/plain; charset=US-ASCII; delsp=yes; format=flowed
-Cc: linux-nfs@vger.kernel.org, Oleg Drokin <Oleg.Drokin-UdXhSnd/wVw@public.gmane.org>
-To: "J. Bruce Fields" <bfields@citi.umich.edu>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 034/100] nfsd4: miscellaneous nfs4state.c style fixes
+Date: Mon, 28 Jan 2008 15:24:59 -0500
+Message-ID: <20080128202459.GH16785@fieldses.org>
+References: <1201303040-7779-26-git-send-email-bfields@citi.umich.edu> <1201303040-7779-27-git-send-email-bfields@citi.umich.edu> <1201303040-7779-28-git-send-email-bfields@citi.umich.edu> <1201303040-7779-29-git-send-email-bfields@citi.umich.edu> <1201303040-7779-30-git-send-email-bfields@citi.umich.edu> <1201303040-7779-31-git-send-email-bfields@citi.umich.edu> <1201303040-7779-32-git-send-email-bfields@citi.umich.edu> <1201303040-7779-33-git-send-email-bfields@citi.!umich.edu> <1201303040-7779-34-git-send-email-bfields@citi.umi!ch.edu> <1638E91B-31D2-448C-9FF6-4C457BAD7B74@oracle.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:24685 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750813AbYA1USX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Jan 2008 15:18:23 -0500
-In-Reply-To: <1201303040-7779-39-git-send-email-bfields@citi.umich.edu>
+Received: from mail.fieldses.org ([66.93.2.214]:52907 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751196AbYA1UZA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 28 Jan 2008 15:25:00 -0500
+In-Reply-To: <1638E91B-31D2-448C-9FF6-4C457BAD7B74@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Jan 25, 2008, at 6:16 PM, J. Bruce Fields wrote:
-> From: Oleg Drokin <Oleg.Drokin-UdXhSnd/wVw@public.gmane.org>
+On Mon, Jan 28, 2008 at 02:39:21PM -0500, Chuck Lever wrote:
+> On Jan 25, 2008, at 6:16 PM, J. Bruce Fields wrote:
+>> Fix various minor style violations.
+>>
+>> Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+>> ---
+>>  fs/nfsd/nfs4state.c |   55 +++++++++++++++++++++++ 
+>> +--------------------------
+>>  1 files changed, 26 insertions(+), 29 deletions(-)
+>>
+>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+>> index 6efce99..1c72b23 100644
+>> --- a/fs/nfsd/nfs4state.c
+>> +++ b/fs/nfsd/nfs4state.c
+>> @@ -339,21 +339,20 @@ STALE_CLIENTID(clientid_t *clid)
+>>   * This type of memory management is somewhat inefficient, but we use 
+>> it
+>>   * anyway since SETCLIENTID is not a common operation.
+>>   */
+>> -static inline struct nfs4_client *
+>> -alloc_client(struct xdr_netobj name)
+>> +static inline struct nfs4_client * alloc_client(struct xdr_netobj  
+>> name)
 >
-> Without the patch, there is a leakage of nlmblock structure refcount
-> that holds a reference nlmfile structure, that holds a reference to
-> struct file, when async GETFL is used (-EINPROGRESS return from
-> file_ops->lock()), and also in some error cases.
+> Since you are addressing style issues, CodingStyle likes "struct  
+> nfs4_client *alloc_client" (no blank after the asterisk).  Also,  
+> "inline" is probably not necessary here; the compiler will do it  
+> automatically (likewise below).
+
+OK, done.--b.
+
 >
-> Fix up a style nit while we're here.
-
-Missing Signed-off-by: ?
-
-> Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
-> ---
->  fs/lockd/svclock.c |   18 +++++++++++-------
->  1 files changed, 11 insertions(+), 7 deletions(-)
+>>  {
+>>  	struct nfs4_client *clp;
+>>
+>> -	if ((clp = kzalloc(sizeof(struct nfs4_client), GFP_KERNEL))!= NULL) {
+>> -		if ((clp->cl_name.data = kmalloc(name.len, GFP_KERNEL)) != NULL) {
+>> -			memcpy(clp->cl_name.data, name.data, name.len);
+>> -			clp->cl_name.len = name.len;
+>> -		}
+>> -		else {
+>> -			kfree(clp);
+>> -			clp = NULL;
+>> -		}
+>> +	clp = kzalloc(sizeof(struct nfs4_client), GFP_KERNEL);
+>> +	if (clp == NULL)
+>> +		return NULL;
+>> +	clp->cl_name.data = kmalloc(name.len, GFP_KERNEL);
+>> +	if (clp->cl_name.data == NULL) {
+>> +		kfree(clp);
+>> +		return NULL;
+>>  	}
+>> +	memcpy(clp->cl_name.data, name.data, name.len);
+>> +	clp->cl_name.len = name.len;
+>>  	return clp;
+>>  }
+>>
+>> @@ -421,12 +420,13 @@ expire_client(struct nfs4_client *clp)
+>>  	put_nfs4_client(clp);
+>>  }
+>>
+>> -static struct nfs4_client *
+>> -create_client(struct xdr_netobj name, char *recdir) {
+>> +static struct nfs4_client * create_client(struct xdr_netobj name,  
+>> char *recdir)
+>> +{
+>>  	struct nfs4_client *clp;
+>>
+>> -	if (!(clp = alloc_client(name)))
+>> -		goto out;
+>> +	clp = alloc_client(name);
+>> +	if (clp == NULL)
+>> +		return NULL;
+>>  	memcpy(clp->cl_recdir, recdir, HEXDIR_LEN);
+>>  	atomic_set(&clp->cl_count, 1);
+>>  	atomic_set(&clp->cl_callback.cb_set, 0);
+>> @@ -435,32 +435,30 @@ create_client(struct xdr_netobj name, char  
+>> *recdir) {
+>>  	INIT_LIST_HEAD(&clp->cl_openowners);
+>>  	INIT_LIST_HEAD(&clp->cl_delegations);
+>>  	INIT_LIST_HEAD(&clp->cl_lru);
+>> -out:
+>>  	return clp;
+>>  }
+>>
+>> -static void
+>> -copy_verf(struct nfs4_client *target, nfs4_verifier *source) {
+>> -	memcpy(target->cl_verifier.data, source->data, sizeof(target- 
+>> >cl_verifier.data));
+>> +static void copy_verf(struct nfs4_client *target, nfs4_verifier  
+>> *source)
+>> +{
+>> +	memcpy(target->cl_verifier.data, source->data,
+>> +			sizeof(target->cl_verifier.data));
+>>  }
+>>
+>> -static void
+>> -copy_clid(struct nfs4_client *target, struct nfs4_client *source) {
+>> +static void copy_clid(struct nfs4_client *target, struct nfs4_client 
+>> *source)
+>> +{
+>>  	target->cl_clientid.cl_boot = source->cl_clientid.cl_boot;
+>>  	target->cl_clientid.cl_id = source->cl_clientid.cl_id;
+>>  }
+>>
+>> -static void
+>> -copy_cred(struct svc_cred *target, struct svc_cred *source) {
+>> -
+>> +static void copy_cred(struct svc_cred *target, struct svc_cred  
+>> *source)
+>> +{
+>>  	target->cr_uid = source->cr_uid;
+>>  	target->cr_gid = source->cr_gid;
+>>  	target->cr_group_info = source->cr_group_info;
+>>  	get_group_info(target->cr_group_info);
+>>  }
+>>
+>> -static inline int
+>> -same_name(const char *n1, const char *n2)
+>> +static inline int same_name(const char *n1, const char *n2)
+>>  {
+>>  	return 0 == memcmp(n1, n2, HEXDIR_LEN);
+>>  }
+>> @@ -502,9 +500,8 @@ static void gen_confirm(struct nfs4_client *clp)
+>>  	*p++ = i++;
+>>  }
+>>
+>> -static int
+>> -check_name(struct xdr_netobj name) {
+>> -
+>> +static int check_name(struct xdr_netobj name)
+>> +{
+>>  	if (name.len == 0)
+>>  		return 0;
+>>  	if (name.len > NFS4_OPAQUE_LIMIT) {
 >
-> diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-> index d120ec3..84c4d5e 100644
-> --- a/fs/lockd/svclock.c
-> +++ b/fs/lockd/svclock.c
-> @@ -501,25 +501,29 @@ nlmsvc_testlock(struct svc_rqst *rqstp,  
-> struct nlm_file *file,
->  			block, block->b_flags, block->b_fl);
->  		if (block->b_flags & B_TIMED_OUT) {
->  			nlmsvc_unlink_block(block);
-> -			return nlm_lck_denied;
-> +			ret = nlm_lck_denied;
-> +			goto out;
-
-Aren't we also leaking the memory pointed to by block->b_fl that  
-nlmsvc_testlock just allocated?
-
-nlmsvc_unlink_block() already invokes nlmsvc_release_block() in some  
-cases.  So now sometimes we have a double release.
-
->  		}
->  		if (block->b_flags & B_GOT_CALLBACK) {
->  			if (block->b_fl != NULL
->  					&& block->b_fl->fl_type != F_UNLCK) {
->  				lock->fl = *block->b_fl;
->  				goto conf_lock;
-> -			}
-> -			else {
-> +			} else {
->  				nlmsvc_unlink_block(block);
-> -				return nlm_granted;
-> +				ret = nlm_granted;
-> +				goto out;
-
-Same comment: block->b_fl leak?
-
->  			}
->  		}
-> -		return nlm_drop_reply;
-> +		ret = nlm_drop_reply;
-> +		goto out;
->  	}
->
->  	error = vfs_test_lock(file->f_file, &lock->fl);
-> -	if (error == -EINPROGRESS)
-> -		return nlmsvc_defer_lock_rqst(rqstp, block);
-> +	if (error == -EINPROGRESS) {
-> +		ret = nlmsvc_defer_lock_rqst(rqstp, block);
-> +		goto out;
-> +	}
->  	if (error) {
->  		ret = nlm_lck_denied_nolocks;
->  		goto out;
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+> --
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
