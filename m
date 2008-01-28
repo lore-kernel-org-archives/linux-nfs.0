@@ -1,81 +1,68 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 022/100] nfsd: move cache proc (un)registration to
-	separate function
-Date: Mon, 28 Jan 2008 16:31:05 -0500
-Message-ID: <20080128213105.GM16785@fieldses.org>
-References: <1201303040-7779-14-git-send-email-bfields@citi.umich.edu> <1201303040-7779-15-git-send-email-bfields@citi.umich.edu> <1201303040-7779-16-git-send-email-bfields@citi.umich.edu> <120!1303040-7779-17-git-send-email-bfields@citi.umich.edu> <1201303040-7779-18-git-send-email-bfields@citi.umich.edu> <1201303040-7779-19-git-send-email-bfields@citi.umich.edu> <1201303040-7779-20-git-send-email-bfields@citi.umich.edu> <1201303040-7779-21-git-send-email-bfields@citi.umich.edu> <1201303040-7779-22-git-send-email-bfields@citi.umich.edu> <1B8DF3CC-4C08-49B0-B035-57F40B4E846A@oracle.com>
+Subject: Re: [PATCH 001/100] nfsd4: probe callback channel only once
+Date: Mon, 28 Jan 2008 16:39:55 -0500
+Message-ID: <20080128213955.GN16785@fieldses.org>
+References: <20080125231521.GG25141@fieldses.org> <1201303040-7779-1-git-send-email-bfields@citi.umich.edu> <68314FDD-D9D1-4DAA-9BC1-423612F05907@oracle.com> <20080128184807.GE16785@fieldses.org> <BF917C75-075F-4C6E-AE55-A9DF0D781862@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-nfs@vger.kernel.org
 To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:37798 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:51298 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752038AbYA1VbG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 28 Jan 2008 16:31:06 -0500
-In-Reply-To: <1B8DF3CC-4C08-49B0-B035-57F40B4E846A@oracle.com>
+	id S1751981AbYA1Vj5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 28 Jan 2008 16:39:57 -0500
+In-Reply-To: <BF917C75-075F-4C6E-AE55-A9DF0D781862@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jan 28, 2008 at 02:40:30PM -0500, Chuck Lever wrote:
-> On Jan 25, 2008, at 6:16 PM, J. Bruce Fields wrote:
->> Just some minor cleanup.
->>
->> Also I don't see much point in trying to register further proc entries
->> if initial entries fail; so just stop trying in that case.
->>
->> Acked-by: NeilBrown <neilb@suse.de>
->> Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
->> ---
->>  net/sunrpc/cache.c |   99 +++++++++++++++++++++++++++ 
->> +-----------------------
->>  1 files changed, 54 insertions(+), 45 deletions(-)
->>
->> diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
->> index d05ea16..504b4e8 100644
->> --- a/net/sunrpc/cache.c
->> +++ b/net/sunrpc/cache.c
->> @@ -290,44 +290,63 @@ static const struct file_operations  
->> cache_flush_operations;
->>  static void do_cache_clean(struct work_struct *work);
->>  static DECLARE_DELAYED_WORK(cache_cleaner, do_cache_clean);
->>
->> -void cache_register(struct cache_detail *cd)
->> +void remove_cache_proc_entries(struct cache_detail *cd)
+On Mon, Jan 28, 2008 at 04:14:47PM -0500, Chuck Lever wrote:
+> Hi Bruce-
 >
-> Since you don't provide an EXPORT_SYMBOL for this new function, perhaps 
-> it should be declared static?
->
->>  {
->> -	cd->proc_ent = proc_mkdir(cd->name, proc_net_rpc);
->> -	if (cd->proc_ent) {
->> -		struct proc_dir_entry *p;
->> -		cd->proc_ent->owner = cd->owner;
->> -		cd->channel_ent = cd->content_ent = NULL;
->> +	if (cd->proc_ent == NULL)
->> +		return;
->> +	if (cd->flush_ent)
->> +		remove_proc_entry("flush", cd->proc_ent);
->> +	if (cd->channel_ent)
->> +		remove_proc_entry("channel", cd->proc_ent);
->> +	if (cd->content_ent)
->> +		remove_proc_entry("content", cd->proc_ent);
->> +	cd->proc_ent = NULL;
->> +	remove_proc_entry(cd->name, proc_net_rpc);
->> +}
+> On Jan 28, 2008, at 1:48 PM, J. Bruce Fields wrote:
+>> On Mon, Jan 28, 2008 at 12:35:48PM -0500, Chuck Lever wrote:
+>>> On Jan 25, 2008, at 6:15 PM, J. Bruce Fields wrote:
+>>>> Our callback code doesn't actually handle concurrent attempts to  
+>>>> probe
+>>>> the callback channel.  Some rethinking of the locking may be  
+>>>> required.
+>>>> However, we can also just move the callback probing to this case.
+>>>> Since
+>>>> this is the only time a client is "confirmed" (and since that can  
+>>>> only
+>>>> happen once in the lifetime of a client), this ensures we only probe
+>>>> once.
+>>>
+>>> Applying 001/100 without applying 002/100 will probably break
+>>> bisectability.
 >>
->> -		p = create_proc_entry("flush", S_IFREG|S_IRUSR|S_IWUSR,
->> -				      cd->proc_ent);
->> -		cd->flush_ent =  p;
->> -		if (p) {
->> -			p->proc_fops = &cache_flush_operations;
->> -			p->owner = cd->owner;
->> -			p->data = cd;
->> -		}
->> +void create_cache_proc_entries(struct cache_detail *cd)
+>> You lost me here.  Why?  I'm probably just missing something obvious.
 >
-> Likewise.
+>
+> Because, even though the kernel compiles with just 001, it doesn't work 
+> properly.
 
-Whoops, yes, fixed.
+Why not?  Treat me like a tired person here ('cause that would be
+accurate) and break it down really carefully....
+
+> In fact, it may even Oops, if I read 002 right, since no RPC 
+> client is available to do the probe?
+
+An rpc client is created in nfsd4_probe_callback():
+
+        /* Create RPC client */
+        cb->cb_client = rpc_create(&args);
+        if (IS_ERR(cb->cb_client)) {
+                dprintk("NFSD: couldn't create callback client\n");
+                goto out_err;
+        }
+
+        /* the task holds a reference to the nfs4_client struct */
+        atomic_inc(&clp->cl_count);
+
+        t = kthread_run(do_probe_callback, clp, "nfs4_cb_probe");
+
+All #2 does is move that rpc_create() into the do_probe_callback() called in
+the new thread.
 
 --b.
