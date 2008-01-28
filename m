@@ -1,75 +1,187 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 001/100] nfsd4: probe callback channel only once
-Date: Mon, 28 Jan 2008 12:35:48 -0500
-Message-ID: <68314FDD-D9D1-4DAA-9BC1-423612F05907@oracle.com>
-References: <20080125231521.GG25141@fieldses.org> <1201303040-7779-1-git-send-email-bfields@citi.umich.edu>
+Subject: Re: [PATCH 024/100] nfsd: move nfsd/auth.h into fs/nfsd
+Date: Mon, 28 Jan 2008 12:24:35 -0500
+Message-ID: <5DD4A881-9BED-47E9-A6A2-936CCCA6C4C4@oracle.com>
+References: <20080125231521.GG25141@fieldses.org> <1201303040-7779-1-git-send-email-bfields@citi.umich.edu> <1201303040-7779-2-git-send-email-bfields@citi.umich.edu> <1201303040-7779-3-git-send-email-bfields@citi.umich.edu> <1201303040-7779-4-git-send-email-bfields@citi.umich.edu> <1201303040-7779-5-git-send-email-bfields@citi.umich.edu> <1201303040-7779-6-git-send-email-bfields@citi.umich.edu> <1201303040-7779-7-git-send-email-bfields@citi.umich.edu> <1201303040-7779-8-git-send-email-bfields@citi.umich.edu> <1201303040-7779-9-git-send-email-bfields@citi.umich.edu> <1201303040-7779-10-git-send-email-bfields@citi.umich.edu> <1201303040-7779-11-git-send-email-bfields@citi.umich.edu> <1201303040-7779-12-git-send-email-bfields@citi.umich.edu> <1201303040-7779-13-git-send-email-bfields@citi.umi
+ ch.edu> <1201303040-7779-14-git-send-email-bfields@citi.umich.edu> <1201303040-7779-15-git-send-email-bfields@citi.umich.edu> <1201303040-7779-16-git-send-email-bfields@citi.umich.edu> <120!
+ 1303040-7779-17-git-send-email-bfields@citi.umich.edu> <1201303040-7779-18-git-send-email-bfields@citi.umich.edu> <1201303040-7779-19-git-send-email-bfields@citi.umich.edu> <1201303040-7779-20-git-send-email-bfields@citi.umich.edu> <1201303040-7779-21-git-send-email-bfields@citi.umich.edu> <1201303040-7779-22-git-send-email-bfields@citi.umich.edu> <1201303040-7779-23-git-send-email-bfields@citi.umich.edu> <1201303040-7779-24-git-send-email-bfields@citi.umich.edu>
 Mime-Version: 1.0 (Apple Message framework v753)
 Content-Type: text/plain; charset=US-ASCII; delsp=yes; format=flowed
-Cc: linux-nfs@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org,
+	"Robert P. J. Day" <rpjday-L09J2beyid0N/H6P543EQg@public.gmane.org>
 To: "J. Bruce Fields" <bfields@citi.umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:23330 "EHLO
+Received: from agminet01.oracle.com ([141.146.126.228]:23807 "EHLO
 	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751572AbYA1SFR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Jan 2008 13:05:17 -0500
-In-Reply-To: <1201303040-7779-1-git-send-email-bfields@citi.umich.edu>
+	with ESMTP id S1751632AbYA1SFy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Jan 2008 13:05:54 -0500
+In-Reply-To: <1201303040-7779-24-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Jan 25, 2008, at 6:15 PM, J. Bruce Fields wrote:
-> Our callback code doesn't actually handle concurrent attempts to probe
-> the callback channel.  Some rethinking of the locking may be required.
-> However, we can also just move the callback probing to this case.   
-> Since
-> this is the only time a client is "confirmed" (and since that can only
-> happen once in the lifetime of a client), this ensures we only probe
-> once.
-
-Applying 001/100 without applying 002/100 will probably break  
-bisectability.  Should you consider combining these two?
-
+On Jan 25, 2008, at 6:16 PM, J. Bruce Fields wrote:
+> This header is used only in a few places in fs/nfsd, so there seems to
+> be little point to having it in include/.  (Thanks to Robert Day for
+> pointing this out.)
+>
+> Cc: Robert P. J. Day <rpjday-L09J2beyid0N/H6P543EQg@public.gmane.org>
+> Acked-by: NeilBrown <neilb@suse.de>
 > Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 > ---
->  fs/nfsd/nfs4callback.c |    3 +--
->  fs/nfsd/nfs4state.c    |    3 +--
->  2 files changed, 2 insertions(+), 4 deletions(-)
+>  fs/nfsd/auth.h               |   27 +++++++++++++++++++++++++++
+>  fs/nfsd/nfs3xdr.c            |    1 +
+>  fs/nfsd/nfsfh.c              |    1 +
+>  fs/nfsd/nfsxdr.c             |    1 +
+>  include/linux/nfsd/Kbuild    |    1 -
+>  include/linux/nfsd/auth.h    |   27 ---------------------------
+>  include/linux/nfsd/nfsd.h    |    1 -
+>  include/linux/nfsd/syscall.h |    1 -
+>  8 files changed, 30 insertions(+), 30 deletions(-)
+>  create mode 100644 fs/nfsd/auth.h
+>  delete mode 100644 include/linux/nfsd/auth.h
 >
-> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-> index 9d536a8..a9735a6 100644
-> --- a/fs/nfsd/nfs4callback.c
-> +++ b/fs/nfsd/nfs4callback.c
-> @@ -395,8 +395,7 @@ nfsd4_probe_callback(struct nfs4_client *clp)
->  	};
->  	struct task_struct *t;
+> diff --git a/fs/nfsd/auth.h b/fs/nfsd/auth.h
+> new file mode 100644
+> index 0000000..0fb9f72
+> --- /dev/null
+> +++ b/fs/nfsd/auth.h
+> @@ -0,0 +1,27 @@
+> +/*
+> + * include/linux/nfsd/auth.h
+
+Now that you've moved this header into fs/nfsd, the pathname in this  
+comment is no longer correct.  Usually hch complains about this; his  
+recommended solution is to remove the filename from the block comment  
+completely.
+
+> + *
+> + * nfsd-specific authentication stuff.
+> + * uid/gid mapping not yet implemented.
+> + *
+> + * Copyright (C) 1995, 1996 Olaf Kirch <okir-pn4DOG8n3UYbFoVRYvo4fw@public.gmane.org>
+> + */
+> +
+> +#ifndef LINUX_NFSD_AUTH_H
+> +#define LINUX_NFSD_AUTH_H
+> +
+> +#ifdef __KERNEL__
+> +
+> +#define nfsd_luid(rq, uid)	((u32)(uid))
+> +#define nfsd_lgid(rq, gid)	((u32)(gid))
+> +#define nfsd_ruid(rq, uid)	((u32)(uid))
+> +#define nfsd_rgid(rq, gid)	((u32)(gid))
+> +
+> +/*
+> + * Set the current process's fsuid/fsgid etc to those of the NFS
+> + * client user
+> + */
+> +int nfsd_setuser(struct svc_rqst *, struct svc_export *);
+> +
+> +#endif /* __KERNEL__ */
+> +#endif /* LINUX_NFSD_AUTH_H */
+> diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
+> index be515c5..4b1ffe3 100644
+> --- a/fs/nfsd/nfs3xdr.c
+> +++ b/fs/nfsd/nfs3xdr.c
+> @@ -21,6 +21,7 @@
+>  #include <linux/sunrpc/svc.h>
+>  #include <linux/nfsd/nfsd.h>
+>  #include <linux/nfsd/xdr3.h>
+> +#include "auth.h"
 >
-> -	if (atomic_read(&cb->cb_set))
-> -		return;
-> +	BUG_ON(atomic_read(&clp->cl_callback.cb_set));
+>  #define NFSDDBG_FACILITY		NFSDDBG_XDR
 >
->  	/* Initialize address */
->  	memset(&addr, 0, sizeof(addr));
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 31673cd..9d81c71 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -948,6 +948,7 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
->  			}
->  			move_to_confirmed(unconf);
->  			conf = unconf;
-> +			nfsd4_probe_callback(conf);
->  			status = nfs_ok;
->  		}
->  	} else if ((!conf || (conf && !same_verf(&conf->cl_confirm,  
-> &confirm)))
-> @@ -965,8 +966,6 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
->  		status = nfserr_clid_inuse;
->  	}
->  out:
-> -	if (!status)
-> -		nfsd4_probe_callback(conf);
->  	nfs4_unlock_state();
->  	return status;
->  }
+> diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
+> index 468f17a..8fbd2dc 100644
+> --- a/fs/nfsd/nfsfh.c
+> +++ b/fs/nfsd/nfsfh.c
+> @@ -22,6 +22,7 @@
+>  #include <linux/sunrpc/svc.h>
+>  #include <linux/sunrpc/svcauth_gss.h>
+>  #include <linux/nfsd/nfsd.h>
+> +#include "auth.h"
+>
+>  #define NFSDDBG_FACILITY		NFSDDBG_FH
+>
+> diff --git a/fs/nfsd/nfsxdr.c b/fs/nfsd/nfsxdr.c
+> index 7003c31..61ad617 100644
+> --- a/fs/nfsd/nfsxdr.c
+> +++ b/fs/nfsd/nfsxdr.c
+> @@ -15,6 +15,7 @@
+>  #include <linux/nfsd/nfsd.h>
+>  #include <linux/nfsd/xdr.h>
+>  #include <linux/mm.h>
+> +#include "auth.h"
+>
+>  #define NFSDDBG_FACILITY		NFSDDBG_XDR
+>
+> diff --git a/include/linux/nfsd/Kbuild b/include/linux/nfsd/Kbuild
+> index d9c5455..e726fc3 100644
+> --- a/include/linux/nfsd/Kbuild
+> +++ b/include/linux/nfsd/Kbuild
+> @@ -4,4 +4,3 @@ unifdef-y += stats.h
+>  unifdef-y += syscall.h
+>  unifdef-y += nfsfh.h
+>  unifdef-y += debug.h
+> -unifdef-y += auth.h
+> diff --git a/include/linux/nfsd/auth.h b/include/linux/nfsd/auth.h
+> deleted file mode 100644
+> index 0fb9f72..0000000
+> --- a/include/linux/nfsd/auth.h
+> +++ /dev/null
+> @@ -1,27 +0,0 @@
+> -/*
+> - * include/linux/nfsd/auth.h
+> - *
+> - * nfsd-specific authentication stuff.
+> - * uid/gid mapping not yet implemented.
+> - *
+> - * Copyright (C) 1995, 1996 Olaf Kirch <okir-pn4DOG8n3UYbFoVRYvo4fw@public.gmane.org>
+> - */
+> -
+> -#ifndef LINUX_NFSD_AUTH_H
+> -#define LINUX_NFSD_AUTH_H
+> -
+> -#ifdef __KERNEL__
+> -
+> -#define nfsd_luid(rq, uid)	((u32)(uid))
+> -#define nfsd_lgid(rq, gid)	((u32)(gid))
+> -#define nfsd_ruid(rq, uid)	((u32)(uid))
+> -#define nfsd_rgid(rq, gid)	((u32)(gid))
+> -
+> -/*
+> - * Set the current process's fsuid/fsgid etc to those of the NFS
+> - * client user
+> - */
+> -int nfsd_setuser(struct svc_rqst *, struct svc_export *);
+> -
+> -#endif /* __KERNEL__ */
+> -#endif /* LINUX_NFSD_AUTH_H */
+> diff --git a/include/linux/nfsd/nfsd.h b/include/linux/nfsd/nfsd.h
+> index a51a30f..8caf4c4 100644
+> --- a/include/linux/nfsd/nfsd.h
+> +++ b/include/linux/nfsd/nfsd.h
+> @@ -20,7 +20,6 @@
+>  #include <linux/nfsd/debug.h>
+>  #include <linux/nfsd/nfsfh.h>
+>  #include <linux/nfsd/export.h>
+> -#include <linux/nfsd/auth.h>
+>  #include <linux/nfsd/stats.h>
+>  /*
+>   * nfsd version
+> diff --git a/include/linux/nfsd/syscall.h b/include/linux/nfsd/ 
+> syscall.h
+> index 8bcddcc..4e43976 100644
+> --- a/include/linux/nfsd/syscall.h
+> +++ b/include/linux/nfsd/syscall.h
+> @@ -18,7 +18,6 @@
+>  #include <linux/nfsd/const.h>
+>  #include <linux/nfsd/export.h>
+>  #include <linux/nfsd/nfsfh.h>
+> -#include <linux/nfsd/auth.h>
+>
+>  /*
+>   * Version of the syscall interface
 > -- 
 > 1.5.4.rc2.60.gb2e62
 >
