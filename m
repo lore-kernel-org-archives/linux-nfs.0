@@ -1,47 +1,47 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 001/100] nfsd4: probe callback channel only once
-Date: Mon, 28 Jan 2008 16:14:47 -0500
-Message-ID: <BF917C75-075F-4C6E-AE55-A9DF0D781862@oracle.com>
-References: <20080125231521.GG25141@fieldses.org> <1201303040-7779-1-git-send-email-bfields@citi.umich.edu> <68314FDD-D9D1-4DAA-9BC1-423612F05907@oracle.com> <20080128184807.GE16785@fieldses.org>
-Mime-Version: 1.0 (Apple Message framework v753)
-Content-Type: text/plain; charset=US-ASCII; delsp=yes; format=flowed
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 021/100] nfsd: fail init on /proc/fs/nfs/exports
+	creation failure
+Date: Mon, 28 Jan 2008 16:20:16 -0500
+Message-ID: <20080128212016.GL16785@fieldses.org>
+References: <1201303040-7779-13-git-send-email-bfields@citi.umich.edu> <1201303040-7779-14-git-send-email-bfields@citi.umich.edu> <1201303040-7779-15-git-send-email-bfields@citi.umich.edu> <1201303040-7779-16-git-send-email-bfields@citi.umich.edu> <120!1303040-7779-17-git-send-email-bfields@citi.umich.edu> <1201303040-7779-18-git-send-email-bfields@citi.umich.edu> <1201303040-7779-19-git-send-email-bfields@citi.umich.edu> <1201303040-7779-20-git-send-email-bfields@citi.umich.edu> <1201303040-7779-21-git-send-email-bfields@citi.umich.edu> <B595219E-9D7E-4544-8E1C-422D2DC7D996@oracle.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Cc: linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:52638 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753164AbYA1VQy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Jan 2008 16:16:54 -0500
-In-Reply-To: <20080128184807.GE16785@fieldses.org>
+Received: from mail.fieldses.org ([66.93.2.214]:60789 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751538AbYA1VUS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 28 Jan 2008 16:20:18 -0500
+In-Reply-To: <B595219E-9D7E-4544-8E1C-422D2DC7D996@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Bruce-
-
-On Jan 28, 2008, at 1:48 PM, J. Bruce Fields wrote:
-> On Mon, Jan 28, 2008 at 12:35:48PM -0500, Chuck Lever wrote:
->> On Jan 25, 2008, at 6:15 PM, J. Bruce Fields wrote:
->>> Our callback code doesn't actually handle concurrent attempts to  
->>> probe
->>> the callback channel.  Some rethinking of the locking may be  
->>> required.
->>> However, we can also just move the callback probing to this case.
->>> Since
->>> this is the only time a client is "confirmed" (and since that can  
->>> only
->>> happen once in the lifetime of a client), this ensures we only probe
->>> once.
+On Mon, Jan 28, 2008 at 02:40:20PM -0500, Chuck Lever wrote:
+> On Jan 25, 2008, at 6:16 PM, J. Bruce Fields wrote:
+>> I assume the reason failure of creation was ignored here was just to
+>> continue support embedded systems that want nfsd but not proc.
 >>
->> Applying 001/100 without applying 002/100 will probably break
->> bisectability.
+>> However, in cases where proc is supported it would be clearer to fail
+>> entirely than to come up with some features disabled.
+>>
+>> Acked-by: NeilBrown <neilb@suse.de>
+>> Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+>> ---
+>>  fs/nfsd/nfsctl.c |   37 ++++++++++++++++++++++++++++---------
+>>  1 files changed, 28 insertions(+), 9 deletions(-)
+>>
+>> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+>> index 2bfda9b..63d8075 100644
+>> --- a/fs/nfsd/nfsctl.c
+>> +++ b/fs/nfsd/nfsctl.c
+>> @@ -674,6 +674,27 @@ static struct file_system_type nfsd_fs_type = {
+>>  	.kill_sb	= kill_litter_super,
+>>  };
+>>
+>> +#ifdef CONFIG_PROC_FS
+>> +static inline int create_proc_exports_entry(void)
 >
-> You lost me here.  Why?  I'm probably just missing something obvious.
+> Nit: "inline" is probably not needed here.
 
-
-Because, even though the kernel compiles with just 001, it doesn't  
-work properly.  In fact, it may even Oops, if I read 002 right, since  
-no RPC client is available to do the probe?
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+OK, fixed.--b.
