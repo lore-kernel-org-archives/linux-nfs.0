@@ -1,77 +1,46 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 020/100] nfsd: select CONFIG_PROC_FS in nfsv4 and gss server cases
-Date: Mon, 28 Jan 2008 16:12:26 -0500
-Message-ID: <C33E449C-C1DB-46D4-9F00-98788B385017@oracle.com>
-References: <1201303040-7779-12-git-send-email-bfields@citi.umich.edu> <1201303040-7779-13-git-send-email-bfields@citi.umich.edu> <1201303040-7779-14-git-send-email-bfields@citi.umich.edu> <1201303040-7779-15-git-send-email-bfields@citi.umich.edu> <1201303040-7779-16-git-send-email-bfields@citi.umich.edu> <120!1303040-7779-17-git-send-email-bfields@citi.umich.edu> <1201303040-7779-18-git-send-email-bfields@citi.umich.edu> <1201303040-7779-19-git-send-email-bfields@citi.umich.edu> <1201303040-7779-20-git-send-email-bfields@citi.umich.edu> <DA5779D5-8037-4640-9571-87E041262988@oracle.com> <20080128182858.GC16785@fieldses.org>
+Subject: Re: [PATCH 001/100] nfsd4: probe callback channel only once
+Date: Mon, 28 Jan 2008 16:14:47 -0500
+Message-ID: <BF917C75-075F-4C6E-AE55-A9DF0D781862@oracle.com>
+References: <20080125231521.GG25141@fieldses.org> <1201303040-7779-1-git-send-email-bfields@citi.umich.edu> <68314FDD-D9D1-4DAA-9BC1-423612F05907@oracle.com> <20080128184807.GE16785@fieldses.org>
 Mime-Version: 1.0 (Apple Message framework v753)
 Content-Type: text/plain; charset=US-ASCII; delsp=yes; format=flowed
 Cc: linux-nfs@vger.kernel.org
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:51866 "EHLO
+Received: from rgminet01.oracle.com ([148.87.113.118]:52638 "EHLO
 	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752426AbYA1VMk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Jan 2008 16:12:40 -0500
-In-Reply-To: <20080128182858.GC16785@fieldses.org>
+	with ESMTP id S1753164AbYA1VQy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Jan 2008 16:16:54 -0500
+In-Reply-To: <20080128184807.GE16785@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Jan 28, 2008, at 1:28 PM, J. Bruce Fields wrote:
-> On Mon, Jan 28, 2008 at 01:07:05PM -0500, Chuck Lever wrote:
->> On Jan 25, 2008, at 6:16 PM, J. Bruce Fields wrote:
->>> The server depends on upcalls under /proc to support nfsv4 and gss.
->>>
->>> Acked-by: NeilBrown <neilb@suse.de>
->>> Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
->>> ---
->>>  fs/Kconfig |    2 ++
->>>  1 files changed, 2 insertions(+), 0 deletions(-)
->>>
->>> diff --git a/fs/Kconfig b/fs/Kconfig
->>> index 487236c..e81fcd6 100644
->>> --- a/fs/Kconfig
->>> +++ b/fs/Kconfig
->>> @@ -1679,6 +1679,8 @@ config NFSD
->>>  	select CRYPTO_MD5 if NFSD_V4
->>>  	select CRYPTO if NFSD_V4
->>>  	select FS_POSIX_ACL if NFSD_V4
->>> +	select PROC_FS if NFSD_V4
->>> +	select PROC_FS if SUNRPC_GSS
->>>  	help
->>>  	  If you want your Linux box to act as an NFS *server*, so that
->>> other
->>>  	  computers on your local network which support NFS can access
->>> certain
+Hi Bruce-
+
+On Jan 28, 2008, at 1:48 PM, J. Bruce Fields wrote:
+> On Mon, Jan 28, 2008 at 12:35:48PM -0500, Chuck Lever wrote:
+>> On Jan 25, 2008, at 6:15 PM, J. Bruce Fields wrote:
+>>> Our callback code doesn't actually handle concurrent attempts to  
+>>> probe
+>>> the callback channel.  Some rethinking of the locking may be  
+>>> required.
+>>> However, we can also just move the callback probing to this case.
+>>> Since
+>>> this is the only time a client is "confirmed" (and since that can  
+>>> only
+>>> happen once in the lifetime of a client), this ensures we only probe
+>>> once.
 >>
->> I'm no Kconfig guru... but wouldn't this be better expressed as a
->> "depends" clause?
+>> Applying 001/100 without applying 002/100 will probably break
+>> bisectability.
 >
-> No idea.  "Not a Kconfig guru" would be a vast understatement in my
-> case.
->
->> i.e. CONFIG_NFSD_V4 and SUNRPC_GSS should depend on PROC_FS --
->> otherwise, someone might deselect PROC_FS, then select NFSV4 or  
->> GSS, and
->> get a surprise.
->
-> The drawback being that no amount of searching through the menus will
-> then help you figure out where the NFSv4 and GSS options have gone to,
-> right?
+> You lost me here.  Why?  I'm probably just missing something obvious.
 
-Just looking in fs/Kconfig will give you some idea.  But what would  
-be more helpful would be a statement in the help for CONFIG_NFS that  
-procfs is required to support NFSv4 or GSS.
 
-> I don't care either way, but I'm inclined to leave this as is until
-> someone comes along with really clear and convincing criteria for when
-> to choose select and when to choose depends.
-
-If NFSv4 or GSS *require* procfs to work, then "depends" is the right  
-choice.
-
-As the patch stands, selecting NFSv4 will also select PROC_FS, but  
-you can go back and deselect PROC_FS later; and you're back in the  
-same boat you were in before this patch.
+Because, even though the kernel compiles with just 001, it doesn't  
+work properly.  In fact, it may even Oops, if I read 002 right, since  
+no RPC client is available to do the probe?
 
 --
 Chuck Lever
