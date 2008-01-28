@@ -1,83 +1,167 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 015/100] nfsd: Fix handling of negative lengths in read_buf()
-Date: Mon, 28 Jan 2008 13:00:47 -0500
-Message-ID: <346EF0C5-EFD6-4187-BA51-1946142920AB@oracle.com>
+Subject: Re: [PATCH 018/100] nfsd: fail module init on reply cache init failure
+Date: Mon, 28 Jan 2008 13:03:23 -0500
+Message-ID: <D938EB81-E5CD-40D4-B302-738F561CF7BE@oracle.com>
 References: <20080125231521.GG25141@fieldses.org> <1201303040-7779-1-git-send-email-bfields@citi.umich.edu> <1201303040-7779-2-git-send-email-bfields@citi.umich.edu> <1201303040-7779-3-git-send-email-bfields@citi.umich.edu> <1201303040-7779-4-git-send-email-bfields@citi.umich.edu> <1201303040-7779-5-git-send-email-bfields@citi.umich.edu> <1201303040-7779-6-git-send-email-bfields@citi.umich.edu> <1201303040-7779-7-git-send-email-bfields@citi.umich.edu> <1201303040-7779-8-git-send-email-bfields@citi.umich.edu> <1201303040-7779-9-git-send-email-bfields@citi.umich.edu> <1201303040-7779-10-git-send-email-bfields@citi.umich.edu> <1201303040-7779-11-git-send-email-bfields@citi.umich.edu> <1201303040-7779-12-git-send-email-bfields@citi.umich.edu> <1201303040-7779-13-git-send-email-bfields@citi.umi
- ch.edu> <1201303040-7779-14-git-send-email-bfields@citi.umich.edu> <1201303040-7779-15-git-send-email-bfields@citi.umich.edu>
+ ch.edu> <1201303040-7779-14-git-send-email-bfields@citi.umich.edu> <1201303040-7779-15-git-send-email-bfields@citi.umich.edu> <1201303040-7779-16-git-send-email-bfields@citi.umich.edu> <120!
+ 1303040-7779-17-git-send-email-bfields@citi.umich.edu> <1201303040-7779-18-git-send-email-bfields@citi.umich.edu>
 Mime-Version: 1.0 (Apple Message framework v753)
 Content-Type: text/plain; charset=US-ASCII; delsp=yes; format=flowed
 Cc: linux-nfs@vger.kernel.org
 To: "J. Bruce Fields" <bfields@citi.umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:20314 "EHLO
+Received: from agminet01.oracle.com ([141.146.126.228]:22222 "EHLO
 	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750837AbYA1SBD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Jan 2008 13:01:03 -0500
-In-Reply-To: <1201303040-7779-15-git-send-email-bfields@citi.umich.edu>
+	with ESMTP id S1751675AbYA1SDk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Jan 2008 13:03:40 -0500
+In-Reply-To: <1201303040-7779-18-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 On Jan 25, 2008, at 6:15 PM, J. Bruce Fields wrote:
-> The length "nbytes" passed into read_buf should never be negative, but
-> we check only for too-large values of "nbytes", not for too-small
-> values.  Make nbytes unsigned, so it's clear that the former tests are
-> sufficient.  (Despite this read_buf() currently correctly returns  
-> an xdr
-> error in the case of a negative length, thanks to an unsigned
-> comparison with size_of() and bounds-checking in kmalloc().  This  
-> seems
-> very fragile, though.)
+> If the reply cache initialization fails due to a kmalloc failure,
+> currently we try to soldier on with a reduced (or nonexistant) reply
+> cache.
 >
+> Better to just fail immediately: the failure is then much easier to
+> understand and debug, and it could save us complexity in some later
+> code.  (But actually, it doesn't help currently because the cache is
+> also turned off in some odd failure cases; we should probably find a
+> better way to handle those failure cases some day.)
+>
+> Fix some minor style problems while we're at it, and rename
+> nfsd_cache_init() to remove the need for a comment describing it.
+>
+> Acked-by: NeilBrown <neilb@suse.de>
 > Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 > ---
->  fs/nfsd/nfs4xdr.c |    7 ++++++-
->  1 files changed, 6 insertions(+), 1 deletions(-)
+>  fs/nfsd/nfscache.c         |   28 +++++++++++++---------------
+>  fs/nfsd/nfsctl.c           |   11 +++++++----
+>  include/linux/nfsd/cache.h |    4 ++--
+>  3 files changed, 22 insertions(+), 21 deletions(-)
 >
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index 5733394..25c7ae2 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -148,7 +148,7 @@ xdr_error:					\
->  	}					\
->  } while (0)
+> diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
+> index 578f2c9..92cb5ae 100644
+> --- a/fs/nfsd/nfscache.c
+> +++ b/fs/nfsd/nfscache.c
+> @@ -44,17 +44,18 @@ static int	nfsd_cache_append(struct svc_rqst  
+> *rqstp, struct kvec *vec);
+>   */
+>  static DEFINE_SPINLOCK(cache_lock);
 >
-> -static __be32 *read_buf(struct nfsd4_compoundargs *argp, int nbytes)
-> +static __be32 *read_buf(struct nfsd4_compoundargs *argp, u32 nbytes)
+> -void
+> -nfsd_cache_init(void)
+> +int
+> +nfsd_reply_cache_init(void)
+
+I'm surprised this got by the style police.
+
 >  {
->  	/* We want more bytes than seem to be available.
->  	 * Maybe we need a new page, maybe we have just run out
-
-Changing nbytes to an unsigned introduces a mixed-sign comparison:
-
-         int avail = (char*)argp->end - (char*)argp->p;
-         __be32 *p;
-         if (avail + argp->pagelen < nbytes)  <<<<<<
-
-"avail" and "argp->pagelen" are signed ints.
-
-                 return NULL;
-         if (avail + PAGE_SIZE < nbytes) /* need more than a page !! */
-                 return NULL;
-
-PAGE_SIZE is unsigned long (defined as "1UL << PAGE_SHIFT"), so  
-changing nbytes may have additional unintended consequences.
-
-We need careful review of everywhere argp->pagelen is used throughout  
-this file.  But I think just this simple fix is inadequate.
-
-> @@ -169,6 +169,11 @@ static __be32 *read_buf(struct  
-> nfsd4_compoundargs *argp, int nbytes)
->  			return NULL;
->  		
+>  	struct svc_cacherep	*rp;
+>  	int			i;
+>
+>  	INIT_LIST_HEAD(&lru_head);
+>  	i = CACHESIZE;
+> -	while(i) {
+> +	while (i) {
+>  		rp = kmalloc(sizeof(*rp), GFP_KERNEL);
+> -		if (!rp) break;
+> +		if (!rp)
+> +			goto out_nomem;
+>  		list_add(&rp->c_lru, &lru_head);
+>  		rp->c_state = RC_UNUSED;
+>  		rp->c_type = RC_NOCACHE;
+> @@ -62,23 +63,20 @@ nfsd_cache_init(void)
+>  		i--;
 >  	}
-> +	/*
-> +	 * The following memcpy is safe because read_buf is always
-> +	 * called with nbytes > avail, and the two cases above both
-> +	 * guarantee p points to at least nbytes bytes.
-> +	 */
->  	memcpy(p, argp->p, avail);
->  	/* step to next page */
->  	argp->p = page_address(argp->pagelist[0]);
+>
+> -	if (i)
+> -		printk (KERN_ERR "nfsd: cannot allocate all %d cache entries,  
+> only got %d\n",
+> -			CACHESIZE, CACHESIZE-i);
+> -
+>  	hash_list = kcalloc (HASHSIZE, sizeof(struct hlist_head),  
+> GFP_KERNEL);
+> -	if (!hash_list) {
+> -		nfsd_cache_shutdown();
+> -		printk (KERN_ERR "nfsd: cannot allocate %Zd bytes for hash list\n",
+> -			HASHSIZE * sizeof(struct hlist_head));
+> -		return;
+> -	}
+> +	if (!hash_list)
+> +		goto out_nomem;
+>
+>  	cache_disabled = 0;
+> +	return 0;
+> +out_nomem:
+> +	printk(KERN_ERR "nfsd: failed to allocate reply cache\n");
+> +	nfsd_reply_cache_shutdown();
+> +	return -ENOMEM;
+>  }
+>
+>  void
+> -nfsd_cache_shutdown(void)
+> +nfsd_reply_cache_shutdown(void)
+
+Likewise.
+
+>  {
+>  	struct svc_cacherep	*rp;
+>
+> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+> index ecf3779..2bfda9b 100644
+> --- a/fs/nfsd/nfsctl.c
+> +++ b/fs/nfsd/nfsctl.c
+> @@ -683,7 +683,9 @@ static int __init init_nfsd(void)
+>  	if (retval)
+>  		return retval;
+>  	nfsd_stat_init();	/* Statistics */
+> -	nfsd_cache_init();	/* RPC reply cache */
+> +	retval = nfsd_reply_cache_init();
+> +	if (retval)
+> +		goto out_free_stat;
+>  	nfsd_export_init();	/* Exports table */
+>  	nfsd_lockd_init();	/* lockd->nfsd callbacks */
+>  	nfsd_idmap_init();      /* Name to ID mapping */
+> @@ -700,11 +702,12 @@ static int __init init_nfsd(void)
+>  out_free_all:
+>  	nfsd_idmap_shutdown();
+>  	nfsd_export_shutdown();
+> -	nfsd_cache_shutdown();
+> +	nfsd_reply_cache_shutdown();
+>  	remove_proc_entry("fs/nfs/exports", NULL);
+>  	remove_proc_entry("fs/nfs", NULL);
+> -	nfsd_stat_shutdown();
+>  	nfsd_lockd_shutdown();
+> +out_free_stat:
+> +	nfsd_stat_shutdown();
+>  	nfsd4_free_slabs();
+>  	return retval;
+>  }
+> @@ -712,7 +715,7 @@ out_free_all:
+>  static void __exit exit_nfsd(void)
+>  {
+>  	nfsd_export_shutdown();
+> -	nfsd_cache_shutdown();
+> +	nfsd_reply_cache_shutdown();
+>  	remove_proc_entry("fs/nfs/exports", NULL);
+>  	remove_proc_entry("fs/nfs", NULL);
+>  	nfsd_stat_shutdown();
+> diff --git a/include/linux/nfsd/cache.h b/include/linux/nfsd/cache.h
+> index 007480c..7b5d784 100644
+> --- a/include/linux/nfsd/cache.h
+> +++ b/include/linux/nfsd/cache.h
+> @@ -72,8 +72,8 @@ enum {
+>   */
+>  #define RC_DELAY		(HZ/5)
+>
+> -void	nfsd_cache_init(void);
+> -void	nfsd_cache_shutdown(void);
+> +int	nfsd_reply_cache_init(void);
+> +void	nfsd_reply_cache_shutdown(void);
+>  int	nfsd_cache_lookup(struct svc_rqst *, int);
+>  void	nfsd_cache_update(struct svc_rqst *, int, __be32 *);
+>
 > -- 
 > 1.5.4.rc2.60.gb2e62
 >
