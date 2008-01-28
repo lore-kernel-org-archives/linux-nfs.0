@@ -1,68 +1,109 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 001/100] nfsd4: probe callback channel only once
-Date: Mon, 28 Jan 2008 16:39:55 -0500
-Message-ID: <20080128213955.GN16785@fieldses.org>
-References: <20080125231521.GG25141@fieldses.org> <1201303040-7779-1-git-send-email-bfields@citi.umich.edu> <68314FDD-D9D1-4DAA-9BC1-423612F05907@oracle.com> <20080128184807.GE16785@fieldses.org> <BF917C75-075F-4C6E-AE55-A9DF0D781862@oracle.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 015/100] nfsd: Fix handling of negative lengths in read_buf()
+Date: Mon, 28 Jan 2008 16:46:06 -0500
+Message-ID: <F228287C-EE5C-4274-9DBE-35F87D7DE030@oracle.com>
+References: <1201303040-7779-7-git-send-email-bfields@citi.umich.edu> <1201303040-7779-8-git-send-email-bfields@citi.umich.edu> <1201303040-7779-9-git-send-email-bfields@citi.umich.edu> <1201303040-7779-10-git-send-email-bfields@citi.umich.edu> <1201303040-7779-11-git-send-email-bfields@citi.umich.edu> <1201303040-7779-12-git-send-email-bfields@citi.umich.edu> <1201303040-7779-13-git-send-email-bfields@citi.umich.edu> <1201303040-7779-14-git-send-email-bfields@citi.umich.edu> <1201303040-7779-15-git-send-email-bfields@citi.umich.edu> <346EF0C5-EFD6-4187-BA51-1946142920AB@oracle.com> <20080128201507.GG16785@fieldses.org>
+Mime-Version: 1.0 (Apple Message framework v753)
+Content-Type: text/plain; charset=US-ASCII; delsp=yes; format=flowed
 Cc: linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:51298 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751981AbYA1Vj5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 28 Jan 2008 16:39:57 -0500
-In-Reply-To: <BF917C75-075F-4C6E-AE55-A9DF0D781862@oracle.com>
+Received: from agminet01.oracle.com ([141.146.126.228]:14616 "EHLO
+	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757313AbYA1Vqf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Jan 2008 16:46:35 -0500
+In-Reply-To: <20080128201507.GG16785@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jan 28, 2008 at 04:14:47PM -0500, Chuck Lever wrote:
-> Hi Bruce-
->
-> On Jan 28, 2008, at 1:48 PM, J. Bruce Fields wrote:
->> On Mon, Jan 28, 2008 at 12:35:48PM -0500, Chuck Lever wrote:
->>> On Jan 25, 2008, at 6:15 PM, J. Bruce Fields wrote:
->>>> Our callback code doesn't actually handle concurrent attempts to  
->>>> probe
->>>> the callback channel.  Some rethinking of the locking may be  
->>>> required.
->>>> However, we can also just move the callback probing to this case.
->>>> Since
->>>> this is the only time a client is "confirmed" (and since that can  
->>>> only
->>>> happen once in the lifetime of a client), this ensures we only probe
->>>> once.
+Hi Bruce-
+
+On Jan 28, 2008, at 3:15 PM, J. Bruce Fields wrote:
+> On Mon, Jan 28, 2008 at 01:00:47PM -0500, Chuck Lever wrote:
+>> On Jan 25, 2008, at 6:15 PM, J. Bruce Fields wrote:
+>>> The length "nbytes" passed into read_buf should never be  
+>>> negative, but
+>>> we check only for too-large values of "nbytes", not for too-small
+>>> values.  Make nbytes unsigned, so it's clear that the former  
+>>> tests are
+>>> sufficient.  (Despite this read_buf() currently correctly returns an
+>>> xdr
+>>> error in the case of a negative length, thanks to an unsigned
+>>> comparison with size_of() and bounds-checking in kmalloc().  This
+>>> seems
+>>> very fragile, though.)
 >>>
->>> Applying 001/100 without applying 002/100 will probably break
->>> bisectability.
+>>> Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+>>> ---
+>>>  fs/nfsd/nfs4xdr.c |    7 ++++++-
+>>>  1 files changed, 6 insertions(+), 1 deletions(-)
+>>>
+>>> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+>>> index 5733394..25c7ae2 100644
+>>> --- a/fs/nfsd/nfs4xdr.c
+>>> +++ b/fs/nfsd/nfs4xdr.c
+>>> @@ -148,7 +148,7 @@ xdr_error:					\
+>>>  	}					\
+>>>  } while (0)
+>>>
+>>> -static __be32 *read_buf(struct nfsd4_compoundargs *argp, int  
+>>> nbytes)
+>>> +static __be32 *read_buf(struct nfsd4_compoundargs *argp, u32  
+>>> nbytes)
+>>>  {
+>>>  	/* We want more bytes than seem to be available.
+>>>  	 * Maybe we need a new page, maybe we have just run out
 >>
->> You lost me here.  Why?  I'm probably just missing something obvious.
+>> Changing nbytes to an unsigned introduces a mixed-sign comparison:
+>>
+>>         int avail = (char*)argp->end - (char*)argp->p;
+>>         __be32 *p;
+>>         if (avail + argp->pagelen < nbytes)  <<<<<<
+>>
+>> "avail" and "argp->pagelen" are signed ints.
 >
+> OK.  Is the result incorrect?
+
+Whether it is or it isn't, I'm not comfortable with introducing a  
+mixed-sign comparison for no reason.  It's not a correctness issue,  
+it's a maintainability issue.
+
+> (Any objections to just making "avail" unsigned?)
+
+If we can guarantee that argp->end is always larger than argp->p...  
+then there's no need for "avail" to be a signed int.  However:
+
+>>                 return NULL;
+>>         if (avail + PAGE_SIZE < nbytes) /* need more than a  
+>> page !! */
+>>                 return NULL;
+>>
+>> PAGE_SIZE is unsigned long (defined as "1UL << PAGE_SHIFT"), so  
+>> changing
+>> nbytes may have additional unintended consequences.
+
+...and since that wasn't noticed or addressed by this patch, it  
+suggests that there may be other issues that the patch author didn't  
+address and that reviewers didn't catch.
+
+>> We need careful review of everywhere argp->pagelen is used throughout
+>> this file.  But I think just this simple fix is inadequate.
 >
-> Because, even though the kernel compiles with just 001, it doesn't work 
-> properly.
+> Sure, such a review would be welcomed.
+>
+> The patch still seems an obvious improvement to me (and you don't seem
+> to be arguing the contrary?) so I'm inclined to apply it pending that
+> further work.
 
-Why not?  Treat me like a tired person here ('cause that would be
-accurate) and break it down really carefully....
+I agree that nbytes should be unsigned, but I'm arguing that you will  
+need more than just changing nbytes to a u32 to produce a truly clean  
+fix; therefore, I'm suggesting you should hold off on this until we  
+have a complete fix that is a result of a thorough review of that code.
 
-> In fact, it may even Oops, if I read 002 right, since no RPC 
-> client is available to do the probe?
+My experience with the NFSv4 XDR routines is that there are scores of  
+these little nuisances waiting to bite us (and a brief review of how  
+argp->pagelen is used in nfs4xdr.c vindicates this experience).
 
-An rpc client is created in nfsd4_probe_callback():
-
-        /* Create RPC client */
-        cb->cb_client = rpc_create(&args);
-        if (IS_ERR(cb->cb_client)) {
-                dprintk("NFSD: couldn't create callback client\n");
-                goto out_err;
-        }
-
-        /* the task holds a reference to the nfs4_client struct */
-        atomic_inc(&clp->cl_count);
-
-        t = kthread_run(do_probe_callback, clp, "nfs4_cb_probe");
-
-All #2 does is move that rpc_create() into the do_probe_callback() called in
-the new thread.
-
---b.
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
