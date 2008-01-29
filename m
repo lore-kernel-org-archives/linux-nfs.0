@@ -1,115 +1,310 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH 2/2] NLM: break out of nlmsvc_retry_blocked if lockd is
- coming down
-Date: Mon, 28 Jan 2008 21:29:42 -0500
-Message-ID: <20080128212942.77035005@tupile.poochiereds.net>
-References: <1201548551-23592-1-git-send-email-jlayton@redhat.com>
-	<1201548551-23592-2-git-send-email-jlayton@redhat.com>
-	<1201548551-23592-3-git-send-email-jlayton@redhat.com>
-	<20080129000517.GY16785@fieldses.org>
-	<20080128201210.376097e6@tleilax.poochiereds.net>
-	<20080129012351.GE16785@fieldses.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 2/3] NLM per-ip grace period - core
+Date: Mon, 28 Jan 2008 21:56:56 -0500
+Message-ID: <20080129025656.GH16785@fieldses.org>
+References: <479970EA.2060900@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: neilb@suse.de, linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: NFS list <linux-nfs@vger.kernel.org>, cluster-devel@redhat.com
+To: Wendy Cheng <wcheng@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:40852 "EHLO mx1.redhat.com"
+Received: from mail.fieldses.org ([66.93.2.214]:55183 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753229AbYA2Cat (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 28 Jan 2008 21:30:49 -0500
-In-Reply-To: <20080129012351.GE16785@fieldses.org>
+	id S1752410AbYA2C46 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 28 Jan 2008 21:56:58 -0500
+In-Reply-To: <479970EA.2060900@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 28 Jan 2008 20:23:51 -0500
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+On Fri, Jan 25, 2008 at 12:17:30AM -0500, Wendy Cheng wrote:
+> The logic is implemented on top of linux nfsd procfs with core functions  
+> residing in lockd kernel module. Entry function is nlmsvc_resume_ip()  
+> where it stores the requested ip interface into a linked-list  
+> nlm_failover_list. The list entry count is nlm_failover_cnt and access  
+> protection is done by nlm_failover_mutex. Entry in nlm_failover_ip_list  
+> is a "nlm_failover_struct", defined in: include/linux/lockd/lockd.h.
+>
+> The list is kept in descending order (newer entry first) based on  
+> g_expire jiffies. For per ip grace period checking, the search goes thru  
+> the list. As soon as one match ip is found, the search stops. This  
+> implies older entries will not be used and always expire before new  
+> entry. This is to allow multiple entries (for the same ip) to be added  
+> into the list. The maximum size of the list entries is NLM_FO_MAX_GP_CNT  
+> (1024).
+>
+> -- Wendy
 
-> On Mon, Jan 28, 2008 at 08:12:10PM -0500, Jeff Layton wrote:
-> > On Mon, 28 Jan 2008 19:05:17 -0500
-> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > 
-> > > On Mon, Jan 28, 2008 at 02:29:11PM -0500, Jeff Layton wrote:
-> > > > It's possible to end up continually looping in
-> > > > nlmsvc_retry_blocked() even when the lockd kthread has been
-> > > > requested to come down. I've been able to reproduce this fairly
-> > > > easily by having an RPC grant callback queued up to an RPC client
-> > > > that's not bound. If the other host is unresponsive, then the block
-> > > > never gets taken off the list, and lockd continually respawns new
-> > > > RPC's.
-> > > > 
-> > > > If lockd is going down anyway, we don't want to keep retrying the
-> > > > blocks, so allow it to break out of this loop. Additionally, in that
-> > > > situation kthread_stop will have already woken lockd, so when
-> > > > nlmsvc_retry_blocked returns, have lockd check for kthread_stop() so
-> > > > that it doesn't end up calling svc_recv and waiting for a long time.
-> > > 
-> > > Stupid question: how is this different from the kthread_stop() coming
-> > > just after this kthread_should_stop() call but before we call
-> > > svc_recv()?  What keeps us from waiting in svc_recv() indefinitely
-> > > after kthread_stop()?
-> > > 
-> > 
-> > Nothing at all, unfortunately :-(
-> > 
-> > Since we've taken signalling out of the lockd_down codepath, this gets
-> > a lot trickier than it used to be. I'm starting to wonder if we should
-> > go back to sending a signal on lockd_down.
+> The logic is implemented on top of linux nfsd procfs with core functions
+> residing in lockd kernel module. Entry function is nlmsvc_resume_ip() where
+> it stores the requested ip interface into a linked-list nlm_failover_list.
+> The list entry count is nlm_failover_cnt and access protection is done by
+> nlm_failover_mutex. Entry in nlm_failover_ip_list is a "nlm_failover_struct", 
+> defined in: include/linux/lockd/lockd.h.
 > 
-> OK, thanks.  So do I keep these patches, or not?  This sounds like a
-> regression (if perhaps a very minor one--I'm not quite clear).  Help!
+> The list is kept in descending order (newer entry first) based on g_expire
+> jiffies. For per ip grace period checking, the search goes thru the list.
+> As soon as one match ip is found, the search stops. This implies older
+> entries will not be used and always expire before new entry. This is to allow 
+> multiple entries (for the same ip) to be added into the list. The maximum size 
+> of the list entries is NLM_FO_MAX_GP_CNT (1024).
 > 
+> Signed-off-by: S. Wendy Cheng <wcheng@redhat.com>
+> Signed-off-by: Lon Hohberger  <lhh@redhat.com>
+> 
+>  fs/lockd/svc.c              |    4 +
+>  fs/lockd/svcsubs.c          |  159 +++++++++++++++++++++++++++++++++++++++++++-
+>  include/linux/lockd/lockd.h |   14 +++
+>  3 files changed, 174 insertions(+), 3 deletions(-)
+> 
+> --- linux-2/include/linux/lockd/lockd.h	2008-01-24 17:07:21.000000000 -0500
+> +++ linux-3/include/linux/lockd/lockd.h	2008-01-24 17:09:26.000000000 -0500
+> @@ -221,6 +221,20 @@ void		  nlmsvc_invalidate_all(void);
+>  int           nlmsvc_failover_path(struct nameidata *nd);
+>  int           nlmsvc_failover_ip(__be32 server_addr);
+>  int           nlmsvc_failover_setgrace(void *server_ip, int ip_size);
+> +void          nlmsvc_failover_reset(void);
+> +
+> +#define NLM_FO_MAX_GP_CNT	1024
+> +
+> +struct nlm_failover_struct {
+> +	struct list_head	g_list;		/* linked list */
+> +	unsigned long		g_expire;	/* grace period expire */
+> +	int			g_size;		/* g_key type: ipv4 or ipv6 */
+> +	union {
+> +		__be32		ipv4;		/* ip v4 address */
+> +		__be32		ipv6[4];	/* ip v6 address */
+> +	} g_key;
+> +#define g_ip			g_key.ipv6
+> +};
 
-Well, if we reintroduce signalling in lockd_down then this particular
-problem goes away. It may be reasonable to add that back into the mix
-for now.
+Only the second member of that union is every used; could we just get
+rid of the union?
 
-As to the more general question of whether to keep these patches...
+Also, is that the right choice of types?  Maybe we should just use
+struct in6_addr?
 
-Most of them are pretty innocuous, but the patch to convert to kthread
-API is the biggest change. 2.6.25 might be a bit aggressive for that. It
-wouldn't hurt to let the conversion to kthread API brew until 2.6.26.
+>  static __inline__ struct inode *
+>  nlmsvc_file_inode(struct nlm_file *file)
+> --- linux-2/fs/lockd/svc.c	2008-01-22 11:44:48.000000000 -0500
+> +++ linux-3/fs/lockd/svc.c	2008-01-24 17:30:55.000000000 -0500
+> @@ -145,6 +145,7 @@ lockd(struct svc_rqst *rqstp)
+>  	nlmsvc_timeout = nlm_timeout * HZ;
+>  
+>  	grace_period_expire = set_grace_period();
+> +	nlmsvc_failover_reset();
+>  
+>  	/*
+>  	 * The main request loop. We don't terminate until the last
+> @@ -160,6 +161,7 @@ lockd(struct svc_rqst *rqstp)
+>  			if (nlmsvc_ops) {
+>  				nlmsvc_invalidate_all();
+>  				grace_period_expire = set_grace_period();
+> +				nlmsvc_failover_reset();
 
-lockd still does have a use after free problem though, so patch 1/2
-here might be worth considering even without changing things over to
-kthreads. I've not tested it on a kernel without the kthread patches,
-however. I can do that if you think that's the right approach.
+If all callers of set_grace_period() are also calling
+nlmsvc_failover_reset(), then may as well just add the
+nlmsvc_failover_reset() to set_grace_period() itself.
 
-> > 
-> > > > This patch prevents this continual looping and allows lockd to
-> > > > eventually come down, but this can quite some time since lockd
-> > > > won't check the condition in the nlmsvc_retry_blocked while loop
-> > > > until nlmsvc_grant_blocked returns. That won't happen until
-> > > > all of the portmap requests time out.
-> > > 
-> > > So, shutdown problems aside, does that mean an unresponsive client can
-> > > cause lock to stop serving lock requests in normal operation?
-> > > 
-> > 
-> > Possibly.
-> > 
-> > I think that in general what happens is that blocks eventually get
-> > reinserted into the list with an expire time that is well after the
-> > current jiffies and we eventually hit this condition:
-> > 
-> >                 if (time_after(block->b_when,jiffies)) {
-> >                         timeout = block->b_when - jiffies;
-> >                         break;
-> >                 }
-> > 
-> > ...but I was seeing lockd loop in this loop over several iterations
-> > without returning back up to the main lockd loop. I think what was
-> > happening was that we were inserting the block with a later jiffies in
-> > nlmsvc_grant_blocked, but the rpcbind attempts would end up taking
-> > longer than that timeout. So when we returned from
-> > nlmsvc_grant_blocked() that condition would no longer fire, and we'd end up retrying the grant callback again.
-> > 
-> > As to why we don't see this more often, I'm not sure. I probably need
-> > to experiment a bit more with it to make sure I'm understanding this
-> > correctly.
-> > 
-> > Let me do that and get back to you...
+>  			}
+>  		}
+>  
+> @@ -209,6 +211,8 @@ lockd(struct svc_rqst *rqstp)
+>  	} else
+>  		printk(KERN_DEBUG
+>  			"lockd: new process, skipping host shutdown\n");
+> +
+> +	nlmsvc_failover_reset();
+>  	wake_up(&lockd_exit);
+>  
+>  	/* Exit the RPC thread */
+> --- linux-2/fs/lockd/svcsubs.c	2008-01-22 11:45:44.000000000 -0500
+> +++ linux-3/fs/lockd/svcsubs.c	2008-01-24 17:35:30.000000000 -0500
+> @@ -23,7 +23,6 @@
+>  
+>  #define NLMDBG_FACILITY		NLMDBG_SVCSUBS
+>  
+> -
+>  /*
+>   * Global file hash table
+>   */
+> @@ -423,11 +422,165 @@ nlmsvc_failover_ip(__be32 server_addr)
+>  }
+>  EXPORT_SYMBOL_GPL(nlmsvc_failover_ip);
+>  
+> +static DEFINE_MUTEX(nlm_failover_mutex);
 
+It looks like none of the critical sections protected by this mutex
+actually sleep (unless I'm missing one), so we could make this a
+spinlock.
 
--- 
-Jeff Layton <jlayton@redhat.com>
+> +int nlm_failover_cnt;
+> +LIST_HEAD(nlm_failover_list);
+> +
+> +/* garbage collection */
+> +static inline
+> +int __fo_check_expire(struct nlm_failover_struct *e_this, struct list_head *p)
+> +{
+> +	if (time_before(e_this->g_expire, jiffies)) {
+> +		dprintk("lockd: ip=%u.%u.%u.%u grace period expires\n",
+> +			NIPQUAD(*e_this->g_ip));
+> +		list_del(p);
+> +		nlm_failover_cnt--;
+> +		kfree(e_this);
+> +		return 1;
+> +	}
+> +	return 0;
+> +}
+> +
+> +/*
+> + * Add grace period setting into global nlm_failover_struct_list where it
+> + * stores the server ip interfaces that should be in grace period.
+> + *
+> + * It is different from (but not conflict with) system-wide lockd grace
+> + * period when lockd is first initialized (see nlmsvc_check_grace_period
+> + * for details).
+> + *
+> + * The list is searched with top-down order (newer entry first). As soon
+> + * as one is found, the search stops. This implies older entries will not
+> + * be used and always expire before new entry.
+> + *
+> + * As an admin interface, the list is expected to be short and entries are
+> + * purged (expired) quickly.
+> + */
+> +
+>  int
+>  nlmsvc_failover_setgrace(void *server_ip, int ip_size)
+>  {
+> -	/* implemented by resume_002.patch */
+> -	return ENOSYS;
+> +	struct list_head *p, *tlist;
+> +	struct nlm_failover_struct *per_ip, *entry;
+> +	int done = 0;
+> +	ulong time_expire;
+> +
+> +	/* allocate the entry */
+> +	per_ip = kzalloc(sizeof(struct nlm_failover_struct), GFP_KERNEL);
+> +	if (per_ip == NULL) {
+> +		dprintk("lockd: nlmsvc_fo_setgrace kmalloc fails\n");
+> +		return(-ENOMEM);
+> +	}
+> +
+> +	/* fill in info */
+> +	per_ip->g_size = ip_size;
+> +	memcpy((void *) per_ip->g_ip, (void *) server_ip, ip_size);
+
+Those casts shouldn't be needed.
+
+> +	time_expire = get_nfs_grace_period();
+> +	per_ip->g_expire = time_expire + jiffies;
+> +	dprintk("lockd: fo_setgrace ip=%u.%u.%u.%u, ip_size=%d, expire=%lu\n",
+> +		   NIPQUAD(per_ip->g_ip[0]), ip_size, per_ip->g_expire);
+> +
+> +	/* add to the nlm_failover_list*/
+> +	mutex_lock(&nlm_failover_mutex);
+> +
+> +	/* handle special case */
+> +	if (list_empty(&nlm_failover_list)) {
+> +		list_add(&per_ip->g_list, &nlm_failover_list);
+> +		nlm_failover_cnt = 1;
+> +		done = 1;
+> +		goto nlmsvc_fo_setgrace_out;
+> +	}
+> +
+> +	/* add to list */
+> +	list_for_each_safe(p, tlist, &nlm_failover_list) {
+> +		entry = list_entry(p, struct nlm_failover_struct, g_list);
+> +		if (!done) {
+> +			/* add the new ip into the list */
+> +			if (entry->g_expire <= per_ip->g_expire) {
+> +				list_add(&per_ip->g_list, &entry->g_list);
+> +				nlm_failover_cnt++;
+> +				done = 1;
+> +			}
+> +		} else {
+> +			/* garbage collection:
+> +			 * we really don't care about duplicate keys
+> +			 * since the list is inserted in descending order */
+> +			if (!__fo_check_expire(entry, p))
+> +				goto nlmsvc_fo_setgrace_out;
+> +		}
+> +	}
+> +
+> +	/* unlikely event but check for the limit */
+> +	if (nlm_failover_cnt > NLM_FO_MAX_GP_CNT) {
+> +		list_del(&per_ip->g_list);
+> +		nlm_failover_cnt--;
+> +		kfree(per_ip);
+> +		done = 0;
+> +		dprintk("lockd: error fo_setgrace max cnt reached\n");
+> +	}
+> +
+> +nlmsvc_fo_setgrace_out:
+> +	mutex_unlock(&nlm_failover_mutex);
+> +	if (done)
+> +		dprintk("lockd: nlmsvc_failover_list=%p\n", &nlm_failover_list);
+> +	return 0;
+>  }
+>  EXPORT_SYMBOL_GPL(nlmsvc_failover_setgrace);
+>  
+> +/*
+> + * Reset global nlm_failover_struct list
+> + */
+> +void
+> +nlmsvc_failover_reset(void)
+> +{
+> +	struct nlm_failover_struct *e_purge;
+> +	struct list_head *p, *tlist;
+> +
+> +	mutex_lock(&nlm_failover_mutex);
+> +
+> +	/* nothing to do */
+> +	if (list_empty(&nlm_failover_list)) {
+> +		mutex_unlock(&nlm_failover_mutex);
+> +		return;
+> +	}
+
+We should just let the following loop handle the case of an empty list
+rather than dealing with it as a special case.
+
+> +
+> +	/* purge the entries */
+> +	list_for_each_safe(p, tlist, &nlm_failover_list) {
+> +		e_purge = list_entry(p, struct nlm_failover_struct, g_list);
+> +		list_del(p);
+> +		kfree(e_purge);
+> +	}
+> +	nlm_failover_cnt = 0;
+> +
+> +	mutex_unlock(&nlm_failover_mutex);
+> +}
+> +
+> +/*
+> + * Check whether the ip is in the failover list: nlm_failover_list.
+> + *	- nlm_failover_mutex taken
+> + *	- return TRUE (1) if ip in grace period.
+> + */
+> +int
+> +nlmsvc_failover_check(struct svc_rqst *rqstp)
+> +{
+> +	struct nlm_failover_struct *e_this;
+> +	struct list_head *p, *tlist;
+> +	int rc = 0, done = 0;
+> +	struct in6_addr *addr_u = &rqstp->rq_daddr.addr6;
+> +
+> +	mutex_lock(&nlm_failover_mutex);
+> +
+> +	/* assume rq_daddr structure is zeroed out upon creation */
+> +	list_for_each_safe(p, tlist, &nlm_failover_list) {
+> +		e_this = list_entry(p, struct nlm_failover_struct, g_list);
+> +		if (!__fo_check_expire(e_this, p)) {
+> +			if (!done &&
+> +			    !memcmp((void *) e_this->g_ip, (void *) addr_u,
+> +					e_this->g_size))
+> +			    done = rc = 1;
+> +		}
+> +	}
+> +
+> +	mutex_unlock(&nlm_failover_mutex);
+> +	return rc;
+> +}
+
