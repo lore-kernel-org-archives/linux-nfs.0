@@ -1,71 +1,55 @@
-From: Wendy Cheng <wcheng@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: Re: [PATCH 2/3] NLM per-ip grace period - core
-Date: Tue, 29 Jan 2008 12:10:32 -0500
-Message-ID: <479F5E08.5050807@redhat.com>
-References: <479970EA.2060900@redhat.com> <20080129025656.GH16785@fieldses.org>
-	<514B944F-02FC-4164-BFDA-209361F4BD25@oracle.com>
+Date: Tue, 29 Jan 2008 12:21:01 -0500
+Message-ID: <20080129172101.GA28032@fieldses.org>
+References: <479970EA.2060900@redhat.com> <20080129025656.GH16785@fieldses.org> <514B944F-02FC-4164-BFDA-209361F4BD25@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII; format=flowed
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	cluster-devel@redhat.com, NFS list <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Wendy Cheng <wcheng@redhat.com>,
+	NFS list <linux-nfs@vger.kernel.org>, cluster-devel@redhat.com
 To: Chuck Lever <chuck.lever@oracle.com>
-Return-path: <cluster-devel-bounces@redhat.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail.fieldses.org ([66.93.2.214]:60235 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754062AbYA2RVE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 29 Jan 2008 12:21:04 -0500
 In-Reply-To: <514B944F-02FC-4164-BFDA-209361F4BD25@oracle.com>
-List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
-List-Archive: <https://www.redhat.com/archives/cluster-devel>
-List-Post: <mailto:cluster-devel@redhat.com>
-List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
-List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
-Sender: cluster-devel-bounces@redhat.com
-Errors-To: cluster-devel-bounces@redhat.com
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Chuck Lever wrote:
+On Tue, Jan 29, 2008 at 11:33:08AM -0500, Chuck Lever wrote:
 > On Jan 28, 2008, at 9:56 PM, J. Bruce Fields wrote:
->> On Fri, Jan 25, 2008 at 12:17:30AM -0500, Wendy Cheng wrote:
->>
->>> The logic is implemented on top of linux nfsd procfs with core 
->>> functions
->>> residing in lockd kernel module. Entry function is 
->>> nlmsvc_resume_ip() where
->>> it stores the requested ip interface into a linked-list 
->>> nlm_failover_list.
->>> The list entry count is nlm_failover_cnt and access protection is 
->>> done by
->>> nlm_failover_mutex. Entry in nlm_failover_ip_list is a 
->>> "nlm_failover_struct",
->>> defined in: include/linux/lockd/lockd.h.
->>>
->>>
->>> +struct nlm_failover_struct {
->>> + struct list_head g_list; /* linked list */
->>> + unsigned long g_expire; /* grace period expire */
->>> + int g_size; /* g_key type: ipv4 or ipv6 */
->>> + union {
->>> + __be32 ipv4; /* ip v4 address */
->>> + __be32 ipv6[4]; /* ip v6 address */
->>> + } g_key;
->>> +#define g_ip g_key.ipv6
->>> +};
->>
->> Only the second member of that union is every used; could we just get
->> rid of the union?
->>
->> Also, is that the right choice of types? Maybe we should just use
+>> Also, is that the right choice of types?  Maybe we should just use
 >> struct in6_addr?
 >
-> I agree with Bruce -- just use in_addr, and leave out the unused IPv6 
+> I agree with Bruce -- just use in_addr, and leave out the unused IPv6  
 > stuff for now.
 >
-> In some places, we just replace in_addr with in6_addr and simply map 
+> In some places, we just replace in_addr with in6_addr and simply map  
 > IPv4 to IPv6 addresses, rather than setting up a union.
 >
-> If the address is used as a hash and never displayed, using a mapped 
+> If the address is used as a hash and never displayed, using a mapped  
 > IPv4 address is sufficient, and keeps things simple.
+>
+>> +
+>>  int
+>>  nlmsvc_failover_setgrace(void *server_ip, int ip_size)
+>
+> Should this be
+>
+>   int nlmsvc_failover_setgrace(const struct in_addr *server_ip)
+>
+> for now, and later we can change it to use in6_addr instead?
 
-ok, I have been yo-yoing about whether doing IPv6 support. This sounds 
-like a good plan. Will do.
+I could go either way, If it'd be just as easy to use in6_addr's
+internally everywhere from the start, that'd be great, and then it'll be
+easy enough to tack the ipv6 parsing onto the interfaces later.
 
--- Wendy
+But I'd leave that to Wendy's judgement for now--I think it's reasonable
+to keep it ipv4 only for now if that keeps the initial implementation
+simpler.
+
+(Just drop the union and use in_addr or in6_addr as opposed to the
+home-grown types.)
+
+--b.
