@@ -1,95 +1,117 @@
-From: Jens Axboe <jens.axboe@oracle.com>
-Subject: Re: atimes not updated over NFS
-Date: Tue, 29 Jan 2008 09:34:02 +0100
-Message-ID: <20080129083402.GN15220@kernel.dk>
-References: <20080114083435.GA24215@janus> <1200325393.7470.6.camel@heimdal.trondhjem.org> <20080114175122.GB2768@janus> <20080121190638.GL17468@fieldses.org> <1200943865.25562.56.camel@heimdal.trondhjem.org> <20080121210230.GA22046@janus> <20080121210925.GQ17468@fieldses.org> <20080122171717.GD24697@fieldses.org> <20080129025940.GI16785@fieldses.org> <20080129041411.GC1190@fieldses.org>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH 2/2] NLM: break out of nlmsvc_retry_blocked if lockd is
+ coming down
+Date: Tue, 29 Jan 2008 06:23:12 -0500
+Message-ID: <20080129062312.33ba5a54@tleilax.poochiereds.net>
+References: <1201548551-23592-1-git-send-email-jlayton@redhat.com>
+	<1201548551-23592-2-git-send-email-jlayton@redhat.com>
+	<1201548551-23592-3-git-send-email-jlayton@redhat.com>
+	<20080129000517.GY16785@fieldses.org>
+	<20080128201210.376097e6@tleilax.poochiereds.net>
+	<20080129012351.GE16785@fieldses.org>
+	<20080128212942.77035005@tupile.poochiereds.net>
+	<20080129030249.GJ16785@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Frank van Maarseveen <frankvm@frankvm.com>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Andre Majorel <aym-xunil-Bi/FLWfhfolQFI55V6+gNQ@public.gmane.org>, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII
+Cc: neilb@suse.de, linux-nfs@vger.kernel.org
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from brick.kernel.dk ([87.55.233.238]:11667 "EHLO kernel.dk"
+Received: from mx1.redhat.com ([66.187.233.31]:58037 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752296AbYA2IeF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 Jan 2008 03:34:05 -0500
-In-Reply-To: <20080129041411.GC1190@fieldses.org>
+	id S1754258AbYA2LXS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 29 Jan 2008 06:23:18 -0500
+In-Reply-To: <20080129030249.GJ16785@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jan 28 2008, J. Bruce Fields wrote:
-> On Mon, Jan 28, 2008 at 09:59:40PM -0500, bfields wrote:
-> > On Tue, Jan 22, 2008 at 12:17:17PM -0500, bfields wrote:
-> > > On Mon, Jan 21, 2008 at 04:09:25PM -0500, bfields wrote:
-> > > > On Mon, Jan 21, 2008 at 10:02:30PM +0100, Frank van Maarseveen wrote:
-> > > > > 2.6.22.10:
-> > > > > 	t
-> > > > > 	t + 2
-> > > > > 	t + 2
-> > > > > 
-> > > > > (same behavior)
-> > > > > 
-> > > > > 2.6.23.12:
-> > > > > 	t
-> > > > > 	t
-> > > > > 	t
-> > > > > 
-> > > > > definately not good. "cat" on the server updates atime again.
-> > > > 
-> > > > Yes, that looks like a server bug, and this:...
-> > > > 
-> > > > > 
-> > > > > 
-> > > > > Trying a different combination of kernels:
-> > > > > 
-> > > > > server 2.6.23.12, client 2.6.22.10:
-> > > > > 	t
-> > > > > 	t
-> > > > > 	t
-> > > > > 
-> > > > > server 2.6.22.10, client 2.6.23.12:
-> > > > > 	t
-> > > > > 	t + 2
-> > > > > 	t + 2
-> > > > 
-> > > > ...confirms that since the results appear to depend only on the server
-> > > > version, not on the client version.
-> > > 
-> > > And I can confirm this here on 2.6.24-rc8 (+ a few patches).
-> > > Unfortunately, I don't have any suggestion better right now than
-> > > bisecting....
+On Mon, 28 Jan 2008 22:02:49 -0500
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
+
+> On Mon, Jan 28, 2008 at 09:29:42PM -0500, Jeff Layton wrote:
+> > On Mon, 28 Jan 2008 20:23:51 -0500
+> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
 > > 
-> > It looks like this happened in the switch from sendfile to sparse.
-> 							     ^^^^^^
-> 							err, splice
+> > > On Mon, Jan 28, 2008 at 08:12:10PM -0500, Jeff Layton wrote:
+> > > > On Mon, 28 Jan 2008 19:05:17 -0500
+> > > > "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > > > 
+> > > > > On Mon, Jan 28, 2008 at 02:29:11PM -0500, Jeff Layton wrote:
+> > > > > > It's possible to end up continually looping in
+> > > > > > nlmsvc_retry_blocked() even when the lockd kthread has been
+> > > > > > requested to come down. I've been able to reproduce this
+> > > > > > fairly easily by having an RPC grant callback queued up to
+> > > > > > an RPC client that's not bound. If the other host is
+> > > > > > unresponsive, then the block never gets taken off the list,
+> > > > > > and lockd continually respawns new RPC's.
+> > > > > > 
+> > > > > > If lockd is going down anyway, we don't want to keep
+> > > > > > retrying the blocks, so allow it to break out of this loop.
+> > > > > > Additionally, in that situation kthread_stop will have
+> > > > > > already woken lockd, so when nlmsvc_retry_blocked returns,
+> > > > > > have lockd check for kthread_stop() so that it doesn't end
+> > > > > > up calling svc_recv and waiting for a long time.
+> > > > > 
+> > > > > Stupid question: how is this different from the
+> > > > > kthread_stop() coming just after this kthread_should_stop()
+> > > > > call but before we call svc_recv()?  What keeps us from
+> > > > > waiting in svc_recv() indefinitely after kthread_stop()?
+> > > > > 
+> > > > 
+> > > > Nothing at all, unfortunately :-(
+> > > > 
+> > > > Since we've taken signalling out of the lockd_down codepath,
+> > > > this gets a lot trickier than it used to be. I'm starting to
+> > > > wonder if we should go back to sending a signal on lockd_down.
+> > > 
+> > > OK, thanks.  So do I keep these patches, or not?  This sounds
+> > > like a regression (if perhaps a very minor one--I'm not quite
+> > > clear).  Help!
+> > > 
+> > 
+> > Well, if we reintroduce signalling in lockd_down then this
+> > particular problem goes away. It may be reasonable to add that back
+> > into the mix for now.
+> > 
+> > As to the more general question of whether to keep these patches...
+> > 
+> > Most of them are pretty innocuous, but the patch to convert to
+> > kthread API is the biggest change. 2.6.25 might be a bit aggressive
+> > for that. It wouldn't hurt to let the conversion to kthread API
+> > brew until 2.6.26.
+> > 
+> > lockd still does have a use after free problem though, so patch 1/2
+> > here might be worth considering even without changing things over to
+> > kthreads. I've not tested it on a kernel without the kthread
+> > patches, however. I can do that if you think that's the right
+> > approach.
 > 
-> > Jens, any advice?  What happened was nfsd reads stopped updating the
-> > atime after the following commit.
+> Pfft, I was hoping you'd tell me what to do.
 > 
-> Erm, sorry, wrong commit--it's the following one that touches nfsd,
-> below.
+> But, yes, it sounds like dropping the kthread conversion and sending
+> in that one bugfix is probably wisest.  (But I assume we should keep
+> the first of those three patches, "SUNRPC: spin svc_rqst
+> initialization to its own function".)
+> 
 
-Probably because do_generic_mapping_read() does a file_accessed() on the
-input file. Does this fixup current -git?
+Yes. The first patch fixes a possible NULL pointer dereference so I
+think we want that one here. This patch:
 
-diff --git a/fs/splice.c b/fs/splice.c
-index 56b802b..c212fde 100644
---- a/fs/splice.c
-+++ b/fs/splice.c
-@@ -1090,8 +1090,10 @@ long do_splice_direct(struct file *in, loff_t *ppos, struct file *out,
- 	long ret;
- 
- 	ret = splice_direct_to_actor(in, &sd, direct_splice_actor);
--	if (ret > 0)
-+	if (ret > 0) {
- 		*ppos += ret;
-+		file_accessed(in);
-+	}
- 
- 	return ret;
- }
+    Subject: [PATCH 2/4] SUNRPC: export svc_sock_update_bufs
+
+...should be safe too, though it's not strictly needed until we convert
+lockd to the kthread API.
+
+So at this point we have 2 questions:
+
+1) is there a way to make sure we don't block in svc_recv() without
+resorting to signals and can we reasonably mix signaling +
+kthread_stop? There may be a chicken and egg problem involved here
+though I haven't thought it through yet...
+
+2) can an unresponsive client make lockd loop continuously in
+nlmsvc_retry_blocked() and prevent it from serving new lock requests?
+
+I'll try to get answers to both of these...
 
 -- 
-Jens Axboe
-
+Jeff Layton <jlayton@redhat.com>
