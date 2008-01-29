@@ -1,43 +1,36 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [NFS] nfs2/3 ESTALE bug on mount point (v2.6.24-rc8)
-Date: Mon, 28 Jan 2008 22:48:35 -0500
-Message-ID: <20080129034834.GA1190@fieldses.org>
-References: <20080129010819.GD16785@fieldses.org> <200801290303.m0T33miE028199@agora.fsl.cs.sunysb.edu>
+From: Greg Banks <gnb-pHk1y4uTXVCai2JIS6bsrQ@public.gmane.org>
+Subject: Re: NFS over TCP idle timeout
+Date: Tue, 29 Jan 2008 14:57:31 +1100
+Message-ID: <20080129035731.GA42391370@ocelot.melbourne.sgi.com>
+References: <Pine.GSO.4.55.0801251516550.21@loogie.intranet.csupomona.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nfs@lists.sourceforge.net, linux-nfs@vger.kernel.org,
-	Trond.Myklebust@netapp.com
-To: Erez Zadok <ezk-EX0cT3Az47bauI2f2gSDlQ@public.gmane.org>
+Cc: linux-nfs@vger.kernel.org
+To: "Paul B. Henson" <henson@acm.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:35838 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752322AbYA2Dsj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 28 Jan 2008 22:48:39 -0500
-In-Reply-To: <200801290303.m0T33miE028199-zop+azHP2WsZjdeEBZXbMidm6ipF23ct@public.gmane.org>
+Received: from netops-testserver-3-out.sgi.com ([192.48.171.28]:33266 "EHLO
+	relay.sgi.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752500AbYA2D5r (ORCPT
+	<rfc822;@relay.sgi.com:linux-nfs@vger.kernel.org>);
+	Mon, 28 Jan 2008 22:57:47 -0500
+In-Reply-To: <Pine.GSO.4.55.0801251516550.21-z2goPYwGszwoNljnaZt3ZkHinNCOp9DfhYY8Ac/fI6A@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jan 28, 2008 at 10:03:48PM -0500, Erez Zadok wrote:
-> In message <20080129010819.GD16785@fieldses.org>, "J. Bruce Fields" writes:
-> > On Sun, Jan 27, 2008 at 11:37:59PM -0500, Erez Zadok wrote:
+On Fri, Jan 25, 2008 at 04:41:00PM -0800, Paul B. Henson wrote:
 > 
-> > > You can find both an strace and content files in
-> > > 
-> > > 	http://agora.fsl.cs.sunysb.edu/tmp/nfs/
-> 
-> Sorry.  I guess tar on /proc files doesn't really save the content of the
-> files.
+> Does the Linux server implementation of NFS over TCP implement an idle
+> timeout that automatically disconnects clients after some amount of
+> inactivity?
+>  [...]
+> Should idle connections automatically be closed? Are there any tunables or
+> switches that need to be touched to enable that?
 
-Hm.
+Try applying this
 
-> I cat'ed the content files and alo placed an updated strace in the above
-> URL.  Here's the content files.  In this run, I got an ESTALE on
-> /n/lower/b2:
-> 
->   mkdir: cannot create directory `/n/lower/b2': Stale NFS file handle
+http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git;a=commitdiff;h=7a1fa065a0264f6b3d3003ba5635289f6583c478
 
-OK, thanks.  This looks consistent with the strace I looked at.  So
-utils/mountd/cache.c:nfsd_fh() is occasionally getting the wrong result
-for some reason.
-
---b.
+-- 
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+The cake is *not* a lie.
+I don't speak for SGI.
