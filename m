@@ -1,310 +1,125 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 2/3] NLM per-ip grace period - core
-Date: Mon, 28 Jan 2008 21:56:56 -0500
-Message-ID: <20080129025656.GH16785@fieldses.org>
-References: <479970EA.2060900@redhat.com>
+Subject: Re: atimes not updated over NFS
+Date: Mon, 28 Jan 2008 21:59:40 -0500
+Message-ID: <20080129025940.GI16785@fieldses.org>
+References: <1199920996.7638.3.camel@heimdal.trondhjem.org> <20080109235153.GI9212@aym.net2.nerim.net> <20080114083435.GA24215@janus> <1200325393.7470.6.camel@heimdal.trondhjem.org> <20080114175122.GB2768@janus> <20080121190638.GL17468@fieldses.org> <1200943865.25562.56.camel@heimdal.trondhjem.org> <20080121210230.GA22046@janus> <20080121210925.GQ17468@fieldses.org> <20080122171717.GD24697@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: NFS list <linux-nfs@vger.kernel.org>, cluster-devel@redhat.com
-To: Wendy Cheng <wcheng@redhat.com>
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	Andre Majorel <aym-xunil-Bi/FLWfhfolQFI55V6+gNQ@public.gmane.org>, linux-nfs@vger.kernel.org,
+	Jens Axboe <jens.axboe@oracle.com>
+To: Frank van Maarseveen <frankvm@frankvm.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:55183 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:56715 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752410AbYA2C46 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 28 Jan 2008 21:56:58 -0500
-In-Reply-To: <479970EA.2060900@redhat.com>
+	id S1752801AbYA2C7r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 28 Jan 2008 21:59:47 -0500
+In-Reply-To: <20080122171717.GD24697@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jan 25, 2008 at 12:17:30AM -0500, Wendy Cheng wrote:
-> The logic is implemented on top of linux nfsd procfs with core functions  
-> residing in lockd kernel module. Entry function is nlmsvc_resume_ip()  
-> where it stores the requested ip interface into a linked-list  
-> nlm_failover_list. The list entry count is nlm_failover_cnt and access  
-> protection is done by nlm_failover_mutex. Entry in nlm_failover_ip_list  
-> is a "nlm_failover_struct", defined in: include/linux/lockd/lockd.h.
->
-> The list is kept in descending order (newer entry first) based on  
-> g_expire jiffies. For per ip grace period checking, the search goes thru  
-> the list. As soon as one match ip is found, the search stops. This  
-> implies older entries will not be used and always expire before new  
-> entry. This is to allow multiple entries (for the same ip) to be added  
-> into the list. The maximum size of the list entries is NLM_FO_MAX_GP_CNT  
-> (1024).
->
-> -- Wendy
-
-> The logic is implemented on top of linux nfsd procfs with core functions
-> residing in lockd kernel module. Entry function is nlmsvc_resume_ip() where
-> it stores the requested ip interface into a linked-list nlm_failover_list.
-> The list entry count is nlm_failover_cnt and access protection is done by
-> nlm_failover_mutex. Entry in nlm_failover_ip_list is a "nlm_failover_struct", 
-> defined in: include/linux/lockd/lockd.h.
+On Tue, Jan 22, 2008 at 12:17:17PM -0500, bfields wrote:
+> On Mon, Jan 21, 2008 at 04:09:25PM -0500, bfields wrote:
+> > On Mon, Jan 21, 2008 at 10:02:30PM +0100, Frank van Maarseveen wrote:
+> > > 2.6.22.10:
+> > > 	t
+> > > 	t + 2
+> > > 	t + 2
+> > > 
+> > > (same behavior)
+> > > 
+> > > 2.6.23.12:
+> > > 	t
+> > > 	t
+> > > 	t
+> > > 
+> > > definately not good. "cat" on the server updates atime again.
+> > 
+> > Yes, that looks like a server bug, and this:...
+> > 
+> > > 
+> > > 
+> > > Trying a different combination of kernels:
+> > > 
+> > > server 2.6.23.12, client 2.6.22.10:
+> > > 	t
+> > > 	t
+> > > 	t
+> > > 
+> > > server 2.6.22.10, client 2.6.23.12:
+> > > 	t
+> > > 	t + 2
+> > > 	t + 2
+> > 
+> > ...confirms that since the results appear to depend only on the server
+> > version, not on the client version.
 > 
-> The list is kept in descending order (newer entry first) based on g_expire
-> jiffies. For per ip grace period checking, the search goes thru the list.
-> As soon as one match ip is found, the search stops. This implies older
-> entries will not be used and always expire before new entry. This is to allow 
-> multiple entries (for the same ip) to be added into the list. The maximum size 
-> of the list entries is NLM_FO_MAX_GP_CNT (1024).
-> 
-> Signed-off-by: S. Wendy Cheng <wcheng@redhat.com>
-> Signed-off-by: Lon Hohberger  <lhh@redhat.com>
-> 
->  fs/lockd/svc.c              |    4 +
->  fs/lockd/svcsubs.c          |  159 +++++++++++++++++++++++++++++++++++++++++++-
->  include/linux/lockd/lockd.h |   14 +++
->  3 files changed, 174 insertions(+), 3 deletions(-)
-> 
-> --- linux-2/include/linux/lockd/lockd.h	2008-01-24 17:07:21.000000000 -0500
-> +++ linux-3/include/linux/lockd/lockd.h	2008-01-24 17:09:26.000000000 -0500
-> @@ -221,6 +221,20 @@ void		  nlmsvc_invalidate_all(void);
->  int           nlmsvc_failover_path(struct nameidata *nd);
->  int           nlmsvc_failover_ip(__be32 server_addr);
->  int           nlmsvc_failover_setgrace(void *server_ip, int ip_size);
-> +void          nlmsvc_failover_reset(void);
-> +
-> +#define NLM_FO_MAX_GP_CNT	1024
-> +
-> +struct nlm_failover_struct {
-> +	struct list_head	g_list;		/* linked list */
-> +	unsigned long		g_expire;	/* grace period expire */
-> +	int			g_size;		/* g_key type: ipv4 or ipv6 */
-> +	union {
-> +		__be32		ipv4;		/* ip v4 address */
-> +		__be32		ipv6[4];	/* ip v6 address */
-> +	} g_key;
-> +#define g_ip			g_key.ipv6
-> +};
+> And I can confirm this here on 2.6.24-rc8 (+ a few patches).
+> Unfortunately, I don't have any suggestion better right now than
+> bisecting....
 
-Only the second member of that union is every used; could we just get
-rid of the union?
+It looks like this happened in the switch from sendfile to sparse.
+Jens, any advice?  What happened was nfsd reads stopped updating the
+atime after the following commit.
 
-Also, is that the right choice of types?  Maybe we should just use
-struct in6_addr?
+--b.
 
->  static __inline__ struct inode *
->  nlmsvc_file_inode(struct nlm_file *file)
-> --- linux-2/fs/lockd/svc.c	2008-01-22 11:44:48.000000000 -0500
-> +++ linux-3/fs/lockd/svc.c	2008-01-24 17:30:55.000000000 -0500
-> @@ -145,6 +145,7 @@ lockd(struct svc_rqst *rqstp)
->  	nlmsvc_timeout = nlm_timeout * HZ;
->  
->  	grace_period_expire = set_grace_period();
-> +	nlmsvc_failover_reset();
->  
->  	/*
->  	 * The main request loop. We don't terminate until the last
-> @@ -160,6 +161,7 @@ lockd(struct svc_rqst *rqstp)
->  			if (nlmsvc_ops) {
->  				nlmsvc_invalidate_all();
->  				grace_period_expire = set_grace_period();
-> +				nlmsvc_failover_reset();
+commit f0930fffa99e7fe0a0c4b6c7d9a244dc88288c27
+Author: Jens Axboe <jens.axboe@oracle.com>
+Date:   Fri Jun 1 11:51:43 2007 +0200
 
-If all callers of set_grace_period() are also calling
-nlmsvc_failover_reset(), then may as well just add the
-nlmsvc_failover_reset() to set_grace_period() itself.
+    sendfile: convert nfs to using splice_read()
+    
+    Acked-by: Trond Myklebust <trond.myklebust@fys.uio.no>
+    Signed-off-by: Jens Axboe <jens.axboe@oracle.com>
 
->  			}
->  		}
->  
-> @@ -209,6 +211,8 @@ lockd(struct svc_rqst *rqstp)
->  	} else
->  		printk(KERN_DEBUG
->  			"lockd: new process, skipping host shutdown\n");
-> +
-> +	nlmsvc_failover_reset();
->  	wake_up(&lockd_exit);
->  
->  	/* Exit the RPC thread */
-> --- linux-2/fs/lockd/svcsubs.c	2008-01-22 11:45:44.000000000 -0500
-> +++ linux-3/fs/lockd/svcsubs.c	2008-01-24 17:35:30.000000000 -0500
-> @@ -23,7 +23,6 @@
->  
->  #define NLMDBG_FACILITY		NLMDBG_SVCSUBS
->  
-> -
->  /*
->   * Global file hash table
->   */
-> @@ -423,11 +422,165 @@ nlmsvc_failover_ip(__be32 server_addr)
->  }
->  EXPORT_SYMBOL_GPL(nlmsvc_failover_ip);
->  
-> +static DEFINE_MUTEX(nlm_failover_mutex);
-
-It looks like none of the critical sections protected by this mutex
-actually sleep (unless I'm missing one), so we could make this a
-spinlock.
-
-> +int nlm_failover_cnt;
-> +LIST_HEAD(nlm_failover_list);
-> +
-> +/* garbage collection */
-> +static inline
-> +int __fo_check_expire(struct nlm_failover_struct *e_this, struct list_head *p)
-> +{
-> +	if (time_before(e_this->g_expire, jiffies)) {
-> +		dprintk("lockd: ip=%u.%u.%u.%u grace period expires\n",
-> +			NIPQUAD(*e_this->g_ip));
-> +		list_del(p);
-> +		nlm_failover_cnt--;
-> +		kfree(e_this);
-> +		return 1;
-> +	}
-> +	return 0;
-> +}
-> +
-> +/*
-> + * Add grace period setting into global nlm_failover_struct_list where it
-> + * stores the server ip interfaces that should be in grace period.
-> + *
-> + * It is different from (but not conflict with) system-wide lockd grace
-> + * period when lockd is first initialized (see nlmsvc_check_grace_period
-> + * for details).
-> + *
-> + * The list is searched with top-down order (newer entry first). As soon
-> + * as one is found, the search stops. This implies older entries will not
-> + * be used and always expire before new entry.
-> + *
-> + * As an admin interface, the list is expected to be short and entries are
-> + * purged (expired) quickly.
-> + */
-> +
->  int
->  nlmsvc_failover_setgrace(void *server_ip, int ip_size)
->  {
-> -	/* implemented by resume_002.patch */
-> -	return ENOSYS;
-> +	struct list_head *p, *tlist;
-> +	struct nlm_failover_struct *per_ip, *entry;
-> +	int done = 0;
-> +	ulong time_expire;
-> +
-> +	/* allocate the entry */
-> +	per_ip = kzalloc(sizeof(struct nlm_failover_struct), GFP_KERNEL);
-> +	if (per_ip == NULL) {
-> +		dprintk("lockd: nlmsvc_fo_setgrace kmalloc fails\n");
-> +		return(-ENOMEM);
-> +	}
-> +
-> +	/* fill in info */
-> +	per_ip->g_size = ip_size;
-> +	memcpy((void *) per_ip->g_ip, (void *) server_ip, ip_size);
-
-Those casts shouldn't be needed.
-
-> +	time_expire = get_nfs_grace_period();
-> +	per_ip->g_expire = time_expire + jiffies;
-> +	dprintk("lockd: fo_setgrace ip=%u.%u.%u.%u, ip_size=%d, expire=%lu\n",
-> +		   NIPQUAD(per_ip->g_ip[0]), ip_size, per_ip->g_expire);
-> +
-> +	/* add to the nlm_failover_list*/
-> +	mutex_lock(&nlm_failover_mutex);
-> +
-> +	/* handle special case */
-> +	if (list_empty(&nlm_failover_list)) {
-> +		list_add(&per_ip->g_list, &nlm_failover_list);
-> +		nlm_failover_cnt = 1;
-> +		done = 1;
-> +		goto nlmsvc_fo_setgrace_out;
-> +	}
-> +
-> +	/* add to list */
-> +	list_for_each_safe(p, tlist, &nlm_failover_list) {
-> +		entry = list_entry(p, struct nlm_failover_struct, g_list);
-> +		if (!done) {
-> +			/* add the new ip into the list */
-> +			if (entry->g_expire <= per_ip->g_expire) {
-> +				list_add(&per_ip->g_list, &entry->g_list);
-> +				nlm_failover_cnt++;
-> +				done = 1;
-> +			}
-> +		} else {
-> +			/* garbage collection:
-> +			 * we really don't care about duplicate keys
-> +			 * since the list is inserted in descending order */
-> +			if (!__fo_check_expire(entry, p))
-> +				goto nlmsvc_fo_setgrace_out;
-> +		}
-> +	}
-> +
-> +	/* unlikely event but check for the limit */
-> +	if (nlm_failover_cnt > NLM_FO_MAX_GP_CNT) {
-> +		list_del(&per_ip->g_list);
-> +		nlm_failover_cnt--;
-> +		kfree(per_ip);
-> +		done = 0;
-> +		dprintk("lockd: error fo_setgrace max cnt reached\n");
-> +	}
-> +
-> +nlmsvc_fo_setgrace_out:
-> +	mutex_unlock(&nlm_failover_mutex);
-> +	if (done)
-> +		dprintk("lockd: nlmsvc_failover_list=%p\n", &nlm_failover_list);
-> +	return 0;
->  }
->  EXPORT_SYMBOL_GPL(nlmsvc_failover_setgrace);
->  
-> +/*
-> + * Reset global nlm_failover_struct list
-> + */
-> +void
-> +nlmsvc_failover_reset(void)
-> +{
-> +	struct nlm_failover_struct *e_purge;
-> +	struct list_head *p, *tlist;
-> +
-> +	mutex_lock(&nlm_failover_mutex);
-> +
-> +	/* nothing to do */
-> +	if (list_empty(&nlm_failover_list)) {
-> +		mutex_unlock(&nlm_failover_mutex);
-> +		return;
-> +	}
-
-We should just let the following loop handle the case of an empty list
-rather than dealing with it as a special case.
-
-> +
-> +	/* purge the entries */
-> +	list_for_each_safe(p, tlist, &nlm_failover_list) {
-> +		e_purge = list_entry(p, struct nlm_failover_struct, g_list);
-> +		list_del(p);
-> +		kfree(e_purge);
-> +	}
-> +	nlm_failover_cnt = 0;
-> +
-> +	mutex_unlock(&nlm_failover_mutex);
-> +}
-> +
-> +/*
-> + * Check whether the ip is in the failover list: nlm_failover_list.
-> + *	- nlm_failover_mutex taken
-> + *	- return TRUE (1) if ip in grace period.
-> + */
-> +int
-> +nlmsvc_failover_check(struct svc_rqst *rqstp)
-> +{
-> +	struct nlm_failover_struct *e_this;
-> +	struct list_head *p, *tlist;
-> +	int rc = 0, done = 0;
-> +	struct in6_addr *addr_u = &rqstp->rq_daddr.addr6;
-> +
-> +	mutex_lock(&nlm_failover_mutex);
-> +
-> +	/* assume rq_daddr structure is zeroed out upon creation */
-> +	list_for_each_safe(p, tlist, &nlm_failover_list) {
-> +		e_this = list_entry(p, struct nlm_failover_struct, g_list);
-> +		if (!__fo_check_expire(e_this, p)) {
-> +			if (!done &&
-> +			    !memcmp((void *) e_this->g_ip, (void *) addr_u,
-> +					e_this->g_size))
-> +			    done = rc = 1;
-> +		}
-> +	}
-> +
-> +	mutex_unlock(&nlm_failover_mutex);
-> +	return rc;
-> +}
-
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 9eb8eb4..8689b73 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -41,7 +41,9 @@ static int nfs_file_open(struct inode *, struct file *);
+ static int nfs_file_release(struct inode *, struct file *);
+ static loff_t nfs_file_llseek(struct file *file, loff_t offset, int origin);
+ static int  nfs_file_mmap(struct file *, struct vm_area_struct *);
+-static ssize_t nfs_file_sendfile(struct file *, loff_t *, size_t, read_actor_t, void *);
++static ssize_t nfs_file_splice_read(struct file *filp, loff_t *ppos,
++					struct pipe_inode_info *pipe,
++					size_t count, unsigned int flags);
+ static ssize_t nfs_file_read(struct kiocb *, const struct iovec *iov,
+ 				unsigned long nr_segs, loff_t pos);
+ static ssize_t nfs_file_write(struct kiocb *, const struct iovec *iov,
+@@ -65,7 +67,7 @@ const struct file_operations nfs_file_operations = {
+ 	.fsync		= nfs_fsync,
+ 	.lock		= nfs_lock,
+ 	.flock		= nfs_flock,
+-	.sendfile	= nfs_file_sendfile,
++	.splice_read	= nfs_file_splice_read,
+ 	.check_flags	= nfs_check_flags,
+ };
+ 
+@@ -224,20 +226,21 @@ nfs_file_read(struct kiocb *iocb, const struct iovec *iov,
+ }
+ 
+ static ssize_t
+-nfs_file_sendfile(struct file *filp, loff_t *ppos, size_t count,
+-		read_actor_t actor, void *target)
++nfs_file_splice_read(struct file *filp, loff_t *ppos,
++		     struct pipe_inode_info *pipe, size_t count,
++		     unsigned int flags)
+ {
+ 	struct dentry *dentry = filp->f_path.dentry;
+ 	struct inode *inode = dentry->d_inode;
+ 	ssize_t res;
+ 
+-	dfprintk(VFS, "nfs: sendfile(%s/%s, %lu@%Lu)\n",
++	dfprintk(VFS, "nfs: splice_read(%s/%s, %lu@%Lu)\n",
+ 		dentry->d_parent->d_name.name, dentry->d_name.name,
+ 		(unsigned long) count, (unsigned long long) *ppos);
+ 
+ 	res = nfs_revalidate_mapping(inode, filp->f_mapping);
+ 	if (!res)
+-		res = generic_file_sendfile(filp, ppos, count, actor, target);
++		res = generic_file_splice_read(filp, ppos, pipe, count, flags);
+ 	return res;
+ }
+ 
