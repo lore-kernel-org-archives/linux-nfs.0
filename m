@@ -1,158 +1,210 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH 2/2] NLM: break out of nlmsvc_retry_blocked if lockd is
- coming down
-Date: Tue, 29 Jan 2008 07:32:41 -0500
-Message-ID: <20080129073241.7c5c2ef1@tleilax.poochiereds.net>
-References: <1201548551-23592-1-git-send-email-jlayton@redhat.com>
-	<1201548551-23592-2-git-send-email-jlayton@redhat.com>
-	<1201548551-23592-3-git-send-email-jlayton@redhat.com>
-	<20080129000517.GY16785@fieldses.org>
-	<20080128201210.376097e6@tleilax.poochiereds.net>
-	<20080129012351.GE16785@fieldses.org>
-	<20080128212942.77035005@tupile.poochiereds.net>
-	<20080129030249.GJ16785@fieldses.org>
-	<20080129062312.33ba5a54@tleilax.poochiereds.net>
+From: Gianluca Alberici <gianluca-I6s3FmifXcAEdjjp4vwUeA@public.gmane.org>
+Subject: Re: NFS EINVAL on open(... | O_TRUNC) on 2.6.23.9
+Date: Tue, 29 Jan 2008 14:04:35 +0100
+Message-ID: <479F2463.2040704@abinetworks.biz>
+References: <476CEC5E.9070002@abinetworks.biz> <838DE9A2-59B2-49FA-B3E8-89B26368B1CF@bluecamel.eml.cc> <476E47F5.4090807@abinetworks.biz> <20071225140431.9264970a.akpm@linux-foundation.org> <199BEBA7-E46E-4B1F-9D36-91BB43331B75@oracle.com> <4791EE99.3030802@abinetworks.biz> <5FD6714F-EF9A-4F07-B2B6-D6F6CC911936@oracle.com> <479C744A.6020207@abinetworks.biz> <12964A18-350B-443F-B15A-D78B3723C89A@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: neilb@suse.de, linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: multipart/mixed;
+ boundary="------------020204080102080103070905"
+Cc: NFS list <linux-nfs@vger.kernel.org>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:43100 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750727AbYA2Mcs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 Jan 2008 07:32:48 -0500
-In-Reply-To: <20080129062312.33ba5a54-RtJpwOs3+0O+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
+Received: from ns4.abinetworks.biz ([216.218.212.66]:39176 "EHLO
+	ns4.abinetworks.biz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760878AbYA2NH3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jan 2008 08:07:29 -0500
+In-Reply-To: <12964A18-350B-443F-B15A-D78B3723C89A@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 29 Jan 2008 06:23:12 -0500
-Jeff Layton <jlayton@redhat.com> wrote:
+This is a multi-part message in MIME format.
+--------------020204080102080103070905
+Content-Type: text/plain; charset=US-ASCII; format=flowed
+Content-Transfer-Encoding: 7bit
 
-> On Mon, 28 Jan 2008 22:02:49 -0500
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> 
-> > On Mon, Jan 28, 2008 at 09:29:42PM -0500, Jeff Layton wrote:
-> > > On Mon, 28 Jan 2008 20:23:51 -0500
-> > > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > > 
-> > > > On Mon, Jan 28, 2008 at 08:12:10PM -0500, Jeff Layton wrote:
-> > > > > On Mon, 28 Jan 2008 19:05:17 -0500
-> > > > > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > > > > 
-> > > > > > On Mon, Jan 28, 2008 at 02:29:11PM -0500, Jeff Layton wrote:
-> > > > > > > It's possible to end up continually looping in
-> > > > > > > nlmsvc_retry_blocked() even when the lockd kthread has
-> > > > > > > been requested to come down. I've been able to reproduce
-> > > > > > > this fairly easily by having an RPC grant callback queued
-> > > > > > > up to an RPC client that's not bound. If the other host is
-> > > > > > > unresponsive, then the block never gets taken off the
-> > > > > > > list, and lockd continually respawns new RPC's.
-> > > > > > > 
-> > > > > > > If lockd is going down anyway, we don't want to keep
-> > > > > > > retrying the blocks, so allow it to break out of this
-> > > > > > > loop. Additionally, in that situation kthread_stop will
-> > > > > > > have already woken lockd, so when nlmsvc_retry_blocked
-> > > > > > > returns, have lockd check for kthread_stop() so that it
-> > > > > > > doesn't end up calling svc_recv and waiting for a long
-> > > > > > > time.
-> > > > > > 
-> > > > > > Stupid question: how is this different from the
-> > > > > > kthread_stop() coming just after this kthread_should_stop()
-> > > > > > call but before we call svc_recv()?  What keeps us from
-> > > > > > waiting in svc_recv() indefinitely after kthread_stop()?
-> > > > > > 
-> > > > > 
-> > > > > Nothing at all, unfortunately :-(
-> > > > > 
-> > > > > Since we've taken signalling out of the lockd_down codepath,
-> > > > > this gets a lot trickier than it used to be. I'm starting to
-> > > > > wonder if we should go back to sending a signal on lockd_down.
-> > > > 
-> > > > OK, thanks.  So do I keep these patches, or not?  This sounds
-> > > > like a regression (if perhaps a very minor one--I'm not quite
-> > > > clear).  Help!
-> > > > 
-> > > 
-> > > Well, if we reintroduce signalling in lockd_down then this
-> > > particular problem goes away. It may be reasonable to add that
-> > > back into the mix for now.
-> > > 
-> > > As to the more general question of whether to keep these
-> > > patches...
-> > > 
-> > > Most of them are pretty innocuous, but the patch to convert to
-> > > kthread API is the biggest change. 2.6.25 might be a bit
-> > > aggressive for that. It wouldn't hurt to let the conversion to
-> > > kthread API brew until 2.6.26.
-> > > 
-> > > lockd still does have a use after free problem though, so patch
-> > > 1/2 here might be worth considering even without changing things
-> > > over to kthreads. I've not tested it on a kernel without the
-> > > kthread patches, however. I can do that if you think that's the
-> > > right approach.
-> > 
-> > Pfft, I was hoping you'd tell me what to do.
-> > 
-> > But, yes, it sounds like dropping the kthread conversion and sending
-> > in that one bugfix is probably wisest.  (But I assume we should keep
-> > the first of those three patches, "SUNRPC: spin svc_rqst
-> > initialization to its own function".)
-> > 
-> 
-> Yes. The first patch fixes a possible NULL pointer dereference so I
-> think we want that one here. This patch:
-> 
->     Subject: [PATCH 2/4] SUNRPC: export svc_sock_update_bufs
-> 
-> ...should be safe too, though it's not strictly needed until we
-> convert lockd to the kthread API.
-> 
-> So at this point we have 2 questions:
-> 
-> 1) is there a way to make sure we don't block in svc_recv() without
-> resorting to signals and can we reasonably mix signaling +
-> kthread_stop? There may be a chicken and egg problem involved here
-> though I haven't thought it through yet...
-> 
+Hello Chuck,
 
-Still looking at this, though I'll note that CIFS has some kthreads
-that deal with sockets. When shutting those down, we generally send
-a signal to them in addition to the kthread_stop call. I'll look at how
-they do that and plan to try out something similar here for lockd.
+I attach as you requested the two dumpfiles obtained by
 
-> 2) can an unresponsive client make lockd loop continuously in
-> nlmsvc_retry_blocked() and prevent it from serving new lock requests?
-> 
+ tcpdump -s0 -i lo -w /tmp/dump-(not-)working port 2049
 
-Yes. This is definitely the case. I can trivially hang lockd with the
-right set of steps. Let me know if you want them, though you can
-probably figure them out.
 
-I'm not sure what the right way to fix this is. Maybe this timeout in
-nlmsvc_grant_blocked should be longer? Something longer than the amount
-of time that it takes to do an rpc_ping on an unbound RPC client:
 
-        /* Schedule next grant callback in 30 seconds */
-        nlmsvc_insert_block(block, 30 * HZ);
+They contain the dump relative to the usual double try: at first the 
+open() syscall creates the file, while in the second tries to truncate 
+to zero length.
 
-The more I look at lockd and its problems, I'm starting to think that
-we might be better served by using two threads. Have one that just
-handles svc_recv/svc_process and another thread that handles
-nlmsvc_retry_blocked and maybe nlmsvc_invalidate_all when things are
-signalled. This second thread could even be a workqueue and the main
-lockd thread could queue tasks to it as needed.
+Hope these are ok with you.
 
-Finally, there's one more question that I forgot:
+I am waiting for istructions if you got any.
 
-3) does this patch fix the use after free bug independently of the
-kthread patches:
+Thanks,
 
-Subject: Re: [PATCH 1/2] NLM: tear down RPC clients in nlm_shutdown_hosts
+Gianluca
 
-...the answer is yes. It does seem to.
+Chuck Lever wrote:
 
-Bruce, would you like me to roll up a new patchset to make it clear
-what I'd like to see for 2.6.25?
+> Hi Gianluca-
+>
+> On Jan 27, 2008, at 7:08 AM, Gianluca Alberici wrote:
+>
+>> Hello Chuck,
+>>
+>> i have produced the output you requested using the code i used to 
+>> show you last time (which simply tries to open(... | O_TRUNC) a file 
+>> onto the nfs mount and writes "Hello" into it. I simply iterate 
+>> execution 2 times. The mount is a loop mount on 127.0.0.1
+>> Since the second execution (the first time it creates the file) you 
+>> get EINVAL:
+>>
+>> FILE CREATION:
+>>
+>> hydra:~# tcpdump -s0 -i lo port 2049
+>> tcpdump: verbose output suppressed, use -v or -vv for full protocol 
+>> decode
+>> listening on lo, link-type EN10MB (Ethernet), capture size 65535 bytes
+>> 12:15:06.306619 IP localhost.251828621 > localhost.nfs: 120 getattr 
+>> fh Unknown/ 
+>> 47521E2B0223C100000000000000000000000000000000000000000000000000
+>> 12:15:06.306666 IP localhost.nfs > localhost.251828621: reply ok 96 
+>> getattr DIR 40777 ids 0/0 sz 4096
+>> 12:15:06.306705 IP localhost.268605837 > localhost.nfs: 128 lookup fh 
+>> Unknown/ 
+>> 47521E2B0223C100000000000000000000000000000000000000000000000000 "test"
+>> 12:15:06.306752 IP localhost.nfs > localhost.268605837: reply ok 28 
+>> lookup ERROR: No such file or directory
+>> 12:15:06.306786 IP localhost.285383053 > localhost.nfs: 160 create fh 
+>> Unknown/ 
+>> 47521E2B0223C100000000000000000000000000000000000000000000000000 "test"
+>> 12:15:06.306917 IP localhost.nfs > localhost.285383053: reply ok 128 
+>> create fh Unknown/ 
+>> 48521E2B0323C120000000000000000000000000000000000000000000000000
+>> 12:15:06.307179 IP localhost.302160269 > localhost.nfs: 144 write fh 
+>> Unknown/ 
+>> 48521E2B0323C120000000000000000000000000000000000000000000000000 5 
+>> (5) bytes @ 0 (0)
+>> 12:15:06.307283 IP localhost.nfs > localhost.302160269: reply ok 96 
+>> write
+>
+>
+> We need to have the raw output of tcpdump. Please use "-w dumpfile" 
+> and send the raw output.
+>
+>>> sudo tcpdump -s0 -w /tmp/dumpfile hostname-of-server
+>>
+>
+>
+> -- 
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+> -
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at http://vger.kernel.org/majordomo-info.html
 
--- 
-Jeff Layton <jlayton@redhat.com>
+
+
+--------------020204080102080103070905
+Content-Type: application/octet-stream;
+ name="dump-working"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment;
+ filename="dump-working"
+
+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
+--------------020204080102080103070905
+Content-Type: application/octet-stream;
+ name="dump-not-working"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment;
+ filename="dump-not-working"
+
+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
+AAAAAAAAAAAAAAAAAAAAAAAW
+--------------020204080102080103070905--
