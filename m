@@ -1,37 +1,58 @@
-From: Jens Axboe <jens.axboe@oracle.com>
-Subject: Re: atimes not updated over NFS
-Date: Tue, 29 Jan 2008 21:12:11 +0100
-Message-ID: <20080129201211.GY15220@kernel.dk>
-References: <20080121210925.GQ17468@fieldses.org> <20080122171717.GD24697@fieldses.org> <20080129025940.GI16785@fieldses.org> <20080129041411.GC1190@fieldses.org> <20080129083402.GN15220@kernel.dk> <20080129182721.GB28032@fieldses.org> <20080129183042.GH15220@kernel.dk> <20080129194508.GG28032@fieldses.org> <20080129195155.GS15220@kernel.dk> <20080129200901.GI28032@fieldses.org>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: NFS EINVAL on open(... | O_TRUNC) on 2.6.23.9
+Date: Tue, 29 Jan 2008 15:31:01 -0500
+Message-ID: <1201638661.7969.7.camel@heimdal.trondhjem.org>
+References: <476CEC5E.9070002@abinetworks.biz>
+	 <838DE9A2-59B2-49FA-B3E8-89B26368B1CF@bluecamel.eml.cc>
+	 <476E47F5.4090807@abinetworks.biz>
+	 <20071225140431.9264970a.akpm@linux-foundation.org>
+	 <199BEBA7-E46E-4B1F-9D36-91BB43331B75@oracle.com>
+	 <4791EE99.3030802@abinetworks.biz>
+	 <5FD6714F-EF9A-4F07-B2B6-D6F6CC911936@oracle.com>
+	 <479C744A.6020207@abinetworks.biz>
+	 <12964A18-350B-443F-B15A-D78B3723C89A@oracle.com>
+	 <479F2463.2040704@abinetworks.biz>
+	 <4AAA3DAF-898C-4ED5-BD07-4FD2B5CEEF16@oracle.com>
+	 <Pine.LNX.4.64.0801291851110.4820@maggie.lkpg.cendio.se>
+	 <7EE4B02B-3359-41C0-BFED-0947DF9F5F5A@oracle.com>
+	 <479F8377.6090704@abinetworks.biz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Frank van Maarseveen <frankvm@frankvm.com>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Andre Majorel <aym-xunil-Bi/FLWfhfolQFI55V6+gNQ@public.gmane.org>, linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+	Peter =?ISO-8859-1?Q?=C5strand?= <astrand-+4tYiAq3b6azQB+pC5nmwQ@public.gmane.org>,
+	NFS list <linux-nfs@vger.kernel.org>
+To: Gianluca Alberici <gianluca-I6s3FmifXcAEdjjp4vwUeA@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from brick.kernel.dk ([87.55.233.238]:7725 "EHLO kernel.dk"
+Received: from pat.uio.no ([129.240.10.15]:46112 "EHLO pat.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753907AbYA2UMQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 Jan 2008 15:12:16 -0500
-In-Reply-To: <20080129200901.GI28032@fieldses.org>
+	id S1752154AbYA2UbX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 29 Jan 2008 15:31:23 -0500
+In-Reply-To: <479F8377.6090704-I6s3FmifXcAEdjjp4vwUeA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jan 29 2008, J. Bruce Fields wrote:
-> On Tue, Jan 29, 2008 at 08:51:55PM +0100, Jens Axboe wrote:
-> > On Tue, Jan 29 2008, J. Bruce Fields wrote:
-> > > Hm.  It's still missing a case.  I've confirmed that the following fixes
-> > > the problem.  (Or maybe it would be better to have them "goto" a common
-> > > out with the file_accessed() check?)
-> > 
-> > Indeed it is, insert standard disclaimer here on the evil of multiple
-> > returns. So can we agree that this then fixes both cases?
+
+On Tue, 2008-01-29 at 20:50 +0100, Gianluca Alberici wrote:
+> Hello,
 > 
-> Yep, thanks!  And I ran one more test just to make sure.  Looks fine.
+> I confirm that i have encountered this same problem (EINVAL on open 
+> (...O | TRUNC) with the following userspace servers:
+> 
+> - nfs-user-server shipped with debian sarge/etch etc...
+> - cfsd (crypto file system which is an nfs server)
+> 
+> I want to underline again that these userspace servers have been woking 
+> perfectly until 2.6.21.7 (which is the last 2.6.21)
+> Since 2.6.22 the problem came out and it is still present into 2.6.24 
+> rc7 (last i tested). Conclusion: there must have been something that is
+> changed in 2.6.22 that caused the problem.
 
-Super, thanks a lot for testing and confirming! Patch is committed.
+The only difference between these two dumps are the fact that the first
+one isn't using the Sun convention for telling NFSv2 servers to set to
+the current time (see the code in xdr_encode_current_server_time).
 
--- 
-Jens Axboe
+I don't see why this would be new behaviour after 2.6.21. The code for
+this has been in the NFS client since 2.6.15 at least...
+
+Trond
 
