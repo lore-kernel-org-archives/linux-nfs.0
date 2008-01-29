@@ -1,46 +1,101 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: NFS EINVAL on open(... | O_TRUNC) on 2.6.23.9
-Date: Tue, 29 Jan 2008 13:14:52 -0500
-Message-ID: <7EE4B02B-3359-41C0-BFED-0947DF9F5F5A@oracle.com>
-References: <476CEC5E.9070002@abinetworks.biz> <838DE9A2-59B2-49FA-B3E8-89B26368B1CF@bluecamel.eml.cc> <476E47F5.4090807@abinetworks.biz> <20071225140431.9264970a.akpm@linux-foundation.org> <199BEBA7-E46E-4B1F-9D36-91BB43331B75@oracle.com> <4791EE99.3030802@abinetworks.biz> <5FD6714F-EF9A-4F07-B2B6-D6F6CC911936@oracle.com> <479C744A.6020207@abinetworks.biz> <12964A18-350B-443F-B15A-D78B3723C89A@oracle.com> <479F2463.2040704@abinetworks.biz> <4AAA3DAF-898C-4ED5-BD07-4FD2B5CEEF16@oracle.com> <Pine.LNX.4.64.0801291851110.4820@maggie.lkpg.cendio.se>
-Mime-Version: 1.0 (Apple Message framework v753)
-Content-Type: text/plain; charset=ISO-8859-1;
-	delsp=yes	format=flowed
-Cc: NFS list <linux-nfs@vger.kernel.org>,
-	Gianluca Alberici <gianluca-I6s3FmifXcAEdjjp4vwUeA@public.gmane.org>
-To: =?ISO-8859-1?Q?Peter_=C5strand?= <astrand-+4tYiAq3b6azQB+pC5nmwQ@public.gmane.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: atimes not updated over NFS
+Date: Tue, 29 Jan 2008 13:27:21 -0500
+Message-ID: <20080129182721.GB28032@fieldses.org>
+References: <1200325393.7470.6.camel@heimdal.trondhjem.org> <20080114175122.GB2768@janus> <20080121190638.GL17468@fieldses.org> <1200943865.25562.56.camel@heimdal.trondhjem.org> <20080121210230.GA22046@janus> <20080121210925.GQ17468@fieldses.org> <20080122171717.GD24697@fieldses.org> <20080129025940.GI16785@fieldses.org> <20080129041411.GC1190@fieldses.org> <20080129083402.GN15220@kernel.dk>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Frank van Maarseveen <frankvm@frankvm.com>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>,
+	Andre Majorel <aym-xunil-Bi/FLWfhfolQFI55V6+gNQ@public.gmane.org>, linux-nfs@vger.kernel.org
+To: Jens Axboe <jens.axboe@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:20235 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751257AbYA2SRO convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jan 2008 13:17:14 -0500
-In-Reply-To: <Pine.LNX.4.64.0801291851110.4820-K9BqGu7AvB3wj5YHdwD3Ga2PxDmRETKR@public.gmane.org>
+Received: from mail.fieldses.org ([66.93.2.214]:43152 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752446AbYA2S1i (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 29 Jan 2008 13:27:38 -0500
+In-Reply-To: <20080129083402.GN15220@kernel.dk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Tue, Jan 29, 2008 at 09:34:02AM +0100, Jens Axboe wrote:
+> On Mon, Jan 28 2008, J. Bruce Fields wrote:
+> > On Mon, Jan 28, 2008 at 09:59:40PM -0500, bfields wrote:
+> > > On Tue, Jan 22, 2008 at 12:17:17PM -0500, bfields wrote:
+> > > > On Mon, Jan 21, 2008 at 04:09:25PM -0500, bfields wrote:
+> > > > > On Mon, Jan 21, 2008 at 10:02:30PM +0100, Frank van Maarseveen wrote:
+> > > > > > 2.6.22.10:
+> > > > > > 	t
+> > > > > > 	t + 2
+> > > > > > 	t + 2
+> > > > > > 
+> > > > > > (same behavior)
+> > > > > > 
+> > > > > > 2.6.23.12:
+> > > > > > 	t
+> > > > > > 	t
+> > > > > > 	t
+> > > > > > 
+> > > > > > definately not good. "cat" on the server updates atime again.
+> > > > > 
+> > > > > Yes, that looks like a server bug, and this:...
+> > > > > 
+> > > > > > 
+> > > > > > 
+> > > > > > Trying a different combination of kernels:
+> > > > > > 
+> > > > > > server 2.6.23.12, client 2.6.22.10:
+> > > > > > 	t
+> > > > > > 	t
+> > > > > > 	t
+> > > > > > 
+> > > > > > server 2.6.22.10, client 2.6.23.12:
+> > > > > > 	t
+> > > > > > 	t + 2
+> > > > > > 	t + 2
+> > > > > 
+> > > > > ...confirms that since the results appear to depend only on the server
+> > > > > version, not on the client version.
+> > > > 
+> > > > And I can confirm this here on 2.6.24-rc8 (+ a few patches).
+> > > > Unfortunately, I don't have any suggestion better right now than
+> > > > bisecting....
+> > > 
+> > > It looks like this happened in the switch from sendfile to sparse.
+> > 							     ^^^^^^
+> > 							err, splice
+> > 
+> > > Jens, any advice?  What happened was nfsd reads stopped updating the
+> > > atime after the following commit.
+> > 
+> > Erm, sorry, wrong commit--it's the following one that touches nfsd,
+> > below.
+> 
+> Probably because do_generic_mapping_read() does a file_accessed() on the
+> input file. Does this fixup current -git?
 
-On Jan 29, 2008, at 12:54 PM, Peter =C5strand wrote:
+No, nfsd is calling splice_direct_to_actor(), not do_splice_direct().
 
-> On Tue, 29 Jan 2008, Chuck Lever wrote:
->
->> I think you mentioned previously that the server is the Debian =20
->> user-space
->> server.  You should contact Debian and ask for their help to =20
->> diagnose the
->> problem.  (As far as I know there are no user-space server =20
->> developers on this
->> list, but I could be incorrect).
->
-> (I've thought I've been advertising unfs3 almost too much :-))
->
-> If this problem shows up with unfs3, I can probably take a look at it=
-=2E
+--b.
 
- From one of Gianluca's previous e-mails, the server is:
-
-"I propose to anybody interested to test cfsd or nfs-user-server =20
-2.2beta47-23 (from debian etch) on any kernel >=3D 2.6.23."
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+> 
+> diff --git a/fs/splice.c b/fs/splice.c
+> index 56b802b..c212fde 100644
+> --- a/fs/splice.c
+> +++ b/fs/splice.c
+> @@ -1090,8 +1090,10 @@ long do_splice_direct(struct file *in, loff_t *ppos, struct file *out,
+>  	long ret;
+>  
+>  	ret = splice_direct_to_actor(in, &sd, direct_splice_actor);
+> -	if (ret > 0)
+> +	if (ret > 0) {
+>  		*ppos += ret;
+> +		file_accessed(in);
+> +	}
+>  
+>  	return ret;
+>  }
+> 
+> -- 
+> Jens Axboe
+> 
