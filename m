@@ -1,47 +1,54 @@
-From: Andre Majorel <aym-xunil-Bi/FLWfhfolQFI55V6+gNQ@public.gmane.org>
-Subject: Re: atimes not updated over NFS
-Date: Tue, 29 Jan 2008 21:37:14 +0100
-Message-ID: <20080129203713.GS17213@aym.net2.nerim.net>
-References: <20080121190638.GL17468@fieldses.org> <1200943865.25562.56.camel@heimdal.trondhjem.org> <20080121210230.GA22046@janus> <20080121210925.GQ17468@fieldses.org> <20080122171717.GD24697@fieldses.org> <20080129025940.GI16785@fieldses.org> <20080129041411.GC1190@fieldses.org> <20080129083402.GN15220@kernel.dk> <20080129182721.GB28032@fieldses.org> <20080129183042.GH15220@kernel.dk>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Frank van Maarseveen <frankvm@frankvm.com>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	linux-nfs@vger.kernel.org
-To: Jens Axboe <jens.axboe@oracle.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: NFS EINVAL on open(... | O_TRUNC) on 2.6.23.9
+Date: Tue, 29 Jan 2008 15:54:12 -0500
+Message-ID: <F7BFE847-A3C3-44E5-A238-5C69ED3EE1C4@oracle.com>
+References: <476CEC5E.9070002@abinetworks.biz> <838DE9A2-59B2-49FA-B3E8-89B26368B1CF@bluecamel.eml.cc> <476E47F5.4090807@abinetworks.biz> <20071225140431.9264970a.akpm@linux-foundation.org> <199BEBA7-E46E-4B1F-9D36-91BB43331B75@oracle.com> <4791EE99.3030802@abinetworks.biz> <5FD6714F-EF9A-4F07-B2B6-D6F6CC911936@oracle.com> <479C744A.6020207@abinetworks.biz> <12964A18-350B-443F-B15A-D78B3723C89A@oracle.com> <479F2463.2040704@abinetworks.biz> <4AAA3DAF-898C-4ED5-BD07-4FD2B5CEEF16@oracle.com> <Pine.LNX.4.64.0801291851110.4820@maggie.lkpg.cendio.se> <7EE4B02B-3359-41C0-BFED-0947DF9F5F5A@oracle.com> <479F8377.6090704@abinetworks.biz> <1201638661.7969.7.camel@heimdal.trondhjem.org>
+Mime-Version: 1.0 (Apple Message framework v753)
+Content-Type: text/plain; charset=US-ASCII; delsp=yes; format=flowed
+Cc: Gianluca Alberici <gianluca-I6s3FmifXcAEdjjp4vwUeA@public.gmane.org>,
+	=?ISO-8859-1?Q?Peter_=C5strand?= <astrand-+4tYiAq3b6azQB+pC5nmwQ@public.gmane.org>,
+	NFS list <linux-nfs@vger.kernel.org>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-102-tuesday.noc.nerim.net ([62.4.17.102]:1409 "EHLO
-	mallaury.nerim.net" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753259AbYA2UhS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jan 2008 15:37:18 -0500
-In-Reply-To: <20080129183042.GH15220@kernel.dk>
+Received: from rgminet01.oracle.com ([148.87.113.118]:63454 "EHLO
+	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1765557AbYA2Uzq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jan 2008 15:55:46 -0500
+In-Reply-To: <1201638661.7969.7.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2008-01-29 19:30 +0100, Jens Axboe wrote:
+On Jan 29, 2008, at 3:31 PM, Trond Myklebust wrote:
+> On Tue, 2008-01-29 at 20:50 +0100, Gianluca Alberici wrote:
+>> Hello,
+>>
+>> I confirm that i have encountered this same problem (EINVAL on open
+>> (...O | TRUNC) with the following userspace servers:
+>>
+>> - nfs-user-server shipped with debian sarge/etch etc...
+>> - cfsd (crypto file system which is an nfs server)
+>>
+>> I want to underline again that these userspace servers have been  
+>> woking
+>> perfectly until 2.6.21.7 (which is the last 2.6.21)
+>> Since 2.6.22 the problem came out and it is still present into 2.6.24
+>> rc7 (last i tested). Conclusion: there must have been something  
+>> that is
+>> changed in 2.6.22 that caused the problem.
+>
+> The only difference between these two dumps are the fact that the  
+> first
+> one isn't using the Sun convention for telling NFSv2 servers to set to
+> the current time (see the code in xdr_encode_current_server_time).
 
-> diff --git a/fs/splice.c b/fs/splice.c
-> index 0a0b79b..504a096 100644
-> --- a/fs/splice.c
-> +++ b/fs/splice.c
-> @@ -1052,8 +1052,10 @@ out_release:
->  	/*
->  	 * If we transferred some data, return the number of bytes:
->  	 */
-> -	if (bytes > 0)
-> +	if (bytes > 0) {
-> +		file_accessed(in);
->  		return bytes;
-> +	}
-> =20
->  	return ret;
+I thought I saw that on both SETATTRs, but I could be wrong.
 
-Does the (bytes > 0) test mean that read(2) on an empty file will
-not update the atime ? Not a big deal for me personally, but that
-would be inconsistent with local file system behaviour.
+> I don't see why this would be new behaviour after 2.6.21. The code for
+> this has been in the NFS client since 2.6.15 at least...
 
---=20
-Andr=E9 Majorel <URL:http://www.teaser.fr/~amajorel/>
-Do not use this account for regular correspondence.
-See the URL above for contact information.
+
+A mount option is set on one test client, and not the other, perhaps?
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
