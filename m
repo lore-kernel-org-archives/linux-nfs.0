@@ -1,55 +1,50 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: nfsd module refcount is out of control....
-Date: Wed, 30 Jan 2008 09:23:31 -0500
-Message-ID: <47A08863.40400@RedHat.com>
+From: Wendy Cheng <wcheng@redhat.com>
+Subject: Re: [PATCH 1/3] NLM add resume procfs file
+Date: Wed, 30 Jan 2008 11:43:50 -0500
+Message-ID: <47A0A946.5030405@redhat.com>
+References: <47997059.704@redhat.com> <20080129021910.GF16785@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: NFS list <linux-nfs@vger.kernel.org>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:40006 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757600AbYA3OYy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 30 Jan 2008 09:24:54 -0500
-Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id m0UEOreJ022341
-	for <linux-nfs@vger.kernel.org>; Wed, 30 Jan 2008 09:24:53 -0500
-Received: from lacrosse.corp.redhat.com (lacrosse.corp.redhat.com [172.16.52.154])
-	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m0UEOqIM029616
-	for <linux-nfs@vger.kernel.org>; Wed, 30 Jan 2008 09:24:52 -0500
-Received: from [10.13.248.46] (vpn-248-46.boston.redhat.com [10.13.248.46])
-	by lacrosse.corp.redhat.com (8.12.11.20060308/8.11.6) with ESMTP id m0UEOph0010462
-	for <linux-nfs@vger.kernel.org>; Wed, 30 Jan 2008 09:24:52 -0500
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: cluster-devel@redhat.com, NFS list <linux-nfs@vger.kernel.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <cluster-devel-bounces@redhat.com>
+In-Reply-To: <20080129021910.GF16785@fieldses.org>
+List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
+	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
+List-Archive: <https://www.redhat.com/archives/cluster-devel>
+List-Post: <mailto:cluster-devel@redhat.com>
+List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
+List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
+	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
+Sender: cluster-devel-bounces@redhat.com
+Errors-To: cluster-devel-bounces@redhat.com
 List-ID: <linux-nfs.vger.kernel.org>
 
-Has anybody noticed that bring up kNFSD (using a 2.6.24 kernel)
-causes 17 modules references on nfsd?
+J. Bruce Fields wrote:
+>> +	int rc;
+>> +
+>> +	rc = failover_parse_ip(file, buf, size, &server_ip);
+>> +	if (rc < 0)
+>> +		return rc;
+>>  
+>>  	return nlmsvc_failover_ip(server_ip);
+>>  }
+>>     
+>
+> Looks great, but it would fit more logically with the previous patch.
+> (If you know you're going to end up using this code in two places, may
+> as well write it that way from the start.)
+>   
 
-# lsmod | grep nfsd
-nfsd                  201584  17 
-lockd                  60488  2 nfsd
-nfs_acl                 6656  1 nfsd
-auth_rpcgss            39360  1 nfsd
-exportfs                7936  1 nfsd
-sunrpc                157892  10 nfsd,lockd,nfs_acl,auth_rpcgss
+The original unlock patch did have a shared routine for this purpose. 
+After review, its code structure got changed a little bit. Since the 
+revised version has non-trivial amount of testing efforts behind it, I 
+think it is better to do the change here, instead of the well-tested 
+unlock patch.
 
-It appears one of the culprits is svc_set_num_threads() since
-it does a module_get() for every thread, which seems a bit
-excessive imho...  What happen to the idea of the first thread 
-creating the refcount and the last thread removing the 
-refcount?
+On the other hand, I cut the resume patch into three pieces mostly for 
+review purpose. Do you think it would be easier (for your git tree 
+works) that I combine these three small patches into a big resume patch 
+after all the review comments are incorporated into the code ?
 
-Anyways, I don't see any routine removing all those 
-refcounts. Should something like svc_exit_thread() be
-doing the module_put() since svc_set_num_threads did
-all those gets? If not, how are all those refcounts
-suppose to be removed?  
-
-Also, does anybody have clue as to why auth_rpcgss is 
-being insmod-ed when there are no secure exports 
-defined?
-
-tia,
-
-steved.
-
+-- Wendy
