@@ -1,84 +1,67 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 1/4] NFS: numeric mount parameters are unsigned
-Date: Tue, 29 Jan 2008 19:13:11 -0500
-Message-ID: <20080130001311.14637.25575.stgit@manray.1015granger.net>
+Subject: [PATCH 3/4] NFS: Save "mount*=" mount options
+Date: Tue, 29 Jan 2008 19:13:26 -0500
+Message-ID: <20080130001326.14637.4463.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: trond.myklebust@fys.uio.no, miklos@szeredi.hu
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from flpi102.sbcis.sbc.com ([207.115.20.71]:56697 "EHLO
+Received: from flpi102.sbcis.sbc.com ([207.115.20.71]:56860 "EHLO
 	flpi102.prodigy.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752970AbYA3AN1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jan 2008 19:13:27 -0500
+	with ESMTP id S1753872AbYA3ANh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jan 2008 19:13:37 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: use %u instead of %d when displaying NFS mount options.
-
-Nit: Fix reporting of "namlen=" option in nfs_show_mount_stats.  The mount
-option is called "namlen" without the "e".
+Save the value of the mountproto= mountport= mountvers= and mountaddr=
+options so that these values can be displayed later via
+nfs_show_options().
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfs/super.c |   26 +++++++++++++-------------
- 1 files changed, 13 insertions(+), 13 deletions(-)
+ fs/nfs/client.c           |   10 ++++++++++
+ include/linux/nfs_fs_sb.h |    7 +++++++
+ 2 files changed, 17 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 22c49c0..93ce01f 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -460,17 +460,17 @@ static void nfs_show_mount_options(struct seq_file *m, struct nfs_server *nfss,
- 	const struct proc_nfs_info *nfs_infop;
- 	struct nfs_client *clp = nfss->nfs_client;
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 685c43f..867290c 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -688,6 +688,16 @@ static int nfs_init_server(struct nfs_server *server,
+ 	if (error < 0)
+ 		goto error;
  
--	seq_printf(m, ",vers=%d", clp->rpc_ops->version);
--	seq_printf(m, ",rsize=%d", nfss->rsize);
--	seq_printf(m, ",wsize=%d", nfss->wsize);
-+	seq_printf(m, ",vers=%u", clp->rpc_ops->version);
-+	seq_printf(m, ",rsize=%u", nfss->rsize);
-+	seq_printf(m, ",wsize=%u", nfss->wsize);
- 	if (nfss->acregmin != 3*HZ || showdefaults)
--		seq_printf(m, ",acregmin=%d", nfss->acregmin/HZ);
-+		seq_printf(m, ",acregmin=%u", nfss->acregmin/HZ);
- 	if (nfss->acregmax != 60*HZ || showdefaults)
--		seq_printf(m, ",acregmax=%d", nfss->acregmax/HZ);
-+		seq_printf(m, ",acregmax=%u", nfss->acregmax/HZ);
- 	if (nfss->acdirmin != 30*HZ || showdefaults)
--		seq_printf(m, ",acdirmin=%d", nfss->acdirmin/HZ);
-+		seq_printf(m, ",acdirmin=%u", nfss->acdirmin/HZ);
- 	if (nfss->acdirmax != 60*HZ || showdefaults)
--		seq_printf(m, ",acdirmax=%d", nfss->acdirmax/HZ);
-+		seq_printf(m, ",acdirmax=%u", nfss->acdirmax/HZ);
- 	for (nfs_infop = nfs_info; nfs_infop->flag; nfs_infop++) {
- 		if (nfss->flags & nfs_infop->flag)
- 			seq_puts(m, nfs_infop->str);
-@@ -526,10 +526,10 @@ static int nfs_show_stats(struct seq_file *m, struct vfsmount *mnt)
++	/* Preserve the values of mount_server-related mount options */
++	if (data->mount_server.addrlen) {
++		memcpy(&server->mountd_address, &data->mount_server.address,
++			data->mount_server.addrlen);
++		server->mountd_addrlen = data->mount_server.addrlen;
++	}
++	server->mountd_version = data->mount_server.version;
++	server->mountd_port = data->mount_server.port;
++	server->mountd_protocol = data->mount_server.protocol;
++
+ 	server->namelen  = data->namlen;
+ 	/* Create a client RPC handle for the NFSv3 ACL management interface */
+ 	nfs_init_server_aclclient(server);
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 3423c67..b7e3072 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -117,6 +117,13 @@ struct nfs_server {
  
- 	seq_printf(m, "\n\tcaps:\t");
- 	seq_printf(m, "caps=0x%x", nfss->caps);
--	seq_printf(m, ",wtmult=%d", nfss->wtmult);
--	seq_printf(m, ",dtsize=%d", nfss->dtsize);
--	seq_printf(m, ",bsize=%d", nfss->bsize);
--	seq_printf(m, ",namelen=%d", nfss->namelen);
-+	seq_printf(m, ",wtmult=%u", nfss->wtmult);
-+	seq_printf(m, ",dtsize=%u", nfss->dtsize);
-+	seq_printf(m, ",bsize=%u", nfss->bsize);
-+	seq_printf(m, ",namlen=%u", nfss->namelen);
+ 	atomic_t active; /* Keep trace of any activity to this server */
+ 	wait_queue_head_t active_wq;  /* Wait for any activity to stop  */
++
++	/* mountd-related mount options */
++	struct sockaddr_storage	mountd_address;
++	size_t			mountd_addrlen;
++	u32			mountd_version;
++	unsigned short		mountd_port;
++	unsigned short		mountd_protocol;
+ };
  
- #ifdef CONFIG_NFS_V4
- 	if (nfss->nfs_client->rpc_ops->version == 4) {
-@@ -543,9 +543,9 @@ static int nfs_show_stats(struct seq_file *m, struct vfsmount *mnt)
- 	/*
- 	 * Display security flavor in effect for this mount
- 	 */
--	seq_printf(m, "\n\tsec:\tflavor=%d", auth->au_ops->au_flavor);
-+	seq_printf(m, "\n\tsec:\tflavor=%u", auth->au_ops->au_flavor);
- 	if (auth->au_flavor)
--		seq_printf(m, ",pseudoflavor=%d", auth->au_flavor);
-+		seq_printf(m, ",pseudoflavor=%u", auth->au_flavor);
- 
- 	/*
- 	 * Display superblock I/O counters
+ /* Server capabilities */
 
