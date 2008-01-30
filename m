@@ -1,232 +1,169 @@
-From: Rasmus Rohde <rohde-3mLe3WyXyAE@public.gmane.org>
-Subject: [NFS] [PATCH] Make UDF exportable
-Date: Wed, 30 Jan 2008 21:53:24 +0100
-Message-ID: <1201726404.2976.8.camel@localhost.localdomain>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: NFS EINVAL on open(... | O_TRUNC) on 2.6.23.9
+Date: Wed, 30 Jan 2008 16:01:45 -0500
+Message-ID: <AB6DF303-5C5B-453C-9992-DAF826FF02CE@oracle.com>
+References: <476CEC5E.9070002@abinetworks.biz> <838DE9A2-59B2-49FA-B3E8-89B26368B1CF@bluecamel.eml.cc> <476E47F5.4090807@abinetworks.biz> <20071225140431.9264970a.akpm@linux-foundation.org> <199BEBA7-E46E-4B1F-9D36-91BB43331B75@oracle.com> <4791EE99.3030802@abinetworks.biz> <5FD6714F-EF9A-4F07-B2B6-D6F6CC911936@oracle.com> <479C744A.6020207@abinetworks.biz> <12964A18-350B-443F-B15A-D78B3723C89A@oracle.com> <479F2463.2040704@abinetworks.biz> <4AAA3DAF-898C-4ED5-BD07-4FD2B5CEEF16@oracle.com> <Pine.LNX.4.64.0801291851110.4820@maggie.lkpg.cendio.se> <7EE4B02B-3359-41C0-BFED-0947DF9F5F5A@oracle.com> <479F8377.6090704@abinetworks.biz> <1201638661.7969.7.camel@heimdal.trondhjem.org> <F7BFE847-A3C3-44E5-A238-5C69ED3EE1C4@oracle.com> <47A0704D.7080808@abinetworks.biz>
+Mime-Version: 1.0 (Apple Message framework v753)
+Content-Type: text/plain; charset=US-ASCII; delsp=yes; format=flowed
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	=?ISO-8859-1?Q?Peter_=C5strand?= <astrand-+4tYiAq3b6azQB+pC5nmwQ@public.gmane.org>,
+	NFS list <linux-nfs@vger.kernel.org>
+To: Gianluca Alberici <gianluca-I6s3FmifXcAEdjjp4vwUeA@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:46027 "EHLO neil.brown.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751646AbYA3UyM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 30 Jan 2008 15:54:12 -0500
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1JKJwZ-0008UC-Fs
-	for linux-nfs@vger.kernel.org; Thu, 31 Jan 2008 07:54:03 +1100
+Received: from agminet01.oracle.com ([141.146.126.228]:33473 "EHLO
+	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753165AbYA3VDN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Jan 2008 16:03:13 -0500
+In-Reply-To: <47A0704D.7080808-I6s3FmifXcAEdjjp4vwUeA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I've cooked together a patch for making UDF exportable.
+Hi Gianluca-
 
-It is based on the code found in ISO fs. Since I am far from an expert
-in this area bugs may be present.
+On Jan 30, 2008, at 7:40 AM, Gianluca Alberici wrote:
+> Hello again everybody
+>
+> Here follows the testbench:
+>
+> - I got two mirrors, same machine, same disk etc...chaged hostname,  
+> IP, and on the second i have recompiled kernel.
+> - First: 2.6.21.7 on debian sarge
+> - Second: 2.6.22 same system.
+> - Onto both i got nfs-user-server and cfsd last versions
+> - The export file is the same (localhost /opt/nfs (rw, async),  
+> stripping off the async option does not changes anything)
+> - Mount options are exactly the same.
+>
+> The problem arises in the very same manner with both nfs and cfsd:
+>
+> NFS:setattr {
+> ...
+> ...
+> RPC:call_decode {
+> return 22;
+> }
+> ...
+> return 22;
+> }
 
---- fs/udf/namei.c.orig	2007-10-10 16:22:30.000000000 +0200
-+++ fs/udf/namei.c	2008-01-30 21:39:00.000000000 +0100
-@@ -31,6 +31,7 @@
- #include <linux/smp_lock.h>
- #include <linux/buffer_head.h>
- #include <linux/sched.h>
-+#include <linux/exportfs.h>
- 
- static inline int udf_match(int len1, const char *name1, int len2,
- 			    const char *name2)
-@@ -315,9 +316,8 @@ static struct dentry *udf_lookup(struct 
- 		}
- 	}
- 	unlock_kernel();
--	d_add(dentry, inode);
- 
--	return NULL;
-+	return d_splice_alias(inode, dentry);
- }
- 
- static struct fileIdentDesc *udf_add_entry(struct inode *dir,
-@@ -1231,6 +1231,151 @@ end_rename:
- 	return retval;
- }
- 
-+static struct dentry *udf_export_get_parent(struct dentry *child)
-+{
-+	struct dentry *parent;
-+	struct inode *inode = NULL;
-+	struct dentry dotdot;
-+	struct fileIdentDesc cfi;
-+	struct udf_fileident_bh fibh;
-+
-+	dotdot.d_name.name = "..";
-+	dotdot.d_name.len = 2;
-+
-+	lock_kernel();
-+	if (udf_find_entry(child->d_inode, &dotdot, &fibh, &cfi)) {
-+		if (fibh.sbh != fibh.ebh)
-+			brelse(fibh.ebh);
-+		brelse(fibh.sbh);
-+		
-+		inode = udf_iget(child->d_inode->i_sb,
-+				 lelb_to_cpu(cfi.icb.extLocation));
-+		if (!inode) {
-+			unlock_kernel();
-+			return ERR_PTR(-EACCES);
-+		}
-+	} else {
-+		unlock_kernel();
-+		return ERR_PTR(-EACCES);
-+	}
-+	unlock_kernel();
-+
-+	parent = d_alloc_anon(inode);
-+	if (!parent) {
-+		iput(inode);
-+		parent = ERR_PTR(-ENOMEM);
-+	}
-+
-+	return parent;
-+}
-+
-+
-+static struct dentry *
-+udf_export_iget(struct super_block *sb, u32 block,
-+		u16 offset, __u32 generation)
-+{
-+	struct inode *inode;
-+	struct dentry *result;
-+	kernel_lb_addr loc;
-+
-+	if (block == 0)
-+		return ERR_PTR(-ESTALE);
-+
-+	loc.logicalBlockNum = block;
-+	loc.partitionReferenceNum = offset;
-+	inode = udf_iget(sb, loc);
-+
-+	if (inode == NULL)
-+		return ERR_PTR(-ENOMEM);
-+
-+	if (is_bad_inode(inode)
-+	    || (generation && inode->i_generation != generation))
-+	{
-+		iput(inode);
-+		return ERR_PTR(-ESTALE);
-+	}
-+	result = d_alloc_anon(inode);
-+	if (!result) {
-+		iput(inode);
-+		return ERR_PTR(-ENOMEM);
-+	}
-+	return result;
-+}
-+
-+
-+struct udf_fid {
-+	u32 block;
-+	u16 partref;
-+	u16 parent_partref;
-+	u32 generation;
-+	u32 parent_block;
-+	u32 parent_generation;
-+};
-+
-+static struct dentry *udf_fh_to_dentry(struct super_block *sb,
-+	struct fid *fid, int fh_len, int fh_type)
-+{
-+	struct udf_fid *ufid = (struct udf_fid *)fid;
-+
-+	if (fh_len < 3 || fh_type > 2)
-+		return NULL;
-+
-+	return udf_export_iget(sb, ufid->block, ufid->partref,
-+			ufid->generation);
-+}
-+
-+static struct dentry *udf_fh_to_parent(struct super_block *sb,
-+		struct fid *fid, int fh_len, int fh_type)
-+{
-+	struct udf_fid *ufid = (struct udf_fid *)fid;
-+
-+	if (fh_type != 2)
-+		return NULL;
-+
-+	return udf_export_iget(sb,
-+			fh_len > 2 ? ufid->parent_block : 0,
-+			ufid->parent_partref,
-+			fh_len > 4 ? ufid->parent_generation : 0);
-+}
-+static int
-+udf_encode_fh(struct dentry *de, __u32 *fh, int *lenp, int connectable)
-+{
-+	int len = *lenp;
-+	struct inode *inode =  de->d_inode;
-+	kernel_lb_addr location = UDF_I_LOCATION(inode);
-+	struct udf_fid *ufid = (struct udf_fid *)fh;
-+	int type = 1;
-+
-+	if (len < 3 || (connectable && len < 5))
-+		return 255;
-+
-+	*lenp = 3;
-+	ufid->block = location.logicalBlockNum;
-+	ufid->partref = location.partitionReferenceNum;
-+	ufid->generation = inode->i_generation;
-+
-+	if (connectable && !S_ISDIR(inode->i_mode)) {
-+		spin_lock(&de->d_lock);
-+		inode = de->d_parent->d_inode;
-+		location = UDF_I_LOCATION(inode);
-+		ufid->parent_block = location.logicalBlockNum;
-+		ufid->parent_partref = location.partitionReferenceNum;	
-+		ufid->parent_generation = inode->i_generation;
-+		spin_unlock(&de->d_lock);
-+		*lenp = 5;
-+		type = 2;
-+	}
-+
-+	return type;
-+}
-+
-+struct export_operations udf_export_ops = {
-+	.encode_fh	= udf_encode_fh,
-+	.fh_to_dentry   = udf_fh_to_dentry,
-+	.fh_to_parent   = udf_fh_to_parent,
-+	.get_parent     = udf_export_get_parent,
-+};
-+
- const struct inode_operations udf_dir_inode_operations = {
- 	.lookup				= udf_lookup,
- 	.create				= udf_create,
+Again, there is nothing wrong with the RPC client or call_decode.   
+The *server* is returning NFSERR_INVAL (22) to a SETATTR request; the  
+RPC client is simply passing that along to the NFS client, as it is  
+designed to do.
 
---- fs/udf/super.c.orig	2008-01-30 17:57:23.000000000 +0100
-+++ fs/udf/super.c	2008-01-30 21:38:10.000000000 +0100
-@@ -71,7 +71,7 @@
- #define VDS_POS_LENGTH			7
- 
- static char error_buf[1024];
--
-+extern struct export_operations udf_export_ops;
- /* These are the "meat" - everything else is stuffing */
- static int udf_fill_super(struct super_block *, void *, int);
- static void udf_put_super(struct super_block *);
-@@ -1490,6 +1490,7 @@ static int udf_fill_super(struct super_b
- 
- 	/* Fill in the rest of the superblock */
- 	sb->s_op = &udf_sb_ops;
-+	sb->s_export_op = &udf_export_ops;
- 	sb->dq_op = NULL;
- 	sb->s_dirt = 0;
- 	sb->s_magic = UDF_SUPER_MAGIC;
+> I have tried these kernels:
+>
+> 2.6.16.11	works
+> 2.6.20		works
+> 2.6.21		works
+> 2.6.21.7	works
+> 2.6.22		doesnt work (contiguous to previous version)
+> 2.6.23		doesnt work (same behavior as previous)
+> 2.6.23.9	doesnt work (as above)
+> 2.6.24rc7	doesnt work (as above)
+>
+> I would really like to do more, client or server side, if you ave  
+> any suggestions.
+> Can we find out what is the change (doesnt matter if it is a buf or  
+> bug fix) that caused this problem ?
+
+The goal here is to identify the kernel change between 2.6.21 and  
+2.6.22 that makes the client generate SETATTR requests the user-space  
+server chokes on.  It may be a change in the NFS client, or it could  
+be somewhere else in the file system stack, like the VFS.
+
+The usual procedure is to use "git bisect".  It does a binary search  
+on the kernel patches between the working kernel version and the  
+kernel version that is known not to work.  It works like this:
+
+1.  You clone a linux kernel git repository (if you don't have a git
+     repository already)
+
+2.  You tell git bisect which kernel version is working, and which  
+isn't.
+     git bisect then selects a commit about half way in between the  
+working
+     and non-working versions, and checks out that version of the kernel
+
+3.  You build that kernel, and run your test case
+
+4.  You tell git bisect whether the resulting kernel passes your test  
+case,
+     it selects a new commit, and checks out that version of the kernel.
+
+5.  Repeat steps 3 and 4 until git bisect has identified the commit that
+     causes the kernel to stop passing your test case
+
+If the number of patches between 2.6.21 and 2.6.22 is N, then git  
+bisect will find the faulty patch in O(log2(N)) steps.  For example,  
+if there are 250 patches between 2.6.21 and 2.6.22, it will take  
+about 8 iterations of steps 3 and 4 to find the faulty patch, if all  
+goes well; far fewer than the total number of patches you would need  
+to test one at a time.
+
+Naturally you can also do this by applying and reverting patches with  
+"patch -p1", but it's a little more work.
+
+> Chuck Lever wrote:
+>
+>> On Jan 29, 2008, at 3:31 PM, Trond Myklebust wrote:
+>>
+>>> On Tue, 2008-01-29 at 20:50 +0100, Gianluca Alberici wrote:
+>>>
+>>>> Hello,
+>>>>
+>>>> I confirm that i have encountered this same problem (EINVAL on open
+>>>> (...O | TRUNC) with the following userspace servers:
+>>>>
+>>>> - nfs-user-server shipped with debian sarge/etch etc...
+>>>> - cfsd (crypto file system which is an nfs server)
+>>>>
+>>>> I want to underline again that these userspace servers have been  
+>>>> woking
+>>>> perfectly until 2.6.21.7 (which is the last 2.6.21)
+>>>> Since 2.6.22 the problem came out and it is still present into  
+>>>> 2.6.24
+>>>> rc7 (last i tested). Conclusion: there must have been something  
+>>>> that is
+>>>> changed in 2.6.22 that caused the problem.
+>>>
+>>>
+>>> The only difference between these two dumps are the fact that the  
+>>> first
+>>> one isn't using the Sun convention for telling NFSv2 servers to  
+>>> set to
+>>> the current time (see the code in xdr_encode_current_server_time).
+>>
+>>
+>> I thought I saw that on both SETATTRs, but I could be wrong.
+>>
+>>> I don't see why this would be new behaviour after 2.6.21. The  
+>>> code for
+>>> this has been in the NFS client since 2.6.15 at least...
+>>
+>>
+>>
+>> A mount option is set on one test client, and not the other, perhaps?
+>>
+>> -- 
+>> Chuck Lever
+>> chuck[dot]lever[at]oracle[dot]com
+>> -
+>> To unsubscribe from this list: send the line "unsubscribe linux- 
+>> nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at http://vger.kernel.org/majordomo-info.html
+>
+>
+> -
+> To unsubscribe from this list: send the line "unsubscribe linux- 
+> nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
 
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Microsoft
-Defy all challenges. Microsoft(R) Visual Studio 2008.
-http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
 
