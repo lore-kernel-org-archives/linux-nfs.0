@@ -1,30 +1,23 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 0/2] fixes for 2.6.25
-Date: Tue, 29 Jan 2008 16:56:28 -0500
-Message-ID: <20080129215628.GK28032@fieldses.org>
-References: <1201620655-7595-1-git-send-email-jlayton@redhat.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 0/4] Display all NFS mount options via nfs_show_options
+Date: Tue, 29 Jan 2008 19:13:02 -0500
+Message-ID: <20080130001202.14637.41538.stgit@manray.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
-To: Jeff Layton <jlayton@redhat.com>
+To: trond.myklebust@fys.uio.no, miklos@szeredi.hu
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:33416 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760068AbYA2V4k (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 Jan 2008 16:56:40 -0500
-In-Reply-To: <1201620655-7595-1-git-send-email-jlayton@redhat.com>
+Received: from flpi102.sbcis.sbc.com ([207.115.20.71]:56588 "EHLO
+	flpi102.prodigy.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751646AbYA3ANX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jan 2008 19:13:23 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jan 29, 2008 at 10:30:53AM -0500, Jeff Layton wrote:
-> Hi Bruce,
->   Here are the two patches that I think are reasonable for 2.6.25. I
-> think it's probably best that we continue working on lockd over the
-> 2.6.25 development cycle and target the conversion to kthread API
-> for 2.6.26.
-> 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Hello-
 
-OK, applied--thanks!
+Here's my (untested) proposal for making the NFS client display all NFS mount
+options via nfs_show_options().  Comments?
 
---b.
+-- 
+corporate:    <chuck dot lever at oracle dot com>
