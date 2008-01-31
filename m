@@ -1,50 +1,65 @@
-From: Greg Banks <gnb@sgi.com>
-Subject: Re: kernel exports table flushes out on running exportfs -a over mips
-Date: Thu, 31 Jan 2008 13:36:54 +1100
-Message-ID: <20080131023654.GA45273388@ocelot.melbourne.sgi.com>
-References: <DDFD17CC94A9BD49A82147DDF7D545C5743B89@exchange.ZeugmaSystems.local>
+From: Frank Filz <ffilzlnx@us.ibm.com>
+Subject: [NFS] [PATCH] nfs-utils: fix CROSSMOUNT test in utils/mountd/cache.c
+Date: Thu, 31 Jan 2008 11:19:53 -0800
+Message-ID: <1201807193.1517.8.camel@dyn9047022153>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Anirban Sinha <ASinha-z4qIPS1Syiu/3pe1ocb+swC/G2K4zDHf@public.gmane.org>
+Content-Type: text/plain; charset="us-ascii"
+To: NFS List <nfs@lists.sourceforge.net>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from relay1.sgi.com ([192.48.171.29]:48479 "EHLO relay.sgi.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1756318AbYAaChG (ORCPT
-	<rfc822;@relay.sgi.com:linux-nfs@vger.kernel.org>);
-	Wed, 30 Jan 2008 21:37:06 -0500
-In-Reply-To: <DDFD17CC94A9BD49A82147DDF7D545C5743B89-Lp/cVzEoVyb8BYCnuv3k+coc7lC+zEt2hPhL2mjWHbk@public.gmane.org>
+Received: from neil.brown.name ([220.233.11.133]:43559 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1760995AbYAaTXz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 31 Jan 2008 14:23:55 -0500
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1JKf0m-0006TC-7b
+	for linux-nfs@vger.kernel.org; Fri, 01 Feb 2008 06:23:48 +1100
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jan 30, 2008 at 05:34:13PM -0800, Anirban Sinha wrote:
-> Hi:
-> 
-> I am seeing an unusual problem on running nfs server on mips. Over Intel
-> this does not happen. When I run exportfs -a on the server when the
-> clients have already mounted their nfs filesystem, the kernel exports
-> table as can be seen from /proc/fs/nfs/exports gets completely flushed
-> out. We (me and one another colleague) have done some digging (mostly
-> looking into nfsutils codebase) and it looks like a kernel side issue.
-> We had also asked folks in the linux-mips mailing list, but apparently
-> no one has any clue. I am just hoping that those who are more familiar
-> with the user level and kernel side of nfs might me something more to
-> chew on. If you can give any suggestions that will be really useful. If
-> you think the information I provided is not enough, I can give you any
-> other information you need in this regard.
-
-Does the MIPS box have the /proc/fs/nfsd/ filesystem mounted?
-Perhaps you could try
-
-1) running exportfs under strace.  I suggest
-   strace -o /tmp/s.log -s 1024 exportfs ...
-
-2) AND enabling kernel debug messages
-   rpcdebug -m nfsd -s export
-   rpcdebug -m rpc -s cache
+While debugging problems with nfs-utils, I noticed the following bit of
+code:
 
 
--- 
-Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-The cake is *not* a lie.
-I don't speak for SGI.
+			/* If one is a CROSSMOUNT, then prefer the longest path */
+			if (((found->m_export.e_flags & NFSEXP_CROSSMOUNT) ||
+			     (found->m_export.e_flags & NFSEXP_CROSSMOUNT)) &&
+			    strlen(found->m_export.e_path) !=
+			    strlen(found->m_export.e_path)) {
+
+This will never actually be hit since the two strlens are always the
+same!
+
+Here is a simple patch to fix this to what I assume the intent was:
+
+Signed-off-by: Frank Filz <ffilzlnx@us.ibm.com>
+
+--- ./utils/mountd/cache.c.orig	2008-01-31 11:09:10.000000000 -0800
++++ ./utils/mountd/cache.c	2008-01-31 11:09:53.000000000 -0800
+@@ -708,9 +708,9 @@ void nfsd_export(FILE *f)
+ 			}
+ 			/* If one is a CROSSMOUNT, then prefer the longest path */
+ 			if (((found->m_export.e_flags & NFSEXP_CROSSMOUNT) ||
+-			     (found->m_export.e_flags & NFSEXP_CROSSMOUNT)) &&
++			     (exp->m_export.e_flags & NFSEXP_CROSSMOUNT)) &&
+ 			    strlen(found->m_export.e_path) !=
+-			    strlen(found->m_export.e_path)) {
++			    strlen(exp->m_export.e_path)) {
+ 
+ 				if (strlen(exp->m_export.e_path) >
+ 				    strlen(found->m_export.e_path)) {
+
+
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Microsoft
+Defy all challenges. Microsoft(R) Visual Studio 2008.
+http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
+
