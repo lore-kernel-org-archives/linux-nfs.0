@@ -1,43 +1,36 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 4/4] NFS: Show most mount options via nfs_show_options()
-Date: Wed, 30 Jan 2008 16:58:46 -0500
-Message-ID: <A00EE326-978A-42AE-9541-8F41F3A1CE5C@oracle.com>
-References: <20080130001333.14637.74159.stgit@manray.1015granger.net> <E1JKCOe-0008Dg-2p@pomaz-ex.szeredi.hu>
-Mime-Version: 1.0 (Apple Message framework v753)
-Content-Type: text/plain; charset=US-ASCII; delsp=yes; format=flowed
-Cc: trond.myklebust@fys.uio.no, linux-nfs@vger.kernel.org
-To: Miklos Szeredi <miklos@szeredi.hu>
+From: "Anirban Sinha" <ASinha-z4qIPS1Syiu/3pe1ocb+swC/G2K4zDHf@public.gmane.org>
+Subject: kernel exports table flushes out on running exportfs -a over mips
+Date: Wed, 30 Jan 2008 17:34:13 -0800
+Message-ID: <DDFD17CC94A9BD49A82147DDF7D545C5743B89@exchange.ZeugmaSystems.local>
+Mime-Version: 1.0
+Content-Type: text/plain;
+	charset="us-ascii"
+To: <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:20480 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751836AbYA3V7S (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Jan 2008 16:59:18 -0500
-In-Reply-To: <E1JKCOe-0008Dg-2p-8f8m9JG5TPIdUIPVzhDTVZP2KDSNp7ea@public.gmane.org>
+Received: from mail.zeugmasystems.com ([192.139.122.66]:10231 "EHLO
+	zeugmasystems.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1754312AbYAaBeu convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Jan 2008 20:34:50 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Miklos-
+Hi:
 
-On Jan 30, 2008, at 7:50 AM, Miklos Szeredi wrote:
->> Display all mount options in /proc/mount which may be needed to  
->> reconstruct
->> a previous mount.
->
-> Thanks, looks good to me.  The only thing I see still missing is
-> "mounthost".  What about that one?
+I am seeing an unusual problem on running nfs server on mips. Over Intel
+this does not happen. When I run exportfs -a on the server when the
+clients have already mounted their nfs filesystem, the kernel exports
+table as can be seen from /proc/fs/nfs/exports gets completely flushed
+out. We (me and one another colleague) have done some digging (mostly
+looking into nfsutils codebase) and it looks like a kernel side issue.
+We had also asked folks in the linux-mips mailing list, but apparently
+no one has any clue. I am just hoping that those who are more familiar
+with the user level and kernel side of nfs might me something more to
+chew on. If you can give any suggestions that will be really useful. If
+you think the information I provided is not enough, I can give you any
+other information you need in this regard.
 
+We are using mips SB1 64 bit processor and running a 2.6.17 kernel from
+linux-mips.org.
 
-User space (the mount.nfs command) converts "mounthost=" to  
-"mountaddr=".  /proc/mounts shows "mountaddr=" so redriving the mount  
-request will just pass that back in.
-
-Currently, none of the DNS resolutions are redone on an NFS remount.   
-The original "addr=" "clientaddr=" and "mountaddr=" options are  
-reused, even with /etc/mtab.
-
-(I'm not editorializing about whether that's right or wrong, but that  
-is my understanding of how it works today).
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+Thanks in advance,
+Ani
