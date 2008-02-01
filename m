@@ -1,52 +1,37 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: [PATCH 3/3] enhanced NFS ESTALE error handling (v2)
-Date: Fri, 01 Feb 2008 16:29:23 -0500
-Message-ID: <47A38F33.9050505@redhat.com>
-References: <4790C76F.2050105@redhat.com>  <47A387D9.1070206@redhat.com> <1201900017.11291.43.camel@heimdal.trondhjem.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	linux-nfs@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:45531 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759283AbYBAV3j (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 1 Feb 2008 16:29:39 -0500
-In-Reply-To: <1201900017.11291.43.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+From: Miklos Szeredi <miklos@szeredi.hu>
+Subject: Re: [PATCH 2/3] enhanced syscall ESTALE error handling (v2)
+Date: Fri, 01 Feb 2008 22:37:48 +0100
+Message-ID: <E1JL3a0-0006H7-U3@pomaz-ex.szeredi.hu>
+References: <4790C768.4080207@redhat.com> <47A387D4.70605@redhat.com>
+Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+	akpm@linux-foundation.org, trond.myklebust@fys.uio.no,
+	linux-fsdevel@vger.kernel.org
+To: staubach@redhat.com
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-reply-to: <47A387D4.70605@redhat.com> (message from Peter Staubach on Fri,
+	01 Feb 2008 15:57:56 -0500)
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Trond Myklebust wrote:
-> On Fri, 2008-02-01 at 15:58 -0500, Peter Staubach wrote:
->   
->> Hi.
->>
->> The patch enhanced the ESTALE error handling for NFS mounted
->> file systems.  It expands the number of places that the NFS
->> client checks for ESTALE returns from the server.
->>
->> It also enhances the ESTALE handling for directories by
->> occasionally retrying revalidation to check to see whether the
->> directory becomes valid again.  This sounds odd, but can occur
->> when a systems administrator, accidently or unknowingly,
->> unexports a file system which is in use.  All active
->> non-directory files become permanently inaccessible, but
->> directories can be become accessible again after the
->> administrator re-exports the file system.  This is a situation
->> that users have been complaining about for years and this
->> support can help to alleviate their situations.
->>     
->
-> As far as I can see, this patch can be applied separately from the VFS
-> fixes. If so, would it make sense for me to take charge of this patch in
-> the NFS tree, while Andrew queues up the other two VFS changes in -mm?
+This doesn't apply to -mm, because the ro-mounts stuff touches a lot
+of the same places as this patch.  You probably need to rebase this on
+top of those changes.
 
-Yes, I think that this would make good sense.
+> This patch adds handling for the error, ESTALE, to the system
+> calls which take pathnames as arguments.  The algorithm used
+> is to detect that an ESTALE error has occurred during an
+> operation subsequent to the lookup process and then to unwind
+> appropriately and then to perform the lookup process again.
+> Eventually, either the lookup process will return an error
+> or a valid dentry/inode combination and then operation can
+> succeed or fail based on its own merits.
 
-    Thanx...
+If a broken NFS server or FUSE filesysem keeps returning ESTALE, this
+goes into an infinite loop.  How are we planning to deal with that?
 
-       ps
+And it has to be dealt with either in the VFS, or in the kernel parts
+of the relevant filesystems.  We can't just say, fix the broken
+servers, especially not with FUSE, where the server is totally
+untrusted.
 
+Miklos
