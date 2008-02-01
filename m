@@ -1,54 +1,55 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 020/100] nfsd: select CONFIG_PROC_FS in nfsv4 and gss server cases
-Date: Fri, 1 Feb 2008 11:40:20 -0500
-Message-ID: <E83AB0F9-B6CB-49CE-B82C-DA450F4ACE9D@oracle.com>
-References: <1201303040-7779-14-git-send-email-bfields@citi.umich.edu> <1201303040-7779-15-git-send-email-bfields@citi.umich.edu> <1201303040-7779-16-git-send-email-bfields@citi.umich.edu> <120!1303040-7779-17-git-send-email-bfields@citi.umich.edu> <1201303040-7779-18-git-send-email-bfields@citi.umich.edu> <1201303040-7779-19-git-send-email-bfields@citi.umich.edu> <1201303040-7779-20-git-send-email-bfields@citi.umich.edu> <DA5779D5-8037-4640-9571-87E041262988@oracle.com> <20080128182858.GC16785@fieldses.org> <C33E449C-C1DB-46D4-9F00-98788B385017@oracle.com> <20080128214851.GO16785@fieldses.org>
-Mime-Version: 1.0 (Apple Message framework v753)
-Content-Type: text/plain; charset=US-ASCII; delsp=yes; format=flowed
-Cc: linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:62432 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758247AbYBAQog (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Feb 2008 11:44:36 -0500
-In-Reply-To: <20080128214851.GO16785@fieldses.org>
-Sender: linux-nfs-owner@vger.kernel.org
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 1/3] NLM add resume procfs file
+Date: Fri, 1 Feb 2008 12:24:31 -0500
+Message-ID: <20080201172431.GE4798@fieldses.org>
+References: <47997059.704@redhat.com> <20080129021910.GF16785@fieldses.org>
+	<47A0A946.5030405@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: cluster-devel@redhat.com, NFS list <linux-nfs@vger.kernel.org>
+To: Wendy Cheng <wcheng@redhat.com>
+Return-path: <cluster-devel-bounces@redhat.com>
+In-Reply-To: <47A0A946.5030405@redhat.com>
+List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
+	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
+List-Archive: <https://www.redhat.com/archives/cluster-devel>
+List-Post: <mailto:cluster-devel@redhat.com>
+List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
+List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
+	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
+Sender: cluster-devel-bounces@redhat.com
+Errors-To: cluster-devel-bounces@redhat.com
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Jan 28, 2008, at 4:48 PM, J. Bruce Fields wrote:
-> On Mon, Jan 28, 2008 at 04:12:26PM -0500, Chuck Lever wrote:
->> On Jan 28, 2008, at 1:28 PM, J. Bruce Fields wrote:
->>> I don't care either way, but I'm inclined to leave this as is until
->>> someone comes along with really clear and convincing criteria for  
->>> when
->>> to choose select and when to choose depends.
+On Wed, Jan 30, 2008 at 11:43:50AM -0500, Wendy Cheng wrote:
+> J. Bruce Fields wrote:
+>>> +	int rc;
+>>> +
+>>> +	rc = failover_parse_ip(file, buf, size, &server_ip);
+>>> +	if (rc < 0)
+>>> +		return rc;
+>>>   	return nlmsvc_failover_ip(server_ip);
+>>>  }
+>>>     
 >>
->> If NFSv4 or GSS *require* procfs to work, then "depends" is the right
->> choice.
+>> Looks great, but it would fit more logically with the previous patch.
+>> (If you know you're going to end up using this code in two places, may
+>> as well write it that way from the start.)
+>>   
 >
-> Neither CONFIG_NFS_FS nor CONFIG_NFSD_FS seem to be following this  
-> rule?
+> The original unlock patch did have a shared routine for this purpose.  
+> After review, its code structure got changed a little bit. Since the  
+> revised version has non-trivial amount of testing efforts behind it, I  
+> think it is better to do the change here, instead of the well-tested  
+> unlock patch.
 >
-> Could you submit a patch that fixes all of those?
+> On the other hand, I cut the resume patch into three pieces mostly for  
+> review purpose. Do you think it would be easier (for your git tree  
+> works) that I combine these three small patches into a big resume patch  
+> after all the review comments are incorporated into the code ?
 
-According to Documentation/kbuild/kconfig-language.txt, "select" is  
-OK to use on non-visible options like NFS_ACL_SUPPORT, LOCKD, and  
-SUNRPC, but generally "depends on" is preferred for setting visible  
-options.  Apparently "select" doesn't do proper dependency checking,  
-it just forces the value of the named option.
+As long as they each compile and run without introducing any new bugs
+(even temporarily) along the way, then I'll almost always prefer more
+smaller patches to fewer larger ones.
 
-NFS_FS looks correct in this regard.
-
-However, NFSD is probably not correct... for example, instead of  
-"select NFSD_TCP if NFSD_V4" we should probably instead add a  
-"depends on NFSD_TCP" under NFSD_V4.
-
-(Alternately, NFSD_TCP could just go away... hint hint).
-
-I'll propose some patches to rectify some of this and fix up the out- 
-of-date help texts.
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+--b.
