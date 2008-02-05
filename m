@@ -1,51 +1,51 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 08/10] NFSD: Move "select FS_POSIX_ACL if NFSD_V4"
-Date: Tue, 05 Feb 2008 13:09:26 -0500
-Message-ID: <20080205180926.32229.34405.stgit@manray.1015granger.net>
+From: Rasmus Rohde <rohde-3mLe3WyXyAE@public.gmane.org>
+Subject: Re: [NFS] [PATCH] Make UDF exportable
+Date: Tue, 05 Feb 2008 20:26:01 +0100
+Message-ID: <1202239561.12188.53.camel__20803.9172729061$1202239667$gmane$org@localhost.localdomain>
+References: <1201726404.2976.8.camel@localhost.localdomain>
+	<20080205102955.GA28347@infradead.org>
+	<1202233464.12188.43.camel@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: linux-fsdevel@vger.kernel.org, jack@suse.cz,
+	nfs@lists.sourceforge.net
+To: Christoph Hellwig <hch@infradead.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from flpi185.sbcis.sbc.com ([207.115.20.187]:56299 "EHLO
-	flpi185.prodigy.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754982AbYBESJ2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Feb 2008 13:09:28 -0500
-Received: from manray.1015granger.net (adsl-76-241-169-38.dsl.sfldmi.sbcglobal.net [76.241.169.38])
-	by flpi185.prodigy.net (8.13.8 out.dk.spool/8.13.8) with ESMTP id m15I9R2a016180
-	for <linux-nfs@vger.kernel.org>; Tue, 5 Feb 2008 10:09:27 -0800
-Received: from manray.1015granger.net (manray.1015granger.net [127.0.0.1])
-	by manray.1015granger.net (8.14.1/8.14.1) with ESMTP id m15I9QZ6032296
-	for <linux-nfs@vger.kernel.org>; Tue, 5 Feb 2008 13:09:26 -0500
+Received: from neil.brown.name ([220.233.11.133]:46876 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756881AbYBET0j (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 5 Feb 2008 14:26:39 -0500
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1JMTRA-0006KA-EM
+	for linux-nfs@vger.kernel.org; Wed, 06 Feb 2008 06:26:32 +1100
+In-Reply-To: <1202233464.12188.43.camel-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: since FS_POSIX_ACL is a boolean, it can be selected safely
-under the NFSD_V4 entry (also a boolean).
+> +static struct dentry *udf_fh_to_parent(struct super_block *sb,
+> +				       struct fid *fid, int fh_len, int fh_type)
+> +{
+> +	if (fh_len != 5 || fh_type != FILEID_UDF_WITHOUT_PARENT)
+                                                   ^^^^^^^
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+Argh - this should have been WITH so the line reads:
 
- fs/Kconfig |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+if (fh_len != 5 || fh_type != FILEID_UDF_WITH_PARENT)
 
-diff --git a/fs/Kconfig b/fs/Kconfig
-index 5f00ee7..faf5620 100644
---- a/fs/Kconfig
-+++ b/fs/Kconfig
-@@ -1661,7 +1661,6 @@ config NFSD
- 	select NFS_ACL_SUPPORT if NFSD_V2_ACL
- 	select CRYPTO_MD5 if NFSD_V4
- 	select CRYPTO if NFSD_V4
--	select FS_POSIX_ACL if NFSD_V4
- 	help
- 	  Choose Y here if you want to allow other computers to access
- 	  files residing on this system using Sun's Network File System
-@@ -1723,6 +1722,7 @@ config NFSD_V4
- 	bool "NFS server support for NFS version 4 (EXPERIMENTAL)"
- 	depends on NFSD && PROC_FS && EXPERIMENTAL
- 	select NFSD_V3
-+	select FS_POSIX_ACL
- 	select RPCSEC_GSS_KRB5
- 	help
- 	  This option enables support in your system's NFS server for
+I'll just hold back a little reposting a new patch if other comments
+should happen to show up.
+
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Microsoft
+Defy all challenges. Microsoft(R) Visual Studio 2008.
+http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
