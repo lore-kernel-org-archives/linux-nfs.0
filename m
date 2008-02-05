@@ -1,68 +1,37 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 5/5] NFSD: Use "depends on" for PROC_FS dependency
-Date: Mon, 04 Feb 2008 19:04:50 -0500
-Message-ID: <20080205000450.18602.4797.stgit@manray.1015granger.net>
+From: Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
+Subject: Re: [PATCH 4/5] NFSD: Remove NFSD_TCP kernel build option
+Date: Tue, 05 Feb 2008 11:19:21 +1100
+Message-ID: <47A7AB89.7020709@melbourne.sgi.com>
+References: <20080205000442.18602.29035.stgit@manray.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: linux-nfs@vger.kernel.org
-To: bfields@citi.umich.edu
+Content-Type: text/plain; charset=UTF-8
+Cc: bfields@citi.umich.edu, linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from flpi195.sbcis.sbc.com ([207.115.20.197]:28939 "EHLO
-	flpi195.prodigy.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757289AbYBEAEw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Feb 2008 19:04:52 -0500
+Received: from netops-testserver-3-out.sgi.com ([192.48.171.28]:58593 "EHLO
+	relay.sgi.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1754908AbYBEAMy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Feb 2008 19:12:54 -0500
+In-Reply-To: <20080205000442.18602.29035.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Recently a reverse dependency was added to fs/Kconfig to ensure that
-PROC_FS was enabled if NFSD_V4 was enabled.
+Chuck Lever wrote:
+> TCP support in the Linux NFS server is stable enough that we can leave it
+> on always.  CONFIG_NFSD_TCP adds about 10 lines of code, and defaults to
+> "Y" anyway.
+>
+> A run-time switch might be more appropriate if people feel they would like
+> to disable NFSD's TCP support.
+>
+>   
+Looks good.
 
-There is a guideline in Documentation/kbuild/kconfig-language.txt that
-states "In general use select only for non-visible symbols (no prompts
-anywhere) and for symbols with no dependencies."
+Actually, I'd be inclined to go one step further and set UDP support
+off by default.
 
-A quick grep around other Kconfig files reveals that no entry currently
-uses "select PROC_FS" -- every one uses "depends on".  Thus CONFIG_NFSD_V4
-should use "depends on PROC_FS" as well.
-
-For SUNRPC_GSS, it's a little more complex.  Other entries can "select"
-SUNRPC_GSS, as it is non-visible.  However, the guideline suggests an
-entry can't "select" it if it has a dependency (such as PROC_FS).
-
-Another problem is that if a tristate entry (SUNRPC_GSS) "depends on" a
-boolean (PROC_FS) we can't set the tristate entry to M.
-
-XXX: Both CONFIG_NFSV4 and CONFIG_NFSD_V4 select RPCSEC_GSS_KRB5, which is
-visible, which kconfig-language.txt also frowns upon.  The intent was to
-enable at least one GSS mechanism if V4 was enabled.  Perhaps we should
-make SUNRPC_GSS visible, and make the NFSv4 options visible only if
-SUNRPC_GSS is enabled.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
- fs/Kconfig |    3 +--
- 1 files changed, 1 insertions(+), 2 deletions(-)
-
-diff --git a/fs/Kconfig b/fs/Kconfig
-index 5ccff9a..d689226 100644
---- a/fs/Kconfig
-+++ b/fs/Kconfig
-@@ -1689,7 +1689,6 @@ config NFSD
- 	select CRYPTO_MD5 if NFSD_V4
- 	select CRYPTO if NFSD_V4
- 	select FS_POSIX_ACL if NFSD_V4
--	select PROC_FS if NFSD_V4
- 	select PROC_FS if SUNRPC_GSS
- 	help
- 	  Say Y here if you want to allow other computers to access files
-@@ -1750,7 +1749,7 @@ config NFSD_V3_ACL
- 
- config NFSD_V4
- 	bool "Provide NFSv4 server support (EXPERIMENTAL)"
--	depends on NFSD && NFSD_V3 && EXPERIMENTAL
-+	depends on NFSD && NFSD_V3 && PROC_FS && EXPERIMENTAL
- 	select RPCSEC_GSS_KRB5
- 	help
- 	  This option enables support in your system's NFS server for
+-- 
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+The cake is *not* a lie.
+I don't speak for SGI.
 
