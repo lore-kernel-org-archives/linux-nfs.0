@@ -1,79 +1,68 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 4/5] NFSD: Remove NFSD_TCP kernel build option
-Date: Mon, 04 Feb 2008 19:04:42 -0500
-Message-ID: <20080205000442.18602.29035.stgit@manray.1015granger.net>
+Subject: [PATCH 5/5] NFSD: Use "depends on" for PROC_FS dependency
+Date: Mon, 04 Feb 2008 19:04:50 -0500
+Message-ID: <20080205000450.18602.4797.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@citi.umich.edu
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from flpi195.sbcis.sbc.com ([207.115.20.197]:28624 "EHLO
+Received: from flpi195.sbcis.sbc.com ([207.115.20.197]:28939 "EHLO
 	flpi195.prodigy.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757259AbYBEAEp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Feb 2008 19:04:45 -0500
+	with ESMTP id S1757289AbYBEAEw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Feb 2008 19:04:52 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-TCP support in the Linux NFS server is stable enough that we can leave it
-on always.  CONFIG_NFSD_TCP adds about 10 lines of code, and defaults to
-"Y" anyway.
+Recently a reverse dependency was added to fs/Kconfig to ensure that
+PROC_FS was enabled if NFSD_V4 was enabled.
 
-A run-time switch might be more appropriate if people feel they would like
-to disable NFSD's TCP support.
+There is a guideline in Documentation/kbuild/kconfig-language.txt that
+states "In general use select only for non-visible symbols (no prompts
+anywhere) and for symbols with no dependencies."
+
+A quick grep around other Kconfig files reveals that no entry currently
+uses "select PROC_FS" -- every one uses "depends on".  Thus CONFIG_NFSD_V4
+should use "depends on PROC_FS" as well.
+
+For SUNRPC_GSS, it's a little more complex.  Other entries can "select"
+SUNRPC_GSS, as it is non-visible.  However, the guideline suggests an
+entry can't "select" it if it has a dependency (such as PROC_FS).
+
+Another problem is that if a tristate entry (SUNRPC_GSS) "depends on" a
+boolean (PROC_FS) we can't set the tristate entry to M.
+
+XXX: Both CONFIG_NFSV4 and CONFIG_NFSD_V4 select RPCSEC_GSS_KRB5, which is
+visible, which kconfig-language.txt also frowns upon.  The intent was to
+enable at least one GSS mechanism if V4 was enabled.  Perhaps we should
+make SUNRPC_GSS visible, and make the NFSv4 options visible only if
+SUNRPC_GSS is enabled.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/Kconfig       |   10 ----------
- fs/nfsd/nfssvc.c |    2 --
- 2 files changed, 0 insertions(+), 12 deletions(-)
+ fs/Kconfig |    3 +--
+ 1 files changed, 1 insertions(+), 2 deletions(-)
 
 diff --git a/fs/Kconfig b/fs/Kconfig
-index e6d4034..5ccff9a 100644
+index 5ccff9a..d689226 100644
 --- a/fs/Kconfig
 +++ b/fs/Kconfig
-@@ -1686,7 +1686,6 @@ config NFSD
- 	select EXPORTFS
- 	select NFSD_V2_ACL if NFSD_V3_ACL
- 	select NFS_ACL_SUPPORT if NFSD_V2_ACL
--	select NFSD_TCP if NFSD_V4
+@@ -1689,7 +1689,6 @@ config NFSD
  	select CRYPTO_MD5 if NFSD_V4
  	select CRYPTO if NFSD_V4
  	select FS_POSIX_ACL if NFSD_V4
-@@ -1763,15 +1762,6 @@ config NFSD_V4
+-	select PROC_FS if NFSD_V4
+ 	select PROC_FS if SUNRPC_GSS
+ 	help
+ 	  Say Y here if you want to allow other computers to access files
+@@ -1750,7 +1749,7 @@ config NFSD_V3_ACL
  
- 	  If unsure, say N.
- 
--config NFSD_TCP
--	bool "Provide NFS server over TCP support"
--	depends on NFSD
--	default y
--	help
--	  If you want your NFS server to support TCP connections, say Y here.
--	  TCP connections usually perform better than the default UDP when
--	  the network is lossy or congested.  If unsure, say Y.
--
- config LOCKD
- 	tristate
- 
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 9647b0f..941041f 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -244,7 +244,6 @@ static int nfsd_init_socks(int port)
- 	if (error < 0)
- 		return error;
- 
--#ifdef CONFIG_NFSD_TCP
- 	error = lockd_up(IPPROTO_TCP);
- 	if (error >= 0) {
- 		error = svc_create_xprt(nfsd_serv, "tcp", port,
-@@ -254,7 +253,6 @@ static int nfsd_init_socks(int port)
- 	}
- 	if (error < 0)
- 		return error;
--#endif
- 	return 0;
- }
- 
+ config NFSD_V4
+ 	bool "Provide NFSv4 server support (EXPERIMENTAL)"
+-	depends on NFSD && NFSD_V3 && EXPERIMENTAL
++	depends on NFSD && NFSD_V3 && PROC_FS && EXPERIMENTAL
+ 	select RPCSEC_GSS_KRB5
+ 	help
+ 	  This option enables support in your system's NFS server for
 
