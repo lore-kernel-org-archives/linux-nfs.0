@@ -1,82 +1,97 @@
-From: James Lentini <jlentini@netapp.com>
-Subject: Re: [NFS] Where is Tom Tucker's git tree gone?
-Date: Tue, 5 Feb 2008 17:43:28 -0500 (EST)
-Message-ID: <Pine.LNX.4.64.0802051739330.2989@jlentini-linux.nane.netapp.com>
-References: <4a4634330801241114m30b48112j209c45cb5b6e8a8d@mail.gmail.com>
-	<C3C57297.2F33E%tom@opengridcomputing.com>
-	<4a4634330802051427v55daf917hbfa51a46d0125bd@mail.gmail.com>
+From: Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
+Subject: Re: [PATCH 4/5] NFSD: Remove NFSD_TCP kernel build option
+Date: Wed, 06 Feb 2008 10:05:39 +1100
+Message-ID: <47A8EBC3.7050900@melbourne.sgi.com>
+References: <20080205000442.18602.29035.stgit@manray.1015granger.net> <47A7AB89.7020709@melbourne.sgi.com> <1202170754.28484.57.camel@heimdal.trondhjem.org> <47A7AE03.10401@melbourne.sgi.com> <4BE5A1AE-DB3B-4796-B6BD-5691930258C8@oracle.com> <47A7F8F3.3020907@melbourne.sgi.com> <20080205155021.GA7805@janus>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Shirish Pargaonkar <shirishpargaonkar@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>,
+	bfields@citi.umich.edu, linux-nfs@vger.kernel.org
+To: Frank van Maarseveen <frankvm@frankvm.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:45164 "EHLO neil.brown.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759676AbYBEWo1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 5 Feb 2008 17:44:27 -0500
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1JMWWf-0006vN-2D
-	for linux-nfs@vger.kernel.org; Wed, 06 Feb 2008 09:44:25 +1100
-In-Reply-To: <4a4634330802051427v55daf917hbfa51a46d0125bd-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Received: from relay1.sgi.com ([192.48.171.29]:36090 "EHLO relay.sgi.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1754913AbYBEW7I (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 5 Feb 2008 17:59:08 -0500
+In-Reply-To: <20080205155021.GA7805@janus>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Frank van Maarseveen wrote:
+> On Tue, Feb 05, 2008 at 04:49:39PM +1100, Greg Banks wrote:
+>   
+>> Chuck Lever wrote:
+>>     
+>>> On Feb 4, 2008, at 7:29 PM, Greg Banks wrote:
+>>>       
+>>>> Trond Myklebust wrote:
+>>>>         
+>>>>> On Tue, 2008-02-05 at 11:19 +1100, Greg Banks wrote:
+>>>>>
+>>>>>           
+>>>>>> Chuck Lever wrote:
+>>>>>>
+>>>>>>             
+>>>>>>> TCP support in the Linux NFS server is stable enough that we can
+>>>>>>> leave it
+>>>>>>> on always.  CONFIG_NFSD_TCP adds about 10 lines of code, and
+>>>>>>> defaults to
+>>>>>>> "Y" anyway.
+>>>>>>>
+>>>>>>> A run-time switch might be more appropriate if people feel they
+>>>>>>> would like
+>>>>>>> to disable NFSD's TCP support.
+>>>>>>>
+>>>>>>>
+>>>>>>>
+>>>>>>>               
+>>>>>> Looks good.
+>>>>>>
+>>>>>> Actually, I'd be inclined to go one step further and set UDP support
+>>>>>> off by default.
+>>>>>>
+>>>>>>             
+>>>>> That will break older clients.
+>>>>>
+>>>>>
+>>>>>           
+>>>> Hence the default, rather than removing the code entirely.
+>>>>         
+>>> What might make sense is to remove NFSD_TCP, but add NFSD_UDP,
+>>> defaulting to Y.
+>>>
+>>> Then in a year or two we can change the default to N.
+>>>
+>>>       
+>> Fine by me.
+>>     
+>
+> Last time I checked (around 2.6.22) writing large files on NFSv3 over
+> UDP was 20% faster compared to TCP (Gb LAN with one switch connecting
+> all machines).
+>   
+Did all of your file arrive at the server, and in the same order it left
+the client?  NFS on UDP relies on IP fragmentation, which is known to
+introduce silent data corruption at high data rates (google for "IPID aliasing").
+
+Also, last time I checked, UDP support in the server uses a single socket
+for all traffic, and processes need to serialise on the svc_sock lock to send,
+so aggregate UDP throughput is strictly limited compared to TCP.  As in, 145 MB/s
+for UDP compared to filling 12 1gige pipes for TCP.  I have a patch to fix this,
+but given the inherent data corruption issues of UDP I haven't bothered posting
+the most recent version.
 
 
-On Tue, 5 Feb 2008, Shirish Pargaonkar wrote:
 
-> On 1/30/08, Tom Tucker <tom@opengridcomputing.com> wrote:
-> >
-> > I renamed it xprt-switch-2.6.git. Sorry for the confusion.
-> >
-> >
-> > On 1/24/08 1:14 PM, "Shirish Pargaonkar" <shirishpargaonkar@gmail.com>
-> > wrote:
-> >
-> > > Hello,
-> > >
-> > > I can't clone git://linux-nfs.org/~tomtucker/nfs-rdma-dev-2.6.git.
-> > > It is gone.
-> > > Where can I find the soruces?
-> > >
-> > > -------------------------------------------------------------------------
-> > > This SF.net email is sponsored by: Microsoft
-> > > Defy all challenges. Microsoft(R) Visual Studio 2008.
-> > > http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
-> > > _______________________________________________
-> > > NFS maillist  -  NFS@lists.sourceforge.net
-> > > https://lists.sourceforge.net/lists/listinfo/nfs
-> > > _______________________________________________
-> > > Please note that nfs@lists.sourceforge.net is being discontinued.
-> > > Please subscribe to linux-nfs@vger.kernel.org instead.
-> > >     http://vger.kernel.org/vger-lists.html#linux-nfs
-> > >
-> > > -
-> > > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > > the body of a message to majordomo@vger.kernel.org
-> > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> >
-> >
-> >
-> 
-> Do I need config option NFSD_RDMA with this git tree?
-> I see that option in the previous git tree.
+> TCP and its timeout/retransmission behavior isn't always the best choice.
+>
+>   
+The timeout & retrans that sunrpc implements on top of UDP is arguably worse,
+especially if you use the "soft" mount option.
 
-You do not. The SUNRPC_XPRT_RDMA config option controls the NFS/RDMA 
-client and server build. It is set automatically. See:
-
-http://article.gmane.org/gmane.linux.nfs/18545/match=
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Microsoft
-Defy all challenges. Microsoft(R) Visual Studio 2008.
-http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+-- 
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+The cake is *not* a lie.
+I don't speak for SGI.
 
