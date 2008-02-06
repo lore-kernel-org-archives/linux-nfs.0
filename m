@@ -1,302 +1,106 @@
-From: Rasmus Rohde <rohde-3mLe3WyXyAE@public.gmane.org>
-Subject: Re: [NFS] [PATCH] Make UDF exportable
-Date: Wed, 06 Feb 2008 21:58:02 +0100
-Message-ID: <1202331482.2727.8.camel__17075.6357991651$1202331556$gmane$org@localhost.localdomain>
-References: <1201726404.2976.8.camel@localhost.localdomain>
-	<20080205102955.GA28347@infradead.org>
-	<1202233464.12188.43.camel@localhost.localdomain>
-	<20080206180850.GD3475@duck.suse.cz>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: (fwd) nfs hang on 2.6.24
+Date: Wed, 6 Feb 2008 16:45:08 -0500
+Message-ID: <20080206214508.GO5342@fieldses.org>
+References: <20080205090132.GA8286@stro.at> <1202248931.12271.18.camel@heimdal.trondhjem.org> <003301c86888$ed735a20$0301a8c0@MURTLE> <1202310021.12647.6.camel@heimdal.trondhjem.org> <20080206150739.GA5342@fieldses.org> <1202310924.12647.24.camel@heimdal.trondhjem.org> <20080206172315.GE5342@fieldses.org> <1202320337.14889.18.camel@heimdal.trondhjem.org> <20080206183128.GG5342@fieldses.org> <37673.203.167.214.129.1202332746.squirrel@mail.orcon.net.nz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Christoph Hellwig <hch@infradead.org>,
-	linux-fsdevel@vger.kernel.org, nfs@lists.sourceforge.net
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=us-ascii
+Cc: Trond Myklebust <trond.myklebust@netapp.com>,
+	linux-nfs@vger.kernel.org, maximilian attems <max-U9r9yeDMy7A@public.gmane.org>
+To: Andrew Dixie <andrew-0FSrDVjkvKm9koe0gwxAeg@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:52970 "EHLO neil.brown.name"
+Received: from pie.citi.umich.edu ([141.211.133.115]:57768 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755957AbYBFU6c (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 6 Feb 2008 15:58:32 -0500
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1JMrLg-0006cI-0E
-	for linux-nfs@vger.kernel.org; Thu, 07 Feb 2008 07:58:28 +1100
-In-Reply-To: <20080206180850.GD3475-pwKtmJkCtMINMLpHRKhSow@public.gmane.org>
+	id S1753991AbYBFVpP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 6 Feb 2008 16:45:15 -0500
+In-Reply-To: <37673.203.167.214.129.1202332746.squirrel-pmwrj2wvkLORZ0GbGNPwb6VXKuFTiq87@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> > +	dotdot.d_name.name = "..";
-> > +	dotdot.d_name.len = 2;
-> > +
-> > +	lock_kernel();
-> > +	if (!udf_find_entry(child->d_inode, &dotdot, &fibh, &cfi))
-> > +		goto out_unlock;
->   Have you ever tried this? I think this could never work. UDF doesn't have
-> entry named .. in a directory. You have to search for an entry that has
-> in fileCharacteristics set bit FID_FILE_CHAR_PARENT. Maybe you could
-> hack-around udf_find_entry() to recognize .. dentry and do the search
-> accordingly.
-Probably not. I just tested that I could read files and navigate the
-directory structure. However looking into UDF I think you are right - it
-will fail.
-I have extended udf_find_entry() to do an explicit check based on
-fileCharacteristics as you propose.
-How do I actually test this case?
+On Thu, Feb 07, 2008 at 10:19:06AM +1300, Andrew Dixie wrote:
+> 
+> > Oh, right, I was confusing client and server reboot and assuming the
+> > client would forget the uniquifier on server reboot.  That's obviously
+> > wrong!  The client will forget its own uniquifier on client reboot, but
+> > that's alright since it's happy enough just to let that old state time
+> > out at that point.  So the only possible problem is suboptimal behavior
+> > when the client reboot time is less than the lease time.
+> 
+> There is one client, a stable connection between client and server, and
+> neither client or server are being rebooted.
+> Are the "string in use by client" messages still expected?
 
->   Otherwise the patch looks fine. But please rediff the patch against
-> Andrew's development tree (or -mm) because there are some cleanups there...
-> Thanks.
-Certainly there are. New patch against 2.6.24-mm1:
+Assuming the client creates and destroys clientid's on demand, as
+they're needed for opens, and uses whatever user credential it has at
+hand to do so, then I think a sequence of alternating opens and closes
+as different users could produce this.
 
-Signed-off-by: Rasmus Rohde <rohde-3mLe3WyXyAE@public.gmane.org>
+But no, it doesn't indicate any real problem on its own.
 
-diff -uprN -X linux-2.6.24-mm1-vanilla/Documentation/dontdiff linux-2.6.24-mm1-vanilla/fs/udf/namei.c linux-2.6.24-mm1/fs/udf/namei.c
---- linux-2.6.24-mm1-vanilla/fs/udf/namei.c	2008-02-06 21:23:36.000000000 +0100
-+++ linux-2.6.24-mm1/fs/udf/namei.c	2008-02-06 21:41:38.000000000 +0100
-@@ -31,6 +31,7 @@
- #include <linux/smp_lock.h>
- #include <linux/buffer_head.h>
- #include <linux/sched.h>
-+#include <linux/exportfs.h>
- 
- static inline int udf_match(int len1, const char *name1, int len2,
- 			    const char *name2)
-@@ -159,6 +160,8 @@ static struct fileIdentDesc *udf_find_en
- 	sector_t offset;
- 	struct extent_position epos = {};
- 	struct udf_inode_info *dinfo = UDF_I(dir);
-+	int isdotdot = dentry->d_name.len == 2 &&
-+		dentry->d_name.name[0] == '.' && dentry->d_name.name[1] == '.';
- 
- 	size = udf_ext0_offset(dir) + dir->i_size;
- 	f_pos = udf_ext0_offset(dir);
-@@ -232,6 +235,12 @@ static struct fileIdentDesc *udf_find_en
- 				continue;
- 		}
- 
-+		if ((cfi->fileCharacteristics & FID_FILE_CHAR_PARENT) &&
-+		    isdotdot) {
-+			brelse(epos.bh);
-+			return fi;
-+		}
-+
- 		if (!lfi)
- 			continue;
- 
-@@ -324,9 +333,8 @@ static struct dentry *udf_lookup(struct 
- 		}
- 	}
- 	unlock_kernel();
--	d_add(dentry, inode);
- 
--	return NULL;
-+	return d_splice_alias(inode, dentry);
- }
- 
- static struct fileIdentDesc *udf_add_entry(struct inode *dir,
-@@ -1298,6 +1306,134 @@ end_rename:
- 	return retval;
- }
- 
-+static struct dentry *udf_get_parent(struct dentry *child)
-+{
-+	struct dentry *parent;
-+	struct inode *inode = NULL;
-+	struct dentry dotdot;
-+	struct fileIdentDesc cfi;
-+	struct udf_fileident_bh fibh;
-+
-+	dotdot.d_name.name = "..";
-+	dotdot.d_name.len = 2;
-+
-+	lock_kernel();
-+	if (!udf_find_entry(child->d_inode, &dotdot, &fibh, &cfi))
-+		goto out_unlock;
-+	
-+	if (fibh.sbh != fibh.ebh)
-+		brelse(fibh.ebh);
-+	brelse(fibh.sbh);
-+		
-+	inode = udf_iget(child->d_inode->i_sb,
-+			 lelb_to_cpu(cfi.icb.extLocation));
-+	if (!inode)
-+		goto out_unlock;
-+	unlock_kernel();
-+
-+	parent = d_alloc_anon(inode);
-+	if (!parent) {
-+		iput(inode);
-+		parent = ERR_PTR(-ENOMEM);
-+	}
-+
-+	return parent;
-+out_unlock:
-+	unlock_kernel();
-+	return ERR_PTR(-EACCES);
-+}
-+
-+
-+static struct dentry *udf_nfs_get_inode(struct super_block *sb, u32 block,
-+					u16 partref, __u32 generation)
-+{
-+	struct inode *inode;
-+	struct dentry *result;
-+	kernel_lb_addr loc;
-+
-+	if (block == 0)
-+		return ERR_PTR(-ESTALE);
-+
-+	loc.logicalBlockNum = block;
-+	loc.partitionReferenceNum = partref;
-+	inode = udf_iget(sb, loc);
-+
-+	if (inode == NULL)
-+		return ERR_PTR(-ENOMEM);
-+
-+	if (generation && inode->i_generation != generation) {
-+		iput(inode);
-+		return ERR_PTR(-ESTALE);
-+	}
-+	result = d_alloc_anon(inode);
-+	if (!result) {
-+		iput(inode);
-+		return ERR_PTR(-ENOMEM);
-+	}
-+	return result;
-+}
-+
-+static struct dentry *udf_fh_to_dentry(struct super_block *sb,
-+				       struct fid *fid, int fh_len, int fh_type)
-+{
-+	if ((fh_len != 3 && fh_len != 5) ||
-+	    (fh_type != FILEID_UDF_WITH_PARENT &&
-+	     fh_type != FILEID_UDF_WITHOUT_PARENT))
-+		return NULL;
-+
-+	return udf_nfs_get_inode(sb, fid->udf.block, fid->udf.partref,
-+			fid->udf.generation);
-+}
-+
-+static struct dentry *udf_fh_to_parent(struct super_block *sb,
-+				       struct fid *fid, int fh_len, int fh_type)
-+{
-+	if (fh_len != 5 || fh_type != FILEID_UDF_WITH_PARENT)
-+		return NULL;
-+
-+	return udf_nfs_get_inode(sb, fid->udf.parent_block,
-+				 fid->udf.parent_partref,
-+				 fid->udf.parent_generation);
-+}
-+static int udf_encode_fh(struct dentry *de, __u32 *fh, int *lenp,
-+			 int connectable)
-+{
-+	int len = *lenp;
-+	struct inode *inode =  de->d_inode;
-+	kernel_lb_addr location = UDF_I(inode)->i_location;
-+	struct fid *fid = (struct fid *)fh;
-+	int type = FILEID_UDF_WITHOUT_PARENT;
-+
-+	if (len < 3 || (connectable && len < 5))
-+		return 255;
-+
-+	*lenp = 3;
-+	fid->udf.block = location.logicalBlockNum;
-+	fid->udf.partref = location.partitionReferenceNum;
-+	fid->udf.generation = inode->i_generation;
-+
-+	if (connectable && !S_ISDIR(inode->i_mode)) {
-+		spin_lock(&de->d_lock);
-+		inode = de->d_parent->d_inode;
-+		location = UDF_I(inode)->i_location;
-+		fid->udf.parent_block = location.logicalBlockNum;
-+		fid->udf.parent_partref = location.partitionReferenceNum;	
-+		fid->udf.parent_generation = inode->i_generation;
-+		spin_unlock(&de->d_lock);
-+		*lenp = 5;
-+		type = FILEID_UDF_WITH_PARENT;
-+	}
-+
-+	return type;
-+}
-+
-+struct export_operations udf_export_ops = {
-+	.encode_fh	= udf_encode_fh,
-+	.fh_to_dentry   = udf_fh_to_dentry,
-+	.fh_to_parent   = udf_fh_to_parent,
-+	.get_parent     = udf_get_parent,
-+};
-+
- const struct inode_operations udf_dir_inode_operations = {
- 	.lookup				= udf_lookup,
- 	.create				= udf_create,
-diff -uprN -X linux-2.6.24-mm1-vanilla/Documentation/dontdiff linux-2.6.24-mm1-vanilla/fs/udf/super.c linux-2.6.24-mm1/fs/udf/super.c
---- linux-2.6.24-mm1-vanilla/fs/udf/super.c	2008-02-06 21:23:36.000000000 +0100
-+++ linux-2.6.24-mm1/fs/udf/super.c	2008-02-06 21:41:38.000000000 +0100
-@@ -76,6 +76,7 @@
- #define UDF_DEFAULT_BLOCKSIZE 2048
- 
- static char error_buf[1024];
-+extern struct export_operations udf_export_ops;
- 
- /* These are the "meat" - everything else is stuffing */
- static int udf_fill_super(struct super_block *, void *, int);
-@@ -1801,6 +1802,7 @@ static int udf_fill_super(struct super_b
- 
- 	/* Fill in the rest of the superblock */
- 	sb->s_op = &udf_sb_ops;
-+	sb->s_export_op = &udf_export_ops;
- 	sb->dq_op = NULL;
- 	sb->s_dirt = 0;
- 	sb->s_magic = UDF_SUPER_MAGIC;
-diff -uprN -X linux-2.6.24-mm1-vanilla/Documentation/dontdiff linux-2.6.24-mm1-vanilla/include/linux/exportfs.h linux-2.6.24-mm1/include/linux/exportfs.h
---- linux-2.6.24-mm1-vanilla/include/linux/exportfs.h	2008-02-06 21:23:46.000000000 +0100
-+++ linux-2.6.24-mm1/include/linux/exportfs.h	2008-02-06 21:25:06.000000000 +0100
-@@ -33,6 +33,19 @@ enum fid_type {
- 	 * 32 bit parent directory inode number.
- 	 */
- 	FILEID_INO32_GEN_PARENT = 2,
-+
-+	/*
-+	 * 32 bit block number, 16 bit partition reference,
-+	 * 16 bit unused, 32 bit generation number.
-+	 */
-+	FILEID_UDF_WITHOUT_PARENT = 0x51,
-+
-+	/*
-+	 * 32 bit block number, 16 bit partition reference,
-+	 * 16 bit unused, 32 bit generation number,
-+	 * 32 bit parent block number, 32 bit parent generation number
-+	 */
-+	FILEID_UDF_WITH_PARENT = 0x52,
- };
- 
- struct fid {
-@@ -43,6 +56,14 @@ struct fid {
- 			u32 parent_ino;
- 			u32 parent_gen;
- 		} i32;
-+		struct {
-+			u32 block;
-+			u16 partref;
-+			u16 parent_partref;
-+			u32 generation;
-+			u32 parent_block;
-+			u32 parent_generation;
-+		} udf;
- 		__u32 raw[6];
- 	};
- };
+> Below is a program that attempts to open a file that is contained in a
+> directory that has been deleted by another client.
+> 
+> I'm not sure these are conditions that are normally occuring, it's just
+> something I encountered trying to reproduce the hang.
+> 
+> This reliably reproduces:
+> Feb  7 09:55:01 devfile kernel: NFSD: preprocess_seqid_op: bad seqid
+> (expected 20, got 22)
 
+That's a bug though, either on the client or server side.
 
+--b.
 
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Microsoft
-Defy all challenges. Microsoft(R) Visual Studio 2008.
-http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
-
+> 
+> And about 1 in 10 times it also reproduces:
+> Feb  7 09:55:01 devfile kernel: NFSD: setclientid: string in use by
+> client(clientid 47a627bd/0000044b)
+> 
+> The server is 2.6.18-5 from debian.
+> 
+> ---
+> 
+> #include <string.h>
+> #include <stdio.h>
+> #include <unistd.h>
+> #include <errno.h>
+> #include <fcntl.h>
+> #include <sys/stat.h>
+> #include <stdlib.h>
+> 
+> #define ASSERT(x) \
+>         if (!(x)) { fprintf(stderr, "%s:%i:assert:" #x "\n", __FILE__,
+> __LINE__); abort(); }
+> 
+> #define testdir "/home/andrewd/testdir"
+> #define testfile testdir "/fred"
+> 
+> int main(int argc, char *argv[])
+> {
+>         int fd;
+>         int rv;
+> 
+>         rv = mkdir(testdir,0777);
+>         ASSERT(rv == 0 || errno == EEXIST);
+> 
+>         fd = open(testfile, O_CREAT|O_WRONLY);
+>         ASSERT(fd != -1);
+>         rv = write(fd, "stuff\n", 6);
+>         ASSERT(rv == 6);
+>         close(fd);
+> 
+>         rv = access(testfile, 0);
+>         ASSERT(rv == 0);
+> 
+>         // Remove directory via another client (nfsv3)
+>         system("ssh devlin7 rm -r "testdir);
+> 
+>         // Try to open file
+>         fd = open(testfile, O_RDONLY);
+>         printf("got fd:%i errno:%i\n", fd, errno);
+>         // fd == -1, errno = ENOENT
+>         // This is expected, error on nfs server is not.
+>         return 0;
+> }
+> 
+> 
