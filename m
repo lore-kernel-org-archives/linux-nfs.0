@@ -1,80 +1,106 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: NFS EINVAL on open(... | O_TRUNC) on 2.6.23.9
-Date: Wed, 6 Feb 2008 14:16:36 -0800
-Message-ID: <20080206141636.1001b1c5.akpm@linux-foundation.org>
-References: <476CEC5E.9070002@abinetworks.biz>
-	<838DE9A2-59B2-49FA-B3E8-89B26368B1CF@bluecamel.eml.cc>
-	<476E47F5.4090807@abinetworks.biz>
-	<20071225140431.9264970a.akpm@linux-foundation.org>
-	<199BEBA7-E46E-4B1F-9D36-91BB43331B75@oracle.com>
-	<4791EE99.3030802@abinetworks.biz>
-	<5FD6714F-EF9A-4F07-B2B6-D6F6CC911936@oracle.com>
-	<479C744A.6020207@abinetworks.biz>
-	<12964A18-350B-443F-B15A-D78B3723C89A@oracle.com>
-	<479F2463.2040704@abinetworks.biz>
-	<4AAA3DAF-898C-4ED5-BD07-4FD2B5CEEF16@oracle.com>
-	<Pine.LNX.4.64.0801291851110.4820@maggie.lkpg.cendio.se>
-	<7EE4B02B-3359-41C0-BFED-0947DF9F5F5A@oracle.com>
-	<479F8377.6090704@abinetworks.biz>
-	<1201638661.7969.7.camel@heimdal.trondhjem.org>
-	<F7BFE847-A3C3-44E5-A238-5C69ED3EE1C4@oracle.com>
-	<47A0704D.7080808@abinetworks.biz>
-	<AB6DF303-5C5B-453C-9992-DAF826FF02CE@oracle.com>
-	<47A9FB91.2040304@abinetworks.biz>
-	<C18DF7CB-3641-4A23-8BEB-63A161503DDD@oracle.com>
-	<47AA2CB6.9070908@abinetworks.biz>
+From: "Andrew Dixie" <andrew-0FSrDVjkvKm9koe0gwxAeg@public.gmane.org>
+Subject: Re: (fwd) nfs hang on 2.6.24
+Date: Thu, 7 Feb 2008 10:19:06 +1300 (NZDT)
+Message-ID: <37673.203.167.214.129.1202332746.squirrel@mail.orcon.net.nz>
+References: <20080205090132.GA8286@stro.at>
+    <1202248931.12271.18.camel@heimdal.trondhjem.org>
+    <003301c86888$ed735a20$0301a8c0@MURTLE>
+    <1202310021.12647.6.camel@heimdal.trondhjem.org>
+    <20080206150739.GA5342@fieldses.org>
+    <1202310924.12647.24.camel@heimdal.trondhjem.org>
+    <20080206172315.GE5342@fieldses.org>
+    <1202320337.14889.18.camel@heimdal.trondhjem.org>
+    <20080206183128.GG5342@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
-Cc: chuck.lever@oracle.com, linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: Gianluca Alberici <gianluca-I6s3FmifXcAEdjjp4vwUeA@public.gmane.org>
+Cc: "Trond Myklebust" <trond.myklebust@netapp.com>,
+	"Andrew Dixie" <andrew-0FSrDVjkvKm9koe0gwxAeg@public.gmane.org>, linux-nfs@vger.kernel.org,
+	"maximilian attems" <max-U9r9yeDMy7A@public.gmane.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp2.linux-foundation.org ([207.189.120.14]:47922 "EHLO
-	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754635AbYBFWRl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Feb 2008 17:17:41 -0500
-In-Reply-To: <47AA2CB6.9070908-I6s3FmifXcAEdjjp4vwUeA@public.gmane.org>
+Received: from mail-out3.orcon.net.nz ([219.88.242.31]:34565 "EHLO
+	mx5.orcon.net.nz" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1758721AbYBFWRv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Feb 2008 17:17:51 -0500
+Received: from Debian-exim by mx5.orcon.net.nz with local (Exim 4.67)
+	(envelope-from <andrew-0FSrDVjkvKm9koe0gwxAeg@public.gmane.org>)
+	id 1JMrfi-0006j5-Rc
+	for linux-nfs@vger.kernel.org; Thu, 07 Feb 2008 10:19:10 +1300
+In-Reply-To: <20080206183128.GG5342@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 06 Feb 2008 22:55:02 +0100
-Gianluca Alberici <gianluca-I6s3FmifXcAEdjjp4vwUeA@public.gmane.org> wrote:
 
-> I finally got it. Problem and solution have been found from 6 month but 
-> nobody cared...up to now those servers have not been mantained, this 
-> problem is not discussed anywhere else than the following link.
-> The bug (userspace server side i would say at this point) is well 
-> described from the author of an nfs-user-server patch which has not been 
-> managed yet. The magic hint to find it on google was 'nfs server 
-> utimensat' :-)
-> 
-> http://marc.info/?l=linux-nfs&m=118724649406144&w=2
+> Oh, right, I was confusing client and server reboot and assuming the
+> client would forget the uniquifier on server reboot.  That's obviously
+> wrong!  The client will forget its own uniquifier on client reboot, but
+> that's alright since it's happy enough just to let that old state time
+> out at that point.  So the only possible problem is suboptimal behavior
+> when the client reboot time is less than the lease time.
 
-This is pretty significant.  We have on several occasions in recent years
-tightened up the argument checking on long-standing system calls and it's
-always a concern that this will break previously-working applications.
+There is one client, a stable connection between client and server, and
+neither client or server are being rebooted.
+Are the "string in use by client" messages still expected?
 
-And now it has happened.
+Below is a program that attempts to open a file that is contained in a
+directory that has been deleted by another client.
 
-If we put buggy code into the kernel then we're largely stuck with it: we
-need to be back-compatible with our bugs so we don't break things like
-this.
+I'm not sure these are conditions that are normally occuring, it's just
+something I encountered trying to reproduce the hang.
 
-> I have already prepared a working patch for cfsd based upon the one ive 
-> listed. The nfs patch is of course waiting for commit since august, 
-> 2007. Ill submit it to debian cfsd mantainers, hoping to have more 
-> chance than my predecessor.
-> It doesnt seem to me that there was any kernel related issue.
-> 
-> Thanks a lot again, sorry for the lots of noise i have done. I will try 
-> to be more appropriate next time.
+This reliably reproduces:
+Feb  7 09:55:01 devfile kernel: NFSD: preprocess_seqid_op: bad seqid
+(expected 20, got 22)
 
-That wasn't noise - it was quite valuable.  Thanks for all the work you did
-on this.
+And about 1 in 10 times it also reproduces:
+Feb  7 09:55:01 devfile kernel: NFSD: setclientid: string in use by
+client(clientid 47a627bd/0000044b)
 
+The server is 2.6.18-5 from debian.
 
-Given that our broken-by-unbreaking code has been out there in several
-releases there isn't really any point in rebreaking it to fix this - the
-offending applications need to be repaired so they'll work on 2.6.22 and
-2.6.23 anyway.
+---
+
+#include <string.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <stdlib.h>
+
+#define ASSERT(x) \
+        if (!(x)) { fprintf(stderr, "%s:%i:assert:" #x "\n", __FILE__,
+__LINE__); abort(); }
+
+#define testdir "/home/andrewd/testdir"
+#define testfile testdir "/fred"
+
+int main(int argc, char *argv[])
+{
+        int fd;
+        int rv;
+
+        rv = mkdir(testdir,0777);
+        ASSERT(rv == 0 || errno == EEXIST);
+
+        fd = open(testfile, O_CREAT|O_WRONLY);
+        ASSERT(fd != -1);
+        rv = write(fd, "stuff\n", 6);
+        ASSERT(rv == 6);
+        close(fd);
+
+        rv = access(testfile, 0);
+        ASSERT(rv == 0);
+
+        // Remove directory via another client (nfsv3)
+        system("ssh devlin7 rm -r "testdir);
+
+        // Try to open file
+        fd = open(testfile, O_RDONLY);
+        printf("got fd:%i errno:%i\n", fd, errno);
+        // fd == -1, errno = ENOENT
+        // This is expected, error on nfs server is not.
+        return 0;
+}
+
 
