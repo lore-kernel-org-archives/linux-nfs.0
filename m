@@ -1,45 +1,65 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: NFS performance (Currently 2.6.20)
-Date: Wed, 06 Feb 2008 13:46:25 -0500
-Message-ID: <1202323586.8549.18.camel@heimdal.trondhjem.org>
-References: <3093.195.41.66.226.1202292274.squirrel@mail.jabbernet.dk>
-	 <47A9C620.70106@oxeva.fr> <1202311096.12647.28.camel@heimdal.trondhjem.org>
-	 <47A9FB75.90206@oxeva.fr>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH 2/2] NLM: Convert lockd to use kthreads
+Date: Wed, 6 Feb 2008 13:47:02 -0500
+Message-ID: <20080206134702.14c9d4f0@barsoom.rdu.redhat.com>
+References: <1202322103-13716-1-git-send-email-jlayton@redhat.com>
+	<1202322103-13716-2-git-send-email-jlayton@redhat.com>
+	<1202322103-13716-3-git-send-email-jlayton@redhat.com>
+	<1202322991.8549.7.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Jesper Krogh <jesper-Q2TZfHgGEy4@public.gmane.org>, linux-nfs@vger.kernel.org
-To: Gabriel Barazer <gabriel-KSe8qvLY914@public.gmane.org>
+Content-Type: text/plain; charset=US-ASCII
+Cc: bfields@fieldses.org, neilb@suse.de, linux-nfs@vger.kernel.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from pat.uio.no ([129.240.10.15]:39540 "EHLO pat.uio.no"
+Received: from mx1.redhat.com ([66.187.233.31]:59549 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751468AbYBFSqa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 6 Feb 2008 13:46:30 -0500
-In-Reply-To: <47A9FB75.90206-KSe8qvLY914@public.gmane.org>
+	id S1757756AbYBFSr0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 6 Feb 2008 13:47:26 -0500
+In-Reply-To: <1202322991.8549.7.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Wed, 06 Feb 2008 13:36:31 -0500
+Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
 
-On Wed, 2008-02-06 at 19:24 +0100, Gabriel Barazer wrote:
-> Oops (tm)! Fortunately I do mostly reads, but maybe the exports(5) man 
-> page should be updated. According to the man page, I thought that 
-> although writes aren't commited to the block devices, the server-side 
-> cache is correctly synchronized (but lost if you pull the plug).
+> 
+> On Wed, 2008-02-06 at 13:21 -0500, Jeff Layton wrote:
+> > Have lockd_up start lockd using kthread_run. With this change,
+> > lockd_down now blocks until lockd actually exits, so there's no
+> > longer need for the waitqueue code at the end of lockd_down. This
+> > also means that only one lockd can be running at a time which
+> > simplifies the code within lockd's main loop.
+> > 
+> > This also adds a check for kthread_should_stop in the main loop of
+> > nlmsvc_retry_blocked and after that function returns. There's no
+> > sense continuing to retry blocks if lockd is coming down anyway.
+> > 
+> > The main difference between this patch and earlier ones is that it
+> > changes lockd_down to again send SIGKILL to lockd when it's coming
+> > down. svc_recv() uses schedule_timeout, so we can end up blocking
+> > there for a long time if we end up calling into it after
+> > kthread_stop wakes up lockd. Sending a SIGKILL should help ensure
+> > that svc_recv returns quickly if this occurs.
+> > 
+> > Because kthread_stop blocks until the kthread actually goes down,
+> > we have to send the signal before calling it. This means that there
+> > is a very small race window like this where lockd_down could block
+> > for a long time:
+> 
+> Having looked again at the code, could you please remind me _why_ we
+> need to signal the process?
+> 
+> AFAICS, kthread_stop() should normally wake the process up if it is in
+> the schedule_timeout() state in svc_recv() since it uses
+> wake_up_process(). Shouldn't the only difference be that svc_recv()
+> will return -EAGAIN instead of -EINTR?
+> 
+> If so, why can't we just forgo the signal?
+> 
 
-...or if the server crashes for some reason.
+There's no guarantee that kthread_stop() won't wake up lockd before
+schedule_timeout() gets called, but after the last check for
+kthread_should_stop().
 
-> Thanks 
-> for the explanation. Having a battery backed large write cache on the 
-> server, is there a performance hit when switching from async to sync in 
-> NFSv3 ?
-
-The main performance hits occur on operations like create(), mkdir(),
-rename and unlink() since they are required to be immediately synced to
-disk.
-IOW: there will be a noticeable overhead when writing lots of small
-files.
-
-For large files, the overhead should be minimal, since all writes can be
-cached by the server until the close() operation.
-
-Trond
-
+-- 
+Jeff Layton <jlayton@redhat.com>
