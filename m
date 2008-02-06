@@ -1,64 +1,302 @@
-From: Jesper Krogh <jesper-Q2TZfHgGEy4@public.gmane.org>
-Subject: Re: NFS performance (Currently 2.6.20)
-Date: Wed, 06 Feb 2008 21:24:41 +0100
-Message-ID: <47AA1789.2040007@krogh.cc>
-References: <3093.195.41.66.226.1202292274.squirrel@mail.jabbernet.dk>    <47A9C620.70106@oxeva.fr> <64226.195.41.66.226.1202313579.squirrel@mail.jabbernet.dk> <47AA12C5.4010807@oxeva.fr>
+From: Rasmus Rohde <rohde-3mLe3WyXyAE@public.gmane.org>
+Subject: Re: [NFS] [PATCH] Make UDF exportable
+Date: Wed, 06 Feb 2008 21:58:02 +0100
+Message-ID: <1202331482.2727.8.camel__17075.6357991651$1202331556$gmane$org@localhost.localdomain>
+References: <1201726404.2976.8.camel@localhost.localdomain>
+	<20080205102955.GA28347@infradead.org>
+	<1202233464.12188.43.camel@localhost.localdomain>
+	<20080206180850.GD3475@duck.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: linux-nfs@vger.kernel.org
-To: Gabriel Barazer <gabriel-KSe8qvLY914@public.gmane.org>
+Content-Type: text/plain; charset="us-ascii"
+Cc: Christoph Hellwig <hch@infradead.org>,
+	linux-fsdevel@vger.kernel.org, nfs@lists.sourceforge.net
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 2605ds1-ynoe.1.fullrate.dk ([90.184.12.24]:43660 "EHLO
-	shrek.krogh.cc" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755661AbYBFUYv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 6 Feb 2008 15:24:51 -0500
-In-Reply-To: <47AA12C5.4010807-KSe8qvLY914@public.gmane.org>
+Received: from neil.brown.name ([220.233.11.133]:52970 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755957AbYBFU6c (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 6 Feb 2008 15:58:32 -0500
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1JMrLg-0006cI-0E
+	for linux-nfs@vger.kernel.org; Thu, 07 Feb 2008 07:58:28 +1100
+In-Reply-To: <20080206180850.GD3475-pwKtmJkCtMINMLpHRKhSow@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Gabriel Barazer wrote:
-> On 02/06/2008 4:59:39 PM +0100, "Jesper Krogh" <jesper-Q2TZfHgGEy4@public.gmane.org> wrote:
-> 
->>> I have a similar setup, and I'm very curious on how you can read an
->>> "iowait" value from the clients: On my nodes (server 2.6.21.5/clients
->>> 2.6.23.14), the iowait counter is only incremented when dealing with
->>> block devices, and since my nodes are diskless my iowait is near 0%.
->>
->> Output in top is like this:
->> top - 16:51:01 up 119 days,  6:10,  1 user,  load average: 2.09, 2.00, 
->> 1.41
->> Tasks:  74 total,   2 running,  72 sleeping,   0 stopped,   0 zombie
->> Cpu(s):  0.2%us,  0.0%sy,  0.0%ni, 50.0%id, 49.8%wa,  0.0%hi,  0.0%si, 
->> 0.0%st
->> Mem:   2060188k total,  2047488k used,    12700k free,     2988k buffers
->> Swap:  4200988k total,    42776k used,  4158212k free,  1985500k cached
-> 
-> You have obviously a block device on your nodes, so I suspect that 
-> something is reading/writing to it. Looking at how much memory is used, 
-> your system must be constantly swapping. This could explain why your 
-> iowait is so high (if your swap space is a block device or a file on a 
-> block device. You don't use swap over NFS do you?)
+> > +	dotdot.d_name.name = "..";
+> > +	dotdot.d_name.len = 2;
+> > +
+> > +	lock_kernel();
+> > +	if (!udf_find_entry(child->d_inode, &dotdot, &fibh, &cfi))
+> > +		goto out_unlock;
+>   Have you ever tried this? I think this could never work. UDF doesn't have
+> entry named .. in a directory. You have to search for an entry that has
+> in fileCharacteristics set bit FID_FILE_CHAR_PARENT. Maybe you could
+> hack-around udf_find_entry() to recognize .. dentry and do the search
+> accordingly.
+Probably not. I just tested that I could read files and navigate the
+directory structure. However looking into UDF I think you are right - it
+will fail.
+I have extended udf_find_entry() to do an explicit check based on
+fileCharacteristics as you propose.
+How do I actually test this case?
 
-No swap over NFS and no swapping at all.
+>   Otherwise the patch looks fine. But please rediff the patch against
+> Andrew's development tree (or -mm) because there are some cleanups there...
+> Thanks.
+Certainly there are. New patch against 2.6.24-mm1:
 
-A "vmstat 1" output of the above situation looks like:
-procs -----------memory---------- ---swap-- -----io---- -system-- 
-----cpu----
-  0  2  42768  11580   1368 1987336    0    0     0     0  638  366  1 
-0 50 48
-  0  2  42768  13088   1368 1985924    0    0     0     0  695  367  2 
-1 50 47
-  0  2  42768  13028   1368 1986112    0    0     0     0  345  129  0 
-0 50 50
-  1  1  42768  12720   1364 1986328    0    0     0     0 1043  710  6 
-1 50 42
-  0  1  42768  12648   1364 1987308    0    0     0     0  636  374  2 
-4 50 44
-  0  2  42768  11608   1364 1988436    0    0     0     0  696  382  1 
-0 51 49
+Signed-off-by: Rasmus Rohde <rohde-3mLe3WyXyAE@public.gmane.org>
 
-You can also see that there barely is used any swap in the "top" report.
+diff -uprN -X linux-2.6.24-mm1-vanilla/Documentation/dontdiff linux-2.6.24-mm1-vanilla/fs/udf/namei.c linux-2.6.24-mm1/fs/udf/namei.c
+--- linux-2.6.24-mm1-vanilla/fs/udf/namei.c	2008-02-06 21:23:36.000000000 +0100
++++ linux-2.6.24-mm1/fs/udf/namei.c	2008-02-06 21:41:38.000000000 +0100
+@@ -31,6 +31,7 @@
+ #include <linux/smp_lock.h>
+ #include <linux/buffer_head.h>
+ #include <linux/sched.h>
++#include <linux/exportfs.h>
+ 
+ static inline int udf_match(int len1, const char *name1, int len2,
+ 			    const char *name2)
+@@ -159,6 +160,8 @@ static struct fileIdentDesc *udf_find_en
+ 	sector_t offset;
+ 	struct extent_position epos = {};
+ 	struct udf_inode_info *dinfo = UDF_I(dir);
++	int isdotdot = dentry->d_name.len == 2 &&
++		dentry->d_name.name[0] == '.' && dentry->d_name.name[1] == '.';
+ 
+ 	size = udf_ext0_offset(dir) + dir->i_size;
+ 	f_pos = udf_ext0_offset(dir);
+@@ -232,6 +235,12 @@ static struct fileIdentDesc *udf_find_en
+ 				continue;
+ 		}
+ 
++		if ((cfi->fileCharacteristics & FID_FILE_CHAR_PARENT) &&
++		    isdotdot) {
++			brelse(epos.bh);
++			return fi;
++		}
++
+ 		if (!lfi)
+ 			continue;
+ 
+@@ -324,9 +333,8 @@ static struct dentry *udf_lookup(struct 
+ 		}
+ 	}
+ 	unlock_kernel();
+-	d_add(dentry, inode);
+ 
+-	return NULL;
++	return d_splice_alias(inode, dentry);
+ }
+ 
+ static struct fileIdentDesc *udf_add_entry(struct inode *dir,
+@@ -1298,6 +1306,134 @@ end_rename:
+ 	return retval;
+ }
+ 
++static struct dentry *udf_get_parent(struct dentry *child)
++{
++	struct dentry *parent;
++	struct inode *inode = NULL;
++	struct dentry dotdot;
++	struct fileIdentDesc cfi;
++	struct udf_fileident_bh fibh;
++
++	dotdot.d_name.name = "..";
++	dotdot.d_name.len = 2;
++
++	lock_kernel();
++	if (!udf_find_entry(child->d_inode, &dotdot, &fibh, &cfi))
++		goto out_unlock;
++	
++	if (fibh.sbh != fibh.ebh)
++		brelse(fibh.ebh);
++	brelse(fibh.sbh);
++		
++	inode = udf_iget(child->d_inode->i_sb,
++			 lelb_to_cpu(cfi.icb.extLocation));
++	if (!inode)
++		goto out_unlock;
++	unlock_kernel();
++
++	parent = d_alloc_anon(inode);
++	if (!parent) {
++		iput(inode);
++		parent = ERR_PTR(-ENOMEM);
++	}
++
++	return parent;
++out_unlock:
++	unlock_kernel();
++	return ERR_PTR(-EACCES);
++}
++
++
++static struct dentry *udf_nfs_get_inode(struct super_block *sb, u32 block,
++					u16 partref, __u32 generation)
++{
++	struct inode *inode;
++	struct dentry *result;
++	kernel_lb_addr loc;
++
++	if (block == 0)
++		return ERR_PTR(-ESTALE);
++
++	loc.logicalBlockNum = block;
++	loc.partitionReferenceNum = partref;
++	inode = udf_iget(sb, loc);
++
++	if (inode == NULL)
++		return ERR_PTR(-ENOMEM);
++
++	if (generation && inode->i_generation != generation) {
++		iput(inode);
++		return ERR_PTR(-ESTALE);
++	}
++	result = d_alloc_anon(inode);
++	if (!result) {
++		iput(inode);
++		return ERR_PTR(-ENOMEM);
++	}
++	return result;
++}
++
++static struct dentry *udf_fh_to_dentry(struct super_block *sb,
++				       struct fid *fid, int fh_len, int fh_type)
++{
++	if ((fh_len != 3 && fh_len != 5) ||
++	    (fh_type != FILEID_UDF_WITH_PARENT &&
++	     fh_type != FILEID_UDF_WITHOUT_PARENT))
++		return NULL;
++
++	return udf_nfs_get_inode(sb, fid->udf.block, fid->udf.partref,
++			fid->udf.generation);
++}
++
++static struct dentry *udf_fh_to_parent(struct super_block *sb,
++				       struct fid *fid, int fh_len, int fh_type)
++{
++	if (fh_len != 5 || fh_type != FILEID_UDF_WITH_PARENT)
++		return NULL;
++
++	return udf_nfs_get_inode(sb, fid->udf.parent_block,
++				 fid->udf.parent_partref,
++				 fid->udf.parent_generation);
++}
++static int udf_encode_fh(struct dentry *de, __u32 *fh, int *lenp,
++			 int connectable)
++{
++	int len = *lenp;
++	struct inode *inode =  de->d_inode;
++	kernel_lb_addr location = UDF_I(inode)->i_location;
++	struct fid *fid = (struct fid *)fh;
++	int type = FILEID_UDF_WITHOUT_PARENT;
++
++	if (len < 3 || (connectable && len < 5))
++		return 255;
++
++	*lenp = 3;
++	fid->udf.block = location.logicalBlockNum;
++	fid->udf.partref = location.partitionReferenceNum;
++	fid->udf.generation = inode->i_generation;
++
++	if (connectable && !S_ISDIR(inode->i_mode)) {
++		spin_lock(&de->d_lock);
++		inode = de->d_parent->d_inode;
++		location = UDF_I(inode)->i_location;
++		fid->udf.parent_block = location.logicalBlockNum;
++		fid->udf.parent_partref = location.partitionReferenceNum;	
++		fid->udf.parent_generation = inode->i_generation;
++		spin_unlock(&de->d_lock);
++		*lenp = 5;
++		type = FILEID_UDF_WITH_PARENT;
++	}
++
++	return type;
++}
++
++struct export_operations udf_export_ops = {
++	.encode_fh	= udf_encode_fh,
++	.fh_to_dentry   = udf_fh_to_dentry,
++	.fh_to_parent   = udf_fh_to_parent,
++	.get_parent     = udf_get_parent,
++};
++
+ const struct inode_operations udf_dir_inode_operations = {
+ 	.lookup				= udf_lookup,
+ 	.create				= udf_create,
+diff -uprN -X linux-2.6.24-mm1-vanilla/Documentation/dontdiff linux-2.6.24-mm1-vanilla/fs/udf/super.c linux-2.6.24-mm1/fs/udf/super.c
+--- linux-2.6.24-mm1-vanilla/fs/udf/super.c	2008-02-06 21:23:36.000000000 +0100
++++ linux-2.6.24-mm1/fs/udf/super.c	2008-02-06 21:41:38.000000000 +0100
+@@ -76,6 +76,7 @@
+ #define UDF_DEFAULT_BLOCKSIZE 2048
+ 
+ static char error_buf[1024];
++extern struct export_operations udf_export_ops;
+ 
+ /* These are the "meat" - everything else is stuffing */
+ static int udf_fill_super(struct super_block *, void *, int);
+@@ -1801,6 +1802,7 @@ static int udf_fill_super(struct super_b
+ 
+ 	/* Fill in the rest of the superblock */
+ 	sb->s_op = &udf_sb_ops;
++	sb->s_export_op = &udf_export_ops;
+ 	sb->dq_op = NULL;
+ 	sb->s_dirt = 0;
+ 	sb->s_magic = UDF_SUPER_MAGIC;
+diff -uprN -X linux-2.6.24-mm1-vanilla/Documentation/dontdiff linux-2.6.24-mm1-vanilla/include/linux/exportfs.h linux-2.6.24-mm1/include/linux/exportfs.h
+--- linux-2.6.24-mm1-vanilla/include/linux/exportfs.h	2008-02-06 21:23:46.000000000 +0100
++++ linux-2.6.24-mm1/include/linux/exportfs.h	2008-02-06 21:25:06.000000000 +0100
+@@ -33,6 +33,19 @@ enum fid_type {
+ 	 * 32 bit parent directory inode number.
+ 	 */
+ 	FILEID_INO32_GEN_PARENT = 2,
++
++	/*
++	 * 32 bit block number, 16 bit partition reference,
++	 * 16 bit unused, 32 bit generation number.
++	 */
++	FILEID_UDF_WITHOUT_PARENT = 0x51,
++
++	/*
++	 * 32 bit block number, 16 bit partition reference,
++	 * 16 bit unused, 32 bit generation number,
++	 * 32 bit parent block number, 32 bit parent generation number
++	 */
++	FILEID_UDF_WITH_PARENT = 0x52,
+ };
+ 
+ struct fid {
+@@ -43,6 +56,14 @@ struct fid {
+ 			u32 parent_ino;
+ 			u32 parent_gen;
+ 		} i32;
++		struct {
++			u32 block;
++			u16 partref;
++			u16 parent_partref;
++			u32 generation;
++			u32 parent_block;
++			u32 parent_generation;
++		} udf;
+ 		__u32 raw[6];
+ 	};
+ };
 
-Jesper
--- 
-Jesper
+
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Microsoft
+Defy all challenges. Microsoft(R) Visual Studio 2008.
+http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
+
