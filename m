@@ -1,66 +1,57 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 3/4] NLM: don't reattempt GRANT_MSG when there is already an RPC in flight
-Date: Wed,  6 Feb 2008 11:34:12 -0500
-Message-ID: <1202315653-11840-4-git-send-email-jlayton@redhat.com>
+Subject: [PATCH 1/4] NLM: set RPC_CLNT_CREATE_NOPING for NLM RPC clients
+Date: Wed,  6 Feb 2008 11:34:10 -0500
+Message-ID: <1202315653-11840-2-git-send-email-jlayton@redhat.com>
 References: <1202315653-11840-1-git-send-email-jlayton@redhat.com>
- <1202315653-11840-2-git-send-email-jlayton@redhat.com>
- <1202315653-11840-3-git-send-email-jlayton@redhat.com>
 To: bfields@fieldses.org, linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:34200 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([66.187.233.31]:34201 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755223AbYBFQeQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1755228AbYBFQeQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Wed, 6 Feb 2008 11:34:16 -0500
-In-Reply-To: <1202315653-11840-3-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1202315653-11840-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-With the current scheme in nlmsvc_grant_blocked, we can end up with more
-than one GRANT_MSG callback for a block in flight. Right now, we requeue
-the block unconditionally so that a GRANT_MSG callback is done again in
-30s. If the client is unresponsive, it can take more than 30s for the
-call already in flight to time out.
+It's currently possible for an unresponsive NLM client to completely
+lock up a server's lockd. The scenario is something like this:
 
-There's no benefit to having more than one GRANT_MSG RPC queued up at a
-time, so put it on the list with a timeout of NLM_NEVER before doing the
-RPC call. If the RPC call submission fails, we requeue it with a short
-timeout. If it works, then nlmsvc_grant_callback will end up requeueing
-it with a shorter timeout after it completes.
+1) client1 (or a process on the server) takes a lock on a file
+2) client2 tries to take a blocking lock on the same file and
+   awaits the callback
+3) client2 goes unresponsive (plug pulled, network partition, etc)
+4) client1 releases the lock
+
+...at that point the server's lockd will try to queue up a GRANT_MSG
+callback for client2, but first it requeues the block with a timeout of
+30s. nlm_async_call will attempt to bind the RPC client to client2 and
+will call rpc_ping. rpc_ping entails a sync RPC call and if client2 is
+unresponsive it will take around 60s for that to time out. Once it times
+out, it's already time to retry the block and the whole process repeats.
+
+Once in this situation, nlmsvc_retry_blocked will never return until
+the host starts responding again. lockd won't service new calls.
+
+Fix this by skipping the RPC ping on NLM RPC clients. This makes
+nlm_async_call return quickly when called.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/lockd/svclock.c |   17 +++++++++++++----
- 1 files changed, 13 insertions(+), 4 deletions(-)
+ fs/lockd/host.c |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
 
-diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-index 2f4d8fa..82db7b3 100644
---- a/fs/lockd/svclock.c
-+++ b/fs/lockd/svclock.c
-@@ -763,11 +763,20 @@ callback:
- 	dprintk("lockd: GRANTing blocked lock.\n");
- 	block->b_granted = 1;
+diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+index ca6b16f..00063ee 100644
+--- a/fs/lockd/host.c
++++ b/fs/lockd/host.c
+@@ -244,6 +244,7 @@ nlm_bind_host(struct nlm_host *host)
+ 			.version	= host->h_version,
+ 			.authflavor	= RPC_AUTH_UNIX,
+ 			.flags		= (RPC_CLNT_CREATE_HARDRTRY |
++					   RPC_CLNT_CREATE_NOPING |
+ 					   RPC_CLNT_CREATE_AUTOBIND),
+ 		};
  
--	/* Schedule next grant callback in 30 seconds */
--	nlmsvc_insert_block(block, 30 * HZ);
-+	/* keep block on the list, but don't reattempt until the RPC
-+	 * completes or the submission fails
-+	 */
-+	nlmsvc_insert_block(block, NLM_NEVER);
- 
--	/* Call the client */
--	nlm_async_call(block->b_call, NLMPROC_GRANTED_MSG, &nlmsvc_grant_ops);
-+	/* Call the client -- use a soft RPC task since nlmsvc_retry_blocked
-+	 * will queue up a new one if this one times out
-+	 */
-+	error = nlm_async_call(block->b_call, NLMPROC_GRANTED_MSG,
-+				&nlmsvc_grant_ops);
-+
-+	/* RPC submission failed, wait a bit and retry */
-+	if (error < 0)
-+		nlmsvc_insert_block(block, 10 * HZ);
- }
- 
- /*
 -- 
 1.5.3.8
 
