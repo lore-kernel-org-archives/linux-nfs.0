@@ -1,52 +1,71 @@
-From: "Jesper Krogh" <jesper-Q2TZfHgGEy4@public.gmane.org>
-Subject: NFS performance (Currently 2.6.20)
-Date: Wed, 6 Feb 2008 11:04:34 +0100 (CET)
-Message-ID: <3093.195.41.66.226.1202292274.squirrel@mail.jabbernet.dk>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH 2/2] NLM: Convert lockd to use kthreads
+Date: Wed, 6 Feb 2008 07:34:28 -0500
+Message-ID: <20080206073428.33bfd8d4@barsoom.rdu.redhat.com>
+References: <1202240277-24437-1-git-send-email-jlayton@redhat.com>
+	<1202240277-24437-2-git-send-email-jlayton@redhat.com>
+	<1202240277-24437-3-git-send-email-jlayton@redhat.com>
+	<20080206043548.GA9747@infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
-To: linux-nfs@vger.kernel.org
+Cc: bfields@citi.umich.edu, neilb@suse.de, linux-nfs@vger.kernel.org
+To: Christoph Hellwig <hch@infradead.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 2605ds1-ynoe.1.fullrate.dk ([90.184.12.24]:33269 "EHLO
-	shrek.krogh.cc" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752874AbYBFKj5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 6 Feb 2008 05:39:57 -0500
-Received: from localhost (localhost.localdomain [127.0.0.1])
-	by shrek.krogh.cc (Postfix) with ESMTP id 0D5D83BF2B6
-	for <linux-nfs@vger.kernel.org>; Wed,  6 Feb 2008 11:04:50 +0100 (CET)
-Received: from shrek.krogh.cc ([127.0.0.1])
-	by localhost (shrek.krogh.cc [127.0.0.1]) (amavisd-new, port 10024)
-	with ESMTP id bcnarTWB+WZJ for <linux-nfs@vger.kernel.org>;
-	Wed,  6 Feb 2008 11:04:34 +0100 (CET)
-Received: from mail.jabbernet.dk (localhost.localdomain [127.0.0.1])
-	by shrek.krogh.cc (Postfix) with ESMTP id 9A7643BF212
-	for <linux-nfs@vger.kernel.org>; Wed,  6 Feb 2008 11:04:34 +0100 (CET)
+Received: from mx1.redhat.com ([66.187.233.31]:49530 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1761321AbYBFMel (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 6 Feb 2008 07:34:41 -0500
+In-Reply-To: <20080206043548.GA9747@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Tue, 5 Feb 2008 23:35:48 -0500
+Christoph Hellwig <hch@infradead.org> wrote:
 
-Hi.
+> On Tue, Feb 05, 2008 at 02:37:57PM -0500, Jeff Layton wrote:
+> > Because kthread_stop blocks until the kthread actually goes down,
+> > we have to send the signal before calling it. This means that there
+> > is a very small race window like this where lockd_down could block
+> > for a long time:
+> > 
+> > lockd_down signals lockd
+> > 				lockd invalidates locks
+> > 				lockd flushes signals
+> > 				lockd checks kthread_should_stop
+> > lockd_down calls kthread_stop
+> > 				lockd calls svc_recv
+> > 
+> > ...and lockd blocks until recvmsg returns. I think this is a
+> > pretty unlikely scenario though. We could probably ensure it
+> > doesn't happen with some locking but I'm not sure that it would be
+> > worth the trouble.
+> 
+> This is not avoidable unless we take sending the signal into the
+> kthread machinery.  
+> 
 
-I'm currently trying to optimize our NFS server. We're running in a
-cluster setup with a single NFS server and some compute nodes pulling data
-from it. Currently the dataset is less than 10GB so it fits in memory of
-the NFS-server. (confirmed via vmstat 1).
-Currently I'm  getting around 500mbit (700 peak) of the server on a
-gigabit link and the server is CPU-bottlenecked when this happens. Clients
-having iowait around 30-50%.
+Yes. Perhaps we should consider a kthread_stop_with_signal() function
+that does a kthread_stop and sends a signal before waiting for
+completion? Most users of kthread_stop won't need it, but it would be
+nice here. CIFS could also probably use something like that.
 
-Is it reasonable to expect to be able to fill a gigabit link in this
-scenario? (I'd like to put in a 10Gbit interface, but when I have a
-cpu-bottleneck)
+> You should probably add a comment similar to your patch description
+> above the place where the signal is sent.
 
-Should I go for NFSv2 (default if I dont change mount options) NFSv3 ? or
-NFSv4
+I'll do that and respin...
 
-NFSv3 default mount options is around 1MB for rsize and wsize, but reading
-the nfs-man page, they suggest setting them "up to" around 32K.
+In the interest of full disclosure, we have some other options besides
+sending a signal here:
 
-I probably only need some pointers to the documentation.
+1) we could call svc_recv with a shorter timeout. This means that lockd
+will wake up more frequently, even when it has nothing to do.
 
-Thanks.
+2) we could try to ensure that when lockd_down is called that a msg
+(maybe a NULL procedure) is sent to lockd's socket to wake it up after
+kthread_stop is called. This probably would mean queuing up a task to a
+workqueue to do this.
+
+...neither of these seem more palatable than sending a signal.
+
 -- 
-Jesper Krogh
-
+Jeff Layton <jlayton@redhat.com>
