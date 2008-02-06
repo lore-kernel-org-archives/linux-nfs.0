@@ -1,41 +1,51 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 1/2] SUNRPC: export svc_sock_update_bufs
-Date: Wed,  6 Feb 2008 13:21:42 -0500
-Message-ID: <1202322103-13716-2-git-send-email-jlayton@redhat.com>
-References: <1202322103-13716-1-git-send-email-jlayton@redhat.com>
-Cc: neilb@suse.de, linux-nfs@vger.kernel.org
-To: bfields@fieldses.org
+From: Gabriel Barazer <gabriel-KSe8qvLY914@public.gmane.org>
+Subject: Re: NFS performance (Currently 2.6.20)
+Date: Wed, 06 Feb 2008 19:24:53 +0100
+Message-ID: <47A9FB75.90206@oxeva.fr>
+References: <3093.195.41.66.226.1202292274.squirrel@mail.jabbernet.dk>	 <47A9C620.70106@oxeva.fr> <1202311096.12647.28.camel@heimdal.trondhjem.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: Jesper Krogh <jesper-Q2TZfHgGEy4@public.gmane.org>, linux-nfs@vger.kernel.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:60950 "EHLO mx1.redhat.com"
+Received: from mail.reagi.com ([195.60.188.80]:42944 "EHLO mail.reagi.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754783AbYBFSVq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 6 Feb 2008 13:21:46 -0500
-In-Reply-To: <1202322103-13716-1-git-send-email-jlayton@redhat.com>
+	id S1751919AbYBFSZA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 6 Feb 2008 13:25:00 -0500
+In-Reply-To: <1202311096.12647.28.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Needed since the plan is to not have a svc_create_thread helper and to
-have current users of that function just call kthread_run directly.
+On 02/06/2008 4:18:16 PM +0100, Trond Myklebust 
+<trond.myklebust@fys.uio.no> wrote:
+> On Wed, 2008-02-06 at 15:37 +0100, Gabriel Barazer wrote:
+> 
+>>> Should I go for NFSv2 (default if I dont change mount options) NFSv3 ? or
+>>> NFSv4
+>> NFSv2/3 have nearly the same performance
+> 
+> Only if you shoot yourself in the foot by setting the 'async' flag
+> in /etc/exports. Don't do that...
+> 
+> Most people will want to use NFSv3 for performance reasons. Unlike NFSv2
+> with 'async', NFSv3 with the 'sync' export flag set actually does _safe_
+> server-side caching of writes.
+> 
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
-Reviewed-by: NeilBrown <neilb@suse.de>
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
----
- net/sunrpc/svcsock.c |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
+Oops (tm)! Fortunately I do mostly reads, but maybe the exports(5) man 
+page should be updated. According to the man page, I thought that 
+although writes aren't commited to the block devices, the server-side 
+cache is correctly synchronized (but lost if you pull the plug). Thanks 
+for the explanation. Having a battery backed large write cache on the 
+server, is there a performance hit when switching from async to sync in 
+NFSv3 ?
 
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 1d3e5fc..b73a92a 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -1101,6 +1101,7 @@ void svc_sock_update_bufs(struct svc_serv *serv)
- 	}
- 	spin_unlock_bh(&serv->sv_lock);
- }
-+EXPORT_SYMBOL(svc_sock_update_bufs);
- 
- /*
-  * Initialize socket for RPC use and create svc_sock struct
--- 
-1.5.3.8
+Off-Topic: maybe the warning when omitting the 'sync' option at export 
+should be removed to only be showed when using the 'async' option ? We 
+really want to warn people before too many feet are shot :-)
 
+To Jesper: I found out that using the 'nolock' flag at mount time on the 
+nfs clients improve the performances but obviously only if don't need 
+write locks (and your setup seems to do only intensive reads)
+
+Gabriel
