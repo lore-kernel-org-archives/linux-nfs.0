@@ -1,82 +1,54 @@
-From: Jeff Layton <jlayton@poochiereds.net>
-Subject: Re: [PATCH 2/2] NLM: Convert lockd to use kthreads
-Date: Wed, 6 Feb 2008 13:53:27 -0500
-Message-ID: <20080206135327.136b9c4f@barsoom.rdu.redhat.com>
-References: <1202322103-13716-1-git-send-email-jlayton@redhat.com>
-	<1202322103-13716-2-git-send-email-jlayton@redhat.com>
-	<1202322103-13716-3-git-send-email-jlayton@redhat.com>
-	<1202322991.8549.7.camel@heimdal.trondhjem.org>
-	<20080206134702.14c9d4f0@barsoom.rdu.redhat.com>
+From: Gabriel Barazer <gabriel-KSe8qvLY914@public.gmane.org>
+Subject: Re: NFS performance (Currently 2.6.20)
+Date: Wed, 06 Feb 2008 21:04:21 +0100
+Message-ID: <47AA12C5.4010807@oxeva.fr>
+References: <3093.195.41.66.226.1202292274.squirrel@mail.jabbernet.dk>    <47A9C620.70106@oxeva.fr> <64226.195.41.66.226.1202313579.squirrel@mail.jabbernet.dk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: bfields@fieldses.org, neilb@suse.de, linux-nfs@vger.kernel.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: linux-nfs@vger.kernel.org
+To: Jesper Krogh <jesper-Q2TZfHgGEy4@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cdptpa-omtalb.mail.rr.com ([75.180.132.120]:46367 "EHLO
-	cdptpa-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758658AbYBFTwK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Feb 2008 14:52:10 -0500
-In-Reply-To: <20080206134702.14c9d4f0-xSBYVWDuneFaJnirhKH9O4GKTjYczspe@public.gmane.org>
+Received: from mail.reagi.com ([195.60.188.80]:57571 "EHLO mail.reagi.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752059AbYBFUE2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 6 Feb 2008 15:04:28 -0500
+In-Reply-To: <64226.195.41.66.226.1202313579.squirrel-e3PW5SUo3N5/BLzvFphCflpr/1R2p/CL@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 6 Feb 2008 13:47:02 -0500
-Jeff Layton <jlayton@redhat.com> wrote:
+On 02/06/2008 4:59:39 PM +0100, "Jesper Krogh" <jesper-Q2TZfHgGEy4@public.gmane.org> wrote:
 
-> On Wed, 06 Feb 2008 13:36:31 -0500
-> Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+>> I have a similar setup, and I'm very curious on how you can read an
+>> "iowait" value from the clients: On my nodes (server 2.6.21.5/clients
+>> 2.6.23.14), the iowait counter is only incremented when dealing with
+>> block devices, and since my nodes are diskless my iowait is near 0%.
 > 
-> > 
-> > On Wed, 2008-02-06 at 13:21 -0500, Jeff Layton wrote:
-> > > Have lockd_up start lockd using kthread_run. With this change,
-> > > lockd_down now blocks until lockd actually exits, so there's no
-> > > longer need for the waitqueue code at the end of lockd_down. This
-> > > also means that only one lockd can be running at a time which
-> > > simplifies the code within lockd's main loop.
-> > > 
-> > > This also adds a check for kthread_should_stop in the main loop of
-> > > nlmsvc_retry_blocked and after that function returns. There's no
-> > > sense continuing to retry blocks if lockd is coming down anyway.
-> > > 
-> > > The main difference between this patch and earlier ones is that it
-> > > changes lockd_down to again send SIGKILL to lockd when it's coming
-> > > down. svc_recv() uses schedule_timeout, so we can end up blocking
-> > > there for a long time if we end up calling into it after
-> > > kthread_stop wakes up lockd. Sending a SIGKILL should help ensure
-> > > that svc_recv returns quickly if this occurs.
-> > > 
-> > > Because kthread_stop blocks until the kthread actually goes down,
-> > > we have to send the signal before calling it. This means that
-> > > there is a very small race window like this where lockd_down
-> > > could block for a long time:
-> > 
-> > Having looked again at the code, could you please remind me _why_ we
-> > need to signal the process?
-> > 
-> > AFAICS, kthread_stop() should normally wake the process up if it is
-> > in the schedule_timeout() state in svc_recv() since it uses
-> > wake_up_process(). Shouldn't the only difference be that svc_recv()
-> > will return -EAGAIN instead of -EINTR?
-> > 
-> > If so, why can't we just forgo the signal?
-> > 
-> 
-> There's no guarantee that kthread_stop() won't wake up lockd before
-> schedule_timeout() gets called, but after the last check for
-> kthread_should_stop().
-> 
+> Output in top is like this:
+> top - 16:51:01 up 119 days,  6:10,  1 user,  load average: 2.09, 2.00, 1.41
+> Tasks:  74 total,   2 running,  72 sleeping,   0 stopped,   0 zombie
+> Cpu(s):  0.2%us,  0.0%sy,  0.0%ni, 50.0%id, 49.8%wa,  0.0%hi,  0.0%si, 
+> 0.0%st
+> Mem:   2060188k total,  2047488k used,    12700k free,     2988k buffers
+> Swap:  4200988k total,    42776k used,  4158212k free,  1985500k cached
 
-Sorry, I hit send too quick...
+You have obviously a block device on your nodes, so I suspect that 
+something is reading/writing to it. Looking at how much memory is used, 
+your system must be constantly swapping. This could explain why your 
+iowait is so high (if your swap space is a block device or a file on a 
+block device. You don't use swap over NFS do you?)
 
-I'm certainly open to alternatives to signaling, but having a pending
-signal seems to be the best way to ensure that we don't end up blocking
-in schedule_timeout() here.
+> It is a Sun V20Z (dual Opteron) NIC is:
+> 02:02.0 Ethernet controller: Broadcom Corporation NetXtreme BCM5704
+> Gigabit Ethernet (rev 03)
 
-As a side note, I've rolled up a patch to add a kthread_stop_sig()
-variant that will use "force_sig" to wake up a kthread instead of just
-waking it up. I've not tested it yet, but once I do and if we can get
-it in then we should be able to close the race I'm talking about in
-this patch description as well...
+I don't know if this adapter supports DMA (no mention on the broadcom 
+specs page). I've seen such a technology only with the Intel I/O 
+Acceleration Technology (I/OAT) implementation, which the mainstream 
+linux kernel supports. But I have really seen the difference. I suppose 
+your controllers are integrated on the motherboard?
+Another thing which could make a difference, maybe you could compile 
+your kernel with a lower timer frequency (CONFIG_HZ) such as 100hz: this 
+results in less interrupts being processed and a higher throughput. 
+(very dirty explanation, I know)
 
--- 
-Jeff Layton <jlayton@redhat.com>
+Gabriel
