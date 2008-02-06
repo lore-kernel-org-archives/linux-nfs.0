@@ -1,70 +1,56 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: (fwd) nfs hang on 2.6.24
-Date: Wed, 6 Feb 2008 13:31:28 -0500
-Message-ID: <20080206183128.GG5342@fieldses.org>
-References: <20080205090132.GA8286@stro.at> <1202248931.12271.18.camel@heimdal.trondhjem.org> <003301c86888$ed735a20$0301a8c0@MURTLE> <1202310021.12647.6.camel@heimdal.trondhjem.org> <20080206150739.GA5342@fieldses.org> <1202310924.12647.24.camel@heimdal.trondhjem.org> <20080206172315.GE5342@fieldses.org> <1202320337.14889.18.camel@heimdal.trondhjem.org>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH 2/2] NLM: Convert lockd to use kthreads
+Date: Wed, 06 Feb 2008 13:36:31 -0500
+Message-ID: <1202322991.8549.7.camel@heimdal.trondhjem.org>
+References: <1202322103-13716-1-git-send-email-jlayton@redhat.com>
+	 <1202322103-13716-2-git-send-email-jlayton@redhat.com>
+	 <1202322103-13716-3-git-send-email-jlayton@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Dixie <andrew-0FSrDVjkvKm9koe0gwxAeg@public.gmane.org>, linux-nfs@vger.kernel.org,
-	maximilian attems <max-U9r9yeDMy7A@public.gmane.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Content-Type: text/plain
+Cc: bfields@fieldses.org, neilb@suse.de, linux-nfs@vger.kernel.org
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from pie.citi.umich.edu ([141.211.133.115]:35194 "EHLO fieldses.org"
+Received: from pat.uio.no ([129.240.10.15]:50464 "EHLO pat.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753970AbYBFSbn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 6 Feb 2008 13:31:43 -0500
-In-Reply-To: <1202320337.14889.18.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+	id S1756811AbYBFSgp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 6 Feb 2008 13:36:45 -0500
+In-Reply-To: <1202322103-13716-3-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 06, 2008 at 12:52:17PM -0500, Trond Myklebust wrote:
+
+On Wed, 2008-02-06 at 13:21 -0500, Jeff Layton wrote:
+> Have lockd_up start lockd using kthread_run. With this change,
+> lockd_down now blocks until lockd actually exits, so there's no longer
+> need for the waitqueue code at the end of lockd_down. This also means
+> that only one lockd can be running at a time which simplifies the code
+> within lockd's main loop.
 > 
-> On Wed, 2008-02-06 at 12:23 -0500, J. Bruce Fields wrote:
-> > On Wed, Feb 06, 2008 at 10:15:23AM -0500, Trond Myklebust wrote:
-> > > 
-> > > On Wed, 2008-02-06 at 10:07 -0500, J. Bruce Fields wrote:
-> > > 
-> > > > That went into 2.6.22:
-> > > > 
-> > > > 	21315edd4877b593d5bf.. "[PATCH] knfsd: nfsd4: demote "clientid
-> > > > 	in use" printk to a dprintk"
-> > > > 
-> > > > It may suggest a problem if this is happening a lot, though, right?
-> > > 
-> > > The client should always be able to generate a new unique clientid if
-> > > this happens.
-> > 
-> > And then the client may fail to reclaim its state on the next server
-> > reboot, or mistakenly prevent some other client from reclaiming state,
-> > since it's not recording the new clientid in stable storage.  So if it's
-> > happening a lot then we I suppose we should figure out better ways to
-> > generate client id's.
+> This also adds a check for kthread_should_stop in the main loop of
+> nlmsvc_retry_blocked and after that function returns. There's no sense
+> continuing to retry blocks if lockd is coming down anyway.
 > 
-> Huh?
+> The main difference between this patch and earlier ones is that it
+> changes lockd_down to again send SIGKILL to lockd when it's coming
+> down. svc_recv() uses schedule_timeout, so we can end up blocking there
+> for a long time if we end up calling into it after kthread_stop wakes
+> up lockd. Sending a SIGKILL should help ensure that svc_recv returns
+> quickly if this occurs.
 > 
-> If the server reboots, the client will try to reclaim state using the
-> _same_ client identifier string.
+> Because kthread_stop blocks until the kthread actually goes down,
+> we have to send the signal before calling it. This means that there
+> is a very small race window like this where lockd_down could block
+> for a long time:
 
-Oh, right, I was confusing client and server reboot and assuming the
-client would forget the uniquifier on server reboot.  That's obviously
-wrong!  The client will forget its own uniquifier on client reboot, but
-that's alright since it's happy enough just to let that old state time
-out at that point.  So the only possible problem is suboptimal behavior
-when the client reboot time is less than the lease time.
+Having looked again at the code, could you please remind me _why_ we
+need to signal the process?
 
-> Two clients should _not_ be able to generate the same clientid unless
-> they're also sharing the same IP address and a number of other
-> properties that we include in the client identifier.
+AFAICS, kthread_stop() should normally wake the process up if it is in
+the schedule_timeout() state in svc_recv() since it uses
+wake_up_process(). Shouldn't the only difference be that svc_recv() will
+return -EAGAIN instead of -EINTR?
 
-Or unless two client implementations just happen to have clashing
-clientid generation algorithms, but we hope that's unlikely.
+If so, why can't we just forgo the signal?
 
-(Except that older Linux clients were prone to produce the same
-clientid, if I remember right.  But the more likely explanation may be
-that these are the result of a single client destroying and then
-creating state on the server within a lease period, and the server being
-stubborn and refusing to let go of the old state (even though no opens
-are associated with it any more) until the end of a lease period.  I
-think that's a server bug.)
+Trond
 
---b.
