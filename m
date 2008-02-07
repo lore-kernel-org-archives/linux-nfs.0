@@ -1,115 +1,59 @@
-From: Greg KH <gregkh@suse.de>
-Subject: [NFS] [patch 59/73] knfsd: Allow NFSv2/3 WRITE calls to succeed
-	when	krb5i etc is used.
-Date: Wed, 6 Feb 2008 15:54:05 -0800
-Message-ID: <20080206235405.GH13121__4678.20981652967$1202346255$gmane$org@suse.de>
-References: <20080206234302.769849277@mini.kroah.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Peter Staubach <staubach@redhat.com>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Zwane Mwaikambo <zwane@arm.linux.org.uk>,
-	NeilBrown <neilb@suse.de>,
-	"J. Bruce Fields" <bfields@citi.umich.edu>,
-	Justin Forbes <jmforbes-a5Mqy2EUIFVAfugRpC6u6w@public.gmane.org>,
-	Domenico Andreoli <cavokz@gmail.com>,
-	Chris Wedgwood <reviews-vFB7bnJMxjixIvdkapsUdQ@public.gmane.org>,
-	Randy Dunlap <rdunlap@xenotime.net>,
-	Michael Krufky <mkrufky-dJidKbW2IEtAfugRpC6u6w@public.gmane.org>,
-	Chuck Ebbert <cebbert@redhat.com>,
-	Dave Jones <davej@redhat.com>,
-	Chuck Wolber <chuckw-lrwSPXAIdEw7YuNMryXyOw@public.gmane.org>,
-	akpm@linux-foundation.org, alan@lxorguk.ukuu.org.uk,
-	nfs@lists.sourceforge.net
-To: linux-kernel@vger.kernel.org, stable@kernel.org,
-	Linus Torvalds <torvalds@linux-foundation.org>
+From: Luke Cyca <luke-rgTVnuQaENGakBO8gow8eQ@public.gmane.org>
+Subject: Re: NFS+krb5: Failed to create krb5 context for user with uid 0
+Date: Wed, 6 Feb 2008 17:20:14 -0800
+Message-ID: <F6E1A865-CC8B-4286-B67B-3E36F610875B@zymeworks.com>
+References: <1459814D-D960-44A2-947E-F6D0BD46DAC6@zymeworks.com> <4d569c330802052112q418ffc45u7e20dee3d2a393d7@mail.gmail.com>
+Mime-Version: 1.0 (Apple Message framework v752.3)
+Content-Type: text/plain; charset=US-ASCII; delsp=yes; format=flowed
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:45214 "EHLO neil.brown.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758092AbYBGBDb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 6 Feb 2008 20:03:31 -0500
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1JMvAm-0000f7-2F
-	for linux-nfs@vger.kernel.org; Thu, 07 Feb 2008 12:03:28 +1100
-In-Reply-To: <20080206235015.GA13121@suse.de>
+Received: from s216-232-71-140.bc.hsia.telus.net ([216.232.71.140]:58372 "EHLO
+	mail.zymeworks.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751161AbYBGBUT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Feb 2008 20:20:19 -0500
+Received: from localhost (localhost [127.0.0.1])
+	by mail.zymeworks.com (Postfix) with ESMTP id 6FB78DA7C64
+	for <linux-nfs@vger.kernel.org>; Wed,  6 Feb 2008 17:20:18 -0800 (PST)
+Received: from mail.zymeworks.com ([127.0.0.1])
+ by localhost (bartender.lan.zymeworks.com [127.0.0.1]) (amavisd-new, port 10024)
+ with ESMTP id 27530-05 for <linux-nfs@vger.kernel.org>;
+ Wed,  6 Feb 2008 17:20:15 -0800 (PST)
+Received: from [192.168.1.25] (moonshine.lan.zymeworks.com [192.168.1.25])
+	by mail.zymeworks.com (Postfix) with ESMTP id 1C429DA7C3A
+	for <linux-nfs@vger.kernel.org>; Wed,  6 Feb 2008 17:20:15 -0800 (PST)
+In-Reply-To: <4d569c330802052112q418ffc45u7e20dee3d2a393d7-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Feb 5, 2008, at 9:12 PM, Kevin Coffman wrote:
+> If the Mac server code can support other encryption types like Triple
+> DES and ArcFour, you shouldn't need to limit it to only the
+> des-cbc-crc key.  The Linux nfs-utils code on the client should be
+> limiting the negotiated encryption type to des.
+>
+> I would assume if normal users are able to get a context and talk to
+> the server, that root using the keytab should be able to do so as
+> well.
 
-2.6.23-stable review patch.  If anyone has any objections, please let us know.
-------------------
-From: NeilBrown <neilb@suse.de>
 
-patch ba67a39efde8312e386c6f603054f8945433d91f in mainline.
+I added a principal for root/myclient.domain.com-Cx6ELD3zwl1XrIkS9f7CXA@public.gmane.org and added  
+it to the client's keytab and everything appears to work now.
 
-When RPCSEC/GSS and krb5i is used, requests are padded, typically to a multiple
-of 8 bytes.  This can make the request look slightly longer than it
-really is.
+I then put the other keys back on the server's keytab as you suggested.
 
-As of
+Thanks for the help!
 
-	f34b95689d2ce001c "The NFSv2/NFSv3 server does not handle zero
-		length WRITE request correctly",
 
-the xdr decode routines for NFSv2 and NFSv3 reject requests that aren't
-the right length, so krb5i (for example) WRITE requests can get lost.
+Luke
 
-This patch relaxes the appropriate test and enhances the related comment.
 
-Signed-off-by: Neil Brown <neilb@suse.de>
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
-Cc: Peter Staubach <staubach@redhat.com>
-Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
-Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
+Notice of Confidentiality: The information transmitted is intended only for the
+person or entity to which it is addressed and may contain confidential and/or
+privileged material. Any review, re-transmission, dissemination or other use of
+or taking of any action in reliance upon this information by persons or entities
+other than the intended recipient is prohibited. If you received this in error
+please contact the sender immediately by return electronic transmission and then
+immediately delete this transmission including all attachments without copying,
+distributing or disclosing the same.
 
----
- fs/nfsd/nfs3xdr.c |    5 ++++-
- fs/nfsd/nfsxdr.c  |    5 ++++-
- 2 files changed, 8 insertions(+), 2 deletions(-)
-
---- a/fs/nfsd/nfs3xdr.c
-+++ b/fs/nfsd/nfs3xdr.c
-@@ -396,8 +396,11 @@ nfs3svc_decode_writeargs(struct svc_rqst
- 	 * Round the length of the data which was specified up to
- 	 * the next multiple of XDR units and then compare that
- 	 * against the length which was actually received.
-+	 * Note that when RPCSEC/GSS (for example) is used, the
-+	 * data buffer can be padded so dlen might be larger
-+	 * than required.  It must never be smaller.
- 	 */
--	if (dlen != XDR_QUADLEN(len)*4)
-+	if (dlen < XDR_QUADLEN(len)*4)
- 		return 0;
- 
- 	if (args->count > max_blocksize) {
---- a/fs/nfsd/nfsxdr.c
-+++ b/fs/nfsd/nfsxdr.c
-@@ -313,8 +313,11 @@ nfssvc_decode_writeargs(struct svc_rqst 
- 	 * Round the length of the data which was specified up to
- 	 * the next multiple of XDR units and then compare that
- 	 * against the length which was actually received.
-+	 * Note that when RPCSEC/GSS (for example) is used, the
-+	 * data buffer can be padded so dlen might be larger
-+	 * than required.  It must never be smaller.
- 	 */
--	if (dlen != XDR_QUADLEN(len)*4)
-+	if (dlen < XDR_QUADLEN(len)*4)
- 		return 0;
- 
- 	rqstp->rq_vec[0].iov_base = (void*)p;
-
--- 
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Microsoft
-Defy all challenges. Microsoft(R) Visual Studio 2008.
-http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
 
