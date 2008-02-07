@@ -1,295 +1,80 @@
-From: Rasmus Rohde <rohde-3mLe3WyXyAE@public.gmane.org>
-Subject: Re: [NFS] [PATCH] Make UDF exportable
-Date: Thu, 07 Feb 2008 16:02:57 +0100
-Message-ID: <1202396577.18175.2.camel@localhost.localdomain>
-References: <1201726404.2976.8.camel@localhost.localdomain>
-	<20080205102955.GA28347@infradead.org>
-	<1202233464.12188.43.camel@localhost.localdomain>
-	<20080206180850.GD3475@duck.suse.cz>
-	<1202331482.2727.8.camel@localhost.localdomain>
-	<20080207054515.GA14585@infradead.org>
-	<1202367997.17388.6.camel@localhost.localdomain>
-	<20080207144859.GJ6140@duck.suse.cz>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH 2/2] NLM: Convert lockd to use kthreads
+Date: Thu, 07 Feb 2008 10:16:56 -0500
+Message-ID: <1202397416.10963.4.camel@heimdal.trondhjem.org>
+References: <1202322103-13716-1-git-send-email-jlayton@redhat.com>
+	 <1202322103-13716-2-git-send-email-jlayton@redhat.com>
+	 <1202322103-13716-3-git-send-email-jlayton@redhat.com>
+	 <1202322991.8549.7.camel@heimdal.trondhjem.org>
+	 <20080206134702.14c9d4f0@barsoom.rdu.redhat.com>
+	 <1202323955.8549.24.camel@heimdal.trondhjem.org>
+	 <20080206140935.3d531bbf@barsoom.rdu.redhat.com>
+	 <1202338876.8549.45.camel@heimdal.trondhjem.org>
+	 <20080207063714.6f8a30d4@tleilax.poochiereds.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Christoph Hellwig <hch@infradead.org>,
-	linux-fsdevel@vger.kernel.org, nfs@lists.sourceforge.net
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain
+Cc: bfields@fieldses.org, neilb@suse.de, linux-nfs@vger.kernel.org
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:53206 "EHLO neil.brown.name"
+Received: from pat.uio.no ([129.240.10.15]:56002 "EHLO pat.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756177AbYBGPDe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 Feb 2008 10:03:34 -0500
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1JN8Hg-00030m-5W
-	for linux-nfs@vger.kernel.org; Fri, 08 Feb 2008 02:03:28 +1100
-In-Reply-To: <20080207144859.GJ6140-pwKtmJkCtMINMLpHRKhSow@public.gmane.org>
+	id S932650AbYBGPRK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 7 Feb 2008 10:17:10 -0500
+In-Reply-To: <20080207063714.6f8a30d4-RtJpwOs3+0O+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-> > Before posting the last and hopefully final patch I'd like to know what
-> > Jan says about open coding the lookup for ..
-> > It will mean a lot of code duplication and I think it makes good sense
-> > for udf_find_entry to be able to handle ..
->   Yes, I think opencoding it would really lead to larger code duplication
-> than I'd like so please keep the change in udf_find_entry(). Thanks.
-Great - then I think we are hopefully at a patch that can be accepted.
+On Thu, 2008-02-07 at 06:37 -0500, Jeff Layton wrote:
+> On Wed, 06 Feb 2008 18:01:16 -0500
+> Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+> 
+> > 
+> > On Wed, 2008-02-06 at 14:09 -0500, Jeff Layton wrote:
+> > > On Wed, 06 Feb 2008 13:52:34 -0500
+> > > Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+> > > 
+> > > > 
+> > > > On Wed, 2008-02-06 at 13:47 -0500, Jeff Layton wrote:
+> > > > > There's no guarantee that kthread_stop() won't wake up lockd before
+> > > > > schedule_timeout() gets called, but after the last check for
+> > > > > kthread_should_stop().
+> > > > 
+> > > > Doesn't the BKL pretty much eliminate this race? (assuming you
+> > > > transform that call to 'if (!kthread_should_stop())
+> > > > schedule_timeout();')
+> > > > 
+> > > > Trond
+> > > > 
+> > > 
+> > > I don't think so. That would require that lockd_down is always called
+> > > with the BKL held, and I don't think it is, is it?
+> > 
+> > Nothing stops you from grabbing the BKL inside lockd_down, though :-)
+> > 
+> 
+> True, but what's worse -- keeping signaling in the codepath or
+> increasing reliance on the BKL? :-)
+> 
+> I think in the near term, you're probably right that taking the BKL in
+> lockd_down is the best scheme to prevent these races. I think the best
+> long term solution though is to add a way for kthread_stop to signal
+> the task before calling wait_for_completion.
 
-Signed-off-by: Rasmus Rohde <rohde-3mLe3WyXyAE@public.gmane.org>
+Doh! Where are my brains?
 
-diff -uprN -X linux-2.6.24-mm1-vanilla/Documentation/dontdiff linux-2.6.24-mm1-vanilla/fs/udf/namei.c linux-2.6.24-mm1/fs/udf/namei.c
---- linux-2.6.24-mm1-vanilla/fs/udf/namei.c	2008-02-06 21:23:36.000000000 +0100
-+++ linux-2.6.24-mm1/fs/udf/namei.c	2008-02-07 07:13:04.000000000 +0100
-@@ -31,6 +31,7 @@
- #include <linux/smp_lock.h>
- #include <linux/buffer_head.h>
- #include <linux/sched.h>
-+#include <linux/exportfs.h>
- 
- static inline int udf_match(int len1, const char *name1, int len2,
- 			    const char *name2)
-@@ -159,6 +160,8 @@ static struct fileIdentDesc *udf_find_en
- 	sector_t offset;
- 	struct extent_position epos = {};
- 	struct udf_inode_info *dinfo = UDF_I(dir);
-+	int isdotdot = dentry->d_name.len == 2 &&
-+		dentry->d_name.name[0] == '.' && dentry->d_name.name[1] == '.';
- 
- 	size = udf_ext0_offset(dir) + dir->i_size;
- 	f_pos = udf_ext0_offset(dir);
-@@ -232,6 +235,12 @@ static struct fileIdentDesc *udf_find_en
- 				continue;
- 		}
- 
-+		if ((cfi->fileCharacteristics & FID_FILE_CHAR_PARENT) &&
-+		    isdotdot) {
-+			brelse(epos.bh);
-+			return fi;
-+		}
-+
- 		if (!lfi)
- 			continue;
- 
-@@ -324,9 +333,8 @@ static struct dentry *udf_lookup(struct 
- 		}
- 	}
- 	unlock_kernel();
--	d_add(dentry, inode);
- 
--	return NULL;
-+	return d_splice_alias(inode, dentry);
- }
- 
- static struct fileIdentDesc *udf_add_entry(struct inode *dir,
-@@ -1298,6 +1306,134 @@ end_rename:
- 	return retval;
- }
- 
-+static struct dentry *udf_get_parent(struct dentry *child)
-+{
-+	struct dentry *parent;
-+	struct inode *inode = NULL;
-+	struct dentry dotdot;
-+	struct fileIdentDesc cfi;
-+	struct udf_fileident_bh fibh;
-+
-+	dotdot.d_name.name = "..";
-+	dotdot.d_name.len = 2;
-+
-+	lock_kernel();
-+	if (!udf_find_entry(child->d_inode, &dotdot, &fibh, &cfi))
-+		goto out_unlock;
-+
-+	if (fibh.sbh != fibh.ebh)
-+		brelse(fibh.ebh);
-+	brelse(fibh.sbh);
-+
-+	inode = udf_iget(child->d_inode->i_sb,
-+			 lelb_to_cpu(cfi.icb.extLocation));
-+	if (!inode)
-+		goto out_unlock;
-+	unlock_kernel();
-+
-+	parent = d_alloc_anon(inode);
-+	if (!parent) {
-+		iput(inode);
-+		parent = ERR_PTR(-ENOMEM);
-+	}
-+
-+	return parent;
-+out_unlock:
-+	unlock_kernel();
-+	return ERR_PTR(-EACCES);
-+}
-+
-+
-+static struct dentry *udf_nfs_get_inode(struct super_block *sb, u32 block,
-+					u16 partref, __u32 generation)
-+{
-+	struct inode *inode;
-+	struct dentry *result;
-+	kernel_lb_addr loc;
-+
-+	if (block == 0)
-+		return ERR_PTR(-ESTALE);
-+
-+	loc.logicalBlockNum = block;
-+	loc.partitionReferenceNum = partref;
-+	inode = udf_iget(sb, loc);
-+
-+	if (inode == NULL)
-+		return ERR_PTR(-ENOMEM);
-+
-+	if (generation && inode->i_generation != generation) {
-+		iput(inode);
-+		return ERR_PTR(-ESTALE);
-+	}
-+	result = d_alloc_anon(inode);
-+	if (!result) {
-+		iput(inode);
-+		return ERR_PTR(-ENOMEM);
-+	}
-+	return result;
-+}
-+
-+static struct dentry *udf_fh_to_dentry(struct super_block *sb,
-+				       struct fid *fid, int fh_len, int fh_type)
-+{
-+	if ((fh_len != 3 && fh_len != 5) ||
-+	    (fh_type != FILEID_UDF_WITH_PARENT &&
-+	     fh_type != FILEID_UDF_WITHOUT_PARENT))
-+		return NULL;
-+
-+	return udf_nfs_get_inode(sb, fid->udf.block, fid->udf.partref,
-+			fid->udf.generation);
-+}
-+
-+static struct dentry *udf_fh_to_parent(struct super_block *sb,
-+				       struct fid *fid, int fh_len, int fh_type)
-+{
-+	if (fh_len != 5 || fh_type != FILEID_UDF_WITH_PARENT)
-+		return NULL;
-+
-+	return udf_nfs_get_inode(sb, fid->udf.parent_block,
-+				 fid->udf.parent_partref,
-+				 fid->udf.parent_generation);
-+}
-+static int udf_encode_fh(struct dentry *de, __u32 *fh, int *lenp,
-+			 int connectable)
-+{
-+	int len = *lenp;
-+	struct inode *inode =  de->d_inode;
-+	kernel_lb_addr location = UDF_I(inode)->i_location;
-+	struct fid *fid = (struct fid *)fh;
-+	int type = FILEID_UDF_WITHOUT_PARENT;
-+
-+	if (len < 3 || (connectable && len < 5))
-+		return 255;
-+
-+	*lenp = 3;
-+	fid->udf.block = location.logicalBlockNum;
-+	fid->udf.partref = location.partitionReferenceNum;
-+	fid->udf.generation = inode->i_generation;
-+
-+	if (connectable && !S_ISDIR(inode->i_mode)) {
-+		spin_lock(&de->d_lock);
-+		inode = de->d_parent->d_inode;
-+		location = UDF_I(inode)->i_location;
-+		fid->udf.parent_block = location.logicalBlockNum;
-+		fid->udf.parent_partref = location.partitionReferenceNum;
-+		fid->udf.parent_generation = inode->i_generation;
-+		spin_unlock(&de->d_lock);
-+		*lenp = 5;
-+		type = FILEID_UDF_WITH_PARENT;
-+	}
-+
-+	return type;
-+}
-+
-+const struct export_operations udf_export_ops = {
-+	.encode_fh	= udf_encode_fh,
-+	.fh_to_dentry   = udf_fh_to_dentry,
-+	.fh_to_parent   = udf_fh_to_parent,
-+	.get_parent     = udf_get_parent,
-+};
-+
- const struct inode_operations udf_dir_inode_operations = {
- 	.lookup				= udf_lookup,
- 	.create				= udf_create,
-diff -uprN -X linux-2.6.24-mm1-vanilla/Documentation/dontdiff linux-2.6.24-mm1-vanilla/fs/udf/super.c linux-2.6.24-mm1/fs/udf/super.c
---- linux-2.6.24-mm1-vanilla/fs/udf/super.c	2008-02-06 21:23:36.000000000 +0100
-+++ linux-2.6.24-mm1/fs/udf/super.c	2008-02-07 07:06:30.000000000 +0100
-@@ -1801,6 +1801,7 @@ static int udf_fill_super(struct super_b
- 
- 	/* Fill in the rest of the superblock */
- 	sb->s_op = &udf_sb_ops;
-+	sb->s_export_op = &udf_export_ops;
- 	sb->dq_op = NULL;
- 	sb->s_dirt = 0;
- 	sb->s_magic = UDF_SUPER_MAGIC;
-diff -uprN -X linux-2.6.24-mm1-vanilla/Documentation/dontdiff linux-2.6.24-mm1-vanilla/fs/udf/udfdecl.h linux-2.6.24-mm1/fs/udf/udfdecl.h
---- linux-2.6.24-mm1-vanilla/fs/udf/udfdecl.h	2008-02-06 21:23:36.000000000 +0100
-+++ linux-2.6.24-mm1/fs/udf/udfdecl.h	2008-02-07 07:11:24.000000000 +0100
-@@ -45,6 +45,7 @@ struct task_struct;
- struct buffer_head;
- struct super_block;
- 
-+extern const struct export_operations udf_export_ops;
- extern const struct inode_operations udf_dir_inode_operations;
- extern const struct file_operations udf_dir_operations;
- extern const struct inode_operations udf_file_inode_operations;
-diff -uprN -X linux-2.6.24-mm1-vanilla/Documentation/dontdiff linux-2.6.24-mm1-vanilla/include/linux/exportfs.h linux-2.6.24-mm1/include/linux/exportfs.h
---- linux-2.6.24-mm1-vanilla/include/linux/exportfs.h	2008-02-06 21:23:46.000000000 +0100
-+++ linux-2.6.24-mm1/include/linux/exportfs.h	2008-02-06 21:25:06.000000000 +0100
-@@ -33,6 +33,19 @@ enum fid_type {
- 	 * 32 bit parent directory inode number.
- 	 */
- 	FILEID_INO32_GEN_PARENT = 2,
-+
-+	/*
-+	 * 32 bit block number, 16 bit partition reference,
-+	 * 16 bit unused, 32 bit generation number.
-+	 */
-+	FILEID_UDF_WITHOUT_PARENT = 0x51,
-+
-+	/*
-+	 * 32 bit block number, 16 bit partition reference,
-+	 * 16 bit unused, 32 bit generation number,
-+	 * 32 bit parent block number, 32 bit parent generation number
-+	 */
-+	FILEID_UDF_WITH_PARENT = 0x52,
- };
- 
- struct fid {
-@@ -43,6 +56,14 @@ struct fid {
- 			u32 parent_ino;
- 			u32 parent_gen;
- 		} i32;
-+		struct {
-+			u32 block;
-+			u16 partref;
-+			u16 parent_partref;
-+			u32 generation;
-+			u32 parent_block;
-+			u32 parent_generation;
-+		} udf;
- 		__u32 raw[6];
- 	};
- };
+You don't need the BKL either here. Just make sure that the test for
+'kthread_should_stop()' occurs after the call to set_current_state().
+wake_up_process() will reset the state to TASK_RUNNING, and so the
+process is kept on the run queue when schedule_timeout() is called.
 
+> I'll keep plugging away on this for now. If I can get a patch
+> upstream to add a kthread_stop_sig() call then we might be able to
+> avoid relying on the BKL here...
 
+No need for signals. We can get rid of them altogether (and good
+riddance!).
 
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Microsoft
-Defy all challenges. Microsoft(R) Visual Studio 2008.
-http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+Cheers
+  Trond
 
