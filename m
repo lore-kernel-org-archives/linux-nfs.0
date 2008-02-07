@@ -1,119 +1,295 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: Wondering about NLM_HOST_MAX ... doesn't anyone understand this
- code?
-Date: Thu, 7 Feb 2008 07:15:01 -0500
-Message-ID: <20080207071501.438dac9b@tleilax.poochiereds.net>
-References: <18346.31720.497379.823879@notabene.brown>
+From: Rasmus Rohde <rohde-3mLe3WyXyAE@public.gmane.org>
+Subject: Re: [NFS] [PATCH] Make UDF exportable
+Date: Thu, 07 Feb 2008 16:02:57 +0100
+Message-ID: <1202396577.18175.2.camel@localhost.localdomain>
+References: <1201726404.2976.8.camel@localhost.localdomain>
+	<20080205102955.GA28347@infradead.org>
+	<1202233464.12188.43.camel@localhost.localdomain>
+	<20080206180850.GD3475@duck.suse.cz>
+	<1202331482.2727.8.camel@localhost.localdomain>
+	<20080207054515.GA14585@infradead.org>
+	<1202367997.17388.6.camel@localhost.localdomain>
+	<20080207144859.GJ6140@duck.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: linux-nfs@vger.kernel.org
-To: Neil Brown <neilb@suse.de>
+Content-Type: text/plain; charset="us-ascii"
+Cc: Christoph Hellwig <hch@infradead.org>,
+	linux-fsdevel@vger.kernel.org, nfs@lists.sourceforge.net
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:55455 "EHLO mx1.redhat.com"
+Received: from neil.brown.name ([220.233.11.133]:53206 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755481AbYBGMPG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 Feb 2008 07:15:06 -0500
-In-Reply-To: <18346.31720.497379.823879-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
+	id S1756177AbYBGPDe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 7 Feb 2008 10:03:34 -0500
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1JN8Hg-00030m-5W
+	for linux-nfs@vger.kernel.org; Fri, 08 Feb 2008 02:03:28 +1100
+In-Reply-To: <20080207144859.GJ6140-pwKtmJkCtMINMLpHRKhSow@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 7 Feb 2008 14:32:56 +1100
-Neil Brown <neilb@suse.de> wrote:
 
-> 
-> Hi,
->  I've been looking at NLM_HOST_MAX in fs/lockd/host.c, as we have a
->  patch in SLES that makes it configurable, and the patch needs to
->  either go upstream or out the window...
-> 
->  But the code that uses NLM_HOST_MAX is weird!  Look:
-> 
-> #define NLM_HOST_EXPIRE		((nrhosts > NLM_HOST_MAX)? 300 * HZ : 120 * HZ)
-> #define NLM_HOST_COLLECT	((nrhosts > NLM_HOST_MAX)? 120 * HZ :  60 * HZ)
-> 
-> So if the number of hosts is more than the maximum (64), we *increase*
-> the expiry time and the garbage collection interval.
-> You would think they should be decreased when we have exceeded the
-> max, so we can get rid of more old entries more quickly.  But no, they
-> are increased.
-> 
-> And in the code where we add a host to the list of hosts:
-> 
-> 	if (++nrhosts > NLM_HOST_MAX)
-> 		next_gc = 0;
-> 
-> 
-> So when we go over the limit, we garbage collect straight away, but
-> almost certainly do nothing because we've just given every host an
-> extra 3 minutes that it is allowed to live.
-> 
-> We could change the '>' to '<' which would make the code make sense at
-> least, but I don't think we want to.  A server could easily have more
-> than 64 clients doing lock requests, and we don't want to make life
-> harder for clients just because there are more of them.
-> 
-> I think we should just get rid of NLM_HOST_MAX altogether.  Old hosts
-> will still go away in a few minutes and pushing them out quickly
-> shouldn't be needed.
-> 
-> So: any comments on the above or on the patch below.  I've chosen to
-> go with "discard hosts older than 5 minutes every 2 minutes" rather
-> than "discard hosts older than 2 minutes every minute" even though the
-> latter is what would have been in effect most of the time, as it seems
-> more like what was intended.
-> 
-> Thanks,
-> NeilBrown
-> 
-> 
-> Signed-off-by: Neil Brown <neilb@suse.de>
-> 
+> > Before posting the last and hopefully final patch I'd like to know what
+> > Jan says about open coding the lookup for ..
+> > It will mean a lot of code duplication and I think it makes good sense
+> > for udf_find_entry to be able to handle ..
+>   Yes, I think opencoding it would really lead to larger code duplication
+> than I'd like so please keep the change in udf_find_entry(). Thanks.
+Great - then I think we are hopefully at a patch that can be accepted.
 
-As far as I can tell, the only "problem" with having a lot of nlm_host
-entries is that they take up a little memory and maybe a little extra
-CPU time when we walk over them in the lists. NLM_HOST_MAX doesn't
-really seem to be needed anymore on any sort of modern hardware.
+Signed-off-by: Rasmus Rohde <rohde-3mLe3WyXyAE@public.gmane.org>
 
-ACK
+diff -uprN -X linux-2.6.24-mm1-vanilla/Documentation/dontdiff linux-2.6.24-mm1-vanilla/fs/udf/namei.c linux-2.6.24-mm1/fs/udf/namei.c
+--- linux-2.6.24-mm1-vanilla/fs/udf/namei.c	2008-02-06 21:23:36.000000000 +0100
++++ linux-2.6.24-mm1/fs/udf/namei.c	2008-02-07 07:13:04.000000000 +0100
+@@ -31,6 +31,7 @@
+ #include <linux/smp_lock.h>
+ #include <linux/buffer_head.h>
+ #include <linux/sched.h>
++#include <linux/exportfs.h>
+ 
+ static inline int udf_match(int len1, const char *name1, int len2,
+ 			    const char *name2)
+@@ -159,6 +160,8 @@ static struct fileIdentDesc *udf_find_en
+ 	sector_t offset;
+ 	struct extent_position epos = {};
+ 	struct udf_inode_info *dinfo = UDF_I(dir);
++	int isdotdot = dentry->d_name.len == 2 &&
++		dentry->d_name.name[0] == '.' && dentry->d_name.name[1] == '.';
+ 
+ 	size = udf_ext0_offset(dir) + dir->i_size;
+ 	f_pos = udf_ext0_offset(dir);
+@@ -232,6 +235,12 @@ static struct fileIdentDesc *udf_find_en
+ 				continue;
+ 		}
+ 
++		if ((cfi->fileCharacteristics & FID_FILE_CHAR_PARENT) &&
++		    isdotdot) {
++			brelse(epos.bh);
++			return fi;
++		}
++
+ 		if (!lfi)
+ 			continue;
+ 
+@@ -324,9 +333,8 @@ static struct dentry *udf_lookup(struct 
+ 		}
+ 	}
+ 	unlock_kernel();
+-	d_add(dentry, inode);
+ 
+-	return NULL;
++	return d_splice_alias(inode, dentry);
+ }
+ 
+ static struct fileIdentDesc *udf_add_entry(struct inode *dir,
+@@ -1298,6 +1306,134 @@ end_rename:
+ 	return retval;
+ }
+ 
++static struct dentry *udf_get_parent(struct dentry *child)
++{
++	struct dentry *parent;
++	struct inode *inode = NULL;
++	struct dentry dotdot;
++	struct fileIdentDesc cfi;
++	struct udf_fileident_bh fibh;
++
++	dotdot.d_name.name = "..";
++	dotdot.d_name.len = 2;
++
++	lock_kernel();
++	if (!udf_find_entry(child->d_inode, &dotdot, &fibh, &cfi))
++		goto out_unlock;
++
++	if (fibh.sbh != fibh.ebh)
++		brelse(fibh.ebh);
++	brelse(fibh.sbh);
++
++	inode = udf_iget(child->d_inode->i_sb,
++			 lelb_to_cpu(cfi.icb.extLocation));
++	if (!inode)
++		goto out_unlock;
++	unlock_kernel();
++
++	parent = d_alloc_anon(inode);
++	if (!parent) {
++		iput(inode);
++		parent = ERR_PTR(-ENOMEM);
++	}
++
++	return parent;
++out_unlock:
++	unlock_kernel();
++	return ERR_PTR(-EACCES);
++}
++
++
++static struct dentry *udf_nfs_get_inode(struct super_block *sb, u32 block,
++					u16 partref, __u32 generation)
++{
++	struct inode *inode;
++	struct dentry *result;
++	kernel_lb_addr loc;
++
++	if (block == 0)
++		return ERR_PTR(-ESTALE);
++
++	loc.logicalBlockNum = block;
++	loc.partitionReferenceNum = partref;
++	inode = udf_iget(sb, loc);
++
++	if (inode == NULL)
++		return ERR_PTR(-ENOMEM);
++
++	if (generation && inode->i_generation != generation) {
++		iput(inode);
++		return ERR_PTR(-ESTALE);
++	}
++	result = d_alloc_anon(inode);
++	if (!result) {
++		iput(inode);
++		return ERR_PTR(-ENOMEM);
++	}
++	return result;
++}
++
++static struct dentry *udf_fh_to_dentry(struct super_block *sb,
++				       struct fid *fid, int fh_len, int fh_type)
++{
++	if ((fh_len != 3 && fh_len != 5) ||
++	    (fh_type != FILEID_UDF_WITH_PARENT &&
++	     fh_type != FILEID_UDF_WITHOUT_PARENT))
++		return NULL;
++
++	return udf_nfs_get_inode(sb, fid->udf.block, fid->udf.partref,
++			fid->udf.generation);
++}
++
++static struct dentry *udf_fh_to_parent(struct super_block *sb,
++				       struct fid *fid, int fh_len, int fh_type)
++{
++	if (fh_len != 5 || fh_type != FILEID_UDF_WITH_PARENT)
++		return NULL;
++
++	return udf_nfs_get_inode(sb, fid->udf.parent_block,
++				 fid->udf.parent_partref,
++				 fid->udf.parent_generation);
++}
++static int udf_encode_fh(struct dentry *de, __u32 *fh, int *lenp,
++			 int connectable)
++{
++	int len = *lenp;
++	struct inode *inode =  de->d_inode;
++	kernel_lb_addr location = UDF_I(inode)->i_location;
++	struct fid *fid = (struct fid *)fh;
++	int type = FILEID_UDF_WITHOUT_PARENT;
++
++	if (len < 3 || (connectable && len < 5))
++		return 255;
++
++	*lenp = 3;
++	fid->udf.block = location.logicalBlockNum;
++	fid->udf.partref = location.partitionReferenceNum;
++	fid->udf.generation = inode->i_generation;
++
++	if (connectable && !S_ISDIR(inode->i_mode)) {
++		spin_lock(&de->d_lock);
++		inode = de->d_parent->d_inode;
++		location = UDF_I(inode)->i_location;
++		fid->udf.parent_block = location.logicalBlockNum;
++		fid->udf.parent_partref = location.partitionReferenceNum;
++		fid->udf.parent_generation = inode->i_generation;
++		spin_unlock(&de->d_lock);
++		*lenp = 5;
++		type = FILEID_UDF_WITH_PARENT;
++	}
++
++	return type;
++}
++
++const struct export_operations udf_export_ops = {
++	.encode_fh	= udf_encode_fh,
++	.fh_to_dentry   = udf_fh_to_dentry,
++	.fh_to_parent   = udf_fh_to_parent,
++	.get_parent     = udf_get_parent,
++};
++
+ const struct inode_operations udf_dir_inode_operations = {
+ 	.lookup				= udf_lookup,
+ 	.create				= udf_create,
+diff -uprN -X linux-2.6.24-mm1-vanilla/Documentation/dontdiff linux-2.6.24-mm1-vanilla/fs/udf/super.c linux-2.6.24-mm1/fs/udf/super.c
+--- linux-2.6.24-mm1-vanilla/fs/udf/super.c	2008-02-06 21:23:36.000000000 +0100
++++ linux-2.6.24-mm1/fs/udf/super.c	2008-02-07 07:06:30.000000000 +0100
+@@ -1801,6 +1801,7 @@ static int udf_fill_super(struct super_b
+ 
+ 	/* Fill in the rest of the superblock */
+ 	sb->s_op = &udf_sb_ops;
++	sb->s_export_op = &udf_export_ops;
+ 	sb->dq_op = NULL;
+ 	sb->s_dirt = 0;
+ 	sb->s_magic = UDF_SUPER_MAGIC;
+diff -uprN -X linux-2.6.24-mm1-vanilla/Documentation/dontdiff linux-2.6.24-mm1-vanilla/fs/udf/udfdecl.h linux-2.6.24-mm1/fs/udf/udfdecl.h
+--- linux-2.6.24-mm1-vanilla/fs/udf/udfdecl.h	2008-02-06 21:23:36.000000000 +0100
++++ linux-2.6.24-mm1/fs/udf/udfdecl.h	2008-02-07 07:11:24.000000000 +0100
+@@ -45,6 +45,7 @@ struct task_struct;
+ struct buffer_head;
+ struct super_block;
+ 
++extern const struct export_operations udf_export_ops;
+ extern const struct inode_operations udf_dir_inode_operations;
+ extern const struct file_operations udf_dir_operations;
+ extern const struct inode_operations udf_file_inode_operations;
+diff -uprN -X linux-2.6.24-mm1-vanilla/Documentation/dontdiff linux-2.6.24-mm1-vanilla/include/linux/exportfs.h linux-2.6.24-mm1/include/linux/exportfs.h
+--- linux-2.6.24-mm1-vanilla/include/linux/exportfs.h	2008-02-06 21:23:46.000000000 +0100
++++ linux-2.6.24-mm1/include/linux/exportfs.h	2008-02-06 21:25:06.000000000 +0100
+@@ -33,6 +33,19 @@ enum fid_type {
+ 	 * 32 bit parent directory inode number.
+ 	 */
+ 	FILEID_INO32_GEN_PARENT = 2,
++
++	/*
++	 * 32 bit block number, 16 bit partition reference,
++	 * 16 bit unused, 32 bit generation number.
++	 */
++	FILEID_UDF_WITHOUT_PARENT = 0x51,
++
++	/*
++	 * 32 bit block number, 16 bit partition reference,
++	 * 16 bit unused, 32 bit generation number,
++	 * 32 bit parent block number, 32 bit parent generation number
++	 */
++	FILEID_UDF_WITH_PARENT = 0x52,
+ };
+ 
+ struct fid {
+@@ -43,6 +56,14 @@ struct fid {
+ 			u32 parent_ino;
+ 			u32 parent_gen;
+ 		} i32;
++		struct {
++			u32 block;
++			u16 partref;
++			u16 parent_partref;
++			u32 generation;
++			u32 parent_block;
++			u32 parent_generation;
++		} udf;
+ 		__u32 raw[6];
+ 	};
+ };
 
-> ### Diffstat output
->  ./fs/lockd/host.c |    8 ++------
->  1 file changed, 2 insertions(+), 6 deletions(-)
-> 
-> diff .prev/fs/lockd/host.c ./fs/lockd/host.c
-> --- .prev/fs/lockd/host.c	2008-02-07 14:20:54.000000000 +1100
-> +++ ./fs/lockd/host.c	2008-02-07 14:23:38.000000000 +1100
-> @@ -19,12 +19,11 @@
->  
->  
->  #define NLMDBG_FACILITY		NLMDBG_HOSTCACHE
-> -#define NLM_HOST_MAX		64
->  #define NLM_HOST_NRHASH		32
->  #define NLM_ADDRHASH(addr)	(ntohl(addr) & (NLM_HOST_NRHASH-1))
->  #define NLM_HOST_REBIND		(60 * HZ)
-> -#define NLM_HOST_EXPIRE		((nrhosts > NLM_HOST_MAX)? 300 * HZ : 120 * HZ)
-> -#define NLM_HOST_COLLECT	((nrhosts > NLM_HOST_MAX)? 120 * HZ :  60 * HZ)
-> +#define NLM_HOST_EXPIRE		(300 * HZ)
-> +#define NLM_HOST_COLLECT	(120 * HZ)
->  
->  static struct hlist_head	nlm_hosts[NLM_HOST_NRHASH];
->  static unsigned long		next_gc;
-> @@ -142,9 +141,6 @@ nlm_lookup_host(int server, const struct
->  	INIT_LIST_HEAD(&host->h_granted);
->  	INIT_LIST_HEAD(&host->h_reclaim);
->  
-> -	if (++nrhosts > NLM_HOST_MAX)
-> -		next_gc = 0;
-> -
->  out:
->  	mutex_unlock(&nlm_host_mutex);
->  	return host;
-> -
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
 
 
--- 
-Jeff Layton <jlayton@redhat.com>
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Microsoft
+Defy all challenges. Microsoft(R) Visual Studio 2008.
+http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
+
