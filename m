@@ -1,66 +1,86 @@
-From: Neil Brown <neilb@suse.de>
-Subject: RE: kernel exports table flushes out on running exportfs -a over mips
-Date: Thu, 7 Feb 2008 16:22:26 +1100
-Message-ID: <18346.38290.73331.936819@notabene.brown>
-References: <DDFD17CC94A9BD49A82147DDF7D545C5743B89@exchange.ZeugmaSystems.local>
-	<20080131023654.GA45273388@ocelot.melbourne.sgi.com>
-	<DDFD17CC94A9BD49A82147DDF7D545C5743D74@exchange.ZeugmaSystems.local>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [NFS] [PATCH] Make UDF exportable
+Date: Thu, 7 Feb 2008 00:45:15 -0500
+Message-ID: <20080207054515.GA14585__43857.1084211164$1202363175$gmane$org@infradead.org>
+References: <1201726404.2976.8.camel@localhost.localdomain>
+	<20080205102955.GA28347@infradead.org>
+	<1202233464.12188.43.camel@localhost.localdomain>
+	<20080206180850.GD3475@duck.suse.cz>
+	<1202331482.2727.8.camel@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Greg Banks" <gnb@sgi.com>, <linux-nfs@vger.kernel.org>
-To: "Anirban Sinha" <ASinha-z4qIPS1Syiu/3pe1ocb+swC/G2K4zDHf@public.gmane.org>
+Content-Type: text/plain; charset="us-ascii"
+Cc: Christoph Hellwig <hch@infradead.org>,
+	linux-fsdevel@vger.kernel.org, Jan Kara <jack@suse.cz>,
+	nfs@lists.sourceforge.net
+To: Rasmus Rohde <rohde-3mLe3WyXyAE@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from ns2.suse.de ([195.135.220.15]:57694 "EHLO mx2.suse.de"
+Received: from neil.brown.name ([220.233.11.133]:43032 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750804AbYBGFW1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 Feb 2008 00:22:27 -0500
-In-Reply-To: message from Anirban Sinha on Thursday January 31
+	id S1751649AbYBGFph (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 7 Feb 2008 00:45:37 -0500
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1JMzZn-0001Un-EF
+	for linux-nfs@vger.kernel.org; Thu, 07 Feb 2008 16:45:35 +1100
+In-Reply-To: <1202331482.2727.8.camel-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thursday January 31, ASinha-z4qIPS1Syiu/3pe1ocb+swC/G2K4zDHf@public.gmane.org wrote:
-> > 
-> > Does the MIPS box have the /proc/fs/nfsd/ filesystem mounted?
+On Wed, Feb 06, 2008 at 09:58:02PM +0100, Rasmus Rohde wrote:
+> > > +	dotdot.d_name.name = "..";
+> > > +	dotdot.d_name.len = 2;
+> > > +
+> > > +	lock_kernel();
+> > > +	if (!udf_find_entry(child->d_inode, &dotdot, &fibh, &cfi))
+> > > +		goto out_unlock;
+> >   Have you ever tried this? I think this could never work. UDF doesn't have
+> > entry named .. in a directory. You have to search for an entry that has
+> > in fileCharacteristics set bit FID_FILE_CHAR_PARENT. Maybe you could
+> > hack-around udf_find_entry() to recognize .. dentry and do the search
+> > accordingly.
+> Probably not. I just tested that I could read files and navigate the
+> directory structure. However looking into UDF I think you are right - it
+> will fail.
+> I have extended udf_find_entry() to do an explicit check based on
+> fileCharacteristics as you propose.
+> How do I actually test this case?
 > 
-> Ahh, I see what you mean. Yes, it is mounted, both /proc/fs/nfsd and
-> /proc/fs/nfs. However, I can see from the code that check_new_cache()
-> checks for a file "filehandle" which does not exist in that location. To
-> be dead sure, I instrumented the code to insert a perror and it returns
-> "no such file or directory". The new_cache flag remains 0. Is this some
-> sort of kernel bug? 
+> >   Otherwise the patch looks fine. But please rediff the patch against
+> > Andrew's development tree (or -mm) because there are some cleanups there...
+> > Thanks.
+> Certainly there are. New patch against 2.6.24-mm1:
 
-OK, that means that /proc/fs/nfs is *not* mounted.
+There's still a few trivial warnings from scripts/checkpatch.pl that
+should be fixed up:
 
-/proc is mounted, and it contains several directories including
-/proc/fs/nfs and proc/fs/nfsd.
+ERROR: trailing whitespace
+#88: FILE: fs/udf/namei.c:1323:
++^I$
 
-To get modern NFS service, you need to
-   mount -t nfsd nfsd /proc/fs/nfsd
+ERROR: trailing whitespace
+#92: FILE: fs/udf/namei.c:1327:
++^I^I$
 
-before running any nfsd related programs (e.g. mountd, nfsd). 
-Most distro do that in their startup scripts.  It seems you are
-missing this.
+ERROR: trailing whitespace
+#185: FILE: fs/udf/namei.c:1420:
++^I^Ifid->udf.parent_partref = location.partitionReferenceNum;^I$
 
-However it should still work.  It seems that it doesn't.
-I tried without /proc/fs/nfsd mounted and got the same result as you.
-It seems that we broke things when /var/lib/nfs/rmtab was changed to
-store IP addresses rather than host names.
+WARNING: externs should be avoided in .c files
+#212: FILE: fs/udf/super.c:79:
++extern struct export_operations udf_export_ops;
 
-The following patch to nfs-utils will fix it.   Or you can just mount
-the 'nfsd' filesystem as above.
-
-NeilBrown
+total: 3 errors, 1 warnings, 218 lines checked
 
 
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Microsoft
+Defy all challenges. Microsoft(R) Visual Studio 2008.
+http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
-diff --git a/support/export/client.c b/support/export/client.c
-index 1cb242f..e96f5e0 100644
---- a/support/export/client.c
-+++ b/support/export/client.c
-@@ -462,5 +462,5 @@ client_gettype(char *ident)
- 	sp++; if(!isdigit(*sp) || strtoul(sp, &sp, 10) > 255 || *sp != '.') return MCL_FQDN;
- 	sp++; if(!isdigit(*sp) || strtoul(sp, &sp, 10) > 255 || *sp != '\0') return MCL_FQDN;
- 	/* we lie here a bit. but technically N.N.N.N == N.N.N.N/32 :) */
--	return MCL_SUBNETWORK;
-+	return MCL_FQDN;
- }
