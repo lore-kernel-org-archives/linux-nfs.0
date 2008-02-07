@@ -1,181 +1,73 @@
-From: "Anirban Sinha" <ASinha-z4qIPS1Syiu/3pe1ocb+swC/G2K4zDHf@public.gmane.org>
-Subject: Re: kernel exports table flushes out on running exportfs -a over mips
-Date: Wed, 6 Feb 2008 19:42:31 -0800
-Message-ID: <DDFD17CC94A9BD49A82147DDF7D545C57984EB@exchange.ZeugmaSystems.local>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [NFS] [PATCH] Make UDF exportable
+Date: Thu, 7 Feb 2008 14:44:00 +1100
+Message-ID: <18346.32384.780598.485949__17631.5290773802$1202355896$gmane$org@notabene.brown>
+References: <1201726404.2976.8.camel@localhost.localdomain>
+	<20080205102955.GA28347@infradead.org>
+	<1202233464.12188.43.camel@localhost.localdomain>
+	<20080206180850.GD3475@duck.suse.cz>
+	<1202331482.2727.8.camel@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-To: <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Cc: Christoph Hellwig <hch@infradead.org>, nfs@lists.sourceforge.net,
+	linux-fsdevel@vger.kernel.org, Jan Kara <jack@suse.cz>
+To: Rasmus Rohde <rohde-3mLe3WyXyAE@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.zeugmasystems.com ([192.139.122.66]:17331 "EHLO
-	zeugmasystems.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1754058AbYBGDnR convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Feb 2008 22:43:17 -0500
+Received: from neil.brown.name ([220.233.11.133]:48334 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754102AbYBGDoT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 6 Feb 2008 22:44:19 -0500
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1JMxgP-00015V-Pv
+	for linux-nfs@vger.kernel.org; Thu, 07 Feb 2008 14:44:17 +1100
+In-Reply-To: message from Rasmus Rohde on Wednesday February 6
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi:
+On Wednesday February 6, rohde-3mLe3WyXyAE@public.gmane.org wrote:
+> > > +	dotdot.d_name.name = "..";
+> > > +	dotdot.d_name.len = 2;
+> > > +
+> > > +	lock_kernel();
+> > > +	if (!udf_find_entry(child->d_inode, &dotdot, &fibh, &cfi))
+> > > +		goto out_unlock;
+> >   Have you ever tried this? I think this could never work. UDF doesn't have
+> > entry named .. in a directory. You have to search for an entry that has
+> > in fileCharacteristics set bit FID_FILE_CHAR_PARENT. Maybe you could
+> > hack-around udf_find_entry() to recognize .. dentry and do the search
+> > accordingly.
+> Probably not. I just tested that I could read files and navigate the
+> directory structure. However looking into UDF I think you are right - it
+> will fail.
+> I have extended udf_find_entry() to do an explicit check based on
+> fileCharacteristics as you propose.
+> How do I actually test this case?
 
-I did some extensive digging into the codebase and I believe I have the
-reason why exportfs -a flushes out the caches after NFS clients have
-mounted the NFS filesystem. 
-The analysis is complicated, but here's
-the crux of the matter: 
+ - Mount the filesystem from the server.
+ - 'cd' a few directories down into the filesystem.
+ - reboot the server(1)
+ - on the client 'ls -l'.
 
-There is a difference in the /etc/exports and the kernel maintained
-cache. The difference is that in /etc/exports, we use anonymous clients
-(*) whereas kernel maintains a FQDN client names in its exports cache
-(see attached file). This difference (the parsing code client_gettype()
-specifically checks for a * or an IP or hostname among other things and
-based on that creates two different types of caches) is causing the nfs
-codebase to recreate new in core exports entries (the second time when
-we issue "exportfs -a") after parsing /proc/fs/nfs/export. Immediately
-later, it then throws these away (for these newly created entries,
-m_mayexport = 0 and m_exported = 1 in function xtab_read()). For
-details, see the logic in exports_update_one():
+(1) A full reboot isn't needed.  Just unexport, unmount, remount,
+    re-export on the server.
 
-if (exp->m_exported && !exp->m_mayexport) { ... unexporting ...}
+alternately, use a non-linux client and cd down into the filesystem
+and
+    ls -l ..
 
-
-Since both the anonymous and FQDN entries are essentially the same, this
-results in blowing away the existing kernel exports table. 
-
-My question is, is there a elegant solution to this problem without
-simply using FQDN in /etc/exports? I have confirmed that the problem
-does not occur when both the in kernel and /etc/exports tables have same
-entries (both * or both FQDN).
-
-Cheers,
-
-Ani
+NeilBrown
 
 
-Attached:
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Microsoft
+Defy all challenges. Microsoft(R) Visual Studio 2008.
+http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
-root:1@1.Zeugma:~# cat /proc/fs/nfs/exports
-# Version 1.1
-# Path Client(Flags) # IPs
-/cf4
-zeugma-1-3(rw,insecure,no_root_squash,async,wdelay,no_subtree_check,inse
-cure_locks)
-/cf2
-zeugma-1-4(rw,insecure,no_root_squash,async,wdelay,no_subtree_check,inse
-cure_locks)
-/cf2/cpu3
-zeugma-1-3(rw,insecure,no_root_squash,async,wdelay,no_subtree_check,inse
-cure_locks)
-/cf2/cpu4
-zeugma-1-4(rw,insecure,no_root_squash,async,wdelay,no_subtree_check,inse
-cure_locks)
-/cf2/cpu2
-zeugma-1-2(rw,insecure,no_root_squash,async,wdelay,no_subtree_check,inse
-cure_locks)
-/cf2
-zeugma-1-2(rw,insecure,no_root_squash,async,wdelay,no_subtree_check,inse
-cure_locks)
-/cf4
-zeugma-1-2(rw,insecure,no_root_squash,async,wdelay,no_subtree_check,inse
-cure_locks)
-/cf4
-zeugma-1-4(rw,insecure,no_root_squash,async,wdelay,no_subtree_check,inse
-cure_locks)
-/cf2
-zeugma-1-3(rw,insecure,no_root_squash,async,wdelay,no_subtree_check,inse
-cure_locks)
-
-root:1@1.Zeugma:~# cat /etc/exports
-/cf2
-*(rw,insecure,async,insecure_locks,no_subtree_check,no_root_squash)
-/cf2/cpu2
-*(rw,insecure,async,insecure_locks,no_subtree_check,no_root_squash)
-/cf2/cpu3
-*(rw,insecure,async,insecure_locks,no_subtree_check,no_root_squash)
-/cf2/cpu4
-*(rw,insecure,async,insecure_locks,no_subtree_check,no_root_squash)
-/cf4
-*(rw,insecure,async,insecure_locks,no_subtree_check,no_root_squash)
-
-
-> -----Original Message-----
-> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs- 
-> owner@vger.kernel.org] On Behalf Of Anirban Sinha
-> Sent: Thursday, January 31, 2008 2:09 PM
-> To: Greg Banks
-> Cc: linux-nfs@vger.kernel.org
-> Subject: RE: kernel exports table flushes out on running exportfs -a 
-> over mips
-> 
-> Hi Greg:
-> 
-> Thanks for replying. Here goes my response:
-> 
-> > -----Original Message-----
-> > From: Greg Banks [mailto:gnb@sgi.com]
-> > Sent: Wednesday, January 30, 2008 6:37 PM
-> > To: Anirban Sinha
-> > Cc: linux-nfs@vger.kernel.org
-> > Subject: Re: kernel exports table flushes out on running exportfs -a
-
-> > over mips
-> >
-> > On Wed, Jan 30, 2008 at 05:34:13PM -0800, Anirban Sinha wrote:
-> > > Hi:
-> > >
-> > > I am seeing an unusual problem on running nfs server on mips. Over
-> > Intel
-> > > this does not happen. When I run exportfs -a on the server when 
-> > > the clients have already mounted their nfs filesystem, the kernel
-> exports
-> > > table as can be seen from /proc/fs/nfs/exports gets completely
-> > flushed
-> > > out. We (me and one another colleague) have done some digging
-> (mostly
-> > > looking into nfsutils codebase) and it looks like a kernel side
-> > issue.
-> > > We had also asked folks in the linux-mips mailing list, but
-> > apparently
-> > > no one has any clue. I am just hoping that those who are more
-> > familiar
-> > > with the user level and kernel side of nfs might me something more
-> to
-> > > chew on. If you can give any suggestions that will be really
-> useful.
-> > If
-> > > you think the information I provided is not enough, I can give you
-> > any
-> > > other information you need in this regard.
-> >
-> > Does the MIPS box have the /proc/fs/nfsd/ filesystem mounted?
-> 
-> Ahh, I see what you mean. Yes, it is mounted, both /proc/fs/nfsd and 
-> /proc/fs/nfs. However, I can see from the code that check_new_cache() 
-> checks for a file "filehandle" which does not exist in that location.
-> To be dead sure, I instrumented the code to insert a perror and it 
-> returns "no such file or directory". The new_cache flag remains 0. Is 
-> this some sort of kernel bug?
-> 
-> 
-> > Perhaps you could try
-> >
-> > 1) running exportfs under strace.  I suggest
-> >    strace -o /tmp/s.log -s 1024 exportfs ...
-> 
-> Strace does not work in our environment as it has not been properly 
-> ported to mips.
-> 
-> > 2) AND enabling kernel debug messages
-> >    rpcdebug -m nfsd -s export
-> >    rpcdebug -m rpc -s cache
-> 
-> I attach the dmesg output after enabling those flags. Zeugma-x-y are 
-> the clients to this server. Not sure if it means anything suspicious.
-> 
-> Ani
-> 
-> 
-> >
-> >
-> > --
-> > Greg Banks, R&D Software Engineer, SGI Australian Software Group.
-> > The cake is *not* a lie.
-> > I don't speak for SGI.
