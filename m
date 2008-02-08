@@ -1,45 +1,46 @@
-From: "Andrew Dixie" <andrew-0FSrDVjkvKm9koe0gwxAeg@public.gmane.org>
-Subject: Re: (fwd) nfs hang on 2.6.24
-Date: Fri, 8 Feb 2008 13:05:38 +1300 (NZDT)
-Message-ID: <49534.203.167.214.129.1202429138.squirrel@mail.orcon.net.nz>
-References: <20080205090132.GA8286@stro.at>
-    <1202248931.12271.18.camel@heimdal.trondhjem.org>
-    <003301c86888$ed735a20$0301a8c0@MURTLE>
-    <1202310021.12647.6.camel@heimdal.trondhjem.org>
-    <55598.203.167.214.129.1202337638.squirrel@mail.orcon.net.nz>
-    <1202338699.8549.42.camel@heimdal.trondhjem.org>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: nfs new_cache mechanism and older kernel
+Date: Fri, 8 Feb 2008 11:45:47 +1100
+Message-ID: <18347.42555.441287.802490@notabene.brown>
+References: <DDFD17CC94A9BD49A82147DDF7D545C5798775@exchange.ZeugmaSystems.local>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: "Andrew Dixie" <andrew-0FSrDVjkvKm9koe0gwxAeg@public.gmane.org>, linux-nfs@vger.kernel.org,
-	"maximilian attems" <max-U9r9yeDMy7A@public.gmane.org>
-To: "Trond Myklebust" <Trond.Myklebust@netapp.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: <linux-nfs@vger.kernel.org>
+To: "Anirban Sinha" <ASinha-z4qIPS1Syiu/3pe1ocb+swC/G2K4zDHf@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out3.orcon.net.nz ([219.88.242.31]:34189 "EHLO
-	mx5.orcon.net.nz" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755407AbYBHAFl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Feb 2008 19:05:41 -0500
-Received: from Debian-exim by mx5.orcon.net.nz with local (Exim 4.67)
-	(envelope-from <andrew-0FSrDVjkvKm9koe0gwxAeg@public.gmane.org>)
-	id 1JNGkN-0001NQ-HQ
-	for linux-nfs@vger.kernel.org; Fri, 08 Feb 2008 13:05:39 +1300
-In-Reply-To: <1202338699.8549.42.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from mx1.suse.de ([195.135.220.2]:56105 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1762894AbYBHAps (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 7 Feb 2008 19:45:48 -0500
+In-Reply-To: message from Anirban Sinha on Thursday February 7
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> I've already got a fix for this bug against 2.6.24. Could you see if it
-> applies to your kernel too?
+On Thursday February 7, ASinha-z4qIPS1Syiu/3pe1ocb+swC/G2K4zDHf@public.gmane.org wrote:
+> Hi:
+> 
+> I am wondering if there is a known issue with using the newer cache
+> mechanism in NFS (by mounting nfsd filesystem on /proc/fs/nfsd) on an
+> older kernel like 2.6.17 built for 64 bit archs. I am observing a
+> peculiar problem. The moment nfs exportfs writes the time value from
+> time() system call to <cache>/flush, the exports entries vanishes.
+> However, when I pass smaller arbitrary values (of the order of 100s or
+> 10000s), the tables do not get cleared. This could be (though I am not
+> completely sure) due to the difference between what sys_time() reports
+> and what get_seconds() reports. Get_seconds() reports the seconds from
+> the xtime structure whereas sys_time uses do_gettimeofday() in 2.6.17
+> kenrel. But I could be wrong. Any thoughts on this? 
 
-Thanks for this.
+2.6.17 isn't that old.  The newer cache mechanism should work for any
+2.6 kernel.
 
-My client is 2.6.24 so it obviously applies.
-I don't believe the bug is in 2.6.18; and 2.6.22 crashes due to other
-problems before I can reproduce this hang.
+I think the different between get_seconds and sys_time should be very
+small and not really significant (I hope?).  I think there is only a
+difference when adjtime is causing time to run a little fast or a
+little slow.... I wonder if we should worry about that.
 
-You didn't specifically ask me to test, and with other obligations over
-the next few weeks I'm just happy to know a fix is in the pipeline.
+It is normal for exportfs to completely flush the in-kernel cache.
+Subsequent NFS requests will then cause an upcall to mountd which will
+add the required information to the cache.
 
-Please let me know if there is anything more you would like from me.
-
-Cheers,
-Andrew
-
+NeilBrown
