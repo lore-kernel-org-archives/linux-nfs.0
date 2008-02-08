@@ -1,152 +1,62 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [GIT] Please pull 2 NFS client fixes
-Date: Thu, 07 Feb 2008 20:07:21 -0500
-Message-ID: <1202432841.18376.50.camel@heimdal.trondhjem.org>
+From: Neil Brown <neilb@suse.de>
+Subject: RE: nfs new_cache mechanism and older kernel
+Date: Fri, 8 Feb 2008 12:10:46 +1100
+Message-ID: <18347.44054.920429.277506@notabene.brown>
+References: <DDFD17CC94A9BD49A82147DDF7D545C5798775@exchange.ZeugmaSystems.local>
+	<18347.42555.441287.802490@notabene.brown>
+	<DDFD17CC94A9BD49A82147DDF7D545C57987CF@exchange.ZeugmaSystems.local>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-	nfsv4@linux-nfs.org
-To: Linus Torvalds <torvalds@linux-foundation.org>,
-	Andrew Morton <akpm@linux-foundation.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: <linux-nfs@vger.kernel.org>
+To: "Anirban Sinha" <ASinha-z4qIPS1Syiu/3pe1ocb+swC/G2K4zDHf@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:44777 "EHLO mx2.netapp.com"
+Received: from mx1.suse.de ([195.135.220.2]:59602 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753986AbYBHBHY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 Feb 2008 20:07:24 -0500
+	id S932220AbYBHBKs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 7 Feb 2008 20:10:48 -0500
+In-Reply-To: message from Anirban Sinha on Thursday February 7
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Linus,
+On Thursday February 7, ASinha-z4qIPS1Syiu/3pe1ocb+swC/G2K4zDHf@public.gmane.org wrote:
+> 
+> Yeah, not sure if it would make any difference. I think one of them is
+> the wall clock time (do_gettimeofday) and the xtime is the monotonic
+> time. One can be obtained from other by adding/subtracting an offset
+> value (wall_to_monotonic or something like that) if I recall correctly.
+> Why not use the same time value for both cases (if you think it could be
+> if some remote significance).
 
-Please pull from the "master" branch of the repository at
+They probably should use the same value - I wasn't previously aware
+there was a difference.... something for Bruce's todo list :-) (but
+not for Bruce to do...)
 
-   git pull git://git.linux-nfs.org/pub/linux/nfs-2.6.git
+>  
+> > 
+> > It is normal for exportfs to completely flush the in-kernel cache.
+> > Subsequent NFS requests will then cause an upcall to mountd which will
+> > add the required information to the cache.
+> 
+> I am wondering ... if it completely flushes the in-kernel cache as its
+> happening in my case, shouldn't the clients who have already mounted
+> their nfs filesystem, lose their mounts? In our case, we are mounting
+> the root fs through nfs and the moment it flushes the cache, the clients
+> become dead. If they happen to resend their mount request, will it not,
+> in that case, involve mountd? Please enlighten me. 
 
-This will update the following files through the appended changesets.
+When an NFS request arrives and the cache doesn't contain enough
+information to accept or reject it, a message is sent to mountd (via
+/proc/net/rpc/XXX/channel) to ask that the information in the cache be
+filled in.  mountd does the appropriate checks and replies with the
+required information.
 
-  Cheers,
-    Trond
+If this isn't happening for you, then something is wrong with
+mountd...
 
-----
- fs/Kconfig     |    7 ++-----
- fs/nfs/write.c |   20 +++++++++++++++++---
- 2 files changed, 19 insertions(+), 8 deletions(-)
+I assume you have checked that mountd is still running, so my best
+guess is that mountd was started *before* the 'nfsd' filesystem was
+mounted.  It needs to be started afterwards.
 
-commit 3211e4eb5834924dd5beac8956c0bc0bfb755c37
-Author: James Lentini <jlentini@netapp.com>
-Date:   Mon Jan 28 12:09:28 2008 -0500
+Just kill mountd, restart it, and see what happens.
 
-    SUNRPC xptrdma: simplify build configuration
-    
-    
-    Trond and Bruce,
-    
-    This is a patch for 2.6.25. This is the same version that was sent out
-    on December 12 for review (no comments to date).
-    
-    To simplify the RPC/RDMA client and server build configuration, make
-    SUNRPC_XPRT_RDMA a hidden config option that continues to depend on
-    SUNRPC and INFINIBAND. The value of SUNRPC_XPRT_RDMA will be:
-    
-     - N if either SUNRPC or INFINIBAND are N
-     - M if both SUNRPC and INFINIBAND are on (M or Y) and at least one is M
-     - Y if both SUNRPC and INFINIBAND are Y
-    
-    In 2.6.25, all of the RPC/RDMA related files are grouped in
-    net/sunrpc/xprtrdma and the net/sunrpc/xprtrdma/Makefile builds both
-    the client and server RPC/RDMA support using this config option.
-    
-    Signed-off-by: James Lentini <jlentini@netapp.com>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit 5d47a35600270e7115061cb1320ee60ae9bcb6b8
-Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date:   Thu Feb 7 17:24:07 2008 -0500
-
-    NFS: Fix a potential file corruption issue when writing
-    
-    If the inode is flagged as having an invalid mapping, then we can't rely on
-    the PageUptodate() flag. Ensure that we don't use the "anti-fragmentation"
-    write optimisation in nfs_updatepage(), since that will cause NFS to write
-    out areas of the page that are no longer guaranteed to be up to date.
-    
-    A potential corruption could occur in the following scenario:
-    
-    client 1			client 2
-    ===============			===============
-    				fd=open("f",O_CREAT|O_WRONLY,0644);
-    				write(fd,"fubar\n",6);	// cache last page
-    				close(fd);
-    fd=open("f",O_WRONLY|O_APPEND);
-    write(fd,"foo\n",4);
-    close(fd);
-    
-    				fd=open("f",O_WRONLY|O_APPEND);
-    				write(fd,"bar\n",4);
-    				close(fd);
-    -----
-    The bug may lead to the file "f" reading 'fubar\n\0\0\0\nbar\n' because
-    client 2 does not update the cached page after re-opening the file for
-    write. Instead it keeps it marked as PageUptodate() until someone calls
-    invaldate_inode_pages2() (typically by calling read()).
-    
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-diff --git a/fs/Kconfig b/fs/Kconfig
-index 3bf6ace..d731282 100644
---- a/fs/Kconfig
-+++ b/fs/Kconfig
-@@ -1778,12 +1778,9 @@ config SUNRPC_GSS
- 	tristate
- 
- config SUNRPC_XPRT_RDMA
--	tristate "RDMA transport for sunrpc (EXPERIMENTAL)"
-+	tristate
- 	depends on SUNRPC && INFINIBAND && EXPERIMENTAL
--	default m
--	help
--	  Adds a client RPC transport for supporting kernel NFS over RDMA
--	  mounts, including Infiniband and iWARP. Experimental.
-+	default SUNRPC && INFINIBAND
- 
- config SUNRPC_BIND34
- 	bool "Support for rpcbind versions 3 & 4 (EXPERIMENTAL)"
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index b144b19..f55c437 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -697,6 +697,17 @@ int nfs_flush_incompatible(struct file *file, struct page *page)
- }
- 
- /*
-+ * If the page cache is marked as unsafe or invalid, then we can't rely on
-+ * the PageUptodate() flag. In this case, we will need to turn off
-+ * write optimisations that depend on the page contents being correct.
-+ */
-+static int nfs_write_pageuptodate(struct page *page, struct inode *inode)
-+{
-+	return PageUptodate(page) &&
-+		!(NFS_I(inode)->cache_validity & (NFS_INO_REVAL_PAGECACHE|NFS_INO_INVALID_DATA));
-+}
-+
-+/*
-  * Update and possibly write a cached page of an NFS file.
-  *
-  * XXX: Keep an eye on generic_file_read to make sure it doesn't do bad
-@@ -717,10 +728,13 @@ int nfs_updatepage(struct file *file, struct page *page,
- 		(long long)(page_offset(page) +offset));
- 
- 	/* If we're not using byte range locks, and we know the page
--	 * is entirely in cache, it may be more efficient to avoid
--	 * fragmenting write requests.
-+	 * is up to date, it may be more efficient to extend the write
-+	 * to cover the entire page in order to avoid fragmentation
-+	 * inefficiencies.
- 	 */
--	if (PageUptodate(page) && inode->i_flock == NULL && !(file->f_mode & O_SYNC)) {
-+	if (nfs_write_pageuptodate(page, inode) &&
-+			inode->i_flock == NULL &&
-+			!(file->f_mode & O_SYNC)) {
- 		count = max(count + offset, nfs_page_length(page));
- 		offset = 0;
- 	}
+NeilBrown
