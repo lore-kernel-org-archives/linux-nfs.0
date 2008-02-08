@@ -1,66 +1,84 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [GIT] Please pull 2 NFS client fixes
-Date: Thu, 07 Feb 2008 23:18:03 -0500
-Message-ID: <1202444283.18376.63.camel@heimdal.trondhjem.org>
-References: <1202432841.18376.50.camel@heimdal.trondhjem.org>
-	<20080207184818.e40d5277.akpm@linux-foundation.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfsv4@linux-nfs.org, linux-nfs@vger.kernel.org,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	linux-kernel@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <20080207184818.e40d5277.akpm@linux-foundation.org>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Should truncated READDIR replies return -EIO?
+Date: Fri,  8 Feb 2008 10:04:42 -0500
+Message-ID: <1202483082-5334-1-git-send-email-jlayton@redhat.com>
+To: linux-nfs@vger.kernel.org
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([66.187.233.31]:59367 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757542AbYBHPEq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 8 Feb 2008 10:04:46 -0500
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id m18F4h73029356
+	for <linux-nfs@vger.kernel.org>; Fri, 8 Feb 2008 10:04:45 -0500
+Received: from pobox.corp.redhat.com (pobox.corp.redhat.com [10.11.255.20])
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m18F4hrR009917
+	for <linux-nfs@vger.kernel.org>; Fri, 8 Feb 2008 10:04:43 -0500
+Received: from localhost.localdomain (vpn-14-19.rdu.redhat.com [10.11.14.19])
+	by pobox.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m18F4gTG025886
+	for <linux-nfs@vger.kernel.org>; Fri, 8 Feb 2008 10:04:42 -0500
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Recently, I ran across a server-side bug that caused the server to send
+truncated READDIR replies. The server would send a valid RPC response to
+a READDIR call, but the contents of it were basically missing
+(everything after the status).
 
-On Thu, 2008-02-07 at 18:48 -0800, Andrew Morton wrote:
-> On Thu, 07 Feb 2008 20:07:21 -0500 Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
-> 
-> > commit 5d47a35600270e7115061cb1320ee60ae9bcb6b8
-> > Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-> > Date:   Thu Feb 7 17:24:07 2008 -0500
-> > 
-> >     NFS: Fix a potential file corruption issue when writing
-> >     
-> >     If the inode is flagged as having an invalid mapping, then we can't rely on
-> >     the PageUptodate() flag. Ensure that we don't use the "anti-fragmentation"
-> >     write optimisation in nfs_updatepage(), since that will cause NFS to write
-> >     out areas of the page that are no longer guaranteed to be up to date.
-> >     
-> >     A potential corruption could occur in the following scenario:
-> >     
-> >     client 1			client 2
-> >     ===============			===============
-> >     				fd=open("f",O_CREAT|O_WRONLY,0644);
-> >     				write(fd,"fubar\n",6);	// cache last page
-> >     				close(fd);
-> >     fd=open("f",O_WRONLY|O_APPEND);
-> >     write(fd,"foo\n",4);
-> >     close(fd);
-> >     
-> >     				fd=open("f",O_WRONLY|O_APPEND);
-> >     				write(fd,"bar\n",4);
-> >     				close(fd);
-> >     -----
-> >     The bug may lead to the file "f" reading 'fubar\n\0\0\0\nbar\n' because
-> >     client 2 does not update the cached page after re-opening the file for
-> >     write. Instead it keeps it marked as PageUptodate() until someone calls
-> >     invaldate_inode_pages2() (typically by calling read()).
-> 
-> Is this one worth feeding back into 2.6.24.x?  (for various values of "4"?)
+The server problem had long been patched in mainline kernels, but the
+interesting bit was that clients didn't return an error in this
+situation. The XDR decoders for readdir calls are supposed to check the
+validity of the response, but in this situation it just fudges the
+contents of the pagecache to make it look like a completely empty
+directory.
 
-Definitely, and probably back into 2.6.23.x, 2.6.22.x,... too.
+Shouldn't the client return an error in this situation? The response
+obviously isn't valid so it seems like it shouldn't pretend that it is.
+If so, would something like the following patch make sense?
 
-Cheers
-  Trond
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfs/nfs2xdr.c |    1 +
+ fs/nfs/nfs3xdr.c |    1 +
+ fs/nfs/nfs4xdr.c |    1 +
+ 3 files changed, 3 insertions(+), 0 deletions(-)
+
+diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
+index 1f7ea67..aa6966a 100644
+--- a/fs/nfs/nfs2xdr.c
++++ b/fs/nfs/nfs2xdr.c
+@@ -478,6 +478,7 @@ nfs_xdr_readdirres(struct rpc_rqst *req, __be32 *p, void *dummy)
+ 	if (!nr) {
+ 		dprintk("NFS: readdir reply truncated!\n");
+ 		entry[1] = 1;
++		nr = -errno_NFSERR_IO;
+ 	}
+ 	goto out;
+ err_unmap:
+diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
+index 3917e2f..04ba525 100644
+--- a/fs/nfs/nfs3xdr.c
++++ b/fs/nfs/nfs3xdr.c
+@@ -592,6 +592,7 @@ nfs3_xdr_readdirres(struct rpc_rqst *req, __be32 *p, struct nfs3_readdirres *res
+ 	if (!nr) {
+ 		dprintk("NFS: readdir reply truncated!\n");
+ 		entry[1] = 1;
++		nr = -errno_NFSERR_IO;
+ 	}
+ 	goto out;
+ err_unmap:
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index db1ed9c..139c9e1 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -3544,6 +3544,7 @@ short_pkt:
+ 	if (!nr) {
+ 		dprintk("NFS: readdir reply truncated!\n");
+ 		entry[1] = 1;
++		nr = -errno_NFSERR_IO;
+ 	}
+ 	goto out;
+ err_unmap:
+-- 
+1.5.3.8
+
