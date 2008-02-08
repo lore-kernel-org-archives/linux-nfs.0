@@ -1,100 +1,66 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 038/100] nfsd: Allow AIX client to read dir containing
-	mountpoints
-Date: Fri, 8 Feb 2008 16:46:33 -0500
-Message-ID: <20080208214633.GL6871@fieldses.org>
-References: <1201303040-7779-32-git-send-email-bfields@citi.umich.edu> <1201303040-7779-33-git-send-email-bfields@citi.umich.edu> <1201303040-7779-34-git-send-email-bfields@citi.umich.edu> <1201303040-7779-35-git-send-email-bfields@citi.umich.edu> <1201303040-7779-36-git-send-email-bfields@citi.umich.edu> <1201303040-7779-37-git-send-email-bfields@citi.umich.edu> <1201303040-7779-38-git-send-email-bfields@citi.umich.!edu> <47ACB69D.60704@redhat.com> <20080208210335.GI6871@fieldses.org> <47ACC8F3.5070706@redhat.com>
+From: Sam Ravnborg <sam-uyr5N9Q2VtJg9hUCZPvPmw@public.gmane.org>
+Subject: Re: [PATCH 06/11] NFSD: Remove NFSv4 dependency on NFSv3
+Date: Fri, 8 Feb 2008 22:50:54 +0100
+Message-ID: <20080208215054.GB541@uranus.ravnborg.org>
+References: <20080208175208.16261.74626.stgit@manray.1015granger.net> <20080208202033.GD31984@uranus.ravnborg.org> <42BB19FA-AF43-4BF6-AF32-EF31A17A41B4@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org, Frank Filz <ffilzlnx@us.ibm.com>
-To: Peter Staubach <staubach@redhat.com>
+Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from pie.citi.umich.edu ([141.211.133.115]:49028 "EHLO fieldses.org"
+Received: from pasmtpb.tele.dk ([80.160.77.98]:39935 "EHLO pasmtpB.tele.dk"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761012AbYBHVqj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 8 Feb 2008 16:46:39 -0500
-In-Reply-To: <47ACC8F3.5070706@redhat.com>
+	id S1750969AbYBHVus (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 8 Feb 2008 16:50:48 -0500
+In-Reply-To: <42BB19FA-AF43-4BF6-AF32-EF31A17A41B4@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Feb 08, 2008 at 04:26:11PM -0500, Peter Staubach wrote:
-> J. Bruce Fields wrote:
->> On Fri, Feb 08, 2008 at 03:07:57PM -0500, Peter Staubach wrote:
->>> Can we go through this explanation one more time, a little more
->>> slowly, please?  I am not following it.
->>>
->>> It is my understanding that FATTR4_RDATTR_ERROR simply says
->>> to return a magic value to indicate that the requested attributes
->>> could not be retrieved during a READDIR operation.  It is also
->>> my understanding that the FATTR4_MOUNTED_ON_FILEID returns either
->>> the fileid of the entry in the directory or the fileid of the
->>> directory which is the root of the mount point which is mounted
->>> on top of the entry in the directory.
->>>     
->>
->> No, it's the fileid of the directory underneath (the mounted-on
->> directory), not of the directory that's mounted on top of it--that would
->> be just the regular fileid.  Does that clear up the confusion?
->>
->>   
->
-> Yes, that helps.  I was misinterpreting the arguments in the call
-> to vfs_getattr() to be the wrong direction.
+On Fri, Feb 08, 2008 at 04:08:42PM -0500, Chuck Lever wrote:
+> On Feb 8, 2008, at 3:20 PM, Sam Ravnborg wrote:
+> >On Fri, Feb 08, 2008 at 12:52:08PM -0500, Chuck Lever wrote:
+> >>Clean up: Because NFSD_V4 "depends on" NFSD_V3, it appears as a  
+> >>child of
+> >>the NFSD_V3 menu entry, and is not visible if NFSD_V3 is unselected.
+> >>
+> >>Replace the dependency on NFSD_V3 with a "select NFSD_V3".  This  
+> >>makes
+> >>NFSD_V4 look and work just like NFS_V3, while ensuring that  
+> >>NFSD_V3 is
+> >>enabled if NFSD_V4 is.
+> >>
+> >>Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> >>---
+> >>
+> >> fs/Kconfig |    3 ++-
+> >> 1 files changed, 2 insertions(+), 1 deletions(-)
+> >>
+> >>diff --git a/fs/Kconfig b/fs/Kconfig
+> >>index 9ad62a9..4c16789 100644
+> >>--- a/fs/Kconfig
+> >>+++ b/fs/Kconfig
+> >>@@ -1723,7 +1723,8 @@ config NFSD_V3_ACL
+> >>
+> >> config NFSD_V4
+> >> 	bool "NFS server support for NFS version 4 (EXPERIMENTAL)"
+> >>-	depends on NFSD && NFSD_V3 && EXPERIMENTAL
+> >>+	depends on NFSD && EXPERIMENTAL
+> >>+	select NFSD_V3
+> >> 	select RPCSEC_GSS_KRB5
+> >> 	help
+> >> 	  This option enables support in your system's NFS server for
+> >
+> >This use of select is questionable. In general it is bad to select
+> >a symbol with dependencies.
+> >In this case the dependencies of NFSD_V3 are duplicated for NFSD_V4
+> >so we will not se erratic configurations but do you remember to
+> >update NFSD_V4 when you add a depends on NFSD_V3?
+> >
+> >But I see no other clean way to do it rithg now.
+> 
+> This patch is entirely optional, and I can just drop it for now.
 
-Any ideas for cleanup (especially patches) are welcomed.  I'd rather the
-code be easier to read there.
+Keep it. My comment was more to say we have things to address in kconfig.
+This is abuse in the acceptable range.
 
->>>> +	if (d_mountpoint(dentry) &&
->>>> +	    (cd->rd_bmval[0] & ~FATTR4_WORD0_RDATTR_ERROR) == 0 &&
->>>> +	    (cd->rd_bmval[1] & ~FATTR4_WORD1_MOUNTED_ON_FILEID) == 0)
->>>>         
->>> These are some odd looking tests.  What is the real intention
->>> for these tests?  They don't test just for requests with just
->>> RDATTR_ERROR and MOUNTED_ON_FILEID set.  They will trigger
->>> whether or not either or neither is set as well.
->>>     
->>
->> Right.  The test is meant to fail iff someone requests an attribute
->> other than those two.  (Note the different rd_bmval[] array indices.)
->>
->>   
->
-> So, it doesn't matter whether those options are even set then?
-
-Right.
-
-Would something like this clarify?:
-
---b.
-
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index b0592e7..ac47f45 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1867,6 +1867,15 @@ out_serverfault:
- 	goto out;
- }
- 
-+static inline int attributes_need_mount(u32 *bmval)
-+{
-+	if (bmval[0] & ~(FATTR4_WORD0_RDATTR_ERROR | FATTR4_WORD0_LEASE_TIME))
-+		return 1;
-+	if (bmval[1] & ~FATTR4_WORD1_MOUNTED_ON_FILEID)
-+		return 1;
-+	return 0;
-+}
-+
- static __be32
- nfsd4_encode_dirent_fattr(struct nfsd4_readdir *cd,
- 		const char *name, int namlen, __be32 *p, int *buflen)
-@@ -1888,9 +1897,7 @@ nfsd4_encode_dirent_fattr(struct nfsd4_readdir *cd,
- 	 * we will not follow the cross mount and will fill the attribtutes
- 	 * directly from the mountpoint dentry.
- 	 */
--	if (d_mountpoint(dentry) &&
--	    (cd->rd_bmval[0] & ~FATTR4_WORD0_RDATTR_ERROR) == 0 &&
--	    (cd->rd_bmval[1] & ~FATTR4_WORD1_MOUNTED_ON_FILEID) == 0)
-+	if (d_mountpoint(dentry) && !attributes_need_mount(cd->rd_bmval))
- 		ignore_crossmnt = 1;
- 	else if (d_mountpoint(dentry)) {
- 		int err;
+	Sam
