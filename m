@@ -1,49 +1,96 @@
-From: Jeff Layton <jlayton@redhat.com>
+From: Chuck Lever <chuck.lever@oracle.com>
 Subject: Re: Should truncated READDIR replies return -EIO?
-Date: Fri, 8 Feb 2008 11:51:32 -0500
-Message-ID: <20080208115132.3631c6b4@tleilax.poochiereds.net>
-References: <1202483082-5334-1-git-send-email-jlayton@redhat.com>
-	<1202483596.8914.13.camel@heimdal.trondhjem.org>
-	<20080208105659.3bfb8a6b@tleilax.poochiereds.net>
-	<1202487187.10337.25.camel@heimdal.trondhjem.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: linux-nfs@vger.kernel.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Date: Fri, 8 Feb 2008 12:16:20 -0500
+Message-ID: <4B54CC40-B164-4B8D-A5D7-74CE2B684955@oracle.com>
+References: <1202483082-5334-1-git-send-email-jlayton@redhat.com> <1202483596.8914.13.camel@heimdal.trondhjem.org> <47AC77C6.80503@redhat.com>
+Mime-Version: 1.0 (Apple Message framework v753)
+Content-Type: text/plain; charset=US-ASCII; delsp=yes; format=flowed
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org
+To: Peter Staubach <staubach@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:52536 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1762666AbYBHQvr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 8 Feb 2008 11:51:47 -0500
-In-Reply-To: <1202487187.10337.25.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from agminet01.oracle.com ([141.146.126.228]:23061 "EHLO
+	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S935080AbYBHRRS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Feb 2008 12:17:18 -0500
+In-Reply-To: <47AC77C6.80503@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 08 Feb 2008 11:13:07 -0500
-Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+On Feb 8, 2008, at 10:39 AM, Peter Staubach wrote:
+> Trond Myklebust wrote:
+>> On Fri, 2008-02-08 at 10:04 -0500, Jeff Layton wrote:
+>>
+>>> Recently, I ran across a server-side bug that caused the server  
+>>> to send
+>>> truncated READDIR replies. The server would send a valid RPC  
+>>> response to
+>>> a READDIR call, but the contents of it were basically missing
+>>> (everything after the status).
+>>>
+>>> The server problem had long been patched in mainline kernels, but  
+>>> the
+>>> interesting bit was that clients didn't return an error in this
+>>> situation. The XDR decoders for readdir calls are supposed to  
+>>> check the
+>>> validity of the response, but in this situation it just fudges the
+>>> contents of the pagecache to make it look like a completely empty
+>>> directory.
+>>>
+>>> Shouldn't the client return an error in this situation? The response
+>>> obviously isn't valid so it seems like it shouldn't pretend that  
+>>> it is.
+>>> If so, would something like the following patch make sense?
+>>>
+>>
+>> It is quite valid (though silly!) for a server to return a READDIR  
+>> reply
+>> with no entries. AFAICR there were servers that actually did this  
+>> at one
+>> point (though I shall refrain from naming and shaming).
+>>
+>> So whereas I agree that it might be correct to flag a READDIR  
+>> reply that
+>> contains no entries due to XDR encoding bugs, I'm not sure that we
+>> should be flagging errors in the case where the XDR is correct.
+>
+> In this case, I believe that the response was malformed.  Pretty
+> much everything after the status was missing, including the EOF
+> indicator.  I would agree that it would be silly to return a
+> response with no error indicated, no entries, and the eof
+> indication set to false.
+>
+> This really boils down to how do we handle malformed responses?
+> Is there a general policy to retransmit the request?  This would
+> seem to be the right thing because a malformed response would
+> result from many things including the TCP connection getting
+> dropped in the middle of receiving the response from a timeout
+> and other things.  However, in this situation, retransmitting
+> the request would just have resulted in the same, broken response
+> from the server.  This was due to a server bug, which has since
+> been fixed, but exists still out in nature.
 
-> 
-> On Fri, 2008-02-08 at 10:56 -0500, Jeff Layton wrote:
-> 
-> > If it looks like the above, but EOF is 0, then we *do* "goto
-> > short_pkt", and that case would be affected by this. But in that case
-> > we currently reset EOF to 1. The client won't retry the request. I'm
-> > not sure that's what we want to do either...
-> 
-> That is to deal with the afore-mentioned broken server. I'm not
-> unwilling to change this (I _hate_ client side fixes for server bugs),
-> but it's important to note that there may be consequences if we do.
-> 
 
-Hmm, tough call...
+Replies that are malformed network or RPC level packets are dropped  
+by the RPC client, and the matching requests are retransmitted by the  
+RPC client after a timeout.  Network events (like your TCP connection  
+example) result in a malformed RPC level packet that the RPC client  
+never delivers to the XDR layer, and are thus retransmitted by the  
+RPC client.
 
-I don't know that the current behavior is actually causing any
-problems, per se. If changing it is likely to do so, then maybe leaving
-this as it is the best thing, at least for lower NFS versions.
+Replies that have malformed XDR are treated by the NFS client as  
+errors.  The problem is the decoders (on Linux) are not terribly  
+careful about checking the correctness of the server's XDR encoding,  
+especially in cases like READDIR (Not to mention compound RPCs!)  
+where the decoding can be complex.  Olaf has mentioned the Linux XDR  
+layer was hand-coded rather than constructed with rpcgen to keep the  
+decoders simple and efficient.
 
-Maybe we should consider changing this behavior for NFSv4? It might be
-good not to carry these sort of kludges forward into later revs. Was
-this buggy nfs server a v4 server as well?
+Network-related corruption is likely to be caught by the lower  
+layers.  I tend to think that malformed XDR is nearly always a  
+genuine software defect on the server, and thus not worth  
+retransmitting (especially if it's an idempotent request!).
 
--- 
-Jeff Layton <jlayton@redhat.com>
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
