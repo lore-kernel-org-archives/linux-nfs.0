@@ -1,31 +1,44 @@
 From: Neil Brown <neilb@suse.de>
-Subject: RE: nfs new_cache mechanism and older kernel
-Date: Fri, 8 Feb 2008 12:39:05 +1100
-Message-ID: <18347.45753.421577.328747@notabene.brown>
-References: <DDFD17CC94A9BD49A82147DDF7D545C5798775@exchange.ZeugmaSystems.local>
-	<18347.42555.441287.802490@notabene.brown>
-	<DDFD17CC94A9BD49A82147DDF7D545C57987CF@exchange.ZeugmaSystems.local>
-	<18347.44054.920429.277506@notabene.brown>
-	<DDFD17CC94A9BD49A82147DDF7D545C5798802@exchange.ZeugmaSystems.local>
+Subject: Re: Wondering about NLM_HOST_MAX ... doesn't anyone understand this code?
+Date: Fri, 8 Feb 2008 13:02:22 +1100
+Message-ID: <18347.47150.621022.745013@notabene.brown>
+References: <18346.31720.497379.823879@notabene.brown>
+	<8D04CC58-DF98-47FB-872A-792976AA7316@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: <linux-nfs@vger.kernel.org>
-To: "Anirban Sinha" <ASinha-z4qIPS1Syiu/3pe1ocb+swC/G2K4zDHf@public.gmane.org>
+Cc: linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:52959 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:55182 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932462AbYBHBjG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 Feb 2008 20:39:06 -0500
-In-Reply-To: message from Anirban Sinha on Thursday February 7
+	id S1751419AbYBHCCX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 7 Feb 2008 21:02:23 -0500
+In-Reply-To: message from Chuck Lever on Thursday February 7
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thursday February 7, ASinha-z4qIPS1Syiu/3pe1ocb+swC/G2K4zDHf@public.gmane.org wrote:
-> Perfect! That was indeed the problem. Thank you so much. Btw, so when
-> mountd starts, it checks whether or not the new cache mechanism is being
-> used and acts accordingly, right? (I am being lazy by not going through
-> the codebase to find that out myself).
+On Thursday February 7, chuck.lever@oracle.com wrote:
+> Hi Neil-
+> 
+> I don't have a problem with removing the variant expiry behavior --  
+> in fact, I think it might be better if NLM host garbage collection  
+> was done only under memory pressure.
 
-Correct on both counts :-)
+Cool, thanks.
 
+> >
+> > -	if (++nrhosts > NLM_HOST_MAX)
+> > -		next_gc = 0;
+> > -
+> 
+> AFAICT this is the only place where nrhosts is bumped.  So you should  
+> either get rid of nrhosts all together, or leave in a ++nrhosts;  
+> somewhere.
+> 
+
+It is still used for a sanity check, and would be needed (I think) if
+we introduced a memory-pressure handler, so I'll leave it there and
+restore the "++nrhosts" - thanks for catching that.
+
+Thanks,
 NeilBrown
