@@ -1,88 +1,86 @@
-From: "Anirban Sinha" <ASinha-z4qIPS1Syiu/3pe1ocb+swC/G2K4zDHf@public.gmane.org>
-Subject: RE: nfs new_cache mechanism and older kernel
-Date: Thu, 7 Feb 2008 19:46:02 -0800
-Message-ID: <DDFD17CC94A9BD49A82147DDF7D545C5798839@exchange.ZeugmaSystems.local>
-References: <DDFD17CC94A9BD49A82147DDF7D545C5798775@exchange.ZeugmaSystems.local> <18347.42555.441287.802490@notabene.brown> <DDFD17CC94A9BD49A82147DDF7D545C57987CF@exchange.ZeugmaSystems.local> <18347.44054.920429.277506@notabene.brown> <20080208034222.GB7117@fieldses.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] knfsd: Remove NLM_HOST_MAX and associated logic.
+Date: Thu, 7 Feb 2008 22:55:08 -0500
+Message-ID: <20080208035508.GC7117@fieldses.org>
+References: <20080208130300.14320.patches@notabene> <1080208020337.14371@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Cc: <linux-nfs@vger.kernel.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-	"Neil Brown" <neilb@suse.de>
+Content-Type: text/plain; charset=us-ascii
+Cc: J.Bruce@suse.de, Fields@suse.de, linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org, Jeff Layton <jlayton@redhat.com>
+To: NeilBrown <neilb@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.zeugmasystems.com ([192.139.122.66]:35439 "EHLO
-	zeugmasystems.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1758855AbYBHDqv convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Feb 2008 22:46:51 -0500
-In-Reply-To: <20080208034222.GB7117@fieldses.org>
+Received: from pie.citi.umich.edu ([141.211.133.115]:50486 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756174AbYBHDzM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 7 Feb 2008 22:55:12 -0500
+In-Reply-To: <1080208020337.14371@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Fri, Feb 08, 2008 at 01:03:37PM +1100, NeilBrown wrote:
 > 
-> I know nothing about time.  I suppose for proc/../flush to be a
-> reasonable user interface the time source used should be something
-that
-> makes sense to userland?
+> Lockd caches information about hosts that have recently held locks it
+> expedite the taking of further locks.
 
-We should not also forget that this timestamp is also used by the kernel
-(and compared with what is returned from get_seconds())  in deciding
-which entries are stale. 
-
-Not sure if this is of any big significance.
-
-Ani
-
-
+Applied, thanks!--b.
 
 > 
-> Looks like the number nfs-utils uses in
-> support/nfs/cacheio.c:cache_flush() is either returned from time() or
-> is
-> the mtime of /var/lib/nfs/etab.
+> It periodically discards this information for hosts that have not been
+> used for a few minutes.
 > 
-> --b.
+> lockd currently has a value NLM_HOST_MAX, and changes the 'garbage
+> collection' behaviour when the number of hosts exceeds this threshold.
 > 
-> >
-> > >
-> > > >
-> > > > It is normal for exportfs to completely flush the in-kernel
-> cache.
-> > > > Subsequent NFS requests will then cause an upcall to mountd
-which
-> will
-> > > > add the required information to the cache.
-> > >
-> > > I am wondering ... if it completely flushes the in-kernel cache as
-> its
-> > > happening in my case, shouldn't the clients who have already
-> mounted
-> > > their nfs filesystem, lose their mounts? In our case, we are
-> mounting
-> > > the root fs through nfs and the moment it flushes the cache, the
-> clients
-> > > become dead. If they happen to resend their mount request, will it
-> not,
-> > > in that case, involve mountd? Please enlighten me.
-> >
-> > When an NFS request arrives and the cache doesn't contain enough
-> > information to accept or reject it, a message is sent to mountd (via
-> > /proc/net/rpc/XXX/channel) to ask that the information in the cache
-> be
-> > filled in.  mountd does the appropriate checks and replies with the
-> > required information.
-> >
-> > If this isn't happening for you, then something is wrong with
-> > mountd...
-> >
-> > I assume you have checked that mountd is still running, so my best
-> > guess is that mountd was started *before* the 'nfsd' filesystem was
-> > mounted.  It needs to be started afterwards.
-> >
-> > Just kill mountd, restart it, and see what happens.
-> >
-> > NeilBrown
-> > -
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs"
-> in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> However it's behaviour in strange an likely not what was intended.
+> When the number of hosts exceeds the max, it scans *less* often (every
+> 2 minutes vs every minute) and allows unused host information to
+> remain around longer (5 minutes instead of 2).
+> 
+> Having this limit is of dubious value anyway, and we have not
+> suffered from the code not getting the limit right, so remove the
+> limit altogether.  We go with the larger values (discard 5 minute old
+> hosts every 2 minutes) as that is probably safer.
+> 
+> Maybe the periodic garbage collection should be replace to with
+> 'shrinker' handler so we just respond to memory pressure....
+> 
+> Acked-by: Jeff Layton <jlayton@redhat.com>
+> Signed-off-by: Neil Brown <neilb@suse.de>
+> 
+> ### Diffstat output
+>  ./fs/lockd/host.c |    9 +++------
+>  1 file changed, 3 insertions(+), 6 deletions(-)
+> 
+> diff .prev/fs/lockd/host.c ./fs/lockd/host.c
+> --- .prev/fs/lockd/host.c	2008-02-07 14:20:54.000000000 +1100
+> +++ ./fs/lockd/host.c	2008-02-08 12:54:28.000000000 +1100
+> @@ -19,12 +19,11 @@
+>  
+>  
+>  #define NLMDBG_FACILITY		NLMDBG_HOSTCACHE
+> -#define NLM_HOST_MAX		64
+>  #define NLM_HOST_NRHASH		32
+>  #define NLM_ADDRHASH(addr)	(ntohl(addr) & (NLM_HOST_NRHASH-1))
+>  #define NLM_HOST_REBIND		(60 * HZ)
+> -#define NLM_HOST_EXPIRE		((nrhosts > NLM_HOST_MAX)? 300 * HZ : 120 * HZ)
+> -#define NLM_HOST_COLLECT	((nrhosts > NLM_HOST_MAX)? 120 * HZ :  60 * HZ)
+> +#define NLM_HOST_EXPIRE		(300 * HZ)
+> +#define NLM_HOST_COLLECT	(120 * HZ)
+>  
+>  static struct hlist_head	nlm_hosts[NLM_HOST_NRHASH];
+>  static unsigned long		next_gc;
+> @@ -142,9 +141,7 @@ nlm_lookup_host(int server, const struct
+>  	INIT_LIST_HEAD(&host->h_granted);
+>  	INIT_LIST_HEAD(&host->h_reclaim);
+>  
+> -	if (++nrhosts > NLM_HOST_MAX)
+> -		next_gc = 0;
+> -
+> +	nrhosts++;
+>  out:
+>  	mutex_unlock(&nlm_host_mutex);
+>  	return host;
+> -
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
