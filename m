@@ -1,56 +1,46 @@
 From: Sam Ravnborg <sam-uyr5N9Q2VtJg9hUCZPvPmw@public.gmane.org>
-Subject: Re: [PATCH 06/11] NFSD: Remove NFSv4 dependency on NFSv3
-Date: Fri, 8 Feb 2008 21:20:33 +0100
-Message-ID: <20080208202033.GD31984@uranus.ravnborg.org>
-References: <20080208175208.16261.74626.stgit@manray.1015granger.net>
+Subject: Re: [PATCH 07/11] NFSD: Use "depends on" for PROC_FS dependency
+Date: Fri, 8 Feb 2008 21:22:19 +0100
+Message-ID: <20080208202219.GE31984@uranus.ravnborg.org>
+References: <20080208175215.16261.39243.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
 To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from pasmtpb.tele.dk ([80.160.77.98]:39778 "EHLO pasmtpB.tele.dk"
+Received: from pasmtpb.tele.dk ([80.160.77.98]:40134 "EHLO pasmtpB.tele.dk"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1763283AbYBHUU0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 8 Feb 2008 15:20:26 -0500
-In-Reply-To: <20080208175208.16261.74626.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+	id S1761606AbYBHUWN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 8 Feb 2008 15:22:13 -0500
+In-Reply-To: <20080208175215.16261.39243.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Feb 08, 2008 at 12:52:08PM -0500, Chuck Lever wrote:
-> Clean up: Because NFSD_V4 "depends on" NFSD_V3, it appears as a child of
-> the NFSD_V3 menu entry, and is not visible if NFSD_V3 is unselected.
+On Fri, Feb 08, 2008 at 12:52:15PM -0500, Chuck Lever wrote:
+> Recently a reverse dependency was added to fs/Kconfig to ensure that
+> PROC_FS was enabled if NFSD_V4 was enabled.
 > 
-> Replace the dependency on NFSD_V3 with a "select NFSD_V3".  This makes
-> NFSD_V4 look and work just like NFS_V3, while ensuring that NFSD_V3 is
-> enabled if NFSD_V4 is.
+> There is a guideline in Documentation/kbuild/kconfig-language.txt that
+> states "In general use select only for non-visible symbols (no prompts
+> anywhere) and for symbols with no dependencies."
 > 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
+> A quick grep around other Kconfig files reveals that no entry currently
+> uses "select PROC_FS" -- every one uses "depends on".  Thus CONFIG_NFSD_V4
+> should use "depends on PROC_FS" as well.
 > 
->  fs/Kconfig |    3 ++-
->  1 files changed, 2 insertions(+), 1 deletions(-)
+> For SUNRPC_GSS, it's a little more complex.  Other entries can "select"
+> SUNRPC_GSS, as it is non-visible.  However, the guideline suggests an
+> entry can't "select" it if it has a dependency (such as PROC_FS).
+> So, we add forward dependencies on PROC_FS to RPCSEC_GSS_FOO instead.
 > 
-> diff --git a/fs/Kconfig b/fs/Kconfig
-> index 9ad62a9..4c16789 100644
-> --- a/fs/Kconfig
-> +++ b/fs/Kconfig
-> @@ -1723,7 +1723,8 @@ config NFSD_V3_ACL
->  
->  config NFSD_V4
->  	bool "NFS server support for NFS version 4 (EXPERIMENTAL)"
-> -	depends on NFSD && NFSD_V3 && EXPERIMENTAL
-> +	depends on NFSD && EXPERIMENTAL
-> +	select NFSD_V3
->  	select RPCSEC_GSS_KRB5
->  	help
->  	  This option enables support in your system's NFS server for
+> XXX: Both CONFIG_NFSV4 and CONFIG_NFSD_V4 select RPCSEC_GSS_KRB5, which is
+> visible, which kconfig-language.txt also frowns upon.  The intent was to
+> enable at least one GSS mechanism if V4 was enabled.  Perhaps we should
+> make SUNRPC_GSS visible, and make the NFSv4 options visible only if
+> SUNRPC_GSS is enabled.
 
-This use of select is questionable. In general it is bad to select
-a symbol with dependencies.
-In this case the dependencies of NFSD_V3 are duplicated for NFSD_V4
-so we will not se erratic configurations but do you remember to
-update NFSD_V4 when you add a depends on NFSD_V3?
-
-But I see no other clean way to do it rithg now.
+This is better than what we had - so OK.
+We can revisit when kconfig gets more features added to support
+such configurations.
 
 	Sam
