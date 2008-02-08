@@ -1,76 +1,54 @@
-From: NeilBrown <neilb@suse.de>
-Subject: [PATCH] knfsd: Remove NLM_HOST_MAX and associated logic.
-Date: Fri, 8 Feb 2008 13:03:37 +1100
-Message-ID: <1080208020337.14371@suse.de>
-References: <20080208130300.14320.patches@notabene>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-To: J.Bruce@suse.de, Fields@suse.de,
-	" <bfields@fieldses.org>@suse.de"@suse.de
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [GIT] Please pull 2 NFS client fixes
+Date: Thu, 7 Feb 2008 18:48:18 -0800
+Message-ID: <20080207184818.e40d5277.akpm@linux-foundation.org>
+References: <1202432841.18376.50.camel@heimdal.trondhjem.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	nfsv4@linux-nfs.org
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.suse.de ([195.135.220.2]:40862 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751969AbYBHCDj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 Feb 2008 21:03:39 -0500
-Cc: Jeff Layton <jlayton@redhat.com>
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:43437 "EHLO
+	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1756154AbYBHCsF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Feb 2008 21:48:05 -0500
+In-Reply-To: <1202432841.18376.50.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, 07 Feb 2008 20:07:21 -0500 Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
 
-Lockd caches information about hosts that have recently held locks it
-expedite the taking of further locks.
+> commit 5d47a35600270e7115061cb1320ee60ae9bcb6b8
+> Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+> Date:   Thu Feb 7 17:24:07 2008 -0500
+> 
+>     NFS: Fix a potential file corruption issue when writing
+>     
+>     If the inode is flagged as having an invalid mapping, then we can't rely on
+>     the PageUptodate() flag. Ensure that we don't use the "anti-fragmentation"
+>     write optimisation in nfs_updatepage(), since that will cause NFS to write
+>     out areas of the page that are no longer guaranteed to be up to date.
+>     
+>     A potential corruption could occur in the following scenario:
+>     
+>     client 1			client 2
+>     ===============			===============
+>     				fd=open("f",O_CREAT|O_WRONLY,0644);
+>     				write(fd,"fubar\n",6);	// cache last page
+>     				close(fd);
+>     fd=open("f",O_WRONLY|O_APPEND);
+>     write(fd,"foo\n",4);
+>     close(fd);
+>     
+>     				fd=open("f",O_WRONLY|O_APPEND);
+>     				write(fd,"bar\n",4);
+>     				close(fd);
+>     -----
+>     The bug may lead to the file "f" reading 'fubar\n\0\0\0\nbar\n' because
+>     client 2 does not update the cached page after re-opening the file for
+>     write. Instead it keeps it marked as PageUptodate() until someone calls
+>     invaldate_inode_pages2() (typically by calling read()).
 
-It periodically discards this information for hosts that have not been
-used for a few minutes.
-
-lockd currently has a value NLM_HOST_MAX, and changes the 'garbage
-collection' behaviour when the number of hosts exceeds this threshold.
-
-However it's behaviour in strange an likely not what was intended.
-When the number of hosts exceeds the max, it scans *less* often (every
-2 minutes vs every minute) and allows unused host information to
-remain around longer (5 minutes instead of 2).
-
-Having this limit is of dubious value anyway, and we have not
-suffered from the code not getting the limit right, so remove the
-limit altogether.  We go with the larger values (discard 5 minute old
-hosts every 2 minutes) as that is probably safer.
-
-Maybe the periodic garbage collection should be replace to with
-'shrinker' handler so we just respond to memory pressure....
-
-Acked-by: Jeff Layton <jlayton@redhat.com>
-Signed-off-by: Neil Brown <neilb@suse.de>
-
-### Diffstat output
- ./fs/lockd/host.c |    9 +++------
- 1 file changed, 3 insertions(+), 6 deletions(-)
-
-diff .prev/fs/lockd/host.c ./fs/lockd/host.c
---- .prev/fs/lockd/host.c	2008-02-07 14:20:54.000000000 +1100
-+++ ./fs/lockd/host.c	2008-02-08 12:54:28.000000000 +1100
-@@ -19,12 +19,11 @@
- 
- 
- #define NLMDBG_FACILITY		NLMDBG_HOSTCACHE
--#define NLM_HOST_MAX		64
- #define NLM_HOST_NRHASH		32
- #define NLM_ADDRHASH(addr)	(ntohl(addr) & (NLM_HOST_NRHASH-1))
- #define NLM_HOST_REBIND		(60 * HZ)
--#define NLM_HOST_EXPIRE		((nrhosts > NLM_HOST_MAX)? 300 * HZ : 120 * HZ)
--#define NLM_HOST_COLLECT	((nrhosts > NLM_HOST_MAX)? 120 * HZ :  60 * HZ)
-+#define NLM_HOST_EXPIRE		(300 * HZ)
-+#define NLM_HOST_COLLECT	(120 * HZ)
- 
- static struct hlist_head	nlm_hosts[NLM_HOST_NRHASH];
- static unsigned long		next_gc;
-@@ -142,9 +141,7 @@ nlm_lookup_host(int server, const struct
- 	INIT_LIST_HEAD(&host->h_granted);
- 	INIT_LIST_HEAD(&host->h_reclaim);
- 
--	if (++nrhosts > NLM_HOST_MAX)
--		next_gc = 0;
--
-+	nrhosts++;
- out:
- 	mutex_unlock(&nlm_host_mutex);
- 	return host;
+Is this one worth feeding back into 2.6.24.x?  (for various values of "4"?)
