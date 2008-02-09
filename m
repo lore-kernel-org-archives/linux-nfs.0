@@ -1,66 +1,50 @@
-From: Sam Ravnborg <sam-uyr5N9Q2VtJg9hUCZPvPmw@public.gmane.org>
-Subject: Re: [PATCH 06/11] NFSD: Remove NFSv4 dependency on NFSv3
-Date: Fri, 8 Feb 2008 22:50:54 +0100
-Message-ID: <20080208215054.GB541@uranus.ravnborg.org>
-References: <20080208175208.16261.74626.stgit@manray.1015granger.net> <20080208202033.GD31984@uranus.ravnborg.org> <42BB19FA-AF43-4BF6-AF32-EF31A17A41B4@oracle.com>
+From: Pierre Ossman <drzeus-list-p3sGCRWkH8CeZLLa646FqQ@public.gmane.org>
+Subject: [NFS] -EXDEV between mounts that are same fs
+Date: Sat, 9 Feb 2008 20:05:03 +0100
+Message-ID: <20080209200503.6a11e88b@poseidon.drzeus.cx>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset="us-ascii"
+To: nfs@lists.sourceforge.net
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from pasmtpb.tele.dk ([80.160.77.98]:39935 "EHLO pasmtpB.tele.dk"
+Received: from neil.brown.name ([220.233.11.133]:36291 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750969AbYBHVus (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 8 Feb 2008 16:50:48 -0500
-In-Reply-To: <42BB19FA-AF43-4BF6-AF32-EF31A17A41B4@oracle.com>
+	id S1754128AbYBITFd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 9 Feb 2008 14:05:33 -0500
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1JNv0w-0004Hn-6b
+	for linux-nfs@vger.kernel.org; Sun, 10 Feb 2008 06:05:26 +1100
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Feb 08, 2008 at 04:08:42PM -0500, Chuck Lever wrote:
-> On Feb 8, 2008, at 3:20 PM, Sam Ravnborg wrote:
-> >On Fri, Feb 08, 2008 at 12:52:08PM -0500, Chuck Lever wrote:
-> >>Clean up: Because NFSD_V4 "depends on" NFSD_V3, it appears as a  
-> >>child of
-> >>the NFSD_V3 menu entry, and is not visible if NFSD_V3 is unselected.
-> >>
-> >>Replace the dependency on NFSD_V3 with a "select NFSD_V3".  This  
-> >>makes
-> >>NFSD_V4 look and work just like NFS_V3, while ensuring that  
-> >>NFSD_V3 is
-> >>enabled if NFSD_V4 is.
-> >>
-> >>Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> >>---
-> >>
-> >> fs/Kconfig |    3 ++-
-> >> 1 files changed, 2 insertions(+), 1 deletions(-)
-> >>
-> >>diff --git a/fs/Kconfig b/fs/Kconfig
-> >>index 9ad62a9..4c16789 100644
-> >>--- a/fs/Kconfig
-> >>+++ b/fs/Kconfig
-> >>@@ -1723,7 +1723,8 @@ config NFSD_V3_ACL
-> >>
-> >> config NFSD_V4
-> >> 	bool "NFS server support for NFS version 4 (EXPERIMENTAL)"
-> >>-	depends on NFSD && NFSD_V3 && EXPERIMENTAL
-> >>+	depends on NFSD && EXPERIMENTAL
-> >>+	select NFSD_V3
-> >> 	select RPCSEC_GSS_KRB5
-> >> 	help
-> >> 	  This option enables support in your system's NFS server for
-> >
-> >This use of select is questionable. In general it is bad to select
-> >a symbol with dependencies.
-> >In this case the dependencies of NFSD_V3 are duplicated for NFSD_V4
-> >so we will not se erratic configurations but do you remember to
-> >update NFSD_V4 when you add a depends on NFSD_V3?
-> >
-> >But I see no other clean way to do it rithg now.
-> 
-> This patch is entirely optional, and I can just drop it for now.
+Hi,
 
-Keep it. My comment was more to say we have things to address in kconfig.
-This is abuse in the acceptable range.
+I have a somewhat odd use case that I think has some room for improvement.
 
-	Sam
+I have a single fs exported on the server (/export/data). On the client I have mount /export/data/a and /export/data/b. Doing a rename("/export/data/a/foo", "/export/data/b/foo") results in -EXDEV.
+
+Now this is a bit annoying from a program point of view as it is very difficult to detect this beforehand. Doing a stat() on source and destination indicates that they are the same fs. So it would seem POSIX would guarantee I would not get a -EXDEV in that case. I assume this is simply a local, client-side check that determines that two different mount entries are involved.
+
+So, would it be possible to actually make the kernel realise that the source and target are in face the same fs on the server (so a NFS rename will succeed)? Or at least make the kernel present different device st_dev for the two trees.
+
+Rgds
+
+-- 
+     -- Pierre Ossman
+
+  Linux kernel, MMC maintainer        http://www.kernel.org
+  PulseAudio, core developer          http://pulseaudio.org
+  rdesktop, core developer          http://www.rdesktop.org
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Microsoft
+Defy all challenges. Microsoft(R) Visual Studio 2008.
+http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
+
