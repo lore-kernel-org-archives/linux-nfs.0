@@ -1,7 +1,7 @@
-From: Christoph Hellwig <hch@infradead.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: Re: [NFS] -EXDEV between mounts that are same fs
-Date: Sun, 10 Feb 2008 10:59:23 -0500
-Message-ID: <20080210155923.GA15345@infradead.org>
+Date: Sun, 10 Feb 2008 13:10:53 -0500
+Message-ID: <20080210181053.GD25571@fieldses.org>
 References: <20080209200503.6a11e88b@poseidon.drzeus.cx>
 	<20080209191021.GE25533@fieldses.org>
 	<20080209213511.59ff4e2c@poseidon.drzeus.cx>
@@ -10,34 +10,39 @@ References: <20080209200503.6a11e88b@poseidon.drzeus.cx>
 	<20080210152618.GB25571@fieldses.org>
 	<20080210153340.GB14540@infradead.org>
 	<20080210155733.GC25571@fieldses.org>
+	<20080210155923.GA15345@infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Christoph Hellwig <hch@infradead.org>, nfs@lists.sourceforge.net,
-	Pierre Ossman <drzeus-list-p3sGCRWkH8CeZLLa646FqQ@public.gmane.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: nfs@lists.sourceforge.net, Pierre Ossman <drzeus-list-p3sGCRWkH8CeZLLa646FqQ@public.gmane.org>
+To: Christoph Hellwig <hch@infradead.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:43627 "EHLO neil.brown.name"
+Received: from neil.brown.name ([220.233.11.133]:57435 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750823AbYBJP7r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 10 Feb 2008 10:59:47 -0500
+	id S1752004AbYBJSLQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 10 Feb 2008 13:11:16 -0500
 Received: from brown by neil.brown.name with local (Exim 4.63)
 	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1JOEan-0007w8-JS
-	for linux-nfs@vger.kernel.org; Mon, 11 Feb 2008 02:59:45 +1100
-In-Reply-To: <20080210155733.GC25571@fieldses.org>
+	id 1JOGe1-0008MJ-3X
+	for linux-nfs@vger.kernel.org; Mon, 11 Feb 2008 05:11:13 +1100
+In-Reply-To: <20080210155923.GA15345@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Feb 10, 2008 at 10:57:33AM -0500, J. Bruce Fields wrote:
-> To get the equivalent of subtree checking, we also need a reference from
-> each inode back to the subvolume it belongs to, so we can determine the
-> subvolume from a filehandle.  I assume that's a more intrusive change.
+On Sun, Feb 10, 2008 at 10:59:23AM -0500, Christoph Hellwig wrote:
+> On Sun, Feb 10, 2008 at 10:57:33AM -0500, J. Bruce Fields wrote:
+> > To get the equivalent of subtree checking, we also need a reference from
+> > each inode back to the subvolume it belongs to, so we can determine the
+> > subvolume from a filehandle.  I assume that's a more intrusive change.
+> 
+> XFS actually has the infrastructure for that by having a project id
+> that's inheritable to child directories/files.  But to actuall make
+> that useable we'd have to encode it in the fsid.  I must admit
+> I haven't thought that far yet.
 
-XFS actually has the infrastructure for that by having a project id
-that's inheritable to child directories/files.  But to actuall make
-that useable we'd have to encode it in the fsid.  I must admit
-I haven't thought that far yet.
+It'd be useful for nfsd.  So if you have any design notes or anything
+I'd be interested.
 
+--b.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft
