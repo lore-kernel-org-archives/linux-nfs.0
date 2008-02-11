@@ -1,50 +1,48 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH 3/3] NLM: Convert lockd to use kthreads
-Date: Mon, 11 Feb 2008 10:33:13 -0500
-Message-ID: <20080211103313.0e3bb207@tleilax.poochiereds.net>
-References: <20080211152938.GF25742@fieldses.org>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH] NFS: fix reference counting for NFSv4 callback thread
+Date: Mon, 11 Feb 2008 10:50:21 -0500
+Message-ID: <1202745024.10117.0.camel@heimdal.trondhjem.org>
+References: <1202742020-28080-1-git-send-email-jlayton@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:37641 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753096AbYBKPdQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 11 Feb 2008 10:33:16 -0500
-In-Reply-To: <20080211152938.GF25742@fieldses.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+To: Jeff Layton <jlayton@redhat.com>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <1202742020-28080-1-git-send-email-jlayton@redhat.com>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 11 Feb 2008 10:29:38 -0500
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-> Oops, did I forget to send this?  I don't' see it in the archives.
-> Apologies:
+On Mon, 2008-02-11 at 10:00 -0500, Jeff Layton wrote:
+> The reference counting for the NFSv4 callback thread stays artificially
+> high. When this thread comes down, it doesn't properly tear down the
+> svc_serv, causing a memory leak. In my testing on an older kernel on
+> x86_64, memory would leak out of the 8k kmalloc slab. So, we're leaking
+> at least a page of memory every time the thread comes down.
 > 
-> On Mon, Feb 11, 2008 at 12:22:08AM +0000, bfields wrote:
-> > On Thu, Feb 07, 2008 at 04:34:55PM -0500, Jeff Layton wrote:
-> > ...
-> > > diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-> > > index 0822646..378b393 100644
-> > > --- a/fs/lockd/svc.c
-> > > +++ b/fs/lockd/svc.c
-> > ...
-> > > @@ -174,6 +167,10 @@ lockd(struct svc_rqst *rqstp)
-> > >  		} else if (time_before(grace_period_expire, jiffies))
-> > >  			clear_grace_period();
-> > >  
-> > > +		/* nlmsvc_retry_blocked can block, so check for kthread_stop */
-> > > +		if (kthread_should_stop())
-> > > +			break;
-> > 
-> > The following svc_recv call will check kthread_should_stop() pretty
-> > early on, so I don't believe this is necessary?
-> > 
-> > Assuming that's correct, I've deleted these lines and applied the rest.
-> > 
+> svc_create() creates the svc_serv with a sv_nrthreads count of 1, and
+> then svc_create_thread() increments that count. Whenever the callback
+> thread is started it has a sv_nrthreads count of 2. When coming down, it
+> calls svc_exit_thread() which decrements that count and if it hits 0, it
+> tears everything down. That never happens here since the count is always
+> at 2 when the thread exits.
+> 
+> The problem is that nfs_callback_up() should be calling svc_destroy() on
+> the svc_serv on both success and failure. This is how lockd_up_proto()
+> handles the reference counting, and doing that here fixes the leak.
+> 
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
 
-Sounds reasonable...ACK
+Thanks Jeff! Applied.
 
--- 
-Jeff Layton <jlayton@redhat.com>
+Cheers
+  Trond
