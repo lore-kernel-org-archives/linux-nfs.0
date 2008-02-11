@@ -1,53 +1,105 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 06/11] NLM: LOCKD fails to load if CONFIG_SYSCTL is not set
-Date: Mon, 11 Feb 2008 17:12:09 -0500
-Message-ID: <20080211221209.1047.39544.stgit@manray.1015granger.net>
+Subject: [PATCH 05/11] SUNRPC: Update help Kconfig text
+Date: Mon, 11 Feb 2008 17:12:01 -0500
+Message-ID: <20080211221201.1047.40419.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org, trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from flpi195.sbcis.sbc.com ([207.115.20.197]:1784 "EHLO
+Received: from flpi195.sbcis.sbc.com ([207.115.20.197]:1514 "EHLO
 	flpi195.prodigy.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756958AbYBKWMi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Feb 2008 17:12:38 -0500
+	with ESMTP id S1757848AbYBKWM1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Feb 2008 17:12:27 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Bruce Fields says:
-"By the way, we've got another config-related nit here:
-
-	http://bugzilla.linux-nfs.org/show_bug.cgi?id=156
-
-You can build lockd without CONFIG_SYSCTL set, but then the module will
-fail to load."
-
-It looks like sysctl is needed for passing nsm_local_state between the
-user space and the kernel.  If that's not available, NSM notification
-from user space appears not to work.
-
-It's not a fatal error if the nsm_local_state file doesn't exist, however
-I've chosen to ensure CONFIG_SYSCTL is selected if LOCKD is selected.  The
-other choice is for nlm_init() to ignore the return code from the sysctl
-root registration call, but I think administrators would be surprised
-that NSM isn't working in this case.
+Clean up: refresh the help text for Kconfig items related to the sunrpc
+module.  Remove obsolete URLs, and make the language consistent among
+the options.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/Kconfig |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
+ fs/Kconfig |   46 +++++++++++++++++++++++++++++++---------------
+ 1 files changed, 31 insertions(+), 15 deletions(-)
 
 diff --git a/fs/Kconfig b/fs/Kconfig
-index 6c4e17b..0c8f85d 100644
+index 7ef9f05..6c4e17b 100644
 --- a/fs/Kconfig
 +++ b/fs/Kconfig
-@@ -1737,6 +1737,7 @@ config NFSD_V4
+@@ -1766,17 +1766,31 @@ config SUNRPC_XPRT_RDMA
+ 	depends on SUNRPC && INFINIBAND && EXPERIMENTAL
+ 	default m
+ 	help
+-	  Adds a client RPC transport for supporting kernel NFS over RDMA
+-	  mounts, including Infiniband and iWARP. Experimental.
++	  This option enables an RPC client transport capability that
++	  allows the NFS client to mount servers via an RDMA-enabled
++	  transport.
++
++	  To compile RPC client RDMA transport support as a module,
++	  choose M here: the module will be called xprtrdma.
++
++	  If unsure, say N.
  
- config LOCKD
- 	tristate
-+	select SYSCTL
+ config SUNRPC_BIND34
+ 	bool "Support for rpcbind versions 3 & 4 (EXPERIMENTAL)"
+ 	depends on SUNRPC && EXPERIMENTAL
+ 	help
+-	  Provides kernel support for querying rpcbind servers via versions 3
+-	  and 4 of the rpcbind protocol.  The kernel automatically falls back
+-	  to version 2 if a remote rpcbind service does not support versions
+-	  3 or 4.
++	  RPC requests over IPv6 networks require support for larger
++	  addresses when performing an RPC bind.  Sun added support for
++	  IPv6 addressing by creating two new versions of the rpcbind
++	  protocol (RFC 1833).
++
++	  This option enables support in the kernel RPC client for
++	  querying rpcbind servers via versions 3 and 4 of the rpcbind
++	  protocol.  The kernel automatically falls back to version 2
++	  if a remote rpcbind service does not support versions 3 or 4.
++	  By themselves, these new versions do not provide support for
++	  RPC over IPv6, but the new protocol versions are necessary to
++	  support it.
  
- config LOCKD_V4
- 	bool
+ 	  If unsure, say N to get traditional behavior (version 2 rpcbind
+ 	  requests only).
+@@ -1790,12 +1804,13 @@ config RPCSEC_GSS_KRB5
+ 	select CRYPTO_DES
+ 	select CRYPTO_CBC
+ 	help
+-	  Provides for secure RPC calls by means of a gss-api
+-	  mechanism based on Kerberos V5. This is required for
+-	  NFSv4.
++	  Choose Y here to enable Secure RPC using the Kerberos version 5
++	  GSS-API mechanism (RFC 1964).
+ 
+-	  Note: Requires an auxiliary userspace daemon which may be found on
+-		http://www.citi.umich.edu/projects/nfsv4/
++	  Secure RPC calls with Kerberos require an auxiliary user-space
++	  daemon which may be found in the Linux nfs-utils package
++	  available from http://linux-nfs.org/.  In addition, user-space
++	  Kerberos support should be installed.
+ 
+ 	  If unsure, say N.
+ 
+@@ -1809,11 +1824,12 @@ config RPCSEC_GSS_SPKM3
+ 	select CRYPTO_CAST5
+ 	select CRYPTO_CBC
+ 	help
+-	  Provides for secure RPC calls by means of a gss-api
+-	  mechanism based on the SPKM3 public-key mechanism.
++	  Choose Y here to enable Secure RPC using the SPKM3 public key
++	  GSS-API mechansim (RFC 2025).
+ 
+-	  Note: Requires an auxiliary userspace daemon which may be found on
+-	  	http://www.citi.umich.edu/projects/nfsv4/
++	  Secure RPC calls with SPKM3 require an auxiliary userspace
++	  daemon which may be found in the Linux nfs-utils package
++	  available from http://linux-nfs.org/.
+ 
+ 	  If unsure, say N.
+ 
 
