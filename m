@@ -1,88 +1,41 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH] NFS: fix reference counting for NFSv4 callback thread
-Date: Mon, 11 Feb 2008 10:00:20 -0500
-Message-ID: <1202742020-28080-1-git-send-email-jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-To: Trond.Myklebust@netapp.com
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 3/3] NLM: Convert lockd to use kthreads
+Date: Mon, 11 Feb 2008 10:29:38 -0500
+Message-ID: <20080211152938.GF25742@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:36408 "EHLO mx1.redhat.com"
+Received: from mail.fieldses.org ([66.93.2.214]:53629 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752736AbYBKPA2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 11 Feb 2008 10:00:28 -0500
+	id S1754013AbYBKP3k (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 11 Feb 2008 10:29:40 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The reference counting for the NFSv4 callback thread stays artificially
-high. When this thread comes down, it doesn't properly tear down the
-svc_serv, causing a memory leak. In my testing on an older kernel on
-x86_64, memory would leak out of the 8k kmalloc slab. So, we're leaking
-at least a page of memory every time the thread comes down.
+Oops, did I forget to send this?  I don't' see it in the archives.
+Apologies:
 
-svc_create() creates the svc_serv with a sv_nrthreads count of 1, and
-then svc_create_thread() increments that count. Whenever the callback
-thread is started it has a sv_nrthreads count of 2. When coming down, it
-calls svc_exit_thread() which decrements that count and if it hits 0, it
-tears everything down. That never happens here since the count is always
-at 2 when the thread exits.
-
-The problem is that nfs_callback_up() should be calling svc_destroy() on
-the svc_serv on both success and failure. This is how lockd_up_proto()
-handles the reference counting, and doing that here fixes the leak.
-
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfs/callback.c |   18 ++++++++++++------
- 1 files changed, 12 insertions(+), 6 deletions(-)
-
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index bd185a5..ecc06c6 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -105,7 +105,7 @@ static void nfs_callback_svc(struct svc_rqst *rqstp)
-  */
- int nfs_callback_up(void)
- {
--	struct svc_serv *serv;
-+	struct svc_serv *serv = NULL;
- 	int ret = 0;
- 
- 	lock_kernel();
-@@ -122,24 +122,30 @@ int nfs_callback_up(void)
- 	ret = svc_create_xprt(serv, "tcp", nfs_callback_set_tcpport,
- 			      SVC_SOCK_ANONYMOUS);
- 	if (ret <= 0)
--		goto out_destroy;
-+		goto out_err;
- 	nfs_callback_tcpport = ret;
- 	dprintk("Callback port = 0x%x\n", nfs_callback_tcpport);
- 
- 	ret = svc_create_thread(nfs_callback_svc, serv);
- 	if (ret < 0)
--		goto out_destroy;
-+		goto out_err;
- 	nfs_callback_info.serv = serv;
- 	wait_for_completion(&nfs_callback_info.started);
- out:
-+	/*
-+	 * svc_create creates the svc_serv with sv_nrthreads == 1, and then
-+	 * svc_create_thread increments that. So we need to call svc_destroy
-+	 * on both success and failure so that the refcount is 1 when the
-+	 * thread exits.
-+	 */
-+	if (serv)
-+		svc_destroy(serv);
- 	mutex_unlock(&nfs_callback_mutex);
- 	unlock_kernel();
- 	return ret;
--out_destroy:
-+out_err:
- 	dprintk("Couldn't create callback socket or server thread; err = %d\n",
- 		ret);
--	svc_destroy(serv);
--out_err:
- 	nfs_callback_info.users--;
- 	goto out;
- }
--- 
-1.5.3.8
-
+On Mon, Feb 11, 2008 at 12:22:08AM +0000, bfields wrote:
+> On Thu, Feb 07, 2008 at 04:34:55PM -0500, Jeff Layton wrote:
+> ...
+> > diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+> > index 0822646..378b393 100644
+> > --- a/fs/lockd/svc.c
+> > +++ b/fs/lockd/svc.c
+> ...
+> > @@ -174,6 +167,10 @@ lockd(struct svc_rqst *rqstp)
+> >  		} else if (time_before(grace_period_expire, jiffies))
+> >  			clear_grace_period();
+> >  
+> > +		/* nlmsvc_retry_blocked can block, so check for kthread_stop */
+> > +		if (kthread_should_stop())
+> > +			break;
+> 
+> The following svc_recv call will check kthread_should_stop() pretty
+> early on, so I don't believe this is necessary?
+> 
+> Assuming that's correct, I've deleted these lines and applied the rest.
+> 
+> --b.
