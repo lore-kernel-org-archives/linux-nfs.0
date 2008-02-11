@@ -1,63 +1,82 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
+From: Jeff Layton <jlayton@redhat.com>
 Subject: Re: [PATCH 2/3] SUNRPC: have svc_recv() check kthread_should_stop()
-Date: Sun, 10 Feb 2008 19:47:59 -0500
-Message-ID: <20080211004759.GD20829@fieldses.org>
-References: <1202420095-5818-1-git-send-email-jlayton@redhat.com> <1202420095-5818-2-git-send-email-jlayton@redhat.com> <1202420095-5818-3-git-send-email-jlayton@redhat.com>
+Date: Mon, 11 Feb 2008 07:06:06 -0500
+Message-ID: <20080211070606.635b57be@tleilax.poochiereds.net>
+References: <1202420095-5818-1-git-send-email-jlayton@redhat.com>
+	<1202420095-5818-2-git-send-email-jlayton@redhat.com>
+	<1202420095-5818-3-git-send-email-jlayton@redhat.com>
+	<20080211004759.GD20829@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=US-ASCII
 Cc: linux-nfs@vger.kernel.org
-To: Jeff Layton <jlayton@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:34771 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([66.187.233.31]:39160 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755269AbYBKAsB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 10 Feb 2008 19:48:01 -0500
-In-Reply-To: <1202420095-5818-3-git-send-email-jlayton@redhat.com>
+	id S1751724AbYBKMGL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 11 Feb 2008 07:06:11 -0500
+In-Reply-To: <20080211004759.GD20829@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Another nit:
+On Sun, 10 Feb 2008 19:47:59 -0500
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-On Thu, Feb 07, 2008 at 04:34:54PM -0500, Jeff Layton wrote:
+> Another nit:
+> 
+> On Thu, Feb 07, 2008 at 04:34:54PM -0500, Jeff Layton wrote:
+> > diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+> > index ea377e0..a3165a2 100644
+> > --- a/net/sunrpc/svc_xprt.c
+> > +++ b/net/sunrpc/svc_xprt.c
+> > @@ -18,6 +18,7 @@
+> >  #include <linux/skbuff.h>
+> >  #include <linux/file.h>
+> >  #include <linux/freezer.h>
+> > +#include <linux/kthread.h>
+> >  #include <net/sock.h>
+> >  #include <net/checksum.h>
+> >  #include <net/ip.h>
+> > @@ -586,6 +587,8 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
+> >  		while (rqstp->rq_pages[i] == NULL) {
+> >  			struct page *p = alloc_page(GFP_KERNEL);
+> >  			if (!p) {
+> > +				if (kthread_should_stop())
+> > +					return -EINTR;
+> >  				int j = msecs_to_jiffies(500);
+> >  				schedule_timeout_uninterruptible(j);
+> >  			}
+> 
+> The compiler's whining about the mixed declarations and code, so I've
+> also done the following in my copy.
+> 
+> --b.
+> 
 > diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-> index ea377e0..a3165a2 100644
+> index a3165a2..53c8ea9 100644
 > --- a/net/sunrpc/svc_xprt.c
 > +++ b/net/sunrpc/svc_xprt.c
-> @@ -18,6 +18,7 @@
->  #include <linux/skbuff.h>
->  #include <linux/file.h>
->  #include <linux/freezer.h>
-> +#include <linux/kthread.h>
->  #include <net/sock.h>
->  #include <net/checksum.h>
->  #include <net/ip.h>
-> @@ -586,6 +587,8 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
+> @@ -587,9 +587,9 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
 >  		while (rqstp->rq_pages[i] == NULL) {
 >  			struct page *p = alloc_page(GFP_KERNEL);
 >  			if (!p) {
-> +				if (kthread_should_stop())
-> +					return -EINTR;
->  				int j = msecs_to_jiffies(500);
+> +				int j = msecs_to_jiffies(500);
+>  				if (kthread_should_stop())
+>  					return -EINTR;
+> -				int j = msecs_to_jiffies(500);
 >  				schedule_timeout_uninterruptible(j);
 >  			}
+>  			rqstp->rq_pages[i] = p;
 
-The compiler's whining about the mixed declarations and code, so I've
-also done the following in my copy.
+Thanks Bruce. This reminds me though that I had a question about the
+above. I'm assuming that it's ok to return -EINTR without allocating
+all of the pages that we'll need to actually do the recv. This seems to
+be OK for all of the in-kernel callers of svc_recv...
 
---b.
+Given that, is there any reason we need an uninterruptible sleep there?
+It looks like when under heavy memory pressure, svc_recv could loop there
+for a long time. Allowing it to exit from that loop when signalled seems
+like it would be a good thing...
 
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index a3165a2..53c8ea9 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -587,9 +587,9 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
- 		while (rqstp->rq_pages[i] == NULL) {
- 			struct page *p = alloc_page(GFP_KERNEL);
- 			if (!p) {
-+				int j = msecs_to_jiffies(500);
- 				if (kthread_should_stop())
- 					return -EINTR;
--				int j = msecs_to_jiffies(500);
- 				schedule_timeout_uninterruptible(j);
- 			}
- 			rqstp->rq_pages[i] = p;
+-- 
+Jeff Layton <jlayton@redhat.com>
