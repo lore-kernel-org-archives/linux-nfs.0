@@ -1,60 +1,46 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 11/11] NFSD: Remove NFSv4 dependency on NFSv3
-Date: Mon, 11 Feb 2008 17:12:46 -0500
-Message-ID: <20080211221246.1047.96665.stgit@manray.1015granger.net>
+Subject: [PATCH 09/11] NFSD: Move "select NFSD_V2_ACL if NFSD_V3_ACL"
+Date: Mon, 11 Feb 2008 17:12:31 -0500
+Message-ID: <20080211221231.1047.73886.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org, trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from flpi195.sbcis.sbc.com ([207.115.20.197]:2509 "EHLO
+Received: from flpi195.sbcis.sbc.com ([207.115.20.197]:4205 "EHLO
 	flpi195.prodigy.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758126AbYBKWNA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Feb 2008 17:13:00 -0500
+	with ESMTP id S1756223AbYBKWNb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Feb 2008 17:13:31 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: Because NFSD_V4 "depends on" NFSD_V3, it appears as a child of
-the NFSD_V3 menu entry, and is not visible if NFSD_V3 is unselected.
-
-Replace the dependency on NFSD_V3 with a "select NFSD_V3".  This makes
-NFSD_V4 look and work just like NFS_V3, while ensuring that NFSD_V3 is
-enabled if NFSD_V4 is.
-
-Sam Ravnborg adds:
-
-"This use of select is questionable. In general it is bad to select
-a symbol with dependencies.
-
-In this case the dependencies of NFSD_V3 are duplicated for NFSD_V4
-so we will not se erratic configurations but do you remember to
-update NFSD_V4 when you add a depends on NFSD_V3?
-
-But I see no other clean way to do it right now."
-
-Later he said:
-
-"My comment was more to say we have things to address in kconfig.
-This is abuse in the acceptable range."
+Clean up: since NFSD_V2_ACL is a boolean, it can be selected safely
+under the NFSD_V3_ACL entry (also a boolean).
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/Kconfig |    3 ++-
- 1 files changed, 2 insertions(+), 1 deletions(-)
+ fs/Kconfig |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
 diff --git a/fs/Kconfig b/fs/Kconfig
-index 267ff73..a5bd7ff 100644
+index e94ca09..fcaf61e 100644
 --- a/fs/Kconfig
 +++ b/fs/Kconfig
-@@ -1718,7 +1718,8 @@ config NFSD_V3_ACL
- 
- config NFSD_V4
- 	bool "NFS server support for NFS version 4 (EXPERIMENTAL)"
--	depends on NFSD && NFSD_V3 && PROC_FS && EXPERIMENTAL
-+	depends on NFSD && PROC_FS && EXPERIMENTAL
-+	select NFSD_V3
- 	select FS_POSIX_ACL
- 	select RPCSEC_GSS_KRB5
+@@ -1657,7 +1657,6 @@ config NFSD
+ 	select LOCKD
+ 	select SUNRPC
+ 	select EXPORTFS
+-	select NFSD_V2_ACL if NFSD_V3_ACL
+ 	select NFS_ACL_SUPPORT if NFSD_V2_ACL
+ 	select CRYPTO_MD5 if NFSD_V4
+ 	select CRYPTO if NFSD_V4
+@@ -1699,6 +1698,7 @@ config NFSD_V3
+ config NFSD_V3_ACL
+ 	bool "NFS server support for the NFSv3 ACL protocol extension"
+ 	depends on NFSD_V3
++	select NFSD_V2_ACL
  	help
+ 	  Solaris NFS servers support an auxiliary NFSv3 ACL protocol that
+ 	  never became an official part of the NFS version 3 protocol.
 
