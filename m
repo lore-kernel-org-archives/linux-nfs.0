@@ -1,57 +1,229 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [NFS] -EXDEV between mounts that are same fs
-Date: Mon, 11 Feb 2008 23:54:04 -0500
-Message-ID: <20080212045404.GA625@infradead.org>
-References: <20080209213511.59ff4e2c@poseidon.drzeus.cx>
-	<20080209231435.GA20501@fieldses.org>
-	<20080210131224.1d4ae39f@poseidon.drzeus.cx>
-	<20080210152618.GB25571@fieldses.org>
-	<20080210153340.GB14540@infradead.org>
-	<20080210155733.GC25571@fieldses.org>
-	<20080210155923.GA15345@infradead.org>
-	<20080210181053.GD25571@fieldses.org>
-	<20080210182121.GA5247@infradead.org>
-	<20080211162136.GK25742@fieldses.org>
+From: "Sagar Borikar" <Sagar_Borikar-4W7cOCfLBmzY0TyS/+Ba5Q@public.gmane.org>
+Subject: nfs performance dropped when using 128 MB RAM
+Date: Tue, 12 Feb 2008 00:33:41 -0800
+Message-ID: <340C71CD25A7EB49BFA81AE8C8392667013239CA@BBY1EXM10.pmc_nt.nt.pmc-sierra.bc.ca>
+References: <1202793191.2890.36.camel@serendib.melbourne.sgi.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Christoph Hellwig <hch@infradead.org>, nfs@lists.sourceforge.net,
-	Pierre Ossman <drzeus-list-p3sGCRWkH8CeZLLa646FqQ@public.gmane.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: multipart/mixed;
+	boundary="----_=_NextPart_001_01C86D51.F8F02CB7"
+To: <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:53604 "EHLO neil.brown.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752791AbYBLFn2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 Feb 2008 00:43:28 -0500
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1JOnvR-0007Vi-Ll
-	for linux-nfs@vger.kernel.org; Tue, 12 Feb 2008 16:43:25 +1100
-In-Reply-To: <20080211162136.GK25742@fieldses.org>
+Received: from pmc216-241-226-183.pmc-sierra.bc.ca ([216.241.226.183]:50234
+	"EHLO pmxedge1.pmc-sierra.bc.ca" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1754044AbYBLIeB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Feb 2008 03:34:01 -0500
+Received: from bby1exg02.pmc_nt.nt.pmc-sierra.bc.ca (BBY1EXG02.pmc-sierra.bc.ca [216.241.231.167])
+	by pmxedge1.pmc-sierra.bc.ca (8.13.4/8.12.7) with ESMTP id m1C8XWZV001135
+	for <linux-nfs@vger.kernel.org>; Tue, 12 Feb 2008 00:33:50 -0800
+In-Reply-To: <1202793191.2890.36.camel-2WabGjdRN2LRvmHwrWB8BmjR7Gm6iKkz0E9HWUfgJXw@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Feb 11, 2008 at 11:21:36AM -0500, J. Bruce Fields wrote:
-> > http://verein.lst.de/~hch/xfs/xfs-multiple-containers.txt
-> 
-> Excellent, thanks, yes that's just what we'd want....
+This is a multi-part message in MIME format.
 
-The proposal still lacks the idea of encoding the projid in the file
-handle.  But I think we could do that quite easily, but I'd do it after
-my planned next round of the export interface cleanups, so that a
-filehandle can see at mount time how much of the filehandle space it
-has left and refuse the export if it doesn't fit (e.g. exporting with
-various 64bit inode fields and NFSv2, or projids on NFSv2)
+------_=_NextPart_001_01C86D51.F8F02CB7
+Content-Type: text/plain;
+	charset="US-ASCII"
+Content-Transfer-Encoding: quoted-printable
 
+ Hello Folks,
+=20
+I am not sure if this is the right place for this question. If not, I am
+sorry and request you to direct me to right mailing list.
+=20
+Currently I am working on a product which is derived from its ancestor
+with more or less similar feature set and few additions. Other than
+memory size, there are not hardware changes. The newer one is having 128
+MB RAM while the ancestor was having 512 MB of RAM. The functionality
+carried forward is also similar except for nfs. Both have gigabit
+Ethernet interfaces
+                 I am finding that nfs write performance has drastically
+reduced say 1 MB/s or even it stalls for large file transfers to the
+box. On the contrary it works fine with 512 MB of RAM. The CPU
+utilization by nfsd as well as rpc.statd / rpc.mountd is also non
+existent. Rather nfsd most of the time is sleeping for the data.  While
+trying to analyse through ethereal, I observe that the write requests by
+clients to the the server are periodic say around 1.5-2 minutes
+interval. Till then the tcpdump captures that the handshake is going on
+only for ack messages for wait requests. After then suddenly the burst
+write transfer starts and within 4-5 seconds when the buffers are full
+and no free memory is available, again it repeats the same cycle. When
+poking in the meminfo stats, I found that there are no dirty pages and
+write back buffers available before write bursts. As soon as the buffers
+are available, nfs sends requests for further data and meminfo stats are
+as it is. The free memory which is LowFree memory used by kernel data
+structures in our case as High free memory is zero, is very less when
+the buffers are not cleaned up. Once the burst data transfer finishes,
+cached memory equal to that of previous buffered gets cleared as
+expected. But Inactive memory is still high. I am attaching the tcpdump
+logs with this mail. I am using rsize / wsize as 64k. Tried various
+combinations of these sizes while mounting the nfs clients but it didn't
+help.
+I tried to check whether this problem is system wide but unfortunately
+CIFS and FTP writes are pretty fast. so only nfs performance is affected
+due to RAM size reduction. We have enabled socket buffer recycling in
+Ethernet driver which block 600k of data for recycling. Even just to get
+confirmation, I disabled the skb  recycling, even then the result was
+same. I am not seeing this kind of behavior in other workstations with
+128 MB of RAM and mips architecture.
+Can anyone let me know, why the write requests are buffered and
+periodically they get cleared?=20
+Also does nfs stack, requires special buffer availability for succeeding
+write requests?=20
+=20
+Thanks and Regards,
+Sagar Borikar=20
+PMC sierra
+=20
+=20
 
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Microsoft
-Defy all challenges. Microsoft(R) Visual Studio 2008.
-http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+------_=_NextPart_001_01C86D51.F8F02CB7
+Content-Type: application/octet-stream;
+	name="tcpdump.log"
+Content-Transfer-Encoding: base64
+Content-Description: tcpdump.log
+Content-Disposition: attachment;
+	filename="tcpdump.log"
 
+Ck1zdGVuaW5nIG9uIGV0aDAsIGxpbmstdHlwZSBFTjEwTUIgKEV0aGVybmV0KSwgY2FwdHVyZSBz
+aXplIDk2IGJ5dGVzCjExOjEyOjM1LjY3NDk4OCBJUCAxNzIuMTYuNDguMTMwLm5mcyA+IDE3Mi4x
+Ni40OC41Mi44Nzk6IC4gYWNrIDgxNjExNDAgd2luIDI4OTYgPG5vcCxub3AsdGltZXN0YW1wIDE4
+OTU4MTMzIDUxNTkzNjcyMj4KMTE6MTI6MzUuNjc1MDA1IElQIDE3Mi4xNi40OC41Mi4xNjY1NzU1
+MjEgPiAxNzIuMTYuNDguMTMwLm5mczogMjg5NiBwcm9jLTIzNzkwNTY4NjgKMTE6MTI6MzUuNjc1
+MDEzIElQIDE3Mi4xNi40OC41Mi40MTU4MzMyMTYgPiAxNzIuMTYuNDguMTMwLm5mczogMTQ0OCBw
+cm9jLTMwMzczMzY4MDAKMTE6MTI6MzUuNjc1Mzk0IElQIDE3Mi4xNi40OC4xMzAubmZzID4gMTcy
+LjE2LjQ4LjUyLjg3OTogLiBhY2sgODE2NDAzNiB3aW4gMjg5NiA8bm9wLG5vcCx0aW1lc3RhbXAg
+MTg5NTgxMzMgNTE1OTM2NzIyPgoxMToxMjozNS42NzU0MTEgSVAgMTcyLjE2LjQ4LjUyLjI0NTU0
+Njc5NjAgPiAxNzIuMTYuNDguMTMwLm5mczogMTQ0OCBwcm9jLTM4MTIyNjcxMzMKMTE6MTI6MzUu
+Njc1NDE5IElQIDE3Mi4xNi40OC41Mi4yNjI3MjAwOCA+IDE3Mi4xNi40OC4xMzAubmZzOiAxNDQ4
+IHByb2MtMzA5NDA2NDE3OAoxMToxMjozNS42NzU2MzYgSVAgMTcyLjE2LjQ4LjEzMC5uZnMgPiAx
+NzIuMTYuNDguNTIuODc5OiAuIGFjayA4MTY2OTMyIHdpbiAyODk2IDxub3Asbm9wLHRpbWVzdGFt
+cCAxODk1ODEzMyA1MTU5MzY3MjM+CjExOjEyOjM1LjY3NTY1MiBJUCAxNzIuMTYuNDguNTIuODE3
+NDY3MDAwID4gMTcyLjE2LjQ4LjEzMC5uZnM6IDE0NDggcHJvYy0xNDU2Nzc2OTA3CjExOjEyOjM1
+LjY3NTY2MCBJUCAxNzIuMTYuNDguNTIuMzU3ODE5MTA0NiA+IDE3Mi4xNi40OC4xMzAubmZzOiAx
+NDQ4IHByb2MtMTkwMjc2OTkzOQoxMToxMjozNS42NzU5MjQgSVAgMTcyLjE2LjQ4LjEzMC5uZnMg
+PiAxNzIuMTYuNDguNTIuODc5OiAuIGFjayA4MTY5ODI4IHdpbiAyODk2IDxub3Asbm9wLHRpbWVz
+dGFtcCAxODk1ODEzMyA1MTU5MzY3MjM+CjExOjEyOjM1LjY3NTk0MCBJUCAxNzIuMTYuNDguNTIu
+MzcyMTU5NjY0MyA+IDE3Mi4xNi40OC4xMzAubmZzOiAxNDQ4IHByb2MtOTc0MjA1MjgyCjExOjEy
+OjM1LjY3NTk0NyBJUCAxNzIuMTYuNDguNTIuMjYwNDU4MDIzOSA+IDE3Mi4xNi40OC4xMzAubmZz
+OiAxNDQ4IHByb2MtMTU5MDUxMjE2NwoxMToxMjozNS42NzYxNjkgSVAgMTcyLjE2LjQ4LjEzMC5u
+ZnMgPiAxNzIuMTYuNDguNTIuODc5OiAuIGFjayA4MTcyNzI0IHdpbiAyODk2IDxub3Asbm9wLHRp
+bWVzdGFtcCAxODk1ODEzMyA1MTU5MzY3MjM+CjExOjEyOjM1LjY3NjE4NSBJUCAxNzIuMTYuNDgu
+NTIuNDI3ODI0MjQ3MyA+IDE3Mi4xNi40OC4xMzAubmZzOiAxNDQ4IHByb2MtMzEyNjg1NjI3NQox
+MToxMjozNS42NzYxOTMgSVAgMTcyLjE2LjQ4LjUyLjI0MTkxNjMxODQgPiAxNzIuMTYuNDguMTMw
+Lm5mczogMTQ0OCBwcm9jLTE4MTU5MDUyNTMKMTE6MTI6MzUuNjc2ODc3IElQIDE3Mi4xNi40OC4x
+MzAubmZzID4gMTcyLjE2LjQ4LjUyLjg3OTogLiBhY2sgODE3NTYyMCB3aW4gMjg5NiA8bm9wLG5v
+cCx0aW1lc3RhbXAgMTg5NTgxMzQgNTE1OTM2NzI0PgoxMToxMjozNS42NzY4OTYgSVAgMTcyLjE2
+LjQ4LjUyLjUyODU5MjIyMyA+IDE3Mi4xNi40OC4xMzAubmZzOiAxNDQ4IHByb2MtMzc5MDU4MTIz
+NwoxMToxMjozNS42NzY5MDQgSVAgMTcyLjE2LjQ4LjUyLjY3NDcxMjY2MiA+IDE3Mi4xNi40OC4x
+MzAubmZzOiAxNDQ4IHByb2MtMTkyMzMxMjk4MgoxMToxMjozNS42NzY5MTMgSVAgMTcyLjE2LjQ4
+LjEzMC5uZnMgPiAxNzIuMTYuNDguNTIuODc5OiAuIGFjayA4MTc4NTE2IHdpbiAyODk2IDxub3As
+bm9wLHRpbWVzdGFtcCAxODk1ODEzNCA1MTU5MzY3MjQ+CjExOjEyOjM1LjY3NjkyOCBJUCAxNzIu
+MTYuNDguNTIuMjAxOTA2MTQ0OCA+IDE3Mi4xNi40OC4xMzAubmZzOiAxNDQ4IHByb2MtMzc4Njcw
+MTI1NwoxMToxMjozNS42NzY5MzUgSVAgMTcyLjE2LjQ4LjUyLjM5MzgxMDcyMTkgPiAxNzIuMTYu
+NDguMTMwLm5mczogMTQ0OCBwcm9jLTQ3NzEzMzU5NgoxMToxMjozNS42Nzc0MjAgSVAgMTcyLjE2
+LjQ4LjEzMC5uZnMgPiAxNzIuMTYuNDguNTIuODc5OiAuIGFjayA4MTgxNDEyIHdpbiAyODk2IDxu
+b3Asbm9wLHRpbWVzdGFtcCAxODk1ODEzNCA1MTU5MzY3MjU+CjExOjEyOjM1LjY3NzQzOSBJUCAx
+NzIuMTYuNDguNTIuMzMwMzA3ODUyMiA+IDE3Mi4xNi40OC4xMzAubmZzOiAxNDQ4IHByb2MtNDE2
+MTc0MzQ3CjExOjEyOjM1LjY3NzQ0NyBJUCAxNzIuMTYuNDguNTIuOTkyMDU1MTk2ID4gMTcyLjE2
+LjQ4LjEzMC5uZnM6IDE0NDggcHJvYy0zMTY3NTMzMzY5CjExOjEyOjM1LjY3NzY1OSBJUCAxNzIu
+MTYuNDguMTMwLm5mcyA+IDE3Mi4xNi40OC41Mi44Nzk6IC4gYWNrIDgxODQzMDggd2luIDI4OTYg
+PG5vcCxub3AsdGltZXN0YW1wIDE4OTU4MTM0IDUxNTkzNjcyNT4KMTE6MTI6MzUuNjc3Njc1IElQ
+IDE3Mi4xNi40OC41Mi4zNzgyNjQxMDA3ID4gMTcyLjE2LjQ4LjEzMC5uZnM6IDE0NDggcHJvYy0z
+NzQ0NTk2NTMwCjExOjEyOjM1LjY3NzY4MyBJUCAxNzIuMTYuNDguNTIuMjgwMDUxNDc1NCA+IDE3
+Mi4xNi40OC4xMzAubmZzOiAxNDQ4IHByb2MtMTYzMjE3MDYzNgoxMToxMjozNS42Nzc5NTYgSVAg
+MTcyLjE2LjQ4LjEzMC5uZnMgPiAxNzIuMTYuNDguNTIuODc5OiAuIGFjayA4MTg3MjA0IHdpbiAy
+ODk2IDxub3Asbm9wLHRpbWVzdGFtcCAxODk1ODEzNCA1MTU5MzY3MjU+CjExOjEyOjM1LjY3Nzk3
+MiBJUCAxNzIuMTYuNDguNTIuMjkyMDIxOTc1MSA+IDE3Mi4xNi40OC4xMzAubmZzOiAxNDQ4IHBy
+b2MtMTY3MzQzNzQ2CjExOjEyOjM1LjY3Nzk4MCBJUCAxNzIuMTYuNDguNTIuMTIxNjU4NTcyOCA+
+IDE3Mi4xNi40OC4xMzAubmZzOiAxNDQ4IHByb2MtMjc4NDc0MjM2NQoxMToxMjozNS42NzgyMjgg
+SVAgMTcyLjE2LjQ4LjEzMC5uZnMgPiAxNzIuMTYuNDguNTIuMjExNjkzMTY0MzogcmVwbHkgb2sg
+MTQwCjExOjEyOjM1LjY3ODI0NSBJUCAxNzIuMTYuNDguNTIuNzk4NDIzNzk0ID4gMTcyLjE2LjQ4
+LjEzMC5uZnM6IDE0NDggcHJvYy0xMjk4OTk1NzYyCjExOjEyOjM1LjY3ODg2MyBJUCAxNzIuMTYu
+NDguMTMwLm5mcyA+IDE3Mi4xNi40OC41Mi44Nzk6IC4gYWNrIDgxOTQ0NDQgd2luIDI4OTYgPG5v
+cCxub3AsdGltZXN0YW1wIDE4OTU4MTM0IDUxNTkzNjcyNT4KMTE6MTI6MzUuNjc4ODgwIElQIDE3
+Mi4xNi40OC41Mi4xNzA1NjMzOTQ2ID4gMTcyLjE2LjQ4LjEzMC5uZnM6IDI4OTYgcHJvYy0yMTc4
+OTM3NjUzCjExOjEyOjM1LjY3ODg4OCBJUCAxNzIuMTYuNDguNTIuODY1MDcyMDc3ID4gMTcyLjE2
+LjQ4LjEzMC5uZnM6IDI4OTYgcHJvYy0zOTM1MDcyNzAzCjExOjEyOjM1LjY3OTM5NSBJUCAxNzIu
+MTYuNDguMTMwLm5mcyA+IDE3Mi4xNi40OC41Mi44Nzk6IC4gYWNrIDgxOTczNDAgd2luIDI4OTYg
+PG5vcCxub3AsdGltZXN0YW1wIDE4OTU4MTM0IDUxNTkzNjcyNz4KMTE6MTI6MzUuNjc5NDEyIElQ
+IDE3Mi4xNi40OC41Mi44NzE1Nzc0MzkgPiAxNzIuMTYuNDguMTMwLm5mczogMjg5NiBwcm9jLTMz
+NDExNzI0ODQKMTE6MTI6MzUuNjc5NjQwIElQIDE3Mi4xNi40OC4xMzAubmZzID4gMTcyLjE2LjQ4
+LjUyLjg3OTogLiBhY2sgODIwMDIzNiB3aW4gMjg5NiA8bm9wLG5vcCx0aW1lc3RhbXAgMTg5NTgx
+MzQgNTE1OTM2NzI3PgoxMToxMjozNS42Nzk2NTUgSVAgMTcyLjE2LjQ4LjUyLjE1MTcwNzU4MDYg
+PiAxNzIuMTYuNDguMTMwLm5mczogMjg5NiBwcm9jLTI4MjQ2OTA1NjgKMTE6MTI6MzUuNjc5OTI1
+IElQIDE3Mi4xNi40OC4xMzAubmZzID4gMTcyLjE2LjQ4LjUyLjg3OTogLiBhY2sgODIwMzEzMiB3
+aW4gMjg5NiA8bm9wLG5vcCx0aW1lc3RhbXAgMTg5NTgxMzQgNTE1OTM2NzI3PgoxMToxMjozNS42
+Nzk5NDIgSVAgMTcyLjE2LjQ4LjUyLjI0NTE4NjM3NzkgPiAxNzIuMTYuNDguMTMwLm5mczogMjg5
+NiBwcm9jLTIxMDQzNjM4MjEKMTE6MTI6MzUuNjgwMTczIElQIDE3Mi4xNi40OC4xMzAubmZzID4g
+MTcyLjE2LjQ4LjUyLjg3OTogLiBhY2sgODIwNjAyOCB3aW4gMjg5NiA8bm9wLG5vcCx0aW1lc3Rh
+bXAgMTg5NTgxMzQgNTE1OTM2NzI3PgoxMToxMjozNS42ODAxODggSVAgMTcyLjE2LjQ4LjUyLjI0
+MjU3NTYwOTggPiAxNzIuMTYuNDguMTMwLm5mczogMjg5NiBwcm9jLTQxMTcwMTk2OTAKMTE6MTI6
+MzUuNjgwNzc3IElQIDE3Mi4xNi40OC4xMzAubmZzID4gMTcyLjE2LjQ4LjUyLjg3OTogLiBhY2sg
+ODIwODkyNCB3aW4gMjg5NiA8bm9wLG5vcCx0aW1lc3RhbXAgMTg5NTgxMzUgNTE1OTM2NzI4Pgox
+MToxMjozNS42ODA3OTQgSVAgMTcyLjE2LjQ4LjUyLjI5NDQyNzQxNDkgPiAxNzIuMTYuNDguMTMw
+Lm5mczogMjg5NiBwcm9jLTIxMTczNTUwMzkKMTE6MTI6MzUuNjgwNzk4IElQIDE3Mi4xNi40OC4x
+MzAubmZzID4gMTcyLjE2LjQ4LjUyLjg3OTogLiBhY2sgODIxMTgyMCB3aW4gMjg5NiA8bm9wLG5v
+cCx0aW1lc3RhbXAgMTg5NTgxMzUgNTE1OTM2NzI4PgoxMToxMjozNS42ODA4MDkgSVAgMTcyLjE2
+LjQ4LjUyLjE3Mjg1NjYwNDUgPiAxNzIuMTYuNDguMTMwLm5mczogMjg5NiBwcm9jLTIyMjA5NzI1
+MDkKMTE6MTI6MzUuNjgxMzE3IElQIDE3Mi4xNi40OC4xMzAubmZzID4gMTcyLjE2LjQ4LjUyLjg3
+OTogLiBhY2sgODIxNDcxNiB3aW4gMjg5NiA8bm9wLG5vcCx0aW1lc3RhbXAgMTg5NTgxMzUgNTE1
+OTM2NzI5PgoxMToxMjozNS42ODEzMzMgSVAgMTcyLjE2LjQ4LjUyLjExMjU2MzIzNDUgPiAxNzIu
+MTYuNDguMTMwLm5mczogMjg5NiBwcm9jLTE5ODQxMTMxMTUKMTE6MTI6MzUuNjgxNTU0IElQIDE3
+Mi4xNi40OC4xMzAubmZzID4gMTcyLjE2LjQ4LjUyLjg3OTogLiBhY2sgODIxNzYxMiB3aW4gMjg5
+NiA8bm9wLG5vcCx0aW1lc3RhbXAgMTg5NTgxMzUgNTE1OTM2NzI5PgoxMToxMjozNS42ODE1NzAg
+SVAgMTcyLjE2LjQ4LjUyLjIwNTIzNjM1ODYgPiAxNzIuMTYuNDguMTMwLm5mczogMjg5NiBwcm9j
+LTMwNTg2NDcwMTIKMTE6MTI6MzUuNjgxODUxIElQIDE3Mi4xNi40OC4xMzAubmZzID4gMTcyLjE2
+LjQ4LjUyLjg3OTogLiBhY2sgODIyMDUwOCB3aW4gMjg5NiA8bm9wLG5vcCx0aW1lc3RhbXAgMTg5
+NTgxMzUgNTE1OTM2NzI5PgoxMToxMjozNS42ODE4NjcgSVAgMTcyLjE2LjQ4LjUyLjMxNjk5MjIx
+NTQgPiAxNzIuMTYuNDguMTMwLm5mczogMjg5NiBwcm9jLTE2OTM1MjkxODEKMTE6MTI6MzUuNjgy
+MDAwIElQIDE3Mi4xNi40OC4xMzAubmZzID4gMTcyLjE2LjQ4LjUyLjIxMzM3MDg4NTk6IHJlcGx5
+IG9rIDE0MAoxMToxMjozNS42ODI2MDEgSVAgMTcyLjE2LjQ4LjEzMC5uZnMgPiAxNzIuMTYuNDgu
+NTIuODc5OiAuIGFjayA4MjI2MzAwIHdpbiAyODk2IDxub3Asbm9wLHRpbWVzdGFtcCAxODk1ODEz
+NSA1MTU5MzY3Mjk+CjExOjEyOjM1LjY4MjYxNyBJUCAxNzIuMTYuNDguNTIuMjA2NDQwNjU0ID4g
+MTcyLjE2LjQ4LjEzMC5uZnM6IDI4OTYgcHJvYy0yNDAwMjg5OTY3CjExOjEyOjM1LjY4MjYyNSBJ
+UCAxNzIuMTYuNDguNTIuMjY4MTY0ODMwMSA+IDE3Mi4xNi40OC4xMzAubmZzOiAyODk2IHByb2Mt
+OTY5ODk4NjMyCjExOjEyOjM1LjY4MzEzMiBJUCAxNzIuMTYuNDguMTMwLm5mcyA+IDE3Mi4xNi40
+OC41Mi44Nzk6IC4gYWNrIDgyMjkxOTYgd2luIDI4OTYgPG5vcCxub3AsdGltZXN0YW1wIDE4OTU4
+MTM1IDUxNTkzNjczMD4KMTE6MTI6MzUuNjgzMTQ5IElQIDE3Mi4xNi40OC41Mi4xNjYxODI0NjMg
+PiAxNzIuMTYuNDguMTMwLm5mczogMjg5NiBwcm9jLTQxMzc5NDA0OTAKMTE6MTI6MzUuNjgzMzc5
+IElQIDE3Mi4xNi40OC4xMzAubmZzID4gMTcyLjE2LjQ4LjUyLjg3OTogLiBhY2sgODIzMjA5MiB3
+aW4gMjg5NiA8bm9wLG5vcCx0aW1lc3RhbXAgMTg5NTgxMzUgNTE1OTM2NzMwPgoxMToxMjozNS42
+ODMzOTUgSVAgMTcyLjE2LjQ4LjUyLjg3MDQ1NzY3MCA+IDE3Mi4xNi40OC4xMzAubmZzOiAyODk2
+IHByb2MtNDYwOTE3ODI0CjExOjEyOjM1LjY4MzY2MyBJUCAxNzIuMTYuNDguMTMwLm5mcyA+IDE3
+Mi4xNi40OC41Mi44Nzk6IC4gYWNrIDgyMzQ5ODggd2luIDI4OTYgPG5vcCxub3AsdGltZXN0YW1w
+IDE4OTU4MTM1IDUxNTkzNjczMT4KMTE6MTI6MzUuNjgzNjc4IElQIDE3Mi4xNi40OC41Mi45MjE1
+NTgyMzIgPiAxNzIuMTYuNDguMTMwLm5mczogMjg5NiBwcm9jLTEyNjA3ODE4MzgKMTE6MTI6MzUu
+NjgzOTA1IElQIDE3Mi4xNi40OC4xMzAubmZzID4gMTcyLjE2LjQ4LjUyLjg3OTogLiBhY2sgODIz
+Nzg4NCB3aW4gMjg5NiA8bm9wLG5vcCx0aW1lc3RhbXAgMTg5NTgxMzUgNTE1OTM2NzMxPgoxMTox
+MjozNS42ODM5MjIgSVAgMTcyLjE2LjQ4LjUyLjIxMTk3ODQ3NjkgPiAxNzIuMTYuNDguMTMwLm5m
+czogMjg5NiBwcm9jLTQyNTU2NTg5MjgKMTE6MTI6MzUuNjg0NTcwIElQIDE3Mi4xNi40OC4xMzAu
+bmZzID4gMTcyLjE2LjQ4LjUyLjg3OTogLiBhY2sgODI0MDc4MCB3aW4gMjg5NiA8bm9wLG5vcCx0
+aW1lc3RhbXAgMTg5NTgxMzYgNTE1OTM2NzMxPgoxMToxMjozNS42ODQ1ODYgSVAgMTcyLjE2LjQ4
+LjUyLjI2MDQyMTQwMjMgPiAxNzIuMTYuNDguMTMwLm5mczogMjg5NiBwcm9jLTQwMzk4NDA3NTAK
+MTE6MTI6MzUuNjg0NTk0IElQIDE3Mi4xNi40OC4xMzAubmZzID4gMTcyLjE2LjQ4LjUyLjg3OTog
+LiBhY2sgODI0MzY3NiB3aW4gMjg5NiA8bm9wLG5vcCx0aW1lc3RhbXAgMTg5NTgxMzYgNTE1OTM2
+NzMyPgoxMToxMjozNS42ODQ2MDcgSVAgMTcyLjE2LjQ4LjUyLjIwMzE3NjEwMTIgPiAxNzIuMTYu
+NDguMTMwLm5mczogMjg5NiBwcm9jLTQxOTU2MDUxOTIKMTE6MTI6MzUuNjg1MTE1IElQIDE3Mi4x
+Ni40OC4xMzAubmZzID4gMTcyLjE2LjQ4LjUyLjg3OTogLiBhY2sgODI0NjU3MiB3aW4gMjg5NiA8
+bm9wLG5vcCx0aW1lc3RhbXAgMTg5NTgxMzYgNTE1OTM2NzMyPgoxMToxMjozNS42ODUxMzMgSVAg
+MTcyLjE2LjQ4LjUyLjM4NDYyMjk3NDYgPiAxNzIuMTYuNDguMTMwLm5mczogMjg5NiBwcm9jLTIz
+ODA0OTg4NDcKMTE6MTI6NDQuODU1NzczIElQIDE3Mi4xNi40OC41Mi44ODQgPiAxNzIuMTYuNDgu
+MTMwLm5mczogLiBhY2sgMzM5NjM5NTgzMyB3aW4gNTAxIDxub3Asbm9wLHRpbWVzdGFtcCA1MTU5
+NDU5MDQgMTg5MzA0MjQ+CjExOjEyOjQ0Ljg1NjAwMyBJUCAxNzIuMTYuNDguMTMwLm5mcyA+IDE3
+Mi4xNi40OC41Mi44ODQ6IC4gYWNrIDEgd2luIDAgPG5vcCxub3AsdGltZXN0YW1wIDE4OTYwNDI5
+IDUxNTYxOTMwMz4KMTE6MTI6NDUuMjI3ODIyIElQIDE3Mi4xNi40OC41Mi44NzkgPiAxNzIuMTYu
+NDguMTMwLm5mczogLiBhY2sgNDA3NDAyMjUzNCB3aW4gNzI5IDxub3Asbm9wLHRpbWVzdGFtcCA1
+MTU5NDYyNzYgMTg5NTk3MTA+CjExOjEyOjQ1LjIyODA0OSBJUCAxNzIuMTYuNDguMTMwLm5mcyA+
+IDE3Mi4xNi40OC41Mi44Nzk6IC4gYWNrIDEgd2luIDAgPG5vcCxub3AsdGltZXN0YW1wIDE4OTYw
+NTIyIDUxNTkzOTk4Nj4KMTE6MTI6NTEuMTI4NzY1IElQIDE3Mi4xNi40OC41Mi44ODIgPiAxNzIu
+MTYuNDguMTMwLm5mczogLiBhY2sgMzg3MTYxNDQwMSB3aW4gNTAxIDxub3Asbm9wLHRpbWVzdGFt
+cCA1MTU5NTIxNzcgMTg5MzYxMzc+CjExOjEyOjUxLjEyODk3MiBJUCAxNzIuMTYuNDguMTMwLm5m
+cyA+IDE3Mi4xNi40OC41Mi44ODI6IC4gYWNrIDEgd2luIDAgPG5vcCxub3AsdGltZXN0YW1wIDE4
+OTYxOTk3IDUxNTc0NTU3MT4KMTE6MTI6NTEuNzIzNzgxIElQIDE3Mi4xNi40OC41Mi44NzkgPiAx
+NzIuMTYuNDguMTMwLm5mczogLiBhY2sgMSB3aW4gNzI5IDxub3Asbm9wLHRpbWVzdGFtcCA1MTU5
+NTI3NzIgMTg5NjA1MjI+CjExOjEyOjUxLjcyMzk0OCBJUCAxNzIuMTYuNDguMTMwLm5mcyA+IDE3
+Mi4xNi40OC41Mi44Nzk6IC4gYWNrIDEgd2luIDAgPG5vcCxub3AsdGltZXN0YW1wIDE4OTYyMTQ2
+IDUxNTkzOTk4Nj4KCgo=
+
+------_=_NextPart_001_01C86D51.F8F02CB7--
