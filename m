@@ -1,76 +1,57 @@
-From: Harshula <harshula@sgi.com>
-Subject: [PATCH] nfs-utils: mountd: empty export list should not be treated
-	as a failure
-Date: Tue, 12 Feb 2008 16:13:11 +1100
-Message-ID: <1202793191.2890.36.camel@serendib.melbourne.sgi.com>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [NFS] -EXDEV between mounts that are same fs
+Date: Mon, 11 Feb 2008 23:54:04 -0500
+Message-ID: <20080212045404.GA625@infradead.org>
+References: <20080209213511.59ff4e2c@poseidon.drzeus.cx>
+	<20080209231435.GA20501@fieldses.org>
+	<20080210131224.1d4ae39f@poseidon.drzeus.cx>
+	<20080210152618.GB25571@fieldses.org>
+	<20080210153340.GB14540@infradead.org>
+	<20080210155733.GC25571@fieldses.org>
+	<20080210155923.GA15345@infradead.org>
+	<20080210181053.GD25571@fieldses.org>
+	<20080210182121.GA5247@infradead.org>
+	<20080211162136.GK25742@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: NFS list <linux-nfs@vger.kernel.org>
-To: Steve Dickson <SteveD@redhat.com>
+Content-Type: text/plain; charset="us-ascii"
+Cc: Christoph Hellwig <hch@infradead.org>, nfs@lists.sourceforge.net,
+	Pierre Ossman <drzeus-list-p3sGCRWkH8CeZLLa646FqQ@public.gmane.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from relay1.sgi.com ([192.48.171.29]:58096 "EHLO relay.sgi.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1750814AbYBLFNR (ORCPT
-	<rfc822;@relay.sgi.com:linux-nfs@vger.kernel.org>);
-	Tue, 12 Feb 2008 00:13:17 -0500
+Received: from neil.brown.name ([220.233.11.133]:53604 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752791AbYBLFn2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Feb 2008 00:43:28 -0500
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1JOnvR-0007Vi-Ll
+	for linux-nfs@vger.kernel.org; Tue, 12 Feb 2008 16:43:25 +1100
+In-Reply-To: <20080211162136.GK25742@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Steve,
+On Mon, Feb 11, 2008 at 11:21:36AM -0500, J. Bruce Fields wrote:
+> > http://verein.lst.de/~hch/xfs/xfs-multiple-containers.txt
+> 
+> Excellent, thanks, yes that's just what we'd want....
 
-This patch is against:
-git://git.linux-nfs.org/projects/steved/nfs-utils.git
-
-In mountd, if get_exportlist() (utils/mountd/mountd.c) returns NULL it
-should not be considered a failure. It just means that there are no
-exports on the system.
-
-The practical problem with the current code is that a showmount -e
-results in a syslog message from mountd that looks like:
-
-rpc.mountd: export request from 10.250.100.2 failed.
+The proposal still lacks the idea of encoding the projid in the file
+handle.  But I think we could do that quite easily, but I'd do it after
+my planned next round of the export interface cleanups, so that a
+filehandle can see at mount time how much of the filehandle space it
+has left and refuse the export if it doesn't fit (e.g. exporting with
+various 64bit inode fields and NFSv2, or projids on NFSv2)
 
 
-References: SGI: PV977213
-Reviewed-by: Greg Banks <gnb@sgi.com>
-Signed-off-by: Harshula Jayasuriya <harshula@sgi.com>
----
-
- utils/mountd/mountd.c |   11 ++++-------
- 1 file changed, 4 insertions(+), 7 deletions(-)
-
---- a/utils/mountd/mountd.c
-+++ b/utils/mountd/mountd.c
-@@ -254,10 +254,8 @@ mount_export_1_svc(struct svc_req *rqstp, void
-*argp, exports *resp)
-        struct sockaddr_in *addr =
-                (struct sockaddr_in *) svc_getcaller(rqstp->rq_xprt);
- 
--       if ((*resp = get_exportlist()) == NULL)
--               xlog(L_WARNING, "export request from %s failed.",
--                       inet_ntoa(addr->sin_addr));
--
-+       xlog(D_CALL, "EXPORT1 request from %s.",
-inet_ntoa(addr->sin_addr));
-+       *resp = get_exportlist();
-        return 1;
- }
- 
-@@ -267,9 +265,8 @@ mount_exportall_1_svc(struct svc_req *rqstp, void
-*argp, exports *resp)
-        struct sockaddr_in *addr =
-                (struct sockaddr_in *) svc_getcaller(rqstp->rq_xprt);
- 
--       if ((*resp = get_exportlist()) == NULL)
--               xlog(L_WARNING, "exportall request from %s failed.",
--                       inet_ntoa(addr->sin_addr));
-+       xlog(D_CALL, "EXPORTALL1 request from %s.",
-inet_ntoa(addr->sin_addr));
-+       *resp = get_exportlist();
-        return 1;
- }
- 
-
-cya,
-#
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Microsoft
+Defy all challenges. Microsoft(R) Visual Studio 2008.
+http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
