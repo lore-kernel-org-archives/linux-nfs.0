@@ -1,39 +1,62 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 07/11] NFSD: Use "depends on" for PROC_FS dependency
-Date: Tue, 12 Feb 2008 17:57:49 -0500
-Message-ID: <1202857069.9228.14.camel@heimdal.trondhjem.org>
-References: <20080211221216.1047.31922.stgit@manray.1015granger.net>
-	 <20080212212325.GM18625@fieldses.org>
-	 <1202852836.9228.1.camel@heimdal.trondhjem.org>
-	 <20080212223235.GP18625@fieldses.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] SUNRPC: allow svc_recv to break out of 500ms sleep
+	when alloc_page fails
+Date: Tue, 12 Feb 2008 18:50:45 -0500
+Message-ID: <20080212235045.GV18625@fieldses.org>
+References: <1202834844-7785-1-git-send-email-jlayton@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from pat.uio.no ([129.240.10.15]:37250 "EHLO pat.uio.no"
+Received: from mail.fieldses.org ([66.93.2.214]:56545 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752648AbYBLW6A (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 Feb 2008 17:58:00 -0500
-In-Reply-To: <20080212223235.GP18625@fieldses.org>
+	id S1758966AbYBLXur (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Feb 2008 18:50:47 -0500
+In-Reply-To: <1202834844-7785-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Tue, 2008-02-12 at 17:32 -0500, J. Bruce Fields wrote:
-> > > I assume nobody cares?
-> > 
-> > You assume wrongly. Patch NAKed...
+On Tue, Feb 12, 2008 at 11:47:24AM -0500, Jeff Layton wrote:
+> svc_recv() calls alloc_page(), and if it fails it does a 500ms
+> uninterruptible sleep and then reattempts. There doesn't seem to be any
+> real reason for this to be uninterruptible, so change it to an
+> interruptible sleep. Also check for kthread_stop() and signalled() after
+> setting the task state to avoid races that might lead to sleeping after
+> kthread_stop() wakes up the task.
 > 
-> Do you have a use case in mind?  (Just curious.)
+> I've done some very basic smoke testing with this, but obviously it's
+> hard to test the actual changes since this all depends on an
+> alloc_page() call failing.
 
-Embedded systems often compile without sysctl and/or procfs support. Why
-shouldn't they be able to run an NFS client with RPCSEC_GSS?
+Looks right to me, thanks; applied.--b.
 
-The other argument is that there is _nothing_ in the actual auth_gss
-code that depends on procfs. The "dependency" (if there is one) is
-between net/sunrpc/cache.c and procfs, and in fact, both sunrpc and the
-auth_gss modules will compile just fine without procfs.
-
-
-
+> 
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  net/sunrpc/svc_xprt.c |    8 +++++---
+>  1 files changed, 5 insertions(+), 3 deletions(-)
+> 
+> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+> index 53c8ea9..dee7837 100644
+> --- a/net/sunrpc/svc_xprt.c
+> +++ b/net/sunrpc/svc_xprt.c
+> @@ -587,10 +587,12 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
+>  		while (rqstp->rq_pages[i] == NULL) {
+>  			struct page *p = alloc_page(GFP_KERNEL);
+>  			if (!p) {
+> -				int j = msecs_to_jiffies(500);
+> -				if (kthread_should_stop())
+> +				set_current_state(TASK_INTERRUPTIBLE);
+> +				if (signalled() || kthread_should_stop()) {
+> +					set_current_state(TASK_RUNNING);
+>  					return -EINTR;
+> -				schedule_timeout_uninterruptible(j);
+> +				}
+> +				schedule_timeout(msecs_to_jiffies(500));
+>  			}
+>  			rqstp->rq_pages[i] = p;
+>  		}
+> -- 
+> 1.5.3.8
+> 
