@@ -1,71 +1,150 @@
-From: "Pascal A. Dupuis" <Pascal.Dupuis-s1sOSHjJPfVpcTqYljSg7g@public.gmane.org>
-Subject: [NFS] Mapping ?
-Date: Tue, 12 Feb 2008 20:40:41 +0100
-Message-ID: <20080212194040.GA16370@example.org>
-Reply-To: Pascal.Dupuis-s1sOSHjJPfVpcTqYljSg7g@public.gmane.org
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 01/11] NFS: Always enable NFS direct I/O
+Date: Tue, 12 Feb 2008 16:03:23 -0500
+Message-ID: <20080212210323.GH18625@fieldses.org>
+References: <20080211221132.1047.50792.stgit@manray.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: trond.myklebust@fys.uio.no, linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:52551 "EHLO neil.brown.name"
+Received: from mail.fieldses.org ([66.93.2.214]:46666 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1764020AbYBLTlb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 Feb 2008 14:41:31 -0500
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1JP10M-0001ox-Qa
-	for linux-nfs@vger.kernel.org; Wed, 13 Feb 2008 06:41:23 +1100
+	id S1765152AbYBLVDq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Feb 2008 16:03:46 -0500
+In-Reply-To: <20080211221132.1047.50792.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+On Mon, Feb 11, 2008 at 05:11:32PM -0500, Chuck Lever wrote:
+> Since O_DIRECT is a standard feature that is enabled in most distros,
 
-next batch of problems. 
-Server setup: I created a /srv/nfsv4 dir, then mounted 3 dir there
-using the bind option: "/backup on /srv/nfsv4/backup type bind
-(rw,bind)" and so on. The /etc/exports contains ONE dir:
-/srv/nfsv4	   192.168.1.2(root_squash,rw,sync,fsid=0,crossmnt,subtree_check)
+Not all distros?  Also, people that really need extremely small kernels
+aren't using distro kernels, are they?  Or does this not add any
+significant size?
 
-rpc.imapd running, /etc/idmapd.conf minimalistic as explained in the
-nfs-howto
+--b.
 
-On the client side, mounting immediatly results in the following
-message: rpc.idmapd[3299]: nss_getpwnam: name '0' does not map into domain 'localdomain' 
- 
-Then,
-`ls -al the_mounted_dir`
-drwxr-xr-x  7 nobody  nogroup 4096 2007-11-28 10:07 backup
-So far so good, but ...
-`ls -al the_mounted_dir/backup`
-kernel: fsid 0:13: expected fileid 0x2, got 0x802a
-
-The file /etc/nsswitch.conf contains "passwd:         compat"
-
-Both server and client running Debian testing, with the package as
-nfs-kernel-server/lenny uptodate 1:1.1.1-12
-Kernel is 2.6.24.2.
-
-Any idea ?
-
-While at the subject, is there a simple way to map UID x on the server
-onto UID y on the client ?
-
-TIA
-
-Pascal Dupuis
-
--- 
+> eliminate the CONFIG_NFS_DIRECTIO build option, and change the
+> fs/nfs/Makefile to always build in the NFS direct I/O engine.
 
 
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Microsoft
-Defy all challenges. Microsoft(R) Visual Studio 2008.
-http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
-
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> 
+>  fs/Kconfig        |   24 ------------------------
+>  fs/nfs/Makefile   |    3 +--
+>  fs/nfs/file.c     |    6 ------
+>  fs/nfs/internal.h |    5 -----
+>  4 files changed, 1 insertions(+), 37 deletions(-)
+> 
+> diff --git a/fs/Kconfig b/fs/Kconfig
+> index 987b5d7..4965fd8 100644
+> --- a/fs/Kconfig
+> +++ b/fs/Kconfig
+> @@ -1638,30 +1638,6 @@ config NFS_V4
+>  
+>  	  If unsure, say N.
+>  
+> -config NFS_DIRECTIO
+> -	bool "Allow direct I/O on NFS files"
+> -	depends on NFS_FS
+> -	help
+> -	  This option enables applications to perform uncached I/O on files
+> -	  in NFS file systems using the O_DIRECT open() flag.  When O_DIRECT
+> -	  is set for a file, its data is not cached in the system's page
+> -	  cache.  Data is moved to and from user-level application buffers
+> -	  directly.  Unlike local disk-based file systems, NFS O_DIRECT has
+> -	  no alignment restrictions.
+> -
+> -	  Unless your program is designed to use O_DIRECT properly, you are
+> -	  much better off allowing the NFS client to manage data caching for
+> -	  you.  Misusing O_DIRECT can cause poor server performance or network
+> -	  storms.  This kernel build option defaults OFF to avoid exposing
+> -	  system administrators unwittingly to a potentially hazardous
+> -	  feature.
+> -
+> -	  For more details on NFS O_DIRECT, see fs/nfs/direct.c.
+> -
+> -	  If unsure, say N.  This reduces the size of the NFS client, and
+> -	  causes open() to return EINVAL if a file residing in NFS is
+> -	  opened with the O_DIRECT flag.
+> -
+>  config NFSD
+>  	tristate "NFS server support"
+>  	depends on INET
+> diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
+> index f54c4d7..344bccb 100644
+> --- a/fs/nfs/Makefile
+> +++ b/fs/nfs/Makefile
+> @@ -8,7 +8,7 @@ EXTRA_CFLAGS = -W -Wall -Wextra -Wsign-compare \
+>  obj-$(CONFIG_NFS_FS) += nfs.o
+>  
+>  nfs-y 			:= client.o dir.o file.o getroot.o inode.o super.o nfs2xdr.o \
+> -			   pagelist.o proc.o read.o symlink.o unlink.o \
+> +			   direct.o pagelist.o proc.o read.o symlink.o unlink.o \
+>  			   write.o namespace.o mount_clnt.o
+>  nfs-$(CONFIG_ROOT_NFS)	+= nfsroot.o
+>  nfs-$(CONFIG_NFS_V3)	+= nfs3proc.o nfs3xdr.o
+> @@ -17,5 +17,4 @@ nfs-$(CONFIG_NFS_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
+>  			   delegation.o idmap.o \
+>  			   callback.o callback_xdr.o callback_proc.o \
+>  			   nfs4namespace.o
+> -nfs-$(CONFIG_NFS_DIRECTIO) += direct.o
+>  nfs-$(CONFIG_SYSCTL) += sysctl.o
+> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+> index ef57a5a..10e8b80 100644
+> --- a/fs/nfs/file.c
+> +++ b/fs/nfs/file.c
+> @@ -234,10 +234,8 @@ nfs_file_read(struct kiocb *iocb, const struct iovec *iov,
+>  	ssize_t result;
+>  	size_t count = iov_length(iov, nr_segs);
+>  
+> -#ifdef CONFIG_NFS_DIRECTIO
+>  	if (iocb->ki_filp->f_flags & O_DIRECT)
+>  		return nfs_file_direct_read(iocb, iov, nr_segs, pos);
+> -#endif
+>  
+>  	dfprintk(VFS, "nfs: read(%s/%s, %lu@%lu)\n",
+>  		dentry->d_parent->d_name.name, dentry->d_name.name,
+> @@ -383,9 +381,7 @@ const struct address_space_operations nfs_file_aops = {
+>  	.write_end = nfs_write_end,
+>  	.invalidatepage = nfs_invalidate_page,
+>  	.releasepage = nfs_release_page,
+> -#ifdef CONFIG_NFS_DIRECTIO
+>  	.direct_IO = nfs_direct_IO,
+> -#endif
+>  	.launder_page = nfs_launder_page,
+>  };
+>  
+> @@ -443,10 +439,8 @@ static ssize_t nfs_file_write(struct kiocb *iocb, const struct iovec *iov,
+>  	ssize_t result;
+>  	size_t count = iov_length(iov, nr_segs);
+>  
+> -#ifdef CONFIG_NFS_DIRECTIO
+>  	if (iocb->ki_filp->f_flags & O_DIRECT)
+>  		return nfs_file_direct_write(iocb, iov, nr_segs, pos);
+> -#endif
+>  
+>  	dfprintk(VFS, "nfs: write(%s/%s(%ld), %lu@%Ld)\n",
+>  		dentry->d_parent->d_name.name, dentry->d_name.name,
+> diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+> index fbe5ba4..13f43d6 100644
+> --- a/fs/nfs/internal.h
+> +++ b/fs/nfs/internal.h
+> @@ -113,13 +113,8 @@ extern void nfs_destroy_readpagecache(void);
+>  extern int __init nfs_init_writepagecache(void);
+>  extern void nfs_destroy_writepagecache(void);
+>  
+> -#ifdef CONFIG_NFS_DIRECTIO
+>  extern int __init nfs_init_directcache(void);
+>  extern void nfs_destroy_directcache(void);
+> -#else
+> -#define nfs_init_directcache() (0)
+> -#define nfs_destroy_directcache() do {} while(0)
+> -#endif
+>  
+>  /* nfs2xdr.c */
+>  extern int nfs_stat_to_errno(int);
+> 
