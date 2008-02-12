@@ -1,80 +1,71 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: nfs performance dropped when using 128 MB RAM
-Date: Tue, 12 Feb 2008 13:25:31 -0500
-Message-ID: <20080212182531.GB18625@fieldses.org>
-References: <1202793191.2890.36.camel@serendib.melbourne.sgi.com> <340C71CD25A7EB49BFA81AE8C8392667013239CA@BBY1EXM10.pmc_nt.nt.pmc-sierra.bc.ca>
+From: "Pascal A. Dupuis" <Pascal.Dupuis-s1sOSHjJPfVpcTqYljSg7g@public.gmane.org>
+Subject: [NFS] Mapping ?
+Date: Tue, 12 Feb 2008 20:40:41 +0100
+Message-ID: <20080212194040.GA16370@example.org>
+Reply-To: Pascal.Dupuis-s1sOSHjJPfVpcTqYljSg7g@public.gmane.org
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Sagar Borikar <Sagar_Borikar-4W7cOCfLBmzY0TyS/+Ba5Q@public.gmane.org>
+Content-Type: text/plain; charset="us-ascii"
+To: nfs@lists.sourceforge.net
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:37677 "EHLO fieldses.org"
+Received: from neil.brown.name ([220.233.11.133]:52551 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760755AbYBLSZf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 Feb 2008 13:25:35 -0500
-In-Reply-To: <340C71CD25A7EB49BFA81AE8C8392667013239CA-WnaG5mLaJUuZWFWj0wbTyA@public.gmane.org_nt.nt.pmc-sierra.bc.ca>
+	id S1764020AbYBLTlb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Feb 2008 14:41:31 -0500
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1JP10M-0001ox-Qa
+	for linux-nfs@vger.kernel.org; Wed, 13 Feb 2008 06:41:23 +1100
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Feb 12, 2008 at 12:33:41AM -0800, Sagar Borikar wrote:
->  Hello Folks,
->  
-> I am not sure if this is the right place for this question. If not, I am
-> sorry and request you to direct me to right mailing list.
+Hello,
 
-This is the right list, but you're replying to an unrelated message,
-which confuses those of us with threaded mail readers--no big deal, just
-please be more careful about that next time.
+next batch of problems. 
+Server setup: I created a /srv/nfsv4 dir, then mounted 3 dir there
+using the bind option: "/backup on /srv/nfsv4/backup type bind
+(rw,bind)" and so on. The /etc/exports contains ONE dir:
+/srv/nfsv4	   192.168.1.2(root_squash,rw,sync,fsid=0,crossmnt,subtree_check)
 
-> Currently I am working on a product which is derived from its ancestor
-> with more or less similar feature set and few additions. Other than
-> memory size, there are not hardware changes. The newer one is having 128
-> MB RAM while the ancestor was having 512 MB of RAM. The functionality
-> carried forward is also similar except for nfs. Both have gigabit
-> Ethernet interfaces
+rpc.imapd running, /etc/idmapd.conf minimalistic as explained in the
+nfs-howto
 
-This is a server, not a client?  What kernel are you using?
+On the client side, mounting immediatly results in the following
+message: rpc.idmapd[3299]: nss_getpwnam: name '0' does not map into domain 'localdomain' 
+ 
+Then,
+`ls -al the_mounted_dir`
+drwxr-xr-x  7 nobody  nogroup 4096 2007-11-28 10:07 backup
+So far so good, but ...
+`ls -al the_mounted_dir/backup`
+kernel: fsid 0:13: expected fileid 0x2, got 0x802a
 
---b.
+The file /etc/nsswitch.conf contains "passwd:         compat"
 
->                  I am finding that nfs write performance has drastically
-> reduced say 1 MB/s or even it stalls for large file transfers to the
-> box. On the contrary it works fine with 512 MB of RAM. The CPU
-> utilization by nfsd as well as rpc.statd / rpc.mountd is also non
-> existent. Rather nfsd most of the time is sleeping for the data.  While
-> trying to analyse through ethereal, I observe that the write requests by
-> clients to the the server are periodic say around 1.5-2 minutes
-> interval. Till then the tcpdump captures that the handshake is going on
-> only for ack messages for wait requests. After then suddenly the burst
-> write transfer starts and within 4-5 seconds when the buffers are full
-> and no free memory is available, again it repeats the same cycle. When
-> poking in the meminfo stats, I found that there are no dirty pages and
-> write back buffers available before write bursts. As soon as the buffers
-> are available, nfs sends requests for further data and meminfo stats are
-> as it is. The free memory which is LowFree memory used by kernel data
-> structures in our case as High free memory is zero, is very less when
-> the buffers are not cleaned up. Once the burst data transfer finishes,
-> cached memory equal to that of previous buffered gets cleared as
-> expected. But Inactive memory is still high. I am attaching the tcpdump
-> logs with this mail. I am using rsize / wsize as 64k. Tried various
-> combinations of these sizes while mounting the nfs clients but it didn't
-> help.
-> I tried to check whether this problem is system wide but unfortunately
-> CIFS and FTP writes are pretty fast. so only nfs performance is affected
-> due to RAM size reduction. We have enabled socket buffer recycling in
-> Ethernet driver which block 600k of data for recycling. Even just to get
-> confirmation, I disabled the skb  recycling, even then the result was
-> same. I am not seeing this kind of behavior in other workstations with
-> 128 MB of RAM and mips architecture.
-> Can anyone let me know, why the write requests are buffered and
-> periodically they get cleared? 
-> Also does nfs stack, requires special buffer availability for succeeding
-> write requests? 
->  
-> Thanks and Regards,
-> Sagar Borikar 
-> PMC sierra
->  
->  
+Both server and client running Debian testing, with the package as
+nfs-kernel-server/lenny uptodate 1:1.1.1-12
+Kernel is 2.6.24.2.
 
+Any idea ?
+
+While at the subject, is there a simple way to map UID x on the server
+onto UID y on the client ?
+
+TIA
+
+Pascal Dupuis
+
+-- 
+
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Microsoft
+Defy all challenges. Microsoft(R) Visual Studio 2008.
+http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
