@@ -1,53 +1,39 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 10/11] NFSD: Remove redundant "select" clauses in
-	fs/Kconfig
-Date: Tue, 12 Feb 2008 17:34:33 -0500
-Message-ID: <20080212223433.GS18625@fieldses.org>
-References: <20080211221238.1047.92046.stgit@manray.1015granger.net>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH 07/11] NFSD: Use "depends on" for PROC_FS dependency
+Date: Tue, 12 Feb 2008 17:57:49 -0500
+Message-ID: <1202857069.9228.14.camel@heimdal.trondhjem.org>
+References: <20080211221216.1047.31922.stgit@manray.1015granger.net>
+	 <20080212212325.GM18625@fieldses.org>
+	 <1202852836.9228.1.camel@heimdal.trondhjem.org>
+	 <20080212223235.GP18625@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: trond.myklebust@fys.uio.no, linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:42115 "EHLO fieldses.org"
+Received: from pat.uio.no ([129.240.10.15]:37250 "EHLO pat.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751494AbYBLWem (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 Feb 2008 17:34:42 -0500
-In-Reply-To: <20080211221238.1047.92046.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+	id S1752648AbYBLW6A (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Feb 2008 17:58:00 -0500
+In-Reply-To: <20080212223235.GP18625@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Feb 11, 2008 at 05:12:38PM -0500, Chuck Lever wrote:
-> As far as I can tell, selecting the CRYPTO and CRYPTO_MD5 entries under
-> CONFIG_NFSD is redundant, since CONFIG_NFSD_V4 already selects
-> RPCSEC_GSS_KRB5, which selects these entries.
-> 
-> Testing with "make menuconfig" shows that the entries under CRYPTO still
-> properly reflect "Y" or "M" based on the setting of CONFIG_NFSD after this
-> change is applied.
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 
-And applied this.  The rest I left alone for now.
+On Tue, 2008-02-12 at 17:32 -0500, J. Bruce Fields wrote:
+> > > I assume nobody cares?
+> > 
+> > You assume wrongly. Patch NAKed...
+> 
+> Do you have a use case in mind?  (Just curious.)
 
---b.
+Embedded systems often compile without sysctl and/or procfs support. Why
+shouldn't they be able to run an NFS client with RPCSEC_GSS?
 
-> ---
-> 
->  fs/Kconfig |    2 --
->  1 files changed, 0 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/Kconfig b/fs/Kconfig
-> index fcaf61e..267ff73 100644
-> --- a/fs/Kconfig
-> +++ b/fs/Kconfig
-> @@ -1658,8 +1658,6 @@ config NFSD
->  	select SUNRPC
->  	select EXPORTFS
->  	select NFS_ACL_SUPPORT if NFSD_V2_ACL
-> -	select CRYPTO_MD5 if NFSD_V4
-> -	select CRYPTO if NFSD_V4
->  	help
->  	  Choose Y here if you want to allow other computers to access
->  	  files residing on this system using Sun's Network File System
-> 
+The other argument is that there is _nothing_ in the actual auth_gss
+code that depends on procfs. The "dependency" (if there is one) is
+between net/sunrpc/cache.c and procfs, and in fact, both sunrpc and the
+auth_gss modules will compile just fine without procfs.
+
+
+
