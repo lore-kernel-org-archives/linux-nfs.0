@@ -1,65 +1,31 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 06/11] NLM: LOCKD fails to load if CONFIG_SYSCTL is not
-	set
-Date: Tue, 12 Feb 2008 16:12:00 -0500
-Message-ID: <20080212211200.GK18625@fieldses.org>
-References: <20080211221209.1047.39544.stgit@manray.1015granger.net>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH] nfs-utils: mountd: empty export list should not be treated
+ as a failure
+Date: Tue, 12 Feb 2008 16:17:33 -0500
+Message-ID: <47B20CED.3050407@RedHat.com>
+References: <1202793191.2890.36.camel@serendib.melbourne.sgi.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: trond.myklebust@fys.uio.no, linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org
+To: Harshula <harshula@sgi.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:39451 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([66.187.233.31]:37141 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759212AbYBLVMK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 Feb 2008 16:12:10 -0500
-In-Reply-To: <20080211221209.1047.39544.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+	id S1758875AbYBLVRg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Feb 2008 16:17:36 -0500
+In-Reply-To: <1202793191.2890.36.camel-2WabGjdRN2LRvmHwrWB8BmjR7Gm6iKkz0E9HWUfgJXw@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Feb 11, 2008 at 05:12:09PM -0500, Chuck Lever wrote:
-> Bruce Fields says:
-> "By the way, we've got another config-related nit here:
+Harshula wrote:
+> In mountd, if get_exportlist() (utils/mountd/mountd.c) returns NULL it
+> should not be considered a failure. It just means that there are no
+> exports on the system.
 > 
-> 	http://bugzilla.linux-nfs.org/show_bug.cgi?id=156
+> The practical problem with the current code is that a showmount -e
+> results in a syslog message from mountd that looks like:
 > 
-> You can build lockd without CONFIG_SYSCTL set, but then the module will
-> fail to load."
-> 
-> It looks like sysctl is needed for passing nsm_local_state between the
-> user space and the kernel.  If that's not available, NSM notification
-> from user space appears not to work.
-> 
-> It's not a fatal error if the nsm_local_state file doesn't exist, however
-> I've chosen to ensure CONFIG_SYSCTL is selected if LOCKD is selected.  The
-> other choice is for nlm_init() to ignore the return code from the sysctl
-> root registration call, but I think administrators would be surprised
-> that NSM isn't working in this case.
+> rpc.mountd: export request from 10.250.100.2 failed.
+Committed... thanks!
 
-OK.
-
-So does anyone understand why the nfs-utils code tries to use
-nsm_local_state, but then silently ignores any failure to find it?
-
---b.
-
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
-> 
->  fs/Kconfig |    1 +
->  1 files changed, 1 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/Kconfig b/fs/Kconfig
-> index 6c4e17b..0c8f85d 100644
-> --- a/fs/Kconfig
-> +++ b/fs/Kconfig
-> @@ -1737,6 +1737,7 @@ config NFSD_V4
->  
->  config LOCKD
->  	tristate
-> +	select SYSCTL
->  
->  config LOCKD_V4
->  	bool
-> 
+steved.
