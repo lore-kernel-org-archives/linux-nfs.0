@@ -1,167 +1,112 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 01/11] NFS: Always enable NFS direct I/O
-Date: Tue, 12 Feb 2008 17:02:47 -0500
-Message-ID: <BF43AC4C-9009-4BE3-B8B1-DF9A9E87B322@oracle.com>
-References: <20080211221132.1047.50792.stgit@manray.1015granger.net> <20080212210323.GH18625@fieldses.org>
+Subject: Re: [PATCH 07/11] NFSD: Use "depends on" for PROC_FS dependency
+Date: Tue, 12 Feb 2008 17:10:57 -0500
+Message-ID: <9C44C93A-AC87-4B21-8E31-872186ABCEBB@oracle.com>
+References: <20080211221216.1047.31922.stgit@manray.1015granger.net> <20080212212325.GM18625@fieldses.org>
 Mime-Version: 1.0 (Apple Message framework v753)
 Content-Type: text/plain; charset=US-ASCII; delsp=yes; format=flowed
 Cc: trond.myklebust@fys.uio.no, linux-nfs@vger.kernel.org
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:59200 "EHLO
+Received: from agminet01.oracle.com ([141.146.126.228]:62836 "EHLO
 	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752585AbYBLWDm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Feb 2008 17:03:42 -0500
-In-Reply-To: <20080212210323.GH18625@fieldses.org>
+	with ESMTP id S1752536AbYBLWL2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Feb 2008 17:11:28 -0500
+In-Reply-To: <20080212212325.GM18625@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Feb 12, 2008, at 4:03 PM, J. Bruce Fields wrote:
-> On Mon, Feb 11, 2008 at 05:11:32PM -0500, Chuck Lever wrote:
->> Since O_DIRECT is a standard feature that is enabled in most distros,
->
-> Not all distros?  Also, people that really need extremely small  
-> kernels
-> aren't using distro kernels, are they?  Or does this not add any
-> significant size?
 
-When building the NFS client module on x86_64 with everything else  
-enabled, but direct I/O disabled, the module is about 3% smaller than  
-with everything enabled.
+On Feb 12, 2008, at 4:23 PM, J. Bruce Fields wrote:
 
-Embedded distros can disable NFSv4 and RPCSEC for a much more  
-significant savings.
+> On Mon, Feb 11, 2008 at 05:12:16PM -0500, Chuck Lever wrote:
+>> Recently, commit 440bcc59 added a reverse dependency to fs/Kconfig to
+>> ensure that PROC_FS was enabled if NFSD_V4 was enabled.
+>>
+>> There is a guideline in Documentation/kbuild/kconfig-language.txt  
+>> that
+>> states "In general use select only for non-visible symbols (no  
+>> prompts
+>> anywhere) and for symbols with no dependencies."
+>>
+>> A quick grep around other Kconfig files reveals that no entry  
+>> currently
+>> uses "select PROC_FS" -- every one uses "depends on".  Thus  
+>> CONFIG_NFSD_V4
+>> should use "depends on PROC_FS" as well.
+>
+> OK.
+>
+>>
+>> For SUNRPC_GSS, it's a little more complex.  Other entries can  
+>> "select"
+>> SUNRPC_GSS, as it is non-visible.  However, the guideline suggests an
+>> entry can't "select" it if it has a dependency (such as PROC_FS).
+>> So, we add forward dependencies on PROC_FS to RPCSEC_GSS_FOO instead.
+>
+> This also makes the client dependent on PROC_FS, which it wasn't  
+> before.
+>
+> I assume nobody cares?
 
->> eliminate the CONFIG_NFS_DIRECTIO build option, and change the
->> fs/nfs/Makefile to always build in the NFS direct I/O engine.
->
->
+Huh?  If I disable PROC_FS, I can still select the NFS client  
+options, even NFSv4.
+
+>> XXX: Both CONFIG_NFSV4 and CONFIG_NFSD_V4 select RPCSEC_GSS_KRB5,  
+>> which is
+>> visible, which kconfig-language.txt also frowns upon.  The intent  
+>> was to
+>> enable at least one GSS mechanism if V4 was enabled.  Perhaps we  
+>> should
+>> make SUNRPC_GSS visible, and make the NFSv4 options visible only if
+>> SUNRPC_GSS is enabled.
 >>
 >> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 >> ---
 >>
->>  fs/Kconfig        |   24 ------------------------
->>  fs/nfs/Makefile   |    3 +--
->>  fs/nfs/file.c     |    6 ------
->>  fs/nfs/internal.h |    5 -----
->>  4 files changed, 1 insertions(+), 37 deletions(-)
+>>  fs/Kconfig |    8 +++-----
+>>  1 files changed, 3 insertions(+), 5 deletions(-)
 >>
 >> diff --git a/fs/Kconfig b/fs/Kconfig
->> index 987b5d7..4965fd8 100644
+>> index 0c8f85d..9ee288f 100644
 >> --- a/fs/Kconfig
 >> +++ b/fs/Kconfig
->> @@ -1638,30 +1638,6 @@ config NFS_V4
+>> @@ -1662,8 +1662,6 @@ config NFSD
+>>  	select CRYPTO_MD5 if NFSD_V4
+>>  	select CRYPTO if NFSD_V4
+>>  	select FS_POSIX_ACL if NFSD_V4
+>> -	select PROC_FS if NFSD_V4
+>> -	select PROC_FS if SUNRPC_GSS
+>>  	help
+>>  	  Choose Y here if you want to allow other computers to access
+>>  	  files residing on this system using Sun's Network File System
+>> @@ -1723,7 +1721,7 @@ config NFSD_V3_ACL
 >>
->>  	  If unsure, say N.
+>>  config NFSD_V4
+>>  	bool "NFS server support for NFS version 4 (EXPERIMENTAL)"
+>> -	depends on NFSD && NFSD_V3 && EXPERIMENTAL
+>> +	depends on NFSD && NFSD_V3 && PROC_FS && EXPERIMENTAL
+>>  	select RPCSEC_GSS_KRB5
+>>  	help
+>>  	  This option enables support in your system's NFS server for
+>> @@ -1798,7 +1796,7 @@ config SUNRPC_BIND34
 >>
->> -config NFS_DIRECTIO
->> -	bool "Allow direct I/O on NFS files"
->> -	depends on NFS_FS
->> -	help
->> -	  This option enables applications to perform uncached I/O on files
->> -	  in NFS file systems using the O_DIRECT open() flag.  When  
->> O_DIRECT
->> -	  is set for a file, its data is not cached in the system's page
->> -	  cache.  Data is moved to and from user-level application buffers
->> -	  directly.  Unlike local disk-based file systems, NFS O_DIRECT has
->> -	  no alignment restrictions.
->> -
->> -	  Unless your program is designed to use O_DIRECT properly, you are
->> -	  much better off allowing the NFS client to manage data caching  
->> for
->> -	  you.  Misusing O_DIRECT can cause poor server performance or  
->> network
->> -	  storms.  This kernel build option defaults OFF to avoid exposing
->> -	  system administrators unwittingly to a potentially hazardous
->> -	  feature.
->> -
->> -	  For more details on NFS O_DIRECT, see fs/nfs/direct.c.
->> -
->> -	  If unsure, say N.  This reduces the size of the NFS client, and
->> -	  causes open() to return EINVAL if a file residing in NFS is
->> -	  opened with the O_DIRECT flag.
->> -
->>  config NFSD
->>  	tristate "NFS server support"
->>  	depends on INET
->> diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
->> index f54c4d7..344bccb 100644
->> --- a/fs/nfs/Makefile
->> +++ b/fs/nfs/Makefile
->> @@ -8,7 +8,7 @@ EXTRA_CFLAGS = -W -Wall -Wextra -Wsign-compare \
->>  obj-$(CONFIG_NFS_FS) += nfs.o
+>>  config RPCSEC_GSS_KRB5
+>>  	tristate "Secure RPC: Kerberos V mechanism (EXPERIMENTAL)"
+>> -	depends on SUNRPC && EXPERIMENTAL
+>> +	depends on SUNRPC && PROC_FS && EXPERIMENTAL
+>>  	select SUNRPC_GSS
+>>  	select CRYPTO
+>>  	select CRYPTO_MD5
+>> @@ -1817,7 +1815,7 @@ config RPCSEC_GSS_KRB5
 >>
->>  nfs-y 			:= client.o dir.o file.o getroot.o inode.o super.o  
->> nfs2xdr.o \
->> -			   pagelist.o proc.o read.o symlink.o unlink.o \
->> +			   direct.o pagelist.o proc.o read.o symlink.o unlink.o \
->>  			   write.o namespace.o mount_clnt.o
->>  nfs-$(CONFIG_ROOT_NFS)	+= nfsroot.o
->>  nfs-$(CONFIG_NFS_V3)	+= nfs3proc.o nfs3xdr.o
->> @@ -17,5 +17,4 @@ nfs-$(CONFIG_NFS_V4)	+= nfs4proc.o nfs4xdr.o  
->> nfs4state.o nfs4renewd.o \
->>  			   delegation.o idmap.o \
->>  			   callback.o callback_xdr.o callback_proc.o \
->>  			   nfs4namespace.o
->> -nfs-$(CONFIG_NFS_DIRECTIO) += direct.o
->>  nfs-$(CONFIG_SYSCTL) += sysctl.o
->> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
->> index ef57a5a..10e8b80 100644
->> --- a/fs/nfs/file.c
->> +++ b/fs/nfs/file.c
->> @@ -234,10 +234,8 @@ nfs_file_read(struct kiocb *iocb, const  
->> struct iovec *iov,
->>  	ssize_t result;
->>  	size_t count = iov_length(iov, nr_segs);
->>
->> -#ifdef CONFIG_NFS_DIRECTIO
->>  	if (iocb->ki_filp->f_flags & O_DIRECT)
->>  		return nfs_file_direct_read(iocb, iov, nr_segs, pos);
->> -#endif
->>
->>  	dfprintk(VFS, "nfs: read(%s/%s, %lu@%lu)\n",
->>  		dentry->d_parent->d_name.name, dentry->d_name.name,
->> @@ -383,9 +381,7 @@ const struct address_space_operations  
->> nfs_file_aops = {
->>  	.write_end = nfs_write_end,
->>  	.invalidatepage = nfs_invalidate_page,
->>  	.releasepage = nfs_release_page,
->> -#ifdef CONFIG_NFS_DIRECTIO
->>  	.direct_IO = nfs_direct_IO,
->> -#endif
->>  	.launder_page = nfs_launder_page,
->>  };
->>
->> @@ -443,10 +439,8 @@ static ssize_t nfs_file_write(struct kiocb  
->> *iocb, const struct iovec *iov,
->>  	ssize_t result;
->>  	size_t count = iov_length(iov, nr_segs);
->>
->> -#ifdef CONFIG_NFS_DIRECTIO
->>  	if (iocb->ki_filp->f_flags & O_DIRECT)
->>  		return nfs_file_direct_write(iocb, iov, nr_segs, pos);
->> -#endif
->>
->>  	dfprintk(VFS, "nfs: write(%s/%s(%ld), %lu@%Ld)\n",
->>  		dentry->d_parent->d_name.name, dentry->d_name.name,
->> diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
->> index fbe5ba4..13f43d6 100644
->> --- a/fs/nfs/internal.h
->> +++ b/fs/nfs/internal.h
->> @@ -113,13 +113,8 @@ extern void nfs_destroy_readpagecache(void);
->>  extern int __init nfs_init_writepagecache(void);
->>  extern void nfs_destroy_writepagecache(void);
->>
->> -#ifdef CONFIG_NFS_DIRECTIO
->>  extern int __init nfs_init_directcache(void);
->>  extern void nfs_destroy_directcache(void);
->> -#else
->> -#define nfs_init_directcache() (0)
->> -#define nfs_destroy_directcache() do {} while(0)
->> -#endif
->>
->>  /* nfs2xdr.c */
->>  extern int nfs_stat_to_errno(int);
+>>  config RPCSEC_GSS_SPKM3
+>>  	tristate "Secure RPC: SPKM3 mechanism (EXPERIMENTAL)"
+>> -	depends on SUNRPC && EXPERIMENTAL
+>> +	depends on SUNRPC && PROC_FS && EXPERIMENTAL
+>>  	select SUNRPC_GSS
+>>  	select CRYPTO
+>>  	select CRYPTO_MD5
 >>
 
 --
