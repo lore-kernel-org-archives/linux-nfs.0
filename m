@@ -1,49 +1,136 @@
 From: Chuck Lever <chuck.lever@oracle.com>
 Subject: Re: [PATCH 07/11] NFSD: Use "depends on" for PROC_FS dependency
-Date: Wed, 13 Feb 2008 13:22:13 -0500
-Message-ID: <47B33555.8000106@oracle.com>
-References: <20080211221216.1047.31922.stgit@manray.1015granger.net>	 <20080212212325.GM18625@fieldses.org>	 <1202852836.9228.1.camel@heimdal.trondhjem.org>	 <20080212223235.GP18625@fieldses.org> <1202857069.9228.14.camel@heimdal.trondhjem.org>
+Date: Wed, 13 Feb 2008 13:28:29 -0500
+Message-ID: <47B336CD.2020305@oracle.com>
+References: <20080211221216.1047.31922.stgit@manray.1015granger.net> <20080212212325.GM18625@fieldses.org> <9C44C93A-AC87-4B21-8E31-872186ABCEBB@oracle.com> <20080212223020.GO18625@fieldses.org>
 Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
 Content-Type: multipart/mixed;
- boundary="------------010102000604000709060403"
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+ boundary="------------090603070609000700050504"
+Cc: trond.myklebust@fys.uio.no, linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:61891 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751818AbYBMSW5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Feb 2008 13:22:57 -0500
-In-Reply-To: <1202857069.9228.14.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from agminet01.oracle.com ([141.146.126.228]:53060 "EHLO
+	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751796AbYBMS3G (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Feb 2008 13:29:06 -0500
+In-Reply-To: <20080212223020.GO18625@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 This is a multi-part message in MIME format.
---------------010102000604000709060403
+--------------090603070609000700050504
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
 
-Trond Myklebust wrote:
-> On Tue, 2008-02-12 at 17:32 -0500, J. Bruce Fields wrote:
->>>> I assume nobody cares?
->>> You assume wrongly. Patch NAKed...
->> Do you have a use case in mind?  (Just curious.)
+J. Bruce Fields wrote:
+> On Tue, Feb 12, 2008 at 05:10:57PM -0500, Chuck Lever wrote:
+>> On Feb 12, 2008, at 4:23 PM, J. Bruce Fields wrote:
+>>
+>>> On Mon, Feb 11, 2008 at 05:12:16PM -0500, Chuck Lever wrote:
+>>>> Recently, commit 440bcc59 added a reverse dependency to fs/Kconfig to
+>>>> ensure that PROC_FS was enabled if NFSD_V4 was enabled.
+>>>>
+>>>> There is a guideline in Documentation/kbuild/kconfig-language.txt  
+>>>> that
+>>>> states "In general use select only for non-visible symbols (no  
+>>>> prompts
+>>>> anywhere) and for symbols with no dependencies."
+>>>>
+>>>> A quick grep around other Kconfig files reveals that no entry  
+>>>> currently
+>>>> uses "select PROC_FS" -- every one uses "depends on".  Thus  
+>>>> CONFIG_NFSD_V4
+>>>> should use "depends on PROC_FS" as well.
+>>> OK.
+>>>
+>>>> For SUNRPC_GSS, it's a little more complex.  Other entries can  
+>>>> "select"
+>>>> SUNRPC_GSS, as it is non-visible.  However, the guideline suggests an
+>>>> entry can't "select" it if it has a dependency (such as PROC_FS).
+>>>> So, we add forward dependencies on PROC_FS to RPCSEC_GSS_FOO instead.
+>>> This also makes the client dependent on PROC_FS, which it wasn't  
+>>> before.
+>>>
+>>> I assume nobody cares?
+>> Huh?  If I disable PROC_FS, I can still select the NFS client options, 
+>> even NFSv4.
 > 
-> Embedded systems often compile without sysctl and/or procfs support. Why
-> shouldn't they be able to run an NFS client with RPCSEC_GSS?
+> OK.  I'm confused, then:
 > 
-> The other argument is that there is _nothing_ in the actual auth_gss
-> code that depends on procfs. The "dependency" (if there is one) is
-> between net/sunrpc/cache.c and procfs, and in fact, both sunrpc and the
-> auth_gss modules will compile just fine without procfs.
+> 	NFS_V4 selects RPCSEC_GSS_KRB5
+> 	RPCSEC_GSS_KRB5 (after this patch) depends on PROC_FS
+> 
+> What am I missing?
 
-In that case, do we really even need a PROC_FS dependency (forward or 
-reverse) for the RPCSEC entries?
+It appears that the "select RPCSEC_GSS_KRB5" is a no-op if 
+RPCSEC_GSS_KRB5 hasn't met it's forward dependencies.
 
-It would be simple to split this patch into an NFSD_V4 part and an 
-RPCSEC part, and just drop the RPCSEC part.
+>>>> XXX: Both CONFIG_NFSV4 and CONFIG_NFSD_V4 select RPCSEC_GSS_KRB5,  
+>>>> which is
+>>>> visible, which kconfig-language.txt also frowns upon.  The intent  
+>>>> was to
+>>>> enable at least one GSS mechanism if V4 was enabled.  Perhaps we  
+>>>> should
+>>>> make SUNRPC_GSS visible, and make the NFSv4 options visible only if
+>>>> SUNRPC_GSS is enabled.
+>>>>
+>>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>>>> ---
+>>>>
+>>>>  fs/Kconfig |    8 +++-----
+>>>>  1 files changed, 3 insertions(+), 5 deletions(-)
+>>>>
+>>>> diff --git a/fs/Kconfig b/fs/Kconfig
+>>>> index 0c8f85d..9ee288f 100644
+>>>> --- a/fs/Kconfig
+>>>> +++ b/fs/Kconfig
+>>>> @@ -1662,8 +1662,6 @@ config NFSD
+>>>>  	select CRYPTO_MD5 if NFSD_V4
+>>>>  	select CRYPTO if NFSD_V4
+>>>>  	select FS_POSIX_ACL if NFSD_V4
+>>>> -	select PROC_FS if NFSD_V4
+>>>> -	select PROC_FS if SUNRPC_GSS
+>>>>  	help
+>>>>  	  Choose Y here if you want to allow other computers to access
+>>>>  	  files residing on this system using Sun's Network File System
+>>>> @@ -1723,7 +1721,7 @@ config NFSD_V3_ACL
+>>>>
+>>>>  config NFSD_V4
+>>>>  	bool "NFS server support for NFS version 4 (EXPERIMENTAL)"
+>>>> -	depends on NFSD && NFSD_V3 && EXPERIMENTAL
+>>>> +	depends on NFSD && NFSD_V3 && PROC_FS && EXPERIMENTAL
+>>>>  	select RPCSEC_GSS_KRB5
+>>>>  	help
+>>>>  	  This option enables support in your system's NFS server for
+>>>> @@ -1798,7 +1796,7 @@ config SUNRPC_BIND34
+>>>>
+>>>>  config RPCSEC_GSS_KRB5
+>>>>  	tristate "Secure RPC: Kerberos V mechanism (EXPERIMENTAL)"
+>>>> -	depends on SUNRPC && EXPERIMENTAL
+>>>> +	depends on SUNRPC && PROC_FS && EXPERIMENTAL
+>>>>  	select SUNRPC_GSS
+>>>>  	select CRYPTO
+>>>>  	select CRYPTO_MD5
+>>>> @@ -1817,7 +1815,7 @@ config RPCSEC_GSS_KRB5
+>>>>
+>>>>  config RPCSEC_GSS_SPKM3
+>>>>  	tristate "Secure RPC: SPKM3 mechanism (EXPERIMENTAL)"
+>>>> -	depends on SUNRPC && EXPERIMENTAL
+>>>> +	depends on SUNRPC && PROC_FS && EXPERIMENTAL
+>>>>  	select SUNRPC_GSS
+>>>>  	select CRYPTO
+>>>>  	select CRYPTO_MD5
+>>>>
+>> --
+>> Chuck Lever
+>> chuck[dot]lever[at]oracle[dot]com
+>>
+>>
+>>
 
---------------010102000604000709060403
+
+--------------090603070609000700050504
 Content-Type: text/x-vcard; charset=utf-8;
  name="chuck_lever.vcf"
 Content-Transfer-Encoding: 7bit
@@ -63,4 +150,4 @@ version:2.1
 end:vcard
 
 
---------------010102000604000709060403--
+--------------090603070609000700050504--
