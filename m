@@ -1,35 +1,55 @@
-From: Adrian Bunk <bunk@kernel.org>
-Subject: [2.6 patch] make nfsd_create_setattr() static
-Date: Wed, 13 Feb 2008 23:30:26 +0200
-Message-ID: <20080213213026.GD3383@cs181133002.pp.htv.fi>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH] NFS: Allow text-based mounts via compat_sys_mount
+Date: Wed, 13 Feb 2008 16:32:39 -0500
+Message-ID: <1202938359.10574.14.camel@heimdal.trondhjem.org>
+References: <20080213195517.10757.74645.stgit@manray.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-To: "J. Bruce Fields" <bfields@citi.umich.edu>, neilb@suse.de
+Content-Type: text/plain
+Cc: linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp5.pp.htv.fi ([213.243.153.39]:47512 "EHLO smtp5.pp.htv.fi"
+Received: from pat.uio.no ([129.240.10.15]:34766 "EHLO pat.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760117AbYBMVam (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 13 Feb 2008 16:30:42 -0500
+	id S1765486AbYBMVcn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Feb 2008 16:32:43 -0500
+In-Reply-To: <20080213195517.10757.74645.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch makes the needlessly global nfsd_create_setattr() static.
 
-Signed-off-by: Adrian Bunk <bunk@kernel.org>
+On Wed, 2008-02-13 at 14:55 -0500, Chuck Lever wrote:
+> The compat_sys_mount() system call throws EINVAL for text-based NFSv4
+> mounts.
+> 
+> The text-based mount interface assumes that any mount option blob that
+> doesn't set the version field to "1" is a C string (ie not a legacy
+> mount request).  The compat_sys_mount() call treats blobs that don't
+> set the version field to "1" as an error.  We just relax the check in
+> compat_sys_mount() a bit to allow C strings to be passed down to the NFSv4
+> client.
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> 
+>  fs/compat.c |    3 ---
+>  1 files changed, 0 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/compat.c b/fs/compat.c
+> index 5216c3f..61388aa 100644
+> --- a/fs/compat.c
+> +++ b/fs/compat.c
+> @@ -702,9 +702,6 @@ static int do_nfs4_super_data_conv(void *raw_data)
+>  		real->flags = raw->flags;
+>  		real->version = raw->version;
+>  	}
+> -	else {
+> -		return -EINVAL;
+> -	}
+>  
+>  	return 0;
+>  }
 
----
-7cfb17a22a0cf76477fbf1fbe6bf586108a13a44 diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index cc75e4f..035204f 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -1151,7 +1151,7 @@ nfsd_commit(struct svc_rqst *rqstp, struct svc_fh *fhp,
- }
- #endif /* CONFIG_NFSD_V3 */
- 
--__be32
-+static __be32
- nfsd_create_setattr(struct svc_rqst *rqstp, struct svc_fh *resfhp,
- 			struct iattr *iap)
- {
+Looks good. Thanks Chuck!
+
+Trond
 
