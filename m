@@ -1,79 +1,45 @@
-From: "Kevin Coffman" <kwc@citi.umich.edu>
-Subject: Re: [NFS] Mapping ?
-Date: Wed, 13 Feb 2008 11:04:43 -0500
-Message-ID: <4d569c330802130804p1b0f6a32y2925819c0669c49e@mail.gmail.com>
-References: <20080212194040.GA16370@example.org>
+From: Quentin Godfroy <godfroy-7pss2ddYZfWsyDt4atOG6g@public.gmane.org>
+Subject: Re: AES support for RPCSEC_GSS?
+Date: Wed, 13 Feb 2008 18:01:56 +0100
+Message-ID: <20080213170155.GA12551@goelette.ens.fr>
+References: <20080212012007.GA6993@goelette.ens.fr> <20080212043715.GD4561@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Pascal.Dupuis-s1sOSHjJPfVpcTqYljSg7g@public.gmane.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:50148 "EHLO neil.brown.name"
+Received: from nef2.ens.fr ([129.199.96.40]:1680 "EHLO nef2.ens.fr"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932246AbYBMQFH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 13 Feb 2008 11:05:07 -0500
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1JPK6b-0008Er-03
-	for linux-nfs@vger.kernel.org; Thu, 14 Feb 2008 03:05:05 +1100
-In-Reply-To: <20080212194040.GA16370-hcDgGtZH8xNAfugRpC6u6w@public.gmane.org>
+	id S1755877AbYBMRCJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Feb 2008 12:02:09 -0500
+In-Reply-To: <20080212043715.GD4561@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Feb 12, 2008 2:40 PM, Pascal A. Dupuis <Pascal.Dupuis-s1sOSHjJPfVpcTqYljSg7g@public.gmane.org> wrote:
-> Hello,
->
-> next batch of problems.
-> Server setup: I created a /srv/nfsv4 dir, then mounted 3 dir there
-> using the bind option: "/backup on /srv/nfsv4/backup type bind
-> (rw,bind)" and so on. The /etc/exports contains ONE dir:
-> /srv/nfsv4         192.168.1.2(root_squash,rw,sync,fsid=0,crossmnt,subtree_check)
->
-> rpc.imapd running, /etc/idmapd.conf minimalistic as explained in the
-> nfs-howto
->
-> On the client side, mounting immediatly results in the following
-> message: rpc.idmapd[3299]: nss_getpwnam: name '0' does not map into domain 'localdomain'
+On Mon, Feb 11, 2008 at 11:37:15PM -0500, J. Bruce Fields wrote:
+> > in all the faqs it is said that there is no working support for
+> > anything else than DES which is a bit outdated and not secure
+> > nowadays.
+> > 
+> > It seemed to me that there was some code in the nfs-utils which
+> > would do some security negociation (somewhere around utils/gssd/krb5_util.c),
+> > but the kernel had nothing to support that.
+> > 
+> > I suppose this will be the last thing to be done once the security features
+> > are working with the three versions of NFS.
+> > 
+> > What are the missing features in this field, and would it be difficult to
+> > add support for other encryption schemes?
+> 
+> Kevin Coffman is working on support for AES (and other algorithms).
+> It's mostly working at this point, so I think we'll be posting patches
+> soon.
 
-If that message is literally what you saw, it indicates that
-/etc/idmapd.conf is not configured correctly.  (Probably on the client
-and the server.)
+I'll be glad to try it once it is available
 
-> Then,
-> `ls -al the_mounted_dir`
-> drwxr-xr-x  7 nobody  nogroup 4096 2007-11-28 10:07 backup
-> So far so good, but ...
-> `ls -al the_mounted_dir/backup`
-> kernel: fsid 0:13: expected fileid 0x2, got 0x802a
+>        Is there something in particular you need or want to work on?
 
-I can't tell you anything about this.
-
-> The file /etc/nsswitch.conf contains "passwd:         compat"
->
-> Both server and client running Debian testing, with the package as
-> nfs-kernel-server/lenny uptodate 1:1.1.1-12
-> Kernel is 2.6.24.2.
->
-> Any idea ?
->
-> While at the subject, is there a simple way to map UID x on the server
-> onto UID y on the client ?
-
-NFSv4 uses names, not UIDs, on the wire.  So, while what you are
-asking for is probably possible, it would require asymmetrical
-mappings between the client and server.
-
-K.C.
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Microsoft
-Defy all challenges. Microsoft(R) Visual Studio 2008.
-http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
-
+No, not really. I find the current implementation sufficient for my needs.
+Maybe the server not being IPv6 compatible is not pleasing to the mind.
+Unfortunately my coding experience is low and probably the nfsd code is not
+the easy way to start.
