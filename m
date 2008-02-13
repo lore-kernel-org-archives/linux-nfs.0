@@ -1,58 +1,48 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Should truncated READDIR replies return -EIO?
-Date: Tue, 12 Feb 2008 19:13:03 -0500
-Message-ID: <1202861583.14707.6.camel@heimdal.trondhjem.org>
-References: <1202483082-5334-1-git-send-email-jlayton@redhat.com>
-	 <1202483596.8914.13.camel@heimdal.trondhjem.org>
-	 <20080208105659.3bfb8a6b@tleilax.poochiereds.net>
-	 <1202487187.10337.25.camel@heimdal.trondhjem.org>
-	 <20080212082038.7e75670e@tleilax.poochiereds.net>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: Upgrade to 2.6.24 breaks NFS service
+Date: Wed, 13 Feb 2008 02:19:12 -0800
+Message-ID: <20080213021912.b127c4a7.akpm@linux-foundation.org>
+References: <87lk5pjkro.fsf@hades.wkstn.nix>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org
-To: Jeff Layton <jlayton@redhat.com>
+Content-Type: text/plain; charset=US-ASCII
+Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
+To: Nix <nix@esperi.org.uk>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from pat.uio.no ([129.240.10.15]:58756 "EHLO pat.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752343AbYBMANJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 Feb 2008 19:13:09 -0500
-In-Reply-To: <20080212082038.7e75670e-RtJpwOs3+0O+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
+Received: from smtp2.linux-foundation.org ([207.189.120.14]:40685 "EHLO
+	smtp2.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752197AbYBMKUt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Feb 2008 05:20:49 -0500
+In-Reply-To: <87lk5pjkro.fsf-x0esd30BCtidcjFyoUV/Pg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+(cc linux-nfs)
 
-On Tue, 2008-02-12 at 08:20 -0500, Jeff Layton wrote:
-> On Fri, 08 Feb 2008 11:13:07 -0500
-> Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
-> 
-> > 
-> > On Fri, 2008-02-08 at 10:56 -0500, Jeff Layton wrote:
-> > 
-> > > If it looks like the above, but EOF is 0, then we *do* "goto
-> > > short_pkt", and that case would be affected by this. But in that case
-> > > we currently reset EOF to 1. The client won't retry the request. I'm
-> > > not sure that's what we want to do either...
-> > 
-> > That is to deal with the afore-mentioned broken server. I'm not
-> > unwilling to change this (I _hate_ client side fixes for server bugs),
-> > but it's important to note that there may be consequences if we do.
-> 
-> Perhaps we can just narrow down this special case so that this server
-> still works, but we can return a proper error when we get other bogus
-> packets? We currently have this:
-> 
-> 	if (!nr && (entry[0] != 0 || entry[1] == 0))
-> 
-> ...but if nr==0, then I think entry[0] must be 0 as well. So, I'm
-> guessing that the server always set value_follows=0 and EOF=0. Is that
-> correct?
-> 
-> If so, what about something like the following patch? This should
-> hopefully make it so that packets that are badly sized return -EIO, but
-> the special case you mention should continue to work.
+On Wed, 13 Feb 2008 08:58:03 +0000 Nix <nix@esperi.org.uk> wrote:
 
-Yup. This looks like it should cover most known cases...
-
-Cheers
-  Trond
+> I upgraded from 2.6.23.10 to 2.6.24.2 yesterday, and found NFS service
+> failing.
+> 
+> To be specific, all locks were blocking forever, with an endless flood
+> of
+> 
+> Feb 12 22:53:10 loki notice: kernel: statd: server localhost not responding, timed out
+> Feb 12 22:53:10 loki notice: kernel: lockd: cannot monitor esperi
+> Feb 12 22:53:45 loki notice: kernel: statd: server localhost not responding, timed out
+> Feb 12 22:53:45 loki notice: kernel: lockd: cannot monitor esperi
+> Feb 12 22:54:20 loki notice: kernel: statd: server localhost not responding, timed out
+> Feb 12 22:54:20 loki notice: kernel: lockd: cannot monitor esperi
+> Feb 12 22:54:55 loki notice: kernel: statd: server localhost not responding, timed out
+> Feb 12 22:54:55 loki notice: kernel: lockd: cannot monitor esperi
+> Feb 12 22:55:20 esperi notice: kernel: lockd: server loki.wkstn.nix not responding, still trying
+> 
+> (esperi is a UML instance on the same machine, connected via a bridged
+> TUN/TAP interface: the bridge, and network service to esperi and to the
+> rest of the local net across that bridge, was fine.)
+> 
+> I'm currently using NFSv3 atop nfs-utils 1.1.0.33-gdd08789, with daemons
+> being started in the suggested order (portmap, mountd, statd
+> --no-notify, nfsd). This evening I'm going to try to upgrade to
+> nfs-utils HEAD and see if this continues.
+> 
 
