@@ -1,63 +1,69 @@
-From: Chuck Lever <chuck.lever@oracle.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: Re: [PATCH 07/11] NFSD: Use "depends on" for PROC_FS dependency
-Date: Wed, 13 Feb 2008 13:44:41 -0500
-Message-ID: <47B33A99.60400@oracle.com>
-References: <20080211221216.1047.31922.stgit@manray.1015granger.net>	 <20080212212325.GM18625@fieldses.org>	 <1202852836.9228.1.camel@heimdal.trondhjem.org>	 <20080212223235.GP18625@fieldses.org> <1202857069.9228.14.camel@heimdal.trondhjem.org>
-Reply-To: chuck.lever@oracle.com
+Date: Wed, 13 Feb 2008 13:58:54 -0500
+Message-ID: <20080213185854.GF13462@fieldses.org>
+References: <20080211221216.1047.31922.stgit@manray.1015granger.net> <20080212212325.GM18625@fieldses.org> <9C44C93A-AC87-4B21-8E31-872186ABCEBB@oracle.com> <20080212223020.GO18625@fieldses.org> <47B336CD.2020305@oracle.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------040004080401000104040201"
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: text/plain; charset=us-ascii
+Cc: trond.myklebust@fys.uio.no, linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:59550 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753330AbYBMSpe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Feb 2008 13:45:34 -0500
-In-Reply-To: <1202857069.9228.14.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from mail.fieldses.org ([66.93.2.214]:34242 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753981AbYBMS71 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Feb 2008 13:59:27 -0500
+In-Reply-To: <47B336CD.2020305@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a multi-part message in MIME format.
---------------040004080401000104040201
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-
-Trond Myklebust wrote:
-> On Tue, 2008-02-12 at 17:32 -0500, J. Bruce Fields wrote:
+On Wed, Feb 13, 2008 at 01:28:29PM -0500, Chuck Lever wrote:
+> J. Bruce Fields wrote:
+>> On Tue, Feb 12, 2008 at 05:10:57PM -0500, Chuck Lever wrote:
+>>> On Feb 12, 2008, at 4:23 PM, J. Bruce Fields wrote:
+>>>
+>>>> On Mon, Feb 11, 2008 at 05:12:16PM -0500, Chuck Lever wrote:
+>>>>> Recently, commit 440bcc59 added a reverse dependency to fs/Kconfig to
+>>>>> ensure that PROC_FS was enabled if NFSD_V4 was enabled.
+>>>>>
+>>>>> There is a guideline in Documentation/kbuild/kconfig-language.txt 
+>>>>>  that
+>>>>> states "In general use select only for non-visible symbols (no   
+>>>>> prompts
+>>>>> anywhere) and for symbols with no dependencies."
+>>>>>
+>>>>> A quick grep around other Kconfig files reveals that no entry   
+>>>>> currently
+>>>>> uses "select PROC_FS" -- every one uses "depends on".  Thus   
+>>>>> CONFIG_NFSD_V4
+>>>>> should use "depends on PROC_FS" as well.
+>>>> OK.
+>>>>
+>>>>> For SUNRPC_GSS, it's a little more complex.  Other entries can   
+>>>>> "select"
+>>>>> SUNRPC_GSS, as it is non-visible.  However, the guideline suggests an
+>>>>> entry can't "select" it if it has a dependency (such as PROC_FS).
+>>>>> So, we add forward dependencies on PROC_FS to RPCSEC_GSS_FOO instead.
+>>>> This also makes the client dependent on PROC_FS, which it wasn't   
+>>>> before.
+>>>>
 >>>> I assume nobody cares?
->>> You assume wrongly. Patch NAKed...
->> Do you have a use case in mind?  (Just curious.)
-> 
-> Embedded systems often compile without sysctl and/or procfs support. Why
-> shouldn't they be able to run an NFS client with RPCSEC_GSS?
+>>> Huh?  If I disable PROC_FS, I can still select the NFS client 
+>>> options, even NFSv4.
+>>
+>> OK.  I'm confused, then:
+>>
+>> 	NFS_V4 selects RPCSEC_GSS_KRB5
+>> 	RPCSEC_GSS_KRB5 (after this patch) depends on PROC_FS
+>>
+>> What am I missing?
+>
+> It appears that the "select RPCSEC_GSS_KRB5" is a no-op if  
+> RPCSEC_GSS_KRB5 hasn't met it's forward dependencies.
 
-OK, it looks like the patch that adds the "depends on SYSCTL" to the 
-LOCKD entry will cause NFS-enabled builds to break if CONFIG_SYSCTL is 
-disabled, thanks to the recent addition of nlmclnt_init and nlmclnt_done.
+Oh, OK, I didn't understand that.
 
-Probably the better solution in this case is to ifdef out the 
-register_sysctl() call in lockd if CONFIG_SYSCTL isn't set.  In the long 
-run, should we make it possible to build the NFS client without lockd?
+However, this means that it's no longer possible to build a V4 client
+with krb5 support without also including PROC_FS.  So I think we can't
+apply this as is.
 
---------------040004080401000104040201
-Content-Type: text/x-vcard; charset=utf-8;
- name="chuck_lever.vcf"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="chuck_lever.vcf"
-
-begin:vcard
-fn:Chuck Lever
-n:Lever;Chuck
-org:Oracle Corporation;Corporate Architecture: Linux Projects Group
-adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
-email;internet:chuck dot lever at nospam oracle dot com
-title:Principal Member of Staff
-tel;work:+1 248 614 5091
-x-mozilla-html:FALSE
-version:2.1
-end:vcard
-
-
---------------040004080401000104040201--
+--b.
