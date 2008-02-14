@@ -1,79 +1,81 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: [PATCH] NFSD: FIDs need to take precedence over UUIDs
-Date: Thu, 14 Feb 2008 15:58:09 -0500
-Message-ID: <47B4AB61.2060004@RedHat.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH] nfs-utils: update mailing list address
+Date: Thu, 14 Feb 2008 16:15:17 -0500
+Message-ID: <20080214211517.12667.18595.stgit@manray.1015granger.net>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------030403060609050709030409"
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org
+To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:47707 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753197AbYBNVBa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 14 Feb 2008 16:01:30 -0500
-Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id m1EL1TU3019319
-	for <linux-nfs@vger.kernel.org>; Thu, 14 Feb 2008 16:01:29 -0500
-Received: from lacrosse.corp.redhat.com (lacrosse.corp.redhat.com [172.16.52.154])
-	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m1EL1S2R023324
-	for <linux-nfs@vger.kernel.org>; Thu, 14 Feb 2008 16:01:28 -0500
-Received: from [10.13.248.108] (vpn-248-108.boston.redhat.com [10.13.248.108])
-	by lacrosse.corp.redhat.com (8.12.11.20060308/8.11.6) with ESMTP id m1EL1S2N017722
-	for <linux-nfs@vger.kernel.org>; Thu, 14 Feb 2008 16:01:28 -0500
+Received: from flpi185.sbcis.sbc.com ([207.115.20.187]:59394 "EHLO
+	flpi185.prodigy.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754265AbYBNVPw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Feb 2008 16:15:52 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a multi-part message in MIME format.
---------------030403060609050709030409
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
+As part of migrating from nfs-TtF/mJH4Jtrk1uMJSBkQmQ@public.gmane.org to linux-nfs@vger.kernel.org,
+update the mailing list address used to report bugs in nfs-utils.
 
-Talking with Neil and Bruce, it seems somewhere down the
-line UUIDs started to taking precedence over the setting 
-fsid= export option when composing file handles which is wrong. 
-This patch restores fsids taking precedence over UUIDs during
-file handing composing.
+I removed the BUGS section in the mount.nfs and umount.nfs man pages since
+they weren't consistent with the contents of the BUGS sections in others
+in nfs-utils.
 
-steved.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
---------------030403060609050709030409
-Content-Type: text/x-patch;
- name="kernel-2.6.25-nfsd-fid-uuid.patch"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline;
- filename="kernel-2.6.25-nfsd-fid-uuid.patch"
+ README                     |    2 +-
+ configure.ac               |    2 +-
+ utils/mount/mount.nfs.man  |    3 ---
+ utils/mount/umount.nfs.man |    3 ---
+ 4 files changed, 2 insertions(+), 8 deletions(-)
 
-Author: Steve Dickson <steved@redhat.com>
-Date:   Thu Feb 14 15:48:20 EST 2008
+diff --git a/README b/README
+index e2196da..e7588cf 100644
+--- a/README
++++ b/README
+@@ -162,4 +162,4 @@ scripts can be written to work correctly.
+ Share And Enjoy!
+ 
+     --	the nfs-utils developers
+-	<nfs@lists.sourceforge.net>
++	<linux-nfs@vger.kernel.org>
+diff --git a/configure.ac b/configure.ac
+index 68c02f3..ab3198a 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -1,6 +1,6 @@
+ dnl Process this file with autoconf to produce a configure script.
+ dnl
+-AC_INIT([linux nfs-utils],[1.1.1],[nfs-TtF/mJH4Jtrk1uMJSBkQmQ@public.gmane.org],[nfs-utils])
++AC_INIT([linux nfs-utils],[1.1.1],[linux-nfs@vger.kernel.org],[nfs-utils])
+ AC_CANONICAL_BUILD([])
+ AC_CANONICAL_HOST([])
+ AC_CONFIG_MACRO_DIR(aclocal)
+diff --git a/utils/mount/mount.nfs.man b/utils/mount/mount.nfs.man
+index 624358c..1a4561b 100644
+--- a/utils/mount/mount.nfs.man
++++ b/utils/mount/mount.nfs.man
+@@ -82,8 +82,5 @@ table of mounted file systems
+ .BR nfs (5),
+ .BR mount (8),
+ 
+-.SH "BUGS"
+-Please notify nfs@lists.sourceforge.net of any bugs found in this software.
+-
+ .SH "AUTHOR"
+ Amit Gud <agud@redhat.com>
+diff --git a/utils/mount/umount.nfs.man b/utils/mount/umount.nfs.man
+index ee4cdaf..15addfa 100644
+--- a/utils/mount/umount.nfs.man
++++ b/utils/mount/umount.nfs.man
+@@ -66,8 +66,5 @@ table of mounted file systems
+ .BR nfs (5),
+ .BR umount (8),
+ 
+-.SH "BUGS"
+-Please notify nfs@lists.sourceforge.net of any bugs found in this software.
+-
+ .SH "AUTHOR"
+ Amit Gud <agud@redhat.com>
 
-    When determining the fsid_type in fh_compose(), the setting of 
-    the FID via fsid= export option needs to take precedence over
-    using the UUID device id. 
-    
-    Signed-off-by: Steve Dickson <steved@redhat.com>
-
-diff -up linux-2.6.24.i686/fs/nfsd/nfsfh.c.orig linux-2.6.24.i686/fs/nfsd/nfsfh.c
---- linux-2.6.24.i686/fs/nfsd/nfsfh.c.orig	2008-02-14 12:52:46.000000000 -0500
-+++ linux-2.6.24.i686/fs/nfsd/nfsfh.c	2008-02-14 14:13:09.000000000 -0500
-@@ -410,6 +410,8 @@ fh_compose(struct svc_fh *fhp, struct sv
- 				goto retry;
- 			break;
- 		}
-+	} else if (exp->ex_flags & NFSEXP_FSID) {
-+		fsid_type = FSID_NUM;
- 	} else if (exp->ex_uuid) {
- 		if (fhp->fh_maxsize >= 64) {
- 			if (root_export)
-@@ -422,9 +424,7 @@ fh_compose(struct svc_fh *fhp, struct sv
- 			else
- 				fsid_type = FSID_UUID4_INUM;
- 		}
--	} else if (exp->ex_flags & NFSEXP_FSID)
--		fsid_type = FSID_NUM;
--	else if (!old_valid_dev(ex_dev))
-+	} else if (!old_valid_dev(ex_dev))
- 		/* for newer device numbers, we must use a newer fsid format */
- 		fsid_type = FSID_ENCODE_DEV;
- 	else
-
---------------030403060609050709030409--
