@@ -1,81 +1,49 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH] nfs-utils: update mailing list address
-Date: Thu, 14 Feb 2008 16:15:17 -0500
-Message-ID: <20080214211517.12667.18595.stgit@manray.1015granger.net>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: linux-nfs@vger.kernel.org
-To: steved@redhat.com
+Subject: location of headers under /usr/include/tirpc
+Date: Thu, 14 Feb 2008 17:09:09 -0500
+Message-ID: <5761C623-763A-4B2C-8536-96B1989C162F@oracle.com>
+Mime-Version: 1.0 (Apple Message framework v753)
+Content-Type: text/plain; charset=US-ASCII; delsp=yes; format=flowed
+Cc: NFS list <linux-nfs@vger.kernel.org>
+To: Steve Dickson <SteveD@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from flpi185.sbcis.sbc.com ([207.115.20.187]:59394 "EHLO
-	flpi185.prodigy.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754265AbYBNVPw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Feb 2008 16:15:52 -0500
+Received: from agminet01.oracle.com ([141.146.126.228]:49936 "EHLO
+	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752105AbYBNWKH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Feb 2008 17:10:07 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-As part of migrating from nfs-TtF/mJH4Jtrk1uMJSBkQmQ@public.gmane.org to linux-nfs@vger.kernel.org,
-update the mailing list address used to report bugs in nfs-utils.
+Hi Steve-
 
-I removed the BUGS section in the mount.nfs and umount.nfs man pages since
-they weren't consistent with the contents of the BUGS sections in others
-in nfs-utils.
+I think libtirpc-devel installs the tirpc headers in the wrong  
+place.  The #include directives in the headers themselves expect them  
+to appear under /usr/include, not under /usr/include/tirpc, so my  
+builds fail when trying to include these headers.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+For example, /usr/include/tirpc/rpc/rpcb_clnt.h does a "#include <rpc/ 
+rpcb_prot.h>" -- and the build chokes because that header is actually  
+in /usr/include/tirpc/rpc/rpcb_prot.h.
 
- README                     |    2 +-
- configure.ac               |    2 +-
- utils/mount/mount.nfs.man  |    3 ---
- utils/mount/umount.nfs.man |    3 ---
- 4 files changed, 2 insertions(+), 8 deletions(-)
+Now, I can probably fix this temporarily by adding "-I /usr/include/ 
+tirpc" to my build.  However:
 
-diff --git a/README b/README
-index e2196da..e7588cf 100644
---- a/README
-+++ b/README
-@@ -162,4 +162,4 @@ scripts can be written to work correctly.
- Share And Enjoy!
- 
-     --	the nfs-utils developers
--	<nfs@lists.sourceforge.net>
-+	<linux-nfs@vger.kernel.org>
-diff --git a/configure.ac b/configure.ac
-index 68c02f3..ab3198a 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -1,6 +1,6 @@
- dnl Process this file with autoconf to produce a configure script.
- dnl
--AC_INIT([linux nfs-utils],[1.1.1],[nfs-TtF/mJH4Jtrk1uMJSBkQmQ@public.gmane.org],[nfs-utils])
-+AC_INIT([linux nfs-utils],[1.1.1],[linux-nfs@vger.kernel.org],[nfs-utils])
- AC_CANONICAL_BUILD([])
- AC_CANONICAL_HOST([])
- AC_CONFIG_MACRO_DIR(aclocal)
-diff --git a/utils/mount/mount.nfs.man b/utils/mount/mount.nfs.man
-index 624358c..1a4561b 100644
---- a/utils/mount/mount.nfs.man
-+++ b/utils/mount/mount.nfs.man
-@@ -82,8 +82,5 @@ table of mounted file systems
- .BR nfs (5),
- .BR mount (8),
- 
--.SH "BUGS"
--Please notify nfs@lists.sourceforge.net of any bugs found in this software.
--
- .SH "AUTHOR"
- Amit Gud <agud@redhat.com>
-diff --git a/utils/mount/umount.nfs.man b/utils/mount/umount.nfs.man
-index ee4cdaf..15addfa 100644
---- a/utils/mount/umount.nfs.man
-+++ b/utils/mount/umount.nfs.man
-@@ -66,8 +66,5 @@ table of mounted file systems
- .BR nfs (5),
- .BR umount (8),
- 
--.SH "BUGS"
--Please notify nfs@lists.sourceforge.net of any bugs found in this software.
--
- .SH "AUTHOR"
- Amit Gud <agud@redhat.com>
+1.  On Solaris, these all appear under /usr/include, there is no /usr/ 
+include/tirpc.
 
+2.  libtirpc-devel installs a bunch of files that already exist, such  
+as /usr/include/rpc/auth.h, in /usr/include/tirpc/rpc/auth.h.
+
+It would be cleaner to have one place for nfs-utils to look for these  
+headers, so I don't want to permanently add "-I /usr/include/tirpc"  
+or autoconf magic to find the right path unless we decide /usr/ 
+include/tirpc is the final location for these files.
+
+So I think applications in general will expect to find these under / 
+usr/include, not under /usr/include/tirpc.
+
+Comments?
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
