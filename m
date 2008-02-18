@@ -1,74 +1,79 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 16/17] text-based mount.nfs: support AF_INET6 addresses for
-	NFSv4 mounting
-Date: Mon, 18 Feb 2008 13:36:43 -0500
-Message-ID: <20080218183643.19060.97270.stgit@manray.1015granger.net>
+From: Tom Tucker <tom@opengridcomputing.com>
+Subject: Re: 2.6.24: RPC: bad TCP reclen 0x00020090 (large)
+Date: Mon, 18 Feb 2008 15:25:09 -0600
+Message-ID: <1203369909.24272.44.camel@trinity.ogc.int>
+References: <47B2F88D.7080300@msgid.tls.msk.ru>
+	 <20080218045812.f1dc6f71.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain
+Cc: Michael Tokarev <mjt@tls.msk.ru>,
+	Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	linux-nfs@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from flpi101.sbcis.sbc.com ([207.115.20.70]:57123 "EHLO
-	flpi101.prodigy.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753056AbYBRSgo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Feb 2008 13:36:44 -0500
-Received: from manray.1015granger.net (adsl-76-241-169-38.dsl.sfldmi.sbcglobal.net [76.241.169.38])
-	by flpi101.prodigy.net (8.13.8 out.dk.spool/8.13.8) with ESMTP id m1IIahhV019749
-	for <linux-nfs@vger.kernel.org>; Mon, 18 Feb 2008 10:36:43 -0800
-Received: from manray.1015granger.net (manray.1015granger.net [127.0.0.1])
-	by manray.1015granger.net (8.14.1/8.14.1) with ESMTP id m1IIahj4019390
-	for <linux-nfs@vger.kernel.org>; Mon, 18 Feb 2008 13:36:43 -0500
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:35652 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1760715AbYBRVQD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Feb 2008 16:16:03 -0500
+In-Reply-To: <20080218045812.f1dc6f71.akpm@linux-foundation.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The kernel now supports client-side IPv6 for the main NFS protocols,
-but not yet for auxiliary protocols such as NLM.
 
-Enable the text-based mount.nfs logic to resolve hostnames to IPv6
-addresses.  This should be enough to begin testing the in-kernel NFSv4 
-support for IPv6.
+On Mon, 2008-02-18 at 04:58 -0800, Andrew Morton wrote:
+> (suitable cc added)
+> 
+> (regression)
+> 
+> On Wed, 13 Feb 2008 17:02:53 +0300 Michael Tokarev <mjt@tls.msk.ru> wrote:
+> 
+> > Hello!
+> > 
+> > After upgrading to 2.6.24 (from .23), we're seeing ALOT
+> > of messages like in $subj in dmesg:
+> > 
+> > Feb 13 13:21:39 paltus kernel: RPC: bad TCP reclen 0x00020090 (large)
+> > Feb 13 13:21:46 paltus kernel: printk: 3586 messages suppressed.
+> > Feb 13 13:21:46 paltus kernel: RPC: bad TCP reclen 0x00020090 (large)
+> > Feb 13 13:21:49 paltus kernel: printk: 371 messages suppressed.
+> > Feb 13 13:21:49 paltus kernel: RPC: bad TCP reclen 0x00020090 (large)
+> > Feb 13 13:21:55 paltus kernel: printk: 2979 messages suppressed.
+> > ...
+> > 
+> > with linux NFS server.  The clients are all linux too, mostly 2.6.23
+> > and some 2.6.22.
+> > 
+> > I found the "offending" piece of code in net/sunrpc/svcsock.c,
+> > in routine svc_tcp_recvfrom() with condition being:
+> > 
+> >    if (svsk->sk_reclen > serv->sv_max_mesg) ...
 
-Since NFSv4 unmounting is only a local process (no communication with the
-server) we don't need to do anything to support unmounting an
-IPv6-addressed NFSv4 server.
+The problem might be that the client is setting a bit in the RPC message
+length field that is meant to be interpreted and masked off by the
+server -- and we're not doing it yet. My bet is that 0x20000 is the bit
+we're looking for. I'll poke around...
 
-Note that the mount command may now also pass in an IPv6 address via
-the "clientaddr=" mount option, though the kernel NFS client doesn't
-yet support an IPv6 callback service.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
- utils/mount/stropts.c |    7 ++++---
- 1 files changed, 4 insertions(+), 3 deletions(-)
-
-diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-index ef6365d..caf13b1 100644
---- a/utils/mount/stropts.c
-+++ b/utils/mount/stropts.c
-@@ -725,13 +725,14 @@ int nfsmount_string(const char *spec, const char *node, const char *type,
- 		    int flags, char **extra_opts, int fake, int child)
- {
- 	struct mount_options *options = NULL;
--	struct sockaddr_in saddr;
-+	struct sockaddr_storage dummy;
-+	struct sockaddr *saddr = (struct sockaddr *)&dummy;
- 	char *hostname;
- 	int retval = EX_FAIL;
- 
- 	if (!parse_devname(spec, &hostname))
- 		return retval;
--	if (!fill_ipv4_sockaddr(hostname, &saddr))
-+	if (nfs_name_to_address(hostname, AF_UNSPEC, saddr))
- 		goto fail;
- 
- 	options = po_split(*extra_opts);
-@@ -740,7 +741,7 @@ int nfsmount_string(const char *spec, const char *node, const char *type,
- 		goto fail;
- 	}
- 
--	if (!set_mandatory_options(type, (struct sockaddr *)&saddr, options))
-+	if (!set_mandatory_options(type, saddr, options))
- 		goto out;
- 
- 	if (po_rightmost(options, "bg", "fg") == PO_KEY1_RIGHTMOST)
+> > 
+> > This happens after a server reboot.  At this point, client(s) are trying
+> > to perform some NFS transaction and fail, and server starts generating
+> > the above messages - till I do a umount followed by mount on all clients.
+> > Before, such situation (nfs server reboot) were handled transparently,
+> > ie, there was nothing to do, the mount continued working just fine when
+> > the server comes back online.
+> > 
+> > Now, I'm not sure if it's really 2.6.24-specific problem or a userspace
+> > problem.  Some time ago we also upgraded nfs-kernel-server (Debian)
+> > package, and the remount-after-nfs-server-reboot problem started to
+> > occur at THAT time (and it is something to worry about as well, I just
+> > had no time to deal with it); but the dmesg spamming only appeared
+> > with 2.6.24.
+> > 
+> > How to debug the issue further on from this point?
+> > 
+> 
+> 
+> -
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
