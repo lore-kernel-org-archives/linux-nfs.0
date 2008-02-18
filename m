@@ -1,119 +1,132 @@
-From: Tom Tucker <tom@opengridcomputing.com>
-Subject: Re: [Fwd: Re: Linux 2.6.25-rc2]
-Date: Mon, 18 Feb 2008 12:18:02 -0600
-Message-ID: <1203358682.24272.31.camel@trinity.ogc.int>
-References: <1203282165.2929.7.camel@heimdal.trondhjem.org>
-	 <20080218174509.GC32492@fieldses.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 02/17] mount command: fix config.h includes in util/mount
+Date: Mon, 18 Feb 2008 13:35:30 -0500
+Message-ID: <20080218183530.19060.7008.stgit@manray.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:50139 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750984AbYBRSI5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Feb 2008 13:08:57 -0500
-In-Reply-To: <20080218174509.GC32492@fieldses.org>
+Received: from flpi101.sbcis.sbc.com ([207.115.20.70]:54767 "EHLO
+	flpi101.prodigy.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752268AbYBRSff (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Feb 2008 13:35:35 -0500
+Received: from manray.1015granger.net (adsl-76-241-169-38.dsl.sfldmi.sbcglobal.net [76.241.169.38])
+	by flpi101.prodigy.net (8.13.8 out.dk.spool/8.13.8) with ESMTP id m1IIZVR9016286
+	for <linux-nfs@vger.kernel.org>; Mon, 18 Feb 2008 10:35:32 -0800
+Received: from manray.1015granger.net (manray.1015granger.net [127.0.0.1])
+	by manray.1015granger.net (8.14.1/8.14.1) with ESMTP id m1IIZUls019306
+	for <linux-nfs@vger.kernel.org>; Mon, 18 Feb 2008 13:35:30 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Bruce:
+Recently #include directives for autoconf's config.h file were added in
+utils/mount/error.c and utils/mount/mount.c, but appropriate HAVE_CONFIG_H
+checks were not added at the same time.
 
-I'll take a look...
+In addition, several other .c files under utils/mount reference
+autoconf-generated HAVE_ macros, but don't appear to include config.h
 
-Tom
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-On Mon, 2008-02-18 at 12:45 -0500, J. Bruce Fields wrote:
-> On Sun, Feb 17, 2008 at 04:02:45PM -0500, Trond Myklebust wrote:
-> > Hi Bruce,
-> > 
-> > Here is a question for you.
-> > 
-> >         Why does svc_close_all() get away with deleting xprt->xpt_ready
-> >         without holding the pool->sp_lock?
-> 
-> >From a quick look--I think the intention is that the code that calls it
-> (in svc_destroy()) is only called after all other server threads have
-> exited, and that there can't be anyone else monkeying with that service
-> any more.  But I haven't verified that really carefully.
-> 
-> > I ask because the strange Oopses that appear in the attached bugreport
-> > often involve the sunrpc server code. They would appear to indicate
-> > corruption in the pool->sp_sockets code...
-> 
-> But obviously this needs a hard look.  OK, thanks.  I could really use
-> some help if there's someone that has time to look into this....
-> 
-> --b.
-> 
-> > 
-> > Cheers
-> >   Trond
-> 
-> Content-Description: Forwarded message - Re: Linux 2.6.25-rc2
-> > From: "Rafael J. Wysocki" <rjw@sisk.pl>
-> > To: Torsten Kaiser <just.for.lkml@googlemail.com>
-> > Subject: Re: Linux 2.6.25-rc2
-> > Date: Sun, 17 Feb 2008 21:25:55 +0100
-> > Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-> > 	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-> > 
-> > On Saturday, 16 of February 2008, Torsten Kaiser wrote:
-> > > On Feb 15, 2008 10:23 PM, Linus Torvalds <torvalds@linux-foundation.org> wrote:
-> > > >
-> > > > Ok,
-> > > >  this kernel is a winner.
-> > > 
-> > > Sadly not for me:
-> > > [ 5282.056415] ------------[ cut here ]------------
-> > > [ 5282.059757] kernel BUG at lib/list_debug.c:33!
-> > > [ 5282.062055] invalid opcode: 0000 [1] SMP
-> > > [ 5282.062055] CPU 3
-> > > [ 5282.062055] Modules linked in: radeon drm w83792d ipv6 tuner
-> > > tea5767 tda8290 tuner_xc2028 tda9887 tuner_simple mt20xx tea5761
-> > > tvaudio msp3400 bttv videodev v4l1_compat ir_common compat_ioctl32
-> > > v4l2_common videobuf_dma_sg videobuf_core btcx_risc tveeprom usbhid
-> > > pata_amd i2c_nforce2 hid sg
-> > > [ 5282.062055] Pid: 12937, comm: sed Not tainted 2.6.25-rc2 #1
-> > > [ 5282.062055] RIP: 0010:[<ffffffff803bffe4>]
-> > > -> then the output from the serial console stopped. I was in X, so I
-> > > could not see, if there was anything more on the real console.
-> > > 
-> > > (gdb) list *0xffffffff803bffe4
-> > > 0xffffffff803bffe4 is in __list_add (lib/list_debug.c:33).
-> > > 28              }
-> > > 29              if (unlikely(prev->next != next)) {
-> > > 30                      printk(KERN_ERR "list_add corruption.
-> > > prev->next should be "
-> > > 31                              "next (%p), but was %p. (prev=%p).\n",
-> > > 32                              next, prev->next, prev);
-> > > 33                      BUG();
-> > > 34              }
-> > > 35              next->prev = new;
-> > > 36              new->next = next;
-> > > 37              new->prev = prev;
-> > > 
-> > > For more on this problem see http://marc.info/?l=linux-kernel&m=120293042005445
-> > 
-> > There's the Bugzilla entry for it at
-> > 
+ utils/mount/error.c     |    5 ++++-
+ utils/mount/mount.c     |    5 ++++-
+ utils/mount/network.c   |    4 ++++
+ utils/mount/nfs4mount.c |    4 ++++
+ utils/mount/nfsmount.c  |    4 ++++
+ utils/mount/stropts.c   |    4 ++++
+ 6 files changed, 24 insertions(+), 2 deletions(-)
 
-
-http://bugzilla.kernel.org/show_bug.cgi?id=9973
-> > 
-> > Please update it with the current information.
-> > 
-> > Thanks,
-> > Rafael
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > Please read the FAQ at  http://www.tux.org/lkml/
-> 
-> -
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/utils/mount/error.c b/utils/mount/error.c
+index 10d4ed2..23a91ff 100644
+--- a/utils/mount/error.c
++++ b/utils/mount/error.c
+@@ -23,7 +23,10 @@
+  *  + Proper support for internationalization
+  */
+ 
+-#include "config.h"
++#ifdef HAVE_CONFIG_H
++#include <config.h>
++#endif
++
+ #include <unistd.h>
+ #include <sys/types.h>
+ #include <stdio.h>
+diff --git a/utils/mount/mount.c b/utils/mount/mount.c
+index 403d6f4..33d8d30 100644
+--- a/utils/mount/mount.c
++++ b/utils/mount/mount.c
+@@ -18,7 +18,10 @@
+  *
+  */
+ 
+-#include "config.h"
++#ifdef HAVE_CONFIG_H
++#include <config.h>
++#endif
++
+ #include <unistd.h>
+ #include <sys/types.h>
+ #include <stdio.h>
+diff --git a/utils/mount/network.c b/utils/mount/network.c
+index 38d0135..ab7f6d0 100644
+--- a/utils/mount/network.c
++++ b/utils/mount/network.c
+@@ -21,6 +21,10 @@
+  *
+  */
+ 
++#ifdef HAVE_CONFIG_H
++#include <config.h>
++#endif
++
+ #include <ctype.h>
+ #include <unistd.h>
+ #include <stdio.h>
+diff --git a/utils/mount/nfs4mount.c b/utils/mount/nfs4mount.c
+index 0a32c3c..311e5a0 100644
+--- a/utils/mount/nfs4mount.c
++++ b/utils/mount/nfs4mount.c
+@@ -18,6 +18,10 @@
+  * - Moved to nfs-utils/utils/mount from util-linux/mount.
+  */
+ 
++#ifdef HAVE_CONFIG_H
++#include <config.h>
++#endif
++
+ #include <unistd.h>
+ #include <stdio.h>
+ #include <string.h>
+diff --git a/utils/mount/nfsmount.c b/utils/mount/nfsmount.c
+index 3d2ebb1..c4e90fb 100644
+--- a/utils/mount/nfsmount.c
++++ b/utils/mount/nfsmount.c
+@@ -35,6 +35,10 @@
+  * nfsmount.c,v 1.1.1.1 1993/11/18 08:40:51 jrs Exp
+  */
+ 
++#ifdef HAVE_CONFIG_H
++#include <config.h>
++#endif
++
+ #include <ctype.h>
+ #include <unistd.h>
+ #include <stdio.h>
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index 0c8d3e1..cadb1f4 100644
+--- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -21,6 +21,10 @@
+  *
+  */
+ 
++#ifdef HAVE_CONFIG_H
++#include <config.h>
++#endif
++
+ #include <ctype.h>
+ #include <unistd.h>
+ #include <stdio.h>
 
