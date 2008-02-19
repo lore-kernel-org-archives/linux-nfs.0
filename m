@@ -1,111 +1,71 @@
-From: Harshula <harshula@sgi.com>
-Subject: [PATCH] sunrpc: GSS integrity and decryption failures should
-	return GARBAGE_ARGS
-Date: Tue, 19 Feb 2008 20:19:41 +1100
-Message-ID: <1203412781.10159.95.camel@serendib.melbourne.sgi.com>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: Should truncated READDIR replies return -EIO?
+Date: Tue, 19 Feb 2008 11:49:20 -0500
+Message-ID: <20080219114920.43db6fdc@tleilax.poochiereds.net>
+References: <1202483082-5334-1-git-send-email-jlayton@redhat.com>
+	<1202483596.8914.13.camel@heimdal.trondhjem.org>
+	<20080208105659.3bfb8a6b@tleilax.poochiereds.net>
+	<1202487187.10337.25.camel@heimdal.trondhjem.org>
+	<20080212082038.7e75670e@tleilax.poochiereds.net>
+	<1202861583.14707.6.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=US-ASCII
 Cc: linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from netops-testserver-3-out.sgi.com ([192.48.171.28]:52374 "EHLO
-	relay.sgi.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752093AbYBSJTr (ORCPT
-	<rfc822;@relay.sgi.com:linux-nfs@vger.kernel.org>);
-	Tue, 19 Feb 2008 04:19:47 -0500
+Received: from mx1.redhat.com ([66.187.233.31]:54858 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753081AbYBSQtj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 19 Feb 2008 11:49:39 -0500
+In-Reply-To: <1202861583.14707.6.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+On Tue, 12 Feb 2008 19:13:03 -0500
+Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
 
-In function svcauth_gss_accept() (net/sunrpc/auth_gss/svcauth_gss.c) the
-code that handles GSS integrity and decryption failures should be
-returning GARBAGE_ARGS as specified in RFC 2203. Is there a reason why
-this is not the case? If not, here's a patch.
+> 
+> On Tue, 2008-02-12 at 08:20 -0500, Jeff Layton wrote:
+> > On Fri, 08 Feb 2008 11:13:07 -0500
+> > Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+> > 
+> > > 
+> > > On Fri, 2008-02-08 at 10:56 -0500, Jeff Layton wrote:
+> > > 
+> > > > If it looks like the above, but EOF is 0, then we *do* "goto
+> > > > short_pkt", and that case would be affected by this. But in that case
+> > > > we currently reset EOF to 1. The client won't retry the request. I'm
+> > > > not sure that's what we want to do either...
+> > > 
+> > > That is to deal with the afore-mentioned broken server. I'm not
+> > > unwilling to change this (I _hate_ client side fixes for server bugs),
+> > > but it's important to note that there may be consequences if we do.
+> > 
+> > Perhaps we can just narrow down this special case so that this server
+> > still works, but we can return a proper error when we get other bogus
+> > packets? We currently have this:
+> > 
+> > 	if (!nr && (entry[0] != 0 || entry[1] == 0))
+> > 
+> > ...but if nr==0, then I think entry[0] must be 0 as well. So, I'm
+> > guessing that the server always set value_follows=0 and EOF=0. Is that
+> > correct?
+> > 
+> > If so, what about something like the following patch? This should
+> > hopefully make it so that packets that are badly sized return -EIO, but
+> > the special case you mention should continue to work.
+> 
+> Yup. This looks like it should cover most known cases...
+> 
+> Cheers
+>   Trond
+> 
 
-http://www.ietf.org/rfc/rfc2203.txt
-----------------------------------------------------------
-5.3.3.4.2.  GSS_VerifyMIC() Failure
+Good. I still need to test this out, but was wondering what your
+thoughts are on keeping the client-side hack in place for NFSv3 and
+NFSv4? Should we remove it from either or both of the later NFS
+versions?
 
-   When GSS_VerifyMIC() is called to verify the verifier in request, a
-   failure results in an RPC response with a reply status of MSG_DENIED,
-   reject status of AUTH_ERROR and an auth status of
-   RPCSEC_GSS_CREDPROBLEM.
-
-   When GSS_VerifyMIC() is called to verify the call arguments (service
-   is rpc_gss_svc_integrity), a failure results in an RPC response with
-   a reply status of MSG_ACCEPTED, and an acceptance status of
-   GARBAGE_ARGS.
-
-5.3.3.4.3.  GSS_Unwrap() Failure
-
-   When GSS_Unwrap() is called to decrypt the call arguments (service is
-   rpc_gss_svc_privacy), a failure results in an RPC response with a
-   reply status of MSG_ACCEPTED, and an acceptance status of
-   GARBAGE_ARGS.
-----------------------------------------------------------
-
-This patch is against:
-git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux-2.6
-
-Reviewed-by: Greg Banks <gnb@sgi.com>
-Signed-off-by: Harshula Jayasuriya <harshula@sgi.com>
----
-
- net/sunrpc/auth_gss/svcauth_gss.c |    9 +++++++--
- net/sunrpc/svc.c                  |    3 +--
- 2 files changed, 8 insertions(+), 4 deletions(-)
-
---- a/net/sunrpc/auth_gss/svcauth_gss.c
-+++ b/net/sunrpc/auth_gss/svcauth_gss.c
-@@ -1146,7 +1146,7 @@ svcauth_gss_accept(struct svc_rqst *rqstp, __be32
-*authp)
-                case RPC_GSS_SVC_INTEGRITY:
-                        if (unwrap_integ_data(&rqstp->rq_arg,
-                                        gc->gc_seq, rsci->mechctx))
--                               goto auth_err;
-+                               goto garbage_args;
-                        /* placeholders for length and seq. number: */
-                        svc_putnl(resv, 0);
-                        svc_putnl(resv, 0);
-@@ -1154,7 +1154,7 @@ svcauth_gss_accept(struct svc_rqst *rqstp, __be32
-*authp)
-                case RPC_GSS_SVC_PRIVACY:
-                        if (unwrap_priv_data(rqstp, &rqstp->rq_arg,
-                                        gc->gc_seq, rsci->mechctx))
--                               goto auth_err;
-+                               goto garbage_args;
-                        /* placeholders for length and seq. number: */
-                        svc_putnl(resv, 0);
-                        svc_putnl(resv, 0);
-@@ -1169,6 +1169,11 @@ svcauth_gss_accept(struct svc_rqst *rqstp, __be32
-*authp)
-                ret = SVC_OK;
-                goto out;
-        }
-+garbage_args:
-+       /* Restore write pointer to its original value: */
-+       xdr_ressize_check(rqstp, reject_stat);
-+       ret = SVC_GARBAGE;
-+       goto out;
- auth_err:
-        /* Restore write pointer to its original value: */
-        xdr_ressize_check(rqstp, reject_stat);
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index a290e15..a6c74fe 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -915,8 +915,7 @@ svc_process(struct svc_rqst *rqstp)
-        case SVC_OK:
-                break;
-        case SVC_GARBAGE:
--               rpc_stat = rpc_garbage_args;
--               goto err_bad;
-+               goto err_garbage;
-        case SVC_SYSERR:
-                rpc_stat = rpc_system_err;
-                goto err_bad;
-
-cya,
-#
-
+Thanks,
+-- 
+Jeff Layton <jlayton@redhat.com>
