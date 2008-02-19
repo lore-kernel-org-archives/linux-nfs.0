@@ -1,78 +1,90 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] SVC: Guard call to xpo_release_rqst in svc_send
-Date: Fri, 29 Feb 2008 15:40:30 -0500
-Message-ID: <20080229204030.GB6276@fieldses.org>
-References: <1204142339.24762.94.camel@trinity.ogc.int>
+From: Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
+Subject: Re: [Fwd: Re: Linux 2.6.25-rc2]
+Date: Tue, 19 Feb 2008 19:00:51 +1100
+Message-ID: <47BA8CB3.4030703@melbourne.sgi.com>
+References: <1203282165.2929.7.camel@heimdal.trondhjem.org>	 <20080218174509.GC32492@fieldses.org> <1203358682.24272.31.camel@trinity.ogc.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: bfields <bfields@fieldses.org>,
-	linux-nfs <linux-nfs@vger.kernel.org>,
-	jaschut <jaschut@sandia.gov>, swise@opengridcomputing.com
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>,
+	linux-nfs@vger.kernel.org
 To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:60170 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761136AbYB2Ukm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 29 Feb 2008 15:40:42 -0500
-In-Reply-To: <1204142339.24762.94.camel-SMNkleLxa3ZimH42XvhXlA@public.gmane.org>
+Received: from relay1.sgi.com ([192.48.171.29]:56259 "EHLO relay.sgi.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1751887AbYBSH4V (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 19 Feb 2008 02:56:21 -0500
+In-Reply-To: <1203358682.24272.31.camel-SMNkleLxa3ZimH42XvhXlA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 27, 2008 at 01:58:59PM -0600, Tom Tucker wrote:
->     
-> The svc_send path is calling xpo_release_rqst without checking
-> the XPT_DEAD bit. It is illegal to call transport methods on a dead
-> transport. In practice, if the transport gets an error and shuts down
-> while there are still RPC in svc_process the resulting svc_send could
-> crash calling into a transport that is being shut down.
+Tom Tucker wrote:
+> Bruce:
+>
+> I'll take a look...
+>
+> Tom
+>
+> On Mon, 2008-02-18 at 12:45 -0500, J. Bruce Fields wrote:
+>   
+>> On Sun, Feb 17, 2008 at 04:02:45PM -0500, Trond Myklebust wrote:
+>>     
+>>> Hi Bruce,
+>>>
+>>> Here is a question for you.
+>>>
+>>>         Why does svc_close_all() get away with deleting xprt->xpt_ready
+>>>         without holding the pool->sp_lock?
+>>>       
+>> >From a quick look--I think the intention is that the code that calls it
+>> (in svc_destroy()) is only called after all other server threads have
+>> exited, and that there can't be anyone else monkeying with that service
+>> any more.  But I haven't verified that really carefully.
+>>     
+That's certainly the intention.  The serv->sv_nrthreads fields is used
+as a refcount, which counts 1 for each nfsd thread and sometimes 1 to
+guard some short-term manipulations.  This refcount should not drop to
+zero until the last thread exits.  So by the time svc_close_all() is
+called, no thread can be looking at a pool's sp_sockets list.  Each
+xprt could still be racily added to that list from softirq mode data
+ready handlers calling svc_xprt_enqueue(), but only until the xprt's
+xpo_detach method is called (which removes any data ready callbacks).
+At that point, no code should be modifying the xpt_ready field, and
+it may or may not be used to link the xprt into some pool->sp_sockets
+but we don't care because all the pools are about to be destroyed
+anyway.
 
-As long as we have a pointer to an xprt (say in rqstp->rq_xprt), we
-should have a reference on the corresponding xprt class, shouldn't we?
-Anything else seems like a problem.
+That's the way it's been working since 2.6.19, and I don't think any
+of Tom's patches changed that.
 
->     
-> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
-> ---
-> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-> index ea377e0..467c1c0 100644
-> --- a/net/sunrpc/svc_xprt.c
-> +++ b/net/sunrpc/svc_xprt.c
-> @@ -729,9 +729,6 @@ int svc_send(struct svc_rqst *rqstp)
->  	if (!xprt)
->  		return -EFAULT;
->  
-> -	/* release the receive skb before sending the reply */
-> -	rqstp->rq_xprt->xpt_ops->xpo_release_rqst(rqstp);
-> -
->  	/* calculate over-all length */
->  	xb = &rqstp->rq_res;
->  	xb->len = xb->head[0].iov_len +
-> @@ -742,8 +739,11 @@ int svc_send(struct svc_rqst *rqstp)
->  	mutex_lock(&xprt->xpt_mutex);
->  	if (test_bit(XPT_DEAD, &xprt->xpt_flags))
->  		len = -ENOTCONN;
-> -	else
-> +	else {
-> +		/* release the receive skb before sending the reply */
-> +		rqstp->rq_xprt->xpt_ops->xpo_release_rqst(rqstp);
->  		len = xprt->xpt_ops->xpo_sendto(rqstp);
-> +	}
+I can think of a couple of things that could be wrong:
 
-So in the case where XPT_DEAD is set, doesn't the receive skb also need
-to be freed, or does somebody else do that?
+ * serv->sv_nrthreads is used in a few places, and there might
+   be bugs in that which are getting that count wrong (when I left
+   the code, all increments and decrements of that field went through
+   svc_get() and svc_destroy(), but other changes have crept in).
 
->  	mutex_unlock(&xprt->xpt_mutex);
->  	svc_xprt_release(rqstp);
+ * Currently running data ready callbacks might be racing with xpo_detach.
+   Moving that call inside the spin_lock_bh() critical section just
+   after it might help.
 
-Also something else is odd here: svc_xprt_release(rqstp) already calls
-rqstp->rq_xprt->xpt_ops->xpo_release_rqst(rqstp) itself, so we seem to
-have two calls to that method.
 
---b.
 
->  
-> 
-> -
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>> For more on this problem see http://marc.info/?l=linux-kernel&m=120293042005445
+>>>>         
+>>> There's the Bugzilla entry for it at
+>>>
+>>>       
+>
+>
+> http://bugzilla.kernel.org/show_bug.cgi?id=9973
+>   
+
+It's not clear from the bugzilla that NFS is at fault here.
+
+
+-- 
+Greg Banks, R&D Software Engineer, SGI Australian Software Group.
+The cake is *not* a lie.
+I don't speak for SGI.
+
