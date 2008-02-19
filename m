@@ -1,54 +1,57 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] sunrpc: GSS integrity and decryption failures should
-	return GARBAGE_ARGS
-Date: Tue, 19 Feb 2008 12:44:13 -0500
-Message-ID: <20080219174413.GB31066@fieldses.org>
-References: <1203412781.10159.95.camel@serendib.melbourne.sgi.com>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH] NFS: flush signals before taking down callback thread
+Date: Tue, 19 Feb 2008 12:51:35 -0500
+Message-ID: <1203443495-7854-1-git-send-email-jlayton@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Harshula <harshula@sgi.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:51708 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753945AbYBSRoO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 19 Feb 2008 12:44:14 -0500
-In-Reply-To: <1203412781.10159.95.camel-2WabGjdRN2LRvmHwrWB8BmjR7Gm6iKkz0E9HWUfgJXw@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Feb 19, 2008 at 08:19:41PM +1100, Harshula wrote:
-> Hi,
-> 
-> In function svcauth_gss_accept() (net/sunrpc/auth_gss/svcauth_gss.c) the
-> code that handles GSS integrity and decryption failures should be
-> returning GARBAGE_ARGS as specified in RFC 2203. Is there a reason why
-> this is not the case?
+Now that the reference counting on the callback thread is working as
+expected, it uncovers another problem.  Peter Staubach noticed while
+testing that patch on an older kernel that he would occasionally see
+this printk in rpc_register fire:
 
-Nope!
+    "RPC: failed to contact portmap (errno -512).
 
-> If not, here's a patch.
+The NFSv4 callback thread is signaled by nfs_callback_down(), but never
+flushes that signal. All of the shutdown processing is done with that
+signal pending. This makes it fail the call to unregister the port with
+the portmapper.
 
-Thanks for the patch and the rfc citation!
+In actuality, this rpc_register call isn't necessary at all since the
+port isn't actually registered with the portmapper anymore. Regardless,
+there doesn't seem to be any reason to leave the signal pending while
+the thread is being shut down and flushing it should generally silence
+that printk.
 
-However:
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfs/callback.c |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
 
-> --- a/net/sunrpc/auth_gss/svcauth_gss.c
-> +++ b/net/sunrpc/auth_gss/svcauth_gss.c
-> @@ -1146,7 +1146,7 @@ svcauth_gss_accept(struct svc_rqst *rqstp, __be32
-> *authp)
-
-Your mailer seems to be wrapping long lines?  This makes the patch not
-apply.
-
->                 case RPC_GSS_SVC_INTEGRITY:
->                         if (unwrap_integ_data(&rqstp->rq_arg,
->                                         gc->gc_seq, rsci->mechctx))
-> -                               goto auth_err;
-> +                               goto garbage_args;
-
-And tabs are getting changed to spaces everywhere too....
-
-Would it be possible to fix those problems and resend?
-
---b.
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index ecc06c6..0d784f6 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -93,6 +93,7 @@ static void nfs_callback_svc(struct svc_rqst *rqstp)
+ 		svc_process(rqstp);
+ 	}
+ 
++	flush_signals(current);
+ 	svc_exit_thread(rqstp);
+ 	nfs_callback_info.pid = 0;
+ 	complete(&nfs_callback_info.stopped);
+-- 
+1.5.3.8
