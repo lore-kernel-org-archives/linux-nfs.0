@@ -1,111 +1,187 @@
-From: Tom Tucker <tom@opengridcomputing.com>
-Subject: Re: 2.6.24: RPC: bad TCP reclen 0x00020090 (large)
-Date: Mon, 18 Feb 2008 16:00:36 -0600
-Message-ID: <1203372036.24272.54.camel@trinity.ogc.int>
-References: <47B2F88D.7080300@msgid.tls.msk.ru>
-	 <20080218045812.f1dc6f71.akpm@linux-foundation.org>
-	 <1203369909.24272.44.camel@trinity.ogc.int>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: Strange lockup during unmount in 2.6.22 - maybe rpciod
+	deadlock?
+Date: Tue, 19 Feb 2008 16:34:43 +1100
+Message-ID: <18362.27251.619125.502340@notabene.brown>
+References: <18310.37731.29874.582772@notabene.brown>
+	<1200004896.13775.27.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Michael Tokarev <mjt@tls.msk.ru>,
-	Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	linux-nfs@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:57839 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753027AbYBRVva (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Feb 2008 16:51:30 -0500
-In-Reply-To: <1203369909.24272.44.camel-SMNkleLxa3ZimH42XvhXlA@public.gmane.org>
+Received: from cantor2.suse.de ([195.135.220.15]:40987 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751331AbYBSFek (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 19 Feb 2008 00:34:40 -0500
+In-Reply-To: message from Trond Myklebust on Thursday January 10
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Mon, 2008-02-18 at 15:25 -0600, Tom Tucker wrote:
-> On Mon, 2008-02-18 at 04:58 -0800, Andrew Morton wrote:
-> > (suitable cc added)
-> > 
-> > (regression)
-> > 
-> > On Wed, 13 Feb 2008 17:02:53 +0300 Michael Tokarev <mjt@tls.msk.ru> wrote:
-> > 
-> > > Hello!
-> > > 
-> > > After upgrading to 2.6.24 (from .23), we're seeing ALOT
-> > > of messages like in $subj in dmesg:
-> > > 
-> > > Feb 13 13:21:39 paltus kernel: RPC: bad TCP reclen 0x00020090 (large)
-> > > Feb 13 13:21:46 paltus kernel: printk: 3586 messages suppressed.
-> > > Feb 13 13:21:46 paltus kernel: RPC: bad TCP reclen 0x00020090 (large)
-> > > Feb 13 13:21:49 paltus kernel: printk: 371 messages suppressed.
-> > > Feb 13 13:21:49 paltus kernel: RPC: bad TCP reclen 0x00020090 (large)
-> > > Feb 13 13:21:55 paltus kernel: printk: 2979 messages suppressed.
-> > > ...
-> > > 
-> > > with linux NFS server.  The clients are all linux too, mostly 2.6.23
-> > > and some 2.6.22.
-> > > 
-> > > I found the "offending" piece of code in net/sunrpc/svcsock.c,
-> > > in routine svc_tcp_recvfrom() with condition being:
-> > > 
-> > >    if (svsk->sk_reclen > serv->sv_max_mesg) ...
+On Thursday January 10, trond.myklebust@fys.uio.no wrote:
 > 
-> The problem might be that the client is setting a bit in the RPC message
-> length field that is meant to be interpreted and masked off by the
-> server -- and we're not doing it yet. My bet is that 0x20000 is the bit
-> we're looking for. I'll poke around...
+> On Fri, 2008-01-11 at 08:51 +1100, Neil Brown wrote:
+> > 
+> > I have a report of an unusual NFS deadlock in OpenSuSE 10.3, which is
+> > based on 2.6.22.
+> > 
+> > People who like bugzilla can find a little more detail at:
+> >     https://bugzilla.novell.com/show_bug.cgi?id=352878
+> > 
+> > We start with a "soft,intr" mount over a VPN on an unreliable network.
+> > 
+> > I assume an unmount happened (by autofs) while there was some
+> > outstanding requests  - at least one was a COMMIT but I'm guessing
+> > there were others.
+> > 
+> > When the last commit completed (probably timed-out) it put the open
+> > context, dropped the last reference on the vfsmnt and so called
+> > nfs_free_server and thence rpc_shutdown_client.
+> > All this is happened in rpciod/0.
+> > 
+> > rpc_shutdown_client calls rpc_killall_tasks and waits for them all to
+> > complete.  This deadlocks.
+> > 
+> > I'm wondering if some other request (read-ahead?) might need service
+> > from rpciod/0 before it can complete.  This would mean that it cannot
+> > complete until rpciod/0 is free, and rpciod/0 won't be free until it
+> > completes.
+> > 
+> > Is this a credible scenario?
+> 
+> Yes, but I have a scenario that I think trumps it:
+> 
+>       * the call that puts the open context is being made in
+>         nfs_commit_done (or possibly nfs_writeback_done), causing it to
+>         wait until the rpc_killall_tasks completes.
+>       * The problem is that rpc_killall_tasks won't complete until the
+>         rpc_task that is stuck in nfs_commit_done/nfs_writeback_done
+>         exits.
+> 
+> Urgh...
+> 
+> I'm surprised that we can get into this state, though. How is
+> sys_umount() able to exit with either readaheads or writebacks still
+> pending? Is this perhaps occurring on a lazy umount?
 
-Never mind. The way this is supposed to work is that the transport is
-shut down. The code used to delete the socket directly, but I
-reorganized this code to just set the XPT_CLOSE bit and let the normal
-close path handle it when it came back through to retry. I'm not sure
-exactly what version of the code you have, but it may be that your
-missing the code from the close path that does this, or it may just not
-work. As a first shot, can you try this patch and tell me if the
-messages go away?
+(finally getting back to this).
+
+Yes, lazy umount is definitely implicated.  OpenSUSE sends 'autofs' a
+SIGUSR1 when suspending, and autofs may use "umount -l" if it received
+SIGUSR1.
+
+I dug further and realised that if there is still a COMMIT in flight,
+then there should still be an open file descriptor on the filesystem,
+so when the COMMIT finishes, it won't be the last thing that is
+holding the filesystem active, so this dead lock shouldn't happen...
+
+Then I found this, which post-dates OpenSUSE-10.3.
+
+----------------------------
+commit a49c3c7736a2e77931dabc5bc4a83fb4b2da013e
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Thu Oct 18 18:03:27 2007 -0400
+
+    NFSv4: Ensure that we wait for the CLOSE request to complete
+    
+    Otherwise, we do end up breaking close-to-open semantics. We also end up
+    breaking some of the silly-rename tests in Connectathon on some setups.
+    
+    Please refer to the bug-report at
+        http://bugzilla.linux-nfs.org/show_bug.cgi?id=150
+----------------------------
+
+Which seems to suggest that a file descriptor could have been
+completely closed before the final COMMIT returned, so that final
+commit would be all that was holding the filesystem active.
+
+So it could be that this bug has since been fixed.
+
+Do you remember this patch well enough to be able to say if the bug it
+fixes could have allowed a COMMIT to be outstanding when the last
+nfs_file_release completed?
 
 
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 1d3e5fc..cf6150a 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -920,6 +920,7 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
+In my investigations, it seemed that (in -mm where I was looking)
+nfs_wb_all can still complete before the last COMMIT returns, but only
+if the process received a signal (the new TASK_KILLABLE seems to allow
+this).  That seems to suggest that the bug could be there again.  If
+you "umount -l", then kill the last process with a file open, there
+could still be an in-fight COMMIT that is holding the filesystem
+active. When it competes, you could get a deadlock.
+
+It also seems to me that  "rpc_shutdown_client" doesn't really need
+to loop.  The only reason I can see for calling rpc_killall_tasks
+multiple times is in case a task schedules a sub-task before it
+noticed that it has been killed.
+
+That possibility can be avoided by flagging the client as 'dying' and
+auto-killing any task that gets added to a dying client.
+
+Once the multiple calls to rpc_killall_tasks aren't needed, there is
+no need to wait until cl_tasks is empty as the kref counting will make
+sure that the client gets cleaned up at the right time.
+
+So maybe the following patch would still be useful to make sure that
+rpc_shutdown_client never deadlocks??
+
+Thanks,
+NeilBrown
+
+
+Signed-off-by: Neil Brown <neilb@suse.de>
+
+### Diffstat output
+ ./include/linux/sunrpc/clnt.h |    2 ++
+ ./net/sunrpc/clnt.c           |   10 +++++-----
+ ./net/sunrpc/sched.c          |    4 ++++
+ 3 files changed, 11 insertions(+), 5 deletions(-)
+
+diff .prev/include/linux/sunrpc/clnt.h ./include/linux/sunrpc/clnt.h
+--- .prev/include/linux/sunrpc/clnt.h	2008-02-19 15:28:06.000000000 +1100
++++ ./include/linux/sunrpc/clnt.h	2008-02-19 15:51:40.000000000 +1100
+@@ -42,6 +42,8 @@ struct rpc_clnt {
  
-  err_delete:
-        set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
-+       svc_delete_xprt(&svsk->sk_xprt);
-        return -EAGAIN;
+ 	unsigned int		cl_softrtry : 1,/* soft timeouts */
+ 				cl_discrtry : 1,/* disconnect before retry */
++				cl_dying : 1,   /* shutting down, allow
++						 * no more tasks */
+ 				cl_autobind : 1;/* use getport() */
  
-  error:
+ 	struct rpc_rtt *	cl_rtt;		/* RTO estimator data */
 
+diff .prev/net/sunrpc/clnt.c ./net/sunrpc/clnt.c
+--- .prev/net/sunrpc/clnt.c	2008-02-19 15:29:58.000000000 +1100
++++ ./net/sunrpc/clnt.c	2008-02-19 15:49:43.000000000 +1100
+@@ -386,11 +386,11 @@ void rpc_shutdown_client(struct rpc_clnt
+ 	dprintk("RPC:       shutting down %s client for %s\n",
+ 			clnt->cl_protname, clnt->cl_server);
+ 
+-	while (!list_empty(&clnt->cl_tasks)) {
+-		rpc_killall_tasks(clnt);
+-		wait_event_timeout(destroy_wait,
+-			list_empty(&clnt->cl_tasks), 1*HZ);
+-	}
++	spin_lock(&clnt->cl_lock);
++	clnt->cl_dying = 1;
++	spin_unlock(&clnt->cl_lock);
++
++	rpc_killall_tasks(clnt);
+ 
+ 	rpc_release_client(clnt);
+ }
 
-> 
-> > > 
-> > > This happens after a server reboot.  At this point, client(s) are trying
-> > > to perform some NFS transaction and fail, and server starts generating
-> > > the above messages - till I do a umount followed by mount on all clients.
-> > > Before, such situation (nfs server reboot) were handled transparently,
-> > > ie, there was nothing to do, the mount continued working just fine when
-> > > the server comes back online.
-> > > 
-> > > Now, I'm not sure if it's really 2.6.24-specific problem or a userspace
-> > > problem.  Some time ago we also upgraded nfs-kernel-server (Debian)
-> > > package, and the remount-after-nfs-server-reboot problem started to
-> > > occur at THAT time (and it is something to worry about as well, I just
-> > > had no time to deal with it); but the dmesg spamming only appeared
-> > > with 2.6.24.
-> > > 
-> > > How to debug the issue further on from this point?
-> > > 
-> > 
-> > 
-> > -
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> -
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+diff .prev/net/sunrpc/sched.c ./net/sunrpc/sched.c
+--- .prev/net/sunrpc/sched.c	2008-02-19 15:25:45.000000000 +1100
++++ ./net/sunrpc/sched.c	2008-02-19 15:37:11.000000000 +1100
+@@ -278,6 +278,10 @@ static void rpc_set_active(struct rpc_ta
+ 	if (clnt != NULL) {
+ 		spin_lock(&clnt->cl_lock);
+ 		list_add_tail(&task->tk_task, &clnt->cl_tasks);
++		if (clnt->cl_dying) {
++			task->tk_flags |= RPC_TASK_KILLED;
++			rpc_exit(task, -EIO);
++		}
+ 		spin_unlock(&clnt->cl_lock);
+ 	}
+ }
