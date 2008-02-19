@@ -1,43 +1,33 @@
-From: Eric Paris <eparis@redhat.com>
-Subject: Re: NFS/LSM: allow NFS to control all of its own mount options
-Date: Tue, 19 Feb 2008 17:36:46 -0500
-Message-ID: <1203460606.2928.127.camel@localhost.localdomain>
-References: <1203457094.2928.113.camel@localhost.localdomain>
-	 <20080219222408.GB10656@infradead.org>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH] NFS: flush signals before taking down callback thread
+Date: Tue, 19 Feb 2008 17:43:30 -0500
+Message-ID: <1203461010.13265.12.camel@heimdal.trondhjem.org>
+References: <1203443495-7854-1-git-send-email-jlayton@redhat.com>
+	<20080219222226.GA10656@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org, selinux <selinux@tycho.nsa.gov>,
-	linux-security-module@vger.kernel.org, steved@redhat.com,
-	jlayton@redhat.com, sds@tycho.nsa.gov, jmorris@namei.org,
-	casey@schaufler-ca.com, trond.myklebust@fys.uio.no,
-	chuck.lever@oracle.com, linux-fsdevel@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org,
+	Jeff Layton <jlayton@redhat.com>
 To: Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20080219222408.GB10656@infradead.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <20080219222226.GA10656@infradead.org>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Tue, 2008-02-19 at 17:24 -0500, Christoph Hellwig wrote:
-> Please don't introduce a special case for just nfs.  All filesystems
-> should control their mount options, so please provide some library
-> helpers for context= handling and move it into all filesystems that
-> can support selinux.
+On Tue, 2008-02-19 at 17:22 -0500, Christoph Hellwig wrote:
+> Wouldn't it be better to not allow for signals to this thread at all?
+> The code really begs for a similar kthread conversion as the lockd one.
 
-A library helper that looks like what?
+I'd tend to prefer that solution too.
 
-Only NFS knows how it is storing that mount option in its blobs.  Only
-NFS knows how to translate its blob into the generic LSM interface
-needed to set security options.  I'd say the solution is going to have
-to be very much NFS specific.
-
-Both in kernel LSMs already provide methods for dealing with mount
-options for filesystems that use text strings (see the
-security_sb_copy_data stuff called from vfs_kern_mount()).  How is this
-'library' going to deal with anything other than a text string, and if
-that's all it deals with we already have that.  NFS just can't use it
-because it isn't using a string for mount data.  I'm sure I'm just
-misunderstanding how to design your solution...
-
--Eric
-
+Cheers
+  Trond
