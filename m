@@ -1,39 +1,123 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: Strange lockup during unmount in 2.6.22 - maybe rpciod
-	deadlock?
-Date: Tue, 19 Feb 2008 18:18:25 -0500
-Message-ID: <1203463105.21343.20.camel@heimdal.trondhjem.org>
-References: <1203449166.8156.85.camel@heimdal.trondhjem.org>
+From: Harshula <harshula@sgi.com>
+Subject: Re: [PATCH] sunrpc: GSS integrity and decryption failures should
+	return GARBAGE_ARGS
+Date: Wed, 20 Feb 2008 10:56:56 +1100
+Message-ID: <1203465416.10159.110.camel@serendib.melbourne.sgi.com>
+References: <1203412781.10159.95.camel@serendib.melbourne.sgi.com>
+	 <20080219174413.GB31066@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain
-To: linux-nfs@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:37611 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751368AbYBSXTD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 19 Feb 2008 18:19:03 -0500
-Received: from svlexrs01.hq.netapp.com (svlexrs01.corp.netapp.com [10.57.156.158])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id m1JNIhVj021567
-	for <linux-nfs@vger.kernel.org>; Tue, 19 Feb 2008 15:19:03 -0800 (PST)
-In-Reply-To: <1203449166.8156.85.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from relay2.sgi.com ([192.48.171.30]:33654 "EHLO relay.sgi.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1754097AbYBSX5E (ORCPT
+	<rfc822;@relay.sgi.com:linux-nfs@vger.kernel.org>);
+	Tue, 19 Feb 2008 18:57:04 -0500
+In-Reply-To: <20080219174413.GB31066@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-How about moving the offending mntput calls off rpciod altogether? That
-way we can avoid both the deadlock with rpc_shutdown_client() and the
-deadlock with nfs_put_super().
-The other advantage of doing this is that we move all those deadlocky
-little malloc() calls from the NFSv4 open(), close(), lock(), and
-locku() out of rpciod too. Ditto for the delegation return stuff that
-may result from the dput() calls...
+Hi Bruce,
 
-The way I'm attempting to do this, is to add something like the
-following patch series (which has been compile tested, but not
-run-tested quite yet). It basically creates an 'nfsiod' workqueue, and
-allows the NFS read/write/... code to specify that the
-tk_ops->rpc_release() callback should be run on that particular
-workqueue. It then moves all the mntput()/dput() stuff into the
-rpc_release() call...
+On Tue, 2008-02-19 at 12:44 -0500, J. Bruce Fields wrote:
 
-Cheers
-  Trond
+> Your mailer seems to be wrapping long lines?  This makes the patch not
+> apply.
+
+> And tabs are getting changed to spaces everywhere too....
+> 
+> Would it be possible to fix those problems and resend?
+
+Sorry about that, here it is again ...
+
+cya,
+#
+
+
+In function svcauth_gss_accept() (net/sunrpc/auth_gss/svcauth_gss.c) the
+code that handles GSS integrity and decryption failures should be
+returning GARBAGE_ARGS as specified in RFC 2203. Is there a reason why
+this is not the case? If not, here's a patch.
+
+http://www.ietf.org/rfc/rfc2203.txt
+----------------------------------------------------------
+5.3.3.4.2.  GSS_VerifyMIC() Failure
+
+   When GSS_VerifyMIC() is called to verify the verifier in request, a
+   failure results in an RPC response with a reply status of MSG_DENIED,
+   reject status of AUTH_ERROR and an auth status of
+   RPCSEC_GSS_CREDPROBLEM.
+
+   When GSS_VerifyMIC() is called to verify the call arguments (service
+   is rpc_gss_svc_integrity), a failure results in an RPC response with
+   a reply status of MSG_ACCEPTED, and an acceptance status of
+   GARBAGE_ARGS.
+
+5.3.3.4.3.  GSS_Unwrap() Failure
+
+   When GSS_Unwrap() is called to decrypt the call arguments (service is
+   rpc_gss_svc_privacy), a failure results in an RPC response with a
+   reply status of MSG_ACCEPTED, and an acceptance status of
+   GARBAGE_ARGS.
+----------------------------------------------------------
+
+This patch is against:
+git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux-2.6
+
+Reviewed-by: Greg Banks <gnb@sgi.com>
+Signed-off-by: Harshula Jayasuriya <harshula@sgi.com>
+---
+
+ net/sunrpc/auth_gss/svcauth_gss.c |    9 +++++++--
+ net/sunrpc/svc.c                  |    3 +--
+ 2 files changed, 8 insertions(+), 4 deletions(-)
+
+--- a/net/sunrpc/auth_gss/svcauth_gss.c
++++ b/net/sunrpc/auth_gss/svcauth_gss.c
+@@ -1146,7 +1146,7 @@ svcauth_gss_accept(struct svc_rqst *rqstp, __be32 *authp)
+ 		case RPC_GSS_SVC_INTEGRITY:
+ 			if (unwrap_integ_data(&rqstp->rq_arg,
+ 					gc->gc_seq, rsci->mechctx))
+-				goto auth_err;
++				goto garbage_args;
+ 			/* placeholders for length and seq. number: */
+ 			svc_putnl(resv, 0);
+ 			svc_putnl(resv, 0);
+@@ -1154,7 +1154,7 @@ svcauth_gss_accept(struct svc_rqst *rqstp, __be32 *authp)
+ 		case RPC_GSS_SVC_PRIVACY:
+ 			if (unwrap_priv_data(rqstp, &rqstp->rq_arg,
+ 					gc->gc_seq, rsci->mechctx))
+-				goto auth_err;
++				goto garbage_args;
+ 			/* placeholders for length and seq. number: */
+ 			svc_putnl(resv, 0);
+ 			svc_putnl(resv, 0);
+@@ -1169,6 +1169,11 @@ svcauth_gss_accept(struct svc_rqst *rqstp, __be32 *authp)
+ 		ret = SVC_OK;
+ 		goto out;
+ 	}
++garbage_args:
++	/* Restore write pointer to its original value: */
++	xdr_ressize_check(rqstp, reject_stat);
++	ret = SVC_GARBAGE;
++	goto out;
+ auth_err:
+ 	/* Restore write pointer to its original value: */
+ 	xdr_ressize_check(rqstp, reject_stat);
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index a290e15..a6c74fe 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -915,8 +915,7 @@ svc_process(struct svc_rqst *rqstp)
+ 	case SVC_OK:
+ 		break;
+ 	case SVC_GARBAGE:
+-		rpc_stat = rpc_garbage_args;
+-		goto err_bad;
++		goto err_garbage;
+ 	case SVC_SYSERR:
+ 		rpc_stat = rpc_system_err;
+ 		goto err_bad;
+
