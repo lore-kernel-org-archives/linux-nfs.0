@@ -1,88 +1,67 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH] lockd: fix race in nlm_release()
-Date: Wed, 20 Feb 2008 17:10:24 -0500
-Message-ID: <022C8A98-7487-475C-AD9C-89DDB2B1252C@oracle.com>
-References: <20080220191153.GG30160@fieldses.org> <1203535466.15034.5.camel@heimdal.trondhjem.org> <20080220192759.GI30160@fieldses.org> <1203536918.15034.11.camel@heimdal.trondhjem.org>
-Mime-Version: 1.0 (Apple Message framework v753)
-Content-Type: text/plain; charset=US-ASCII; delsp=yes; format=flowed
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Timo Reimann <mailinglist-d4LLFNs4DFRA7UZ8SB9NFg@public.gmane.org>
+Subject: mountd prevents spindown of non-exported disk
+Date: Wed, 20 Feb 2008 22:52:25 +0100
+Message-ID: <47BCA119.2030404@foo-lounge.de>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-15
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:48231 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759493AbYBTWKx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Feb 2008 17:10:53 -0500
-In-Reply-To: <1203536918.15034.11.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from server3.hostprice.de ([213.239.211.250]:60480 "EHLO
+	server3.hostprice.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1761244AbYBTWPX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Feb 2008 17:15:23 -0500
+Received: from [192.168.0.3] (dslb-088-067-245-087.pools.arcor-ip.net [88.67.245.87])
+	by server3.hostprice.de (Postfix) with ESMTP id 059182DC0ED
+	for <linux-nfs@vger.kernel.org>; Wed, 20 Feb 2008 22:52:26 +0100 (CET)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Feb 20, 2008, at 2:48 PM, Trond Myklebust wrote:
-> On Wed, 2008-02-20 at 14:27 -0500, J. Bruce Fields wrote:
->> On Wed, Feb 20, 2008 at 02:24:26PM -0500, Trond Myklebust wrote:
->>>
->>> On Wed, 2008-02-20 at 14:11 -0500, J. Bruce Fields wrote:
->>>> From: J. Bruce Fields <bfields@citi.umich.edu>
->>>>
->>>> The sm_count is decremented to zero but left on the nsm_handles  
->>>> list.
->>>> So in the space between decrementing sm_count and acquiring  
->>>> nsm_mutex,
->>>> it is possible for another task to find this nsm_handle,  
->>>> increment the
->>>> use count and then enter nsm_release itself.
->>>>
->>>> Thus there's nothing to prevent the nsm being freed before we  
->>>> acquire
->>>> nsm_mutex here.
->>>>
->>>> Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
->>>> ---
->>>>  fs/lockd/host.c |   10 ++++------
->>>>  1 files changed, 4 insertions(+), 6 deletions(-)
->>>>
->>>> Am I missing something here?--b.
->>>>
->>>> diff --git a/fs/lockd/host.c b/fs/lockd/host.c
->>>> index c3f1194..960911c 100644
->>>> --- a/fs/lockd/host.c
->>>> +++ b/fs/lockd/host.c
->>>> @@ -529,12 +529,10 @@ nsm_release(struct nsm_handle *nsm)
->>>>  {
->>>>  	if (!nsm)
->>>>  		return;
->>>> +	mutex_lock(&nsm_mutex);
->>>>  	if (atomic_dec_and_test(&nsm->sm_count)) {
->>>> -		mutex_lock(&nsm_mutex);
->>>> -		if (atomic_read(&nsm->sm_count) == 0) {
->>>> -			list_del(&nsm->sm_link);
->>>> -			kfree(nsm);
->>>> -		}
->>>> -		mutex_unlock(&nsm_mutex);
->>>> +		list_del(&nsm->sm_link);
->>>> +		kfree(nsm);
->>>>  	}
->>>> +	mutex_unlock(&nsm_mutex);
->>>>  }
->>>
->>> It would be nice to get rid of that mutex. That should really be  
->>> either
->>> a spinlock or an rcu-protected list...
->>
->> OK, I'll look into doing that next.
->>
->> If you've got any other suggestions while I'm in the general area,  
->> I'm
->> all ears.
->
-> Just the usual plea to replace the host->h_server flag with 2 separate
-> lists: one list of client nlm_hosts, and one list of server
-> nlm_hosts :-)
+Hi all,
 
-I have no objection to that, but my NLM IPv6 patches will be  
-significantly affected by such a change right at this point.  Can we  
-hold off until the IPv6 work is integrated, or make this change part  
-of the IPv6 work itself?
+I have two disks in my server, one of them (hda) being used for backups
+solely. To reduce noise level and power consumption, I have been trying
+to keep it running in standby mode (as opposed to active) most of the time.
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+Although there should be nothing accessing the disk except my custom
+backup cron job initiating at 5am daily, something was constantly
+bringing it back into active state after a rough 20-25 minutes. With the
+help of blktrace, I monitored every single I/O access to the disk and
+found a single process only that would cause the wake-up:
+
+
+$ sudo blkparse -i hda.blktrace.0
+Input file hda.blktrace.0 added
+[...]
+  3,0    0        6    88.950000000  6806  Q   R 447 + 8 [rpc.mountd]
+[...]
+
+
+So for some reason, rpc.mountd issues this disk request in regular
+intervals although nothing on the disk is being NFS-exported according
+to /etc/exports.
+
+mountd in debug mode did not yield anything further, so I did another
+run with mountd hooked up to strace, and found out that the requests
+happen when I NFS-mount my other drive on the server (sda), or if it's
+already mounted, access files on sda (read: not hda). I assume the
+spinup event can be pinpointed down to calls to stat64 or open on hda:
+
+  open("/dev/mapper/backup-backup1", O_RDONLY) = 12
+
+I should mention at this point that both disks have their partitions set
+up facilitating LVM2, and additionally use encryption layers through
+dm-crypt/LUKS on top of that. However, both sda and hda are treated in
+completely separate physical volumes, respectively, not interweaved in
+any way. So any access to sda should not touch hda filesystem-wise.
+
+I'd glad if anyone could help me out by explaining why NFS operations
+influence disks that are not participating in a particular operation.
+Preferably with a solution how I can have both NFS running on sda and
+keep hda asleep unintermittedly.
+
+By the way, I'm using NFSv3.
+
+
+Cheers,
+
+--Timo
