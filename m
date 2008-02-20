@@ -1,34 +1,48 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] sunrpc: GSS integrity and decryption failures should
-	return GARBAGE_ARGS
-Date: Wed, 20 Feb 2008 10:38:20 -0500
-Message-ID: <20080220153820.GE30160@fieldses.org>
-References: <1203412781.10159.95.camel@serendib.melbourne.sgi.com> <20080219174413.GB31066@fieldses.org> <1203465416.10159.110.camel@serendib.melbourne.sgi.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH] NFS: convert nfs4 callback thread to kthread API
+Date: Wed, 20 Feb 2008 10:39:36 -0500
+Message-ID: <1203521976.11997.15.camel@heimdal.trondhjem.org>
+References: <1203515730-15974-1-git-send-email-jlayton@redhat.com>
+	<1203520163.8620.14.camel@heimdal.trondhjem.org>
+	<20080220151532.GA30160@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Harshula <harshula@sgi.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:37434 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932400AbYBTPiV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Feb 2008 10:38:21 -0500
-In-Reply-To: <1203465416.10159.110.camel-2WabGjdRN2LRvmHwrWB8BmjR7Gm6iKkz0E9HWUfgJXw@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org,
+	Jeff Layton <jlayton@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <20080220151532.GA30160@fieldses.org>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 20, 2008 at 10:56:56AM +1100, Harshula wrote:
-> Hi Bruce,
-> 
-> On Tue, 2008-02-19 at 12:44 -0500, J. Bruce Fields wrote:
-> 
-> > Your mailer seems to be wrapping long lines?  This makes the patch not
-> > apply.
-> 
-> > And tabs are getting changed to spaces everywhere too....
-> > 
-> > Would it be possible to fix those problems and resend?
-> 
-> Sorry about that, here it is again ...
 
-Thanks!  Applied.--b.
+On Wed, 2008-02-20 at 10:15 -0500, J. Bruce Fields wrote:
+> On Wed, Feb 20, 2008 at 10:09:23AM -0500, Trond Myklebust wrote:
+> > 
+> > On Wed, 2008-02-20 at 08:55 -0500, Jeff Layton wrote:
+> > > There's a general push to convert kernel threads to use the (much
+> > > cleaner) kthread API. This patch converts the NFSv4 callback kernel
+> > > thread to the kthread API. In addition to being generally cleaner this
+> > > also removes the dependency on signals when shutting down the thread.
+> > > 
+> > > Note that this patch depends on the recent patches to svc_recv() to
+> > > make it check kthread_should_stop() periodically. Those patches are
+> > > in Bruce's tree at the moment and are slated for 2.6.26 along with
+> > > the lockd conversion, so this conversion is probably also appropriate
+> > > for 2.6.26.
+> > 
+> > Since this only touches the callback server, can't we just ask Bruce to
+> > pick up this patch and merge it together with the others?
+> 
+> Yep.  Can I take that as an ACK from you, or do you still need to read
+> it over?
+
+Feel free to add an 'acked-by' on my behalf...
