@@ -1,83 +1,60 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [Fwd: Re: Linux 2.6.25-rc2]
-Date: Wed, 20 Feb 2008 13:52:53 -0500
-Message-ID: <20080220185253.GF30160@fieldses.org>
-References: <1203282165.2929.7.camel@heimdal.trondhjem.org> <20080218174509.GC32492@fieldses.org> <1203358682.24272.31.camel@trinity.ogc.int> <47BA8CB3.4030703@melbourne.sgi.com>
+Subject: [PATCH] lockd: fix race in nlm_release()
+Date: Wed, 20 Feb 2008 14:11:53 -0500
+Message-ID: <20080220191153.GG30160@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Tom Tucker <tom@opengridcomputing.com>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	linux-nfs@vger.kernel.org
-To: Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:41973 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:55434 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750706AbYBTSw5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Feb 2008 13:52:57 -0500
-In-Reply-To: <47BA8CB3.4030703-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
+	id S1753079AbYBTTLy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Feb 2008 14:11:54 -0500
+Received: from bfields by fieldses.org with local (Exim 4.69)
+	(envelope-from <bfields@fieldses.org>)
+	id 1JRuMD-0002yE-EE
+	for linux-nfs@vger.kernel.org; Wed, 20 Feb 2008 14:11:53 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Feb 19, 2008 at 07:00:51PM +1100, Greg Banks wrote:
-> Tom Tucker wrote:
-> > Bruce:
-> >
-> > I'll take a look...
-> >
-> > Tom
-> >
-> > On Mon, 2008-02-18 at 12:45 -0500, J. Bruce Fields wrote:
-> >   
-> >> On Sun, Feb 17, 2008 at 04:02:45PM -0500, Trond Myklebust wrote:
-> >>     
-> >>> Hi Bruce,
-> >>>
-> >>> Here is a question for you.
-> >>>
-> >>>         Why does svc_close_all() get away with deleting xprt->xpt_ready
-> >>>         without holding the pool->sp_lock?
-> >>>       
-> >> >From a quick look--I think the intention is that the code that calls it
-> >> (in svc_destroy()) is only called after all other server threads have
-> >> exited, and that there can't be anyone else monkeying with that service
-> >> any more.  But I haven't verified that really carefully.
-> >>     
-> That's certainly the intention.  The serv->sv_nrthreads fields is used
-> as a refcount, which counts 1 for each nfsd thread and sometimes 1 to
-> guard some short-term manipulations.  This refcount should not drop to
-> zero until the last thread exits.  So by the time svc_close_all() is
-> called, no thread can be looking at a pool's sp_sockets list.  Each
-> xprt could still be racily added to that list from softirq mode data
-> ready handlers calling svc_xprt_enqueue(), but only until the xprt's
-> xpo_detach method is called (which removes any data ready callbacks).
-> At that point, no code should be modifying the xpt_ready field, and
-> it may or may not be used to link the xprt into some pool->sp_sockets
-> but we don't care because all the pools are about to be destroyed
-> anyway.
+From: J. Bruce Fields <bfields@citi.umich.edu>
 
-OK, thanks very much for the confirmation.  It looks like they've
-finally decided the problem was actually with the memory allocator:
+The sm_count is decremented to zero but left on the nsm_handles list.
+So in the space between decrementing sm_count and acquiring nsm_mutex,
+it is possible for another task to find this nsm_handle, increment the
+use count and then enter nsm_release itself.
 
-	http://bugzilla.kernel.org/show_bug.cgi?id=9973
+Thus there's nothing to prevent the nsm being freed before we acquire
+nsm_mutex here.
 
-so I think we're OK.
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+---
+ fs/lockd/host.c |   10 ++++------
+ 1 files changed, 4 insertions(+), 6 deletions(-)
 
-> That's the way it's been working since 2.6.19, and I don't think any
-> of Tom's patches changed that.
-> 
-> I can think of a couple of things that could be wrong:
-> 
->  * serv->sv_nrthreads is used in a few places, and there might
->    be bugs in that which are getting that count wrong (when I left
->    the code, all increments and decrements of that field went through
->    svc_get() and svc_destroy(), but other changes have crept in).
-> 
->  * Currently running data ready callbacks might be racing with xpo_detach.
->    Moving that call inside the spin_lock_bh() critical section just
->    after it might help.
+Am I missing something here?--b.
 
-But if you were unsure about these two things then I suppose it might be
-worth doing a closer audit and seeing if there's any refactoring or
-documentation that could be added to make the rules clearer.
+diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+index c3f1194..960911c 100644
+--- a/fs/lockd/host.c
++++ b/fs/lockd/host.c
+@@ -529,12 +529,10 @@ nsm_release(struct nsm_handle *nsm)
+ {
+ 	if (!nsm)
+ 		return;
++	mutex_lock(&nsm_mutex);
+ 	if (atomic_dec_and_test(&nsm->sm_count)) {
+-		mutex_lock(&nsm_mutex);
+-		if (atomic_read(&nsm->sm_count) == 0) {
+-			list_del(&nsm->sm_link);
+-			kfree(nsm);
+-		}
+-		mutex_unlock(&nsm_mutex);
++		list_del(&nsm->sm_link);
++		kfree(nsm);
+ 	}
++	mutex_unlock(&nsm_mutex);
+ }
+-- 
+1.5.4.rc2.60.gb2e62
 
---b.
