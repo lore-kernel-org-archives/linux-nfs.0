@@ -1,145 +1,179 @@
-From: Stephen Smalley <sds@tycho.nsa.gov>
-Subject: Re: NFS/LSM: allow NFS to control all of its own mount options
-Date: Wed, 20 Feb 2008 08:50:10 -0500
-Message-ID: <1203515410.9902.128.camel@moss-spartans.epoch.ncsc.mil>
-References: <1203457094.2928.113.camel@localhost.localdomain>
-	 <20080219222408.GB10656@infradead.org>
-	 <E1JRlsG-0004UB-H4@pomaz-ex.szeredi.hu>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH] NFS: convert nfs4 callback thread to kthread API
+Date: Wed, 20 Feb 2008 08:55:30 -0500
+Message-ID: <1203515730-15974-1-git-send-email-jlayton@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: hch@infradead.org, eparis@redhat.com, linux-nfs@vger.kernel.org,
-	selinux@tycho.nsa.gov, linux-security-module@vger.kernel.org,
-	steved@redhat.com, jlayton@redhat.com, jmorris@namei.org,
-	casey@schaufler-ca.com, trond.myklebust@fys.uio.no,
-	chuck.lever@oracle.com, linux-fsdevel@vger.kernel.org
-To: Miklos Szeredi <miklos@szeredi.hu>
-Return-path: <linux-security-module-owner@vger.kernel.org>
-In-Reply-To: <E1JRlsG-0004UB-H4@pomaz-ex.szeredi.hu>
-Sender: linux-security-module-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+There's a general push to convert kernel threads to use the (much
+cleaner) kthread API. This patch converts the NFSv4 callback kernel
+thread to the kthread API. In addition to being generally cleaner this
+also removes the dependency on signals when shutting down the thread.
 
-On Wed, 2008-02-20 at 11:08 +0100, Miklos Szeredi wrote:
-> > Please don't introduce a special case for just nfs.  All filesystems
-> > should control their mount options, so please provide some library
-> > helpers for context= handling and move it into all filesystems that
-> > can support selinux.
-> 
-> Hmm, looks like selinux is not showing it's mount options in
-> /proc/mounts.  Well, actually there's no infrastructure for it either.
-> Here's a template patch (completely untested).
+Note that this patch depends on the recent patches to svc_recv() to
+make it check kthread_should_stop() periodically. Those patches are
+in Bruce's tree at the moment and are slated for 2.6.26 along with
+the lockd conversion, so this conversion is probably also appropriate
+for 2.6.26.
 
-I think the intent is to use the security_sb_get_mnt_opts() hook for
-this purpose.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfs/callback.c |   72 +++++++++++++++++++++++++---------------------------
+ 1 files changed, 35 insertions(+), 37 deletions(-)
 
-> 
-> Selinux guys, please fill in the details and submit, thanks.
-> 
-> Signed-off-by: Miklos Szeredi <mszeredi@suse.cz>
-> 
-> Index: linux/fs/namespace.c
-> ===================================================================
-> --- linux.orig/fs/namespace.c	2008-02-20 10:51:11.000000000 +0100
-> +++ linux/fs/namespace.c	2008-02-20 10:51:25.000000000 +0100
-> @@ -385,6 +385,7 @@ static int show_vfsmnt(struct seq_file *
->  		if (mnt->mnt_flags & fs_infop->flag)
->  			seq_puts(m, fs_infop->str);
->  	}
-> +	security_sb_show_options(m, mnt->mnt_sb);
->  	if (mnt->mnt_sb->s_op->show_options)
->  		err = mnt->mnt_sb->s_op->show_options(m, mnt);
->  	seq_puts(m, " 0 0\n");
-> Index: linux/include/linux/security.h
-> ===================================================================
-> --- linux.orig/include/linux/security.h	2008-02-18 21:20:03.000000000 +0100
-> +++ linux/include/linux/security.h	2008-02-20 11:02:04.000000000 +0100
-> @@ -80,6 +80,7 @@ struct xfrm_selector;
->  struct xfrm_policy;
->  struct xfrm_state;
->  struct xfrm_user_sec_ctx;
-> +struct seq_file;
->  
->  extern int cap_netlink_send(struct sock *sk, struct sk_buff *skb);
->  extern int cap_netlink_recv(struct sk_buff *skb, int cap);
-> @@ -1226,6 +1227,7 @@ struct security_operations {
->  	int (*sb_copy_data)(struct file_system_type *type,
->  			    void *orig, void *copy);
->  	int (*sb_kern_mount) (struct super_block *sb, void *data);
-> +	int (*sb_show_options) (struct seq_file *, struct super_block *sb);
->  	int (*sb_statfs) (struct dentry *dentry);
->  	int (*sb_mount) (char *dev_name, struct nameidata * nd,
->  			 char *type, unsigned long flags, void *data);
-> @@ -1487,6 +1489,7 @@ int security_sb_alloc(struct super_block
->  void security_sb_free(struct super_block *sb);
->  int security_sb_copy_data(struct file_system_type *type, void *orig, void *copy);
->  int security_sb_kern_mount(struct super_block *sb, void *data);
-> +int security_sb_show_options(struct seq_file *, struct super_block *sb);
->  int security_sb_statfs(struct dentry *dentry);
->  int security_sb_mount(char *dev_name, struct nameidata *nd,
->                         char *type, unsigned long flags, void *data);
-> @@ -1744,6 +1747,12 @@ static inline int security_sb_kern_mount
->  	return 0;
->  }
->  
-> +static inline int security_sb_show_options (struct seq_file *m,
-> +					    struct super_block *sb)
-> +{
-> +	return 0;
-> +}
-> +
->  static inline int security_sb_statfs (struct dentry *dentry)
->  {
->  	return 0;
-> Index: linux/security/security.c
-> ===================================================================
-> --- linux.orig/security/security.c	2008-02-18 21:20:06.000000000 +0100
-> +++ linux/security/security.c	2008-02-20 10:56:16.000000000 +0100
-> @@ -252,6 +252,14 @@ int security_sb_kern_mount(struct super_
->  	return security_ops->sb_kern_mount(sb, data);
->  }
->  
-> +int security_sb_show_options (struct seq_file *m, struct super_block *sb)
-> +{
-> +	if (security_ops->sb_show_options)
-> +		return security_ops->sb_show_options(m, sb);
-> +	else
-> +		return 0;
-> +}
-> +
->  int security_sb_statfs(struct dentry *dentry)
->  {
->  	return security_ops->sb_statfs(dentry);
-> Index: linux/security/selinux/hooks.c
-> ===================================================================
-> --- linux.orig/security/selinux/hooks.c	2008-02-18 21:20:06.000000000 +0100
-> +++ linux/security/selinux/hooks.c	2008-02-20 10:58:57.000000000 +0100
-> @@ -590,6 +590,12 @@ out:
->  	return rc;
->  }
->  
-> +static int selinux_sb_show_options(struct seq_file *m, struct super_block *sb)
-> +{
-> +	/* ... */
-> +	return 0;
-> +}
-> +
->  static int superblock_doinit(struct super_block *sb, void *data)
->  {
->  	struct superblock_security_struct *sbsec = sb->s_security;
-> @@ -4797,6 +4803,7 @@ static struct security_operations selinu
->  	.sb_free_security =		selinux_sb_free_security,
->  	.sb_copy_data =			selinux_sb_copy_data,
->  	.sb_kern_mount =	        selinux_sb_kern_mount,
-> +	.sb_show_options =		selinux_sb_show_options,
->  	.sb_statfs =			selinux_sb_statfs,
->  	.sb_mount =			selinux_mount,
->  	.sb_umount =			selinux_umount,
-> 
-> -
-> To unsubscribe from this list: send the line "unsubscribe linux-security-module" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index ecc06c6..d13f202 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -15,6 +15,7 @@
+ #include <linux/nfs_fs.h>
+ #include <linux/mutex.h>
+ #include <linux/freezer.h>
++#include <linux/kthread.h>
+ 
+ #include <net/inet_sock.h>
+ 
+@@ -27,9 +28,7 @@
+ struct nfs_callback_data {
+ 	unsigned int users;
+ 	struct svc_serv *serv;
+-	pid_t pid;
+-	struct completion started;
+-	struct completion stopped;
++	struct task_struct *task;
+ };
+ 
+ static struct nfs_callback_data nfs_callback_info;
+@@ -57,27 +56,20 @@ module_param_call(callback_tcpport, param_set_port, param_get_int,
+ /*
+  * This is the callback kernel thread.
+  */
+-static void nfs_callback_svc(struct svc_rqst *rqstp)
++static int
++nfs_callback_svc(void *vrqstp)
+ {
+ 	int err;
++	struct svc_rqst *rqstp = vrqstp;
+ 
+-	__module_get(THIS_MODULE);
+-	lock_kernel();
+-
+-	nfs_callback_info.pid = current->pid;
+-	daemonize("nfsv4-svc");
+-	/* Process request with signals blocked, but allow SIGKILL.  */
+-	allow_signal(SIGKILL);
+ 	set_freezable();
+ 
+-	complete(&nfs_callback_info.started);
+-
+-	for(;;) {
+-		if (signalled()) {
+-			if (nfs_callback_info.users == 0)
+-				break;
+-			flush_signals(current);
+-		}
++	/*
++	 * FIXME: do we really need to run this under the BKL? If so, please
++	 * add a comment about what it's intended to protect.
++	 */
++	lock_kernel();
++	while (!kthread_should_stop()) {
+ 		/*
+ 		 * Listen for a request on the socket
+ 		 */
+@@ -92,12 +84,10 @@ static void nfs_callback_svc(struct svc_rqst *rqstp)
+ 		}
+ 		svc_process(rqstp);
+ 	}
+-
+-	svc_exit_thread(rqstp);
+-	nfs_callback_info.pid = 0;
+-	complete(&nfs_callback_info.stopped);
+ 	unlock_kernel();
+-	module_put_and_exit(0);
++	nfs_callback_info.task = NULL;
++	svc_exit_thread(rqstp);
++	return 0;
+ }
+ 
+ /*
+@@ -106,14 +96,13 @@ static void nfs_callback_svc(struct svc_rqst *rqstp)
+ int nfs_callback_up(void)
+ {
+ 	struct svc_serv *serv = NULL;
++	struct svc_rqst *rqstp;
+ 	int ret = 0;
+ 
+ 	lock_kernel();
+ 	mutex_lock(&nfs_callback_mutex);
+-	if (nfs_callback_info.users++ || nfs_callback_info.pid != 0)
++	if (nfs_callback_info.users++ || nfs_callback_info.task != NULL)
+ 		goto out;
+-	init_completion(&nfs_callback_info.started);
+-	init_completion(&nfs_callback_info.stopped);
+ 	serv = svc_create(&nfs4_callback_program, NFS4_CALLBACK_BUFSIZE, NULL);
+ 	ret = -ENOMEM;
+ 	if (!serv)
+@@ -126,15 +115,28 @@ int nfs_callback_up(void)
+ 	nfs_callback_tcpport = ret;
+ 	dprintk("Callback port = 0x%x\n", nfs_callback_tcpport);
+ 
+-	ret = svc_create_thread(nfs_callback_svc, serv);
+-	if (ret < 0)
++	rqstp = svc_prepare_thread(serv, &serv->sv_pools[0]);
++	if (IS_ERR(rqstp)) {
++		ret = PTR_ERR(rqstp);
+ 		goto out_err;
++	}
++
++	svc_sock_update_bufs(serv);
+ 	nfs_callback_info.serv = serv;
+-	wait_for_completion(&nfs_callback_info.started);
++
++	nfs_callback_info.task = kthread_run(nfs_callback_svc, rqstp,
++					     "nfsv4-svc");
++	if (IS_ERR(nfs_callback_info.task)) {
++		ret = PTR_ERR(nfs_callback_info.task);
++		nfs_callback_info.serv = NULL;
++		nfs_callback_info.task = NULL;
++		svc_exit_thread(rqstp);
++		goto out_err;
++	}
+ out:
+ 	/*
+ 	 * svc_create creates the svc_serv with sv_nrthreads == 1, and then
+-	 * svc_create_thread increments that. So we need to call svc_destroy
++	 * svc_prepare_thread increments that. So we need to call svc_destroy
+ 	 * on both success and failure so that the refcount is 1 when the
+ 	 * thread exits.
+ 	 */
+@@ -158,12 +160,8 @@ void nfs_callback_down(void)
+ 	lock_kernel();
+ 	mutex_lock(&nfs_callback_mutex);
+ 	nfs_callback_info.users--;
+-	do {
+-		if (nfs_callback_info.users != 0 || nfs_callback_info.pid == 0)
+-			break;
+-		if (kill_proc(nfs_callback_info.pid, SIGKILL, 1) < 0)
+-			break;
+-	} while (wait_for_completion_timeout(&nfs_callback_info.stopped, 5*HZ) == 0);
++	if (nfs_callback_info.users == 0 && nfs_callback_info.task != NULL)
++		kthread_stop(nfs_callback_info.task);
+ 	mutex_unlock(&nfs_callback_mutex);
+ 	unlock_kernel();
+ }
 -- 
-Stephen Smalley
-National Security Agency
-
+1.5.3.8
