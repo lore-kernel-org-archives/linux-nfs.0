@@ -1,64 +1,41 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: compound header status
-Date: Thu, 21 Feb 2008 16:15:40 -0500
-Message-ID: <1203628540.8258.28.camel@heimdal.trondhjem.org>
-References: <E472128B1EB43941B4E7FB268020C89B054968F1@riverside.int.panasas.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH] Wrap buffers used for rpc debug printks into
+	RPC_IFDEBUG
+Date: Thu, 21 Feb 2008 16:45:22 -0500
+Message-ID: <1203630322.8258.35.camel@heimdal.trondhjem.org>
+References: <47BD2EF9.4010309@openvz.org>
 Mime-Version: 1.0
 Content-Type: text/plain
-Cc: nfsv4@linux-nfs.org, pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
-To: "Halevy, Benny" <bhalevy@panasas.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+To: Pavel Emelyanov <xemul@openvz.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:39066 "EHLO mx2.netapp.com"
+Received: from pat.uio.no ([129.240.10.15]:51941 "EHLO pat.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753708AbYBUVPm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 21 Feb 2008 16:15:42 -0500
-In-Reply-To: <E472128B1EB43941B4E7FB268020C89B054968F1-XOSzO3tqRPoWvTAaqqP10hT1OSi83eBDAL8bYrjMMd8@public.gmane.org>
+	id S1761142AbYBUVp1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 21 Feb 2008 16:45:27 -0500
+In-Reply-To: <47BD2EF9.4010309@openvz.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Thu, 2008-02-21 at 00:18 -0500, Halevy, Benny wrote:
-> Trond, we had a discussion today in Austin about the COMPOUND result header
-> status.  Looking at fs/nfs/nfs4xdr.c we saw that some decoding routines
-> return an error based on hdr.status after all the compound operations
-> decoding completed successfully.
+On Thu, 2008-02-21 at 10:57 +0300, Pavel Emelyanov wrote:
+> Sorry for the noise, but here's the v3 of this compilation fix :)
 > 
-> For example:
-> static int nfs4_xdr_dec_setclientid_confirm(struct rpc_rqst *req, __be32 *p, struct nfs_fsinfo *fsinfo)
-> {
-> 	struct xdr_stream xdr;
-> 	struct compound_hdr hdr;
-> 	int status;
+> There are some places, which declare the char buf[...] on the stack
+> to push it later into dprintk(). Since the dprintk sometimes (if the 
+> CONFIG_SYSCTL=n) becomes an empty do { } while (0) stub, these buffers
+> cause gcc to produce appropriate warnings.
 > 
-> 	xdr_init_decode(&xdr, &req->rq_rcv_buf, p);
-> 	status = decode_compound_hdr(&xdr, &hdr);
-> 	if (!status)
-> 		status = decode_setclientid_confirm(&xdr);
-> 	if (!status)
-> 		status = decode_putrootfh(&xdr);
-> 	if (!status)
-> 		status = decode_fsinfo(&xdr, fsinfo);
-> 	if (!status)
-> 		status = -nfs4_stat_to_errno(hdr.status);
-> 		                             ^^^^^^^^^^
-> 	return status;
-> }
+> Wrap these buffers with RPC_IFDEBUG macro, as Trond proposed, to 
+> compile them out when not needed.
 > 
-> It seems like this is unneeded since hdr.status must be NFS_OK if all operations
-> in the compound succeeded (and assuming we decode the results from all ops we sent).
-> The first error will be found by decode_op_hdr called by any of the decoding
-> routines for the individual ops.
-> If hdr.status contains an error in this case, the server must be broken, isn't it?
+> Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
 
-Agreed. I can only see 3 cases where we do this, but it would be nice to
-fix them.
+Thanks Pavel!
 
-> One more thing, all use sites for nfs4_stat_to_errno negate its return value
-> so it might make sense to return a negative error from nfs4_stat_to_errno rather
-> than negating its return value everywhere.
+Bruce, do you want to shepherd this in, or should I? I'm planning on
+pushing a couple of bugfixes to Linus this evening anyway...
 
-If we do, then we should fix up nfs_stat_to_errno() too. It will just
-get confusing if we establish differing standards between NFSv2/v3 and
-NFSv4.
+Cheers
+  Trond
 
-Trond
