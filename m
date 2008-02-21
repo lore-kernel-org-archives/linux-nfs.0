@@ -1,53 +1,94 @@
 From: Kevin Coffman <kwc@citi.umich.edu>
-Subject: [PATCH 05/19] Correct grammer/typos in dprintks
-Date: Thu, 21 Feb 2008 13:44:12 -0500
-Message-ID: <20080221184412.19195.93743.stgit@jazz.citi.umich.edu>
+Subject: [PATCH 04/19] Add new pipefs file indicating which Kerberos enctypes
+	the kernel supports
+Date: Thu, 21 Feb 2008 13:44:07 -0500
+Message-ID: <20080221184407.19195.62074.stgit@jazz.citi.umich.edu>
 References: <20080221184208.19195.94518.stgit@jazz.citi.umich.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from citi.umich.edu ([141.211.133.111]:16676 "EHLO citi.umich.edu"
+Received: from citi.umich.edu ([141.211.133.111]:20953 "EHLO citi.umich.edu"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753178AbYBUSoM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 21 Feb 2008 13:44:12 -0500
+	id S1752975AbYBUSoH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 21 Feb 2008 13:44:07 -0500
 Received: from jazz.citi.umich.edu (jazz.citi.umich.edu [141.211.133.62])
-	by citi.umich.edu (Postfix) with ESMTP id 569804602
-	for <linux-nfs@vger.kernel.org>; Thu, 21 Feb 2008 13:44:12 -0500 (EST)
+	by citi.umich.edu (Postfix) with ESMTP id 48A064608
+	for <linux-nfs@vger.kernel.org>; Thu, 21 Feb 2008 13:44:07 -0500 (EST)
 In-Reply-To: <20080221184208.19195.94518.stgit-zTNJhAanYLVZN1qrTdtDg5Vzexx5G7lz@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-cleanup:  Fix grammer/typos to use "too" instead of "to"
+New file, krb5_info, indicates which Kerberos encryption types are
+supported by the kernel rpcsecgss code.  This is used by gssd to
+determine which encryption types it should attempt to negotiate
+when creating a context with a server.
 
+The server principal's database and keytab encryption types are
+what limits what it should negotiate.  Therefore, its keytab
+should be created with only the enctypes listed by this file.
+
+From: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Kevin Coffman <kwc@citi.umich.edu>
 ---
 
- net/sunrpc/auth_gss/gss_krb5_crypto.c |    6 +++---
- 1 files changed, 3 insertions(+), 3 deletions(-)
+ net/sunrpc/rpc_pipe.c |   31 +++++++++++++++++++++++++++++++
+ 1 files changed, 31 insertions(+), 0 deletions(-)
 
-diff --git a/net/sunrpc/auth_gss/gss_krb5_crypto.c b/net/sunrpc/auth_gss/gss_krb5_crypto.c
-index 0dd7923..1d52308 100644
---- a/net/sunrpc/auth_gss/gss_krb5_crypto.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_crypto.c
-@@ -66,8 +66,8 @@ krb5_encrypt(
- 		goto out;
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index 7e19716..5781862 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -385,6 +385,31 @@ static const struct file_operations rpc_info_operations = {
+ 	.release	= rpc_info_release,
+ };
  
- 	if (crypto_blkcipher_ivsize(tfm) > 16) {
--		dprintk("RPC:       gss_k5encrypt: tfm iv size to large %d\n",
--			 crypto_blkcipher_ivsize(tfm));
-+		dprintk("RPC:       gss_k5encrypt: tfm iv size too large %d\n",
-+			crypto_blkcipher_ivsize(tfm));
- 		goto out;
- 	}
++/*
++ * This really belongs in the gss_krb5 code,
++ * but the info file logically belongs here
++ */
++static int
++rpc_show_krb5_info(struct seq_file *m, void *v)
++{
++	seq_printf(m, "enctypes: 3,1,2\n");
++	return 0;
++}
++
++static int
++rpc_krb5_info_open(struct inode *inode, struct file *file)
++{
++	return single_open(file, rpc_show_krb5_info, NULL);
++}
++
++static struct file_operations krb5_info_operations = {
++	.owner		= THIS_MODULE,
++	.open		= rpc_krb5_info_open,
++	.read		= seq_read,
++	.llseek		= seq_lseek,
++	.release	= single_release,
++};
++
  
-@@ -102,7 +102,7 @@ krb5_decrypt(
- 		goto out;
+ /*
+  * We have a single directory with 1 node in it.
+@@ -396,6 +421,7 @@ enum {
+ 	RPCAUTH_nfs,
+ 	RPCAUTH_portmap,
+ 	RPCAUTH_statd,
++	RPCAUTH_krb5_info,
+ 	RPCAUTH_RootEOF
+ };
  
- 	if (crypto_blkcipher_ivsize(tfm) > 16) {
--		dprintk("RPC:       gss_k5decrypt: tfm iv size to large %d\n",
-+		dprintk("RPC:       gss_k5decrypt: tfm iv size too large %d\n",
- 			crypto_blkcipher_ivsize(tfm));
- 		goto out;
- 	}
+@@ -429,6 +455,11 @@ static struct rpc_filelist files[] = {
+ 		.name = "statd",
+ 		.mode = S_IFDIR | S_IRUGO | S_IXUGO,
+ 	},
++	[RPCAUTH_krb5_info] = {
++		.name = "krb5_info",
++		.i_fop = &krb5_info_operations,
++		.mode = S_IFREG | S_IRUSR,
++	},
+ };
+ 
+ enum {
 
