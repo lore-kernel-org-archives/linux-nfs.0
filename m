@@ -1,49 +1,46 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Strange lockup during unmount in 2.6.22 - maybe rpciod
-	deadlock?
-Date: Thu, 21 Feb 2008 10:27:33 -0500
-Message-ID: <1203607653.10477.22.camel@heimdal.trondhjem.org>
-References: <18310.37731.29874.582772@notabene.brown>
-	 <1200004896.13775.27.camel@heimdal.trondhjem.org>
-	 <18362.27251.619125.502340@notabene.brown>
-	 <1203449166.8156.85.camel@heimdal.trondhjem.org>
-	 <18365.1274.387629.944796@notabene.brown>
+From: Kevin Coffman <kwc@citi.umich.edu>
+Subject: [PATCH 00/19] RFC add kernel support for newer encrytpion types
+Date: Thu, 21 Feb 2008 13:43:46 -0500
+Message-ID: <20080221184208.19195.94518.stgit@jazz.citi.umich.edu>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org
-To: Neil Brown <neilb@suse.de>
+Content-Type: text/plain; charset="utf-8"
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from pat.uio.no ([129.240.10.15]:53655 "EHLO pat.uio.no"
+Received: from citi.umich.edu ([141.211.133.111]:34672 "EHLO citi.umich.edu"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754221AbYBUP1i (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 21 Feb 2008 10:27:38 -0500
-In-Reply-To: <18365.1274.387629.944796-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
+	id S1750806AbYBUSnt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 21 Feb 2008 13:43:49 -0500
+Received: from jazz.citi.umich.edu (jazz.citi.umich.edu [141.211.133.62])
+	by citi.umich.edu (Postfix) with ESMTP id EF2DF4504
+	for <linux-nfs@vger.kernel.org>; Thu, 21 Feb 2008 13:43:46 -0500 (EST)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Consider this an RFC.
 
-On Thu, 2008-02-21 at 15:58 +1100, Neil Brown wrote:
+These patches add kernel support for triple-DES and AES encryption to the
+Kerberos gss code.
 
-> My question is:  *why* cannot rpc_shutdown_client complete until all
-> active rpc_tasks complete?  The use of reference counting ensure that
-> once they do all complete, the client will be finally released and any
-> relevant modules will also be released.
-> 
-> Is there really any need to wait for completion?
+These are currently built on 2.6.25-rc1, but I think they should apply
+to the latest code as well.
 
-Looking at the code, I suspect that you can probably get rid of the
-rpc_shutdown_client() without creating too much trouble (since we now
-hold a reference to the vfsmount in most of the asynchronous
-operations).
+The first patch adds a crypto cts wrapper to do the cts mode req'd by
+AES.  This has been submitted to Herbert Xu.
 
-However the asynchronous sillyrenames are still a problem: if you don't
-wait for the sillyrename RPC call to complete, then you end up with the
-famous "Self-destruct in 5 seconds" message on umount (because we have
-to hold a reference to the directory inode for the duration of the RPC
-call if we want to avoid lookup races and cache consistency issues
-during normal operation).
-Hence, I think the extra workqueue is justified by the fact that rpciod
-cannot ever wait for the sillyrename calls to complete.
+A couple of things remain:
+
+ - Allocate the blkcipher(s) for "cbc(aes)" during context initialization
+   rather than on-demand.  I'll include this in the next version.
+
+ - Add support for rc4-hmac.
+
+ - Implement the code necessary to handle possibly rotated data in the
+   version two tokens.  I don't expect we'll see rotated data in normal
+   operation, but this should be done for completeness.
+
+There are nfs-utils patches required for the new context format from
+user-land to kernel.  I need to finish changes for non-lucid contexts
+and test those further.
 
 
-
+K.C.
