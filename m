@@ -1,50 +1,82 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] Wrap buffers used for rpc debug printks into
-	RPC_IFDEBUG
-Date: Thu, 21 Feb 2008 16:58:24 -0500
-Message-ID: <20080221215824.GH13358@fieldses.org>
-References: <47BD2EF9.4010309@openvz.org> <1203630322.8258.35.camel@heimdal.trondhjem.org>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [pnfs] compound header status
+Date: Thu, 21 Feb 2008 16:37:56 -0600
+Message-ID: <47BDFD44.9020301@panasas.com>
+References: <E472128B1EB43941B4E7FB268020C89B054968F1@riverside.int.panasas.com> <1203628540.8258.28.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Pavel Emelyanov <xemul@openvz.org>, linux-nfs@vger.kernel.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org, nfsv4@linux-nfs.org
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:36602 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933220AbYBUV61 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 21 Feb 2008 16:58:27 -0500
-In-Reply-To: <1203630322.8258.35.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from wr-out-0506.google.com ([64.233.184.224]:35440 "EHLO
+	wr-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S935118AbYBUWiE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Feb 2008 17:38:04 -0500
+Received: by wr-out-0506.google.com with SMTP id c48so315405wra.23
+        for <linux-nfs@vger.kernel.org>; Thu, 21 Feb 2008 14:38:03 -0800 (PST)
+In-Reply-To: <1203628540.8258.28.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Feb 21, 2008 at 04:45:22PM -0500, Trond Myklebust wrote:
+On Feb. 21, 2008, 15:15 -0600, Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+> On Thu, 2008-02-21 at 00:18 -0500, Halevy, Benny wrote:
+>> Trond, we had a discussion today in Austin about the COMPOUND result header
+>> status.  Looking at fs/nfs/nfs4xdr.c we saw that some decoding routines
+>> return an error based on hdr.status after all the compound operations
+>> decoding completed successfully.
+>>
+>> For example:
+>> static int nfs4_xdr_dec_setclientid_confirm(struct rpc_rqst *req, __be32 *p, struct nfs_fsinfo *fsinfo)
+>> {
+>> 	struct xdr_stream xdr;
+>> 	struct compound_hdr hdr;
+>> 	int status;
+>>
+>> 	xdr_init_decode(&xdr, &req->rq_rcv_buf, p);
+>> 	status = decode_compound_hdr(&xdr, &hdr);
+>> 	if (!status)
+>> 		status = decode_setclientid_confirm(&xdr);
+>> 	if (!status)
+>> 		status = decode_putrootfh(&xdr);
+>> 	if (!status)
+>> 		status = decode_fsinfo(&xdr, fsinfo);
+>> 	if (!status)
+>> 		status = -nfs4_stat_to_errno(hdr.status);
+>> 		                             ^^^^^^^^^^
+>> 	return status;
+>> }
+>>
+>> It seems like this is unneeded since hdr.status must be NFS_OK if all operations
+>> in the compound succeeded (and assuming we decode the results from all ops we sent).
+>> The first error will be found by decode_op_hdr called by any of the decoding
+>> routines for the individual ops.
+>> If hdr.status contains an error in this case, the server must be broken, isn't it?
 > 
-> On Thu, 2008-02-21 at 10:57 +0300, Pavel Emelyanov wrote:
-> > Sorry for the noise, but here's the v3 of this compilation fix :)
-> > 
-> > There are some places, which declare the char buf[...] on the stack
-> > to push it later into dprintk(). Since the dprintk sometimes (if the 
-> > CONFIG_SYSCTL=n) becomes an empty do { } while (0) stub, these buffers
-> > cause gcc to produce appropriate warnings.
-> > 
-> > Wrap these buffers with RPC_IFDEBUG macro, as Trond proposed, to 
-> > compile them out when not needed.
-> > 
-> > Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
-> 
-> Thanks Pavel!
+> Agreed. I can only see 3 cases where we do this, but it would be nice to
+> fix them.
 
-Yes, thanks Pavel for persisting--it looks very straightforward to me
-this way.
+Cool. The cases we do need to look at hdr.status are when we fail to
+decode the op header, i.e. we ran out of bytes to code, or the opnum
+doesn't match what we expect.  Then, if hdr.status != NFS_OK we should
+translate and return this error rather than a generic -EIO;
 
 > 
-> Bruce, do you want to shepherd this in, or should I? I'm planning on
-> pushing a couple of bugfixes to Linus this evening anyway...
+>> One more thing, all use sites for nfs4_stat_to_errno negate its return value
+>> so it might make sense to return a negative error from nfs4_stat_to_errno rather
+>> than negating its return value everywhere.
+> 
+> If we do, then we should fix up nfs_stat_to_errno() too. It will just
+> get confusing if we establish differing standards between NFSv2/v3 and
+> NFSv4.
 
-That would be great; feel free to add an
+Agreed.  This will be in a separate patch of course.
 
-	Acked-by: J. Bruce Fields <bfields@citi.umich.edu>
+Benny
 
-if you want.
+> 
+> Trond
+> _______________________________________________
+> pNFS mailing list
+> pNFS@linux-nfs.org
+> http://linux-nfs.org/cgi-bin/mailman/listinfo/pnfs
 
---b.
