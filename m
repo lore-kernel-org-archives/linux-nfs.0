@@ -1,79 +1,49 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: [PATCH] lockd: fix race in nlm_release()
-Date: Thu, 21 Feb 2008 09:39:20 -0500
-Message-ID: <47BD8D18.1000409@redhat.com>
-References: <20080220191153.GG30160@fieldses.org> <1203535466.15034.5.camel@heimdal.trondhjem.org> <20080220192759.GI30160@fieldses.org> <1203536918.15034.11.camel@heimdal.trondhjem.org> <20080220234625.GN30160@fieldses.org>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: Strange lockup during unmount in 2.6.22 - maybe rpciod
+	deadlock?
+Date: Thu, 21 Feb 2008 10:27:33 -0500
+Message-ID: <1203607653.10477.22.camel@heimdal.trondhjem.org>
+References: <18310.37731.29874.582772@notabene.brown>
+	 <1200004896.13775.27.camel@heimdal.trondhjem.org>
+	 <18362.27251.619125.502340@notabene.brown>
+	 <1203449166.8156.85.camel@heimdal.trondhjem.org>
+	 <18365.1274.387629.944796@notabene.brown>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain
+Cc: linux-nfs@vger.kernel.org
+To: Neil Brown <neilb@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:40374 "EHLO mx1.redhat.com"
+Received: from pat.uio.no ([129.240.10.15]:53655 "EHLO pat.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752396AbYBUOja (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 21 Feb 2008 09:39:30 -0500
-In-Reply-To: <20080220234625.GN30160@fieldses.org>
+	id S1754221AbYBUP1i (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 21 Feb 2008 10:27:38 -0500
+In-Reply-To: <18365.1274.387629.944796-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-J. Bruce Fields wrote:
-> On Wed, Feb 20, 2008 at 02:48:38PM -0500, Trond Myklebust wrote:
->   
->> On Wed, 2008-02-20 at 14:27 -0500, J. Bruce Fields wrote:
->>     
->>> On Wed, Feb 20, 2008 at 02:24:26PM -0500, Trond Myklebust wrote:
->>>       
->>>> On Wed, 2008-02-20 at 14:11 -0500, J. Bruce Fields wrote:
->>>>         
->>>>> From: J. Bruce Fields <bfields@citi.umich.edu>
->>>>>
->>>>> The sm_count is decremented to zero but left on the nsm_handles list.
->>>>> So in the space between decrementing sm_count and acquiring nsm_mutex,
->>>>> it is possible for another task to find this nsm_handle, increment the
->>>>> use count and then enter nsm_release itself.
->>>>>
->>>>> Thus there's nothing to prevent the nsm being freed before we acquire
->>>>> nsm_mutex here.
->>>>>
->>>>> Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
->>>>> ---
->>>>>  fs/lockd/host.c |   10 ++++------
->>>>>  1 files changed, 4 insertions(+), 6 deletions(-)
->>>>>
->>>>> Am I missing something here?--b.
->>>>>
->>>>> diff --git a/fs/lockd/host.c b/fs/lockd/host.c
->>>>> index c3f1194..960911c 100644
->>>>> --- a/fs/lockd/host.c
->>>>> +++ b/fs/lockd/host.c
->>>>>           
-> ...
->   
->>> If you've got any other suggestions while I'm in the general area, I'm
->>> all ears.
->>>       
->> Just the usual plea to replace the host->h_server flag with 2 separate
->> lists: one list of client nlm_hosts, and one list of server
->> nlm_hosts :-)
->>     
->
-> OK, I'm looking at that.
->
->   
->> ...Oh and a minor optimisation: If we're using a loopback mount, I don't
->> think we'll ever need to monitor 'localhost' :-)
->>     
->
-> I assumed one of the only uses for loopback mounts was for testing and
-> development, in which case it's better to keep the loopback behavior
-> similar to non-loopback behavior, even if it's a little silly.  No?
 
-We have encountered a number of customers, who are trying to deploy
-in a cluster architecture, who mount over loopback.  We have tried
-to convince them that this is a bad idea and/or that they should use
-something like bind mounts instead, but they insist.
+On Thu, 2008-02-21 at 15:58 +1100, Neil Brown wrote:
 
-We try not to look too surprised when they encounter issues...  :-)
+> My question is:  *why* cannot rpc_shutdown_client complete until all
+> active rpc_tasks complete?  The use of reference counting ensure that
+> once they do all complete, the client will be finally released and any
+> relevant modules will also be released.
+> 
+> Is there really any need to wait for completion?
 
-       ps
+Looking at the code, I suspect that you can probably get rid of the
+rpc_shutdown_client() without creating too much trouble (since we now
+hold a reference to the vfsmount in most of the asynchronous
+operations).
+
+However the asynchronous sillyrenames are still a problem: if you don't
+wait for the sillyrename RPC call to complete, then you end up with the
+famous "Self-destruct in 5 seconds" message on umount (because we have
+to hold a reference to the directory inode for the duration of the RPC
+call if we want to avoid lookup races and cache consistency issues
+during normal operation).
+Hence, I think the extra workqueue is justified by the fact that rpciod
+cannot ever wait for the sillyrename calls to complete.
+
+
+
