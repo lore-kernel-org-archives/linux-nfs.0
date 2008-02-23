@@ -1,58 +1,66 @@
-From: Rajesham Gajjela <rajeshamg@yahoo.com>
-Subject: [NFS] ipv6 support on nfsv2/3 server support for linux-2.6.12-5
-Date: Fri, 22 Feb 2008 14:18:01 -0800 (PST)
-Message-ID: <833422.40516.qm@web30502.mail.mud.yahoo.com>
+From: Jindrich Makovicka <makovick@gmail.com>
+Subject: [PATCH] nfsmount segfault fix
+Date: Sat, 23 Feb 2008 16:33:43 +0100
+Message-ID: <20080223163343.43f8197d@holly>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: rajeshamg@yahoo.com
-To: nfs@lists.sourceforge.net
+Content-Type: multipart/mixed; boundary="MP_/ohKrmqAQThk9mTpQTHuqUoT"
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:46938 "EHLO neil.brown.name"
+Received: from main.gmane.org ([80.91.229.2]:51640 "EHLO ciao.gmane.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S936514AbYBVWSZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 22 Feb 2008 17:18:25 -0500
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1JSgDl-000789-6y
-	for linux-nfs@vger.kernel.org; Sat, 23 Feb 2008 09:18:21 +1100
+	id S1750941AbYBWPkG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 23 Feb 2008 10:40:06 -0500
+Received: from root by ciao.gmane.org with local (Exim 4.43)
+	id 1JSwTq-0004Ng-TM
+	for linux-nfs@vger.kernel.org; Sat, 23 Feb 2008 15:40:02 +0000
+Received: from 82.208.33.94 ([82.208.33.94])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Sat, 23 Feb 2008 15:40:02 +0000
+Received: from makovick by 82.208.33.94 with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Sat, 23 Feb 2008 15:40:02 +0000
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+--MP_/ohKrmqAQThk9mTpQTHuqUoT
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
-I wanted to test IPV6 support on nfs 
-(nfs v2 and v3) for linux-2.6.12-5.
-This is for nfs server side. I followed guideline at:
-http://nfsv4.bullopensource.org/patches/nfs_ipv6-4/IPv6-test-plan.php
+Hi,
 
-I was trying to pull in the CITI patches and apply to
-2.6.12-5. For ipv6+nfsv3/2+nfs server, which patch
-should I apply from "linux-2.6.12-rc6-001-NFS_ALL.dif"
+In current nfsmount, two tests of the mount result version are out of
+sync. The test in nfs_call_mount() tests the mnt_server->pmap.pm_vers to
+decide what mount function (v2 or v3) to call, but later in nfsmount(),
+(nfs_pmap->pm_vers == 2) condition is used to decide about the result
+format, which is wrong. The result then can be misinterpreted, causing
+a segfault, when mnt_pmap->pm_vers==2 and nfs_pmap->pm_vers>2, and
+nfsmount tries to read the auth flavors.
 
-and "linux-2.6.12-rc6-CITI_NFS4_ALL-1.dif" ?. I am
-tending to say it must be
-"linux-2.6.12-rc6-001-NFS_ALL.dif", but I am not
-pretty
-sure.
+Trivial fix is attached.
 
-Thanks in advance for your help.
+Regards,
+-- 
+Jindrich Makovicka
 
-Please cc me, I am not part of this mailing list.
-Rajesham
+--MP_/ohKrmqAQThk9mTpQTHuqUoT
+Content-Type: text/x-patch; name=nfsmount.c.diff
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment; filename=nfsmount.c.diff
 
+--- nfsmount.c.orig	2007-10-19 05:07:28.000000000 +0200
++++ nfsmount.c	2008-02-15 23:43:32.000000000 +0100
+@@ -714,7 +714,7 @@
+ 			rpc_mount_errors(*nfs_server.hostname, 1, bg);
+ 	}
+ 
+-	if (nfs_pmap->pm_vers == 2) {
++	if (mnt_pmap->pm_vers <= 2) {
+ 		if (mntres.nfsv2.fhs_status != 0) {
+ 			nfs_error(_("%s: %s:%s failed, reason given by server: %s"),
+ 					progname, hostname, dirname,
 
-      ____________________________________________________________________________________
-Never miss a thing.  Make Yahoo your home page. 
-http://www.yahoo.com/r/hs
+--MP_/ohKrmqAQThk9mTpQTHuqUoT--
 
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Microsoft
-Defy all challenges. Microsoft(R) Visual Studio 2008.
-http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
 
