@@ -1,65 +1,315 @@
-From: =?UTF-8?Q?Peter_=C3=85strand?= <astrand-+4tYiAq3b6azQB+pC5nmwQ@public.gmane.org>
-Subject: Re: A new NFSv4 server...
-Date: Fri, 4 Jan 2008 10:15:11 +0100 (CET)
-Message-ID: <Pine.LNX.4.64.0801031332060.18129@maggie.lkpg.cendio.se>
-References: <477CD231.30603@garzik.org>
+From: James Lentini <jlentini@netapp.com>
+Subject: Re: new NFS/RDMA instructions for 2.6.25-rc1
+Date: Mon, 25 Feb 2008 11:49:58 -0500 (EST)
+Message-ID: <Pine.LNX.4.64.0802251140290.16537@jlentini-linux.nane.netapp.com>
+References: <Pine.LNX.4.64.0802111223040.23589@jlentini-linux.nane.netapp.com>
+ <20080211173322.GA4755@fieldses.org> <Pine.LNX.4.64.0802111552080.23589@jlentini-linux.nane.netapp.com>
+ <20080211210044.GA4561@fieldses.org>
 Mime-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="789237761-844506634-1199363527=:18129"
-Cc: NFS list <linux-nfs@vger.kernel.org>, nfsv4@linux-nfs.org
-To: Jeff Garzik <jeff@garzik.org>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Thomas Talpey <talpey@netapp.com>,
+	Tom Tucker <tom@opengridcomputing.com>,
+	general-ZwoEplunGu1OwGhvXhtEPSCwEArCW2h5@public.gmane.org, linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.cendio.se ([193.12.253.69]:62460 "EHLO mail.cendio.se"
+Received: from mx2.netapp.com ([216.240.18.37]:45643 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753640AbYADJeL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 Jan 2008 04:34:11 -0500
-In-Reply-To: <477CD231.30603@garzik.org>
+	id S1754520AbYBYQuD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 25 Feb 2008 11:50:03 -0500
+In-Reply-To: <20080211210044.GA4561@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
-
---789237761-844506634-1199363527=:18129
-Content-Type: TEXT/PLAIN; CHARSET=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Content-ID: <Pine.LNX.4.64.0801031459002.20565-K9BqGu7AvB3wj5YHdwD3Ga2PxDmRETKR@public.gmane.org>
 
 
-[About your implementation]
+On Mon, 11 Feb 2008, J. Bruce Fields wrote:
 
-> In case some developers are interested...  I'm poking at a from-scratch
-> userland NFSv4 server, as a side project.
+> On Mon, Feb 11, 2008 at 03:56:17PM -0500, James Lentini wrote:
+> > 
+> > 
+> > On Mon, 11 Feb 2008, J. Bruce Fields wrote:
+> > 
+> > > On Mon, Feb 11, 2008 at 12:25:14PM -0500, James Lentini wrote:
+> > > > 
+> > > > Linux 2.6.25 will be the first official kernel release to contain the
+> > > > NFS/RDMA server. With the client and server now both available in 
+> > > > 2.6.25-rc1, we've simplified our NFS/RDMA installation instructions.
+> > > > The new instructions are available here:
+> > > >  
+> > > >  http://nfs-rdma.sourceforge.net/Documents/README
+> > > 
+> > > Any reason not to add that to the linux tree, say in
+> > > Documentation/filesystems/nfs-rdma.txt?
+> > > 
+> > > --b.
+> > 
+> > That sounds like a good idea Bruce. The current document is strictly a 
+> > HOWTO. Should we add sections on the design and implementation?
+> 
+> Sure, that'd be great.  But I think it'd be fine to submit the howto
+> pretty much as it is and add the rest later.
+> 
+> --b.
 
-Cool! Being one of the unfs3 developers, I believe that userland NFS=20
-servers are very useful.=20
+Bruce,
 
+These are ready to include in what ever kernel version you see fit.
 
-> In the first step down this long path, I've created an NFSv4 userland ser=
-ver
-> from scratch.  Currently it merely serves data straight from RAM, but the=
- long
+Signed-off-by: James Lentini <jlentini@netapp.com>
 
-Do you know about the n4 project
-(http://cvs.samba.org/cgi-bin/cvsweb/n4/) ? It was abandon many years
-ago, but might have some usefulness.=20
-
-
-> term goal is to permit modular storage backends.  Thus you could implemen=
-t a
-> simple RAM backend, an sqlite-based backend or a complex distributed stor=
-age
-> backend.
-
-unfs3 has a basic modular backend system. I wonder if it would be
-possible to merge your server with unfs3, and still have something
-that's readable. If you are interested, take a look at
-http://cvs.lysator.liu.se/viewcvs/viewcvs.cgi/unfs3/?root=3Dunfs3.
-
-
-Regards,=20
----
-Peter =C3=85strand=09=09ThinLinc Chief Developer
-Cendio AB=09=09http://www.cendio.se
-Wallenbergs gata 4
-583 30 Link=C3=B6ping=09Phone: +46-13-21 46 00
---789237761-844506634-1199363527=:18129--
+--- /dev/null	2008-01-17 11:34:08.491004516 -0500
++++ Documentation/nfs-rdma.txt	2008-02-25 11:43:45.705518000 -0500
+@@ -0,0 +1,253 @@
++################################################################################
++#									       #
++#				NFS/RDMA README				       #
++#									       #
++################################################################################
++
++ Author: NetApp and Open Grid Computing
++ Date: February 11, 2008
++
++Table of Contents
++~~~~~~~~~~~~~~~~~
++ - Overview
++ - Getting Help
++ - Installation
++ - Check RDMA and NFS Setup
++ - NFS/RDMA Setup
++
++Overview
++~~~~~~~~
++
++  This document describes how to install and setup the Linux NFS/RDMA client 
++  and server software.
++
++  The NFS/RDMA client was first included in Linux 2.6.24. The NFS/RDMA server 
++  was first included in the following release, Linux 2.6.25.
++
++  In our testing, we have obtained excellent performance results (full 10Gbit 
++  wire bandwidth at minimal client CPU) under many workloads. The code passes 
++  the full Connectathon test suite and operates over both Infiniband and iWARP 
++  RDMA adapters. 
++
++Getting Help
++~~~~~~~~~~~~
++
++  If you get stuck, you can ask questions on the
++
++                nfs-rdma-devel@lists.sourceforge.net
++  
++  mailing list. 
++
++Installation
++~~~~~~~~~~~~
++
++  These instructions are a step by step guide to building a machine for
++  use with NFS/RDMA.
++
++  - Install an OpenFabrics-compatible RDMA card
++
++    Any device that is compatible with the OpenFabrics.org software stack is 
++    acceptable.
++
++    Testing has been performed using several Mellanox-based IB cards, the 
++    Ammasso AMS1100 iWARP adapter, and the Chelsio cxgb3 iWARP adapter.
++
++  - Install a Linux distribution and tools
++
++    The first kernel release to contain both the NFS/RDMA client and server was 
++    Linux 2.6.25  Therefore, a distribution compatible with this and subsequent 
++    Linux kernel release should be installed.
++
++    The procedures described in this document have been tested with
++    distributions from Red Hat's Fedora Project (http://fedora.redhat.com/).
++
++  - Install nfs-utils-1.1.1 or greater on the client
++
++    An NFS/RDMA mount point can only be obtained by using the mount.nfs 
++    command in nfs-utils-1.1.1 or greater. To see which version of mount.nfs 
++    you are using, type:
++
++    > /sbin/mount.nfs -V
++
++    If the version is less than 1.1.1 or the command does not exist, 
++    then you will need to install the latest version of nfs-utils. 
++
++    Download the latest package from:
++
++    http://www.kernel.org/pub/linux/utils/nfs
++
++    Uncompress the package and follow the installation instructions.
++
++    If you will not be using GSS and NFSv4, the installation process 
++    can be simplified by disabling these features when running configure:
++
++    > ./configure --disable-gss --disable-nfsv4
++
++    For more information on this see the package's README and INSTALL files.
++
++    After building the nfs-utils package, there will be a mount.nfs binary in 
++    the utils/mount directory. This binary can be used to initiate NFS v2, v3, 
++    or v4 mounts. To initiate a v4 mount, the binary must be called mount.nfs4. 
++    The standard technique is to create a symlink called mount.nfs4 to mount.nfs.
++
++    NOTE: mount.nfs and therefore nfs-utils-1.1.1 or greater is only needed 
++    on the NFS client machine. You do not need this specific version of 
++    nfs-utils on the server. Furthermore, only the mount.nfs command from 
++    nfs-utils-1.1.1 is needed on the client.
++
++  - Install a Linux kernel with NFS/RDMA
++
++    The NFS/RDMA client and server are both included in the mainline Linux 
++    kernel version 2.6.25 and later. This and other versions of the 2.6 Linux 
++    kernel can be found at:
++
++    ftp://ftp.kernel.org/pub/linux/kernel/v2.6/
++
++    Download the sources and place them in an appropriate location. 
++
++  - Configure the RDMA stack
++
++    Make sure your kernel configuration has RDMA support enabled. Under
++    Device Drivers -> InfiniBand support, update the kernel configuration  
++    to enable InfiniBand support [NOTE: the option name is misleading. Enabling
++    InfiniBand support is required for all RDMA devices (IB, iWARP, etc.)]. 
++    
++    Enable the appropriate IB HCA support (mlx4, mthca, ehca, ipath, etc.) or 
++    iWARP adapter support (amso, cxgb3, etc.).
++
++    If you are using InfiniBand, be sure to enable IP-over-InfiniBand support.
++
++  - Configure the NFS client and server
++
++    Your kernel configuration must also have NFS file system support and/or 
++    NFS server support enabled. These and other NFS related configuration 
++    options can be found under File Systems -> Network File Systems.
++
++  - Build, install, reboot
++
++    The NFS/RDMA code will be enabled automatically if NFS and RDMA
++    are turned on. The NFS/RDMA client and server are configured via the hidden
++    SUNRPC_XPRT_RDMA config option that depends on SUNRPC and INFINIBAND. The 
++    value of SUNRPC_XPRT_RDMA will be:
++
++     - N if either SUNRPC or INFINIBAND are N, in this case the NFS/RDMA client 
++       and server will not be built
++     - M if both SUNRPC and INFINIBAND are on (M or Y) and at least one is M,
++       in this case the NFS/RDMA client and server will be built as modules
++     - Y if both SUNRPC and INFINIBAND are Y, in this case the NFS/RDMA client 
++       and server will be built into the kernel
++
++    Therefore, if you have followed the steps above and turned no NFS and RDMA,
++    the NFS/RDMA client and server will be built.
++
++    Build a new kernel, install it, boot it.
++
++Check RDMA and NFS Setup
++~~~~~~~~~~~~~~~~~~~~~~~~
++
++    Before configuring the NFS/RDMA software, it is a good idea to test 
++    your new kernel to ensure that the kernel is working correctly.
++    In particular, it is a good idea to verify that the RDMA stack 
++    is functioning as expected and standard NFS over TCP/IP and/or UDP/IP 
++    is working properly.
++
++  - Check RDMA Setup
++
++    If you built the RDMA components as modules, load them at
++    this time. For example, if you are using a Mellanox Tavor/Sinai/Arbel 
++    card:
++    
++    > modprobe ib_mthca
++    > modprobe ib_ipoib
++
++    If you are using InfiniBand, make sure there is a Subnet Manager (SM)
++    running on the network. If your IB switch has an embedded SM, you can
++    use it. Otherwise, you will need to run an SM, such as OpenSM, on one
++    of your end nodes.
++
++    If an SM is running on your network, you should see the following:
++
++    > cat /sys/class/infiniband/driverX/ports/1/state 
++    4: ACTIVE
++
++    where driverX is mthca0, ipath5, ehca3, etc.
++
++    To further test the InfiniBand software stack, use IPoIB (this
++    assumes you have two IB hosts named host1 and host2):
++
++    host1> ifconfig ib0 a.b.c.x 
++    host2> ifconfig ib0 a.b.c.y
++    host1> ping a.b.c.y
++    host2> ping a.b.c.x
++    
++    For other device types, follow the appropriate procedures.
++
++  - Check NFS Setup
++
++    For the NFS components enabled above (client and/or server), 
++    test their functionality over standard Ethernet using TCP/IP or UDP/IP.
++
++NFS/RDMA Setup
++~~~~~~~~~~~~~~
++
++  We recommend that you use two machines, one to act as the client and 
++  one to act as the server. 
++
++  One time configuration:
++
++  - On the server system, configure the /etc/exports file and 
++    start the NFS/RDMA server.
++
++    Exports entries with the following format have been tested:
++
++    /vol0   10.97.103.47(rw,async) 192.168.0.47(rw,async,insecure,no_root_squash)
++
++    Here the first IP address is the client's Ethernet address and the second 
++    IP address is the clients IPoIB address.
++
++ Each time a machine boots:
++
++  - Load and configure the RDMA drivers
++   
++    For InfiniBand using a Mellanox adapter: 
++
++    > modprobe ib_mthca
++    > modprobe ib_ipoib
++    > ifconfig ib0 a.b.c.d  
++    
++    NOTE: use unique addresses for the client and server
++
++  - Start the NFS server
++
++    If the NFS/RDMA server was built as a module (CONFIG_SUNRPC_XPRT_RDMA=m in kernel config), 
++    load the RDMA transport module:
++
++    > modprobe svcrdma
++
++    Regardless of how the server was built (module or built-in), start the server:
++
++    > /etc/init.d/nfs start
++
++    or 
++
++    > service nfs start
++
++    Instruct the server to listen on the RDMA transport:
++
++    > echo rdma 2050 > /proc/fs/nfsd/portlist
++
++  - On the client system
++
++    If the NFS/RDMA client was built as a module (CONFIG_SUNRPC_XPRT_RDMA=m in kernel config),
++    load the RDMA client module:
++
++    > modprobe xprtrdma.ko 
++
++    Regardless of how the client was built (module or built-in), issue the mount.nfs command:
++
++    > /path/to/your/mount.nfs <IPoIB-server-name-or-address>:/<export> /mnt -i -o rdma,port=2050
++
++    To verify that the mount is using RDMA, run "cat /proc/mounts" and check the 
++    "proto" field for the given mount.
++
++  Congratulations! You're using NFS/RDMA!
