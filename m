@@ -1,71 +1,41 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: mountd prevents spindown of non-exported disk
-Date: Mon, 25 Feb 2008 11:32:47 -0500
-Message-ID: <20080225163247.GA10402@fieldses.org>
-References: <47BCA119.2030404@foo-lounge.de> <18364.64328.189954.417159@notabene.brown> <47C2CFB1.4000004@foo-lounge.de>
+Subject: Re: kernel 2.6 and simulated flock() with posix locks
+Date: Mon, 25 Feb 2008 11:38:02 -0500
+Message-ID: <20080225163802.GB10402@fieldses.org>
+References: <47C2C09D.2010203@arx.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org
-To: Timo Reimann <mailinglist-d4LLFNs4DFRA7UZ8SB9NFg@public.gmane.org>
+Cc: linux-nfs@vger.kernel.org
+To: Thanos Chatziathanassiou <tchatzi-nz9JlX+3IF8@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:55670 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:51601 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755382AbYBYQcw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 25 Feb 2008 11:32:52 -0500
-In-Reply-To: <47C2CFB1.4000004-d4LLFNs4DFRA7UZ8SB9NFg@public.gmane.org>
+	id S1754549AbYBYQiE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 25 Feb 2008 11:38:04 -0500
+In-Reply-To: <47C2C09D.2010203-nz9JlX+3IF8@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Feb 25, 2008 at 03:24:49PM +0100, Timo Reimann wrote:
-> Neil Brown wrote:
-> > On Wednesday February 20, mailinglist-d4LLFNs4DFRA7UZ8SB9NFg@public.gmane.org wrote:
-> >> Although there should be nothing accessing the disk except my custom
-> >> backup cron job initiating at 5am daily, something was constantly
-> >> bringing it back into active state after a rough 20-25 minutes. With the
-> >> help of blktrace, I monitored every single I/O access to the disk and
-> >> found a single process only that would cause the wake-up:
-> >>
-> >>
-> >> $ sudo blkparse -i hda.blktrace.0
-> >> Input file hda.blktrace.0 added
-> >> [...]
-> >>   3,0    0        6    88.950000000  6806  Q   R 447 + 8 [rpc.mountd]
-> >> [...]
-> >>
-> >>
-> >> So for some reason, rpc.mountd issues this disk request in regular
-> >> intervals although nothing on the disk is being NFS-exported according
-> >> to /etc/exports.
-> > 
-> > This is doubtlessly something related to libblkid.
-> > 
-> > We only ever ask it for the UID of specific devices that have been
-> > exported.  However it is quite possible that it touches other devices
-> > as well...
-> > 
-> > I'm using libblkid in a way that it wasn't originally designed to be
-> > used.  It was (as far as I can tell) designed to find a device given a
-> > UUID or similar.  In that case you would expect it to touch every
-> > device.
-> > 
-> > You could always build your own nfs-utils and configure with
-> > --without-uuid.
-> 
-> I did so and re-compiled the nfs-utils package, resulting in new
-> packages of nfs-common and nfs-kernel-server under Ubuntu 7.10.
-> 
-> However, another re-run of blktrace yielded that the problem did not go
-> away. There are still lots of disk accesses from mountd, and the strace
-> output continuously contains open calls to the unmounted backup filesystem.
-> 
-> 
-> Is there anything else I can do in attempt to resolve this issue? I
-> suppose pasting the complete output of strace might help, but I wouldn't
-> do so without explicit confirmation of yours as the log-file is 3.2 MB
-> large.
+On Mon, Feb 25, 2008 at 03:20:29PM +0200, Thanos Chatziathanassiou wrote:
+> Hi,
+>
+> I've been trying to replace kernel 2.4 in a web server mounting its Document Root via NFS with kernel 2.6 and faced a rather disturbing problem.
+> About 1/2 hour after starting, the server would stop serving requests though it seemed fine.
+> Earlier 2.6 kernels exhibited the ``do_vfs_lock: VFS is out of sync with lock manager!'' symptom, later (when this was changed to a dprintk()) just sat there.
+> No apparent error apart from apache compaining ``[error] server reached MaxClients setting, consider raising the MaxClients setting'', unable to serve any requests.
+>
+> This issue does not surface under 2.4, where everything works as expected.
+> I came across this 
+> (http://blog.notreally.org/articles/2007/12/19/modifying-a-live-linux-kernel/) 
+> where apparently they faced the same problem, but their solution (which 
+> seemed a little crude) resulted in apache spitting ``There are no 
+> available locks'' messages (or roughly this, translated from my regional 
+> settings).
+>
+> Is there any solution to this or a way to get 2.4 behavior under 2.6 ?
 
-Probably the most likely to read such an strace are me, Neil, and Steve
-(<steved@redhat.com>), so you might just send it privately to the three
-of us.
+I'm a little confused--how do you know that the problem you face is the
+same as the one described on the blog above?  Are you re-exporting NFS
+via Samba?
 
 --b.
