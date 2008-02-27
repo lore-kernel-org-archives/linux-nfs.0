@@ -1,83 +1,54 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 09/10] SUNRPC: Ensure that we read all available tcp data
-Date: Wed, 27 Feb 2008 10:21:34 -0800
-Message-ID: <47C5AA2E.8020408@oracle.com>
-References: <20080226172308.10383.49081.stgit@c-69-242-210-120.hsd1.mi.comcast.net> <20080226172308.10383.82368.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
-Reply-To: chuck.lever@oracle.com
+From: Tom Tucker <tom@opengridcomputing.com>
+Subject: [PATCH] SVC: Guard call to xpo_release_rqst in svc_send
+Date: Wed, 27 Feb 2008 13:58:59 -0600
+Message-ID: <1204142339.24762.94.camel@trinity.ogc.int>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------060200050506010807090206"
-Cc: linux-nfs@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Content-Type: text/plain
+Cc: linux-nfs <linux-nfs@vger.kernel.org>,
+	jaschut <jaschut@sandia.gov>, swise@opengridcomputing.com
+To: bfields <bfields-ag9A2Eb6PFsgsBAKwltoeQ@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:47706 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757790AbYB0SWC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Feb 2008 13:22:02 -0500
-In-Reply-To: <20080226172308.10383.82368.stgit-KPEdlmqt5P7XOazzY/2fV4TcuzvYVacciM950cveMlzk1uMJSBkQmQ@public.gmane.org>
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:48238 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1757015AbYB0TtV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Feb 2008 14:49:21 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a multi-part message in MIME format.
---------------060200050506010807090206
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Transfer-Encoding: 7bit
+    
+The svc_send path is calling xpo_release_rqst without checking
+the XPT_DEAD bit. It is illegal to call transport methods on a dead
+transport. In practice, if the transport gets an error and shuts down
+while there are still RPC in svc_process the resulting svc_send could
+crash calling into a transport that is being shut down.
+    
+Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+---
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index ea377e0..467c1c0 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -729,9 +729,6 @@ int svc_send(struct svc_rqst *rqstp)
+ 	if (!xprt)
+ 		return -EFAULT;
+ 
+-	/* release the receive skb before sending the reply */
+-	rqstp->rq_xprt->xpt_ops->xpo_release_rqst(rqstp);
+-
+ 	/* calculate over-all length */
+ 	xb = &rqstp->rq_res;
+ 	xb->len = xb->head[0].iov_len +
+@@ -742,8 +739,11 @@ int svc_send(struct svc_rqst *rqstp)
+ 	mutex_lock(&xprt->xpt_mutex);
+ 	if (test_bit(XPT_DEAD, &xprt->xpt_flags))
+ 		len = -ENOTCONN;
+-	else
++	else {
++		/* release the receive skb before sending the reply */
++		rqstp->rq_xprt->xpt_ops->xpo_release_rqst(rqstp);
+ 		len = xprt->xpt_ops->xpo_sendto(rqstp);
++	}
+ 	mutex_unlock(&xprt->xpt_mutex);
+ 	svc_xprt_release(rqstp);
+ 
 
-Trond Myklebust wrote:
-> Don't stop until we run out of data, or we hit an error.
-
-I don't understand how this patch is related to the others.
-
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> ---
-> 
->  net/sunrpc/xprtsock.c |    7 +++++--
->  1 files changed, 5 insertions(+), 2 deletions(-)
-> 
-> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-> index 30e7ac2..8bd3b0f 100644
-> --- a/net/sunrpc/xprtsock.c
-> +++ b/net/sunrpc/xprtsock.c
-> @@ -1073,6 +1073,7 @@ static void xs_tcp_data_ready(struct sock *sk, int bytes)
->  {
->  	struct rpc_xprt *xprt;
->  	read_descriptor_t rd_desc;
-> +	int read;
->  
->  	dprintk("RPC:       xs_tcp_data_ready...\n");
->  
-> @@ -1084,8 +1085,10 @@ static void xs_tcp_data_ready(struct sock *sk, int bytes)
->  
->  	/* We use rd_desc to pass struct xprt to xs_tcp_data_recv */
->  	rd_desc.arg.data = xprt;
-> -	rd_desc.count = 65536;
-> -	tcp_read_sock(sk, &rd_desc, xs_tcp_data_recv);
-> +	do {
-> +		rd_desc.count = 65536;
-> +		read = tcp_read_sock(sk, &rd_desc, xs_tcp_data_recv);
-> +	} while (read > 0);
-
-Why are we looping instead of simply setting rd_desc.count to a larger 
-value (say, a megabyte)?
-
-(If we keep this, it would be nice to replace the "65536" with a macro, 
-and to add a comment explaining the need for the loop).
-
->  out:
->  	read_unlock(&sk->sk_callback_lock);
->  }
-
---------------060200050506010807090206
-Content-Type: text/x-vcard; charset=utf-8;
- name="chuck_lever.vcf"
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment;
- filename="chuck_lever.vcf"
-
-YmVnaW46dmNhcmQNCmZuOkNodWNrIExldmVyDQpuOkxldmVyO0NodWNrDQpvcmc6T3JhY2xl
-IENvcnBvcmF0aW9uO0NvcnBvcmF0ZSBBcmNoaXRlY3R1cmU6IExpbnV4IFByb2plY3RzIEdy
-b3VwDQphZHI6OzsxMDE1IEdyYW5nZXIgQXZlbnVlO0FubiBBcmJvcjtNSTs0ODEwNDtVU0EN
-CnRpdGxlOlByaW5jaXBhbCBNZW1iZXIgb2YgU3RhZmYNCnRlbDt3b3JrOisxIDI0OCA2MTQg
-NTA5MQ0KeC1tb3ppbGxhLWh0bWw6RkFMU0UNCnZlcnNpb246Mi4xDQplbmQ6dmNhcmQNCg0K
-
---------------060200050506010807090206--
