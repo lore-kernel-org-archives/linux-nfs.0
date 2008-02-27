@@ -1,38 +1,41 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 00/10] Cleanups of the RPC waitqueue locking
-Date: Tue, 26 Feb 2008 15:41:35 -0800
-Message-ID: <1204069295.10615.0.camel@heimdal.trondhjem.org>
+From: Stephen Rothwell <sfr@canb.auug.org.au>
+Subject: linux-next: nfs client fixup
+Date: Wed, 27 Feb 2008 16:52:51 +1100
+Message-ID: <20080227165251.f3393be2.sfr@canb.auug.org.au>
 Mime-Version: 1.0
-Content-Type: text/plain
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII
+Cc: linux-next@vger.kernel.org, linux-nfs@vger.kernel.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:35598 "EHLO mx2.netapp.com"
+Received: from chilli.pcug.org.au ([203.10.76.44]:33309 "EHLO smtps.tip.net.au"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1763721AbYBZXlh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 26 Feb 2008 18:41:37 -0500
-Received: from svlexrs02.hq.netapp.com (svlexrs02.corp.netapp.com [10.57.156.154])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id m1QNfa6H028013
-	for <linux-nfs@vger.kernel.org>; Tue, 26 Feb 2008 15:41:37 -0800 (PST)
+	id S1751684AbYB0Fww (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 27 Feb 2008 00:52:52 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-One of the main reasons for the complicated locking in the RPC waitqueue
-wakeup code is the fact that the timeout code can kick in at any time
-between the call to rpc_wake_up_*(), and the call to rpc_delete_timer()
-inside __rpc_execute().
-By moving the timers from the rpc_task onto the waitqueue itself, we can
-greatly simplify the locking on the rpc_wakeup_task() stuff, since we
-can then guarantee that the timer will not touch the task once it has
-been removed from the wait queue (and the wake-queue loses track of
-where the task is).
+Hi Trond,
 
-Another simplification that results is that we can get rid of the
-rcu-safe releases of the RPC tasks.
+I assume you have already found this, but the current linux-next tree
+fails to build if CONFIG_NFS_V4 is not set and CONFIG_NFS_FS is set.
 
-Finally, we simplify the RPC timer callbacks themselves by moving the
-complexity into the process context (using task->tk_callback()), and
-simplify the RPC timer callbacks themselves to simply waking up the
-tasks and setting task->tk_status to ETIMEDOUT. 
+s/nfs/client.c:192: error: 'struct nfs_client' has no member named 'cl_rpcwaitq'
 
-Cheers
-  Trond
+-- 
+Cheers,
+Stephen Rothwell                    sfr@canb.auug.org.au
+
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 2b20650..b7daf24 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -189,7 +189,9 @@ static void nfs_free_client(struct nfs_client *clp)
+ 	if (__test_and_clear_bit(NFS_CS_CALLBACK, &clp->cl_res_state))
+ 		nfs_callback_down();
+ 
++#ifdef CONFIG_NFS_V4
+ 	rpc_destroy_wait_queue(&clp->cl_rpcwaitq);
++#endif
+ 	kfree(clp->cl_hostname);
+ 	kfree(clp);
+ 
