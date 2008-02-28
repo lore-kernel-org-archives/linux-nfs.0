@@ -1,65 +1,41 @@
-From: Tobias Oetiker <tobi-7K0TWYW2a3pyDzI6CaY1VQ@public.gmane.org>
-Subject: 2.6.22.19 mount problem for /usr with nfs-root (diskless)
-Date: Thu, 28 Feb 2008 16:16:44 +0100 (CET)
-Message-ID: <alpine.DEB.1.00.0802281603000.5281@sebohet.brgvxre.pu>
+From: Frans Pop <elendil@planet.nl>
+Subject: [regression] nfs4: 30 second delay during umount of remote fs on system shutdown
+Date: Thu, 28 Feb 2008 18:29:15 +0100
+Message-ID: <200802281829.16343.elendil@planet.nl>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: text/plain;
+  charset="us-ascii"
+Cc: linux-kernel@vger.kernel.org
 To: linux-nfs@vger.kernel.org
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from james.oetiker.ch ([213.144.138.195]:37712 "EHLO
-	james.oetiker.ch" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758118AbYB1Pib (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Feb 2008 10:38:31 -0500
-Received: from localhost (localhost [127.0.0.1])
-	by james.oetiker.ch (Postfix) with ESMTP id C4F278AEF0
-	for <linux-nfs@vger.kernel.org>; Thu, 28 Feb 2008 16:16:44 +0100 (CET)
-Received: from james.oetiker.ch ([127.0.0.1])
-	by localhost (james.oetiker.ch [127.0.0.1]) (amavisd-new, port 10024)
-	with LMTP id Ug6kI626-RoS for <linux-nfs@vger.kernel.org>;
-	Thu, 28 Feb 2008 16:16:44 +0100 (CET)
-Received: from johan.oetiker.ch (johan.oetiker.ch [213.144.133.194])
-	by james.oetiker.ch (Postfix) with ESMTP id A6D148AEDF
-	for <linux-nfs@vger.kernel.org>; Thu, 28 Feb 2008 16:16:44 +0100 (CET)
-Sender: linux-nfs-owner@vger.kernel.org
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1760108AbYB1R32@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi List,
+With 2.6.25-rc2 and -rc3 I noticed a pause of 30 seconds when my system 
+(Debian unstable, x86_64) is being shutdown. The cause is the unmounting of 
+an nfs4 remote file system.
+The pause does not happen with 2.6.24. I'm unsure about 2.6.25-rc1 as I was 
+concentrating on other issues when I was testing that.
 
-I am running a diskless linux setup. I tired to upgrade to kernel
-2.6.22.19 and found the following:
+I can reproduce the same pause on an active system by stopping portmap 
+before doing an umount of the filesystem.
 
-If I have the following exports on my server (2.6.24.2)
+The shutdown sequence on my box includes:
+K20nfs-common
+[...]
+S20sendsigs
+[...]
+S31umountnfs.sh
+S32portmap
 
- /partition-a/client-root-a
- /partition-a/client-root-b
- /partition-a/client-root-c
- /partition-a/client-usr
+So it seems that things should be OK (S32portmap is after S31umountnfs.sh), 
+but in fact portmap has already been killed during S20sendsigs!
 
-Once the client has booted off /partition-a/client-root-a it can
-not mount /partition-a/client-usr.
+I have verified that portmap is also not running during S31umountnfs.sh with 
+2.6.24, so apparently there has been a change in the kernel that has made 
+umount look for portmap and cause the 30 second delay if it is not running.
 
-It complains with
+Is this a kernel regression?
 
- mount:  server:/partition-a/client-usr  already mounted or /usr busy
-
-which is not true ...
-
-Mouting also does not work if I try to mount this partition
-anywhere else. I also get the same error if I try to mount any
-other directory shared below /partition-a (/partition-a/XXXX)
-
-If I move /partition-a/client-usr to /partition-b/client-usr
-then everything works well ...
-
-I have seen that 2.6.22.19 got quite a number of nfs patches, so
-maybe this rings a bell with someone ... let me know if you need
-more details.
-
-cheers
-tobi
-
-ps. the setup works fine with 2.6.24.2 clients and 2.6.22.9 clients
-
--- 
-Tobi Oetiker, OETIKER+PARTNER AG, Aarweg 15 CH-4600 Olten
-http://it.oetiker.ch tobi-7K0TWYW2a3pyDzI6CaY1VQ@public.gmane.org ++41 62 213 9902
+Cheers,
+FJP
