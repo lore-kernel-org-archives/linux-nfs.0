@@ -1,45 +1,138 @@
-From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
-Subject: Re: nfs4 over rdma transport oops
-Date: Thu, 28 Feb 2008 03:13:58 -0500
-Message-ID: <EXNANE01Kd6QR7j1HaK000000f4@exnane01.hq.netapp.com>
-References: <EXNANE01nwpGR881Np7000000e3@exnane01.hq.netapp.com>
- <4a4634330802272049xe20ef80y21c2c59f55932c70@mail.gmail.com> <4a4634330802272049xe20ef80y21c2c59f55932c70@mail.gmail.com
- >
+From: Gertjan Oude Lohuis <gertjan-DW70C6hi67U@public.gmane.org>
+Subject: Re: Kernel (2.6.24) crash on nfsd (BUG: soft lockup)
+Date: Thu, 28 Feb 2008 12:08:52 +0100
+Message-ID: <47C69644.7010606@byte.nl>
+References: <47C434D2.80601@byte.nl>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs@vger.kernel.org
-To: "Shirish Pargaonkar" <shirishpargaonkar@gmail.com>
+Content-Type: multipart/mixed;
+ boundary="------------090806010409000803040207"
+Cc: rune.nilssen-FJFKJQU35qU@public.gmane.org
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:29381 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754597AbYB1IPH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 28 Feb 2008 03:15:07 -0500
-In-Reply-To: <4a4634330802272049xe20ef80y21c2c59f55932c70-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org
- >
-References: <EXNANE01nwpGR881Np7000000e3-kboziUmgGqYSZCGxjG3uujkOHZLvdrmu@public.gmane.org>
- <4a4634330802272049xe20ef80y21c2c59f55932c70-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Received: from gw.c1.byte.nl ([82.94.214.64]:47003 "EHLO smtp.byte.nl"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1759629AbYB1LIz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 28 Feb 2008 06:08:55 -0500
+In-Reply-To: <47C434D2.80601-DW70C6hi67U@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-At 11:49 PM 2/27/2008, Shirish Pargaonkar wrote:
->The code fix works.  I did not apply the workaround you had mentioned earlier
->and did not encounter oops for the same operation (cat) on the file on the
->mounted filesystem.
+This is a multi-part message in MIME format.
+--------------090806010409000803040207
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-Great! I'll send it along to Trond then.
+Over the past few days, our fileserver has crashed with this bug a 
+couple of times. We downgraded the kernel to 2.6.23.17 last night, but 
+about an hour ago the machine crashed again, this time with a sligthly 
+different stacktrace (attached).
+This is driving us nuts: kernel 2.6.17 to 2.6.22 are not possible, 
+because of the lockd issue, and 2.6.23 and 2.6.24 are not possible 
+because it crashes even more often.
 
-If you have a chance after running for a while on an RDMA mount
-point, I'd be interested in the output of Chuck's "mountstats" python
-script, which can extract some of the rdma operation statistics from the
-rpc/rdma code. The "hardway" statistic is the one I'm especially interested
-in, in your NFSv4 case. You can get it at:
-	http://oss.oracle.com/~cel/linux-2.6/2.6.24/mountstats
+I noticed that Rune Nilssen reported the same issue a few days ago to 
+this list, but he too hasn't received any response yet 
+(http://article.gmane.org/gmane.linux.nfs/19105).
 
-There is also another script there which shows some very interesting
-timing and other performance data, which I recommend:
-	http://oss.oracle.com/~cel/linux-2.6/2.6.24/nfs-iostat
+Any more people here that suffer from this issue? Can I get/give more 
+information to make debugging easier?
 
-Thanks,
 
-Tom.
+-- 
 
+Met vriendelijke groet,
+
+Gertjan Oude Lohuis
+Byte Internet
+
+W www.byte.nl
+E support-DW70C6hi67U@public.gmane.org
+F 020 6255 922
+
+--------------090806010409000803040207
+Content-Type: text/plain;
+ name="stacktrace3.txt"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline;
+ filename="stacktrace3.txt"
+
+BUG: soft lockup - CPU#3 stuck for 11s! [nfsd:2643]
+
+Pid: 2643, comm:                 nfsd
+EIP: 0060:[<c0179a3a>] CPU: 3
+EIP is at __generic_file_splice_read+0x12c/0x418
+ EFLAGS: 00000206    Not tainted  (2.6.23.17-fwsh-byte #3)
+EAX: f6e9dddc EBX: 00001000 ECX: 00000001 EDX: 00000000
+ESI: 00000000 EDI: f6e9dcd0 EBP: 00000095 DS: 007b ES: 007b FS: 00d8
+CR0: 8005003b CR2: b7e72cc0 CR3: 00622000 CR4: 000006f0
+DR0: 00000000 DR1: 00000000 DR2: 00000000 DR3: 00000000
+DR6: ffff0ff0 DR7: 00000400
+ [<c0113cbb>] __check_preempt_curr_fair+0x4b/0x7d
+ [<c0113dcb>] entity_tick+0x47/0x54
+ [<c013006b>] getnstimeofday+0x37/0x111
+ [<c0132fb6>] clockevents_program_event+0xac/0xcc
+ [<c0122996>] run_timer_softirq+0x30/0x184
+ [<c012f36f>] hrtimer_interrupt+0x132/0x1c4
+ [<c011f0e0>] __do_softirq+0xba/0xcf
+ [<c010da6a>] smp_apic_timer_interrupt+0x2c/0x35
+ [<c01032bc>] apic_timer_interrupt+0x28/0x30
+ [<c0179da7>] generic_file_splice_read+0x81/0xd5
+ [<c017a6b0>] do_splice_to+0x75/0x97
+ [<c017a771>] splice_direct_to_actor+0x9f/0x166
+ [<f8f2a494>] nfsd_acceptable+0x0/0xd1 [nfsd]
+ [<f8f2c247>] nfsd_direct_splice_actor+0x0/0xa [nfsd]
+ [<f8f2c5ea>] nfsd_vfs_read+0x399/0x3bd [nfsd]
+ [<c015d57f>] dentry_open+0x34/0x64
+ [<f8f2ca1d>] nfsd_read+0xee/0xfb [nfsd]
+ [<f8f332ab>] nfsd3_proc_read+0xfe/0x186 [nfsd]
+ [<f8f34cd9>] nfs3svc_decode_readargs+0x0/0xeb [nfsd]
+ [<f8f28847>] nfsd_dispatch+0xc5/0x1ca [nfsd]
+ [<c043ab82>] svcauth_unix_set_client+0x116/0x165
+ [<c0436b96>] svc_process+0x4fb/0x6d4
+ [<c01164ad>] default_wake_function+0x0/0xc
+ [<f8f2863d>] nfsd+0x16a/0x282 [nfsd]
+ [<f8f284d3>] nfsd+0x0/0x282 [nfsd]
+ [<c010343f>] kernel_thread_helper+0x7/0x10
+ =======================
+
+
+Pid: 2643, comm:                 nfsd
+EIP: 0060:[<c01799ed>] CPU: 3
+EIP is at __generic_file_splice_read+0xdf/0x418
+ EFLAGS: 00000206    Not tainted  (2.6.23.17-fwsh-byte #3)
+EAX: 00000095 EBX: f6e9de50 ECX: 00000001 EDX: 00000000
+ESI: 00000001 EDI: f6e9dcd0 EBP: 00000096 DS: 007b ES: 007b FS: 00d8
+CR0: 8005003b CR2: b7e72cc0 CR3: 00622000 CR4: 000006f0
+DR0: 00000000 DR1: 00000000 DR2: 00000000 DR3: 00000000
+DR6: ffff0ff0 DR7: 00000400
+ [<c0113cbb>] __check_preempt_curr_fair+0x4b/0x7d
+ [<c0113dcb>] entity_tick+0x47/0x54
+ [<c013006b>] getnstimeofday+0x37/0x111
+ [<c0132fb6>] clockevents_program_event+0xac/0xcc
+ [<c0122996>] run_timer_softirq+0x30/0x184
+ [<c012f36f>] hrtimer_interrupt+0x132/0x1c4
+ [<c011f0e0>] __do_softirq+0xba/0xcf
+ [<c010da6a>] smp_apic_timer_interrupt+0x2c/0x35
+ [<c01032bc>] apic_timer_interrupt+0x28/0x30
+ [<c017007b>] find_inode_fast+0x26/0x46
+ [<c0179da7>] generic_file_splice_read+0x81/0xd5
+ [<c017a6b0>] do_splice_to+0x75/0x97
+ [<c017a771>] splice_direct_to_actor+0x9f/0x166
+ [<f8f2a494>] nfsd_acceptable+0x0/0xd1 [nfsd]
+ [<f8f2c247>] nfsd_direct_splice_actor+0x0/0xa [nfsd]
+ [<f8f2c5ea>] nfsd_vfs_read+0x399/0x3bd [nfsd]
+ [<c015d57f>] dentry_open+0x34/0x64
+ [<f8f2ca1d>] nfsd_read+0xee/0xfb [nfsd]
+ [<f8f332ab>] nfsd3_proc_read+0xfe/0x186 [nfsd]
+ [<f8f34cd9>] nfs3svc_decode_readargs+0x0/0xeb [nfsd]
+ [<f8f28847>] nfsd_dispatch+0xc5/0x1ca [nfsd]
+ [<c043ab82>] svcauth_unix_set_client+0x116/0x165
+ [<c0436b96>] svc_process+0x4fb/0x6d4
+ [<c01164ad>] default_wake_function+0x0/0xc
+ [<f8f2863d>] nfsd+0x16a/0x282 [nfsd]
+ [<f8f284d3>] nfsd+0x0/0x282 [nfsd]
+ [<c010343f>] kernel_thread_helper+0x7/0x10
+ =======================
+
+
+--------------090806010409000803040207--
