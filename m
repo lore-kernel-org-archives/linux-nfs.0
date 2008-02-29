@@ -1,45 +1,78 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [NFS] mount.nfs4 issue
-Date: Fri, 29 Feb 2008 09:20:48 -0800
-Message-ID: <1204305648.7961.19.camel@heimdal.trondhjem.org>
-References: <200802281506.05177.toralf.foerster@gmx.de>
-	<1204225211.7825.0.camel@heimdal.trondhjem.org>
-	<200802291748.30887.toralf.foerster@gmx.de>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] SVC: Guard call to xpo_release_rqst in svc_send
+Date: Fri, 29 Feb 2008 15:40:30 -0500
+Message-ID: <20080229204030.GB6276@fieldses.org>
+References: <1204142339.24762.94.camel@trinity.ogc.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: nfs@lists.sourceforge.net
-To: Toralf =?ISO-8859-1?Q?F=F6rster?= <toralf.foerster@gmx.de>
+Content-Type: text/plain; charset=us-ascii
+Cc: bfields <bfields@fieldses.org>,
+	linux-nfs <linux-nfs@vger.kernel.org>,
+	jaschut <jaschut@sandia.gov>, swise@opengridcomputing.com
+To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:48429 "EHLO neil.brown.name"
+Received: from mail.fieldses.org ([66.93.2.214]:60170 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752835AbYB2RVw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 29 Feb 2008 12:21:52 -0500
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1JV8vb-0005z0-Tx
-	for linux-nfs@vger.kernel.org; Sat, 01 Mar 2008 04:21:47 +1100
-In-Reply-To: <200802291748.30887.toralf.foerster@gmx.de>
+	id S1761136AbYB2Ukm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 29 Feb 2008 15:40:42 -0500
+In-Reply-To: <1204142339.24762.94.camel-SMNkleLxa3ZimH42XvhXlA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ck9uIEZyaSwgMjAwOC0wMi0yOSBhdCAxNzo0OCArMDEwMCwgVG9yYWxmIEbDtnJzdGVyIHdyb3Rl
-Ogo+IEF0IFRodXJzZGF5IDI4IEZlYnJ1YXJ5IDIwMDggVHJvbmQgTXlrbGVidXN0IHdyb3RlIDoK
-PiAKPiA+IAo+ID4gVGhhdCdzIGJlY2F1c2UgeW91IG5lZWQgdG8gbW91bnQgJy8nIGluc3RlYWQg
-b2YgJy90bXAnLgo+IAo+IEFyZ2ggLSBteSBmYXVsdCwgTkZTdjQgZGlmZmVycyBtdWNoIG1vcmUg
-ZnJvbSBORlN2MyB0aGFuIGV4cGVjdGVkLgoKVGhhdCBkaWZmZXJlbmNlIGluIHNlbWFudGljcyBp
-cyBhY3R1YWxseSBhIGJ1ZyB0aGF0IG5lZWRzIHRvIGJlIGZpeGVkIG9uCnRoZSBzZXJ2ZXIuIEl0
-IGlzIGJlaW5nIHdvcmtlZCBvbi4KCj4gQW5kIHdoeSBkb2VzIHRoZSBtb3VudCBjb21tYW5kIGNo
-ZWNrcyBmb3IgdGhlIGV4aXN0YW5jZSBvZiB0aGUgZGlyZWN0b3J5Cj4gL3Jvb3QvPGhvc3RuYW1l
-PiA/CgpJdCBkb2VzPyBJJ3ZlIG5vIGlkZWEuLi4KClRyb25kCgoKLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQpU
-aGlzIFNGLm5ldCBlbWFpbCBpcyBzcG9uc29yZWQgYnk6IE1pY3Jvc29mdApEZWZ5IGFsbCBjaGFs
-bGVuZ2VzLiBNaWNyb3NvZnQoUikgVmlzdWFsIFN0dWRpbyAyMDA4LgpodHRwOi8vY2xrLmF0ZG10
-LmNvbS9NUlQvZ28vdnNlMDEyMDAwMDA3MG1ydC9kaXJlY3QvMDEvCl9fX19fX19fX19fX19fX19f
-X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fCk5GUyBtYWlsbGlzdCAgLSAgTkZTQGxpc3Rz
-LnNvdXJjZWZvcmdlLm5ldApodHRwczovL2xpc3RzLnNvdXJjZWZvcmdlLm5ldC9saXN0cy9saXN0
-aW5mby9uZnMKX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX18K
-UGxlYXNlIG5vdGUgdGhhdCBuZnNAbGlzdHMuc291cmNlZm9yZ2UubmV0IGlzIGJlaW5nIGRpc2Nv
-bnRpbnVlZC4KUGxlYXNlIHN1YnNjcmliZSB0byBsaW51eC1uZnNAdmdlci5rZXJuZWwub3JnIGlu
-c3RlYWQuCiAgICBodHRwOi8vdmdlci5rZXJuZWwub3JnL3ZnZXItbGlzdHMuaHRtbCNsaW51eC1u
-ZnMK
+On Wed, Feb 27, 2008 at 01:58:59PM -0600, Tom Tucker wrote:
+>     
+> The svc_send path is calling xpo_release_rqst without checking
+> the XPT_DEAD bit. It is illegal to call transport methods on a dead
+> transport. In practice, if the transport gets an error and shuts down
+> while there are still RPC in svc_process the resulting svc_send could
+> crash calling into a transport that is being shut down.
 
+As long as we have a pointer to an xprt (say in rqstp->rq_xprt), we
+should have a reference on the corresponding xprt class, shouldn't we?
+Anything else seems like a problem.
+
+>     
+> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+> ---
+> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+> index ea377e0..467c1c0 100644
+> --- a/net/sunrpc/svc_xprt.c
+> +++ b/net/sunrpc/svc_xprt.c
+> @@ -729,9 +729,6 @@ int svc_send(struct svc_rqst *rqstp)
+>  	if (!xprt)
+>  		return -EFAULT;
+>  
+> -	/* release the receive skb before sending the reply */
+> -	rqstp->rq_xprt->xpt_ops->xpo_release_rqst(rqstp);
+> -
+>  	/* calculate over-all length */
+>  	xb = &rqstp->rq_res;
+>  	xb->len = xb->head[0].iov_len +
+> @@ -742,8 +739,11 @@ int svc_send(struct svc_rqst *rqstp)
+>  	mutex_lock(&xprt->xpt_mutex);
+>  	if (test_bit(XPT_DEAD, &xprt->xpt_flags))
+>  		len = -ENOTCONN;
+> -	else
+> +	else {
+> +		/* release the receive skb before sending the reply */
+> +		rqstp->rq_xprt->xpt_ops->xpo_release_rqst(rqstp);
+>  		len = xprt->xpt_ops->xpo_sendto(rqstp);
+> +	}
+
+So in the case where XPT_DEAD is set, doesn't the receive skb also need
+to be freed, or does somebody else do that?
+
+>  	mutex_unlock(&xprt->xpt_mutex);
+>  	svc_xprt_release(rqstp);
+
+Also something else is odd here: svc_xprt_release(rqstp) already calls
+rqstp->rq_xprt->xpt_ops->xpo_release_rqst(rqstp) itself, so we seem to
+have two calls to that method.
+
+--b.
+
+>  
+> 
+> -
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
