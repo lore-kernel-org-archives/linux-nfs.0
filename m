@@ -1,102 +1,156 @@
-From: Jens Axboe <jens.axboe@oracle.com>
-Subject: Re: Kernel 2.6.23.17 crash (Was: Kernel (2.6.24) crash on nfsd  (BUG: soft lockup))
-Date: Sat, 1 Mar 2008 18:03:23 +0100
-Message-ID: <20080301170322.GY6704@kernel.dk>
-References: <47C434D2.80601@byte.nl> <47C50754.5030107@byte.nl> <47C50ABB.8050700@byte.nl> <Pine.LNX.4.62.0802281153040.31013@office2.c1.internal> <20080301163944.GC19927@fieldses.org>
+From: Tom Tucker <tom@opengridcomputing.com>
+Subject: Re: [PATCH] SVC: Guard call to xpo_release_rqst in svc_send
+Date: Sat, 01 Mar 2008 12:53:54 -0600
+Message-ID: <C3EF0262.37A72%tom@opengridcomputing.com>
+References: <20080301162441.GB19927@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Allard Hoeve <allard-DW70C6hi67U@public.gmane.org>, linux-nfs@vger.kernel.org,
-	"Nilssen, Rune" <rune.nilssen-FJFKJQU35qU@public.gmane.org>,
-	Gertjan Oude Lohuis <gertjan-DW70C6hi67U@public.gmane.org>
+Content-Type: text/plain;
+	charset="US-ASCII"
+Cc: linux-nfs <linux-nfs@vger.kernel.org>,
+	jaschut <jaschut@sandia.gov>,
+	Steve Wise <swise@opengridcomputing.com>
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from brick.kernel.dk ([87.55.233.238]:19440 "EHLO kernel.dk"
+Received: from mail.es335.com ([67.65.19.105]:8961 "EHLO mail.es335.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752104AbYCARD2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 1 Mar 2008 12:03:28 -0500
-In-Reply-To: <20080301163944.GC19927@fieldses.org>
+	id S1751235AbYCASyF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 1 Mar 2008 13:54:05 -0500
+In-Reply-To: <20080301162441.GB19927@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Mar 01 2008, J. Bruce Fields wrote:
-> On Thu, Feb 28, 2008 at 11:56:51AM +0100, Allard Hoeve wrote:
-> > After trying 2.6.23.17, the same happened. The stacktrace is a bit  
-> > different, but they are comparable.
-> >
-> > Is this an NFS problem in the first place? Where could we go for help 
-> > with this problem?
+
+
+
+On 3/1/08 10:24 AM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+
+> On Fri, Feb 29, 2008 at 09:20:34PM -0600, Tom Tucker wrote:
+>> Bruce:
+>> 
+>> Summary response: Mia culpa....please revert this patch.
 > 
-> Thanks for the reports!
+> OK!  I hadn't gotten around to applying it, so no need to revert.
 > 
-> So, the summary: several people are reporting soft lockup warnings with
-> _generic_file_splice_read as the latest or next-to-latest function on
-> the stack.  Sounds like 2.6.18 is good, various kernels around 2.6.23
-> and 2.6.24 are reported bad.  Is it possible this was a regression
-> introduced by the splice changes?
 
-I posted this two days ago, but didn't get a reply back regarding if
-anyone who can reproduce tested it?
+Awesome.
 
-diff --git a/fs/splice.c b/fs/splice.c
-index 9b559ee..0254ec6 100644
---- a/fs/splice.c
-+++ b/fs/splice.c
-@@ -370,8 +370,10 @@ __generic_file_splice_read(struct file *in, loff_t *ppos,
- 			 * for an in-flight io page
- 			 */
- 			if (flags & SPLICE_F_NONBLOCK) {
--				if (TestSetPageLocked(page))
-+				if (TestSetPageLocked(page)) {
-+					error = -EAGAIN;
- 					break;
-+				}
- 			} else
- 				lock_page(page);
- 
-@@ -479,9 +481,8 @@ ssize_t generic_file_splice_read(struct file *in, loff_t *ppos,
- 				 struct pipe_inode_info *pipe, size_t len,
- 				 unsigned int flags)
- {
--	ssize_t spliced;
--	int ret;
- 	loff_t isize, left;
-+	int ret;
- 
- 	isize = i_size_read(in->f_mapping->host);
- 	if (unlikely(*ppos >= isize))
-@@ -491,29 +492,9 @@ ssize_t generic_file_splice_read(struct file *in, loff_t *ppos,
- 	if (unlikely(left < len))
- 		len = left;
- 
--	ret = 0;
--	spliced = 0;
--	while (len && !spliced) {
--		ret = __generic_file_splice_read(in, ppos, pipe, len, flags);
--
--		if (ret < 0)
--			break;
--		else if (!ret) {
--			if (spliced)
--				break;
--			if (flags & SPLICE_F_NONBLOCK) {
--				ret = -EAGAIN;
--				break;
--			}
--		}
--
-+	ret = __generic_file_splice_read(in, ppos, pipe, len, flags);
-+	if (ret > 0)
- 		*ppos += ret;
--		len -= ret;
--		spliced += ret;
--	}
--
--	if (spliced)
--		return spliced;
- 
- 	return ret;
- }
+>> Although it made the test failure go away, this patch just moves the
+>> problem, it doesn't fix anything.
+> 
+> Remind me what the test failure was?  (You saw that the problem Torsten
+> Kaiser reported turned out to be a bug in the memory allocator, right?:
+> http://bugzilla.kernel.org/show_bug.cgi?id=9973)
+> 
 
--- 
-Jens Axboe
+The real problem was found by Sandia labs. But it is easily reproducible
+here. Something seems to have changed in the Infiniband verbs core that
+exposed a latent bug in the RDMA transport driver. The initial "fix" fixed
+the original crash, but in addition to being incorrect, additional testing
+revealed that it still crashed in other ways -- that's why I sent this note.
+
+So the problem is that there is a race between the I/O event callbacks from
+the RDMA core and the close path in the transport driver. The incorrect
+assumption made in the code is that after the call to rdma_destroy_id
+returns, you will receive no more events from lower level. Well .... that's
+not true. You won't receive any more CM events, but you may still receive CQ
+and QP events. 
+
+I have a fix and am thoroughly testing it now. I'll send it to you after
+I've had 24 hrs on it ;-).
+
+Tom
+
+> --b.
+> 
+>> 
+>> More below inline....
+>> 
+>> On 2/29/08 2:40 PM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+>> 
+>> 
+>>> On Wed, Feb 27, 2008 at 01:58:59PM -0600, Tom Tucker wrote:
+>>>>     
+>>>> The svc_send path is calling xpo_release_rqst without checking
+>>>> the XPT_DEAD bit. It is illegal to call transport methods on a dead
+>>>> transport. In practice, if the transport gets an error and shuts down
+>>>> while there are still RPC in svc_process the resulting svc_send could
+>>>> crash calling into a transport that is being shut down.
+>>> 
+>>> As long as we have a pointer to an xprt (say in rqstp->rq_xprt), we
+>>> should have a reference on the corresponding xprt class, shouldn't we?
+>>> Anything else seems like a problem.
+>>> 
+>> 
+>> Generally yes. In particular, at entry to svc_recv, we should have a minimum
+>> of two references. svc_xprt_enqueue gets you one, and there is a one ref
+>> bias that comes from svc_xprt_init. The bias gets removed on close.
+>> 
+>>>>     
+>>>> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+>>>> ---
+>>>> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+>>>> index ea377e0..467c1c0 100644
+>>>> --- a/net/sunrpc/svc_xprt.c
+>>>> +++ b/net/sunrpc/svc_xprt.c
+>>>> @@ -729,9 +729,6 @@ int svc_send(struct svc_rqst *rqstp)
+>>>> if (!xprt)
+>>>> return -EFAULT;
+>>>>  
+>>>> - /* release the receive skb before sending the reply */
+>>>> - rqstp->rq_xprt->xpt_ops->xpo_release_rqst(rqstp);
+>>>> -
+>>>> /* calculate over-all length */
+>>>> xb = &rqstp->rq_res;
+>>>> xb->len = xb->head[0].iov_len +
+>>>> @@ -742,8 +739,11 @@ int svc_send(struct svc_rqst *rqstp)
+>>>> mutex_lock(&xprt->xpt_mutex);
+>>>> if (test_bit(XPT_DEAD, &xprt->xpt_flags))
+>>>> len = -ENOTCONN;
+>>>> - else
+>>>> + else {
+>>>> +  /* release the receive skb before sending the reply */
+>>>> +  rqstp->rq_xprt->xpt_ops->xpo_release_rqst(rqstp);
+>>>> len = xprt->xpt_ops->xpo_sendto(rqstp);
+>>>> + }
+>>> 
+>>> So in the case where XPT_DEAD is set, doesn't the receive skb also need
+>>> to be freed, or does somebody else do that?
+>>> 
+>> 
+>> Only reboot does that :-\. I need to think this through more carefully. On
+>> RDMA transports this function is used to return send credits to the user,
+>> and that involves talking to the transport. Sorry for this hasty
+>> patch...it's not right.
+>> 
+>>>> mutex_unlock(&xprt->xpt_mutex);
+>>>> svc_xprt_release(rqstp);
+>>> 
+>>> Also something else is odd here: svc_xprt_release(rqstp) already calls
+>>> rqstp->rq_xprt->xpt_ops->xpo_release_rqst(rqstp) itself, so we seem to
+>>> have two calls to that method.
+>>> 
+>> 
+>> Hmm. Busted. This patch is broken in three dimensions. Is that a record?
+>> 
+>> Tom
+>>  
+>>> --b.
+>>> 
+>>>>  
+>>>> 
+>>>> -
+>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>> the body of a message to majordomo@vger.kernel.org
+>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> 
+>> 
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
 
