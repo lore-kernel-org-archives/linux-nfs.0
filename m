@@ -1,91 +1,112 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 2/6] SUNRPC: Fix RPCAUTH_LOOKUP_ROOTCREDS
-Date: Thu, 13 Mar 2008 16:45:28 -0400
-Message-ID: <20080313204528.GB9283@fieldses.org>
-References: <20080313174806.13840.90325.stgit@c-69-242-210-120.hsd1.mi.comcast.net> <20080313174807.13840.38440.stgit@c-69-242-210-120.hsd1.mi.comcast.net> <47D97C5A.6020100@citi.umich.edu> <1205435968.13453.27.camel@heimdal.trondhjem.org> <1205436339.13453.35.camel@heimdal.trondhjem.org> <20080313194330.GK29517@fieldses.org> <1205440566.15354.21.camel@heimdal.trondhjem.org>
+From: Tom Tucker <tom@opengridcomputing.com>
+Subject: Re: [PATCH] SVC: Guard call to xpo_release_rqst in svc_send
+Date: Fri, 29 Feb 2008 21:20:34 -0600
+Message-ID: <C3EE27A2.3776E%tom@opengridcomputing.com>
+References: <20080229204030.GB6276@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Olga Kornievskaia <aglo@citi.umich.edu>, linux-nfs@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Content-Type: text/plain;
+	charset="US-ASCII"
+Cc: linux-nfs <linux-nfs@vger.kernel.org>,
+	jaschut <jaschut@sandia.gov>,
+	Steve Wise <swise@opengridcomputing.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:44094 "EHLO fieldses.org"
+Received: from mail.es335.com ([67.65.19.105]:6094 "EHLO mail.es335.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752477AbYCMUpb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 13 Mar 2008 16:45:31 -0400
-In-Reply-To: <1205440566.15354.21.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+	id S1752731AbYCADw1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 29 Feb 2008 22:52:27 -0500
+In-Reply-To: <20080229204030.GB6276@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Mar 13, 2008 at 04:36:06PM -0400, Trond Myklebust wrote:
-> 
-> On Thu, 2008-03-13 at 15:43 -0400, J. Bruce Fields wrote:
-> > On Thu, Mar 13, 2008 at 03:25:38PM -0400, Trond Myklebust wrote:
-> > > 
-> > > On Thu, 2008-03-13 at 15:19 -0400, Trond Myklebust wrote:
-> > > > On Thu, 2008-03-13 at 15:11 -0400, Olga Kornievskaia wrote:
-> > > > > Trond,
-> > > > > 
-> > > > >     We were thinking of using RPCAUTH_LOOKUP_ROOTCREDS flag to acquire 
-> > > > > machine creds for authenticated callback.
-> > > > 
-> > > > I'd strongly suggest using a different flag for that purpose. The
-> > > > function of RPCAUTH_LOOKUP_ROOTCREDS _today_ is to allow a future
-> > > > swap-over-nfs to use root credentials when paging out memory.
-> > > > 
-> > > > That is not the same as machine creds...
-> > > 
-> > > 
-> > > In fact, I'd strongly urge you to add the information for machine creds
-> > > to the 'struct auth_cred' instead. The latter is the lookup key for
-> > > 'rpc_authops->lookup_cred()'.
-> > 
-> > So something like 
-> > 
-> > diff --git a/include/linux/sunrpc/auth.h b/include/linux/sunrpc/auth.h
-> > index 7a69ca3..d624169 100644
-> > --- a/include/linux/sunrpc/auth.h
-> > +++ b/include/linux/sunrpc/auth.h
-> > @@ -26,6 +26,7 @@ struct auth_cred {
-> >  	uid_t	uid;
-> >  	gid_t	gid;
-> >  	struct group_info *group_info;
-> > +	int	is_machine_cred;
-> >  };
-> 
-> Yes. Unless we need more information. Will we ever be in a situation
-> where we want to specify a full 
+Bruce:
 
-A full principal name, or something?  No, I can't think of a reason for
-now.
+Summary response: Mia culpa....please revert this patch. Although it made
+the test failure go away, this patch just moves the problem, it doesn't fix
+anything.  
 
-> > ?  No objection, but it seems like mild overkill for a single bit when
-> > the necessary functions already take a flag parameter.
+More below inline....
+
+On 2/29/08 2:40 PM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+
+
+> On Wed, Feb 27, 2008 at 01:58:59PM -0600, Tom Tucker wrote:
+>>     
+>> The svc_send path is calling xpo_release_rqst without checking
+>> the XPT_DEAD bit. It is illegal to call transport methods on a dead
+>> transport. In practice, if the transport gets an error and shuts down
+>> while there are still RPC in svc_process the resulting svc_send could
+>> crash calling into a transport that is being shut down.
 > 
-> The flag parameter should be for internal use by the RPC auth code to
-> pass around lookup intent information (see gss_match(), which is the
-> only remaining callback that actually uses that parameter).
+> As long as we have a pointer to an xprt (say in rqstp->rq_xprt), we
+> should have a reference on the corresponding xprt class, shouldn't we?
+> Anything else seems like a problem.
 > 
-> The lookup key, OTOH, should be a single structure.
+
+Generally yes. In particular, at entry to svc_recv, we should have a minimum
+of two references. svc_xprt_enqueue gets you one, and there is a one ref
+bias that comes from svc_xprt_init. The bias gets removed on close.
+
+>>     
+>> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+>> ---
+>> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+>> index ea377e0..467c1c0 100644
+>> --- a/net/sunrpc/svc_xprt.c
+>> +++ b/net/sunrpc/svc_xprt.c
+>> @@ -729,9 +729,6 @@ int svc_send(struct svc_rqst *rqstp)
+>> if (!xprt)
+>> return -EFAULT;
+>>  
+>> - /* release the receive skb before sending the reply */
+>> - rqstp->rq_xprt->xpt_ops->xpo_release_rqst(rqstp);
+>> -
+>> /* calculate over-all length */
+>> xb = &rqstp->rq_res;
+>> xb->len = xb->head[0].iov_len +
+>> @@ -742,8 +739,11 @@ int svc_send(struct svc_rqst *rqstp)
+>> mutex_lock(&xprt->xpt_mutex);
+>> if (test_bit(XPT_DEAD, &xprt->xpt_flags))
+>> len = -ENOTCONN;
+>> - else
+>> + else {
+>> +  /* release the receive skb before sending the reply */
+>> +  rqstp->rq_xprt->xpt_ops->xpo_release_rqst(rqstp);
+>> len = xprt->xpt_ops->xpo_sendto(rqstp);
+>> + }
 > 
-> >   Or do you want
-> > this information in that structure for future uses of the auth_cred as a
-> > key into a more general cred cache?
+> So in the case where XPT_DEAD is set, doesn't the receive skb also need
+> to be freed, or does somebody else do that?
 > 
-> See the rest of the patch series...
 
-Whoops, OK, will do.
+Only reboot does that :-\. I need to think this through more carefully. On
+RDMA transports this function is used to return send credits to the user,
+and that involves talking to the transport. Sorry for this hasty
+patch...it's not right.
 
-> Basically, if the administrator changes our security landscape on the
-> fly, either by migrating our filesystem, or by changing the supported
-> security flavours, then we're going to have to renegotiate security on
-> the fly. We really do _not_ want the NFS structures to cache RPC
-> credentials which are tied to a particular auth mechanism or rpcsec_gss
-> session.
-> The "generic" credential I'm proposing is the tool for carrying all the
-> information that is needed in order to lookup/create an on-the-wire
-> credential at the instant when we issue the RPC call.
+>> mutex_unlock(&xprt->xpt_mutex);
+>> svc_xprt_release(rqstp);
+> 
+> Also something else is odd here: svc_xprt_release(rqstp) already calls
+> rqstp->rq_xprt->xpt_ops->xpo_release_rqst(rqstp) itself, so we seem to
+> have two calls to that method.
+> 
 
-Got it; putting the information that we want a host credential into the
-auth_cred sounds right. Thanks!
+Hmm. Busted. This patch is broken in three dimensions. Is that a record?
 
---b.
+Tom
+ 
+> --b.
+> 
+>>  
+>> 
+>> -
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
