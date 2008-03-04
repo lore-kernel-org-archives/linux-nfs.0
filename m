@@ -1,51 +1,80 @@
-From: Dave Quigley <dpquigl@tycho.nsa.gov>
-Subject: Re: [PATCH -v2] NFS/LSM: allow NFS to control all of its own mount
-	options
-Date: Mon, 03 Mar 2008 14:51:23 -0500
-Message-ID: <1204573883.14520.91.camel@moss-terrapins.epoch.ncsc.mil>
-References: <1204573372.3216.42.camel@localhost.localdomain>
-	 <1204573122.14520.90.camel@moss-terrapins.epoch.ncsc.mil>
-	 <1204575055.3216.49.camel@localhost.localdomain>
-Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org, selinux <selinux@tycho.nsa.gov>,
-	linux-security-module@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, steved@redhat.com,
-	jlayton@redhat.com, sds@tycho.nsa.gov, jmorris@namei.org,
-	casey@schaufler-ca.com, trond.myklebust@fys.uio.no,
-	chuck.lever@oracle.com, hch@infradead.org
-To: Eric Paris <eparis@redhat.com>
-Return-path: <linux-security-module-owner@vger.kernel.org>
-In-Reply-To: <1204575055.3216.49.camel@localhost.localdomain>
-Sender: linux-security-module-owner@vger.kernel.org
+From: NeilBrown <neilb@suse.de>
+Subject: [PATCH] Add more entropy to selection of port and xid for NFS client.
+Date: Tue, 4 Mar 2008 16:35:53 +1100
+Message-ID: <1080304053553.18549@suse.de>
+References: <20080304163343.18442.patches@notabene>
+Cc: Chuck Lever <chuck.lever@oracle.com>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from ns2.suse.de ([195.135.220.15]:41173 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750842AbYCDFgB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Mar 2008 00:36:01 -0500
+Cc: linux-nfs@vger.kernel.org
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Cool, I look forward to rebaseing my patches when you get around to
-that.
+Hi Trond/Chunk
 
-Dave
+I wonder what you think of this patch.
+
+I found we needed it for some customers who had machines with NFS root
+who (for reasons I never fully understood) find they reboot their
+machines fairly often (maybe it was a test setup or something).  The
+often got "inode number mismatch" errors because the reply came out of
+the server's cache and was left over from before the client's reboot.
+
+Thanks,
+NeilBrown
 
 
-On Mon, 2008-03-03 at 15:10 -0500, Eric Paris wrote:
-> On Mon, 2008-03-03 at 14:38 -0500, Dave Quigley wrote:
-> > > This patch was tested with NFSv3 mounts and solves all of the
-> > > regressions that have been introduced in the NFS code.  It supports both
-> > > the binary interface and text options without pushing LSM specific
-> > > parsing into the FS.  It doesn't introduce the new LSM constructs
-> > > necessary to show these mount options in /proc/mounts suggested by
-> > > Miklos Szeredi but that will be coming in 2.6.26 (it's not a regression
-> > > or bug fix).  I also do not have the proper security_sb_set_mnt_opts()
-> > > call in nfs4_get_sb due to a lack of a testing environment, but will add
-> > > that in 2.6.26 as well.
-> >
-> > I see above that the patch does not provide this support for NFSv4. Do
-> > you intend on adding this in the future or is it being deferred to
-> > someone else?
-> 
-> I believe it is just the very same addition to nfs4_get_sb() that i did
-> in nfs_get_sb and plan to test and do that myself in the next release.
-> I'm just trying to make this patch as absolutely small as possible while
-> still fixing all the problems to get it into 2.6.25.
-> 
-> -Eric
+### Comments for Changeset
 
+Diskless clients that use NFS-root have very little chance
+to gain much entropy in net_random before the NFS client must
+choose a port number and an 'xid' to being talking to the server.
+So add as much entropy as possible.
+
+Without this, clients can and do suffer from collisions in the servers
+reply cache, and get meaningless replies.
+
+Signed-off-by: Neil Brown <neilb@suse.de>
+
+### Diffstat output
+ ./net/sunrpc/xprt.c     |    5 ++++-
+ ./net/sunrpc/xprtsock.c |    7 +++++--
+ 2 files changed, 9 insertions(+), 3 deletions(-)
+
+diff .prev/net/sunrpc/xprt.c ./net/sunrpc/xprt.c
+--- .prev/net/sunrpc/xprt.c	2008-03-04 16:33:26.000000000 +1100
++++ ./net/sunrpc/xprt.c	2008-03-04 16:33:36.000000000 +1100
+@@ -922,7 +922,10 @@ static inline __be32 xprt_alloc_xid(stru
+ 
+ static inline void xprt_init_xid(struct rpc_xprt *xprt)
+ {
+-	xprt->xid = net_random();
++	get_random_bytes(&xprt->xid, sizeof(xprt->xid));
++	/* And just in case random_state isn't initialised yet.. */
++	xprt->xid ^= net_random();
++	xprt->xid += (CURRENT_TIME.tv_sec << 10);
+ }
+ 
+ static void xprt_request_init(struct rpc_task *task, struct rpc_xprt *xprt)
+
+diff .prev/net/sunrpc/xprtsock.c ./net/sunrpc/xprtsock.c
+--- .prev/net/sunrpc/xprtsock.c	2008-03-04 16:33:26.000000000 +1100
++++ ./net/sunrpc/xprtsock.c	2008-03-04 16:28:06.000000000 +1100
+@@ -1283,8 +1283,11 @@ static void xs_udp_timer(struct rpc_task
+ static unsigned short xs_get_random_port(void)
+ {
+ 	unsigned short range = xprt_max_resvport - xprt_min_resvport;
+-	unsigned short rand = (unsigned short) net_random() % range;
+-	return rand + xprt_min_resvport;
++	unsigned short rand;
++	get_random_bytes(&rand, sizeof(rand));
++	rand ^= (unsigned short)net_random();
++	rand ^= (CURRENT_TIME.tv_nsec >> 10);
++	return (rand % range) + xprt_min_resvport;
+ }
+ 
+ /**
