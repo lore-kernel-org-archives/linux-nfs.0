@@ -1,36 +1,69 @@
-From: "Steinar H. Gunderson" <sgunderson-jG/AHqQBv7lBDgjK7y7TUQ@public.gmane.org>
-Subject: Re: Last call for nfs-utils patches
-Date: Tue, 4 Mar 2008 17:55:16 +0100
-Message-ID: <20080304165516.GD29399@uio.no>
-References: <47CD680B.1070106@RedHat.com>
+From: "bc Wong" <bcwalrus@gmail.com>
+Subject: [NFS] Choosing auth flavour in nfsmount.c
+Date: Tue, 4 Mar 2008 14:04:39 -0800
+Message-ID: <f88853200803041404m11a5e24eoc65fbb386a2cb41e@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-To: Steve Dickson <SteveD@redhat.com>
+Content-Type: text/plain; charset="us-ascii"
+To: nfs@lists.sourceforge.net
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cassarossa.samfundet.no ([129.241.93.19]:47274 "EHLO
-	cassarossa.samfundet.no" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752429AbYCDRem (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Mar 2008 12:34:42 -0500
-In-Reply-To: <47CD680B.1070106-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+Received: from neil.brown.name ([220.233.11.133]:51251 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755477AbYCDWEz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Mar 2008 17:04:55 -0500
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1JWfFj-0005z8-QT
+	for linux-nfs@vger.kernel.org; Wed, 05 Mar 2008 09:04:51 +1100
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 04, 2008 at 10:17:31AM -0500, Steve Dickson wrote:
-> So if you don't see a commit you have posted to either
-> the nfs or nfsv4 mailing list it probably means I missed it
-> so you might want to bring it to my attention. '
+I think nfsmount.c violates rfc2623 section 2.7:
 
-I've posted a few patches (some of them as trivial as spelling fixes in man
-pages) three times with no response, so I gave up.
+   a NFS client SHOULD use the first flavor in the list that it
+   supports, on the assumption that the best access is
+   provided by the first flavor.
 
-FWIW, Debian's current patch set (including the aforemented patches) is at
+The code is on line 746:
+                i = mountres->auth_flavors.auth_flavors_len;
+                if (i <= 0)
+                        goto noauth_flavors;
 
-  http://people.debian.org/~sesse/nfs-utils-patches/
+                flavor = mountres->auth_flavors.auth_flavors_val;
+                while (--i >= 0) {
+                        /* If no flavour requested, use first simple
+                         * flavour that is offered.
+                         */
+                        if (! (data.flags & NFS_MOUNT_SECFLAVOUR) &&
+                            (flavor[i] == AUTH_SYS ||
+                             flavor[i] == AUTH_NONE)) {
+                                data.pseudoflavor = flavor[i];
+                                data.flags |= NFS_MOUNT_SECFLAVOUR;
+                        }
+                        if (flavor[i] == data.pseudoflavor)
+                                yum = 1;
+#ifdef NFS_MOUNT_DEBUG
+                        printf(_("auth flavor %d: %d\n"), i, flavor[i]);
+#endif
+                }
 
-I believe they should all, except 02-document-debian-init-scripts.patch, be
-applicable for upstream. (Some of them are already applied.)
+If the server advertises AUTH_SYS and then AUTH_NONE,
+the client will pick AUTH_NONE instead of AUTH_SYS.
 
-/* Steinar */
--- 
-Homepage: http://www.sesse.net/
+I have a fix. What's the process of filing a bug? submitting
+a patch? or getting involved with development?
+
+Thanks,
+bc
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Microsoft
+Defy all challenges. Microsoft(R) Visual Studio 2008.
+http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
+
