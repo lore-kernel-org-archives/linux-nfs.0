@@ -1,223 +1,48 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 2/2] NFS: use new LSM interfaces to explicitly set
-	mount options
-Date: Wed, 05 Mar 2008 13:25:04 -0500
-Message-ID: <1204741504.3356.14.camel@heimdal.trondhjem.org>
-References: <1204731117.3216.238.camel@localhost.localdomain>
+Subject: Re: "sync" mount option semantics
+Date: Wed, 05 Mar 2008 13:13:08 -0500
+Message-ID: <1204740788.3356.9.camel@heimdal.trondhjem.org>
+References: <9DC7FC7A-41B0-43C6-9759-8DF253C47EEE@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org, selinux@tycho.nsa.gov,
-	linux-security-module@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, steved@redhat.com,
-	jlayton@redhat.com, sds@tycho.nsa.gov, jmorris@namei.org,
-	casey@schaufler-ca.com, chuck.lever@oracle.com, hch@infradead.org,
-	akpm@linux-foundation.org
-To: Eric Paris <eparis@redhat.com>
-Return-path: <linux-security-module-owner@vger.kernel.org>
-In-Reply-To: <1204731117.3216.238.camel@localhost.localdomain>
-Sender: linux-security-module-owner@vger.kernel.org
+Cc: NFS list <linux-nfs@vger.kernel.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from pat.uio.no ([129.240.10.15]:40933 "EHLO pat.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751145AbYCES3q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Mar 2008 13:29:46 -0500
+In-Reply-To: <9DC7FC7A-41B0-43C6-9759-8DF253C47EEE@oracle.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Wed, 2008-03-05 at 10:31 -0500, Eric Paris wrote:
-> NFS and SELinux worked together previously because SELinux had NFS
-> specific knowledge built in.  This design was approved by both groups
-> back in 2004 but the recent NFS changes to use nfs_parsed_mount_data and
-> the usage of nfs_clone_mount_data showed this to be a poor fragile
-> solution.  This patch fixes the NFS functionality regression by making
-> use of the new LSM interfaces to allow an FS to explicitly set its own
-> mount options.
+On Tue, 2008-03-04 at 18:15 -0500, Chuck Lever wrote:
+> Hi Trond-
 > 
-> The explicit setting of mount options is done in the nfs get_sb
-> functions which are called before the generic vfs hooks try to set mount
-> options for filesystems which use text mount data.
+> I have kind of an academic question.
 > 
-> This does not currently support NFSv4 as that functionality did not
-> exist in previous kernels and thus there is no regression.  I will be
-> adding the needed code, which I believe to be the exact same as the v3
-> code, in nfs4_get_sb for 2.6.26.
+> When an NFS file system is mounted with the "sync" option, only  
+> writes via sys_write appear to be affected.  Writes via mmap or pages  
+> dirtied via a loopback device are not affected at all.
 > 
-> Signed-off-by: Eric Paris <eparis@redhat.com>
+> Similarly, O_SYNC only appears to affect sys_write and not mmap or  
+> loopback.
 > 
-> ---
-> 
->  fs/nfs/internal.h |    3 ++
->  fs/nfs/super.c    |   63 ++++++++++++++++++++++++++++++++++++++++++++++++++++--
->  2 files changed, 64 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-> index 0f56196..9319927 100644
-> --- a/fs/nfs/internal.h
-> +++ b/fs/nfs/internal.h
-> @@ -3,6 +3,7 @@
->   */
->  
->  #include <linux/mount.h>
-> +#include <linux/security.h>
->  
->  struct nfs_string;
->  
-> @@ -57,6 +58,8 @@ struct nfs_parsed_mount_data {
->  		char			*export_path;
->  		int			protocol;
->  	} nfs_server;
-> +
-> +	struct security_mnt_opts lsm_opts;
->  };
->  
->  /* client.c */
-> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-> index 1fb3818..a097adf 100644
-> --- a/fs/nfs/super.c
-> +++ b/fs/nfs/super.c
-> @@ -684,8 +684,9 @@ static void nfs_parse_server_address(char *value,
->  static int nfs_parse_mount_options(char *raw,
->  				   struct nfs_parsed_mount_data *mnt)
->  {
-> -	char *p, *string;
-> +	char *p, *string, *secdata;
->  	unsigned short port = 0;
-> +	int rc;
->  
->  	if (!raw) {
->  		dfprintk(MOUNT, "NFS: mount options string was NULL.\n");
-> @@ -693,6 +694,20 @@ static int nfs_parse_mount_options(char *raw,
->  	}
->  	dfprintk(MOUNT, "NFS: nfs mount opts='%s'\n", raw);
->  
-> +	secdata = alloc_secdata();
-> +	if (!secdata)
-> +		goto out_nomem;
-> +
-> +	rc = security_sb_copy_data(raw, secdata);
-> +	if (rc)
-> +		goto out_security_failure;
-> +
-> +	rc = security_sb_parse_opts_str(secdata, &mnt->lsm_opts);
-> +	if (rc)
-> +		goto out_security_failure;
-> +
-> +	free_secdata(secdata);
-> +
->  	while ((p = strsep(&raw, ",")) != NULL) {
->  		substring_t args[MAX_OPT_ARGS];
->  		int option, token;
-> @@ -1042,7 +1057,10 @@ static int nfs_parse_mount_options(char *raw,
->  out_nomem:
->  	printk(KERN_INFO "NFS: not enough memory to parse option\n");
->  	return 0;
-> -
-> +out_security_failure:
-> +	free_secdata(secdata);
-> +	printk(KERN_INFO "NFS: security options invalid: %d\n", rc);
-> +	return 0;
->  out_unrec_vers:
->  	printk(KERN_INFO "NFS: unrecognized NFS version number\n");
->  	return 0;
-> @@ -1214,6 +1232,32 @@ static int nfs_validate_mount_data(void *options,
->  		args->namlen		= data->namlen;
->  		args->bsize		= data->bsize;
->  		args->auth_flavors[0]	= data->pseudoflavor;
-> +
-> +		/*
-> +		 * The legacy version 6 binary mount data from userspace has a
-> +		 * field used only to transport selinux information into the
-> +		 * the kernel.  To continue to support that functionality we
-> +		 * have a touch of selinux knowledge here in the NFS code. The
-> +		 * userspace code converted context=blah to just blah so we are
-> +		 * converting back to the full string selinux understands.
-> +		 */
-> +		if (data->context[0]){
-> +#ifdef CONFIG_SECURITY_SELINUX
-> +			int rc;
-> +			char *opts_str = kmalloc(sizeof(data->context) + 8, GFP_KERNEL);
-> +			if (!opts_str)
-> +				return -ENOMEM;
-> +			strcpy(opts_str, "context=");
-> +			strcat(opts_str, &data->context[0]);
+> Is this the desired behavior?  If so, why not include cached writes?   
+> Should we document this in nfs(5)?
 
-Shouldn't this be a strncat? I can't see that we're sanity checking the
-data->context string for \NUL termination anywhere.
+What does it mean to have "synchronous writes with mmap"? I'm not sure
+that I really understand your concern: mmap is by its very nature
+asynchronous. AFAIK, the only guarantee you have w.r.t. synchronicity is
+that msync(MS_SYNC) can only complete once the data is on disk.
 
-> +			rc = security_sb_parse_opts_str(opts_str, &args->lsm_opts);
-> +			kfree(opts_str);
-> +			if (rc)
-> +				return rc;
-> +#else
-> +			return -EINVAL;
+So what semantics or guarantees are you saying that we're violating when
+we don't use synchronous writes at the NFS level for mmap?
 
-Is this really necessary?
+Ditto really for the loopback device. Its semantics are those of a block
+device, and so I really don't see what guarantees we're violating by not
+using synchronous writes at the NFS level.
 
-> +#endif
-> +		}
-> +
->  		break;
->  	default: {
->  		unsigned int len;
-> @@ -1476,6 +1520,8 @@ static int nfs_get_sb(struct file_system_type *fs_type,
->  	};
->  	int error;
->  
-> +	security_init_mnt_opts(&data.lsm_opts);
-> +
->  	/* Validate the mount data */
->  	error = nfs_validate_mount_data(raw_data, &data, &mntfh, dev_name);
->  	if (error < 0)
-> @@ -1515,6 +1561,10 @@ static int nfs_get_sb(struct file_system_type *fs_type,
->  		goto error_splat_super;
->  	}
->  
-> +	error = security_sb_set_mnt_opts(s, &data.lsm_opts);
-> +	if (error)
-> +		goto error_splat_root;
-> +
->  	s->s_flags |= MS_ACTIVE;
->  	mnt->mnt_sb = s;
->  	mnt->mnt_root = mntroot;
-> @@ -1523,12 +1573,15 @@ static int nfs_get_sb(struct file_system_type *fs_type,
->  out:
->  	kfree(data.nfs_server.hostname);
->  	kfree(data.mount_server.hostname);
-> +	security_free_mnt_opts(&data.lsm_opts);
->  	return error;
->  
->  out_err_nosb:
->  	nfs_free_server(server);
->  	goto out;
->  
-> +error_splat_root:
-> +	dput(mntroot);
->  error_splat_super:
->  	up_write(&s->s_umount);
->  	deactivate_super(s);
-> @@ -1608,6 +1661,9 @@ static int nfs_xdev_get_sb(struct file_system_type *fs_type, int flags,
->  	mnt->mnt_sb = s;
->  	mnt->mnt_root = mntroot;
->  
-> +	/* clone any lsm security options from the parent to the new sb */
-> +	security_sb_clone_mnt_opts(data->sb, s);
-> +
->  	dprintk("<-- nfs_xdev_get_sb() = 0\n");
->  	return 0;
->  
-> @@ -1850,6 +1906,8 @@ static int nfs4_get_sb(struct file_system_type *fs_type,
->  	};
->  	int error;
->  
-> +	security_init_mnt_opts(&data.lsm_opts);
-> +
->  	/* Validate the mount data */
->  	error = nfs4_validate_mount_data(raw_data, &data, dev_name);
->  	if (error < 0)
-> @@ -1898,6 +1956,7 @@ out:
->  	kfree(data.client_address);
->  	kfree(data.nfs_server.export_path);
->  	kfree(data.nfs_server.hostname);
-> +	security_free_mnt_opts(&data.lsm_opts);
->  	return error;
->  
->  out_free:
-> 
-> 
-> 
+
 
