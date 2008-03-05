@@ -1,49 +1,83 @@
-From: lizhong <lizhong-3pZTqkFmMFknDS1+zs4M5A@public.gmane.org>
-Subject: Problems in configuring SNFS
-Date: Thu, 06 Mar 2008 00:29:19 +0800
-Message-ID: <47CECA5F.1000008@ncic.ac.cn>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [NFS] Choosing auth flavour in nfsmount.c
+Date: Wed, 05 Mar 2008 11:59:09 -0500
+Message-ID: <1204736349.1613.13.camel@heimdal.trondhjem.org>
+References: <f88853200803041404m11a5e24eoc65fbb386a2cb41e@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=GB2312
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
+To: bc Wong <bcwalrus@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gatekeeper.ncic.ac.cn ([159.226.41.188]:54122 "HELO ac.cn"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with SMTP
-	id S1753533AbYCEQih (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Mar 2008 11:38:37 -0500
-Received: from [10.10.21.203] (unknown [159.226.41.141])
-	by ncic.ac.cn (Postfix) with ESMTP id 6F91B13687C
-	for <linux-nfs@vger.kernel.org>; Thu,  6 Mar 2008 00:12:08 +0800 (CST)
+Received: from neil.brown.name ([220.233.11.133]:50854 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754214AbYCEQ7f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Mar 2008 11:59:35 -0500
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1JWwxm-00011t-KD
+	for linux-nfs@vger.kernel.org; Thu, 06 Mar 2008 03:59:30 +1100
+In-Reply-To: <f88853200803041404m11a5e24eoc65fbb386a2cb41e-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello all,
-I'm trying to set up SNFS on my Redhat server. I have read all
-infomation in this page:
-http://www.math.ualberta.ca/imaging/snfs/
-I have set up the SNIS server successfully, but when I failed in setting
-up the SNFS server. The host name of my SNFS server is gcnode029, and my
-client is gcnode010. I can mount directories from gcnode029 to gcnode010
-using common NFS, but failed in mount ing directories using SNFS.
 
-I configured SNFS like this:
-1. Run command "snfshost gcnode029:200008" at client gcnode010.
-2. Add this into /etc/fstab at client gcnode010:
-gcnode029:/home/ha /home/ha nfs
-user,noauto,hard,intr,rsize=8192,wsize=8192,mountprog=200008,nfsprog=250008
-0 0
-3. Run command "rpc_psrv -r -d /usr/local/etc/snfs/gcnode029" at client
-gcnode010, then enter gcnode029's root password. Now I saw "ID String
-correctly read: RPC Proxy Client".
-4. Run command "mount /home/ha", then I got the following error message:
-mount: mount to NFS server 'gcnode029' failed: RPC Error: Program not
-registered.
-5. Run command "ps -aux | grep rpc" at host gcnode029:
-root 5278 0.0 0.0 1656 744 ? Ss Mar05 0:00 rpc_pcl -P -1 -e
-snfs-genode010-200008.log -d -M 200008:100005
+On Tue, 2008-03-04 at 14:04 -0800, bc Wong wrote:
+> I think nfsmount.c violates rfc2623 section 2.7:
+> 
+>    a NFS client SHOULD use the first flavor in the list that it
+>    supports, on the assumption that the best access is
+>    provided by the first flavor.
+> 
+> The code is on line 746:
+>                 i = mountres->auth_flavors.auth_flavors_len;
+>                 if (i <= 0)
+>                         goto noauth_flavors;
+> 
+>                 flavor = mountres->auth_flavors.auth_flavors_val;
+>                 while (--i >= 0) {
+>                         /* If no flavour requested, use first simple
+>                          * flavour that is offered.
+>                          */
+>                         if (! (data.flags & NFS_MOUNT_SECFLAVOUR) &&
+>                             (flavor[i] == AUTH_SYS ||
+>                              flavor[i] == AUTH_NONE)) {
+>                                 data.pseudoflavor = flavor[i];
+>                                 data.flags |= NFS_MOUNT_SECFLAVOUR;
+>                         }
+>                         if (flavor[i] == data.pseudoflavor)
+>                                 yum = 1;
+> #ifdef NFS_MOUNT_DEBUG
+>                         printf(_("auth flavor %d: %d\n"), i, flavor[i]);
+> #endif
+>                 }
+> 
+> If the server advertises AUTH_SYS and then AUTH_NONE,
+> the client will pick AUTH_NONE instead of AUTH_SYS.
+> 
+> I have a fix. What's the process of filing a bug? submitting
+> a patch? or getting involved with development?
 
-If I simply run command "mount -t nfs gcnode029:/home/ha /home/ha", I
-could get the remote directory. But in this way, I just used the common
-nfs, not SNFS. It seems that for some reason, rpc_psrv received no
-message from mount /home/ha, and nothing was sent to host gcnode029.
+A patch should normally be sufficient, but please make sure that it
+follows the guidelines in Documentation/SubmittingPatches (i.e. no major
+style violations, a changelog entry at the top of the patch, and a
+signed-off-by line).
 
-Thank you for any help!
+Send all NFS client patches to me with a Cc to
+linux-nfs-u79uwXL29TaiAVqoAR/hOK1cXZ9k6wlg@public.gmane.org
+
+Thanks,
+  Trond
+
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Microsoft
+Defy all challenges. Microsoft(R) Visual Studio 2008.
+http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
+
