@@ -1,48 +1,77 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: "sync" mount option semantics
-Date: Wed, 05 Mar 2008 13:13:08 -0500
-Message-ID: <1204740788.3356.9.camel@heimdal.trondhjem.org>
-References: <9DC7FC7A-41B0-43C6-9759-8DF253C47EEE@oracle.com>
+From: Eric Paris <eparis@redhat.com>
+Subject: Re: [PATCH 2/2] NFS: use new LSM interfaces to explicitly set
+	mount options
+Date: Wed, 05 Mar 2008 13:58:08 -0500
+Message-ID: <1204743488.3216.251.camel@localhost.localdomain>
+References: <1204731117.3216.238.camel@localhost.localdomain>
+	 <1204741504.3356.14.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain
-Cc: NFS list <linux-nfs@vger.kernel.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from pat.uio.no ([129.240.10.15]:40933 "EHLO pat.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751145AbYCES3q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Mar 2008 13:29:46 -0500
-In-Reply-To: <9DC7FC7A-41B0-43C6-9759-8DF253C47EEE@oracle.com>
-Sender: linux-nfs-owner@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org, selinux@tycho.nsa.gov,
+	linux-security-module@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, steved@redhat.com,
+	jlayton@redhat.com, sds@tycho.nsa.gov, jmorris@namei.org,
+	casey@schaufler-ca.com, chuck.lever@oracle.com, hch@infradead.org,
+	akpm@linux-foundation.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Return-path: <linux-security-module-owner@vger.kernel.org>
+In-Reply-To: <1204741504.3356.14.camel@heimdal.trondhjem.org>
+Sender: linux-security-module-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Tue, 2008-03-04 at 18:15 -0500, Chuck Lever wrote:
-> Hi Trond-
+On Wed, 2008-03-05 at 13:25 -0500, Trond Myklebust wrote:
+> On Wed, 2008-03-05 at 10:31 -0500, Eric Paris wrote:
+
+> > @@ -1214,6 +1232,32 @@ static int nfs_validate_mount_data(void *options,
+> >  		args->namlen		= data->namlen;
+> >  		args->bsize		= data->bsize;
+> >  		args->auth_flavors[0]	= data->pseudoflavor;
+> > +
+> > +		/*
+> > +		 * The legacy version 6 binary mount data from userspace has a
+> > +		 * field used only to transport selinux information into the
+> > +		 * the kernel.  To continue to support that functionality we
+> > +		 * have a touch of selinux knowledge here in the NFS code. The
+> > +		 * userspace code converted context=blah to just blah so we are
+> > +		 * converting back to the full string selinux understands.
+> > +		 */
+> > +		if (data->context[0]){
+> > +#ifdef CONFIG_SECURITY_SELINUX
+> > +			int rc;
+> > +			char *opts_str = kmalloc(sizeof(data->context) + 8, GFP_KERNEL);
+> > +			if (!opts_str)
+> > +				return -ENOMEM;
+> > +			strcpy(opts_str, "context=");
+> > +			strcat(opts_str, &data->context[0]);
 > 
-> I have kind of an academic question.
+> Shouldn't this be a strncat? I can't see that we're sanity checking the
+> data->context string for \NUL termination anywhere.
+
+No good reason not to make sure since we know the size of the static
+context array.  I just assumed NFS was doing checks on the hostname and
+the context array the same way to make sure they were both valid.  I'll
+send a new patch which uses strncat.
+
+> > +			rc = security_sb_parse_opts_str(opts_str, &args->lsm_opts);
+> > +			kfree(opts_str);
+> > +			if (rc)
+> > +				return rc;
+> > +#else
+> > +			return -EINVAL;
 > 
-> When an NFS file system is mounted with the "sync" option, only  
-> writes via sys_write appear to be affected.  Writes via mmap or pages  
-> dirtied via a loopback device are not affected at all.
-> 
-> Similarly, O_SYNC only appears to affect sys_write and not mmap or  
-> loopback.
-> 
-> Is this the desired behavior?  If so, why not include cached writes?   
-> Should we document this in nfs(5)?
+> Is this really necessary?
 
-What does it mean to have "synchronous writes with mmap"? I'm not sure
-that I really understand your concern: mmap is by its very nature
-asynchronous. AFAIK, the only guarantee you have w.r.t. synchronicity is
-that msync(MS_SYNC) can only complete once the data is on disk.
+If someone used context= with the binary data interface the kernel needs
+to tell them that it didn't understand.  It's really no different than
+nfs_parse_mount_options() having the out_unknown error case instead of
+just ignoring unknown.  If they used the text interface they would fail
+on the out_unknown case if !CONFIG_SELINUX.
 
-So what semantics or guarantees are you saying that we're violating when
-we don't use synchronous writes at the NFS level for mmap?
-
-Ditto really for the loopback device. Its semantics are those of a block
-device, and so I really don't see what guarantees we're violating by not
-using synchronous writes at the NFS level.
-
-
+> > +#endif
+> > +		}
+> > +
+> >  		break;
+> >  	default: {
+> >  		unsigned int len;
 
