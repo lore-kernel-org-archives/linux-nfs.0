@@ -1,19 +1,20 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: SVCRDMA: Add refs to RDMA transport close path
-Date: Thu, 06 Mar 2008 11:55:37 -0600
-Message-ID: <1204826137.21546.9.camel@trinity.ogc.int>
+Subject: [PATCH] SVCRDMA: Add refs to RDMA transport close path
+Date: Thu, 06 Mar 2008 11:59:31 -0600
+Message-ID: <1204826371.21546.12.camel@trinity.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain
 Cc: linux-nfs <linux-nfs@vger.kernel.org>
-To: Bruce Fields <bfields@fieldses.org>
+To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:51123 "EHLO
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:51137 "EHLO
 	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751316AbYCFRpb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Mar 2008 12:45:31 -0500
+	by vger.kernel.org with ESMTP id S1758167AbYCFRtY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Mar 2008 12:49:24 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Oops, fixed the Subject line...
 
 The close code was refactored so that transport close in error and close
 are performed by the same code.
@@ -266,4 +267,9 @@ index f09444c..8c9917c 100644
  }
  
  static int svc_rdma_has_wspace(struct svc_xprt *xprt)
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
