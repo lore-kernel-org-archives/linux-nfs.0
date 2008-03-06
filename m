@@ -1,51 +1,63 @@
-From: Timo Aaltonen <tjaalton@cc.hut.fi>
-Subject: Re: Last call for nfs-utils patches
-Date: Thu, 6 Mar 2008 09:38:42 +0200 (EET)
-Message-ID: <alpine.OSF.0.99.0803060931390.100983@replicant.hut.fi>
-References: <47CD680B.1070106@RedHat.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: Problems in configuring SNFS
+Date: Thu, 06 Mar 2008 09:15:54 -0500
+Message-ID: <47CFFC9A.1060209@RedHat.com>
+References: <47CECA5F.1000008@ncic.ac.cn>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-To: Steve Dickson <SteveD@redhat.com>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <47CD680B.1070106@RedHat.com>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org
+To: lizhong <lizhong-3pZTqkFmMFknDS1+zs4M5A@public.gmane.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([66.187.233.31]:55527 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751746AbYCFOQD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 6 Mar 2008 09:16:03 -0500
+In-Reply-To: <47CECA5F.1000008-3pZTqkFmMFknDS1+zs4M5A@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 4 Mar 2008, Steve Dickson wrote:
 
->
-> I'm planning on cutting a nfs-utils-1.1.2 release since
-> there has been a number commits since the last 1.1.1 release.
->
-> The attached list are all of the commits that have been made to
-> the git://linux-nfs.org/nfs-utils git tree.
->
-> (Note: to get a working copy of this tree use:
->    git clone  git://linux-nfs.org/nfs-utils nfs-utils)
->
-> So if you don't see a commit you have posted to either
-> the nfs or nfsv4 mailing list it probably means I missed it
-> so you might want to bring it to my attention.
-> (Please Note, the patch authors in some of my earlier
-> commit are incorrect. This was simply due to my lack
-> of git knowledge. Once it was pointed it out to me,
-> the problem was corrected.)
->
-> Also if you were holding off posting some (hopefully)
-> non-intrusive patches now it the time. There is a very
-> good chance I will not cut the release until this weekend.
 
-What about the changes which make rpc.gssd spam the syslog less, ie. 
-lowering the priority of two printerr's? It did the trick wonderfully, no 
-more syslog overflows when user creds have expired.
+lizhong wrote:
+> Hello all,
+> I'm trying to set up SNFS on my Redhat server. I have read all
+> infomation in this page:
+> http://www.math.ualberta.ca/imaging/snfs/
+> I have set up the SNIS server successfully, but when I failed in setting
+> up the SNFS server. The host name of my SNFS server is gcnode029, and my
+> client is gcnode010. I can mount directories from gcnode029 to gcnode010
+> using common NFS, but failed in mount ing directories using SNFS.
+> 
+> I configured SNFS like this:
+> 1. Run command "snfshost gcnode029:200008" at client gcnode010.
+> 2. Add this into /etc/fstab at client gcnode010:
+> gcnode029:/home/ha /home/ha nfs
+> user,noauto,hard,intr,rsize=8192,wsize=8192,mountprog=200008,nfsprog=250008
+> 0 0
+> 3. Run command "rpc_psrv -r -d /usr/local/etc/snfs/gcnode029" at client
+> gcnode010, then enter gcnode029's root password. Now I saw "ID String
+> correctly read: RPC Proxy Client".
+> 4. Run command "mount /home/ha", then I got the following error message:
+> mount: mount to NFS server 'gcnode029' failed: RPC Error: Program not
+> registered.
+> 5. Run command "ps -aux | grep rpc" at host gcnode029:
+> root 5278 0.0 0.0 1656 744 ? Ss Mar05 0:00 rpc_pcl -P -1 -e
+> snfs-genode010-200008.log -d -M 200008:100005
+> 
+> If I simply run command "mount -t nfs gcnode029:/home/ha /home/ha", I
+> could get the remote directory. But in this way, I just used the common
+> nfs, not SNFS. It seems that for some reason, rpc_psrv received no
+> message from mount /home/ha, and nothing was sent to host gcnode029.
+> 
+> Thank you for any help!
+Unfortunately nothing in the above explanation can be used
+to help debug this problem.
 
-t
+Fortunately, the people at Bull have come up with commands that will 
+help set up a Kerberized NFS environment. See:
+ 
+    http://nfsv4.bullopensource.org/doc/kerberosnfs/krbnfscmd_v2.php
+
+I would start there...
+
+steved.
