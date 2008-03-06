@@ -1,75 +1,51 @@
-From: Adam Schrotenboer <adam-PMR2DCmmWYEAvxtiuMwx3w@public.gmane.org>
-Subject: Re: [opensuse] nfs_update_inode: inode X mode changed, Y to Z
-Date: Wed, 05 Mar 2008 19:19:33 -0800
-Message-ID: <47CF62C5.7000908@m2000.com>
-References: <47CF0829.4020502@m2000.com>	<1204752463.5035.34.camel@heimdal.trondhjem.org>	<47CF157B.1010908@m2000.com> <18383.24847.381754.517731@notabene.brown>
+From: Timo Aaltonen <tjaalton@cc.hut.fi>
+Subject: Re: Last call for nfs-utils patches
+Date: Thu, 6 Mar 2008 09:38:42 +0200 (EET)
+Message-ID: <alpine.OSF.0.99.0803060931390.100983@replicant.hut.fi>
+References: <47CD680B.1070106@RedHat.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-ripemd160;
- protocol="application/pgp-signature";
- boundary="------------enig36D96900582C8896F95DF97C"
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, lkml@vger.kernel.org,
-	linux-nfs@vger.kernel.org, Thomas Daniel <tdaniel-PMR2DCmmWYEAvxtiuMwx3w@public.gmane.org>,
-	jesper.juhl@gmail.com
-To: Neil Brown <neilb@suse.de>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail3.ldmi.net ([64.118.147.197]:47886 "EHLO mail.ldmi.net"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S932385AbYCFD0R (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Mar 2008 22:26:17 -0500
-In-Reply-To: <18383.24847.381754.517731-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+To: Steve Dickson <SteveD@redhat.com>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <47CD680B.1070106@RedHat.com>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is an OpenPGP/MIME signed message (RFC 2440 and 3156)
---------------enig36D96900582C8896F95DF97C
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: quoted-printable
+On Tue, 4 Mar 2008, Steve Dickson wrote:
 
-Neil Brown wrote:
-> On Wednesday March 5, adam-PMR2DCmmWYEAvxtiuMwx3w@public.gmane.org wrote:
->  =20
-> Where :-)
 >
-> A excerpt from the logs to show actual error messages could be
-> helpful.
+> I'm planning on cutting a nfs-utils-1.1.2 release since
+> there has been a number commits since the last 1.1.1 release.
 >
-> Thanks,
-> NeilBrown
-sorry, must have missed the paste
+> The attached list are all of the commits that have been made to
+> the git://linux-nfs.org/nfs-utils git tree.
+>
+> (Note: to get a working copy of this tree use:
+>    git clone  git://linux-nfs.org/nfs-utils nfs-utils)
+>
+> So if you don't see a commit you have posted to either
+> the nfs or nfsv4 mailing list it probably means I missed it
+> so you might want to bring it to my attention.
+> (Please Note, the patch authors in some of my earlier
+> commit are incorrect. This was simply due to my lack
+> of git knowledge. Once it was pointed it out to me,
+> the problem was corrected.)
+>
+> Also if you were holding off posting some (hopefully)
+> non-intrusive patches now it the time. There is a very
+> good chance I will not cut the release until this weekend.
 
-Feb 28 17:27:58 koi kernel: nfs_update_inode: inode 3221350147 mode=20
-changed, 0040755 to 0100644
-Feb 28 21:57:22 koi kernel: nfs_update_inode: inode 2149056279 mode=20
-changed, 0040755 to 0100755
-Mar  5 01:43:21 koi kernel: nfs_update_inode: inode 3222473680 mode=20
-changed, 0040755 to 0100644
-Mar  5 08:52:19 koi kernel: nfs_update_inode: inode 3222473568 mode=20
-changed, 0120777 to 0100644
-Mar  5 15:00:01 koi kernel: nfs_update_inode: inode 3222473569 mode=20
-changed, 0120777 to 0100644
-Mar  5 15:00:31 koi kernel: nfs_update_inode: inode 3222473674 mode=20
-changed, 0120777 to 0100644
-Mar  5 15:00:31 koi kernel: nfs_update_inode: inode 3222473675 mode=20
-changed, 0120777 to 0100644
-Mar  5 15:00:31 koi kernel: nfs_update_inode: inode 3222473672 mode=20
-changed, 0040755 to 0100644
-Mar  5 15:00:31 koi kernel: nfs_update_inode: inode 3222473673 mode=20
-changed, 0120777 to 0100644
+What about the changes which make rpc.gssd spam the syslog less, ie. 
+lowering the priority of two printerr's? It did the trick wonderfully, no 
+more syslog overflows when user creds have expired.
 
-
-
---------------enig36D96900582C8896F95DF97C
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: OpenPGP digital signature
-Content-Disposition: attachment; filename="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.7 (MingW32)
-Comment: Using GnuPG with Mozilla - http://enigmail.mozdev.org
-
-iD8DBQFHz2LFyWYDdvnGArwRAy6bAJ9MlEyLweOEQYdwXFwlqEDWJFpeqwCeJLYt
-KINCLXPRP214vA4vX1w2oGc=
-=q49o
------END PGP SIGNATURE-----
-
---------------enig36D96900582C8896F95DF97C--
+t
