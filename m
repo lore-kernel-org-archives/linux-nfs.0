@@ -1,38 +1,67 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [PATCH] SVCRDMA: Add refs to RDMA transport close path
-Date: Thu, 06 Mar 2008 11:59:31 -0600
-Message-ID: <1204826371.21546.12.camel@trinity.ogc.int>
+Subject: [PATCH][REPOST] SVCRDMA: Add refs to RDMA transport close path
+Date: Thu, 06 Mar 2008 14:01:13 -0600
+Message-ID: <1204833673.21546.31.camel@trinity.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain
 Cc: linux-nfs <linux-nfs@vger.kernel.org>
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:51137 "EHLO
+Received: from 209-198-142-2-host.prismnet.net ([209.198.142.2]:43186 "EHLO
 	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1758167AbYCFRtY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Mar 2008 12:49:24 -0500
+	by vger.kernel.org with ESMTP id S1754609AbYCFTvI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Mar 2008 14:51:08 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Oops, fixed the Subject line...
+Bruce: 
 
-The close code was refactored so that transport close in error and close
-are performed by the same code.
-   
-Additional transport references were added as follows:
-- A reference when on the DTO Q to avoid having the transport
-  deleted while queued for I/O.
-- A reference while there is a QP able to generate events.
-- A reference until the DISCONNECTED event is received on the CM ID
+This patch is for 2.6.25 if possible. The previous version of this patch had a warning
+that I missed in my "make && make modules_install && make install" test cycle. 
 
-Finally, the QP and CQ event handler messages were changed to printk's to
-make it easier for system administrators to diagnose RDMA transport
-problems.
+This patch has been tested with multiple concurrent mounts of both IB and iWARP. The
+connect/destroy test was as follows:
 
-Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+#  while true; do \
+   mount.nfs vic1-10g:/dsfs /mnt/iwarp -i -o rdma,port=2050,vers=3;\
+   iozone -aec -i 0 -i 1 -s 10M -q 128k -y 32k -f /mnt/iwarp/foo; \
+   umount /mnt/iwarp; \
+   sleep 1; \
+done
+
+A similar test is run concurrently for IB as follows:
+
+#  while true; do \
+   mount.nfs vic1-ib:/dsfs /mnt/ib -i -o rdma,port=2050,vers=3;\
+   iozone -aec -i 0 -i 1 -s 10M -q 128k -y 32k -f /mnt/ib/bar; \
+   umount /mnt/ib; \
+   sleep 1; \
+done
+
+I also ran Connectathon for grins.
+
+Sorry for the noise on the warning...
+    
+    The close code was re-factored so that transport close in error and close
+    are performed by the same code.
+    
+    Additional transport references were added as follows:
+    - A reference when on the DTO Q to avoid having the transport
+      deleted while queued for I/O.
+    - A reference while there is a QP able to generate events.
+    - A reference until the DISCONNECTED event is received on the CM ID
+    
+    Finally, the QP and CQ event handler messages were changed to printk's to
+    make it easier for system administrators to diagnose RDMA transport
+    problems.
+    
+    Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+---
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |  113 ++++++++++++++++++------------
+ 1 files changed, 68 insertions(+), 45 deletions(-)
 
 diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index f09444c..8c9917c 100644
+index f09444c..7340abb 100644
 --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
 +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
 @@ -54,7 +54,6 @@ static struct svc_xprt *svc_rdma_create(struct svc_serv *serv,
@@ -146,7 +175,7 @@ index f09444c..8c9917c 100644
 -		rdma_destroy_xprt(cma_xprt);
 +		svc_xprt_put(&cma_xprt->sc_xprt);
  		dprintk("svcrdma: rdma_listen failed = %d\n", ret);
-+		return ret;
++		return ERR_PTR(ret);
  	}
  
  	/*
@@ -267,9 +296,4 @@ index f09444c..8c9917c 100644
  }
  
  static int svc_rdma_has_wspace(struct svc_xprt *xprt)
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
