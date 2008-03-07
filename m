@@ -1,7 +1,7 @@
 From: Peter Staubach <staubach@redhat.com>
 Subject: Re: [PATCH] nfs-utils: Handle authentication flavour order properly
-Date: Fri, 07 Mar 2008 13:27:01 -0500
-Message-ID: <47D188F5.9060005@redhat.com>
+Date: Fri, 07 Mar 2008 13:29:23 -0500
+Message-ID: <47D18983.4080507@redhat.com>
 References: <f88853200803061908y497164bdpdff7b9109567d8c0@mail.gmail.com>	 <629ABBF6-C368-44AC-B4B9-471296229325@oracle.com> <f88853200803071011j3a70b0abka9142396d3275b10@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
@@ -9,10 +9,10 @@ Cc: Chuck Lever <chuck.lever@oracle.com>, trond.myklebust@fys.uio.no,
 	linux-nfs@vger.kernel.org
 To: bc Wong <bcwalrus@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:57704 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([66.187.233.31]:57772 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932449AbYCGS2N (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 7 Mar 2008 13:28:13 -0500
+	id S1757614AbYCGS3n (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 7 Mar 2008 13:29:43 -0500
 In-Reply-To: <f88853200803071011j3a70b0abka9142396d3275b10-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
@@ -51,16 +51,24 @@ bc Wong wrote:
 > NFS RPC error, instead of a MOUNT error. I can look into fixing
 > the kernel client as well.
 >
+>   
+
+Actually, NFS servers that support AUTH_NONE, map the uid and gid to the
+anonymous uid and gids for access to file systems which are exported
+AUTH_NONE.  It doesn't seem to matter what authentication flavor that
+the client uses.
+
+       ps
+
 > I'd still like the submitted patch to be considered. It's quite bad
 > that mount.nfs would encounter (AUTH_SYS, AUTH_NULL) and
 > pick the latter.
+>
+> Thanks,
+> bc
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>   
 
-I don't think that the client can generate AUTH_NONE, can it?  I thought
-that the client generated AUTH_SYS even if the server specified AUTH_NONE?
-
-If you make changes in this area, please ensure that the server exporting
-AUTH_NONE still works.
-
-    Thanx...
-
-       ps
