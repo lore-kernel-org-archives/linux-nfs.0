@@ -1,106 +1,74 @@
-From: "bc Wong" <bcwalrus@gmail.com>
-Subject: [PATCH] nfs-utils: Handle authentication flavour order properly
-Date: Thu, 6 Mar 2008 19:08:38 -0800
-Message-ID: <f88853200803061908y497164bdpdff7b9109567d8c0@mail.gmail.com>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [opensuse] nfs_update_inode: inode X mode changed, Y to Z
+Date: Fri, 7 Mar 2008 15:38:53 +1100
+Message-ID: <18384.50909.866848.966192@notabene.brown>
+References: <47CF0829.4020502@m2000.com>
+	<1204752463.5035.34.camel@heimdal.trondhjem.org>
+	<47CF157B.1010908@m2000.com>
+	<18383.24847.381754.517731@notabene.brown>
+	<47CF62C5.7000908@m2000.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: trond.myklebust@fys.uio.no, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, lkml@vger.kernel.org,
+	linux-nfs@vger.kernel.org, Thomas Daniel <tdaniel-PMR2DCmmWYEAvxtiuMwx3w@public.gmane.org>,
+	jesper.juhl@gmail.com
+To: Adam Schrotenboer <adam-PMR2DCmmWYEAvxtiuMwx3w@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rn-out-0910.google.com ([64.233.170.189]:44362 "EHLO
-	rn-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1761526AbYCGDIj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Mar 2008 22:08:39 -0500
-Received: by rn-out-0910.google.com with SMTP id v46so474486rnb.15
-        for <linux-nfs@vger.kernel.org>; Thu, 06 Mar 2008 19:08:39 -0800 (PST)
+Received: from ns2.suse.de ([195.135.220.15]:55736 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759347AbYCGEjG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 6 Mar 2008 23:39:06 -0500
+In-Reply-To: message from Adam Schrotenboer on Wednesday March 5
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-There were 2 things wrong with auth flavour ordering:
-- Mountd used to advertise AUTH_NULL as the first flavour on
-  the list, which means that it prefers AUTH_NULL to anything
-  else (as per RFC 2623 section 2.7).
-- Mount.nfs used to scan the returned list in reverse order,
-  and stopping at the first AUTH_NULL or AUTH_SYS encountered.
-  If a server advertises (AUTH_SYS, AUTH_NULL), it will by
-  default choose AUTH_NULL and have degraded access.
+On Wednesday March 5, adam-PMR2DCmmWYEAvxtiuMwx3w@public.gmane.org wrote:
+> Neil Brown wrote:
+> > On Wednesday March 5, adam-PMR2DCmmWYEAvxtiuMwx3w@public.gmane.org wrote:
+> >   
+> > Where :-)
+> >
+> > A excerpt from the logs to show actual error messages could be
+> > helpful.
+> >
+> > Thanks,
+> > NeilBrown
+> sorry, must have missed the paste
+> 
+> Feb 28 17:27:58 koi kernel: nfs_update_inode: inode 3221350147 mode 
+> changed, 0040755 to 0100644
+> Feb 28 21:57:22 koi kernel: nfs_update_inode: inode 2149056279 mode 
+> changed, 0040755 to 0100755
+> Mar  5 01:43:21 koi kernel: nfs_update_inode: inode 3222473680 mode 
+> changed, 0040755 to 0100644
+> Mar  5 08:52:19 koi kernel: nfs_update_inode: inode 3222473568 mode 
+> changed, 0120777 to 0100644
+> Mar  5 15:00:01 koi kernel: nfs_update_inode: inode 3222473569 mode 
+> changed, 0120777 to 0100644
+> Mar  5 15:00:31 koi kernel: nfs_update_inode: inode 3222473674 mode 
+> changed, 0120777 to 0100644
+> Mar  5 15:00:31 koi kernel: nfs_update_inode: inode 3222473675 mode 
+> changed, 0120777 to 0100644
+> Mar  5 15:00:31 koi kernel: nfs_update_inode: inode 3222473672 mode 
+> changed, 0040755 to 0100644
+> Mar  5 15:00:31 koi kernel: nfs_update_inode: inode 3222473673 mode 
+> changed, 0120777 to 0100644
+> 
+> 
+Hmmm...
+Directories and symlinks "changing" to regular files.
 
-I've fixed mount.nfs to scan from the beginning. For mountd,
-it does not advertise AUTH_NULL anymore. This is necessary
-to avoid backward compatibility issue. If AUTH_NULL appears
-in the list, either the new or the old client will choose
-that over AUTH_SYS.
+32bit inode numbers with the high bit set.
 
-Tested the server/client combination against the previous
-versions, as well as Solaris and FreeBSD.
+Random times, but a burst at 3pm one afternoon.
 
-Signed-off-by: bc Wong <bcwong-FYB4Gu1CFyUAvxtiuMwx3w@public.gmane.org>
+The fact that it happens so rarely make is very hard to collect more
+data....
 
-Cheers,
-bc
 
----
+What happens when a user experiences an error?  What sort of file is
+the error reported against?  Does the file remain inaccessible or does
+it start working again soon?  Is the same file accessible from another
+client?
 
- utils/mount/nfsmount.c |   13 ++++++++-----
- utils/mountd/mountd.c  |    9 ++++++++-
- 2 files changed, 16 insertions(+), 6 deletions(-)
-
-diff --git a/utils/mount/nfsmount.c b/utils/mount/nfsmount.c
-index 3d2ebb1..da5c428 100644
---- a/utils/mount/nfsmount.c
-+++ b/utils/mount/nfsmount.c
-@@ -734,7 +734,7 @@ nfsmount(const char *spec, const char *node, int flags,
- #if NFS_MOUNT_VERSION >= 4
-                mountres3_ok *mountres;
-                fhandle3 *fhandle;
--               int i, *flavor, yum = 0;
-+               int i, n_flavors, *flavor, yum = 0;
-                if (mntres.nfsv3.fhs_status != 0) {
-                        nfs_error(_("%s: %s:%s failed, reason given by
-server: %s"),
-                                        progname, hostname, dirname,
-@@ -743,13 +743,16 @@ nfsmount(const char *spec, const char *node, int flags,
-                }
- #if NFS_MOUNT_VERSION >= 5
-                mountres = &mntres.nfsv3.mountres3_u.mountinfo;
--               i = mountres->auth_flavors.auth_flavors_len;
--               if (i <= 0)
-+               n_flavors = mountres->auth_flavors.auth_flavors_len;
-+               if (n_flavors <= 0)
-                        goto noauth_flavors;
-
-                flavor = mountres->auth_flavors.auth_flavors_val;
--               while (--i >= 0) {
--                       /* If no flavour requested, use first simple
-+               for (i = 0; i < n_flavors; ++i) {
-+                       /*
-+                        * Per RFC2623, section 2.7, we should prefer the
-+                        * flavour listed first.
-+                        * If no flavour requested, use the first simple
-                         * flavour that is offered.
-                         */
-                        if (! (data.flags & NFS_MOUNT_SECFLAVOUR) &&
-diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
-index 63d5ce1..b006dc6 100644
---- a/utils/mountd/mountd.c
-+++ b/utils/mountd/mountd.c
-@@ -342,7 +342,14 @@ mount_mnt_3_svc(struct svc_req *rqstp, dirpath
-*path, mountres3 *res)
- #define AUTH_GSS_KRB5 390003
- #define AUTH_GSS_KRB5I 390004
- #define AUTH_GSS_KRB5P 390005
--       static int      flavors[] = { AUTH_NULL, AUTH_UNIX,
-AUTH_GSS_KRB5, AUTH_GSS_KRB5I, AUTH_GSS_KRB5P};
-+       /*
-+        * We should advertise the preferred flavours first. (See RFC 2623
-+        * section 2.7.) AUTH_UNIX is arbitrarily ranked over the GSS's.
-+        * AUTH_NULL is dropped from the list to avoid backward compatibility
-+        * issue with older Linux clients, who inspect the list in reversed
-+        * order.
-+        */
-+       static int      flavors[] = { AUTH_UNIX, AUTH_GSS_KRB5,
-AUTH_GSS_KRB5I, AUTH_GSS_KRB5P };
-        struct nfs_fh_len *fh;
-
-        xlog(D_CALL, "MNT3(%s) called", *path);
--- 
-1.5.2.5
+NeilBrown
