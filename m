@@ -1,70 +1,34 @@
-From: Timo Sirainen <tss@iki.fi>
-Subject: Re: NFS server waking up sleeping disks
-Date: Sun, 9 Mar 2008 05:11:20 +0200
-Message-ID: <CFB019DD-6BDA-4007-B4AA-3E06C58196FD@iki.fi>
-References: <1204969522.11220.680.camel@hurina>	 <47D29BC2.9000806@foo-lounge.de> <1205018864.11220.689.camel@hurina> <47D35249.7020000@foo-lounge.de>
-Mime-Version: 1.0 (Apple Message framework v919.2)
-Content-Type: multipart/signed; protocol="application/pgp-signature"; micalg=pgp-sha1; boundary="Apple-Mail-4--908186495"
-Cc: linux-nfs@vger.kernel.org
-To: Timo Reimann <mailinglist-d4LLFNs4DFRA7UZ8SB9NFg@public.gmane.org>
+From: Jan Engelhardt <jengelh-bdq14YP6qtRlEiWPh9xO2Q@public.gmane.org>
+Subject: Re: READDIRPLUS max mount option
+Date: Sun, 9 Mar 2008 17:16:36 +0100 (CET)
+Message-ID: <Pine.LNX.4.64.0803091713440.26142@fbirervta.pbzchgretzou.qr>
+References: <47D1995E.6060501@krose.org>  <1204919978.16746.12.camel@heimdal.trondhjem.org>
+  <47D1A0F5.2070501@krose.org> <1204922570.16746.37.camel@heimdal.trondhjem.org>
+ <47D1ADC5.1050108@krose.org>
+Mime-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	linux-nfs@vger.kernel.org
+To: Kyle Rose <krose-x8616dYPWyvYtjvyW6yDsg@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from dovecot.org ([82.118.211.50]:51248 "EHLO dovecot.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751085AbYCIDLW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 8 Mar 2008 22:11:22 -0500
-In-Reply-To: <47D35249.7020000-d4LLFNs4DFRA7UZ8SB9NFg@public.gmane.org>
+Received: from sovereign.computergmbh.de ([85.214.69.204]:34004 "EHLO
+	sovereign.computergmbh.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750769AbYCIQQh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 9 Mar 2008 12:16:37 -0400
+In-Reply-To: <47D1ADC5.1050108-x8616dYPWyvYtjvyW6yDsg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is an OpenPGP/MIME signed message (RFC 2440 and 3156)
---Apple-Mail-4--908186495
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Content-Transfer-Encoding: 7bit
 
-On Mar 9, 2008, at 4:58 AM, Timo Reimann wrote:
-
->>> However, there is no `ls' or similar call required to wake up my  
->>> disk.
->>> It just happens.
->>
->> Thanks, mountd is indeed the problem:
->>
->> I'll go figure out why it's doing this.
+On Mar 7 2008 16:04, Kyle Rose wrote:
+>> Since we're talking about what is really a quite arbitrary limit, I can
+>> certainly see an argument for why we might want a way to change it, but
+>> I'm still not convinced that we need to be setting this parameter at the
+>> mountpoint level.
 >
-> If you find a solution prior to the other guys who offered their  
-> help to
-> me, please let us (especially me :) ) know.
-
-Well, after half an hour of looking at mountd and libblk code and  
-trying to figure out why I can't seem to find the code for what I see  
-in the strace, I finally found out the mountd sources were newer than  
-what I was using and this issue was already fixed (Debian unstable):
-
-   * 10-no-flush-blkid-cache.diff: New patch from Theodore Ts'o, removes
-     unneccessary flushing of the blkid cache, leading to lots of  
-spurious
-     DM_* ioctls. (Closes: #431940)
-
-This appears to fix my problem, although it'll probably takes a few  
-days until I'm sure. This is the second time already when I've wasted  
-a lot of time trying to figure out a problem, only to find out that  
-dist-upgrade would have solved it. Have to remember to do that the  
-next time. :)
-
-
---Apple-Mail-4--908186495
-content-type: application/pgp-signature; x-mac-type=70674453;
-	name=PGP.sig
-content-description: This is a digitally signed message part
-content-disposition: inline; filename=PGP.sig
-content-transfer-encoding: 7bit
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.8 (Darwin)
-
-iEYEARECAAYFAkfTVVgACgkQyUhSUUBVislhzgCeLC4gswQCFoT2APEj5o7aypgt
-pQsAoIzI+KXyZxZ9/8mX5MJCxf7XBBkP
-=Epi8
------END PGP SIGNATURE-----
-
---Apple-Mail-4--908186495--
+> Fair enough.  A proc entry to alter this globally would be an acceptable
+> compromise for me, even if my local sysadmins might not like it.
+>
+sysfs, no? A module parameter is easy for a global default and is
+the minimum thing to do :)
