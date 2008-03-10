@@ -1,86 +1,186 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 2/2] NFS: When faking pre_op_attrs, don't allow backward mtime updates
-Date: Mon, 10 Mar 2008 13:08:46 -0400
-Message-ID: <1205168926-14373-3-git-send-email-jlayton@redhat.com>
-References: <1205168926-14373-1-git-send-email-jlayton@redhat.com>
- <1205168926-14373-2-git-send-email-jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-To: Trond.Myklebust@netapp.com
+From: Peter Staubach <staubach@redhat.com>
+Subject: [PATCH 1/3] enhanced lookup ESTALE error handling (v3)
+Date: Mon, 10 Mar 2008 16:23:33 -0400
+Message-ID: <47D598C5.7080609@redhat.com>
+References: <4790C761.1010603@redhat.com> <47A387CF.70201@redhat.com>
+Mime-Version: 1.0
+Content-Type: multipart/mixed;
+ boundary="------------010507020900030509040003"
+Cc: linux-nfs@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>
+To: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:35064 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([66.187.233.31]:41840 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751165AbYCJRJD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 10 Mar 2008 13:09:03 -0400
-In-Reply-To: <1205168926-14373-2-git-send-email-jlayton@redhat.com>
+	id S1751048AbYCJUYM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 10 Mar 2008 16:24:12 -0400
+In-Reply-To: <47A387CF.70201@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Since write replies don't necessarily come back in the order that they
-were committed to disk, the post_op_attr mtime can sometimes jump
-forward and backward. When this happens, it can make the client
-invalidate the cache, even in situations when it's clear there are
-no other writers.
+This is a multi-part message in MIME format.
+--------------010507020900030509040003
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-In the situation where we're faking up pre_op_attrs, take extra care
-to not allow the post_op_attrs to roll the mtime backward. If we get
-a fattr with a mtime that's older the one currently on the inode,
-assume that we've already previously updated the mtime and the one
-currently on the inode is the correct one.
+Hi.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfs/inode.c          |   13 ++++++++++---
- include/linux/nfs_xdr.h |    1 +
- 2 files changed, 11 insertions(+), 3 deletions(-)
+This is a patch to enhance ESTALE error handling during the
+lookup process.  The error, ESTALE, can occur when out of data
+dentries, stored in the dcache, is used to translate a pathname
+component to a dentry.  When this occurs, the dentry which
+contains the pointer to the inode which refers to the non-existent
+file is dropped from the dcache and then the lookup process
+started again.  Care is taken to ensure that forward process is
+always being made.  If forward process is not detected, then the
+lookup process is terminated and the error, ENOENT, is returned
+to the caller.
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index e5dbe75..c502494 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -816,7 +816,14 @@ static void nfs_wcc_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 		if (timespec_equal(&inode->i_ctime, &fattr->pre_ctime))
- 			memcpy(&inode->i_ctime, &fattr->ctime, sizeof(inode->i_ctime));
- 		if (timespec_equal(&inode->i_mtime, &fattr->pre_mtime)) {
--			memcpy(&inode->i_mtime, &fattr->mtime, sizeof(inode->i_mtime));
-+			if ((fattr->valid & NFS_ATTR_WCC_FAKE) &&
-+			    timespec_compare(&inode->i_mtime,
-+					     &fattr->mtime) > 0)
-+				memcpy(&fattr->mtime, &inode->i_mtime,
-+					sizeof(fattr->mtime));
-+			else
-+				memcpy(&inode->i_mtime, &fattr->mtime,
-+					sizeof(inode->i_mtime));
- 			if (S_ISDIR(inode->i_mode))
- 				nfsi->cache_validity |= NFS_INO_INVALID_DATA;
- 		}
-@@ -956,13 +963,13 @@ int nfs_post_op_update_inode_force_wcc(struct inode *inode, struct nfs_fattr *fa
+    Thanx...
+
+        ps
+
+Signed-off-by: Peter Staubach <staubach@redhat.com>
+
+--------------010507020900030509040003
+Content-Type: text/plain;
+ name="estale.lookup.3"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline;
+ filename="estale.lookup.3"
+
+--- linux-2.6.24.i686/fs/namei.c.org
++++ linux-2.6.24.i686/fs/namei.c
+@@ -750,7 +750,7 @@ static __always_inline void follow_dotdo
  {
- 	if ((fattr->valid & NFS_ATTR_FATTR_V4) != 0) {
- 		fattr->pre_change_attr = NFS_I(inode)->change_attr;
--		fattr->valid |= NFS_ATTR_WCC_V4;
-+		fattr->valid |= (NFS_ATTR_WCC_V4|NFS_ATTR_WCC_FAKE);
- 	}
- 	if ((fattr->valid & NFS_ATTR_FATTR) != 0) {
- 		memcpy(&fattr->pre_ctime, &inode->i_ctime, sizeof(fattr->pre_ctime));
- 		memcpy(&fattr->pre_mtime, &inode->i_mtime, sizeof(fattr->pre_mtime));
- 		fattr->pre_size = inode->i_size;
--		fattr->valid |= NFS_ATTR_WCC;
-+		fattr->valid |= (NFS_ATTR_WCC|NFS_ATTR_WCC_FAKE);
- 	}
- 	return nfs_post_op_update_inode(inode, fattr);
- }
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index f301d0b..6715a67 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -64,6 +64,7 @@ struct nfs_fattr {
- #define NFS_ATTR_FATTR_V4	0x0008		/* NFSv4 change attribute */
- #define NFS_ATTR_WCC_V4		0x0010		/* pre-op change attribute */
- #define NFS_ATTR_FATTR_V4_REFERRAL	0x0020		/* NFSv4 referral */
-+#define NFS_ATTR_WCC_FAKE	0x0040		/* pre-op attrs are faked */
+ 	struct fs_struct *fs = current->fs;
  
- /*
-  * Info on the file system
--- 
-1.5.3.6
+-	while(1) {
++	while (1) {
+ 		struct vfsmount *parent;
+ 		struct dentry *old = nd->path.dentry;
+ 
+@@ -849,7 +849,7 @@ static int __link_path_walk(const char *
+ 		lookup_flags = LOOKUP_FOLLOW | (nd->flags & LOOKUP_CONTINUE);
+ 
+ 	/* At this point we know we have a real path component. */
+-	for(;;) {
++	for (;;) {
+ 		unsigned long hash;
+ 		struct qstr this;
+ 		unsigned int c;
+@@ -1003,7 +1003,7 @@ return_reval:
+ 		 */
+ 		if (nd->path.dentry && nd->path.dentry->d_sb &&
+ 		    (nd->path.dentry->d_sb->s_type->fs_flags & FS_REVAL_DOT)) {
+-			err = -ESTALE;
++			err = -ENOENT;
+ 			/* Note: we do not d_invalidate() */
+ 			if (!nd->path.dentry->d_op->d_revalidate(
+ 					nd->path.dentry, nd))
+@@ -1015,6 +1015,8 @@ out_dput:
+ 		path_put_conditional(&next, nd);
+ 		break;
+ 	}
++	if (err == -ESTALE)
++		d_drop(nd->path.dentry);
+ 	path_put(&nd->path);
+ return_err:
+ 	return err;
+@@ -1031,13 +1033,24 @@ static int link_path_walk(const char *na
+ {
+ 	struct nameidata save = *nd;
+ 	int result;
++	struct dentry *svd;
+ 
+ 	/* make sure the stuff we saved doesn't go away */
+ 	dget(save.path.dentry);
+ 	mntget(save.path.mnt);
+ 
++	svd = nd->path.dentry;
+ 	result = __link_path_walk(name, nd);
+-	if (result == -ESTALE) {
++	while (result == -ESTALE) {
++		/*
++		 * If no progress was made looking up the pathname,
++		 * then stop and return ENOENT instead of ESTALE.
++		 */
++		if (nd->path.dentry == svd) {
++			result = -ENOENT;
++			break;
++		}
++		svd = nd->path.dentry;
+ 		*nd = save;
+ 		dget(nd->path.dentry);
+ 		mntget(nd->path.mnt);
+@@ -1714,7 +1727,10 @@ int open_namei(int dfd, const char *path
+ 	int acc_mode, error;
+ 	struct path path;
+ 	struct dentry *dir;
+-	int count = 0;
++	int count;
++
++top:
++	count = 0;
+ 
+ 	acc_mode = ACC_MODE(flag);
+ 
+@@ -1741,7 +1757,8 @@ int open_namei(int dfd, const char *path
+ 	/*
+ 	 * Create - we need to know the parent.
+ 	 */
+-	error = path_lookup_create(dfd,pathname,LOOKUP_PARENT,nd,flag,mode);
++	error = path_lookup_create(dfd, pathname, LOOKUP_PARENT, nd,
++				flag, mode);
+ 	if (error)
+ 		return error;
+ 
+@@ -1814,10 +1831,17 @@ ok:
+ 	return 0;
+ 
+ exit_dput:
++	if (error == -ESTALE)
++		d_drop(path.dentry);
+ 	path_put_conditional(&path, nd);
+ exit:
+ 	if (!IS_ERR(nd->intent.open.file))
+ 		release_open_intent(nd);
++	if (error == -ESTALE) {
++		d_drop(nd->path.dentry);
++		path_put(&nd->path);
++		goto top;
++	}
+ 	path_put(&nd->path);
+ 	return error;
+ 
+@@ -1827,7 +1851,7 @@ do_link:
+ 		goto exit_dput;
+ 	/*
+ 	 * This is subtle. Instead of calling do_follow_link() we do the
+-	 * thing by hands. The reason is that this way we have zero link_count
++	 * thing by hand. The reason is that this way we have zero link_count
+ 	 * and path_walk() (called from ->follow_link) honoring LOOKUP_PARENT.
+ 	 * After that we have the parent and last component, i.e.
+ 	 * we are in the same situation as after the first path_walk().
+@@ -1846,6 +1870,8 @@ do_link:
+ 		 * with "intent.open".
+ 		 */
+ 		release_open_intent(nd);
++		if (error == ESTALE)
++			goto top;
+ 		return error;
+ 	}
+ 	nd->flags &= ~LOOKUP_PARENT;
+@@ -1859,7 +1885,7 @@ do_link:
+ 		goto exit;
+ 	}
+ 	error = -ELOOP;
+-	if (count++==32) {
++	if (count++ == 32) {
+ 		__putname(nd->last.name);
+ 		goto exit;
+ 	}
 
+--------------010507020900030509040003--
