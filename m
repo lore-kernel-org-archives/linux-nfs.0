@@ -1,45 +1,43 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [PATCH] SVCRDMA: Add check for XPT_CLOSE in svc_rdma_send
-Date: Tue, 11 Mar 2008 12:44:27 -0500
-Message-ID: <1205257467.4795.3.camel@trinity.ogc.int>
+Subject: [PATCH] SVCRDMA: Fix erroneous BUG_ON in send_write
+Date: Tue, 11 Mar 2008 13:05:33 -0500
+Message-ID: <1205258733.4795.8.camel@trinity.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain
 Cc: linux-nfs <linux-nfs@vger.kernel.org>
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([209.198.142.2]:55573 "EHLO
+Received: from smtp.opengridcomputing.com ([209.198.142.2]:59207 "EHLO
 	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752534AbYCKReD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Mar 2008 13:34:03 -0400
+	by vger.kernel.org with ESMTP id S1753865AbYCKRzK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Mar 2008 13:55:10 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-SVCRDMA: Add check for XPT_CLOSE in svc_rdma_send
-    
-The svcrdma transport can crash if a send is waiting for an
-empty SQ slot and the connection is closed due to an asynchronous error.
-The crash is caused when svc_rdma_send attempts to send on a deleted
-QP.
+The assertion that checks for sge context overflow is
+incorrectly hard-coded to 32. This causes a kernel bug
+check when using big-data mounts. Changed the BUG_ON to
+use the computed value RPCSVC_MAXPAGES.
     
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
+Please queue this for 2.6.25. This problem was found by a 2.6.25 user who sent me
+the oops.
 
-This is not a critical fix for 2.6.25, but part of a general clean up of the error paths.
+ net/sunrpc/xprtrdma/svc_rdma_sendto.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
- net/sunrpc/xprtrdma/svc_rdma_transport.c |    2 ++
- 1 files changed, 2 insertions(+), 0 deletions(-)
-
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index 16fd3f6..af408fc 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -1036,6 +1036,8 @@ int svc_rdma_send(struct svcxprt_rdma *xprt, struct ib_send_wr *wr)
- 			wait_event(xprt->sc_send_wait,
- 				   atomic_read(&xprt->sc_sq_count) <
- 				   xprt->sc_sq_depth);
-+			if (test_bit(XPT_CLOSE, &xprt->sc_xprt.xpt_flags))
-+				return 0;
- 			continue;
- 		}
- 		/* Bumped used SQ WR count and post */
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+index 0598b22..981f190 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+@@ -156,7 +156,7 @@ static int send_write(struct svcxprt_rdma *xprt, struct svc_rqst *rqstp,
+ 	struct svc_rdma_op_ctxt *ctxt;
+ 	int ret = 0;
+ 
+-	BUG_ON(sge_count >= 32);
++	BUG_ON(sge_count > RPCSVC_MAXPAGES);
+ 	dprintk("svcrdma: RDMA_WRITE rmr=%x, to=%llx, xdr_off=%d, "
+ 		"write_len=%d, xdr_sge=%p, sge_count=%d\n",
+ 		rmr, (unsigned long long)to, xdr_off,
 
