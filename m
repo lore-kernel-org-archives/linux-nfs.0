@@ -1,50 +1,95 @@
-From: "bc Wong" <bcwalrus@gmail.com>
-Subject: Re: [PATCH] nfs-utils: Handle authentication flavour order properly
-Date: Tue, 11 Mar 2008 11:28:29 -0800
-Message-ID: <f88853200803111228s280cb748s2ab6a62af054838@mail.gmail.com>
-References: <f88853200803061908y497164bdpdff7b9109567d8c0@mail.gmail.com>
-	 <629ABBF6-C368-44AC-B4B9-471296229325@oracle.com>
-	 <f88853200803071011j3a70b0abka9142396d3275b10@mail.gmail.com>
-	 <47D18983.4080507@redhat.com>
-	 <f88853200803071059yf523114wcabb12fdeee7b8d6@mail.gmail.com>
-	 <47D19336.9010903@redhat.com>
-	 <f88853200803071138n58d16ca6t4f4410d587141141@mail.gmail.com>
-	 <47D1A55F.5030200@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: "Chuck Lever" <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
-	"J. Bruce Fields" <bfields@fieldses.org>
-To: "Peter Staubach" <staubach@redhat.com>,
-	"Steve Dickson" <steved@redhat.com>
+From: "Fletcher Mattox" <fletcher-NZpS4cJIG2HvQtjrzfazuQ@public.gmane.org>
+Subject: mail corruption with async mounts NFSv3
+Date: Tue, 11 Mar 2008 13:59:43 -0500
+Message-ID: <200803111859.m2BIxiKC001883@cs.utexas.edu>
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rv-out-0910.google.com ([209.85.198.187]:33848 "EHLO
-	rv-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752865AbYCKT2a (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Mar 2008 15:28:30 -0400
-Received: by rv-out-0910.google.com with SMTP id k20so1544262rvb.1
-        for <linux-nfs@vger.kernel.org>; Tue, 11 Mar 2008 12:28:29 -0700 (PDT)
-In-Reply-To: <47D1A55F.5030200@redhat.com>
+Received: from shadowfax.cs.utexas.edu ([128.83.120.180]:59858 "EHLO
+	shadowfax.cs.utexas.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750874AbYCKTpo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Mar 2008 15:45:44 -0400
+Received: from cs.utexas.edu (fletcher-NZpS4cJIG2HvQtjrzfazuQ@public.gmane.org [128.83.139.9])
+	by shadowfax.cs.utexas.edu (8.14.2/8.14.2) with ESMTP id m2BIxi75013011
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Tue, 11 Mar 2008 13:59:44 -0500 (CDT)
+Received: (from fletcher@localhost)
+	by cs.utexas.edu (8.14.2/8.14.2/Submit) id m2BIxiKC001883
+	for linux-nfs@vger.kernel.org; Tue, 11 Mar 2008 13:59:44 -0500 (CDT)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Mar 7, 2008 at 12:28 PM, Peter Staubach <staubach@redhat.com> wrote:
-<snip>
->  It would be good to ensure that they continue to work.
->
->     Thanx...
->
->        ps
+Hi
 
-Hi,
+We deliver mail via NFS to a NetApp file server.  After many trouble
+free years, we are suddenly and frequently seeing corrupted mailboxes.
+We usually see a series of NUL bytes (10 to 2000+) prepended to the
+message (i.e. immediately in front of the From_ line).  Our local
+delivery agent is procmail.  It is configured to lock files via
+dotlock only, no kernel based file locking.  After obtaining a lock,
+procmail does this, before writing:
 
-I tested the original patch against the Solaris AUTH_NONE server
-setup. It works. Two cases specifically:
-(1) share -F nfs -o sec=none <export>
-(2) share -F nfs -o sec=sys:none,anon=-1 <export>
+        fd   = open(mailbox,O_WRONLY|O_APPEND|O_CREAT,perm);
+        last = lseek(fd,(off_t)0,SEEK_END);
 
-(1) works both before and after. Client uses AUTH_NONE. (2) would
-cause degraded client access before (using AUTH_NONE), but works
-after the patch (using AUTH_SYS).
+My experience with procmail has been positive.  It goes to great
+trouble to do correct locking over NFS (within the limits of the
+protocol, of course).
 
-Thanks,
-bc
+We use NFSv3 on a 2.6.19.1 kernel with this entry in /etc/mtab:
+
+    filer4b:/vol/vol18/v18q001 /v/filer4b/v18q001 nfs \
+      rw,tcp,rsize=8192,wsize=8192,intr,grpid,quota,retry=2,\
+      addr=128.83.x.x 0 0
+
+I will admit to being surprised to learn that async mounts are the
+default.  I was fooled by the absence of an "async" above.  Could that
+be the problem?  I guess if the corruption were infrequent, isolated
+events, I would be tempted to write it off to async an async mount.
+But this happens consistently (several times a day on a 12,000
+message/day mail server).
+
+We can identify no changes on the client or server which might account
+for this.  Very frustrating.  Even a complete backup/restore on the
+client from a couple weeks prior to the first reported incident had
+no effect.  And our NetApp administrator tells me nothing changed on
+the server.
+
+I am not a NetApp administrator, but looking at the server side,
+I find this in NetApp's documentation (Solution ID: ntapcs6821),
+wherein it states:
+
+        NetApp filers only support synchronous mounts. If
+        an NFS client is mounted to a filer volume or qtree
+        asynchronously, the client may or may not mount the
+        filer volume. If the mount is successful, the NFS
+        mount to the filer will be synchronous.
+          [ ... snip ... ]
+        * Using an asynchronous NFS mount could lead to data
+          inconsistency or corruption
+        
+        * Asynchronous NFS mounts may be desired for better
+          write performance, but NetApp filers generally
+          exhibit very good NFS write performance with
+          synchronous NFS due to the way the NVRAM works
+
+This document is three years old, so it may no longer be accurate,
+but it does seem apropos to our situation.  And sure enough, if
+I add a "sync" flag to the above mount, the corruption goes away.
+Of course, we then suffer nearly a tenfold(!) decrease in performance.
+
+So my questions are: What will the linux automounter/mount do when
+informed by an NFS server that async mounts are not supported?  Will it
+return an error to the user, or log a diagnostic message somewhere?
+It seems, based on our experience, that there is no error, the mount
+succeeds, and the writes will proceed asynchronously.  Is this true?
+
+However, something about the above explanation of our problem does not
+ring true.  First of all, we have been using async mounts for years
+without any problem.  But more importantly, why do we see corruption
+so consistently?  If async mounts are to blame, wouldn't we see
+corruption only when the server crashed? (which has not happened)
+
+Does anyone have another explanation?  (And thanks for reading
+this far!)
+
+Fletcher
