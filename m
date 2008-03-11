@@ -1,41 +1,50 @@
-From: Tom Tucker <tom@opengridcomputing.com>
-Subject: Re: [PATCH] SVCRDMA: Add check for XPT_CLOSE in svc_rdma_send
-Date: Tue, 11 Mar 2008 14:23:46 -0500
-Message-ID: <1205263426.4795.12.camel@trinity.ogc.int>
-References: <1205257467.4795.3.camel@trinity.ogc.int>
-	 <20080311183215.GA14679@fieldses.org>
+From: "bc Wong" <bcwalrus@gmail.com>
+Subject: Re: [PATCH] nfs-utils: Handle authentication flavour order properly
+Date: Tue, 11 Mar 2008 11:28:29 -0800
+Message-ID: <f88853200803111228s280cb748s2ab6a62af054838@mail.gmail.com>
+References: <f88853200803061908y497164bdpdff7b9109567d8c0@mail.gmail.com>
+	 <629ABBF6-C368-44AC-B4B9-471296229325@oracle.com>
+	 <f88853200803071011j3a70b0abka9142396d3275b10@mail.gmail.com>
+	 <47D18983.4080507@redhat.com>
+	 <f88853200803071059yf523114wcabb12fdeee7b8d6@mail.gmail.com>
+	 <47D19336.9010903@redhat.com>
+	 <f88853200803071138n58d16ca6t4f4410d587141141@mail.gmail.com>
+	 <47D1A55F.5030200@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: "Chuck Lever" <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
+	"J. Bruce Fields" <bfields@fieldses.org>
+To: "Peter Staubach" <staubach@redhat.com>,
+	"Steve Dickson" <steved@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([209.198.142.2]:60678 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751252AbYCKTNV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Mar 2008 15:13:21 -0400
-In-Reply-To: <20080311183215.GA14679@fieldses.org>
+Received: from rv-out-0910.google.com ([209.85.198.187]:33848 "EHLO
+	rv-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752865AbYCKT2a (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Mar 2008 15:28:30 -0400
+Received: by rv-out-0910.google.com with SMTP id k20so1544262rvb.1
+        for <linux-nfs@vger.kernel.org>; Tue, 11 Mar 2008 12:28:29 -0700 (PDT)
+In-Reply-To: <47D1A55F.5030200@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Fri, Mar 7, 2008 at 12:28 PM, Peter Staubach <staubach@redhat.com> wrote:
+<snip>
+>  It would be good to ensure that they continue to work.
+>
+>     Thanx...
+>
+>        ps
 
-On Tue, 2008-03-11 at 14:32 -0400, J. Bruce Fields wrote:
-> On Tue, Mar 11, 2008 at 12:44:27PM -0500, Tom Tucker wrote:
-> > SVCRDMA: Add check for XPT_CLOSE in svc_rdma_send
-> >     
-> > The svcrdma transport can crash if a send is waiting for an
-> > empty SQ slot and the connection is closed due to an asynchronous error.
-> > The crash is caused when svc_rdma_send attempts to send on a deleted
-> > QP.
-> >     
-> > Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
-> > ---
-> > 
-> > This is not a critical fix for 2.6.25, but part of a general clean up of the error paths.
-> 
-> OK, thanks; I've applied this, and passed along the other two to Linus.
+Hi,
 
-Awesome, thanks.
+I tested the original patch against the Solaris AUTH_NONE server
+setup. It works. Two cases specifically:
+(1) share -F nfs -o sec=none <export>
+(2) share -F nfs -o sec=sys:none,anon=-1 <export>
 
-> 
-> --b.
+(1) works both before and after. Client uses AUTH_NONE. (2) would
+cause degraded client access before (using AUTH_NONE), but works
+after the patch (using AUTH_SYS).
 
+Thanks,
+bc
