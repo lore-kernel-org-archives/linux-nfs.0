@@ -1,232 +1,133 @@
-From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [PATCH] SVCRDMA: Add xprt refs to fix close/unmount crash
-Date: Tue, 11 Mar 2008 10:42:38 -0500
-Message-ID: <1205250158.714.3.camel@trinity.ogc.int>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH] mount command: fix config.h includes in util/mount
+Date: Tue, 11 Mar 2008 11:47:35 -0400
+Message-ID: <20080311154734.31719.64271.stgit@manray.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-To: bfields@fieldses.org
+Content-Type: text/plain; charset="utf-8"
+Cc: arnolds-KXqJB1yYWjE05vS0JrMVqf60q2sDzT0c@public.gmane.org, linux-nfs@vger.kernel.org
+To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([209.198.142.2]:48390 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752794AbYCKPcO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Mar 2008 11:32:14 -0400
+Received: from flpi102.sbcis.sbc.com ([207.115.20.71]:17426 "EHLO
+	flpi102.prodigy.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756977AbYCKPsS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Mar 2008 11:48:18 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-RDMA connection shutdown on an SMP machine can cause a kernel crash due
-to the transport close path racing with the I/O tasklet.
+Recently #include directives for autoconf's config.h file were added in
+utils/mount/error.c and utils/mount/mount.c, but appropriate HAVE_CONFIG_H
+checks were not added at the same time.
 
-Additional transport references were added as follows:
-- A reference when on the DTO Q to avoid having the transport
-  deleted while queued for I/O.
-- A reference while there is a QP able to generate events.
-- A reference until the DISCONNECTED event is received on the CM ID
+In addition, several other .c files under utils/mount reference
+autoconf-generated HAVE_ macros, but don't appear to include config.h
 
-Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+Also, Heinz-Ado Arnolds <arnolds-KXqJB1yYWjE05vS0JrMVqf60q2sDzT0c@public.gmane.org> reports that this
+patch is needed to ensure START_STATD is properly defined in
+utils/mount/network.c.  Otherwise start_statd() is always a no-op, even if
+the configure script defines an appropriate statd start-up script.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Cc: Heinz-Ado Arnolds <arnolds-KXqJB1yYWjE05vS0JrMVqf60q2sDzT0c@public.gmane.org>
 ---
 
-Please queue for 2.6.25.
+ utils/mount/error.c     |    5 ++++-
+ utils/mount/mount.c     |    5 ++++-
+ utils/mount/network.c   |    4 ++++
+ utils/mount/nfs4mount.c |    4 ++++
+ utils/mount/nfsmount.c  |    4 ++++
+ utils/mount/stropts.c   |    4 ++++
+ 6 files changed, 24 insertions(+), 2 deletions(-)
 
- net/sunrpc/xprtrdma/svc_rdma_transport.c |   96 ++++++++++++++++++------------
- 1 files changed, 58 insertions(+), 38 deletions(-)
-
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index f09444c..16fd3f6 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -54,7 +54,6 @@ static struct svc_xprt *svc_rdma_create(struct svc_serv *serv,
- 					int flags);
- static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt);
- static void svc_rdma_release_rqst(struct svc_rqst *);
--static void rdma_destroy_xprt(struct svcxprt_rdma *xprt);
- static void dto_tasklet_func(unsigned long data);
- static void svc_rdma_detach(struct svc_xprt *xprt);
- static void svc_rdma_free(struct svc_xprt *xprt);
-@@ -247,6 +246,7 @@ static void dto_tasklet_func(unsigned long data)
- 			sq_cq_reap(xprt);
- 		}
+diff --git a/utils/mount/error.c b/utils/mount/error.c
+index 10d4ed2..23a91ff 100644
+--- a/utils/mount/error.c
++++ b/utils/mount/error.c
+@@ -23,7 +23,10 @@
+  *  + Proper support for internationalization
+  */
  
-+		svc_xprt_put(&xprt->sc_xprt);
- 		spin_lock_irqsave(&dto_lock, flags);
- 	}
- 	spin_unlock_irqrestore(&dto_lock, flags);
-@@ -275,8 +275,10 @@ static void rq_comp_handler(struct ib_cq *cq, void *cq_context)
- 	 * add it
- 	 */
- 	spin_lock_irqsave(&dto_lock, flags);
--	if (list_empty(&xprt->sc_dto_q))
-+	if (list_empty(&xprt->sc_dto_q)) {
-+		svc_xprt_get(&xprt->sc_xprt);
- 		list_add_tail(&xprt->sc_dto_q, &dto_xprt_q);
-+	}
- 	spin_unlock_irqrestore(&dto_lock, flags);
- 
- 	/* Tasklet does all the work to avoid irqsave locks. */
-@@ -386,8 +388,10 @@ static void sq_comp_handler(struct ib_cq *cq, void *cq_context)
- 	 * add it
- 	 */
- 	spin_lock_irqsave(&dto_lock, flags);
--	if (list_empty(&xprt->sc_dto_q))
-+	if (list_empty(&xprt->sc_dto_q)) {
-+		svc_xprt_get(&xprt->sc_xprt);
- 		list_add_tail(&xprt->sc_dto_q, &dto_xprt_q);
-+	}
- 	spin_unlock_irqrestore(&dto_lock, flags);
- 
- 	/* Tasklet does all the work to avoid irqsave locks. */
-@@ -611,6 +615,7 @@ static int rdma_cma_handler(struct rdma_cm_id *cma_id,
- 	switch (event->event) {
- 	case RDMA_CM_EVENT_ESTABLISHED:
- 		/* Accept complete */
-+		svc_xprt_get(xprt);
- 		dprintk("svcrdma: Connection completed on DTO xprt=%p, "
- 			"cm_id=%p\n", xprt, cma_id);
- 		clear_bit(RDMAXPRT_CONN_PENDING, &rdma->sc_flags);
-@@ -661,15 +666,15 @@ static struct svc_xprt *svc_rdma_create(struct svc_serv *serv,
- 
- 	listen_id = rdma_create_id(rdma_listen_handler, cma_xprt, RDMA_PS_TCP);
- 	if (IS_ERR(listen_id)) {
--		rdma_destroy_xprt(cma_xprt);
-+		svc_xprt_put(&cma_xprt->sc_xprt);
- 		dprintk("svcrdma: rdma_create_id failed = %ld\n",
- 			PTR_ERR(listen_id));
- 		return (void *)listen_id;
- 	}
- 	ret = rdma_bind_addr(listen_id, sa);
- 	if (ret) {
--		rdma_destroy_xprt(cma_xprt);
- 		rdma_destroy_id(listen_id);
-+		svc_xprt_put(&cma_xprt->sc_xprt);
- 		dprintk("svcrdma: rdma_bind_addr failed = %d\n", ret);
- 		return ERR_PTR(ret);
- 	}
-@@ -678,8 +683,9 @@ static struct svc_xprt *svc_rdma_create(struct svc_serv *serv,
- 	ret = rdma_listen(listen_id, RPCRDMA_LISTEN_BACKLOG);
- 	if (ret) {
- 		rdma_destroy_id(listen_id);
--		rdma_destroy_xprt(cma_xprt);
-+		svc_xprt_put(&cma_xprt->sc_xprt);
- 		dprintk("svcrdma: rdma_listen failed = %d\n", ret);
-+		return ERR_PTR(ret);
- 	}
- 
- 	/*
-@@ -820,6 +826,7 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
- 		newxprt->sc_sq_depth = qp_attr.cap.max_send_wr;
- 		newxprt->sc_max_requests = qp_attr.cap.max_recv_wr;
- 	}
-+	svc_xprt_get(&newxprt->sc_xprt);
- 	newxprt->sc_qp = newxprt->sc_cm_id->qp;
- 
- 	/* Register all of physical memory */
-@@ -891,8 +898,15 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
- 
-  errout:
- 	dprintk("svcrdma: failure accepting new connection rc=%d.\n", ret);
-+	/* Take a reference in case the DTO handler runs */
-+	svc_xprt_get(&newxprt->sc_xprt);
-+	if (newxprt->sc_qp && !IS_ERR(newxprt->sc_qp)) {
-+		ib_destroy_qp(newxprt->sc_qp);
-+		svc_xprt_put(&newxprt->sc_xprt);
-+	}
- 	rdma_destroy_id(newxprt->sc_cm_id);
--	rdma_destroy_xprt(newxprt);
-+	/* This call to put will destroy the transport */
-+	svc_xprt_put(&newxprt->sc_xprt);
- 	return NULL;
- }
- 
-@@ -919,54 +933,60 @@ static void svc_rdma_release_rqst(struct svc_rqst *rqstp)
- 	rqstp->rq_xprt_ctxt = NULL;
- }
- 
--/* Disable data ready events for this connection */
-+/*
-+ * When connected, an svc_xprt has at least three references:
-+ *
-+ * - A reference held by the QP. We still hold that here because this
-+ *   code deletes the QP and puts the reference.
-+ *
-+ * - A reference held by the cm_id between the ESTABLISHED and
-+ *   DISCONNECTED events. If the remote peer disconnected first, this
-+ *   reference could be gone.
-+ *
-+ * - A reference held by the svc_recv code that called this function
-+ *   as part of close processing.
-+ *
-+ * At a minimum two references should still be held.
-+ */
- static void svc_rdma_detach(struct svc_xprt *xprt)
- {
- 	struct svcxprt_rdma *rdma =
- 		container_of(xprt, struct svcxprt_rdma, sc_xprt);
--	unsigned long flags;
--
- 	dprintk("svc: svc_rdma_detach(%p)\n", xprt);
--	/*
--	 * Shutdown the connection. This will ensure we don't get any
--	 * more events from the provider.
--	 */
+-#include "config.h"
++#ifdef HAVE_CONFIG_H
++#include <config.h>
++#endif
 +
-+	/* Disconnect and flush posted WQE */
- 	rdma_disconnect(rdma->sc_cm_id);
--	rdma_destroy_id(rdma->sc_cm_id);
+ #include <unistd.h>
+ #include <sys/types.h>
+ #include <stdio.h>
+diff --git a/utils/mount/mount.c b/utils/mount/mount.c
+index 403d6f4..33d8d30 100644
+--- a/utils/mount/mount.c
++++ b/utils/mount/mount.c
+@@ -18,7 +18,10 @@
+  *
+  */
  
--	/* We may already be on the DTO list */
--	spin_lock_irqsave(&dto_lock, flags);
--	if (!list_empty(&rdma->sc_dto_q))
--		list_del_init(&rdma->sc_dto_q);
--	spin_unlock_irqrestore(&dto_lock, flags);
-+	/* Destroy the QP if present (not a listener) */
-+	if (rdma->sc_qp && !IS_ERR(rdma->sc_qp)) {
-+		ib_destroy_qp(rdma->sc_qp);
-+		svc_xprt_put(xprt);
-+	}
+-#include "config.h"
++#ifdef HAVE_CONFIG_H
++#include <config.h>
++#endif
 +
-+	/* Destroy the CM ID */
-+	rdma_destroy_id(rdma->sc_cm_id);
- }
+ #include <unistd.h>
+ #include <sys/types.h>
+ #include <stdio.h>
+diff --git a/utils/mount/network.c b/utils/mount/network.c
+index 38d0135..ab7f6d0 100644
+--- a/utils/mount/network.c
++++ b/utils/mount/network.c
+@@ -21,6 +21,10 @@
+  *
+  */
  
- static void svc_rdma_free(struct svc_xprt *xprt)
- {
- 	struct svcxprt_rdma *rdma = (struct svcxprt_rdma *)xprt;
- 	dprintk("svcrdma: svc_rdma_free(%p)\n", rdma);
--	rdma_destroy_xprt(rdma);
--	kfree(rdma);
--}
--
--static void rdma_destroy_xprt(struct svcxprt_rdma *xprt)
--{
--	if (xprt->sc_qp && !IS_ERR(xprt->sc_qp))
--		ib_destroy_qp(xprt->sc_qp);
--
--	if (xprt->sc_sq_cq && !IS_ERR(xprt->sc_sq_cq))
--		ib_destroy_cq(xprt->sc_sq_cq);
-+	/* We should only be called from kref_put */
-+	BUG_ON(atomic_read(&xprt->xpt_ref.refcount) != 0);
-+	if (rdma->sc_sq_cq && !IS_ERR(rdma->sc_sq_cq))
-+		ib_destroy_cq(rdma->sc_sq_cq);
++#ifdef HAVE_CONFIG_H
++#include <config.h>
++#endif
++
+ #include <ctype.h>
+ #include <unistd.h>
+ #include <stdio.h>
+diff --git a/utils/mount/nfs4mount.c b/utils/mount/nfs4mount.c
+index 0a32c3c..311e5a0 100644
+--- a/utils/mount/nfs4mount.c
++++ b/utils/mount/nfs4mount.c
+@@ -18,6 +18,10 @@
+  * - Moved to nfs-utils/utils/mount from util-linux/mount.
+  */
  
--	if (xprt->sc_rq_cq && !IS_ERR(xprt->sc_rq_cq))
--		ib_destroy_cq(xprt->sc_rq_cq);
-+	if (rdma->sc_rq_cq && !IS_ERR(rdma->sc_rq_cq))
-+		ib_destroy_cq(rdma->sc_rq_cq);
++#ifdef HAVE_CONFIG_H
++#include <config.h>
++#endif
++
+ #include <unistd.h>
+ #include <stdio.h>
+ #include <string.h>
+diff --git a/utils/mount/nfsmount.c b/utils/mount/nfsmount.c
+index 3d2ebb1..c4e90fb 100644
+--- a/utils/mount/nfsmount.c
++++ b/utils/mount/nfsmount.c
+@@ -35,6 +35,10 @@
+  * nfsmount.c,v 1.1.1.1 1993/11/18 08:40:51 jrs Exp
+  */
  
--	if (xprt->sc_phys_mr && !IS_ERR(xprt->sc_phys_mr))
--		ib_dereg_mr(xprt->sc_phys_mr);
-+	if (rdma->sc_phys_mr && !IS_ERR(rdma->sc_phys_mr))
-+		ib_dereg_mr(rdma->sc_phys_mr);
++#ifdef HAVE_CONFIG_H
++#include <config.h>
++#endif
++
+ #include <ctype.h>
+ #include <unistd.h>
+ #include <stdio.h>
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index 0c8d3e1..cadb1f4 100644
+--- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -21,6 +21,10 @@
+  *
+  */
  
--	if (xprt->sc_pd && !IS_ERR(xprt->sc_pd))
--		ib_dealloc_pd(xprt->sc_pd);
-+	if (rdma->sc_pd && !IS_ERR(rdma->sc_pd))
-+		ib_dealloc_pd(rdma->sc_pd);
- 
--	destroy_context_cache(xprt->sc_ctxt_head);
-+	destroy_context_cache(rdma->sc_ctxt_head);
-+	kfree(rdma);
- }
- 
- static int svc_rdma_has_wspace(struct svc_xprt *xprt)
++#ifdef HAVE_CONFIG_H
++#include <config.h>
++#endif
++
+ #include <ctype.h>
+ #include <unistd.h>
+ #include <stdio.h>
 
