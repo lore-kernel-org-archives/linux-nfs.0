@@ -1,104 +1,54 @@
-From: Adam Schrotenboer <adam-PMR2DCmmWYEAvxtiuMwx3w@public.gmane.org>
-Subject: Re: nfs_update_inode: inode X mode changed, Y to Z
-Date: Wed, 12 Mar 2008 11:06:02 -0700
-Message-ID: <47D81B8A.7040702@m2000.com>
-References: <47C5EC81.6080004@m2000.com> <47C71EC6.3050702@m2000.com> <3AD71C5E-B45A-4BDB-8C94-73D62256BEBF@astro.wisc.edu>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [opensuse] nfs_update_inode: inode X mode changed, Y to Z
+Date: Wed, 12 Mar 2008 14:08:03 -0400
+Message-ID: <1205345284.9419.8.camel@heimdal.trondhjem.org>
+References: <47CF0829.4020502@m2000.com>
+	 <1204752463.5035.34.camel@heimdal.trondhjem.org>
+	 <47CF157B.1010908@m2000.com>	<18383.24847.381754.517731@notabene.brown>
+	 <47CF62C5.7000908@m2000.com> <18384.50909.866848.966192@notabene.brown>
+	 <47D0D8B5.6050403@m2000.com>  <47D818FB.8080302@m2000.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
- protocol="application/pgp-signature";
- boundary="------------enig3AA27CAB1B4215B4C2494F5B"
-Cc: opensuse@opensuse.org, Thomas Daniel <tdaniel-PMR2DCmmWYEAvxtiuMwx3w@public.gmane.org>,
-	Trond Myklebust <Trond.Myklebust@netapp.com>,
-	linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-	jesper.juhl@gmail.com, Fred Revenu <frevenu-PMR2DCmmWYEAvxtiuMwx3w@public.gmane.org>,
-	Neil Brown <neilb@suse.de>
-To: Stephan Jansen <jansen-IwvncFSHKSLQAyQhgwMYSA@public.gmane.org>
-Return-path: <opensuse+bounces-53980-glsog-opensuse=m.gmane.org@opensuse.org>
-List-Post: <mailto:opensuse@opensuse.org>
-List-Help: <mailto:opensuse+help@opensuse.org>
-List-Subscribe: <mailto:opensuse+subscribe@opensuse.org>
-List-Unsubscribe: <mailto:opensuse+unsubscribe@opensuse.org>
-List-Owner: <mailto:opensuse+owner@opensuse.org>
-In-Reply-To: <3AD71C5E-B45A-4BDB-8C94-73D62256BEBF-IwvncFSHKSLQAyQhgwMYSA@public.gmane.org>
+Content-Type: text/plain
+Cc: Neil Brown <neilb@suse.de>, linux-kernel@vger.kernel.org,
+	linux-nfs@vger.kernel.org, Thomas Daniel <tdaniel-PMR2DCmmWYEAvxtiuMwx3w@public.gmane.org>,
+	jesper.juhl@gmail.com, Fred Revenu <frevenu-PMR2DCmmWYEAvxtiuMwx3w@public.gmane.org>
+To: Adam Schrotenboer <adam-PMR2DCmmWYEAvxtiuMwx3w@public.gmane.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx2.netapp.com ([216.240.18.37]:35403 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754145AbYCLSIG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 12 Mar 2008 14:08:06 -0400
+In-Reply-To: <47D818FB.8080302-PMR2DCmmWYEAvxtiuMwx3w@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is an OpenPGP/MIME signed message (RFC 2440 and 3156)
---------------enig3AA27CAB1B4215B4C2494F5B
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: quoted-printable
 
-Stephan Jansen wrote:
->
-> Hi,
->
-> We've just run into a similar thing.  We have an OpenSuSE 10.3 NFS serv=
-er
-> exporting a filesystem to about 40 machines, most of which are also
-> running OpenSuSE 10.3.  The client machines are running a distributed
-> data processing pipeline.  The clients create, move and delete=20
-> directories
-> and files on the server.  We've seen a few instances where the=20
-> programs on
-> the clients die with a "no such file or directory" error but no errors =
-in
-> syslog.  Finally last night many of the clients gave these errors in=20
-> syslog
-> at about the same time as the client programs died with "no such file o=
-r
-> directory" errors:
->
-> Mar 11 20:57:53 glimpse5 kernel: nfs_update_inode: inode 402653248=20
-> mode changed, 0100644 to 0040755
-> Mar 11 20:57:54 glimpse6 kernel: nfs_update_inode: inode 402653248=20
-> mode changed, 0100644 to 0040755
-> Mar 11 20:57:49 tsingtao kernel: nfs_update_inode: inode 402653248=20
-> mode changed, 0100644 to 0040755
-> Mar 11 20:57:16 glimpse12 kernel: nfs_update_inode: inode 402653248=20
-> mode changed, 0100644 to 0040755
-> Mar 11 20:59:04 cecilia kernel: nfs_update_inode: inode 402653248 mode =
+On Wed, 2008-03-12 at 10:55 -0700, Adam Schrotenboer wrote:
+> Another excerpt from last night.
+> 
+> Mar 12 00:53:16 wanda kernel: nfs: server 192.168.1.27 not responding, 
+> still trying
+> Mar 12 00:53:18 wanda kernel: nfs: server 192.168.1.27 OK
+> Mar 12 00:54:29 wanda kernel: nfs_update_inode: inode 1075049148 mode 
+> changed, 0040755 to 0100644
 
-> changed, 0100644 to 0040755
-> Mar 11 20:59:11 glimpse28 kernel: nfs_update_inode: inode 402653248=20
-> mode changed, 0100644 to 0040755
-> Mar 11 20:58:20 glimpse27 kernel: nfs_update_inode: inode 402653248=20
-> mode changed, 0100644 to 0040755
-> Mar 11 20:59:12 glimpse18 kernel: nfs_update_inode: inode 402653248=20
-> mode changed, 0100644 to 0040755
-> Mar 11 20:58:22 glimpse19 kernel: nfs_update_inode: inode 402653248=20
-> mode changed, 0100644 to 0040755
-> Mar 11 20:59:25 glimpse20 kernel: nfs_update_inode: inode 402653248=20
-> mode changed, 0100644 to 0040755
-> Mar 11 20:58:35 glimpse21 kernel: nfs_update_inode: inode 402653248=20
-> mode changed, 0100644 to 0040755
-> Mar 11 20:59:27 glimpse22 kernel: nfs_update_inode: inode 402653248=20
-> mode changed, 0100644 to 0040755
-> Mar 11 20:59:27 glimpse23 kernel: nfs_update_inode: inode 402653248=20
-> mode changed, 0100644 to 0040755
-> Mar 11 20:59:39 glimpse24 kernel: nfs_update_inode: inode 402653248=20
-> mode changed, 0100644 to 0040755
->
-> I notice that the offending inodes are all the same.  This all worked=20
-> without
-> problems when the NFS server was SuSE 10.0.  The exported filesystem=20
-> is XFS.
->
-> Anyone have any ideas what's going on?
-I personally don't, but I have a running thread with some of the NFS=20
-maintainers, that I have added this mail to now.
+Hang on. That does not look like an XID collision problem...
 
+That code path basically means that the fileids/inode numbers match,
+which would not be the case if we were talking about an XID collision
+causing the reply cache to replay an old request...
 
---------------enig3AA27CAB1B4215B4C2494F5B
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: OpenPGP digital signature
-Content-Disposition: attachment; filename="signature.asc"
+That message rather symptomatic of a filehandle reuse problem. In other
+words a NFS filehandle appears to be reused to label a regular file
+after it has been used for a directory with the same fileid/inode
+number. That is a definite server bug.
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.7 (MingW32)
-Comment: Using GnuPG with Mozilla - http://enigmail.mozdev.org
+Are you sure that you are using the regular kernel nfs server?
 
-iD8DBQFH2BuKyWYDdvnGArwRAv49AJ9Oni5roL8rkCFtIbXYt2STSqHkXQCbB79I
-wugF6kM0BAkvaIr/PEvuRHI=
-=ssmx
------END PGP SIGNATURE-----
+-- 
+Trond Myklebust
+NFS client maintainer
 
---------------enig3AA27CAB1B4215B4C2494F5B--
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
