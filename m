@@ -1,89 +1,41 @@
-From: Adam Schrotenboer <adam-PMR2DCmmWYEAvxtiuMwx3w@public.gmane.org>
-Subject: Re: [opensuse] nfs_update_inode: inode X mode changed, Y to Z
-Date: Wed, 12 Mar 2008 11:16:04 -0700
-Message-ID: <47D81DE4.5040303@m2000.com>
-References: <47CF0829.4020502@m2000.com>	<1204752463.5035.34.camel@heimdal.trondhjem.org>	<47CF157B.1010908@m2000.com>	<18383.24847.381754.517731@notabene.brown>	<47CF62C5.7000908@m2000.com> <18384.50909.866848.966192@notabene.brown>	<47D0D8B5.6050403@m2000.com>  <47D818FB.8080302@m2000.com> <1205345284.9419.8.camel@heimdal.trondhjem.org>
+From: "Kevin Coffman" <kwc@citi.umich.edu>
+Subject: Re: [PATCH 06/19] Use get_random_bytes() to create confounder
+Date: Wed, 12 Mar 2008 14:37:26 -0400
+Message-ID: <4d569c330803121137w755c5c76j4b692aac53d54619@mail.gmail.com>
+References: <20080221184208.19195.94518.stgit@jazz.citi.umich.edu>
+	 <20080221184417.19195.55123.stgit@jazz.citi.umich.edu>
+	 <20080312164616.GF10015@fieldses.org> <1205344238.11354.59.camel@calx>
+	 <20080312180337.GH10015@fieldses.org>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
- protocol="application/pgp-signature";
- boundary="------------enig5BE7FD79FB07E04B58B7B750"
-Cc: Neil Brown <neilb@suse.de>, linux-kernel@vger.kernel.org,
-	linux-nfs@vger.kernel.org, Thomas Daniel <tdaniel-PMR2DCmmWYEAvxtiuMwx3w@public.gmane.org>,
-	jesper.juhl@gmail.com, Fred Revenu <frevenu-PMR2DCmmWYEAvxtiuMwx3w@public.gmane.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: "Matt Mackall" <mpm-VDJrAJ4Gl5ZBDgjK7y7TUQ@public.gmane.org>, linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from asterix.m2000.com ([212.155.102.83]:3106 "EHLO
-	asterix.m2000.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751803AbYCLSQQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Mar 2008 14:16:16 -0400
-In-Reply-To: <1205345284.9419.8.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from ug-out-1314.google.com ([66.249.92.168]:32340 "EHLO
+	ug-out-1314.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753439AbYCLSh2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Mar 2008 14:37:28 -0400
+Received: by ug-out-1314.google.com with SMTP id z38so308755ugc.16
+        for <linux-nfs@vger.kernel.org>; Wed, 12 Mar 2008 11:37:27 -0700 (PDT)
+In-Reply-To: <20080312180337.GH10015@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is an OpenPGP/MIME signed message (RFC 2440 and 3156)
---------------enig5BE7FD79FB07E04B58B7B750
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: quoted-printable
-
-Trond Myklebust wrote:
-> On Wed, 2008-03-12 at 10:55 -0700, Adam Schrotenboer wrote:
->  =20
->> Another excerpt from last night.
->>
->> Mar 12 00:53:16 wanda kernel: nfs: server 192.168.1.27 not responding,=
-=20
->> still trying
->> Mar 12 00:53:18 wanda kernel: nfs: server 192.168.1.27 OK
->> Mar 12 00:54:29 wanda kernel: nfs_update_inode: inode 1075049148 mode =
-
->> changed, 0040755 to 0100644
->>    =20
+On Wed, Mar 12, 2008 at 2:03 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Wed, Mar 12, 2008 at 12:50:38PM -0500, Matt Mackall wrote:
 >
-> Hang on. That does not look like an XID collision problem...
+>  > Take a look at lib/random32.c for a moderately stong and fast PRND.
+>  > Reseeding that periodically with get_random_bytes might be sufficient.
+>  > Or look at secure_tcp_sequence_number in random.c for a more ad-hoc
+>  > approach.
 >
-> That code path basically means that the fileids/inode numbers match,
-> which would not be the case if we were talking about an XID collision
-> causing the reply cache to replay an old request...
+>  OK.  Yes, I'd definitely be happy to sacrifice quality for performance
+>  in this case, at least until I see an argument pointing out some reason
+>  we need good randomness here....
 >
-> That message rather symptomatic of a filehandle reuse problem. In other=
+>  Thanks for the help!
 
-> words a NFS filehandle appears to be reused to label a regular file
-> after it has been used for a directory with the same fileid/inode
-> number. That is a definite server bug.
->
-> Are you sure that you are using the regular kernel nfs server?
->
->  =20
-Quite. OpenSuSE 10.2 stock unmodified kernel.
+Yes, thanks Matt.  It looks to me like random32() should be good (and
+fast) enough for this.  Do you agree Bruce?
 
-dolphin:~ # uname -a
-Linux dolphin 2.6.18.2-34-default #1 SMP Mon Nov 27 11:46:27 UTC 2006=20
-x86_64 x86_64 x86_64 GNU/Linux
-
-dolphin:~ # top -bn1 |grep nfsd
-
-
-  PID  PPID USER      PR  NI  VIRT  RES  SHR S %CPU %MEM    TIME+  COMMAN=
-D
- 3916     1 root      15   0     0    0    0 S    0  0.0   3:04.42 nfsd
- 3942     1 root      15   0     0    0    0 S    0  0.0   3:11.88 nfsd
-(there's quite a bit more of these threads than this (32), but they all=20
-look the same in top or ps)
-
-
-
---------------enig5BE7FD79FB07E04B58B7B750
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: OpenPGP digital signature
-Content-Disposition: attachment; filename="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.7 (MingW32)
-Comment: Using GnuPG with Mozilla - http://enigmail.mozdev.org
-
-iD8DBQFH2B3kyWYDdvnGArwRAm4XAJ9KOX7o3+qns7jvH04eiXOWCxTyIQCfZHTN
-Qo7L6AtD7GzZyDVFRjZNxJU=
-=4eHi
------END PGP SIGNATURE-----
-
---------------enig5BE7FD79FB07E04B58B7B750--
+K.C.
