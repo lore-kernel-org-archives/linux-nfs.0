@@ -1,205 +1,62 @@
-From: Adam Schrotenboer <adam-PMR2DCmmWYEAvxtiuMwx3w@public.gmane.org>
-Subject: Re: [opensuse] nfs_update_inode: inode X mode changed, Y to Z
-Date: Wed, 12 Mar 2008 10:55:07 -0700
-Message-ID: <47D818FB.8080302@m2000.com>
-References: <47CF0829.4020502@m2000.com>	<1204752463.5035.34.camel@heimdal.trondhjem.org>	<47CF157B.1010908@m2000.com>	<18383.24847.381754.517731@notabene.brown>	<47CF62C5.7000908@m2000.com> <18384.50909.866848.966192@notabene.brown> <47D0D8B5.6050403@m2000.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 06/19] Use get_random_bytes() to create confounder
+Date: Wed, 12 Mar 2008 14:03:37 -0400
+Message-ID: <20080312180337.GH10015@fieldses.org>
+References: <20080221184208.19195.94518.stgit@jazz.citi.umich.edu> <20080221184417.19195.55123.stgit@jazz.citi.umich.edu> <20080312164616.GF10015@fieldses.org> <1205344238.11354.59.camel@calx>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-ripemd160;
- protocol="application/pgp-signature";
- boundary="------------enig740E7F2344E950C55AEDB19E"
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-	linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-	Thomas Daniel <tdaniel-PMR2DCmmWYEAvxtiuMwx3w@public.gmane.org>, jesper.juhl@gmail.com,
-	Fred Revenu <frevenu-PMR2DCmmWYEAvxtiuMwx3w@public.gmane.org>
-To: Neil Brown <neilb@suse.de>
+Content-Type: text/plain; charset=us-ascii
+Cc: Kevin Coffman <kwc@citi.umich.edu>, linux-nfs@vger.kernel.org
+To: Matt Mackall <mpm-VDJrAJ4Gl5ZBDgjK7y7TUQ@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail3.ldmi.net ([64.118.147.197]:52478 "EHLO mail.ldmi.net"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1751351AbYCLRzO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 12 Mar 2008 13:55:14 -0400
-In-Reply-To: <47D0D8B5.6050403-PMR2DCmmWYEAvxtiuMwx3w@public.gmane.org>
+Received: from mail.fieldses.org ([66.93.2.214]:36876 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751312AbYCLSDk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 12 Mar 2008 14:03:40 -0400
+In-Reply-To: <1205344238.11354.59.camel@calx>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is an OpenPGP/MIME signed message (RFC 2440 and 3156)
---------------enig740E7F2344E950C55AEDB19E
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: quoted-printable
+On Wed, Mar 12, 2008 at 12:50:38PM -0500, Matt Mackall wrote:
+> 
+> On Wed, 2008-03-12 at 12:46 -0400, J. Bruce Fields wrote:
+> > On Thu, Feb 21, 2008 at 01:44:17PM -0500, Kevin Coffman wrote:
+> > > Instead of using an incementing value for the confounder, use
+> > > get_random_bytes() which gives us the desired unpredictable value.
+> > 
+> > OK, admittedly I was probably nuts to substitute a predictable number
+> > for a random number in any cryptographic protocol, even if I was pretty
+> > sure it didn't matter in our case--so thanks for doing this.
+> > 
+> > But my impression is that other callers of this function are using it on
+> > a per-connection basis instead of (as in our case) a per-rpc basis.  Is
+> > there any problem with calling it that frequently?  Is it fast enough?
+> > Will it deplete some common entropy pool?
+> 
+> get_random_bytes is in the many megabytes/second range, so it's fast
+> enough for most things, but considered too slow for per-socket use
+> (which means the comment above it is quite stale!). If per-rpc means
+> once per every stat over NFS,
 
+Yep, that's what I meant.  Of course we are also encrypting every stat
+in this particular case, so we're accepting a certain amount of
+overhead.
 
-Another excerpt from last night.
+> then definitely too expensive.
 
-Mar 12 00:53:16 wanda kernel: nfs: server 192.168.1.27 not responding,=20
-still trying
-Mar 12 00:53:18 wanda kernel: nfs: server 192.168.1.27 OK
-Mar 12 00:54:29 wanda kernel: nfs_update_inode: inode 1075049148 mode=20
-changed, 0040755 to 0100644
-Mar 12 00:54:49 wanda kernel: nfs_update_inode: inode 1611920610 mode=20
-changed, 0100644 to 0040755
-Mar 12 00:54:49 wanda kernel: nfs_update_inode: inode 1611920612 mode=20
-changed, 0040755 to 0100644
-Mar 12 00:54:50 wanda kernel: nfs_update_inode: inode 2685631887 mode=20
-changed, 0100644 to 0040755
-Mar 12 00:54:50 wanda kernel: nfs_update_inode: inode 3222506021 mode=20
-changed, 0100644 to 0040755
-Mar 12 00:54:55 wanda kernel: nfs_update_inode: inode 1372131 mode=20
-changed, 0100644 to 0040755
-Mar 12 00:55:25 wanda kernel: nfs_update_inode: inode 3759413120 mode=20
-changed, 0040755 to 0100644
-Mar 12 00:56:05 wanda kernel: nfs_update_inode: inode 1075051607 mode=20
-changed, 0100644 to 0040755
-Mar 12 00:56:05 wanda kernel: nfs_update_inode: inode 1075051608 mode=20
-changed, 0040755 to 0100644
-Mar 12 00:56:05 wanda kernel: nfs_update_inode: inode 1075051612 mode=20
-changed, 0100644 to 0040755
-Mar 12 00:56:05 wanda kernel: nfs_update_inode: inode 1075051613 mode=20
-changed, 0040755 to 0100644
-Mar 12 00:56:06 wanda kernel: nfs_update_inode: inode 1075051616 mode=20
-changed, 0100644 to 0040755
-Mar 12 00:56:06 wanda kernel: nfs_update_inode: inode 1075051617 mode=20
-changed, 0040755 to 0100644
-Mar 12 00:56:09 wanda kernel: nfs_update_inode: inode 1075051624 mode=20
-changed, 0100644 to 0040755
-Mar 12 01:00:33 wanda kernel: nfs_update_inode: inode 1611926434 mode=20
-changed, 0040755 to 0100644
-Mar 12 01:00:33 wanda kernel: nfs_update_inode: inode 1611926438 mode=20
-changed, 0040755 to 0100644
-Mar 12 01:00:33 wanda kernel: nfs_update_inode: inode 1611926442 mode=20
-changed, 0040755 to 0100644
-Mar 12 01:00:33 wanda kernel: nfs_update_inode: inode 1611926446 mode=20
-changed, 0040755 to 0100644
-Mar 12 01:00:33 wanda kernel: nfs_update_inode: inode 1611926450 mode=20
-changed, 0040755 to 0100644
-Mar 12 01:00:33 wanda kernel: nfs_update_inode: inode 1611926454 mode=20
-changed, 0040755 to 0100644
-Mar 12 01:00:33 wanda kernel: nfs_update_inode: inode 1611926458 mode=20
-changed, 0040755 to 0100644
-Mar 12 01:00:33 wanda kernel: nfs_update_inode: inode 1611926462 mode=20
-changed, 0040755 to 0100644
-Mar 12 01:00:34 wanda kernel: nfs_update_inode: inode 1611926463 mode=20
-changed, 0100644 to 0040755
-Mar 12 09:36:46 wanda kernel: nfs_update_inode: inode 538186966 mode=20
-changed, 0100644 to 0040755
-Mar 12 09:36:46 wanda kernel: nfs_update_inode: inode 538186967 mode=20
-changed, 0040755 to 0100644
-Mar 12 09:36:46 wanda kernel: nfs_update_inode: inode 538186970 mode=20
-changed, 0100644 to 0040755
-Mar 12 09:36:46 wanda kernel: nfs_update_inode: inode 538186972 mode=20
-changed, 0040755 to 0100644
-Mar 12 09:36:47 wanda kernel: nfs_update_inode: inode 538186974 mode=20
-changed, 0100644 to 0040755
-Mar 12 09:36:47 wanda kernel: nfs_update_inode: inode 538186977 mode=20
-changed, 0040755 to 0100644
-Mar 12 09:36:47 wanda kernel: nfs_update_inode: inode 538186979 mode=20
-changed, 0100644 to 0040755
-Mar 12 09:36:47 wanda kernel: nfs_update_inode: inode 538186982 mode=20
-changed, 0040755 to 0100644
-Mar 12 09:36:47 wanda kernel: nfs_update_inode: inode 538186984 mode=20
-changed, 0100644 to 0040755
-Mar 12 09:36:47 wanda kernel: nfs_update_inode: inode 538186987 mode=20
-changed, 0040755 to 0100644
-Mar 12 09:36:47 wanda kernel: nfs_update_inode: inode 538186989 mode=20
-changed, 0100644 to 0040755
-Mar 12 09:36:47 wanda kernel: nfs_update_inode: inode 538186992 mode=20
-changed, 0040755 to 0100644
-Mar 12 09:36:47 wanda kernel: nfs_update_inode: inode 538186994 mode=20
-changed, 0100644 to 0040755
-Mar 12 09:36:47 wanda kernel: nfs_update_inode: inode 538186997 mode=20
-changed, 0040755 to 0100644
-Mar 12 09:36:47 wanda kernel: nfs_update_inode: inode 538186999 mode=20
-changed, 0100644 to 0040755
-Mar 12 09:36:47 wanda kernel: nfs_update_inode: inode 538187002 mode=20
-changed, 0040755 to 0100644
-Mar 12 09:36:47 wanda kernel: nfs_update_inode: inode 538187004 mode=20
-changed, 0100644 to 0040755
+OK.
 
-It keeps going...
+> It draws
+> from the non-blocking pool, so no worries about entropy depletion.
+> 
+> Take a look at lib/random32.c for a moderately stong and fast PRND.
+> Reseeding that periodically with get_random_bytes might be sufficient.
+> Or look at secure_tcp_sequence_number in random.c for a more ad-hoc
+> approach.
 
-Another machine, different times.
+OK.  Yes, I'd definitely be happy to sacrifice quality for performance
+in this case, at least until I see an argument pointing out some reason
+we need good randomness here....
 
-Mar 12 03:35:19 minnow kernel: nfs_update_inode: inode 2685628653 mode=20
-changed, 0100644 to 0040755
-Mar 12 03:38:01 minnow kernel: nfs_update_inode: inode 2685628658 mode=20
-changed, 0100644 to 0040755
-Mar 12 03:38:04 minnow kernel: nfs_update_inode: inode 2685628707 mode=20
-changed, 0100644 to 0040755
-Mar 12 03:38:04 minnow kernel: nfs_update_inode: inode 2685628715 mode=20
-changed, 0100644 to 0040755
-Mar 12 03:38:04 minnow kernel: nfs_update_inode: inode 2685628719 mode=20
-changed, 0100644 to 0040755
-Mar 12 03:38:04 minnow kernel: nfs_update_inode: inode 2685628731 mode=20
-changed, 0100644 to 0040755
-Mar 12 03:38:05 minnow kernel: nfs_update_inode: inode 3222503513 mode=20
-changed, 0100644 to 0040755
-Mar 12 03:38:05 minnow kernel: nfs_update_inode: inode 2685628818 mode=20
-changed, 0100644 to 0040755
-Mar 12 03:38:06 minnow kernel: nfs_update_inode: inode 2685628842 mode=20
-changed, 0100644 to 0040755
-Mar 12 03:38:06 minnow kernel: nfs_update_inode: inode 2685628846 mode=20
-changed, 0100644 to 0040755
-Mar 12 03:38:06 minnow kernel: nfs_update_inode: inode 2685628851 mode=20
-changed, 0100644 to 0040755
-Mar 12 03:38:06 minnow kernel: nfs_update_inode: inode 2685628856 mode=20
-changed, 0100644 to 0040755
-Mar 12 03:38:07 minnow kernel: nfs_update_inode: inode 3222503585 mode=20
-changed, 0100644 to 0040755
-Mar 12 03:38:09 minnow kernel: nfs_update_inode: inode 2685628923 mode=20
-changed, 0100644 to 0040755
-Mar 12 03:38:09 minnow kernel: nfs_update_inode: inode 2685628927 mode=20
-changed, 0100644 to 0040755
-Mar 12 04:00:48 minnow kernel: nfs_update_inode: inode 2149158555 mode=20
-changed, 0100644 to 0040755
-Mar 12 04:00:51 minnow kernel: nfs_update_inode: inode 1611926234 mode=20
-changed, 0040755 to 0100644
-Mar 12 04:01:04 minnow kernel: nfs_update_inode: inode 1611926235 mode=20
-changed, 0100644 to 0040755
-Mar 12 04:01:04 minnow kernel: nfs_update_inode: inode 1611926238 mode=20
-changed, 0040755 to 0100644
-Mar 12 04:01:04 minnow kernel: nfs_update_inode: inode 1611926240 mode=20
-changed, 0100644 to 0040755
-Mar 12 04:01:04 minnow kernel: nfs_update_inode: inode 1611926243 mode=20
-changed, 0040755 to 0100644
+Thanks for the help!
 
-I have other machines it has occurred to as well. The only usage pattern =
-
-I have is that it happened mostly while running Mentor's Precision, but=20
-I am doubting that that is relevant.
-
-This is the line from /proc/mounts on Minnow:
-
-192.168.1.27:/mnt/storage0/users /home/users nfs=20
-rw,v3,rsize=3D32768,wsize=3D32768,hard,lock,proto=3Dtcp,addr=3D192.168.1.=
-27 0 0
-
-192.168.1.27 is our machine dolphin, which is running OpenSuSE 10.2=20
-x86_64 on  Intel(R) Xeon(R) CPU E5310 @ 1.60GHz with 4G of RAM, and is=20
-an XFS file system running on a Dell PERC5/i
-adam@dolphin:~$ df -h /mnt/storage0/
-Filesystem            Size  Used Avail Use% Mounted on
-/dev/sdb1             2.8T  2.0T  807G  72% /mnt/storage0
-from /etc/fstab
-/dev/disk/by-label/storage0 /mnt/storage0 xfs rw,usrquota,grpquota 0 0
-It is not running with inode64, but probably should be. Hasn't become a=20
-problem yet. Otoh, I understand that NFS v3 doesn't support 64bit inode=20
-numbers.
-FYI almost all of our NFS clients are x86_64 Linux(except 2)
-
-I have CC:d Fred Revenu, who was the person who brought it to my=20
-attention this morning that it had happened again last night.
-
-
---------------enig740E7F2344E950C55AEDB19E
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: OpenPGP digital signature
-Content-Disposition: attachment; filename="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.7 (MingW32)
-Comment: Using GnuPG with Mozilla - http://enigmail.mozdev.org
-
-iD8DBQFH2Bj7yWYDdvnGArwRAzQyAKCQvrE/Lez797RA9uaPnsAFTSVSCACeJCrx
-h6Si6jeBnX8difzuSdVg4mg=
-=9xrU
------END PGP SIGNATURE-----
-
---------------enig740E7F2344E950C55AEDB19E--
+--b.
