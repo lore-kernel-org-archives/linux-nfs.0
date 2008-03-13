@@ -1,43 +1,40 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH] nfs: fix encode_fsinfo_maxsz
-Date: Thu, 13 Mar 2008 12:55:12 -0400
-Message-ID: <1205427312.11399.23.camel@heimdal.trondhjem.org>
-References: <1205414790-1710-1-git-send-email-bhalevy@panasas.com>
-	 <1205425264.11399.3.camel@heimdal.trondhjem.org>
-	 <Pine.BSO.4.64.0803131227380.29614@citi.umich.edu>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 0/6] Implement generic RPC credentials
+Date: Thu, 13 Mar 2008 13:59:05 -0400
+Message-ID: <1205431145.13453.11.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain
-Cc: Benny Halevy <bhalevy@panasas.com>, linux-nfs@vger.kernel.org
-To: Fredric Isaman <iisaman@citi.umich.edu>
+To: linux-nfs@vger.kernel.org, Kevin Coffman <kwc@citi.umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from pat.uio.no ([129.240.10.15]:44120 "EHLO pat.uio.no"
+Received: from mx2.netapp.com ([216.240.18.37]:24660 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753765AbYCMQzS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 13 Mar 2008 12:55:18 -0400
-In-Reply-To: <Pine.BSO.4.64.0803131227380.29614@citi.umich.edu>
+	id S1751756AbYCMR75 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 13 Mar 2008 13:59:57 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+The NFSv4 protocol allows clients to negotiate security protocols on the
+fly in the case where an administrator on the server changes the export
+settings and/or in the case where we may have a filesystem migration
+event.
 
-On Thu, 2008-03-13 at 12:29 -0400, Fredric Isaman wrote:
-> 
-> On Thu, 13 Mar 2008, Trond Myklebust wrote:
-> > Has this ever been observed to cause problems in the mainline NFSv4?
-> > Having never seen any such problems myself, I'm a bit inclined to delay
-> > this until the 2.6.26 merge window. That said, if you can point to an
-> > instance where it caused a bug, then I'll push it to Linus sooner.
-> >
-> > Cheers
-> >  Trond
-> >
-> >
-> 
-> I just noticed it in the process of adding some attributes to fsinfo, as 
-> opposed to searching down a bug.
+Instead of having the NFS client code cache credentials that are tied to
+a particular AUTH method it is therefore preferable to have a generic
+credential that can be converted into whatever AUTH is in use by the RPC
+client when the read/write/sillyrename/... is put on the wire.
+    
+We do this by means of a new "generic" credential, which basically just
+caches the minimal information that is needed to look up an RPCSEC_GSS,
+AUTH_SYS, or AUTH_NULL credential.
 
-OK. I'll queue it up for 2.6.26, then.
+We then ensure that when the rpc_init_task attempts to bind this
+credential is bound to the task, it results in a lookup of a cred for
+whatever auth mechanism is currently the default in task->tk_client.
 
-Again thanks!
+-- 
+Trond Myklebust
+NFS client maintainer
 
-  Trond
-
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
