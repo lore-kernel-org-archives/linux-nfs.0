@@ -1,7 +1,7 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 3/6] SUNRPC: Clean up rpcauth_bindcred()
+Subject: [PATCH 4/6] SUNRPC: Add a generic RPC credential
 Date: Thu, 13 Mar 2008 13:48:09 -0400
-Message-ID: <20080313174808.13840.32022.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
+Message-ID: <20080313174809.13840.50790.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
 References: <20080313174806.13840.90325.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -9,110 +9,214 @@ To: linux-nfs@vger.kernel.org, Kevin Coffman <kwc@citi.umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:61939 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753939AbYCMSCH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 13 Mar 2008 14:02:07 -0400
+	id S1753917AbYCMSCE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 13 Mar 2008 14:02:04 -0400
 In-Reply-To: <20080313174806.13840.90325.stgit-KPEdlmqt5P7XOazzY/2fV4TcuzvYVacciM950cveMlzk1uMJSBkQmQ@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Add an rpc credential that is not tied to any particular auth mechanism,
+but that can be cached by NFS, and later used to look up a cred for
+whichever auth mechanism that turns out to be valid when the RPC call is
+being made.
+
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- include/linux/sunrpc/auth.h |    4 +---
- net/sunrpc/auth.c           |   28 ++++++++++++++++++----------
- net/sunrpc/sched.c          |   11 ++++-------
- 3 files changed, 23 insertions(+), 20 deletions(-)
+ include/linux/sunrpc/auth.h |    3 +
+ net/sunrpc/Makefile         |    2 -
+ net/sunrpc/auth.c           |    1 
+ net/sunrpc/auth_generic.c   |  142 +++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 147 insertions(+), 1 deletions(-)
 
 diff --git a/include/linux/sunrpc/auth.h b/include/linux/sunrpc/auth.h
-index 012566a..348546c 100644
+index 348546c..70644ed 100644
 --- a/include/linux/sunrpc/auth.h
 +++ b/include/linux/sunrpc/auth.h
-@@ -135,9 +135,7 @@ void			rpcauth_release(struct rpc_auth *);
- struct rpc_cred *	rpcauth_lookup_credcache(struct rpc_auth *, struct auth_cred *, int);
- void			rpcauth_init_cred(struct rpc_cred *, const struct auth_cred *, struct rpc_auth *, const struct rpc_credops *);
- struct rpc_cred *	rpcauth_lookupcred(struct rpc_auth *, int);
--void			rpcauth_bindcred(struct rpc_task *);
--void			rpcauth_bind_root_cred(struct rpc_task *);
--void			rpcauth_holdcred(struct rpc_task *);
-+void			rpcauth_bindcred(struct rpc_task *, struct rpc_cred *, int);
- void			put_rpccred(struct rpc_cred *);
- void			rpcauth_unbindcred(struct rpc_task *);
- __be32 *		rpcauth_marshcred(struct rpc_task *, __be32 *);
+@@ -125,9 +125,12 @@ extern const struct rpc_authops	authunix_ops;
+ extern const struct rpc_authops	authnull_ops;
+ 
+ void __init		rpc_init_authunix(void);
++void __init		rpc_init_generic_auth(void);
+ void __init		rpcauth_init_module(void);
+ void __exit		rpcauth_remove_module(void);
++void __exit		rpc_destroy_generic_auth(void);
+ 
++struct rpc_cred *	rpc_lookup_cred(void);
+ int			rpcauth_register(const struct rpc_authops *);
+ int			rpcauth_unregister(const struct rpc_authops *);
+ struct rpc_auth *	rpcauth_create(rpc_authflavor_t, struct rpc_clnt *);
+diff --git a/net/sunrpc/Makefile b/net/sunrpc/Makefile
+index 92e1dbe..5369aa3 100644
+--- a/net/sunrpc/Makefile
++++ b/net/sunrpc/Makefile
+@@ -8,7 +8,7 @@ obj-$(CONFIG_SUNRPC_GSS) += auth_gss/
+ obj-$(CONFIG_SUNRPC_XPRT_RDMA) += xprtrdma/
+ 
+ sunrpc-y := clnt.o xprt.o socklib.o xprtsock.o sched.o \
+-	    auth.o auth_null.o auth_unix.o \
++	    auth.o auth_null.o auth_unix.o auth_generic.o \
+ 	    svc.o svcsock.o svcauth.o svcauth_unix.o \
+ 	    rpcb_clnt.o timer.o xdr.o \
+ 	    sunrpc_syms.o cache.o rpc_pipe.o \
 diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
-index b0f2b2e..1cdb163 100644
+index 1cdb163..012f2a3 100644
 --- a/net/sunrpc/auth.c
 +++ b/net/sunrpc/auth.c
-@@ -375,7 +375,15 @@ rpcauth_init_cred(struct rpc_cred *cred, const struct auth_cred *acred,
+@@ -566,6 +566,7 @@ static struct shrinker rpc_cred_shrinker = {
+ void __init rpcauth_init_module(void)
+ {
+ 	rpc_init_authunix();
++	rpc_init_generic_auth();
+ 	register_shrinker(&rpc_cred_shrinker);
  }
- EXPORT_SYMBOL_GPL(rpcauth_init_cred);
  
--void
-+static void
-+rpcauth_generic_bind_cred(struct rpc_task *task, struct rpc_cred *cred)
+diff --git a/net/sunrpc/auth_generic.c b/net/sunrpc/auth_generic.c
+new file mode 100644
+index 0000000..6f129b1
+--- /dev/null
++++ b/net/sunrpc/auth_generic.c
+@@ -0,0 +1,142 @@
++/*
++ * Generic RPC credential
++ *
++ * Copyright (C) 2008, Trond Myklebust <Trond.Myklebust@netapp.com>
++ */
++
++#include <linux/err.h>
++#include <linux/types.h>
++#include <linux/module.h>
++#include <linux/sched.h>
++#include <linux/sunrpc/auth.h>
++#include <linux/sunrpc/clnt.h>
++#include <linux/sunrpc/debug.h>
++#include <linux/sunrpc/sched.h>
++
++#ifdef RPC_DEBUG
++# define RPCDBG_FACILITY	RPCDBG_AUTH
++#endif
++
++struct generic_cred {
++	struct rpc_cred gc_base;
++	struct auth_cred acred;
++};
++
++static struct rpc_auth generic_auth;
++static struct rpc_cred_cache generic_cred_cache;
++static const struct rpc_credops generic_credops;
++
++/*
++ * Public call interface
++ */
++struct rpc_cred *rpc_lookup_cred(void)
 +{
-+	task->tk_msg.rpc_cred = get_rpccred(cred);
-+	dprintk("RPC: %5u holding %s cred %p\n", task->tk_pid,
-+			cred->cr_auth->au_ops->au_name, cred);
++	return rpcauth_lookupcred(&generic_auth, 0);
++}
++EXPORT_SYMBOL_GPL(rpc_lookup_cred);
++
++/*
++ * Lookup generic creds for current process
++ */
++static struct rpc_cred *
++generic_lookup_cred(struct rpc_auth *auth, struct auth_cred *acred, int flags)
++{
++	return rpcauth_lookup_credcache(&generic_auth, acred, flags);
++}
++
++static struct rpc_cred *
++generic_create_cred(struct rpc_auth *auth, struct auth_cred *acred, int flags)
++{
++	struct generic_cred *gcred;
++
++	gcred = kmalloc(sizeof(*gcred), GFP_KERNEL);
++	if (gcred == NULL)
++		return ERR_PTR(-ENOMEM);
++
++	rpcauth_init_cred(&gcred->gc_base, acred, &generic_auth, &generic_credops);
++	gcred->gc_base.cr_flags = 1UL << RPCAUTH_CRED_UPTODATE;
++
++	gcred->acred.uid = acred->uid;
++	gcred->acred.gid = acred->gid;
++	gcred->acred.group_info = acred->group_info;
++	if (gcred->acred.group_info != NULL)
++		get_group_info(gcred->acred.group_info);
++
++	dprintk("RPC:       allocated generic cred %p for uid %d gid %d\n",
++			gcred, acred->uid, acred->gid);
++	return &gcred->gc_base;
 +}
 +
 +static void
- rpcauth_bind_root_cred(struct rpc_task *task)
- {
- 	struct rpc_auth *auth = task->tk_client->cl_auth;
-@@ -394,8 +402,8 @@ rpcauth_bind_root_cred(struct rpc_task *task)
- 		task->tk_status = PTR_ERR(ret);
- }
- 
--void
--rpcauth_bindcred(struct rpc_task *task)
++generic_free_cred(struct rpc_cred *cred)
++{
++	struct generic_cred *gcred = container_of(cred, struct generic_cred, gc_base);
++
++	dprintk("RPC:       generic_free_cred %p\n", gcred);
++	if (gcred->acred.group_info != NULL)
++		put_group_info(gcred->acred.group_info);
++	kfree(gcred);
++}
++
 +static void
-+rpcauth_bind_new_cred(struct rpc_task *task)
- {
- 	struct rpc_auth *auth = task->tk_client->cl_auth;
- 	struct rpc_cred *ret;
-@@ -410,14 +418,14 @@ rpcauth_bindcred(struct rpc_task *task)
- }
- 
- void
--rpcauth_holdcred(struct rpc_task *task)
-+rpcauth_bindcred(struct rpc_task *task, struct rpc_cred *cred, int flags)
- {
--	struct rpc_cred *cred = task->tk_msg.rpc_cred;
--	if (cred != NULL) {
--		get_rpccred(cred);
--		dprintk("RPC: %5u holding %s cred %p\n", task->tk_pid,
--				cred->cr_auth->au_ops->au_name, cred);
--	}
-+	if (cred != NULL)
-+		rpcauth_generic_bind_cred(task, cred);
-+	else if (flags & RPC_TASK_ROOTCREDS)
-+		rpcauth_bind_root_cred(task);
-+	else
-+		rpcauth_bind_new_cred(task);
- }
- 
- void
-diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-index 7db956f..6eab9bf 100644
---- a/net/sunrpc/sched.c
-+++ b/net/sunrpc/sched.c
-@@ -817,14 +817,11 @@ static void rpc_init_task(struct rpc_task *task, const struct rpc_task_setup *ta
- 		task->tk_action = rpc_prepare_task;
- 
- 	if (task_setup_data->rpc_message != NULL) {
--		memcpy(&task->tk_msg, task_setup_data->rpc_message, sizeof(task->tk_msg));
-+		task->tk_msg.rpc_proc = task_setup_data->rpc_message->rpc_proc;
-+		task->tk_msg.rpc_argp = task_setup_data->rpc_message->rpc_argp;
-+		task->tk_msg.rpc_resp = task_setup_data->rpc_message->rpc_resp;
- 		/* Bind the user cred */
--		if (task->tk_msg.rpc_cred != NULL)
--			rpcauth_holdcred(task);
--		else if (!(task_setup_data->flags & RPC_TASK_ROOTCREDS))
--			rpcauth_bindcred(task);
--		else
--			rpcauth_bind_root_cred(task);
-+		rpcauth_bindcred(task, task_setup_data->rpc_message->rpc_cred, task_setup_data->flags);
- 		if (task->tk_action == NULL)
- 			rpc_call_start(task);
- 	}
++generic_free_cred_callback(struct rcu_head *head)
++{
++	struct rpc_cred *cred = container_of(head, struct rpc_cred, cr_rcu);
++	generic_free_cred(cred);
++}
++
++static void
++generic_destroy_cred(struct rpc_cred *cred)
++{
++	call_rcu(&cred->cr_rcu, generic_free_cred_callback);
++}
++
++/*
++ * Match credentials against current process creds.
++ */
++static int
++generic_match(struct auth_cred *acred, struct rpc_cred *cred, int flags)
++{
++	struct generic_cred *gcred = container_of(cred, struct generic_cred, gc_base);
++
++	if (gcred->acred.uid != acred->uid ||
++	    gcred->acred.gid != acred->gid ||
++	    gcred->acred.group_info != acred->group_info)
++		return 0;
++	return 1;
++}
++
++void __init rpc_init_generic_auth(void)
++{
++	spin_lock_init(&generic_cred_cache.lock);
++}
++
++void __exit rpc_destroy_generic_auth(void)
++{
++	rpcauth_clear_credcache(&generic_cred_cache);
++}
++
++static struct rpc_cred_cache generic_cred_cache = {
++	{{ NULL, },},
++};
++
++static const struct rpc_authops generic_auth_ops = {
++	.owner = THIS_MODULE,
++#ifdef RPC_DEBUG
++	.au_name = "Generic",
++#endif
++	.lookup_cred = generic_lookup_cred,
++	.crcreate = generic_create_cred,
++};
++
++static struct rpc_auth generic_auth = {
++	.au_ops = &generic_auth_ops,
++	.au_count = ATOMIC_INIT(0),
++	.au_credcache = &generic_cred_cache,
++};
++
++static const struct rpc_credops generic_credops = {
++	.cr_name = "Generic cred",
++	.crdestroy = generic_destroy_cred,
++	.crmatch = generic_match,
++};
 
