@@ -1,113 +1,232 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: interrupting the wait for NLM GRANT causes problems
-Date: Thu, 13 Mar 2008 14:50:37 -0400
-Message-ID: <1205434237.3736.10.camel@tleilax.poochiereds.net>
-References: <20080313193226.4cf9100e@brian.englab.brq.redhat.com>
+From: Olga Kornievskaia <aglo@citi.umich.edu>
+Subject: Re: [PATCH 2/6] SUNRPC: Fix RPCAUTH_LOOKUP_ROOTCREDS
+Date: Thu, 13 Mar 2008 15:11:22 -0400
+Message-ID: <47D97C5A.6020100@citi.umich.edu>
+References: <20080313174806.13840.90325.stgit@c-69-242-210-120.hsd1.mi.comcast.net> <20080313174807.13840.38440.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org,
-	Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Michal Schmidt <mschmidt@redhat.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Cc: linux-nfs@vger.kernel.org
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:37940 "EHLO mx1.redhat.com"
+Received: from citi.umich.edu ([141.211.133.111]:10052 "EHLO citi.umich.edu"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753949AbYCMSu4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 13 Mar 2008 14:50:56 -0400
-In-Reply-To: <20080313193226.4cf9100e-7cei8Ivw5CaoyI6RK4xok/XAX3CI6PSWQQ4Iyu8u01E@public.gmane.org>
+	id S1754181AbYCMTLX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 13 Mar 2008 15:11:23 -0400
+In-Reply-To: <20080313174807.13840.38440.stgit-KPEdlmqt5P7XOazzY/2fV4TcuzvYVacciM950cveMlzk1uMJSBkQmQ@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Trond,
 
-On Thu, 2008-03-13 at 19:32 +0100, Michal Schmidt wrote:
-> [CC Jeff, I found your bz432855 where you noticed the same problem]
-> 
-> Hello,
-> 
-> When a client attempting to lock a file and waiting for NLM
-> GRANTED callback is interrupted by a signal in nlmclnt_block(), bad
-> things happen.
-> 
-> The userspace program will get EINTR and most likely retry the lock,
-> which it can successfully obtain (when the GRANTED callback comes).
-> That sounds OK, but something causes the client to lose track of this
-> lock and when the program tries to release the lock, the NLM UNLOCK
-> message is sent with a new SVID. The NFS server rightfully thinks
-> the file is still locked by the original SVID. Noone can lock the file
-> again.
-> 
-> I think the bug is in do_setlk(), where the VFS lock is created when
-> the lock attempt was interrupted by a signal. I don't understand the
-> reason why it does that. nlmclnt_lock() cancels the lock request if
-> nlmclnt_block() is interrupted, so there should be no state on the
-> server to be cleaned (as the comment suggests there is). But I may be
-> missing something.
-> 
-> Attached is a test program. It locks a file and waits for Enter before
-> unlocking it. It shows the locks held at the interesting moments
-> (from /proc/locks).
-> 
-> To reproduce the bug, run the program on two clients at the same time:
-> ./lockunlock /mnt/nfs_server/shared_file
-> 
-> The first client will get the lock. Press CTRL+C on the second one, to
-> interrupt its wait for NLM GRANTED. Notice the VFS lock shown. Press
-> Enter on the first client, to release the lock. The second client will
-> obtain it. Let it release it. Try running it again and notice you can't
-> lock the file anymore.
-> 
-> I have tried the following patch and it helps in my testcase. But maybe
-> it breaks something else?
-> 
-> Comments welcome.
-> 
-> Michal
-> 
-> 
+    We were thinking of using RPCAUTH_LOOKUP_ROOTCREDS flag to acquire 
+machine creds for authenticated callback.
+
+Trond Myklebust wrote:
+> The current RPCAUTH_LOOKUP_ROOTCREDS flag only works for AUTH_SYS
+> authentication, and then only as a special case in the code. This patch
+> removes the auth_sys special casing, and replaces it with generic code.
+>
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 > ---
->  fs/nfs/file.c |   12 ++----------
->  1 files changed, 2 insertions(+), 10 deletions(-)
-> 
-> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-> index ef57a5a..b311d9a 100644
-> --- a/fs/nfs/file.c
-> +++ b/fs/nfs/file.c
-> @@ -572,17 +572,9 @@ static int do_setlk(struct file *filp, int cmd,
-> struct file_lock *fl) 
->  	lock_kernel();
->  	/* Use local locking if mounted with "-onolock" */
-> -	if (!(NFS_SERVER(inode)->flags & NFS_MOUNT_NONLM)) {
-> +	if (!(NFS_SERVER(inode)->flags & NFS_MOUNT_NONLM))
->  		status = NFS_PROTO(inode)->lock(filp, cmd, fl);
-> -		/* If we were signalled we still need to ensure that
-> -		 * we clean up any state on the server. We therefore
-> -		 * record the lock call as having succeeded in order to
-> -		 * ensure that locks_remove_posix() cleans it out when
-> -		 * the process exits.
-> -		 */
-> -		if (status == -EINTR || status == -ERESTARTSYS)
-> -			do_vfs_lock(filp, fl);
-> -	} else
+>
+>  include/linux/sunrpc/auth.h |    4 ++-
+>  net/sunrpc/auth.c           |   35 +++++++++++++++------------
+>  net/sunrpc/auth_unix.c      |   56 ++++++++++++++++++-------------------------
+>  net/sunrpc/sched.c          |    4 ++-
+>  4 files changed, 49 insertions(+), 50 deletions(-)
+>
+> diff --git a/include/linux/sunrpc/auth.h b/include/linux/sunrpc/auth.h
+> index 84d5f3a..012566a 100644
+> --- a/include/linux/sunrpc/auth.h
+> +++ b/include/linux/sunrpc/auth.h
+> @@ -89,7 +89,6 @@ struct rpc_auth {
+>  
+>  /* Flags for rpcauth_lookupcred() */
+>  #define RPCAUTH_LOOKUP_NEW		0x01	/* Accept an uninitialised cred */
+> -#define RPCAUTH_LOOKUP_ROOTCREDS	0x02	/* This really ought to go! */
+>  
+>  /*
+>   * Client authentication ops
+> @@ -136,7 +135,8 @@ void			rpcauth_release(struct rpc_auth *);
+>  struct rpc_cred *	rpcauth_lookup_credcache(struct rpc_auth *, struct auth_cred *, int);
+>  void			rpcauth_init_cred(struct rpc_cred *, const struct auth_cred *, struct rpc_auth *, const struct rpc_credops *);
+>  struct rpc_cred *	rpcauth_lookupcred(struct rpc_auth *, int);
+> -struct rpc_cred *	rpcauth_bindcred(struct rpc_task *);
+> +void			rpcauth_bindcred(struct rpc_task *);
+> +void			rpcauth_bind_root_cred(struct rpc_task *);
+>  void			rpcauth_holdcred(struct rpc_task *);
+>  void			put_rpccred(struct rpc_cred *);
+>  void			rpcauth_unbindcred(struct rpc_task *);
+> diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
+> index b38f6ee..b0f2b2e 100644
+> --- a/net/sunrpc/auth.c
+> +++ b/net/sunrpc/auth.c
+> @@ -285,9 +285,6 @@ rpcauth_lookup_credcache(struct rpc_auth *auth, struct auth_cred * acred,
+>  
+>  	nr = hash_long(acred->uid, RPC_CREDCACHE_HASHBITS);
+>  
+> -	if (!(flags & RPCAUTH_LOOKUP_ROOTCREDS))
+> -		nr = acred->uid & RPC_CREDCACHE_MASK;
+> -
+>  	rcu_read_lock();
+>  	hlist_for_each_entry_rcu(entry, pos, &cache->hashtable[nr], cr_hash) {
+>  		if (!entry->cr_ops->crmatch(acred, entry, flags))
+> @@ -378,30 +375,38 @@ rpcauth_init_cred(struct rpc_cred *cred, const struct auth_cred *acred,
+>  }
+>  EXPORT_SYMBOL_GPL(rpcauth_init_cred);
+>  
+> -struct rpc_cred *
+> -rpcauth_bindcred(struct rpc_task *task)
+> +void
+> +rpcauth_bind_root_cred(struct rpc_task *task)
+>  {
+>  	struct rpc_auth *auth = task->tk_client->cl_auth;
+>  	struct auth_cred acred = {
+> -		.uid = current->fsuid,
+> -		.gid = current->fsgid,
+> -		.group_info = current->group_info,
+> +		.uid = 0,
+> +		.gid = 0,
+>  	};
+>  	struct rpc_cred *ret;
+> -	int flags = 0;
+>  
+>  	dprintk("RPC: %5u looking up %s cred\n",
+>  		task->tk_pid, task->tk_client->cl_auth->au_ops->au_name);
+> -	get_group_info(acred.group_info);
+> -	if (task->tk_flags & RPC_TASK_ROOTCREDS)
+> -		flags |= RPCAUTH_LOOKUP_ROOTCREDS;
+> -	ret = auth->au_ops->lookup_cred(auth, &acred, flags);
+> +	ret = auth->au_ops->lookup_cred(auth, &acred, 0);
+> +	if (!IS_ERR(ret))
+> +		task->tk_msg.rpc_cred = ret;
 > +	else
->  		status = do_vfs_lock(filp, fl);
->  	unlock_kernel();
->  	if (status < 0)
-
-
-I think the intent is basically what the comment says...
-
-If the call is interrupted, we don't know what the state of the lock on
-the server is. There's a chance that the server could have granted us
-the lock. If we don't set a vfs lock then we never send an unlock
-request to the server, and then nobody will get it or clean it up.
-
-I guess the thinking is that if the process is signaled that it will
-probably be exiting soon anyway. That's probably not a safe assumption,
-however.
-
-The ideal thing might be to send an async unlock request to the server
-when the lock call is interrupted. This is tricky though, since the
-process has been signaled and you have to deal with that as well.
-
---
-Jeff Layton <jlayton@redhat.com>
-
+> +		task->tk_status = PTR_ERR(ret);
+> +}
+> +
+> +void
+> +rpcauth_bindcred(struct rpc_task *task)
+> +{
+> +	struct rpc_auth *auth = task->tk_client->cl_auth;
+> +	struct rpc_cred *ret;
+> +
+> +	dprintk("RPC: %5u looking up %s cred\n",
+> +		task->tk_pid, auth->au_ops->au_name);
+> +	ret = rpcauth_lookupcred(auth, 0);
+>  	if (!IS_ERR(ret))
+>  		task->tk_msg.rpc_cred = ret;
+>  	else
+>  		task->tk_status = PTR_ERR(ret);
+> -	put_group_info(acred.group_info);
+> -	return ret;
+>  }
+>  
+>  void
+> diff --git a/net/sunrpc/auth_unix.c b/net/sunrpc/auth_unix.c
+> index 5ed91e5..b763710 100644
+> --- a/net/sunrpc/auth_unix.c
+> +++ b/net/sunrpc/auth_unix.c
+> @@ -60,7 +60,8 @@ static struct rpc_cred *
+>  unx_create_cred(struct rpc_auth *auth, struct auth_cred *acred, int flags)
+>  {
+>  	struct unx_cred	*cred;
+> -	int		i;
+> +	unsigned int groups = 0;
+> +	unsigned int i;
+>  
+>  	dprintk("RPC:       allocating UNIX cred for uid %d gid %d\n",
+>  			acred->uid, acred->gid);
+> @@ -70,21 +71,17 @@ unx_create_cred(struct rpc_auth *auth, struct auth_cred *acred, int flags)
+>  
+>  	rpcauth_init_cred(&cred->uc_base, acred, auth, &unix_credops);
+>  	cred->uc_base.cr_flags = 1UL << RPCAUTH_CRED_UPTODATE;
+> -	if (flags & RPCAUTH_LOOKUP_ROOTCREDS) {
+> -		cred->uc_uid = 0;
+> -		cred->uc_gid = 0;
+> -		cred->uc_gids[0] = NOGROUP;
+> -	} else {
+> -		int groups = acred->group_info->ngroups;
+> -		if (groups > NFS_NGROUPS)
+> -			groups = NFS_NGROUPS;
+> -
+> -		cred->uc_gid = acred->gid;
+> -		for (i = 0; i < groups; i++)
+> -			cred->uc_gids[i] = GROUP_AT(acred->group_info, i);
+> -		if (i < NFS_NGROUPS)
+> -		  cred->uc_gids[i] = NOGROUP;
+> -	}
+> +
+> +	if (acred->group_info != NULL)
+> +		groups = acred->group_info->ngroups;
+> +	if (groups > NFS_NGROUPS)
+> +		groups = NFS_NGROUPS;
+> +
+> +	cred->uc_gid = acred->gid;
+> +	for (i = 0; i < groups; i++)
+> +		cred->uc_gids[i] = GROUP_AT(acred->group_info, i);
+> +	if (i < NFS_NGROUPS)
+> +		cred->uc_gids[i] = NOGROUP;
+>  
+>  	return &cred->uc_base;
+>  }
+> @@ -118,26 +115,21 @@ static int
+>  unx_match(struct auth_cred *acred, struct rpc_cred *rcred, int flags)
+>  {
+>  	struct unx_cred	*cred = container_of(rcred, struct unx_cred, uc_base);
+> -	int		i;
+> +	unsigned int groups = 0;
+> +	unsigned int i;
+>  
+> -	if (!(flags & RPCAUTH_LOOKUP_ROOTCREDS)) {
+> -		int groups;
+>  
+> -		if (cred->uc_uid != acred->uid
+> -		 || cred->uc_gid != acred->gid)
+> -			return 0;
+> +	if (cred->uc_uid != acred->uid || cred->uc_gid != acred->gid)
+> +		return 0;
+>  
+> +	if (acred->group_info != NULL)
+>  		groups = acred->group_info->ngroups;
+> -		if (groups > NFS_NGROUPS)
+> -			groups = NFS_NGROUPS;
+> -		for (i = 0; i < groups ; i++)
+> -			if (cred->uc_gids[i] != GROUP_AT(acred->group_info, i))
+> -				return 0;
+> -		return 1;
+> -	}
+> -	return (cred->uc_uid == 0
+> -	     && cred->uc_gid == 0
+> -	     && cred->uc_gids[0] == (gid_t) NOGROUP);
+> +	if (groups > NFS_NGROUPS)
+> +		groups = NFS_NGROUPS;
+> +	for (i = 0; i < groups ; i++)
+> +		if (cred->uc_gids[i] != GROUP_AT(acred->group_info, i))
+> +			return 0;
+> +	return 1;
+>  }
+>  
+>  /*
+> diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+> index cae219c..7db956f 100644
+> --- a/net/sunrpc/sched.c
+> +++ b/net/sunrpc/sched.c
+> @@ -821,8 +821,10 @@ static void rpc_init_task(struct rpc_task *task, const struct rpc_task_setup *ta
+>  		/* Bind the user cred */
+>  		if (task->tk_msg.rpc_cred != NULL)
+>  			rpcauth_holdcred(task);
+> -		else
+> +		else if (!(task_setup_data->flags & RPC_TASK_ROOTCREDS))
+>  			rpcauth_bindcred(task);
+> +		else
+> +			rpcauth_bind_root_cred(task);
+>  		if (task->tk_action == NULL)
+>  			rpc_call_start(task);
+>  	}
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+>   
