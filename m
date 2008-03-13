@@ -1,132 +1,158 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 6/6] SUNRPC: Add a helper rpcauth_lookup_generic_cred()
-Date: Thu, 13 Mar 2008 13:48:11 -0400
-Message-ID: <20080313174810.13840.87427.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
+Subject: [PATCH 5/6] SUNRPC: Add an rpc_credop callback for binding a
+	credential to an rpc_task
+Date: Thu, 13 Mar 2008 13:48:10 -0400
+Message-ID: <20080313174809.13840.9683.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
 References: <20080313174806.13840.90325.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 To: linux-nfs@vger.kernel.org, Kevin Coffman <kwc@citi.umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:61939 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:47380 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753086AbYCMSCG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 13 Mar 2008 14:02:06 -0400
+	id S1754027AbYCMSCN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 13 Mar 2008 14:02:13 -0400
 In-Reply-To: <20080313174806.13840.90325.stgit-KPEdlmqt5P7XOazzY/2fV4TcuzvYVacciM950cveMlzk1uMJSBkQmQ@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The NFSv4 protocol allows clients to negotiate security protocols on the
-fly in the case where an administrator on the server changes the export
-settings and/or in the case where we may have a filesystem migration event.
-
-Instead of having the NFS client code cache credentials that are tied to a
-particular AUTH method it is therefore preferable to have a generic credential
-that can be converted into whatever AUTH is in use by the RPC client when
-the read/write/sillyrename/... is put on the wire.
-
-We do this by means of the new "generic" credential, which basically just
-caches the minimal information that is needed to look up an RPCSEC_GSS,
-AUTH_SYS, or AUTH_NULL credential.
+We need the ability to treat 'generic' creds specially, since they want to
+bind instances of the auth cred instead of binding themselves.
 
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- fs/nfs/dir.c      |    2 +-
- fs/nfs/inode.c    |    2 +-
- fs/nfs/nfs4proc.c |    8 ++++----
- fs/nfs/unlink.c   |    2 +-
- net/sunrpc/auth.c |    1 -
- 5 files changed, 7 insertions(+), 8 deletions(-)
+ include/linux/sunrpc/auth.h    |    2 ++
+ net/sunrpc/auth.c              |    5 +++--
+ net/sunrpc/auth_generic.c      |   15 +++++++++++++++
+ net/sunrpc/auth_gss/auth_gss.c |    2 ++
+ net/sunrpc/auth_null.c         |    1 +
+ net/sunrpc/auth_unix.c         |    1 +
+ 6 files changed, 24 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 6cea747..d583654 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -1966,7 +1966,7 @@ force_lookup:
- 	if (!NFS_PROTO(inode)->access)
- 		goto out_notsup;
+diff --git a/include/linux/sunrpc/auth.h b/include/linux/sunrpc/auth.h
+index 70644ed..e93cd8a 100644
+--- a/include/linux/sunrpc/auth.h
++++ b/include/linux/sunrpc/auth.h
+@@ -112,6 +112,7 @@ struct rpc_credops {
+ 	void			(*crdestroy)(struct rpc_cred *);
  
--	cred = rpcauth_lookupcred(NFS_CLIENT(inode)->cl_auth, 0);
-+	cred = rpc_lookup_cred();
- 	if (!IS_ERR(cred)) {
- 		res = nfs_do_access(inode, cred, mask);
- 		put_rpccred(cred);
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index c49f6d8..15f7873 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -613,7 +613,7 @@ int nfs_open(struct inode *inode, struct file *filp)
- 	struct nfs_open_context *ctx;
- 	struct rpc_cred *cred;
- 
--	cred = rpcauth_lookupcred(NFS_CLIENT(inode)->cl_auth, 0);
-+	cred = rpc_lookup_cred();
- 	if (IS_ERR(cred))
- 		return PTR_ERR(cred);
- 	ctx = alloc_nfs_open_context(filp->f_path.mnt, filp->f_path.dentry, cred);
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index bbb0d58..f38d057 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1408,7 +1408,7 @@ nfs4_atomic_open(struct inode *dir, struct dentry *dentry, struct nameidata *nd)
- 		BUG_ON(nd->intent.open.flags & O_CREAT);
- 	}
- 
--	cred = rpcauth_lookupcred(NFS_CLIENT(dir)->cl_auth, 0);
-+	cred = rpc_lookup_cred();
- 	if (IS_ERR(cred))
- 		return (struct dentry *)cred;
- 	parent = dentry->d_parent;
-@@ -1443,7 +1443,7 @@ nfs4_open_revalidate(struct inode *dir, struct dentry *dentry, int openflags, st
- 	struct rpc_cred *cred;
- 	struct nfs4_state *state;
- 
--	cred = rpcauth_lookupcred(NFS_CLIENT(dir)->cl_auth, 0);
-+	cred = rpc_lookup_cred();
- 	if (IS_ERR(cred))
- 		return PTR_ERR(cred);
- 	state = nfs4_do_open(dir, &path, openflags, NULL, cred);
-@@ -1660,7 +1660,7 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
- 
- 	nfs_fattr_init(fattr);
- 	
--	cred = rpcauth_lookupcred(NFS_CLIENT(inode)->cl_auth, 0);
-+	cred = rpc_lookup_cred();
- 	if (IS_ERR(cred))
- 		return PTR_ERR(cred);
- 
-@@ -1896,7 +1896,7 @@ nfs4_proc_create(struct inode *dir, struct dentry *dentry, struct iattr *sattr,
- 	struct rpc_cred *cred;
- 	int status = 0;
- 
--	cred = rpcauth_lookupcred(NFS_CLIENT(dir)->cl_auth, 0);
-+	cred = rpc_lookup_cred();
- 	if (IS_ERR(cred)) {
- 		status = PTR_ERR(cred);
- 		goto out;
-diff --git a/fs/nfs/unlink.c b/fs/nfs/unlink.c
-index 7574153..3adf8b2 100644
---- a/fs/nfs/unlink.c
-+++ b/fs/nfs/unlink.c
-@@ -234,7 +234,7 @@ nfs_async_unlink(struct inode *dir, struct dentry *dentry)
- 	if (data == NULL)
- 		goto out;
- 
--	data->cred = rpcauth_lookupcred(NFS_CLIENT(dir)->cl_auth, 0);
-+	data->cred = rpc_lookup_cred();
- 	if (IS_ERR(data->cred)) {
- 		status = PTR_ERR(data->cred);
- 		goto out_free;
+ 	int			(*crmatch)(struct auth_cred *, struct rpc_cred *, int);
++	void			(*crbind)(struct rpc_task *, struct rpc_cred *);
+ 	__be32 *		(*crmarshal)(struct rpc_task *, __be32 *);
+ 	int			(*crrefresh)(struct rpc_task *);
+ 	__be32 *		(*crvalidate)(struct rpc_task *, __be32 *);
+@@ -139,6 +140,7 @@ struct rpc_cred *	rpcauth_lookup_credcache(struct rpc_auth *, struct auth_cred *
+ void			rpcauth_init_cred(struct rpc_cred *, const struct auth_cred *, struct rpc_auth *, const struct rpc_credops *);
+ struct rpc_cred *	rpcauth_lookupcred(struct rpc_auth *, int);
+ void			rpcauth_bindcred(struct rpc_task *, struct rpc_cred *, int);
++void			rpcauth_generic_bind_cred(struct rpc_task *, struct rpc_cred *);
+ void			put_rpccred(struct rpc_cred *);
+ void			rpcauth_unbindcred(struct rpc_task *);
+ __be32 *		rpcauth_marshcred(struct rpc_task *, __be32 *);
 diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
-index d65dd79..0632cd0 100644
+index 012f2a3..d65dd79 100644
 --- a/net/sunrpc/auth.c
 +++ b/net/sunrpc/auth.c
-@@ -356,7 +356,6 @@ rpcauth_lookupcred(struct rpc_auth *auth, int flags)
- 	put_group_info(acred.group_info);
- 	return ret;
+@@ -375,13 +375,14 @@ rpcauth_init_cred(struct rpc_cred *cred, const struct auth_cred *acred,
  }
--EXPORT_SYMBOL_GPL(rpcauth_lookupcred);
+ EXPORT_SYMBOL_GPL(rpcauth_init_cred);
  
- void
- rpcauth_init_cred(struct rpc_cred *cred, const struct auth_cred *acred,
+-static void
++void
+ rpcauth_generic_bind_cred(struct rpc_task *task, struct rpc_cred *cred)
+ {
+ 	task->tk_msg.rpc_cred = get_rpccred(cred);
+ 	dprintk("RPC: %5u holding %s cred %p\n", task->tk_pid,
+ 			cred->cr_auth->au_ops->au_name, cred);
+ }
++EXPORT_SYMBOL_GPL(rpcauth_generic_bind_cred);
+ 
+ static void
+ rpcauth_bind_root_cred(struct rpc_task *task)
+@@ -421,7 +422,7 @@ void
+ rpcauth_bindcred(struct rpc_task *task, struct rpc_cred *cred, int flags)
+ {
+ 	if (cred != NULL)
+-		rpcauth_generic_bind_cred(task, cred);
++		cred->cr_ops->crbind(task, cred);
+ 	else if (flags & RPC_TASK_ROOTCREDS)
+ 		rpcauth_bind_root_cred(task);
+ 	else
+diff --git a/net/sunrpc/auth_generic.c b/net/sunrpc/auth_generic.c
+index 6f129b1..6a3f77c 100644
+--- a/net/sunrpc/auth_generic.c
++++ b/net/sunrpc/auth_generic.c
+@@ -35,6 +35,20 @@ struct rpc_cred *rpc_lookup_cred(void)
+ }
+ EXPORT_SYMBOL_GPL(rpc_lookup_cred);
+ 
++static void
++generic_bind_cred(struct rpc_task *task, struct rpc_cred *cred)
++{
++	struct rpc_auth *auth = task->tk_client->cl_auth;
++	struct auth_cred *acred = &container_of(cred, struct generic_cred, gc_base)->acred;
++	struct rpc_cred *ret;
++
++	ret = auth->au_ops->lookup_cred(auth, acred, 0);
++	if (!IS_ERR(ret))
++		task->tk_msg.rpc_cred = ret;
++	else
++		task->tk_status = PTR_ERR(ret);
++}
++
+ /*
+  * Lookup generic creds for current process
+  */
+@@ -138,5 +152,6 @@ static struct rpc_auth generic_auth = {
+ static const struct rpc_credops generic_credops = {
+ 	.cr_name = "Generic cred",
+ 	.crdestroy = generic_destroy_cred,
++	.crbind = generic_bind_cred,
+ 	.crmatch = generic_match,
+ };
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index ef63849..d34f6df 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -1300,6 +1300,7 @@ static const struct rpc_credops gss_credops = {
+ 	.cr_name	= "AUTH_GSS",
+ 	.crdestroy	= gss_destroy_cred,
+ 	.cr_init	= gss_cred_init,
++	.crbind		= rpcauth_generic_bind_cred,
+ 	.crmatch	= gss_match,
+ 	.crmarshal	= gss_marshal,
+ 	.crrefresh	= gss_refresh,
+@@ -1311,6 +1312,7 @@ static const struct rpc_credops gss_credops = {
+ static const struct rpc_credops gss_nullops = {
+ 	.cr_name	= "AUTH_GSS",
+ 	.crdestroy	= gss_destroy_cred,
++	.crbind		= rpcauth_generic_bind_cred,
+ 	.crmatch	= gss_match,
+ 	.crmarshal	= gss_marshal,
+ 	.crrefresh	= gss_refresh_null,
+diff --git a/net/sunrpc/auth_null.c b/net/sunrpc/auth_null.c
+index 537d0e8..3c26c18 100644
+--- a/net/sunrpc/auth_null.c
++++ b/net/sunrpc/auth_null.c
+@@ -125,6 +125,7 @@ static
+ const struct rpc_credops null_credops = {
+ 	.cr_name	= "AUTH_NULL",
+ 	.crdestroy	= nul_destroy_cred,
++	.crbind		= rpcauth_generic_bind_cred,
+ 	.crmatch	= nul_match,
+ 	.crmarshal	= nul_marshal,
+ 	.crrefresh	= nul_refresh,
+diff --git a/net/sunrpc/auth_unix.c b/net/sunrpc/auth_unix.c
+index b763710..04e936a 100644
+--- a/net/sunrpc/auth_unix.c
++++ b/net/sunrpc/auth_unix.c
+@@ -237,6 +237,7 @@ static
+ const struct rpc_credops unix_credops = {
+ 	.cr_name	= "AUTH_UNIX",
+ 	.crdestroy	= unx_destroy_cred,
++	.crbind		= rpcauth_generic_bind_cred,
+ 	.crmatch	= unx_match,
+ 	.crmarshal	= unx_marshal,
+ 	.crrefresh	= unx_refresh,
 
