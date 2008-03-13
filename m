@@ -1,219 +1,132 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 2/6] SUNRPC: Fix RPCAUTH_LOOKUP_ROOTCREDS
-Date: Thu, 13 Mar 2008 13:48:08 -0400
-Message-ID: <20080313174807.13840.38440.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
+Subject: [PATCH 6/6] SUNRPC: Add a helper rpcauth_lookup_generic_cred()
+Date: Thu, 13 Mar 2008 13:48:11 -0400
+Message-ID: <20080313174810.13840.87427.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
 References: <20080313174806.13840.90325.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 To: linux-nfs@vger.kernel.org, Kevin Coffman <kwc@citi.umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:47380 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:61939 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753984AbYCMSCM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 13 Mar 2008 14:02:12 -0400
+	id S1753086AbYCMSCG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 13 Mar 2008 14:02:06 -0400
 In-Reply-To: <20080313174806.13840.90325.stgit-KPEdlmqt5P7XOazzY/2fV4TcuzvYVacciM950cveMlzk1uMJSBkQmQ@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The current RPCAUTH_LOOKUP_ROOTCREDS flag only works for AUTH_SYS
-authentication, and then only as a special case in the code. This patch
-removes the auth_sys special casing, and replaces it with generic code.
+The NFSv4 protocol allows clients to negotiate security protocols on the
+fly in the case where an administrator on the server changes the export
+settings and/or in the case where we may have a filesystem migration event.
+
+Instead of having the NFS client code cache credentials that are tied to a
+particular AUTH method it is therefore preferable to have a generic credential
+that can be converted into whatever AUTH is in use by the RPC client when
+the read/write/sillyrename/... is put on the wire.
+
+We do this by means of the new "generic" credential, which basically just
+caches the minimal information that is needed to look up an RPCSEC_GSS,
+AUTH_SYS, or AUTH_NULL credential.
 
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- include/linux/sunrpc/auth.h |    4 ++-
- net/sunrpc/auth.c           |   35 +++++++++++++++------------
- net/sunrpc/auth_unix.c      |   56 ++++++++++++++++++-------------------------
- net/sunrpc/sched.c          |    4 ++-
- 4 files changed, 49 insertions(+), 50 deletions(-)
+ fs/nfs/dir.c      |    2 +-
+ fs/nfs/inode.c    |    2 +-
+ fs/nfs/nfs4proc.c |    8 ++++----
+ fs/nfs/unlink.c   |    2 +-
+ net/sunrpc/auth.c |    1 -
+ 5 files changed, 7 insertions(+), 8 deletions(-)
 
-diff --git a/include/linux/sunrpc/auth.h b/include/linux/sunrpc/auth.h
-index 84d5f3a..012566a 100644
---- a/include/linux/sunrpc/auth.h
-+++ b/include/linux/sunrpc/auth.h
-@@ -89,7 +89,6 @@ struct rpc_auth {
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 6cea747..d583654 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -1966,7 +1966,7 @@ force_lookup:
+ 	if (!NFS_PROTO(inode)->access)
+ 		goto out_notsup;
  
- /* Flags for rpcauth_lookupcred() */
- #define RPCAUTH_LOOKUP_NEW		0x01	/* Accept an uninitialised cred */
--#define RPCAUTH_LOOKUP_ROOTCREDS	0x02	/* This really ought to go! */
+-	cred = rpcauth_lookupcred(NFS_CLIENT(inode)->cl_auth, 0);
++	cred = rpc_lookup_cred();
+ 	if (!IS_ERR(cred)) {
+ 		res = nfs_do_access(inode, cred, mask);
+ 		put_rpccred(cred);
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index c49f6d8..15f7873 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -613,7 +613,7 @@ int nfs_open(struct inode *inode, struct file *filp)
+ 	struct nfs_open_context *ctx;
+ 	struct rpc_cred *cred;
  
- /*
-  * Client authentication ops
-@@ -136,7 +135,8 @@ void			rpcauth_release(struct rpc_auth *);
- struct rpc_cred *	rpcauth_lookup_credcache(struct rpc_auth *, struct auth_cred *, int);
- void			rpcauth_init_cred(struct rpc_cred *, const struct auth_cred *, struct rpc_auth *, const struct rpc_credops *);
- struct rpc_cred *	rpcauth_lookupcred(struct rpc_auth *, int);
--struct rpc_cred *	rpcauth_bindcred(struct rpc_task *);
-+void			rpcauth_bindcred(struct rpc_task *);
-+void			rpcauth_bind_root_cred(struct rpc_task *);
- void			rpcauth_holdcred(struct rpc_task *);
- void			put_rpccred(struct rpc_cred *);
- void			rpcauth_unbindcred(struct rpc_task *);
+-	cred = rpcauth_lookupcred(NFS_CLIENT(inode)->cl_auth, 0);
++	cred = rpc_lookup_cred();
+ 	if (IS_ERR(cred))
+ 		return PTR_ERR(cred);
+ 	ctx = alloc_nfs_open_context(filp->f_path.mnt, filp->f_path.dentry, cred);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index bbb0d58..f38d057 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1408,7 +1408,7 @@ nfs4_atomic_open(struct inode *dir, struct dentry *dentry, struct nameidata *nd)
+ 		BUG_ON(nd->intent.open.flags & O_CREAT);
+ 	}
+ 
+-	cred = rpcauth_lookupcred(NFS_CLIENT(dir)->cl_auth, 0);
++	cred = rpc_lookup_cred();
+ 	if (IS_ERR(cred))
+ 		return (struct dentry *)cred;
+ 	parent = dentry->d_parent;
+@@ -1443,7 +1443,7 @@ nfs4_open_revalidate(struct inode *dir, struct dentry *dentry, int openflags, st
+ 	struct rpc_cred *cred;
+ 	struct nfs4_state *state;
+ 
+-	cred = rpcauth_lookupcred(NFS_CLIENT(dir)->cl_auth, 0);
++	cred = rpc_lookup_cred();
+ 	if (IS_ERR(cred))
+ 		return PTR_ERR(cred);
+ 	state = nfs4_do_open(dir, &path, openflags, NULL, cred);
+@@ -1660,7 +1660,7 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
+ 
+ 	nfs_fattr_init(fattr);
+ 	
+-	cred = rpcauth_lookupcred(NFS_CLIENT(inode)->cl_auth, 0);
++	cred = rpc_lookup_cred();
+ 	if (IS_ERR(cred))
+ 		return PTR_ERR(cred);
+ 
+@@ -1896,7 +1896,7 @@ nfs4_proc_create(struct inode *dir, struct dentry *dentry, struct iattr *sattr,
+ 	struct rpc_cred *cred;
+ 	int status = 0;
+ 
+-	cred = rpcauth_lookupcred(NFS_CLIENT(dir)->cl_auth, 0);
++	cred = rpc_lookup_cred();
+ 	if (IS_ERR(cred)) {
+ 		status = PTR_ERR(cred);
+ 		goto out;
+diff --git a/fs/nfs/unlink.c b/fs/nfs/unlink.c
+index 7574153..3adf8b2 100644
+--- a/fs/nfs/unlink.c
++++ b/fs/nfs/unlink.c
+@@ -234,7 +234,7 @@ nfs_async_unlink(struct inode *dir, struct dentry *dentry)
+ 	if (data == NULL)
+ 		goto out;
+ 
+-	data->cred = rpcauth_lookupcred(NFS_CLIENT(dir)->cl_auth, 0);
++	data->cred = rpc_lookup_cred();
+ 	if (IS_ERR(data->cred)) {
+ 		status = PTR_ERR(data->cred);
+ 		goto out_free;
 diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
-index b38f6ee..b0f2b2e 100644
+index d65dd79..0632cd0 100644
 --- a/net/sunrpc/auth.c
 +++ b/net/sunrpc/auth.c
-@@ -285,9 +285,6 @@ rpcauth_lookup_credcache(struct rpc_auth *auth, struct auth_cred * acred,
- 
- 	nr = hash_long(acred->uid, RPC_CREDCACHE_HASHBITS);
- 
--	if (!(flags & RPCAUTH_LOOKUP_ROOTCREDS))
--		nr = acred->uid & RPC_CREDCACHE_MASK;
--
- 	rcu_read_lock();
- 	hlist_for_each_entry_rcu(entry, pos, &cache->hashtable[nr], cr_hash) {
- 		if (!entry->cr_ops->crmatch(acred, entry, flags))
-@@ -378,30 +375,38 @@ rpcauth_init_cred(struct rpc_cred *cred, const struct auth_cred *acred,
+@@ -356,7 +356,6 @@ rpcauth_lookupcred(struct rpc_auth *auth, int flags)
+ 	put_group_info(acred.group_info);
+ 	return ret;
  }
- EXPORT_SYMBOL_GPL(rpcauth_init_cred);
- 
--struct rpc_cred *
--rpcauth_bindcred(struct rpc_task *task)
-+void
-+rpcauth_bind_root_cred(struct rpc_task *task)
- {
- 	struct rpc_auth *auth = task->tk_client->cl_auth;
- 	struct auth_cred acred = {
--		.uid = current->fsuid,
--		.gid = current->fsgid,
--		.group_info = current->group_info,
-+		.uid = 0,
-+		.gid = 0,
- 	};
- 	struct rpc_cred *ret;
--	int flags = 0;
- 
- 	dprintk("RPC: %5u looking up %s cred\n",
- 		task->tk_pid, task->tk_client->cl_auth->au_ops->au_name);
--	get_group_info(acred.group_info);
--	if (task->tk_flags & RPC_TASK_ROOTCREDS)
--		flags |= RPCAUTH_LOOKUP_ROOTCREDS;
--	ret = auth->au_ops->lookup_cred(auth, &acred, flags);
-+	ret = auth->au_ops->lookup_cred(auth, &acred, 0);
-+	if (!IS_ERR(ret))
-+		task->tk_msg.rpc_cred = ret;
-+	else
-+		task->tk_status = PTR_ERR(ret);
-+}
-+
-+void
-+rpcauth_bindcred(struct rpc_task *task)
-+{
-+	struct rpc_auth *auth = task->tk_client->cl_auth;
-+	struct rpc_cred *ret;
-+
-+	dprintk("RPC: %5u looking up %s cred\n",
-+		task->tk_pid, auth->au_ops->au_name);
-+	ret = rpcauth_lookupcred(auth, 0);
- 	if (!IS_ERR(ret))
- 		task->tk_msg.rpc_cred = ret;
- 	else
- 		task->tk_status = PTR_ERR(ret);
--	put_group_info(acred.group_info);
--	return ret;
- }
+-EXPORT_SYMBOL_GPL(rpcauth_lookupcred);
  
  void
-diff --git a/net/sunrpc/auth_unix.c b/net/sunrpc/auth_unix.c
-index 5ed91e5..b763710 100644
---- a/net/sunrpc/auth_unix.c
-+++ b/net/sunrpc/auth_unix.c
-@@ -60,7 +60,8 @@ static struct rpc_cred *
- unx_create_cred(struct rpc_auth *auth, struct auth_cred *acred, int flags)
- {
- 	struct unx_cred	*cred;
--	int		i;
-+	unsigned int groups = 0;
-+	unsigned int i;
- 
- 	dprintk("RPC:       allocating UNIX cred for uid %d gid %d\n",
- 			acred->uid, acred->gid);
-@@ -70,21 +71,17 @@ unx_create_cred(struct rpc_auth *auth, struct auth_cred *acred, int flags)
- 
- 	rpcauth_init_cred(&cred->uc_base, acred, auth, &unix_credops);
- 	cred->uc_base.cr_flags = 1UL << RPCAUTH_CRED_UPTODATE;
--	if (flags & RPCAUTH_LOOKUP_ROOTCREDS) {
--		cred->uc_uid = 0;
--		cred->uc_gid = 0;
--		cred->uc_gids[0] = NOGROUP;
--	} else {
--		int groups = acred->group_info->ngroups;
--		if (groups > NFS_NGROUPS)
--			groups = NFS_NGROUPS;
--
--		cred->uc_gid = acred->gid;
--		for (i = 0; i < groups; i++)
--			cred->uc_gids[i] = GROUP_AT(acred->group_info, i);
--		if (i < NFS_NGROUPS)
--		  cred->uc_gids[i] = NOGROUP;
--	}
-+
-+	if (acred->group_info != NULL)
-+		groups = acred->group_info->ngroups;
-+	if (groups > NFS_NGROUPS)
-+		groups = NFS_NGROUPS;
-+
-+	cred->uc_gid = acred->gid;
-+	for (i = 0; i < groups; i++)
-+		cred->uc_gids[i] = GROUP_AT(acred->group_info, i);
-+	if (i < NFS_NGROUPS)
-+		cred->uc_gids[i] = NOGROUP;
- 
- 	return &cred->uc_base;
- }
-@@ -118,26 +115,21 @@ static int
- unx_match(struct auth_cred *acred, struct rpc_cred *rcred, int flags)
- {
- 	struct unx_cred	*cred = container_of(rcred, struct unx_cred, uc_base);
--	int		i;
-+	unsigned int groups = 0;
-+	unsigned int i;
- 
--	if (!(flags & RPCAUTH_LOOKUP_ROOTCREDS)) {
--		int groups;
- 
--		if (cred->uc_uid != acred->uid
--		 || cred->uc_gid != acred->gid)
--			return 0;
-+	if (cred->uc_uid != acred->uid || cred->uc_gid != acred->gid)
-+		return 0;
- 
-+	if (acred->group_info != NULL)
- 		groups = acred->group_info->ngroups;
--		if (groups > NFS_NGROUPS)
--			groups = NFS_NGROUPS;
--		for (i = 0; i < groups ; i++)
--			if (cred->uc_gids[i] != GROUP_AT(acred->group_info, i))
--				return 0;
--		return 1;
--	}
--	return (cred->uc_uid == 0
--	     && cred->uc_gid == 0
--	     && cred->uc_gids[0] == (gid_t) NOGROUP);
-+	if (groups > NFS_NGROUPS)
-+		groups = NFS_NGROUPS;
-+	for (i = 0; i < groups ; i++)
-+		if (cred->uc_gids[i] != GROUP_AT(acred->group_info, i))
-+			return 0;
-+	return 1;
- }
- 
- /*
-diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-index cae219c..7db956f 100644
---- a/net/sunrpc/sched.c
-+++ b/net/sunrpc/sched.c
-@@ -821,8 +821,10 @@ static void rpc_init_task(struct rpc_task *task, const struct rpc_task_setup *ta
- 		/* Bind the user cred */
- 		if (task->tk_msg.rpc_cred != NULL)
- 			rpcauth_holdcred(task);
--		else
-+		else if (!(task_setup_data->flags & RPC_TASK_ROOTCREDS))
- 			rpcauth_bindcred(task);
-+		else
-+			rpcauth_bind_root_cred(task);
- 		if (task->tk_action == NULL)
- 			rpc_call_start(task);
- 	}
+ rpcauth_init_cred(struct rpc_cred *cred, const struct auth_cred *acred,
 
