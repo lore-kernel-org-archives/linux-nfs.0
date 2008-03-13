@@ -1,22 +1,27 @@
-From: Benny Halevy <bhalevy@panasas.com>
+From: Fredric Isaman <iisaman@citi.umich.edu>
 Subject: Re: [PATCH] nfs: fix encode_fsinfo_maxsz
-Date: Thu, 13 Mar 2008 18:27:16 +0200
-Message-ID: <47D955E4.5010900@panasas.com>
-References: <1205414790-1710-1-git-send-email-bhalevy@panasas.com> <1205425264.11399.3.camel@heimdal.trondhjem.org>
+Date: Thu, 13 Mar 2008 12:29:06 -0400 (EDT)
+Message-ID: <Pine.BSO.4.64.0803131227380.29614@citi.umich.edu>
+References: <1205414790-1710-1-git-send-email-bhalevy@panasas.com>
+ <1205425264.11399.3.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org, Fred Isaman <iisaman@citi.umich.edu>
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
+Cc: Benny Halevy <bhalevy@panasas.com>, linux-nfs@vger.kernel.org
 To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-colo-pa.panasas.com ([66.238.117.130]:31494 "EHLO
-	cassoulet.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751672AbYCMQ2B (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Mar 2008 12:28:01 -0400
+Received: from citi.umich.edu ([141.211.133.111]:12587 "EHLO citi.umich.edu"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751618AbYCMQ3I (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 13 Mar 2008 12:29:08 -0400
 In-Reply-To: <1205425264.11399.3.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Trond Myklebust wrote:
+
+
+On Thu, 13 Mar 2008, Trond Myklebust wrote:
+
+>
 > On Thu, 2008-03-13 at 15:26 +0200, Benny Halevy wrote:
 >> From: Fred Isaman <iisaman@citi.umich.edu>
 >>
@@ -41,22 +46,21 @@ Trond Myklebust wrote:
 >>  #define decode_fsinfo_maxsz	(op_decode_hdr_maxsz + 11)
 >>  #define encode_renew_maxsz	(op_encode_hdr_maxsz + 3)
 >>  #define decode_renew_maxsz	(op_decode_hdr_maxsz)
-> 
+>
 > Thanks!
-> 
+>
 > Has this ever been observed to cause problems in the mainline NFSv4?
 > Having never seen any such problems myself, I'm a bit inclined to delay
 > this until the 2.6.26 merge window. That said, if you can point to an
 > instance where it caused a bug, then I'll push it to Linus sooner.
-
-I can't point to such an instance.
-I *think* it was found by code inspection only.
-Maybe Fred can...
-
-Benny
-
-> 
+>
 > Cheers
->   Trond
-> 
+>  Trond
+>
+>
+
+I just noticed it in the process of adding some attributes to fsinfo, as 
+opposed to searching down a bug.
+
+ 	Fred
 
