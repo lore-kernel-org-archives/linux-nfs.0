@@ -1,67 +1,44 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 2/6] lockd: refactor SM_MON mon_name argument encoder
-Date: Fri, 14 Mar 2008 14:25:39 -0400
-Message-ID: <20080314182539.30171.4746.stgit@manray.1015granger.net>
+Subject: [PATCH 1/6] lockd: Ensure NSM strings aren't longer than protocol
+	allows
+Date: Fri, 14 Mar 2008 14:25:32 -0400
+Message-ID: <20080314182531.30171.73471.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: Trond.Myklebust@netapp.com, bfields@citi.umich.edu
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from flpi102.sbcis.sbc.com ([207.115.20.71]:44527 "EHLO
+Received: from flpi102.sbcis.sbc.com ([207.115.20.71]:44462 "EHLO
 	flpi102.prodigy.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752999AbYCNSZ4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Mar 2008 14:25:56 -0400
+	with ESMTP id S1755572AbYCNSZt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Mar 2008 14:25:49 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: introduce a new XDR encoder specifically for the mon_name
-argument of SM_MON requests.  This will be updated later to support IPv6
-addresses in addition to IPv4 addresses.
+Introduce a special helper function to check the length of NSM strings
+before they are placed on the wire.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/lockd/mon.c |   25 +++++++++++++++++++++++++
- 1 files changed, 25 insertions(+), 0 deletions(-)
+ fs/lockd/mon.c |    9 +++++++++
+ 1 files changed, 9 insertions(+), 0 deletions(-)
 
 diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
-index 84fd84c..87bd4e4 100644
+index 908b23f..84fd84c 100644
 --- a/fs/lockd/mon.c
 +++ b/fs/lockd/mon.c
-@@ -18,6 +18,8 @@
+@@ -149,6 +149,15 @@ nsm_create(void)
+  * XDR functions for NSM.
+  */
  
- #define NLMDBG_FACILITY		NLMDBG_MONITOR
- 
-+#define XDR_ADDRBUF_LEN		(20)
-+
- static struct rpc_clnt *	nsm_create(void);
- 
- static struct rpc_program	nsm_program;
-@@ -158,6 +160,29 @@ static __be32 *xdr_encode_nsm_string(__be32 *p, char *string)
- 	return xdr_encode_opaque(p, string, len);
- }
- 
-+/*
-+ * "mon_name" specifies the host to be monitored.
-+ *
-+ * Linux uses a text version of the IP address of the remote
-+ * host as the host identifier (the "mon_name" argument).
-+ *
-+ * Linux statd always looks up the canonical hostname first for
-+ * whatever remote hostname it receives, so this works alright.
-+ */
-+static __be32 *xdr_encode_mon_name(__be32 *p, struct nsm_args *argp)
++static __be32 *xdr_encode_nsm_string(__be32 *p, char *string)
 +{
-+	char	buffer[XDR_ADDRBUF_LEN + 1];
-+	char	*name = argp->mon_name;
++	size_t len = strlen(string);
 +
-+	if (!nsm_use_hostnames) {
-+		snprintf(buffer, XDR_ADDRBUF_LEN,
-+			 NIPQUAD_FMT, NIPQUAD(argp->addr));
-+		name = buffer;
-+	}
-+
-+	return xdr_encode_nsm_string(p, name);
++	if (len > SM_MAXSTRLEN)
++		len = SM_MAXSTRLEN;
++	return xdr_encode_opaque(p, string, len);
 +}
 +
  static __be32 *
