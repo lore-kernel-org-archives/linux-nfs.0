@@ -1,62 +1,48 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 3/3] lockd: bring a few function declarations up to date
-Date: Fri, 14 Mar 2008 14:18:45 -0400
-Message-ID: <20080314181844.29948.14864.stgit@manray.1015granger.net>
+From: "Kevin Coffman" <kwc@citi.umich.edu>
+Subject: theoretical rpcsec_gss deadlock
+Date: Fri, 14 Mar 2008 14:23:20 -0400
+Message-ID: <4d569c330803141123o23a35f4bm99ea9ca97a26c59d@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: linux-nfs@vger.kernel.org
-To: Trond.Myklebust@netapp.com, bfields@citi.umich.edu
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-crypto@vger.kernel.org, linux-nfs@vger.kernel.org
+To: "Herbert Xu" <herbert-lOAM2aK0SrRLBo1qDEOMRrpzq4S04n8Q@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from flpi101.sbcis.sbc.com ([207.115.20.70]:31002 "EHLO
-	flpi101.prodigy.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754256AbYCNSTD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Mar 2008 14:19:03 -0400
+Received: from rn-out-0910.google.com ([64.233.170.191]:23652 "EHLO
+	rn-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754067AbYCNSXW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Mar 2008 14:23:22 -0400
+Received: by rn-out-0910.google.com with SMTP id v46so2866113rnb.15
+        for <linux-nfs@vger.kernel.org>; Fri, 14 Mar 2008 11:23:20 -0700 (PDT)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean-up: replace  __inline__ and use up-to-date function declaration
-conventions.
+The rpcsec_gss code used for NFS currently does basically the
+following to create a checksum for each rpc:
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+  crypto_alloc_hash()
+  crypto_hash_init()
+  crypto_hash_update() ...
+  crypto_hash_final()
+  crypto_free_hash()
 
- include/linux/lockd/lockd.h |   11 +++++------
- 1 files changed, 5 insertions(+), 6 deletions(-)
+The crypto_alloc_hash() poses a possible deadlock situation.
+(Although it hasn't been a problem so far in practice.)  It would be
+preferable to allocate the transform once in a context (shared by
+multiple tasks).  However, doing so seems to cause problems with bad
+checksums.  We'd rather not have to add a spinlock to serialize its
+use.  Is there a way to allocate state information on the stack (or
+elsewhere) such that the transform can be shared simultaneously?
 
-diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
-index d155950..acf39e1 100644
---- a/include/linux/lockd/lockd.h
-+++ b/include/linux/lockd/lockd.h
-@@ -219,8 +219,7 @@ void		  nlmsvc_mark_resources(void);
- void		  nlmsvc_free_host_resources(struct nlm_host *);
- void		  nlmsvc_invalidate_all(void);
- 
--static __inline__ struct inode *
--nlmsvc_file_inode(struct nlm_file *file)
-+static inline struct inode *nlmsvc_file_inode(struct nlm_file *file)
- {
- 	return file->f_file->f_path.dentry->d_inode;
- }
-@@ -228,8 +227,8 @@ nlmsvc_file_inode(struct nlm_file *file)
- /*
-  * Compare two host addresses (needs modifying for ipv6)
-  */
--static __inline__ int
--nlm_cmp_addr(const struct sockaddr_in *sin1, const struct sockaddr_in *sin2)
-+static inline int nlm_cmp_addr(const struct sockaddr_in *sin1,
-+			       const struct sockaddr_in *sin2)
- {
- 	return sin1->sin_addr.s_addr == sin2->sin_addr.s_addr;
- }
-@@ -238,8 +237,8 @@ nlm_cmp_addr(const struct sockaddr_in *sin1, const struct sockaddr_in *sin2)
-  * Compare two NLM locks.
-  * When the second lock is of type F_UNLCK, this acts like a wildcard.
-  */
--static __inline__ int
--nlm_compare_locks(const struct file_lock *fl1, const struct file_lock *fl2)
-+static inline int nlm_compare_locks(const struct file_lock *fl1,
-+				    const struct file_lock *fl2)
- {
- 	return	fl1->fl_pid   == fl2->fl_pid
- 	     && fl1->fl_owner == fl2->fl_owner
+Herbert, Bruce Fields says you suggested a while back that an
+interface was already there, or was being planned?  Can you give me
+any details?  Could we possibly help?
 
+Another question:  The current checksum code deals only with "md5".
+Support for newer Kerberos encryption types uses keyed hashes.  In an
+extreme case, support for the rc4-hmac Kerberos encryption type
+requires a new hash key be derived for each rpc.  Would this interface
+be able to deal with changing keys as well?  In that same case, the
+"rc4" cipher key changes with each rpc as well.
+
+Thanks,
+K.C.
