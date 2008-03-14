@@ -1,80 +1,113 @@
-From: Adam Schrotenboer <adam-PMR2DCmmWYEAvxtiuMwx3w@public.gmane.org>
-Subject: Re: [opensuse] nfs_update_inode: inode X mode changed, Y to Z
-Date: Fri, 14 Mar 2008 14:36:16 -0700
-Message-ID: <47DAEFD0.9020407@m2000.com>
-References: <47CF0829.4020502@m2000.com>	<1204752463.5035.34.camel@heimdal.trondhjem.org>	<47CF157B.1010908@m2000.com>	<18383.24847.381754.517731@notabene.brown>	<47CF62C5.7000908@m2000.com>	<18384.50909.866848.966192@notabene.brown>	<9a8748490803121513w285cd45rb6b26a3d842cac1b@mail.gmail.com>	<20080312221511.GC31632@fieldses.org>	<9a8748490803121516u36395872i70cc88b0439adc74@mail.gmail.com> <18394.1501.991087.80264@notabene.brown>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH 4/4] NLM: don't requeue block if it was invalidated
+ while GRANT_MSG was in flight
+Date: Fri, 14 Mar 2008 17:39:38 -0400
+Message-ID: <20080314173938.48c4f7cb@tleilax.poochiereds.net>
+References: <1202315653-11840-1-git-send-email-jlayton@redhat.com>
+	<1202315653-11840-2-git-send-email-jlayton@redhat.com>
+	<1202315653-11840-3-git-send-email-jlayton@redhat.com>
+	<1202315653-11840-4-git-send-email-jlayton@redhat.com>
+	<1202315653-11840-5-git-send-email-jlayton@redhat.com>
+	<170fa0d20803141255k41e8e2a3t6a53f4f812a15d7b@mail.gmail.com>
+	<1205529061.27906.86.camel@heimdal.trondhjem.org>
+	<170fa0d20803141421s5c784d16ie1db8e1d57e4b428@mail.gmail.com>
+	<1205530164.27906.100.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
- protocol="application/pgp-signature";
- boundary="------------enigC8D76307EFB12FD7255B880A"
-Cc: Jesper Juhl <jesper.juhl@gmail.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	Trond Myklebust <Trond.Myklebust@netapp.com>,
-	lkml@vger.kernel.org, linux-nfs@vger.kernel.org,
-	Thomas Daniel <tdaniel-PMR2DCmmWYEAvxtiuMwx3w@public.gmane.org>,
-	Frederic Revenu <frevenu-PMR2DCmmWYEAvxtiuMwx3w@public.gmane.org>,
-	Jeff Doan <jdoan-PMR2DCmmWYEAvxtiuMwx3w@public.gmane.org>
-To: Neil Brown <neilb@suse.de>
+Content-Type: text/plain; charset=US-ASCII
+Cc: Mike Snitzer <snitzer@gmail.com>, bfields@fieldses.org,
+	linux-nfs@vger.kernel.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from asterix.m2000.com ([212.155.102.83]:3977 "EHLO
-	asterix.m2000.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754328AbYCNVg3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Mar 2008 17:36:29 -0400
-In-Reply-To: <18394.1501.991087.80264-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
+Received: from mx1.redhat.com ([66.187.233.31]:44992 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755531AbYCNVjx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 14 Mar 2008 17:39:53 -0400
+In-Reply-To: <1205530164.27906.100.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is an OpenPGP/MIME signed message (RFC 2440 and 3156)
---------------enigC8D76307EFB12FD7255B880A
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: quoted-printable
+On Fri, 14 Mar 2008 17:29:24 -0400
+Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
 
-Neil Brown wrote:
-> On Wednesday March 12, jesper.juhl@gmail.com wrote:
->  =20
->> On 12/03/2008, J. Bruce Fields <bfields@fieldses.org> wrote:
->>    =20
->>> What was the exported filesystem?
->>>
->>>      =20
->> XFS
->>
->>    =20
->
-> It's a bit of along shot, but could you try mounting the XFS file
-> system with
->    -o ikeep
->
-> and see if it makes a difference.
->
-> When you have "ikeep", I can find the code that increments the
-> generation number between different uses of the one inode number.
->
-> When you have "noikeep" (which I think is the default) it doesn't keep
-> the inode of disk when deleted and so (presumably) needs generate a
-> random generation number for each use.  But I cannot find the code
-> that does that.  I'm probably not looking in the right place, but I
-> don't think it can hurt to try "-o ikeep".
->
-> NeilBrown
->  =20
-Ok, I've unmounted and remounted with that option enabled (/proc/mounts=20
-confirms it's enabled). We'll see what happens.
+> 
+> On Fri, 2008-03-14 at 17:21 -0400, Mike Snitzer wrote:
+> > On 3/14/08, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+> > >
+> > >  On Fri, 2008-03-14 at 15:55 -0400, Mike Snitzer wrote:
+> > >  > On 2/6/08, Jeff Layton <jlayton@redhat.com> wrote:
+> > >  > > It's possible for lockd to catch a SIGKILL while a GRANT_MSG callback
+> > >  > >  is in flight. If this happens we don't want lockd to insert the block
+> > >  > >  back into the nlm_blocked list.
+> > >  > >
+> > >  > >  This helps that situation, but there's still a possible race. Fixing
+> > >  > >  that will mean adding real locking for nlm_blocked.
+> > >  > >
+> > >  > >  Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > >  > >  ---
+> > >  > >   fs/lockd/svclock.c |   11 +++++++++++
+> > >  > >   1 files changed, 11 insertions(+), 0 deletions(-)
+> > >  > >
+> > >  > >  diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
+> > >  > >  index 82db7b3..fe9bdb4 100644
+> > >  > >  --- a/fs/lockd/svclock.c
+> > >  > >  +++ b/fs/lockd/svclock.c
+> > >  > >  @@ -795,6 +795,17 @@ static void nlmsvc_grant_callback(struct rpc_task *task, void *data)
+> > >  > >
+> > >  > >         dprintk("lockd: GRANT_MSG RPC callback\n");
+> > >  > >
+> > >  > >  +       /* if the block is not on a list at this point then it has
+> > >  > >  +        * been invalidated. Don't try to requeue it.
+> > >  > >  +        *
+> > >  > >  +        * FIXME: it's possible that the block is removed from the list
+> > >  > >  +        * after this check but before the nlmsvc_insert_block. In that
+> > >  > >  +        * case it will be added back. Perhaps we need better locking
+> > >  > >  +        * for nlm_blocked?
+> > >  > >  +        */
+> > >  > >  +       if (list_empty(&block->b_list))
+> > >  > >  +               return;
+> > >  > >  +
+> > >  > >         /* Technically, we should down the file semaphore here. Since we
+> > >  > >          * move the block towards the head of the queue only, no harm
+> > >  > >          * can be done, though. */
+> > >  > >
+> > >  >
+> > >  > Hi Jeff,
+> > >  >
+> > >  > Would the following patch take care of this race?  Two questions I have:
+> > >  > 1) Does my patch address your FIXME?  I believe it should.
+> > >  > 2) Can I get rid of the BKL in nlmsvc_grant_deferred() given this
+> > >  > nlm_blocked serialization?  It is unclear to me if
+> > >  > nlmsvc_grant_deferred() is taking the BKL purely to protect
+> > >  > nlm_blocked.
+> > >
+> > >
+> > > Ugh... NACK!
+> > >
+> > >  We already have the file->f_mutex, so there should be no need to add a
+> > >  global semaphore on top of that.
+> > 
+> > Um, nlm_blocked is global.  file->f_mutex is local.  What am I missing?
+> 
+> The _race_ occurs when the block is temporarily removed and replaced on
+> the list.
+> 
 
+The race I had in mind was:
 
+rpciod: nlmsvc_grant_callback checks to see if the block is on the list
+lockd:  lockd() removes the block from the list after getting a SIGKILL
+rpciod: nlmsvc_grant_callback requeues the block with a new timeout
 
---------------enigC8D76307EFB12FD7255B880A
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: OpenPGP digital signature
-Content-Disposition: attachment; filename="signature.asc"
+...though now that I've looked, it seems like the BKL should prevent
+that particular race.
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.7 (MingW32)
-Comment: Using GnuPG with Mozilla - http://enigmail.mozdev.org
+> This should, AFAIK, only occur while holding the file->f_mutex.
+> Similarly, the GRANTED code should be holding the same lock when looking
+> up the block.
+> 
 
-iD8DBQFH2u/QyWYDdvnGArwRAhoGAKCaCxTuhLA1AAT6yRLzkhUYmuiCwQCeJ3Im
-q386adwF+IShO+0L7NNVRF8=
-=EzTX
------END PGP SIGNATURE-----
+It's not though, is it? I don't think nlmsvc_grant_callback is run
+under the file->f_mutex (unless I'm missing something).
 
---------------enigC8D76307EFB12FD7255B880A--
+-- 
+Jeff Layton <jlayton@redhat.com>
