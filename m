@@ -1,56 +1,72 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 3/6] lockd: refactor SM_MON my_id argument encoder
-Date: Fri, 14 Mar 2008 14:25:46 -0400
-Message-ID: <20080314182546.30171.83469.stgit@manray.1015granger.net>
+From: Michael Tokarev <mjt@tls.msk.ru>
+Subject: Re: 2.6.24: RPC: bad TCP reclen 0x00020090 (large)
+Date: Fri, 14 Mar 2008 21:57:00 +0300
+Message-ID: <47DACA7C.8020807@msgid.tls.msk.ru>
+References: <C4001FE3.3BDB9%tom@opengridcomputing.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Cc: linux-nfs@vger.kernel.org
-To: Trond.Myklebust@netapp.com, bfields@citi.umich.edu
+To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from flpi102.sbcis.sbc.com ([207.115.20.71]:44610 "EHLO
-	flpi102.prodigy.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754730AbYCNS0E (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Mar 2008 14:26:04 -0400
+Received: from hobbit.corpit.ru ([81.13.94.6]:22407 "EHLO hobbit.corpit.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752529AbYCNS5F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 14 Mar 2008 14:57:05 -0400
+In-Reply-To: <C4001FE3.3BDB9%tom@opengridcomputing.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: introduce a new XDR encoder specifically for the my_id
-argument of SM_MON requests.
+Tom Tucker wrote:
+> Michael:
+> 
+>>>>>> On Wed, 13 Feb 2008 17:02:53 +0300 Michael Tokarev <mjt@tls.msk.ru> wrote:
+>>>>>>
+>>>>>>> Hello!
+>>>>>>>
+>>>>>>> After upgrading to 2.6.24 (from .23), we're seeing ALOT
+>>>>>>> of messages like in $subj in dmesg:
+>>>>>>>
+>>>>>>> Feb 13 13:21:39 paltus kernel: RPC: bad TCP reclen 0x00020090 (large)
+>>>>>>> Feb 13 13:21:46 paltus kernel: printk: 3586 messages suppressed.
+>>>>>>> Feb 13 13:21:46 paltus kernel: RPC: bad TCP reclen 0x00020090 (large)
+>>>>>>> Feb 13 13:21:49 paltus kernel: printk: 371 messages suppressed.
+>>>>>>> Feb 13 13:21:49 paltus kernel: RPC: bad TCP reclen 0x00020090 (large)
+>>>>>>> Feb 13 13:21:55 paltus kernel: printk: 2979 messages suppressed.
+>>>>>>> ...
+>>>>>>>
+> 
+> Are you seeing this with the latest bits?  I just want to make sure that
+> this particular close path issue is fixed.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+Err.  I completely forgot about that issue, due to many many other
+issues popped up last few weeks...
 
- fs/lockd/mon.c |   19 +++++++++++++++++++
- 1 files changed, 19 insertions(+), 0 deletions(-)
+Ok.
 
-diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
-index 87bd4e4..06216d6 100644
---- a/fs/lockd/mon.c
-+++ b/fs/lockd/mon.c
-@@ -183,6 +183,25 @@ static __be32 *xdr_encode_mon_name(__be32 *p, struct nsm_args *argp)
- 	return xdr_encode_nsm_string(p, name);
- }
- 
-+/*
-+ * The "my_id" argument specifies the hostname and RPC procedure
-+ * to be called when the status manager receives notification
-+ * (via the SM_NOTIFY call) that the state of host "mon_name"
-+ * has changed.
-+ */
-+static __be32 *xdr_encode_my_id(__be32 *p, struct nsm_args *argp)
-+{
-+	p = xdr_encode_nsm_string(p, utsname()->nodename);
-+	if (!p)
-+		return ERR_PTR(-EIO);
-+
-+	*p++ = htonl(argp->prog);
-+	*p++ = htonl(argp->vers);
-+	*p++ = htonl(argp->proc);
-+
-+	return p;
-+}
-+
- static __be32 *
- xdr_encode_common(struct rpc_rqst *rqstp, __be32 *p, struct nsm_args *argp)
- {
+I tried to reproduce it here.  It happened only once here, when I changed
+the kernel on the NFS server from 2.6.23-i686 to 2.6.24-x86-64, without
+rebooting/remounting clients.  The messages shown above were on the server.
+After remounting the filesystem on clients, the message disappeared.
 
+After that, I tried the same thing with other machines (that one was
+our main production server so no experiments there) -- same clients but
+another server.  I did many reboots with different kernels while the
+clients had filesystems mounted - but wasn't able to reproduce the same
+messages again.
+
+So I don't really know what happened, and even if whatever happened
+was due to single client or not - I wasn't thought about tcpdump at
+the time when I were remounting the clients.  Maybe it was a random
+glitch, maybe it IS a bug - I don't really know by now.
+
+There was another issue before, when after upgrading the server,
+clients were needed to remount stuff or else "ESTALE" were always
+returned.  I think it was around 2.6.21=>2.6.22.  Again, I can't
+reproduce it anymore (with current kernels).
+
+So I think the case can be closed now - esp. since noone (it seems)
+reported similar issues.
+
+Thank you!
+
+/mjt
