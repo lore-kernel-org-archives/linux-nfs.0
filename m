@@ -1,48 +1,70 @@
-From: "Kevin Coffman" <kwc@citi.umich.edu>
-Subject: theoretical rpcsec_gss deadlock
-Date: Fri, 14 Mar 2008 14:23:20 -0400
-Message-ID: <4d569c330803141123o23a35f4bm99ea9ca97a26c59d@mail.gmail.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 2/6] lockd: refactor SM_MON mon_name argument encoder
+Date: Fri, 14 Mar 2008 14:25:39 -0400
+Message-ID: <20080314182539.30171.4746.stgit@manray.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-crypto@vger.kernel.org, linux-nfs@vger.kernel.org
-To: "Herbert Xu" <herbert-lOAM2aK0SrRLBo1qDEOMRrpzq4S04n8Q@public.gmane.org>
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org
+To: Trond.Myklebust@netapp.com, bfields@citi.umich.edu
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rn-out-0910.google.com ([64.233.170.191]:23652 "EHLO
-	rn-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754067AbYCNSXW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Mar 2008 14:23:22 -0400
-Received: by rn-out-0910.google.com with SMTP id v46so2866113rnb.15
-        for <linux-nfs@vger.kernel.org>; Fri, 14 Mar 2008 11:23:20 -0700 (PDT)
+Received: from flpi102.sbcis.sbc.com ([207.115.20.71]:44527 "EHLO
+	flpi102.prodigy.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752999AbYCNSZ4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Mar 2008 14:25:56 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The rpcsec_gss code used for NFS currently does basically the
-following to create a checksum for each rpc:
+Clean up: introduce a new XDR encoder specifically for the mon_name
+argument of SM_MON requests.  This will be updated later to support IPv6
+addresses in addition to IPv4 addresses.
 
-  crypto_alloc_hash()
-  crypto_hash_init()
-  crypto_hash_update() ...
-  crypto_hash_final()
-  crypto_free_hash()
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-The crypto_alloc_hash() poses a possible deadlock situation.
-(Although it hasn't been a problem so far in practice.)  It would be
-preferable to allocate the transform once in a context (shared by
-multiple tasks).  However, doing so seems to cause problems with bad
-checksums.  We'd rather not have to add a spinlock to serialize its
-use.  Is there a way to allocate state information on the stack (or
-elsewhere) such that the transform can be shared simultaneously?
+ fs/lockd/mon.c |   25 +++++++++++++++++++++++++
+ 1 files changed, 25 insertions(+), 0 deletions(-)
 
-Herbert, Bruce Fields says you suggested a while back that an
-interface was already there, or was being planned?  Can you give me
-any details?  Could we possibly help?
+diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
+index 84fd84c..87bd4e4 100644
+--- a/fs/lockd/mon.c
++++ b/fs/lockd/mon.c
+@@ -18,6 +18,8 @@
+ 
+ #define NLMDBG_FACILITY		NLMDBG_MONITOR
+ 
++#define XDR_ADDRBUF_LEN		(20)
++
+ static struct rpc_clnt *	nsm_create(void);
+ 
+ static struct rpc_program	nsm_program;
+@@ -158,6 +160,29 @@ static __be32 *xdr_encode_nsm_string(__be32 *p, char *string)
+ 	return xdr_encode_opaque(p, string, len);
+ }
+ 
++/*
++ * "mon_name" specifies the host to be monitored.
++ *
++ * Linux uses a text version of the IP address of the remote
++ * host as the host identifier (the "mon_name" argument).
++ *
++ * Linux statd always looks up the canonical hostname first for
++ * whatever remote hostname it receives, so this works alright.
++ */
++static __be32 *xdr_encode_mon_name(__be32 *p, struct nsm_args *argp)
++{
++	char	buffer[XDR_ADDRBUF_LEN + 1];
++	char	*name = argp->mon_name;
++
++	if (!nsm_use_hostnames) {
++		snprintf(buffer, XDR_ADDRBUF_LEN,
++			 NIPQUAD_FMT, NIPQUAD(argp->addr));
++		name = buffer;
++	}
++
++	return xdr_encode_nsm_string(p, name);
++}
++
+ static __be32 *
+ xdr_encode_common(struct rpc_rqst *rqstp, __be32 *p, struct nsm_args *argp)
+ {
 
-Another question:  The current checksum code deals only with "md5".
-Support for newer Kerberos encryption types uses keyed hashes.  In an
-extreme case, support for the rc4-hmac Kerberos encryption type
-requires a new hash key be derived for each rpc.  Would this interface
-be able to deal with changing keys as well?  In that same case, the
-"rc4" cipher key changes with each rpc as well.
-
-Thanks,
-K.C.
