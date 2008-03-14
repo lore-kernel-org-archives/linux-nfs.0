@@ -1,30 +1,30 @@
-From: Jeff Layton <jlayton@redhat.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: [PATCH 4/4] NLM: don't requeue block if it was invalidated
- while GRANT_MSG was in flight
-Date: Fri, 14 Mar 2008 17:01:20 -0400
-Message-ID: <20080314170120.790f99a9@tleilax.poochiereds.net>
+	while GRANT_MSG was in flight
+Date: Fri, 14 Mar 2008 17:11:01 -0400
+Message-ID: <1205529061.27906.86.camel@heimdal.trondhjem.org>
 References: <1202315653-11840-1-git-send-email-jlayton@redhat.com>
-	<1202315653-11840-2-git-send-email-jlayton@redhat.com>
-	<1202315653-11840-3-git-send-email-jlayton@redhat.com>
-	<1202315653-11840-4-git-send-email-jlayton@redhat.com>
-	<1202315653-11840-5-git-send-email-jlayton@redhat.com>
-	<170fa0d20803141255k41e8e2a3t6a53f4f812a15d7b@mail.gmail.com>
+	 <1202315653-11840-2-git-send-email-jlayton@redhat.com>
+	 <1202315653-11840-3-git-send-email-jlayton@redhat.com>
+	 <1202315653-11840-4-git-send-email-jlayton@redhat.com>
+	 <1202315653-11840-5-git-send-email-jlayton@redhat.com>
+	 <170fa0d20803141255k41e8e2a3t6a53f4f812a15d7b@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-To: "Mike Snitzer" <snitzer@gmail.com>
+Content-Type: text/plain
+Cc: Jeff Layton <jlayton@redhat.com>, bfields@fieldses.org,
+	linux-nfs@vger.kernel.org
+To: Mike Snitzer <snitzer@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:38618 "EHLO mx1.redhat.com"
+Received: from pat.uio.no ([129.240.10.15]:37430 "EHLO pat.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752548AbYCNVBZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 14 Mar 2008 17:01:25 -0400
+	id S1754789AbYCNVLS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 14 Mar 2008 17:11:18 -0400
 In-Reply-To: <170fa0d20803141255k41e8e2a3t6a53f4f812a15d7b-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 14 Mar 2008 15:55:38 -0400
-"Mike Snitzer" <snitzer@gmail.com> wrote:
 
+On Fri, 2008-03-14 at 15:55 -0400, Mike Snitzer wrote:
 > On 2/6/08, Jeff Layton <jlayton@redhat.com> wrote:
 > > It's possible for lockd to catch a SIGKILL while a GRANT_MSG callback
 > >  is in flight. If this happens we don't want lockd to insert the block
@@ -66,44 +66,15 @@ On Fri, 14 Mar 2008 15:55:38 -0400
 > 
 > Would the following patch take care of this race?  Two questions I have:
 > 1) Does my patch address your FIXME?  I believe it should.
-
-I don't think so. I think you'd have to have nlmsvc_grant_callback()
-take and hold your nlm_blocked_mutex over the whole function.
-
 > 2) Can I get rid of the BKL in nlmsvc_grant_deferred() given this
 > nlm_blocked serialization?  It is unclear to me if
 > nlmsvc_grant_deferred() is taking the BKL purely to protect
 > nlm_blocked.
-> 
 
-I'm not at all clear on why we have so much of this done under the BKL.
-I'm not sure that anyone does. If you could figure it out and document
-it, you'd be my hero. My understanding was that it had more to do with
-VFS locking, but I could certainly be wrong on this.
+Ugh... NACK!
 
-Now that you mention it though, it does look like we do rpc_call_done
-under the BKL. So you may be right that that's actually protecting
-nlm_blocked here. My FIXME may be bogus.
+We already have the file->f_mutex, so there should be no need to add a
+global semaphore on top of that.
 
-The main user of nlm_blocked is lockd itself. I don't think anything
-else generally touches that list. Since lockd is single-threaded by
-design, locking the list may be unnecessary. The exception is the grant
-callback here, which runs from rpciod. But if that's protected by the
-BKL, it may not be a problem.
+Trond
 
-> As an aside, I'm not convinced that the SIGKILL-only assertion you're
-> making about the block not being on the list is valid considering it
-> looks to me like there is a race in nlmsvc_lock().
-> 
-> The block isn't added to nlm_blocked until after there is an opening
-> for the FS to callback via fl_grant().  Whereby causing
-> nlmsvc_grant_callback() to not find the block on the list.
-> 
-
-I'm not sure I see this race. nlmsvc_grant_callback() won't get called
-until after nlmsvc_grant_blocked() has does the RPC call. That doesn't
-happen until the block has been added to the list. Can you elaborate on
-the race you're seeing?
-
--- 
-Jeff Layton <jlayton@redhat.com>
