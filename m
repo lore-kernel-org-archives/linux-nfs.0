@@ -1,42 +1,52 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: 2.6.24: RPC: bad TCP reclen 0x00020090 (large)
-Date: Fri, 14 Mar 2008 20:10:14 -0400
-Message-ID: <20080315001014.GT2119@fieldses.org>
-References: <20080314190645.GJ2119@fieldses.org> <C4003B51.3BE6A%tom@opengridcomputing.com>
+From: Herbert Xu <herbert-lOAM2aK0SrRLBo1qDEOMRrpzq4S04n8Q@public.gmane.org>
+Subject: Re: theoretical rpcsec_gss deadlock
+Date: Sat, 15 Mar 2008 09:18:12 +0800
+Message-ID: <20080315011812.GA24837@gondor.apana.org.au>
+References: <4d569c330803141123o23a35f4bm99ea9ca97a26c59d@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Michael Tokarev <mjt@tls.msk.ru>, linux-nfs@vger.kernel.org
-To: Tom Tucker <tom@opengridcomputing.com>
+Cc: linux-crypto@vger.kernel.org, linux-nfs@vger.kernel.org
+To: Kevin Coffman <kwc@citi.umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:54249 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751291AbYCOAKR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 14 Mar 2008 20:10:17 -0400
-In-Reply-To: <C4003B51.3BE6A%tom@opengridcomputing.com>
+Received: from rhun.apana.org.au ([64.62.148.172]:42122 "EHLO
+	arnor.apana.org.au" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753807AbYCOBSQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Mar 2008 21:18:16 -0400
+In-Reply-To: <4d569c330803141123o23a35f4bm99ea9ca97a26c59d-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Mar 14, 2008 at 02:25:21PM -0500, Tom Tucker wrote:
-> 
-> Michael:
-> 
-> Thanks for the update. BTW, the perfect "positive fix indication" would be
-> seeing a single "...bad TCP reclen..." message in the log for the
-> reconnecting/confused client.
+On Fri, Mar 14, 2008 at 02:23:20PM -0400, Kevin Coffman wrote:
+>
+> Herbert, Bruce Fields says you suggested a while back that an
+> interface was already there, or was being planned?  Can you give me
+> any details?  Could we possibly help?
 
-Hm.  This may be entirely unrelated (and not at all your responsibility)
-but
+Have a look at the linux-crypto archive for the async hash patch
+that was posted in January/February.  That will eventually allow
+the same tfm to be used in parallel.  However, there is much work
+to be done as all existing transforms would have to be updated for
+this.
 
-	 ./testserver.py server:/ --rundeps -v WRT5
+> Another question:  The current checksum code deals only with "md5".
+> Support for newer Kerberos encryption types uses keyed hashes.  In an
+> extreme case, support for the rc4-hmac Kerberos encryption type
+> requires a new hash key be derived for each rpc.  Would this interface
+> be able to deal with changing keys as well?  In that same case, the
+> "rc4" cipher key changes with each rpc as well.
 
-with newpynfs:
+Sorry, but setting the key is an expensive operation in general,
+so the rule is one tfm per key to allow simultaneous operations
+on the same key.
 
-	http://www.citi.umich.edu/projects/nfsv4/pynfs/
+However, if hmac is the only mode you're ever going to support,
+you could consider implementing hmac by hand which would allow you
+to share the underlying algorithm tfm object.  This is because
+the hmac key just gets hashed into the underlying tfm.
 
-gets me a "RPC: bad TCP reclen 0x00000800 (non-terminal)" and a test
-failure.  Hm.  It may be that newpynfs is doing something intolerably
-weird and the server's just dropping the request instead of returning an
-error.  OK, probably totally unrelated.  I haven't looked hard enough
-yet.
-
---b.
+Cheers,
+-- 
+Visit Openswan at http://www.openswan.org/
+Email: Herbert Xu ~{PmV>HI~} <herbert-lOAM2aK0SrRLBo1qDEOMRrpzq4S04n8Q@public.gmane.org>
+Home Page: http://gondor.apana.org.au/~herbert/
+PGP Key: http://gondor.apana.org.au/~herbert/pubkey.txt
