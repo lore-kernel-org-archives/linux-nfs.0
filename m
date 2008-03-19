@@ -1,133 +1,105 @@
-From: Fredric Isaman <iisaman@citi.umich.edu>
-Subject: Re: [PATCH 2/2] nfs: don't ignore return value from nfs_pageio_add_request
-Date: Wed, 19 Mar 2008 17:48:23 -0400 (EDT)
-Message-ID: <Pine.BSO.4.64.0803191748090.26161@citi.umich.edu>
-References: <1205940280-10479-1-git-send-email-iisaman@citi.umich.edu>
- <1205940280-10479-2-git-send-email-iisaman@citi.umich.edu>
- <1205940280-10479-3-git-send-email-iisaman@citi.umich.edu>
- <1205959447.14710.3.camel@heimdal.trondhjem.org> <1205962751.18643.9.camel@heimdal.trondhjem.org>
+From: "Kevin Coffman" <kwc@citi.umich.edu>
+Subject: Re: nfs-utils-1.1.2
+Date: Wed, 19 Mar 2008 18:03:52 -0400
+Message-ID: <4d569c330803191503g73ec5100y155aed65c8545fd0@mail.gmail.com>
+References: <x63aqnq6vw@gzp>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
+Content-Type: text/plain; charset=ISO-8859-1
 Cc: linux-nfs@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: "Gabor Z. Papp" <gzp-2g/1Y3AqmNE@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from citi.umich.edu ([141.211.133.111]:30353 "EHLO citi.umich.edu"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933832AbYCSVsZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 19 Mar 2008 17:48:25 -0400
-In-Reply-To: <1205962751.18643.9.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from gv-out-0910.google.com ([216.239.58.186]:43635 "EHLO
+	gv-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1161455AbYCSWDz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Mar 2008 18:03:55 -0400
+Received: by gv-out-0910.google.com with SMTP id s4so247136gve.37
+        for <linux-nfs@vger.kernel.org>; Wed, 19 Mar 2008 15:03:53 -0700 (PDT)
+In-Reply-To: <x63aqnq6vw@gzp>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-ACK.
+Yes, both idmapd and libnfsidmap have cfg.[ch] to process the config
+file.  The version in idmapd has been enhanced to add a new function,
+conf_get_str_with_def.
 
- 	Fred
+To get around the problem you're seeing, I'd suggest removing cfg.c
+from the list of files in libnfsidmap.
 
+I'll have to think about a permanent solution, which may be to have
+idmapd use the code in libnfsidmap.
 
-On Wed, 19 Mar 2008, Trond Myklebust wrote:
+BTW, why do you need to statically link libnfsidmap?
 
+K.C.
+
+On Wed, Mar 19, 2008 at 7:40 AM, Gabor Z. Papp <gzp-2g/1Y3AqmNE@public.gmane.org> wrote:
+> Hello,
 >
-> On Wed, 2008-03-19 at 16:44 -0400, Trond Myklebust wrote:
->> Please could you reverse the order of these two patches. I'd like to
->> send this one in for 2.6.25, but I can't do that as long as it depends
->> on the previous patch.
+>  I'm trying to compile nfs-utils 1.1.2 with nfs4 support, but in the
+>  following environment:
 >
-> I ended up doing this myself, since I'd like to prepare this for merging
-> as soon as possible. Please could you ack the following updated patch.
+>  Linux 2.4
+>  glibc 2.3.5
+>  static libevent and libnfsidmap
 >
-> Cheers
->  Trond
+>  I'm getting the following problem:
 >
-> ---------------------------------
-> From: Fred Isaman <iisaman@citi.umich.edu>
-> Date: Wed, 19 Mar 2008 11:24:39 -0400
-> nfs: don't ignore return value from nfs_pageio_add_request
+>  /bin/sh ../../libtool --tag=CC   --mode=link gcc -Wall -Wstrict-prototypes  -pipe -g -O2   -o idmapd atomicio.o cfg.o idmapd.o strlcat.o strlcpy.o -lrt -levent -lnfsidmap ../../support/nfs/libnfs.a
+>  gcc -Wall -Wstrict-prototypes -pipe -g -O2 -o idmapd atomicio.o cfg.o idmapd.o strlcat.o strlcpy.o  -lrt -levent -lnfsidmap ../../support/nfs/libnfs.a
+>  /pkg/lib/gcc/i686-pc-linux-gnu/4.2.4/../../../libnfsidmap.a(cfg.o): In function `conf_begin':
+>  /home/gzp/src/libnfsidmap-0.20/cfg.c:641: multiple definition of `conf_begin'
+>  cfg.o:/home/gzp/src/nfs-utils-1.1.2/utils/idmapd/cfg.c:628: first defined here
+>  /pkg/lib/gcc/i686-pc-linux-gnu/4.2.4/../../../libnfsidmap.a(cfg.o): In function `conf_decode_base64':
+>  /home/gzp/src/libnfsidmap-0.20/cfg.c:558: multiple definition of `conf_decode_base64'
+>  cfg.o:/home/gzp/src/nfs-utils-1.1.2/utils/idmapd/cfg.c:545: first defined here
+>  /pkg/lib/gcc/i686-pc-linux-gnu/4.2.4/../../../libnfsidmap.a(cfg.o):(.rodata+0x60): multiple definition of `asc2bin'
+>  cfg.o:(.rodata+0x60): first defined here
+>  /pkg/lib/gcc/i686-pc-linux-gnu/4.2.4/../../../libnfsidmap.a(cfg.o): In function `conf_report':
+>  /home/gzp/src/libnfsidmap-0.20/cfg.c:829: multiple definition of `conf_report'
+>  cfg.o:/home/gzp/src/nfs-utils-1.1.2/utils/idmapd/cfg.c:816: first defined here
+>  /pkg/lib/gcc/i686-pc-linux-gnu/4.2.4/../../../libnfsidmap.a(cfg.o): In function `conf_free_list':
+>  /home/gzp/src/libnfsidmap-0.20/cfg.c:622: multiple definition of `conf_free_list'
+>  cfg.o:/home/gzp/src/nfs-utils-1.1.2/utils/idmapd/cfg.c:609: first defined here
+>  /pkg/lib/gcc/i686-pc-linux-gnu/4.2.4/../../../libnfsidmap.a(cfg.o): In function `conf_remove_section':
+>  /home/gzp/src/libnfsidmap-0.20/cfg.c:738: multiple definition of `conf_remove_section'
+>  cfg.o:/home/gzp/src/nfs-utils-1.1.2/utils/idmapd/cfg.c:725: first defined here
+>  /pkg/lib/gcc/i686-pc-linux-gnu/4.2.4/../../../libnfsidmap.a(cfg.o): In function `conf_remove':
+>  /home/gzp/src/libnfsidmap-0.20/cfg.c:707: multiple definition of `conf_remove'
+>  cfg.o:/home/gzp/src/nfs-utils-1.1.2/utils/idmapd/cfg.c:694: first defined here
+>  /pkg/lib/gcc/i686-pc-linux-gnu/4.2.4/../../../libnfsidmap.a(cfg.o): In function `conf_set':
+>  /home/gzp/src/libnfsidmap-0.20/cfg.c:666: multiple definition of `conf_set'
+>  cfg.o:/home/gzp/src/nfs-utils-1.1.2/utils/idmapd/cfg.c:653: first defined here
+>  /pkg/lib/gcc/i686-pc-linux-gnu/4.2.4/../../../libnfsidmap.a(cfg.o): In function `conf_get_tag_list':
+>  /home/gzp/src/libnfsidmap-0.20/cfg.c:524: multiple definition of `conf_get_tag_list'
+>  cfg.o:/home/gzp/src/nfs-utils-1.1.2/utils/idmapd/cfg.c:509: first defined here
+>  /pkg/lib/gcc/i686-pc-linux-gnu/4.2.4/../../../libnfsidmap.a(cfg.o): In function `conf_get_str':
+>  /home/gzp/src/libnfsidmap-0.20/cfg.c:435: multiple definition of `conf_get_str'
+>  cfg.o:/home/gzp/src/nfs-utils-1.1.2/utils/idmapd/cfg.c:435: first defined here
+>  /pkg/lib/gcc/i686-pc-linux-gnu/4.2.4/../../../libnfsidmap.a(cfg.o): In function `conf_get_list':
+>  /home/gzp/src/libnfsidmap-0.20/cfg.c:471: multiple definition of `conf_get_list'
+>  cfg.o:/home/gzp/src/nfs-utils-1.1.2/utils/idmapd/cfg.c:454: first defined here
+>  /pkg/lib/gcc/i686-pc-linux-gnu/4.2.4/../../../libnfsidmap.a(cfg.o): In function `conf_match_num':
+>  /home/gzp/src/libnfsidmap-0.20/cfg.c:410: multiple definition of `conf_match_num'
+>  cfg.o:/home/gzp/src/nfs-utils-1.1.2/utils/idmapd/cfg.c:410: first defined here
+>  /pkg/lib/gcc/i686-pc-linux-gnu/4.2.4/../../../libnfsidmap.a(cfg.o): In function `conf_get_num':
+>  /home/gzp/src/libnfsidmap-0.20/cfg.c:399: multiple definition of `conf_get_num'
+>  cfg.o:/home/gzp/src/nfs-utils-1.1.2/utils/idmapd/cfg.c:399: first defined here
+>  /pkg/lib/gcc/i686-pc-linux-gnu/4.2.4/../../../libnfsidmap.a(cfg.o): In function `conf_end':
+>  /home/gzp/src/libnfsidmap-0.20/cfg.c:761: multiple definition of `conf_end'
+>  cfg.o:/home/gzp/src/nfs-utils-1.1.2/utils/idmapd/cfg.c:748: first defined here
+>  /pkg/lib/gcc/i686-pc-linux-gnu/4.2.4/../../../libnfsidmap.a(cfg.o): In function `conf_reinit':
+>  /home/gzp/src/libnfsidmap-0.20/cfg.c:328: multiple definition of `conf_reinit'
+>  cfg.o:/home/gzp/src/nfs-utils-1.1.2/utils/idmapd/cfg.c:328: first defined here
+>  /pkg/lib/gcc/i686-pc-linux-gnu/4.2.4/../../../libnfsidmap.a(cfg.o): In function `conf_init':
+>  /home/gzp/src/libnfsidmap-0.20/cfg.c:316: multiple definition of `conf_init'
+>  cfg.o:/home/gzp/src/nfs-utils-1.1.2/utils/idmapd/cfg.c:316: first defined here
+>  /pkg/lib/gcc/i686-pc-linux-gnu/4.2.4/../../../libnfsidmap.a(cfg.o):(.rodata+0x0): multiple definition of `bin2asc'
+>  cfg.o:(.rodata+0x0): first defined here
+>  collect2: ld returned 1 exit status
+>  make: *** [idmapd] Error 1
+>  --
+>  To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>  the body of a message to majordomo@vger.kernel.org
+>  More majordomo info at  http://vger.kernel.org/majordomo-info.html
 >
-> Ignoring the return value from nfs_pageio_add_request can cause deadlocks.
->
-> In read path:
->  call nfs_pageio_add_request from readpage_async_filler
->  assume at this point that there are requests already in desc, that
->    can't be merged with the current request.
->  so nfs_pageio_doio is fired up to clear out desc.
->  assume something goes wrong in setting up the io, so desc->pg_error is set.
->  This causes nfs_pageio_add_request to return 0, *WITHOUT* adding the original
->    request.
->  BUT, since return code is ignored, readpage_async_filler assumes it has
->    been added, and does nothing further, leaving page locked.
->  do_generic_mapping_read will eventually call lock_page, resulting in deadlock
->
-> In write path:
->  page is marked dirty by generic_perform_write
->  nfs_writepages is called
->  call nfs_pageio_add_request from nfs_page_async_flush
->  assume at this point that there are requests already in desc, that
->    can't be merged with the current request.
->  so nfs_pageio_doio is fired up to clear out desc.
->  assume something goes wrong in setting up the io, so desc->pg_error is set.
->  This causes nfs_page_async_flush to return 0, *WITHOUT* adding the original
->    request, yet marking the request as locked (PG_BUSY) and in writeback,
->    clearing dirty marks.
->  The next time a write is done to the page, deadlock will result as
->    nfs_write_end calls nfs_update_request
->
-> Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> ---
->
-> fs/nfs/read.c  |    5 ++++-
-> fs/nfs/write.c |    8 +++++++-
-> 2 files changed, 11 insertions(+), 2 deletions(-)
->
-> diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-> index be9e827..ab2f7d2 100644
-> --- a/fs/nfs/read.c
-> +++ b/fs/nfs/read.c
-> @@ -531,7 +531,10 @@ readpage_async_filler(void *data, struct page *page)
->
-> 	if (len < PAGE_CACHE_SIZE)
-> 		zero_user_segment(page, len, PAGE_CACHE_SIZE);
-> -	nfs_pageio_add_request(desc->pgio, new);
-> +	if (!nfs_pageio_add_request(desc->pgio, new)) {
-> +		error = desc->pgio->pg_error;
-> +		goto out_unlock;
-> +	}
-> 	return 0;
-> out_error:
-> 	error = PTR_ERR(new);
-> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-> index 3051302..7a2ba26 100644
-> --- a/fs/nfs/write.c
-> +++ b/fs/nfs/write.c
-> @@ -39,6 +39,7 @@ static struct nfs_page * nfs_update_request(struct nfs_open_context*,
-> 					    unsigned int, unsigned int);
-> static void nfs_pageio_init_write(struct nfs_pageio_descriptor *desc,
-> 				  struct inode *inode, int ioflags);
-> +static void nfs_redirty_request(struct nfs_page *req);
-> static const struct rpc_call_ops nfs_write_partial_ops;
-> static const struct rpc_call_ops nfs_write_full_ops;
-> static const struct rpc_call_ops nfs_commit_ops;
-> @@ -279,7 +280,12 @@ static int nfs_page_async_flush(struct nfs_pageio_descriptor *pgio,
-> 		BUG();
-> 	}
-> 	spin_unlock(&inode->i_lock);
-> -	nfs_pageio_add_request(pgio, req);
-> +	if (!nfs_pageio_add_request(pgio, req)) {
-> +		nfs_redirty_request(req);
-> +		nfs_end_page_writeback(page);
-> +		nfs_clear_page_tag_locked(req);
-> +		return pgio->pg_error;
-> +	}
-> 	return 0;
-> }
->
->
->
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
->
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
 >
