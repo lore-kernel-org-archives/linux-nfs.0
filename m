@@ -1,51 +1,56 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: [PATCH 2/2] nfs: don't ignore return value from
 	nfs_pageio_add_request
-Date: Wed, 19 Mar 2008 11:14:35 -0400
-Message-ID: <1205939675.8388.61.camel@heimdal.trondhjem.org>
+Date: Wed, 19 Mar 2008 10:50:39 -0400
+Message-ID: <1205938239.8388.50.camel@heimdal.trondhjem.org>
 References: <1205936000-9336-1-git-send-email-iisaman@citi.umich.edu>
 	 <1205936000-9336-2-git-send-email-iisaman@citi.umich.edu>
-	 <1205938696.8388.53.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain
 Cc: linux-nfs@vger.kernel.org
 To: Fred Isaman <iisaman@citi.umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:35439 "EHLO mx2.netapp.com"
+Received: from pat.uio.no ([129.240.10.15]:46066 "EHLO pat.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756510AbYCSTfa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 19 Mar 2008 15:35:30 -0400
-In-Reply-To: <1205938696.8388.53.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+	id S1754568AbYCSTgh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 19 Mar 2008 15:36:37 -0400
+In-Reply-To: <1205936000-9336-2-git-send-email-iisaman@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Wed, 2008-03-19 at 10:58 -0400, Trond Myklebust wrote:
-> On Wed, 2008-03-19 at 10:13 -0400, Fred Isaman wrote:
-> > Ignoring the return value from nfs_pageio_add_request can cause deadlocks.
-> > 
-> > In read path:
-> >   call nfs_pageio_add_request from readpage_async_filler
-> >   assume at this point that there are requests already in desc, that
-> >     can't be merged with the current request.
-> >   so nfs_pageio_doio is fired up to clear out desc.
-> >   assume something goes wrong in setting up the io, so desc->pg_error is set.
-> >   This causes nfs_pageio_add_request to return 0, *WITHOUT* adding the original
-> >     request.
-> >   BUT, since return code is ignored, readpage_async_filler assumes it has
-> >     been added, and does nothing further, leaving page locked.
-> >   do_generic_mapping_read will eventually call lock_page, resulting in deadlock
+On Wed, 2008-03-19 at 10:13 -0400, Fred Isaman wrote:
+> Ignoring the return value from nfs_pageio_add_request can cause deadlocks.
 > 
-> BTW: the same bug may occur in nfs_readpage_async(). I'll add a fixup
-> for that to your patch.
+> In read path:
+>   call nfs_pageio_add_request from readpage_async_filler
+>   assume at this point that there are requests already in desc, that
+>     can't be merged with the current request.
+>   so nfs_pageio_doio is fired up to clear out desc.
+>   assume something goes wrong in setting up the io, so desc->pg_error is set.
+>   This causes nfs_pageio_add_request to return 0, *WITHOUT* adding the original
+>     request.
+>   BUT, since return code is ignored, readpage_async_filler assumes it has
+>     been added, and does nothing further, leaving page locked.
+>   do_generic_mapping_read will eventually call lock_page, resulting in deadlock
+> 
+> In write path:
+>   page is marked dirty by generic_perform_write
+>   nfs_writepages is called
+>   call nfs_pageio_add_request from nfs_page_async_flush
+>   assume at this point that there are requests already in desc, that
+>     can't be merged with the current request.
+>   so nfs_pageio_doio is fired up to clear out desc.
+>   assume something goes wrong in setting up the io, so desc->pg_error is set.
+>   This causes nfs_page_async_flush to return 0, *WITHOUT* adding the original
+>     request, yet marking the request as locked (PG_BUSY) and in writeback,
+>     clearing dirty marks.
+>   The next time a write is done to the page, deadlock will result as
+>     nfs_write_end calls nfs_update_request
+> 
+> Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
 
-Oops... My bad. nfs_readpage_async() appears to be fine. I'll go have
-another coffee...
+Applied. Thanks Fred!
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+
