@@ -1,85 +1,107 @@
-From: Fred Isaman <iisaman@citi.umich.edu>
-Subject: [PATCH 2/2] nfs: don't ignore return value from nfs_pageio_add_request
-Date: Wed, 19 Mar 2008 10:13:20 -0400
-Message-ID: <1205936000-9336-2-git-send-email-iisaman@citi.umich.edu>
-References: <1205936000-9336-1-git-send-email-iisaman@citi.umich.edu>
-Cc: linux-nfs@vger.kernel.org, Fred Isaman <iisaman@citi.umich.edu>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH 2/2] nfs: don't ignore return value from
+	nfs_pageio_add_request
+Date: Wed, 19 Mar 2008 16:44:07 -0400
+Message-ID: <1205959447.14710.3.camel@heimdal.trondhjem.org>
+References: <1205940280-10479-1-git-send-email-iisaman@citi.umich.edu>
+	 <1205940280-10479-2-git-send-email-iisaman@citi.umich.edu>
+	 <1205940280-10479-3-git-send-email-iisaman@citi.umich.edu>
+Mime-Version: 1.0
+Content-Type: text/plain
+Cc: linux-nfs@vger.kernel.org
+To: Fred Isaman <iisaman@citi.umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from citi.umich.edu ([141.211.133.111]:9158 "EHLO citi.umich.edu"
+Received: from pat.uio.no ([129.240.10.15]:32814 "EHLO pat.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1765409AbYCSUOw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 19 Mar 2008 16:14:52 -0400
-In-Reply-To: <1205936000-9336-1-git-send-email-iisaman@citi.umich.edu>
+	id S934760AbYCSUoM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 19 Mar 2008 16:44:12 -0400
+In-Reply-To: <1205940280-10479-3-git-send-email-iisaman@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ignoring the return value from nfs_pageio_add_request can cause deadlocks.
 
-In read path:
-  call nfs_pageio_add_request from readpage_async_filler
-  assume at this point that there are requests already in desc, that
-    can't be merged with the current request.
-  so nfs_pageio_doio is fired up to clear out desc.
-  assume something goes wrong in setting up the io, so desc->pg_error is set.
-  This causes nfs_pageio_add_request to return 0, *WITHOUT* adding the original
-    request.
-  BUT, since return code is ignored, readpage_async_filler assumes it has
-    been added, and does nothing further, leaving page locked.
-  do_generic_mapping_read will eventually call lock_page, resulting in deadlock
+On Wed, 2008-03-19 at 11:24 -0400, Fred Isaman wrote:
+> Ignoring the return value from nfs_pageio_add_request can cause deadlocks.
+> 
+> In read path:
+>   call nfs_pageio_add_request from readpage_async_filler
+>   assume at this point that there are requests already in desc, that
+>     can't be merged with the current request.
+>   so nfs_pageio_doio is fired up to clear out desc.
+>   assume something goes wrong in setting up the io, so desc->pg_error is set.
+>   This causes nfs_pageio_add_request to return 0, *WITHOUT* adding the original
+>     request.
+>   BUT, since return code is ignored, readpage_async_filler assumes it has
+>     been added, and does nothing further, leaving page locked.
+>   do_generic_mapping_read will eventually call lock_page, resulting in deadlock
+> 
+> In write path:
+>   page is marked dirty by generic_perform_write
+>   nfs_writepages is called
+>   call nfs_pageio_add_request from nfs_page_async_flush
+>   assume at this point that there are requests already in desc, that
+>     can't be merged with the current request.
+>   so nfs_pageio_doio is fired up to clear out desc.
+>   assume something goes wrong in setting up the io, so desc->pg_error is set.
+>   This causes nfs_page_async_flush to return 0, *WITHOUT* adding the original
+>     request, yet marking the request as locked (PG_BUSY) and in writeback,
+>     clearing dirty marks.
+>   The next time a write is done to the page, deadlock will result as
+>     nfs_write_end calls nfs_update_request
+> 
+> Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+> ---
+>  fs/nfs/read.c  |    5 ++++-
+>  fs/nfs/write.c |    6 +++++-
+>  2 files changed, 9 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+> index 3d7d963..77f8ac9 100644
+> --- a/fs/nfs/read.c
+> +++ b/fs/nfs/read.c
+> @@ -533,7 +533,10 @@ readpage_async_filler(void *data, struct page *page)
+>  
+>  	if (len < PAGE_CACHE_SIZE)
+>  		zero_user_segment(page, len, PAGE_CACHE_SIZE);
+> -	nfs_pageio_add_request(desc->pgio, new);
+> +	if (!nfs_pageio_add_request(desc->pgio, new)) {
+> +		error = desc->pagio->pg_error;
 
-In write path:
-  page is marked dirty by generic_perform_write
-  nfs_writepages is called
-  call nfs_pageio_add_request from nfs_page_async_flush
-  assume at this point that there are requests already in desc, that
-    can't be merged with the current request.
-  so nfs_pageio_doio is fired up to clear out desc.
-  assume something goes wrong in setting up the io, so desc->pg_error is set.
-  This causes nfs_page_async_flush to return 0, *WITHOUT* adding the original
-    request, yet marking the request as locked (PG_BUSY) and in writeback,
-    clearing dirty marks.
-  The next time a write is done to the page, deadlock will result as
-    nfs_write_end calls nfs_update_request
+                          ^^^^^^^^^^^^^ this has never been
+compile-tested.
 
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
----
- fs/nfs/read.c  |    5 ++++-
- fs/nfs/write.c |    5 ++++-
- 2 files changed, 8 insertions(+), 2 deletions(-)
+> +		goto out_unlock;
+> +	}
+>  	return 0;
+>  out_error:
+>  	error = PTR_ERR(new);
+> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+> index df85b7b..a146089 100644
+> --- a/fs/nfs/write.c
+> +++ b/fs/nfs/write.c
+> @@ -39,6 +39,7 @@ static struct nfs_page * nfs_update_request(struct nfs_open_context*,
+>  					    unsigned int, unsigned int);
+>  static void nfs_pageio_init_write(struct nfs_pageio_descriptor *desc,
+>  				  struct inode *inode, int ioflags);
+> +static void nfs_redirty_request(struct nfs_page *req);
+>  static const struct rpc_call_ops nfs_write_partial_ops;
+>  static const struct rpc_call_ops nfs_write_full_ops;
+>  static const struct rpc_call_ops nfs_commit_ops;
+> @@ -288,7 +289,10 @@ static int nfs_page_async_flush(struct nfs_pageio_descriptor *pgio,
+>  		BUG();
+>  	}
+>  	spin_unlock(&inode->i_lock);
+> -	nfs_pageio_add_request(pgio, req);
+> +	if (!nfs_pageio_add_request(pgio, req)) {
+> +		nfs_redirty_request(req);
 
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 3d7d963..77f8ac9 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -533,7 +533,10 @@ readpage_async_filler(void *data, struct page *page)
- 
- 	if (len < PAGE_CACHE_SIZE)
- 		zero_user_segment(page, len, PAGE_CACHE_SIZE);
--	nfs_pageio_add_request(desc->pgio, new);
-+	if (!nfs_pageio_add_request(desc->pgio, new)) {
-+		error = desc->pagio->pg_error;
-+		goto out_unlock;
-+	}
- 	return 0;
- out_error:
- 	error = PTR_ERR(new);
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 01bf68e..c8bb767 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -288,7 +288,10 @@ static int nfs_page_async_flush(struct nfs_pageio_descriptor *pgio,
- 		BUG();
- 	}
- 	spin_unlock(&inode->i_lock);
--	nfs_pageio_add_request(pgio, req);
-+	if (!nfs_pageio_add_request(pgio, req)) {
-+		nfs_retry_request(req);
-+		return pgio->pg_error;
-+	}
- 	return 0;
- }
- 
--- 
-1.5.3.3
+Please could you reverse the order of these two patches. I'd like to
+send this one in for 2.6.25, but I can't do that as long as it depends
+on the previous patch.
+
+> +		return pgio->pg_error;
+> +	}
+>  	return 0;
+>  }
+>  
 
