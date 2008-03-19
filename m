@@ -1,79 +1,42 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH] NFS: make remounts of NFS filesystems return a proper error
-Date: Wed, 19 Mar 2008 09:19:49 -0400
-Message-ID: <1205932789-6272-1-git-send-email-jlayton@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-To: Trond.Myklebust@netapp.com
-Return-path: <nfsv4-bounces@linux-nfs.org>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+From: Fred Isaman <iisaman@citi.umich.edu>
+Subject: [PATCH 1/1] nfs: remove duplicate initializations of nfs_read_data field
+Date: Wed, 19 Mar 2008 11:54:04 -0400
+Message-ID: <1205942044-10576-1-git-send-email-iisaman@citi.umich.edu>
+Cc: linux-nfs@vger.kernel.org, Fred Isaman <iisaman@citi.umich.edu>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from citi.umich.edu ([141.211.133.111]:40336 "EHLO citi.umich.edu"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753127AbYCSTYw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 19 Mar 2008 15:24:52 -0400
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently if you try to remount an NFS filesystem (using -o remount),
-it will return as if the remount had succeeded even though it doesn't
-actually apply any changes to the mount options.
-
-Since remount functionality isn't actually implemented, just have any
-remount attempt return -ENOSYS to make it clear that it doesn't work.
-
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
 ---
- fs/nfs/super.c |   13 +++++++++++++
- 1 files changed, 13 insertions(+), 0 deletions(-)
+ fs/nfs/read.c |    2 --
+ 1 files changed, 0 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index fcf4b98..74c81bd 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -207,6 +207,7 @@ static int nfs_xdev_get_sb(struct file_system_type *fs_type,
- 		int flags, const char *dev_name, void *raw_data, struct vfsmount *mnt);
- static void nfs_kill_super(struct super_block *);
- static void nfs_put_super(struct super_block *);
-+static int nfs_remount(struct super_block *sb, int *flags, char *data);
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index 77f8ac9..03d079b 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -253,7 +253,6 @@ static int nfs_pagein_multi(struct inode *inode, struct list_head *head, unsigne
+ 		data = nfs_readdata_alloc(1);
+ 		if (!data)
+ 			goto out_bad;
+-		INIT_LIST_HEAD(&data->pages);
+ 		list_add(&data->pages, &list);
+ 		requests++;
+ 		nbytes -= len;
+@@ -300,7 +299,6 @@ static int nfs_pagein_one(struct inode *inode, struct list_head *head, unsigned
+ 	if (!data)
+ 		goto out_bad;
  
- static struct file_system_type nfs_fs_type = {
- 	.owner		= THIS_MODULE,
-@@ -230,6 +231,7 @@ static const struct super_operations nfs_sops = {
- 	.write_inode	= nfs_write_inode,
- 	.put_super	= nfs_put_super,
- 	.statfs		= nfs_statfs,
-+	.remount_fs	= nfs_remount,
- 	.clear_inode	= nfs_clear_inode,
- 	.umount_begin	= nfs_umount_begin,
- 	.show_options	= nfs_show_options,
-@@ -274,6 +276,7 @@ static const struct super_operations nfs4_sops = {
- 	.destroy_inode	= nfs_destroy_inode,
- 	.write_inode	= nfs_write_inode,
- 	.statfs		= nfs_statfs,
-+	.remount_fs	= nfs_remount,
- 	.clear_inode	= nfs4_clear_inode,
- 	.umount_begin	= nfs_umount_begin,
- 	.show_options	= nfs_show_options,
-@@ -1681,6 +1684,16 @@ error_splat_super:
- 	return error;
- }
- 
-+/*
-+ * Remounts with NFS have a whole host of issues. Just have them fail
-+ * outright for now.
-+ */
-+static int
-+nfs_remount(struct super_block *sb, int *flags, char *data)
-+{
-+	return -ENOSYS;
-+}
-+
- #ifdef CONFIG_NFS_V4
- 
- /*
+-	INIT_LIST_HEAD(&data->pages);
+ 	pages = data->pagevec;
+ 	while (!list_empty(head)) {
+ 		req = nfs_list_entry(head->next);
 -- 
-1.5.3.6
+1.5.3.3
+
