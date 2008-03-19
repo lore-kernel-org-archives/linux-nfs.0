@@ -1,57 +1,79 @@
-From: "NeilBrown" <neilb@suse.de>
-Subject: Re: NFSERR_NOSPC nfs-client bug
-Date: Tue, 18 Mar 2008 17:08:31 +1100 (EST)
-Message-ID: <32962.192.168.1.70.1205820511.squirrel@neil.brown.name>
-References: <200803172021.08327.nfs@share-foo.com>
-    <47DF1E5C.9090607@melbourne.sgi.com>
-    <200803172050.22223.nfs@share-foo.com>
-    <47DF2415.6070802@melbourne.sgi.com>
-    <1205809775.22258.9.camel@heimdal.trondhjem.org>
-    <47DF3F01.9050504@melbourne.sgi.com>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH] NFS: make remounts of NFS filesystems return a proper error
+Date: Wed, 19 Mar 2008 09:19:49 -0400
+Message-ID: <1205932789-6272-1-git-send-email-jlayton@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: "Trond Myklebust" <trond.myklebust@fys.uio.no>, nfs-Uh4cUGhLB8SgSpxsJD1C4w@public.gmane.org,
-	linux-nfs@vger.kernel.org
-To: "Greg Banks" <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from ns.suse.de ([195.135.220.2]:49333 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751801AbYCRGaQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 18 Mar 2008 02:30:16 -0400
-In-Reply-To: <47DF3F01.9050504-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+To: Trond.Myklebust@netapp.com
+Return-path: <nfsv4-bounces@linux-nfs.org>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, March 18, 2008 3:03 pm, Greg Banks wrote:
-> So that would be
-> http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git;a=commitdiff;h=7b159fc18d417980f57aef64cab3417ee6af70f8
->
-> ?
-> Is my reading right, that a solitary transient ENOSPC is still reported
-> at close(), but a sequence of two or more ENOSPC is reported in the next
-> write() call?
+Currently if you try to remount an NFS filesystem (using -o remount),
+it will return as if the remount had succeeded even though it doesn't
+actually apply any changes to the mount options.
 
-I don't think so.
-After an error report is received by the client, the next write/fsync/close
-will report the error (even if that write didn't actually have an error).
+Since remount functionality isn't actually implemented, just have any
+remount attempt return -ENOSYS to make it clear that it doesn't work.
 
-Also, further writes will be attempted synchronously, so the correct error
-is reported, until a write succeeds.  At this point we go back to
-async writes.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfs/super.c |   13 +++++++++++++
+ 1 files changed, 13 insertions(+), 0 deletions(-)
 
-So a solitary transient ENOSPC will be reported against a subsequent
-write.
-
-When a write fails, the page remains DIRTY, so a flush will be attempted
-on every subsequent 'sync', including those triggered by a write while
-the error flag is set.
-So if you keep writing, you will keep getting an error until all dirty
-pages have been safely written to the server.
-
-If you give up and close the file, you won't be able to tell just by
-looking at the error codes which pages were successfully written and which
-aren't.  But it would seem unwise to expect to be able to do that in
-any case.
-
-NeilBrown
-
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index fcf4b98..74c81bd 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -207,6 +207,7 @@ static int nfs_xdev_get_sb(struct file_system_type *fs_type,
+ 		int flags, const char *dev_name, void *raw_data, struct vfsmount *mnt);
+ static void nfs_kill_super(struct super_block *);
+ static void nfs_put_super(struct super_block *);
++static int nfs_remount(struct super_block *sb, int *flags, char *data);
+ 
+ static struct file_system_type nfs_fs_type = {
+ 	.owner		= THIS_MODULE,
+@@ -230,6 +231,7 @@ static const struct super_operations nfs_sops = {
+ 	.write_inode	= nfs_write_inode,
+ 	.put_super	= nfs_put_super,
+ 	.statfs		= nfs_statfs,
++	.remount_fs	= nfs_remount,
+ 	.clear_inode	= nfs_clear_inode,
+ 	.umount_begin	= nfs_umount_begin,
+ 	.show_options	= nfs_show_options,
+@@ -274,6 +276,7 @@ static const struct super_operations nfs4_sops = {
+ 	.destroy_inode	= nfs_destroy_inode,
+ 	.write_inode	= nfs_write_inode,
+ 	.statfs		= nfs_statfs,
++	.remount_fs	= nfs_remount,
+ 	.clear_inode	= nfs4_clear_inode,
+ 	.umount_begin	= nfs_umount_begin,
+ 	.show_options	= nfs_show_options,
+@@ -1681,6 +1684,16 @@ error_splat_super:
+ 	return error;
+ }
+ 
++/*
++ * Remounts with NFS have a whole host of issues. Just have them fail
++ * outright for now.
++ */
++static int
++nfs_remount(struct super_block *sb, int *flags, char *data)
++{
++	return -ENOSYS;
++}
++
+ #ifdef CONFIG_NFS_V4
+ 
+ /*
+-- 
+1.5.3.6
