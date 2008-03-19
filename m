@@ -1,86 +1,94 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 1/2] nfs: nfs_retry_request
-Date: Wed, 19 Mar 2008 10:48:07 -0400
-Message-ID: <1205938087.8388.48.camel@heimdal.trondhjem.org>
-References: <1205936000-9336-1-git-send-email-iisaman@citi.umich.edu>
-Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org
-To: Fred Isaman <iisaman@citi.umich.edu>
+From: Fred Isaman <iisaman@citi.umich.edu>
+Subject: [PATCH 2/2] nfs: don't ignore return value from nfs_pageio_add_request
+Date: Wed, 19 Mar 2008 11:24:39 -0400
+Message-ID: <1205940280-10479-3-git-send-email-iisaman@citi.umich.edu>
+References: <1205940280-10479-1-git-send-email-iisaman@citi.umich.edu>
+ <1205940280-10479-2-git-send-email-iisaman@citi.umich.edu>
+Cc: linux-nfs@vger.kernel.org, Fred Isaman <iisaman@citi.umich.edu>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from pat.uio.no ([129.240.10.15]:46066 "EHLO pat.uio.no"
+Received: from citi.umich.edu ([141.211.133.111]:16616 "EHLO citi.umich.edu"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756181AbYCSTgk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 19 Mar 2008 15:36:40 -0400
-In-Reply-To: <1205936000-9336-1-git-send-email-iisaman@citi.umich.edu>
+	id S1754640AbYCSUOy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 19 Mar 2008 16:14:54 -0400
+In-Reply-To: <1205940280-10479-2-git-send-email-iisaman@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Ignoring the return value from nfs_pageio_add_request can cause deadlocks.
 
-On Wed, 2008-03-19 at 10:13 -0400, Fred Isaman wrote:
-> From: Fred <iisaman@citi.umich.edu>
-> 
-> Both flush functions have the same error handling routine.  Pull
-> it out as a function.
-> 
-> Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-> ---
->  fs/nfs/write.c |   19 +++++++++++++------
->  1 files changed, 13 insertions(+), 6 deletions(-)
-> 
-> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-> index 80c61fd..01bf68e 100644
-> --- a/fs/nfs/write.c
-> +++ b/fs/nfs/write.c
-> @@ -845,6 +845,17 @@ static void nfs_write_rpcsetup(struct nfs_page *req,
->  		rpc_put_task(task);
->  }
->  
-> +/* If a nfs_flush_* function fails, it should remove reqs from @head and
-> + * call this on each, which will prepare them to be retried on next
-> + * writeback using standard nfs.
-> + */
-> +static void nfs_retry_request(struct nfs_page *req)
-> +{
-> +	nfs_redirty_request(req);
-> +	nfs_end_page_writeback(req->wb_page);
-> +	nfs_clear_page_tag_locked(req);
-> +}
-> +
->  /*
->   * Generate multiple small requests to write out a single
->   * contiguous dirty area on one page.
-> @@ -899,9 +910,7 @@ out_bad:
->  		list_del(&data->pages);
->  		nfs_writedata_release(data);
->  	}
-> -	nfs_redirty_request(req);
-> -	nfs_end_page_writeback(req->wb_page);
-> -	nfs_clear_page_tag_locked(req);
-> +	nfs_retry_request(req);
->  	return -ENOMEM;
->  }
->  
-> @@ -941,9 +950,7 @@ static int nfs_flush_one(struct inode *inode, struct list_head *head, unsigned i
->  	while (!list_empty(head)) {
->  		req = nfs_list_entry(head->next);
->  		nfs_list_remove_request(req);
-> -		nfs_redirty_request(req);
-> -		nfs_end_page_writeback(req->wb_page);
-> -		nfs_clear_page_tag_locked(req);
-> +		nfs_retry_request(req);
->  	}
->  	return -ENOMEM;
->  }
+In read path:
+  call nfs_pageio_add_request from readpage_async_filler
+  assume at this point that there are requests already in desc, that
+    can't be merged with the current request.
+  so nfs_pageio_doio is fired up to clear out desc.
+  assume something goes wrong in setting up the io, so desc->pg_error is set.
+  This causes nfs_pageio_add_request to return 0, *WITHOUT* adding the original
+    request.
+  BUT, since return code is ignored, readpage_async_filler assumes it has
+    been added, and does nothing further, leaving page locked.
+  do_generic_mapping_read will eventually call lock_page, resulting in deadlock
 
-My one nit is with the name of your function: it isn't really retrying
-the flush, but rather requeuing it on the dirty list after an attempt to
-flush failed.
+In write path:
+  page is marked dirty by generic_perform_write
+  nfs_writepages is called
+  call nfs_pageio_add_request from nfs_page_async_flush
+  assume at this point that there are requests already in desc, that
+    can't be merged with the current request.
+  so nfs_pageio_doio is fired up to clear out desc.
+  assume something goes wrong in setting up the io, so desc->pg_error is set.
+  This causes nfs_page_async_flush to return 0, *WITHOUT* adding the original
+    request, yet marking the request as locked (PG_BUSY) and in writeback,
+    clearing dirty marks.
+  The next time a write is done to the page, deadlock will result as
+    nfs_write_end calls nfs_update_request
 
-How about renaming the current 'nfs_redirty_request()' as
-'nfs_mark_request_dirty()', and then using the name
-nfs_redirty_request() for your new helper?
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+---
+ fs/nfs/read.c  |    5 ++++-
+ fs/nfs/write.c |    6 +++++-
+ 2 files changed, 9 insertions(+), 2 deletions(-)
 
-Cheers
-  Trond
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index 3d7d963..77f8ac9 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -533,7 +533,10 @@ readpage_async_filler(void *data, struct page *page)
+ 
+ 	if (len < PAGE_CACHE_SIZE)
+ 		zero_user_segment(page, len, PAGE_CACHE_SIZE);
+-	nfs_pageio_add_request(desc->pgio, new);
++	if (!nfs_pageio_add_request(desc->pgio, new)) {
++		error = desc->pagio->pg_error;
++		goto out_unlock;
++	}
+ 	return 0;
+ out_error:
+ 	error = PTR_ERR(new);
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index df85b7b..a146089 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -39,6 +39,7 @@ static struct nfs_page * nfs_update_request(struct nfs_open_context*,
+ 					    unsigned int, unsigned int);
+ static void nfs_pageio_init_write(struct nfs_pageio_descriptor *desc,
+ 				  struct inode *inode, int ioflags);
++static void nfs_redirty_request(struct nfs_page *req);
+ static const struct rpc_call_ops nfs_write_partial_ops;
+ static const struct rpc_call_ops nfs_write_full_ops;
+ static const struct rpc_call_ops nfs_commit_ops;
+@@ -288,7 +289,10 @@ static int nfs_page_async_flush(struct nfs_pageio_descriptor *pgio,
+ 		BUG();
+ 	}
+ 	spin_unlock(&inode->i_lock);
+-	nfs_pageio_add_request(pgio, req);
++	if (!nfs_pageio_add_request(pgio, req)) {
++		nfs_redirty_request(req);
++		return pgio->pg_error;
++	}
+ 	return 0;
+ }
+ 
+-- 
+1.5.3.3
 
