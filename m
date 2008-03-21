@@ -1,71 +1,72 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 2/6] SUNRPC: Don't display the rpc_show_tasks header if there
-	are no tasks
-Date: Fri, 21 Mar 2008 18:43:12 -0400
-Message-ID: <20080321224312.18966.19727.stgit@ingres.1015granger.net>
+Subject: [PATCH 4/6] SUNRPC: Add second output line for each RPC task in
+	rpc_show_tasks
+Date: Fri, 21 Mar 2008 18:43:27 -0400
+Message-ID: <20080321224326.18966.76928.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: trond.myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from flpi195.sbcis.sbc.com ([207.115.20.197]:27114 "EHLO
+Received: from flpi195.sbcis.sbc.com ([207.115.20.197]:27402 "EHLO
 	flpi195.prodigy.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756701AbYCUWn3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Mar 2008 18:43:29 -0400
+	with ESMTP id S1758617AbYCUWnj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Mar 2008 18:43:39 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: don't display the rpc_show_tasks column header unless there is at
-least one task to display.
-
-scripts/checkpatch.pl also wants a KERN_FOO at the start of any newly added
-printk() calls, so this and subsequent patches will also add KERN_INFO, as
-appropriate.
+Clean up:  Add a second display output line for each RPC task shown via
+rpc_show_tasks.  This second line is for non-columnar variable-length
+data (like the name of the RPC wait queue the task is waiting on, or
+the procedure name).
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- net/sunrpc/clnt.c |   14 ++++++++++++--
- 1 files changed, 12 insertions(+), 2 deletions(-)
+ net/sunrpc/clnt.c |   20 ++++++++++----------
+ 1 files changed, 10 insertions(+), 10 deletions(-)
 
 diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 5a48f96..0410acb 100644
+index f7ad79c..31fae5f 100644
 --- a/net/sunrpc/clnt.c
 +++ b/net/sunrpc/clnt.c
-@@ -1511,16 +1511,21 @@ struct rpc_task *rpc_call_null(struct rpc_clnt *clnt, struct rpc_cred *cred, int
- EXPORT_SYMBOL_GPL(rpc_call_null);
- 
+@@ -1513,28 +1513,28 @@ EXPORT_SYMBOL_GPL(rpc_call_null);
  #ifdef RPC_DEBUG
-+static void rpc_show_header(void)
-+{
-+	printk(KERN_INFO "-pid- proc flgs status -client- -prog- --rqstp- "
-+		"-timeout -rpcwait -action- ---ops--\n");
-+}
-+
- void rpc_show_tasks(void)
+ static void rpc_show_header(void)
  {
- 	struct rpc_clnt *clnt;
- 	struct rpc_task *t;
-+	int header = 0;
+-	printk(KERN_INFO "-pid- proc flgs status -client- -prog- --rqstp- "
+-		"-timeout -rpcwait -action- ---ops--\n");
++	printk(KERN_INFO "-pid- flgs status -client- --rqstp- "
++		"-timeout -action- ---ops--\n");
+ }
  
- 	spin_lock(&rpc_client_lock);
- 	if (list_empty(&all_clients))
- 		goto out;
--	printk("-pid- proc flgs status -client- -prog- --rqstp- -timeout "
--		"-rpcwait -action- ---ops--\n");
- 	list_for_each_entry(clnt, &all_clients, cl_clients) {
- 		if (list_empty(&clnt->cl_tasks))
- 			continue;
-@@ -1529,6 +1534,11 @@ void rpc_show_tasks(void)
- 			const char *rpc_waitq = "none";
- 			int proc;
+ static void rpc_show_task(struct rpc_clnt *clnt, struct rpc_task *task)
+ {
+ 	const char *rpc_waitq = "none";
+-	int proc = -1;
++	const char *proc = "NULL";
  
-+			if (!header) {
-+				rpc_show_header();
-+				header++;
-+			}
+ 	if (task->tk_msg.rpc_proc)
+-		proc = task->tk_msg.rpc_proc->p_proc;
++		proc = task->tk_msg.rpc_proc->p_name;
+ 
+ 	if (RPC_IS_QUEUED(task))
+ 		rpc_waitq = rpc_qname(task->tk_waitqueue);
+ 
+-	printk(KERN_INFO "%5u %04d %04x %6d %8p %6d %8p %8ld %8s %8p %8p\n",
+-		task->tk_pid, proc,
+-		task->tk_flags, task->tk_status,
+-		clnt, clnt->cl_prog,
+-		task->tk_rqstp, task->tk_timeout,
+-		rpc_waitq,
++	printk(KERN_INFO "%5u %04x %6d %8p %8p %8ld %8p %8p\n",
++		task->tk_pid, task->tk_flags, task->tk_status,
++		clnt, task->tk_rqstp, task->tk_timeout,
+ 		task->tk_action, task->tk_ops);
 +
- 			if (t->tk_msg.rpc_proc)
- 				proc = t->tk_msg.rpc_proc->p_proc;
- 			else
++	printk(KERN_INFO " prog: %s%u  proc: %s  waitq: %s\n",
++		clnt->cl_protname, clnt->cl_vers, proc, rpc_waitq);
+ }
+ 
+ void rpc_show_tasks(void)
 
