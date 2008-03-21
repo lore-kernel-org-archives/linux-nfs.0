@@ -1,140 +1,92 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 5/6] SUNRPC: Rename "call_" functions that are no longer FSM
-	states
-Date: Fri, 21 Mar 2008 18:43:34 -0400
-Message-ID: <20080321224334.18966.71286.stgit@ingres.1015granger.net>
+Subject: [PATCH 2/5] NFS: Make nfs_fsync methods consistent
+Date: Fri, 21 Mar 2008 19:02:09 -0400
+Message-ID: <20080321230209.23627.5763.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: trond.myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from flpi195.sbcis.sbc.com ([207.115.20.197]:27753 "EHLO
-	flpi195.prodigy.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756744AbYCUWnu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Mar 2008 18:43:50 -0400
+Received: from flpi185.sbcis.sbc.com ([207.115.20.187]:12315 "EHLO
+	flpi185.prodigy.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1764943AbYCUXCc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Mar 2008 19:02:32 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The RPC client uses a finite state machine to move RPC tasks through each
-step of an RPC request.  Each state is contained in a function in
-net/sunrpc/clnt.c, and named call_foo.
-
-Some of the functions named call_foo have changed over the past few years and
-are no longer states in the FSM.  These include: call_encode, call_header,
-and call_verify.
-
-Clean up:  Rename the functions that are no longer real FSM states.
+Clean up: Report the same debugging info, count function calls the same,
+and use similar function naming in nfs_fsync_dir() and nfs_fsync().
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- net/sunrpc/clnt.c |   35 +++++++++++++----------------------
- 1 files changed, 13 insertions(+), 22 deletions(-)
+ fs/nfs/dir.c  |    3 ++-
+ fs/nfs/file.c |   12 +++++++-----
+ 2 files changed, 9 insertions(+), 6 deletions(-)
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 31fae5f..c8acd56 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -58,7 +58,6 @@ static void	call_start(struct rpc_task *task);
- static void	call_reserve(struct rpc_task *task);
- static void	call_reserveresult(struct rpc_task *task);
- static void	call_allocate(struct rpc_task *task);
--static void	call_encode(struct rpc_task *task);
- static void	call_decode(struct rpc_task *task);
- static void	call_bind(struct rpc_task *task);
- static void	call_bind_status(struct rpc_task *task);
-@@ -70,9 +69,9 @@ static void	call_refreshresult(struct rpc_task *task);
- static void	call_timeout(struct rpc_task *task);
- static void	call_connect(struct rpc_task *task);
- static void	call_connect_status(struct rpc_task *task);
--static __be32 *	call_header(struct rpc_task *task);
--static __be32 *	call_verify(struct rpc_task *task);
- 
-+static __be32	*rpc_encode_header(struct rpc_task *task);
-+static __be32	*rpc_verify_header(struct rpc_task *task);
- static int	rpc_ping(struct rpc_clnt *clnt, int flags);
- 
- static void rpc_register_client(struct rpc_clnt *clnt)
-@@ -865,7 +864,7 @@ rpc_xdr_buf_init(struct xdr_buf *buf, void *start, size_t len)
-  * 3.	Encode arguments of an RPC call
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index d583654..534a811 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -629,10 +629,11 @@ out:
   */
- static void
--call_encode(struct rpc_task *task)
-+rpc_xdr_encode(struct rpc_task *task)
+ static int nfs_fsync_dir(struct file *filp, struct dentry *dentry, int datasync)
  {
- 	struct rpc_rqst	*req = task->tk_rqstp;
- 	kxdrproc_t	encode;
-@@ -880,13 +879,14 @@ call_encode(struct rpc_task *task)
- 			 (char *)req->rq_buffer + req->rq_callsize,
- 			 req->rq_rcvsize);
+-	dfprintk(VFS, "NFS: fsync_dir(%s/%s) datasync %d\n",
++	dfprintk(VFS, "NFS: fsync dir(%s/%s) datasync %d\n",
+ 			dentry->d_parent->d_name.name, dentry->d_name.name,
+ 			datasync);
  
--	/* Encode header and provided arguments */
--	encode = task->tk_msg.rpc_proc->p_encode;
--	if (!(p = call_header(task))) {
--		printk(KERN_INFO "RPC: call_header failed, exit EIO\n");
-+	p = rpc_encode_header(task);
-+	if (p == NULL) {
-+		printk(KERN_INFO "RPC: couldn't encode RPC header, exit EIO\n");
- 		rpc_exit(task, -EIO);
- 		return;
- 	}
-+
-+	encode = task->tk_msg.rpc_proc->p_encode;
- 	if (encode == NULL)
- 		return;
- 
-@@ -1050,7 +1050,7 @@ call_transmit(struct rpc_task *task)
- 	/* Encode here so that rpcsec_gss can use correct sequence number. */
- 	if (rpc_task_need_encode(task)) {
- 		BUG_ON(task->tk_rqstp->rq_bytes_sent != 0);
--		call_encode(task);
-+		rpc_xdr_encode(task);
- 		/* Did the encode result in an error condition? */
- 		if (task->tk_status != 0)
- 			return;
-@@ -1222,8 +1222,7 @@ call_decode(struct rpc_task *task)
- 	WARN_ON(memcmp(&req->rq_rcv_buf, &req->rq_private_buf,
- 				sizeof(req->rq_rcv_buf)) != 0);
- 
--	/* Verify the RPC header */
--	p = call_verify(task);
-+	p = rpc_verify_header(task);
- 	if (IS_ERR(p)) {
- 		if (p == ERR_PTR(-EAGAIN))
- 			goto out_retry;
-@@ -1284,11 +1283,7 @@ call_refreshresult(struct rpc_task *task)
- 	return;
++	nfs_inc_stats(dentry->d_inode, NFSIOS_VFSFSYNC);
+ 	return 0;
  }
  
--/*
-- * Call header serialization
-- */
--static __be32 *
--call_header(struct rpc_task *task)
-+static __be32 *rpc_encode_header(struct rpc_task *task)
- {
- 	struct rpc_clnt *clnt = task->tk_client;
- 	struct rpc_rqst	*req = task->tk_rqstp;
-@@ -1308,11 +1303,7 @@ call_header(struct rpc_task *task)
- 	return p;
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 3438cd4..38424eb 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -50,7 +50,7 @@ static ssize_t nfs_file_read(struct kiocb *, const struct iovec *iov,
+ static ssize_t nfs_file_write(struct kiocb *, const struct iovec *iov,
+ 				unsigned long nr_segs, loff_t pos);
+ static int  nfs_file_flush(struct file *, fl_owner_t id);
+-static int  nfs_fsync(struct file *, struct dentry *dentry, int datasync);
++static int  nfs_file_fsync(struct file *, struct dentry *dentry, int datasync);
+ static int nfs_check_flags(int flags);
+ static int nfs_lock(struct file *filp, int cmd, struct file_lock *fl);
+ static int nfs_flock(struct file *filp, int cmd, struct file_lock *fl);
+@@ -68,7 +68,7 @@ const struct file_operations nfs_file_operations = {
+ 	.open		= nfs_file_open,
+ 	.flush		= nfs_file_flush,
+ 	.release	= nfs_file_release,
+-	.fsync		= nfs_fsync,
++	.fsync		= nfs_file_fsync,
+ 	.lock		= nfs_lock,
+ 	.flock		= nfs_flock,
+ 	.splice_read	= nfs_file_splice_read,
+@@ -177,7 +177,7 @@ static loff_t nfs_file_llseek(struct file *filp, loff_t offset, int origin)
  }
  
--/*
-- * Reply header verification
-- */
--static __be32 *
--call_verify(struct rpc_task *task)
-+static __be32 *rpc_verify_header(struct rpc_task *task)
+ /*
+- * Helper for nfs_file_flush() and nfs_fsync()
++ * Helper for nfs_file_flush() and nfs_file_fsync()
+  *
+  * Notice that it clears the NFS_CONTEXT_ERROR_WRITE before synching to
+  * disk, but it retrieves and clears ctx->error after synching, despite
+@@ -292,12 +292,14 @@ nfs_file_mmap(struct file * file, struct vm_area_struct * vma)
+  * whether any write errors occurred for this process.
+  */
+ static int
+-nfs_fsync(struct file *file, struct dentry *dentry, int datasync)
++nfs_file_fsync(struct file *file, struct dentry *dentry, int datasync)
  {
- 	struct kvec *iov = &task->tk_rqstp->rq_rcv_buf.head[0];
- 	int len = task->tk_rqstp->rq_rcv_buf.len >> 2;
-@@ -1386,7 +1377,7 @@ call_verify(struct rpc_task *task)
- 			task->tk_action = call_bind;
- 			goto out_retry;
- 		case RPC_AUTH_TOOWEAK:
--			printk(KERN_NOTICE "call_verify: server %s requires stronger "
-+			printk(KERN_NOTICE "RPC: server %s requires stronger "
- 			       "authentication.\n", task->tk_client->cl_server);
- 			break;
- 		default:
+ 	struct nfs_open_context *ctx = nfs_file_open_context(file);
+ 	struct inode *inode = dentry->d_inode;
+ 
+-	dfprintk(VFS, "nfs: fsync(%s/%ld)\n", inode->i_sb->s_id, inode->i_ino);
++	dfprintk(VFS, "NFS: fsync file(%s/%s) datasync %d\n",
++			dentry->d_parent->d_name.name, dentry->d_name.name,
++			datasync);
+ 
+ 	nfs_inc_stats(inode, NFSIOS_VFSFSYNC);
+ 	return nfs_do_fsync(ctx, inode);
 
