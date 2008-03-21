@@ -1,228 +1,77 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 4/4] NFS: text-based mounts should support multiple security
-	flavors
-Date: Fri, 21 Mar 2008 17:50:57 -0400
-Message-ID: <20080321215057.13546.38940.stgit@ingres.1015granger.net>
+Subject: [PATCH] SUNRPC: Clean up: rename sock_xprt's addr field
+Date: Fri, 21 Mar 2008 18:07:43 -0400
+Message-ID: <20080321220617.15442.42229.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: trond.myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from flpi102.sbcis.sbc.com ([207.115.20.71]:13037 "EHLO
+Received: from flpi102.sbcis.sbc.com ([207.115.20.71]:29946 "EHLO
 	flpi102.prodigy.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753311AbYCUVvK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Mar 2008 17:51:10 -0400
+	with ESMTP id S1750890AbYCUWIA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Mar 2008 18:08:00 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add support to the in-kernel NFS mount option parser for handling multiple
-security flavors.
+The usual convention is to use the name "addr" for fields that store
+destination addresses in the RPC client.  The sock_xprt's addr field is
+a socket's source address, not a destination address.
 
-This does not implement support for multiple security flavors in the
-underlying NFS or mountd clients.  When that support is added, simply crank
-up the value of the MAX_SECURITY_FLAVORS macro, and that will enable the
-mount option parser to grok colons and multiple security flavors.
+Clean up: rename this field in order to make it less confusing.
+
+Note that the client-side RDMA transport doesn't copy out the source
+address field passed in from xprt_create_transport(); it doesn't need to do
+this yet, but perhaps it should if rpcbind and NLM over RDMA are ever
+implemented.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
+A singleton clean-up patch for 2.6.26.  Cc: linux-nfs for those of you
+following along at home.
+---
 
- fs/nfs/internal.h |    4 +
- fs/nfs/super.c    |  149 +++++++++++++++++++++++++++++++----------------------
- 2 files changed, 90 insertions(+), 63 deletions(-)
+ net/sunrpc/xprtsock.c |    8 ++++----
+ 1 files changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 04ae867..6672c3a 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -27,6 +27,8 @@ struct nfs_clone_mount {
- 	rpc_authflavor_t authflavor;
- };
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 8bd3b0f..560fff1 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -240,7 +240,7 @@ struct sock_xprt {
+ 	 * Connection of transports
+ 	 */
+ 	struct delayed_work	connect_worker;
+-	struct sockaddr_storage	addr;
++	struct sockaddr_storage	source_address;
+ 	unsigned short		port;
  
-+#define MAX_SECURITY_FLAVORS	(1)
-+
- /*
-  * In-kernel mount arguments
-  */
-@@ -39,7 +41,7 @@ struct nfs_parsed_mount_data {
- 	int			namlen;
- 	unsigned int		bsize;
- 	unsigned int		auth_flavor_len;
--	rpc_authflavor_t	auth_flavors[1];
-+	rpc_authflavor_t	auth_flavors[MAX_SECURITY_FLAVORS];
- 	char			*client_address;
+ 	/*
+@@ -1344,7 +1344,7 @@ static int xs_bind4(struct sock_xprt *transport, struct socket *sock)
+ 	unsigned short port = xs_get_srcport(transport, sock);
+ 	unsigned short last;
  
- 	struct {
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 0869cf2..e99e808 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -742,81 +742,106 @@ static void nfs_parse_server_address(char *value,
+-	sa = (struct sockaddr_in *)&transport->addr;
++	sa = (struct sockaddr_in *)&transport->source_address;
+ 	myaddr.sin_addr = sa->sin_addr;
+ 	do {
+ 		myaddr.sin_port = htons(port);
+@@ -1377,7 +1377,7 @@ static int xs_bind6(struct sock_xprt *transport, struct socket *sock)
+ 	unsigned short port = xs_get_srcport(transport, sock);
+ 	unsigned short last;
  
- /*
-  * Parse the value of the 'sec=' option.
-- *
-- * The flavor_len setting is for v4 mounts.
-  */
--static int nfs_parse_security_flavors(char *string,
-+static int nfs_parse_security_flavors(char *value,
- 				      struct nfs_parsed_mount_data *mnt)
- {
--	int token;
--	substring_t args[MAX_OPT_ARGS];
-+	int result = 1;
-+	char *p, *string;
+-	sa = (struct sockaddr_in6 *)&transport->addr;
++	sa = (struct sockaddr_in6 *)&transport->source_address;
+ 	myaddr.sin6_addr = sa->sin6_addr;
+ 	do {
+ 		myaddr.sin6_port = htons(port);
+@@ -1885,7 +1885,7 @@ static struct rpc_xprt *xs_setup_xprt(struct xprt_create *args,
+ 	memcpy(&xprt->addr, args->dstaddr, args->addrlen);
+ 	xprt->addrlen = args->addrlen;
+ 	if (args->srcaddr)
+-		memcpy(&new->addr, args->srcaddr, args->addrlen);
++		memcpy(&new->source_address, args->srcaddr, args->addrlen);
  
--	if (string == NULL)
--		goto out_nomem;
-+	mnt->auth_flavor_len = 0;
- 
--	dfprintk(MOUNT, "NFS: parsing sec=%s option\n", string);
-+	dfprintk(MOUNT, "NFS: parsing sec=%s option\n", value);
- 
--	token = match_token(string, nfs_secflavor_tokens, args);
--	kfree(string);
-+	while ((p = strsep(&value, ":")) != NULL) {
-+		substring_t args[MAX_OPT_ARGS];
-+		int token;
- 
--	switch (token) {
--	case Opt_sec_none:
--		mnt->auth_flavor_len = 0;
--		mnt->auth_flavors[0] = RPC_AUTH_NULL;
--		break;
--	case Opt_sec_sys:
--		mnt->auth_flavor_len = 0;
--		mnt->auth_flavors[0] = RPC_AUTH_UNIX;
--		break;
--	case Opt_sec_krb5:
--		mnt->auth_flavor_len = 1;
--		mnt->auth_flavors[0] = RPC_AUTH_GSS_KRB5;
--		break;
--	case Opt_sec_krb5i:
--		mnt->auth_flavor_len = 1;
--		mnt->auth_flavors[0] = RPC_AUTH_GSS_KRB5I;
--		break;
--	case Opt_sec_krb5p:
--		mnt->auth_flavor_len = 1;
--		mnt->auth_flavors[0] = RPC_AUTH_GSS_KRB5P;
--		break;
--	case Opt_sec_lkey:
--		mnt->auth_flavor_len = 1;
--		mnt->auth_flavors[0] = RPC_AUTH_GSS_LKEY;
--		break;
--	case Opt_sec_lkeyi:
--		mnt->auth_flavor_len = 1;
--		mnt->auth_flavors[0] = RPC_AUTH_GSS_LKEYI;
--		break;
--	case Opt_sec_lkeyp:
--		mnt->auth_flavor_len = 1;
--		mnt->auth_flavors[0] = RPC_AUTH_GSS_LKEYP;
--		break;
--	case Opt_sec_spkm:
--		mnt->auth_flavor_len = 1;
--		mnt->auth_flavors[0] = RPC_AUTH_GSS_SPKM;
--		break;
--	case Opt_sec_spkmi:
--		mnt->auth_flavor_len = 1;
--		mnt->auth_flavors[0] = RPC_AUTH_GSS_SPKMI;
--		break;
--	case Opt_sec_spkmp:
--		mnt->auth_flavor_len = 1;
--		mnt->auth_flavors[0] = RPC_AUTH_GSS_SPKMP;
--		break;
--	default:
--		goto out_unrec_sec;
-+		if (!*p)
-+			continue;
-+
-+		if (mnt->auth_flavor_len >= MAX_SECURITY_FLAVORS)
-+			goto out_inval_auth;
-+
-+		string = match_strdup(args);
-+		if (string == NULL)
-+			goto out_nomem;
-+		token = match_token(string, nfs_secflavor_tokens, args);
-+		kfree(string);
-+
-+		switch (token) {
-+		case Opt_sec_none:
-+			mnt->auth_flavors[mnt->auth_flavor_len] =
-+							RPC_AUTH_NULL;
-+			break;
-+		case Opt_sec_sys:
-+			mnt->auth_flavors[mnt->auth_flavor_len] =
-+							RPC_AUTH_UNIX;
-+			break;
-+		case Opt_sec_krb5:
-+			mnt->auth_flavors[mnt->auth_flavor_len] =
-+							RPC_AUTH_GSS_KRB5;
-+			break;
-+		case Opt_sec_krb5i:
-+			mnt->auth_flavors[mnt->auth_flavor_len] =
-+							RPC_AUTH_GSS_KRB5I;
-+			break;
-+		case Opt_sec_krb5p:
-+			mnt->auth_flavors[mnt->auth_flavor_len] =
-+							RPC_AUTH_GSS_KRB5P;
-+			break;
-+		case Opt_sec_lkey:
-+			mnt->auth_flavors[mnt->auth_flavor_len] =
-+							RPC_AUTH_GSS_LKEY;
-+			break;
-+		case Opt_sec_lkeyi:
-+			mnt->auth_flavors[mnt->auth_flavor_len] =
-+							RPC_AUTH_GSS_LKEYI;
-+			break;
-+		case Opt_sec_lkeyp:
-+			mnt->auth_flavors[mnt->auth_flavor_len] =
-+							RPC_AUTH_GSS_LKEYP;
-+			break;
-+		case Opt_sec_spkm:
-+			mnt->auth_flavors[mnt->auth_flavor_len] =
-+							RPC_AUTH_GSS_SPKM;
-+			break;
-+		case Opt_sec_spkmi:
-+			mnt->auth_flavors[mnt->auth_flavor_len] =
-+							RPC_AUTH_GSS_SPKMI;
-+			break;
-+		case Opt_sec_spkmp:
-+			mnt->auth_flavors[mnt->auth_flavor_len] =
-+							RPC_AUTH_GSS_SPKMP;
-+			break;
-+		default:
-+			goto out_unrec_sec;
-+		}
-+
-+		mnt->auth_flavor_len++;
- 	}
- 
--	return 1;
-+out:
-+	kfree(value);
-+	return result;
- 
- out_nomem:
--	printk(KERN_INFO "NFS: not enough memory to parse sec= option\n");
--	return 0;
-+	printk(KERN_INFO
-+		"NFS: not enough memory to parse sec= option\n");
-+	result = 0;
-+	goto out;
- 
- out_unrec_sec:
--	printk(KERN_INFO "NFS: unrecognized security flavor\n");
--	return 0;
-+	printk(KERN_INFO
-+		"NFS: sec= option specifies an unrecognized security flavor\n");
-+	result = 0;
-+	goto out;
-+
-+out_inval_auth:
-+	printk(KERN_INFO
-+		"NFS: sec= option specifies too many security flavors\n");
-+	result = 0;
-+	goto out;
+ 	return xprt;
  }
- 
- /*
 
