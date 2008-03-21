@@ -1,136 +1,140 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 6/6] SUNRPC: Display symbolic function addresses in
-	rpc_show_tasks
-Date: Fri, 21 Mar 2008 18:43:41 -0400
-Message-ID: <20080321224341.18966.360.stgit@ingres.1015granger.net>
+Subject: [PATCH 5/6] SUNRPC: Rename "call_" functions that are no longer FSM
+	states
+Date: Fri, 21 Mar 2008 18:43:34 -0400
+Message-ID: <20080321224334.18966.71286.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: trond.myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from flpi195.sbcis.sbc.com ([207.115.20.197]:27999 "EHLO
+Received: from flpi195.sbcis.sbc.com ([207.115.20.197]:27753 "EHLO
 	flpi195.prodigy.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758929AbYCUWn6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Mar 2008 18:43:58 -0400
+	with ESMTP id S1756744AbYCUWnu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Mar 2008 18:43:50 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-For each running RPC task, rpc_show_tasks displays the hex address of the
-call_foo function that the task is running.  To make debugging slightly
-nicer, let's display the call_foo function name instead.
+The RPC client uses a finite state machine to move RPC tasks through each
+step of an RPC request.  Each state is contained in a function in
+net/sunrpc/clnt.c, and named call_foo.
 
-Note that it was necessary to expose rpc_prepare_task to the rest of the
-RPC client so that its address would be visible in the action name table.
+Some of the functions named call_foo have changed over the past few years and
+are no longer states in the FSM.  These include: call_encode, call_header,
+and call_verify.
+
+Clean up:  Rename the functions that are no longer real FSM states.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- include/linux/sunrpc/sched.h |    1 +
- net/sunrpc/clnt.c            |   54 ++++++++++++++++++++++++++++++++++++++----
- net/sunrpc/sched.c           |    2 +-
- 3 files changed, 51 insertions(+), 6 deletions(-)
+ net/sunrpc/clnt.c |   35 +++++++++++++----------------------
+ 1 files changed, 13 insertions(+), 22 deletions(-)
 
-diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
-index d1a5c8c..108342e 100644
---- a/include/linux/sunrpc/sched.h
-+++ b/include/linux/sunrpc/sched.h
-@@ -212,6 +212,7 @@ struct rpc_wait_queue {
- struct rpc_task *rpc_new_task(const struct rpc_task_setup *);
- struct rpc_task *rpc_run_task(const struct rpc_task_setup *);
- void		rpc_put_task(struct rpc_task *);
-+void		rpc_prepare_task(struct rpc_task *);
- void		rpc_exit_task(struct rpc_task *);
- void		rpc_release_calldata(const struct rpc_call_ops *, void *);
- void		rpc_killall_tasks(struct rpc_clnt *);
 diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index c8acd56..13bb0d5 100644
+index 31fae5f..c8acd56 100644
 --- a/net/sunrpc/clnt.c
 +++ b/net/sunrpc/clnt.c
-@@ -1502,10 +1502,53 @@ struct rpc_task *rpc_call_null(struct rpc_clnt *clnt, struct rpc_cred *cred, int
- EXPORT_SYMBOL_GPL(rpc_call_null);
+@@ -58,7 +58,6 @@ static void	call_start(struct rpc_task *task);
+ static void	call_reserve(struct rpc_task *task);
+ static void	call_reserveresult(struct rpc_task *task);
+ static void	call_allocate(struct rpc_task *task);
+-static void	call_encode(struct rpc_task *task);
+ static void	call_decode(struct rpc_task *task);
+ static void	call_bind(struct rpc_task *task);
+ static void	call_bind_status(struct rpc_task *task);
+@@ -70,9 +69,9 @@ static void	call_refreshresult(struct rpc_task *task);
+ static void	call_timeout(struct rpc_task *task);
+ static void	call_connect(struct rpc_task *task);
+ static void	call_connect_status(struct rpc_task *task);
+-static __be32 *	call_header(struct rpc_task *task);
+-static __be32 *	call_verify(struct rpc_task *task);
  
- #ifdef RPC_DEBUG
-+/*
-+ * To make it easier to tell what action each running RPC task
-+ * is executing, use a table to map the content of tk_action to
-+ * a human-readable name.  This uses a little extra memory, but
-+ * causes no additional run-time overhead per RPC request.
-+ */
-+typedef void   (*rpc_task_action)(struct rpc_task *);
-+
-+static struct {
-+	rpc_task_action		action;
-+	const char		*name;
-+} rpc_action_table[] = {
-+	{ rpc_prepare_task,		"prepare"		},
-+	{ call_start,			"start"			},
-+	{ call_reserve,			"reserve"		},
-+	{ call_reserveresult,		"reserveresult"		},
-+	{ call_allocate,		"allocate"		},
-+	{ call_bind,			"bind"			},
-+	{ call_bind_status,		"bindstatus"		},
-+	{ call_connect,			"connect"		},
-+	{ call_connect_status,		"connectstatus"		},
-+	{ call_transmit,		"transmit"		},
-+	{ call_transmit_status,		"transmitstatus"	},
-+	{ call_status,			"status"		},
-+	{ call_timeout,			"timeout"		},
-+	{ call_decode,			"decode"		},
-+	{ call_refresh,			"refresh"		},
-+	{ call_refreshresult,		"refreshresult"		},
-+	{ rpc_exit_task,		"exit"			},
-+	{ NULL,				"null"			},
-+};
-+
-+static const char *rpc_show_action(rpc_task_action action)
-+{
-+	unsigned int i;
-+
-+	for (i = 0; i <= ARRAY_SIZE(rpc_action_table); i++)
-+		if (rpc_action_table[i].action == action)
-+			return rpc_action_table[i].name;
-+
-+	return "unknown";
-+}
-+
- static void rpc_show_header(void)
- {
- 	printk(KERN_INFO "-pid- flgs status -client- --rqstp- "
--		"-timeout -action- ---ops--\n");
-+		"-timeout ---ops--\n");
- }
++static __be32	*rpc_encode_header(struct rpc_task *task);
++static __be32	*rpc_verify_header(struct rpc_task *task);
+ static int	rpc_ping(struct rpc_clnt *clnt, int flags);
  
- static void rpc_show_task(struct rpc_clnt *clnt, struct rpc_task *task)
-@@ -1519,13 +1562,14 @@ static void rpc_show_task(struct rpc_clnt *clnt, struct rpc_task *task)
- 	if (RPC_IS_QUEUED(task))
- 		rpc_waitq = rpc_qname(task->tk_waitqueue);
- 
--	printk(KERN_INFO "%5u %04x %6d %8p %8p %8ld %8p %8p\n",
-+	printk(KERN_INFO "%5u %04x %6d %8p %8p %8ld %8p\n",
- 		task->tk_pid, task->tk_flags, task->tk_status,
- 		clnt, task->tk_rqstp, task->tk_timeout,
--		task->tk_action, task->tk_ops);
-+		task->tk_ops);
- 
--	printk(KERN_INFO " prog: %s%u  proc: %s  waitq: %s\n",
--		clnt->cl_protname, clnt->cl_vers, proc, rpc_waitq);
-+	printk(KERN_INFO " prog: %s%u  proc: %s  action: %s  waitq: %s\n",
-+		clnt->cl_protname, clnt->cl_vers,
-+		proc, rpc_show_action(task->tk_action), rpc_waitq);
- }
- 
- void rpc_show_tasks(void)
-diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-index 6eab9bf..9aa9948 100644
---- a/net/sunrpc/sched.c
-+++ b/net/sunrpc/sched.c
-@@ -574,7 +574,7 @@ EXPORT_SYMBOL_GPL(rpc_delay);
- /*
-  * Helper to call task->tk_ops->rpc_call_prepare
+ static void rpc_register_client(struct rpc_clnt *clnt)
+@@ -865,7 +864,7 @@ rpc_xdr_buf_init(struct xdr_buf *buf, void *start, size_t len)
+  * 3.	Encode arguments of an RPC call
   */
--static void rpc_prepare_task(struct rpc_task *task)
-+void rpc_prepare_task(struct rpc_task *task)
+ static void
+-call_encode(struct rpc_task *task)
++rpc_xdr_encode(struct rpc_task *task)
  {
- 	lock_kernel();
- 	task->tk_ops->rpc_call_prepare(task, task->tk_calldata);
+ 	struct rpc_rqst	*req = task->tk_rqstp;
+ 	kxdrproc_t	encode;
+@@ -880,13 +879,14 @@ call_encode(struct rpc_task *task)
+ 			 (char *)req->rq_buffer + req->rq_callsize,
+ 			 req->rq_rcvsize);
+ 
+-	/* Encode header and provided arguments */
+-	encode = task->tk_msg.rpc_proc->p_encode;
+-	if (!(p = call_header(task))) {
+-		printk(KERN_INFO "RPC: call_header failed, exit EIO\n");
++	p = rpc_encode_header(task);
++	if (p == NULL) {
++		printk(KERN_INFO "RPC: couldn't encode RPC header, exit EIO\n");
+ 		rpc_exit(task, -EIO);
+ 		return;
+ 	}
++
++	encode = task->tk_msg.rpc_proc->p_encode;
+ 	if (encode == NULL)
+ 		return;
+ 
+@@ -1050,7 +1050,7 @@ call_transmit(struct rpc_task *task)
+ 	/* Encode here so that rpcsec_gss can use correct sequence number. */
+ 	if (rpc_task_need_encode(task)) {
+ 		BUG_ON(task->tk_rqstp->rq_bytes_sent != 0);
+-		call_encode(task);
++		rpc_xdr_encode(task);
+ 		/* Did the encode result in an error condition? */
+ 		if (task->tk_status != 0)
+ 			return;
+@@ -1222,8 +1222,7 @@ call_decode(struct rpc_task *task)
+ 	WARN_ON(memcmp(&req->rq_rcv_buf, &req->rq_private_buf,
+ 				sizeof(req->rq_rcv_buf)) != 0);
+ 
+-	/* Verify the RPC header */
+-	p = call_verify(task);
++	p = rpc_verify_header(task);
+ 	if (IS_ERR(p)) {
+ 		if (p == ERR_PTR(-EAGAIN))
+ 			goto out_retry;
+@@ -1284,11 +1283,7 @@ call_refreshresult(struct rpc_task *task)
+ 	return;
+ }
+ 
+-/*
+- * Call header serialization
+- */
+-static __be32 *
+-call_header(struct rpc_task *task)
++static __be32 *rpc_encode_header(struct rpc_task *task)
+ {
+ 	struct rpc_clnt *clnt = task->tk_client;
+ 	struct rpc_rqst	*req = task->tk_rqstp;
+@@ -1308,11 +1303,7 @@ call_header(struct rpc_task *task)
+ 	return p;
+ }
+ 
+-/*
+- * Reply header verification
+- */
+-static __be32 *
+-call_verify(struct rpc_task *task)
++static __be32 *rpc_verify_header(struct rpc_task *task)
+ {
+ 	struct kvec *iov = &task->tk_rqstp->rq_rcv_buf.head[0];
+ 	int len = task->tk_rqstp->rq_rcv_buf.len >> 2;
+@@ -1386,7 +1377,7 @@ call_verify(struct rpc_task *task)
+ 			task->tk_action = call_bind;
+ 			goto out_retry;
+ 		case RPC_AUTH_TOOWEAK:
+-			printk(KERN_NOTICE "call_verify: server %s requires stronger "
++			printk(KERN_NOTICE "RPC: server %s requires stronger "
+ 			       "authentication.\n", task->tk_client->cl_server);
+ 			break;
+ 		default:
 
