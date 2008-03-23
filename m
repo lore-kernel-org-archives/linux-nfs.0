@@ -1,66 +1,77 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 4/5] NFS: Make nfs_open methods consistent
-Date: Fri, 21 Mar 2008 19:02:24 -0400
-Message-ID: <20080321230224.23627.85247.stgit@ingres.1015granger.net>
+From: Roland Dreier <rdreier-FYB4Gu1CFyUAvxtiuMwx3w@public.gmane.org>
+Subject: [PATCH for 2.6.25] SVCRDMA: Use only 1 RDMA read scatter entry for iWARP adapters
+Date: Sun, 23 Mar 2008 14:27:12 -0700
+Message-ID: <adaiqzdt9lb.fsf@cisco.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: linux-nfs@vger.kernel.org
-To: trond.myklebust@netapp.com
+Content-Type: text/plain; charset=us-ascii
+Cc: Neil Brown <neilb@suse.de>,
+	Trond Myklebust <Trond.Myklebust@netapp.com>,
+	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Tom Tucker <tom@opengridcomputing.com>,
+	"J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from flpi185.sbcis.sbc.com ([207.115.20.187]:12484 "EHLO
-	flpi185.prodigy.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1764947AbYCUXCk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Mar 2008 19:02:40 -0400
+Received: from sj-iport-6.cisco.com ([171.71.176.117]:62029 "EHLO
+	sj-iport-6.cisco.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755096AbYCWV1N (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 23 Mar 2008 17:27:13 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: Report the same debugging info and count function calls the
-same for files and directories in nfs_opendir() and nfs_file_open().
+The iWARP protocol limits RDMA read requests to a single scatter
+entry.  NFS/RDMA has code in rdma_read_max_sge() that is supposed to
+limit the sge_count for RDMA read requests to 1, but the code to do
+that is inside an #ifdef RDMA_TRANSPORT_IWARP block.  In the mainline
+kernel at least, RDMA_TRANSPORT_IWARP is an enum and not a
+preprocessor #define, so the #ifdef'ed code is never compiled.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+In my test of a kernel build with -j8 on an NFS/RDMA mount, this
+problem eventually leads to trouble starting with:
+
+    svcrdma: Error posting send = -22
+    svcrdma : RDMA_READ error = -22
+
+and things go downhill from there.
+
+The trivial fix is to delete the #ifdef guard.  The check seems to be
+a remnant of when the NFS/RDMA code was not merged and needed to
+compile against multiple kernel versions, although I don't think it
+ever worked as intended.  In any case now that the code is upstream
+there's no need to test whether the RDMA_TRANSPORT_IWARP constant is
+defined or not.
+
+Without this patch, my kernel build on an NFS/RDMA mount using NetEffect
+adapters quickly and 100% reproducibly failed with an error like:
+
+    ld: final link failed: Software caused connection abort
+
+With the patch applied I was able to complete a kernel build on the
+same setup.
+
+Signed-off-by: Roland Dreier <rolandd-FYB4Gu1CFyUAvxtiuMwx3w@public.gmane.org>
 ---
+I guess this should probably go into 2.6.25 if possible, since things
+get seriously screwed up in my testing once this bug is hit.
 
- fs/nfs/dir.c  |    8 ++++++--
- fs/nfs/file.c |    5 +++++
- 2 files changed, 11 insertions(+), 2 deletions(-)
+Not sure why this doesn't trigger on Chelsio or Ammasso adapters (or
+does it?), but it's easily reproducible here on Neteffect adapters
+(and that driver is now upstream for 2.6.25).
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 63f8f1c..2346e73 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -131,10 +131,14 @@ const struct inode_operations nfs4_dir_inode_operations = {
- static int
- nfs_opendir(struct inode *inode, struct file *filp)
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+index ab54a73..9712716 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+@@ -237,14 +237,12 @@ static void rdma_set_ctxt_sge(struct svc_rdma_op_ctxt *ctxt,
+ 
+ static int rdma_read_max_sge(struct svcxprt_rdma *xprt, int sge_count)
  {
-+	struct dentry *dentry = filp->f_path.dentry;
- 	int res;
+-#ifdef RDMA_TRANSPORT_IWARP
+ 	if ((RDMA_TRANSPORT_IWARP ==
+ 	     rdma_node_get_transport(xprt->sc_cm_id->
+ 				     device->node_type))
+ 	    && sge_count > 1)
+ 		return 1;
+ 	else
+-#endif
+ 		return min_t(int, sge_count, xprt->sc_max_sge);
+ }
  
--	dfprintk(VFS, "NFS: opendir(%s/%ld)\n",
--			inode->i_sb->s_id, inode->i_ino);
-+	dfprintk(VFS, "NFS: open dir(%s/%s)\n",
-+			dentry->d_parent->d_name.name,
-+			dentry->d_name.name);
-+
-+	nfs_inc_stats(inode, NFSIOS_VFSOPEN);
- 
- 	lock_kernel();
- 	/* Call generic open code in order to cache credentials */
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index 7776a89..b50f86c 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -113,8 +113,13 @@ static int nfs_check_flags(int flags)
- static int
- nfs_file_open(struct inode *inode, struct file *filp)
- {
-+	struct dentry *dentry = filp->f_path.dentry;
- 	int res;
- 
-+	dfprintk(VFS, "NFS: open file(%s/%s)\n",
-+			dentry->d_parent->d_name.name,
-+			dentry->d_name.name);
-+
- 	res = nfs_check_flags(filp->f_flags);
- 	if (res)
- 		return res;
-
