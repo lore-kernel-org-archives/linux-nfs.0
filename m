@@ -1,120 +1,131 @@
-From: Tom Tucker <tom@opengridcomputing.com>
-Subject: FW: [PATCH for 2.6.25] SVCRDMA: Use only 1 RDMA read scatter
- entry for iWARP adapters
-Date: Sun, 23 Mar 2008 22:06:08 -0500
-Message-ID: <C40C84D0.3E674%tom@opengridcomputing.com>
-References: <C40C5781.3E539%tom@opengridcomputing.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: FW: [PATCH for 2.6.25] SVCRDMA: Use only 1 RDMA read scatter
+	entry for iWARP adapters
+Date: Mon, 24 Mar 2008 11:44:52 -0400
+Message-ID: <20080324154452.GA23736@fieldses.org>
+References: <C40C5781.3E539%tom@opengridcomputing.com> <C40C84D0.3E674%tom@opengridcomputing.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="US-ASCII"
-Cc: Roland Dreier <rdreier-FYB4Gu1CFyUAvxtiuMwx3w@public.gmane.org>, <linux-nfs@vger.kernel.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Roland Dreier <rdreier-FYB4Gu1CFyUAvxtiuMwx3w@public.gmane.org>, linux-nfs@vger.kernel.org
+To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.es335.com ([67.65.19.105]:27124 "EHLO mail.es335.com"
+Received: from mail.fieldses.org ([66.93.2.214]:46452 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750820AbYCXDGV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 23 Mar 2008 23:06:21 -0400
-In-Reply-To: <C40C5781.3E539%tom@opengridcomputing.com>
+	id S1752524AbYCXPo4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 24 Mar 2008 11:44:56 -0400
+In-Reply-To: <C40C84D0.3E674%tom@opengridcomputing.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Bruce:
+On Sun, Mar 23, 2008 at 10:06:08PM -0500, Tom Tucker wrote:
+> Bruce:
+> 
+> If possible, this should go in 2.6.25. This was a merge error on my part.
+> Thanks to Roland for figuring this out...
 
-If possible, this should go in 2.6.25. This was a merge error on my part.
-Thanks to Roland for figuring this out...
+Will do, thanks, but, as a subsequent patch, could we clean this up a
+little?  For example, assuming sge_count and sc_max_sge are always
+positive, isn't the (sge_count > 1) check superfluous, given that the
+following min_t's going to produce 1 in that case anyway?
 
-Tom
+Also, would it be possible just to ensure sc_max_sge is just set to 1
+from the start in this case?
 
------- Forwarded Message
-From: Tom Tucker <tom@opengridcomputing.com>
-Date:  Sun, 23 Mar 2008 18:52:49 -0500
-To: Roland Dreier <rdreier-FYB4Gu1CFyUAvxtiuMwx3w@public.gmane.org>, "J. Bruce Fields"
-<bfields@fieldses.org>
-Cc: NeilBrown <neilb@suse.de>, Trond Myklebust <Trond.Myklebust@netapp.com>,
-<linux-nfs@vger.kernel.org>, <linux-kernel@vger.kernel.org>
-Conversation: [PATCH for 2.6.25] SVCRDMA: Use only 1 RDMA read scatter entry
-for iWARP adapters
-Subject: Re: [PATCH for 2.6.25] SVCRDMA: Use only 1 RDMA read scatter entry
-for iWARP adapters
+--b.
 
-
-Ack. It's actually an _ancient_ remnant when it had to compile against iWARP
-vs. non-iWARP enabled OFA trees.
-
-
-On 3/23/08 4:27 PM, "Roland Dreier" <rdreier-FYB4Gu1CFyUAvxtiuMwx3w@public.gmane.org> wrote:
-
-> The iWARP protocol limits RDMA read requests to a single scatter
-> entry.  NFS/RDMA has code in rdma_read_max_sge() that is supposed to
-> limit the sge_count for RDMA read requests to 1, but the code to do
-> that is inside an #ifdef RDMA_TRANSPORT_IWARP block.  In the mainline
-> kernel at least, RDMA_TRANSPORT_IWARP is an enum and not a
-> preprocessor #define, so the #ifdef'ed code is never compiled.
 > 
-> In my test of a kernel build with -j8 on an NFS/RDMA mount, this
-> problem eventually leads to trouble starting with:
+> Tom
 > 
->     svcrdma: Error posting send = -22
->     svcrdma : RDMA_READ error = -22
+> ------ Forwarded Message
+> From: Tom Tucker <tom@opengridcomputing.com>
+> Date:  Sun, 23 Mar 2008 18:52:49 -0500
+> To: Roland Dreier <rdreier-FYB4Gu1CFyUAvxtiuMwx3w@public.gmane.org>, "J. Bruce Fields"
+> <bfields@fieldses.org>
+> Cc: NeilBrown <neilb@suse.de>, Trond Myklebust <Trond.Myklebust@netapp.com>,
+> <linux-nfs@vger.kernel.org>, <linux-kernel@vger.kernel.org>
+> Conversation: [PATCH for 2.6.25] SVCRDMA: Use only 1 RDMA read scatter entry
+> for iWARP adapters
+> Subject: Re: [PATCH for 2.6.25] SVCRDMA: Use only 1 RDMA read scatter entry
+> for iWARP adapters
 > 
-> and things go downhill from there.
 > 
-> The trivial fix is to delete the #ifdef guard.  The check seems to be
-> a remnant of when the NFS/RDMA code was not merged and needed to
-> compile against multiple kernel versions, although I don't think it
-> ever worked as intended.  In any case now that the code is upstream
-> there's no need to test whether the RDMA_TRANSPORT_IWARP constant is
-> defined or not.
+> Ack. It's actually an _ancient_ remnant when it had to compile against iWARP
+> vs. non-iWARP enabled OFA trees.
 > 
-> Without this patch, my kernel build on an NFS/RDMA mount using NetEffect
-> adapters quickly and 100% reproducibly failed with an error like:
 > 
->     ld: final link failed: Software caused connection abort
+> On 3/23/08 4:27 PM, "Roland Dreier" <rdreier-FYB4Gu1CFyUAvxtiuMwx3w@public.gmane.org> wrote:
 > 
-> With the patch applied I was able to complete a kernel build on the
-> same setup.
+> > The iWARP protocol limits RDMA read requests to a single scatter
+> > entry.  NFS/RDMA has code in rdma_read_max_sge() that is supposed to
+> > limit the sge_count for RDMA read requests to 1, but the code to do
+> > that is inside an #ifdef RDMA_TRANSPORT_IWARP block.  In the mainline
+> > kernel at least, RDMA_TRANSPORT_IWARP is an enum and not a
+> > preprocessor #define, so the #ifdef'ed code is never compiled.
+> > 
+> > In my test of a kernel build with -j8 on an NFS/RDMA mount, this
+> > problem eventually leads to trouble starting with:
+> > 
+> >     svcrdma: Error posting send = -22
+> >     svcrdma : RDMA_READ error = -22
+> > 
+> > and things go downhill from there.
+> > 
+> > The trivial fix is to delete the #ifdef guard.  The check seems to be
+> > a remnant of when the NFS/RDMA code was not merged and needed to
+> > compile against multiple kernel versions, although I don't think it
+> > ever worked as intended.  In any case now that the code is upstream
+> > there's no need to test whether the RDMA_TRANSPORT_IWARP constant is
+> > defined or not.
+> > 
+> > Without this patch, my kernel build on an NFS/RDMA mount using NetEffect
+> > adapters quickly and 100% reproducibly failed with an error like:
+> > 
+> >     ld: final link failed: Software caused connection abort
+> > 
+> > With the patch applied I was able to complete a kernel build on the
+> > same setup.
+> > 
+> > Signed-off-by: Roland Dreier <rolandd-FYB4Gu1CFyUAvxtiuMwx3w@public.gmane.org>
+> > ---
+> > I guess this should probably go into 2.6.25 if possible, since things
+> > get seriously screwed up in my testing once this bug is hit.
+> > 
+> > Not sure why this doesn't trigger on Chelsio or Ammasso adapters (or
+> > does it?), but it's easily reproducible here on Neteffect adapters
+> > (and that driver is now upstream for 2.6.25).
+> > 
+> > diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+> > b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+> > index ab54a73..9712716 100644
+> > --- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+> > +++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+> > @@ -237,14 +237,12 @@ static void rdma_set_ctxt_sge(struct svc_rdma_op_ctxt
+> > *ctxt,
+> >  
+> >  static int rdma_read_max_sge(struct svcxprt_rdma *xprt, int sge_count)
+> >  {
+> > -#ifdef RDMA_TRANSPORT_IWARP
+> > if ((RDMA_TRANSPORT_IWARP ==
+> >     rdma_node_get_transport(xprt->sc_cm_id->
+> >     device->node_type))
+> >    && sge_count > 1)
+> > return 1;
+> > else
+> > -#endif
+> > return min_t(int, sge_count, xprt->sc_max_sge);
+> >  }
+> >  
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
-> Signed-off-by: Roland Dreier <rolandd-FYB4Gu1CFyUAvxtiuMwx3w@public.gmane.org>
-> ---
-> I guess this should probably go into 2.6.25 if possible, since things
-> get seriously screwed up in my testing once this bug is hit.
 > 
-> Not sure why this doesn't trigger on Chelsio or Ammasso adapters (or
-> does it?), but it's easily reproducible here on Neteffect adapters
-> (and that driver is now upstream for 2.6.25).
-> 
-> diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-> b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-> index ab54a73..9712716 100644
-> --- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-> +++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-> @@ -237,14 +237,12 @@ static void rdma_set_ctxt_sge(struct svc_rdma_op_ctxt
-> *ctxt,
->  
->  static int rdma_read_max_sge(struct svcxprt_rdma *xprt, int sge_count)
->  {
-> -#ifdef RDMA_TRANSPORT_IWARP
-> if ((RDMA_TRANSPORT_IWARP ==
->     rdma_node_get_transport(xprt->sc_cm_id->
->     device->node_type))
->    && sge_count > 1)
-> return 1;
-> else
-> -#endif
-> return min_t(int, sge_count, xprt->sc_max_sge);
->  }
->  
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
------- End of Forwarded Message
-
-
+> 
+> ------ End of Forwarded Message
+> 
+> 
