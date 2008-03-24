@@ -1,25 +1,41 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: Re: [PATCH for 2.6.25] SVCRDMA: Use only 1 RDMA read scatter
+Subject: FW: [PATCH for 2.6.25] SVCRDMA: Use only 1 RDMA read scatter
  entry for iWARP adapters
-Date: Sun, 23 Mar 2008 18:52:49 -0500
-Message-ID: <C40C5781.3E539%tom@opengridcomputing.com>
-References: <adaiqzdt9lb.fsf@cisco.com>
+Date: Sun, 23 Mar 2008 22:06:08 -0500
+Message-ID: <C40C84D0.3E674%tom@opengridcomputing.com>
+References: <C40C5781.3E539%tom@opengridcomputing.com>
 Mime-Version: 1.0
 Content-Type: text/plain;
 	charset="US-ASCII"
-Cc: NeilBrown <neilb@suse.de>,
-	Trond Myklebust <Trond.Myklebust@netapp.com>,
-	<linux-nfs@vger.kernel.org>, <linux-kernel@vger.kernel.org>
-To: Roland Dreier <rdreier-FYB4Gu1CFyUAvxtiuMwx3w@public.gmane.org>,
-	"J. Bruce Fields" <bfields@fieldses.org>
+Cc: Roland Dreier <rdreier-FYB4Gu1CFyUAvxtiuMwx3w@public.gmane.org>, <linux-nfs@vger.kernel.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.es335.com ([67.65.19.105]:6195 "EHLO mail.es335.com"
+Received: from mail.es335.com ([67.65.19.105]:27124 "EHLO mail.es335.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756691AbYCWXwv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 23 Mar 2008 19:52:51 -0400
-In-Reply-To: <adaiqzdt9lb.fsf-FYB4Gu1CFyUAvxtiuMwx3w@public.gmane.org>
+	id S1750820AbYCXDGV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 23 Mar 2008 23:06:21 -0400
+In-Reply-To: <C40C5781.3E539%tom@opengridcomputing.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+
+Bruce:
+
+If possible, this should go in 2.6.25. This was a merge error on my part.
+Thanks to Roland for figuring this out...
+
+Tom
+
+------ Forwarded Message
+From: Tom Tucker <tom@opengridcomputing.com>
+Date:  Sun, 23 Mar 2008 18:52:49 -0500
+To: Roland Dreier <rdreier-FYB4Gu1CFyUAvxtiuMwx3w@public.gmane.org>, "J. Bruce Fields"
+<bfields@fieldses.org>
+Cc: NeilBrown <neilb@suse.de>, Trond Myklebust <Trond.Myklebust@netapp.com>,
+<linux-nfs@vger.kernel.org>, <linux-kernel@vger.kernel.org>
+Conversation: [PATCH for 2.6.25] SVCRDMA: Use only 1 RDMA read scatter entry
+for iWARP adapters
+Subject: Re: [PATCH for 2.6.25] SVCRDMA: Use only 1 RDMA read scatter entry
+for iWARP adapters
 
 
 Ack. It's actually an _ancient_ remnant when it had to compile against iWARP
@@ -92,5 +108,13 @@ On 3/23/08 4:27 PM, "Roland Dreier" <rdreier-FYB4Gu1CFyUAvxtiuMwx3w@public.gmane
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+------ End of Forwarded Message
 
 
