@@ -1,85 +1,42 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: [PATCH] SVCRDMA: Use only 1 RDMA read scatter entry for iWARP
-	adapters
-Date: Mon, 24 Mar 2008 12:03:03 -0400
-Message-ID: <20080324160303.GB23736@fieldses.org>
+From: Roland Dreier <rdreier-FYB4Gu1CFyUAvxtiuMwx3w@public.gmane.org>
+Subject: Re: FW: [PATCH for 2.6.25] SVCRDMA: Use only 1 RDMA read scatter entry for iWARP adapters
+Date: Mon, 24 Mar 2008 09:57:04 -0700
+Message-ID: <adave3crrfj.fsf@cisco.com>
+References: <C40C5781.3E539%tom@opengridcomputing.com>
+	<C40C84D0.3E674%tom@opengridcomputing.com>
+	<20080324154452.GA23736@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Neil Brown <neilb@suse.de>, Roland Dreier <rolandd-FYB4Gu1CFyUAvxtiuMwx3w@public.gmane.org>,
-	Tom Tucker <tom@opengridcomputing.com>,
-	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Tom Tucker <tom@opengridcomputing.com>, linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:51160 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753434AbYCXQDS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 24 Mar 2008 12:03:18 -0400
+Received: from sj-iport-1.cisco.com ([171.71.176.70]:41313 "EHLO
+	sj-iport-1.cisco.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758087AbYCXQ5I (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Mar 2008 12:57:08 -0400
+In-Reply-To: <20080324154452.GA23736@fieldses.org> (J. Bruce Fields's message of "Mon, 24 Mar 2008 11:44:52 -0400")
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Roland Dreier <rdreier-FYB4Gu1CFyUAvxtiuMwx3w@public.gmane.org>
+ > Will do, thanks, but, as a subsequent patch, could we clean this up a
+ > little?  For example, assuming sge_count and sc_max_sge are always
+ > positive, isn't the (sge_count > 1) check superfluous, given that the
+ > following min_t's going to produce 1 in that case anyway?
 
-The iWARP protocol limits RDMA read requests to a single scatter
-entry.  NFS/RDMA has code in rdma_read_max_sge() that is supposed to
-limit the sge_count for RDMA read requests to 1, but the code to do
-that is inside an #ifdef RDMA_TRANSPORT_IWARP block.  In the mainline
-kernel at least, RDMA_TRANSPORT_IWARP is an enum and not a
-preprocessor #define, so the #ifdef'ed code is never compiled.
+Yes, I had the same thought reading the code but I didn't want to try
+and do too many things in one patch.
 
-In my test of a kernel build with -j8 on an NFS/RDMA mount, this
-problem eventually leads to trouble starting with:
+ > Also, would it be possible just to ensure sc_max_sge is just set to 1
+ > from the start in this case?
 
-    svcrdma: Error posting send = -22
-    svcrdma : RDMA_READ error = -22
+I think the problem with this is that on InfiniBand, it is fine to
+have multiple scatter entries for an RDMA read request, while on iWARP
+only 1 scatter entry is possible for RDMA read.  For both IB and
+iWARP, you can eg have multiple gather entries for an RDMA write.  So
+sc_max_sge as it stands may want to be bigger than 1 even for iWARP devices.
 
-and things go downhill from there.
+One not-too-bad possibility would just be to have sc_max_sge and
+sc_max_sge_rdma_read fields and initialize them properly based on IB
+vs iWARP...
 
-The trivial fix is to delete the #ifdef guard.  The check seems to be
-a remnant of when the NFS/RDMA code was not merged and needed to
-compile against multiple kernel versions, although I don't think it
-ever worked as intended.  In any case now that the code is upstream
-there's no need to test whether the RDMA_TRANSPORT_IWARP constant is
-defined or not.
-
-Without this patch, my kernel build on an NFS/RDMA mount using NetEffect
-adapters quickly and 100% reproducibly failed with an error like:
-
-    ld: final link failed: Software caused connection abort
-
-With the patch applied I was able to complete a kernel build on the
-same setup.
-
-(Tom Tucker says this is "actually an _ancient_ remnant when it had to
-compile against iWARP vs. non-iWARP enabled OFA trees.")
-
-Signed-off-by: Roland Dreier <rolandd-FYB4Gu1CFyUAvxtiuMwx3w@public.gmane.org>
-Acked-by: Tom Tucker <tom@opengridcomputing.com>
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
----
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |    2 --
- 1 files changed, 0 insertions(+), 2 deletions(-)
-
-This is a bugfix appropriate for 2.6.25.--b.
-
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-index ab54a73..9712716 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-@@ -237,14 +237,12 @@ static void rdma_set_ctxt_sge(struct svc_rdma_op_ctxt *ctxt,
- 
- static int rdma_read_max_sge(struct svcxprt_rdma *xprt, int sge_count)
- {
--#ifdef RDMA_TRANSPORT_IWARP
- 	if ((RDMA_TRANSPORT_IWARP ==
- 	     rdma_node_get_transport(xprt->sc_cm_id->
- 				     device->node_type))
- 	    && sge_count > 1)
- 		return 1;
- 	else
--#endif
- 		return min_t(int, sge_count, xprt->sc_max_sge);
- }
- 
--- 
-1.5.5.rc1
-
+ - R.
