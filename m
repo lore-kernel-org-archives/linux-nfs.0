@@ -1,49 +1,97 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: FW: [PATCH for 2.6.25] SVCRDMA: Use only 1 RDMA read scatter
-	entry for iWARP adapters
-Date: Mon, 24 Mar 2008 13:05:28 -0400
-Message-ID: <20080324170528.GE23736@fieldses.org>
-References: <C40C5781.3E539%tom@opengridcomputing.com> <C40C84D0.3E674%tom@opengridcomputing.com> <20080324154452.GA23736@fieldses.org> <adave3crrfj.fsf@cisco.com>
+From: Tom Tucker <tom@opengridcomputing.com>
+Subject: [PATCH] SVCRDMA: Check num_sge when setting LAST_CTXT bit
+Date: Tue, 25 Mar 2008 11:14:02 -0500
+Message-ID: <1206461642.19529.30.camel@trinity.ogc.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Tom Tucker <tom@opengridcomputing.com>, linux-nfs@vger.kernel.org
-To: Roland Dreier <rdreier-FYB4Gu1CFyUAvxtiuMwx3w@public.gmane.org>
+Content-Type: text/plain
+Cc: linux-nfs <linux-nfs@vger.kernel.org>,
+	Roland Dreier <rdreier-FYB4Gu1CFyUAvxtiuMwx3w@public.gmane.org>,
+	James Lentini <jlentini@netapp.com>,
+	"Talpey, Thomas" <Thomas.Talpey@netapp.com>,
+	Steve Wise <swise@chelsio.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:48964 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757573AbYCXRFb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 24 Mar 2008 13:05:31 -0400
-In-Reply-To: <adave3crrfj.fsf-FYB4Gu1CFyUAvxtiuMwx3w@public.gmane.org>
+Received: from smtp.opengridcomputing.com ([209.198.142.2]:45431 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1756203AbYCYQMf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Mar 2008 12:12:35 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Mar 24, 2008 at 09:57:04AM -0700, Roland Dreier wrote:
->  > Will do, thanks, but, as a subsequent patch, could we clean this up a
->  > little?  For example, assuming sge_count and sc_max_sge are always
->  > positive, isn't the (sge_count > 1) check superfluous, given that the
->  > following min_t's going to produce 1 in that case anyway?
-> 
-> Yes, I had the same thought reading the code but I didn't want to try
-> and do too many things in one patch.
+    SVCRDMA: Check num_sge when setting LAST_CTXT bit
+    
+    The RDMACTXT_F_LAST_CTXT bit was getting set incorrectly
+    when the last chunk in the read-list spanned multiple pages. This
+    resulted in a kernel panic when the wrong context was used to
+    build the RPC iovec page list.
+    
+    RDMA_READ is used to fetch RPC data from the client for
+    NFS_WRITE requests. A scatter-gather is used to map the
+    advertised client side buffer to the server-side iovec and
+    associated page list.
+    
+    WR contexts are used to convey which scatter-gather entries are
+    handled by each WR. When the write data is large, a single RPC may
+    require multiple RDMA_READ requests so the contexts for a single RPC
+    are chained together in a linked list. The last context in this list
+    is marked with a bit RDMACTXT_F_LAST_CTXT so that when this WR completes,
+    the CQ handler code can enqueue the RPC for processing.
+    
+    The code in rdma_read_xdr was setting this bit on the last two
+    contexts on this list when the last read-list chunk spanned multiple
+    pages. This caused the svc_rdma_recvfrom logic to incorrectly build
+    the RPC and caused the kernel to crash because the second-to-last
+    context doesn't contain the iovec page list.
+    
+    Modified the condition that sets this bit so that it correctly detects
+    the last context for the RPC.
+    
+    Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+    Tested-by: Roland Dreier <rolandd-FYB4Gu1CFyUAvxtiuMwx3w@public.gmane.org>
+---
 
-Sure.
+Bruce, this should be queued for 2.6.25 if possible.
 
-> 
->  > Also, would it be possible just to ensure sc_max_sge is just set to 1
->  > from the start in this case?
-> 
-> I think the problem with this is that on InfiniBand, it is fine to
-> have multiple scatter entries for an RDMA read request, while on iWARP
-> only 1 scatter entry is possible for RDMA read.  For both IB and
-> iWARP, you can eg have multiple gather entries for an RDMA write.  So
-> sc_max_sge as it stands may want to be bigger than 1 even for iWARP devices.
-> 
-> One not-too-bad possibility would just be to have sc_max_sge and
-> sc_max_sge_rdma_read fields and initialize them properly based on IB
-> vs iWARP...
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |   21 +++++++++++----------
+ 1 files changed, 11 insertions(+), 10 deletions(-)
 
-I'll leave the decision to people who understand this code better than
-me, but offhand that does sound like it'd be a little more
-straightforward.
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+index 301f619..85788e7 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+@@ -326,15 +326,6 @@ next_sge:
+ 		ctxt->direction = DMA_FROM_DEVICE;
+ 		clear_bit(RDMACTXT_F_READ_DONE, &ctxt->flags);
+ 		clear_bit(RDMACTXT_F_LAST_CTXT, &ctxt->flags);
+-		if ((ch+1)->rc_discrim == 0) {
+-			/*
+-			 * Checked in sq_cq_reap to see if we need to
+-			 * be enqueued
+-			 */
+-			set_bit(RDMACTXT_F_LAST_CTXT, &ctxt->flags);
+-			ctxt->next = hdr_ctxt;
+-			hdr_ctxt->next = head;
+-		}
+ 
+ 		/* Prepare READ WR */
+ 		memset(&read_wr, 0, sizeof read_wr);
+@@ -352,7 +343,17 @@ next_sge:
+ 		rdma_set_ctxt_sge(ctxt, &sge[ch_sge_ary[ch_no].start],
+ 				  &sgl_offset,
+ 				  read_wr.num_sge);
+-
++		if (((ch+1)->rc_discrim == 0) &&
++		    (read_wr.num_sge == ch_sge_ary[ch_no].count)) {
++			/*
++			 * Mark the last RDMA_READ with a bit to
++			 * indicate all RPC data has been fetched from
++			 * the client and the RPC needs to be enqueued.
++			 */
++			set_bit(RDMACTXT_F_LAST_CTXT, &ctxt->flags);
++			ctxt->next = hdr_ctxt;
++			hdr_ctxt->next = head;
++		}
+ 		/* Post the read */
+ 		err = svc_rdma_send(xprt, &read_wr);
+ 		if (err) {
 
---b.
