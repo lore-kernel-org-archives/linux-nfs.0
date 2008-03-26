@@ -1,100 +1,72 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: [PATCH] SVCRDMA: Check num_sge when setting LAST_CTXT bit
-Date: Tue, 25 Mar 2008 22:27:19 -0400
-Message-ID: <20080326022718.GA25657@fieldses.org>
+From: Timothy Shimmin <tes@sgi.com>
+Subject: Re: [opensuse] nfs_update_inode: inode X mode changed, Y to Z
+Date: Wed, 26 Mar 2008 14:27:26 +1100
+Message-ID: <47E9C29E.6090703@sgi.com>
+References: <47CF62C5.7000908@m2000.com>    <18384.50909.866848.966192@notabene.brown>    <9a8748490803121513w285cd45rb6b26a3d842cac1b@mail.gmail.com>    <20080312221511.GC31632@fieldses.org>    <9a8748490803121516u36395872i70cc88b0439adc74@mail.gmail.com>    <18394.1501.991087.80264@notabene.brown> <47DAEFD0.9020407@m2000.com>    <47E92F8E.7030504@m2000.com> <20080325190943.GF2237@fieldses.org>    <32953.192.168.1.70.1206477121.squirrel@neil.brown.name>    <20080325212425.GA20257@josefsipek.net> <34178.192.168.1.70.1206481102.squirrel@neil.brown.name>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-	Neil Brown <neilb@suse.de>,
-	Tom Tucker <tom@opengridcomputing.com>,
-	Roland Dreier <rolandd-FYB4Gu1CFyUAvxtiuMwx3w@public.gmane.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: "Josef 'Jeff' Sipek" <jeffpc-PM1Ls4bqFqUFEYicpp4bmg@public.gmane.org>,
+	"J. Bruce Fields" <bfields@fieldses.org>, xfs@oss.sgi.com,
+	Adam Schrotenboer <adam-PMR2DCmmWYEAvxtiuMwx3w@public.gmane.org>,
+	Jesper Juhl <jesper.juhl@gmail.com>,
+	Trond Myklebust <trond.myklebust@netapp.com>,
+	lkml@vger.kernel.org, linux-nfs@vger.kernel.org,
+	Thomas Daniel <tdaniel-PMR2DCmmWYEAvxtiuMwx3w@public.gmane.org>,
+	Frederic Revenu <frevenu-PMR2DCmmWYEAvxtiuMwx3w@public.gmane.org>,
+	Jeff Doan <jdoan-PMR2DCmmWYEAvxtiuMwx3w@public.gmane.org>
+To: NeilBrown <neilb@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:36657 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752965AbYCZC1X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 25 Mar 2008 22:27:23 -0400
+Received: from netops-testserver-3-out.sgi.com ([192.48.171.28]:55276 "EHLO
+	relay.sgi.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1754700AbYCZD1h (ORCPT
+	<rfc822;@relay.sgi.com:linux-nfs@vger.kernel.org>);
+	Tue, 25 Mar 2008 23:27:37 -0400
+In-Reply-To: <34178.192.168.1.70.1206481102.squirrel-eq65iwfR9nKIECXXMXunQA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Tom Tucker <tom@opengridcomputing.com>
+Hi Neil,
 
-The RDMACTXT_F_LAST_CTXT bit was getting set incorrectly
-when the last chunk in the read-list spanned multiple pages. This
-resulted in a kernel panic when the wrong context was used to
-build the RPC iovec page list.
+NeilBrown wrote:
+> On Wed, March 26, 2008 8:24 am, Josef 'Jeff' Sipek wrote:
+> 
+>> Unless you specify the "ikeep" mount option, XFS will remove unused inode
+>> clusters.  The newly freed blocks can be then used to store data or
+>> possibly
+>> a new inode cluster.  If the blocks get reused for inodes, you'll end up
+>> with inodes whose generation numbers regressed. (inode number = f(block
+>> number))
+>>
+>> Using the "ikeep" mount option causes to _never_ free empty inode
+>> clusters.
+>> This means that if you create many files and then unlink them, you'll end
+>> up
+>> with many unused inodes that are still allocated (and taking up disk
+>> space)
+>> but free to be used by the next creat(2)/mkdir(2)/etc..
+>>
+>> This "problem" is inherent to any file system which dynamically allocates
+>> inodes.
+> 
+> Yes, I understand all that.
+> 
+> However you still need to do something about the generation number.  It
+> must be set to something.
+> 
+> When you allocate an inode that doesn't currently exist on the device,
+> you obviously cannot increment the old value and use that.
+> However you can do a lot better than always using 0.
+> 
+Yes, this is a known problem.
+We came across it in about August last year I believe in the context of
+DMF as it wants to keep persistent file handles with gen#s in them:
+   SGI bug:
+   969192: Default mount option "noikeep" makes the inode generation number non-persistent
+I vaguely remember at the time that a number of different schemes were
+tossed around but in the end we just turned off the ikeep
+for DMAPI mounted filesystems.
+I thought we had a bug open to do a real fix but can't see
+it at the moment. Will look into it and discuss with our group.
 
-RDMA_READ is used to fetch RPC data from the client for
-NFS_WRITE requests. A scatter-gather is used to map the
-advertised client side buffer to the server-side iovec and
-associated page list.
-
-WR contexts are used to convey which scatter-gather entries are
-handled by each WR. When the write data is large, a single RPC may
-require multiple RDMA_READ requests so the contexts for a single RPC
-are chained together in a linked list. The last context in this list
-is marked with a bit RDMACTXT_F_LAST_CTXT so that when this WR completes,
-the CQ handler code can enqueue the RPC for processing.
-
-The code in rdma_read_xdr was setting this bit on the last two
-contexts on this list when the last read-list chunk spanned multiple
-pages. This caused the svc_rdma_recvfrom logic to incorrectly build
-the RPC and caused the kernel to crash because the second-to-last
-context doesn't contain the iovec page list.
-
-Modified the condition that sets this bit so that it correctly detects
-the last context for the RPC.
-
-Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
-Tested-by: Roland Dreier <rolandd-FYB4Gu1CFyUAvxtiuMwx3w@public.gmane.org>
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
----
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |   21 +++++++++++----------
- 1 files changed, 11 insertions(+), 10 deletions(-)
-
-One more server-side rdma patch for 2.6.25.
-
---b.
-
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-index 9712716..c22d6b6 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-@@ -322,15 +322,6 @@ next_sge:
- 		ctxt->direction = DMA_FROM_DEVICE;
- 		clear_bit(RDMACTXT_F_READ_DONE, &ctxt->flags);
- 		clear_bit(RDMACTXT_F_LAST_CTXT, &ctxt->flags);
--		if ((ch+1)->rc_discrim == 0) {
--			/*
--			 * Checked in sq_cq_reap to see if we need to
--			 * be enqueued
--			 */
--			set_bit(RDMACTXT_F_LAST_CTXT, &ctxt->flags);
--			ctxt->next = hdr_ctxt;
--			hdr_ctxt->next = head;
--		}
- 
- 		/* Prepare READ WR */
- 		memset(&read_wr, 0, sizeof read_wr);
-@@ -348,7 +339,17 @@ next_sge:
- 		rdma_set_ctxt_sge(ctxt, &sge[ch_sge_ary[ch_no].start],
- 				  &sgl_offset,
- 				  read_wr.num_sge);
--
-+		if (((ch+1)->rc_discrim == 0) &&
-+		    (read_wr.num_sge == ch_sge_ary[ch_no].count)) {
-+			/*
-+			 * Mark the last RDMA_READ with a bit to
-+			 * indicate all RPC data has been fetched from
-+			 * the client and the RPC needs to be enqueued.
-+			 */
-+			set_bit(RDMACTXT_F_LAST_CTXT, &ctxt->flags);
-+			ctxt->next = hdr_ctxt;
-+			hdr_ctxt->next = head;
-+		}
- 		/* Post the read */
- 		err = svc_rdma_send(xprt, &read_wr);
- 		if (err) {
--- 
-1.5.5.rc1
-
+Cheers,
+--Tim
