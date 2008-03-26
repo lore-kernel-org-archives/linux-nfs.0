@@ -1,185 +1,50 @@
-From: David Chinner <dgc@sgi.com>
-Subject: Re: [opensuse] nfs_update_inode: inode X mode changed, Y to Z
-Date: Wed, 26 Mar 2008 16:02:08 +1100
-Message-ID: <20080326050208.GH108924158@sgi.com>
-References: <9a8748490803121516u36395872i70cc88b0439adc74@mail.gmail.com> <18394.1501.991087.80264@notabene.brown> <47DAEFD0.9020407@m2000.com> <47E92F8E.7030504@m2000.com> <20080325190943.GF2237@fieldses.org> <32953.192.168.1.70.1206477121.squirrel@neil.brown.name> <20080325212425.GA20257@josefsipek.net> <34178.192.168.1.70.1206481102.squirrel@neil.brown.name> <20080325221321.GC20257@josefsipek.net> <20080326033738.GX103491721@sgi.com>
+From: Le Rouzic <aime.le-rouzic@bull.net>
+Subject: 2.6.25-rc6-CITI_NFS4_ALL-1 connectathon suite testdir error
+Date: Wed, 26 Mar 2008 14:56:52 +0100
+Message-ID: <47EA5624.3030905@bull.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Josef 'Jeff' Sipek" <jeffpc-PM1Ls4bqFqUFEYicpp4bmg@public.gmane.org>,
-	NeilBrown <neilb@suse.de>,
-	"J. Bruce Fields" <bfields@fieldses.org>, xfs@oss.sgi.com,
-	Adam Schrotenboer <adam-PMR2DCmmWYEAvxtiuMwx3w@public.gmane.org>,
-	Jesper Juhl <jesper.juhl@gmail.com>,
-	Trond Myklebust <trond.myklebust@netapp.com>,
-	linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-	Thomas Daniel <tdaniel-PMR2DCmmWYEAvxtiuMwx3w@public.gmane.org>,
-	Frederic Revenu <frevenu-PMR2DCmmWYEAvxtiuMwx3w@public.gmane.org>,
-	Jeff Doan <jdoan-PMR2DCmmWYEAvxtiuMwx3w@public.gmane.org>
-To: David Chinner <dgc@sgi.com>
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: linux-nfs@vger.kernel.org
+To: nfsv4 <nfsv4@linux-nfs.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from relay1.sgi.com ([192.48.171.29]:57660 "EHLO relay.sgi.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1751569AbYCZFCe (ORCPT
-	<rfc822;@relay.sgi.com:linux-nfs@vger.kernel.org>);
-	Wed, 26 Mar 2008 01:02:34 -0400
-In-Reply-To: <20080326033738.GX103491721@sgi.com>
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:45200 "EHLO
+	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752046AbYCZNxV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Mar 2008 09:53:21 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Mar 26, 2008 at 02:37:38PM +1100, David Chinner wrote:
-> Given this state of affairs (i.e. HSM using ikeep), I guess we can do
-> anything we want for the noikeep case. I'll cook up a patch that does
-> something similar to ext3 generation numbers for the initial seeding....
+Hi,
 
-Patch below for comments. It passes xfsqa, but there's no userspace
-support for it yet. 2.6.26 is the likely target for this change.
+Running 2.6.25-rc6-CITI_NFS4_ALL-1 on two Intel X86_64 bi-ways machines as
+client and server, get the following error with the runtest (-s) of the special
+tests of the connectathon suite when running it with several other robustness
+tests (fsx,iozone,fssb,fss_stress) in the same time:
 
-Cheers,
+ Second check for lost reply on non-idempotent requests
+ testing 50 idempotencies in directory "testdir"
+ rmdir 1: Directory not empty
+ special tests failed
 
-Dave.
+
+It is similar to the bug#150 <http://bugzilla.linux-nfs.org/show_bug.cgi?id=150> found with 2.6.23-rc9-CITI_NFS4_ALL-1
+Bug:  http://bugzilla.linux-nfs.org/show_bug.cgi?id=150  
+which was closed since.  
+
+
+So I created a new one:
+http://bugzilla.linux-nfs.org/show_bug.cgi?id=162
+
+
+Best Regards
+
 -- 
-Dave Chinner
-Principal Engineer
-SGI Australian Software Group
+-----------------------------------------------------------------
+Company : Bull, Architect of an Open World TM (www.bull.com)
+Name    : Aime Le Rouzic 
+Mail    : Bull - BP 208 - 38432 Echirolles Cedex - France
+E-Mail  : aime.le-rouzic@bull.net
+Phone   : 33 (4) 76.29.75.51
+Fax     : 33 (4) 76.29.75.18
+----------------------------------------------------------------- 
 
----
-
-Don't initialise new inode generation numbers to zero
-
-When we allocation new inode chunks, we initialise the generation
-numbers to zero. This works fine until we delete a chunk and then
-reallocate it, resulting in the same inode numbers but with a
-reset generation count. This can result in inode/generation
-pairs of different inodes occurring relatively close together.
-
-Given that the inode/gen pair makes up the "unique" portion of
-an NFS filehandle on XFS, this can result in file handles cached
-on clients being seen on the wire from the server but refer to
-a different file. This causes .... issues for NFS clients.
-
-Hence we need a unique generation number initialisation for
-each inode to prevent reuse of a small portion of the generation
-number space. Make this initialiser per-allocation group so
-that it is not a single point of contention in the filesystem,
-and increment it on every allocation within an AG to reduce the
-chance that a generation number is reused for a given inode number
-if the inode chunk is deleted and reallocated immediately
-afterwards.
-
-It is safe to add the agi_newinogen field to the AGI without
-using a feature bit. If an older kernel is used, it simply
-will not update the field on allocation. If the kernel is
-updated and the field has garbage in it, then it's like having a
-random seed to the generation number....
-
-Signed-off-by: Dave Chinner <dgc@sgi.com>
----
- fs/xfs/xfs_ag.h     |    4 +++-
- fs/xfs/xfs_ialloc.c |   30 ++++++++++++++++++++++--------
- 2 files changed, 25 insertions(+), 9 deletions(-)
-
-Index: 2.6.x-xfs-new/fs/xfs/xfs_ag.h
-===================================================================
---- 2.6.x-xfs-new.orig/fs/xfs/xfs_ag.h	2008-01-18 18:30:06.000000000 +1100
-+++ 2.6.x-xfs-new/fs/xfs/xfs_ag.h	2008-03-26 13:03:41.122918236 +1100
-@@ -121,6 +121,7 @@ typedef struct xfs_agi {
- 	 * still being referenced.
- 	 */
- 	__be32		agi_unlinked[XFS_AGI_UNLINKED_BUCKETS];
-+	__be32		agi_newinogen;	/* inode cluster generation */
- } xfs_agi_t;
- 
- #define	XFS_AGI_MAGICNUM	0x00000001
-@@ -134,7 +135,8 @@ typedef struct xfs_agi {
- #define	XFS_AGI_NEWINO		0x00000100
- #define	XFS_AGI_DIRINO		0x00000200
- #define	XFS_AGI_UNLINKED	0x00000400
--#define	XFS_AGI_NUM_BITS	11
-+#define	XFS_AGI_NEWINOGEN	0x00000800
-+#define	XFS_AGI_NUM_BITS	12
- #define	XFS_AGI_ALL_BITS	((1 << XFS_AGI_NUM_BITS) - 1)
- 
- /* disk block (xfs_daddr_t) in the AG */
-Index: 2.6.x-xfs-new/fs/xfs/xfs_ialloc.c
-===================================================================
---- 2.6.x-xfs-new.orig/fs/xfs/xfs_ialloc.c	2008-03-25 15:41:27.000000000 +1100
-+++ 2.6.x-xfs-new/fs/xfs/xfs_ialloc.c	2008-03-26 14:29:47.998554368 +1100
-@@ -309,6 +309,8 @@ xfs_ialloc_ag_alloc(
- 			free = XFS_MAKE_IPTR(args.mp, fbuf, i);
- 			free->di_core.di_magic = cpu_to_be16(XFS_DINODE_MAGIC);
- 			free->di_core.di_version = version;
-+			free->di_core.di_gen = agi->agi_newinogen;
-+			be32_add_cpu(&agi->agi_newinogen, 1);
- 			free->di_next_unlinked = cpu_to_be32(NULLAGINO);
- 			xfs_ialloc_log_di(tp, fbuf, i,
- 				XFS_DI_CORE_BITS | XFS_DI_NEXT_UNLINKED);
-@@ -347,7 +349,8 @@ xfs_ialloc_ag_alloc(
- 	 * Log allocation group header fields
- 	 */
- 	xfs_ialloc_log_agi(tp, agbp,
--		XFS_AGI_COUNT | XFS_AGI_FREECOUNT | XFS_AGI_NEWINO);
-+		XFS_AGI_COUNT | XFS_AGI_FREECOUNT |
-+		XFS_AGI_NEWINO | XFS_AGI_NEWINOGEN);
- 	/*
- 	 * Modify/log superblock values for inode count and inode free count.
- 	 */
-@@ -896,11 +899,12 @@ nextag:
- 	ino = XFS_AGINO_TO_INO(mp, agno, rec.ir_startino + offset);
- 	XFS_INOBT_CLR_FREE(&rec, offset);
- 	rec.ir_freecount--;
-+	be32_add_cpu(&agi->agi_newinogen, 1);
- 	if ((error = xfs_inobt_update(cur, rec.ir_startino, rec.ir_freecount,
- 			rec.ir_free)))
- 		goto error0;
- 	be32_add(&agi->agi_freecount, -1);
--	xfs_ialloc_log_agi(tp, agbp, XFS_AGI_FREECOUNT);
-+	xfs_ialloc_log_agi(tp, agbp, XFS_AGI_FREECOUNT | XFS_AGI_NEWINOGEN);
- 	down_read(&mp->m_peraglock);
- 	mp->m_perag[tagno].pagi_freecount--;
- 	up_read(&mp->m_peraglock);
-@@ -1320,6 +1324,11 @@ xfs_ialloc_compute_maxlevels(
- 
- /*
-  * Log specified fields for the ag hdr (inode section)
-+ *
-+ * We don't log the unlinked inode fields through here; they
-+ * get logged directly to the buffer. Hence we have a discontinuity
-+ * in the fields we are logging and we need two calls to map all
-+ * the dirtied parts of the agi....
-  */
- void
- xfs_ialloc_log_agi(
-@@ -1342,22 +1351,27 @@ xfs_ialloc_log_agi(
- 		offsetof(xfs_agi_t, agi_newino),
- 		offsetof(xfs_agi_t, agi_dirino),
- 		offsetof(xfs_agi_t, agi_unlinked),
-+		offsetof(xfs_agi_t, agi_newinogen),
- 		sizeof(xfs_agi_t)
- 	};
-+	int			log_newino = fields & XFS_AGI_NEWINOGEN;
-+
- #ifdef DEBUG
- 	xfs_agi_t		*agi;	/* allocation group header */
- 
- 	agi = XFS_BUF_TO_AGI(bp);
- 	ASSERT(be32_to_cpu(agi->agi_magicnum) == XFS_AGI_MAGIC);
- #endif
--	/*
--	 * Compute byte offsets for the first and last fields.
--	 */
-+	fields &= ~XFS_AGI_NEWINOGEN;
-+
-+	/* Compute byte offsets for the first and last fields.  */
- 	xfs_btree_offsets(fields, offsets, XFS_AGI_NUM_BITS, &first, &last);
--	/*
--	 * Log the allocation group inode header buffer.
--	 */
- 	xfs_trans_log_buf(tp, bp, first, last);
-+	if (log_newino) {
-+		xfs_btree_offsets(XFS_AGI_NEWINOGEN, offsets, XFS_AGI_NUM_BITS,
-+					&first, &last);
-+		xfs_trans_log_buf(tp, bp, first, last);
-+	}
- }
- 
- /*
