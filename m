@@ -1,100 +1,100 @@
-From: "NeilBrown" <neilb@suse.de>
-Subject: Re: [opensuse] nfs_update_inode: inode X mode changed, Y to Z
-Date: Wed, 26 Mar 2008 10:09:00 +1100 (EST)
-Message-ID: <45922.192.168.1.70.1206486540.squirrel@neil.brown.name>
-References: <9a8748490803121513w285cd45rb6b26a3d842cac1b@mail.gmail.com>
-    <20080312221511.GC31632@fieldses.org>
-    <9a8748490803121516u36395872i70cc88b0439adc74@mail.gmail.com>
-    <18394.1501.991087.80264@notabene.brown> <47DAEFD0.9020407@m2000.com>
-    <47E92F8E.7030504@m2000.com> <20080325190943.GF2237@fieldses.org>
-    <32953.192.168.1.70.1206477121.squirrel@neil.brown.name>
-    <20080325212425.GA20257@josefsipek.net>
-    <34178.192.168.1.70.1206481102.squirrel@neil.brown.name>
-    <20080325221321.GC20257@josefsipek.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: [PATCH] SVCRDMA: Check num_sge when setting LAST_CTXT bit
+Date: Tue, 25 Mar 2008 22:27:19 -0400
+Message-ID: <20080326022718.GA25657@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, xfs@oss.sgi.com,
-	"Adam Schrotenboer" <adam-PMR2DCmmWYEAvxtiuMwx3w@public.gmane.org>,
-	"Jesper Juhl" <jesper.juhl@gmail.com>,
-	"Trond Myklebust" <trond.myklebust@netapp.com>,
-	linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-	"Thomas Daniel" <tdaniel-PMR2DCmmWYEAvxtiuMwx3w@public.gmane.org>,
-	"Frederic Revenu" <frevenu-PMR2DCmmWYEAvxtiuMwx3w@public.gmane.org>,
-	"Jeff Doan" <jdoan-PMR2DCmmWYEAvxtiuMwx3w@public.gmane.org>
-To: "Josef 'Jeff' Sipek" <jeffpc-PM1Ls4bqFqUFEYicpp4bmg@public.gmane.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+	Neil Brown <neilb@suse.de>,
+	Tom Tucker <tom@opengridcomputing.com>,
+	Roland Dreier <rolandd-FYB4Gu1CFyUAvxtiuMwx3w@public.gmane.org>
+To: Linus Torvalds <torvalds@linux-foundation.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from ns2.suse.de ([195.135.220.15]:60724 "EHLO mx2.suse.de"
+Received: from mail.fieldses.org ([66.93.2.214]:36657 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760731AbYCYXJL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 25 Mar 2008 19:09:11 -0400
-In-Reply-To: <20080325221321.GC20257-PM1Ls4bqFqUFEYicpp4bmg@public.gmane.org>
+	id S1752965AbYCZC1X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 25 Mar 2008 22:27:23 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, March 26, 2008 9:13 am, Josef 'Jeff' Sipek wrote:
-> On Wed, Mar 26, 2008 at 08:38:22AM +1100, NeilBrown wrote:
-> ...
->> However you still need to do something about the generation number.  It
->> must be set to something.
->
-> Right.
->
->> When you allocate an inode that doesn't currently exist on the device,
->> you obviously cannot increment the old value and use that.
->
-> Makes sense.
->
->> However you can do a lot better than always using 0.
->
-> I looked at the code (xfs_ialloc.c:xfs_ialloc_ag_alloc)
->
->  290                 /*
->  291                  * Set initial values for the inodes in this buffer.
->  292                  */
->  293                 xfs_biozero(fbuf, 0, ninodes <<
-> args.mp->m_sb.sb_inodelog);
->  294                 for (i = 0; i < ninodes; i++) {
->  295                         free = XFS_MAKE_IPTR(args.mp, fbuf, i);
->  296                         free->di_core.di_magic =
-> cpu_to_be16(XFS_DINODE_MAGIC);
->  297                         free->di_core.di_version = version;
->  298                         free->di_next_unlinked =
-> cpu_to_be32(NULLAGINO);
->  299                         xfs_ialloc_log_di(tp, fbuf, i,
->  300                                 XFS_DI_CORE_BITS |
-> XFS_DI_NEXT_UNLINKED);
->  301                 }
->
-> xfs_biozero(...) turns into a memset(buf, 0, len), and since the loop that
-> follows doesn't change the generation number, it'll stay 0.
->
->> The simplest would be to generate a 'random' number (get_random_bytes).
->> Slightly better would be to generate a random number at boot time
->> and use that, incrementing it each time it is used to set the
->> generation number for an inode.
->
-> I'm not familiar enough with NFS, do you want something that's
-> monotonically
-> increasing or do you just test for inequality?  If it is inequality, why
-> not
-> just use something like the jiffies - that should be unique enough.
->
+From: Tom Tucker <tom@opengridcomputing.com>
 
-What we need is for the "filehandle" to be stable and unique.
-By 'stable' I mean that every time I get the filehandle for a particular
-file, I get the same string of bytes.
-By 'uniqie' I mean that if I get two filehandles for two different
-files, they must differ in at least one bit.
-If a file is deleted and the inode is re-used for a new file, then the
-old and new files are different and must have different file handles.
+The RDMACTXT_F_LAST_CTXT bit was getting set incorrectly
+when the last chunk in the read-list spanned multiple pages. This
+resulted in a kernel panic when the wrong context was used to
+build the RPC iovec page list.
 
-The filehandle is traditionally generated from the inode number and
-a generation number, but the filesystem can actually do whatever it
-likes.  xfs does it with xfs_fs_encode_fh().
+RDMA_READ is used to fetch RPC data from the client for
+NFS_WRITE requests. A scatter-gather is used to map the
+advertised client side buffer to the server-side iovec and
+associated page list.
 
-Certainly you could initialise the i_generation to jiffies in
-xfs_ialloc_ag_alloc.  That would be a suitable fix.  get_random_bytes
-might be better, but the difference probably wouldn't be noticeable.
+WR contexts are used to convey which scatter-gather entries are
+handled by each WR. When the write data is large, a single RPC may
+require multiple RDMA_READ requests so the contexts for a single RPC
+are chained together in a linked list. The last context in this list
+is marked with a bit RDMACTXT_F_LAST_CTXT so that when this WR completes,
+the CQ handler code can enqueue the RPC for processing.
 
-NeilBrown
+The code in rdma_read_xdr was setting this bit on the last two
+contexts on this list when the last read-list chunk spanned multiple
+pages. This caused the svc_rdma_recvfrom logic to incorrectly build
+the RPC and caused the kernel to crash because the second-to-last
+context doesn't contain the iovec page list.
+
+Modified the condition that sets this bit so that it correctly detects
+the last context for the RPC.
+
+Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+Tested-by: Roland Dreier <rolandd-FYB4Gu1CFyUAvxtiuMwx3w@public.gmane.org>
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+---
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |   21 +++++++++++----------
+ 1 files changed, 11 insertions(+), 10 deletions(-)
+
+One more server-side rdma patch for 2.6.25.
+
+--b.
+
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+index 9712716..c22d6b6 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+@@ -322,15 +322,6 @@ next_sge:
+ 		ctxt->direction = DMA_FROM_DEVICE;
+ 		clear_bit(RDMACTXT_F_READ_DONE, &ctxt->flags);
+ 		clear_bit(RDMACTXT_F_LAST_CTXT, &ctxt->flags);
+-		if ((ch+1)->rc_discrim == 0) {
+-			/*
+-			 * Checked in sq_cq_reap to see if we need to
+-			 * be enqueued
+-			 */
+-			set_bit(RDMACTXT_F_LAST_CTXT, &ctxt->flags);
+-			ctxt->next = hdr_ctxt;
+-			hdr_ctxt->next = head;
+-		}
+ 
+ 		/* Prepare READ WR */
+ 		memset(&read_wr, 0, sizeof read_wr);
+@@ -348,7 +339,17 @@ next_sge:
+ 		rdma_set_ctxt_sge(ctxt, &sge[ch_sge_ary[ch_no].start],
+ 				  &sgl_offset,
+ 				  read_wr.num_sge);
+-
++		if (((ch+1)->rc_discrim == 0) &&
++		    (read_wr.num_sge == ch_sge_ary[ch_no].count)) {
++			/*
++			 * Mark the last RDMA_READ with a bit to
++			 * indicate all RPC data has been fetched from
++			 * the client and the RPC needs to be enqueued.
++			 */
++			set_bit(RDMACTXT_F_LAST_CTXT, &ctxt->flags);
++			ctxt->next = hdr_ctxt;
++			hdr_ctxt->next = head;
++		}
+ 		/* Post the read */
+ 		err = svc_rdma_send(xprt, &read_wr);
+ 		if (err) {
+-- 
+1.5.5.rc1
 
