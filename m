@@ -1,95 +1,156 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 5/5] NFSD: Use "depends on" for PROC_FS dependency
-Date: Mon, 4 Feb 2008 19:28:18 -0500
-Message-ID: <463F2346-A02C-4781-800F-16282B90331D@oracle.com>
-References: <20080205000450.18602.4797.stgit@manray.1015granger.net>
-Mime-Version: 1.0 (Apple Message framework v753)
-Content-Type: text/plain; charset=US-ASCII; delsp=yes; format=flowed
-Cc: NFS list <linux-nfs@vger.kernel.org>
-To: "J. Bruce Fields" <bfields@citi.umich.edu>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:18564 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756824AbYBEA22 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Feb 2008 19:28:28 -0500
-In-Reply-To: <20080205000450.18602.4797.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Return-Path: <nfsv4-bounces@linux-nfs.org>
+To: nfsv4@linux-nfs.org, linux-nfs@vger.kernel.org
+Subject: linux-2.6.25-rc7-CITI_NFS4_ALL-1
+Message-Id: <E1Jecuc-0003ae-4r@fieldses.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Date: Wed, 26 Mar 2008 17:11:58 -0400
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Content-Type: multipart/mixed; boundary="===============1117480115=="
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
+MIME-Version: 1.0
 List-ID: <linux-nfs.vger.kernel.org>
 
-Sigh.  I see this is broken already.
+--===============1117480115==
+Content-Type: text/plain
 
-It may be the case that "select ... if ..." is the only way to do this.
+http://www.citi.umich.edu/projects/nfsv4/linux/kernel-patches/2.6.25-rc7-1/linux-2.6.25-rc7-CITI_NFS4_ALL-1.diff
 
-On Feb 4, 2008, at 7:04 PM, Chuck Lever wrote:
+--b.
 
-> Recently a reverse dependency was added to fs/Kconfig to ensure that
-> PROC_FS was enabled if NFSD_V4 was enabled.
->
-> There is a guideline in Documentation/kbuild/kconfig-language.txt that
-> states "In general use select only for non-visible symbols (no prompts
-> anywhere) and for symbols with no dependencies."
->
-> A quick grep around other Kconfig files reveals that no entry  
-> currently
-> uses "select PROC_FS" -- every one uses "depends on".  Thus  
-> CONFIG_NFSD_V4
-> should use "depends on PROC_FS" as well.
->
-> For SUNRPC_GSS, it's a little more complex.  Other entries can  
-> "select"
-> SUNRPC_GSS, as it is non-visible.  However, the guideline suggests an
-> entry can't "select" it if it has a dependency (such as PROC_FS).
->
-> Another problem is that if a tristate entry (SUNRPC_GSS) "depends  
-> on" a
-> boolean (PROC_FS) we can't set the tristate entry to M.
->
-> XXX: Both CONFIG_NFSV4 and CONFIG_NFSD_V4 select RPCSEC_GSS_KRB5,  
-> which is
-> visible, which kconfig-language.txt also frowns upon.  The intent  
-> was to
-> enable at least one GSS mechanism if V4 was enabled.  Perhaps we  
-> should
-> make SUNRPC_GSS visible, and make the NFSv4 options visible only if
-> SUNRPC_GSS is enabled.
->
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
->
->  fs/Kconfig |    3 +--
->  1 files changed, 1 insertions(+), 2 deletions(-)
->
-> diff --git a/fs/Kconfig b/fs/Kconfig
-> index 5ccff9a..d689226 100644
-> --- a/fs/Kconfig
-> +++ b/fs/Kconfig
-> @@ -1689,7 +1689,6 @@ config NFSD
->  	select CRYPTO_MD5 if NFSD_V4
->  	select CRYPTO if NFSD_V4
->  	select FS_POSIX_ACL if NFSD_V4
-> -	select PROC_FS if NFSD_V4
->  	select PROC_FS if SUNRPC_GSS
->  	help
->  	  Say Y here if you want to allow other computers to access files
-> @@ -1750,7 +1749,7 @@ config NFSD_V3_ACL
->
->  config NFSD_V4
->  	bool "Provide NFSv4 server support (EXPERIMENTAL)"
-> -	depends on NFSD && NFSD_V3 && EXPERIMENTAL
-> +	depends on NFSD && NFSD_V3 && PROC_FS && EXPERIMENTAL
->  	select RPCSEC_GSS_KRB5
->  	help
->  	  This option enables support in your system's NFS server for
->
-> -
-> To unsubscribe from this list: send the line "unsubscribe linux- 
-> nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Adrian Bunk (1):
+      make nfsd_create_setattr() static
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+Andrew Morton (1):
+      net/sunrpc/svc.c: suppress unintialized var warning
+
+Aurélien Charbon (1):
+      IPv6 support for NFS server export caches
+
+Chuck Lever (22):
+      NFS: numeric mount parameters are unsigned
+      NFS: Fix up data types of fields in nfs_parsed_mount_options
+      NFS: Save the value of the "port=" mount option
+      NFS: Save the values of the "mount*=" mount options
+      NFS: Show most mount options via nfs_show_options()
+      NFS: Always enable NFS direct I/O
+      SUNRPC: Update help Kconfig text
+      SUNRPC: Add a default setting for CONFIG_SUNRPC_BIND34
+      NLM: LOCKD fails to load if CONFIG_SYSCTL is not set
+      NLM: NLM protocol version numbers are u32
+      lockd: bring a few function declarations up to date
+      lockd: Ensure NSM strings aren't longer than protocol allows
+      lockd: refactor SM_MON mon_name argument encoder
+      lockd: refactor SM_MON my_id argument encoder
+      lockd: document use of mon_id argument in SM_MON requests
+      lockd: Fix up incorrect RPC buffer size calculations.
+      lockd: introduce new function to encode private argument in SM_MON requests
+      NFSD: Remove NFSD_TCP kernel build option
+      NFSD: Update help text for CONFIG_NFSD
+      NFSD: Move "select FS_POSIX_ACL if NFSD_V4"
+      NFSD: Move "select NFSD_V2_ACL if NFSD_V3_ACL"
+      NFSD: Remove redundant "select" clauses in fs/Kconfig
+
+Felix Blyakher (1):
+      nfsd: initialize lease type in nfs4_open_delegation()
+
+Fred (1):
+      nfs: nfs_redirty_request
+
+Fred Isaman (2):
+      NFS: fix encode_fsinfo_maxsz
+      nfs: remove duplicate initializations of nfs_read_data field
+
+Harshula Jayasuriya (1):
+      sunrpc: GSS integrity and decryption failures should return GARBAGE_ARGS
+
+Harvey Harrison (3):
+      lockd: fix sparse warning in svcshare.c
+      nfsd: fix sparse warnings
+      nfsd: fix sparse warning in vfs.c
+
+J. Bruce Fields (12):
+      nfs: remove unnecessary NFS_NEED_* defines
+      nfsd4: remove unnecessary CHECK_FH check in preprocess_seqid_op
+      nfsd4: simplify stateid sequencing checks
+      nfsd4: kill unnecessary check in preprocess_stateid_op
+      svcrpc: move unused field from cache_deferred_req
+      nfsd: clarify readdir/mountpoint-crossing code
+      lockd: fix race in nlm_release()
+      lockd: clean up __nsm_find()
+      lockd: convert nsm_mutex to a spinlock
+      nfsd: move most of fh_verify to separate function
+      Merge commit 'nfs-server-stable^'
+      Add CITI_NFS4_ALL version to kernel version number
+
+James Lentini (1):
+      Documentation: NFS/RDMA instructions for 2.6.25-rc1
+
+Jeff Layton (8):
+      NFS: clean up short packet handling for NFSv2 readdir
+      NFS: clean up short packet handling for NFSv3 readdir
+      NFS: clean up short packet handling for NFSv4 readdir
+      SUNRPC: export svc_sock_update_bufs
+      SUNRPC: have svc_recv() check kthread_should_stop()
+      NLM: Convert lockd to use kthreads
+      SUNRPC: allow svc_recv to break out of 500ms sleep when alloc_page fails
+      NFS: convert nfs4 callback thread to kthread API
+
+Kevin Coffman (2):
+      Correct grammer/typos in dprintks
+      Remove define for KRB5_CKSUM_LENGTH, which will become enctype-dependent
+
+NeilBrown (1):
+      knfsd: Remove NLM_HOST_MAX and associated logic.
+
+Nick Piggin (1):
+      nfs: use GFP_NOFS preloads for radix-tree insertion
+
+Tom Tucker (2):
+      SVCRDMA: Add check for XPT_CLOSE in svc_rdma_send
+      SVCRDMA: Check num_sge when setting LAST_CTXT bit
+
+Trond Myklebust (25):
+      SUNRPC: Declare as const the rpc_message arguments to rpc_call_sync/async
+      NFS: Fix an f_mode/f_flags confusion in fs/nfs/write.c
+      NFS: Fix a deadlock with lazy umount
+      SUNRPC: Allow the rpc_release() callback to be run on another workqueue
+      NFS: Add an nfsiod workqueue
+      NFS: Ensure that the asynchronous RPC calls complete on nfsiod.
+      SUNRPC: Clean up rpc_run_timer()
+      SUNRPC: Add a new helper rpc_wake_up_queued_task()
+      SUNRPC: Convert users of rpc_wake_up_task to use rpc_wake_up_queued_task
+      SUNRPC: Run rpc timeout functions as callbacks instead of in softirqs
+      SUNRPC: Add a (empty for the moment) destructor for rpc_wait_queues
+      SUNRPC: Add a timer function to wait queues.
+      SUNRPC: Switch tasks to using the rpc_waitqueue's timer function
+      SUNRPC: Eliminate the now-redundant rpc_start_wakeup()
+      SUNRPC: Ensure that we read all available tcp data
+      SUNRPC: Remove now-redundant RCU-safe rpc_task free path
+      Merge branch 'cleanups' into next
+      Merge commit 'origin' into devel
+      SUNRPC: Fix a bug in rpcauth_lookup_credcache()
+      SUNRPC: Fix RPCAUTH_LOOKUP_ROOTCREDS
+      SUNRPC: Clean up rpcauth_bindcred()
+      SUNRPC: Add a generic RPC credential
+      SUNRPC: Add an rpc_credop callback for binding a credential to an rpc_task
+      SUNRPC: Add a helper rpcauth_lookup_generic_cred()
+      Merge branch 'hotfixes' into devel
 
 
+--===============1117480115==
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
+_______________________________________________
+NFSv4 mailing list
+NFSv4@linux-nfs.org
+http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
+--===============1117480115==--
