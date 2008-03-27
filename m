@@ -1,69 +1,74 @@
-From: "Aaron Wiebe" <epiphani@gmail.com>
-Subject: nlm bad unlocking condition (results in stuck lock serverside)
-Date: Thu, 27 Mar 2008 12:33:47 -0400
-Message-ID: <e7ca40f70803270933vb526f3bxb93be24b4f791926@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: bseibel@gmail.com
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+From: Olga Kornievskaia <aglo@umich.edu>
+Subject: [PATCH 1/1] silence-call-timeout-printk
+Date: Thu, 27 Mar 2008 14:49:12 -0400
+Message-ID: <1206643752-11132-1-git-send-email-aglo@umich.edu>
+Cc: Olga Kornievskaia <aglo@umich.edu>
+To: bfields@citi.umich.edu, linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from wa-out-1112.google.com ([209.85.146.182]:25830 "EHLO
-	wa-out-1112.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1761004AbYC0Qds (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Mar 2008 12:33:48 -0400
-Received: by wa-out-1112.google.com with SMTP id v27so4892202wah.23
-        for <linux-nfs@vger.kernel.org>; Thu, 27 Mar 2008 09:33:47 -0700 (PDT)
+Received: from skydive.citi.umich.edu ([141.211.133.216]:35077 "EHLO
+	skydive.citi.umich.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756369AbYC0TMr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Mar 2008 15:12:47 -0400
+In-Reply-To: aglo@umich.edu
+References: aglo@umich.edu
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hey Folks, we've been hunting an NLM bug here for a few days and I
-think we've got enough information to bring this one to the community.
+When the client's callback server goes away, the server's callback client
+tries to contact the server and times out. For nfsd, it is beneficial to
+printout a message when the client is unable to contact the server. For
+the callback server, the same message is printed yet it is really not
+an error. Thus we need a way to silence the message for the callback 
+and yet print it for other cases.
 
-This exists, as far as we can tell, in the current tree, and goes back
-at least as early as .22.
+Signed-off-by: Olga Kornievskaia <aglo@umich.edu>
+---
+ fs/nfsd/nfs4callback.c      |    1 +
+ include/linux/sunrpc/clnt.h |    1 +
+ net/sunrpc/clnt.c           |    6 ++++--
+ 3 files changed, 6 insertions(+), 2 deletions(-)
 
-Two clients(one process per client), clientA holds a lock a full file
-lock on a file.  The clientB is waiting on the lock.
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index aae2b29..bf7d57e 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -400,6 +400,7 @@ static int do_probe_callback(void *data)
+ 		status = PTR_ERR(client);
+ 		goto out_err;
+ 	}
++	client->cl_quiet = 1;
+ 
+ 	status = rpc_call_sync(client, &msg, RPC_TASK_SOFT);
+ 
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index 129a86e..0a1141e 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -57,6 +57,7 @@ struct rpc_clnt {
+ 	struct rpc_timeout	cl_timeout_default;
+ 	struct rpc_program *	cl_program;
+ 	char			cl_inline_name[32];
++	int                     cl_quiet; /* silences call_timeout printk */
+ };
+ 
+ /*
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 8c6a7f1..5a2a718 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -1160,8 +1160,10 @@ call_timeout(struct rpc_task *task)
+ 	task->tk_timeouts++;
+ 
+ 	if (RPC_IS_SOFT(task)) {
+-		printk(KERN_NOTICE "%s: server %s not responding, timed out\n",
+-				clnt->cl_protname, clnt->cl_server);
++		if (!clnt->cl_quiet)
++			printk(KERN_NOTICE "%s: server %s not responding, "
++				"timed out\n", clnt->cl_protname, 
++				clnt->cl_server);
+ 		rpc_exit(task, -EIO);
+ 		return;
+ 	}
+-- 
+1.5.3.3
 
-If a signal is received for the process on clientB, the lock is
-cancelled, then re-requested:
-
-[11269.808195] lockd: server 10.1.230.34 CANCEL (async) status 0 pid 0
-(0) type 0x1 0 -> 9223372036854775807 fh(32) 0x003d71ae 0x107ebab1
-0x00000020 0xb799de00 0x06c2e532 0x5b0098
-a0 0x003d71ae 0x007ebab1
-[11269.819230] lockd: server 10.1.230.34 LOCK status 3 pid 1 (0) type
-0x1 0 -> 9223372036854775807 fh(32) 0x003d71ae 0x107ebab1 0x00000020
-0xb799de00 0x06c2e532 0x5b0098a0 0x003d7
-1ae 0x007ebab1
-
-
-The pid being incremented between requests, as it should.  Now, if
-clientA releases its lock, clientB gets the callback properly, and
-successfully gains the lock:
-
-[11298.158595] lockd: server 10.1.230.34 GRANTED status 0 pid 1 (1)
-type 0x1 0 -> 9223372036854775807 fh(32) 0x003d71ae 0x107ebab1
-0x00000020 0xb799de00 0x06c2e532 0x5b0098a0 0x00
-3d71ae 0x007ebab1
-
-
-Now, clientB's process dies, releasing the lock:
-
-[11306.465702] lockd: server 10.1.230.34 UNLOCK (async) status 0 pid 2
-(0) type 0x2 0 -> 9223372036854775807 fh(32) 0x003d71ae 0x107ebab1
-0x00000020 0xb799de00 0x06c2e532 0x5b0098a0 0x003d71ae 0x007ebab1
-
-Note the pid here has incorrectly incremented.
-
-We dug into this a bit and found that __nlm_find_lockowner() did not
-correctly match the lock we were trying to find and unlock, so it
-created a new lock "pid".  This results in the server ignoring the
-unlock, and the file being permenently locked up.
-
-We're no kernel wizards here, so we're looking for a bit of help.  Any
-suggestions on where to look from here would be appreciated.
-
-Thanks!
-
--Aaron
