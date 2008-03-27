@@ -1,37 +1,69 @@
-From: "Boone Engel" <ffrontee1954-53H+ZE7QYK4@public.gmane.org>
-Subject: [NFS] Don't Make The wife Wait
-Date: Thu, 27 Mar 2008 15:21:37 +0100
-Message-ID: <A5B29EB1.1%ffrontee1954@7x77.se>
+From: "Aaron Wiebe" <epiphani@gmail.com>
+Subject: nlm bad unlocking condition (results in stuck lock serverside)
+Date: Thu, 27 Mar 2008 12:33:47 -0400
+Message-ID: <e7ca40f70803270933vb526f3bxb93be24b4f791926@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: bseibel@gmail.com
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:46274 "EHLO neil.brown.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754420AbYC0OVx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 27 Mar 2008 10:21:53 -0400
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1JeszF-0001hR-Mj
-	for linux-nfs@vger.kernel.org; Fri, 28 Mar 2008 01:21:50 +1100
+Received: from wa-out-1112.google.com ([209.85.146.182]:25830 "EHLO
+	wa-out-1112.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1761004AbYC0Qds (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Mar 2008 12:33:48 -0400
+Received: by wa-out-1112.google.com with SMTP id v27so4892202wah.23
+        for <linux-nfs@vger.kernel.org>; Thu, 27 Mar 2008 09:33:47 -0700 (PDT)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Please don't envy me and get started as well
+Hey Folks, we've been hunting an NLM bug here for a few days and I
+think we've got enough information to bring this one to the community.
 
-http://www.pinchlynss.com/
-Rock Her hard, real hard
+This exists, as far as we can tell, in the current tree, and goes back
+at least as early as .22.
 
--------------------------------------------------------------------------
-Check out the new SourceForge.net Marketplace.
-It's the best place to buy or sell services for
-just about anything Open Source.
-http://ad.doubleclick.net/clk;164216239;13503038;w?http://sf.net/marketplace
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+Two clients(one process per client), clientA holds a lock a full file
+lock on a file.  The clientB is waiting on the lock.
 
+If a signal is received for the process on clientB, the lock is
+cancelled, then re-requested:
+
+[11269.808195] lockd: server 10.1.230.34 CANCEL (async) status 0 pid 0
+(0) type 0x1 0 -> 9223372036854775807 fh(32) 0x003d71ae 0x107ebab1
+0x00000020 0xb799de00 0x06c2e532 0x5b0098
+a0 0x003d71ae 0x007ebab1
+[11269.819230] lockd: server 10.1.230.34 LOCK status 3 pid 1 (0) type
+0x1 0 -> 9223372036854775807 fh(32) 0x003d71ae 0x107ebab1 0x00000020
+0xb799de00 0x06c2e532 0x5b0098a0 0x003d7
+1ae 0x007ebab1
+
+
+The pid being incremented between requests, as it should.  Now, if
+clientA releases its lock, clientB gets the callback properly, and
+successfully gains the lock:
+
+[11298.158595] lockd: server 10.1.230.34 GRANTED status 0 pid 1 (1)
+type 0x1 0 -> 9223372036854775807 fh(32) 0x003d71ae 0x107ebab1
+0x00000020 0xb799de00 0x06c2e532 0x5b0098a0 0x00
+3d71ae 0x007ebab1
+
+
+Now, clientB's process dies, releasing the lock:
+
+[11306.465702] lockd: server 10.1.230.34 UNLOCK (async) status 0 pid 2
+(0) type 0x2 0 -> 9223372036854775807 fh(32) 0x003d71ae 0x107ebab1
+0x00000020 0xb799de00 0x06c2e532 0x5b0098a0 0x003d71ae 0x007ebab1
+
+Note the pid here has incorrectly incremented.
+
+We dug into this a bit and found that __nlm_find_lockowner() did not
+correctly match the lock we were trying to find and unlock, so it
+created a new lock "pid".  This results in the server ignoring the
+unlock, and the file being permenently locked up.
+
+We're no kernel wizards here, so we're looking for a bit of help.  Any
+suggestions on where to look from here would be appreciated.
+
+Thanks!
+
+-Aaron
