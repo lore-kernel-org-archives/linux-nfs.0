@@ -1,60 +1,70 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 2/3] SUNRPC: Remove PROC_FS dependency
-Date: Thu, 27 Mar 2008 17:20:39 -0400
-Message-ID: <20080327212039.GP32540@fieldses.org>
-References: <20080327203447.5036.93689.stgit@manray.1015granger.net>
+From: "Aaron Wiebe" <epiphani@gmail.com>
+Subject: Re: nlm bad unlocking condition (results in stuck lock serverside)
+Date: Thu, 27 Mar 2008 17:24:16 -0400
+Message-ID: <e7ca40f70803271424m4dd8c360o5171a6e88b47d27e@mail.gmail.com>
+References: <e7ca40f70803270933vb526f3bxb93be24b4f791926@mail.gmail.com>
+	 <EXNANE01YTHrdusluCB000001cc@exnane01.hq.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+	bseibel@gmail.com
+To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:33104 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759487AbYC0VUk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 27 Mar 2008 17:20:40 -0400
-In-Reply-To: <20080327203447.5036.93689.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+Received: from el-out-1112.google.com ([209.85.162.182]:25388 "EHLO
+	el-out-1112.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754420AbYC0VYS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Mar 2008 17:24:18 -0400
+Received: by el-out-1112.google.com with SMTP id z25so2612545ele.15
+        for <linux-nfs@vger.kernel.org>; Thu, 27 Mar 2008 14:24:17 -0700 (PDT)
+In-Reply-To: <EXNANE01YTHrdusluCB000001cc-kboziUmgGqYSZCGxjG3uujkOHZLvdrmu@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Mar 27, 2008 at 04:34:47PM -0400, Chuck Lever wrote:
-> Recently, commit 440bcc59 added a reverse dependency to fs/Kconfig to
-> ensure that PROC_FS was enabled if SUNRPC_GSS was enabled.
-> 
-> Apparently this isn't necessary because the auth_gss components under
-> net/sunrpc will build correctly even if PROC_FS is disabled, though
-> RPCSEC_GSS will not work without /proc.
+We think we have a fix - however we definitely need some folks to
+review.  This does appear to solve the reproducible issue as we were
+seeing it.
 
-It's only server-side RPCSEC_GSS that won't work without /proc.
+>From 627028f01dae67882061c533236ac3f1f00c70c3 Mon Sep 17 00:00:00 2001
+From: Aaron Wiebe <aaronw-k7QPB+T73Rje9wHmmfpqLFaTQe2KTcn/@public.gmane.org>
+Date: Thu, 27 Mar 2008 16:53:04 -0400
+Subject: [PATCH] Fix an issue where an NLM CANCEL would desync VFS
 
-And it still bugs me a little that you can select both RPCSEC_GSS and
-NFSD and end up with something that doesn't actually support server-side
-GSS.
+In the condition where a process is waiting on an NLM
+lock, and the process receives a signal, an NLM CANCEL
+is sent to the nfs server.  In that case, VFS would
+maintain an entry in its blocked list.  After the
+signal handler returns, NLM re-requests the lock.
 
-But I don't know what to do about that; so, fine, applied.--b.
+VFS is not being properly notified to release the local
+lock when the NLM CANCEL is processed.  When NLM
+re-requests the lock, blocks, and then a GRANTED
+callback is received, the process ends up blocking on
+its original (cancelled) lock.
 
-> 
-> It also violates the guideline in Documentation/kbuild/kconfig-language.txt
-> that states "In general use select only for non-visible symbols (no prompts
-> anywhere) and for symbols with no dependencies."
-> 
-> To address these issues, remove the dependency.
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
-> 
->  fs/Kconfig |    1 -
->  1 files changed, 0 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/Kconfig b/fs/Kconfig
-> index db67512..373ee37 100644
-> --- a/fs/Kconfig
-> +++ b/fs/Kconfig
-> @@ -1668,7 +1668,6 @@ config NFSD
->  	select SUNRPC
->  	select EXPORTFS
->  	select NFS_ACL_SUPPORT if NFSD_V2_ACL
-> -	select PROC_FS if SUNRPC_GSS
->  	help
->  	  Choose Y here if you want to allow other computers to access
->  	  files residing on this system using Sun's Network File System
-> 
+Tell VFS to clear the lock request after a CANCEL is
+completed.
+
+Signed-off-by:  Aaron Wiebe <aaronw-k7QPB+T73Rje9wHmmfpqLFaTQe2KTcn/@public.gmane.org>
+Signed-off-by:  Brandon Seibel <brandon.seibel-k7QPB+T73Rje9wHmmfpqLFaTQe2KTcn/@public.gmane.org>
+---
+ fs/lockd/clntproc.c |    4 ++++
+ 1 files changed, 4 insertions(+), 0 deletions(-)
+
+diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
+index b6b74a6..6a1b80c 100644
+--- a/fs/lockd/clntproc.c
++++ b/fs/lockd/clntproc.c
+@@ -687,6 +687,10 @@ static int nlmclnt_cancel(struct nlm_host *host,
+int block, struct file_lock *fl
+                return -ENOMEM;
+        req->a_flags = RPC_TASK_ASYNC;
+
++       /* set the lock type to F_UNLCK for vfs, so once the cancel has
++        * completed, the vfs blocked list will be updated accordingly
++        */
++       fl->fl_type = F_UNLCK;
+        nlmclnt_setlockargs(req, fl);
+        req->a_args.block = block;
+
+-- 
+1.5.3.4
