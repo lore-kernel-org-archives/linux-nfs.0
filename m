@@ -1,24 +1,60 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 0/3] Three remaining patches for 2.6.26
-Date: Thu, 27 Mar 2008 16:34:32 -0400
-Message-ID: <20080327203301.5036.45566.stgit@manray.1015granger.net>
+Subject: [PATCH 3/3] NFSD: Remove NFSv4 dependency on NFSv3
+Date: Thu, 27 Mar 2008 16:34:54 -0400
+Message-ID: <20080327203454.5036.6176.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from flpi195.sbcis.sbc.com ([207.115.20.197]:29531 "EHLO
+Received: from flpi195.sbcis.sbc.com ([207.115.20.197]:30404 "EHLO
 	flpi195.prodigy.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1761301AbYC0Uep (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Mar 2008 16:34:45 -0400
+	with ESMTP id S1760751AbYC0UfD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Mar 2008 16:35:03 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Bruce-
+Clean up: Because NFSD_V4 "depends on" NFSD_V3, it appears as a child of
+the NFSD_V3 menu entry, and is not visible if NFSD_V3 is unselected.
 
-Reposting these three patches for 2.6.26.  They are missing from
-linux-2.6.25-rc7-CITI_NFS4_ALL-1, and I hadn't heard whether you accepted them
-or wanted them dropped.
+Replace the dependency on NFSD_V3 with a "select NFSD_V3".  This makes
+NFSD_V4 look and work just like NFS_V3, while ensuring that NFSD_V3 is
+enabled if NFSD_V4 is.
 
--- 
-corporate:    <chuck dot lever at oracle dot com>
+Sam Ravnborg adds:
+
+"This use of select is questionable. In general it is bad to select
+a symbol with dependencies.
+
+In this case the dependencies of NFSD_V3 are duplicated for NFSD_V4
+so we will not se erratic configurations but do you remember to
+update NFSD_V4 when you add a depends on NFSD_V3?
+
+But I see no other clean way to do it right now."
+
+Later he said:
+
+"My comment was more to say we have things to address in kconfig.
+This is abuse in the acceptable range."
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+ fs/Kconfig |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
+
+diff --git a/fs/Kconfig b/fs/Kconfig
+index 373ee37..151808b 100644
+--- a/fs/Kconfig
++++ b/fs/Kconfig
+@@ -1728,7 +1728,8 @@ config NFSD_V3_ACL
+ 
+ config NFSD_V4
+ 	bool "NFS server support for NFS version 4 (EXPERIMENTAL)"
+-	depends on NFSD && NFSD_V3 && PROC_FS && EXPERIMENTAL
++	depends on NFSD && PROC_FS && EXPERIMENTAL
++	select NFSD_V3
+ 	select RPCSEC_GSS_KRB5
+ 	help
+ 	  This option enables support in your system's NFS server for
+
