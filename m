@@ -1,92 +1,42 @@
-From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
-Subject: Re: nlm bad unlocking condition (results in stuck lock
-  serverside)
-Date: Thu, 27 Mar 2008 16:21:39 -0400
-Message-ID: <EXNANE01YTHrdusluCB000001cc@exnane01.hq.netapp.com>
-References: <e7ca40f70803270933vb526f3bxb93be24b4f791926@mail.gmail.com> <e7ca40f70803270933vb526f3bxb93be24b4f791926@mail.gmail.com
- >
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 1/1] silence-call-timeout-printk
+Date: Thu, 27 Mar 2008 16:23:31 -0400
+Message-ID: <20080327202331.GJ32540@fieldses.org>
+References: <1206643752-11132-1-git-send-email-aglo@umich.edu> <20080327195445.GI32540@fieldses.org> <1206648229.15396.2.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-	bseibel@gmail.com
-To: "Aaron Wiebe" <epiphani@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Olga Kornievskaia <aglo@umich.edu>, linux-nfs@vger.kernel.org
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:16737 "EHLO mx2.netapp.com"
+Received: from mail.fieldses.org ([66.93.2.214]:57695 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756664AbYC0UVm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 27 Mar 2008 16:21:42 -0400
-In-Reply-To: <e7ca40f70803270933vb526f3bxb93be24b4f791926-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org
- >
-References: <e7ca40f70803270933vb526f3bxb93be24b4f791926-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+	id S1756991AbYC0UXf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 27 Mar 2008 16:23:35 -0400
+In-Reply-To: <1206648229.15396.2.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Aaron - I've been looking into this here, it does appear to be a
-client issue. I suspect the lockowner is not being properly linked
-into the per-server list, in the case where the lock request is
-retried. It appears to be related to the use/reuse of the file_lock
-struct that comes down with the call.
+On Thu, Mar 27, 2008 at 04:03:49PM -0400, Trond Myklebust wrote:
+> On Thu, 2008-03-27 at 15:54 -0400, J. Bruce Fields wrote:
+> > On Thu, Mar 27, 2008 at 02:49:12PM -0400, Olga Kornievskaia wrote:
+> > > When the client's callback server goes away, the server's callback client
+> > > tries to contact the server and times out. For nfsd, it is beneficial to
+> > > printout a message when the client is unable to contact the server. For
+> > > the callback server, the same message is printed yet it is really not
+> > > an error. Thus we need a way to silence the message for the callback 
+> > > and yet print it for other cases.
+> 
+> Bring, back,
+> Bring, back,
+> Oh, bring back my cl_chatty to me...
+> 
+>   http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git;a=commitdiff;h=f518e35aec984036903c1003e867f833747a9d79
 
-In kernels prior to 2.6.9, this may have worked fine because the same
-lockowner was always used for a given process. It's not yet clear to
-me if the lost-unlock behavior was also introduced there however.
+OK, OK, so, shall we apply a patch that basically just reverts Chuck's
+patch there, except that it inverts the meaning and uses the name
+cl_quiet instead of cl_chatty?  (On the theory that since the verbose
+case is the common case, it's best to let this thing be initialized to 0
+and only make the callback code mess with it?)  Or are you nostalgic for
+cl_chatty?
 
-I can reproduce some slightly different behavior using three flock(1)
-commands, ^Z and ^C. I haven't been able to leave abandoned
-locks on the server with these yet, however. More later...
-
-Tom.
-
-At 12:33 PM 3/27/2008, Aaron Wiebe wrote:
->Hey Folks, we've been hunting an NLM bug here for a few days and I
->think we've got enough information to bring this one to the community.
->
->This exists, as far as we can tell, in the current tree, and goes back
->at least as early as .22.
->
->Two clients(one process per client), clientA holds a lock a full file
->lock on a file.  The clientB is waiting on the lock.
->
->If a signal is received for the process on clientB, the lock is
->cancelled, then re-requested:
->
->[11269.808195] lockd: server 10.1.230.34 CANCEL (async) status 0 pid 0
->(0) type 0x1 0 -> 9223372036854775807 fh(32) 0x003d71ae 0x107ebab1
->0x00000020 0xb799de00 0x06c2e532 0x5b0098
->a0 0x003d71ae 0x007ebab1
->[11269.819230] lockd: server 10.1.230.34 LOCK status 3 pid 1 (0) type
->0x1 0 -> 9223372036854775807 fh(32) 0x003d71ae 0x107ebab1 0x00000020
->0xb799de00 0x06c2e532 0x5b0098a0 0x003d7
->1ae 0x007ebab1
->
->
->The pid being incremented between requests, as it should.  Now, if
->clientA releases its lock, clientB gets the callback properly, and
->successfully gains the lock:
->
->[11298.158595] lockd: server 10.1.230.34 GRANTED status 0 pid 1 (1)
->type 0x1 0 -> 9223372036854775807 fh(32) 0x003d71ae 0x107ebab1
->0x00000020 0xb799de00 0x06c2e532 0x5b0098a0 0x00
->3d71ae 0x007ebab1
->
->
->Now, clientB's process dies, releasing the lock:
->
->[11306.465702] lockd: server 10.1.230.34 UNLOCK (async) status 0 pid 2
->(0) type 0x2 0 -> 9223372036854775807 fh(32) 0x003d71ae 0x107ebab1
->0x00000020 0xb799de00 0x06c2e532 0x5b0098a0 0x003d71ae 0x007ebab1
->
->Note the pid here has incorrectly incremented.
->
->We dug into this a bit and found that __nlm_find_lockowner() did not
->correctly match the lock we were trying to find and unlock, so it
->created a new lock "pid".  This results in the server ignoring the
->unlock, and the file being permenently locked up.
->
->We're no kernel wizards here, so we're looking for a bit of help.  Any
->suggestions on where to look from here would be appreciated.
->
->Thanks!
->
->-Aaron
-
+--b.
