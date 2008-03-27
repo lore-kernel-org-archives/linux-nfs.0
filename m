@@ -1,70 +1,92 @@
-From: "Aaron Wiebe" <epiphani@gmail.com>
-Subject: Re: nlm bad unlocking condition (results in stuck lock serverside)
-Date: Thu, 27 Mar 2008 17:24:16 -0400
-Message-ID: <e7ca40f70803271424m4dd8c360o5171a6e88b47d27e@mail.gmail.com>
-References: <e7ca40f70803270933vb526f3bxb93be24b4f791926@mail.gmail.com>
-	 <EXNANE01YTHrdusluCB000001cc@exnane01.hq.netapp.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-	bseibel@gmail.com
-To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
+From: Olga Kornievskaia <aglo@umich.edu>
+Subject: [PATCH 1/1] bring-back-chatty
+Date: Thu, 27 Mar 2008 17:56:24 -0400
+Message-ID: <1206654984-3097-1-git-send-email-aglo@umich.edu>
+Cc: Olga Kornievskaia <aglo-f4j/GOoueJu+0zDwvd8n29KIQNXEaThN@public.gmane.org>
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from el-out-1112.google.com ([209.85.162.182]:25388 "EHLO
-	el-out-1112.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754420AbYC0VYS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Mar 2008 17:24:18 -0400
-Received: by el-out-1112.google.com with SMTP id z25so2612545ele.15
-        for <linux-nfs@vger.kernel.org>; Thu, 27 Mar 2008 14:24:17 -0700 (PDT)
-In-Reply-To: <EXNANE01YTHrdusluCB000001cc-kboziUmgGqYSZCGxjG3uujkOHZLvdrmu@public.gmane.org>
+Received: from skydive.citi.umich.edu ([141.211.133.216]:44334 "EHLO
+	skydive.citi.umich.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760083AbYC0V50 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Mar 2008 17:57:26 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We think we have a fix - however we definitely need some folks to
-review.  This does appear to solve the reproducible issue as we were
-seeing it.
+From: Olga Kornievskaia <aglo-f4j/GOoueJu+0zDwvd8n29KIQNXEaThN@public.gmane.org>
 
->From 627028f01dae67882061c533236ac3f1f00c70c3 Mon Sep 17 00:00:00 2001
-From: Aaron Wiebe <aaronw-k7QPB+T73Rje9wHmmfpqLFaTQe2KTcn/@public.gmane.org>
-Date: Thu, 27 Mar 2008 16:53:04 -0400
-Subject: [PATCH] Fix an issue where an NLM CANCEL would desync VFS
+Another attempt to silence call_timeout() prints by bringing back "chatty".
 
-In the condition where a process is waiting on an NLM
-lock, and the process receives a signal, an NLM CANCEL
-is sent to the nfs server.  In that case, VFS would
-maintain an entry in its blocked list.  After the
-signal handler returns, NLM re-requests the lock.
+When the client's callback server goes away, the server's callback client
+tries to contact the server and times out. For nfsd, it is beneficial to
+printout a message when the client is unable to contact the server. For
+the callback server, the same message is printed yet it is really not
+an error. Thus we need a way to silence the message for the callback
+and yet print it for other cases.
 
-VFS is not being properly notified to release the local
-lock when the NLM CANCEL is processed.  When NLM
-re-requests the lock, blocks, and then a GRANTED
-callback is received, the process ends up blocking on
-its original (cancelled) lock.
-
-Tell VFS to clear the lock request after a CANCEL is
-completed.
-
-Signed-off-by:  Aaron Wiebe <aaronw-k7QPB+T73Rje9wHmmfpqLFaTQe2KTcn/@public.gmane.org>
-Signed-off-by:  Brandon Seibel <brandon.seibel-k7QPB+T73Rje9wHmmfpqLFaTQe2KTcn/@public.gmane.org>
 ---
- fs/lockd/clntproc.c |    4 ++++
- 1 files changed, 4 insertions(+), 0 deletions(-)
+ fs/nfsd/nfs4callback.c      |    2 +-
+ include/linux/sunrpc/clnt.h |    4 +++-
+ net/sunrpc/clnt.c           |    5 ++++-
+ 3 files changed, 8 insertions(+), 3 deletions(-)
 
-diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
-index b6b74a6..6a1b80c 100644
---- a/fs/lockd/clntproc.c
-+++ b/fs/lockd/clntproc.c
-@@ -687,6 +687,10 @@ static int nlmclnt_cancel(struct nlm_host *host,
-int block, struct file_lock *fl
-                return -ENOMEM;
-        req->a_flags = RPC_TASK_ASYNC;
-
-+       /* set the lock type to F_UNLCK for vfs, so once the cancel has
-+        * completed, the vfs blocked list will be updated accordingly
-+        */
-+       fl->fl_type = F_UNLCK;
-        nlmclnt_setlockargs(req, fl);
-        req->a_args.block = block;
-
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index aae2b29..00d3448 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -367,7 +367,7 @@ static int do_probe_callback(void *data)
+ 		.program	= program,
+ 		.version	= nfs_cb_version[1]->number,
+ 		.authflavor	= RPC_AUTH_UNIX, /* XXX: need AUTH_GSS... */
+-		.flags		= (RPC_CLNT_CREATE_NOPING),
++		.flags		= (RPC_CLNT_CREATE_NOPING | RPC_CLNT_CREATE_QUIET),
+ 	};
+ 	struct rpc_message msg = {
+ 		.rpc_proc       = &nfs4_cb_procedures[NFSPROC4_CLNT_CB_NULL],
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index 129a86e..249f7a2 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -42,7 +42,8 @@ struct rpc_clnt {
+ 
+ 	unsigned int		cl_softrtry : 1,/* soft timeouts */
+ 				cl_discrtry : 1,/* disconnect before retry */
+-				cl_autobind : 1;/* use getport() */
++				cl_autobind : 1,/* use getport() */
++				cl_chatty   : 1;/* be verbose */
+ 
+ 	struct rpc_rtt *	cl_rtt;		/* RTO estimator data */
+ 	const struct rpc_timeout *cl_timeout;	/* Timeout strategy */
+@@ -114,6 +115,7 @@ struct rpc_create_args {
+ #define RPC_CLNT_CREATE_NONPRIVPORT	(1UL << 3)
+ #define RPC_CLNT_CREATE_NOPING		(1UL << 4)
+ #define RPC_CLNT_CREATE_DISCRTRY	(1UL << 5)
++#define RPC_CLNT_CREATE_QUIET		(1UL << 6)
+ 
+ struct rpc_clnt *rpc_create(struct rpc_create_args *args);
+ struct rpc_clnt	*rpc_bind_new_program(struct rpc_clnt *,
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 8c6a7f1..3aa3348 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -328,6 +328,8 @@ struct rpc_clnt *rpc_create(struct rpc_create_args *args)
+ 		clnt->cl_autobind = 1;
+ 	if (args->flags & RPC_CLNT_CREATE_DISCRTRY)
+ 		clnt->cl_discrtry = 1;
++	if (args->flags & RPC_CLNT_CREATE_QUIET)
++		clnt->cl_chatty = 0;
+ 
+ 	return clnt;
+ }
+@@ -1160,7 +1162,8 @@ call_timeout(struct rpc_task *task)
+ 	task->tk_timeouts++;
+ 
+ 	if (RPC_IS_SOFT(task)) {
+-		printk(KERN_NOTICE "%s: server %s not responding, timed out\n",
++		if (clnt->cl_chatty)
++			printk(KERN_NOTICE "%s: server %s not responding, timed out\n",
+ 				clnt->cl_protname, clnt->cl_server);
+ 		rpc_exit(task, -EIO);
+ 		return;
 -- 
-1.5.3.4
+1.5.3.3
+
