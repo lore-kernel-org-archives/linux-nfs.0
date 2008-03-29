@@ -1,91 +1,70 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 1/3] mount.nfs: fix retry option settings with binary mount options
-Date: Sat, 29 Mar 2008 16:30:06 -0400
-Message-ID: <1206822608-20154-2-git-send-email-jlayton@redhat.com>
+Subject: [PATCH 3/3] mount.nfs: get rid of prev_bg_host cruft in nfsmount()
+Date: Sat, 29 Mar 2008 16:30:08 -0400
+Message-ID: <1206822608-20154-4-git-send-email-jlayton@redhat.com>
 References: <1206822608-20154-1-git-send-email-jlayton@redhat.com>
+ <1206822608-20154-2-git-send-email-jlayton@redhat.com>
+ <1206822608-20154-3-git-send-email-jlayton@redhat.com>
 Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
 To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:54735 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([66.187.233.31]:54734 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754444AbYC2UaN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1754363AbYC2UaN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Sat, 29 Mar 2008 16:30:13 -0400
-In-Reply-To: <1206822608-20154-1-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1206822608-20154-3-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently nfs4mount() sets the retry value to 10000 on both fg and bg
-mounts. It should be 2 for fg and 10000 for bg. nfsmount() sets it
-properly, but there is a potential corner case. If someone explicitly
-sets retry=10000 on a fg mount, then it will be reset to 2.
-
-Fix this by having retry default to -1 for both flavors, and then reset if
-needed after the mount options have been parsed.
+The prev_bg_host stuff made sense when NFS didn't have its own mount
+handler. Now though, each mount.nfs invocation is really a one-shot
+affair, and this check no longer works. It also leaked memory. Remove
+it.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- utils/mount/nfs4mount.c |   10 +++++++++-
- utils/mount/nfsmount.c  |   12 ++++++++----
- 2 files changed, 17 insertions(+), 5 deletions(-)
+ utils/mount/nfsmount.c |   14 --------------
+ 1 files changed, 0 insertions(+), 14 deletions(-)
 
-diff --git a/utils/mount/nfs4mount.c b/utils/mount/nfs4mount.c
-index 311e5a0..af70551 100644
---- a/utils/mount/nfs4mount.c
-+++ b/utils/mount/nfs4mount.c
-@@ -238,7 +238,7 @@ int nfs4mount(const char *spec, const char *node, int flags,
- 	nocto = 0;
- 	noac = 0;
- 	unshared = 0;
--	retry = 10000;		/* 10000 minutes ~ 1 week */
-+	retry = -1;
- 
- 	/*
- 	 * NFSv4 specifies that the default port should be 2049
-@@ -332,6 +332,14 @@ int nfs4mount(const char *spec, const char *node, int flags,
- 		}
- 	}
- 
-+	/* if retry is still -1, then it wasn't set via an option */
-+	if (retry == -1) {
-+		if (bg)
-+			retry = 10000;	/* 10000 mins == ~1 week */
-+		else
-+			retry = 2;	/* 2 min default on fg mounts */
-+	}
-+
- 	data.flags = (soft ? NFS4_MOUNT_SOFT : 0)
- 		| (intr ? NFS4_MOUNT_INTR : 0)
- 		| (nocto ? NFS4_MOUNT_NOCTO : 0)
 diff --git a/utils/mount/nfsmount.c b/utils/mount/nfsmount.c
-index ff0ff93..27c46a7 100644
+index 27c46a7..3effcf3 100644
 --- a/utils/mount/nfsmount.c
 +++ b/utils/mount/nfsmount.c
-@@ -571,7 +571,7 @@ nfsmount(const char *spec, const char *node, int flags,
- #endif
+@@ -494,7 +494,6 @@ int
+ nfsmount(const char *spec, const char *node, int flags,
+ 	 char **extra_opts, int fake, int running_bg)
+ {
+-	static char *prev_bg_host;
+ 	char hostdir[1024];
+ 	char *hostname, *dirname, *old_opts, *mounthost = NULL;
+ 	char new_opts[1024], cbuf[1024];
+@@ -628,18 +627,6 @@ nfsmount(const char *spec, const char *node, int flags,
+ 	if (flags & MS_REMOUNT)
+ 		goto out_ok;
  
- 	bg = 0;
--	retry = 10000;		/* 10000 minutes ~ 1 week */
-+	retry = -1;
+-	/*
+-	 * If the previous mount operation on the same host was
+-	 * backgrounded, and the "bg" for this mount is also set,
+-	 * give up immediately, to avoid the initial timeout.
+-	 */
+-	if (bg && !running_bg &&
+-	    prev_bg_host && strcmp(hostname, prev_bg_host) == 0) {
+-		if (retry > 0)
+-			retval = EX_BG;
+-		return retval;
+-	}
+-
+ 	/* create mount deamon client */
  
- 	memset(mnt_pmap, 0, sizeof(*mnt_pmap));
- 	mnt_pmap->pm_prog = MOUNTPROG;
-@@ -585,9 +585,13 @@ nfsmount(const char *spec, const char *node, int flags,
- 		goto fail;
- 	if (!nfsmnt_check_compat(nfs_pmap, mnt_pmap))
- 		goto fail;
--	
--	if (retry == 10000 && !bg)
--		retry = 2; /* reset for fg mounts */
-+
-+	if (retry == -1) {
-+		if (bg)
-+			retry = 10000;	/* 10000 mins == ~1 week*/
-+		else
-+			retry = 2;	/* 2 min default on fg mounts */
-+	}
- 
- #ifdef NFS_MOUNT_DEBUG
- 	printf(_("rsize = %d, wsize = %d, timeo = %d, retrans = %d\n"),
+ 	/*
+@@ -708,7 +695,6 @@ nfsmount(const char *spec, const char *node, int flags,
+ 			continue;
+ 		}
+ 		if (!running_bg) {
+-			prev_bg_host = xstrdup(hostname);
+ 			if (retry > 0)
+ 				retval = EX_BG;
+ 			goto fail;
 -- 
 1.5.3.6
 
