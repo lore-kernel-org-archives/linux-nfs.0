@@ -1,60 +1,91 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 2/3] mount.nfs: allow backgrounded nfs4 mounts to work with binary mount opts
-Date: Sat, 29 Mar 2008 16:30:07 -0400
-Message-ID: <1206822608-20154-3-git-send-email-jlayton@redhat.com>
+Subject: [PATCH 1/3] mount.nfs: fix retry option settings with binary mount options
+Date: Sat, 29 Mar 2008 16:30:06 -0400
+Message-ID: <1206822608-20154-2-git-send-email-jlayton@redhat.com>
 References: <1206822608-20154-1-git-send-email-jlayton@redhat.com>
- <1206822608-20154-2-git-send-email-jlayton@redhat.com>
 Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
 To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:54733 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([66.187.233.31]:54735 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754333AbYC2UaN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1754444AbYC2UaN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Sat, 29 Mar 2008 16:30:13 -0400
-In-Reply-To: <1206822608-20154-2-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1206822608-20154-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The bg option is essentially ignored with nfs4 currently. nfs4mount()
-will never exit with EX_BG, so the mount will never be backgrounded.
-Fix it so that when bg is specified that we error out with EX_BG as
-soon as possible after the first failed mount attempt.
+Currently nfs4mount() sets the retry value to 10000 on both fg and bg
+mounts. It should be 2 for fg and 10000 for bg. nfsmount() sets it
+properly, but there is a potential corner case. If someone explicitly
+sets retry=10000 on a fg mount, then it will be reset to 2.
+
+Fix this by having retry default to -1 for both flavors, and then reset if
+needed after the mount options have been parsed.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- utils/mount/nfs4mount.c |   10 ++++++++--
- 1 files changed, 8 insertions(+), 2 deletions(-)
+ utils/mount/nfs4mount.c |   10 +++++++++-
+ utils/mount/nfsmount.c  |   12 ++++++++----
+ 2 files changed, 17 insertions(+), 5 deletions(-)
 
 diff --git a/utils/mount/nfs4mount.c b/utils/mount/nfs4mount.c
-index af70551..2b0fe2e 100644
+index 311e5a0..af70551 100644
 --- a/utils/mount/nfs4mount.c
 +++ b/utils/mount/nfs4mount.c
-@@ -188,10 +188,9 @@ int nfs4mount(const char *spec, const char *node, int flags,
- 	int bg, soft, intr;
- 	int nocto, noac, unshared;
- 	int retry;
--	int retval;
-+	int retval = EX_FAIL;
- 	time_t timeout, t;
+@@ -238,7 +238,7 @@ int nfs4mount(const char *spec, const char *node, int flags,
+ 	nocto = 0;
+ 	noac = 0;
+ 	unshared = 0;
+-	retry = 10000;		/* 10000 minutes ~ 1 week */
++	retry = -1;
  
--	retval = EX_FAIL;
- 	if (strlen(spec) >= sizeof(hostdir)) {
- 		nfs_error(_("%s: excessively long host:dir argument\n"),
- 				progname);
-@@ -443,6 +442,13 @@ int nfs4mount(const char *spec, const char *node, int flags,
- 			rpc_mount_errors(hostname, 0, bg);
- 			goto fail;
+ 	/*
+ 	 * NFSv4 specifies that the default port should be 2049
+@@ -332,6 +332,14 @@ int nfs4mount(const char *spec, const char *node, int flags,
  		}
+ 	}
+ 
++	/* if retry is still -1, then it wasn't set via an option */
++	if (retry == -1) {
++		if (bg)
++			retry = 10000;	/* 10000 mins == ~1 week */
++		else
++			retry = 2;	/* 2 min default on fg mounts */
++	}
 +
-+		if (bg && !running_bg) {
-+			if (retry > 0)
-+				retval = EX_BG;
-+			goto fail;
-+		}
+ 	data.flags = (soft ? NFS4_MOUNT_SOFT : 0)
+ 		| (intr ? NFS4_MOUNT_INTR : 0)
+ 		| (nocto ? NFS4_MOUNT_NOCTO : 0)
+diff --git a/utils/mount/nfsmount.c b/utils/mount/nfsmount.c
+index ff0ff93..27c46a7 100644
+--- a/utils/mount/nfsmount.c
++++ b/utils/mount/nfsmount.c
+@@ -571,7 +571,7 @@ nfsmount(const char *spec, const char *node, int flags,
+ #endif
+ 
+ 	bg = 0;
+-	retry = 10000;		/* 10000 minutes ~ 1 week */
++	retry = -1;
+ 
+ 	memset(mnt_pmap, 0, sizeof(*mnt_pmap));
+ 	mnt_pmap->pm_prog = MOUNTPROG;
+@@ -585,9 +585,13 @@ nfsmount(const char *spec, const char *node, int flags,
+ 		goto fail;
+ 	if (!nfsmnt_check_compat(nfs_pmap, mnt_pmap))
+ 		goto fail;
+-	
+-	if (retry == 10000 && !bg)
+-		retry = 2; /* reset for fg mounts */
 +
- 		t = time(NULL);
- 		if (t >= timeout) {
- 			rpc_mount_errors(hostname, 0, bg);
++	if (retry == -1) {
++		if (bg)
++			retry = 10000;	/* 10000 mins == ~1 week*/
++		else
++			retry = 2;	/* 2 min default on fg mounts */
++	}
+ 
+ #ifdef NFS_MOUNT_DEBUG
+ 	printf(_("rsize = %d, wsize = %d, timeo = %d, retrans = %d\n"),
 -- 
 1.5.3.6
 
