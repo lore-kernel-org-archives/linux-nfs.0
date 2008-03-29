@@ -1,62 +1,60 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH] SUNRPC: have soft RPC tasks return -ETIMEDOUT instead
-	of -EIO on major connect timeout
-Date: Sat, 29 Mar 2008 16:05:49 -0400
-Message-ID: <1206821149.8455.13.camel@heimdal.trondhjem.org>
-References: <1206794957-17010-1-git-send-email-jlayton@redhat.com>
-	<1206809051.8480.33.camel@heimdal.trondhjem.org>
-	<20080329152424.6857ee86@tleilax.poochiereds.net>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org,
-	linux-kernel@vger.kernel.org
-To: Jeff Layton <jlayton@redhat.com>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <20080329152424.6857ee86@tleilax.poochiereds.net>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+From: Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH 2/3] mount.nfs: allow backgrounded nfs4 mounts to work with binary mount opts
+Date: Sat, 29 Mar 2008 16:30:07 -0400
+Message-ID: <1206822608-20154-3-git-send-email-jlayton@redhat.com>
+References: <1206822608-20154-1-git-send-email-jlayton@redhat.com>
+ <1206822608-20154-2-git-send-email-jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+To: steved@redhat.com
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([66.187.233.31]:54733 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754333AbYC2UaN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 29 Mar 2008 16:30:13 -0400
+In-Reply-To: <1206822608-20154-2-git-send-email-jlayton@redhat.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+The bg option is essentially ignored with nfs4 currently. nfs4mount()
+will never exit with EX_BG, so the mount will never be backgrounded.
+Fix it so that when bg is specified that we error out with EX_BG as
+soon as possible after the first failed mount attempt.
 
-On Sat, 2008-03-29 at 15:24 -0400, Jeff Layton wrote:
-> On Sat, 29 Mar 2008 12:44:11 -0400
-> Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
-> > Userland has the clnt_geterr() function that returns more detailed 'RPC
-> > level' errors. While that 'error function call' approach doesn't work in
-> > a multi-threaded environment, we might still be able to add the
-> > equivalent of a pointer to an 'rpc_err' structure to the rpc_task, and
-> > then have functions like call_timeout() (and especially call_verify()!)
-> > fill in more detailed error info if that pointer is non-zero?
-> >
-> 
-> I'm not sure we really need this, do we?
-> 
-> Should it really be the business of the RPC layer to sanitize the
-> tk_status like this? It seems like the NFS layer ought to be
-> translating "illegal" errors from the RPC layer into more generic ones
-> where needed rather than relying on the RPC layer to do it, though
-> maybe I'm not thinking about the RPC layer in the right way here...
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ utils/mount/nfs4mount.c |   10 ++++++++--
+ 1 files changed, 8 insertions(+), 2 deletions(-)
 
-Yes and no. The RPC error reports are sometimes more complex than what
-we can fit into a single 32-bit error code. I'm thinking in particular
-of the RPC_AUTH_* errors (EACCESS just doesn't do them justice), and
-RPC_PROG_MISMATCH error.
+diff --git a/utils/mount/nfs4mount.c b/utils/mount/nfs4mount.c
+index af70551..2b0fe2e 100644
+--- a/utils/mount/nfs4mount.c
++++ b/utils/mount/nfs4mount.c
+@@ -188,10 +188,9 @@ int nfs4mount(const char *spec, const char *node, int flags,
+ 	int bg, soft, intr;
+ 	int nocto, noac, unshared;
+ 	int retry;
+-	int retval;
++	int retval = EX_FAIL;
+ 	time_t timeout, t;
+ 
+-	retval = EX_FAIL;
+ 	if (strlen(spec) >= sizeof(hostdir)) {
+ 		nfs_error(_("%s: excessively long host:dir argument\n"),
+ 				progname);
+@@ -443,6 +442,13 @@ int nfs4mount(const char *spec, const char *node, int flags,
+ 			rpc_mount_errors(hostname, 0, bg);
+ 			goto fail;
+ 		}
++
++		if (bg && !running_bg) {
++			if (retry > 0)
++				retval = EX_BG;
++			goto fail;
++		}
++
+ 		t = time(NULL);
+ 		if (t >= timeout) {
+ 			rpc_mount_errors(hostname, 0, bg);
+-- 
+1.5.3.6
 
-In the case of RPC_PROG_MISMATCH, it would, for instance, be really
-useful for the in-kernel mount code to be able to also retrieve the
-'mismatch_info' structure (see RFC1831), which tells you exactly which
-program versions are actually supported on that port.
-
-An extra optional pointer to a structure in the rpc_task won't cost us
-much, but could possibly provide a lot of interesting information that
-we are currently ignoring.
-
-Cheers
-  Trond
