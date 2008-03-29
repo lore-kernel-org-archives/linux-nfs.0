@@ -1,56 +1,50 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH 0/2] asynchronous unlock on exit
-Date: Fri, 28 Mar 2008 18:08:15 -0400
-Message-ID: <1206742095.15567.44.camel@heimdal.trondhjem.org>
-References: <20080328201229.18158.52437.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
-	 <47ED6534.9080604@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain
-Cc: NFS list <linux-nfs@vger.kernel.org>
-To: Peter Staubach <staubach@redhat.com>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH] SUNRPC: have soft RPC tasks return -ETIMEDOUT instead of -EIO on major connect timeout
+Date: Sat, 29 Mar 2008 08:49:17 -0400
+Message-ID: <1206794957-17010-1-git-send-email-jlayton@redhat.com>
+Cc: linux-kernel@vger.kernel.org
+To: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:19053 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([66.187.233.31]:39844 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758994AbYC1WIS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 28 Mar 2008 18:08:18 -0400
-In-Reply-To: <47ED6534.9080604@redhat.com>
+	id S1751000AbYC2MtU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 29 Mar 2008 08:49:20 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+NFSv4 background mounts do not currently work correctly. While we could
+try to fix this in userspace, I think it's really a kernel problem...
 
-On Fri, 2008-03-28 at 17:37 -0400, Peter Staubach wrote:
+When a soft RPC tasks experiences a major timeout during a connection
+attempt, it does an rpc_exit with a return code of -EIO. For NFSv4
+mounts, this makes the mount() syscall return -EIO. mount.nfs4 then
+interprets that as a "permanent" error, and won't attempt a background
+mount when bg is specified. Fix this by making call_timeout() do the
+rpc_exit() with an error of -ETIMEDOUT.
 
-> However, I think that nlmclnt_unlock() needs to wait until
-> the RPC is completed.
+This fixes the background mount issue, but does make other syscalls
+on soft mounts return ETIMEDOUT instead of EIO in this situation.
 
-It should do that now. See the call to rpc_wait_for_completion_task() in
-nlm_async_call()
+Comments welcome.
 
->   The original problem was test12() in
-> the Connectathon testsuite, which would occasionally fail.
-> It would fail because the parent would kill the child process
-> (actually the child of the child) and immediately attempt to
-> grab the lock.  This would fail because the child hadn't
-> completed releasing the lock yet.  There were some timing
-> dependencies in test12() itself, which I eliminated, but then
-> discovered that this wouldn't solve the entire problem.  (I
-> can send you the new version of test12(), if you wish.)
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ net/sunrpc/clnt.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-So, at least in 2.6.25, the call to rpc_wait_for_completion_task() will
-exit only on a fatal signal. The problem in test12() is that there is a
-'pre-existing condition', in that the parent signalled us with a SIGINT,
-and so the signal is set upon entry to the function.
-
-IOW: we might have to perform a similar trick to what do_coredump()
-does, and clear the TIF_SIGPENDING flag. I'm not sure if that is
-sufficient, but given that we're eliminating the calls to
-recalc_sigpending(), and that there should be no such calls left in the
-RPC code, I think we're OK.
-
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 8c6a7f1..b6d409e 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -1162,7 +1162,7 @@ call_timeout(struct rpc_task *task)
+ 	if (RPC_IS_SOFT(task)) {
+ 		printk(KERN_NOTICE "%s: server %s not responding, timed out\n",
+ 				clnt->cl_protname, clnt->cl_server);
+-		rpc_exit(task, -EIO);
++		rpc_exit(task, -ETIMEDOUT);
+ 		return;
+ 	}
+ 
 -- 
-Trond Myklebust
-Linux NFS client maintainer
+1.5.3.6
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
