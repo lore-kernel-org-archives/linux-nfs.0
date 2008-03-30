@@ -1,38 +1,52 @@
-From: "Steinar H. Gunderson" <sesse@debian.org>
-Subject: Version check in aclocal/kerberos.m5
-Date: Sun, 30 Mar 2008 12:31:59 +0200
-Message-ID: <20080330103159.GA4003@uio.no>
+From: Adrian Bunk <bunk@kernel.org>
+Subject: [2.6 patch] make nfs_automount_list static
+Date: Mon, 31 Mar 2008 02:28:04 +0300
+Message-ID: <20080330232804.GT28445@cs181133002.pp.htv.fi>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=utf-8
-To: linux-nfs@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Al Viro <viro@zeniv.linux.org.uk>, Trond.Myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cassarossa.samfundet.no ([129.241.93.19]:55177 "EHLO
-	cassarossa.samfundet.no" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750913AbYC3KcE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 30 Mar 2008 06:32:04 -0400
-Received: from trofast.ipv6.sesse.net ([2001:700:300:1803:20e:cff:fe36:a766] helo=trofast.sesse.net)
-	by cassarossa.samfundet.no with esmtps (TLS-1.0:RSA_AES_256_CBC_SHA1:32)
-	(Exim 4.63)
-	(envelope-from <sesse-BrfabpQBY5qlHtIdYg32fQ@public.gmane.org>)
-	id 1JfupU-0000TV-NI
-	for linux-nfs@vger.kernel.org; Sun, 30 Mar 2008 12:32:00 +0200
-Received: from root by trofast.sesse.net with local (Exim 4.69)
-	(envelope-from <sesse-BrfabpQBY5qlHtIdYg32fQ@public.gmane.org>)
-	id 1JfupT-000132-W5
-	for linux-nfs@vger.kernel.org; Sun, 30 Mar 2008 12:32:00 +0200
+Received: from smtp4.pp.htv.fi ([213.243.153.38]:55245 "EHLO smtp4.pp.htv.fi"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751019AbYC3X2Q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 30 Mar 2008 19:28:16 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+nfs_automount_list can now become static.
 
-Does anyone know where the version check in aclocal/kerberos.m5 come from? I
-need to patch it (Debian's krb5-config --version gives a version like
-"1.6.3-beta1-debian", and it doesn't manage to strip away the -beta part),
-but it's not clear to me who upstream really is. (At least I've seen the code
-in several other projects.)
+Signed-off-by: Adrian Bunk <bunk@kernel.org>
 
-Any ideas?
+---
 
-/* Steinar */
--- 
-Homepage: http://www.sesse.net/
+ fs/nfs/namespace.c     |    2 +-
+ include/linux/nfs_fs.h |    1 -
+ 2 files changed, 1 insertion(+), 2 deletions(-)
+
+7620c6ff4cdf4975d02158361f85e7d881f55ec3 diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
+index 607f6eb..af4d0f1 100644
+--- a/fs/nfs/namespace.c
++++ b/fs/nfs/namespace.c
+@@ -20,7 +20,7 @@
+ 
+ static void nfs_expire_automounts(struct work_struct *work);
+ 
+-LIST_HEAD(nfs_automount_list);
++static LIST_HEAD(nfs_automount_list);
+ static DECLARE_DELAYED_WORK(nfs_automount_task, nfs_expire_automounts);
+ int nfs_mountpoint_expiry_timeout = 500 * HZ;
+ 
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index f4a0e4c..13f7c75 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -430,7 +430,6 @@ extern void nfs_unregister_sysctl(void);
+ /*
+  * linux/fs/nfs/namespace.c
+  */
+-extern struct list_head nfs_automount_list;
+ extern const struct inode_operations nfs_mountpoint_inode_operations;
+ extern const struct inode_operations nfs_referral_inode_operations;
+ extern int nfs_mountpoint_expiry_timeout;
+
