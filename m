@@ -1,38 +1,43 @@
-From: "Kevin Coffman" <kwc@citi.umich.edu>
-Subject: Re: Version check in aclocal/kerberos.m5
-Date: Mon, 31 Mar 2008 09:38:34 -0400
-Message-ID: <4d569c330803310638vec97b65u6d63080bc8df8f55@mail.gmail.com>
-References: <20080330103159.GA4003@uio.no>
-	 <4d569c330803310615n1eb6e911o1e09c3df2ee5a7e2@mail.gmail.com>
-	 <20080331132926.GA10294@uio.no>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH 0/2] nfsv4 compound status
+Date: Mon, 31 Mar 2008 17:35:23 +0300
+Message-ID: <47F0F6AB.3030302@panasas.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org
-To: "Steinar H. Gunderson" <sgunderson-jG/AHqQBv7lBDgjK7y7TUQ@public.gmane.org>
+Cc: NFS list <linux-nfs@vger.kernel.org>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from ti-out-0910.google.com ([209.85.142.185]:60679 "EHLO
-	ti-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750921AbYCaNii (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Mar 2008 09:38:38 -0400
-Received: by ti-out-0910.google.com with SMTP id 28so372744tif.23
-        for <linux-nfs@vger.kernel.org>; Mon, 31 Mar 2008 06:38:36 -0700 (PDT)
-In-Reply-To: <20080331132926.GA10294-6Z/AllhyZU4@public.gmane.org>
+Received: from gw-colo-pa.panasas.com ([66.238.117.130]:16167 "EHLO
+	cassoulet.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1750765AbYCaOfh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Mar 2008 10:35:37 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Mar 31, 2008 at 9:29 AM, Steinar H. Gunderson
-<sgunderson-jG/AHqQBv7lBDgjK7y7TUQ@public.gmane.org> wrote:
-> On Mon, Mar 31, 2008 at 09:15:37AM -0400, Kevin Coffman wrote:
->  > Hello Steinar,
->  > I'm not clear what you are looking to patch?
->  >
->  > It should be possible to improve the parsing in aclocal/kerberos5.m4
->  > to handle this situation.  Is that what you are looking for?
->
->  Yes, that was my idea.
->
->  My question was: Does this code actually originate in nfs-utils, or does it
->  come from somewhere else?
+Two patches in this patchset implement what we discussed last month:
+http://linux-nfs.org/pipermail/nfsv4/2008-February/007945.html
 
-AFAIK, I am the only one to blame.  There are other versions of
-configure tests for K5, but none that try to use the version number...
+[PATCH 1/2] nfs: return negative error value from nfs{,4}_stat_to_errno
+
+    All use sites for nfs{,4}_stat_to_errno negate their return value.
+    It's more efficient to return a negative error from the stat_to_errno convertors
+    rather than negating its return value everywhere. This also produces slightly
+    smaller code.
+
+[PATCH 2/2] nfs: use compound hdr.status to override op status.
+
+    The compound header status must be equivalent to the
+    status of the last operation in the compound results.
+    In certain cases like lack of resources or xdr decoding error,
+    the nfs server may return a non-zero status in the compound header
+    which is not returned by any operation.  In this case we would
+    notice that today when looking for the respective operations
+    code in the results and we return -EIO when we cannot find it.
+    This patch fixes that by returning the status available in the
+    comound header instead.
+
+    This patch also fixes 3 call sites where we looked at the comound
+    hdr.status in the success case which is useless (yet benign).
+    These are nfs4_xdr_dec_{fsinfo,setclientid,setclientid_confirm}
+
+Benny
