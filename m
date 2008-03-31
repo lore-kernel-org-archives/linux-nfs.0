@@ -1,52 +1,44 @@
-From: Adrian Bunk <bunk@kernel.org>
-Subject: [2.6 patch] make nfs_automount_list static
-Date: Mon, 31 Mar 2008 02:28:04 +0300
-Message-ID: <20080330232804.GT28445@cs181133002.pp.htv.fi>
+From: "Kevin Coffman" <kwc@citi.umich.edu>
+Subject: Re: Version check in aclocal/kerberos.m5
+Date: Mon, 31 Mar 2008 09:15:37 -0400
+Message-ID: <4d569c330803310615n1eb6e911o1e09c3df2ee5a7e2@mail.gmail.com>
+References: <20080330103159.GA4003@uio.no>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Al Viro <viro@zeniv.linux.org.uk>, Trond.Myklebust@netapp.com
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org
+To: "Steinar H. Gunderson" <sesse@debian.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp4.pp.htv.fi ([213.243.153.38]:55245 "EHLO smtp4.pp.htv.fi"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751019AbYC3X2Q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 30 Mar 2008 19:28:16 -0400
+Received: from ik-out-1112.google.com ([66.249.90.181]:1499 "EHLO
+	ik-out-1112.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753598AbYCaNPw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Mar 2008 09:15:52 -0400
+Received: by ik-out-1112.google.com with SMTP id c28so216115ika.5
+        for <linux-nfs@vger.kernel.org>; Mon, 31 Mar 2008 06:15:38 -0700 (PDT)
+In-Reply-To: <20080330103159.GA4003-6Z/AllhyZU4@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-nfs_automount_list can now become static.
+On Sun, Mar 30, 2008 at 6:31 AM, Steinar H. Gunderson <sesse@debian.org> wrote:
+> Hi,
+>
+>  Does anyone know where the version check in aclocal/kerberos.m5 come from? I
+>  need to patch it (Debian's krb5-config --version gives a version like
+>  "1.6.3-beta1-debian", and it doesn't manage to strip away the -beta part),
+>  but it's not clear to me who upstream really is. (At least I've seen the code
+>  in several other projects.)
+>
+>  Any ideas?
 
-Signed-off-by: Adrian Bunk <bunk@kernel.org>
+Hello Steinar,
+I'm not clear what you are looking to patch?
 
----
+It should be possible to improve the parsing in aclocal/kerberos5.m4
+to handle this situation.  Is that what you are looking for?
 
- fs/nfs/namespace.c     |    2 +-
- include/linux/nfs_fs.h |    1 -
- 2 files changed, 1 insertion(+), 2 deletions(-)
+In hindsight, it probably makes more sense to use the version number
+in aclocal/kerberos5.m4 to set feature-specific definitions rather
+than continue to pass along the parsed version number.  (The version
+number is currently used to determine which method to use to tell the
+Kerberos library where to find the credentials.)
 
-7620c6ff4cdf4975d02158361f85e7d881f55ec3 diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
-index 607f6eb..af4d0f1 100644
---- a/fs/nfs/namespace.c
-+++ b/fs/nfs/namespace.c
-@@ -20,7 +20,7 @@
- 
- static void nfs_expire_automounts(struct work_struct *work);
- 
--LIST_HEAD(nfs_automount_list);
-+static LIST_HEAD(nfs_automount_list);
- static DECLARE_DELAYED_WORK(nfs_automount_task, nfs_expire_automounts);
- int nfs_mountpoint_expiry_timeout = 500 * HZ;
- 
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index f4a0e4c..13f7c75 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -430,7 +430,6 @@ extern void nfs_unregister_sysctl(void);
- /*
-  * linux/fs/nfs/namespace.c
-  */
--extern struct list_head nfs_automount_list;
- extern const struct inode_operations nfs_mountpoint_inode_operations;
- extern const struct inode_operations nfs_referral_inode_operations;
- extern int nfs_mountpoint_expiry_timeout;
-
+K.C.
