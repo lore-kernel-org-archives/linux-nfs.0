@@ -1,72 +1,130 @@
-From: "Anirban Sinha" <ASinha-z4qIPS1Syiu/3pe1ocb+swC/G2K4zDHf@public.gmane.org>
-Subject: RE: nfsd restart failures without /proc/fs/nfsd filesystem mounted
-Date: Tue, 1 Apr 2008 14:24:09 -0700
-Message-ID: <DDFD17CC94A9BD49A82147DDF7D545C59D377A@exchange.ZeugmaSystems.local>
-References: <DDFD17CC94A9BD49A82147DDF7D545C59D349C@exchange.ZeugmaSystems.local> <20080401210627.GD21343@fieldses.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: nfsd restart failures without /proc/fs/nfsd filesystem mounted
+Date: Tue, 1 Apr 2008 18:13:27 -0400
+Message-ID: <20080401221327.GH21343@fieldses.org>
+References: <DDFD17CC94A9BD49A82147DDF7D545C59D349C@exchange.ZeugmaSystems.local> <20080401210627.GD21343@fieldses.org> <DDFD17CC94A9BD49A82147DDF7D545C59D3777@exchange.ZeugmaSystems.local>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="utf-8"
-To: <linux-nfs@vger.kernel.org>,
-	"J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Anirban Sinha <ASinha-z4qIPS1Syiu/3pe1ocb+swC/G2K4zDHf@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.zeugmasystems.com ([192.139.122.66]:37118 "EHLO
-	zeugmasystems.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755807AbYDAVYp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Apr 2008 17:24:45 -0400
-In-Reply-To: <20080401210627.GD21343@fieldses.org>
+Received: from mail.fieldses.org ([66.93.2.214]:42281 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753059AbYDAWN3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 Apr 2008 18:13:29 -0400
+In-Reply-To: <DDFD17CC94A9BD49A82147DDF7D545C59D3777-Lp/cVzEoVyb8BYCnuv3k+coc7lC+zEt2hPhL2mjWHbk@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-SSB0cmllZCBjcmVhdGluZyBhIHNpbmdsZSBuZnNkIHRocmVhZCBidXQgSSBnZXQgdGhlIHNhbWUg
-ZXJyb3IgZnJvbSB0aGUga2VybmVsLg0KDQpBbmkNCg0KDQo+LS0tLS1PcmlnaW5hbCBNZXNzYWdl
-LS0tLS0NCj5Gcm9tOiBKLiBCcnVjZSBGaWVsZHMgW21haWx0bzpiZmllbGRzQGZpZWxkc2VzLm9y
-Z10NCj5TZW50OiBUdWVzZGF5LCBBcHJpbCAwMSwgMjAwOCAyOjA2IFBNDQo+VG86IEFuaXJiYW4g
-U2luaGENCj5DYzogbGludXgtbmZzQHZnZXIua2VybmVsLm9yZw0KPlN1YmplY3Q6IFJlOiBuZnNk
-IHJlc3RhcnQgZmFpbHVyZXMgd2l0aG91dCAvcHJvYy9mcy9uZnNkIGZpbGVzeXN0ZW0NCj5tb3Vu
-dGVkDQo+DQo+T24gTW9uLCBNYXIgMzEsIDIwMDggYXQgMDM6Mzk6MDRQTSAtMDcwMCwgQW5pcmJh
-biBTaW5oYSB3cm90ZToNCj4+IEhpOg0KPj4NCj4+IEkgYW0gdXNpbmcgYSBzeXN0ZW0gd2hlcmUg
-d2UgZG8gbm90IHVzZSB0aGUgL3Byb2MvbmZzL25mc2QgZmlsZXN5c3RlbQ0KPihkdWUgdG8gc2V2
-ZXJhbCByZWFzb25zKS4gSSB1bmRlcnN0YW5kIHRoYXQgd2l0aG91dCB0aGlzIGZpbGVzeXN0ZW0s
-DQo+bmZzdXRpbHMgZG9lcyBub3QgdXNlIHRoZSAibmV3IGNhY2hlIiBtZWNoYW5pc20uIEhvd2V2
-ZXIsIGEgbmZzZCByZXN0YXJ0DQo+b3BlcmF0aW9uIHNob3VsZCBzdGlsbCBiZSBmdW5jdGlvbmFs
-LiBIb3dldmVyLCB3aGVuIEkgdHJ5IGRvaW5nIHRoaXMNCj5tYW51YWxseSwgSSBnZXQgdGhlIGZv
-bGxvd2luZyBlcnJvcjoNCj4+DQo+PiByb290Om15X25vZGU6L2V0Yy9yYy5kL2luaXQuZCMgL3Ni
-aW4vc2VydmljZSBuZnMgcmVzdGFydA0KPj4gU2h1dHRpbmcgZG93biBORlMgbW91bnRkOsKgwqDC
-oMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKg
-wqDCoCBbwqAgT0vCoCBdDQo+PiBTaHV0dGluZyBkb3duIE5GUyBkYWVtb246wqDCoMKgwqDCoMKg
-wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgIFtG
-QUlMRURdDQo+PiBTaHV0dGluZyBkb3duIE5GUyBzZXJ2aWNlczrCoMKgwqDCoMKgwqDCoMKgwqDC
-oMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoCBbwqAgT0vCoCBdDQo+
-PiBTdGFydGluZyBORlMgc2VydmljZXM6wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDC
-oMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgIFvCoCBPS8KgIF0NCj4+IFN0
-YXJ0aW5nIE5GUyBkYWVtb246wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDC
-oMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqAgwqBbRkFJTEVEXQ0KPj4gU3RhcnRp
-bmcgTkZTIG1vdW50ZDrCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDC
-oMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgIFvCoCBPS8KgIF0NCj4+DQo+PiBBbmQg
-dGhlIGtlcm5lbCBsb2cgc2F5czoNCj4+IFsxMzozNzozNy43NjY4NDRdIG5mc2Q6IENvdWxkIG5v
-dCBhbGxvY2F0ZSBtZW1vcnkgcmVhZC1haGVhZCBjYWNoZS4NCj4NCj5XaGF0IGtlcm5lbCB2ZXJz
-aW9uIGlzIHRoaXM/ICBJbiB0aGUgbGF0ZXN0DQo+ZnMvbmZzZC92ZnMuYzpuZnNkX3JhY2FjaGVf
-aW5pdChpbnQgY2FjaGVfc2l6ZSk6DQo+DQo+CXJhcGFybWwgPSBrY2FsbG9jKGNhY2hlX3NpemUs
-IHNpemVvZihzdHJ1Y3QgcmFwYXJtcyksIEdGUF9LRVJORUwpOw0KPg0KPglpZiAoIXJhcGFybWwp
-IHsNCj4JCXByaW50ayhLRVJOX1dBUk5JTkcNCj4JCQkibmZzZDogQ291bGQgbm90IGFsbG9jYXRl
-IG1lbW9yeSByZWFkLWFoZWFkDQo+Y2FjaGUuXG4iKTsNCj4JCXJldHVybiAtRU5PTUVNOw0KPgl9
-DQo+DQo+d2hpY2ggaXMgY2FsbGVkIGZyb20gZnMvbmZzZC9uZnNzdmMuYzpuZnNkX3N2YygpIGFz
-Og0KPg0KPgllcnJvciA9IG5mc2RfcmFjYWNoZV9pbml0KDIqbnJzZXJ2cyk7DQo+DQo+d2hlcmUg
-bnJzZXJ2cyBpcyB0aGUgbnVtYmVyIG9mIHNlcnZlciB0aHJlYWRzLiAgSG93IG1hbnkgc2VydmVy
-IHRocmVhZHMNCj5hcmUgeW91DQo+dHJ5aW5nIHRvIHN0YXJ0LCBhbmQgaG93IG11Y2ggbWVtb3J5
-IGRvIHlvdSBoYXZlPw0KPg0KPi0tYi4NCj4NCj4+DQo+PiBUaGlzIGlzc3VlIGlzIGhhcHBlbmlu
-ZyBvbiBhbiBpbnRlbCBwbGF0Zm9ybS4gSG93ZXZlciwgdGhpcyBzYW1lDQo+b3BlcmF0aW9uIHN1
-Y2NlZWRzIG9uIG91ciBtaXBzIHBsYXRmb3JtICh3aXRob3V0IG5mc2QgZmlsZXN5c3RlbSkuIFdo
-YXQNCj5pcyBhbHNvIGludGVyZXN0aW5nIGlzIHRoYXQgb25jZSBJIHR1cm4gb24gL3Byb2MvZnMv
-bmZzZCBmaWxlc3lzdGVtIG9uDQo+SW50ZWwsIHRoZSBpc3N1ZSBzZWVtcyB0byBnbyBhd2F5Lg0K
-Pj4NCj4+IFNldmVyYWwgd2Vla3MgYmFjaywgSSByZXBvcnRlZCBhbiBpc3N1ZSByZWdhcmRpbmcg
-ZXhwb3J0ZnMgLWEgZmFpbHVyZQ0KPm9uIGFuIGFscmVhZHkgZXhwb3J0ZWQgZmlsZXN5c3RlbSB3
-aGVuIG5mc2QgRlMgd2FzIG5vdCB1c2VkLiBJdCB0dXJuZWQNCj5vdXQgdG8gYmUgYSBidWcgaW4g
-dGhlIG5mc3V0aWxzLiBEaWQgd2UgYnVtcCBpbnRvIGFub3RoZXIgYnVnIGhlcmU/IElzDQo+dGhl
-cmUgbm8gb3RoZXIgb3B0aW9uIGJ1dCB0byB0dXJuIG9uIG5mc2QgZmlsZXN5c3RlbT8NCj4+DQo+
-PiBUaGFua3MgZm9yIHdob2V2ZXIgcmVzcG9uZHMgdG8gdGhpcyAuLi4NCj4+DQo+PiBDaGVlcnMs
-DQo+Pg0KPj4gQW5pDQo+Pg0KPj4NCj4+DQo+PiAtLQ0KPj4gVG8gdW5zdWJzY3JpYmUgZnJvbSB0
-aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJlIGxpbnV4LW5mcyINCj5pbg0KPj4g
-dGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1ham9yZG9tb0B2Z2VyLmtlcm5lbC5vcmcNCj4+IE1v
-cmUgbWFqb3Jkb21vIGluZm8gYXQgIGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWlu
-Zm8uaHRtbA0K
+On Tue, Apr 01, 2008 at 02:19:04PM -0700, Anirban Sinha wrote:
+> Hi:
+> 
+> Thanks for responding. 
+> 
+> 
+> >> And the kernel log says:
+> >> [13:37:37.766844] nfsd: Could not allocate memory read-ahead cache.
+> >
+> >What kernel version is this?  
+> 
+> I am using kernel version 2.6.17.7. 
+> 
+> 
+> > In the latest
+> >fs/nfsd/vfs.c:nfsd_racache_init(int cache_size):
+> >
+> >	raparml = kcalloc(cache_size, sizeof(struct raparms), GFP_KERNEL);
+> >
+> >	if (!raparml) {
+> >		printk(KERN_WARNING
+> >			"nfsd: Could not allocate memory read-ahead
+> >cache.\n");
+> >		return -ENOMEM;
+> >	}
+> >
+> >which is called from fs/nfsd/nfssvc.c:nfsd_svc() as:
+> >
+> >	error = nfsd_racache_init(2*nrservs);
+> >
+> >where nrservs is the number of server threads.  How many server threads
+> >are you
+> >trying to start, and how much memory do you have?
+> 
+> 
+> Yea, I have seen that codebase. The configuration file /etc/init.d/nfs creates 8 nfs threads:
+> 
+> root:Zeugma:/etc/init.d# ps -A |grep nfs
+>  2202 ?        00:00:00 nfsd
+>  2203 ?        00:00:00 nfsd
+>  2204 ?        00:00:00 nfsd
+>  2205 ?        00:00:00 nfsd
+>  2206 ?        00:00:00 nfsd
+>  2207 ?        00:00:00 nfsd
+>  2208 ?        00:00:00 nfsd
+>  2209 ?        00:00:00 nfsd
+> root:Zeugma:/etc/init.d# free
+>              total       used       free     shared    buffers     cached
+> Mem:        255372      34352     221020          0       2564      18720
+> -/+ buffers/cache:      13068     242304
+> Swap:            0          0          0
+> 
+> 
+> The funny thing is that the moment I enable nfsd filesystem, the problem
+> seems to go away.
+
+OK, so write_svc() (hence sys_nfsservctl()) is getting garbage.  Hm.
+The structure that's passed in to the kernel is:
+
+	struct nfsctl_svc {
+		unsigned short svc_port;
+		int svc_nthreads;
+	};
+
+Is it at all possible that userspace and the kernel could disagree about
+the layout of that structure?
+
+Can you play with strace or insert some printk's to figure out what's
+going on?
+
+> Can you try and reproduce the problem by disabling nfsd filesystem in your
+> system?
+
+I haven't tried yet.
+
+--b.
+
+> 
+> #> umount /proc/fs/nfsd
+> 
+> Ani
+> 
+> 
+> 
+> 
+> >
+> >--b.
+> >
+> >>
+> >> This issue is happening on an intel platform. However, this same
+> >operation succeeds on our mips platform (without nfsd filesystem). What
+> >is also interesting is that once I turn on /proc/fs/nfsd filesystem on
+> >Intel, the issue seems to go away.
+> >>
+> >> Several weeks back, I reported an issue regarding exportfs -a failure
+> >on an already exported filesystem when nfsd FS was not used. It turned
+> >out to be a bug in the nfsutils. Did we bump into another bug here? Is
+> >there no other option but to turn on nfsd filesystem?
+> >>
+> >> Thanks for whoever responds to this ...
+> >>
+> >> Cheers,
+> >>
+> >> Ani
+> >>
+> >>
+> >>
+> >> --
+> >> To unsubscribe from this list: send the line "unsubscribe linux-nfs"
+> >in
+> >> the body of a message to majordomo@vger.kernel.org
+> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
