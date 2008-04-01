@@ -1,39 +1,62 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: regression: am-utils stopped working in 2.6.25-rc*
-Date: Tue, 1 Apr 2008 17:07:42 -0400
-Message-ID: <20080401210742.GE21343@fieldses.org>
-References: <Pine.SOC.4.64.0803281447530.6128@math.ut.ee>
+From: "Anirban Sinha" <ASinha-z4qIPS1Syiu/3pe1ocb+swC/G2K4zDHf@public.gmane.org>
+Subject: RE: nfsd restart failures without /proc/fs/nfsd filesystem mounted
+Date: Tue, 1 Apr 2008 14:19:04 -0700
+Message-ID: <DDFD17CC94A9BD49A82147DDF7D545C59D3777@exchange.ZeugmaSystems.local>
+References: <DDFD17CC94A9BD49A82147DDF7D545C59D349C@exchange.ZeugmaSystems.local> <20080401210627.GD21343@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Linux Kernel list <linux-kernel@vger.kernel.org>,
-	linux-nfs@vger.kernel.org
-To: Meelis Roos <mroos-Y27EyoLml9s@public.gmane.org>
+Content-Type: text/plain;
+	charset="utf-8"
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+	<linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:37954 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761029AbYDAVHn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 Apr 2008 17:07:43 -0400
-In-Reply-To: <Pine.SOC.4.64.0803281447530.6128-ptEonEWSGqKptlylMvRsHA@public.gmane.org>
+Received: from mail.zeugmasystems.com ([192.139.122.66]:37020 "EHLO
+	zeugmasystems.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1758116AbYDAVTg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Apr 2008 17:19:36 -0400
+In-Reply-To: <20080401210627.GD21343@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Mar 28, 2008 at 03:20:18PM +0200, Meelis Roos wrote:
-> Current 2.6.25-rc* kernels have broken am-utils (NFS-based automounter) 
-> support. No error messages, just "no such file or directory" when trying 
-> to enter /net/anotherhostname. Just tried 2.6.24 and that worked fine. 
-> am-utils is the latest in Debian unstable, 6.1.5-9.
-> 
-> Earliest 2.6.25-rc currently tested was 2.6.25-rc3+git as of 20080304. 
-> This version reports 
-> Invalid hostname "pid3477@koiott:/net" in NFS lock request
-> into dmesg and am-utils does not work.
-> 
-> 2.6.25-rc4+git as of 20080310 and later ones do not show this message 
-> but am-utils does still not work.
-> 
-> Will try bisecting it further.
-
-Have you figured out anything more?  Can strace show exactly which
-system call is  failing?
-
---b.
+SGk6DQoNClRoYW5rcyBmb3IgcmVzcG9uZGluZy4gDQoNCg0KPj4gQW5kIHRoZSBrZXJuZWwgbG9n
+IHNheXM6DQo+PiBbMTM6Mzc6MzcuNzY2ODQ0XSBuZnNkOiBDb3VsZCBub3QgYWxsb2NhdGUgbWVt
+b3J5IHJlYWQtYWhlYWQgY2FjaGUuDQo+DQo+V2hhdCBrZXJuZWwgdmVyc2lvbiBpcyB0aGlzPyAg
+DQoNCkkgYW0gdXNpbmcga2VybmVsIHZlcnNpb24gMi42LjE3LjcuIA0KDQoNCj4gSW4gdGhlIGxh
+dGVzdA0KPmZzL25mc2QvdmZzLmM6bmZzZF9yYWNhY2hlX2luaXQoaW50IGNhY2hlX3NpemUpOg0K
+Pg0KPglyYXBhcm1sID0ga2NhbGxvYyhjYWNoZV9zaXplLCBzaXplb2Yoc3RydWN0IHJhcGFybXMp
+LCBHRlBfS0VSTkVMKTsNCj4NCj4JaWYgKCFyYXBhcm1sKSB7DQo+CQlwcmludGsoS0VSTl9XQVJO
+SU5HDQo+CQkJIm5mc2Q6IENvdWxkIG5vdCBhbGxvY2F0ZSBtZW1vcnkgcmVhZC1haGVhZA0KPmNh
+Y2hlLlxuIik7DQo+CQlyZXR1cm4gLUVOT01FTTsNCj4JfQ0KPg0KPndoaWNoIGlzIGNhbGxlZCBm
+cm9tIGZzL25mc2QvbmZzc3ZjLmM6bmZzZF9zdmMoKSBhczoNCj4NCj4JZXJyb3IgPSBuZnNkX3Jh
+Y2FjaGVfaW5pdCgyKm5yc2VydnMpOw0KPg0KPndoZXJlIG5yc2VydnMgaXMgdGhlIG51bWJlciBv
+ZiBzZXJ2ZXIgdGhyZWFkcy4gIEhvdyBtYW55IHNlcnZlciB0aHJlYWRzDQo+YXJlIHlvdQ0KPnRy
+eWluZyB0byBzdGFydCwgYW5kIGhvdyBtdWNoIG1lbW9yeSBkbyB5b3UgaGF2ZT8NCg0KDQpZZWEs
+IEkgaGF2ZSBzZWVuIHRoYXQgY29kZWJhc2UuIFRoZSBjb25maWd1cmF0aW9uIGZpbGUgL2V0Yy9p
+bml0LmQvbmZzIGNyZWF0ZXMgOCBuZnMgdGhyZWFkczoNCg0Kcm9vdDpaZXVnbWE6L2V0Yy9pbml0
+LmQjIHBzIC1BIHxncmVwIG5mcw0KIDIyMDIgPyAgICAgICAgMDA6MDA6MDAgbmZzZA0KIDIyMDMg
+PyAgICAgICAgMDA6MDA6MDAgbmZzZA0KIDIyMDQgPyAgICAgICAgMDA6MDA6MDAgbmZzZA0KIDIy
+MDUgPyAgICAgICAgMDA6MDA6MDAgbmZzZA0KIDIyMDYgPyAgICAgICAgMDA6MDA6MDAgbmZzZA0K
+IDIyMDcgPyAgICAgICAgMDA6MDA6MDAgbmZzZA0KIDIyMDggPyAgICAgICAgMDA6MDA6MDAgbmZz
+ZA0KIDIyMDkgPyAgICAgICAgMDA6MDA6MDAgbmZzZA0Kcm9vdDpaZXVnbWE6L2V0Yy9pbml0LmQj
+IGZyZWUNCiAgICAgICAgICAgICB0b3RhbCAgICAgICB1c2VkICAgICAgIGZyZWUgICAgIHNoYXJl
+ZCAgICBidWZmZXJzICAgICBjYWNoZWQNCk1lbTogICAgICAgIDI1NTM3MiAgICAgIDM0MzUyICAg
+ICAyMjEwMjAgICAgICAgICAgMCAgICAgICAyNTY0ICAgICAgMTg3MjANCi0vKyBidWZmZXJzL2Nh
+Y2hlOiAgICAgIDEzMDY4ICAgICAyNDIzMDQNClN3YXA6ICAgICAgICAgICAgMCAgICAgICAgICAw
+ICAgICAgICAgIDANCg0KDQpUaGUgZnVubnkgdGhpbmcgaXMgdGhhdCB0aGUgbW9tZW50IEkgZW5h
+YmxlIG5mc2QgZmlsZXN5c3RlbSwgdGhlIHByb2JsZW0gc2VlbXMgdG8gZ28gYXdheS4gQ2FuIHlv
+dSB0cnkgYW5kIHJlcHJvZHVjZSB0aGUgcHJvYmxlbSBieSBkaXNhYmxpbmcgbmZzZCBmaWxlc3lz
+dGVtIGluIHlvdXIgc3lzdGVtPw0KDQojPiB1bW91bnQgL3Byb2MvZnMvbmZzZA0KDQpBbmkNCg0K
+DQoNCg0KPg0KPi0tYi4NCj4NCj4+DQo+PiBUaGlzIGlzc3VlIGlzIGhhcHBlbmluZyBvbiBhbiBp
+bnRlbCBwbGF0Zm9ybS4gSG93ZXZlciwgdGhpcyBzYW1lDQo+b3BlcmF0aW9uIHN1Y2NlZWRzIG9u
+IG91ciBtaXBzIHBsYXRmb3JtICh3aXRob3V0IG5mc2QgZmlsZXN5c3RlbSkuIFdoYXQNCj5pcyBh
+bHNvIGludGVyZXN0aW5nIGlzIHRoYXQgb25jZSBJIHR1cm4gb24gL3Byb2MvZnMvbmZzZCBmaWxl
+c3lzdGVtIG9uDQo+SW50ZWwsIHRoZSBpc3N1ZSBzZWVtcyB0byBnbyBhd2F5Lg0KPj4NCj4+IFNl
+dmVyYWwgd2Vla3MgYmFjaywgSSByZXBvcnRlZCBhbiBpc3N1ZSByZWdhcmRpbmcgZXhwb3J0ZnMg
+LWEgZmFpbHVyZQ0KPm9uIGFuIGFscmVhZHkgZXhwb3J0ZWQgZmlsZXN5c3RlbSB3aGVuIG5mc2Qg
+RlMgd2FzIG5vdCB1c2VkLiBJdCB0dXJuZWQNCj5vdXQgdG8gYmUgYSBidWcgaW4gdGhlIG5mc3V0
+aWxzLiBEaWQgd2UgYnVtcCBpbnRvIGFub3RoZXIgYnVnIGhlcmU/IElzDQo+dGhlcmUgbm8gb3Ro
+ZXIgb3B0aW9uIGJ1dCB0byB0dXJuIG9uIG5mc2QgZmlsZXN5c3RlbT8NCj4+DQo+PiBUaGFua3Mg
+Zm9yIHdob2V2ZXIgcmVzcG9uZHMgdG8gdGhpcyAuLi4NCj4+DQo+PiBDaGVlcnMsDQo+Pg0KPj4g
+QW5pDQo+Pg0KPj4NCj4+DQo+PiAtLQ0KPj4gVG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6
+IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJlIGxpbnV4LW5mcyINCj5pbg0KPj4gdGhlIGJvZHkg
+b2YgYSBtZXNzYWdlIHRvIG1ham9yZG9tb0B2Z2VyLmtlcm5lbC5vcmcNCj4+IE1vcmUgbWFqb3Jk
+b21vIGluZm8gYXQgIGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtbA0K
