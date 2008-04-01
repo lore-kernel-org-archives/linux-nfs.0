@@ -1,71 +1,81 @@
-From: Michael Guntsche <mike-Z92qn3yYq0hWk0Htik3J/w@public.gmane.org>
-Subject: NFS3+KRB5 question
-Date: Tue, 1 Apr 2008 10:51:09 +0200
-Message-ID: <35b652ed9c3ac37ca9dc102b1bb65a83@localhost>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [PATCH 2/2] nfs: use compound hdr.status to override op status.
+Date: Tue, 01 Apr 2008 12:37:33 +0300
+Message-ID: <47F2025D.3030306@panasas.com>
+References: <47F0F6AB.3030302@panasas.com>	 <1206974900-368-1-git-send-email-bhalevy@panasas.com> <1207002349.15341.15.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from lvps87-230-0-242.dedicated.hosteurope.de ([87.230.0.242]:34616
-	"EHLO lvps87-230-0-242.dedicated.hosteurope.de" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755328AbYDAI6p (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Apr 2008 04:58:45 -0400
-Received: from [127.0.0.1] (helo=mail.maru.homelinux.org ident=IpuIqVwe)
-	by gibson.comsick.at with esmtp (Exim 4.69)
-	(envelope-from <mike-Z92qn3yYq0hWk0Htik3J/w@public.gmane.org>)
-	id 1JgcCz-0006GW-Kp
-	for linux-nfs@vger.kernel.org; Tue, 01 Apr 2008 10:51:09 +0200
+Received: from gw-colo-pa.panasas.com ([66.238.117.130]:29349 "EHLO
+	cassoulet.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1755978AbYDAJhu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Apr 2008 05:37:50 -0400
+In-Reply-To: <1207002349.15341.15.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello list.
+On Apr. 01, 2008, 1:25 +0300, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+> On Mon, 2008-03-31 at 17:48 +0300, Benny Halevy wrote:
+>> The compound header status must be equivalent to the
+>> status of the last operation in the compound results.
+>> In certain cases like lack of resources or xdr decoding error,
+>> the nfs server may return a non-zero status in the compound header
+>> which is not returned by any operation.  In this case we would
+>> notice that today when looking for the respective operations
+>> code in the results and we return -EIO when we cannot find it.
+>> This patch fixes that by returning the status available in the
+>> comound header instead.
+>>
+>> This patch also fixes 3 call sites where we looked at the comound
+>> hdr.status in the success case which is useless (yet benign).
+>> These are nfs4_xdr_dec_{fsinfo,setclientid,setclientid_confirm}
+>>
+>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>> ---
+>>  fs/nfs/nfs4xdr.c |   74 +++++++++++++++++++++++++++++++++++++++++++++++++----
+>>  1 files changed, 68 insertions(+), 6 deletions(-)
+>>
+>> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+>> index bb95b7c..edaa2fe 100644
+>> --- a/fs/nfs/nfs4xdr.c
+>> +++ b/fs/nfs/nfs4xdr.c
+>> @@ -3779,6 +3779,8 @@ static int nfs4_xdr_dec_open_downgrade(struct rpc_rqst *rqstp, __be32 *p, struct
+>>  		goto out;
+>>  	decode_getfattr(&xdr, res->fattr, res->server);
+>>  out:
+>> +	if (hdr.status)
+>> +		status = nfs4_stat_to_errno(hdr.status);
+> 
+> This changes the return value so that the outcome of the RPC call now
+> depends on the success of a previously optional post-op GETATTR
+> operation. For non-idempotent RPC calls, that's not acceptable.
 
-I am facing a strange behaviour here with a test NFS3+KRB5 setup.
-I am currently testing NFS4+KRB5 and everything seems to work ok.
+Point taken.
 
-#NFS4 export snippet
-/srv/nfs4  *(sec=krb5,rw,async,fsid=0,insecure,crossmnt,no_subtree_check)
-/srv/nfs4/media  *(sec=krb5,rw,async,insecure,crossmnt,no_subtree_check)
+Please see the patch in reply to this message.
+It takes a different approach which overrides the status
+only in the error case. For example:
 
-Both the server and client linux machine are running nfs-utils 1.1.2.
++#define nfs4_fixup_status(status, hdr_status) \
++	( likely(!status) ? 0 : nfs4_stat_to_errno(hdr_status) )
++
+ /*
+  * Decode OPEN_DOWNGRADE response
+  */
+@@ -3779,7 +3782,7 @@ static int nfs4_xdr_dec_open_downgrade(struct rpc_rqst *rqstp, __be32 *p, struct
+ 		goto out;
+ 	decode_getfattr(&xdr, res->fattr, res->server);
+ out:
+-        return status;
++	return nfs4_fixup_status(status, hdr.status);
+ }
+ 
+ /*
 
-I can mount these exports with.
+Benny
 
-    mount -t nfs4 -osec=krb5 servername:/ /mnt
-
-Now I tried the same with an NFS3 export.
-
-#NFS3 export snippet
-/var/media
-192.168.0.0/24(sec=krb5:krb5i:krb5p:sys,rw,async,insecure,no_subtree_check)
-
-If I try to mount this export form my client it works
-
-   mount -osec=krb5 servername:/var/media /mnt
-
-I can see that rpc.gssd on the client is doing its work fetching a ticket
-etc....
-But as you can see i still have sec=...:sys in this export line.
-
-If I remove sys from sec I can NO LONGER mount this share from my linux
-client. 
-Although I see a authenticated line in the server logs several times, the
-mount does not succeed.
-Furthermore the rpc.gssd daemon on the client does not do anything in this
-case (I let it run in foreground to check it).
-As soon as I add sec=...:sys to the export, mounting via -osec=krb5 works
-again and I can also see rpc.gssd doing its work.
-
-For testing purposes I tried to mount the same export from a mac client
-(leopard) and this worked with and without the sec=sys.
-
-So my question. Do you still need to have sec=sys in your exports even if
-you just want to mount them via kerberos or is this a bug?
-The server is running kernel version 2.6.24.2 and the linux client
-2.6.25-rc2. I also tried to mount export from the server itself but it
-failed the same way.
-
-Kind regards,
-Michael
-
-
+P.S. The reason I defined this macro rather than a static inline function
+is that it produced the smallest machine code (for x86_64, as reported by
+objdump -h).
