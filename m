@@ -1,87 +1,71 @@
-From: "Robert P. J. Day" <rpjday-L09J2beyid0N/H6P543EQg@public.gmane.org>
-Subject: [PATCH] NFSD:  Strip __KERNEL__ testing from unexported header
- files.
-Date: Tue, 1 Apr 2008 21:48:37 -0400 (EDT)
-Message-ID: <alpine.LFD.1.00.0804012147030.11039@localhost.localdomain>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: regression: am-utils stopped working in 2.6.25-rc*
+Date: Wed, 02 Apr 2008 10:53:36 +0300
+Message-ID: <47F33B80.1070508@panasas.com>
+References: <Pine.SOC.4.64.0803281447530.6128@math.ut.ee>	 <20080401210742.GE21343@fieldses.org> <1207088063.13443.22.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Andrew Morton <akpm@osdl.org>
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Meelis Roos <mroos-Y27EyoLml9s@public.gmane.org>,
+	Linux Kernel list <linux-kernel@vger.kernel.org>,
+	linux-nfs@vger.kernel.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	"J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from astoria.ccjclearline.com ([64.235.106.9]:50411 "EHLO
-	astoria.ccjclearline.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753227AbYDBBsk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Apr 2008 21:48:40 -0400
+Received: from gw-colo-pa.panasas.com ([66.238.117.130]:4164 "EHLO
+	cassoulet.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751869AbYDBHyH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Apr 2008 03:54:07 -0400
+In-Reply-To: <1207088063.13443.22.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Apr. 02, 2008, 1:14 +0300, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+> On Tue, 2008-04-01 at 17:07 -0400, J. Bruce Fields wrote:
+>> On Fri, Mar 28, 2008 at 03:20:18PM +0200, Meelis Roos wrote:
+>>> Current 2.6.25-rc* kernels have broken am-utils (NFS-based automounter) 
+>>> support. No error messages, just "no such file or directory" when trying 
+>>> to enter /net/anotherhostname. Just tried 2.6.24 and that worked fine. 
+>>> am-utils is the latest in Debian unstable, 6.1.5-9.
+>>>
+>>> Earliest 2.6.25-rc currently tested was 2.6.25-rc3+git as of 20080304. 
+>>> This version reports 
+>>> Invalid hostname "pid3477@koiott:/net" in NFS lock request
+>>> into dmesg and am-utils does not work.
+>>>
+>>> 2.6.25-rc4+git as of 20080310 and later ones do not show this message 
+>>> but am-utils does still not work.
+>>>
+>>> Will try bisecting it further.
+>> Have you figured out anything more?  Can strace show exactly which
+>> system call is  failing?
+> 
+> See the bugzilla report:
+>   http://bugzilla.kernel.org/show_bug.cgi?id=10349
 
-Also, sort the Kbuild file.
+FWIW, I've already opened this bug on am-utils's bugzilla:
+https://bugzilla.am-utils.org/show_bug.cgi?id=612
 
-Signed-off-by: Robert P. J. Day <rpjday-L09J2beyid0N/H6P543EQg@public.gmane.org>
+I updated it with the info on this message.
 
----
+Benny
 
- include/linux/nfsd/Kbuild  |    4 ++--
- include/linux/nfsd/cache.h |    2 --
- include/linux/nfsd/nfsd.h  |    3 ---
- 3 files changed, 2 insertions(+), 7 deletions(-)
+> 
+> I'm still waiting to hear back from Meelis, but to me this looks like an
+> am-utils bug.
+> 
+> AFAICS, am-utils advertises a binary NFS mount structure version of '6',
+> to the mount() syscall, but internally they only initialise the
+> equivalent of a version '4' structure.
+> When
+>      http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git&a=commitdiff&h=f9c3a3802119a2d30f3e4a69aef30a81e09d0209
+> was merged, then this failure to initialise the selinux 'context' field
+> causes mount() to return an EINVAL.
+> 
+> Cheers
+>   Trond
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-diff --git a/include/linux/nfsd/Kbuild b/include/linux/nfsd/Kbuild
-index e726fc3..fc97204 100644
---- a/include/linux/nfsd/Kbuild
-+++ b/include/linux/nfsd/Kbuild
-@@ -1,6 +1,6 @@
- unifdef-y += const.h
-+unifdef-y += debug.h
- unifdef-y += export.h
-+unifdef-y += nfsfh.h
- unifdef-y += stats.h
- unifdef-y += syscall.h
--unifdef-y += nfsfh.h
--unifdef-y += debug.h
-diff --git a/include/linux/nfsd/cache.h b/include/linux/nfsd/cache.h
-index 7b5d784..04b355c 100644
---- a/include/linux/nfsd/cache.h
-+++ b/include/linux/nfsd/cache.h
-@@ -10,7 +10,6 @@
- #ifndef NFSCACHE_H
- #define NFSCACHE_H
-
--#ifdef __KERNEL__
- #include <linux/in.h>
- #include <linux/uio.h>
-
-@@ -77,5 +76,4 @@ void	nfsd_reply_cache_shutdown(void);
- int	nfsd_cache_lookup(struct svc_rqst *, int);
- void	nfsd_cache_update(struct svc_rqst *, int, __be32 *);
-
--#endif /* __KERNEL__ */
- #endif /* NFSCACHE_H */
-diff --git a/include/linux/nfsd/nfsd.h b/include/linux/nfsd/nfsd.h
-index 8caf4c4..c17ef86 100644
---- a/include/linux/nfsd/nfsd.h
-+++ b/include/linux/nfsd/nfsd.h
-@@ -27,7 +27,6 @@
- #define NFSD_VERSION		"0.5"
- #define NFSD_SUPPORTED_MINOR_VERSION	0
-
--#ifdef __KERNEL__
- /*
-  * Special flags for nfsd_permission. These must be different from MAY_READ,
-  * MAY_WRITE, and MAY_EXEC.
-@@ -326,6 +325,4 @@ extern struct timeval	nfssvc_boot;
-
- #endif /* CONFIG_NFSD_V4 */
-
--#endif /* __KERNEL__ */
--
- #endif /* LINUX_NFSD_NFSD_H */
-
-========================================================================
-Robert P. J. Day
-Linux Consulting, Training and Annoying Kernel Pedantry:
-    Have classroom, will lecture.
-
-http://crashcourse.ca                          Waterloo, Ontario, CANADA
-========================================================================
