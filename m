@@ -1,97 +1,71 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] NFSD:  Strip __KERNEL__ testing from unexported header
-	files.
-Date: Wed, 2 Apr 2008 18:38:53 -0400
-Message-ID: <20080402223853.GD16302@fieldses.org>
-References: <alpine.LFD.1.00.0804012147030.11039@localhost.localdomain>
+From: "Anirban Sinha" <ASinha-z4qIPS1Syiu/3pe1ocb+swC/G2K4zDHf@public.gmane.org>
+Subject: RE: nfsd restart failures without /proc/fs/nfsd filesystem mounted
+Date: Wed, 2 Apr 2008 16:06:14 -0700
+Message-ID: <DDFD17CC94A9BD49A82147DDF7D545C59D3BD9@exchange.ZeugmaSystems.local>
+References: <DDFD17CC94A9BD49A82147DDF7D545C59D349C@exchange.ZeugmaSystems.local> <20080401210627.GD21343@fieldses.org> <DDFD17CC94A9BD49A82147DDF7D545C59D3777@exchange.ZeugmaSystems.local> <20080401221327.GH21343@fieldses.org> <DDFD17CC94A9BD49A82147DDF7D545C59D3A6C@exchange.ZeugmaSystems.local> <DDFD17CC94A9BD49A82147DDF7D545C59D3B32@exchange.ZeugmaSystems.local> <20080402222611.GC16302@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org, Andrew Morton <akpm@osdl.org>
-To: "Robert P. J. Day" <rpjday-L09J2beyid0N/H6P543EQg@public.gmane.org>
+Content-Type: text/plain;
+	charset="us-ascii"
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+	<linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:42795 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752337AbYDBWi5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 Apr 2008 18:38:57 -0400
-In-Reply-To: <alpine.LFD.1.00.0804012147030.11039-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
+Received: from mail.zeugmasystems.com ([192.139.122.66]:25422 "EHLO
+	zeugmasystems.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1756203AbYDBXGy convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Apr 2008 19:06:54 -0400
+In-Reply-To: <20080402222611.GC16302@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Apr 01, 2008 at 09:48:37PM -0400, Robert P. J. Day wrote:
-> 
-> Also, sort the Kbuild file.
+>>
+>>
+>> Indeed. Actually, by mistake, I was using the new 1.1.2 nfs-utils
+>> binaries and making changes in the old 1.1.0 nfs-utils source. The
+>> removal of the member does not change anything. What is happening is
+>> that an upgrade to the new 1.1.2 nfs-utils binaries solves the
+>problem.
+>> I think you can reproduce the problem at your end simply by
+unmounting
+>> nfsd filesystem and using 1.1.0 nfs-utils binary.
+>
+>OK!  Hm, do you know which patch actually fixed this?  (Is it actually
+>just the same problem you reported before?)  
 
-Applied, thanks.--b.
+No, it can't be the same patch. After I reported the issue and Neil gave
+me the patch, I applied the patch to our own nfs-utils source and
+thereafter, our build process has been using the patched nfs-utils
+binaries ever since. However, interestingly, the patch that was
+committed to the git repo is handles the issue slightly differently
+(though I think it should not create any difference).
 
-> 
-> Signed-off-by: Robert P. J. Day <rpjday-L09J2beyid0N/H6P543EQg@public.gmane.org>
-> 
-> ---
-> 
->  include/linux/nfsd/Kbuild  |    4 ++--
->  include/linux/nfsd/cache.h |    2 --
->  include/linux/nfsd/nfsd.h  |    3 ---
->  3 files changed, 2 insertions(+), 7 deletions(-)
-> 
-> diff --git a/include/linux/nfsd/Kbuild b/include/linux/nfsd/Kbuild
-> index e726fc3..fc97204 100644
-> --- a/include/linux/nfsd/Kbuild
-> +++ b/include/linux/nfsd/Kbuild
-> @@ -1,6 +1,6 @@
->  unifdef-y += const.h
-> +unifdef-y += debug.h
->  unifdef-y += export.h
-> +unifdef-y += nfsfh.h
->  unifdef-y += stats.h
->  unifdef-y += syscall.h
-> -unifdef-y += nfsfh.h
-> -unifdef-y += debug.h
-> diff --git a/include/linux/nfsd/cache.h b/include/linux/nfsd/cache.h
-> index 7b5d784..04b355c 100644
-> --- a/include/linux/nfsd/cache.h
-> +++ b/include/linux/nfsd/cache.h
-> @@ -10,7 +10,6 @@
->  #ifndef NFSCACHE_H
->  #define NFSCACHE_H
-> 
-> -#ifdef __KERNEL__
->  #include <linux/in.h>
->  #include <linux/uio.h>
-> 
-> @@ -77,5 +76,4 @@ void	nfsd_reply_cache_shutdown(void);
->  int	nfsd_cache_lookup(struct svc_rqst *, int);
->  void	nfsd_cache_update(struct svc_rqst *, int, __be32 *);
-> 
-> -#endif /* __KERNEL__ */
->  #endif /* NFSCACHE_H */
-> diff --git a/include/linux/nfsd/nfsd.h b/include/linux/nfsd/nfsd.h
-> index 8caf4c4..c17ef86 100644
-> --- a/include/linux/nfsd/nfsd.h
-> +++ b/include/linux/nfsd/nfsd.h
-> @@ -27,7 +27,6 @@
->  #define NFSD_VERSION		"0.5"
->  #define NFSD_SUPPORTED_MINOR_VERSION	0
-> 
-> -#ifdef __KERNEL__
->  /*
->   * Special flags for nfsd_permission. These must be different from MAY_READ,
->   * MAY_WRITE, and MAY_EXEC.
-> @@ -326,6 +325,4 @@ extern struct timeval	nfssvc_boot;
-> 
->  #endif /* CONFIG_NFSD_V4 */
-> 
-> -#endif /* __KERNEL__ */
-> -
->  #endif /* LINUX_NFSD_NFSD_H */
-> 
-> ========================================================================
-> Robert P. J. Day
-> Linux Consulting, Training and Annoying Kernel Pedantry:
->     Have classroom, will lecture.
-> 
-> http://crashcourse.ca                          Waterloo, Ontario, CANADA
-> ========================================================================
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+The patch Neil gave me is as follows:
+
+diff --git a/support/export/client.c b/support/export/client.c
+index 1cb242f..e96f5e0 100644
+--- a/support/export/client.c
++++ b/support/export/client.c
+@@ -462,5 +462,5 @@ client_gettype(char *ident)
+ 	sp++; if(!isdigit(*sp) || strtoul(sp, &sp, 10) > 255 || *sp !=
+'.') return MCL_FQDN;
+ 	sp++; if(!isdigit(*sp) || strtoul(sp, &sp, 10) > 255 || *sp !=
+'\0') return MCL_FQDN;
+ 	/* we lie here a bit. but technically N.N.N.N == N.N.N.N/32 :)
+*/
+-	return MCL_SUBNETWORK;
++	return MCL_FQDN;
+ } 
+
+
+On a quick skim through the
+>git history I'm not seeing it.
+
+Hmm, I also did a quick skip through the commit logs. Didn't quite see
+anything that might be relevant. However, I retested with 1.1.2 and
+again it *did* solve the issue. Interesting! 
+
+
+A
+
+
+>
+>--b.
