@@ -1,98 +1,38 @@
-From: Frank van Maarseveen <frankvm@frankvm.com>
-Subject: reconnect_path() breaks NFS server causing occasional EACCES
-Date: Fri, 4 Apr 2008 12:24:49 +0200
-Message-ID: <20080404102449.GA10209@janus>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Linux NFS mailing list <linux-nfs@vger.kernel.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: RPC service registration timeout
+Date: Fri, 4 Apr 2008 12:38:56 -0400
+Message-ID: <503B5614-4F04-470D-B7FF-9DAA6AE6E316@oracle.com>
+Mime-Version: 1.0 (Apple Message framework v753)
+Content-Type: text/plain; charset=US-ASCII; delsp=yes; format=flowed
+Cc: NFS list <linux-nfs@vger.kernel.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Neil Brown <neilb@suse.de>, Steve Dickson <SteveD@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from frankvm.xs4all.nl ([80.126.170.174]:37944 "EHLO
-	janus.localdomain" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752169AbYDDKYv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Apr 2008 06:24:51 -0400
+Received: from rgminet01.oracle.com ([148.87.113.118]:38518 "EHLO
+	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750993AbYDDQlD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Apr 2008 12:41:03 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Occasionally we experience EACCES errors which are caused by the exportfs
-reconnect_path() function called by the NFS server (NFSv3). The following
-reproduces it reliably on the client.
+Registering a local RPC service has a long timeout.
 
-Compile cd-droppriv.c and make it setuid root:
---------
-#include <stdio.h>
-#include <stdarg.h>
-#include <unistd.h>
-#include <string.h>
-#include <stdlib.h>
-#include <errno.h>
-#include <dirent.h>
+When starting the NFSD service, for example, the RPC server wants to  
+unregister at least 6 different RPC services (three versions of NFS  
+and three versions of lockd) before it even tries to register the  
+services it's bringing up.
 
-void die(const char *fmt, ...) __attribute__((format(printf, 1, 2), noreturn));
-void die(const char *fmt, ...)
-{
-	va_list ap;
+Usually this isnt' a problem.  However, if a portmapper or rpcbind  
+daemon isn't running, each one of these registrations causes a long  
+wait (up to a minute each, I think) while the RPC server attempts to  
+contact the rpcbind daemon at localhost.
 
-	va_start(ap, fmt);
-	fprintf(stderr, "cd-droppriv: ");
-	vfprintf(stderr, fmt, ap);
-	va_end(ap);
-	exit(1);
-}
+I don't think this wait is interruptible, either.
 
-int main(int argc, char **argv)
-{
-	if (chdir(argv[1]) == -1)
-		die("chdir: %s\n", strerror(errno));
-	if (setuid(getuid()) == -1)
-		die("setuid: %s\n", strerror(errno));
-	printf("Restart the NFS server then press <enter>.\n");
-	getchar();
-	if (opendir(".") == NULL)
-		die("opendir: %s\n", strerror(errno));
-	return 0;
-}
---------
+I'm wondering if this long timeout is really necessary.  Can we get  
+by with a second or so, and a couple of retries?
 
-As root, create a directory tree on the client. The export options on
-the server for /mnt include no_root_squash and no_subtree_check:
-
-	mkdir -p /mnt/a/b
-	chmod 700 /mnt/a
-	chmod 777 /mnt/a/b
-
-Run the program as non-root on the client:
-
-	cd-droppriv /mnt/a/b
-
-and press <enter>. When the server is restarted before pressing <enter>
-opendir() fails with EACCES:
-
-	cd-droppriv: opendir: Permission denied
-
-This happens too when dentries are dropped on the server due to memory
-pressure. The following seems to fix the problem (2.6.24.4):
-
---- ./fs/exportfs/expfs.c.orig	2008-02-04 14:24:21.000000000 +0100
-+++ ./fs/exportfs/expfs.c	2008-04-03 18:00:20.000000000 +0200
-@@ -170,7 +170,7 @@ reconnect_path(struct vfsmount *mnt, str
- 			}
- 			dprintk("%s: found name: %s\n", __FUNCTION__, nbuf);
- 			mutex_lock(&ppd->d_inode->i_mutex);
--			npd = lookup_one_len(nbuf, ppd, strlen(nbuf));
-+			npd = lookup_one_noperm(nbuf, ppd);
- 			mutex_unlock(&ppd->d_inode->i_mutex);
- 			if (IS_ERR(npd)) {
- 				err = PTR_ERR(npd);
-@@ -447,8 +447,7 @@ struct dentry *exportfs_decode_fh(struct
- 		err = exportfs_get_name(mnt, target_dir, nbuf, result);
- 		if (!err) {
- 			mutex_lock(&target_dir->d_inode->i_mutex);
--			nresult = lookup_one_len(nbuf, target_dir,
--						 strlen(nbuf));
-+			nresult = lookup_one_noperm(nbuf, target_dir);
- 			mutex_unlock(&target_dir->d_inode->i_mutex);
- 			if (!IS_ERR(nresult)) {
- 				if (nresult->d_inode) {
-
--- 
-Frank
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
