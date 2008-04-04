@@ -1,146 +1,98 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH 8/8] NLM/lockd: Ensure client locking calls use correct
- credentials
-Date: Fri, 04 Apr 2008 11:19:27 +0300
-Message-ID: <47F5E48F.9000401@panasas.com>
-References: <20080403223921.12713.71396.stgit@c-69-242-210-120.hsd1.mi.comcast.net> <20080403223922.12713.37190.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
+From: Frank van Maarseveen <frankvm@frankvm.com>
+Subject: reconnect_path() breaks NFS server causing occasional EACCES
+Date: Fri, 4 Apr 2008 12:24:49 +0200
+Message-ID: <20080404102449.GA10209@janus>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Cc: linux-nfs@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Content-Type: text/plain; charset=us-ascii
+To: Linux NFS mailing list <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-colo-pa.panasas.com ([66.238.117.130]:13034 "EHLO
-	cassoulet.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752574AbYDDITt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Apr 2008 04:19:49 -0400
-In-Reply-To: <20080403223922.12713.37190.stgit-KPEdlmqt5P7XOazzY/2fV4TcuzvYVacciM950cveMlzk1uMJSBkQmQ@public.gmane.org>
+Received: from frankvm.xs4all.nl ([80.126.170.174]:37944 "EHLO
+	janus.localdomain" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752169AbYDDKYv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Apr 2008 06:24:51 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Apr. 04, 2008, 1:39 +0300, Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
-> Now that we've added the 'generic' credentials (that are independent of the
-> rpc_client) to the nfs_open_context, we can use those in the NLM client to
-> ensure that the lock/unlock requests are authenticated to whoever
-> originally opened the file.
-> 
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> ---
-> 
->  fs/lockd/clntproc.c |   23 ++++++++++++++---------
->  1 files changed, 14 insertions(+), 9 deletions(-)
-> 
-> diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
-> index 37d1aa2..40b16f2 100644
-> --- a/fs/lockd/clntproc.c
-> +++ b/fs/lockd/clntproc.c
-> @@ -247,7 +247,7 @@ static int nlm_wait_on_grace(wait_queue_head_t *queue)
->   * Generic NLM call
->   */
->  static int
-> -nlmclnt_call(struct nlm_rqst *req, u32 proc)
-> +nlmclnt_call(struct rpc_cred *cred, struct nlm_rqst *req, u32 proc)
+Occasionally we experience EACCES errors which are caused by the exportfs
+reconnect_path() function called by the NFS server (NFSv3). The following
+reproduces it reliably on the client.
 
-very minor nit: The order of arguments seems odd to me.
-I'd add cred either second or last as nlm_rqst seems to be the primary argument
-for this fucntion.
+Compile cd-droppriv.c and make it setuid root:
+--------
+#include <stdio.h>
+#include <stdarg.h>
+#include <unistd.h>
+#include <string.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <dirent.h>
 
->  {
->  	struct nlm_host	*host = req->a_host;
->  	struct rpc_clnt	*clnt;
-> @@ -256,6 +256,7 @@ nlmclnt_call(struct nlm_rqst *req, u32 proc)
->  	struct rpc_message msg = {
->  		.rpc_argp	= argp,
->  		.rpc_resp	= resp,
-> +		.rpc_cred	= cred,
->  	};
->  	int		status;
->  
-> @@ -390,11 +391,12 @@ int nlm_async_reply(struct nlm_rqst *req, u32 proc, const struct rpc_call_ops *t
->   *      completion in order to be able to correctly track the lock
->   *      state.
->   */
-> -static int nlmclnt_async_call(struct nlm_rqst *req, u32 proc, const struct rpc_call_ops *tk_ops)
-> +static int nlmclnt_async_call(struct rpc_cred *cred, struct nlm_rqst *req, u32 proc, const struct rpc_call_ops *tk_ops)
->  {
+void die(const char *fmt, ...) __attribute__((format(printf, 1, 2), noreturn));
+void die(const char *fmt, ...)
+{
+	va_list ap;
 
-ditto.
+	va_start(ap, fmt);
+	fprintf(stderr, "cd-droppriv: ");
+	vfprintf(stderr, fmt, ap);
+	va_end(ap);
+	exit(1);
+}
 
->  	struct rpc_message msg = {
->  		.rpc_argp	= &req->a_args,
->  		.rpc_resp	= &req->a_res,
-> +		.rpc_cred	= cred,
->  	};
->  	struct rpc_task *task;
->  	int err;
-> @@ -415,7 +417,7 @@ nlmclnt_test(struct nlm_rqst *req, struct file_lock *fl)
->  {
->  	int	status;
->  
-> -	status = nlmclnt_call(req, NLMPROC_TEST);
-> +	status = nlmclnt_call(nfs_file_cred(fl->fl_file), req, NLMPROC_TEST);
->  	if (status < 0)
->  		goto out;
->  
-> @@ -506,6 +508,7 @@ static int do_vfs_lock(struct file_lock *fl)
->  static int
->  nlmclnt_lock(struct nlm_rqst *req, struct file_lock *fl)
->  {
-> +	struct rpc_cred *cred = nfs_file_cred(fl->fl_file);
->  	struct nlm_host	*host = req->a_host;
->  	struct nlm_res	*resp = &req->a_res;
->  	struct nlm_wait *block = NULL;
-> @@ -534,7 +537,7 @@ again:
->  	for(;;) {
->  		/* Reboot protection */
->  		fl->fl_u.nfs_fl.state = host->h_state;
-> -		status = nlmclnt_call(req, NLMPROC_LOCK);
-> +		status = nlmclnt_call(cred, req, NLMPROC_LOCK);
->  		if (status < 0)
->  			break;
->  		/* Did a reclaimer thread notify us of a server reboot? */
-> @@ -595,7 +598,7 @@ out_unlock:
->  	up_read(&host->h_rwsem);
->  	fl->fl_type = fl_type;
->  	fl->fl_flags = fl_flags;
-> -	nlmclnt_async_call(req, NLMPROC_UNLOCK, &nlmclnt_unlock_ops);
-> +	nlmclnt_async_call(cred, req, NLMPROC_UNLOCK, &nlmclnt_unlock_ops);
->  	return status;
->  }
->  
-> @@ -619,8 +622,8 @@ nlmclnt_reclaim(struct nlm_host *host, struct file_lock *fl)
->  	nlmclnt_setlockargs(req, fl);
->  	req->a_args.reclaim = 1;
->  
-> -	if ((status = nlmclnt_call(req, NLMPROC_LOCK)) >= 0
-> -	 && req->a_res.status == nlm_granted)
-> +	status = nlmclnt_call(nfs_file_cred(fl->fl_file), req, NLMPROC_LOCK);
-> +	if (status >= 0 && req->a_res.status == nlm_granted)
->  		return 0;
->  
->  	printk(KERN_WARNING "lockd: failed to reclaim lock for pid %d "
-> @@ -669,7 +672,8 @@ nlmclnt_unlock(struct nlm_rqst *req, struct file_lock *fl)
->  	}
->  
->  	atomic_inc(&req->a_count);
-> -	status = nlmclnt_async_call(req, NLMPROC_UNLOCK, &nlmclnt_unlock_ops);
-> +	status = nlmclnt_async_call(nfs_file_cred(fl->fl_file), req,
-> +			NLMPROC_UNLOCK, &nlmclnt_unlock_ops);
->  	if (status < 0)
->  		goto out;
->  
-> @@ -738,7 +742,8 @@ static int nlmclnt_cancel(struct nlm_host *host, int block, struct file_lock *fl
->  	req->a_args.block = block;
->  
->  	atomic_inc(&req->a_count);
-> -	status = nlmclnt_async_call(req, NLMPROC_CANCEL, &nlmclnt_cancel_ops);
-> +	status = nlmclnt_async_call(nfs_file_cred(fl->fl_file), req,
-> +			NLMPROC_CANCEL, &nlmclnt_cancel_ops);
->  	if (status == 0 && req->a_res.status == nlm_lck_denied)
->  		status = -ENOLCK;
->  	nlm_release_call(req);
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+int main(int argc, char **argv)
+{
+	if (chdir(argv[1]) == -1)
+		die("chdir: %s\n", strerror(errno));
+	if (setuid(getuid()) == -1)
+		die("setuid: %s\n", strerror(errno));
+	printf("Restart the NFS server then press <enter>.\n");
+	getchar();
+	if (opendir(".") == NULL)
+		die("opendir: %s\n", strerror(errno));
+	return 0;
+}
+--------
 
+As root, create a directory tree on the client. The export options on
+the server for /mnt include no_root_squash and no_subtree_check:
+
+	mkdir -p /mnt/a/b
+	chmod 700 /mnt/a
+	chmod 777 /mnt/a/b
+
+Run the program as non-root on the client:
+
+	cd-droppriv /mnt/a/b
+
+and press <enter>. When the server is restarted before pressing <enter>
+opendir() fails with EACCES:
+
+	cd-droppriv: opendir: Permission denied
+
+This happens too when dentries are dropped on the server due to memory
+pressure. The following seems to fix the problem (2.6.24.4):
+
+--- ./fs/exportfs/expfs.c.orig	2008-02-04 14:24:21.000000000 +0100
++++ ./fs/exportfs/expfs.c	2008-04-03 18:00:20.000000000 +0200
+@@ -170,7 +170,7 @@ reconnect_path(struct vfsmount *mnt, str
+ 			}
+ 			dprintk("%s: found name: %s\n", __FUNCTION__, nbuf);
+ 			mutex_lock(&ppd->d_inode->i_mutex);
+-			npd = lookup_one_len(nbuf, ppd, strlen(nbuf));
++			npd = lookup_one_noperm(nbuf, ppd);
+ 			mutex_unlock(&ppd->d_inode->i_mutex);
+ 			if (IS_ERR(npd)) {
+ 				err = PTR_ERR(npd);
+@@ -447,8 +447,7 @@ struct dentry *exportfs_decode_fh(struct
+ 		err = exportfs_get_name(mnt, target_dir, nbuf, result);
+ 		if (!err) {
+ 			mutex_lock(&target_dir->d_inode->i_mutex);
+-			nresult = lookup_one_len(nbuf, target_dir,
+-						 strlen(nbuf));
++			nresult = lookup_one_noperm(nbuf, target_dir);
+ 			mutex_unlock(&target_dir->d_inode->i_mutex);
+ 			if (!IS_ERR(nresult)) {
+ 				if (nresult->d_inode) {
+
+-- 
+Frank
