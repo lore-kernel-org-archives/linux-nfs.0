@@ -1,7 +1,7 @@
 From: su17171-3sKltW3hOZpWj0EZb7rXcA@public.gmane.org
 Subject: Dear Friend
-Date: Sat, 05 Apr 2008 22:35:15 +0200
-Message-ID: <20080405223515.26673ya8h0yff5wk__29916.9102604084$1207429320$gmane$org@webmail-html.freesurf.fr>
+Date: Sat, 05 Apr 2008 22:35:10 +0200
+Message-ID: <20080405223510.65231h8jjfpzpvgg__24785.9432166026$1207429451$gmane$org@webmail-html.freesurf.fr>
 Mime-Version: 1.0
 Content-Type: text/plain;
 	charset=ISO-8859-1;
@@ -9,10 +9,10 @@ Content-Type: text/plain;
 	format="flowed"
 To: undisclosed-recipients:;
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fructidor.freesurf.fr ([212.43.206.30]:53955 "EHLO
+Received: from fructidor.freesurf.fr ([212.43.206.30]:39821 "EHLO
 	smtp-out.freesurf.fr" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753491AbYDEVAj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 5 Apr 2008 17:00:39 -0400
+	with ESMTP id S1753536AbYDEVC5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 5 Apr 2008 17:02:57 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
