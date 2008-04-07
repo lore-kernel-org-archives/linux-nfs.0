@@ -1,46 +1,38 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] NLM: hold BKL when clearing global lockd task and serv
-	vars
-Date: Mon, 7 Apr 2008 13:56:15 -0400
-Message-ID: <20080407175615.GD3305@fieldses.org>
-References: <1207575514-6703-1-git-send-email-jlayton@redhat.com> <1207575514-6703-2-git-send-email-jlayton@redhat.com> <20080407164500.GA17728@infradead.org>
+Subject: Re: NFS3+KRB5 question
+Date: Mon, 7 Apr 2008 14:00:51 -0400
+Message-ID: <20080407180051.GE3305@fieldses.org>
+References: <35b652ed9c3ac37ca9dc102b1bb65a83@localhost> <20080401123643.GA18475@goelette.ens.fr> <20080401205629.GC21343@fieldses.org> <2A8F26C5-13E7-47F0-AC04-33820FF9377A@it-loops.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jeff Layton <jlayton@redhat.com>, trond.myklebust@fys.uio.no,
-	nfsv4@linux-nfs.org, linux-nfs@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
+Cc: linux-nfs@vger.kernel.org
+To: Guntsche Michael <mike-Z92qn3yYq0hWk0Htik3J/w@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:34085 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:38210 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751719AbYDGR4b (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 7 Apr 2008 13:56:31 -0400
-In-Reply-To: <20080407164500.GA17728@infradead.org>
+	id S1751097AbYDGSAw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 7 Apr 2008 14:00:52 -0400
+In-Reply-To: <2A8F26C5-13E7-47F0-AC04-33820FF9377A-Z92qn3yYq0hWk0Htik3J/w@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Apr 07, 2008 at 12:45:01PM -0400, Christoph Hellwig wrote:
-> On Mon, Apr 07, 2008 at 09:38:34AM -0400, Jeff Layton wrote:
-> > The global task and serv pointers for lockd are normally protected by
-> > the nlmsvc_mutex. The exception is when the lockd exits abnormally. When
-> > this occurs, these variables are cleared without any locking.
-> 
-> Shouldn't we get rid of the case where it exits abnormally instead?
+On Thu, Apr 03, 2008 at 10:43:22PM +0200, Guntsche Michael wrote:
+>
+> On Apr 1, 2008, at 22:56, J. Bruce Fields wrote:
+>> The client here is within its rights, and the server is wrong; see:
+>>
+>> 	http://www.ietf.org/rfc/rfc2623.txt
+>>
+>> (especially 2.3.2, "NFS Procedures Used at Mount Time").  The kernel
+>> changes on the server side should not be too difficult after the  
+>> export
+>> changes we made a few versions ago.
+>
+> Hi,
+>
+> Thanks for the info, is it planned to change the server part in the near 
+> future, or is this a low priority task, just curious.
 
-I tried to figure out when this could actually occur (when can
-svc_recv() return an error other than -EINTR or -EAGAIN?), and got lost
-in sock_recvmsg():
-
-	- svc_recv() itself returns only -EAGAIN or the return from
-	  ->xpo_recvfrom().
-	- the only xpo_recvfrom() that's interesting is
-	  svc_tcp_recvfrom(), which can return the error it gets from
-	  svc_recvfrom(), which can return the error from
-	  kernel_recvmsg(), which gets its return from sock_recvmsg().
-
-Since __sock_recvmsg() has a security hook, it looks like we can end up
-with an -EACCES from selinux?
-
-So one case would be selinux deciding we weren't allowed to receive
-packets from this socket.  Huh.
+It's on my todo list, but I don't know when I'm going to get to it.
 
 --b.
