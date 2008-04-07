@@ -1,67 +1,59 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH] NLM: hold BKL when clearing global lockd task and serv
- vars
-Date: Mon, 7 Apr 2008 16:22:41 -0400
-Message-ID: <20080407162241.0a06fd6f@tleilax.poochiereds.net>
-References: <1207575514-6703-1-git-send-email-jlayton@redhat.com>
-	<1207575514-6703-2-git-send-email-jlayton@redhat.com>
-	<20080407164500.GA17728@infradead.org>
-	<20080407175615.GD3305@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: Christoph Hellwig <hch@infradead.org>, trond.myklebust@fys.uio.no,
-	nfsv4@linux-nfs.org, linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: [PATCH] SUNRPC: remove svc_create_thread()
+Date: Mon,  7 Apr 2008 16:45:37 -0400
+Message-ID: <1207601137-6099-1-git-send-email-jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org, hch@infradead.org
+To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:54513 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([66.187.233.31]:46101 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750949AbYDGUW5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 7 Apr 2008 16:22:57 -0400
-In-Reply-To: <20080407175615.GD3305@fieldses.org>
+	id S1752309AbYDGUpm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 7 Apr 2008 16:45:42 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 7 Apr 2008 13:56:15 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+Now that the nfs4 callback thread uses the kthread API, there are no
+more users of svc_create_thread(). Remove it.
 
-> On Mon, Apr 07, 2008 at 12:45:01PM -0400, Christoph Hellwig wrote:
-> > On Mon, Apr 07, 2008 at 09:38:34AM -0400, Jeff Layton wrote:
-> > > The global task and serv pointers for lockd are normally protected by
-> > > the nlmsvc_mutex. The exception is when the lockd exits abnormally. When
-> > > this occurs, these variables are cleared without any locking.
-> > 
-> > Shouldn't we get rid of the case where it exits abnormally instead?
-> 
-> I tried to figure out when this could actually occur (when can
-> svc_recv() return an error other than -EINTR or -EAGAIN?), and got lost
-> in sock_recvmsg():
-> 
-> 	- svc_recv() itself returns only -EAGAIN or the return from
-> 	  ->xpo_recvfrom().
-> 	- the only xpo_recvfrom() that's interesting is
-> 	  svc_tcp_recvfrom(), which can return the error it gets from
-> 	  svc_recvfrom(), which can return the error from
-> 	  kernel_recvmsg(), which gets its return from sock_recvmsg().
-> 
-> Since __sock_recvmsg() has a security hook, it looks like we can end up
-> with an -EACCES from selinux?
-> 
-> So one case would be selinux deciding we weren't allowed to receive
-> packets from this socket.  Huh.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ include/linux/sunrpc/svc.h |    1 -
+ net/sunrpc/svc.c           |   10 ----------
+ 2 files changed, 0 insertions(+), 11 deletions(-)
 
-I got lost there too, but I would suspect that there are other errors
-that can bubble up from the lower networking layers as well. Even if
-there aren't currently, it's probably still prudent to assume that it's
-a possibility and code for it.
-
-I tend to think the safest thing is probably to do a long sleep (1s or
-so and retry when we get an error (maybe also a ratelimited printk?).
-It's unlikely to do any harm (other than a few wasted CPU cycles), and
-if the error is transient then we have the possibility to recover and
-continue normal operation.
-
-The current situation is rather bad. If lockd exits abnormally,
-then we'll BUG if someone happens to do a lockd_down().
-
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 64c9755..4b54c5f 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -386,7 +386,6 @@ struct svc_serv *  svc_create(struct svc_program *, unsigned int,
+ 			      void (*shutdown)(struct svc_serv*));
+ struct svc_rqst *svc_prepare_thread(struct svc_serv *serv,
+ 					struct svc_pool *pool);
+-int		   svc_create_thread(svc_thread_fn, struct svc_serv *);
+ void		   svc_exit_thread(struct svc_rqst *);
+ struct svc_serv *  svc_create_pooled(struct svc_program *, unsigned int,
+ 			void (*shutdown)(struct svc_serv*),
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index 60c9e92..71023c7 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -613,16 +613,6 @@ out_thread:
+ }
+ 
+ /*
+- * Create a thread in the default pool.  Caller must hold BKL.
+- */
+-int
+-svc_create_thread(svc_thread_fn func, struct svc_serv *serv)
+-{
+-	return __svc_create_thread(func, serv, &serv->sv_pools[0]);
+-}
+-EXPORT_SYMBOL(svc_create_thread);
+-
+-/*
+  * Choose a pool in which to create a new thread, for svc_set_num_threads
+  */
+ static inline struct svc_pool *
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.5.3.6
+
