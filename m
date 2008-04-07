@@ -1,67 +1,29 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] SUNRPC: remove svc_create_thread()
-Date: Mon, 7 Apr 2008 16:53:38 -0400
-Message-ID: <20080407205338.GF11219@fieldses.org>
-References: <1207601137-6099-1-git-send-email-jlayton@redhat.com>
+From: Vince Busam <vbusam@google.com>
+Subject: Default supported enctypes in rpc.gssd
+Date: Mon, 07 Apr 2008 14:33:14 -0700
+Message-ID: <47FA931A.8080602@google.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org, hch@infradead.org
-To: Jeff Layton <jlayton@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:37098 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750960AbYDGUxj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 7 Apr 2008 16:53:39 -0400
-In-Reply-To: <1207601137-6099-1-git-send-email-jlayton@redhat.com>
+Received: from smtp-out.google.com ([216.239.33.17]:52402 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753765AbYDGVcy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Apr 2008 17:32:54 -0400
+Received: from zps77.corp.google.com (zps77.corp.google.com [172.25.146.77])
+	by smtp-out.google.com with ESMTP id m37LWpC4022427
+	for <linux-nfs@vger.kernel.org>; Mon, 7 Apr 2008 22:32:51 +0100
+Received: from dig.smo.corp.google.com (dig.smo.corp.google.com [172.29.60.89])
+	by zps77.corp.google.com with ESMTP id m37LWoD7030659
+	for <linux-nfs@vger.kernel.org>; Mon, 7 Apr 2008 14:32:50 -0700
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Apr 07, 2008 at 04:45:37PM -0400, Jeff Layton wrote:
-> Now that the nfs4 callback thread uses the kthread API, there are no
-> more users of svc_create_thread(). Remove it.
+Is there a reason the patch to use kernel supported enctypes from
+http://www.citi.umich.edu/projects/nfsv4/linux/nfs-utils-patches/1.1.1-1/nfs-utils-1.1.1-007-gssd_use_kernel_supported_enctypes.dif 
 
-Thanks; applied.--b.
+wasn't included in the 1.1.2 release?  It would be nice to at least 
+increase the default list to match what this patch does ("1,3,2", adding 
+ENCTYPE_DES_CBC_MD4 & ENCTYPE_DES_CBC_MD5).
 
-> 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  include/linux/sunrpc/svc.h |    1 -
->  net/sunrpc/svc.c           |   10 ----------
->  2 files changed, 0 insertions(+), 11 deletions(-)
-> 
-> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-> index 64c9755..4b54c5f 100644
-> --- a/include/linux/sunrpc/svc.h
-> +++ b/include/linux/sunrpc/svc.h
-> @@ -386,7 +386,6 @@ struct svc_serv *  svc_create(struct svc_program *, unsigned int,
->  			      void (*shutdown)(struct svc_serv*));
->  struct svc_rqst *svc_prepare_thread(struct svc_serv *serv,
->  					struct svc_pool *pool);
-> -int		   svc_create_thread(svc_thread_fn, struct svc_serv *);
->  void		   svc_exit_thread(struct svc_rqst *);
->  struct svc_serv *  svc_create_pooled(struct svc_program *, unsigned int,
->  			void (*shutdown)(struct svc_serv*),
-> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-> index 60c9e92..71023c7 100644
-> --- a/net/sunrpc/svc.c
-> +++ b/net/sunrpc/svc.c
-> @@ -613,16 +613,6 @@ out_thread:
->  }
->  
->  /*
-> - * Create a thread in the default pool.  Caller must hold BKL.
-> - */
-> -int
-> -svc_create_thread(svc_thread_fn func, struct svc_serv *serv)
-> -{
-> -	return __svc_create_thread(func, serv, &serv->sv_pools[0]);
-> -}
-> -EXPORT_SYMBOL(svc_create_thread);
-> -
-> -/*
->   * Choose a pool in which to create a new thread, for svc_set_num_threads
->   */
->  static inline struct svc_pool *
-> -- 
-> 1.5.3.6
-> 
+Vince
