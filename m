@@ -1,19 +1,14 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: oops during nfs4 mount
-Date: Sun, 06 Apr 2008 11:17:45 -0400
-Message-ID: <1207495065.8441.2.camel@heimdal.trondhjem.org>
-References: <20080328111428.GA8665@csclub.uwaterloo.ca>
-	<1207427978.8420.18.camel@heimdal.trondhjem.org>
-	<20080405211052.0b3f5623@tupile.poochiereds.net>
-	<1207452676.19568.3.camel@heimdal.trondhjem.org>
-	<20080406111122.1f0c6696@tleilax.poochiereds.net>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH] NLM: hold BKL when clearing global lockd task and serv vars
+Date: Mon,  7 Apr 2008 09:38:34 -0400
+Message-ID: <1207575514-6703-2-git-send-email-jlayton@redhat.com>
+References: <1207575514-6703-1-git-send-email-jlayton@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfsv4@linux-nfs.org, "Dr. J. Bruce Fields" <bfields@citi.umich.edu>,
-	linux-nfs@vger.kernel.org
-To: Jeff Layton <jlayton@redhat.com>
+Cc: nfsv4@linux-nfs.org, linux-nfs@vger.kernel.org
+To: trond.myklebust@fys.uio.no, bfields@fieldses.org
 Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <20080406111122.1f0c6696@tleilax.poochiereds.net>
+In-Reply-To: <1207575514-6703-1-git-send-email-jlayton@redhat.com>
 List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
 	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
 List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
@@ -25,107 +20,68 @@ Sender: nfsv4-bounces@linux-nfs.org
 Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+The global task and serv pointers for lockd are normally protected by
+the nlmsvc_mutex. The exception is when the lockd exits abnormally. When
+this occurs, these variables are cleared without any locking.
 
-On Sun, 2008-04-06 at 11:11 -0400, Jeff Layton wrote:
-> On Sat, 05 Apr 2008 23:31:15 -0400
-> Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
-> 
-> > 
-> > On Sat, 2008-04-05 at 21:10 -0400, Jeff Layton wrote:
-> > > > Hmm... Bruce & Jeff,
-> > > > 
-> > > > Doesn't the line
-> > > > 
-> > > > 	nfs_callback_info.task = NULL;
-> > > > 
-> > > > in nfs_callback_svc() need protection by the BKL?
-> > > > 
-> > > 
-> > > Moving it under the BKL probably won't hurt anything, but isn't it
-> > > already protected by the nfs_callback_mutex?
-> >
-> > AFAICS, nfs_callback_svc() doesn't (and in fact, can't) take the mutex. 
-> > 
-> > The point of the BKL here would be to protect nfs_callback_down against
-> > the race where nfs_callback_svc() terminates early, and clears
-> > nfs_callback_info.task.
-> > 
-> 
-> It also looks like the new lockd code may have a similar race. How
-> about something like this patch against Bruce's tree?
-> 
-> Note that this patch is untested. I'll plan to give it some testing in
-> the next day or two and will post it formally if the basic idea seems
-> OK.
-> 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> 
-> diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-> index 513a186..341f9b1 100644
-> --- a/fs/lockd/svc.c
-> +++ b/fs/lockd/svc.c
-> @@ -194,11 +194,11 @@ lockd(void *vrqstp)
->  		nlmsvc_invalidate_all();
->  	nlm_shutdown_hosts();
->  
-> -	unlock_kernel();
-> -
->  	nlmsvc_task = NULL;
->  	nlmsvc_serv = NULL;
->  
-> +	unlock_kernel();
-> +
->  	/* Exit the RPC thread */
->  	svc_exit_thread(rqstp);
->  
-> @@ -251,6 +251,7 @@ lockd_up(int proto) /* Maybe add a 'family' option when IPv6 is supported ?? */
->  	struct svc_rqst *rqstp;
->  	int		error = 0;
->  
-> +	lock_kernel();
->  	mutex_lock(&nlmsvc_mutex);
+Make sure that these variables are cleared while still holding the BKL,
+and have lockd_up and lockd_down take the BKL.
 
-Small nit: there's no need to hold the BKL while waiting for the mutex
-lock, so it would be more efficient to invert these two lines. Ditto for
-lockd_down().
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/lockd/svc.c |    9 ++++++---
+ 1 files changed, 6 insertions(+), 3 deletions(-)
 
->  	/*
->  	 * Check whether we're already up and running.
-> @@ -315,6 +316,7 @@ out:
->  	if (!error)
->  		nlmsvc_users++;
->  	mutex_unlock(&nlmsvc_mutex);
-> +	unlock_kernel();
->  	return error;
->  }
->  EXPORT_SYMBOL(lockd_up);
-> @@ -325,6 +327,7 @@ EXPORT_SYMBOL(lockd_up);
->  void
->  lockd_down(void)
->  {
-> +	lock_kernel();
->  	mutex_lock(&nlmsvc_mutex);
->  	if (nlmsvc_users) {
->  		if (--nlmsvc_users)
-> @@ -342,6 +345,7 @@ lockd_down(void)
->  	kthread_stop(nlmsvc_task);
->  out:
->  	mutex_unlock(&nlmsvc_mutex);
-> +	unlock_kernel();
->  }
->  EXPORT_SYMBOL(lockd_down);
->  
-> diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-> index 2e5de77..894e64b 100644
-> --- a/fs/nfs/callback.c
-> +++ b/fs/nfs/callback.c
-> @@ -84,8 +84,8 @@ nfs_callback_svc(void *vrqstp)
->  		}
->  		svc_process(rqstp);
->  	}
-> -	unlock_kernel();
->  	nfs_callback_info.task = NULL;
-> +	unlock_kernel();
->  	svc_exit_thread(rqstp);
->  	return 0;
->  }
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index 66b5c98..efba919 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -191,12 +191,11 @@ lockd(void *vrqstp)
+ 	if (nlmsvc_ops)
+ 		nlmsvc_invalidate_all();
+ 	nlm_shutdown_hosts();
+-
+-	unlock_kernel();
+-
+ 	nlmsvc_task = NULL;
+ 	nlmsvc_serv = NULL;
+ 
++	unlock_kernel();
++
+ 	/* Exit the RPC thread */
+ 	svc_exit_thread(rqstp);
+ 
+@@ -250,6 +249,7 @@ lockd_up(int proto) /* Maybe add a 'family' option when IPv6 is supported ?? */
+ 	int		error = 0;
+ 
+ 	mutex_lock(&nlmsvc_mutex);
++	lock_kernel();
+ 	/*
+ 	 * Check whether we're already up and running.
+ 	 */
+@@ -312,6 +312,7 @@ destroy_and_out:
+ out:
+ 	if (!error)
+ 		nlmsvc_users++;
++	unlock_kernel();
+ 	mutex_unlock(&nlmsvc_mutex);
+ 	return error;
+ }
+@@ -324,6 +325,7 @@ void
+ lockd_down(void)
+ {
+ 	mutex_lock(&nlmsvc_mutex);
++	lock_kernel();
+ 	if (nlmsvc_users) {
+ 		if (--nlmsvc_users)
+ 			goto out;
+@@ -339,6 +341,7 @@ lockd_down(void)
+ 	}
+ 	kthread_stop(nlmsvc_task);
+ out:
++	unlock_kernel();
+ 	mutex_unlock(&nlmsvc_mutex);
+ }
+ EXPORT_SYMBOL(lockd_down);
+-- 
+1.5.4.1
