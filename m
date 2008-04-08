@@ -1,114 +1,134 @@
-From: "Kevin Coffman" <kwc@citi.umich.edu>
-Subject: Re: [PATCH] gssd: search multiple directories for credentials
-Date: Tue, 8 Apr 2008 13:15:05 -0400
-Message-ID: <4d569c330804081015g7db0c3f7oe7784784a2e0fc40@mail.gmail.com>
-References: <20080407214228.GA11350@google.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH] SUNRPC: RPC client's TCP transport ignores errors during
+	connect
+Date: Tue, 08 Apr 2008 13:38:14 -0400
+Message-ID: <20080408173602.21776.60671.stgit@manray.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
-To: "Vince Busam" <vbusam@google.com>
+To: trond.myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from ti-out-0910.google.com ([209.85.142.188]:1688 "EHLO
-	ti-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752837AbYDHRPJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Apr 2008 13:15:09 -0400
-Received: by ti-out-0910.google.com with SMTP id 28so820380tif.23
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Apr 2008 10:15:07 -0700 (PDT)
-In-Reply-To: <20080407214228.GA11350@google.com>
+Received: from flpi101.sbcis.sbc.com ([207.115.20.70]:32608 "EHLO
+	flpi101.prodigy.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751563AbYDHRic (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Apr 2008 13:38:32 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Apr 7, 2008 at 5:42 PM, Vince Busam <vbusam@google.com> wrote:
-> We store kerberos credentials in multiple places, and it would be nice to
->  search them for a valid credential when making NFS requests.  This patch
->  allows that.
->
->  diff -up --recursive nfs-utils-1.1.1.orig/utils/gssd/gssd.c nfs-utils-1.1.1/utils/gssd/gssd.c
->  --- nfs-utils-1.1.1.orig/utils/gssd/gssd.c      2007-10-18 20:07:28.000000000 -0700
->  +++ nfs-utils-1.1.1/utils/gssd/gssd.c   2008-03-17 13:35:39.000000000 -0700
->  @@ -57,6 +57,7 @@ char pipefs_dir[PATH_MAX] = GSSD_PIPEFS_
->   char pipefs_nfsdir[PATH_MAX] = GSSD_PIPEFS_DIR;
->   char keytabfile[PATH_MAX] = GSSD_DEFAULT_KEYTAB_FILE;
->   char ccachedir[PATH_MAX] = GSSD_DEFAULT_CRED_DIR;
->  +char *ccachesearch[GSSD_MAX_CCACHE_SEARCH];
->   int  use_memcache = 0;
->   int  root_uses_machine_creds = 1;
->
->  @@ -93,9 +94,11 @@ main(int argc, char *argv[])
->         int verbosity = 0;
->         int rpc_verbosity = 0;
->         int opt;
->  +       int i;
->         extern char *optarg;
->         char *progname;
->
->  +       memset(ccachesearch, 0, sizeof(ccachesearch));
->         while ((opt = getopt(argc, argv, "fvrmnMp:k:d:")) != -1) {
->                 switch (opt) {
->                         case 'f':
->  @@ -130,6 +133,12 @@ main(int argc, char *argv[])
->                                 strncpy(ccachedir, optarg, sizeof(ccachedir));
->                                 if (ccachedir[sizeof(ccachedir)-1] != '\0')
->                                         errx(1, "ccachedir path name too long");
->  +                               i = 0;
->  +                               strtok(ccachedir,":");
->  +                               do {
->  +                                       ccachesearch[i] = strtok(NULL,":");
->  +                                       i++;
->  +                               } while (ccachesearch[i-1] && (i<(GSSD_MAX_CCACHE_SEARCH-1)));
->                                 break;
->                         default:
->                                 usage(argv[0]);
->  diff -up --recursive nfs-utils-1.1.1.orig/utils/gssd/gssd.h nfs-utils-1.1.1/utils/gssd/gssd.h
->  --- nfs-utils-1.1.1.orig/utils/gssd/gssd.h      2007-10-18 20:07:28.000000000 -0700
->  +++ nfs-utils-1.1.1/utils/gssd/gssd.h   2008-03-12 13:10:19.000000000 -0700
->  @@ -50,6 +50,7 @@
->   #define GSSD_DEFAULT_KEYTAB_FILE               "/etc/krb5.keytab"
->   #define GSSD_SERVICE_NAME                      "nfs"
->   #define GSSD_SERVICE_NAME_LEN                  3
->  +#define GSSD_MAX_CCACHE_SEARCH                 16
->
->   /*
->   * The gss mechanisms that we can handle
->  @@ -62,6 +63,7 @@ extern char                   pipefs_dir[PATH_MAX];
->   extern char                    pipefs_nfsdir[PATH_MAX];
->   extern char                    keytabfile[PATH_MAX];
->   extern char                    ccachedir[PATH_MAX];
->  +extern char                    *ccachesearch[GSSD_MAX_CCACHE_SEARCH];
->   extern int                     use_memcache;
->   extern int                     root_uses_machine_creds;
->
->  diff -up --recursive nfs-utils-1.1.1.orig/utils/gssd/gssd_proc.c nfs-utils-1.1.1/utils/gssd/gssd_proc.c
->  --- nfs-utils-1.1.1.orig/utils/gssd/gssd_proc.c 2007-10-18 20:07:28.000000000 -0700
->  +++ nfs-utils-1.1.1/utils/gssd/gssd_proc.c      2008-03-12 14:44:26.000000000 -0700
->  @@ -691,10 +691,18 @@ handle_krb5_upcall(struct clnt_info *clp
->
->         if (uid != 0 || (uid == 0 && root_uses_machine_creds == 0)) {
->                 /* Tell krb5 gss which credentials cache to use */
->  -               gssd_setup_krb5_user_gss_ccache(uid, clp->servername);
->  +               gssd_setup_krb5_user_gss_ccache(uid, clp->servername, ccachedir);
->
->                 create_resp = create_auth_rpc_client(clp, &rpc_clnt, &auth, uid,
->                                                      AUTHTYPE_KRB5);
->  +               for (ccname = ccachesearch; *ccname; ccname++) {
->  +                       gssd_setup_krb5_user_gss_ccache(uid, clp->servername, *ccname);
->  +
->  +                       create_resp = create_auth_rpc_client(clp, &rpc_clnt, &auth, uid,
->  +                                                            AUTHTYPE_KRB5);
->  +                       if (create_resp == 0)
->  +                               break;
->  +               }
->         }
+Commits 66af1e55 through 663b8858 recently changed how
+xs_tcp_state_change() awakens RPC tasks in order to address problems
+with disconnection of TCP sockets that were already connected.
 
-Thanks for the patch, and sorry for taking so long to get to it.
+The generic function xprt_connect_status() is invoked during a transport
+connection operation by this wake-up.  It expects a specific error value
+describing the connection failure, but currently always gets ENOTCONN.
 
-If I use "-d /tmp:/tmp/ticket:/tmp/tickets", this part ignores the
-fact that I've successfully created the context with credentials in
-/tmp and continues to try /tmp/ticket and /tmp/tickets and eventually
-fails.
+To fix this, change xprt_disconnect_done() to take an errno value
+argument and pass it on to xprt_wake_pending_tasks().  Change
+xs_tcp_state_change() to invoke xprt_disconnect_done() with the value
+contained in the socket's sk_err field in order to report the specific
+error which prevented the connect operation from completing.
 
-I think I see why you continued to use ccachedir as well as
-ccachesearch, but I'm not happy with it.  I'm reworking this and will
-submit upstream.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-K.C.
+Found this while poking at the RPC server registration logic.  It appears to
+fix the problem I was seeing with refused TCP connections.
+
+Comments?
+
+ include/linux/sunrpc/xprt.h     |    2 +-
+ net/sunrpc/xprt.c               |    4 ++--
+ net/sunrpc/xprtrdma/transport.c |    4 ++--
+ net/sunrpc/xprtsock.c           |    9 +++++----
+ 4 files changed, 10 insertions(+), 9 deletions(-)
+
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index b3ff9a8..a3543c8 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -239,7 +239,7 @@ void			xprt_adjust_cwnd(struct rpc_task *task, int result);
+ struct rpc_rqst *	xprt_lookup_rqst(struct rpc_xprt *xprt, __be32 xid);
+ void			xprt_complete_rqst(struct rpc_task *task, int copied);
+ void			xprt_release_rqst_cong(struct rpc_task *task);
+-void			xprt_disconnect_done(struct rpc_xprt *xprt);
++void			xprt_disconnect_done(struct rpc_xprt *xprt, int error);
+ void			xprt_force_disconnect(struct rpc_xprt *xprt);
+ 
+ /*
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index d5553b8..f61b560 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -579,12 +579,12 @@ static void xprt_autoclose(struct work_struct *work)
+  * @xprt: transport to flag for disconnect
+  *
+  */
+-void xprt_disconnect_done(struct rpc_xprt *xprt)
++void xprt_disconnect_done(struct rpc_xprt *xprt, int error)
+ {
+ 	dprintk("RPC:       disconnected transport %p\n", xprt);
+ 	spin_lock_bh(&xprt->transport_lock);
+ 	xprt_clear_connected(xprt);
+-	xprt_wake_pending_tasks(xprt, -ENOTCONN);
++	xprt_wake_pending_tasks(xprt, error);
+ 	spin_unlock_bh(&xprt->transport_lock);
+ }
+ EXPORT_SYMBOL_GPL(xprt_disconnect_done);
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index a564c1a..ac3938d 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -458,7 +458,7 @@ xprt_rdma_close(struct rpc_xprt *xprt)
+ 	struct rpcrdma_xprt *r_xprt = rpcx_to_rdmax(xprt);
+ 
+ 	dprintk("RPC:       %s: closing\n", __func__);
+-	xprt_disconnect_done(xprt);
++	xprt_disconnect_done(xprt, -ENOTCONN);
+ 	(void) rpcrdma_ep_disconnect(&r_xprt->rx_ep, &r_xprt->rx_ia);
+ }
+ 
+@@ -695,7 +695,7 @@ xprt_rdma_send_request(struct rpc_task *task)
+ 	}
+ 
+ 	if (rpcrdma_ep_post(&r_xprt->rx_ia, &r_xprt->rx_ep, req)) {
+-		xprt_disconnect_done(xprt);
++		xprt_disconnect_done(xprt, -ENOTCONN);
+ 		return -ENOTCONN;	/* implies disconnect */
+ 	}
+ 
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 896aa1e..47b37ac 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -771,7 +771,7 @@ clear_close_wait:
+ 	clear_bit(XPRT_CLOSE_WAIT, &xprt->state);
+ 	clear_bit(XPRT_CLOSING, &xprt->state);
+ 	smp_mb__after_clear_bit();
+-	xprt_disconnect_done(xprt);
++	xprt_disconnect_done(xprt, -ENOTCONN);
+ }
+ 
+ /**
+@@ -1105,8 +1105,8 @@ static void xs_tcp_state_change(struct sock *sk)
+ 	if (!(xprt = xprt_from_sock(sk)))
+ 		goto out;
+ 	dprintk("RPC:       xs_tcp_state_change client %p...\n", xprt);
+-	dprintk("RPC:       state %x conn %d dead %d zapped %d\n",
+-			sk->sk_state, xprt_connected(xprt),
++	dprintk("RPC:       state %x sk_err %d conn %d dead %d zapped %d\n",
++			sk->sk_state, sk->sk_err, xprt_connected(xprt),
+ 			sock_flag(sk, SOCK_DEAD),
+ 			sock_flag(sk, SOCK_ZAPPED));
+ 
+@@ -1161,7 +1161,8 @@ static void xs_tcp_state_change(struct sock *sk)
+ 		clear_bit(XPRT_CLOSING, &xprt->state);
+ 		smp_mb__after_clear_bit();
+ 		/* Mark transport as closed and wake up all pending tasks */
+-		xprt_disconnect_done(xprt);
++		xprt_disconnect_done(xprt, (sk->sk_err ?
++						-sk->sk_err : -ENOTCONN));
+ 	}
+  out:
+ 	read_unlock(&sk->sk_callback_lock);
+
