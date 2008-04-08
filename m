@@ -1,35 +1,91 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH] SUNRPC: Fix memory leak introduced by commit 510deb0d
-Date: Tue, 08 Apr 2008 12:20:37 -0400
-Message-ID: <1207671637.10273.5.camel@heimdal.trondhjem.org>
-References: <20080408144713.20422.40323.stgit@manray.1015granger.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] NLM: hold BKL when clearing global lockd task and serv
+	vars
+Date: Tue, 8 Apr 2008 12:28:21 -0400
+Message-ID: <20080408162821.GA8994@fieldses.org>
+References: <1207575514-6703-1-git-send-email-jlayton@redhat.com>
+	<1207575514-6703-2-git-send-email-jlayton@redhat.com>
+	<20080407164500.GA17728@infradead.org>
+	<20080407175615.GD3305@fieldses.org>
+	<20080407162241.0a06fd6f@tleilax.poochiereds.net>
+	<20080407205027.GE11219@fieldses.org>
+	<20080408092102.2404f5ee@tleilax.poochiereds.net>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:9497 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751837AbYDHQUv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Apr 2008 12:20:51 -0400
-In-Reply-To: <20080408144713.20422.40323.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+To: Jeff Layton <jlayton@redhat.com>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <20080408092102.2404f5ee@tleilax.poochiereds.net>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Tue, 2008-04-08 at 10:47 -0400, Chuck Lever wrote:
-> Commit 510deb0d was supposed to move the xprt_create_transport() call in
-> rpc_create(), but neglected to remove the old call site.  This resulted in
-> a transport leak after every rpc_create() call.
+On Tue, Apr 08, 2008 at 09:21:02AM -0400, Jeff Layton wrote:
+> On Mon, 7 Apr 2008 16:50:27 -0400
+> "J. Bruce Fields" <bfields@fieldses.org> wrote:
 > 
-> This leak is present in 2.6.24 and 2.6.25.
+> > On Mon, Apr 07, 2008 at 04:22:41PM -0400, Jeff Layton wrote:
+> > > On Mon, 7 Apr 2008 13:56:15 -0400
+> > > "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > > 
+> > > > On Mon, Apr 07, 2008 at 12:45:01PM -0400, Christoph Hellwig wrote:
+> > > > > On Mon, Apr 07, 2008 at 09:38:34AM -0400, Jeff Layton wrote:
+> > > > > > The global task and serv pointers for lockd are normally protected by
+> > > > > > the nlmsvc_mutex. The exception is when the lockd exits abnormally. When
+> > > > > > this occurs, these variables are cleared without any locking.
+> > > > > 
+> > > > > Shouldn't we get rid of the case where it exits abnormally instead?
+> > > > 
+> > > > I tried to figure out when this could actually occur (when can
+> > > > svc_recv() return an error other than -EINTR or -EAGAIN?), and got lost
+> > > > in sock_recvmsg():
+> > > > 
+> > > > 	- svc_recv() itself returns only -EAGAIN or the return from
+> > > > 	  ->xpo_recvfrom().
+> > > > 	- the only xpo_recvfrom() that's interesting is
+> > > > 	  svc_tcp_recvfrom(), which can return the error it gets from
+> > > > 	  svc_recvfrom(), which can return the error from
+> > > > 	  kernel_recvmsg(), which gets its return from sock_recvmsg().
+> > > > 
+> > > > Since __sock_recvmsg() has a security hook, it looks like we can end up
+> > > > with an -EACCES from selinux?
+> > > > 
+> > > > So one case would be selinux deciding we weren't allowed to receive
+> > > > packets from this socket.  Huh.
+> > > 
+> > > I got lost there too, but I would suspect that there are other errors
+> > > that can bubble up from the lower networking layers as well. Even if
+> > > there aren't currently, it's probably still prudent to assume that it's
+> > > a possibility and code for it.
+> > > 
+> > > I tend to think the safest thing is probably to do a long sleep (1s or
+> > > so and retry when we get an error (maybe also a ratelimited printk?).
+> > 
+> > Yeah, I guess I can't think of anything better.
+> > 
+> 
+> Ok, I went ahead and did patches for this and gave them a quick test
+> this morning. Obviously, these are hard to fully unit test since this
+> seems to be a very uncommon occurrence.
 
-Argh. I'll pass that on asap...
+I suppose this could probably be reproduced with some selinux magic.
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+> Any thoughts?
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+If anyone does ever hit this and it doesn't go away, the printk (even
+with the ratelimiting) could be pretty annoying, so it might be worth
+arranging to print this just once.  But perhaps we can wait and see if
+that actually happens.
+
+Given what appears to be a very unusual crash, and what I'm assuming is
+an impending release, I suppose we should wait for the merge window (but
+possibly also submit to 2.6.25.x).
+
+--b.
