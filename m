@@ -1,56 +1,54 @@
-From: Kevin Coffman <kwc@citi.umich.edu>
-Subject: [PATCH 1/2] gssd: add a function to retrieve the current verbosity
-	level
-Date: Tue, 08 Apr 2008 14:33:25 -0400
-Message-ID: <20080408183322.11839.46964.stgit@RoCK.CiTi.UmIcH.EdU>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH] SUNRPC: RPC client's TCP transport ignores errors
+	during connect
+Date: Tue, 08 Apr 2008 14:35:43 -0400
+Message-ID: <1207679743.11699.23.camel@heimdal.trondhjem.org>
+References: <20080408173602.21776.60671.stgit@manray.1015granger.net>
+	 <1207677612.11699.14.camel@heimdal.trondhjem.org>
+	 <EXNANE01j2iihlMWBLY00000265@exnane01.hq.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: linux-nfs@vger.kernel.org
-To: SteveD@redhat.com
+Content-Type: text/plain
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from citi.umich.edu ([141.211.133.111]:15727 "EHLO citi.umich.edu"
+Received: from mx2.netapp.com ([216.240.18.37]:34418 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752615AbYDHSd0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Apr 2008 14:33:26 -0400
+	id S1753388AbYDHSnB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Apr 2008 14:43:01 -0400
+In-Reply-To: <EXNANE01j2iihlMWBLY00000265-kboziUmgGqYSZCGxjG3uujkOHZLvdrmu@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Kevin Coffman <kwc@citi.umich.edu>
 
-Add a new function to retrieve the current verbosity level
-so that some messages that would otherwise always print may
-be silenced.
+On Tue, 2008-04-08 at 14:22 -0400, Talpey, Thomas wrote:
+> At 02:00 PM 4/8/2008, Trond Myklebust wrote:
+> >As I said, it looks to me as if a report other than ENOTCONN or
+> >ETIMEDOUT will automatically result in the rpc task aborting.
+> 
+> FWIW, we've seen some leaks on NFS/RDMA clients that receive strange
+> errors from the RDMA layer when connecting to the server. I hope to be
+> able to test this soon to see if it eliminates the leak, but don't have the
+> ability to do that where I am right now.
+> 
+> Anyway, the RDMA layer does return some very different errors from
+> sockets. We attempt to "fix" them in the RPC transport before returning
+> them, but it's a bit of a challenge so I would welcome error hardening in
+> the layer(s) above.
 
-Signed-off-by: Kevin Coffman <kwc@citi.umich.edu>
----
+The only justification for passing more errors up to the higher layers
+is if they have different error handling requirements.
+The reason why we currently transform more or less everything into
+ENOTCONN is because the two other errors ECONNRESET and ECONNREFUSED
+basically require the same kind of error handling (exit with EIO in the
+"soft" case, and keep retrying in the "hard" case).
 
- utils/gssd/err_util.c |    5 +++++
- utils/gssd/err_util.h |    1 +
- 2 files changed, 6 insertions(+), 0 deletions(-)
+So, what kind of RDMA errors are these, and how are we failing to handle
+them correctly today?
 
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-diff --git a/utils/gssd/err_util.c b/utils/gssd/err_util.c
-index 5644db6..2583e06 100644
---- a/utils/gssd/err_util.c
-+++ b/utils/gssd/err_util.c
-@@ -60,3 +60,8 @@ void printerr(int priority, char *format, ...)
- 		xlog_backend(L_ERROR, format, args);
- 	va_end(args);
- }
-+
-+int get_verbosity(void)
-+{
-+	return verbosity;
-+}
-diff --git a/utils/gssd/err_util.h b/utils/gssd/err_util.h
-index 5e5af48..c4df32d 100644
---- a/utils/gssd/err_util.h
-+++ b/utils/gssd/err_util.h
-@@ -33,5 +33,6 @@
- 
- void initerr(char *progname, int verbosity, int fg);
- void printerr(int priority, char *format, ...);
-+int get_verbosity(void);
- 
- #endif /* _ERR_UTIL_H_ */
-
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
