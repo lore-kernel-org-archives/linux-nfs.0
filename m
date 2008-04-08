@@ -1,45 +1,44 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH] SUNRPC: Fix memory leak introduced by commit 510deb0d
-Date: Tue, 08 Apr 2008 10:47:43 -0400
-Message-ID: <20080408144713.20422.40323.stgit@manray.1015granger.net>
+From: Kevin Coffman <kwc@citi.umich.edu>
+Subject: [PATCH] gssd: add other des encryption types to default list
+Date: Tue, 08 Apr 2008 11:31:33 -0400
+Message-ID: <20080408153133.17749.60365.stgit@RoCK.CiTi.UmIcH.EdU>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
-To: trond.myklebust@netapp.com
+To: SteveD@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from flpi185.sbcis.sbc.com ([207.115.20.187]:8708 "EHLO
-	flpi185.prodigy.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752011AbYDHOrs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Apr 2008 10:47:48 -0400
+Received: from citi.umich.edu ([141.211.133.111]:24090 "EHLO citi.umich.edu"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751318AbYDHPbd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Apr 2008 11:31:33 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit 510deb0d was supposed to move the xprt_create_transport() call in
-rpc_create(), but neglected to remove the old call site.  This resulted in
-a transport leak after every rpc_create() call.
+From: Kevin Coffman <kwc@citi.umich.edu>
 
-This leak is present in 2.6.24 and 2.6.25.
+Add the other two DES encryption types to the default list of
+Kerberos encryption types that may be negotiated.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Kevin Coffman <kwc@citi.umich.edu>
 ---
-Resending...
 
- net/sunrpc/clnt.c |    4 ----
- 1 files changed, 0 insertions(+), 4 deletions(-)
+ utils/gssd/krb5_util.c |    4 +++-
+ 1 files changed, 3 insertions(+), 1 deletions(-)
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index d0f04c8..dd39a39 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -260,10 +260,6 @@ struct rpc_clnt *rpc_create(struct rpc_create_args *args)
- 	};
- 	char servername[48];
+
+diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+index 3cf27ca..0589cd8 100644
+--- a/utils/gssd/krb5_util.c
++++ b/utils/gssd/krb5_util.c
+@@ -277,7 +277,9 @@ limit_krb5_enctypes(struct rpc_gss_sec *sec, uid_t uid)
+ 	u_int maj_stat, min_stat;
+ 	gss_cred_id_t credh;
+ 	gss_OID_set_desc  desired_mechs;
+-	krb5_enctype enctypes[] = { ENCTYPE_DES_CBC_CRC };
++	krb5_enctype enctypes[] = { ENCTYPE_DES_CBC_CRC,
++				    ENCTYPE_DES_CBC_MD5,
++				    ENCTYPE_DES_CBC_MD4 };
+ 	int num_enctypes = sizeof(enctypes) / sizeof(enctypes[0]);
  
--	xprt = xprt_create_transport(&xprtargs);
--	if (IS_ERR(xprt))
--		return (struct rpc_clnt *)xprt;
--
- 	/*
- 	 * If the caller chooses not to specify a hostname, whip
- 	 * up a string representation of the passed-in address.
+ 	/* We only care about getting a krb5 cred */
 
