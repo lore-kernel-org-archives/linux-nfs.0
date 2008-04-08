@@ -1,263 +1,56 @@
 From: Kevin Coffman <kwc@citi.umich.edu>
-Subject: [PATCH 2/2] gssd: search multiple directories for Kerberos credentials
-Date: Tue, 08 Apr 2008 14:33:30 -0400
-Message-ID: <20080408183330.11839.49523.stgit@RoCK.CiTi.UmIcH.EdU>
-References: <20080408183322.11839.46964.stgit@RoCK.CiTi.UmIcH.EdU>
+Subject: [PATCH 1/2] gssd: add a function to retrieve the current verbosity
+	level
+Date: Tue, 08 Apr 2008 14:33:25 -0400
+Message-ID: <20080408183322.11839.46964.stgit@RoCK.CiTi.UmIcH.EdU>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: SteveD@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from citi.umich.edu ([141.211.133.111]:27248 "EHLO citi.umich.edu"
+Received: from citi.umich.edu ([141.211.133.111]:15727 "EHLO citi.umich.edu"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753377AbYDHSdb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Apr 2008 14:33:31 -0400
-In-Reply-To: <20080408183322.11839.46964.stgit-hbtfTJCOpS4Aszt8jGNha3UJcR+ueUCI@public.gmane.org>
+	id S1752615AbYDHSd0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Apr 2008 14:33:26 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Kevin Coffman <kwc@citi.umich.edu>
 
-Kerberos credentials may be stored in multiple places.  Make it
-possible to search several directories for valid credentials when
-making NFS requests.
+Add a new function to retrieve the current verbosity level
+so that some messages that would otherwise always print may
+be silenced.
 
-Original patch from Vince Busam <vbusam@google.com>, modified by
-Kevin Coffman <kwc@citi.umich.edu>.
-
-Signed-off-by: Vince Busam <vbusam@google.com>
 Signed-off-by: Kevin Coffman <kwc@citi.umich.edu>
 ---
 
- utils/gssd/gssd.c      |   10 ++++++++++
- utils/gssd/gssd.h      |    3 ++-
- utils/gssd/gssd.man    |    6 +++++-
- utils/gssd/gssd_proc.c |   11 ++++++++---
- utils/gssd/krb5_util.c |   30 ++++++++++++++++--------------
- utils/gssd/krb5_util.h |    3 ++-
- 6 files changed, 43 insertions(+), 20 deletions(-)
+ utils/gssd/err_util.c |    5 +++++
+ utils/gssd/err_util.h |    1 +
+ 2 files changed, 6 insertions(+), 0 deletions(-)
 
 
-diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
-index bbcad20..e8612a5 100644
---- a/utils/gssd/gssd.c
-+++ b/utils/gssd/gssd.c
-@@ -57,6 +57,7 @@ char pipefs_dir[PATH_MAX] = GSSD_PIPEFS_DIR;
- char pipefs_nfsdir[PATH_MAX] = GSSD_PIPEFS_DIR;
- char keytabfile[PATH_MAX] = GSSD_DEFAULT_KEYTAB_FILE;
- char ccachedir[PATH_MAX] = GSSD_DEFAULT_CRED_DIR;
-+char *ccachesearch[GSSD_MAX_CCACHE_SEARCH + 1];
- int  use_memcache = 0;
- int  root_uses_machine_creds = 1;
- 
-@@ -93,9 +94,11 @@ main(int argc, char *argv[])
- 	int verbosity = 0;
- 	int rpc_verbosity = 0;
- 	int opt;
-+	int i;
- 	extern char *optarg;
- 	char *progname;
- 
-+	memset(ccachesearch, 0, sizeof(ccachesearch));
- 	while ((opt = getopt(argc, argv, "fvrmnMp:k:d:")) != -1) {
- 		switch (opt) {
- 			case 'f':
-@@ -136,6 +139,13 @@ main(int argc, char *argv[])
- 				break;
- 		}
- 	}
-+
-+	i = 0;
-+	ccachesearch[i++] = strtok(ccachedir, ":");
-+	do {
-+		ccachesearch[i++] = strtok(NULL, ":");
-+	} while (ccachesearch[i-1] != NULL && i < GSSD_MAX_CCACHE_SEARCH);
-+
- 	snprintf(pipefs_nfsdir, sizeof(pipefs_nfsdir), "%s/%s",
- 		 pipefs_dir, GSSD_SERVICE_NAME);
- 	if (pipefs_nfsdir[sizeof(pipefs_nfsdir)-1] != '\0')
-diff --git a/utils/gssd/gssd.h b/utils/gssd/gssd.h
-index e17edde..9e1ab43 100644
---- a/utils/gssd/gssd.h
-+++ b/utils/gssd/gssd.h
-@@ -50,6 +50,7 @@
- #define GSSD_DEFAULT_KEYTAB_FILE		"/etc/krb5.keytab"
- #define GSSD_SERVICE_NAME			"nfs"
- #define GSSD_SERVICE_NAME_LEN			3
-+#define GSSD_MAX_CCACHE_SEARCH			16
- 
- /*
-  * The gss mechanisms that we can handle
-@@ -61,7 +62,7 @@ enum {AUTHTYPE_KRB5, AUTHTYPE_SPKM3, AUTHTYPE_LIPKEY};
- extern char			pipefs_dir[PATH_MAX];
- extern char			pipefs_nfsdir[PATH_MAX];
- extern char			keytabfile[PATH_MAX];
--extern char			ccachedir[PATH_MAX];
-+extern char			*ccachesearch[];
- extern int			use_memcache;
- extern int			root_uses_machine_creds;
- 
-diff --git a/utils/gssd/gssd.man b/utils/gssd/gssd.man
-index 2fa749e..8fa4f4a 100644
---- a/utils/gssd/gssd.man
-+++ b/utils/gssd/gssd.man
-@@ -74,7 +74,11 @@ where to look for the rpc_pipefs filesystem.  The default value is
- .B -d directory
- Tells
- .B rpc.gssd
--where to look for kerberos credential files.  The default value is "/tmp".
-+where to look for Kerberos credential files.  The default value is "/tmp".
-+This can also be a colon separated list of directories to be searched
-+for Kerberos credential files.  Note that if machine credentials are being
-+stored in files, then the first directory on this list is where the
-+machine credentials are stored.
- .TP
- .B -v
- Increases the verbosity of the output (can be specified multiple times).
-diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-index 6860cc8..17f85e1 100644
---- a/utils/gssd/gssd_proc.c
-+++ b/utils/gssd/gssd_proc.c
-@@ -675,6 +675,7 @@ handle_krb5_upcall(struct clnt_info *clp)
- 	gss_buffer_desc		token;
- 	char			**credlist = NULL;
- 	char			**ccname;
-+	char			**dirname;
- 	int			create_resp = -1;
- 
- 	printerr(1, "handling krb5 upcall\n");
-@@ -691,10 +692,14 @@ handle_krb5_upcall(struct clnt_info *clp)
- 
- 	if (uid != 0 || (uid == 0 && root_uses_machine_creds == 0)) {
- 		/* Tell krb5 gss which credentials cache to use */
--		gssd_setup_krb5_user_gss_ccache(uid, clp->servername);
-+		for (dirname = ccachesearch; *dirname != NULL; dirname++) {
-+			gssd_setup_krb5_user_gss_ccache(uid, clp->servername, *dirname);
- 
--		create_resp = create_auth_rpc_client(clp, &rpc_clnt, &auth, uid,
--						     AUTHTYPE_KRB5);
-+			create_resp = create_auth_rpc_client(clp, &rpc_clnt, &auth, uid,
-+							     AUTHTYPE_KRB5);
-+			if (create_resp == 0)
-+				break;
-+		}
- 	}
- 	if (create_resp != 0) {
- 		if (uid == 0 && root_uses_machine_creds == 1) {
-diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
-index 0589cd8..512c1cf 100644
---- a/utils/gssd/krb5_util.c
-+++ b/utils/gssd/krb5_util.c
-@@ -131,7 +131,8 @@ struct gssd_k5_kt_princ *gssd_k5_kt_princ_list = NULL;
- /*==========================*/
- 
- static int select_krb5_ccache(const struct dirent *d);
--static int gssd_find_existing_krb5_ccache(uid_t uid, struct dirent **d);
-+static int gssd_find_existing_krb5_ccache(uid_t uid, char *dirname,
-+		struct dirent **d);
- static int gssd_get_single_krb5_cred(krb5_context context,
- 		krb5_keytab kt, struct gssd_k5_kt_princ *ple);
- 
-@@ -159,7 +160,7 @@ select_krb5_ccache(const struct dirent *d)
+diff --git a/utils/gssd/err_util.c b/utils/gssd/err_util.c
+index 5644db6..2583e06 100644
+--- a/utils/gssd/err_util.c
++++ b/utils/gssd/err_util.c
+@@ -60,3 +60,8 @@ void printerr(int priority, char *format, ...)
+ 		xlog_backend(L_ERROR, format, args);
+ 	va_end(args);
  }
++
++int get_verbosity(void)
++{
++	return verbosity;
++}
+diff --git a/utils/gssd/err_util.h b/utils/gssd/err_util.h
+index 5e5af48..c4df32d 100644
+--- a/utils/gssd/err_util.h
++++ b/utils/gssd/err_util.h
+@@ -33,5 +33,6 @@
  
- /*
-- * Look in the ccachedir for files that look like they
-+ * Look in directory "dirname" for files that look like they
-  * are Kerberos Credential Cache files for a given UID.  Return
-  * non-zero and the dirent pointer for the entry most likely to be
-  * what we want. Otherwise, return zero and no dirent pointer.
-@@ -170,7 +171,7 @@ select_krb5_ccache(const struct dirent *d)
-  *	1 => found an existing entry
-  */
- static int
--gssd_find_existing_krb5_ccache(uid_t uid, struct dirent **d)
-+gssd_find_existing_krb5_ccache(uid_t uid, char *dirname, struct dirent **d)
- {
- 	struct dirent **namelist;
- 	int n;
-@@ -181,9 +182,10 @@ gssd_find_existing_krb5_ccache(uid_t uid, struct dirent **d)
+ void initerr(char *progname, int verbosity, int fg);
+ void printerr(int priority, char *format, ...);
++int get_verbosity(void);
  
- 	memset(&best_match_stat, 0, sizeof(best_match_stat));
- 	*d = NULL;
--	n = scandir(ccachedir, &namelist, select_krb5_ccache, 0);
-+	n = scandir(dirname, &namelist, select_krb5_ccache, 0);
- 	if (n < 0) {
--		perror("scandir looking for krb5 credentials caches");
-+		printerr(1, "Error doing scandir on directory '%s': %s\n",
-+			dirname, strerror(errno));
- 	}
- 	else if (n > 0) {
- 		char statname[1024];
-@@ -191,7 +193,7 @@ gssd_find_existing_krb5_ccache(uid_t uid, struct dirent **d)
- 			printerr(3, "CC file '%s' being considered\n",
- 				 namelist[i]->d_name);
- 			snprintf(statname, sizeof(statname),
--				 "%s/%s", ccachedir, namelist[i]->d_name);
-+				 "%s/%s", dirname, namelist[i]->d_name);
- 			if (lstat(statname, &tmp_stat)) {
- 				printerr(0, "Error doing stat on file '%s'\n",
- 					 statname);
-@@ -291,8 +293,9 @@ limit_krb5_enctypes(struct rpc_gss_sec *sec, uid_t uid)
- 				    &credh, NULL, NULL);
- 
- 	if (maj_stat != GSS_S_COMPLETE) {
--		pgsserr("gss_acquire_cred",
--			maj_stat, min_stat, &krb5oid);
-+		if (get_verbosity() > 0)
-+			pgsserr("gss_acquire_cred",
-+				maj_stat, min_stat, &krb5oid);
- 		return -1;
- 	}
- 
-@@ -406,7 +409,7 @@ gssd_get_single_krb5_cred(krb5_context context,
- 	    cache_type = "FILE";
- 	snprintf(cc_name, sizeof(cc_name), "%s:%s/%s%s_%s",
- 		cache_type,
--		ccachedir, GSSD_DEFAULT_CRED_PREFIX,
-+		ccachesearch[0], GSSD_DEFAULT_CRED_PREFIX,
- 		GSSD_DEFAULT_MACHINE_CRED_SUFFIX, ple->realm);
- 	ple->endtime = my_creds.times.endtime;
- 	if (ple->ccname != NULL)
-@@ -894,7 +897,7 @@ out:
-  *	void
-  */
- void
--gssd_setup_krb5_user_gss_ccache(uid_t uid, char *servername)
-+gssd_setup_krb5_user_gss_ccache(uid_t uid, char *servername, char *dirname)
- {
- 	char			buf[MAX_NETOBJ_SZ];
- 	struct dirent		*d;
-@@ -902,14 +905,13 @@ gssd_setup_krb5_user_gss_ccache(uid_t uid, char *servername)
- 	printerr(2, "getting credentials for client with uid %u for "
- 		    "server %s\n", uid, servername);
- 	memset(buf, 0, sizeof(buf));
--	if (gssd_find_existing_krb5_ccache(uid, &d)) {
--		snprintf(buf, sizeof(buf), "FILE:%s/%s",
--			ccachedir, d->d_name);
-+	if (gssd_find_existing_krb5_ccache(uid, dirname, &d)) {
-+		snprintf(buf, sizeof(buf), "FILE:%s/%s", dirname, d->d_name);
- 		free(d);
- 	}
- 	else
- 		snprintf(buf, sizeof(buf), "FILE:%s/%s%u",
--			ccachedir, GSSD_DEFAULT_CRED_PREFIX, uid);
-+			dirname, GSSD_DEFAULT_CRED_PREFIX, uid);
- 	printerr(2, "using %s as credentials cache for client with "
- 		    "uid %u for server %s\n", buf, uid, servername);
- 	gssd_set_krb5_ccache_name(buf);
-diff --git a/utils/gssd/krb5_util.h b/utils/gssd/krb5_util.h
-index 78ad45c..431fdaf 100644
---- a/utils/gssd/krb5_util.h
-+++ b/utils/gssd/krb5_util.h
-@@ -17,7 +17,8 @@ struct gssd_k5_kt_princ {
- };
- 
- 
--void gssd_setup_krb5_user_gss_ccache(uid_t uid, char *servername);
-+void gssd_setup_krb5_user_gss_ccache(uid_t uid, char *servername,
-+				     char *dirname);
- int  gssd_get_krb5_machine_cred_list(char ***list);
- void gssd_free_krb5_machine_cred_list(char **list);
- void gssd_setup_krb5_machine_gss_ccache(char *servername);
+ #endif /* _ERR_UTIL_H_ */
 
