@@ -1,53 +1,74 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH] NFS: don't let nfs_callback_svc exit on unexpected svc_recv errors
-Date: Tue,  8 Apr 2008 09:18:08 -0400
-Message-ID: <1207660689-11863-1-git-send-email-jlayton@redhat.com>
-Cc: trond.myklebust@fys.uio.no, hch@infradead.org,
-	linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-To: bfields@fieldses.org
+Subject: Re: [PATCH] NLM: hold BKL when clearing global lockd task and serv
+ vars
+Date: Tue, 8 Apr 2008 09:21:02 -0400
+Message-ID: <20080408092102.2404f5ee@tleilax.poochiereds.net>
+References: <1207575514-6703-1-git-send-email-jlayton@redhat.com>
+	<1207575514-6703-2-git-send-email-jlayton@redhat.com>
+	<20080407164500.GA17728@infradead.org>
+	<20080407175615.GD3305@fieldses.org>
+	<20080407162241.0a06fd6f@tleilax.poochiereds.net>
+	<20080407205027.GE11219@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:39185 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([66.187.233.31]:39313 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751213AbYDHNST (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Apr 2008 09:18:19 -0400
+	id S1751590AbYDHNVF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Apr 2008 09:21:05 -0400
+In-Reply-To: <20080407205027.GE11219@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When svc_recv returns an unexpected error, nfs_callback_svc will print a
-warning and exit. This problematic for several reasons. In particular,
-it will cause the reference counts for the thread to be wrong, and no
-new thread will be started until all nfs4 mounts are unmounted.
+On Mon, 7 Apr 2008 16:50:27 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-Rather than exiting on error from svc_recv, have the thread do a 1s
-sleep and then retry the loop. This is unlikely to cause any harm, and
-if the error turns out to be something temporary then it may be able to
-recover.
+> On Mon, Apr 07, 2008 at 04:22:41PM -0400, Jeff Layton wrote:
+> > On Mon, 7 Apr 2008 13:56:15 -0400
+> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > 
+> > > On Mon, Apr 07, 2008 at 12:45:01PM -0400, Christoph Hellwig wrote:
+> > > > On Mon, Apr 07, 2008 at 09:38:34AM -0400, Jeff Layton wrote:
+> > > > > The global task and serv pointers for lockd are normally protected by
+> > > > > the nlmsvc_mutex. The exception is when the lockd exits abnormally. When
+> > > > > this occurs, these variables are cleared without any locking.
+> > > > 
+> > > > Shouldn't we get rid of the case where it exits abnormally instead?
+> > > 
+> > > I tried to figure out when this could actually occur (when can
+> > > svc_recv() return an error other than -EINTR or -EAGAIN?), and got lost
+> > > in sock_recvmsg():
+> > > 
+> > > 	- svc_recv() itself returns only -EAGAIN or the return from
+> > > 	  ->xpo_recvfrom().
+> > > 	- the only xpo_recvfrom() that's interesting is
+> > > 	  svc_tcp_recvfrom(), which can return the error it gets from
+> > > 	  svc_recvfrom(), which can return the error from
+> > > 	  kernel_recvmsg(), which gets its return from sock_recvmsg().
+> > > 
+> > > Since __sock_recvmsg() has a security hook, it looks like we can end up
+> > > with an -EACCES from selinux?
+> > > 
+> > > So one case would be selinux deciding we weren't allowed to receive
+> > > packets from this socket.  Huh.
+> > 
+> > I got lost there too, but I would suspect that there are other errors
+> > that can bubble up from the lower networking layers as well. Even if
+> > there aren't currently, it's probably still prudent to assume that it's
+> > a possibility and code for it.
+> > 
+> > I tend to think the safest thing is probably to do a long sleep (1s or
+> > so and retry when we get an error (maybe also a ratelimited printk?).
+> 
+> Yeah, I guess I can't think of anything better.
+> 
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfs/callback.c |    9 +++++----
- 1 files changed, 5 insertions(+), 4 deletions(-)
+Ok, I went ahead and did patches for this and gave them a quick test
+this morning. Obviously, these are hard to fully unit test since this
+seems to be a very uncommon occurrence.
 
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index a9f1538..78bc69a 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -77,10 +77,11 @@ nfs_callback_svc(void *vrqstp)
- 		if (err == -EAGAIN || err == -EINTR)
- 			continue;
- 		if (err < 0) {
--			printk(KERN_WARNING
--					"%s: terminating on error %d\n",
--					__FUNCTION__, -err);
--			break;
-+			if (printk_ratelimit())
-+				printk(KERN_WARNING "%s: unexpected error "
-+					"from svc_recv (%d)\n", __func__, err);
-+			schedule_timeout_uninterruptible(HZ);
-+			continue;
- 		}
- 		svc_process(rqstp);
- 	}
+Any thoughts?
 -- 
-1.5.3.6
-
+Jeff Layton <jlayton@redhat.com>
