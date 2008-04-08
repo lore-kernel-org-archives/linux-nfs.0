@@ -1,74 +1,28 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH] NLM: hold BKL when clearing global lockd task and serv
- vars
-Date: Tue, 8 Apr 2008 09:21:02 -0400
-Message-ID: <20080408092102.2404f5ee@tleilax.poochiereds.net>
-References: <1207575514-6703-1-git-send-email-jlayton@redhat.com>
-	<1207575514-6703-2-git-send-email-jlayton@redhat.com>
-	<20080407164500.GA17728@infradead.org>
-	<20080407175615.GD3305@fieldses.org>
-	<20080407162241.0a06fd6f@tleilax.poochiereds.net>
-	<20080407205027.GE11219@fieldses.org>
+From: Christoph Bartoschek <bartoschek-eefaeeawk+jFLWzOrOlZPg@public.gmane.org>
+Subject: Finding processes causing NFS traffic
+Date: Tue, 8 Apr 2008 16:06:37 +0200
+Message-ID: <200804081606.37951.bartoschek@or.uni-bonn.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain;
+  charset="us-ascii"
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:39313 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751590AbYDHNVF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Apr 2008 09:21:05 -0400
-In-Reply-To: <20080407205027.GE11219@fieldses.org>
+Received: from brical.or.uni-bonn.de ([131.220.141.99]:40864 "EHLO
+	brical.or.uni-bonn.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750975AbYDHOj2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Apr 2008 10:39:28 -0400
+Received: from wse04.or.uni-bonn.de (bg-1.or.uni-bonn.de [131.220.141.100])
+	by brical.or.uni-bonn.de (Postfix) with ESMTP id 4D0333B6AA
+	for <linux-nfs@vger.kernel.org>; Tue,  8 Apr 2008 16:02:48 +0200 (CEST)
+Received: from [131.220.143.130] (wse00.or.uni-bonn.de [131.220.143.130])
+	by wse04.or.uni-bonn.de (Postfix) with ESMTP id 46537E965
+	for <linux-nfs@vger.kernel.org>; Tue,  8 Apr 2008 16:06:28 +0200 (CEST)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 7 Apr 2008 16:50:27 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+Hi,
 
-> On Mon, Apr 07, 2008 at 04:22:41PM -0400, Jeff Layton wrote:
-> > On Mon, 7 Apr 2008 13:56:15 -0400
-> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > 
-> > > On Mon, Apr 07, 2008 at 12:45:01PM -0400, Christoph Hellwig wrote:
-> > > > On Mon, Apr 07, 2008 at 09:38:34AM -0400, Jeff Layton wrote:
-> > > > > The global task and serv pointers for lockd are normally protected by
-> > > > > the nlmsvc_mutex. The exception is when the lockd exits abnormally. When
-> > > > > this occurs, these variables are cleared without any locking.
-> > > > 
-> > > > Shouldn't we get rid of the case where it exits abnormally instead?
-> > > 
-> > > I tried to figure out when this could actually occur (when can
-> > > svc_recv() return an error other than -EINTR or -EAGAIN?), and got lost
-> > > in sock_recvmsg():
-> > > 
-> > > 	- svc_recv() itself returns only -EAGAIN or the return from
-> > > 	  ->xpo_recvfrom().
-> > > 	- the only xpo_recvfrom() that's interesting is
-> > > 	  svc_tcp_recvfrom(), which can return the error it gets from
-> > > 	  svc_recvfrom(), which can return the error from
-> > > 	  kernel_recvmsg(), which gets its return from sock_recvmsg().
-> > > 
-> > > Since __sock_recvmsg() has a security hook, it looks like we can end up
-> > > with an -EACCES from selinux?
-> > > 
-> > > So one case would be selinux deciding we weren't allowed to receive
-> > > packets from this socket.  Huh.
-> > 
-> > I got lost there too, but I would suspect that there are other errors
-> > that can bubble up from the lower networking layers as well. Even if
-> > there aren't currently, it's probably still prudent to assume that it's
-> > a possibility and code for it.
-> > 
-> > I tend to think the safest thing is probably to do a long sleep (1s or
-> > so and retry when we get an error (maybe also a ratelimited printk?).
-> 
-> Yeah, I guess I can't think of anything better.
-> 
+is there a tool that shows me which processes cause NFS traffic?
 
-Ok, I went ahead and did patches for this and gave them a quick test
-this morning. Obviously, these are hard to fully unit test since this
-seems to be a very uncommon occurrence.
-
-Any thoughts?
--- 
-Jeff Layton <jlayton@redhat.com>
+Greetings
+Christoph
