@@ -1,113 +1,114 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH] NLM: hold BKL when clearing global lockd task and serv
- vars
-Date: Tue, 8 Apr 2008 13:02:26 -0400
-Message-ID: <20080408130226.3def8241@tleilax.poochiereds.net>
-References: <1207575514-6703-1-git-send-email-jlayton@redhat.com>
-	<1207575514-6703-2-git-send-email-jlayton@redhat.com>
-	<20080407164500.GA17728@infradead.org>
-	<20080407175615.GD3305@fieldses.org>
-	<20080407162241.0a06fd6f@tleilax.poochiereds.net>
-	<20080407205027.GE11219@fieldses.org>
-	<20080408092102.2404f5ee@tleilax.poochiereds.net>
-	<20080408162821.GA8994@fieldses.org>
+From: "Kevin Coffman" <kwc@citi.umich.edu>
+Subject: Re: [PATCH] gssd: search multiple directories for credentials
+Date: Tue, 8 Apr 2008 13:15:05 -0400
+Message-ID: <4d569c330804081015g7db0c3f7oe7784784a2e0fc40@mail.gmail.com>
+References: <20080407214228.GA11350@google.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org
+To: "Vince Busam" <vbusam@google.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:33851 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752546AbYDHRCa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Apr 2008 13:02:30 -0400
-In-Reply-To: <20080408162821.GA8994@fieldses.org>
+Received: from ti-out-0910.google.com ([209.85.142.188]:1688 "EHLO
+	ti-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752837AbYDHRPJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Apr 2008 13:15:09 -0400
+Received: by ti-out-0910.google.com with SMTP id 28so820380tif.23
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Apr 2008 10:15:07 -0700 (PDT)
+In-Reply-To: <20080407214228.GA11350@google.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 8 Apr 2008 12:28:21 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+On Mon, Apr 7, 2008 at 5:42 PM, Vince Busam <vbusam@google.com> wrote:
+> We store kerberos credentials in multiple places, and it would be nice to
+>  search them for a valid credential when making NFS requests.  This patch
+>  allows that.
+>
+>  diff -up --recursive nfs-utils-1.1.1.orig/utils/gssd/gssd.c nfs-utils-1.1.1/utils/gssd/gssd.c
+>  --- nfs-utils-1.1.1.orig/utils/gssd/gssd.c      2007-10-18 20:07:28.000000000 -0700
+>  +++ nfs-utils-1.1.1/utils/gssd/gssd.c   2008-03-17 13:35:39.000000000 -0700
+>  @@ -57,6 +57,7 @@ char pipefs_dir[PATH_MAX] = GSSD_PIPEFS_
+>   char pipefs_nfsdir[PATH_MAX] = GSSD_PIPEFS_DIR;
+>   char keytabfile[PATH_MAX] = GSSD_DEFAULT_KEYTAB_FILE;
+>   char ccachedir[PATH_MAX] = GSSD_DEFAULT_CRED_DIR;
+>  +char *ccachesearch[GSSD_MAX_CCACHE_SEARCH];
+>   int  use_memcache = 0;
+>   int  root_uses_machine_creds = 1;
+>
+>  @@ -93,9 +94,11 @@ main(int argc, char *argv[])
+>         int verbosity = 0;
+>         int rpc_verbosity = 0;
+>         int opt;
+>  +       int i;
+>         extern char *optarg;
+>         char *progname;
+>
+>  +       memset(ccachesearch, 0, sizeof(ccachesearch));
+>         while ((opt = getopt(argc, argv, "fvrmnMp:k:d:")) != -1) {
+>                 switch (opt) {
+>                         case 'f':
+>  @@ -130,6 +133,12 @@ main(int argc, char *argv[])
+>                                 strncpy(ccachedir, optarg, sizeof(ccachedir));
+>                                 if (ccachedir[sizeof(ccachedir)-1] != '\0')
+>                                         errx(1, "ccachedir path name too long");
+>  +                               i = 0;
+>  +                               strtok(ccachedir,":");
+>  +                               do {
+>  +                                       ccachesearch[i] = strtok(NULL,":");
+>  +                                       i++;
+>  +                               } while (ccachesearch[i-1] && (i<(GSSD_MAX_CCACHE_SEARCH-1)));
+>                                 break;
+>                         default:
+>                                 usage(argv[0]);
+>  diff -up --recursive nfs-utils-1.1.1.orig/utils/gssd/gssd.h nfs-utils-1.1.1/utils/gssd/gssd.h
+>  --- nfs-utils-1.1.1.orig/utils/gssd/gssd.h      2007-10-18 20:07:28.000000000 -0700
+>  +++ nfs-utils-1.1.1/utils/gssd/gssd.h   2008-03-12 13:10:19.000000000 -0700
+>  @@ -50,6 +50,7 @@
+>   #define GSSD_DEFAULT_KEYTAB_FILE               "/etc/krb5.keytab"
+>   #define GSSD_SERVICE_NAME                      "nfs"
+>   #define GSSD_SERVICE_NAME_LEN                  3
+>  +#define GSSD_MAX_CCACHE_SEARCH                 16
+>
+>   /*
+>   * The gss mechanisms that we can handle
+>  @@ -62,6 +63,7 @@ extern char                   pipefs_dir[PATH_MAX];
+>   extern char                    pipefs_nfsdir[PATH_MAX];
+>   extern char                    keytabfile[PATH_MAX];
+>   extern char                    ccachedir[PATH_MAX];
+>  +extern char                    *ccachesearch[GSSD_MAX_CCACHE_SEARCH];
+>   extern int                     use_memcache;
+>   extern int                     root_uses_machine_creds;
+>
+>  diff -up --recursive nfs-utils-1.1.1.orig/utils/gssd/gssd_proc.c nfs-utils-1.1.1/utils/gssd/gssd_proc.c
+>  --- nfs-utils-1.1.1.orig/utils/gssd/gssd_proc.c 2007-10-18 20:07:28.000000000 -0700
+>  +++ nfs-utils-1.1.1/utils/gssd/gssd_proc.c      2008-03-12 14:44:26.000000000 -0700
+>  @@ -691,10 +691,18 @@ handle_krb5_upcall(struct clnt_info *clp
+>
+>         if (uid != 0 || (uid == 0 && root_uses_machine_creds == 0)) {
+>                 /* Tell krb5 gss which credentials cache to use */
+>  -               gssd_setup_krb5_user_gss_ccache(uid, clp->servername);
+>  +               gssd_setup_krb5_user_gss_ccache(uid, clp->servername, ccachedir);
+>
+>                 create_resp = create_auth_rpc_client(clp, &rpc_clnt, &auth, uid,
+>                                                      AUTHTYPE_KRB5);
+>  +               for (ccname = ccachesearch; *ccname; ccname++) {
+>  +                       gssd_setup_krb5_user_gss_ccache(uid, clp->servername, *ccname);
+>  +
+>  +                       create_resp = create_auth_rpc_client(clp, &rpc_clnt, &auth, uid,
+>  +                                                            AUTHTYPE_KRB5);
+>  +                       if (create_resp == 0)
+>  +                               break;
+>  +               }
+>         }
 
-> On Tue, Apr 08, 2008 at 09:21:02AM -0400, Jeff Layton wrote:
-> > On Mon, 7 Apr 2008 16:50:27 -0400
-> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > 
-> > > On Mon, Apr 07, 2008 at 04:22:41PM -0400, Jeff Layton wrote:
-> > > > On Mon, 7 Apr 2008 13:56:15 -0400
-> > > > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > > > 
-> > > > > On Mon, Apr 07, 2008 at 12:45:01PM -0400, Christoph Hellwig wrote:
-> > > > > > On Mon, Apr 07, 2008 at 09:38:34AM -0400, Jeff Layton wrote:
-> > > > > > > The global task and serv pointers for lockd are normally protected by
-> > > > > > > the nlmsvc_mutex. The exception is when the lockd exits abnormally. When
-> > > > > > > this occurs, these variables are cleared without any locking.
-> > > > > > 
-> > > > > > Shouldn't we get rid of the case where it exits abnormally instead?
-> > > > > 
-> > > > > I tried to figure out when this could actually occur (when can
-> > > > > svc_recv() return an error other than -EINTR or -EAGAIN?), and got lost
-> > > > > in sock_recvmsg():
-> > > > > 
-> > > > > 	- svc_recv() itself returns only -EAGAIN or the return from
-> > > > > 	  ->xpo_recvfrom().
-> > > > > 	- the only xpo_recvfrom() that's interesting is
-> > > > > 	  svc_tcp_recvfrom(), which can return the error it gets from
-> > > > > 	  svc_recvfrom(), which can return the error from
-> > > > > 	  kernel_recvmsg(), which gets its return from sock_recvmsg().
-> > > > > 
-> > > > > Since __sock_recvmsg() has a security hook, it looks like we can end up
-> > > > > with an -EACCES from selinux?
-> > > > > 
-> > > > > So one case would be selinux deciding we weren't allowed to receive
-> > > > > packets from this socket.  Huh.
-> > > > 
-> > > > I got lost there too, but I would suspect that there are other errors
-> > > > that can bubble up from the lower networking layers as well. Even if
-> > > > there aren't currently, it's probably still prudent to assume that it's
-> > > > a possibility and code for it.
-> > > > 
-> > > > I tend to think the safest thing is probably to do a long sleep (1s or
-> > > > so and retry when we get an error (maybe also a ratelimited printk?).
-> > > 
-> > > Yeah, I guess I can't think of anything better.
-> > > 
-> > 
-> > Ok, I went ahead and did patches for this and gave them a quick test
-> > this morning. Obviously, these are hard to fully unit test since this
-> > seems to be a very uncommon occurrence.
-> 
-> I suppose this could probably be reproduced with some selinux magic.
-> 
+Thanks for the patch, and sorry for taking so long to get to it.
 
-Good idea. I'll chat with our SELinux guys and see if they can point me
-in the right direction on this.
+If I use "-d /tmp:/tmp/ticket:/tmp/tickets", this part ignores the
+fact that I've successfully created the context with credentials in
+/tmp and continues to try /tmp/ticket and /tmp/tickets and eventually
+fails.
 
-> > Any thoughts?
-> 
-> If anyone does ever hit this and it doesn't go away, the printk (even
-> with the ratelimiting) could be pretty annoying, so it might be worth
-> arranging to print this just once.  But perhaps we can wait and see if
-> that actually happens.
-> 
+I think I see why you continued to use ccachedir as well as
+ccachesearch, but I'm not happy with it.  I'm reworking this and will
+submit upstream.
 
-I tend to think that this is most likely to happen when there's a
-significant problem in lower level networking (or maybe a VM problem?).
-SELinux is also a possibility, as you pointed out, but I'm not sure how
-much kernel threads are affected by SELinux...
-
-In any case, if this happens, then we're probably going to have bigger
-problems than a printk every second. My suggestion would be that we keep
-it like this for now, and reconsider it if it turns out to be a
-problem...
-
-> Given what appears to be a very unusual crash, and what I'm assuming is
-> an impending release, I suppose we should wait for the merge window (but
-> possibly also submit to 2.6.25.x).
-> 
-
-Yes. I was thinking that all of this should probably be 2.6.26
-material (along with all of the kthread conversion patches). Aside from
-this possibly happening in Michael's crash, I've never seen lockd exit
-abnormally like this.
-
--- 
-Jeff Layton <jlayton@redhat.com>
+K.C.
