@@ -1,55 +1,71 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH] SUNRPC: RPC client's TCP transport ignores errors during connect
-Date: Tue, 8 Apr 2008 15:35:38 -0400
-Message-ID: <E12D75B9-D74B-45F0-97A3-5209F7C3539F@oracle.com>
-References: <20080408173602.21776.60671.stgit@manray.1015granger.net> <1207677350.11699.9.camel@heimdal.trondhjem.org>
-Mime-Version: 1.0 (Apple Message framework v753)
-Content-Type: text/plain; charset=US-ASCII; delsp=yes; format=flowed
-Cc: linux-nfs@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH] NFS: don't let nfs_callback_svc exit on unexpected svc_recv errors (try #2)
+Date: Tue,  8 Apr 2008 15:40:07 -0400
+Message-ID: <1207683608-17550-1-git-send-email-jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:24744 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753183AbYDHTgI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Apr 2008 15:36:08 -0400
-In-Reply-To: <1207677350.11699.9.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from mx1.redhat.com ([66.187.233.31]:41589 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755964AbYDHTkL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Apr 2008 15:40:11 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Apr 8, 2008, at 1:55 PM, Trond Myklebust wrote:
-> On Tue, 2008-04-08 at 13:38 -0400, Chuck Lever wrote:
->> Commits 66af1e55 through 663b8858 recently changed how
->> xs_tcp_state_change() awakens RPC tasks in order to address problems
->> with disconnection of TCP sockets that were already connected.
->>
->> The generic function xprt_connect_status() is invoked during a  
->> transport
->> connection operation by this wake-up.  It expects a specific error  
->> value
->> describing the connection failure, but currently always gets  
->> ENOTCONN.
->
-> Does it? AFAICS, the only errors that it cares about are ETIMEDOUT,
-> ENOTCONN, ECONNRESET, and ECONNREFUSED, and the only effect is change
-> the dprintk() message.
->
-> OTOH, call_connect_status() will cause the task to exit with an EIO if
-> ever it gets sent an ECONNRESET or ECONNREFUSED.
+When svc_recv returns an unexpected error, nfs_callback_svc will print a
+warning and exit. This problematic for several reasons. In particular,
+it will cause the reference counts for the thread to be wrong, and no
+new thread will be started until all nfs4 mounts are unmounted.
 
-Well, OK... but why keep the extra switch arms in xprt_connect_status  
-if transports and the generic logic don't use those error codes?  It  
-serves only to confuse.
+Rather than exiting on error from svc_recv, have the thread do a 1s
+sleep and then retry the loop. This is unlikely to cause any harm, and
+if the error turns out to be something temporary then it may be able to
+recover.
 
-Last week, you claimed:
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfs/callback.c |   18 ++++++++++++------
+ 1 files changed, 12 insertions(+), 6 deletions(-)
 
- > The client currently doesn't retry in the case of a connection
- > failing for a soft RPC request.
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index a9f1538..5606ae3 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -59,7 +59,7 @@ module_param_call(callback_tcpport, param_set_port, param_get_int,
+ static int
+ nfs_callback_svc(void *vrqstp)
+ {
+-	int err;
++	int err, preverr = 0;
+ 	struct svc_rqst *rqstp = vrqstp;
+ 
+ 	set_freezable();
+@@ -74,14 +74,20 @@ nfs_callback_svc(void *vrqstp)
+ 		 * Listen for a request on the socket
+ 		 */
+ 		err = svc_recv(rqstp, MAX_SCHEDULE_TIMEOUT);
+-		if (err == -EAGAIN || err == -EINTR)
++		if (err == -EAGAIN || err == -EINTR) {
++			preverr = err;
+ 			continue;
++		}
+ 		if (err < 0) {
+-			printk(KERN_WARNING
+-					"%s: terminating on error %d\n",
+-					__FUNCTION__, -err);
+-			break;
++			if (err != preverr) {
++				printk(KERN_WARNING "%s: unexpected error "
++					"from svc_recv (%d)\n", __func__, err);
++				preverr = err;
++			}
++			schedule_timeout_uninterruptible(HZ);
++			continue;
+ 		}
++		preverr = err;
+ 		svc_process(rqstp);
+ 	}
+ 	unlock_kernel();
+-- 
+1.5.3.6
 
-In fact, it does retry a connection attempt on soft RPC requests  
-until a *major* timeout occurs.
-
-So is the actual bug in call_timeout?
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
