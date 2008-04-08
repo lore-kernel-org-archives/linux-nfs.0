@@ -1,121 +1,45 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH] NLM: hold BKL when clearing global lockd task and serv
-	vars
-Date: Tue, 8 Apr 2008 16:20:26 -0400
-Message-ID: <20080408162026.2e2e62cc@tleilax.poochiereds.net>
-References: <1207575514-6703-1-git-send-email-jlayton@redhat.com>
-	<1207575514-6703-2-git-send-email-jlayton@redhat.com>
-	<20080407164500.GA17728@infradead.org>
-	<20080407175615.GD3305@fieldses.org>
-	<20080407162241.0a06fd6f@tleilax.poochiereds.net>
-	<20080407205027.GE11219@fieldses.org>
-	<20080408092102.2404f5ee@tleilax.poochiereds.net>
-	<20080408162821.GA8994@fieldses.org>
-	<3B9C3AE1-2C48-49D7-A961-51AE72A685D1@oracle.com>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH] SUNRPC: RPC client's TCP transport ignores errors
+	during connect
+Date: Tue, 08 Apr 2008 16:21:13 -0400
+Message-ID: <1207686073.11699.32.camel@heimdal.trondhjem.org>
+References: <20080408173602.21776.60671.stgit@manray.1015granger.net>
+	 <1207677350.11699.9.camel@heimdal.trondhjem.org>
+	 <E12D75B9-D74B-45F0-97A3-5209F7C3539F@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+Content-Type: text/plain
+Cc: linux-nfs@vger.kernel.org
 To: Chuck Lever <chuck.lever@oracle.com>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <3B9C3AE1-2C48-49D7-A961-51AE72A685D1@oracle.com>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx2.netapp.com ([216.240.18.37]:36283 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753179AbYDHUVm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Apr 2008 16:21:42 -0400
+In-Reply-To: <E12D75B9-D74B-45F0-97A3-5209F7C3539F@oracle.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 8 Apr 2008 16:08:40 -0400
-Chuck Lever <chuck.lever@oracle.com> wrote:
 
-> On Apr 8, 2008, at 12:28 PM, J. Bruce Fields wrote:
-> > On Tue, Apr 08, 2008 at 09:21:02AM -0400, Jeff Layton wrote:
-> >> On Mon, 7 Apr 2008 16:50:27 -0400
-> >> "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> >>
-> >>> On Mon, Apr 07, 2008 at 04:22:41PM -0400, Jeff Layton wrote:
-> >>>> On Mon, 7 Apr 2008 13:56:15 -0400
-> >>>> "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> >>>>
-> >>>>> On Mon, Apr 07, 2008 at 12:45:01PM -0400, Christoph Hellwig wrote:
-> >>>>>> On Mon, Apr 07, 2008 at 09:38:34AM -0400, Jeff Layton wrote:
-> >>>>>>> The global task and serv pointers for lockd are normally  
-> >>>>>>> protected by
-> >>>>>>> the nlmsvc_mutex. The exception is when the lockd exits  
-> >>>>>>> abnormally. When
-> >>>>>>> this occurs, these variables are cleared without any locking.
-> >>>>>>
-> >>>>>> Shouldn't we get rid of the case where it exits abnormally  
-> >>>>>> instead?
-> >>>>>
-> >>>>> I tried to figure out when this could actually occur (when can
-> >>>>> svc_recv() return an error other than -EINTR or -EAGAIN?), and  
-> >>>>> got lost
-> >>>>> in sock_recvmsg():
-> >>>>>
-> >>>>> 	- svc_recv() itself returns only -EAGAIN or the return from
-> >>>>> 	  ->xpo_recvfrom().
-> >>>>> 	- the only xpo_recvfrom() that's interesting is
-> >>>>> 	  svc_tcp_recvfrom(), which can return the error it gets from
-> >>>>> 	  svc_recvfrom(), which can return the error from
-> >>>>> 	  kernel_recvmsg(), which gets its return from sock_recvmsg().
-> >>>>>
-> >>>>> Since __sock_recvmsg() has a security hook, it looks like we  
-> >>>>> can end up
-> >>>>> with an -EACCES from selinux?
-> >>>>>
-> >>>>> So one case would be selinux deciding we weren't allowed to  
-> >>>>> receive
-> >>>>> packets from this socket.  Huh.
-> >>>>
-> >>>> I got lost there too, but I would suspect that there are other  
-> >>>> errors
-> >>>> that can bubble up from the lower networking layers as well.  
-> >>>> Even if
-> >>>> there aren't currently, it's probably still prudent to assume  
-> >>>> that it's
-> >>>> a possibility and code for it.
-> >>>>
-> >>>> I tend to think the safest thing is probably to do a long sleep  
-> >>>> (1s or
-> >>>> so and retry when we get an error (maybe also a ratelimited  
-> >>>> printk?).
-> >>>
-> >>> Yeah, I guess I can't think of anything better.
-> >>>
-> >>
-> >> Ok, I went ahead and did patches for this and gave them a quick test
-> >> this morning. Obviously, these are hard to fully unit test since this
-> >> seems to be a very uncommon occurrence.
-> >
-> > I suppose this could probably be reproduced with some selinux magic.
-> >
-> >> Any thoughts?
-> >
-> > If anyone does ever hit this and it doesn't go away, the printk (even
-> > with the ratelimiting) could be pretty annoying, so it might be worth
-> > arranging to print this just once.  But perhaps we can wait and see if
-> > that actually happens.
-> 
-> 
-> Coding by contract would be useful here.
-> 
-> If svc_recv() returns only specific error codes (and never anything  
-> else) then its callers don't need any special logic for  
-> "unrecognized" return codes.
-> 
-> Thus, ensuring that svc_recv() returns only EINTR, EACCES, or EAGAIN  
-> would limit the complexity and failure modes of its callers.
-> 
+On Tue, 2008-04-08 at 15:35 -0400, Chuck Lever wrote:
 
-I don't think that gains us much. The errors of interest are basically
-EINTR, EAGAIN and "everything else". If we have to deal with EACCES
-anyway, then it's not really too much more complexity to just deal with
-"everything else" at this level.
+> Last week, you claimed:
+> 
+>  > The client currently doesn't retry in the case of a connection
+>  > failing for a soft RPC request.
+> 
+> In fact, it does retry a connection attempt on soft RPC requests  
+> until a *major* timeout occurs.
+
+You're right. I forgot that we changed that.
+
+> So is the actual bug in call_timeout?
+
+I'm confused. What should call_timeout be doing differently?
 
 -- 
-Jeff Layton <jlayton@redhat.com>
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
