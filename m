@@ -1,74 +1,85 @@
-From: Stephen Smalley <sds@tycho.nsa.gov>
-Subject: Re: nfs_xdev_get_sb appears to sometimes reuse a sb and makes
-	SELinux angry
-Date: Wed, 09 Apr 2008 12:52:24 -0400
-Message-ID: <1207759944.21223.464.camel@moss-spartans.epoch.ncsc.mil>
-References: <1207753502.3070.25.camel@localhost.localdomain>
-	 <1207754713.21223.449.camel@moss-spartans.epoch.ncsc.mil>
-	 <1207757286.3070.32.camel@localhost.localdomain>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] NLM: don't let lockd exit on unexpected svc_recv
+	errors (try #2)
+Date: Wed, 9 Apr 2008 13:53:38 -0400
+Message-ID: <20080409175338.GI32475@fieldses.org>
+References: <1207683608-17550-1-git-send-email-jlayton@redhat.com>
+	<1207683608-17550-2-git-send-email-jlayton@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org, selinux@tycho.nsa.gov,
-	steved@redhat.com, jlayton@redhat.com, jmorris@namei.org,
-	trond.myklebust@fys.uio.no, chuck.lever@oracle.com
-To: Eric Paris <eparis@redhat.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from zombie.ncsc.mil ([144.51.88.131]:48381 "EHLO zombie.ncsc.mil"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752826AbYDIRIA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 9 Apr 2008 13:08:00 -0400
-In-Reply-To: <1207757286.3070.32.camel-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+To: Jeff Layton <jlayton@redhat.com>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <1207683608-17550-2-git-send-email-jlayton@redhat.com>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Tue, Apr 08, 2008 at 03:40:08PM -0400, Jeff Layton wrote:
+> When svc_recv returns an unexpected error, lockd will print a warning
+> and exit. This problematic for several reasons. In particular, it will
+> cause the reference counts for the thread to be wrong, and can lead to a
+> potential BUG() call.
+> 
+> Rather than exiting on error from svc_recv, have the thread do a 1s
+> sleep and then retry the loop. This is unlikely to cause any harm, and
+> if the error turns out to be something temporary then it may be able to
+> recover.
 
-On Wed, 2008-04-09 at 12:08 -0400, Eric Paris wrote:
-> On Wed, 2008-04-09 at 11:25 -0400, Stephen Smalley wrote:
-> > On Wed, 2008-04-09 at 11:05 -0400, Eric Paris wrote:
-> > > When I wrote the new NFS/SELinux mount options code I was working under
-> > > the assumption that nfs_xdev_get_sb() would always give a new superblock
-> > > without the security struct initialized.  I now have a report of a user
-> > > in which we hit BUG_ON(newsbsec->initialized) indicating to me that NFS
-> > > is reusing a superblock.  The user says that he only has one mount to
-> > > the server in fstab, but doesn't know much about the server setup.  Is
-> > > it expected that nfs_xdev_get_sb might reuse a superblock?  If so maybe
-> > > we want this patch below?  Instead of me BUGing every time selinux sees
-> > > a reused superblock we but only if the reused superblock has different
-> > > security options than the old one.  I can't reproduce the issue so I
-> > > can't really test it....
-> > > 
-> > > comments?  should NFS be reusing a superblock here?  Can the NFS people
-> > > let me know how I can trigger it to make sure my patch fixes it?
-> > 
-> > Looks to me like nfs_compare_mount_options() needs to also compare
-> > security options as part of the criteria for deciding when sharing is
-> > permissible.  Otherwise, it seems quite possible that you'll still hit
-> > the new BUG.
-> 
-> Making nfs_compare_mount_options() security aware is not the right
-> answer.  Doing so means that we could end up with the same data 2 places
-> with different security options.  This is just not what we want...
-> 
-> I could make the _clone_ functions return -EINVAL instead of BUG but
-> since this is inside nfs_xdev_get_sb the user has no way to 'fix' it.
-> So that's not the right fix. (this is what I do with user controlled
-> mounts already which go through nfs_get_sb)
-> 
-> I'm currently leaning towards changing all of this to
-> 
-> if (newsbsec->initialized)
-> 	return;
-> 
-> so the first sb wins and its mount options stick forever.  At least we
-> know we did our best to maintain labeling of the data and nothing is
-> going to explode.....
+Both applied; thanks!--b.
 
-Yes, and that is consistent with how user-initiated mounts used to work,
-IIRC - first mount would determine the security options and all
-subsequent ones would just re-use them as the superblock security
-structure was already set up.
-
--- 
-Stephen Smalley
-National Security Agency
-
+> 
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  fs/lockd/svc.c |   18 ++++++++++++------
+>  1 files changed, 12 insertions(+), 6 deletions(-)
+> 
+> diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+> index 66b5c98..cf977bb 100644
+> --- a/fs/lockd/svc.c
+> +++ b/fs/lockd/svc.c
+> @@ -112,7 +112,7 @@ static inline void clear_grace_period(void)
+>  static int
+>  lockd(void *vrqstp)
+>  {
+> -	int		err = 0;
+> +	int		err = 0, preverr = 0;
+>  	struct svc_rqst *rqstp = vrqstp;
+>  	unsigned long grace_period_expire;
+>  
+> @@ -172,14 +172,20 @@ lockd(void *vrqstp)
+>  		 * recvfrom routine.
+>  		 */
+>  		err = svc_recv(rqstp, timeout);
+> -		if (err == -EAGAIN || err == -EINTR)
+> +		if (err == -EAGAIN || err == -EINTR) {
+> +			preverr = err;
+>  			continue;
+> +		}
+>  		if (err < 0) {
+> -			printk(KERN_WARNING
+> -			       "lockd: terminating on error %d\n",
+> -			       -err);
+> -			break;
+> +			if (err != preverr) {
+> +				printk(KERN_WARNING "%s: unexpected error "
+> +					"from svc_recv (%d)\n", __func__, err);
+> +				preverr = err;
+> +			}
+> +			schedule_timeout_interruptible(HZ);
+> +			continue;
+>  		}
+> +		preverr = err;
+>  
+>  		dprintk("lockd: request from %s\n",
+>  				svc_print_addr(rqstp, buf, sizeof(buf)));
+> -- 
+> 1.5.3.6
+> 
