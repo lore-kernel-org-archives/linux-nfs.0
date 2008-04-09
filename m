@@ -1,27 +1,26 @@
-From: Jeff Layton <jlayton@redhat.com>
+From: Stephen Smalley <sds@tycho.nsa.gov>
 Subject: Re: nfs_xdev_get_sb appears to sometimes reuse a sb and makes
- SELinux angry
-Date: Wed, 9 Apr 2008 11:19:10 -0400
-Message-ID: <20080409111910.42106baa@barsoom.rdu.redhat.com>
+	SELinux angry
+Date: Wed, 09 Apr 2008 11:25:13 -0400
+Message-ID: <1207754713.21223.449.camel@moss-spartans.epoch.ncsc.mil>
 References: <1207753502.3070.25.camel@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain
 Cc: linux-nfs@vger.kernel.org, selinux@tycho.nsa.gov,
-	steved@redhat.com, sds@tycho.nsa.gov, jmorris@namei.org,
+	steved@redhat.com, jlayton@redhat.com, jmorris@namei.org,
 	trond.myklebust@fys.uio.no, chuck.lever@oracle.com
 To: Eric Paris <eparis@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:39518 "EHLO mx1.redhat.com"
+Received: from zombie.ncsc.mil ([144.51.88.131]:34103 "EHLO zombie.ncsc.mil"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752616AbYDIPYj convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Apr 2008 11:24:39 -0400
+	id S1752126AbYDIP1v (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 9 Apr 2008 11:27:51 -0400
 In-Reply-To: <1207753502.3070.25.camel-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 09 Apr 2008 11:05:02 -0400
-Eric Paris <eparis@redhat.com> wrote:
 
+On Wed, 2008-04-09 at 11:05 -0400, Eric Paris wrote:
 > When I wrote the new NFS/SELinux mount options code I was working under
 > the assumption that nfs_xdev_get_sb() would always give a new superblock
 > without the security struct initialized.  I now have a report of a user
@@ -36,7 +35,12 @@ Eric Paris <eparis@redhat.com> wrote:
 > 
 > comments?  should NFS be reusing a superblock here?  Can the NFS people
 > let me know how I can trigger it to make sure my patch fixes it?
-> 
+
+Looks to me like nfs_compare_mount_options() needs to also compare
+security options as part of the criteria for deciding when sharing is
+permissible.  Otherwise, it seems quite possible that you'll still hit
+the new BUG.
+
 > -Eric
 > 
 > ---
@@ -97,34 +101,7 @@ Eric Paris <eparis@redhat.com> wrote:
 >  
 >  	newsbsec->flags = oldsbsec->flags;
 > 
-> 
-
-
->From nfs_xdev_get_sb:
-
-        int (*compare_super)(struct super_block *, void *) = nfs_compare_super;
-	...
-        s = sget(&nfs_fs_type, compare_super, nfs_set_super, &sb_mntdata);
-
-
-...if "compare_super" succeeds then an existing superblock will be
-returned here.
-
-To reproduce this, you'll probably need to have a server that
-exports 2 filesystems, one mounted on the other. I've not tested this
-but I suspect something like this would work:
-
-Suppose you have 2 filesystems on the server /a and /a/b. Export them
-both, and make sure to export /a/b with "nohide".
-
-Now, on the client, mount up /a/b on a directory.
-
-Then mount up /a in a different spot and "cd" into /a/b through that
-mountpoint. When you walk into /a/b then it should search and find the
-existing superblock from the first mount and use that.
-
-If that's not clear, ping me and I'll see if I can help...
-
-Cheers,
 -- 
-Jeff Layton <jlayton@redhat.com>
+Stephen Smalley
+National Security Agency
+
