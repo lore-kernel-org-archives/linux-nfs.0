@@ -1,16 +1,16 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] NLM: don't let lockd exit on unexpected svc_recv
-	errors (try #2)
-Date: Wed, 9 Apr 2008 13:53:38 -0400
-Message-ID: <20080409175338.GI32475@fieldses.org>
-References: <1207683608-17550-1-git-send-email-jlayton@redhat.com>
-	<1207683608-17550-2-git-send-email-jlayton@redhat.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH 1/3] mount.nfs: fix retry option settings with binary
+	mount options
+Date: Wed, 09 Apr 2008 14:00:39 -0400
+Message-ID: <47FD0447.9030704@RedHat.com>
+References: <1206822608-20154-1-git-send-email-jlayton@redhat.com>
+	<1206822608-20154-2-git-send-email-jlayton@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
 To: Jeff Layton <jlayton@redhat.com>
 Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <1207683608-17550-2-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1206822608-20154-2-git-send-email-jlayton@redhat.com>
 List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
 	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
 List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
@@ -22,64 +22,100 @@ Sender: nfsv4-bounces@linux-nfs.org
 Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Apr 08, 2008 at 03:40:08PM -0400, Jeff Layton wrote:
-> When svc_recv returns an unexpected error, lockd will print a warning
-> and exit. This problematic for several reasons. In particular, it will
-> cause the reference counts for the thread to be wrong, and can lead to a
-> potential BUG() call.
+
+Jeff Layton wrote:
+> Currently nfs4mount() sets the retry value to 10000 on both fg and bg
+> mounts. It should be 2 for fg and 10000 for bg. nfsmount() sets it
+> properly, but there is a potential corner case. If someone explicitly
+> sets retry=10000 on a fg mount, then it will be reset to 2.
 > 
-> Rather than exiting on error from svc_recv, have the thread do a 1s
-> sleep and then retry the loop. This is unlikely to cause any harm, and
-> if the error turns out to be something temporary then it may be able to
-> recover.
-
-Both applied; thanks!--b.
-
+> Fix this by having retry default to -1 for both flavors, and then reset if
+> needed after the mount options have been parsed.
 > 
 > Signed-off-by: Jeff Layton <jlayton@redhat.com>
 > ---
->  fs/lockd/svc.c |   18 ++++++++++++------
->  1 files changed, 12 insertions(+), 6 deletions(-)
+>  utils/mount/nfs4mount.c |   10 +++++++++-
+>  utils/mount/nfsmount.c  |   12 ++++++++----
+>  2 files changed, 17 insertions(+), 5 deletions(-)
 > 
-> diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-> index 66b5c98..cf977bb 100644
-> --- a/fs/lockd/svc.c
-> +++ b/fs/lockd/svc.c
-> @@ -112,7 +112,7 @@ static inline void clear_grace_period(void)
->  static int
->  lockd(void *vrqstp)
->  {
-> -	int		err = 0;
-> +	int		err = 0, preverr = 0;
->  	struct svc_rqst *rqstp = vrqstp;
->  	unsigned long grace_period_expire;
+> diff --git a/utils/mount/nfs4mount.c b/utils/mount/nfs4mount.c
+> index 311e5a0..af70551 100644
+> --- a/utils/mount/nfs4mount.c
+> +++ b/utils/mount/nfs4mount.c
+> @@ -238,7 +238,7 @@ int nfs4mount(const char *spec, const char *node, int flags,
+>  	nocto = 0;
+>  	noac = 0;
+>  	unshared = 0;
+> -	retry = 10000;		/* 10000 minutes ~ 1 week */
+> +	retry = -1;
 >  
-> @@ -172,14 +172,20 @@ lockd(void *vrqstp)
->  		 * recvfrom routine.
->  		 */
->  		err = svc_recv(rqstp, timeout);
-> -		if (err == -EAGAIN || err == -EINTR)
-> +		if (err == -EAGAIN || err == -EINTR) {
-> +			preverr = err;
->  			continue;
-> +		}
->  		if (err < 0) {
-> -			printk(KERN_WARNING
-> -			       "lockd: terminating on error %d\n",
-> -			       -err);
-> -			break;
-> +			if (err != preverr) {
-> +				printk(KERN_WARNING "%s: unexpected error "
-> +					"from svc_recv (%d)\n", __func__, err);
-> +				preverr = err;
-> +			}
-> +			schedule_timeout_interruptible(HZ);
-> +			continue;
+>  	/*
+>  	 * NFSv4 specifies that the default port should be 2049
+> @@ -332,6 +332,14 @@ int nfs4mount(const char *spec, const char *node, int flags,
 >  		}
-> +		preverr = err;
+>  	}
 >  
->  		dprintk("lockd: request from %s\n",
->  				svc_print_addr(rqstp, buf, sizeof(buf)));
-> -- 
-> 1.5.3.6
-> 
+> +	/* if retry is still -1, then it wasn't set via an option */
+> +	if (retry == -1) {
+> +		if (bg)
+> +			retry = 10000;	/* 10000 mins == ~1 week */
+> +		else
+> +			retry = 2;	/* 2 min default on fg mounts */
+> +	}
+> +
+>  	data.flags = (soft ? NFS4_MOUNT_SOFT : 0)
+>  		| (intr ? NFS4_MOUNT_INTR : 0)
+>  		| (nocto ? NFS4_MOUNT_NOCTO : 0)
+> diff --git a/utils/mount/nfsmount.c b/utils/mount/nfsmount.c
+> index ff0ff93..27c46a7 100644
+> --- a/utils/mount/nfsmount.c
+> +++ b/utils/mount/nfsmount.c
+> @@ -571,7 +571,7 @@ nfsmount(const char *spec, const char *node, int flags,
+>  #endif
+>  
+>  	bg = 0;
+> -	retry = 10000;		/* 10000 minutes ~ 1 week */
+> +	retry = -1;
+>  
+>  	memset(mnt_pmap, 0, sizeof(*mnt_pmap));
+>  	mnt_pmap->pm_prog = MOUNTPROG;
+> @@ -585,9 +585,13 @@ nfsmount(const char *spec, const char *node, int flags,
+>  		goto fail;
+>  	if (!nfsmnt_check_compat(nfs_pmap, mnt_pmap))
+>  		goto fail;
+> -	
+> -	if (retry == 10000 && !bg)
+> -		retry = 2; /* reset for fg mounts */
+> +
+> +	if (retry == -1) {
+> +		if (bg)
+> +			retry = 10000;	/* 10000 mins == ~1 week*/
+> +		else
+> +			retry = 2;	/* 2 min default on fg mounts */
+> +	}
+>  
+>  #ifdef NFS_MOUNT_DEBUG
+>  	printf(_("rsize = %d, wsize = %d, timeo = %d, retrans = %d\n"),
+
+Jeff, 
+
+I believe all thats needed is to add the same code nfsmount() uses
+reset retry into nfs4mount(). Something like:
+
+--- a/utils/mount/nfs4mount.c
++++ b/utils/mount/nfs4mount.c
+@@ -332,6 +332,9 @@ int nfs4mount(const char *spec, const char *node, int flags,
+                }
+        }
+ 
++       if (retry == 10000 && !bg)
++               retry = 2; /* reset for fg mounts */
++
+        data.flags = (soft ? NFS4_MOUNT_SOFT : 0)
+                | (intr ? NFS4_MOUNT_INTR : 0)
+                | (nocto ? NFS4_MOUNT_NOCTO : 0)
+
+or missing something...
+
+
+steved.
