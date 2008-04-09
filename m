@@ -1,52 +1,63 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH 1/3] mount.nfs: fix retry option settings with binary
-	mount options
-Date: Wed, 9 Apr 2008 16:30:37 -0400
-Message-ID: <20080409163037.4937a267@tleilax.poochiereds.net>
-References: <1206822608-20154-1-git-send-email-jlayton@redhat.com>
-	<1206822608-20154-2-git-send-email-jlayton@redhat.com>
-	<47FD0447.9030704@RedHat.com>
-	<20080409141323.0c594185@barsoom.rdu.redhat.com>
-	<47FD15FB.6090208@RedHat.com>
-	<20080409153021.3947925b@barsoom.rdu.redhat.com>
-	<47FD22F1.4030704@RedHat.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH] SELinux: don't BUG if fs reuses a superblock
+Date: Wed, 09 Apr 2008 16:31:31 -0400
+Message-ID: <1207773091.11881.27.camel@heimdal.trondhjem.org>
+References: <1207764515.3070.39.camel@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-To: Steve Dickson <SteveD@redhat.com>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <47FD22F1.4030704@RedHat.com>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: text/plain
+Cc: linux-nfs@vger.kernel.org, selinux@tycho.nsa.gov,
+	steved@redhat.com, jlayton@redhat.com, sds@tycho.nsa.gov,
+	jmorris@namei.org, chuck.lever@oracle.com
+To: Eric Paris <eparis@redhat.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from pat.uio.no ([129.240.10.15]:54930 "EHLO pat.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758598AbYDIUbg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 9 Apr 2008 16:31:36 -0400
+In-Reply-To: <1207764515.3070.39.camel-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 09 Apr 2008 16:11:29 -0400
-Steve Dickson <SteveD@redhat.com> wrote:
 
-> Jeff Layton wrote:
-> > 
-> > Yes. But like I mentioned in the description, there is a potential
-> > corner case here. If someone does a foreground mount and
-> > explicitly sets retry=10000 then it will be reset to 2. It's not very
-> > likely, but is simple enough to prevent...
-> hmm.. I guess... but programing for every single brain dead
-> corner case can really make the code more complicated than
-> it need to be, which I think is the case here... I think I would
-> rather just added the three lines and live that corner case...
+On Wed, 2008-04-09 at 14:08 -0400, Eric Paris wrote:
+> I (wrongly) assumed that nfs_xdev_get_sb() would not ever share a
+> superblock and so cloning mount options would always be correct.  Turns
+> out that isn't the case and we could fall over a BUG_ON() that wasn't a
+> BUG at all.  Since there is little we can do to reconcile different
+> mount options this patch just leaves the sb alone and the first set of
+> options wins.
 > 
-> steved.
+> Signed-off-by: Eric Paris <eparis@redhat.com>
+
+Ack...
+
+> ---
+> 
+>  security/selinux/hooks.c |    8 ++++----
+>  1 files changed, 4 insertions(+), 4 deletions(-)
+> 
+> diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+> index 89bb6d3..d39b59c 100644
+> --- a/security/selinux/hooks.c
+> +++ b/security/selinux/hooks.c
+> @@ -760,13 +760,13 @@ static void selinux_sb_clone_mnt_opts(const struct super_block *oldsb,
+>  	 * this early in the boot process. */
+>  	BUG_ON(!ss_initialized);
+>  
+> -	/* this might go away sometime down the line if there is a new user
+> -	 * of clone, but for now, nfs better not get here... */
+> -	BUG_ON(newsbsec->initialized);
+> -
+>  	/* how can we clone if the old one wasn't set up?? */
+>  	BUG_ON(!oldsbsec->initialized);
+>  
+> +	/* if fs is reusing a sb, just let its options stand... */
+> +	if (newsbsec->initialized)
+> +		return;
+> +
+>  	mutex_lock(&newsbsec->lock);
+>  
+>  	newsbsec->flags = oldsbsec->flags;
+> 
 > 
 
-I don't feel strongly about it either way. If you think the original
-method is better then I'm OK with it.
-
-Cheers,
--- 
-Jeff Layton <jlayton@redhat.com>
