@@ -1,47 +1,52 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [GIT] Please pull NFS client fixes against linux-2.6.25-rc8
-Date: Wed, 09 Apr 2008 09:37:31 -0400
-Message-ID: <1207748251.8303.31.camel@heimdal.trondhjem.org>
-References: <1207703414.21370.1.camel@heimdal.trondhjem.org>
-	 <20080409082408.GA17458@infradead.org>
-	 <1207746758.8303.4.camel@heimdal.trondhjem.org>
-	 <20080409132721.GA23852@infradead.org>
+From: Frank van Maarseveen <frankvm@frankvm.com>
+Subject: Re: reconnect_path() breaks NFS server causing occasional EACCES
+Date: Wed, 9 Apr 2008 16:11:24 +0200
+Message-ID: <20080409141124.GA30864@janus>
+References: <20080404102449.GA10209@janus> <20080407184346.GF3305@fieldses.org> <20080409133639.GA9588@lst.de>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>,
-	Bryan Wu <cooloney@kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	Frank van Maarseveen <frankvm@frankvm.com>,
+	Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+	Neil Brown <neilb@suse.de>
+To: Christoph Hellwig <hch@lst.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:19596 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754020AbYDINhf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 9 Apr 2008 09:37:35 -0400
-In-Reply-To: <20080409132721.GA23852@infradead.org>
+Received: from frankvm.xs4all.nl ([80.126.170.174]:47747 "EHLO
+	janus.localdomain" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1750702AbYDIOL0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Apr 2008 10:11:26 -0400
+In-Reply-To: <20080409133639.GA9588@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Wed, 2008-04-09 at 09:27 -0400, Christoph Hellwig wrote:
-> On Wed, Apr 09, 2008 at 09:12:38AM -0400, Trond Myklebust wrote:
-> > That is what this does. For the case of no mmu, generic_file_mmap()
-> > compiles into a 'return -ENOSYS;'
+On Wed, Apr 09, 2008 at 03:36:39PM +0200, Christoph Hellwig wrote:
+> On Mon, Apr 07, 2008 at 02:43:46PM -0400, J. Bruce Fields wrote:
+> > Anyone who depends on the "x" bit to control access to objects in an
+> > nfs-exported filesystem is already in trouble.  We could do so for
+> > directories (at the expense of non-posix-like behavior such as what
+> > you've seen), but we probably can't for files.  So I'm inclined to think
+> > this is the right thing to do.
+> > 
+> > The "DON'T USE THIS FUNCTION EVER, thanks." suggests we should at least
+> > consult the person who added that comment (cc'd) before adding a call to
+> > lookup_one_noperm().  (And if we decide to do this, we should make a
+> > note of this in that comment.)
 > 
-> doh, I was under the impression we had a real implementation now.
-> Of course then it makes much more sense to just not set .mmap at all,
-> which gives the same effect in a more obvious way and without any
-> confusion to the reader.  (actually that one gives -ENODEV which I
-> assume is for some reason more appropinquate)
+> That function really shouldn't be used and we should obey the x bit.
+> And yes, due to NFSs staleless file handles this will lead to non-posix
+> behaviour which is expected.  The same will happen with other nfs
+> servers aswell.
 
-I'm assuming there is a reason why the nommu folks want to return ENOSYS
-rather than ENODEV when mmap() is unsupported by the hardware.
+The server exhibits non-posix behavior only occasionally and particularly
+this "randomness" is bad. Random failure once every few days is hard to
+figure out.
 
-Bryan, any comments to that?
+Whether we want to be posix compliant with directory handles is a separate
+issue but I think we should. And we (mostly) are.
+
+The proposed patch fixes the linux NFS server behavior to be consistent
+over reboots and high memory pressure. It's not a security issue so I
+don't see a downside.
 
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+Frank
