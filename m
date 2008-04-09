@@ -1,29 +1,36 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [GIT] Please pull NFS client fixes against linux-2.6.25-rc8
-Date: Wed, 9 Apr 2008 09:27:21 -0400
-Message-ID: <20080409132721.GA23852@infradead.org>
-References: <1207703414.21370.1.camel@heimdal.trondhjem.org> <20080409082408.GA17458@infradead.org> <1207746758.8303.4.camel@heimdal.trondhjem.org>
+From: Christoph Hellwig <hch@lst.de>
+Subject: Re: reconnect_path() breaks NFS server causing occasional EACCES
+Date: Wed, 9 Apr 2008 15:36:39 +0200
+Message-ID: <20080409133639.GA9588@lst.de>
+References: <20080404102449.GA10209@janus> <20080407184346.GF3305@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Frank van Maarseveen <frankvm@frankvm.com>,
+	Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+	Christoph Hellwig <hch@lst.de>, Neil Brown <neilb@suse.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:36585 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751673AbYDIN1j (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Apr 2008 09:27:39 -0400
-In-Reply-To: <1207746758.8303.4.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from verein.lst.de ([213.95.11.210]:33205 "EHLO verein.lst.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752430AbYDINgv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 9 Apr 2008 09:36:51 -0400
+In-Reply-To: <20080407184346.GF3305@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Apr 09, 2008 at 09:12:38AM -0400, Trond Myklebust wrote:
-> That is what this does. For the case of no mmu, generic_file_mmap()
-> compiles into a 'return -ENOSYS;'
+On Mon, Apr 07, 2008 at 02:43:46PM -0400, J. Bruce Fields wrote:
+> Anyone who depends on the "x" bit to control access to objects in an
+> nfs-exported filesystem is already in trouble.  We could do so for
+> directories (at the expense of non-posix-like behavior such as what
+> you've seen), but we probably can't for files.  So I'm inclined to think
+> this is the right thing to do.
+> 
+> The "DON'T USE THIS FUNCTION EVER, thanks." suggests we should at least
+> consult the person who added that comment (cc'd) before adding a call to
+> lookup_one_noperm().  (And if we decide to do this, we should make a
+> note of this in that comment.)
 
-doh, I was under the impression we had a real implementation now.
-Of course then it makes much more sense to just not set .mmap at all,
-which gives the same effect in a more obvious way and without any
-confusion to the reader.  (actually that one gives -ENODEV which I
-assume is for some reason more appropinquate)
+That function really shouldn't be used and we should obey the x bit.
+And yes, due to NFSs staleless file handles this will lead to non-posix
+behaviour which is expected.  The same will happen with other nfs
+servers aswell.
