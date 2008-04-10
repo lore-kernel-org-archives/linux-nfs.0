@@ -1,107 +1,50 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [pnfs] [PATCH] nfs: call nfs4_try_open_cached only if opendata->state
- is not NULL
-Date: Thu, 10 Apr 2008 18:59:43 +0300
-Message-ID: <47FE396F.3090803@panasas.com>
-References: <1207758052-12825-1-git-send-email-bhalevy@panasas.com> <1207759202.9549.30.camel@heimdal.trondhjem.org>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: NFS: unknown mount option: grpid
+Date: Thu, 10 Apr 2008 12:07:46 -0400
+Message-ID: <47FE3B52.5060907@RedHat.com>
+References: <47FE0C42.6030900@TechFak.Uni-Bielefeld.DE>
+	<56D1CF7A-BB26-4D07-B47D-9D43D55A1B8F@oracle.com>
+	<47FE2C2D.1070703@redhat.com>
+	<A5A48540-EC83-422F-A566-324A5F141339@oracle.com>
+	<20080410153449.GA9429@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org, nfsv4@linux-nfs.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from bzq-219-195-70.pop.bezeqint.net ([62.219.195.70]:54458 "EHLO
-	bh-buildlin1.bhalevy.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755095AbYDJQAH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Apr 2008 12:00:07 -0400
-In-Reply-To: <1207759202.9549.30.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: NFS list <linux-nfs@vger.kernel.org>,
+	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>,
+	Jan Sanders <jsanders@TechFak.Uni-Bielefeld.DE>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <20080410153449.GA9429@fieldses.org>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Apr. 09, 2008, 19:40 +0300, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
-> On Wed, 2008-04-09 at 19:20 +0300, Benny Halevy wrote:
->> Fixes the following oops that happened after breaking from a pending
->> open with ^C.
->>
->> (traces below apply to the nfs41 development tree, not mainline kernel)
->>
->> Apr  9 19:00:19 bh-testlin1 kernel: BUG: unable to handle kernel NULL pointer dereference at 0000000000000038
->> Apr  9 19:00:19 bh-testlin1 kernel: IP: [<ffffffff8820732b>] :nfs:nfs4_opendata_to_nfs4_state+0x27/0x240
->> ...
->> Apr  9 19:00:19 bh-testlin1 kernel: Call Trace:
->> Apr  9 19:00:19 bh-testlin1 kernel:  [<ffffffff88207833>] :nfs:nfs4_do_open+0x14e/0x238
->> Apr  9 19:00:19 bh-testlin1 kernel:  [<ffffffff8820be3a>] :nfs:nfs4_atomic_open+0xd7/0x19d
->> Apr  9 19:00:19 bh-testlin1 kernel:  [<ffffffff8108e0a1>] init_object+0x27/0x6b
->> Apr  9 19:00:19 bh-testlin1 kernel:  [<ffffffff8108faf3>] __slab_alloc+0x3c5/0x44a
->> Apr  9 19:00:19 bh-testlin1 kernel:  [<ffffffff810a579a>] d_alloc+0x24/0x1af
->> Apr  9 19:00:19 bh-testlin1 kernel:  [<ffffffff881f3e3e>] :nfs:nfs_atomic_lookup+0xb5/0x109
->> Apr  9 19:00:19 bh-testlin1 kernel:  [<ffffffff8109c624>] __lookup_hash+0xe9/0x10d
->> Apr  9 19:00:19 bh-testlin1 kernel:  [<ffffffff8109f8c6>] open_namei+0xfe/0x675
->> Apr  9 19:00:19 bh-testlin1 kernel:  [<ffffffff8108e399>] check_bytes_and_report+0x37/0xc9
->> Apr  9 19:00:19 bh-testlin1 kernel:  [<ffffffff81093f5d>] do_filp_open+0x1c/0x38
->> Apr  9 19:00:19 bh-testlin1 kernel:  [<ffffffff8109d6f2>] getname+0x25/0x1a6
->> Apr  9 19:00:19 bh-testlin1 kernel:  [<ffffffff81093d3e>] get_unused_fd_flags+0x111/0x11f
->> Apr  9 19:00:19 bh-testlin1 kernel:  [<ffffffff81093fbf>] do_sys_open+0x46/0xc3
->> Apr  9 19:00:19 bh-testlin1 kernel:  [<ffffffff8100c0bd>] tracesys+0xdc/0xe1
->>
->> (gdb) list *(nfs4_opendata_to_nfs4_state+0x27)
->> 0x1832b is in nfs4_opendata_to_nfs4_state (fs/nfs/nfs4proc.c:806).
->> 801     }
->> 802
->> 803     static struct nfs4_state *nfs4_try_open_cached(struct nfs4_opendata *opendata)
->> 804     {
->> 805             struct nfs4_state *state = opendata->state;
->> 806             struct nfs_inode *nfsi = NFS_I(state->inode);
->> 807             struct nfs_delegation *delegation;
->> 808             int open_mode = opendata->o_arg.open_flags & (FMODE_READ|FMODE_WRITE|O_EXCL);
->> 809             nfs4_stateid stateid;
->> 810             int ret = -EAGAIN;
->>
->> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
->> ---
->>  fs/nfs/nfs4proc.c |    2 +-
->>  1 files changed, 1 insertions(+), 1 deletions(-)
->>
->> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->> index 7ce0786..d6a530f 100644
->> --- a/fs/nfs/nfs4proc.c
->> +++ b/fs/nfs/nfs4proc.c
->> @@ -483,7 +483,7 @@ static struct nfs4_state *nfs4_opendata_to_nfs4_state(struct nfs4_opendata *data
->>  	nfs4_stateid *deleg_stateid = NULL;
->>  	int ret;
->>  
->> -	if (!data->rpc_done) {
->> +	if (!data->rpc_done && data->state) {
->>  		state = nfs4_try_open_cached(data);
->>  		goto out;
->>  	}
-> 
-> Wait. How are we getting in this state in the first place? If we're
-> exiting without rpc_done being set, then that means either
-> 
->       * the 'can_open_cached()' condition in nfs4_open_prepare()
->         triggered (in which case we _do_ have data->state set)
-> or
->       * the user interrupted the RPC call before it completed, in which
->         case we should get an error from nfs4_proc_open, and never call
->         nfs4_opendata_to_nfs4_state()
 
-Yes, the open call was interrupted.
-IIRC, the nfs4_opendata_to_nfs4_state call happened on a subsequent
-open, not the one that was interrupted.
-I'll try to reproduce this and prove better analysis and hopefully a
-better fix.
 
-Benny
+J. Bruce Fields wrote:
+>>>>> The mount call returns with EINVAL invalis argument.
+>>>>>
+>>>>>  From strace:
+>>>>> mount("nfs-server:/volumes/www", "/vol/www", "nfs", MS_NOSUID,
+>>>>> "grpid,addr=192.168.0.123") = -1 EINVAL (Invalid argument)
+>>>>>
+>>
+>> However, I was not aware of a requirement for NFS mount to ignore all  
+>> options it doesn't understand.
+>>
+>> It's easy enough to add, I suppose.  Community opinion?
+> 
+> This is exactly what "-s" ("sloppy") is supposed to do, right?  At
+> least, that's what "man mount" says.
+Not exactly... Looking at the code it seems '-s' will cause the mount.nfs 
+command to ignore unknown _nfs_ options. In this case it appears the
+sys_mount call is failing which something different.
 
-> 
-> The only other case I see would be the one where RPC_ASSASSINATED()
-> triggers in nfs4_open_done(); I suppose that might trigger the Oops. The
-> fix in that case would be to ensure that we still set data->rpc_done.
-> 
->   Trond
-> 
-> _______________________________________________
-> pNFS mailing list
-> pNFS@linux-nfs.org
-> http://linux-nfs.org/cgi-bin/mailman/listinfo/pnfs
-
+steved.
