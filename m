@@ -1,130 +1,83 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH 1/3] mount.nfs: fix retry option settings with binary
- mount options
-Date: Thu, 10 Apr 2008 10:54:56 -0400
-Message-ID: <20080410105456.778c55c9@tupile.poochiereds.net>
-References: <1206822608-20154-1-git-send-email-jlayton@redhat.com>
-	<1206822608-20154-2-git-send-email-jlayton@redhat.com>
-	<B6004229-62F1-4A06-A6A8-47A0EC58FCA3@oracle.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-To: Chuck Lever <chuck.lever@oracle.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:53484 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756150AbYDJOzJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 10 Apr 2008 10:55:09 -0400
-In-Reply-To: <B6004229-62F1-4A06-A6A8-47A0EC58FCA3@oracle.com>
-Sender: linux-nfs-owner@vger.kernel.org
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: NFS: unknown mount option: grpid
+Date: Thu, 10 Apr 2008 11:17:48 -0400
+Message-ID: <A5A48540-EC83-422F-A566-324A5F141339@oracle.com>
+References: <47FE0C42.6030900@TechFak.Uni-Bielefeld.DE>
+	<56D1CF7A-BB26-4D07-B47D-9D43D55A1B8F@oracle.com>
+	<47FE2C2D.1070703@redhat.com>
+Mime-Version: 1.0 (Apple Message framework v753)
+Content-Type: text/plain; charset="us-ascii"
+Cc: NFS list <linux-nfs@vger.kernel.org>,
+	Jan Sanders <jsanders@TechFak.Uni-Bielefeld.DE>,
+	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
+To: Peter Staubach <staubach@redhat.com>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <47FE2C2D.1070703@redhat.com>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 10 Apr 2008 10:43:46 -0400
-Chuck Lever <chuck.lever@oracle.com> wrote:
-
-> Hi Jeff-
-> 
-> Is this also an issue for text-based mounts?
-> 
-
-It looks like text-based mounts handle this correctly. They initialize
-a "timeout" variable to the default and only clobber it if a retry
-option is specified.
-
-
-> On Mar 29, 2008, at 4:30 PM, Jeff Layton wrote:
-> > Currently nfs4mount() sets the retry value to 10000 on both fg and bg
-> > mounts. It should be 2 for fg and 10000 for bg. nfsmount() sets it
-> > properly, but there is a potential corner case. If someone explicitly
-> > sets retry=10000 on a fg mount, then it will be reset to 2.
-> >
-> > Fix this by having retry default to -1 for both flavors, and then  
-> > reset if
-> > needed after the mount options have been parsed.
-> >
-> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > ---
-> >  utils/mount/nfs4mount.c |   10 +++++++++-
-> >  utils/mount/nfsmount.c  |   12 ++++++++----
-> >  2 files changed, 17 insertions(+), 5 deletions(-)
-> >
-> > diff --git a/utils/mount/nfs4mount.c b/utils/mount/nfs4mount.c
-> > index 311e5a0..af70551 100644
-> > --- a/utils/mount/nfs4mount.c
-> > +++ b/utils/mount/nfs4mount.c
-> > @@ -238,7 +238,7 @@ int nfs4mount(const char *spec, const char  
-> > *node, int flags,
-> >  	nocto = 0;
-> >  	noac = 0;
-> >  	unshared = 0;
-> > -	retry = 10000;		/* 10000 minutes ~ 1 week */
-> > +	retry = -1;
-> >
-> >  	/*
-> >  	 * NFSv4 specifies that the default port should be 2049
-> > @@ -332,6 +332,14 @@ int nfs4mount(const char *spec, const char  
-> > *node, int flags,
-> >  		}
-> >  	}
-> >
-> > +	/* if retry is still -1, then it wasn't set via an option */
-> > +	if (retry == -1) {
-> > +		if (bg)
-> > +			retry = 10000;	/* 10000 mins == ~1 week */
-> > +		else
-> > +			retry = 2;	/* 2 min default on fg mounts */
-> > +	}
-> > +
-> >  	data.flags = (soft ? NFS4_MOUNT_SOFT : 0)
-> >  		| (intr ? NFS4_MOUNT_INTR : 0)
-> >  		| (nocto ? NFS4_MOUNT_NOCTO : 0)
-> > diff --git a/utils/mount/nfsmount.c b/utils/mount/nfsmount.c
-> > index ff0ff93..27c46a7 100644
-> > --- a/utils/mount/nfsmount.c
-> > +++ b/utils/mount/nfsmount.c
-> > @@ -571,7 +571,7 @@ nfsmount(const char *spec, const char *node,  
-> > int flags,
-> >  #endif
-> >
-> >  	bg = 0;
-> > -	retry = 10000;		/* 10000 minutes ~ 1 week */
-> > +	retry = -1;
-> >
-> >  	memset(mnt_pmap, 0, sizeof(*mnt_pmap));
-> >  	mnt_pmap->pm_prog = MOUNTPROG;
-> > @@ -585,9 +585,13 @@ nfsmount(const char *spec, const char *node,  
-> > int flags,
-> >  		goto fail;
-> >  	if (!nfsmnt_check_compat(nfs_pmap, mnt_pmap))
-> >  		goto fail;
-> > -	
-> > -	if (retry == 10000 && !bg)
-> > -		retry = 2; /* reset for fg mounts */
-> > +
-> > +	if (retry == -1) {
-> > +		if (bg)
-> > +			retry = 10000;	/* 10000 mins == ~1 week*/
-> > +		else
-> > +			retry = 2;	/* 2 min default on fg mounts */
-> > +	}
-> >
-> >  #ifdef NFS_MOUNT_DEBUG
-> >  	printf(_("rsize = %d, wsize = %d, timeo = %d, retrans = %d\n"),
-> > -- 
-> > 1.5.3.6
-> >
-> > _______________________________________________
-> > NFSv4 mailing list
-> > NFSv4@linux-nfs.org
-> > http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
-> 
-> --
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
-> 
-> 
-> 
+On Apr 10, 2008, at 11:03 AM, Peter Staubach wrote:
+> Chuck Lever wrote:
+>> Hi Jan-
+>>
+>> On Apr 10, 2008, at 8:46 AM, Jan Sanders wrote:
+>>
+>>> Hi all,
+>>>
+>>> I have come across a little NFS problem.
+>>>
+>>> My nfs client, a Ubuntu-Hardy machine with nfs-common-1.1.2 tries to
+>>> mount a directory but fails complaining
+>>>
+>>> Apr 10 12:18:34 sorpe kernel: [  490.911951]NFS: unknown mount   
+>>> option: grpid
+>>>
+>>> The mount options are rw,nosuid,grpid. The mount is done by  
+>>> autofs but
+>>> trying to mount the directory usdin the same options rw,nosuid,grpid
+>>> results in the same error.
+>>> I checked using strace that the mount call was indeed done using   
+>>> grpid.
+>>> The mount call returns with EINVAL invalis argument.
+>>>
+>>>  From strace:
+>>> mount("nfs-server:/volumes/www", "/vol/www", "nfs", MS_NOSUID,
+>>> "grpid,addr=192.168.0.123") = -1 EINVAL (Invalid argument)
+>>>
+>>
+>> grpid isn't a valid NFS mount option; it's valid only for xfs and   
+>> ext2/3, according to mount(8).
+>>
+>> I can't explain why the earlier version of mount.nfs didn't  
+>> complain  about it.
+>>
+>>
+>
+> I thought that the NFS mount command was supposed to ignore
+> mount options that it didn't understand.  It could perhaps
+> give a warning message, but should mount anyway.
+>
+> I thought that this behavior was useful for automounter
+> applications which have to be able to share maps in a
+> heterogeneous environment.
 
 
--- 
-Jeff Layton <jlayton@redhat.com>
+Well, it does ignore legacy NFS mount options that are no longer  
+supported.
+
+However, I was not aware of a requirement for NFS mount to ignore all  
+options it doesn't understand.
+
+It's easy enough to add, I suppose.  Community opinion?
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
