@@ -1,50 +1,49 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: NFS: unknown mount option: grpid
-Date: Thu, 10 Apr 2008 12:07:46 -0400
-Message-ID: <47FE3B52.5060907@RedHat.com>
-References: <47FE0C42.6030900@TechFak.Uni-Bielefeld.DE>
-	<56D1CF7A-BB26-4D07-B47D-9D43D55A1B8F@oracle.com>
-	<47FE2C2D.1070703@redhat.com>
-	<A5A48540-EC83-422F-A566-324A5F141339@oracle.com>
-	<20080410153449.GA9429@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: NFS list <linux-nfs@vger.kernel.org>,
-	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>,
-	Jan Sanders <jsanders@TechFak.Uni-Bielefeld.DE>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <20080410153449.GA9429@fieldses.org>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+From: Miklos Szeredi <miklos@szeredi.hu>
+Subject: nfs: infinite loop in fcntl(F_SETLKW)
+Date: Thu, 10 Apr 2008 21:51:50 +0200
+Message-ID: <E1Jk2oI-0007UX-MS@pomaz-ex.szeredi.hu>
+References: <E1JjcgO-0004q2-VJ@pomaz-ex.szeredi.hu>
+Cc: akpm@linux-foundation.org, linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: neilb@suse.de, Trond.Myklebust@netapp.com
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Another infinite loop, this one involving both client and server.
 
+Basically what happens is that on the server nlm_fopen() calls
+nfsd_open() which returns -EACCES, to which nlm_fopen() returns
+NLM_LCK_DENIED.
 
-J. Bruce Fields wrote:
->>>>> The mount call returns with EINVAL invalis argument.
->>>>>
->>>>>  From strace:
->>>>> mount("nfs-server:/volumes/www", "/vol/www", "nfs", MS_NOSUID,
->>>>> "grpid,addr=192.168.0.123") = -1 EINVAL (Invalid argument)
->>>>>
->>
->> However, I was not aware of a requirement for NFS mount to ignore all  
->> options it doesn't understand.
->>
->> It's easy enough to add, I suppose.  Community opinion?
-> 
-> This is exactly what "-s" ("sloppy") is supposed to do, right?  At
-> least, that's what "man mount" says.
-Not exactly... Looking at the code it seems '-s' will cause the mount.nfs 
-command to ignore unknown _nfs_ options. In this case it appears the
-sys_mount call is failing which something different.
+On the client this will turn into a -EAGAIN (nlm_stat_to_errno()),
+which in will cause fcntl_setlk() to retry forever.
 
-steved.
+I _think_ the solution is to turn NLM_LCK_DENIED into ENOLCK for
+blocking locks, as NLM_LCK_BLOCKED is for the contended case.  For
+testing the lock leave NLM_LCK_DENIED as EAGAIN.  That still could be
+misleading, but at least there's no infinite loop in that case.
+
+I've minimally tested this patch to verify that it cures the lockup,
+and that simple blocking locks keep working.
+
+Signed-off-by: Miklos Szeredi <mszeredi@suse.cz>
+---
+ fs/lockd/clntproc.c |    3 +++
+ 1 file changed, 3 insertions(+)
+
+Index: linux/fs/lockd/clntproc.c
+===================================================================
+--- linux.orig/fs/lockd/clntproc.c	2008-04-02 13:34:57.000000000 +0200
++++ linux/fs/lockd/clntproc.c	2008-04-10 21:23:46.000000000 +0200
+@@ -536,6 +536,9 @@ again:
+ 		up_read(&host->h_rwsem);
+ 	}
+ 	status = nlm_stat_to_errno(resp->status);
++	/* Don't return EAGAIN, as that would make fcntl_setlk() loop */
++	if (status == -EAGAIN)
++		status = -ENOLCK;
+ out_unblock:
+ 	nlmclnt_finish_block(block);
+ 	/* Cancel the blocked request if it is still pending */
+
