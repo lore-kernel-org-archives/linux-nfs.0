@@ -1,88 +1,112 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH] NFS: make remounts of NFS filesystems return a proper error
-	(resend)
-Date: Thu, 10 Apr 2008 08:09:59 -0400
-Message-ID: <1207829399-3328-1-git-send-email-jlayton@redhat.com>
+From: Carsten Aulbert <carsten.aulbert-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>
+Subject: [NFS] How to set-up a Linux NFS server to handle massive number of
+	requests
+Date: Thu, 10 Apr 2008 14:12:58 +0200
+Message-ID: <47FE044A.7020008@aei.mpg.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-To: Trond.Myklebust@netapp.com
-Return-path: <nfsv4-bounces@linux-nfs.org>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+To: nfs@lists.sourceforge.net
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from neil.brown.name ([220.233.11.133]:49627 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755046AbYDJMNT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 Apr 2008 08:13:19 -0400
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1JjveX-0002mL-OG
+	for linux-nfs@vger.kernel.org; Thu, 10 Apr 2008 22:13:17 +1000
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond,
-   I sent this a few weeks ago and never got a response. Any thoughts?
+Hi all,
 
-Thanks,
-Jeff
+we have a pretty extreme problem here and I try to figure out how to get 
+it done right.
 
------------[snip]------------
+We have a large cluster consisting of 1340 compute nodes who have a 
+automount directory which will subsequently trigger a NFS mount (read-only):
 
-Currently if you try to remount an NFS filesystem (using -o remount),
-it will return as if the remount had succeeded even though it doesn't
-actually apply any changes to the mount options.
+$ ypcat auto.data
+-fstype=nfs,nfsvers=3,hard,intr,rsize=8192,wsize=8192,tcp       &:/data
 
-Since remount functionality isn't actually implemented, just have any
-remount attempt return -ENOSYS to make it clear that it doesn't work.
+$ grep auto.data /etc/auto.master
+/atlas/data          yp:auto.data      --timeout=5
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfs/super.c |   13 +++++++++++++
- 1 files changed, 13 insertions(+), 0 deletions(-)
+So far so good.
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index fcf4b98..74c81bd 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -207,6 +207,7 @@ static int nfs_xdev_get_sb(struct file_system_type *fs_type,
- 		int flags, const char *dev_name, void *raw_data, struct vfsmount *mnt);
- static void nfs_kill_super(struct super_block *);
- static void nfs_put_super(struct super_block *);
-+static int nfs_remount(struct super_block *sb, int *flags, char *data);
- 
- static struct file_system_type nfs_fs_type = {
- 	.owner		= THIS_MODULE,
-@@ -230,6 +231,7 @@ static const struct super_operations nfs_sops = {
- 	.write_inode	= nfs_write_inode,
- 	.put_super	= nfs_put_super,
- 	.statfs		= nfs_statfs,
-+	.remount_fs	= nfs_remount,
- 	.clear_inode	= nfs_clear_inode,
- 	.umount_begin	= nfs_umount_begin,
- 	.show_options	= nfs_show_options,
-@@ -274,6 +276,7 @@ static const struct super_operations nfs4_sops = {
- 	.destroy_inode	= nfs_destroy_inode,
- 	.write_inode	= nfs_write_inode,
- 	.statfs		= nfs_statfs,
-+	.remount_fs	= nfs_remount,
- 	.clear_inode	= nfs4_clear_inode,
- 	.umount_begin	= nfs_umount_begin,
- 	.show_options	= nfs_show_options,
-@@ -1681,6 +1684,16 @@ error_splat_super:
- 	return error;
- }
- 
-+/*
-+ * Remounts with NFS have a whole host of issues. Just have them fail
-+ * outright for now.
-+ */
-+static int
-+nfs_remount(struct super_block *sb, int *flags, char *data)
-+{
-+	return -ENOSYS;
-+}
-+
- #ifdef CONFIG_NFS_V4
- 
- /*
--- 
-1.5.3.6
+When submitting 1000 jobs just doing a md5sum of the very same file from 
+one single data server, I see very weird effects.
+
+In the standard set-up many connections get into the box (tcp connection 
+status SYN_RECV) but those fall over after some time and stay in 
+CLOSE_WAIT state until I restart the nfs-kernel-server. Typically that 
+looks like (netstat -an):
+
+tcp        0      0 10.20.10.14:687         10.10.2.87:799          SYN_RECV
+tcp        0      0 10.20.10.14:687         10.10.4.1:823           SYN_RECV
+tcp        0      0 10.20.10.14:687         10.10.1.65:656          SYN_RECV
+tcp        0      0 10.20.10.14:687         10.10.1.30:650          SYN_RECV
+tcp        0      0 10.20.10.14:687         10.10.0.71:789          SYN_RECV
+tcp        0      0 10.20.10.14:687         10.10.1.4:602           SYN_RECV
+tcp        0      0 10.20.10.14:687         10.10.1.1:967           SYN_RECV
+tcp        0      0 10.20.10.14:687         10.10.3.66:915          SYN_RECV
+tcp        0      0 10.20.10.14:687         10.10.0.55:620          SYN_RECV
+tcp        0      0 10.20.10.14:687         10.10.1.41:835          SYN_RECV
+tcp        0      0 10.20.10.14:687         10.10.2.29:958          SYN_RECV
+tcp        0      0 10.20.10.14:687         10.10.1.12:998          SYN_RECV
+tcp        0      0 10.20.10.14:687         10.10.1.30:651          SYN_RECV
+tcp        0      0 10.20.10.14:687         10.10.1.4:601           SYN_RECV
+tcp        0      0 10.20.10.14:2049        10.10.1.19:846 
+ESTABLISHED
+tcp       45      0 10.20.10.14:687         10.10.0.68:979 
+CLOSE_WAIT
+tcp       45      0 10.20.10.14:687         10.10.3.83:680 
+CLOSE_WAIT
+tcp       89      0 10.20.10.14:687         10.10.0.79:604 
+CLOSE_WAIT
+tcp        0      0 10.20.10.14:2049        10.10.2.6:676 
+ESTABLISHED
+tcp       45      0 10.20.10.14:687         10.10.2.56:913 
+CLOSE_WAIT
+tcp       45      0 10.20.10.14:687         10.10.0.60:827 
+CLOSE_WAIT
+tcp        0      0 10.20.10.14:2049        10.10.3.55:778 
+ESTABLISHED
+tcp       45      0 10.20.10.14:687         10.10.2.86:981 
+CLOSE_WAIT
+tcp       45      0 10.20.10.14:687         10.10.9.13:792 
+CLOSE_WAIT
+tcp       89      0 10.20.10.14:687         10.10.2.93:728 
+CLOSE_WAIT
+tcp       45      0 10.20.10.14:687         10.10.0.20:742 
+CLOSE_WAIT
+tcp       45      0 10.20.10.14:687         10.10.3.44:982 
+CLOSE_WAIT
+
+
+I played with different numbers of of nfsd (ranging from 8-1024) and 
+increasing the number of threads for rpc.mountd from 1 to 64, in quite a 
+few combinations, but so far I have not found a consistent set of 
+parameters where 1000 nodes are able to read this file at the same time.
+
+Any ideas from anyone or do you need more input from me?
+
+TIA
+
+Carsten
+
+PS: Please Cc me, I'm not yet subscribed.
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by the 2008 JavaOne(SM) Conference 
+Don't miss this year's exciting event. There's still time to save $100. 
+Use priority code J8TL2D2. 
+http://ad.doubleclick.net/clk;198757673;13503038;p?http://java.sun.com/javaone
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
+
