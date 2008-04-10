@@ -1,87 +1,88 @@
-From: Frank van Maarseveen <frankvm@frankvm.com>
-Subject: Re: 2.6.24.3 kernel BUG at fs/nfs/pagelist.c:82
-Date: Thu, 10 Apr 2008 13:54:33 +0200
-Message-ID: <20080410115433.GA29211@janus>
-References: <20080319094942.GA7627@janus> <1206017233.8465.7.camel@heimdal.trondhjem.org> <20080320125716.GA20071@janus>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH] NFS: make remounts of NFS filesystems return a proper error
+	(resend)
+Date: Thu, 10 Apr 2008 08:09:59 -0400
+Message-ID: <1207829399-3328-1-git-send-email-jlayton@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from frankvm.xs4all.nl ([80.126.170.174]:44092 "EHLO
-	janus.localdomain" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1756580AbYDJLyf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Apr 2008 07:54:35 -0400
-In-Reply-To: <20080320125716.GA20071@janus>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+To: Trond.Myklebust@netapp.com
+Return-path: <nfsv4-bounces@linux-nfs.org>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-FYI,
+Hi Trond,
+   I sent this a few weeks ago and never got a response. Any thoughts?
 
-On Thu, Mar 20, 2008 at 01:57:16PM +0100, Frank van Maarseveen wrote:
-> On Thu, Mar 20, 2008 at 08:47:13AM -0400, Trond Myklebust wrote:
-> > 
-> > On Wed, 2008-03-19 at 10:49 +0100, Frank van Maarseveen wrote:
-> > > FYI,
-> > > 
-> > > 2.6.24.3 wrote:
-> > > > kernel BUG at fs/nfs/pagelist.c:82!
-> > > 
-> > > BUG_ON(PagePrivate(page));
-> > > 
-> > > > invalid opcode: 0000 [#1] SMP 
-> > > > Modules linked in: vmnetfilter vmnet(P) vmmon(P) vmthrottle
-> > > 
-> > > In addition, there are some NFS patches for handling >16 groups and
-> > > selectively disabling attribute caching so its not a clean kernel.
-> > > 
-> > > > 
-> > > > Pid: 4575, comm: tail Tainted: P        (2.6.24.3-x177 #1)
->                        ^^^^
-> > > > EIP: 0060:[<c01fc084>] EFLAGS: 00010202 CPU: 1
-> > > > EIP is at nfs_create_request+0xf4/0x100
-> > > > EAX: 80000821 EBX: e31a5300 ECX: 00000000 EDX: c1f0712c
-> > > > ESI: c1f0712c EDI: e31a5338 EBP: e56dfd90 ESP: e56dfd74
-> > > >  DS: 007b ES: 007b FS: 00d8 GS: 0033 SS: 0068 
-> > > > Process tail (pid: 4575, ti=e56de000 task=d4b65500 task.ti=e56de000) 
-> > > > Stack: 00000000 f669ad20 cac3c168 e7330cb0 00000000 00000000 cac3c168 e56dfdc8 
-> > > >        c01fded5 00000000 000000a4 039cffff 000000a4 c1f0712c cac3c168 e7330cb0 
-> > > >        e56dfdb4 e56dfdb4 ffffff8c c1f0712c e7330cb0 e56dfdf0 c01fe8ce e56dfddc 
-> > > > Call Trace:
-> > > >  [<c010562a>] show_trace_log_lvl+0x1a/0x30
-> > > >  [<c01056fa>] show_stack_log_lvl+0x9a/0xc0
-> > > >  [<c01058a8>] show_registers+0xc8/0x1d0
-> > > >  [<c0105b1c>] die+0x10c/0x230
-> > > >  [<c0105cd1>] do_trap+0x91/0xd0  
-> > > >  [<c0105f79>] do_invalid_op+0x89/0xa0
-> > > >  [<c05bba02>] error_code+0x72/0x80
-> > > >  [<c01fded5>] nfs_readpage_async+0xb5/0x1b0
-> > > >  [<c01fe8ce>] nfs_readpage+0xae/0x120
-> > > >  [<c0155268>] do_generic_mapping_read+0xe8/0x440
-> > > >  [<c01558b0>] generic_file_aio_read+0x160/0x190
-> > > >  [<c01f4fb7>] nfs_file_read+0x97/0xe0
-> > > >  [<c01795e7>] do_sync_read+0xc7/0x120
-> > > >  [<c01796c4>] vfs_read+0x84/0x130
-> > > >  [<c01799fd>] sys_read+0x3d/0x70 
-> > > >  [<c0104292>] syscall_call+0x7/0xb
-> > > >  =======================
-> > > > Code: 02 75 0a e8 4f dc 3b 00 e9 4a ff ff ff 83 c4 10 b8 00 fe ff ff 5b 5e 5f 5d c3 8b 56 0c e9 7a ff ff ff 0f 0b eb fe 90 0f 0b eb fe <0f> 0b eb fe 90 8d b4 26 00 00 00 00 55 89 e5 53 83 ec 04 89 c3 
-> > > > EIP: [<c01fc084>] nfs_create_request+0xf4/0x100 SS:ESP 0068:e56dfd74
-> > > > ---[ end trace 0ef921372ea6410b ]--- 
-> > > 
-> > > The machine is a quad Xeon with 4GB ram with CONFIG_HIGHMEM64G=y
-> > 
-> > Would that be on a file that was open for read and write, or is it
-> > possible that some other process was writing to the same file? If so,
-> > then it might be a bug in nfs_wb_page().
-> 
-> Yes, I'm quite sure it was a "tail -f" on a logfile which gets
-> continuously appended to by another process.. So, one process reads it
-> while another one writes to it through different descriptors/struct file.
+Thanks,
+Jeff
 
-The problem occurred again on a different box under exactly the same
-userland conditions yielding exactly the same stack trace. Kernels are
-identical but no vmware modules this time.
+-----------[snip]------------
 
+Currently if you try to remount an NFS filesystem (using -o remount),
+it will return as if the remount had succeeded even though it doesn't
+actually apply any changes to the mount options.
+
+Since remount functionality isn't actually implemented, just have any
+remount attempt return -ENOSYS to make it clear that it doesn't work.
+
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfs/super.c |   13 +++++++++++++
+ 1 files changed, 13 insertions(+), 0 deletions(-)
+
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index fcf4b98..74c81bd 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -207,6 +207,7 @@ static int nfs_xdev_get_sb(struct file_system_type *fs_type,
+ 		int flags, const char *dev_name, void *raw_data, struct vfsmount *mnt);
+ static void nfs_kill_super(struct super_block *);
+ static void nfs_put_super(struct super_block *);
++static int nfs_remount(struct super_block *sb, int *flags, char *data);
+ 
+ static struct file_system_type nfs_fs_type = {
+ 	.owner		= THIS_MODULE,
+@@ -230,6 +231,7 @@ static const struct super_operations nfs_sops = {
+ 	.write_inode	= nfs_write_inode,
+ 	.put_super	= nfs_put_super,
+ 	.statfs		= nfs_statfs,
++	.remount_fs	= nfs_remount,
+ 	.clear_inode	= nfs_clear_inode,
+ 	.umount_begin	= nfs_umount_begin,
+ 	.show_options	= nfs_show_options,
+@@ -274,6 +276,7 @@ static const struct super_operations nfs4_sops = {
+ 	.destroy_inode	= nfs_destroy_inode,
+ 	.write_inode	= nfs_write_inode,
+ 	.statfs		= nfs_statfs,
++	.remount_fs	= nfs_remount,
+ 	.clear_inode	= nfs4_clear_inode,
+ 	.umount_begin	= nfs_umount_begin,
+ 	.show_options	= nfs_show_options,
+@@ -1681,6 +1684,16 @@ error_splat_super:
+ 	return error;
+ }
+ 
++/*
++ * Remounts with NFS have a whole host of issues. Just have them fail
++ * outright for now.
++ */
++static int
++nfs_remount(struct super_block *sb, int *flags, char *data)
++{
++	return -ENOSYS;
++}
++
+ #ifdef CONFIG_NFS_V4
+ 
+ /*
 -- 
-Frank
+1.5.3.6
