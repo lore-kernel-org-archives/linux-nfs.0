@@ -1,110 +1,51 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: nfs: infinite loop in fcntl(F_SETLKW)
-Date: Thu, 10 Apr 2008 17:54:10 -0400
-Message-ID: <20080410215410.GF22324@fieldses.org>
-References: <E1JjcgO-0004q2-VJ@pomaz-ex.szeredi.hu> <E1Jk2oI-0007UX-MS@pomaz-ex.szeredi.hu> <1207861339.8180.14.camel@heimdal.trondhjem.org> <1207861661.8180.18.camel@heimdal.trondhjem.org> <1207862436.8180.30.camel@heimdal.trondhjem.org>
+From: Brian De Wolf <bldewolf@csupomona.edu>
+Subject: nfs4_getfacl "Failed getxattr operation" when too many ACL entries
+ exist
+Date: Thu, 10 Apr 2008 14:53:44 -0700
+Message-ID: <47FE8C68.50502@csupomona.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Miklos Szeredi <miklos@szeredi.hu>,
-	Marc Eshel <eshel@almaden.ibm.com>, neilb@suse.de,
-	akpm@linux-foundation.org, linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1207862436.8180.30.camel@heimdal.trondhjem.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+To: linux-nfs@vger.kernel.org
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from tweak.unx.csupomona.edu ([134.71.247.20]:38010 "EHLO
+	tweak.unx.csupomona.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756802AbYDJWCB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Apr 2008 18:02:01 -0400
+Received: from localhost (localhost [127.0.0.1])
+	by tweak.unx.csupomona.edu (Postfix) with ESMTP id A00B21345E0
+	for <linux-nfs@vger.kernel.org>; Thu, 10 Apr 2008 14:53:45 -0700 (PDT)
+Received: from tweak.unx.csupomona.edu ([127.0.0.1])
+	by localhost (tweak.unx.csupomona.edu [127.0.0.1]) (amavisd-new, port 10024)
+	with ESMTP id s7znvIfrPiuC for <linux-nfs@vger.kernel.org>;
+	Thu, 10 Apr 2008 14:53:45 -0700 (PDT)
+Received: from [134.71.248.29] (woof.iitsystems.csupomona.edu [134.71.248.29])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	(Authenticated sender: bldewolf)
+	by tweak.unx.csupomona.edu (Postfix) with ESMTP id 7E95D1345DD
+	for <linux-nfs@vger.kernel.org>; Thu, 10 Apr 2008 14:53:45 -0700 (PDT)
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 10, 2008 at 05:20:36PM -0400, Trond Myklebust wrote:
-> 
-> On Thu, 2008-04-10 at 17:07 -0400, Trond Myklebust wrote:
-> > On Thu, 2008-04-10 at 17:02 -0400, Trond Myklebust wrote:
-> > > On Thu, 2008-04-10 at 21:51 +0200, Miklos Szeredi wrote:
-> > > > Another infinite loop, this one involving both client and server.
-> > > > 
-> > > > Basically what happens is that on the server nlm_fopen() calls
-> > > > nfsd_open() which returns -EACCES, to which nlm_fopen() returns
-> > > > NLM_LCK_DENIED.
-> > > > 
-> > > > On the client this will turn into a -EAGAIN (nlm_stat_to_errno()),
-> > > > which in will cause fcntl_setlk() to retry forever.
-> > > > 
-> > > > I _think_ the solution is to turn NLM_LCK_DENIED into ENOLCK for
-> > > > blocking locks, as NLM_LCK_BLOCKED is for the contended case.  For
-> > > > testing the lock leave NLM_LCK_DENIED as EAGAIN.  That still could be
-> > > > misleading, but at least there's no infinite loop in that case.
-> > > > 
-> > > > I've minimally tested this patch to verify that it cures the lockup,
-> > > > and that simple blocking locks keep working.
-> > > > 
-> > > > Signed-off-by: Miklos Szeredi <mszeredi@suse.cz>
-> > > > ---
-> > > >  fs/lockd/clntproc.c |    3 +++
-> > > >  1 file changed, 3 insertions(+)
-> > > > 
-> > > > Index: linux/fs/lockd/clntproc.c
-> > > > ===================================================================
-> > > > --- linux.orig/fs/lockd/clntproc.c	2008-04-02 13:34:57.000000000 +0200
-> > > > +++ linux/fs/lockd/clntproc.c	2008-04-10 21:23:46.000000000 +0200
-> > > > @@ -536,6 +536,9 @@ again:
-> > > >  		up_read(&host->h_rwsem);
-> > > >  	}
-> > > >  	status = nlm_stat_to_errno(resp->status);
-> > > > +	/* Don't return EAGAIN, as that would make fcntl_setlk() loop */
-> > > > +	if (status == -EAGAIN)
-> > > > +		status = -ENOLCK;
-> > > >  out_unblock:
-> > > >  	nlmclnt_finish_block(block);
-> > > >  	/* Cancel the blocked request if it is still pending */
-> > > 
-> > > 
-> > > Wait. There is something really weird going on here.
-> > > 
-> > > According to the spec, LCK_DENIED means 'the request failed' (i.e.
-> > > ENOLCK is definitely correct)
-> > > 
-> > > OTOH, LCK_DENIED_NOLOCKS and LCK_DENIED_GRACE_PERIOD are both temporary
-> > > failures, the first because the server had a resource problem, and the
-> > > second because the server rebooted and is in the grace period (i.e.
-> > > EAGAIN would appear to be more appropriate). See
-> > > 
-> > > http://www.opengroup.org/onlinepubs/9629799/chap10.htm#tagcjh_11_02_02_02
-> > > 
-> > > AFAICS, the correct thing to do is to fix nlm_stat_to_errno() by
-> > > swapping the return values for NLM_LCK_DENIED and
-> > > NLM_LCK_DENIED_NOLOCKS/NLM_LCK_DENIED_GRACE_PERIOD.
-> > > 
-> > > The problem is that there appears to be a similar confusion on the Linux
-> > > server side in nlmsvc_lock(). :-(
-> > 
-> > Duh... Sorry, EAGAIN is indeed the correct return value for fcntl() when
-> > the lock attempt failed. I should have reread the manpage/posix spec
-> > before replying.
-> 
-> OK. So the correct fix here should really be applied to fcntl_setlk().
-> There is absolutely no reason why we should be looping at all if the
-> filesystem has a ->lock() method.
-> 
-> In fact, this looping behaviour was introduced recently in commit
-> 7723ec9777d9832849b76475b1a21a2872a40d20.
+Recently we've been prototyping serving Solaris ZFS exports via NFSv4 to some 
+Linux hosts.  These will some day be exposed to general users, so I've been 
+testing things to see if I can break them.  Anyway, it seems that nfs4_getfacl 
+is only able to read ACLs with up to 208 entries.  nfs4_setfacl is able to 
+insert a 209th entry, but any attempts to view or edit the ACLs after that fail 
+with:
 
-Apologies, that was indeed a behavioral change introduced in a commit
-that claimed just to be shuffling code around.
+Failed getxattr operation
+: Input/output error
 
-> Marc, Bruce, why was this
-> done, and how are filesystems now supposed to behave?
-> 
+There are two ways to make the ACLs readable again:
+1) Have someone log in to the Solaris box and remove some of the entries
+2) Reset the ACLs using nfs4_setfacl -s `some spec`
 
-The assumption must have been that -EAGAIN could only mean that we
-needed to keep blocking, and hence was a nonsensical return from a
-filesystem lock method that waited itself for the lock to become
-available--such a method would return 0, -EINTR (or some more exotic
-error), or continue waiting.
-
-If we agree that EAGAIN is actually a legimate error to return from a
-blocking lock, then, yes, we need take ->lock() back out of this loop.
-
-And I don't think there's any real reason we need the new behavior.  So
-we should probably revert that--I'll take a closer look tomorrow....
-
---b.
+Has anyone run into this issue before?  Is it fixable?  I didn't reach the same 
+problem locally on the Solaris box, nor on another Solaris box with the same NFS 
+mount, so it looks like it's a problem specific to Linux.  Here's the versions 
+of relevant packages on the test box running Gentoo (did I miss any?):
+Kernel: 2.6.23-gentoo-r8
+nfs-utils-1.1.0-r1
+attr-2.4.39
+nfs4-acl-tools-0.3.2
