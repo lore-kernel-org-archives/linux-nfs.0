@@ -1,19 +1,19 @@
 From: postmaster-VeXSzIpa7R+DMlpl5HjoNw@public.gmane.org
 Subject: [NFS] Delivery problems
-Date: Fri, 11 Apr 2008 03:48:28 +0200
-Message-ID: <0804110348280900@com.schiller.ch>
+Date: Fri, 11 Apr 2008 04:00:38 +0200
+Message-ID: <0804110400381600@com.schiller.ch>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: <nfs@lists.sourceforge.net>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:50442 "EHLO neil.brown.name"
+Received: from neil.brown.name ([220.233.11.133]:51743 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754544AbYDKCZP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 10 Apr 2008 22:25:15 -0400
+	id S1753373AbYDKCvY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 Apr 2008 22:51:24 -0400
 Received: from brown by neil.brown.name with local (Exim 4.63)
 	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1Jk8wz-0005g2-P4
-	for linux-nfs@vger.kernel.org; Fri, 11 Apr 2008 12:25:13 +1000
+	id 1Jk9MI-0005jT-FU
+	for linux-nfs@vger.kernel.org; Fri, 11 Apr 2008 12:51:22 +1000
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
