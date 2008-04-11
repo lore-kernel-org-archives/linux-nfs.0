@@ -1,209 +1,61 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: 2.6.24.3 kernel BUG at fs/nfs/pagelist.c:82
-Date: Fri, 11 Apr 2008 16:44:39 -0400
-Message-ID: <1207946679.15646.29.camel@heimdal.trondhjem.org>
-References: <20080319094942.GA7627@janus>
-	 <1206017233.8465.7.camel@heimdal.trondhjem.org>
-	 <20080320125716.GA20071@janus>  <20080410115433.GA29211@janus>
-	 <1207944436.14621.6.camel@heimdal.trondhjem.org>
-	 <47FFC5C2.1070009@redhat.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH] NFS: implement option checking when remounting
+	NFS	filesystems
+Date: Fri, 11 Apr 2008 17:07:46 -0400
+Message-ID: <1207948071.16583.13.camel@heimdal.trondhjem.org>
+References: <1207937413-16189-1-git-send-email-jlayton@redhat.com>
+	<47FFB9B3.1020703@redhat.com>
+	<1207942347.14621.1.camel@heimdal.trondhjem.org>
+	<47FFC6AE.8080609@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Frank van Maarseveen <frankvm@frankvm.com>,
-	linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org,
+	Jeff Layton <jlayton@redhat.com>
 To: Peter Staubach <staubach@redhat.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:55902 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759292AbYDKUom (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Apr 2008 16:44:42 -0400
-In-Reply-To: <47FFC5C2.1070009@redhat.com>
-Sender: linux-nfs-owner@vger.kernel.org
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <47FFC6AE.8080609@redhat.com>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Fri, 2008-04-11 at 16:10 -0400, Peter Staubach wrote:
+On Fri, 2008-04-11 at 16:14 -0400, Peter Staubach wrote:
 > Trond Myklebust wrote:
-> > On Thu, 2008-04-10 at 13:54 +0200, Frank van Maarseveen wrote:
+> > On Fri, 2008-04-11 at 15:19 -0400, Peter Staubach wrote:
 > >   
-> >> FYI,
-> >>
-> >> On Thu, Mar 20, 2008 at 01:57:16PM +0100, Frank van Maarseveen wrote:
+> >> Jeff Layton wrote:
 > >>     
-> >>> On Thu, Mar 20, 2008 at 08:47:13AM -0400, Trond Myklebust wrote:
+> >>> When remounting an NFS or NFS4 filesystem, the new NFS options are not
+> >>> respected, yet the remount will still return success. This patch adds
+> >>> a remount_fs sb op for NFS that checks any new nfs mount options against
+> >>> the existing ones and fails the mount if any have changed.
+> >>>
+> >>> This is only implemented for string-based mount options since doing
+> >>> this with binary options isn't really feasible.
 > >>>       
-> >>>> On Wed, 2008-03-19 at 10:49 +0100, Frank van Maarseveen wrote:
-> >>>>         
-> >>>>> FYI,
-> >>>>>
-> >>>>> 2.6.24.3 wrote:
-> >>>>>           
-> >>>>>> kernel BUG at fs/nfs/pagelist.c:82!
-> >>>>>>             
-> >>>>> BUG_ON(PagePrivate(page));
-> >>>>>
-> >>>>>           
-> >>>>>> invalid opcode: 0000 [#1] SMP 
-> >>>>>> Modules linked in: vmnetfilter vmnet(P) vmmon(P) vmthrottle
-> >>>>>>             
-> >>>>> In addition, there are some NFS patches for handling >16 groups and
-> >>>>> selectively disabling attribute caching so its not a clean kernel.
-> >>>>>
-> >>>>>           
-> >>>>>> Pid: 4575, comm: tail Tainted: P        (2.6.24.3-x177 #1)
-> >>>>>>             
-> >>>                        ^^^^
-> >>>       
-> >>>>>> EIP: 0060:[<c01fc084>] EFLAGS: 00010202 CPU: 1
-> >>>>>> EIP is at nfs_create_request+0xf4/0x100
-> >>>>>> EAX: 80000821 EBX: e31a5300 ECX: 00000000 EDX: c1f0712c
-> >>>>>> ESI: c1f0712c EDI: e31a5338 EBP: e56dfd90 ESP: e56dfd74
-> >>>>>>  DS: 007b ES: 007b FS: 00d8 GS: 0033 SS: 0068 
-> >>>>>> Process tail (pid: 4575, ti=e56de000 task=d4b65500 task.ti=e56de000) 
-> >>>>>> Stack: 00000000 f669ad20 cac3c168 e7330cb0 00000000 00000000 cac3c168 e56dfdc8 
-> >>>>>>        c01fded5 00000000 000000a4 039cffff 000000a4 c1f0712c cac3c168 e7330cb0 
-> >>>>>>        e56dfdb4 e56dfdb4 ffffff8c c1f0712c e7330cb0 e56dfdf0 c01fe8ce e56dfddc 
-> >>>>>> Call Trace:
-> >>>>>>  [<c010562a>] show_trace_log_lvl+0x1a/0x30
-> >>>>>>  [<c01056fa>] show_stack_log_lvl+0x9a/0xc0
-> >>>>>>  [<c01058a8>] show_registers+0xc8/0x1d0
-> >>>>>>  [<c0105b1c>] die+0x10c/0x230
-> >>>>>>  [<c0105cd1>] do_trap+0x91/0xd0  
-> >>>>>>  [<c0105f79>] do_invalid_op+0x89/0xa0
-> >>>>>>  [<c05bba02>] error_code+0x72/0x80
-> >>>>>>  [<c01fded5>] nfs_readpage_async+0xb5/0x1b0
-> >>>>>>  [<c01fe8ce>] nfs_readpage+0xae/0x120
-> >>>>>>  [<c0155268>] do_generic_mapping_read+0xe8/0x440
-> >>>>>>  [<c01558b0>] generic_file_aio_read+0x160/0x190
-> >>>>>>  [<c01f4fb7>] nfs_file_read+0x97/0xe0
-> >>>>>>  [<c01795e7>] do_sync_read+0xc7/0x120
-> >>>>>>  [<c01796c4>] vfs_read+0x84/0x130
-> >>>>>>  [<c01799fd>] sys_read+0x3d/0x70 
-> >>>>>>  [<c0104292>] syscall_call+0x7/0xb
-> >>>>>>  =======================
-> >>>>>> Code: 02 75 0a e8 4f dc 3b 00 e9 4a ff ff ff 83 c4 10 b8 00 fe ff ff 5b 5e 5f 5d c3 8b 56 0c e9 7a ff ff ff 0f 0b eb fe 90 0f 0b eb fe <0f> 0b eb fe 90 8d b4 26 00 00 00 00 55 89 e5 53 83 ec 04 89 c3 
-> >>>>>> EIP: [<c01fc084>] nfs_create_request+0xf4/0x100 SS:ESP 0068:e56dfd74
-> >>>>>> ---[ end trace 0ef921372ea6410b ]--- 
-> >>>>>>             
-> >>>>> The machine is a quad Xeon with 4GB ram with CONFIG_HIGHMEM64G=y
-> >>>>>           
-> >>>> Would that be on a file that was open for read and write, or is it
-> >>>> possible that some other process was writing to the same file? If so,
-> >>>> then it might be a bug in nfs_wb_page().
-> >>>>         
-> >>> Yes, I'm quite sure it was a "tail -f" on a logfile which gets
-> >>> continuously appended to by another process.. So, one process reads it
-> >>> while another one writes to it through different descriptors/struct file.
-> >>>       
-> >> The problem occurred again on a different box under exactly the same
-> >> userland conditions yielding exactly the same stack trace. Kernels are
-> >> identical but no vmware modules this time.
+> >> What about respecting the new options as makes sense and rejecting
+> >> those which absolutely can't be changed dynamically?
 > >>     
 > >
-> > Just a quick question: how does your > 16 groups patch behave when it is
-> > denied a write with an EACCES error? I've got a feeling that this may be
-> > due to the page getting redirtied and the RPC call retried. If so, then
-> > the following patch may help.
-> >
-> > Cheers
-> >   Trond
-> > --------------------------------------------------------------------------
-> > From: Trond Myklebust <Trond.Myklebust@netapp.com>
-> > Date: Fri, 11 Apr 2008 16:03:54 -0400
-> > Subject: NFS: Fix nfs_wb_page() to always exit with an error or a clean page
-> >
-> > It is possible for nfs_wb_page() to sometimes exit with 0 return value, yet
-> > the page is left in a dirty state.
-> > For instance in the case where the server rebooted, and the COMMIT request
-> > failed, then all the previously "clean" pages which were cached by the
-> > server, but were not guaranteed to have been writted out to disk,
-> > have to be redirtied and resent to the server.
-> > The fix is to have nfs_wb_page_priority() check that the page is clean
-> > before it exits...
-> >
-> >   
+> > If we were to do this, then how should superblocks that are shared
+> > between multiple mountpoints behave?
 > 
-> Is this a problem if the page is mmap'd into a process address
-> space which is constantly touching it?
+> Do you mean if those other mountpoints were mounted with explicit
+> options and this remount might affect those options?
+> 
+> Isn't the same problem that we potentially have today?
 
-I initially thought that we only use nfs_wb_page() in the readpage()
-case, but looking again, it seems that we also use it in cases where tha
-page may indeed be mapped. OK, then that's a good reason to eliminate
-the PageDirty() test at the end of that loop.
+Sure, but I'm trying to figure out what you mean when you talk about
+"rejecting those which absolutely can't be changed dynamically". We can
+potentially change pretty much any parameter dynamically if we really
+want to (with the sole exception of 'nosharecache').
 
-Note that since the callers of nfs_wb_page() are guaranteed to hold the
-page lock, then there is no way for someone else to add a new nfs_page
-structure and set PagePrivate.
-
-Thanks,
+Cheers
   Trond
-
---------------------------------------------
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date: Fri, 11 Apr 2008 16:03:54 -0400
-Subject: NFS: Fix nfs_wb_page() to always exit with an error or a clean page
-
-It is possible for nfs_wb_page() to sometimes exit with 0 return value, yet
-the page is left in a dirty state.
-For instance in the case where the server rebooted, and the COMMIT request
-failed, then all the previously "clean" pages which were cached by the
-server, but were not guaranteed to have been writted out to disk,
-have to be redirtied and resent to the server.
-The fix is to have nfs_wb_page_priority() check that the page is clean
-before it exits...
-
-This fixes a condition that triggers the BUG_ON(PagePrivate(page)) in
-nfs_create_request() when we're in the nfs_readpage() path.
-
-Also eliminate a redundant BUG_ON(!PageLocked(page)) while we're at it. It
-turns out that clear_page_dirty_for_io() has the exact same test.
-
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
-
- fs/nfs/write.c |   23 ++++++++++++-----------
- 1 files changed, 12 insertions(+), 11 deletions(-)
-
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index ce40cad..997b42a 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1493,18 +1493,19 @@ static int nfs_wb_page_priority(struct inode *inode, struct page *page,
- 	};
- 	int ret;
- 
--	BUG_ON(!PageLocked(page));
--	if (clear_page_dirty_for_io(page)) {
--		ret = nfs_writepage_locked(page, &wbc);
-+	do {
-+		if (clear_page_dirty_for_io(page)) {
-+			ret = nfs_writepage_locked(page, &wbc);
-+			if (ret < 0)
-+				goto out_error;
-+		} else if (!PagePrivate(page))
-+			break;
-+		ret = nfs_sync_mapping_wait(page->mapping, &wbc, how);
- 		if (ret < 0)
--			goto out;
--	}
--	if (!PagePrivate(page))
--		return 0;
--	ret = nfs_sync_mapping_wait(page->mapping, &wbc, how);
--	if (ret >= 0)
--		return 0;
--out:
-+			goto out_error;
-+	} while (PagePrivate(page));
-+	return 0;
-+out_error:
- 	__mark_inode_dirty(inode, I_DIRTY_PAGES);
- 	return ret;
- }
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
