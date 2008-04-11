@@ -1,27 +1,44 @@
-From: Miklos Szeredi <miklos@szeredi.hu>
-Subject: Re: nfs: infinite loop in fcntl(F_SETLKW)
-Date: Fri, 11 Apr 2008 21:22:32 +0200
-Message-ID: <E1JkOpU-0000rX-6L@pomaz-ex.szeredi.hu>
-References: <E1JjcgO-0004q2-VJ@pomaz-ex.szeredi.hu> <E1Jk2oI-0007UX-MS@pomaz-ex.szeredi.hu> <1207861339.8180.14.camel@heimdal.trondhjem.org> <1207861661.8180.18.camel@heimdal.trondhjem.org> <1207862436.8180.30.camel@heimdal.trondhjem.org> <20080410215410.GF22324@fieldses.org> <E1JkOff-0000pS-A7@pomaz-ex.szeredi.hu> <20080411191910.GB16965@fieldses.org>
-Cc: miklos@szeredi.hu, trond.myklebust@fys.uio.no,
-	eshel@almaden.ibm.com, neilb@suse.de, akpm@linux-foundation.org,
-	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-To: bfields@fieldses.org
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fxip-0047f.externet.hu ([88.209.222.127]:56498 "EHLO
-	pomaz-ex.szeredi.hu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758858AbYDKTWn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Apr 2008 15:22:43 -0400
-In-reply-to: <20080411191910.GB16965@fieldses.org> (bfields@fieldses.org)
-Sender: linux-nfs-owner@vger.kernel.org
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH] NFS: implement option checking when remounting NFS
+	filesystems
+Date: Fri, 11 Apr 2008 15:32:27 -0400
+Message-ID: <1207942347.14621.1.camel@heimdal.trondhjem.org>
+References: <1207937413-16189-1-git-send-email-jlayton@redhat.com>
+	<47FFB9B3.1020703@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org,
+	Jeff Layton <jlayton@redhat.com>
+To: Peter Staubach <staubach@redhat.com>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <47FFB9B3.1020703@redhat.com>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> > Btw, why hasn't this work been posted on -fsdevel prior to merging
-> > into mainline?
+
+On Fri, 2008-04-11 at 15:19 -0400, Peter Staubach wrote:
+> Jeff Layton wrote:
+> > When remounting an NFS or NFS4 filesystem, the new NFS options are not
+> > respected, yet the remount will still return success. This patch adds
+> > a remount_fs sb op for NFS that checks any new nfs mount options against
+> > the existing ones and fails the mount if any have changed.
+> >
+> > This is only implemented for string-based mount options since doing
+> > this with binary options isn't really feasible.
 > 
-> http://marc.info/?l=linux-fsdevel&m=117581629326194&w=2
+> What about respecting the new options as makes sense and rejecting
+> those which absolutely can't be changed dynamically?
 
-Ah, sorry.  I was only looking at the last half year of archives :)
+If we were to do this, then how should superblocks that are shared
+between multiple mountpoints behave?
 
-Miklos
+Cheers
+  Trond
