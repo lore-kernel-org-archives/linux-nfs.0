@@ -1,80 +1,88 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: [PATCH] NFS: implement option checking when
-	remounting	NFS	filesystems
-Date: Fri, 11 Apr 2008 17:20:38 -0400
-Message-ID: <47FFD626.2@redhat.com>
-References: <1207937413-16189-1-git-send-email-jlayton@redhat.com>	
-	<47FFB9B3.1020703@redhat.com>	
-	<1207942347.14621.1.camel@heimdal.trondhjem.org>	
-	<47FFC6AE.8080609@redhat.com>
-	<1207948071.16583.13.camel@heimdal.trondhjem.org>
+From: Brian De Wolf <bldewolf@csupomona.edu>
+Subject: Re: nfs4_getfacl "Failed getxattr operation" when too many ACLentries
+ exist
+Date: Fri, 11 Apr 2008 14:43:05 -0700
+Message-ID: <47FFDB69.8030504@csupomona.edu>
+References: <47FE8C68.50502@csupomona.edu> <Pine.BSO.4.64.0804101829270.12362@citi.umich.edu> <Pine.BSO.4.64.0804101837200.12362@citi.umich.edu> <20080411193320.GC16965@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org,
-	Jeff Layton <jlayton@redhat.com>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <1207948071.16583.13.camel@heimdal.trondhjem.org>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: "david m. richter" <richterd@citi.umich.edu>,
+	linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from sparky.unx.csupomona.edu ([134.71.247.19]:36783 "EHLO
+	sparky.unx.csupomona.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758152AbYDKVnV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Apr 2008 17:43:21 -0400
+In-Reply-To: <20080411193320.GC16965@fieldses.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Trond Myklebust wrote:
-> On Fri, 2008-04-11 at 16:14 -0400, Peter Staubach wrote:
->   
->> Trond Myklebust wrote:
->>     
->>> On Fri, 2008-04-11 at 15:19 -0400, Peter Staubach wrote:
->>>   
->>>       
->>>> Jeff Layton wrote:
->>>>     
->>>>         
->>>>> When remounting an NFS or NFS4 filesystem, the new NFS options are not
->>>>> respected, yet the remount will still return success. This patch adds
->>>>> a remount_fs sb op for NFS that checks any new nfs mount options against
->>>>> the existing ones and fails the mount if any have changed.
->>>>>
->>>>> This is only implemented for string-based mount options since doing
->>>>> this with binary options isn't really feasible.
->>>>>       
->>>>>           
->>>> What about respecting the new options as makes sense and rejecting
->>>> those which absolutely can't be changed dynamically?
->>>>     
->>>>         
->>> If we were to do this, then how should superblocks that are shared
->>> between multiple mountpoints behave?
->>>       
->> Do you mean if those other mountpoints were mounted with explicit
->> options and this remount might affect those options?
+On 04/11/08 12:33, J. Bruce Fields wrote:
+> On Thu, Apr 10, 2008 at 06:41:18PM -0400, david m. richter wrote:
+>> On Thu, 10 Apr 2008, david m. richter wrote:
 >>
->> Isn't the same problem that we potentially have today?
->>     
->
-> Sure, but I'm trying to figure out what you mean when you talk about
-> "rejecting those which absolutely can't be changed dynamically". We can
-> potentially change pretty much any parameter dynamically if we really
-> want to (with the sole exception of 'nosharecache').
+>>> On Thu, 10 Apr 2008, Brian De Wolf wrote:
+>>>
+>>>> Recently we've been prototyping serving Solaris ZFS exports via NFSv4 to some
+>>>> Linux hosts.  These will some day be exposed to general users, so I've been
+>>>> testing things to see if I can break them.  Anyway, it seems that nfs4_getfacl
+>>>> is only able to read ACLs with up to 208 entries.  nfs4_setfacl is able to
+>>>> insert a 209th entry, but any attempts to view or edit the ACLs after that
+>>>> fail with:
+>>>>
+>>>> Failed getxattr operation
+>>>> : Input/output error
+>>>>
+>>>> There are two ways to make the ACLs readable again:
+>>>> 1) Have someone log in to the Solaris box and remove some of the entries
+>>>> 2) Reset the ACLs using nfs4_setfacl -s `some spec`
+>>>>
+>>>> Has anyone run into this issue before?  Is it fixable?  I didn't reach the
+>>>> same problem locally on the Solaris box, nor on another Solaris box with the
+>>>> same NFS mount, so it looks like it's a problem specific to Linux.  Here's the
+>>>> versions of relevant packages on the test box running Gentoo (did I miss
+>>>> any?):
+>>>> Kernel: 2.6.23-gentoo-r8
+>>>> nfs-utils-1.1.0-r1
+>>>> attr-2.4.39
+>>>> nfs4-acl-tools-0.3.2
+>>> 	honestly, this probably stems from some naive, unrevisited <ahem> 
+>>> assumptions still lingering nfs4-acl-tools code that need fixing.  at the 
+>>> -very- least, nfs4_setfacl could save the original ACL and attempt to 
+>>> restore it if the setxattr() call fails.
+>> 	sorry, misread part of your letter the first time around -- it'd 
+>> be very bizarre if nfs4_getfacl influenced the ACL in any way, so i 
+>> suspect that something's going awry with nfs4_setfacl.  seeing such an 
+>> arbitrary limit of 208 or 209 ACEs looks like the tools being dumb.
+> 
+> I haven't looked at this code in a while.  From a quick look.... It
+> appears the kernel limits ACLs to 64K (xdr-encoded).  One ACE has length
+> 
+> 	16 + (length of user/group name rounded up to multiple of 4)
 
-I hadn't actually put enough thought into which options can be
-changed dynamically and which ones can not.  I presume that we
-could change anything that we want, but I think that it would
-be good to ensure that the changes would be safe.
+More or less, yes.  An strace of the ruleset "A::OWNER@:" yields a getxattr 
+buffer size of 28 bytes.
 
-In the past, I have seen problems with adjusting wsize dynamically.
-It needs to be done carefully or potential problems with the
-server not being able to detect duplicate requests occur.  That,
-of course, was with a different implementation, but it has made
-me wary ever since.
+> But to be hitting that limit with 208 entries I think you'd have to have
+> user/group names (including domain) of about 300 characters.
 
-    Thanx...
+Unfortunately not.  With 209 lines of "A::OWNER@:", it breaks.  208 lines of 
+this makes a getxattr buffer of size 4996.  If I use "A::EVERYONE@:", it ends up 
+breaking at 180 lines.  At 179 lines, this requires a buffer of 4988 bytes.  It 
+looks like there might be a ceiling at 5000 bytes?
 
-       ps
+> Anyway, strace'ing nfs4_getfacl/nfs4_setfacl would verify whether the
+> error was coming from the kernel or the tools.
+
+This is when the attributes list is too long:
+
+getxattr("hello", "system.nfs4_acl"..., 0x0, 0) = -1 EIO (Input/output error)
+
+I couldn't find a mention of EIO in the man pages for getxattr(2) or stat(2).
+
+> I have to ask: how many acl entries do you need?
+
+We don't plan on using huge ACLs, but it's nice to know they'll work if someone 
+tries to use them.  If I could limit the maximum number of ACL entries to 
+something smaller, I would have done that instead, but it's not configurable.
