@@ -1,136 +1,67 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH] NFS: implement option checking when remounting NFS filesystems
-Date: Fri, 11 Apr 2008 14:10:13 -0400
-Message-ID: <1207937413-16189-1-git-send-email-jlayton@redhat.com>
+From: Eric Paris <eparis@redhat.com>
+Subject: Re: [PATCH] NFS Client mounts hang when exported directory do not
+	exist
+Date: Fri, 11 Apr 2008 14:35:02 -0400
+Message-ID: <1207938902.3379.7.camel@localhost.localdomain>
+References: <47FF7FCC.2050403@RedHat.com>
+	 <1207927210.3379.1.camel@localhost.localdomain>
+	 <47FF8D6A.9040902@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-Return-path: <nfsv4-bounces@linux-nfs.org>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: text/plain
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+	Fedora Kernel Mailing list <fedora-kernel-list@redhat.com>
+To: Steve Dickson <SteveD@redhat.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([66.187.233.31]:47222 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759196AbYDKSfK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Apr 2008 14:35:10 -0400
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id m3BIZA7s014544
+	for <linux-nfs@vger.kernel.org>; Fri, 11 Apr 2008 14:35:10 -0400
+In-Reply-To: <47FF8D6A.9040902-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When remounting an NFS or NFS4 filesystem, the new NFS options are not
-respected, yet the remount will still return success. This patch adds
-a remount_fs sb op for NFS that checks any new nfs mount options against
-the existing ones and fails the mount if any have changed.
+On Fri, 2008-04-11 at 12:10 -0400, Steve Dickson wrote:
+> 
+> Eric Paris wrote:
+> > On Fri, 2008-04-11 at 11:12 -0400, Steve Dickson wrote:
+> >> This patch fixes a regression that was introduced by the string based mounts. 
+> >>
+> >> nfs_mount() statically returns -EACCES for every error returned
+> >> by the remote mounted. This is incorrect because -EACCES is
+> >> an non-fatal error to the mount.nfs command. This error causes
+> >> mount.nfs to retry the mount even in the case when the exported
+> >> directory does not exist. 
+> >>
+> >> This patch maps the errors returned by the remote mountd into
+> >> valid errno values, exactly how it was done pre-string based 
+> >> mounts. By returning the correct errno enables mount.nfs 
+> >> to do the right thing.
+> > 
+> > Does this mean the EACCES can/will again become fatal in mount.nfs like
+> > it used to be?
+> EACCES is still a non-fatal error as it was... 
 
-This is only implemented for string-based mount options since doing
-this with binary options isn't really feasible.
+"non-fatal error as it was"?  Huh?  Back in the days of binary mount
+data it was fatal.  Try this on a new and old system.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfs/super.c |   70 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 70 insertions(+), 0 deletions(-)
+mount -o context=system_u:object_r:httpd_t:s0 server:/export /import
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index f4ee9d9..b49f90f 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -207,6 +207,7 @@ static int nfs_xdev_get_sb(struct file_system_type *fs_type,
- 		int flags, const char *dev_name, void *raw_data, struct vfsmount *mnt);
- static void nfs_kill_super(struct super_block *);
- static void nfs_put_super(struct super_block *);
-+static int nfs_remount(struct super_block *sb, int *flags, char *raw_data);
- 
- static struct file_system_type nfs_fs_type = {
- 	.owner		= THIS_MODULE,
-@@ -234,6 +235,7 @@ static const struct super_operations nfs_sops = {
- 	.umount_begin	= nfs_umount_begin,
- 	.show_options	= nfs_show_options,
- 	.show_stats	= nfs_show_stats,
-+	.remount_fs	= nfs_remount,
- };
- 
- #ifdef CONFIG_NFS_V4
-@@ -278,6 +280,7 @@ static const struct super_operations nfs4_sops = {
- 	.umount_begin	= nfs_umount_begin,
- 	.show_options	= nfs_show_options,
- 	.show_stats	= nfs_show_stats,
-+	.remount_fs	= nfs_remount,
- };
- #endif
- 
-@@ -1327,6 +1330,73 @@ out_invalid_fh:
- 	return -EINVAL;
- }
- 
-+static int
-+nfs_compare_remount_data(struct nfs_server *nfss,
-+			 struct nfs_parsed_mount_data *data)
-+{
-+	if (data->flags != nfss->flags ||
-+	    data->rsize != nfss->rsize ||
-+	    data->wsize != nfss->wsize ||
-+	    data->retrans != nfss->client->cl_timeout->to_retries ||
-+	    data->auth_flavors[0] != nfss->client->cl_auth->au_flavor ||
-+	    data->acregmin != nfss->acregmin / HZ ||
-+	    data->acregmax != nfss->acregmax / HZ ||
-+	    data->acdirmin != nfss->acdirmin / HZ ||
-+	    data->acdirmax != nfss->acdirmax / HZ ||
-+	    data->timeo != (10U * nfss->client->cl_timeout->to_initval / HZ))
-+		return -EINVAL;
-+	else
-+		return 0;
-+}
-+
-+static int
-+nfs_remount(struct super_block *sb, int *flags, char *raw_data)
-+{
-+	int error;
-+	struct nfs_server *nfss = sb->s_fs_info;
-+	struct nfs_parsed_mount_data *data;
-+	struct nfs_mount_data *options = (struct nfs_mount_data *)raw_data;
-+	struct nfs4_mount_data *options4 = (struct nfs4_mount_data *)raw_data;
-+
-+	/*
-+	 * Userspace mount programs that send binary options generally send
-+	 * them populated with default values. We have no way to know which
-+	 * ones were explicitly specified. Fall back to legacy behavior and
-+	 * just return success.
-+	 */
-+	if ((sb->s_type == &nfs4_fs_type && options4->version == 1) ||
-+	    (sb->s_type == &nfs_fs_type && options->version >= 1 &&
-+	     options->version <= 6))
-+		return 0;
-+
-+	data = kzalloc(sizeof(*data), GFP_KERNEL);
-+	if (data == NULL)
-+		return -ENOMEM;
-+
-+	/* fill out struct with values from existing mount */
-+	data->flags = nfss->flags;
-+	data->rsize = nfss->rsize;
-+	data->wsize = nfss->wsize;
-+	data->retrans = nfss->client->cl_timeout->to_retries;
-+	data->auth_flavors[0] = nfss->client->cl_auth->au_flavor;
-+	data->acregmin = nfss->acregmin / HZ;
-+	data->acregmax = nfss->acregmax / HZ;
-+	data->acdirmin = nfss->acdirmin / HZ;
-+	data->acdirmax = nfss->acdirmax / HZ;
-+	data->timeo = 10U * nfss->client->cl_timeout->to_initval / HZ;
-+
-+	/* overwrite those values with any that were specified */
-+	error = nfs_parse_mount_options((char *)options, data);
-+	if (error < 0)
-+		goto out;
-+
-+	/* compare new mount options with old ones */
-+	error = nfs_compare_remount_data(nfss, data);
-+out:
-+	kfree(data);
-+	return error;
-+}
-+
- /*
-  * Initialise the common bits of the superblock
-  */
--- 
-1.5.3.6
+old system it was fatal and we died instantly with EACCES telling the
+user it was a permissions problem.  New system I have to waste 2 minutes
+and then get a message about it timing out.  It wasn't a timeout, it was
+a permission failure.  Users are going to be looking down the wrong
+path..
+
+> The problem is the 
+> kernel was should have been returning ENOENT, which is a fatal error,
+> instead of EACCES.
+
+That may well have been your problem, but it doesn't change the fact the
+EACCES has been a fatal error in mount.nfs until just recently.  Why was
+it changed?  When is EACCES not fatal?
+
+-Eric
+
