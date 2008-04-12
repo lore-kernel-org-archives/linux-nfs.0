@@ -1,60 +1,131 @@
-From: Frank van Maarseveen <frankvm@frankvm.com>
-Subject: Re: 2.6.24.3 kernel BUG at fs/nfs/pagelist.c:82
-Date: Sat, 12 Apr 2008 12:10:17 +0200
-Message-ID: <20080412101017.GB29211@janus>
-References: <20080319094942.GA7627@janus> <1206017233.8465.7.camel@heimdal.trondhjem.org> <20080320125716.GA20071@janus> <20080410115433.GA29211@janus> <1207944436.14621.6.camel@heimdal.trondhjem.org> <47FFC5C2.1070009@redhat.com> <1207946679.15646.29.camel@heimdal.trondhjem.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Peter Staubach <staubach@redhat.com>, linux-nfs@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH 1/2] NFS: implement option checking when remounting NFS filesystems (try #2)
+Date: Sat, 12 Apr 2008 10:33:17 -0400
+Message-ID: <1208010798-22782-1-git-send-email-jlayton@redhat.com>
+To: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from frankvm.xs4all.nl ([80.126.170.174]:53483 "EHLO
-	janus.localdomain" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1756291AbYDLKKT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 12 Apr 2008 06:10:19 -0400
-In-Reply-To: <1207946679.15646.29.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from mx1.redhat.com ([66.187.233.31]:37137 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752444AbYDLOdU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 12 Apr 2008 10:33:20 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+When remounting an NFS or NFS4 filesystem, the new NFS options are not
+respected, yet the remount will still return success. This patch adds
+a remount_fs sb op for NFS that checks any new nfs mount options against
+the existing ones and fails the mount if any have changed.
 
-It happened again. tail -f died with the usual stack trace:
-> [<c010562a>] show_trace_log_lvl+0x1a/0x30
-> [<c01056fa>] show_stack_log_lvl+0x9a/0xc0
-> [<c01058a8>] show_registers+0xc8/0x1d0
-> [<c0105b1c>] die+0x10c/0x230
-> [<c0105cd1>] do_trap+0x91/0xd0
-> [<c0105f79>] do_invalid_op+0x89/0xa0
-> [<c05bba62>] error_code+0x72/0x80
-> [<c01fdf55>] nfs_readpage_async+0xb5/0x1b0
-> [<c01fe94e>] nfs_readpage+0xae/0x120
-> [<c01552b8>] do_generic_mapping_read+0xe8/0x440
-> [<c0155900>] generic_file_aio_read+0x160/0x190
-> [<c01f5037>] nfs_file_read+0x97/0xe0
-> [<c0179647>] do_sync_read+0xc7/0x120
-> [<c0179724>] vfs_read+0x84/0x130
-> [<c0179a5d>] sys_read+0x3d/0x70
-> [<c0104292>] syscall_call+0x7/0xb
+This is only implemented for string-based mount options since doing
+this with binary options isn't really feasible.
 
-And this is the trace of the writer, now stuck in state D (using echo
-t >/proc/sysrq-trigger):
-> [<c05b9d4e>] io_schedule+0x1e/0x30
-> [<c0154465>] sync_page+0x35/0x60
-> [<c05b9fc9>] __wait_on_bit_lock+0x49/0x70
-> [<c0154cd5>] __lock_page+0x85/0xa0
-> [<c0154e62>] find_lock_page+0x62/0xa0
-> [<c0156a5c>] __grab_cache_page+0x1c/0xb0
-> [<c01f5258>] nfs_write_begin+0x18/0x60
-> [<c0156ebe>] generic_perform_write+0x9e/0x180
-> [<c0157007>] generic_file_buffered_write+0x67/0x110
-> [<c01572f7>] __generic_file_aio_write_nolock+0x247/0x560
-> [<c015774c>] generic_file_aio_write+0x5c/0xd0
-> [<c01f55d7>] nfs_file_write+0xa7/0x150
-> [<c0179897>] do_sync_write+0xc7/0x120
-> [<c0179977>] vfs_write+0x87/0x130
-> [<c0179acd>] sys_write+0x3d/0x70
-> [<c0104292>] syscall_call+0x7/0xb
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfs/super.c |   70 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 70 insertions(+), 0 deletions(-)
 
-The file is not mmap()'ed, at least not by reader or writer in userland.
-
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index f4ee9d9..b49f90f 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -207,6 +207,7 @@ static int nfs_xdev_get_sb(struct file_system_type *fs_type,
+ 		int flags, const char *dev_name, void *raw_data, struct vfsmount *mnt);
+ static void nfs_kill_super(struct super_block *);
+ static void nfs_put_super(struct super_block *);
++static int nfs_remount(struct super_block *sb, int *flags, char *raw_data);
+ 
+ static struct file_system_type nfs_fs_type = {
+ 	.owner		= THIS_MODULE,
+@@ -234,6 +235,7 @@ static const struct super_operations nfs_sops = {
+ 	.umount_begin	= nfs_umount_begin,
+ 	.show_options	= nfs_show_options,
+ 	.show_stats	= nfs_show_stats,
++	.remount_fs	= nfs_remount,
+ };
+ 
+ #ifdef CONFIG_NFS_V4
+@@ -278,6 +280,7 @@ static const struct super_operations nfs4_sops = {
+ 	.umount_begin	= nfs_umount_begin,
+ 	.show_options	= nfs_show_options,
+ 	.show_stats	= nfs_show_stats,
++	.remount_fs	= nfs_remount,
+ };
+ #endif
+ 
+@@ -1327,6 +1330,73 @@ out_invalid_fh:
+ 	return -EINVAL;
+ }
+ 
++static int
++nfs_compare_remount_data(struct nfs_server *nfss,
++			 struct nfs_parsed_mount_data *data)
++{
++	if (data->flags != nfss->flags ||
++	    data->rsize != nfss->rsize ||
++	    data->wsize != nfss->wsize ||
++	    data->retrans != nfss->client->cl_timeout->to_retries ||
++	    data->auth_flavors[0] != nfss->client->cl_auth->au_flavor ||
++	    data->acregmin != nfss->acregmin / HZ ||
++	    data->acregmax != nfss->acregmax / HZ ||
++	    data->acdirmin != nfss->acdirmin / HZ ||
++	    data->acdirmax != nfss->acdirmax / HZ ||
++	    data->timeo != (10U * nfss->client->cl_timeout->to_initval / HZ))
++		return -EINVAL;
++	else
++		return 0;
++}
++
++static int
++nfs_remount(struct super_block *sb, int *flags, char *raw_data)
++{
++	int error;
++	struct nfs_server *nfss = sb->s_fs_info;
++	struct nfs_parsed_mount_data *data;
++	struct nfs_mount_data *options = (struct nfs_mount_data *)raw_data;
++	struct nfs4_mount_data *options4 = (struct nfs4_mount_data *)raw_data;
++
++	/*
++	 * Userspace mount programs that send binary options generally send
++	 * them populated with default values. We have no way to know which
++	 * ones were explicitly specified. Fall back to legacy behavior and
++	 * just return success.
++	 */
++	if ((sb->s_type == &nfs4_fs_type && options4->version == 1) ||
++	    (sb->s_type == &nfs_fs_type && options->version >= 1 &&
++	     options->version <= 6))
++		return 0;
++
++	data = kzalloc(sizeof(*data), GFP_KERNEL);
++	if (data == NULL)
++		return -ENOMEM;
++
++	/* fill out struct with values from existing mount */
++	data->flags = nfss->flags;
++	data->rsize = nfss->rsize;
++	data->wsize = nfss->wsize;
++	data->retrans = nfss->client->cl_timeout->to_retries;
++	data->auth_flavors[0] = nfss->client->cl_auth->au_flavor;
++	data->acregmin = nfss->acregmin / HZ;
++	data->acregmax = nfss->acregmax / HZ;
++	data->acdirmin = nfss->acdirmin / HZ;
++	data->acdirmax = nfss->acdirmax / HZ;
++	data->timeo = 10U * nfss->client->cl_timeout->to_initval / HZ;
++
++	/* overwrite those values with any that were specified */
++	error = nfs_parse_mount_options((char *)options, data);
++	if (error < 0)
++		goto out;
++
++	/* compare new mount options with old ones */
++	error = nfs_compare_remount_data(nfss, data);
++out:
++	kfree(data);
++	return error;
++}
++
+ /*
+  * Initialise the common bits of the superblock
+  */
 -- 
-Frank
+1.5.3.6
+
