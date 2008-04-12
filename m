@@ -1,58 +1,51 @@
 From: Steve Dickson <SteveD@redhat.com>
-Subject: [PATCH] NFS Client mounts hang when exported directory do not exist
-Date: Fri, 11 Apr 2008 20:03:06 -0400
-Message-ID: <47FFFC3A.2040708@RedHat.com>
+Subject: Re: [PATCH] NFS Client mounts hang when exported directory do not
+ exist
+Date: Fri, 11 Apr 2008 20:14:27 -0400
+Message-ID: <47FFFEE3.3010302@RedHat.com>
+References: <47FF7FCC.2050403@RedHat.com>	 <1207927210.3379.1.camel@localhost.localdomain>	 <47FF8D6A.9040902@RedHat.com> <1207938902.3379.7.camel@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: Fedora Kernel Mailing list <fedora-kernel-list@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Return-path: <fedora-kernel-list-bounces@redhat.com>
-List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/fedora-kernel-list>,
-	<mailto:fedora-kernel-list-request@redhat.com?subject=unsubscribe>
-List-Archive: <https://www.redhat.com/archives/fedora-kernel-list>
-List-Post: <mailto:fedora-kernel-list@redhat.com>
-List-Help: <mailto:fedora-kernel-list-request@redhat.com?subject=help>
-List-Subscribe: <https://www.redhat.com/mailman/listinfo/fedora-kernel-list>,
-	<mailto:fedora-kernel-list-request@redhat.com?subject=subscribe>
-Sender: fedora-kernel-list-bounces@redhat.com
-Errors-To: fedora-kernel-list-bounces@redhat.com
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+	Fedora Kernel Mailing list <fedora-kernel-list@redhat.com>
+To: Eric Paris <eparis@redhat.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([66.187.233.31]:32786 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757103AbYDLAOo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Apr 2008 20:14:44 -0400
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id m3C0Eiep025620
+	for <linux-nfs@vger.kernel.org>; Fri, 11 Apr 2008 20:14:44 -0400
+In-Reply-To: <1207938902.3379.7.camel-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch fixes a regression that was introduced by the string based mounts. 
+Eric Paris wrote:
+> On Fri, 2008-04-11 at 12:10 -0400, Steve Dickson wrote:
+>>> Does this mean the EACCES can/will again become fatal in mount.nfs like
+>>> it used to be?
+>> EACCES is still a non-fatal error as it was... 
+I guess I didn't look back far enough...
 
-nfs_mount() statically returns -EACCES for every error returned
-by the remote mounted. This is incorrect because -EACCES is
-an non-fatal error to the mount.nfs command. This error causes
-mount.nfs to retry the mount even in the case when the exported
-directory does not exist. 
+> 
+> "non-fatal error as it was"?  Huh?  Back in the days of binary mount
+> data it was fatal.  Try this on a new and old system.
+Yes, I see...
 
-This patch maps the errors returned by the remote mountd into
-valid errno values, exactly how it was done pre-string based 
-mounts. By returning the correct errno enables mount.nfs 
-to do the right thing.  
+> That may well have been your problem, but it doesn't change the fact the
+> EACCES has been a fatal error in mount.nfs until just recently.  Why was
+> it changed?  When is EACCES not fatal?
+It appears the change came in with the text-based mount.nfs changes
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
-Take 2- Why reinvent the wheel, as Trond pointed out using
-nfs_stat_to_errno() makes more sense and is makes things much 
-similar, something I'm always a fan of... 
+commit 4ce9ddfb03de06e90fb4cf0eb5767cb0e3a98905
+Author: Chuck Lever <chuck.lever@oracle.com>
+Date:   Wed Oct 10 15:06:39 2007 -0400
 
-diff -up linux/fs/nfs/mount_clnt.c.orig linux/fs/nfs/mount_clnt.c
---- linux/fs/nfs/mount_clnt.c.orig	2008-04-09 08:32:43.000000000 -0400
-+++ linux/fs/nfs/mount_clnt.c	2008-04-11 19:42:16.000000000 -0400
-@@ -14,6 +14,7 @@
- #include <linux/sunrpc/clnt.h>
- #include <linux/sunrpc/sched.h>
- #include <linux/nfs_fs.h>
-+#include "internal.h"
- 
- #ifdef RPC_DEBUG
- # define NFSDBG_FACILITY	NFSDBG_MOUNT
-@@ -98,7 +99,7 @@ out_call_err:
- 
- out_mnt_err:
- 	dprintk("NFS: MNT server returned result %d\n", result.status);
--	status = -EACCES;
-+	status = -nfs_stat_to_errno(result.status);
- 	goto out;
- }
+    text-based mount.nfs: sort between permanent and temporary errors
+
+and I'm not sure why EACCES was deemed a non fatal error, but I'm
+beginning to agree with you... EACCES probably should be fatal...
+But thats something easily fixed in nfs-utils...
+
+steved.
