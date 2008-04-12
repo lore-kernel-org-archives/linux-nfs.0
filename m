@@ -1,86 +1,63 @@
-From: Carsten Aulbert <carsten.aulbert-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>
-Subject: Re: [NFS] How to set-up a Linux NFS server to handle massive	number
- of requests
-Date: Sat, 12 Apr 2008 08:45:12 +0200
-Message-ID: <48005A78.9090609@aei.mpg.de>
-References: <47FE044A.7020008@aei.mpg.de> <20080411230754.GI24830@fieldses.org>
+From: Frank van Maarseveen <frankvm@frankvm.com>
+Subject: Re: 2.6.24.3 kernel BUG at fs/nfs/pagelist.c:82
+Date: Sat, 12 Apr 2008 11:42:06 +0200
+Message-ID: <20080412094205.GA29211@janus>
+References: <20080319094942.GA7627@janus> <1206017233.8465.7.camel@heimdal.trondhjem.org> <20080320125716.GA20071@janus> <20080410115433.GA29211@janus> <1207944436.14621.6.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:55960 "EHLO neil.brown.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752959AbYDLGra (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 12 Apr 2008 02:47:30 -0400
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1JkZWK-0003LV-2H
-	for linux-nfs@vger.kernel.org; Sat, 12 Apr 2008 16:47:28 +1000
-In-Reply-To: <20080411230754.GI24830@fieldses.org>
+Received: from frankvm.xs4all.nl ([80.126.170.174]:47181 "EHLO
+	janus.localdomain" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1756457AbYDLJmI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 12 Apr 2008 05:42:08 -0400
+In-Reply-To: <1207944436.14621.6.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-2.6.24.Hi,
-
-J. Bruce Fields wrote:
->> In the standard set-up many connections get into the box (tcp connection 
->> status SYN_RECV) but those fall over after some time and stay in 
->> CLOSE_WAIT state until I restart the nfs-kernel-server. Typically that 
->> looks like (netstat -an):
+On Fri, Apr 11, 2008 at 04:07:16PM -0400, Trond Myklebust wrote:
 > 
-> That's interesting!  But I'm not sure how to figure this out.
+> On Thu, 2008-04-10 at 13:54 +0200, Frank van Maarseveen wrote:
+> > FYI,
+> > 
+> > On Thu, Mar 20, 2008 at 01:57:16PM +0100, Frank van Maarseveen wrote:
+> > > On Thu, Mar 20, 2008 at 08:47:13AM -0400, Trond Myklebust wrote:
+> > > > 
+> > > > On Wed, 2008-03-19 at 10:49 +0100, Frank van Maarseveen wrote:
+> > > > > FYI,
+> > > > > 
+> > > > > 2.6.24.3 wrote:
+> > > > > > kernel BUG at fs/nfs/pagelist.c:82!
+> > > > > 
+> > > > > BUG_ON(PagePrivate(page));
+[...]
+> > > > > The machine is a quad Xeon with 4GB ram with CONFIG_HIGHMEM64G=y
+> > > > 
+> > > > Would that be on a file that was open for read and write, or is it
+> > > > possible that some other process was writing to the same file? If so,
+> > > > then it might be a bug in nfs_wb_page().
+> > > 
+> > > Yes, I'm quite sure it was a "tail -f" on a logfile which gets
+> > > continuously appended to by another process.. So, one process reads it
+> > > while another one writes to it through different descriptors/struct file.
+> > 
+> > The problem occurred again on a different box under exactly the same
+> > userland conditions yielding exactly the same stack trace. Kernels are
+> > identical but no vmware modules this time.
 > 
-> Is it possible to get a network trace that shows what's going on?
->
+> Just a quick question: how does your > 16 groups patch behave when it is
+> denied a write with an EACCES error? I've got a feeling that this may be
+> due to the page getting redirtied and the RPC call retried. If so, then
+> the following patch may help.
 
-In principle yes, but
-(1) it's huge. I only get this when doing this with 500-1000 clients 
-starting at about the same time
-(2) It seems that I don't get a full trace, i.e. the session seem to be 
-incomplete - sometimes I only see a single packet with FIN set. I tried 
-doing this both with wireshark running locally and with ntap's capturing 
-device.
+The >16 groups patch doesn't do anything special with file I/O
+(credentials are determined at open time) and is not retrying
+anywhere upon error.
 
-> What happens on the clients?
-> 
-In the logs (/var/log/daemon.log) I only see that the mount request 
-fails in different ways.
+It's just one process which writes a big logfile on NFS (also involving
+small writes) and a tail -f trying to catch up. The machine is heavily
+loaded at that time, probably both CPU and networking I/O (non-NFS).
 
-Apr  9 12:07:55 n0078 automount[26838]: >> mount: RPC: Timed out
-Apr  9 12:07:55 n0078 automount[26838]: mount(nfs): nfs: mount failure 
-d14:/data on /atlas/data/d14
-Apr  9 12:07:55 n0078 automount[26838]: failed to mount /atlas/data/d14
-Apr  9 12:18:56 n0078 automount[27977]: >> mount: RPC: Remote system 
-error - Connection timed out
-Apr  9 12:18:56 n0078 automount[27977]: mount(nfs): nfs: mount failure 
-d14:/data on /atlas/data/d14
-
-I have not yet run tshark in the background on many nodes to see if I 
-can capture the client's view. Would that be beneficial?
-
-> What kernel version are you using?--b.
-
-2.6.24.4 on Debian Etch
-
-Right now, it seems that running 196 nfsd plus 64 threads for mountd 
-solves the problem for the time being. Although it would be nice to 
-understand these "magic" numbers ;)
-
-Thanks!
-
-Carsten
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by the 2008 JavaOne(SM) Conference 
-Don't miss this year's exciting event. There's still time to save $100. 
-Use priority code J8TL2D2. 
-http://ad.doubleclick.net/clk;198757673;13503038;p?http://java.sun.com/javaone
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
-
+-- 
+Frank
