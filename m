@@ -1,57 +1,93 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 03/24] SUNRPC: RPC server still uses 2.4 method for disabling
-	TCP Nagle
-Date: Mon, 14 Apr 2008 12:27:01 -0400
-Message-ID: <20080414162701.12741.10868.stgit@manray.1015granger.net>
+Subject: [PATCH 06/24] SUNRPC: Sanity check incoming UDP datagram lengths
+	properly
+Date: Mon, 14 Apr 2008 12:27:23 -0400
+Message-ID: <20080414162723.12741.35500.stgit@manray.1015granger.net>
 References: <20080414162108.12741.73233.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@citi.umich.edu, trond.myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from flpi101.sbcis.sbc.com ([207.115.20.70]:48607 "EHLO
+Received: from flpi101.sbcis.sbc.com ([207.115.20.70]:49652 "EHLO
 	flpi101.prodigy.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758119AbYDNQ11 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Apr 2008 12:27:27 -0400
+	with ESMTP id S1759698AbYDNQ1u (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Apr 2008 12:27:50 -0400
 In-Reply-To: <20080414162108.12741.73233.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Use the 2.6 method for disabling TCP Nagle in the kernel's RPC server.
+Clean up: ensure svc_udp_recvfrom() is getting at least a full UDP header
+to avoid potential negative intermediate values.
+
+A similar sanity check is already used in the RPC client.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- net/sunrpc/svcsock.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+ net/sunrpc/svcsock.c |   20 +++++++++++++-------
+ 1 files changed, 13 insertions(+), 7 deletions(-)
 
 diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index c475977..6d4162b 100644
+index d077071..de29e7f 100644
 --- a/net/sunrpc/svcsock.c
 +++ b/net/sunrpc/svcsock.c
-@@ -38,6 +38,7 @@
- #include <net/checksum.h>
- #include <net/ip.h>
- #include <net/ipv6.h>
-+#include <net/tcp.h>
- #include <net/tcp_states.h>
- #include <asm/uaccess.h>
- #include <asm/ioctls.h>
-@@ -1045,7 +1046,6 @@ void svc_cleanup_xprt_sock(void)
- static void svc_tcp_init(struct svc_sock *svsk, struct svc_serv *serv)
- {
- 	struct sock	*sk = svsk->sk_sk;
--	struct tcp_sock *tp = tcp_sk(sk);
+@@ -431,6 +431,7 @@ static int svc_udp_recvfrom(struct svc_rqst *rqstp)
+ 	} buffer;
+ 	struct cmsghdr *cmh = &buffer.hdr;
+ 	int		err, len;
++	unsigned int	bytes;
+ 	struct msghdr msg = {
+ 		.msg_name = svc_addr(rqstp),
+ 		.msg_control = cmh,
+@@ -484,8 +485,13 @@ static int svc_udp_recvfrom(struct svc_rqst *rqstp)
+ 	 */
+ 	svc_xprt_received(&svsk->sk_xprt);
  
- 	svc_xprt_init(&svc_tcp_class, &svsk->sk_xprt, serv);
- 	set_bit(XPT_CACHE_AUTH, &svsk->sk_xprt.xpt_flags);
-@@ -1063,7 +1063,7 @@ static void svc_tcp_init(struct svc_sock *svsk, struct svc_serv *serv)
- 		svsk->sk_reclen = 0;
- 		svsk->sk_tcplen = 0;
+-	len  = skb->len - sizeof(struct udphdr);
+-	rqstp->rq_arg.len = len;
++	if (skb->len < sizeof(struct udphdr)) {
++		dprintk("svc: bad UDP datagram length: %u\n", skb->len);
++		skb_free_datagram(svsk->sk_sk, skb);
++		return 0;
++	}
++	bytes = skb->len - sizeof(struct udphdr);
++	rqstp->rq_arg.len = bytes;
  
--		tp->nonagle = 1;        /* disable Nagle's algorithm */
-+		tcp_sk(sk)->nonagle |= TCP_NAGLE_OFF;
+ 	rqstp->rq_prot = IPPROTO_UDP;
  
- 		/* initialise setting must have enough space to
- 		 * receive and respond to one request.
+@@ -515,7 +521,7 @@ static int svc_udp_recvfrom(struct svc_rqst *rqstp)
+ 		/* we can use it in-place */
+ 		rqstp->rq_arg.head[0].iov_base = skb->data +
+ 			sizeof(struct udphdr);
+-		rqstp->rq_arg.head[0].iov_len = len;
++		rqstp->rq_arg.head[0].iov_len = bytes;
+ 		if (skb_checksum_complete(skb)) {
+ 			skb_free_datagram(svsk->sk_sk, skb);
+ 			return 0;
+@@ -524,12 +530,12 @@ static int svc_udp_recvfrom(struct svc_rqst *rqstp)
+ 	}
+ 
+ 	rqstp->rq_arg.page_base = 0;
+-	if (len <= rqstp->rq_arg.head[0].iov_len) {
+-		rqstp->rq_arg.head[0].iov_len = len;
++	if (bytes <= rqstp->rq_arg.head[0].iov_len) {
++		rqstp->rq_arg.head[0].iov_len = bytes;
+ 		rqstp->rq_arg.page_len = 0;
+ 		rqstp->rq_respages = rqstp->rq_pages+1;
+ 	} else {
+-		rqstp->rq_arg.page_len = len - rqstp->rq_arg.head[0].iov_len;
++		rqstp->rq_arg.page_len = bytes - rqstp->rq_arg.head[0].iov_len;
+ 		rqstp->rq_respages = rqstp->rq_pages + 1 +
+ 			DIV_ROUND_UP(rqstp->rq_arg.page_len, PAGE_SIZE);
+ 	}
+@@ -537,7 +543,7 @@ static int svc_udp_recvfrom(struct svc_rqst *rqstp)
+ 	if (serv->sv_stats)
+ 		serv->sv_stats->netudpcnt++;
+ 
+-	return len;
++	return bytes;
+ }
+ 
+ static int
 
