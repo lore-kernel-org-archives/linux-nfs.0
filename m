@@ -1,44 +1,134 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: nfs: infinite loop in fcntl(F_SETLKW)
-Date: Mon, 14 Apr 2008 13:07:43 -0400
-Message-ID: <20080414170743.GD15950@fieldses.org>
-References: <E1JjcgO-0004q2-VJ@pomaz-ex.szeredi.hu> <E1Jk2oI-0007UX-MS@pomaz-ex.szeredi.hu> <1207861339.8180.14.camel@heimdal.trondhjem.org> <1207861661.8180.18.camel@heimdal.trondhjem.org> <1207862436.8180.30.camel@heimdal.trondhjem.org> <20080410215410.GF22324@fieldses.org> <E1JkOff-0000pS-A7@pomaz-ex.szeredi.hu> <20080413000830.GF31789@fieldses.org> <E1JkxKz-0003A8-9V@pomaz-ex.szeredi.hu>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 13/24] SUNRPC: Document some naked integers in rpcbind client
+Date: Mon, 14 Apr 2008 12:28:14 -0400
+Message-ID: <20080414162814.12741.20253.stgit@manray.1015granger.net>
+References: <20080414162108.12741.73233.stgit@manray.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: trond.myklebust@fys.uio.no, eshel@almaden.ibm.com, neilb@suse.de,
-	akpm@linux-foundation.org, linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Miklos Szeredi <miklos@szeredi.hu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <E1JkxKz-0003A8-9V@pomaz-ex.szeredi.hu>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org
+To: bfields@citi.umich.edu, trond.myklebust@netapp.com
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from flpi195.sbcis.sbc.com ([207.115.20.197]:40697 "EHLO
+	flpi195.prodigy.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1761040AbYDNRBM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Apr 2008 13:01:12 -0400
+In-Reply-To: <20080414162108.12741.73233.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Apr 13, 2008 at 10:13:21AM +0200, Miklos Szeredi wrote:
-> > > > > OK. So the correct fix here should really be applied to fcntl_setlk().
-> > > > > There is absolutely no reason why we should be looping at all if the
-> > > > > filesystem has a ->lock() method.
-> > > > > 
-> > > > > In fact, this looping behaviour was introduced recently in commit
-> > > > > 7723ec9777d9832849b76475b1a21a2872a40d20.
-> > > > 
-> > > > Apologies, that was indeed a behavioral change introduced in a commit
-> > > > that claimed just to be shuffling code around.
-> > > 
-> > > Yeah, that patch looks totally wrong.  It's not generally a good idea
-> > > to do a loop where the exit condition depends on something you don't
-> > > control.  And error values from filesystem methods are typically like
-> > > that.  For example with fuse, the error code could come from an
-> > > unprivileged userspace process.
-> > > 
-> > > I didn't realize this aspect of the bug previously, because I
-> > > concentrated on the lockd inconsistency.
-> > 
-> > So, does this patch on its own fix the problem you saw?
-> 
-> Yes.  With the patch applied, the test program returns "lockf:
-> Resource temporarily unavailable" instead of hanging.
+Clean up: Replace naked integers that represent rpcbind protocol versions.
 
-OK, thanks!
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
---b.
+ net/sunrpc/rpcb_clnt.c |   49 +++++++++++++++++++++++++++++++++++-------------
+ 1 files changed, 36 insertions(+), 13 deletions(-)
+
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index 904b1f5..d852b2e 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -32,6 +32,10 @@
+ #define RPCBIND_PROGRAM		(100000u)
+ #define RPCBIND_PORT		(111u)
+ 
++#define RPCBVERS_2		(2u)
++#define RPCBVERS_3		(3u)
++#define RPCBVERS_4		(4u)
++
+ enum {
+ 	RPCBPROC_NULL,
+ 	RPCBPROC_SET,
+@@ -82,7 +86,7 @@ static struct rpc_procinfo rpcb_procedures2[];
+ static struct rpc_procinfo rpcb_procedures3[];
+ 
+ struct rpcb_info {
+-	int			rpc_vers;
++	u32			rpc_vers;
+ 	struct rpc_procinfo *	rpc_proc;
+ };
+ 
+@@ -177,7 +181,7 @@ int rpcb_register(u32 prog, u32 vers, int prot, unsigned short port, int *okay)
+ 			prog, vers, prot, port);
+ 
+ 	rpcb_clnt = rpcb_create("localhost", (struct sockaddr *) &sin,
+-				sizeof(sin), XPRT_TRANSPORT_UDP, 2, 1);
++				sizeof(sin), XPRT_TRANSPORT_UDP, RPCBVERS_2, 1);
+ 	if (IS_ERR(rpcb_clnt))
+ 		return PTR_ERR(rpcb_clnt);
+ 
+@@ -227,7 +231,7 @@ int rpcb_getport_sync(struct sockaddr_in *sin, u32 prog, u32 vers, int prot)
+ 		__FUNCTION__, NIPQUAD(sin->sin_addr.s_addr), prog, vers, prot);
+ 
+ 	rpcb_clnt = rpcb_create(NULL, (struct sockaddr *)sin,
+-				sizeof(*sin), prot, 2, 0);
++				sizeof(*sin), prot, RPCBVERS_2, 0);
+ 	if (IS_ERR(rpcb_clnt))
+ 		return PTR_ERR(rpcb_clnt);
+ 
+@@ -589,35 +593,54 @@ static struct rpc_procinfo rpcb_procedures4[] = {
+ 
+ static struct rpcb_info rpcb_next_version[] = {
+ #ifdef CONFIG_SUNRPC_BIND34
+-	{ 4, &rpcb_procedures4[RPCBPROC_GETVERSADDR] },
+-	{ 3, &rpcb_procedures3[RPCBPROC_GETADDR] },
++	{
++		.rpc_vers	= RPCBVERS_4,
++		.rpc_proc	= &rpcb_procedures4[RPCBPROC_GETVERSADDR],
++	},
++	{
++		.rpc_vers	= RPCBVERS_3,
++		.rpc_proc	= &rpcb_procedures3[RPCBPROC_GETADDR],
++	},
+ #endif
+-	{ 2, &rpcb_procedures2[RPCBPROC_GETPORT] },
+-	{ 0, NULL },
++	{
++		.rpc_vers	= RPCBVERS_2,
++		.rpc_proc	= &rpcb_procedures2[RPCBPROC_GETPORT],
++	},
++	{
++		.rpc_proc	= NULL,
++	},
+ };
+ 
+ static struct rpcb_info rpcb_next_version6[] = {
+ #ifdef CONFIG_SUNRPC_BIND34
+-	{ 4, &rpcb_procedures4[RPCBPROC_GETVERSADDR] },
+-	{ 3, &rpcb_procedures3[RPCBPROC_GETADDR] },
++	{
++		.rpc_vers	= RPCBVERS_4,
++		.rpc_proc	= &rpcb_procedures4[RPCBPROC_GETVERSADDR],
++	},
++	{
++		.rpc_vers	= RPCBVERS_3,
++		.rpc_proc	= &rpcb_procedures3[RPCBPROC_GETADDR],
++	},
+ #endif
+-	{ 0, NULL },
++	{
++		.rpc_proc	= NULL,
++	},
+ };
+ 
+ static struct rpc_version rpcb_version2 = {
+-	.number		= 2,
++	.number		= RPCBVERS_2,
+ 	.nrprocs	= RPCB_HIGHPROC_2,
+ 	.procs		= rpcb_procedures2
+ };
+ 
+ static struct rpc_version rpcb_version3 = {
+-	.number		= 3,
++	.number		= RPCBVERS_3,
+ 	.nrprocs	= RPCB_HIGHPROC_3,
+ 	.procs		= rpcb_procedures3
+ };
+ 
+ static struct rpc_version rpcb_version4 = {
+-	.number		= 4,
++	.number		= RPCBVERS_4,
+ 	.nrprocs	= RPCB_HIGHPROC_4,
+ 	.procs		= rpcb_procedures4
+ };
+
