@@ -1,95 +1,218 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 19/24] SUNRPC: Quickly detect missing portmapper during RPC
-	service registration
-Date: Mon, 14 Apr 2008 12:28:58 -0400
-Message-ID: <20080414162858.12741.35946.stgit@manray.1015granger.net>
+Subject: [PATCH 20/24] SUNRPC: Support registering IPv6 interfaces with local
+	rpcbind daemon
+Date: Mon, 14 Apr 2008 12:29:06 -0400
+Message-ID: <20080414162905.12741.64600.stgit@manray.1015granger.net>
 References: <20080414162108.12741.73233.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@citi.umich.edu, trond.myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from flpi101.sbcis.sbc.com ([207.115.20.70]:53289 "EHLO
+Received: from flpi101.sbcis.sbc.com ([207.115.20.70]:53575 "EHLO
 	flpi101.prodigy.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1762111AbYDNQ3Q (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Apr 2008 12:29:16 -0400
+	with ESMTP id S1762514AbYDNQ3Y (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Apr 2008 12:29:24 -0400
 In-Reply-To: <20080414162108.12741.73233.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently the in-kernel RPC server uses an unconnected UDP socket to
-contact the local user-space portmapper daemon because UDP is less
-overhead than TCP.  However, attempting to register or unregister a
-local RPC service with a portmapper that isn't listening for requests
-results in a long timeout wait (35 seconds per request, by my
-calculations).
+Introduce a new API to register RPC services on IPv6 interfaces to allow
+the NFS server and lockd to advertise on IPv6 networks.
 
-Using TCP, the absence of a listener results in an immediate ECONNREFUSED.
-Setting the ONESHOT flag causes the RPC client to fail RPC requests as soon
-as this occurs.
+Unlike rpcb_register(), the new rpcb_v4_register() function uses rpcbind
+protocol version 4 to contact the local rpcbind daemon.  The version 4
+SET/UNSET procedures allow services to register address families besides
+AF_INET, register at specific network interfaces, and register transport
+protocols besides UDP and TCP.  All of this functionality is exposed via
+the new rpcb_v4_register() kernel API.
 
-Therefore, this patch changes rpcb_register() to use TCP to contact the
-local portmapper.  Starting up in-kernel RPC services should no longer
-hang if there is no local portmapper listening for requests.
+A user-space rpcbind daemon implementation that supports version 4 of the
+rpcbind protocol is required in order to make use of this new API.
+
+Note that rpcbind version 3 is sufficient to support the new rpcbind
+facilities listed above, but most extant implementations use version 4.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- net/sunrpc/rpcb_clnt.c |   22 ++++++++++++++++++++--
- 1 files changed, 20 insertions(+), 2 deletions(-)
+ include/linux/sunrpc/clnt.h |    3 +
+ net/sunrpc/rpcb_clnt.c      |  136 +++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 139 insertions(+), 0 deletions(-)
 
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index 129a86e..919b1ea 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -123,6 +123,9 @@ void		rpc_shutdown_client(struct rpc_clnt *);
+ void		rpc_release_client(struct rpc_clnt *);
+ 
+ int		rpcb_register(u32, u32, int, unsigned short, int *);
++int		rpcb_v4_register(const u32 program, const u32 version,
++				 const struct sockaddr *address,
++				 const char *netid, int *result);
+ int		rpcb_getport_sync(struct sockaddr_in *, u32, u32, int);
+ void		rpcb_getport_async(struct rpc_task *);
+ 
 diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index eb2bffe..4a85bf5 100644
+index 4a85bf5..849b4f7 100644
 --- a/net/sunrpc/rpcb_clnt.c
 +++ b/net/sunrpc/rpcb_clnt.c
-@@ -67,6 +67,12 @@ enum {
- #define RPCB_OWNER_STRING	"rpcb"
- #define RPCB_MAXOWNERLEN	sizeof(RPCB_OWNER_STRING)
+@@ -90,6 +90,7 @@ struct rpcbind_args {
  
-+/*
-+ * Number of seconds before timing out a registration request
-+ * to our local user space rpcbind daemon.
-+ */
-+#define RPCB_REGISTER_TO_SECS	(10UL)
-+
- static void			rpcb_getport_done(struct rpc_task *, void *);
- static struct rpc_program	rpcb_program;
+ static struct rpc_procinfo rpcb_procedures2[];
+ static struct rpc_procinfo rpcb_procedures3[];
++static struct rpc_procinfo rpcb_procedures4[];
  
-@@ -118,14 +124,26 @@ static const struct sockaddr_in rpcb_inaddr_loopback = {
+ struct rpcb_info {
+ 	u32			rpc_vers;
+@@ -124,6 +125,12 @@ static const struct sockaddr_in rpcb_inaddr_loopback = {
  	.sin_port		= htons(RPCBIND_PORT),
  };
  
-+/*
-+ * TCP is always used to contact the local rpcbind daemon because we
-+ * get an immediate indication of whether there is a remote listener
-+ * when a connection is attempted.
-+ */
-+static const struct rpc_timeout rpcb_local_tcp_timeout = {
-+	.to_initval		= RPCB_REGISTER_TO_SECS * HZ,
-+	.to_maxval		= RPCB_REGISTER_TO_SECS * HZ,
-+	.to_retries		= 0,
++static const struct sockaddr_in6 rpcb_in6addr_loopback = {
++	.sin6_family		= AF_INET6,
++	.sin6_addr		= IN6ADDR_LOOPBACK_INIT,
++	.sin6_port		= htons(RPCBIND_PORT),
 +};
 +
- static struct rpc_clnt *rpcb_create_local(struct sockaddr *addr,
- 					  size_t addrlen, u32 version)
- {
- 	struct rpc_create_args args = {
--		.protocol	= XPRT_TRANSPORT_UDP,
-+		.protocol	= XPRT_TRANSPORT_TCP,
- 		.address	= addr,
- 		.addrsize	= addrlen,
- 		.servername	= "localhost",
-+		.timeout	= &rpcb_local_tcp_timeout,
- 		.program	= &rpcb_program,
- 		.version	= version,
- 		.authflavor	= RPC_AUTH_UNIX,
-@@ -175,7 +193,7 @@ static int rpcb_register_call(struct sockaddr *addr, size_t addrlen,
+ /*
+  * TCP is always used to contact the local rpcbind daemon because we
+  * get an immediate indication of whether there is a remote listener
+@@ -244,6 +251,135 @@ int rpcb_register(u32 prog, u32 vers, int prot, unsigned short port, int *okay)
+ 					RPCBVERS_2, &msg, okay);
+ }
  
- 	rpcb_clnt = rpcb_create_local(addr, addrlen, version);
- 	if (!IS_ERR(rpcb_clnt)) {
--		error = rpc_call_sync(rpcb_clnt, msg, 0);
-+		error = rpc_call_sync(rpcb_clnt, msg, RPC_TASK_ONESHOT);
- 		rpc_shutdown_client(rpcb_clnt);
- 	} else
- 		error = PTR_ERR(rpcb_clnt);
++/*
++ * Fill in AF_INET family-specific arguments to register
++ */
++static int rpcb_register_netid4(struct sockaddr_in *address_to_register,
++				struct rpc_message *msg)
++{
++	struct rpcbind_args *map = msg->rpc_argp;
++	unsigned short port = ntohs(address_to_register->sin_port);
++	char buf[32];
++
++	/* Construct AF_INET universal address */
++	snprintf(buf, sizeof(buf),
++			NIPQUAD_FMT".%u.%u",
++			NIPQUAD(address_to_register->sin_addr.s_addr),
++			port >> 8, port & 0xff);
++	map->r_addr = buf;
++
++	dprintk("RPC:       %sregistering [%u, %u, %s, '%s'] with "
++		"local rpcbind\n", (port ? "" : "un"),
++			map->r_prog, map->r_vers,
++			map->r_addr, map->r_netid);
++
++	msg->rpc_proc = &rpcb_procedures4[RPCBPROC_UNSET];
++	if (port)
++		msg->rpc_proc = &rpcb_procedures4[RPCBPROC_SET];
++
++	return rpcb_register_call((struct sockaddr *)&rpcb_inaddr_loopback,
++					sizeof(rpcb_inaddr_loopback),
++					RPCBVERS_4, msg, msg->rpc_resp);
++}
++
++/*
++ * Fill in AF_INET6 family-specific arguments to register
++ */
++static int rpcb_register_netid6(struct sockaddr_in6 *address_to_register,
++				struct rpc_message *msg)
++{
++	struct rpcbind_args *map = msg->rpc_argp;
++	unsigned short port = ntohs(address_to_register->sin6_port);
++	char buf[64];
++
++	/* Construct AF_INET6 universal address */
++	snprintf(buf, sizeof(buf),
++			NIP6_FMT".%u.%u",
++			NIP6(address_to_register->sin6_addr),
++			port >> 8, port & 0xff);
++	map->r_addr = buf;
++
++	dprintk("RPC:       %sregistering [%u, %u, %s, '%s'] with "
++		"local rpcbind\n", (port ? "" : "un"),
++			map->r_prog, map->r_vers,
++			map->r_addr, map->r_netid);
++
++	msg->rpc_proc = &rpcb_procedures4[RPCBPROC_UNSET];
++	if (port)
++		msg->rpc_proc = &rpcb_procedures4[RPCBPROC_SET];
++
++	return rpcb_register_call((struct sockaddr *)&rpcb_in6addr_loopback,
++					sizeof(rpcb_in6addr_loopback),
++					RPCBVERS_4, msg, msg->rpc_resp);
++}
++
++/**
++ * rpcb_v4_register - set or unset a port registration with the local rpcbind
++ * @program: RPC program number of service to (un)register
++ * @version: RPC version number of service to (un)register
++ * @address: family, IP address, and port to (un)register
++ * @netid: netid of transport protocol to (un)register
++ * @result: result code from rpcbind RPC call
++ *
++ * Called by server-side RPC consumers to advertise an RPC-based service
++ * via the system's rpcbind daemon.  Callers must call this routine once for
++ * each [program, version, address, netid] tuple they wish to advertise.
++ * A unique address family counts as a separate address, thus a service must
++ * register AF_INET and AF_INET6 service addresses separately.
++ *
++ * Callers may also unregister their RPC services by setting the port
++ * number in the passed-in address to zero.  Callers can pass "" for
++ * @netid to unregister all transport netids associated with [program,
++ * version, address].
++ *
++ * Returns zero if the registration request was dispatched successfully.
++ * The rpcbind daemon's result code is stored in *result.
++ *
++ * Returns an errno value and sets *result to zero if there was some
++ * problem that prevented the rpcbind request from being dispatched.
++ *
++ * This function uses rpcbind protocol version 4 to contact the local
++ * rpcbind daemon.  The local rpcbind daemon must support version 4 of the
++ * rpcbind protocol in order for these functions to return success.
++ *
++ * Version 4 SET/UNSET procedures allow services to register address
++ * families besides AF_INET, register at specific network interfaces, and
++ * register transport protocols besides UDP and TCP.
++ *
++ * The contents of @address determine the address family and the port to be
++ * registered.  The usual practice is to pass in INADDR_ANY as the raw
++ * address, but specifying a non-zero address is supported by this API if
++ * the caller wishes to advertise a service on a specific network interface.
++ */
++int rpcb_v4_register(const u32 program, const u32 version,
++		     const struct sockaddr *address, const char *netid,
++		     int *result)
++{
++	struct rpcbind_args map = {
++		.r_prog		= program,
++		.r_vers		= version,
++		.r_netid	= netid,
++		.r_owner	= RPCB_OWNER_STRING,
++	};
++	struct rpc_message msg = {
++		.rpc_argp	= &map,
++		.rpc_resp	= result,
++	};
++
++	*result = 0;
++
++	switch (address->sa_family) {
++	case AF_INET:
++		return rpcb_register_netid4((struct sockaddr_in *)address,
++					    &msg);
++	case AF_INET6:
++		return rpcb_register_netid6((struct sockaddr_in6 *)address,
++					    &msg);
++	}
++
++	return -EAFNOSUPPORT;
++}
++
+ /**
+  * rpcb_getport_sync - obtain the port for an RPC service on a given host
+  * @sin: address of remote peer
 
