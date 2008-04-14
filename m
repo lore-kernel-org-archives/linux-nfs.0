@@ -1,59 +1,114 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: nfs: infinite loop in fcntl(F_SETLKW)
-Date: Mon, 14 Apr 2008 13:19:09 -0400
-Message-ID: <20080414171909.GE15950@fieldses.org>
-References: <E1JjcgO-0004q2-VJ@pomaz-ex.szeredi.hu> <E1Jk2oI-0007UX-MS@pomaz-ex.szeredi.hu> <1207861339.8180.14.camel@heimdal.trondhjem.org> <1207861661.8180.18.camel@heimdal.trondhjem.org> <1207862436.8180.30.camel@heimdal.trondhjem.org> <20080410215410.GF22324@fieldses.org> <E1JkxZI-0003Bc-9C@pomaz-ex.szeredi.hu>
+Subject: Re: [NFS] How to set-up a Linux NFS server to handle massive	number
+	of requests
+Date: Mon, 14 Apr 2008 13:06:07 -0400
+Message-ID: <20080414170607.GC15950@fieldses.org>
+References: <47FE044A.7020008@aei.mpg.de> <20080411230754.GI24830@fieldses.org>
+	<48005A78.9090609@aei.mpg.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: trond.myklebust@fys.uio.no, eshel@almaden.ibm.com, neilb@suse.de,
-	akpm@linux-foundation.org, linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Miklos Szeredi <miklos@szeredi.hu>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1763090AbYDNRTg@vger.kernel.org>
-In-Reply-To: <E1JkxZI-0003Bc-9C@pomaz-ex.szeredi.hu>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
+To: Carsten Aulbert <carsten.aulbert-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from neil.brown.name ([220.233.11.133]:42917 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751880AbYDNR1B (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 14 Apr 2008 13:27:01 -0400
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1JlSS9-000720-2q
+	for linux-nfs@vger.kernel.org; Tue, 15 Apr 2008 03:26:49 +1000
+In-Reply-To: <48005A78.9090609-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Apr 13, 2008 at 10:28:08AM +0200, Miklos Szeredi wrote:
-> > Apologies, that was indeed a behavioral change introduced in a commit
-> > that claimed just to be shuffling code around.
-> 
-> Another complaint about this series: using EINPROGRESS to signal
-> asynchronous locking looks really fishy.  How does the filesystem
-> know, that the caller wants to do async locking?
+On Sat, Apr 12, 2008 at 08:45:12AM +0200, Carsten Aulbert wrote:
+> 2.6.24.Hi,
+>
+> J. Bruce Fields wrote:
+>>> In the standard set-up many connections get into the box (tcp 
+>>> connection status SYN_RECV) but those fall over after some time and 
+>>> stay in CLOSE_WAIT state until I restart the nfs-kernel-server. 
+>>> Typically that looks like (netstat -an):
+>>
+>> That's interesting!  But I'm not sure how to figure this out.
+>>
+>> Is it possible to get a network trace that shows what's going on?
+>>
+>
+> In principle yes, but
+> (1) it's huge. I only get this when doing this with 500-1000 clients  
+> starting at about the same time
+> (2) It seems that I don't get a full trace, i.e. the session seem to be  
+> incomplete - sometimes I only see a single packet with FIN set. I tried  
+> doing this both with wireshark running locally and with ntap's capturing  
+> device.
 
-The caller sets a fl_grant callback.  But I guess the interesting
-question is how the caller knows that the filesystem is really going to
-return the results asynchronously:
+Yeah, that's not surprising.  You'd probably want to dedicate a machine
+to doing the capture, and then I'm not sure what kind of hardware you'd
+need for a given network to get everything.  Probably it's not worth it.
 
-> How do we make sure,
-> that the filesystem (like fuse or 9p, which "blindly" return the error
-> from the server) doesn't return EINPROGRESS even when it's _not_ doing
-> an asynchronous lock?
+>> What happens on the clients?
+>>
+> In the logs (/var/log/daemon.log) I only see that the mount request  
+> fails in different ways.
+>
+> Apr  9 12:07:55 n0078 automount[26838]: >> mount: RPC: Timed out
+> Apr  9 12:07:55 n0078 automount[26838]: mount(nfs): nfs: mount failure  
+> d14:/data on /atlas/data/d14
+> Apr  9 12:07:55 n0078 automount[26838]: failed to mount /atlas/data/d14
+> Apr  9 12:18:56 n0078 automount[27977]: >> mount: RPC: Remote system  
+> error - Connection timed out
+> Apr  9 12:18:56 n0078 automount[27977]: mount(nfs): nfs: mount failure  
+> d14:/data on /atlas/data/d14
+>
+> I have not yet run tshark in the background on many nodes to see if I  
+> can capture the client's view. Would that be beneficial?
 
-Right, there's no safeguard there--if fuse returns EINPROGRESS, then
-we'll wait for a grant callback that's not going to come.  It should
-time out, so that's not a total disaster, but still.
+Couldn't hurt.
 
-Anyway, I'm not sure what to do about that.
+Hauling out TCP/IP Illustrated and refreshing my memory of the tcp state
+transition diagram....  So if the server has a lot of connections stuck
+in CLOSE_WAIT, that means it got FIN's from the clients (perhaps after
+they timed out), but never shut down its side of the connection.  Sounds
+like a bug in some server-side rpc code.  (Hm.  But all those SYN_RECV's
+are somebody waiting for a client to ACK a SYN.  Why are there so many
+of those?)
 
-> 
-> I think it would have been much cleaner to have a completely separate
-> interface for async locking, instead of trying to cram that into
-> f_op->lock().
+Those connections are actually to port 687, which I assume is mountd
+(what does rpcinfo -p say?).  (And probably if you just killed and
+restarted mountd, instead of doing a complete
+"/etc/init.d/nfs-kernel-server restart", that'd also clear those out.)
+In fact, in the example you gave only three out of about 27 connections
+(the only ESTABLISHED connections) were to port 2049 (nfsd itself).
 
-Maybe so.  ->lock() had quite a bit crammed into it even before this.
+So it looks like it's mountd that's not keeping up (and that's leaving
+connections sitting around too long), and the mountd processes are
+probably what we should be debugging.
 
-> Would that be possible to fix now?  Or at least make EINPROGRESS a
-> kernel-internal error value (>512), to make it that it has a special
-> meaning for the _kernel only_?
+>> What kernel version are you using?--b.
+>
+> 2.6.24.4 on Debian Etch
+>
+> Right now, it seems that running 196 nfsd plus 64 threads for mountd  
+> solves the problem for the time being. Although it would be nice to  
+> understand these "magic" numbers ;)
 
-Perhaps so.
-
-The behavior of lockd will still depend to some degree on the exact
-error returned from the filesystem--e.g. if you return -EAGAIN from
-->lock() without later calling ->fl_grant() it will cause some
-unexpected delays.  (Though again clients will eventually give up and
-poll for the lock.)
+Yes, definitely.  I'm surprised the number of nfsd threads matters much
+at all, actually, if mountd is the bottleneck.
 
 --b.
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by the 2008 JavaOne(SM) Conference 
+Don't miss this year's exciting event. There's still time to save $100. 
+Use priority code J8TL2D2. 
+http://ad.doubleclick.net/clk;198757673;13503038;p?http://java.sun.com/javaone
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
+
