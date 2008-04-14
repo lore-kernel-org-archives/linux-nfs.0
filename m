@@ -1,85 +1,58 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH] NFS: Only warn on unrecognized mount options
-Date: Mon, 14 Apr 2008 10:00:37 -0400
-Message-ID: <2832BD5F-D944-41FD-9FF1-1EC4D4DFA5E0@oracle.com>
-References: <20080411200249.28007.12509.stgit@manray.1015granger.net> <1207945499.15646.11.camel@heimdal.trondhjem.org>
-Mime-Version: 1.0 (Apple Message framework v919.2)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Subject: [PATCH 08/24] SUNRPC: Use unsigned index when looping over arrays
+Date: Mon, 14 Apr 2008 12:27:38 -0400
+Message-ID: <20080414162738.12741.26613.stgit@manray.1015granger.net>
+References: <20080414162108.12741.73233.stgit@manray.1015granger.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: bfields@citi.umich.edu, trond.myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:36378 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753336AbYDNOBr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Apr 2008 10:01:47 -0400
-In-Reply-To: <1207945499.15646.11.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from flpi101.sbcis.sbc.com ([207.115.20.70]:57381 "EHLO
+	flpi101.prodigy.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755060AbYDNQbA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Apr 2008 12:31:00 -0400
+In-Reply-To: <20080414162108.12741.73233.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Apr 11, 2008, at 4:24 PM, Trond Myklebust wrote:
-> On Fri, 2008-04-11 at 16:03 -0400, Chuck Lever wrote:
->> To provide compatibility with automounters who use a common set of  
->> mount
->> options for all file systems, change the NFS in-kernel mount option  
->> parser
->> to ignore mount options it doesn't recognize.
->>
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> ---
->> Yet another NFS mount patch!  Build tested only.  Comments?
->>
->> fs/nfs/super.c |    7 ++-----
->> 1 files changed, 2 insertions(+), 5 deletions(-)
->>
->> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
->> index f921902..a7201f0 100644
->> --- a/fs/nfs/super.c
->> +++ b/fs/nfs/super.c
->> @@ -1044,7 +1044,8 @@ static int nfs_parse_mount_options(char *raw,
->> 			break;
->>
->> 		default:
->> -			goto out_unknown;
->> +			printk(KERN_INFO "NFS: unrecognized mount option '%s'"
->> +					" ignored\n", p);
->> 		}
->> 	}
->>
->> @@ -1070,10 +1071,6 @@ out_unrec_xprt:
->> out_unrec_sec:
->> 	printk(KERN_INFO "NFS: unrecognized security flavor\n");
->> 	return 0;
->> -
->> -out_unknown:
->> -	printk(KERN_INFO "NFS: unknown mount option: %s\n", p);
->> -	return 0;
->> }
->>
->> /*
->
-> This isn't really a very good solution either. Spamming the syslog on
-> every option that is being ignored isn't going to help the folks with
-> the global automounter maps. Either the rules should be that 'all
-> options are allowed' or they should be that 'only recognised NFS  
-> options
-> are allowed'.
+Clean up: Suppress a handful of harmless compiler warnings in the RPC
+client related to array indices.
 
+ARRAY_SIZE() returns a size_t, so use unsigned type for a loop index when
+looping over arrays.
 
-Despite what I posted last week, I like the code the way it is now:   
-We should reject any unrecognized mount options with an error  
-message.  Anything else invites subtle behavior problems, security  
-holes, or even the possibility of data corruption.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-Oracle databases, for example, do rely on "sync" mounts actually being  
-synchronous.  If you specify Kerberos security but misspell it, I  
-think you would want to know that you're not getting the security  
-level you expect.
+ net/sunrpc/rpc_pipe.c |    2 +-
+ net/sunrpc/sched.c    |    2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-Can someone (maybe Peter) help me understand how exactly this makes  
-using an automounter problematic?
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index 1b395a4..5209444 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -529,7 +529,7 @@ static void rpc_depopulate(struct dentry *parent,
+ 	struct inode *dir = parent->d_inode;
+ 	struct list_head *pos, *next;
+ 	struct dentry *dentry, *dvec[10];
+-	int n = 0;
++	unsigned int n = 0;
+ 
+ 	mutex_lock_nested(&dir->i_mutex, I_MUTEX_CHILD);
+ repeat:
+diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+index 63fe132..01fc7b8 100644
+--- a/net/sunrpc/sched.c
++++ b/net/sunrpc/sched.c
+@@ -222,7 +222,7 @@ static inline void rpc_reset_waitqueue_priority(struct rpc_wait_queue *queue)
+ 
+ static void __rpc_init_priority_wait_queue(struct rpc_wait_queue *queue, const char *qname, unsigned char nr_queues)
+ {
+-	int i;
++	unsigned int i;
+ 
+ 	spin_lock_init(&queue->lock);
+ 	for (i = 0; i < ARRAY_SIZE(queue->tasks); i++)
 
-Thanks!
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
