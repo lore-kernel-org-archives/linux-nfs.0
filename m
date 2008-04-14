@@ -1,39 +1,89 @@
-From: Miklos Szeredi <miklos@szeredi.hu>
-Subject: Re: nfs: infinite loop in fcntl(F_SETLKW)
-Date: Sun, 13 Apr 2008 10:28:08 +0200
-Message-ID: <E1JkxZI-0003Bc-9C@pomaz-ex.szeredi.hu>
-References: <E1JjcgO-0004q2-VJ@pomaz-ex.szeredi.hu> <E1Jk2oI-0007UX-MS@pomaz-ex.szeredi.hu> <1207861339.8180.14.camel@heimdal.trondhjem.org> <1207861661.8180.18.camel@heimdal.trondhjem.org> <1207862436.8180.30.camel@heimdal.trondhjem.org> <20080410215410.GF22324@fieldses.org>
-Cc: trond.myklebust@fys.uio.no, miklos@szeredi.hu,
-	eshel@almaden.ibm.com, neilb@suse.de, akpm@linux-foundation.org,
-	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-To: bfields@fieldses.org
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fxip-0047f.externet.hu ([88.209.222.127]:41429 "EHLO
-	pomaz-ex.szeredi.hu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756612AbYDMI22 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Apr 2008 04:28:28 -0400
-In-reply-to: <20080410215410.GF22324@fieldses.org> (bfields@fieldses.org)
-Sender: linux-nfs-owner@vger.kernel.org
+From: Jan Sanders <jsanders@TechFak.Uni-Bielefeld.DE>
+Subject: Re: NFS: unknown mount option: grpid
+Date: Mon, 14 Apr 2008 14:34:35 +0200
+Message-ID: <48034F5B.7060304@TechFak.Uni-Bielefeld.DE>
+References: <47FE0C42.6030900@TechFak.Uni-Bielefeld.DE>	<56D1CF7A-BB26-4D07-B47D-9D43D55A1B8F@oracle.com>	<47FE2C2D.1070703@redhat.com>
+	<A5A48540-EC83-422F-A566-324A5F141339@oracle.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Cc: NFS list <linux-nfs@vger.kernel.org>,
+	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <A5A48540-EC83-422F-A566-324A5F141339@oracle.com>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> Apologies, that was indeed a behavioral change introduced in a commit
-> that claimed just to be shuffling code around.
+Chuck Lever wrote:
+> On Apr 10, 2008, at 11:03 AM, Peter Staubach wrote:
+>   
+>> Chuck Lever wrote:
+>>     
+>>> Hi Jan-
+>>>
+>>> On Apr 10, 2008, at 8:46 AM, Jan Sanders wrote:
+>>>
+>>>       
+>>>> Hi all,
+>>>>
+>>>> I have come across a little NFS problem.
+>>>>
+>>>> My nfs client, a Ubuntu-Hardy machine with nfs-common-1.1.2 tries to
+>>>> mount a directory but fails complaining
+>>>>
+>>>> Apr 10 12:18:34 sorpe kernel: [  490.911951]NFS: unknown mount   
+>>>> option: grpid
+>>>>
+>>>> The mount options are rw,nosuid,grpid. The mount is done by  
+>>>> autofs but
+>>>> trying to mount the directory usdin the same options rw,nosuid,grpid
+>>>> results in the same error.
+>>>> I checked using strace that the mount call was indeed done using   
+>>>> grpid.
+>>>> The mount call returns with EINVAL invalis argument.
+>>>>
+>>>>  From strace:
+>>>> mount("nfs-server:/volumes/www", "/vol/www", "nfs", MS_NOSUID,
+>>>> "grpid,addr=192.168.0.123") = -1 EINVAL (Invalid argument)
+>>>>
+>>>>         
+>>> grpid isn't a valid NFS mount option; it's valid only for xfs and   
+>>> ext2/3, according to mount(8).
+>>>
+>>> I can't explain why the earlier version of mount.nfs didn't  
+>>> complain  about it.
+>>>
+>>>
+>>>       
+>> I thought that the NFS mount command was supposed to ignore
+>> mount options that it didn't understand.  It could perhaps
+>> give a warning message, but should mount anyway.
+>>
+>> I thought that this behavior was useful for automounter
+>> applications which have to be able to share maps in a
+>> heterogeneous environment.
+>>     
+>
+>
+> Well, it does ignore legacy NFS mount options that are no longer  
+> supported.
+>
+> However, I was not aware of a requirement for NFS mount to ignore all  
+> options it doesn't understand.
+>
+> It's easy enough to add, I suppose.  Community opinion?
+Needless to say that I would opine for it :-D
 
-Another complaint about this series: using EINPROGRESS to signal
-asynchronous locking looks really fishy.  How does the filesystem
-know, that the caller wants to do async locking?  How do we make sure,
-that the filesystem (like fuse or 9p, which "blindly" return the error
-from the server) doesn't return EINPROGRESS even when it's _not_ doing
-an asynchronous lock?
+cheers
 
-I think it would have been much cleaner to have a completely separate
-interface for async locking, instead of trying to cram that into
-f_op->lock().
+Jan S.
 
-Would that be possible to fix now?  Or at least make EINPROGRESS a
-kernel-internal error value (>512), to make it that it has a special
-meaning for the _kernel only_?
-
-Thanks,
-Miklos
+tnx for your help so far btw!
