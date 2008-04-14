@@ -1,55 +1,52 @@
-From: Adrian Bunk <bunk@kernel.org>
-Subject: [2.6 patch] make nfs_automount_list static
-Date: Mon, 14 Apr 2008 21:41:32 +0300
-Message-ID: <20080414184132.GT6695@cs181133002.pp.htv.fi>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 09/24] SUNRPC: Use unsigned index when looping over
+	arrays
+Date: Mon, 14 Apr 2008 14:51:13 -0400
+Message-ID: <20080414185113.GK15950@fieldses.org>
+References: <20080414162108.12741.73233.stgit@manray.1015granger.net> <20080414162745.12741.37176.stgit@manray.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Al Viro <viro@zeniv.linux.org.uk>, Trond.Myklebust@netapp.com
+Content-Type: text/plain; charset=us-ascii
+Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp4.pp.htv.fi ([213.243.153.38]:51114 "EHLO smtp4.pp.htv.fi"
+Received: from mail.fieldses.org ([66.93.2.214]:49682 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934248AbYDNSmi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 14 Apr 2008 14:42:38 -0400
+	id S932207AbYDNSvb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 14 Apr 2008 14:51:31 -0400
+In-Reply-To: <20080414162745.12741.37176.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-nfs_automount_list can now become static.
+On Mon, Apr 14, 2008 at 12:27:45PM -0400, Chuck Lever wrote:
+> Clean up: Suppress a harmless compiler warning in the RPC server related
+> to array indices.
+> 
+> ARRAY_SIZE() returns a size_t, so use unsigned type for a loop index when
+> looping over arrays.
 
-Signed-off-by: Adrian Bunk <bunk@kernel.org>
+OK (and thanks for the "harmless compiler warning clarification").--b.
 
----
-
-This patch has been sent on:
-- 31 Mar 2008
-
- fs/nfs/namespace.c     |    2 +-
- include/linux/nfs_fs.h |    1 -
- 2 files changed, 1 insertion(+), 2 deletions(-)
-
-7620c6ff4cdf4975d02158361f85e7d881f55ec3 diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
-index 607f6eb..af4d0f1 100644
---- a/fs/nfs/namespace.c
-+++ b/fs/nfs/namespace.c
-@@ -20,7 +20,7 @@
- 
- static void nfs_expire_automounts(struct work_struct *work);
- 
--LIST_HEAD(nfs_automount_list);
-+static LIST_HEAD(nfs_automount_list);
- static DECLARE_DELAYED_WORK(nfs_automount_task, nfs_expire_automounts);
- int nfs_mountpoint_expiry_timeout = 500 * HZ;
- 
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index f4a0e4c..13f7c75 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -430,7 +430,6 @@ extern void nfs_unregister_sysctl(void);
- /*
-  * linux/fs/nfs/namespace.c
-  */
--extern struct list_head nfs_automount_list;
- extern const struct inode_operations nfs_mountpoint_inode_operations;
- extern const struct inode_operations nfs_referral_inode_operations;
- extern int nfs_mountpoint_expiry_timeout;
-
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> 
+>  net/sunrpc/svc.c |    5 +++--
+>  1 files changed, 3 insertions(+), 2 deletions(-)
+> 
+> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+> index a290e15..c1e763b 100644
+> --- a/net/sunrpc/svc.c
+> +++ b/net/sunrpc/svc.c
+> @@ -528,8 +528,9 @@ svc_init_buffer(struct svc_rqst *rqstp, unsigned int size)
+>  static void
+>  svc_release_buffer(struct svc_rqst *rqstp)
+>  {
+> -	int i;
+> -	for (i=0; i<ARRAY_SIZE(rqstp->rq_pages); i++)
+> +	unsigned int i;
+> +
+> +	for (i = 0; i < ARRAY_SIZE(rqstp->rq_pages); i++)
+>  		if (rqstp->rq_pages[i])
+>  			put_page(rqstp->rq_pages[i]);
+>  }
+> 
