@@ -1,51 +1,94 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 04/24] SUNRPC: Address potential buffer length overflow
-	in svc_sendto
-Date: Mon, 14 Apr 2008 13:48:59 -0400
-Message-ID: <20080414174859.GH15950@fieldses.org>
-References: <20080414162108.12741.73233.stgit@manray.1015granger.net> <20080414162708.12741.71691.stgit@manray.1015granger.net>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH] nfs: handle nfs_{read,write,commit}_rpcsetup errors
+Date: Mon, 14 Apr 2008 13:54:40 -0400
+Message-ID: <1208195681.11223.18.camel@heimdal.trondhjem.org>
+References: <1208194278-6165-1-git-send-email-bhalevy@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain
+Cc: linux-nfs@vger.kernel.org
+To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:40000 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:34678 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752148AbYDNRtS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 14 Apr 2008 13:49:18 -0400
-In-Reply-To: <20080414162708.12741.71691.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+	id S932176AbYDNRyp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 14 Apr 2008 13:54:45 -0400
+In-Reply-To: <1208194278-6165-1-git-send-email-bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Apr 14, 2008 at 12:27:08PM -0400, Chuck Lever wrote:
-> Paranoia: Ensure a negative error value return from kernel_sendpage never
-> matches a large buffer length.
 
-That is a little paranoid.  Absent an argument for exactly what sort of
-bug could allow us to reach this point with the head iov_len in at least
-the gigabytes, I'm inclined to leave this alone for simplicity's
-sake....
+On Mon, 2008-04-14 at 20:31 +0300, Benny Halevy wrote:
+> Currently, nfs_{read,write,commit}_rpcsetup return no errors.
+> All three call rpc_run_task that can fail when out of memory.
+> Ignoring these failures leads to hangs.
 
---b.
+How?
 
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 > ---
+>  fs/nfs/read.c  |   35 +++++++++++++++++++++--------
+>  fs/nfs/write.c |   66 ++++++++++++++++++++++++++++++++++++-------------------
+>  2 files changed, 68 insertions(+), 33 deletions(-)
 > 
->  net/sunrpc/svcsock.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
-> 
-> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-> index 6d4162b..a8ae279 100644
-> --- a/net/sunrpc/svcsock.c
-> +++ b/net/sunrpc/svcsock.c
-> @@ -200,7 +200,7 @@ static int svc_sendto(struct svc_rqst *rqstp, struct xdr_buf *xdr)
->  		flags = 0;
->  	len = kernel_sendpage(sock, rqstp->rq_respages[0], 0,
->  				  xdr->head[0].iov_len, flags);
-> -	if (len != xdr->head[0].iov_len)
-> +	if (len < 0 || len != xdr->head[0].iov_len)
->  		goto out;
->  	slen -= xdr->head[0].iov_len;
->  	if (slen == 0)
-> 
+> diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+> index 5a70be5..85df148 100644
+> --- a/fs/nfs/read.c
+> +++ b/fs/nfs/read.c
+> @@ -156,7 +156,7 @@ static void nfs_readpage_release(struct nfs_page *req)
+>  /*
+>   * Set up the NFS read request struct
+>   */
+> -static void nfs_read_rpcsetup(struct nfs_page *req, struct nfs_read_data *data,
+> +static int nfs_read_rpcsetup(struct nfs_page *req, struct nfs_read_data *data,
+>  		const struct rpc_call_ops *call_ops,
+>  		unsigned int count, unsigned int offset)
+>  {
+> @@ -204,8 +204,10 @@ static void nfs_read_rpcsetup(struct nfs_page *req, struct nfs_read_data *data,
+>  			(unsigned long long)data->args.offset);
+>  
+>  	task = rpc_run_task(&task_setup_data);
+> -	if (!IS_ERR(task))
+> -		rpc_put_task(task);
+> +	if (unlikely(IS_ERR(task)))
+> +		return PTR_ERR(task);
+> +	rpc_put_task(task);
+> +	return 0;
+>  }
+>  
+>  static void
+> @@ -242,6 +244,7 @@ static int nfs_pagein_multi(struct inode *inode, struct list_head *head, unsigne
+>  	size_t rsize = NFS_SERVER(inode)->rsize, nbytes;
+>  	unsigned int offset;
+>  	int requests = 0;
+> +	int ret = -ENOMEM;
+>  	LIST_HEAD(list);
+>  
+>  	nfs_list_remove_request(req);
+> @@ -271,8 +274,12 @@ static int nfs_pagein_multi(struct inode *inode, struct list_head *head, unsigne
+>  
+>  		if (nbytes < rsize)
+>  			rsize = nbytes;
+> -		nfs_read_rpcsetup(req, data, &nfs_read_partial_ops,
+> -				  rsize, offset);
+> +		ret = nfs_read_rpcsetup(req, data, &nfs_read_partial_ops,
+> +					rsize, offset);
+> +		if (unlikely(ret)) {
+> +			list_add(&data->pages, &list);
+
+NACK. This is a use-after-free case.
+
+The call to rpc_run_task() is _guaranteed_ to always call
+nfs_readpage_release(). You therefore no longer hold the page lock, nor
+can you rely on 'data' still being around.
+
+The same applies to all the other "fixes".
+
+Trond
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
