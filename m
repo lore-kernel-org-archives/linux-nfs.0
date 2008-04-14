@@ -1,114 +1,111 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [NFS] How to set-up a Linux NFS server to handle massive	number
-	of requests
-Date: Mon, 14 Apr 2008 13:06:07 -0400
-Message-ID: <20080414170607.GC15950@fieldses.org>
-References: <47FE044A.7020008@aei.mpg.de> <20080411230754.GI24830@fieldses.org>
-	<48005A78.9090609@aei.mpg.de>
+From: Peter Staubach <staubach@redhat.com>
+Subject: Re: [PATCH] NFS: Only warn on unrecognized mount options
+Date: Mon, 14 Apr 2008 13:19:29 -0400
+Message-ID: <48039221.5020609@redhat.com>
+References: <20080411200249.28007.12509.stgit@manray.1015granger.net> <1207945499.15646.11.camel@heimdal.trondhjem.org> <2832BD5F-D944-41FD-9FF1-1EC4D4DFA5E0@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Carsten Aulbert <carsten.aulbert-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+	linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:42917 "EHLO neil.brown.name"
+Received: from mx1.redhat.com ([66.187.233.31]:43848 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751880AbYDNR1B (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 14 Apr 2008 13:27:01 -0400
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1JlSS9-000720-2q
-	for linux-nfs@vger.kernel.org; Tue, 15 Apr 2008 03:26:49 +1000
-In-Reply-To: <48005A78.9090609-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>
+	id S1755617AbYDNRUp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 14 Apr 2008 13:20:45 -0400
+In-Reply-To: <2832BD5F-D944-41FD-9FF1-1EC4D4DFA5E0@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Apr 12, 2008 at 08:45:12AM +0200, Carsten Aulbert wrote:
-> 2.6.24.Hi,
->
-> J. Bruce Fields wrote:
->>> In the standard set-up many connections get into the box (tcp 
->>> connection status SYN_RECV) but those fall over after some time and 
->>> stay in CLOSE_WAIT state until I restart the nfs-kernel-server. 
->>> Typically that looks like (netstat -an):
+Chuck Lever wrote:
+> On Apr 11, 2008, at 4:24 PM, Trond Myklebust wrote:
+>> On Fri, 2008-04-11 at 16:03 -0400, Chuck Lever wrote:
+>>> To provide compatibility with automounters who use a common set of 
+>>> mount
+>>> options for all file systems, change the NFS in-kernel mount option 
+>>> parser
+>>> to ignore mount options it doesn't recognize.
+>>>
+>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>>> ---
+>>> Yet another NFS mount patch!  Build tested only.  Comments?
+>>>
+>>> fs/nfs/super.c |    7 ++-----
+>>> 1 files changed, 2 insertions(+), 5 deletions(-)
+>>>
+>>> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+>>> index f921902..a7201f0 100644
+>>> --- a/fs/nfs/super.c
+>>> +++ b/fs/nfs/super.c
+>>> @@ -1044,7 +1044,8 @@ static int nfs_parse_mount_options(char *raw,
+>>>             break;
+>>>
+>>>         default:
+>>> -            goto out_unknown;
+>>> +            printk(KERN_INFO "NFS: unrecognized mount option '%s'"
+>>> +                    " ignored\n", p);
+>>>         }
+>>>     }
+>>>
+>>> @@ -1070,10 +1071,6 @@ out_unrec_xprt:
+>>> out_unrec_sec:
+>>>     printk(KERN_INFO "NFS: unrecognized security flavor\n");
+>>>     return 0;
+>>> -
+>>> -out_unknown:
+>>> -    printk(KERN_INFO "NFS: unknown mount option: %s\n", p);
+>>> -    return 0;
+>>> }
+>>>
+>>> /*
 >>
->> That's interesting!  But I'm not sure how to figure this out.
->>
->> Is it possible to get a network trace that shows what's going on?
->>
+>> This isn't really a very good solution either. Spamming the syslog on
+>> every option that is being ignored isn't going to help the folks with
+>> the global automounter maps. Either the rules should be that 'all
+>> options are allowed' or they should be that 'only recognised NFS options
+>> are allowed'.
 >
-> In principle yes, but
-> (1) it's huge. I only get this when doing this with 500-1000 clients  
-> starting at about the same time
-> (2) It seems that I don't get a full trace, i.e. the session seem to be  
-> incomplete - sometimes I only see a single packet with FIN set. I tried  
-> doing this both with wireshark running locally and with ntap's capturing  
-> device.
-
-Yeah, that's not surprising.  You'd probably want to dedicate a machine
-to doing the capture, and then I'm not sure what kind of hardware you'd
-need for a given network to get everything.  Probably it's not worth it.
-
->> What happens on the clients?
->>
-> In the logs (/var/log/daemon.log) I only see that the mount request  
-> fails in different ways.
 >
-> Apr  9 12:07:55 n0078 automount[26838]: >> mount: RPC: Timed out
-> Apr  9 12:07:55 n0078 automount[26838]: mount(nfs): nfs: mount failure  
-> d14:/data on /atlas/data/d14
-> Apr  9 12:07:55 n0078 automount[26838]: failed to mount /atlas/data/d14
-> Apr  9 12:18:56 n0078 automount[27977]: >> mount: RPC: Remote system  
-> error - Connection timed out
-> Apr  9 12:18:56 n0078 automount[27977]: mount(nfs): nfs: mount failure  
-> d14:/data on /atlas/data/d14
+> Despite what I posted last week, I like the code the way it is now:  
+> We should reject any unrecognized mount options with an error 
+> message.  Anything else invites subtle behavior problems, security 
+> holes, or even the possibility of data corruption.
 >
-> I have not yet run tshark in the background on many nodes to see if I  
-> can capture the client's view. Would that be beneficial?
-
-Couldn't hurt.
-
-Hauling out TCP/IP Illustrated and refreshing my memory of the tcp state
-transition diagram....  So if the server has a lot of connections stuck
-in CLOSE_WAIT, that means it got FIN's from the clients (perhaps after
-they timed out), but never shut down its side of the connection.  Sounds
-like a bug in some server-side rpc code.  (Hm.  But all those SYN_RECV's
-are somebody waiting for a client to ACK a SYN.  Why are there so many
-of those?)
-
-Those connections are actually to port 687, which I assume is mountd
-(what does rpcinfo -p say?).  (And probably if you just killed and
-restarted mountd, instead of doing a complete
-"/etc/init.d/nfs-kernel-server restart", that'd also clear those out.)
-In fact, in the example you gave only three out of about 27 connections
-(the only ESTABLISHED connections) were to port 2049 (nfsd itself).
-
-So it looks like it's mountd that's not keeping up (and that's leaving
-connections sitting around too long), and the mountd processes are
-probably what we should be debugging.
-
->> What kernel version are you using?--b.
+> Oracle databases, for example, do rely on "sync" mounts actually being 
+> synchronous.  If you specify Kerberos security but misspell it, I 
+> think you would want to know that you're not getting the security 
+> level you expect.
 >
-> 2.6.24.4 on Debian Etch
->
-> Right now, it seems that running 196 nfsd plus 64 threads for mountd  
-> solves the problem for the time being. Although it would be nice to  
-> understand these "magic" numbers ;)
+> Can someone (maybe Peter) help me understand how exactly this makes 
+> using an automounter problematic? 
 
-Yes, definitely.  I'm surprised the number of nfsd threads matters much
-at all, actually, if mountd is the bottleneck.
+Automounter tools like autofs tend to get their mount options from
+global maps, stored in name or directory services like NIS or LDAP.
+Many users will be running mixed environment networks, including
+systems like Solaris, HP/UX, AIX, Linux, etc.  This means that the
+automounter maps may include options which only make sense for
+specific systems and aren't applicable to other systems.
 
---b.
+One of the features of an automounting feature, other than the
+centralized administration, which may or may not be a liability
+in this situation, is dynamic mounting and umounting.  This keeps
+unused file systems from causing a problem because they get umounted
+and then less likely for an application to stumble into and hence,
+keeping a dead or very slow server from causing needless delays
+and problems.  This also means that the same file system may get
+mounted and umounted many times during day.
 
--------------------------------------------------------------------------
-This SF.net email is sponsored by the 2008 JavaOne(SM) Conference 
-Don't miss this year's exciting event. There's still time to save $100. 
-Use priority code J8TL2D2. 
-http://ad.doubleclick.net/clk;198757673;13503038;p?http://java.sun.com/javaone
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+If the kernel is to print a message every time that it sees an
+option that it doesn't understand, than it is possible that many,
+many messages could be printed, one for _each_ unknown option
+_every time_ that the file system is mounted.
 
+As Trond said, this could lead to spamming the syslog, which will
+make it useless.  This might be useful if the unknown options could
+be logged once, but logging each individual unknown option, each
+time that the file system mounted, makes this much less than
+desirable and could potentially lead to a denial of service attack.
+
+The risks outweigh the benefits when viewed from the big picture.
+
+       ps
