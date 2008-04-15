@@ -1,148 +1,166 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 06/24] SUNRPC: Sanity check incoming UDP datagram lengths properly
-Date: Mon, 14 Apr 2008 17:38:52 -0400
-Message-ID: <9F262A93-C31E-4CEE-AB79-D373278C0933@oracle.com>
-References: <20080414162108.12741.73233.stgit@manray.1015granger.net> <20080414162723.12741.35500.stgit@manray.1015granger.net> <20080414183804.GI15950@fieldses.org> <57F5E6FE-975E-4936-AD04-13956747A18E@oracle.com> <20080414205411.GQ15950@fieldses.org>
-Mime-Version: 1.0 (Apple Message framework v919.2)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+From: Tom Tucker <tom@opengridcomputing.com>
+Subject: Re: [NFS] How to set-up a Linux NFS server to handle	massive	number
+	of requests
+Date: Mon, 14 Apr 2008 23:48:33 -0500
+Message-ID: <1208234913.17169.50.camel@trinity.ogc.int>
+References: <47FE044A.7020008@aei.mpg.de> <20080411230754.GI24830@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net,
+	Carsten Aulbert <carsten.aulbert-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:47995 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752577AbYDNVkZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Apr 2008 17:40:25 -0400
-In-Reply-To: <20080414205411.GQ15950@fieldses.org>
+Received: from neil.brown.name ([220.233.11.133]:58349 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753023AbYDOEsN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 Apr 2008 00:48:13 -0400
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1Jld5X-0000dJ-1C
+	for linux-nfs@vger.kernel.org; Tue, 15 Apr 2008 14:48:11 +1000
+In-Reply-To: <20080411230754.GI24830@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Apr 14, 2008, at 4:54 PM, J. Bruce Fields wrote:
-> On Mon, Apr 14, 2008 at 03:55:16PM -0400, Chuck Lever wrote:
->> On Apr 14, 2008, at 2:38 PM, J. Bruce Fields wrote:
->>> On Mon, Apr 14, 2008 at 12:27:23PM -0400, Chuck Lever wrote:
->>>> Clean up: ensure svc_udp_recvfrom() is getting at least a full UDP
->>>> header
->>>> to avoid potential negative intermediate values.
->>>
->>> Is it legal in this case for skb_recv_datagram() to return an skb
->>> without at least that minimum length? (And if not, should this be a
->>> BUG()?)
->>>
->>>
->>>> A similar sanity check is already used in the RPC client.
->>>
->>> This one?:
->>>
->>> 	repsize = skb->len - sizeof(struct udphdr);
->>> 	if (repsize < 4) {
->>> 		dprintk("RPC:       impossible RPC reply size %d!\n", repsize);
->>> 		goto dropit;
->>> 	}
->>>
->>> I assumed it was needed because of the rpc-level check (for the 4
->>> bytes worth
->>> of xid), not because it needed udp-level checking.
->>
->> The server side check programmatically guarantees we get a non- 
->> negative
->> number when we compute "bytes."
->
-> Would a BUG() accomplish the same thing?
 
-udp_recvfrom doesn't check for underflow at all; it just stores the  
-difference into an unsigned variable with aplomb.  I'll submit a  
-replacement patch that removes the check and clarifies the description.
+Maybe this this is a TCP_BACKLOG issue?
 
->> Thus we can use an unsigned variable and
->> eliminate a mixed sign comparison later on.
->>
->> We can add a "+ sizeof(u32)" to the check if you like.
->>
->>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->>>> ---
->>>>
->>>> net/sunrpc/svcsock.c |   20 +++++++++++++-------
->>>> 1 files changed, 13 insertions(+), 7 deletions(-)
->>>>
->>>> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
->>>> index d077071..de29e7f 100644
->>>> --- a/net/sunrpc/svcsock.c
->>>> +++ b/net/sunrpc/svcsock.c
->>>> @@ -431,6 +431,7 @@ static int svc_udp_recvfrom(struct svc_rqst
->>>> *rqstp)
->>>> 	} buffer;
->>>> 	struct cmsghdr *cmh = &buffer.hdr;
->>>> 	int		err, len;
->>>> +	unsigned int	bytes;
->>>> 	struct msghdr msg = {
->>>> 		.msg_name = svc_addr(rqstp),
->>>> 		.msg_control = cmh,
->>>> @@ -484,8 +485,13 @@ static int svc_udp_recvfrom(struct svc_rqst
->>>> *rqstp)
->>>> 	 */
->>>> 	svc_xprt_received(&svsk->sk_xprt);
->>>>
->>>> -	len  = skb->len - sizeof(struct udphdr);
->>>> -	rqstp->rq_arg.len = len;
->>>> +	if (skb->len < sizeof(struct udphdr)) {
->>>> +		dprintk("svc: bad UDP datagram length: %u\n", skb->len);
->>>> +		skb_free_datagram(svsk->sk_sk, skb);
->>>> +		return 0;
->>>> +	}
->>>> +	bytes = skb->len - sizeof(struct udphdr);
->>>> +	rqstp->rq_arg.len = bytes;
->>>>
->>>> 	rqstp->rq_prot = IPPROTO_UDP;
->>>>
->>>> @@ -515,7 +521,7 @@ static int svc_udp_recvfrom(struct svc_rqst
->>>> *rqstp)
->>>> 		/* we can use it in-place */
->>>> 		rqstp->rq_arg.head[0].iov_base = skb->data +
->>>> 			sizeof(struct udphdr);
->>>> -		rqstp->rq_arg.head[0].iov_len = len;
->>>> +		rqstp->rq_arg.head[0].iov_len = bytes;
->>>> 		if (skb_checksum_complete(skb)) {
->>>> 			skb_free_datagram(svsk->sk_sk, skb);
->>>> 			return 0;
->>>> @@ -524,12 +530,12 @@ static int svc_udp_recvfrom(struct svc_rqst
->>>> *rqstp)
->>>> 	}
->>>>
->>>> 	rqstp->rq_arg.page_base = 0;
->>>> -	if (len <= rqstp->rq_arg.head[0].iov_len) {
->>>> -		rqstp->rq_arg.head[0].iov_len = len;
->>>> +	if (bytes <= rqstp->rq_arg.head[0].iov_len) {
->>>> +		rqstp->rq_arg.head[0].iov_len = bytes;
->>>> 		rqstp->rq_arg.page_len = 0;
->>>> 		rqstp->rq_respages = rqstp->rq_pages+1;
->>>> 	} else {
->>>> -		rqstp->rq_arg.page_len = len - rqstp->rq_arg.head[0].iov_len;
->>>> +		rqstp->rq_arg.page_len = bytes - rqstp->rq_arg.head[0].iov_len;
->>>> 		rqstp->rq_respages = rqstp->rq_pages + 1 +
->>>> 			DIV_ROUND_UP(rqstp->rq_arg.page_len, PAGE_SIZE);
->>>> 	}
->>>> @@ -537,7 +543,7 @@ static int svc_udp_recvfrom(struct svc_rqst
->>>> *rqstp)
->>>> 	if (serv->sv_stats)
->>>> 		serv->sv_stats->netudpcnt++;
->>>>
->>>> -	return len;
->>>> +	return bytes;
->>>> }
->>>>
->>>> static int
->>>>
->>
->> --
->> Chuck Lever
->> chuck[dot]lever[at]oracle[dot]com
->>
->>
->>
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+BTW, with that many mounts won't you run out of "secure" ports (< 1024),
+so you'll need to use 'insecure' as a mount option.
 
 
+On Fri, 2008-04-11 at 19:07 -0400, J. Bruce Fields wrote:
+> On Thu, Apr 10, 2008 at 02:12:58PM +0200, Carsten Aulbert wrote:
+> > Hi all,
+> > 
+> > we have a pretty extreme problem here and I try to figure out how to get 
+> > it done right.
+> > 
+> > We have a large cluster consisting of 1340 compute nodes who have a 
+> > automount directory which will subsequently trigger a NFS mount (read-only):
+> > 
+> > $ ypcat auto.data
+> > -fstype=nfs,nfsvers=3,hard,intr,rsize=8192,wsize=8192,tcp       &:/data
+> > 
+> > $ grep auto.data /etc/auto.master
+> > /atlas/data          yp:auto.data      --timeout=5
+> > 
+> > So far so good.
+> > 
+> > When submitting 1000 jobs just doing a md5sum of the very same file from 
+> > one single data server, I see very weird effects.
+> > 
+> > In the standard set-up many connections get into the box (tcp connection 
+> > status SYN_RECV) but those fall over after some time and stay in 
+> > CLOSE_WAIT state until I restart the nfs-kernel-server. Typically that 
+> > looks like (netstat -an):
+> 
+> That's interesting!  But I'm not sure how to figure this out.
+> 
+> Is it possible to get a network trace that shows what's going on?
+> 
+> What happens on the clients?
+> 
+> What kernel version are you using?--b.
+> 
+> > 
+> > tcp        0      0 10.20.10.14:687         10.10.2.87:799          SYN_RECV
+> > tcp        0      0 10.20.10.14:687         10.10.4.1:823           SYN_RECV
+> > tcp        0      0 10.20.10.14:687         10.10.1.65:656          SYN_RECV
+> > tcp        0      0 10.20.10.14:687         10.10.1.30:650          SYN_RECV
+> > tcp        0      0 10.20.10.14:687         10.10.0.71:789          SYN_RECV
+> > tcp        0      0 10.20.10.14:687         10.10.1.4:602           SYN_RECV
+> > tcp        0      0 10.20.10.14:687         10.10.1.1:967           SYN_RECV
+> > tcp        0      0 10.20.10.14:687         10.10.3.66:915          SYN_RECV
+> > tcp        0      0 10.20.10.14:687         10.10.0.55:620          SYN_RECV
+> > tcp        0      0 10.20.10.14:687         10.10.1.41:835          SYN_RECV
+> > tcp        0      0 10.20.10.14:687         10.10.2.29:958          SYN_RECV
+> > tcp        0      0 10.20.10.14:687         10.10.1.12:998          SYN_RECV
+> > tcp        0      0 10.20.10.14:687         10.10.1.30:651          SYN_RECV
+> > tcp        0      0 10.20.10.14:687         10.10.1.4:601           SYN_RECV
+> > tcp        0      0 10.20.10.14:2049        10.10.1.19:846 
+> > ESTABLISHED
+> > tcp       45      0 10.20.10.14:687         10.10.0.68:979 
+> > CLOSE_WAIT
+> > tcp       45      0 10.20.10.14:687         10.10.3.83:680 
+> > CLOSE_WAIT
+> > tcp       89      0 10.20.10.14:687         10.10.0.79:604 
+> > CLOSE_WAIT
+> > tcp        0      0 10.20.10.14:2049        10.10.2.6:676 
+> > ESTABLISHED
+> > tcp       45      0 10.20.10.14:687         10.10.2.56:913 
+> > CLOSE_WAIT
+> > tcp       45      0 10.20.10.14:687         10.10.0.60:827 
+> > CLOSE_WAIT
+> > tcp        0      0 10.20.10.14:2049        10.10.3.55:778 
+> > ESTABLISHED
+> > tcp       45      0 10.20.10.14:687         10.10.2.86:981 
+> > CLOSE_WAIT
+> > tcp       45      0 10.20.10.14:687         10.10.9.13:792 
+> > CLOSE_WAIT
+> > tcp       89      0 10.20.10.14:687         10.10.2.93:728 
+> > CLOSE_WAIT
+> > tcp       45      0 10.20.10.14:687         10.10.0.20:742 
+> > CLOSE_WAIT
+> > tcp       45      0 10.20.10.14:687         10.10.3.44:982 
+> > CLOSE_WAIT
+> > 
+> > 
+> > I played with different numbers of of nfsd (ranging from 8-1024) and 
+> > increasing the number of threads for rpc.mountd from 1 to 64, in quite a 
+> > few combinations, but so far I have not found a consistent set of 
+> > parameters where 1000 nodes are able to read this file at the same time.
+> > 
+> > Any ideas from anyone or do you need more input from me?
+> > 
+> > TIA
+> > 
+> > Carsten
+> > 
+> > PS: Please Cc me, I'm not yet subscribed.
+> > 
+> > -------------------------------------------------------------------------
+> > This SF.net email is sponsored by the 2008 JavaOne(SM) Conference 
+> > Don't miss this year's exciting event. There's still time to save $100. 
+> > Use priority code J8TL2D2. 
+> > http://ad.doubleclick.net/clk;198757673;13503038;p?http://java.sun.com/javaone
+> > _______________________________________________
+> > NFS maillist  -  NFS@lists.sourceforge.net
+> > https://lists.sourceforge.net/lists/listinfo/nfs
+> > _______________________________________________
+> > Please note that nfs@lists.sourceforge.net is being discontinued.
+> > Please subscribe to linux-nfs@vger.kernel.org instead.
+> >     http://vger.kernel.org/vger-lists.html#linux-nfs
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> -------------------------------------------------------------------------
+> This SF.net email is sponsored by the 2008 JavaOne(SM) Conference 
+> Don't miss this year's exciting event. There's still time to save $100. 
+> Use priority code J8TL2D2. 
+> http://ad.doubleclick.net/clk;198757673;13503038;p?http://java.sun.com/javaone
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
+> _______________________________________________
+> Please note that nfs@lists.sourceforge.net is being discontinued.
+> Please subscribe to linux-nfs@vger.kernel.org instead.
+>     http://vger.kernel.org/vger-lists.html#linux-nfs
+
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by the 2008 JavaOne(SM) Conference 
+Don't miss this year's exciting event. There's still time to save $100. 
+Use priority code J8TL2D2. 
+http://ad.doubleclick.net/clk;198757673;13503038;p?http://java.sun.com/javaone
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
