@@ -1,72 +1,139 @@
-From: Carsten Aulbert <carsten.aulbert-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>
-Subject: Re: [NFS] How to set-up a Linux NFS server to handle	massive	number
- of requests
-Date: Tue, 15 Apr 2008 07:42:45 +0200
-Message-ID: <48044055.2060500@aei.mpg.de>
-References: <47FE044A.7020008@aei.mpg.de>	
-	<20080411230754.GI24830@fieldses.org>
-	<1208234913.17169.50.camel@trinity.ogc.int>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [PATCH] nfs: handle nfs_{read,write,commit}_rpcsetup errors
+Date: Tue, 15 Apr 2008 10:09:50 +0300
+Message-ID: <480454BE.30500@panasas.com>
+References: <1208194278-6165-1-git-send-email-bhalevy@panasas.com> <1208195681.11223.18.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, nfs@lists.sourceforge.net
-To: Tom Tucker <tom@opengridcomputing.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:42875 "EHLO neil.brown.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753783AbYDOFnE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 15 Apr 2008 01:43:04 -0400
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1Jldwb-0000kQ-Dy
-	for linux-nfs@vger.kernel.org; Tue, 15 Apr 2008 15:43:01 +1000
-In-Reply-To: <1208234913.17169.50.camel-SMNkleLxa3ZimH42XvhXlA@public.gmane.org>
+Received: from bzq-219-195-70.pop.bezeqint.net ([62.219.195.70]:38556 "EHLO
+	bh-buildlin1.bhalevy.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752937AbYDOHKS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Apr 2008 03:10:18 -0400
+In-Reply-To: <1208195681.11223.18.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-Tom Tucker wrote:
-> Maybe this this is a TCP_BACKLOG issue?
+On Apr. 14, 2008, 20:54 +0300, Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+> On Mon, 2008-04-14 at 20:31 +0300, Benny Halevy wrote:
+>> Currently, nfs_{read,write,commit}_rpcsetup return no errors.
+>> All three call rpc_run_task that can fail when out of memory.
+>> Ignoring these failures leads to hangs.
 > 
+> How?
 
-Hmm, Google does not yield much information about this. I think I know 
-what that would be, is there a cure or some kernel switches for tuning that?
+I've seen this with instrumentation I've put in the rpc_run_task path.
+However, I reexamined the call sites and I agree that since we pass
+both task_setup_data.task and task_setup_data.rpc_message.rpc_cred
+rpc_run_task will never fail in the current implementation.
 
-> BTW, with that many mounts won't you run out of "secure" ports (< 1024),
-> so you'll need to use 'insecure' as a mount option.
+How about adding the following BUG()s instead?
 
-Not to my knowledge. All connections go to a single port onto the server 
-box (well, one port per service).  Only the clients may run out of 
-privileged ports of they do too much mounting, but mostly this option is 
-just for "security" reasons. At least that's my understanding.
+Benny
 
-By the ways, discussing this issue with my colleague cluster admins, the 
-question popped up, if there is a guideline/rule of thump of how many 
-nfsd one should run - or asking the other way round, how to arrive at a 
-good compromise.
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index 5a70be5..9db9db1 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -206,6 +206,8 @@ static void nfs_read_rpcsetup(struct nfs_page *req, struct nfs_read_data *data,
+ 	task = rpc_run_task(&task_setup_data);
+ 	if (!IS_ERR(task))
+ 		rpc_put_task(task);
++	else
++		BUG();
+ }
+ 
+ static void
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index bed6341..06e6363 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -849,6 +849,8 @@ static void nfs_write_rpcsetup(struct nfs_page *req,
+ 	task = rpc_run_task(&task_setup_data);
+ 	if (!IS_ERR(task))
+ 		rpc_put_task(task);
++	else
++		BUG();
+ }
+ 
+ /*
+@@ -1216,6 +1218,8 @@ static void nfs_commit_rpcsetup(struct list_head *head,
+ 	task = rpc_run_task(&task_setup_data);
+ 	if (!IS_ERR(task))
+ 		rpc_put_task(task);
++	else
++		BUG();
+ }
+ 
+ /*
 
-Our server boxes are pretty big (8 cores, 16 GB memory, 16 disk 
-Areca1261 RAID6), so the resources used by the nfsd are not much of an 
-issue - I even tested with 1024 nfsd idling around. AT some point 
-increasing the number does not make much sense because I cannot get the 
-data out fast enough or the seeks will likely "kill" the box^Wperformance.
+> 
+>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>> ---
+>>  fs/nfs/read.c  |   35 +++++++++++++++++++++--------
+>>  fs/nfs/write.c |   66 ++++++++++++++++++++++++++++++++++++-------------------
+>>  2 files changed, 68 insertions(+), 33 deletions(-)
+>>
+>> diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+>> index 5a70be5..85df148 100644
+>> --- a/fs/nfs/read.c
+>> +++ b/fs/nfs/read.c
+>> @@ -156,7 +156,7 @@ static void nfs_readpage_release(struct nfs_page *req)
+>>  /*
+>>   * Set up the NFS read request struct
+>>   */
+>> -static void nfs_read_rpcsetup(struct nfs_page *req, struct nfs_read_data *data,
+>> +static int nfs_read_rpcsetup(struct nfs_page *req, struct nfs_read_data *data,
+>>  		const struct rpc_call_ops *call_ops,
+>>  		unsigned int count, unsigned int offset)
+>>  {
+>> @@ -204,8 +204,10 @@ static void nfs_read_rpcsetup(struct nfs_page *req, struct nfs_read_data *data,
+>>  			(unsigned long long)data->args.offset);
+>>  
+>>  	task = rpc_run_task(&task_setup_data);
+>> -	if (!IS_ERR(task))
+>> -		rpc_put_task(task);
+>> +	if (unlikely(IS_ERR(task)))
+>> +		return PTR_ERR(task);
+>> +	rpc_put_task(task);
+>> +	return 0;
+>>  }
+>>  
+>>  static void
+>> @@ -242,6 +244,7 @@ static int nfs_pagein_multi(struct inode *inode, struct list_head *head, unsigne
+>>  	size_t rsize = NFS_SERVER(inode)->rsize, nbytes;
+>>  	unsigned int offset;
+>>  	int requests = 0;
+>> +	int ret = -ENOMEM;
+>>  	LIST_HEAD(list);
+>>  
+>>  	nfs_list_remove_request(req);
+>> @@ -271,8 +274,12 @@ static int nfs_pagein_multi(struct inode *inode, struct list_head *head, unsigne
+>>  
+>>  		if (nbytes < rsize)
+>>  			rsize = nbytes;
+>> -		nfs_read_rpcsetup(req, data, &nfs_read_partial_ops,
+>> -				  rsize, offset);
+>> +		ret = nfs_read_rpcsetup(req, data, &nfs_read_partial_ops,
+>> +					rsize, offset);
+>> +		if (unlikely(ret)) {
+>> +			list_add(&data->pages, &list);
+> 
+> NACK. This is a use-after-free case.
+> 
+> The call to rpc_run_task() is _guaranteed_ to always call
+> nfs_readpage_release(). You therefore no longer hold the page lock, nor
+> can you rely on 'data' still being around.
+> 
+> The same applies to all the other "fixes".
 
-Any thoughts on that?
+Agreed. I missed that.
 
-Cheers
+Benny
 
-Carsten
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by the 2008 JavaOne(SM) Conference 
-Don't miss this year's exciting event. There's still time to save $100. 
-Use priority code J8TL2D2. 
-http://ad.doubleclick.net/clk;198757673;13503038;p?http://java.sun.com/javaone
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+> 
+> Trond
+> 
 
