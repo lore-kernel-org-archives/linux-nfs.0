@@ -1,70 +1,134 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [NFS] Forcefully resetting a lock
-Date: Wed, 16 Apr 2008 14:42:33 -0400
-Message-ID: <20080416184233.GF22743@fieldses.org>
-References: <200804161117.24734.hensema@hostingxs.nl>
-	<48061807.9030808@gmail.com>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH] knfsd: clear both setuid and setgid whenever a chown is
+ done
+Date: Wed, 16 Apr 2008 14:46:49 -0400
+Message-ID: <20080416144649.56e8acfd@barsoom.rdu.redhat.com>
+References: <1208349531-16138-1-git-send-email-jlayton@redhat.com>
+	<20080416183728.GD22743@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net,
-	Erik Hensema / HostingXS Internet Services
-	<hensema-yolSOB3tinz/D1n+0JDH9g@public.gmane.org>
-To: Wendy Cheng <s.wendy.cheng@gmail.com>
+Content-Type: text/plain; charset=US-ASCII
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:56831 "EHLO neil.brown.name"
+Received: from mx1.redhat.com ([66.187.233.31]:39545 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751243AbYDPSmu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Apr 2008 14:42:50 -0400
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1JmCam-0006Uu-A9
-	for linux-nfs@vger.kernel.org; Thu, 17 Apr 2008 04:42:48 +1000
-In-Reply-To: <48061807.9030808@gmail.com>
+	id S1750724AbYDPSqx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Apr 2008 14:46:53 -0400
+In-Reply-To: <20080416183728.GD22743@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Apr 16, 2008 at 10:15:19AM -0500, Wendy Cheng wrote:
-> Erik Hensema / HostingXS Internet Services wrote:
->> Hi all,
->>
->> Sometimes a file lock gets stuck. Is there any way on either server or  
->> client to obtain a list of locks? Or a list of processes/clients  
->> locking a particular file?
->> And the million dollar question: is it possible to forcefully remove a  
->> lock?
->>
->> I'm using NFSv4 on Linux 2.6.18 (server and client).
->>
->>   
->
-> *Cough* !
->
-> Bruce, so what happens to my lock dropping patch that was said "will get  
-> pulled into 2.6.26 kernel" ?
+On Wed, 16 Apr 2008 14:37:28 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-Gulp.
+> On Wed, Apr 16, 2008 at 08:38:51AM -0400, Jeff Layton wrote:
+> > Currently, knfsd only clears the setuid bit if the owner of a file
+> > is changed on a SETATTR call, and only clears the setgid bit if
+> > the group is changed. POSIX says this in the spec for chown():
+> > 
+> >     "If the specified file is a regular file, one or more of the
+> >      S_IXUSR, S_IXGRP, or S_IXOTH bits of the file mode are set, and the
+> >      process does not have appropriate privileges, the set-user-ID
+> >      (S_ISUID) and set-group-ID (S_ISGID) bits of the file mode shall
+> >      be cleared upon successful return from chown()."
+> > 
+> > If I'm reading this correct, then knfsd is doing this wrong. It should
+> > be clearing both the setuid and setgid bit on any SETATTR that changes
+> > the uid or gid. This wasn't really as noticable before, but now that the
+> > ATTR_KILL_S*ID bits are a no-op for the NFS client, it's more evident.
+> 
+> OK, thanks!
+> 
+> > 
+> > This patch corrects the nfsd_setattr logic so that this occurs. It also
+> > does a bit of cleanup to the function and eliminates an unneeded local
+> > variable.
+> 
+> Might be nice to have the cleanup separately first, if that's easy.
+> (Should be for the "imode" removal, at least.  Wonder how that got
+> there?)
+> 
 
-I started an alternative implementation, and got it to the point where
-it was basically working (but I didn't completely trust it).  And I did
-a small fix or two on your patches, but I seem to recall there were one
-or more todo's there too.
+Yep, that's the main thing I was cleaning up. I'll plan to respin it as
+2 or more separate patches.
 
-Then I dropped both for a couple weeks.
+> One other question:
+> 
+> > 
+> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > ---
+> >  fs/nfsd/vfs.c |   30 ++++++++++++++----------------
+> >  1 files changed, 14 insertions(+), 16 deletions(-)
+> > 
+> > diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> > index 17ac51b..7d6cd1a 100644
+> > --- a/fs/nfsd/vfs.c
+> > +++ b/fs/nfsd/vfs.c
+> > @@ -264,7 +264,6 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
+> >  	struct inode	*inode;
+> >  	int		accmode = MAY_SATTR;
+> >  	int		ftype = 0;
+> > -	int		imode;
+> >  	__be32		err;
+> >  	int		host_err;
+> >  	int		size_change = 0;
+> > @@ -360,25 +359,24 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
+> >  		DQUOT_INIT(inode);
+> >  	}
+> >  
+> > -	imode = inode->i_mode;
+> >  	if (iap->ia_valid & ATTR_MODE) {
+> >  		iap->ia_mode &= S_IALLUGO;
+> > -		imode = iap->ia_mode |= (imode & ~S_IALLUGO);
+> > -		/* if changing uid/gid revoke setuid/setgid in mode */
+> > -		if ((iap->ia_valid & ATTR_UID) && iap->ia_uid != inode->i_uid) {
+> > -			iap->ia_valid |= ATTR_KILL_PRIV;
+> > +		iap->ia_mode |= (inode->i_mode & ~S_IALLUGO);
+> > +	}
+> > +
+> > +	/* Revoke setuid/setgid on chown */
+> > +	if (((iap->ia_valid & ATTR_UID) && iap->ia_uid != inode->i_uid) ||
+> > +	    ((iap->ia_valid & ATTR_GID) && iap->ia_gid != inode->i_gid)) {
+> > +		iap->ia_valid |= ATTR_KILL_PRIV;
+> > +		if (iap->ia_valid & ATTR_MODE) {
+> > +			/* we're setting mode too, just clear the mode bits */
+> >  			iap->ia_mode &= ~S_ISUID;
+> > +			if (iap->ia_mode & S_IXGRP)
+> > +				iap->ia_mode &= ~S_ISGID;
+> 
+> Why the check for S_IXGRP?  I notice it's mentioned in the posix text
+> (though this doesn't implement precisely that suggestion), but the old
+> code didn't do it that I can see.
+> 
+> --b.
+> 
 
-I'll take a harder look this afternoon....
+Yes, that is different. I tried to mirror what notify_change actually
+does. It's possible that someone could set the S_ISGID bit without
+S_IXGRP, as that signifies mandatory locking. In that case, we
+probably don't want to clear the S_ISGID bit.
 
---b.
+> > +		} else {
+> > +			/* set ATTR_KILL_* bits and let VFS handle it */
+> > +			iap->ia_valid |= (ATTR_KILL_SUID | ATTR_KILL_SGID);
+> >  		}
+> > -		if ((iap->ia_valid & ATTR_GID) && iap->ia_gid != inode->i_gid)
+> > -			iap->ia_mode &= ~S_ISGID;
+> > -	} else {
+> > -		/*
+> > -		 * Revoke setuid/setgid bit on chown/chgrp
+> > -		 */
+> > -		if ((iap->ia_valid & ATTR_UID) && iap->ia_uid != inode->i_uid)
+> > -			iap->ia_valid |= ATTR_KILL_SUID | ATTR_KILL_PRIV;
+> > -		if ((iap->ia_valid & ATTR_GID) && iap->ia_gid != inode->i_gid)
+> > -			iap->ia_valid |= ATTR_KILL_SGID;
+> >  	}
+> >  
+> >  	/* Change the attributes. */
+> > -- 
+> > 1.5.3.6
+> > 
 
--------------------------------------------------------------------------
-This SF.net email is sponsored by the 2008 JavaOne(SM) Conference 
-Don't miss this year's exciting event. There's still time to save $100. 
-Use priority code J8TL2D2. 
-http://ad.doubleclick.net/clk;198757673;13503038;p?http://java.sun.com/javaone
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
-
+Thanks!
+-- 
+Jeff Layton <jlayton@redhat.com>
