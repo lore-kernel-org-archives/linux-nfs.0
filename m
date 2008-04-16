@@ -1,75 +1,39 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH] nfs-utils: make nfsstat read and print stats as unsigned integers (try #2)
-Date: Wed, 16 Apr 2008 12:43:30 -0400
-Message-ID: <1208364210-19925-1-git-send-email-jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-To: steved@redhat.com
+Subject: Re: [PATCH] nfs-utils: make nfsstat read and print stats as
+ unsigned integers
+Date: Wed, 16 Apr 2008 12:41:17 -0400
+Message-ID: <20080416124117.5ebdd0e4@barsoom.rdu.redhat.com>
+References: <1208362206-19653-1-git-send-email-jlayton@redhat.com>
+	<Pine.BSO.4.64.0804161226420.16179@citi.umich.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Cc: steved@redhat.com, linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+To: "david m. richter" <richterd@citi.umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:55348 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([66.187.233.31]:57094 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757220AbYDPQnm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Apr 2008 12:43:42 -0400
+	id S1755512AbYDPQlV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Apr 2008 12:41:21 -0400
+In-Reply-To: <Pine.BSO.4.64.0804161226420.16179@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The nfsstat program reads /proc/net/rpc/* files to gets info about
-calls. This info is output as unsigned numbers (at least on any
-relatively recent kernel). When nfsstat prints these numbers, they are
-printed as signed integers. When the call counters reach 2^31, things
-start being printed as negative numbers.
+On Wed, 16 Apr 2008 12:29:26 -0400 (EDT)
+"david m. richter" <richterd@citi.umich.edu> wrote:
 
-This patch changes nfsstat to read and print all counters as unsigned
-integers. Tested by hacking up a kernel to initialize call counters to
-2^31+1.
+> 	hello, jeff,
+> 
+> 	i think one other place that could use a signed->unsigned fix is 
+> in parse_pretty_statfile(), where "sum" is declared as signed but actually 
+> represents an unsigned total.
+> 
+> 	thanks,
+> 
+> 	d
+> 	.
+> 	
 
-Thanks to Takafumi Miki for the initial version of this patch.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- utils/nfsstat/nfsstat.c |    9 +++++----
- 1 files changed, 5 insertions(+), 4 deletions(-)
-
-diff --git a/utils/nfsstat/nfsstat.c b/utils/nfsstat/nfsstat.c
-index aa6c961..953e4a5 100644
---- a/utils/nfsstat/nfsstat.c
-+++ b/utils/nfsstat/nfsstat.c
-@@ -539,7 +539,7 @@ print_numbers(const char *hdr, unsigned int *info, unsigned int nr)
- 
- 	fputs(hdr, stdout);
- 	for (i = 0; i < nr; i++)
--		printf("%s%-8d", i? "   " : "", info[i]);
-+		printf("%s%-8u", i? "   " : "", info[i]);
- 	printf("\n");
- }
- 
-@@ -562,7 +562,7 @@ print_callstats(const char *hdr, const char **names,
- 		printf("\n");
- 		for (j = 0; j < 6 && i + j < nr; j++) {
- 			pct = ((unsigned long long) info[i+j]*100)/total;
--			printf("%-8d%3llu%% ", info[i+j], pct);
-+			printf("%-8u%3llu%% ", info[i+j], pct);
- 		}
- 		printf("\n");
- 	}
-@@ -604,7 +604,7 @@ parse_raw_statfile(const char *name, struct statinfo *statp)
- 		for (i = 0; i < cnt; i++) {
- 			if (!(sp = strtok(NULL, " \t")))
- 				break;
--			ip->valptr[i] = atoi(sp);
-+			ip->valptr[i] = (unsigned int) strtoul(sp, NULL, 0);
- 			total += ip->valptr[i];
- 		}
- 		ip->valptr[cnt - 1] = total;
-@@ -618,7 +618,8 @@ parse_raw_statfile(const char *name, struct statinfo *statp)
- static int
- parse_pretty_statfile(const char *filename, struct statinfo *info)
- {
--	int numvals, curindex, numconsumed, n, sum, err = 1;
-+	int numvals, curindex, numconsumed, n, err = 1;
-+	unsigned int sum;
- 	char buf[4096], *bufp, *fmt, is_proc;
- 	FILE *fp = NULL;
- 	struct statinfo *ip;
+Thanks, Dave. Good catch. I'll respin and repost...
 -- 
-1.5.3.6
-
+Jeff Layton <jlayton@redhat.com>
