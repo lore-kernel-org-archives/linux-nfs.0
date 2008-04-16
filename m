@@ -1,92 +1,48 @@
-From: Wendy Cheng <s.wendy.cheng@gmail.com>
-Subject: Re: [NFS] Forcefully resetting a lock
-Date: Wed, 16 Apr 2008 14:39:19 -0500
-Message-ID: <480655E7.30800@gmail.com>
-References: <200804161117.24734.hensema@hostingxs.nl>
-	<48061807.9030808@gmail.com> <20080416184233.GF22743@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net,
-	Erik Hensema / HostingXS Internet Services
-	<hensema-yolSOB3tinz/D1n+0JDH9g@public.gmane.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH 1/2] knfsd: get rid of imode variable in nfsd_setattr
+Date: Wed, 16 Apr 2008 16:28:46 -0400
+Message-ID: <1208377727-22834-1-git-send-email-jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:47616 "EHLO neil.brown.name"
+Received: from mx1.redhat.com ([66.187.233.31]:51549 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750822AbYDPTjh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Apr 2008 15:39:37 -0400
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1JmDTi-0006ef-Lo
-	for linux-nfs@vger.kernel.org; Thu, 17 Apr 2008 05:39:34 +1000
-In-Reply-To: <20080416184233.GF22743@fieldses.org>
+	id S1752514AbYDPU2v (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Apr 2008 16:28:51 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-J. Bruce Fields wrote:
-> On Wed, Apr 16, 2008 at 10:15:19AM -0500, Wendy Cheng wrote:
->   
->> Erik Hensema / HostingXS Internet Services wrote:
->>     
->>> Hi all,
->>>
->>> Sometimes a file lock gets stuck. Is there any way on either server or  
->>> client to obtain a list of locks? Or a list of processes/clients  
->>> locking a particular file?
->>> And the million dollar question: is it possible to forcefully remove a  
->>> lock?
->>>
->>> I'm using NFSv4 on Linux 2.6.18 (server and client).
->>>
->>>   
->>>       
->> *Cough* !
->>
->> Bruce, so what happens to my lock dropping patch that was said "will get  
->> pulled into 2.6.26 kernel" ?
->>     
->
-> Gulp.
->
-> I started an alternative implementation, and got it to the point where
-> it was basically working (but I didn't completely trust it).  And I did
-> a small fix or two on your patches, but I seem to recall there were one
-> or more todo's there too.
->
-> Then I dropped both for a couple weeks.
->   
+...it's not really needed.
 
-Be carefully. .. "a couple weeks" can turn into "a couple years" .. It 
-has been more than 2 years since my first patch submission. Regardless 
-the patch has been repeatedly requested and had gone thru thorough 
-testings, it just sits there idling while Linux nfs server keeps 
-suffering the very same issue.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfsd/vfs.c |    4 +---
+ 1 files changed, 1 insertions(+), 3 deletions(-)
 
-Don't get too ambitious. Cluster issues are not trivial - please take 
-one step at a time. The patch is very usable *and* solves an immediate 
-issue *and* has a clean boundary with existing main-line logic. I really 
-don't see the reason to delay it.
-
--- Wendy
-
-
-> I'll take a harder look this afternoon....
->
-> --b.
->   
-
-
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by the 2008 JavaOne(SM) Conference 
-Don't miss this year's exciting event. There's still time to save $100. 
-Use priority code J8TL2D2. 
-http://ad.doubleclick.net/clk;198757673;13503038;p?http://java.sun.com/javaone
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 17ac51b..dd4dcb4 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -264,7 +264,6 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
+ 	struct inode	*inode;
+ 	int		accmode = MAY_SATTR;
+ 	int		ftype = 0;
+-	int		imode;
+ 	__be32		err;
+ 	int		host_err;
+ 	int		size_change = 0;
+@@ -360,10 +359,9 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
+ 		DQUOT_INIT(inode);
+ 	}
+ 
+-	imode = inode->i_mode;
+ 	if (iap->ia_valid & ATTR_MODE) {
+ 		iap->ia_mode &= S_IALLUGO;
+-		imode = iap->ia_mode |= (imode & ~S_IALLUGO);
++		iap->ia_mode |= (inode->i_mode & ~S_IALLUGO);
+ 		/* if changing uid/gid revoke setuid/setgid in mode */
+ 		if ((iap->ia_valid & ATTR_UID) && iap->ia_uid != inode->i_uid) {
+ 			iap->ia_valid |= ATTR_KILL_PRIV;
+-- 
+1.5.3.6
 
