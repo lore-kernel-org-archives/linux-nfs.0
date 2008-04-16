@@ -1,95 +1,84 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [NFS] How to set-up a Linux NFS server to handle massive	number
+From: Tom Tucker <tom@opengridcomputing.com>
+Subject: Re: [NFS] How to set-up a Linux NFS server to	handle	massive	number
 	of requests
-Date: Tue, 15 Apr 2008 22:58:48 -0400
-Message-ID: <20080416025848.GA27274@fieldses.org>
+Date: Tue, 15 Apr 2008 21:49:57 -0500
+Message-ID: <1208314197.3521.35.camel@trinity.ogc.int>
 References: <47FE044A.7020008@aei.mpg.de> <20080411230754.GI24830@fieldses.org>
 	<1208234913.17169.50.camel@trinity.ogc.int>
-	<20080415151227.GB32218@fieldses.org>
-	<1208313790.3521.32.camel@trinity.ogc.int>
+	<48044055.2060500@aei.mpg.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net,
-	Carsten Aulbert <carsten.aulbert-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>
-To: Tom Tucker <tom@opengridcomputing.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, nfs@lists.sourceforge.net
+To: Carsten Aulbert <carsten.aulbert-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:60953 "EHLO neil.brown.name"
+Received: from neil.brown.name ([220.233.11.133]:48561 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753274AbYDPC67 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 15 Apr 2008 22:58:59 -0400
+	id S1753043AbYDPCt3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 Apr 2008 22:49:29 -0400
 Received: from brown by neil.brown.name with local (Exim 4.63)
 	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1JlxrN-0003zj-C4
-	for linux-nfs@vger.kernel.org; Wed, 16 Apr 2008 12:58:57 +1000
-In-Reply-To: <1208313790.3521.32.camel-SMNkleLxa3ZimH42XvhXlA@public.gmane.org>
+	id 1JlxiB-0003yI-SP
+	for linux-nfs@vger.kernel.org; Wed, 16 Apr 2008 12:49:27 +1000
+In-Reply-To: <48044055.2060500-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Apr 15, 2008 at 09:43:10PM -0500, Tom Tucker wrote:
+
+On Tue, 2008-04-15 at 07:42 +0200, Carsten Aulbert wrote:
 > 
-> On Tue, 2008-04-15 at 11:12 -0400, J. Bruce Fields wrote:
-> > On Mon, Apr 14, 2008 at 11:48:33PM -0500, Tom Tucker wrote:
-> > > 
-> > > Maybe this this is a TCP_BACKLOG issue?
+> Tom Tucker wrote:
+> > Maybe this this is a TCP_BACKLOG issue?
 > > 
-> > So, looking around.... There seems to be a global limit in
-> > /proc/sys/net/ipv4/tcp_max_syn_backlog (default 1024?); might be worth
-> > seeing what happens if that's increased, e.g., with
-> > 
-> > 	echo 2048 >/proc/sys/net/ipv4/tcp_max_syn_backlog
 > 
-> I think this represents the collective total for all listening
-> endpoints. I think we're only talking about mountd. 
-
-Yes.
-
-> Shooting from the hip...
+> Hmm, Google does not yield much information about this. I think I know 
+> what that would be, is there a cure or some kernel switches for tuning that?
 > 
-> My gray haired recollection is that the single connection default is a
-> backlog of 10 (SYN received, not accepted connections). Additional SYN's
-> received to this endpoint will be dropped...clients will retry the SYN
-> as part of normal TCP retransmit...
+> > BTW, with that many mounts won't you run out of "secure" ports (< 1024),
+> > so you'll need to use 'insecure' as a mount option.
+
+> Not to my knowledge. All connections go to a single port onto the server 
+> box (well, one port per service).  Only the clients may run out of 
+> privileged ports of they do too much mounting, but mostly this option is 
+> just for "security" reasons. At least that's my understanding.
+
+Yes, you're right...I was being dumb here. Sorry. 
+
 > 
-> It might be that the CLOSE_WAIT's in the log are _normal_. That is, they
-> reflect completed mount requests that are in the normal close path. If
-> they never go away, then that's not normal. Is this the case?
+> By the ways, discussing this issue with my colleague cluster admins, the 
+> question popped up, if there is a guideline/rule of thump of how many 
+> nfsd one should run - or asking the other way round, how to arrive at a 
+> good compromise.
+> 
+> Our server boxes are pretty big (8 cores, 16 GB memory, 16 disk 
+> Areca1261 RAID6), so the resources used by the nfsd are not much of an 
+> issue - I even tested with 1024 nfsd idling around. AT some point 
+> increasing the number does not make much sense because I cannot get the 
+> data out fast enough or the seeks will likely "kill" the box^Wperformance.
+> 
+> Any thoughts on that?
+> 
+> Cheers
+> 
+> Carsten
+> 
+> -------------------------------------------------------------------------
+> This SF.net email is sponsored by the 2008 JavaOne(SM) Conference 
+> Don't miss this year's exciting event. There's still time to save $100. 
+> Use priority code J8TL2D2. 
+> http://ad.doubleclick.net/clk;198757673;13503038;p?http://java.sun.com/javaone
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
+> _______________________________________________
+> Please note that nfs@lists.sourceforge.net is being discontinued.
+> Please subscribe to linux-nfs@vger.kernel.org instead.
+>     http://vger.kernel.org/vger-lists.html#linux-nfs
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-What he said was:
-
-	"those fall over after some time and stay in CLOSE_WAIT state
-	until I restart the nfs-kernel-server."
-
-Carsten, are you positive that the same sockets were in CLOSE_WAIT the
-whole time you were watching?  And how long was it before you gave up
-and restarted?
-
-> Suppose the 10 is roughly correct. The remaining "jilted" clients will
-> retransmit their SYN after a randomized exponential backoff. I think you
-> can imagine that trying 1300+ connections of which only 10 succeed and
-> then retrying 1300-10 based on a randomized exponential backoff might
-> get you some pretty bad performance.
-
-Right, could be, but:
-
-...
-> > Oh, but: Grepping the glibc rpc code, it looks like it calls listen with
-> > second argument SOMAXCONN == 128.  You can confirm that by strace'ing
-> > rpc.mountd -F and looking for the listen call.
-> > 
-> > And that socket's shared between all the mountd processes, so I guess
-> > that's the real limit.  I don't see an easy way to adjust that.  You'd
-> > also need to increase /proc/sys/net/core/somaxconn first.
-> > 
-> > But none of this explains why we'd see connections stuck in CLOSE_WAIT
-> > indefinitely?
-
-So the limit appears to be more like 128, and (based on my quick look at
-the code) that appears to baked in to the glibc rpc code.
-
-Maybe you could code around that in mountd.  Looks like the relevant
-code is in nfs-utils/support/include/rpcmisc.c:rpc_init().
-
---b.
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by the 2008 JavaOne(SM) Conference 
