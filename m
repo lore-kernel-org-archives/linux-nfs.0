@@ -1,175 +1,136 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: linux-2.6.25-rc9-CITI_NFS4_ALL-1
-Date: Tue, 15 Apr 2008 17:54:54 -0400
-Message-ID: <E1Jlt78-0004Ii-4U@fieldses.org>
+From: Tom Tucker <tom@opengridcomputing.com>
+Subject: Re: [NFS] How to set-up a Linux NFS server to handle	massive	number
+	of requests
+Date: Tue, 15 Apr 2008 22:22:46 -0500
+Message-ID: <1208316166.3521.42.camel@trinity.ogc.int>
+References: <47FE044A.7020008@aei.mpg.de> <20080411230754.GI24830@fieldses.org>
+	<1208234913.17169.50.camel@trinity.ogc.int>
+	<20080415151227.GB32218@fieldses.org>
+	<1208313790.3521.32.camel@trinity.ogc.int>
+	<20080416025848.GA27274@fieldses.org>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=ISO-8859-1
-To: nfsv4@linux-nfs.org, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net,
+	Carsten Aulbert <carsten.aulbert-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:35123 "EHLO fieldses.org"
+Received: from neil.brown.name ([220.233.11.133]:48859 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751146AbYDOVyz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 15 Apr 2008 17:54:55 -0400
+	id S1754713AbYDPDWW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 Apr 2008 23:22:22 -0400
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1JlyDy-00042v-Bs
+	for linux-nfs@vger.kernel.org; Wed, 16 Apr 2008 13:22:18 +1000
+In-Reply-To: <20080416025848.GA27274@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-http://www.citi.umich.edu/projects/nfsv4/linux/kernel-patches/2.6.25-rc=
-9-1/linux-2.6.25-rc9-CITI_NFS4_ALL-1.diff
 
---b.
+On Tue, 2008-04-15 at 22:58 -0400, J. Bruce Fields wrote:
+> On Tue, Apr 15, 2008 at 09:43:10PM -0500, Tom Tucker wrote:
+> > 
+> > On Tue, 2008-04-15 at 11:12 -0400, J. Bruce Fields wrote:
+> > > On Mon, Apr 14, 2008 at 11:48:33PM -0500, Tom Tucker wrote:
+> > > > 
+> > > > Maybe this this is a TCP_BACKLOG issue?
+> > > 
+> > > So, looking around.... There seems to be a global limit in
+> > > /proc/sys/net/ipv4/tcp_max_syn_backlog (default 1024?); might be worth
+> > > seeing what happens if that's increased, e.g., with
+> > > 
+> > > 	echo 2048 >/proc/sys/net/ipv4/tcp_max_syn_backlog
+> > 
+> > I think this represents the collective total for all listening
+> > endpoints. I think we're only talking about mountd. 
+> 
+> Yes.
+> 
+> > Shooting from the hip...
+> > 
+> > My gray haired recollection is that the single connection default is a
+> > backlog of 10 (SYN received, not accepted connections). Additional SYN's
+> > received to this endpoint will be dropped...clients will retry the SYN
+> > as part of normal TCP retransmit...
+> > 
+> > It might be that the CLOSE_WAIT's in the log are _normal_. That is, they
+> > reflect completed mount requests that are in the normal close path. If
+> > they never go away, then that's not normal. Is this the case?
+> 
+> What he said was:
+> 
+> 	"those fall over after some time and stay in CLOSE_WAIT state
+> 	until I restart the nfs-kernel-server."
+> 
+> Carsten, are you positive that the same sockets were in CLOSE_WAIT the
+> whole time you were watching?  And how long was it before you gave up
+> and restarted?
+> 
+> > Suppose the 10 is roughly correct. The remaining "jilted" clients will
+> > retransmit their SYN after a randomized exponential backoff. I think you
+> > can imagine that trying 1300+ connections of which only 10 succeed and
+> > then retrying 1300-10 based on a randomized exponential backoff might
+> > get you some pretty bad performance.
+> 
+> Right, could be, but:
+> 
+> ...
+> > > Oh, but: Grepping the glibc rpc code, it looks like it calls listen with
+> > > second argument SOMAXCONN == 128.  You can confirm that by strace'ing
+> > > rpc.mountd -F and looking for the listen call.
+> > > 
+> > > And that socket's shared between all the mountd processes, so I guess
+> > > that's the real limit.  I don't see an easy way to adjust that.  You'd
+> > > also need to increase /proc/sys/net/core/somaxconn first.
+> > > 
+> > > But none of this explains why we'd see connections stuck in CLOSE_WAIT
+> > > indefinitely?
+> 
+> So the limit appears to be more like 128, and (based on my quick look at
+> the code) that appears to baked in to the glibc rpc code.
+> 
+> Maybe you could code around that in mountd.  Looks like the relevant
+> code is in nfs-utils/support/include/rpcmisc.c:rpc_init().
 
-NFS-related changes:
+If you really need to start 1300 mounts all at once then something needs
+to change. BTW even after you get past mountd, the server is going to
+get pounded with SYN and RPC_NOP. 
 
-Adrian Bunk (1):
-      make nfsd_create_setattr() static
+It might be interesting to look at httpd (Apache) to see what it does. I
+would think it faces similar traffic flows.
 
-Andrew Morton (1):
-      net/sunrpc/svc.c: suppress unintialized var warning
+> 
+> --b.
+> 
+> -------------------------------------------------------------------------
+> This SF.net email is sponsored by the 2008 JavaOne(SM) Conference 
+> Don't miss this year's exciting event. There's still time to save $100. 
+> Use priority code J8TL2D2. 
+> http://ad.doubleclick.net/clk;198757673;13503038;p?http://java.sun.com/javaone
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
+> _______________________________________________
+> Please note that nfs@lists.sourceforge.net is being discontinued.
+> Please subscribe to linux-nfs@vger.kernel.org instead.
+>     http://vger.kernel.org/vger-lists.html#linux-nfs
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-Aur=C3=A9lien Charbon (1):
-      IPv6 support for NFS server export caches
 
-Chuck Lever (29):
-      NFS: numeric mount parameters are unsigned
-      NFS: Fix up data types of fields in nfs_parsed_mount_options
-      NFS: Save the value of the "port=3D" mount option
-      NFS: Save the values of the "mount*=3D" mount options
-      NFS: Show most mount options via nfs_show_options()
-      NFS: Always enable NFS direct I/O
-      SUNRPC: Update help Kconfig text
-      SUNRPC: Add a default setting for CONFIG_SUNRPC_BIND34
-      NLM: LOCKD fails to load if CONFIG_SYSCTL is not set
-      NLM: NLM protocol version numbers are u32
-      lockd: bring a few function declarations up to date
-      lockd: Ensure NSM strings aren't longer than protocol allows
-      lockd: refactor SM_MON mon_name argument encoder
-      lockd: refactor SM_MON my_id argument encoder
-      lockd: document use of mon_id argument in SM_MON requests
-      lockd: Fix up incorrect RPC buffer size calculations.
-      lockd: introduce new function to encode private argument in SM_MO=
-N requests
-      NFSD: Remove NFSD_TCP kernel build option
-      NFSD: Update help text for CONFIG_NFSD
-      NFSD: Move "select FS_POSIX_ACL if NFSD_V4"
-      NFSD: Move "select NFSD_V2_ACL if NFSD_V3_ACL"
-      NFSD: Remove redundant "select" clauses in fs/Kconfig
-      NFSD: Use "depends on" for PROC_FS dependency
-      SUNRPC: Remove PROC_FS dependency
-      NFSD: Remove NFSv4 dependency on NFSv3
-      SUNRPC: RPC server still uses 2.4 method for disabling TCP Nagle
-      SUNRPC: Update RPC server's TCP record marker decoder
-      SUNRPC: Use unsigned index when looping over arrays
-      SUNRPC: Use unsigned loop and array index in svc_init_buffer()
-
-=46elix Blyakher (1):
-      nfsd: initialize lease type in nfs4_open_delegation()
-
-=46red (1):
-      nfs: nfs_redirty_request
-
-=46red Isaman (2):
-      NFS: fix encode_fsinfo_maxsz
-      nfs: remove duplicate initializations of nfs_read_data field
-
-Harshula Jayasuriya (1):
-      sunrpc: GSS integrity and decryption failures should return GARBA=
-GE_ARGS
-
-Harvey Harrison (3):
-      lockd: fix sparse warning in svcshare.c
-      nfsd: fix sparse warnings
-      nfsd: fix sparse warning in vfs.c
-
-J. Bruce Fields (15):
-      nfs: remove unnecessary NFS_NEED_* defines
-      nfsd4: remove unnecessary CHECK_FH check in preprocess_seqid_op
-      nfsd4: simplify stateid sequencing checks
-      nfsd4: kill unnecessary check in preprocess_stateid_op
-      svcrpc: move unused field from cache_deferred_req
-      nfsd: clarify readdir/mountpoint-crossing code
-      lockd: fix race in nlm_release()
-      lockd: clean up __nsm_find()
-      lockd: convert nsm_mutex to a spinlock
-      nfsd: move most of fh_verify to separate function
-      lockd: Fix stale nlmsvc_unlink_block comment
-      nfsd: fix comment
-      locks: fix possible infinite loop in fcntl(F_SETLKW) over nfs
-      Merge commit 'nfs-server-stable^'
-      Add CITI_NFS4_ALL version to kernel version number
-
-James Lentini (1):
-      Documentation: NFS/RDMA instructions for 2.6.25-rc1
-
-Jeff Layton (11):
-      NFS: clean up short packet handling for NFSv2 readdir
-      NFS: clean up short packet handling for NFSv3 readdir
-      NFS: clean up short packet handling for NFSv4 readdir
-      SUNRPC: export svc_sock_update_bufs
-      SUNRPC: have svc_recv() check kthread_should_stop()
-      NLM: Convert lockd to use kthreads
-      SUNRPC: allow svc_recv to break out of 500ms sleep when alloc_pag=
-e fails
-      NFS: convert nfs4 callback thread to kthread API
-      SUNRPC: remove svc_create_thread()
-      NFS: don't let nfs_callback_svc exit on unexpected svc_recv error=
-s (try #2)
-      NLM: don't let lockd exit on unexpected svc_recv errors (try #2)
-
-Kevin Coffman (4):
-      Correct grammer/typos in dprintks
-      Remove define for KRB5_CKSUM_LENGTH, which will become enctype-de=
-pendent
-      gss_krb5: consistently use unsigned for seqnum
-      sunrpc: make token header values less confusing
-
-NeilBrown (1):
-      knfsd: Remove NLM_HOST_MAX and associated logic.
-
-Nick Piggin (1):
-      nfs: use GFP_NOFS preloads for radix-tree insertion
-
-Olga Kornievskaia (1):
-      nfsd: use static memory for callback program and stats
-
-Robert P. J. Day (1):
-      NFSD: Strip __KERNEL__ testing from unexported header files.
-
-Steven Whitehouse (1):
-      Use a zero sized array for raw field in struct fid
-
-Tom Tucker (1):
-      SVCRDMA: Add check for XPT_CLOSE in svc_rdma_send
-
-Trond Myklebust (25):
-      SUNRPC: Declare as const the rpc_message arguments to rpc_call_sy=
-nc/async
-      NFS: Fix an f_mode/f_flags confusion in fs/nfs/write.c
-      NFS: Fix a deadlock with lazy umount
-      SUNRPC: Allow the rpc_release() callback to be run on another wor=
-kqueue
-      NFS: Add an nfsiod workqueue
-      NFS: Ensure that the asynchronous RPC calls complete on nfsiod.
-      SUNRPC: Clean up rpc_run_timer()
-      SUNRPC: Add a new helper rpc_wake_up_queued_task()
-      SUNRPC: Convert users of rpc_wake_up_task to use rpc_wake_up_queu=
-ed_task
-      SUNRPC: Run rpc timeout functions as callbacks instead of in soft=
-irqs
-      SUNRPC: Add a (empty for the moment) destructor for rpc_wait_queu=
-es
-      SUNRPC: Add a timer function to wait queues.
-      SUNRPC: Switch tasks to using the rpc_waitqueue's timer function
-      SUNRPC: Eliminate the now-redundant rpc_start_wakeup()
-      SUNRPC: Ensure that we read all available tcp data
-      SUNRPC: Remove now-redundant RCU-safe rpc_task free path
-      Merge branch 'cleanups' into next
-      Merge commit 'origin' into devel
-      SUNRPC: Fix a bug in rpcauth_lookup_credcache()
-      SUNRPC: Fix RPCAUTH_LOOKUP_ROOTCREDS
-      SUNRPC: Clean up rpcauth_bindcred()
-      SUNRPC: Add a generic RPC credential
-      SUNRPC: Add an rpc_credop callback for binding a credential to an=
- rpc_task
-      SUNRPC: Add a helper rpcauth_lookup_generic_cred()
-      Merge branch 'hotfixes' into devel
+-------------------------------------------------------------------------
+This SF.net email is sponsored by the 2008 JavaOne(SM) Conference 
+Don't miss this year's exciting event. There's still time to save $100. 
+Use priority code J8TL2D2. 
+http://ad.doubleclick.net/clk;198757673;13503038;p?http://java.sun.com/javaone
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
