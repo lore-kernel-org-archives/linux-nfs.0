@@ -1,49 +1,47 @@
-From: Carsten Aulbert <carsten.aulbert-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>
-Subject: Re: [NFS] How to set-up a Linux NFS server to handle	massive	number
- of requests
-Date: Wed, 16 Apr 2008 16:35:42 +0200
-Message-ID: <48060EBE.4060604@aei.mpg.de>
-References: <47FE044A.7020008@aei.mpg.de> <20080411230754.GI24830@fieldses.org>
-	<1208234913.17169.50.camel@trinity.ogc.int>
-	<20080415151227.GB32218@fieldses.org>
-	<1208313790.3521.32.camel@trinity.ogc.int>
-	<20080416025848.GA27274@fieldses.org>
-	<1208316166.3521.42.camel@trinity.ogc.int>
-	<E9FA280C-E881-4DCB-9C4C-5DBD4B16A984@oracle.com>
+From: Wendy Cheng <s.wendy.cheng@gmail.com>
+Subject: Re: [NFS] Forcefully resetting a lock
+Date: Wed, 16 Apr 2008 10:15:19 -0500
+Message-ID: <48061807.9030808@gmail.com>
+References: <200804161117.24734.hensema@hostingxs.nl>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, nfs@lists.sourceforge.net
-To: Chuck Lever <chuck.lever@oracle.com>
+Cc: nfs@lists.sourceforge.net,
+	Erik Hensema / HostingXS Internet Services
+	<hensema-yolSOB3tinz/D1n+0JDH9g@public.gmane.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:48591 "EHLO neil.brown.name"
+Received: from neil.brown.name ([220.233.11.133]:52817 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751950AbYDPOhr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Apr 2008 10:37:47 -0400
+	id S1754384AbYDPPT2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Apr 2008 11:19:28 -0400
 Received: from brown by neil.brown.name with local (Exim 4.63)
 	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1Jm8le-0005m3-1b
-	for linux-nfs@vger.kernel.org; Thu, 17 Apr 2008 00:37:46 +1000
-In-Reply-To: <E9FA280C-E881-4DCB-9C4C-5DBD4B16A984@oracle.com>
+	id 1Jm9Pw-0005sW-Cl
+	for linux-nfs@vger.kernel.org; Thu, 17 Apr 2008 01:19:24 +1000
+In-Reply-To: <200804161117.24734.hensema-yolSOB3tinz/D1n+0JDH9g@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-Chuck Lever wrote:
+Erik Hensema / HostingXS Internet Services wrote:
+> Hi all,
 >
-> Force UDP for the mountd protocol by specifying the "mountproto=udp" 
-> option.
+> Sometimes a file lock gets stuck. Is there any way on either server or 
+> client to obtain a list of locks? Or a list of processes/clients 
+> locking a particular file?
+> And the million dollar question: is it possible to forcefully remove a 
+> lock?
+>
+> I'm using NFSv4 on Linux 2.6.18 (server and client).
+>
+>   
 
-I'll give that also a try. I'm currently busy running other benchmarks. 
-I'll try to get some results by the weekend, if nothing comes from my 
-side by then, I'm probably buried alive in work, but please send me a 
-(friendly) reminder then.
+*Cough* !
 
-Thanks already for all the input!
+Bruce, so what happens to my lock dropping patch that was said "will get 
+pulled into 2.6.26 kernel" ?
 
-Cheers
+-- Wendy
 
-Carsten
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by the 2008 JavaOne(SM) Conference 
