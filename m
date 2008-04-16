@@ -1,46 +1,26 @@
-From: Wendy Cheng <s.wendy.cheng@gmail.com>
-Subject: Re: [NFS] Forcefully resetting a lock
-Date: Wed, 16 Apr 2008 10:15:19 -0500
-Message-ID: <48061807.9030808@gmail.com>
-References: <200804161117.24734.hensema@hostingxs.nl>
+From: Luc Deschenaux <luc.deschenaux-3sKltW3hOZofv37vnLkPlQ@public.gmane.org>
+Subject: [NFS] cannot export directory located on a ubuntu livecd using NFS
+Date: Wed, 16 Apr 2008 17:28:18 +0200
+Message-ID: <1208359698.7731.9.camel@asus>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net,
-	Erik Hensema / HostingXS Internet Services
-	<hensema-yolSOB3tinz/D1n+0JDH9g@public.gmane.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+To: nfs@lists.sourceforge.net
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:52817 "EHLO neil.brown.name"
+Received: from neil.brown.name ([220.233.11.133]:35818 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754384AbYDPPT2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Apr 2008 11:19:28 -0400
+	id S1758848AbYDPPeI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Apr 2008 11:34:08 -0400
 Received: from brown by neil.brown.name with local (Exim 4.63)
 	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1Jm9Pw-0005sW-Cl
-	for linux-nfs@vger.kernel.org; Thu, 17 Apr 2008 01:19:24 +1000
-In-Reply-To: <200804161117.24734.hensema-yolSOB3tinz/D1n+0JDH9g@public.gmane.org>
+	id 1Jm9e9-0005v2-IV
+	for linux-nfs@vger.kernel.org; Thu, 17 Apr 2008 01:34:05 +1000
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Erik Hensema / HostingXS Internet Services wrote:
-> Hi all,
->
-> Sometimes a file lock gets stuck. Is there any way on either server or 
-> client to obtain a list of locks? Or a list of processes/clients 
-> locking a particular file?
-> And the million dollar question: is it possible to forcefully remove a 
-> lock?
->
-> I'm using NFSv4 on Linux 2.6.18 (server and client).
->
->   
+You gonna tell me "normal it is unionfs", "but you can use image
+files"..
 
-*Cough* !
-
-Bruce, so what happens to my lock dropping patch that was said "will get 
-pulled into 2.6.26 kernel" ?
-
--- Wendy
+But it's just not normal :/
 
 
 -------------------------------------------------------------------------
