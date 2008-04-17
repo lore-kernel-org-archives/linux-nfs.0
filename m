@@ -1,82 +1,119 @@
-From: Eric Paris <eparis@redhat.com>
-Subject: [PATCH] NFS/LSM: Make NFSv4 set LSM mount options
-Date: Thu, 17 Apr 2008 10:04:51 -0400
-Message-ID: <1208441091.2985.8.camel@localhost.localdomain>
-References: <1204744818.3216.254.camel@localhost.localdomain>
+From: "Janne Karhunen" <janne.karhunen@gmail.com>
+Subject: [patch] fix statd -n
+Date: Thu, 17 Apr 2008 12:38:43 -0400
+Message-ID: <24c1515f0804170938s23fe3ea3pfe77355ed01d8bbf@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: selinux@tycho.nsa.gov, linux-security-module@vger.kernel.org,
-	steved@redhat.com, jlayton@redhat.com, sds@tycho.nsa.gov,
-	jmorris@namei.org, chuck.lever@oracle.com,
-	akpm@linux-foundation.org
+Content-Type: multipart/mixed;
+	boundary="----=_Part_1980_24658972.1208450324019"
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:41633 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751390AbYDQOG7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 Apr 2008 10:06:59 -0400
-In-Reply-To: <1204744818.3216.254.camel-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
+Received: from wr-out-0506.google.com ([64.233.184.227]:12160 "EHLO
+	wr-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1763098AbYDQQis (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Apr 2008 12:38:48 -0400
+Received: by wr-out-0506.google.com with SMTP id c48so127346wra.1
+        for <linux-nfs@vger.kernel.org>; Thu, 17 Apr 2008 09:38:45 -0700 (PDT)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-NFSv3 get_sb operations call into the LSM layer to set security options
-passed from userspace.  NFSv4 hooks were not originally added since it
-was reasonably late in the merge window and NFSv3 was the only thing
-that had regressed (v4 has never supported any LSM options)
+------=_Part_1980_24658972.1208450324019
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
-This patch makes NFSv4 call into the LSM to set security options rather
-than just blindly dropping them with no notice to the user as happens
-today.  This patch was tested in a simple NFSv4 environment with the
-context= option and appeared to work as expected.
+Hi all,
 
-Signed-off-by: Eric Paris <eparis@redhat.com>
-
----
-
- fs/nfs/super.c |   10 ++++++++++
- 1 files changed, 10 insertions(+), 0 deletions(-)
-
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index f921902..ffd46f8 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -1946,6 +1946,10 @@ static int nfs4_get_sb(struct file_system_type *fs_type,
- 		goto error_splat_super;
- 	}
- 
-+	error = security_sb_set_mnt_opts(s, &data.lsm_opts);
-+	if (error)
-+		goto error_splat_root;
-+
- 	s->s_flags |= MS_ACTIVE;
- 	mnt->mnt_sb = s;
- 	mnt->mnt_root = mntroot;
-@@ -1962,6 +1966,8 @@ out_free:
- 	nfs_free_server(server);
- 	goto out;
- 
-+error_splat_root:
-+	dput(mntroot);
- error_splat_super:
- 	up_write(&s->s_umount);
- 	deactivate_super(s);
-@@ -2041,6 +2047,8 @@ static int nfs4_xdev_get_sb(struct file_system_type *fs_type, int flags,
- 	mnt->mnt_sb = s;
- 	mnt->mnt_root = mntroot;
- 
-+	security_sb_clone_mnt_opts(data->sb, s);
-+
- 	dprintk("<-- nfs4_xdev_get_sb() = 0\n");
- 	return 0;
- 
-@@ -2120,6 +2128,8 @@ static int nfs4_referral_get_sb(struct file_system_type *fs_type, int flags,
- 	mnt->mnt_sb = s;
- 	mnt->mnt_root = mntroot;
- 
-+	security_sb_clone_mnt_opts(data->sb, s);
-+
- 	dprintk("<-- nfs4_referral_get_sb() = 0\n");
- 	return 0;
- 
+Apparently lockd does not expect statd to be used with -n
+switch: statd is expected to bind loopback, always. Attached
+patches show one (IPv4 specific) way of fixing it. Comments?
 
 
+-- 
+// Janne
+
+------=_Part_1980_24658972.1208450324019
+Content-Type: text/x-patch; name=statd-rmtcall.patch
+Content-Transfer-Encoding: base64
+X-Attachment-Id: f_ff5jq2sq0
+Content-Disposition: attachment; filename=statd-rmtcall.patch
+
+LS0tIHJtdGNhbGwuYy5vcmcJMjAwOC0wNC0xNCAxMDo1MzozMC4wMDAwMDAwMDAgLTA0MDAKKysr
+IHJtdGNhbGwuYwkyMDA4LTA0LTE0IDEzOjAxOjI3LjAwMDAwMDAwMCAtMDQwMApAQCAtMzcsNiAr
+MzcsNyBAQAogI2luY2x1ZGUgPG5ldGRiLmg+CiAjaW5jbHVkZSA8c3RyaW5nLmg+CiAjaW5jbHVk
+ZSA8dW5pc3RkLmg+CisjaW5jbHVkZSA8ZXJybm8uaD4KICNpZmRlZiBIQVZFX0lGQUREUlNfSAog
+I2luY2x1ZGUgPGlmYWRkcnMuaD4KICNlbmRpZiAvKiBIQVZFX0lGQUREUlNfSCAqLwpAQCAtNTQs
+NiArNTUsMzQgQEAKIAogc3RhdGljIHVuc2lnbmVkIGxvbmcJeGlkID0gMDsJLyogUlBDIFhJRCBj
+b3VudGVyICovCiBzdGF0aWMgaW50CQlzb2NrZmQgPSAtMTsJLyogbm90aWZ5IHNvY2tldCAqLwor
+c3RhdGljIGludCAgICAgICAgICAgICAgaWZzZXQgPSAwOworCisvKgorICogTm90aWZ5IGxvY2tk
+IG9mIG5vbi1zdGFuZGFyZCBiaW5kaW5nIAorICovCitpbmxpbmUgdm9pZAorbmxtX25zbV9zZXQo
+dW5zaWduZWQgaW50IGFkZHIpCit7CisgICAgICAgIHNzaXplX3Qgc3ogPSAwOworICAgICAgICBj
+aGFyIGJ1ZlsyMF07CisgICAgICAgIGludCBmZDsKKworICAgICAgICBpZiAoIGlmc2V0ICkKKyAg
+ICAgICAgICAgICAgICByZXR1cm4gOworCisgICAgICAgIHNwcmludGYgKGJ1ZiwiJXUiLGFkZHIp
+OworCisgICAgICAgIGZkID0gb3BlbiAoIi9wcm9jL3N5cy9mcy9uZnMvbmxtX25zbV9pbnRlcmZh
+Y2UiLCBPX1JEV1IpOworICAgICAgICBpZiAoZmQgPiAwKSB7CisgICAgICAgICAgICAgICAgc3og
+PSB3cml0ZSAoZmQsYnVmLHN0cmxlbigoY2hhciopYnVmKSk7CisgICAgICAgICAgICAgICAgaWYg
+KCBzeiA9PSAtMSApCisgICAgICAgICAgICAgICAgICAgICAgICBub3RlKE5fQ1JJVCwgInN0YXRk
+OiB3cml0ZTogJXNcbiIsIHN0cmVycm9yKGVycm5vKSk7CisgICAgICAgICAgICAgICAgY2xvc2Ug
+KGZkKTsKKyAgICAgICAgfSBlbHNlCisgICAgICAgICAgICAgICAgbm90ZShOX0NSSVQsICJzdGF0
+ZDogLW4gd2FzIHNwZWNpZmllZCB3aXRoIHdpdGggbm8ga2VybmVsIHN1cHBvcnQ/XG4iKTsKKwor
+ICAgICAgICBpZnNldCA9IDE7Cit9CiAKIC8qCiAgKiBJbml0aWFsaXplIGNhbGxiYWNrIHNvY2tl
+dApAQCAtODUsNiArMTE0LDcgQEAgc3RhdGRfZ2V0X3NvY2tldChpbnQgcG9ydCkKIAkJc3RydWN0
+IGhvc3RlbnQgKmhwID0gZ2V0aG9zdGJ5bmFtZShNWV9OQU1FKTsKIAkJaWYgKGhwKQogCQkJc2lu
+LnNpbl9hZGRyID0gKihzdHJ1Y3QgaW5fYWRkciAqKSBocC0+aF9hZGRyOworCQlubG1fbnNtX3Nl
+dCAoKHVuc2lnbmVkIGludClzaW4uc2luX2FkZHIuc19hZGRyKTsKIAl9CiAJaWYgKHBvcnQgIT0g
+MCkgewogCQlzaW4uc2luX3BvcnQgPSBodG9ucyhwb3J0KTsK
+------=_Part_1980_24658972.1208450324019
+Content-Type: text/x-patch; name=lockd-nsmif.patch
+Content-Transfer-Encoding: base64
+X-Attachment-Id: f_ff5jqenl1
+Content-Disposition: attachment; filename=lockd-nsmif.patch
+
+ZGlmZiAtTmF1cnAgbG9ja2Qub3JnL3N2YzRwcm9jLmMgbG9ja2Qvc3ZjNHByb2MuYwotLS0gbG9j
+a2Qub3JnL3N2YzRwcm9jLmMJMjAwOC0wNC0xNCAxMDo1ODoyOS4wMDAwMDAwMDAgLTA0MDAKKysr
+IGxvY2tkL3N2YzRwcm9jLmMJMjAwOC0wNC0xNCAxMjoxOTowNC4wMDAwMDAwMDAgLTA0MDAKQEAg
+LTIxLDYgKzIxLDggQEAKIAogI2RlZmluZSBOTE1EQkdfRkFDSUxJVFkJCU5MTURCR19DTElFTlQK
+IAorZXh0ZXJuIHVuc2lnbmVkIGludCBubG1fbnNtX2ludGVyZmFjZTsKKwogLyoKICAqIE9idGFp
+biBjbGllbnQgYW5kIGZpbGUgZnJvbSBhcmd1bWVudHMKICAqLwpAQCAtNDMwLDggKzQzMiw5IEBA
+IG5sbTRzdmNfcHJvY19zbV9ub3RpZnkoc3RydWN0IHN2Y19ycXN0ICoKIAltZW1jcHkoJnNhZGRy
+LCBzdmNfYWRkcl9pbihycXN0cCksIHNpemVvZihzYWRkcikpOwogCiAJZHByaW50aygibG9ja2Q6
+IFNNX05PVElGWSAgICAgY2FsbGVkXG4iKTsKLQlpZiAoc2FkZHIuc2luX2FkZHIuc19hZGRyICE9
+IGh0b25sKElOQUREUl9MT09QQkFDSykKLQkgfHwgbnRvaHMoc2FkZHIuc2luX3BvcnQpID49IDEw
+MjQpIHsKKwlpZiAoKChzYWRkci5zaW5fYWRkci5zX2FkZHIgIT0gaHRvbmwoSU5BRERSX0xPT1BC
+QUNLKSkKKwkgJiYgKG5sbV9uc21faW50ZXJmYWNlICYmIChzYWRkci5zaW5fYWRkci5zX2FkZHIg
+IT0gaHRvbmwobmxtX25zbV9pbnRlcmZhY2UpKSkpCisJIHx8IChudG9ocyhzYWRkci5zaW5fcG9y
+dCkgPj0gMTAyNCkpIHsKIAkJY2hhciBidWZbUlBDX01BWF9BRERSQlVGTEVOXTsKIAkJcHJpbnRr
+KEtFUk5fV0FSTklORyAibG9ja2Q6IHJlamVjdGVkIE5TTSBjYWxsYmFjayBmcm9tICVzXG4iLAog
+CQkJCXN2Y19wcmludF9hZGRyKHJxc3RwLCBidWYsIHNpemVvZihidWYpKSk7CmRpZmYgLU5hdXJw
+IGxvY2tkLm9yZy9zdmMuYyBsb2NrZC9zdmMuYwotLS0gbG9ja2Qub3JnL3N2Yy5jCTIwMDgtMDQt
+MTQgMTA6NTg6MjkuMDAwMDAwMDAwIC0wNDAwCisrKyBsb2NrZC9zdmMuYwkyMDA4LTA0LTE0IDEy
+OjE5OjA0LjAwMDAwMDAwMCAtMDQwMApAQCAtNjQsNiArNjQsNyBAQCBzdGF0aWMgdW5zaWduZWQg
+bG9uZwkJbmxtX2dyYWNlX3BlcmlvZDsKIHN0YXRpYyB1bnNpZ25lZCBsb25nCQlubG1fdGltZW91
+dCA9IExPQ0tEX0RGTFRfVElNRU87CiBzdGF0aWMgaW50CQkJbmxtX3VkcHBvcnQsIG5sbV90Y3Bw
+b3J0OwogaW50CQkJCW5zbV91c2VfaG9zdG5hbWVzID0gMDsKK3Vuc2lnbmVkIGludAkJCW5sbV9u
+c21faW50ZXJmYWNlID0gMDsKIAogLyoKICAqIENvbnN0YW50cyBuZWVkZWQgZm9yIHRoZSBzeXNj
+dGwgaW50ZXJmYWNlLgpAQCAtNDI1LDYgKzQyNiwxNCBAQCBzdGF0aWMgY3RsX3RhYmxlIG5sbV9z
+eXNjdGxzW10gPSB7CiAJCS5tb2RlCQk9IDA2NDQsCiAJCS5wcm9jX2hhbmRsZXIJPSAmcHJvY19k
+b2ludHZlYywKIAl9LAorICAgICAgICB7CisgICAgICAgICAgICAgICAgLmN0bF9uYW1lICAgICAg
+ID0gQ1RMX1VOTlVNQkVSRUQsCisgICAgICAgICAgICAgICAgLnByb2NuYW1lICAgICAgID0gIm5s
+bV9uc21faW50ZXJmYWNlIiwKKyAgICAgICAgICAgICAgICAuZGF0YSAgICAgICAgICAgPSAmbmxt
+X25zbV9pbnRlcmZhY2UsCisgICAgICAgICAgICAgICAgLm1heGxlbiAgICAgICAgID0gc2l6ZW9m
+KGludCksCisgICAgICAgICAgICAgICAgLm1vZGUgICAgICAgICAgID0gMDY0NCwKKyAgICAgICAg
+ICAgICAgICAucHJvY19oYW5kbGVyICAgPSAmcHJvY19kb2ludHZlYywKKyAgICAgICAgfSwKIAl7
+IC5jdGxfbmFtZSA9IDAgfQogfTsKIApkaWZmIC1OYXVycCBsb2NrZC5vcmcvc3ZjcHJvYy5jIGxv
+Y2tkL3N2Y3Byb2MuYwotLS0gbG9ja2Qub3JnL3N2Y3Byb2MuYwkyMDA4LTA0LTE0IDEwOjU4OjI5
+LjAwMDAwMDAwMCAtMDQwMAorKysgbG9ja2Qvc3ZjcHJvYy5jCTIwMDgtMDQtMTQgMTI6MTk6MDQu
+MDAwMDAwMDAwIC0wNDAwCkBAIC0yMSw2ICsyMSw4IEBACiAKICNkZWZpbmUgTkxNREJHX0ZBQ0lM
+SVRZCQlOTE1EQkdfQ0xJRU5UCiAKK2V4dGVybiB1bnNpZ25lZCBpbnQgbmxtX25zbV9pbnRlcmZh
+Y2U7CisKICNpZmRlZiBDT05GSUdfTE9DS0RfVjQKIHN0YXRpYyBfX2JlMzIKIGNhc3RfdG9fbmxt
+KF9fYmUzMiBzdGF0dXMsIHUzMiB2ZXJzKQpAQCAtNDYyLDggKzQ2NCw5IEBAIG5sbXN2Y19wcm9j
+X3NtX25vdGlmeShzdHJ1Y3Qgc3ZjX3Jxc3QgKnIKIAltZW1jcHkoJnNhZGRyLCBzdmNfYWRkcl9p
+bihycXN0cCksIHNpemVvZihzYWRkcikpOwogCiAJZHByaW50aygibG9ja2Q6IFNNX05PVElGWSAg
+ICAgY2FsbGVkXG4iKTsKLQlpZiAoc2FkZHIuc2luX2FkZHIuc19hZGRyICE9IGh0b25sKElOQURE
+Ul9MT09QQkFDSykKLQkgfHwgbnRvaHMoc2FkZHIuc2luX3BvcnQpID49IDEwMjQpIHsKKwlpZiAo
+KChzYWRkci5zaW5fYWRkci5zX2FkZHIgIT0gaHRvbmwoSU5BRERSX0xPT1BCQUNLKSkKKwkgJiYg
+KG5sbV9uc21faW50ZXJmYWNlICYmIChzYWRkci5zaW5fYWRkci5zX2FkZHIgIT0gaHRvbmwobmxt
+X25zbV9pbnRlcmZhY2UpKSkpCisJIHx8IChudG9ocyhzYWRkci5zaW5fcG9ydCkgPj0gMTAyNCkp
+IHsKIAkJY2hhciBidWZbUlBDX01BWF9BRERSQlVGTEVOXTsKIAkJcHJpbnRrKEtFUk5fV0FSTklO
+RyAibG9ja2Q6IHJlamVjdGVkIE5TTSBjYWxsYmFjayBmcm9tICVzXG4iLAogCQkJCXN2Y19wcmlu
+dF9hZGRyKHJxc3RwLCBidWYsIHNpemVvZihidWYpKSk7Cg==
+------=_Part_1980_24658972.1208450324019--
