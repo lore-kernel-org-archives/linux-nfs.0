@@ -1,119 +1,110 @@
-From: "Janne Karhunen" <janne.karhunen@gmail.com>
-Subject: [patch] fix statd -n
-Date: Thu, 17 Apr 2008 12:38:43 -0400
-Message-ID: <24c1515f0804170938s23fe3ea3pfe77355ed01d8bbf@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: multipart/mixed;
-	boundary="----=_Part_1980_24658972.1208450324019"
-To: linux-nfs@vger.kernel.org
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from wr-out-0506.google.com ([64.233.184.227]:12160 "EHLO
-	wr-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1763098AbYDQQis (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Apr 2008 12:38:48 -0400
-Received: by wr-out-0506.google.com with SMTP id c48so127346wra.1
-        for <linux-nfs@vger.kernel.org>; Thu, 17 Apr 2008 09:38:45 -0700 (PDT)
-Sender: linux-nfs-owner@vger.kernel.org
+From: Miklos Szeredi <miklos@szeredi.hu>
+Subject: nfs: lock stuck after interrupt
+Date: Thu, 17 Apr 2008 19:44:08 +0200
+Message-ID: <E1JmY9Y-0004e4-7R@pomaz-ex.szeredi.hu>
+Cc: trond.myklebust@fys.uio.no, eshel@almaden.ibm.com, neilb@suse.de,
+	akpm@linux-foundation.org, linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: bfields@fieldses.org
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1762007AbYDQRox@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-------=_Part_1980_24658972.1208450324019
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+1) on server lock file X
+2) on client lock file X
+     blocks
+3) on client send interrupt to process doing locking
+     locking syscall restarted, continues blocking
+4) on server release lock on file X
+     on client lock is acquired
+5) on client release lock on file X
+6) on client lock file X
+     blocks
 
-Hi all,
+Everything up to the last step is fine, but something goes wrong
+during the final unlock.  Stopping the nfs-server removes the stray
+lock.
 
-Apparently lockd does not expect statd to be used with -n
-switch: statd is expected to bind loopback, always. Attached
-patches show one (IPv4 specific) way of fixing it. Comments?
+Here's a trace on the server:
+
+lockd: request from 192.168.1.1, port=862
+lockd: LOCK          called
+lockd: nlm_lookup_host(192.168.1.2->192.168.1.1, p=6, v=4, my role=server, name=tucsk)
+lockd: get host tucsk
+lockd: nsm_monitor(tucsk)
+lockd: nlm_lookup_file (02000001 00006200 00000002 0001783d 7f54ef79 00017801 d06c5915 00000000)
+lockd: creating file for (02000001 00006200 00000002 0001783d 7f54ef79 00017801 d06c5915 00000000)
+lockd: found file 0ad074c0 (count 0)
+lockd: nlmsvc_lock(ubda/96317, ty=1, pi=1, 0-99, bl=1)
+lockd: nlm_lookup_host(192.168.1.2->192.168.1.1, p=6, v=4, my role=server, name=tucsk)
+lockd: get host tucsk
+lockd: nlmsvc_lookup_block f=0ad074c0 pd=1 0-99 ty=1
+lockd: get host tucsk
+lockd: created block 0aeabf80...
+lockd: vfs_lock_file returned 1
+lockd: nlmsvc_insert_block(0aeabf80, -1)
+lockd: release host tucsk
+lockd: nlmsvc_lock returned 50331648
+lockd: LOCK         status 3
+lockd: release host tucsk
+lockd: nlm_release_file(0ad074c0, ct = 2)
+lockd: request from 192.168.1.1, port=862
+lockd: CANCEL        called
+lockd: nlm_lookup_host(192.168.1.2->192.168.1.1, p=6, v=4, my role=server, name=tucsk)
+lockd: get host tucsk
+lockd: nlm_lookup_file (02000001 00006200 00000002 0001783d 7f54ef79 00017801 d06c5915 00000000)
+lockd: found file 0ad074c0 (count 1)
+lockd: nlmsvc_cancel(ubda/96317, pi=1, 0-99)
+lockd: nlmsvc_lookup_block f=0ad074c0 pd=1 0-99 ty=1
+lockd: check f=0ad074c0 pd=1 0-99 ty=1 cookie=36120000
+lockd: unlinking block 0aeabf80...
+lockd: freeing block 0aeabf80...
+lockd: release host tucsk
+lockd: nlm_release_file(0ad074c0, ct = 2)
+lockd: CANCEL        status 0
+lockd: release host tucsk
+lockd: nlm_release_file(0ad074c0, ct = 1)
+lockd: closing file ubda/96317
+lockd: request from 192.168.1.1, port=862
+lockd: LOCK          called
+lockd: nlm_lookup_host(192.168.1.2->192.168.1.1, p=6, v=4, my role=server, name=tucsk)
+lockd: get host tucsk
+lockd: nsm_monitor(tucsk)
+lockd: nlm_lookup_file (02000001 00006200 00000002 0001783d 7f54ef79 00017801 d06c5915 00000000)
+lockd: creating file for (02000001 00006200 00000002 0001783d 7f54ef79 00017801 d06c5915 00000000)
+lockd: found file 0ad074c0 (count 0)
+lockd: nlmsvc_lock(ubda/96317, ty=1, pi=2, 0-99, bl=1)
+lockd: nlm_lookup_host(192.168.1.2->192.168.1.1, p=6, v=4, my role=server, name=tucsk)
+lockd: get host tucsk
+lockd: nlmsvc_lookup_block f=0ad074c0 pd=2 0-99 ty=1
+lockd: get host tucsk
+lockd: created block 0aeab240...
+lockd: vfs_lock_file returned 0
+lockd: freeing block 0aeab240...
+lockd: release host tucsk
+lockd: nlm_release_file(0ad074c0, ct = 2)
+lockd: release host tucsk
+lockd: nlmsvc_lock returned 0
+lockd: LOCK         status 0
+lockd: release host tucsk
+lockd: nlm_release_file(0ad074c0, ct = 1)
+lockd: request from 192.168.1.1, port=862
+lockd: UNLOCK        called
+lockd: nlm_lookup_host(192.168.1.2->192.168.1.1, p=6, v=4, my role=server, name=tucsk)
+lockd: get host tucsk
+lockd: nlm_lookup_file (02000001 00006200 00000002 0001783d 7f54ef79 00017801 d06c5915 00000000)
+lockd: found file 0ad074c0 (count 0)
+lockd: nlmsvc_unlock(ubda/96317, pi=3, 0-9223372036854775807)
+lockd: nlmsvc_cancel(ubda/96317, pi=3, 0-9223372036854775807)
+lockd: nlmsvc_lookup_block f=0ad074c0 pd=3 0-9223372036854775807 ty=2
+lockd: UNLOCK        status 0
+lockd: release host tucsk
+lockd: nlm_release_file(0ad074c0, ct = 1)
 
 
--- 
-// Janne
+Everything looks normal, yet...
 
-------=_Part_1980_24658972.1208450324019
-Content-Type: text/x-patch; name=statd-rmtcall.patch
-Content-Transfer-Encoding: base64
-X-Attachment-Id: f_ff5jq2sq0
-Content-Disposition: attachment; filename=statd-rmtcall.patch
+This is 100% reproducable for me (ext3 exported over nfs, server and
+client: 2.6-git).
 
-LS0tIHJtdGNhbGwuYy5vcmcJMjAwOC0wNC0xNCAxMDo1MzozMC4wMDAwMDAwMDAgLTA0MDAKKysr
-IHJtdGNhbGwuYwkyMDA4LTA0LTE0IDEzOjAxOjI3LjAwMDAwMDAwMCAtMDQwMApAQCAtMzcsNiAr
-MzcsNyBAQAogI2luY2x1ZGUgPG5ldGRiLmg+CiAjaW5jbHVkZSA8c3RyaW5nLmg+CiAjaW5jbHVk
-ZSA8dW5pc3RkLmg+CisjaW5jbHVkZSA8ZXJybm8uaD4KICNpZmRlZiBIQVZFX0lGQUREUlNfSAog
-I2luY2x1ZGUgPGlmYWRkcnMuaD4KICNlbmRpZiAvKiBIQVZFX0lGQUREUlNfSCAqLwpAQCAtNTQs
-NiArNTUsMzQgQEAKIAogc3RhdGljIHVuc2lnbmVkIGxvbmcJeGlkID0gMDsJLyogUlBDIFhJRCBj
-b3VudGVyICovCiBzdGF0aWMgaW50CQlzb2NrZmQgPSAtMTsJLyogbm90aWZ5IHNvY2tldCAqLwor
-c3RhdGljIGludCAgICAgICAgICAgICAgaWZzZXQgPSAwOworCisvKgorICogTm90aWZ5IGxvY2tk
-IG9mIG5vbi1zdGFuZGFyZCBiaW5kaW5nIAorICovCitpbmxpbmUgdm9pZAorbmxtX25zbV9zZXQo
-dW5zaWduZWQgaW50IGFkZHIpCit7CisgICAgICAgIHNzaXplX3Qgc3ogPSAwOworICAgICAgICBj
-aGFyIGJ1ZlsyMF07CisgICAgICAgIGludCBmZDsKKworICAgICAgICBpZiAoIGlmc2V0ICkKKyAg
-ICAgICAgICAgICAgICByZXR1cm4gOworCisgICAgICAgIHNwcmludGYgKGJ1ZiwiJXUiLGFkZHIp
-OworCisgICAgICAgIGZkID0gb3BlbiAoIi9wcm9jL3N5cy9mcy9uZnMvbmxtX25zbV9pbnRlcmZh
-Y2UiLCBPX1JEV1IpOworICAgICAgICBpZiAoZmQgPiAwKSB7CisgICAgICAgICAgICAgICAgc3og
-PSB3cml0ZSAoZmQsYnVmLHN0cmxlbigoY2hhciopYnVmKSk7CisgICAgICAgICAgICAgICAgaWYg
-KCBzeiA9PSAtMSApCisgICAgICAgICAgICAgICAgICAgICAgICBub3RlKE5fQ1JJVCwgInN0YXRk
-OiB3cml0ZTogJXNcbiIsIHN0cmVycm9yKGVycm5vKSk7CisgICAgICAgICAgICAgICAgY2xvc2Ug
-KGZkKTsKKyAgICAgICAgfSBlbHNlCisgICAgICAgICAgICAgICAgbm90ZShOX0NSSVQsICJzdGF0
-ZDogLW4gd2FzIHNwZWNpZmllZCB3aXRoIHdpdGggbm8ga2VybmVsIHN1cHBvcnQ/XG4iKTsKKwor
-ICAgICAgICBpZnNldCA9IDE7Cit9CiAKIC8qCiAgKiBJbml0aWFsaXplIGNhbGxiYWNrIHNvY2tl
-dApAQCAtODUsNiArMTE0LDcgQEAgc3RhdGRfZ2V0X3NvY2tldChpbnQgcG9ydCkKIAkJc3RydWN0
-IGhvc3RlbnQgKmhwID0gZ2V0aG9zdGJ5bmFtZShNWV9OQU1FKTsKIAkJaWYgKGhwKQogCQkJc2lu
-LnNpbl9hZGRyID0gKihzdHJ1Y3QgaW5fYWRkciAqKSBocC0+aF9hZGRyOworCQlubG1fbnNtX3Nl
-dCAoKHVuc2lnbmVkIGludClzaW4uc2luX2FkZHIuc19hZGRyKTsKIAl9CiAJaWYgKHBvcnQgIT0g
-MCkgewogCQlzaW4uc2luX3BvcnQgPSBodG9ucyhwb3J0KTsK
-------=_Part_1980_24658972.1208450324019
-Content-Type: text/x-patch; name=lockd-nsmif.patch
-Content-Transfer-Encoding: base64
-X-Attachment-Id: f_ff5jqenl1
-Content-Disposition: attachment; filename=lockd-nsmif.patch
-
-ZGlmZiAtTmF1cnAgbG9ja2Qub3JnL3N2YzRwcm9jLmMgbG9ja2Qvc3ZjNHByb2MuYwotLS0gbG9j
-a2Qub3JnL3N2YzRwcm9jLmMJMjAwOC0wNC0xNCAxMDo1ODoyOS4wMDAwMDAwMDAgLTA0MDAKKysr
-IGxvY2tkL3N2YzRwcm9jLmMJMjAwOC0wNC0xNCAxMjoxOTowNC4wMDAwMDAwMDAgLTA0MDAKQEAg
-LTIxLDYgKzIxLDggQEAKIAogI2RlZmluZSBOTE1EQkdfRkFDSUxJVFkJCU5MTURCR19DTElFTlQK
-IAorZXh0ZXJuIHVuc2lnbmVkIGludCBubG1fbnNtX2ludGVyZmFjZTsKKwogLyoKICAqIE9idGFp
-biBjbGllbnQgYW5kIGZpbGUgZnJvbSBhcmd1bWVudHMKICAqLwpAQCAtNDMwLDggKzQzMiw5IEBA
-IG5sbTRzdmNfcHJvY19zbV9ub3RpZnkoc3RydWN0IHN2Y19ycXN0ICoKIAltZW1jcHkoJnNhZGRy
-LCBzdmNfYWRkcl9pbihycXN0cCksIHNpemVvZihzYWRkcikpOwogCiAJZHByaW50aygibG9ja2Q6
-IFNNX05PVElGWSAgICAgY2FsbGVkXG4iKTsKLQlpZiAoc2FkZHIuc2luX2FkZHIuc19hZGRyICE9
-IGh0b25sKElOQUREUl9MT09QQkFDSykKLQkgfHwgbnRvaHMoc2FkZHIuc2luX3BvcnQpID49IDEw
-MjQpIHsKKwlpZiAoKChzYWRkci5zaW5fYWRkci5zX2FkZHIgIT0gaHRvbmwoSU5BRERSX0xPT1BC
-QUNLKSkKKwkgJiYgKG5sbV9uc21faW50ZXJmYWNlICYmIChzYWRkci5zaW5fYWRkci5zX2FkZHIg
-IT0gaHRvbmwobmxtX25zbV9pbnRlcmZhY2UpKSkpCisJIHx8IChudG9ocyhzYWRkci5zaW5fcG9y
-dCkgPj0gMTAyNCkpIHsKIAkJY2hhciBidWZbUlBDX01BWF9BRERSQlVGTEVOXTsKIAkJcHJpbnRr
-KEtFUk5fV0FSTklORyAibG9ja2Q6IHJlamVjdGVkIE5TTSBjYWxsYmFjayBmcm9tICVzXG4iLAog
-CQkJCXN2Y19wcmludF9hZGRyKHJxc3RwLCBidWYsIHNpemVvZihidWYpKSk7CmRpZmYgLU5hdXJw
-IGxvY2tkLm9yZy9zdmMuYyBsb2NrZC9zdmMuYwotLS0gbG9ja2Qub3JnL3N2Yy5jCTIwMDgtMDQt
-MTQgMTA6NTg6MjkuMDAwMDAwMDAwIC0wNDAwCisrKyBsb2NrZC9zdmMuYwkyMDA4LTA0LTE0IDEy
-OjE5OjA0LjAwMDAwMDAwMCAtMDQwMApAQCAtNjQsNiArNjQsNyBAQCBzdGF0aWMgdW5zaWduZWQg
-bG9uZwkJbmxtX2dyYWNlX3BlcmlvZDsKIHN0YXRpYyB1bnNpZ25lZCBsb25nCQlubG1fdGltZW91
-dCA9IExPQ0tEX0RGTFRfVElNRU87CiBzdGF0aWMgaW50CQkJbmxtX3VkcHBvcnQsIG5sbV90Y3Bw
-b3J0OwogaW50CQkJCW5zbV91c2VfaG9zdG5hbWVzID0gMDsKK3Vuc2lnbmVkIGludAkJCW5sbV9u
-c21faW50ZXJmYWNlID0gMDsKIAogLyoKICAqIENvbnN0YW50cyBuZWVkZWQgZm9yIHRoZSBzeXNj
-dGwgaW50ZXJmYWNlLgpAQCAtNDI1LDYgKzQyNiwxNCBAQCBzdGF0aWMgY3RsX3RhYmxlIG5sbV9z
-eXNjdGxzW10gPSB7CiAJCS5tb2RlCQk9IDA2NDQsCiAJCS5wcm9jX2hhbmRsZXIJPSAmcHJvY19k
-b2ludHZlYywKIAl9LAorICAgICAgICB7CisgICAgICAgICAgICAgICAgLmN0bF9uYW1lICAgICAg
-ID0gQ1RMX1VOTlVNQkVSRUQsCisgICAgICAgICAgICAgICAgLnByb2NuYW1lICAgICAgID0gIm5s
-bV9uc21faW50ZXJmYWNlIiwKKyAgICAgICAgICAgICAgICAuZGF0YSAgICAgICAgICAgPSAmbmxt
-X25zbV9pbnRlcmZhY2UsCisgICAgICAgICAgICAgICAgLm1heGxlbiAgICAgICAgID0gc2l6ZW9m
-KGludCksCisgICAgICAgICAgICAgICAgLm1vZGUgICAgICAgICAgID0gMDY0NCwKKyAgICAgICAg
-ICAgICAgICAucHJvY19oYW5kbGVyICAgPSAmcHJvY19kb2ludHZlYywKKyAgICAgICAgfSwKIAl7
-IC5jdGxfbmFtZSA9IDAgfQogfTsKIApkaWZmIC1OYXVycCBsb2NrZC5vcmcvc3ZjcHJvYy5jIGxv
-Y2tkL3N2Y3Byb2MuYwotLS0gbG9ja2Qub3JnL3N2Y3Byb2MuYwkyMDA4LTA0LTE0IDEwOjU4OjI5
-LjAwMDAwMDAwMCAtMDQwMAorKysgbG9ja2Qvc3ZjcHJvYy5jCTIwMDgtMDQtMTQgMTI6MTk6MDQu
-MDAwMDAwMDAwIC0wNDAwCkBAIC0yMSw2ICsyMSw4IEBACiAKICNkZWZpbmUgTkxNREJHX0ZBQ0lM
-SVRZCQlOTE1EQkdfQ0xJRU5UCiAKK2V4dGVybiB1bnNpZ25lZCBpbnQgbmxtX25zbV9pbnRlcmZh
-Y2U7CisKICNpZmRlZiBDT05GSUdfTE9DS0RfVjQKIHN0YXRpYyBfX2JlMzIKIGNhc3RfdG9fbmxt
-KF9fYmUzMiBzdGF0dXMsIHUzMiB2ZXJzKQpAQCAtNDYyLDggKzQ2NCw5IEBAIG5sbXN2Y19wcm9j
-X3NtX25vdGlmeShzdHJ1Y3Qgc3ZjX3Jxc3QgKnIKIAltZW1jcHkoJnNhZGRyLCBzdmNfYWRkcl9p
-bihycXN0cCksIHNpemVvZihzYWRkcikpOwogCiAJZHByaW50aygibG9ja2Q6IFNNX05PVElGWSAg
-ICAgY2FsbGVkXG4iKTsKLQlpZiAoc2FkZHIuc2luX2FkZHIuc19hZGRyICE9IGh0b25sKElOQURE
-Ul9MT09QQkFDSykKLQkgfHwgbnRvaHMoc2FkZHIuc2luX3BvcnQpID49IDEwMjQpIHsKKwlpZiAo
-KChzYWRkci5zaW5fYWRkci5zX2FkZHIgIT0gaHRvbmwoSU5BRERSX0xPT1BCQUNLKSkKKwkgJiYg
-KG5sbV9uc21faW50ZXJmYWNlICYmIChzYWRkci5zaW5fYWRkci5zX2FkZHIgIT0gaHRvbmwobmxt
-X25zbV9pbnRlcmZhY2UpKSkpCisJIHx8IChudG9ocyhzYWRkci5zaW5fcG9ydCkgPj0gMTAyNCkp
-IHsKIAkJY2hhciBidWZbUlBDX01BWF9BRERSQlVGTEVOXTsKIAkJcHJpbnRrKEtFUk5fV0FSTklO
-RyAibG9ja2Q6IHJlamVjdGVkIE5TTSBjYWxsYmFjayBmcm9tICVzXG4iLAogCQkJCXN2Y19wcmlu
-dF9hZGRyKHJxc3RwLCBidWYsIHNpemVvZihidWYpKSk7Cg==
-------=_Part_1980_24658972.1208450324019--
+Miklos
