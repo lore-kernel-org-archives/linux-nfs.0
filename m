@@ -1,110 +1,66 @@
-From: Wendy Cheng <s.wendy.cheng@gmail.com>
-Subject: Re: [NFS] Forcefully resetting a lock
-Date: Fri, 18 Apr 2008 09:02:06 -0500
-Message-ID: <4808A9DE.9040304@gmail.com>
-References: <200804161117.24734.hensema@hostingxs.nl>
-	<48061807.9030808@gmail.com> <20080416184233.GF22743@fieldses.org>
-	<480655E7.30800@gmail.com> <20080417215222.GK9912@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net,
-	Erik Hensema / HostingXS Internet Services
-	<hensema-yolSOB3tinz/D1n+0JDH9g@public.gmane.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+From: Miklos Szeredi <miklos@szeredi.hu>
+Subject: Re: nfs: infinite loop in fcntl(F_SETLKW)
+Date: Fri, 18 Apr 2008 14:47:53 +0200
+Message-ID: <E1Jmq0P-0005sj-On@pomaz-ex.szeredi.hu>
+References: <E1Jk2oI-0007UX-MS@pomaz-ex.szeredi.hu> <1207861339.8180.14.camel@heimdal.trondhjem.org> <1207861661.8180.18.camel@heimdal.trondhjem.org> <1207862436.8180.30.camel@heimdal.trondhjem.org> <20080410215410.GF22324@fieldses.org> <E1JkxZI-0003Bc-9C@pomaz-ex.szeredi.hu> <20080414171909.GE15950@fieldses.org> <E1JlW1p-0006vZ-NW@pomaz-ex.szeredi.hu> <20080415185856.GI32218@fieldses.org> <E1JmAUP-0002VA-9g@pomaz-ex.szeredi.hu> <20080417222620.GL9912@fieldses.org>
+Cc: miklos@szeredi.hu, trond.myklebust@fys.uio.no,
+	eshel@almaden.ibm.com, neilb@suse.de, akpm@linux-foundation.org,
+	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org
+To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:59004 "EHLO neil.brown.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751267AbYDRODE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 18 Apr 2008 10:03:04 -0400
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1JmrB6-0005yI-Ek
-	for linux-nfs@vger.kernel.org; Sat, 19 Apr 2008 00:03:00 +1000
-In-Reply-To: <20080417215222.GK9912@fieldses.org>
+Received: from fxip-0047f.externet.hu ([88.209.222.127]:57683 "EHLO
+	pomaz-ex.szeredi.hu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753592AbYDRMsr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2008 08:48:47 -0400
+In-reply-to: <20080417222620.GL9912@fieldses.org> (bfields@fieldses.org)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-J. Bruce Fields wrote:
-> On Wed, Apr 16, 2008 at 02:39:19PM -0500, Wendy Cheng wrote:
->   
->> J. Bruce Fields wrote:
->>     
->>> On Wed, Apr 16, 2008 at 10:15:19AM -0500, Wendy Cheng wrote:
->>>   
->>>       
->>>> Erik Hensema / HostingXS Internet Services wrote:
->>>>     
->>>>         
->>>>> Hi all,
->>>>>
->>>>> Sometimes a file lock gets stuck. Is there any way on either server 
->>>>> or  client to obtain a list of locks? Or a list of 
->>>>> processes/clients  locking a particular file?
->>>>> And the million dollar question: is it possible to forcefully 
->>>>> remove a  lock?
->>>>>
->>>>> I'm using NFSv4 on Linux 2.6.18 (server and client).
->>>>>
->>>>>         
->>>>>           
->>>> *Cough* !
->>>>
->>>> Bruce, so what happens to my lock dropping patch that was said "will 
->>>> get  pulled into 2.6.26 kernel" ?
->>>>     
->>>>         
->>> Gulp.
->>>
->>> I started an alternative implementation, and got it to the point where
->>> it was basically working (but I didn't completely trust it).  And I did
->>> a small fix or two on your patches, but I seem to recall there were one
->>> or more todo's there too.
->>>
->>> Then I dropped both for a couple weeks.
->>>   
->>>       
->> Be carefully. .. "a couple weeks" can turn into "a couple years" .. It  
->> has been more than 2 years since my first patch submission. Regardless  
->> the patch has been repeatedly requested and had gone thru thorough  
->> testings, it just sits there idling while Linux nfs server keeps  
->> suffering the very same issue.
->>     
->
-> Yes, apologies for not getting this done on time.
->
->   
->> Don't get too ambitious. Cluster issues are not trivial - please take  
->> one step at a time. The patch is very usable *and* solves an immediate  
->> issue *and* has a clean boundary with existing main-line logic. I really  
->> don't see the reason to delay it.
->>     
->
-> My current version of your patch follows.
->
-> I've rebased it a couple times (the only change I recall being required
-> was a trivial fix to take into account reorganization of struct
-> nameidata.).  I also made two other changes; any objections to either?:
->   
+> > > > 1) if !FL_SLEEP, then return 0 if granted, -EAGAIN on contention
+> > > > 2) if FL_SLEEP and fl_grant == NULL, then return 0 if granted, block on
+> > > >    contention
+> > > > 3) if FL_SLEEP and fl_grant != NULL, then return 0 if granted, on
+> > > >    contention:
+> > > >    a) either return -EINPROGRESS and call fl_grant when granted
+> > > >    b) or return -EAGAIN  and call fl_notify when the lock needs retrying
+> > > 
+> > > I'd put it this way (after a quick check of the code to convince myself
+> > > I'm remembering this right...):
+> > > 
+> > >   1) If FL_SLEEP, then return 0 if granted, and on contention either:
+> > >      a) block, or
+> > >      b) return -EAGAIN, and call fl_notify when the lock should be
+> > >         retried.
+> > 
+> > Gfs2 seems to return -EINPROGRESS regardless of the FL_SLEEP flag:
+> 
+> Oops, you're right; in FL_SLEEP case fs/lockd/svclock.c:nlmsvc_lock() 
+> returns NLM_LCK_BLOCKED.  I believe it'll get an fl_grant() callback
+> after that and do a grant call back to the client, but I haven't
+> checked....
+> 
+> Note, as has been pointed out by Mark Snitzer
+> (http://article.gmane.org/gmane.linux.nfs/17801/), this limits the kind
+> of error reporting the filesystem can do--if it needs to block on the
+> initial lock call, it has to commit to queueing up, and eventually
+> granting, the lock.
 
-Thanks for doing this... The changes look good - though I don't have 
-chances to test it out yet. When is 2.6.26 code cut-off date (or we have 
-missed it again) ?
+OK, but that AFAICS is a lock manager implementation issue, not an API
+issue.  Which is important, but not as important as the API ;)
 
--- Wendy
-> 	
+> > > OK, but I haven't read your patch yet, apologies....
+> > 
+> > No problem.  Here it is again with some cosmetic fixes and testing.
+> 
+> Thanks!  Ping me in a couple days if I haven't made any comments.  From
+> a quick skim the GFS2 change and the error return change both seem
+> reasonable.
+> 
+> I need to a real GFS2 testing setup....  (Did you test GFS2 locking
+> specifically?)
 
+No gfs2, only ext3.
 
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by the 2008 JavaOne(SM) Conference 
-Don't miss this year's exciting event. There's still time to save $100. 
-Use priority code J8TL2D2. 
-http://ad.doubleclick.net/clk;198757673;13503038;p?http://java.sun.com/javaone
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
-
+Thanks,
+Miklos
