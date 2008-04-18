@@ -1,217 +1,69 @@
 From: Peter Staubach <staubach@redhat.com>
 Subject: Re: [patch] fix statd -n
-Date: Fri, 18 Apr 2008 16:23:50 -0400
-Message-ID: <48090356.9020703@redhat.com>
-References: <24c1515f0804170938s23fe3ea3pfe77355ed01d8bbf@mail.gmail.com> <20080418173646.GC19038@fieldses.org> <480902CA.1070805@redhat.com>
+Date: Fri, 18 Apr 2008 16:22:18 -0400
+Message-ID: <480902FA.7060609@redhat.com>
+References: <24c1515f0804170938s23fe3ea3pfe77355ed01d8bbf@mail.gmail.com>	 <20080418173646.GC19038@fieldses.org> <24c1515f0804181111x465d7083o4b78e1ba36b51cb@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Janne Karhunen <janne.karhunen@gmail.com>,
-	linux-nfs@vger.kernel.org
-To: Peter Staubach <staubach@redhat.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+To: Janne Karhunen <janne.karhunen@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:39762 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([66.187.233.31]:38631 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751233AbYDRUXy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 18 Apr 2008 16:23:54 -0400
-In-Reply-To: <480902CA.1070805@redhat.com>
+	id S1751774AbYDRUWY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 18 Apr 2008 16:22:24 -0400
+In-Reply-To: <24c1515f0804181111x465d7083o4b78e1ba36b51cb-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Peter Staubach wrote:
-> J. Bruce Fields wrote:
->> On Thu, Apr 17, 2008 at 12:38:43PM -0400, Janne Karhunen wrote:
->>  
->>> Apparently lockd does not expect statd to be used with -n
->>> switch: statd is expected to bind loopback, always. Attached
->>> patches show one (IPv4 specific) way of fixing it. Comments?
->>>     
+Janne Karhunen wrote:
+> On Fri, Apr 18, 2008 at 1:36 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+>
+>   
+>>  > Apparently lockd does not expect statd to be used with -n
+>>  > switch: statd is expected to bind loopback, always. Attached
+>>  > patches show one (IPv4 specific) way of fixing it. Comments?
 >>
->> Maybe statd really should always bind to the loopback interface?  Is
->> there any reason not to?
->>
->>   
+>>  Maybe statd really should always bind to the loopback interface?  Is
+>>  there any reason not to?
+>>     
 >
-> I think that statd needs to be reachable from clients
-> and/or servers when the state changes on the other end.
+> In my case I used -n to push NSM/NLM comms to
+> clusters specific NFS service address (that just
+> happens to migrate all around). -n is the only way
+> to do this: otherwise it will bind to INADDR_ANY
+> on node that has gazillion interfaces/addresses..
 >
-> This "-n" option really assumes that the system is single-homed
-> though, doesn't it?  Binding to one particular interface will
-> make it so that statd will not be reachable via any of the other
-> interfaces on the system.
->
-> Perhaps statd should always bind to the loopback interface
-> if it doesn't bind to INADDR_ANY?
->
+>   
 
-Sorry, not very clear.  Perhaps statd should bind to the loopback
-interface in addition to any other interfaces if it doesn't bind
-to INADDR_ANY.
+What happens on systems with more than one network interface?
 
     Thanx...
 
        ps
 
->    Thanx...
+> That, and the original reasoning for the option is
+> said in statd code:
 >
->       ps
+>         /*
+>          * If a local hostname is given (-n option to statd), bind to
+> the address
+>          * specified. This is required to support clients that ignore
+> the mon_name in
+>          * the statd protocol but use the source address from the
+> request packet.
+>          */
 >
->> From a quick look at the current nfs-utils code: it looks like the -n
->> option only affects the operation of the sm-notify program that's called
->> on boot to notify peer statd's?  I'm a little confused.  (What version
->> of nfs-utils are you working from?)
->>
->> --b.
->>
->>  
->>> -- 
->>> // Janne
->>>     
->>
->>  
->>> --- rmtcall.c.org    2008-04-14 10:53:30.000000000 -0400
->>> +++ rmtcall.c    2008-04-14 13:01:27.000000000 -0400
->>> @@ -37,6 +37,7 @@
->>>  #include <netdb.h>
->>>  #include <string.h>
->>>  #include <unistd.h>
->>> +#include <errno.h>
->>>  #ifdef HAVE_IFADDRS_H
->>>  #include <ifaddrs.h>
->>>  #endif /* HAVE_IFADDRS_H */
->>> @@ -54,6 +55,34 @@
->>>  
->>>  static unsigned long    xid = 0;    /* RPC XID counter */
->>>  static int        sockfd = -1;    /* notify socket */
->>> +static int              ifset = 0;
->>> +
->>> +/*
->>> + * Notify lockd of non-standard binding + */
->>> +inline void
->>> +nlm_nsm_set(unsigned int addr)
->>> +{
->>> +        ssize_t sz = 0;
->>> +        char buf[20];
->>> +        int fd;
->>> +
->>> +        if ( ifset )
->>> +                return ;
->>> +
->>> +        sprintf (buf,"%u",addr);
->>> +
->>> +        fd = open ("/proc/sys/fs/nfs/nlm_nsm_interface", O_RDWR);
->>> +        if (fd > 0) {
->>> +                sz = write (fd,buf,strlen((char*)buf));
->>> +                if ( sz == -1 )
->>> +                        note(N_CRIT, "statd: write: %s\n", 
->>> strerror(errno));
->>> +                close (fd);
->>> +        } else
->>> +                note(N_CRIT, "statd: -n was specified with with no 
->>> kernel support?\n");
->>> +
->>> +        ifset = 1;
->>> +}
->>>  
->>>  /*
->>>   * Initialize callback socket
->>> @@ -85,6 +114,7 @@ statd_get_socket(int port)
->>>          struct hostent *hp = gethostbyname(MY_NAME);
->>>          if (hp)
->>>              sin.sin_addr = *(struct in_addr *) hp->h_addr;
->>> +        nlm_nsm_set ((unsigned int)sin.sin_addr.s_addr);
->>>      }
->>>      if (port != 0) {
->>>          sin.sin_port = htons(port);
->>>     
->>
->>  
->>> diff -Naurp lockd.org/svc4proc.c lockd/svc4proc.c
->>> --- lockd.org/svc4proc.c    2008-04-14 10:58:29.000000000 -0400
->>> +++ lockd/svc4proc.c    2008-04-14 12:19:04.000000000 -0400
->>> @@ -21,6 +21,8 @@
->>>  
->>>  #define NLMDBG_FACILITY        NLMDBG_CLIENT
->>>  
->>> +extern unsigned int nlm_nsm_interface;
->>> +
->>>  /*
->>>   * Obtain client and file from arguments
->>>   */
->>> @@ -430,8 +432,9 @@ nlm4svc_proc_sm_notify(struct svc_rqst *
->>>      memcpy(&saddr, svc_addr_in(rqstp), sizeof(saddr));
->>>  
->>>      dprintk("lockd: SM_NOTIFY     called\n");
->>> -    if (saddr.sin_addr.s_addr != htonl(INADDR_LOOPBACK)
->>> -     || ntohs(saddr.sin_port) >= 1024) {
->>> +    if (((saddr.sin_addr.s_addr != htonl(INADDR_LOOPBACK))
->>> +     && (nlm_nsm_interface && (saddr.sin_addr.s_addr != 
->>> htonl(nlm_nsm_interface))))
->>> +     || (ntohs(saddr.sin_port) >= 1024)) {
->>>          char buf[RPC_MAX_ADDRBUFLEN];
->>>          printk(KERN_WARNING "lockd: rejected NSM callback from %s\n",
->>>                  svc_print_addr(rqstp, buf, sizeof(buf)));
->>> diff -Naurp lockd.org/svc.c lockd/svc.c
->>> --- lockd.org/svc.c    2008-04-14 10:58:29.000000000 -0400
->>> +++ lockd/svc.c    2008-04-14 12:19:04.000000000 -0400
->>> @@ -64,6 +64,7 @@ static unsigned long        nlm_grace_period;
->>>  static unsigned long        nlm_timeout = LOCKD_DFLT_TIMEO;
->>>  static int            nlm_udpport, nlm_tcpport;
->>>  int                nsm_use_hostnames = 0;
->>> +unsigned int            nlm_nsm_interface = 0;
->>>  
->>>  /*
->>>   * Constants needed for the sysctl interface.
->>> @@ -425,6 +426,14 @@ static ctl_table nlm_sysctls[] = {
->>>          .mode        = 0644,
->>>          .proc_handler    = &proc_dointvec,
->>>      },
->>> +        {
->>> +                .ctl_name       = CTL_UNNUMBERED,
->>> +                .procname       = "nlm_nsm_interface",
->>> +                .data           = &nlm_nsm_interface,
->>> +                .maxlen         = sizeof(int),
->>> +                .mode           = 0644,
->>> +                .proc_handler   = &proc_dointvec,
->>> +        },
->>>      { .ctl_name = 0 }
->>>  };
->>>  
->>> diff -Naurp lockd.org/svcproc.c lockd/svcproc.c
->>> --- lockd.org/svcproc.c    2008-04-14 10:58:29.000000000 -0400
->>> +++ lockd/svcproc.c    2008-04-14 12:19:04.000000000 -0400
->>> @@ -21,6 +21,8 @@
->>>  
->>>  #define NLMDBG_FACILITY        NLMDBG_CLIENT
->>>  
->>> +extern unsigned int nlm_nsm_interface;
->>> +
->>>  #ifdef CONFIG_LOCKD_V4
->>>  static __be32
->>>  cast_to_nlm(__be32 status, u32 vers)
->>> @@ -462,8 +464,9 @@ nlmsvc_proc_sm_notify(struct svc_rqst *r
->>>      memcpy(&saddr, svc_addr_in(rqstp), sizeof(saddr));
->>>  
->>>      dprintk("lockd: SM_NOTIFY     called\n");
->>> -    if (saddr.sin_addr.s_addr != htonl(INADDR_LOOPBACK)
->>> -     || ntohs(saddr.sin_port) >= 1024) {
->>> +    if (((saddr.sin_addr.s_addr != htonl(INADDR_LOOPBACK))
->>> +     && (nlm_nsm_interface && (saddr.sin_addr.s_addr != 
->>> htonl(nlm_nsm_interface))))
->>> +     || (ntohs(saddr.sin_port) >= 1024)) {
->>>          char buf[RPC_MAX_ADDRBUFLEN];
->>>          printk(KERN_WARNING "lockd: rejected NSM callback from %s\n",
->>>                  svc_print_addr(rqstp, buf, sizeof(buf)));
->>>     
->>
->> -- 
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>   
 >
-> -- 
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>   
+>>  From a quick look at the current nfs-utils code: it looks like the -n
+>>  option only affects the operation of the sm-notify program that's called
+>>  on boot to notify peer statd's?  I'm a little confused.  (What version
+>>  of nfs-utils are you working from?)
+>>     
+>
+> Right. 1.0.8 -> 1.0.12, it's valid for all.
+>
+>
+>   
 
