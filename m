@@ -1,167 +1,110 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [patch] fix statd -n
-Date: Fri, 18 Apr 2008 13:36:46 -0400
-Message-ID: <20080418173646.GC19038@fieldses.org>
-References: <24c1515f0804170938s23fe3ea3pfe77355ed01d8bbf@mail.gmail.com>
+From: Wendy Cheng <s.wendy.cheng@gmail.com>
+Subject: Re: [NFS] Forcefully resetting a lock
+Date: Fri, 18 Apr 2008 09:02:06 -0500
+Message-ID: <4808A9DE.9040304@gmail.com>
+References: <200804161117.24734.hensema@hostingxs.nl>
+	<48061807.9030808@gmail.com> <20080416184233.GF22743@fieldses.org>
+	<480655E7.30800@gmail.com> <20080417215222.GK9912@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Janne Karhunen <janne.karhunen@gmail.com>
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net,
+	Erik Hensema / HostingXS Internet Services
+	<hensema-yolSOB3tinz/D1n+0JDH9g@public.gmane.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:40235 "EHLO fieldses.org"
+Received: from neil.brown.name ([220.233.11.133]:59004 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758597AbYDRRgr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 18 Apr 2008 13:36:47 -0400
-In-Reply-To: <24c1515f0804170938s23fe3ea3pfe77355ed01d8bbf-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+	id S1751267AbYDRODE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 18 Apr 2008 10:03:04 -0400
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1JmrB6-0005yI-Ek
+	for linux-nfs@vger.kernel.org; Sat, 19 Apr 2008 00:03:00 +1000
+In-Reply-To: <20080417215222.GK9912@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 17, 2008 at 12:38:43PM -0400, Janne Karhunen wrote:
-> Apparently lockd does not expect statd to be used with -n
-> switch: statd is expected to bind loopback, always. Attached
-> patches show one (IPv4 specific) way of fixing it. Comments?
+J. Bruce Fields wrote:
+> On Wed, Apr 16, 2008 at 02:39:19PM -0500, Wendy Cheng wrote:
+>   
+>> J. Bruce Fields wrote:
+>>     
+>>> On Wed, Apr 16, 2008 at 10:15:19AM -0500, Wendy Cheng wrote:
+>>>   
+>>>       
+>>>> Erik Hensema / HostingXS Internet Services wrote:
+>>>>     
+>>>>         
+>>>>> Hi all,
+>>>>>
+>>>>> Sometimes a file lock gets stuck. Is there any way on either server 
+>>>>> or  client to obtain a list of locks? Or a list of 
+>>>>> processes/clients  locking a particular file?
+>>>>> And the million dollar question: is it possible to forcefully 
+>>>>> remove a  lock?
+>>>>>
+>>>>> I'm using NFSv4 on Linux 2.6.18 (server and client).
+>>>>>
+>>>>>         
+>>>>>           
+>>>> *Cough* !
+>>>>
+>>>> Bruce, so what happens to my lock dropping patch that was said "will 
+>>>> get  pulled into 2.6.26 kernel" ?
+>>>>     
+>>>>         
+>>> Gulp.
+>>>
+>>> I started an alternative implementation, and got it to the point where
+>>> it was basically working (but I didn't completely trust it).  And I did
+>>> a small fix or two on your patches, but I seem to recall there were one
+>>> or more todo's there too.
+>>>
+>>> Then I dropped both for a couple weeks.
+>>>   
+>>>       
+>> Be carefully. .. "a couple weeks" can turn into "a couple years" .. It  
+>> has been more than 2 years since my first patch submission. Regardless  
+>> the patch has been repeatedly requested and had gone thru thorough  
+>> testings, it just sits there idling while Linux nfs server keeps  
+>> suffering the very same issue.
+>>     
+>
+> Yes, apologies for not getting this done on time.
+>
+>   
+>> Don't get too ambitious. Cluster issues are not trivial - please take  
+>> one step at a time. The patch is very usable *and* solves an immediate  
+>> issue *and* has a clean boundary with existing main-line logic. I really  
+>> don't see the reason to delay it.
+>>     
+>
+> My current version of your patch follows.
+>
+> I've rebased it a couple times (the only change I recall being required
+> was a trivial fix to take into account reorganization of struct
+> nameidata.).  I also made two other changes; any objections to either?:
+>   
 
-Maybe statd really should always bind to the loopback interface?  Is
-there any reason not to?
+Thanks for doing this... The changes look good - though I don't have 
+chances to test it out yet. When is 2.6.26 code cut-off date (or we have 
+missed it again) ?
 
->From a quick look at the current nfs-utils code: it looks like the -n
-option only affects the operation of the sm-notify program that's called
-on boot to notify peer statd's?  I'm a little confused.  (What version
-of nfs-utils are you working from?)
+-- Wendy
+> 	
 
---b.
 
-> 
-> 
-> -- 
-> // Janne
 
-> --- rmtcall.c.org	2008-04-14 10:53:30.000000000 -0400
-> +++ rmtcall.c	2008-04-14 13:01:27.000000000 -0400
-> @@ -37,6 +37,7 @@
->  #include <netdb.h>
->  #include <string.h>
->  #include <unistd.h>
-> +#include <errno.h>
->  #ifdef HAVE_IFADDRS_H
->  #include <ifaddrs.h>
->  #endif /* HAVE_IFADDRS_H */
-> @@ -54,6 +55,34 @@
->  
->  static unsigned long	xid = 0;	/* RPC XID counter */
->  static int		sockfd = -1;	/* notify socket */
-> +static int              ifset = 0;
-> +
-> +/*
-> + * Notify lockd of non-standard binding 
-> + */
-> +inline void
-> +nlm_nsm_set(unsigned int addr)
-> +{
-> +        ssize_t sz = 0;
-> +        char buf[20];
-> +        int fd;
-> +
-> +        if ( ifset )
-> +                return ;
-> +
-> +        sprintf (buf,"%u",addr);
-> +
-> +        fd = open ("/proc/sys/fs/nfs/nlm_nsm_interface", O_RDWR);
-> +        if (fd > 0) {
-> +                sz = write (fd,buf,strlen((char*)buf));
-> +                if ( sz == -1 )
-> +                        note(N_CRIT, "statd: write: %s\n", strerror(errno));
-> +                close (fd);
-> +        } else
-> +                note(N_CRIT, "statd: -n was specified with with no kernel support?\n");
-> +
-> +        ifset = 1;
-> +}
->  
->  /*
->   * Initialize callback socket
-> @@ -85,6 +114,7 @@ statd_get_socket(int port)
->  		struct hostent *hp = gethostbyname(MY_NAME);
->  		if (hp)
->  			sin.sin_addr = *(struct in_addr *) hp->h_addr;
-> +		nlm_nsm_set ((unsigned int)sin.sin_addr.s_addr);
->  	}
->  	if (port != 0) {
->  		sin.sin_port = htons(port);
-
-> diff -Naurp lockd.org/svc4proc.c lockd/svc4proc.c
-> --- lockd.org/svc4proc.c	2008-04-14 10:58:29.000000000 -0400
-> +++ lockd/svc4proc.c	2008-04-14 12:19:04.000000000 -0400
-> @@ -21,6 +21,8 @@
->  
->  #define NLMDBG_FACILITY		NLMDBG_CLIENT
->  
-> +extern unsigned int nlm_nsm_interface;
-> +
->  /*
->   * Obtain client and file from arguments
->   */
-> @@ -430,8 +432,9 @@ nlm4svc_proc_sm_notify(struct svc_rqst *
->  	memcpy(&saddr, svc_addr_in(rqstp), sizeof(saddr));
->  
->  	dprintk("lockd: SM_NOTIFY     called\n");
-> -	if (saddr.sin_addr.s_addr != htonl(INADDR_LOOPBACK)
-> -	 || ntohs(saddr.sin_port) >= 1024) {
-> +	if (((saddr.sin_addr.s_addr != htonl(INADDR_LOOPBACK))
-> +	 && (nlm_nsm_interface && (saddr.sin_addr.s_addr != htonl(nlm_nsm_interface))))
-> +	 || (ntohs(saddr.sin_port) >= 1024)) {
->  		char buf[RPC_MAX_ADDRBUFLEN];
->  		printk(KERN_WARNING "lockd: rejected NSM callback from %s\n",
->  				svc_print_addr(rqstp, buf, sizeof(buf)));
-> diff -Naurp lockd.org/svc.c lockd/svc.c
-> --- lockd.org/svc.c	2008-04-14 10:58:29.000000000 -0400
-> +++ lockd/svc.c	2008-04-14 12:19:04.000000000 -0400
-> @@ -64,6 +64,7 @@ static unsigned long		nlm_grace_period;
->  static unsigned long		nlm_timeout = LOCKD_DFLT_TIMEO;
->  static int			nlm_udpport, nlm_tcpport;
->  int				nsm_use_hostnames = 0;
-> +unsigned int			nlm_nsm_interface = 0;
->  
->  /*
->   * Constants needed for the sysctl interface.
-> @@ -425,6 +426,14 @@ static ctl_table nlm_sysctls[] = {
->  		.mode		= 0644,
->  		.proc_handler	= &proc_dointvec,
->  	},
-> +        {
-> +                .ctl_name       = CTL_UNNUMBERED,
-> +                .procname       = "nlm_nsm_interface",
-> +                .data           = &nlm_nsm_interface,
-> +                .maxlen         = sizeof(int),
-> +                .mode           = 0644,
-> +                .proc_handler   = &proc_dointvec,
-> +        },
->  	{ .ctl_name = 0 }
->  };
->  
-> diff -Naurp lockd.org/svcproc.c lockd/svcproc.c
-> --- lockd.org/svcproc.c	2008-04-14 10:58:29.000000000 -0400
-> +++ lockd/svcproc.c	2008-04-14 12:19:04.000000000 -0400
-> @@ -21,6 +21,8 @@
->  
->  #define NLMDBG_FACILITY		NLMDBG_CLIENT
->  
-> +extern unsigned int nlm_nsm_interface;
-> +
->  #ifdef CONFIG_LOCKD_V4
->  static __be32
->  cast_to_nlm(__be32 status, u32 vers)
-> @@ -462,8 +464,9 @@ nlmsvc_proc_sm_notify(struct svc_rqst *r
->  	memcpy(&saddr, svc_addr_in(rqstp), sizeof(saddr));
->  
->  	dprintk("lockd: SM_NOTIFY     called\n");
-> -	if (saddr.sin_addr.s_addr != htonl(INADDR_LOOPBACK)
-> -	 || ntohs(saddr.sin_port) >= 1024) {
-> +	if (((saddr.sin_addr.s_addr != htonl(INADDR_LOOPBACK))
-> +	 && (nlm_nsm_interface && (saddr.sin_addr.s_addr != htonl(nlm_nsm_interface))))
-> +	 || (ntohs(saddr.sin_port) >= 1024)) {
->  		char buf[RPC_MAX_ADDRBUFLEN];
->  		printk(KERN_WARNING "lockd: rejected NSM callback from %s\n",
->  				svc_print_addr(rqstp, buf, sizeof(buf)));
+-------------------------------------------------------------------------
+This SF.net email is sponsored by the 2008 JavaOne(SM) Conference 
+Don't miss this year's exciting event. There's still time to save $100. 
+Use priority code J8TL2D2. 
+http://ad.doubleclick.net/clk;198757673;13503038;p?http://java.sun.com/javaone
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
