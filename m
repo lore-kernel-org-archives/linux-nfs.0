@@ -1,198 +1,81 @@
-From: Peter Staubach <staubach@redhat.com>
+From: "Janne Karhunen" <janne.karhunen@gmail.com>
 Subject: Re: [patch] fix statd -n
-Date: Fri, 18 Apr 2008 16:21:30 -0400
-Message-ID: <480902CA.1070805@redhat.com>
-References: <24c1515f0804170938s23fe3ea3pfe77355ed01d8bbf@mail.gmail.com> <20080418173646.GC19038@fieldses.org>
+Date: Fri, 18 Apr 2008 15:46:01 -0400
+Message-ID: <24c1515f0804181246lbd40b60jb167484b07b4a6ed@mail.gmail.com>
+References: <24c1515f0804170938s23fe3ea3pfe77355ed01d8bbf@mail.gmail.com>
+	 <20080418173646.GC19038@fieldses.org>
+	 <24c1515f0804181111x465d7083o4b78e1ba36b51cb@mail.gmail.com>
+	 <20080418182550.GC24552@fieldses.org>
+	 <24c1515f0804181131i238a50a7v85ef80299ec2216f@mail.gmail.com>
+	 <20080418183443.GE24552@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: Janne Karhunen <janne.karhunen@gmail.com>,
-	linux-nfs@vger.kernel.org
+Content-Type: multipart/mixed;
+	boundary="----=_Part_8907_22444710.1208547961705"
+Cc: linux-nfs@vger.kernel.org
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:38606 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751352AbYDRUVf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 18 Apr 2008 16:21:35 -0400
-In-Reply-To: <20080418173646.GC19038@fieldses.org>
+Received: from wa-out-1112.google.com ([209.85.146.178]:27516 "EHLO
+	wa-out-1112.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760837AbYDRTqD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2008 15:46:03 -0400
+Received: by wa-out-1112.google.com with SMTP id m16so1119887waf.23
+        for <linux-nfs@vger.kernel.org>; Fri, 18 Apr 2008 12:46:02 -0700 (PDT)
+In-Reply-To: <20080418183443.GE24552@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-J. Bruce Fields wrote:
-> On Thu, Apr 17, 2008 at 12:38:43PM -0400, Janne Karhunen wrote:
->   
->> Apparently lockd does not expect statd to be used with -n
->> switch: statd is expected to bind loopback, always. Attached
->> patches show one (IPv4 specific) way of fixing it. Comments?
->>     
->
-> Maybe statd really should always bind to the loopback interface?  Is
-> there any reason not to?
->
->   
+------=_Part_8907_22444710.1208547961705
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
-I think that statd needs to be reachable from clients
-and/or servers when the state changes on the other end.
+On Fri, Apr 18, 2008 at 2:34 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
 
-This "-n" option really assumes that the system is single-homed
-though, doesn't it?  Binding to one particular interface will
-make it so that statd will not be reachable via any of the other
-interfaces on the system.
+>  I was looking at recent git.  Note the most recent tarball on
+>  sourceforge.net is 1.1.2, and that has the relevant changes.
 
-Perhaps statd should always bind to the loopback interface
-if it doesn't bind to INADDR_ANY?
+There you go, against 1.1.2.
 
-    Thanx...
 
-       ps
+-- 
+// Janne
 
-> From a quick look at the current nfs-utils code: it looks like the -n
-> option only affects the operation of the sm-notify program that's called
-> on boot to notify peer statd's?  I'm a little confused.  (What version
-> of nfs-utils are you working from?)
->
-> --b.
->
->   
->> -- 
->> // Janne
->>     
->
->   
->> --- rmtcall.c.org	2008-04-14 10:53:30.000000000 -0400
->> +++ rmtcall.c	2008-04-14 13:01:27.000000000 -0400
->> @@ -37,6 +37,7 @@
->>  #include <netdb.h>
->>  #include <string.h>
->>  #include <unistd.h>
->> +#include <errno.h>
->>  #ifdef HAVE_IFADDRS_H
->>  #include <ifaddrs.h>
->>  #endif /* HAVE_IFADDRS_H */
->> @@ -54,6 +55,34 @@
->>  
->>  static unsigned long	xid = 0;	/* RPC XID counter */
->>  static int		sockfd = -1;	/* notify socket */
->> +static int              ifset = 0;
->> +
->> +/*
->> + * Notify lockd of non-standard binding 
->> + */
->> +inline void
->> +nlm_nsm_set(unsigned int addr)
->> +{
->> +        ssize_t sz = 0;
->> +        char buf[20];
->> +        int fd;
->> +
->> +        if ( ifset )
->> +                return ;
->> +
->> +        sprintf (buf,"%u",addr);
->> +
->> +        fd = open ("/proc/sys/fs/nfs/nlm_nsm_interface", O_RDWR);
->> +        if (fd > 0) {
->> +                sz = write (fd,buf,strlen((char*)buf));
->> +                if ( sz == -1 )
->> +                        note(N_CRIT, "statd: write: %s\n", strerror(errno));
->> +                close (fd);
->> +        } else
->> +                note(N_CRIT, "statd: -n was specified with with no kernel support?\n");
->> +
->> +        ifset = 1;
->> +}
->>  
->>  /*
->>   * Initialize callback socket
->> @@ -85,6 +114,7 @@ statd_get_socket(int port)
->>  		struct hostent *hp = gethostbyname(MY_NAME);
->>  		if (hp)
->>  			sin.sin_addr = *(struct in_addr *) hp->h_addr;
->> +		nlm_nsm_set ((unsigned int)sin.sin_addr.s_addr);
->>  	}
->>  	if (port != 0) {
->>  		sin.sin_port = htons(port);
->>     
->
->   
->> diff -Naurp lockd.org/svc4proc.c lockd/svc4proc.c
->> --- lockd.org/svc4proc.c	2008-04-14 10:58:29.000000000 -0400
->> +++ lockd/svc4proc.c	2008-04-14 12:19:04.000000000 -0400
->> @@ -21,6 +21,8 @@
->>  
->>  #define NLMDBG_FACILITY		NLMDBG_CLIENT
->>  
->> +extern unsigned int nlm_nsm_interface;
->> +
->>  /*
->>   * Obtain client and file from arguments
->>   */
->> @@ -430,8 +432,9 @@ nlm4svc_proc_sm_notify(struct svc_rqst *
->>  	memcpy(&saddr, svc_addr_in(rqstp), sizeof(saddr));
->>  
->>  	dprintk("lockd: SM_NOTIFY     called\n");
->> -	if (saddr.sin_addr.s_addr != htonl(INADDR_LOOPBACK)
->> -	 || ntohs(saddr.sin_port) >= 1024) {
->> +	if (((saddr.sin_addr.s_addr != htonl(INADDR_LOOPBACK))
->> +	 && (nlm_nsm_interface && (saddr.sin_addr.s_addr != htonl(nlm_nsm_interface))))
->> +	 || (ntohs(saddr.sin_port) >= 1024)) {
->>  		char buf[RPC_MAX_ADDRBUFLEN];
->>  		printk(KERN_WARNING "lockd: rejected NSM callback from %s\n",
->>  				svc_print_addr(rqstp, buf, sizeof(buf)));
->> diff -Naurp lockd.org/svc.c lockd/svc.c
->> --- lockd.org/svc.c	2008-04-14 10:58:29.000000000 -0400
->> +++ lockd/svc.c	2008-04-14 12:19:04.000000000 -0400
->> @@ -64,6 +64,7 @@ static unsigned long		nlm_grace_period;
->>  static unsigned long		nlm_timeout = LOCKD_DFLT_TIMEO;
->>  static int			nlm_udpport, nlm_tcpport;
->>  int				nsm_use_hostnames = 0;
->> +unsigned int			nlm_nsm_interface = 0;
->>  
->>  /*
->>   * Constants needed for the sysctl interface.
->> @@ -425,6 +426,14 @@ static ctl_table nlm_sysctls[] = {
->>  		.mode		= 0644,
->>  		.proc_handler	= &proc_dointvec,
->>  	},
->> +        {
->> +                .ctl_name       = CTL_UNNUMBERED,
->> +                .procname       = "nlm_nsm_interface",
->> +                .data           = &nlm_nsm_interface,
->> +                .maxlen         = sizeof(int),
->> +                .mode           = 0644,
->> +                .proc_handler   = &proc_dointvec,
->> +        },
->>  	{ .ctl_name = 0 }
->>  };
->>  
->> diff -Naurp lockd.org/svcproc.c lockd/svcproc.c
->> --- lockd.org/svcproc.c	2008-04-14 10:58:29.000000000 -0400
->> +++ lockd/svcproc.c	2008-04-14 12:19:04.000000000 -0400
->> @@ -21,6 +21,8 @@
->>  
->>  #define NLMDBG_FACILITY		NLMDBG_CLIENT
->>  
->> +extern unsigned int nlm_nsm_interface;
->> +
->>  #ifdef CONFIG_LOCKD_V4
->>  static __be32
->>  cast_to_nlm(__be32 status, u32 vers)
->> @@ -462,8 +464,9 @@ nlmsvc_proc_sm_notify(struct svc_rqst *r
->>  	memcpy(&saddr, svc_addr_in(rqstp), sizeof(saddr));
->>  
->>  	dprintk("lockd: SM_NOTIFY     called\n");
->> -	if (saddr.sin_addr.s_addr != htonl(INADDR_LOOPBACK)
->> -	 || ntohs(saddr.sin_port) >= 1024) {
->> +	if (((saddr.sin_addr.s_addr != htonl(INADDR_LOOPBACK))
->> +	 && (nlm_nsm_interface && (saddr.sin_addr.s_addr != htonl(nlm_nsm_interface))))
->> +	 || (ntohs(saddr.sin_port) >= 1024)) {
->>  		char buf[RPC_MAX_ADDRBUFLEN];
->>  		printk(KERN_WARNING "lockd: rejected NSM callback from %s\n",
->>  				svc_print_addr(rqstp, buf, sizeof(buf)));
->>     
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->   
+------=_Part_8907_22444710.1208547961705
+Content-Type: text/x-patch; name=rmtcall-nsmif.patch
+Content-Transfer-Encoding: base64
+X-Attachment-Id: f_ff7676zv0
+Content-Disposition: attachment; filename=rmtcall-nsmif.patch
 
+LS0tIHJtdGNhbGwuYy5vcmcJMjAwOC0wNC0xOCAxNTo0MToxNi4wMDAwMDAwMDAgLTA0MDAKKysr
+IHJtdGNhbGwuYwkyMDA4LTA0LTE4IDE1OjQwOjEyLjAwMDAwMDAwMCAtMDQwMApAQCAtMjcsNiAr
+MjcsNyBAQAogI2luY2x1ZGUgPHN5cy90eXBlcy5oPgogI2luY2x1ZGUgPHN5cy9zb2NrZXQuaD4K
+ICNpbmNsdWRlIDxzeXMvdGltZS5oPgorI2luY2x1ZGUgPHN5cy9zdGF0Lmg+CiAjaW5jbHVkZSA8
+bmV0aW5ldC9pbi5oPgogI2luY2x1ZGUgPG5ldC9pZi5oPgogI2luY2x1ZGUgPGFycGEvaW5ldC5o
+PgpAQCAtMzcsNiArMzgsOSBAQAogI2luY2x1ZGUgPG5ldGRiLmg+CiAjaW5jbHVkZSA8c3RyaW5n
+Lmg+CiAjaW5jbHVkZSA8dW5pc3RkLmg+CisjaW5jbHVkZSA8ZmNudGwuaD4KKyNpbmNsdWRlIDxl
+cnJuby5oPgorI2luY2x1ZGUgPG5ldGRiLmg+CiAjaWZkZWYgSEFWRV9JRkFERFJTX0gKICNpbmNs
+dWRlIDxpZmFkZHJzLmg+CiAjZW5kaWYgLyogSEFWRV9JRkFERFJTX0ggKi8KQEAgLTU0LDYgKzU4
+LDM0IEBACiAKIHN0YXRpYyB1bnNpZ25lZCBsb25nCXhpZCA9IDA7CS8qIFJQQyBYSUQgY291bnRl
+ciAqLwogc3RhdGljIGludAkJc29ja2ZkID0gLTE7CS8qIG5vdGlmeSBzb2NrZXQgKi8KK3N0YXRp
+YyBpbnQJCWlmc2V0ID0gMDsKKworLyoKKyAqIE5vdGlmeSBsb2NrZCBvZiBub24tc3RhbmRhcmQg
+YmluZGluZyAKKyAqLwordm9pZAorbmxtX25zbV9zZXQodW5zaWduZWQgaW50IGFkZHIpCit7CisJ
+c3NpemVfdCBzeiA9IDA7CisJY2hhciBidWZbMjBdOworCWludCBmZDsKKworCWlmICggaWZzZXQg
+KQorCQlyZXR1cm4gOworCisJc3ByaW50ZiAoYnVmLCIldSIsYWRkcik7CisKKwlmZCA9IG9wZW4g
+KCIvcHJvYy9zeXMvZnMvbmZzL25sbV9uc21faW50ZXJmYWNlIiwgT19SRFdSKTsKKwlpZiAoZmQg
+PiAwKSB7CisJCXN6ID0gd3JpdGUgKGZkLGJ1ZixzdHJsZW4oKGNoYXIqKWJ1ZikpOworCQlpZiAo
+IHN6ID09IC0xICkKKwkJCW5vdGUoTl9DUklULCAic3RhdGQ6IHdyaXRlOiAlc1xuIiwgc3RyZXJy
+b3IoZXJybm8pKTsKKwkJY2xvc2UgKGZkKTsKKwl9IGVsc2UKKwkJbm90ZShOX0NSSVQsICJzdGF0
+ZDogLW4gd2FzIHNwZWNpZmllZCB3aXRoIHdpdGggbm8ga2VybmVsIHN1cHBvcnQ/XG4iKTsKKwor
+CWlmc2V0ID0gMTsKK30KIAogLyoKICAqIEluaXRpYWxpemUgY2FsbGJhY2sgc29ja2V0CkBAIC02
+Myw2ICs5NSw3IEBAIHN0YXRkX2dldF9zb2NrZXQodm9pZCkKIHsKIAlzdHJ1Y3Qgc29ja2FkZHJf
+aW4Jc2luOwogCXN0cnVjdCBzZXJ2ZW50ICpzZTsKKwlzdHJ1Y3QgaG9zdGVudCAqaHA7CiAJaW50
+IGxvb3BjbnQgPSAxMDA7CiAKIAlpZiAoc29ja2ZkID49IDApCkBAIC03NywxMSArMTEwLDE4IEBA
+IHN0YXRkX2dldF9zb2NrZXQodm9pZCkKIAkJCXJldHVybiAtMTsKIAkJfQogCi0KIAkJbWVtc2V0
+KCZzaW4sIDAsIHNpemVvZihzaW4pKTsKIAkJc2luLnNpbl9mYW1pbHkgPSBBRl9JTkVUOwogCQlz
+aW4uc2luX2FkZHIuc19hZGRyID0gSU5BRERSX0FOWTsKIAorCQlpZiAoTVlfTkFNRSkgeworCQkJ
+aHAgPSBnZXRob3N0YnluYW1lKE1ZX05BTUUpOworCQkJaWYgKGhwKSB7CisJCQkJc2luLnNpbl9h
+ZGRyID0gKihzdHJ1Y3QgaW5fYWRkciAqKSBocC0+aF9hZGRyOworCQkJCW5sbV9uc21fc2V0ICgo
+dW5zaWduZWQgaW50KXNpbi5zaW5fYWRkci5zX2FkZHIpOworCQkJfQorCQl9IAorCiAJCWlmIChi
+aW5kcmVzdnBvcnQoc29ja2ZkLCAmc2luKSA8IDApIHsKIAkJCWRwcmludGYoTl9XQVJOSU5HLAog
+CQkJCSJwcm9jZXNzX2hvc3RzOiBjYW4ndCBiaW5kIHRvIHJlc2VydmVkIHBvcnRcbiIpOwo=
+------=_Part_8907_22444710.1208547961705--
