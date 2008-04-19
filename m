@@ -1,203 +1,93 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 02/33] SUNRPC: Fix up xprt_write_space()
-Date: Sat, 19 Apr 2008 16:40:47 -0400
-Message-ID: <20080419204047.14124.5947.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
+Subject: [PATCH 31/33] NFS - fix potential NULL pointer dereference v2
+Date: Sat, 19 Apr 2008 16:40:55 -0400
+Message-ID: <20080419204054.14124.59641.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
 References: <20080419204047.14124.49490.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Cyrill Gorcunov <gorcunov@gmail.com>,
+	Trond Myklebust <Trond.Myklebust@netapp.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:51678 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:53673 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756476AbYDSUue (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 19 Apr 2008 16:50:34 -0400
-Received: from svlexrs02.hq.netapp.com (svlexrs02.corp.netapp.com [10.57.156.154])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id m3JKoXCp002646
-	for <linux-nfs@vger.kernel.org>; Sat, 19 Apr 2008 13:50:33 -0700 (PDT)
+	id S1756683AbYDSUuh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 19 Apr 2008 16:50:37 -0400
 In-Reply-To: <20080419204047.14124.49490.stgit-KPEdlmqt5P7XOazzY/2fV4TcuzvYVacciM950cveMlzk1uMJSBkQmQ@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The rest of the networking layer uses SOCK_ASYNC_NOSPACE to signal whether
-or not we have someone waiting for buffer memory. Convert the SUNRPC layer
-to use the same idiom.
-Remove the unlikely()s in xs_udp_write_space and xs_tcp_write_space. In
-fact, the most common case will be that there is nobody waiting for buffer
-space.
+From: Cyrill Gorcunov <gorcunov@gmail.com>
 
-SOCK_NOSPACE is there to tell the TCP layer whether or not the cwnd was
-limited by the application window. Ensure that we follow the same idiom as
-the rest of the networking layer here too.
+There is possible NULL pointer dereference if kstr[n]dup failed.
+So fix them for safety.
 
-Finally, ensure that we clear SOCK_ASYNC_NOSPACE once we wake up, so that
-write_space() doesn't keep waking things up on xprt->pending.
-
+Signed-off-by: Cyrill Gorcunov <gorcunov@gmail.com>
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- include/linux/sunrpc/xprt.h |    2 +
- net/sunrpc/xprt.c           |    4 +--
- net/sunrpc/xprtsock.c       |   61 +++++++++++++++++++++++++++++--------------
- 3 files changed, 44 insertions(+), 23 deletions(-)
+ fs/nfs/super.c |   16 ++++++++++++++++
+ 1 files changed, 16 insertions(+), 0 deletions(-)
 
-diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-index b3ff9a8..8a0629a 100644
---- a/include/linux/sunrpc/xprt.h
-+++ b/include/linux/sunrpc/xprt.h
-@@ -232,7 +232,7 @@ int			xprt_unregister_transport(struct xprt_class *type);
- void			xprt_set_retrans_timeout_def(struct rpc_task *task);
- void			xprt_set_retrans_timeout_rtt(struct rpc_task *task);
- void			xprt_wake_pending_tasks(struct rpc_xprt *xprt, int status);
--void			xprt_wait_for_buffer_space(struct rpc_task *task);
-+void			xprt_wait_for_buffer_space(struct rpc_task *task, rpc_action action);
- void			xprt_write_space(struct rpc_xprt *xprt);
- void			xprt_update_rtt(struct rpc_task *task);
- void			xprt_adjust_cwnd(struct rpc_task *task, int result);
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index 85199c6..3ba64f9 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -447,13 +447,13 @@ EXPORT_SYMBOL_GPL(xprt_wake_pending_tasks);
-  * @task: task to be put to sleep
-  *
-  */
--void xprt_wait_for_buffer_space(struct rpc_task *task)
-+void xprt_wait_for_buffer_space(struct rpc_task *task, rpc_action action)
- {
- 	struct rpc_rqst *req = task->tk_rqstp;
- 	struct rpc_xprt *xprt = req->rq_xprt;
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 140174d..7c13ce7 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -1295,6 +1295,8 @@ static int nfs_validate_mount_data(void *options,
+ 		args->namlen		= data->namlen;
+ 		args->bsize		= data->bsize;
+ 		args->auth_flavors[0]	= data->pseudoflavor;
++		if (!args->nfs_server.hostname)
++			goto out_nomem;
  
- 	task->tk_timeout = req->rq_timeout;
--	rpc_sleep_on(&xprt->pending, task, NULL);
-+	rpc_sleep_on(&xprt->pending, task, action);
- }
- EXPORT_SYMBOL_GPL(xprt_wait_for_buffer_space);
+ 		/*
+ 		 * The legacy version 6 binary mount data from userspace has a
+@@ -1341,6 +1343,8 @@ static int nfs_validate_mount_data(void *options,
+ 		len = c - dev_name;
+ 		/* N.B. caller will free nfs_server.hostname in all cases */
+ 		args->nfs_server.hostname = kstrndup(dev_name, len, GFP_KERNEL);
++		if (!args->nfs_server.hostname)
++			goto out_nomem;
  
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 8bd3b0f..4c2462e 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -516,6 +516,14 @@ out:
- 	return sent;
- }
+ 		c++;
+ 		if (strlen(c) > NFS_MAXPATHLEN)
+@@ -1384,6 +1388,10 @@ out_v3_not_compiled:
+ 	return -EPROTONOSUPPORT;
+ #endif /* !CONFIG_NFS_V3 */
  
-+static void xs_nospace_callback(struct rpc_task *task)
-+{
-+	struct sock_xprt *transport = container_of(task->tk_rqstp->rq_xprt, struct sock_xprt, xprt);
++out_nomem:
++	dfprintk(MOUNT, "NFS: not enough memory to handle mount options\n");
++	return -ENOMEM;
 +
-+	transport->inet->sk_write_pending--;
-+	clear_bit(SOCK_ASYNC_NOSPACE, &transport->sock->flags);
-+}
+ out_no_address:
+ 	dfprintk(MOUNT, "NFS: mount program didn't pass remote address\n");
+ 	return -EINVAL;
+@@ -1890,12 +1898,16 @@ static int nfs4_validate_mount_data(void *options,
+ 			return -ENAMETOOLONG;
+ 		/* N.B. caller will free nfs_server.hostname in all cases */
+ 		args->nfs_server.hostname = kstrndup(dev_name, len, GFP_KERNEL);
++		if (!args->nfs_server.hostname)
++			goto out_nomem;
+ 
+ 		c++;			/* step over the ':' */
+ 		len = strlen(c);
+ 		if (len > NFS4_MAXPATHLEN)
+ 			return -ENAMETOOLONG;
+ 		args->nfs_server.export_path = kstrndup(c, len, GFP_KERNEL);
++		if (!args->nfs_server.export_path)
++			goto out_nomem;
+ 
+ 		dprintk("NFS: MNTPATH: '%s'\n", args->nfs_server.export_path);
+ 
+@@ -1917,6 +1929,10 @@ out_inval_auth:
+ 		 data->auth_flavourlen);
+ 	return -EINVAL;
+ 
++out_nomem:
++	dfprintk(MOUNT, "NFS4: not enough memory to handle mount options\n");
++	return -ENOMEM;
 +
- /**
-  * xs_nospace - place task on wait queue if transmit was incomplete
-  * @task: task to put to sleep
-@@ -531,20 +539,27 @@ static void xs_nospace(struct rpc_task *task)
- 			task->tk_pid, req->rq_slen - req->rq_bytes_sent,
- 			req->rq_slen);
- 
--	if (test_bit(SOCK_ASYNC_NOSPACE, &transport->sock->flags)) {
--		/* Protect against races with write_space */
--		spin_lock_bh(&xprt->transport_lock);
--
--		/* Don't race with disconnect */
--		if (!xprt_connected(xprt))
--			task->tk_status = -ENOTCONN;
--		else if (test_bit(SOCK_NOSPACE, &transport->sock->flags))
--			xprt_wait_for_buffer_space(task);
-+	/* Protect against races with write_space */
-+	spin_lock_bh(&xprt->transport_lock);
-+
-+	/* Don't race with disconnect */
-+	if (xprt_connected(xprt)) {
-+		if (test_bit(SOCK_ASYNC_NOSPACE, &transport->sock->flags)) {
-+			/*
-+			 * Notify TCP that we're limited by the application
-+			 * window size
-+			 */
-+			set_bit(SOCK_NOSPACE, &transport->sock->flags);
-+			transport->inet->sk_write_pending++;
-+			/* ...and wait for more buffer space */
-+			xprt_wait_for_buffer_space(task, xs_nospace_callback);
-+		}
-+	} else {
-+		clear_bit(SOCK_ASYNC_NOSPACE, &transport->sock->flags);
-+		task->tk_status = -ENOTCONN;
-+	}
- 
--		spin_unlock_bh(&xprt->transport_lock);
--	} else
--		/* Keep holding the socket if it is blocked */
--		rpc_delay(task, HZ>>4);
-+	spin_unlock_bh(&xprt->transport_lock);
- }
- 
- /**
-@@ -588,19 +603,20 @@ static int xs_udp_send_request(struct rpc_task *task)
- 	}
- 
- 	switch (status) {
-+	case -EAGAIN:
-+		xs_nospace(task);
-+		break;
- 	case -ENETUNREACH:
- 	case -EPIPE:
- 	case -ECONNREFUSED:
- 		/* When the server has died, an ICMP port unreachable message
- 		 * prompts ECONNREFUSED. */
--		break;
--	case -EAGAIN:
--		xs_nospace(task);
-+		clear_bit(SOCK_ASYNC_NOSPACE, &transport->sock->flags);
- 		break;
- 	default:
-+		clear_bit(SOCK_ASYNC_NOSPACE, &transport->sock->flags);
- 		dprintk("RPC:       sendmsg returned unrecognized error %d\n",
- 			-status);
--		break;
- 	}
- 
- 	return status;
-@@ -695,12 +711,13 @@ static int xs_tcp_send_request(struct rpc_task *task)
- 	case -ENOTCONN:
- 	case -EPIPE:
- 		status = -ENOTCONN;
-+		clear_bit(SOCK_ASYNC_NOSPACE, &transport->sock->flags);
- 		break;
- 	default:
- 		dprintk("RPC:       sendmsg returned unrecognized error %d\n",
- 			-status);
-+		clear_bit(SOCK_ASYNC_NOSPACE, &transport->sock->flags);
- 		xs_tcp_shutdown(xprt);
--		break;
- 	}
- 
- 	return status;
-@@ -1189,9 +1206,11 @@ static void xs_udp_write_space(struct sock *sk)
- 
- 		if (unlikely(!(sock = sk->sk_socket)))
- 			goto out;
-+		clear_bit(SOCK_NOSPACE, &sock->flags);
-+
- 		if (unlikely(!(xprt = xprt_from_sock(sk))))
- 			goto out;
--		if (unlikely(!test_and_clear_bit(SOCK_NOSPACE, &sock->flags)))
-+		if (test_and_clear_bit(SOCK_ASYNC_NOSPACE, &sock->flags) == 0)
- 			goto out;
- 
- 		xprt_write_space(xprt);
-@@ -1222,9 +1241,11 @@ static void xs_tcp_write_space(struct sock *sk)
- 
- 		if (unlikely(!(sock = sk->sk_socket)))
- 			goto out;
-+		clear_bit(SOCK_NOSPACE, &sock->flags);
-+
- 		if (unlikely(!(xprt = xprt_from_sock(sk))))
- 			goto out;
--		if (unlikely(!test_and_clear_bit(SOCK_NOSPACE, &sock->flags)))
-+		if (test_and_clear_bit(SOCK_ASYNC_NOSPACE, &sock->flags) == 0)
- 			goto out;
- 
- 		xprt_write_space(xprt);
+ out_no_address:
+ 	dfprintk(MOUNT, "NFS4: mount program didn't pass remote address\n");
+ 	return -EINVAL;
 
