@@ -1,8 +1,7 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 14/33] NLM/lockd: convert __nlm_async_call to use
-	rpc_run_task()
-Date: Sat, 19 Apr 2008 16:40:50 -0400
-Message-ID: <20080419204050.14124.83710.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
+Subject: [PATCH 26/33] SUNRPC: remove XS_SENDMSG_RETRY
+Date: Sat, 19 Apr 2008 16:40:53 -0400
+Message-ID: <20080419204053.14124.2952.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
 References: <20080419204047.14124.49490.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -11,161 +10,60 @@ To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:34369 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756163AbYDSUu2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1756234AbYDSUu2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Sat, 19 Apr 2008 16:50:28 -0400
 Received: from svlexrs01.hq.netapp.com (svlexrs01.corp.netapp.com [10.57.156.158])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id m3JKoQYj002617
-	for <linux-nfs@vger.kernel.org>; Sat, 19 Apr 2008 13:50:26 -0700 (PDT)
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id m3JKoR5g026068
+	for <linux-nfs@vger.kernel.org>; Sat, 19 Apr 2008 13:50:27 -0700 (PDT)
 In-Reply-To: <20080419204047.14124.49490.stgit-KPEdlmqt5P7XOazzY/2fV4TcuzvYVacciM950cveMlzk1uMJSBkQmQ@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Peter Staubach comments:
-
-> In the course of investigating testing failures in the locking phase of
-> the Connectathon testsuite, I discovered a couple of things.  One was
-> that one of the tests in the locking tests was racy when it didn't seem
-> to need to be and two, that the NFS client asynchronously releases locks
-> when a process is exiting.
-...
-> The Single UNIX Specification Version 3 specifies that:  "All locks
-> associated with a file for a given process shall be removed when a file
-> descriptor for that file is closed by that process or the process holding
-> that file descriptor terminates.".
->
-> This does not specify whether those locks must be released prior to the
-> completion of the exit processing for the process or not.  However,
-> general assumptions seem to be that those locks will be released.  This
-> leads to more deterministic behavior under normal circumstances.
-
-The following patch converts the NFSv2/v3 locking code to use the same
-mechanism as NFSv4 for sending asynchronous RPC calls and then waiting for
-them to complete. This ensures that the UNLOCK and CANCEL RPC calls will
-complete even if the user interrupts the call, yet satisfies the
-above request for synchronous behaviour on process exit.
+The condition for exiting from the loop in xs_tcp_send_request() should be
+that we find we're not making progress (i.e. number of bytes sent is 0).
 
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- fs/lockd/clntproc.c |   64 +++++++++++++++++++++++++++++++++++++++++++--------
- 1 files changed, 54 insertions(+), 10 deletions(-)
+ net/sunrpc/xprtsock.c |   12 +++---------
+ 1 files changed, 3 insertions(+), 9 deletions(-)
 
-diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
-index 749eb53..a34b709 100644
---- a/fs/lockd/clntproc.c
-+++ b/fs/lockd/clntproc.c
-@@ -346,10 +346,16 @@ in_grace_period:
- /*
-  * Generic NLM call, async version.
-  */
--static int __nlm_async_call(struct nlm_rqst *req, u32 proc, struct rpc_message *msg, const struct rpc_call_ops *tk_ops)
-+static struct rpc_task *__nlm_async_call(struct nlm_rqst *req, u32 proc, struct rpc_message *msg, const struct rpc_call_ops *tk_ops)
- {
- 	struct nlm_host	*host = req->a_host;
- 	struct rpc_clnt	*clnt;
-+	struct rpc_task_setup task_setup_data = {
-+		.rpc_message = msg,
-+		.callback_ops = tk_ops,
-+		.callback_data = req,
-+		.flags = RPC_TASK_ASYNC,
-+	};
- 
- 	dprintk("lockd: call procedure %d on %s (async)\n",
- 			(int)proc, host->h_name);
-@@ -359,21 +365,36 @@ static int __nlm_async_call(struct nlm_rqst *req, u32 proc, struct rpc_message *
- 	if (clnt == NULL)
- 		goto out_err;
- 	msg->rpc_proc = &clnt->cl_procinfo[proc];
-+	task_setup_data.rpc_client = clnt;
- 
-         /* bootstrap and kick off the async RPC call */
--        return rpc_call_async(clnt, msg, RPC_TASK_ASYNC, tk_ops, req);
-+	return rpc_run_task(&task_setup_data);
- out_err:
- 	tk_ops->rpc_release(req);
--	return -ENOLCK;
-+	return ERR_PTR(-ENOLCK);
-+}
-+
-+static int nlm_do_async_call(struct nlm_rqst *req, u32 proc, struct rpc_message *msg, const struct rpc_call_ops *tk_ops)
-+{
-+	struct rpc_task *task;
-+
-+	task = __nlm_async_call(req, proc, msg, tk_ops);
-+	if (IS_ERR(task))
-+		return PTR_ERR(task);
-+	rpc_put_task(task);
-+	return 0;
- }
- 
-+/*
-+ * NLM asynchronous call.
-+ */
- int nlm_async_call(struct nlm_rqst *req, u32 proc, const struct rpc_call_ops *tk_ops)
- {
- 	struct rpc_message msg = {
- 		.rpc_argp	= &req->a_args,
- 		.rpc_resp	= &req->a_res,
- 	};
--	return __nlm_async_call(req, proc, &msg, tk_ops);
-+	return nlm_do_async_call(req, proc, &msg, tk_ops);
- }
- 
- int nlm_async_reply(struct nlm_rqst *req, u32 proc, const struct rpc_call_ops *tk_ops)
-@@ -381,7 +402,32 @@ int nlm_async_reply(struct nlm_rqst *req, u32 proc, const struct rpc_call_ops *t
- 	struct rpc_message msg = {
- 		.rpc_argp	= &req->a_res,
- 	};
--	return __nlm_async_call(req, proc, &msg, tk_ops);
-+	return nlm_do_async_call(req, proc, &msg, tk_ops);
-+}
-+
-+/*
-+ * NLM client asynchronous call.
-+ *
-+ * Note that although the calls are asynchronous, and are therefore
-+ *      guaranteed to complete, we still always attempt to wait for
-+ *      completion in order to be able to correctly track the lock
-+ *      state.
-+ */
-+static int nlmclnt_async_call(struct nlm_rqst *req, u32 proc, const struct rpc_call_ops *tk_ops)
-+{
-+	struct rpc_message msg = {
-+		.rpc_argp	= &req->a_args,
-+		.rpc_resp	= &req->a_res,
-+	};
-+	struct rpc_task *task;
-+	int err;
-+
-+	task = __nlm_async_call(req, proc, &msg, tk_ops);
-+	if (IS_ERR(task))
-+		return PTR_ERR(task);
-+	err = rpc_wait_for_completion_task(task);
-+	rpc_put_task(task);
-+	return err;
- }
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 4c2462e..4a567a9 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -136,12 +136,6 @@ static ctl_table sunrpc_table[] = {
+ #endif
  
  /*
-@@ -620,10 +666,8 @@ nlmclnt_unlock(struct nlm_rqst *req, struct file_lock *fl)
- 		goto out;
+- * How many times to try sending a request on a socket before waiting
+- * for the socket buffer to clear.
+- */
+-#define XS_SENDMSG_RETRY	(10U)
+-
+-/*
+  * Time out for an RPC UDP socket connect.  UDP socket connects are
+  * synchronous, but we set a timeout anyway in case of resource
+  * exhaustion on the local host.
+@@ -666,7 +660,6 @@ static int xs_tcp_send_request(struct rpc_task *task)
+ 	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
+ 	struct xdr_buf *xdr = &req->rq_snd_buf;
+ 	int status;
+-	unsigned int retry = 0;
+ 
+ 	xs_encode_tcp_record_marker(&req->rq_snd_buf);
+ 
+@@ -697,9 +690,10 @@ static int xs_tcp_send_request(struct rpc_task *task)
+ 			return 0;
+ 		}
+ 
++		if (status != 0)
++			continue;
+ 		status = -EAGAIN;
+-		if (retry++ > XS_SENDMSG_RETRY)
+-			break;
++		break;
  	}
  
--	if (req->a_flags & RPC_TASK_ASYNC)
--		return nlm_async_call(req, NLMPROC_UNLOCK, &nlmclnt_unlock_ops);
--
--	status = nlmclnt_call(req, NLMPROC_UNLOCK);
-+	atomic_inc(&req->a_count);
-+	status = nlmclnt_async_call(req, NLMPROC_UNLOCK, &nlmclnt_unlock_ops);
- 	if (status < 0)
- 		goto out;
- 
-@@ -697,7 +741,7 @@ static int nlmclnt_cancel(struct nlm_host *host, int block, struct file_lock *fl
- 	nlmclnt_setlockargs(req, fl);
- 	req->a_args.block = block;
- 
--	status = nlm_async_call(req, NLMPROC_CANCEL, &nlmclnt_cancel_ops);
-+	status = nlmclnt_async_call(req, NLMPROC_CANCEL, &nlmclnt_cancel_ops);
- 
- 	spin_lock_irqsave(&current->sighand->siglock, flags);
- 	current->blocked = oldset;
+ 	switch (status) {
 
