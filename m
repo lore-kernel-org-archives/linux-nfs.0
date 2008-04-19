@@ -1,7 +1,7 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 29/33] SUNRPC: Fix a race in gss_refresh_upcall()
-Date: Sat, 19 Apr 2008 16:40:54 -0400
-Message-ID: <20080419204054.14124.69744.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
+Subject: [PATCH 13/33] NLM/lockd: Add a reference counter to struct nlm_rqst
+Date: Sat, 19 Apr 2008 16:40:50 -0400
+Message-ID: <20080419204050.14124.52623.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
 References: <20080419204047.14124.49490.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -10,65 +10,57 @@ To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:34369 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756257AbYDSUua (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 19 Apr 2008 16:50:30 -0400
-Received: from svlexrs02.hq.netapp.com (svlexrs02.corp.netapp.com [10.57.156.154])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id m3JKoTbc026078
-	for <linux-nfs@vger.kernel.org>; Sat, 19 Apr 2008 13:50:29 -0700 (PDT)
+	id S1756732AbYDSUub (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 19 Apr 2008 16:50:31 -0400
+Received: from svlexrs01.hq.netapp.com (svlexrs01.corp.netapp.com [10.57.156.158])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id m3JKoUfZ026090
+	for <linux-nfs@vger.kernel.org>; Sat, 19 Apr 2008 13:50:30 -0700 (PDT)
 In-Reply-To: <20080419204047.14124.49490.stgit-KPEdlmqt5P7XOazzY/2fV4TcuzvYVacciM950cveMlzk1uMJSBkQmQ@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If the downcall completes before we get the spin_lock then we currently
-fail to refresh the credential.
+When we replace the existing synchronous RPC calls with asynchronous calls,
+the reference count will be needed in order to allow us to examine the
+result of the RPC call.
 
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- net/sunrpc/auth_gss/auth_gss.c |   11 ++++++++---
- 1 files changed, 8 insertions(+), 3 deletions(-)
+ fs/lockd/clntproc.c         |    3 +++
+ include/linux/lockd/lockd.h |    1 +
+ 2 files changed, 4 insertions(+), 0 deletions(-)
 
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 46f7ec8..6f1b4e2 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -117,6 +117,7 @@ gss_cred_set_ctx(struct rpc_cred *cred, struct gss_cl_ctx *ctx)
- 	struct gss_cl_ctx *old;
+diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
+index 4e1c012..749eb53 100644
+--- a/fs/lockd/clntproc.c
++++ b/fs/lockd/clntproc.c
+@@ -221,6 +221,7 @@ struct nlm_rqst *nlm_alloc_call(struct nlm_host *host)
+ 	for(;;) {
+ 		call = kzalloc(sizeof(*call), GFP_KERNEL);
+ 		if (call != NULL) {
++			atomic_set(&call->a_count, 1);
+ 			locks_init_lock(&call->a_args.lock.fl);
+ 			locks_init_lock(&call->a_res.lock.fl);
+ 			call->a_host = host;
+@@ -237,6 +238,8 @@ struct nlm_rqst *nlm_alloc_call(struct nlm_host *host)
  
- 	old = gss_cred->gc_ctx;
-+	gss_get_ctx(ctx);
- 	rcu_assign_pointer(gss_cred->gc_ctx, ctx);
- 	set_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags);
- 	clear_bit(RPCAUTH_CRED_NEW, &cred->cr_flags);
-@@ -340,7 +341,7 @@ gss_upcall_callback(struct rpc_task *task)
- 
- 	spin_lock(&inode->i_lock);
- 	if (gss_msg->ctx)
--		gss_cred_set_ctx(task->tk_msg.rpc_cred, gss_get_ctx(gss_msg->ctx));
-+		gss_cred_set_ctx(task->tk_msg.rpc_cred, gss_msg->ctx);
- 	else
- 		task->tk_status = gss_msg->msg.errno;
- 	gss_cred->gc_upcall = NULL;
-@@ -417,7 +418,11 @@ gss_refresh_upcall(struct rpc_task *task)
- 	spin_lock(&inode->i_lock);
- 	if (gss_cred->gc_upcall != NULL)
- 		rpc_sleep_on(&gss_cred->gc_upcall->rpc_waitqueue, task, NULL);
--	else if (gss_msg->ctx == NULL && gss_msg->msg.errno >= 0) {
-+	else if (gss_msg->ctx != NULL) {
-+		gss_cred_set_ctx(task->tk_msg.rpc_cred, gss_msg->ctx);
-+		gss_cred->gc_upcall = NULL;
-+		rpc_wake_up_status(&gss_msg->rpc_waitqueue, gss_msg->msg.errno);
-+	} else if (gss_msg->msg.errno >= 0) {
- 		task->tk_timeout = 0;
- 		gss_cred->gc_upcall = gss_msg;
- 		/* gss_upcall_callback will release the reference to gss_upcall_msg */
-@@ -462,7 +467,7 @@ gss_create_upcall(struct gss_auth *gss_auth, struct gss_cred *gss_cred)
- 		schedule();
- 	}
- 	if (gss_msg->ctx)
--		gss_cred_set_ctx(cred, gss_get_ctx(gss_msg->ctx));
-+		gss_cred_set_ctx(cred, gss_msg->ctx);
- 	else
- 		err = gss_msg->msg.errno;
- 	spin_unlock(&inode->i_lock);
+ void nlm_release_call(struct nlm_rqst *call)
+ {
++	if (!atomic_dec_and_test(&call->a_count))
++		return;
+ 	nlm_release_host(call->a_host);
+ 	nlmclnt_release_lockargs(call);
+ 	kfree(call);
+diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
+index acf39e1..94649a8 100644
+--- a/include/linux/lockd/lockd.h
++++ b/include/linux/lockd/lockd.h
+@@ -91,6 +91,7 @@ struct nlm_wait;
+  */
+ #define NLMCLNT_OHSIZE		((__NEW_UTS_LEN) + 10u)
+ struct nlm_rqst {
++	atomic_t		a_count;
+ 	unsigned int		a_flags;	/* initial RPC task flags */
+ 	struct nlm_host *	a_host;		/* host handle */
+ 	struct nlm_args		a_args;		/* arguments */
 
