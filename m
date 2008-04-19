@@ -1,117 +1,171 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 24/33] NFSv4: Attempt to use machine credentials in
-	SETCLIENTID calls
-Date: Sat, 19 Apr 2008 16:40:53 -0400
-Message-ID: <20080419204053.14124.3478.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
+Subject: [PATCH 14/33] NLM/lockd: convert __nlm_async_call to use
+	rpc_run_task()
+Date: Sat, 19 Apr 2008 16:40:50 -0400
+Message-ID: <20080419204050.14124.83710.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
 References: <20080419204047.14124.49490.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:18330 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:34369 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756398AbYDSUu2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1756163AbYDSUu2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Sat, 19 Apr 2008 16:50:28 -0400
 Received: from svlexrs01.hq.netapp.com (svlexrs01.corp.netapp.com [10.57.156.158])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id m3JKoRnt002626
-	for <linux-nfs@vger.kernel.org>; Sat, 19 Apr 2008 13:50:27 -0700 (PDT)
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id m3JKoQYj002617
+	for <linux-nfs@vger.kernel.org>; Sat, 19 Apr 2008 13:50:26 -0700 (PDT)
 In-Reply-To: <20080419204047.14124.49490.stgit-KPEdlmqt5P7XOazzY/2fV4TcuzvYVacciM950cveMlzk1uMJSBkQmQ@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Peter Staubach comments:
+
+> In the course of investigating testing failures in the locking phase of
+> the Connectathon testsuite, I discovered a couple of things.  One was
+> that one of the tests in the locking tests was racy when it didn't seem
+> to need to be and two, that the NFS client asynchronously releases locks
+> when a process is exiting.
+...
+> The Single UNIX Specification Version 3 specifies that:  "All locks
+> associated with a file for a given process shall be removed when a file
+> descriptor for that file is closed by that process or the process holding
+> that file descriptor terminates.".
+>
+> This does not specify whether those locks must be released prior to the
+> completion of the exit processing for the process or not.  However,
+> general assumptions seem to be that those locks will be released.  This
+> leads to more deterministic behavior under normal circumstances.
+
+The following patch converts the NFSv2/v3 locking code to use the same
+mechanism as NFSv4 for sending asynchronous RPC calls and then waiting for
+them to complete. This ensures that the UNLOCK and CANCEL RPC calls will
+complete even if the user interrupts the call, yet satisfies the
+above request for synchronous behaviour on process exit.
+
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- fs/nfs/nfs4state.c |   41 +++++++++++++++++++++++++++++++++++++----
- 1 files changed, 37 insertions(+), 4 deletions(-)
+ fs/lockd/clntproc.c |   64 +++++++++++++++++++++++++++++++++++++++++++--------
+ 1 files changed, 54 insertions(+), 10 deletions(-)
 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 7775435..46eb624 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -71,6 +71,29 @@ static int nfs4_init_client(struct nfs_client *clp, struct rpc_cred *cred)
- 	return status;
- }
+diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
+index 749eb53..a34b709 100644
+--- a/fs/lockd/clntproc.c
++++ b/fs/lockd/clntproc.c
+@@ -346,10 +346,16 @@ in_grace_period:
+ /*
+  * Generic NLM call, async version.
+  */
+-static int __nlm_async_call(struct nlm_rqst *req, u32 proc, struct rpc_message *msg, const struct rpc_call_ops *tk_ops)
++static struct rpc_task *__nlm_async_call(struct nlm_rqst *req, u32 proc, struct rpc_message *msg, const struct rpc_call_ops *tk_ops)
+ {
+ 	struct nlm_host	*host = req->a_host;
+ 	struct rpc_clnt	*clnt;
++	struct rpc_task_setup task_setup_data = {
++		.rpc_message = msg,
++		.callback_ops = tk_ops,
++		.callback_data = req,
++		.flags = RPC_TASK_ASYNC,
++	};
  
-+static struct rpc_cred *nfs4_get_machine_cred(struct nfs_client *clp)
-+{
-+	struct rpc_cred *cred = NULL;
-+
-+	spin_lock(&clp->cl_lock);
-+	if (clp->cl_machine_cred != NULL)
-+		cred = get_rpccred(clp->cl_machine_cred);
-+	spin_unlock(&clp->cl_lock);
-+	return cred;
+ 	dprintk("lockd: call procedure %d on %s (async)\n",
+ 			(int)proc, host->h_name);
+@@ -359,21 +365,36 @@ static int __nlm_async_call(struct nlm_rqst *req, u32 proc, struct rpc_message *
+ 	if (clnt == NULL)
+ 		goto out_err;
+ 	msg->rpc_proc = &clnt->cl_procinfo[proc];
++	task_setup_data.rpc_client = clnt;
+ 
+         /* bootstrap and kick off the async RPC call */
+-        return rpc_call_async(clnt, msg, RPC_TASK_ASYNC, tk_ops, req);
++	return rpc_run_task(&task_setup_data);
+ out_err:
+ 	tk_ops->rpc_release(req);
+-	return -ENOLCK;
++	return ERR_PTR(-ENOLCK);
 +}
 +
-+static void nfs4_clear_machine_cred(struct nfs_client *clp)
++static int nlm_do_async_call(struct nlm_rqst *req, u32 proc, struct rpc_message *msg, const struct rpc_call_ops *tk_ops)
 +{
-+	struct rpc_cred *cred;
++	struct rpc_task *task;
 +
-+	spin_lock(&clp->cl_lock);
-+	cred = clp->cl_machine_cred;
-+	clp->cl_machine_cred = NULL;
-+	spin_unlock(&clp->cl_lock);
-+	if (cred != NULL)
-+		put_rpccred(cred);
-+}
-+
- struct rpc_cred *nfs4_get_renew_cred(struct nfs_client *clp)
- {
- 	struct nfs4_state_owner *sp;
-@@ -91,13 +114,18 @@ static struct rpc_cred *nfs4_get_setclientid_cred(struct nfs_client *clp)
- {
- 	struct nfs4_state_owner *sp;
- 	struct rb_node *pos;
-+	struct rpc_cred *cred;
- 
-+	cred = nfs4_get_machine_cred(clp);
-+	if (cred != NULL)
-+		goto out;
- 	pos = rb_first(&clp->cl_state_owners);
- 	if (pos != NULL) {
- 		sp = rb_entry(pos, struct nfs4_state_owner, so_client_node);
--		return get_rpccred(sp->so_cred);
-+		cred = get_rpccred(sp->so_cred);
- 	}
--	return NULL;
-+out:
-+	return cred;
++	task = __nlm_async_call(req, proc, msg, tk_ops);
++	if (IS_ERR(task))
++		return PTR_ERR(task);
++	rpc_put_task(task);
++	return 0;
  }
  
- static void nfs_alloc_unique_id(struct rb_root *root, struct nfs_unique_id *new,
-@@ -924,10 +952,10 @@ restart_loop:
- 	if (cred != NULL) {
- 		/* Yes there are: try to renew the old lease */
- 		status = nfs4_proc_renew(clp, cred);
-+		put_rpccred(cred);
- 		switch (status) {
- 			case 0:
- 			case -NFS4ERR_CB_PATH_DOWN:
--				put_rpccred(cred);
- 				goto out;
- 			case -NFS4ERR_STALE_CLIENTID:
- 			case -NFS4ERR_LEASE_MOVED:
-@@ -936,14 +964,19 @@ restart_loop:
- 	} else {
- 		/* "reboot" to ensure we clear all state on the server */
- 		clp->cl_boot_time = CURRENT_TIME;
--		cred = nfs4_get_setclientid_cred(clp);
++/*
++ * NLM asynchronous call.
++ */
+ int nlm_async_call(struct nlm_rqst *req, u32 proc, const struct rpc_call_ops *tk_ops)
+ {
+ 	struct rpc_message msg = {
+ 		.rpc_argp	= &req->a_args,
+ 		.rpc_resp	= &req->a_res,
+ 	};
+-	return __nlm_async_call(req, proc, &msg, tk_ops);
++	return nlm_do_async_call(req, proc, &msg, tk_ops);
+ }
+ 
+ int nlm_async_reply(struct nlm_rqst *req, u32 proc, const struct rpc_call_ops *tk_ops)
+@@ -381,7 +402,32 @@ int nlm_async_reply(struct nlm_rqst *req, u32 proc, const struct rpc_call_ops *t
+ 	struct rpc_message msg = {
+ 		.rpc_argp	= &req->a_res,
+ 	};
+-	return __nlm_async_call(req, proc, &msg, tk_ops);
++	return nlm_do_async_call(req, proc, &msg, tk_ops);
++}
++
++/*
++ * NLM client asynchronous call.
++ *
++ * Note that although the calls are asynchronous, and are therefore
++ *      guaranteed to complete, we still always attempt to wait for
++ *      completion in order to be able to correctly track the lock
++ *      state.
++ */
++static int nlmclnt_async_call(struct nlm_rqst *req, u32 proc, const struct rpc_call_ops *tk_ops)
++{
++	struct rpc_message msg = {
++		.rpc_argp	= &req->a_args,
++		.rpc_resp	= &req->a_res,
++	};
++	struct rpc_task *task;
++	int err;
++
++	task = __nlm_async_call(req, proc, &msg, tk_ops);
++	if (IS_ERR(task))
++		return PTR_ERR(task);
++	err = rpc_wait_for_completion_task(task);
++	rpc_put_task(task);
++	return err;
+ }
+ 
+ /*
+@@ -620,10 +666,8 @@ nlmclnt_unlock(struct nlm_rqst *req, struct file_lock *fl)
+ 		goto out;
  	}
- 	/* We're going to have to re-establish a clientid */
- 	nfs4_state_mark_reclaim(clp);
- 	status = -ENOENT;
-+	cred = nfs4_get_setclientid_cred(clp);
- 	if (cred != NULL) {
- 		status = nfs4_init_client(clp, cred);
- 		put_rpccred(cred);
-+		/* Handle case where the user hasn't set up machine creds */
-+		if (status == -EACCES && cred == clp->cl_machine_cred) {
-+			nfs4_clear_machine_cred(clp);
-+			goto restart_loop;
-+		}
- 	}
- 	if (status)
- 		goto out_error;
+ 
+-	if (req->a_flags & RPC_TASK_ASYNC)
+-		return nlm_async_call(req, NLMPROC_UNLOCK, &nlmclnt_unlock_ops);
+-
+-	status = nlmclnt_call(req, NLMPROC_UNLOCK);
++	atomic_inc(&req->a_count);
++	status = nlmclnt_async_call(req, NLMPROC_UNLOCK, &nlmclnt_unlock_ops);
+ 	if (status < 0)
+ 		goto out;
+ 
+@@ -697,7 +741,7 @@ static int nlmclnt_cancel(struct nlm_host *host, int block, struct file_lock *fl
+ 	nlmclnt_setlockargs(req, fl);
+ 	req->a_args.block = block;
+ 
+-	status = nlm_async_call(req, NLMPROC_CANCEL, &nlmclnt_cancel_ops);
++	status = nlmclnt_async_call(req, NLMPROC_CANCEL, &nlmclnt_cancel_ops);
+ 
+ 	spin_lock_irqsave(&current->sighand->siglock, flags);
+ 	current->blocked = oldset;
 
