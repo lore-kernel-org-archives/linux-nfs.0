@@ -1,8 +1,8 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 03/33] SUNRPC: Don't attempt to destroy expired RPCSEC_GSS
-	credentials..
-Date: Sat, 19 Apr 2008 16:40:48 -0400
-Message-ID: <20080419204047.14124.64969.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
+Subject: [PATCH 11/33] NLM/lockd: Ensure we don't corrupt fl->fl_flags in
+	nlmclnt_unlock()
+Date: Sat, 19 Apr 2008 16:40:50 -0400
+Message-ID: <20080419204049.14124.95488.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
 References: <20080419204047.14124.49490.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -11,52 +11,82 @@ To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:35010 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756077AbYDSUuX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 19 Apr 2008 16:50:23 -0400
-Received: from svlexrs02.hq.netapp.com (svlexrs02.corp.netapp.com [10.57.156.154])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id m3JKoN9f002605
-	for <linux-nfs@vger.kernel.org>; Sat, 19 Apr 2008 13:50:23 -0700 (PDT)
+	id S1756122AbYDSUuY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 19 Apr 2008 16:50:24 -0400
+Received: from svlexrs01.hq.netapp.com (svlexrs01.corp.netapp.com [10.57.156.158])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id m3JKoNIC026052
+	for <linux-nfs@vger.kernel.org>; Sat, 19 Apr 2008 13:50:24 -0700 (PDT)
 In-Reply-To: <20080419204047.14124.49490.stgit-KPEdlmqt5P7XOazzY/2fV4TcuzvYVacciM950cveMlzk1uMJSBkQmQ@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-..and always destroy using a 'soft' RPC call. Destroying GSS credentials
-isn't mandatory; the server can always cope with a few credentials not
-getting destroyed in a timely fashion.
-
-This actually fixes a hang situation. Basically, some servers will decide
-that the client is crazy if it tries to destroy an RPC context for which
-they have sent an RPCSEC_GSS_CREDPROBLEM, and so will refuse to talk to it
-for a while.
-The regression therefor probably was introduced by commit
-0df7fb74fbb709591301871a38aac7735a1d6583.
+Also fix up nlmclnt_lock() so that it doesn't pass modified versions of
+fl->fl_flags to nlmclnt_cancel() and other helpers.
 
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- net/sunrpc/auth_gss/auth_gss.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+ fs/lockd/clntproc.c |   16 ++++++++++------
+ 1 files changed, 10 insertions(+), 6 deletions(-)
 
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index d34f6df..55948cd 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -710,7 +710,7 @@ gss_destroying_context(struct rpc_cred *cred)
- 	struct rpc_task *task;
+diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
+index b6b74a6..4e1c012 100644
+--- a/fs/lockd/clntproc.c
++++ b/fs/lockd/clntproc.c
+@@ -493,6 +493,7 @@ nlmclnt_lock(struct nlm_rqst *req, struct file_lock *fl)
+ 	}
+ 	fl->fl_flags |= FL_ACCESS;
+ 	status = do_vfs_lock(fl);
++	fl->fl_flags = fl_flags;
+ 	if (status < 0)
+ 		goto out;
  
- 	if (gss_cred->gc_ctx == NULL ||
--			gss_cred->gc_ctx->gc_proc == RPC_GSS_PROC_DESTROY)
-+	    test_and_clear_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags) == 0)
- 		return 0;
+@@ -530,10 +531,11 @@ again:
+ 			goto again;
+ 		}
+ 		/* Ensure the resulting lock will get added to granted list */
+-		fl->fl_flags = fl_flags | FL_SLEEP;
++		fl->fl_flags |= FL_SLEEP;
+ 		if (do_vfs_lock(fl) < 0)
+ 			printk(KERN_WARNING "%s: VFS is out of sync with lock manager!\n", __FUNCTION__);
+ 		up_read(&host->h_rwsem);
++		fl->fl_flags = fl_flags;
+ 	}
+ 	status = nlm_stat_to_errno(resp->status);
+ out_unblock:
+@@ -543,7 +545,6 @@ out_unblock:
+ 		nlmclnt_cancel(host, req->a_args.block, fl);
+ out:
+ 	nlm_release_call(req);
+-	fl->fl_flags = fl_flags;
+ 	return status;
+ }
  
- 	gss_cred->gc_ctx->gc_proc = RPC_GSS_PROC_DESTROY;
-@@ -720,7 +720,7 @@ gss_destroying_context(struct rpc_cred *cred)
- 	 * by the RPC call or by the put_rpccred() below */
- 	get_rpccred(cred);
+@@ -598,7 +599,8 @@ nlmclnt_unlock(struct nlm_rqst *req, struct file_lock *fl)
+ {
+ 	struct nlm_host	*host = req->a_host;
+ 	struct nlm_res	*resp = &req->a_res;
+-	int status = 0;
++	int status;
++	unsigned char fl_flags = fl->fl_flags;
  
--	task = rpc_call_null(gss_auth->client, cred, RPC_TASK_ASYNC);
-+	task = rpc_call_null(gss_auth->client, cred, RPC_TASK_ASYNC|RPC_TASK_SOFT);
- 	if (!IS_ERR(task))
- 		rpc_put_task(task);
+ 	/*
+ 	 * Note: the server is supposed to either grant us the unlock
+@@ -607,11 +609,13 @@ nlmclnt_unlock(struct nlm_rqst *req, struct file_lock *fl)
+ 	 */
+ 	fl->fl_flags |= FL_EXISTS;
+ 	down_read(&host->h_rwsem);
+-	if (do_vfs_lock(fl) == -ENOENT) {
+-		up_read(&host->h_rwsem);
++	status = do_vfs_lock(fl);
++	up_read(&host->h_rwsem);
++	fl->fl_flags = fl_flags;
++	if (status == -ENOENT) {
++		status = 0;
+ 		goto out;
+ 	}
+-	up_read(&host->h_rwsem);
  
+ 	if (req->a_flags & RPC_TASK_ASYNC)
+ 		return nlm_async_call(req, NLMPROC_UNLOCK, &nlmclnt_unlock_ops);
 
