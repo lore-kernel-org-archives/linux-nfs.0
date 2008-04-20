@@ -1,109 +1,144 @@
-From: Mike Frysinger <vapier@gentoo.org>
-Subject: [NFS] [patch] rpcgen: include sys/ioctl.h on linux systems
-Date: Sun, 20 Apr 2008 06:49:44 -0400
-Message-ID: <200804200649.44542.vapier@gentoo.org>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH 1/2] NFS: implement option checking when remounting NFS
+	filesystems (try #2)
+Date: Sun, 20 Apr 2008 12:56:11 -0400
+Message-ID: <1208710571.9518.8.camel@heimdal.trondhjem.org>
+References: <1208010798-22782-1-git-send-email-jlayton@redhat.com>
 Mime-Version: 1.0
-Content-Type: Multipart/Mixed;
-  boundary="Boundary-00=_I/xCIULC0HnqBrF"
-To: nfs@lists.sourceforge.net
+Content-Type: text/plain
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:42873 "EHLO neil.brown.name"
+Received: from pat.uio.no ([129.240.10.15]:46234 "EHLO pat.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1762968AbYDTKtx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 20 Apr 2008 06:49:53 -0400
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1JnX7I-0006hk-9D
-	for linux-nfs@vger.kernel.org; Sun, 20 Apr 2008 20:49:52 +1000
+	id S1753992AbYDTQ4Q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 20 Apr 2008 12:56:16 -0400
+In-Reply-To: <1208010798-22782-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Boundary-00=_I/xCIULC0HnqBrF
-Content-Type: multipart/signed; boundary="nextPart1214265.iFRnkbCNCF";
-	protocol="application/pgp-signature"; micalg=pgp-sha1
-Content-Transfer-Encoding: 7bit
 
---nextPart1214265.iFRnkbCNCF
-Content-Type: text/plain;
-  charset="us-ascii"
-Content-Transfer-Encoding: quoted-printable
-Content-Disposition: inline
+On Sat, 2008-04-12 at 10:33 -0400, Jeff Layton wrote:
+> When remounting an NFS or NFS4 filesystem, the new NFS options are not
+> respected, yet the remount will still return success. This patch adds
+> a remount_fs sb op for NFS that checks any new nfs mount options against
+> the existing ones and fails the mount if any have changed.
+> 
+> This is only implemented for string-based mount options since doing
+> this with binary options isn't really feasible.
+> 
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  fs/nfs/super.c |   70 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+>  1 files changed, 70 insertions(+), 0 deletions(-)
+> 
+> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+> index f4ee9d9..b49f90f 100644
+> --- a/fs/nfs/super.c
+> +++ b/fs/nfs/super.c
+> @@ -207,6 +207,7 @@ static int nfs_xdev_get_sb(struct file_system_type *fs_type,
+>  		int flags, const char *dev_name, void *raw_data, struct vfsmount *mnt);
+>  static void nfs_kill_super(struct super_block *);
+>  static void nfs_put_super(struct super_block *);
+> +static int nfs_remount(struct super_block *sb, int *flags, char *raw_data);
+>  
+>  static struct file_system_type nfs_fs_type = {
+>  	.owner		= THIS_MODULE,
+> @@ -234,6 +235,7 @@ static const struct super_operations nfs_sops = {
+>  	.umount_begin	= nfs_umount_begin,
+>  	.show_options	= nfs_show_options,
+>  	.show_stats	= nfs_show_stats,
+> +	.remount_fs	= nfs_remount,
+>  };
+>  
+>  #ifdef CONFIG_NFS_V4
+> @@ -278,6 +280,7 @@ static const struct super_operations nfs4_sops = {
+>  	.umount_begin	= nfs_umount_begin,
+>  	.show_options	= nfs_show_options,
+>  	.show_stats	= nfs_show_stats,
+> +	.remount_fs	= nfs_remount,
+>  };
+>  #endif
+>  
+> @@ -1327,6 +1330,73 @@ out_invalid_fh:
+>  	return -EINVAL;
+>  }
+>  
+> +static int
+> +nfs_compare_remount_data(struct nfs_server *nfss,
+> +			 struct nfs_parsed_mount_data *data)
+> +{
+> +	if (data->flags != nfss->flags ||
+> +	    data->rsize != nfss->rsize ||
+> +	    data->wsize != nfss->wsize ||
+> +	    data->retrans != nfss->client->cl_timeout->to_retries ||
+> +	    data->auth_flavors[0] != nfss->client->cl_auth->au_flavor ||
+> +	    data->acregmin != nfss->acregmin / HZ ||
+> +	    data->acregmax != nfss->acregmax / HZ ||
+> +	    data->acdirmin != nfss->acdirmin / HZ ||
+> +	    data->acdirmax != nfss->acdirmax / HZ ||
+> +	    data->timeo != (10U * nfss->client->cl_timeout->to_initval / HZ))
+> +		return -EINVAL;
+> +	else
+         ^^^^^ redundant
+> +		return 0;
+> +}
+> +
+> +static int
+> +nfs_remount(struct super_block *sb, int *flags, char *raw_data)
+> +{
+> +	int error;
+> +	struct nfs_server *nfss = sb->s_fs_info;
+> +	struct nfs_parsed_mount_data *data;
+> +	struct nfs_mount_data *options = (struct nfs_mount_data *)raw_data;
+> +	struct nfs4_mount_data *options4 = (struct nfs4_mount_data *)raw_data;
+> +
+> +	/*
+> +	 * Userspace mount programs that send binary options generally send
+> +	 * them populated with default values. We have no way to know which
+> +	 * ones were explicitly specified. Fall back to legacy behavior and
+> +	 * just return success.
+> +	 */
+> +	if ((sb->s_type == &nfs4_fs_type && options4->version == 1) ||
+> +	    (sb->s_type == &nfs_fs_type && options->version >= 1 &&
+> +	     options->version <= 6))
+> +		return 0;
+> +
+> +	data = kzalloc(sizeof(*data), GFP_KERNEL);
+> +	if (data == NULL)
+> +		return -ENOMEM;
+> +
+> +	/* fill out struct with values from existing mount */
+> +	data->flags = nfss->flags;
+> +	data->rsize = nfss->rsize;
+> +	data->wsize = nfss->wsize;
+> +	data->retrans = nfss->client->cl_timeout->to_retries;
+> +	data->auth_flavors[0] = nfss->client->cl_auth->au_flavor;
+> +	data->acregmin = nfss->acregmin / HZ;
+> +	data->acregmax = nfss->acregmax / HZ;
+> +	data->acdirmin = nfss->acdirmin / HZ;
+> +	data->acdirmax = nfss->acdirmax / HZ;
+> +	data->timeo = 10U * nfss->client->cl_timeout->to_initval / HZ;
+> +
+> +	/* overwrite those values with any that were specified */
+> +	error = nfs_parse_mount_options((char *)options, data);
+> +	if (error < 0)
+> +		goto out;
+> +
+> +	/* compare new mount options with old ones */
+> +	error = nfs_compare_remount_data(nfss, data);
 
-the rpcgen tool included with nfs-utils will generate calls to ioctl() but =
-not=20
-actually generate the sys/ioctl.h header include.  attached patch should fi=
-x=20
-this.
-=2Dmike
+It might be nice also to signal when someone tries to convert a udp
+mount into a tcp mount, or change the server address...
+You don't need to do that in the same patch, but it is a common mistake
+that even experienced admins make.
 
---nextPart1214265.iFRnkbCNCF
-Content-Type: application/pgp-signature; name=signature.asc 
-Content-Description: This is a digitally signed message part.
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.7 (GNU/Linux)
-
-iQIVAwUASAsfyEFjO5/oN/WBAQL19Q/+JbBJQutdISRN40VgAH7MmML5tB6YY868
-SnR/EmoUmhsUf4uv56Z93qqIeLEvhngEs8/vzgUiHxK10hhKSVRolskNfIoz3/5Y
-dSAjGFfdN9+iRDuv+zr8eRznCLvWKkxt6B3KutCvYQixKxAWhWYLF7L5eywxTeCI
-eVJ95e0lBDvMzMbCcCBck4hyP6K1CUuf2P1R8CRP4jOgRMKXDx5fwElnqUHF1ViF
-WgDHNJ9RmkhdtNajvOiY/q7ZWJwihPDKDzEIvAg8eKYvQCtsSfalQHWZygpGkQFG
-HBXuimi9hizocOsGy/xrfhNirTMNg9Moi52DAvRXiOmz8TK2kondisHLHKS+XsBI
-wx2R7yMLL2qrlgD5gHcUfyWl+qeGekGV2FCOujgAa0Ckl0OfIPvdhdHfgyhizsBq
-Wo4THtkbV/SAvpLypt1ssOPZ2WyPs5xy8wmuxfR5IzYkCTAKcgCAG4zk1VsdJmaZ
-4LAPWW8M0f5qhAMAubcXqebItcwh3IAWnL4Ar2ZAsPgDEbZqe0WW/dQt8HyP2Fqf
-Of99u14rE8ulYiRs4K6ElaKxXaMzlJ04MJyobkNq4TanlYKvd2ZnJgW6KuwBsPz2
-WhhRB3pKQZtGrnxc6W/Q7ELNcCOOW9OD6H6TjyfK0H9HtOoFc4t9rRIk08p6XAF/
-z5hc1PLO/YI=
-=tJhx
------END PGP SIGNATURE-----
-
---nextPart1214265.iFRnkbCNCF--
-
---Boundary-00=_I/xCIULC0HnqBrF
-Content-Type: text/x-diff; charset="us-ascii";
-	name="nfs-utils-1.1.2-rpcgen-ioctl.patch"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment; filename="nfs-utils-1.1.2-rpcgen-ioctl.patch"
-
---- tools/rpcgen/rpc_main.c
-+++ tools/rpcgen/rpc_main.c
-@@ -548,6 +548,9 @@
- #ifndef linux
- 	if( !tirpcflag && inetdflag )
- 	  f_print(fout, "#include <sys/ttycom.h>/* TIOCNOTTY */\n");
-+#else
-+	if( !tirpcflag )
-+	  f_print(fout, "#include <sys/ioctl.h>/* TIOCNOTTY */\n");
- #endif
- 	if( Cflag && (inetdflag || pmflag ) ) {
- 	  f_print(fout, "#ifdef __cplusplus\n");
-
---Boundary-00=_I/xCIULC0HnqBrF
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by the 2008 JavaOne(SM) Conference 
-Don't miss this year's exciting event. There's still time to save $100. 
-Use priority code J8TL2D2. 
-http://ad.doubleclick.net/clk;198757673;13503038;p?http://java.sun.com/javaone
---Boundary-00=_I/xCIULC0HnqBrF
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
-
---Boundary-00=_I/xCIULC0HnqBrF--
-
+> +out:
+> +	kfree(data);
+> +	return error;
+> +}
+> +
+>  /*
+>   * Initialise the common bits of the superblock
+>   */
 
