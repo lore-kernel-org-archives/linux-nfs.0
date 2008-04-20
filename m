@@ -1,13 +1,16 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH] NFS: implement option checking when remounting NFS
-	filesystems (try #3)
-Date: Sun, 20 Apr 2008 15:00:07 -0400
-Message-ID: <1208718007-11802-1-git-send-email-jlayton@redhat.com>
+Subject: Re: [PATCH 1/2] NFS: implement option checking when remounting NFS
+	filesystems (try #2)
+Date: Sun, 20 Apr 2008 15:03:17 -0400
+Message-ID: <20080420150317.27b49725@tleilax.poochiereds.net>
+References: <1208010798-22782-1-git-send-email-jlayton@redhat.com>
+	<1208710571.9518.8.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-To: trond.myklebust@fys.uio.no
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <1208710571.9518.8.camel@heimdal.trondhjem.org>
 List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
 	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
 List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
@@ -19,129 +22,22 @@ Sender: nfsv4-bounces@linux-nfs.org
 Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When remounting an NFS or NFS4 filesystem, the new NFS options are not
-respected, yet the remount will still return success. This patch adds
-a remount_fs sb op for NFS that checks any new nfs mount options against
-the existing ones and fails the mount if any have changed.
+On Sun, 20 Apr 2008 12:56:11 -0400
+Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
 
-This is only implemented for string-based mount options since doing
-this with binary options isn't really feasible.
+> It might be nice also to signal when someone tries to convert a udp
+> mount into a tcp mount, or change the server address...
+> You don't need to do that in the same patch, but it is a common mistake
+> that even experienced admins make.
+> 
 
-This is essentially the same as the original patch I sent out, but
-adds a check to see if the addr= option has changed.
+The original patch should make the mount call return -EINVAL if someone
+tries to change from tcp to udp, or vice versa since that would change
+the flags.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfs/super.c |   76 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 76 insertions(+), 0 deletions(-)
+The original patch didn't catch changes to "addr=", but the one I just
+sent out should do so.
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index f4ee9d9..c6dab36 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -207,6 +207,7 @@ static int nfs_xdev_get_sb(struct file_system_type *fs_type,
- 		int flags, const char *dev_name, void *raw_data, struct vfsmount *mnt);
- static void nfs_kill_super(struct super_block *);
- static void nfs_put_super(struct super_block *);
-+static int nfs_remount(struct super_block *sb, int *flags, char *raw_data);
- 
- static struct file_system_type nfs_fs_type = {
- 	.owner		= THIS_MODULE,
-@@ -234,6 +235,7 @@ static const struct super_operations nfs_sops = {
- 	.umount_begin	= nfs_umount_begin,
- 	.show_options	= nfs_show_options,
- 	.show_stats	= nfs_show_stats,
-+	.remount_fs	= nfs_remount,
- };
- 
- #ifdef CONFIG_NFS_V4
-@@ -278,6 +280,7 @@ static const struct super_operations nfs4_sops = {
- 	.umount_begin	= nfs_umount_begin,
- 	.show_options	= nfs_show_options,
- 	.show_stats	= nfs_show_stats,
-+	.remount_fs	= nfs_remount,
- };
- #endif
- 
-@@ -1327,6 +1330,79 @@ out_invalid_fh:
- 	return -EINVAL;
- }
- 
-+static int
-+nfs_compare_remount_data(struct nfs_server *nfss,
-+			 struct nfs_parsed_mount_data *data)
-+{
-+	if (data->flags != nfss->flags ||
-+	    data->rsize != nfss->rsize ||
-+	    data->wsize != nfss->wsize ||
-+	    data->retrans != nfss->client->cl_timeout->to_retries ||
-+	    data->auth_flavors[0] != nfss->client->cl_auth->au_flavor ||
-+	    data->acregmin != nfss->acregmin / HZ ||
-+	    data->acregmax != nfss->acregmax / HZ ||
-+	    data->acdirmin != nfss->acdirmin / HZ ||
-+	    data->acdirmax != nfss->acdirmax / HZ ||
-+	    data->timeo != (10U * nfss->client->cl_timeout->to_initval / HZ) ||
-+	    data->nfs_server.addrlen != nfss->nfs_client->cl_addrlen ||
-+	    memcmp(&data->nfs_server.address, &nfss->nfs_client->cl_addr,
-+		   data->nfs_server.addrlen) != 0)
-+		return -EINVAL;
-+
-+	return 0;
-+}
-+
-+static int
-+nfs_remount(struct super_block *sb, int *flags, char *raw_data)
-+{
-+	int error;
-+	struct nfs_server *nfss = sb->s_fs_info;
-+	struct nfs_parsed_mount_data *data;
-+	struct nfs_mount_data *options = (struct nfs_mount_data *)raw_data;
-+	struct nfs4_mount_data *options4 = (struct nfs4_mount_data *)raw_data;
-+
-+	/*
-+	 * Userspace mount programs that send binary options generally send
-+	 * them populated with default values. We have no way to know which
-+	 * ones were explicitly specified. Fall back to legacy behavior and
-+	 * just return success.
-+	 */
-+	if ((sb->s_type == &nfs4_fs_type && options4->version == 1) ||
-+	    (sb->s_type == &nfs_fs_type && options->version >= 1 &&
-+	     options->version <= 6))
-+		return 0;
-+
-+	data = kzalloc(sizeof(*data), GFP_KERNEL);
-+	if (data == NULL)
-+		return -ENOMEM;
-+
-+	/* fill out struct with values from existing mount */
-+	data->flags = nfss->flags;
-+	data->rsize = nfss->rsize;
-+	data->wsize = nfss->wsize;
-+	data->retrans = nfss->client->cl_timeout->to_retries;
-+	data->auth_flavors[0] = nfss->client->cl_auth->au_flavor;
-+	data->acregmin = nfss->acregmin / HZ;
-+	data->acregmax = nfss->acregmax / HZ;
-+	data->acdirmin = nfss->acdirmin / HZ;
-+	data->acdirmax = nfss->acdirmax / HZ;
-+	data->timeo = 10U * nfss->client->cl_timeout->to_initval / HZ;
-+	data->nfs_server.addrlen = nfss->nfs_client->cl_addrlen;
-+	memcpy(&data->nfs_server.address, &nfss->nfs_client->cl_addr,
-+		data->nfs_server.addrlen);
-+
-+	/* overwrite those values with any that were specified */
-+	error = nfs_parse_mount_options((char *)options, data);
-+	if (error < 0)
-+		goto out;
-+
-+	/* compare new mount options with old ones */
-+	error = nfs_compare_remount_data(nfss, data);
-+out:
-+	kfree(data);
-+	return error;
-+}
-+
- /*
-  * Initialise the common bits of the superblock
-  */
+Thanks,
 -- 
-1.5.3.6
+Jeff Layton <jlayton@redhat.com>
