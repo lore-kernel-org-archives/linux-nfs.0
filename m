@@ -1,124 +1,147 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: nfs: lock stuck after interrupt
-Date: Sun, 20 Apr 2008 14:45:15 -0400
-Message-ID: <20080420184515.GA27536@fieldses.org>
-References: <E1JmY9Y-0004e4-7R@pomaz-ex.szeredi.hu>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH] NFS: implement option checking when remounting NFS
+	filesystems (try #3)
+Date: Sun, 20 Apr 2008 15:00:07 -0400
+Message-ID: <1208718007-11802-1-git-send-email-jlayton@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: trond.myklebust@fys.uio.no, eshel@almaden.ibm.com, neilb@suse.de,
-	akpm@linux-foundation.org, linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Miklos Szeredi <miklos@szeredi.hu>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:47782 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754448AbYDTSpa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 20 Apr 2008 14:45:30 -0400
-In-Reply-To: <E1JmY9Y-0004e4-7R-8f8m9JG5TPIdUIPVzhDTVZP2KDSNp7ea@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+To: trond.myklebust@fys.uio.no
+Return-path: <nfsv4-bounces@linux-nfs.org>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 17, 2008 at 07:44:08PM +0200, Miklos Szeredi wrote:
-> 1) on server lock file X
-> 2) on client lock file X
->      blocks
-> 3) on client send interrupt to process doing locking
->      locking syscall restarted, continues blocking
-> 4) on server release lock on file X
->      on client lock is acquired
-> 5) on client release lock on file X
-> 6) on client lock file X
->      blocks
-> 
-> Everything up to the last step is fine, but something goes wrong
-> during the final unlock.  Stopping the nfs-server removes the stray
-> lock.
-> 
-> Here's a trace on the server:
-> 
-> lockd: request from 192.168.1.1, port=862
-> lockd: LOCK          called
-> lockd: nlm_lookup_host(192.168.1.2->192.168.1.1, p=6, v=4, my role=server, name=tucsk)
-> lockd: get host tucsk
-> lockd: nsm_monitor(tucsk)
-> lockd: nlm_lookup_file (02000001 00006200 00000002 0001783d 7f54ef79 00017801 d06c5915 00000000)
-> lockd: creating file for (02000001 00006200 00000002 0001783d 7f54ef79 00017801 d06c5915 00000000)
-> lockd: found file 0ad074c0 (count 0)
-> lockd: nlmsvc_lock(ubda/96317, ty=1, pi=1, 0-99, bl=1)
-> lockd: nlm_lookup_host(192.168.1.2->192.168.1.1, p=6, v=4, my role=server, name=tucsk)
-> lockd: get host tucsk
-> lockd: nlmsvc_lookup_block f=0ad074c0 pd=1 0-99 ty=1
-> lockd: get host tucsk
-> lockd: created block 0aeabf80...
-> lockd: vfs_lock_file returned 1
+When remounting an NFS or NFS4 filesystem, the new NFS options are not
+respected, yet the remount will still return success. This patch adds
+a remount_fs sb op for NFS that checks any new nfs mount options against
+the existing ones and fails the mount if any have changed.
 
-Why is vfs_lock_file returning 1?  It should be 0 or -ERRNO.
+This is only implemented for string-based mount options since doing
+this with binary options isn't really feasible.
 
---b.
+This is essentially the same as the original patch I sent out, but
+adds a check to see if the addr= option has changed.
 
-> lockd: nlmsvc_insert_block(0aeabf80, -1)
-> lockd: release host tucsk
-> lockd: nlmsvc_lock returned 50331648
-> lockd: LOCK         status 3
-> lockd: release host tucsk
-> lockd: nlm_release_file(0ad074c0, ct = 2)
-> lockd: request from 192.168.1.1, port=862
-> lockd: CANCEL        called
-> lockd: nlm_lookup_host(192.168.1.2->192.168.1.1, p=6, v=4, my role=server, name=tucsk)
-> lockd: get host tucsk
-> lockd: nlm_lookup_file (02000001 00006200 00000002 0001783d 7f54ef79 00017801 d06c5915 00000000)
-> lockd: found file 0ad074c0 (count 1)
-> lockd: nlmsvc_cancel(ubda/96317, pi=1, 0-99)
-> lockd: nlmsvc_lookup_block f=0ad074c0 pd=1 0-99 ty=1
-> lockd: check f=0ad074c0 pd=1 0-99 ty=1 cookie=36120000
-> lockd: unlinking block 0aeabf80...
-> lockd: freeing block 0aeabf80...
-> lockd: release host tucsk
-> lockd: nlm_release_file(0ad074c0, ct = 2)
-> lockd: CANCEL        status 0
-> lockd: release host tucsk
-> lockd: nlm_release_file(0ad074c0, ct = 1)
-> lockd: closing file ubda/96317
-> lockd: request from 192.168.1.1, port=862
-> lockd: LOCK          called
-> lockd: nlm_lookup_host(192.168.1.2->192.168.1.1, p=6, v=4, my role=server, name=tucsk)
-> lockd: get host tucsk
-> lockd: nsm_monitor(tucsk)
-> lockd: nlm_lookup_file (02000001 00006200 00000002 0001783d 7f54ef79 00017801 d06c5915 00000000)
-> lockd: creating file for (02000001 00006200 00000002 0001783d 7f54ef79 00017801 d06c5915 00000000)
-> lockd: found file 0ad074c0 (count 0)
-> lockd: nlmsvc_lock(ubda/96317, ty=1, pi=2, 0-99, bl=1)
-> lockd: nlm_lookup_host(192.168.1.2->192.168.1.1, p=6, v=4, my role=server, name=tucsk)
-> lockd: get host tucsk
-> lockd: nlmsvc_lookup_block f=0ad074c0 pd=2 0-99 ty=1
-> lockd: get host tucsk
-> lockd: created block 0aeab240...
-> lockd: vfs_lock_file returned 0
-> lockd: freeing block 0aeab240...
-> lockd: release host tucsk
-> lockd: nlm_release_file(0ad074c0, ct = 2)
-> lockd: release host tucsk
-> lockd: nlmsvc_lock returned 0
-> lockd: LOCK         status 0
-> lockd: release host tucsk
-> lockd: nlm_release_file(0ad074c0, ct = 1)
-> lockd: request from 192.168.1.1, port=862
-> lockd: UNLOCK        called
-> lockd: nlm_lookup_host(192.168.1.2->192.168.1.1, p=6, v=4, my role=server, name=tucsk)
-> lockd: get host tucsk
-> lockd: nlm_lookup_file (02000001 00006200 00000002 0001783d 7f54ef79 00017801 d06c5915 00000000)
-> lockd: found file 0ad074c0 (count 0)
-> lockd: nlmsvc_unlock(ubda/96317, pi=3, 0-9223372036854775807)
-> lockd: nlmsvc_cancel(ubda/96317, pi=3, 0-9223372036854775807)
-> lockd: nlmsvc_lookup_block f=0ad074c0 pd=3 0-9223372036854775807 ty=2
-> lockd: UNLOCK        status 0
-> lockd: release host tucsk
-> lockd: nlm_release_file(0ad074c0, ct = 1)
-> 
-> 
-> Everything looks normal, yet...
-> 
-> This is 100% reproducable for me (ext3 exported over nfs, server and
-> client: 2.6-git).
-> 
-> Miklos
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfs/super.c |   76 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 76 insertions(+), 0 deletions(-)
+
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index f4ee9d9..c6dab36 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -207,6 +207,7 @@ static int nfs_xdev_get_sb(struct file_system_type *fs_type,
+ 		int flags, const char *dev_name, void *raw_data, struct vfsmount *mnt);
+ static void nfs_kill_super(struct super_block *);
+ static void nfs_put_super(struct super_block *);
++static int nfs_remount(struct super_block *sb, int *flags, char *raw_data);
+ 
+ static struct file_system_type nfs_fs_type = {
+ 	.owner		= THIS_MODULE,
+@@ -234,6 +235,7 @@ static const struct super_operations nfs_sops = {
+ 	.umount_begin	= nfs_umount_begin,
+ 	.show_options	= nfs_show_options,
+ 	.show_stats	= nfs_show_stats,
++	.remount_fs	= nfs_remount,
+ };
+ 
+ #ifdef CONFIG_NFS_V4
+@@ -278,6 +280,7 @@ static const struct super_operations nfs4_sops = {
+ 	.umount_begin	= nfs_umount_begin,
+ 	.show_options	= nfs_show_options,
+ 	.show_stats	= nfs_show_stats,
++	.remount_fs	= nfs_remount,
+ };
+ #endif
+ 
+@@ -1327,6 +1330,79 @@ out_invalid_fh:
+ 	return -EINVAL;
+ }
+ 
++static int
++nfs_compare_remount_data(struct nfs_server *nfss,
++			 struct nfs_parsed_mount_data *data)
++{
++	if (data->flags != nfss->flags ||
++	    data->rsize != nfss->rsize ||
++	    data->wsize != nfss->wsize ||
++	    data->retrans != nfss->client->cl_timeout->to_retries ||
++	    data->auth_flavors[0] != nfss->client->cl_auth->au_flavor ||
++	    data->acregmin != nfss->acregmin / HZ ||
++	    data->acregmax != nfss->acregmax / HZ ||
++	    data->acdirmin != nfss->acdirmin / HZ ||
++	    data->acdirmax != nfss->acdirmax / HZ ||
++	    data->timeo != (10U * nfss->client->cl_timeout->to_initval / HZ) ||
++	    data->nfs_server.addrlen != nfss->nfs_client->cl_addrlen ||
++	    memcmp(&data->nfs_server.address, &nfss->nfs_client->cl_addr,
++		   data->nfs_server.addrlen) != 0)
++		return -EINVAL;
++
++	return 0;
++}
++
++static int
++nfs_remount(struct super_block *sb, int *flags, char *raw_data)
++{
++	int error;
++	struct nfs_server *nfss = sb->s_fs_info;
++	struct nfs_parsed_mount_data *data;
++	struct nfs_mount_data *options = (struct nfs_mount_data *)raw_data;
++	struct nfs4_mount_data *options4 = (struct nfs4_mount_data *)raw_data;
++
++	/*
++	 * Userspace mount programs that send binary options generally send
++	 * them populated with default values. We have no way to know which
++	 * ones were explicitly specified. Fall back to legacy behavior and
++	 * just return success.
++	 */
++	if ((sb->s_type == &nfs4_fs_type && options4->version == 1) ||
++	    (sb->s_type == &nfs_fs_type && options->version >= 1 &&
++	     options->version <= 6))
++		return 0;
++
++	data = kzalloc(sizeof(*data), GFP_KERNEL);
++	if (data == NULL)
++		return -ENOMEM;
++
++	/* fill out struct with values from existing mount */
++	data->flags = nfss->flags;
++	data->rsize = nfss->rsize;
++	data->wsize = nfss->wsize;
++	data->retrans = nfss->client->cl_timeout->to_retries;
++	data->auth_flavors[0] = nfss->client->cl_auth->au_flavor;
++	data->acregmin = nfss->acregmin / HZ;
++	data->acregmax = nfss->acregmax / HZ;
++	data->acdirmin = nfss->acdirmin / HZ;
++	data->acdirmax = nfss->acdirmax / HZ;
++	data->timeo = 10U * nfss->client->cl_timeout->to_initval / HZ;
++	data->nfs_server.addrlen = nfss->nfs_client->cl_addrlen;
++	memcpy(&data->nfs_server.address, &nfss->nfs_client->cl_addr,
++		data->nfs_server.addrlen);
++
++	/* overwrite those values with any that were specified */
++	error = nfs_parse_mount_options((char *)options, data);
++	if (error < 0)
++		goto out;
++
++	/* compare new mount options with old ones */
++	error = nfs_compare_remount_data(nfss, data);
++out:
++	kfree(data);
++	return error;
++}
++
+ /*
+  * Initialise the common bits of the superblock
+  */
+-- 
+1.5.3.6
