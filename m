@@ -1,109 +1,124 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 31/33] NFS - fix potential NULL pointer dereference v2
-Date: Mon, 21 Apr 2008 17:13:51 -0400
-Message-ID: <92D71B7E-B046-4281-B4D4-1F2648DA991E@oracle.com>
-References: <20080419204047.14124.49490.stgit@c-69-242-210-120.hsd1.mi.comcast.net> <20080419204054.14124.59641.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
+Subject: Re: [PATCH 10/33] SUNRPC: Fix read ordering problems with req->rq_private_buf.len
+Date: Mon, 21 Apr 2008 17:19:16 -0400
+Message-ID: <CAC2A944-24A0-4E20-83AE-2A4F88CF5C70@oracle.com>
+References: <20080419204047.14124.49490.stgit@c-69-242-210-120.hsd1.mi.comcast.net> <20080419204049.14124.11174.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
 Mime-Version: 1.0 (Apple Message framework v919.2)
 Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: linux-nfs@vger.kernel.org, Cyrill Gorcunov <gorcunov@gmail.com>
+Cc: linux-nfs@vger.kernel.org
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:50424 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751313AbYDUVPR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Apr 2008 17:15:17 -0400
-In-Reply-To: <20080419204054.14124.59641.stgit-KPEdlmqt5P7XOazzY/2fV4TcuzvYVacciM950cveMlzk1uMJSBkQmQ@public.gmane.org>
+Received: from rgminet01.oracle.com ([148.87.113.118]:40701 "EHLO
+	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752282AbYDUVTk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Apr 2008 17:19:40 -0400
+In-Reply-To: <20080419204049.14124.11174.stgit-KPEdlmqt5P7XOazzY/2fV4TcuzvYVacciM950cveMlzk1uMJSBkQmQ@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi Trond-
+
 On Apr 19, 2008, at 4:40 PM, Trond Myklebust wrote:
-> From: Cyrill Gorcunov <gorcunov@gmail.com>
+> We want to ensure that req->rq_private_buf.len is updated before
+> req->rq_received, so that call_decode() doesn't use an old value for
+> req->rq_rcv_buf.len.
 >
-> There is possible NULL pointer dereference if kstr[n]dup failed.
+> In 'call_decode()' itself, instead of using task->tk_status (which  
+> is set
+> using req->rq_received) must use the actual value of
+> req->rq_private_buf.len when deciding whether or not the received  
+> RPC reply
+> is too short.
+>
+> Finally ensure that we set req->rq_rcv_buf.len to zero when retrying a
+> request. A typo meant that we were resetting req->rq_private_buf.len  
+> in
+> call_decode(), and then clobbering that value with the old  
+> rq_rcv_buf.len
+> again in xprt_transmit().
 
-The logic in super.c and client.c shouldn't assume nfs_server.hostname  
-is non-NULL.  Can you say where the NULL dereference might happen?
+After staring at this for a while, the interaction between  
+xprt_complete_rqst and call_decode isn't clear to me.
 
-> So fix them for safety.
+I take it there is no guarantee that the xdr_buf fields and  
+rq_received are completely updated before the task is awoken and  
+call_decode runs?
 
-Note that mount_server.hostname, and nfs_server.export_path also use  
-kstrdup without a safety net.
-
-I see that nfs_mount and nfs4_path_walk might have a problem if a  
-kstrdup failed earlier.
-
-> Signed-off-by: Cyrill Gorcunov <gorcunov@gmail.com>
 > Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 > ---
 >
-> fs/nfs/super.c |   16 ++++++++++++++++
-> 1 files changed, 16 insertions(+), 0 deletions(-)
+> net/sunrpc/clnt.c |   26 +++++++++++++-------------
+> net/sunrpc/xprt.c |    3 ++-
+> 2 files changed, 15 insertions(+), 14 deletions(-)
 >
-> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-> index 140174d..7c13ce7 100644
-> --- a/fs/nfs/super.c
-> +++ b/fs/nfs/super.c
-> @@ -1295,6 +1295,8 @@ static int nfs_validate_mount_data(void  
-> *options,
-> 		args->namlen		= data->namlen;
-> 		args->bsize		= data->bsize;
-> 		args->auth_flavors[0]	= data->pseudoflavor;
-> +		if (!args->nfs_server.hostname)
-> +			goto out_nomem;
+> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+> index 0c29792..57663a4 100644
+> --- a/net/sunrpc/clnt.c
+> +++ b/net/sunrpc/clnt.c
+> @@ -1195,18 +1195,6 @@ call_decode(struct rpc_task *task)
+> 		task->tk_flags &= ~RPC_CALL_MAJORSEEN;
+> 	}
 >
-> 		/*
-> 		 * The legacy version 6 binary mount data from userspace has a
-> @@ -1341,6 +1343,8 @@ static int nfs_validate_mount_data(void  
-> *options,
-> 		len = c - dev_name;
-> 		/* N.B. caller will free nfs_server.hostname in all cases */
-> 		args->nfs_server.hostname = kstrndup(dev_name, len, GFP_KERNEL);
-> +		if (!args->nfs_server.hostname)
-> +			goto out_nomem;
+> -	if (task->tk_status < 12) {
+> -		if (!RPC_IS_SOFT(task)) {
+> -			task->tk_action = call_bind;
+> -			clnt->cl_stats->rpcretrans++;
+> -			goto out_retry;
+> -		}
+> -		dprintk("RPC:       %s: too small RPC reply size (%d bytes)\n",
+> -				clnt->cl_protname, task->tk_status);
+> -		task->tk_action = call_timeout;
+> -		goto out_retry;
+> -	}
+> -
+> 	/*
+> 	 * Ensure that we see all writes made by xprt_complete_rqst()
+> 	 * before it changed req->rq_received.
+> @@ -1218,6 +1206,18 @@ call_decode(struct rpc_task *task)
+> 	WARN_ON(memcmp(&req->rq_rcv_buf, &req->rq_private_buf,
+> 				sizeof(req->rq_rcv_buf)) != 0);
 >
-> 		c++;
-> 		if (strlen(c) > NFS_MAXPATHLEN)
-> @@ -1384,6 +1388,10 @@ out_v3_not_compiled:
-> 	return -EPROTONOSUPPORT;
-> #endif /* !CONFIG_NFS_V3 */
->
-> +out_nomem:
-> +	dfprintk(MOUNT, "NFS: not enough memory to handle mount options\n");
-> +	return -ENOMEM;
+> +	if (req->rq_rcv_buf.len < 12) {
+> +		if (!RPC_IS_SOFT(task)) {
+> +			task->tk_action = call_bind;
+> +			clnt->cl_stats->rpcretrans++;
+> +			goto out_retry;
+> +		}
+> +		dprintk("RPC:       %s: too small RPC reply size (%d bytes)\n",
+> +				clnt->cl_protname, task->tk_status);
+> +		task->tk_action = call_timeout;
+> +		goto out_retry;
+> +	}
 > +
-> out_no_address:
-> 	dfprintk(MOUNT, "NFS: mount program didn't pass remote address\n");
-> 	return -EINVAL;
-> @@ -1890,12 +1898,16 @@ static int nfs4_validate_mount_data(void  
-> *options,
-> 			return -ENAMETOOLONG;
-> 		/* N.B. caller will free nfs_server.hostname in all cases */
-> 		args->nfs_server.hostname = kstrndup(dev_name, len, GFP_KERNEL);
-> +		if (!args->nfs_server.hostname)
-> +			goto out_nomem;
+> 	/* Verify the RPC header */
+> 	p = call_verify(task);
+> 	if (IS_ERR(p)) {
+> @@ -1239,7 +1239,7 @@ out_retry:
+> 	task->tk_status = 0;
+> 	/* Note: call_verify() may have freed the RPC slot */
+> 	if (task->tk_rqstp == req) {
+> -		req->rq_received = req->rq_private_buf.len = 0;
+> +		req->rq_received = req->rq_rcv_buf.len = 0;
+> 		if (task->tk_client->cl_discrtry)
+> 			xprt_force_disconnect(task->tk_xprt);
+> 	}
+> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+> index 3ba64f9..5110a4e 100644
+> --- a/net/sunrpc/xprt.c
+> +++ b/net/sunrpc/xprt.c
+> @@ -757,9 +757,10 @@ void xprt_complete_rqst(struct rpc_task *task,  
+> int copied)
+> 	task->tk_rtt = (long)jiffies - req->rq_xtime;
 >
-> 		c++;			/* step over the ':' */
-> 		len = strlen(c);
-> 		if (len > NFS4_MAXPATHLEN)
-> 			return -ENAMETOOLONG;
-> 		args->nfs_server.export_path = kstrndup(c, len, GFP_KERNEL);
-> +		if (!args->nfs_server.export_path)
-> +			goto out_nomem;
->
-> 		dprintk("NFS: MNTPATH: '%s'\n", args->nfs_server.export_path);
->
-> @@ -1917,6 +1929,10 @@ out_inval_auth:
-> 		 data->auth_flavourlen);
-> 	return -EINVAL;
->
-> +out_nomem:
-> +	dfprintk(MOUNT, "NFS4: not enough memory to handle mount options 
-> \n");
-> +	return -ENOMEM;
-> +
-> out_no_address:
-> 	dfprintk(MOUNT, "NFS4: mount program didn't pass remote address\n");
-> 	return -EINVAL;
+> 	list_del_init(&req->rq_list);
+> +	req->rq_private_buf.len = copied;
+> 	/* Ensure all writes are done before we update req->rq_received */
+> 	smp_wmb();
+> -	req->rq_received = req->rq_private_buf.len = copied;
+> +	req->rq_received = copied;
+> 	rpc_wake_up_queued_task(&xprt->pending, task);
+> }
+> EXPORT_SYMBOL_GPL(xprt_complete_rqst);
 >
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
