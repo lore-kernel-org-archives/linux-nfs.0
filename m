@@ -1,53 +1,51 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [patch] fix statd -n
-Date: Mon, 21 Apr 2008 13:55:48 -0400
-Message-ID: <20080421135548.1aa1a4e8@tleilax.poochiereds.net>
-References: <480902CA.1070805@redhat.com>
-	<48090356.9020703@redhat.com>
-	<20080418203225.GD28277@fieldses.org>
-	<24c1515f0804181346g5867fa1fqfbbcd13af25027cb@mail.gmail.com>
-	<20080421000214.GA5453@fieldses.org>
-	<24c1515f0804201749x47bee916y9970fe1102bfb5@mail.gmail.com>
-	<20080421021153.GC5453@fieldses.org>
-	<20080421070107.454cfad2@tleilax.poochiereds.net>
-	<20080421133940.GB28795@fieldses.org>
-	<20080421101003.4e9d85a6@tleilax.poochiereds.net>
-	<20080421173227.GE4379@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: Janne Karhunen <janne.karhunen@gmail.com>,
-	Peter Staubach <staubach@redhat.com>, linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: Bug#476577: corrected patch
+Date: Mon, 21 Apr 2008 14:04:18 -0400
+Message-ID: <A10E2E89-C45F-46DC-8718-157F25B8061D@oracle.com>
+References: <20080417200928.GA20809@kodama.kitenet.net> <20080420223416.GA12722@uio.no> <40FD052D-BBC2-4AE4-BEF3-56914D39E13A@oracle.com> <20080421165314.GA2178@kodama.kitenet.net>
+Mime-Version: 1.0 (Apple Message framework v919.2)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: "Steinar H. Gunderson" <sesse@debian.org>,
+	linux-nfs@vger.kernel.org, 476577@bugs.debian.org
+To: Joey Hess <joeyh@debian.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:57207 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752902AbYDUR4G (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 21 Apr 2008 13:56:06 -0400
-In-Reply-To: <20080421173227.GE4379@fieldses.org>
+Received: from agminet01.oracle.com ([141.146.126.228]:30555 "EHLO
+	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754475AbYDUSFq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Apr 2008 14:05:46 -0400
+In-Reply-To: <20080421165314.GA2178-goE9YToxfH7EOVZ/abRnzaxOck334EZe@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 21 Apr 2008 13:32:27 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+Hi Joey-
 
-> > I think that's basically correct, but most modern distros turn it on by
-> > default. From the default /etc/sysctl.conf on my fedora box:
-> > 
-> > net.ipv4.conf.default.rp_filter = 1
-> > 
-> > ...it's generally a good thing to enable, but there are places where it
-> > needs to be disabled. For instance, my Linksys WRT54g is doing firewall
-> > duties and has it disabled because the switch ports on it are segmented
-> > with VLANs and rp_filter interferes with that.
-> 
-> Actually, the specific question here is: say you have an ethernet
-> interface 192.168.0.1.  Will the kernel deliver a packet that comes from
-> the network and has source address 192.168.0.1?
-> 
+On Apr 21, 2008, at 12:53 PM, Joey Hess wrote:
+> Chuck Lever wrote:
+>> What if /etc/mtab is a symlink to a valid writable file that is not /
+>> proc/mounts?  The test you introduce below will prevent that case  
+>> from
+>> working properly.
+>
+> Note that util-linux mount does the same thing in this case, so this  
+> must be an uncommon case.
+>
+> umount.nfs also avoids writing to /etc/mtab if it is a symlink..
 
-Ahh, I misunderstood then. I'm not sure about that specific situation.
-I doubt that rp_filter would prevent that, but there may be some other
-mechanism that would.
+In that case, I think the patch description should start out with  
+"Make mount.nfs handle symlinked /etc/mtab the way umount.nfs and util- 
+linux handle it."  Then the description should explain why this  
+important.
 
--- 
-Jeff Layton <jlayton@redhat.com>
+That provides much better documentation of the change and why it is  
+needed.  Having the util-linux precedent is especially good to know,  
+and demonstrates that the right homework was done.
+
+>> Is there a security issue with creating a file in / when /proc isn't
+>> mounted, or is this just an inconvenience?
+>
+> The worse problem is that mount.nfs fails with a nonzero exit code if
+> /proc/ is mounted, since the fchmod of /proc/mounts fails.
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
