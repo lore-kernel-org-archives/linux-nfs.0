@@ -1,77 +1,61 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 01/33] SUNRPC: Fix a bug in call_decode()
-Date: Mon, 21 Apr 2008 12:22:22 -0400
-Message-ID: <3A712572-A884-41BB-ABFF-94C41EF41F7E@oracle.com>
-References: <20080419204047.14124.49490.stgit@c-69-242-210-120.hsd1.mi.comcast.net> <20080419204047.14124.76946.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
-Mime-Version: 1.0 (Apple Message framework v919.2)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: linux-nfs@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:41853 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756956AbYDUQXj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Apr 2008 12:23:39 -0400
-In-Reply-To: <20080419204047.14124.76946.stgit-KPEdlmqt5P7XOazzY/2fV4TcuzvYVacciM950cveMlzk1uMJSBkQmQ@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+From: Joey Hess <joeyh@debian.org>
+Subject: Bug#476577: corrected patch
+Date: Mon, 21 Apr 2008 12:53:14 -0400
+Message-ID: <20080421165314.GA2178@kodama.kitenet.net>
+References: <20080417200928.GA20809@kodama.kitenet.net> <20080420223416.GA12722@uio.no> <40FD052D-BBC2-4AE4-BEF3-56914D39E13A@oracle.com>
+Reply-To: Joey Hess <joeyh@debian.org>, 476577@bugs.debian.org
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="tThc/1wpZn/ma/RB"
+Cc: "Steinar H. Gunderson" <sesse@debian.org>, linux-nfs@vger.kernel.org,
+	476577@bugs.debian.org
+To: Chuck Lever <chuck.lever@oracle.com>
+Return-path: <bounce-debian-bugs-dist=glddb-debian-bugs-dist=m.gmane.org@lists.debian.org>
+Resent-Message-ID: <handler.476577.B476577.12087967971647@bugs.debian.org>
+In-Reply-To: <40FD052D-BBC2-4AE4-BEF3-56914D39E13A@oracle.com>
+List-Post: <mailto:debian-bugs-dist@lists.debian.org>
+List-Help: <mailto:debian-bugs-dist-request@lists.debian.org?subject=help>
+List-Subscribe: <mailto:debian-bugs-dist-request@lists.debian.org?subject=subscribe>
+List-Unsubscribe: <mailto:debian-bugs-dist-request@lists.debian.org?subject=unsubscribe>
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond-
 
-On Apr 19, 2008, at 4:40 PM, Trond Myklebust wrote:
-> call_verify() can, under certain circumstances, free the RPC slot.  
-> In that
-> case, our cached pointer 'req = task->tk_rqstp' is invalid. Bug was
-> introduced in commit 220bcc2afd7011b3e0569fc178331fa983c92c1b (SUNRPC:
-> Don't call xprt_release in call refresh).
+--tThc/1wpZn/ma/RB
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-Since you still refer to this function as "call_verify" can I assume  
-you rejected my patches that renamed it rpc_verify_header?
+Chuck Lever wrote:
+> What if /etc/mtab is a symlink to a valid writable file that is not /=20
+> proc/mounts?  The test you introduce below will prevent that case from =
+=20
+> working properly.
 
-A better fix might instead move the logic in call_decode's out_retry:  
-arm into call_verify.
+Note that util-linux mount does the same thing in this case, so this must
+be an uncommon case.
 
-A subsequent clean-up should refactor the spaghetti in call_verify  
-into several simpler functions to reduce the likelihood of this kind  
-of defect cropping up again.
+umount.nfs also avoids writing to /etc/mtab if it is a symlink..
 
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> ---
->
-> net/sunrpc/clnt.c |    9 ++++++---
-> 1 files changed, 6 insertions(+), 3 deletions(-)
->
-> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-> index d6701f7..0c29792 100644
-> --- a/net/sunrpc/clnt.c
-> +++ b/net/sunrpc/clnt.c
-> @@ -1236,10 +1236,13 @@ call_decode(struct rpc_task *task)
-> 			task->tk_status);
-> 	return;
-> out_retry:
-> -	req->rq_received = req->rq_private_buf.len = 0;
-> 	task->tk_status = 0;
-> -	if (task->tk_client->cl_discrtry)
-> -		xprt_force_disconnect(task->tk_xprt);
-> +	/* Note: call_verify() may have freed the RPC slot */
-> +	if (task->tk_rqstp == req) {
-> +		req->rq_received = req->rq_private_buf.len = 0;
-> +		if (task->tk_client->cl_discrtry)
-> +			xprt_force_disconnect(task->tk_xprt);
-> +	}
-> }
->
-> /*
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
-> in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Is there a security issue with creating a file in / when /proc isn't =20
+> mounted, or is this just an inconvenience?
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+The worse problem is that mount.nfs fails with a nonzero exit code if
+/proc/ is mounted, since the fchmod of /proc/mounts fails.
 
+--=20
+see shy jo
 
+--tThc/1wpZn/ma/RB
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: Digital signature
+Content-Disposition: inline
 
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.6 (GNU/Linux)
+
+iD8DBQFIDMZ6d8HHehbQuO8RAvCPAJ4sHLvDygM0YTQjrsEmowipU1iP4gCgjjrv
+ESEqMsE1Wnb7sZqqBHYXCqI=
+=htOv
+-----END PGP SIGNATURE-----
+
+--tThc/1wpZn/ma/RB--
