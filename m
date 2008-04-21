@@ -1,76 +1,60 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [patch] fix statd -n
-Date: Mon, 21 Apr 2008 07:01:07 -0400
-Message-ID: <20080421070107.454cfad2@tleilax.poochiereds.net>
-References: <24c1515f0804170938s23fe3ea3pfe77355ed01d8bbf@mail.gmail.com>
-	<20080418173646.GC19038@fieldses.org>
-	<480902CA.1070805@redhat.com>
-	<48090356.9020703@redhat.com>
-	<20080418203225.GD28277@fieldses.org>
-	<24c1515f0804181346g5867fa1fqfbbcd13af25027cb@mail.gmail.com>
-	<20080421000214.GA5453@fieldses.org>
-	<24c1515f0804201749x47bee916y9970fe1102bfb5@mail.gmail.com>
-	<20080421021153.GC5453@fieldses.org>
+From: Jordi Prats <jprats-KO9VOOLprG0@public.gmane.org>
+Subject: [NFS] NFS limits?
+Date: Mon, 21 Apr 2008 14:50:51 +0200
+Message-ID: <480C8DAB.40504@cesca.es>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: Janne Karhunen <janne.karhunen@gmail.com>,
-	Peter Staubach <staubach@redhat.com>, linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=iso-8859-1
+To: nfs@lists.sourceforge.net
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:41504 "EHLO mx1.redhat.com"
+Received: from neil.brown.name ([220.233.11.133]:55047 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754488AbYDULBM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 21 Apr 2008 07:01:12 -0400
-In-Reply-To: <20080421021153.GC5453@fieldses.org>
+	id S1756688AbYDUMy2 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Apr 2008 08:54:28 -0400
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1JnvXN-0005BJ-OS
+	for linux-nfs@vger.kernel.org; Mon, 21 Apr 2008 22:54:25 +1000
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, 20 Apr 2008 22:11:53 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+Hi all,
+I've a 4246 GB (above 4TB) using NFSv2 to export it. Some application=20
+are generating estrange errors, so it's possible I'm facing a NFS limit=
+?=20
+How large can a be to be exported without problems?
 
-> On Sun, Apr 20, 2008 at 08:49:52PM -0400, Janne Karhunen wrote:
-> > On Sun, Apr 20, 2008 at 8:02 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > 
-> > >  > I didn't get the idea. So the idea is to use multiple sockets,
-> > >  > one bound to LOOPBACK and one to external interface?
-> > >
-> > >  I suppose so.  One socket would be for communication for the local
-> > >  kernel nfsd, one for communication with statd peers.
-> > 
-> > Ok, but that's really quite intrusive - my goal with that
-> > patch was to minimize the amount of changes. Sure,
-> > we can rework larger part of it if you think is better
-> > that way.
-> 
-> Yes.  Hopefully it's not too bad....
-> 
-> > >  > Complicated and unclean in my opinion: one address
-> > >  > should suffice.
-> > >
-> > >  The advantage is that it would require no changes to the kernel or
-> > >  kernel interfaces, and would also solve the problem for people that
-> > >  don't want to upgrade their kernels.
-> > 
-> > Right, but that's hardly an issue with Linux. You need
-> > to do that twice per week anyway ;)
-> > 
-> > 
-> > >  The "rpc over lo" interface to the kernel's lockd is simple enough, and
-> > >  I'd rather not replace it with "rpc over either lo or the interface
-> > >  specified via sysctl" unless there's a really clear advantage.
-> > >
-> > >  (Also, would your patch mean lockd could accept requests that could have
-> > >  spoofed source addresses?)
-> > 
-> > Yes, but loopback can also be spoofed.
-> 
-> Is that true?  I thought the kernel discarded packets from interfaces
-> other than lo claiming to be from 127.*.*.*.
-> 
+I'm using a 32bits architecture.
 
-I think that's the case only if you have rp_filter turned on. It
-usually is these days, but there are some situations where it doesn't
-do what's expected (vlans, for instance), and has to be disabled.
+Thanks!
+Jordi
 
--- 
-Jeff Layton <jlayton@redhat.com>
+--=20
+=2E....................................................................=
+=2E
+         __
+        / /          Jordi Prats
+  C E / S / C A      Dept. de Sistemes
+      /_/            Centre de Supercomputaci=F3 de Catalunya
+
+  Gran Capit=E0, 2-4 (Edifici Nexus) =B7 08034 Barcelona
+  T. 93 205 6464 =B7 F.  93 205 6979 =B7 jprats-KO9VOOLprG0@public.gmane.org
+=2E....................................................................=
+=2E=20
+
+
+-----------------------------------------------------------------------=
+--
+This SF.net email is sponsored by the 2008 JavaOne(SM) Conference=20
+Don't miss this year's exciting event. There's still time to save $100.=
+=20
+Use priority code J8TL2D2.=20
+http://ad.doubleclick.net/clk;198757673;13503038;p?http://java.sun.com/=
+javaone
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
+
