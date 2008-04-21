@@ -1,120 +1,68 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: Bug#476577: corrected patch
-Date: Mon, 21 Apr 2008 11:59:07 -0400
-Message-ID: <40FD052D-BBC2-4AE4-BEF3-56914D39E13A@oracle.com>
-References: <20080417200928.GA20809@kodama.kitenet.net> <20080420223416.GA12722@uio.no>
+Subject: Re: [PATCH 01/33] SUNRPC: Fix a bug in call_decode()
+Date: Mon, 21 Apr 2008 12:22:22 -0400
+Message-ID: <3A712572-A884-41BB-ABFF-94C41EF41F7E@oracle.com>
+References: <20080419204047.14124.49490.stgit@c-69-242-210-120.hsd1.mi.comcast.net> <20080419204047.14124.76946.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
 Mime-Version: 1.0 (Apple Message framework v919.2)
 Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: linux-nfs@vger.kernel.org, Joey Hess <joeyh@debian.org>,
-	476577@bugs.debian.org
-To: "Steinar H. Gunderson" <sesse@debian.org>
+Cc: linux-nfs@vger.kernel.org
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:28817 "EHLO
+Received: from agminet01.oracle.com ([141.146.126.228]:41853 "EHLO
 	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756106AbYDUQBD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Apr 2008 12:01:03 -0400
-In-Reply-To: <20080420223416.GA12722-6Z/AllhyZU4@public.gmane.org>
+	with ESMTP id S1756956AbYDUQXj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Apr 2008 12:23:39 -0400
+In-Reply-To: <20080419204047.14124.76946.stgit-KPEdlmqt5P7XOazzY/2fV4TcuzvYVacciM950cveMlzk1uMJSBkQmQ@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Apr 20, 2008, at 6:34 PM, Steinar H. Gunderson wrote:
-> Hi guys,
->
-> Would you please consider this patch for inclusion into upstream? It  
-> looks
-> more than reasonable to me, at least.
+Hi Trond-
 
-What if /etc/mtab is a symlink to a valid writable file that is not / 
-proc/mounts?  The test you introduce below will prevent that case from  
-working properly.
+On Apr 19, 2008, at 4:40 PM, Trond Myklebust wrote:
+> call_verify() can, under certain circumstances, free the RPC slot.  
+> In that
+> case, our cached pointer 'req = task->tk_rqstp' is invalid. Bug was
+> introduced in commit 220bcc2afd7011b3e0569fc178331fa983c92c1b (SUNRPC:
+> Don't call xprt_release in call refresh).
 
-Is there a security issue with creating a file in / when /proc isn't  
-mounted, or is this just an inconvenience?
+Since you still refer to this function as "call_verify" can I assume  
+you rejected my patches that renamed it rpc_verify_header?
 
-> /* Steinar */
+A better fix might instead move the logic in call_decode's out_retry:  
+arm into call_verify.
+
+A subsequent clean-up should refactor the spaghetti in call_verify  
+into several simpler functions to reduce the likelihood of this kind  
+of defect cropping up again.
+
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> ---
 >
-> On Thu, Apr 17, 2008 at 04:09:28PM -0400, Joey Hess wrote:
->> Hmm, nmudiff did not send in the patch I expected. Here is a
->> corrected/tested one.
->>
->> -- 
->> see shy jo
+> net/sunrpc/clnt.c |    9 ++++++---
+> 1 files changed, 6 insertions(+), 3 deletions(-)
 >
->> diff -ur foo/nfs-utils-1.1.2/debian/changelog nfs-utils-1.1.2/ 
->> debian/changelog
->> --- foo/nfs-utils-1.1.2/debian/changelog	2008-04-17  
->> 16:06:27.000000000 -0400
->> +++ nfs-utils-1.1.2/debian/changelog	2008-04-17 15:33:41.000000000  
->> -0400
->> @@ -1,3 +1,10 @@
->> +nfs-utils (1:1.1.2-2.1) UNRELEASED; urgency=low
->> +
->> +  * Avoid writing to or fchmodding /etc/mtab if it is a symlink.
->> +    Closes: #476577
->> +
->> + -- Joey Hess <joeyh@debian.org>  Thu, 17 Apr 2008 15:30:49 -0400
->> +
->> nfs-utils (1:1.1.2-2) unstable; urgency=low
->>
->>   * Remove ${misc:Depends} from binary variables -- it is not used,  
->> and not
->> diff -ur foo/nfs-utils-1.1.2/utils/mount/fstab.c nfs-utils-1.1.2/ 
->> utils/mount/fstab.c
->> --- foo/nfs-utils-1.1.2/utils/mount/fstab.c	2008-03-14  
->> 11:46:29.000000000 -0400
->> +++ nfs-utils-1.1.2/utils/mount/fstab.c	2008-04-17  
->> 15:40:01.000000000 -0400
->> @@ -52,7 +52,7 @@
->> 	return var_mtab_does_not_exist;
->> }
->>
->> -static int
->> +int
->> mtab_is_a_symlink(void) {
->>         get_mtab_info();
->>         return var_mtab_is_a_symlink;
->> diff -ur foo/nfs-utils-1.1.2/utils/mount/fstab.h nfs-utils-1.1.2/ 
->> utils/mount/fstab.h
->> --- foo/nfs-utils-1.1.2/utils/mount/fstab.h	2008-03-14  
->> 11:46:29.000000000 -0400
->> +++ nfs-utils-1.1.2/utils/mount/fstab.h	2008-04-17  
->> 15:38:30.000000000 -0400
->> @@ -7,6 +7,7 @@
->> #define _PATH_FSTAB "/etc/fstab"
->> #endif
->>
->> +int mtab_is_a_symlink(void);
->> int mtab_is_writable(void);
->> int mtab_does_not_exist(void);
->>
->> diff -ur foo/nfs-utils-1.1.2/utils/mount/mount.c nfs-utils-1.1.2/ 
->> utils/mount/mount.c
->> --- foo/nfs-utils-1.1.2/utils/mount/mount.c	2008-03-14  
->> 11:46:29.000000000 -0400
->> +++ nfs-utils-1.1.2/utils/mount/mount.c	2008-04-17  
->> 15:39:34.000000000 -0400
->> @@ -257,6 +257,13 @@
->> 		return EX_SUCCESS;
->> 	}
->>
->> +        /* Avoid writing if the mtab is a symlink to /proc/mounts,  
->> since
->> +	   that would create a file /proc/mounts in case the proc  
->> filesystem
->> +           is not mounted, and the fchmod below would also fail. */
->> +	if (mtab_is_a_symlink()) {
->> +		return EX_SUCCESS;
->> +	}
->> +
->> 	lock_mtab();
->>
->> 	mtab = nfs_setmntent(MOUNTED, "a+");
+> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+> index d6701f7..0c29792 100644
+> --- a/net/sunrpc/clnt.c
+> +++ b/net/sunrpc/clnt.c
+> @@ -1236,10 +1236,13 @@ call_decode(struct rpc_task *task)
+> 			task->tk_status);
+> 	return;
+> out_retry:
+> -	req->rq_received = req->rq_private_buf.len = 0;
+> 	task->tk_status = 0;
+> -	if (task->tk_client->cl_discrtry)
+> -		xprt_force_disconnect(task->tk_xprt);
+> +	/* Note: call_verify() may have freed the RPC slot */
+> +	if (task->tk_rqstp == req) {
+> +		req->rq_received = req->rq_private_buf.len = 0;
+> +		if (task->tk_client->cl_discrtry)
+> +			xprt_force_disconnect(task->tk_xprt);
+> +	}
+> }
 >
+> /*
 >
->
->
-> -- 
-> Homepage: http://www.sesse.net/
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
 > in
