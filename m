@@ -1,61 +1,41 @@
-From: Joey Hess <joeyh@debian.org>
-Subject: Bug#476577: corrected patch
-Date: Mon, 21 Apr 2008 12:53:14 -0400
-Message-ID: <20080421165314.GA2178@kodama.kitenet.net>
-References: <20080417200928.GA20809@kodama.kitenet.net> <20080420223416.GA12722@uio.no> <40FD052D-BBC2-4AE4-BEF3-56914D39E13A@oracle.com>
-Reply-To: Joey Hess <joeyh@debian.org>, 476577@bugs.debian.org
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [patch] fix statd -n
+Date: Mon, 21 Apr 2008 12:59:03 -0400
+Message-ID: <20080421165903.GB4379@fieldses.org>
+References: <24c1515f0804170938s23fe3ea3pfe77355ed01d8bbf@mail.gmail.com> <20080418173646.GC19038@fieldses.org> <480902CA.1070805@redhat.com> <48090356.9020703@redhat.com> <20080418203225.GD28277@fieldses.org> <24c1515f0804181346g5867fa1fqfbbcd13af25027cb@mail.gmail.com> <20080421000214.GA5453@fieldses.org> <24c1515f0804210746t2d392b8ct6575f09dc7254b07@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="tThc/1wpZn/ma/RB"
-Cc: "Steinar H. Gunderson" <sesse@debian.org>, linux-nfs@vger.kernel.org,
-	476577@bugs.debian.org
-To: Chuck Lever <chuck.lever@oracle.com>
-Return-path: <bounce-debian-bugs-dist=glddb-debian-bugs-dist=m.gmane.org@lists.debian.org>
-Resent-Message-ID: <handler.476577.B476577.12087967971647@bugs.debian.org>
-In-Reply-To: <40FD052D-BBC2-4AE4-BEF3-56914D39E13A@oracle.com>
-List-Post: <mailto:debian-bugs-dist@lists.debian.org>
-List-Help: <mailto:debian-bugs-dist-request@lists.debian.org?subject=help>
-List-Subscribe: <mailto:debian-bugs-dist-request@lists.debian.org?subject=subscribe>
-List-Unsubscribe: <mailto:debian-bugs-dist-request@lists.debian.org?subject=unsubscribe>
+Content-Type: text/plain; charset=us-ascii
+Cc: Peter Staubach <staubach@redhat.com>, linux-nfs@vger.kernel.org
+To: Janne Karhunen <janne.karhunen@gmail.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail.fieldses.org ([66.93.2.214]:44261 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754537AbYDUQ7S (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 21 Apr 2008 12:59:18 -0400
+In-Reply-To: <24c1515f0804210746t2d392b8ct6575f09dc7254b07-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Mon, Apr 21, 2008 at 10:46:00AM -0400, Janne Karhunen wrote:
+> On Sun, Apr 20, 2008 at 8:02 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> 
+> >  > >  > Sorry, not very clear.  Perhaps statd should bind to the loopback
+> >  > >  > interface in addition to any other interfaces if it doesn't bind
+> >  > >  > to INADDR_ANY.
+> >  > >
+> >  > >  Right, that's what would make the most sense to me.  Janne, is there any
+> >  > >  reason that wouldn't solve your problem?
+> >  >
+> >  > I didn't get the idea. So the idea is to use multiple sockets,
+> >  > one bound to LOOPBACK and one to external interface?
+> >
+> >  I suppose so.  One socket would be for communication for the local
+> >  kernel nfsd, one for communication with statd peers.
+> 
+> So shall we add yet another port option for statd or talk
+> to portmap about the port assignment?  It's ugly any way
+> you put it.
 
---tThc/1wpZn/ma/RB
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+I'm confused--why is either needed?
 
-Chuck Lever wrote:
-> What if /etc/mtab is a symlink to a valid writable file that is not /=20
-> proc/mounts?  The test you introduce below will prevent that case from =
-=20
-> working properly.
-
-Note that util-linux mount does the same thing in this case, so this must
-be an uncommon case.
-
-umount.nfs also avoids writing to /etc/mtab if it is a symlink..
-
-> Is there a security issue with creating a file in / when /proc isn't =20
-> mounted, or is this just an inconvenience?
-
-The worse problem is that mount.nfs fails with a nonzero exit code if
-/proc/ is mounted, since the fchmod of /proc/mounts fails.
-
---=20
-see shy jo
-
---tThc/1wpZn/ma/RB
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
-Content-Disposition: inline
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.6 (GNU/Linux)
-
-iD8DBQFIDMZ6d8HHehbQuO8RAvCPAJ4sHLvDygM0YTQjrsEmowipU1iP4gCgjjrv
-ESEqMsE1Wnb7sZqqBHYXCqI=
-=htOv
------END PGP SIGNATURE-----
-
---tThc/1wpZn/ma/RB--
+--b.
