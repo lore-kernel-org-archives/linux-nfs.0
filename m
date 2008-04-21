@@ -1,91 +1,53 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 03/33] SUNRPC: Don't attempt to destroy expired RPCSEC_GSS credentials..
-Date: Mon, 21 Apr 2008 13:50:49 -0400
-Message-ID: <FB8780E7-FE92-40D6-8DFE-0663DF1B0162@oracle.com>
-References: <20080419204047.14124.49490.stgit@c-69-242-210-120.hsd1.mi.comcast.net> <20080419204047.14124.64969.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
-Mime-Version: 1.0 (Apple Message framework v919.2)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: linux-nfs@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [patch] fix statd -n
+Date: Mon, 21 Apr 2008 13:55:48 -0400
+Message-ID: <20080421135548.1aa1a4e8@tleilax.poochiereds.net>
+References: <480902CA.1070805@redhat.com>
+	<48090356.9020703@redhat.com>
+	<20080418203225.GD28277@fieldses.org>
+	<24c1515f0804181346g5867fa1fqfbbcd13af25027cb@mail.gmail.com>
+	<20080421000214.GA5453@fieldses.org>
+	<24c1515f0804201749x47bee916y9970fe1102bfb5@mail.gmail.com>
+	<20080421021153.GC5453@fieldses.org>
+	<20080421070107.454cfad2@tleilax.poochiereds.net>
+	<20080421133940.GB28795@fieldses.org>
+	<20080421101003.4e9d85a6@tleilax.poochiereds.net>
+	<20080421173227.GE4379@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Cc: Janne Karhunen <janne.karhunen@gmail.com>,
+	Peter Staubach <staubach@redhat.com>, linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:23852 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754480AbYDURvO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Apr 2008 13:51:14 -0400
-In-Reply-To: <20080419204047.14124.64969.stgit-KPEdlmqt5P7XOazzY/2fV4TcuzvYVacciM950cveMlzk1uMJSBkQmQ@public.gmane.org>
+Received: from mx1.redhat.com ([66.187.233.31]:57207 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752902AbYDUR4G (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 21 Apr 2008 13:56:06 -0400
+In-Reply-To: <20080421173227.GE4379@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond-
+On Mon, 21 Apr 2008 13:32:27 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-On Apr 19, 2008, at 4:40 PM, Trond Myklebust wrote:
-> ..and always destroy using a 'soft' RPC call. Destroying GSS  
-> credentials
-> isn't mandatory; the server can always cope with a few credentials not
-> getting destroyed in a timely fashion.
+> > I think that's basically correct, but most modern distros turn it on by
+> > default. From the default /etc/sysctl.conf on my fedora box:
+> > 
+> > net.ipv4.conf.default.rp_filter = 1
+> > 
+> > ...it's generally a good thing to enable, but there are places where it
+> > needs to be disabled. For instance, my Linksys WRT54g is doing firewall
+> > duties and has it disabled because the switch ports on it are segmented
+> > with VLANs and rp_filter interferes with that.
+> 
+> Actually, the specific question here is: say you have an ethernet
+> interface 192.168.0.1.  Will the kernel deliver a packet that comes from
+> the network and has source address 192.168.0.1?
+> 
 
-These two changes may have different side-effects, but backing out  
-this patch will revert both changes.  Should these be split into  
-separate patches to facilitate git bisect?
+Ahh, I misunderstood then. I'm not sure about that specific situation.
+I doubt that rp_filter would prevent that, but there may be some other
+mechanism that would.
 
-> This actually fixes a hang situation. Basically, some servers will  
-> decide
-> that the client is crazy if it tries to destroy an RPC context for  
-> which
-> they have sent an RPCSEC_GSS_CREDPROBLEM, and so will refuse to talk  
-> to it
-> for a while.
-
-That seems unfriendly.  Is this server-side behavior mandated?  Why  
-wouldn't the server just treat an extraneous context destruction  
-request as a successful no-op?
-
-You definitely should include an explanation of this server-side  
-behavior in the documenting comment for gss_destroying_context.
-
-> The regression therefor probably was introduced by commit
-> 0df7fb74fbb709591301871a38aac7735a1d6583.
->
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> ---
->
-> net/sunrpc/auth_gss/auth_gss.c |    4 ++--
-> 1 files changed, 2 insertions(+), 2 deletions(-)
->
-> diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/ 
-> auth_gss.c
-> index d34f6df..55948cd 100644
-> --- a/net/sunrpc/auth_gss/auth_gss.c
-> +++ b/net/sunrpc/auth_gss/auth_gss.c
-> @@ -710,7 +710,7 @@ gss_destroying_context(struct rpc_cred *cred)
-> 	struct rpc_task *task;
->
-> 	if (gss_cred->gc_ctx == NULL ||
-> -			gss_cred->gc_ctx->gc_proc == RPC_GSS_PROC_DESTROY)
-> +	    test_and_clear_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags) == 0)
-> 		return 0;
->
-> 	gss_cred->gc_ctx->gc_proc = RPC_GSS_PROC_DESTROY;
-> @@ -720,7 +720,7 @@ gss_destroying_context(struct rpc_cred *cred)
-> 	 * by the RPC call or by the put_rpccred() below */
-> 	get_rpccred(cred);
->
-> -	task = rpc_call_null(gss_auth->client, cred, RPC_TASK_ASYNC);
-> +	task = rpc_call_null(gss_auth->client, cred, RPC_TASK_ASYNC| 
-> RPC_TASK_SOFT);
-> 	if (!IS_ERR(task))
-> 		rpc_put_task(task);
->
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
-> in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+-- 
+Jeff Layton <jlayton@redhat.com>
