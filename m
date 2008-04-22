@@ -1,67 +1,36 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 07/33] NFS: Ensure that rpc_run_task() errors are propagated back to the caller
-Date: Tue, 22 Apr 2008 11:32:59 -0400
-Message-ID: <F6371394-AC06-4B2A-9786-607E29E2B41A@oracle.com>
-References: <20080419204047.14124.49490.stgit@c-69-242-210-120.hsd1.mi.comcast.net> <20080419204048.14124.4335.stgit@c-69-242-210-120.hsd1.mi.comcast.net> <BE4F0130-A492-4229-83E4-E7C912B0ABF0@oracle.com> <1208823472.7767.40.camel@heimdal.trondhjem.org> <92201A7C-4650-450E-ABF2-EF699B208647@oracle.com> <1208877058.11982.11.camel@heimdal.trondhjem.org>
-Mime-Version: 1.0 (Apple Message framework v919.2)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: linux-nfs@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+From: Quentin Godfroy <godfroy-7pss2ddYZfWsyDt4atOG6g@public.gmane.org>
+Subject: Problem with krb5 authentification, server under a NAT
+Date: Tue, 22 Apr 2008 18:19:09 +0200
+Message-ID: <20080422161908.GC11221@goelette.ens.fr>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+To: nfsv4@linux-nfs.org, linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:43146 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756787AbYDVPeS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Apr 2008 11:34:18 -0400
-In-Reply-To: <1208877058.11982.11.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from nef2.ens.fr ([129.199.96.40]:1415 "EHLO nef2.ens.fr"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752874AbYDVQTP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 Apr 2008 12:19:15 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Apr 22, 2008, at 11:10 AM, Trond Myklebust wrote:
-> On Tue, 2008-04-22 at 10:19 -0400, Chuck Lever wrote:
->> My point is that EFAULT isn't an appropriate return code if
->> rpc_run_task() fails.  EFAULT is appropriate only when the I/O engine
->> can't access the user's memory.
->>
->> If no bytes were read, an error code that reflects the problem should
->> be returned.
->>
->> 	task = rpc_run_task(&task_setup_data);
->> 	if (IS_ERR(task) {
->> 		result = PTR_ERR(task);
+Hi,
 
-		^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+I have a problem with krb5 authentification and nfsv4:
 
-You need to add this line to your patch.
+basically the server is behind a NAT which over I do not have much control.
+To mount exported partitions I use socat on the NAT and redirect some TCP port
+(actually 2050 because 2049 is firewalled) to the port 2049 on the server. I
+can successfuly mount with auth=sys,port=2050, but I am unable to mount with
+kerberos authentification. The problem seems to lie within rpc.gssd which does
+not care for the port setting and tries to contact the server on port 2049.
 
->>
->> 		break;
->> 	}
->> 	rpc_put_task(task);
->>
->> The logic at the end of nfs_direct_read_schedule_segment() will take
->> care to return the number of bytes read, or an error code if no bytes
->> were read.
->
-> Then a fix should be applied to auth_gss.c: the EFAULT error message  
-> is
-> coming from the downcall code. If it is not appropriate to pass that  
-> on
-> to the RPC caller, then we should substitute an EACCES.
+I suppose the same could happen with nfsv{2,3} (provided the mountd port is
+redirected as well)
 
-The way I read your patch, PTR_ERR(task) is never returned to  
-nfs_direct_read_schedule_segment's caller, so it's not possible for  
-the downcall error code to be propagated upwards.
+Is this a problem you were aware of?
 
-Instead, if rpc_run_task() fails the _first_ time through the loop  
-(before any bytes have been started), the loop will exit, but "result"  
-will already be set to the number of pages grabbed by get_user_pages.
+I suppose fixing it may require a change in the callback between the kernel
+and rpc.gssd?
 
-In other words, if no bytes are in flight, "result" will be equal to  
-or greater than zero, and the logic at the end of the function will  
-return EFAULT.
-
-Am I wrong about that?
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+Regards,
+Quentin Godfroy
