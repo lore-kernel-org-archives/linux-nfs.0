@@ -1,13 +1,14 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: [NFS] [PATCH] lockd: unlock lockd locks associated with a given
-	server ip
-Date: Tue, 22 Apr 2008 19:17:29 -0400
-Message-ID: <20080422231729.GJ21770@fieldses.org>
+Subject: [NFS] [PATCH] lockd: unlock lockd locks held for a certain
+	filesystem
+Date: Tue, 22 Apr 2008 19:18:55 -0400
+Message-ID: <20080422231855.GK21770@fieldses.org>
 References: <200804161117.24734.hensema@hostingxs.nl>
 	<48061807.9030808@gmail.com> <20080416184233.GF22743@fieldses.org>
 	<480655E7.30800@gmail.com> <20080417215222.GK9912@fieldses.org>
 	<4808A9DE.9040304@gmail.com> <20080418181918.GB24552@fieldses.org>
 	<20080422231520.GI21770@fieldses.org>
+	<20080422231729.GJ21770@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Lon Hohberger <lhh@redhat.com>, nfs@lists.sourceforge.net,
@@ -16,45 +17,26 @@ Cc: Lon Hohberger <lhh@redhat.com>, nfs@lists.sourceforge.net,
 	<hensema-yolSOB3tinz/D1n+0JDH9g@public.gmane.org>
 To: Wendy Cheng <s.wendy.cheng@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:34055 "EHLO neil.brown.name"
+Received: from neil.brown.name ([220.233.11.133]:34056 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750705AbYDVXRr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 Apr 2008 19:17:47 -0400
+	id S933421AbYDVXTG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 Apr 2008 19:19:06 -0400
 Received: from brown by neil.brown.name with local (Exim 4.63)
 	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1JoRk9-0005bb-NW
-	for linux-nfs@vger.kernel.org; Wed, 23 Apr 2008 09:17:45 +1000
-In-Reply-To: <20080422231520.GI21770@fieldses.org>
+	id 1JoRlR-0005bs-7V
+	for linux-nfs@vger.kernel.org; Wed, 23 Apr 2008 09:19:05 +1000
+In-Reply-To: <20080422231729.GJ21770@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Wendy Cheng <wcheng@redhat.com>
 
-For high-availability NFS service, we generally need to be able to drop
-file locks held on the exported filesystem before moving clients to a
-new server.  Currently the only way to do that is by shutting down lockd
-entirely, which is often undesireable (for example, if you want to
-continue exporting other filesystems).
+Add /proc/fs/nfsd/unlock_filesystem, which allows e.g.:
 
-This patch allows the administrator to release all locks held by clients
-accessing the client through a given server ip address, by echoing that
-address to a new file, /proc/fs/nfsd/unlock_ip, as in:
+shell> echo /mnt/sfs1 > /proc/fs/nfsd/unlock_filesystem
 
-shell> echo 10.1.1.2 > /proc/fs/nfsd/unlock_ip
-
-The expected sequence of events can be:
-1. Tear down the IP address
-2. Unexport the path
-3. Write IP to /proc/fs/nfsd/unlock_ip to unlock files
-4. Signal peer to begin take-over.
-
-For now we only support IPv4 addresses and NFSv2/v3 (NFSv4 locks are not
-affected).
-
-Also, if unmounting the filesystem is required, we assume at step 3 that
-clients using the given server ip are the only clients holding locks on
-the given filesystem; otherwise, an additional patch is required to
-allow revoking all locks held by lockd on a given filesystem.
+so that a filesystem can be unmounted before allowing a peer nfsd to
+take over nfs service for the filesystem.
 
 Signed-off-by: S. Wendy Cheng <wcheng@redhat.com>
 Cc: Lon Hohberger  <lhh@redhat.com>
@@ -66,149 +48,140 @@ Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
  include/linux/lockd/lockd.h |    7 ++++
  3 files changed, 131 insertions(+), 7 deletions(-)
 ---
- fs/lockd/svcsubs.c          |   36 +++++++++++++++++++++++++++++++-----
- fs/nfsd/nfsctl.c            |   33 +++++++++++++++++++++++++++++++++
- include/linux/lockd/lockd.h |    7 ++++++-
- 3 files changed, 70 insertions(+), 6 deletions(-)
+ fs/lockd/svcsubs.c          |   38 +++++++++++++++++++++++++++++++++-----
+ fs/nfsd/nfsctl.c            |   32 ++++++++++++++++++++++++++++++++
+ include/linux/lockd/lockd.h |    1 +
+ 3 files changed, 66 insertions(+), 5 deletions(-)
 
 diff --git a/fs/lockd/svcsubs.c b/fs/lockd/svcsubs.c
-index dbbefbc..e12daba 100644
+index e12daba..24589de 100644
 --- a/fs/lockd/svcsubs.c
 +++ b/fs/lockd/svcsubs.c
-@@ -18,6 +18,8 @@
- #include <linux/lockd/lockd.h>
- #include <linux/lockd/share.h>
- #include <linux/lockd/sm_inter.h>
-+#include <linux/module.h>
-+#include <linux/mount.h>
- 
- #define NLMDBG_FACILITY		NLMDBG_SVCSUBS
- 
-@@ -230,7 +232,7 @@ nlm_file_inuse(struct nlm_file *file)
-  * Loop over all files in the file table.
-  */
- static int
--nlm_traverse_files(struct nlm_host *host, nlm_host_match_fn_t match)
-+nlm_traverse_files(void *data, nlm_host_match_fn_t match)
- {
- 	struct hlist_node *pos, *next;
- 	struct nlm_file	*file;
-@@ -244,7 +246,7 @@ nlm_traverse_files(struct nlm_host *host, nlm_host_match_fn_t match)
- 
- 			/* Traverse locks, blocks and shares of this file
- 			 * and update file->f_locks count */
--			if (nlm_inspect_file(host, file, match))
-+			if (nlm_inspect_file(data, file, match))
- 				ret = 1;
- 
- 			mutex_lock(&nlm_file_mutex);
-@@ -303,21 +305,27 @@ nlm_release_file(struct nlm_file *file)
-  *	Used by nlmsvc_invalidate_all
-  */
- static int
--nlmsvc_mark_host(struct nlm_host *host, struct nlm_host *dummy)
-+nlmsvc_mark_host(void *data, struct nlm_host *dummy)
- {
-+	struct nlm_host *host = data;
-+
- 	host->h_inuse = 1;
+@@ -196,6 +196,12 @@ again:
  	return 0;
  }
  
- static int
--nlmsvc_same_host(struct nlm_host *host, struct nlm_host *other)
-+nlmsvc_same_host(void *data, struct nlm_host *other)
- {
-+	struct nlm_host *host = data;
++static int
++nlmsvc_always_match(void *dummy1, struct nlm_host *dummy2)
++{
++	return 1;
++}
 +
- 	return host == other;
+ /*
+  * Inspect a single file
+  */
+@@ -232,7 +238,8 @@ nlm_file_inuse(struct nlm_file *file)
+  * Loop over all files in the file table.
+  */
+ static int
+-nlm_traverse_files(void *data, nlm_host_match_fn_t match)
++nlm_traverse_files(void *data, nlm_host_match_fn_t match,
++		int (*is_failover_file)(void *data, struct nlm_file *file))
+ {
+ 	struct hlist_node *pos, *next;
+ 	struct nlm_file	*file;
+@@ -241,6 +248,8 @@ nlm_traverse_files(void *data, nlm_host_match_fn_t match)
+ 	mutex_lock(&nlm_file_mutex);
+ 	for (i = 0; i < FILE_NRHASH; i++) {
+ 		hlist_for_each_entry_safe(file, pos, next, &nlm_files[i], f_list) {
++			if (is_failover_file && !is_failover_file(data, file))
++				continue;
+ 			file->f_count++;
+ 			mutex_unlock(&nlm_file_mutex);
+ 
+@@ -345,7 +354,7 @@ void
+ nlmsvc_mark_resources(void)
+ {
+ 	dprintk("lockd: nlmsvc_mark_resources\n");
+-	nlm_traverse_files(NULL, nlmsvc_mark_host);
++	nlm_traverse_files(NULL, nlmsvc_mark_host, NULL);
  }
  
- static int
--nlmsvc_is_client(struct nlm_host *host, struct nlm_host *dummy)
-+nlmsvc_is_client(void *data, struct nlm_host *dummy)
+ /*
+@@ -356,7 +365,7 @@ nlmsvc_free_host_resources(struct nlm_host *host)
  {
-+	struct nlm_host *host = data;
-+
- 	if (host->h_server) {
- 		/* we are destroying locks even though the client
- 		 * hasn't asked us too, so don't unmonitor the
-@@ -370,3 +378,21 @@ nlmsvc_invalidate_all(void)
+ 	dprintk("lockd: nlmsvc_free_host_resources\n");
+ 
+-	if (nlm_traverse_files(host, nlmsvc_same_host)) {
++	if (nlm_traverse_files(host, nlmsvc_same_host, NULL)) {
+ 		printk(KERN_WARNING
+ 			"lockd: couldn't remove all locks held by %s\n",
+ 			host->h_name);
+@@ -376,8 +385,26 @@ nlmsvc_invalidate_all(void)
+ 	 * turn, which is about as inefficient as it gets.
+ 	 * Now we just do it once in nlm_traverse_files.
  	 */
- 	nlm_traverse_files(NULL, nlmsvc_is_client);
- }
+-	nlm_traverse_files(NULL, nlmsvc_is_client);
++	nlm_traverse_files(NULL, nlmsvc_is_client, NULL);
++}
 +
 +static int
-+nlmsvc_failover_file_ok_ip(void *datap, struct nlm_host *host)
++nlmsvc_failover_file_ok_path(void *datap, struct nlm_file *file)
 +{
-+	__be32 *server_addr = datap;
-+
-+	return host->h_saddr.sin_addr.s_addr == *server_addr;
++	struct nameidata *nd = datap;
++	return nd->path.mnt->mnt_sb == file->f_file->f_path.mnt->mnt_sb;
 +}
 +
 +int
-+nlmsvc_failover_ip(__be32 server_addr)
++nlmsvc_failover_path(struct nameidata *nd)
 +{
 +	int ret;
-+	ret = nlm_traverse_files(&server_addr, nlmsvc_failover_file_ok_ip);
-+	return ret ? -EIO : 0;
 +
-+}
-+EXPORT_SYMBOL_GPL(nlmsvc_failover_ip);
++	ret = nlm_traverse_files(nd, nlmsvc_always_match,
++				 nlmsvc_failover_file_ok_path);
++	return ret ? -EIO : 0;
+ }
++EXPORT_SYMBOL_GPL(nlmsvc_failover_path);
+ 
+ static int
+ nlmsvc_failover_file_ok_ip(void *datap, struct nlm_host *host)
+@@ -391,7 +418,8 @@ int
+ nlmsvc_failover_ip(__be32 server_addr)
+ {
+ 	int ret;
+-	ret = nlm_traverse_files(&server_addr, nlmsvc_failover_file_ok_ip);
++	ret = nlm_traverse_files(&server_addr, nlmsvc_failover_file_ok_ip,
++						NULL);
+ 	return ret ? -EIO : 0;
+ 
+ }
 diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 8516137..02c3949 100644
+index 02c3949..05a59cc 100644
 --- a/fs/nfsd/nfsctl.c
 +++ b/fs/nfsd/nfsctl.c
-@@ -22,6 +22,7 @@
- #include <linux/seq_file.h>
- #include <linux/pagemap.h>
- #include <linux/init.h>
-+#include <linux/inet.h>
- #include <linux/string.h>
- #include <linux/smp_lock.h>
- #include <linux/ctype.h>
-@@ -35,6 +36,7 @@
- #include <linux/nfsd/cache.h>
- #include <linux/nfsd/xdr.h>
- #include <linux/nfsd/syscall.h>
-+#include <linux/lockd/lockd.h>
- 
- #include <asm/uaccess.h>
- 
-@@ -52,6 +54,7 @@ enum {
- 	NFSD_Getfs,
+@@ -55,6 +55,7 @@ enum {
  	NFSD_List,
  	NFSD_Fh,
-+	NFSD_FO_UnlockIP,
+ 	NFSD_FO_UnlockIP,
++	NFSD_FO_UnlockFS,
  	NFSD_Threads,
  	NFSD_Pool_Threads,
  	NFSD_Versions,
-@@ -88,6 +91,8 @@ static ssize_t write_leasetime(struct file *file, char *buf, size_t size);
- static ssize_t write_recoverydir(struct file *file, char *buf, size_t size);
+@@ -92,6 +93,7 @@ static ssize_t write_recoverydir(struct file *file, char *buf, size_t size);
  #endif
  
-+static ssize_t failover_unlock_ip(struct file *file, char *buf, size_t size);
-+
+ static ssize_t failover_unlock_ip(struct file *file, char *buf, size_t size);
++static ssize_t failover_unlock_fs(struct file *file, char *buf, size_t size);
+ 
  static ssize_t (*write_op[])(struct file *, char *, size_t) = {
  	[NFSD_Svc] = write_svc,
- 	[NFSD_Add] = write_add,
-@@ -97,6 +102,7 @@ static ssize_t (*write_op[])(struct file *, char *, size_t) = {
- 	[NFSD_Getfd] = write_getfd,
+@@ -103,6 +105,7 @@ static ssize_t (*write_op[])(struct file *, char *, size_t) = {
  	[NFSD_Getfs] = write_getfs,
  	[NFSD_Fh] = write_filehandle,
-+	[NFSD_FO_UnlockIP] = failover_unlock_ip,
+ 	[NFSD_FO_UnlockIP] = failover_unlock_ip,
++	[NFSD_FO_UnlockFS] = failover_unlock_fs,
  	[NFSD_Threads] = write_threads,
  	[NFSD_Pool_Threads] = write_pool_threads,
  	[NFSD_Versions] = write_versions,
-@@ -288,6 +294,31 @@ static ssize_t write_getfd(struct file *file, char *buf, size_t size)
- 	return err;
+@@ -319,6 +322,33 @@ static ssize_t failover_unlock_ip(struct file *file, char *buf, size_t size)
+ 	return nlmsvc_failover_ip(server_ip);
  }
  
-+static ssize_t failover_unlock_ip(struct file *file, char *buf, size_t size)
++static ssize_t failover_unlock_fs(struct file *file, char *buf, size_t size)
 +{
-+	__be32 server_ip;
-+	char *fo_path, c;
-+	int b1, b2, b3, b4;
++	struct nameidata nd;
++	char *fo_path;
++	int error;
 +
 +	/* sanity check */
 +	if (size == 0)
@@ -221,51 +194,40 @@ index 8516137..02c3949 100644
 +	if (qword_get(&buf, fo_path, size) < 0)
 +		return -EINVAL;
 +
-+	/* get ipv4 address */
-+	if (sscanf(fo_path, "%u.%u.%u.%u%c", &b1, &b2, &b3, &b4, &c) != 4)
-+		return -EINVAL;
-+	server_ip = htonl((((((b1<<8)|b2)<<8)|b3)<<8)|b4);
++	error = path_lookup(fo_path, 0, &nd);
++	if (error)
++		return error;
 +
-+	return nlmsvc_failover_ip(server_ip);
++	error = nlmsvc_failover_path(&nd);
++
++	path_put(&nd.path);
++	return error;
 +}
 +
  static ssize_t write_filehandle(struct file *file, char *buf, size_t size)
  {
  	/* request is:
-@@ -696,6 +727,8 @@ static int nfsd_fill_super(struct super_block * sb, void * data, int silent)
- 		[NFSD_Getfd] = {".getfd", &transaction_ops, S_IWUSR|S_IRUSR},
- 		[NFSD_Getfs] = {".getfs", &transaction_ops, S_IWUSR|S_IRUSR},
+@@ -729,6 +759,8 @@ static int nfsd_fill_super(struct super_block * sb, void * data, int silent)
  		[NFSD_List] = {"exports", &exports_operations, S_IRUGO},
-+		[NFSD_FO_UnlockIP] = {"unlock_ip",
+ 		[NFSD_FO_UnlockIP] = {"unlock_ip",
+ 					&transaction_ops, S_IWUSR|S_IRUSR},
++		[NFSD_FO_UnlockFS] = {"unlock_filesystem",
 +					&transaction_ops, S_IWUSR|S_IRUSR},
  		[NFSD_Fh] = {"filehandle", &transaction_ops, S_IWUSR|S_IRUSR},
  		[NFSD_Threads] = {"threads", &transaction_ops, S_IWUSR|S_IRUSR},
  		[NFSD_Pool_Threads] = {"pool_threads", &transaction_ops, S_IWUSR|S_IRUSR},
 diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
-index 4babb2a..f06d2db 100644
+index f06d2db..cde8605 100644
 --- a/include/linux/lockd/lockd.h
 +++ b/include/linux/lockd/lockd.h
-@@ -191,7 +191,7 @@ void		  nsm_release(struct nsm_handle *);
-  * This is used in garbage collection and resource reclaim
-  * A return value != 0 means destroy the lock/block/share
-  */
--typedef int	  (*nlm_host_match_fn_t)(struct nlm_host *cur, struct nlm_host *ref);
-+typedef int	  (*nlm_host_match_fn_t)(void *cur, struct nlm_host *ref);
- 
+@@ -220,6 +220,7 @@ void		  nlmsvc_invalidate_all(void);
  /*
-  * Server-side lock handling
-@@ -217,6 +217,11 @@ void		  nlmsvc_mark_resources(void);
- void		  nlmsvc_free_host_resources(struct nlm_host *);
- void		  nlmsvc_invalidate_all(void);
+  * Cluster failover support
+  */
++int           nlmsvc_failover_path(struct nameidata *nd);
+ int           nlmsvc_failover_ip(__be32 server_addr);
  
-+/*
-+ * Cluster failover support
-+ */
-+int           nlmsvc_failover_ip(__be32 server_addr);
-+
  static __inline__ struct inode *
- nlmsvc_file_inode(struct nlm_file *file)
- {
 -- 
 1.5.5.rc1
 
