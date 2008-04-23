@@ -1,113 +1,254 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 03/33] SUNRPC: Don't attempt to destroy expired RPCSEC_GSS credentials..
-Date: Wed, 23 Apr 2008 13:40:52 -0400
-Message-ID: <BA4DAED3-46BB-4AC9-9FDF-95FB11548487@oracle.com>
-References: <20080419204047.14124.49490.stgit@c-69-242-210-120.hsd1.mi.comcast.net> <20080419204047.14124.64969.stgit@c-69-242-210-120.hsd1.mi.comcast.net> <FB8780E7-FE92-40D6-8DFE-0663DF1B0162@oracle.com> <1208822443.7767.23.camel@heimdal.trondhjem.org> <86898638-C54D-44F7-917E-1EDF6795B56C@oracle.com> <1208876800.11982.6.camel@heimdal.trondhjem.org> <1208960443.7459.9.camel@heimdal.trondhjem.org>
-Mime-Version: 1.0 (Apple Message framework v919.2)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: linux-nfs@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [NFS] [PATCH] lockd: unlock lockd locks held for a certain
+	filesystem
+Date: Wed, 23 Apr 2008 13:12:40 -0400
+Message-ID: <20080423171240.GG31576@fieldses.org>
+References: <48061807.9030808@gmail.com> <20080416184233.GF22743@fieldses.org>
+	<480655E7.30800@gmail.com> <20080417215222.GK9912@fieldses.org>
+	<4808A9DE.9040304@gmail.com> <20080418181918.GB24552@fieldses.org>
+	<20080422231520.GI21770@fieldses.org>
+	<20080422231729.GJ21770@fieldses.org>
+	<20080422231855.GK21770@fieldses.org>
+	<20080423074422.GA23518@lst.de>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Cc: Lon Hohberger <lhh@redhat.com>,
+	Wendy Cheng <s.wendy.cheng@gmail.com>,
+	nfs@lists.sourceforge.net,
+	Erik Hensema / HostingXS Internet Services
+	<hensema-yolSOB3tinz/D1n+0JDH9g@public.gmane.org>
+To: Christoph Hellwig <hch@lst.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:35385 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752696AbYDWRlY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Apr 2008 13:41:24 -0400
-In-Reply-To: <1208960443.7459.9.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from neil.brown.name ([220.233.11.133]:60076 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751174AbYDWSNy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 Apr 2008 14:13:54 -0400
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1JojTc-0008NF-LR
+	for linux-nfs@vger.kernel.org; Thu, 24 Apr 2008 04:13:52 +1000
+In-Reply-To: <20080423074422.GA23518@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Apr 23, 2008, at 10:20 AM, Trond Myklebust wrote:
-> On Tue, 2008-04-22 at 11:11 -0400, Trond Myklebust wrote:
->> On Tue, 2008-04-22 at 09:38 -0400, Chuck Lever wrote:
->>>> RFC-2203 states that servers are supposed to silently discard  
->>>> requests
->>>> that they don't recognise (see section 5.3.3.1 - Context
->>>> Management), so
->>>> it is correct server behaviour.
->>>
->>>
->>> Dropping the request to destroy a context is fine.  Temporarily
->>> fencing the client is what I was concerned about.
->>
->> I'd agree that is somewhat drastic, and have passed the information  
->> on
->> to the server vendor, however that doesn't change the fact that we  
->> have
->> a client bug too: we should not be using expired creds.
->>
->> The client side performance problem was compounded by the fact that  
->> the
->> RPCSEC_GSS destruction call was sent as a hard RPC call, and the fact
->> that we impose the NFSv4 rule that we need to drop the connection  
->> before
->> resending a request.
->
-> Having thought a bit more about the consequences of this RFC, I  
-> think we
-> also need to drop the credential on (major) timeouts, since we need to
-> assume that the timeout may be due to the credential being out of
-> sequence.
+On Wed, Apr 23, 2008 at 09:44:22AM +0200, Christoph Hellwig wrote:
+> Please don't pass down the nameidata, but just the super_block.  That's
+> all we need in the lower layer functions.
 
-I'm not an expert on this, but so we're on the same page, are you  
-looking at RFC 2203 Section 5.3.3, or Section 7.2?
+Yep, I agree that's nicer; here's the result.
 
-5.3.3.1 seems to suggest that clients will typically bump the sequence  
-number and retry after the server drops a request.  In other words, it  
-doesn't expect there to be much more to timeout recovery than that.
+--b.
 
-I wonder about the impact of frequent credential invalidation for  
-datagram transports, where major timeouts are not so rare.
+commit 26a816586b71877d8a84fbb436373099384e328b
+Author: Wendy Cheng <wcheng@redhat.com>
+Date:   Thu Jan 17 11:10:12 2008 -0500
 
-> ---------------------------------------------
-> From: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Date: Tue, 22 Apr 2008 16:47:55 -0400
-> SUNRPC: Invalidate the RPCSEC_GSS session if the server dropped the  
-> request
->
-> RFC 2203 requires the server to drop the request if it believes the
-> RPCSEC_GSS context is out of sequence. The problem is that we have  
-> no way
-> on the client to know why the server dropped the request. In order  
-> to avoid
-> spinning forever trying to resend the request, the safe approach is
-> therefore to always invalidate the RPCSEC_GSS context on every major
-> timeout.
->
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> ---
->
-> net/sunrpc/clnt.c |    5 +++++
-> 1 files changed, 5 insertions(+), 0 deletions(-)
->
-> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-> index 2969e84..eb813e9 100644
-> --- a/net/sunrpc/clnt.c
-> +++ b/net/sunrpc/clnt.c
-> @@ -1169,6 +1169,11 @@ call_timeout(struct rpc_task *task)
-> 			clnt->cl_protname, clnt->cl_server);
-> 	}
-> 	rpc_force_rebind(clnt);
-> +	/*
-> +	 * Did our request time out due to an RPCSEC_GSS out-of-sequence
-> +	 * event? RFC2203 requires the server to drop all such requests.
-> +	 */
-> +	rpcauth_invalcred(task);
->
-> retry:
-> 	clnt->cl_stats->rpcretrans++;
->
->
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
->
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
+    lockd: unlock lockd locks held for a certain filesystem
+    
+    Add /proc/fs/nfsd/unlock_filesystem, which allows e.g.:
+    
+    shell> echo /mnt/sfs1 > /proc/fs/nfsd/unlock_filesystem
+    
+    so that a filesystem can be unmounted before allowing a peer nfsd to
+    take over nfs service for the filesystem.
+    
+    Signed-off-by: S. Wendy Cheng <wcheng@redhat.com>
+    Cc: Lon Hohberger  <lhh@redhat.com>
+    Cc: Christoph Hellwig <hch@lst.de>
+    Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+    
+     fs/lockd/svcsubs.c          |   66 +++++++++++++++++++++++++++++++++++++++-----
+     fs/nfsd/nfsctl.c            |   65 +++++++++++++++++++++++++++++++++++++++++++
+     include/linux/lockd/lockd.h |    7 ++++
+     3 files changed, 131 insertions(+), 7 deletions(-)
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+diff --git a/fs/lockd/svcsubs.c b/fs/lockd/svcsubs.c
+index e12daba..dcdcff6 100644
+--- a/fs/lockd/svcsubs.c
++++ b/fs/lockd/svcsubs.c
+@@ -196,6 +196,12 @@ again:
+ 	return 0;
+ }
+ 
++static int
++nlmsvc_always_match(void *dummy1, struct nlm_host *dummy2)
++{
++	return 1;
++}
++
+ /*
+  * Inspect a single file
+  */
+@@ -232,7 +238,8 @@ nlm_file_inuse(struct nlm_file *file)
+  * Loop over all files in the file table.
+  */
+ static int
+-nlm_traverse_files(void *data, nlm_host_match_fn_t match)
++nlm_traverse_files(void *data, nlm_host_match_fn_t match,
++		int (*is_failover_file)(void *data, struct nlm_file *file))
+ {
+ 	struct hlist_node *pos, *next;
+ 	struct nlm_file	*file;
+@@ -241,6 +248,8 @@ nlm_traverse_files(void *data, nlm_host_match_fn_t match)
+ 	mutex_lock(&nlm_file_mutex);
+ 	for (i = 0; i < FILE_NRHASH; i++) {
+ 		hlist_for_each_entry_safe(file, pos, next, &nlm_files[i], f_list) {
++			if (is_failover_file && !is_failover_file(data, file))
++				continue;
+ 			file->f_count++;
+ 			mutex_unlock(&nlm_file_mutex);
+ 
+@@ -345,7 +354,7 @@ void
+ nlmsvc_mark_resources(void)
+ {
+ 	dprintk("lockd: nlmsvc_mark_resources\n");
+-	nlm_traverse_files(NULL, nlmsvc_mark_host);
++	nlm_traverse_files(NULL, nlmsvc_mark_host, NULL);
+ }
+ 
+ /*
+@@ -356,7 +365,7 @@ nlmsvc_free_host_resources(struct nlm_host *host)
+ {
+ 	dprintk("lockd: nlmsvc_free_host_resources\n");
+ 
+-	if (nlm_traverse_files(host, nlmsvc_same_host)) {
++	if (nlm_traverse_files(host, nlmsvc_same_host, NULL)) {
+ 		printk(KERN_WARNING
+ 			"lockd: couldn't remove all locks held by %s\n",
+ 			host->h_name);
+@@ -376,8 +385,27 @@ nlmsvc_invalidate_all(void)
+ 	 * turn, which is about as inefficient as it gets.
+ 	 * Now we just do it once in nlm_traverse_files.
+ 	 */
+-	nlm_traverse_files(NULL, nlmsvc_is_client);
++	nlm_traverse_files(NULL, nlmsvc_is_client, NULL);
++}
++
++static int
++nlmsvc_failover_file_ok_path(void *datap, struct nlm_file *file)
++{
++	struct super_block *sb = datap;
++
++	return sb == file->f_file->f_path.mnt->mnt_sb;
++}
++
++int
++nlmsvc_failover_path(struct super_block *sb)
++{
++	int ret;
++
++	ret = nlm_traverse_files(sb, nlmsvc_always_match,
++				 nlmsvc_failover_file_ok_path);
++	return ret ? -EIO : 0;
+ }
++EXPORT_SYMBOL_GPL(nlmsvc_failover_path);
+ 
+ static int
+ nlmsvc_failover_file_ok_ip(void *datap, struct nlm_host *host)
+@@ -391,7 +419,8 @@ int
+ nlmsvc_failover_ip(__be32 server_addr)
+ {
+ 	int ret;
+-	ret = nlm_traverse_files(&server_addr, nlmsvc_failover_file_ok_ip);
++	ret = nlm_traverse_files(&server_addr, nlmsvc_failover_file_ok_ip,
++						NULL);
+ 	return ret ? -EIO : 0;
+ 
+ }
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index 02c3949..b4ca5c9 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -55,6 +55,7 @@ enum {
+ 	NFSD_List,
+ 	NFSD_Fh,
+ 	NFSD_FO_UnlockIP,
++	NFSD_FO_UnlockFS,
+ 	NFSD_Threads,
+ 	NFSD_Pool_Threads,
+ 	NFSD_Versions,
+@@ -92,6 +93,7 @@ static ssize_t write_recoverydir(struct file *file, char *buf, size_t size);
+ #endif
+ 
+ static ssize_t failover_unlock_ip(struct file *file, char *buf, size_t size);
++static ssize_t failover_unlock_fs(struct file *file, char *buf, size_t size);
+ 
+ static ssize_t (*write_op[])(struct file *, char *, size_t) = {
+ 	[NFSD_Svc] = write_svc,
+@@ -103,6 +105,7 @@ static ssize_t (*write_op[])(struct file *, char *, size_t) = {
+ 	[NFSD_Getfs] = write_getfs,
+ 	[NFSD_Fh] = write_filehandle,
+ 	[NFSD_FO_UnlockIP] = failover_unlock_ip,
++	[NFSD_FO_UnlockFS] = failover_unlock_fs,
+ 	[NFSD_Threads] = write_threads,
+ 	[NFSD_Pool_Threads] = write_pool_threads,
+ 	[NFSD_Versions] = write_versions,
+@@ -319,6 +322,33 @@ static ssize_t failover_unlock_ip(struct file *file, char *buf, size_t size)
+ 	return nlmsvc_failover_ip(server_ip);
+ }
+ 
++static ssize_t failover_unlock_fs(struct file *file, char *buf, size_t size)
++{
++	struct nameidata nd;
++	char *fo_path;
++	int error;
++
++	/* sanity check */
++	if (size == 0)
++		return -EINVAL;
++
++	if (buf[size-1] != '\n')
++		return -EINVAL;
++
++	fo_path = buf;
++	if (qword_get(&buf, fo_path, size) < 0)
++		return -EINVAL;
++
++	error = path_lookup(fo_path, 0, &nd);
++	if (error)
++		return error;
++
++	error = nlmsvc_failover_path(nd.path.mnt->mnt_sb);
++
++	path_put(&nd.path);
++	return error;
++}
++
+ static ssize_t write_filehandle(struct file *file, char *buf, size_t size)
+ {
+ 	/* request is:
+@@ -729,6 +759,8 @@ static int nfsd_fill_super(struct super_block * sb, void * data, int silent)
+ 		[NFSD_List] = {"exports", &exports_operations, S_IRUGO},
+ 		[NFSD_FO_UnlockIP] = {"unlock_ip",
+ 					&transaction_ops, S_IWUSR|S_IRUSR},
++		[NFSD_FO_UnlockFS] = {"unlock_filesystem",
++					&transaction_ops, S_IWUSR|S_IRUSR},
+ 		[NFSD_Fh] = {"filehandle", &transaction_ops, S_IWUSR|S_IRUSR},
+ 		[NFSD_Threads] = {"threads", &transaction_ops, S_IWUSR|S_IRUSR},
+ 		[NFSD_Pool_Threads] = {"pool_threads", &transaction_ops, S_IWUSR|S_IRUSR},
+diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
+index f06d2db..7cd9c8e 100644
+--- a/include/linux/lockd/lockd.h
++++ b/include/linux/lockd/lockd.h
+@@ -220,6 +220,7 @@ void		  nlmsvc_invalidate_all(void);
+ /*
+  * Cluster failover support
+  */
++int           nlmsvc_failover_path(struct super_block *sb);
+ int           nlmsvc_failover_ip(__be32 server_addr);
+ 
+ static __inline__ struct inode *
 
-
+-------------------------------------------------------------------------
+This SF.net email is sponsored by the 2008 JavaOne(SM) Conference 
+Don't miss this year's exciting event. There's still time to save $100. 
+Use priority code J8TL2D2. 
+http://ad.doubleclick.net/clk;198757673;13503038;p?http://java.sun.com/javaone
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
