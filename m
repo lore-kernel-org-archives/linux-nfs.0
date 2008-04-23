@@ -1,99 +1,54 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 03/33] SUNRPC: Don't attempt to destroy expired
-	RPCSEC_GSS credentials..
-Date: Wed, 23 Apr 2008 14:19:35 -0400
-Message-ID: <20080423181935.GC5280@fieldses.org>
-References: <20080419204047.14124.49490.stgit@c-69-242-210-120.hsd1.mi.comcast.net> <20080419204047.14124.64969.stgit@c-69-242-210-120.hsd1.mi.comcast.net> <FB8780E7-FE92-40D6-8DFE-0663DF1B0162@oracle.com> <1208822443.7767.23.camel@heimdal.trondhjem.org> <86898638-C54D-44F7-917E-1EDF6795B56C@oracle.com> <1208876800.11982.6.camel@heimdal.trondhjem.org> <1208960443.7459.9.camel@heimdal.trondhjem.org>
+From: Christoph Hellwig <hch@lst.de>
+Subject: Re: [NFS] [PATCH] lockd: unlock lockd locks held for a certain
+	filesystem
+Date: Wed, 23 Apr 2008 19:52:26 +0200
+Message-ID: <20080423175226.GA32537@lst.de>
+References: <20080416184233.GF22743@fieldses.org> <480655E7.30800@gmail.com>
+	<20080417215222.GK9912@fieldses.org> <4808A9DE.9040304@gmail.com>
+	<20080418181918.GB24552@fieldses.org>
+	<20080422231520.GI21770@fieldses.org>
+	<20080422231729.GJ21770@fieldses.org>
+	<20080422231855.GK21770@fieldses.org>
+	<20080423074422.GA23518@lst.de>
+	<20080423171240.GG31576@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Content-Type: text/plain; charset="us-ascii"
+Cc: Lon Hohberger <lhh@redhat.com>,
+	Wendy Cheng <s.wendy.cheng@gmail.com>,
+	nfs@lists.sourceforge.net, Christoph Hellwig <hch@lst.de>,
+	Erik Hensema / HostingXS Internet Services
+	<hensema-yolSOB3tinz/D1n+0JDH9g@public.gmane.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:53421 "EHLO fieldses.org"
+Received: from neil.brown.name ([220.233.11.133]:47118 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757590AbYDWSTy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 Apr 2008 14:19:54 -0400
-In-Reply-To: <1208960443.7459.9.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+	id S1751780AbYDWS2U (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 Apr 2008 14:28:20 -0400
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1Jojha-0008PM-Ij
+	for linux-nfs@vger.kernel.org; Thu, 24 Apr 2008 04:28:18 +1000
+In-Reply-To: <20080423171240.GG31576@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Apr 23, 2008 at 10:20:43AM -0400, Trond Myklebust wrote:
-> 
-> On Tue, 2008-04-22 at 11:11 -0400, Trond Myklebust wrote:
-> > On Tue, 2008-04-22 at 09:38 -0400, Chuck Lever wrote:
-> > > > RFC-2203 states that servers are supposed to silently discard requests
-> > > > that they don't recognise (see section 5.3.3.1 - Context  
-> > > > Management), so
-> > > > it is correct server behaviour.
-> > > 
-> > > 
-> > > Dropping the request to destroy a context is fine.  Temporarily  
-> > > fencing the client is what I was concerned about.
-> > 
-> > I'd agree that is somewhat drastic, and have passed the information on
-> > to the server vendor, however that doesn't change the fact that we have
-> > a client bug too: we should not be using expired creds.
-> > 
-> > The client side performance problem was compounded by the fact that the
-> > RPCSEC_GSS destruction call was sent as a hard RPC call, and the fact
-> > that we impose the NFSv4 rule that we need to drop the connection before
-> > resending a request.
-> 
-> Having thought a bit more about the consequences of this RFC, I think we
-> also need to drop the credential on (major) timeouts, since we need to
-> assume that the timeout may be due to the credential being out of
-> sequence.
+On Wed, Apr 23, 2008 at 01:12:40PM -0400, J. Bruce Fields wrote:
+> +int           nlmsvc_failover_path(struct super_block *sb);
 
-I'm a little confused.  Each resend is done with a new gss sequence
-number.
+With a super_block argument the path suffix doesn't make sense anymore.
+Should probably be an _sb instead.
 
---b.
 
-> 
-> ---------------------------------------------
-> From: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Date: Tue, 22 Apr 2008 16:47:55 -0400
-> SUNRPC: Invalidate the RPCSEC_GSS session if the server dropped the request
-> 
-> RFC 2203 requires the server to drop the request if it believes the
-> RPCSEC_GSS context is out of sequence. The problem is that we have no way
-> on the client to know why the server dropped the request. In order to avoid
-> spinning forever trying to resend the request, the safe approach is
-> therefore to always invalidate the RPCSEC_GSS context on every major
-> timeout.
-> 
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> ---
-> 
->  net/sunrpc/clnt.c |    5 +++++
->  1 files changed, 5 insertions(+), 0 deletions(-)
-> 
-> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-> index 2969e84..eb813e9 100644
-> --- a/net/sunrpc/clnt.c
-> +++ b/net/sunrpc/clnt.c
-> @@ -1169,6 +1169,11 @@ call_timeout(struct rpc_task *task)
->  			clnt->cl_protname, clnt->cl_server);
->  	}
->  	rpc_force_rebind(clnt);
-> +	/*
-> +	 * Did our request time out due to an RPCSEC_GSS out-of-sequence
-> +	 * event? RFC2203 requires the server to drop all such requests.
-> +	 */
-> +	rpcauth_invalcred(task);
->  
->  retry:
->  	clnt->cl_stats->rpcretrans++;
-> 
-> 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-------------------------------------------------------------------------
+This SF.net email is sponsored by the 2008 JavaOne(SM) Conference 
+Don't miss this year's exciting event. There's still time to save $100. 
+Use priority code J8TL2D2. 
+http://ad.doubleclick.net/clk;198757673;13503038;p?http://java.sun.com/javaone
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
+
