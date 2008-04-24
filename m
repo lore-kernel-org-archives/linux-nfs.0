@@ -1,43 +1,69 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: Text-based mount interface breaking non-UDP mounts
-Date: Thu, 24 Apr 2008 10:12:58 -0400
-Message-ID: <2CE28767-23B0-4F6C-AE53-4921D73B2782@oracle.com>
-References: <20080423214929.GA24387@uio.no>
-Mime-Version: 1.0 (Apple Message framework v919.2)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: linux-nfs@vger.kernel.org
-To: "Steinar H. Gunderson" <sgunderson-jG/AHqQBv7lBDgjK7y7TUQ@public.gmane.org>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH 03/33] SUNRPC: Don't attempt to destroy expired
+	RPCSEC_GSS credentials..
+Date: Thu, 24 Apr 2008 13:48:29 -0400
+Message-ID: <1209059309.7619.2.camel@heimdal.trondhjem.org>
+References: <20080419204047.14124.49490.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
+	 <20080419204047.14124.64969.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
+	 <FB8780E7-FE92-40D6-8DFE-0663DF1B0162@oracle.com>
+	 <1208822443.7767.23.camel@heimdal.trondhjem.org>
+	 <86898638-C54D-44F7-917E-1EDF6795B56C@oracle.com>
+	 <1208876800.11982.6.camel@heimdal.trondhjem.org>
+	 <1208960443.7459.9.camel@heimdal.trondhjem.org>
+	 <20080423181935.GC5280@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:33111 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757084AbYDXORO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Apr 2008 10:17:14 -0400
-In-Reply-To: <20080423214929.GA24387-6Z/AllhyZU4@public.gmane.org>
+Received: from mx2.netapp.com ([216.240.18.37]:48821 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752989AbYDXRsT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 24 Apr 2008 13:48:19 -0400
+In-Reply-To: <20080423181935.GC5280@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Steinar-
 
-On Apr 23, 2008, at 5:49 PM, Steinar H. Gunderson wrote:
-> I've gotten a few bug reports lately that if UDP is blocked at the  
-> server,
-> NFS mounts (even with -o tcp) fail. git bisect shows that the  
-> culprit is
-> the change "Get rid of the "-i" option for mount.nfs[4] and always  
-> use the
-> text-based mount(2) system call for kernel version 2.6.23 and  
-> later." -- in
-> other words, the bug is specific to the text interface. Does anyone  
-> know why
-> this would be the case?
+On Wed, 2008-04-23 at 14:19 -0400, J. Bruce Fields wrote:
+> On Wed, Apr 23, 2008 at 10:20:43AM -0400, Trond Myklebust wrote:
+> > 
+> > On Tue, 2008-04-22 at 11:11 -0400, Trond Myklebust wrote:
+> > > On Tue, 2008-04-22 at 09:38 -0400, Chuck Lever wrote:
+> > > > > RFC-2203 states that servers are supposed to silently discard requests
+> > > > > that they don't recognise (see section 5.3.3.1 - Context  
+> > > > > Management), so
+> > > > > it is correct server behaviour.
+> > > > 
+> > > > 
+> > > > Dropping the request to destroy a context is fine.  Temporarily  
+> > > > fencing the client is what I was concerned about.
+> > > 
+> > > I'd agree that is somewhat drastic, and have passed the information on
+> > > to the server vendor, however that doesn't change the fact that we have
+> > > a client bug too: we should not be using expired creds.
+> > > 
+> > > The client side performance problem was compounded by the fact that the
+> > > RPCSEC_GSS destruction call was sent as a hard RPC call, and the fact
+> > > that we impose the NFSv4 rule that we need to drop the connection before
+> > > resending a request.
+> > 
+> > Having thought a bit more about the consequences of this RFC, I think we
+> > also need to drop the credential on (major) timeouts, since we need to
+> > assume that the timeout may be due to the credential being out of
+> > sequence.
+> 
+> I'm a little confused.  Each resend is done with a new gss sequence
+> number.
 
-I specifically tested that when developing the text-based mount  
-interface, so if it doesn't work, it's a bug or a missed corner case.
+The point is that if the _server_ gets confused, then it may not tell us
+that our context is invalid: it will just start dropping all the
+requests that we send it.
 
-Start with "mount.nfs -v" to see if the mount command tells you  
-anything interesting.  Then do a raw network trace to see what's  
-failing during the mount version/protocol negotiation.
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
