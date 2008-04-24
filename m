@@ -1,37 +1,82 @@
-From: "Steinar H. Gunderson" <sgunderson-jG/AHqQBv7lBDgjK7y7TUQ@public.gmane.org>
-Subject: Text-based mount interface breaking non-UDP mounts
-Date: Wed, 23 Apr 2008 23:49:29 +0200
-Message-ID: <20080423214929.GA24387@uio.no>
+From: tony-B47dsA4koDqXvyopL2yb9tBPR1lH4CV8@public.gmane.org (Tony Breeds)
+Subject: [PATCH] Silence 'may be used uninitialized' warning in fs/nfs/callback_xdr.c
+Date: Thu, 24 Apr 2008 14:22:15 +1000
+Message-ID: <20080424042215.GO20457@bakeyournoodle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=utf-8
-To: linux-nfs@vger.kernel.org
+Cc: Linux Kernel ML <linux-kernel@vger.kernel.org>,
+	Andrew Morton <akpm@linux-foundation.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+	linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cassarossa.samfundet.no ([129.241.93.19]:48101 "EHLO
-	cassarossa.samfundet.no" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754554AbYDWVtg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Apr 2008 17:49:36 -0400
-Received: from trofast.ipv6.sesse.net ([2001:700:300:1803:20e:cff:fe36:a766] helo=trofast.sesse.net)
-	by cassarossa.samfundet.no with esmtps (TLS-1.0:RSA_AES_256_CBC_SHA1:32)
-	(Exim 4.63)
-	(envelope-from <sesse-BrfabpQBY5qlHtIdYg32fQ@public.gmane.org>)
-	id 1JomqL-00018H-K9
-	for linux-nfs@vger.kernel.org; Wed, 23 Apr 2008 23:49:34 +0200
-Received: from root by trofast.sesse.net with local (Exim 4.69)
-	(envelope-from <sesse-BrfabpQBY5qlHtIdYg32fQ@public.gmane.org>)
-	id 1JomqH-0006Lf-MG
-	for linux-nfs@vger.kernel.org; Wed, 23 Apr 2008 23:49:29 +0200
+Received: from pythia.bakeyournoodle.com ([203.82.209.197]:36372 "EHLO
+	pythia.bakeyournoodle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751488AbYDXEz0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Apr 2008 00:55:26 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+Currently the kernel will issue the following warnings:
 
-I've gotten a few bug reports lately that if UDP is blocked at the server,
-NFS mounts (even with -o tcp) fail. git bisect shows that the culprit is
-the change "Get rid of the "-i" option for mount.nfs[4] and always use the
-text-based mount(2) system call for kernel version 2.6.23 and later." -- in
-other words, the bug is specific to the text interface. Does anyone know why
-this would be the case?
+fs/nfs/callback_xdr.c: In function 'nfs4_callback_compound':
+fs/nfs/callback_xdr.c:404: warning: 'hdr_arg.taglen' may be used uninitialized in this function
+fs/nfs/callback_xdr.c:404: warning: 'hdr_arg.tag' may be used uninitialized in this function
+fs/nfs/callback_xdr.c:404: warning: 'hdr_arg.nops' may be used uninitialized in this function
 
-/* Steinar */
+It seems that call chain look something like:
+nfs4_callback_compound() 
+ -> decode_compound_hdr_arg()
+  -> decode_string() which may fail and return NFS4ERR_RESOURCE. 
+Which decode_compound_hdr_arg() passes on.  Unfortunately
+nfs4_callback_compound() doesn't check this status and cheerfully uses
+hdr_arg which is basically stack garbage.  The same problem seems to
+apply to encode_compound_hdr_res().
+
+Check the return values, and explictly tell gcc to silence that warning.
+
+Signed-off-by: Tony Breeds <tony-B47dsA4koDqXvyopL2yb9tBPR1lH4CV8@public.gmane.org>
+---
+ fs/nfs/callback_xdr.c |   10 +++++++---
+ 1 files changed, 7 insertions(+), 3 deletions(-)
+
+diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
+index 13619d2..d26af3e 100644
+--- a/fs/nfs/callback_xdr.c
++++ b/fs/nfs/callback_xdr.c
+@@ -401,7 +401,7 @@ static __be32 process_op(struct svc_rqst *rqstp,
+  */
+ static __be32 nfs4_callback_compound(struct svc_rqst *rqstp, void *argp, void *resp)
+ {
+-	struct cb_compound_hdr_arg hdr_arg;
++	struct cb_compound_hdr_arg uninitialized_var(hdr_arg);
+ 	struct cb_compound_hdr_res hdr_res;
+ 	struct xdr_stream xdr_in, xdr_out;
+ 	__be32 *p;
+@@ -415,11 +415,15 @@ static __be32 nfs4_callback_compound(struct svc_rqst *rqstp, void *argp, void *r
+ 	p = (__be32*)((char *)rqstp->rq_res.head[0].iov_base + rqstp->rq_res.head[0].iov_len);
+ 	xdr_init_encode(&xdr_out, &rqstp->rq_res, p);
+ 
+-	decode_compound_hdr_arg(&xdr_in, &hdr_arg);
++	status = decode_compound_hdr_arg(&xdr_in, &hdr_arg);
++	if (unlikely(status != 0))
++		return status;
+ 	hdr_res.taglen = hdr_arg.taglen;
+ 	hdr_res.tag = hdr_arg.tag;
+ 	hdr_res.nops = NULL;
+-	encode_compound_hdr_res(&xdr_out, &hdr_res);
++	status = encode_compound_hdr_res(&xdr_out, &hdr_res);
++	if (unlikely(status != 0))
++		return status;
+ 
+ 	for (;;) {
+ 		status = process_op(rqstp, &xdr_in, argp, &xdr_out, resp);
 -- 
-Homepage: http://www.sesse.net/
+1.5.5.1
+
+
+
+Yours Tony
+
+  linux.conf.au    http://www.marchsouth.org/
+  Jan 19 - 24 2009 The Australian Linux Technical Conference!
+
