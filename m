@@ -1,102 +1,64 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: stuff
-Date: Thu, 24 Apr 2008 16:34:03 -0400
-Message-ID: <20080424203403.GD18573@fieldses.org>
+Subject: Re: [PATCH] Update to NFS/RDMA documentation
+Date: Thu, 24 Apr 2008 16:35:42 -0400
+Message-ID: <20080424203542.GE18573@fieldses.org>
+References: <alpine.LFD.1.00.0804241553060.14137@jlentini-linux.nane.netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Trond Myklebust <trond@netapp.com>
+Cc: Tom Tucker <tom@opengridcomputing.com>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>,
+	Thomas Talpey <talpey@netapp.com>, linux-nfs@vger.kernel.org
+To: James Lentini <jlentini@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:52636 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:49925 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756688AbYDXUeF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 24 Apr 2008 16:34:05 -0400
+	id S1756636AbYDXUft (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 24 Apr 2008 16:35:49 -0400
+In-Reply-To: <alpine.LFD.1.00.0804241553060.14137-5zmYZXM8ymTNoO61VEKW3MYxy48AqY0ZOQ4dku92ua4@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Trond--you mentioned noticing some locks_copy_locks() abuses; is this
-what you were thinking of?
+On Thu, Apr 24, 2008 at 03:57:43PM -0400, James Lentini wrote:
+> 
+> Bruce,
+> 
+> Below is an update to the NFS/RDMA documentation that clarifies how to 
+> configure the exports file. Could you please merge this for 2.6.26?
 
---b.
+Applied; thanks.--b.
 
-commit 07c5abe6899d8ab49368604e64894821d4f60bf9
-Author: J. Bruce Fields <bfields@citi.umich.edu>
-Date:   Thu Apr 24 10:08:22 2008 -0400
-
-    locks: don't call ->copy_lock methods on return of conflicting locks
-    
-    The file_lock structure is used both as a heavy-weight representation of
-    an active lock, with pointers to reference-counted structures, etc., and
-    as a simple container for parameters that describe a file lock.
-    
-    The conflicting lock returned from __posix_lock_file is an example of
-    the latter; so don't call the filesystem or lock manager callbacks when
-    copying to it.  This also saves the need for an unnecessary
-    locks_init_lock in the nfsv4 server.
-    
-    Thanks to Trond for pointing out the error.
-    
-    Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
-    Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-index 1f122c1..4d81553 100644
---- a/fs/lockd/svclock.c
-+++ b/fs/lockd/svclock.c
-@@ -632,7 +632,7 @@ nlmsvc_update_deferred_block(struct nlm_block *block, struct file_lock *conf,
- 		block->b_flags |= B_TIMED_OUT;
- 	if (conf) {
- 		if (block->b_fl)
--			locks_copy_lock(block->b_fl, conf);
-+			__locks_copy_lock(block->b_fl, conf);
- 	}
- }
- 
-diff --git a/fs/locks.c b/fs/locks.c
-index 2e0fa66..e1ea2fe 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -224,7 +224,7 @@ static void locks_copy_private(struct file_lock *new, struct file_lock *fl)
- /*
-  * Initialize a new lock from an existing file_lock structure.
-  */
--static void __locks_copy_lock(struct file_lock *new, const struct file_lock *fl)
-+void __locks_copy_lock(struct file_lock *new, const struct file_lock *fl)
- {
- 	new->fl_owner = fl->fl_owner;
- 	new->fl_pid = fl->fl_pid;
-@@ -833,7 +833,7 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
- 			if (!posix_locks_conflict(request, fl))
- 				continue;
- 			if (conflock)
--				locks_copy_lock(conflock, fl);
-+				__locks_copy_lock(conflock, fl);
- 			error = -EAGAIN;
- 			if (!(request->fl_flags & FL_SLEEP))
- 				goto out;
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 55dfdd7..8799b87 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2712,9 +2712,6 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	* Note: locks.c uses the BKL to protect the inode's lock list.
- 	*/
- 
--	/* XXX?: Just to divert the locks_release_private at the start of
--	 * locks_copy_lock: */
--	locks_init_lock(&conflock);
- 	err = vfs_lock_file(filp, cmd, &file_lock, &conflock);
- 	switch (-err) {
- 	case 0: /* success! */
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index cc2be2c..6556f2f 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -973,6 +973,7 @@ extern int do_sync_mapping_range(struct address_space *mapping, loff_t offset,
- /* fs/locks.c */
- extern void locks_init_lock(struct file_lock *);
- extern void locks_copy_lock(struct file_lock *, struct file_lock *);
-+extern void __locks_copy_lock(struct file_lock *, const struct file_lock *);
- extern void locks_remove_posix(struct file *, fl_owner_t);
- extern void locks_remove_flock(struct file *);
- extern void posix_test_lock(struct file *, struct file_lock *);
+> 
+> Signed-off-by: James Lentini <jlentini@netapp.com>
+> 
+> --- a/Documentation/filesystems/nfs-rdma.txt	2008-04-24 15:19:25.854101000 -0400
+> +++ b/Documentation/filesystems/nfs-rdma.txt	2008-04-24 15:45:56.372312000 -0400
+> @@ -5,7 +5,7 @@
+>  ################################################################################
+>  
+>   Author: NetApp and Open Grid Computing
+> - Date: February 25, 2008
+> + Date: April 15, 2008
+>  
+>  Table of Contents
+>  ~~~~~~~~~~~~~~~~~
+> @@ -197,12 +197,16 @@ NFS/RDMA Setup
+>    - On the server system, configure the /etc/exports file and
+>      start the NFS/RDMA server.
+>  
+> -    Exports entries with the following format have been tested:
+> +    Exports entries with the following formats have been tested:
+>  
+> -    /vol0   10.97.103.47(rw,async) 192.168.0.47(rw,async,insecure,no_root_squash)
+> +    /vol0   192.168.0.47(fsid=0,rw,async,insecure,no_root_squash)
+> +    /vol0   192.168.0.0/255.255.255.0(fsid=0,rw,async,insecure,no_root_squash)
+>  
+> -    Here the first IP address is the client's Ethernet address and the second
+> -    IP address is the clients IPoIB address.
+> +    The IP address(es) is(are) the client's IPoIB address for an InfiniBand HCA or the
+> +    cleint's iWARP address(es) for an RNIC.
+> +
+> +    NOTE: The "insecure" option must be used because the NFS/RDMA client does not
+> +    use a reserved port.
+>  
+>   Each time a machine boots:
+>  
