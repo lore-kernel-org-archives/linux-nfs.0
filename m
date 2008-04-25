@@ -1,36 +1,77 @@
-From: "Steinar H. Gunderson" <sgunderson-jG/AHqQBv7lBDgjK7y7TUQ@public.gmane.org>
-Subject: The text-based mount interface doesn't support -s (--sloppy)
-Date: Fri, 25 Apr 2008 10:11:14 +0200
-Message-ID: <20080425081114.GA5148@uio.no>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH] NFS: Only warn on unrecognized mount options
+Date: Fri, 25 Apr 2008 07:33:42 -0400
+Message-ID: <20080425073342.6326a4a3@tleilax.poochiereds.net>
+References: <20080411202800.31268.3495.stgit@manray.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII
+Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cassarossa.samfundet.no ([129.241.93.19]:52688 "EHLO
-	cassarossa.samfundet.no" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752529AbYDYILR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Apr 2008 04:11:17 -0400
-Received: from trofast.ipv6.sesse.net ([2001:700:300:1803:20e:cff:fe36:a766] helo=trofast.sesse.net)
-	by cassarossa.samfundet.no with esmtps (TLS-1.0:RSA_AES_256_CBC_SHA1:32)
-	(Exim 4.63)
-	(envelope-from <sesse-BrfabpQBY5qlHtIdYg32fQ@public.gmane.org>)
-	id 1JpJ1X-0005zJ-4g
-	for linux-nfs@vger.kernel.org; Fri, 25 Apr 2008 10:11:15 +0200
-Received: from root by trofast.sesse.net with local (Exim 4.69)
-	(envelope-from <sesse-BrfabpQBY5qlHtIdYg32fQ@public.gmane.org>)
-	id 1JpJ1W-0001LN-Ho
-	for linux-nfs@vger.kernel.org; Fri, 25 Apr 2008 10:11:14 +0200
+Received: from mx1.redhat.com ([66.187.233.31]:45626 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751430AbYDYLeK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Apr 2008 07:34:10 -0400
+In-Reply-To: <20080411202800.31268.3495.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+On Fri, 11 Apr 2008 16:28:43 -0400
+Chuck Lever <chuck.lever@oracle.com> wrote:
 
-Another user-reported regression. -s used to work, but since 1.1.2 it does
-not, probably due to the text-based interface somehow:
+> To provide compatibility with automounters who use a common set of mount
+> options for all file systems, change the NFS in-kernel mount option parser
+> to ignore mount options it doesn't recognize.
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> Take 2.
+> 
+>  fs/nfs/super.c |    7 ++-----
+>  1 files changed, 2 insertions(+), 5 deletions(-)
+> 
+> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+> index f921902..cbf2b37 100644
+> --- a/fs/nfs/super.c
+> +++ b/fs/nfs/super.c
+> @@ -1044,7 +1044,8 @@ static int nfs_parse_mount_options(char *raw,
+>  			break;
+>  
+>  		default:
+> -			goto out_unknown;
+> +			dfprintk(MOUNT, "NFS: unrecognized mount option '%s'"
+> +					" ignored\n", p);
+>  		}
+>  	}
+>  
+> @@ -1070,10 +1071,6 @@ out_unrec_xprt:
+>  out_unrec_sec:
+>  	printk(KERN_INFO "NFS: unrecognized security flavor\n");
+>  	return 0;
+> -
+> -out_unknown:
+> -	printk(KERN_INFO "NFS: unknown mount option: %s\n", p);
+> -	return 0;
+>  }
+>  
+>  /*
+> 
 
-  fugl:~> sudo mount.nfs 10.0.0.10:/store /store -s -o rw,asdfasdf   
-  mount.nfs: an incorrect mount option was specified
 
-/* Steinar */
+Sorry for late reply on this...
+
+I wonder if we should make this conditional on the "-s" (sloppy)
+option? I think autofs will use that option when it mounts. There are a
+couple of ways we could approach this:
+
+1) have -s set a mount flag (which means getting a new MS_SLOPPY flag
+added to the VFS).
+
+2) have -s make mount.nfs prepend an implicit "sloppy," to the option
+string. That would get parsed first and you could make the behavior of
+unrecognized mount options be dependent upon that.
+
+#2 sounds fairly easy to do, actually...
+
 -- 
-Homepage: http://www.sesse.net/
+Jeff Layton <jlayton@redhat.com>
