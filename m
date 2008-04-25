@@ -1,64 +1,35 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] Update to NFS/RDMA documentation
-Date: Thu, 24 Apr 2008 16:35:42 -0400
-Message-ID: <20080424203542.GE18573@fieldses.org>
-References: <alpine.LFD.1.00.0804241553060.14137@jlentini-linux.nane.netapp.com>
+From: "Steinar H. Gunderson" <sgunderson-jG/AHqQBv7lBDgjK7y7TUQ@public.gmane.org>
+Subject: Re: Text-based mount interface breaking non-UDP mounts
+Date: Fri, 25 Apr 2008 10:01:28 +0200
+Message-ID: <20080425080128.GA4848@uio.no>
+References: <20080423214929.GA24387@uio.no> <2CE28767-23B0-4F6C-AE53-4921D73B2782@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Tom Tucker <tom@opengridcomputing.com>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Thomas Talpey <talpey@netapp.com>, linux-nfs@vger.kernel.org
-To: James Lentini <jlentini@netapp.com>
+Content-Type: text/plain; charset=utf-8
+Cc: linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:49925 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756636AbYDXUft (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 24 Apr 2008 16:35:49 -0400
-In-Reply-To: <alpine.LFD.1.00.0804241553060.14137-5zmYZXM8ymTNoO61VEKW3MYxy48AqY0ZOQ4dku92ua4@public.gmane.org>
+Received: from cassarossa.samfundet.no ([129.241.93.19]:59756 "EHLO
+	cassarossa.samfundet.no" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758897AbYDYIBd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Apr 2008 04:01:33 -0400
+In-Reply-To: <2CE28767-23B0-4F6C-AE53-4921D73B2782@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 24, 2008 at 03:57:43PM -0400, James Lentini wrote:
-> 
-> Bruce,
-> 
-> Below is an update to the NFS/RDMA documentation that clarifies how to 
-> configure the exports file. Could you please merge this for 2.6.26?
+On Thu, Apr 24, 2008 at 10:12:58AM -0400, Chuck Lever wrote:
+> Start with "mount.nfs -v" to see if the mount command tells you anything 
+> interesting.  Then do a raw network trace to see what's failing during 
+> the mount version/protocol negotiation.
 
-Applied; thanks.--b.
+There's nothing in -v except that it adds an addr= field. As for the
+packet dump, that's the most interesting part -- for my part, the server
+doesn't have iptables, so I'm blocking on the client. In that case, exactly
+zero packets enter the write before mount gives up...
 
-> 
-> Signed-off-by: James Lentini <jlentini@netapp.com>
-> 
-> --- a/Documentation/filesystems/nfs-rdma.txt	2008-04-24 15:19:25.854101000 -0400
-> +++ b/Documentation/filesystems/nfs-rdma.txt	2008-04-24 15:45:56.372312000 -0400
-> @@ -5,7 +5,7 @@
->  ################################################################################
->  
->   Author: NetApp and Open Grid Computing
-> - Date: February 25, 2008
-> + Date: April 15, 2008
->  
->  Table of Contents
->  ~~~~~~~~~~~~~~~~~
-> @@ -197,12 +197,16 @@ NFS/RDMA Setup
->    - On the server system, configure the /etc/exports file and
->      start the NFS/RDMA server.
->  
-> -    Exports entries with the following format have been tested:
-> +    Exports entries with the following formats have been tested:
->  
-> -    /vol0   10.97.103.47(rw,async) 192.168.0.47(rw,async,insecure,no_root_squash)
-> +    /vol0   192.168.0.47(fsid=0,rw,async,insecure,no_root_squash)
-> +    /vol0   192.168.0.0/255.255.255.0(fsid=0,rw,async,insecure,no_root_squash)
->  
-> -    Here the first IP address is the client's Ethernet address and the second
-> -    IP address is the clients IPoIB address.
-> +    The IP address(es) is(are) the client's IPoIB address for an InfiniBand HCA or the
-> +    cleint's iWARP address(es) for an RNIC.
-> +
-> +    NOTE: The "insecure" option must be used because the NFS/RDMA client does not
-> +    use a reserved port.
->  
->   Each time a machine boots:
->  
+The other submitters have iptables blocking on the server, though, and it
+doesn't work for them either (one is using NFSv3, the other NFSv4). Is this
+really working for you?
+
+/* Steinar */
+-- 
+Homepage: http://www.sesse.net/
