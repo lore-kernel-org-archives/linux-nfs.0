@@ -1,99 +1,31 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: The text-based mount interface doesn't support -s (--sloppy)
-Date: Fri, 25 Apr 2008 14:07:10 -0400
-Message-ID: <0EB2F2D3-5DD8-4BE6-B249-6D13F27DFFBD@oracle.com>
-References: <20080425081114.GA5148@uio.no> <DF3AF794-BD55-40E8-9696-BC6C40E82713@oracle.com> <20080425143543.GA6292@uio.no> <54BFCFD6-18D0-42E9-ADE9-867BEB1B2AB5@oracle.com> <20080425110319.479a0e80@tupile.poochiereds.net> <82AA941E-B77C-40FF-8021-3E3950AA7D45@oracle.com> <20080425114240.7a9518c1@tupile.poochiereds.net>
+Subject: Re: retry= is additive with the text-based mount interface
+Date: Fri, 25 Apr 2008 16:37:56 -0400
+Message-ID: <29105BE5-81BE-4C7C-9E4A-EB133200217E@oracle.com>
+References: <20080425080535.GA4999@uio.no> <46541DE2-4D6A-4701-A3BB-E609F0E51D6D@oracle.com> <20080425163457.GA6952@uio.no> <F4C3F5C0-1D60-4285-9CB3-171C70C96B03@oracle.com> <20080425165921.GA7108@uio.no> <9CE7224B-002F-48B8-9DCB-8776A61167EF@oracle.com> <20080425173833.GA7306@uio.no>
 Mime-Version: 1.0 (Apple Message framework v919.2)
 Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: "Steinar H. Gunderson" <sgunderson-jG/AHqQBv7lBDgjK7y7TUQ@public.gmane.org>,
-	Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+To: "Steinar H. Gunderson" <sgunderson-jG/AHqQBv7lBDgjK7y7TUQ@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:12933 "EHLO
+Received: from agminet01.oracle.com ([141.146.126.228]:24681 "EHLO
 	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1765557AbYDYSOT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Apr 2008 14:14:19 -0400
-In-Reply-To: <20080425114240.7a9518c1-PC62bkCOHzGdMjc06nkz3ljfA9RmPOcC@public.gmane.org>
+	with ESMTP id S1764237AbYDYUir (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Apr 2008 16:38:47 -0400
+In-Reply-To: <20080425173833.GA7306-6Z/AllhyZU4@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Apr 25, 2008, at 11:42 AM, Jeff Layton wrote:
-> On Fri, 25 Apr 2008 11:17:39 -0400
-> Chuck Lever <chuck.lever@oracle.com> wrote:
->> On Apr 25, 2008, at 11:03 AM, Jeff Layton wrote:
->>> On Fri, 25 Apr 2008 10:50:09 -0400
->>> Chuck Lever <chuck.lever@oracle.com> wrote:
->>>> On Apr 25, 2008, at 10:35 AM, Steinar H. Gunderson wrote:
->>>>> On Fri, Apr 25, 2008 at 10:30:35AM -0400, Chuck Lever wrote:
->>>>>> It's not exactly clear what the "sloppy" option is supposed to
->>>>>> allow.
->>>>>> We are trying to figure out right now precisely how this should
->>>>>> work.
->>>>>
->>>>> Well, in general it seems to ignore any new options that come into
->>>>> it. The
->>>>> problem in question was -o grpid= that was coming in through  
->>>>> autofs
->>>>> mounts and was not too easy to remove for the user.
->>>>
->>>> The grpid mount option is what triggered our earlier discussion  
->>>> of --
->>>> sloppy as well.
->>>>
->>>> An expedient solution may be to tell the kernel mount option parser
->>>> specifically to ignore these common automounter options, like  
->>>> grpid.
->>>> Jeff, what do you think of that?
->>>>
->>>
->>> That might reduce the pain for now...
->>>
->>> I tend to think the big problem is people sharing autofs maps  
->>> between
->>> different OS's. It's hard to predict what options we might see that
->>> are
->>> valid on another OS. We really need to define what the sloppy flag
->>> means and how it behaves. It's a reasonably safe assumption that
->>> autofs
->>> will use it, so hooking that up is probably the best solution.
->>>
->>> Personally, I like the idea of just adding a "sloppy" mount option  
->>> and
->>> making "-s" add it to the string. When someone adds that option, the
->>> kernel could just skip over options it doesn't recognize. When it's
->>> not
->>> present, then it would fail on any unrecognized options.
->>>
->>> This might mean that we need to have the kernel parser do more than
->>> one
->>> pass over the string though. Once to look for the sloppy option, and
->>> again to parse the others. This is not such a bad thing, IMO...there
->>> are some other options that can get clobbered depending on order.
+On Apr 25, 2008, at 1:38 PM, Steinar H. Gunderson wrote:
+> On Fri, Apr 25, 2008 at 01:11:02PM -0400, Chuck Lever wrote:
+>> Just change "*timeout +=" to "*timeout =" in parse_retry_option().
 >>
->> The mount.nfs command can easily guarantee that the "sloppy" option
->> comes first.  It might be a nice added flexibility to allow the  
->> parser
->> to switch from strict to sloppy mode in the middle of the option  
->> string.
->>
+>> That was the bug I was trying to fix in the first place.  Sigh.
 >
-> That's fine with me, but we'll definitely need to document that.  
-> People
-> usu assume that the order of mount options don't matter.
->
->>> For instance, if retrans or timeo is parsed before "tcp" those  
->>> options
->>> can get overwritten. We may end up needing a multi-pass parser
->>> anyway...
->>
->> The parser can be made more careful about how those options are  
->> handled.
->>
->
-> Yep. That's another option (and is probably easier to implement too).
+> That fixes it -- thanks!
 
-I have some patches now that address both these problems.  I'll do  
-some testing and post on Monday.
+Thanks for testing.  I'll post a corrected patch to Mr. Dickson in a  
+bit.
 
 --
 Chuck Lever
