@@ -1,32 +1,58 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: retry= is additive with the text-based mount interface
-Date: Fri, 25 Apr 2008 16:37:56 -0400
-Message-ID: <29105BE5-81BE-4C7C-9E4A-EB133200217E@oracle.com>
-References: <20080425080535.GA4999@uio.no> <46541DE2-4D6A-4701-A3BB-E609F0E51D6D@oracle.com> <20080425163457.GA6952@uio.no> <F4C3F5C0-1D60-4285-9CB3-171C70C96B03@oracle.com> <20080425165921.GA7108@uio.no> <9CE7224B-002F-48B8-9DCB-8776A61167EF@oracle.com> <20080425173833.GA7306@uio.no>
-Mime-Version: 1.0 (Apple Message framework v919.2)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: linux-nfs@vger.kernel.org
-To: "Steinar H. Gunderson" <sgunderson-jG/AHqQBv7lBDgjK7y7TUQ@public.gmane.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: multiple instances of rpc.statd
+Date: Fri, 25 Apr 2008 18:07:27 -0400
+Message-ID: <20080425220727.GA9597@fieldses.org>
+References: <200804251531.21035.bs@q-leap.de> <4811E0D7.4070608@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Bernd Schubert <bs-PKu+Ek1N2UGzQB+pC5nmwQ@public.gmane.org>, linux-nfs@vger.kernel.org
+To: Wendy Cheng <s.wendy.cheng@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:24681 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1764237AbYDYUir (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Apr 2008 16:38:47 -0400
-In-Reply-To: <20080425173833.GA7306-6Z/AllhyZU4@public.gmane.org>
+Received: from mail.fieldses.org ([66.93.2.214]:38471 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932210AbYDYWHb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Apr 2008 18:07:31 -0400
+In-Reply-To: <4811E0D7.4070608@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Apr 25, 2008, at 1:38 PM, Steinar H. Gunderson wrote:
-> On Fri, Apr 25, 2008 at 01:11:02PM -0400, Chuck Lever wrote:
->> Just change "*timeout +=" to "*timeout =" in parse_retry_option().
+On Fri, Apr 25, 2008 at 09:47:03AM -0400, Wendy Cheng wrote:
+> Bernd Schubert wrote:
+>> Hello,
 >>
->> That was the bug I was trying to fix in the first place.  Sigh.
->
-> That fixes it -- thanks!
+>> on servers with heartbeat managed resources one rather often has the 
+>> situation one exports different directories from different resources.
+>>
+>> It now may happen all resources are running on one host, but they can 
+>> also run from different hosts. The situation gets even more complicated 
+>> if the server is also a nfs client.
+>>
+>> In principle having different nfs resources works fine, only the statd 
+>> state directory is a problem. Or in principle the statd concept at all. 
+>> Actually we would need to have several instances of statd running using 
+>> different directories. These then would have to be migrated from one 
+>> server to the other on resource movement. However, as far I understand 
+>> it, there does not even exist the basic concept for this, doesn't it? 
+>>
+>>   
+> The efforts have been attempted (to remedy this issue) and a complete  
+> set of patches have been (kept) submitting for the past two years. The   
+> patch acceptance progress is very slow (I guess people just don't want  
+> to get bothered with cluster issues ?).
 
-Thanks for testing.  I'll post a corrected patch to Mr. Dickson in a  
-bit.
+We definitely want to get this all figured out....
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+> Anyway, the kernel side has the basic infrastructure to handle the  
+> problem (it stores the incoming clients IP address as part of its  
+> book-keeping record) - just a little bit tweak will do the job. However,  
+> the user side statd directory needs to get re-structured. I didn't  
+> publish the user side directory structure script during my last round of  
+> submission. Forking statd into multiple threads do not solve all the  
+> issues. Check out:
+> https://www.redhat.com/archives/cluster-devel/2007-April/msg00028.html
+
+So for basic v2/v3 failover, what remains is some statd -H scripts, and
+some form of grace period control?  Is there anything else we're
+missing?
+
+--b.
