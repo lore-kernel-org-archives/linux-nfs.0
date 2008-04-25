@@ -1,77 +1,41 @@
-From: Bernd Schubert <bs-PKu+Ek1N2UGzQB+pC5nmwQ@public.gmane.org>
-Subject: Re: multiple instances of rpc.statd
-Date: Fri, 25 Apr 2008 16:30:36 +0200
-Message-ID: <200804251630.36917.bs@q-leap.de>
-References: <200804251531.21035.bs@q-leap.de> <4811E0D7.4070608@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-15"
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: The text-based mount interface doesn't support -s (--sloppy)
+Date: Fri, 25 Apr 2008 10:30:35 -0400
+Message-ID: <DF3AF794-BD55-40E8-9696-BC6C40E82713@oracle.com>
+References: <20080425081114.GA5148@uio.no>
+Mime-Version: 1.0 (Apple Message framework v919.2)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
 Cc: linux-nfs@vger.kernel.org
-To: Wendy Cheng <s.wendy.cheng@gmail.com>
+To: "Steinar H. Gunderson" <sgunderson-jG/AHqQBv7lBDgjK7y7TUQ@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from ns1.q-leap.de ([153.94.51.193]:45799 "EHLO mail.q-leap.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757017AbYDYOai (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Apr 2008 10:30:38 -0400
-In-Reply-To: <4811E0D7.4070608@gmail.com>
+Received: from agminet01.oracle.com ([141.146.126.228]:21407 "EHLO
+	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751869AbYDYObm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Apr 2008 10:31:42 -0400
+In-Reply-To: <20080425081114.GA5148-6Z/AllhyZU4@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello Wendy.
-
-On Friday 25 April 2008 15:47:03 Wendy Cheng wrote:
-> Bernd Schubert wrote:
-> > Hello,
-> >
-> > on servers with heartbeat managed resources one rather often has the
-> > situation one exports different directories from different resources.
-> >
-> > It now may happen all resources are running on one host, but they can
-> > also run from different hosts. The situation gets even more complicated
-> > if the server is also a nfs client.
-> >
-> > In principle having different nfs resources works fine, only the statd
-> > state directory is a problem. Or in principle the statd concept at all.
-> > Actually we would need to have several instances of statd running using
-> > different directories. These then would have to be migrated from one
-> > server to the other on resource movement.
-> > However, as far I understand it, there does not even exist the basic
-> > concept for this, doesn't it?
+On Apr 25, 2008, at 4:11 AM, Steinar H. Gunderson wrote:
+> Hi,
 >
-> The efforts have been attempted (to remedy this issue) and a complete
-> set of patches have been (kept) submitting for the past two years. The
-> patch acceptance progress is very slow (I guess people just don't want
-> to get bothered with cluster issues ?).
-
-Well, I think people are just ignorant. I did see your discussions about NLM 
-in the past on the NFS mailing list, but actually I didn't understand the 
-entire point of discussion ;) I was simply used to active-passive services 
-(mostly due to heartbeat-1.x) and there we just had /var/lib/nfs linked to 
-the exported directory.
-
-After I started to work here, I was confronted with the fact we do have 
-working active-active clusters here, but nobody besides me ever cared about 
-the locking problem :( NFS failovers just are done ignoring file locks.
-Seems so far also nobody run into a problem, but maybe the result was so 
-obscure that nobody ever bothered to complain...
-I'm just afraid most admins will simply do like this...
-
+> Another user-reported regression. -s used to work, but since 1.1.2  
+> it does
+> not, probably due to the text-based interface somehow:
 >
-> Anyway, the kernel side has the basic infrastructure to handle the
-> problem (it stores the incoming clients IP address as part of its
-> book-keeping record) - just a little bit tweak will do the job. However,
-> the user side statd directory needs to get re-structured. I didn't
-> publish the user side directory structure script during my last round of
-> submission. Forking statd into multiple threads do not solve all the
-> issues. Check out:
-> https://www.redhat.com/archives/cluster-devel/2007-April/msg00028.html
-
-Thanks, I will read this!
+>  fugl:~> sudo mount.nfs 10.0.0.10:/store /store -s -o rw,asdfasdf
+>  mount.nfs: an incorrect mount option was specified
 
 
-Thanks again,
-Bernd
+It's not exactly clear what the "sloppy" option is supposed to allow.   
+We are trying to figure out right now precisely how this should work.
 
--- 
-Bernd Schubert
-Q-Leap Networks GmbH
+But before complaining too loudly about text-based mounts, please  
+remember that there was no specification for the mount.nfs command and  
+mount system call interface except for a 15 year old man page.  We had  
+to do something to move forward with IPv6 and RDMA transports; the  
+legacy binary-only interface was simply inadequate.
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
