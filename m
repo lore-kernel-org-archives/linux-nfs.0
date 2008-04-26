@@ -1,30 +1,67 @@
-From: "Steinar H. Gunderson" <sgunderson-jG/AHqQBv7lBDgjK7y7TUQ@public.gmane.org>
+From: "Frank A. Kingswood" <frank-YzJE6wl5KmBjuoFY8sQqqY5Lr7LD32fptUK59QYPAWc@public.gmane.org>
 Subject: Re: Text-based mount interface breaking non-UDP mounts
-Date: Sat, 26 Apr 2008 01:57:13 +0200
-Message-ID: <20080425235713.GA9109@uio.no>
-References: <20080423214929.GA24387@uio.no> <2CE28767-23B0-4F6C-AE53-4921D73B2782@oracle.com> <20080425080128.GA4848@uio.no> <09F49D76-049E-47A0-B0AD-5A177F8433E6@oracle.com> <20080425142712.GA6119@uio.no> <4D5FA350-EED5-4204-8D70-E3BE5E400595@oracle.com> <20080425235546.GA9053@uio.no>
+Date: Sat, 26 Apr 2008 16:23:16 +0100
+Message-ID: <481348E4.3000003@kingswood-consulting.co.uk>
+References: <20080423214929.GA24387@uio.no>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Cc: linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Cc: public-linux-nfs-u79uwXL29TY76Z2rM5mHXA-8ByrlEUxsivZ+VzJOa5vwg@public.gmane.org
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cassarossa.samfundet.no ([129.241.93.19]:56907 "EHLO
-	cassarossa.samfundet.no" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754547AbYDYX5P (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Apr 2008 19:57:15 -0400
-In-Reply-To: <20080425235546.GA9053-6Z/AllhyZU4@public.gmane.org>
+Received: from main.gmane.org ([80.91.229.2]:57908 "EHLO ciao.gmane.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753629AbYDZPZH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 26 Apr 2008 11:25:07 -0400
+Received: from root by ciao.gmane.org with local (Exim 4.43)
+	id 1JpmGs-0005c2-5O
+	for linux-nfs@vger.kernel.org; Sat, 26 Apr 2008 15:25:02 +0000
+Received: from 88-97-16-53.dsl.zen.co.uk ([88.97.16.53])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Sat, 26 Apr 2008 15:25:02 +0000
+Received: from frank by 88-97-16-53.dsl.zen.co.uk with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Sat, 26 Apr 2008 15:25:02 +0000
+In-Reply-To: <20080423214929.GA24387-6Z/AllhyZU4@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Apr 26, 2008 at 01:55:46AM +0200, Steinar H. Gunderson wrote:
-> I checked the original bug report, and indeed it seems that the blocking was
-> on the client there as well. I'll ask the user to check what happens when the
-> filtering is done server-side instead.
+Steinar H. Gunderson wrote:
+> Hi,
+> 
+> I've gotten a few bug reports lately that if UDP is blocked at the server,
+> NFS mounts (even with -o tcp) fail. git bisect shows that the culprit is
+> the change "Get rid of the "-i" option for mount.nfs[4] and always use the
+> text-based mount(2) system call for kernel version 2.6.23 and later." -- in
+> other words, the bug is specific to the text interface. Does anyone know why
+> this would be the case?
+This also fails for me. My setup is through an ssh tunnel
+    ssh -L2049:srv:2049 -L2050:srv:2050 -L2051:srv:2051ser@gateway
 
-Hm, no, there's also reports of blocking on a firewall in the middle; see
+and I follow that with
+    strace mount localhost:/export /mountpoint \
+              -o nfsvers=3,port=2049,mountport=2050,...
 
-  http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=473171
+This hangs in this kernel call
+   mount("localhost:/export", "/mountpoint", "nfs", 
+MS_NOSUID|MS_NOATIME, 
+"tcp,intr,fg,soft,nfsvers=3,port=2049,mountport=2050,nolock,addr=127.0.0.1"
 
-/* Steinar */
--- 
-Homepage: http://www.sesse.net/
+This hack makes it work for me again:
+
+diff -ru nfs-utils-1.1.2/utils/mount/mount.c 
+nfs-utils-1.1.2-changed/utils/mount/mount.c
+--- nfs-utils-1.1.2/utils/mount/mount.c	2008-03-14 15:46:29 +0000
++++ nfs-utils-hack/utils/mount/mount.c	2008-04-26 15:49:55 +0100
+@@ -191,7 +191,8 @@
+  		nfs_mount_data_version = NFS_MOUNT_VERSION;
+  	else
+  		if (kernel_version > MAKE_VERSION(2, 6, 22))
+-			string++;
++			string=0;
+  }
+
+  static void print_one(char *spec, char *node, char *type, char *opts)
+
+Frank
+
