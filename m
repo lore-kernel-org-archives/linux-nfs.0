@@ -1,93 +1,106 @@
-From: Wendy Cheng <s.wendy.cheng@gmail.com>
-Subject: Re: multiple instances of rpc.statd
-Date: Sun, 27 Apr 2008 22:59:11 -0500
-Message-ID: <48154B8F.7050301@gmail.com>
-References: <200804251531.21035.bs@q-leap.de> <4811E0D7.4070608@gmail.com> <20080425220727.GA9597@fieldses.org>
+From: Jordi Prats <jprats-KO9VOOLprG0@public.gmane.org>
+Subject: Re: [NFS] NFS limits?
+Date: Mon, 28 Apr 2008 12:43:23 +0200
+Message-ID: <4815AA4B.1080304@cesca.es>
+References: <480C8DAB.40504@cesca.es> <480C9A1B.20604@redhat.com>
+	<480CA2CC.80209@cesca.es>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=iso-8859-1
+Cc: Peter Staubach <staubach@redhat.com>, nfs@lists.sourceforge.net
+To: Jordi Prats <jprats-KO9VOOLprG0@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from an-out-0708.google.com ([209.85.132.251]:3157 "EHLO
-	an-out-0708.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1761755AbYD1D7O (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Apr 2008 23:59:14 -0400
-Received: by an-out-0708.google.com with SMTP id d31so1176225and.103
-        for <linux-nfs@vger.kernel.org>; Sun, 27 Apr 2008 20:59:12 -0700 (PDT)
-In-Reply-To: <20080425220727.GA9597@fieldses.org>
+Received: from neil.brown.name ([220.233.11.133]:37613 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754008AbYD1Kqo convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Apr 2008 06:46:44 -0400
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1JqQsc-00011Q-SB
+	for linux-nfs@vger.kernel.org; Mon, 28 Apr 2008 20:46:42 +1000
+In-Reply-To: <480CA2CC.80209-KO9VOOLprG0@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-J. Bruce Fields wrote:
-> On Fri, Apr 25, 2008 at 09:47:03AM -0400, Wendy Cheng wrote:
->   
->> Bernd Schubert wrote:
->>     
->>> Hello,
+Hi all,
+Witch are the limits of NFSv3 and NFSv4?
+
+I was wrong about the version I was using, we are currently using NFSv3=
+=2E=20
+Anyone is exporting by NFS a filesystem as large (or larger) as our?
+
+Thanks,
+Jordi
+
+Jordi Prats wrote:
+> Hi Peter,
+> My boss is reluctant to upgrade this server, so I'm stuck to NFSv2 :(=
+ I=20
+> hope this will convince him !
+>
+> Thanks,
+> Jordi
+>
+> Peter Staubach wrote:
+>  =20
+>> Jordi Prats wrote:
+>>    =20
+>>> Hi all,
+>>> I've a 4246 GB (above 4TB) using NFSv2 to export it. Some applicati=
+on=20
+>>> are generating estrange errors, so it's possible I'm facing a NFS=20
+>>> limit? How large can a be to be exported without problems?
 >>>
->>> on servers with heartbeat managed resources one rather often has the 
->>> situation one exports different directories from different resources.
+>>> I'm using a 32bits architecture.
 >>>
->>> It now may happen all resources are running on one host, but they can 
->>> also run from different hosts. The situation gets even more complicated 
->>> if the server is also a nfs client.
+>>> Thanks!
+>>> Jordi
 >>>
->>> In principle having different nfs resources works fine, only the statd 
->>> state directory is a problem. Or in principle the statd concept at all. 
->>> Actually we would need to have several instances of statd running using 
->>> different directories. These then would have to be migrated from one 
->>> server to the other on resource movement. However, as far I understand 
->>> it, there does not even exist the basic concept for this, doesn't it? 
->>>
->>>   
->>>       
->> The efforts have been attempted (to remedy this issue) and a complete  
->> set of patches have been (kept) submitting for the past two years. The   
->> patch acceptance progress is very slow (I guess people just don't want  
->> to get bothered with cluster issues ?).
->>     
->
-> We definitely want to get this all figured out....
->
->   
->> Anyway, the kernel side has the basic infrastructure to handle the  
->> problem (it stores the incoming clients IP address as part of its  
->> book-keeping record) - just a little bit tweak will do the job. However,  
->> the user side statd directory needs to get re-structured. I didn't  
->> publish the user side directory structure script during my last round of  
->> submission. Forking statd into multiple threads do not solve all the  
->> issues. Check out:
->> https://www.redhat.com/archives/cluster-devel/2007-April/msg00028.html
->>     
->
-> So for basic v2/v3 failover, what remains is some statd -H scripts, and
-> some form of grace period control?  Is there anything else we're
-> missing?
+>>>  =20
+>>>      =20
+>> NFSv2 is a 32 bit file access protocol, so don't be surprised
+>> if you see EFBIG sorts of errors on operations such as FSSTAT.
+>>
+>> In particular, that file system size is too large to represent,
+>> I am sort of surprised that it would even be mountable.
+>>
+>> Why not use NFSv3 or NFSv4?
+>>
+>>       ps
+>>
+>>
+>>    =20
 >
 >
->   
-The submitted patch set is reasonably complete ... .
+>  =20
 
-There was another thought about statd patches though - mostly because of
-the concerns over statd's responsiveness. It depended so much on network
-status and clients' participations.  I was hoping NFS V4 would catch up
-by the time v2/v3 grace period patches got accepted into mainline
-kernel. Ideally the v2/v3 lock reclaiming logic could use (or at least
-did a similar implementation) the communication channel established by
-v4 servers - that is,
 
-1. Enable grace period as previous submitted patches on secondary server.
-2. Drop the locks on primary server (and chained the dropped locks into
-a lock-list).
-3. Send the lock-list via v4 communication channel (or similar
-implementation) from primary server to backup server.
-4. Reclaim the lock base on the lock-list on backup server.
+--=20
+=2E....................................................................=
+=2E
+         __
+        / /          Jordi Prats
+  C E / S / C A      Dept. de Sistemes
+      /_/            Centre de Supercomputaci=F3 de Catalunya
 
-In short, it would be nice to replace the existing statd lock reclaiming
-logic with the above steps if all possible during active-active
-failover. For reboot, on the other hand, should stay same as today's
-statd logic without changes.
+  Gran Capit=E0, 2-4 (Edifici Nexus) =B7 08034 Barcelona
+  T. 93 205 6464 =B7 F.  93 205 6979 =B7 jprats-KO9VOOLprG0@public.gmane.org
+=2E....................................................................=
+=2E=20
 
--- Wendy
 
+-----------------------------------------------------------------------=
+--
+This SF.net email is sponsored by the 2008 JavaOne(SM) Conference=20
+Don't miss this year's exciting event. There's still time to save $100.=
+=20
+Use priority code J8TL2D2.=20
+http://ad.doubleclick.net/clk;198757673;13503038;p?http://java.sun.com/=
+javaone
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
