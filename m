@@ -1,71 +1,124 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: Text-based mount interface breaking non-UDP mounts
-Date: Mon, 28 Apr 2008 14:44:35 -0400
-Message-ID: <2C8DA783-FB7C-40E5-B0B5-94D9067EBC9C@oracle.com>
-References: <20080423214929.GA24387@uio.no> <48134C77.9090700@kingswood-consulting.co.uk> <2AA81EE8-74A9-42A5-8ACF-E01BBB6F2280@oracle.com> <48161671.2070508@kingswood-consulting.co.uk>
-Mime-Version: 1.0 (Apple Message framework v919.2)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: linux-nfs@vger.kernel.org,
-	public-linux-nfs-u79uwXL29TY76Z2rM5mHXA-8ByrlEUxsivZ+VzJOa5vwg@public.gmane.org
-To: "Frank A. Kingswood" <frank-YzJE6wl5KmBjuoFY8sQqqY5Lr7LD32fptUK59QYPAWc@public.gmane.org>
+From: Chuck Lever <chucklever@gmail.com>
+Subject: [PATCH] text-based mount command: Fix retry= option
+Date: Mon, 28 Apr 2008 15:05:33 -0400
+Message-ID: <20080428190533.1939.39604.stgit@manray.1015granger.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org
+To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:23069 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1765906AbYD1Spo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Apr 2008 14:45:44 -0400
-In-Reply-To: <48161671.2070508-YzJE6wl5KmBjuoFY8sQqqY5Lr7LD32fptUK59QYPAWc@public.gmane.org>
+Received: from hs-out-0708.google.com ([64.233.178.248]:17016 "EHLO
+	hs-out-0708.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753226AbYD1TFg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Apr 2008 15:05:36 -0400
+Received: by hs-out-0708.google.com with SMTP id 4so3736582hsl.5
+        for <linux-nfs@vger.kernel.org>; Mon, 28 Apr 2008 12:05:35 -0700 (PDT)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Apr 28, 2008, at 2:24 PM, Frank A. Kingswood wrote:
-> Chuck Lever wrote:
->>>
->>> The NFS client code (nfs-utils-1.1.2) tests for
->>> if (kernel_version > MAKE_VERSION(2, 6, 22))
->>>
->>> yet the kernel patch for NFS did not go un until 2.6.25-rc2
->>> So the test should at least be > MAKE_VERSION(2, 6, 24).
->> The original NFS text-based mount support was added in 2.6.23.
-> OK.
->> New features will be added only to the text-based mount interface,  
->> however, so eventually everyone will need to use the text-based  
->> mount interface on new kernels.
-> That sounds like a good idea.
->> Because we have little documented history and only a handful of use  
->> cases and unit tests for the mount command, it's important for  
->> everyone to test the new API and report problems here so we can  
->> address them.  NFS mount is complex and has many subtle and hidden  
->> historical behaviors.
-> My system fails with 2.6.23 and 2.6.25 kernels. As I described in my  
-> original mail, I only have TCP access to the server, and only  
-> through an ssh tunnel.
->
-> Would you like me to try and produce some debug traces, or do you  
-> think you can find the problem with the information you have  
-> already? I've seen quite a few reports of this now.
+Steinar Gunderson reports:
 
-Thanks for the offer.  I tested against a server configuration that  
-dropped UDP packets, but I never tested through an ssh tunnel.
+"It seems retry= is now additive with the text-based mount interface. In
+particular, "mount -o retry=0" still gives a two-minute timeout."
 
-Network traces might be a little hard with a tunnel, but give it a  
-shot.  The best information comes from a full-packet raw trace.  Use  
-the "-s0" option on tcpdump.
+Correct the bug and make retry= option parsing more robust.  If parsing
+the retry option fails, the option is ignored and a default timeout is
+used.
 
-You can also trace NFS mount processing with:
+Note that currently the kernel parser ignores the "retry=" option if the
+value is a number.  If the value contains other characters, the kernel will
+choke.  A subsequent patch to the kernel will allow any characters as the
+value of the retry option (excepting of course ",").
 
-# sysctl -w sunrpc.nfs_debug = 128
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-Or trace all RPC activity (including rpcbind and RPC network transport  
-errors) with:
+ utils/mount/stropts.c |   51 +++++++++++++++++++++++++++++++++++++------------
+ 1 files changed, 38 insertions(+), 13 deletions(-)
 
-# sysctl -w sunrpc.rpc_debug = 32767
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index cadb1f4..6630879 100644
+--- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -65,6 +65,14 @@
+ #define NFS_MAXPATHNAME		(1024)
+ #endif
+ 
++#ifndef NFS_DEF_FG_TIMEOUT_MINUTES
++#define NFS_DEF_FG_TIMEOUT_MINUTES	(2u)
++#endif
++
++#ifndef NFS_DEF_BG_TIMEOUT_MINUTES
++#define NFS_DEF_BG_TIMEOUT_MINUTES	(10000u)
++#endif
++
+ extern int nfs_mount_data_version;
+ extern char *progname;
+ extern int verbose;
+@@ -141,6 +149,32 @@ static int fill_ipv4_sockaddr(const char *hostname, struct sockaddr_in *addr)
+ }
+ 
+ /*
++ * Obtain a retry timeout value based on the value of the "retry=" option.
++ *
++ * Returns a time_t timeout timestamp, in seconds.
++ */
++static time_t parse_retry_option(struct mount_options *options,
++				 unsigned int timeout_minutes)
++{
++	char *retry_option, *endptr;
++
++	retry_option = po_get(options, "retry");
++	if (retry_option) {
++		long tmp;
++
++		errno = 0;
++		tmp = strtol(retry_option, &endptr, 10);
++		if (errno == 0 && endptr != retry_option && tmp >= 0)
++			timeout_minutes = tmp;
++		else if (verbose)
++			nfs_error(_("%s: invalid retry timeout was specified; "
++					"using default timeout\n"), progname);
++	}
++
++	return time(NULL) + (time_t)(timeout_minutes * 60);
++}
++
++/*
+  * Append the 'addr=' option to the options string to pass a resolved
+  * server address to the kernel.  After a successful mount, this address
+  * is also added to /etc/mtab for use when unmounting.
+@@ -535,14 +569,9 @@ static int nfsmount_fg(const char *spec, const char *node,
+ 		       char **extra_opts)
+ {
+ 	unsigned int secs = 1;
+-	time_t timeout = time(NULL);
+-	char *retry;
+-
+-	timeout += 60 * 2;		/* default: 2 minutes */
+-	retry = po_get(options, "retry");
+-	if (retry)
+-		timeout += 60 * atoi(retry);
++	time_t timeout;
+ 
++	timeout = parse_retry_option(options, NFS_DEF_FG_TIMEOUT_MINUTES);
+ 	if (verbose)
+ 		printf(_("%s: timeout set for %s"),
+ 			progname, ctime(&timeout));
+@@ -612,13 +641,9 @@ static int nfsmount_child(const char *spec, const char *node,
+ 			  int fake, char **extra_opts)
+ {
+ 	unsigned int secs = 1;
+-	time_t timeout = time(NULL);
+-	char *retry;
++	time_t timeout;
+ 
+-	timeout += 60 * 10000;		/* default: 10,000 minutes */
+-	retry = po_get(options, "retry");
+-	if (retry)
+-		timeout += 60 * atoi(retry);
++	timeout = parse_retry_option(options, NFS_DEF_BG_TIMEOUT_MINUTES);
+ 
+ 	for (;;) {
+ 		if (sleep(secs))
 
-You can set both of these at the same time.  Trace output will appear  
-in /var/log/messages.  To disable tracing when you're done, set these  
-sysctls to zero.
-
-You can post these to me privately.
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
