@@ -1,106 +1,77 @@
-From: Jordi Prats <jprats-KO9VOOLprG0@public.gmane.org>
-Subject: Re: [NFS] NFS limits?
-Date: Mon, 28 Apr 2008 12:43:23 +0200
-Message-ID: <4815AA4B.1080304@cesca.es>
-References: <480C8DAB.40504@cesca.es> <480C9A1B.20604@redhat.com>
-	<480CA2CC.80209@cesca.es>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: Peter Staubach <staubach@redhat.com>, nfs@lists.sourceforge.net
-To: Jordi Prats <jprats-KO9VOOLprG0@public.gmane.org>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:37613 "EHLO neil.brown.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754008AbYD1Kqo convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Apr 2008 06:46:44 -0400
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1JqQsc-00011Q-SB
-	for linux-nfs@vger.kernel.org; Mon, 28 Apr 2008 20:46:42 +1000
-In-Reply-To: <480CA2CC.80209-KO9VOOLprG0@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+From: Jan Blunck <jblunck@suse.de>
+Subject: [PATCH 2/3] NFS: path_{get,put}() cleanups
+Date: Mon, 28 Apr 2008 18:37:33 +0200
+Message-ID: <20080428163732.072893435@T61.localnet>
+References: <20080428163731.774191296@T61.localnet>
+Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
+To: Linux-Kernel Mailinglist <linux-kernel@vger.kernel.org>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Linux-fsdevel Mailinglist <linux-fsdevel@vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi all,
-Witch are the limits of NFSv3 and NFSv4?
+Here are some more places where path_{get,put}() can be used instead of
+dput()/mntput() pair.
 
-I was wrong about the version I was using, we are currently using NFSv3=
-=2E=20
-Anyone is exporting by NFS a filesystem as large (or larger) as our?
+Signed-off-by: Jan Blunck <jblunck@suse.de>
+---
+ fs/nfs/inode.c     |    3 +--
+ fs/nfs/namespace.c |    3 +--
+ fs/nfs/nfs4proc.c  |    6 ++----
+ 3 files changed, 4 insertions(+), 8 deletions(-)
 
-Thanks,
-Jordi
+Index: b/fs/nfs/inode.c
+===================================================================
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -541,8 +541,7 @@ static void __put_nfs_open_context(struc
+ 	}
+ 	if (ctx->cred != NULL)
+ 		put_rpccred(ctx->cred);
+-	dput(ctx->path.dentry);
+-	mntput(ctx->path.mnt);
++	path_put(&ctx->path);
+ 	kfree(ctx);
+ }
+ 
+Index: b/fs/nfs/namespace.c
+===================================================================
+--- a/fs/nfs/namespace.c
++++ b/fs/nfs/namespace.c
+@@ -137,8 +137,7 @@ static void * nfs_follow_mountpoint(stru
+ 			goto out_follow;
+ 		goto out_err;
+ 	}
+-	mntput(nd->path.mnt);
+-	dput(nd->path.dentry);
++	path_put(&nd->path);
+ 	nd->path.mnt = mnt;
+ 	nd->path.dentry = dget(mnt->mnt_root);
+ 	schedule_delayed_work(&nfs_automount_task, nfs_mountpoint_expiry_timeout);
+Index: b/fs/nfs/nfs4proc.c
+===================================================================
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -304,8 +304,7 @@ static void nfs4_opendata_free(struct kr
+ 		nfs4_put_open_state(p->state);
+ 	nfs4_put_state_owner(p->owner);
+ 	dput(p->dir);
+-	dput(p->path.dentry);
+-	mntput(p->path.mnt);
++	path_put(&p->path);
+ 	kfree(p);
+ }
+ 
+@@ -1213,8 +1212,7 @@ static void nfs4_free_closedata(void *da
+ 	nfs4_put_open_state(calldata->state);
+ 	nfs_free_seqid(calldata->arg.seqid);
+ 	nfs4_put_state_owner(sp);
+-	dput(calldata->path.dentry);
+-	mntput(calldata->path.mnt);
++	path_put(&calldata->path);
+ 	kfree(calldata);
+ }
+ 
 
-Jordi Prats wrote:
-> Hi Peter,
-> My boss is reluctant to upgrade this server, so I'm stuck to NFSv2 :(=
- I=20
-> hope this will convince him !
->
-> Thanks,
-> Jordi
->
-> Peter Staubach wrote:
->  =20
->> Jordi Prats wrote:
->>    =20
->>> Hi all,
->>> I've a 4246 GB (above 4TB) using NFSv2 to export it. Some applicati=
-on=20
->>> are generating estrange errors, so it's possible I'm facing a NFS=20
->>> limit? How large can a be to be exported without problems?
->>>
->>> I'm using a 32bits architecture.
->>>
->>> Thanks!
->>> Jordi
->>>
->>>  =20
->>>      =20
->> NFSv2 is a 32 bit file access protocol, so don't be surprised
->> if you see EFBIG sorts of errors on operations such as FSSTAT.
->>
->> In particular, that file system size is too large to represent,
->> I am sort of surprised that it would even be mountable.
->>
->> Why not use NFSv3 or NFSv4?
->>
->>       ps
->>
->>
->>    =20
->
->
->  =20
-
-
---=20
-=2E....................................................................=
-=2E
-         __
-        / /          Jordi Prats
-  C E / S / C A      Dept. de Sistemes
-      /_/            Centre de Supercomputaci=F3 de Catalunya
-
-  Gran Capit=E0, 2-4 (Edifici Nexus) =B7 08034 Barcelona
-  T. 93 205 6464 =B7 F.  93 205 6979 =B7 jprats-KO9VOOLprG0@public.gmane.org
-=2E....................................................................=
-=2E=20
-
-
------------------------------------------------------------------------=
---
-This SF.net email is sponsored by the 2008 JavaOne(SM) Conference=20
-Don't miss this year's exciting event. There's still time to save $100.=
-=20
-Use priority code J8TL2D2.=20
-http://ad.doubleclick.net/clk;198757673;13503038;p?http://java.sun.com/=
-javaone
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
 
