@@ -1,54 +1,185 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: nfs_revalidate_file_size
-Date: Mon, 28 Apr 2008 16:32:49 -0400
-Message-ID: <4C012AB6-670F-41E6-8392-7164E42611AB@oracle.com>
-Mime-Version: 1.0 (Apple Message framework v919.2)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+From: "Janne Karhunen" <janne.karhunen@gmail.com>
+Subject: Re: [patch] fix statd -n
+Date: Mon, 28 Apr 2008 16:52:32 -0400
+Message-ID: <24c1515f0804281352u2d04ac89i820dc6807dde39f1@mail.gmail.com>
+References: <24c1515f0804170938s23fe3ea3pfe77355ed01d8bbf@mail.gmail.com>
+	 <20080418173646.GC19038@fieldses.org> <480902CA.1070805@redhat.com>
+	 <48090356.9020703@redhat.com> <20080418203225.GD28277@fieldses.org>
+	 <24c1515f0804181346g5867fa1fqfbbcd13af25027cb@mail.gmail.com>
+	 <20080421000214.GA5453@fieldses.org>
+Mime-Version: 1.0
+Content-Type: multipart/mixed;
+	boundary="----=_Part_7750_8404602.1209415952595"
+Cc: "Peter Staubach" <staubach@redhat.com>, linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:17290 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1765889AbYD1UdY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Apr 2008 16:33:24 -0400
+Received: from wf-out-1314.google.com ([209.85.200.168]:64475 "EHLO
+	wf-out-1314.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S966485AbYD1Uwd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Apr 2008 16:52:33 -0400
+Received: by wf-out-1314.google.com with SMTP id 28so4182531wff.4
+        for <linux-nfs@vger.kernel.org>; Mon, 28 Apr 2008 13:52:32 -0700 (PDT)
+In-Reply-To: <20080421000214.GA5453@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond-
+------=_Part_7750_8404602.1209415952595
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
-I'm looking at this logic in nfs_revalidate_file_size:
+On Sun, Apr 20, 2008 at 8:02 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
 
-         if (server->flags & NFS_MOUNT_NOAC)
-                 goto force_reval;
-         if (filp->f_flags & O_DIRECT)
-                 goto force_reval;
-         if (nfsi->npages != 0)
-                 return 0;
-         if (!(nfsi->cache_validity & NFS_INO_REVAL_PAGECACHE) &&
-					!nfs_attribute_timeout(inode))
-                 return 0;
-force_reval:
-         return __nfs_revalidate_inode(server, inode);
+>  > >  Right, that's what would make the most sense to me.  Janne, is there any
+>  > >  reason that wouldn't solve your problem?
+>  >
+>  > I didn't get the idea. So the idea is to use multiple sockets,
+>  > one bound to LOOPBACK and one to external interface?
+>
+>  I suppose so.  One socket would be for communication for the local
+>  kernel nfsd, one for communication with statd peers.
 
-There are problems with this when there are concurrent writers or  
-there happen to be outstanding writes.
+Finally got around to it again. Attached patch takes a
+shot at the two socket approach. Patch is a draft to
+see what you guys would really think about this
+approach.
 
-If "noac" is set and there are concurrent (O_SYNC) writers, the  
-getattr may not see the correct file size on the server if it is done  
-while some other process is in the middle of a write.
 
-The logic should be looking at acregmin/max not at the "noac" flag.   
-If someone sets "actimeo=0" this logic will continue to use a cached  
-file size if there happen to be outstanding dirty pages.
+-- 
+// Janne
 
-If this is an O_APPEND write, the client will potentially miss file  
-size changes on the server if there happen to be outstanding dirty  
-pages on this client.
+------=_Part_7750_8404602.1209415952595
+Content-Type: text/x-patch; name=statd-two-sockets.patch
+Content-Transfer-Encoding: base64
+X-Attachment-Id: f_fflixcay0
+Content-Disposition: attachment; filename=statd-two-sockets.patch
 
-These cases could be improved by using the same technique as  
-nfs_getattr: Causing all writers to wait, flushing out the writes  
-without a commit, then doing the getattr.
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+ZGlmZiAtTmF1cnAgbmZzLXV0aWxzLTEuMS4yLm9yaWcvdXRpbHMvc3RhdGQvcm10Y2FsbC5jIG5m
+cy11dGlscy0xLjEuMi91dGlscy9zdGF0ZC9ybXRjYWxsLmMKLS0tIG5mcy11dGlscy0xLjEuMi5v
+cmlnL3V0aWxzL3N0YXRkL3JtdGNhbGwuYwkyMDA4LTAzLTE0IDExOjQ2OjI5LjAwMDAwMDAwMCAt
+MDQwMAorKysgbmZzLXV0aWxzLTEuMS4yL3V0aWxzL3N0YXRkL3JtdGNhbGwuYwkyMDA4LTA0LTI4
+IDE2OjE2OjAyLjAwMDAwMDAwMCAtMDQwMApAQCAtNTQsMzUgKzU0LDM0IEBACiAKIHN0YXRpYyB1
+bnNpZ25lZCBsb25nCXhpZCA9IDA7CS8qIFJQQyBYSUQgY291bnRlciAqLwogc3RhdGljIGludAkJ
+c29ja2ZkID0gLTE7CS8qIG5vdGlmeSBzb2NrZXQgKi8KK3N0YXRpYyBpbnQgICAgICAgICAgICAg
+IG5sbWZkID0gLTE7ICAgICAvKiBsb2NrZCBzb2NrZXQgKi8KIAogLyoKLSAqIEluaXRpYWxpemUg
+Y2FsbGJhY2sgc29ja2V0CisgKiBJbml0aWFsaXplIGNhbGxiYWNrIHNvY2tldCBhbmQgYmluZCBp
+dCB0byBhZGRyCiAgKi8KIGludAotc3RhdGRfZ2V0X3NvY2tldCh2b2lkKQorc3RhdGRfcmVzZXJ2
+ZV9zb2NrZXQoc3RydWN0IGluX2FkZHIgKmFkZHIpCiB7Ci0Jc3RydWN0IHNvY2thZGRyX2luCXNp
+bjsKKwlzdHJ1Y3Qgc29ja2FkZHJfaW4gICAgICBzaW47CiAJc3RydWN0IHNlcnZlbnQgKnNlOwog
+CWludCBsb29wY250ID0gMTAwOworCWludCBmZCA9IC0xOwogCi0JaWYgKHNvY2tmZCA+PSAwKQot
+CQlyZXR1cm4gc29ja2ZkOwotCi0Jd2hpbGUgKGxvb3BjbnQtLSA+IDApIHsKKwltZW1zZXQoJnNp
+biwgMCwgc2l6ZW9mKHNpbikpOworCXNpbi5zaW5fZmFtaWx5ID0gQUZfSU5FVDsKKwltZW1jcHko
+JnNpbi5zaW5fYWRkciwgYWRkciwgc2l6ZW9mKHN0cnVjdCBpbl9hZGRyKSk7CiAKLQkJaWYgKHNv
+Y2tmZCA+PSAwKSBjbG9zZShzb2NrZmQpOworCXdoaWxlIChsb29wY250LS0gPiAwKQorCXsKKwkJ
+aWYgKGZkID49IDApCisJCQljbG9zZShmZCk7CiAKLQkJaWYgKChzb2NrZmQgPSBzb2NrZXQoQUZf
+SU5FVCwgU09DS19ER1JBTSwgSVBQUk9UT19VRFApKSA8IDApIHsKKwkJaWYgKChmZCA9IHNvY2tl
+dChBRl9JTkVULCBTT0NLX0RHUkFNLCBJUFBST1RPX1VEUCkpIDwgMCkgewogCQkJbm90ZShOX0NS
+SVQsICJDYW4ndCBjcmVhdGUgc29ja2V0OiAlbSIpOwogCQkJcmV0dXJuIC0xOwogCQl9CiAKLQot
+CQltZW1zZXQoJnNpbiwgMCwgc2l6ZW9mKHNpbikpOwotCQlzaW4uc2luX2ZhbWlseSA9IEFGX0lO
+RVQ7Ci0JCXNpbi5zaW5fYWRkci5zX2FkZHIgPSBJTkFERFJfQU5ZOwotCi0JCWlmIChiaW5kcmVz
+dnBvcnQoc29ja2ZkLCAmc2luKSA8IDApIHsKKwkJaWYgKGJpbmRyZXN2cG9ydChmZCwgJnNpbikg
+PCAwKSB7CiAJCQlkcHJpbnRmKE5fV0FSTklORywKIAkJCQkicHJvY2Vzc19ob3N0czogY2FuJ3Qg
+YmluZCB0byByZXNlcnZlZCBwb3J0XG4iKTsKIAkJCWJyZWFrOwpAQCAtOTIsMTIgKzkxLDc1IEBA
+IHN0YXRkX2dldF9zb2NrZXQodm9pZCkKIAkJCWJyZWFrOwogCQkvKiByYXRoZXIgbm90IHVzZSB0
+aGF0IHBvcnQsIHRyeSBhZ2FpbiAqLwogCX0KLQlGRF9TRVQoc29ja2ZkLCAmU1ZDX0ZEU0VUKTsK
+LQlyZXR1cm4gc29ja2ZkOworCUZEX1NFVChmZCwgJlNWQ19GRFNFVCk7CisJcmV0dXJuIGZkOwor
+fQorCisvKgorICogQ2hlY2sgcmVxdWlyZWQgc29ja2V0cyBhbmQgaW5pdAorICovCitpbnQKK3N0
+YXRkX2luaXRfc29ja2V0cyh2b2lkKQoreworCXN0cnVjdCBob3N0ZW50ICpocCA9IDA7CisJc3Ry
+dWN0IGluX2FkZHIgYWRkcjsKKworCWlmIChNWV9OQU1FKQorCQlocCA9IGdldGhvc3RieW5hbWUo
+TVlfTkFNRSk7CisKKwlpZiAoaHApIHsKKwkJbWVtY3B5ICgmYWRkcixocC0+aF9hZGRyLHNpemVv
+ZihzdHJ1Y3QgaW5fYWRkcikpOworCQlzb2NrZmQgPSBzdGF0ZF9yZXNlcnZlX3NvY2tldCgmYWRk
+cik7CisKKwkJYWRkci5zX2FkZHIgPSBodG9ubChJTkFERFJfTE9PUEJBQ0spOworCQlubG1mZCAg
+PSBzdGF0ZF9yZXNlcnZlX3NvY2tldCgmYWRkcik7CisJfSBlbHNlIHsKKwkJYWRkci5zX2FkZHIg
+PSBJTkFERFJfQU5ZOworCQlzb2NrZmQgPSBzdGF0ZF9yZXNlcnZlX3NvY2tldCgmYWRkcik7CisJ
+CW5sbWZkICA9IHNvY2tmZDsKKwl9CisJaWYgKHNvY2tmZCA8IDAgfHwgbmxtZmQgPCAwKSB7CisJ
+CWNsb3NlKHNvY2tmZCk7CisJCWNsb3NlKG5sbWZkKTsKKwkJc29ja2ZkID0gMDsKKwkJbmxtZmQg
+ID0gMDsKKwkJcmV0dXJuIC0xOworCX0KKwlyZXR1cm4gMTsKK30KKworLyoKKyAqICBHZXQgc29j
+a2V0IHRvIGRlc3RpbmF0aW9uLiBMb2NhbCBjb21tdW5pY2F0aW9ucyBzaG91bGQKKyAqICB1c2Ug
+c3BlY2lmaWMgc29ja2V0IGJvdW5kIHRvIGxvb3BiYWNrIGlmIHdlJ3JlIHJ1bm5pbmcKKyAqICB3
+aXRoIC1uLgorICovCitpbnQKK3N0YXRkX2dldF9zb2NrZXQoc3RydWN0IGluX2FkZHIgKmRlc3Qp
+Cit7CisJc3RydWN0IGluX2FkZHIgYWRkcjsKKwlpbnQgcmVzOworCisJaWYgKCFkZXN0KQorCQly
+ZXR1cm4gLTE7CisKKwlhZGRyLnNfYWRkciA9IG50b2hsKGRlc3QtPnNfYWRkcik7CisKKwlpZiAo
+KG5sbWZkID4gMCkgJiYgKGFkZHIuc19hZGRyID09IElOQUREUl9MT09QQkFDSykpCisJCXJldHVy
+biBubG1mZDsKKworCWlmICgoc29ja2ZkID4gMCkgJiYgKGFkZHIuc19hZGRyICE9IElOQUREUl9M
+T09QQkFDSykpCisJCXJldHVybiBzb2NrZmQ7CisKKwlyZXMgPSBzdGF0ZF9pbml0X3NvY2tldHMo
+KTsKKwlpZiAocmVzIDwgMCkgeworCQlub3RlKE5fV0FSTklORywgInN0YXRkX2dldF9zb2NrZXQ6
+IGNvdWxkIG5vdCBpbml0aWxpemUgc29ja2V0c1xuIik7CisJCXJldHVybiAtMTsKKwl9CisJcmV0
+dXJuIChhZGRyLnNfYWRkciA9PSBJTkFERFJfTE9PUEJBQ0spID8gbmxtZmQgOiBzb2NrZmQ7CiB9
+CiAKIHN0YXRpYyB1bnNpZ25lZCBsb25nCi14bWl0X2NhbGwoaW50IHNvY2tmZCwgc3RydWN0IHNv
+Y2thZGRyX2luICpzaW4sCit4bWl0X2NhbGwoaW50IGZkLCBzdHJ1Y3Qgc29ja2FkZHJfaW4gKnNp
+biwKIAkgIHVfaW50MzJfdCBwcm9nLCB1X2ludDMyX3QgdmVycywgdV9pbnQzMl90IHByb2MsCiAJ
+ICB4ZHJwcm9jX3QgZnVuYywgdm9pZCAqb2JqKQogLyogCQlfX3UzMiBwcm9nLCBfX3UzMiB2ZXJz
+LCBfX3UzMiBwcm9jLCB4ZHJwcm9jX3QgZnVuYywgdm9pZCAqb2JqKSAqLwpAQCAtMTUwLDcgKzIx
+Miw3IEBAIHhtaXRfY2FsbChpbnQgc29ja2ZkLCBzdHJ1Y3Qgc29ja2FkZHJfaW4KIAkvKiBHZXQg
+b3ZlcmFsbCBsZW5ndGggb2YgZGF0YWdyYW0gKi8KIAltc2dsZW4gPSB4ZHJfZ2V0cG9zKHhkcnMp
+OwogCi0JaWYgKChlcnIgPSBzZW5kdG8oc29ja2ZkLCBtc2didWYsIG1zZ2xlbiwgMCwKKwlpZiAo
+KGVyciA9IHNlbmR0byhmZCwgbXNnYnVmLCBtc2dsZW4sIDAsCiAJCQkoc3RydWN0IHNvY2thZGRy
+ICopIHNpbiwgc2l6ZW9mKCpzaW4pKSkgPCAwKSB7CiAJCWRwcmludGYoTl9XQVJOSU5HLCAieG1p
+dF9tZXNnOiBzZW5kdG8gZmFpbGVkOiAlbSIpOwogCX0gZWxzZSBpZiAoZXJyICE9IG1zZ2xlbikg
+ewpAQCAtMTYzLDcgKzIyNSw3IEBAIHhtaXRfY2FsbChpbnQgc29ja2ZkLCBzdHJ1Y3Qgc29ja2Fk
+ZHJfaW4KIH0KIAogc3RhdGljIG5vdGlmeV9saXN0ICoKLXJlY3ZfcnBseShpbnQgc29ja2ZkLCBz
+dHJ1Y3Qgc29ja2FkZHJfaW4gKnNpbiwgdV9sb25nICpwb3J0cCkKK3JlY3ZfcnBseShpbnQgZmQs
+IHN0cnVjdCBzb2NrYWRkcl9pbiAqc2luLCB1X2xvbmcgKnBvcnRwKQogewogCXVuc2lnbmVkIGlu
+dAkJbXNnYnVmW01BWE1TR1NJWkVdLCBtc2dsZW47CiAJc3RydWN0IHJwY19tc2cJCW1lc2c7CkBA
+IC0xNzIsNyArMjM0LDcgQEAgcmVjdl9ycGx5KGludCBzb2NrZmQsIHN0cnVjdCBzb2NrYWRkcl9p
+bgogCXNvY2tsZW5fdAkJYWxlbiA9IHNpemVvZigqc2luKTsKIAogCS8qIFJlY2VpdmUgbWVzc2Fn
+ZSAqLwotCWlmICgobXNnbGVuID0gcmVjdmZyb20oc29ja2ZkLCBtc2didWYsIHNpemVvZihtc2di
+dWYpLCAwLAorCWlmICgobXNnbGVuID0gcmVjdmZyb20oZmQsIG1zZ2J1Ziwgc2l6ZW9mKG1zZ2J1
+ZiksIDAsCiAJCQkoc3RydWN0IHNvY2thZGRyICopIHNpbiwgJmFsZW4pKSA8IDApIHsKIAkJZHBy
+aW50ZihOX1dBUk5JTkcsICJyZWN2X3JwbHk6IHJlY3Zmcm9tIGZhaWxlZDogJW0iKTsKIAkJcmV0
+dXJuIE5VTEw7CkBAIC0yMzksNyArMzAxLDcgQEAgZG9uZToKICAqIE5vdGlmeSBvcGVyYXRpb24g
+Zm9yIGEgc2luZ2xlIGxpc3QgZW50cnkKICAqLwogc3RhdGljIGludAotcHJvY2Vzc19lbnRyeShp
+bnQgc29ja2ZkLCBub3RpZnlfbGlzdCAqbHApCitwcm9jZXNzX2VudHJ5KGludCBmZCwgbm90aWZ5
+X2xpc3QgKmxwKQogewogCXN0cnVjdCBzb2NrYWRkcl9pbglzaW47CiAJc3RydWN0IHN0YXR1cwkJ
+bmV3X3N0YXR1czsKQEAgLTI3Myw3ICszMzUsNyBAQCBwcm9jZXNzX2VudHJ5KGludCBzb2NrZmQs
+IG5vdGlmeV9saXN0ICpsCiAJbmV3X3N0YXR1cy5zdGF0ZSAgICA9IE5MX1NUQVRFKGxwKTsKIAlt
+ZW1jcHkobmV3X3N0YXR1cy5wcml2LCBOTF9QUklWKGxwKSwgU01fUFJJVl9TSVpFKTsKIAotCWxw
+LT54aWQgPSB4bWl0X2NhbGwoc29ja2ZkLCAmc2luLCBwcm9nLCB2ZXJzLCBwcm9jLCBmdW5jLCBv
+YmpwKTsKKwlscC0+eGlkID0geG1pdF9jYWxsKGZkLCAmc2luLCBwcm9nLCB2ZXJzLCBwcm9jLCBm
+dW5jLCBvYmpwKTsKIAlpZiAoIWxwLT54aWQpIHsKIAkJbm90ZShOX1dBUk5JTkcsICJub3RpZnlf
+aG9zdDogZmFpbGVkIHRvIG5vdGlmeSBwb3J0ICVkXG4iLAogCQkJCW50b2hzKGxwLT5wb3J0KSk7
+CkBAIC0yODMsMjYgKzM0NSwyMCBAQCBwcm9jZXNzX2VudHJ5KGludCBzb2NrZmQsIG5vdGlmeV9s
+aXN0ICpsCiAJcmV0dXJuIDE7CiB9CiAKLS8qCi0gKiBQcm9jZXNzIGEgZGF0YWdyYW0gcmVjZWl2
+ZWQgb24gdGhlIG5vdGlmeSBzb2NrZXQKLSAqLwogaW50Ci1wcm9jZXNzX3JlcGx5KEZEX1NFVF9U
+WVBFICpyZmRzKQorcHJvY2Vzc19zb2NrKGludCBmZCkKIHsKLQlzdHJ1Y3Qgc29ja2FkZHJfaW4J
+c2luOwotCW5vdGlmeV9saXN0CQkqbHA7Ci0JdV9sb25nCQkJcG9ydDsKKwlzdHJ1Y3Qgc29ja2Fk
+ZHJfaW4gICAgICBzaW47CisJbm90aWZ5X2xpc3QgICAgICAgICAgICAgKmxwOworCXVfbG9uZyAg
+ICAgICAgICAgICAgICAgIHBvcnQ7CiAKLQlpZiAoc29ja2ZkID09IC0xIHx8ICFGRF9JU1NFVChz
+b2NrZmQsIHJmZHMpKQotCQlyZXR1cm4gMDsKLQotCWlmICghKGxwID0gcmVjdl9ycGx5KHNvY2tm
+ZCwgJnNpbiwgJnBvcnQpKSkKKwlpZiAoIShscCA9IHJlY3ZfcnBseShmZCwgJnNpbiwgJnBvcnQp
+KSkKIAkJcmV0dXJuIDE7CiAKIAlpZiAobHAtPnBvcnQgPT0gMCkgewogCQlpZiAocG9ydCAhPSAw
+KSB7CiAJCQlscC0+cG9ydCA9IGh0b25zKCh1bnNpZ25lZCBzaG9ydCkgcG9ydCk7Ci0JCQlwcm9j
+ZXNzX2VudHJ5KHNvY2tmZCwgbHApOworCQkJcHJvY2Vzc19lbnRyeShmZCwgbHApOwogCQkJTkxf
+V0hFTihscCkgPSB0aW1lKE5VTEwpICsgTk9USUZZX1RJTUVPVVQ7CiAJCQlubGlzdF9yZW1vdmUo
+Jm5vdGlmeSwgbHApOwogCQkJbmxpc3RfaW5zZXJ0X3RpbWVyKCZub3RpZnksIGxwKTsKQEAgLTMx
+OSw2ICszNzUsMjMgQEAgcHJvY2Vzc19yZXBseShGRF9TRVRfVFlQRSAqcmZkcykKIH0KIAogLyoK
+KyAqIFByb2Nlc3MgYSBkYXRhZ3JhbSByZWNlaXZlZCBvbiB0aGUgbm90aWZ5IHNvY2tldAorICov
+CitpbnQKK3Byb2Nlc3NfcmVwbHkoRkRfU0VUX1RZUEUgKnJmZHMpCit7CisJaW50IHJldDEgPSAw
+LCByZXQyID0gMDsKKworCWlmIChGRF9JU1NFVChzb2NrZmQscmZkcykpIHsKKwkJcmV0MSA9IHBy
+b2Nlc3Nfc29jayhzb2NrZmQpOworCX0KKwlpZiAoKG5sbWZkICE9IHNvY2tmZCkgJiYgKEZEX0lT
+U0VUKG5sbWZkLHJmZHMpKSkgeworCQlyZXQyID0gcHJvY2Vzc19zb2NrKG5sbWZkKTsKKwl9CisJ
+cmV0dXJuIHJldDErcmV0MjsKK30KKworLyoKICAqIFByb2Nlc3MgYSBub3RpZnkgbGlzdCwgZWl0
+aGVyIGZvciBub3RpZnlpbmcgcmVtb3RlIGhvc3RzIGFmdGVyIHJlYm9vdAogICogb3IgZm9yIGNh
+bGxpbmcgYmFjayAobG9jYWwpIHN0YXRkIGNsaWVudHMgd2hlbiB0aGUgcmVtb3RlIGhhcyBub3Rp
+ZmllZAogICogdXMgb2YgYSBjcmFzaC4gCkBAIC0zMzAsMTAgKzQwMyw5IEBAIHByb2Nlc3Nfbm90
+aWZ5X2xpc3Qodm9pZCkKIAl0aW1lX3QJCW5vdzsKIAlpbnQJCWZkOwogCi0JaWYgKChmZCA9IHN0
+YXRkX2dldF9zb2NrZXQoKSkgPCAwKQotCQlyZXR1cm4gMDsKLQogCXdoaWxlICgoZW50cnkgPSBu
+b3RpZnkpICE9IE5VTEwgJiYgTkxfV0hFTihlbnRyeSkgPCB0aW1lKCZub3cpKSB7CisJCWZkID0g
+c3RhdGRfZ2V0X3NvY2tldCgmZW50cnktPmFkZHIpOworCiAJCWlmIChwcm9jZXNzX2VudHJ5KGZk
+LCBlbnRyeSkpIHsKIAkJCU5MX1dIRU4oZW50cnkpID0gdGltZShOVUxMKSArIE5PVElGWV9USU1F
+T1VUOwogCQkJbmxpc3RfcmVtb3ZlKCZub3RpZnksIGVudHJ5KTsKZGlmZiAtTmF1cnAgbmZzLXV0
+aWxzLTEuMS4yLm9yaWcvdXRpbHMvc3RhdGQvc3RhdGQuYyBuZnMtdXRpbHMtMS4xLjIvdXRpbHMv
+c3RhdGQvc3RhdGQuYwotLS0gbmZzLXV0aWxzLTEuMS4yLm9yaWcvdXRpbHMvc3RhdGQvc3RhdGQu
+YwkyMDA4LTAzLTE0IDExOjQ2OjI5LjAwMDAwMDAwMCAtMDQwMAorKysgbmZzLXV0aWxzLTEuMS4y
+L3V0aWxzL3N0YXRkL3N0YXRkLmMJMjAwOC0wNC0yOCAxNDo0NzoxNS4wMDAwMDAwMDAgLTA0MDAK
+QEAgLTc1LDcgKzc1LDcgQEAgc3RhdGljIHN0cnVjdCBvcHRpb24gbG9uZ29wdHNbXSA9CiB9Owog
+CiBleHRlcm4gdm9pZCBzbV9wcm9nXzEgKHN0cnVjdCBzdmNfcmVxICosIHJlZ2lzdGVyIFNWQ1hQ
+UlQgKik7Ci1leHRlcm4gaW50IHN0YXRkX2dldF9zb2NrZXQodm9pZCk7CitleHRlcm4gaW50ICBz
+dGF0ZF9pbml0X3NvY2tldHModm9pZCk7CiBzdGF0aWMgdm9pZCBsb2FkX3N0YXRlX251bWJlcih2
+b2lkKTsKIAogI2lmZGVmIFNJTVVMQVRJT05TCkBAIC00NzcsNyArNDc3LDcgQEAgaW50IG1haW4g
+KGludCBhcmdjLCBjaGFyICoqYXJndikKIAkJfQogCiAJLyogTWFrZSBzdXJlIHdlIGhhdmUgYSBw
+cml2aWxlZ2UgcG9ydCBmb3IgY2FsbGluZyBpbnRvIHRoZSBrZXJuZWwgKi8KLQlzdGF0ZF9nZXRf
+c29ja2V0KCk7CisJc3RhdGRfaW5pdF9zb2NrZXRzKCk7CiAKIAkvKiBJZiBzbS1ub3RpZnkgZGlk
+bid0IHRha2UgYWxsIHRoZSBzdGF0ZSBmaWxlcywgbG9hZAogCSAqIHN0YXRlIGluZm9ybWF0aW9u
+IGludG8gb3VyIG5vdGlmeS1saXN0IHNvIHdlIGNhbgo=
+------=_Part_7750_8404602.1209415952595--
