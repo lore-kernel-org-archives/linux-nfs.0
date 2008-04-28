@@ -1,38 +1,53 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: Text-based mount interface breaking non-UDP mounts
-Date: Mon, 28 Apr 2008 11:28:40 -0400
-Message-ID: <D6B17926-F41E-4126-A94D-55B37E696BCC@oracle.com>
-References: <20080423214929.GA24387@uio.no> <2CE28767-23B0-4F6C-AE53-4921D73B2782@oracle.com> <20080425080128.GA4848@uio.no> <09F49D76-049E-47A0-B0AD-5A177F8433E6@oracle.com> <20080425142712.GA6119@uio.no> <4D5FA350-EED5-4204-8D70-E3BE5E400595@oracle.com> <20080425235546.GA9053@uio.no> <20080425235713.GA9109@uio.no>
-Mime-Version: 1.0 (Apple Message framework v919.2)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: linux-nfs@vger.kernel.org
-To: "Steinar H. Gunderson" <sgunderson-jG/AHqQBv7lBDgjK7y7TUQ@public.gmane.org>
+From: Adrian Bunk <bunk@kernel.org>
+Subject: [2.6 patch] make nfs4_drop_state_owner() static
+Date: Mon, 28 Apr 2008 18:39:55 +0300
+Message-ID: <20080428153955.GS2813@cs181133002.pp.htv.fi>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:51576 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934376AbYD1P3k (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Apr 2008 11:29:40 -0400
-In-Reply-To: <20080425235713.GA9109-6Z/AllhyZU4@public.gmane.org>
+Received: from smtp4.pp.htv.fi ([213.243.153.38]:49172 "EHLO smtp4.pp.htv.fi"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S935649AbYD1Pk2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 28 Apr 2008 11:40:28 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Apr 25, 2008, at 7:57 PM, Steinar H. Gunderson wrote:
-> On Sat, Apr 26, 2008 at 01:55:46AM +0200, Steinar H. Gunderson wrote:
->> I checked the original bug report, and indeed it seems that the  
->> blocking was
->> on the client there as well. I'll ask the user to check what  
->> happens when the
->> filtering is done server-side instead.
->
-> Hm, no, there's also reports of blocking on a firewall in the  
-> middle; see
->
->  http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=473171
+nfs4_drop_state_owner() can now become static.
 
-The user is correct that the mount process for NFSv4 should not  
-attempt to use the portmapper unless the port=0 option is specified.   
-I will look into the problem.
+Signed-off-by: Adrian Bunk <bunk@kernel.org>
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+---
+
+ fs/nfs/nfs4_fs.h   |    1 -
+ fs/nfs/nfs4state.c |    2 +-
+ 2 files changed, 1 insertion(+), 2 deletions(-)
+
+c13c9c023ace63d07e04e85ed60bab169abbeabc diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index bd1b9d6..ea79064 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -206,7 +206,6 @@ struct rpc_cred *nfs4_get_renew_cred(struct nfs_client *clp);
+ 
+ extern struct nfs4_state_owner * nfs4_get_state_owner(struct nfs_server *, struct rpc_cred *);
+ extern void nfs4_put_state_owner(struct nfs4_state_owner *);
+-extern void nfs4_drop_state_owner(struct nfs4_state_owner *);
+ extern struct nfs4_state * nfs4_get_open_state(struct inode *, struct nfs4_state_owner *);
+ extern void nfs4_put_open_state(struct nfs4_state *);
+ extern void nfs4_close_state(struct path *, struct nfs4_state *, mode_t);
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 46eb624..da76c2e 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -282,7 +282,7 @@ nfs4_alloc_state_owner(void)
+ 	return sp;
+ }
+ 
+-void
++static void
+ nfs4_drop_state_owner(struct nfs4_state_owner *sp)
+ {
+ 	if (!RB_EMPTY_NODE(&sp->so_client_node)) {
+
