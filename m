@@ -1,77 +1,84 @@
-From: Jan Blunck <jblunck@suse.de>
-Subject: [PATCH 2/3] NFS: path_{get,put}() cleanups
-Date: Mon, 28 Apr 2008 18:37:33 +0200
-Message-ID: <20080428163732.072893435@T61.localnet>
-References: <20080428163731.774191296@T61.localnet>
-Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
-To: Linux-Kernel Mailinglist <linux-kernel@vger.kernel.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Linux-fsdevel Mailinglist <linux-fsdevel@vger.kernel.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: Text-based mount interface breaking non-UDP mounts
+Date: Mon, 28 Apr 2008 11:13:37 -0400
+Message-ID: <2AA81EE8-74A9-42A5-8ACF-E01BBB6F2280@oracle.com>
+References: <20080423214929.GA24387@uio.no> <48134C77.9090700@kingswood-consulting.co.uk>
+Mime-Version: 1.0 (Apple Message framework v919.2)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: linux-nfs@vger.kernel.org,
+	public-linux-nfs-u79uwXL29TY76Z2rM5mHXA-8ByrlEUxsivZ+VzJOa5vwg@public.gmane.org
+To: "Frank A. Kingswood" <frank-YzJE6wl5KmBjuoFY8sQqqY5Lr7LD32fptUK59QYPAWc@public.gmane.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from rgminet01.oracle.com ([148.87.113.118]:44684 "EHLO
+	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S935505AbYD1POG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Apr 2008 11:14:06 -0400
+In-Reply-To: <48134C77.9090700-YzJE6wl5KmBjuoFY8sQqqY5Lr7LD32fptUK59QYPAWc@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Here are some more places where path_{get,put}() can be used instead of
-dput()/mntput() pair.
+On Apr 26, 2008, at 11:38 AM, Frank A. Kingswood wrote:
+> Steinar H. Gunderson wrote:
+>> I've gotten a few bug reports lately that if UDP is blocked at the  
+>> server,
+>> NFS mounts (even with -o tcp) fail. git bisect shows that the  
+>> culprit is
+>> the change "Get rid of the "-i" option for mount.nfs[4] and always  
+>> use the
+>> text-based mount(2) system call for kernel version 2.6.23 and  
+>> later." -- in
+>> other words, the bug is specific to the text interface. Does anyone  
+>> know why
+>> this would be the case?
+>
+> The NFS client code (nfs-utils-1.1.2) tests for
+>  if (kernel_version > MAKE_VERSION(2, 6, 22))
+>
+> yet the kernel patch for NFS did not go un until 2.6.25-rc2
+>
+>> From: Linus Torvalds <torvalds@...>
+>> Subject: Linux 2.6.25-rc2
+>> Date: Feb 15, 5:23 pm 2008
+>> Ok,
+>> this kernel is a winner.
+>> [...]
+>> Chuck Lever (1):
+>>      NFS: Allow text-based mounts via compat_sys_mount
+>
+> So the test should at least be > MAKE_VERSION(2, 6, 24).
 
-Signed-off-by: Jan Blunck <jblunck@suse.de>
----
- fs/nfs/inode.c     |    3 +--
- fs/nfs/namespace.c |    3 +--
- fs/nfs/nfs4proc.c  |    6 ++----
- 3 files changed, 4 insertions(+), 8 deletions(-)
+Frank, the patch you refer to fixes a bug with the compat_sys_mount  
+interface, which is separate from the sys_mount interface, and used  
+only on a handful of hardware platforms (SPARC?).
 
-Index: b/fs/nfs/inode.c
-===================================================================
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -541,8 +541,7 @@ static void __put_nfs_open_context(struc
- 	}
- 	if (ctx->cred != NULL)
- 		put_rpccred(ctx->cred);
--	dput(ctx->path.dentry);
--	mntput(ctx->path.mnt);
-+	path_put(&ctx->path);
- 	kfree(ctx);
- }
- 
-Index: b/fs/nfs/namespace.c
-===================================================================
---- a/fs/nfs/namespace.c
-+++ b/fs/nfs/namespace.c
-@@ -137,8 +137,7 @@ static void * nfs_follow_mountpoint(stru
- 			goto out_follow;
- 		goto out_err;
- 	}
--	mntput(nd->path.mnt);
--	dput(nd->path.dentry);
-+	path_put(&nd->path);
- 	nd->path.mnt = mnt;
- 	nd->path.dentry = dget(mnt->mnt_root);
- 	schedule_delayed_work(&nfs_automount_task, nfs_mountpoint_expiry_timeout);
-Index: b/fs/nfs/nfs4proc.c
-===================================================================
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -304,8 +304,7 @@ static void nfs4_opendata_free(struct kr
- 		nfs4_put_open_state(p->state);
- 	nfs4_put_state_owner(p->owner);
- 	dput(p->dir);
--	dput(p->path.dentry);
--	mntput(p->path.mnt);
-+	path_put(&p->path);
- 	kfree(p);
- }
- 
-@@ -1213,8 +1212,7 @@ static void nfs4_free_closedata(void *da
- 	nfs4_put_open_state(calldata->state);
- 	nfs_free_seqid(calldata->arg.seqid);
- 	nfs4_put_state_owner(sp);
--	dput(calldata->path.dentry);
--	mntput(calldata->path.mnt);
-+	path_put(&calldata->path);
- 	kfree(calldata);
- }
- 
+The original NFS text-based mount support was added in 2.6.23.
 
+I don't have a problem with adjusting MAKE_VERSION in the master nfs- 
+utils repo as you describe, since that bug does break text-based  
+mounts on those few hardware platforms that use compat_sys_mount  
+instead of sys_mount.  It might affect some early adopters of NFS over  
+RDMA or FS cache, however.
 
+On distributions that don't support NFS over RDMA or the FS cache  
+facility, it should be harmless for now to make the mount command use  
+the legacy mount API even on newer kernels.  Simply adjust the  
+MAKE_VERSION() macro as needed, or disable it entirely as you did with  
+your "string = 0" hack.
+
+New features will be added only to the text-based mount interface,  
+however, so eventually everyone will need to use the text-based mount  
+interface on new kernels.
+
+Because we have little documented history and only a handful of use  
+cases and unit tests for the mount command, it's important for  
+everyone to test the new API and report problems here so we can  
+address them.  NFS mount is complex and has many subtle and hidden  
+historical behaviors.
+
+Even if 70-80% of the common use cases are working properly, there are  
+going to be outliers that will experience issues until we can get the  
+corner cases fixed.
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
