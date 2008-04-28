@@ -1,83 +1,49 @@
 From: Chuck Lever <chuck.lever@oracle.com>
 Subject: Re: Text-based mount interface breaking non-UDP mounts
-Date: Mon, 28 Apr 2008 11:13:37 -0400
-Message-ID: <2AA81EE8-74A9-42A5-8ACF-E01BBB6F2280@oracle.com>
-References: <20080423214929.GA24387@uio.no> <48134C77.9090700@kingswood-consulting.co.uk>
+Date: Mon, 28 Apr 2008 11:16:16 -0400
+Message-ID: <EBC0B2E8-66BB-4692-8BF2-553804F6FA36@oracle.com>
+References: <20080423214929.GA24387@uio.no> <2CE28767-23B0-4F6C-AE53-4921D73B2782@oracle.com> <20080425080128.GA4848@uio.no> <09F49D76-049E-47A0-B0AD-5A177F8433E6@oracle.com> <20080425142712.GA6119@uio.no> <4D5FA350-EED5-4204-8D70-E3BE5E400595@oracle.com> <20080425235546.GA9053@uio.no>
 Mime-Version: 1.0 (Apple Message framework v919.2)
 Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: linux-nfs@vger.kernel.org,
-	public-linux-nfs-u79uwXL29TY76Z2rM5mHXA-8ByrlEUxsivZ+VzJOa5vwg@public.gmane.org
-To: "Frank A. Kingswood" <frank-YzJE6wl5KmBjuoFY8sQqqY5Lr7LD32fptUK59QYPAWc@public.gmane.org>
+Cc: linux-nfs@vger.kernel.org
+To: "Steinar H. Gunderson" <sgunderson-jG/AHqQBv7lBDgjK7y7TUQ@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:44684 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S935505AbYD1POG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Apr 2008 11:14:06 -0400
-In-Reply-To: <48134C77.9090700-YzJE6wl5KmBjuoFY8sQqqY5Lr7LD32fptUK59QYPAWc@public.gmane.org>
+Received: from agminet01.oracle.com ([141.146.126.228]:28426 "EHLO
+	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934278AbYD1PQz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Apr 2008 11:16:55 -0400
+In-Reply-To: <20080425235546.GA9053-6Z/AllhyZU4@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Apr 26, 2008, at 11:38 AM, Frank A. Kingswood wrote:
-> Steinar H. Gunderson wrote:
->> I've gotten a few bug reports lately that if UDP is blocked at the  
->> server,
->> NFS mounts (even with -o tcp) fail. git bisect shows that the  
->> culprit is
->> the change "Get rid of the "-i" option for mount.nfs[4] and always  
->> use the
->> text-based mount(2) system call for kernel version 2.6.23 and  
->> later." -- in
->> other words, the bug is specific to the text interface. Does anyone  
->> know why
->> this would be the case?
+On Apr 25, 2008, at 7:55 PM, Steinar H. Gunderson wrote:
+> On Fri, Apr 25, 2008 at 06:13:03PM -0400, Chuck Lever wrote:
+>> I just tried this specific use case.
+>>
+>> Because of the local packet filtering on the client, the kernel's RPC
+>> client is getting -EPERM when trying to send the initial rpcbind
+>> request.
+>>
+>> As far as I can see, nothing in the RPC client knows how to deal
+>> specifically with that error code, so it punts the request, and the
+>> mount fails.
+>>
+>> When I originally tested mount protocol/version negotiation, I used  
+>> only
+>> server-side filtering.
 >
-> The NFS client code (nfs-utils-1.1.2) tests for
->  if (kernel_version > MAKE_VERSION(2, 6, 22))
+> I checked the original bug report, and indeed it seems that the  
+> blocking was
+> on the client there as well. I'll ask the user to check what happens  
+> when the filtering is done server-side instead.
 >
-> yet the kernel patch for NFS did not go un until 2.6.25-rc2
->
->> From: Linus Torvalds <torvalds@...>
->> Subject: Linux 2.6.25-rc2
->> Date: Feb 15, 5:23 pm 2008
->> Ok,
->> this kernel is a winner.
->> [...]
->> Chuck Lever (1):
->>      NFS: Allow text-based mounts via compat_sys_mount
->
-> So the test should at least be > MAKE_VERSION(2, 6, 24).
+> There's also http://bugs.debian.org/cgi-bin/bugreport.cgi? 
+> bug=476128, but I believe that's a different bug.
 
-Frank, the patch you refer to fixes a bug with the compat_sys_mount  
-interface, which is separate from the sys_mount interface, and used  
-only on a handful of hardware platforms (SPARC?).
 
-The original NFS text-based mount support was added in 2.6.23.
-
-I don't have a problem with adjusting MAKE_VERSION in the master nfs- 
-utils repo as you describe, since that bug does break text-based  
-mounts on those few hardware platforms that use compat_sys_mount  
-instead of sys_mount.  It might affect some early adopters of NFS over  
-RDMA or FS cache, however.
-
-On distributions that don't support NFS over RDMA or the FS cache  
-facility, it should be harmless for now to make the mount command use  
-the legacy mount API even on newer kernels.  Simply adjust the  
-MAKE_VERSION() macro as needed, or disable it entirely as you did with  
-your "string = 0" hack.
-
-New features will be added only to the text-based mount interface,  
-however, so eventually everyone will need to use the text-based mount  
-interface on new kernels.
-
-Because we have little documented history and only a handful of use  
-cases and unit tests for the mount command, it's important for  
-everyone to test the new API and report problems here so we can  
-address them.  NFS mount is complex and has many subtle and hidden  
-historical behaviors.
-
-Even if 70-80% of the common use cases are working properly, there are  
-going to be outliers that will experience issues until we can get the  
-corner cases fixed.
+FYI: Steve Dickson (nfs-utils maintainer) is already looking at  
+removing EACCES from the list of temporary errors, so yes, we're aware  
+of that issue.
 
 --
 Chuck Lever
