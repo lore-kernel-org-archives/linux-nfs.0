@@ -1,53 +1,93 @@
-From: Adrian Bunk <bunk@kernel.org>
-Subject: [2.6 patch] make nfs4_drop_state_owner() static
-Date: Mon, 28 Apr 2008 18:39:55 +0300
-Message-ID: <20080428153955.GS2813@cs181133002.pp.htv.fi>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [NFS] NFS limits?
+Date: Mon, 28 Apr 2008 12:06:19 -0400
+Message-ID: <5FFAAFB8-DB6B-413C-9BEF-29C20EFD6C82@oracle.com>
+References: <480C8DAB.40504@cesca.es> <480C9A1B.20604@redhat.com>
+	<480CA2CC.80209@cesca.es> <4815AA4B.1080304@cesca.es>
+Mime-Version: 1.0 (Apple Message framework v919.2)
+Content-Type: text/plain; charset="us-ascii"
+Cc: Peter Staubach <staubach@redhat.com>, nfs@lists.sourceforge.net
+To: Jordi Prats <jprats-KO9VOOLprG0@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp4.pp.htv.fi ([213.243.153.38]:49172 "EHLO smtp4.pp.htv.fi"
+Received: from neil.brown.name ([220.233.11.133]:58466 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S935649AbYD1Pk2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 28 Apr 2008 11:40:28 -0400
+	id S965623AbYD1SLH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 28 Apr 2008 14:11:07 -0400
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1JqXob-0003am-O0
+	for linux-nfs@vger.kernel.org; Tue, 29 Apr 2008 04:11:01 +1000
+In-Reply-To: <4815AA4B.1080304-KO9VOOLprG0@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-nfs4_drop_state_owner() can now become static.
+On Apr 28, 2008, at 6:43 AM, Jordi Prats wrote:
+> Hi all,
+> Witch are the limits of NFSv3 and NFSv4?
 
-Signed-off-by: Adrian Bunk <bunk@kernel.org>
+If you are using NFSv3, then this may not be an NFS limitation at  
+all.  I seem to recall that some Linux kernels had issues with file  
+systems larger than 2TB.
 
----
+Which kernel version are you using?
 
- fs/nfs/nfs4_fs.h   |    1 -
- fs/nfs/nfs4state.c |    2 +-
- 2 files changed, 1 insertion(+), 2 deletions(-)
+> I was wrong about the version I was using, we are currently using  
+> NFSv3.
+> Anyone is exporting by NFS a filesystem as large (or larger) as our?
+>
+> Thanks,
+> Jordi
+>
+> Jordi Prats wrote:
+>> Hi Peter,
+>> My boss is reluctant to upgrade this server, so I'm stuck to NFSv2 : 
+>> ( I
+>> hope this will convince him !
+>>
+>> Thanks,
+>> Jordi
+>>
+>> Peter Staubach wrote:
+>>
+>>> Jordi Prats wrote:
+>>>
+>>>> Hi all,
+>>>> I've a 4246 GB (above 4TB) using NFSv2 to export it. Some  
+>>>> application
+>>>> are generating estrange errors, so it's possible I'm facing a NFS
+>>>> limit? How large can a be to be exported without problems?
+>>>>
+>>>> I'm using a 32bits architecture.
+>>>>
+>>>> Thanks!
+>>>> Jordi
+>>>>
+>>>>
+>>>>
+>>> NFSv2 is a 32 bit file access protocol, so don't be surprised
+>>> if you see EFBIG sorts of errors on operations such as FSSTAT.
+>>>
+>>> In particular, that file system size is too large to represent,
+>>> I am sort of surprised that it would even be mountable.
+>>>
+>>> Why not use NFSv3 or NFSv4?
+>>>
+>>>      ps
 
-c13c9c023ace63d07e04e85ed60bab169abbeabc diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index bd1b9d6..ea79064 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -206,7 +206,6 @@ struct rpc_cred *nfs4_get_renew_cred(struct nfs_client *clp);
- 
- extern struct nfs4_state_owner * nfs4_get_state_owner(struct nfs_server *, struct rpc_cred *);
- extern void nfs4_put_state_owner(struct nfs4_state_owner *);
--extern void nfs4_drop_state_owner(struct nfs4_state_owner *);
- extern struct nfs4_state * nfs4_get_open_state(struct inode *, struct nfs4_state_owner *);
- extern void nfs4_put_open_state(struct nfs4_state *);
- extern void nfs4_close_state(struct path *, struct nfs4_state *, mode_t);
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 46eb624..da76c2e 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -282,7 +282,7 @@ nfs4_alloc_state_owner(void)
- 	return sp;
- }
- 
--void
-+static void
- nfs4_drop_state_owner(struct nfs4_state_owner *sp)
- {
- 	if (!RB_EMPTY_NODE(&sp->so_client_node)) {
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by the 2008 JavaOne(SM) Conference 
+Don't miss this year's exciting event. There's still time to save $100. 
+Use priority code J8TL2D2. 
+http://ad.doubleclick.net/clk;198757673;13503038;p?http://java.sun.com/javaone
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
