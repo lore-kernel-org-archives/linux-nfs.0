@@ -1,51 +1,60 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: [PATCH] nfsd: remove unnecessary atomic ops
-Date: Mon, 28 Apr 2008 23:13:25 -0400
-Message-ID: <20080429031325.GA2841@fieldses.org>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: reconnect_path() breaks NFS server causing occasional EACCES
+Date: Tue, 29 Apr 2008 15:20:30 +1000
+Message-ID: <18454.45086.254692.412079@notabene.brown>
+References: <20080404102449.GA10209@janus>
+	<20080407184346.GF3305@fieldses.org>
+	<20080409133639.GA9588@lst.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	Frank van Maarseveen <frankvm@frankvm.com>,
+	Linux NFS mailing list <linux-nfs@vger.kernel.org>
+To: Christoph Hellwig <hch@lst.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:50432 "EHLO fieldses.org"
+Received: from mx2.suse.de ([195.135.220.15]:53259 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752749AbYD2DN0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 28 Apr 2008 23:13:26 -0400
-Received: from bfields by fieldses.org with local (Exim 4.69)
-	(envelope-from <bfields@fieldses.org>)
-	id 1JqgHV-0000ye-Ip
-	for linux-nfs@vger.kernel.org; Mon, 28 Apr 2008 23:13:25 -0400
+	id S1753504AbYD2FUP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 29 Apr 2008 01:20:15 -0400
+In-Reply-To: message from Christoph Hellwig on Wednesday April 9
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: J. Bruce Fields <bfields@citi.umich.edu>
+On Wednesday April 9, hch@lst.de wrote:
+> On Mon, Apr 07, 2008 at 02:43:46PM -0400, J. Bruce Fields wrote:
+> > Anyone who depends on the "x" bit to control access to objects in an
+> > nfs-exported filesystem is already in trouble.  We could do so for
+> > directories (at the expense of non-posix-like behavior such as what
+> > you've seen), but we probably can't for files.  So I'm inclined to think
+> > this is the right thing to do.
+> > 
+> > The "DON'T USE THIS FUNCTION EVER, thanks." suggests we should at least
+> > consult the person who added that comment (cc'd) before adding a call to
+> > lookup_one_noperm().  (And if we decide to do this, we should make a
+> > note of this in that comment.)
+> 
+> That function really shouldn't be used and we should obey the x bit.
+> And yes, due to NFSs staleless file handles this will lead to non-posix
+> behaviour which is expected.  The same will happen with other nfs
+> servers aswell.
 
-These bit operations don't need to be atomic.  They're all done under a
-single big mutex anyway.
+For the record, I disagree.  I think it is perfectly appropriate to
+use this function.  I think that obeying the 'x' bit is wrong.
 
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
----
- fs/nfsd/nfs4state.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+Why?
 
-I'm queuing this up for 2.6.26.
+What we are doing here is reconstructing the dcache to correctly
+reflect the filesystem.  The reason that we need to do this (rather
+than just leaving the dentry disconnected as we sometimes do with
+files) is so that lock_rename can find valid d_parent pointers and can
+guard against certain directory rename races that might create
+disconnected loops.
 
---b.
+i.e. the look_one_* is not being done on behalf of the owner of the
+file, or of the group-owner of the file, or of anyone else.  It is
+being done on behalf of the filesystem to ensure future filesystem
+consistency.
+So none of the 'x' bits (owner, group-owner, world) is appropriate to
+validate this lookup.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 8799b87..5c97d47 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1579,8 +1579,8 @@ nfs4_upgrade_open(struct svc_rqst *rqstp, struct svc_fh *cur_fh, struct nfs4_sta
- 	}
- 	/* remember the open */
- 	filp->f_mode |= open->op_share_access;
--	set_bit(open->op_share_access, &stp->st_access_bmap);
--	set_bit(open->op_share_deny, &stp->st_deny_bmap);
-+	__set_bit(open->op_share_access, &stp->st_access_bmap);
-+	__set_bit(open->op_share_deny, &stp->st_deny_bmap);
- 
- 	return nfs_ok;
- }
--- 
-1.5.5.rc1
-
+NeilBrown
