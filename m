@@ -1,60 +1,46 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: reconnect_path() breaks NFS server causing occasional EACCES
-Date: Tue, 29 Apr 2008 15:20:30 +1000
-Message-ID: <18454.45086.254692.412079@notabene.brown>
-References: <20080404102449.GA10209@janus>
-	<20080407184346.GF3305@fieldses.org>
-	<20080409133639.GA9588@lst.de>
+From: Wendy Cheng <wcheng@netapp.com>
+Subject: Re: [patch] fix statd -n
+Date: Tue, 29 Apr 2008 10:45:03 -0400
+Message-ID: <4817346F.5000101@netapp.com>
+References: <24c1515f0804170938s23fe3ea3pfe77355ed01d8bbf@mail.gmail.com>	 <20080418173646.GC19038@fieldses.org> <480902CA.1070805@redhat.com>	 <48090356.9020703@redhat.com> <20080418203225.GD28277@fieldses.org>	 <24c1515f0804181346g5867fa1fqfbbcd13af25027cb@mail.gmail.com>	 <20080421000214.GA5453@fieldses.org> <24c1515f0804281352u2d04ac89i820dc6807dde39f1@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Frank van Maarseveen <frankvm@frankvm.com>,
-	Linux NFS mailing list <linux-nfs@vger.kernel.org>
-To: Christoph Hellwig <hch@lst.de>
+	Peter Staubach <staubach@redhat.com>, linux-nfs@vger.kernel.org
+To: Janne Karhunen <janne.karhunen@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:53259 "EHLO mx2.suse.de"
+Received: from mx2.netapp.com ([216.240.18.37]:14028 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753504AbYD2FUP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 Apr 2008 01:20:15 -0400
-In-Reply-To: message from Christoph Hellwig on Wednesday April 9
+	id S1751978AbYD2OnJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 29 Apr 2008 10:43:09 -0400
+In-Reply-To: <24c1515f0804281352u2d04ac89i820dc6807dde39f1-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wednesday April 9, hch@lst.de wrote:
-> On Mon, Apr 07, 2008 at 02:43:46PM -0400, J. Bruce Fields wrote:
-> > Anyone who depends on the "x" bit to control access to objects in an
-> > nfs-exported filesystem is already in trouble.  We could do so for
-> > directories (at the expense of non-posix-like behavior such as what
-> > you've seen), but we probably can't for files.  So I'm inclined to think
-> > this is the right thing to do.
-> > 
-> > The "DON'T USE THIS FUNCTION EVER, thanks." suggests we should at least
-> > consult the person who added that comment (cc'd) before adding a call to
-> > lookup_one_noperm().  (And if we decide to do this, we should make a
-> > note of this in that comment.)
-> 
-> That function really shouldn't be used and we should obey the x bit.
-> And yes, due to NFSs staleless file handles this will lead to non-posix
-> behaviour which is expected.  The same will happen with other nfs
-> servers aswell.
+Janne Karhunen wrote:
+> On Sun, Apr 20, 2008 at 8:02 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+>
+>   
+>>  > >  Right, that's what would make the most sense to me.  Janne, is there any
+>>  > >  reason that wouldn't solve your problem?
+>>  >
+>>  > I didn't get the idea. So the idea is to use multiple sockets,
+>>  > one bound to LOOPBACK and one to external interface?
+>>
+>>  I suppose so.  One socket would be for communication for the local
+>>  kernel nfsd, one for communication with statd peers.
+>>     
+>
+> Finally got around to it again. Attached patch takes a
+> shot at the two socket approach. Patch is a draft to
+> see what you guys would really think about this
+> approach.
+>
+>   
+Do we really have to add so many lines of the code just to fix "statd 
+-n" ? Maybe we should go back to the basics by understanding the 
+requirement of this command ? So why do we need it (i.e. what kind of 
+bad things we'll see if we don't fix this) ? Some short description 
+would help. 
 
-For the record, I disagree.  I think it is perfectly appropriate to
-use this function.  I think that obeying the 'x' bit is wrong.
-
-Why?
-
-What we are doing here is reconstructing the dcache to correctly
-reflect the filesystem.  The reason that we need to do this (rather
-than just leaving the dentry disconnected as we sometimes do with
-files) is so that lock_rename can find valid d_parent pointers and can
-guard against certain directory rename races that might create
-disconnected loops.
-
-i.e. the look_one_* is not being done on behalf of the owner of the
-file, or of the group-owner of the file, or of anyone else.  It is
-being done on behalf of the filesystem to ensure future filesystem
-consistency.
-So none of the 'x' bits (owner, group-owner, world) is appropriate to
-validate this lookup.
-
-NeilBrown
+-- Wendy
