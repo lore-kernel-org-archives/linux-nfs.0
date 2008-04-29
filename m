@@ -1,117 +1,83 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: multiple instances of rpc.statd
-Date: Tue, 29 Apr 2008 12:20:56 -0400
-Message-ID: <20080429162056.GB20420@fieldses.org>
-References: <200804251531.21035.bs@q-leap.de> <4811E0D7.4070608@gmail.com> <20080425220727.GA9597@fieldses.org> <48154B8F.7050301@gmail.com> <20080428182612.GC22037@fieldses.org> <48162340.6060509@gmail.com>
+Subject: Re: reconnect_path() breaks NFS server causing occasional EACCES
+Date: Tue, 29 Apr 2008 12:35:54 -0400
+Message-ID: <20080429163554.GE20420@fieldses.org>
+References: <20080404102449.GA10209@janus> <20080407184346.GF3305@fieldses.org> <20080409133639.GA9588@lst.de> <18454.45086.254692.412079@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Wendy Cheng <s.wendy.cheng@gmail.com>
+Cc: Christoph Hellwig <hch@lst.de>,
+	Frank van Maarseveen <frankvm@frankvm.com>,
+	Linux NFS mailing list <linux-nfs@vger.kernel.org>
+To: Neil Brown <neilb@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:34215 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:55824 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758441AbYD2QU6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 Apr 2008 12:20:58 -0400
-In-Reply-To: <48162340.6060509@gmail.com>
+	id S1751838AbYD2Qf7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 29 Apr 2008 12:35:59 -0400
+In-Reply-To: <18454.45086.254692.412079-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Apr 28, 2008 at 03:19:28PM -0400, Wendy Cheng wrote:
-> J. Bruce Fields wrote:
->> On Sun, Apr 27, 2008 at 10:59:11PM -0500, Wendy Cheng wrote:
->>   
->>>
->>>> So for basic v2/v3 failover, what remains is some statd -H scripts, and
->>>> some form of grace period control?  Is there anything else we're
->>>> missing?
->>>>       
->>> The submitted patch set is reasonably complete ... .
->>>
->>> There was another thought about statd patches though - mostly because of
->>> the concerns over statd's responsiveness. It depended so much on network
->>> status and clients' participations.  I was hoping NFS V4 would catch up
->>> by the time v2/v3 grace period patches got accepted into mainline
->>> kernel. Ideally the v2/v3 lock reclaiming logic could use (or at least
->>> did a similar implementation) the communication channel established by
->>> v4 servers - that is,
->>>
->>> 1. Enable grace period as previous submitted patches on secondary server.
->>> 2. Drop the locks on primary server (and chained the dropped locks into
->>> a lock-list).
->>>     
->>
->> What information exactly would be on that lock list?
->>   
->
-> Can't believe I get myself into this ... I'm supposed to be a disk  
-> firmware person *now* .. Anyway,
->
-> Are the lock state finalized in v4 yet ?
+On Tue, Apr 29, 2008 at 03:20:30PM +1000, Neil Brown wrote:
+> On Wednesday April 9, hch@lst.de wrote:
+> > On Mon, Apr 07, 2008 at 02:43:46PM -0400, J. Bruce Fields wrote:
+> > > Anyone who depends on the "x" bit to control access to objects in an
+> > > nfs-exported filesystem is already in trouble.  We could do so for
+> > > directories (at the expense of non-posix-like behavior such as what
+> > > you've seen), but we probably can't for files.  So I'm inclined to think
+> > > this is the right thing to do.
+> > > 
+> > > The "DON'T USE THIS FUNCTION EVER, thanks." suggests we should at least
+> > > consult the person who added that comment (cc'd) before adding a call to
+> > > lookup_one_noperm().  (And if we decide to do this, we should make a
+> > > note of this in that comment.)
+> > 
+> > That function really shouldn't be used and we should obey the x bit.
+> > And yes, due to NFSs staleless file handles this will lead to non-posix
+> > behaviour which is expected.  The same will happen with other nfs
+> > servers aswell.
+> 
+> For the record, I disagree.  I think it is perfectly appropriate to
+> use this function.  I think that obeying the 'x' bit is wrong.
+> 
+> Why?
+> 
+> What we are doing here is reconstructing the dcache to correctly
+> reflect the filesystem.  The reason that we need to do this (rather
+> than just leaving the dentry disconnected as we sometimes do with
+> files) is so that lock_rename can find valid d_parent pointers and can
+> guard against certain directory rename races that might create
+> disconnected loops.
+> 
+> i.e. the look_one_* is not being done on behalf of the owner of the
+> file, or of the group-owner of the file, or of anyone else.  It is
+> being done on behalf of the filesystem to ensure future filesystem
+> consistency.
+> So none of the 'x' bits (owner, group-owner, world) is appropriate to
+> validate this lookup.
 
-You mean, have we figured out what to send across for a transparent
-migration?  Somebody did a prototype that I think we set aside for a
-while, but I don't recall if it tried to handle truly transparent
-migration, or whether it just sent across the v4 equivalent of the statd
-data; I'll check.
+Just to make sure I understand--you're not claiming that there's an
+actual threat of corrupting the on-disk filesystem or in-core data
+structures, right? 
 
---b.
+I understand the "this isn't being done as any particular user"
+argument.
 
-> Can we borrow the concepts (and  
-> saved lock states) from v4 ? We certainly can define the saved state  
-> useful for v3 independent of v4, say client IP, file path, lock range,  
-> lock type, and user id ? Need to re-read linux source to make sure it is  
-> doable though.
->
->>   
->>> 3. Send the lock-list via v4 communication channel (or similar
->>> implementation) from primary server to backup server.
->>> 4. Reclaim the lock base on the lock-list on backup server.
->>>     
->>
->> So at this step it's the server itself reclaiming those locks, and
->> you're talking about a completely transparent migration that doesn't
->> look to the client like a reboot?
->>   
->
-> Yes, that's the idea .. never implement any prototype code yet - so not  
-> sure how feasible it would be.
->> My feeling has been that that's best done after first making sure we can
->> handle the case where the client reclaims the locks, since the latter is
->> easier, and is likely to involve at least some of the same work.  I
->> could be wrong.
->>   
->
-> Makes sense .. so the steps taken may be:
->
-> 1. Push the patch sets that we originally submitted. This is to make  
-> sure we have something working.
-> 2. Prototype the new logic, parallel with v4 development, observe and  
-> learn the results from step 1 based on user feedbacks.
-> 3. Integrate the new logic, if it turns out to be good.
->
->> Exactly which data has to be transferred from the old server to the new?
->> (Lock types, ranges, fh's, owners, and pid's, for established locks; do
->> we also need to hand off blocking locks?  Statd data still needs to be
->> transferred.  Ideally rpc reply caches.  What else?)
->>   
->
-> All statd has is the client network addresses (that is already part of  
-> current NLM states anyway). Yes, rpc reply cache is important (and  
-> that's exactly the motivation for this thread of discussion). Eventually  
-> the rpc reply cache needs to get transferred. As long as the  
-> communication channel is established, there is no reason for lock states  
-> not taking this advantages.
->
->>   
->>> In short, it would be nice to replace the existing statd lock reclaiming
->>> logic with the above steps if all possible during active-active
->>> failover. For reboot, on the other hand, should stay same as today's
->>> statd logic without changes.
->>>     
->
-> As mentioned before, cluster issues are not trivial. Take one step at a  
-> time .. So the next task we should be focusing may be the grace period  
-> patch. Will see what I can do to help out here.
->
-> -- Wendy
->
+It also seems to me that the actual security value of these checks is
+very low, given that all they're likely to do is raise the cost of a
+filehandle-guessing attack slightly, without really eliminating it.
+
+And from the point of a user the current behavior seems likely to lead
+to difficult-to-analyse behavior.
+
+So I don't understand Christoph's objection yet either.
+
+It might also help if we could confirm or deny Christoph's assertion
+about the behavior of other nfs servers.  It shouldn't be hard to run
+the original test case
+
+	http://marc.info/?l=linux-nfs&m=120730475719642&w=2
+
+against another server or two.
+
+---b.
