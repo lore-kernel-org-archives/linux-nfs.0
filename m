@@ -1,28 +1,31 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: EACCES in mount.nfs
-Date: Tue, 29 Apr 2008 17:42:07 -0400
-Message-ID: <183E9EC8-78F5-4352-BB01-84F9CE4F72FE@oracle.com>
-Mime-Version: 1.0 (Apple Message framework v919.2)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: Steve Dickson <SteveD@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: lock reclaims outside grace period
+Date: Tue, 29 Apr 2008 17:57:07 -0400
+Message-ID: <20080429215707.GF26468@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:64832 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753891AbYD2Vmj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Apr 2008 17:42:39 -0400
+Received: from mail.fieldses.org ([66.93.2.214]:46665 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753207AbYD2V5I (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 29 Apr 2008 17:57:08 -0400
+Received: from bfields by fieldses.org with local (Exim 4.69)
+	(envelope-from <bfields@fieldses.org>)
+	id 1Jqxox-0007e6-GG
+	for linux-nfs@vger.kernel.org; Tue, 29 Apr 2008 17:57:07 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Steve-
+Current lockd code appears to reject regular locks done during the grace
+period, but not reclaims that come outside of the grace period.
 
-There is an important case in mount.nfs where EACCES is temporary:   
-The kernel's rpcbind client returns EACCES if the remote rpcbind  
-server replies that the requested service is not registered.
+(That's based on inspecting the code--I haven't run tests.)
 
-It would be easy enough for the kernel's mount client to remap that  
-error code into something unique for the mount system call.
+That seems like an obvious bug.  (We're not giving the client any way to
+determine whether conflicting locks might have been granted.)
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+Can we fix it, or is there a chance that people have been depending on
+this behavior?  (Maybe for failing over to an already-active server??)
+
+--b.
