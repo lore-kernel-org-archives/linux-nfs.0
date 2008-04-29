@@ -1,212 +1,105 @@
-From: Chuck Lever <chucklever@gmail.com>
-Subject: [PATCH] NFS: Update help text for CONFIG_NFS_FS
-Date: Tue, 29 Apr 2008 13:08:34 -0400
-Message-ID: <20080429170646.26700.25527.stgit@manray.1015granger.net>
+From: Frank van Maarseveen <frankvm@frankvm.com>
+Subject: Re: reconnect_path() breaks NFS server causing occasional EACCES
+Date: Tue, 29 Apr 2008 19:40:04 +0200
+Message-ID: <20080429174004.GA28719@janus>
+References: <20080404102449.GA10209@janus> <20080407184346.GF3305@fieldses.org> <20080409133639.GA9588@lst.de> <18454.45086.254692.412079@notabene.brown> <20080429163554.GE20420@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: linux-nfs@vger.kernel.org
-To: trond.myklebust@netapp.com
+Content-Type: text/plain; charset=us-ascii
+Cc: Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@lst.de>,
+	Frank van Maarseveen <frankvm@frankvm.com>,
+	Linux NFS mailing list <linux-nfs@vger.kernel.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from wr-out-0506.google.com ([64.233.184.230]:33006 "EHLO
-	wr-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759573AbYD2RIk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Apr 2008 13:08:40 -0400
-Received: by wr-out-0506.google.com with SMTP id c48so104399wra.1
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Apr 2008 10:08:39 -0700 (PDT)
+Received: from frankvm.xs4all.nl ([80.126.170.174]:42600 "EHLO
+	janus.localdomain" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1760827AbYD2RkG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Apr 2008 13:40:06 -0400
+In-Reply-To: <20080429163554.GE20420@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: refresh the help text for Kconfig items related to the NFS
-client.  Remove obsolete URLs, and make the language consistent among
-the options.
+On Tue, Apr 29, 2008 at 12:35:54PM -0400, J. Bruce Fields wrote:
+> On Tue, Apr 29, 2008 at 03:20:30PM +1000, Neil Brown wrote:
+> > On Wednesday April 9, hch@lst.de wrote:
+> > > On Mon, Apr 07, 2008 at 02:43:46PM -0400, J. Bruce Fields wrote:
+> > > > Anyone who depends on the "x" bit to control access to objects in an
+> > > > nfs-exported filesystem is already in trouble.  We could do so for
+> > > > directories (at the expense of non-posix-like behavior such as what
+> > > > you've seen), but we probably can't for files.  So I'm inclined to think
+> > > > this is the right thing to do.
+> > > > 
+> > > > The "DON'T USE THIS FUNCTION EVER, thanks." suggests we should at least
+> > > > consult the person who added that comment (cc'd) before adding a call to
+> > > > lookup_one_noperm().  (And if we decide to do this, we should make a
+> > > > note of this in that comment.)
+> > > 
+> > > That function really shouldn't be used and we should obey the x bit.
+> > > And yes, due to NFSs staleless file handles this will lead to non-posix
+> > > behaviour which is expected.  The same will happen with other nfs
+> > > servers aswell.
+> > 
+> > For the record, I disagree.  I think it is perfectly appropriate to
+> > use this function.  I think that obeying the 'x' bit is wrong.
+> > 
+> > Why?
+> > 
+> > What we are doing here is reconstructing the dcache to correctly
+> > reflect the filesystem.  The reason that we need to do this (rather
+> > than just leaving the dentry disconnected as we sometimes do with
+> > files) is so that lock_rename can find valid d_parent pointers and can
+> > guard against certain directory rename races that might create
+> > disconnected loops.
+> > 
+> > i.e. the look_one_* is not being done on behalf of the owner of the
+> > file, or of the group-owner of the file, or of anyone else.  It is
+> > being done on behalf of the filesystem to ensure future filesystem
+> > consistency.
+> > So none of the 'x' bits (owner, group-owner, world) is appropriate to
+> > validate this lookup.
 
-Also move the ROOT_NFS config option next to the options related to the
-NFS client.
+Ok, so this is another reason why the x-bit check is incorrect. Sounds like
+it could cause improper behavior in other cases.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-Hi Trond-
+> 
+> Just to make sure I understand--you're not claiming that there's an
+> actual threat of corrupting the on-disk filesystem or in-core data
+> structures, right? 
+> 
+> I understand the "this isn't being done as any particular user"
+> argument.
+> 
+> It also seems to me that the actual security value of these checks is
+> very low, given that all they're likely to do is raise the cost of a
+> filehandle-guessing attack slightly, without really eliminating it.
+> 
+> And from the point of a user the current behavior seems likely to lead
+> to difficult-to-analyse behavior.
+> 
+> So I don't understand Christoph's objection yet either.
+> 
+> It might also help if we could confirm or deny Christoph's assertion
+> about the behavior of other nfs servers.  It shouldn't be hard to run
+> the original test case
+> 
+> 	http://marc.info/?l=linux-nfs&m=120730475719642&w=2
+> 
+> against another server or two.
 
-This patch appears to be missing from the others you sent for 2.6.26.
+I don't think it is that relevant for two reasons:
 
- fs/Kconfig |  115 ++++++++++++++++++++++++++++++------------------------------
- 1 files changed, 57 insertions(+), 58 deletions(-)
+* Currently, the linux NFS server behaves inconsistent depending
+  on memory pressure/reboot. That on its own looks like a bug to me.
 
-diff --git a/fs/Kconfig b/fs/Kconfig
-index 2e43d46..33ea400 100644
---- a/fs/Kconfig
-+++ b/fs/Kconfig
-@@ -1543,10 +1543,6 @@ config UFS_FS
-           The recently released UFS2 variant (used in FreeBSD 5.x) is
-           READ-ONLY supported.
- 
--	  If you only intend to mount files from some other Unix over the
--	  network using NFS, you don't need the UFS file system support (but
--	  you need NFS file system support obviously).
--
- 	  Note that this option is generally not needed for floppies, since a
- 	  good portable way to transport files and directories between unixes
- 	  (and even other operating systems) is given by the tar program ("man
-@@ -1586,6 +1582,7 @@ menuconfig NETWORK_FILESYSTEMS
- 	  Say Y here to get to see options for network filesystems and
- 	  filesystem-related networking code, such as NFS daemon and
- 	  RPCSEC security modules.
-+
- 	  This option alone does not add any kernel code.
- 
- 	  If you say N, all options in this submenu will be skipped and
-@@ -1594,76 +1591,92 @@ menuconfig NETWORK_FILESYSTEMS
- if NETWORK_FILESYSTEMS
- 
- config NFS_FS
--	tristate "NFS file system support"
-+	tristate "NFS client support"
- 	depends on INET
- 	select LOCKD
- 	select SUNRPC
- 	select NFS_ACL_SUPPORT if NFS_V3_ACL
- 	help
--	  If you are connected to some other (usually local) Unix computer
--	  (using SLIP, PLIP, PPP or Ethernet) and want to mount files residing
--	  on that computer (the NFS server) using the Network File Sharing
--	  protocol, say Y. "Mounting files" means that the client can access
--	  the files with usual UNIX commands as if they were sitting on the
--	  client's hard disk. For this to work, the server must run the
--	  programs nfsd and mountd (but does not need to have NFS file system
--	  support enabled in its kernel). NFS is explained in the Network
--	  Administrator's Guide, available from
--	  <http://www.tldp.org/docs.html#guide>, on its man page: "man
--	  nfs", and in the NFS-HOWTO.
--
--	  A superior but less widely used alternative to NFS is provided by
--	  the Coda file system; see "Coda file system support" below.
-+	  Choose Y here if you want to access files residing on other
-+	  computers using Sun's Network File System protocol.  To compile
-+	  this file system support as a module, choose M here: the module
-+	  will be called nfs.
- 
--	  If you say Y here, you should have said Y to TCP/IP networking also.
--	  This option would enlarge your kernel by about 27 KB.
-+	  To mount file systems exported by NFS servers, you also need to
-+	  install the user space mount.nfs command which can be found in
-+	  the Linux nfs-utils package, available from http://linux-nfs.org/.
-+	  Information about using the mount command is available in the
-+	  mount(8) man page.  More detail about the Linux NFS client
-+	  implementation is available via the nfs(5) man page.
- 
--	  To compile this file system support as a module, choose M here: the
--	  module will be called nfs.
-+	  Below you can choose which versions of the NFS protocol are
-+	  available in the kernel to mount NFS servers.  Support for NFS
-+	  version 2 (RFC 1094) is always available when NFS_FS is selected.
- 
--	  If you are configuring a diskless machine which will mount its root
--	  file system over NFS at boot time, say Y here and to "Kernel
--	  level IP autoconfiguration" above and to "Root file system on NFS"
--	  below. You cannot compile this driver as a module in this case.
--	  There are two packages designed for booting diskless machines over
--	  the net: netboot, available from
--	  <http://ftp1.sourceforge.net/netboot/>, and Etherboot,
--	  available from <http://ftp1.sourceforge.net/etherboot/>.
-+	  To configure a system which mounts its root file system via NFS
-+	  at boot time, say Y here, select "Kernel level IP
-+	  autoconfiguration" in the NETWORK menu, and select "Root file
-+	  system on NFS" below.  You cannot compile this file system as a
-+	  module in this case.
- 
--	  If you don't know what all this is about, say N.
-+	  If unsure, say N.
- 
- config NFS_V3
--	bool "Provide NFSv3 client support"
-+	bool "NFS client support for NFS version 3"
- 	depends on NFS_FS
- 	help
--	  Say Y here if you want your NFS client to be able to speak version
--	  3 of the NFS protocol.
-+	  This option enables support for version 3 of the NFS protocol
-+	  (RFC 1813) in the kernel's NFS client.
- 
- 	  If unsure, say Y.
- 
- config NFS_V3_ACL
--	bool "Provide client support for the NFSv3 ACL protocol extension"
-+	bool "NFS client support for the NFSv3 ACL protocol extension"
- 	depends on NFS_V3
- 	help
--	  Implement the NFSv3 ACL protocol extension for manipulating POSIX
--	  Access Control Lists.  The server should also be compiled with
--	  the NFSv3 ACL protocol extension; see the CONFIG_NFSD_V3_ACL option.
-+	  Some NFS servers support an auxiliary NFSv3 ACL protocol that
-+	  Sun added to Solaris but never became an official part of the
-+	  NFS version 3 protocol.  This protocol extension allows
-+	  applications on NFS clients to manipulate POSIX Access Control
-+	  Lists on files residing on NFS servers.  NFS servers enforce
-+	  ACLs on local files whether this protocol is available or not.
-+
-+	  Choose Y here if your NFS server supports the Solaris NFSv3 ACL
-+	  protocol extension and you want your NFS client to allow
-+	  applications to access and modify ACLs on files on the server.
-+
-+	  Most NFS servers don't support the Solaris NFSv3 ACL protocol
-+	  extension.  You can choose N here or specify the "noacl" mount
-+	  option to prevent your NFS client from trying to use the NFSv3
-+	  ACL protocol.
- 
- 	  If unsure, say N.
- 
- config NFS_V4
--	bool "Provide NFSv4 client support (EXPERIMENTAL)"
-+	bool "NFS client support for NFS version 4 (EXPERIMENTAL)"
- 	depends on NFS_FS && EXPERIMENTAL
- 	select RPCSEC_GSS_KRB5
- 	help
--	  Say Y here if you want your NFS client to be able to speak the newer
--	  version 4 of the NFS protocol.
-+	  This option enables support for version 4 of the NFS protocol 
-+	  (RFC 3530) in the kernel's NFS client.
- 
--	  Note: Requires auxiliary userspace daemons which may be found on
--		http://www.citi.umich.edu/projects/nfsv4/
-+	  To mount NFS servers using NFSv4, you also need to install user
-+	  space programs which can be found in the Linux nfs-utils package,
-+	  available from http://linux-nfs.org/.
- 
- 	  If unsure, say N.
- 
-+config ROOT_NFS
-+	bool "Root file system on NFS"
-+	depends on NFS_FS=y && IP_PNP
-+	help
-+	  If you want your system to mount its root file system via NFS,
-+	  choose Y here.  This is common practice for managing systems
-+	  without local permanent storage.  For details, read
-+	  <file:Documentation/filesystems/nfsroot.txt>.
-+
-+	  Most people say N here.
-+
- config NFSD
- 	tristate "NFS server support"
- 	depends on INET
-@@ -1745,20 +1758,6 @@ config NFSD_V4
- 
- 	  If unsure, say N.
- 
--config ROOT_NFS
--	bool "Root file system on NFS"
--	depends on NFS_FS=y && IP_PNP
--	help
--	  If you want your Linux box to mount its whole root file system (the
--	  one containing the directory /) from some other computer over the
--	  net via NFS (presumably because your box doesn't have a hard disk),
--	  say Y. Read <file:Documentation/filesystems/nfsroot.txt> for
--	  details. It is likely that in this case, you also want to say Y to
--	  "Kernel level IP autoconfiguration" so that your box can discover
--	  its network address at boot time.
--
--	  Most people say N here.
--
- config LOCKD
- 	tristate
- 
+* The NFS server should never re-check access to a [directory]
+  path which has been used in the past to obtain a handle:
+  Permission checks apply only once, at open time. This is how
+  POSIX filesystems behave.
 
+I also guess it will be hard to find another NFS server with exactly the
+same behavior. Either the x-bit of the complete path to the file-handle
+is checked upon every operation (sounds totally broken to me) or it is
+never checked beyond open time. It looks like this bug has everything
+to do with the internal housekeeping and is certainly not intentional.
+
+-- 
+Frank
