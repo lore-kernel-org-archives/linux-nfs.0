@@ -1,45 +1,42 @@
 From: Kevin Coffman <kwc@citi.umich.edu>
-Subject: [enctypes round 2: PATCH 16/26] gss_krb5: add DES3 to the list of
-	supported enctypes
-Date: Wed, 30 Apr 2008 12:47:09 -0400
-Message-ID: <20080430164709.16010.75006.stgit@jazz.citi.umich.edu>
+Subject: [enctypes round 2: PATCH 17/26] sunrpc: Export function
+	write_bytes_to_xdr_buf
+Date: Wed, 30 Apr 2008 12:47:14 -0400
+Message-ID: <20080430164714.16010.37810.stgit@jazz.citi.umich.edu>
 References: <20080430164306.16010.44650.stgit@jazz.citi.umich.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from citi.umich.edu ([141.211.133.111]:30623 "EHLO citi.umich.edu"
+Received: from citi.umich.edu ([141.211.133.111]:46276 "EHLO citi.umich.edu"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757363AbYD3QrK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 30 Apr 2008 12:47:10 -0400
+	id S1757768AbYD3QrP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 30 Apr 2008 12:47:15 -0400
 In-Reply-To: <20080430164306.16010.44650.stgit-zTNJhAanYLVZN1qrTdtDg5Vzexx5G7lz@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This TEMPORARY patch notifies gssd that DES3 encryption is supported
-by the kernel's gss_krb5 code.
-
-This patch will go away when the final solution of adding the
-enctype information to the upcall to gssd is implemented.
+Implementation of the AES encryption for gss_krb5 needs to use
+read_bytes_from_xdr_buf() and write_bytes_to_xdr_buf().
+The read function is already exported.  Export the write function.
 
 Signed-off-by: Kevin Coffman <kwc@citi.umich.edu>
 ---
 
- net/sunrpc/rpc_pipe.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ net/sunrpc/xdr.c |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
 
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index 5f159a0..c2d7817 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -392,7 +392,7 @@ static const struct file_operations rpc_info_operations = {
- static int
- rpc_show_krb5_info(struct seq_file *m, void *v)
- {
--	seq_printf(m, "enctypes: 3,1,2\n");
-+	seq_printf(m, "enctypes: 16,3,1,2\n");
+diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
+index 79a55d5..493c95c 100644
+--- a/net/sunrpc/xdr.c
++++ b/net/sunrpc/xdr.c
+@@ -761,6 +761,7 @@ int write_bytes_to_xdr_buf(struct xdr_buf *buf, unsigned int base, void *obj, un
+ 	__write_bytes_to_xdr_buf(&subbuf, obj, len);
  	return 0;
  }
++EXPORT_SYMBOL(write_bytes_to_xdr_buf);
  
+ int
+ xdr_decode_word(struct xdr_buf *buf, unsigned int base, u32 *obj)
 
