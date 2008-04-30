@@ -1,105 +1,66 @@
-From: Chuck Lever <chucklever@gmail.com>
-Subject: [PATCH 5/6] NFS: "proto=tcp" implies "mountproto=tcp"
-Date: Wed, 30 Apr 2008 12:00:11 -0400
-Message-ID: <20080430160011.32402.7262.stgit@manray.1015granger.net>
-References: <20080430154011.32402.42101.stgit@manray.1015granger.net>
+From: Kevin Coffman <kwc@citi.umich.edu>
+Subject: [enctypes round 2: PATCH 00/26] Implement more encryption for gss_krb5
+Date: Wed, 30 Apr 2008 12:45:48 -0400
+Message-ID: <20080430164306.16010.44650.stgit@jazz.citi.umich.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
-To: jlayton@redhat.com
+To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from an-out-0708.google.com ([209.85.132.242]:59334 "EHLO
-	an-out-0708.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1760483AbYD3QAO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Apr 2008 12:00:14 -0400
-Received: by an-out-0708.google.com with SMTP id d40so120817and.103
-        for <linux-nfs@vger.kernel.org>; Wed, 30 Apr 2008 09:00:14 -0700 (PDT)
-In-Reply-To: <20080430154011.32402.42101.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+Received: from citi.umich.edu ([141.211.133.111]:44194 "EHLO citi.umich.edu"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753596AbYD3Qpt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 30 Apr 2008 12:45:49 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If a user specifies "proto=tcp" via the legacy mount API, the mount command
-also uses TCP to contact the server's mount daemon.  Ditto for "proto=udp".
-This makes it easier to mount through firewalls that block one or the other
-transport protocol.
+This is round 2.
 
-Make the in-kernel NFS mount option parser emulate this behavior.
+This set of patches adds kernel support for triple-DES (des3-cbc-sha1),
+arcfour (rc4-hmac), and AES (aes128-cts, aes256-cts) encryption to the
+kernel's Kerberos rpcsec_gss code.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+These are currently based on Trond's tree as of 4/29/08 @ 17:15.
 
- fs/nfs/super.c |   16 ++++++++++++++--
- 1 files changed, 14 insertions(+), 2 deletions(-)
+Two issues remain:
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 1f3fa91..e2cadd9 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -749,6 +749,7 @@ static int nfs_parse_mount_options(char *raw,
- {
- 	char *p, *string, *secdata;
- 	int timeo = 0, retrans = 0;
-+	unsigned short mount_protocol = 0;
- 	int rc;
- 
- 	if (!raw) {
-@@ -821,6 +822,8 @@ static int nfs_parse_mount_options(char *raw,
- 		case Opt_udp:
- 			mnt->flags &= ~NFS_MOUNT_TCP;
- 			mnt->nfs_server.protocol = XPRT_TRANSPORT_UDP;
-+			if (mount_protocol == 0)
-+				mount_protocol = XPRT_TRANSPORT_UDP;
- 			if (timeo == 0)
- 				timeo = NFS_DEF_UDP_TIMEO;
- 			if (retrans == 0)
-@@ -829,6 +832,8 @@ static int nfs_parse_mount_options(char *raw,
- 		case Opt_tcp:
- 			mnt->flags |= NFS_MOUNT_TCP;
- 			mnt->nfs_server.protocol = XPRT_TRANSPORT_TCP;
-+			if (mount_protocol == 0)
-+				mount_protocol = XPRT_TRANSPORT_TCP;
- 			if (timeo == 0)
- 				timeo = NFS_DEF_TCP_TIMEO;
- 			if (retrans == 0)
-@@ -1040,6 +1045,8 @@ static int nfs_parse_mount_options(char *raw,
- 			case Opt_xprt_udp:
- 				mnt->flags &= ~NFS_MOUNT_TCP;
- 				mnt->nfs_server.protocol = XPRT_TRANSPORT_UDP;
-+				if (mount_protocol == 0)
-+					mount_protocol = XPRT_TRANSPORT_UDP;
- 				if (timeo == 0)
- 					timeo = NFS_DEF_UDP_TIMEO;
- 				if (retrans == 0)
-@@ -1048,6 +1055,8 @@ static int nfs_parse_mount_options(char *raw,
- 			case Opt_xprt_tcp:
- 				mnt->flags |= NFS_MOUNT_TCP;
- 				mnt->nfs_server.protocol = XPRT_TRANSPORT_TCP;
-+				if (mount_protocol == 0)
-+					mount_protocol = XPRT_TRANSPORT_TCP;
- 				if (timeo == 0)
- 					timeo = NFS_DEF_TCP_TIMEO;
- 				if (retrans == 0)
-@@ -1076,10 +1085,10 @@ static int nfs_parse_mount_options(char *raw,
- 
- 			switch (token) {
- 			case Opt_xprt_udp:
--				mnt->mount_server.protocol = XPRT_TRANSPORT_UDP;
-+				mount_protocol = XPRT_TRANSPORT_UDP;
- 				break;
- 			case Opt_xprt_tcp:
--				mnt->mount_server.protocol = XPRT_TRANSPORT_TCP;
-+				mount_protocol = XPRT_TRANSPORT_TCP;
- 				break;
- 			case Opt_xprt_rdma: /* not used for side protocols */
- 			default:
-@@ -1137,6 +1146,9 @@ static int nfs_parse_mount_options(char *raw,
- 	if (retrans != 0)
- 		mnt->retrans = retrans;
- 
-+	if (mount_protocol)
-+		mnt->mount_server.protocol = mount_protocol;
-+
- 	return 1;
- 
- out_nomem:
+1) The patch to add krb5_info will eventually be replaced with an
+updated upcall which will include the supported enctype information.
+I have split out these portions of the patches to (hopefully) make
+that transition easier.
+
+2) There is currently no code to handle the possiblity of rotated
+data in the version two tokens.  I don't expect we'll see rotated
+data in normal operation, but this should be done eventually for
+completeness.
+
+There are two nfs-utils patches required with this.  The first reads
+and parses the list of kernel supported enctypes.  The second
+implements the new context format from user-land to kernel.
+I will include these in a new set of CITI nfs-utils patches RSN.
+
+
+------------------
+
+Note: for AES support, the following patch for MIT Kerberos is needed
+to get the right key when there is an acceptor_subkey.  [mea culpa]
+
+This fix is scheduled to be included in MIT release 1.6.4, currently
+in beta testing.
+
+This patch should also apply to releases 1.4.0 to 1.6.3.
+
+Index: src/lib/gssapi/krb5/lucid_context.c
+===================================================================
+--- src/lib/gssapi/krb5/lucid_context.c (revision 20174)
++++ src/lib/gssapi/krb5/lucid_context.c (revision 20175)
+@@ -231,7 +231,7 @@
+                                        &lctx->cfx_kd.ctx_key)))
+            goto error_out;
+        if (gctx->have_acceptor_subkey) {
+-           if ((retval = copy_keyblock_to_lucid_key(gctx->enc,
++           if ((retval = copy_keyblock_to_lucid_key(gctx->acceptor_subkey,
+                                        &lctx->cfx_kd.acceptor_subkey)))
+                goto error_out;
+            lctx->cfx_kd.have_acceptor_subkey = 1;
 
