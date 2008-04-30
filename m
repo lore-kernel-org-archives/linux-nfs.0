@@ -1,149 +1,116 @@
 From: Kevin Coffman <kwc@citi.umich.edu>
-Subject: [enctypes round 2: PATCH 08/26] gss_krb5: prepare for new context
-	format
-Date: Wed, 30 Apr 2008 12:46:29 -0400
-Message-ID: <20080430164629.16010.74150.stgit@jazz.citi.umich.edu>
+Subject: [enctypes round 2: PATCH 05/26] rpc: gss: Add oid values to the
+	gss_api mechanism structures
+Date: Wed, 30 Apr 2008 12:46:14 -0400
+Message-ID: <20080430164613.16010.22760.stgit@jazz.citi.umich.edu>
 References: <20080430164306.16010.44650.stgit@jazz.citi.umich.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from citi.umich.edu ([141.211.133.111]:39941 "EHLO citi.umich.edu"
+Received: from citi.umich.edu ([141.211.133.111]:17803 "EHLO citi.umich.edu"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756980AbYD3Qq3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 30 Apr 2008 12:46:29 -0400
+	id S1756232AbYD3QqO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 30 Apr 2008 12:46:14 -0400
 In-Reply-To: <20080430164306.16010.44650.stgit-zTNJhAanYLVZN1qrTdtDg5Vzexx5G7lz@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Prepare for new context format by splitting out the old "v1"
-context processing function.
+From: Usha Ketineni <uketinen@us.ibm.com>
 
-From: J. Bruce Fields <bfields@citi.umich.edu>
-Signed-off-by: Kevin Coffman <kwc@citi.umich.edu>
+On NFSV4 server side, these are required as part of the security
+triple(oid,qop,service) information being sent in the response of the
+SECINFO operation.
+
+Signed-off-by: Usha Ketineni <uketinen@us.ibm.com>
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
 
- net/sunrpc/auth_gss/gss_krb5_mech.c |   62 +++++++++++++++++++++++------------
- 1 files changed, 40 insertions(+), 22 deletions(-)
+ fs/nfsd/nfs4xdr.c                    |    6 +++---
+ include/linux/sunrpc/gss_api.h       |    2 +-
+ include/linux/sunrpc/gss_krb5.h      |    2 ++
+ net/sunrpc/auth_gss/gss_krb5_mech.c  |    4 +++-
+ net/sunrpc/auth_gss/gss_spkm3_mech.c |    4 +++-
+ 5 files changed, 12 insertions(+), 6 deletions(-)
 
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index c513bbd..737dbe8 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -2512,9 +2512,9 @@ nfsd4_encode_secinfo(struct nfsd4_compoundres *resp, __be32 nfserr,
+ 			RESERVE_SPACE(4);
+ 			WRITE32(RPC_AUTH_GSS);
+ 			ADJUST_ARGS();
+-			RESERVE_SPACE(4 + gm->gm_oid.len);
+-			WRITE32(gm->gm_oid.len);
+-			WRITEMEM(gm->gm_oid.data, gm->gm_oid.len);
++			RESERVE_SPACE(4 + gm->gm_oid->len);
++			WRITE32(gm->gm_oid->len);
++			WRITEMEM(gm->gm_oid->data, gm->gm_oid->len);
+ 			ADJUST_ARGS();
+ 			RESERVE_SPACE(4);
+ 			WRITE32(0); /* qop */
+diff --git a/include/linux/sunrpc/gss_api.h b/include/linux/sunrpc/gss_api.h
+index 459c5fc..ed0b80c 100644
+--- a/include/linux/sunrpc/gss_api.h
++++ b/include/linux/sunrpc/gss_api.h
+@@ -76,7 +76,7 @@ struct pf_desc {
+ struct gss_api_mech {
+ 	struct list_head	gm_list;
+ 	struct module		*gm_owner;
+-	struct xdr_netobj	gm_oid;
++	struct xdr_netobj	*gm_oid;
+ 	char			*gm_name;
+ 	const struct gss_api_ops *gm_ops;
+ 	/* pseudoflavors supported by this mechanism: */
+diff --git a/include/linux/sunrpc/gss_krb5.h b/include/linux/sunrpc/gss_krb5.h
+index 5bb227e..65003b2 100644
+--- a/include/linux/sunrpc/gss_krb5.h
++++ b/include/linux/sunrpc/gss_krb5.h
+@@ -79,6 +79,8 @@ enum seal_alg {
+ 	SEAL_ALG_DES3KD = 0x0002
+ };
+ 
++extern struct xdr_netobj krb5_oid;
++
+ #define CKSUMTYPE_CRC32			0x0001
+ #define CKSUMTYPE_RSA_MD4		0x0002
+ #define CKSUMTYPE_RSA_MD4_DES		0x0003
 diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_mech.c
-index 477cf07..f0f0749 100644
+index 60c3dba..3c070d0 100644
 --- a/net/sunrpc/auth_gss/gss_krb5_mech.c
 +++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
-@@ -123,51 +123,47 @@ out_err:
- }
+@@ -232,10 +232,12 @@ static struct pf_desc gss_kerberos_pfs[] = {
+ 	},
+ };
  
- static int
--gss_import_sec_context_kerberos(const void *p,
--				size_t len,
--				struct gss_ctx *ctx_id)
-+gss_import_v1_context(const void *p, const void *end, struct krb5_ctx *ctx)
- {
--	const void *end = (const void *)((const char *)p + len);
--	struct	krb5_ctx *ctx;
- 	int tmp;
++struct xdr_netobj krb5_oid = {9, "\x2a\x86\x48\x86\xf7\x12\x01\x02\x02"};
++
+ static struct gss_api_mech gss_kerberos_mech = {
+ 	.gm_name	= "krb5",
+ 	.gm_owner	= THIS_MODULE,
+-	.gm_oid		= {9, (void *)"\x2a\x86\x48\x86\xf7\x12\x01\x02\x02"},
++	.gm_oid		= &krb5_oid,
+ 	.gm_ops		= &gss_kerberos_ops,
+ 	.gm_pf_num	= ARRAY_SIZE(gss_kerberos_pfs),
+ 	.gm_pfs		= gss_kerberos_pfs,
+diff --git a/net/sunrpc/auth_gss/gss_spkm3_mech.c b/net/sunrpc/auth_gss/gss_spkm3_mech.c
+index 5deb4b6..210b23b 100644
+--- a/net/sunrpc/auth_gss/gss_spkm3_mech.c
++++ b/net/sunrpc/auth_gss/gss_spkm3_mech.c
+@@ -214,10 +214,12 @@ static struct pf_desc gss_spkm3_pfs[] = {
+ 	{RPC_AUTH_GSS_SPKMI, RPC_GSS_SVC_INTEGRITY, "spkm3i"},
+ };
  
--	if (!(ctx = kzalloc(sizeof(*ctx), GFP_KERNEL)))
--		goto out_err;
--
- 	p = simple_get_bytes(p, end, &ctx->initiate, sizeof(ctx->initiate));
- 	if (IS_ERR(p))
--		goto out_err_free_ctx;
-+		goto out_err;
++struct xdr_netobj spkm3_oid = {7, "\053\006\001\005\005\001\003"};
 +
-+	/* Old format supports only DES!  Any other enctype uses new format */
- 	ctx->enctype = ENCTYPE_DES_CBC_RAW;
-+
- 	/* The downcall format was designed before we completely understood
- 	 * the uses of the context fields; so it includes some stuff we
- 	 * just give some minimal sanity-checking, and some we ignore
- 	 * completely (like the next twenty bytes): */
- 	if (unlikely(p + 20 > end || p + 20 < p))
--		goto out_err_free_ctx;
-+		goto out_err;
- 	p += 20;
- 	p = simple_get_bytes(p, end, &tmp, sizeof(tmp));
- 	if (IS_ERR(p))
--		goto out_err_free_ctx;
-+		goto out_err;
- 	if (tmp != SGN_ALG_DES_MAC_MD5) {
- 		p = ERR_PTR(-ENOSYS);
--		goto out_err_free_ctx;
-+		goto out_err;
- 	}
- 	p = simple_get_bytes(p, end, &tmp, sizeof(tmp));
- 	if (IS_ERR(p))
--		goto out_err_free_ctx;
-+		goto out_err;
- 	if (tmp != SEAL_ALG_DES) {
- 		p = ERR_PTR(-ENOSYS);
--		goto out_err_free_ctx;
-+		goto out_err;
- 	}
- 	p = simple_get_bytes(p, end, &ctx->endtime, sizeof(ctx->endtime));
- 	if (IS_ERR(p))
--		goto out_err_free_ctx;
-+		goto out_err;
- 	p = simple_get_bytes(p, end, &ctx->seq_send, sizeof(ctx->seq_send));
- 	if (IS_ERR(p))
--		goto out_err_free_ctx;
-+		goto out_err;
- 	p = simple_get_netobj(p, end, &ctx->mech_used);
- 	if (IS_ERR(p))
--		goto out_err_free_ctx;
-+		goto out_err;
- 	p = get_key(p, end, &ctx->enc);
- 	if (IS_ERR(p))
- 		goto out_err_free_mech;
-@@ -179,9 +175,6 @@ gss_import_sec_context_kerberos(const void *p,
- 		goto out_err_free_key2;
- 	}
- 
--	ctx_id->internal_ctx_id = ctx;
--
--	dprintk("RPC:       Successfully imported new context.\n");
- 	return 0;
- 
- out_err_free_key2:
-@@ -190,12 +183,37 @@ out_err_free_key1:
- 	crypto_free_blkcipher(ctx->enc);
- out_err_free_mech:
- 	kfree(ctx->mech_used.data);
--out_err_free_ctx:
--	kfree(ctx);
- out_err:
- 	return PTR_ERR(p);
- }
- 
-+static int
-+gss_import_sec_context_kerberos(const void *p, size_t len,
-+				struct gss_ctx *ctx_id)
-+{
-+	const void *end = (const void *)((const char *)p + len);
-+	struct  krb5_ctx *ctx;
-+	int ret;
-+
-+	ctx = kmalloc(sizeof(*ctx), GFP_KERNEL);
-+	if (ctx == NULL)
-+		return -ENOMEM;
-+	memset(ctx, 0, sizeof(*ctx));
-+
-+	if (len == 85)
-+		ret = gss_import_v1_context(p, end, ctx);
-+	else
-+		ret = -EINVAL;
-+
-+	if (ret == 0)
-+		ctx_id->internal_ctx_id = ctx;
-+	else
-+		kfree(ctx);
-+
-+	dprintk("RPC:       %s: returning %d\n", __func__, ret);
-+	return ret;
-+}
-+
- static void
- gss_delete_sec_context_kerberos(void *internal_ctx) {
- 	struct krb5_ctx *kctx = internal_ctx;
+ static struct gss_api_mech gss_spkm3_mech = {
+ 	.gm_name	= "spkm3",
+ 	.gm_owner	= THIS_MODULE,
+-	.gm_oid		= {7, "\053\006\001\005\005\001\003"},
++	.gm_oid		= &spkm3_oid,
+ 	.gm_ops		= &gss_spkm3_ops,
+ 	.gm_pf_num	= ARRAY_SIZE(gss_spkm3_pfs),
+ 	.gm_pfs		= gss_spkm3_pfs,
 
