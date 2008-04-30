@@ -1,66 +1,95 @@
 From: Kevin Coffman <kwc@citi.umich.edu>
-Subject: [enctypes round 2: PATCH 00/26] Implement more encryption for gss_krb5
-Date: Wed, 30 Apr 2008 12:45:48 -0400
-Message-ID: <20080430164306.16010.44650.stgit@jazz.citi.umich.edu>
+Subject: [enctypes round 2: PATCH 02/26] gss_krb5: move gss_krb5_crypto into
+	the krb5 module
+Date: Wed, 30 Apr 2008 12:45:58 -0400
+Message-ID: <20080430164558.16010.1610.stgit@jazz.citi.umich.edu>
+References: <20080430164306.16010.44650.stgit@jazz.citi.umich.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from citi.umich.edu ([141.211.133.111]:44194 "EHLO citi.umich.edu"
+Received: from citi.umich.edu ([141.211.133.111]:21342 "EHLO citi.umich.edu"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753596AbYD3Qpt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 30 Apr 2008 12:45:49 -0400
+	id S1755916AbYD3Qp7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 30 Apr 2008 12:45:59 -0400
+In-Reply-To: <20080430164306.16010.44650.stgit-zTNJhAanYLVZN1qrTdtDg5Vzexx5G7lz@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is round 2.
+The gss_krb5_crypto.o object belongs in the rpcsec_gss_krb5 module.
+Also, there is no need to export symbols from gss_krb5_crypto.c
 
-This set of patches adds kernel support for triple-DES (des3-cbc-sha1),
-arcfour (rc4-hmac), and AES (aes128-cts, aes256-cts) encryption to the
-kernel's Kerberos rpcsec_gss code.
+Signed-off-by: Kevin Coffman <kwc@citi.umich.edu>
+---
 
-These are currently based on Trond's tree as of 4/29/08 @ 17:15.
+ net/sunrpc/auth_gss/Makefile          |    4 ++--
+ net/sunrpc/auth_gss/gss_krb5_crypto.c |   10 ----------
+ 2 files changed, 2 insertions(+), 12 deletions(-)
 
-Two issues remain:
-
-1) The patch to add krb5_info will eventually be replaced with an
-updated upcall which will include the supported enctype information.
-I have split out these portions of the patches to (hopefully) make
-that transition easier.
-
-2) There is currently no code to handle the possiblity of rotated
-data in the version two tokens.  I don't expect we'll see rotated
-data in normal operation, but this should be done eventually for
-completeness.
-
-There are two nfs-utils patches required with this.  The first reads
-and parses the list of kernel supported enctypes.  The second
-implements the new context format from user-land to kernel.
-I will include these in a new set of CITI nfs-utils patches RSN.
-
-
-------------------
-
-Note: for AES support, the following patch for MIT Kerberos is needed
-to get the right key when there is an acceptor_subkey.  [mea culpa]
-
-This fix is scheduled to be included in MIT release 1.6.4, currently
-in beta testing.
-
-This patch should also apply to releases 1.4.0 to 1.6.3.
-
-Index: src/lib/gssapi/krb5/lucid_context.c
-===================================================================
---- src/lib/gssapi/krb5/lucid_context.c (revision 20174)
-+++ src/lib/gssapi/krb5/lucid_context.c (revision 20175)
-@@ -231,7 +231,7 @@
-                                        &lctx->cfx_kd.ctx_key)))
-            goto error_out;
-        if (gctx->have_acceptor_subkey) {
--           if ((retval = copy_keyblock_to_lucid_key(gctx->enc,
-+           if ((retval = copy_keyblock_to_lucid_key(gctx->acceptor_subkey,
-                                        &lctx->cfx_kd.acceptor_subkey)))
-                goto error_out;
-            lctx->cfx_kd.have_acceptor_subkey = 1;
+diff --git a/net/sunrpc/auth_gss/Makefile b/net/sunrpc/auth_gss/Makefile
+index f3431a7..4de8bcf 100644
+--- a/net/sunrpc/auth_gss/Makefile
++++ b/net/sunrpc/auth_gss/Makefile
+@@ -5,12 +5,12 @@
+ obj-$(CONFIG_SUNRPC_GSS) += auth_rpcgss.o
+ 
+ auth_rpcgss-objs := auth_gss.o gss_generic_token.o \
+-	gss_mech_switch.o svcauth_gss.o gss_krb5_crypto.o
++	gss_mech_switch.o svcauth_gss.o
+ 
+ obj-$(CONFIG_RPCSEC_GSS_KRB5) += rpcsec_gss_krb5.o
+ 
+ rpcsec_gss_krb5-objs := gss_krb5_mech.o gss_krb5_seal.o gss_krb5_unseal.o \
+-	gss_krb5_seqnum.o gss_krb5_wrap.o
++	gss_krb5_seqnum.o gss_krb5_wrap.o gss_krb5_crypto.o
+ 
+ obj-$(CONFIG_RPCSEC_GSS_SPKM3) += rpcsec_gss_spkm3.o
+ 
+diff --git a/net/sunrpc/auth_gss/gss_krb5_crypto.c b/net/sunrpc/auth_gss/gss_krb5_crypto.c
+index 1d52308..c93fca2 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_crypto.c
++++ b/net/sunrpc/auth_gss/gss_krb5_crypto.c
+@@ -83,8 +83,6 @@ out:
+ 	return ret;
+ }
+ 
+-EXPORT_SYMBOL(krb5_encrypt);
+-
+ u32
+ krb5_decrypt(
+      struct crypto_blkcipher *tfm,
+@@ -118,8 +116,6 @@ out:
+ 	return ret;
+ }
+ 
+-EXPORT_SYMBOL(krb5_decrypt);
+-
+ static int
+ checksummer(struct scatterlist *sg, void *data)
+ {
+@@ -161,8 +157,6 @@ out:
+ 	return err ? GSS_S_FAILURE : 0;
+ }
+ 
+-EXPORT_SYMBOL(make_checksum);
+-
+ struct encryptor_desc {
+ 	u8 iv[8]; /* XXX hard-coded blocksize */
+ 	struct blkcipher_desc desc;
+@@ -262,8 +256,6 @@ gss_encrypt_xdr_buf(struct crypto_blkcipher *tfm, struct xdr_buf *buf,
+ 	return ret;
+ }
+ 
+-EXPORT_SYMBOL(gss_encrypt_xdr_buf);
+-
+ struct decryptor_desc {
+ 	u8 iv[8]; /* XXX hard-coded blocksize */
+ 	struct blkcipher_desc desc;
+@@ -334,5 +326,3 @@ gss_decrypt_xdr_buf(struct crypto_blkcipher *tfm, struct xdr_buf *buf,
+ 
+ 	return xdr_process_buf(buf, offset, buf->len - offset, decryptor, &desc);
+ }
+-
+-EXPORT_SYMBOL(gss_decrypt_xdr_buf);
 
