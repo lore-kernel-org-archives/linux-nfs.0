@@ -1,83 +1,64 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Data corruption using 2.6.18 NFSv3 client -- sparse files?
-Date: Wed, 30 Apr 2008 00:33:45 -0700
-Message-ID: <1209540825.7337.5.camel@heimdal.trondhjem.org>
+From: Adrian Phillips <a.phillips-VB/+SrIvmXw@public.gmane.org>
+Subject: Re: [NFS] Data corruption using 2.6.18 NFSv3 client -- sparse files?
+Date: Wed, 30 Apr 2008 11:56:39 +0200
+Message-ID: <8763tzis2w.fsf@freeze.oslo.dnmi.no>
 References: <loom.20080430T061925-652@post.gmane.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org
-To: Clay McClure <clay-zo/yENU/GurR7s880joybQ@public.gmane.org>
+Content-Type: text/plain; charset="us-ascii"
+To: nfs@lists.sourceforge.net
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from pat.uio.no ([129.240.10.15]:35298 "EHLO pat.uio.no"
+Received: from neil.brown.name ([220.233.11.133]:43349 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751232AbYD3Hdu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 30 Apr 2008 03:33:50 -0400
-In-Reply-To: <loom.20080430T061925-652-eS7Uydv5nfjZ+VzJOa5vwg@public.gmane.org>
+	id S1757580AbYD3OVy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 30 Apr 2008 10:21:54 -0400
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1JrDBw-00067Y-DR
+	for linux-nfs@vger.kernel.org; Thu, 01 May 2008 00:21:52 +1000
+In-Reply-To: <loom.20080430T061925-652-eS7Uydv5nfjZ+VzJOa5vwg@public.gmane.org> (Clay McClure's message
+	of "Wed, 30 Apr 2008 06:41:48 +0000 (UTC)")
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+>>>>> "Clay" == Clay McClure <clay-zo/yENU/GurR7s880joybQ@public.gmane.org> writes:
 
-On Wed, 2008-04-30 at 06:41 +0000, Clay McClure wrote:
-> Hello,
-> 
-> When multiple 2.6.18 NFSv3 clients write to the same file, after one of the
-> clients has recently read from the file, we see data corruption in the form of
-> null bytes inserted into the file.
-> 
-> Simple test case:
-> 
-> hosta% echo "line 1" > /nfs/volume/bar.txt 
-> 
-> then, in rapid succession: 
-> 
-> hostb% cat bar.txt && sleep 2 && echo "line 2 from hostb" >> /nfs/bar.txt 
-> hostc% cat bar.txt && sleep 2 && echo "line 2 from hostc" >> /nfs/bar.txt 
-> 
-> Expected result:
-> 
-> /nfs/bar.txt contains:
-> 
-> line 1
-> line 2 from hostb
-> line 2 from hostc
-> 
-> Actual result:
-> 
-> /nfs/bar.txt contains:
-> 
-> line 1
-> \0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0line 2 from hostc
-> 
-> This seems to be due to an inconsistency between the page cache and the
-> attribute cache on hostc. Running the 'cat' command on hostc causes bar.txt
-> to be loaded into the page cache. Meanwhile, its attributes are cached in the
-> attribute cache.
-> 
-> Seconds later, the 'echo' command on hostc causes the attribute cache to be
-> updated (a GETATTR operation is issued) with the new file size (reflecting
-> the line just appended by hostb), but the page cache is not updated (no READ
-> operation is issued).
-> 
-> The subsequent WRITE operation from hostc specifies an offset of 0 (beginning
-> of file) and a length equal to "line 1" + "line 2 from hostb" + "line 2 from 
-> hostc". Since the page cache on hostc does not contain the "line 2 from hostb"
-> content, that segment of the WRITE buffer is filled with nulls.
-> 
-> Note that no file locking is being used in this test case or our production
-> use case.
-> 
-> Questions:
-> 
-> - Is this a bug or correct operation?
-> - Would file locking produce the expected behaviour?
-> 
-> Thanks,
-> 
-> Clay McClure
+    Clay> Hello, When multiple 2.6.18 NFSv3 clients write to the same
+    Clay> file, after one of the clients has recently read from the
+    Clay> file, we see data corruption in the form of null bytes
+    Clay> inserted into the file.
 
+If its the same bug we've seen it appeared in 2.6.17 and we "fixed" by
+downgrading the involved hosts to 2.6.16. It was related to this post
+by Trond Myklebust (in Jan/Feb) :-
 
-A number of read and write races have been fixed since September 2006.
-Have you tested with 2.6.25?
+    That is very likely to be the same problem as fixed in
 
-Trond
+    http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git;a=commitdiff;h=5d47a35600270e7115061cb1320ee60ae9bcb6b8
+
+    AFAICR, all kernels after 2.6.17 were affected. Can you therefore see if
+    the same patch applies to 2.6.19, and if it fixes your problem?
+
+    Cheers
+      Trond
+
+Sincerely,
+
+Adrian Phillips
+
+-- 
+Who really wrote the works of William Shakespeare ?
+http://www.pbs.org/wgbh/pages/frontline/shakespeare/
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by the 2008 JavaOne(SM) Conference 
+Don't miss this year's exciting event. There's still time to save $100. 
+Use priority code J8TL2D2. 
+http://ad.doubleclick.net/clk;198757673;13503038;p?http://java.sun.com/javaone
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
