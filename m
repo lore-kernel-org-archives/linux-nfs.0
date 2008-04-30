@@ -1,131 +1,133 @@
 From: Kevin Coffman <kwc@citi.umich.edu>
-Subject: [enctypes round 2: PATCH 22/26] gss_krb5: add "raw" session key to
-	context to be used for deriving keys
-Date: Wed, 30 Apr 2008 12:47:40 -0400
-Message-ID: <20080430164740.16010.24030.stgit@jazz.citi.umich.edu>
+Subject: [enctypes round 2: PATCH 23/26] gss_krb5: pass struct krb5_ctx
+	pointer to sequence number functions
+Date: Wed, 30 Apr 2008 12:47:45 -0400
+Message-ID: <20080430164745.16010.22855.stgit@jazz.citi.umich.edu>
 References: <20080430164306.16010.44650.stgit@jazz.citi.umich.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from citi.umich.edu ([141.211.133.111]:21235 "EHLO citi.umich.edu"
+Received: from citi.umich.edu ([141.211.133.111]:5045 "EHLO citi.umich.edu"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757482AbYD3Qrk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 30 Apr 2008 12:47:40 -0400
+	id S1757482AbYD3Qrp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 30 Apr 2008 12:47:45 -0400
 In-Reply-To: <20080430164306.16010.44650.stgit-zTNJhAanYLVZN1qrTdtDg5Vzexx5G7lz@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Save the "raw" session key in the context.  This is needed for deriving
-arcfour-hmac keys "on the fly" using the sequence number or checksum.
+For the arcfour-hmac support, the make_seq_num and get_seq_num functions
+need access to the kerberos context structure.  This will be used in a
+later patch.
 
 Signed-off-by: Kevin Coffman <kwc@citi.umich.edu>
 ---
 
- include/linux/sunrpc/gss_krb5.h     |    1 +
- net/sunrpc/auth_gss/gss_krb5_mech.c |   27 +++++++++++++--------------
- 2 files changed, 14 insertions(+), 14 deletions(-)
+ include/linux/sunrpc/gss_krb5.h       |    6 ++++--
+ net/sunrpc/auth_gss/gss_krb5_seal.c   |    5 ++---
+ net/sunrpc/auth_gss/gss_krb5_seqnum.c |    6 ++++--
+ net/sunrpc/auth_gss/gss_krb5_unseal.c |    3 ++-
+ net/sunrpc/auth_gss/gss_krb5_wrap.c   |    6 +++---
+ 5 files changed, 15 insertions(+), 11 deletions(-)
 
 diff --git a/include/linux/sunrpc/gss_krb5.h b/include/linux/sunrpc/gss_krb5.h
-index 9fa6fec..7c20495 100644
+index 7c20495..75309a1 100644
 --- a/include/linux/sunrpc/gss_krb5.h
 +++ b/include/linux/sunrpc/gss_krb5.h
-@@ -101,6 +101,7 @@ struct krb5_ctx {
- 	struct crypto_blkcipher *initiator_enc;
- 	struct crypto_blkcipher *acceptor_enc_aux;
- 	struct crypto_blkcipher *initiator_enc_aux;
-+	u8			Ksess[GSS_KRB5_MAX_KEYLEN]; /* session key */
- 	u8			cksum[GSS_KRB5_MAX_KEYLEN];
- 	s32			endtime;
- 	u32			seq_send;
-diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_mech.c
-index d59c497..70232f5 100644
---- a/net/sunrpc/auth_gss/gss_krb5_mech.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
-@@ -341,7 +341,7 @@ set_cdata(u8 cdata[GSS_KRB5_K5CLENGTH], u32 usage, u8 seed)
+@@ -277,12 +277,14 @@ gss_decrypt_xdr_buf(struct crypto_blkcipher *tfm, struct xdr_buf *inbuf,
+ 		    int offset);
+ 
+ s32
+-krb5_make_seq_num(struct crypto_blkcipher *key,
++krb5_make_seq_num(struct krb5_ctx *kctx,
++		struct crypto_blkcipher *key,
+ 		int direction,
+ 		u32 seqnum, unsigned char *cksum, unsigned char *buf);
+ 
+ s32
+-krb5_get_seq_num(struct crypto_blkcipher *key,
++krb5_get_seq_num(struct krb5_ctx *kctx,
++	       struct crypto_blkcipher *key,
+ 	       unsigned char *cksum,
+ 	       unsigned char *buf, int *direction, u32 *seqnum);
+ 
+diff --git a/net/sunrpc/auth_gss/gss_krb5_seal.c b/net/sunrpc/auth_gss/gss_krb5_seal.c
+index a98fbb5..fe73b8b 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_seal.c
++++ b/net/sunrpc/auth_gss/gss_krb5_seal.c
+@@ -153,9 +153,8 @@ gss_get_mic_v1(struct krb5_ctx *ctx, struct xdr_buf *text,
+ 	seq_send = ctx->seq_send++;
+ 	spin_unlock(&krb5_seq_lock);
+ 
+-	if (krb5_make_seq_num(ctx->seq, ctx->initiate ? 0 : 0xff,
+-			      seq_send, ptr + GSS_KRB5_TOK_HDR_LEN,
+-			      ptr + 8))
++	if (krb5_make_seq_num(ctx, ctx->seq, ctx->initiate ? 0 : 0xff,
++			      seq_send, ptr + GSS_KRB5_TOK_HDR_LEN, ptr + 8))
+ 		return GSS_S_FAILURE;
+ 
+ 	return (ctx->endtime < now) ? GSS_S_CONTEXT_EXPIRED : GSS_S_COMPLETE;
+diff --git a/net/sunrpc/auth_gss/gss_krb5_seqnum.c b/net/sunrpc/auth_gss/gss_krb5_seqnum.c
+index f160be6..c7b196d 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_seqnum.c
++++ b/net/sunrpc/auth_gss/gss_krb5_seqnum.c
+@@ -41,7 +41,8 @@
+ #endif
+ 
+ s32
+-krb5_make_seq_num(struct crypto_blkcipher *key,
++krb5_make_seq_num(struct krb5_ctx *kctx,
++		struct crypto_blkcipher *key,
+ 		int direction,
+ 		u32 seqnum,
+ 		unsigned char *cksum, unsigned char *buf)
+@@ -62,7 +63,8 @@ krb5_make_seq_num(struct crypto_blkcipher *key,
  }
  
- static int
--context_derive_keys_des3(struct krb5_ctx *ctx, u8 *rawkey, u32 keylen)
-+context_derive_keys_des3(struct krb5_ctx *ctx)
- {
- 	struct xdr_netobj c, keyin, keyout;
- 	u8 cdata[GSS_KRB5_K5CLENGTH];
-@@ -350,18 +350,18 @@ context_derive_keys_des3(struct krb5_ctx *ctx, u8 *rawkey, u32 keylen)
- 	c.len = GSS_KRB5_K5CLENGTH;
- 	c.data = cdata;
+ s32
+-krb5_get_seq_num(struct crypto_blkcipher *key,
++krb5_get_seq_num(struct krb5_ctx *kctx,
++	       struct crypto_blkcipher *key,
+ 	       unsigned char *cksum,
+ 	       unsigned char *buf,
+ 	       int *direction, u32 *seqnum)
+diff --git a/net/sunrpc/auth_gss/gss_krb5_unseal.c b/net/sunrpc/auth_gss/gss_krb5_unseal.c
+index ecd424a..ccc9ebb 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_unseal.c
++++ b/net/sunrpc/auth_gss/gss_krb5_unseal.c
+@@ -132,7 +132,8 @@ gss_verify_mic_v1(struct krb5_ctx *ctx,
  
--	keyin.data = rawkey;
--	keyin.len = keylen;
--	keyout.len = keylen;
-+	keyin.data = ctx->Ksess;
-+	keyin.len = ctx->gk5e->keylength;
-+	keyout.len = ctx->gk5e->keylength;
+ 	/* do sequencing checks */
  
- 	/* seq uses the raw key */
- 	ctx->seq = context_v2_alloc_cipher(ctx, ctx->gk5e->encrypt_name,
--					   rawkey);
-+					   ctx->Ksess);
- 	if (ctx->seq == NULL)
- 		goto out_err;
+-	if (krb5_get_seq_num(ctx->seq, ptr + GSS_KRB5_TOK_HDR_LEN, ptr + 8, &direction, &seqnum))
++	if (krb5_get_seq_num(ctx, ctx->seq, ptr + GSS_KRB5_TOK_HDR_LEN, ptr + 8,
++			     &direction, &seqnum))
+ 		return GSS_S_FAILURE;
  
- 	ctx->enc = context_v2_alloc_cipher(ctx, ctx->gk5e->encrypt_name,
--					   rawkey);
-+					   ctx->Ksess);
- 	if (ctx->enc == NULL)
- 		goto out_free_seq;
+ 	if ((ctx->initiate && direction != 0xff) ||
+diff --git a/net/sunrpc/auth_gss/gss_krb5_wrap.c b/net/sunrpc/auth_gss/gss_krb5_wrap.c
+index 5e8572f..f170a91 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_wrap.c
++++ b/net/sunrpc/auth_gss/gss_krb5_wrap.c
+@@ -229,7 +229,7 @@ gss_wrap_kerberos_v1(struct krb5_ctx *kctx, int offset,
  
-@@ -386,7 +386,7 @@ out_err:
- }
+ 	/* XXX would probably be more efficient to compute checksum
+ 	 * and encrypt at the same time: */
+-	if ((krb5_make_seq_num(kctx->seq, kctx->initiate ? 0 : 0xff,
++	if ((krb5_make_seq_num(kctx, kctx->seq, kctx->initiate ? 0 : 0xff,
+ 			       seq_send, ptr + GSS_KRB5_TOK_HDR_LEN, ptr + 8)))
+ 		return GSS_S_FAILURE;
  
- static int
--context_derive_keys_new(struct krb5_ctx *ctx, u8 *rawkey, u32 keylen)
-+context_derive_keys_new(struct krb5_ctx *ctx)
- {
- 	struct xdr_netobj c, keyin, keyout;
- 	u8 cdata[GSS_KRB5_K5CLENGTH];
-@@ -395,9 +395,9 @@ context_derive_keys_new(struct krb5_ctx *ctx, u8 *rawkey, u32 keylen)
- 	c.len = GSS_KRB5_K5CLENGTH;
- 	c.data = cdata;
+@@ -316,8 +316,8 @@ gss_unwrap_kerberos_v1(struct krb5_ctx *kctx, int offset, struct xdr_buf *buf)
  
--	keyin.data = rawkey;
--	keyin.len = keylen;
--	keyout.len = keylen;
-+	keyin.data = ctx->Ksess;
-+	keyin.len = ctx->gk5e->keylength;
-+	keyout.len = ctx->gk5e->keylength;
+ 	/* do sequencing checks */
  
- 	/* initiator seal encryption */
- 	set_cdata(cdata, KG_USAGE_INITIATOR_SEAL, KEY_USAGE_SEED_ENCRYPTION);
-@@ -499,7 +499,6 @@ out_err:
- static int
- gss_import_v2_context(const void *p, const void *end, struct krb5_ctx *ctx)
- {
--	u8 rawkey[GSS_KRB5_MAX_KEYLEN];
- 	int keylen;
+-	if (krb5_get_seq_num(kctx->seq, ptr + GSS_KRB5_TOK_HDR_LEN, ptr + 8,
+-				    &direction, &seqnum))
++	if (krb5_get_seq_num(kctx, kctx->seq, ptr + GSS_KRB5_TOK_HDR_LEN,
++				    ptr + 8, &direction, &seqnum))
+ 		return GSS_S_BAD_SIG;
  
- 	p = simple_get_bytes(p, end, &ctx->flags, sizeof(ctx->flags));
-@@ -535,7 +534,7 @@ gss_import_v2_context(const void *p, const void *end, struct krb5_ctx *ctx)
- 	}
- 	keylen = ctx->gk5e->keylength;
- 
--	p = simple_get_bytes(p, end, rawkey, keylen);
-+	p = simple_get_bytes(p, end, ctx->Ksess, keylen);
- 	if (IS_ERR(p))
- 		goto out_err;
- 
-@@ -546,10 +545,10 @@ gss_import_v2_context(const void *p, const void *end, struct krb5_ctx *ctx)
- 
- 	switch (ctx->enctype) {
- 	case ENCTYPE_DES3_CBC_RAW:
--		return context_derive_keys_des3(ctx, rawkey, keylen);
-+		return context_derive_keys_des3(ctx);
- 	case ENCTYPE_AES128_CTS_HMAC_SHA1_96:
- 	case ENCTYPE_AES256_CTS_HMAC_SHA1_96:
--		return context_derive_keys_new(ctx, rawkey, keylen);
-+		return context_derive_keys_new(ctx);
- 	default:
- 		return -EINVAL;
- 	}
+ 	if ((kctx->initiate && direction != 0xff) ||
 
