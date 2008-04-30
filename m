@@ -1,116 +1,195 @@
 From: Kevin Coffman <kwc@citi.umich.edu>
-Subject: [enctypes round 2: PATCH 05/26] rpc: gss: Add oid values to the
-	gss_api mechanism structures
-Date: Wed, 30 Apr 2008 12:46:14 -0400
-Message-ID: <20080430164613.16010.22760.stgit@jazz.citi.umich.edu>
+Subject: [enctypes round 2: PATCH 07/26] gss_krb5: split up functions in
+	preparation of adding new enctypes
+Date: Wed, 30 Apr 2008 12:46:24 -0400
+Message-ID: <20080430164624.16010.92034.stgit@jazz.citi.umich.edu>
 References: <20080430164306.16010.44650.stgit@jazz.citi.umich.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from citi.umich.edu ([141.211.133.111]:17803 "EHLO citi.umich.edu"
+Received: from citi.umich.edu ([141.211.133.111]:39519 "EHLO citi.umich.edu"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756232AbYD3QqO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 30 Apr 2008 12:46:14 -0400
+	id S1757217AbYD3QqY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 30 Apr 2008 12:46:24 -0400
 In-Reply-To: <20080430164306.16010.44650.stgit-zTNJhAanYLVZN1qrTdtDg5Vzexx5G7lz@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Usha Ketineni <uketinen@us.ibm.com>
+Add encryption type to the krb5 context structure and use it to switch
+to the correct functions depending on the encryption type.
 
-On NFSV4 server side, these are required as part of the security
-triple(oid,qop,service) information being sent in the response of the
-SECINFO operation.
-
-Signed-off-by: Usha Ketineni <uketinen@us.ibm.com>
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+Signed-off-by: Kevin Coffman <kwc@citi.umich.edu>
 ---
 
- fs/nfsd/nfs4xdr.c                    |    6 +++---
- include/linux/sunrpc/gss_api.h       |    2 +-
- include/linux/sunrpc/gss_krb5.h      |    2 ++
- net/sunrpc/auth_gss/gss_krb5_mech.c  |    4 +++-
- net/sunrpc/auth_gss/gss_spkm3_mech.c |    4 +++-
- 5 files changed, 12 insertions(+), 6 deletions(-)
+ include/linux/sunrpc/gss_krb5.h       |    1 +
+ net/sunrpc/auth_gss/gss_krb5_mech.c   |    1 +
+ net/sunrpc/auth_gss/gss_krb5_seal.c   |   20 +++++++++++++++--
+ net/sunrpc/auth_gss/gss_krb5_unseal.c |   21 ++++++++++++++++--
+ net/sunrpc/auth_gss/gss_krb5_wrap.c   |   38 ++++++++++++++++++++++++++++-----
+ 5 files changed, 69 insertions(+), 12 deletions(-)
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index c513bbd..737dbe8 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -2512,9 +2512,9 @@ nfsd4_encode_secinfo(struct nfsd4_compoundres *resp, __be32 nfserr,
- 			RESERVE_SPACE(4);
- 			WRITE32(RPC_AUTH_GSS);
- 			ADJUST_ARGS();
--			RESERVE_SPACE(4 + gm->gm_oid.len);
--			WRITE32(gm->gm_oid.len);
--			WRITEMEM(gm->gm_oid.data, gm->gm_oid.len);
-+			RESERVE_SPACE(4 + gm->gm_oid->len);
-+			WRITE32(gm->gm_oid->len);
-+			WRITEMEM(gm->gm_oid->data, gm->gm_oid->len);
- 			ADJUST_ARGS();
- 			RESERVE_SPACE(4);
- 			WRITE32(0); /* qop */
-diff --git a/include/linux/sunrpc/gss_api.h b/include/linux/sunrpc/gss_api.h
-index 459c5fc..ed0b80c 100644
---- a/include/linux/sunrpc/gss_api.h
-+++ b/include/linux/sunrpc/gss_api.h
-@@ -76,7 +76,7 @@ struct pf_desc {
- struct gss_api_mech {
- 	struct list_head	gm_list;
- 	struct module		*gm_owner;
--	struct xdr_netobj	gm_oid;
-+	struct xdr_netobj	*gm_oid;
- 	char			*gm_name;
- 	const struct gss_api_ops *gm_ops;
- 	/* pseudoflavors supported by this mechanism: */
 diff --git a/include/linux/sunrpc/gss_krb5.h b/include/linux/sunrpc/gss_krb5.h
-index 5bb227e..65003b2 100644
+index 65003b2..aa99e57 100644
 --- a/include/linux/sunrpc/gss_krb5.h
 +++ b/include/linux/sunrpc/gss_krb5.h
-@@ -79,6 +79,8 @@ enum seal_alg {
- 	SEAL_ALG_DES3KD = 0x0002
- };
+@@ -48,6 +48,7 @@
  
-+extern struct xdr_netobj krb5_oid;
-+
- #define CKSUMTYPE_CRC32			0x0001
- #define CKSUMTYPE_RSA_MD4		0x0002
- #define CKSUMTYPE_RSA_MD4_DES		0x0003
+ struct krb5_ctx {
+ 	int			initiate; /* 1 = initiating, 0 = accepting */
++	u32			enctype;
+ 	struct crypto_blkcipher	*enc;
+ 	struct crypto_blkcipher	*seq;
+ 	s32			endtime;
 diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_mech.c
-index 60c3dba..3c070d0 100644
+index 3c070d0..477cf07 100644
 --- a/net/sunrpc/auth_gss/gss_krb5_mech.c
 +++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
-@@ -232,10 +232,12 @@ static struct pf_desc gss_kerberos_pfs[] = {
- 	},
- };
+@@ -137,6 +137,7 @@ gss_import_sec_context_kerberos(const void *p,
+ 	p = simple_get_bytes(p, end, &ctx->initiate, sizeof(ctx->initiate));
+ 	if (IS_ERR(p))
+ 		goto out_err_free_ctx;
++	ctx->enctype = ENCTYPE_DES_CBC_RAW;
+ 	/* The downcall format was designed before we completely understood
+ 	 * the uses of the context fields; so it includes some stuff we
+ 	 * just give some minimal sanity-checking, and some we ignore
+diff --git a/net/sunrpc/auth_gss/gss_krb5_seal.c b/net/sunrpc/auth_gss/gss_krb5_seal.c
+index b8f42ef..6319b33 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_seal.c
++++ b/net/sunrpc/auth_gss/gss_krb5_seal.c
+@@ -71,11 +71,10 @@
  
-+struct xdr_netobj krb5_oid = {9, "\x2a\x86\x48\x86\xf7\x12\x01\x02\x02"};
-+
- static struct gss_api_mech gss_kerberos_mech = {
- 	.gm_name	= "krb5",
- 	.gm_owner	= THIS_MODULE,
--	.gm_oid		= {9, (void *)"\x2a\x86\x48\x86\xf7\x12\x01\x02\x02"},
-+	.gm_oid		= &krb5_oid,
- 	.gm_ops		= &gss_kerberos_ops,
- 	.gm_pf_num	= ARRAY_SIZE(gss_kerberos_pfs),
- 	.gm_pfs		= gss_kerberos_pfs,
-diff --git a/net/sunrpc/auth_gss/gss_spkm3_mech.c b/net/sunrpc/auth_gss/gss_spkm3_mech.c
-index 5deb4b6..210b23b 100644
---- a/net/sunrpc/auth_gss/gss_spkm3_mech.c
-+++ b/net/sunrpc/auth_gss/gss_spkm3_mech.c
-@@ -214,10 +214,12 @@ static struct pf_desc gss_spkm3_pfs[] = {
- 	{RPC_AUTH_GSS_SPKMI, RPC_GSS_SVC_INTEGRITY, "spkm3i"},
- };
+ DEFINE_SPINLOCK(krb5_seq_lock);
  
-+struct xdr_netobj spkm3_oid = {7, "\053\006\001\005\005\001\003"};
+-u32
+-gss_get_mic_kerberos(struct gss_ctx *gss_ctx, struct xdr_buf *text,
++static u32
++gss_get_mic_v1(struct krb5_ctx *ctx, struct xdr_buf *text,
+ 		struct xdr_netobj *token)
+ {
+-	struct krb5_ctx		*ctx = gss_ctx->internal_ctx_id;
+ 	char			cksumdata[16];
+ 	struct xdr_netobj	md5cksum = {.len = 0, .data = cksumdata};
+ 	unsigned char		*ptr, *msg_start;
+@@ -121,3 +120,18 @@ gss_get_mic_kerberos(struct gss_ctx *gss_ctx, struct xdr_buf *text,
+ 
+ 	return (ctx->endtime < now) ? GSS_S_CONTEXT_EXPIRED : GSS_S_COMPLETE;
+ }
 +
- static struct gss_api_mech gss_spkm3_mech = {
- 	.gm_name	= "spkm3",
- 	.gm_owner	= THIS_MODULE,
--	.gm_oid		= {7, "\053\006\001\005\005\001\003"},
-+	.gm_oid		= &spkm3_oid,
- 	.gm_ops		= &gss_spkm3_ops,
- 	.gm_pf_num	= ARRAY_SIZE(gss_spkm3_pfs),
- 	.gm_pfs		= gss_spkm3_pfs,
++u32
++gss_get_mic_kerberos(struct gss_ctx *gss_ctx, struct xdr_buf *text,
++		     struct xdr_netobj *token)
++{
++	struct krb5_ctx		*ctx = gss_ctx->internal_ctx_id;
++
++	switch (ctx->enctype) {
++	default:
++		BUG();
++	case ENCTYPE_DES_CBC_RAW:
++		return gss_get_mic_v1(ctx, text, token);
++	}
++}
++
+diff --git a/net/sunrpc/auth_gss/gss_krb5_unseal.c b/net/sunrpc/auth_gss/gss_krb5_unseal.c
+index 066ec73..945609a 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_unseal.c
++++ b/net/sunrpc/auth_gss/gss_krb5_unseal.c
+@@ -71,11 +71,10 @@
+ /* read_token is a mic token, and message_buffer is the data that the mic was
+  * supposedly taken over. */
+ 
+-u32
+-gss_verify_mic_kerberos(struct gss_ctx *gss_ctx,
++static u32
++gss_verify_mic_v1(struct krb5_ctx *ctx,
+ 		struct xdr_buf *message_buffer, struct xdr_netobj *read_token)
+ {
+-	struct krb5_ctx		*ctx = gss_ctx->internal_ctx_id;
+ 	int			signalg;
+ 	int			sealalg;
+ 	char			cksumdata[16];
+@@ -136,3 +135,19 @@ gss_verify_mic_kerberos(struct gss_ctx *gss_ctx,
+ 
+ 	return GSS_S_COMPLETE;
+ }
++
++u32
++gss_verify_mic_kerberos(struct gss_ctx *gss_ctx,
++			struct xdr_buf *message_buffer,
++			struct xdr_netobj *read_token)
++{
++	struct krb5_ctx *ctx = gss_ctx->internal_ctx_id;
++
++	switch (ctx->enctype) {
++	default:
++		BUG();
++	case ENCTYPE_DES_CBC_RAW:
++		return gss_verify_mic_v1(ctx, message_buffer, read_token);
++	}
++}
++
+diff --git a/net/sunrpc/auth_gss/gss_krb5_wrap.c b/net/sunrpc/auth_gss/gss_krb5_wrap.c
+index 4c14b0a..743fa92 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_wrap.c
++++ b/net/sunrpc/auth_gss/gss_krb5_wrap.c
+@@ -125,11 +125,10 @@ make_confounder(char *p, u32 conflen)
+ 
+ /* XXX factor out common code with seal/unseal. */
+ 
+-u32
+-gss_wrap_kerberos(struct gss_ctx *ctx, int offset,
++static u32
++gss_wrap_kerberos_v1(struct krb5_ctx *kctx, int offset,
+ 		struct xdr_buf *buf, struct page **pages)
+ {
+-	struct krb5_ctx		*kctx = ctx->internal_ctx_id;
+ 	char			cksumdata[16];
+ 	struct xdr_netobj	md5cksum = {.len = 0, .data = cksumdata};
+ 	int			blocksize = 0, plainlen;
+@@ -205,10 +204,9 @@ gss_wrap_kerberos(struct gss_ctx *ctx, int offset,
+ 	return (kctx->endtime < now) ? GSS_S_CONTEXT_EXPIRED : GSS_S_COMPLETE;
+ }
+ 
+-u32
+-gss_unwrap_kerberos(struct gss_ctx *ctx, int offset, struct xdr_buf *buf)
++static u32
++gss_unwrap_kerberos_v1(struct krb5_ctx *kctx, int offset, struct xdr_buf *buf)
+ {
+-	struct krb5_ctx		*kctx = ctx->internal_ctx_id;
+ 	int			signalg;
+ 	int			sealalg;
+ 	char			cksumdata[16];
+@@ -296,3 +294,31 @@ gss_unwrap_kerberos(struct gss_ctx *ctx, int offset, struct xdr_buf *buf)
+ 
+ 	return GSS_S_COMPLETE;
+ }
++
++u32
++gss_wrap_kerberos(struct gss_ctx *gctx, int offset,
++		  struct xdr_buf *buf, struct page **pages)
++{
++	struct krb5_ctx	*kctx = gctx->internal_ctx_id;
++
++	switch (kctx->enctype) {
++	default:
++		BUG();
++	case ENCTYPE_DES_CBC_RAW:
++		return gss_wrap_kerberos_v1(kctx, offset, buf, pages);
++	}
++}
++
++u32
++gss_unwrap_kerberos(struct gss_ctx *gctx, int offset, struct xdr_buf *buf)
++{
++	struct krb5_ctx	*kctx = gctx->internal_ctx_id;
++
++	switch (kctx->enctype) {
++	default:
++		BUG();
++	case ENCTYPE_DES_CBC_RAW:
++		return gss_unwrap_kerberos_v1(kctx, offset, buf);
++	}
++}
++
 
