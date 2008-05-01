@@ -1,55 +1,43 @@
 From: Kevin Coffman <kwc@citi.umich.edu>
-Subject: [PATCH 3/4] gssd: add a function to retrieve the current verbosity
-	level
-Date: Thu, 01 May 2008 09:35:10 -0400
-Message-ID: <20080501133510.28884.94379.stgit@jazz.citi.umich.edu>
+Subject: [PATCH 2/4] gssd: add other des encryption types to default list
+Date: Thu, 01 May 2008 09:35:05 -0400
+Message-ID: <20080501133505.28884.30497.stgit@jazz.citi.umich.edu>
 References: <20080501133455.28884.4768.stgit@jazz.citi.umich.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from citi.umich.edu ([141.211.133.111]:29456 "EHLO citi.umich.edu"
+Received: from citi.umich.edu ([141.211.133.111]:42952 "EHLO citi.umich.edu"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753835AbYEANfL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 1 May 2008 09:35:11 -0400
+	id S1754055AbYEANfG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 1 May 2008 09:35:06 -0400
 In-Reply-To: <20080501133455.28884.4768.stgit-zTNJhAanYLVZN1qrTdtDg5Vzexx5G7lz@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add a new function to retrieve the current verbosity level
-so that some messages that would otherwise always print may
-be silenced.
+Add the other two DES encryption types to the default list of
+Kerberos encryption types that may be negotiated.
 
 Signed-off-by: Kevin Coffman <kwc@citi.umich.edu>
 ---
 
- utils/gssd/err_util.c |    5 +++++
- utils/gssd/err_util.h |    1 +
- 2 files changed, 6 insertions(+), 0 deletions(-)
+ utils/gssd/krb5_util.c |    4 +++-
+ 1 files changed, 3 insertions(+), 1 deletions(-)
 
-diff --git a/utils/gssd/err_util.c b/utils/gssd/err_util.c
-index 5644db6..2583e06 100644
---- a/utils/gssd/err_util.c
-+++ b/utils/gssd/err_util.c
-@@ -60,3 +60,8 @@ void printerr(int priority, char *format, ...)
- 		xlog_backend(L_ERROR, format, args);
- 	va_end(args);
- }
-+
-+int get_verbosity(void)
-+{
-+	return verbosity;
-+}
-diff --git a/utils/gssd/err_util.h b/utils/gssd/err_util.h
-index 5e5af48..c4df32d 100644
---- a/utils/gssd/err_util.h
-+++ b/utils/gssd/err_util.h
-@@ -33,5 +33,6 @@
+diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+index 3cf27ca..0589cd8 100644
+--- a/utils/gssd/krb5_util.c
++++ b/utils/gssd/krb5_util.c
+@@ -277,7 +277,9 @@ limit_krb5_enctypes(struct rpc_gss_sec *sec, uid_t uid)
+ 	u_int maj_stat, min_stat;
+ 	gss_cred_id_t credh;
+ 	gss_OID_set_desc  desired_mechs;
+-	krb5_enctype enctypes[] = { ENCTYPE_DES_CBC_CRC };
++	krb5_enctype enctypes[] = { ENCTYPE_DES_CBC_CRC,
++				    ENCTYPE_DES_CBC_MD5,
++				    ENCTYPE_DES_CBC_MD4 };
+ 	int num_enctypes = sizeof(enctypes) / sizeof(enctypes[0]);
  
- void initerr(char *progname, int verbosity, int fg);
- void printerr(int priority, char *format, ...);
-+int get_verbosity(void);
- 
- #endif /* _ERR_UTIL_H_ */
+ 	/* We only care about getting a krb5 cred */
 
