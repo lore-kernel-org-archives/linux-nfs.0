@@ -1,54 +1,45 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH] NFS: Ensure that 'noac' and/or 'actimeo=0' turn off
-	attribute caching
-Date: Fri, 02 May 2008 16:25:02 -0400
-Message-ID: <20080502202502.29449.81285.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-To: linux-nfs@vger.kernel.org
+From: akpm@linux-foundation.org
+Subject: [patch 1/5] fs/nfs/callback_xdr.c: suppress uninitialiized variable warnings
+Date: Fri, 02 May 2008 13:42:40 -0700
+Message-ID: <200805022042.m42KgfHl013872@imap1.linux-foundation.org>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org,
+	akpm@linux-foundation.org
+To: trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:22906 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1762130AbYEBUZ7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 2 May 2008 16:25:59 -0400
-Received: from svlexrs01.hq.netapp.com (svlexrs01.corp.netapp.com [10.57.156.158])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id m42KPwrQ017084
-	for <linux-nfs@vger.kernel.org>; Fri, 2 May 2008 13:25:58 -0700 (PDT)
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:52164 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S932658AbYEBUm5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 May 2008 16:42:57 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Both the 'noac' and 'actimeo=0' mount options should ensure that attributes
-are not cached, however a bug in nfs_attribute_timeout() means that
-currently, the attributes may in fact get cached for up to one jiffy. This
-has been seen to cause corruption in some applications.
+From: Andrew Morton <akpm@linux-foundation.org>
 
-The reason for the bug is that the time_in_range() test returns 'true' as
-long as the current time lies between nfsi->read_cache_jiffies and
-nfsi->read_cache_jiffies + nfsi->attrtimeo. In other words, if jiffies
-equals nfsi->read_cache_jiffies, then we still cache the attribute data.
+I'm tired of reading this:
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+fs/nfs/callback_xdr.c: In function 'nfs4_callback_compound':
+fs/nfs/callback_xdr.c:404: warning: 'hdr_arg.taglen' may be used uninitialized in this function
+fs/nfs/callback_xdr.c:404: warning: 'hdr_arg.tag' may be used uninitialized in this function
+fs/nfs/callback_xdr.c:404: warning: 'hdr_arg.nops' may be used uninitialized in this function
+
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/nfs/inode.c |    7 +++++++
- 1 files changed, 7 insertions(+), 0 deletions(-)
+ fs/nfs/callback_xdr.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 5cb3345..38f06d3 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -707,6 +707,13 @@ int nfs_attribute_timeout(struct inode *inode)
- 
- 	if (nfs_have_delegation(inode, FMODE_READ))
- 		return 0;
-+	/*
-+	 * Special case: if the attribute timeout is set to 0, then we
-+	 * 		 treat the cache as having expired (unless we
-+	 * 		 have a delegation).
-+	 */
-+	if (nfsi->attrtimeo == 0)
-+		return 1;
- 	return !time_in_range(jiffies, nfsi->read_cache_jiffies, nfsi->read_cache_jiffies + nfsi->attrtimeo);
- }
- 
-
+diff -puN fs/nfs/callback_xdr.c~fs-nfs-callback_xdrc-suppress-uninitialiized-variable-warnings fs/nfs/callback_xdr.c
+--- a/fs/nfs/callback_xdr.c~fs-nfs-callback_xdrc-suppress-uninitialiized-variable-warnings
++++ a/fs/nfs/callback_xdr.c
+@@ -401,7 +401,7 @@ static __be32 process_op(struct svc_rqst
+  */
+ static __be32 nfs4_callback_compound(struct svc_rqst *rqstp, void *argp, void *resp)
+ {
+-	struct cb_compound_hdr_arg hdr_arg;
++	struct cb_compound_hdr_arg uninitialized_var(hdr_arg);
+ 	struct cb_compound_hdr_res hdr_res;
+ 	struct xdr_stream xdr_in, xdr_out;
+ 	__be32 *p;
+_
