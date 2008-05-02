@@ -1,58 +1,65 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [NFS] How to set-up a Linux NFS server to handle massive	number
-	of requests
-Date: Thu, 1 May 2008 15:51:33 -0400
-Message-ID: <20080501195132.GM28981@fieldses.org>
-References: <47FE044A.7020008@aei.mpg.de> <20080411230754.GI24830@fieldses.org>
-	<1208234913.17169.50.camel@trinity.ogc.int>
-	<20080415151227.GB32218@fieldses.org>
-	<1208313790.3521.32.camel@trinity.ogc.int>
-	<20080416025848.GA27274@fieldses.org>
-	<1208316166.3521.42.camel@trinity.ogc.int>
-	<481A1E3A.4040503@gmail.com>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [RFC] Reinstate NFS exportability for JFFS2.
+Date: Fri, 2 May 2008 11:38:41 +1000
+Message-ID: <18458.28833.539314.455215@notabene.brown>
+References: <1209670979.25560.587.camel@pmac.infradead.org>
+	<20080501204820.GA5951@infradead.org>
+	<1209681898.25560.613.camel@pmac.infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net,
-	Carsten Aulbert <carsten.aulbert-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>
-To: Dean Hildebrand <seattleplus@gmail.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:36561 "EHLO neil.brown.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755960AbYEATv5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 1 May 2008 15:51:57 -0400
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1Jreou-0005gl-AO
-	for linux-nfs@vger.kernel.org; Fri, 02 May 2008 05:51:56 +1000
-In-Reply-To: <481A1E3A.4040503@gmail.com>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Christoph Hellwig <hch@infradead.org>,
+	linux-fsdevel@vger.kernel.org, linux-mtd@lists.infradead.org,
+	linux-nfs@vger.kernel.org
+To: David Woodhouse <dwmw2@infradead.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: message from David Woodhouse on Thursday May 1
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, May 01, 2008 at 12:47:06PM -0700, Dean Hildebrand wrote:
->
->> If you really need to start 1300 mounts all at once then something needs
->> to change. BTW even after you get past mountd, the server is going to
->> get pounded with SYN and RPC_NOP.   
-> Just to give my 2 cents after the fact,.. a new approach is definitely  
-> needed.  For example, a small 10 line MPI program that has a single  
-> client mount the server, calculate the md5sum, and distribute the result  
-> to the other 999 clients would be a much better approach....
+On Thursday May 1, dwmw2@infradead.org wrote:
+> On Thu, 2008-05-01 at 16:48 -0400, Christoph Hellwig wrote:
+> > Yes, and get_fsid would be extremly useful, especially for those
+> > filesystems that already have an uuid in the superblock
+> > (*cough*, XFS, *cough*), but it'll need some co-operations with
+> > nfs-utils on when to use it.
+> 
+> Why do you need to co-operate with userspace? Userspace shouldn't need
+> to do anything -- we'll just generate a suitable fsid/uuid for
+> ourselves, unless userspace deliberately overrides it for the export in
+> question.
 
-For that toy example, yes, but we still need to fix whatever's
-preventing us from handling 1000 simultaneous mounts.
+Actually it is the kernel that doesn't need to do anything....
+Mapping between the filesystem and the filesystem part of the
+filehandle is done entirely in user space.
+The kernel says "Here is a filehandle fragement, what filesystem
+should I be accessing".
 
---b.
+So what you really want is to teach nfs-utils to recognise JFFS2 and
+extract an appropriate uuid.
+It already uses libblkid to get uuids for ext3 and XFS and others.
+Extending that to handle JFFS2 should be much of a drama.
 
--------------------------------------------------------------------------
-This SF.net email is sponsored by the 2008 JavaOne(SM) Conference 
-Don't miss this year's exciting event. There's still time to save $100. 
-Use priority code J8TL2D2. 
-http://ad.doubleclick.net/clk;198757673;13503038;p?http://java.sun.com/javaone
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+> 
+> > Patch looks good for me except for the few introduced overlong lines.
+> 
+> Bah, don't you start. A less onanistic problem with it is the deadlock
+> with NFS readdirplus (->readdir->encode_entry->compose_entry_fh->lookup)
+> 
+> I wonder if we should postpone the calls to compose_entry_fh() until
+> _after_ readdir() has completed. Leave space in the response for the
+> filehandles, but only walk through it again calling compose_entry_fh()
+> once we're done in readdir. That would allow us to get rid of the
+> various icky hacks that file systems have to avoid that deadlock.
 
+Why is there a deadlock here?
+Both readdir and lookup are called with i_mutex held on the directory
+so there should need to do any extra locking (he said, naively).  In
+the readdirplus cases, i_mutex is held across both the readdir and the
+lookup....
+
+One problem with your proposed solution is that filehandles aren't all
+the same length, so you cannot reliably leave space for them.
+
+Awkward.
+
+NeilBrown
