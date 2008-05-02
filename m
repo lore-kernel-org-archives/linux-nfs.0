@@ -1,72 +1,59 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: lock reclaims outside grace period
-Date: Fri, 2 May 2008 16:04:10 -0400
-Message-ID: <20080502200410.GF21918@fieldses.org>
-References: <20080429215707.GF26468@fieldses.org> <1209507531.8321.11.camel@heimdal.trondhjem.org> <20080430000349.GA32692@fieldses.org>
+From: "HIRANO Takahito" <hiranotaka-FWFpUBK1X0Y@public.gmane.org>
+Subject: [PATCH] [stable 2.6.24] Fix oops at rpcb_getport_async in sunrpc
+Date: Sat, 3 May 2008 05:07:21 +0900
+Message-ID: <8408c1a50805021307x2f1843ffrfb53efbbfaf8aaba@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: text/plain; charset=ISO-8859-1
+To: stable@kernel.org, linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:56906 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756646AbYEBUEN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 2 May 2008 16:04:13 -0400
-In-Reply-To: <20080430000349.GA32692@fieldses.org>
+Received: from wf-out-1314.google.com ([209.85.200.174]:36478 "EHLO
+	wf-out-1314.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756815AbYEBUHV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 May 2008 16:07:21 -0400
+Received: by wf-out-1314.google.com with SMTP id 27so111885wfd.4
+        for <linux-nfs@vger.kernel.org>; Fri, 02 May 2008 13:07:21 -0700 (PDT)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Apr 29, 2008 at 08:03:49PM -0400, bfields wrote:
-> On Tue, Apr 29, 2008 at 03:18:51PM -0700, Trond Myklebust wrote:
-> > 
-> > On Tue, 2008-04-29 at 17:57 -0400, J. Bruce Fields wrote:
-> > > Current lockd code appears to reject regular locks done during the grace
-> > > period, but not reclaims that come outside of the grace period.
-> > > 
-> > > (That's based on inspecting the code--I haven't run tests.)
-> > > 
-> > > That seems like an obvious bug.  (We're not giving the client any way to
-> > > determine whether conflicting locks might have been granted.)
-> > > 
-> > > Can we fix it, or is there a chance that people have been depending on
-> > > this behavior?  (Maybe for failing over to an already-active server??)
-> > 
-> > Sorry, but I really don't care if anyone has been relying on it: that is
-> > a _major_ bug and needs to be fixed ASAP.
-> 
-> OK, good, I'll do some tests to confirm and then submit a patch.
+The rpcb_getport_async in the sunrpc module copies larger memory area than
+the allocated. Because of this problem, NFS users might encounter oops.
 
-Well, I figured the easiest way to reproduce the problem would be just
-by acquiring a lock on a client, then playing tricks with the network to
-cause it to miss the grace period.
+This problem only exists in 2.6.24.y.
+It is fixed in 2.6.25 by the commit 86d61d8638ddf9cdf87df26c7fa69b2804425fbe.
 
-But I'm not getting statd to work--or at least, I'm not seeing any statd
-activity on the network.  There must be something basic wrong with my
-configuration, but I haven't found it yet.
+Regards,
 
---b.
+HIRANO Takahito
 
-> 
-> When I ran across this I checked what specs I could find (mostly
-> wondering which error to return), and was surprised to find no mention
-> of this case.  For example, from the Open Group XNFS spec
-> (http://www.opengroup.org/onlinepubs/9629799/):
-> 
-> 	"If "reclaim" is true, then the server will assume this is a
-> 	request to re-establish a previous lock (for example, after the
-> 	server has crashed and rebooted). During the grace period the
-> 	server will only accept locks with "reclaim" set to true."
-> 
-> But they don't state the converse.
-> 
-> And LCK_DENIED_GRACE_PERIOD "Indicates that the procedure failed because
-> the server host has recently been rebooted and the server NLM is
-> re-establishing existing locks, and is not yet ready to accept normal
-> service requests."  But absent an objection I suppose I'll use
-> LCK_DENIED_GRACE_PERIOD for the other case too.
-> 
-> Anyway, it all made me worry whether ignoring the late-reclaim case was
-> actually standard behavior.  It wouldn't be the only weird thing about
-> NLM.
-> 
-> --b.
+Cc: stable@kernel.org,
+    linux-nfs@vger.kernel.org
+
+Signed-off-by: HIRANO Takahito <hiranotaka-FWFpUBK1X0Y@public.gmane.org>
+---
+ net/sunrpc/rpcb_clnt.c |    6 ++----
+ 1 files changed, 2 insertions(+), 4 deletions(-)
+
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index a05493a..4d939a6 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -113,7 +113,7 @@ struct rpcbind_args {
+ 	u32			r_prot;
+ 	unsigned short		r_port;
+ 	char *			r_netid;
+-	char			r_addr[RPCB_MAXADDRLEN];
++	const char *		r_addr;
+ 	char *			r_owner;
+ };
+
+@@ -390,9 +390,7 @@ void rpcb_getport_async(struct rpc_task *task)
+ 	map->r_port = 0;
+ 	map->r_xprt = xprt_get(xprt);
+ 	map->r_netid = rpc_peeraddr2str(clnt, RPC_DISPLAY_NETID);
+-	memcpy(map->r_addr,
+-	       rpc_peeraddr2str(rpcb_clnt, RPC_DISPLAY_UNIVERSAL_ADDR),
+-	       sizeof(map->r_addr));
++	map->r_addr = rpc_peeraddr2str(rpcb_clnt, RPC_DISPLAY_UNIVERSAL_ADDR);
+ 	map->r_owner = RPCB_OWNER_STRING;	/* ignored for GETADDR */
+
+ 	child = rpc_run_task(rpcb_clnt, RPC_TASK_ASYNC, &rpcb_getport_ops, map);
