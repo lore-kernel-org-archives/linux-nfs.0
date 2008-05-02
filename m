@@ -1,59 +1,82 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [RFC] Reinstate NFS exportability for JFFS2.
-Date: Fri, 2 May 2008 10:08:04 -0400
-Message-ID: <20080502140804.GA16959@fieldses.org>
-References: <1209670979.25560.587.camel@pmac.infradead.org> <20080501204820.GA5951@infradead.org> <1209681898.25560.613.camel@pmac.infradead.org> <18458.28833.539314.455215@notabene.brown> <1209728238.25560.686.camel@pmac.infradead.org>
+From: Frank van Maarseveen <frankvm@frankvm.com>
+Subject: [PATCH] exportfs: fix incorrect EACCES in reconnect_path()
+Date: Fri, 2 May 2008 17:16:46 +0200
+Message-ID: <20080502151646.GA5515@janus>
+References: <20080404102449.GA10209@janus> <20080407184346.GF3305@fieldses.org> <20080409133639.GA9588@lst.de> <18454.45086.254692.412079@notabene.brown> <20080429163554.GE20420@fieldses.org> <20080429174004.GA28719@janus> <20080430174736.GB20377@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-	linux-fsdevel@vger.kernel.org, linux-mtd@lists.infradead.org,
-	linux-nfs@vger.kernel.org
-To: David Woodhouse <dwmw2@infradead.org>
+Cc: Frank van Maarseveen <frankvm@frankvm.com>,
+	Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@lst.de>,
+	Linux NFS mailing list <linux-nfs@vger.kernel.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:40879 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754455AbYEBOIR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 2 May 2008 10:08:17 -0400
-In-Reply-To: <1209728238.25560.686.camel-ZP4jZrcIevRpWr+L1FloEB2eb7JE58TQ@public.gmane.org>
+Received: from frankvm.xs4all.nl ([80.126.170.174]:46923 "EHLO
+	janus.localdomain" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S935700AbYEBPQt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 May 2008 11:16:49 -0400
+In-Reply-To: <20080430174736.GB20377@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, May 02, 2008 at 12:37:18PM +0100, David Woodhouse wrote:
-> On Fri, 2008-05-02 at 11:38 +1000, Neil Brown wrote:
-> > Why is there a deadlock here?
-> 
-> Many file systems have their own locking, and lookup() can end up trying
-> to re-take a lock which readdir() is already holding. In the JFFS2 case,
-> it's the fs-internal inode mutex, which is required because the garbage
-> collector can't use i_mutex for lock ordering reasons.
-> 
-> See also the readdir implementation and surrounding comments in
-> fs/xfs/linux-2.6/xfs_file.c -- and the way GFS2 uses
-> gfs2_glock_is_locked_by_me() to avoid the deadlock.
-> 
-> The annoying thing is that JFFS2 doesn't even _implement_ i_generation,
-> so you get no more useful information out of the lookup() call anyway :)
-> 
-> > Both readdir and lookup are called with i_mutex held on the directory
-> > so there should need to do any extra locking (he said, naively).  In
-> > the readdirplus cases, i_mutex is held across both the readdir and the
-> > lookup....
-> > 
-> > One problem with your proposed solution is that filehandles aren't all
-> > the same length, so you cannot reliably leave space for them.
-> 
-> Not without moving stuff around during the postprocessing, I suppose.
-> Which isn't very pretty -- but it's prettier than some of the hacks we
-> have at the moment to avoid the deadlock.
+A privileged process on an NFS client which drops privileges after using
+them to change the current working directory, will experience incorrect
+EACCES after an NFS server reboot. This problem can also occur after
+memory pressure on the server, particularly when the client side is
+quiet for some time.
 
-This comes up periodically.  It would be great to finally get it fixed.
-The last conversation I remember started at about:
+This patch removes the x-bit check during dentry tree reconstruction at
+the server by exportfs on behalf of nfsd.
 
-	http://marc.info/?l=linux-kernel&m=119506226209056&w=2
+Signed-off-by: Frank van Maarseveen <frankvm@frankvm.com>
+---
 
-Summary: one approach would be to define a ->readdirplus() that passes a
-dentry to its equivalent of the ->filldir callback.  (Christoph points
-out that returning a stat struct would be simpler.  But unfortunately we
-need to check for mountpoints here, so that's not sufficient.)
+Here's the patch including a comment change for lookup_one_noperm().
 
---b.
+diff -urp a/fs/exportfs/expfs.c b/fs/exportfs/expfs.c
+--- a/fs/exportfs/expfs.c	2008-02-04 14:24:21.000000000 +0100
++++ b/fs/exportfs/expfs.c	2008-05-02 14:40:13.000000000 +0200
+@@ -170,7 +170,7 @@ reconnect_path(struct vfsmount *mnt, str
+ 			}
+ 			dprintk("%s: found name: %s\n", __FUNCTION__, nbuf);
+ 			mutex_lock(&ppd->d_inode->i_mutex);
+-			npd = lookup_one_len(nbuf, ppd, strlen(nbuf));
++			npd = lookup_one_noperm(nbuf, ppd);
+ 			mutex_unlock(&ppd->d_inode->i_mutex);
+ 			if (IS_ERR(npd)) {
+ 				err = PTR_ERR(npd);
+@@ -447,8 +447,7 @@ struct dentry *exportfs_decode_fh(struct
+ 		err = exportfs_get_name(mnt, target_dir, nbuf, result);
+ 		if (!err) {
+ 			mutex_lock(&target_dir->d_inode->i_mutex);
+-			nresult = lookup_one_len(nbuf, target_dir,
+-						 strlen(nbuf));
++			nresult = lookup_one_noperm(nbuf, target_dir);
+ 			mutex_unlock(&target_dir->d_inode->i_mutex);
+ 			if (!IS_ERR(nresult)) {
+ 				if (nresult->d_inode) {
+diff -urp a/fs/namei.c b/fs/namei.c
+--- a/fs/namei.c	2008-04-29 09:30:55.000000000 +0200
++++ b/fs/namei.c	2008-05-02 17:04:32.000000000 +0200
+@@ -1391,15 +1391,15 @@ struct dentry *lookup_one_len(const char
+ }
+ 
+ /**
+- * lookup_one_noperm - bad hack for sysfs
+  * @name:	pathname component to lookup
+  * @base:	base directory to lookup from
+  *
+  * This is a variant of lookup_one_len that doesn't perform any permission
+- * checks.   It's a horrible hack to work around the braindead sysfs
+- * architecture and should not be used anywhere else.
++ * checks. nfsd needs it via exportfs to reconstruct the dentry tree for
++ * directory handles (e.g. after a server reboot).
+  *
+- * DON'T USE THIS FUNCTION EVER, thanks.
++ * Originally this function was a horrible hack to work around the braindead
++ * sysfs architecture and it is still being used there.
+  */
+ struct dentry *lookup_one_noperm(const char *name, struct dentry *base)
+ {
+
+-- 
+Frank
