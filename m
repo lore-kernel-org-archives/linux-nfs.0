@@ -1,42 +1,72 @@
-From: "Janne Karhunen" <janne.karhunen@gmail.com>
-Subject: Re: [patch] fix statd -n
-Date: Fri, 2 May 2008 17:15:43 -0400
-Message-ID: <24c1515f0805021415t65b39300s5f96c2b29a2723d3@mail.gmail.com>
-References: <24c1515f0804170938s23fe3ea3pfe77355ed01d8bbf@mail.gmail.com>
-	 <24c1515f0804181346g5867fa1fqfbbcd13af25027cb@mail.gmail.com>
-	 <20080421000214.GA5453@fieldses.org>
-	 <24c1515f0804281352u2d04ac89i820dc6807dde39f1@mail.gmail.com>
-	 <4817346F.5000101@netapp.com> <20080429161607.GA20420@fieldses.org>
-	 <24c1515f0805010557o5daf72f7hc3db5bf85354898e@mail.gmail.com>
-	 <24c1515f0805010628k6b57598btb27116c719b99fad@mail.gmail.com>
-	 <481B316E.8090800@gmail.com>
-	 <24c1515f0805021413u450d8bbcr806a90c327b287a1@mail.gmail.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: recent failover-by-IP changes
+Date: Fri, 2 May 2008 17:26:08 -0400
+Message-ID: <20080502212608.GI21918@fieldses.org>
+References: <1B257A25-2B59-448F-B11C-637B8688D883@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	"Peter Staubach" <staubach@redhat.com>, linux-nfs@vger.kernel.org
-To: "Wendy Cheng" <s.wendy.cheng@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Wendy Cheng <s.wendy.cheng@gmail.com>,
+	Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from wa-out-1112.google.com ([209.85.146.176]:11706 "EHLO
-	wa-out-1112.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934810AbYEBVPn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 May 2008 17:15:43 -0400
-Received: by wa-out-1112.google.com with SMTP id j37so512909waf.23
-        for <linux-nfs@vger.kernel.org>; Fri, 02 May 2008 14:15:43 -0700 (PDT)
-In-Reply-To: <24c1515f0805021413u450d8bbcr806a90c327b287a1-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Received: from mail.fieldses.org ([66.93.2.214]:47450 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751083AbYEBV0L (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 2 May 2008 17:26:11 -0400
+In-Reply-To: <1B257A25-2B59-448F-B11C-637B8688D883@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, May 2, 2008 at 5:13 PM, Janne Karhunen <janne.karhunen@gmail.com> wrote:
-
->  >  After browsing thru "statd -n" flow, it is still not clear what will happen
->  > if there are more than 2 interfaces used to export NFS shares ?
+On Fri, May 02, 2008 at 04:58:58PM -0400, Chuck Lever wrote:
+> Hi Wendy-
 >
->  How come? It will use the interface specified with -n.
+> Looking at your recent lockd-failover-by-IP changes... I'd like to make 
+> sure I understand this logic before I merge it into my NLM IPv6 patch 
+> set.
+>
+> In fs/lockd/svcsubs.c:
+> > static int
+> > nlmsvc_match_ip(void *datap, struct nlm_host *host)
+> > {
+> > 	__be32 *server_addr = datap;
+> >
+> > 	return host->h_saddr.sin_addr.s_addr == *server_addr;
+>
+> h_saddr is the local host's source address, not the server address, and 
+> is used only on multi-interface systems.  Is that what you wanted to 
+> compare, or did you mean ->h_addr?
 
-Ah, you were talking about rest of the services. Yeah,
-we would need to go this through one patch at a time.
+This is server-side code--h_saddr, last I checked, isn't even filled in
+on the client side.  So the current host *is* the server.
 
+--b.
 
--- 
-// Janne
+>
+> Does it make sense to use nlm_cmp_addr() here as is done in other places 
+> in lockd?
+>
+> > }
+> >
+> > int
+> > nlmsvc_unlock_all_by_ip(__be32 server_addr)
+>
+> Should this be "struct in_addr server_addr" ?  It would be even nicer if 
+> this were a "struct sockaddr *".
+>
+> > {
+> > 	int ret;
+> > 	ret = nlm_traverse_files(&server_addr, nlmsvc_match_ip, NULL);
+> > 	return ret ? -EIO : 0;
+> > }
+> > EXPORT_SYMBOL_GPL(nlmsvc_unlock_all_by_ip);
+>
+> The only call site for nlmsvc_unlock_all_by_ip() is in fs/nfsd/nfsctl.c:
+>
+> > 	/* get ipv4 address */
+> > 	if (sscanf(fo_path, "%u.%u.%u.%u%c", &b1, &b2, &b3, &b4, &c) != 4)
+> > 		return -EINVAL;
+> > 	server_ip = htonl((((((b1<<8)|b2)<<8)|b3)<<8)|b4);
+> >
+> > 	return nlmsvc_unlock_all_by_ip(server_ip);
+>
+> Why can't you use in4_pton() to convert your IP address?
