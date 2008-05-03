@@ -1,60 +1,47 @@
-From: Sten Spans <sten-4ZM2p5qjiQFChlZ7zSldDQ@public.gmane.org>
-Subject: [NFS] bug in nfs-utils support/misc/tcpwrapper.c
-Date: Sat, 3 May 2008 01:49:20 +0200 (CEST)
-Message-ID: <alpine.DEB.0.99999.0805030130590.9075@zaphod.blinkenlights.nl>
+From: "Janne Karhunen" <janne.karhunen@gmail.com>
+Subject: Re: [patch] fix statd -n
+Date: Fri, 2 May 2008 20:24:25 -0400
+Message-ID: <24c1515f0805021724q7dfe5294r702a9c8ffde01129@mail.gmail.com>
+References: <24c1515f0804170938s23fe3ea3pfe77355ed01d8bbf@mail.gmail.com>
+	 <20080421000214.GA5453@fieldses.org>
+	 <24c1515f0804281352u2d04ac89i820dc6807dde39f1@mail.gmail.com>
+	 <4817346F.5000101@netapp.com> <20080429161607.GA20420@fieldses.org>
+	 <24c1515f0805010557o5daf72f7hc3db5bf85354898e@mail.gmail.com>
+	 <24c1515f0805010628k6b57598btb27116c719b99fad@mail.gmail.com>
+	 <481B316E.8090800@gmail.com>
+	 <24c1515f0805021413u450d8bbcr806a90c327b287a1@mail.gmail.com>
+	 <481B96D0.8010802@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	"Peter Staubach" <staubach@redhat.com>, linux-nfs@vger.kernel.org
+To: "Wendy Cheng" <s.wendy.cheng@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from [220.233.11.133] ([220.233.11.133]:57853 "EHLO neil.brown.name"
-	rhost-flags-FAIL-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1759302AbYEBXub (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 2 May 2008 19:50:31 -0400
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1Js50a-0003md-NL
-	for linux-nfs@vger.kernel.org; Sat, 03 May 2008 09:49:44 +1000
+Received: from wa-out-1112.google.com ([209.85.146.180]:51629 "EHLO
+	wa-out-1112.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759164AbYECAY2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 May 2008 20:24:28 -0400
+Received: by wa-out-1112.google.com with SMTP id j37so605751waf.23
+        for <linux-nfs@vger.kernel.org>; Fri, 02 May 2008 17:24:25 -0700 (PDT)
+In-Reply-To: <481B96D0.8010802@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Fri, May 2, 2008 at 6:33 PM, Wendy Cheng <s.wendy.cheng@gmail.com> wrote:
 
-I've been trying to get /etc/netgroup support going on
-a machine serving nfs mounts to hosts located in various
-.nl netblocks. Managing hosts this way greatly simplifies
-hosts.allow and exports management, easily worth any slowdowns
-during mounting.
+>  Maybe I mislead you in previous post. The "-H" is only an "example" - to
+> show people how to selectively move an ip address around without affecting
+> other co-existing nfs ip interface on the same server. I did plan to submit
+> a complete user mode patch so the program after "-H" will have a default
+> executable (but user still can use their own if they don't like our nlm
+> directory structure).
 
-I did notice a small problem in the tcpwrapper support:
-(resulting in errors from mountd)
+Even if you ship the default executable user would
+still need to go and edit it (add the address). Well,
+I guess it would not be that much harder than
+specifying the -n, but somehow this does seem
+more arcane (for simple setups).
 
-127    /* Check the official name first. */
-128    if (hosts_ctl(daemon, "", hp->h_name, ""))
-129         return 1;
-
-this supplies the resolved hostname in the address field of hosts_ctl
-which doesn't work. Changing it to:
-
-if (hosts_ctl(daemon, hp->h_name, "", ""))
-
-does work as expected. The h_aliases check on line 133 probably needs
-the same change to work as expected.
 
 -- 
-Sten Spans
-
-"There is a crack in everything, that's how the light gets in."
-Leonard Cohen - Anthem
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by the 2008 JavaOne(SM) Conference 
-Don't miss this year's exciting event. There's still time to save $100. 
-Use priority code J8TL2D2. 
-http://ad.doubleclick.net/clk;198757673;13503038;p?http://java.sun.com/javaone
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
-
+// Janne
