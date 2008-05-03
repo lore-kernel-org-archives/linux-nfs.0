@@ -1,86 +1,138 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 6/8] SUNRPC: Add second output line for each RPC task
-	in rpc_show_tasks
-Date: Mon, 19 May 2008 12:21:18 -0400
-Message-ID: <20080519162118.GJ7622@fieldses.org>
-References: <20080518021241.8366.12464.stgit@ellison.1015granger.net> <20080518021650.8366.96474.stgit@ellison.1015granger.net>
+From: Frank van Maarseveen <frankvm@frankvm.com>
+Subject: Re: [PATCH] exportfs: fix incorrect EACCES in reconnect_path()
+Date: Sat, 3 May 2008 10:52:05 +0200
+Message-ID: <20080503085205.GB26931@janus>
+References: <20080407184346.GF3305@fieldses.org> <20080409133639.GA9588@lst.de> <18454.45086.254692.412079@notabene.brown> <20080429163554.GE20420@fieldses.org> <20080429174004.GA28719@janus> <20080430174736.GB20377@fieldses.org> <20080502151646.GA5515@janus> <20080502153439.GC7376@infradead.org> <20080502155617.GD18401@fieldses.org> <1209744293.8294.19.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	Christoph Hellwig <hch@infradead.org>,
+	Frank van Maarseveen <frankvm@frankvm.com>,
+	Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@lst.de>,
+	Linux NFS mailing list <linux-nfs@vger.kernel.org>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:43859 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754017AbYESQVg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 19 May 2008 12:21:36 -0400
-In-Reply-To: <20080518021650.8366.96474.stgit-ewv44WTpT0t9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
+Received: from frankvm.xs4all.nl ([80.126.170.174]:55364 "EHLO
+	janus.localdomain" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751623AbYECIwI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 3 May 2008 04:52:08 -0400
+In-Reply-To: <1209744293.8294.19.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, May 17, 2008 at 10:16:50PM -0400, Chuck Lever wrote:
-> Add a second output line displayed for each RPC task shown via
-> rpc_show_tasks.  This second line is for non-columnar variable-length
-> data (like the name of the RPC wait queue the task is waiting on, or
-> the procedure name).
+On Fri, May 02, 2008 at 12:04:53PM -0400, Trond Myklebust wrote:
+> 
+> On Fri, 2008-05-02 at 11:56 -0400, J. Bruce Fields wrote:
+> > On Fri, May 02, 2008 at 11:34:39AM -0400, Christoph Hellwig wrote:
+> > > On Fri, May 02, 2008 at 05:16:46PM +0200, Frank van Maarseveen wrote:
+> > > > A privileged process on an NFS client which drops privileges after using
+> > > > them to change the current working directory, will experience incorrect
+> > > > EACCES after an NFS server reboot. This problem can also occur after
+> > > > memory pressure on the server, particularly when the client side is
+> > > > quiet for some time.
+> > > > 
+> > > > This patch removes the x-bit check during dentry tree reconstruction at
+> > > > the server by exportfs on behalf of nfsd.
+> > > 
+> > > I'm still against adding this crap,
+> > 
+> > The only statements I've seen against the change so far have been of the
+> > form "you should not do that", without explaining why not.
+> > 
+> > It's entirely possible that you're right, but I need some argument.
+> 
+> 
+> AFAICS, the real problem here is that nfsd is dropping its privileged
+> mode too early. Why can't you call reconnect_path() using nfsd's root
+> permissions instead of dropping permissions checks altogether?
+> 
+> > > and even when I get overruled that
+> > > doesn't make the comments on lookup_one_noperm any less true,
+> > 
+> > We do need to at least update it to reflect the addition of a new
+> > caller.
+> > 
+> > > not does it give you a permit to break the kerneldoc generation.
+> > 
+> > Oops; here's a version that should make kerneldoc happy.  It also adds a
+> > little more explanation, and leaves alone the editorializing on sysfs
+> > (on which I have no opinion).
+> > 
+> > --b.
+> > 
+> > commit ccdfe77dc49a07c298bb9e2107290267492f16b3
+> > Author: Frank van Maarseveen <frankvm@frankvm.com>
+> > Date:   Fri May 2 17:16:46 2008 +0200
+> > 
+> >     exportfs: fix incorrect EACCES in reconnect_path()
+> >     
+> >     A privileged process on an NFS client which drops privileges after using
+> >     them to change the current working directory, will experience incorrect
+> >     EACCES after an NFS server reboot. This problem can also occur after
+> >     memory pressure on the server, particularly when the client side is
+> >     quiet for some time.
+> >     
+> >     This patch removes the x-bit check during dentry tree reconstruction at
+> >     the server by exportfs on behalf of nfsd.
+> >     
+> >     Signed-off-by: Frank van Maarseveen <frankvm@frankvm.com>
+> >     Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+> > 
+> > diff --git a/fs/exportfs/expfs.c b/fs/exportfs/expfs.c
+> > index 109ab5e..89dc7ae 100644
+> > --- a/fs/exportfs/expfs.c
+> > +++ b/fs/exportfs/expfs.c
+> > @@ -170,7 +170,7 @@ reconnect_path(struct vfsmount *mnt, struct dentry *target_dir)
+> >  			}
+> >  			dprintk("%s: found name: %s\n", __FUNCTION__, nbuf);
+> >  			mutex_lock(&ppd->d_inode->i_mutex);
+> > -			npd = lookup_one_len(nbuf, ppd, strlen(nbuf));
+> > +			npd = lookup_one_noperm(nbuf, ppd);
+> >  			mutex_unlock(&ppd->d_inode->i_mutex);
+> >  			if (IS_ERR(npd)) {
+> >  				err = PTR_ERR(npd);
+> > @@ -447,8 +447,7 @@ struct dentry *exportfs_decode_fh(struct vfsmount *mnt, struct fid *fid,
+> >  		err = exportfs_get_name(mnt, target_dir, nbuf, result);
+> >  		if (!err) {
+> >  			mutex_lock(&target_dir->d_inode->i_mutex);
+> > -			nresult = lookup_one_len(nbuf, target_dir,
+> > -						 strlen(nbuf));
+> > +			nresult = lookup_one_noperm(nbuf, target_dir);
+> >  			mutex_unlock(&target_dir->d_inode->i_mutex);
+> >  			if (!IS_ERR(nresult)) {
+> >  				if (nresult->d_inode) {
+> > diff --git a/fs/namei.c b/fs/namei.c
+> > index e179f71..c00150c 100644
+> > --- a/fs/namei.c
+> > +++ b/fs/namei.c
+> > @@ -1391,7 +1391,7 @@ struct dentry *lookup_one_len(const char *name, struct dentry *base, int len)
+> >  }
+> >  
+> >  /**
+> > - * lookup_one_noperm - bad hack for sysfs
+> > + * lookup_one_noperm - bad hack for sysfs and nfsd
+> >   * @name:	pathname component to lookup
+> >   * @base:	base directory to lookup from
+> >   *
+> > @@ -1399,7 +1399,12 @@ struct dentry *lookup_one_len(const char *name, struct dentry *base, int len)
+> >   * checks.   It's a horrible hack to work around the braindead sysfs
+> >   * architecture and should not be used anywhere else.
+> >   *
+> > - * DON'T USE THIS FUNCTION EVER, thanks.
+> > + * It is also used by nfsd via exports to reconstruct the dentry tree
+> > + * for directory handles (e.g. when a client requests a directory by
+> > + * filehandle after a server reboot has cleared the dentry cache of that
+> > + * directory's parents).
+> > + *
+> > + * DON'T USE THIS FUNCTION ANYWHERE ELSE, thanks.
+> >   */
+> >  struct dentry *lookup_one_noperm(const char *name, struct dentry *base)
+> >  {
+> 
+> How about if exportfs is compiled as a module?
 
-Maybe sample before and after output would help?
+Good point. The patch should include a EXPORT_SYMBOL(lookup_one_noperm)
+in fs/namei.c if we decide to fix it this way.
 
---b.
-
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
-> 
->  net/sunrpc/clnt.c |   20 ++++++++++----------
->  1 files changed, 10 insertions(+), 10 deletions(-)
-> 
-> 
-> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-> index 15c0f5b..1b2c766 100644
-> --- a/net/sunrpc/clnt.c
-> +++ b/net/sunrpc/clnt.c
-> @@ -1519,29 +1519,29 @@ EXPORT_SYMBOL_GPL(rpc_call_null);
->  #ifdef RPC_DEBUG
->  static void rpc_show_header(void)
->  {
-> -	printk(KERN_INFO "-pid- proc flgs status -client- -prog- --rqstp- "
-> -		"-timeout -rpcwait -action- ---ops--\n");
-> +	printk(KERN_INFO "-pid- flgs status -client- --rqstp- "
-> +		"-timeout -action- ---ops--\n");
->  }
->  
->  static void rpc_show_task(const struct rpc_clnt *clnt,
->  			  const struct rpc_task *task)
->  {
->  	const char *rpc_waitq = "none";
-> -	int proc = -1;
-> +	const char *proc = "unspecified";
->  
->  	if (task->tk_msg.rpc_proc)
-> -		proc = task->tk_msg.rpc_proc->p_proc;
-> +		proc = task->tk_msg.rpc_proc->p_name;
->  
->  	if (RPC_IS_QUEUED(task))
->  		rpc_waitq = rpc_qname(task->tk_waitqueue);
->  
-> -	printk(KERN_INFO "%5u %04d %04x %6d %8p %6d %8p %8ld %8s %8p %8p\n",
-> -		task->tk_pid, proc,
-> -		task->tk_flags, task->tk_status,
-> -		clnt, clnt->cl_prog,
-> -		task->tk_rqstp, task->tk_timeout,
-> -		rpc_waitq,
-> +	printk(KERN_INFO "%5u %04x %6d %8p %8p %8ld %8p %8p\n",
-> +		task->tk_pid, task->tk_flags, task->tk_status,
-> +		clnt, task->tk_rqstp, task->tk_timeout,
->  		task->tk_action, task->tk_ops);
-> +
-> +	printk(KERN_INFO " prog: %s%u  proc: %s  waitq: %s\n",
-> +		clnt->cl_protname, clnt->cl_vers, proc, rpc_waitq);
->  }
->  
->  void rpc_show_tasks(void)
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+Frank
