@@ -1,138 +1,59 @@
-From: Frank van Maarseveen <frankvm@frankvm.com>
-Subject: Re: [PATCH] exportfs: fix incorrect EACCES in reconnect_path()
-Date: Sat, 3 May 2008 10:52:05 +0200
-Message-ID: <20080503085205.GB26931@janus>
-References: <20080407184346.GF3305@fieldses.org> <20080409133639.GA9588@lst.de> <18454.45086.254692.412079@notabene.brown> <20080429163554.GE20420@fieldses.org> <20080429174004.GA28719@janus> <20080430174736.GB20377@fieldses.org> <20080502151646.GA5515@janus> <20080502153439.GC7376@infradead.org> <20080502155617.GD18401@fieldses.org> <1209744293.8294.19.camel@heimdal.trondhjem.org>
+From: Wendy Cheng <s.wendy.cheng@gmail.com>
+Subject: Re: [patch] fix statd -n
+Date: Sat, 03 May 2008 10:29:45 -0500
+Message-ID: <481C84E9.3060602@gmail.com>
+References: <24c1515f0804170938s23fe3ea3pfe77355ed01d8bbf@mail.gmail.com>	 <20080421000214.GA5453@fieldses.org>	 <24c1515f0804281352u2d04ac89i820dc6807dde39f1@mail.gmail.com>	 <4817346F.5000101@netapp.com> <20080429161607.GA20420@fieldses.org>	 <24c1515f0805010557o5daf72f7hc3db5bf85354898e@mail.gmail.com>	 <24c1515f0805010628k6b57598btb27116c719b99fad@mail.gmail.com>	 <481B316E.8090800@gmail.com>	 <24c1515f0805021413u450d8bbcr806a90c327b287a1@mail.gmail.com>	 <481B96D0.8010802@gmail.com> <24c1515f0805021554u483c471bm61cf3a6d8d434b45@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Christoph Hellwig <hch@infradead.org>,
-	Frank van Maarseveen <frankvm@frankvm.com>,
-	Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@lst.de>,
-	Linux NFS mailing list <linux-nfs@vger.kernel.org>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+	Peter Staubach <staubach@redhat.com>, linux-nfs@vger.kernel.org
+To: Janne Karhunen <janne.karhunen@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from frankvm.xs4all.nl ([80.126.170.174]:55364 "EHLO
-	janus.localdomain" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751623AbYECIwI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 3 May 2008 04:52:08 -0400
-In-Reply-To: <1209744293.8294.19.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from py-out-1112.google.com ([64.233.166.178]:42325 "EHLO
+	py-out-1112.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756870AbYECP3z (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 3 May 2008 11:29:55 -0400
+Received: by py-out-1112.google.com with SMTP id u52so567468pyb.10
+        for <linux-nfs@vger.kernel.org>; Sat, 03 May 2008 08:29:54 -0700 (PDT)
+In-Reply-To: <24c1515f0805021554u483c471bm61cf3a6d8d434b45-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, May 02, 2008 at 12:04:53PM -0400, Trond Myklebust wrote:
-> 
-> On Fri, 2008-05-02 at 11:56 -0400, J. Bruce Fields wrote:
-> > On Fri, May 02, 2008 at 11:34:39AM -0400, Christoph Hellwig wrote:
-> > > On Fri, May 02, 2008 at 05:16:46PM +0200, Frank van Maarseveen wrote:
-> > > > A privileged process on an NFS client which drops privileges after using
-> > > > them to change the current working directory, will experience incorrect
-> > > > EACCES after an NFS server reboot. This problem can also occur after
-> > > > memory pressure on the server, particularly when the client side is
-> > > > quiet for some time.
-> > > > 
-> > > > This patch removes the x-bit check during dentry tree reconstruction at
-> > > > the server by exportfs on behalf of nfsd.
-> > > 
-> > > I'm still against adding this crap,
-> > 
-> > The only statements I've seen against the change so far have been of the
-> > form "you should not do that", without explaining why not.
-> > 
-> > It's entirely possible that you're right, but I need some argument.
-> 
-> 
-> AFAICS, the real problem here is that nfsd is dropping its privileged
-> mode too early. Why can't you call reconnect_path() using nfsd's root
-> permissions instead of dropping permissions checks altogether?
-> 
-> > > and even when I get overruled that
-> > > doesn't make the comments on lookup_one_noperm any less true,
-> > 
-> > We do need to at least update it to reflect the addition of a new
-> > caller.
-> > 
-> > > not does it give you a permit to break the kerneldoc generation.
-> > 
-> > Oops; here's a version that should make kerneldoc happy.  It also adds a
-> > little more explanation, and leaves alone the editorializing on sysfs
-> > (on which I have no opinion).
-> > 
-> > --b.
-> > 
-> > commit ccdfe77dc49a07c298bb9e2107290267492f16b3
-> > Author: Frank van Maarseveen <frankvm@frankvm.com>
-> > Date:   Fri May 2 17:16:46 2008 +0200
-> > 
-> >     exportfs: fix incorrect EACCES in reconnect_path()
-> >     
-> >     A privileged process on an NFS client which drops privileges after using
-> >     them to change the current working directory, will experience incorrect
-> >     EACCES after an NFS server reboot. This problem can also occur after
-> >     memory pressure on the server, particularly when the client side is
-> >     quiet for some time.
-> >     
-> >     This patch removes the x-bit check during dentry tree reconstruction at
-> >     the server by exportfs on behalf of nfsd.
-> >     
-> >     Signed-off-by: Frank van Maarseveen <frankvm@frankvm.com>
-> >     Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
-> > 
-> > diff --git a/fs/exportfs/expfs.c b/fs/exportfs/expfs.c
-> > index 109ab5e..89dc7ae 100644
-> > --- a/fs/exportfs/expfs.c
-> > +++ b/fs/exportfs/expfs.c
-> > @@ -170,7 +170,7 @@ reconnect_path(struct vfsmount *mnt, struct dentry *target_dir)
-> >  			}
-> >  			dprintk("%s: found name: %s\n", __FUNCTION__, nbuf);
-> >  			mutex_lock(&ppd->d_inode->i_mutex);
-> > -			npd = lookup_one_len(nbuf, ppd, strlen(nbuf));
-> > +			npd = lookup_one_noperm(nbuf, ppd);
-> >  			mutex_unlock(&ppd->d_inode->i_mutex);
-> >  			if (IS_ERR(npd)) {
-> >  				err = PTR_ERR(npd);
-> > @@ -447,8 +447,7 @@ struct dentry *exportfs_decode_fh(struct vfsmount *mnt, struct fid *fid,
-> >  		err = exportfs_get_name(mnt, target_dir, nbuf, result);
-> >  		if (!err) {
-> >  			mutex_lock(&target_dir->d_inode->i_mutex);
-> > -			nresult = lookup_one_len(nbuf, target_dir,
-> > -						 strlen(nbuf));
-> > +			nresult = lookup_one_noperm(nbuf, target_dir);
-> >  			mutex_unlock(&target_dir->d_inode->i_mutex);
-> >  			if (!IS_ERR(nresult)) {
-> >  				if (nresult->d_inode) {
-> > diff --git a/fs/namei.c b/fs/namei.c
-> > index e179f71..c00150c 100644
-> > --- a/fs/namei.c
-> > +++ b/fs/namei.c
-> > @@ -1391,7 +1391,7 @@ struct dentry *lookup_one_len(const char *name, struct dentry *base, int len)
-> >  }
-> >  
-> >  /**
-> > - * lookup_one_noperm - bad hack for sysfs
-> > + * lookup_one_noperm - bad hack for sysfs and nfsd
-> >   * @name:	pathname component to lookup
-> >   * @base:	base directory to lookup from
-> >   *
-> > @@ -1399,7 +1399,12 @@ struct dentry *lookup_one_len(const char *name, struct dentry *base, int len)
-> >   * checks.   It's a horrible hack to work around the braindead sysfs
-> >   * architecture and should not be used anywhere else.
-> >   *
-> > - * DON'T USE THIS FUNCTION EVER, thanks.
-> > + * It is also used by nfsd via exports to reconstruct the dentry tree
-> > + * for directory handles (e.g. when a client requests a directory by
-> > + * filehandle after a server reboot has cleared the dentry cache of that
-> > + * directory's parents).
-> > + *
-> > + * DON'T USE THIS FUNCTION ANYWHERE ELSE, thanks.
-> >   */
-> >  struct dentry *lookup_one_noperm(const char *name, struct dentry *base)
-> >  {
-> 
-> How about if exportfs is compiled as a module?
+Janne Karhunen wrote:
+>
+>>  I think you mis-understand our approach. With our patch, you do *not* need
+>> to do anything if you have only one single (floating) interface to do nfs
+>> export (and you can have the machine configured to use other hostname). The
+>> statd's "my_name" is correctly filled (from kernel by our patch) - it is no
+>> longer bound to 127.0.0.1.
+>>     
+>
+> What happens when it fails over to node that has
+> different name?  Mon_name in NOTIFY changes
+> while address it's coming from does not. Which
+> one should client believe - the address or the
+> name?
+>
+> But OK, I probably need to dig out the patch to
+> have a look.
+>   
+In the middle of re-doing our old patch (it should be very small this 
+time, with Frank's patch already in mainline and Chuck taking over IPV6 
+issues) so the logic can be clear. I also have a feel that you never 
+look into "sm-notify" ? Get nfs-util git tree source and take a look at 
+the "README" file in the top directory. Either Neil Brown or Steve 
+Dickson had added a nice "DAEMON STARTUP ORDER" there. Basically the 
+whole issue is a two-steps thing:
 
-Good point. The patch should include a EXPORT_SYMBOL(lookup_one_noperm)
-in fs/namei.c if we decide to fix it this way.
+1. statd is the process responsible for recording client address into 
+the nsm directory
+2. sm-notify is the process responsible for notifying clients about 
+server reboot activities.
 
--- 
-Frank
+The "sm-notify" design allows the flexibility of notifying clients with 
+different cluster configurations, including yours. I think you already 
+know this stuff very well... just do a "man sm-notify" ... it should 
+clear up your confusions.
+
+-- Wendy
+
