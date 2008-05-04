@@ -1,33 +1,35 @@
-From: Greg KH <greg@kroah.com>
-Subject: Re: [stable] [PATCH] [stable 2.6.24] Fix oops at
-	rpcb_getport_async in sunrpc
-Date: Fri, 2 May 2008 13:27:03 -0700
-Message-ID: <20080502202703.GB11135@kroah.com>
-References: <8408c1a50805021307x2f1843ffrfb53efbbfaf8aaba@mail.gmail.com>
+From: vinvin-CCKDRK/Hd0cdbCeoMzGj59i2O/JbrIOy@public.gmane.org (vincent)
+Subject: Re: Text-based mount interface breaking non-UDP mounts
+Date: Mon, 5 May 2008 00:39:34 +0200
+Message-ID: <20080504223934.GA11746@vinvin.dyndns.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: stable@kernel.org, linux-nfs@vger.kernel.org
-To: HIRANO Takahito <hiranotaka-FWFpUBK1X0Y@public.gmane.org>
+Cc: bfields@fieldses.org
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from pentafluge.infradead.org ([213.146.154.40]:40033 "EHLO
-	pentafluge.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752597AbYECXDW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 3 May 2008 19:03:22 -0400
-In-Reply-To: <8408c1a50805021307x2f1843ffrfb53efbbfaf8aaba-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Received: from smtp21.orange.fr ([80.12.242.46]:62349 "EHLO smtp21.orange.fr"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756786AbYEDWjh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 4 May 2008 18:39:37 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, May 03, 2008 at 05:07:21AM +0900, HIRANO Takahito wrote:
-> The rpcb_getport_async in the sunrpc module copies larger memory area than
-> the allocated. Because of this problem, NFS users might encounter oops.
-> 
-> This problem only exists in 2.6.24.y.
-> It is fixed in 2.6.25 by the commit 86d61d8638ddf9cdf87df26c7fa69b2804425fbe.
+> Chuck Lever wrote:
+> Thanks for the offer.  I tested against a server configuration that  
+> dropped UDP packets, but I never tested through an ssh tunnel.
 
-The 2.6.24.y kernel tree is pretty much "closed" now, we don't want to
-do any more releases of it, so I'm not going to add this to any queue,
-sorry.
+In the ssh tunnel case, what can be seen in network captures for
+localhost on the client is that mounting requests are sent over UDP, and
+since the ports are those specified for the ssh tunnel, they lead to
+nothing on localhost UDP, and an ICMP dest unreach (port) is sent back.
+This is made twice before mount.nfs exits with an internal error, 2
+packets each time.
 
-thanks,
+I have the same problem than Frank, using NFS through a ssh tunnel. It
+was working with 2.6.20 and I've just upgraded to 2.6.25 and it does not
+works anymore.
 
-greg k-h
+
+Vincent
+
+
