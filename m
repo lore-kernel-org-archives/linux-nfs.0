@@ -1,68 +1,63 @@
-From: Clay McClure <clay-zo/yENU/GurR7s880joybQ@public.gmane.org>
-Subject: Re: 'noacl' NFS parameter seems ineffective (Fedora Core 7)
-Date: Mon, 5 May 2008 18:27:02 +0000 (UTC)
-Message-ID: <loom.20080505T174704-239@post.gmane.org>
-References: <a90f74cc0707051401p38167340s955be299a807710d@mail.gmail.com> <468D6064.3080307@redhat.com> <1183728245.6463.17.camel@heimdal.trondhjem.org> <468E4659.8090209@redhat.com> <1183732066.6463.44.camel@heimdal.trondhjem.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH  1/17] svcrdma: Simplify receive buffer posting
+Date: Mon, 5 May 2008 15:31:40 -0400
+Message-ID: <20080505193140.GC12814@fieldses.org>
+References: <1209745721600-git-send-email-tom@opengridcomputing.com> <12097457211326-git-send-email-tom@opengridcomputing.com> <1209745721248-git-send-email-tom@opengridcomputing.com> <12097457213375-git-send-email-tom@opengridcomputing.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: linux-nfs@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org
+To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from main.gmane.org ([80.91.229.2]:53300 "EHLO ciao.gmane.org"
+Received: from mail.fieldses.org ([66.93.2.214]:33349 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760718AbYEES1S (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 5 May 2008 14:27:18 -0400
-Received: from list by ciao.gmane.org with local (Exim 4.43)
-	id 1Jt5P8-0003af-CE
-	for linux-nfs@vger.kernel.org; Mon, 05 May 2008 18:27:14 +0000
-Received: from 208.82.18.93 ([208.82.18.93])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Mon, 05 May 2008 18:27:14 +0000
-Received: from clay by 208.82.18.93 with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Mon, 05 May 2008 18:27:14 +0000
+	id S1752242AbYEETbl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 5 May 2008 15:31:41 -0400
+In-Reply-To: <12097457213375-git-send-email-tom@opengridcomputing.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Trond Myklebust <trond.myklebust <at> fys.uio.no> writes:
+On Fri, May 02, 2008 at 11:28:27AM -0500, Tom Tucker wrote:
+> The svcrdma transport provider currently allocates receive buffers
+> to the RQ through the xpo_release_rqst method. This approach is overly
+> complicated since it means that the rqstp rq_xprt_ctxt has to be
+> selectively set based on whether the RPC is going to be processed
+> immediately or deferred. Instead, just post the receive buffer when
+> we are certain that we are replying in the send_reply function.
 
-> On Fri, 2007-07-06 at 09:40 -0400, Peter Staubach wrote:
-> > It was misguided on someone's part to think that no ACLs meant that
-> > checking the mode bits for permissions was sufficient.
-> 
-> Yup.
+Makes sense to me.  But, by the way:
 
-It seems to me that disabling ACCESS might prevent clients from knowing
-whether an operation is allowed, but it would not allow clients to bypass
-server ACLs. From a security perspective, then, I would think disabling
-ACCESS would not affect the correctness of the protocol.
+> index af408fc..1e0af2f 100644
+> --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> @@ -910,27 +910,8 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
+>  	return NULL;
+>  }
+>  
+> -/*
+> - * Post an RQ WQE to the RQ when the rqst is being released. This
+> - * effectively returns an RQ credit to the client. The rq_xprt_ctxt
+> - * will be null if the request is deferred due to an RDMA_READ or the
+> - * transport had no data ready (EAGAIN). Note that an RPC deferred in
+> - * svc_process will still return the credit, this is because the data
+> - * is copied and no longer consume a WQE/WC.
+> - */
+>  static void svc_rdma_release_rqst(struct svc_rqst *rqstp)
+>  {
+> -	int err;
+> -	struct svcxprt_rdma *rdma =
+> -		container_of(rqstp->rq_xprt, struct svcxprt_rdma, sc_xprt);
+> -	if (rqstp->rq_xprt_ctxt) {
+> -		BUG_ON(rqstp->rq_xprt_ctxt != rdma);
+> -		err = svc_rdma_post_recv(rdma);
+> -		if (err)
+> -			dprintk("svcrdma: failed to post an RQ WQE error=%d\n",
+> -				err);
+> -	}
+> -	rqstp->rq_xprt_ctxt = NULL;
+>  }
 
-In other words, if a client with ACCESS disabled determined (by mode
-bits alone) that a read operation was allowed, and issued a READ call,
-would the server still determine whether the request was allowed
-(according to its ACL and user mapping policy), and return
-NFS3ERR_ACCES if not?
+Why is it that the svcsock equivalent (svc_release_skb) frees
+rqstp->rq_deferred, but this doesn't?  Don't we need to free that in the
+rdma case too?
 
-> The correct way to deal with the problem of too many ACCESS calls
-> was rather to improve the caching. There should be a vast difference
-> between a 2.6.19 kernel or higher and earlier versions when it comes to
-> the ability to cache credentials from multiple users and I hope that
-> addresses the problems that people were seeing.
-
-ACCESS calls make up 17% of the NFS ops generated by our application
-running on a stock CentOS 5 2.6.18 kernel. We don't use ACLs or root
-mapping. One user (root) performs all file access on the NFS volume
-in question.
-
-Would the credential caching you mention in 2.6.19 help us reduce the
-number of ACCESS operations we see (even though only one user is
-performing file I/O)?
-
-Is it safe to apply a patch to eliminate ACCESS altogether?
-
-Thanks,
-
-Clay
-
-
-
+--b.
