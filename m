@@ -1,46 +1,65 @@
-From: "Janne Karhunen" <janne.karhunen@gmail.com>
-Subject: Re: [patch] fix statd -n
-Date: Mon, 5 May 2008 11:01:42 -0400
-Message-ID: <24c1515f0805050801m66cce68k94073914ba26511e@mail.gmail.com>
-References: <20080421000214.GA5453@fieldses.org>
-	 <20080429161607.GA20420@fieldses.org>
-	 <24c1515f0805010557o5daf72f7hc3db5bf85354898e@mail.gmail.com>
-	 <24c1515f0805010628k6b57598btb27116c719b99fad@mail.gmail.com>
-	 <481B316E.8090800@gmail.com>
-	 <24c1515f0805021413u450d8bbcr806a90c327b287a1@mail.gmail.com>
-	 <481B96D0.8010802@gmail.com>
-	 <24c1515f0805021724q7dfe5294r702a9c8ffde01129@mail.gmail.com>
-	 <20080505144538.GB8259@fieldses.org> <481F20B6.8080603@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	"Peter Staubach" <staubach@redhat.com>, linux-nfs@vger.kernel.org
-To: "Wendy Cheng" <s.wendy.cheng@gmail.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH] NFS: Ensure that 'noac' and/or 'actimeo=0' turn off attribute caching
+Date: Mon, 5 May 2008 11:02:00 -0400
+Message-ID: <6A5A94A9-6F7A-469C-926D-A39B18381FFE@oracle.com>
+References: <20080502202502.29449.81285.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
+Mime-Version: 1.0 (Apple Message framework v919.2)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: linux-nfs@vger.kernel.org
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from el-out-1112.google.com ([209.85.162.177]:50805 "EHLO
-	el-out-1112.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753724AbYEEPBq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 May 2008 11:01:46 -0400
-Received: by el-out-1112.google.com with SMTP id n30so715034elf.21
-        for <linux-nfs@vger.kernel.org>; Mon, 05 May 2008 08:01:43 -0700 (PDT)
-In-Reply-To: <481F20B6.8080603@gmail.com>
+Received: from rgminet01.oracle.com ([148.87.113.118]:35132 "EHLO
+	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756069AbYEEPCX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 May 2008 11:02:23 -0400
+In-Reply-To: <20080502202502.29449.81285.stgit-KPEdlmqt5P7XOazzY/2fV4TcuzvYVacciM950cveMlzk1uMJSBkQmQ@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, May 5, 2008 at 10:59 AM, Wendy Cheng <s.wendy.cheng@gmail.com> wrote:
+Hi Trond-
 
-> > In any case, if there's still a legimate use case for -n, even if it's
-> > not great, we should err on the side of fixing it just to save problems
-> > for anyone with an existing working setup.
-> >
->  Simpler code and consolidated logic flow are always better - would like to
-> vote for its deletion.
+On May 2, 2008, at 4:25 PM, Trond Myklebust wrote:
+> Both the 'noac' and 'actimeo=0' mount options should ensure that  
+> attributes
+> are not cached, however a bug in nfs_attribute_timeout() means that
+> currently, the attributes may in fact get cached for up to one  
+> jiffy. This
+> has been seen to cause corruption in some applications.
+>
+> The reason for the bug is that the time_in_range() test returns  
+> 'true' as
+> long as the current time lies between nfsi->read_cache_jiffies and
+> nfsi->read_cache_jiffies + nfsi->attrtimeo. In other words, if jiffies
+> equals nfsi->read_cache_jiffies, then we still cache the attribute  
+> data.
+>
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> ---
+>
+> fs/nfs/inode.c |    7 +++++++
+> 1 files changed, 7 insertions(+), 0 deletions(-)
+>
+> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+> index 5cb3345..38f06d3 100644
+> --- a/fs/nfs/inode.c
+> +++ b/fs/nfs/inode.c
+> @@ -707,6 +707,13 @@ int nfs_attribute_timeout(struct inode *inode)
+>
+> 	if (nfs_have_delegation(inode, FMODE_READ))
+> 		return 0;
+> +	/*
+> +	 * Special case: if the attribute timeout is set to 0, then we
+> +	 * 		 treat the cache as having expired (unless we
+> +	 * 		 have a delegation).
+> +	 */
+> +	if (nfsi->attrtimeo == 0)
+> +		return 1;
+> 	return !time_in_range(jiffies, nfsi->read_cache_jiffies, nfsi- 
+> >read_cache_jiffies + nfsi->attrtimeo);
+> }
 
-So the solution would be to use -H with a script that
-does sm-notify with user specified name (-v)? Kernel
-name can't be used directly as it might migrate to
-node that has different name.
+Do nfs_access_get_cached() and nfs_update_inode() have the same issue?
 
-
--- 
-// Janne
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
