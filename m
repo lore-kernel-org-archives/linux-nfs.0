@@ -1,92 +1,56 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: recent failover-by-IP changes
-Date: Mon, 5 May 2008 10:46:48 -0400
-Message-ID: <798F2369-07C5-4CBD-8D29-131314CCA3DA@oracle.com>
-References: <1B257A25-2B59-448F-B11C-637B8688D883@oracle.com> <481B8EE4.8020409@gmail.com>
-Mime-Version: 1.0 (Apple Message framework v919.2)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: Wendy Cheng <s.wendy.cheng@gmail.com>
+From: Wendy Cheng <s.wendy.cheng@gmail.com>
+Subject: Re: [patch] fix statd -n
+Date: Mon, 05 May 2008 10:59:02 -0400
+Message-ID: <481F20B6.8080603@gmail.com>
+References: <20080421000214.GA5453@fieldses.org> <24c1515f0804281352u2d04ac89i820dc6807dde39f1@mail.gmail.com> <4817346F.5000101@netapp.com> <20080429161607.GA20420@fieldses.org> <24c1515f0805010557o5daf72f7hc3db5bf85354898e@mail.gmail.com> <24c1515f0805010628k6b57598btb27116c719b99fad@mail.gmail.com> <481B316E.8090800@gmail.com> <24c1515f0805021413u450d8bbcr806a90c327b287a1@mail.gmail.com> <481B96D0.8010802@gmail.com> <24c1515f0805021724q7dfe5294r702a9c8ffde01129@mail.gmail.com> <20080505144538.GB8259@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: Janne Karhunen <janne.karhunen@gmail.com>,
+	Peter Staubach <staubach@redhat.com>, linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:26263 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755616AbYEEOr6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 May 2008 10:47:58 -0400
-In-Reply-To: <481B8EE4.8020409@gmail.com>
+Received: from mx2.netapp.com ([216.240.18.37]:64157 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753149AbYEEO4t (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 5 May 2008 10:56:49 -0400
+In-Reply-To: <20080505144538.GB8259@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On May 2, 2008, at 6:00 PM, Wendy Cheng wrote:
-> Chuck Lever wrote:
->> Hi Wendy-
+J. Bruce Fields wrote:
+> On Fri, May 02, 2008 at 08:24:25PM -0400, Janne Karhunen wrote:
+>   
+>> On Fri, May 2, 2008 at 6:33 PM, Wendy Cheng <s.wendy.cheng@gmail.com> wrote:
 >>
->> Looking at your recent lockd-failover-by-IP changes... I'd like to  
->> make sure I understand this logic before I merge it into my NLM  
->> IPv6 patch set.
->>
->> In fs/lockd/svcsubs.c:
->> > static int
->> > nlmsvc_match_ip(void *datap, struct nlm_host *host)
->> > {
->> > __be32 *server_addr = datap;
->> >
->> > return host->h_saddr.sin_addr.s_addr == *server_addr;
->>
->> h_saddr is the local host's source address, not the server address,  
->> and is used only on multi-interface systems. Is that what you  
->> wanted to compare, or did you mean ->h_addr?
+>>     
+>>>  Maybe I mislead you in previous post. The "-H" is only an "example" - to
+>>> show people how to selectively move an ip address around without affecting
+>>> other co-existing nfs ip interface on the same server. I did plan to submit
+>>> a complete user mode patch so the program after "-H" will have a default
+>>> executable (but user still can use their own if they don't like our nlm
+>>> directory structure).
+>>>       
+>> Even if you ship the default executable user would
+>> still need to go and edit it (add the address). Well,
+>> I guess it would not be that much harder than
+>> specifying the -n, but somehow this does seem
+>> more arcane (for simple setups).
+>>     
 >
-> Yes, it is what we want (trying not to change the mainline logic if  
-> all possible). Bruce did the merge and he did this *right*. Check  
-> out how nlm_lookup_host() fills in the h_saddr (and how  
-> nlmsvc_lookup_host passes in "ssin") before our changes. But I'll do  
-> the testing over the weekend nevertheless - will report back if I  
-> see problems.
+> In any case, if there's still a legimate use case for -n, even if it's
+> not great, we should err on the side of fixing it just to save problems
+> for anyone with an existing working setup.
 >
-> We'll let you worry about how to make ipv6 working in this  
-> case :) .. (just joking .. will help if needed) ..
+> If -n has never worked at all for anyone, then OK, let's get rid of it.
 >
->> Does it make sense to use nlm_cmp_addr() here as is done in other  
->> places in lockd?
->
-> It can - but would suggest leave it as today until your ipv6 patches  
-> are ready (are they ready now ?).
+> --b.
+>   
+Simpler code and consolidated logic flow are always better - would like 
+to vote for its deletion.
 
-Yes.  I plan to test basic functionality next week at Connectathon.
+I had a very bad experience with a filesystem (*cough*) that accepted 
+few mis-understood boundary condition fixes that ended up disturbing the 
+core logic. It still couldn't recover from it and the code churning 
+keeps going on until today.
 
->> > }
->> >
->> > int
->> > nlmsvc_unlock_all_by_ip(__be32 server_addr)
->>
->> Should this be "struct in_addr server_addr" ? It would be even  
->> nicer if this were a "struct sockaddr *".
->
-> Yes, it would be nice. But it would be even "nicer" if we let people  
-> run this stuff before another round of revising.
-
-Given that the IPv6 support needs to be finished soon (IPv6 support  
-will be a purchasing requirement for US government later this year), I  
-don't think we can wait.  The changes are not terribly invasive, and  
-can be validated with IPv4 testing.
-
->> > /* get ipv4 address */
->> > if (sscanf(fo_path, "%u.%u.%u.%u%c", &b1, &b2, &b3, &b4, &c) != 4)
->> > return -EINVAL;
->> > server_ip = htonl((((((b1<<8)|b2)<<8)|b3)<<8)|b4);
->> >
->> > return nlmsvc_unlock_all_by_ip(server_ip);
->>
->> Why can't you use in4_pton() to convert your IP address?
-
-> I think in4_pton was my original code (?) We changed it because of a  
-> legitimate comment from a code review (but I forgot the details from  
-> the top of my head at this moment). Will follow up after I check the  
-> archives tomorrow.
-
-Yes, I'd like to see the reviewer's comment.
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+-- Wendy
