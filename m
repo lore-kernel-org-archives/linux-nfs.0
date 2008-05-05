@@ -1,65 +1,87 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH] NFS: Ensure that 'noac' and/or 'actimeo=0' turn off attribute caching
-Date: Mon, 5 May 2008 11:02:00 -0400
-Message-ID: <6A5A94A9-6F7A-469C-926D-A39B18381FFE@oracle.com>
-References: <20080502202502.29449.81285.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
-Mime-Version: 1.0 (Apple Message framework v919.2)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: linux-nfs@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [NFS] bug in nfs-utils support/misc/tcpwrapper.c
+Date: Mon, 5 May 2008 11:11:05 -0400
+Message-ID: <20080505151105.GC8259@fieldses.org>
+References: <alpine.DEB.0.99999.0805030130590.9075@zaphod.blinkenlights.nl>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net, steved@redhat.com
+To: Sten Spans <sten-4ZM2p5qjiQFChlZ7zSldDQ@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:35132 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756069AbYEEPCX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 May 2008 11:02:23 -0400
-In-Reply-To: <20080502202502.29449.81285.stgit-KPEdlmqt5P7XOazzY/2fV4TcuzvYVacciM950cveMlzk1uMJSBkQmQ@public.gmane.org>
+Received: from neil.brown.name ([220.233.11.133]:48732 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753288AbYEEPQa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 5 May 2008 11:16:30 -0400
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1Jt2QT-0004l1-1G
+	for linux-nfs@vger.kernel.org; Tue, 06 May 2008 01:16:25 +1000
+In-Reply-To: <alpine.DEB.0.99999.0805030130590.9075-bOEg3dqIyRvlQVwb/tpZ4uvFKoSm8Hlx@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond-
+On Sat, May 03, 2008 at 01:49:20AM +0200, Sten Spans wrote:
+> 
+> I've been trying to get /etc/netgroup support going on
+> a machine serving nfs mounts to hosts located in various
+> .nl netblocks. Managing hosts this way greatly simplifies
+> hosts.allow and exports management, easily worth any slowdowns
+> during mounting.
+> 
+> I did notice a small problem in the tcpwrapper support:
+> (resulting in errors from mountd)
+> 
+> 127    /* Check the official name first. */
+> 128    if (hosts_ctl(daemon, "", hp->h_name, ""))
+> 129         return 1;
+> 
+> this supplies the resolved hostname in the address field of hosts_ctl
+> which doesn't work. Changing it to:
+> 
+> if (hosts_ctl(daemon, hp->h_name, "", ""))
+> 
+> does work as expected. The h_aliases check on line 133 probably needs
+> the same change to work as expected.
 
-On May 2, 2008, at 4:25 PM, Trond Myklebust wrote:
-> Both the 'noac' and 'actimeo=0' mount options should ensure that  
-> attributes
-> are not cached, however a bug in nfs_attribute_timeout() means that
-> currently, the attributes may in fact get cached for up to one  
-> jiffy. This
-> has been seen to cause corruption in some applications.
->
-> The reason for the bug is that the time_in_range() test returns  
-> 'true' as
-> long as the current time lies between nfsi->read_cache_jiffies and
-> nfsi->read_cache_jiffies + nfsi->attrtimeo. In other words, if jiffies
-> equals nfsi->read_cache_jiffies, then we still cache the attribute  
-> data.
->
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> ---
->
-> fs/nfs/inode.c |    7 +++++++
-> 1 files changed, 7 insertions(+), 0 deletions(-)
->
-> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-> index 5cb3345..38f06d3 100644
-> --- a/fs/nfs/inode.c
-> +++ b/fs/nfs/inode.c
-> @@ -707,6 +707,13 @@ int nfs_attribute_timeout(struct inode *inode)
->
-> 	if (nfs_have_delegation(inode, FMODE_READ))
-> 		return 0;
-> +	/*
-> +	 * Special case: if the attribute timeout is set to 0, then we
-> +	 * 		 treat the cache as having expired (unless we
-> +	 * 		 have a delegation).
-> +	 */
-> +	if (nfsi->attrtimeo == 0)
-> +		return 1;
-> 	return !time_in_range(jiffies, nfsi->read_cache_jiffies, nfsi- 
-> >read_cache_jiffies + nfsi->attrtimeo);
-> }
+Yep; looks like a clear bugfix.  (If you have a moment to generate a
+patch (with diff -u) showing both changes, that would probably help
+Steve.)--b.
 
-Do nfs_access_get_cached() and nfs_update_inode() have the same issue?
+> 
+> -- 
+> Sten Spans
+> 
+> "There is a crack in everything, that's how the light gets in."
+> Leonard Cohen - Anthem
+> 
+> -------------------------------------------------------------------------
+> This SF.net email is sponsored by the 2008 JavaOne(SM) Conference 
+> Don't miss this year's exciting event. There's still time to save $100. 
+> Use priority code J8TL2D2. 
+> http://ad.doubleclick.net/clk;198757673;13503038;p?http://java.sun.com/javaone
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
+> _______________________________________________
+> Please note that nfs@lists.sourceforge.net is being discontinued.
+> Please subscribe to linux-nfs@vger.kernel.org instead.
+>     http://vger.kernel.org/vger-lists.html#linux-nfs
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+-------------------------------------------------------------------------
+This SF.net email is sponsored by the 2008 JavaOne(SM) Conference 
+Don't miss this year's exciting event. There's still time to save $100. 
+Use priority code J8TL2D2. 
+http://ad.doubleclick.net/clk;198757673;13503038;p?http://java.sun.com/javaone
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
+
