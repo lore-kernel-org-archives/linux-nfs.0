@@ -1,53 +1,75 @@
-From: "Janne Karhunen" <janne.karhunen@gmail.com>
-Subject: Re: [patch] fix statd -n
-Date: Mon, 5 May 2008 11:23:37 -0400
-Message-ID: <24c1515f0805050823s14f4caf7s3a4ff06a70c220be@mail.gmail.com>
-References: <20080421000214.GA5453@fieldses.org>
-	 <24c1515f0805010628k6b57598btb27116c719b99fad@mail.gmail.com>
-	 <481B316E.8090800@gmail.com>
-	 <24c1515f0805021413u450d8bbcr806a90c327b287a1@mail.gmail.com>
-	 <481B96D0.8010802@gmail.com>
-	 <24c1515f0805021724q7dfe5294r702a9c8ffde01129@mail.gmail.com>
-	 <20080505144538.GB8259@fieldses.org> <481F20B6.8080603@gmail.com>
-	 <24c1515f0805050801m66cce68k94073914ba26511e@mail.gmail.com>
-	 <481F2600.20501@gmail.com>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH] NFS: Ensure that 'noac' and/or 'actimeo=0' turn off
+	attribute caching
+Date: Mon, 05 May 2008 11:23:53 -0400
+Message-ID: <1210001033.7409.1.camel@localhost>
+References: <20080502202502.29449.81285.stgit@c-69-242-210-120.hsd1.mi.comcast.net>
+	 <6A5A94A9-6F7A-469C-926D-A39B18381FFE@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	"Peter Staubach" <staubach@redhat.com>, linux-nfs@vger.kernel.org
-To: "Wendy Cheng" <s.wendy.cheng@gmail.com>
+Content-Type: text/plain
+Cc: linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from wa-out-1112.google.com ([209.85.146.182]:50194 "EHLO
-	wa-out-1112.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751850AbYEEPXi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 May 2008 11:23:38 -0400
-Received: by wa-out-1112.google.com with SMTP id j37so758749waf.23
-        for <linux-nfs@vger.kernel.org>; Mon, 05 May 2008 08:23:38 -0700 (PDT)
-In-Reply-To: <481F2600.20501@gmail.com>
+Received: from mx2.netapp.com ([216.240.18.37]:40607 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759435AbYEEPX5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 5 May 2008 11:23:57 -0400
+In-Reply-To: <6A5A94A9-6F7A-469C-926D-A39B18381FFE@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, May 5, 2008 at 11:21 AM, Wendy Cheng <s.wendy.cheng@gmail.com> wrote:
+On Mon, 2008-05-05 at 11:02 -0400, Chuck Lever wrote:
+> Hi Trond-
+> 
+> On May 2, 2008, at 4:25 PM, Trond Myklebust wrote:
+> > Both the 'noac' and 'actimeo=0' mount options should ensure that  
+> > attributes
+> > are not cached, however a bug in nfs_attribute_timeout() means that
+> > currently, the attributes may in fact get cached for up to one  
+> > jiffy. This
+> > has been seen to cause corruption in some applications.
+> >
+> > The reason for the bug is that the time_in_range() test returns  
+> > 'true' as
+> > long as the current time lies between nfsi->read_cache_jiffies and
+> > nfsi->read_cache_jiffies + nfsi->attrtimeo. In other words, if jiffies
+> > equals nfsi->read_cache_jiffies, then we still cache the attribute  
+> > data.
+> >
+> > Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> > ---
+> >
+> > fs/nfs/inode.c |    7 +++++++
+> > 1 files changed, 7 insertions(+), 0 deletions(-)
+> >
+> > diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+> > index 5cb3345..38f06d3 100644
+> > --- a/fs/nfs/inode.c
+> > +++ b/fs/nfs/inode.c
+> > @@ -707,6 +707,13 @@ int nfs_attribute_timeout(struct inode *inode)
+> >
+> > 	if (nfs_have_delegation(inode, FMODE_READ))
+> > 		return 0;
+> > +	/*
+> > +	 * Special case: if the attribute timeout is set to 0, then we
+> > +	 * 		 treat the cache as having expired (unless we
+> > +	 * 		 have a delegation).
+> > +	 */
+> > +	if (nfsi->attrtimeo == 0)
+> > +		return 1;
+> > 	return !time_in_range(jiffies, nfsi->read_cache_jiffies, nfsi- 
+> > >read_cache_jiffies + nfsi->attrtimeo);
+> > }
+> 
+> Do nfs_access_get_cached() and nfs_update_inode() have the same issue?
 
->  No. "-H" is only for different export (server IP) interfaces. Say server
-> has 10.1.1.1 and 10.1.1.2 as NFS export interfaces. If 10.1.1.1 is migrated
-> but 10.1.1.2 stays, you would like to notify the nfs clients coming in from
-> 10.1.1.1 but not the clients from 10.1.1.2, you need to structure your sm
-> directory seperately. That is the usage of "-H" (to allow admin to organize
-> client IPs).
-
-Right.
-
-
->  For a single export IP interface like you have (even you have a seperate
-> hostname), ignore "-H". I believe "sm-notify -v" should be enough -
-> otherwise we have bugs - i.e., sm-notify should be part of your nfsd
-> bring-up script.
-
-As statd runs this directly and reads name for -v from
-MY_NAME, how exactly would you pass it MY_NAME
-given that -n is removed?
-
+nfs_access_get_cached() probably has the same issue, but I can't see how
+nfs_update_inode() would. Could you explain?
 
 -- 
-// Janne
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
