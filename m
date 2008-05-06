@@ -1,81 +1,89 @@
-From: Oren Held <oren-8uj5FFcqMgc+JF/nGntIXQ@public.gmane.org>
-Subject: [NFS] A quick manpage typo fix
-Date: Tue, 6 May 2008 11:16:53 +0300
-Message-ID: <200805061116.53778.oren@held.org.il>
+From: Tom Tucker <tom@opengridcomputing.com>
+Subject: Re: [PATCH  7/17] svcrdma: Fix error handling during listening
+ endpoint creation
+Date: Tue, 06 May 2008 09:48:06 -0500
+Message-ID: <C445D9D6.4AB49%tom@opengridcomputing.com>
+References: <20080505224140.GI12814@fieldses.org>
 Mime-Version: 1.0
-Content-Type: Multipart/Mixed;
-  boundary="Boundary-00=_1PBIIl/U1chP86H"
-To: nfs@lists.sourceforge.net
+Content-Type: text/plain;
+	charset="US-ASCII"
+Cc: <linux-nfs@vger.kernel.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:33320 "EHLO neil.brown.name"
+Received: from mail.es335.com ([67.65.19.105]:19778 "EHLO mail.es335.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755129AbYEFIR2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 May 2008 04:17:28 -0400
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1JtIMU-0000Pp-V2
-	for linux-nfs@vger.kernel.org; Tue, 06 May 2008 18:17:23 +1000
+	id S1757324AbYEFOsV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 May 2008 10:48:21 -0400
+In-Reply-To: <20080505224140.GI12814@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Boundary-00=_1PBIIl/U1chP86H
-Content-Type: text/plain;
-  charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
 
-Hi,
 
-The exportfs manpage has a small typo, attached is a fix: 
-(changes "djando"->"django"):
 
- - Oren
+On 5/5/08 5:41 PM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
 
---Boundary-00=_1PBIIl/U1chP86H
-Content-Type: text/x-diff;
-  charset="utf-8";
-  name="exportfs.man.patch"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename="exportfs.man.patch"
+> On Fri, May 02, 2008 at 11:28:39AM -0500, Tom Tucker wrote:
+>> A listening endpoint isn't known to the generic transport switch until
+>> the svc_create_xprt function returns without error. Calling
+>> svc_xprt_put within the xpo_create function causes the module reference
+>> count to be erroneously decremented.
+> 
+> There's some redundant code in these three error paths; would the usual
+> kernel-style "goto cleanup" thing help?
 
---- exportfs.man.orig	2008-05-06 11:12:48.000000000 +0300
-+++ exportfs.man	2008-05-06 11:12:55.000000000 +0300
-@@ -198,7 +198,7 @@
- To export the
- .B /usr/tmp
- directory to host 
--.BR djando ,
-+.BR django ,
- allowing asynchronous writes, one would do this:
- .P
- .nf
+I think code-size it's a wash, but it might look more familiar. BTW, I
+noticed that the error path above returns a positive errno :-\, so that
+needs to be fixed too.
 
---Boundary-00=_1PBIIl/U1chP86H
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by the 2008 JavaOne(SM) Conference 
-Don't miss this year's exciting event. There's still time to save $100. 
-Use priority code J8TL2D2. 
-http://ad.doubleclick.net/clk;198757673;13503038;p?http://java.sun.com/javaone
---Boundary-00=_1PBIIl/U1chP86H
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
-
---Boundary-00=_1PBIIl/U1chP86H--
+> 
+> --b.
+> 
+>> 
+>> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+>> 
+>> ---
+>>  net/sunrpc/xprtrdma/svc_rdma_transport.c |    6 +++---
+>>  1 files changed, 3 insertions(+), 3 deletions(-)
+>> 
+>> diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c
+>> b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+>> index 83818cf..0d9a828 100644
+>> --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
+>> +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+>> @@ -669,7 +669,7 @@ static struct svc_xprt *svc_rdma_create(struct svc_serv
+>> *serv,
+>>  
+>> listen_id = rdma_create_id(rdma_listen_handler, cma_xprt, RDMA_PS_TCP);
+>> if (IS_ERR(listen_id)) {
+>> -  svc_xprt_put(&cma_xprt->sc_xprt);
+>> +  kfree(cma_xprt);
+>> dprintk("svcrdma: rdma_create_id failed = %ld\n",
+>> PTR_ERR(listen_id));
+>> return (void *)listen_id;
+>> @@ -677,7 +677,7 @@ static struct svc_xprt *svc_rdma_create(struct svc_serv
+>> *serv,
+>> ret = rdma_bind_addr(listen_id, sa);
+>> if (ret) {
+>> rdma_destroy_id(listen_id);
+>> -  svc_xprt_put(&cma_xprt->sc_xprt);
+>> +  kfree(cma_xprt);
+>> dprintk("svcrdma: rdma_bind_addr failed = %d\n", ret);
+>> return ERR_PTR(ret);
+>> }
+>> @@ -686,7 +686,7 @@ static struct svc_xprt *svc_rdma_create(struct svc_serv
+>> *serv,
+>> ret = rdma_listen(listen_id, RPCRDMA_LISTEN_BACKLOG);
+>> if (ret) {
+>> rdma_destroy_id(listen_id);
+>> -  svc_xprt_put(&cma_xprt->sc_xprt);
+>> +  kfree(cma_xprt);
+>> dprintk("svcrdma: rdma_listen failed = %d\n", ret);
+>> return ERR_PTR(ret);
+>> }
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
 
