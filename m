@@ -1,111 +1,81 @@
-From: Neil Brown <neilb@suse.de>
-Subject: [PATCH - nfs-utils] Make sure statd gets started when 'string options' are in use.
-Date: Tue, 6 May 2008 14:38:55 +1000
-Message-ID: <18463.57567.260973.429439@notabene.brown>
+From: Oren Held <oren-8uj5FFcqMgc+JF/nGntIXQ@public.gmane.org>
+Subject: [NFS] A quick manpage typo fix
+Date: Tue, 6 May 2008 11:16:53 +0300
+Message-ID: <200805061116.53778.oren@held.org.il>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Steve Dickson <SteveD@redhat.com>
+Content-Type: Multipart/Mixed;
+  boundary="Boundary-00=_1PBIIl/U1chP86H"
+To: nfs@lists.sourceforge.net
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:50343 "EHLO mx2.suse.de"
+Received: from neil.brown.name ([220.233.11.133]:33320 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751378AbYEFEjD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 May 2008 00:39:03 -0400
+	id S1755129AbYEFIR2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 May 2008 04:17:28 -0400
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1JtIMU-0000Pp-V2
+	for linux-nfs@vger.kernel.org; Tue, 06 May 2008 18:17:23 +1000
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+--Boundary-00=_1PBIIl/U1chP86H
+Content-Type: text/plain;
+  charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
-The code for checking and starting statd was only in the binary-options
-branch of the code.
-This moves it into common code.
----
- utils/mount/mount.c    |   22 ++++++++++++++++++++--
- utils/mount/nfsmount.c |   11 -----------
- 2 files changed, 20 insertions(+), 13 deletions(-)
+Hi,
 
-diff --git a/utils/mount/mount.c b/utils/mount/mount.c
-index 5076468..0036caa 100644
---- a/utils/mount/mount.c
-+++ b/utils/mount/mount.c
-@@ -334,7 +334,8 @@ static void parse_opt(const char *opt, int *mask, char *extra_opts, int len)
-  * standard options (indicated by MS_ bits), and output parameter
-  * "@extra_opts" gets all the filesystem-specific options.
-  */
--static void parse_opts(const char *options, int *flags, char **extra_opts)
-+static void parse_opts(const char *options, int *flags, char **extra_opts,
-+		       int *lock)
- {
- 	if (options != NULL) {
- 		char *opts = xstrdup(options);
-@@ -358,6 +359,10 @@ static void parse_opts(const char *options, int *flags, char **extra_opts)
- 			/* end of option item or last item */
- 			if (*p == '\0' || *(p + 1) == '\0') {
- 				parse_opt(opt, flags, *extra_opts, len);
-+				if (strcmp(opt, "lock") == 0)
-+					*lock = 1;
-+				if (strcmp(opt, "nolock") == 0)
-+					*lock = 0;
- 				opt = NULL;
- 			}
- 		}
-@@ -421,6 +426,7 @@ int main(int argc, char *argv[])
- 	char *spec, *mount_point, *fs_type = "nfs";
- 	char *extra_opts = NULL, *mount_opts = NULL;
- 	uid_t uid = getuid();
-+	int lock = 1;
- 
- 	progname = basename(argv[0]);
- 
-@@ -531,7 +537,7 @@ int main(int argc, char *argv[])
- 		goto out;
- 	}
- 
--	parse_opts(mount_opts, &flags, &extra_opts);
-+	parse_opts(mount_opts, &flags, &extra_opts, &lock);
- 
- 	if (uid != 0) {
- 		if (!(flags & (MS_USERS|MS_USER))) {
-@@ -546,6 +552,18 @@ int main(int argc, char *argv[])
- 		goto out;
- 	}
- 
-+	if (!fake && lock) {
-+		if (!start_statd()) {
-+			nfs_error(_("%s: rpc.statd is not running but is "
-+				"required for remote locking.\n"
-+				"   Either use '-o nolock' to keep "
-+				"locks local, or start statd."),
-+					progname);
-+			mnt_err = EX_FAIL;
-+			goto out;
-+		}
-+	}
-+
- 	mnt_err = try_mount(spec, mount_point, flags, fs_type, &extra_opts,
- 				mount_opts, fake, nomtab, FOREGROUND);
- 	if (mnt_err == EX_BG) {
-diff --git a/utils/mount/nfsmount.c b/utils/mount/nfsmount.c
-index 6c0c365..e6ed019 100644
---- a/utils/mount/nfsmount.c
-+++ b/utils/mount/nfsmount.c
-@@ -851,17 +851,6 @@ noauth_flavors:
- 
- 	*extra_opts = xstrdup(new_opts);
- 
--	if (!fake && !(data.flags & NFS_MOUNT_NONLM)) {
--		if (!start_statd()) {
--			nfs_error(_("%s: rpc.statd is not running but is "
--				"required for remote locking.\n"
--				"   Either use '-o nolock' to keep "
--				"locks local, or start statd."),
--					progname);
--			goto fail;
--		}
--	}
--
- 	if (!fake) {
- 		if (mount(spec, node, "nfs",
- 				flags & ~(MS_USER|MS_USERS), &data)) {
--- 
-1.5.5.1
+The exportfs manpage has a small typo, attached is a fix: 
+(changes "djando"->"django"):
+
+ - Oren
+
+--Boundary-00=_1PBIIl/U1chP86H
+Content-Type: text/x-diff;
+  charset="utf-8";
+  name="exportfs.man.patch"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename="exportfs.man.patch"
+
+--- exportfs.man.orig	2008-05-06 11:12:48.000000000 +0300
++++ exportfs.man	2008-05-06 11:12:55.000000000 +0300
+@@ -198,7 +198,7 @@
+ To export the
+ .B /usr/tmp
+ directory to host 
+-.BR djando ,
++.BR django ,
+ allowing asynchronous writes, one would do this:
+ .P
+ .nf
+
+--Boundary-00=_1PBIIl/U1chP86H
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by the 2008 JavaOne(SM) Conference 
+Don't miss this year's exciting event. There's still time to save $100. 
+Use priority code J8TL2D2. 
+http://ad.doubleclick.net/clk;198757673;13503038;p?http://java.sun.com/javaone
+--Boundary-00=_1PBIIl/U1chP86H
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
+
+--Boundary-00=_1PBIIl/U1chP86H--
+
 
