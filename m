@@ -1,90 +1,87 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH] exportfs: fix incorrect EACCES in reconnect_path()
-Date: Tue, 6 May 2008 10:35:46 +1000
-Message-ID: <18463.42978.531115.344884@notabene.brown>
-References: <18454.45086.254692.412079@notabene.brown>
-	<20080429163554.GE20420@fieldses.org>
-	<20080429174004.GA28719@janus>
-	<20080430174736.GB20377@fieldses.org>
-	<20080502151646.GA5515@janus>
-	<20080502153439.GC7376@infradead.org>
-	<20080502155617.GD18401@fieldses.org>
-	<1209744293.8294.19.camel@heimdal.trondhjem.org>
-	<20080502221216.GP21918@fieldses.org>
-	<18462.17737.353976.999538@notabene.brown>
-	<20080505174716.GA12814@fieldses.org>
+From: Tom Tucker <tom@opengridcomputing.com>
+Subject: Re: [PATCH  2/17] svcrdma: Fix race with dto_tasklet in
+ svc_rdma_send
+Date: Mon, 05 May 2008 21:26:02 -0500
+Message-ID: <C4452BEA.4959F%tom@opengridcomputing.com>
+References: <20080505220636.GG12814@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Christoph Hellwig <hch@infradead.org>,
-	Frank van Maarseveen <frankvm@frankvm.com>,
-	Christoph Hellwig <hch@lst.de>,
-	Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Content-Type: text/plain;
+	charset="US-ASCII"
+Cc: <linux-nfs@vger.kernel.org>
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from ns.suse.de ([195.135.220.2]:42875 "EHLO mx1.suse.de"
+Received: from mail.es335.com ([67.65.19.105]:11855 "EHLO mail.es335.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751064AbYEFBhF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 5 May 2008 21:37:05 -0400
-In-Reply-To: message from J. Bruce Fields on Monday May 5
+	id S1754491AbYEFC0P (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 5 May 2008 22:26:15 -0400
+In-Reply-To: <20080505220636.GG12814@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Monday May 5, bfields@fieldses.org wrote:
-> On Mon, May 05, 2008 at 09:22:49AM +1000, Neil Brown wrote:
-> > 
-> > Now it could be argued that this permission test is really a dumb idea
-> > that buys nothing and costs much.  And if you were to queue a patch to
-> > get rid of it, I doubt you would get any objections .... certainly not
-> > from me :-)
+
+
+
+On 5/5/08 5:06 PM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+
+> On Fri, May 02, 2008 at 11:28:34AM -0500, Tom Tucker wrote:
+>> The svc_rdma_send function will attempt to reap SQ WR to make room for
+>> a new request if it finds the SQ full. This function races with the
+>> dto_tasklet that also reaps SQ WR. To avoid calling the function
+>> unnecessarily use test_and_clear_bit with the RDMAXPRT_SQ_PENDING
+>> flag to serialize access to the sq_cq_reap function.
 > 
-> Dumb idea or not, it looks like it's explicitly documented in
-> exports(5):
+> OK.  I won't pretend to understand much of this, but--would it be worth
+> pulling out the added code here into a helper function, since it now
+> exists in two different places?  (Especially if correctness depends on
+> the same thing happening in both the places this bit can be cleared.)
+
+Yes. Good suggestions.
+
+BTW, this code is here because the SQ is undersized for big data. Since a
+single NFS_READ/WRITE can result in an attempt to fetch a large amount of
+data from the client (2M) and depending on certain HW resources this can
+result in a lot of WR being posted to the SQ.
+
+That said, there is a change coming in the 2.6.27 time frame that supports
+what is called Fast NSMR register. This allows the transport to effectively
+DMA map the entire transfer size (32k -- 2M) all as a single SGE. This will
+take a lot of pressure off the SQ and effectively make this code
+unnecessary.
+
 > 
-> 	" subtree  checking  is  also  used to make sure that files
-> 	inside directories to which only root has access can only be
-> 	accessed if  the  filesystem is exported with no_root_squash
-> 	(see below), even if the file itself allows more general
-> 	access."
+> --b.
 > 
-> So as much as I'd like to I'm not comfortable silently turning off that
-> check.
-
-Ack.
-
-> 
-> I suppose we could choose to acquire those capabilities only in the
-> no_subtree_check case.
-
-If only it were that easy ;-)
-
-reconnect_path potentially requires both 'r' and 'x' permission on
-parent directories.  'r' to be able to read the directory to find the
-name of the object being reconnected, and 'x' to do the lookup which
-effects the reconnect.
-
-To fix the current bug properly, reconnect_path still needs to bypass
-normal permission checks even when subtree_check is in effect, so it
-can be sure of getting read permission on the parent directory.
-
-There is another way .... but it would need careful consideration.
-
-While the dentry returned by exportfs_decode_fh (for a directory) must
-be connected in the dcache tree, it does *not* need to have a correct
-name.  All that is needed is that d_parent is correct  (this is used,
-as mentioned before, to correctly lock directory renames).
-
-We can leave the dentry unhashed but with a correct d_parent pointer.
-If the directory is ever access by name, d_slice_alias will be called
-and this will update the name in the dentry to be correct.
-
-We could then get rid of exportfs_get_name and the call to
-lookup_one_len, and add some dcache magic after the ->get_parent call
-to make 'pd' an anonymous child of 'ppd'.
-
-Some matching changes to d_splice_alias should finish the task.
-
-Does this seem sane to anyone else?  Is it worth a try?
+>> 
+>> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+>> 
+>> ---
+>>  net/sunrpc/xprtrdma/svc_rdma_transport.c |    8 ++++++--
+>>  1 files changed, 6 insertions(+), 2 deletions(-)
+>> 
+>> diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c
+>> b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+>> index 1e0af2f..14f83a1 100644
+>> --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
+>> +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+>> @@ -1010,8 +1010,12 @@ int svc_rdma_send(struct svcxprt_rdma *xprt, struct
+>> ib_send_wr *wr)
+>> if (xprt->sc_sq_depth == atomic_read(&xprt->sc_sq_count)) {
+>> spin_unlock_bh(&xprt->sc_lock);
+>> atomic_inc(&rdma_stat_sq_starve);
+>> -   /* See if we can reap some SQ WR */
+>> -   sq_cq_reap(xprt);
+>> +
+>> +   /* See if we can opportunistically reap SQ WR to make room */
+>> +   if (test_and_clear_bit(RDMAXPRT_SQ_PENDING, &xprt->sc_flags)) {
+>> +    ib_req_notify_cq(xprt->sc_sq_cq, IB_CQ_NEXT_COMP);
+>> +    sq_cq_reap(xprt);
+>> +   }
+>>  
+>> /* Wait until SQ WR available if SQ still full */
+>> wait_event(xprt->sc_send_wait,
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
 
-NeilBrown
