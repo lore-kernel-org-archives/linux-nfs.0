@@ -1,84 +1,60 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH  3/17] svcrdma: Fix return value in svc_rdma_send
-Date: Tue, 6 May 2008 17:08:35 -0400
-Message-ID: <20080506210835.GL13484@fieldses.org>
-References: <20080505220817.GH12814@fieldses.org> <C4452686.4957E%tom@opengridcomputing.com>
+Subject: Re: [PATCH  2/17] svcrdma: Fix race with dto_tasklet in
+	svc_rdma_send
+Date: Tue, 6 May 2008 17:18:51 -0400
+Message-ID: <20080506211851.GM13484@fieldses.org>
+References: <20080505220636.GG12814@fieldses.org> <C4452BEA.4959F%tom@opengridcomputing.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-nfs@vger.kernel.org
 To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:37188 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:43768 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751490AbYEFVIh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 May 2008 17:08:37 -0400
-In-Reply-To: <C4452686.4957E%tom@opengridcomputing.com>
+	id S932717AbYEFVSw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 May 2008 17:18:52 -0400
+In-Reply-To: <C4452BEA.4959F%tom@opengridcomputing.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, May 05, 2008 at 09:03:02PM -0500, Tom Tucker wrote:
+On Mon, May 05, 2008 at 09:26:02PM -0500, Tom Tucker wrote:
 > 
 > 
-> On 5/5/08 5:08 PM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
 > 
-> > On Fri, May 02, 2008 at 11:28:35AM -0500, Tom Tucker wrote:
-> >> Fix the return value on close to -ENOTCONN so caller knows to free context.
-> >> Also if a thread is waiting for free SQ space, check for close when waking
-> >> to avoid posting WR to a closing transport.
+> On 5/5/08 5:06 PM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> 
+> > On Fri, May 02, 2008 at 11:28:34AM -0500, Tom Tucker wrote:
+> >> The svc_rdma_send function will attempt to reap SQ WR to make room for
+> >> a new request if it finds the SQ full. This function races with the
+> >> dto_tasklet that also reaps SQ WR. To avoid calling the function
+> >> unnecessarily use test_and_clear_bit with the RDMAXPRT_SQ_PENDING
+> >> flag to serialize access to the sq_cq_reap function.
 > > 
-> > A random related question: svc_rdma_send_error() seems to have only one
-> > caller, which ignores its return value.  Should its return value be
-> > made void?
+> > OK.  I won't pretend to understand much of this, but--would it be worth
+> > pulling out the added code here into a helper function, since it now
+> > exists in two different places?  (Especially if correctness depends on
+> > the same thing happening in both the places this bit can be cleared.)
 > 
-> Honestly, I don't think this code path has ever been excercised. This is the
-> "protocol error" path. Given my experience with the "random transport error"
-> tests that resulted in the patchset your currently looking at, I'd be
-> inclined to defer this kind of thing until I've built a "protocol error" set
-> of tests and worked through the "evil client" scenarios.
+> Yes. Good suggestions.
 > 
-> Thoughts?
+> BTW, this code is here because the SQ is undersized for big data. Since a
+> single NFS_READ/WRITE can result in an attempt to fetch a large amount of
+> data from the client (2M) and depending on certain HW resources this can
+> result in a lot of WR being posted to the SQ.
 
-None, just the observation that it's ugly to have something defined as
+WR is write request, SQ is send queue?  (In which case this happens on
+nfs read operations?)  I'm behind....
 
-	int svc_rdma_send_error(struct svcxprt_rdma *xprt, ...
+> That said, there is a change coming in the 2.6.27 time frame that supports
+> what is called Fast NSMR register. This allows the transport to effectively
+> DMA map the entire transfer size (32k -- 2M) all as a single SGE. This will
+> take a lot of pressure off the SQ and effectively make this code
+> unnecessary.
 
-whose only caller is
+OK!
 
-	(void)svc_rdma_send_error(rdma_xprt, rmsgp, ERR_VERS);
-
-But it's not urgent--if you want to wait till you're fixing something
-related, OK.
+Ideally we'd have patches for 2.6.27 in linux-next for a little while
+first, so we should try to have that ready in a month or so, when the
+-rc's start looking final.
 
 --b.
-
-> > 
-> > --b.
-> > 
-> >> 
-> >> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
-> >> 
-> >> ---
-> >>  net/sunrpc/xprtrdma/svc_rdma_transport.c |    2 +-
-> >>  1 files changed, 1 insertions(+), 1 deletions(-)
-> >> 
-> >> diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-> >> b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-> >> index 14f83a1..8adb2f0 100644
-> >> --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-> >> +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-> >> @@ -999,7 +999,7 @@ int svc_rdma_send(struct svcxprt_rdma *xprt, struct
-> >> ib_send_wr *wr)
-> >> int ret;
-> >>  
-> >> if (test_bit(XPT_CLOSE, &xprt->sc_xprt.xpt_flags))
-> >> -  return 0;
-> >> +  return -ENOTCONN;
-> >>  
-> >> BUG_ON(wr->send_flags != IB_SEND_SIGNALED);
-> >> BUG_ON(((struct svc_rdma_op_ctxt *)(unsigned long)wr->wr_id)->wr_op !=
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> 
