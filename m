@@ -1,84 +1,117 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: Re: [PATCH  2/17] svcrdma: Fix race with dto_tasklet in
- svc_rdma_send
-Date: Mon, 05 May 2008 21:26:02 -0500
-Message-ID: <C4452BEA.4959F%tom@opengridcomputing.com>
-References: <20080505220636.GG12814@fieldses.org>
+Subject: Re: [PATCH  8/17] svcrdma: Return error from rdma_read_xdr so
+ caller knows to free context
+Date: Mon, 05 May 2008 21:05:37 -0500
+Message-ID: <C4452721.4958A%tom@opengridcomputing.com>
+References: <20080505225207.GJ12814@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain;
 	charset="US-ASCII"
 Cc: <linux-nfs@vger.kernel.org>
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.es335.com ([67.65.19.105]:11855 "EHLO mail.es335.com"
+Received: from mail.es335.com ([67.65.19.105]:5445 "EHLO mail.es335.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754491AbYEFC0P (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 5 May 2008 22:26:15 -0400
-In-Reply-To: <20080505220636.GG12814@fieldses.org>
+	id S1755921AbYEFC2X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 5 May 2008 22:28:23 -0400
+In-Reply-To: <20080505225207.GJ12814@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
 
-On 5/5/08 5:06 PM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+On 5/5/08 5:52 PM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-> On Fri, May 02, 2008 at 11:28:34AM -0500, Tom Tucker wrote:
->> The svc_rdma_send function will attempt to reap SQ WR to make room for
->> a new request if it finds the SQ full. This function races with the
->> dto_tasklet that also reaps SQ WR. To avoid calling the function
->> unnecessarily use test_and_clear_bit with the RDMAXPRT_SQ_PENDING
->> flag to serialize access to the sq_cq_reap function.
+> On Fri, May 02, 2008 at 11:28:40AM -0500, Tom Tucker wrote:
+>> The rdma_read_xdr function did discriminate between no read-list and
+>     ^^^
+>     did not?
 > 
-> OK.  I won't pretend to understand much of this, but--would it be worth
-> pulling out the added code here into a helper function, since it now
-> exists in two different places?  (Especially if correctness depends on
-> the same thing happening in both the places this bit can be cleared.)
+Ack.
 
-Yes. Good suggestions.
-
-BTW, this code is here because the SQ is undersized for big data. Since a
-single NFS_READ/WRITE can result in an attempt to fetch a large amount of
-data from the client (2M) and depending on certain HW resources this can
-result in a lot of WR being posted to the SQ.
-
-That said, there is a change coming in the 2.6.27 time frame that supports
-what is called Fast NSMR register. This allows the transport to effectively
-DMA map the entire transfer size (32k -- 2M) all as a single SGE. This will
-take a lot of pressure off the SQ and effectively make this code
-unnecessary.
-
-> 
-> --b.
-> 
+>> an error posting the read-list. This results a leak of a page in the
+>> context when an asyncrhonous error occurs on the transport.
 >> 
 >> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 >> 
 >> ---
->>  net/sunrpc/xprtrdma/svc_rdma_transport.c |    8 ++++++--
->>  1 files changed, 6 insertions(+), 2 deletions(-)
+>>  net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |   17 +++++++++++++----
+>>  1 files changed, 13 insertions(+), 4 deletions(-)
 >> 
->> diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c
->> b/net/sunrpc/xprtrdma/svc_rdma_transport.c
->> index 1e0af2f..14f83a1 100644
->> --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
->> +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
->> @@ -1010,8 +1010,12 @@ int svc_rdma_send(struct svcxprt_rdma *xprt, struct
->> ib_send_wr *wr)
->> if (xprt->sc_sq_depth == atomic_read(&xprt->sc_sq_count)) {
->> spin_unlock_bh(&xprt->sc_lock);
->> atomic_inc(&rdma_stat_sq_starve);
->> -   /* See if we can reap some SQ WR */
->> -   sq_cq_reap(xprt);
->> +
->> +   /* See if we can opportunistically reap SQ WR to make room */
->> +   if (test_and_clear_bit(RDMAXPRT_SQ_PENDING, &xprt->sc_flags)) {
->> +    ib_req_notify_cq(xprt->sc_sq_cq, IB_CQ_NEXT_COMP);
->> +    sq_cq_reap(xprt);
->> +   }
+>> diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+>> b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+>> index f3a108a..0ac375a 100644
+>> --- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+>> +++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+>> @@ -260,11 +260,16 @@ static int rdma_read_max_sge(struct svcxprt_rdma *xprt,
+>> int sge_count)
+>>   * On our side, we need to read into a pagelist. The first page immediately
+>>   * follows the RPC header.
+>>   *
+>> - * This function returns 1 to indicate success. The data is not yet in
+>> + * This function returns:
+>> + * 0 - No error and no read-list found.
+>> + *
+>> + * 1 - Successful read-list processing. The data is not yet in
+>>   * the pagelist and therefore the RPC request must be deferred. The
+>>   * I/O completion will enqueue the transport again and
+>>   * svc_rdma_recvfrom will complete the request.
+>>   *
+>> + * <0 - Error processing/posting read-list.
+>> + *
+>>   * NOTE: The ctxt must not be touched after the last WR has been posted
+>>   * because the I/O completion processing may occur on another
+>>   * processor and free / modify the context. Ne touche pas!
+>> @@ -398,7 +403,7 @@ next_sge:
+>> svc_rdma_put_context(head, 1);
+>> head = ctxt;
+>> }
+>> -  return 0;
+>> +  return err;
+>> }
 >>  
->> /* Wait until SQ WR available if SQ still full */
->> wait_event(xprt->sc_send_wait,
+>> return 1;
+>> @@ -536,8 +541,12 @@ int svc_rdma_recvfrom(struct svc_rqst *rqstp)
+>> * it. Not that in this case, we don't return the RQ credit
+>> * until after the read completes.
+>> */
+>> - if (rdma_read_xdr(rdma_xprt, rmsgp, rqstp, ctxt)) {
+>> -  svc_xprt_received(xprt);
+>> + ret = rdma_read_xdr(rdma_xprt, rmsgp, rqstp, ctxt);
+>> + if (ret) {
+>> +  if (ret > 0)
+>> +   svc_xprt_received(xprt);
+>> +  else
+>> +   svc_rdma_put_context(ctxt, 1);
+>> return 0;
+>> }
+>>  
+> 
+> Possibly slightly more straightforward?:
+> 
+> /* Read read-list data. */
+> ret = rdma_read_xdr(rdma_xprt, rmsgp, rqstp, ctxt);
+> if (ret < 0) {
+> svc_rdma_put_context(ctxt, 1);
+> return 0;
+> }
+> if (ret > 0) {
+> /*
+> * We need to wait; defer the request.  Note that in
+> * this case, we don't return the RQ credit until after
+> * the read completes.
+> */
+> svc_xprt_received(xprt);
+> return 0;
+> }
+> ...
+> 
+
+Yep. I rewrote that code three different ways and never liked it. I think
+you've got it right first try... :-)
+
+> --b.
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
