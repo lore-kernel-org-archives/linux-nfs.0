@@ -1,89 +1,91 @@
-From: Tom Tucker <tom@opengridcomputing.com>
-Subject: Re: [PATCH  7/17] svcrdma: Fix error handling during listening
- endpoint creation
-Date: Tue, 06 May 2008 09:48:06 -0500
-Message-ID: <C445D9D6.4AB49%tom@opengridcomputing.com>
-References: <20080505224140.GI12814@fieldses.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] exportfs: fix incorrect EACCES in reconnect_path()
+Date: Tue, 6 May 2008 15:50:41 -0400
+Message-ID: <20080506195041.GD13484@fieldses.org>
+References: <20080429174004.GA28719@janus> <20080430174736.GB20377@fieldses.org> <20080502151646.GA5515@janus> <20080502153439.GC7376@infradead.org> <20080502155617.GD18401@fieldses.org> <1209744293.8294.19.camel@heimdal.trondhjem.org> <20080502221216.GP21918@fieldses.org> <18462.17737.353976.999538@notabene.brown> <20080505174716.GA12814@fieldses.org> <18463.42978.531115.344884@notabene.brown>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="US-ASCII"
-Cc: <linux-nfs@vger.kernel.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	Christoph Hellwig <hch@infradead.org>,
+	Frank van Maarseveen <frankvm@frankvm.com>,
+	Christoph Hellwig <hch@lst.de>,
+	Linux NFS mailing list <linux-nfs@vger.kernel.org>
+To: Neil Brown <neilb@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.es335.com ([67.65.19.105]:19778 "EHLO mail.es335.com"
+Received: from mail.fieldses.org ([66.93.2.214]:43717 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757324AbYEFOsV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 May 2008 10:48:21 -0400
-In-Reply-To: <20080505224140.GI12814@fieldses.org>
+	id S932879AbYEFTvB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 May 2008 15:51:01 -0400
+In-Reply-To: <18463.42978.531115.344884-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-
-On 5/5/08 5:41 PM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-
-> On Fri, May 02, 2008 at 11:28:39AM -0500, Tom Tucker wrote:
->> A listening endpoint isn't known to the generic transport switch until
->> the svc_create_xprt function returns without error. Calling
->> svc_xprt_put within the xpo_create function causes the module reference
->> count to be erroneously decremented.
+On Tue, May 06, 2008 at 10:35:46AM +1000, Neil Brown wrote:
+> On Monday May 5, bfields@fieldses.org wrote:
+> > On Mon, May 05, 2008 at 09:22:49AM +1000, Neil Brown wrote:
+> > > 
+> > > Now it could be argued that this permission test is really a dumb idea
+> > > that buys nothing and costs much.  And if you were to queue a patch to
+> > > get rid of it, I doubt you would get any objections .... certainly not
+> > > from me :-)
+> > 
+> > Dumb idea or not, it looks like it's explicitly documented in
+> > exports(5):
+> > 
+> > 	" subtree  checking  is  also  used to make sure that files
+> > 	inside directories to which only root has access can only be
+> > 	accessed if  the  filesystem is exported with no_root_squash
+> > 	(see below), even if the file itself allows more general
+> > 	access."
+> > 
+> > So as much as I'd like to I'm not comfortable silently turning off that
+> > check.
 > 
-> There's some redundant code in these three error paths; would the usual
-> kernel-style "goto cleanup" thing help?
+> Ack.
+> 
+> > 
+> > I suppose we could choose to acquire those capabilities only in the
+> > no_subtree_check case.
+> 
+> If only it were that easy ;-)
+> 
+> reconnect_path potentially requires both 'r' and 'x' permission on
+> parent directories.  'r' to be able to read the directory to find the
+> name of the object being reconnected, and 'x' to do the lookup which
+> effects the reconnect.
+> 
+> To fix the current bug properly, reconnect_path still needs to bypass
+> normal permission checks even when subtree_check is in effect, so it
+> can be sure of getting read permission on the parent directory.
 
-I think code-size it's a wash, but it might look more familiar. BTW, I
-noticed that the error path above returns a positive errno :-\, so that
-needs to be fixed too.
+OK, but why not just forget the subtree_check case?  It would be just
+another item on the "reasons not to use subtree_check" list.
+
+If a fix for the subtree checking case were easy (or if someone else had
+the time to do a very careful job of it), then fine, but maybe we should
+just fix the easy case and leave the subtree checking as is for now.
+
+--b.
 
 > 
-> --b.
+> There is another way .... but it would need careful consideration.
 > 
->> 
->> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
->> 
->> ---
->>  net/sunrpc/xprtrdma/svc_rdma_transport.c |    6 +++---
->>  1 files changed, 3 insertions(+), 3 deletions(-)
->> 
->> diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c
->> b/net/sunrpc/xprtrdma/svc_rdma_transport.c
->> index 83818cf..0d9a828 100644
->> --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
->> +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
->> @@ -669,7 +669,7 @@ static struct svc_xprt *svc_rdma_create(struct svc_serv
->> *serv,
->>  
->> listen_id = rdma_create_id(rdma_listen_handler, cma_xprt, RDMA_PS_TCP);
->> if (IS_ERR(listen_id)) {
->> -  svc_xprt_put(&cma_xprt->sc_xprt);
->> +  kfree(cma_xprt);
->> dprintk("svcrdma: rdma_create_id failed = %ld\n",
->> PTR_ERR(listen_id));
->> return (void *)listen_id;
->> @@ -677,7 +677,7 @@ static struct svc_xprt *svc_rdma_create(struct svc_serv
->> *serv,
->> ret = rdma_bind_addr(listen_id, sa);
->> if (ret) {
->> rdma_destroy_id(listen_id);
->> -  svc_xprt_put(&cma_xprt->sc_xprt);
->> +  kfree(cma_xprt);
->> dprintk("svcrdma: rdma_bind_addr failed = %d\n", ret);
->> return ERR_PTR(ret);
->> }
->> @@ -686,7 +686,7 @@ static struct svc_xprt *svc_rdma_create(struct svc_serv
->> *serv,
->> ret = rdma_listen(listen_id, RPCRDMA_LISTEN_BACKLOG);
->> if (ret) {
->> rdma_destroy_id(listen_id);
->> -  svc_xprt_put(&cma_xprt->sc_xprt);
->> +  kfree(cma_xprt);
->> dprintk("svcrdma: rdma_listen failed = %d\n", ret);
->> return ERR_PTR(ret);
->> }
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-
+> While the dentry returned by exportfs_decode_fh (for a directory) must
+> be connected in the dcache tree, it does *not* need to have a correct
+> name.  All that is needed is that d_parent is correct  (this is used,
+> as mentioned before, to correctly lock directory renames).
+> 
+> We can leave the dentry unhashed but with a correct d_parent pointer.
+> If the directory is ever access by name, d_slice_alias will be called
+> and this will update the name in the dentry to be correct.
+> 
+> We could then get rid of exportfs_get_name and the call to
+> lookup_one_len, and add some dcache magic after the ->get_parent call
+> to make 'pd' an anonymous child of 'ppd'.
+> 
+> Some matching changes to d_splice_alias should finish the task.
+> 
+> Does this seem sane to anyone else?  Is it worth a try?
+> 
+> 
+> NeilBrown
