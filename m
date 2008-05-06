@@ -1,631 +1,347 @@
 From: Kevin Coffman <kwc@citi.umich.edu>
-Subject: [enctypes round 3: PATCH 16/24] gss_krb5: add support for new token
-	formats in rfc4121
-Date: Tue, 06 May 2008 17:04:53 -0400
-Message-ID: <20080506210453.3770.20322.stgit@jazz.citi.umich.edu>
+Subject: [enctypes round 3: PATCH 11/24] gss_krb5: handle new context format
+	from gssd
+Date: Tue, 06 May 2008 17:04:27 -0400
+Message-ID: <20080506210427.3770.83370.stgit@jazz.citi.umich.edu>
 References: <20080506210156.3770.95914.stgit@jazz.citi.umich.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from citi.umich.edu ([141.211.133.111]:6768 "EHLO citi.umich.edu"
+Received: from citi.umich.edu ([141.211.133.111]:21968 "EHLO citi.umich.edu"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757327AbYEFVEy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 May 2008 17:04:54 -0400
+	id S1765735AbYEFVE2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 May 2008 17:04:28 -0400
 In-Reply-To: <20080506210156.3770.95914.stgit-zTNJhAanYLVZN1qrTdtDg5Vzexx5G7lz@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a step toward support for AES encryption types which are required
-to use the new token formats defined in rfc4121.
+For encryption types other than DES, gssd sends down context information
+in a new format.  This new format includes the information needed to
+support the new Kerberos GSS-API tokens defined in rfc4121.
 
 Signed-off-by: Kevin Coffman <kwc@citi.umich.edu>
 ---
 
- include/linux/sunrpc/gss_krb5.h       |   28 ++++
- net/sunrpc/auth_gss/gss_krb5_crypto.c |   74 ++++++++++
- net/sunrpc/auth_gss/gss_krb5_seal.c   |   70 +++++++++
- net/sunrpc/auth_gss/gss_krb5_unseal.c |   61 ++++++++
- net/sunrpc/auth_gss/gss_krb5_wrap.c   |  247 +++++++++++++++++++++++++++++++++
- 5 files changed, 480 insertions(+), 0 deletions(-)
+ include/linux/sunrpc/gss_krb5.h     |   19 +++
+ net/sunrpc/auth_gss/gss_krb5_mech.c |  237 +++++++++++++++++++++++++++++++++++
+ 2 files changed, 255 insertions(+), 1 deletions(-)
 
 diff --git a/include/linux/sunrpc/gss_krb5.h b/include/linux/sunrpc/gss_krb5.h
-index c686fa9..c6bb014 100644
+index b17a310..81d6fc2 100644
 --- a/include/linux/sunrpc/gss_krb5.h
 +++ b/include/linux/sunrpc/gss_krb5.h
-@@ -53,6 +53,8 @@
- /* Maximum blocksize for the supported crypto algorithms */
- #define GSS_KRB5_MAX_BLOCKSIZE  (16)
- 
-+struct krb5_ctx;
-+
- struct gss_krb5_enctype {
- 	const u32		etype;		/* encryption (key) type */
- 	const u32		ctype;		/* checksum type */
-@@ -75,6 +77,12 @@ struct gss_krb5_enctype {
- 	u32 (*mk_key) (struct gss_krb5_enctype *gk5e,
- 		       struct xdr_netobj *in,
+@@ -77,16 +77,31 @@ struct gss_krb5_enctype {
  		       struct xdr_netobj *out);	/* complete key generation */
-+	u32 (*encrypt_v2) (struct krb5_ctx *kctx, u32 offset,
-+			   struct xdr_buf *buf, int ec,
-+			   struct page **pages); /* v2 encryption function */
-+	u32 (*decrypt_v2) (struct krb5_ctx *kctx, u32 offset,
-+			   struct xdr_buf *buf, u32 *headskip,
-+			   u32 *tailskip);	/* v2 decryption function */
  };
  
- /* krb5_ctx flags definitions */
-@@ -112,6 +120,18 @@ extern spinlock_t krb5_seq_lock;
- #define KG_TOK_MIC_MSG    0x0101
- #define KG_TOK_WRAP_MSG   0x0201
- 
-+#define KG2_TOK_INITIAL     0x0101
-+#define KG2_TOK_RESPONSE    0x0202
-+#define KG2_TOK_MIC         0x0404
-+#define KG2_TOK_WRAP        0x0504
++/* krb5_ctx flags definitions */
++#define KRB5_CTX_FLAG_INITIATOR         0x00000001
++#define KRB5_CTX_FLAG_CFX               0x00000002
++#define KRB5_CTX_FLAG_ACCEPTOR_SUBKEY   0x00000004
 +
-+#define KG2_TOKEN_FLAG_SENTBYACCEPTOR   0x01
-+#define KG2_TOKEN_FLAG_SEALED           0x02
-+#define KG2_TOKEN_FLAG_ACCEPTORSUBKEY   0x04
-+
-+#define KG2_RESP_FLAG_ERROR             0x0001
-+#define KG2_RESP_FLAG_DELEG_OK          0x0002
-+
- enum sgn_alg {
- 	SGN_ALG_DES_MAC_MD5 = 0x0000,
- 	SGN_ALG_MD2_5 = 0x0001,
-@@ -136,6 +156,9 @@ enum seal_alg {
- #define CKSUMTYPE_RSA_MD5_DES		0x0008
- #define CKSUMTYPE_NIST_SHA		0x0009
- #define CKSUMTYPE_HMAC_SHA1_DES3	0x000c
-+#define CKSUMTYPE_HMAC_SHA1_96_AES128   0x000f
-+#define CKSUMTYPE_HMAC_SHA1_96_AES256   0x0010
-+#define CKSUMTYPE_HMAC_MD5_ARCFOUR      -138 /* Microsoft md5 hmac cksumtype */
+ struct krb5_ctx {
+ 	int			initiate; /* 1 = initiating, 0 = accepting */
+ 	u32			enctype;
++	u32			flags;
+ 	struct gss_krb5_enctype *gk5e;		/* enctype-specific info */
+ 	struct crypto_blkcipher	*enc;
+ 	struct crypto_blkcipher	*seq;
++	struct crypto_blkcipher *acceptor_enc;
++	struct crypto_blkcipher *initiator_enc;
+ 	u8			cksum[GSS_KRB5_MAX_KEYLEN];
+ 	s32			endtime;
+ 	u32			seq_send;
++	u64			seq_send64;
+ 	struct xdr_netobj	mech_used;
++	u8			initiator_sign[GSS_KRB5_MAX_KEYLEN];
++	u8			acceptor_sign[GSS_KRB5_MAX_KEYLEN];
++	u8			initiator_seal[GSS_KRB5_MAX_KEYLEN];
++	u8			acceptor_seal[GSS_KRB5_MAX_KEYLEN];
++	u8			initiator_integ[GSS_KRB5_MAX_KEYLEN];
++	u8			acceptor_integ[GSS_KRB5_MAX_KEYLEN];
+ };
  
- /* from gssapi_err_krb5.h */
- #define KG_CCACHE_NOMATCH                        (39756032L)
-@@ -212,6 +235,11 @@ make_checksum(struct krb5_ctx *kctx, char *header, int hdrlen,
- 		struct xdr_buf *body, int body_offset, u8 *cksumkey,
- 		struct xdr_netobj *cksumout);
+ extern spinlock_t krb5_seq_lock;
+@@ -151,6 +166,10 @@ enum seal_alg {
+ #define ENCTYPE_DES3_CBC_RAW    0x0006	/* DES-3 cbc mode raw */
+ #define ENCTYPE_DES_HMAC_SHA1   0x0008
+ #define ENCTYPE_DES3_CBC_SHA1   0x0010
++#define ENCTYPE_AES128_CTS_HMAC_SHA1_96 0x0011
++#define ENCTYPE_AES256_CTS_HMAC_SHA1_96 0x0012
++#define ENCTYPE_ARCFOUR_HMAC            0x0017
++#define ENCTYPE_ARCFOUR_HMAC_EXP        0x0018
+ #define ENCTYPE_UNKNOWN         0x01ff
  
-+u32
-+make_checksum_v2(struct krb5_ctx *, char *header, int hdrlen,
-+		 struct xdr_buf *body, int body_offset, u8 *key,
-+		 struct xdr_netobj *cksum);
+ /*
+diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_mech.c
+index bff929f..bf0d0c1 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_mech.c
++++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
+@@ -48,6 +48,8 @@
+ # define RPCDBG_FACILITY	RPCDBG_AUTH
+ #endif
+ 
++static struct gss_api_mech gss_kerberos_mech;	/* forward declaration */
 +
- u32 gss_get_mic_kerberos(struct gss_ctx *, struct xdr_buf *,
- 		struct xdr_netobj *);
- 
-diff --git a/net/sunrpc/auth_gss/gss_krb5_crypto.c b/net/sunrpc/auth_gss/gss_krb5_crypto.c
-index 0c91186..66ba0b3 100644
---- a/net/sunrpc/auth_gss/gss_krb5_crypto.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_crypto.c
-@@ -198,6 +198,80 @@ out:
- 	return err ? GSS_S_FAILURE : 0;
+ static struct gss_krb5_enctype supported_gss_krb5_enctypes[] = {
+ 	/*
+ 	 * DES (All DES enctypes are mapped to the same gss functionality)
+@@ -246,6 +248,237 @@ out_err:
+ 	return PTR_ERR(p);
  }
  
-+/*
-+ * checksum the plaintext data and hdrlen bytes of the token header
-+ * Per rfc4121, sec. 4.2.4, the checksum is performed over the data
-+ * body then over the first 16 octets of the MIC token
-+ * Inclusion of the header data in the calculation of the
-+ * checksum is optional.
-+ */
-+u32
-+make_checksum_v2(struct krb5_ctx *kctx, char *header, int hdrlen,
-+		 struct xdr_buf *body, int body_offset, u8 *cksumkey,
-+		 struct xdr_netobj *cksumout)
++struct crypto_blkcipher *
++context_v2_alloc_cipher(struct krb5_ctx *ctx, u8 *key)
 +{
-+	struct hash_desc desc;
-+	struct scatterlist sg[1];
-+	int err;
-+	u8 checksumdata[GSS_KRB5_MAX_CKSUM_LEN];
-+	unsigned int checksumlen;
++	struct crypto_blkcipher *cp;
 +
-+	if (kctx->gk5e->keyed_cksum == 0) {
-+		dprintk("%s: expected keyed hash for %s\n",
-+			__func__, kctx->gk5e->name);
-+		return GSS_S_FAILURE;
++	cp = crypto_alloc_blkcipher(ctx->gk5e->encrypt_name,
++					0, CRYPTO_ALG_ASYNC);
++	if (IS_ERR(cp)) {
++		printk("gss_kerberos_mech: unable to initialize "
++			"crypto algorithm %s\n", ctx->gk5e->encrypt_name);
++		return NULL;
 +	}
-+	if (cksumkey == NULL) {
-+		dprintk("%s: no key supplied for %s\n",
-+			__func__, kctx->gk5e->name);
-+		return GSS_S_FAILURE;
++	if (crypto_blkcipher_setkey(cp, key, ctx->gk5e->keylength)) {
++		printk("gss_kerberos_mech: error setting key for "
++			"crypto algorithm %s\n", ctx->gk5e->encrypt_name);
++		crypto_free_blkcipher(cp);
++		return NULL;
 +	}
-+
-+	desc.tfm = crypto_alloc_hash(kctx->gk5e->cksum_name, 0,
-+							CRYPTO_ALG_ASYNC);
-+	if (IS_ERR(desc.tfm))
-+		return GSS_S_FAILURE;
-+	checksumlen = crypto_hash_digestsize(desc.tfm);
-+	desc.flags = CRYPTO_TFM_REQ_MAY_SLEEP;
-+
-+	err = crypto_hash_setkey(desc.tfm, cksumkey, kctx->gk5e->keylength);
-+	if (err)
-+		goto out;
-+
-+	err = crypto_hash_init(&desc);
-+	if (err)
-+		goto out;
-+	err = xdr_process_buf(body, body_offset, body->len - body_offset,
-+			      checksummer, &desc);
-+	if (err)
-+		goto out;
-+	if (header != NULL) {
-+		sg_init_one(sg, header, hdrlen);
-+		err = crypto_hash_update(&desc, sg, hdrlen);
-+		if (err)
-+			goto out;
-+	}
-+	err = crypto_hash_final(&desc, checksumdata);
-+	if (err)
-+		goto out;
-+
-+	cksumout->len = kctx->gk5e->cksumlength;
-+
-+	switch (kctx->gk5e->ctype) {
-+	case CKSUMTYPE_HMAC_SHA1_96_AES128:
-+	case CKSUMTYPE_HMAC_SHA1_96_AES256:
-+		/* note that this truncates the hash */
-+		memcpy(cksumout->data, checksumdata, kctx->gk5e->cksumlength);
-+		break;
-+	default:
-+		BUG();
-+		break;
-+	}
-+out:
-+	crypto_free_hash(desc.tfm);
-+	return err ? GSS_S_FAILURE : 0;
++	return cp;
 +}
 +
- struct encryptor_desc {
- 	u8 iv[GSS_KRB5_MAX_BLOCKSIZE];
- 	struct blkcipher_desc desc;
-diff --git a/net/sunrpc/auth_gss/gss_krb5_seal.c b/net/sunrpc/auth_gss/gss_krb5_seal.c
-index ba86910..6f01d87 100644
---- a/net/sunrpc/auth_gss/gss_krb5_seal.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_seal.c
-@@ -92,6 +92,33 @@ setup_token(struct krb5_ctx *ctx, struct xdr_netobj *token)
- 	return (char *)krb5_hdr;
- }
- 
-+static void *
-+setup_token_v2(struct krb5_ctx *ctx, struct xdr_netobj *token)
++static inline void
++set_cdata(u8 cdata[GSS_KRB5_K5CLENGTH], u32 usage, u8 seed)
 +{
-+	__be16 *ptr, *krb5_hdr;
-+	u8 *p, flags = 0x00;
-+
-+	if ((ctx->flags & KRB5_CTX_FLAG_INITIATOR) == 0)
-+		flags |= 0x01;
-+	if (ctx->flags & KRB5_CTX_FLAG_ACCEPTOR_SUBKEY)
-+		flags |= 0x04;
-+
-+	/* Per rfc 4121, sec 4.2.6.1, there is no header,
-+	 * just start the token */
-+	krb5_hdr = ptr = (__be16 *)token->data;
-+
-+	*ptr++ = KG2_TOK_MIC;
-+	p = (u8 *)ptr;
-+	*p++ = flags;
-+	*p++ = 0xff;
-+	ptr = (__be16 *)p;
-+	*ptr++ = 0xffff;
-+	*ptr++ = 0xffff;
-+
-+	token->len = GSS_KRB5_TOK_HDR_LEN + ctx->gk5e->cksumlength;
-+	return krb5_hdr;
++	cdata[0] = (usage>>24)&0xff;
++	cdata[1] = (usage>>16)&0xff;
++	cdata[2] = (usage>>8)&0xff;
++	cdata[3] = usage&0xff;
++	cdata[4] = seed;
 +}
 +
- static u32
- gss_get_mic_v1(struct krb5_ctx *ctx, struct xdr_buf *text,
- 		struct xdr_netobj *token)
-@@ -134,6 +161,46 @@ gss_get_mic_v1(struct krb5_ctx *ctx, struct xdr_buf *text,
- }
- 
- u32
-+gss_get_mic_v2(struct krb5_ctx *ctx, struct xdr_buf *text,
-+		struct xdr_netobj *token)
++static int
++context_derive_keys_des3(struct krb5_ctx *ctx, u8 *rawkey, u32 keylen)
 +{
-+	char cksumdata[GSS_KRB5_MAX_CKSUM_LEN];
-+	struct xdr_netobj cksumobj = { .len = sizeof(cksumdata),
-+				       .data = cksumdata};
-+	void *krb5_hdr;
-+	s32 now;
-+	u64 seq_send;
-+	u8 *cksumkey;
++	struct xdr_netobj c, keyin, keyout;
++	u8 cdata[GSS_KRB5_K5CLENGTH];
++	u32 err;
 +
-+	dprintk("RPC:       %s\n", __func__);
-+	BUG_ON(ctx == NULL);
++	c.len = GSS_KRB5_K5CLENGTH;
++	c.data = cdata;
 +
-+	krb5_hdr = setup_token_v2(ctx, token);
++	keyin.data = rawkey;
++	keyin.len = keylen;
++	keyout.len = keylen;
 +
-+	/* Set up the sequence number. Now 64-bits in clear
-+	 * text and w/o direction indicator */
-+	spin_lock(&krb5_seq_lock);
-+	seq_send = ctx->seq_send64++;
-+	spin_unlock(&krb5_seq_lock);
-+	*((u64 *)(krb5_hdr + 8)) = cpu_to_be64(seq_send);
++	/* seq uses the raw key */
++	ctx->seq = context_v2_alloc_cipher(ctx, rawkey);
++	if (ctx->seq == NULL)
++		goto out_err;
 +
-+	if (ctx->initiate)
-+		cksumkey = ctx->initiator_sign;
-+	else
-+		cksumkey = ctx->acceptor_sign;
++	ctx->enc = context_v2_alloc_cipher(ctx, rawkey);
++	if (ctx->enc == NULL)
++		goto out_free_seq;
 +
-+	if (make_checksum_v2(ctx, krb5_hdr, GSS_KRB5_TOK_HDR_LEN,
-+			     text, 0, cksumkey, &cksumobj))
-+		return GSS_S_FAILURE;
-+
-+	memcpy(krb5_hdr + GSS_KRB5_TOK_HDR_LEN, cksumobj.data, cksumobj.len);
-+
-+	now = get_seconds();
-+
-+	return (ctx->endtime < now) ? GSS_S_CONTEXT_EXPIRED : GSS_S_COMPLETE;
-+}
-+
-+u32
- gss_get_mic_kerberos(struct gss_ctx *gss_ctx, struct xdr_buf *text,
- 		     struct xdr_netobj *token)
- {
-@@ -145,6 +212,9 @@ gss_get_mic_kerberos(struct gss_ctx *gss_ctx, struct xdr_buf *text,
- 	case ENCTYPE_DES_CBC_RAW:
- 	case ENCTYPE_DES3_CBC_RAW:
- 		return gss_get_mic_v1(ctx, text, token);
-+	case ENCTYPE_AES128_CTS_HMAC_SHA1_96:
-+	case ENCTYPE_AES256_CTS_HMAC_SHA1_96:
-+		return gss_get_mic_v2(ctx, text, token);
- 	}
- }
- 
-diff --git a/net/sunrpc/auth_gss/gss_krb5_unseal.c b/net/sunrpc/auth_gss/gss_krb5_unseal.c
-index becd212..5305b02 100644
---- a/net/sunrpc/auth_gss/gss_krb5_unseal.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_unseal.c
-@@ -142,6 +142,64 @@ gss_verify_mic_v1(struct krb5_ctx *ctx,
- 	return GSS_S_COMPLETE;
- }
- 
-+static u32
-+gss_verify_mic_v2(struct krb5_ctx *ctx,
-+		struct xdr_buf *message_buffer, struct xdr_netobj *read_token)
-+{
-+	char cksumdata[GSS_KRB5_MAX_CKSUM_LEN];
-+	struct xdr_netobj cksumobj = {.len = sizeof(cksumdata),
-+				      .data = cksumdata};
-+	s32 now;
-+	u64 seqnum;
-+	u8 *ptr = read_token->data;
-+	u8 *cksumkey;
-+	u8 flags;
-+	int i;
-+
-+	dprintk("RPC:       %s\n", __func__);
-+
-+	if (be16_to_cpu(*((__be16 *)ptr)) != KG2_TOK_MIC)
-+		return GSS_S_DEFECTIVE_TOKEN;
-+
-+	flags = ptr[2];
-+	if ((!ctx->initiate && (flags & KG2_TOKEN_FLAG_SENTBYACCEPTOR)) ||
-+	    (ctx->initiate && !(flags & KG2_TOKEN_FLAG_SENTBYACCEPTOR)))
-+		return GSS_S_BAD_SIG;
-+
-+	if (flags & KG2_TOKEN_FLAG_SEALED) {
-+		dprintk("%s: token has unexpected sealed flag\n", __func__);
-+		return GSS_S_FAILURE;
-+	}
-+
-+	for (i = 3; i < 8; i++)
-+		if (ptr[i] != 0xff)
-+			return GSS_S_DEFECTIVE_TOKEN;
-+
-+	if (ctx->initiate)
-+		cksumkey = ctx->acceptor_sign;
-+	else
-+		cksumkey = ctx->initiator_sign;
-+
-+	if (make_checksum_v2(ctx, ptr, GSS_KRB5_TOK_HDR_LEN, message_buffer, 0,
-+			     cksumkey, &cksumobj))
-+		return GSS_S_FAILURE;
-+
-+	if (memcmp(cksumobj.data, ptr + GSS_KRB5_TOK_HDR_LEN,
-+				ctx->gk5e->cksumlength))
-+		return GSS_S_BAD_SIG;
-+
-+	/* it got through unscathed.  Make sure the context is unexpired */
-+	now = get_seconds();
-+	if (now > ctx->endtime)
-+		return GSS_S_CONTEXT_EXPIRED;
-+
-+	/* do sequencing checks */
-+
-+	seqnum = be64_to_cpu((__be64 *)ptr + 8);
-+
-+	return GSS_S_COMPLETE;
-+}
-+
- u32
- gss_verify_mic_kerberos(struct gss_ctx *gss_ctx,
- 			struct xdr_buf *message_buffer,
-@@ -155,6 +213,9 @@ gss_verify_mic_kerberos(struct gss_ctx *gss_ctx,
- 	case ENCTYPE_DES_CBC_RAW:
- 	case ENCTYPE_DES3_CBC_RAW:
- 		return gss_verify_mic_v1(ctx, message_buffer, read_token);
-+	case ENCTYPE_AES128_CTS_HMAC_SHA1_96:
-+	case ENCTYPE_AES256_CTS_HMAC_SHA1_96:
-+		return gss_verify_mic_v2(ctx, message_buffer, read_token);
- 	}
- }
- 
-diff --git a/net/sunrpc/auth_gss/gss_krb5_wrap.c b/net/sunrpc/auth_gss/gss_krb5_wrap.c
-index c541d20..0c47bdd 100644
---- a/net/sunrpc/auth_gss/gss_krb5_wrap.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_wrap.c
-@@ -342,6 +342,247 @@ gss_unwrap_kerberos_v1(struct krb5_ctx *kctx, int offset, struct xdr_buf *buf)
- 	return GSS_S_COMPLETE;
- }
- 
-+#define TEST_ROTATE 0
-+#define TEST_EXTRA_COUNT  0
-+
-+#if TEST_ROTATE
-+static u32
-+rotate_right(struct krb5_ctx *kctx, u32 offset, struct xdr_buf *buf,
-+	     struct page **pages, u16 *rrc)
-+{
-+	u16 rotate_count = 0;
-+	u8 *tbuf;
-+
-+	/*
-+	 * As a quick test, if there is tail data that will fit within
-+	 * the head, move it there
-+	 */
-+
-+	/* If there is no tail, don't bother */
-+	if (buf->tail[0].iov_base == NULL)
-+		goto out;
-+
-+	/* If head and tail share a page, don't bother */
-+	if (buf->tail[0].iov_base - buf->head[0].iov_base < PAGE_CACHE_SIZE)
-+		goto out;
-+
-+	tbuf = kmalloc(buf->tail[0].iov_len, GFP_KERNEL);
-+	if (tbuf == NULL)
-+		goto out;
-+
-+	memcpy(tbuf, buf->tail[0].iov_base, buf->tail[0].iov_len);
-+
-+	/* XXX This assumes there is room in the head */
-+	rotate_count = buf->tail[0].iov_len;
-+
-+	if (shift_head_data(buf, offset + GSS_KRB5_TOK_HDR_LEN, rotate_count))
-+		goto out;
-+	memcpy(buf->head[0].iov_base + offset + GSS_KRB5_TOK_HDR_LEN, tbuf,
-+		buf->tail[0].iov_len);
-+	/* this is adjusted upwards in shift_head_data(),
-+	 * but we aren't adjusting the total length */
-+	buf->len -= rotate_count;
-+
-+	buf->tail[0].iov_len -= rotate_count;
-+	buf->tail[0].iov_base = NULL;   /* Needed? Correct? */
-+
-+	kfree(tbuf);
-+out:
-+	*rrc = rotate_count;
-+	dprintk("%s: returning with rotate_count of %u\n", __func__, *rrc);
-+	return 0;
-+}
-+#endif
-+
-+/*
-+ * We cannot currently handle tokens with rotated data.  We need a
-+ * generalized routine to rotate the data in place.  It is anticipated
-+ * that we won't encounter rotated data in the general case.
-+ */
-+static u32
-+rotate_left(struct krb5_ctx *kctx, u32 offset, struct xdr_buf *buf, u16 rrc)
-+{
-+	unsigned int realrrc = rrc % (buf->len - offset - GSS_KRB5_TOK_HDR_LEN);
-+
-+	if (realrrc == 0)
-+		return 0;
-+
-+	dprintk("%s: cannot process token with rotated data: "
-+		"rrc %u, realrrc %u\n", __func__, rrc, realrrc);
-+	return 1;
-+}
-+
-+static u32
-+gss_wrap_kerberos_v2(struct krb5_ctx *kctx, u32 offset,
-+		     struct xdr_buf *buf, struct page **pages)
-+{
-+	int		blocksize;
-+	u8		*ptr, *plainhdr;
-+	s32		now;
-+	u8		flags = 0x00;
-+	__be16		*be16ptr, ec = 0;
-+	__be64		*be64ptr;
-+	u32		err;
-+#if TEST_ROTATE
-+	u16		rrc;
-+#endif
-+#if TEST_EXTRA_COUNT
-+	unsigned int	plainlen;
-+#endif
-+
-+	dprintk("RPC:       %s\n", __func__);
-+
-+	GSS_KRB5_SLACK_CHECK;
-+
-+	if (kctx->gk5e->encrypt_v2 == NULL)
-+		return GSS_S_FAILURE;
-+
-+#if TEST_EXTRA_COUNT
-+	plainlen = buf->head[0].iov_len - offset
-+				+ buf->page_len + buf->tail[0].iov_len;
-+#endif
-+	/* make room for gss token header */
-+	if (shift_head_data(buf, offset, GSS_KRB5_TOK_HDR_LEN))
-+		return GSS_S_FAILURE;
-+
-+	/* construct gss token header */
-+	ptr = plainhdr = buf->head[0].iov_base + offset;
-+	*ptr++ = (unsigned char) ((KG2_TOK_WRAP>>8) & 0xff);
-+	*ptr++ = (unsigned char) (KG2_TOK_WRAP & 0xff);
-+
-+	if ((kctx->flags & KRB5_CTX_FLAG_INITIATOR) == 0)
-+		flags |= KG2_TOKEN_FLAG_SENTBYACCEPTOR;
-+	if ((kctx->flags & KRB5_CTX_FLAG_ACCEPTOR_SUBKEY) != 0)
-+		flags |= KG2_TOKEN_FLAG_ACCEPTORSUBKEY;
-+	/* We always do confidentiality in wrap tokens */
-+	flags |= KG2_TOKEN_FLAG_SEALED;
-+
-+	*ptr++ = flags;
-+	*ptr++ = 0xff;
-+	be16ptr = (__be16 *)ptr;
-+
-+	blocksize = crypto_blkcipher_blocksize(kctx->acceptor_enc);
-+#if TEST_EXTRA_COUNT
-+	ec = plainlen % blocksize ? blocksize - plainlen % blocksize : 0;
-+#endif
-+	*be16ptr++ = cpu_to_be16(ec);
-+	/* "inner" token header always uses 0 for RRC */
-+	*be16ptr++ = cpu_to_be16(0);
-+
-+	be64ptr = (__be64 *)be16ptr;
-+	spin_lock(&krb5_seq_lock);
-+	*be64ptr = cpu_to_be64(kctx->seq_send64++);
-+	spin_unlock(&krb5_seq_lock);
-+
-+	err = (*kctx->gk5e->encrypt_v2)(kctx, offset, buf, ec, pages);
-+	if (err)
-+		return err;
-+
-+#if TEST_ROTATE
-+	err = rotate_right(kctx, offset, buf, pages, &rrc);
-+	if (err)
-+		return err;
-+	*((__be16 *)(plainhdr + 6)) = cpu_to_be16(rrc);
-+#endif
-+	now = get_seconds();
-+	return (kctx->endtime < now) ? GSS_S_CONTEXT_EXPIRED : GSS_S_COMPLETE;
-+}
-+
-+static u32
-+gss_unwrap_kerberos_v2(struct krb5_ctx *kctx, int offset, struct xdr_buf *buf)
-+{
-+	s32		now;
-+	u64		seqnum;
-+	u8		*ptr;
-+	u8		flags = 0x00;
-+	u16		ec, rrc;
-+	int		err;
-+	u32		headskip, tailskip;
-+	u8		decrypted_hdr[GSS_KRB5_TOK_HDR_LEN];
-+	unsigned int	movelen;
-+
-+
-+	dprintk("RPC:       %s\n", __func__);
-+
-+	if (kctx->gk5e->decrypt_v2 == NULL)
-+		return GSS_S_FAILURE;
-+
-+	ptr = buf->head[0].iov_base + offset;
-+
-+	if (be16_to_cpu(*((__be16 *)ptr)) != KG2_TOK_WRAP)
-+		return GSS_S_DEFECTIVE_TOKEN;
-+
-+	flags = ptr[2];
-+	if ((!kctx->initiate && (flags & KG2_TOKEN_FLAG_SENTBYACCEPTOR)) ||
-+	    (kctx->initiate && !(flags & KG2_TOKEN_FLAG_SENTBYACCEPTOR)))
-+		return GSS_S_BAD_SIG;
-+
-+	if ((flags & KG2_TOKEN_FLAG_SEALED) == 0) {
-+		dprintk("%s: token missing expected sealed flag\n", __func__);
-+		return GSS_S_DEFECTIVE_TOKEN;
-+	}
-+
-+	if (ptr[3] != 0xff)
-+		return GSS_S_DEFECTIVE_TOKEN;
-+
-+	ec = be16_to_cpup((__be16 *)(ptr + 4));
-+	rrc = be16_to_cpup((__be16 *)(ptr + 6));
-+
-+	seqnum = be64_to_cpup((__be64 *)(ptr + 8));
-+
-+	if (rrc != 0) {
-+		err = rotate_left(kctx, offset, buf, rrc);
-+		if (err)
-+			return GSS_S_FAILURE;
-+	}
-+
-+	err = (*kctx->gk5e->decrypt_v2)(kctx, offset, buf,
-+					&headskip, &tailskip);
-+	if (err)
-+		return GSS_S_FAILURE;
-+
-+	/*
-+	 * Retrieve the decrypted gss token header and verify
-+	 * it against the original
-+	 */
-+	err = read_bytes_from_xdr_buf(buf,
-+				buf->len - GSS_KRB5_TOK_HDR_LEN - tailskip,
-+				decrypted_hdr, GSS_KRB5_TOK_HDR_LEN);
++	/* derive cksum */
++	set_cdata(cdata, KG_USAGE_SIGN, KEY_USAGE_SEED_CHECKSUM);
++	keyout.data = ctx->cksum;
++	err = krb5_derive_key(ctx->gk5e, &keyin, &keyout, &c);
 +	if (err) {
-+		dprintk("%s: error %u getting decrypted_hdr\n", __func__, err);
-+		return GSS_S_FAILURE;
-+	}
-+	if (memcmp(ptr, decrypted_hdr, 6)
-+				|| memcmp(ptr + 8, decrypted_hdr + 8, 8)) {
-+		dprintk("%s: token hdr, plaintext hdr mismatch!\n", __func__);
-+		return GSS_S_FAILURE;
++		dprintk("%s: Error %d deriving cksum key\n",
++			__func__, err);
++		goto out_free_enc;
 +	}
 +
-+	/* do sequencing checks */
++	return 0;
 +
-+	/* it got through unscathed.  Make sure the context is unexpired */
-+	now = get_seconds();
-+	if (now > kctx->endtime)
-+		return GSS_S_CONTEXT_EXPIRED;
-+
-+	/*
-+	 * Move the head data back to the right position in xdr_buf.
-+	 * We ignore any "ec" data since it might be in the head or
-+	 * the tail, and we really don't need to deal with it.
-+	 * Note that buf->head[0].iov_len may indicate the available
-+	 * head buffer space rather than that actually occupied.
-+	 */
-+	movelen = min_t(unsigned int, buf->head[0].iov_len, buf->len);
-+	movelen -= offset + GSS_KRB5_TOK_HDR_LEN + headskip;
-+	BUG_ON(offset + GSS_KRB5_TOK_HDR_LEN + headskip + movelen >
-+							buf->head[0].iov_len);
-+	memmove(ptr, ptr + GSS_KRB5_TOK_HDR_LEN + headskip, movelen);
-+	buf->head[0].iov_len -= GSS_KRB5_TOK_HDR_LEN + headskip;
-+	buf->len -= GSS_KRB5_TOK_HDR_LEN + headskip;
-+
-+	return GSS_S_COMPLETE;
++out_free_enc:
++	crypto_free_blkcipher(ctx->enc);
++out_free_seq:
++	crypto_free_blkcipher(ctx->seq);
++out_err:
++	return -EINVAL;
 +}
 +
- u32
- gss_wrap_kerberos(struct gss_ctx *gctx, int offset,
- 		  struct xdr_buf *buf, struct page **pages)
-@@ -354,6 +595,9 @@ gss_wrap_kerberos(struct gss_ctx *gctx, int offset,
- 	case ENCTYPE_DES_CBC_RAW:
- 	case ENCTYPE_DES3_CBC_RAW:
- 		return gss_wrap_kerberos_v1(kctx, offset, buf, pages);
++static int
++context_derive_keys_new(struct krb5_ctx *ctx, u8 *rawkey, u32 keylen)
++{
++	struct xdr_netobj c, keyin, keyout;
++	u8 cdata[GSS_KRB5_K5CLENGTH];
++	u32 err;
++
++	c.len = GSS_KRB5_K5CLENGTH;
++	c.data = cdata;
++
++	keyin.data = rawkey;
++	keyin.len = keylen;
++	keyout.len = keylen;
++
++	/* initiator seal encryption */
++	set_cdata(cdata, KG_USAGE_INITIATOR_SEAL, KEY_USAGE_SEED_ENCRYPTION);
++	keyout.data = ctx->initiator_seal;
++	err = krb5_derive_key(ctx->gk5e, &keyin, &keyout, &c);
++	if (err) {
++		dprintk("%s: Error %d deriving initiator_seal key\n",
++			__func__, err);
++		goto out_err;
++	}
++	ctx->initiator_enc = context_v2_alloc_cipher(ctx, ctx->initiator_seal);
++	if (ctx->initiator_enc == NULL)
++		goto out_err;
++
++	/* acceptor seal encryption */
++	set_cdata(cdata, KG_USAGE_ACCEPTOR_SEAL, KEY_USAGE_SEED_ENCRYPTION);
++	keyout.data = ctx->acceptor_seal;
++	err = krb5_derive_key(ctx->gk5e, &keyin, &keyout, &c);
++	if (err) {
++		dprintk("%s: Error %d deriving acceptor_seal key\n",
++			__func__, err);
++		goto out_free_initiator_enc;
++	}
++	ctx->acceptor_enc = context_v2_alloc_cipher(ctx, ctx->acceptor_seal);
++	if (ctx->acceptor_enc == NULL)
++		goto out_free_initiator_enc;
++
++	/* initiator sign checksum */
++	set_cdata(cdata, KG_USAGE_INITIATOR_SIGN, KEY_USAGE_SEED_CHECKSUM);
++	keyout.data = ctx->initiator_sign;
++	err = krb5_derive_key(ctx->gk5e, &keyin, &keyout, &c);
++	if (err) {
++		dprintk("%s: Error %d deriving initiator_sign key\n",
++			__func__, err);
++		goto out_free_acceptor_enc;
++	}
++
++	/* acceptor sign checksum */
++	set_cdata(cdata, KG_USAGE_ACCEPTOR_SIGN, KEY_USAGE_SEED_CHECKSUM);
++	keyout.data = ctx->acceptor_sign;
++	err = krb5_derive_key(ctx->gk5e, &keyin, &keyout, &c);
++	if (err) {
++		dprintk("%s: Error %d deriving acceptor_sign key\n",
++			__func__, err);
++		goto out_free_acceptor_enc;
++	}
++
++	/* initiator seal integrity */
++	set_cdata(cdata, KG_USAGE_INITIATOR_SEAL, KEY_USAGE_SEED_INTEGRITY);
++	keyout.data = ctx->initiator_integ;
++	err = krb5_derive_key(ctx->gk5e, &keyin, &keyout, &c);
++	if (err) {
++		dprintk("%s: Error %d deriving initiator_integ key\n",
++			__func__, err);
++		goto out_free_acceptor_enc;
++	}
++
++	/* acceptor seal integrity */
++	set_cdata(cdata, KG_USAGE_ACCEPTOR_SEAL, KEY_USAGE_SEED_INTEGRITY);
++	keyout.data = ctx->acceptor_integ;
++	err = krb5_derive_key(ctx->gk5e, &keyin, &keyout, &c);
++	if (err) {
++		dprintk("%s: Error %d deriving acceptor_integ key\n",
++			__func__, err);
++		goto out_free_acceptor_enc;
++	}
++
++	return 0;
++
++out_free_acceptor_enc:
++	crypto_free_blkcipher(ctx->acceptor_enc);
++out_free_initiator_enc:
++	crypto_free_blkcipher(ctx->initiator_enc);
++out_err:
++	return -EINVAL;
++}
++
++static int
++gss_import_v2_context(const void *p, const void *end, struct krb5_ctx *ctx)
++{
++	u8 rawkey[GSS_KRB5_MAX_KEYLEN];
++	int keylen;
++
++	p = simple_get_bytes(p, end, &ctx->flags, sizeof(ctx->flags));
++	if (IS_ERR(p))
++		goto out_err;
++	ctx->initiate = ctx->flags & KRB5_CTX_FLAG_INITIATOR;
++
++	p = simple_get_bytes(p, end, &ctx->endtime, sizeof(ctx->endtime));
++	if (IS_ERR(p))
++		goto out_err;
++	p = simple_get_bytes(p, end, &ctx->seq_send64, sizeof(ctx->seq_send64));
++	if (IS_ERR(p))
++		goto out_err;
++	/* set seq_send for use by "older" enctypes */
++	ctx->seq_send = ctx->seq_send64;
++	if (ctx->seq_send64 != ctx->seq_send) {
++		dprintk("%s: seq_send64 %lx, seq_send %x overflow?\n", __func__,
++			(long unsigned)ctx->seq_send64, ctx->seq_send);
++		goto out_err;
++	}
++	p = simple_get_bytes(p, end, &ctx->enctype, sizeof(ctx->enctype));
++	if (IS_ERR(p))
++		goto out_err;
++	ctx->gk5e = get_gss_krb5_enctype(ctx->enctype);
++	if (ctx->gk5e == NULL) {
++		printk("gss_kerberos_mech: unsupported krb5 enctype %u\n",
++			ctx->enctype);
++		p = ERR_PTR(-EINVAL);
++		goto out_err;
++	}
++	keylen = ctx->gk5e->keylength;
++
++	p = simple_get_bytes(p, end, rawkey, keylen);
++	if (IS_ERR(p))
++		goto out_err;
++
++	if (p != end) {
++		p = ERR_PTR(-EINVAL);
++		goto out_err;
++	}
++
++	ctx->mech_used.data = kmemdup(gss_kerberos_mech.gm_oid.data,
++				      gss_kerberos_mech.gm_oid.len, GFP_KERNEL);
++	if (unlikely(ctx->mech_used.data == NULL)) {
++		p = ERR_PTR(-ENOMEM);
++		goto out_err;
++	}
++	ctx->mech_used.len = gss_kerberos_mech.gm_oid.len;
++
++	switch (ctx->enctype) {
++	case ENCTYPE_DES3_CBC_RAW:
++		return context_derive_keys_des3(ctx, rawkey, keylen);
 +	case ENCTYPE_AES128_CTS_HMAC_SHA1_96:
 +	case ENCTYPE_AES256_CTS_HMAC_SHA1_96:
-+		return gss_wrap_kerberos_v2(kctx, offset, buf, pages);
- 	}
- }
++		return context_derive_keys_new(ctx, rawkey, keylen);
++	default:
++		return -EINVAL;
++	}
++
++out_err:
++	return PTR_ERR(p);
++}
++
+ static int
+ gss_import_sec_context_kerberos(const void *p, size_t len,
+ 				struct gss_ctx *ctx_id)
+@@ -262,7 +495,7 @@ gss_import_sec_context_kerberos(const void *p, size_t len,
+ 	if (len == 85)
+ 		ret = gss_import_v1_context(p, end, ctx);
+ 	else
+-		ret = -EINVAL;
++		ret = gss_import_v2_context(p, end, ctx);
  
-@@ -368,6 +612,9 @@ gss_unwrap_kerberos(struct gss_ctx *gctx, int offset, struct xdr_buf *buf)
- 	case ENCTYPE_DES_CBC_RAW:
- 	case ENCTYPE_DES3_CBC_RAW:
- 		return gss_unwrap_kerberos_v1(kctx, offset, buf);
-+	case ENCTYPE_AES128_CTS_HMAC_SHA1_96:
-+	case ENCTYPE_AES256_CTS_HMAC_SHA1_96:
-+		return gss_unwrap_kerberos_v2(kctx, offset, buf);
- 	}
- }
+ 	if (ret == 0)
+ 		ctx_id->internal_ctx_id = ctx;
+@@ -279,6 +512,8 @@ gss_delete_sec_context_kerberos(void *internal_ctx) {
  
+ 	crypto_free_blkcipher(kctx->seq);
+ 	crypto_free_blkcipher(kctx->enc);
++	crypto_free_blkcipher(kctx->acceptor_enc);
++	crypto_free_blkcipher(kctx->initiator_enc);
+ 	kfree(kctx->mech_used.data);
+ 	kfree(kctx);
+ }
 
