@@ -1,91 +1,74 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] exportfs: fix incorrect EACCES in reconnect_path()
-Date: Tue, 6 May 2008 15:50:41 -0400
-Message-ID: <20080506195041.GD13484@fieldses.org>
-References: <20080429174004.GA28719@janus> <20080430174736.GB20377@fieldses.org> <20080502151646.GA5515@janus> <20080502153439.GC7376@infradead.org> <20080502155617.GD18401@fieldses.org> <1209744293.8294.19.camel@heimdal.trondhjem.org> <20080502221216.GP21918@fieldses.org> <18462.17737.353976.999538@notabene.brown> <20080505174716.GA12814@fieldses.org> <18463.42978.531115.344884@notabene.brown>
+From: Kevin Coffman <kwc@citi.umich.edu>
+Subject: [enctypes round 3: PATCH 00/24] Add new enctypes for gss_krb5
+Date: Tue, 06 May 2008 17:03:28 -0400
+Message-ID: <20080506210156.3770.95914.stgit@jazz.citi.umich.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Christoph Hellwig <hch@infradead.org>,
-	Frank van Maarseveen <frankvm@frankvm.com>,
-	Christoph Hellwig <hch@lst.de>,
-	Linux NFS mailing list <linux-nfs@vger.kernel.org>
-To: Neil Brown <neilb@suse.de>
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org
+To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:43717 "EHLO fieldses.org"
+Received: from citi.umich.edu ([141.211.133.111]:13946 "EHLO citi.umich.edu"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932879AbYEFTvB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 May 2008 15:51:01 -0400
-In-Reply-To: <18463.42978.531115.344884-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
+	id S1754282AbYEFVD3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 May 2008 17:03:29 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, May 06, 2008 at 10:35:46AM +1000, Neil Brown wrote:
-> On Monday May 5, bfields@fieldses.org wrote:
-> > On Mon, May 05, 2008 at 09:22:49AM +1000, Neil Brown wrote:
-> > > 
-> > > Now it could be argued that this permission test is really a dumb idea
-> > > that buys nothing and costs much.  And if you were to queue a patch to
-> > > get rid of it, I doubt you would get any objections .... certainly not
-> > > from me :-)
-> > 
-> > Dumb idea or not, it looks like it's explicitly documented in
-> > exports(5):
-> > 
-> > 	" subtree  checking  is  also  used to make sure that files
-> > 	inside directories to which only root has access can only be
-> > 	accessed if  the  filesystem is exported with no_root_squash
-> > 	(see below), even if the file itself allows more general
-> > 	access."
-> > 
-> > So as much as I'd like to I'm not comfortable silently turning off that
-> > check.
-> 
-> Ack.
-> 
-> > 
-> > I suppose we could choose to acquire those capabilities only in the
-> > no_subtree_check case.
-> 
-> If only it were that easy ;-)
-> 
-> reconnect_path potentially requires both 'r' and 'x' permission on
-> parent directories.  'r' to be able to read the directory to find the
-> name of the object being reconnected, and 'x' to do the lookup which
-> effects the reconnect.
-> 
-> To fix the current bug properly, reconnect_path still needs to bypass
-> normal permission checks even when subtree_check is in effect, so it
-> can be sure of getting read permission on the parent directory.
+This is round 3.
 
-OK, but why not just forget the subtree_check case?  It would be just
-another item on the "reasons not to use subtree_check" list.
+This set of patches adds kernel support for triple-DES (des3-cbc-sha1),
+arcfour (rc4-hmac), and AES (aes128-cts, aes256-cts) encryption to the
+kernel's Kerberos rpcsec_gss code.
 
-If a fix for the subtree checking case were easy (or if someone else had
-the time to do a very careful job of it), then fine, but maybe we should
-just fix the easy case and leave the subtree checking as is for now.
+These are currently based on Trond's tree as of 05/06/08.
 
---b.
+This still includes the first couple of patches you've already applied
+(I couldn't find them in your public git, so I assume I'm missing
+something, or they are applied to your local development git, or
+I'm still missing something...)
 
-> 
-> There is another way .... but it would need careful consideration.
-> 
-> While the dentry returned by exportfs_decode_fh (for a directory) must
-> be connected in the dcache tree, it does *not* need to have a correct
-> name.  All that is needed is that d_parent is correct  (this is used,
-> as mentioned before, to correctly lock directory renames).
-> 
-> We can leave the dentry unhashed but with a correct d_parent pointer.
-> If the directory is ever access by name, d_slice_alias will be called
-> and this will update the name in the dentry to be correct.
-> 
-> We could then get rid of exportfs_get_name and the call to
-> lookup_one_len, and add some dcache magic after the ->get_parent call
-> to make 'pd' an anonymous child of 'ppd'.
-> 
-> Some matching changes to d_splice_alias should finish the task.
-> 
-> Does this seem sane to anyone else?  Is it worth a try?
-> 
-> 
-> NeilBrown
+This round removes the two patches that use global OIDs.  Instead,
+krb5 contexts created from the new v2 context format from gssd copy
+the OID from the gss_kerberos_mech structure.
+
+Two issues remain:
+
+1) The patch to add krb5_info will eventually be replaced with an
+updated upcall which will include the supported enctype information.
+I have split out these portions of the patches to (hopefully) make
+that transition easier.
+
+2) There is currently no code to handle the possiblity of rotated
+data in the version two tokens.  I don't expect we'll see rotated
+data in normal operation, but this should be done eventually for
+completeness.
+
+There are two nfs-utils patches required with this.  The first reads
+and parses the list of kernel supported enctypes.  The second
+implements the new context format from user-land to kernel.
+These are included in the recent nfs-utils-1.1.2-CITI_NFS4_ALL-1 patches.
+
+
+------------------
+
+Note: for AES support, the following patch for MIT Kerberos is needed
+to get the right key when there is an acceptor_subkey.  [mea culpa]
+
+This fix is scheduled to be included in MIT release 1.6.4, currently
+in beta testing.
+
+This patch should also apply to releases 1.4.0 to 1.6.3.
+
+Index: src/lib/gssapi/krb5/lucid_context.c
+===================================================================
+--- src/lib/gssapi/krb5/lucid_context.c (revision 20174)
++++ src/lib/gssapi/krb5/lucid_context.c (revision 20175)
+@@ -231,7 +231,7 @@
+                                        &lctx->cfx_kd.ctx_key)))
+            goto error_out;
+        if (gctx->have_acceptor_subkey) {
+-           if ((retval = copy_keyblock_to_lucid_key(gctx->enc,
++           if ((retval = copy_keyblock_to_lucid_key(gctx->acceptor_subkey,
+                                        &lctx->cfx_kd.acceptor_subkey)))
+                goto error_out;
+            lctx->cfx_kd.have_acceptor_subkey = 1;
