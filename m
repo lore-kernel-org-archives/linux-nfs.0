@@ -1,85 +1,82 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [enctypes round 3: PATCH 00/24] Add new enctypes for gss_krb5
-Date: Wed, 7 May 2008 10:41:59 -0400
-Message-ID: <20080507144159.GA10599@fieldses.org>
-References: <20080506210156.3770.95914.stgit@jazz.citi.umich.edu>
+From: Tom Tucker <tom@opengridcomputing.com>
+Subject: Re: [PATCH  1/3] svcrdma: Remove redunant call to xpo_release_rqst
+	method.
+Date: Wed, 07 May 2008 10:08:06 -0500
+Message-ID: <1210172886.27493.30.camel@trinity.ogc.int>
+References: <12097450861136-git-send-email-tom@opengridcomputing.com>
+	 <12097450861293-git-send-email-tom@opengridcomputing.com>
+	 <20080506215940.GQ13484@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain
 Cc: linux-nfs@vger.kernel.org
-To: Kevin Coffman <kwc@citi.umich.edu>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:38382 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758718AbYEGOmB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 May 2008 10:42:01 -0400
-In-Reply-To: <20080506210156.3770.95914.stgit-zTNJhAanYLVZN1qrTdtDg5Vzexx5G7lz@public.gmane.org>
+Received: from smtp.opengridcomputing.com ([209.198.142.2]:46446 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754627AbYEGPFh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 May 2008 11:05:37 -0400
+In-Reply-To: <20080506215940.GQ13484@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, May 06, 2008 at 05:03:28PM -0400, Kevin Coffman wrote:
-> This is round 3.
-> 
-> This set of patches adds kernel support for triple-DES (des3-cbc-sha1),
-> arcfour (rc4-hmac), and AES (aes128-cts, aes256-cts) encryption to the
-> kernel's Kerberos rpcsec_gss code.
-> 
-> These are currently based on Trond's tree as of 05/06/08.
-> 
-> This still includes the first couple of patches you've already applied
-> (I couldn't find them in your public git, so I assume I'm missing
-> something, or they are applied to your local development git, or
-> I'm still missing something...)
 
-No, that was my fault, sorry--I applied them, then didn't push them out
-immediately.  They should be there now.
+On Tue, 2008-05-06 at 17:59 -0400, J. Bruce Fields wrote:
+> On Fri, May 02, 2008 at 11:18:04AM -0500, Tom Tucker wrote:
+> > The xpo_release_rqst method is called from svc_xprt_release and therefore
+> > this direct call of the provider method is redundant. There is no bug
+> > here since the provider protects against multiple calls.
+> > 
+> > Originally, this code was here because the xpo_release_rqst function was
+> > being used by the RDMA transport to return credits to the client, i.e.
+> > posting a receive buffer. This had to be done before the send in order to
+> > avoid a race wherein the client responds immediately with a new request
+> > but the buffer has not yet been posted. This is a poor design point and
+> > the recv buffer posting has been modified in the rdma transport.
+> 
+> The comment there refers to the socket code, not the rdma code, and
 
-I may not take a look at the rest of these till after connectathon (but
-I'll try if I get a chance).
+Yes, you are correct. 
 
---b.
+> there was a svc_release_skb() there before the rdma code came along.
+> I'd like to understand why.
 
-> This round removes the two patches that use global OIDs.  Instead,
-> krb5 contexts created from the new v2 context format from gssd copy
-> the OID from the gss_kerberos_mech structure.
+I believe it's because the socket code has buffer quotas and the skb
+you're holding consumes credits in the recv sock buf. So it's
+conceivable that you could send a message, another client message
+arrives prior to releasing the skb your holding, and this new message
+gets dropped unnecessarily. I don't believe it affects the sending at
+all because the message you're holding came from sock_recv_datagram and
+only consumes recv side credits.
+
+Since this patch is only for "clean up" purposes, I'm inclined to just
+ditch this patch and let us noodle on it a little more. Agreed?
+
 > 
-> Two issues remain:
+> --b.
 > 
-> 1) The patch to add krb5_info will eventually be replaced with an
-> updated upcall which will include the supported enctype information.
-> I have split out these portions of the patches to (hopefully) make
-> that transition easier.
-> 
-> 2) There is currently no code to handle the possiblity of rotated
-> data in the version two tokens.  I don't expect we'll see rotated
-> data in normal operation, but this should be done eventually for
-> completeness.
-> 
-> There are two nfs-utils patches required with this.  The first reads
-> and parses the list of kernel supported enctypes.  The second
-> implements the new context format from user-land to kernel.
-> These are included in the recent nfs-utils-1.1.2-CITI_NFS4_ALL-1 patches.
-> 
-> 
-> ------------------
-> 
-> Note: for AES support, the following patch for MIT Kerberos is needed
-> to get the right key when there is an acceptor_subkey.  [mea culpa]
-> 
-> This fix is scheduled to be included in MIT release 1.6.4, currently
-> in beta testing.
-> 
-> This patch should also apply to releases 1.4.0 to 1.6.3.
-> 
-> Index: src/lib/gssapi/krb5/lucid_context.c
-> ===================================================================
-> --- src/lib/gssapi/krb5/lucid_context.c (revision 20174)
-> +++ src/lib/gssapi/krb5/lucid_context.c (revision 20175)
-> @@ -231,7 +231,7 @@
->                                         &lctx->cfx_kd.ctx_key)))
->             goto error_out;
->         if (gctx->have_acceptor_subkey) {
-> -           if ((retval = copy_keyblock_to_lucid_key(gctx->enc,
-> +           if ((retval = copy_keyblock_to_lucid_key(gctx->acceptor_subkey,
->                                         &lctx->cfx_kd.acceptor_subkey)))
->                 goto error_out;
->             lctx->cfx_kd.have_acceptor_subkey = 1;
+> > 
+> > Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+> > 
+> > ---
+> >  net/sunrpc/svc_xprt.c |    3 ---
+> >  1 files changed, 0 insertions(+), 3 deletions(-)
+> > 
+> > diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+> > index d8e8d79..74e52d4 100644
+> > --- a/net/sunrpc/svc_xprt.c
+> > +++ b/net/sunrpc/svc_xprt.c
+> > @@ -751,9 +751,6 @@ int svc_send(struct svc_rqst *rqstp)
+> >  	if (!xprt)
+> >  		return -EFAULT;
+> >  
+> > -	/* release the receive skb before sending the reply */
+> > -	rqstp->rq_xprt->xpt_ops->xpo_release_rqst(rqstp);
+> > -
+> >  	/* calculate over-all length */
+> >  	xb = &rqstp->rq_res;
+> >  	xb->len = xb->head[0].iov_len +
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
