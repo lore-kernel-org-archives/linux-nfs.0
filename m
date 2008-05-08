@@ -1,42 +1,41 @@
-From: Neil Brown <neilb@suse.de>
-Subject: [PATCH nfs-utils] Give useful error if mount.nfs not installed setuid.
-Date: Thu, 8 May 2008 14:17:00 +1000
-Message-ID: <18466.32444.577468.951202@notabene.brown>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH 0/4] nfs-utils gssd
+Date: Thu, 08 May 2008 04:58:04 -0400
+Message-ID: <4822C09C.2080402@RedHat.com>
+References: <20080501133455.28884.4768.stgit@jazz.citi.umich.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Steve Dickson <SteveD@redhat.com>
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Cc: linux-nfs@vger.kernel.org
+To: Kevin Coffman <kwc@citi.umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.suse.de ([195.135.220.2]:43931 "EHLO mx1.suse.de"
+Received: from mx1.redhat.com ([66.187.233.31]:37842 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751303AbYEHERI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 8 May 2008 00:17:08 -0400
+	id S1753367AbYEHJDZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 8 May 2008 05:03:25 -0400
+In-Reply-To: <20080501133455.28884.4768.stgit-zTNJhAanYLVZN1qrTdtDg5Vzexx5G7lz@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-If mount.nfs is not installed setuid, an attempt to perform a "user"
-or "users" mount will fail with a fairly obscure error message,
-typically about getting "permission denied" from the server.
 
-This patch gives a more helpful message in that case.
+Kevin Coffman wrote:
+> Hi Steve,
+> These have all been sent before, with various levels of formality,
+> but haven't made it into git yet.
+> 
+> 1) adds code to gssd to read a possible alternate port number
+> from the info file.
+> 
+> 2) adds the "other" DES encryption types to the default list that
+> can currently be negotiated.
+> 
+> 3) adds a utility function to retrieve the current logging
+> verbosity.  (Used by the fourth patch to determine whether
+> it should print certain error messages.)
+> 
+> 4) allows the administrator to specify multiple directories
+> where gssd can look for credentials caches.
+Committed... thanks... 
 
-Signed-off-by: NeilBrown <neilb@suse.de>
+steved.
 
-diff --git a/utils/mount/mount.c b/utils/mount/mount.c
-index 5076468..57360fb 100644
---- a/utils/mount/mount.c
-+++ b/utils/mount/mount.c
-@@ -539,6 +539,12 @@ int main(int argc, char *argv[])
- 			mnt_err = EX_USAGE;
- 			goto out;
- 		}
-+
-+		if (geteuid() != 0) {
-+			nfs_error(_("%s: not installed setuid - "
-+				    "\"user\" NFS mounts not supported."));
-+			exit(EX_FAIL);
-+		}
- 	}
- 
- 	if (chk_mountpoint(mount_point)) {
