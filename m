@@ -1,41 +1,46 @@
 From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH 0/4] nfs-utils gssd
-Date: Thu, 08 May 2008 04:58:04 -0400
-Message-ID: <4822C09C.2080402@RedHat.com>
-References: <20080501133455.28884.4768.stgit@jazz.citi.umich.edu>
+Subject: Re: [NFS] A quick manpage typo fix
+Date: Thu, 08 May 2008 05:19:28 -0400
+Message-ID: <4822C5A0.3070205@RedHat.com>
+References: <200805061116.53778.oren@held.org.il>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: linux-nfs@vger.kernel.org
-To: Kevin Coffman <kwc@citi.umich.edu>
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
+To: Oren Held <oren-8uj5FFcqMgc+JF/nGntIXQ@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:37842 "EHLO mx1.redhat.com"
+Received: from neil.brown.name ([220.233.11.133]:43906 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753367AbYEHJDZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 8 May 2008 05:03:25 -0400
-In-Reply-To: <20080501133455.28884.4768.stgit-zTNJhAanYLVZN1qrTdtDg5Vzexx5G7lz@public.gmane.org>
+	id S1756912AbYEHJZX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 8 May 2008 05:25:23 -0400
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1Ju2NO-0007ET-3k
+	for linux-nfs@vger.kernel.org; Thu, 08 May 2008 19:25:22 +1000
+In-Reply-To: <200805061116.53778.oren-8uj5FFcqMgc+JF/nGntIXQ@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-Kevin Coffman wrote:
-> Hi Steve,
-> These have all been sent before, with various levels of formality,
-> but haven't made it into git yet.
+Oren Held wrote:
+> Hi,
 > 
-> 1) adds code to gssd to read a possible alternate port number
-> from the info file.
-> 
-> 2) adds the "other" DES encryption types to the default list that
-> can currently be negotiated.
-> 
-> 3) adds a utility function to retrieve the current logging
-> verbosity.  (Used by the fourth patch to determine whether
-> it should print certain error messages.)
-> 
-> 4) allows the administrator to specify multiple directories
-> where gssd can look for credentials caches.
-Committed... thanks... 
+> The exportfs manpage has a small typo, attached is a fix: 
+> (changes "djando"->"django"):
+Committed... thanks...
 
 steved.
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by the 2008 JavaOne(SM) Conference 
+Don't miss this year's exciting event. There's still time to save $100. 
+Use priority code J8TL2D2. 
+http://ad.doubleclick.net/clk;198757673;13503038;p?http://java.sun.com/javaone
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
