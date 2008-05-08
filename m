@@ -1,144 +1,105 @@
 From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH - nfs-utils] Make sure statd gets started when 'string options' are in use.
-Date: Thu, 8 May 2008 12:48:18 +1000
-Message-ID: <18466.27122.507819.788772@notabene.brown>
-References: <18463.57567.260973.429439@notabene.brown>
-	<F7A5F2B8-A400-425C-9D90-EAACC9E5F086@oracle.com>
+Subject: Re: [PATCH] exportfs: fix incorrect EACCES in reconnect_path()
+Date: Thu, 8 May 2008 13:03:09 +1000
+Message-ID: <18466.28013.258338.485948@notabene.brown>
+References: <20080429174004.GA28719@janus>
+	<20080430174736.GB20377@fieldses.org>
+	<20080502151646.GA5515@janus>
+	<20080502153439.GC7376@infradead.org>
+	<20080502155617.GD18401@fieldses.org>
+	<1209744293.8294.19.camel@heimdal.trondhjem.org>
+	<20080502221216.GP21918@fieldses.org>
+	<18462.17737.353976.999538@notabene.brown>
+	<20080505174716.GA12814@fieldses.org>
+	<18463.42978.531115.344884@notabene.brown>
+	<20080506195041.GD13484@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	Christoph Hellwig <hch@infradead.org>,
+	Frank van Maarseveen <frankvm@frankvm.com>,
+	Christoph Hellwig <hch@lst.de>,
+	Linux NFS mailing list <linux-nfs@vger.kernel.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:58421 "EHLO mx1.suse.de"
+Received: from mail.suse.de ([195.135.220.2]:60497 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755845AbYEHCs0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 May 2008 22:48:26 -0400
-In-Reply-To: message from Chuck Lever on Tuesday May 6
+	id S1755240AbYEHDDS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 7 May 2008 23:03:18 -0400
+In-Reply-To: message from J. Bruce Fields on Tuesday May 6
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tuesday May 6, chuck.lever@oracle.com wrote:
-> On May 6, 2008, at 12:38 AM, Neil Brown wrote:
-> > The code for checking and starting statd was only in the binary- 
-> > options
-> > branch of the code.
-> > This moves it into common code.
-> > ---
-> > utils/mount/mount.c    |   22 ++++++++++++++++++++--
-> > utils/mount/nfsmount.c |   11 -----------
-> > 2 files changed, 20 insertions(+), 13 deletions(-)
-> >
-> > diff --git a/utils/mount/mount.c b/utils/mount/mount.c
-> > index 5076468..0036caa 100644
-> > --- a/utils/mount/mount.c
-> > +++ b/utils/mount/mount.c
-> > @@ -334,7 +334,8 @@ static void parse_opt(const char *opt, int  
-> > *mask, char *extra_opts, int len)
-> >  * standard options (indicated by MS_ bits), and output parameter
-> >  * "@extra_opts" gets all the filesystem-specific options.
-> >  */
-> > -static void parse_opts(const char *options, int *flags, char  
-> > **extra_opts)
-> > +static void parse_opts(const char *options, int *flags, char  
-> > **extra_opts,
-> > +		       int *lock)
-> > {
-> > 	if (options != NULL) {
-> > 		char *opts = xstrdup(options);
-> > @@ -358,6 +359,10 @@ static void parse_opts(const char *options, int  
-> > *flags, char **extra_opts)
-> > 			/* end of option item or last item */
-> > 			if (*p == '\0' || *(p + 1) == '\0') {
-> > 				parse_opt(opt, flags, *extra_opts, len);
-> > +				if (strcmp(opt, "lock") == 0)
-> > +					*lock = 1;
-> > +				if (strcmp(opt, "nolock") == 0)
-> > +					*lock = 0;
-> > 				opt = NULL;
-> > 			}
-> > 		}
-> > @@ -421,6 +426,7 @@ int main(int argc, char *argv[])
-> > 	char *spec, *mount_point, *fs_type = "nfs";
-> > 	char *extra_opts = NULL, *mount_opts = NULL;
-> > 	uid_t uid = getuid();
-> > +	int lock = 1;
-> >
-> > 	progname = basename(argv[0]);
-> >
-> > @@ -531,7 +537,7 @@ int main(int argc, char *argv[])
-> > 		goto out;
-> > 	}
-> >
-> > -	parse_opts(mount_opts, &flags, &extra_opts);
-> > +	parse_opts(mount_opts, &flags, &extra_opts, &lock);
-> >
-> > 	if (uid != 0) {
-> > 		if (!(flags & (MS_USERS|MS_USER))) {
-> > @@ -546,6 +552,18 @@ int main(int argc, char *argv[])
-> > 		goto out;
-> > 	}
-> >
-> > +	if (!fake && lock) {
-> > +		if (!start_statd()) {
-> > +			nfs_error(_("%s: rpc.statd is not running but is "
-> > +				"required for remote locking.\n"
-> > +				"   Either use '-o nolock' to keep "
-> > +				"locks local, or start statd."),
-> > +					progname);
-> > +			mnt_err = EX_FAIL;
-> > +			goto out;
-> > +		}
-> > +	}
-> > +
+On Tuesday May 6, bfields@fieldses.org wrote:
+> On Tue, May 06, 2008 at 10:35:46AM +1000, Neil Brown wrote:
+> > 
+> > To fix the current bug properly, reconnect_path still needs to bypass
+> > normal permission checks even when subtree_check is in effect, so it
+> > can be sure of getting read permission on the parent directory.
 > 
-> You probably want to gate this based on NFS version (ie do the  
-> checking only for NFSv2/v3 mounts, and not for NFSv4 mounts)
+> OK, but why not just forget the subtree_check case?  It would be just
+> another item on the "reasons not to use subtree_check" list.
 
-Yes, of course :-(
-I remember think about that but must have forgotten when I actually
-cut the patch.
+I guess so.
 
 > 
-> There is already a function in stropts.c (called  
-> set_mandatory_options) that might be a better place to put the special  
-> option parsing, as you can use the nice po_* calls, and it already has  
-> a switch for detecting which NFS version is being requested.
+> If a fix for the subtree checking case were easy (or if someone else had
+> the time to do a very careful job of it), then fine, but maybe we should
+> just fix the easy case and leave the subtree checking as is for now.
 
-I cannot bring myself to put code in a function called
-"set_mandatory_options" which does not, in fact, set any options,
-whether mandatory or not.
-
-> 
-> Since the common part of this code (start_statd) is already in a  
-> helper, I would leave the existing logic in nfsmount.c, and just add a  
-> handful of lines in stropts.c:set_mandatory_options that worries about  
-> "lock/nolock" for NFSv2/v3 mounts.
-
-So how about the following?
-
-Thanks for the feedback.
+So is this the proposed fix?  A bit ugly, but I guess it's OK.
 
 NeilBrown
 
-diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-index cdd610e..be77d17 100644
---- a/utils/mount/stropts.c
-+++ b/utils/mount/stropts.c
-@@ -694,6 +694,17 @@ int nfsmount_string(const char *spec, const char *node, const char *type,
- 	if (!set_mandatory_options(type, &saddr, options))
- 		goto out;
+Signed-off-by: Neil Brown <neilb@suse.de>
+
+### Diffstat output
+ ./fs/nfsd/nfsfh.c |   29 ++++++++++++++++++++++++++---
+ 1 file changed, 26 insertions(+), 3 deletions(-)
+
+diff .prev/fs/nfsd/nfsfh.c ./fs/nfsd/nfsfh.c
+--- .prev/fs/nfsd/nfsfh.c	2008-05-06 10:06:59.000000000 +1000
++++ ./fs/nfsd/nfsfh.c	2008-05-08 13:01:06.000000000 +1000
+@@ -176,9 +176,24 @@ static __be32 nfsd_set_fh_dentry(struct 
+ 	if (IS_ERR(exp))
+ 		return nfserrno(PTR_ERR(exp));
  
-+	if (!fake && strcmp(type, "nfs4") != 0 &&
-+	    po_rightmost(options, "nolock", "lock") != PO_KEY1_RIGHTMOST)
-+		if (!start_statd()) {
-+			nfs_error(_("%s: rpc.statd is not running but is "
-+				    "required for remote locking.\n"
-+				    "   Either use '-o nolock' to keep "
-+				    "locks local, or start statd."),
-+				  progname);
+-	error = nfsd_setuser_and_check_port(rqstp, exp);
+-	if (error)
+-		goto out;
++	if (exp->ex_flags & NFSEXP_NOSUBTREECHECK) {
++		/* Elevate privileges so that the lack of 'r' or 'x'
++		 * permission on some parent directory will
++		 * not stop exportfs_decode_fh from being able
++		 * to reconnect a directory into the dentry cache.
++		 * The same problem can affect "SUBTREECHECK" exports,
++		 * but as nfsd_acceptable depends on correct
++		 * access control settings being in effect, we cannot
++		 * fix that case easily - so though.
++		 */
++		current->cap_effective =
++			cap_raise_nfsd_set(current->cap_effective,
++					   current->cap_permitted);
++	} else {
++		error = nfsd_setuser_and_check_port(rqstp, exp);
++		if (error)
++			goto out;
++	}
+ 
+ 	/*
+ 	 * Look up the dentry using the NFS file handle.
+@@ -215,6 +230,14 @@ static __be32 nfsd_set_fh_dentry(struct 
+ 		goto out;
+ 	}
+ 
++	if (exp->ex_flags & NFSEXP_NOSUBTREECHECK) {
++		error = nfsd_setuser_and_check_port(rqstp, exp);
++		if (error) {
++			dput(dentry);
 +			goto out;
 +		}
++	}
 +
- 	if (po_rightmost(options, "bg", "fg") == PO_KEY1_RIGHTMOST)
- 		retval = nfsmount_bg(spec, node, type, hostname, flags,
- 					options, fake, child, extra_opts);
+ 	if (S_ISDIR(dentry->d_inode->i_mode) &&
+ 			(dentry->d_flags & DCACHE_DISCONNECTED)) {
+ 		printk("nfsd: find_fh_dentry returned a DISCONNECTED directory: %s/%s\n",
