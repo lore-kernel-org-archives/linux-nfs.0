@@ -1,55 +1,144 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH  1/3] svcrdma: Remove redunant call to xpo_release_rqst
-	method.
-Date: Wed, 7 May 2008 12:26:11 -0400
-Message-ID: <20080507162611.GD13128@fieldses.org>
-References: <12097450861136-git-send-email-tom@opengridcomputing.com> <12097450861293-git-send-email-tom@opengridcomputing.com> <20080506215940.GQ13484@fieldses.org> <1210172886.27493.30.camel@trinity.ogc.int>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH - nfs-utils] Make sure statd gets started when 'string options' are in use.
+Date: Thu, 8 May 2008 12:48:18 +1000
+Message-ID: <18466.27122.507819.788772@notabene.brown>
+References: <18463.57567.260973.429439@notabene.brown>
+	<F7A5F2B8-A400-425C-9D90-EAACC9E5F086@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Tom Tucker <tom@opengridcomputing.com>
+Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:42855 "EHLO fieldses.org"
+Received: from cantor.suse.de ([195.135.220.2]:58421 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754770AbYEGQ0P (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 May 2008 12:26:15 -0400
-In-Reply-To: <1210172886.27493.30.camel-SMNkleLxa3ZimH42XvhXlA@public.gmane.org>
+	id S1755845AbYEHCs0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 7 May 2008 22:48:26 -0400
+In-Reply-To: message from Chuck Lever on Tuesday May 6
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, May 07, 2008 at 10:08:06AM -0500, Tom Tucker wrote:
+On Tuesday May 6, chuck.lever@oracle.com wrote:
+> On May 6, 2008, at 12:38 AM, Neil Brown wrote:
+> > The code for checking and starting statd was only in the binary- 
+> > options
+> > branch of the code.
+> > This moves it into common code.
+> > ---
+> > utils/mount/mount.c    |   22 ++++++++++++++++++++--
+> > utils/mount/nfsmount.c |   11 -----------
+> > 2 files changed, 20 insertions(+), 13 deletions(-)
+> >
+> > diff --git a/utils/mount/mount.c b/utils/mount/mount.c
+> > index 5076468..0036caa 100644
+> > --- a/utils/mount/mount.c
+> > +++ b/utils/mount/mount.c
+> > @@ -334,7 +334,8 @@ static void parse_opt(const char *opt, int  
+> > *mask, char *extra_opts, int len)
+> >  * standard options (indicated by MS_ bits), and output parameter
+> >  * "@extra_opts" gets all the filesystem-specific options.
+> >  */
+> > -static void parse_opts(const char *options, int *flags, char  
+> > **extra_opts)
+> > +static void parse_opts(const char *options, int *flags, char  
+> > **extra_opts,
+> > +		       int *lock)
+> > {
+> > 	if (options != NULL) {
+> > 		char *opts = xstrdup(options);
+> > @@ -358,6 +359,10 @@ static void parse_opts(const char *options, int  
+> > *flags, char **extra_opts)
+> > 			/* end of option item or last item */
+> > 			if (*p == '\0' || *(p + 1) == '\0') {
+> > 				parse_opt(opt, flags, *extra_opts, len);
+> > +				if (strcmp(opt, "lock") == 0)
+> > +					*lock = 1;
+> > +				if (strcmp(opt, "nolock") == 0)
+> > +					*lock = 0;
+> > 				opt = NULL;
+> > 			}
+> > 		}
+> > @@ -421,6 +426,7 @@ int main(int argc, char *argv[])
+> > 	char *spec, *mount_point, *fs_type = "nfs";
+> > 	char *extra_opts = NULL, *mount_opts = NULL;
+> > 	uid_t uid = getuid();
+> > +	int lock = 1;
+> >
+> > 	progname = basename(argv[0]);
+> >
+> > @@ -531,7 +537,7 @@ int main(int argc, char *argv[])
+> > 		goto out;
+> > 	}
+> >
+> > -	parse_opts(mount_opts, &flags, &extra_opts);
+> > +	parse_opts(mount_opts, &flags, &extra_opts, &lock);
+> >
+> > 	if (uid != 0) {
+> > 		if (!(flags & (MS_USERS|MS_USER))) {
+> > @@ -546,6 +552,18 @@ int main(int argc, char *argv[])
+> > 		goto out;
+> > 	}
+> >
+> > +	if (!fake && lock) {
+> > +		if (!start_statd()) {
+> > +			nfs_error(_("%s: rpc.statd is not running but is "
+> > +				"required for remote locking.\n"
+> > +				"   Either use '-o nolock' to keep "
+> > +				"locks local, or start statd."),
+> > +					progname);
+> > +			mnt_err = EX_FAIL;
+> > +			goto out;
+> > +		}
+> > +	}
+> > +
 > 
-> On Tue, 2008-05-06 at 17:59 -0400, J. Bruce Fields wrote:
-> > On Fri, May 02, 2008 at 11:18:04AM -0500, Tom Tucker wrote:
-> > > The xpo_release_rqst method is called from svc_xprt_release and therefore
-> > > this direct call of the provider method is redundant. There is no bug
-> > > here since the provider protects against multiple calls.
-> > > 
-> > > Originally, this code was here because the xpo_release_rqst function was
-> > > being used by the RDMA transport to return credits to the client, i.e.
-> > > posting a receive buffer. This had to be done before the send in order to
-> > > avoid a race wherein the client responds immediately with a new request
-> > > but the buffer has not yet been posted. This is a poor design point and
-> > > the recv buffer posting has been modified in the rdma transport.
-> > 
-> > The comment there refers to the socket code, not the rdma code, and
-> 
-> Yes, you are correct. 
-> 
-> > there was a svc_release_skb() there before the rdma code came along.
-> > I'd like to understand why.
-> 
-> I believe it's because the socket code has buffer quotas and the skb
-> you're holding consumes credits in the recv sock buf. So it's
-> conceivable that you could send a message, another client message
-> arrives prior to releasing the skb your holding, and this new message
-> gets dropped unnecessarily. I don't believe it affects the sending at
-> all because the message you're holding came from sock_recv_datagram and
-> only consumes recv side credits.
-> 
-> Since this patch is only for "clean up" purposes, I'm inclined to just
-> ditch this patch and let us noodle on it a little more. Agreed?
+> You probably want to gate this based on NFS version (ie do the  
+> checking only for NFSv2/v3 mounts, and not for NFSv4 mounts)
 
-Yep, sounds prudent.
+Yes, of course :-(
+I remember think about that but must have forgotten when I actually
+cut the patch.
 
---b.
+> 
+> There is already a function in stropts.c (called  
+> set_mandatory_options) that might be a better place to put the special  
+> option parsing, as you can use the nice po_* calls, and it already has  
+> a switch for detecting which NFS version is being requested.
+
+I cannot bring myself to put code in a function called
+"set_mandatory_options" which does not, in fact, set any options,
+whether mandatory or not.
+
+> 
+> Since the common part of this code (start_statd) is already in a  
+> helper, I would leave the existing logic in nfsmount.c, and just add a  
+> handful of lines in stropts.c:set_mandatory_options that worries about  
+> "lock/nolock" for NFSv2/v3 mounts.
+
+So how about the following?
+
+Thanks for the feedback.
+
+NeilBrown
+
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index cdd610e..be77d17 100644
+--- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -694,6 +694,17 @@ int nfsmount_string(const char *spec, const char *node, const char *type,
+ 	if (!set_mandatory_options(type, &saddr, options))
+ 		goto out;
+ 
++	if (!fake && strcmp(type, "nfs4") != 0 &&
++	    po_rightmost(options, "nolock", "lock") != PO_KEY1_RIGHTMOST)
++		if (!start_statd()) {
++			nfs_error(_("%s: rpc.statd is not running but is "
++				    "required for remote locking.\n"
++				    "   Either use '-o nolock' to keep "
++				    "locks local, or start statd."),
++				  progname);
++			goto out;
++		}
++
+ 	if (po_rightmost(options, "bg", "fg") == PO_KEY1_RIGHTMOST)
+ 		retval = nfsmount_bg(spec, node, type, hostname, flags,
+ 					options, fake, child, extra_opts);
