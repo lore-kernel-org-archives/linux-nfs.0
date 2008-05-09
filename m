@@ -1,76 +1,72 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [NFS] Server-side locking issue
-Date: Fri, 9 May 2008 11:43:05 -0400
-Message-ID: <20080509154305.GA798@fieldses.org>
-References: <20080508221815.GB4583@async.com.br>
+Subject: stuff
+Date: Fri, 9 May 2008 15:23:19 -0400
+Message-ID: <20080509192319.GG1907@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: NFS@lists.sourceforge.net
-To: Christian Robottom Reis <kiko@canonical.com>
+Content-Type: text/plain; charset=utf-8
+Cc: Aurelien Charbon <aurelien.charbon@bull.net>,
+	Neil Brown <neilb@suse.de>, Brian Haley <brian.haley@hp.com>,
+	YOSHIFUJI Hideaki / =?utf-8?B?5ZCJ6Jek6Iux5piO?=
+	<yoshfuji@linux-ipv6.org>
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:36099 "EHLO neil.brown.name"
+Received: from mail.fieldses.org ([66.93.2.214]:58969 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754636AbYEIRXr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 9 May 2008 13:23:47 -0400
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1JuWJs-0003Jm-3t
-	for linux-nfs@vger.kernel.org; Sat, 10 May 2008 03:23:44 +1000
-In-Reply-To: <20080508221815.GB4583-Zkq4WM0RTTBfJ/NunPodnw@public.gmane.org>
+	id S1754736AbYEITXW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 9 May 2008 15:23:22 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, May 08, 2008 at 07:18:16PM -0300, Christian Robottom Reis wrote:
-> Today, apparently at random, we had a locking problem on our LAN. Client
-> applications hung, restarting them led to hangs, and the client dmesgs
-> showed a familiar:
-> 
->     [443619.682118] lockd: server anthem not responding, still trying
-> 
-> So the server lockd apparently stopped responding to clients, and
-> restarting clients got us nowhere. Eventually we cycled the server and
-> everything's back to normal, but I'm pretty confused as to what
-> happened. I couldn't scrape any evidence on the server that would point
-> to why this happened -- no OOPS, error or even warning output.
-> 
-> I was reading through the thread at
-> http://groups.google.com.br/group/fa.linux.kernel/browse_thread/thread/6c7b5e49a46aef75/91adbb9f298db509?lnk=st&q=nfs+locking+server#91adbb9f298db509
-> and figured that it might be a similar problem I'm facing, but I'm not
-> entirely sure as it's hard to say if somebody interrupted a client
-> program or not (it's a large diskless network).
+=46rom: J. Bruce Fields <bfields@citi.umich.edu>
 
-I don't think the server stopped responding to clients in the case
-Miklos described.
+Commit f15364bd4cf8799a7677b6daeed7b67d9139d974 ("IPv6 support for NFS
+server export caches") dropped a couple spaces, rendering the output
+here difficult to read.
 
-Perhaps a sysrq-T dump of lockd would show where (and whether) it's
-blocked?  (So once lockd stops responding, log into the server, run
-"echo t >/proc/sysrq-trigger", and collect the output from the logs,
-especially the stacktrace for the lockd process).
+(However note that we expect the output to be parsed only by humans, no=
+t
+machines, so this shouldn't have broken any userland software.)
 
-> 
-> Clients run 2.6.24-16-generic (stock Ubuntu Hardy) and server is
-> 2.6.22-14-generic (stock Ubuntu Gutsy).
-> 
-> If the problem happens again, what can I do on server and client to
-> further debug the problem? And is there a utility that clears locks that
-> we could use to avoid having to restart the server (acking the risks in
-> cleared locks)?
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+Cc: Aurelien Charbon <aurelien.charbon@bull.net>
+Cc: Neil Brown <neilb@suse.de>
+Cc: Brian Haley <brian.haley@hp.com>
+Cc:  YOSHIFUJI Hideaki / =E5=90=89=E8=97=A4=E8=8B=B1=E6=98=8E <yoshfuji=
+@linux-ipv6.org>
 
-If the server lockd has completely stopped responding to lockd requests,
-then the problem isn't just a stray file lock.
+---
+ net/sunrpc/svcauth_unix.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
+
+I just noticed this while doing some debugging at Connectathon.  I'm
+undecided whether to take it seriously.  Does anyone other than me use
+these /content files?  I suppose it should probably go into 2.6.26 but
+not 2.6.25.x.
 
 --b.
 
--------------------------------------------------------------------------
-This SF.net email is sponsored by the 2008 JavaOne(SM) Conference 
-Don't miss this year's exciting event. There's still time to save $100. 
-Use priority code J8TL2D2. 
-http://ad.doubleclick.net/clk;198757673;13503038;p?http://java.sun.com/javaone
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
+index 3f30ee6..f24800f 100644
+--- a/net/sunrpc/svcauth_unix.c
++++ b/net/sunrpc/svcauth_unix.c
+@@ -278,7 +278,7 @@ static int ip_map_show(struct seq_file *m,
+ 		dom =3D im->m_client->h.name;
+=20
+ 	if (ipv6_addr_v4mapped(&addr)) {
+-		seq_printf(m, "%s" NIPQUAD_FMT "%s\n",
++		seq_printf(m, "%s " NIPQUAD_FMT " %s\n",
+ 			im->m_class,
+ 			ntohl(addr.s6_addr32[3]) >> 24 & 0xff,
+ 			ntohl(addr.s6_addr32[3]) >> 16 & 0xff,
+@@ -286,7 +286,7 @@ static int ip_map_show(struct seq_file *m,
+ 			ntohl(addr.s6_addr32[3]) >>  0 & 0xff,
+ 			dom);
+ 	} else {
+-		seq_printf(m, "%s" NIP6_FMT "%s\n",
++		seq_printf(m, "%s " NIP6_FMT " %s\n",
+ 			im->m_class, NIP6(addr), dom);
+ 	}
+ 	return 0;
+--=20
+1.5.5.rc1
 
