@@ -1,105 +1,31 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] exportfs: fix incorrect EACCES in reconnect_path()
-Date: Fri, 9 May 2008 00:34:25 -0400
-Message-ID: <20080509043425.GD21408@fieldses.org>
-References: <20080502151646.GA5515@janus> <20080502153439.GC7376@infradead.org> <20080502155617.GD18401@fieldses.org> <1209744293.8294.19.camel@heimdal.trondhjem.org> <20080502221216.GP21918@fieldses.org> <18462.17737.353976.999538@notabene.brown> <20080505174716.GA12814@fieldses.org> <18463.42978.531115.344884@notabene.brown> <20080506195041.GD13484@fieldses.org> <18466.28013.258338.485948@notabene.brown>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: referrals
+Date: Thu, 08 May 2008 22:10:39 -0700
+Message-ID: <1210309839.8657.0.camel@localhost>
+References: <20080509011918.GK12690@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Christoph Hellwig <hch@infradead.org>,
-	Frank van Maarseveen <frankvm@frankvm.com>,
-	Christoph Hellwig <hch@lst.de>,
-	Linux NFS mailing list <linux-nfs@vger.kernel.org>
-To: Neil Brown <neilb@suse.de>
+Content-Type: text/plain
+Cc: Trond Myklebust <trond@netapp.com>, linux-nfs@vger.kernel.org,
+	Manoj Naik <manoj@almaden.ibm.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:37284 "EHLO fieldses.org"
+Received: from pat.uio.no ([129.240.10.15]:50859 "EHLO pat.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750830AbYEIEev (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 9 May 2008 00:34:51 -0400
-In-Reply-To: <18466.28013.258338.485948-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
+	id S1751832AbYEIFKr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 9 May 2008 01:10:47 -0400
+In-Reply-To: <20080509011918.GK12690@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, May 08, 2008 at 01:03:09PM +1000, Neil Brown wrote:
-> On Tuesday May 6, bfields@fieldses.org wrote:
-> > On Tue, May 06, 2008 at 10:35:46AM +1000, Neil Brown wrote:
-> > > 
-> > > To fix the current bug properly, reconnect_path still needs to bypass
-> > > normal permission checks even when subtree_check is in effect, so it
-> > > can be sure of getting read permission on the parent directory.
-> > 
-> > OK, but why not just forget the subtree_check case?  It would be just
-> > another item on the "reasons not to use subtree_check" list.
+On Thu, 2008-05-08 at 21:19 -0400, J. Bruce Fields wrote:
+> An attempt to follow an nfsv4 referral is leading to a hang.  I'm doing
+> an "ls" on the absent directory.  A network trace shows the server
+> returning with a sane-looking response to the getattr of fs_locations.
+> I've appended the part of the sysrq-t trace for "ls".  Any ideas?
 > 
-> I guess so.
-> 
-> > 
-> > If a fix for the subtree checking case were easy (or if someone else had
-> > the time to do a very careful job of it), then fine, but maybe we should
-> > just fix the easy case and leave the subtree checking as is for now.
-> 
-> So is this the proposed fix?  A bit ugly, but I guess it's OK.
+> --b.
 
-Something like that, yep.  (Frank, can you confirm that this does the
-job for you?)
+What kernel?
 
-It'd be nice if we could find a way to incorporate a little cleanup at
-the same time, but I'm not sure exactly what to suggest.
+Trond
 
---b.
-
-> 
-> NeilBrown
-> 
-> Signed-off-by: Neil Brown <neilb@suse.de>
-> 
-> ### Diffstat output
->  ./fs/nfsd/nfsfh.c |   29 ++++++++++++++++++++++++++---
->  1 file changed, 26 insertions(+), 3 deletions(-)
-> 
-> diff .prev/fs/nfsd/nfsfh.c ./fs/nfsd/nfsfh.c
-> --- .prev/fs/nfsd/nfsfh.c	2008-05-06 10:06:59.000000000 +1000
-> +++ ./fs/nfsd/nfsfh.c	2008-05-08 13:01:06.000000000 +1000
-> @@ -176,9 +176,24 @@ static __be32 nfsd_set_fh_dentry(struct 
->  	if (IS_ERR(exp))
->  		return nfserrno(PTR_ERR(exp));
->  
-> -	error = nfsd_setuser_and_check_port(rqstp, exp);
-> -	if (error)
-> -		goto out;
-> +	if (exp->ex_flags & NFSEXP_NOSUBTREECHECK) {
-> +		/* Elevate privileges so that the lack of 'r' or 'x'
-> +		 * permission on some parent directory will
-> +		 * not stop exportfs_decode_fh from being able
-> +		 * to reconnect a directory into the dentry cache.
-> +		 * The same problem can affect "SUBTREECHECK" exports,
-> +		 * but as nfsd_acceptable depends on correct
-> +		 * access control settings being in effect, we cannot
-> +		 * fix that case easily - so though.
-> +		 */
-> +		current->cap_effective =
-> +			cap_raise_nfsd_set(current->cap_effective,
-> +					   current->cap_permitted);
-> +	} else {
-> +		error = nfsd_setuser_and_check_port(rqstp, exp);
-> +		if (error)
-> +			goto out;
-> +	}
->  
->  	/*
->  	 * Look up the dentry using the NFS file handle.
-> @@ -215,6 +230,14 @@ static __be32 nfsd_set_fh_dentry(struct 
->  		goto out;
->  	}
->  
-> +	if (exp->ex_flags & NFSEXP_NOSUBTREECHECK) {
-> +		error = nfsd_setuser_and_check_port(rqstp, exp);
-> +		if (error) {
-> +			dput(dentry);
-> +			goto out;
-> +		}
-> +	}
-> +
->  	if (S_ISDIR(dentry->d_inode->i_mode) &&
->  			(dentry->d_flags & DCACHE_DISCONNECTED)) {
->  		printk("nfsd: find_fh_dentry returned a DISCONNECTED directory: %s/%s\n",
