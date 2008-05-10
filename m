@@ -1,71 +1,32 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH v2] nfs: use compound hdr.status to override op status.
-Date: Sat, 10 May 2008 10:24:36 -0700
-Message-ID: <1210440276.12927.0.camel@localhost>
-References: <47F0F6AB.3030302@panasas.com>
-	<1206974900-368-1-git-send-email-bhalevy@panasas.com>
-	<1207002349.15341.15.camel@heimdal.trondhjem.org>
-	<47F2025D.3030306@panasas.com> <47F20334.7040208@panasas.com>
-	<4824E08E.6070401@panasas.com>
+Subject: Re: [PATCH] nfs: Fix misparsing of nfsv4 fs_locations attribute
+Date: Sat, 10 May 2008 10:32:08 -0700
+Message-ID: <1210440728.12927.5.camel@localhost>
+References: <20080509011918.GK12690@fieldses.org>
+	 <1210309839.8657.0.camel@localhost> <20080509152750.GA325@fieldses.org>
+	 <20080509165204.GB1907@fieldses.org> <20080509171208.GC1907@fieldses.org>
+	 <20080509235930.GM1907@fieldses.org>
+	 <C4A41609-740F-450E-BE8F-7F51A8A9327B@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-To: Benny Halevy <bhalevy@panasas.com>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <4824E08E.6070401@panasas.com>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: text/plain
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	Trond Myklebust <trond@netapp.com>, linux-nfs@vger.kernel.org,
+	Manoj Naik <manoj@almaden.ibm.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from pat.uio.no ([129.240.10.15]:46091 "EHLO pat.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752816AbYEJRcV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 10 May 2008 13:32:21 -0400
+In-Reply-To: <C4A41609-740F-450E-BE8F-7F51A8A9327B@oracle.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2008-05-09 at 16:38 -0700, Benny Halevy wrote:
-> >From 513dd2b4ebab280343db4bf6071b75c4820089fc Mon Sep 17 00:00:00 2001
-> From: Benny Halevy <bhalevy@panasas.com>
-> Date: Tue, 1 Apr 2008 12:41:08 +0300
-> Subject: [PATCH 1/1 v2] nfs: use compound hdr.status to override op status.
-> 
-> The compound header status must be equivalent to the
-> status of the last operation in the compound results.
-> In certain cases like lack of resources or xdr decoding error,
-> the nfs server may return a non-zero status in the compound header
-> which is not returned by any operation.  In this case we would
-> notice that today when looking for the respective operations
-> code in the results and we return -EIO when we cannot find it.
-> This patch fixes that by returning the status available in the
-> compound header instead.
-> 
-> This patch also fixes 3 call sites where we looked at the compound
-> hdr.status in the success case which is useless (yet benign).
-> These are nfs4_xdr_dec_{fsinfo,setclientid,setclientid_confirm}
-> 
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> ---
->  fs/nfs/nfs4xdr.c |   84 +++++++++++++++++++++++++----------------------------
->  1 files changed, 40 insertions(+), 44 deletions(-)
-> 
-> Changes in PATCH v2:
-> * rebased onto 2.6.26 (off of linux-2.6 28a4acb4)
-> * fixed checkpatch.pl nits
-> * do not fixup status in nfs4_xdr_enc_setacl
-> 
-> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-> index 5a2d649..57b512e 100644
-> --- a/fs/nfs/nfs4xdr.c
-> +++ b/fs/nfs/nfs4xdr.c
-> @@ -3791,6 +3791,9 @@ static int decode_delegreturn(struct xdr_stream *xdr)
->  	return decode_op_hdr(xdr, OP_DELEGRETURN);
->  }
->  
-> +#define nfs4_fixup_status(status, hdr_status) \
-> +	(likely(!status) ? 0 : nfs4_stat_to_errno(hdr_status))
-> +
+On Fri, 2008-05-09 at 19:29 -0700, Chuck Lever wrote:
+> Should you use in4_pton() instead?
 
-static function please!
+Can we rather convert this to use nfs_parse_server_address? We don't
+need 10 different ways to parse text addresses...
 
-  Trond
+Trond
+
