@@ -1,59 +1,145 @@
-From: "Alexander Borghgraef" <alexander.borghgraef.rma@gmail.com>
-Subject: Nfs filesystem corruption(?) after kmail crash
-Date: Wed, 14 May 2008 14:32:16 +0200
-Message-ID: <9e8c52a20805140532w2bcfeff3n896fa5a9b0e82b5@mail.gmail.com>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH] NFS: implement option checking when remounting NFS
+	filesystems (resend)
+Date: Wed, 14 May 2008 12:45:36 -0400
+Message-ID: <1210783536-23607-1-git-send-email-jlayton@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: linux-nfs@vger.kernel.org
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from nf-out-0910.google.com ([64.233.182.184]:54525 "EHLO
-	nf-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754358AbYENMcS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 May 2008 08:32:18 -0400
-Received: by nf-out-0910.google.com with SMTP id d3so1407593nfc.21
-        for <linux-nfs@vger.kernel.org>; Wed, 14 May 2008 05:32:16 -0700 (PDT)
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+To: trond.myklebust@fys.uio.no
+Return-path: <nfsv4-bounces@linux-nfs.org>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi all,
+When remounting an NFS or NFS4 filesystem, the new NFS options are not
+respected, yet the remount will still return success. This patch adds
+a remount_fs sb op for NFS that checks any new nfs mount options against
+the existing ones and fails the mount if any have changed.
 
-I've been posting this on every linux support forum I thought
-relevant, with no useful response. I suspect it's an nfs problem, so
-now I'm trying this list. The problem is this: ever since upgrading
-from Fedora 6 to 8, I've been experiencing periodic kmail/contact
-crashes. After running for some time, kmail pops an error window:
+This is only implemented for string-based mount options since doing
+this with binary options isn't really feasible.
 
-  Error opening /home/myhome/Mail/sent-mail/cur; either this is not a
-valid maildir folder, or you do not have
-  sufficient access permissions.
+This is essentially the same as the original patch I sent out, but
+adds a check to see if the addr= option has changed.
+---
+ fs/nfs/super.c |   76 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 76 insertions(+), 0 deletions(-)
 
-Sent-mail is just an example, it happens to random mail directories.
-Shortly after this, kmail crashes with the error message:
-
-  KMail encountered a fatal error and will terminate now. The error
-was: Could not sync maildir folder.
-
-So I did an ls of an affected mail directory, which resides on an nfs
-filesystem on a fileserver, and I found this rather disquieting
-result:
-
-  aborghgr@mypc~$ ls -l Mail/inbox/
-  ls: cannot access Mail/inbox/cur: No such file or directory
-  total 8
-  d????????? ? ?        ?          ?                ? cur
-  drwx------ 2 aborghgr slocate 4096 2005-07-08 13:23 new
-  drwx------ 2 aborghgr slocate 4096 2008-04-24 10:24 tmp
-
-The cur directory (or other files to which this has happened)is not
-permanently lost: moving its parent directory for example restores all
-of the files, and simply waiting also solves the problem. Still, it
-makes working with kmail impossible, and also raises concerns about
-the stability of the filesystem in general. The people at the kdepim
-list said that a user-space program such as kmail could not possibly
-corrupt the filesystem like that, so it has to be a bug in nfs. Any
-ideas? I'm using Fedora 8, the 2.6.24.4-64.fc8 kernel and kmail 1.9.9
-on kde 3.5.9-5.fc8. The nfs fileserver runs Fedora Core 3 with the
-2.6.9-1.667 kernel (old machine).
-
---
-Alex Borghgraef
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 7226a50..8558b03 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -207,6 +207,7 @@ static int nfs_xdev_get_sb(struct file_system_type *fs_type,
+ 		int flags, const char *dev_name, void *raw_data, struct vfsmount *mnt);
+ static void nfs_kill_super(struct super_block *);
+ static void nfs_put_super(struct super_block *);
++static int nfs_remount(struct super_block *sb, int *flags, char *raw_data);
+ 
+ static struct file_system_type nfs_fs_type = {
+ 	.owner		= THIS_MODULE,
+@@ -234,6 +235,7 @@ static const struct super_operations nfs_sops = {
+ 	.umount_begin	= nfs_umount_begin,
+ 	.show_options	= nfs_show_options,
+ 	.show_stats	= nfs_show_stats,
++	.remount_fs	= nfs_remount,
+ };
+ 
+ #ifdef CONFIG_NFS_V4
+@@ -278,6 +280,7 @@ static const struct super_operations nfs4_sops = {
+ 	.umount_begin	= nfs_umount_begin,
+ 	.show_options	= nfs_show_options,
+ 	.show_stats	= nfs_show_stats,
++	.remount_fs	= nfs_remount,
+ };
+ #endif
+ 
+@@ -1398,6 +1401,79 @@ out_invalid_fh:
+ 	return -EINVAL;
+ }
+ 
++static int
++nfs_compare_remount_data(struct nfs_server *nfss,
++			 struct nfs_parsed_mount_data *data)
++{
++	if (data->flags != nfss->flags ||
++	    data->rsize != nfss->rsize ||
++	    data->wsize != nfss->wsize ||
++	    data->retrans != nfss->client->cl_timeout->to_retries ||
++	    data->auth_flavors[0] != nfss->client->cl_auth->au_flavor ||
++	    data->acregmin != nfss->acregmin / HZ ||
++	    data->acregmax != nfss->acregmax / HZ ||
++	    data->acdirmin != nfss->acdirmin / HZ ||
++	    data->acdirmax != nfss->acdirmax / HZ ||
++	    data->timeo != (10U * nfss->client->cl_timeout->to_initval / HZ) ||
++	    data->nfs_server.addrlen != nfss->nfs_client->cl_addrlen ||
++	    memcmp(&data->nfs_server.address, &nfss->nfs_client->cl_addr,
++		   data->nfs_server.addrlen) != 0)
++		return -EINVAL;
++
++	return 0;
++}
++
++static int
++nfs_remount(struct super_block *sb, int *flags, char *raw_data)
++{
++	int error;
++	struct nfs_server *nfss = sb->s_fs_info;
++	struct nfs_parsed_mount_data *data;
++	struct nfs_mount_data *options = (struct nfs_mount_data *)raw_data;
++	struct nfs4_mount_data *options4 = (struct nfs4_mount_data *)raw_data;
++
++	/*
++	 * Userspace mount programs that send binary options generally send
++	 * them populated with default values. We have no way to know which
++	 * ones were explicitly specified. Fall back to legacy behavior and
++	 * just return success.
++	 */
++	if ((sb->s_type == &nfs4_fs_type && options4->version == 1) ||
++	    (sb->s_type == &nfs_fs_type && options->version >= 1 &&
++	     options->version <= 6))
++		return 0;
++
++	data = kzalloc(sizeof(*data), GFP_KERNEL);
++	if (data == NULL)
++		return -ENOMEM;
++
++	/* fill out struct with values from existing mount */
++	data->flags = nfss->flags;
++	data->rsize = nfss->rsize;
++	data->wsize = nfss->wsize;
++	data->retrans = nfss->client->cl_timeout->to_retries;
++	data->auth_flavors[0] = nfss->client->cl_auth->au_flavor;
++	data->acregmin = nfss->acregmin / HZ;
++	data->acregmax = nfss->acregmax / HZ;
++	data->acdirmin = nfss->acdirmin / HZ;
++	data->acdirmax = nfss->acdirmax / HZ;
++	data->timeo = 10U * nfss->client->cl_timeout->to_initval / HZ;
++	data->nfs_server.addrlen = nfss->nfs_client->cl_addrlen;
++	memcpy(&data->nfs_server.address, &nfss->nfs_client->cl_addr,
++		data->nfs_server.addrlen);
++
++	/* overwrite those values with any that were specified */
++	error = nfs_parse_mount_options((char *)options, data);
++	if (error < 0)
++		goto out;
++
++	/* compare new mount options with old ones */
++	error = nfs_compare_remount_data(nfss, data);
++out:
++	kfree(data);
++	return error;
++}
++
+ /*
+  * Initialise the common bits of the superblock
+  */
+-- 
+1.5.3.6
