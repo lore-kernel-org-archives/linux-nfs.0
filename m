@@ -1,82 +1,59 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: portmap -> map db entirely in filesystem
-Date: Tue, 13 May 2008 15:30:42 -0700
-Message-ID: <DCFA5A55-22F0-4C03-9877-E8DC80F57CB5@oracle.com>
-References: <20080513195831.GA18915@nibiru.local>
-Mime-Version: 1.0 (Apple Message framework v919.2)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-To: weigelt-EU+a56NjgY8@public.gmane.org
+From: "Alexander Borghgraef" <alexander.borghgraef.rma@gmail.com>
+Subject: Nfs filesystem corruption(?) after kmail crash
+Date: Wed, 14 May 2008 14:32:16 +0200
+Message-ID: <9e8c52a20805140532w2bcfeff3n896fa5a9b0e82b5@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:14686 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751774AbYEMWa6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 May 2008 18:30:58 -0400
-In-Reply-To: <20080513195831.GA18915-q9I3ByPDOfiE+EvaaNYduQ@public.gmane.org>
+Received: from nf-out-0910.google.com ([64.233.182.184]:54525 "EHLO
+	nf-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754358AbYENMcS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 May 2008 08:32:18 -0400
+Received: by nf-out-0910.google.com with SMTP id d3so1407593nfc.21
+        for <linux-nfs@vger.kernel.org>; Wed, 14 May 2008 05:32:16 -0700 (PDT)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On May 13, 2008, at 12:58 PM, Enrico Weigelt wrote:
-> Hi folks,
->
-> while working on portmap, I was thinking about moving the
-> entire mapping table to the filesystem: one file per record.
+Hi all,
 
-Well, first of all we are moving away from portmap these days since we  
-need to support IPv6.  We currently have an rpcbind implementation  
-that is ported from Solaris.
+I've been posting this on every linux support forum I thought
+relevant, with no useful response. I suspect it's an nfs problem, so
+now I'm trying this list. The problem is this: ever since upgrading
+from Fedora 6 to 8, I've been experiencing periodic kmail/contact
+crashes. After running for some time, kmail pops an error window:
 
-But it would make sense to keep the rpcbind service completely in the  
-kernel.  That way the kernel RPC services could register with the  
-rpcbind database directly, and we wouldn't have to worry about re- 
-registering running RPC services because of a daemon restart.
+  Error opening /home/myhome/Mail/sent-mail/cur; either this is not a
+valid maildir folder, or you do not have
+  sufficient access permissions.
 
-There's no need to involve permanent storage for rpcbind.  Once the  
-system reboots the database is empty and must be repopulated as RPC  
-services are restarted.
+Sent-mail is just an example, it happens to random mail directories.
+Shortly after this, kmail crashes with the error message:
 
-Local user-space RPC services might then register via an ioctl() (or  
-other special interface) instead of an actual RPC.  That way we could  
-gate RPC service registration with actual security capabilities.
+  KMail encountered a fatal error and will terminate now. The error
+was: Could not sync maildir folder.
 
-> Benefits:
->
-> * allows much simpler code: no internal maptable and load/store
->  logic - just simple file IO (even limited to REST)
-> * external programs can directly manipulate the map db, w/o
->  goint through portmap itself
-> * several portmap's (eg. for serving on separate sockets or
->  different security domains) can easily share the same map.
-> * less process memory consumption of portmap (on larger maps)
->
-> Drawbacks:
->
-> * a bit slower, more IO traffic
-> * we have to rethink chroot'ing
->
->
-> What do you think about this ?
->
->
-> cu
-> -- 
-> ---------------------------------------------------------------------
-> Enrico Weigelt    ==   metux IT service - http://www.metux.de/
-> ---------------------------------------------------------------------
-> Please visit the OpenSource QM Taskforce:
-> 	http://wiki.metux.de/public/OpenSource_QM_Taskforce
-> Patches / Fixes for a lot dozens of packages in dozens of versions:
-> 	http://patches.metux.de/
-> ---------------------------------------------------------------------
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
-> in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+So I did an ls of an affected mail directory, which resides on an nfs
+filesystem on a fileserver, and I found this rather disquieting
+result:
+
+  aborghgr@mypc~$ ls -l Mail/inbox/
+  ls: cannot access Mail/inbox/cur: No such file or directory
+  total 8
+  d????????? ? ?        ?          ?                ? cur
+  drwx------ 2 aborghgr slocate 4096 2005-07-08 13:23 new
+  drwx------ 2 aborghgr slocate 4096 2008-04-24 10:24 tmp
+
+The cur directory (or other files to which this has happened)is not
+permanently lost: moving its parent directory for example restores all
+of the files, and simply waiting also solves the problem. Still, it
+makes working with kmail impossible, and also raises concerns about
+the stability of the filesystem in general. The people at the kdepim
+list said that a user-space program such as kmail could not possibly
+corrupt the filesystem like that, so it has to be a bug in nfs. Any
+ideas? I'm using Fedora 8, the 2.6.24.4-64.fc8 kernel and kmail 1.9.9
+on kde 3.5.9-5.fc8. The nfs fileserver runs Fedora Core 3 with the
+2.6.9-1.667 kernel (old machine).
 
 --
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+Alex Borghgraef
