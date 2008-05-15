@@ -1,145 +1,68 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH] NFS: implement option checking when remounting NFS
-	filesystems (resend)
-Date: Wed, 14 May 2008 12:45:36 -0400
-Message-ID: <1210783536-23607-1-git-send-email-jlayton@redhat.com>
+From: "Adam Olsen" <arolsen@gmail.com>
+Subject: NFS+GD issues on kernel 2.6.24, but not 2.6.22
+Date: Thu, 15 May 2008 08:06:29 -0600
+Message-ID: <2473b43f0805150706g5be9918cu3c77d9135cded912@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-To: trond.myklebust@fys.uio.no
-Return-path: <nfsv4-bounces@linux-nfs.org>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: text/plain; charset=ISO-8859-1
+To: linux-nfs@vger.kernel.org
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from wf-out-1314.google.com ([209.85.200.173]:53550 "EHLO
+	wf-out-1314.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932144AbYEOOGa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 May 2008 10:06:30 -0400
+Received: by wf-out-1314.google.com with SMTP id 27so400243wfd.4
+        for <linux-nfs@vger.kernel.org>; Thu, 15 May 2008 07:06:30 -0700 (PDT)
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When remounting an NFS or NFS4 filesystem, the new NFS options are not
-respected, yet the remount will still return success. This patch adds
-a remount_fs sb op for NFS that checks any new nfs mount options against
-the existing ones and fails the mount if any have changed.
+Hello,
 
-This is only implemented for string-based mount options since doing
-this with binary options isn't really feasible.
+I'm having an issue with perl and libgd reading TrueType fonts over an
+NFS mount.
 
-This is essentially the same as the original patch I sent out, but
-adds a check to see if the addr= option has changed.
----
- fs/nfs/super.c |   76 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 76 insertions(+), 0 deletions(-)
+The NFS server is an Isilon cluster (I believe they are based on FreeBSD 6.1?)
+The client is a machine that's just been updated to Hardy.
+  * Kernel 2.6.24-16-server
+  * libgd-gd2-perl 2.35-1
+  * libgd2-xpm 2.0.35
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 7226a50..8558b03 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -207,6 +207,7 @@ static int nfs_xdev_get_sb(struct file_system_type *fs_type,
- 		int flags, const char *dev_name, void *raw_data, struct vfsmount *mnt);
- static void nfs_kill_super(struct super_block *);
- static void nfs_put_super(struct super_block *);
-+static int nfs_remount(struct super_block *sb, int *flags, char *raw_data);
- 
- static struct file_system_type nfs_fs_type = {
- 	.owner		= THIS_MODULE,
-@@ -234,6 +235,7 @@ static const struct super_operations nfs_sops = {
- 	.umount_begin	= nfs_umount_begin,
- 	.show_options	= nfs_show_options,
- 	.show_stats	= nfs_show_stats,
-+	.remount_fs	= nfs_remount,
- };
- 
- #ifdef CONFIG_NFS_V4
-@@ -278,6 +280,7 @@ static const struct super_operations nfs4_sops = {
- 	.umount_begin	= nfs_umount_begin,
- 	.show_options	= nfs_show_options,
- 	.show_stats	= nfs_show_stats,
-+	.remount_fs	= nfs_remount,
- };
- #endif
- 
-@@ -1398,6 +1401,79 @@ out_invalid_fh:
- 	return -EINVAL;
- }
- 
-+static int
-+nfs_compare_remount_data(struct nfs_server *nfss,
-+			 struct nfs_parsed_mount_data *data)
-+{
-+	if (data->flags != nfss->flags ||
-+	    data->rsize != nfss->rsize ||
-+	    data->wsize != nfss->wsize ||
-+	    data->retrans != nfss->client->cl_timeout->to_retries ||
-+	    data->auth_flavors[0] != nfss->client->cl_auth->au_flavor ||
-+	    data->acregmin != nfss->acregmin / HZ ||
-+	    data->acregmax != nfss->acregmax / HZ ||
-+	    data->acdirmin != nfss->acdirmin / HZ ||
-+	    data->acdirmax != nfss->acdirmax / HZ ||
-+	    data->timeo != (10U * nfss->client->cl_timeout->to_initval / HZ) ||
-+	    data->nfs_server.addrlen != nfss->nfs_client->cl_addrlen ||
-+	    memcmp(&data->nfs_server.address, &nfss->nfs_client->cl_addr,
-+		   data->nfs_server.addrlen) != 0)
-+		return -EINVAL;
-+
-+	return 0;
-+}
-+
-+static int
-+nfs_remount(struct super_block *sb, int *flags, char *raw_data)
-+{
-+	int error;
-+	struct nfs_server *nfss = sb->s_fs_info;
-+	struct nfs_parsed_mount_data *data;
-+	struct nfs_mount_data *options = (struct nfs_mount_data *)raw_data;
-+	struct nfs4_mount_data *options4 = (struct nfs4_mount_data *)raw_data;
-+
-+	/*
-+	 * Userspace mount programs that send binary options generally send
-+	 * them populated with default values. We have no way to know which
-+	 * ones were explicitly specified. Fall back to legacy behavior and
-+	 * just return success.
-+	 */
-+	if ((sb->s_type == &nfs4_fs_type && options4->version == 1) ||
-+	    (sb->s_type == &nfs_fs_type && options->version >= 1 &&
-+	     options->version <= 6))
-+		return 0;
-+
-+	data = kzalloc(sizeof(*data), GFP_KERNEL);
-+	if (data == NULL)
-+		return -ENOMEM;
-+
-+	/* fill out struct with values from existing mount */
-+	data->flags = nfss->flags;
-+	data->rsize = nfss->rsize;
-+	data->wsize = nfss->wsize;
-+	data->retrans = nfss->client->cl_timeout->to_retries;
-+	data->auth_flavors[0] = nfss->client->cl_auth->au_flavor;
-+	data->acregmin = nfss->acregmin / HZ;
-+	data->acregmax = nfss->acregmax / HZ;
-+	data->acdirmin = nfss->acdirmin / HZ;
-+	data->acdirmax = nfss->acdirmax / HZ;
-+	data->timeo = 10U * nfss->client->cl_timeout->to_initval / HZ;
-+	data->nfs_server.addrlen = nfss->nfs_client->cl_addrlen;
-+	memcpy(&data->nfs_server.address, &nfss->nfs_client->cl_addr,
-+		data->nfs_server.addrlen);
-+
-+	/* overwrite those values with any that were specified */
-+	error = nfs_parse_mount_options((char *)options, data);
-+	if (error < 0)
-+		goto out;
-+
-+	/* compare new mount options with old ones */
-+	error = nfs_compare_remount_data(nfss, data);
-+out:
-+	kfree(data);
-+	return error;
-+}
-+
- /*
-  * Initialise the common bits of the superblock
-  */
+The issue is this:  using libgd via a perl script, I try writing text
+to an image in a font, specified by a file name (the font is located
+on the remote NFS server).  The script says that it cannot locate the
+font.  The client machine does not have any other known problems with
+the NFS share, it can read and write other files just fine.   We have
+several other machines that are reading this same share, though they
+are running kernel 2.6.22 from Gutsy (I confirmed that a downgrade to
+2.6.22 on Hardy resolves the issue).
+
+Here is a link to a script that can duplicate the problem 100% of the
+time:  http://soc.ath.cx/testfont.pl.txt
+
+An strace using the kernel that doesn't work looks like this:
+
+access("/mnt/isilon/fonts/arial.ttf", R_OK) = 0
+open("/mnt/isilon/fonts/arial.ttf", O_RDONLY) = 3
+fcntl64(3, F_SETFD, FD_CLOEXEC)         = 0
+fstat64(3, {st_mode=S_IFREG|0666, st_size=48784, ...}) = 0
+close(3)                                = 0
+
+And the strace on the system that *does* work looks like this:
+
+access("/mnt/isilon/fonts/arial.ttf", R_OK) = 0
+open("/mnt/isilon/fonts/arial.ttf", O_RDONLY) = 3
+fcntl64(3, F_SETFD, FD_CLOEXEC)         = 0
+fstat64(3, {st_mode=S_IFREG|0666, st_size=48784, ...}) = 0
+mmap2(NULL, 48784, PROT_READ, MAP_PRIVATE, 3, 0) = 0xb79cd000
+close(3)                                = 0
+
+Everything looks the same except the missing "mmap2" section.  Again,
+a note, this same machine *can* access other shares and read fonts
+just fine.  It appears to just be the connection to the Isilon
+machine.  Everything worked before the upgrade, and a downgrade to
+2.6.22 works.  Any information would be helpful.
+
 -- 
-1.5.3.6
+Adam Olsen
+SendOutCards.com
+http://www.vimtips.org
+http://last.fm/user/synic
