@@ -1,47 +1,97 @@
-From: "Chris Fanning" <christopher.fanning@gmail.com>
-Subject: [NFS] async vs. sync. corrupted fs
-Date: Fri, 16 May 2008 12:55:59 +0200
-Message-ID: <215ff4410805160355x25b8d055x9a0a246aa5875482@mail.gmail.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] nfs: Fix misparsing of nfsv4 fs_locations attribute
+Date: Fri, 16 May 2008 15:53:26 -0400
+Message-ID: <20080516195326.GD14228@fieldses.org>
+References: <20080509011918.GK12690@fieldses.org> <1210309839.8657.0.camel@localhost> <20080509152750.GA325@fieldses.org> <20080509165204.GB1907@fieldses.org> <20080509171208.GC1907@fieldses.org> <20080509235930.GM1907@fieldses.org> <C4A41609-740F-450E-BE8F-7F51A8A9327B@oracle.com> <1210440728.12927.5.camel@localhost> <5FE6354F-8E28-4697-A27D-8532FD547683@oracle.com> <1d07ca700805101807s7c034b08sc531993aa81010b2@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>,
+	linux-nfs@vger.kernel.org, Manoj Naik <manoj@almaden.ibm.com>
+To: "david m. richter" <richterd@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:37675 "EHLO neil.brown.name"
+Received: from mail.fieldses.org ([66.93.2.214]:60748 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754943AbYEPMYN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 16 May 2008 08:24:13 -0400
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1Jwyyn-0001g3-Rh
-	for linux-nfs@vger.kernel.org; Fri, 16 May 2008 22:24:09 +1000
+	id S1752363AbYEPTxh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 16 May 2008 15:53:37 -0400
+In-Reply-To: <1d07ca700805101807s7c034b08sc531993aa81010b2-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello all,
+On Sat, May 10, 2008 at 09:07:23PM -0400, david m. richter wrote:
+> On Sat, May 10, 2008 at 7:50 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+> > On May 10, 2008, at 10:32 AM, Trond Myklebust wrote:
+> >>
+> >> On Fri, 2008-05-09 at 19:29 -0700, Chuck Lever wrote:
+> >>>
+> >>> Should you use in4_pton() instead?
+> >>
+> >> Can we rather convert this to use nfs_parse_server_address? We don't
+> >> need 10 different ways to parse text addresses...
+> >
+> > I'm OK with that, as long as there isn't a technical problem with using
+> > in4_pton().
+> 
+> nfs_parse_server_address() uses in4_pton(), it just also groks ipv6.
 
-Could someone help me out?
+This is all a bit orthogonal to the actual bug, as all those functions
+want null-terminated strings too.
 
-I'm exporting a whole partition to a client.
-Using (rw,no_root_squash,sync, no_subtree_check), when I shutdown the
-server _before_ the client, the filesystem on the partion becomes
-corrupted.
-When I user async, it doesn't happen.
+We could apply the below (compile-tested only) and then add ipv6 support
+and converting to nfs_parse_server_address() in a subsequent patch.
 
-Is this normal?
-The exports manpage suggests that 'sync' is the better option.
+--b.
 
-Thanks.
-Chris.
+>From 530b441f2239d8bcedf9456c3c570d9c179cb406 Mon Sep 17 00:00:00 2001
+From: J. Bruce Fields <bfields@citi.umich.edu>
+Date: Fri, 9 May 2008 15:10:56 -0700
+Subject: [PATCH] nfs: Fix misparsing of nfsv4 fs_locations attribute
 
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Microsoft 
-Defy all challenges. Microsoft(R) Visual Studio 2008. 
-http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+The code incorrectly assumes here that the server name (or ip address)
+is null-terminated.  This can cause referrals to fail in some cases.
+
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+---
+ fs/nfs/nfs4namespace.c |   13 ++++++++++---
+ 1 files changed, 10 insertions(+), 3 deletions(-)
+
+diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
+index 5f9ba41..40a0209 100644
+--- a/fs/nfs/nfs4namespace.c
++++ b/fs/nfs/nfs4namespace.c
+@@ -93,14 +93,21 @@ static int nfs4_validate_fspath(const struct vfsmount *mnt_parent,
+ 	return 0;
+ }
+ 
++#define MAX_IPADDR_STRLEN 40
+ /*
+  * Check if the string represents a "valid" IPv4 address
+  */
+-static inline int valid_ipaddr4(const char *buf)
++static inline int valid_ipaddr4(const struct nfs4_string *buf)
+ {
+ 	int rc, count, in[4];
++	char str[MAX_IPADDR_STRLEN];
+ 
+-	rc = sscanf(buf, "%d.%d.%d.%d", &in[0], &in[1], &in[2], &in[3]);
++	if (buf->len >= MAX_IPADDR_STRLEN)
++		return -EINVAL;
++	memcpy(str, buf->data, buf->len);
++	str[buf->len] = '\0';
++
++	rc = sscanf(str, "%d.%d.%d.%d", &in[0], &in[1], &in[2], &in[3]);
+ 	if (rc != 4)
+ 		return -EINVAL;
+ 	for (count = 0; count < 4; count++) {
+@@ -178,7 +185,7 @@ static struct vfsmount *nfs_follow_referral(const struct vfsmount *mnt_parent,
+ 			};
+ 
+ 			if (location->servers[s].len <= 0 ||
+-			    valid_ipaddr4(location->servers[s].data) < 0) {
++			    valid_ipaddr4(&location->servers[s]) < 0) {
+ 				s++;
+ 				continue;
+ 			}
+-- 
+1.5.5.rc1
 
