@@ -1,46 +1,98 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 3/8] SUNRPC: Use RPC procedure name in call_verify
-Date: Sat, 17 May 2008 22:16:28 -0400
-Message-ID: <20080518021628.8366.57289.stgit@ellison.1015granger.net>
+Subject: [PATCH 5/8] SUNRPC: Refactor rpc_show_tasks
+Date: Sat, 17 May 2008 22:16:43 -0400
+Message-ID: <20080518021643.8366.13632.stgit@ellison.1015granger.net>
 References: <20080518021241.8366.12464.stgit@ellison.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: trond.myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:47104 "EHLO
+Received: from agminet01.oracle.com ([141.146.126.228]:47127 "EHLO
 	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751315AbYERCUB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 17 May 2008 22:20:01 -0400
+	with ESMTP id S1751513AbYERCUP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 17 May 2008 22:20:15 -0400
 In-Reply-To: <20080518021241.8366.12464.stgit-ewv44WTpT0t9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Making debugging output a little cleaner in call_verify by displaying the
-name of the RPC procedure instead of it's number.
+Clean up: move the logic that displays each task to its own function.
+This removes indentation and makes future changes easier.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- net/sunrpc/clnt.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+ net/sunrpc/clnt.c |   46 ++++++++++++++++++++++++----------------------
+ 1 files changed, 24 insertions(+), 22 deletions(-)
 
 
 diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index adbc85c..5aa32fa 100644
+index 1a12236..15c0f5b 100644
 --- a/net/sunrpc/clnt.c
 +++ b/net/sunrpc/clnt.c
-@@ -1431,10 +1431,10 @@ call_verify(struct rpc_task *task)
- 		error = -EPROTONOSUPPORT;
- 		goto out_err;
- 	case RPC_PROC_UNAVAIL:
--		dprintk("RPC: %5u %s: proc %p unsupported by program %u, "
-+		dprintk("RPC: %5u %s: proc %s unsupported by program %u, "
- 				"version %u on server %s\n",
- 				task->tk_pid, __func__,
--				task->tk_msg.rpc_proc,
-+				task->tk_msg.rpc_proc->p_name,
- 				task->tk_client->cl_prog,
- 				task->tk_client->cl_vers,
- 				task->tk_client->cl_server);
+@@ -1523,40 +1523,42 @@ static void rpc_show_header(void)
+ 		"-timeout -rpcwait -action- ---ops--\n");
+ }
+ 
++static void rpc_show_task(const struct rpc_clnt *clnt,
++			  const struct rpc_task *task)
++{
++	const char *rpc_waitq = "none";
++	int proc = -1;
++
++	if (task->tk_msg.rpc_proc)
++		proc = task->tk_msg.rpc_proc->p_proc;
++
++	if (RPC_IS_QUEUED(task))
++		rpc_waitq = rpc_qname(task->tk_waitqueue);
++
++	printk(KERN_INFO "%5u %04d %04x %6d %8p %6d %8p %8ld %8s %8p %8p\n",
++		task->tk_pid, proc,
++		task->tk_flags, task->tk_status,
++		clnt, clnt->cl_prog,
++		task->tk_rqstp, task->tk_timeout,
++		rpc_waitq,
++		task->tk_action, task->tk_ops);
++}
++
+ void rpc_show_tasks(void)
+ {
+ 	struct rpc_clnt *clnt;
+-	struct rpc_task *t;
++	struct rpc_task *task;
+ 	int header = 0;
+ 
+ 	spin_lock(&rpc_client_lock);
+ 	list_for_each_entry(clnt, &all_clients, cl_clients) {
+ 		spin_lock(&clnt->cl_lock);
+-		list_for_each_entry(t, &clnt->cl_tasks, tk_task) {
+-			const char *rpc_waitq = "none";
+-			int proc;
+-
++		list_for_each_entry(task, &clnt->cl_tasks, tk_task) {
+ 			if (!header) {
+ 				rpc_show_header();
+ 				header++;
+ 			}
+-
+-			if (t->tk_msg.rpc_proc)
+-				proc = t->tk_msg.rpc_proc->p_proc;
+-			else
+-				proc = -1;
+-
+-			if (RPC_IS_QUEUED(t))
+-				rpc_waitq = rpc_qname(t->tk_waitqueue);
+-
+-			printk("%5u %04d %04x %6d %8p %6d %8p %8ld %8s %8p %8p\n",
+-				t->tk_pid, proc,
+-				t->tk_flags, t->tk_status,
+-				t->tk_client,
+-				(t->tk_client ? t->tk_client->cl_prog : 0),
+-				t->tk_rqstp, t->tk_timeout,
+-				rpc_waitq,
+-				t->tk_action, t->tk_ops);
++			rpc_show_task(clnt, task);
+ 		}
+ 		spin_unlock(&clnt->cl_lock);
+ 	}
 
