@@ -1,60 +1,232 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [NFS] nfs over Windows
-Date: Sun, 18 May 2008 18:06:31 +0300
-Message-ID: <483045F7.8050401@panasas.com>
-References: <1211106185.14779.4.camel@Linux-stef.steph.lan>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 0/20] svcrdma: RDMA transport driver close path cleanup.
+Date: Sun, 18 May 2008 17:34:12 -0400
+Message-ID: <20080518213412.GB23253@fieldses.org>
+References: <12106196511042-git-send-email-tom@opengridcomputing.com> <20080513063342.GG1194@fieldses.org> <16276330-C8CC-4203-A3F7-390D5D5B939A@opengridcomputing.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: nfs@lists.sourceforge.net
-To: =?UTF-8?B?U3TDqXBoYW5lIEd1ZWRvbg==?= <stephaneguedon-6bugY6I12JBBDgjK7y7TUQ@public.gmane.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:43921 "EHLO neil.brown.name"
+Received: from mail.fieldses.org ([66.93.2.214]:58258 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753515AbYERPy1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 18 May 2008 11:54:27 -0400
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1JxlDK-0006O4-0A
-	for linux-nfs@vger.kernel.org; Mon, 19 May 2008 01:54:22 +1000
-In-Reply-To: <1211106185.14779.4.camel-CM9Um1Qnwm5RVcPm7aGZsP4CVqVLow9K@public.gmane.org>
+	id S1751166AbYERVeO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 18 May 2008 17:34:14 -0400
+In-Reply-To: <16276330-C8CC-4203-A3F7-390D5D5B939A@opengridcomputing.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTWF5LiAxOCwgMjAwOCwgMTM6MjMgKzAzMDAsIFN0w6lwaGFuZSBHdWVkb24gPHN0ZXBoYW5l
-Z3VlZG9uQGlmcmFuY2UuY29tPiB3cm90ZToKPiBIZWxsbwo+IAo+IEkgYW0gYSB1c2VyIG9mIE5G
-UyB1bmRlciBMaW51eC4gSSBmaW5kIGl0IG11Y2ggYmV0dGVyIGFuZCB2ZXJ5IG11Y2gKPiBlYXNp
-ZXIgdGhhbiBzYW1iYS4KPiBJIGhhdmUgcmVkIGluIHNvbWUgaW50ZXJuZXQgd2Vic2l0ZSB0aGF0
-IE5GU3Y0IHdpbGwgc3VwcG9ydCBNJCBXaW5kb3dzLgo+IENhbiBzb21lYm9keSB0ZWxsIG1lIHdo
-YXQgZG9lcyBpdCBtZWFuID8KPiBEb2VzIFdpbmRvd3Mgd2lsbCByZWFkIE5GU3Y0IG5hdGl2ZWx5
-LCBvciBkbyBJIG5lZWQgYSBkcml2ZXIgKGxpa2UgU0ZVLAo+IGRyaXZlciBvZiBNaWNyb3NvZnQp
-ID8KCkFzIGZhciBhcyBJIGtub3csIE1pY3Jvc29mdCBkbyBub3QgaGF2ZSBuYXRpdmUgc3VwcG9y
-dCBmb3IgTkZTdjQgeWV0LgpZb3VyIGJlc3QgYmV0IGlzIHVzaW5nIHRoZSBIdW1taW5nYmlyZCBj
-bGllbnQuCgpCZW5ueQoKPiAKPiBUaGFua3MgZm9yIHlvdXIgYXR0ZW50aW9uLgo+IEJlc3QgcmVn
-YXJkcy4KPiAKPiBtYSBwYWdlIHdlYiBzdXIgbW9uIHNlcnZldXIgcGVyc29ubmVsIDoKPiBodHRw
-Oi8vMjJkZWNlbWJyZS5mci5uZi8KPiAKPiAKPiAtLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tCj4gVGhpcyBTRi5u
-ZXQgZW1haWwgaXMgc3BvbnNvcmVkIGJ5OiBNaWNyb3NvZnQgCj4gRGVmeSBhbGwgY2hhbGxlbmdl
-cy4gTWljcm9zb2Z0KFIpIFZpc3VhbCBTdHVkaW8gMjAwOC4gCj4gaHR0cDovL2Nsay5hdGRtdC5j
-b20vTVJUL2dvL3ZzZTAxMjAwMDAwNzBtcnQvZGlyZWN0LzAxLwo+IF9fX19fX19fX19fX19fX19f
-X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fCj4gTkZTIG1haWxsaXN0ICAtICBORlNAbGlz
-dHMuc291cmNlZm9yZ2UubmV0Cj4gaHR0cHM6Ly9saXN0cy5zb3VyY2Vmb3JnZS5uZXQvbGlzdHMv
-bGlzdGluZm8vbmZzCj4gX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
-X19fX18KPiBQbGVhc2Ugbm90ZSB0aGF0IG5mc0BsaXN0cy5zb3VyY2Vmb3JnZS5uZXQgaXMgYmVp
-bmcgZGlzY29udGludWVkLgo+IFBsZWFzZSBzdWJzY3JpYmUgdG8gbGludXgtbmZzQHZnZXIua2Vy
-bmVsLm9yZyBpbnN0ZWFkLgo+ICAgICBodHRwOi8vdmdlci5rZXJuZWwub3JnL3ZnZXItbGlzdHMu
-aHRtbCNsaW51eC1uZnMKPiAKPiAtLQo+IFRvIHVuc3Vic2NyaWJlIGZyb20gdGhpcyBsaXN0OiBz
-ZW5kIHRoZSBsaW5lICJ1bnN1YnNjcmliZSBsaW51eC1uZnMiIGluCj4gdGhlIGJvZHkgb2YgYSBt
-ZXNzYWdlIHRvIG1ham9yZG9tb0B2Z2VyLmtlcm5lbC5vcmcKPiBNb3JlIG1ham9yZG9tbyBpbmZv
-IGF0ICBodHRwOi8vdmdlci5rZXJuZWwub3JnL21ham9yZG9tby1pbmZvLmh0bWwKCgotLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tClRoaXMgU0YubmV0IGVtYWlsIGlzIHNwb25zb3JlZCBieTogTWljcm9zb2Z0IApE
-ZWZ5IGFsbCBjaGFsbGVuZ2VzLiBNaWNyb3NvZnQoUikgVmlzdWFsIFN0dWRpbyAyMDA4LiAKaHR0
-cDovL2Nsay5hdGRtdC5jb20vTVJUL2dvL3ZzZTAxMjAwMDAwNzBtcnQvZGlyZWN0LzAxLwpfX19f
-X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fXwpORlMgbWFpbGxpc3Qg
-IC0gIE5GU0BsaXN0cy5zb3VyY2Vmb3JnZS5uZXQKaHR0cHM6Ly9saXN0cy5zb3VyY2Vmb3JnZS5u
-ZXQvbGlzdHMvbGlzdGluZm8vbmZzCl9fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
-X19fX19fX19fX19fClBsZWFzZSBub3RlIHRoYXQgbmZzQGxpc3RzLnNvdXJjZWZvcmdlLm5ldCBp
-cyBiZWluZyBkaXNjb250aW51ZWQuClBsZWFzZSBzdWJzY3JpYmUgdG8gbGludXgtbmZzQHZnZXIu
-a2VybmVsLm9yZyBpbnN0ZWFkLgogICAgaHR0cDovL3ZnZXIua2VybmVsLm9yZy92Z2VyLWxpc3Rz
-Lmh0bWwjbGludXgtbmZzCg==
+Sorry for the delay:
 
+On Tue, May 13, 2008 at 07:56:47AM -0500, Tom Tucker wrote:
+> The for-bfields branch should contain those same patches.
+
+The series in the for-bfield branch includes two patches at the start
+that I don't think were in the series you mailed ("svcrdma: Remove extra
+check for XPT_DEAD bit in svc_xprt_enqueue" and "svcrdma: Remove unused
+header files from svc_xprt.c").
+
+Small patches, so probably doesn't matter either way, but we may as well
+go with whichever result was actually tested, if only one was?
+
+--b.
+
+
+>
+> Tom
+>
+> On May 13, 2008, at 1:33 AM, "J. Bruce Fields" <bfields@fieldses.org>  
+> wrote:
+>
+>> On Mon, May 12, 2008 at 02:13:51PM -0500, Tom Tucker wrote:
+>>> This is an updated version of the patchset that includes changes per
+>>> your recommendations, plus:
+>>>
+>>> - cleanup: changed the return type on svc_rdma_send_error to void
+>>> - bug: added copy of transport address to the rqstp structure in  
+>>> rdma read
+>>>  completion logic
+>>> - bug: fixed svc_rdma_accept race that was found by inspection,
+>>
+>> OK, thanks.  A minor whine: whatever procedure you're using to mail
+>> these seems to alphabetize them like:
+>>
+>>    11/20
+>>    1/20
+>>    12/20
+>>    13/20
+>>    14/20
+>>    15/20
+>>    16/20
+>>    17/20
+>>    18/20
+>>    19/20
+>>    20/20
+>>    2/20
+>>    3/20
+>>    ...
+>>
+>> So the threading doesn't help apply them in the right order.
+>>
+>> Anyway, not a big problem.  And I'd also be just as happy to take them
+>> from git if that'd be simpler.  (But from a quick glance I didn't see
+>> a branch with the identical patches?)
+>>
+>> --b.
+>>
+>>>
+>>> The original description follows:
+>>>
+>>> This patchset fixes a number of defects in the close path of the  
+>>> SVCRDMA
+>>> transport provider. The defects were found by injecting errors on the
+>>> transport at random intervals while running concurrent iozone tests  
+>>> on
+>>> IB and iWARP mounts. With this set of patches applied I was able to  
+>>> run
+>>> the above tests for several hours without causing a crash or leaking
+>>> resources. The transport recovers correctly on a client reconnect.
+>>>
+>>> This patchset is based on 2.6 top of tree, however, I think these  
+>>> fixes are
+>>> good candidates for a 2.6.25 dot release as well. I have a set that  
+>>> is
+>>> already merged for that release if you would like them. They are  
+>>> available in
+>>> my git tree on linux-nfs.org in the '2.6.25' branch. Please let me  
+>>> know if you
+>>> would like me to post them here.
+>>>
+>>> [PATCH 1/20] svcrdma: Simplify receive buffer posting
+>>>
+>>> net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |   17 +----------------
+>>> net/sunrpc/xprtrdma/svc_rdma_sendto.c    |   10 ++++++++++
+>>> net/sunrpc/xprtrdma/svc_rdma_transport.c |   19 -------------------
+>>> 3 files changed, 11 insertions(+), 35 deletions(-)
+>>>
+>>> [PATCH 2/20] svcrdma: Fix race with dto_tasklet in svc_rdma_send
+>>>
+>>> net/sunrpc/xprtrdma/svc_rdma_transport.c |   40 +++++++++++++++ 
+>>> +-------------
+>>> 1 files changed, 22 insertions(+), 18 deletions(-)
+>>>
+>>> [PATCH 3/20] svcrdma: Fix return value in svc_rdma_send
+>>>
+>>> net/sunrpc/xprtrdma/svc_rdma_transport.c |    2 +-
+>>> 1 files changed, 1 insertions(+), 1 deletions(-)
+>>>
+>>> [PATCH 4/20] svcrdma: Add put of connection ESTABLISHED reference in 
+>>> rdma_cma_handler
+>>>
+>>> net/sunrpc/xprtrdma/svc_rdma_transport.c |    1 +
+>>> 1 files changed, 1 insertions(+), 0 deletions(-)
+>>>
+>>> [PATCH 5/20] svcrdma: Free context on ib_post_recv error
+>>>
+>>> net/sunrpc/xprtrdma/svc_rdma_transport.c |    2 ++
+>>> 1 files changed, 2 insertions(+), 0 deletions(-)
+>>>
+>>> [PATCH 6/20] svcrdma: Free context on post_recv error in send_reply
+>>>
+>>> net/sunrpc/xprtrdma/svc_rdma_sendto.c |    3 ++-
+>>> 1 files changed, 2 insertions(+), 1 deletions(-)
+>>>
+>>> [PATCH 7/20] svcrdma: Fix error handling during listening endpoint  
+>>> creation
+>>>
+>>> net/sunrpc/xprtrdma/svc_rdma_transport.c |   24 ++++++++++++ 
+>>> +-----------
+>>> 1 files changed, 13 insertions(+), 11 deletions(-)
+>>>
+>>> [PATCH 8/20] svcrdma: Return error from rdma_read_xdr so caller  
+>>> knows to free context
+>>>
+>>> net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |   23 +++++++++++++++ 
+>>> +-------
+>>> 1 files changed, 16 insertions(+), 7 deletions(-)
+>>>
+>>> [PATCH 9/20] svcrdma: Remove unused READ_DONE context flags bit
+>>>
+>>> include/linux/sunrpc/svc_rdma.h          |    1 -
+>>> net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |    1 -
+>>> net/sunrpc/xprtrdma/svc_rdma_transport.c |    1 -
+>>> 3 files changed, 0 insertions(+), 3 deletions(-)
+>>>
+>>> [PATCH 10/20] svcrdma: Simplify RDMA_READ deferral buffer management
+>>>
+>>> include/linux/sunrpc/svc_rdma.h          |    1 +
+>>> net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |   58 +++++ 
+>>> +------------------------
+>>> net/sunrpc/xprtrdma/svc_rdma_transport.c |    5 ++-
+>>> 3 files changed, 16 insertions(+), 48 deletions(-)
+>>>
+>>> [PATCH 11/20] svcrdma: Use standard Linux lists for context cache
+>>>
+>>> include/linux/sunrpc/svc_rdma.h          |    5 ++-
+>>> net/sunrpc/xprtrdma/svc_rdma_transport.c |   47 +++++++++++++++ 
+>>> +-------------
+>>> 2 files changed, 29 insertions(+), 23 deletions(-)
+>>>
+>>> [PATCH 12/20] svcrdma: Shrink scope of spinlock on RQ CQ
+>>>
+>>> net/sunrpc/xprtrdma/svc_rdma_transport.c |    4 ++--
+>>> 1 files changed, 2 insertions(+), 2 deletions(-)
+>>>
+>>> [PATCH 13/20] svcrdma: Move destroy to kernel thread
+>>>
+>>> include/linux/sunrpc/svc_rdma.h          |    1 +
+>>> net/sunrpc/xprtrdma/svc_rdma_transport.c |   17 ++++++++++++++---
+>>> 2 files changed, 15 insertions(+), 3 deletions(-)
+>>>
+>>> [PATCH 14/20] svcrdma: Add reference for each SQ/RQ WR
+>>>
+>>> net/sunrpc/xprtrdma/svc_rdma_transport.c |   18 ++++++++++++++++--
+>>> 1 files changed, 16 insertions(+), 2 deletions(-)
+>>>
+>>> [PATCH 15/20] svcrdma: Move the QP and cm_id destruction to  
+>>> svc_rdma_free
+>>>
+>>> net/sunrpc/xprtrdma/svc_rdma_transport.c |   40 ++++++++++++++ 
+>>> +---------------
+>>> 1 files changed, 20 insertions(+), 20 deletions(-)
+>>>
+>>> [PATCH 16/20] svcrdma: Cleanup queued, but unprocessed I/O in  
+>>> svc_rdma_free
+>>>
+>>> net/sunrpc/xprtrdma/svc_rdma_transport.c |   38 ++++++++++++++++++++ 
+>>> +++++++--
+>>> 1 files changed, 35 insertions(+), 3 deletions(-)
+>>>
+>>> [PATCH 17/20] svcrdma: Use ib verbs version of dma_unmap
+>>>
+>>> net/sunrpc/xprtrdma/svc_rdma_transport.c |    8 ++++----
+>>> 1 files changed, 4 insertions(+), 4 deletions(-)
+>>>
+>>> [PATCH 18/20] svcrdma: Set rqstp transport address in  
+>>> rdma_read_complete function
+>>>
+>>> net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |    1 +
+>>> 1 files changed, 1 insertions(+), 0 deletions(-)
+>>>
+>>> [PATCH 19/20] svcrdma: Copy transport address and arm CQ before  
+>>> calling rdma_accept
+>>>
+>>> net/sunrpc/xprtrdma/svc_rdma_transport.c |   23 +++++++++++++ 
+>>> +---------
+>>> 1 files changed, 14 insertions(+), 9 deletions(-)
+>>>
+>>> [PATCH 20/20] svcrdma: Change svc_rdma_send_error return type to void
+>>>
+>>> include/linux/sunrpc/svc_rdma.h          |    4 ++--
+>>> net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |    2 +-
+>>> net/sunrpc/xprtrdma/svc_rdma_transport.c |    9 ++++-----
+>>> 3 files changed, 7 insertions(+), 8 deletions(-)
+>>>
+>>> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+>>> .
+>>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
+>> in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
