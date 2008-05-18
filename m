@@ -1,114 +1,60 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH] nfs: Fix misparsing of nfsv4 fs_locations attribute
-Date: Sun, 18 May 2008 11:22:18 -0400
-Message-ID: <CF603745-0163-469F-AC12-B4C5747038FC@oracle.com>
-References: <20080509011918.GK12690@fieldses.org> <1210309839.8657.0.camel@localhost> <20080509152750.GA325@fieldses.org> <20080509165204.GB1907@fieldses.org> <20080509171208.GC1907@fieldses.org> <20080509235930.GM1907@fieldses.org> <C4A41609-740F-450E-BE8F-7F51A8A9327B@oracle.com> <1210440728.12927.5.camel@localhost> <5FE6354F-8E28-4697-A27D-8532FD547683@oracle.com> <1d07ca700805101807s7c034b08sc531993aa81010b2@mail.gmail.com> <20080516195326.GD14228@fieldses.org>
-Mime-Version: 1.0 (Apple Message framework v919.2)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: "david m. richter" <richterd@gmail.com>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	linux-nfs@vger.kernel.org, Manoj Naik <manoj@almaden.ibm.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [NFS] nfs over Windows
+Date: Sun, 18 May 2008 18:06:31 +0300
+Message-ID: <483045F7.8050401@panasas.com>
+References: <1211106185.14779.4.camel@Linux-stef.steph.lan>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Cc: nfs@lists.sourceforge.net
+To: =?UTF-8?B?U3TDqXBoYW5lIEd1ZWRvbg==?= <stephaneguedon-6bugY6I12JBBDgjK7y7TUQ@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:34343 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753779AbYERPab (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 18 May 2008 11:30:31 -0400
-In-Reply-To: <20080516195326.GD14228@fieldses.org>
+Received: from neil.brown.name ([220.233.11.133]:43921 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753515AbYERPy1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 18 May 2008 11:54:27 -0400
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1JxlDK-0006O4-0A
+	for linux-nfs@vger.kernel.org; Mon, 19 May 2008 01:54:22 +1000
+In-Reply-To: <1211106185.14779.4.camel-CM9Um1Qnwm5RVcPm7aGZsP4CVqVLow9K@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On May 16, 2008, at 3:53 PM, J. Bruce Fields wrote:
-> On Sat, May 10, 2008 at 09:07:23PM -0400, david m. richter wrote:
->> On Sat, May 10, 2008 at 7:50 PM, Chuck Lever  
->> <chuck.lever@oracle.com> wrote:
->>> On May 10, 2008, at 10:32 AM, Trond Myklebust wrote:
->>>>
->>>> On Fri, 2008-05-09 at 19:29 -0700, Chuck Lever wrote:
->>>>>
->>>>> Should you use in4_pton() instead?
->>>>
->>>> Can we rather convert this to use nfs_parse_server_address? We  
->>>> don't
->>>> need 10 different ways to parse text addresses...
->>>
->>> I'm OK with that, as long as there isn't a technical problem with  
->>> using
->>> in4_pton().
->>
->> nfs_parse_server_address() uses in4_pton(), it just also groks ipv6.
->
-> This is all a bit orthogonal to the actual bug, as all those functions
-> want null-terminated strings too.
->
-> We could apply the below (compile-tested only) and then add ipv6  
-> support
-> and converting to nfs_parse_server_address() in a subsequent patch.
-
-I'm looking at this code for other reasons, but it would be very easy  
-to teach nfs_parse_server_address() to take a string length and not  
-assume the passed-in address string is null-terminated.  Both in4_pton  
-and in6_pton will take a string length.
-
-> From 530b441f2239d8bcedf9456c3c570d9c179cb406 Mon Sep 17 00:00:00 2001
-> From: J. Bruce Fields <bfields@citi.umich.edu>
-> Date: Fri, 9 May 2008 15:10:56 -0700
-> Subject: [PATCH] nfs: Fix misparsing of nfsv4 fs_locations attribute
->
-> The code incorrectly assumes here that the server name (or ip address)
-> is null-terminated.  This can cause referrals to fail in some cases.
->
-> Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
-> ---
-> fs/nfs/nfs4namespace.c |   13 ++++++++++---
-> 1 files changed, 10 insertions(+), 3 deletions(-)
->
-> diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
-> index 5f9ba41..40a0209 100644
-> --- a/fs/nfs/nfs4namespace.c
-> +++ b/fs/nfs/nfs4namespace.c
-> @@ -93,14 +93,21 @@ static int nfs4_validate_fspath(const struct  
-> vfsmount *mnt_parent,
-> 	return 0;
-> }
->
-> +#define MAX_IPADDR_STRLEN 40
-> /*
->  * Check if the string represents a "valid" IPv4 address
->  */
-> -static inline int valid_ipaddr4(const char *buf)
-> +static inline int valid_ipaddr4(const struct nfs4_string *buf)
-> {
-> 	int rc, count, in[4];
-> +	char str[MAX_IPADDR_STRLEN];
->
-> -	rc = sscanf(buf, "%d.%d.%d.%d", &in[0], &in[1], &in[2], &in[3]);
-> +	if (buf->len >= MAX_IPADDR_STRLEN)
-> +		return -EINVAL;
-> +	memcpy(str, buf->data, buf->len);
-> +	str[buf->len] = '\0';
-> +
-> +	rc = sscanf(str, "%d.%d.%d.%d", &in[0], &in[1], &in[2], &in[3]);
-> 	if (rc != 4)
-> 		return -EINVAL;
-> 	for (count = 0; count < 4; count++) {
-> @@ -178,7 +185,7 @@ static struct vfsmount  
-> *nfs_follow_referral(const struct vfsmount *mnt_parent,
-> 			};
->
-> 			if (location->servers[s].len <= 0 ||
-> -			    valid_ipaddr4(location->servers[s].data) < 0) {
-> +			    valid_ipaddr4(&location->servers[s]) < 0) {
-> 				s++;
-> 				continue;
-> 			}
-> -- 
-> 1.5.5.rc1
->
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
+T24gTWF5LiAxOCwgMjAwOCwgMTM6MjMgKzAzMDAsIFN0w6lwaGFuZSBHdWVkb24gPHN0ZXBoYW5l
+Z3VlZG9uQGlmcmFuY2UuY29tPiB3cm90ZToKPiBIZWxsbwo+IAo+IEkgYW0gYSB1c2VyIG9mIE5G
+UyB1bmRlciBMaW51eC4gSSBmaW5kIGl0IG11Y2ggYmV0dGVyIGFuZCB2ZXJ5IG11Y2gKPiBlYXNp
+ZXIgdGhhbiBzYW1iYS4KPiBJIGhhdmUgcmVkIGluIHNvbWUgaW50ZXJuZXQgd2Vic2l0ZSB0aGF0
+IE5GU3Y0IHdpbGwgc3VwcG9ydCBNJCBXaW5kb3dzLgo+IENhbiBzb21lYm9keSB0ZWxsIG1lIHdo
+YXQgZG9lcyBpdCBtZWFuID8KPiBEb2VzIFdpbmRvd3Mgd2lsbCByZWFkIE5GU3Y0IG5hdGl2ZWx5
+LCBvciBkbyBJIG5lZWQgYSBkcml2ZXIgKGxpa2UgU0ZVLAo+IGRyaXZlciBvZiBNaWNyb3NvZnQp
+ID8KCkFzIGZhciBhcyBJIGtub3csIE1pY3Jvc29mdCBkbyBub3QgaGF2ZSBuYXRpdmUgc3VwcG9y
+dCBmb3IgTkZTdjQgeWV0LgpZb3VyIGJlc3QgYmV0IGlzIHVzaW5nIHRoZSBIdW1taW5nYmlyZCBj
+bGllbnQuCgpCZW5ueQoKPiAKPiBUaGFua3MgZm9yIHlvdXIgYXR0ZW50aW9uLgo+IEJlc3QgcmVn
+YXJkcy4KPiAKPiBtYSBwYWdlIHdlYiBzdXIgbW9uIHNlcnZldXIgcGVyc29ubmVsIDoKPiBodHRw
+Oi8vMjJkZWNlbWJyZS5mci5uZi8KPiAKPiAKPiAtLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tCj4gVGhpcyBTRi5u
+ZXQgZW1haWwgaXMgc3BvbnNvcmVkIGJ5OiBNaWNyb3NvZnQgCj4gRGVmeSBhbGwgY2hhbGxlbmdl
+cy4gTWljcm9zb2Z0KFIpIFZpc3VhbCBTdHVkaW8gMjAwOC4gCj4gaHR0cDovL2Nsay5hdGRtdC5j
+b20vTVJUL2dvL3ZzZTAxMjAwMDAwNzBtcnQvZGlyZWN0LzAxLwo+IF9fX19fX19fX19fX19fX19f
+X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fCj4gTkZTIG1haWxsaXN0ICAtICBORlNAbGlz
+dHMuc291cmNlZm9yZ2UubmV0Cj4gaHR0cHM6Ly9saXN0cy5zb3VyY2Vmb3JnZS5uZXQvbGlzdHMv
+bGlzdGluZm8vbmZzCj4gX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
+X19fX18KPiBQbGVhc2Ugbm90ZSB0aGF0IG5mc0BsaXN0cy5zb3VyY2Vmb3JnZS5uZXQgaXMgYmVp
+bmcgZGlzY29udGludWVkLgo+IFBsZWFzZSBzdWJzY3JpYmUgdG8gbGludXgtbmZzQHZnZXIua2Vy
+bmVsLm9yZyBpbnN0ZWFkLgo+ICAgICBodHRwOi8vdmdlci5rZXJuZWwub3JnL3ZnZXItbGlzdHMu
+aHRtbCNsaW51eC1uZnMKPiAKPiAtLQo+IFRvIHVuc3Vic2NyaWJlIGZyb20gdGhpcyBsaXN0OiBz
+ZW5kIHRoZSBsaW5lICJ1bnN1YnNjcmliZSBsaW51eC1uZnMiIGluCj4gdGhlIGJvZHkgb2YgYSBt
+ZXNzYWdlIHRvIG1ham9yZG9tb0B2Z2VyLmtlcm5lbC5vcmcKPiBNb3JlIG1ham9yZG9tbyBpbmZv
+IGF0ICBodHRwOi8vdmdlci5rZXJuZWwub3JnL21ham9yZG9tby1pbmZvLmh0bWwKCgotLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tClRoaXMgU0YubmV0IGVtYWlsIGlzIHNwb25zb3JlZCBieTogTWljcm9zb2Z0IApE
+ZWZ5IGFsbCBjaGFsbGVuZ2VzLiBNaWNyb3NvZnQoUikgVmlzdWFsIFN0dWRpbyAyMDA4LiAKaHR0
+cDovL2Nsay5hdGRtdC5jb20vTVJUL2dvL3ZzZTAxMjAwMDAwNzBtcnQvZGlyZWN0LzAxLwpfX19f
+X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fXwpORlMgbWFpbGxpc3Qg
+IC0gIE5GU0BsaXN0cy5zb3VyY2Vmb3JnZS5uZXQKaHR0cHM6Ly9saXN0cy5zb3VyY2Vmb3JnZS5u
+ZXQvbGlzdHMvbGlzdGluZm8vbmZzCl9fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
+X19fX19fX19fX19fClBsZWFzZSBub3RlIHRoYXQgbmZzQGxpc3RzLnNvdXJjZWZvcmdlLm5ldCBp
+cyBiZWluZyBkaXNjb250aW51ZWQuClBsZWFzZSBzdWJzY3JpYmUgdG8gbGludXgtbmZzQHZnZXIu
+a2VybmVsLm9yZyBpbnN0ZWFkLgogICAgaHR0cDovL3ZnZXIua2VybmVsLm9yZy92Z2VyLWxpc3Rz
+Lmh0bWwjbGludXgtbmZzCg==
 
