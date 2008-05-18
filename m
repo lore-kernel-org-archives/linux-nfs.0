@@ -1,210 +1,342 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 1/8] NFS: Update help text for CONFIG_NFS_FS
-Date: Sat, 17 May 2008 22:16:14 -0400
-Message-ID: <20080518021614.8366.39102.stgit@ellison.1015granger.net>
-References: <20080518021241.8366.12464.stgit@ellison.1015granger.net>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: linux-nfs@vger.kernel.org
-To: trond.myklebust@netapp.com
+From: Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH 1/3] [RFC] knfsd: convert knfsd to kthread API
+Date: Sat, 17 May 2008 22:35:12 -0400
+Message-ID: <1211078114-18384-2-git-send-email-jlayton@redhat.com>
+References: <1211078114-18384-1-git-send-email-jlayton@redhat.com>
+To: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:49927 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750878AbYERCdC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 17 May 2008 22:33:02 -0400
-In-Reply-To: <20080518021241.8366.12464.stgit-ewv44WTpT0t9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
+Received: from mx1.redhat.com ([66.187.233.31]:51768 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751014AbYERCfR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 17 May 2008 22:35:17 -0400
+In-Reply-To: <1211078114-18384-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: refresh the help text for Kconfig items related to the NFS
-client.  Remove obsolete URLs, and make the language consistent among
-the options.
+This patch is rather large, but I couldn't figure out a way to break it
+up that would remain bisectable. It does several things:
 
-Also move the ROOT_NFS config option next to the options related to the
-NFS client.
+- change svc_thread_fn typedef to better match what kthread_create expects
+- change svc_pool_map_set_cpumask to be more kthread friendly. Make it
+  take a task arg and and get rid of the "oldmask"
+- have svc_set_num_threads call set up the thread and call kthread_run
+  directly, and to call kthread_stop to take down threads.
+- change nfsd() to ignore signals, and to loop forever until kthread_stop
+  is called on it
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
+ fs/nfsd/nfssvc.c           |   57 ++++++++----------------
+ include/linux/sunrpc/svc.h |    2 +-
+ net/sunrpc/svc.c           |  101 +++++++++++++++-----------------------------
+ 3 files changed, 54 insertions(+), 106 deletions(-)
 
- fs/Kconfig |  115 ++++++++++++++++++++++++++++++------------------------------
- 1 files changed, 57 insertions(+), 58 deletions(-)
-
-
-diff --git a/fs/Kconfig b/fs/Kconfig
-index cf12c40..0e0faf2 100644
---- a/fs/Kconfig
-+++ b/fs/Kconfig
-@@ -1544,10 +1544,6 @@ config UFS_FS
-           The recently released UFS2 variant (used in FreeBSD 5.x) is
-           READ-ONLY supported.
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index 941041f..b5fdb9b 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -21,6 +21,7 @@
+ #include <linux/smp_lock.h>
+ #include <linux/freezer.h>
+ #include <linux/fs_struct.h>
++#include <linux/kthread.h>
  
--	  If you only intend to mount files from some other Unix over the
--	  network using NFS, you don't need the UFS file system support (but
--	  you need NFS file system support obviously).
+ #include <linux/sunrpc/types.h>
+ #include <linux/sunrpc/stats.h>
+@@ -51,7 +52,7 @@
+ #define	SIG_NOCLEAN	SIGHUP
+ 
+ extern struct svc_program	nfsd_program;
+-static void			nfsd(struct svc_rqst *rqstp);
++static int			nfsd(void *vrqstp);
+ struct timeval			nfssvc_boot;
+        struct svc_serv 		*nfsd_serv;
+ static atomic_t			nfsd_busy;
+@@ -391,18 +392,17 @@ update_thread_usage(int busy_threads)
+ /*
+  * This is the NFS server kernel thread
+  */
+-static void
+-nfsd(struct svc_rqst *rqstp)
++static int
++nfsd(void *vrqstp)
+ {
++	struct svc_rqst *rqstp = (struct svc_rqst *) vrqstp;
+ 	struct fs_struct *fsp;
+-	int		err;
+-	sigset_t shutdown_mask, allowed_mask;
++	int err, preverr = 0;
+ 
+ 	/* Lock module and set up kernel thread */
+ 	lock_kernel();
+-	daemonize("nfsd");
+ 
+-	/* After daemonize() this kernel thread shares current->fs
++	/* At this point, the thread shares current->fs
+ 	 * with the init process. We need to create files with a
+ 	 * umask of 0 instead of init's umask. */
+ 	fsp = copy_fs_struct(current->fs);
+@@ -414,13 +414,8 @@ nfsd(struct svc_rqst *rqstp)
+ 	current->fs = fsp;
+ 	current->fs->umask = 0;
+ 
+-	siginitsetinv(&shutdown_mask, SHUTDOWN_SIGS);
+-	siginitsetinv(&allowed_mask, ALLOWED_SIGS);
 -
- 	  Note that this option is generally not needed for floppies, since a
- 	  good portable way to transport files and directories between unixes
- 	  (and even other operating systems) is given by the tar program ("man
-@@ -1587,6 +1583,7 @@ menuconfig NETWORK_FILESYSTEMS
- 	  Say Y here to get to see options for network filesystems and
- 	  filesystem-related networking code, such as NFS daemon and
- 	  RPCSEC security modules.
-+
- 	  This option alone does not add any kernel code.
+ 	nfsdstats.th_cnt++;
  
- 	  If you say N, all options in this submenu will be skipped and
-@@ -1595,76 +1592,92 @@ menuconfig NETWORK_FILESYSTEMS
- if NETWORK_FILESYSTEMS
- 
- config NFS_FS
--	tristate "NFS file system support"
-+	tristate "NFS client support"
- 	depends on INET
- 	select LOCKD
- 	select SUNRPC
- 	select NFS_ACL_SUPPORT if NFS_V3_ACL
- 	help
--	  If you are connected to some other (usually local) Unix computer
--	  (using SLIP, PLIP, PPP or Ethernet) and want to mount files residing
--	  on that computer (the NFS server) using the Network File Sharing
--	  protocol, say Y. "Mounting files" means that the client can access
--	  the files with usual UNIX commands as if they were sitting on the
--	  client's hard disk. For this to work, the server must run the
--	  programs nfsd and mountd (but does not need to have NFS file system
--	  support enabled in its kernel). NFS is explained in the Network
--	  Administrator's Guide, available from
--	  <http://www.tldp.org/docs.html#guide>, on its man page: "man
--	  nfs", and in the NFS-HOWTO.
+-	rqstp->rq_task = current;
 -
--	  A superior but less widely used alternative to NFS is provided by
--	  the Coda file system; see "Coda file system support" below.
-+	  Choose Y here if you want to access files residing on other
-+	  computers using Sun's Network File System protocol.  To compile
-+	  this file system support as a module, choose M here: the module
-+	  will be called nfs.
+ 	unlock_kernel();
  
--	  If you say Y here, you should have said Y to TCP/IP networking also.
--	  This option would enlarge your kernel by about 27 KB.
-+	  To mount file systems exported by NFS servers, you also need to
-+	  install the user space mount.nfs command which can be found in
-+	  the Linux nfs-utils package, available from http://linux-nfs.org/.
-+	  Information about using the mount command is available in the
-+	  mount(8) man page.  More detail about the Linux NFS client
-+	  implementation is available via the nfs(5) man page.
- 
--	  To compile this file system support as a module, choose M here: the
--	  module will be called nfs.
-+	  Below you can choose which versions of the NFS protocol are
-+	  available in the kernel to mount NFS servers.  Support for NFS
-+	  version 2 (RFC 1094) is always available when NFS_FS is selected.
- 
--	  If you are configuring a diskless machine which will mount its root
--	  file system over NFS at boot time, say Y here and to "Kernel
--	  level IP autoconfiguration" above and to "Root file system on NFS"
--	  below. You cannot compile this driver as a module in this case.
--	  There are two packages designed for booting diskless machines over
--	  the net: netboot, available from
--	  <http://ftp1.sourceforge.net/netboot/>, and Etherboot,
--	  available from <http://ftp1.sourceforge.net/etherboot/>.
-+	  To configure a system which mounts its root file system via NFS
-+	  at boot time, say Y here, select "Kernel level IP
-+	  autoconfiguration" in the NETWORK menu, and select "Root file
-+	  system on NFS" below.  You cannot compile this file system as a
-+	  module in this case.
- 
--	  If you don't know what all this is about, say N.
-+	  If unsure, say N.
- 
- config NFS_V3
--	bool "Provide NFSv3 client support"
-+	bool "NFS client support for NFS version 3"
- 	depends on NFS_FS
- 	help
--	  Say Y here if you want your NFS client to be able to speak version
--	  3 of the NFS protocol.
-+	  This option enables support for version 3 of the NFS protocol
-+	  (RFC 1813) in the kernel's NFS client.
- 
- 	  If unsure, say Y.
- 
- config NFS_V3_ACL
--	bool "Provide client support for the NFSv3 ACL protocol extension"
-+	bool "NFS client support for the NFSv3 ACL protocol extension"
- 	depends on NFS_V3
- 	help
--	  Implement the NFSv3 ACL protocol extension for manipulating POSIX
--	  Access Control Lists.  The server should also be compiled with
--	  the NFSv3 ACL protocol extension; see the CONFIG_NFSD_V3_ACL option.
-+	  Some NFS servers support an auxiliary NFSv3 ACL protocol that
-+	  Sun added to Solaris but never became an official part of the
-+	  NFS version 3 protocol.  This protocol extension allows
-+	  applications on NFS clients to manipulate POSIX Access Control
-+	  Lists on files residing on NFS servers.  NFS servers enforce
-+	  ACLs on local files whether this protocol is available or not.
-+
-+	  Choose Y here if your NFS server supports the Solaris NFSv3 ACL
-+	  protocol extension and you want your NFS client to allow
-+	  applications to access and modify ACLs on files on the server.
-+
-+	  Most NFS servers don't support the Solaris NFSv3 ACL protocol
-+	  extension.  You can choose N here or specify the "noacl" mount
-+	  option to prevent your NFS client from trying to use the NFSv3
-+	  ACL protocol.
- 
- 	  If unsure, say N.
- 
- config NFS_V4
--	bool "Provide NFSv4 client support (EXPERIMENTAL)"
-+	bool "NFS client support for NFS version 4 (EXPERIMENTAL)"
- 	depends on NFS_FS && EXPERIMENTAL
- 	select RPCSEC_GSS_KRB5
- 	help
--	  Say Y here if you want your NFS client to be able to speak the newer
--	  version 4 of the NFS protocol.
-+	  This option enables support for version 4 of the NFS protocol 
-+	  (RFC 3530) in the kernel's NFS client.
- 
--	  Note: Requires auxiliary userspace daemons which may be found on
--		http://www.citi.umich.edu/projects/nfsv4/
-+	  To mount NFS servers using NFSv4, you also need to install user
-+	  space programs which can be found in the Linux nfs-utils package,
-+	  available from http://linux-nfs.org/.
- 
- 	  If unsure, say N.
- 
-+config ROOT_NFS
-+	bool "Root file system on NFS"
-+	depends on NFS_FS=y && IP_PNP
-+	help
-+	  If you want your system to mount its root file system via NFS,
-+	  choose Y here.  This is common practice for managing systems
-+	  without local permanent storage.  For details, read
-+	  <file:Documentation/filesystems/nfsroot.txt>.
-+
-+	  Most people say N here.
-+
- config NFSD
- 	tristate "NFS server support"
- 	depends on INET
-@@ -1746,20 +1759,6 @@ config NFSD_V4
- 
- 	  If unsure, say N.
- 
--config ROOT_NFS
--	bool "Root file system on NFS"
--	depends on NFS_FS=y && IP_PNP
--	help
--	  If you want your Linux box to mount its whole root file system (the
--	  one containing the directory /) from some other computer over the
--	  net via NFS (presumably because your box doesn't have a hard disk),
--	  say Y. Read <file:Documentation/filesystems/nfsroot.txt> for
--	  details. It is likely that in this case, you also want to say Y to
--	  "Kernel level IP autoconfiguration" so that your box can discover
--	  its network address at boot time.
+ 	/*
+@@ -434,27 +429,29 @@ nfsd(struct svc_rqst *rqstp)
+ 	/*
+ 	 * The main request loop
+ 	 */
+-	for (;;) {
+-		/* Block all but the shutdown signals */
+-		sigprocmask(SIG_SETMASK, &shutdown_mask, NULL);
 -
--	  Most people say N here.
--
- config LOCKD
- 	tristate
++	while (!kthread_should_stop()) {
+ 		/*
+ 		 * Find a socket with data available and call its
+ 		 * recvfrom routine.
+ 		 */
+ 		while ((err = svc_recv(rqstp, 60*60*HZ)) == -EAGAIN)
+ 			;
+-		if (err < 0)
+-			break;
++		if (err < 0) {
++			if (err != preverr) {
++				printk(KERN_WARNING "%s: unexpected error "
++					"from svc_recv (%d)\n", __func__, -err);
++				preverr = err;
++			}
++			schedule_timeout_uninterruptible(HZ);
++			continue;
++		}
++
+ 		update_thread_usage(atomic_read(&nfsd_busy));
+ 		atomic_inc(&nfsd_busy);
  
+ 		/* Lock the export hash tables for reading. */
+ 		exp_readlock();
+ 
+-		/* Process request with signals blocked.  */
+-		sigprocmask(SIG_SETMASK, &allowed_mask, NULL);
+-
+ 		svc_process(rqstp);
+ 
+ 		/* Unlock export hash tables */
+@@ -463,31 +460,15 @@ nfsd(struct svc_rqst *rqstp)
+ 		atomic_dec(&nfsd_busy);
+ 	}
+ 
+-	if (err != -EINTR) {
+-		printk(KERN_WARNING "nfsd: terminating on error %d\n", -err);
+-	} else {
+-		unsigned int	signo;
+-
+-		for (signo = 1; signo <= _NSIG; signo++)
+-			if (sigismember(&current->pending.signal, signo) &&
+-			    !sigismember(&current->blocked, signo))
+-				break;
+-		killsig = signo;
+-	}
+-	/* Clear signals before calling svc_exit_thread() */
+-	flush_signals(current);
+-
+ 	lock_kernel();
+-
+ 	nfsdstats.th_cnt --;
+ 
+ out:
+ 	/* Release the thread */
+ 	svc_exit_thread(rqstp);
+ 
+-	/* Release module */
+ 	unlock_kernel();
+-	module_put_and_exit(0);
++	return 0;
+ }
+ 
+ static __be32 map_new_errors(u32 vers, __be32 nfserr)
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 4b54c5f..011d6d8 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -22,7 +22,7 @@
+ /*
+  * This is the RPC server thread function prototype
+  */
+-typedef void		(*svc_thread_fn)(struct svc_rqst *);
++typedef int		(*svc_thread_fn)(void *);
+ 
+ /*
+  *
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index 01c7e31..18a9e33 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -18,6 +18,7 @@
+ #include <linux/mm.h>
+ #include <linux/interrupt.h>
+ #include <linux/module.h>
++#include <linux/kthread.h>
+ 
+ #include <linux/sunrpc/types.h>
+ #include <linux/sunrpc/xdr.h>
+@@ -291,15 +292,14 @@ svc_pool_map_put(void)
+ 
+ 
+ /*
+- * Set the current thread's cpus_allowed mask so that it
++ * Set the given thread's cpus_allowed mask so that it
+  * will only run on cpus in the given pool.
+- *
+- * Returns 1 and fills in oldmask iff a cpumask was applied.
+  */
+-static inline int
+-svc_pool_map_set_cpumask(unsigned int pidx, cpumask_t *oldmask)
++static inline void
++svc_pool_map_set_cpumask(struct task_struct *task, unsigned int pidx)
+ {
+ 	struct svc_pool_map *m = &svc_pool_map;
++	unsigned int node = m->pool_to[pidx];
+ 
+ 	/*
+ 	 * The caller checks for sv_nrpools > 1, which
+@@ -307,26 +307,17 @@ svc_pool_map_set_cpumask(unsigned int pidx, cpumask_t *oldmask)
+ 	 */
+ 	BUG_ON(m->count == 0);
+ 
+-	switch (m->mode)
+-	{
+-	default:
+-		return 0;
++	switch (m->mode) {
+ 	case SVC_POOL_PERCPU:
+ 	{
+-		unsigned int cpu = m->pool_to[pidx];
+-
+-		*oldmask = current->cpus_allowed;
+-		set_cpus_allowed_ptr(current, &cpumask_of_cpu(cpu));
+-		return 1;
++		set_cpus_allowed_ptr(task, &cpumask_of_cpu(node));
++		break;
+ 	}
+ 	case SVC_POOL_PERNODE:
+ 	{
+-		unsigned int node = m->pool_to[pidx];
+ 		node_to_cpumask_ptr(nodecpumask, node);
+-
+-		*oldmask = current->cpus_allowed;
+-		set_cpus_allowed_ptr(current, nodecpumask);
+-		return 1;
++		set_cpus_allowed_ptr(task, nodecpumask);
++		break;
+ 	}
+ 	}
+ }
+@@ -578,46 +569,6 @@ out_enomem:
+ EXPORT_SYMBOL(svc_prepare_thread);
+ 
+ /*
+- * Create a thread in the given pool.  Caller must hold BKL.
+- * On a NUMA or SMP machine, with a multi-pool serv, the thread
+- * will be restricted to run on the cpus belonging to the pool.
+- */
+-static int
+-__svc_create_thread(svc_thread_fn func, struct svc_serv *serv,
+-		    struct svc_pool *pool)
+-{
+-	struct svc_rqst	*rqstp;
+-	int		error = -ENOMEM;
+-	int		have_oldmask = 0;
+-	cpumask_t	uninitialized_var(oldmask);
+-
+-	rqstp = svc_prepare_thread(serv, pool);
+-	if (IS_ERR(rqstp)) {
+-		error = PTR_ERR(rqstp);
+-		goto out;
+-	}
+-
+-	if (serv->sv_nrpools > 1)
+-		have_oldmask = svc_pool_map_set_cpumask(pool->sp_id, &oldmask);
+-
+-	error = kernel_thread((int (*)(void *)) func, rqstp, 0);
+-
+-	if (have_oldmask)
+-		set_cpus_allowed(current, oldmask);
+-
+-	if (error < 0)
+-		goto out_thread;
+-	svc_sock_update_bufs(serv);
+-	error = 0;
+-out:
+-	return error;
+-
+-out_thread:
+-	svc_exit_thread(rqstp);
+-	goto out;
+-}
+-
+-/*
+  * Choose a pool in which to create a new thread, for svc_set_num_threads
+  */
+ static inline struct svc_pool *
+@@ -686,7 +637,9 @@ found_pool:
+ int
+ svc_set_num_threads(struct svc_serv *serv, struct svc_pool *pool, int nrservs)
+ {
+-	struct task_struct *victim;
++	struct svc_rqst	*rqstp;
++	struct task_struct *task;
++	struct svc_pool *chosen_pool;
+ 	int error = 0;
+ 	unsigned int state = serv->sv_nrthreads-1;
+ 
+@@ -702,18 +655,32 @@ svc_set_num_threads(struct svc_serv *serv, struct svc_pool *pool, int nrservs)
+ 	/* create new threads */
+ 	while (nrservs > 0) {
+ 		nrservs--;
+-		__module_get(serv->sv_module);
+-		error = __svc_create_thread(serv->sv_function, serv,
+-					    choose_pool(serv, pool, &state));
+-		if (error < 0) {
+-			module_put(serv->sv_module);
++		chosen_pool = choose_pool(serv, pool, &state);
++
++		rqstp = svc_prepare_thread(serv, chosen_pool);
++		if (IS_ERR(rqstp)) {
++			error = PTR_ERR(rqstp);
+ 			break;
+ 		}
++
++		task = kthread_create(serv->sv_function, rqstp, serv->sv_name);
++		if (IS_ERR(task)) {
++			error = PTR_ERR(task);
++			svc_exit_thread(rqstp);
++			break;
++		}
++
++		rqstp->rq_task = task;
++		if (serv->sv_nrpools > 1)
++			svc_pool_map_set_cpumask(task, chosen_pool->sp_id);
++
++		svc_sock_update_bufs(serv);
++		wake_up_process(task);
+ 	}
+ 	/* destroy old threads */
+ 	while (nrservs < 0 &&
+-	       (victim = choose_victim(serv, pool, &state)) != NULL) {
+-		send_sig(serv->sv_kill_signal, victim, 1);
++	       (task = choose_victim(serv, pool, &state)) != NULL) {
++		kthread_stop(task);
+ 		nrservs++;
+ 	}
+ 
+-- 
+1.5.3.6
 
