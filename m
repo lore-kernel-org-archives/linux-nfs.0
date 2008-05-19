@@ -1,68 +1,66 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 1/8] NFS: Update help text for CONFIG_NFS_FS
-Date: Mon, 19 May 2008 13:21:19 -0400
-Message-ID: <64E73AAD-3E2E-4C57-B51F-6D060B6890E8@oracle.com>
-References: <20080518021241.8366.12464.stgit@ellison.1015granger.net> <20080518021614.8366.39102.stgit@ellison.1015granger.net> <RTPCLUEXC1-PRDXzzAg00000113@RTPMVEXC1-PRD.hq.netapp.com>
-Mime-Version: 1.0 (Apple Message framework v919.2)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: linux-nfs@vger.kernel.org
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] svcrdma: Limit ORD based on client's advertised IRD
+Date: Mon, 19 May 2008 13:39:34 -0400
+Message-ID: <20080519173934.GN7622@fieldses.org>
+References: <1211214842.31725.38.camel@trinity.ogc.int> <RTPCLUEXC1-PRD1q4gt00000114@RTPMVEXC1-PRD.hq.netapp.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Tom Tucker <tom@opengridcomputing.com>,
+	linux-nfs <linux-nfs@vger.kernel.org>
 To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:62596 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754594AbYESRVs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 May 2008 13:21:48 -0400
-In-Reply-To: <RTPCLUEXC1-PRDXzzAg00000113-rtwIt2gI0FxT+ZUat5FNkAK/GNPrWCqfQQ4Iyu8u01E@public.gmane.org>
+Received: from mail.fieldses.org ([66.93.2.214]:40760 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753688AbYESRjh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 19 May 2008 13:39:37 -0400
+In-Reply-To: <RTPCLUEXC1-PRD1q4gt00000114-rtwIt2gI0FxT+ZUat5FNkAK/GNPrWCqfQQ4Iyu8u01E@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On May 19, 2008, at 1:09 PM, Talpey, Thomas wrote:
-> At 10:16 PM 5/17/2008, Chuck Lever wrote:
->> Clean up: refresh the help text for Kconfig items related to the NFS
->> client.  Remove obsolete URLs, and make the language consistent among
->> the options.
->
-> I like the patch for no other reason than (finally) getting rid
-> of the CODA nasty-gram:
->
->> -	  A superior but less widely used alternative to NFS is provided by
->> -	  the Coda file system; see "Coda file system support" below.
->
-> But I do have a comment - I think calling it "Sun's" protocol is  
-> unnecessary.
-> It's an IETF standard, and widely implemented.
+I got dropped of the cc: somehow--please try not to prune cc's.  I have
+enough trouble keeping up without the additional confusion to my mail
+filters....
 
-I think that's why this patch was originally rejected.  Trond didn't  
-like the fact that I said IETF standard, but I don't recall the exact  
-details.
+--b.
 
->> +	  Choose Y here if you want to access files residing on other
->> +	  computers using Sun's Network File System protocol.  To compile
->> +	  this file system support as a module, choose M here: the module
->> +	  will be called nfs.
->
->
->> config NFS_V3
->> -	bool "Provide NFSv3 client support"
->> +	bool "NFS client support for NFS version 3"
->
-> The new option says NFS twice.
-
-Yes, but I think it makes the description more precise.  It could say  
-"NFS client support for version 3" or "Client support for NFS version  
-3".  I think both of those choices are ambiguous in one way or another.
-
->> config NFS_V4
->> -	bool "Provide NFSv4 client support (EXPERIMENTAL)"
->> +	bool "NFS client support for NFS version 4 (EXPERIMENTAL)"
->> 	depends on NFS_FS && EXPERIMENTAL
->
-> Is it necessary to say "(EXPERIMENTAL)"? There are many other kernel
-> options that don't, but in fact are dependent.
-
-It's usually good to mark these as experimental, and it has been  
-convention for a long while, but I don't see a requirement for it.
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+On Mon, May 19, 2008 at 01:17:54PM -0400, Talpey, Thomas wrote:
+> At 12:34 PM 5/19/2008, Tom Tucker wrote:
+> >When adapters have differing IRD limits, the RDMA transport will fail to
+> >connect properly. The RDMA transport should use the client's advertised
+> >inbound read limit when computing it's outbound read limit. For iWARP
+> >transports, there is no exchange of the IRD/ORD during connect request and
+> >so the only way to ensure compatability is to use the
+> >/proc/sys/sunrpc/svc_rdma/max_outbound_read_requests file to control
+> >server ORD.
+> 
+> Well, technically the iWARP connection manager *currently* does not
+> exchange these values. I think the comment would be more accurate
+> if it said "in the absence of"...
+> 
+> >-static void handle_connect_req(struct rdma_cm_id *new_cma_id)
+> >+static void handle_connect_req(struct rdma_cm_id *new_cma_id, u8 client_ird)
+> 
+> While "u8" might be the limit of the implementations today, wouldn't "int" be
+> easier to understand, and more portable?
+> 
+> >+	/* Save client advertised inbound read limit for use later in accept. */
+> >+	newxprt->sc_ord = client_ird;
+> >+
+> and...
+> >+	/* 
+> >+	* Limit ORD based on client limit, local device limit, and
+> >+	* configured svcrdma limit.
+> >+	*/
+> >+	newxprt->sc_ord =  min((size_t)devattr.max_qp_rd_atom, newxprt->sc_ord);
+> >+	newxprt->sc_ord = min((size_t)svcrdma_ord, newxprt->sc_ord);
+> 
+> Looks good, but it's a little odd that the value goes into sc_ord in one
+> routine, only to be changed before being used. I guess the device attrs
+> aren't handy at the time the connection is notified though, so ok.
+> 
+> Tom.
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
