@@ -1,37 +1,53 @@
-From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
-Subject: Re: [PATCH 1/8] NFS: Update help text for CONFIG_NFS_FS
-Date: Mon, 19 May 2008 14:10:10 -0400
-Message-ID: <RTPCLUEXC1-PRDKKQpQ00000116@RTPMVEXC1-PRD.hq.netapp.com>
-References: <20080518021241.8366.12464.stgit@ellison.1015granger.net>
- <20080518021614.8366.39102.stgit@ellison.1015granger.net>
- <RTPCLUEXC1-PRDXzzAg00000113@RTPMVEXC1-PRD.hq.netapp.com>
- <64E73AAD-3E2E-4C57-B51F-6D060B6890E8@oracle.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 01/05] svcrdma: Verify read-list fits within
+	RPCSVC_MAXPAGES
+Date: Mon, 19 May 2008 14:20:03 -0400
+Message-ID: <20080519182003.GC11993@fieldses.org>
+References: <12111560011694-git-send-email-tom@opengridcomputing.com> <12111560022506-git-send-email-tom@opengridcomputing.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset=us-ascii
 Cc: linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:10000 "EHLO mx2.netapp.com"
+Received: from mail.fieldses.org ([66.93.2.214]:41819 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1763140AbYESSKy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 19 May 2008 14:10:54 -0400
-In-Reply-To: <64E73AAD-3E2E-4C57-B51F-6D060B6890E8@oracle.com>
-References: <20080518021241.8366.12464.stgit-ewv44WTpT0t9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
- <20080518021614.8366.39102.stgit-ewv44WTpT0t9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
- <RTPCLUEXC1-PRDXzzAg00000113-rtwIt2gI0FxT+ZUat5FNkAK/GNPrWCqfQQ4Iyu8u01E@public.gmane.org>
- <64E73AAD-3E2E-4C57-B51F-6D060B6890E8@oracle.com>
+	id S1755341AbYESSUE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 19 May 2008 14:20:04 -0400
+In-Reply-To: <12111560022506-git-send-email-tom@opengridcomputing.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-At 01:21 PM 5/19/2008, Chuck Lever wrote:
->I think that's why this patch was originally rejected.  Trond didn't  
->like the fact that I said IETF standard, but I don't recall the exact  
->details.
+On Sun, May 18, 2008 at 07:13:17PM -0500, Tom Tucker wrote:
+> A RDMA read-list cannot contain more elements than RPCSVC_MAXPAGES or
+> it will overflow the DTO context. Verify this when processing the
+> protocol header.
+> 
+> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+> 
+> ---
+>  net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |    2 ++
+>  1 files changed, 2 insertions(+), 0 deletions(-)
+> 
+> diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+> index 6b16d8c..06ab484 100644
+> --- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+> +++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+> @@ -306,6 +306,8 @@ static int rdma_read_xdr(struct svcxprt_rdma *xprt,
+>  	ch_sge_ary = (struct chunk_sge *)tmp_ch_ctxt->sge;
+>  
+>  	svc_rdma_rcl_chunk_counts(ch, &ch_count, &byte_count);
+> +	if (ch_count > RPCSVC_MAXPAGES)
+> +		return -EINVAL;
+>  	sge_count = rdma_rcl_to_sge(xprt, rqstp, hdr_ctxt, rmsgp,
+>  				    sge, ch_sge_ary,
+>  				    ch_count, byte_count);
 
-Ok, I guess I'm with you, but don't have a strong issue with it.
-Again, I'm mainly just glad the NFS_FS option doesn't say to use
-CODA instead. EXPERIMENTAL and Sun's protocol - at least it's
-moving up in the pecking order. :-)
+If the ch_count is just the total number of bytes to be read into this
+request, then don't we also need to know at what offset they're going to
+be inserted?  (Shouldn't there be some check like ch->rc_position +
+ch_count > RPCSVC_MAXPAGES ?)
 
-Tom.
+Also, do we verify somewhere (before calling
+svc_rdma_rcl_chunk_counts()) that rc_discrim is set on the last chunk?
 
+--b.
