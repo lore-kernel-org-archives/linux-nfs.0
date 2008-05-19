@@ -1,60 +1,83 @@
-From: Tom Tucker <tom@opengridcomputing.com>
-Subject: Re: [PATCH] svcrdma: Limit ORD based on client's advertised IRD
-Date: Mon, 19 May 2008 13:54:22 -0500
-Message-ID: <1211223262.31725.58.camel@trinity.ogc.int>
-References: <1211214842.31725.38.camel@trinity.ogc.int>
-	 <RTPCLUEXC1-PRD1q4gt00000114@RTPMVEXC1-PRD.hq.netapp.com>
-	 <1211221933.31725.56.camel@trinity.ogc.int>
-	 <RTPCLUEXC1-PRD4mG0E00000117@RTPMVEXC1-PRD.hq.netapp.com>
+From: Theodore Tso <tytso-DPNOqEs/LNQ@public.gmane.org>
+Subject: Re: [PATCH] nfs2/3 ESTALE bug (libblkid uses stale cache/uuid
+	values)
+Date: Mon, 19 May 2008 15:03:56 -0400
+Message-ID: <20080519190356.GH15035@mit.edu>
+References: <200805172204.m4HM424o003970@agora.fsl.cs.sunysb.edu> <20080519160408.GG7622@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs <linux-nfs@vger.kernel.org>,
-	Bruce Fields <bfields@fieldses.org>
-To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Erez Zadok <ezk-EX0cT3Az47bauI2f2gSDlQ@public.gmane.org>,
+	Trond Myklebust <Trond.Myklebust@netapp.com>,
+	Kevin Coffman <kwc@umich.edu>, nfs@lists.sourceforge.net,
+	linux-nfs@vger.kernel.org, Himanshu Kanda <hkanda-EX0cT3Az47bauI2f2gSDlQ@public.gmane.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([209.198.142.2]:40270 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751430AbYESSuw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 May 2008 14:50:52 -0400
-In-Reply-To: <RTPCLUEXC1-PRD4mG0E00000117-rtwIt2gI0FxT+ZUat5FNkAK/GNPrWCqfQQ4Iyu8u01E@public.gmane.org>
+Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:37118 "EHLO
+	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751430AbYESTEx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 May 2008 15:04:53 -0400
+In-Reply-To: <20080519160408.GG7622@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Mon, May 19, 2008 at 12:04:08PM -0400, J. Bruce Fields wrote:
+> > 3. blkid_verify can verify that a device is valid.  To do so, it open(2)'s
+> >    the device, reads some filesystem-specific info from it (e.g., the ext2
+> >    superblock header, which includes the uuid), and caches all that
+> >    filesystem-specific information for later reuse.  Of course, reading the
+> >    f/s superblock each time is expensive,
+> 
+> How expensive is it actually?
 
-On Mon, 2008-05-19 at 14:34 -0400, Talpey, Thomas wrote:
-> At 02:32 PM 5/19/2008, Tom Tucker wrote:
-> >> Well, technically the iWARP connection manager *currently* does not
-> >> exchange these values. I think the comment would be more accurate
-> >> if it said "in the absence of"...
-> >
-> >I'm not sure it really has anything to do with where it is implemented.
-> 
-> That wasn't my point - I meant, in the absence of information what the
-> peer's maximum might be, the server has to make something up. But, future
-> iwarp cm's could pass it.
-> 
-> What value bubbles up in this field from current iWARP connections? Is
-> it total garbage, or at least, recognizably useless (-1)?
+The problem is if you have a *very* large number of disk drives, and
+you sequence through them doing a mount -a, it because an order
+n-squared operation.  The goal here was to avoid doing that check.
 
-For iWARP it is currently the local device's max. When iWARP (hopefully)
-gets a standard for this -- it will be the remote peer's IRD. This code
-won't need to change.
+> >    Therefore, the above "if" wants to ensure that a device won't be
+> >    re-probed unless enough time had passed since the last time it was
+> >    probed: BLKID_PROBE_INTERVAL is 200 seconds.  That check alone is wrong.
+> >    A device could have changed numerous times within 200 seconds, and the
+> >    result is that libblkid happily returns the old dev structure, with the
+> >    old UUID, *until* 200 seconds have passed.  We verified it by sticking
+> >    printf's in nfs-utils and libblkid, and also using tcpdumps b/t an nfs
+> >    client and server.
 
-> 
-> >> >-static void handle_connect_req(struct rdma_cm_id *new_cma_id)
-> >> >+static void handle_connect_req(struct rdma_cm_id *new_cma_id, u8 
-> >client_ird)
-> >> 
-> >> While "u8" might be the limit of the implementations today, wouldn't "int" be
-> >> easier to understand, and more portable?
-> >> 
-> >
-> >I think that 'int' might provoke the "wrath of Chuck". Unsigned
-> >something else --
-> 
-> Okay, well if not "int", then at least some type which is not a specific
-> storage size. u{8,16,32} etc should be reserved for describing hardware
-> and on-wire stuff, and handled as native when used locally.
-> 
-> Tom.
+In practice it's rare for a system administrator to rerun mkfs
+multiple times in the space of 200 seconds.  (Especially since mkfs
+for ext3 normally takes quite a bit of time to run on large disks,
+although I'll grant that's a bug that we'll fixing for ext4.  :-) In
+general, though, it's rare for system administrator to be constantly
+recreating filesystems on their devices.  It's happening in your test
+scenario, but in real life, it's rare that an administrator will be
+constantly reformatting a drive, especially if it's being exported by
+NFS.
 
+> I should know this, but I don't: when exactly do the ctime, mtime, and
+> atime of a block device get updated?
+
+They won't get change if they are being modified via a mounted
+filesystem, but if they are modified from an outside program (such as
+mkfs) the mtime will get changed.
+
+> >    (BTW, I think that the check for "diff > 0" is redundant in the above
+> >    "if" b/c if "now > dev->bid_time" is true, then "diff > 0" is also true.)
+> 
+> I don't understand that check either.
+
+Yeah, it's not needed.
+
+> > The following patch (against e2fsprogs v1.40.8-215-g9817a2b) fixes
+> > the bug.  It's a small patch, but perhaps not the cleanest one: it
+> > has to goto the middle of another if statement; a better patch
+> > would perhaps consolidate the stat() and fstat() calls into one,
+> > and rewrite the code so the second 'if' doesn't need the fstat().
+> > We've tested this patch with our script and we cannot reproduce
+> > the ESTALE bug even after thousands of iterations.
+
+Thanks for the patch.  I'll clean it up and include in e2fsprogs, but
+I don't consider this a high priority fix to get out to everyone,
+since it's really not something that I expect will be hit in real
+life, except in test scenarios like the one run into by Erez and his
+team.
+
+						- Ted
