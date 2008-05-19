@@ -1,129 +1,116 @@
-From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [PATCH REPOST] svcrdma: Add dma map count and WARN_ON
-Date: Mon, 19 May 2008 14:45:19 -0500
-Message-ID: <1211226319.31725.74.camel@trinity.ogc.int>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH 0/3] [RFC] knfsd: convert to kthread API and remove
+ signaling for shutdown
+Date: Mon, 19 May 2008 17:01:41 -0400
+Message-ID: <20080519170141.617879eb@barsoom.rdu.redhat.com>
+References: <1211078114-18384-1-git-send-email-jlayton@redhat.com>
+	<18481.6416.571430.593722@notabene.brown>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-To: Bruce Fields <bfields@fieldses.org>
+Content-Type: text/plain; charset=US-ASCII
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+To: Neil Brown <neilb@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([209.198.142.2]:45484 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754119AbYESTlu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 May 2008 15:41:50 -0400
+Received: from mx1.redhat.com ([66.187.233.31]:60384 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753051AbYESVBp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 19 May 2008 17:01:45 -0400
+In-Reply-To: <18481.6416.571430.593722-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-svcrdma: Add dma map count and WARN_ON
-    
-Add a dma map count in order to verify that all DMA mapping resources
-have been freed when the transport is closed.
-    
-Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
----
+On Mon, 19 May 2008 16:07:12 +1000
+Neil Brown <neilb@suse.de> wrote:
 
-Reposted with clearer wording for the commit message.
+> On Saturday May 17, jlayton@redhat.com wrote:
+> > knfsd is the last NFS-related kernel thread that does not use the
+> > kthread API. This patchset represents a first pass at converting it. It
+> > seems to work, but changes the shutdown interface. knfsd currently
+> > allows signals to tell it when to come down.
+> > 
+> > My main question is...how tied to this shutdown method are we? We can
+> > also take down nfsd by having people run:
+> > 
+> >      # rpc.nfsd 0
+> > 
+> > ...which basically does:
+> > 
+> >      # echo 0 > /proc/fs/nfsd/threads
+> > 
+> > ...so we don't think we *have* to use signals here. Is signaling
+> > something we can reasonably eliminate? 
+> 
+> Good question.  I suspect lots of distros still use "killall" or some
+> equivalent to stop nfsd - so at a minimum, some education would be
+> required.
+> 
+> Most kernel threads are there to provide a service for some other
+> entity, such as a filesystem or a device etc.  So it doesn't make
+> sense to kill them except when the device/filesystem/whatever goes
+> away.
+> 
+> With nfsd, the thread *is* the central entity.  So killing it does
+> make sense.
+> This doesn't argue strongly in favour of a killable nfsd, but does
+> explain why it might be different from all other kernel threads.
+> 
+> >                                         In addition to making the code a
+> > bit simpler and cleaner, I think it will also eliminate this race:
+> > 
+> >     http://lkml.org/lkml/2007/8/2/462
+> 
+> I never followed up on this did I...
+> The core problem seems to be the principle of
+>   "The last one out turns off the lights"
+> but once you've turned off the lights, you can't see if someone else
+> snuck back in so you aren't the last one.  You really have to have
+> only one door and stand in the doorway while switching off the
+> lights....
+> 
+> If we replace the BKL usage with a simple global semaphore, that
+> problem might just go away.  We should only need to protect
+> svc_destroy, svc_exit_thread, and svc_set_num_threads from each other.
+> 
+> It's long past time to discard the BLK here anyway.
+> 
+> > 
+> > If this isn't feasible, then I can add the signaling back in, but am not
+> > sure whether we can eliminate the race without adding more locking.
+> 
+> I think I prefer keeping the signalling and fixing the locking.
+> 
+> > 
+> > If we can do this, we may need to provide an alternate way to specify
+> > that we want to take down all nfsd's but not flush the export table.
+> > Currently that's done with a SIGHUP, but the value of this facility is
+> > not clear to me since the kernel can just do another upcall.
+> 
+> I added this functionality well before the kernel could do upcalls to
+> refill the export table.
+> 
+> I wanted to be able to change the number of active threads without a
+> complete shutdown and restart, so I make the /proc/fs/nfs/threads
+> file accessed by "nfsd NN".
+> 
+> Then I wanted
+>    nfsd 0
+>    nfsd 8
+> to just change the number of threads, not flush the exports table as
+> well (because at the time, flushing the exports table was more
+> serious).
+> So I arranged that "nfsd 0" just reduced the number of threads to 0
+> and changed no other (externally visible) state.
+> 
+> As you say, it isn't really needed now.   I wouldn't have a problem
+> with removing the SIGHUP feature, but I think keeping SIGKILL and
+> SIGINT with their old meaning is important.
+> 
 
- include/linux/sunrpc/svc_rdma.h          |    1 +
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |    1 +
- net/sunrpc/xprtrdma/svc_rdma_sendto.c    |    3 +++
- net/sunrpc/xprtrdma/svc_rdma_transport.c |    5 +++++
- 4 files changed, 10 insertions(+), 0 deletions(-)
+Ok, I'll plan to take a second crack at this when I get some time and
+put the signaling back in. I think removing the SIGHUP feature will
+make the code a little simpler, so I'll plan to take it out. I'll also
+have a look at putting better locking around the svc_* functions you
+mention above...
 
-diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
-index 29bfc9b..0a9c431 100644
---- a/include/linux/sunrpc/svc_rdma.h
-+++ b/include/linux/sunrpc/svc_rdma.h
-@@ -105,6 +105,7 @@ struct svcxprt_rdma {
- 
- 	struct ib_pd         *sc_pd;
- 
-+	atomic_t	     sc_dma_used;
- 	atomic_t	     sc_ctxt_used;
- 	struct list_head     sc_ctxt_free;
- 	int		     sc_ctxt_cnt;
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-index 32c6103..4da0d1d 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-@@ -228,6 +228,7 @@ static void rdma_set_ctxt_sge(struct svcxprt_rdma *xprt,
- 	ctxt->count = count;
- 	ctxt->direction = DMA_FROM_DEVICE;
- 	for (i = 0; i < count; i++) {
-+		atomic_inc(&xprt->sc_dma_used);
- 		ctxt->sge[i].addr = (unsigned long)
- 			ib_dma_map_single(xprt->sc_cm_id->device,
- 					  (void*)sge[i].addr, sge[i].length,
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-index 85931c4..cdb0732 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-@@ -174,6 +174,7 @@ static int send_write(struct svcxprt_rdma *xprt, struct svc_rqst *rqstp,
- 		sge_bytes = min((size_t)bc,
- 				(size_t)(xdr_sge[xdr_sge_no].length-sge_off));
- 		sge[sge_no].length = sge_bytes;
-+		atomic_inc(&xprt->sc_dma_used);
- 		sge[sge_no].addr =
- 			ib_dma_map_single(xprt->sc_cm_id->device,
- 					  (void *)
-@@ -399,6 +400,7 @@ static int send_reply(struct svcxprt_rdma *rdma,
- 	ctxt->count = 1;
- 
- 	/* Prepare the SGE for the RPCRDMA Header */
-+	atomic_inc(&rdma->sc_dma_used);
- 	ctxt->sge[0].addr =
- 		ib_dma_map_page(rdma->sc_cm_id->device,
- 				page, 0, PAGE_SIZE, DMA_TO_DEVICE);
-@@ -411,6 +413,7 @@ static int send_reply(struct svcxprt_rdma *rdma,
- 		sge_bytes = min((size_t)ctxt->sge[sge_no].length,
- 				(size_t)byte_count);
- 		byte_count -= sge_bytes;
-+		atomic_inc(&rdma->sc_dma_used);
- 		ctxt->sge[sge_no].addr =
- 			ib_dma_map_single(rdma->sc_cm_id->device,
- 					  (void *)
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index 8a50586..68908b5 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -155,6 +155,7 @@ static void svc_rdma_unmap_dma(struct svc_rdma_op_ctxt *ctxt)
- 	struct svcxprt_rdma *xprt = ctxt->xprt;
- 	int i;
- 	for (i = 0; i < ctxt->count && ctxt->sge[i].length; i++) {
-+		atomic_dec(&xprt->sc_dma_used);
- 		ib_dma_unmap_single(xprt->sc_cm_id->device,
- 				    ctxt->sge[i].addr,
- 				    ctxt->sge[i].length,
-@@ -493,6 +494,7 @@ static struct svcxprt_rdma *rdma_create_xprt(struct svc_serv *serv,
- 	cma_xprt->sc_max_requests = svcrdma_max_requests;
- 	cma_xprt->sc_sq_depth = svcrdma_max_requests * RPCRDMA_SQ_DEPTH_MULT;
- 	atomic_set(&cma_xprt->sc_sq_count, 0);
-+	atomic_set(&cma_xprt->sc_ctxt_used, 0);
- 
- 	if (!listener) {
- 		int reqs = cma_xprt->sc_max_requests;
-@@ -543,6 +545,7 @@ int svc_rdma_post_recv(struct svcxprt_rdma *xprt)
- 		BUG_ON(sge_no >= xprt->sc_max_sge);
- 		page = svc_rdma_get_page();
- 		ctxt->pages[sge_no] = page;
-+		atomic_inc(&xprt->sc_dma_used);
- 		pa = ib_dma_map_page(xprt->sc_cm_id->device,
- 				     page, 0, PAGE_SIZE,
- 				     DMA_FROM_DEVICE);
-@@ -1023,6 +1026,7 @@ static void __svc_rdma_free(struct work_struct *work)
- 
- 	/* Warn if we leaked a resource or under-referenced */
- 	WARN_ON(atomic_read(&rdma->sc_ctxt_used) != 0);
-+	WARN_ON(atomic_read(&rdma->sc_dma_used) != 0);
- 
- 	/* Destroy the QP if present (not a listener) */
- 	if (rdma->sc_qp && !IS_ERR(rdma->sc_qp))
-@@ -1143,6 +1147,7 @@ void svc_rdma_send_error(struct svcxprt_rdma *xprt, struct rpcrdma_msg *rmsgp,
- 	length = svc_rdma_xdr_encode_error(xprt, rmsgp, err, va);
- 
- 	/* Prepare SGE for local address */
-+	atomic_inc(&xprt->sc_dma_used);
- 	sge.addr = ib_dma_map_page(xprt->sc_cm_id->device,
- 				   p, 0, PAGE_SIZE, DMA_FROM_DEVICE);
- 	sge.lkey = xprt->sc_phys_mr->lkey;
-
+Thanks for the review,
+-- 
+Jeff Layton <jlayton@redhat.com>
