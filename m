@@ -1,79 +1,37 @@
-From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [PATCH] svcrdma: Limit ORD based on client's advertised IRD
-Date: Mon, 19 May 2008 11:34:02 -0500
-Message-ID: <1211214842.31725.38.camel@trinity.ogc.int>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH 6/8] SUNRPC: Add second output line for each RPC task
+	in rpc_show_tasks
+Date: Mon, 19 May 2008 12:31:42 -0400
+Message-ID: <1211214702.16052.7.camel@localhost>
+References: <20080518021241.8366.12464.stgit@ellison.1015granger.net>
+	 <20080518021650.8366.96474.stgit@ellison.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-To: Bruce Fields <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([209.198.142.2]:55614 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1759274AbYESQad (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 May 2008 12:30:33 -0400
+Received: from mx2.netapp.com ([216.240.18.37]:63777 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750997AbYESQbr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 19 May 2008 12:31:47 -0400
+In-Reply-To: <20080518021650.8366.96474.stgit-ewv44WTpT0t9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When adapters have differing IRD limits, the RDMA transport will fail to
-connect properly. The RDMA transport should use the client's advertised
-inbound read limit when computing it's outbound read limit. For iWARP
-transports, there is no exchange of the IRD/ORD during connect request and
-so the only way to ensure compatability is to use the
-/proc/sys/sunrpc/svc_rdma/max_outbound_read_requests file to control
-server ORD.
+On Sat, 2008-05-17 at 22:16 -0400, Chuck Lever wrote:
+> Add a second output line displayed for each RPC task shown via
+> rpc_show_tasks.  This second line is for non-columnar variable-length
+> data (like the name of the RPC wait queue the task is waiting on, or
+> the procedure name).
 
-Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
----
+I don't really agree with this: it makes the output harder to parse
+rather than easier. grep, awk and friends don't cope well with
+multi-line data...
 
- net/sunrpc/xprtrdma/svc_rdma_transport.c |   16 ++++++++++++----
- 1 files changed, 12 insertions(+), 4 deletions(-)
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index 68908b5..b961dc5 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -580,7 +580,7 @@ int svc_rdma_post_recv(struct svcxprt_rdma *xprt)
-  * will call the recvfrom method on the listen xprt which will accept the new
-  * connection.
-  */
--static void handle_connect_req(struct rdma_cm_id *new_cma_id)
-+static void handle_connect_req(struct rdma_cm_id *new_cma_id, u8 client_ird)
- {
- 	struct svcxprt_rdma *listen_xprt = new_cma_id->context;
- 	struct svcxprt_rdma *newxprt;
-@@ -597,6 +597,9 @@ static void handle_connect_req(struct rdma_cm_id *new_cma_id)
- 	dprintk("svcrdma: Creating newxprt=%p, cm_id=%p, listenxprt=%p\n",
- 		newxprt, newxprt->sc_cm_id, listen_xprt);
- 
-+	/* Save client advertised inbound read limit for use later in accept. */
-+	newxprt->sc_ord = client_ird;
-+
- 	/* Set the local and remote addresses in the transport */
- 	sa = (struct sockaddr *)&newxprt->sc_cm_id->route.addr.dst_addr;
- 	svc_xprt_set_remote(&newxprt->sc_xprt, sa, svc_addr_len(sa));
-@@ -633,7 +636,8 @@ static int rdma_listen_handler(struct rdma_cm_id *cma_id,
- 	case RDMA_CM_EVENT_CONNECT_REQUEST:
- 		dprintk("svcrdma: Connect request on cma_id=%p, xprt = %p, "
- 			"event=%d\n", cma_id, cma_id->context, event->event);
--		handle_connect_req(cma_id);
-+		handle_connect_req(cma_id,
-+				   event->param.conn.responder_resources);
- 		break;
- 
- 	case RDMA_CM_EVENT_ESTABLISHED:
-@@ -807,8 +811,12 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
- 				   (size_t)svcrdma_max_requests);
- 	newxprt->sc_sq_depth = RPCRDMA_SQ_DEPTH_MULT * newxprt->sc_max_requests;
- 
--	newxprt->sc_ord =  min((size_t)devattr.max_qp_rd_atom,
--			       (size_t)svcrdma_ord);
-+	/* 
-+	 * Limit ORD based on client limit, local device limit, and
-+	 * configured svcrdma limit.
-+	 */
-+	newxprt->sc_ord =  min((size_t)devattr.max_qp_rd_atom, newxprt->sc_ord);
-+	newxprt->sc_ord = min((size_t)svcrdma_ord, newxprt->sc_ord);
- 
- 	newxprt->sc_pd = ib_alloc_pd(newxprt->sc_cm_id->device);
- 	if (IS_ERR(newxprt->sc_pd)) {
-
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
