@@ -1,79 +1,103 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH 0/3] [RFC] knfsd: convert to kthread API and remove
-	signaling for shutdown
-Date: Tue, 20 May 2008 13:13:09 +1000
-Message-ID: <18482.16837.381955.636390@notabene.brown>
-References: <1211078114-18384-1-git-send-email-jlayton@redhat.com>
-	<18481.6416.571430.593722@notabene.brown>
-	<4831F860.6050801@melbourne.sgi.com>
-	<18482.4782.858347.981553@notabene.brown>
-	<20080519222457.6f24daa5@tupile.poochiereds.net>
+From: "Chris Fanning" <christopher.fanning@gmail.com>
+Subject: Re: [NFS] async vs. sync. corrupted fs
+Date: Tue, 20 May 2008 10:00:34 +0200
+Message-ID: <215ff4410805200100o20fb83bcm9921127efef27ef9@mail.gmail.com>
+References: <215ff4410805160355x25b8d055x9a0a246aa5875482@mail.gmail.com>
+	<20080519145411.GC7622@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org,
-	Greg Banks <gnb@melbourne.sgi.com>
-To: Jeff Layton <jlayton@redhat.com>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: message from Jeff Layton on Monday May 19
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Cc: nfs@lists.sourceforge.net
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from neil.brown.name ([220.233.11.133]:54732 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752628AbYETIAp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 May 2008 04:00:45 -0400
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1JyMm3-0008DG-4P
+	for linux-nfs@vger.kernel.org; Tue, 20 May 2008 18:00:43 +1000
+In-Reply-To: <20080519145411.GC7622@fieldses.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Monday May 19, jlayton@redhat.com wrote:
-> 
-> I find all of the locking in rpc/nlm/nfs/nfsd *very* confusing. It's
-> always been explained to me that it's best to not use locking to
-> protect a section of code, but rather data structures. This makes it
-> easier to get the locking right when the code changes.
+On Mon, May 19, 2008 at 4:54 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Fri, May 16, 2008 at 12:55:59PM +0200, Chris Fanning wrote:
+>> Hello all,
+>>
+>> Could someone help me out?
+>>
+>> I'm exporting a whole partition to a client.
+>> Using (rw,no_root_squash,sync, no_subtree_check), when I shutdown the
+>> server _before_ the client, the filesystem on the partion becomes
+>> corrupted.
+>
+> How do you know it becomes corrupted?
+>
+when I boot the server it reports the partition as corrupted and I
+need to perform an fsck.
 
-Absolutely.
+>> When I user async, it doesn't happen.
+>
+> "async" the client-side mount option, or "async" the server-side export
+> option?
+server export.
+(rw,no_root_squash,sync, no_subtree_check)
 
-> 
-> This is the problem we have now with the BKL. So much of
-> rpc/nlm/nfs/nfsd runs under it that it's nearly impossible to tell what
-> it's intended to actually protect. If we're going to start a push
-> toward BKL removal, my humble request is that we try to be as explicit
-> as possible about what locks protect what data structures.
-> 
-> So that's my question about this patch -- exactly what data is this new
-> mutex intended to protect?
-> 
+client mount (fstab)
+nfs_home_server:/home  /home  nfs  tcp,rw  0  0
 
-Fair question.
-The new nfsd_mutex primarily protects "nfsd_serv", both the pointer
-itself and various members of the structure that it sometimes points
-to.
-In particular, ->sv_nrthreads but also to some extent sv_temp_socks
-and sv_permsocks.
-Also nfsdstats.th_cnt.
+>
+>> Is this normal?
+>
+> No.
+I didn't think so ;)
 
-If (out side the lock) nfsd_serv is non-NULL, then it must point to
-a properly initialised 'struct svc_serv' with ->sv_nrthreads > 0, and
-that number of nfsd threads must exist and each must listed in
-->sp_all_threads for exactly on ->sv_pools[].
+Perhaps I can shed some more light on this. The client is diskless.
+The problems I'm reporting are with it's /home mount. It's root
+filessystem is also a nfs mount (but that is exported form a
+_different_ nfs server).
+I modify the nfsroot using chroot on the server.
 
-The particular thing that the lock is protecting is transitions
-between 0 and non-0.  On these transitions, the svc_serv struct needs
-to be either created and initialised, or freed up.
+I *think* this might be because of /proc mounted in the chroot get
+exported to the client? Any insight?
 
-Having said all that, I think I see a race.
-When a new rqst is created at put on sp_all_threads, ->rq_task it not
-set and doesn't get set until the thread runs and gets the mutex.  So
-there is a brief hole when ->rq_task isn't set.  I don't know if that
-can cause a problem, but it feels wrong.
-When you switch to kthreads, you use the fact that kthread_create
-returns a task_struct, and assign that to ->rq_task in
-__svc_create_thread instead of nfsd, which will close that hole.
+I've been trying all sorts of combinations yesterday (/proc mounted
+and not mounted in the chroot) and I haven't been able to reproduce
+the error. Strange becuase it definitely happened when was shutting
+down the nfs_home_server while everything else was up and running.
 
-If you look in nfsctl.c, you will probably be able to find plenty of
-places where nfsd_serv is dereferenced without any locking.  These are
-all wrong and need fixing.
+Perahps it is also worth noting that I'm booting the client with
+live-initramfs. /home gets mounted after the real
+filesystem(aufs,nfs+ram) comes up.
+Once the client has booted I can use /home. But it doesn't show up
+using 'df', and it is not present in /etc/mtab
+However it does show up in /proc/mounts
+nfs_home_server:/home /home nfs
+rw,vers=3,rsize=32768,wsize=23768,hard,nointr,proto=tcp,timeo=600,retrans=2,sec=sys,addr=192.168.2.2
+0 0
 
-NeilBrown
+Sorry for the convulated reply.
+Thanks.
+Chris.
+
+>
+>> The exports manpage suggests that 'sync' is the better option.
+>
+> Yes.
+>
+> --b.
+>
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Microsoft 
+Defy all challenges. Microsoft(R) Visual Studio 2008. 
+http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
+
