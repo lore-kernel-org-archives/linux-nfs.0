@@ -1,84 +1,42 @@
-From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [PATCH REPOST2] svcrdma: Limit ORD based on client's advertised
-	IRD
-Date: Mon, 19 May 2008 19:11:35 -0500
-Message-ID: <1211242295.31725.95.camel@trinity.ogc.int>
+From: Peter Leckie <pleckie@sgi.com>
+Subject: Re: [PATCH 00/04]  NFS/RDMA client stall patches
+Date: Tue, 20 May 2008 10:30:27 +1000
+Message-ID: <48321BA3.5010704@sgi.com>
+References: <4830D7B1.6050107@sgi.com> <RTPCLUEXC1-PRD33HFn00000100@RTPMVEXC1-PRD.hq.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: "Talpey, Thomas" <Thomas.Talpey@netapp.com>,
-	linux-nfs <linux-nfs@vger.kernel.org>
-To: Bruce Fields <bfields@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: linux-nfs@vger.kernel.org
+To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([209.198.142.2]:60886 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1756277AbYETAIF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 May 2008 20:08:05 -0400
+Received: from netops-testserver-3-out.sgi.com ([192.48.171.28]:37433 "EHLO
+	relay.sgi.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1755798AbYETAan (ORCPT
+	<rfc822;@relay.sgi.com:linux-nfs@vger.kernel.org>);
+	Mon, 19 May 2008 20:30:43 -0400
+In-Reply-To: <RTPCLUEXC1-PRD33HFn00000100-rtwIt2gI0FxT+ZUat5FNkAK/GNPrWCqfQQ4Iyu8u01E@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When adapters have differing IRD limits, the RDMA transport will fail to
-connect properly. The RDMA transport should use the client's advertised
-inbound read limit when computing its outbound read limit. For iWARP
-transports, there is currently no standard for exchanging IRD/ORD
-during connection establishment so the 'responder_resources' field in the
-connect event is the local device's limit. The RDMA transport can be
-configured to use a smaller ORD by writing the desired number to the
-/proc/sys/sunrpc/svc_rdma/max_outbound_read_requests file.
-    
-Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
----
+Talpey, Thomas wrote:
+> At 09:28 PM 5/18/2008, Peter Leckie wrote:
+>   
+>> Hi here are a few patches that prevent the NFS/RDMA client from
+>> stalling during xprt disconnect.
+>>     
+>
+> Thanks! I have some patches from Connectathon that I hope to send
+> this week, I'll take a look shortly. (There are some server patches on
+> the way from Tom Tucker as well.)
+>
+> I noticed the SGI client was offering up to 1MB rsize/wsize. Is that
+> work perhaps ready for review? I'm working to increase these sizes
+> to at least 128KB, and if taking them to 1MB is not overly resource-
+> intensive under RDMA, that would be great.
+>   
 
-This one includes the min_t change. This is nicer. Thanks Tom.
+Yeah I was hoping on reworking that patch before I send it out, it's a 
+little hard coded for 1M mount.
+I'll try and sent it out by the weekend.
 
- net/sunrpc/xprtrdma/svc_rdma_transport.c |   16 ++++++++++++----
- 1 files changed, 12 insertions(+), 4 deletions(-)
-
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index 68908b5..54b2126 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -580,7 +580,7 @@ int svc_rdma_post_recv(struct svcxprt_rdma *xprt)
-  * will call the recvfrom method on the listen xprt which will accept the new
-  * connection.
-  */
--static void handle_connect_req(struct rdma_cm_id *new_cma_id)
-+static void handle_connect_req(struct rdma_cm_id *new_cma_id, size_t client_ird)
- {
- 	struct svcxprt_rdma *listen_xprt = new_cma_id->context;
- 	struct svcxprt_rdma *newxprt;
-@@ -597,6 +597,9 @@ static void handle_connect_req(struct rdma_cm_id *new_cma_id)
- 	dprintk("svcrdma: Creating newxprt=%p, cm_id=%p, listenxprt=%p\n",
- 		newxprt, newxprt->sc_cm_id, listen_xprt);
- 
-+	/* Save client advertised inbound read limit for use later in accept. */
-+	newxprt->sc_ord = client_ird;
-+
- 	/* Set the local and remote addresses in the transport */
- 	sa = (struct sockaddr *)&newxprt->sc_cm_id->route.addr.dst_addr;
- 	svc_xprt_set_remote(&newxprt->sc_xprt, sa, svc_addr_len(sa));
-@@ -633,7 +636,8 @@ static int rdma_listen_handler(struct rdma_cm_id *cma_id,
- 	case RDMA_CM_EVENT_CONNECT_REQUEST:
- 		dprintk("svcrdma: Connect request on cma_id=%p, xprt = %p, "
- 			"event=%d\n", cma_id, cma_id->context, event->event);
--		handle_connect_req(cma_id);
-+		handle_connect_req(cma_id,
-+				   event->param.conn.responder_resources);
- 		break;
- 
- 	case RDMA_CM_EVENT_ESTABLISHED:
-@@ -807,8 +811,12 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
- 				   (size_t)svcrdma_max_requests);
- 	newxprt->sc_sq_depth = RPCRDMA_SQ_DEPTH_MULT * newxprt->sc_max_requests;
- 
--	newxprt->sc_ord =  min((size_t)devattr.max_qp_rd_atom,
--			       (size_t)svcrdma_ord);
-+	/*
-+	 * Limit ORD based on client limit, local device limit, and
-+	 * configured svcrdma limit.
-+	 */
-+	newxprt->sc_ord = min_t(size_t, devattr.max_qp_rd_atom, newxprt->sc_ord);
-+	newxprt->sc_ord = min_t(size_t,	svcrdma_ord, newxprt->sc_ord);
- 
- 	newxprt->sc_pd = ib_alloc_pd(newxprt->sc_cm_id->device);
- 	if (IS_ERR(newxprt->sc_pd)) {
+Pete
 
