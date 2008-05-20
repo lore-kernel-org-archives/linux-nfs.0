@@ -1,54 +1,108 @@
-From: Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
-Subject: Re: [PATCH 0/3] [RFC] knfsd: convert to kthread API and remove	signaling
- for shutdown
-Date: Tue, 20 May 2008 13:26:47 -0700
-Message-ID: <48333407.8020007@melbourne.sgi.com>
-References: <1211078114-18384-1-git-send-email-jlayton@redhat.com>	<18481.6416.571430.593722@notabene.brown>	<4831F860.6050801@melbourne.sgi.com>	<18482.4782.858347.981553@notabene.brown>	<20080519222457.6f24daa5@tupile.poochiereds.net> <18482.16837.381955.636390@notabene.brown>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org,
-	nfsv4@linux-nfs.org
-To: Neil Brown <neilb@suse.de>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: Kernel call trace on NFS-mount (using autofs).
+Date: Tue, 20 May 2008 16:28:43 -0400
+Message-ID: <3C99F710-A573-4932-8F37-BE784BD66581@oracle.com>
+References: <48331EAE.6060107@krogh.cc>
+Mime-Version: 1.0 (Apple Message framework v919.2)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: NFS list <linux-nfs@vger.kernel.org>
+To: Jesper Krogh <jesper-Q2TZfHgGEy4@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from relay2.sgi.com ([192.48.171.30]:60637 "EHLO relay.sgi.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1758367AbYETU3R (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 May 2008 16:29:17 -0400
-In-Reply-To: <18482.16837.381955.636390-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
+Received: from agminet01.oracle.com ([141.146.126.228]:44423 "EHLO
+	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758367AbYETU3c (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 May 2008 16:29:32 -0400
+In-Reply-To: <48331EAE.6060107-Q2TZfHgGEy4@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Neil Brown wrote:
+Jesper-
+
+On May 20, 2008, at 2:55 PM, Jesper Krogh wrote:
+> Hi. I'm seeing this every now and then. (not directly reproduceable).
 >
-> Fair question.
-> The new nfsd_mutex primarily protects "nfsd_serv", both the pointer
-> itself and various members of the structure that it sometimes points
-> to.
-> In particular, ->sv_nrthreads but also to some extent sv_temp_socks
-> and sv_permsocks.
->   
-Those two fields should be guarded by svc_serv->sv_lock only.  In fact
-IIRC the only field of svc_serv guarded by the global mutex is
-sv_nrthreads in it's role as pseudo-refcount.
+> May 20 13:58:33 node36 kernel: [1291441.355677] PGD 6b195067 PUD  
+> a7751067 PMD 0
+> May 20 13:58:33 node36 kernel: [1291441.448833] CPU 0
+> May 20 13:58:33 node36 kernel: [1291441.475005] Modules linked in:  
+> nfs lockd sunrpc autofs4 ipv6 usbhid hid uhci_hcd ehci_hcd usbkbd  
+> fuse parport_pc lp parport af_packet i2c_amd756 i2c_core pcspkr  
+> psmouse k8temp amd_rng serio_raw shpchp pci_hotplug evdev ext3 jbd  
+> mbcache sg sd_mod ide_cd cdrom ata_generic libata floppy mptspi  
+> mptscsih mptbase scsi_transport_spi scsi_mod tg3 ohci_hcd amd74xx  
+> ide_core usbcore thermal processor fan capability commoncap
+> May 20 13:58:33 node36 kernel: [1291441.920746] Pid: 1080, comm:  
+> mount.nfs Not tainted 2.6.22-14-generic #1
+> May 20 13:58:33 node36 kernel: [1291442.001856] RIP: 0010:[graft_tree 
+> +76/304]  [graft_tree+76/304] graft_tree+0x4c/0x130
+> May 20 13:58:33 node36 kernel: [1291442.098650] RSP:  
+> 0018:ffff8100856b3c48  EFLAGS: 00010246
+> May 20 13:58:33 node36 kernel: [1291442.164181] RAX:  
+> ffff8100ce0e41a0 RBX: 00000000ffffffec RCX: 0000000000000000
+> May 20 13:58:33 node36 kernel: [1291442.251524] RDX:  
+> ffff8100ba66f100 RSI: ffff8100856b3e58 RDI: ffff8100a7c63600
+> May 20 13:58:33 node36 kernel: [1291442.338866] RBP:  
+> ffff8100a7c63600 R08: 0000000000000000 R09: ffff81005ad02980
+> May 20 13:58:33 node36 kernel: [1291442.426210] R10:  
+> 000000001685c20a R11: 0000000000000006 R12: ffff8100856b3e58
+> May 20 13:58:33 node36 kernel: [1291442.513551] R13:  
+> 0000000000000000 R14: 000000000000000b R15: 000000000000000b
+> May 20 13:58:33 node36 kernel: [1291442.600894] FS:  
+> 00002b12c126d6e0(0000) GS:ffffffff80561000(0000) knlGS: 
+> 00000000f7da76b0
+> May 20 13:58:33 node36 kernel: [1291442.699656] CS:  0010 DS: 0000  
+> ES: 0000 CR0: 000000008005003b
+> May 20 13:58:33 node36 kernel: [1291442.770380] CR2:  
+> 00000000000000b2 CR3: 000000002ade7000 CR4: 00000000000006e0
+> May 20 13:58:33 node36 kernel: [1291442.857723] Process mount.nfs  
+> (pid: 1080, threadinfo ffff8100856b2000, task ffff8100bcba14a0)
+> May 20 13:58:33 node36 kernel: [1291442.961678] Stack:   
+> ffff8100856b3e58 ffff8100856b3e60 ffff8100a7c63600 ffffffff802b1fa0
+> May 20 13:58:33 node36 kernel: [1291443.059926]  0000000000000006  
+> ffffffffa7c63600 ffff810030d78000 ffff810059996000
+> May 20 13:58:33 node36 kernel: [1291443.150800]  ffff81007b39e000  
+> ffffffff802b3271 0000000000000010 0000000000000000
+> May 20 13:58:33 node36 kernel: [1291443.239489] Call Trace:
+> May 20 13:58:33 node36 kernel: [1291443.272934]  [do_add_mount 
+> +160/352] do_add_mount+0xa0/0x160
+> May 20 13:58:33 node36 kernel: [1291443.339502]  [do_mount 
+> +1329/2000] do_mount+0x531/0x7d0
+> May 20 13:58:33 node36 kernel: [1291443.402957] [__handle_mm_fault 
+> +1985/2912] __handle_mm_fault+0x7c1/0xb60
+> May 20 13:58:33 node36 kernel: [1291443.475761]  
+> [autoremove_wake_function+0/48] autoremove_wake_function+0x0/0x30
+> May 20 13:58:33 node36 kernel: [1291443.552711]  [__up_read+33/176]  
+> __up_read+0x21/0xb0
+> May 20 13:58:33 node36 kernel: [1291443.615125] [do_page_fault 
+> +971/2160] do_page_fault+0x3cb/0x870
+> May 20 13:58:33 node36 kernel: [1291443.683776] [zone_statistics 
+> +125/128] zone_statistics+0x7d/0x80
+> May 20 13:58:33 node36 kernel: [1291443.752425]  [error_exit+0/132]  
+> error_exit+0x0/0x84
+> May 20 13:58:33 node36 kernel: [1291443.814842] [copy_mount_options 
+> +273/384] copy_mount_options+0x111/0x180
+> May 20 13:58:33 node36 kernel: [1291443.888680]  [sys_mount+155/256]  
+> sys_mount+0x9b/0x100
+> May 20 13:58:33 node36 kernel: [1291443.952136]  [system_call 
+> +126/131] system_call+0x7e/0x83
+> May 20 13:58:33 node36 kernel: [1291444.016629]
+> May 20 13:58:33 node36 kernel: [1291444.036459]
+> May 20 13:58:33 node36 kernel: [1291444.036460] Code: 0f b7 81 b2 00  
+> 00 00 25 00 f0 00 00 3d 00 40 00 00 48 8b 47
+> May 20 13:58:33 node36 kernel: [1291444.215606]  RSP  
+> <ffff8100856b3c48>
+>
+>
+> It does get triggered by some application using the automounter  
+> (autofs)
+> that then does the mount.nfs call.
+>
+> Kernel is a: 2.6.22-14-generic. I wasn't able to search similar stuff
+> up from the archive.
 
-> Having said all that, I think I see a race.
-> When a new rqst is created at put on sp_all_threads, ->rq_task it not
-> set and doesn't get set until the thread runs and gets the mutex.  So
-> there is a brief hole when ->rq_task isn't set.  I don't know if that
-> can cause a problem, but it feels wrong.
-> When you switch to kthreads, you use the fact that kthread_create
-> returns a task_struct, and assign that to ->rq_task in
-> __svc_create_thread instead of nfsd, which will close that hole.
->   
-Yes, that aspect of Jeff's patch is a definite improvement.
-> If you look in nfsctl.c, you will probably be able to find plenty of
-> places where nfsd_serv is dereferenced without any locking.  These are
-> all wrong and need fixing.
->   
-Agreed!
+It would be interesting to know which nfs-utils version you have  
+installed, too.
 
--- 
-Greg Banks, P.Engineer, SGI Australian Software Group.
-The cake is *not* a lie.
-I don't speak for SGI.
-
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
