@@ -1,114 +1,98 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [NFS] async vs. sync. corrupted fs
-Date: Tue, 20 May 2008 09:01:48 -0400
-Message-ID: <1211288508.13163.13.camel@localhost>
-References: <215ff4410805160355x25b8d055x9a0a246aa5875482@mail.gmail.com>
-	<20080519145411.GC7622@fieldses.org>
-	<215ff4410805200100o20fb83bcm9921127efef27ef9@mail.gmail.com>
+From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
+Subject: Re: [PATCH REPOST2] svcrdma: Limit ORD based on client's
+  advertised  IRD
+Date: Tue, 20 May 2008 09:12:50 -0400
+Message-ID: <RTPCLUEXC1-PRDBeKwM00000125@RTPMVEXC1-PRD.hq.netapp.com>
+References: <1211242295.31725.95.camel@trinity.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, nfs@lists.sourceforge.net
-To: Chris Fanning <christopher.fanning@gmail.com>
+Cc: Bruce Fields <bfields@fieldses.org>,
+	linux-nfs <linux-nfs@vger.kernel.org>
+To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:38798 "EHLO neil.brown.name"
+Received: from mx2.netapp.com ([216.240.18.37]:3547 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1765828AbYETNCK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 May 2008 09:02:10 -0400
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1JyRTj-0000eE-Ru
-	for linux-nfs@vger.kernel.org; Tue, 20 May 2008 23:02:07 +1000
-In-Reply-To: <215ff4410805200100o20fb83bcm9921127efef27ef9-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+	id S1755040AbYETNND (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 May 2008 09:13:03 -0400
+In-Reply-To: <1211242295.31725.95.camel-SMNkleLxa3ZimH42XvhXlA@public.gmane.org>
+References: <1211242295.31725.95.camel-SMNkleLxa3ZimH42XvhXlA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2008-05-20 at 10:00 +0200, Chris Fanning wrote:
-> On Mon, May 19, 2008 at 4:54 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > On Fri, May 16, 2008 at 12:55:59PM +0200, Chris Fanning wrote:
-> >> Hello all,
-> >>
-> >> Could someone help me out?
-> >>
-> >> I'm exporting a whole partition to a client.
-> >> Using (rw,no_root_squash,sync, no_subtree_check), when I shutdown the
-> >> server _before_ the client, the filesystem on the partion becomes
-> >> corrupted.
-> >
-> > How do you know it becomes corrupted?
-> >
-> when I boot the server it reports the partition as corrupted and I
-> need to perform an fsck.
-> 
-> >> When I user async, it doesn't happen.
-> >
-> > "async" the client-side mount option, or "async" the server-side export
-> > option?
-> server export.
-> (rw,no_root_squash,sync, no_subtree_check)
-> 
-> client mount (fstab)
-> nfs_home_server:/home  /home  nfs  tcp,rw  0  0
-> 
-> >
-> >> Is this normal?
-> >
-> > No.
-> I didn't think so ;)
-> 
-> Perhaps I can shed some more light on this. The client is diskless.
-> The problems I'm reporting are with it's /home mount. It's root
-> filessystem is also a nfs mount (but that is exported form a
-> _different_ nfs server).
-> I modify the nfsroot using chroot on the server.
-> 
-> I *think* this might be because of /proc mounted in the chroot get
-> exported to the client? Any insight?
-> 
-> I've been trying all sorts of combinations yesterday (/proc mounted
-> and not mounted in the chroot) and I haven't been able to reproduce
-> the error. Strange becuase it definitely happened when was shutting
-> down the nfs_home_server while everything else was up and running.
-> 
-> Perahps it is also worth noting that I'm booting the client with
-> live-initramfs. /home gets mounted after the real
-> filesystem(aufs,nfs+ram) comes up.
-> Once the client has booted I can use /home. But it doesn't show up
-> using 'df', and it is not present in /etc/mtab
-> However it does show up in /proc/mounts
-> nfs_home_server:/home /home nfs
-> rw,vers=3,rsize=32768,wsize=23768,hard,nointr,proto=tcp,timeo=600,retrans=2,sec=sys,addr=192.168.2.2
-> 0 0
-> 
-> Sorry for the convulated reply.
-> Thanks.
-> Chris.
+Looks great. I haven't been able to test it between mthca client and
+mlx4 server hardware yet though.
 
-The NFS client is incapable of physically corrupting the disk on the
-server. The reason is simple: there are no NFS RPC calls that can access
-the raw disk.
-
-You should therefore rather be taking a long hard look at the server
-side, to see if there might be anything going on there that can explain
-it.
-One issue to look at would be stack corruption: we know that some
-combinations of soft raid + lvm + xfs can produce very deep call stacks,
-which can lead to stack overflows which might be causing corruption.
-You could also try running something like memtest86 to ensure that you
-don't have faulty memory.
-
-Cheers
-  Trond
+Tom.
 
 
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Microsoft 
-Defy all challenges. Microsoft(R) Visual Studio 2008. 
-http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+At 08:11 PM 5/19/2008, Tom Tucker wrote:
+>When adapters have differing IRD limits, the RDMA transport will fail to
+>connect properly. The RDMA transport should use the client's advertised
+>inbound read limit when computing its outbound read limit. For iWARP
+>transports, there is currently no standard for exchanging IRD/ORD
+>during connection establishment so the 'responder_resources' field in the
+>connect event is the local device's limit. The RDMA transport can be
+>configured to use a smaller ORD by writing the desired number to the
+>/proc/sys/sunrpc/svc_rdma/max_outbound_read_requests file.
+>    
+>Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+>---
+>
+>This one includes the min_t change. This is nicer. Thanks Tom.
+>
+> net/sunrpc/xprtrdma/svc_rdma_transport.c |   16 ++++++++++++----
+> 1 files changed, 12 insertions(+), 4 deletions(-)
+>
+>diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c 
+>b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+>index 68908b5..54b2126 100644
+>--- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
+>+++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+>@@ -580,7 +580,7 @@ int svc_rdma_post_recv(struct svcxprt_rdma *xprt)
+>  * will call the recvfrom method on the listen xprt which will accept the new
+>  * connection.
+>  */
+>-static void handle_connect_req(struct rdma_cm_id *new_cma_id)
+>+static void handle_connect_req(struct rdma_cm_id *new_cma_id, size_t 
+>client_ird)
+> {
+> 	struct svcxprt_rdma *listen_xprt = new_cma_id->context;
+> 	struct svcxprt_rdma *newxprt;
+>@@ -597,6 +597,9 @@ static void handle_connect_req(struct rdma_cm_id 
+>*new_cma_id)
+> 	dprintk("svcrdma: Creating newxprt=%p, cm_id=%p, listenxprt=%p\n",
+> 		newxprt, newxprt->sc_cm_id, listen_xprt);
+> 
+>+	/* Save client advertised inbound read limit for use later in accept. */
+>+	newxprt->sc_ord = client_ird;
+>+
+> 	/* Set the local and remote addresses in the transport */
+> 	sa = (struct sockaddr *)&newxprt->sc_cm_id->route.addr.dst_addr;
+> 	svc_xprt_set_remote(&newxprt->sc_xprt, sa, svc_addr_len(sa));
+>@@ -633,7 +636,8 @@ static int rdma_listen_handler(struct rdma_cm_id *cma_id,
+> 	case RDMA_CM_EVENT_CONNECT_REQUEST:
+> 		dprintk("svcrdma: Connect request on cma_id=%p, xprt = %p, "
+> 			"event=%d\n", cma_id, cma_id->context, event->event);
+>-		handle_connect_req(cma_id);
+>+		handle_connect_req(cma_id,
+>+				   event->param.conn.responder_resources);
+> 		break;
+> 
+> 	case RDMA_CM_EVENT_ESTABLISHED:
+>@@ -807,8 +811,12 @@ static struct svc_xprt *svc_rdma_accept(struct 
+>svc_xprt *xprt)
+> 				   (size_t)svcrdma_max_requests);
+> 	newxprt->sc_sq_depth = RPCRDMA_SQ_DEPTH_MULT * newxprt->sc_max_requests;
+> 
+>-	newxprt->sc_ord =  min((size_t)devattr.max_qp_rd_atom,
+>-			       (size_t)svcrdma_ord);
+>+	/*
+>+	* Limit ORD based on client limit, local device limit, and
+>+	* configured svcrdma limit.
+>+	*/
+>+	newxprt->sc_ord = min_t(size_t, devattr.max_qp_rd_atom, newxprt->sc_ord);
+>+	newxprt->sc_ord = min_t(size_t,	svcrdma_ord, newxprt->sc_ord);
+> 
+> 	newxprt->sc_pd = ib_alloc_pd(newxprt->sc_cm_id->device);
+> 	if (IS_ERR(newxprt->sc_pd)) {
 
