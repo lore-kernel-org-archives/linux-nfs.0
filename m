@@ -1,57 +1,43 @@
 From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
-Subject: Re: [PATCH 03/04]  NFS/RDMA client stall patches
-Date: Tue, 20 May 2008 09:20:54 -0400
-Message-ID: <RTPCLUEXC1-PRDtrSBy00000126@RTPMVEXC1-PRD.hq.netapp.com>
-References: <4830D86E.6040605@sgi.com>
- <RTPCLUEXC1-PRDBPaa700000101@RTPMVEXC1-PRD.hq.netapp.com>
- <48321FE2.6000703@sgi.com>
+Subject: Re: [PATCH 01/05] svcrdma: Verify read-list fits within
+  RPCSVC_MAXPAGES
+Date: Tue, 20 May 2008 09:27:13 -0400
+Message-ID: <RTPCLUEXC1-PRDh133t00000127@RTPMVEXC1-PRD.hq.netapp.com>
+References: <12111560011694-git-send-email-tom@opengridcomputing.com>
+ <12111560022506-git-send-email-tom@opengridcomputing.com>
+ <20080519182003.GC11993@fieldses.org>
+ <1211245672.31725.111.camel@trinity.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs@vger.kernel.org
-To: Peter Leckie <pleckie@sgi.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:52188 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:24433 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752358AbYETNUw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 May 2008 09:20:52 -0400
-In-Reply-To: <48321FE2.6000703@sgi.com>
-References: <4830D86E.6040605@sgi.com>
- <RTPCLUEXC1-PRDBPaa700000101-rtwIt2gI0FxT+ZUat5FNkAK/GNPrWCqfQQ4Iyu8u01E@public.gmane.org>
- <48321FE2.6000703@sgi.com>
+	id S1758230AbYETN1r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 May 2008 09:27:47 -0400
+In-Reply-To: <1211245672.31725.111.camel-SMNkleLxa3ZimH42XvhXlA@public.gmane.org>
+References: <12111560011694-git-send-email-tom@opengridcomputing.com>
+ <12111560022506-git-send-email-tom@opengridcomputing.com>
+ <20080519182003.GC11993@fieldses.org>
+ <1211245672.31725.111.camel-SMNkleLxa3ZimH42XvhXlA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-At 08:48 PM 5/19/2008, Peter Leckie wrote:
->Well xprt_disconnect_done() is no more heavy weight then the 
->rpcrdma_conn_func()
->equivalent it simply clears the connected bit and labels the  queues as 
->not connected.
->The reason for calling xprt_disconnect_done() is to  make a single 
->disconnect function.
+At 09:07 PM 5/19/2008, Tom Tucker wrote:
+>No we don't and a Byzantine client could crash us.
 
-Aha - I agree and now realize that I misunderstood because your patch
-calls xprt_disconnect(), which (IIRC) is an older heavier function that's no
-longer in sunrpc. Is this the right patch then?
+That can be arranged... :-)
 
->The reason this change is needed is to allow the send and resend queues 
->to be drained on disconnect, patch 02 could have been changed to also 
->drain the these queues from rpcrdma_conn_func() however I think this is 
->a cleaner fix.
+>This kind of check along with a bunch of others should go in
+>svc_rdma_xdr_decode_req.  I have these things planned for the 2.6.27
+>time-frame (along with Fast NSMR support). 
+>
+>Do you think it's more urgent?
 
-Sounds good - pending better understanding of which fix is right. :-)
-
-...
->>> Index: linux-2.6.25.3/net/sunrpc/xprtrdma/rpc_rdma.c
->>> ===================================================================
->>> --- linux-2.6.25.3.orig/net/sunrpc/xprtrdma/rpc_rdma.c
->>> +++ linux-2.6.25.3/net/sunrpc/xprtrdma/rpc_rdma.c
->>> @@ -680,15 +680,13 @@ rpcrdma_conn_func(struct rpcrdma_ep *ep)
-...
->>> +               spin_unlock_bh(&xprt->transport_lock);
->>> +       } else
->>> +               xprt_disconnect(xprt);
->>> }
->>>
+MHO is that it's important but not urgent, and it should be part of a later
+change. At Connectathon, no clients were sending any problematic requests,
+so I think it's unlikely this will affect us in the wild, for now. 
 
 Tom.
 
