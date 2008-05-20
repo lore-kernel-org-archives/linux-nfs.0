@@ -1,98 +1,57 @@
 From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
-Subject: Re: [PATCH REPOST2] svcrdma: Limit ORD based on client's
-  advertised  IRD
-Date: Tue, 20 May 2008 09:12:50 -0400
-Message-ID: <RTPCLUEXC1-PRDBeKwM00000125@RTPMVEXC1-PRD.hq.netapp.com>
-References: <1211242295.31725.95.camel@trinity.ogc.int>
+Subject: Re: [PATCH 03/04]  NFS/RDMA client stall patches
+Date: Tue, 20 May 2008 09:20:54 -0400
+Message-ID: <RTPCLUEXC1-PRDtrSBy00000126@RTPMVEXC1-PRD.hq.netapp.com>
+References: <4830D86E.6040605@sgi.com>
+ <RTPCLUEXC1-PRDBPaa700000101@RTPMVEXC1-PRD.hq.netapp.com>
+ <48321FE2.6000703@sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Bruce Fields <bfields@fieldses.org>,
-	linux-nfs <linux-nfs@vger.kernel.org>
-To: Tom Tucker <tom@opengridcomputing.com>
+Cc: linux-nfs@vger.kernel.org
+To: Peter Leckie <pleckie@sgi.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:3547 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:52188 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755040AbYETNND (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 May 2008 09:13:03 -0400
-In-Reply-To: <1211242295.31725.95.camel-SMNkleLxa3ZimH42XvhXlA@public.gmane.org>
-References: <1211242295.31725.95.camel-SMNkleLxa3ZimH42XvhXlA@public.gmane.org>
+	id S1752358AbYETNUw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 May 2008 09:20:52 -0400
+In-Reply-To: <48321FE2.6000703@sgi.com>
+References: <4830D86E.6040605@sgi.com>
+ <RTPCLUEXC1-PRDBPaa700000101-rtwIt2gI0FxT+ZUat5FNkAK/GNPrWCqfQQ4Iyu8u01E@public.gmane.org>
+ <48321FE2.6000703@sgi.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Looks great. I haven't been able to test it between mthca client and
-mlx4 server hardware yet though.
+At 08:48 PM 5/19/2008, Peter Leckie wrote:
+>Well xprt_disconnect_done() is no more heavy weight then the 
+>rpcrdma_conn_func()
+>equivalent it simply clears the connected bit and labels the  queues as 
+>not connected.
+>The reason for calling xprt_disconnect_done() is to  make a single 
+>disconnect function.
+
+Aha - I agree and now realize that I misunderstood because your patch
+calls xprt_disconnect(), which (IIRC) is an older heavier function that's no
+longer in sunrpc. Is this the right patch then?
+
+>The reason this change is needed is to allow the send and resend queues 
+>to be drained on disconnect, patch 02 could have been changed to also 
+>drain the these queues from rpcrdma_conn_func() however I think this is 
+>a cleaner fix.
+
+Sounds good - pending better understanding of which fix is right. :-)
+
+...
+>>> Index: linux-2.6.25.3/net/sunrpc/xprtrdma/rpc_rdma.c
+>>> ===================================================================
+>>> --- linux-2.6.25.3.orig/net/sunrpc/xprtrdma/rpc_rdma.c
+>>> +++ linux-2.6.25.3/net/sunrpc/xprtrdma/rpc_rdma.c
+>>> @@ -680,15 +680,13 @@ rpcrdma_conn_func(struct rpcrdma_ep *ep)
+...
+>>> +               spin_unlock_bh(&xprt->transport_lock);
+>>> +       } else
+>>> +               xprt_disconnect(xprt);
+>>> }
+>>>
 
 Tom.
-
-
-At 08:11 PM 5/19/2008, Tom Tucker wrote:
->When adapters have differing IRD limits, the RDMA transport will fail to
->connect properly. The RDMA transport should use the client's advertised
->inbound read limit when computing its outbound read limit. For iWARP
->transports, there is currently no standard for exchanging IRD/ORD
->during connection establishment so the 'responder_resources' field in the
->connect event is the local device's limit. The RDMA transport can be
->configured to use a smaller ORD by writing the desired number to the
->/proc/sys/sunrpc/svc_rdma/max_outbound_read_requests file.
->    
->Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
->---
->
->This one includes the min_t change. This is nicer. Thanks Tom.
->
-> net/sunrpc/xprtrdma/svc_rdma_transport.c |   16 ++++++++++++----
-> 1 files changed, 12 insertions(+), 4 deletions(-)
->
->diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c 
->b/net/sunrpc/xprtrdma/svc_rdma_transport.c
->index 68908b5..54b2126 100644
->--- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
->+++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
->@@ -580,7 +580,7 @@ int svc_rdma_post_recv(struct svcxprt_rdma *xprt)
->  * will call the recvfrom method on the listen xprt which will accept the new
->  * connection.
->  */
->-static void handle_connect_req(struct rdma_cm_id *new_cma_id)
->+static void handle_connect_req(struct rdma_cm_id *new_cma_id, size_t 
->client_ird)
-> {
-> 	struct svcxprt_rdma *listen_xprt = new_cma_id->context;
-> 	struct svcxprt_rdma *newxprt;
->@@ -597,6 +597,9 @@ static void handle_connect_req(struct rdma_cm_id 
->*new_cma_id)
-> 	dprintk("svcrdma: Creating newxprt=%p, cm_id=%p, listenxprt=%p\n",
-> 		newxprt, newxprt->sc_cm_id, listen_xprt);
-> 
->+	/* Save client advertised inbound read limit for use later in accept. */
->+	newxprt->sc_ord = client_ird;
->+
-> 	/* Set the local and remote addresses in the transport */
-> 	sa = (struct sockaddr *)&newxprt->sc_cm_id->route.addr.dst_addr;
-> 	svc_xprt_set_remote(&newxprt->sc_xprt, sa, svc_addr_len(sa));
->@@ -633,7 +636,8 @@ static int rdma_listen_handler(struct rdma_cm_id *cma_id,
-> 	case RDMA_CM_EVENT_CONNECT_REQUEST:
-> 		dprintk("svcrdma: Connect request on cma_id=%p, xprt = %p, "
-> 			"event=%d\n", cma_id, cma_id->context, event->event);
->-		handle_connect_req(cma_id);
->+		handle_connect_req(cma_id,
->+				   event->param.conn.responder_resources);
-> 		break;
-> 
-> 	case RDMA_CM_EVENT_ESTABLISHED:
->@@ -807,8 +811,12 @@ static struct svc_xprt *svc_rdma_accept(struct 
->svc_xprt *xprt)
-> 				   (size_t)svcrdma_max_requests);
-> 	newxprt->sc_sq_depth = RPCRDMA_SQ_DEPTH_MULT * newxprt->sc_max_requests;
-> 
->-	newxprt->sc_ord =  min((size_t)devattr.max_qp_rd_atom,
->-			       (size_t)svcrdma_ord);
->+	/*
->+	* Limit ORD based on client limit, local device limit, and
->+	* configured svcrdma limit.
->+	*/
->+	newxprt->sc_ord = min_t(size_t, devattr.max_qp_rd_atom, newxprt->sc_ord);
->+	newxprt->sc_ord = min_t(size_t,	svcrdma_ord, newxprt->sc_ord);
-> 
-> 	newxprt->sc_pd = ib_alloc_pd(newxprt->sc_cm_id->device);
-> 	if (IS_ERR(newxprt->sc_pd)) {
 
