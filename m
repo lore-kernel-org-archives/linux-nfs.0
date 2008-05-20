@@ -1,82 +1,45 @@
-From: Tom Tucker <tom@opengridcomputing.com>
-Subject: Re: [PATCH 01/05] svcrdma: Verify read-list fits within
-	RPCSVC_MAXPAGES
-Date: Mon, 19 May 2008 20:07:52 -0500
-Message-ID: <1211245672.31725.111.camel@trinity.ogc.int>
-References: <12111560011694-git-send-email-tom@opengridcomputing.com>
-	 <12111560022506-git-send-email-tom@opengridcomputing.com>
-	 <20080519182003.GC11993@fieldses.org>
+From: Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
+Subject: Re: [PATCH 0/3] [RFC] knfsd: convert to kthread API and remove	signaling
+ for shutdown
+Date: Mon, 19 May 2008 19:04:22 -0700
+Message-ID: <483231A6.9020809@melbourne.sgi.com>
+References: <1211078114-18384-1-git-send-email-jlayton@redhat.com>	<18481.6416.571430.593722@notabene.brown>	<4831F860.6050801@melbourne.sgi.com> <18482.4782.858347.981553@notabene.brown>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org,
+	nfsv4@linux-nfs.org
+To: Neil Brown <neilb@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([209.198.142.2]:47668 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1760707AbYETBEV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 May 2008 21:04:21 -0400
-In-Reply-To: <20080519182003.GC11993@fieldses.org>
+Received: from netops-testserver-3-out.sgi.com ([192.48.171.28]:38957 "EHLO
+	relay.sgi.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752853AbYETCGs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 May 2008 22:06:48 -0400
+In-Reply-To: <18482.4782.858347.981553-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Neil Brown wrote:
 
-On Mon, 2008-05-19 at 14:20 -0400, J. Bruce Fields wrote:
-> On Sun, May 18, 2008 at 07:13:17PM -0500, Tom Tucker wrote:
-> > A RDMA read-list cannot contain more elements than RPCSVC_MAXPAGES or
-> > it will overflow the DTO context. Verify this when processing the
-> > protocol header.
-> > 
-> > Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
-> > 
-> > ---
-> >  net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |    2 ++
-> >  1 files changed, 2 insertions(+), 0 deletions(-)
-> > 
-> > diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-> > index 6b16d8c..06ab484 100644
-> > --- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-> > +++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-> > @@ -306,6 +306,8 @@ static int rdma_read_xdr(struct svcxprt_rdma *xprt,
-> >  	ch_sge_ary = (struct chunk_sge *)tmp_ch_ctxt->sge;
-> >  
-> >  	svc_rdma_rcl_chunk_counts(ch, &ch_count, &byte_count);
-> > +	if (ch_count > RPCSVC_MAXPAGES)
-> > +		return -EINVAL;
-> >  	sge_count = rdma_rcl_to_sge(xprt, rqstp, hdr_ctxt, rmsgp,
-> >  				    sge, ch_sge_ary,
-> >  				    ch_count, byte_count);
-> 
-> If the ch_count is just the total number of bytes to be read into this
-> request, then don't we also need to know at what offset they're going to
-> be inserted?  (Shouldn't there be some check like ch->rc_position +
-> ch_count > RPCSVC_MAXPAGES ?)
-> 
+>  
+> +static ssize_t write_ports(struct file *file, char *buf, size_t size)
+> +{
+> +	ssize_t rv;
+> +	mutex_lock(&nfsd_mutex);
+> +	rv = __write_ports(file, buf, size);
+> +	mutex_unlock(&nfsd_mutex);
+> +	return rv;
+> +}
+>   
+Oooh, much better.  I was foolishly trying to fix all the lock_kernels()
+in the original write_ports().
 
-The ch_count is the number of RPCRDMA chunk elements in the read-list.
-It's not a byte count, but a scatter-gather-list length.
+There are some comments in net/sunrpc/svc.c referring to callers needing
+to own the BKL, which will need updating also. Otherwise, looks good :-)
+Perhaps the trouble I was having was in the older codebase only, or
+because I didn't pull the locking out far enough.
 
-I think the local read-list buffer limits should be clamped by
-svc_rdma_rcl_chunk_counts, however, see below...
-
-> Also, do we verify somewhere (before calling
-> svc_rdma_rcl_chunk_counts()) that rc_discrim is set on the last chunk?
-> 
-
-No we don't and a Byzantine client could crash us. The computed
-byte_count should also be clamped here. I'll add this to the list --
-nice catch.
-
-This kind of check along with a bunch of others should go in
-svc_rdma_xdr_decode_req.  I have these things planned for the 2.6.27
-time-frame (along with Fast NSMR support). 
-
-Do you think it's more urgent?
-
-Tom
-
-> --b.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+Greg Banks, P.Engineer, SGI Australian Software Group.
+The cake is *not* a lie.
+I don't speak for SGI.
 
