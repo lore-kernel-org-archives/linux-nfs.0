@@ -1,43 +1,42 @@
 From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
-Subject: Re: [PATCH 01/05] svcrdma: Verify read-list fits within
-  RPCSVC_MAXPAGES
-Date: Tue, 20 May 2008 09:27:13 -0400
-Message-ID: <RTPCLUEXC1-PRDh133t00000127@RTPMVEXC1-PRD.hq.netapp.com>
-References: <12111560011694-git-send-email-tom@opengridcomputing.com>
- <12111560022506-git-send-email-tom@opengridcomputing.com>
- <20080519182003.GC11993@fieldses.org>
- <1211245672.31725.111.camel@trinity.ogc.int>
+Subject: Re: [PATCH 0/3] [RFC] knfsd: convert to kthread API and
+  remove	signaling for shutdown
+Date: Tue, 20 May 2008 09:33:11 -0400
+Message-ID: <RTPCLUEXC1-PRDYwlib00000128@RTPMVEXC1-PRD.hq.netapp.com>
+References: <1211078114-18384-1-git-send-email-jlayton@redhat.com>
+ <18481.6416.571430.593722@notabene.brown>
+ <4831F860.6050801@melbourne.sgi.com>
+ <18482.4782.858347.981553@notabene.brown>
+ <20080519222457.6f24daa5@tupile.poochiereds.net>
+ <483238B3.4010702@melbourne.sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-To: Tom Tucker <tom@opengridcomputing.com>
+Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org,
+	nfsv4@linux-nfs.org
+To: Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:24433 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:26918 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758230AbYETN1r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 May 2008 09:27:47 -0400
-In-Reply-To: <1211245672.31725.111.camel-SMNkleLxa3ZimH42XvhXlA@public.gmane.org>
-References: <12111560011694-git-send-email-tom@opengridcomputing.com>
- <12111560022506-git-send-email-tom@opengridcomputing.com>
- <20080519182003.GC11993@fieldses.org>
- <1211245672.31725.111.camel-SMNkleLxa3ZimH42XvhXlA@public.gmane.org>
+	id S1754764AbYETNdH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 May 2008 09:33:07 -0400
+In-Reply-To: <483238B3.4010702-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
+References: <1211078114-18384-1-git-send-email-jlayton@redhat.com>
+ <18481.6416.571430.593722-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
+ <4831F860.6050801-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
+ <18482.4782.858347.981553-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
+ <20080519222457.6f24daa5-PC62bkCOHzGdMjc06nkz3ljfA9RmPOcC@public.gmane.org>
+ <483238B3.4010702-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-At 09:07 PM 5/19/2008, Tom Tucker wrote:
->No we don't and a Byzantine client could crash us.
+At 10:34 PM 5/19/2008, Greg Banks wrote:
+>Practically none of nfsd runs under BKL, except the startup and shutdown
+>sequences and some of the write handlers for /proc/fs/nfsd/.
 
-That can be arranged... :-)
+Locking and NFSv4 delegations.
 
->This kind of check along with a bunch of others should go in
->svc_rdma_xdr_decode_req.  I have these things planned for the 2.6.27
->time-frame (along with Fast NSMR support). 
->
->Do you think it's more urgent?
-
-MHO is that it's important but not urgent, and it should be part of a later
-change. At Connectathon, no clients were sending any problematic requests,
-so I think it's unlikely this will affect us in the wild, for now. 
+In my opinion, getting rid of the BKL in NFS comes down to getting
+locking right. It's incredibly intertwined, and it's not NFS's fault.
 
 Tom.
 
