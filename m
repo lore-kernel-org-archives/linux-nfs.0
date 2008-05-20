@@ -1,42 +1,54 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH] nfs: Fix misparsing of nfsv4 fs_locations attribute
-Date: Tue, 20 May 2008 15:42:38 -0400
-Message-ID: <1211312558.23156.29.camel@localhost>
-References: <20080509152750.GA325@fieldses.org>
-	 <20080509165204.GB1907@fieldses.org> <20080509171208.GC1907@fieldses.org>
-	 <20080509235930.GM1907@fieldses.org>
-	 <C4A41609-740F-450E-BE8F-7F51A8A9327B@oracle.com>
-	 <1210440728.12927.5.camel@localhost>
-	 <5FE6354F-8E28-4697-A27D-8532FD547683@oracle.com>
-	 <1d07ca700805101807s7c034b08sc531993aa81010b2@mail.gmail.com>
-	 <20080516195326.GD14228@fieldses.org>
-	 <CF603745-0163-469F-AC12-B4C5747038FC@oracle.com>
-	 <20080520024734.GA23457@fieldses.org>
-	 <F7A2B33E-BD03-473E-ABA3-F51DE366F2ED@oracle.com>
-	 <1211311935.23156.15.camel@localhost>
-	 <6C0F215B-C450-4BF7-8099-F19CF1397403@oracle.com>
+From: Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
+Subject: Re: [PATCH 0/3] [RFC] knfsd: convert to kthread API and remove	signaling
+ for shutdown
+Date: Tue, 20 May 2008 13:26:47 -0700
+Message-ID: <48333407.8020007@melbourne.sgi.com>
+References: <1211078114-18384-1-git-send-email-jlayton@redhat.com>	<18481.6416.571430.593722@notabene.brown>	<4831F860.6050801@melbourne.sgi.com>	<18482.4782.858347.981553@notabene.brown>	<20080519222457.6f24daa5@tupile.poochiereds.net> <18482.16837.381955.636390@notabene.brown>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	"david m. richter" <richterd@gmail.com>, linux-nfs@vger.kernel.org,
-	Manoj Naik <manoj@almaden.ibm.com>
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org,
+	nfsv4@linux-nfs.org
+To: Neil Brown <neilb@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from pat.uio.no ([129.240.10.15]:58383 "EHLO pat.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757567AbYETTmr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 May 2008 15:42:47 -0400
-In-Reply-To: <6C0F215B-C450-4BF7-8099-F19CF1397403@oracle.com>
+Received: from relay2.sgi.com ([192.48.171.30]:60637 "EHLO relay.sgi.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1758367AbYETU3R (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 May 2008 16:29:17 -0400
+In-Reply-To: <18482.16837.381955.636390-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2008-05-20 at 15:38 -0400, Chuck Lever wrote:
+Neil Brown wrote:
+>
+> Fair question.
+> The new nfsd_mutex primarily protects "nfsd_serv", both the pointer
+> itself and various members of the structure that it sometimes points
+> to.
+> In particular, ->sv_nrthreads but also to some extent sv_temp_socks
+> and sv_permsocks.
+>   
+Those two fields should be guarded by svc_serv->sv_lock only.  In fact
+IIRC the only field of svc_serv guarded by the global mutex is
+sv_nrthreads in it's role as pseudo-refcount.
 
-> I assume this new mechanism is intended to handle IPv6 addresses and  
-> DNS resolution correctly because it will invoke mount.nfs.
+> Having said all that, I think I see a race.
+> When a new rqst is created at put on sp_all_threads, ->rq_task it not
+> set and doesn't get set until the thread runs and gets the mutex.  So
+> there is a brief hole when ->rq_task isn't set.  I don't know if that
+> can cause a problem, but it feels wrong.
+> When you switch to kthreads, you use the fact that kthread_create
+> returns a task_struct, and assign that to ->rq_task in
+> __svc_create_thread instead of nfsd, which will close that hole.
+>   
+Yes, that aspect of Jeff's patch is a definite improvement.
+> If you look in nfsctl.c, you will probably be able to find plenty of
+> places where nfsd_serv is dereferenced without any locking.  These are
+> all wrong and need fixing.
+>   
+Agreed!
 
-I hadn't explicitly considered the problem of IPv6 addresses but yes, we
-should get all that for free.
-
-  Trond
+-- 
+Greg Banks, P.Engineer, SGI Australian Software Group.
+The cake is *not* a lie.
+I don't speak for SGI.
 
