@@ -1,99 +1,140 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH REPOST2] svcrdma: Limit ORD based on client's
-	advertised IRD
-Date: Tue, 20 May 2008 17:24:34 -0400
-Message-ID: <20080520212434.GF8177@fieldses.org>
-References: <1211242295.31725.95.camel@trinity.ogc.int>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Talpey, Thomas" <Thomas.Talpey@netapp.com>,
-	linux-nfs <linux-nfs@vger.kernel.org>
-To: Tom Tucker <tom@opengridcomputing.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 8/8] SUNRPC: Display symbolic function addresses in rpc_show_tasks
+Date: Tue, 20 May 2008 17:37:32 -0400
+Message-ID: <3F88B3F3-1820-4C6D-BE3F-533207747FBF@oracle.com>
+References: <20080520202108.3851.7464.stgit@ellison.1015granger.net> <20080520203018.3851.21166.stgit@ellison.1015granger.net> <1211317892.26809.8.camel@localhost>
+Mime-Version: 1.0 (Apple Message framework v919.2)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: linux-nfs@vger.kernel.org
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:59453 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1763355AbYETVYi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 May 2008 17:24:38 -0400
-In-Reply-To: <1211242295.31725.95.camel-SMNkleLxa3ZimH42XvhXlA@public.gmane.org>
+Received: from agminet01.oracle.com ([141.146.126.228]:15947 "EHLO
+	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1761094AbYETVi0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 May 2008 17:38:26 -0400
+In-Reply-To: <1211317892.26809.8.camel@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, May 19, 2008 at 07:11:35PM -0500, Tom Tucker wrote:
-> When adapters have differing IRD limits, the RDMA transport will fail to
-> connect properly.
- 
-How will this look to the user?  Are they going to get some sort of
-mysterious failure when they try to mount, and then have to go echo
-lower values into /proc/sys/sunrpc/svc_rdma/max_outbound_read_requests
-until it works?
+On May 20, 2008, at 5:11 PM, Trond Myklebust wrote:
+> On Tue, 2008-05-20 at 16:30 -0400, Chuck Lever wrote:
+>> For each running RPC task, rpc_show_tasks displays the hex address  
+>> of the
+>> call_foo function that the task is running.  To make debugging  
+>> slightly
+>> nicer, let's display the call_foo function name instead.
+>>
+>> Sample output:
+>>
+>> -pid- flgs status -client- --rqstp- -timeout ---ops--
+>> 27915 0001      0 ee84a460 eedf00d0    60000 f8fa677c nfs3 COMMIT  
+>> act:status wq:xprt_pending
+>> 27918 0080      0 ee84a460 eedf0000    60000 f8d527a8 nfs3 SETATTR  
+>> act:status wq:xprt_pending
+>>
+>> -pid- flgs status -client- --rqstp- -timeout ---ops--
+>> 60859 0001      0 ee84a460 eedf00d0        0 f8fa66c8 nfs3 READ  
+>> act:status
+>> 60860 0080      0 ee84a460 eedf0000        0 f8d527a8 nfs3 GETATTR  
+>> act:status
+>>
+>>
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> ---
+>>
+>> include/linux/sunrpc/sched.h |    1 +
+>> net/sunrpc/clnt.c            |   52 ++++++++++++++++++++++++++++++++ 
+>> +++++++---
+>> net/sunrpc/sched.c           |    2 +-
+>> 3 files changed, 50 insertions(+), 5 deletions(-)
+>>
+>>
+>> diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/ 
+>> sched.h
+>> index d1a5c8c..108342e 100644
+>> --- a/include/linux/sunrpc/sched.h
+>> +++ b/include/linux/sunrpc/sched.h
+>> @@ -212,6 +212,7 @@ struct rpc_wait_queue {
+>> struct rpc_task *rpc_new_task(const struct rpc_task_setup *);
+>> struct rpc_task *rpc_run_task(const struct rpc_task_setup *);
+>> void		rpc_put_task(struct rpc_task *);
+>> +void		rpc_prepare_task(struct rpc_task *);
+>> void		rpc_exit_task(struct rpc_task *);
+>> void		rpc_release_calldata(const struct rpc_call_ops *, void *);
+>> void		rpc_killall_tasks(struct rpc_clnt *);
+>> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+>> index c33d727..ec9c072 100644
+>> --- a/net/sunrpc/clnt.c
+>> +++ b/net/sunrpc/clnt.c
+>> @@ -1510,24 +1510,68 @@ struct rpc_task *rpc_call_null(struct  
+>> rpc_clnt *clnt, struct rpc_cred *cred, int
+>> EXPORT_SYMBOL_GPL(rpc_call_null);
+>>
+>> #ifdef RPC_DEBUG
+>> +/*
+>> + * To make it easier to tell what action each running RPC task
+>> + * is executing, use a table to map the content of tk_action to
+>> + * a human-readable name.  This uses a little extra memory, but
+>> + * causes no additional run-time overhead per RPC request.
+>> + */
+>> +typedef void   (*rpc_task_action)(struct rpc_task *);
+>> +
+>> +static struct {
+>> +	rpc_task_action		action;
+>> +	const char		*name;
+>> +} rpc_action_table[] = {
+>> +	{ rpc_prepare_task,		"prepare"		},
+>> +	{ call_start,			"start"			},
+>> +	{ call_reserve,			"reserve"		},
+>> +	{ call_reserveresult,		"reserveresult"		},
+>> +	{ call_allocate,		"allocate"		},
+>> +	{ call_bind,			"bind"			},
+>> +	{ call_bind_status,		"bindstatus"		},
+>> +	{ call_connect,			"connect"		},
+>> +	{ call_connect_status,		"connectstatus"		},
+>> +	{ call_transmit,		"transmit"		},
+>> +	{ call_transmit_status,		"transmitstatus"	},
+>> +	{ call_status,			"status"		},
+>> +	{ call_timeout,			"timeout"		},
+>> +	{ call_decode,			"decode"		},
+>> +	{ call_refresh,			"refresh"		},
+>> +	{ call_refreshresult,		"refreshresult"		},
+>> +	{ rpc_exit_task,		"exit"			},
+>> +	{ NULL,				"null"			},
+>> +};
+>>
+>> +
+>> +static const char *rpc_show_action(rpc_task_action action)
+>> +{
+>> +	unsigned int i;
+>> +
+>> +	for (i = 0; i <= ARRAY_SIZE(rpc_action_table); i++)
+>> +		if (rpc_action_table[i].action == action)
+>> +			return rpc_action_table[i].name;
+>> +
+>> +	return "unknown";
+>> +}
+>
+>
+> NACK. Maintaining tables like the above in the long run is a  
+> nightmare.
 
-> The RDMA transport should use the client's advertised
-> inbound read limit when computing its outbound read limit. For iWARP
-> transports, there is currently no standard for exchanging IRD/ORD
-> during connection establishment so the 'responder_resources' field in the
-> connect event is the local device's limit. The RDMA transport can be
-> configured to use a smaller ORD by writing the desired number to the
-> /proc/sys/sunrpc/svc_rdma/max_outbound_read_requests file.
+> What's more, by eliminating the printout of the actual pointer you are
+> potentially replacing useful information that could otherwise easily  
+> be
+> looked up using /proc/kallsyms with "unknown".
 
-Do we have any documentation on using these various sysctls?
+> The above translation could easily be done using a simple script in
+> userspace instead.
 
---b.
+Except when you don't have access to the kernel image and modules  
+where the dump was generated.  Why would I want to run a script to do  
+this, when Oops output already displays symbolic function addresses in  
+a callback trace?
 
->     
-> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
-> ---
-> 
-> This one includes the min_t change. This is nicer. Thanks Tom.
-> 
->  net/sunrpc/xprtrdma/svc_rdma_transport.c |   16 ++++++++++++----
->  1 files changed, 12 insertions(+), 4 deletions(-)
-> 
-> diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-> index 68908b5..54b2126 100644
-> --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-> +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-> @@ -580,7 +580,7 @@ int svc_rdma_post_recv(struct svcxprt_rdma *xprt)
->   * will call the recvfrom method on the listen xprt which will accept the new
->   * connection.
->   */
-> -static void handle_connect_req(struct rdma_cm_id *new_cma_id)
-> +static void handle_connect_req(struct rdma_cm_id *new_cma_id, size_t client_ird)
->  {
->  	struct svcxprt_rdma *listen_xprt = new_cma_id->context;
->  	struct svcxprt_rdma *newxprt;
-> @@ -597,6 +597,9 @@ static void handle_connect_req(struct rdma_cm_id *new_cma_id)
->  	dprintk("svcrdma: Creating newxprt=%p, cm_id=%p, listenxprt=%p\n",
->  		newxprt, newxprt->sc_cm_id, listen_xprt);
->  
-> +	/* Save client advertised inbound read limit for use later in accept. */
-> +	newxprt->sc_ord = client_ird;
-> +
->  	/* Set the local and remote addresses in the transport */
->  	sa = (struct sockaddr *)&newxprt->sc_cm_id->route.addr.dst_addr;
->  	svc_xprt_set_remote(&newxprt->sc_xprt, sa, svc_addr_len(sa));
-> @@ -633,7 +636,8 @@ static int rdma_listen_handler(struct rdma_cm_id *cma_id,
->  	case RDMA_CM_EVENT_CONNECT_REQUEST:
->  		dprintk("svcrdma: Connect request on cma_id=%p, xprt = %p, "
->  			"event=%d\n", cma_id, cma_id->context, event->event);
-> -		handle_connect_req(cma_id);
-> +		handle_connect_req(cma_id,
-> +				   event->param.conn.responder_resources);
->  		break;
->  
->  	case RDMA_CM_EVENT_ESTABLISHED:
-> @@ -807,8 +811,12 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
->  				   (size_t)svcrdma_max_requests);
->  	newxprt->sc_sq_depth = RPCRDMA_SQ_DEPTH_MULT * newxprt->sc_max_requests;
->  
-> -	newxprt->sc_ord =  min((size_t)devattr.max_qp_rd_atom,
-> -			       (size_t)svcrdma_ord);
-> +	/*
-> +	 * Limit ORD based on client limit, local device limit, and
-> +	 * configured svcrdma limit.
-> +	 */
-> +	newxprt->sc_ord = min_t(size_t, devattr.max_qp_rd_atom, newxprt->sc_ord);
-> +	newxprt->sc_ord = min_t(size_t,	svcrdma_ord, newxprt->sc_ord);
->  
->  	newxprt->sc_pd = ib_alloc_pd(newxprt->sc_cm_id->device);
->  	if (IS_ERR(newxprt->sc_pd)) {
-> 
+We can drop this one for now.  Please let me know about the  
+disposition of the other seven.
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
