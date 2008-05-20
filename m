@@ -1,139 +1,72 @@
-From: "Marcelo Leal" <diversos-roWltSPQdMkZWYhx5MAOMFAUjnlXr6A1@public.gmane.org>
-Subject: Re: [NFS] async vs. sync. corrupted fs
-Date: Tue, 20 May 2008 11:05:28 -0300
-Message-ID: <42996ba90805200705o49b4a17bn62cc9962bbcac8b2@mail.gmail.com>
-References: <215ff4410805160355x25b8d055x9a0a246aa5875482@mail.gmail.com>
-	<20080519145411.GC7622@fieldses.org>
-	<215ff4410805200100o20fb83bcm9921127efef27ef9@mail.gmail.com>
-	<1211288508.13163.13.camel@localhost>
+From: Allard Hoeve <allard-DW70C6hi67U@public.gmane.org>
+Subject: [NFS] NFSv3 + SVN + Apache2 gives stale filehandles and FORBIDDEN
+	responses
+Date: Tue, 20 May 2008 16:07:39 +0200 (CEST)
+Message-ID: <Pine.LNX.4.62.0805201425430.18549@office2.c1.internal>
+Reply-To: Allard Hoeve <allard-DW70C6hi67U@public.gmane.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Chris Fanning <christopher.fanning@gmail.com>,
-	nfs@lists.sourceforge.net
-To: "Trond Myklebust" <trond.myklebust@fys.uio.no>
+To: nfs@lists.sourceforge.net
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:34252 "EHLO neil.brown.name"
+Received: from neil.brown.name ([220.233.11.133]:34253 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756223AbYETOFk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 May 2008 10:05:40 -0400
+	id S1755483AbYETOH6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 May 2008 10:07:58 -0400
 Received: from brown by neil.brown.name with local (Exim 4.63)
 	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1JySTB-0000nF-OE
-	for linux-nfs@vger.kernel.org; Wed, 21 May 2008 00:05:37 +1000
-In-Reply-To: <1211288508.13163.13.camel@localhost>
+	id 1JySVQ-0000nZ-AN
+	for linux-nfs@vger.kernel.org; Wed, 21 May 2008 00:07:56 +1000
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We already saw xfs filesystem full and NFS server (2.4 kernel),
-produce a disc corruption (partition table goes away).
-But believe me, not in the full disc, but in another one (we can
-reproduce). Always the same disc is corrupted (the first one i guess).
 
- Leal.
+Hello all,
 
-2008/5/20 Trond Myklebust <trond.myklebust@fys.uio.no>:
-> On Tue, 2008-05-20 at 10:00 +0200, Chris Fanning wrote:
->> On Mon, May 19, 2008 at 4:54 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
->> > On Fri, May 16, 2008 at 12:55:59PM +0200, Chris Fanning wrote:
->> >> Hello all,
->> >>
->> >> Could someone help me out?
->> >>
->> >> I'm exporting a whole partition to a client.
->> >> Using (rw,no_root_squash,sync, no_subtree_check), when I shutdown the
->> >> server _before_ the client, the filesystem on the partion becomes
->> >> corrupted.
->> >
->> > How do you know it becomes corrupted?
->> >
->> when I boot the server it reports the partition as corrupted and I
->> need to perform an fsck.
->>
->> >> When I user async, it doesn't happen.
->> >
->> > "async" the client-side mount option, or "async" the server-side export
->> > option?
->> server export.
->> (rw,no_root_squash,sync, no_subtree_check)
->>
->> client mount (fstab)
->> nfs_home_server:/home  /home  nfs  tcp,rw  0  0
->>
->> >
->> >> Is this normal?
->> >
->> > No.
->> I didn't think so ;)
->>
->> Perhaps I can shed some more light on this. The client is diskless.
->> The problems I'm reporting are with it's /home mount. It's root
->> filessystem is also a nfs mount (but that is exported form a
->> _different_ nfs server).
->> I modify the nfsroot using chroot on the server.
->>
->> I *think* this might be because of /proc mounted in the chroot get
->> exported to the client? Any insight?
->>
->> I've been trying all sorts of combinations yesterday (/proc mounted
->> and not mounted in the chroot) and I haven't been able to reproduce
->> the error. Strange becuase it definitely happened when was shutting
->> down the nfs_home_server while everything else was up and running.
->>
->> Perahps it is also worth noting that I'm booting the client with
->> live-initramfs. /home gets mounted after the real
->> filesystem(aufs,nfs+ram) comes up.
->> Once the client has booted I can use /home. But it doesn't show up
->> using 'df', and it is not present in /etc/mtab
->> However it does show up in /proc/mounts
->> nfs_home_server:/home /home nfs
->> rw,vers=3,rsize=32768,wsize=23768,hard,nointr,proto=tcp,timeo=600,retrans=2,sec=sys,addr=192.168.2.2
->> 0 0
->>
->> Sorry for the convulated reply.
->> Thanks.
->> Chris.
->
-> The NFS client is incapable of physically corrupting the disk on the
-> server. The reason is simple: there are no NFS RPC calls that can access
-> the raw disk.
->
-> You should therefore rather be taking a long hard look at the server
-> side, to see if there might be anything going on there that can explain
-> it.
-> One issue to look at would be stack corruption: we know that some
-> combinations of soft raid + lvm + xfs can produce very deep call stacks,
-> which can lead to stack overflows which might be causing corruption.
-> You could also try running something like memtest86 to ensure that you
-> don't have faulty memory.
->
-> Cheers
->  Trond
->
->
-> -------------------------------------------------------------------------
-> This SF.net email is sponsored by: Microsoft
-> Defy all challenges. Microsoft(R) Visual Studio 2008.
-> http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
-> _______________________________________________
-> Please note that nfs@lists.sourceforge.net is being discontinued.
-> Please subscribe to linux-nfs@vger.kernel.org instead.
->    http://vger.kernel.org/vger-lists.html#linux-nfs
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
->
+I'm currently experiencing the following on Debian Etch (nfsv3, 2.6.24.2):
 
+http://linux-nfs.org/pipermail/nfsv4/2008-April/008423.html
 
+It is properly summarized by J. Bruce Fields at:
 
--- 
-pOSix rules
+http://linux-nfs.org/pipermail/nfsv4/2008-April/008452.html
+
+I can reproduce this easily.
+
+Let's assume three hosts:
+
+* Host A is where development happens, this has a separate checkout
+* Host B is where the checkout gets updated (shellserver) on an NFS mount
+* Host C is where the webserver resides, Apache serves from the an NFS
+    mount that points to the same server as B's NFS mount points to
+
+This setup is easily created if you have two hosts and access to an SVN 
+server.
+
+To reproduce:
+
+1) I update the testfile on host A and commit it.
+2) I update the checkout with svn commit on host B.
+3) No I test the file on host C:
+    a) I try to access the file on host C through the webserver: permission
+       denied (stale NFS handle)
+    b) I try to stat the file: cannot stat 'test': Stale NFS file handle
+4) A simple 'cat test' gives me the new contents of 'test' and solves the
+     problem. The file is now 'stat'-able and downloadable through the
+     webserver.
+
+Where should I start to solve the problem? From the threads above, I seem 
+to understand that fixing this in userspace (Apache2 / stat) would require 
+some work and that the solution lies in the NFS client? This would require 
+me hacking the NFS kernel code.  *shivers* :)
+
+Or maybe there already is someone working on the problem? *crosses 
+fingers*. I could test patches, etc if you'd like.x
+
+Thanks for your time,
+
+Regards,
+
+Allard Hoeve
 
 -------------------------------------------------------------------------
 This SF.net email is sponsored by: Microsoft 
