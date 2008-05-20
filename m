@@ -1,8 +1,8 @@
 From: Tom Tucker <tom@opengridcomputing.com>
 Subject: Re: [PATCH REPOST2] svcrdma: Limit ORD based on client's
 	advertised IRD
-Date: Tue, 20 May 2008 17:26:48 -0500
-Message-ID: <1211322408.12428.34.camel@trinity.ogc.int>
+Date: Tue, 20 May 2008 17:29:54 -0500
+Message-ID: <1211322594.12428.37.camel@trinity.ogc.int>
 References: <1211242295.31725.95.camel@trinity.ogc.int>
 	 <20080520212434.GF8177@fieldses.org>
 Mime-Version: 1.0
@@ -11,10 +11,10 @@ Cc: "Talpey, Thomas" <Thomas.Talpey@netapp.com>,
 	linux-nfs <linux-nfs@vger.kernel.org>
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([209.198.142.2]:42208 "EHLO
+Received: from smtp.opengridcomputing.com ([209.198.142.2]:46676 "EHLO
 	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1759537AbYETWXN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 May 2008 18:23:13 -0400
+	by vger.kernel.org with ESMTP id S934631AbYETW0T (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 May 2008 18:26:19 -0400
 In-Reply-To: <20080520212434.GF8177@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
@@ -29,13 +29,15 @@ On Tue, 2008-05-20 at 17:24 -0400, J. Bruce Fields wrote:
 > mysterious failure when they try to mount, and then have to go echo
 > lower values into /proc/sys/sunrpc/svc_rdma/max_outbound_read_requests
 > until it works?
+
+BTW, this is a hypothetical for iWARP. The last I checked, the current
+spate of adapters seemed to work fine (Chelsio/Neteffect) because the
+NFSRDMA default is supported by both. I'll check again and get back to
+you.
+
+Tom
+
 > 
-
-Yes, the mount will fail with a connection error. It's disgusting.
-However, there's not much we can do until we get this negotiated in the
-iWARP CM (Steve Wise is working on this in the OpenFabrics working
-group).  When that work is finished, this issue goes away.
-
 > > The RDMA transport should use the client's advertised
 > > inbound read limit when computing its outbound read limit. For iWARP
 > > transports, there is currently no standard for exchanging IRD/ORD
@@ -46,10 +48,6 @@ group).  When that work is finished, this issue goes away.
 > 
 > Do we have any documentation on using these various sysctls?
 > 
-
-At this point, not in Linux. I can put something together and post it
-here.
-
 > --b.
 > 
 > >     
@@ -110,4 +108,8 @@ here.
 > >  	newxprt->sc_pd = ib_alloc_pd(newxprt->sc_cm_id->device);
 > >  	if (IS_ERR(newxprt->sc_pd)) {
 > > 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
