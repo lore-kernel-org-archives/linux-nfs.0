@@ -1,55 +1,43 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH] nfs: Fix misparsing of nfsv4 fs_locations attribute
-Date: Tue, 20 May 2008 15:32:14 -0400
-Message-ID: <1211311935.23156.15.camel@localhost>
-References: <20080509152750.GA325@fieldses.org>
-	 <20080509165204.GB1907@fieldses.org> <20080509171208.GC1907@fieldses.org>
-	 <20080509235930.GM1907@fieldses.org>
-	 <C4A41609-740F-450E-BE8F-7F51A8A9327B@oracle.com>
-	 <1210440728.12927.5.camel@localhost>
-	 <5FE6354F-8E28-4697-A27D-8532FD547683@oracle.com>
-	 <1d07ca700805101807s7c034b08sc531993aa81010b2@mail.gmail.com>
-	 <20080516195326.GD14228@fieldses.org>
-	 <CF603745-0163-469F-AC12-B4C5747038FC@oracle.com>
-	 <20080520024734.GA23457@fieldses.org>
-	 <F7A2B33E-BD03-473E-ABA3-F51DE366F2ED@oracle.com>
+Subject: Re: Kernel call trace on NFS-mount (using autofs).
+Date: Tue, 20 May 2008 15:37:16 -0400
+Message-ID: <1211312236.23156.21.camel@localhost>
+References: <48331EAE.6060107@krogh.cc>
+	 <1211311573.23156.10.camel@localhost>  <4833272B.9030602@krogh.cc>
 Mime-Version: 1.0
 Content-Type: text/plain
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	"david m. richter" <richterd@gmail.com>, linux-nfs@vger.kernel.org,
-	Manoj Naik <manoj@almaden.ibm.com>
-To: Chuck Lever <chuck.lever@oracle.com>
+Cc: NFS list <linux-nfs@vger.kernel.org>
+To: Jesper Krogh <jesper-Q2TZfHgGEy4@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from pat.uio.no ([129.240.10.15]:48090 "EHLO pat.uio.no"
+Received: from pat.uio.no ([129.240.10.15]:52973 "EHLO pat.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757001AbYETTcZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 May 2008 15:32:25 -0400
-In-Reply-To: <F7A2B33E-BD03-473E-ABA3-F51DE366F2ED@oracle.com>
+	id S1756462AbYETThT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 May 2008 15:37:19 -0400
+In-Reply-To: <4833272B.9030602-Q2TZfHgGEy4@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2008-05-20 at 12:54 -0400, Chuck Lever wrote:
-
-> So, I haven't added IPv6 support in this area because it seems to  
-> assume an IPv4 address here, and it needs to handle the case where  
-> this might be a hostname (ie there should be a DNS resolution in this  
-> path).
+On Tue, 2008-05-20 at 21:31 +0200, Jesper Krogh wrote:
+> Trond Myklebust wrote:
+>   > That appears to be crashing in generic VFS code rather than in anything
+> > nfs specific, so I'd suggest reposting this Oops to linux-fsdevel. It
+> > would be nice if you could first try to reproduce it with 2.6.25,
+> > though.
 > 
-> If you're going to call in4_pton(), it really should call  
-> nfs_parse_server_address() instead; then this path would magically  
-> support IPv6 addresses as well.
-> 
-> But in the long run, this path will need either an upcall or it will  
-> have to use the key-based kernel DNS resolution facility (Jeff Layton  
-> mentioned something like this over lunch last week).
+> Can I safely upgrade kernel to 2.6.25 without changing userspace utils
+> and autofs?
 
-No. The correct way to do this is to replace the current code
-fs_locations handler so that we do the mount from userspace. In addition
-to voiding the whole issue of in-kernel DNS resolution, that also has
-the benefit that it allows us to put policy decisions like which server
-to mount from under administrator control in userspace.
+Normally that should be fine as long as you don't enable any new
+features that explicitly state in the kconfig file that they need
+updated utilities.
 
-I've already started coding up a solution.
+> It is not particulary repoducible. I happens "every second day on a 
+> random node of a set of around 48".
 
-   Trond
+If it is difficult to reproduce, then you can always try posting the
+existing Oops (mentioning the above), and seeing if that elicits any
+response. It may be that this proves to be a known bug...
+
+Cheers
+  Trond
 
