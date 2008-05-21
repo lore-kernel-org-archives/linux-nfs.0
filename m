@@ -1,74 +1,221 @@
-From: Erez Zadok <ezk-EX0cT3Az47bauI2f2gSDlQ@public.gmane.org>
-Subject: Re: [NFS] [PATCH] nfs2/3 ESTALE bug (libblkid uses stale cache/uuid
-	values)
-Date: Tue, 20 May 2008 18:32:13 -0400
-Message-ID: <200805202232.m4KMWD11020355@agora.fsl.cs.sunysb.edu>
-References: <20080519190356.GH15035@mit.edu>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 02/05] svcrdma: Refactor RDMA_WRITE dma mapping logic
+Date: Tue, 20 May 2008 20:46:08 -0400
+Message-ID: <20080521004608.GL8177@fieldses.org>
+References: <12111560011694-git-send-email-tom@opengridcomputing.com> <12111560022506-git-send-email-tom@opengridcomputing.com> <1211156002624-git-send-email-tom@opengridcomputing.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Kevin Coffman <kwc@umich.edu>, linux-nfs@vger.kernel.org,
-	Himanshu Kanda <hkanda-EX0cT3Az47bauI2f2gSDlQ@public.gmane.org>,
-	Trond Myklebust <Trond.Myklebust@netapp.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	nfs@lists.sourceforge.net, Erez Zadok <ezk-EX0cT3Az47bauI2f2gSDlQ@public.gmane.org>
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=utf-8
+Cc: linux-nfs@vger.kernel.org
+To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:59776 "EHLO neil.brown.name"
+Received: from mail.fieldses.org ([66.93.2.214]:38354 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1764760AbYETWcl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 May 2008 18:32:41 -0400
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1JyaNq-00031U-F0
-	for linux-nfs@vger.kernel.org; Wed, 21 May 2008 08:32:38 +1000
-In-reply-to: Your message of "Mon, 19 May 2008 15:03:56 EDT."
-	<20080519190356.GH15035@mit.edu>
+	id S1761770AbYEUAqJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 May 2008 20:46:09 -0400
+In-Reply-To: <1211156002624-git-send-email-tom@opengridcomputing.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In message <20080519190356.GH15035@mit.edu>, Theodore Tso writes:
-> On Mon, May 19, 2008 at 12:04:08PM -0400, J. Bruce Fields wrote:
-[...]
-> In practice it's rare for a system administrator to rerun mkfs
-> multiple times in the space of 200 seconds.  (Especially since mkfs
-> for ext3 normally takes quite a bit of time to run on large disks,
-> although I'll grant that's a bug that we'll fixing for ext4.  :-) In
-> general, though, it's rare for system administrator to be constantly
-> recreating filesystems on their devices.  It's happening in your test
-> scenario, but in real life, it's rare that an administrator will be
-> constantly reformatting a drive, especially if it's being exported by
-> NFS.
-[...]
+On Sun, May 18, 2008 at 07:13:18PM -0500, Tom Tucker wrote:
+> In order to make the dma mapping code easier to understand and reduce=
+ the
+> number of I/O contexts required, move the DMA for RDMA_WRITE WR to th=
+e
+> code that prepares the WR SGE.
 
-> Thanks for the patch.  I'll clean it up and include in e2fsprogs, but
-> I don't consider this a high priority fix to get out to everyone,
-> since it's really not something that I expect will be hit in real
-> life, except in test scenarios like the one run into by Erez and his
-> team.
-> 
-> 						- Ted
+This one makes my (32-bit) compiler whine:
 
-Ted, I agree with you it's an uncommon scenario, running mkfs so many times,
-and this isn't a high priority fix.  As long as it gets into e2fsprogs,
-eventually all the distros will have it.  Thanks.
+CC      net/sunrpc/xprtrdma/svc_rdma_sendto.o
+net/sunrpc/xprtrdma/svc_rdma_sendto.c: In function =E2=80=98send_write=E2=
+=80=99:
+net/sunrpc/xprtrdma/svc_rdma_sendto.c:180: warning: passing argument 2 =
+of =E2=80=98ib_dma_map_single=E2=80=99 makes pointer from integer witho=
+ut a cast
+net/sunrpc/xprtrdma/svc_rdma_sendto.c: In function =E2=80=98send_reply=E2=
+=80=99:
+net/sunrpc/xprtrdma/svc_rdma_sendto.c:416: warning: passing argument 2 =
+of =E2=80=98ib_dma_map_single=E2=80=99 makes pointer from integer witho=
+ut a cast
 
-However, with more people using unioning systems, repeated mkfs's are
-becoming more commonplace.  For example, users like to dynamically add and
-remove branches into a union, and those branches sometimes come from small
-loop devices that are mkfs'ed.
+And the types do seem weird:
 
-Cheers,
-Erez.
+>=20
+> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+>=20
+> ---
+>  net/sunrpc/xprtrdma/svc_rdma_sendto.c    |   44 +++++++++++++++-----=
+----------
+>  net/sunrpc/xprtrdma/svc_rdma_transport.c |    5 +++-
+>  2 files changed, 26 insertions(+), 23 deletions(-)
+>=20
+> diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtr=
+dma/svc_rdma_sendto.c
+> index fb82b1b..85931c4 100644
+> --- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+> +++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+> @@ -84,10 +84,7 @@ static struct ib_sge *xdr_to_sge(struct svcxprt_rd=
+ma *xprt,
+>  	sge_no =3D 1;
+> =20
+>  	/* Head SGE */
+> -	sge[sge_no].addr =3D ib_dma_map_single(xprt->sc_cm_id->device,
+> -					     xdr->head[0].iov_base,
+> -					     xdr->head[0].iov_len,
+> -					     DMA_TO_DEVICE);
+> +	sge[sge_no].addr =3D (unsigned long)xdr->head[0].iov_base;
 
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Microsoft 
-Defy all challenges. Microsoft(R) Visual Studio 2008. 
-http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+So before we called a function that took a void *, returned a u64; now
+we're storing a void* directly into a u64.
 
+>  	sge_bytes =3D min_t(u32, byte_count, xdr->head[0].iov_len);
+>  	byte_count -=3D sge_bytes;
+>  	sge[sge_no].length =3D sge_bytes;
+> @@ -99,11 +96,9 @@ static struct ib_sge *xdr_to_sge(struct svcxprt_rd=
+ma *xprt,
+>  	page_bytes =3D xdr->page_len;
+>  	page_off =3D xdr->page_base;
+>  	while (byte_count && page_bytes) {
+> +		sge[sge_no].addr =3D (unsigned long)
+> +			page_address(xdr->pages[page_no]) + page_off;
+>  		sge_bytes =3D min_t(u32, byte_count, (PAGE_SIZE-page_off));
+> -		sge[sge_no].addr =3D
+> -			ib_dma_map_page(xprt->sc_cm_id->device,
+> -					xdr->pages[page_no], page_off,
+> -					sge_bytes, DMA_TO_DEVICE);
+>  		sge_bytes =3D min(sge_bytes, page_bytes);
+>  		byte_count -=3D sge_bytes;
+>  		page_bytes -=3D sge_bytes;
+> @@ -117,11 +112,7 @@ static struct ib_sge *xdr_to_sge(struct svcxprt_=
+rdma *xprt,
+> =20
+>  	/* Tail SGE */
+>  	if (byte_count && xdr->tail[0].iov_len) {
+> -		sge[sge_no].addr =3D
+> -			ib_dma_map_single(xprt->sc_cm_id->device,
+> -					  xdr->tail[0].iov_base,
+> -					  xdr->tail[0].iov_len,
+> -					  DMA_TO_DEVICE);
+> +		sge[sge_no].addr =3D (unsigned long)xdr->tail[0].iov_base;
+>  		sge_bytes =3D min_t(u32, byte_count, xdr->tail[0].iov_len);
+>  		byte_count -=3D sge_bytes;
+>  		sge[sge_no].length =3D sge_bytes;
+> @@ -145,7 +136,6 @@ static int send_write(struct svcxprt_rdma *xprt, =
+struct svc_rqst *rqstp,
+>  		      u32 xdr_off, int write_len,
+>  		      struct ib_sge *xdr_sge, int sge_count)
+>  {
+> -	struct svc_rdma_op_ctxt *tmp_sge_ctxt;
+>  	struct ib_send_wr write_wr;
+>  	struct ib_sge *sge;
+>  	int xdr_sge_no;
+> @@ -163,9 +153,8 @@ static int send_write(struct svcxprt_rdma *xprt, =
+struct svc_rqst *rqstp,
+>  		write_len, xdr_sge, sge_count);
+> =20
+>  	ctxt =3D svc_rdma_get_context(xprt);
+> -	ctxt->count =3D 0;
+> -	tmp_sge_ctxt =3D svc_rdma_get_context(xprt);
+> -	sge =3D tmp_sge_ctxt->sge;
+> +	ctxt->direction =3D DMA_TO_DEVICE;
+> +	sge =3D ctxt->sge;
+> =20
+>  	/* Find the SGE associated with xdr_off */
+>  	for (bc =3D xdr_off, xdr_sge_no =3D 1; bc && xdr_sge_no < sge_count=
+;
+> @@ -181,14 +170,20 @@ static int send_write(struct svcxprt_rdma *xprt=
+, struct svc_rqst *rqstp,
+> =20
+>  	/* Copy the remaining SGE */
+>  	while (bc !=3D 0 && xdr_sge_no < sge_count) {
+> -		sge[sge_no].addr =3D xdr_sge[xdr_sge_no].addr + sge_off;
+>  		sge[sge_no].lkey =3D xdr_sge[xdr_sge_no].lkey;
+>  		sge_bytes =3D min((size_t)bc,
+>  				(size_t)(xdr_sge[xdr_sge_no].length-sge_off));
+>  		sge[sge_no].length =3D sge_bytes;
+> -
+> +		sge[sge_no].addr =3D
+> +			ib_dma_map_single(xprt->sc_cm_id->device,
+> +					  (void *)
+> +					  xdr_sge[xdr_sge_no].addr + sge_off,
+> +					  sge_bytes, DMA_TO_DEVICE);
+> +		if (dma_mapping_error(sge[sge_no].addr))
+> +			return -EINVAL;
+
+And then here we're casting the u64 back to a void *.  Also, we're
+adding sge_off to the input, instead of to the result.  Is it true that
+that
+
+	ib_dma_map_single(., x + sge_off, ., .)
+
+and
+
+	ib_dma_map_single(., x, ., .) + sge_off
+
+always have the same result?
+
+--b.
+
+>  		sge_off =3D 0;
+>  		sge_no++;
+> +		ctxt->count++;
+>  		xdr_sge_no++;
+>  		bc -=3D sge_bytes;
+>  	}
+> @@ -210,11 +205,10 @@ static int send_write(struct svcxprt_rdma *xprt=
+, struct svc_rqst *rqstp,
+>  	/* Post It */
+>  	atomic_inc(&rdma_stat_write);
+>  	if (svc_rdma_send(xprt, &write_wr)) {
+> -		svc_rdma_put_context(ctxt, 1);
+> +		svc_rdma_put_context(ctxt, 0);
+>  		/* Fatal error, close transport */
+>  		ret =3D -EIO;
+>  	}
+> -	svc_rdma_put_context(tmp_sge_ctxt, 0);
+>  	return ret;
+>  }
+> =20
+> @@ -417,6 +411,11 @@ static int send_reply(struct svcxprt_rdma *rdma,
+>  		sge_bytes =3D min((size_t)ctxt->sge[sge_no].length,
+>  				(size_t)byte_count);
+>  		byte_count -=3D sge_bytes;
+> +		ctxt->sge[sge_no].addr =3D
+> +			ib_dma_map_single(rdma->sc_cm_id->device,
+> +					  (void *)
+> +					  ctxt->sge[sge_no].addr,
+> +					  sge_bytes, DMA_TO_DEVICE);
+>  	}
+>  	BUG_ON(byte_count !=3D 0);
+> =20
+> @@ -428,8 +427,9 @@ static int send_reply(struct svcxprt_rdma *rdma,
+>  		ctxt->pages[page_no+1] =3D rqstp->rq_respages[page_no];
+>  		ctxt->count++;
+>  		rqstp->rq_respages[page_no] =3D NULL;
+> +		if (page_no+1 >=3D sge_no)
+> +			ctxt->sge[page_no+1].length =3D 0;
+>  	}
+> -
+>  	BUG_ON(sge_no > rdma->sc_max_sge);
+>  	memset(&send_wr, 0, sizeof send_wr);
+>  	ctxt->wr_op =3D IB_WR_SEND;
+> diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xp=
+rtrdma/svc_rdma_transport.c
+> index e132509..9e9e244 100644
+> --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> @@ -361,10 +361,13 @@ static void sq_cq_reap(struct svcxprt_rdma *xpr=
+t)
+> =20
+>  		switch (ctxt->wr_op) {
+>  		case IB_WR_SEND:
+> -		case IB_WR_RDMA_WRITE:
+>  			svc_rdma_put_context(ctxt, 1);
+>  			break;
+> =20
+> +		case IB_WR_RDMA_WRITE:
+> +			svc_rdma_put_context(ctxt, 0);
+> +			break;
+> +
+>  		case IB_WR_RDMA_READ:
+>  			if (test_bit(RDMACTXT_F_LAST_CTXT, &ctxt->flags)) {
+>  				struct svc_rdma_op_ctxt *read_hdr =3D ctxt->read_hdr;
