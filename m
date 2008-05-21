@@ -1,210 +1,150 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 1/6] NFS: Update help text for CONFIG_NFS_FS
-Date: Wed, 21 May 2008 14:15:43 -0400
-Message-ID: <20080521181543.3295.25965.stgit@ellison>
+Subject: [PATCH 3/6] SUNRPC: Rename "call_" functions that are no longer FSM
+	states
+Date: Wed, 21 May 2008 14:15:58 -0400
+Message-ID: <20080521181558.3295.41474.stgit@ellison>
 References: <20080521180231.3295.84997.stgit@ellison>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: trond.myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:38794 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756543AbYEUSQN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 May 2008 14:16:13 -0400
+Received: from rgminet01.oracle.com ([148.87.113.118]:31482 "EHLO
+	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934883AbYEUSQ0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 May 2008 14:16:26 -0400
 In-Reply-To: <20080521180231.3295.84997.stgit@ellison>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: refresh the help text for Kconfig items related to the NFS
-client.  Remove obsolete URLs, and make the language consistent among
-the options.
+The RPC client uses a finite state machine to move RPC tasks through each
+step of an RPC request.  Each state is contained in a function in
+net/sunrpc/clnt.c, and named call_foo.
 
-Also move the ROOT_NFS config option next to the options related to the
-NFS client.
+Some of the functions named call_foo have changed over the past few years and
+are no longer states in the FSM.  These include: call_encode, call_header,
+and call_verify.  As a clean up, rename the functions that have changed.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/Kconfig |  115 ++++++++++++++++++++++++++++++------------------------------
- 1 files changed, 57 insertions(+), 58 deletions(-)
+ net/sunrpc/clnt.c |   35 ++++++++++++++---------------------
+ 1 files changed, 14 insertions(+), 21 deletions(-)
 
 
-diff --git a/fs/Kconfig b/fs/Kconfig
-index cf12c40..07a61f5 100644
---- a/fs/Kconfig
-+++ b/fs/Kconfig
-@@ -1544,10 +1544,6 @@ config UFS_FS
-           The recently released UFS2 variant (used in FreeBSD 5.x) is
-           READ-ONLY supported.
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index b20638b..619e4ea 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -58,7 +58,6 @@ static void	call_start(struct rpc_task *task);
+ static void	call_reserve(struct rpc_task *task);
+ static void	call_reserveresult(struct rpc_task *task);
+ static void	call_allocate(struct rpc_task *task);
+-static void	call_encode(struct rpc_task *task);
+ static void	call_decode(struct rpc_task *task);
+ static void	call_bind(struct rpc_task *task);
+ static void	call_bind_status(struct rpc_task *task);
+@@ -70,9 +69,9 @@ static void	call_refreshresult(struct rpc_task *task);
+ static void	call_timeout(struct rpc_task *task);
+ static void	call_connect(struct rpc_task *task);
+ static void	call_connect_status(struct rpc_task *task);
+-static __be32 *	call_header(struct rpc_task *task);
+-static __be32 *	call_verify(struct rpc_task *task);
  
--	  If you only intend to mount files from some other Unix over the
--	  network using NFS, you don't need the UFS file system support (but
--	  you need NFS file system support obviously).
--
- 	  Note that this option is generally not needed for floppies, since a
- 	  good portable way to transport files and directories between unixes
- 	  (and even other operating systems) is given by the tar program ("man
-@@ -1587,6 +1583,7 @@ menuconfig NETWORK_FILESYSTEMS
- 	  Say Y here to get to see options for network filesystems and
- 	  filesystem-related networking code, such as NFS daemon and
- 	  RPCSEC security modules.
++static __be32	*rpc_encode_header(struct rpc_task *task);
++static __be32	*rpc_verify_header(struct rpc_task *task);
+ static int	rpc_ping(struct rpc_clnt *clnt, int flags);
+ 
+ static void rpc_register_client(struct rpc_clnt *clnt)
+@@ -876,7 +875,7 @@ rpc_xdr_buf_init(struct xdr_buf *buf, void *start, size_t len)
+  * 3.	Encode arguments of an RPC call
+  */
+ static void
+-call_encode(struct rpc_task *task)
++rpc_xdr_encode(struct rpc_task *task)
+ {
+ 	struct rpc_rqst	*req = task->tk_rqstp;
+ 	kxdrproc_t	encode;
+@@ -891,13 +890,14 @@ call_encode(struct rpc_task *task)
+ 			 (char *)req->rq_buffer + req->rq_callsize,
+ 			 req->rq_rcvsize);
+ 
+-	/* Encode header and provided arguments */
+-	encode = task->tk_msg.rpc_proc->p_encode;
+-	if (!(p = call_header(task))) {
+-		printk(KERN_INFO "RPC: call_header failed, exit EIO\n");
++	p = rpc_encode_header(task);
++	if (p == NULL) {
++		printk(KERN_INFO "RPC: couldn't encode RPC header, exit EIO\n");
+ 		rpc_exit(task, -EIO);
+ 		return;
+ 	}
 +
- 	  This option alone does not add any kernel code.
++	encode = task->tk_msg.rpc_proc->p_encode;
+ 	if (encode == NULL)
+ 		return;
  
- 	  If you say N, all options in this submenu will be skipped and
-@@ -1595,76 +1592,92 @@ menuconfig NETWORK_FILESYSTEMS
- if NETWORK_FILESYSTEMS
+@@ -1061,7 +1061,7 @@ call_transmit(struct rpc_task *task)
+ 	/* Encode here so that rpcsec_gss can use correct sequence number. */
+ 	if (rpc_task_need_encode(task)) {
+ 		BUG_ON(task->tk_rqstp->rq_bytes_sent != 0);
+-		call_encode(task);
++		rpc_xdr_encode(task);
+ 		/* Did the encode result in an error condition? */
+ 		if (task->tk_status != 0)
+ 			return;
+@@ -1239,8 +1239,7 @@ call_decode(struct rpc_task *task)
+ 		goto out_retry;
+ 	}
  
- config NFS_FS
--	tristate "NFS file system support"
-+	tristate "NFS client support"
- 	depends on INET
- 	select LOCKD
- 	select SUNRPC
- 	select NFS_ACL_SUPPORT if NFS_V3_ACL
- 	help
--	  If you are connected to some other (usually local) Unix computer
--	  (using SLIP, PLIP, PPP or Ethernet) and want to mount files residing
--	  on that computer (the NFS server) using the Network File Sharing
--	  protocol, say Y. "Mounting files" means that the client can access
--	  the files with usual UNIX commands as if they were sitting on the
--	  client's hard disk. For this to work, the server must run the
--	  programs nfsd and mountd (but does not need to have NFS file system
--	  support enabled in its kernel). NFS is explained in the Network
--	  Administrator's Guide, available from
--	  <http://www.tldp.org/docs.html#guide>, on its man page: "man
--	  nfs", and in the NFS-HOWTO.
--
--	  A superior but less widely used alternative to NFS is provided by
--	  the Coda file system; see "Coda file system support" below.
-+	  Choose Y here if you want to access files residing on other
-+	  computers using Sun's Network File System protocol.  To compile
-+	  this file system support as a module, choose M here: the module
-+	  will be called nfs.
+-	/* Verify the RPC header */
+-	p = call_verify(task);
++	p = rpc_verify_header(task);
+ 	if (IS_ERR(p)) {
+ 		if (p == ERR_PTR(-EAGAIN))
+ 			goto out_retry;
+@@ -1258,7 +1257,7 @@ call_decode(struct rpc_task *task)
+ 	return;
+ out_retry:
+ 	task->tk_status = 0;
+-	/* Note: call_verify() may have freed the RPC slot */
++	/* Note: rpc_verify_header() may have freed the RPC slot */
+ 	if (task->tk_rqstp == req) {
+ 		req->rq_received = req->rq_rcv_buf.len = 0;
+ 		if (task->tk_client->cl_discrtry)
+@@ -1305,11 +1304,8 @@ call_refreshresult(struct rpc_task *task)
+ 	return;
+ }
  
--	  If you say Y here, you should have said Y to TCP/IP networking also.
--	  This option would enlarge your kernel by about 27 KB.
-+	  To mount file systems exported by NFS servers, you also need to
-+	  install the user space mount.nfs command which can be found in
-+	  the Linux nfs-utils package, available from http://linux-nfs.org/.
-+	  Information about using the mount command is available in the
-+	  mount(8) man page.  More detail about the Linux NFS client
-+	  implementation is available via the nfs(5) man page.
+-/*
+- * Call header serialization
+- */
+ static __be32 *
+-call_header(struct rpc_task *task)
++rpc_encode_header(struct rpc_task *task)
+ {
+ 	struct rpc_clnt *clnt = task->tk_client;
+ 	struct rpc_rqst	*req = task->tk_rqstp;
+@@ -1329,11 +1325,8 @@ call_header(struct rpc_task *task)
+ 	return p;
+ }
  
--	  To compile this file system support as a module, choose M here: the
--	  module will be called nfs.
-+	  Below you can choose which versions of the NFS protocol are
-+	  available in the kernel to mount NFS servers.  Support for NFS
-+	  version 2 (RFC 1094) is always available when NFS_FS is selected.
- 
--	  If you are configuring a diskless machine which will mount its root
--	  file system over NFS at boot time, say Y here and to "Kernel
--	  level IP autoconfiguration" above and to "Root file system on NFS"
--	  below. You cannot compile this driver as a module in this case.
--	  There are two packages designed for booting diskless machines over
--	  the net: netboot, available from
--	  <http://ftp1.sourceforge.net/netboot/>, and Etherboot,
--	  available from <http://ftp1.sourceforge.net/etherboot/>.
-+	  To configure a system which mounts its root file system via NFS
-+	  at boot time, say Y here, select "Kernel level IP
-+	  autoconfiguration" in the NETWORK menu, and select "Root file
-+	  system on NFS" below.  You cannot compile this file system as a
-+	  module in this case.
- 
--	  If you don't know what all this is about, say N.
-+	  If unsure, say N.
- 
- config NFS_V3
--	bool "Provide NFSv3 client support"
-+	bool "NFS client support for NFS version 3"
- 	depends on NFS_FS
- 	help
--	  Say Y here if you want your NFS client to be able to speak version
--	  3 of the NFS protocol.
-+	  This option enables support for version 3 of the NFS protocol
-+	  (RFC 1813) in the kernel's NFS client.
- 
- 	  If unsure, say Y.
- 
- config NFS_V3_ACL
--	bool "Provide client support for the NFSv3 ACL protocol extension"
-+	bool "NFS client support for the NFSv3 ACL protocol extension"
- 	depends on NFS_V3
- 	help
--	  Implement the NFSv3 ACL protocol extension for manipulating POSIX
--	  Access Control Lists.  The server should also be compiled with
--	  the NFSv3 ACL protocol extension; see the CONFIG_NFSD_V3_ACL option.
-+	  Some NFS servers support an auxiliary NFSv3 ACL protocol that
-+	  Sun added to Solaris but never became an official part of the
-+	  NFS version 3 protocol.  This protocol extension allows
-+	  applications on NFS clients to manipulate POSIX Access Control
-+	  Lists on files residing on NFS servers.  NFS servers enforce
-+	  ACLs on local files whether this protocol is available or not.
-+
-+	  Choose Y here if your NFS server supports the Solaris NFSv3 ACL
-+	  protocol extension and you want your NFS client to allow
-+	  applications to access and modify ACLs on files on the server.
-+
-+	  Most NFS servers don't support the Solaris NFSv3 ACL protocol
-+	  extension.  You can choose N here or specify the "noacl" mount
-+	  option to prevent your NFS client from trying to use the NFSv3
-+	  ACL protocol.
- 
- 	  If unsure, say N.
- 
- config NFS_V4
--	bool "Provide NFSv4 client support (EXPERIMENTAL)"
-+	bool "NFS client support for NFS version 4 (EXPERIMENTAL)"
- 	depends on NFS_FS && EXPERIMENTAL
- 	select RPCSEC_GSS_KRB5
- 	help
--	  Say Y here if you want your NFS client to be able to speak the newer
--	  version 4 of the NFS protocol.
-+	  This option enables support for version 4 of the NFS protocol
-+	  (RFC 3530) in the kernel's NFS client.
- 
--	  Note: Requires auxiliary userspace daemons which may be found on
--		http://www.citi.umich.edu/projects/nfsv4/
-+	  To mount NFS servers using NFSv4, you also need to install user
-+	  space programs which can be found in the Linux nfs-utils package,
-+	  available from http://linux-nfs.org/.
- 
- 	  If unsure, say N.
- 
-+config ROOT_NFS
-+	bool "Root file system on NFS"
-+	depends on NFS_FS=y && IP_PNP
-+	help
-+	  If you want your system to mount its root file system via NFS,
-+	  choose Y here.  This is common practice for managing systems
-+	  without local permanent storage.  For details, read
-+	  <file:Documentation/filesystems/nfsroot.txt>.
-+
-+	  Most people say N here.
-+
- config NFSD
- 	tristate "NFS server support"
- 	depends on INET
-@@ -1746,20 +1759,6 @@ config NFSD_V4
- 
- 	  If unsure, say N.
- 
--config ROOT_NFS
--	bool "Root file system on NFS"
--	depends on NFS_FS=y && IP_PNP
--	help
--	  If you want your Linux box to mount its whole root file system (the
--	  one containing the directory /) from some other computer over the
--	  net via NFS (presumably because your box doesn't have a hard disk),
--	  say Y. Read <file:Documentation/filesystems/nfsroot.txt> for
--	  details. It is likely that in this case, you also want to say Y to
--	  "Kernel level IP autoconfiguration" so that your box can discover
--	  its network address at boot time.
--
--	  Most people say N here.
--
- config LOCKD
- 	tristate
- 
+-/*
+- * Reply header verification
+- */
+ static __be32 *
+-call_verify(struct rpc_task *task)
++rpc_verify_header(struct rpc_task *task)
+ {
+ 	struct kvec *iov = &task->tk_rqstp->rq_rcv_buf.head[0];
+ 	int len = task->tk_rqstp->rq_rcv_buf.len >> 2;
+@@ -1407,7 +1400,7 @@ call_verify(struct rpc_task *task)
+ 			task->tk_action = call_bind;
+ 			goto out_retry;
+ 		case RPC_AUTH_TOOWEAK:
+-			printk(KERN_NOTICE "call_verify: server %s requires stronger "
++			printk(KERN_NOTICE "RPC: server %s requires stronger "
+ 			       "authentication.\n", task->tk_client->cl_server);
+ 			break;
+ 		default:
 
