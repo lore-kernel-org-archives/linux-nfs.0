@@ -1,50 +1,141 @@
-From: Greg KH <greg@kroah.com>
-Subject: Re: [PATCH] usb-storage: don't call utsname()
-Date: Wed, 21 May 2008 12:35:17 -0700
-Message-ID: <20080521193517.GA4905@kroah.com>
-References: <20080521123700.GA8770@infradead.org> <Pine.LNX.4.44L0.0805211349480.3409-100000@iolanthe.rowland.org> <20080521180957.GA17598@kroah.com> <20080521185251.GA783@infradead.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 6/6] SUNRPC: Display some debugging information as text
+	rather than numbers
+Date: Wed, 21 May 2008 15:50:41 -0400
+Message-ID: <20080521195041.GC6712@fieldses.org>
+References: <20080521180231.3295.84997.stgit@ellison> <20080521181620.3295.2298.stgit@ellison>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Alan Stern <stern-nwvwT67g6+6dFdvTe/nMLpVzexx5G7lz@public.gmane.org>,
-	Matthew Dharm <mdharm-usb-JGfshJpz5UybPZpvUQj5UqxOck334EZe@public.gmane.org>,
-	"Frank Ch. Eigler" <fche@redhat.com>,
-	Adrian Bunk <bunk@kernel.org>,
-	USB Storage list <usb-storage-ijkIwGHArpdIPJnuZ7Njw4oP9KaGy4wf@public.gmane.org>,
-	Kernel development list <linux-kernel@vger.kernel.org>,
-	"David S. Miller" <davem-xgOahHnHvIuGfricDzPwBeTW4wlIGRCZ@public.gmane.org>,
-	systemtap-R2MHTz/CkKAf7BdofF/totBPR1lH4CV8@public.gmane.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-cifs-client@lists.samba.org, linux-nfs@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
+Content-Type: text/plain; charset=utf-8
+Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from pentafluge.infradead.org ([213.146.154.40]:55286 "EHLO
-	pentafluge.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S936957AbYEUTfm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 May 2008 15:35:42 -0400
-In-Reply-To: <20080521185251.GA783@infradead.org>
+Received: from mail.fieldses.org ([66.93.2.214]:58256 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S936661AbYEUTun (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 May 2008 15:50:43 -0400
+In-Reply-To: <20080521181620.3295.2298.stgit@ellison>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, May 21, 2008 at 02:52:51PM -0400, Christoph Hellwig wrote:
-> On Wed, May 21, 2008 at 11:09:57AM -0700, Greg KH wrote:
-> > Why?  With this change, if you change the version number, the file will
-> > have to be rebuilt.  Without the change, the file will not need to be
-> > rebuilt, right?
-> 
-> Because thanks to the container patches it utsname fields other than
-> hostname can actually change at runtime now and you'll get races looking
-> at them.  And probably not the output you want if someone in your
-> container changes the kernel version to trick applications.
+On Wed, May 21, 2008 at 02:16:20PM -0400, Chuck Lever wrote:
+> In rpc_show_tasks(), display the program name, version number, proced=
+ure
+> name and tk_action as human-readable variable-length text fields rath=
+er
+> than columnar numbers.
+>=20
+> Doing the symbol lookup here helps in cases where we have actual
+> debugging output from a kernel log, but don't have access to the kern=
+el
+> image or RPC module that generated the output.
+>=20
+> Sample output:
+>=20
+>  -pid- flgs status -client- --rqstp- -timeout ---ops--
+>   5608 0001    -11 eeb42690 f6d93710        0 f8fa1764 nfsv3 WRITE a:=
+call_transmit_status q:none
+>   5609 0001    -11 eeb42690 f6d937e0        0 f8fa1764 nfsv3 WRITE a:=
+call_status q:xprt_sending
+>   5610 0001    -11 eeb42690 f6d93230        0 f8fa1764 nfsv3 WRITE a:=
+call_status q:xprt_sending
+>   5611 0001    -11 eeb42690 f6d93300        0 f8fa1764 nfsv3 WRITE a:=
+call_status q:xprt_sending
+>   5612 0001    -11 eeb42690 f6d93090        0 f8fa1764 nfsv3 WRITE a:=
+call_status q:xprt_sending
+>   5613 0001    -11 eeb42690 f6d933d0        0 f8fa1764 nfsv3 WRITE a:=
+call_status q:xprt_sending
+>   5614 0001    -11 eeb42690 f6d93cc0        0 f8fa1764 nfsv3 WRITE a:=
+call_status q:xprt_sending
+>   5615 0001    -11 eeb42690 f6d93a50        0 f8fa1764 nfsv3 WRITE a:=
+call_status q:xprt_sending
+>   5616 0001    -11 eeb42690 f6d93640        0 f8fa1764 nfsv3 WRITE a:=
+call_status q:xprt_sending
+>   5617 0001    -11 eeb42690 f6d93b20        0 f8fa1764 nfsv3 WRITE a:=
+call_status q:xprt_sending
+>   5618 0001    -11 eeb42690 f6d93160        0 f8fa1764 nfsv3 WRITE a:=
+call_status q:xprt_sending
+>=20
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+>=20
+>  net/sunrpc/clnt.c |   29 ++++++++++++++++-------------
+>  1 files changed, 16 insertions(+), 13 deletions(-)
+>=20
+>=20
+> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+> index 68b08d4..878752c 100644
+> --- a/net/sunrpc/clnt.c
+> +++ b/net/sunrpc/clnt.c
+> @@ -25,6 +25,7 @@
+> =20
+>  #include <linux/module.h>
+>  #include <linux/types.h>
+> +#include <linux/kallsyms.h>
+>  #include <linux/mm.h>
+>  #include <linux/slab.h>
+>  #include <linux/smp_lock.h>
+> @@ -1527,29 +1528,31 @@ EXPORT_SYMBOL_GPL(rpc_call_null);
+>  #ifdef RPC_DEBUG
+>  static void rpc_show_header(void)
+>  {
+> -	printk(KERN_INFO "-pid- proc flgs status -client- -prog- --rqstp- "
+> -		"-timeout -rpcwait -action- ---ops--\n");
+> +	printk(KERN_INFO "-pid- flgs status -client- --rqstp- "
+> +		"-timeout ---ops--\n");
+>  }
+> =20
+>  static void rpc_show_task(const struct rpc_clnt *clnt,
+>  			  const struct rpc_task *task)
+>  {
+>  	const char *rpc_waitq =3D "none";
+> -	int proc =3D -1;
+> -
+> -	if (task->tk_msg.rpc_proc)
+> -		proc =3D task->tk_msg.rpc_proc->p_proc;
+> +	char *p, action[KSYM_SYMBOL_LEN];
+> =20
+>  	if (RPC_IS_QUEUED(task))
+>  		rpc_waitq =3D rpc_qname(task->tk_waitqueue);
+> =20
+> -	printk(KERN_INFO "%5u %04d %04x %6d %8p %6d %8p %8ld %8s %8p %8p\n"=
+,
+> -		task->tk_pid, proc,
+> -		task->tk_flags, task->tk_status,
+> -		clnt, clnt->cl_prog,
+> -		task->tk_rqstp, task->tk_timeout,
+> -		rpc_waitq,
+> -		task->tk_action, task->tk_ops);
+> +	/* map tk_action pointer to a function name; then trim off
+> +	 * the "+0x0 [sunrpc]" */
+> +	sprint_symbol(action, (unsigned long)task->tk_action);
+> +	p =3D strchr(action, '+');
+> +	if (p)
+> +		*p =3D '\0';
+> +
+> +	printk(KERN_INFO "%5u %04x %6d %8p %8p %8ld %8p %sv%u %s a:%s q:%s\=
+n",
+> +		task->tk_pid, task->tk_flags, task->tk_status,
+> +		clnt, task->tk_rqstp, task->tk_timeout, task->tk_ops,
+> +		clnt->cl_protname, clnt->cl_vers, rpc_proc_name(task),
+> +		action, queue);
 
-So, do we now go and rip out all usages of utsname()->release and put
-back the #define just because of the loonacy of containers?
+"net/sunrpc/clnt.c: In function =E2=80=98rpc_show_task=E2=80=99:
+ net/sunrpc/clnt.c:1555: error: =E2=80=98queue=E2=80=99 undeclared (fir=
+st use in this function)
+ net/sunrpc/clnt.c:1555: error: (Each undeclared identifier is reported=
+ only once
+ net/sunrpc/clnt.c:1555: error: for each function it appears in.)"
 
-No kernel should have to change it's version number to trick an
-application, why would an application care about the version number to
-start with?  In the "enterprise kernel" world, version numbers have
-little to no relevance on the functionality or features of the kernel,
-so any check of something like this is sure to be wrong to start with.
+Is that last "queue" supposed to be "rpc_waitq"???
 
-thanks,
+--b.
 
-greg k-h
+>  }
+> =20
+>  void rpc_show_tasks(void)
+>=20
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
+in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
