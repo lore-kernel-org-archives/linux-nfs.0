@@ -1,29 +1,33 @@
-From: Jesper Krogh <jesper-Q2TZfHgGEy4@public.gmane.org>
-Subject: Re: Kernel call trace on NFS-mount (using autofs).
-Date: Wed, 21 May 2008 07:03:23 +0200
-Message-ID: <4833AD1B.6010408@krogh.cc>
-References: <48331EAE.6060107@krogh.cc> <3C99F710-A573-4932-8F37-BE784BD66581@oracle.com>
+From: "Alexander Borghgraef" <alexander.borghgraef.rma@gmail.com>
+Subject: Re: Nfs filesystem corruption(?) after kmail crash
+Date: Wed, 21 May 2008 10:15:00 +0200
+Message-ID: <9e8c52a20805210115y53cc3b34jdb9a60128317120a@mail.gmail.com>
+References: <9e8c52a20805140532w2bcfeff3n896fa5a9b0e82b5@mail.gmail.com>
+	 <20080519144806.GB7622@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: NFS list <linux-nfs@vger.kernel.org>
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 2605ds1-ynoe.1.fullrate.dk ([90.184.12.24]:59643 "EHLO
-	shrek.krogh.cc" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751385AbYEUFDf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 May 2008 01:03:35 -0400
-In-Reply-To: <3C99F710-A573-4932-8F37-BE784BD66581@oracle.com>
+Received: from nf-out-0910.google.com ([64.233.182.186]:14963 "EHLO
+	nf-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757565AbYEUIPC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 May 2008 04:15:02 -0400
+Received: by nf-out-0910.google.com with SMTP id d3so1092033nfc.21
+        for <linux-nfs@vger.kernel.org>; Wed, 21 May 2008 01:15:00 -0700 (PDT)
+In-Reply-To: <20080519144806.GB7622@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Chuck Lever wrote:
->> Kernel is a: 2.6.22-14-generic. I wasn't able to search similar stuff
->> up from the archive.
-> 
-> It would be interesting to know which nfs-utils version you have 
-> installed, too.
+On Mon, May 19, 2008 at 4:48 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> You're doing the "ls" from the client, though, not the server, right?
 
-It is: 1.1.1~git-20070709-3ubuntu1
+Yes, from the client. I'll check what ls on the server does if it happens again.
+
+> Out of curiosity--what's the filesystem on the server?  (I just wonder
+> if this could be due to poor time resolution, so if e.g. switching from
+> ext3 to xfs would work around the problem.)
+
+Just checked, it's ext3.
 
 -- 
-Jesper
+Alex Borghgraef
