@@ -1,34 +1,29 @@
-From: Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
-Subject: Re: [PATCH 0/3] [RFC] knfsd: convert to kthread API and	remove signaling
- for shutdown
-Date: Tue, 20 May 2008 20:29:52 -0700
-Message-ID: <48339730.3060206@melbourne.sgi.com>
-References: <1211078114-18384-1-git-send-email-jlayton@redhat.com>	<18481.6416.571430.593722@notabene.brown>	<4831F860.6050801@melbourne.sgi.com>	<4833364A.4010803@melbourne.sgi.com> <20080520214823.576ad7a7@tleilax.poochiereds.net>
+From: Jesper Krogh <jesper-Q2TZfHgGEy4@public.gmane.org>
+Subject: Re: Kernel call trace on NFS-mount (using autofs).
+Date: Wed, 21 May 2008 07:03:23 +0200
+Message-ID: <4833AD1B.6010408@krogh.cc>
+References: <48331EAE.6060107@krogh.cc> <3C99F710-A573-4932-8F37-BE784BD66581@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org,
-	nfsv4@linux-nfs.org
-To: Jeff Layton <jlayton@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: NFS list <linux-nfs@vger.kernel.org>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from relay2.sgi.com ([192.48.171.30]:40232 "EHLO relay.sgi.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1765490AbYEUDcX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 May 2008 23:32:23 -0400
-In-Reply-To: <20080520214823.576ad7a7-RtJpwOs3+0O+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
+Received: from 2605ds1-ynoe.1.fullrate.dk ([90.184.12.24]:59643 "EHLO
+	shrek.krogh.cc" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751385AbYEUFDf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 May 2008 01:03:35 -0400
+In-Reply-To: <3C99F710-A573-4932-8F37-BE784BD66581@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Jeff Layton wrote:
->   
-> [...] Rather than delaying the allocation like this,
-> I wonder if we can just figure out the node from the cpumask and then
-> do a kmalloc_node()?
->
->   
-Sure.
+Chuck Lever wrote:
+>> Kernel is a: 2.6.22-14-generic. I wasn't able to search similar stuff
+>> up from the archive.
+> 
+> It would be interesting to know which nfs-utils version you have 
+> installed, too.
+
+It is: 1.1.1~git-20070709-3ubuntu1
 
 -- 
-Greg Banks, P.Engineer, SGI Australian Software Group.
-The cake is *not* a lie.
-I don't speak for SGI.
-
+Jesper
