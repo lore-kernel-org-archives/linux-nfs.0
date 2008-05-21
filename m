@@ -1,37 +1,75 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: [PATCH 3/8] SUNRPC: Use RPC procedure name in call_verify
-Date: Wed, 21 May 2008 08:38:38 -0400
-Message-ID: <483417CE.1070308@redhat.com>
-References: <20080520202108.3851.7464.stgit@ellison.1015granger.net> <20080520202941.3851.61861.stgit@ellison.1015granger.net> <1211318498.26809.13.camel@localhost> <DF95EE8C-4F20-4B4A-9967-9AD354196D4D@oracle.com> <48341218.10009@redhat.com> <RTPCLUEXC1-PRDQrwFN00000141@RTPMVEXC1-PRD.hq.netapp.com>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [NFS] nfs locking problems maybe solved
+Date: Wed, 21 May 2008 08:16:15 -0400
+Message-ID: <20080521081615.343563ba@tleilax.poochiereds.net>
+References: <200805211320.35610.hensema@hostingxs.nl>
+	<RTPCLUEXC1-PRDqKwRP0000013f@RTPMVEXC1-PRD.hq.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net,
+	Erik Hensema / HostingXS Internet Services
+	<hensema-yolSOB3tinz/D1n+0JDH9g@public.gmane.org>
 To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:42780 "EHLO mx1.redhat.com"
+Received: from neil.brown.name ([220.233.11.133]:35294 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1764354AbYEUMi5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 May 2008 08:38:57 -0400
-In-Reply-To: <RTPCLUEXC1-PRDQrwFN00000141-rtwIt2gI0FxT+ZUat5FNkAK/GNPrWCqfQQ4Iyu8u01E@public.gmane.org>
+	id S1755425AbYEUMsL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 May 2008 08:48:11 -0400
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1Jynjl-000760-AE
+	for linux-nfs@vger.kernel.org; Wed, 21 May 2008 22:48:09 +1000
+In-Reply-To: <RTPCLUEXC1-PRDqKwRP0000013f-rtwIt2gI0FxT+ZUat5FNkAK/GNPrWCqfQQ4Iyu8u01E@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Talpey, Thomas wrote:
-> At 08:14 AM 5/21/2008, Peter Staubach wrote:
->   
->> I have seen servers which didn't implement the NULL_PROC procedure
->> for protocols like NFS_ACL.  Beats me why.
->>     
->
-> Names. We want names. :-)
+On Wed, 21 May 2008 07:58:13 -0400
+"Talpey, Thomas" <Thomas.Talpey@netapp.com> wrote:
 
-:-)
+> At 07:20 AM 5/21/2008, Erik Hensema / HostingXS Internet Services wrote:
+> >So I granted 192.168.200.45 access to the portmapper on voyager, and 
+> >most clients were unstuck. I updated hosts.allow on most clients to 
+> >grant access to the portmapper now.
+> >
+> >Now I still have about 4 clients which can't lock rrd files.
+> ...
+> >
+> >Everything is NFSv3 by the way. Most clients are opensuse 10.2 (kernel 
+> >2.6.18.8), server is opensuse 10.3 (kernel 2.6.22.17).
+> 
+> You need to grant access to the client's portmap, nlm and statd ports
+> in order for the server to call back with locking operations. Unfortunately,
+> only portmap is at a well-known port (111). The nlm and statd ports are
+> dynamically selected, and receive random high numbered port values.
+> 
 
-Names withheld to prevent embarrassment of the guilty?
+> They are then advertised in portmap so if you are concerned about opening
+> up an entire port range to the servers, you can see these with "rpcinfo -p".
+> This command will show them under the names "nlockmgr" and "status"
+> respectively. Remember these ports may change at every boot.
+> 
+> Also be aware that "statd" is a kernel process on opensuse. Most other
+> distros have rpc.statd as a user process.
+> 
 
-Actually, I don't remember anymore who they were, but I suspect
-that I would have complained to them at the time.  It just isn't
-that hard to implement a procedure which doesn't do anything but
-respond to the client.
+It's also possible to statically set ports for each of these services
+(though I'm not certain about SUSE's in-kernel statd). This is what you
+want to be doing if you're going to have firewalls between NFS servers
+and clients. With RH/Fedora distros, this is generally set up
+in /etc/sysconfig/nfs, but I'm not sure how SUSE does it...
 
-       ps
+-- 
+Jeff Layton <jlayton@redhat.com>
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Microsoft 
+Defy all challenges. Microsoft(R) Visual Studio 2008. 
+http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
+
