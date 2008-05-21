@@ -1,37 +1,67 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH] usb-storage: don't call utsname()
-Date: Wed, 21 May 2008 14:52:51 -0400
-Message-ID: <20080521185251.GA783@infradead.org>
-References: <20080521123700.GA8770@infradead.org> <Pine.LNX.4.44L0.0805211349480.3409-100000@iolanthe.rowland.org> <20080521180957.GA17598@kroah.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 0/6] Initial set of 2.6.27 patches, take 3
+Date: Wed, 21 May 2008 15:15:20 -0400
+Message-ID: <20080521191520.GA6712@fieldses.org>
+References: <20080521180231.3295.84997.stgit@ellison>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Alan Stern <stern-nwvwT67g6+6dFdvTe/nMLpVzexx5G7lz@public.gmane.org>,
-	Matthew Dharm <mdharm-usb-JGfshJpz5UybPZpvUQj5UqxOck334EZe@public.gmane.org>,
-	Christoph Hellwig <hch@infradead.org>,
-	"Frank Ch. Eigler" <fche@redhat.com>,
-	Adrian Bunk <bunk@kernel.org>,
-	USB Storage list <usb-storage-ijkIwGHArpdIPJnuZ7Njw4oP9KaGy4wf@public.gmane.org>,
-	Kernel development list <linux-kernel@vger.kernel.org>,
-	"David S. Miller" <davem-xgOahHnHvIuGfricDzPwBeTW4wlIGRCZ@public.gmane.org>,
-	systemtap-R2MHTz/CkKAf7BdofF/totBPR1lH4CV8@public.gmane.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-cifs-client@lists.samba.org, linux-nfs@vger.kernel.org
-To: Greg KH <greg@kroah.com>
+Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:40242 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S936405AbYEUSxK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 May 2008 14:53:10 -0400
-In-Reply-To: <20080521180957.GA17598@kroah.com>
+Received: from mail.fieldses.org ([66.93.2.214]:33877 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751619AbYEUTQG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 May 2008 15:16:06 -0400
+In-Reply-To: <20080521180231.3295.84997.stgit@ellison>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, May 21, 2008 at 11:09:57AM -0700, Greg KH wrote:
-> Why?  With this change, if you change the version number, the file will
-> have to be rebuilt.  Without the change, the file will not need to be
-> rebuilt, right?
+On Wed, May 21, 2008 at 02:15:33PM -0400, Chuck Lever wrote:
+> Hi Trond-
+> 
+> Resending the first batch of 2.6.27 patches, with additional fixes.
+> 
+> Using the RPC procedure name in debugging messages should no longer add a
+> risk of a segmentation fault.
+> 
+> I've also done a third re-implementation of the tk_action function name
+> patch.  I finally managed to find an interface that will perform the symbol
+> table lookup, and can be called from a module or from built-in code.
+> 
+> Oddly this API has been around for a while; I'm not sure how I missed it
+> originally.  But it should implement the nice function-name-rather-than-
+> memory-address feature without a wonky table, and without requiring any
+> additional changes when adding a new FSM state function.  It will display
+> the function name if the lookup succeeds; otherwise it will display a hex
+> memory address.  It works for any arbitrary pointer stored in the
+> tk_action field.
 
-Because thanks to the container patches it utsname fields other than
-hostname can actually change at runtime now and you'll get races looking
-at them.  And probably not the output you want if someone in your
-container changes the kernel version to trick applications.
+Neat-o.--b.
+
+> 
+> I've thought of a couple of other ways rpc_show_tasks() could be improved.
+> First, it could display the IP address of the server handling each request;
+> and it should have a different column layout for systems with 64-bit
+> addresses.  All for another day, I suppose.
+> 
+> ---
+> 
+> Chuck Lever (6):
+>       SUNRPC: Display some debugging information as text rather than numbers
+>       SUNRPC: Refactor rpc_show_tasks
+>       SUNRPC: Don't display the rpc_show_tasks header if there are no tasks
+>       SUNRPC: Rename "call_" functions that are no longer FSM states
+>       SUNRPC: Add a function to display the name of an RPC procedure
+>       NFS: Update help text for CONFIG_NFS_FS
+> 
+> 
+>  fs/Kconfig        |  115 ++++++++++++++++++++++++-------------------------
+>  net/sunrpc/clnt.c |  124 ++++++++++++++++++++++++++++++-----------------------
+>  2 files changed, 128 insertions(+), 111 deletions(-)
+> 
+> -- 
+> Signature
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
