@@ -1,62 +1,98 @@
-From: Robert Gordon <Robert.Gordon-UdXhSnd/wVw@public.gmane.org>
-Subject: Re: [PATCH 3/8] SUNRPC: Use RPC procedure name in call_verify
-Date: Wed, 21 May 2008 10:27:51 -0500
-Message-ID: <E3DF41A5-5DBA-42CE-ADE2-FAE8AC5E4722@Sun.COM>
-References: <20080520202108.3851.7464.stgit@ellison.1015granger.net>
- <20080520202941.3851.61861.stgit@ellison.1015granger.net>
- <1211318498.26809.13.camel@localhost>
- <DF95EE8C-4F20-4B4A-9967-9AD354196D4D@oracle.com> <48341218.10009@redhat.com>
- <RTPCLUEXC1-PRDQrwFN00000141@RTPMVEXC1-PRD.hq.netapp.com>
- <483417CE.1070308@redhat.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: [PATCH, E2FSPROGS] blkid: If the device mtime is newer that the
+	cache time, force a revalidation
+Date: Wed, 21 May 2008 11:58:20 -0400
+Message-ID: <20080521155820.GJ8581@mit.edu>
+References: <20080519190356.GH15035@mit.edu> <200805202232.m4KMWD11020355@agora.fsl.cs.sunysb.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; delsp=yes; format=flowed; charset=US-ASCII
-Cc: "Talpey, Thomas" <Thomas.Talpey@netapp.com>,
-	linux-nfs@vger.kernel.org
-To: Peter Staubach <staubach@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	Trond Myklebust <Trond.Myklebust@netapp.com>,
+	Kevin Coffman <kwc@umich.edu>, nfs@lists.sourceforge.net,
+	linux-nfs@vger.kernel.org, Himanshu Kanda <hkanda-EX0cT3Az47bauI2f2gSDlQ@public.gmane.org>
+To: Erez Zadok <ezk-EX0cT3Az47bauI2f2gSDlQ@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from brmea-mail-1.Sun.COM ([192.18.98.31]:44885 "EHLO
-	brmea-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757389AbYEUPpO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 May 2008 11:45:14 -0400
-Received: from fe-amer-09.sun.com ([192.18.109.79])
-	by brmea-mail-1.sun.com (8.13.6+Sun/8.12.9) with ESMTP id m4LFS5ZI014698
-	for <linux-nfs@vger.kernel.org>; Wed, 21 May 2008 15:28:05 GMT
-Received: from conversion-daemon.mail-amer.sun.com by mail-amer.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0K1800M0136NYQ00-suYR2Hc8r9/lQFUxb2hVpgC/G2K4zDHf@public.gmane.org>
- (original mail from Robert.Gordon-UdXhSnd/wVw@public.gmane.org) for linux-nfs@vger.kernel.org; Wed,
- 21 May 2008 09:28:05 -0600 (MDT)
-In-reply-to: <483417CE.1070308@redhat.com>
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:40477 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1755213AbYEUP7V (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 May 2008 11:59:21 -0400
+In-Reply-To: <200805202232.m4KMWD11020355-zop+azHP2WsZjdeEBZXbMidm6ipF23ct@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+This fixes problems turned up by a test case written by Erez Zadok's
+group which constantly reformats filesystems.
 
-This being an accepted practice -- as opposed to a clearly
-defined requirement in a spec someplace ??
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ lib/blkid/probe.c |   48 +++++++++++++++++++++++++++---------------------
+ 1 files changed, 27 insertions(+), 21 deletions(-)
 
-On May 21, 2008, at 7:38 AM, Peter Staubach wrote:
-> Talpey, Thomas wrote:
->> At 08:14 AM 5/21/2008, Peter Staubach wrote:
->>
->>> I have seen servers which didn't implement the NULL_PROC procedure
->>> for protocols like NFS_ACL.  Beats me why.
->>>
->>
->> Names. We want names. :-)
->
-> :-)
->
-> Names withheld to prevent embarrassment of the guilty?
->
-> Actually, I don't remember anymore who they were, but I suspect
-> that I would have complained to them at the time.  It just isn't
-> that hard to implement a procedure which doesn't do anything but
-> respond to the client.
->
->      ps
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
-> in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/lib/blkid/probe.c b/lib/blkid/probe.c
+index 4964209..62ab392 100644
+--- a/lib/blkid/probe.c
++++ b/lib/blkid/probe.c
+@@ -1214,33 +1214,39 @@ blkid_dev blkid_verify(blkid_cache cache, blkid_dev dev)
+ 	now = time(0);
+ 	diff = now - dev->bid_time;
+ 
+-	if ((now > dev->bid_time) && (diff > 0) && 
++	if (stat(dev->bid_name, &st) < 0) {
++		DBG(DEBUG_PROBE,
++		    printf("blkid_verify: error %s (%d) while "
++			   "trying to stat %s\n", strerror(errno), errno,
++			   dev->bid_name));
++	open_err:
++		if ((errno == EPERM) || (errno == EACCES) || (errno == ENOENT)) {
++			/* We don't have read permission, just return cache data. */
++			DBG(DEBUG_PROBE, printf("returning unverified data for %s\n",
++						dev->bid_name));
++			return dev;
++		}
++		blkid_free_dev(dev);
++		return NULL;
++	}
++
++	if ((now >= dev->bid_time) &&
++	    (st.st_mtime <= dev->bid_time) &&
+ 	    ((diff < BLKID_PROBE_MIN) || 
+ 	     (dev->bid_flags & BLKID_BID_FL_VERIFIED &&
+ 	      diff < BLKID_PROBE_INTERVAL)))
+ 		return dev;
+ 
+ 	DBG(DEBUG_PROBE,
+-	    printf("need to revalidate %s (time since last check %llu)\n", 
+-		   dev->bid_name, (unsigned long long)diff));
+-
+-	if (((probe.fd = open(dev->bid_name, O_RDONLY)) < 0) ||
+-	    (fstat(probe.fd, &st) < 0)) {
+-		if (probe.fd >= 0) close(probe.fd);
+-		if ((errno != EPERM) && (errno != EACCES) &&
+-		    (errno != ENOENT)) {
+-			DBG(DEBUG_PROBE, 
+-			    printf("blkid_verify: error %s (%d) while "
+-				   "opening %s\n", strerror(errno), errno, 
+-				   dev->bid_name));
+-			blkid_free_dev(dev);
+-			return NULL;
+-		}
+-		/* We don't have read permission, just return cache data. */
+-		DBG(DEBUG_PROBE,
+-		    printf("returning unverified data for %s\n",
+-			   dev->bid_name));
+-		return dev;
++	    printf("need to revalidate %s (cache time %d, stat time %d,\n\t"
++		   "time since last check %lu)\n",
++		   dev->bid_name, dev->bid_time, st.st_mtime, (unsigned long)diff));
++
++	if ((probe.fd = open(dev->bid_name, O_RDONLY)) < 0) {
++		DBG(DEBUG_PROBE, printf("blkid_verify: error %s (%d) while "
++					"opening %s\n", strerror(errno), errno, 
++					dev->bid_name));
++		goto open_err;
+ 	}
+ 
+ 	probe.cache = cache;
+-- 
+1.5.4.1.144.gdfee-dirty
 
