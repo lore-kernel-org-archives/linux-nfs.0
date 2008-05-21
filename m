@@ -1,44 +1,81 @@
-From: Greg KH <greg@kroah.com>
-Subject: Re: [PATCH] usb-storage: don't call utsname()
-Date: Wed, 21 May 2008 11:09:57 -0700
-Message-ID: <20080521180957.GA17598@kroah.com>
-References: <20080521123700.GA8770@infradead.org> <Pine.LNX.4.44L0.0805211349480.3409-100000@iolanthe.rowland.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 2/6] SUNRPC: Add a function to display the name of an RPC
+	procedure
+Date: Wed, 21 May 2008 14:15:51 -0400
+Message-ID: <20080521181550.3295.65954.stgit@ellison>
+References: <20080521180231.3295.84997.stgit@ellison>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Matthew Dharm <mdharm-usb-JGfshJpz5UybPZpvUQj5UqxOck334EZe@public.gmane.org>,
-	Christoph Hellwig <hch@infradead.org>,
-	"Frank Ch. Eigler" <fche@redhat.com>,
-	Adrian Bunk <bunk@kernel.org>,
-	USB Storage list <usb-storage-ijkIwGHArpdIPJnuZ7Njw4oP9KaGy4wf@public.gmane.org>,
-	Kernel development list <linux-kernel@vger.kernel.org>,
-	"David S. Miller" <davem-xgOahHnHvIuGfricDzPwBeTW4wlIGRCZ@public.gmane.org>,
-	systemtap-R2MHTz/CkKAf7BdofF/totBPR1lH4CV8@public.gmane.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-cifs-client@lists.samba.org, linux-nfs@vger.kernel.org
-To: Alan Stern <stern-nwvwT67g6+6dFdvTe/nMLpVzexx5G7lz@public.gmane.org>
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org
+To: trond.myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from pentafluge.infradead.org ([213.146.154.40]:57259 "EHLO
-	pentafluge.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932579AbYEUSKe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 May 2008 14:10:34 -0400
-In-Reply-To: <Pine.LNX.4.44L0.0805211349480.3409-100000-IYeN2dnnYyZXsRXLowluHWD2FQJk+8+b@public.gmane.org>
+Received: from rgminet01.oracle.com ([148.87.113.118]:31457 "EHLO
+	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933225AbYEUSQW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 May 2008 14:16:22 -0400
+In-Reply-To: <20080521180231.3295.84997.stgit@ellison>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, May 21, 2008 at 01:51:17PM -0400, Alan Stern wrote:
-> This patch (as1100) replaces the core-kernel function call to utsname()
-> in usb-storage with the UTS_RELEASE macro.  It's used only for warning
-> about extra unusual_devs entries.
-> 
-> Signed-off-by: Alan Stern <stern-nwvwT67g6+6dFdvTe/nMLpVzexx5G7lz@public.gmane.org>
+Improve debugging messages in call_start() and call_verify() by having
+them show the RPC procedure name instead of the procedure number.
 
-Why?  With this change, if you change the version number, the file will
-have to be rebuilt.  Without the change, the file will not need to be
-rebuilt, right?
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-I thought that was why this change was made a while ago, to prevent
-things from having to be rebuilt that didn't need to be.
+ net/sunrpc/clnt.c |   23 +++++++++++++++++++----
+ 1 files changed, 19 insertions(+), 4 deletions(-)
 
-thanks,
 
-greg k-h
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 8945307..b20638b 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -690,6 +690,21 @@ rpc_restart_call(struct rpc_task *task)
+ }
+ EXPORT_SYMBOL_GPL(rpc_restart_call);
+ 
++#ifdef RPC_DEBUG
++static const char *rpc_proc_name(const struct rpc_task *task)
++{
++	const struct rpc_procinfo *proc = task->tk_msg.rpc_proc;
++
++	if (proc) {
++		if (proc->p_name)
++			return proc->p_name;
++		else
++			return "NULL";
++	} else
++		return "no proc";
++}
++#endif
++
+ /*
+  * 0.  Initial state
+  *
+@@ -701,9 +716,9 @@ call_start(struct rpc_task *task)
+ {
+ 	struct rpc_clnt	*clnt = task->tk_client;
+ 
+-	dprintk("RPC: %5u call_start %s%d proc %d (%s)\n", task->tk_pid,
++	dprintk("RPC: %5u call_start %s%d proc %s (%s)\n", task->tk_pid,
+ 			clnt->cl_protname, clnt->cl_vers,
+-			task->tk_msg.rpc_proc->p_proc,
++			rpc_proc_name(task),
+ 			(RPC_IS_ASYNC(task) ? "async" : "sync"));
+ 
+ 	/* Increment call count */
+@@ -1431,10 +1446,10 @@ call_verify(struct rpc_task *task)
+ 		error = -EPROTONOSUPPORT;
+ 		goto out_err;
+ 	case RPC_PROC_UNAVAIL:
+-		dprintk("RPC: %5u %s: proc %p unsupported by program %u, "
++		dprintk("RPC: %5u %s: proc %s unsupported by program %u, "
+ 				"version %u on server %s\n",
+ 				task->tk_pid, __func__,
+-				task->tk_msg.rpc_proc,
++				rpc_proc_name(task),
+ 				task->tk_client->cl_prog,
+ 				task->tk_client->cl_vers,
+ 				task->tk_client->cl_server);
+
