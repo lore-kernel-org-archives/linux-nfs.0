@@ -1,107 +1,52 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 6/6] SUNRPC: Display some debugging information as text rather
-	than numbers
-Date: Wed, 21 May 2008 14:16:20 -0400
-Message-ID: <20080521181620.3295.2298.stgit@ellison>
-References: <20080521180231.3295.84997.stgit@ellison>
+From: "Steve French (smfltc)" <smfltc@us.ibm.com>
+Subject: Re: Re: [PATCH] usb-storage: don't call utsname()
+Date: Wed, 21 May 2008 13:19:32 -0500
+Message-ID: <483467B4.1060601@us.ibm.com>
+References: <20080521123700.GA8770@infradead.org>	<Pine.LNX.4.44L0.0805211349480.3409-100000@iolanthe.rowland.org> <20080521180957.GA17598@kroah.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: linux-nfs@vger.kernel.org
-To: trond.myklebust@netapp.com
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: Alan Stern <stern-nwvwT67g6+6dFdvTe/nMLpVzexx5G7lz@public.gmane.org>,
+	Matthew Dharm <mdharm-usb-JGfshJpz5UybPZpvUQj5UqxOck334EZe@public.gmane.org>,
+	Christoph Hellwig <hch@infradead.org>,
+	"Frank Ch. Eigler" <fche@redhat.com>,
+	Adrian Bunk <bunk@kernel.org>,
+	USB Storage list <usb-storage-ijkIwGHArpdIPJnuZ7Njw4oP9KaGy4wf@public.gmane.org>,
+	Kernel development list <linux-kernel@vger.kernel.org>,
+	"David S. Miller" <davem-xgOahHnHvIuGfricDzPwBeTW4wlIGRCZ@public.gmane.org>,
+	systemtap-R2MHTz/CkKAf7BdofF/totBPR1lH4CV8@public.gmane.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-cifs-client@lists.samba.org, linux-nfs@vger.kernel.org
+To: Greg KH <greg@kroah.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:31639 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S935973AbYEUSQo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 May 2008 14:16:44 -0400
-In-Reply-To: <20080521180231.3295.84997.stgit@ellison>
+Received: from e2.ny.us.ibm.com ([32.97.182.142]:38951 "EHLO e2.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755087AbYEUSSn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 May 2008 14:18:43 -0400
+In-Reply-To: <20080521180957.GA17598@kroah.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In rpc_show_tasks(), display the program name, version number, procedure
-name and tk_action as human-readable variable-length text fields rather
-than columnar numbers.
-
-Doing the symbol lookup here helps in cases where we have actual
-debugging output from a kernel log, but don't have access to the kernel
-image or RPC module that generated the output.
-
-Sample output:
-
- -pid- flgs status -client- --rqstp- -timeout ---ops--
-  5608 0001    -11 eeb42690 f6d93710        0 f8fa1764 nfsv3 WRITE a:call_transmit_status q:none
-  5609 0001    -11 eeb42690 f6d937e0        0 f8fa1764 nfsv3 WRITE a:call_status q:xprt_sending
-  5610 0001    -11 eeb42690 f6d93230        0 f8fa1764 nfsv3 WRITE a:call_status q:xprt_sending
-  5611 0001    -11 eeb42690 f6d93300        0 f8fa1764 nfsv3 WRITE a:call_status q:xprt_sending
-  5612 0001    -11 eeb42690 f6d93090        0 f8fa1764 nfsv3 WRITE a:call_status q:xprt_sending
-  5613 0001    -11 eeb42690 f6d933d0        0 f8fa1764 nfsv3 WRITE a:call_status q:xprt_sending
-  5614 0001    -11 eeb42690 f6d93cc0        0 f8fa1764 nfsv3 WRITE a:call_status q:xprt_sending
-  5615 0001    -11 eeb42690 f6d93a50        0 f8fa1764 nfsv3 WRITE a:call_status q:xprt_sending
-  5616 0001    -11 eeb42690 f6d93640        0 f8fa1764 nfsv3 WRITE a:call_status q:xprt_sending
-  5617 0001    -11 eeb42690 f6d93b20        0 f8fa1764 nfsv3 WRITE a:call_status q:xprt_sending
-  5618 0001    -11 eeb42690 f6d93160        0 f8fa1764 nfsv3 WRITE a:call_status q:xprt_sending
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
- net/sunrpc/clnt.c |   29 ++++++++++++++++-------------
- 1 files changed, 16 insertions(+), 13 deletions(-)
-
-
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 68b08d4..878752c 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -25,6 +25,7 @@
- 
- #include <linux/module.h>
- #include <linux/types.h>
-+#include <linux/kallsyms.h>
- #include <linux/mm.h>
- #include <linux/slab.h>
- #include <linux/smp_lock.h>
-@@ -1527,29 +1528,31 @@ EXPORT_SYMBOL_GPL(rpc_call_null);
- #ifdef RPC_DEBUG
- static void rpc_show_header(void)
- {
--	printk(KERN_INFO "-pid- proc flgs status -client- -prog- --rqstp- "
--		"-timeout -rpcwait -action- ---ops--\n");
-+	printk(KERN_INFO "-pid- flgs status -client- --rqstp- "
-+		"-timeout ---ops--\n");
- }
- 
- static void rpc_show_task(const struct rpc_clnt *clnt,
- 			  const struct rpc_task *task)
- {
- 	const char *rpc_waitq = "none";
--	int proc = -1;
--
--	if (task->tk_msg.rpc_proc)
--		proc = task->tk_msg.rpc_proc->p_proc;
-+	char *p, action[KSYM_SYMBOL_LEN];
- 
- 	if (RPC_IS_QUEUED(task))
- 		rpc_waitq = rpc_qname(task->tk_waitqueue);
- 
--	printk(KERN_INFO "%5u %04d %04x %6d %8p %6d %8p %8ld %8s %8p %8p\n",
--		task->tk_pid, proc,
--		task->tk_flags, task->tk_status,
--		clnt, clnt->cl_prog,
--		task->tk_rqstp, task->tk_timeout,
--		rpc_waitq,
--		task->tk_action, task->tk_ops);
-+	/* map tk_action pointer to a function name; then trim off
-+	 * the "+0x0 [sunrpc]" */
-+	sprint_symbol(action, (unsigned long)task->tk_action);
-+	p = strchr(action, '+');
-+	if (p)
-+		*p = '\0';
-+
-+	printk(KERN_INFO "%5u %04x %6d %8p %8p %8ld %8p %sv%u %s a:%s q:%s\n",
-+		task->tk_pid, task->tk_flags, task->tk_status,
-+		clnt, task->tk_rqstp, task->tk_timeout, task->tk_ops,
-+		clnt->cl_protname, clnt->cl_vers, rpc_proc_name(task),
-+		action, queue);
- }
- 
- void rpc_show_tasks(void)
-
+Greg KH wrote:
+> On Wed, May 21, 2008 at 01:51:17PM -0400, Alan Stern wrote:
+>   
+>> This patch (as1100) replaces the core-kernel function call to utsname()
+>> in usb-storage with the UTS_RELEASE macro.  It's used only for warning
+>> about extra unusual_devs entries.
+>>
+>> Signed-off-by: Alan Stern <stern-nwvwT67g6+6dFdvTe/nMLpVzexx5G7lz@public.gmane.org>
+>>     
+>
+> Why?  With this change, if you change the version number, the file will
+> have to be rebuilt.  Without the change, the file will not need to be
+> rebuilt, right?
+>
+> I thought that was why this change was made a while ago, to prevent
+> things from having to be rebuilt that didn't need to be
+>   
+I agree - what was wrong with utsname->release ... it seems odd to 
+statically build the kernel's version
+number into a module - it should be something we should be able to query 
+(and it shouldn't change without
+reboot so accessing it is not racy).  Access to other fields in the 
+structure (nodename, domainname etc.) might
+need to be included in a macro but I didn't see one in utsname.h for this.
