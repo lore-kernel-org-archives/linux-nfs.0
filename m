@@ -1,98 +1,34 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: [PATCH, E2FSPROGS] blkid: If the device mtime is newer that the
-	cache time, force a revalidation
-Date: Wed, 21 May 2008 11:58:20 -0400
-Message-ID: <20080521155820.GJ8581@mit.edu>
-References: <20080519190356.GH15035@mit.edu> <200805202232.m4KMWD11020355@agora.fsl.cs.sunysb.edu>
+From: Peter Staubach <staubach@redhat.com>
+Subject: Re: [PATCH 3/8] SUNRPC: Use RPC procedure name in call_verify
+Date: Wed, 21 May 2008 12:02:45 -0400
+Message-ID: <483447A5.8000802@redhat.com>
+References: <20080520202108.3851.7464.stgit@ellison.1015granger.net> <20080520202941.3851.61861.stgit@ellison.1015granger.net> <1211318498.26809.13.camel@localhost> <DF95EE8C-4F20-4B4A-9967-9AD354196D4D@oracle.com> <48341218.10009@redhat.com> <RTPCLUEXC1-PRDQrwFN00000141@RTPMVEXC1-PRD.hq.netapp.com> <483417CE.1070308@redhat.com> <E3DF41A5-5DBA-42CE-ADE2-FAE8AC5E4722@Sun.COM>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Trond Myklebust <Trond.Myklebust@netapp.com>,
-	Kevin Coffman <kwc@umich.edu>, nfs@lists.sourceforge.net,
-	linux-nfs@vger.kernel.org, Himanshu Kanda <hkanda-EX0cT3Az47bauI2f2gSDlQ@public.gmane.org>
-To: Erez Zadok <ezk-EX0cT3Az47bauI2f2gSDlQ@public.gmane.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: "Talpey, Thomas" <Thomas.Talpey@netapp.com>,
+	linux-nfs@vger.kernel.org
+To: Robert Gordon <Robert.Gordon-UdXhSnd/wVw@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:40477 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755213AbYEUP7V (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 May 2008 11:59:21 -0400
-In-Reply-To: <200805202232.m4KMWD11020355-zop+azHP2WsZjdeEBZXbMidm6ipF23ct@public.gmane.org>
+Received: from mx1.redhat.com ([66.187.233.31]:56274 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1763100AbYEUQFI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 May 2008 12:05:08 -0400
+In-Reply-To: <E3DF41A5-5DBA-42CE-ADE2-FAE8AC5E4722-UdXhSnd/wVw@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This fixes problems turned up by a test case written by Erez Zadok's
-group which constantly reformats filesystems.
+Robert Gordon wrote:
+>
+> This being an accepted practice -- as opposed to a clearly
+> defined requirement in a spec someplace ?? 
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- lib/blkid/probe.c |   48 +++++++++++++++++++++++++++---------------------
- 1 files changed, 27 insertions(+), 21 deletions(-)
+You know, I don't know whether the RPC specification clearly
+indicates that procedure, 0, is the NULL procedure.  It just
+seems to be accepted practice and assumptions have been made
+that procedure, 0, is the NULL procedure and also does not
+require any special authentication.
 
-diff --git a/lib/blkid/probe.c b/lib/blkid/probe.c
-index 4964209..62ab392 100644
---- a/lib/blkid/probe.c
-+++ b/lib/blkid/probe.c
-@@ -1214,33 +1214,39 @@ blkid_dev blkid_verify(blkid_cache cache, blkid_dev dev)
- 	now = time(0);
- 	diff = now - dev->bid_time;
- 
--	if ((now > dev->bid_time) && (diff > 0) && 
-+	if (stat(dev->bid_name, &st) < 0) {
-+		DBG(DEBUG_PROBE,
-+		    printf("blkid_verify: error %s (%d) while "
-+			   "trying to stat %s\n", strerror(errno), errno,
-+			   dev->bid_name));
-+	open_err:
-+		if ((errno == EPERM) || (errno == EACCES) || (errno == ENOENT)) {
-+			/* We don't have read permission, just return cache data. */
-+			DBG(DEBUG_PROBE, printf("returning unverified data for %s\n",
-+						dev->bid_name));
-+			return dev;
-+		}
-+		blkid_free_dev(dev);
-+		return NULL;
-+	}
-+
-+	if ((now >= dev->bid_time) &&
-+	    (st.st_mtime <= dev->bid_time) &&
- 	    ((diff < BLKID_PROBE_MIN) || 
- 	     (dev->bid_flags & BLKID_BID_FL_VERIFIED &&
- 	      diff < BLKID_PROBE_INTERVAL)))
- 		return dev;
- 
- 	DBG(DEBUG_PROBE,
--	    printf("need to revalidate %s (time since last check %llu)\n", 
--		   dev->bid_name, (unsigned long long)diff));
--
--	if (((probe.fd = open(dev->bid_name, O_RDONLY)) < 0) ||
--	    (fstat(probe.fd, &st) < 0)) {
--		if (probe.fd >= 0) close(probe.fd);
--		if ((errno != EPERM) && (errno != EACCES) &&
--		    (errno != ENOENT)) {
--			DBG(DEBUG_PROBE, 
--			    printf("blkid_verify: error %s (%d) while "
--				   "opening %s\n", strerror(errno), errno, 
--				   dev->bid_name));
--			blkid_free_dev(dev);
--			return NULL;
--		}
--		/* We don't have read permission, just return cache data. */
--		DBG(DEBUG_PROBE,
--		    printf("returning unverified data for %s\n",
--			   dev->bid_name));
--		return dev;
-+	    printf("need to revalidate %s (cache time %d, stat time %d,\n\t"
-+		   "time since last check %lu)\n",
-+		   dev->bid_name, dev->bid_time, st.st_mtime, (unsigned long)diff));
-+
-+	if ((probe.fd = open(dev->bid_name, O_RDONLY)) < 0) {
-+		DBG(DEBUG_PROBE, printf("blkid_verify: error %s (%d) while "
-+					"opening %s\n", strerror(errno), errno, 
-+					dev->bid_name));
-+		goto open_err;
- 	}
- 
- 	probe.cache = cache;
--- 
-1.5.4.1.144.gdfee-dirty
+The NULL_PROC is used as a "ping" sort of procedure by things
+like rpcinfo, the NFS mount command, etc.
 
+       ps
