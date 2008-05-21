@@ -1,62 +1,62 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH] update mount.nfs example in NFS/RDMA documentation
-Date: Fri, 30 May 2008 18:48:31 -0400
-Message-ID: <A4F07986-C129-4D87-9C82-61FC797A178F@oracle.com>
-References: <alpine.LFD.1.10.0805291534360.2898@jlentini-linux.nane.netapp.com> <A04A3C4F-EF91-4204-B28F-E63BFEAF3241@oracle.com> <alpine.LFD.1.10.0805301805490.26788@jlentini-linux.nane.netapp.com>
-Mime-Version: 1.0 (Apple Message framework v924)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Tom Tucker <tom@opengridcomputing.com>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Thomas Talpey <talpey@netapp.com>, linux-nfs@vger.kernel.org
-To: James Lentini <jlentini@netapp.com>
+From: Robert Gordon <Robert.Gordon-UdXhSnd/wVw@public.gmane.org>
+Subject: Re: [PATCH 3/8] SUNRPC: Use RPC procedure name in call_verify
+Date: Wed, 21 May 2008 10:27:51 -0500
+Message-ID: <E3DF41A5-5DBA-42CE-ADE2-FAE8AC5E4722@Sun.COM>
+References: <20080520202108.3851.7464.stgit@ellison.1015granger.net>
+ <20080520202941.3851.61861.stgit@ellison.1015granger.net>
+ <1211318498.26809.13.camel@localhost>
+ <DF95EE8C-4F20-4B4A-9967-9AD354196D4D@oracle.com> <48341218.10009@redhat.com>
+ <RTPCLUEXC1-PRDQrwFN00000141@RTPMVEXC1-PRD.hq.netapp.com>
+ <483417CE.1070308@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; delsp=yes; format=flowed; charset=US-ASCII
+Cc: "Talpey, Thomas" <Thomas.Talpey@netapp.com>,
+	linux-nfs@vger.kernel.org
+To: Peter Staubach <staubach@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:34909 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752134AbYE3WzR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 May 2008 18:55:17 -0400
-In-Reply-To: <alpine.LFD.1.10.0805301805490.26788-5zmYZXM8ymTNoO61VEKW3MYxy48AqY0ZOQ4dku92ua4@public.gmane.org>
+Received: from brmea-mail-1.Sun.COM ([192.18.98.31]:44885 "EHLO
+	brmea-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757389AbYEUPpO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 May 2008 11:45:14 -0400
+Received: from fe-amer-09.sun.com ([192.18.109.79])
+	by brmea-mail-1.sun.com (8.13.6+Sun/8.12.9) with ESMTP id m4LFS5ZI014698
+	for <linux-nfs@vger.kernel.org>; Wed, 21 May 2008 15:28:05 GMT
+Received: from conversion-daemon.mail-amer.sun.com by mail-amer.sun.com
+ (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
+ id <0K1800M0136NYQ00-suYR2Hc8r9/lQFUxb2hVpgC/G2K4zDHf@public.gmane.org>
+ (original mail from Robert.Gordon-UdXhSnd/wVw@public.gmane.org) for linux-nfs@vger.kernel.org; Wed,
+ 21 May 2008 09:28:05 -0600 (MDT)
+In-reply-to: <483417CE.1070308@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On May 30, 2008, at 6:14 PM, James Lentini wrote:
-> Hi Chuck,
->
-> Replies below:
->
-> On Fri, 30 May 2008, Chuck Lever wrote:
->> You can simply extract the rebuilt mount.nfs command instead of  
->> installing the
->> whole package with
+
+This being an accepted practice -- as opposed to a clearly
+defined requirement in a spec someplace ??
+
+On May 21, 2008, at 7:38 AM, Peter Staubach wrote:
+> Talpey, Thomas wrote:
+>> At 08:14 AM 5/21/2008, Peter Staubach wrote:
 >>
->> 	$ sudo cp utils/mount/mount.nfs /path/to/your/mount.nfs
+>>> I have seen servers which didn't implement the NULL_PROC procedure
+>>> for protocols like NFS_ACL.  Beats me why.
+>>>
+>>
+>> Names. We want names. :-)
 >
-> For mount.nfs to be picked up automatically by mount, mount.nfs needs
-> to be at /sbin/mount.nfs, correct?
-
-I haven't looked at that part of the mount command, but usually  
-distributors will cede that detail to the package maintainers to  
-reduce the number of patches they have to apply.
-
-Let's assume /sbin is the correct place for mount.nfs, unless someone  
-complains loudly.
-
-> In the instructions, I'll recommend
-> that the binary be copied as follows:
+> :-)
 >
-> $ sudo cp utils/mount/mount.nfs /sbin/mount.nfs
+> Names withheld to prevent embarrassment of the guilty?
 >
->> The tcp_wrappers package is needed to build nfs-utils in any case,  
->> so it would
->> be helpful to mention that too.
+> Actually, I don't remember anymore who they were, but I suspect
+> that I would have complained to them at the time.  It just isn't
+> that hard to implement a procedure which doesn't do anything but
+> respond to the client.
 >
-> I'd like to leave that detail to the nfs-utils README. Does that sound
-> reasonable?
+>      ps
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
+> in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-If you're going to provide a blanket pointer to the nfs-utils README  
-for building it, and omit any specific instructions from nfs-rdma.txt  
-(aside from copying the mount.nfs executable), that sounds reasonable.
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
