@@ -1,91 +1,92 @@
-From: Alan Cox <alan@lxorguk.ukuu.org.uk>
-Subject: [PATCH] rpc: Push down the ioctl BKL into the RPC code
-Date: Thu, 22 May 2008 22:27:30 +0100
-Message-ID: <20080522222730.311832af@core>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [NFS] NFSv3 + SVN + Apache2 gives stale filehandles
+	and	FORBIDDEN responses
+Date: Thu, 22 May 2008 17:41:36 -0400
+Message-ID: <20080522214136.GB18822@fieldses.org>
+References: <Pine.LNX.4.62.0805201425430.18549@office2.c1.internal>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-To: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
+To: Allard Hoeve <allard-DW70C6hi67U@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from earthlight.etchedpixels.co.uk ([81.2.110.250]:55612 "EHLO
-	lxorguk.ukuu.org.uk" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755271AbYEVVj6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 May 2008 17:39:58 -0400
+Received: from neil.brown.name ([220.233.11.133]:48676 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1760139AbYEVVlx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 May 2008 17:41:53 -0400
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1JzIXl-0006RN-H1
+	for linux-nfs@vger.kernel.org; Fri, 23 May 2008 07:41:49 +1000
+In-Reply-To: <Pine.LNX.4.62.0805201425430.18549-FHjt3+7qfYHBZBx2VKNGNcSTQT6m/s+e@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-One or two bits I couldn't figure out if the BKL could be dropped for
+On Tue, May 20, 2008 at 04:07:39PM +0200, Allard Hoeve wrote:
+> 
+> Hello all,
+> 
+> I'm currently experiencing the following on Debian Etch (nfsv3, 2.6.24.2):
+> 
+> http://linux-nfs.org/pipermail/nfsv4/2008-April/008423.html
+> 
+> It is properly summarized by J. Bruce Fields at:
+> 
+> http://linux-nfs.org/pipermail/nfsv4/2008-April/008452.html
+> 
+> I can reproduce this easily.
+> 
+> Let's assume three hosts:
+> 
+> * Host A is where development happens, this has a separate checkout
+> * Host B is where the checkout gets updated (shellserver) on an NFS mount
+> * Host C is where the webserver resides, Apache serves from the an NFS
+>     mount that points to the same server as B's NFS mount points to
+> 
+> This setup is easily created if you have two hosts and access to an SVN 
+> server.
+> 
+> To reproduce:
+> 
+> 1) I update the testfile on host A and commit it.
+> 2) I update the checkout with svn commit on host B.
+> 3) No I test the file on host C:
+>     a) I try to access the file on host C through the webserver: permission
+>        denied (stale NFS handle)
+>     b) I try to stat the file: cannot stat 'test': Stale NFS file handle
+> 4) A simple 'cat test' gives me the new contents of 'test' and solves the
+>      problem. The file is now 'stat'-able and downloadable through the
+>      webserver.
+> 
+> Where should I start to solve the problem? From the threads above, I seem 
+> to understand that fixing this in userspace (Apache2 / stat) would require 
+> some work and that the solution lies in the NFS client? This would require 
+> me hacking the NFS kernel code.  *shivers* :)
+> 
+> Or maybe there already is someone working on the problem? *crosses 
+> fingers*. I could test patches, etc if you'd like.x
 
-Signed-off-by: Alan Cox <alan@redhat.com>
+The only proposal I've heard to address this involves fixing the client
+to retry a lookup one time.  The steps of that project as I understand
+it are:
 
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index c996671..0c1af5d 100644
---- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -826,11 +826,11 @@ cache_poll(struct file *filp, poll_table *wait)
- 	return mask;
- }
- 
--static int
--cache_ioctl(struct inode *ino, struct file *filp,
--	    unsigned int cmd, unsigned long arg)
-+static long
-+cache_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
- {
- 	int len = 0;
-+	struct inode *ino = filp->f_path.dentry->d_inode;
- 	struct cache_reader *rp = filp->private_data;
- 	struct cache_queue *cq;
- 	struct cache_detail *cd = PDE(ino)->data;
-@@ -918,7 +918,7 @@ static const struct file_operations cache_file_operations = {
- 	.read		= cache_read,
- 	.write		= cache_write,
- 	.poll		= cache_poll,
--	.ioctl		= cache_ioctl, /* for FIONREAD */
-+	.unlocked_ioctl	= cache_ioctl, /* for FIONREAD */
- 	.open		= cache_open,
- 	.release	= cache_release,
- };
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index 5a9b0e7..80bca08 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -296,23 +296,26 @@ rpc_pipe_poll(struct file *filp, struct poll_table_struct *wait)
- 	return mask;
- }
- 
--static int
--rpc_pipe_ioctl(struct inode *ino, struct file *filp,
--		unsigned int cmd, unsigned long arg)
-+static long
-+rpc_pipe_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
- {
- 	struct rpc_inode *rpci = RPC_I(filp->f_path.dentry->d_inode);
- 	int len;
- 
- 	switch (cmd) {
- 	case FIONREAD:
--		if (rpci->ops == NULL)
-+		lock_kernel();
-+		if (rpci->ops == NULL) {
-+			unlock_kernel();
- 			return -EPIPE;
-+		}
- 		len = rpci->pipelen;
- 		if (filp->private_data) {
- 			struct rpc_pipe_msg *msg;
- 			msg = (struct rpc_pipe_msg *)filp->private_data;
- 			len += msg->len - msg->copied;
- 		}
-+		unlock_kernel();
- 		return put_user(len, (int __user *)arg);
- 	default:
- 		return -EINVAL;
-@@ -325,7 +328,7 @@ static const struct file_operations rpc_pipe_fops = {
- 	.read		= rpc_pipe_read,
- 	.write		= rpc_pipe_write,
- 	.poll		= rpc_pipe_poll,
--	.ioctl		= rpc_pipe_ioctl,
-+	.unlocked_ioctl	= rpc_pipe_ioctl,
- 	.open		= rpc_pipe_open,
- 	.release	= rpc_pipe_release,
- };
+	1. Digest this message from Al Viro into language the rest of us
+	   can understand:
+	   http://thread.gmane.org/gmane.linux.kernel/676019/focus=676145
+	2. Implement the result.
+
+Looks difficult but fun....
+
+--b.
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Microsoft
+Defy all challenges. Microsoft(R) Visual Studio 2008.
+http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
+
