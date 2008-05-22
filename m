@@ -1,58 +1,68 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 0/6] Initial set of 2.6.27 patches, take 4
-Date: Wed, 21 May 2008 17:08:56 -0400
-Message-ID: <20080521210411.6468.68771.stgit@ellison.1015granger.net>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: linux-nfs@vger.kernel.org
-To: trond.myklebust@netapp.com
+Subject: lost interrupt after a signal?
+Date: Thu, 22 May 2008 10:57:35 -0400
+Message-ID: <2A43EAAA-8AEC-4EA1-AAA6-1AE1C750DB4C@oracle.com>
+Mime-Version: 1.0 (Apple Message framework v919.2)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+	Matthew Wilcox <matthew@wil.cx>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:47859 "EHLO
+Received: from agminet01.oracle.com ([141.146.126.228]:12082 "EHLO
 	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S937429AbYEUVKe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 May 2008 17:10:34 -0400
+	with ESMTP id S1752141AbYEVPBZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 May 2008 11:01:25 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond-
+We've been running some tests to understand how the 2.6.25 "intr/ 
+nointr" behavior affects signal handling during I/O on NFS mounts.
 
-Resending the first batch of 2.6.27 patches, with additional fixes.
+While running an Oracle database workload, we signal the database  
+(this is a normal way administrative tools control database  
+activity).  Subsequently all of the I/O threads block on the inode  
+mutex in nfs_invalidate_mapping() except this one:
 
-Using the RPC procedure name in debugging messages should no longer add a
-risk of a segmentation fault.
+INFO: task oracle:27214 blocked for more than 120 seconds.
+"echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this  
+message.
+oracle        D f6d85e84  1592 27214      1
+        c93d2920 00200086 00000001 f6d85e84 c04a0080 c04a0080 c04a0080  
+c93d2b84
+        c93d2b84 c4021f80 00000001 cc072000 f341c900 f6d85e7c 10a1a042  
+f6d85e7c
+        cc072ddc c4021f80 03b7e000 cc072ddc c40082b4 c036e21c cc072dd4  
+00000001
+Call Trace:
+  [<c036e21c>] io_schedule+0x4c/0x90
+  [<c015f63c>] sync_page+0x2c/0x40
+  [<c036e3e5>] __wait_on_bit_lock+0x45/0x70
+  [<c015f610>] sync_page+0x0/0x40
+  [<c015f5f3>] __lock_page+0x73/0x80
+  [<c013cad0>] wake_bit_function+0x0/0x80
+  [<c0167f98>] invalidate_inode_pages2_range+0xb8/0x200
+  [<f905d1a8>] nfs_writepages+0x68/0x90 [nfs]
+  [<f905489f>] nfs_invalidate_mapping_nolock+0x1f/0xd0 [nfs]
+  [<f9054ffa>] nfs_invalidate_mapping+0x5a/0x60 [nfs]
+  [<f90538a5>] nfs_file_read+0x85/0x120 [nfs]
+  [<c0182685>] do_sync_read+0xd5/0x120
+  [<c016cf4a>] __do_fault+0x1ca/0x400
+  [<c011c277>] __update_rq_clock+0x27/0x180
+  [<c013ca80>] autoremove_wake_function+0x0/0x50
+  [<c0136b25>] k_getrusage+0x1f5/0x200
+  [<c01e525c>] security_file_permission+0xc/0x10
+  [<c0182736>] rw_verify_area+0x66/0xd0
+  [<c0136b52>] getrusage+0x22/0x40
+  [<c0182f81>] vfs_read+0xa1/0x140
+  [<c01825b0>] do_sync_read+0x0/0x120
+  [<c01835da>] sys_pread64+0x6a/0x70
+  [<c0103e62>] syscall_call+0x7/0xb
 
-I've also done a third re-implementation of the tk_action function name
-patch.  I finally managed to find an interface that will perform the symbol
-table lookup, and can be called from a module or from built-in code.
+I haven't looked too closely at this, but maybe the signal caused a  
+lost I/O interrupt?
 
-Oddly this API has been around for a while; I'm not sure how I missed it
-originally.  But it should implement the nice function-name-rather-than-
-memory-address feature without a wonky table, and without requiring any
-additional changes when adding a new FSM state function.  It will display
-the function name if the lookup succeeds; otherwise it will display a hex
-memory address.  It works for any arbitrary pointer stored in the
-tk_action field.
+What would be the next steps to troubleshoot this further?
 
-I've thought of a couple of other ways rpc_show_tasks() could be improved.
-First, it could display the IP address of the server handling each request;
-and it should have a different column layout for systems with 64-bit
-addresses.  All for another day, I suppose.
-
----
-
-Chuck Lever (6):
-      SUNRPC: Display some debugging information as text rather than numbers
-      SUNRPC: Refactor rpc_show_tasks
-      SUNRPC: Don't display the rpc_show_tasks header if there are no tasks
-      SUNRPC: Rename "call_" functions that are no longer FSM states
-      SUNRPC: Add a function to display the name of an RPC procedure
-      NFS: Update help text for CONFIG_NFS_FS
-
-
- fs/Kconfig        |  115 ++++++++++++++++++++++++-------------------------
- net/sunrpc/clnt.c |  124 ++++++++++++++++++++++++++++++-----------------------
- 2 files changed, 128 insertions(+), 111 deletions(-)
-
--- 
+--
 Chuck Lever
 chuck[dot]lever[at]oracle[dot]com
