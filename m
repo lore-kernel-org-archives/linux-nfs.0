@@ -1,68 +1,87 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: lost interrupt after a signal?
-Date: Thu, 22 May 2008 10:57:35 -0400
-Message-ID: <2A43EAAA-8AEC-4EA1-AAA6-1AE1C750DB4C@oracle.com>
-Mime-Version: 1.0 (Apple Message framework v919.2)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-	Matthew Wilcox <matthew@wil.cx>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 4/4] text-based mount command: use correct server name in
+	rewrite_mount_options
+Date: Thu, 22 May 2008 12:11:16 -0400
+Message-ID: <20080522161116.3044.2908.stgit@ellison.1015granger.net>
+References: <20080522160457.3044.16441.stgit@ellison.1015granger.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org
+To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:12082 "EHLO
+Received: from agminet01.oracle.com ([141.146.126.228]:41252 "EHLO
 	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752141AbYEVPBZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 May 2008 11:01:25 -0400
+	with ESMTP id S1754185AbYEVQMd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 May 2008 12:12:33 -0400
+In-Reply-To: <20080522160457.3044.16441.stgit-ewv44WTpT0t9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We've been running some tests to understand how the 2.6.25 "intr/ 
-nointr" behavior affects signal handling during I/O on NFS mounts.
+Fix error reporting when probe_bothports() fails while rewriting mount
+options.
 
-While running an Oracle database workload, we signal the database  
-(this is a normal way administrative tools control database  
-activity).  Subsequently all of the I/O threads block on the inode  
-mutex in nfs_invalidate_mapping() except this one:
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-INFO: task oracle:27214 blocked for more than 120 seconds.
-"echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this  
-message.
-oracle        D f6d85e84  1592 27214      1
-        c93d2920 00200086 00000001 f6d85e84 c04a0080 c04a0080 c04a0080  
-c93d2b84
-        c93d2b84 c4021f80 00000001 cc072000 f341c900 f6d85e7c 10a1a042  
-f6d85e7c
-        cc072ddc c4021f80 03b7e000 cc072ddc c40082b4 c036e21c cc072dd4  
-00000001
-Call Trace:
-  [<c036e21c>] io_schedule+0x4c/0x90
-  [<c015f63c>] sync_page+0x2c/0x40
-  [<c036e3e5>] __wait_on_bit_lock+0x45/0x70
-  [<c015f610>] sync_page+0x0/0x40
-  [<c015f5f3>] __lock_page+0x73/0x80
-  [<c013cad0>] wake_bit_function+0x0/0x80
-  [<c0167f98>] invalidate_inode_pages2_range+0xb8/0x200
-  [<f905d1a8>] nfs_writepages+0x68/0x90 [nfs]
-  [<f905489f>] nfs_invalidate_mapping_nolock+0x1f/0xd0 [nfs]
-  [<f9054ffa>] nfs_invalidate_mapping+0x5a/0x60 [nfs]
-  [<f90538a5>] nfs_file_read+0x85/0x120 [nfs]
-  [<c0182685>] do_sync_read+0xd5/0x120
-  [<c016cf4a>] __do_fault+0x1ca/0x400
-  [<c011c277>] __update_rq_clock+0x27/0x180
-  [<c013ca80>] autoremove_wake_function+0x0/0x50
-  [<c0136b25>] k_getrusage+0x1f5/0x200
-  [<c01e525c>] security_file_permission+0xc/0x10
-  [<c0182736>] rw_verify_area+0x66/0xd0
-  [<c0136b52>] getrusage+0x22/0x40
-  [<c0182f81>] vfs_read+0xa1/0x140
-  [<c01825b0>] do_sync_read+0x0/0x120
-  [<c01835da>] sys_pread64+0x6a/0x70
-  [<c0103e62>] syscall_call+0x7/0xb
+ utils/mount/error.c   |    3 +++
+ utils/mount/stropts.c |    9 +++++----
+ 2 files changed, 8 insertions(+), 4 deletions(-)
 
-I haven't looked too closely at this, but maybe the signal caused a  
-lost I/O interrupt?
 
-What would be the next steps to troubleshoot this further?
+diff --git a/utils/mount/error.c b/utils/mount/error.c
+index 23a91ff..147e919 100644
+--- a/utils/mount/error.c
++++ b/utils/mount/error.c
+@@ -227,6 +227,9 @@ void mount_error(const char *spec, const char *mount_point, int error)
+ 			nfs_error(_("%s: mount point %s does not exist"),
+ 				progname, mount_point);
+ 		break;
++	case ESPIPE:
++		rpc_mount_errors((char *)spec, 0, 0);
++		break;
+ 	case EIO:
+ 	case EFAULT:
+ 		nfs_error(_("%s: internal error"), progname);
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index 3564f15..967fd69 100644
+--- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -356,6 +356,8 @@ static struct mount_options *rewrite_mount_options(char *str)
+ 	clnt_addr_t nfs_server = { };
+ 	int p;
+ 
++	errno = EIO;
++
+ 	options = po_split(str);
+ 	if (!options)
+ 		return NULL;
+@@ -426,7 +428,7 @@ static struct mount_options *rewrite_mount_options(char *str)
+ 	po_remove_all(options, "udp");
+ 
+ 	if (!probe_bothports(&mnt_server, &nfs_server)) {
+-		rpc_mount_errors("rpcbind", 0, 0);
++		errno = ESPIPE;
+ 		goto err;
+ 	}
+ 
+@@ -452,6 +454,7 @@ static struct mount_options *rewrite_mount_options(char *str)
+ 
+ 	}
+ 
++	errno = 0;
+ 	return options;
+ 
+ err:
+@@ -498,10 +501,8 @@ static int nfs_retry_nfs23mount(struct nfsmount_info *mi)
+ 	char **extra_opts = mi->extra_opts;
+ 
+ 	retry_options = rewrite_mount_options(*extra_opts);
+-	if (!retry_options) {
+-		errno = EIO;
++	if (!retry_options)
+ 		return 0;
+-	}
+ 
+ 	if (po_join(retry_options, &retry_str) == PO_FAILED) {
+ 		po_destroy(retry_options);
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
