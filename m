@@ -1,43 +1,40 @@
-From: "Alexander Borghgraef" <alexander.borghgraef.rma@gmail.com>
-Subject: Re: Nfs filesystem corruption(?) after kmail crash
-Date: Fri, 23 May 2008 16:44:11 +0200
-Message-ID: <9e8c52a20805230744m2f7488e5q2867674f2987444@mail.gmail.com>
-References: <9e8c52a20805140532w2bcfeff3n896fa5a9b0e82b5@mail.gmail.com>
-	 <20080519144806.GB7622@fieldses.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: extremely long time for exportfs to display
+Date: Fri, 23 May 2008 11:20:45 -0400
+Message-ID: <20080523152045.GA6276@fieldses.org>
+References: <620E93B2E5CC3B46BD811165E3335B87011F8E9C@0461-its-exmb02.us.saic.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: "Murata, Dennis" <DENNIS.MURATA-jTGLxe6cr0Q@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from nf-out-0910.google.com ([64.233.182.186]:12031 "EHLO
-	nf-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752360AbYEWOoP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 May 2008 10:44:15 -0400
-Received: by nf-out-0910.google.com with SMTP id d3so310891nfc.21
-        for <linux-nfs@vger.kernel.org>; Fri, 23 May 2008 07:44:11 -0700 (PDT)
-In-Reply-To: <20080519144806.GB7622@fieldses.org>
+Received: from mail.fieldses.org ([66.93.2.214]:56600 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753079AbYEWPUr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 23 May 2008 11:20:47 -0400
+In-Reply-To: <620E93B2E5CC3B46BD811165E3335B87011F8E9C-9/h0XwadXgnyjpQT3Si/rsM9+qvyE0V4QQ4Iyu8u01E@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, May 19, 2008 at 4:48 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+On Thu, May 22, 2008 at 05:41:05PM -0700, Murata, Dennis wrote:
+> Very recently we have seen a very serious slowdown with the exportfs
+> command on a file server.  Usually the exportfs -r command or even just
+> the exportfs command to display the exported directories is very quick.
+> Now it can take 20 minutes to display the exported directories.
+> An strace shows a lookup at /etc/hosts, from yp, and from dns.  The
+> hosts lookup in /etc/nsswitch is files nis dns, so this is as expected,
+> the time it is taking is not.
 
-> Out of curiosity--what's the filesystem on the server?  (I just wonder
-> if this could be due to poor time resolution, so if e.g. switching from
-> ext3 to xfs would work around the problem.)
+Have you run strace with something like -t to work out exactly where the
+time is going?
 
- Is ext3 known for time resolution issues? Switching to a different fs
-could prove problematic, but I could always ask the sysadmin to move
-my home dir to my client machine, there should be enough space so that
-would rule out any synchronization problems.
+--b.
 
- The main thing here is that I'd like to understand why this is
-happening? What does it mean when ls returns something like:
-
-d????????? ? ?        ?          ?                ? cur
-
-Why is this triggered by an app like kmail? Why does the problem
-disappear when I cd into the oddly behaving directory, but not when
-kmail checks its availability? Why doesn't this always work? Things
-like that.
-
--- 
-Alex Borghgraef
+> The yp slave that the server is bound to seems to be having some
+> problems, could this be the issue?
+> 
+> Wayne
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
