@@ -1,40 +1,42 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: extremely long time for exportfs to display
-Date: Fri, 23 May 2008 11:20:45 -0400
-Message-ID: <20080523152045.GA6276@fieldses.org>
-References: <620E93B2E5CC3B46BD811165E3335B87011F8E9C@0461-its-exmb02.us.saic.com>
+From: Tom Tucker <tom@opengridcomputing.com>
+Subject: [PATCH] svcrdma: Add flush_scheduled_work to module exit function
+Date: Fri, 23 May 2008 10:31:25 -0500
+Message-ID: <1211556685.4114.14.camel@trinity.ogc.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: "Murata, Dennis" <DENNIS.MURATA-jTGLxe6cr0Q@public.gmane.org>
+Content-Type: text/plain
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+To: Andrew Morton <akpm@linux-foundation.org>,
+	Bruce Fields <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:56600 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753079AbYEWPUr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 23 May 2008 11:20:47 -0400
-In-Reply-To: <620E93B2E5CC3B46BD811165E3335B87011F8E9C-9/h0XwadXgnyjpQT3Si/rsM9+qvyE0V4QQ4Iyu8u01E@public.gmane.org>
+Received: from smtp.opengridcomputing.com ([209.198.142.2]:53390 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752135AbYEWP1g (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 May 2008 11:27:36 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, May 22, 2008 at 05:41:05PM -0700, Murata, Dennis wrote:
-> Very recently we have seen a very serious slowdown with the exportfs
-> command on a file server.  Usually the exportfs -r command or even just
-> the exportfs command to display the exported directories is very quick.
-> Now it can take 20 minutes to display the exported directories.
-> An strace shows a lookup at /etc/hosts, from yp, and from dns.  The
-> hosts lookup in /etc/nsswitch is files nis dns, so this is as expected,
-> the time it is taking is not.
+    
+Make certain all transports pending free are flushed from the wq
+before unloading the module.
+    
+    Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+---
 
-Have you run strace with something like -t to work out exactly where the
-time is going?
+Thanks to Andrew for pointing this out.
 
---b.
+ net/sunrpc/xprtrdma/svc_rdma.c |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
 
-> The yp slave that the server is bound to seems to be having some
-> problems, could this be the issue?
-> 
-> Wayne
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/net/sunrpc/xprtrdma/svc_rdma.c b/net/sunrpc/xprtrdma/svc_rdma.c
+index 88c0ca2..b370e5c 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma.c
++++ b/net/sunrpc/xprtrdma/svc_rdma.c
+@@ -236,6 +236,7 @@ static ctl_table svcrdma_root_table[] = {
+ void svc_rdma_cleanup(void)
+ {
+ 	dprintk("SVCRDMA Module Removed, deregister RPC RDMA transport\n");
++	flush_scheduled_work();
+ 	if (svcrdma_table_header) {
+ 		unregister_sysctl_table(svcrdma_table_header);
+ 		svcrdma_table_header = NULL;
+
