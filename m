@@ -1,70 +1,76 @@
-From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [PATCH] svcrdma: Fix compile warning on 32b platforms
-Date: Fri, 23 May 2008 10:39:53 -0500
-Message-ID: <1211557193.4114.21.camel@trinity.ogc.int>
+From: "david m. richter" <richterd@citi.umich.edu>
+Subject: Re: Strange NFS behaviour
+Date: Fri, 23 May 2008 13:22:36 -0400 (EDT)
+Message-ID: <Pine.BSO.4.64.0805231310040.32037@citi.umich.edu>
+References: <g163h5$3mu$3@ger.gmane.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-To: Bruce Fields <bfields@fieldses.org>,
-	Andrew Morton <akpm@linux-foundation.org>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-nfs@vger.kernel.org
+To: Simone Carbonara <simone-2dnJtoj8yUAi5CQI31g/s0B+6BGkLq7r@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([209.198.142.2]:55389 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753355AbYEWPgE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 May 2008 11:36:04 -0400
+Received: from citi.umich.edu ([141.211.133.111]:46109 "EHLO citi.umich.edu"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751979AbYEWRWg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 23 May 2008 13:22:36 -0400
+In-Reply-To: <g163h5$3mu$3@ger.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The ib_sge is used to store both dma_addr_t and virtual addresses.
-This causes a warning on 32b platforms when casting ptrs to the
-u64 addr field of the ib_sge. There is work underway to reduce the
-memory footprint of the WR context in 2.6.27 the time frame that will
-remove the overloading of the ib_sge.addr field.
+On Fri, 23 May 2008, Simone Carbonara wrote:
 
-Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
----
+> Hello,
+> 
+> i'm experiencing on debian etch the following behaviour with NFS.
+> 
+> I have 1 backend running linux debian sarge that exports via NFS a  SVN
+> working copy to a couple of frontend (debian etch) that read the contents of
+> the exported NFS share called /WEB-2 (under drbd ) and publish it via apache.
+> 
+> Sometimes when i update my working copy on my backend i don't see the changes
+> on all the frontends as follows the output on ls on the frontends.
+> 
+> FE-01:~# ls -alio /WEB-2/sites/http/pilot/frontend/contenuto_lista_nozze.php
+> 17237334 -rw-r----- 0 vapache 3387 2008-05-16 11:10
+> /WEB-2/sites/http/pilot/frontend/contenuto_lista_nozze.php
+> FE-02:~# ls -alio /WEB-2/sites/http/pilot/frontend/contenuto_lista_nozze.php
+> 17237564 -rw-r--r-- 1 vapache 3801 2008-05-23 11:09
+> /WEB-2/sites/http/pilot/frontend/contenuto_lista_nozze.php
+> 
+> 
+> If i remount the /WEB-1 share on the frontend the changes are seen and updated
+> correctly on all frontends but it's clear that this behaviour is not accetable
+> when writing codes that needs to be updated directly on production.
 
-Thanks to Bruce and Andrew for pointing this out. I will compile-test both
-32b and 64b platforms in the future.
+	it's the client-side caching.  i used to run into essentially the 
+same thing when developing on a git repository that's exported over NFSv4, 
+then mounting and building on the clients (with lndir or make O=) -- i'll 
+quick fix a little bug and try to recompile, but the clients don't notice 
+the change until their caches expire or they're forced to invalidate them 
+(say, touch the changed file, but that's lame).
 
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |    3 ++-
- net/sunrpc/xprtrdma/svc_rdma_sendto.c   |    4 ++--
- 2 files changed, 4 insertions(+), 3 deletions(-)
+	you can experiment with mount options like 'noac' or 'actimeo' 
+(see the nfs(5) manpage); they'll impact performance somewhat, but maybe 
+in your situation it won't be a problem.
 
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-index 4da0d1d..dbab252 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-@@ -231,7 +231,8 @@ static void rdma_set_ctxt_sge(struct svcxprt_rdma *xprt,
- 		atomic_inc(&xprt->sc_dma_used);
- 		ctxt->sge[i].addr = (unsigned long)
- 			ib_dma_map_single(xprt->sc_cm_id->device,
--					  (void*)sge[i].addr, sge[i].length,
-+					  (void*)(unsigned long)
-+					  sge[i].addr, sge[i].length,
- 					  DMA_FROM_DEVICE);
- 		ctxt->sge[i].length = sge[i].length;
- 		ctxt->sge[i].lkey = sge[i].lkey;
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-index cdb0732..eeee078 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-@@ -177,7 +177,7 @@ static int send_write(struct svcxprt_rdma *xprt, struct svc_rqst *rqstp,
- 		atomic_inc(&xprt->sc_dma_used);
- 		sge[sge_no].addr =
- 			ib_dma_map_single(xprt->sc_cm_id->device,
--					  (void *)
-+					  (void *)(unsigned long)
- 					  xdr_sge[xdr_sge_no].addr + sge_off,
- 					  sge_bytes, DMA_TO_DEVICE);
- 		if (dma_mapping_error(sge[sge_no].addr))
-@@ -416,7 +416,7 @@ static int send_reply(struct svcxprt_rdma *rdma,
- 		atomic_inc(&rdma->sc_dma_used);
- 		ctxt->sge[sge_no].addr =
- 			ib_dma_map_single(rdma->sc_cm_id->device,
--					  (void *)
-+					  (void *)(unsigned long)
- 					  ctxt->sge[sge_no].addr,
- 					  sge_bytes, DMA_TO_DEVICE);
- 	}
+	good luck,
 
+	d
+	.
+
+> 
+> The exportfs flag options on the exported fs on the Backend are as follows
+> 
+> rw,all_squash,anonuid=4001,anongid=555,no_subtree_check,sync.
+> 
+> Someone could address me in any troubleshooting steps on this issue?
+> 
+> Best Regards,
+> 
+> Simone Carbonara
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
