@@ -1,79 +1,43 @@
-From: "Ajay Gupta (akgupta)" <akgupta-FYB4Gu1CFyUAvxtiuMwx3w@public.gmane.org>
-Subject: Re: [NFS] Error ESTALE require Linux NFS client to reboot?
-Date: Fri, 23 May 2008 09:53:16 -0400
-Message-ID: <C71BB463D9B1EF4E8F55E0737EF558B504D30ADB@xmb-rtp-209.amer.cisco.com>
-References: <C71BB463D9B1EF4E8F55E0737EF558B504D30ABC@xmb-rtp-209.amer.cisco.com>
-	<4836CB16.6040909@redhat.com>
+From: "Alexander Borghgraef" <alexander.borghgraef.rma@gmail.com>
+Subject: Re: Nfs filesystem corruption(?) after kmail crash
+Date: Fri, 23 May 2008 16:44:11 +0200
+Message-ID: <9e8c52a20805230744m2f7488e5q2867674f2987444@mail.gmail.com>
+References: <9e8c52a20805140532w2bcfeff3n896fa5a9b0e82b5@mail.gmail.com>
+	 <20080519144806.GB7622@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: "Peter Staubach" <staubach@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:40461 "EHLO neil.brown.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753151AbYEWNxu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 23 May 2008 09:53:50 -0400
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1JzXiO-0000Ww-0U
-	for linux-nfs@vger.kernel.org; Fri, 23 May 2008 23:53:48 +1000
-In-Reply-To: <4836CB16.6040909@redhat.com>
+Received: from nf-out-0910.google.com ([64.233.182.186]:12031 "EHLO
+	nf-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752360AbYEWOoP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 May 2008 10:44:15 -0400
+Received: by nf-out-0910.google.com with SMTP id d3so310891nfc.21
+        for <linux-nfs@vger.kernel.org>; Fri, 23 May 2008 07:44:11 -0700 (PDT)
+In-Reply-To: <20080519144806.GB7622@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks Peter!!
+On Mon, May 19, 2008 at 4:48 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
 
-Sorry typo... I meant Linux kernel version 2.6.12. 
+> Out of curiosity--what's the filesystem on the server?  (I just wonder
+> if this could be due to poor time resolution, so if e.g. switching from
+> ext3 to xfs would work around the problem.)
 
-Is there any pointer where I can get more info about recovering from
-ESTALE error at client?
+ Is ext3 known for time resolution issues? Switching to a different fs
+could prove problematic, but I could always ask the sysadmin to move
+my home dir to my client machine, there should be enough space so that
+would rule out any synchronization problems.
 
-Regards,
-Ajay
+ The main thing here is that I'd like to understand why this is
+happening? What does it mean when ls returns something like:
 
------Original Message-----
-From: Peter Staubach [mailto:staubach@redhat.com] 
-Sent: Friday, May 23, 2008 9:48 AM
-To: Ajay Gupta (akgupta)
-Cc: nfs@lists.sourceforge.net
-Subject: Re: [NFS] Error ESTALE require Linux NFS client to reboot?
+d????????? ? ?        ?          ?                ? cur
 
-Ajay Gupta (akgupta) wrote:
-> Hi,
->  
-> I have few questions regarding ESTALE error which Linux NFS client 
-> reports to application - is there any scenario where this will require
+Why is this triggered by an app like kmail? Why does the problem
+disappear when I cd into the oddly behaving directory, but not when
+kmail checks its availability? Why doesn't this always work? Things
+like that.
 
-> a NFS client reboot ? Does Linux kernel version 2.6.Le or after can 
-> fully recover from ESTALE error and not require client to reboot? What
-
-> application should do if encountered ESTALE error to gracefully
-recover ?
->
-
-Most of this depends upon where the ESTALE error was encountered in the
-file system and what the application was doing with that object.  It
-also depends upon what semantics are desired for "recovering".
-
-In general though, a client reboot is not required.  Finding a way to
-umount and mount again or to close and reopen the file will lead to
-things clearing up.
-
-By the way, which Linux kernel version is 2.6.Le?
-
-    Thanx...
-
-       ps
-
--------------------------------------------------------------------------
-This SF.net email is sponsored by: Microsoft
-Defy all challenges. Microsoft(R) Visual Studio 2008.
-http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
-
+-- 
+Alex Borghgraef
