@@ -1,37 +1,51 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] svcrdma: Fix compile warning on 32b platforms
-Date: Sun, 25 May 2008 15:01:12 -0400
-Message-ID: <20080525190112.GC8094@fieldses.org>
-References: <1211557193.4114.21.camel@trinity.ogc.int>
+Subject: Re: [PATCH] svcrdma: Add flush_scheduled_work to module exit
+	function
+Date: Sun, 25 May 2008 15:01:37 -0400
+Message-ID: <20080525190137.GD8094@fieldses.org>
+References: <1211556685.4114.14.camel@trinity.ogc.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Andrew Morton <akpm@linux-foundation.org>,
 	linux-nfs <linux-nfs@vger.kernel.org>
 To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:50506 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:50509 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757930AbYEYTBP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 25 May 2008 15:01:15 -0400
-In-Reply-To: <1211557193.4114.21.camel-SMNkleLxa3ZimH42XvhXlA@public.gmane.org>
+	id S1757102AbYEYTBi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 25 May 2008 15:01:38 -0400
+In-Reply-To: <1211556685.4114.14.camel-SMNkleLxa3ZimH42XvhXlA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, May 23, 2008 at 10:39:53AM -0500, Tom Tucker wrote:
-> The ib_sge is used to store both dma_addr_t and virtual addresses.
-> This causes a warning on 32b platforms when casting ptrs to the
-> u64 addr field of the ib_sge. There is work underway to reduce the
-> memory footprint of the WR context in 2.6.27 the time frame that will
-> remove the overloading of the ib_sge.addr field.
+On Fri, May 23, 2008 at 10:31:25AM -0500, Tom Tucker wrote:
+>     
+> Make certain all transports pending free are flushed from the wq
+> before unloading the module.
 
-Naively, this and "svcrdma: Refactor RDMA_WRITE dma mapping logic" still
-look like a step in the wrong direction; the old code seemed to have a
-much more clear separation between kernel addresses (void *'s) and
-on-the-wire addresses (stored in u64's).  Stuff like:
-
-> +					  (void*)(unsigned long)
-> +					  sge[i].addr, sge[i].length,
-
-makes me nervous.
+OK, makes sense.
 
 --b.
+
+>     
+>     Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+> ---
+> 
+> Thanks to Andrew for pointing this out.
+> 
+>  net/sunrpc/xprtrdma/svc_rdma.c |    1 +
+>  1 files changed, 1 insertions(+), 0 deletions(-)
+> 
+> diff --git a/net/sunrpc/xprtrdma/svc_rdma.c b/net/sunrpc/xprtrdma/svc_rdma.c
+> index 88c0ca2..b370e5c 100644
+> --- a/net/sunrpc/xprtrdma/svc_rdma.c
+> +++ b/net/sunrpc/xprtrdma/svc_rdma.c
+> @@ -236,6 +236,7 @@ static ctl_table svcrdma_root_table[] = {
+>  void svc_rdma_cleanup(void)
+>  {
+>  	dprintk("SVCRDMA Module Removed, deregister RPC RDMA transport\n");
+> +	flush_scheduled_work();
+>  	if (svcrdma_table_header) {
+>  		unregister_sysctl_table(svcrdma_table_header);
+>  		svcrdma_table_header = NULL;
+> 
