@@ -1,54 +1,53 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] svcrdma: Initialize the context free list for listeners
-Date: Sun, 25 May 2008 15:03:57 -0400
-Message-ID: <20080525190357.GE8094@fieldses.org>
-References: <1211556779.4114.17.camel@trinity.ogc.int>
+Subject: Re: [PATCH 02/05] svcrdma: Refactor RDMA_WRITE dma mapping logic
+Date: Sun, 25 May 2008 15:05:36 -0400
+Message-ID: <20080525190536.GF8094@fieldses.org>
+References: <12111560011694-git-send-email-tom@opengridcomputing.com> <12111560022506-git-send-email-tom@opengridcomputing.com> <1211156002624-git-send-email-tom@opengridcomputing.com> <20080521004608.GL8177@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
+Cc: linux-nfs@vger.kernel.org
 To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:33391 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:33396 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757388AbYEYTD6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 25 May 2008 15:03:58 -0400
-In-Reply-To: <1211556779.4114.17.camel-SMNkleLxa3ZimH42XvhXlA@public.gmane.org>
+	id S1757482AbYEYTFh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 25 May 2008 15:05:37 -0400
+In-Reply-To: <20080521004608.GL8177@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, May 23, 2008 at 10:32:59AM -0500, Tom Tucker wrote:
-> Move the initialization of the sc_ctxt_free list to the
-> client/listener generic bit of the init logic. This is
-> necessary to avoid a bug check when shutting down a listening
-> endpoint when list debug is enabled. This bug was introduced
-> when the context cache was converted to use Linux lists.
+I'm also still curious about this:
 
-OK.--b.
-
+On Tue, May 20, 2008 at 08:46:08PM -0400, bfields wrote:
+> On Sun, May 18, 2008 at 07:13:18PM -0500, Tom Tucker wrote:
+> > @@ -181,14 +170,20 @@ static int send_write(struct svcxprt_rdma *xprt, struct svc_rqst *rqstp,
+> >  
+> >  	/* Copy the remaining SGE */
+> >  	while (bc != 0 && xdr_sge_no < sge_count) {
+> > -		sge[sge_no].addr = xdr_sge[xdr_sge_no].addr + sge_off;
+> >  		sge[sge_no].lkey = xdr_sge[xdr_sge_no].lkey;
+> >  		sge_bytes = min((size_t)bc,
+> >  				(size_t)(xdr_sge[xdr_sge_no].length-sge_off));
+> >  		sge[sge_no].length = sge_bytes;
+> > -
+> > +		sge[sge_no].addr =
+> > +			ib_dma_map_single(xprt->sc_cm_id->device,
+> > +					  (void *)
+> > +					  xdr_sge[xdr_sge_no].addr + sge_off,
+> > +					  sge_bytes, DMA_TO_DEVICE);
+> > +		if (dma_mapping_error(sge[sge_no].addr))
+> > +			return -EINVAL;
 > 
-> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
-> ---
->  net/sunrpc/xprtrdma/svc_rdma_transport.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
+> And then here we're casting the u64 back to a void *.  Also, we're
+> adding sge_off to the input, instead of to the result.  Is it true that
+> that
 > 
-> diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-> index 54b2126..2c2f5f6 100644
-> --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-> +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-> @@ -446,7 +446,6 @@ static void create_context_cache(struct svcxprt_rdma *xprt,
->  	xprt->sc_ctxt_cnt = 0;
->  	atomic_set(&xprt->sc_ctxt_used, 0);
->  
-> -	INIT_LIST_HEAD(&xprt->sc_ctxt_free);
->  	for (i = 0; i < ctxt_count; i++) {
->  		ctxt = kmalloc(sizeof(*ctxt), GFP_KERNEL);
->  		if (ctxt) {
-> @@ -496,6 +495,7 @@ static struct svcxprt_rdma *rdma_create_xprt(struct svc_serv *serv,
->  	atomic_set(&cma_xprt->sc_sq_count, 0);
->  	atomic_set(&cma_xprt->sc_ctxt_used, 0);
->  
-> +	INIT_LIST_HEAD(&cma_xprt->sc_ctxt_free);
->  	if (!listener) {
->  		int reqs = cma_xprt->sc_max_requests;
->  		create_context_cache(cma_xprt,
+> 	ib_dma_map_single(., x + sge_off, ., .)
 > 
+> and
+> 
+> 	ib_dma_map_single(., x, ., .) + sge_off
+> 
+> always have the same result?
+> 
+> --b.
