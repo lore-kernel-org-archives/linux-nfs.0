@@ -1,41 +1,44 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] svcrdma: Fix compile warning on 32b platforms
-Date: Sun, 25 May 2008 16:21:43 -0400
-Message-ID: <20080525202143.GA11997@fieldses.org>
-References: <1211557193.4114.21.camel@trinity.ogc.int> <20080525190112.GC8094@fieldses.org>
+From: "Alexander Borghgraef" <alexander.borghgraef.rma@gmail.com>
+Subject: Re: Nfs filesystem corruption(?) after kmail crash
+Date: Mon, 26 May 2008 10:44:07 +0200
+Message-ID: <9e8c52a20805260144u34f81996oa27475cc4c2e72d2@mail.gmail.com>
+References: <9e8c52a20805140532w2bcfeff3n896fa5a9b0e82b5@mail.gmail.com>
+	 <20080519144806.GB7622@fieldses.org>
+	 <9e8c52a20805230744m2f7488e5q2867674f2987444@mail.gmail.com>
+	 <RTPCLUEXC1-PRDRXf2L00000168@RTPMVEXC1-PRD.hq.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	linux-nfs <linux-nfs@vger.kernel.org>
-To: Tom Tucker <tom@opengridcomputing.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org
+To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:57252 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756292AbYEYUVq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 25 May 2008 16:21:46 -0400
-In-Reply-To: <20080525190112.GC8094@fieldses.org>
+Received: from nf-out-0910.google.com ([64.233.182.186]:11222 "EHLO
+	nf-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753572AbYEZIoJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 May 2008 04:44:09 -0400
+Received: by nf-out-0910.google.com with SMTP id d3so854478nfc.21
+        for <linux-nfs@vger.kernel.org>; Mon, 26 May 2008 01:44:07 -0700 (PDT)
+In-Reply-To: <RTPCLUEXC1-PRDRXf2L00000168-rtwIt2gI0FxT+ZUat5FNkAK/GNPrWCqfQQ4Iyu8u01E@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, May 25, 2008 at 03:01:12PM -0400, bfields wrote:
-> On Fri, May 23, 2008 at 10:39:53AM -0500, Tom Tucker wrote:
-> > The ib_sge is used to store both dma_addr_t and virtual addresses.
-> > This causes a warning on 32b platforms when casting ptrs to the
-> > u64 addr field of the ib_sge. There is work underway to reduce the
-> > memory footprint of the WR context in 2.6.27 the time frame that will
-> > remove the overloading of the ib_sge.addr field.
-> 
-> Naively, this and "svcrdma: Refactor RDMA_WRITE dma mapping logic" still
-> look like a step in the wrong direction; the old code seemed to have a
-> much more clear separation between kernel addresses (void *'s) and
-> on-the-wire addresses (stored in u64's).  Stuff like:
-> 
-> > +					  (void*)(unsigned long)
-> > +					  sge[i].addr, sge[i].length,
-> 
-> makes me nervous.
+On Fri, May 23, 2008 at 9:08 PM, Talpey, Thomas
+<Thomas.Talpey@netapp.com> wrote:
+>> The main thing here is that I'd like to understand why this is
+>>happening? What does it mean when ls returns something like:
+>>
+>>d????????? ? ?        ?          ?                ? cur
+>
+> This is something very different. (I'm assuming this "ls" was done on the
+> NFS mount and not the server itself.)
 
-That aside, are those two patches really bugfixes?  We need to keep
-bugfixes (for 2.6.26) separate from other stuff (for 2.6.27).
+Yes, ls on the NFS mount on the client.
 
---b.
+> Usually, this happens because there
+> are no attributes available locally - ls seems to know only the filetype
+> (directory) and filename (cur). What client kernel version are you running?
+
+Client kernel: 2.6.24.4-64.fc8
+Server kernel: 2.6.9-1.667
+
+-- 
+Alex Borghgraef
