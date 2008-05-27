@@ -1,110 +1,100 @@
-From: Timo Sirainen <tss@iki.fi>
-Subject: Re: inode caching
-Date: Tue, 27 May 2008 18:40:48 +0300
-Message-ID: <1211902848.3904.279.camel@hurina>
-References: <1211835499.3904.231.camel@hurina>  <483C031B.80601@redhat.com>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-bRIdSC78VbuFmt4KCbmH"
-Cc: linux-nfs@vger.kernel.org
-To: Peter Staubach <staubach@redhat.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: lost interrupt after a signal?
+Date: Tue, 27 May 2008 11:59:00 -0400
+Message-ID: <D56CE258-FB78-4449-A1D8-376BB3D93387@oracle.com>
+References: <2A43EAAA-8AEC-4EA1-AAA6-1AE1C750DB4C@oracle.com> <20080523035004.GY2638@parisc-linux.org>
+Mime-Version: 1.0 (Apple Message framework v919.2)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+	Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: Matthew Wilcox <matthew@wil.cx>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from dovecot.org ([82.118.211.50]:41024 "EHLO dovecot.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757604AbYE0Pky (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 27 May 2008 11:40:54 -0400
-In-Reply-To: <483C031B.80601@redhat.com>
+Received: from rgminet01.oracle.com ([148.87.113.118]:60603 "EHLO
+	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756440AbYE0P7w (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 27 May 2008 11:59:52 -0400
+In-Reply-To: <20080523035004.GY2638-6jwH94ZQLHl74goWV3ctuw@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On May 22, 2008, at 11:50 PM, Matthew Wilcox wrote:
+> On Thu, May 22, 2008 at 10:57:35AM -0400, Chuck Lever wrote:
+>> We've been running some tests to understand how the 2.6.25 "intr/
+>> nointr" behavior affects signal handling during I/O on NFS mounts.
+>
+> I believe intr is now a no-op ... we still recognise the option, but  
+> it
+> does nothing.
 
---=-bRIdSC78VbuFmt4KCbmH
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+Understood...
 
-On Tue, 2008-05-27 at 08:48 -0400, Peter Staubach wrote:
-> Timo Sirainen wrote:
-> > NFS server: Linux 2.6.25
-> > NFS client: Linux debian 2.6.25-2 (or 2.6.23.1)
-> >
-> > If I do:
-> >
-> > NFS client: fd1 =3D creat("foo"); write(fd1, "xx", 2); fsync(fd1);
-> > NFS server: unlink("foo"); creat("foo");
-> > NFS client: fd2 =3D open("foo"); fstat(fd1, &st1); fstat(fd2, &st2);
-> > fstat(fd1, &st3);
-> >
-> > The result is usually that the fstat(fd1) fails with ESTALE. But
-> > sometimes the result is st1.st_ino =3D=3D st2.st_ino =3D=3D st3.st_ino =
-and
-> > st1.st_size =3D=3D 2 but st2.st_size =3D=3D 0. So I see two different f=
-iles
-> > using the same inode number. I'd really want to avoid seeing that
-> > condition.
-> >
-> >  =20
->=20
-> This is really up the file system on the server. It is the one
-> that selects the inode number when creating a new file.
+>> While running an Oracle database workload, we signal the database
+>> (this is a normal way administrative tools control database
+>> activity).  Subsequently all of the I/O threads block on the inode
+>> mutex in nfs_invalidate_mapping() except this one:
+>>
+>> INFO: task oracle:27214 blocked for more than 120 seconds.
+>> "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this
+>> message.
+>> oracle        D f6d85e84  1592 27214      1
+>>       c93d2920 00200086 00000001 f6d85e84 c04a0080 c04a0080 c04a0080
+>> c93d2b84
+>>       c93d2b84 c4021f80 00000001 cc072000 f341c900 f6d85e7c 10a1a042
+>> f6d85e7c
+>>       cc072ddc c4021f80 03b7e000 cc072ddc c40082b4 c036e21c cc072dd4
+>> 00000001
+>> Call Trace:
+>> [<c036e21c>] io_schedule+0x4c/0x90
+>> [<c015f63c>] sync_page+0x2c/0x40
+>> [<c036e3e5>] __wait_on_bit_lock+0x45/0x70
+>> [<c015f610>] sync_page+0x0/0x40
+>> [<c015f5f3>] __lock_page+0x73/0x80
+>> [<c013cad0>] wake_bit_function+0x0/0x80
+>> [<c0167f98>] invalidate_inode_pages2_range+0xb8/0x200
+>> [<f905d1a8>] nfs_writepages+0x68/0x90 [nfs]
+> [...]
+>
+> This isn't jumping out screaming that it's my fault (obviously it
+> probably is, but ...).  invalidate_inode_pages2_range calls  
+> lock_page()
+> ... which uses TASK_UNINTERRUPTIBLE.  If it were calling
+> lock_page_killable(), I'd understand.
 
-I don't mind that the inode gets reused, I mind that I can't reliably
-detect that situation.
+I don't think it's directly caused by your changes, but my concern is  
+that you may have exposed a latent bug, or exposed an underlying  
+design assumption in the NFS/RPC client stack that causes the hang in  
+this situation.
 
-> > So what I'd want to know is:
-> >
-> > a) Why does this happen only sometimes? I can't really figure out from
-> > the code what invalidates the fd1 inode. Apparently the second open()
-> > somehow, but since it uses the new "foo" file with a different struct
-> > inode, where does the old struct inode get invalidated?
-> >
-> >  =20
->=20
-> This will happen always, but you may see occasional successful
-> fstat() calls on the client due to attribute caching and/or
-> dentry caching.
+> Maybe this isn't the problem task though.  Maybe this is just the
+> canary that dropped dead, and we should stop trying to autopsy it and
+> start running.  [ok, I'll stop with the bad analogies now]
 
-I would understand if it always failed or always succeeded, but it seems
-to be somewhat random now. And it's not "occational successful fstat()",
-but it's "occational failed fstat()". The difference shouldn't be
-because of attribute caching, because I specify it explicitly to two
-seconds and run the test within that 2 second. So the test should always
-hit the attribute cache, and according to you that should always cause
-it to succeed (but it rarely does). I think dentry caching also more or
-less depends on attribute cache timeout?
+This appears to be the only task that is in this state.  All the  
+others in the dump are waiting for this inode's mutex.  I don't know  
+if the dump is complete, though.
 
-> > b) Can this be fixed? Or is it just luck that it works as well as it
-> > does now?
-> >
-> >  =20
->=20
-> This can be fixed, somewhat. I have some changes to address the
-> ESTALE situation in system calls that take filename as arguments,
-> but I need to work with some more people to get them included.
-> The system calls which do not take file names as arguments can not
-> be recovered from because the file they are referring is really
-> gone or at least not accessible anymore.
->=20
-> The reuse of the inode number is just a fact of life and that way
-> that file systems work. I would suggest rethinking your application
-> in order to reduce or eliminate any dependence that it might have.
+> It might be informative to do something like:
+>
+> int __fatal_signal_pending(struct task_struct *tsk)
+> {
+> -	return sigismember(&tsk->pending.signal, SIGKILL);
+> +	if (sigismember(&tsk->pending.signal, SIGKILL)) {
+> +		dump_stack();
+> +		return 1;
+> +	}
+> +	return 0;
+> }
+>
+>> I haven't looked too closely at this, but maybe the signal caused a
+>> lost I/O interrupt?
+>
+> I wonder if the signal caused something bad to happen to the page that
+> we're trying to sync?  Maybe dumping the page struct would give us  
+> some
+> useful information?
 
-The problem I have is that I need to reliably find out if a file has
-been replaced with a new file. So I first flush the dentry cache
-(chowning parent directory), stat() the file and fstat() the opened
-file. If fstat() fails with ESTALE or if the inodes don't match, I know
-that the file has been replaced and I need to re-open and re-read it.
-This seems to work nearly always.
+I've passed your suggestions along to our testers.
 
---=-bRIdSC78VbuFmt4KCbmH
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Description: This is a digitally signed message part
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.6 (GNU/Linux)
-
-iD8DBQBIPCuAyUhSUUBViskRAqmQAJ4xMsVaYZhrYP42tHfeHhQ2/+SPcwCdEtvF
-CKzdlRX0Qr1BtFc2fg3uY9s=
-=pfDx
------END PGP SIGNATURE-----
-
---=-bRIdSC78VbuFmt4KCbmH--
-
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
