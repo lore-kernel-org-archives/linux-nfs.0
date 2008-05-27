@@ -1,53 +1,122 @@
-From: Matthew Wilcox <matthew@wil.cx>
-Subject: Re: lost interrupt after a signal?
-Date: Tue, 27 May 2008 11:35:31 -0600
-Message-ID: <20080527173530.GM30894@parisc-linux.org>
-References: <2A43EAAA-8AEC-4EA1-AAA6-1AE1C750DB4C@oracle.com> <20080523035004.GY2638@parisc-linux.org> <D56CE258-FB78-4449-A1D8-376BB3D93387@oracle.com>
+From: Peter Staubach <staubach@redhat.com>
+Subject: Re: inode caching
+Date: Tue, 27 May 2008 14:09:37 -0400
+Message-ID: <483C4E61.7020102@redhat.com>
+References: <1211835499.3904.231.camel@hurina>  <483C031B.80601@redhat.com> <1211902848.3904.279.camel@hurina>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-	Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: linux-nfs@vger.kernel.org
+To: Timo Sirainen <tss@iki.fi>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from palinux.external.hp.com ([192.25.206.14]:36284 "EHLO
-	mail.parisc-linux.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756693AbYE0Rfr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 27 May 2008 13:35:47 -0400
-In-Reply-To: <D56CE258-FB78-4449-A1D8-376BB3D93387@oracle.com>
+Received: from mx1.redhat.com ([66.187.233.31]:50931 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756031AbYE0SJo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 27 May 2008 14:09:44 -0400
+In-Reply-To: <1211902848.3904.279.camel@hurina>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, May 27, 2008 at 11:59:00AM -0400, Chuck Lever wrote:
-> >This isn't jumping out screaming that it's my fault (obviously it
-> >probably is, but ...).  invalidate_inode_pages2_range calls  
-> >lock_page()
-> >... which uses TASK_UNINTERRUPTIBLE.  If it were calling
-> >lock_page_killable(), I'd understand.
-> 
-> I don't think it's directly caused by your changes, but my concern is  
-> that you may have exposed a latent bug, or exposed an underlying  
-> design assumption in the NFS/RPC client stack that causes the hang in  
-> this situation.
+Timo Sirainen wrote:
+> On Tue, 2008-05-27 at 08:48 -0400, Peter Staubach wrote:
+>   
+>> Timo Sirainen wrote:
+>>     
+>>> NFS server: Linux 2.6.25
+>>> NFS client: Linux debian 2.6.25-2 (or 2.6.23.1)
+>>>
+>>> If I do:
+>>>
+>>> NFS client: fd1 = creat("foo"); write(fd1, "xx", 2); fsync(fd1);
+>>> NFS server: unlink("foo"); creat("foo");
+>>> NFS client: fd2 = open("foo"); fstat(fd1, &st1); fstat(fd2, &st2);
+>>> fstat(fd1, &st3);
+>>>
+>>> The result is usually that the fstat(fd1) fails with ESTALE. But
+>>> sometimes the result is st1.st_ino == st2.st_ino == st3.st_ino and
+>>> st1.st_size == 2 but st2.st_size == 0. So I see two different files
+>>> using the same inode number. I'd really want to avoid seeing that
+>>> condition.
+>>>
+>>>   
+>>>       
+>> This is really up the file system on the server. It is the one
+>> that selects the inode number when creating a new file.
+>>     
+>
+> I don't mind that the inode gets reused, I mind that I can't reliably
+> detect that situation.
+>
+>   
 
-Certainly possible.
+Outside of shortening up the attribute cache timeout values,
+with the current implementation, I don't think that you are
+going to be able to reliably detect when the file on the server
+has been removed and recreated.
 
-> >Maybe this isn't the problem task though.  Maybe this is just the
-> >canary that dropped dead, and we should stop trying to autopsy it and
-> >start running.  [ok, I'll stop with the bad analogies now]
-> 
-> This appears to be the only task that is in this state.  All the  
-> others in the dump are waiting for this inode's mutex.  I don't know  
-> if the dump is complete, though.
+>>> So what I'd want to know is:
+>>>
+>>> a) Why does this happen only sometimes? I can't really figure out from
+>>> the code what invalidates the fd1 inode. Apparently the second open()
+>>> somehow, but since it uses the new "foo" file with a different struct
+>>> inode, where does the old struct inode get invalidated?
+>>>
+>>>   
+>>>       
+>> This will happen always, but you may see occasional successful
+>> fstat() calls on the client due to attribute caching and/or
+>> dentry caching.
+>>     
+>
+> I would understand if it always failed or always succeeded, but it seems
+> to be somewhat random now. And it's not "occational successful fstat()",
+> but it's "occational failed fstat()". The difference shouldn't be
+> because of attribute caching, because I specify it explicitly to two
+> seconds and run the test within that 2 second. So the test should always
+> hit the attribute cache, and according to you that should always cause
+> it to succeed (but it rarely does). I think dentry caching also more or
+> less depends on attribute cache timeout?
+>
+>   
 
-My thought is that the task which caused the problem has gone away and
-left this page in a state where sync_page will never finish.
+How did you specify the attribute cache to be 2 seconds?
 
-> I've passed your suggestions along to our testers.
+The dentry based caching is also subject to timeout based
+verification, but typically on much longer time scales.
 
-Thanks!  I'm keen to get this fixed.
 
--- 
-Intel are signing my paycheques ... these opinions are still mine
-"Bill, look, we understand that you're interested in selling us this
-operating system, but compare it to ours.  We can't possibly take such
-a retrograde step."
+>>> b) Can this be fixed? Or is it just luck that it works as well as it
+>>> does now?
+>>>
+>>>   
+>>>       
+>> This can be fixed, somewhat. I have some changes to address the
+>> ESTALE situation in system calls that take filename as arguments,
+>> but I need to work with some more people to get them included.
+>> The system calls which do not take file names as arguments can not
+>> be recovered from because the file they are referring is really
+>> gone or at least not accessible anymore.
+>>
+>> The reuse of the inode number is just a fact of life and that way
+>> that file systems work. I would suggest rethinking your application
+>> in order to reduce or eliminate any dependence that it might have.
+>>     
+>
+> The problem I have is that I need to reliably find out if a file has
+> been replaced with a new file. So I first flush the dentry cache
+> (chowning parent directory), stat() the file and fstat() the opened
+> file. If fstat() fails with ESTALE or if the inodes don't match, I know
+> that the file has been replaced and I need to re-open and re-read it.
+> This seems to work nearly always.
+>   
+
+This would seem to be quite implementation specific and also has
+some timing dependencies built-in.  These would seem to me to be
+dangerous assumptions and heuristics to be depending upon.
+
+Have you considered making the contents of the file itself versioned
+in some fashion and thus, removing dependencies on how the NFS client
+works and/or the file system on the NFS server?
+
+    Thanx...
+
+       ps
