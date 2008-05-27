@@ -1,115 +1,103 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 4/7] NFS: Add debugging facility for NFS aops
-Date: Tue, 27 May 2008 16:29:29 -0400
-Message-ID: <20080527202929.6651.32893.stgit@ellison.1015granger.net>
+Subject: [PATCH 6/7] NFS: Fix trace debugging nits in write.c
+Date: Tue, 27 May 2008 16:29:44 -0400
+Message-ID: <20080527202944.6651.59747.stgit@ellison.1015granger.net>
 References: <20080527202347.6651.54668.stgit@ellison.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: trond.myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:32508 "EHLO
+Received: from agminet01.oracle.com ([141.146.126.228]:32607 "EHLO
 	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757990AbYE0UaB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 27 May 2008 16:30:01 -0400
+	with ESMTP id S1758006AbYE0UaH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 27 May 2008 16:30:07 -0400
 In-Reply-To: <20080527202347.6651.54668.stgit-ewv44WTpT0t9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Recent work in fs/nfs/file.c neglected to add appropriate trace debugging
-for the NFS client's address space operations.
+Clean up: fix a few dprintk messages that still need to show the RPC task ID
+correctly, and be sure we use the preferred %lld or %llu instead of %Ld or
+%Lu.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfs/file.c |   29 ++++++++++++++++++++++++++++-
- 1 files changed, 28 insertions(+), 1 deletions(-)
+ fs/nfs/write.c |   18 ++++++++++--------
+ 1 files changed, 10 insertions(+), 8 deletions(-)
 
 
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index c3e7af0..c872ce4 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -333,11 +333,17 @@ static int nfs_write_begin(struct file *file, struct address_space *mapping,
- 			loff_t pos, unsigned len, unsigned flags,
- 			struct page **pagep, void **fsdata)
- {
-+	struct dentry *dentry = file->f_path.dentry;
-+	struct inode *inode = mapping->host;
- 	int ret;
- 	pgoff_t index;
- 	struct page *page;
- 	index = pos >> PAGE_CACHE_SHIFT;
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 6d8ace3..c03a039 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -721,10 +721,10 @@ int nfs_updatepage(struct file *file, struct page *page,
  
-+	dfprintk(PAGECACHE, "NFS: write_begin(%s/%s(%ld), %u@%lld)\n",
-+		dentry->d_parent->d_name.name, dentry->d_name.name,
-+		inode->i_ino, len, (long long) pos);
-+
- 	page = __grab_cache_page(mapping, index);
- 	if (!page)
- 		return -ENOMEM;
-@@ -355,9 +361,15 @@ static int nfs_write_end(struct file *file, struct address_space *mapping,
- 			loff_t pos, unsigned len, unsigned copied,
- 			struct page *page, void *fsdata)
- {
-+	struct dentry *dentry = file->f_path.dentry;
-+	struct inode *inode = mapping->host;
- 	unsigned offset = pos & (PAGE_CACHE_SIZE - 1);
- 	int status;
+ 	nfs_inc_stats(inode, NFSIOS_VFSUPDATEPAGE);
  
-+	dfprintk(PAGECACHE, "NFS: write_end(%s/%s(%ld), %u@%lld)\n",
-+		dentry->d_parent->d_name.name, dentry->d_name.name,
-+		inode->i_ino, len, (long long) pos);
-+
- 	lock_kernel();
- 	status = nfs_updatepage(file, page, offset, copied);
- 	unlock_kernel();
-@@ -372,6 +384,8 @@ static int nfs_write_end(struct file *file, struct address_space *mapping,
+-	dprintk("NFS:      nfs_updatepage(%s/%s %d@%Ld)\n",
++	dprintk("NFS:       nfs_updatepage(%s/%s %d@%lld)\n",
+ 		file->f_path.dentry->d_parent->d_name.name,
+ 		file->f_path.dentry->d_name.name, count,
+-		(long long)(page_offset(page) +offset));
++		(long long)(page_offset(page) + offset));
  
- static void nfs_invalidate_page(struct page *page, unsigned long offset)
- {
-+	dfprintk(PAGECACHE, "NFS: invalidate_page(%p, %lu)\n", page, offset);
-+
- 	if (offset != 0)
- 		return;
- 	/* Cancel any unstarted writes on this page */
-@@ -380,13 +394,20 @@ static void nfs_invalidate_page(struct page *page, unsigned long offset)
+ 	/* If we're not using byte range locks, and we know the page
+ 	 * is up to date, it may be more efficient to extend the write
+@@ -741,7 +741,7 @@ int nfs_updatepage(struct file *file, struct page *page,
+ 	status = nfs_writepage_setup(ctx, page, offset, count);
+ 	__set_page_dirty_nobuffers(page);
  
- static int nfs_release_page(struct page *page, gfp_t gfp)
- {
-+	dfprintk(PAGECACHE, "NFS: release_page(%p)\n", page);
-+
- 	/* If PagePrivate() is set, then the page is not freeable */
- 	return 0;
- }
+-        dprintk("NFS:      nfs_updatepage returns %d (isize %Ld)\n",
++	dprintk("NFS:       nfs_updatepage returns %d (isize %lld)\n",
+ 			status, (long long)i_size_read(inode));
+ 	if (status < 0)
+ 		nfs_set_pageerror(page);
+@@ -833,7 +833,7 @@ static int nfs_write_rpcsetup(struct nfs_page *req,
+ 	NFS_PROTO(inode)->write_setup(data, &msg);
  
- static int nfs_launder_page(struct page *page)
- {
--	return nfs_wb_page(page->mapping->host, page);
-+	struct inode *inode = page->mapping->host;
-+
-+	dfprintk(PAGECACHE, "NFS: launder_page(%ld, %llu)\n",
-+		inode->i_ino, (long long)page_offset(page));
-+
-+	return nfs_wb_page(inode, page);
- }
+ 	dprintk("NFS: %5u initiated write call "
+-		"(req %s/%Ld, %u bytes @ offset %Lu)\n",
++		"(req %s/%lld, %u bytes @ offset %llu)\n",
+ 		data->task.tk_pid,
+ 		inode->i_sb->s_id,
+ 		(long long)NFS_FILEID(inode),
+@@ -979,7 +979,8 @@ static void nfs_writeback_done_partial(struct rpc_task *task, void *calldata)
+ 	struct nfs_write_data	*data = calldata;
+ 	struct nfs_page		*req = data->req;
  
- const struct address_space_operations nfs_file_aops = {
-@@ -406,10 +427,16 @@ const struct address_space_operations nfs_file_aops = {
- static int nfs_vm_page_mkwrite(struct vm_area_struct *vma, struct page *page)
- {
- 	struct file *filp = vma->vm_file;
-+	struct dentry *dentry = filp->f_path.dentry;
- 	unsigned pagelen;
- 	int ret = -EINVAL;
- 	struct address_space *mapping;
+-	dprintk("NFS: write (%s/%Ld %d@%Ld)",
++	dprintk("NFS: %5u write(%s/%lld %d@%lld)",
++		task->tk_pid,
+ 		req->wb_context->path.dentry->d_inode->i_sb->s_id,
+ 		(long long)NFS_FILEID(req->wb_context->path.dentry->d_inode),
+ 		req->wb_bytes,
+@@ -1057,7 +1058,8 @@ static void nfs_writeback_release_full(void *calldata)
  
-+	dfprintk(PAGECACHE, "NFS: vm_page_mkwrite(%s/%s(%ld), offset %lld)\n",
-+		dentry->d_parent->d_name.name, dentry->d_name.name,
-+		filp->f_mapping->host->i_ino,
-+		(long long)page_offset(page));
-+
- 	lock_page(page);
- 	mapping = page->mapping;
- 	if (mapping != vma->vm_file->f_path.dentry->d_inode->i_mapping)
+ 		nfs_list_remove_request(req);
+ 
+-		dprintk("NFS: write (%s/%Ld %d@%Ld)",
++		dprintk("NFS: %5u write (%s/%lld %d@%lld)",
++			data->task.tk_pid,
+ 			req->wb_context->path.dentry->d_inode->i_sb->s_id,
+ 			(long long)NFS_FILEID(req->wb_context->path.dentry->d_inode),
+ 			req->wb_bytes,
+@@ -1132,7 +1134,7 @@ int nfs_writeback_done(struct rpc_task *task, struct nfs_write_data *data)
+ 		static unsigned long    complain;
+ 
+ 		if (time_before(complain, jiffies)) {
+-			dprintk("NFS: faulty NFS server %s:"
++			dprintk("NFS:       faulty NFS server %s:"
+ 				" (committed = %d) != (stable = %d)\n",
+ 				NFS_SERVER(data->inode)->nfs_client->cl_hostname,
+ 				resp->verf->committed, argp->stable);
+@@ -1301,7 +1303,7 @@ static void nfs_commit_release(void *calldata)
+ 		dec_bdi_stat(req->wb_page->mapping->backing_dev_info,
+ 				BDI_RECLAIMABLE);
+ 
+-		dprintk("NFS: commit (%s/%Ld %d@%Ld)",
++		dprintk("NFS:       commit (%s/%lld %d@%lld)",
+ 			req->wb_context->path.dentry->d_inode->i_sb->s_id,
+ 			(long long)NFS_FILEID(req->wb_context->path.dentry->d_inode),
+ 			req->wb_bytes,
 
