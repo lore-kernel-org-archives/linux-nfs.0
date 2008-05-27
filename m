@@ -1,57 +1,74 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 7/7] SUNRPC: Remove obsolete messages during transport connect
-Date: Tue, 27 May 2008 16:29:51 -0400
-Message-ID: <20080527202951.6651.69777.stgit@ellison.1015granger.net>
-References: <20080527202347.6651.54668.stgit@ellison.1015granger.net>
+From: Frank Filz <ffilzlnx@us.ibm.com>
+Subject: [NFS] Corrupted stateid
+Date: Tue, 27 May 2008 13:33:45 -0700
+Message-ID: <1211920425.3907.26.camel@dyn9047022153>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: linux-nfs@vger.kernel.org
-To: trond.myklebust@netapp.com
+Content-Type: text/plain; charset="us-ascii"
+To: NFS List <nfs@lists.sourceforge.net>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:35296 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756385AbYE0UgI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 27 May 2008 16:36:08 -0400
-In-Reply-To: <20080527202347.6651.54668.stgit-ewv44WTpT0t9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
+Received: from neil.brown.name ([220.233.11.133]:54597 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755695AbYE0U4p (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 27 May 2008 16:56:45 -0400
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1K16Dp-000631-Lq
+	for linux-nfs@vger.kernel.org; Wed, 28 May 2008 06:56:42 +1000
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Recent changes to the RPC client's transport connect logic make connect
-status values ECONNREFUSED and ECONNRESET impossible.
+I'm helping debug a problem where a Linux client (2.6.18 kernel) is
+talking to an AIX server. We see an issue where Linux is happily using
+the stateid issued by the server (other part only, does not include the
+sequence number):
 
-Clean up xprt_connect_status() to account for these changes.
+47B2DD610000014100128042
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+and then occasionally uses a different stateid:
 
- net/sunrpc/xprt.c |    8 +-------
- 1 files changed, 1 insertions(+), 7 deletions(-)
+47B2DD610000014100148042
+
+This stateid is the correct stateid + 20000, however, AIX accepted it
+(very odd).
+
+Interestingly, this alternate stateid is used in a close, which the AIX
+server also accepts, returning the following stateid:
+
+47B2DD610000014100140042
+
+which is the original stateid +20000 - 8000
+
+It appears that somewhere the code is overlaying some flag bits onto the
+stateid.
+
+The weird part is that way before this, AIX suddenly complains about the
+original stateid with 
+NFS4ERR_BAD_STATEID. The sequence number has not changed at all during
+this period.
+
+Apparently another trace does show the Linux client making this same
+corruption of the stateid, but in that case, the AIX server DOES
+complain.
+
+Any thoughts what might be going on here from a Linux perspective?
+
+Thanks
+
+Frank
 
 
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index e1770f7..67996bd 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -690,7 +690,7 @@ static void xprt_connect_status(struct rpc_task *task)
- {
- 	struct rpc_xprt	*xprt = task->tk_xprt;
- 
--	if (task->tk_status >= 0) {
-+	if (task->tk_status == 0) {
- 		xprt->stat.connect_count++;
- 		xprt->stat.connect_time += (long)jiffies - xprt->stat.connect_start;
- 		dprintk("RPC: %5u xprt_connect_status: connection established\n",
-@@ -699,12 +699,6 @@ static void xprt_connect_status(struct rpc_task *task)
- 	}
- 
- 	switch (task->tk_status) {
--	case -ECONNREFUSED:
--	case -ECONNRESET:
--		dprintk("RPC: %5u xprt_connect_status: server %s refused "
--				"connection\n", task->tk_pid,
--				task->tk_client->cl_server);
--		break;
- 	case -ENOTCONN:
- 		dprintk("RPC: %5u xprt_connect_status: connection broken\n",
- 				task->tk_pid);
+
+
+
+-------------------------------------------------------------------------
+This SF.net email is sponsored by: Microsoft
+Defy all challenges. Microsoft(R) Visual Studio 2008.
+http://clk.atdmt.com/MRT/go/vse0120000070mrt/direct/01/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
