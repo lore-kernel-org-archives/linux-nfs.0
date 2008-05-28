@@ -1,67 +1,102 @@
-From: Timo Sirainen <tss@iki.fi>
-Subject: Re: inode caching
-Date: Wed, 28 May 2008 18:20:57 +0300
-Message-ID: <1211988057.3904.304.camel@hurina>
-References: <1211835499.3904.231.camel@hurina> <483C031B.80601@redhat.com>
-	 <1211902848.3904.279.camel@hurina> <483C4E61.7020102@redhat.com>
-	 <0BF144BC-6CBB-49FA-8F49-D765FB58AF5E@iki.fi>
-	 <483CEFD5.8050507@panasas.com>  <20080528135935.GA17606@fieldses.org>
+From: "Jeff McNeil" <jeff-ugcqE8b+Z2XR7s880joybQ@public.gmane.org>
+Subject: Negative dentry hits not revalidating correctly?
+Date: Wed, 28 May 2008 14:53:58 -0400
+Message-ID: <82d28c40805281153m2eec3c83ide3abae0edb84808@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-4S9mQgSd12fFyjv1gNP5"
-Cc: Benny Halevy <bhalevy@panasas.com>,
-	Peter Staubach <staubach@redhat.com>, linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from dovecot.org ([82.118.211.50]:43653 "EHLO dovecot.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752442AbYE1PVA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 28 May 2008 11:21:00 -0400
-In-Reply-To: <20080528135935.GA17606@fieldses.org>
+Received: from rv-out-0506.google.com ([209.85.198.232]:27814 "EHLO
+	rv-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752333AbYE1Sx7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 May 2008 14:53:59 -0400
+Received: by rv-out-0506.google.com with SMTP id l9so3656472rvb.1
+        for <linux-nfs@vger.kernel.org>; Wed, 28 May 2008 11:53:58 -0700 (PDT)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi NFS list!
 
---=-4S9mQgSd12fFyjv1gNP5
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+I've been dealing with a bit of a problem over the past few days that
+I can't seem to get through. First, a bit of information about my
+environment.  We're using a BlueArc Titan NAS cluster in concert with
+NFS v3 over TCP. The Linux hosts are all running a fairly recent
+update of RHES5, uname -a tells me ' 2.6.18-53.1.13.el5PAE.'   My
+apologies for the patched-up Red Hat kernel as opposed to a stock
+build.
 
-On Wed, 2008-05-28 at 09:59 -0400, J. Bruce Fields wrote:
-> On Wed, May 28, 2008 at 08:38:29AM +0300, Benny Halevy wrote:
-> > On May. 27, 2008, 22:13 +0300, Timo Sirainen <tss@iki.fi> wrote:
-> > > I'd still like to understand why exactly this happens though. Maybe =20
-> > > there's a chance that this is just a bug in the current NFS =20
-> > > implementation so I could keep using my current code (which is =20
-> > > actually very difficult to break even with stress testing, so if this=
- =20
-> > > doesn't get fixed on kernel side I'll probably just leave my code as =
-=20
-> > > it is). I guess I'll start debugging the NFS code to find out what's =
-=20
-> > > really going on.
-> >=20
-> > My guess would be that the new incarnation of the inode generates the
-> > same filehandle as the old one, not just the same inode number.
->=20
-> That sounds like a server bug (either in the server itself, or the
-> filesystem it's exporting); the generation number is supposed to prevent
-> this.
+Mount options are as follows:
 
-And if it happens, wouldn't the struct inode on NFS client be the same
-for both files then? I'm seeing different results for fstat() calls
-(just with the same st_ino).
+lnh-nfs01:/lthfs01 on /home/cluster1 type nfs
+(rw,nfsvers=3,proto=tcp,hard,intr,wsize=32768,rsize=32768,addr=10.2.25.19)
 
+The environment is pretty straightforward.  It's generally just a
+run-of-the-mill H/A web cluster.  We're utilizing bind mounts in a few
+situations, but the problem I'm having manifests itself on machines
+both with and without bind mounts.
 
---=-4S9mQgSd12fFyjv1gNP5
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Description: This is a digitally signed message part
+In summary, it appears that once a file has a negative dcache entry,
+it is never revalidated correctly without some sort of intervention.
+I've been able to mitigate the problem either by dropping caches more
+often than I'd like via /proc/sys/vm/drop_caches, or by stepping into
+the parent directory of the 'missing' file and running an 'ls.'  It
+appears that the 'ls' triggers an invalidation of the parent directory
+(which is what we're looking for initially).
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.6 (GNU/Linux)
+To trigger the issue:
 
-iD8DBQBIPXhZyUhSUUBViskRAq2HAJ0ZgAuzdSt8p3eitFk4vbiO38ofpACdE478
-QbsbGxOjC/nhWpNyB93/spg=
-=srIJ
------END PGP SIGNATURE-----
+1. Stat a file that we know is non-existant. This populates the dentry
+cache with a negative entry.
 
---=-4S9mQgSd12fFyjv1gNP5--
+[root@lnh-util ~]# ssh root@lnh-www1a-mgmt
+"stat /home/cluster1/data/f/f/nfsuser01/test_nofile"
+stat: cannot stat `/home/cluster1/data/f/f/nfsuser01/test_nofile': No
+such file or directory
 
+2. Create that file on a different server, this will also update the
+mtime on that parent directory, so the NFS validation code on the dentry
+hit ought to catch that.
+
+[root@lnh-util ~]# ssh root@lnh-sshftp1a-mgmt
+"touch /home/cluster1/data/f/f/nfsuser01/test_nofile"
+
+3. Try and stat the file again. Still broken.
+
+[root@lnh-util ~]# ssh root@lnh-www1a-mgmt
+"stat /home/cluster1/data/f/f/nfsuser01/test_nofile"
+stat: cannot stat `/home/cluster1/data/f/f/nfsuser01/test_nofile': No
+such file or directory
+
+4. Wait at least 60 seconds, just to rule out attribute cache data
+(though from reading
+the code, it appears that the parent directory is revalidated
+regardless in nfs_check_verifier). We're
+using defaults.
+
+5. Read the parent directory.
+
+[root@lnh-util ~]# ssh root@lnh-www1a-mgmt
+"ls /home/cluster1/data/f/f/nfsuser01/ | wc -l"
+16
+
+6. And now the missing file is present.
+
+[root@lnh-util ~]# ssh root@lnh-www1a-mgmt
+"stat /home/cluster1/data/f/f/nfsuser01/test_nofile"
+  File: `/home/cluster1/data/f/f/nfsuser01/test_nofile'
+  Size: 0               Blocks: 0          IO Block: 4096   regular
+empty file
+Device: 15h/21d Inode: 4046108346  Links: 1
+Access: (0644/-rw-r--r--)  Uid: (    0/    root)   Gid: (    0/    root)
+Access: 2008-05-28 10:07:28.963000000 -0400
+Modify: 2008-05-28 10:07:28.963000000 -0400
+Change: 2008-05-28 10:07:28.963000000 -0400
+[root@lnh-util ~]#
+
+The negative file entry continuously stays present.  This is true even
+when a stat of the parent directory shows that the cached attributes
+have timed out and we've updated mtime data.
+
+Thoughts?
+
+Jeff
