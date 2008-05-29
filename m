@@ -1,85 +1,73 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: root over nfs, error -93
-Date: Wed, 28 May 2008 17:04:57 -0700
-Message-ID: <1212019497.7544.4.camel@localhost>
-References: <1212009456.3786.24.camel@wf>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: [RFC] nfsd: make nfs4xdr WRITEMEM safe against zero count
+Date: Thu, 29 May 2008 12:56:08 +0300
+Message-ID: <483E7DB8.1050705@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org
-To: Julius <julius.junghans@gmx.de>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: NFS list <linux-nfs@vger.kernel.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from pat.uio.no ([129.240.10.15]:46971 "EHLO pat.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751367AbYE2AFB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 28 May 2008 20:05:01 -0400
-In-Reply-To: <1212009456.3786.24.camel@wf>
+Received: from ug-out-1314.google.com ([66.249.92.173]:21503 "EHLO
+	ug-out-1314.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752760AbYE2J4O (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 May 2008 05:56:14 -0400
+Received: by ug-out-1314.google.com with SMTP id h2so51380ugf.16
+        for <linux-nfs@vger.kernel.org>; Thu, 29 May 2008 02:56:12 -0700 (PDT)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2008-05-28 at 23:17 +0200, Julius wrote:
-> Hi,
-> 
-> 
-> im trying to get a client boot from my server via nfs. but it fails
-> with:
-> 
-> Root-NFS: Server returned error -93 while
-> mounting /nfs-exports/pxeclient
-> 
-> the client uses a vanilla 2.6.24.7 kernel with these settings:
-> <*>   NFS file system support 
->  [*]     Provide NFSv3 client support 
->  [*]       Provide client support for the NFSv3 ACL protocol extension 
->  [*]   Root file system on NFS
->  [*]   Support for rpcbind versions 3 & 4 (EXPERIMENTAL)
-> 
-> 
-> full config:
-> http://metalfan2.me.funpic.de/.config
-> 
-> 
-> kernel append line:
-> append root=/dev/nfs nfsroot=192.168.11.3:/nfs-exports/pxeclient ip=dhcp
-> 
-> 
-> the system successfully boots the kernel via syslinux and requests its
-> ip via dhcp
-> 
-> 
-> server:
-> rpcinfo -p localhost
->    program vers proto   port
->     100000    2   tcp    111  portmapper
->     100000    2   udp    111  portmapper
->     100024    1   udp  54039  status
->     100024    1   tcp  57693  status
->     100005    3   udp  48497  mountd
->     100005    3   tcp  34406  mountd
->     100003    2   udp   2049  nfs
->     100003    3   udp   2049  nfs
->     100003    4   udp   2049  nfs
->     100021    1   udp  47061  nlockmgr
->     100021    3   udp  47061  nlockmgr
->     100021    4   udp  47061  nlockmgr
->     100003    2   tcp   2049  nfs
->     100003    3   tcp   2049  nfs
->     100003    4   tcp   2049  nfs
->     100021    1   tcp  54896  nlockmgr
->     100021    3   tcp  54896  nlockmgr
->     100021    4   tcp  54896  nlockmgr
-> 
-> nfs-utils-1.1.0
-> 
-> 
-> 
-> Any ideas whats wrong?
+WRITEMEM zeroes the last word in the destination buffer
+for padding purposes, but this must not be done if
+no bytes are to be copied, as it would result
+in zeroing of the word right before the array.
 
-I believe that the default is to try mounting NFSv2, unless you
-explicitly add the 'v3' option. Try something like
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 
-append root=/dev/nfs nfsroot=192.168.11.3:/nfs-exports/pxeclient,v3 ip=dhcp
+--
+The current implementation works since it's always called
+with non zero nbytes or it follows an encoding of the
+string (or opaque) length which, if equal to zero, 
+can be overwritten with zero.
 
+Another way of implementing that is the way it's done in
+fs/nfsd/nfs4callback.c:
 
-Cheers
-  Trond
+static inline __be32 *
+xdr_writemem(__be32 *p, const void *ptr, int nbytes)
+{
+	int tmp = XDR_QUADLEN(nbytes);
+	if (!tmp)
+		return p;
+	p[tmp-1] = 0;
+	memcpy(p, ptr, nbytes);
+	return p + tmp;
+}
 
+#define WRITEMEM(ptr,nbytes)     do {                           \
+	p = xdr_writemem(p, ptr, nbytes);                       \
+} while (0)
+
+Also, is there any plan to clean up the xdr encoding definition
+any time and define a cleaner static inline API?
+I'd be happy to take a stab at it and come up with a
+written and tested proposal.
+
+Benny
+
+git diff --stat -p
+ fs/nfsd/nfs4xdr.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index e8e27fb..588c9f6 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1712,7 +1712,7 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
+ 	*p++ = htonl((u32)((n) >> 32));				\
+ 	*p++ = htonl((u32)(n));					\
+ } while (0)
+-#define WRITEMEM(ptr,nbytes)     do {				\
++#define WRITEMEM(ptr,nbytes)     do if (nbytes > 0) {		\
+ 	*(p + XDR_QUADLEN(nbytes) -1) = 0;                      \
+ 	memcpy(p, ptr, nbytes);					\
+ 	p += XDR_QUADLEN(nbytes);				\
