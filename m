@@ -1,105 +1,89 @@
-From: Julius <julius.junghans@gmx.de>
-Subject: Re: root over nfs, error -93
-Date: Thu, 29 May 2008 12:01:55 +0200
-Message-ID: <1212055315.3786.37.camel@wf>
-References: <1212009456.3786.24.camel@wf>
-	 <1212019497.7544.4.camel@localhost>
-Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [RFC] nfsd: make nfs4xdr WRITEMEM safe against zero count
+Date: Thu, 29 May 2008 12:10:33 -0400
+Message-ID: <49A2810F-7B30-4687-B729-E908C605F5EE@oracle.com>
+References: <483E7DB8.1050705@panasas.com>
+Mime-Version: 1.0 (Apple Message framework v924)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	NFS list <linux-nfs@vger.kernel.org>
+To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.gmx.net ([213.165.64.20]:50999 "HELO mail.gmx.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
-	id S1750950AbYE2J6Y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 29 May 2008 05:58:24 -0400
-In-Reply-To: <1212019497.7544.4.camel@localhost>
+Received: from rgminet01.oracle.com ([148.87.113.118]:46448 "EHLO
+	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752210AbYE2QOu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 May 2008 12:14:50 -0400
+In-Reply-To: <483E7DB8.1050705@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2008-05-28 at 17:04 -0700, Trond Myklebust wrote:
-> On Wed, 2008-05-28 at 23:17 +0200, Julius wrote:
-> > Hi,
-> > 
-> > 
-> > im trying to get a client boot from my server via nfs. but it fails
-> > with:
-> > 
-> > Root-NFS: Server returned error -93 while
-> > mounting /nfs-exports/pxeclient
-> > 
-> > the client uses a vanilla 2.6.24.7 kernel with these settings:
-> > <*>   NFS file system support 
-> >  [*]     Provide NFSv3 client support 
-> >  [*]       Provide client support for the NFSv3 ACL protocol extension 
-> >  [*]   Root file system on NFS
-> >  [*]   Support for rpcbind versions 3 & 4 (EXPERIMENTAL)
-> > 
-> > 
-> > full config:
-> > http://metalfan2.me.funpic.de/.config
-> > 
-> > 
-> > kernel append line:
-> > append root=/dev/nfs nfsroot=192.168.11.3:/nfs-exports/pxeclient ip=dhcp
-> > 
-> > 
-> > the system successfully boots the kernel via syslinux and requests its
-> > ip via dhcp
-> > 
-> > 
-> > server:
-> > rpcinfo -p localhost
-> >    program vers proto   port
-> >     100000    2   tcp    111  portmapper
-> >     100000    2   udp    111  portmapper
-> >     100024    1   udp  54039  status
-> >     100024    1   tcp  57693  status
-> >     100005    3   udp  48497  mountd
-> >     100005    3   tcp  34406  mountd
-> >     100003    2   udp   2049  nfs
-> >     100003    3   udp   2049  nfs
-> >     100003    4   udp   2049  nfs
-> >     100021    1   udp  47061  nlockmgr
-> >     100021    3   udp  47061  nlockmgr
-> >     100021    4   udp  47061  nlockmgr
-> >     100003    2   tcp   2049  nfs
-> >     100003    3   tcp   2049  nfs
-> >     100003    4   tcp   2049  nfs
-> >     100021    1   tcp  54896  nlockmgr
-> >     100021    3   tcp  54896  nlockmgr
-> >     100021    4   tcp  54896  nlockmgr
-> > 
-> > nfs-utils-1.1.0
-> > 
-> > 
-> > 
-> > Any ideas whats wrong?
-> 
-> I believe that the default is to try mounting NFSv2, unless you
-> explicitly add the 'v3' option. Try something like
-> 
-> append root=/dev/nfs nfsroot=192.168.11.3:/nfs-exports/pxeclient,v3 ip=dhcp
-> 
-> 
-> Cheers
->   Trond
+On May 29, 2008, at 5:56 AM, Benny Halevy wrote:
+> WRITEMEM zeroes the last word in the destination buffer
+> for padding purposes, but this must not be done if
+> no bytes are to be copied, as it would result
+> in zeroing of the word right before the array.
+>
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>
+> --
+> The current implementation works since it's always called
+> with non zero nbytes or it follows an encoding of the
+> string (or opaque) length which, if equal to zero,
+> can be overwritten with zero.
+>
+> Another way of implementing that is the way it's done in
+> fs/nfsd/nfs4callback.c:
+>
+> static inline __be32 *
+> xdr_writemem(__be32 *p, const void *ptr, int nbytes)
+> {
+> 	int tmp = XDR_QUADLEN(nbytes);
+> 	if (!tmp)
+> 		return p;
+> 	p[tmp-1] = 0;
+> 	memcpy(p, ptr, nbytes);
+> 	return p + tmp;
+> }
+>
+> #define WRITEMEM(ptr,nbytes)     do {                           \
+> 	p = xdr_writemem(p, ptr, nbytes);                       \
+> } while (0)
+>
+> Also, is there any plan to clean up the xdr encoding definition
+> any time and define a cleaner static inline API?
+> I'd be happy to take a stab at it and come up with a
+> written and tested proposal.
 
+I took a long jump at this last year, but no-one else seemed  
+interested in the work.
 
-Okay, ive used the append line above and now it mounts the root
-filesystem. But it takes ages, looks like the requests time out.
+> git diff --stat -p
+> fs/nfsd/nfs4xdr.c |    2 +-
+> 1 files changed, 1 insertions(+), 1 deletions(-)
+>
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index e8e27fb..588c9f6 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -1712,7 +1712,7 @@ nfsd4_decode_compound(struct  
+> nfsd4_compoundargs *argp)
+> 	*p++ = htonl((u32)((n) >> 32));				\
+> 	*p++ = htonl((u32)(n));					\
+> } while (0)
+> -#define WRITEMEM(ptr,nbytes)     do {				\
+> +#define WRITEMEM(ptr,nbytes)     do if (nbytes > 0) {		\
+> 	*(p + XDR_QUADLEN(nbytes) -1) = 0;                      \
+> 	memcpy(p, ptr, nbytes);					\
+> 	p += XDR_QUADLEN(nbytes);				\
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
+> in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-Theres no firewall between the server/client.
-
-Heres a tshark capture(330Kbyte) from power on to mount root and some of
-the following timeouts:
-http://metalfan2.me.funpic.de/nfsd.capture2
-ive used the filter !tftp and saved it
-
-
-
-Julius
-
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
 
 
