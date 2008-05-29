@@ -1,29 +1,22 @@
-From: Chuck Lever <chuck.lever@oracle.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: root over nfs, error -93
-Date: Wed, 28 May 2008 18:23:40 -0400
-Message-ID: <483DDB6C.4040209@oracle.com>
+Date: Wed, 28 May 2008 17:04:57 -0700
+Message-ID: <1212019497.7544.4.camel@localhost>
 References: <1212009456.3786.24.camel@wf>
-Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------060603090609010000010700"
+Content-Type: text/plain
 Cc: linux-nfs@vger.kernel.org
 To: Julius <julius.junghans@gmx.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:50915 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753401AbYE1WYE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 May 2008 18:24:04 -0400
+Received: from pat.uio.no ([129.240.10.15]:46971 "EHLO pat.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751367AbYE2AFB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 28 May 2008 20:05:01 -0400
 In-Reply-To: <1212009456.3786.24.camel@wf>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a multi-part message in MIME format.
---------------060603090609010000010700
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-
-Julius wrote:
+On Wed, 2008-05-28 at 23:17 +0200, Julius wrote:
 > Hi,
 > 
 > 
@@ -32,15 +25,7 @@ Julius wrote:
 > 
 > Root-NFS: Server returned error -93 while
 > mounting /nfs-exports/pxeclient
-
-Error 93 is EPROTONOSUPPORT.  Is there a firewall between client and 
-server?  tcpwrappers on either end?  Are you using a motherboard NIC 
-that silently hijacks a reserved UDP port?
-
-Try capturing a network trace with "tcpdump -s0 -w /tmp/dump" on your 
-server while your client boots.  Take a look at it with wireshark or 
-tethereal.
-
+> 
 > the client uses a vanilla 2.6.24.7 kernel with these settings:
 > <*>   NFS file system support 
 >  [*]     Provide NFSv3 client support 
@@ -88,31 +73,13 @@ tethereal.
 > 
 > 
 > Any ideas whats wrong?
-> 
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
---------------060603090609010000010700
-Content-Type: text/x-vcard; charset=utf-8;
- name="chuck_lever.vcf"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="chuck_lever.vcf"
+I believe that the default is to try mounting NFSv2, unless you
+explicitly add the 'v3' option. Try something like
 
-begin:vcard
-fn:Chuck Lever
-n:Lever;Chuck
-org:Oracle Corporation;Corporate Architecture: Linux Projects Group
-adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
-title:Principal Member of Staff
-tel;work:+1 248 614 5091
-x-mozilla-html:FALSE
-version:2.1
-end:vcard
+append root=/dev/nfs nfsroot=192.168.11.3:/nfs-exports/pxeclient,v3 ip=dhcp
 
 
---------------060603090609010000010700--
+Cheers
+  Trond
+
