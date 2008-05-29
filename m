@@ -1,47 +1,105 @@
-Return-Path: <nfsv4-bounces@linux-nfs.org>
-Message-Id: <DDB646D2-C5B3-4EC3-A8DB-EF7B6F99A8E2@oracle.com>
-From: Chuck Lever <chuck.lever@oracle.com>
-To: Le Rouzic <aime.le-rouzic@bull.net>
-In-Reply-To: <483A874A.5080502@bull.net>
-Subject: Re: svc_create_xprt for nfsd and lockd with ipv6
-Date: Tue, 27 May 2008 10:27:52 -0400
-References: <483A874A.5080502@bull.net>
-Cc: linux-nfs@vger.kernel.org, nfsv4 <nfsv4@linux-nfs.org>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Content-Type: text/plain; charset="us-ascii"
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
-MIME-Version: 1.0
+From: Julius <julius.junghans@gmx.de>
+Subject: Re: root over nfs, error -93
+Date: Thu, 29 May 2008 12:01:55 +0200
+Message-ID: <1212055315.3786.37.camel@wf>
+References: <1212009456.3786.24.camel@wf>
+	 <1212019497.7544.4.camel@localhost>
+Mime-Version: 1.0
+Content-Type: text/plain
+Cc: linux-nfs@vger.kernel.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail.gmx.net ([213.165.64.20]:50999 "HELO mail.gmx.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
+	id S1750950AbYE2J6Y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 29 May 2008 05:58:24 -0400
+In-Reply-To: <1212019497.7544.4.camel@localhost>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On May 26, 2008, at 5:47 AM, Le Rouzic wrote:
-> Hi,
-> I was thinking that linux-2.6.25-rc6-CITI_NFS4_ALL-1 nfsd was able  
-> to listen on the IPV6 domain also.
-> Since 2.6.24 Main changes have been done to replace the way to make  
-> a socket for nfsd and lockd by replacing
-> svc_makesock routine by the *svc_create_xprt* service.
->
-> Does anybody know if there is already a patch on this new code to  
-> support IPV6 for nfsd and lockd ?
+On Wed, 2008-05-28 at 17:04 -0700, Trond Myklebust wrote:
+> On Wed, 2008-05-28 at 23:17 +0200, Julius wrote:
+> > Hi,
+> > 
+> > 
+> > im trying to get a client boot from my server via nfs. but it fails
+> > with:
+> > 
+> > Root-NFS: Server returned error -93 while
+> > mounting /nfs-exports/pxeclient
+> > 
+> > the client uses a vanilla 2.6.24.7 kernel with these settings:
+> > <*>   NFS file system support 
+> >  [*]     Provide NFSv3 client support 
+> >  [*]       Provide client support for the NFSv3 ACL protocol extension 
+> >  [*]   Root file system on NFS
+> >  [*]   Support for rpcbind versions 3 & 4 (EXPERIMENTAL)
+> > 
+> > 
+> > full config:
+> > http://metalfan2.me.funpic.de/.config
+> > 
+> > 
+> > kernel append line:
+> > append root=/dev/nfs nfsroot=192.168.11.3:/nfs-exports/pxeclient ip=dhcp
+> > 
+> > 
+> > the system successfully boots the kernel via syslinux and requests its
+> > ip via dhcp
+> > 
+> > 
+> > server:
+> > rpcinfo -p localhost
+> >    program vers proto   port
+> >     100000    2   tcp    111  portmapper
+> >     100000    2   udp    111  portmapper
+> >     100024    1   udp  54039  status
+> >     100024    1   tcp  57693  status
+> >     100005    3   udp  48497  mountd
+> >     100005    3   tcp  34406  mountd
+> >     100003    2   udp   2049  nfs
+> >     100003    3   udp   2049  nfs
+> >     100003    4   udp   2049  nfs
+> >     100021    1   udp  47061  nlockmgr
+> >     100021    3   udp  47061  nlockmgr
+> >     100021    4   udp  47061  nlockmgr
+> >     100003    2   tcp   2049  nfs
+> >     100003    3   tcp   2049  nfs
+> >     100003    4   tcp   2049  nfs
+> >     100021    1   tcp  54896  nlockmgr
+> >     100021    3   tcp  54896  nlockmgr
+> >     100021    4   tcp  54896  nlockmgr
+> > 
+> > nfs-utils-1.1.0
+> > 
+> > 
+> > 
+> > Any ideas whats wrong?
+> 
+> I believe that the default is to try mounting NFSv2, unless you
+> explicitly add the 'v3' option. Try something like
+> 
+> append root=/dev/nfs nfsroot=192.168.11.3:/nfs-exports/pxeclient,v3 ip=dhcp
+> 
+> 
+> Cheers
+>   Trond
 
-See:
 
-    http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=summary
+Okay, ive used the append line above and now it mounts the root
+filesystem. But it takes ages, looks like the requests time out.
 
-There are patches that adjust svc_create_xprt() appropriately to take  
-an address family argument.
+Theres no firewall between the server/client.
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-_______________________________________________
-NFSv4 mailing list
-NFSv4@linux-nfs.org
-http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
+Heres a tshark capture(330Kbyte) from power on to mount root and some of
+the following timeouts:
+http://metalfan2.me.funpic.de/nfsd.capture2
+ive used the filter !tftp and saved it
+
+
+
+Julius
+
+
+
+
