@@ -1,119 +1,156 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH] update mount.nfs example in NFS/RDMA documentation
-Date: Fri, 30 May 2008 11:09:19 -0400
-Message-ID: <A04A3C4F-EF91-4204-B28F-E63BFEAF3241@oracle.com>
-References: <alpine.LFD.1.10.0805291534360.2898@jlentini-linux.nane.netapp.com>
-Mime-Version: 1.0 (Apple Message framework v924)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Tom Tucker <tom@opengridcomputing.com>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Thomas Talpey <talpey@netapp.com>, linux-nfs@vger.kernel.org
-To: James Lentini <jlentini@netapp.com>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH 0/3] [RFC] knfsd: convert to kthread API and	remove
+ signaling for shutdown
+Date: Fri, 30 May 2008 12:25:17 -0400
+Message-ID: <20080530122517.4f18c48e@tleilax.poochiereds.net>
+References: <1211078114-18384-1-git-send-email-jlayton@redhat.com>
+	<18481.6416.571430.593722@notabene.brown>
+	<4831F860.6050801@melbourne.sgi.com>
+	<4833364A.4010803@melbourne.sgi.com>
+	<20080520214823.576ad7a7@tleilax.poochiereds.net>
+	<48339730.3060206@melbourne.sgi.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Cc: Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org,
+	nfsv4@linux-nfs.org
+To: Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:59261 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752988AbYE3PKe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 May 2008 11:10:34 -0400
-In-Reply-To: <alpine.LFD.1.10.0805291534360.2898-5zmYZXM8ymTNoO61VEKW3MYxy48AqY0ZOQ4dku92ua4@public.gmane.org>
+Received: from mx1.redhat.com ([66.187.233.31]:57976 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752988AbYE3QZX convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 May 2008 12:25:23 -0400
+In-Reply-To: <48339730.3060206-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi James-
+On Tue, 20 May 2008 20:29:52 -0700
+Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org> wrote:
 
-On May 29, 2008, at 3:40 PM, James Lentini wrote:
-> Bruce,
->
-> Below is an update to the NFS/RDMA documentation that clarifies how
-> to run mount.nfs. Could you please merge this for 2.6.26?
->
-> Signed-off-by: James Lentini <jlentini@netapp.com>
->
-> --- a/Documentation/filesystems/nfs-rdma.txt	2008-05-29  
-> 15:09:38.753033000 -0400
-> +++ b/Documentation/filesystems/nfs-rdma.txt	2008-05-29  
-> 15:31:33.374948000 -0400
-> @@ -5,7 +5,7 @@
-> ################################################################################
->
->  Author: NetApp and Open Grid Computing
-> - Date: February 25, 2008
-> + Date: May 29, 2008
->
-> Table of Contents
-> ~~~~~~~~~~~~~~~~~
-> @@ -242,10 +242,19 @@ NFS/RDMA Setup
->
->> modprobe xprtrdma.ko
->
-> -    Regardless of how the client was built (module or built-in),  
-> issue the mount.nfs command:
-> +    Regardless of how the client was built (module or built-in),  
-> use the mount.nfs command to
-> +    mount the NFS/RDMA server.
-> +
-> +    If you have nfs-utils version 1.1.1, use this command:
->
->> /path/to/your/mount.nfs <IPoIB-server-name-or-address>:/<export> / 
->> mnt -i -o rdma,port=2050
->
-> +    If you have nfs-utils version 1.1.2 or later, use this command  
-> (the "-i" flag is no longer
-> +    needed; the command checks the kernel's version to see if the  
-> NFS string mount API support is
-> +    available):
-> +
-> +    > /path/to/your/mount.nfs <IPoIB-server-name-or-address>:/ 
-> <export> /mnt -o rdma,port=2050
-> +
+> Jeff Layton wrote:
+> >   
+> > [...] Rather than delaying the allocation like this,
+> > I wonder if we can just figure out the node from the cpumask and then
+> > do a kmalloc_node()?
+> >
+> >   
+> Sure.
+> 
 
-Do you still need to invoke the helper directly?  I think this should  
-work with a straight mount command after 1.1.2, since the "-i" flag is  
-no longer necessary.
+I started to do this patch as part of the kthread conversion, but it's
+actually pretty independent. We can probably treat it separately.
+This hasn't been tested on an actual NUMA machine yet, but any thoughts
+on the following patch?
 
-If it works, the "permanent" instructions in this documentation should  
-use "mount" not "mount.nfs," and specify the command line arguments in  
-the right order (doesn't mount like the "-o options" to come before  
-the arguments?).  We shouldn't encourage direct use of the helper  
-subcommand if we can avoid it, and it would allow admins to place rdma  
-mounts in /etc/fstab and automounter maps.
+-----------------[snip]-------------------
 
-In fact, since 1.1.2 is now available, why even mention 1.1.1 in the  
-instructions?  It would nicely simplify the text if you start with  
-1.1.2, and the scourge (or ridiculousness?) of the "-i" option need  
-never be mentioned again.
+>From 46432a021fe1931f4a44587124ac9442e83c4731 Mon Sep 17 00:00:00 2001
+From: Jeff Layton <jlayton@redhat.com>
+Date: Fri, 30 May 2008 11:57:18 -0400
+Subject: [PATCH] sunrpc: have pooled services make NUMA-friendly allocations
 
-Looking at other parts of nfs-rdma.txt:
+Currently, svc_prepare_thread allocates memory using plain kmalloc()
+and alloc_page() calls, even for threads that are destined to run on
+different CPUs or NUMA nodes than the current one. Add a function to
+translate a poolid into a NUMA node, and have svc_prepare_thread and
+svc_init_buffer allocate memory on those nodes instead.
 
-The instructions describing how to build nfs-utils are slightly  
-misleading.  The "--disable-gss" and "--disable-nfsv4" options do not  
-affect the mount command -- the resulting mount.nfs executable still  
-supports NFSv4.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ net/sunrpc/svc.c |   46 ++++++++++++++++++++++++++++++++++++++++------
+ 1 files changed, 40 insertions(+), 6 deletions(-)
 
-The true reason to specify these options on ./configure is to prevent  
-nfs-utils from building the idmapper and gssd executables, which you  
-don't need to replace if you are only installing a new mount.nfs  
-command, and which require that the build system have certain other  
-packages installed.
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index 01c7e31..3985fbc 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -332,6 +332,32 @@ svc_pool_map_set_cpumask(unsigned int pidx, cpumask_t *oldmask)
+ }
+ 
+ /*
++ * for a given poolid, return the NUMA memory node. This allows us to
++ * allocate memory close to the CPU's where the task will be running
++ */
++static inline unsigned int
++svc_pool_to_node(unsigned int pidx)
++{
++	struct svc_pool_map *m = &svc_pool_map;
++	unsigned int poolnode = m->pool_to[pidx];
++
++	/*
++	 * The caller checks for sv_nrpools > 1, which
++	 * implies that we've been initialized.
++	 */
++	BUG_ON(m->count == 0);
++
++	switch (m->mode) {
++	case SVC_POOL_PERNODE:
++		return poolnode;
++	case SVC_POOL_PERCPU:
++		return cpu_to_node(poolnode);
++	}
++
++	return numa_node_id();
++}
++
++/*
+  * Use the mapping mode to choose a pool for a given CPU.
+  * Used when enqueueing an incoming RPC.  Always returns
+  * a non-NULL pool pointer.
+@@ -507,7 +533,7 @@ EXPORT_SYMBOL(svc_destroy);
+  * We allocate pages and place them in rq_argpages.
+  */
+ static int
+-svc_init_buffer(struct svc_rqst *rqstp, unsigned int size)
++svc_init_buffer(struct svc_rqst *rqstp, unsigned int size, unsigned int node)
+ {
+ 	unsigned int pages, arghi;
+ 
+@@ -517,7 +543,7 @@ svc_init_buffer(struct svc_rqst *rqstp, unsigned int size)
+ 	arghi = 0;
+ 	BUG_ON(pages > RPCSVC_MAXPAGES);
+ 	while (pages) {
+-		struct page *p = alloc_page(GFP_KERNEL);
++		struct page *p = alloc_pages_node(node, GFP_KERNEL, 0);
+ 		if (!p)
+ 			break;
+ 		rqstp->rq_pages[arghi++] = p;
+@@ -543,8 +569,14 @@ struct svc_rqst *
+ svc_prepare_thread(struct svc_serv *serv, struct svc_pool *pool)
+ {
+ 	struct svc_rqst	*rqstp;
++	unsigned int	node;
++
++	if (serv->sv_nrpools > 1)
++		node = svc_pool_to_node(pool->sp_id);
++	else
++		node = numa_node_id();
+ 
+-	rqstp = kzalloc(sizeof(*rqstp), GFP_KERNEL);
++	rqstp = kmalloc_node(sizeof(*rqstp), GFP_KERNEL | __GFP_ZERO, node);
+ 	if (!rqstp)
+ 		goto out_enomem;
+ 
+@@ -558,15 +590,17 @@ svc_prepare_thread(struct svc_serv *serv, struct svc_pool *pool)
+ 	rqstp->rq_server = serv;
+ 	rqstp->rq_pool = pool;
+ 
+-	rqstp->rq_argp = kmalloc(serv->sv_xdrsize, GFP_KERNEL);
++	rqstp->rq_argp = kmalloc_node(serv->sv_xdrsize,
++					GFP_KERNEL | __GFP_ZERO, node);
+ 	if (!rqstp->rq_argp)
+ 		goto out_thread;
+ 
+-	rqstp->rq_resp = kmalloc(serv->sv_xdrsize, GFP_KERNEL);
++	rqstp->rq_resp = kmalloc_node(serv->sv_xdrsize,
++					GFP_KERNEL | __GFP_ZERO, node);
+ 	if (!rqstp->rq_resp)
+ 		goto out_thread;
+ 
+-	if (!svc_init_buffer(rqstp, serv->sv_max_mesg))
++	if (!svc_init_buffer(rqstp, serv->sv_max_mesg, node))
+ 		goto out_thread;
+ 
+ 	return rqstp;
+-- 
+1.5.3.6
 
-You can simply extract the rebuilt mount.nfs command instead of  
-installing the whole package with
-
-	$ sudo cp utils/mount/mount.nfs /path/to/your/mount.nfs
-
-The tcp_wrappers package is needed to build nfs-utils in any case, so  
-it would be helpful to mention that too.
-
-It's worth mentioning that several distributions already ship with  
-1.1.2, so on modern systems, this build step is probably not needed.
-
-Also, I would use a standard shell prompt in the examples (say, "$ "  
-or "% ", or "# " as necessary, instead of "> "), but that's just me.
-
->     To verify that the mount is using RDMA, run "cat /proc/mounts"  
-> and check the
->     "proto" field for the given mount.
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
