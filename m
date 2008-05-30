@@ -1,89 +1,62 @@
-From: James Lentini <jlentini@netapp.com>
+From: Chuck Lever <chuck.lever@oracle.com>
 Subject: Re: [PATCH] update mount.nfs example in NFS/RDMA documentation
-Date: Fri, 30 May 2008 18:14:00 -0400 (EDT)
-Message-ID: <alpine.LFD.1.10.0805301805490.26788@jlentini-linux.nane.netapp.com>
-References: <alpine.LFD.1.10.0805291534360.2898@jlentini-linux.nane.netapp.com> <A04A3C4F-EF91-4204-B28F-E63BFEAF3241@oracle.com>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Date: Fri, 30 May 2008 18:48:31 -0400
+Message-ID: <A4F07986-C129-4D87-9C82-61FC797A178F@oracle.com>
+References: <alpine.LFD.1.10.0805291534360.2898@jlentini-linux.nane.netapp.com> <A04A3C4F-EF91-4204-B28F-E63BFEAF3241@oracle.com> <alpine.LFD.1.10.0805301805490.26788@jlentini-linux.nane.netapp.com>
+Mime-Version: 1.0 (Apple Message framework v924)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
 Cc: "J. Bruce Fields" <bfields@fieldses.org>,
 	Tom Tucker <tom@opengridcomputing.com>,
 	Trond Myklebust <trond.myklebust@fys.uio.no>,
 	Thomas Talpey <talpey@netapp.com>, linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+To: James Lentini <jlentini@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:35308 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751620AbYE3WOE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 30 May 2008 18:14:04 -0400
-In-Reply-To: <A04A3C4F-EF91-4204-B28F-E63BFEAF3241@oracle.com>
+Received: from agminet01.oracle.com ([141.146.126.228]:34909 "EHLO
+	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752134AbYE3WzR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 May 2008 18:55:17 -0400
+In-Reply-To: <alpine.LFD.1.10.0805301805490.26788-5zmYZXM8ymTNoO61VEKW3MYxy48AqY0ZOQ4dku92ua4@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On May 30, 2008, at 6:14 PM, James Lentini wrote:
+> Hi Chuck,
+>
+> Replies below:
+>
+> On Fri, 30 May 2008, Chuck Lever wrote:
+>> You can simply extract the rebuilt mount.nfs command instead of  
+>> installing the
+>> whole package with
+>>
+>> 	$ sudo cp utils/mount/mount.nfs /path/to/your/mount.nfs
+>
+> For mount.nfs to be picked up automatically by mount, mount.nfs needs
+> to be at /sbin/mount.nfs, correct?
 
-Hi Chuck,
+I haven't looked at that part of the mount command, but usually  
+distributors will cede that detail to the package maintainers to  
+reduce the number of patches they have to apply.
 
-Replies below:
+Let's assume /sbin is the correct place for mount.nfs, unless someone  
+complains loudly.
 
-On Fri, 30 May 2008, Chuck Lever wrote:
+> In the instructions, I'll recommend
+> that the binary be copied as follows:
+>
+> $ sudo cp utils/mount/mount.nfs /sbin/mount.nfs
+>
+>> The tcp_wrappers package is needed to build nfs-utils in any case,  
+>> so it would
+>> be helpful to mention that too.
+>
+> I'd like to leave that detail to the nfs-utils README. Does that sound
+> reasonable?
 
-> Do you still need to invoke the helper directly?  I think this should work
-> with a straight mount command after 1.1.2, since the "-i" flag is no longer
-> necessary.
+If you're going to provide a blanket pointer to the nfs-utils README  
+for building it, and omit any specific instructions from nfs-rdma.txt  
+(aside from copying the mount.nfs executable), that sounds reasonable.
 
-Correct. I'll update this.
-
-> If it works, the "permanent" instructions in this documentation should use
-> "mount" not "mount.nfs," and specify the command line arguments in the right
-> order (doesn't mount like the "-o options" to come before the arguments?).  We
-
-mount.nfs accepts either order, but I'll move the -o options before 
-the other arguments to agree with the mount man page.
-
-> shouldn't encourage direct use of the helper subcommand if we can avoid it,
-> and it would allow admins to place rdma mounts in /etc/fstab and automounter
-> maps.
-> 
-> In fact, since 1.1.2 is now available, why even mention 1.1.1 in the
-> instructions?  It would nicely simplify the text if you start with 1.1.2, and
-> the scourge (or ridiculousness?) of the "-i" option need never be mentioned
-> again.
-> 
-> Looking at other parts of nfs-rdma.txt:
-> 
-> The instructions describing how to build nfs-utils are slightly misleading.
-> The "--disable-gss" and "--disable-nfsv4" options do not affect the mount
-> command -- the resulting mount.nfs executable still supports NFSv4.
-> 
-> The true reason to specify these options on ./configure is to prevent
-> nfs-utils from building the idmapper and gssd executables, which you don't
-> need to replace if you are only installing a new mount.nfs command, and which
-> require that the build system have certain other packages installed.
-
-Thanks. I'll correct this.
-
-> You can simply extract the rebuilt mount.nfs command instead of installing the
-> whole package with
-> 
-> 	$ sudo cp utils/mount/mount.nfs /path/to/your/mount.nfs
-
-For mount.nfs to be picked up automatically by mount, mount.nfs needs 
-to be at /sbin/mount.nfs, correct? In the instructions, I'll recommend 
-that the binary be copied as follows:
-
- $ sudo cp utils/mount/mount.nfs /sbin/mount.nfs
-
-> 
-> The tcp_wrappers package is needed to build nfs-utils in any case, so it would
-> be helpful to mention that too.
-
-I'd like to leave that detail to the nfs-utils README. Does that sound 
-reasonable?
-
-> It's worth mentioning that several distributions already ship with 
-> 1.1.2, so on modern systems, this build step is probably not needed.
-> 
-> Also, I would use a standard shell prompt in the examples (say, "$ " or "% ",
-> or "# " as necessary, instead of "> "), but that's just me.
-
-Good point. ">" is my shell prompt, so it looks natural to me. I'll 
-change it to "$".
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
