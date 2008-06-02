@@ -1,61 +1,112 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: Nfs filesystem corruption(?) after kmail crash
-Date: Mon, 2 Jun 2008 09:43:22 -0400
-Message-ID: <20080602094322.79a40c29@tleilax.poochiereds.net>
-References: <9e8c52a20805140532w2bcfeff3n896fa5a9b0e82b5@mail.gmail.com>
-	<20080519144806.GB7622@fieldses.org>
-	<9e8c52a20805230744m2f7488e5q2867674f2987444@mail.gmail.com>
-	<RTPCLUEXC1-PRDRXf2L00000168@RTPMVEXC1-PRD.hq.netapp.com>
-	<9e8c52a20805260144u34f81996oa27475cc4c2e72d2@mail.gmail.com>
-	<20080526074054.141945a7@tleilax.poochiereds.net>
-	<9e8c52a20805270515o14a7ded6ne1737a827c91d2a7@mail.gmail.com>
-	<RTPCLUEXC1-PRDqYW8B0000016d@RTPMVEXC1-PRD.hq.netapp.com>
-	<9e8c52a20805270837i73d51bdbwa66aead92ee5d3e3@mail.gmail.com>
-	<9e8c52a20806020605u736e758bsfe24dac02c8acdfe@mail.gmail.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] rpc: Push down the ioctl BKL into the RPC code
+Date: Mon, 2 Jun 2008 12:15:49 -0400
+Message-ID: <20080602161549.GC18887@fieldses.org>
+References: <20080522222730.311832af@core>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: linux-nfs@vger.kernel.org
-To: "Alexander Borghgraef" <alexander.borghgraef.rma@gmail.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:53029 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752596AbYFBNnZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 2 Jun 2008 09:43:25 -0400
-In-Reply-To: <9e8c52a20806020605u736e758bsfe24dac02c8acdfe-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Trond Myklebust <trond@netapp.com>
+To: Alan Cox <alan@lxorguk.ukuu.org.uk>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1757063AbYFBQQP@vger.kernel.org>
+In-Reply-To: <20080522222730.311832af@core>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2 Jun 2008 15:05:17 +0200
-"Alexander Borghgraef" <alexander.borghgraef.rma@gmail.com> wrote:
-
-> Nobody? Anyone care to tell me how to interpret the strace stat cur output?
+On Thu, May 22, 2008 at 10:27:30PM +0100, Alan Cox wrote:
+> One or two bits I couldn't figure out if the BKL could be dropped for
 > 
+> Signed-off-by: Alan Cox <alan@redhat.com>
 
-> lstat64("cur", 0xbfb81cb4)              = -1 ENOENT (No such file or directory)
+Ack to the net/sunrpc/cache.c change.
 
-File doesn't exist...
+The net/sunrpc/rpc_pipe.c changes look fine too, except that there's no
+point keeping the BKL anywhere there.
 
-If this is from "ls -l" or something like that, that means that the
-client did a READDIR or READDIRPLUS and saw a "cur" entry in the
-directory with a particular filehandle. It then went back and did a
-stat() against that filehandle and it was gone. The two possibilities
-are that something removed that directory in the interim (possibly
-replacing it with a new "cur" directory), or that the filehandle was
-bad for some reason. I'm not aware of any bugs causing the latter, so
-the former is the most likely.
+As a matter of fact I think that rpc_pipe_ioctl *is* racy, but that's a
+preexisting problem--it needs the i_lock or i_mutex, not the BKL.
 
-You would think that the client would just use the info returned by
-READDIRPLUS to fill out the stat() info, but it doesn't because stat()
-calls generate an on-the-wire getattr (unless noatime is specified).
-Peter S. and I were talking about this the other day. IMO, this
-probably ought to be changed.
+(I'm not sure how important the rpci->ops check is, but the "len"
+calculation would make more sense if it were atomic, and couldn't the
+separate check and dereference of filp->private data lead to a null
+deference?)
 
-Most likely, this is the race that Tom described. ext3 has 1s
-granularity on timestamps. It's easy to do *many* NFS operations within
-1s. You might consider switching to a local filesystem on the server w/
-more granular timestamps if you have a lot of concurrent activity like
-this.
+--b.
 
-Cheers,
--- 
-Jeff Layton <jlayton@redhat.com>
+> 
+> diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+> index c996671..0c1af5d 100644
+> --- a/net/sunrpc/cache.c
+> +++ b/net/sunrpc/cache.c
+> @@ -826,11 +826,11 @@ cache_poll(struct file *filp, poll_table *wait)
+>  	return mask;
+>  }
+>  
+> -static int
+> -cache_ioctl(struct inode *ino, struct file *filp,
+> -	    unsigned int cmd, unsigned long arg)
+> +static long
+> +cache_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+>  {
+>  	int len = 0;
+> +	struct inode *ino = filp->f_path.dentry->d_inode;
+>  	struct cache_reader *rp = filp->private_data;
+>  	struct cache_queue *cq;
+>  	struct cache_detail *cd = PDE(ino)->data;
+> @@ -918,7 +918,7 @@ static const struct file_operations cache_file_operations = {
+>  	.read		= cache_read,
+>  	.write		= cache_write,
+>  	.poll		= cache_poll,
+> -	.ioctl		= cache_ioctl, /* for FIONREAD */
+> +	.unlocked_ioctl	= cache_ioctl, /* for FIONREAD */
+>  	.open		= cache_open,
+>  	.release	= cache_release,
+>  };
+> diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+> index 5a9b0e7..80bca08 100644
+> --- a/net/sunrpc/rpc_pipe.c
+> +++ b/net/sunrpc/rpc_pipe.c
+> @@ -296,23 +296,26 @@ rpc_pipe_poll(struct file *filp, struct poll_table_struct *wait)
+>  	return mask;
+>  }
+>  
+> -static int
+> -rpc_pipe_ioctl(struct inode *ino, struct file *filp,
+> -		unsigned int cmd, unsigned long arg)
+> +static long
+> +rpc_pipe_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+>  {
+>  	struct rpc_inode *rpci = RPC_I(filp->f_path.dentry->d_inode);
+>  	int len;
+>  
+>  	switch (cmd) {
+>  	case FIONREAD:
+> -		if (rpci->ops == NULL)
+> +		lock_kernel();
+> +		if (rpci->ops == NULL) {
+> +			unlock_kernel();
+>  			return -EPIPE;
+> +		}
+>  		len = rpci->pipelen;
+>  		if (filp->private_data) {
+>  			struct rpc_pipe_msg *msg;
+>  			msg = (struct rpc_pipe_msg *)filp->private_data;
+>  			len += msg->len - msg->copied;
+>  		}
+> +		unlock_kernel();
+>  		return put_user(len, (int __user *)arg);
+>  	default:
+>  		return -EINVAL;
+> @@ -325,7 +328,7 @@ static const struct file_operations rpc_pipe_fops = {
+>  	.read		= rpc_pipe_read,
+>  	.write		= rpc_pipe_write,
+>  	.poll		= rpc_pipe_poll,
+> -	.ioctl		= rpc_pipe_ioctl,
+> +	.unlocked_ioctl	= rpc_pipe_ioctl,
+>  	.open		= rpc_pipe_open,
+>  	.release	= rpc_pipe_release,
+>  };
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
