@@ -1,153 +1,39 @@
-From: "Chuck Lever" <chuck.lever@oracle.com>
-Subject: Re: [PATCH] update NFS/RDMA documentation
-Date: Mon, 2 Jun 2008 18:30:25 -0400
-Message-ID: <76bd70e30806021530w46ec3889y4017a76bd5343705@mail.gmail.com>
-References: <alpine.LFD.1.10.0806021530560.26788@jlentini-linux.nane.netapp.com>
-	 <4B7D1A89-DB85-4E33-91AB-F93901A55CA1@oracle.com>
-	 <alpine.LFD.1.10.0806021653360.26788@jlentini-linux.nane.netapp.com>
-Reply-To: chucklever@gmail.com
+From: Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
+Subject: Re: [PATCH 0/3] [RFC] knfsd: convert to kthread API and	remove signaling
+ for shutdown
+Date: Tue, 03 Jun 2008 13:27:56 +1000
+Message-ID: <4844BA3C.3010605@melbourne.sgi.com>
+References: <1211078114-18384-1-git-send-email-jlayton@redhat.com>	<18481.6416.571430.593722@notabene.brown>	<4831F860.6050801@melbourne.sgi.com>	<4833364A.4010803@melbourne.sgi.com>	<20080520214823.576ad7a7@tleilax.poochiereds.net>	<48339730.3060206@melbourne.sgi.com>	<20080530122517.4f18c48e@tleilax.poochiereds.net>	<48438A76.6000400@melbourne.sgi.com> <20080602064132.10c69c88@tleilax.poochiereds.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	"Trond Myklebust" <trond.myklebust@fys.uio.no>,
-	"Thomas Talpey" <talpey@netapp.com>,
-	"Tom Tucker" <tom@opengridcomputing.com>, linux-nfs@vger.kernel.org
-To: "James Lentini" <jlentini@netapp.com>
+Cc: Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org,
+	nfsv4@linux-nfs.org
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from wx-out-0506.google.com ([66.249.82.237]:39599 "EHLO
-	wx-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752721AbYFBWa1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Jun 2008 18:30:27 -0400
-Received: by wx-out-0506.google.com with SMTP id h29so824157wxd.4
-        for <linux-nfs@vger.kernel.org>; Mon, 02 Jun 2008 15:30:26 -0700 (PDT)
-In-Reply-To: <alpine.LFD.1.10.0806021653360.26788-5zmYZXM8ymTNoO61VEKW3MYxy48AqY0ZOQ4dku92ua4@public.gmane.org>
+Received: from relay2.sgi.com ([192.48.171.30]:43225 "EHLO relay.sgi.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1752522AbYFCDbk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 2 Jun 2008 23:31:40 -0400
+In-Reply-To: <20080602064132.10c69c88-RtJpwOs3+0O+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jun 2, 2008 at 5:13 PM, James Lentini <jlentini@netapp.com> wrote:
-> On Mon, 2 Jun 2008, Chuck Lever wrote:
->> > @@ -77,22 +79,32 @@ Installation
->> >
->> >    Uncompress the package and follow the installation instructions.
->> >
->> > -    If you will not be using GSS and NFSv4, the installation process
->> > -    can be simplified by disabling these features when running configure:
->> > +    If you will not need the idmapper and gssd executables (you do not need
->> > +    these to create an NFS/RDMA enabled mount command), the installation
->> > +    process can be simplified by disabling these features when running
->> > +    configure:
->>
->> This explanation still seems confusing.
->>
->> idmapper *is* required for NFSv4 (and I assume you can mount an
->> NFSv4 server over RDMA),
+Jeff Layton wrote:
+> On Mon, 02 Jun 2008 00:51:50 -0500
+> Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org> wrote:
+>   
 >
-> Yes, NFSv4 works over RDMA.
+> I'm certainly no VM expert either, but where are you seeing the
+> kmalloc + memset? The only definition I see is the inlined function
+> in slab.h which is:
 >
->> and gssd *is* required to support secure mounts, all of which may
->> co-exist with the RDMA capability.
+> static inline void *kzalloc(size_t size, gfp_t flags)
 >
-> I agree. The intent of the text is to inform the reader that the
-> idmapper and gssd are not need if all they need is a
-> NFS/RDMA-compatible (aka string mount API enabled) mount.nfs command.
->
->> I think you would be much better off providing a recipe for building
->> and installing mount.nfs instead of trying to "insert" bits into the
->> instructions in the nfs-utils README.
->
-> I'm open to suggestions on how to improve the text.
->
-> Can send an example of such a recipe?
-
-Here's a stab at it.  It's a little wordy, but it spells out the necessary
-steps, which someone can even copy-n-paste, recipe style, to build
-and install the mount.nfs command, in most cases.  Part of the
-problem is the nfs-utils README is a little sparse in some of these
-areas.
-
-Naturally you should test these instructions before publishing them :-)
-
-  - Install nfs-utils-1.1.2 or later on the client
-
-    To mount an NFS server over RDMA, you must have the
-    mount.nfs subcommand from nfs-utils-1.1.2 or later installed on
-    your client.  For the purposes of this discussion, we will assume
-    that your distribution keeps the mount subcommands under /sbin.
-
-    To see which version of mount.nfs is installed on your client,
-    type:
-
-    $ /sbin/mount.nfs -V
-    mount.nfs (linux nfs-utils 1.1.2)
-    $
-
-    If the reported version is less than 1.1.2, or the command does
-    not exist, then you will need to install the latest version of the
-    NFS mount.nfs subcommand.
-
-    Your distributor may provide an update that brings the nfs-utils
-    package up to 1.1.2 or later, but if your client's packages are
-    completely up-to-date and you still don't have nfs-utils 1.1.2,
-    you will need to build nfs-utils from the latest upstream version.
-
-    Download the latest nfs-utils package from:
-
-        http://www.kernel.org/pub/linux/utils/nfs
-
-    Uncompress the package into a convenient place.
-
-    Building nfs-utils also requires that the tcp_wrapper-devel
-    package is installed on your build system.  For example, on a
-    typical Fedora system, you can use yum to install it:
-
-    $ sudo yum install tcp_wrappers-devel
-
-    On other systems, use an appropriate native package
-    management facility to retrieve and install tcp_wrappers-devel.
-
-    Now cd to the top level directory of the uncompressed nfs-utils
-    tarball.
-
-    $ cd /tmp/nfs-utils-1.1.2
-
-    Set up the autotools scripts.  Since we only need to build the
-    mount.nfs command, let's disable other components of nfs-utils
-    that might depend on packages that are not typically available
-    on most systems.
-
-    $ ./configure --disable-gss --disable-nfsv4
-    $ make
-
-    If all has gone well, there should be a mount.nfs executable
-    under the utils/mount directory when the build is finished.
-
-    You can invoke the mount.nfs subcommand directly if desired,
-    but the usual practice is to place the subcommand where your
-    system's mount command can find it, and then it will be invoked
-    automatically during NFS mount requests.  This way you can
-    add NFS/RDMA mount points to your client's /etc/fstab or
-    automounter maps.
-
-    We haven't made any special changes here, so this version of
-    the mount.nfs subcommand can safely replace your system's
-    original mount.nfs subcommand.  When you are satisfied it is
-    working as expected, install it.
-
-    $ cd utils/mount
-    $ sudo make install-exec
-
-    Some features require that the mount.nfs subcommand is
-    setuid root, but this is entirely optional.
-
-    $ sudo chown root /sbin/mount.nfs
-    $ sudo chmod u+s /sbin/mount.nfs
-
-    You do not need to replace the mount.nfs command on your NFS
-    server to support NFS over RDMA.
-
-    More information on the mount.nfs command is available in the
-    nfs-utils package's README and INSTALL files.
+>   
+Sorry, I was looking in the wrong tree (sles10 not tot).  Nevermind :-)
 
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+Greg Banks, P.Engineer, SGI Australian Software Group.
+The cake is *not* a lie.
+I don't speak for SGI.
+
