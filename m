@@ -1,89 +1,91 @@
-From: Tom Tucker <tom@opengridcomputing.com>
-Subject: Re: [PATCH 0/3] have pooled sunrpc services make more intelligent
-	allocations
-Date: Tue, 03 Jun 2008 13:37:25 -0500
-Message-ID: <1212518245.29133.25.camel@trinity.ogc.int>
-References: <20080603110549.8631.46647.stgit@dantu.usersys.redhat.com>
-	 <1212512022.29133.18.camel@trinity.ogc.int>
-	 <20080603134257.1de3a1c3@tleilax.poochiereds.net>
+From: Norman Weathers <norman.r.weathers-496aOtIFJR1B+Kdf37RAV9BPR1lH4CV8@public.gmane.org>
+Subject: Problems with large number of clients and reads
+Date: Tue, 03 Jun 2008 13:50:01 -0500
+Message-ID: <1212519001.24900.14.camel@hololw58>
 Mime-Version: 1.0
 Content-Type: text/plain
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-	bfields@fieldses.org
-To: Jeff Layton <jlayton@redhat.com>
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([209.198.142.2]:46983 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753387AbYFCScj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Jun 2008 14:32:39 -0400
-In-Reply-To: <20080603134257.1de3a1c3-RtJpwOs3+0O+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
+Received: from mailman2.ppco.com ([138.32.41.14]:47343 "EHLO mailman2.ppco.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754304AbYFCTln (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Jun 2008 15:41:43 -0400
+Received: from bvlextrd1.conoco.net (bvlextrd1.conoco.net [138.32.41.12])
+	by mailman2.ppco.com (Switch-3.2.7/Switch-3.2.7) with ESMTP id m53Io8PV026303
+	for <linux-nfs@vger.kernel.org>; Tue, 3 Jun 2008 13:50:08 -0500
+Received: from bvlexbh4.conoco.net (bvlexbh4.conoco.net [158.139.203.25])
+	by mail1.ppco.com (Switch-3.2.7/Switch-3.2.7) with ESMTP id m53Io0sS017006
+	for <linux-nfs@vger.kernel.org>; Tue, 3 Jun 2008 13:50:05 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hello all,
 
-On Tue, 2008-06-03 at 13:42 -0400, Jeff Layton wrote:
-> On Tue, 03 Jun 2008 11:53:42 -0500
-> Tom Tucker <tom@opengridcomputing.com> wrote:
-> 
-> > Jeff:
-> > 
-> > This brings up an interesting issue with the RDMA transport and
-> > RDMA_READ. RDMA_READ is submitted as part of fetching an RPC from the
-> > client (e.g. NFS_WRITE). The xpo_recvfrom function doesn't block waiting
-> > for the RDMA_READ to complete, but rather queues the RPC for subsequent
-> > processing when the I/O completes and returns 0. 
-> > 
-> > I can use these new services to allocate CPU local pages for this I/O.
-> > So far, so good. However, when the I/O completes, and the transport is
-> > rescheduled for subsequent RPC completion processing, the pool/CPU that
-> > is elected doesn't have any affinity for the CPU on which the I/O was
-> > initially submitted. I think this means that the svc_process/reply steps
-> > may occur on a CPU far away from the memory in which the data resides.
-> > 
-> > Am I making sense here? If so, any thoughts on what could/should be
-> > done?
-> > 
-> > Thanks,
-> > Tom
-> > 
-> 
-> I confess I didn't think hard about the RDMA case here (and haven't
-> been paying as much attention as I probably should to the design of
-> it). So take my thoughts with a large chunk of salt...
-> 
-> On a NUMA box, the pages have to live _somewhere_ and some CPUs will be
-> closer to them than others. If we're concerned about making sure that
-> the post-RDMA_READ processing is done on a CPU close to the memory,
-> then we don't have much choice but to try to make sure that this
-> processing is only done on CPUs that are close to that memory.
-> 
-> Assuming that this post-processing is done by nfsd, I suppose we'd need
-> to tag the post-RDMA_READ RPC with a poolid or something and make sure
-> that only nfsds running on CPUs close to the memory pick it up. Perhaps
-> there could be a per-pool queue for these RPC's or something...
-> 
-> Either way, the big question is whether that will be a net win or loss
-> for throughput. i.e. are we better off waiting for the right nfsd to
-> become available or allowing the first nfsd that becomes available to
-> make the crosscalls needed to do the RPC? It's hard to say...
+We are having some issues with some high throughput servers of ours.
 
-Not only that, but it would lead to more disorder in the RPC processing
-which might kill write-behind.
+Here is the issue, we are using a vanilla 2.6.22.14 kernel on a node
+with 2 Dual Core Intels (3 GHz) and 16 GB of ram.  The files that are
+being served are around 2 GB each, and there are usually 3 to 5 of them
+being read, so once read they fit into memory nicely, and when all is
+working correctly, we have a perfectly filled cache, with almost no disk
+activity.
 
-> 
-> In the near term, I doubt this patchset will harm the RDMA case. 
+When we have large NFS activity (say, 600 to 1200 clients) connecting to
+the server(s), they can get into a state where they are using up all of
+memory, but they are dropping cache.  slabtop is showing 13 GB of memory
+being used by the size-4096 slab object.  We have two ethernet channels
+bonded, so we see in excess of 240 MB/s of data flowing out of the box,
+and all of the sudden, disk activity has risen to 185 MB/s.  This
+happens if we are using 8 or more nfs threads.  If we limit the threads
+to 6 or less, this doesn't happen.  Of course, we are starving clients,
+but at least the jobs that my customers are throwing out there are
+progressing.  The question becomes, what is causing the memory to be
+used up by the slab size-4096 object?  Why when all of the sudden a
+bunch of clients ask for data does this object grow from 100 MB to 13
+GB?  I have set the memory settings to something that I thought was
+reasonable.
 
-Agreed. 
+Here is some more of the particulars:
 
-> After
-> all, the distribution of memory allocations is pretty lumpy now. On
-> a NUMA box with RDMA you're probably doing a lot of crosscalls with
-> the current code.
+sysctl.conf tcp memory settings:
 
-Probably no worse than the socket's transport since the skbuf's aren't
-necessarily allocated on the CPU calling svc_recv.
+# NFS Tuning Parameters
+sunrpc.udp_slot_table_entries = 128
+sunrpc.tcp_slot_table_entries = 128
+vm.overcommit_ratio = 80
 
-> 
+net.core.rmem_max=524288
+net.core.rmem_default=262144
+net.core.wmem_max=524288
+net.core.wmem_default=262144
+net.ipv4.tcp_rmem = 8192 262144 524288
+net.ipv4.tcp_wmem = 8192 262144 524288
+net.ipv4.tcp_sack=0
+net.ipv4.tcp_timestamps=0
+vm.min_free_kbytes=50000
+vm.overcommit_memory=1
+net.ipv4.tcp_reordering=127
+
+# Enable tcp_low_latency
+net.ipv4.tcp_low_latency=1
+
+Here is a current reading from a slabtop of a system where this error is
+happening:
+
+3007154 3007154 100%    4.00K 3007154        1  12028616K size-4096
+
+Note the size of the object cache, usually it is 50 - 100 MB (I have
+another box with 32 threads and the same settings which is bouncing
+between 50 and 128 MB right now).
+
+I have a lot of client boxes that need access to these servers, and
+would really benefit from having more threads, but if I increase the
+number of threads, it pushes everything out of cache, forcing re-reads,
+and really slows down our jobs.
+
+Any thoughts on this?
 
 
+Thanks, 
 
+Norman Weathers
