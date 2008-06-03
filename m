@@ -1,104 +1,64 @@
-From: "Kevin Coffman" <kwc@umich.edu>
-Subject: Re: NFSv4, MIT KRB5, home-directory permissions
-Date: Tue, 3 Jun 2008 12:40:03 -0400
-Message-ID: <4d569c330806030940j2c3e366fp1498b8c189d6e0b5@mail.gmail.com>
-References: <20080603115721.GA27052@netwichtig.de>
+From: Tom Tucker <tom@opengridcomputing.com>
+Subject: Re: [PATCH 0/3] have pooled sunrpc services make more intelligent
+	allocations
+Date: Tue, 03 Jun 2008 11:53:42 -0500
+Message-ID: <1212512022.29133.18.camel@trinity.ogc.int>
+References: <20080603110549.8631.46647.stgit@dantu.usersys.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org
-To: "Hendrik Jaeger" <hank-BuXUH66JCJPEZGwTFP6sgQ@public.gmane.org>
+Content-Type: text/plain
+Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+	bfields@fieldses.org
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from ti-out-0910.google.com ([209.85.142.190]:25490 "EHLO
-	ti-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750862AbYFCQkG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Jun 2008 12:40:06 -0400
-Received: by ti-out-0910.google.com with SMTP id b6so565097tic.23
-        for <linux-nfs@vger.kernel.org>; Tue, 03 Jun 2008 09:40:04 -0700 (PDT)
-In-Reply-To: <20080603115721.GA27052-BuXUH66JCJPEZGwTFP6sgQ@public.gmane.org>
+Received: from smtp.opengridcomputing.com ([209.198.142.2]:49984 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751377AbYFCQs5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Jun 2008 12:48:57 -0400
+In-Reply-To: <20080603110549.8631.46647.stgit-LRazzElzaNIFmhoHi+V13ACJwEvxM/w9@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-By default, the machine credentials are used for mount (and any file
-access done by root).  The testuser needs to have their own Kerberos
-credentials.  I can't think of any work-around to that.
+Jeff:
 
-K.C.
+This brings up an interesting issue with the RDMA transport and
+RDMA_READ. RDMA_READ is submitted as part of fetching an RPC from the
+client (e.g. NFS_WRITE). The xpo_recvfrom function doesn't block waiting
+for the RDMA_READ to complete, but rather queues the RPC for subsequent
+processing when the I/O completes and returns 0. 
 
-On Tue, Jun 3, 2008 at 7:57 AM, Hendrik Jaeger <hank-BuXUH66JCJPEZGwTFP6sgQ@public.gmane.org> wrote:
-> Hi,
->
-> I have a problem with my setup. In the end it should work like this:
-> - Users are in LDAP, including their passwords
-> - Homedirectories are mounted via NFSv4 on the clients
-> - client-machines are authenticated to the NFS-Server via MIT Kerberos
-> - Users are authenticated via libpam-ldap
->
-> Most of that is already working and IIRC i already had everything
-> working when i tried it some time ago, but now i can't figure out, what
-> i did wrong this time.
->
-> What I have:
-> - 1 machine running slapd, nfs-kernel-server and MIT Kerberos v5 (FQDN
->        is server.bws.example)
-> - 1 machine acting as client (FQDN is client.bws.example)
-> - 1 User in the ldap tree called 'testuser' with homedirectory set to
->        /home/nfs/testuser
-> - 1 export on the server:
->        /srv/nfs *(rw,sync,fsid=0,sec=krb5p)
-> - 1 nfs4 mount on the client
->        server.bws.example:/ /home/nfs nfs4 sec=krb5p 0 0
-> - 2 principals: nfs/server.bws.example and nfs/client.bws.example
->        each of those has been exported and put in the /etc/krb5.keytab on the
->        corresponding machine
-> - on both machines matching lines in /etc/hosts:
->        192.168.0.1 server.bws.example server
->        192.168.0.2 client.bws.example client
->
-> What works:
-> - testuser can log in on the client
-> - /home/nfs can be mounted on the client
-> - ls -ld /home/nfs/testuser as root shows the directory belonging to
->        testuser:testuser with permissions 755
->
-> What does not:
-> - testuser can't get to his own homedirectory. he gets a 'permission
->        denied' when trying to access /home/nfs
->
-> syslog on the client:
-> rpc.gssd: ERROR: GSS-API: error in gss_acquite_cred(): Unspecified GSS
-> failure. Minor code may provide more information - No credentials cache
-> found
-> rpc.gssd: WARNING: Failed to create krb5 context for user with uid 10000
-> for server server.bws.example
->
-> This looks to me like 'testuser' should have a principal in kerberos to
-> use the nfs-mount.
->
-> Is there a possibility to just make the machines authenticate each other
-> for the nfs mount and NOT need every single user in kerberos as well?
-> AFAIR i had a setup like this only some weeks ago, but i'm not able to
-> reproduce it.
->
-> Any help with this is appreciated. Since i am not subscribed to the list
-> (yet) please CC me.
->
-> If you need any more information please ask.
->
-> Thanks in advance!
->
-> Hendrik Jaeger
->
->
->
+I can use these new services to allocate CPU local pages for this I/O.
+So far, so good. However, when the I/O completes, and the transport is
+rescheduled for subsequent RPC completion processing, the pool/CPU that
+is elected doesn't have any affinity for the CPU on which the I/O was
+initially submitted. I think this means that the svc_process/reply steps
+may occur on a CPU far away from the memory in which the data resides.
+
+Am I making sense here? If so, any thoughts on what could/should be
+done?
+
+Thanks,
+Tom
+
+On Tue, 2008-06-03 at 07:16 -0400, Jeff Layton wrote:
+> The sunrpc code has had some support for spreading pooled services over
+> different NUMA nodes and CPUs for some time. So far though, this support
+> has been for CPU masks only. Memory allocated for these services is
+> generally done by whatever CPU happens to be running the init script
+> that starts the services and so most of it ends up on the same NUMA node.
+> This means that nfsd's end up wasting a lot of time updating remote
+> memory on a different memory node.
+> 
+> This patchset attempts to remedy that by having pooled services make
+> per-thread allocations that are on their local memory node. I have no
+> hard performance numbers for this particular patchset, but Greg Banks
+> sent me a different patch that has a similar effect and claims that
+> there is a significant performance gain.
+> 
+> Comments and suggestions appreciated...
+> 
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
 > --
-> Slang is language that takes off its coat, spits on its hands, and goes to work.
->
-> -----BEGIN PGP SIGNATURE-----
-> Version: GnuPG v1.4.6 (GNU/Linux)
->
-> iD8DBQFIRTGh5PO/ypkUBC8RAhDfAKCsy/4gpaCcEnujr1sm1zEwDOJkkwCgjLu6
-> +77cu93MYSruEItZRPwQztk=
-> =L/jq
-> -----END PGP SIGNATURE-----
->
->
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
