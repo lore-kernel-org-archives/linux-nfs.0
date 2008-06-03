@@ -1,56 +1,34 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH 0/3] [RFC] knfsd: convert to kthread API and	remove
- signaling for shutdown
-Date: Tue, 3 Jun 2008 06:51:00 -0400
-Message-ID: <20080603065100.289e01b4@tupile.poochiereds.net>
-References: <1211078114-18384-1-git-send-email-jlayton@redhat.com>
-	<18481.6416.571430.593722@notabene.brown>
-	<4831F860.6050801@melbourne.sgi.com>
-	<4833364A.4010803@melbourne.sgi.com>
-	<20080520214823.576ad7a7@tleilax.poochiereds.net>
-	<48339730.3060206@melbourne.sgi.com>
-	<20080530122517.4f18c48e@tleilax.poochiereds.net>
-	<48438A76.6000400@melbourne.sgi.com>
-	<20080602064132.10c69c88@tleilax.poochiereds.net>
-	<4844BA3C.3010605@melbourne.sgi.com>
+Subject: [PATCH 0/3] have pooled sunrpc services make more intelligent
+	allocations
+Date: Tue, 03 Jun 2008 07:16:09 -0400
+Message-ID: <20080603110549.8631.46647.stgit@dantu.usersys.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org,
-	nfsv4@linux-nfs.org
-To: Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
+Content-Type: text/plain; charset="utf-8"
+To: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+	bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:52317 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([66.187.233.31]:46155 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752287AbYFCKvp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Jun 2008 06:51:45 -0400
-In-Reply-To: <4844BA3C.3010605-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
+	id S1751999AbYFCLQ1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Jun 2008 07:16:27 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 03 Jun 2008 13:27:56 +1000
-Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org> wrote:
+The sunrpc code has had some support for spreading pooled services over
+different NUMA nodes and CPUs for some time. So far though, this support
+has been for CPU masks only. Memory allocated for these services is
+generally done by whatever CPU happens to be running the init script
+that starts the services and so most of it ends up on the same NUMA node.
+This means that nfsd's end up wasting a lot of time updating remote
+memory on a different memory node.
 
-> Jeff Layton wrote:
-> > On Mon, 02 Jun 2008 00:51:50 -0500
-> > Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org> wrote:
-> >   
-> >
-> > I'm certainly no VM expert either, but where are you seeing the
-> > kmalloc + memset? The only definition I see is the inlined function
-> > in slab.h which is:
-> >
-> > static inline void *kzalloc(size_t size, gfp_t flags)
-> >
-> >   
-> Sorry, I was looking in the wrong tree (sles10 not tot).  Nevermind :-)
-> 
+This patchset attempts to remedy that by having pooled services make
+per-thread allocations that are on their local memory node. I have no
+hard performance numbers for this particular patchset, but Greg Banks
+sent me a different patch that has a similar effect and claims that
+there is a significant performance gain.
 
-No worries... :-)
+Comments and suggestions appreciated...
 
-I went back and walked through the slab and slub code and it looks like
-simply setting __GFP_ZERO on the allocation will do the right thing.
-I'll plan to push the patchset today sometime.
-
-Thanks,
--- 
-Jeff Layton <jlayton@redhat.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
