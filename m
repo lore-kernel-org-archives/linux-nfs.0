@@ -1,75 +1,51 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [NFS] I/O Errors with hard mounts
-Date: Wed, 4 Jun 2008 14:19:10 -0400
-Message-ID: <A9046394-948D-4EDF-B1B2-3E3BD2C484C1@oracle.com>
-References: <4f0f0cb0806040633x74fd0afbm94866cf85810f242@mail.gmail.com>
-Mime-Version: 1.0 (Apple Message framework v924)
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: "David Konerding" <dakoner@gmail.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 1/4] knfsd: Replace lock_kernel with a mutex for nfsd
+	thread startup/shutdown locking.
+Date: Wed, 4 Jun 2008 17:02:35 -0400
+Message-ID: <20080604210235.GC10362@fieldses.org>
+References: <1212591796-22144-1-git-send-email-jlayton@redhat.com> <1212591796-22144-2-git-send-email-jlayton@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org,
+	gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:57834 "EHLO neil.brown.name"
+Received: from mail.fieldses.org ([66.93.2.214]:60052 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752922AbYFDSVH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 4 Jun 2008 14:21:07 -0400
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1K3xbc-0001g7-CR
-	for linux-nfs@vger.kernel.org; Thu, 05 Jun 2008 04:21:04 +1000
-In-Reply-To: <4f0f0cb0806040633x74fd0afbm94866cf85810f242-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+	id S1752593AbYFDVCi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 4 Jun 2008 17:02:38 -0400
+In-Reply-To: <1212591796-22144-2-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Jun 4, 2008, at 9:33 AM, David Konerding wrote:
-> Hi,
->
-> We have a bunch of Linux clients (SLES 10 SP1) which mount a NetApp  
-> filer.
->
-> When the NetApp gets very, very busy, for example, one user is
-> deleting 1Tbyte of data
-> while another user is doing a 30 client throughput test, it will stop
-> responding to some requests.
->
-> Although we are using hard mounts, some users report that during the
-> hammering period, some of their
-> file operations produce "I/O Error" messages on their terminal.
->
-> We checked, and the hosts are indeed using hard mounting.  From our
-> reading, I/O Errors
-> should only ever make it back to the user if are using soft mounting.
->
-> We're pretty sure the filer is not sending back an NFS_ERR response  
-> (and we're
-> pretty sure that wouldn't get reported to the user as an I/O Error...)
->
-> At this point, we suspect there must be a path in the NFS
-> implementation that returns I/O Error to user
-> space even with a hard mount.
->
-> Any ideas?
+On Wed, Jun 04, 2008 at 11:03:13AM -0400, Jeff Layton wrote:
+> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+> index 5ac00c4..d601a77 100644
+> --- a/fs/nfsd/nfsctl.c
+> +++ b/fs/nfsd/nfsctl.c
+...
+> @@ -566,14 +574,13 @@ static ssize_t write_versions(struct file *file, char *buf, size_t size)
+>  	return len;
+>  }
+>  
+> -static ssize_t write_ports(struct file *file, char *buf, size_t size)
+> +static ssize_t __write_ports(struct file *file, char *buf, size_t size)
+>  {
+>  	if (size == 0) {
+>  		int len = 0;
+> -		lock_kernel();
+> +
+>  		if (nfsd_serv)
+>  			len = svc_xprt_names(nfsd_serv, buf, 0);
+> -		unlock_kernel();
 
-One place where this can occur is if XDR encoding or decoding fails.   
-This is not too likely though.  I would look at the RPC client's  
-decoding logic first: call_decode() and friends.
+svc_xprt_names() has to be prepared to accept NULL as a first parameter
+(since we've got nothing here any longer to guarantee that nfsd_serv
+won't change after we've checked it).  And, indeed, it does check for
+that (with its local copy, which won't change.  So that's OK.  But then
+could we just ditch this redundant check here?  It's confusing.
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+Oops, but: what happens if something like this races with svc_destroy,
+so svc_xprt_names() is passed a pointer to freed memory?
 
-
-
-
--------------------------------------------------------------------------
-Check out the new SourceForge.net Marketplace.
-It's the best place to buy or sell services for
-just about anything Open Source.
-http://sourceforge.net/services/buy/index.php
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
-
+--b.
