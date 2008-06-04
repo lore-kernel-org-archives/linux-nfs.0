@@ -1,94 +1,64 @@
-From: Jeff Layton <jlayton@redhat.com>
+From: Chuck Lever <chuck.lever@oracle.com>
 Subject: Re: [NFS] I/O Errors with hard mounts
-Date: Wed, 4 Jun 2008 13:58:17 -0400
-Message-ID: <20080604135817.0608273a@tleilax.poochiereds.net>
+Date: Wed, 4 Jun 2008 14:19:10 -0400
+Message-ID: <A9046394-948D-4EDF-B1B2-3E3BD2C484C1@oracle.com>
 References: <4f0f0cb0806040633x74fd0afbm94866cf85810f242@mail.gmail.com>
-	<20080604121723.5b6a53e6@tleilax.poochiereds.net>
-	<4f0f0cb0806041000m7926d1e7m93f71ebaacd6c976@mail.gmail.com>
-Mime-Version: 1.0
+Mime-Version: 1.0 (Apple Message framework v924)
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfs@lists.sourceforge.net
 To: "David Konerding" <dakoner@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:34586 "EHLO neil.brown.name"
+Received: from neil.brown.name ([220.233.11.133]:57834 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753608AbYFDR6c (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 4 Jun 2008 13:58:32 -0400
+	id S1752922AbYFDSVH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 4 Jun 2008 14:21:07 -0400
 Received: from brown by neil.brown.name with local (Exim 4.63)
 	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1K3xFl-0001bw-7M
-	for linux-nfs@vger.kernel.org; Thu, 05 Jun 2008 03:58:29 +1000
-In-Reply-To: <4f0f0cb0806041000m7926d1e7m93f71ebaacd6c976-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+	id 1K3xbc-0001g7-CR
+	for linux-nfs@vger.kernel.org; Thu, 05 Jun 2008 04:21:04 +1000
+In-Reply-To: <4f0f0cb0806040633x74fd0afbm94866cf85810f242-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 4 Jun 2008 10:00:16 -0700
-"David Konerding" <dakoner@gmail.com> wrote:
+On Jun 4, 2008, at 9:33 AM, David Konerding wrote:
+> Hi,
+>
+> We have a bunch of Linux clients (SLES 10 SP1) which mount a NetApp  
+> filer.
+>
+> When the NetApp gets very, very busy, for example, one user is
+> deleting 1Tbyte of data
+> while another user is doing a 30 client throughput test, it will stop
+> responding to some requests.
+>
+> Although we are using hard mounts, some users report that during the
+> hammering period, some of their
+> file operations produce "I/O Error" messages on their terminal.
+>
+> We checked, and the hosts are indeed using hard mounting.  From our
+> reading, I/O Errors
+> should only ever make it back to the user if are using soft mounting.
+>
+> We're pretty sure the filer is not sending back an NFS_ERR response  
+> (and we're
+> pretty sure that wouldn't get reported to the user as an I/O Error...)
+>
+> At this point, we suspect there must be a path in the NFS
+> implementation that returns I/O Error to user
+> space even with a hard mount.
+>
+> Any ideas?
 
-> >> Although we are using hard mounts, some users report that during the
-> >> hammering period, some of their
-> >> file operations produce "I/O Error" messages on their terminal.
-> >>
-> >> We checked, and the hosts are indeed using hard mounting.  From our
-> >> reading, I/O Errors
-> >> should only ever make it back to the user if are using soft mounting.
-> >>
-> > hard/soft only governs what happens when there is a major timeout (i.e.
-> > the server doesn't respond within a given time). If there are other
-> > errors (for instance, client side memory shortage, server starts
-> > refusing connections, etc), then there can be errors returned to the
-> > application.
-> >
-> 
-> OK; we're already using TCP mounts, so I don't think that any new
-> client->server connections
-> should occur after the mount is established.
-> 
+One place where this can occur is if XDR encoding or decoding fails.   
+This is not too likely though.  I would look at the RPC client's  
+decoding logic first: call_decode() and friends.
 
-Unless the connection is broken for some reason and the socket has
-to be reconnected.
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-> Second, memory is not an issue; this happens on lightly loaded clients
-> with 64Gbytes RAM,
-> and RAM is all cache and buffer.
-> 
 
-Yeah, you'd probably get a -ENOMEM or something if memory were short. I
-was just offering up that as an obvious way to get errors even if
-you're hard mounting.
 
-> 
-> > EIO is pretty generic, and is often what you see when a more obscure
-> > error is translated into what a syscall would expect. It can happen for
-> > other reasons besides an RPC timeout.
-> 
-> 
-> OK, so, our best bet to debug this, is to:
-> 1) reproduce the problem
-> 2) when the problem occurs, make sure the command that run that got an
-> EIO was running
-> under strace, so we know what syscall was being made
-> 3) when we know what syscall was being made, backtrack to the kernel
-> source for that syscall
-> 4) inspect the source to see what paths generate EIO
-> 
-> Dave
-
-Getting straces of the apps failing might be helpful, particularly if
-it's always in the same syscalls. I have a hunch though that you'll find
-yourself in the twisty maze of RPC code. In that case, knowing the
-particular syscalls might not be that informative.
-
-Looking at network captures might also be helpful. If you can correlate
-the straces with what's going over the wire, then you might be able to
-determine whether this error is being generated as a result of a NFS
-error from the server or something else entirely.
-
-NFS/RPC debugging might also be helpful (see rpcdebug manpage and note
-that it can have significant performance impact).
-
--- 
-Jeff Layton <jlayton@redhat.com>
 
 -------------------------------------------------------------------------
 Check out the new SourceForge.net Marketplace.
