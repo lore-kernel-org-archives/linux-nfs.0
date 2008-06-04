@@ -1,78 +1,81 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 1/4] knfsd: Replace lock_kernel with a mutex for nfsd
-	thread startup/shutdown locking.
-Date: Wed, 4 Jun 2008 18:41:20 -0400
-Message-ID: <20080604224120.GI10362@fieldses.org>
-References: <1212591796-22144-1-git-send-email-jlayton@redhat.com> <1212591796-22144-2-git-send-email-jlayton@redhat.com> <20080604210235.GC10362@fieldses.org> <20080604172752.31686797@tleilax.poochiereds.net> <20080604215815.GF10362@fieldses.org>
+From: Ricardo Labiaga <labiaga@yahoo.com>
+Subject: Re: [NFS] I/O Errors with hard mounts
+Date: Wed, 4 Jun 2008 15:45:04 -0700 (PDT)
+Message-ID: <927260.87785.qm@web31407.mail.mud.yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org,
-	gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org
-To: Jeff Layton <jlayton@redhat.com>
+Content-Type: text/plain; charset=iso-8859-1
+Cc: nfs@lists.sourceforge.net
+To: dakoner@gmail.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:39946 "EHLO fieldses.org"
+Received: from neil.brown.name ([220.233.11.133]:50370 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751945AbYFDWlW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 4 Jun 2008 18:41:22 -0400
-In-Reply-To: <20080604215815.GF10362@fieldses.org>
+	id S1750900AbYFDWp2 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Jun 2008 18:45:28 -0400
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1K41jP-0002aa-6k
+	for linux-nfs@vger.kernel.org; Thu, 05 Jun 2008 08:45:23 +1000
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jun 04, 2008 at 05:58:15PM -0400, bfields wrote:
-> On Wed, Jun 04, 2008 at 05:27:52PM -0400, Jeff Layton wrote:
-> > On Wed, 4 Jun 2008 17:02:35 -0400
-> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > 
-> > > On Wed, Jun 04, 2008 at 11:03:13AM -0400, Jeff Layton wrote:
-> > > > diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-> > > > index 5ac00c4..d601a77 100644
-> > > > --- a/fs/nfsd/nfsctl.c
-> > > > +++ b/fs/nfsd/nfsctl.c
-> > > ...
-> > > > @@ -566,14 +574,13 @@ static ssize_t write_versions(struct file *file, char *buf, size_t size)
-> > > >  	return len;
-> > > >  }
-> > > >  
-> > > > -static ssize_t write_ports(struct file *file, char *buf, size_t size)
-> > > > +static ssize_t __write_ports(struct file *file, char *buf, size_t size)
-> > > >  {
-> > > >  	if (size == 0) {
-> > > >  		int len = 0;
-> > > > -		lock_kernel();
-> > > > +
-> > > >  		if (nfsd_serv)
-> > > >  			len = svc_xprt_names(nfsd_serv, buf, 0);
-> > > > -		unlock_kernel();
-> > > 
-> > > svc_xprt_names() has to be prepared to accept NULL as a first parameter
-> > > (since we've got nothing here any longer to guarantee that nfsd_serv
-> > > won't change after we've checked it).  And, indeed, it does check for
-> > > that (with its local copy, which won't change.  So that's OK.  But then
-> > > could we just ditch this redundant check here?  It's confusing.
-> > > 
-> > > Oops, but: what happens if something like this races with svc_destroy,
-> > > so svc_xprt_names() is passed a pointer to freed memory?
-> > > 
-> > 
-> > We do have a guarantee that nfsd_serv won't change after it's checked
-> > here. The new nfsd_mutex protects it. write_ports has been renamed to
-> > __write_ports, and write_ports has been turned into a wrapper that runs
-> > the entire original function under the nfsd_mutex. We also have nfsd
-> > hold the nfsd_mutex when svc_exit_thread is called, so svc_destroy
-> > should also be called while holding it. That should serialize access
-> > to the nfsd_serv.
-> 
-> Of course, you're right; thanks for setting me straight!
+Does=A0/var/log/messages show any errors around the same time?=A0 In ad=
+dition=A0to the=A0network trace=A0and=A0rpcdebug on the client, take a =
+look at "nfsstat -d" on the filer.=A0Is=A0the filer=A0dropping the conn=
+ection?=A0 Look for "dropped with EAGAIN" or "dropped from vol offline"=
+ in the output.=A0 This will help narrow down the problem.
+- ricardo
+> -----Original Message-----
+> From: David Konerding [mailto:dakoner@gmail.com]=20
+> Sent: Wednesday, June 04, 2008 6:33 AM
+> To: nfs@lists.sourceforge.net
+> Subject: [NFS] I/O Errors with hard mounts
+>=20
+> Hi,
+>=20
+> We have a bunch of Linux clients (SLES 10 SP1) which mount a=20
+> NetApp filer.
+>=20
+> When the NetApp gets very, very busy, for example, one user is
+> deleting 1Tbyte of data
+> while another user is doing a 30 client throughput test, it will stop
+> responding to some requests.
+>=20
+> Although we are using hard mounts, some users report that during the
+> hammering period, some of their
+> file operations produce "I/O Error" messages on their terminal.
+>=20
+> We checked, and the hosts are indeed using hard mounting.=A0 From our
+> reading, I/O Errors
+> should only ever make it back to the user if are using soft mounting.
+>=20
+> We're pretty sure the filer is not sending back an NFS_ERR=20
+> response (and we're
+> pretty sure that wouldn't get reported to the user as an I/O Error...=
+)
+>=20
+> At this point, we suspect there must be a path in the NFS
+> implementation that returns I/O Error to user
+> space even with a hard mount.
+>=20
+> Any ideas?
+>=20
+> Dave
 
-One more random point of confusion: is write_versions racy?  It assigns
-to nfsd_versions, which is used in svc_process() to decide whether a
-version is supported or not, without doing the adjustment of rq_argp and
-rq_resp which a comment in write_versions() says is necessary.  And
-there's no locking around the nfsd_serv check there.  So in theory could
-a write_versions() at the wrong time result in an nfsd that accepted nfs
-versions that it shouldn't (and hence could overflow some buffer)?
 
-That'd be a preexisting problem, nothing to do with your work--I was
-just grepping for uses of nfsd_serv....
 
---b.
+     =20
+
+-----------------------------------------------------------------------=
+--
+Check out the new SourceForge.net Marketplace.
+It's the best place to buy or sell services for
+just about anything Open Source.
+http://sourceforge.net/services/buy/index.php
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
+
