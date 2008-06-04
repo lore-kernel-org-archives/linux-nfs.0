@@ -1,60 +1,110 @@
-From: "David Konerding" <dakoner@gmail.com>
-Subject: [NFS] I/O Errors with hard mounts
-Date: Wed, 4 Jun 2008 06:33:18 -0700
-Message-ID: <4f0f0cb0806040633x74fd0afbm94866cf85810f242@mail.gmail.com>
+From: "Chuck Lever" <chucklever@gmail.com>
+Subject: Re: Problems with large number of clients and reads
+Date: Wed, 4 Jun 2008 09:49:19 -0400
+Message-ID: <76bd70e30806040649h53ab5d66x8c3423c551e94f77@mail.gmail.com>
+References: <1212519001.24900.14.camel@hololw58>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org
+To: "Norman Weathers" <norman.r.weathers-496aOtIFJR1B+Kdf37RAV9BPR1lH4CV8@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:48774 "EHLO neil.brown.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751130AbYFDNdc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 4 Jun 2008 09:33:32 -0400
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1K3t7J-0000nE-0l
-	for linux-nfs@vger.kernel.org; Wed, 04 Jun 2008 23:33:29 +1000
+Received: from wx-out-0506.google.com ([66.249.82.228]:37074 "EHLO
+	wx-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753399AbYFDNtV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Jun 2008 09:49:21 -0400
+Received: by wx-out-0506.google.com with SMTP id h29so70085wxd.4
+        for <linux-nfs@vger.kernel.org>; Wed, 04 Jun 2008 06:49:20 -0700 (PDT)
+In-Reply-To: <1212519001.24900.14.camel@hololw58>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+Hi Norman-
 
-We have a bunch of Linux clients (SLES 10 SP1) which mount a NetApp filer.
+On Tue, Jun 3, 2008 at 2:50 PM, Norman Weathers
+<norman.r.weathers-496aOtIFJR1B+Kdf37RAV9BPR1lH4CV8@public.gmane.org> wrote:
+> Hello all,
+>
+> We are having some issues with some high throughput servers of ours.
+>
+> Here is the issue, we are using a vanilla 2.6.22.14 kernel on a node
+> with 2 Dual Core Intels (3 GHz) and 16 GB of ram.  The files that are
+> being served are around 2 GB each, and there are usually 3 to 5 of them
+> being read, so once read they fit into memory nicely, and when all is
+> working correctly, we have a perfectly filled cache, with almost no disk
+> activity.
+>
+> When we have large NFS activity (say, 600 to 1200 clients) connecting to
+> the server(s), they can get into a state where they are using up all of
+> memory, but they are dropping cache.  slabtop is showing 13 GB of memory
+> being used by the size-4096 slab object.  We have two ethernet channels
+> bonded, so we see in excess of 240 MB/s of data flowing out of the box,
+> and all of the sudden, disk activity has risen to 185 MB/s.  This
+> happens if we are using 8 or more nfs threads.  If we limit the threads
+> to 6 or less, this doesn't happen.  Of course, we are starving clients,
+> but at least the jobs that my customers are throwing out there are
+> progressing.  The question becomes, what is causing the memory to be
+> used up by the slab size-4096 object?  Why when all of the sudden a
+> bunch of clients ask for data does this object grow from 100 MB to 13
+> GB?  I have set the memory settings to something that I thought was
+> reasonable.
+>
+> Here is some more of the particulars:
+>
+> sysctl.conf tcp memory settings:
+>
+> # NFS Tuning Parameters
+> sunrpc.udp_slot_table_entries = 128
+> sunrpc.tcp_slot_table_entries = 128
 
-When the NetApp gets very, very busy, for example, one user is
-deleting 1Tbyte of data
-while another user is doing a 30 client throughput test, it will stop
-responding to some requests.
+I don't have an answer to your size-4096 question, but I do want to
+note that setting the slot table entries sysctls has no effect on NFS
+servers.  It's a client-only setting.
 
-Although we are using hard mounts, some users report that during the
-hammering period, some of their
-file operations produce "I/O Error" messages on their terminal.
+Have you tried this experiment on a server where there are no special
+memory tuning sysctls?
 
-We checked, and the hosts are indeed using hard mounting.  From our
-reading, I/O Errors
-should only ever make it back to the user if are using soft mounting.
+Can you describe the characteristics of your I/O workload (the
+random/sequentialness of it, the size of the I/O requests, the
+burstiness, etc)?
 
-We're pretty sure the filer is not sending back an NFS_ERR response (and we're
-pretty sure that wouldn't get reported to the user as an I/O Error...)
+What mount options are you using on the clients, and what are your
+export options on the server?  (Which NFS version are you using)?
 
-At this point, we suspect there must be a path in the NFS
-implementation that returns I/O Error to user
-space even with a hard mount.
+And finally, the output of uname -a on the server would be good to include.
 
-Any ideas?
+> vm.overcommit_ratio = 80
+>
+> net.core.rmem_max=524288
+> net.core.rmem_default=262144
+> net.core.wmem_max=524288
+> net.core.wmem_default=262144
+> net.ipv4.tcp_rmem = 8192 262144 524288
+> net.ipv4.tcp_wmem = 8192 262144 524288
+> net.ipv4.tcp_sack=0
+> net.ipv4.tcp_timestamps=0
+> vm.min_free_kbytes=50000
+> vm.overcommit_memory=1
+> net.ipv4.tcp_reordering=127
+>
+> # Enable tcp_low_latency
+> net.ipv4.tcp_low_latency=1
+>
+> Here is a current reading from a slabtop of a system where this error is
+> happening:
+>
+> 3007154 3007154 100%    4.00K 3007154        1  12028616K size-4096
+>
+> Note the size of the object cache, usually it is 50 - 100 MB (I have
+> another box with 32 threads and the same settings which is bouncing
+> between 50 and 128 MB right now).
+>
+> I have a lot of client boxes that need access to these servers, and
+> would really benefit from having more threads, but if I increase the
+> number of threads, it pushes everything out of cache, forcing re-reads,
+> and really slows down our jobs.
+>
+> Any thoughts on this?
 
-Dave
-
--------------------------------------------------------------------------
-Check out the new SourceForge.net Marketplace.
-It's the best place to buy or sell services for
-just about anything Open Source.
-http://sourceforge.net/services/buy/index.php
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
-
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
