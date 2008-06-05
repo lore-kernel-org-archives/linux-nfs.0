@@ -1,39 +1,38 @@
-From: Greg Banks <gnb@melbourne.sgi.com>
-Subject: Re: [PATCH 4/4] sunrpc: remove unneeded field from svc_serv struct
-Date: Thu, 05 Jun 2008 11:30:21 +1000
-Message-ID: <484741AD.5040705@melbourne.sgi.com>
-References: <1212591796-22144-1-git-send-email-jlayton@redhat.com>
-	<1212591796-22144-2-git-send-email-jlayton@redhat.com>
-	<1212591796-22144-3-git-send-email-jlayton@redhat.com>
-	<1212591796-22144-4-git-send-email-jlayton@redhat.com>
-	<1212591796-22144-5-git-send-email-jlayton@redhat.com>
+From: Neil Brown <neilb@suse.de>
+Subject: [PATCH] nfs-utils:  "nfsstat -m" should report nfsv4 mounts too.
+Date: Thu, 5 Jun 2008 14:56:22 +1000
+Message-ID: <18503.29174.373900.73302@notabene.brown>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-To: Jeff Layton <jlayton@redhat.com>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <1212591796-22144-5-git-send-email-jlayton@redhat.com>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Steve Dickson <SteveD@redhat.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from ns.suse.de ([195.135.220.2]:37396 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751402AbYFEE4a (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Jun 2008 00:56:30 -0400
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Jeff Layton wrote:
-> Remove the sv_module field from the svc_serv struct since
-> svc_set_num_threads doesn't bother with module reference
-> counts anymore.
->
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
->   
-Acked-by: Greg Banks <gnb@melbourne.sgi.com>
 
--- 
-Greg Banks, P.Engineer, SGI Australian Software Group.
-The cake is *not* a lie.
-I don't speak for SGI.
+nfsstat -m lists all current nfs mounts, with the mount options.
+It does this by reading /proc/mounts and looking for mounts of type
+"nfs".
+It really should check for "nfs4" as well.  For simplicity, just check
+the first 3 characters of the type.
+
+Signed-off-by: NeilBrown <neilb@suse.de>
+
+diff --git a/utils/nfsstat/nfsstat.c b/utils/nfsstat/nfsstat.c
+index aa6c961..488c845 100644
+--- a/utils/nfsstat/nfsstat.c
++++ b/utils/nfsstat/nfsstat.c
+@@ -716,7 +716,7 @@ mounts(const char *name)
+ 		if (!(type = strtok(NULL, " \t")))
+ 			continue;
+ 
+-		if (strcmp(type, "nfs")) {
++		if (strncmp(type, "nfs", 3)) {
+ 		    continue;
+ 		}
+ 
