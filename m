@@ -1,146 +1,86 @@
-From: Norman Weathers <norman.r.weathers-496aOtIFJR1B+Kdf37RAV9BPR1lH4CV8@public.gmane.org>
-Subject: Re: Problems with large number of clients and reads
-Date: Thu, 05 Jun 2008 13:54:32 -0500
-Message-ID: <1212692072.25393.6.camel@hololw58>
-References: <1212519001.24900.14.camel@hololw58>
-	 <76bd70e30806040649h53ab5d66x8c3423c551e94f77@mail.gmail.com>
-	 <1212588796.27117.4.camel@hololw58>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 1/4] knfsd: Replace lock_kernel with a mutex for nfsd
+	thread startup/shutdown locking.
+Date: Thu, 5 Jun 2008 16:03:58 -0400
+Message-ID: <20080605200358.GB5829@fieldses.org>
+References: <1212591796-22144-1-git-send-email-jlayton@redhat.com>
+	<1212591796-22144-2-git-send-email-jlayton@redhat.com>
+	<484737A9.508@melbourne.sgi.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org
-To: Chuck Lever <chucklever@gmail.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailman2.ppco.com ([138.32.41.14]:39225 "EHLO mailman2.ppco.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750878AbYFESyi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Jun 2008 14:54:38 -0400
-Received: from bvlextrd2.conoco.net (bvlextrd2.conoco.net [138.32.41.13])
-	by mailman2.ppco.com (Switch-3.2.7/Switch-3.2.7) with ESMTP id m55Isaxb032450
-	for <linux-nfs@vger.kernel.org>; Thu, 5 Jun 2008 13:54:36 -0500
-In-Reply-To: <1212588796.27117.4.camel@hololw58>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org,
+	Jeff Layton <jlayton@redhat.com>
+To: Greg Banks <gnb@melbourne.sgi.com>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <484737A9.508@melbourne.sgi.com>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2008-06-04 at 09:13 -0500, Norman Weathers wrote:
-> On Wed, 2008-06-04 at 09:49 -0400, Chuck Lever wrote:
-> > Hi Norman-
-> > 
-> > On Tue, Jun 3, 2008 at 2:50 PM, Norman Weathers
-> > <norman.r.weathers-496aOtIFJR1B+Kdf37RAV9BPR1lH4CV8@public.gmane.org> wrote:
-> > > Hello all,
-> > >
-> > > We are having some issues with some high throughput servers of ours.
-> > >
-> > > Here is the issue, we are using a vanilla 2.6.22.14 kernel on a node
-> > > with 2 Dual Core Intels (3 GHz) and 16 GB of ram.  The files that are
-> > > being served are around 2 GB each, and there are usually 3 to 5 of them
-> > > being read, so once read they fit into memory nicely, and when all is
-> > > working correctly, we have a perfectly filled cache, with almost no disk
-> > > activity.
-> > >
-> > > When we have large NFS activity (say, 600 to 1200 clients) connecting to
-> > > the server(s), they can get into a state where they are using up all of
-> > > memory, but they are dropping cache.  slabtop is showing 13 GB of memory
-> > > being used by the size-4096 slab object.  We have two ethernet channels
-> > > bonded, so we see in excess of 240 MB/s of data flowing out of the box,
-> > > and all of the sudden, disk activity has risen to 185 MB/s.  This
-> > > happens if we are using 8 or more nfs threads.  If we limit the threads
-> > > to 6 or less, this doesn't happen.  Of course, we are starving clients,
-> > > but at least the jobs that my customers are throwing out there are
-> > > progressing.  The question becomes, what is causing the memory to be
-> > > used up by the slab size-4096 object?  Why when all of the sudden a
-> > > bunch of clients ask for data does this object grow from 100 MB to 13
-> > > GB?  I have set the memory settings to something that I thought was
-> > > reasonable.
-> > >
-> > > Here is some more of the particulars:
-> > >
-> > > sysctl.conf tcp memory settings:
-> > >
-> > > # NFS Tuning Parameters
-> > > sunrpc.udp_slot_table_entries = 128
-> > > sunrpc.tcp_slot_table_entries = 128
-> > 
-> > I don't have an answer to your size-4096 question, but I do want to
-> > note that setting the slot table entries sysctls has no effect on NFS
-> > servers.  It's a client-only setting.
-> > 
-> 
-> 
-> Ok.
-> 
-> > Have you tried this experiment on a server where there are no special
-> > memory tuning sysctls?
-> 
-> Unfortunately, no.  I can try it today.
-> 
+On Thu, Jun 05, 2008 at 10:47:37AM +1000, Greg Banks wrote:
+> I notice there's no change to write_leasetime().  That calls
+> nfs4_reset_lease(), which seems to want to only be called when nfsd is
+> not started (according to my reading of the comment preceding the
+> function), and which uses the BKL to protect the variable
+> user_lease_time.  Perhaps that path should be changed to use the new
+> nfsd_mutex also?
 
+write_leasetime() just results in setting the user_lease_time, which is
+copied (once, on server startup) to lease_time, which is what is
+actually used by the running server.  So I don't think there's a race
+here (and the existing BKL use in write_leasetime() isn't really
+needed).
 
-I tried the test with no special memory settings, and I still see the
-same issue.  I also have noticed that even with only 3 threads running,
-I can still have times where 11 GB of memory is being used for buffer
-and not for disk cache.  It just seems like memory is being used up if
-we have a lot of requests from a lot of clients at once...
+--b.
 
-> > 
-> > Can you describe the characteristics of your I/O workload (the
-> > random/sequentialness of it, the size of the I/O requests, the
-> > burstiness, etc)?
 > 
-> The I/O pattern is somewhat random, but when functioning properly, the
-> files are small enough to fit into cache.  Size per record is ~ 10k (can
-> be up to 64k).
+> Similarly with write_recoverydir().  That calls nfs4_reset_recoverydir()
+> which uses client_mutex to protect user_recovery_dirname[], but that
+> variable is only used during nfsd startup.  Perhaps that path should use
+> the new nfsd_mutex also?
+> > diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+> > index 941041f..040b3c2 100644
+> > --- a/fs/nfsd/nfssvc.c
+> > +++ b/fs/nfsd/nfssvc.c
+> > @@ -53,11 +53,27 @@
+> > @@ -190,13 +206,14 @@ void nfsd_reset_versions(void)
+> > @@ -223,7 +240,7 @@ int nfsd_create_serv(void)
+> > @@ -282,6 +299,8 @@ int nfsd_set_nrthreads(int n, int *nthreads)
+> > @@ -316,7 +335,6 @@ int nfsd_set_nrthreads(int n, int *nthreads)
+> > @@ -325,7 +343,6 @@ int nfsd_set_nrthreads(int n, int *nthreads)
+> > @@ -334,8 +351,8 @@ int
+> > @@ -363,7 +380,7 @@ nfsd_svc(unsigned short port, int nrservs)
+> > @@ -399,7 +416,7 @@ nfsd(struct svc_rqst *rqstp)
+> > @@ -417,11 +434,13 @@ nfsd(struct svc_rqst *rqstp)
+> > @@ -477,7 +496,7 @@ nfsd(struct svc_rqst *rqstp)
+> > @@ -486,7 +505,7 @@ out:
+> >   
+> All good.
+> > diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+> > index 01c7e31..7bffaff 100644
+> > --- a/net/sunrpc/svc.c
+> > +++ b/net/sunrpc/svc.c
+> > @@ -461,7 +461,8 @@ svc_create_pooled(struct svc_program *prog, unsigned int bufsize,
+> > @@ -578,9 +579,10 @@ out_enomem:
+> > @@ -674,7 +676,7 @@ found_pool:
+> > @@ -722,7 +724,8 @@ svc_set_num_threads(struct svc_serv *serv, struct svc_pool *pool, int nrservs)
+> >   
 > 
-> > 
-> > What mount options are you using on the clients, and what are your
-> > export options on the server?  (Which NFS version are you using)?
+> All good.
 > 
-> NFSv3.  Client mount options are:
-> rw,vers=3,rsize=1048576,wsize=1048576,acregmin=1,acregmax=15,acdirmin=0,acdirmax=0,hard,intr,proto=tcp,timeo=600,retrans=2,addr=hoeptt01
+> -- 
+> Greg Banks, P.Engineer, SGI Australian Software Group.
+> The cake is *not* a lie.
+> I don't speak for SGI.
 > 
-> 
-> > 
-> > And finally, the output of uname -a on the server would be good to include.
-> > 
-> 
-> Linux hoeptt06 2.6.22.14.SLAB #5 SMP Wed Jan 23 15:45:40 CST 2008 x86_64
-> x86_64 x86_64 GNU/Linux
-> 
-> 
-> > > vm.overcommit_ratio = 80
-> > >
-> > > net.core.rmem_max=524288
-> > > net.core.rmem_default=262144
-> > > net.core.wmem_max=524288
-> > > net.core.wmem_default=262144
-> > > net.ipv4.tcp_rmem = 8192 262144 524288
-> > > net.ipv4.tcp_wmem = 8192 262144 524288
-> > > net.ipv4.tcp_sack=0
-> > > net.ipv4.tcp_timestamps=0
-> > > vm.min_free_kbytes=50000
-> > > vm.overcommit_memory=1
-> > > net.ipv4.tcp_reordering=127
-> > >
-> > > # Enable tcp_low_latency
-> > > net.ipv4.tcp_low_latency=1
-> > >
-> > > Here is a current reading from a slabtop of a system where this error is
-> > > happening:
-> > >
-> > > 3007154 3007154 100%    4.00K 3007154        1  12028616K size-4096
-> > >
-> > > Note the size of the object cache, usually it is 50 - 100 MB (I have
-> > > another box with 32 threads and the same settings which is bouncing
-> > > between 50 and 128 MB right now).
-> > >
-> > > I have a lot of client boxes that need access to these servers, and
-> > > would really benefit from having more threads, but if I increase the
-> > > number of threads, it pushes everything out of cache, forcing re-reads,
-> > > and really slows down our jobs.
-> > >
-> > > Any thoughts on this?
-> > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> _______________________________________________
+> NFSv4 mailing list
+> NFSv4@linux-nfs.org
+> http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
