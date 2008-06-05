@@ -1,112 +1,50 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH 1/4] knfsd: Replace lock_kernel with a mutex for nfsd
-	thread startup/shutdown locking.
-Date: Thu, 5 Jun 2008 16:15:43 -0400
-Message-ID: <20080605161543.33bebda9@tleilax.poochiereds.net>
-References: <1212591796-22144-1-git-send-email-jlayton@redhat.com>
-	<1212591796-22144-2-git-send-email-jlayton@redhat.com>
-	<484737A9.508@melbourne.sgi.com>
-	<20080605200358.GB5829@fieldses.org>
+From: Steve Gaarder <gaarder-O+4OpAMI7mIibAbXQ5Tkjg@public.gmane.org>
+Subject: File locking quits
+Date: Thu, 5 Jun 2008 17:06:06 -0400 (EDT)
+Message-ID: <alpine.LRH.1.00.0806051040070.4860@baltic.math.cornell.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org,
-	Greg Banks <gnb@melbourne.sgi.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <20080605200358.GB5829@fieldses.org>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: TEXT/PLAIN; format=flowed; charset=US-ASCII
+To: linux-nfs@vger.kernel.org
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from math.cornell.edu ([128.84.234.110]:58999 "EHLO math.cornell.edu"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752502AbYFEVmi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Jun 2008 17:42:38 -0400
+Received: from baltic.math.cornell.edu ([128.84.234.231])
+	by math.cornell.edu with esmtp (Exim 4.43)
+	id 1K4Mes-0000cD-DH
+	for linux-nfs@vger.kernel.org; Thu, 05 Jun 2008 17:06:06 -0400
+Received: from localhost (localhost.localdomain [127.0.0.1])
+	by baltic.math.cornell.edu (8.13.1/8.13.1) with ESMTP id m55L66Qq013761
+	for <linux-nfs@vger.kernel.org>; Thu, 5 Jun 2008 17:06:06 -0400
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 5 Jun 2008 16:03:58 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+I am running an NFS (version 3 and 4) server on Red Hat Enterprise 5, 
+upgraded to kernel version 2.6.18-92.el5 a couple weeks ago.  A couple 
+days ago NFS file locking quit completely.  Any program that tried to lock 
+a file would hang, including this piece of Python code:
 
-> On Thu, Jun 05, 2008 at 10:47:37AM +1000, Greg Banks wrote:
-> > I notice there's no change to write_leasetime().  That calls
-> > nfs4_reset_lease(), which seems to want to only be called when nfsd is
-> > not started (according to my reading of the comment preceding the
-> > function), and which uses the BKL to protect the variable
-> > user_lease_time.  Perhaps that path should be changed to use the new
-> > nfsd_mutex also?
-> 
-> write_leasetime() just results in setting the user_lease_time, which is
-> copied (once, on server startup) to lease_time, which is what is
-> actually used by the running server.  So I don't think there's a race
-> here (and the existing BKL use in write_leasetime() isn't really
-> needed).
-> 
-> --b.
-> 
+import fcntl
+fp = open("lock-test4", "a")
+fcntl.lockf(fp.fileno(), fcntl.LOCK_EX|fcntl.LOCK_NB)
 
-I think write_recoverydir might be a similar situation. It just sets
-user_recovery_dirname, and that is also only read once when nfsd is
-starting. We can probably eliminate the client_mutex locking around
-that too.
+A packet sniff showed periodic retransmissions of requests to the lock 
+manager port, and no replies.  I am running iptables with that port (among 
+others) allowed through.  Restarting iptables did not help.  The only 
+thing that did help was a reboot.  The next day the problem happened 
+again; this time, when I rebooted, I reverted to the older kernel, 
+2.6.18-53.1.4.el5.  So far, it's run a bit more than 24 hours without 
+incident.
 
-Presuming that Bruce and I are correct, then I think I only need to
-make sure that we add some nfsd_mutex locking to write_versions.
+- any idea what might be going on?
+- am I correct that this locking is handled in the kernel?
+- is there a way of restarting locking short of rebooting?
+- how would I go about debugging this further?
 
--- Jeff
+thanks,
 
-> > 
-> > Similarly with write_recoverydir().  That calls nfs4_reset_recoverydir()
-> > which uses client_mutex to protect user_recovery_dirname[], but that
-> > variable is only used during nfsd startup.  Perhaps that path should use
-> > the new nfsd_mutex also?
-
-
-> > > diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-> > > index 941041f..040b3c2 100644
-> > > --- a/fs/nfsd/nfssvc.c
-> > > +++ b/fs/nfsd/nfssvc.c
-> > > @@ -53,11 +53,27 @@
-> > > @@ -190,13 +206,14 @@ void nfsd_reset_versions(void)
-> > > @@ -223,7 +240,7 @@ int nfsd_create_serv(void)
-> > > @@ -282,6 +299,8 @@ int nfsd_set_nrthreads(int n, int *nthreads)
-> > > @@ -316,7 +335,6 @@ int nfsd_set_nrthreads(int n, int *nthreads)
-> > > @@ -325,7 +343,6 @@ int nfsd_set_nrthreads(int n, int *nthreads)
-> > > @@ -334,8 +351,8 @@ int
-> > > @@ -363,7 +380,7 @@ nfsd_svc(unsigned short port, int nrservs)
-> > > @@ -399,7 +416,7 @@ nfsd(struct svc_rqst *rqstp)
-> > > @@ -417,11 +434,13 @@ nfsd(struct svc_rqst *rqstp)
-> > > @@ -477,7 +496,7 @@ nfsd(struct svc_rqst *rqstp)
-> > > @@ -486,7 +505,7 @@ out:
-> > >   
-> > All good.
-> > > diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-> > > index 01c7e31..7bffaff 100644
-> > > --- a/net/sunrpc/svc.c
-> > > +++ b/net/sunrpc/svc.c
-> > > @@ -461,7 +461,8 @@ svc_create_pooled(struct svc_program *prog, unsigned int bufsize,
-> > > @@ -578,9 +579,10 @@ out_enomem:
-> > > @@ -674,7 +676,7 @@ found_pool:
-> > > @@ -722,7 +724,8 @@ svc_set_num_threads(struct svc_serv *serv, struct svc_pool *pool, int nrservs)
-> > >   
-> > 
-> > All good.
-> > 
-> > -- 
-> > Greg Banks, P.Engineer, SGI Australian Software Group.
-> > The cake is *not* a lie.
-> > I don't speak for SGI.
-> > 
-> > _______________________________________________
-> > NFSv4 mailing list
-> > NFSv4@linux-nfs.org
-> > http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-
-
--- 
-Jeff Layton <jlayton@redhat.com>
+Steve Gaarder
+System Administrator, Dept of Mathematics
+Cornell University, Ithaca, NY, USA
+gaarder-O+4OpAMI7mIibAbXQ5Tkjg@public.gmane.org
