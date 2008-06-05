@@ -1,73 +1,78 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [2.6.26-rc4] mount.nfsv4/memory poisoning issues...
-Date: Wed, 4 Jun 2008 20:35:04 -0400
-Message-ID: <20080604203504.62730951@tleilax.poochiereds.net>
-References: <6278d2220806041633n3bfe3dd2ke9602697697228b@mail.gmail.com>
+From: Ricardo Labiaga <labiaga@yahoo.com>
+Subject: [NFS] (no subject)
+Date: Wed, 4 Jun 2008 17:37:55 -0700 (PDT)
+Message-ID: <789108.93067.qm@web31401.mail.mud.yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org,
-	Linux Kernel <linux-kernel@vger.kernel.org>
-To: "Daniel J Blueman" <daniel.blueman@gmail.com>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <6278d2220806041633n3bfe3dd2ke9602697697228b@mail.gmail.com>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: text/plain; charset=iso-8859-1
+Cc: nfs@lists.sourceforge.net
+To: dakoner@gmail.com
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from neil.brown.name ([220.233.11.133]:51673 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755861AbYFEAiM convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Jun 2008 20:38:12 -0400
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1K43UX-00033U-HH
+	for linux-nfs@vger.kernel.org; Thu, 05 Jun 2008 10:38:09 +1000
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 5 Jun 2008 00:33:54 +0100
-"Daniel J Blueman" <daniel.blueman@gmail.com> wrote:
+David,
+Can you provide the entire nfsstat -d output on the filer?
+- ricardo
 
-> Having experienced 'mount.nfs4: internal error' when mounting nfsv4 in
-> the past, I have a minimal test-case I sometimes run:
-> 
-> $ while :; do mount -t nfs4 filer:/store /store; umount /store; done
-> 
-> After ~100 iterations, I saw the 'mount.nfs4: internal error',
-> followed by symptoms of memory corruption [1], a locking issue with
-> the reporting [2] and another (related?) memory-corruption issue
-> (off-by-1?) [3]. A little analysis shows memory being overwritten by
-> (likely) a poison value, which gets complicated if it's not
-> use-after-free...
-> 
-> Anyone dare confirm this issue? NFSv4 server is x86-64 Ubuntu 8.04
-> 2.6.24-18, client U8.04 2.6.26-rc4; batteries included [4].
-> 
-> I'm happy to decode addresses, test patches etc.
-> 
-> Daniel
-> 
+> -----Original Message-----
+> From: David Konerding [mailto:dakoner@gmail.com]=20
+> Sent: Wednesday, June 04, 2008 3:56 PM
+> To: nfs@lists.sourceforge.net
+> Subject: Re: [NFS] I/O Errors with hard mounts
+>=20
+> On Wed, Jun 4, 2008 at 3:45 PM, Ricardo Labiaga=20
+> <labiaga@yahoo.com> wrote:
+> > Does /var/log/messages show any errors around the same=20
+> time?=A0 In addition to the network trace and rpcdebug on the=20
+> client, take a look at "nfsstat -d" on the filer. Is the=20
+> filer dropping the connection?=A0 Look for "dropped with=20
+> EAGAIN" or "dropped from vol offline" in the output.=A0 This=20
+> will help narrow down the problem.
+>=20
+> So, sometimes when somebody deletes a lot of data (like the problem w=
+e
+> just observed),
+> the deleting host, and often other hosts, do report=A0 'filer not
+> responding' in the logs.
+> However, operations that aren't happening in the delete dir, tend to
+> work just fine (for example, iozone could be running and doing pretty
+> well)).=A0 Further, the most recent time this happened, the host didn=
+'t
+> report filer not responding.
+>=20
+>=20
+> This is the only EAGAN reference I see:
+>=20
+> assist queue (queued, split mbufs, drop for EAGAIN) =3D (0,=20
+> 64478612, 94340)
+>=20
+>=20
+> Dave
+>=20
 
-Looks like it fell down while trying to take down the kthread during a
-failed mount attempt. I have to wonder if I might have introduced a
-race when I changed nfs4 callback thread to kthread API. I think we may
-need the BKL around the last 2 statements in the main callback thread
-function. If you can easily reproduce this, could you test the
-following patch and let me know if it helps?
-
-Note that this patch is entirely untested, so test it someplace
-non-critical ;-).
-
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
 
 
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index c1e7c83..a3e83f9 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -90,9 +90,9 @@ nfs_callback_svc(void *vrqstp)
- 		preverr = err;
- 		svc_process(rqstp);
- 	}
--	unlock_kernel();
- 	nfs_callback_info.task = NULL;
- 	svc_exit_thread(rqstp);
-+	unlock_kernel();
- 	return 0;
- }
+     =20
+
+-----------------------------------------------------------------------=
+--
+Check out the new SourceForge.net Marketplace.
+It's the best place to buy or sell services for
+just about anything Open Source.
+http://sourceforge.net/services/buy/index.php
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
+
