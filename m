@@ -1,66 +1,54 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: File locking quits
-Date: Thu, 5 Jun 2008 19:37:11 -0400
-Message-ID: <20080605193711.670dd88d@tleilax.poochiereds.net>
-References: <alpine.LRH.1.00.0806051040070.4860@baltic.math.cornell.edu>
+From: Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
+Subject: Re: [PATCH 1/4] knfsd: Replace lock_kernel with a mutex for nfsd
+ thread startup/shutdown locking.
+Date: Fri, 06 Jun 2008 09:35:51 +1000
+Message-ID: <48487857.4030706@melbourne.sgi.com>
+References: <1212591796-22144-1-git-send-email-jlayton@redhat.com>	<1212591796-22144-2-git-send-email-jlayton@redhat.com>	<484737A9.508@melbourne.sgi.com> <20080605200358.GB5829@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: linux-nfs@vger.kernel.org
-To: Steve Gaarder <gaarder-O+4OpAMI7mIibAbXQ5Tkjg@public.gmane.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org,
+	Jeff Layton <jlayton@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:47107 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753281AbYFEXhS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Jun 2008 19:37:18 -0400
-In-Reply-To: <alpine.LRH.1.00.0806051040070.4860-Sx1j/aq4mu3k0HFLh5Ah4O1KJvuKJAac@public.gmane.org>
+Received: from relay2.sgi.com ([192.48.171.30]:58177 "EHLO relay.sgi.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1753526AbYFEXjn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Jun 2008 19:39:43 -0400
+In-Reply-To: <20080605200358.GB5829@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 5 Jun 2008 17:06:06 -0400 (EDT)
-Steve Gaarder <gaarder-O+4OpAMI7mIibAbXQ5Tkjg@public.gmane.org> wrote:
-
-> I am running an NFS (version 3 and 4) server on Red Hat Enterprise 5, 
-> upgraded to kernel version 2.6.18-92.el5 a couple weeks ago.  A couple 
-> days ago NFS file locking quit completely.  Any program that tried to lock 
-> a file would hang, including this piece of Python code:
-> 
-> import fcntl
-> fp = open("lock-test4", "a")
-> fcntl.lockf(fp.fileno(), fcntl.LOCK_EX|fcntl.LOCK_NB)
-> 
-> A packet sniff showed periodic retransmissions of requests to the lock 
-> manager port, and no replies.  I am running iptables with that port (among 
-> others) allowed through.  Restarting iptables did not help.  The only 
-> thing that did help was a reboot.  The next day the problem happened 
-> again; this time, when I rebooted, I reverted to the older kernel, 
-> 2.6.18-53.1.4.el5.  So far, it's run a bit more than 24 hours without 
-> incident.
-> 
-> - any idea what might be going on?
-
-Not right offhand, I don't believe we saw this in testing. Sounds like
-a race of some sort. I'm going to assume, since you mention packets
-going to the NLM port that the problem seems to be with NFSv3. Is this
-correct?
-
-> - am I correct that this locking is handled in the kernel?
-
-Yes.
-
-> - is there a way of restarting locking short of rebooting?
-
-Not really. You can unmount and try to make sure that lockd
-goes down, but without knowing what the problem is that may
-not fix it anyway.
-
-> - how would I go about debugging this further?
-> 
-
-It would be interesting to know what lockd is actually doing. Getting
-some sysrq-t info might be a good place to start. I'd definitely
-recommend opening a support case for this so we can track it formally
-within Red Hat (and possibly can get you a supported fix if it turns
-out to be a bug).
+J. Bruce Fields wrote:
+> On Thu, Jun 05, 2008 at 10:47:37AM +1000, Greg Banks wrote:
+>   
+>> I notice there's no change to write_leasetime().  That calls
+>> nfs4_reset_lease(), which seems to want to only be called when nfsd is
+>> not started (according to my reading of the comment preceding the
+>> function), and which uses the BKL to protect the variable
+>> user_lease_time.  Perhaps that path should be changed to use the new
+>> nfsd_mutex also?
+>>     
+>
+> write_leasetime() just results in setting the user_lease_time, which is
+> copied (once, on server startup) to lease_time, which is what is
+> actually used by the running server.
+Yes, understood.
+>   So I don't think there's a race
+> here (and the existing BKL use in write_leasetime() isn't really
+> needed).
+>   
+The race is pretty harmless.  The only read of user_lease_time happens
+during the critical section currently guarded by the BKL in nfsd_svc();
+the only write of the variable is not guarded by that lock.  If you call
+write_leasetime() many times with different values during nfsd startup,
+the actual value used is not predictable and you can't tell from
+userspace whether your write() succeeded in changing the behaviour of
+the server or not.  Also, you can do write_leasetime() after nfsd
+startup without useful effect; other parameters which can't be changed
+from /proc after the service is running will fail the write() with EBUSY.
 
 -- 
-Jeff Layton <jlayton@redhat.com>
+Greg Banks, P.Engineer, SGI Australian Software Group.
+The cake is *not* a lie.
+I don't speak for SGI.
+
