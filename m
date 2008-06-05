@@ -1,27 +1,26 @@
 From: Ricardo Labiaga <labiaga@yahoo.com>
-Subject: [NFS] (no subject)
-Date: Wed, 4 Jun 2008 17:37:55 -0700 (PDT)
-Message-ID: <789108.93067.qm@web31401.mail.mud.yahoo.com>
+Subject: Re: [NFS] I/O Errors with hard mounts
+Date: Wed, 4 Jun 2008 17:40:59 -0700 (PDT)
+Message-ID: <982706.10752.qm@web31405.mail.mud.yahoo.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=iso-8859-1
 Cc: nfs@lists.sourceforge.net
 To: dakoner@gmail.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:51673 "EHLO neil.brown.name"
+Received: from neil.brown.name ([220.233.11.133]:51677 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755861AbYFEAiM convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Jun 2008 20:38:12 -0400
+	id S1752149AbYFEAlL convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Jun 2008 20:41:11 -0400
 Received: from brown by neil.brown.name with local (Exim 4.63)
 	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1K43UX-00033U-HH
-	for linux-nfs@vger.kernel.org; Thu, 05 Jun 2008 10:38:09 +1000
+	id 1K43XS-00034j-3k
+	for linux-nfs@vger.kernel.org; Thu, 05 Jun 2008 10:41:10 +1000
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-David,
 Can you provide the entire nfsstat -d output on the filer?
+(Apologies for the lack of subject line in previous reply)
 - ricardo
-
 > -----Original Message-----
 > From: David Konerding [mailto:dakoner@gmail.com]=20
 > Sent: Wednesday, June 04, 2008 3:56 PM
