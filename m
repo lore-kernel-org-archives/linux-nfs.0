@@ -1,86 +1,66 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 13/37] SUNRPC: Don't display the rpc_show_tasks header if
-	there are no tasks
-Date: Thu, 12 Jun 2008 15:22:00 -0400
-Message-ID: <20080612192200.24528.72028.stgit@localhost.localdomain>
-References: <20080612192159.24528.43756.stgit@localhost.localdomain>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: File locking quits
+Date: Thu, 5 Jun 2008 19:37:11 -0400
+Message-ID: <20080605193711.670dd88d@tleilax.poochiereds.net>
+References: <alpine.LRH.1.00.0806051040070.4860@baltic.math.cornell.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-	Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII
+Cc: linux-nfs@vger.kernel.org
+To: Steve Gaarder <gaarder-O+4OpAMI7mIibAbXQ5Tkjg@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:61969 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([66.187.233.31]:47107 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754900AbYFLTeE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 12 Jun 2008 15:34:04 -0400
-In-Reply-To: <20080612192159.24528.43756.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
+	id S1753281AbYFEXhS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Jun 2008 19:37:18 -0400
+In-Reply-To: <alpine.LRH.1.00.0806051040070.4860-Sx1j/aq4mu3k0HFLh5Ah4O1KJvuKJAac@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Chuck Lever <chuck.lever@oracle.com>
+On Thu, 5 Jun 2008 17:06:06 -0400 (EDT)
+Steve Gaarder <gaarder-O+4OpAMI7mIibAbXQ5Tkjg@public.gmane.org> wrote:
 
-Clean up: don't display the rpc_show_tasks column header unless there is at
-least one task to display.  As far as I can tell, it is safe to let the
-list_for_each_entry macro decide that each list is empty.
+> I am running an NFS (version 3 and 4) server on Red Hat Enterprise 5, 
+> upgraded to kernel version 2.6.18-92.el5 a couple weeks ago.  A couple 
+> days ago NFS file locking quit completely.  Any program that tried to lock 
+> a file would hang, including this piece of Python code:
+> 
+> import fcntl
+> fp = open("lock-test4", "a")
+> fcntl.lockf(fp.fileno(), fcntl.LOCK_EX|fcntl.LOCK_NB)
+> 
+> A packet sniff showed periodic retransmissions of requests to the lock 
+> manager port, and no replies.  I am running iptables with that port (among 
+> others) allowed through.  Restarting iptables did not help.  The only 
+> thing that did help was a reboot.  The next day the problem happened 
+> again; this time, when I rebooted, I reverted to the older kernel, 
+> 2.6.18-53.1.4.el5.  So far, it's run a bit more than 24 hours without 
+> incident.
+> 
+> - any idea what might be going on?
 
-scripts/checkpatch.pl also wants a KERN_FOO at the start of any newly added
-printk() calls, so this and subsequent patches will also add KERN_INFO.
+Not right offhand, I don't believe we saw this in testing. Sounds like
+a race of some sort. I'm going to assume, since you mention packets
+going to the NLM port that the problem seems to be with NFSv3. Is this
+correct?
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
+> - am I correct that this locking is handled in the kernel?
 
- net/sunrpc/clnt.c |   19 ++++++++++++-------
- 1 files changed, 12 insertions(+), 7 deletions(-)
+Yes.
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index ab8038d..7dda328 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -1526,24 +1526,30 @@ struct rpc_task *rpc_call_null(struct rpc_clnt *clnt, struct rpc_cred *cred, int
- EXPORT_SYMBOL_GPL(rpc_call_null);
- 
- #ifdef RPC_DEBUG
-+static void rpc_show_header(void)
-+{
-+	printk(KERN_INFO "-pid- proc flgs status -client- -prog- --rqstp- "
-+		"-timeout -rpcwait -action- ---ops--\n");
-+}
-+
- void rpc_show_tasks(void)
- {
- 	struct rpc_clnt *clnt;
- 	struct rpc_task *t;
-+	int header = 0;
- 
- 	spin_lock(&rpc_client_lock);
--	if (list_empty(&all_clients))
--		goto out;
--	printk("-pid- proc flgs status -client- -prog- --rqstp- -timeout "
--		"-rpcwait -action- ---ops--\n");
- 	list_for_each_entry(clnt, &all_clients, cl_clients) {
--		if (list_empty(&clnt->cl_tasks))
--			continue;
- 		spin_lock(&clnt->cl_lock);
- 		list_for_each_entry(t, &clnt->cl_tasks, tk_task) {
- 			const char *rpc_waitq = "none";
- 			int proc;
- 
-+			if (!header) {
-+				rpc_show_header();
-+				header++;
-+			}
-+
- 			if (t->tk_msg.rpc_proc)
- 				proc = t->tk_msg.rpc_proc->p_proc;
- 			else
-@@ -1563,7 +1569,6 @@ void rpc_show_tasks(void)
- 		}
- 		spin_unlock(&clnt->cl_lock);
- 	}
--out:
- 	spin_unlock(&rpc_client_lock);
- }
- #endif
+> - is there a way of restarting locking short of rebooting?
 
+Not really. You can unmount and try to make sure that lockd
+goes down, but without knowing what the problem is that may
+not fix it anyway.
+
+> - how would I go about debugging this further?
+> 
+
+It would be interesting to know what lockd is actually doing. Getting
+some sysrq-t info might be a good place to start. I'd definitely
+recommend opening a support case for this so we can track it formally
+within Red Hat (and possibly can get you a supported fix if it turns
+out to be a bug).
+
+-- 
+Jeff Layton <jlayton@redhat.com>
