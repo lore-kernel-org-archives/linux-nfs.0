@@ -1,77 +1,88 @@
-From: tracingworld4u@gmail.com
-Subject: [NFS] Regarding high quality image editing
-Date: Thu, 5 Jun 2008 13:59:47 +0530 (IST)
-Message-ID: <8522252.1212654587402.JavaMail.user1@user>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [2.6.26-rc4] mount.nfsv4/memory poisoning issues...
+Date: Thu, 5 Jun 2008 06:32:53 -0400
+Message-ID: <20080605063253.40787ca3@tleilax.poochiereds.net>
+References: <6278d2220806041633n3bfe3dd2ke9602697697228b@mail.gmail.com>
+	<20080604203504.62730951@tleilax.poochiereds.net>
+	<6278d2220806050128x6e892df3p1632d6ae6b40b55b@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=US-ASCII
+Cc: chucklever@gmail.com, linux-nfs@vger.kernel.org,
+	nfsv4@linux-nfs.org, "Linux Kernel" <linux-kernel@vger.kernel.org>
+To: "Daniel J Blueman" <daniel.blueman@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:52184 "EHLO neil.brown.name"
+Received: from mx1.redhat.com ([66.187.233.31]:47821 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752706AbYFEIaN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Jun 2008 04:30:13 -0400
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1K4ArJ-0004c3-Dn
-	for linux-nfs@vger.kernel.org; Thu, 05 Jun 2008 18:30:09 +1000
+	id S1754760AbYFEKdA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Jun 2008 06:33:00 -0400
+In-Reply-To: <6278d2220806050128x6e892df3p1632d6ae6b40b55b-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
- Very good morning,
+On Thu, 5 Jun 2008 09:28:51 +0100
+"Daniel J Blueman" <daniel.blueman@gmail.com> wrote:
 
- I was browsing the internet and came across your web site. I appreciate the site
- and got interested in it, i think my work can help your business too.
+> On Thu, Jun 5, 2008 at 1:35 AM, Jeff Layton <jlayton@redhat.com> wrote:
+> > On Thu, 5 Jun 2008 00:33:54 +0100
+> > "Daniel J Blueman" <daniel.blueman@gmail.com> wrote:
+> >
+> >> Having experienced 'mount.nfs4: internal error' when mounting nfsv4 in
+> >> the past, I have a minimal test-case I sometimes run:
+> >>
+> >> $ while :; do mount -t nfs4 filer:/store /store; umount /store; done
+> >>
+> >> After ~100 iterations, I saw the 'mount.nfs4: internal error',
+> >> followed by symptoms of memory corruption [1], a locking issue with
+> >> the reporting [2] and another (related?) memory-corruption issue
+> >> (off-by-1?) [3]. A little analysis shows memory being overwritten by
+> >> (likely) a poison value, which gets complicated if it's not
+> >> use-after-free...
+> >>
+> >> Anyone dare confirm this issue? NFSv4 server is x86-64 Ubuntu 8.04
+> >> 2.6.24-18, client U8.04 2.6.26-rc4; batteries included [4].
+> >>
+> >> I'm happy to decode addresses, test patches etc.
+> >>
+> >> Daniel
+> >>
+> >
+> > Looks like it fell down while trying to take down the kthread during a
+> > failed mount attempt. I have to wonder if I might have introduced a
+> > race when I changed nfs4 callback thread to kthread API. I think we may
+> > need the BKL around the last 2 statements in the main callback thread
+> > function. If you can easily reproduce this, could you test the
+> > following patch and let me know if it helps?
+> >
+> > Note that this patch is entirely untested, so test it someplace
+> > non-critical ;-).
+> >
+> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> >
+> >
+> > diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+> > index c1e7c83..a3e83f9 100644
+> > --- a/fs/nfs/callback.c
+> > +++ b/fs/nfs/callback.c
+> > @@ -90,9 +90,9 @@ nfs_callback_svc(void *vrqstp)
+> >                preverr = err;
+> >                svc_process(rqstp);
+> >        }
+> > -       unlock_kernel();
+> >        nfs_callback_info.task = NULL;
+> >        svc_exit_thread(rqstp);
+> > +       unlock_kernel();
+> >        return 0;
+> >  }
+> 
+> This doesn't resolve the issue, alas. I'll hunker down to the
+> bisection in the next few days.
+> 
+> Thanks,
+>   Daniel
 
- We provide high quality image/photo editing services. (professionally hand made)
- [clipping path, masking, colour correction, logo, banner]. Since i am
- contacting you personally, i would like to offer free work for 3 images 
- so that you can see our work and its quality.
+Yeah, after I sent that I went back and looked and it seemed like
+while we don't hold the BKL there, access to the callback info is still
+serialized via a semaphore. Thanks for testing it anyway...
 
- This will help you to utilize your time in more creative work and improve
- your business. It will be worth looking at the samples, quality of work 
- and low prices for such  services.
-
- With our large resources pool we are delivering thousands of images in 24
- hour.
-
-Please see samples at http://www.imageworld4u.net/
- 
-(Price starts from 0.75 $ per picture) please see pricing section for details.
- 
-
- You can avail the offer of 3 test pictures by sending us email .
- 
-
- If the size is big please upload it on our server, we will create a ftp
- account for you without any charges.
-
-
-Sincerely,
-Jayashree
-
-Design manager
-
------------------------------
-Tracing World Pvt Ltd
------------------------------
-No 50 ,Shreyas Complex
-2nd floor,YNT
-Bangalore , india 560064
-
-
-
-
--------------------------------------------------------------------------
-Check out the new SourceForge.net Marketplace.
-It's the best place to buy or sell services for
-just about anything Open Source.
-http://sourceforge.net/services/buy/index.php
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
-
+-- 
+Jeff Layton <jlayton@redhat.com>
