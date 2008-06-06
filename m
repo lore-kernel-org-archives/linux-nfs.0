@@ -1,72 +1,230 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH 1/4] knfsd: Replace lock_kernel with a mutex for nfsd
- thread startup/shutdown locking.
-Date: Fri, 6 Jun 2008 11:05:02 -0400
-Message-ID: <20080606110502.7e4f3967@tleilax.poochiereds.net>
-References: <1212591796-22144-1-git-send-email-jlayton@redhat.com>
-	<1212591796-22144-2-git-send-email-jlayton@redhat.com>
-	<484737A9.508@melbourne.sgi.com>
-	<20080605200358.GB5829@fieldses.org>
-	<48487857.4030706@melbourne.sgi.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-To: Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
+Subject: [PATCH 2/5] knfsd: clean up nfsd filesystem interfaces
+Date: Fri,  6 Jun 2008 11:12:48 -0400
+Message-ID: <1212765171-26042-3-git-send-email-jlayton@redhat.com>
+References: <1212765171-26042-1-git-send-email-jlayton@redhat.com>
+ <1212765171-26042-2-git-send-email-jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org, neilb@suse.de,
+	gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org
+To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:43348 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([66.187.233.31]:49157 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756950AbYFFPFU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 6 Jun 2008 11:05:20 -0400
-In-Reply-To: <48487857.4030706-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
+	id S1757542AbYFFPM5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 6 Jun 2008 11:12:57 -0400
+In-Reply-To: <1212765171-26042-2-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 06 Jun 2008 09:35:51 +1000
-Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org> wrote:
+Several of the nfsd filesystem interfaces allow changes to parameters
+that don't have any effect on a running nfsd service. They are only ever
+checked when nfsd is started. This patch fixes it so that changes to
+those procfiles return -EBUSY if nfsd is already running to make it
+clear that changes on the fly don't work.
 
-> J. Bruce Fields wrote:
-> > On Thu, Jun 05, 2008 at 10:47:37AM +1000, Greg Banks wrote:
-> >   
-> >> I notice there's no change to write_leasetime().  That calls
-> >> nfs4_reset_lease(), which seems to want to only be called when nfsd is
-> >> not started (according to my reading of the comment preceding the
-> >> function), and which uses the BKL to protect the variable
-> >> user_lease_time.  Perhaps that path should be changed to use the new
-> >> nfsd_mutex also?
-> >>     
-> >
-> > write_leasetime() just results in setting the user_lease_time, which is
-> > copied (once, on server startup) to lease_time, which is what is
-> > actually used by the running server.
-> Yes, understood.
-> >   So I don't think there's a race
-> > here (and the existing BKL use in write_leasetime() isn't really
-> > needed).
-> >   
-> The race is pretty harmless.  The only read of user_lease_time happens
-> during the critical section currently guarded by the BKL in nfsd_svc();
-> the only write of the variable is not guarded by that lock.  If you call
-> write_leasetime() many times with different values during nfsd startup,
-> the actual value used is not predictable and you can't tell from
-> userspace whether your write() succeeded in changing the behaviour of
-> the server or not.  Also, you can do write_leasetime() after nfsd
-> startup without useful effect; other parameters which can't be changed
-> from /proc after the service is running will fail the write() with EBUSY.
-> 
+The patch should also close some relatively harmless races between
+changing the info in those interfaces and starting nfsd, since these
+variables are being moved under the protection of the nfsd_mutex.
 
-The race there is pretty harmless, but fixing it sounds like it'll be low
-impact. I don't expect that the nfsd_mutex will be highly contended,
-so adding some locking around these interfaces really shouldn't harm
-anything.
+Finally, the nfsv4recoverydir file always returns -EINVAL if read. This
+patch fixes it to return the recoverydir path as expected.
 
-Also, as you point out, many of these interfaces should return -EBUSY if
-nfsd is up (to be consistent with how write_versions behaves), and we'll
-need proper locking to do that.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfsd/nfs4state.c |   17 ++++++++++---
+ fs/nfsd/nfsctl.c    |   66 +++++++++++++++++++++++++++++++++++++++++----------
+ fs/nfsd/nfssvc.c    |    8 ++++++
+ 3 files changed, 74 insertions(+), 17 deletions(-)
 
-I've got a new patchset that should hopefully address these problems and
-some of your other comments that I'll post in a little while...
-
-Cheers,
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 8799b87..c602aba 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -3249,12 +3249,14 @@ nfs4_state_shutdown(void)
+ 	nfs4_unlock_state();
+ }
+ 
++/*
++ * user_recovery_dirname is protected by the nfsd_mutex since it's only
++ * accessed when nfsd is starting.
++ */
+ static void
+ nfs4_set_recdir(char *recdir)
+ {
+-	nfs4_lock_state();
+ 	strcpy(user_recovery_dirname, recdir);
+-	nfs4_unlock_state();
+ }
+ 
+ /*
+@@ -3278,6 +3280,12 @@ nfs4_reset_recoverydir(char *recdir)
+ 	return status;
+ }
+ 
++char *
++nfs4_recoverydir(void)
++{
++	return user_recovery_dirname;
++}
++
+ /*
+  * Called when leasetime is changed.
+  *
+@@ -3286,11 +3294,12 @@ nfs4_reset_recoverydir(char *recdir)
+  * we start to register any changes in lease time.  If the administrator
+  * really wants to change the lease time *now*, they can go ahead and bring
+  * nfsd down and then back up again after changing the lease time.
++ *
++ * user_lease_time is protected by nfsd_mutex since it's only really accessed
++ * when nfsd is starting
+  */
+ void
+ nfs4_reset_lease(time_t leasetime)
+ {
+-	lock_kernel();
+ 	user_lease_time = leasetime;
+-	unlock_kernel();
+ }
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index 049d2a9..2c2eb87 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -509,7 +509,7 @@ out_free:
+ 	return rv;
+ }
+ 
+-static ssize_t write_versions(struct file *file, char *buf, size_t size)
++static ssize_t __write_versions(struct file *file, char *buf, size_t size)
+ {
+ 	/*
+ 	 * Format:
+@@ -572,6 +572,16 @@ static ssize_t write_versions(struct file *file, char *buf, size_t size)
+ 	return len;
+ }
+ 
++static ssize_t write_versions(struct file *file, char *buf, size_t size)
++{
++	ssize_t rv;
++
++	mutex_lock(&nfsd_mutex);
++	rv = __write_versions(file, buf, size);
++	mutex_unlock(&nfsd_mutex);
++	return rv;
++}
++
+ static ssize_t __write_ports(struct file *file, char *buf, size_t size)
+ {
+ 	if (size == 0) {
+@@ -675,6 +685,7 @@ static ssize_t __write_ports(struct file *file, char *buf, size_t size)
+ static ssize_t write_ports(struct file *file, char *buf, size_t size)
+ {
+ 	ssize_t rv;
++
+ 	mutex_lock(&nfsd_mutex);
+ 	rv = __write_ports(file, buf, size);
+ 	mutex_unlock(&nfsd_mutex);
+@@ -714,16 +725,17 @@ static ssize_t write_maxblksize(struct file *file, char *buf, size_t size)
+ #ifdef CONFIG_NFSD_V4
+ extern time_t nfs4_leasetime(void);
+ 
+-static ssize_t write_leasetime(struct file *file, char *buf, size_t size)
++static ssize_t __write_leasetime(struct file *file, char *buf, size_t size)
+ {
+ 	/* if size > 10 seconds, call
+ 	 * nfs4_reset_lease() then write out the new lease (seconds) as reply
+ 	 */
+ 	char *mesg = buf;
+-	int rv;
++	int rv, lease;
+ 
+ 	if (size > 0) {
+-		int lease;
++		if (nfsd_serv)
++			return -EBUSY;
+ 		rv = get_int(&mesg, &lease);
+ 		if (rv)
+ 			return rv;
+@@ -735,24 +747,52 @@ static ssize_t write_leasetime(struct file *file, char *buf, size_t size)
+ 	return strlen(buf);
+ }
+ 
+-static ssize_t write_recoverydir(struct file *file, char *buf, size_t size)
++static ssize_t write_leasetime(struct file *file, char *buf, size_t size)
++{
++	ssize_t rv;
++
++	mutex_lock(&nfsd_mutex);
++	rv = __write_leasetime(file, buf, size);
++	mutex_unlock(&nfsd_mutex);
++	return rv;
++}
++
++extern char *nfs4_recoverydir(void);
++
++static ssize_t __write_recoverydir(struct file *file, char *buf, size_t size)
+ {
+ 	char *mesg = buf;
+ 	char *recdir;
+ 	int len, status;
+ 
+-	if (size == 0 || size > PATH_MAX || buf[size-1] != '\n')
+-		return -EINVAL;
+-	buf[size-1] = 0;
++	if (size > 0) {
++		if (nfsd_serv)
++			return -EBUSY;
++		if (size > PATH_MAX || buf[size-1] != '\n')
++			return -EINVAL;
++		buf[size-1] = 0;
+ 
+-	recdir = mesg;
+-	len = qword_get(&mesg, recdir, size);
+-	if (len <= 0)
+-		return -EINVAL;
++		recdir = mesg;
++		len = qword_get(&mesg, recdir, size);
++		if (len <= 0)
++			return -EINVAL;
+ 
+-	status = nfs4_reset_recoverydir(recdir);
++		status = nfs4_reset_recoverydir(recdir);
++	}
++	sprintf(buf, "%s\n", nfs4_recoverydir());
+ 	return strlen(buf);
+ }
++
++static ssize_t write_recoverydir(struct file *file, char *buf, size_t size)
++{
++	ssize_t rv;
++
++	mutex_lock(&nfsd_mutex);
++	rv = __write_recoverydir(file, buf, size);
++	mutex_unlock(&nfsd_mutex);
++	return rv;
++}
++
+ #endif
+ 
+ /*----------------------------------------------------------------------------*/
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index 512bd04..929af23 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -70,6 +70,14 @@ static DEFINE_SPINLOCK(nfsd_call_lock);
+  * Transitions of the thread count between zero and non-zero are of particular
+  * interest since the svc_serv needs to be created and initialized at that
+  * point, or freed.
++ *
++ * Finally, the nfsd_mutex also protects some of the global variables that are
++ * accessed when nfsd starts and that are settable via the write_* routines in
++ * nfsctl.c. In particular:
++ *
++ *	user_recovery_dirname
++ *	user_lease_time
++ *	nfsd_versions
+  */
+ DEFINE_MUTEX(nfsd_mutex);
+ struct svc_serv 		*nfsd_serv;
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.5.3.6
+
