@@ -1,111 +1,72 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: Problems with large number of clients and reads
-Date: Fri, 06 Jun 2008 10:44:46 -0400
-Message-ID: <48494D5E.9000501@oracle.com>
-References: <1212519001.24900.14.camel@hololw58>	 <76bd70e30806040649h53ab5d66x8c3423c551e94f77@mail.gmail.com>	 <1212588796.27117.4.camel@hololw58> <1212692072.25393.6.camel@hololw58>
-Reply-To: chuck.lever@oracle.com
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH 1/4] knfsd: Replace lock_kernel with a mutex for nfsd
+ thread startup/shutdown locking.
+Date: Fri, 6 Jun 2008 11:05:02 -0400
+Message-ID: <20080606110502.7e4f3967@tleilax.poochiereds.net>
+References: <1212591796-22144-1-git-send-email-jlayton@redhat.com>
+	<1212591796-22144-2-git-send-email-jlayton@redhat.com>
+	<484737A9.508@melbourne.sgi.com>
+	<20080605200358.GB5829@fieldses.org>
+	<48487857.4030706@melbourne.sgi.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------060303010303080207050202"
-Cc: Chuck Lever <chucklever@gmail.com>, linux-nfs@vger.kernel.org
-To: Norman Weathers <norman.r.weathers-496aOtIFJR1B+Kdf37RAV9BPR1lH4CV8@public.gmane.org>
+Content-Type: text/plain; charset=US-ASCII
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+To: Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:58639 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755063AbYFFOpK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Jun 2008 10:45:10 -0400
-In-Reply-To: <1212692072.25393.6.camel@hololw58>
+Received: from mx1.redhat.com ([66.187.233.31]:43348 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756950AbYFFPFU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 6 Jun 2008 11:05:20 -0400
+In-Reply-To: <48487857.4030706-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a multi-part message in MIME format.
---------------060303010303080207050202
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+On Fri, 06 Jun 2008 09:35:51 +1000
+Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org> wrote:
 
-Norman Weathers wrote:
-> On Wed, 2008-06-04 at 09:13 -0500, Norman Weathers wrote:
->> On Wed, 2008-06-04 at 09:49 -0400, Chuck Lever wrote:
->>> Hi Norman-
->>>
->>> On Tue, Jun 3, 2008 at 2:50 PM, Norman Weathers
->>> <norman.r.weathers-496aOtIFJR1B+Kdf37RAV9BPR1lH4CV8@public.gmane.org> wrote:
->>>> Hello all,
->>>>
->>>> We are having some issues with some high throughput servers of ours.
->>>>
->>>> Here is the issue, we are using a vanilla 2.6.22.14 kernel on a node
->>>> with 2 Dual Core Intels (3 GHz) and 16 GB of ram.  The files that are
->>>> being served are around 2 GB each, and there are usually 3 to 5 of them
->>>> being read, so once read they fit into memory nicely, and when all is
->>>> working correctly, we have a perfectly filled cache, with almost no disk
->>>> activity.
->>>>
->>>> When we have large NFS activity (say, 600 to 1200 clients) connecting to
->>>> the server(s), they can get into a state where they are using up all of
->>>> memory, but they are dropping cache.  slabtop is showing 13 GB of memory
->>>> being used by the size-4096 slab object.  We have two ethernet channels
->>>> bonded, so we see in excess of 240 MB/s of data flowing out of the box,
->>>> and all of the sudden, disk activity has risen to 185 MB/s.  This
->>>> happens if we are using 8 or more nfs threads.  If we limit the threads
->>>> to 6 or less, this doesn't happen.  Of course, we are starving clients,
->>>> but at least the jobs that my customers are throwing out there are
->>>> progressing.  The question becomes, what is causing the memory to be
->>>> used up by the slab size-4096 object?  Why when all of the sudden a
->>>> bunch of clients ask for data does this object grow from 100 MB to 13
->>>> GB?  I have set the memory settings to something that I thought was
->>>> reasonable.
->>>>
->>>> Here is some more of the particulars:
->>>>
->>>> sysctl.conf tcp memory settings:
->>>>
->>>> # NFS Tuning Parameters
->>>> sunrpc.udp_slot_table_entries = 128
->>>> sunrpc.tcp_slot_table_entries = 128
->>> I don't have an answer to your size-4096 question, but I do want to
->>> note that setting the slot table entries sysctls has no effect on NFS
->>> servers.  It's a client-only setting.
->>>
->>
->> Ok.
->>
->>> Have you tried this experiment on a server where there are no special
->>> memory tuning sysctls?
->> Unfortunately, no.  I can try it today.
->>
+> J. Bruce Fields wrote:
+> > On Thu, Jun 05, 2008 at 10:47:37AM +1000, Greg Banks wrote:
+> >   
+> >> I notice there's no change to write_leasetime().  That calls
+> >> nfs4_reset_lease(), which seems to want to only be called when nfsd is
+> >> not started (according to my reading of the comment preceding the
+> >> function), and which uses the BKL to protect the variable
+> >> user_lease_time.  Perhaps that path should be changed to use the new
+> >> nfsd_mutex also?
+> >>     
+> >
+> > write_leasetime() just results in setting the user_lease_time, which is
+> > copied (once, on server startup) to lease_time, which is what is
+> > actually used by the running server.
+> Yes, understood.
+> >   So I don't think there's a race
+> > here (and the existing BKL use in write_leasetime() isn't really
+> > needed).
+> >   
+> The race is pretty harmless.  The only read of user_lease_time happens
+> during the critical section currently guarded by the BKL in nfsd_svc();
+> the only write of the variable is not guarded by that lock.  If you call
+> write_leasetime() many times with different values during nfsd startup,
+> the actual value used is not predictable and you can't tell from
+> userspace whether your write() succeeded in changing the behaviour of
+> the server or not.  Also, you can do write_leasetime() after nfsd
+> startup without useful effect; other parameters which can't be changed
+> from /proc after the service is running will fail the write() with EBUSY.
 > 
-> 
-> I tried the test with no special memory settings, and I still see the
-> same issue.  I also have noticed that even with only 3 threads running,
-> I can still have times where 11 GB of memory is being used for buffer
-> and not for disk cache.  It just seems like memory is being used up if
-> we have a lot of requests from a lot of clients at once...
 
-I'm at a loss... but I have another question or two.  Is it just memory 
-utilization issues that you see on the server, or are there noticeable 
-performance problems that crop up when you see this?
+The race there is pretty harmless, but fixing it sounds like it'll be low
+impact. I don't expect that the nfsd_mutex will be highly contended,
+so adding some locking around these interfaces really shouldn't harm
+anything.
 
-Did you mention what your physical file system is on the server?  Are 
-you running it on an LVM or software or hardware RAID?
+Also, as you point out, many of these interfaces should return -EBUSY if
+nfsd is up (to be consistent with how write_versions behaves), and we'll
+need proper locking to do that.
 
---------------060303010303080207050202
-Content-Type: text/x-vcard; charset=utf-8;
- name="chuck_lever.vcf"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="chuck_lever.vcf"
+I've got a new patchset that should hopefully address these problems and
+some of your other comments that I'll post in a little while...
 
-begin:vcard
-fn:Chuck Lever
-n:Lever;Chuck
-org:Oracle Corporation;Corporate Architecture: Linux Projects Group
-adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
-title:Principal Member of Staff
-tel;work:+1 248 614 5091
-x-mozilla-html:FALSE
-version:2.1
-end:vcard
-
-
---------------060303010303080207050202--
+Cheers,
+-- 
+Jeff Layton <jlayton@redhat.com>
