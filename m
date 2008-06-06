@@ -1,99 +1,70 @@
 From: Dean Hildebrand <seattleplus@gmail.com>
-Subject: Re: Problems with large number of clients and reads
-Date: Thu, 05 Jun 2008 17:06:17 -0700
-Message-ID: <48487F79.4000607@gmail.com>
-References: <1212519001.24900.14.camel@hololw58>
+Subject: Re: size of nfsv4 writes
+Date: Thu, 05 Jun 2008 17:25:18 -0700
+Message-ID: <484883EE.2060802@gmail.com>
+References: <4846C586.1050000@citi.umich.edu> <1212597977.7422.4.camel@localhost> <48471180.8090208@citi.umich.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: linux-nfs@vger.kernel.org
-To: Norman Weathers <norman.r.weathers-496aOtIFJR1B+Kdf37RAV9BPR1lH4CV8@public.gmane.org>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+	Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+To: Olga Kornievskaia <aglo@citi.umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from wf-out-1314.google.com ([209.85.200.175]:34332 "EHLO
+Received: from wf-out-1314.google.com ([209.85.200.169]:57059 "EHLO
 	wf-out-1314.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752850AbYFFAGX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Jun 2008 20:06:23 -0400
-Received: by wf-out-1314.google.com with SMTP id 27so709013wfd.4
-        for <linux-nfs@vger.kernel.org>; Thu, 05 Jun 2008 17:06:22 -0700 (PDT)
-In-Reply-To: <1212519001.24900.14.camel@hololw58>
+	with ESMTP id S1752200AbYFFAZW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Jun 2008 20:25:22 -0400
+Received: by wf-out-1314.google.com with SMTP id 27so714582wfd.4
+        for <linux-nfs@vger.kernel.org>; Thu, 05 Jun 2008 17:25:21 -0700 (PDT)
+In-Reply-To: <48471180.8090208@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-What is the file system?  It is the one managing the cache on the server.
-Dean
 
-Norman Weathers wrote:
-> Hello all,
->
-> We are having some issues with some high throughput servers of ours.
->
-> Here is the issue, we are using a vanilla 2.6.22.14 kernel on a node
-> with 2 Dual Core Intels (3 GHz) and 16 GB of ram.  The files that are
-> being served are around 2 GB each, and there are usually 3 to 5 of them
-> being read, so once read they fit into memory nicely, and when all is
-> working correctly, we have a perfectly filled cache, with almost no disk
-> activity.
->
-> When we have large NFS activity (say, 600 to 1200 clients) connecting to
-> the server(s), they can get into a state where they are using up all of
-> memory, but they are dropping cache.  slabtop is showing 13 GB of memory
-> being used by the size-4096 slab object.  We have two ethernet channels
-> bonded, so we see in excess of 240 MB/s of data flowing out of the box,
-> and all of the sudden, disk activity has risen to 185 MB/s.  This
-> happens if we are using 8 or more nfs threads.  If we limit the threads
-> to 6 or less, this doesn't happen.  Of course, we are starving clients,
-> but at least the jobs that my customers are throwing out there are
-> progressing.  The question becomes, what is causing the memory to be
-> used up by the slab size-4096 object?  Why when all of the sudden a
-> bunch of clients ask for data does this object grow from 100 MB to 13
-> GB?  I have set the memory settings to something that I thought was
-> reasonable.
->
-> Here is some more of the particulars:
->
-> sysctl.conf tcp memory settings:
->
-> # NFS Tuning Parameters
-> sunrpc.udp_slot_table_entries = 128
-> sunrpc.tcp_slot_table_entries = 128
-> vm.overcommit_ratio = 80
->
-> net.core.rmem_max=524288
-> net.core.rmem_default=262144
-> net.core.wmem_max=524288
-> net.core.wmem_default=262144
-> net.ipv4.tcp_rmem = 8192 262144 524288
-> net.ipv4.tcp_wmem = 8192 262144 524288
-> net.ipv4.tcp_sack=0
-> net.ipv4.tcp_timestamps=0
-> vm.min_free_kbytes=50000
-> vm.overcommit_memory=1
-> net.ipv4.tcp_reordering=127
->
-> # Enable tcp_low_latency
-> net.ipv4.tcp_low_latency=1
->
-> Here is a current reading from a slabtop of a system where this error is
-> happening:
->
-> 3007154 3007154 100%    4.00K 3007154        1  12028616K size-4096
->
-> Note the size of the object cache, usually it is 50 - 100 MB (I have
-> another box with 32 threads and the same settings which is bouncing
-> between 50 and 128 MB right now).
->
-> I have a lot of client boxes that need access to these servers, and
-> would really benefit from having more threads, but if I increase the
-> number of threads, it pushes everything out of cache, forcing re-reads,
-> and really slows down our jobs.
->
-> Any thoughts on this?
+
+Olga Kornievskaia wrote:
 >
 >
-> Thanks, 
->
-> Norman Weathers
-> --
+> Trond Myklebust wrote:
+>> On Wed, 2008-06-04 at 12:40 -0400, Olga Kornievskaia wrote:
+>>  
+>>> While testing NFSv4 performance over the 10GE network, we are seeing 
+>>> the following behavior and would like to know if it is normal or a 
+>>> bug in the client code.
+>>>
+>>> The server offers the max_write of 1M. The client mounts the server 
+>>> with the "wsize" option of 1M. Yet during the write we are seeing 
+>>> that the write size is at most 49K. Why does client never come close 
+>>> to 1M limit?
+Does /proc/mounts indicate 1M?  As a total guess, could there be 
+something going on in nfs_can_coalesce_requests 
+</lxr-pnfs/ident?i=nfs_can_coalesce_requests>?  (I can't imagine why, 
+but we had a pnfs problem where our additions to 
+nfs_can_coalesce_requests were causing similar behavior)
+>>>     
+>>
+>> I have a feeling that is due to some crap in the VM. I'm currently
+>> investigating a situation where it appears we're sending 1 COMMIT for
+>> every 1-5 32k WRITEs. This is not a policy that stems from the NFS
+>> client, so it would appear that the VM is being silly about things.
+>>
+>> I'm specially suspicious of the code in get_dirty_limits() that is
+>> setting a limit to the number of dirty pages based on the number of
+>> pages a given BDI has written out in the recent past. As far as I can
+>> see, the intention is to penalise devices that are slow writers, but in
+>> practice it doesn't do that: it penalises the devices that have the
+>> least activity.
+>>
+>>   
+> I think we are seeing larger than usual number of COMMIT messages.
+With older kernels, no matter how I configured linux to flush dirty 
+pages, it would always flush too often and hence send way too many 
+commit messages.  But more like every couple hundred megabytes..... 
+
+If you don't need the page cache, I have found that O_DIRECT can 
+increase performance by giving predefined points at which the client 
+will commit.
+Dean
+> -- 
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
->   
