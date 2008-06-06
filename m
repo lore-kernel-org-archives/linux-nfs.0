@@ -1,41 +1,67 @@
-From: Le Rouzic <aime.le-rouzic@bull.net>
-Subject: Results of a Robustness Regression tests and Performances campaign
- on linux-2.6.25-rc6-CITI_NFS4_ALL-1
-Date: Fri, 06 Jun 2008 11:15:55 +0200
-Message-ID: <4849004B.2010406@bull.net>
+From: "Narasimha Valiveti" <nvaliveti@gmail.com>
+Subject: NFS hang in nfs_complete_unlink() with RHEL 5.2
+Date: Fri, 6 Jun 2008 06:57:07 -0700
+Message-ID: <cc8f6ab0806060657p5de1e70exf9221eda9ab592e5@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: linux-nfs@vger.kernel.org, nfs@lists.sourceforge.net
-To: nfsv4-request@linux-nfs.org
+Content-Type: text/plain; charset=ISO-8859-1
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from ecfrec.frec.bull.fr ([129.183.4.8]:35565 "EHLO
-	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751963AbYFFJRN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Jun 2008 05:17:13 -0400
+Received: from yw-out-2324.google.com ([74.125.46.28]:49466 "EHLO
+	yw-out-2324.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751631AbYFFN5p (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Jun 2008 09:57:45 -0400
+Received: by yw-out-2324.google.com with SMTP id 9so724368ywe.1
+        for <linux-nfs@vger.kernel.org>; Fri, 06 Jun 2008 06:57:39 -0700 (PDT)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
-The results of a Robustness Regression tests and Performances campaign 
-on linux-2.6.25-rc6 plus
-the linux-2.6.25-rc6-CITI_NFS4_ALL-1 path are available at : 
-http://nfsv4.bullopensource.org/
-Those results include kerberos flavors krb5, krb5i, krb5p on Intel 
-x86_64 machines.
+Hello,
 
-I needed also to add a patch found at http://lkml.org/lkml/2008/2/29/443
-to fix an the infinite loop in generic_file_splice_read() we can see
-with nfsv4 when nfsd looping.
+With the latest RHEL 5.2 installed on one of the machines, I noticed a
+NFS/RPC hang. Looking at
+the stack of all the process, I noticed the following wait by rpciod thread.
 
-Best regards
+PID: 7672   TASK: ed3bd550  CPU: 0   COMMAND: "rpciod/0"
+ #0 [cc9c8e1c] schedule at c05facb9
+ #1 [cc9c8e84] rpc_wait_bit_interruptible at f8cff9ed
+ #2 [cc9c8e88] __wait_on_bit at c05fb52d
+ #3 [cc9c8ea0] out_of_line_wait_on_bit at c05fb5b2
+ #4 [cc9c8ed8] __rpc_wait_for_completion_task at f8cffa16
+ #5 [cc9c8ee4] nfs_complete_unlink at f90a872b
+ #6 [cc9c8efc] nfs_dentry_iput at f90a0e0c
+ #7 [cc9c8f08] dentry_iput at c047de77
+ #8 [cc9c8f14] dput at c047e996
+ #9 [cc9c8f20] put_nfs_open_context at f90a2bad
+#10 [cc9c8f38] nfs_writeback_done_full at f90aa450
+#11 [cc9c8f60] __rpc_execute at f8cffe87
+#12 [cc9c8f8c] worker_thread at c04329bb
+#13 [cc9c8fcc] kthread at c0434d97
+#14 [cc9c8fe4] kernel_thread_helper at c0404c39
 
--- 
------------------------------------------------------------------
-Company : Bull, Architect of an Open World TM (www.bull.com)
-Name    : Aime Le Rouzic 
-Mail    : Bull - BP 208 - 38432 Echirolles Cedex - France
-E-Mail  : aime.le-rouzic@bull.net
-Phone   : 33 (4) 76.29.75.51
-Fax     : 33 (4) 76.29.75.18
------------------------------------------------------------------ 
+This was never an issue earlier and looking at 5.1 nfs_complete_unlink() source:
 
+void
+nfs_complete_unlink(struct dentry *dentry)
+{
+       . . . .
+        dentry->d_flags &= ~DCACHE_NFSFS_RENAMED;
+        spin_unlock(&dentry->d_lock);
+        rpc_wake_up_task(&data->task);
+        nfs_put_unlinkdata(data);
+}
+
+
+So, it seems like __rpc_wait_for_completion_task() called is added to
+nfs_comlete_unlink() in 5.2
+Also looking at the RHEL 5.2 announcement, the following bug seems to
+have pulled this into 5.2
+https://bugzilla.redhat.com/show_bug.cgi?id=253663
+
+The only way to resolve this is by rebooting the node, I don't have a
+reproduction scenario, but it
+hanged couple of time in last 2 days.
+
+Any comments on how we can fix this now ?
+
+Thanks,
+- vnr
