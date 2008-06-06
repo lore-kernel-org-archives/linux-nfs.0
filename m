@@ -1,54 +1,99 @@
-From: Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
-Subject: Re: [PATCH 1/4] knfsd: Replace lock_kernel with a mutex for nfsd
- thread startup/shutdown locking.
-Date: Fri, 06 Jun 2008 09:35:51 +1000
-Message-ID: <48487857.4030706@melbourne.sgi.com>
-References: <1212591796-22144-1-git-send-email-jlayton@redhat.com>	<1212591796-22144-2-git-send-email-jlayton@redhat.com>	<484737A9.508@melbourne.sgi.com> <20080605200358.GB5829@fieldses.org>
+From: Dean Hildebrand <seattleplus@gmail.com>
+Subject: Re: Problems with large number of clients and reads
+Date: Thu, 05 Jun 2008 17:06:17 -0700
+Message-ID: <48487F79.4000607@gmail.com>
+References: <1212519001.24900.14.camel@hololw58>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org,
-	Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: linux-nfs@vger.kernel.org
+To: Norman Weathers <norman.r.weathers-496aOtIFJR1B+Kdf37RAV9BPR1lH4CV8@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from relay2.sgi.com ([192.48.171.30]:58177 "EHLO relay.sgi.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1753526AbYFEXjn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Jun 2008 19:39:43 -0400
-In-Reply-To: <20080605200358.GB5829@fieldses.org>
+Received: from wf-out-1314.google.com ([209.85.200.175]:34332 "EHLO
+	wf-out-1314.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752850AbYFFAGX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Jun 2008 20:06:23 -0400
+Received: by wf-out-1314.google.com with SMTP id 27so709013wfd.4
+        for <linux-nfs@vger.kernel.org>; Thu, 05 Jun 2008 17:06:22 -0700 (PDT)
+In-Reply-To: <1212519001.24900.14.camel@hololw58>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-J. Bruce Fields wrote:
-> On Thu, Jun 05, 2008 at 10:47:37AM +1000, Greg Banks wrote:
->   
->> I notice there's no change to write_leasetime().  That calls
->> nfs4_reset_lease(), which seems to want to only be called when nfsd is
->> not started (according to my reading of the comment preceding the
->> function), and which uses the BKL to protect the variable
->> user_lease_time.  Perhaps that path should be changed to use the new
->> nfsd_mutex also?
->>     
+What is the file system?  It is the one managing the cache on the server.
+Dean
+
+Norman Weathers wrote:
+> Hello all,
 >
-> write_leasetime() just results in setting the user_lease_time, which is
-> copied (once, on server startup) to lease_time, which is what is
-> actually used by the running server.
-Yes, understood.
->   So I don't think there's a race
-> here (and the existing BKL use in write_leasetime() isn't really
-> needed).
+> We are having some issues with some high throughput servers of ours.
+>
+> Here is the issue, we are using a vanilla 2.6.22.14 kernel on a node
+> with 2 Dual Core Intels (3 GHz) and 16 GB of ram.  The files that are
+> being served are around 2 GB each, and there are usually 3 to 5 of them
+> being read, so once read they fit into memory nicely, and when all is
+> working correctly, we have a perfectly filled cache, with almost no disk
+> activity.
+>
+> When we have large NFS activity (say, 600 to 1200 clients) connecting to
+> the server(s), they can get into a state where they are using up all of
+> memory, but they are dropping cache.  slabtop is showing 13 GB of memory
+> being used by the size-4096 slab object.  We have two ethernet channels
+> bonded, so we see in excess of 240 MB/s of data flowing out of the box,
+> and all of the sudden, disk activity has risen to 185 MB/s.  This
+> happens if we are using 8 or more nfs threads.  If we limit the threads
+> to 6 or less, this doesn't happen.  Of course, we are starving clients,
+> but at least the jobs that my customers are throwing out there are
+> progressing.  The question becomes, what is causing the memory to be
+> used up by the slab size-4096 object?  Why when all of the sudden a
+> bunch of clients ask for data does this object grow from 100 MB to 13
+> GB?  I have set the memory settings to something that I thought was
+> reasonable.
+>
+> Here is some more of the particulars:
+>
+> sysctl.conf tcp memory settings:
+>
+> # NFS Tuning Parameters
+> sunrpc.udp_slot_table_entries = 128
+> sunrpc.tcp_slot_table_entries = 128
+> vm.overcommit_ratio = 80
+>
+> net.core.rmem_max=524288
+> net.core.rmem_default=262144
+> net.core.wmem_max=524288
+> net.core.wmem_default=262144
+> net.ipv4.tcp_rmem = 8192 262144 524288
+> net.ipv4.tcp_wmem = 8192 262144 524288
+> net.ipv4.tcp_sack=0
+> net.ipv4.tcp_timestamps=0
+> vm.min_free_kbytes=50000
+> vm.overcommit_memory=1
+> net.ipv4.tcp_reordering=127
+>
+> # Enable tcp_low_latency
+> net.ipv4.tcp_low_latency=1
+>
+> Here is a current reading from a slabtop of a system where this error is
+> happening:
+>
+> 3007154 3007154 100%    4.00K 3007154        1  12028616K size-4096
+>
+> Note the size of the object cache, usually it is 50 - 100 MB (I have
+> another box with 32 threads and the same settings which is bouncing
+> between 50 and 128 MB right now).
+>
+> I have a lot of client boxes that need access to these servers, and
+> would really benefit from having more threads, but if I increase the
+> number of threads, it pushes everything out of cache, forcing re-reads,
+> and really slows down our jobs.
+>
+> Any thoughts on this?
+>
+>
+> Thanks, 
+>
+> Norman Weathers
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 >   
-The race is pretty harmless.  The only read of user_lease_time happens
-during the critical section currently guarded by the BKL in nfsd_svc();
-the only write of the variable is not guarded by that lock.  If you call
-write_leasetime() many times with different values during nfsd startup,
-the actual value used is not predictable and you can't tell from
-userspace whether your write() succeeded in changing the behaviour of
-the server or not.  Also, you can do write_leasetime() after nfsd
-startup without useful effect; other parameters which can't be changed
-from /proc after the service is running will fail the write() with EBUSY.
-
--- 
-Greg Banks, P.Engineer, SGI Australian Software Group.
-The cake is *not* a lie.
-I don't speak for SGI.
-
