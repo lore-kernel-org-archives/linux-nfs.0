@@ -1,16 +1,16 @@
 Return-Path: <nfsv4-bounces@linux-nfs.org>
-Date: Mon, 9 Jun 2008 14:10:48 -0400
-From: Neil Horman <nhorman@redhat.com>
-To: Jeff Layton <jlayton@redhat.com>
-Subject: Re: rapid clustered nfs server failover and hung clients -- how best
-	to close the sockets?
-Message-ID: <20080609181048.GI20181@hmsendeavour.rdu.redhat.com>
+Date: Mon, 9 Jun 2008 12:01:10 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
+Subject: Re: rapid clustered nfs server failover and hung clients --  how
+	best to	close the sockets?
+Message-ID: <20080609120110.1fee7221@tleilax.poochiereds.net>
+In-Reply-To: <RTPCLUEXC1-PRDOLZCH000001d2@RTPMVEXC1-PRD.hq.netapp.com>
 References: <20080609103137.2474aabd@tleilax.poochiereds.net>
-	<484D6510.2010109@gmail.com>
-	<20080609132425.5144557b@tleilax.poochiereds.net>
-In-Reply-To: <20080609132425.5144557b@tleilax.poochiereds.net>
-Cc: lhh@redhat.com, linux-nfs@vger.kernel.org,
-        Wendy Cheng <s.wendy.cheng@gmail.com>, nfsv4@linux-nfs.org,
+	<484D4659.9000105@redhat.com>
+	<20080609111821.6e06d4f8@tleilax.poochiereds.net>
+	<RTPCLUEXC1-PRDOLZCH000001d2@RTPMVEXC1-PRD.hq.netapp.com>
+Cc: linux-nfs@vger.kernel.org, lhh@redhat.com, nfsv4@linux-nfs.org,
         nhorman@redhat.com
 List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
 	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
@@ -25,68 +25,32 @@ Errors-To: nfsv4-bounces@linux-nfs.org
 MIME-Version: 1.0
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jun 09, 2008 at 01:24:25PM -0400, Jeff Layton wrote:
-> On Mon, 09 Jun 2008 13:14:56 -0400
-> Wendy Cheng <s.wendy.cheng@gmail.com> wrote:
-> 
-> > Jeff Layton wrote:
-> > > The problem we've run into is that occasionally they fail over to the
-> > > alternate machine and then back very rapidly. 
-> > 
-> > It is a well known issue in the NFS-TCP failover arena (or more 
-> > specifically, for floating IP applications) that failover from server A 
-> > to server B, then immediately failing back from server B to A would 
-> > *not* work well. IIRC last round of discussing with Red Hat GPS and 
-> > support folks, we concluded that most of the applications/users *can* 
-> > tolerate this restriction.
-> > 
-> > Maybe another more basic question: "other than QA efforts, are there 
-> > real NFSv2/v3 applications depending on this "feature" ? Or there may 
-> > need tons of efforts for something that will not have much usages when 
-> > it is finally delivered ?
-> > 
-> 
-> Certainly a valid question...
-> 
-> While rapid failover like this is unusual, it's easily possible for a
-> sysadmin to do it. Maybe they moved the wrong service, or their downtime
-> was for something very brief but the service had to be off of the host to
-> make the change. In that case, a quick failover and back could easily
-> be something that happens in a real environment.
-> 
-> As to whether it's worth a ton of effort, that's a tough call. People want
-> HA services to guard against outages. Anything that jeopardizes that is
-> probably worth fixing. This could be solved with documentation, but a note
-> like:
-> 
-> "Be sure to wait for X minutes between failovers"
-> 
-Thats the real problem here.  Given the problem as we've describe it, its
-possible for X to be _large_, potentially indefinite.
+On Mon, 09 Jun 2008 11:51:51 -0400
+"Talpey, Thomas" <Thomas.Talpey@netapp.com> wrote:
 
-> IMO, the ideal thing would be to make sure that the "old" server is
-> ready to pick up the service again as soon as possible after the service
-> leaves it.
+> At 11:18 AM 6/9/2008, Jeff Layton wrote:
+> >No, it's not specific to NFS. It can happen to any "service" that
+> >floats IP addresses between machines, but does not close the sockets
+> >that are connected to those addresses. Most services that fail over
+> >(at least in RH's cluster server) shut down the daemons on failover
+> >too, so tends to mitigate this problem elsewhere.
 > 
-Yes, this is really what needs to happen.  In this environment, a floating IP
-address effectively means that nfsd services can inadvertently 'share' a tcp
-connection, and if nfsd is to play in a floating IP environment it needs to be
-able to handle that sharing...
+> Why exactly don't you choose to restart the nfsd's (and lockd's) on the
+> victim server?
 
-Neil
+The victim server might have other nfsd/lockd's running on them. Stopping
+all the nfsd's could bring down lockd, and then you have to deal with lock
+recovery on the stuff that isn't moving to the other server.
 
-> -- 
-> Jeff Layton <jlayton@redhat.com>
+> Failing that, for TCP at least would ifdown/ifup accomplish
+> the socket reset?
+> 
+
+I don't think ifdown/ifup closes the sockets, but maybe someone can
+correct me on this...
 
 -- 
-/***************************************************
- *Neil Horman
- *Software Engineer
- *Red Hat, Inc.
- *nhorman@redhat.com
- *gpg keyid: 1024D / 0x92A74FA1
- *http://pgp.mit.edu
- ***************************************************/
+Jeff Layton <jlayton@redhat.com>
 _______________________________________________
 NFSv4 mailing list
 NFSv4@linux-nfs.org
