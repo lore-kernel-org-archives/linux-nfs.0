@@ -1,16 +1,21 @@
 Return-Path: <nfsv4-bounces@linux-nfs.org>
-Date: Mon, 09 Jun 2008 11:51:51 -0400
-To: Jeff Layton <jlayton@redhat.com>
-From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
-Subject: Re: rapid clustered nfs server failover and hung clients --
-	how best to	close the sockets?
-In-Reply-To: <20080609111821.6e06d4f8@tleilax.poochiereds.net>
+Date: Mon, 9 Jun 2008 14:03:46 -0400
+To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
+Subject: Re: rapid clustered nfs server failover and hung clients -- how
+	best to close the sockets?
+Message-ID: <20080609180346.GA28584@fieldses.org>
 References: <20080609103137.2474aabd@tleilax.poochiereds.net>
 	<484D4659.9000105@redhat.com>
 	<20080609111821.6e06d4f8@tleilax.poochiereds.net>
-Message-ID: <RTPCLUEXC1-PRDOLZCH000001d2@RTPMVEXC1-PRD.hq.netapp.com>
+	<RTPCLUEXC1-PRDOLZCH000001d2@RTPMVEXC1-PRD.hq.netapp.com>
+	<20080609120110.1fee7221@tleilax.poochiereds.net>
+	<RTPCLUEXC1-PRDF8Eqf000001d4@RTPMVEXC1-PRD.hq.netapp.com>
+	<20080609122249.51767b21@tleilax.poochiereds.net>
+	<RTPCLUEXC1-PRDusMjQ000001d5@RTPMVEXC1-PRD.hq.netapp.com>
+In-Reply-To: <RTPCLUEXC1-PRDusMjQ000001d5@RTPMVEXC1-PRD.hq.netapp.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Cc: linux-nfs@vger.kernel.org, lhh@redhat.com, nfsv4@linux-nfs.org,
-        nhorman@redhat.com
+        nhorman@redhat.com, Jeff Layton <jlayton@redhat.com>
 List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
 	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
 List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
@@ -24,19 +29,30 @@ Errors-To: nfsv4-bounces@linux-nfs.org
 MIME-Version: 1.0
 List-ID: <linux-nfs.vger.kernel.org>
 
-At 11:18 AM 6/9/2008, Jeff Layton wrote:
->No, it's not specific to NFS. It can happen to any "service" that
->floats IP addresses between machines, but does not close the sockets
->that are connected to those addresses. Most services that fail over
->(at least in RH's cluster server) shut down the daemons on failover
->too, so tends to mitigate this problem elsewhere.
+On Mon, Jun 09, 2008 at 12:40:05PM -0400, Talpey, Thomas wrote:
+> At 12:22 PM 6/9/2008, Jeff Layton wrote:
+> >That might be worth investigating, but sounds like it might cause problems
+> >with the services associated with IP addresses that are staying on the
+> >victim server.
+> 
+> Jeff, I think you have many years of job security to look forward to, here. :-)
+> 
+> Since you sent this to the NFSv4 list - is there any chance you're thinking
+> to not transparently take over IP addresses, but use NFSv4 locations and
+> referrals for these "migrations"?
 
-Why exactly don't you choose to restart the nfsd's (and lockd's) on the
-victim server? Failing that, for TCP at least would ifdown/ifup accomplish
-the socket reset?
+Yeah, definitely.  We've a got a prototype and some other work in
+progress--hopefully there'll be something "real" in the coming months!
 
-Tom.
+There's some overlap with nfsv2/v3, though (not in this case, but in the
+need for lock migration, for example).  And people really are using this
+floating-ip address stuff now, so anything we can do to make it more
+reliable or easier to use is welcome.
 
+--b.
+
+> Yes, I know some clients may not quite be
+> there yet.
 _______________________________________________
 NFSv4 mailing list
 NFSv4@linux-nfs.org
