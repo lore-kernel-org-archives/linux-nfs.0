@@ -1,11 +1,15 @@
 Return-Path: <nfsv4-bounces@linux-nfs.org>
-Date: Tue, 24 Jun 2008 17:34:32 +0200
-From: Lukas Hejtmanek <xhejtman@ics.muni.cz>
-To: Steve Dickson <SteveD@redhat.com>
-Subject: [Patch] customizable timeouts for kernel cache of kerberos credentials
-Message-ID: <20080624153432.GJ4484@ics.muni.cz>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-        Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
+Date: Mon, 9 Jun 2008 11:23:21 -0400
+From: Neil Horman <nhorman@redhat.com>
+To: Peter Staubach <staubach@redhat.com>
+Subject: Re: rapid clustered nfs server failover and hung clients -- how best
+	to	close the sockets?
+Message-ID: <20080609152321.GA20181@hmsendeavour.rdu.redhat.com>
+References: <20080609103137.2474aabd@tleilax.poochiereds.net>
+	<484D4659.9000105@redhat.com>
+In-Reply-To: <484D4659.9000105@redhat.com>
+Cc: linux-nfs@vger.kernel.org, lhh@redhat.com, nfsv4@linux-nfs.org,
+        nhorman@redhat.com, Jeff Layton <jlayton@redhat.com>
 List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
 	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
 List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
@@ -19,101 +23,114 @@ Errors-To: nfsv4-bounces@linux-nfs.org
 MIME-Version: 1.0
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Mon, Jun 09, 2008 at 11:03:53AM -0400, Peter Staubach wrote:
+> Jeff Layton wrote:
+> >Apologies for the long email, but I ran into an interesting problem the
+> >other day and am looking for some feedback on my general approach to
+> >fixing it before I spend too much time on it:
+> >
+> >We (RH) have a cluster-suite product that some people use for making HA
+> >NFS services. When our QA folks test this, they often will start up
+> >some operations that do activity on an NFS mount from the cluster and
+> >then rapidly do failovers between cluster machines and make sure
+> >everything keeps moving along. The cluster is designed to not shut down
+> >nfsd's when a failover occurs. nfsd's are considered a "shared
+> >resource". It's possible that there could be multiple clustered
+> >services for NFS-sharing, so when a failover occurs, we just manipulate
+> >the exports table.
+> >
+> >The problem we've run into is that occasionally they fail over to the
+> >alternate machine and then back very rapidly. Because nfsd's are not
+> >shut down on failover, sockets are not closed. So what happens is
+> >something like this on TCP mounts:
+> >
+> >- client has NFS mount from clustered NFS service on one server
+> >
+> >- service fails over, new server doesn't know anything about the
+> >  existing socket, so it sends a RST back to the client when data
+> >  comes in. Client closes connection and reopens it and does some
+> >  I/O on the socket.
+> >
+> >- service fails back to original server. The original socket there
+> >  is still open, but now the TCP sequence numbers are off. When
+> >  packets come into the server we end up with an ACK storm, and the
+> >  client hangs for a long time.
+> >
+> >Neil Horman did a good writeup of this problem here for those that
+> >want the gory details:
+> >
+> >    https://bugzilla.redhat.com/show_bug.cgi?id=369991#c16
+> >
+> >I can think of 3 ways to fix this:
+> >
+> >1) Add something like the recently added "unlock_ip" interface that
+> >was added for NLM. Maybe a "close_ip" that allows us to close all
+> >nfsd sockets connected to a given local IP address. So clustering
+> >software could do something like:
+> >
+> >    # echo 10.20.30.40 > /proc/fs/nfsd/close_ip
+> >
+> >...and make sure that all of the sockets are closed.
+> >
+> >2) just use the same "unlock_ip" interface and just have it also
+> >close sockets in addition to dropping locks.
+> >
+> >3) have an nfsd close all non-listening connections when it gets a
+> >certain signal (maybe SIGUSR1 or something). Connections on a
+> >sockets that aren't failing over should just get a RST and would
+> >reopen their connections.
+> >
+> >...my preference would probably be approach #1.
+> >
+> >I've only really done some rudimentary perusing of the code, so there
+> >may be roadblocks with some of these approaches I haven't considered.
+> >Does anyone have thoughts on the general problem or idea for a solution?
+> >
+> >The situation is a bit specific to failover testing -- most people failing
+> >over don't do it so rapidly, but we'd still like to ensure that this
+> >problem doesn't occur if someone does do it.
+> >
+> >Thanks,
+> >  
+> 
+> This doesn't sound like it would be an NFS specific situation.
+> Why doesn't TCP handle this, without causing an ACK storm?
+> 
 
-Default expiration time of kerberos tickets is their expiration thus
-kdestroy has no effect here. 
+You're right, its not a problem specific to NFS, any TCP based service in which
+sockets are not explicitly closed on the application are subject to this
+problem.  however, I think NFS is currently the only clustered service that we
+offer in which we explicitly leave nfsd running during such a 'soft' failover,
+and so practically speaking, this is the only place that this issue manifests
+itself.  If we could shut down nfsd on the server doing a failover, that would
+solve this problem (as it prevents the problem with all other clustered tcp
+based services), but from what I'm told, thats a non-starter.
 
-This patch adds -t timeout cmd option to rpc.gssd so that client may specify 
-timeout for expritation of kerberos tickets in kernel. After this timeout the
-rpc.gssd is consulted to pick up a proper kerberos ticked.
+As for why TCP doesnt handle this, thats because the situation is ambiguous from
+the point of view of the client and server.  The write up in the bugzilla has
+all the gory details, but the executive summary is that during rapid failover,
+the client will ack some data to server A in the cluster, and some to server B
+in the cluster.  If you quickly fail over and back between the servers in the
+cluster, each server will see some gaps in the data stream sequence numbers, but
+the client will see that all data has been acked.  This leaves the connection in
+an unrecoverable state.
 
-By default, timeout is 0 (i.e., no timeout at all) which follows the
-previous behavior.
+Regards
+Neil
+  
+>    Thanx...
+> 
+>       ps
 
-Signed-off-by: Lukas Hejtmanek <xhejtman@ics.muni.cz>
-
-
-diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
-index e8612a5..ff5a454 100644
---- a/utils/gssd/gssd.c
-+++ b/utils/gssd/gssd.c
-@@ -60,6 +60,7 @@ char ccachedir[PATH_MAX] = GSSD_DEFAULT_CRED_DIR;
- char *ccachesearch[GSSD_MAX_CCACHE_SEARCH + 1];
- int  use_memcache = 0;
- int  root_uses_machine_creds = 1;
-+int  ccache_timeout = 0;
- 
- void
- sig_die(int signal)
-@@ -82,7 +83,7 @@ sig_hup(int signal)
- static void
- usage(char *progname)
- {
--	fprintf(stderr, "usage: %s [-f] [-M] [-n] [-v] [-r] [-p pipefsdir] [-k keytab] [-d ccachedir]\n",
-+	fprintf(stderr, "usage: %s [-f] [-M] [-n] [-v] [-r] [-p pipefsdir] [-k keytab] [-d ccachedir] [-t timeout]\n",
- 		progname);
- 	exit(1);
- }
-@@ -99,7 +100,7 @@ main(int argc, char *argv[])
- 	char *progname;
- 
- 	memset(ccachesearch, 0, sizeof(ccachesearch));
--	while ((opt = getopt(argc, argv, "fvrmnMp:k:d:")) != -1) {
-+	while ((opt = getopt(argc, argv, "fvrmnMp:k:d:t:")) != -1) {
- 		switch (opt) {
- 			case 'f':
- 				fg = 1;
-@@ -134,6 +135,9 @@ main(int argc, char *argv[])
- 				if (ccachedir[sizeof(ccachedir)-1] != '\0')
- 					errx(1, "ccachedir path name too long");
- 				break;
-+			case 't':
-+				ccache_timeout = atoi(optarg);
-+				break;
- 			default:
- 				usage(argv[0]);
- 				break;
-diff --git a/utils/gssd/gssd.h b/utils/gssd/gssd.h
-index 0f9f428..6dd57bf 100644
---- a/utils/gssd/gssd.h
-+++ b/utils/gssd/gssd.h
-@@ -65,6 +65,7 @@ extern char			keytabfile[PATH_MAX];
- extern char			*ccachesearch[];
- extern int			use_memcache;
- extern int			root_uses_machine_creds;
-+extern int 			ccache_timeout;
- 
- TAILQ_HEAD(clnt_list_head, clnt_info) clnt_list;
- 
-diff --git a/utils/gssd/gssd.man b/utils/gssd/gssd.man
-index 8fa4f4a..81ea68d 100644
---- a/utils/gssd/gssd.man
-+++ b/utils/gssd/gssd.man
-@@ -86,6 +86,11 @@ Increases the verbosity of the output (can be specified multiple times).
- .B -r
- If the rpcsec_gss library supports setting debug level,
- increases the verbosity of the output (can be specified multiple times).
-+.TP
-+.B -t timeout
-+Timeout in seconds for kernel tickets cache. This is workaround in case you want to 
-+change kerberos tickets and identities frequently. Default value is 
-+0 seconds - no timeout.
- .SH SEE ALSO
- .BR rpc.svcgssd(8)
- .SH AUTHORS
-diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-index be6f440..7202b64 100644
---- a/utils/gssd/gssd_proc.c
-+++ b/utils/gssd/gssd_proc.c
-@@ -427,7 +427,7 @@ do_downcall(int k5_fd, uid_t uid, struct authgss_private_data *pd,
- 	    gss_buffer_desc *context_token)
- {
- 	char    *buf = NULL, *p = NULL, *end = NULL;
--	unsigned int timeout = 0; /* XXX decide on a reasonable value */
-+	unsigned int timeout = ccache_timeout;
- 	unsigned int buf_size = 0;
- 
- 	printerr(1, "doing downcall\n");
+-- 
+/***************************************************
+ *Neil Horman
+ *Software Engineer
+ *Red Hat, Inc.
+ *nhorman@redhat.com
+ *gpg keyid: 1024D / 0x92A74FA1
+ *http://pgp.mit.edu
+ ***************************************************/
 _______________________________________________
 NFSv4 mailing list
 NFSv4@linux-nfs.org
