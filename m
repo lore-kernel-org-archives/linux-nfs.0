@@ -1,132 +1,101 @@
 From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 1/6] rpc: bring back cl_chatty
-Date: Mon,  9 Jun 2008 16:51:31 -0400
-Message-ID: <1213044696-32741-2-git-send-email-bfields@citi.umich.edu>
+Subject: [PATCH 6/6] nfs: Fix misparsing of nfsv4 fs_locations attribute
+Date: Mon,  9 Jun 2008 16:51:36 -0400
+Message-ID: <1213044696-32741-7-git-send-email-bfields@citi.umich.edu>
 References: <1213044696-32741-1-git-send-email-bfields@citi.umich.edu>
-Cc: linux-nfs@vger.kernel.org, Olga Kornievskaia <aglo@citi.umich.edu>,
+ <1213044696-32741-2-git-send-email-bfields@citi.umich.edu>
+ <1213044696-32741-3-git-send-email-bfields@citi.umich.edu>
+ <1213044696-32741-4-git-send-email-bfields@citi.umich.edu>
+ <1213044696-32741-5-git-send-email-bfields@citi.umich.edu>
+ <1213044696-32741-6-git-send-email-bfields@citi.umich.edu>
+Cc: linux-nfs@vger.kernel.org,
 	"J. Bruce Fields" <bfields@citi.umich.edu>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:48628 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:48638 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751523AbYFIUvi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1752204AbYFIUvi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Mon, 9 Jun 2008 16:51:38 -0400
-In-Reply-To: <1213044696-32741-1-git-send-email-bfields@citi.umich.edu>
+In-Reply-To: <1213044696-32741-6-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Olga Kornievskaia <aglo@citi.umich.edu>
-
-The cl_chatty flag alows us to control whether a given rpc client leaves
-
-	"server X not responding, timed out"
-
-messages in the syslog.  Such messages make sense for ordinary nfs
-clients (where an unresponsive server means applications on the
-mountpoint are probably hanging), but not for the callback client (which
-can fail more commonly, with the only result just of disabling some
-optimizations).
-
-Previously cl_chatty was removed, do to lack of users; reinstate it, and
-use it for the nfsd's callback client.
+The code incorrectly assumes here that the server name (or ip address)
+is null-terminated.  This can cause referrals to fail in some cases.
 
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
- fs/nfsd/nfs4callback.c      |    2 +-
- include/linux/sunrpc/clnt.h |    4 +++-
- net/sunrpc/clnt.c           |   16 +++++++++++-----
- 3 files changed, 15 insertions(+), 7 deletions(-)
+ fs/nfs/nfs4namespace.c |   34 ++++++++++------------------------
+ 1 files changed, 10 insertions(+), 24 deletions(-)
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 4d4760e..702fa57 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -381,7 +381,7 @@ static int do_probe_callback(void *data)
- 		.program	= &cb_program,
- 		.version	= nfs_cb_version[1]->number,
- 		.authflavor	= RPC_AUTH_UNIX, /* XXX: need AUTH_GSS... */
--		.flags		= (RPC_CLNT_CREATE_NOPING),
-+		.flags		= (RPC_CLNT_CREATE_NOPING | RPC_CLNT_CREATE_QUIET),
- 	};
- 	struct rpc_message msg = {
- 		.rpc_proc       = &nfs4_cb_procedures[NFSPROC4_CLNT_CB_NULL],
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index 6fff7f8..764fd4c 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -42,7 +42,8 @@ struct rpc_clnt {
- 
- 	unsigned int		cl_softrtry : 1,/* soft timeouts */
- 				cl_discrtry : 1,/* disconnect before retry */
--				cl_autobind : 1;/* use getport() */
-+				cl_autobind : 1,/* use getport() */
-+				cl_chatty   : 1;/* be verbose */
- 
- 	struct rpc_rtt *	cl_rtt;		/* RTO estimator data */
- 	const struct rpc_timeout *cl_timeout;	/* Timeout strategy */
-@@ -114,6 +115,7 @@ struct rpc_create_args {
- #define RPC_CLNT_CREATE_NONPRIVPORT	(1UL << 3)
- #define RPC_CLNT_CREATE_NOPING		(1UL << 4)
- #define RPC_CLNT_CREATE_DISCRTRY	(1UL << 5)
-+#define RPC_CLNT_CREATE_QUIET		(1UL << 6)
- 
- struct rpc_clnt *rpc_create(struct rpc_create_args *args);
- struct rpc_clnt	*rpc_bind_new_program(struct rpc_clnt *,
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 8945307..08ec845 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -324,6 +324,8 @@ struct rpc_clnt *rpc_create(struct rpc_create_args *args)
- 		clnt->cl_autobind = 1;
- 	if (args->flags & RPC_CLNT_CREATE_DISCRTRY)
- 		clnt->cl_discrtry = 1;
-+	if (!(args->flags & RPC_CLNT_CREATE_QUIET))
-+		clnt->cl_chatty = 1;
- 
- 	return clnt;
+diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
+index b112857..2f3eabe 100644
+--- a/fs/nfs/nfs4namespace.c
++++ b/fs/nfs/nfs4namespace.c
+@@ -93,23 +93,6 @@ static int nfs4_validate_fspath(const struct vfsmount *mnt_parent,
+ 	return 0;
  }
-@@ -1132,7 +1134,8 @@ call_status(struct rpc_task *task)
- 		rpc_exit(task, status);
- 		break;
- 	default:
--		printk("%s: RPC call returned error %d\n",
-+		if (clnt->cl_chatty)
-+			printk("%s: RPC call returned error %d\n",
- 			       clnt->cl_protname, -status);
- 		rpc_exit(task, status);
- 	}
-@@ -1157,7 +1160,8 @@ call_timeout(struct rpc_task *task)
- 	task->tk_timeouts++;
  
- 	if (RPC_IS_SOFT(task)) {
--		printk(KERN_NOTICE "%s: server %s not responding, timed out\n",
-+		if (clnt->cl_chatty)
-+			printk(KERN_NOTICE "%s: server %s not responding, timed out\n",
- 				clnt->cl_protname, clnt->cl_server);
- 		rpc_exit(task, -EIO);
- 		return;
-@@ -1165,7 +1169,8 @@ call_timeout(struct rpc_task *task)
+-/*
+- * Check if the string represents a "valid" IPv4 address
+- */
+-static inline int valid_ipaddr4(const char *buf)
+-{
+-	int rc, count, in[4];
+-
+-	rc = sscanf(buf, "%d.%d.%d.%d", &in[0], &in[1], &in[2], &in[3]);
+-	if (rc != 4)
+-		return -EINVAL;
+-	for (count = 0; count < 4; count++) {
+-		if (in[count] > 255)
+-			return -EINVAL;
+-	}
+-	return 0;
+-}
+-
+ /**
+  * nfs_follow_referral - set up mountpoint when hitting a referral on moved error
+  * @mnt_parent - mountpoint of parent directory
+@@ -172,19 +155,20 @@ static struct vfsmount *nfs_follow_referral(const struct vfsmount *mnt_parent,
  
- 	if (!(task->tk_flags & RPC_CALL_MAJORSEEN)) {
- 		task->tk_flags |= RPC_CALL_MAJORSEEN;
--		printk(KERN_NOTICE "%s: server %s not responding, still trying\n",
-+		if (clnt->cl_chatty)
-+			printk(KERN_NOTICE "%s: server %s not responding, still trying\n",
- 			clnt->cl_protname, clnt->cl_server);
- 	}
- 	rpc_force_rebind(clnt);
-@@ -1196,8 +1201,9 @@ call_decode(struct rpc_task *task)
- 			task->tk_pid, task->tk_status);
+ 		s = 0;
+ 		while (s < location->nservers) {
++			const struct nfs4_string *buf = &location->servers[s];
+ 			struct sockaddr_in addr = {
+ 				.sin_family	= AF_INET,
+ 				.sin_port	= htons(NFS_PORT),
+ 			};
++			u8 *ip = (u8 *)addr.sin_addr.s_addr;
  
- 	if (task->tk_flags & RPC_CALL_MAJORSEEN) {
--		printk(KERN_NOTICE "%s: server %s OK\n",
--			clnt->cl_protname, clnt->cl_server);
-+		if (clnt->cl_chatty)
-+			printk(KERN_NOTICE "%s: server %s OK\n",
-+				clnt->cl_protname, clnt->cl_server);
- 		task->tk_flags &= ~RPC_CALL_MAJORSEEN;
- 	}
+-			if (location->servers[s].len <= 0 ||
+-			    valid_ipaddr4(location->servers[s].data) < 0) {
+-				s++;
+-				continue;
+-			}
++			if (buf->len <= 0 || buf->len >= PAGE_SIZE)
++				goto next;
++			if (!in4_pton(buf->data, buf->len, ip, '\0', NULL))
++				goto next;
  
+-			mountdata.hostname = location->servers[s].data;
+-			addr.sin_addr.s_addr = in_aton(mountdata.hostname),
++			mountdata.hostname = kmalloc(buf->len + 1, GFP_KERNEL);
++			mountdata.hostname[buf->len] = 0;
+ 			mountdata.addr = (struct sockaddr *)&addr;
+ 			mountdata.addrlen = sizeof(addr);
+ 
+@@ -193,9 +177,11 @@ static struct vfsmount *nfs_follow_referral(const struct vfsmount *mnt_parent,
+ 					mountdata.mnt_path);
+ 
+ 			mnt = vfs_kern_mount(&nfs4_referral_fs_type, 0, page, &mountdata);
++			kfree(mountdata.hostname);
+ 			if (!IS_ERR(mnt)) {
+ 				break;
+ 			}
++next:
+ 			s++;
+ 		}
+ 		loc++;
 -- 
 1.5.5.rc1
 
