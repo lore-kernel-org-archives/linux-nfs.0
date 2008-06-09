@@ -1,17 +1,22 @@
 Return-Path: <nfsv4-bounces@linux-nfs.org>
-Date: Mon, 9 Jun 2008 12:24:07 -0400
-From: Neil Horman <nhorman@redhat.com>
-To: Peter Staubach <staubach@redhat.com>
+Message-Id: <6956CC1C-1724-4240-A29F-4485B351B4C8@oracle.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+To: Jeff Layton <jlayton@redhat.com>
+In-Reply-To: <20080609161124.2d9a90fd@tleilax.poochiereds.net>
 Subject: Re: rapid clustered nfs server failover and hung clients -- how best
-	to	close the sockets?
-Message-ID: <20080609162407.GE20181@hmsendeavour.rdu.redhat.com>
+	to close the sockets?
+Date: Mon, 9 Jun 2008 16:56:20 -0400
 References: <20080609103137.2474aabd@tleilax.poochiereds.net>
 	<484D4659.9000105@redhat.com>
-	<20080609152321.GA20181@hmsendeavour.rdu.redhat.com>
-	<484D53A5.8010509@redhat.com>
-In-Reply-To: <484D53A5.8010509@redhat.com>
-Cc: Neil Horman <nhorman@redhat.com>, lhh@redhat.com, nfsv4@linux-nfs.org,
-        linux-nfs@vger.kernel.org, Jeff Layton <jlayton@redhat.com>
+	<20080609111821.6e06d4f8@tleilax.poochiereds.net>
+	<RTPCLUEXC1-PRDOLZCH000001d2@RTPMVEXC1-PRD.hq.netapp.com>
+	<20080609120110.1fee7221@tleilax.poochiereds.net>
+	<RTPCLUEXC1-PRDF8Eqf000001d4@RTPMVEXC1-PRD.hq.netapp.com>
+	<20080609122249.51767b21@tleilax.poochiereds.net>
+	<76bd70e30806091236k563412dcib951b848aa9a9ce3@mail.gmail.com>
+	<20080609161124.2d9a90fd@tleilax.poochiereds.net>
+Cc: linux-nfs@vger.kernel.org, chucklever@gmail.com, lhh@redhat.com,
+        nfsv4@linux-nfs.org, nhorman@redhat.com
 List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
 	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
 List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
@@ -25,172 +30,217 @@ Errors-To: nfsv4-bounces@linux-nfs.org
 MIME-Version: 1.0
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jun 09, 2008 at 12:00:37PM -0400, Peter Staubach wrote:
-> Neil Horman wrote:
-> >On Mon, Jun 09, 2008 at 11:03:53AM -0400, Peter Staubach wrote:
-> >  
-> >>Jeff Layton wrote:
-> >>    
-> >>>Apologies for the long email, but I ran into an interesting problem the
-> >>>other day and am looking for some feedback on my general approach to
-> >>>fixing it before I spend too much time on it:
-> >>>
-> >>>We (RH) have a cluster-suite product that some people use for making HA
-> >>>NFS services. When our QA folks test this, they often will start up
-> >>>some operations that do activity on an NFS mount from the cluster and
-> >>>then rapidly do failovers between cluster machines and make sure
-> >>>everything keeps moving along. The cluster is designed to not shut down
-> >>>nfsd's when a failover occurs. nfsd's are considered a "shared
-> >>>resource". It's possible that there could be multiple clustered
-> >>>services for NFS-sharing, so when a failover occurs, we just manipulate
-> >>>the exports table.
-> >>>
-> >>>The problem we've run into is that occasionally they fail over to the
-> >>>alternate machine and then back very rapidly. Because nfsd's are not
-> >>>shut down on failover, sockets are not closed. So what happens is
-> >>>something like this on TCP mounts:
-> >>>
-> >>>- client has NFS mount from clustered NFS service on one server
-> >>>
-> >>>- service fails over, new server doesn't know anything about the
-> >>> existing socket, so it sends a RST back to the client when data
-> >>> comes in. Client closes connection and reopens it and does some
-> >>> I/O on the socket.
-> >>>
-> >>>- service fails back to original server. The original socket there
-> >>> is still open, but now the TCP sequence numbers are off. When
-> >>> packets come into the server we end up with an ACK storm, and the
-> >>> client hangs for a long time.
-> >>>
-> >>>Neil Horman did a good writeup of this problem here for those that
-> >>>want the gory details:
-> >>>
-> >>>   https://bugzilla.redhat.com/show_bug.cgi?id=369991#c16
-> >>>
-> >>>I can think of 3 ways to fix this:
-> >>>
-> >>>1) Add something like the recently added "unlock_ip" interface that
-> >>>was added for NLM. Maybe a "close_ip" that allows us to close all
-> >>>nfsd sockets connected to a given local IP address. So clustering
-> >>>software could do something like:
-> >>>
-> >>>   # echo 10.20.30.40 > /proc/fs/nfsd/close_ip
-> >>>
-> >>>...and make sure that all of the sockets are closed.
-> >>>
-> >>>2) just use the same "unlock_ip" interface and just have it also
-> >>>close sockets in addition to dropping locks.
-> >>>
-> >>>3) have an nfsd close all non-listening connections when it gets a
-> >>>certain signal (maybe SIGUSR1 or something). Connections on a
-> >>>sockets that aren't failing over should just get a RST and would
-> >>>reopen their connections.
-> >>>
-> >>>...my preference would probably be approach #1.
-> >>>
-> >>>I've only really done some rudimentary perusing of the code, so there
-> >>>may be roadblocks with some of these approaches I haven't considered.
-> >>>Does anyone have thoughts on the general problem or idea for a solution?
-> >>>
-> >>>The situation is a bit specific to failover testing -- most people 
-> >>>failing
-> >>>over don't do it so rapidly, but we'd still like to ensure that this
-> >>>problem doesn't occur if someone does do it.
-> >>>
-> >>>Thanks,
-> >>> 
-> >>>      
-> >>This doesn't sound like it would be an NFS specific situation.
-> >>Why doesn't TCP handle this, without causing an ACK storm?
-> >>
-> >>    
-> >
-> >You're right, its not a problem specific to NFS, any TCP based service in 
-> >which
-> >sockets are not explicitly closed on the application are subject to this
-> >problem.  however, I think NFS is currently the only clustered service 
-> >that we
-> >offer in which we explicitly leave nfsd running during such a 'soft' 
-> >failover,
-> >and so practically speaking, this is the only place that this issue 
-> >manifests
-> >itself.  If we could shut down nfsd on the server doing a failover, that 
-> >would
-> >solve this problem (as it prevents the problem with all other clustered tcp
-> >based services), but from what I'm told, thats a non-starter.
-> >
-> >As for why TCP doesnt handle this, thats because the situation is 
-> >ambiguous from
-> >the point of view of the client and server.  The write up in the bugzilla 
-> >has
-> >all the gory details, but the executive summary is that during rapid 
-> >failover,
-> >the client will ack some data to server A in the cluster, and some to 
-> >server B
-> >in the cluster.  If you quickly fail over and back between the servers in 
-> >the
-> >cluster, each server will see some gaps in the data stream sequence 
-> >numbers, but
-> >the client will see that all data has been acked.  This leaves the 
-> >connection in
-> >an unrecoverable state.
-> 
-> This doesn't seem so ambiguous from the client's viewpoint to me.
-> 
-> The server sends back an ACK for a sequence number which is less
-> than the beginning sequence number that the client has to
-> retransmit.  Shouldn't that imply a problem to the client and
-> cause the TCP on the client to give up and return an error to
-> the caller, in this case the RPC?
-> 
-> Can there be gaps in sequence numbers?
-> 
-No there can't be gaps in sequence numbers, but the fact that there are on a
-given connection is in fact ambiguous.  See RFC 793 page 36/37 for a more
-detailed explination.  The RFC mandates that in response to an out of range
-sequence number for an established connection, the peer can only respond with an
-empty ACK containing the next available send-sequence number.
+On Jun 9, 2008, at 4:11 PM, Jeff Layton wrote:
+> On Mon, 9 Jun 2008 15:36:18 -0400
+> "Chuck Lever" <chuck.lever@oracle.com> wrote:
+>> On Mon, Jun 9, 2008 at 12:22 PM, Jeff Layton <jlayton@redhat.com>  
+>> wrote:
+>>> On Mon, 09 Jun 2008 12:09:48 -0400
+>>> "Talpey, Thomas" <Thomas.Talpey@netapp.com> wrote:
+>>>
+>>>> At 12:01 PM 6/9/2008, Jeff Layton wrote:
+>>>>> On Mon, 09 Jun 2008 11:51:51 -0400
+>>>>> "Talpey, Thomas" <Thomas.Talpey@netapp.com> wrote:
+>>>>>
+>>>>>> At 11:18 AM 6/9/2008, Jeff Layton wrote:
+>>>>>>> No, it's not specific to NFS. It can happen to any "service"  
+>>>>>>> that
+>>>>>>> floats IP addresses between machines, but does not close the  
+>>>>>>> sockets
+>>>>>>> that are connected to those addresses. Most services that fail  
+>>>>>>> over
+>>>>>>> (at least in RH's cluster server) shut down the daemons on  
+>>>>>>> failover
+>>>>>>> too, so tends to mitigate this problem elsewhere.
+>>>>>>
+>>>>>> Why exactly don't you choose to restart the nfsd's (and  
+>>>>>> lockd's) on the
+>>>>>> victim server?
+>>>>>
+>>>>> The victim server might have other nfsd/lockd's running on them.  
+>>>>> Stopping
+>>>>> all the nfsd's could bring down lockd, and then you have to deal  
+>>>>> with lock
+>>>>> recovery on the stuff that isn't moving to the other server.
+>>>>
+>>>> But but but... the IP address is the only identification the  
+>>>> client can use
+>>>> to isolate a server. You're telling me that some locks will  
+>>>> migrate and
+>>>> some won't? Good luck with that! The clients are going to be  
+>>>> mightily
+>>>> confused.
+>>>>
+>>>
+>>> Maybe I'm not being clear. My understanding is this:
+>>>
+>>> Right now, when we fail over we send a SIGKILL to lockd, and then  
+>>> send
+>>> a SM_NOTIFY to all of the clients that the "victim" server has,
+>>> regardless of what IP address the clients are talking to. So all  
+>>> locks
+>>> get dropped and all clients should recover their locks. Since the
+>>> service will fail over to the new host, locks that were in that  
+>>> export
+>>> will get recovered on the "new" host.
+>>>
+>>> But, we just recently added this new "unlock_ip" interface. With  
+>>> that,
+>>> we should be able to just send SM_NOTIFY's to clients of that IP
+>>> address. Locks associated with that server address will be recovered
+>>> and the others should be unaffected.
+>>
+>> Maybe that's a little imprecise.
+>>
+>> The failover_unlock_ip() API doesn't send any SM_NOTIFY calls at all,
+>> it tells the server's NLM to drop all locks held by that IP, but
+>> there's logic in nlmsvc_is_client() specifically to keep monitoring
+>> these clients.  The SM_NOTIFY calls will come from user space, just  
+>> to
+>> be clear.
+>>
+>> If this is truly a service migration, I would think that the old
+>> server would want to stop monitoring these clients anyway.
+>>
+>>> All of
+>>> the NSM/NLM stuff here is really separate from the main problem I'm
+>>> interested in at the moment, which is how to deal with the old,  
+>>> stale
+>>> sockets that nfsd has open after the local address disappears.
+>>
+>> IMO it's just the reverse: the main problem is how to do service
+>> migration in a robust fashion; the bugs you are focused on right at
+>> the moment are due to the fact the current migration strategy is
+>> poorly designed.  The real issue is how do you fix your design, and
+>> that's a lot bigger than addressing a few SYNs and ACKs.  I do not
+>> believe there is going to be a simple network level fix here if you
+>> want to prevent more corner cases.
+>>
+>> I am still of the opinion that you can't do this without involvement
+>> from the nfsd threads.  The old server is going to have to stop
+>> accepting incoming connections during the failover period.  NetApp
+>> found that it is not enough to drop a newly accepted connection
+>> without having read any data -- that confuses some clients.  Your
+>> server really does need to shut off the listener, in order to refuse
+>> new connections.
+>>
+>
+> I'm not sure I follow your logic here. The first thing that happens
+> when failover occurs is that the IP address is removed from the
+> interface. This prevents new connections on that IP address (and new
+> packets for existing connections for that matter). Why would this not
+> be sufficient to prevent new activity on those sockets?
 
-The problem lies in the fact that, due to the failover and failback, the peers
-have differeing views on what state the connection is in.  The NFS client has,
-at the time this problem occurs seen ACKs to all the data it has sent.  As such,
-it now sees this ack that is backward in time and assumes that this frame
-somehow got lost in the network, and just now made it here, after all the
-subsequent frames did.  The appropriate thing, per the rfc, is to ignore it, and
-send an ACK reminding the peer of where it is in sequence.
+Because precisely the situation that you have observed occurs.  The  
+clients and servers get confused about network state because the TCP  
+connections weren't properly shut down.
 
-The NFS server on the other hand, is in fact missing a chunk of sequence
-numbers, which were acked by the other server in the cluster during the
-failover, failback period,  So it legitimately thinks that some set of sequence
-numbers got dropped, and it can't continue until it has them.  The only thing it
-can do is continue to ACK its last seen sequence number, hoping that the client
-will retransmit them (which it should, because as far as this server is
-concerned, it never acked them).
+>> I think this might be a new server state.  A bunch of nfsd threads
+>> will exist and be processing NFS requests, but there will be no
+>> listener.
+>>
+>> Then the old server can drain the doomed sockets and disconnect them
+>> in an orderly manner.  This will prevent a lot of segment ordering
+>> problems and keep network layer confusion about socket state to a
+>> minimum.  It's a good idea to try to return any pending replies to
+>> clients before closing the connection to reduce the likelihood of RPC
+>> retransmits.  To prevent the clients from transmitting any new
+>> requests, use a half-close (just close the receiving half of the
+>> connection on the server).
+>
+> Ahh ok. So you're thinking that we need to keep the IP address in  
+> place
+> so that we can send replies for RPC's that are still in progress? That
+> makes sense.
 
-There could be an argument made, I suppose for adding some sort of knob to set a
-threshold for this particular behavior (X Data-less ACKs in Y amount of TIME ==
-RST or some such), but I'm sure that won't get much upstream traction (at least
-I won't propose it), since the knob would violate the RFC, possibly reset
-legitimate connections (think keep alive frames), and really only solve a
-problem that is manufactured by keeping processes alive (allbeit apparently
-necessecary) in such a way that two systems share a tcp connection.
+There is a part of NFSD failover that must occur before the IP address  
+is taken down.  Otherwise you orphan NFS requests on the server and  
+TCP segments in the network.
 
-Regards
-Neil
+You have an opportunity, during service migration, to shut down the  
+old service gracefully so that you greatly reduce the risk of data  
+loss or corruption.
 
->    Thanx...
-> 
->       ps
+> I suppose that instead of shutting down the listener altogether, we
+> could just have the listener refuse connections for the given  
+> destination address.
 
--- 
-/***************************************************
- *Neil Horman
- *Software Engineer
- *Red Hat, Inc.
- *nhorman@redhat.com
- *gpg keyid: 1024D / 0x92A74FA1
- *http://pgp.mit.edu
- ***************************************************/
+I didn't think you could do that to an active listener.  Even if you  
+could, NFSD would depend on the specifics of the network layer  
+implementation to disallow races or partially connected states while  
+the listener socket was transitioning.
+
+Since these events are rare compared to RPC requests and new  
+connections, I would think it wouldn't matter if the listener wasn't  
+available for a brief period.  What matters is the service shut down  
+on the old server is clean and orderly.
+
+> That said, if we assume we want to use the unlock_ip interface then
+> there's a potential race between writing to unlock_ip and taking down
+> the address. I'll have to think about how to deal with that maybe some
+> sort of 3 stage teardown:
+>
+> 1) refuse new connections for the IP address, drain the RPC queues,
+>   half close sockets
+>
+> 2) remove the address from the interface
+>
+> 3) close sockets the rest of the way, stop refusing connections
+
+I'm not sure what you accomplish with "close sockets the rest of the  
+way" after you have removed the address from the interface?
+
+The NFSDs should gracefully destroy all resources on that address  
+before you remove the address from the interface.  Closing the sockets  
+properly means that both halves of the connection duplex have an  
+opportunity to go through the FIN,ACK dance.
+
+There is still a risk that things will get confused.  But in most  
+normal cases, this is enough to ensure an orderly transition of the  
+network connections.
+
+>> Naturally this will have to be time-bounded because clients can be  
+>> too
+>> busy to read any remaining data off the socket, or could just be  
+>> dead.
+>> That shouldn't hold up your service migration event.
+>
+> Definitely.
+>
+>> Any clients attempting to connect to the old server during failover
+>> will be refused.  If they are trying to access legitimate NFS
+>> resources that have not been migrated, they will retry connecting
+>> later, so this really shouldn't be an issue.  Clients connecting to
+>> the new server should be OK, but again, I think they should be fenced
+>> from the old server's file system until the old server has finished
+>> processing any pending requests from clients that are being migrated
+>> to the new server.
+>>
+>> When failover is complete, the old server can start accepting new TCP
+>> connections again.  Clients connecting to the old server looking for
+>> migrated resources should get something like ESTALE ("These are not
+>> the file handles you are looking for.").
+>
+> I think we return -EACCES or something (whatever you get when you  
+> try to
+> access something that isn't exported). We remove the export from the
+> exports table when we fail over.
+
+>> In this way, the server is in control over the migration, and isn't
+>> depending on any wonky TCP behavior to make it happen correctly.   
+>> It's
+>> using entirely legitimate features of the socket interface to move
+>> each client through the necessary states of migration.
+>>
+>> Now that the network connections are figured out, your servers can
+>> start worrying about recoverying NLM, NSM, and DRC state.
+>>
+> -- 
+> Jeff Layton <jlayton@redhat.com>
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 _______________________________________________
 NFSv4 mailing list
 NFSv4@linux-nfs.org
