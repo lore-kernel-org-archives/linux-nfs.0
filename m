@@ -1,13 +1,15 @@
 Return-Path: <nfsv4-bounces@linux-nfs.org>
-Date: Mon, 9 Jun 2008 11:18:21 -0400
+Date: Mon, 9 Jun 2008 15:10:11 -0400
 From: Jeff Layton <jlayton@redhat.com>
-To: Peter Staubach <staubach@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: Re: rapid clustered nfs server failover and hung clients -- how
-	best to	close the sockets?
-Message-ID: <20080609111821.6e06d4f8@tleilax.poochiereds.net>
-In-Reply-To: <484D4659.9000105@redhat.com>
+	best to close the sockets?
+Message-ID: <20080609151011.57939639@tleilax.poochiereds.net>
+In-Reply-To: <20080609172313.GB26920@fieldses.org>
 References: <20080609103137.2474aabd@tleilax.poochiereds.net>
-	<484D4659.9000105@redhat.com>
+	<20080609155136.GC25230@fieldses.org>
+	<20080609120243.5958beb4@tleilax.poochiereds.net>
+	<20080609172313.GB26920@fieldses.org>
 Cc: linux-nfs@vger.kernel.org, lhh@redhat.com, nfsv4@linux-nfs.org,
         nhorman@redhat.com
 List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
@@ -23,94 +25,77 @@ Errors-To: nfsv4-bounces@linux-nfs.org
 MIME-Version: 1.0
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 09 Jun 2008 11:03:53 -0400
-Peter Staubach <staubach@redhat.com> wrote:
+On Mon, 9 Jun 2008 13:23:13 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-> Jeff Layton wrote:
-> > Apologies for the long email, but I ran into an interesting problem the
-> > other day and am looking for some feedback on my general approach to
-> > fixing it before I spend too much time on it:
-> >
-> > We (RH) have a cluster-suite product that some people use for making HA
-> > NFS services. When our QA folks test this, they often will start up
-> > some operations that do activity on an NFS mount from the cluster and
-> > then rapidly do failovers between cluster machines and make sure
-> > everything keeps moving along. The cluster is designed to not shut down
-> > nfsd's when a failover occurs. nfsd's are considered a "shared
-> > resource". It's possible that there could be multiple clustered
-> > services for NFS-sharing, so when a failover occurs, we just manipulate
-> > the exports table.
-> >
-> > The problem we've run into is that occasionally they fail over to the
-> > alternate machine and then back very rapidly. Because nfsd's are not
-> > shut down on failover, sockets are not closed. So what happens is
-> > something like this on TCP mounts:
-> >
-> > - client has NFS mount from clustered NFS service on one server
-> >
-> > - service fails over, new server doesn't know anything about the
-> >   existing socket, so it sends a RST back to the client when data
-> >   comes in. Client closes connection and reopens it and does some
-> >   I/O on the socket.
-> >
-> > - service fails back to original server. The original socket there
-> >   is still open, but now the TCP sequence numbers are off. When
-> >   packets come into the server we end up with an ACK storm, and the
-> >   client hangs for a long time.
-> >
-> > Neil Horman did a good writeup of this problem here for those that
-> > want the gory details:
-> >
-> >     https://bugzilla.redhat.com/show_bug.cgi?id=369991#c16
-> >
-> > I can think of 3 ways to fix this:
-> >
-> > 1) Add something like the recently added "unlock_ip" interface that
-> > was added for NLM. Maybe a "close_ip" that allows us to close all
-> > nfsd sockets connected to a given local IP address. So clustering
-> > software could do something like:
-> >
-> >     # echo 10.20.30.40 > /proc/fs/nfsd/close_ip
-> >
-> > ...and make sure that all of the sockets are closed.
-> >
-> > 2) just use the same "unlock_ip" interface and just have it also
-> > close sockets in addition to dropping locks.
-> >
-> > 3) have an nfsd close all non-listening connections when it gets a
-> > certain signal (maybe SIGUSR1 or something). Connections on a
-> > sockets that aren't failing over should just get a RST and would
-> > reopen their connections.
-> >
-> > ...my preference would probably be approach #1.
-> >
-> > I've only really done some rudimentary perusing of the code, so there
-> > may be roadblocks with some of these approaches I haven't considered.
-> > Does anyone have thoughts on the general problem or idea for a solution?
-> >
-> > The situation is a bit specific to failover testing -- most people failing
-> > over don't do it so rapidly, but we'd still like to ensure that this
-> > problem doesn't occur if someone does do it.
-> >
-> > Thanks,
-> >   
+> On Mon, Jun 09, 2008 at 12:02:43PM -0400, Jeff Layton wrote:
+> > On Mon, 9 Jun 2008 11:51:36 -0400
+> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > 
+> > > On Mon, Jun 09, 2008 at 10:31:37AM -0400, Jeff Layton wrote:
+> > > > I can think of 3 ways to fix this:
+> > > > 
+> > > > 1) Add something like the recently added "unlock_ip" interface that
+> > > > was added for NLM. Maybe a "close_ip" that allows us to close all
+> > > > nfsd sockets connected to a given local IP address. So clustering
+> > > > software could do something like:
+> > > > 
+> > > >     # echo 10.20.30.40 > /proc/fs/nfsd/close_ip
+> > > > 
+> > > > ...and make sure that all of the sockets are closed.
+> > > > 
+> > > > 2) just use the same "unlock_ip" interface and just have it also
+> > > > close sockets in addition to dropping locks.
+> > > > 
+> > > > 3) have an nfsd close all non-listening connections when it gets a
+> > > > certain signal (maybe SIGUSR1 or something). Connections on a
+> > > > sockets that aren't failing over should just get a RST and would
+> > > > reopen their connections.
+> > > > 
+> > > > ...my preference would probably be approach #1.
+> > > 
+> > > What do you see as the advantage of #1 over #2?  Are there cases where
+> > > someone would want to drop locks but not also close connections (or
+> > > vice-versa)?
+> > > 
+> > 
+> > There's no real advantage that I can see (maybe if they're running a
+> > cluster with no NLM services somehow). Mostly that "unlock_ip" seems to
+> > imply that it deals with locking, and this doesn't. I'd be OK with #2
+> > if it's a reasonable solution. Given what Chuck mentioned, it sounds
+> > like we'll also need to take care to make sure that existing calls
+> > complete and the replies get flushed out too, so this could be more
+> > complicated that I had anticipated.
 > 
-> This doesn't sound like it would be an NFS specific situation.
-> Why doesn't TCP handle this, without causing an ACK storm?
+> It seems to me that in the long run what we'd like is a virtualized NFS
+> service--you should be able to start and stop independent "servers"
+> hosted on a single kernel, and to clients they should look like
+> completely independent servers.
+> 
+> And I guess the question is how little "virtualization" you can get away
+> with and still have the whole thing work.
+
+Yep. That was Lon's exact question. Could we start nfsd's that just
+work for certain exports? The answer (of course) is currently no.
+
+As an idle side thought, I wonder whether/how we could make nfsd
+containerized? I wonder if it's possible to run a local nfsd in
+a Solaris zone/container thingy.
+
+> 
+> But anyway, ideally I think there'd be a single interface that says
+> "shut down the nfs service provided via server ip x.y.z.w, for possible
+> migration to another host".  That's the only operation anyone really
+> want to do--independent control over the tcp connections, and the locks,
+> and the rpc cache, and whatever else needs to be dealt with, sounds
+> unlikely to be useful.
 > 
 
-No, it's not specific to NFS. It can happen to any "service" that
-floats IP addresses between machines, but does not close the sockets
-that are connected to those addresses. Most services that fail over
-(at least in RH's cluster server) shut down the daemons on failover
-too, so tends to mitigate this problem elsewhere.
-
-I'm not sure how the TCP layer can really handle this situation. On
-the wire, it looks to the client and server like the connection has
-been hijacked (and in a sense, it has). It would be nice if it
-didn't end up in an ACK storm, but I'm not aware of a way to prevent
-that that stays within the spec.
-
+Ok. When I get some time to work on this, I'll plan to work on hooking
+into the current unlock_ip interface rather than creating a new
+procfile. That does seem to make the most sense, though the name
+"unlock_ip" might not really adequately convey what it will now be doing...
+ 
 -- 
 Jeff Layton <jlayton@redhat.com>
 _______________________________________________
