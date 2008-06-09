@@ -1,14 +1,14 @@
 Return-Path: <nfsv4-bounces@linux-nfs.org>
-Date: Mon, 9 Jun 2008 13:23:13 -0400
+Date: Mon, 09 Jun 2008 11:51:51 -0400
 To: Jeff Layton <jlayton@redhat.com>
-Subject: Re: rapid clustered nfs server failover and hung clients -- how
-	best to close the sockets?
-Message-ID: <20080609172313.GB26920@fieldses.org>
+From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
+Subject: Re: rapid clustered nfs server failover and hung clients --
+	how best to	close the sockets?
+In-Reply-To: <20080609111821.6e06d4f8@tleilax.poochiereds.net>
 References: <20080609103137.2474aabd@tleilax.poochiereds.net>
-	<20080609155136.GC25230@fieldses.org>
-	<20080609120243.5958beb4@tleilax.poochiereds.net>
-In-Reply-To: <20080609120243.5958beb4@tleilax.poochiereds.net>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	<484D4659.9000105@redhat.com>
+	<20080609111821.6e06d4f8@tleilax.poochiereds.net>
+Message-ID: <RTPCLUEXC1-PRDOLZCH000001d2@RTPMVEXC1-PRD.hq.netapp.com>
 Cc: linux-nfs@vger.kernel.org, lhh@redhat.com, nfsv4@linux-nfs.org,
         nhorman@redhat.com
 List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
@@ -24,61 +24,19 @@ Errors-To: nfsv4-bounces@linux-nfs.org
 MIME-Version: 1.0
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jun 09, 2008 at 12:02:43PM -0400, Jeff Layton wrote:
-> On Mon, 9 Jun 2008 11:51:36 -0400
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> 
-> > On Mon, Jun 09, 2008 at 10:31:37AM -0400, Jeff Layton wrote:
-> > > I can think of 3 ways to fix this:
-> > > 
-> > > 1) Add something like the recently added "unlock_ip" interface that
-> > > was added for NLM. Maybe a "close_ip" that allows us to close all
-> > > nfsd sockets connected to a given local IP address. So clustering
-> > > software could do something like:
-> > > 
-> > >     # echo 10.20.30.40 > /proc/fs/nfsd/close_ip
-> > > 
-> > > ...and make sure that all of the sockets are closed.
-> > > 
-> > > 2) just use the same "unlock_ip" interface and just have it also
-> > > close sockets in addition to dropping locks.
-> > > 
-> > > 3) have an nfsd close all non-listening connections when it gets a
-> > > certain signal (maybe SIGUSR1 or something). Connections on a
-> > > sockets that aren't failing over should just get a RST and would
-> > > reopen their connections.
-> > > 
-> > > ...my preference would probably be approach #1.
-> > 
-> > What do you see as the advantage of #1 over #2?  Are there cases where
-> > someone would want to drop locks but not also close connections (or
-> > vice-versa)?
-> > 
-> 
-> There's no real advantage that I can see (maybe if they're running a
-> cluster with no NLM services somehow). Mostly that "unlock_ip" seems to
-> imply that it deals with locking, and this doesn't. I'd be OK with #2
-> if it's a reasonable solution. Given what Chuck mentioned, it sounds
-> like we'll also need to take care to make sure that existing calls
-> complete and the replies get flushed out too, so this could be more
-> complicated that I had anticipated.
+At 11:18 AM 6/9/2008, Jeff Layton wrote:
+>No, it's not specific to NFS. It can happen to any "service" that
+>floats IP addresses between machines, but does not close the sockets
+>that are connected to those addresses. Most services that fail over
+>(at least in RH's cluster server) shut down the daemons on failover
+>too, so tends to mitigate this problem elsewhere.
 
-It seems to me that in the long run what we'd like is a virtualized NFS
-service--you should be able to start and stop independent "servers"
-hosted on a single kernel, and to clients they should look like
-completely independent servers.
+Why exactly don't you choose to restart the nfsd's (and lockd's) on the
+victim server? Failing that, for TCP at least would ifdown/ifup accomplish
+the socket reset?
 
-And I guess the question is how little "virtualization" you can get away
-with and still have the whole thing work.
+Tom.
 
-But anyway, ideally I think there'd be a single interface that says
-"shut down the nfs service provided via server ip x.y.z.w, for possible
-migration to another host".  That's the only operation anyone really
-want to do--independent control over the tcp connections, and the locks,
-and the rpc cache, and whatever else needs to be dealt with, sounds
-unlikely to be useful.
-
---b.
 _______________________________________________
 NFSv4 mailing list
 NFSv4@linux-nfs.org
