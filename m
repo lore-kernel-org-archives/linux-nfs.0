@@ -1,46 +1,41 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 1/4] Import mountstats utility
-Date: Mon, 09 Jun 2008 12:47:28 -0400
-Message-ID: <20080609164727.5461.60464.stgit@ellison.1015granger.net>
+Subject: [PATCH 3/4] Import the old iostat-ms Python script
+Date: Mon, 09 Jun 2008 12:47:39 -0400
+Message-ID: <20080609164738.5461.22837.stgit@ellison.1015granger.net>
 References: <20080609163029.5461.35699.stgit@ellison.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:26402 "EHLO
+Received: from rgminet01.oracle.com ([148.87.113.118]:27073 "EHLO
 	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752298AbYFIQry (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Jun 2008 12:47:54 -0400
+	with ESMTP id S1751981AbYFIQtP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Jun 2008 12:49:15 -0400
 In-Reply-To: <20080609163029.5461.35699.stgit-ewv44WTpT0t9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The "mountstats" utility is a Python program that extracts and displays NFS
+The "nfs-iostat" utility is a Python program that extracts and displays NFS
 client performance information from /proc/self/mountstats.
-
-Note that if mountstats is named 'ms-nfsstat' or 'ms-iostat' it offers
-slightly different functionality.  It needs two man pages and the install
-script should provide both commands by installing the script and providing the
-other command via a symlink.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- tools/mountstats/mountstats.py |  584 ++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 584 insertions(+), 0 deletions(-)
- create mode 100755 tools/mountstats/mountstats.py
+ tools/nfs-iostat/nfs-iostat.py |  544 ++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 544 insertions(+), 0 deletions(-)
+ create mode 100755 tools/nfs-iostat/nfs-iostat.py
 
 
-diff --git a/tools/mountstats/mountstats.py b/tools/mountstats/mountstats.py
+diff --git a/tools/nfs-iostat/nfs-iostat.py b/tools/nfs-iostat/nfs-iostat.py
 new file mode 100755
-index 0000000..5f20db6
+index 0000000..794d4a8
 --- /dev/null
-+++ b/tools/mountstats/mountstats.py
-@@ -0,0 +1,584 @@
++++ b/tools/nfs-iostat/nfs-iostat.py
+@@ -0,0 +1,544 @@
 +#!/usr/bin/env python
 +# -*- python-mode -*-
-+"""Parse /proc/self/mountstats and display it in human readable form
++"""Emulate iostat for NFS mount points using /proc/self/mountstats
 +"""
 +
 +__copyright__ = """
@@ -62,12 +57,51 @@ index 0000000..5f20db6
 +
 +import sys, os, time
 +
-+Mountstats_version = '0.2'
++Iostats_version = '0.2'
 +
 +def difference(x, y):
 +    """Used for a map() function
 +    """
 +    return x - y
++
++NfsEventCounters = [
++    'inoderevalidates',
++    'dentryrevalidates',
++    'datainvalidates',
++    'attrinvalidates',
++    'vfsopen',
++    'vfslookup',
++    'vfspermission',
++    'vfsupdatepage',
++    'vfsreadpage',
++    'vfsreadpages',
++    'vfswritepage',
++    'vfswritepages',
++    'vfsreaddir',
++    'vfssetattr',
++    'vfsflush',
++    'vfsfsync',
++    'vfslock',
++    'vfsrelease',
++    'congestionwait',
++    'setattrtrunc',
++    'extendwrite',
++    'sillyrenames',
++    'shortreads',
++    'shortwrites',
++    'delay'
++]
++
++NfsByteCounters = [
++    'normalreadbytes',
++    'normalwritebytes',
++    'directreadbytes',
++    'directwritebytes',
++    'serverreadbytes',
++    'serverwritebytes',
++    'readpages',
++    'writepages'
++]
 +
 +class DeviceData:
 +    """DeviceData objects provide methods for parsing and displaying
@@ -83,7 +117,7 @@ index 0000000..5f20db6
 +            self.__nfs_data['export'] = words[1]
 +            self.__nfs_data['mountpoint'] = words[4]
 +            self.__nfs_data['fstype'] = words[7]
-+            if words[7].find('nfs') != -1:
++            if words[7] == 'nfs':
 +                self.__nfs_data['statvers'] = words[8]
 +        elif words[0] == 'age:':
 +            self.__nfs_data['age'] = long(words[1])
@@ -100,36 +134,15 @@ index 0000000..5f20db6
 +            if self.__nfs_data['flavor'] == 6:
 +                self.__nfs_data['pseudoflavor'] = int(keys[1].split('=')[1])
 +        elif words[0] == 'events:':
-+            self.__nfs_data['inoderevalidates'] = int(words[1])
-+            self.__nfs_data['dentryrevalidates'] = int(words[2])
-+            self.__nfs_data['datainvalidates'] = int(words[3])
-+            self.__nfs_data['attrinvalidates'] = int(words[4])
-+            self.__nfs_data['syncinodes'] = int(words[5])
-+            self.__nfs_data['vfsopen'] = int(words[6])
-+            self.__nfs_data['vfslookup'] = int(words[7])
-+            self.__nfs_data['vfspermission'] = int(words[8])
-+            self.__nfs_data['vfsreadpage'] = int(words[9])
-+            self.__nfs_data['vfsreadpages'] = int(words[10])
-+            self.__nfs_data['vfswritepage'] = int(words[11])
-+            self.__nfs_data['vfswritepages'] = int(words[12])
-+            self.__nfs_data['vfsreaddir'] = int(words[13])
-+            self.__nfs_data['vfsflush'] = int(words[14])
-+            self.__nfs_data['vfsfsync'] = int(words[15])
-+            self.__nfs_data['vfslock'] = int(words[16])
-+            self.__nfs_data['vfsrelease'] = int(words[17])
-+            self.__nfs_data['setattrtrunc'] = int(words[18])
-+            self.__nfs_data['extendwrite'] = int(words[19])
-+            self.__nfs_data['sillyrenames'] = int(words[20])
-+            self.__nfs_data['shortreads'] = int(words[21])
-+            self.__nfs_data['shortwrites'] = int(words[22])
-+            self.__nfs_data['delay'] = int(words[23])
++            i = 1
++            for key in NfsEventCounters:
++                self.__nfs_data[key] = int(words[i])
++                i += 1
 +        elif words[0] == 'bytes:':
-+            self.__nfs_data['normalreadbytes'] = long(words[1])
-+            self.__nfs_data['normalwritebytes'] = long(words[2])
-+            self.__nfs_data['directreadbytes'] = long(words[3])
-+            self.__nfs_data['directwritebytes'] = long(words[4])
-+            self.__nfs_data['serverreadbytes'] = long(words[5])
-+            self.__nfs_data['serverwritebytes'] = long(words[6])
++            i = 1
++            for key in NfsByteCounters:
++                self.__nfs_data[key] = long(words[i])
++                i += 1
 +
 +    def __parse_rpc_line(self, words):
 +        if words[0] == 'RPC':
@@ -155,7 +168,7 @@ index 0000000..5f20db6
 +                self.__rpc_data['rpcreceives'] = int(words[8])
 +                self.__rpc_data['badxids'] = int(words[9])
 +                self.__rpc_data['inflightsends'] = long(words[10])
-+                self.__rpc_data['backlogutil'] = int(words[11])
++                self.__rpc_data['backlogutil'] = long(words[11])
 +        elif words[0] == 'per-op':
 +            self.__rpc_data['per-op'] = words
 +        else:
@@ -189,109 +202,6 @@ index 0000000..5f20db6
 +            return True
 +        return False
 +
-+    def display_nfs_options(self):
-+        """Pretty-print the NFS options
-+        """
-+        print 'Stats for %s mounted on %s:' % \
-+            (self.__nfs_data['export'], self.__nfs_data['mountpoint'])
-+
-+        print '  NFS mount options: %s' % ','.join(self.__nfs_data['mountoptions'])
-+        print '  NFS server capabilities: %s' % ','.join(self.__nfs_data['servercapabilities'])
-+        if self.__nfs_data.has_key('nfsv4flags'):
-+            print '  NFSv4 capability flags: %s' % ','.join(self.__nfs_data['nfsv4flags'])
-+        if self.__nfs_data.has_key('pseudoflavor'):
-+            print '  NFS security flavor: %d  pseudoflavor: %d' % \
-+                (self.__nfs_data['flavor'], self.__nfs_data['pseudoflavor'])
-+        else:
-+            print '  NFS security flavor: %d' % self.__nfs_data['flavor']
-+
-+    def display_nfs_events(self):
-+        """Pretty-print the NFS event counters
-+        """
-+        print
-+        print 'Cache events:'
-+        print '  data cache invalidated %d times' % self.__nfs_data['datainvalidates']
-+        print '  attribute cache invalidated %d times' % self.__nfs_data['attrinvalidates']
-+        print '  inodes synced %d times' % self.__nfs_data['syncinodes']
-+        print
-+        print 'VFS calls:'
-+        print '  VFS requested %d inode revalidations' % self.__nfs_data['inoderevalidates']
-+        print '  VFS requested %d dentry revalidations' % self.__nfs_data['dentryrevalidates']
-+        print
-+        print '  VFS called nfs_readdir() %d times' % self.__nfs_data['vfsreaddir']
-+        print '  VFS called nfs_lookup() %d times' % self.__nfs_data['vfslookup']
-+        print '  VFS called nfs_permission() %d times' % self.__nfs_data['vfspermission']
-+        print '  VFS called nfs_file_open() %d times' % self.__nfs_data['vfsopen']
-+        print '  VFS called nfs_file_flush() %d times' % self.__nfs_data['vfsflush']
-+        print '  VFS called nfs_lock() %d times' % self.__nfs_data['vfslock']
-+        print '  VFS called nfs_fsync() %d times' % self.__nfs_data['vfsfsync']
-+        print '  VFS called nfs_file_release() %d times' % self.__nfs_data['vfsrelease']
-+        print
-+        print 'VM calls:'
-+        print '  VFS called nfs_readpage() %d times' % self.__nfs_data['vfsreadpage']
-+        print '  VFS called nfs_readpages() %d times' % self.__nfs_data['vfsreadpages']
-+        print '  VFS called nfs_writepage() %d times' % self.__nfs_data['vfswritepage']
-+        print '  VFS called nfs_writepages() %d times' % self.__nfs_data['vfswritepages']
-+        print
-+        print 'Generic NFS counters:'
-+        print '  File size changing operations:'
-+        print '    truncating SETATTRs: %d  extending WRITEs: %d' % \
-+            (self.__nfs_data['setattrtrunc'], self.__nfs_data['extendwrite'])
-+        print '  %d silly renames' % self.__nfs_data['sillyrenames']
-+        print '  short reads: %d  short writes: %d' % \
-+            (self.__nfs_data['shortreads'], self.__nfs_data['shortwrites'])
-+        print '  NFSERR_DELAYs from server: %d' % self.__nfs_data['delay']
-+
-+    def display_nfs_bytes(self):
-+        """Pretty-print the NFS event counters
-+        """
-+        print
-+        print 'NFS byte counts:'
-+        print '  applications read %d bytes via read(2)' % self.__nfs_data['normalreadbytes']
-+        print '  applications wrote %d bytes via write(2)' % self.__nfs_data['normalwritebytes']
-+        print '  applications read %d bytes via O_DIRECT read(2)' % self.__nfs_data['directreadbytes']
-+        print '  applications wrote %d bytes via O_DIRECT write(2)' % self.__nfs_data['directwritebytes']
-+        print '  client read %d bytes via NFS READ' % self.__nfs_data['serverreadbytes']
-+        print '  client wrote %d bytes via NFS WRITE' % self.__nfs_data['serverwritebytes']
-+
-+    def display_rpc_generic_stats(self):
-+        """Pretty-print the generic RPC stats
-+        """
-+        sends = self.__rpc_data['rpcsends']
-+
-+        print
-+        print 'RPC statistics:'
-+
-+        print '  %d RPC requests sent, %d RPC replies received (%d XIDs not found)' % \
-+            (sends, self.__rpc_data['rpcreceives'], self.__rpc_data['badxids'])
-+        if sends != 0:
-+            print '  average backlog queue length: %d' % \
-+                (float(self.__rpc_data['backlogutil']) / sends)
-+
-+    def display_rpc_op_stats(self):
-+        """Pretty-print the per-op stats
-+        """
-+        sends = self.__rpc_data['rpcsends']
-+
-+        # XXX: these should be sorted by 'count'
-+        print
-+        for op in self.__rpc_data['ops']:
-+            stats = self.__rpc_data[op]
-+            count = stats[0]
-+            retrans = stats[1] - count
-+            if count != 0:
-+                print '%s:' % op
-+                print '\t%d ops (%d%%)' % \
-+                    (count, ((count * 100) / sends)),
-+                print '\t%d retrans (%d%%)' % (retrans, ((retrans * 100) / count)),
-+                print '\t%d major timeouts' % stats[2]
-+                print '\tavg bytes sent per op: %d\tavg bytes received per op: %d' % \
-+                    (stats[3] / count, stats[4] / count)
-+                print '\tbacklog wait: %f' % (float(stats[5]) / count),
-+                print '\tRTT: %f' % (float(stats[6]) / count),
-+                print '\ttotal execute time: %f (milliseconds)' % \
-+                    (float(stats[7]) / count)
-+
 +    def compare_iostats(self, old_stats):
 +        """Return the difference between two sets of stats
 +        """
@@ -313,65 +223,219 @@ index 0000000..5f20db6
 +        # update the remaining keys we care about
 +        result.__rpc_data['rpcsends'] -= old_stats.__rpc_data['rpcsends']
 +        result.__rpc_data['backlogutil'] -= old_stats.__rpc_data['backlogutil']
-+        result.__nfs_data['serverreadbytes'] -= old_stats.__nfs_data['serverreadbytes']
-+        result.__nfs_data['serverwritebytes'] -= old_stats.__nfs_data['serverwritebytes']
++
++        for key in NfsEventCounters:
++            result.__nfs_data[key] -= old_stats.__nfs_data[key]
++        for key in NfsByteCounters:
++            result.__nfs_data[key] -= old_stats.__nfs_data[key]
 +
 +        return result
 +
-+    def display_iostats(self, sample_time):
++    def __print_data_cache_stats(self):
++        """Print the data cache hit rate
++        """
++        nfs_stats = self.__nfs_data
++        app_bytes_read = float(nfs_stats['normalreadbytes'])
++        if app_bytes_read != 0:
++            client_bytes_read = float(nfs_stats['serverreadbytes'] - nfs_stats['directreadbytes'])
++            ratio = ((app_bytes_read - client_bytes_read) * 100) / app_bytes_read
++
++            print
++            print 'app bytes: %f  client bytes %f' % (app_bytes_read, client_bytes_read)
++            print 'Data cache hit ratio: %4.2f%%' % ratio
++
++    def __print_attr_cache_stats(self, sample_time):
++        """Print attribute cache efficiency stats
++        """
++        nfs_stats = self.__nfs_data
++        getattr_stats = self.__rpc_data['GETATTR']
++
++        if nfs_stats['inoderevalidates'] != 0:
++            getattr_ops = float(getattr_stats[1])
++            opens = float(nfs_stats['vfsopen'])
++            revalidates = float(nfs_stats['inoderevalidates']) - opens
++            if revalidates != 0:
++                ratio = ((revalidates - getattr_ops) * 100) / revalidates
++            else:
++                ratio = 0.0
++
++            data_invalidates = float(nfs_stats['datainvalidates'])
++            attr_invalidates = float(nfs_stats['attrinvalidates'])
++
++            print
++            print '%d inode revalidations, hitting in cache %4.2f%% of the time' % \
++                (revalidates, ratio)
++            print '%d open operations (mandatory GETATTR requests)' % opens
++            if getattr_ops != 0:
++                print '%4.2f%% of GETATTRs resulted in data cache invalidations' % \
++                   ((data_invalidates * 100) / getattr_ops)
++
++    def __print_dir_cache_stats(self, sample_time):
++        """Print directory stats
++        """
++        nfs_stats = self.__nfs_data
++        lookup_ops = self.__rpc_data['LOOKUP'][0]
++        readdir_ops = self.__rpc_data['READDIR'][0]
++        if self.__rpc_data.has_key('READDIRPLUS'):
++            readdir_ops += self.__rpc_data['READDIRPLUS'][0]
++
++        dentry_revals = nfs_stats['dentryrevalidates']
++        opens = nfs_stats['vfsopen']
++        lookups = nfs_stats['vfslookup']
++        getdents = nfs_stats['vfsreaddir']
++
++        print
++        print '%d open operations (pathname lookups)' % opens
++        print '%d dentry revalidates and %d vfs lookup requests' % \
++            (dentry_revals, lookups),
++        print 'resulted in %d LOOKUPs on the wire' % lookup_ops
++        print '%d vfs getdents calls resulted in %d READDIRs on the wire' % \
++            (getdents, readdir_ops)
++
++    def __print_page_stats(self, sample_time):
++        """Print page cache stats
++        """
++        nfs_stats = self.__nfs_data
++
++        vfsreadpage = nfs_stats['vfsreadpage']
++        vfsreadpages = nfs_stats['vfsreadpages']
++        pages_read = nfs_stats['readpages']
++        vfswritepage = nfs_stats['vfswritepage']
++        vfswritepages = nfs_stats['vfswritepages']
++        pages_written = nfs_stats['writepages']
++
++        print
++        print '%d nfs_readpage() calls read %d pages' % \
++            (vfsreadpage, vfsreadpage)
++        print '%d nfs_readpages() calls read %d pages' % \
++            (vfsreadpages, pages_read - vfsreadpage),
++        if vfsreadpages != 0:
++            print '(%.1f pages per call)' % \
++                (float(pages_read - vfsreadpage) / vfsreadpages)
++        else:
++            print
++
++        print
++        print '%d nfs_updatepage() calls' % nfs_stats['vfsupdatepage']
++        print '%d nfs_writepage() calls wrote %d pages' % \
++            (vfswritepage, vfswritepage)
++        print '%d nfs_writepages() calls wrote %d pages' % \
++            (vfswritepages, pages_written - vfswritepage),
++        if (vfswritepages) != 0:
++            print '(%.1f pages per call)' % \
++                (float(pages_written - vfswritepage) / vfswritepages)
++        else:
++            print
++
++        congestionwaits = nfs_stats['congestionwait']
++        if congestionwaits != 0:
++            print
++            print '%d congestion waits' % congestionwaits
++
++    def __print_rpc_op_stats(self, op, sample_time):
++        """Print generic stats for one RPC op
++        """
++        if not self.__rpc_data.has_key(op):
++            return
++
++        rpc_stats = self.__rpc_data[op]
++        ops = float(rpc_stats[0])
++        retrans = float(rpc_stats[1] - rpc_stats[0])
++        kilobytes = float(rpc_stats[3] + rpc_stats[4]) / 1024
++        rtt = float(rpc_stats[6])
++        exe = float(rpc_stats[7])
++
++        # prevent floating point exceptions
++        if ops != 0:
++            kb_per_op = kilobytes / ops
++            retrans_percent = (retrans * 100) / ops
++            rtt_per_op = rtt / ops
++            exe_per_op = exe / ops
++        else:
++            kb_per_op = 0.0
++            retrans_percent = 0.0
++            rtt_per_op = 0.0
++            exe_per_op = 0.0
++
++        op += ':'
++        print '%s' % op.lower().ljust(15),
++        print '  ops/s\t\t   Kb/s\t\t  Kb/op\t\tretrans\t\tavg RTT (ms)\tavg exe (ms)'
++
++        print '\t\t%7.3f' % (ops / sample_time),
++        print '\t%7.3f' % (kilobytes / sample_time),
++        print '\t%7.3f' % kb_per_op,
++        print ' %7d (%3.1f%%)' % (retrans, retrans_percent),
++        print '\t%7.3f' % rtt_per_op,
++        print '\t%7.3f' % exe_per_op
++
++    def display_iostats(self, sample_time, which):
 +        """Display NFS and RPC stats in an iostat-like way
 +        """
 +        sends = float(self.__rpc_data['rpcsends'])
 +        if sample_time == 0:
 +            sample_time = float(self.__nfs_data['age'])
++        if sends != 0:
++            backlog = (float(self.__rpc_data['backlogutil']) / sends) / sample_time
++        else:
++            backlog = 0.0
 +
 +        print
 +        print '%s mounted on %s:' % \
 +            (self.__nfs_data['export'], self.__nfs_data['mountpoint'])
++        print
 +
-+        print '\top/s\trpc bklog'
-+        print '\t%.2f' % (sends / sample_time), 
-+        if sends != 0:
-+            print '\t%.2f' % \
-+                ((float(self.__rpc_data['backlogutil']) / sends) / sample_time)
-+        else:
-+            print '\t0.00'
++        print '   op/s\t\trpc bklog'
++        print '%7.2f' % (sends / sample_time), 
++        print '\t%7.2f' % backlog
 +
-+        # reads:  ops/s, Kb/s, avg rtt, and avg exe
-+        # XXX: include avg xfer size and retransmits?
-+        read_rpc_stats = self.__rpc_data['READ']
-+        ops = float(read_rpc_stats[0])
-+        kilobytes = float(self.__nfs_data['serverreadbytes']) / 1024
-+        rtt = float(read_rpc_stats[6])
-+        exe = float(read_rpc_stats[7])
++        if which == 0:
++            self.__print_rpc_op_stats('READ', sample_time)
++            self.__print_rpc_op_stats('WRITE', sample_time)
++        elif which == 1:
++            self.__print_rpc_op_stats('GETATTR', sample_time)
++            self.__print_rpc_op_stats('ACCESS', sample_time)
++            self.__print_attr_cache_stats(sample_time)
++        elif which == 2:
++            self.__print_rpc_op_stats('LOOKUP', sample_time)
++            self.__print_rpc_op_stats('READDIR', sample_time)
++            if self.__rpc_data.has_key('READDIRPLUS'):
++                self.__print_rpc_op_stats('READDIRPLUS', sample_time)
++            self.__print_dir_cache_stats(sample_time)
++        elif which == 3:
++            self.__print_rpc_op_stats('READ', sample_time)
++            self.__print_rpc_op_stats('WRITE', sample_time)
++            self.__print_page_stats(sample_time)
 +
-+        print '\treads:\tops/s\t\tKb/s\t\tavg RTT (ms)\tavg exe (ms)'
-+        print '\t\t%.2f' % (ops / sample_time),
-+        print '\t\t%.2f' % (kilobytes / sample_time),
-+        if ops != 0:
-+            print '\t\t%.2f' % (rtt / ops),
-+            print '\t\t%.2f' % (exe / ops)
-+        else:
-+            print '\t\t0.00',
-+            print '\t\t0.00'
++#
++# Functions
++#
 +
-+        # writes:  ops/s, Kb/s, avg rtt, and avg exe
-+        # XXX: include avg xfer size and retransmits?
-+        write_rpc_stats = self.__rpc_data['WRITE']
-+        ops = float(write_rpc_stats[0])
-+        kilobytes = float(self.__nfs_data['serverwritebytes']) / 1024
-+        rtt = float(write_rpc_stats[6])
-+        exe = float(write_rpc_stats[7])
-+
-+        print '\twrites:\tops/s\t\tKb/s\t\tavg RTT (ms)\tavg exe (ms)'
-+        print '\t\t%.2f' % (ops / sample_time),
-+        print '\t\t%.2f' % (kilobytes / sample_time),
-+        if ops != 0:
-+            print '\t\t%.2f' % (rtt / ops),
-+            print '\t\t%.2f' % (exe / ops)
-+        else:
-+            print '\t\t0.00',
-+            print '\t\t0.00'
++def print_iostat_help(name):
++    print 'usage: %s [ <interval> [ <count> ] ] [ <options> ] [ <mount point> ] ' % name
++    print
++    print ' Version %s' % Iostats_version
++    print
++    print ' Sample iostat-like program to display NFS client per-mount statistics.'
++    print
++    print ' The <interval> parameter specifies the amount of time in seconds between'
++    print ' each report.  The first report contains statistics for the time since each'
++    print ' file system was mounted.  Each subsequent report contains statistics'
++    print ' collected during the interval since the previous report.'
++    print
++    print ' If the <count> parameter is specified, the value of <count> determines the'
++    print ' number of reports generated at <interval> seconds apart.  If the interval'
++    print ' parameter is specified without the <count> parameter, the command generates'
++    print ' reports continuously.'
++    print
++    print ' Options include "--attr", which displays statistics related to the attribute'
++    print ' cache, "--dir", which displays statistics related to directory operations,'
++    print ' and "--page", which displays statistics related to the page cache.'
++    print ' By default, if no option is specified, statistics related to file I/O are'
++    print ' displayed.'
++    print
++    print ' If one or more <mount point> names are specified, statistics for only these'
++    print ' mount points will be displayed.  Otherwise, all NFS mount points on the'
++    print ' client are listed.'
 +
 +def parse_stats_file(filename):
 +    """pop the contents of a mountstats file into a dictionary,
@@ -397,151 +461,47 @@ index 0000000..5f20db6
 +
 +    return ms_dict
 +
-+def print_mountstats_help(name):
-+    print 'usage: %s [ options ] <mount point>' % name
-+    print
-+    print ' Version %s' % Mountstats_version
-+    print
-+    print ' Display NFS client per-mount statistics.'
-+    print
-+    print '  --version    display the version of this command'
-+    print '  --nfs        display only the NFS statistics'
-+    print '  --rpc        display only the RPC statistics'
-+    print '  --start      sample and save statistics'
-+    print '  --end        resample statistics and compare them with saved'
-+    print
-+
-+def mountstats_command():
-+    """Mountstats command
-+    """
-+    mountpoints = []
-+    nfs_only = False
-+    rpc_only = False
-+
-+    for arg in sys.argv:
-+        if arg in ['-h', '--help', 'help', 'usage']:
-+            print_mountstats_help(prog)
-+            return
-+
-+        if arg in ['-v', '--version', 'version']:
-+            print '%s version %s' % (sys.argv[0], Mountstats_version)
-+            sys.exit(0)
-+
-+        if arg in ['-n', '--nfs']:
-+            nfs_only = True
-+            continue
-+
-+        if arg in ['-r', '--rpc']:
-+            rpc_only = True
-+            continue
-+
-+        if arg in ['-s', '--start']:
-+            raise Exception, 'Sampling is not yet implemented'
-+
-+        if arg in ['-e', '--end']:
-+            raise Exception, 'Sampling is not yet implemented'
-+
-+        if arg == sys.argv[0]:
-+            continue
-+
-+        mountpoints += [arg]
-+
-+    if mountpoints == []:
-+        print_mountstats_help(prog)
-+        return
-+
-+    if rpc_only == True and nfs_only == True:
-+        print_mountstats_help(prog)
-+        return
-+
-+    mountstats = parse_stats_file('/proc/self/mountstats')
-+
-+    for mp in mountpoints:
-+        if mp not in mountstats:
-+            print 'Statistics for mount point %s not found' % mp
-+            continue
-+
-+        stats = DeviceData()
-+        stats.parse_stats(mountstats[mp])
-+
-+        if not stats.is_nfs_mountpoint():
-+            print 'Mount point %s exists but is not an NFS mount' % mp
-+            continue
-+
-+        if nfs_only:
-+           stats.display_nfs_options()
-+           stats.display_nfs_events()
-+           stats.display_nfs_bytes()
-+        elif rpc_only:
-+           stats.display_rpc_generic_stats()
-+           stats.display_rpc_op_stats()
-+        else:
-+           stats.display_nfs_options()
-+           stats.display_nfs_bytes()
-+           stats.display_rpc_generic_stats()
-+           stats.display_rpc_op_stats()
-+
-+def print_nfsstat_help(name):
-+    print 'usage: %s [ options ]' % name
-+    print
-+    print ' Version %s' % Mountstats_version
-+    print
-+    print ' nfsstat-like program that uses NFS client per-mount statistics.'
-+    print
-+
-+def nfsstat_command():
-+    print_nfsstat_help(prog)
-+
-+def print_iostat_help(name):
-+    print 'usage: %s [ <interval> [ <count> ] ] [ <mount point> ] ' % name
-+    print
-+    print ' Version %s' % Mountstats_version
-+    print
-+    print ' iostat-like program to display NFS client per-mount statistics.'
-+    print
-+    print ' The <interval> parameter specifies the amount of time in seconds between'
-+    print ' each report.  The first report contains statistics for the time since each'
-+    print ' file system was mounted.  Each subsequent report contains statistics'
-+    print ' collected during the interval since the previous report.'
-+    print
-+    print ' If the <count> parameter is specified, the value of <count> determines the'
-+    print ' number of reports generated at <interval> seconds apart.  If the interval'
-+    print ' parameter is specified without the <count> parameter, the command generates'
-+    print ' reports continuously.'
-+    print
-+    print ' If one or more <mount point> names are specified, statistics for only these'
-+    print ' mount points will be displayed.  Otherwise, all NFS mount points on the'
-+    print ' client are listed.'
-+    print
-+
-+def print_iostat_summary(old, new, devices, time):
++def print_iostat_summary(old, new, devices, time, ac):
 +    for device in devices:
 +        stats = DeviceData()
 +        stats.parse_stats(new[device])
 +        if not old:
-+            stats.display_iostats(time)
++            stats.display_iostats(time, ac)
 +        else:
 +            old_stats = DeviceData()
 +            old_stats.parse_stats(old[device])
 +            diff_stats = stats.compare_iostats(old_stats)
-+            diff_stats.display_iostats(time)
++            diff_stats.display_iostats(time, ac)
 +
-+def iostat_command():
++def iostat_command(name):
 +    """iostat-like command for NFS mount points
 +    """
 +    mountstats = parse_stats_file('/proc/self/mountstats')
 +    devices = []
++    which = 0
 +    interval_seen = False
 +    count_seen = False
 +
 +    for arg in sys.argv:
 +        if arg in ['-h', '--help', 'help', 'usage']:
-+            print_iostat_help(prog)
++            print_iostat_help(name)
 +            return
 +
 +        if arg in ['-v', '--version', 'version']:
-+            print '%s version %s' % (sys.argv[0], Mountstats_version)
++            print '%s version %s' % (name, Iostats_version)
 +            return
++
++        if arg in ['-a', '--attr']:
++            which = 1
++            continue
++
++        if arg in ['-d', '--dir']:
++            which = 2
++            continue
++
++        if arg in ['-p', '--page']:
++            which = 3
++            continue
 +
 +        if arg == sys.argv[0]:
 +            continue
@@ -583,15 +543,15 @@ index 0000000..5f20db6
 +        return
 +
 +    old_mountstats = None
-+    sample_time = 0
++    sample_time = 0.0
 +
 +    if not interval_seen:
-+        print_iostat_summary(old_mountstats, mountstats, devices, sample_time)
++        print_iostat_summary(old_mountstats, mountstats, devices, sample_time, which)
 +        return
 +
 +    if count_seen:
 +        while count != 0:
-+            print_iostat_summary(old_mountstats, mountstats, devices, sample_time)
++            print_iostat_summary(old_mountstats, mountstats, devices, sample_time, which)
 +            old_mountstats = mountstats
 +            time.sleep(interval)
 +            sample_time = interval
@@ -599,7 +559,7 @@ index 0000000..5f20db6
 +            count -= 1
 +    else: 
 +        while True:
-+            print_iostat_summary(old_mountstats, mountstats, devices, sample_time)
++            print_iostat_summary(old_mountstats, mountstats, devices, sample_time, which)
 +            old_mountstats = mountstats
 +            time.sleep(interval)
 +            sample_time = interval
@@ -611,12 +571,7 @@ index 0000000..5f20db6
 +prog = os.path.basename(sys.argv[0])
 +
 +try:
-+    if prog == 'mountstats':
-+        mountstats_command()
-+    elif prog == 'ms-nfsstat':
-+        nfsstat_command()
-+    elif prog == 'ms-iostat':
-+        iostat_command()
++    iostat_command(prog)
 +except KeyboardInterrupt:
 +    print 'Caught ^C... exiting'
 +    sys.exit(1)
