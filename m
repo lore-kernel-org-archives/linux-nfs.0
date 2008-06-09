@@ -1,53 +1,76 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: rapid clustered nfs server failover and hung clients -- how
-	best to close the sockets?
-Date: Mon, 9 Jun 2008 13:14:41 -0400
-Message-ID: <20080609171441.GA26920@fieldses.org>
-References: <20080609103137.2474aabd@tleilax.poochiereds.net> <484D4659.9000105@redhat.com> <20080609111821.6e06d4f8@tleilax.poochiereds.net> <RTPCLUEXC1-PRDOLZCH000001d2@RTPMVEXC1-PRD.hq.netapp.com> <20080609120110.1fee7221@tleilax.poochiereds.net> <RTPCLUEXC1-PRDF8Eqf000001d4@RTPMVEXC1-PRD.hq.netapp.com>
+Subject: Re: [PATCH 4/5] knfsd: convert knfsd to kthread API
+Date: Mon, 9 Jun 2008 14:39:23 -0400
+Message-ID: <20080609183923.GE28584@fieldses.org>
+References: <1212765171-26042-1-git-send-email-jlayton@redhat.com> <1212765171-26042-2-git-send-email-jlayton@redhat.com> <1212765171-26042-3-git-send-email-jlayton@redhat.com> <1212765171-26042-4-git-send-email-jlayton@redhat.com> <1212765171-26042-5-git-send-email-jlayton@redhat.com> <20080606172431.GA761@fieldses.org> <20080606141116.07b79b14@tleilax.poochiereds.net> <20080606154948.303aba28@tleilax.poochiereds.net> <20080609130830.GA21769@fieldses.org> <20080609091948.0b2b19a9@tleilax.poochiereds.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jeff Layton <jlayton@redhat.com>,
-	Peter Staubach <staubach@redhat.com>,
-	linux-nfs@vger.kernel.org, lhh@redhat.com, nfsv4@linux-nfs.org,
-	nhorman@redhat.com
-To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org, neilb@suse.de,
+	gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:57864 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:43473 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752543AbYFIROq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 9 Jun 2008 13:14:46 -0400
-In-Reply-To: <RTPCLUEXC1-PRDF8Eqf000001d4-rtwIt2gI0FxT+ZUat5FNkAK/GNPrWCqfQQ4Iyu8u01E@public.gmane.org>
+	id S1752630AbYFISjZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 9 Jun 2008 14:39:25 -0400
+In-Reply-To: <20080609091948.0b2b19a9-RtJpwOs3+0O+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jun 09, 2008 at 12:09:48PM -0400, Talpey, Thomas wrote:
-> At 12:01 PM 6/9/2008, Jeff Layton wrote:
-> >On Mon, 09 Jun 2008 11:51:51 -0400
-> >"Talpey, Thomas" <Thomas.Talpey@netapp.com> wrote:
-> >
-> >> At 11:18 AM 6/9/2008, Jeff Layton wrote:
-> >> >No, it's not specific to NFS. It can happen to any "service" that
-> >> >floats IP addresses between machines, but does not close the sockets
-> >> >that are connected to those addresses. Most services that fail over
-> >> >(at least in RH's cluster server) shut down the daemons on failover
-> >> >too, so tends to mitigate this problem elsewhere.
-> >> 
-> >> Why exactly don't you choose to restart the nfsd's (and lockd's) on the
-> >> victim server?
-> >
-> >The victim server might have other nfsd/lockd's running on them. Stopping
-> >all the nfsd's could bring down lockd, and then you have to deal with lock
-> >recovery on the stuff that isn't moving to the other server.
+On Mon, Jun 09, 2008 at 09:19:48AM -0400, Jeff Layton wrote:
+> On Mon, 9 Jun 2008 09:08:30 -0400
+> "J. Bruce Fields" <bfields@fieldses.org> wrote:
 > 
-> But but but... the IP address is the only identification the client can use
-> to isolate a server.
+> > On Fri, Jun 06, 2008 at 03:49:48PM -0400, Jeff Layton wrote:
+> > > On Fri, 6 Jun 2008 14:11:16 -0400
+> > > Jeff Layton <jlayton@redhat.com> wrote:
+> > > 
+> > > > On Fri, 6 Jun 2008 13:24:31 -0400
+> > > > "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > > > 
+> > > ...
+> > > > > How does the module refcounting work after this patch?
+> > > > > 
+> > > > > --b.
+> > > > > 
+> > > > 
+> > > > I think I've goofed this part, actually. I was thinking that we didn't
+> > > > need to bump the refcount here, and that the kernel would realize that
+> > > > nfsd() hadn't returned and would prevent unloading until it had. This
+> > > > doesn't seem to be the case. I'll need to go back and add refcounting
+> > > > back in.
+> > > > 
+> > > 
+> > > Here's a respun patch that adds back in the module refcounts and also
+> > > removes the unneeded "err = 0;" at the bottom of the loop. Thoughts?
+> > 
+> > Looks good to me.  I'll apply all 5 (with this version of #4) if noone
+> > catches something else.
+> > 
+> > --b.
+> > 
+> 
+> Sounds good. My only concern here is whether moving the __module_get
+> from the RPC layer to nfsd() itself is OK.
 
-Right.
+Oh, I see, I missed that.
 
-> You're telling me that some locks will migrate and some won't?  Good
-> luck with that! The clients are going to be mightily confused.
+> I *think* it is since the
+> nfsctl and /proc/fs/nfsd routines are all part of the nfsd module, so
+> we're guaranteed to have a reference there anyway, but if there are
+> potential races then we may want to go back to the old way.
 
-Locks migrate or not depending on the server ip address.  Where do you
-see the confusion?
+The vfs should take care that e.g. it gets a reference on the module
+before creating an open file for the nfsd filesystem.  But it don't see
+how anything can guarantee that the __module_get() in the new nfsd
+thread completes before whoever called svc_set_num_threads() returns and
+drops their reference.
+
+So, yeah, I think it's not right.
+
+> I'd appreciate an ack/nack on this from someone who understands module
+> refcounts better than me.
+
+Not that I'll calim to be an expert there....
 
 --b.
