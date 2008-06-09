@@ -1,22 +1,15 @@
 Return-Path: <nfsv4-bounces@linux-nfs.org>
-Message-Id: <6956CC1C-1724-4240-A29F-4485B351B4C8@oracle.com>
-From: Chuck Lever <chuck.lever@oracle.com>
-To: Jeff Layton <jlayton@redhat.com>
-In-Reply-To: <20080609161124.2d9a90fd@tleilax.poochiereds.net>
-Subject: Re: rapid clustered nfs server failover and hung clients -- how best
-	to close the sockets?
-Date: Mon, 9 Jun 2008 16:56:20 -0400
+Date: Mon, 9 Jun 2008 13:24:25 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Wendy Cheng <s.wendy.cheng@gmail.com>
+Subject: Re: rapid clustered nfs server failover and hung clients -- how
+	best to close the sockets?
+Message-ID: <20080609132425.5144557b@tleilax.poochiereds.net>
+In-Reply-To: <484D6510.2010109@gmail.com>
 References: <20080609103137.2474aabd@tleilax.poochiereds.net>
-	<484D4659.9000105@redhat.com>
-	<20080609111821.6e06d4f8@tleilax.poochiereds.net>
-	<RTPCLUEXC1-PRDOLZCH000001d2@RTPMVEXC1-PRD.hq.netapp.com>
-	<20080609120110.1fee7221@tleilax.poochiereds.net>
-	<RTPCLUEXC1-PRDF8Eqf000001d4@RTPMVEXC1-PRD.hq.netapp.com>
-	<20080609122249.51767b21@tleilax.poochiereds.net>
-	<76bd70e30806091236k563412dcib951b848aa9a9ce3@mail.gmail.com>
-	<20080609161124.2d9a90fd@tleilax.poochiereds.net>
-Cc: linux-nfs@vger.kernel.org, chucklever@gmail.com, lhh@redhat.com,
-        nfsv4@linux-nfs.org, nhorman@redhat.com
+	<484D6510.2010109@gmail.com>
+Cc: linux-nfs@vger.kernel.org, lhh@redhat.com, nfsv4@linux-nfs.org,
+        nhorman@redhat.com
 List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
 	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
 List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
@@ -30,217 +23,51 @@ Errors-To: nfsv4-bounces@linux-nfs.org
 MIME-Version: 1.0
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Jun 9, 2008, at 4:11 PM, Jeff Layton wrote:
-> On Mon, 9 Jun 2008 15:36:18 -0400
-> "Chuck Lever" <chuck.lever@oracle.com> wrote:
->> On Mon, Jun 9, 2008 at 12:22 PM, Jeff Layton <jlayton@redhat.com>  
->> wrote:
->>> On Mon, 09 Jun 2008 12:09:48 -0400
->>> "Talpey, Thomas" <Thomas.Talpey@netapp.com> wrote:
->>>
->>>> At 12:01 PM 6/9/2008, Jeff Layton wrote:
->>>>> On Mon, 09 Jun 2008 11:51:51 -0400
->>>>> "Talpey, Thomas" <Thomas.Talpey@netapp.com> wrote:
->>>>>
->>>>>> At 11:18 AM 6/9/2008, Jeff Layton wrote:
->>>>>>> No, it's not specific to NFS. It can happen to any "service"  
->>>>>>> that
->>>>>>> floats IP addresses between machines, but does not close the  
->>>>>>> sockets
->>>>>>> that are connected to those addresses. Most services that fail  
->>>>>>> over
->>>>>>> (at least in RH's cluster server) shut down the daemons on  
->>>>>>> failover
->>>>>>> too, so tends to mitigate this problem elsewhere.
->>>>>>
->>>>>> Why exactly don't you choose to restart the nfsd's (and  
->>>>>> lockd's) on the
->>>>>> victim server?
->>>>>
->>>>> The victim server might have other nfsd/lockd's running on them.  
->>>>> Stopping
->>>>> all the nfsd's could bring down lockd, and then you have to deal  
->>>>> with lock
->>>>> recovery on the stuff that isn't moving to the other server.
->>>>
->>>> But but but... the IP address is the only identification the  
->>>> client can use
->>>> to isolate a server. You're telling me that some locks will  
->>>> migrate and
->>>> some won't? Good luck with that! The clients are going to be  
->>>> mightily
->>>> confused.
->>>>
->>>
->>> Maybe I'm not being clear. My understanding is this:
->>>
->>> Right now, when we fail over we send a SIGKILL to lockd, and then  
->>> send
->>> a SM_NOTIFY to all of the clients that the "victim" server has,
->>> regardless of what IP address the clients are talking to. So all  
->>> locks
->>> get dropped and all clients should recover their locks. Since the
->>> service will fail over to the new host, locks that were in that  
->>> export
->>> will get recovered on the "new" host.
->>>
->>> But, we just recently added this new "unlock_ip" interface. With  
->>> that,
->>> we should be able to just send SM_NOTIFY's to clients of that IP
->>> address. Locks associated with that server address will be recovered
->>> and the others should be unaffected.
->>
->> Maybe that's a little imprecise.
->>
->> The failover_unlock_ip() API doesn't send any SM_NOTIFY calls at all,
->> it tells the server's NLM to drop all locks held by that IP, but
->> there's logic in nlmsvc_is_client() specifically to keep monitoring
->> these clients.  The SM_NOTIFY calls will come from user space, just  
->> to
->> be clear.
->>
->> If this is truly a service migration, I would think that the old
->> server would want to stop monitoring these clients anyway.
->>
->>> All of
->>> the NSM/NLM stuff here is really separate from the main problem I'm
->>> interested in at the moment, which is how to deal with the old,  
->>> stale
->>> sockets that nfsd has open after the local address disappears.
->>
->> IMO it's just the reverse: the main problem is how to do service
->> migration in a robust fashion; the bugs you are focused on right at
->> the moment are due to the fact the current migration strategy is
->> poorly designed.  The real issue is how do you fix your design, and
->> that's a lot bigger than addressing a few SYNs and ACKs.  I do not
->> believe there is going to be a simple network level fix here if you
->> want to prevent more corner cases.
->>
->> I am still of the opinion that you can't do this without involvement
->> from the nfsd threads.  The old server is going to have to stop
->> accepting incoming connections during the failover period.  NetApp
->> found that it is not enough to drop a newly accepted connection
->> without having read any data -- that confuses some clients.  Your
->> server really does need to shut off the listener, in order to refuse
->> new connections.
->>
->
-> I'm not sure I follow your logic here. The first thing that happens
-> when failover occurs is that the IP address is removed from the
-> interface. This prevents new connections on that IP address (and new
-> packets for existing connections for that matter). Why would this not
-> be sufficient to prevent new activity on those sockets?
+On Mon, 09 Jun 2008 13:14:56 -0400
+Wendy Cheng <s.wendy.cheng@gmail.com> wrote:
 
-Because precisely the situation that you have observed occurs.  The  
-clients and servers get confused about network state because the TCP  
-connections weren't properly shut down.
+> Jeff Layton wrote:
+> > The problem we've run into is that occasionally they fail over to the
+> > alternate machine and then back very rapidly. 
+> 
+> It is a well known issue in the NFS-TCP failover arena (or more 
+> specifically, for floating IP applications) that failover from server A 
+> to server B, then immediately failing back from server B to A would 
+> *not* work well. IIRC last round of discussing with Red Hat GPS and 
+> support folks, we concluded that most of the applications/users *can* 
+> tolerate this restriction.
+> 
+> Maybe another more basic question: "other than QA efforts, are there 
+> real NFSv2/v3 applications depending on this "feature" ? Or there may 
+> need tons of efforts for something that will not have much usages when 
+> it is finally delivered ?
+> 
 
->> I think this might be a new server state.  A bunch of nfsd threads
->> will exist and be processing NFS requests, but there will be no
->> listener.
->>
->> Then the old server can drain the doomed sockets and disconnect them
->> in an orderly manner.  This will prevent a lot of segment ordering
->> problems and keep network layer confusion about socket state to a
->> minimum.  It's a good idea to try to return any pending replies to
->> clients before closing the connection to reduce the likelihood of RPC
->> retransmits.  To prevent the clients from transmitting any new
->> requests, use a half-close (just close the receiving half of the
->> connection on the server).
->
-> Ahh ok. So you're thinking that we need to keep the IP address in  
-> place
-> so that we can send replies for RPC's that are still in progress? That
-> makes sense.
+Certainly a valid question...
 
-There is a part of NFSD failover that must occur before the IP address  
-is taken down.  Otherwise you orphan NFS requests on the server and  
-TCP segments in the network.
+While rapid failover like this is unusual, it's easily possible for a
+sysadmin to do it. Maybe they moved the wrong service, or their downtime
+was for something very brief but the service had to be off of the host to
+make the change. In that case, a quick failover and back could easily
+be something that happens in a real environment.
 
-You have an opportunity, during service migration, to shut down the  
-old service gracefully so that you greatly reduce the risk of data  
-loss or corruption.
+As to whether it's worth a ton of effort, that's a tough call. People want
+HA services to guard against outages. Anything that jeopardizes that is
+probably worth fixing. This could be solved with documentation, but a note
+like:
 
-> I suppose that instead of shutting down the listener altogether, we
-> could just have the listener refuse connections for the given  
-> destination address.
+"Be sure to wait for X minutes between failovers"
 
-I didn't think you could do that to an active listener.  Even if you  
-could, NFSD would depend on the specifics of the network layer  
-implementation to disallow races or partially connected states while  
-the listener socket was transitioning.
+...wouldn't instill me with a lot of confidence. We'd have to have
+some sort of mechanism to enforce this, and that would be less than
+ideal.
 
-Since these events are rare compared to RPC requests and new  
-connections, I would think it wouldn't matter if the listener wasn't  
-available for a brief period.  What matters is the service shut down  
-on the old server is clean and orderly.
+IMO, the ideal thing would be to make sure that the "old" server is
+ready to pick up the service again as soon as possible after the service
+leaves it.
 
-> That said, if we assume we want to use the unlock_ip interface then
-> there's a potential race between writing to unlock_ip and taking down
-> the address. I'll have to think about how to deal with that maybe some
-> sort of 3 stage teardown:
->
-> 1) refuse new connections for the IP address, drain the RPC queues,
->   half close sockets
->
-> 2) remove the address from the interface
->
-> 3) close sockets the rest of the way, stop refusing connections
-
-I'm not sure what you accomplish with "close sockets the rest of the  
-way" after you have removed the address from the interface?
-
-The NFSDs should gracefully destroy all resources on that address  
-before you remove the address from the interface.  Closing the sockets  
-properly means that both halves of the connection duplex have an  
-opportunity to go through the FIN,ACK dance.
-
-There is still a risk that things will get confused.  But in most  
-normal cases, this is enough to ensure an orderly transition of the  
-network connections.
-
->> Naturally this will have to be time-bounded because clients can be  
->> too
->> busy to read any remaining data off the socket, or could just be  
->> dead.
->> That shouldn't hold up your service migration event.
->
-> Definitely.
->
->> Any clients attempting to connect to the old server during failover
->> will be refused.  If they are trying to access legitimate NFS
->> resources that have not been migrated, they will retry connecting
->> later, so this really shouldn't be an issue.  Clients connecting to
->> the new server should be OK, but again, I think they should be fenced
->> from the old server's file system until the old server has finished
->> processing any pending requests from clients that are being migrated
->> to the new server.
->>
->> When failover is complete, the old server can start accepting new TCP
->> connections again.  Clients connecting to the old server looking for
->> migrated resources should get something like ESTALE ("These are not
->> the file handles you are looking for.").
->
-> I think we return -EACCES or something (whatever you get when you  
-> try to
-> access something that isn't exported). We remove the export from the
-> exports table when we fail over.
-
->> In this way, the server is in control over the migration, and isn't
->> depending on any wonky TCP behavior to make it happen correctly.   
->> It's
->> using entirely legitimate features of the socket interface to move
->> each client through the necessary states of migration.
->>
->> Now that the network connections are figured out, your servers can
->> start worrying about recoverying NLM, NSM, and DRC state.
->>
-> -- 
-> Jeff Layton <jlayton@redhat.com>
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+-- 
+Jeff Layton <jlayton@redhat.com>
 _______________________________________________
 NFSv4 mailing list
 NFSv4@linux-nfs.org
