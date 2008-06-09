@@ -1,128 +1,95 @@
-From: "Weathers, Norman R." <Norman.R.Weathers-496aOtIFJR1B+Kdf37RAV9BPR1lH4CV8@public.gmane.org>
-Subject: RE: Problems with large number of clients and reads
-Date: Mon, 9 Jun 2008 09:19:03 -0500
-Message-ID: <0122F800A3B64C449565A9E8C2977010155587@hoexmb9.conoco.net>
-References: <1212519001.24900.14.camel@hololw58> <20080606160922.GG30863@fieldses.org>
+From: Peter Staubach <staubach@redhat.com>
+Subject: Re: rapid clustered nfs server failover and hung clients -- how best
+ to	close the sockets?
+Date: Mon, 09 Jun 2008 11:03:53 -0400
+Message-ID: <484D4659.9000105@redhat.com>
+References: <20080609103137.2474aabd@tleilax.poochiereds.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: <linux-nfs@vger.kernel.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org, nhorman@redhat.com,
+	lhh@redhat.com
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailman1.ppco.com ([138.32.41.4]:45795 "EHLO mailman1.ppco.com"
+Received: from mx1.redhat.com ([66.187.233.31]:34471 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759266AbYFIOTN convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Jun 2008 10:19:13 -0400
-Received: from bvlextrd1.conoco.net (bvlextrd1.conoco.net [138.32.41.12])
-	by mailman1.ppco.com (Switch-3.2.7/Switch-3.2.7) with ESMTP id m59EJAgn020517
-	for <linux-nfs@vger.kernel.org>; Mon, 9 Jun 2008 09:19:10 -0500
+	id S1753715AbYFIPED (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 9 Jun 2008 11:04:03 -0400
+In-Reply-To: <20080609103137.2474aabd-RtJpwOs3+0O+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Jeff Layton wrote:
+> Apologies for the long email, but I ran into an interesting problem the
+> other day and am looking for some feedback on my general approach to
+> fixing it before I spend too much time on it:
+>
+> We (RH) have a cluster-suite product that some people use for making HA
+> NFS services. When our QA folks test this, they often will start up
+> some operations that do activity on an NFS mount from the cluster and
+> then rapidly do failovers between cluster machines and make sure
+> everything keeps moving along. The cluster is designed to not shut down
+> nfsd's when a failover occurs. nfsd's are considered a "shared
+> resource". It's possible that there could be multiple clustered
+> services for NFS-sharing, so when a failover occurs, we just manipulate
+> the exports table.
+>
+> The problem we've run into is that occasionally they fail over to the
+> alternate machine and then back very rapidly. Because nfsd's are not
+> shut down on failover, sockets are not closed. So what happens is
+> something like this on TCP mounts:
+>
+> - client has NFS mount from clustered NFS service on one server
+>
+> - service fails over, new server doesn't know anything about the
+>   existing socket, so it sends a RST back to the client when data
+>   comes in. Client closes connection and reopens it and does some
+>   I/O on the socket.
+>
+> - service fails back to original server. The original socket there
+>   is still open, but now the TCP sequence numbers are off. When
+>   packets come into the server we end up with an ACK storm, and the
+>   client hangs for a long time.
+>
+> Neil Horman did a good writeup of this problem here for those that
+> want the gory details:
+>
+>     https://bugzilla.redhat.com/show_bug.cgi?id=369991#c16
+>
+> I can think of 3 ways to fix this:
+>
+> 1) Add something like the recently added "unlock_ip" interface that
+> was added for NLM. Maybe a "close_ip" that allows us to close all
+> nfsd sockets connected to a given local IP address. So clustering
+> software could do something like:
+>
+>     # echo 10.20.30.40 > /proc/fs/nfsd/close_ip
+>
+> ...and make sure that all of the sockets are closed.
+>
+> 2) just use the same "unlock_ip" interface and just have it also
+> close sockets in addition to dropping locks.
+>
+> 3) have an nfsd close all non-listening connections when it gets a
+> certain signal (maybe SIGUSR1 or something). Connections on a
+> sockets that aren't failing over should just get a RST and would
+> reopen their connections.
+>
+> ...my preference would probably be approach #1.
+>
+> I've only really done some rudimentary perusing of the code, so there
+> may be roadblocks with some of these approaches I haven't considered.
+> Does anyone have thoughts on the general problem or idea for a solution?
+>
+> The situation is a bit specific to failover testing -- most people failing
+> over don't do it so rapidly, but we'd still like to ensure that this
+> problem doesn't occur if someone does do it.
+>
+> Thanks,
+>   
 
+This doesn't sound like it would be an NFS specific situation.
+Why doesn't TCP handle this, without causing an ACK storm?
 
+    Thanx...
 
------Original Message-----
-From: J. Bruce Fields [mailto:bfields@fieldses.org]
-Sent: Fri 6/6/2008 11:09 AM
-To: Weathers, Norman R.
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Problems with large number of clients and reads
- 
-On Tue, Jun 03, 2008 at 01:50:01PM -0500, Norman Weathers wrote:
-> Hello all,
-> 
-> We are having some issues with some high throughput servers of ours.
-> 
-> Here is the issue, we are using a vanilla 2.6.22.14 kernel on a node
-> with 2 Dual Core Intels (3 GHz) and 16 GB of ram.  The files that are
-> being served are around 2 GB each, and there are usually 3 to 5 of them
-> being read, so once read they fit into memory nicely, and when all is
-> working correctly, we have a perfectly filled cache, with almost no disk
-> activity.
-> 
-> When we have large NFS activity (say, 600 to 1200 clients) connecting to
-> the server(s), they can get into a state where they are using up all of
-> memory, but they are dropping cache.  slabtop is showing 13 GB of memory
-> being used by the size-4096 slab object.  We have two ethernet channels
-> bonded, so we see in excess of 240 MB/s of data flowing out of the box,
-> and all of the sudden, disk activity has risen to 185 MB/s.  This
-> happens if we are using 8 or more nfs threads.  If we limit the threads
-> to 6 or less, this doesn't happen.  Of course, we are starving clients,
-> but at least the jobs that my customers are throwing out there are
-> progressing.  The question becomes, what is causing the memory to be
-> used up by the slab size-4096 object?  Why when all of the sudden a
-> bunch of clients ask for data does this object grow from 100 MB to 13
-> GB?  I have set the memory settings to something that I thought was
-> reasonable.
-> 
-> Here is some more of the particulars:
-> 
-> sysctl.conf tcp memory settings:
-> 
-> # NFS Tuning Parameters
-> sunrpc.udp_slot_table_entries = 128
-> sunrpc.tcp_slot_table_entries = 128
-> vm.overcommit_ratio = 80
-> 
-> net.core.rmem_max=524288
-> net.core.rmem_default=262144
-> net.core.wmem_max=524288
-> net.core.wmem_default=262144
-> net.ipv4.tcp_rmem = 8192 262144 524288
-> net.ipv4.tcp_wmem = 8192 262144 524288
-> net.ipv4.tcp_sack=0
-> net.ipv4.tcp_timestamps=0
-> vm.min_free_kbytes=50000
-> vm.overcommit_memory=1
-> net.ipv4.tcp_reordering=127
-> 
-> # Enable tcp_low_latency
-> net.ipv4.tcp_low_latency=1
-> 
-> Here is a current reading from a slabtop of a system where this error is
-> happening:
-> 
-> 3007154 3007154 100%    4.00K 3007154        1  12028616K size-4096
-> 
-> Note the size of the object cache, usually it is 50 - 100 MB (I have
-> another box with 32 threads and the same settings which is bouncing
-> between 50 and 128 MB right now).
-> 
-> I have a lot of client boxes that need access to these servers, and
-> would really benefit from having more threads, but if I increase the
-> number of threads, it pushes everything out of cache, forcing re-reads,
-> and really slows down our jobs.
-> 
-> Any thoughts on this?
-
-
-
->I'd've thought that suggests a leak of memory allocated by kmalloc().
-
->Does the size-4096 cache decrease eventually, or does it stay that large
->until you reboot?
-
-
-
->--b.
-
-
-
-I would agree that it "looks" like a memory leak.  If I restart NFS, the size-4096 cache
-goes from 12 GB to under 50 MB, but then depending upon how hard the box is utilized, it
-starts to climb back up.  I have seen it climb back up to 3 or 4 GB right after the
-restart, but that is much better because the regular disk cache will grow from the 2 GB
-that it was pressured into back to 5 or 8 GB, so all of the files have been reread into
-memory and things are progressing smoothly.  It is weird.  I really think that this has 
-to do with a lot of connections happening at once, because I can run slabtop and see a
-node that is running full out, but only have a couple hundred megs of the size-4096 slab
-being used, and then turn around and see another node that is pushing out 245 MB/s and
-all of the sudden using over 12 GB of the size-4096.  It is very odd...  If I lower the
-number of threads from a usable 64 to a low of 3 threads, I have less of a chance of the
-servers going haywire, to the point of being so loaded they may crash or you cannot 
-contact them over the network (fortunately, I have serial on these boxes so that I can
-get on the nodes if they reach that point).  If I run 8 threads, and with enough 
-clients, I can bring down one of these servers. size-4096 goes through the roof, and
-depending on the hour of the day, the server can either crash or becomes unresponsive.
-
-Norman
+       ps
