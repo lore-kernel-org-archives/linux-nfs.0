@@ -1,65 +1,53 @@
-From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
-Subject: Re: [PATCH 0/4] Python scripts for analyzing NFS/RPC metrics
-Date: Mon, 09 Jun 2008 13:11:24 -0400
-Message-ID: <RTPCLUEXC1-PRDVIdGs000001d6@RTPMVEXC1-PRD.hq.netapp.com>
-References: <20080609163029.5461.35699.stgit@ellison.1015granger.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: rapid clustered nfs server failover and hung clients -- how
+	best to close the sockets?
+Date: Mon, 9 Jun 2008 13:14:41 -0400
+Message-ID: <20080609171441.GA26920@fieldses.org>
+References: <20080609103137.2474aabd@tleilax.poochiereds.net> <484D4659.9000105@redhat.com> <20080609111821.6e06d4f8@tleilax.poochiereds.net> <RTPCLUEXC1-PRDOLZCH000001d2@RTPMVEXC1-PRD.hq.netapp.com> <20080609120110.1fee7221@tleilax.poochiereds.net> <RTPCLUEXC1-PRDF8Eqf000001d4@RTPMVEXC1-PRD.hq.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jeff Layton <jlayton@redhat.com>,
+	Peter Staubach <staubach@redhat.com>,
+	linux-nfs@vger.kernel.org, lhh@redhat.com, nfsv4@linux-nfs.org,
+	nhorman@redhat.com
+To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:42401 "EHLO mx2.netapp.com"
+Received: from mail.fieldses.org ([66.93.2.214]:57864 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752860AbYFIRLu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 9 Jun 2008 13:11:50 -0400
-In-Reply-To: <20080609163029.5461.35699.stgit-ewv44WTpT0t9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
-References: <20080609163029.5461.35699.stgit-ewv44WTpT0t9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
+	id S1752543AbYFIROq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 9 Jun 2008 13:14:46 -0400
+In-Reply-To: <RTPCLUEXC1-PRDF8Eqf000001d4-rtwIt2gI0FxT+ZUat5FNkAK/GNPrWCqfQQ4Iyu8u01E@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-By the way. I love these scripts. The best thing about them is the
-way they actually analyze the realtime performance of each RPC
-procedure and server mount point including latencies and queuing,
-which are nearly impossible to figure out with the commandline.
-For example, they instantly tell whether the RPC slot table is too
-small (or large) for the workload.
+On Mon, Jun 09, 2008 at 12:09:48PM -0400, Talpey, Thomas wrote:
+> At 12:01 PM 6/9/2008, Jeff Layton wrote:
+> >On Mon, 09 Jun 2008 11:51:51 -0400
+> >"Talpey, Thomas" <Thomas.Talpey@netapp.com> wrote:
+> >
+> >> At 11:18 AM 6/9/2008, Jeff Layton wrote:
+> >> >No, it's not specific to NFS. It can happen to any "service" that
+> >> >floats IP addresses between machines, but does not close the sockets
+> >> >that are connected to those addresses. Most services that fail over
+> >> >(at least in RH's cluster server) shut down the daemons on failover
+> >> >too, so tends to mitigate this problem elsewhere.
+> >> 
+> >> Why exactly don't you choose to restart the nfsd's (and lockd's) on the
+> >> victim server?
+> >
+> >The victim server might have other nfsd/lockd's running on them. Stopping
+> >all the nfsd's could bring down lockd, and then you have to deal with lock
+> >recovery on the stuff that isn't moving to the other server.
+> 
+> But but but... the IP address is the only identification the client can use
+> to isolate a server.
 
-Tom.
+Right.
 
-At 12:47 PM 6/9/2008, Chuck Lever wrote:
->Hi Steve-
->
->As promised, here are the Python scripts that I've implemented for analyzing
->NFS and RPC performance metrics reported via /proc/self/mountstats.  They
->still need man pages and proper installation in the nfs-utils Makefile.
->
->While we decide whether to install and support these scripts as they are, or
->to replace them with C language re-implementations, let's include them in
->nfs-utils now so folks can try them out, bugs can be addressed, and missing
->features provided.
->
->---
->
->Chuck Lever (2):
->      Import the old iostat-ms Python script
->      Import mountstats utility
->
->Tom Talpey (2):
->      NFS iostats - add RDMA statistics
->      NFS mountstats - add RDMA statistics
->
->
-> tools/mountstats/mountstats.py |  604 ++++++++++++++++++++++++++++++++++++++++
-> tools/nfs-iostat/nfs-iostat.py |  564 +++++++++++++++++++++++++++++++++++++
-> 2 files changed, 1168 insertions(+), 0 deletions(-)
-> create mode 100755 tools/mountstats/mountstats.py
-> create mode 100755 tools/nfs-iostat/nfs-iostat.py
->
->-- 
->Chuck Lever
->chuck[dot]lever[at]oracle[dot]com
->--
->To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->the body of a message to majordomo@vger.kernel.org
->More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> You're telling me that some locks will migrate and some won't?  Good
+> luck with that! The clients are going to be mightily confused.
 
+Locks migrate or not depending on the server ip address.  Where do you
+see the confusion?
+
+--b.
