@@ -1,57 +1,91 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: Problems with large number of clients and reads
-Date: Mon, 9 Jun 2008 14:53:55 -0400
-Message-ID: <20080609185355.GF28584@fieldses.org>
-References: <1212519001.24900.14.camel@hololw58> <20080606160922.GG30863@fieldses.org> <0122F800A3B64C449565A9E8C2977010155587@hoexmb9.conoco.net>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH 4/5] knfsd: convert knfsd to kthread API
+Date: Mon, 9 Jun 2008 14:54:59 -0400
+Message-ID: <20080609145459.1adda51a@tleilax.poochiereds.net>
+References: <1212765171-26042-1-git-send-email-jlayton@redhat.com>
+	<1212765171-26042-2-git-send-email-jlayton@redhat.com>
+	<1212765171-26042-3-git-send-email-jlayton@redhat.com>
+	<1212765171-26042-4-git-send-email-jlayton@redhat.com>
+	<1212765171-26042-5-git-send-email-jlayton@redhat.com>
+	<20080606172431.GA761@fieldses.org>
+	<20080606141116.07b79b14@tleilax.poochiereds.net>
+	<20080606154948.303aba28@tleilax.poochiereds.net>
+	<20080609130830.GA21769@fieldses.org>
+	<20080609091948.0b2b19a9@tleilax.poochiereds.net>
+	<20080609183923.GE28584@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: "Weathers, Norman R." <Norman.R.Weathers-496aOtIFJR1B+Kdf37RAV9BPR1lH4CV8@public.gmane.org>
+Content-Type: text/plain; charset=US-ASCII
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org, neilb@suse.de,
+	gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:49346 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([66.187.233.31]:41502 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752942AbYFISx5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 9 Jun 2008 14:53:57 -0400
-In-Reply-To: <0122F800A3B64C449565A9E8C2977010155587-zIGg2qceuZx7uNL6xugVa6xOck334EZe@public.gmane.org>
+	id S1753049AbYFISzM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 9 Jun 2008 14:55:12 -0400
+In-Reply-To: <20080609183923.GE28584@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jun 09, 2008 at 09:19:03AM -0500, Weathers, Norman R. wrote:
-> >I'd've thought that suggests a leak of memory allocated by kmalloc().
+On Mon, 9 Jun 2008 14:39:23 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
+
+> On Mon, Jun 09, 2008 at 09:19:48AM -0400, Jeff Layton wrote:
+> > On Mon, 9 Jun 2008 09:08:30 -0400
+> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > 
+> > > On Fri, Jun 06, 2008 at 03:49:48PM -0400, Jeff Layton wrote:
+> > > > On Fri, 6 Jun 2008 14:11:16 -0400
+> > > > Jeff Layton <jlayton@redhat.com> wrote:
+> > > > 
+> > > > > On Fri, 6 Jun 2008 13:24:31 -0400
+> > > > > "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > > > > 
+> > > > ...
+> > > > > > How does the module refcounting work after this patch?
+> > > > > > 
+> > > > > > --b.
+> > > > > > 
+> > > > > 
+> > > > > I think I've goofed this part, actually. I was thinking that we didn't
+> > > > > need to bump the refcount here, and that the kernel would realize that
+> > > > > nfsd() hadn't returned and would prevent unloading until it had. This
+> > > > > doesn't seem to be the case. I'll need to go back and add refcounting
+> > > > > back in.
+> > > > > 
+> > > > 
+> > > > Here's a respun patch that adds back in the module refcounts and also
+> > > > removes the unneeded "err = 0;" at the bottom of the loop. Thoughts?
+> > > 
+> > > Looks good to me.  I'll apply all 5 (with this version of #4) if noone
+> > > catches something else.
+> > > 
+> > > --b.
+> > > 
+> > 
+> > Sounds good. My only concern here is whether moving the __module_get
+> > from the RPC layer to nfsd() itself is OK.
 > 
-> >Does the size-4096 cache decrease eventually, or does it stay that
-> >large until you reboot?
+> Oh, I see, I missed that.
 > 
-> I would agree that it "looks" like a memory leak.  If I restart NFS,
-> the size-4096 cache goes from 12 GB to under 50 MB,
+> > I *think* it is since the
+> > nfsctl and /proc/fs/nfsd routines are all part of the nfsd module, so
+> > we're guaranteed to have a reference there anyway, but if there are
+> > potential races then we may want to go back to the old way.
+> 
+> The vfs should take care that e.g. it gets a reference on the module
+> before creating an open file for the nfsd filesystem.  But it don't see
+> how anything can guarantee that the __module_get() in the new nfsd
+> thread completes before whoever called svc_set_num_threads() returns and
+> drops their reference.
+> 
+> So, yeah, I think it's not right.
+> 
 
-And restarting nfsd is the only thing you've found that will do this?
-(So decreasing the number of threads, or stopping all the client won't
-do anything to the size-4096 number?)
+Ok, that makes sense. I'll need to respin the set then since we'll need
+the sv_module field in the svc_serv struct after all. Let me do that
+and get back to you...
 
-> but then depending
-> upon how hard the box is utilized, it starts to climb back up.
-
-> I have
-> seen it climb back up to 3 or 4 GB right after the restart, but that
-> is much better because the regular disk cache will grow from the 2 GB
-> that it was pressured into back to 5 or 8 GB, so all of the files have
-> been reread into memory and things are progressing smoothly.  It is
-> weird.  I really think that this has to do with a lot of connections
-> happening at once, because I can run slabtop and see a node that is
-> running full out, but only have a couple hundred megs of the size-4096
-> slab being used, and then turn around and see another node that is
-> pushing out 245 MB/s and all of the sudden using over 12 GB of the
-> size-4096.  It is very odd...  If I lower the number of threads from a
-> usable 64 to a low of 3 threads, I have less of a chance of the
-> servers going haywire, to the point of being so loaded they may crash
-> or you cannot contact them over the network (fortunately, I have
-> serial on these boxes so that I can get on the nodes if they reach
-> that point).  If I run 8 threads, and with enough clients, I can bring
-> down one of these servers. size-4096 goes through the roof, and
-> depending on the hour of the day, the server can either crash or
-> becomes unresponsive.
-
-These are doing only NFS v2 and v3?  (No v4?)
-
---b.
+Thanks,
+-- 
+Jeff Layton <jlayton@redhat.com>
