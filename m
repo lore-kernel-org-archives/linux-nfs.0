@@ -1,19 +1,11 @@
 Return-Path: <nfsv4-bounces@linux-nfs.org>
-Date: Mon, 9 Jun 2008 12:22:49 -0400
+Date: Mon, 9 Jun 2008 10:31:37 -0400
 From: Jeff Layton <jlayton@redhat.com>
-To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
-Subject: Re: rapid clustered nfs server failover and hung clients --   how
-	best to	close the sockets?
-Message-ID: <20080609122249.51767b21@tleilax.poochiereds.net>
-In-Reply-To: <RTPCLUEXC1-PRDF8Eqf000001d4@RTPMVEXC1-PRD.hq.netapp.com>
-References: <20080609103137.2474aabd@tleilax.poochiereds.net>
-	<484D4659.9000105@redhat.com>
-	<20080609111821.6e06d4f8@tleilax.poochiereds.net>
-	<RTPCLUEXC1-PRDOLZCH000001d2@RTPMVEXC1-PRD.hq.netapp.com>
-	<20080609120110.1fee7221@tleilax.poochiereds.net>
-	<RTPCLUEXC1-PRDF8Eqf000001d4@RTPMVEXC1-PRD.hq.netapp.com>
-Cc: linux-nfs@vger.kernel.org, lhh@redhat.com, nfsv4@linux-nfs.org,
-        nhorman@redhat.com
+To: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+Subject: rapid clustered nfs server failover and hung clients -- how best to
+	close the sockets?
+Message-ID: <20080609103137.2474aabd@tleilax.poochiereds.net>
+Cc: nhorman@redhat.com, lhh@redhat.com
 List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
 	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
 List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
@@ -27,64 +19,72 @@ Errors-To: nfsv4-bounces@linux-nfs.org
 MIME-Version: 1.0
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 09 Jun 2008 12:09:48 -0400
-"Talpey, Thomas" <Thomas.Talpey@netapp.com> wrote:
+Apologies for the long email, but I ran into an interesting problem the
+other day and am looking for some feedback on my general approach to
+fixing it before I spend too much time on it:
 
-> At 12:01 PM 6/9/2008, Jeff Layton wrote:
-> >On Mon, 09 Jun 2008 11:51:51 -0400
-> >"Talpey, Thomas" <Thomas.Talpey@netapp.com> wrote:
-> >
-> >> At 11:18 AM 6/9/2008, Jeff Layton wrote:
-> >> >No, it's not specific to NFS. It can happen to any "service" that
-> >> >floats IP addresses between machines, but does not close the sockets
-> >> >that are connected to those addresses. Most services that fail over
-> >> >(at least in RH's cluster server) shut down the daemons on failover
-> >> >too, so tends to mitigate this problem elsewhere.
-> >> 
-> >> Why exactly don't you choose to restart the nfsd's (and lockd's) on the
-> >> victim server?
-> >
-> >The victim server might have other nfsd/lockd's running on them. Stopping
-> >all the nfsd's could bring down lockd, and then you have to deal with lock
-> >recovery on the stuff that isn't moving to the other server.
-> 
-> But but but... the IP address is the only identification the client can use
-> to isolate a server. You're telling me that some locks will migrate and
-> some won't? Good luck with that! The clients are going to be mightily
-> confused.
-> 
+We (RH) have a cluster-suite product that some people use for making HA
+NFS services. When our QA folks test this, they often will start up
+some operations that do activity on an NFS mount from the cluster and
+then rapidly do failovers between cluster machines and make sure
+everything keeps moving along. The cluster is designed to not shut down
+nfsd's when a failover occurs. nfsd's are considered a "shared
+resource". It's possible that there could be multiple clustered
+services for NFS-sharing, so when a failover occurs, we just manipulate
+the exports table.
 
-Maybe I'm not being clear. My understanding is this:
+The problem we've run into is that occasionally they fail over to the
+alternate machine and then back very rapidly. Because nfsd's are not
+shut down on failover, sockets are not closed. So what happens is
+something like this on TCP mounts:
 
-Right now, when we fail over we send a SIGKILL to lockd, and then send
-a SM_NOTIFY to all of the clients that the "victim" server has,
-regardless of what IP address the clients are talking to. So all locks
-get dropped and all clients should recover their locks. Since the
-service will fail over to the new host, locks that were in that export
-will get recovered on the "new" host.
+- client has NFS mount from clustered NFS service on one server
 
-But, we just recently added this new "unlock_ip" interface. With that,
-we should be able to just send SM_NOTIFY's to clients of that IP
-address. Locks associated with that server address will be recovered
-and the others should be unaffected.
+- service fails over, new server doesn't know anything about the
+  existing socket, so it sends a RST back to the client when data
+  comes in. Client closes connection and reopens it and does some
+  I/O on the socket.
 
-> >
-> >> Failing that, for TCP at least would ifdown/ifup accomplish
-> >> the socket reset?
-> >> 
-> >
-> >I don't think ifdown/ifup closes the sockets, but maybe someone can
-> >correct me on this...
-> 
-> No, it doesn't close the sockets, but it sends interface-down status to them.
-> The nfsd's, in theory, should close the sockets in response. But, it's possible
-> (probable?) that nfsd may ignore this, and do nothing. It's just an idea.
-> 
+- service fails back to original server. The original socket there
+  is still open, but now the TCP sequence numbers are off. When
+  packets come into the server we end up with an ACK storm, and the
+  client hangs for a long time.
 
-That might be worth investigating, but sounds like it might cause problems
-with the services associated with IP addresses that are staying on the
-victim server.
+Neil Horman did a good writeup of this problem here for those that
+want the gory details:
 
+    https://bugzilla.redhat.com/show_bug.cgi?id=369991#c16
+
+I can think of 3 ways to fix this:
+
+1) Add something like the recently added "unlock_ip" interface that
+was added for NLM. Maybe a "close_ip" that allows us to close all
+nfsd sockets connected to a given local IP address. So clustering
+software could do something like:
+
+    # echo 10.20.30.40 > /proc/fs/nfsd/close_ip
+
+...and make sure that all of the sockets are closed.
+
+2) just use the same "unlock_ip" interface and just have it also
+close sockets in addition to dropping locks.
+
+3) have an nfsd close all non-listening connections when it gets a
+certain signal (maybe SIGUSR1 or something). Connections on a
+sockets that aren't failing over should just get a RST and would
+reopen their connections.
+
+...my preference would probably be approach #1.
+
+I've only really done some rudimentary perusing of the code, so there
+may be roadblocks with some of these approaches I haven't considered.
+Does anyone have thoughts on the general problem or idea for a solution?
+
+The situation is a bit specific to failover testing -- most people failing
+over don't do it so rapidly, but we'd still like to ensure that this
+problem doesn't occur if someone does do it.
+
+Thanks,
 -- 
 Jeff Layton <jlayton@redhat.com>
 _______________________________________________
