@@ -1,131 +1,65 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: [PATCH] make "noac" and "actimeo=0" work correctly
-Date: Tue, 10 Jun 2008 16:52:36 -0400
-Message-ID: <484EE994.5030907@redhat.com>
-Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------040306070304060301070603"
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: NFS list <linux-nfs@vger.kernel.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 6/6] nfs: Fix misparsing of nfsv4 fs_locations attribute
+Date: Tue, 10 Jun 2008 16:51:53 -0400
+Message-ID: <3086B205-3200-4D77-B4C7-C23163593E37@oracle.com>
+References: <1213044696-32741-1-git-send-email-bfields@citi.umich.edu> <1213044696-32741-2-git-send-email-bfields@citi.umich.edu> <1213044696-32741-3-git-send-email-bfields@citi.umich.edu> <1213044696-32741-4-git-send-email-bfields@citi.umich.edu> <1213044696-32741-5-git-send-email-bfields@citi.umich.edu> <1213044696-32741-6-git-send-email-bfields@citi.umich.edu> <1213044696-32741-7-git-send-email-bfields@citi.umich.edu> <1213045696.19130.7.camel@localhost> <20080609212205.GB32446@fieldses.org> <BD59D20E-31F3-4D74-9CB6-3A14F6CB025A@oracle.com> <20080610191752.GN20184@fieldses.org>
+Mime-Version: 1.0 (Apple Message framework v924)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+	linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:56740 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758798AbYFJUwx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Jun 2008 16:52:53 -0400
+Received: from agminet01.oracle.com ([141.146.126.228]:58539 "EHLO
+	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758196AbYFJUxG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Jun 2008 16:53:06 -0400
+In-Reply-To: <20080610191752.GN20184@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a multi-part message in MIME format.
---------------040306070304060301070603
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+On Jun 10, 2008, at 3:17 PM, J. Bruce Fields wrote:
+> On Tue, Jun 10, 2008 at 11:34:14AM -0400, Chuck Lever wrote:
+>> On Jun 9, 2008, at 5:22 PM, J. Bruce Fields wrote:
+>>> On Mon, Jun 09, 2008 at 05:08:16PM -0400, Trond Myklebust wrote:
+>>>>
+>>>> What if it is an IPv6 address? As I've said before, could we please
+>>>> just
+>>>> adapt nfs_parse_server_address to deal with all these cases?
+>>>
+>>> I haven't had the time to do that, so I thought we'd rather have a  
+>>> fix
+>>> for the immediate bug now, then add ipv6 support later.  For all I
+>>> know
+>>> the final patches might end up factoring reasonable cleanly that way
+>>> anyway.
+>>
+>> I have a patch (upcoming for 2.6.27) that fixes  
+>> nfs_parse_server_address
+>> to be careful about '\0'-termination.  It changes the function to  
+>> take a
+>> char * and a length.  All you will need to do is make it non-static.
+>
+> OK, good.  That patch and my patch will apply together in either  
+> order;
+> mine ditches the unnecessary valid_ipadd4() and relies on in4_pton()
+> instead.  Yours makes nfs_parse_server_address more-or-less a drop-in
+> replacement for in4_pton there.  And it should be easy to switch it  
+> over
+> either in whichever patch comes second or in a small third patch.
+>
+> So, I was right, this is the natural way to factor out the change
+> anyway.
+>
+> The one remaining thing missing for that to work, I think, is to fix  
+> the
+>
+> 	struct sockaddr *addr;
+>
+> field in nfs_clone_mount?
 
-Hi.
+"struct sockaddr *" is what we want.  Only the current logic in  
+nfs_follow_referral() is AF_INET-specific.
 
-I've been looking at a bugzilla which describes a problem where
-a customer was advised to use either the "noac" or "actimeo=0"
-mount options to solve a consistency problem that they were
-seeing in the file attributes.  It turned out that this solution
-did not work reliably for them because sometimes, the local
-attribute cache was believed to be valid and not timed out.
-(With an attribute cache timeout of 0, the cache should always
-appear to be timed out.)
-
-In looking at this situation, it appears to me that the problem
-is that the attribute cache timeout code has an off-by-one
-error in it.  It is assuming that the cache is valid in the
-region, [read_cache_jiffies, read_cache_jiffies + attrtimeo].  The
-cache should be considered valid only in the region,
-[read_cache_jiffies, read_cache_jiffies + attrtimeo).  With this
-change, the options, "noac" and "actimeo=0", work as originally
-expected.
-
-While I was there, I addressed a problem with the jiffies
-overflowing on 32 bit systems.  When overflow occurs, the
-value of read_cache_jiffies + attrtimeo can be less then the
-value of read_cache_jiffies.  This would cause an unnecessary
-GETATTR over the wire.
-
-Thoughts and/or comments?
-
-   Thanx...
-
-      ps
-
-Signed-off-by: Peter Staubach <staubach@redhat.com>
-
-
---------------040306070304060301070603
-Content-Type: text/plain;
- name="attrtimeo.f-9"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline;
- filename="attrtimeo.f-9"
-
---- linux-2.6.25.i686/fs/nfs/inode.c.org
-+++ linux-2.6.25.i686/fs/nfs/inode.c
-@@ -703,7 +714,7 @@ int nfs_attribute_timeout(struct inode *
- 
- 	if (nfs_have_delegation(inode, FMODE_READ))
- 		return 0;
--	return !time_in_range(jiffies, nfsi->read_cache_jiffies, nfsi->read_cache_jiffies + nfsi->attrtimeo);
-+	return !nfs_time_in_range_open(jiffies, nfsi->read_cache_jiffies, nfsi->read_cache_jiffies + nfsi->attrtimeo);
- }
- 
- /**
-@@ -1088,7 +1113,7 @@ static int nfs_update_inode(struct inode
- 		nfsi->attrtimeo_timestamp = now;
- 		nfsi->last_updated = now;
- 	} else {
--		if (!time_in_range(now, nfsi->attrtimeo_timestamp, nfsi->attrtimeo_timestamp + nfsi->attrtimeo)) {
-+		if (!nfs_time_in_range_open(now, nfsi->attrtimeo_timestamp, nfsi->attrtimeo_timestamp + nfsi->attrtimeo)) {
- 			if ((nfsi->attrtimeo <<= 1) > NFS_MAXATTRTIMEO(inode))
- 				nfsi->attrtimeo = NFS_MAXATTRTIMEO(inode);
- 			nfsi->attrtimeo_timestamp = now;
---- linux-2.6.25.i686/fs/nfs/dir.c.org
-+++ linux-2.6.25.i686/fs/nfs/dir.c
-@@ -1807,7 +1830,7 @@ static int nfs_access_get_cached(struct 
- 	cache = nfs_access_search_rbtree(inode, cred);
- 	if (cache == NULL)
- 		goto out;
--	if (!time_in_range(jiffies, cache->jiffies, cache->jiffies + nfsi->attrtimeo))
-+	if (!nfs_time_in_range_open(jiffies, cache->jiffies, cache->jiffies + nfsi->attrtimeo))
- 		goto out_stale;
- 	res->jiffies = cache->jiffies;
- 	res->cred = cache->cred;
---- linux-2.6.25.i686/include/linux/nfs_fs.h.org
-+++ linux-2.6.25.i686/include/linux/nfs_fs.h
-@@ -121,7 +121,7 @@ struct nfs_inode {
- 	 *
- 	 * We need to revalidate the cached attrs for this inode if
- 	 *
--	 *	jiffies - read_cache_jiffies > attrtimeo
-+	 *	jiffies - read_cache_jiffies >= attrtimeo
- 	 */
- 	unsigned long		read_cache_jiffies;
- 	unsigned long		attrtimeo;
-@@ -244,6 +244,22 @@ static inline unsigned NFS_MAXATTRTIMEO(
- 	return S_ISDIR(inode->i_mode) ? nfss->acdirmax : nfss->acregmax;
- }
- 
-+static inline int nfs_time_in_range_open(unsigned long a,
-+				unsigned long b, unsigned long c)
-+{
-+	/*
-+	 * If c is less then b, then the jiffies have wrapped.
-+	 * If so, then check to see if a is between b and the
-+	 * max jiffies value or between 0 and the value of c.
-+	 * This is the range between b and c.
-+	 *
-+	 * Otherwise, just check to see whether a is in [b, c).
-+	 */
-+	if (c < b)
-+		return time_after_eq(a, b) || time_before(a, c);
-+	return time_after_eq(a, b) && time_before(a, c);
-+}
-+
- static inline int NFS_STALE(const struct inode *inode)
- {
- 	return test_bit(NFS_INO_STALE, &NFS_I(inode)->flags);
-
---------------040306070304060301070603--
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
