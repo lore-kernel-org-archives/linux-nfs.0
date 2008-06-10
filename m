@@ -1,79 +1,75 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 4/5] knfsd: convert knfsd to kthread API
-Date: Tue, 10 Jun 2008 16:05:42 -0400
-Message-ID: <20080610200542.GQ20184@fieldses.org>
-References: <1213101639-26423-1-git-send-email-jlayton@redhat.com>
-	<1213101639-26423-2-git-send-email-jlayton@redhat.com>
-	<1213101639-26423-3-git-send-email-jlayton@redhat.com>
-	<1213101639-26423-4-git-send-email-jlayton@redhat.com>
-	<1213101639-26423-5-git-send-email-jlayton@redhat.com>
-	<20080610162426.GD20184@fieldses.org>
-	<20080610162526.GE20184@fieldses.org>
-	<20080610130651.331abdae@tleilax.poochiereds.net>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [2.6.26-rc4] mount.nfsv4/memory poisoning issues...
+Date: Tue, 10 Jun 2008 16:13:52 -0400
+Message-ID: <20080610161352.4e588653@tleilax.poochiereds.net>
+References: <6278d2220806041633n3bfe3dd2ke9602697697228b@mail.gmail.com>
+	<20080604203504.62730951@tleilax.poochiereds.net>
+	<1213124088.20459.16.camel@localhost>
+	<20080610151357.150b6f69@tleilax.poochiereds.net>
+	<1213127909.20459.48.camel@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org, gnb@melbourne.sgi.com
-To: Jeff Layton <jlayton@redhat.com>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <20080610130651.331abdae@tleilax.poochiereds.net>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: text/plain; charset=US-ASCII
+Cc: Daniel J Blueman <daniel.blueman@gmail.com>,
+	linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org,
+	Linux Kernel <linux-kernel@vger.kernel.org>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([66.187.233.31]:36169 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751257AbYFJUOK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 10 Jun 2008 16:14:10 -0400
+In-Reply-To: <1213127909.20459.48.camel@localhost>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jun 10, 2008 at 01:06:51PM -0400, Jeff Layton wrote:
-> On Tue, 10 Jun 2008 12:25:26 -0400
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
+On Tue, 10 Jun 2008 15:58:29 -0400
+Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+
+> On Tue, 2008-06-10 at 15:13 -0400, Jeff Layton wrote:
 > 
-> > On Tue, Jun 10, 2008 at 12:24:26PM -0400, bfields wrote:
-> > > On Tue, Jun 10, 2008 at 08:40:38AM -0400, Jeff Layton wrote:
-> > > In fact, I don't think you really need to take a reference till there's
-> > > a chance the new thread will decrement the reference--and since the
-> > > first thing the new thread does is take the mutex (which we're also
-> > > holding here), you could wait till after the succesful kthread_create()
-> > > to take the reference.  But maybe that's more fragile.  So I'd just
-> > > move the module_get to right before the kthread_create().
+> > I think you're basically correct, but it looks to me like the
+> > nfs_callback_mutex actually protects nfs_callback_info.task as well.
 > > 
-> > Anyway, that's very minor, and this all seems OK otherwise, so I might
-> > make this one small modification and just apply if there's no further
-> > comments.
+> > If we're starting the thread, then we can't call kthread_stop on it
+> > until we release the mutex. So the thread can't exit until we release
+> > the mutex, and we can be guaranteed that this:
 > > 
-> > --b.
+> >      nfs_callback_info.task = NULL;
+> > 
+> > ...can't happen until after kthread_run returns and nfs_callback_up
+> > sets it.
+> > 
+> > If that's right, then maybe this (untested, RFC only) patch would make sense?
 > 
-> Thanks. That sounds right to me. Let me know if you want me to formally
-> respin the patch instead.
+> Hmm... I suppose that is correct, but what if nfs_alloc_client() does
+> 
+> 	nfs_callback_up();
+> 	<kstrdup() fails>
+> 	nfs_callback_down();
+> 
+> AFAICS, if nfs_callback_down() gets called before the kthread() function
+> gets scheduled back in, then you can get left with a value of
+> nfs_callback_info.task != NULL, since nfs_callback_svc() will never be
+> called.
+> 
 
-I went ahead and applied with that one change; results are in
+I don't see this race.
 
-	git://linux-nfs.org/~bfields/linux.git for-2.6.27
+We can't call nfs_callback_down() until after nfs_callback_up()
+returns, so we're guaranteed to have "task" set to a valid task
+(presuming that nfs_callback_up() doesn't return error). We also can't
+return from nfs_callback_down() until after the nfs_callback_svc() has
+exited. kthread_stop() will block until it does.
 
-Thanks!  It'll be good to have this taken care of.
+> Wouldn't it therefore make more sense to clear nfs_callback_info.task in
+> nfs_callback_down()?
+> 
 
---b.
+I suppose that makes just as much sense. It also seems more symmetrical
+given that we also set the var in nfs_callback_up(). I'll roll that into
+the BKL removal patch, and give it some testing. Look for it in a day
+or two...
 
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 77088bf..5a32cb7 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -657,14 +657,13 @@ svc_set_num_threads(struct svc_serv *serv, struct svc_pool *pool, int nrservs)
- 		nrservs--;
- 		chosen_pool = choose_pool(serv, pool, &state);
- 
--		__module_get(serv->sv_module);
- 		rqstp = svc_prepare_thread(serv, chosen_pool);
- 		if (IS_ERR(rqstp)) {
- 			error = PTR_ERR(rqstp);
--			module_put(serv->sv_module);
- 			break;
- 		}
- 
-+		__module_get(serv->sv_module);
- 		task = kthread_create(serv->sv_function, rqstp, serv->sv_name);
- 		if (IS_ERR(task)) {
- 			error = PTR_ERR(task);
+Thanks,
+-- 
+Jeff Layton <jlayton@redhat.com>
