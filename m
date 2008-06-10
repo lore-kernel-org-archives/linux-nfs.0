@@ -1,333 +1,99 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 4/5] knfsd: convert knfsd to kthread API
-Date: Tue, 10 Jun 2008 08:40:38 -0400
-Message-ID: <1213101639-26423-5-git-send-email-jlayton@redhat.com>
+Subject: [PATCH 5/5] sunrpc: remove sv_kill_signal field from svc_serv struct
+Date: Tue, 10 Jun 2008 08:40:39 -0400
+Message-ID: <1213101639-26423-6-git-send-email-jlayton@redhat.com>
 References: <1213101639-26423-1-git-send-email-jlayton@redhat.com>
  <1213101639-26423-2-git-send-email-jlayton@redhat.com>
  <1213101639-26423-3-git-send-email-jlayton@redhat.com>
  <1213101639-26423-4-git-send-email-jlayton@redhat.com>
+ <1213101639-26423-5-git-send-email-jlayton@redhat.com>
 Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org, neilb@suse.de,
 	gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:35241 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([66.187.233.31]:35236 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753098AbYFJMkx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Jun 2008 08:40:53 -0400
-In-Reply-To: <1213101639-26423-4-git-send-email-jlayton@redhat.com>
+	id S1751430AbYFJMkw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 10 Jun 2008 08:40:52 -0400
+In-Reply-To: <1213101639-26423-5-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch is rather large, but I couldn't figure out a way to break it
-up that would remain bisectable. It does several things:
-
-- change svc_thread_fn typedef to better match what kthread_create expects
-- change svc_pool_map_set_cpumask to be more kthread friendly. Make it
-  take a task arg and and get rid of the "oldmask"
-- have svc_set_num_threads call kthread_create directly
-- eliminate __svc_create_thread
+Since we no longer make any distinction between shutdown signals with
+nfsd, then it becomes easier to just standardize on a particular signal
+to use to bring it down (SIGINT, in this case).
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfsd/nfssvc.c           |   45 +++++++++++++-------
- include/linux/sunrpc/svc.h |    2 +-
- net/sunrpc/svc.c           |  101 +++++++++++++++----------------------------
- 3 files changed, 65 insertions(+), 83 deletions(-)
+ fs/nfsd/nfssvc.c           |    3 +--
+ include/linux/sunrpc/svc.h |    5 ++---
+ net/sunrpc/svc.c           |    5 ++---
+ 3 files changed, 5 insertions(+), 8 deletions(-)
 
 diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 6339cb7..9e21568 100644
+index 9e21568..26c8114 100644
 --- a/fs/nfsd/nfssvc.c
 +++ b/fs/nfsd/nfssvc.c
-@@ -21,6 +21,7 @@
- #include <linux/smp_lock.h>
- #include <linux/freezer.h>
- #include <linux/fs_struct.h>
-+#include <linux/kthread.h>
+@@ -236,8 +236,7 @@ int nfsd_create_serv(void)
  
- #include <linux/sunrpc/types.h>
- #include <linux/sunrpc/stats.h>
-@@ -46,7 +47,7 @@
- #define SHUTDOWN_SIGS	(sigmask(SIGKILL) | sigmask(SIGHUP) | sigmask(SIGINT) | sigmask(SIGQUIT))
+ 	atomic_set(&nfsd_busy, 0);
+ 	nfsd_serv = svc_create_pooled(&nfsd_program, nfsd_max_blksize,
+-				      nfsd_last_thread, nfsd, SIGINT,
+-				      THIS_MODULE);
++				      nfsd_last_thread, nfsd, THIS_MODULE);
+ 	if (nfsd_serv == NULL)
+ 		err = -ENOMEM;
  
- extern struct svc_program	nfsd_program;
--static void			nfsd(struct svc_rqst *rqstp);
-+static int			nfsd(void *vrqstp);
- struct timeval			nfssvc_boot;
- static atomic_t			nfsd_busy;
- static unsigned long		nfsd_last_call;
-@@ -407,18 +408,19 @@ update_thread_usage(int busy_threads)
- /*
-  * This is the NFS server kernel thread
-  */
--static void
--nfsd(struct svc_rqst *rqstp)
-+static int
-+nfsd(void *vrqstp)
- {
-+	struct svc_rqst *rqstp = (struct svc_rqst *) vrqstp;
- 	struct fs_struct *fsp;
--	int		err;
- 	sigset_t shutdown_mask, allowed_mask;
-+	int err, preverr = 0;
-+	unsigned int signo;
- 
- 	/* Lock module and set up kernel thread */
- 	mutex_lock(&nfsd_mutex);
--	daemonize("nfsd");
- 
--	/* After daemonize() this kernel thread shares current->fs
-+	/* At this point, the thread shares current->fs
- 	 * with the init process. We need to create files with a
- 	 * umask of 0 instead of init's umask. */
- 	fsp = copy_fs_struct(current->fs);
-@@ -433,14 +435,18 @@ nfsd(struct svc_rqst *rqstp)
- 	siginitsetinv(&shutdown_mask, SHUTDOWN_SIGS);
- 	siginitsetinv(&allowed_mask, ALLOWED_SIGS);
- 
-+	/*
-+	 * thread is spawned with all signals set to SIG_IGN, re-enable
-+	 * the ones that matter
-+	 */
-+	for (signo = 1; signo <= _NSIG; signo++) {
-+		if (!sigismember(&shutdown_mask, signo))
-+			allow_signal(signo);
-+	}
- 
- 	nfsdstats.th_cnt++;
--
--	rqstp->rq_task = current;
--
- 	mutex_unlock(&nfsd_mutex);
- 
--
- 	/*
- 	 * We want less throttling in balance_dirty_pages() so that nfs to
- 	 * localhost doesn't cause nfsd to lock up due to all the client's
-@@ -462,15 +468,25 @@ nfsd(struct svc_rqst *rqstp)
- 		 */
- 		while ((err = svc_recv(rqstp, 60*60*HZ)) == -EAGAIN)
- 			;
--		if (err < 0)
-+		if (err == -EINTR)
- 			break;
-+		else if (err < 0) {
-+			if (err != preverr) {
-+				printk(KERN_WARNING "%s: unexpected error "
-+					"from svc_recv (%d)\n", __func__, -err);
-+				preverr = err;
-+			}
-+			schedule_timeout_uninterruptible(HZ);
-+			continue;
-+		}
-+
- 		update_thread_usage(atomic_read(&nfsd_busy));
- 		atomic_inc(&nfsd_busy);
- 
- 		/* Lock the export hash tables for reading. */
- 		exp_readlock();
- 
--		/* Process request with signals blocked.  */
-+		/* Process request with signals blocked. */
- 		sigprocmask(SIG_SETMASK, &allowed_mask, NULL);
- 
- 		svc_process(rqstp);
-@@ -481,14 +497,10 @@ nfsd(struct svc_rqst *rqstp)
- 		atomic_dec(&nfsd_busy);
- 	}
- 
--	if (err != -EINTR)
--		printk(KERN_WARNING "nfsd: terminating on error %d\n", -err);
--
- 	/* Clear signals before calling svc_exit_thread() */
- 	flush_signals(current);
- 
- 	mutex_lock(&nfsd_mutex);
--
- 	nfsdstats.th_cnt --;
- 
- out:
-@@ -498,6 +510,7 @@ out:
- 	/* Release module */
- 	mutex_unlock(&nfsd_mutex);
- 	module_put_and_exit(0);
-+	return 0;
- }
- 
- static __be32 map_new_errors(u32 vers, __be32 nfserr)
 diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 4b54c5f..011d6d8 100644
+index 011d6d8..dc69068 100644
 --- a/include/linux/sunrpc/svc.h
 +++ b/include/linux/sunrpc/svc.h
-@@ -22,7 +22,7 @@
- /*
-  * This is the RPC server thread function prototype
-  */
--typedef void		(*svc_thread_fn)(struct svc_rqst *);
-+typedef int		(*svc_thread_fn)(void *);
+@@ -80,7 +80,6 @@ struct svc_serv {
+ 	struct module *		sv_module;	/* optional module to count when
+ 						 * adding threads */
+ 	svc_thread_fn		sv_function;	/* main function for threads */
+-	int			sv_kill_signal;	/* signal to kill threads */
+ };
  
  /*
-  *
+@@ -388,8 +387,8 @@ struct svc_rqst *svc_prepare_thread(struct svc_serv *serv,
+ 					struct svc_pool *pool);
+ void		   svc_exit_thread(struct svc_rqst *);
+ struct svc_serv *  svc_create_pooled(struct svc_program *, unsigned int,
+-			void (*shutdown)(struct svc_serv*),
+-			svc_thread_fn, int sig, struct module *);
++			void (*shutdown)(struct svc_serv*), svc_thread_fn,
++			struct module *);
+ int		   svc_set_num_threads(struct svc_serv *, struct svc_pool *, int);
+ void		   svc_destroy(struct svc_serv *);
+ int		   svc_process(struct svc_rqst *);
 diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 7bffaff..bcb7ccf 100644
+index bcb7ccf..77088bf 100644
 --- a/net/sunrpc/svc.c
 +++ b/net/sunrpc/svc.c
-@@ -18,6 +18,7 @@
- #include <linux/mm.h>
- #include <linux/interrupt.h>
- #include <linux/module.h>
-+#include <linux/kthread.h>
- 
- #include <linux/sunrpc/types.h>
- #include <linux/sunrpc/xdr.h>
-@@ -291,15 +292,14 @@ svc_pool_map_put(void)
- 
- 
- /*
-- * Set the current thread's cpus_allowed mask so that it
-+ * Set the given thread's cpus_allowed mask so that it
-  * will only run on cpus in the given pool.
-- *
-- * Returns 1 and fills in oldmask iff a cpumask was applied.
-  */
--static inline int
--svc_pool_map_set_cpumask(unsigned int pidx, cpumask_t *oldmask)
-+static inline void
-+svc_pool_map_set_cpumask(struct task_struct *task, unsigned int pidx)
+@@ -434,7 +434,7 @@ EXPORT_SYMBOL(svc_create);
+ struct svc_serv *
+ svc_create_pooled(struct svc_program *prog, unsigned int bufsize,
+ 		void (*shutdown)(struct svc_serv *serv),
+-		  svc_thread_fn func, int sig, struct module *mod)
++		  svc_thread_fn func, struct module *mod)
  {
- 	struct svc_pool_map *m = &svc_pool_map;
-+	unsigned int node = m->pool_to[pidx];
+ 	struct svc_serv *serv;
+ 	unsigned int npools = svc_pool_map_get();
+@@ -443,7 +443,6 @@ svc_create_pooled(struct svc_program *prog, unsigned int bufsize,
  
- 	/*
- 	 * The caller checks for sv_nrpools > 1, which
-@@ -307,26 +307,17 @@ svc_pool_map_set_cpumask(unsigned int pidx, cpumask_t *oldmask)
- 	 */
- 	BUG_ON(m->count == 0);
+ 	if (serv != NULL) {
+ 		serv->sv_function = func;
+-		serv->sv_kill_signal = sig;
+ 		serv->sv_module = mod;
+ 	}
  
--	switch (m->mode)
--	{
--	default:
--		return 0;
-+	switch (m->mode) {
- 	case SVC_POOL_PERCPU:
- 	{
--		unsigned int cpu = m->pool_to[pidx];
--
--		*oldmask = current->cpus_allowed;
--		set_cpus_allowed_ptr(current, &cpumask_of_cpu(cpu));
--		return 1;
-+		set_cpus_allowed_ptr(task, &cpumask_of_cpu(node));
-+		break;
- 	}
- 	case SVC_POOL_PERNODE:
- 	{
--		unsigned int node = m->pool_to[pidx];
- 		node_to_cpumask_ptr(nodecpumask, node);
--
--		*oldmask = current->cpus_allowed;
--		set_cpus_allowed_ptr(current, nodecpumask);
--		return 1;
-+		set_cpus_allowed_ptr(task, nodecpumask);
-+		break;
- 	}
- 	}
- }
-@@ -579,47 +570,6 @@ out_enomem:
- EXPORT_SYMBOL(svc_prepare_thread);
- 
- /*
-- * Create a thread in the given pool.  Caller must hold BKL or another lock to
-- * serialize access to the svc_serv struct. On a NUMA or SMP machine, with a
-- * multi-pool serv, the thread will be restricted to run on the cpus belonging
-- * to the pool.
-- */
--static int
--__svc_create_thread(svc_thread_fn func, struct svc_serv *serv,
--		    struct svc_pool *pool)
--{
--	struct svc_rqst	*rqstp;
--	int		error = -ENOMEM;
--	int		have_oldmask = 0;
--	cpumask_t	uninitialized_var(oldmask);
--
--	rqstp = svc_prepare_thread(serv, pool);
--	if (IS_ERR(rqstp)) {
--		error = PTR_ERR(rqstp);
--		goto out;
--	}
--
--	if (serv->sv_nrpools > 1)
--		have_oldmask = svc_pool_map_set_cpumask(pool->sp_id, &oldmask);
--
--	error = kernel_thread((int (*)(void *)) func, rqstp, 0);
--
--	if (have_oldmask)
--		set_cpus_allowed(current, oldmask);
--
--	if (error < 0)
--		goto out_thread;
--	svc_sock_update_bufs(serv);
--	error = 0;
--out:
--	return error;
--
--out_thread:
--	svc_exit_thread(rqstp);
--	goto out;
--}
--
--/*
-  * Choose a pool in which to create a new thread, for svc_set_num_threads
-  */
- static inline struct svc_pool *
-@@ -688,7 +638,9 @@ found_pool:
- int
- svc_set_num_threads(struct svc_serv *serv, struct svc_pool *pool, int nrservs)
- {
--	struct task_struct *victim;
-+	struct svc_rqst	*rqstp;
-+	struct task_struct *task;
-+	struct svc_pool *chosen_pool;
- 	int error = 0;
- 	unsigned int state = serv->sv_nrthreads-1;
- 
-@@ -704,18 +656,35 @@ svc_set_num_threads(struct svc_serv *serv, struct svc_pool *pool, int nrservs)
- 	/* create new threads */
- 	while (nrservs > 0) {
- 		nrservs--;
-+		chosen_pool = choose_pool(serv, pool, &state);
-+
- 		__module_get(serv->sv_module);
--		error = __svc_create_thread(serv->sv_function, serv,
--					    choose_pool(serv, pool, &state));
--		if (error < 0) {
-+		rqstp = svc_prepare_thread(serv, chosen_pool);
-+		if (IS_ERR(rqstp)) {
-+			error = PTR_ERR(rqstp);
- 			module_put(serv->sv_module);
- 			break;
- 		}
-+
-+		task = kthread_create(serv->sv_function, rqstp, serv->sv_name);
-+		if (IS_ERR(task)) {
-+			error = PTR_ERR(task);
-+			module_put(serv->sv_module);
-+			svc_exit_thread(rqstp);
-+			break;
-+		}
-+
-+		rqstp->rq_task = task;
-+		if (serv->sv_nrpools > 1)
-+			svc_pool_map_set_cpumask(task, chosen_pool->sp_id);
-+
-+		svc_sock_update_bufs(serv);
-+		wake_up_process(task);
- 	}
+@@ -684,7 +683,7 @@ svc_set_num_threads(struct svc_serv *serv, struct svc_pool *pool, int nrservs)
  	/* destroy old threads */
  	while (nrservs < 0 &&
--	       (victim = choose_victim(serv, pool, &state)) != NULL) {
--		send_sig(serv->sv_kill_signal, victim, 1);
-+	       (task = choose_victim(serv, pool, &state)) != NULL) {
-+		send_sig(serv->sv_kill_signal, task, 1);
+ 	       (task = choose_victim(serv, pool, &state)) != NULL) {
+-		send_sig(serv->sv_kill_signal, task, 1);
++		send_sig(SIGINT, task, 1);
  		nrservs++;
  	}
  
