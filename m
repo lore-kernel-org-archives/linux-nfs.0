@@ -1,115 +1,78 @@
-From: Wendy Cheng <s.wendy.cheng@gmail.com>
-Subject: Re: [NFS] Does "sync" cause the FUA bit to be set?
-Date: Tue, 10 Jun 2008 17:58:06 -0500
-Message-ID: <484F06FE.6030708@gmail.com>
-References: <484E5AC1.3020200@bio.ifi.lmu.de> <484EA146.8070201@gmail.com>
-	<484EA215.5090000@panasas.com> <484ECD58.8040100@gmail.com>
-	<484EC317.8090801@panasas.com>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [2.6.26-rc4] mount.nfsv4/memory poisoning issues...
+Date: Tue, 10 Jun 2008 18:04:09 -0400
+Message-ID: <20080610180409.018bf8ae@tleilax.poochiereds.net>
+References: <6278d2220806041633n3bfe3dd2ke9602697697228b@mail.gmail.com>
+	<20080604203504.62730951@tleilax.poochiereds.net>
+	<1213124088.20459.16.camel@localhost>
+	<20080610151357.150b6f69@tleilax.poochiereds.net>
+	<1213127909.20459.48.camel@localhost>
+	<20080610161352.4e588653@tleilax.poochiereds.net>
+	<1213130012.20459.58.camel@localhost>
+	<20080610170154.68e2e6fb@tleilax.poochiereds.net>
+	<1213133876.20459.91.camel@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Frank Steiner <fsteiner-mail1-G0GEQqhI7DhYiKXMg8wJIg@public.gmane.org>,
-	nfs@lists.sourceforge.net
-To: Benny Halevy <bhalevy@panasas.com>
+Content-Type: text/plain; charset=US-ASCII
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org,
+	Linux Kernel <linux-kernel@vger.kernel.org>,
+	bfields@fieldses.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:58130 "EHLO neil.brown.name"
+Received: from mx1.redhat.com ([66.187.233.31]:54828 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751129AbYFJWAh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Jun 2008 18:00:37 -0400
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1K6BtK-0005UB-4O
-	for linux-nfs@vger.kernel.org; Wed, 11 Jun 2008 08:00:34 +1000
-In-Reply-To: <484EC317.8090801@panasas.com>
+	id S1753616AbYFJWER (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 10 Jun 2008 18:04:17 -0400
+In-Reply-To: <1213133876.20459.91.camel@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Benny Halevy wrote:
-> On Jun. 10, 2008, 21:52 +0300, Wendy Cheng <s.wendy.cheng@gmail.com> wrote:
->   
->> Benny Halevy wrote:
->>     
->>> On Jun. 10, 2008, 18:44 +0300, Wendy Cheng <s.wendy.cheng@gmail.com> wrote:
->>>   
->>>       
->>>> Frank Steiner wrote:
->>>>     
->>>>         
->>>>> With the profile ignoring the FUA bit, copying or deleting directories
->>>>> of e.g. 10M with a about 1000 files is factor 5 faster than with the
->>>>> profile honoring the FUA bit.
->>>>>   
->>>>>       
->>>>>           
->>>> FUA bit is normally combined with write-thru scsi command that bypasses 
->>>> storage write cache. I would imagine it needs to well synchronize 
->>>> various pieces before issuing this command. It could hurt the 
->>>> performance if not done well, particularly for meta data. So your result 
->>>> is not surprising.
->>>>     
->>>>         
->>>>> We export with the "sync" option. Does that option maybe set the FUA bit
->>>>> for all write operations on the NFS server?
->>>>>   
->>>>>       
->>>>>           
->>>> It depends on how the filesystem (and its associated disk subsystem) is 
->>>> implemented. The "sync" export option itself has a heavy performance 
->>>> impact, regardless how FUA bit is handled. Some vendors uses specialized 
->>>> HW (e.g. NVRAM) to alleviate this performance hit. If your filesystem 
->>>> doesn't have this type of support, you should expect "sync" option runs 
->>>> much much slower than "async". It is a choice (or balance) between cost, 
->>>> performance, and data reliability.
->>>>     
->>>>         
->>> Wendy, I *think* what you have in mind is the sync mount option
->>> rather than the sync export flag.  The latter just tells the server
->>> not to cheat and do everything asynchronously.  It should *not*
->>> have a heavy performance penalty for I/O intensive writes if the
->>> client is using async writes and commits.
->>>
->>>   
->>>       
->> No, I didn't get confused ... We can use Linux as an example :) .. check 
->> out:
->> http://marc.info/?l=linux-nfs&m=119618886105337&w=2
->>
->> -- quote
->>
->> The default export might have been "async", but unless the option "sync"
->> in /etc/exports was being ignored I was already using "sync". Nevertheless
->> I will try to change to async and test if it makes a difference.
->>
->> (one day later: )
->>
->> I have now tried it and the load on the NFS server is much lower and KDE
->> logins seem to be reasonably fast now.
->>
->> -- un-quote
->>
->>
->> -- Wendy
->>     
->
-> I'm not sure how the problem you referred to is related to the
-> one at hand.  what I'm trying to say is that the sync _exports_
-> flag has stronger affect on namespace modifying workloads, like
-> what I believe Frank's workload might be ... [snip]
-The referred thread showed "sync" export has performance impacts on 
-Linux server *too*.
+On Tue, 10 Jun 2008 17:37:56 -0400
+Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
 
--- Wendy
+> On Tue, 2008-06-10 at 17:01 -0400, Jeff Layton wrote:
+> 
+> > In practice, I think the thread generally runs immediately (at least
+> > with current scheduler behavior), so we're probably not terribly
+> > vulnerable to this race. Still, we shouldn't rely on that...
+> 
+> In the code I showed you, the 'kthread' task is put to sleep, then
+> kthread_run() calls wake_up_process() on it, but the current task isn't
+> scheduled out. Rather, it continues to run, so in almost all UP cases,
+> the race is not only possible, it is actually rather likely if
+> nfs_alloc_client() fails.
+> 
 
+Ok, makes sense. It looks like with the kernel_thread interface, that
+the function always runs, so we're not vulnerable to this race with
+that.
 
--------------------------------------------------------------------------
-Check out the new SourceForge.net Marketplace.
-It's the best place to buy or sell services for
-just about anything Open Source.
-http://sourceforge.net/services/buy/index.php
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+> > For lockd and the nfs4 callback thread, we'll also need to deal with
+> > the fact that svc_exit_thread() doesn't get called if this happens. So
+> > we'll need to call svc_exit_thread from the *_down() functions too
+> > (I presume that's OK).
+> 
+> These *_up()/*_down() functions are getting very complex. Any chance we
+> could hide some of this complexity in some helpers? Looking at the NFSv4
+> callback code and lockd, it seems that there might be a couple of
+> opportunities for merging code.
+> 
 
+Possibly. I may start by just closing the races and then look and see what
+can be consolidated.
+
+> > nfsd is a bigger problem since it exits on a signal. For that, perhaps
+> > we should declare a completion variable and have svc_set_num_threads()
+> > wait until nfsd() has actually run before continuing.
+> 
+> nfsd doesn't use kthreads, does it?
+> 
+
+Bruce just took a patchset to make it use kthreads too. I'm thinking
+2.6.27 for that, presuming that we get all of these issues worked out.
+
+I think the only thing we can reasonably do there is make sure that
+the thread actually starts before allowing svc_set_num_threads to
+continue.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
