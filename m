@@ -1,66 +1,125 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH 4/5] knfsd: convert knfsd to kthread API
-Date: Tue, 10 Jun 2008 16:19:14 -0400
-Message-ID: <20080610161914.51a23481@tleilax.poochiereds.net>
-References: <1213101639-26423-1-git-send-email-jlayton@redhat.com>
-	<1213101639-26423-2-git-send-email-jlayton@redhat.com>
-	<1213101639-26423-3-git-send-email-jlayton@redhat.com>
-	<1213101639-26423-4-git-send-email-jlayton@redhat.com>
-	<1213101639-26423-5-git-send-email-jlayton@redhat.com>
-	<20080610162426.GD20184@fieldses.org>
-	<20080610162526.GE20184@fieldses.org>
-	<20080610130651.331abdae@tleilax.poochiereds.net>
-	<20080610200542.GQ20184@fieldses.org>
+From: "Daniel J Blueman" <daniel.blueman@gmail.com>
+Subject: Re: [2.6.26-rc4] mount.nfsv4/memory poisoning issues...
+Date: Tue, 10 Jun 2008 21:27:07 +0100
+Message-ID: <6278d2220806101327t29baac6ft30919301277d730c@mail.gmail.com>
+References: <6278d2220806041633n3bfe3dd2ke9602697697228b@mail.gmail.com>
+	 <20080604203504.62730951@tleilax.poochiereds.net>
+	 <1213124088.20459.16.camel@localhost>
+	 <20080610151357.150b6f69@tleilax.poochiereds.net>
+	 <20080610151829.3c4d6c1e@tleilax.poochiereds.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: "Trond Myklebust" <trond.myklebust@fys.uio.no>,
+	nfsv4@linux-nfs.org, linux-nfs@vger.kernel.org,
+	"Linux Kernel" <linux-kernel@vger.kernel.org>
+To: "Jeff Layton" <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:48696 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756134AbYFJUTS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Jun 2008 16:19:18 -0400
-In-Reply-To: <20080610200542.GQ20184@fieldses.org>
+Received: from wa-out-1112.google.com ([209.85.146.181]:25547 "EHLO
+	wa-out-1112.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752909AbYFJU1Q (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Jun 2008 16:27:16 -0400
+Received: by wa-out-1112.google.com with SMTP id j37so2265662waf.23
+        for <linux-nfs@vger.kernel.org>; Tue, 10 Jun 2008 13:27:15 -0700 (PDT)
+In-Reply-To: <20080610151829.3c4d6c1e-RtJpwOs3+0O+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 10 Jun 2008 16:05:42 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+On Tue, Jun 10, 2008 at 8:18 PM, Jeff Layton <jlayton@redhat.com> wrote:
+> On Tue, 10 Jun 2008 15:13:57 -0400
+> Jeff Layton <jlayton@redhat.com> wrote:
+>
+>> On Tue, 10 Jun 2008 14:54:48 -0400
+>> Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+>>
+>> > On Wed, 2008-06-04 at 20:35 -0400, Jeff Layton wrote:
+>> > > On Thu, 5 Jun 2008 00:33:54 +0100
+>> > > "Daniel J Blueman" <daniel.blueman@gmail.com> wrote:
+>> > >
+>> > > > Having experienced 'mount.nfs4: internal error' when mounting nfsv4 in
+>> > > > the past, I have a minimal test-case I sometimes run:
+>> > > >
+>> > > > $ while :; do mount -t nfs4 filer:/store /store; umount /store; done
+>> > > >
+>> > > > After ~100 iterations, I saw the 'mount.nfs4: internal error',
+>> > > > followed by symptoms of memory corruption [1], a locking issue with
+>> > > > the reporting [2] and another (related?) memory-corruption issue
+>> > > > (off-by-1?) [3]. A little analysis shows memory being overwritten by
+>> > > > (likely) a poison value, which gets complicated if it's not
+>> > > > use-after-free...
+>> > > >
+>> > > > Anyone dare confirm this issue? NFSv4 server is x86-64 Ubuntu 8.04
+>> > > > 2.6.24-18, client U8.04 2.6.26-rc4; batteries included [4].
+>> > > >
+>> > > > I'm happy to decode addresses, test patches etc.
+>> > > >
+>> > > > Daniel
+>> > > >
+>> > >
+>> > > Looks like it fell down while trying to take down the kthread during a
+>> > > failed mount attempt. I have to wonder if I might have introduced a
+>> > > race when I changed nfs4 callback thread to kthread API. I think we may
+>> > > need the BKL around the last 2 statements in the main callback thread
+>> > > function. If you can easily reproduce this, could you test the
+>> > > following patch and let me know if it helps?
+>> > >
+>> > > Note that this patch is entirely untested, so test it someplace
+>> > > non-critical ;-).
+>> > >
+>> > > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+>> > >
+>> > >
+>> > > diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+>> > > index c1e7c83..a3e83f9 100644
+>> > > --- a/fs/nfs/callback.c
+>> > > +++ b/fs/nfs/callback.c
+>> > > @@ -90,9 +90,9 @@ nfs_callback_svc(void *vrqstp)
+>> > >           preverr = err;
+>> > >           svc_process(rqstp);
+>> > >   }
+>> > > - unlock_kernel();
+>> > >   nfs_callback_info.task = NULL;
+>> > >   svc_exit_thread(rqstp);
+>> > > + unlock_kernel();
+>> > >   return 0;
+>> > >  }
+>> >
+>> > We certainly need to protect nfs_callback_info.task (and I believe I
+>> > explained this earlier), but why do we need to protect svc_exit_thread?
+>> >
+>> > Also, looking at the general use of the BKL in that code, I thought we
+>> > agreed that there was no need to hold the BKL while taking the
+>> > nfs_callback_mutex?
+>> >
+>>
+>> Hmm, I don't remember that discussion, but I'll take your word for it...
+>>
+>> I think you're basically correct, but it looks to me like the
+>> nfs_callback_mutex actually protects nfs_callback_info.task as well.
+>>
+>> If we're starting the thread, then we can't call kthread_stop on it
+>> until we release the mutex. So the thread can't exit until we release
+>> the mutex, and we can be guaranteed that this:
+>>
+>>      nfs_callback_info.task = NULL;
+>>
+>> ...can't happen until after kthread_run returns and nfs_callback_up
+>> sets it.
+>>
+>> If that's right, then maybe this (untested, RFC only) patch would make sense?
+>>
+>
+> To clarify for Dan...
+>
+> I don't think that this patch will help the problem you're having. This
+> is essentially a cleanup patch to remove some locking that doesn't
+> appear to be needed.
+>
+> The original patch that Trond commented on above is also probably
+> unnecessary (assuming I'm right about the locking here).
 
-> On Tue, Jun 10, 2008 at 01:06:51PM -0400, Jeff Layton wrote:
-> > On Tue, 10 Jun 2008 12:25:26 -0400
-> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > 
-> > > On Tue, Jun 10, 2008 at 12:24:26PM -0400, bfields wrote:
-> > > > On Tue, Jun 10, 2008 at 08:40:38AM -0400, Jeff Layton wrote:
-> > > > In fact, I don't think you really need to take a reference till there's
-> > > > a chance the new thread will decrement the reference--and since the
-> > > > first thing the new thread does is take the mutex (which we're also
-> > > > holding here), you could wait till after the succesful kthread_create()
-> > > > to take the reference.  But maybe that's more fragile.  So I'd just
-> > > > move the module_get to right before the kthread_create().
-> > > 
-> > > Anyway, that's very minor, and this all seems OK otherwise, so I might
-> > > make this one small modification and just apply if there's no further
-> > > comments.
-> > > 
-> > > --b.
-> > 
-> > Thanks. That sounds right to me. Let me know if you want me to formally
-> > respin the patch instead.
-> 
-> I went ahead and applied with that one change; results are in
-> 
-> 	git://linux-nfs.org/~bfields/linux.git for-2.6.27
-> 
-> Thanks!  It'll be good to have this taken care of.
-> 
-> --b.
-> 
+Thanks for the head-up, Jeff. I took it at face value, so didn't
+harbour the notion it would fix the memory corruption.
 
-Thanks for the cleanup and the patience through the different patch
-gyrations...
-
-Cheers,
+Let's see If I can get time for this git bisect sooner rather than later...
 -- 
-Jeff Layton <jlayton@redhat.com>
+Daniel J Blueman
