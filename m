@@ -1,62 +1,93 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: Problems with large number of clients and reads
-Date: Tue, 10 Jun 2008 13:16:02 -0400
-Message-ID: <20080610171602.GG20184@fieldses.org>
-References: <1212519001.24900.14.camel@hololw58> <20080606160922.GG30863@fieldses.org> <0122F800A3B64C449565A9E8C2977010155587@hoexmb9.conoco.net> <20080609185355.GF28584@fieldses.org> <0122F800A3B64C449565A9E8C297701002D75D9F@hoexmb9.conoco.net>
+From: Wendy Cheng <s.wendy.cheng@gmail.com>
+Subject: Re: [NFS] Does "sync" cause the FUA bit to be set?
+Date: Tue, 10 Jun 2008 13:52:08 -0500
+Message-ID: <484ECD58.8040100@gmail.com>
+References: <484E5AC1.3020200@bio.ifi.lmu.de> <484EA146.8070201@gmail.com>
+	<484EA215.5090000@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: "Weathers, Norman R." <Norman.R.Weathers-496aOtIFJR1B+Kdf37RAV9BPR1lH4CV8@public.gmane.org>
+Content-Type: text/plain; charset="us-ascii"
+Cc: Frank Steiner <fsteiner-mail1-G0GEQqhI7DhYiKXMg8wJIg@public.gmane.org>,
+	nfs@lists.sourceforge.net
+To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:54895 "EHLO fieldses.org"
+Received: from neil.brown.name ([220.233.11.133]:37032 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751014AbYFJRQE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Jun 2008 13:16:04 -0400
-In-Reply-To: <0122F800A3B64C449565A9E8C297701002D75D9F-zIGg2qceuZx7uNL6xugVa6xOck334EZe@public.gmane.org>
+	id S1752572AbYFJRyk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 10 Jun 2008 13:54:40 -0400
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1K683J-0004aH-PQ
+	for linux-nfs@vger.kernel.org; Wed, 11 Jun 2008 03:54:37 +1000
+In-Reply-To: <484EA215.5090000@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jun 10, 2008 at 09:30:18AM -0500, Weathers, Norman R. wrote:
-> Unfortunately, I cannot stop the clients (middle of long running
-> jobs).  I might be able to test this soon.  If I have the number of
-> threads high, yes I can reduce the number of threads and it appears to
-> lower some of the memory, but even with as little as three threads,
-> the memory usage climbs very high, just not as high as if there are
-> say 8 threads.  When the memory usage climbs high, it can cause the
-> box to not respond over the network (ssh, rsh), and even be very
-> sluggish when I am connected over our serial console to the server(s).
-> This same scenario has been happening with kernels that I have tried
-> from 2.6.22.x on to the 2.6.25 series.  The 2.6.25 series is
-> interesting in that I can push the same load from a box with the
-> 2.6.25 kernel and not have a load over .3 (with 3 threads), but with
-> the 2.6.22.x kernel, I have a load of over 3 when I hit the same
-> conditions.
+Benny Halevy wrote:
+> On Jun. 10, 2008, 18:44 +0300, Wendy Cheng <s.wendy.cheng@gmail.com> wrote:
+>   
+>> Frank Steiner wrote:
+>>     
+>>> With the profile ignoring the FUA bit, copying or deleting directories
+>>> of e.g. 10M with a about 1000 files is factor 5 faster than with the
+>>> profile honoring the FUA bit.
+>>>   
+>>>       
+>> FUA bit is normally combined with write-thru scsi command that bypasses 
+>> storage write cache. I would imagine it needs to well synchronize 
+>> various pieces before issuing this command. It could hurt the 
+>> performance if not done well, particularly for meta data. So your result 
+>> is not surprising.
+>>     
+>>> We export with the "sync" option. Does that option maybe set the FUA bit
+>>> for all write operations on the NFS server?
+>>>   
+>>>       
+>> It depends on how the filesystem (and its associated disk subsystem) is 
+>> implemented. The "sync" export option itself has a heavy performance 
+>> impact, regardless how FUA bit is handled. Some vendors uses specialized 
+>> HW (e.g. NVRAM) to alleviate this performance hit. If your filesystem 
+>> doesn't have this type of support, you should expect "sync" option runs 
+>> much much slower than "async". It is a choice (or balance) between cost, 
+>> performance, and data reliability.
+>>     
+>
+> Wendy, I *think* what you have in mind is the sync mount option
+> rather than the sync export flag.  The latter just tells the server
+> not to cheat and do everything asynchronously.  It should *not*
+> have a heavy performance penalty for I/O intensive writes if the
+> client is using async writes and commits.
+>
+>   
+No, I didn't get confused ... We can use Linux as an example :) .. check 
+out:
+http://marc.info/?l=linux-nfs&m=119618886105337&w=2
 
-OK, I think what we want to do is turn on CONFIG_DEBUG_SLAB_LEAK.  I've
-never used it before, but it looks like it will report which functions
-are allocating from each slab cache, which may be exactly what we need
-to know.  So:
+-- quote
 
-	1. Install a kernel with both CONFIG_DEBUG_SLAB ("Debug slab
-	memory allocations") and CONFIG_DEBUG_SLAB_LEAK ("Memory leak
-	debugging") turned on.  They're both under the "kernel hacking"
-	section of the kernel config.  (If you have a file
-	/proc/slab_allocators, then you already have these turned on and
-	you can skip this step.)
+The default export might have been "async", but unless the option "sync"
+in /etc/exports was being ignored I was already using "sync". Nevertheless
+I will try to change to async and test if it makes a difference.
 
-	2. Do whatever you need to do to reproduce the problem.
+(one day later: )
 
-	3. Get a copy of /proc/slabinfo and /proc/slab_allocators.
+I have now tried it and the load on the NFS server is much lower and KDE
+logins seem to be reasonably fast now.
 
-Then we can take a look at that and see if it sheds any light.
+-- un-quote
 
-I think that debugging will hurt the server performance, so you won't
-want to keep it turned on all the time.
 
-> 
-> Also, this is all with the SLAB cache option.  SLUB crashes everytime
-> I use it under heavy load.
+-- Wendy
 
-Have you reported the SLUB bugs to lkml?
+-------------------------------------------------------------------------
+Check out the new SourceForge.net Marketplace.
+It's the best place to buy or sell services for
+just about anything Open Source.
+http://sourceforge.net/services/buy/index.php
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
---b.
