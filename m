@@ -1,58 +1,117 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 6/6] nfs: Fix misparsing of nfsv4 fs_locations attribute
-Date: Tue, 10 Jun 2008 15:17:52 -0400
-Message-ID: <20080610191752.GN20184@fieldses.org>
-References: <1213044696-32741-1-git-send-email-bfields@citi.umich.edu> <1213044696-32741-2-git-send-email-bfields@citi.umich.edu> <1213044696-32741-3-git-send-email-bfields@citi.umich.edu> <1213044696-32741-4-git-send-email-bfields@citi.umich.edu> <1213044696-32741-5-git-send-email-bfields@citi.umich.edu> <1213044696-32741-6-git-send-email-bfields@citi.umich.edu> <1213044696-32741-7-git-send-email-bfields@citi.umich.edu> <1213045696.19130.7.camel@localhost> <20080609212205.GB32446@fieldses.org> <BD59D20E-31F3-4D74-9CB6-3A14F6CB025A@oracle.com>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [2.6.26-rc4] mount.nfsv4/memory poisoning issues...
+Date: Tue, 10 Jun 2008 15:18:29 -0400
+Message-ID: <20080610151829.3c4d6c1e@tleilax.poochiereds.net>
+References: <6278d2220806041633n3bfe3dd2ke9602697697228b@mail.gmail.com>
+	<20080604203504.62730951@tleilax.poochiereds.net>
+	<1213124088.20459.16.camel@localhost>
+	<20080610151357.150b6f69@tleilax.poochiereds.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-	linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=US-ASCII
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>, nfsv4@linux-nfs.org,
+	linux-nfs@vger.kernel.org,
+	Linux Kernel <linux-kernel@vger.kernel.org>
+To: Daniel J Blueman <daniel.blueman@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:48272 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([66.187.233.31]:34622 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754356AbYFJTSF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Jun 2008 15:18:05 -0400
-In-Reply-To: <BD59D20E-31F3-4D74-9CB6-3A14F6CB025A@oracle.com>
+	id S1752984AbYFJTSf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 10 Jun 2008 15:18:35 -0400
+In-Reply-To: <20080610151357.150b6f69-RtJpwOs3+0O+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jun 10, 2008 at 11:34:14AM -0400, Chuck Lever wrote:
-> On Jun 9, 2008, at 5:22 PM, J. Bruce Fields wrote:
->> On Mon, Jun 09, 2008 at 05:08:16PM -0400, Trond Myklebust wrote:
->>>
->>> What if it is an IPv6 address? As I've said before, could we please  
->>> just
->>> adapt nfs_parse_server_address to deal with all these cases?
->>
->> I haven't had the time to do that, so I thought we'd rather have a fix
->> for the immediate bug now, then add ipv6 support later.  For all I  
->> know
->> the final patches might end up factoring reasonable cleanly that way
->> anyway.
->
-> I have a patch (upcoming for 2.6.27) that fixes nfs_parse_server_address 
-> to be careful about '\0'-termination.  It changes the function to take a 
-> char * and a length.  All you will need to do is make it non-static.
+On Tue, 10 Jun 2008 15:13:57 -0400
+Jeff Layton <jlayton@redhat.com> wrote:
 
-OK, good.  That patch and my patch will apply together in either order;
-mine ditches the unnecessary valid_ipadd4() and relies on in4_pton()
-instead.  Yours makes nfs_parse_server_address more-or-less a drop-in
-replacement for in4_pton there.  And it should be easy to switch it over
-either in whichever patch comes second or in a small third patch.
+> On Tue, 10 Jun 2008 14:54:48 -0400
+> Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+> 
+> > On Wed, 2008-06-04 at 20:35 -0400, Jeff Layton wrote:
+> > > On Thu, 5 Jun 2008 00:33:54 +0100
+> > > "Daniel J Blueman" <daniel.blueman@gmail.com> wrote:
+> > > 
+> > > > Having experienced 'mount.nfs4: internal error' when mounting nfsv4 in
+> > > > the past, I have a minimal test-case I sometimes run:
+> > > > 
+> > > > $ while :; do mount -t nfs4 filer:/store /store; umount /store; done
+> > > > 
+> > > > After ~100 iterations, I saw the 'mount.nfs4: internal error',
+> > > > followed by symptoms of memory corruption [1], a locking issue with
+> > > > the reporting [2] and another (related?) memory-corruption issue
+> > > > (off-by-1?) [3]. A little analysis shows memory being overwritten by
+> > > > (likely) a poison value, which gets complicated if it's not
+> > > > use-after-free...
+> > > > 
+> > > > Anyone dare confirm this issue? NFSv4 server is x86-64 Ubuntu 8.04
+> > > > 2.6.24-18, client U8.04 2.6.26-rc4; batteries included [4].
+> > > > 
+> > > > I'm happy to decode addresses, test patches etc.
+> > > > 
+> > > > Daniel
+> > > > 
+> > > 
+> > > Looks like it fell down while trying to take down the kthread during a
+> > > failed mount attempt. I have to wonder if I might have introduced a
+> > > race when I changed nfs4 callback thread to kthread API. I think we may
+> > > need the BKL around the last 2 statements in the main callback thread
+> > > function. If you can easily reproduce this, could you test the
+> > > following patch and let me know if it helps?
+> > > 
+> > > Note that this patch is entirely untested, so test it someplace
+> > > non-critical ;-).
+> > > 
+> > > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > > 
+> > > 
+> > > diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+> > > index c1e7c83..a3e83f9 100644
+> > > --- a/fs/nfs/callback.c
+> > > +++ b/fs/nfs/callback.c
+> > > @@ -90,9 +90,9 @@ nfs_callback_svc(void *vrqstp)
+> > >  		preverr = err;
+> > >  		svc_process(rqstp);
+> > >  	}
+> > > -	unlock_kernel();
+> > >  	nfs_callback_info.task = NULL;
+> > >  	svc_exit_thread(rqstp);
+> > > +	unlock_kernel();
+> > >  	return 0;
+> > >  }
+> > 
+> > We certainly need to protect nfs_callback_info.task (and I believe I
+> > explained this earlier), but why do we need to protect svc_exit_thread?
+> > 
+> > Also, looking at the general use of the BKL in that code, I thought we
+> > agreed that there was no need to hold the BKL while taking the
+> > nfs_callback_mutex?
+> > 
+> 
+> Hmm, I don't remember that discussion, but I'll take your word for it...
+> 
+> I think you're basically correct, but it looks to me like the
+> nfs_callback_mutex actually protects nfs_callback_info.task as well.
+> 
+> If we're starting the thread, then we can't call kthread_stop on it
+> until we release the mutex. So the thread can't exit until we release
+> the mutex, and we can be guaranteed that this:
+> 
+>      nfs_callback_info.task = NULL;
+> 
+> ...can't happen until after kthread_run returns and nfs_callback_up
+> sets it.
+> 
+> If that's right, then maybe this (untested, RFC only) patch would make sense?
+> 
 
-So, I was right, this is the natural way to factor out the change
-anyway.
+To clarify for Dan...
 
-The one remaining thing missing for that to work, I think, is to fix the
+I don't think that this patch will help the problem you're having. This
+is essentially a cleanup patch to remove some locking that doesn't
+appear to be needed.
 
-	struct sockaddr *addr;
+The original patch that Trond commented on above is also probably
+unnecessary (assuming I'm right about the locking here).
 
-field in nfs_clone_mount?
-
---b.
-
->
-> (I would have mentioned it yesterday but I thought I had dropped the  
-> patch from my "for 2.6.27" series).
-
+-- 
+Jeff Layton <jlayton@redhat.com>
