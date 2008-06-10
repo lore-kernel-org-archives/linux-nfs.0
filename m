@@ -1,51 +1,36 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 01/04]  NFS/RDMA client stall patches
-Date: Tue, 10 Jun 2008 15:24:59 -0400
-Message-ID: <1213125899.20459.34.camel@localhost>
-References: <4830F91C.7070206@sgi.com>
+Subject: Re: [PATCH] NFS: implement option checking when remounting NFS
+	filesystems (resend)
+Date: Tue, 10 Jun 2008 15:26:48 -0400
+Message-ID: <1213126008.20459.36.camel@localhost>
+References: <1210783536-23607-1-git-send-email-jlayton@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain
-Cc: talpey@netapp.com, linux-nfs@vger.kernel.org
-To: Peter Leckie <pleckie@sgi.com>
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from pat.uio.no ([129.240.10.15]:38238 "EHLO pat.uio.no"
+Received: from pat.uio.no ([129.240.10.15]:39566 "EHLO pat.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755368AbYFJTZG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Jun 2008 15:25:06 -0400
-In-Reply-To: <4830F91C.7070206@sgi.com>
+	id S1753604AbYFJT0w (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 10 Jun 2008 15:26:52 -0400
+In-Reply-To: <1210783536-23607-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2008-05-19 at 13:50 +1000, Peter Leckie wrote:
-> Don't call __xprt_get_cong() if this is a retransmit.
-> This prevents __xprt_get_cong() from recursively
-> incrementing the congestion avoidance window for
-> retransmitted data.
+On Wed, 2008-05-14 at 12:45 -0400, Jeff Layton wrote:
+> When remounting an NFS or NFS4 filesystem, the new NFS options are not
+> respected, yet the remount will still return success. This patch adds
+> a remount_fs sb op for NFS that checks any new nfs mount options against
+> the existing ones and fails the mount if any have changed.
 > 
-> Signed-off-by: Peter Leckie <pleckie-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
-> Reviewed-by: Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
-> X-Sgi-Pv: 971446
->  <http://bugworks/query.cgi/971446>---
-> Index: linux-2.6.25.3/net/sunrpc/xprt.c
-> ===================================================================
-> --- linux-2.6.25.3.orig/net/sunrpc/xprt.c
-> +++ linux-2.6.25.3/net/sunrpc/xprt.c
-> @@ -224,7 +224,8 @@ int xprt_reserve_xprt_cong(struct rpc_ta
->                         return 1;
->                 goto out_sleep;
->         }
-> -       if (__xprt_get_cong(xprt, task)) {
-> +     /*If this is a retransmit don't increment cong*/
-> +       if ((req && req->rq_ntrans) ||__xprt_get_cong(xprt, task)) {
->                 xprt->snd_task = task;
->                 if (req) {
->                         req->rq_bytes_sent = 0;
+> This is only implemented for string-based mount options since doing
+> this with binary options isn't really feasible.
 > 
+> This is essentially the same as the original patch I sent out, but
+> adds a check to see if the addr= option has changed.
+> ---
 
-Why would we not want to increment the congestion avoidance window on
-retransmitted data? On timeout, xprt_adjust_cwnd will call
-__xprt_put_cong() prior to the retransmission, so I can't see how this
-is a 'recursive increment'.
+s-o-b: ?
 
 Trond
 
