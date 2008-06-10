@@ -1,117 +1,47 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [2.6.26-rc4] mount.nfsv4/memory poisoning issues...
-Date: Tue, 10 Jun 2008 15:18:29 -0400
-Message-ID: <20080610151829.3c4d6c1e@tleilax.poochiereds.net>
-References: <6278d2220806041633n3bfe3dd2ke9602697697228b@mail.gmail.com>
-	<20080604203504.62730951@tleilax.poochiereds.net>
-	<1213124088.20459.16.camel@localhost>
-	<20080610151357.150b6f69@tleilax.poochiereds.net>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH 02/04]  NFS/RDMA client stall patches
+Date: Tue, 10 Jun 2008 15:19:20 -0400
+Message-ID: <1213125560.20459.28.camel@localhost>
+References: <4830F929.7000307@sgi.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>, nfsv4@linux-nfs.org,
-	linux-nfs@vger.kernel.org,
-	Linux Kernel <linux-kernel@vger.kernel.org>
-To: Daniel J Blueman <daniel.blueman@gmail.com>
+Content-Type: text/plain
+Cc: talpey@netapp.com, linux-nfs@vger.kernel.org
+To: Peter Leckie <pleckie@sgi.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:34622 "EHLO mx1.redhat.com"
+Received: from pat.uio.no ([129.240.10.15]:33178 "EHLO pat.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752984AbYFJTSf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Jun 2008 15:18:35 -0400
-In-Reply-To: <20080610151357.150b6f69-RtJpwOs3+0O+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
+	id S1755572AbYFJTT0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 10 Jun 2008 15:19:26 -0400
+In-Reply-To: <4830F929.7000307@sgi.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 10 Jun 2008 15:13:57 -0400
-Jeff Layton <jlayton@redhat.com> wrote:
+On Mon, 2008-05-19 at 13:51 +1000, Peter Leckie wrote:
+> Drain both the sending and resend queues on disconnect.
+> This prevents the client from getting it's self into a
+> dead state when the server disconnects us.
+> 
+> Signed-off-by: Peter Leckie <pleckie-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
+> Reviewed-by: Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
+> X-Sgi-Pv: 971446
+>  <http://bugworks/query.cgi/971446>---
+> Index: linux-2.6.25.3/net/sunrpc/xprt.c
+> ===================================================================
+> --- linux-2.6.25.3.orig/net/sunrpc/xprt.c
+> +++ linux-2.6.25.3/net/sunrpc/xprt.c
+> @@ -586,6 +586,8 @@ void xprt_disconnect_done(struct rpc_xpr
+>         spin_lock_bh(&xprt->transport_lock);
+>         xprt_clear_connected(xprt);
+>         xprt_wake_pending_tasks(xprt, -ENOTCONN);
+> +       rpc_wake_up_status(&xprt->resend, -ENOTCONN);
+> +       rpc_wake_up_status(&xprt->sending, -ENOTCONN);
+>         spin_unlock_bh(&xprt->transport_lock);
+>  }
+>  EXPORT_SYMBOL_GPL(xprt_disconnect_done);
 
-> On Tue, 10 Jun 2008 14:54:48 -0400
-> Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
-> 
-> > On Wed, 2008-06-04 at 20:35 -0400, Jeff Layton wrote:
-> > > On Thu, 5 Jun 2008 00:33:54 +0100
-> > > "Daniel J Blueman" <daniel.blueman@gmail.com> wrote:
-> > > 
-> > > > Having experienced 'mount.nfs4: internal error' when mounting nfsv4 in
-> > > > the past, I have a minimal test-case I sometimes run:
-> > > > 
-> > > > $ while :; do mount -t nfs4 filer:/store /store; umount /store; done
-> > > > 
-> > > > After ~100 iterations, I saw the 'mount.nfs4: internal error',
-> > > > followed by symptoms of memory corruption [1], a locking issue with
-> > > > the reporting [2] and another (related?) memory-corruption issue
-> > > > (off-by-1?) [3]. A little analysis shows memory being overwritten by
-> > > > (likely) a poison value, which gets complicated if it's not
-> > > > use-after-free...
-> > > > 
-> > > > Anyone dare confirm this issue? NFSv4 server is x86-64 Ubuntu 8.04
-> > > > 2.6.24-18, client U8.04 2.6.26-rc4; batteries included [4].
-> > > > 
-> > > > I'm happy to decode addresses, test patches etc.
-> > > > 
-> > > > Daniel
-> > > > 
-> > > 
-> > > Looks like it fell down while trying to take down the kthread during a
-> > > failed mount attempt. I have to wonder if I might have introduced a
-> > > race when I changed nfs4 callback thread to kthread API. I think we may
-> > > need the BKL around the last 2 statements in the main callback thread
-> > > function. If you can easily reproduce this, could you test the
-> > > following patch and let me know if it helps?
-> > > 
-> > > Note that this patch is entirely untested, so test it someplace
-> > > non-critical ;-).
-> > > 
-> > > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > > 
-> > > 
-> > > diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-> > > index c1e7c83..a3e83f9 100644
-> > > --- a/fs/nfs/callback.c
-> > > +++ b/fs/nfs/callback.c
-> > > @@ -90,9 +90,9 @@ nfs_callback_svc(void *vrqstp)
-> > >  		preverr = err;
-> > >  		svc_process(rqstp);
-> > >  	}
-> > > -	unlock_kernel();
-> > >  	nfs_callback_info.task = NULL;
-> > >  	svc_exit_thread(rqstp);
-> > > +	unlock_kernel();
-> > >  	return 0;
-> > >  }
-> > 
-> > We certainly need to protect nfs_callback_info.task (and I believe I
-> > explained this earlier), but why do we need to protect svc_exit_thread?
-> > 
-> > Also, looking at the general use of the BKL in that code, I thought we
-> > agreed that there was no need to hold the BKL while taking the
-> > nfs_callback_mutex?
-> > 
-> 
-> Hmm, I don't remember that discussion, but I'll take your word for it...
-> 
-> I think you're basically correct, but it looks to me like the
-> nfs_callback_mutex actually protects nfs_callback_info.task as well.
-> 
-> If we're starting the thread, then we can't call kthread_stop on it
-> until we release the mutex. So the thread can't exit until we release
-> the mutex, and we can be guaranteed that this:
-> 
->      nfs_callback_info.task = NULL;
-> 
-> ...can't happen until after kthread_run returns and nfs_callback_up
-> sets it.
-> 
-> If that's right, then maybe this (untested, RFC only) patch would make sense?
-> 
+What kind of a deadlock? The tasks on these queues should be waiting for
+the XPRT_LOCKED bit. Why would the change in connection status change
+anything to that?
 
-To clarify for Dan...
+Trond
 
-I don't think that this patch will help the problem you're having. This
-is essentially a cleanup patch to remove some locking that doesn't
-appear to be needed.
-
-The original patch that Trond commented on above is also probably
-unnecessary (assuming I'm right about the locking here).
-
--- 
-Jeff Layton <jlayton@redhat.com>
