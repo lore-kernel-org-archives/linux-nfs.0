@@ -1,43 +1,62 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 6/6] nfs: Fix misparsing of nfsv4 fs_locations attribute
-Date: Tue, 10 Jun 2008 11:34:14 -0400
-Message-ID: <BD59D20E-31F3-4D74-9CB6-3A14F6CB025A@oracle.com>
-References: <1213044696-32741-1-git-send-email-bfields@citi.umich.edu> <1213044696-32741-2-git-send-email-bfields@citi.umich.edu> <1213044696-32741-3-git-send-email-bfields@citi.umich.edu> <1213044696-32741-4-git-send-email-bfields@citi.umich.edu> <1213044696-32741-5-git-send-email-bfields@citi.umich.edu> <1213044696-32741-6-git-send-email-bfields@citi.umich.edu> <1213044696-32741-7-git-send-email-bfields@citi.umich.edu> <1213045696.19130.7.camel@localhost> <20080609212205.GB32446@fieldses.org>
-Mime-Version: 1.0 (Apple Message framework v924)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-	linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+From: Wendy Cheng <s.wendy.cheng@gmail.com>
+Subject: Re: [NFS] Does "sync" cause the FUA bit to be set?
+Date: Tue, 10 Jun 2008 11:44:06 -0400
+Message-ID: <484EA146.8070201@gmail.com>
+References: <484E5AC1.3020200@bio.ifi.lmu.de>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
+To: Frank Steiner <fsteiner-mail1-G0GEQqhI7DhYiKXMg8wJIg@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:35500 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751839AbYFJPeq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Jun 2008 11:34:46 -0400
-In-Reply-To: <20080609212205.GB32446@fieldses.org>
+Received: from neil.brown.name ([220.233.11.133]:48409 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753201AbYFJPlg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 10 Jun 2008 11:41:36 -0400
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1K65yY-00047G-4p
+	for linux-nfs@vger.kernel.org; Wed, 11 Jun 2008 01:41:34 +1000
+In-Reply-To: <484E5AC1.3020200-G0GEQqhI7DhYiKXMg8wJIg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Jun 9, 2008, at 5:22 PM, J. Bruce Fields wrote:
-> On Mon, Jun 09, 2008 at 05:08:16PM -0400, Trond Myklebust wrote:
->>
->> What if it is an IPv6 address? As I've said before, could we please  
->> just
->> adapt nfs_parse_server_address to deal with all these cases?
->
-> I haven't had the time to do that, so I thought we'd rather have a fix
-> for the immediate bug now, then add ipv6 support later.  For all I  
-> know
-> the final patches might end up factoring reasonable cleanly that way
-> anyway.
+Frank Steiner wrote:
+> With the profile ignoring the FUA bit, copying or deleting directories
+> of e.g. 10M with a about 1000 files is factor 5 faster than with the
+> profile honoring the FUA bit.
+>   
+FUA bit is normally combined with write-thru scsi command that bypasses 
+storage write cache. I would imagine it needs to well synchronize 
+various pieces before issuing this command. It could hurt the 
+performance if not done well, particularly for meta data. So your result 
+is not surprising.
+> We export with the "sync" option. Does that option maybe set the FUA bit
+> for all write operations on the NFS server?
+>   
+It depends on how the filesystem (and its associated disk subsystem) is 
+implemented. The "sync" export option itself has a heavy performance 
+impact, regardless how FUA bit is handled. Some vendors uses specialized 
+HW (e.g. NVRAM) to alleviate this performance hit. If your filesystem 
+doesn't have this type of support, you should expect "sync" option runs 
+much much slower than "async". It is a choice (or balance) between cost, 
+performance, and data reliability.
 
-I have a patch (upcoming for 2.6.27) that fixes  
-nfs_parse_server_address to be careful about '\0'-termination.  It  
-changes the function to take a char * and a length.  All you will need  
-to do is make it non-static.
+Don't you have the vendor's support group to go ? Better get this answer 
+from the storage vendor directly.
 
-(I would have mentioned it yesterday but I thought I had dropped the  
-patch from my "for 2.6.27" series).
+-- Wendy
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+
+-------------------------------------------------------------------------
+Check out the new SourceForge.net Marketplace.
+It's the best place to buy or sell services for
+just about anything Open Source.
+http://sourceforge.net/services/buy/index.php
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
+
