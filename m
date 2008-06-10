@@ -1,88 +1,85 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH 2/7] NFS: Make nfs_llseek methods consistent
-Date: Tue, 10 Jun 2008 14:27:00 -0400
-Message-ID: <1213122420.20459.2.camel@localhost>
+Subject: Re: [PATCH 3/7] NFS: Make nfs_open methods consistent
+Date: Tue, 10 Jun 2008 14:27:39 -0400
+Message-ID: <1213122459.20459.4.camel@localhost>
 References: <20080527202347.6651.54668.stgit@ellison.1015granger.net>
-	 <20080527202915.6651.44947.stgit@ellison.1015granger.net>
+	 <20080527202922.6651.18161.stgit@ellison.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=UTF-8
 Cc: linux-nfs@vger.kernel.org
 To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:4573 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:3912 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751257AbYFJS1D (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Jun 2008 14:27:03 -0400
-In-Reply-To: <20080527202915.6651.44947.stgit-ewv44WTpT0t9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
+	id S1752143AbYFJS1q convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Jun 2008 14:27:46 -0400
+In-Reply-To: <20080527202922.6651.18161.stgit-ewv44WTpT0t9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 On Tue, 2008-05-27 at 16:29 -0400, Chuck Lever wrote:
-> Clean up: Report the same debugging info in nfs_llseek_dir() and
-> nfs_llseek_file().
-> 
+> Clean up: Report the same debugging info and count function calls the
+> same for files and directories in nfs_opendir() and nfs_file_open().
+>=20
 > Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 > ---
-> 
->  fs/nfs/dir.c  |   12 ++++++++++--
->  fs/nfs/file.c |    7 +++++++
->  2 files changed, 17 insertions(+), 2 deletions(-)
-> 
-> 
+>=20
+>  fs/nfs/dir.c  |    8 ++++++--
+>  fs/nfs/file.c |    5 +++++
+>  2 files changed, 11 insertions(+), 2 deletions(-)
+>=20
+>=20
 > diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-> index 1bc8bc6..36e51f7 100644
+> index 36e51f7..40b559a 100644
 > --- a/fs/nfs/dir.c
 > +++ b/fs/nfs/dir.c
-> @@ -603,7 +603,15 @@ out:
->  
->  static loff_t nfs_llseek_dir(struct file *filp, loff_t offset, int origin)
+> @@ -131,10 +131,14 @@ const struct inode_operations nfs4_dir_inode_op=
+erations =3D {
+>  static int
+>  nfs_opendir(struct inode *inode, struct file *filp)
 >  {
-> -	mutex_lock(&filp->f_path.dentry->d_inode->i_mutex);
-> +	struct dentry *dentry = filp->f_path.dentry;
-> +	struct inode *inode = filp->f_path.dentry->d_inode;
-> +
-> +	dfprintk(VFS, "NFS: llseek dir(%s/%s, %lld, %d)\n",
+> +	struct dentry *dentry =3D filp->f_path.dentry;
+>  	int res;
+> =20
+> -	dfprintk(VFS, "NFS: opendir(%s/%ld)\n",
+> -			inode->i_sb->s_id, inode->i_ino);
+> +	dfprintk(VFS, "NFS: open dir(%s/%s)\n",
 > +			dentry->d_parent->d_name.name,
-> +			dentry->d_name.name,
-> +			offset, origin);
+> +			dentry->d_name.name);
 > +
-> +	mutex_lock(&inode->i_mutex);
->  	switch (origin) {
->  		case 1:
->  			offset += filp->f_pos;
-> @@ -619,7 +627,7 @@ static loff_t nfs_llseek_dir(struct file *filp, loff_t offset, int origin)
->  		nfs_file_open_context(filp)->dir_cookie = 0;
->  	}
->  out:
-> -	mutex_unlock(&filp->f_path.dentry->d_inode->i_mutex);
-> +	mutex_unlock(&inode->i_mutex);
->  	return offset;
->  }
->  
-> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-> index e452903..06a1322 100644
-> --- a/fs/nfs/file.c
-> +++ b/fs/nfs/file.c
-> @@ -170,6 +170,13 @@ force_reval:
->  
->  static loff_t nfs_file_llseek(struct file *filp, loff_t offset, int origin)
->  {
-> +	struct dentry *dentry = filp->f_path.dentry;
-> +
-> +	dfprintk(VFS, "NFS: llseek file(%s/%s, %lld, %d)\n",
-> +			dentry->d_parent->d_name.name,
-> +			dentry->d_name.name,
-> +			offset, origin);
-> +
+> +	nfs_inc_stats(inode, NFSIOS_VFSOPEN);
+> =20
 
 This will result in 'unused variable' warnings for 'dentry' if you
 compile with #undef RPC_DEBUG.
 
->  	/* origin == SEEK_END => we must revalidate the cached file length */
->  	if (origin == SEEK_END) {
->  		struct inode *inode = filp->f_mapping->host;
-> 
--- 
+>  	lock_kernel();
+>  	/* Call generic open code in order to cache credentials */
+> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+> index 06a1322..c3e7af0 100644
+> --- a/fs/nfs/file.c
+> +++ b/fs/nfs/file.c
+> @@ -117,8 +117,13 @@ static int nfs_check_flags(int flags)
+>  static int
+>  nfs_file_open(struct inode *inode, struct file *filp)
+>  {
+> +	struct dentry *dentry =3D filp->f_path.dentry;
+>  	int res;
+> =20
+> +	dfprintk(VFS, "NFS: open file(%s/%s)\n",
+> +			dentry->d_parent->d_name.name,
+> +			dentry->d_name.name);
+> +
+
+=EF=BB=BFThis will result in 'unused variable' warnings for 'dentry' if=
+ you
+compile with #undef RPC_DEBUG.
+
+>  	res =3D nfs_check_flags(filp->f_flags);
+>  	if (res)
+>  		return res;
+>=20
+--=20
 Trond Myklebust
 Linux NFS client maintainer
 
