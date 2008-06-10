@@ -1,21 +1,22 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Jeff Layton <jlayton@redhat.com>
 Subject: Re: [2.6.26-rc4] mount.nfsv4/memory poisoning issues...
-Date: Tue, 10 Jun 2008 16:33:32 -0400
-Message-ID: <1213130012.20459.58.camel@localhost>
+Date: Tue, 10 Jun 2008 16:41:47 -0400
+Message-ID: <20080610164147.671e2cc3@tleilax.poochiereds.net>
 References: <6278d2220806041633n3bfe3dd2ke9602697697228b@mail.gmail.com>
 	<20080604203504.62730951@tleilax.poochiereds.net>
 	<1213124088.20459.16.camel@localhost>
 	<20080610151357.150b6f69@tleilax.poochiereds.net>
 	<1213127909.20459.48.camel@localhost>
 	<20080610161352.4e588653@tleilax.poochiereds.net>
+	<1213130012.20459.58.camel@localhost>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: nfsv4@linux-nfs.org, linux-nfs@vger.kernel.org,
 	Daniel J Blueman <daniel.blueman@gmail.com>,
 	Linux Kernel <linux-kernel@vger.kernel.org>
-To: Jeff Layton <jlayton@redhat.com>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <20080610161352.4e588653@tleilax.poochiereds.net>
+In-Reply-To: <1213130012.20459.58.camel@localhost>
 List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
 	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
 List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
@@ -27,29 +28,36 @@ Sender: nfsv4-bounces@linux-nfs.org
 Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2008-06-10 at 16:13 -0400, Jeff Layton wrote:
+On Tue, 10 Jun 2008 16:33:32 -0400
+Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
 
-> We can't call nfs_callback_down() until after nfs_callback_up()
-> returns, so we're guaranteed to have "task" set to a valid task
-> (presuming that nfs_callback_up() doesn't return error). We also can't
-> return from nfs_callback_down() until after the nfs_callback_svc() has
-> exited. kthread_stop() will block until it does.
+> On Tue, 2008-06-10 at 16:13 -0400, Jeff Layton wrote:
+> 
+> > We can't call nfs_callback_down() until after nfs_callback_up()
+> > returns, so we're guaranteed to have "task" set to a valid task
+> > (presuming that nfs_callback_up() doesn't return error). We also can't
+> > return from nfs_callback_down() until after the nfs_callback_svc() has
+> > exited. kthread_stop() will block until it does.
+> 
+> The code I'm alluding to is in kthread():
+> 
+>        /* OK, tell user we're spawned, wait for stop or wakeup */
+>         __set_current_state(TASK_UNINTERRUPTIBLE);
+>         complete(&create->started);
+>         schedule();
+> 
+>         if (!kthread_should_stop())
+>                 ret = threadfn(data);
+> 
+> schedule() is called _after_ the complete() call, and _before_ we
+> execute threadfn() a.k.a. nfs_callback_svc(). If nfs_alloc_client() has
+> time to call nfs_callback_down() before the above thread gets scheduled
+> back in, then threadfn() doesn't get called at all, since
+> kthread_should_stop() is true.
+> 
 
-The code I'm alluding to is in kthread():
+That makes total sense. Thanks for clearing it up.
 
-       /* OK, tell user we're spawned, wait for stop or wakeup */
-        __set_current_state(TASK_UNINTERRUPTIBLE);
-        complete(&create->started);
-        schedule();
-
-        if (!kthread_should_stop())
-                ret = threadfn(data);
-
-schedule() is called _after_ the complete() call, and _before_ we
-execute threadfn() a.k.a. nfs_callback_svc(). If nfs_alloc_client() has
-time to call nfs_callback_down() before the above thread gets scheduled
-back in, then threadfn() doesn't get called at all, since
-kthread_should_stop() is true.
-
-Cheers
-  Trond
+Cheers,
+-- 
+Jeff Layton <jlayton@redhat.com>
