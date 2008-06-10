@@ -1,230 +1,109 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 2/5] knfsd: clean up nfsd filesystem interfaces
-Date: Tue, 10 Jun 2008 08:40:36 -0400
-Message-ID: <1213101639-26423-3-git-send-email-jlayton@redhat.com>
+Subject: [PATCH 3/5] knfsd: remove special handling for SIGHUP
+Date: Tue, 10 Jun 2008 08:40:37 -0400
+Message-ID: <1213101639-26423-4-git-send-email-jlayton@redhat.com>
 References: <1213101639-26423-1-git-send-email-jlayton@redhat.com>
- <1213101639-26423-2-git-send-email-jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org, neilb@suse.de,
-	gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org
+	<1213101639-26423-2-git-send-email-jlayton@redhat.com>
+	<1213101639-26423-3-git-send-email-jlayton@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org, gnb@melbourne.sgi.com
 To: bfields@fieldses.org
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:35237 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752679AbYFJMkx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Jun 2008 08:40:53 -0400
-In-Reply-To: <1213101639-26423-2-git-send-email-jlayton@redhat.com>
-Sender: linux-nfs-owner@vger.kernel.org
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <1213101639-26423-3-git-send-email-jlayton@redhat.com>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Several of the nfsd filesystem interfaces allow changes to parameters
-that don't have any effect on a running nfsd service. They are only ever
-checked when nfsd is started. This patch fixes it so that changes to
-those procfiles return -EBUSY if nfsd is already running to make it
-clear that changes on the fly don't work.
-
-The patch should also close some relatively harmless races between
-changing the info in those interfaces and starting nfsd, since these
-variables are being moved under the protection of the nfsd_mutex.
-
-Finally, the nfsv4recoverydir file always returns -EINVAL if read. This
-patch fixes it to return the recoverydir path as expected.
+The special handling for SIGHUP in knfsd is a holdover from much
+earlier versions of Linux where reloading the export table was
+more expensive. That facility is not really needed anymore and
+to my knowledge, is seldom-used.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfsd/nfs4state.c |   17 ++++++++++---
- fs/nfsd/nfsctl.c    |   66 +++++++++++++++++++++++++++++++++++++++++----------
- fs/nfsd/nfssvc.c    |    8 ++++++
- 3 files changed, 74 insertions(+), 17 deletions(-)
+ fs/nfsd/nfssvc.c |   33 ++++++++-------------------------
+ 1 files changed, 8 insertions(+), 25 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 8799b87..c602aba 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3249,12 +3249,14 @@ nfs4_state_shutdown(void)
- 	nfs4_unlock_state();
- }
- 
-+/*
-+ * user_recovery_dirname is protected by the nfsd_mutex since it's only
-+ * accessed when nfsd is starting.
-+ */
- static void
- nfs4_set_recdir(char *recdir)
- {
--	nfs4_lock_state();
- 	strcpy(user_recovery_dirname, recdir);
--	nfs4_unlock_state();
- }
- 
- /*
-@@ -3278,6 +3280,12 @@ nfs4_reset_recoverydir(char *recdir)
- 	return status;
- }
- 
-+char *
-+nfs4_recoverydir(void)
-+{
-+	return user_recovery_dirname;
-+}
-+
- /*
-  * Called when leasetime is changed.
-  *
-@@ -3286,11 +3294,12 @@ nfs4_reset_recoverydir(char *recdir)
-  * we start to register any changes in lease time.  If the administrator
-  * really wants to change the lease time *now*, they can go ahead and bring
-  * nfsd down and then back up again after changing the lease time.
-+ *
-+ * user_lease_time is protected by nfsd_mutex since it's only really accessed
-+ * when nfsd is starting
-  */
- void
- nfs4_reset_lease(time_t leasetime)
- {
--	lock_kernel();
- 	user_lease_time = leasetime;
--	unlock_kernel();
- }
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 049d2a9..2c2eb87 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -509,7 +509,7 @@ out_free:
- 	return rv;
- }
- 
--static ssize_t write_versions(struct file *file, char *buf, size_t size)
-+static ssize_t __write_versions(struct file *file, char *buf, size_t size)
- {
- 	/*
- 	 * Format:
-@@ -572,6 +572,16 @@ static ssize_t write_versions(struct file *file, char *buf, size_t size)
- 	return len;
- }
- 
-+static ssize_t write_versions(struct file *file, char *buf, size_t size)
-+{
-+	ssize_t rv;
-+
-+	mutex_lock(&nfsd_mutex);
-+	rv = __write_versions(file, buf, size);
-+	mutex_unlock(&nfsd_mutex);
-+	return rv;
-+}
-+
- static ssize_t __write_ports(struct file *file, char *buf, size_t size)
- {
- 	if (size == 0) {
-@@ -675,6 +685,7 @@ static ssize_t __write_ports(struct file *file, char *buf, size_t size)
- static ssize_t write_ports(struct file *file, char *buf, size_t size)
- {
- 	ssize_t rv;
-+
- 	mutex_lock(&nfsd_mutex);
- 	rv = __write_ports(file, buf, size);
- 	mutex_unlock(&nfsd_mutex);
-@@ -714,16 +725,17 @@ static ssize_t write_maxblksize(struct file *file, char *buf, size_t size)
- #ifdef CONFIG_NFSD_V4
- extern time_t nfs4_leasetime(void);
- 
--static ssize_t write_leasetime(struct file *file, char *buf, size_t size)
-+static ssize_t __write_leasetime(struct file *file, char *buf, size_t size)
- {
- 	/* if size > 10 seconds, call
- 	 * nfs4_reset_lease() then write out the new lease (seconds) as reply
- 	 */
- 	char *mesg = buf;
--	int rv;
-+	int rv, lease;
- 
- 	if (size > 0) {
--		int lease;
-+		if (nfsd_serv)
-+			return -EBUSY;
- 		rv = get_int(&mesg, &lease);
- 		if (rv)
- 			return rv;
-@@ -735,24 +747,52 @@ static ssize_t write_leasetime(struct file *file, char *buf, size_t size)
- 	return strlen(buf);
- }
- 
--static ssize_t write_recoverydir(struct file *file, char *buf, size_t size)
-+static ssize_t write_leasetime(struct file *file, char *buf, size_t size)
-+{
-+	ssize_t rv;
-+
-+	mutex_lock(&nfsd_mutex);
-+	rv = __write_leasetime(file, buf, size);
-+	mutex_unlock(&nfsd_mutex);
-+	return rv;
-+}
-+
-+extern char *nfs4_recoverydir(void);
-+
-+static ssize_t __write_recoverydir(struct file *file, char *buf, size_t size)
- {
- 	char *mesg = buf;
- 	char *recdir;
- 	int len, status;
- 
--	if (size == 0 || size > PATH_MAX || buf[size-1] != '\n')
--		return -EINVAL;
--	buf[size-1] = 0;
-+	if (size > 0) {
-+		if (nfsd_serv)
-+			return -EBUSY;
-+		if (size > PATH_MAX || buf[size-1] != '\n')
-+			return -EINVAL;
-+		buf[size-1] = 0;
- 
--	recdir = mesg;
--	len = qword_get(&mesg, recdir, size);
--	if (len <= 0)
--		return -EINVAL;
-+		recdir = mesg;
-+		len = qword_get(&mesg, recdir, size);
-+		if (len <= 0)
-+			return -EINVAL;
- 
--	status = nfs4_reset_recoverydir(recdir);
-+		status = nfs4_reset_recoverydir(recdir);
-+	}
-+	sprintf(buf, "%s\n", nfs4_recoverydir());
- 	return strlen(buf);
- }
-+
-+static ssize_t write_recoverydir(struct file *file, char *buf, size_t size)
-+{
-+	ssize_t rv;
-+
-+	mutex_lock(&nfsd_mutex);
-+	rv = __write_recoverydir(file, buf, size);
-+	mutex_unlock(&nfsd_mutex);
-+	return rv;
-+}
-+
- #endif
- 
- /*----------------------------------------------------------------------------*/
 diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 512bd04..929af23 100644
+index 929af23..6339cb7 100644
 --- a/fs/nfsd/nfssvc.c
 +++ b/fs/nfsd/nfssvc.c
-@@ -70,6 +70,14 @@ static DEFINE_SPINLOCK(nfsd_call_lock);
-  * Transitions of the thread count between zero and non-zero are of particular
-  * interest since the svc_serv needs to be created and initialized at that
-  * point, or freed.
-+ *
-+ * Finally, the nfsd_mutex also protects some of the global variables that are
-+ * accessed when nfsd starts and that are settable via the write_* routines in
-+ * nfsctl.c. In particular:
-+ *
-+ *	user_recovery_dirname
-+ *	user_lease_time
-+ *	nfsd_versions
+@@ -44,11 +44,6 @@
+  * when not handling a request. i.e. when waiting
   */
- DEFINE_MUTEX(nfsd_mutex);
- struct svc_serv 		*nfsd_serv;
+ #define SHUTDOWN_SIGS	(sigmask(SIGKILL) | sigmask(SIGHUP) | sigmask(SIGINT) | sigmask(SIGQUIT))
+-/* if the last thread dies with SIGHUP, then the exports table is
+- * left unchanged ( like 2.4-{0-9} ).  Any other signal will clear
+- * the exports table (like 2.2).
+- */
+-#define	SIG_NOCLEAN	SIGHUP
+ 
+ extern struct svc_program	nfsd_program;
+ static void			nfsd(struct svc_rqst *rqstp);
+@@ -175,7 +170,6 @@ int nfsd_nrthreads(void)
+ 		return nfsd_serv->sv_nrthreads;
+ }
+ 
+-static int killsig;	/* signal that was used to kill last nfsd */
+ static void nfsd_last_thread(struct svc_serv *serv)
+ {
+ 	/* When last nfsd thread exits we need to do some clean-up */
+@@ -186,11 +180,9 @@ static void nfsd_last_thread(struct svc_serv *serv)
+ 	nfsd_racache_shutdown();
+ 	nfs4_state_shutdown();
+ 
+-	printk(KERN_WARNING "nfsd: last server has exited\n");
+-	if (killsig != SIG_NOCLEAN) {
+-		printk(KERN_WARNING "nfsd: unexporting all filesystems\n");
+-		nfsd_export_flush();
+-	}
++	printk(KERN_WARNING "nfsd: last server has exited, flushing export "
++			    "cache\n");
++	nfsd_export_flush();
+ }
+ 
+ void nfsd_reset_versions(void)
+@@ -242,10 +234,9 @@ int nfsd_create_serv(void)
+ 	}
+ 
+ 	atomic_set(&nfsd_busy, 0);
+-	nfsd_serv = svc_create_pooled(&nfsd_program,
+-				      nfsd_max_blksize,
+-				      nfsd_last_thread,
+-				      nfsd, SIG_NOCLEAN, THIS_MODULE);
++	nfsd_serv = svc_create_pooled(&nfsd_program, nfsd_max_blksize,
++				      nfsd_last_thread, nfsd, SIGINT,
++				      THIS_MODULE);
+ 	if (nfsd_serv == NULL)
+ 		err = -ENOMEM;
+ 
+@@ -490,17 +481,9 @@ nfsd(struct svc_rqst *rqstp)
+ 		atomic_dec(&nfsd_busy);
+ 	}
+ 
+-	if (err != -EINTR) {
++	if (err != -EINTR)
+ 		printk(KERN_WARNING "nfsd: terminating on error %d\n", -err);
+-	} else {
+-		unsigned int	signo;
+-
+-		for (signo = 1; signo <= _NSIG; signo++)
+-			if (sigismember(&current->pending.signal, signo) &&
+-			    !sigismember(&current->blocked, signo))
+-				break;
+-		killsig = signo;
+-	}
++
+ 	/* Clear signals before calling svc_exit_thread() */
+ 	flush_signals(current);
+ 
 -- 
 1.5.3.6
-
