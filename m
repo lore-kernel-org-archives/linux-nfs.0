@@ -1,96 +1,56 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [NFS] Does "sync" cause the FUA bit to be set?
-Date: Tue, 10 Jun 2008 15:47:12 -0400
-Message-ID: <20080610194712.GP20184@fieldses.org>
-References: <484E5AC1.3020200@bio.ifi.lmu.de> <484EA146.8070201@gmail.com>
-	<484EA215.5090000@panasas.com> <484ECD58.8040100@gmail.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [2.6.26-rc4] mount.nfsv4/memory poisoning issues...
+Date: Tue, 10 Jun 2008 15:58:29 -0400
+Message-ID: <1213127909.20459.48.camel@localhost>
+References: <6278d2220806041633n3bfe3dd2ke9602697697228b@mail.gmail.com>
+	 <20080604203504.62730951@tleilax.poochiereds.net>
+	 <1213124088.20459.16.camel@localhost>
+	 <20080610151357.150b6f69@tleilax.poochiereds.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Benny Halevy <bhalevy@panasas.com>,
-	Frank Steiner <fsteiner-mail1-G0GEQqhI7DhYiKXMg8wJIg@public.gmane.org>,
-	nfs@lists.sourceforge.net
-To: Wendy Cheng <s.wendy.cheng@gmail.com>
+Content-Type: text/plain
+Cc: Daniel J Blueman <daniel.blueman@gmail.com>,
+	linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org,
+	Linux Kernel <linux-kernel@vger.kernel.org>
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:43359 "EHLO neil.brown.name"
+Received: from pat.uio.no ([129.240.10.15]:41468 "EHLO pat.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754437AbYFJTrc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Jun 2008 15:47:32 -0400
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1K69oY-0004uU-B0
-	for linux-nfs@vger.kernel.org; Wed, 11 Jun 2008 05:47:30 +1000
-In-Reply-To: <484ECD58.8040100@gmail.com>
+	id S1752314AbYFJT6f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 10 Jun 2008 15:58:35 -0400
+In-Reply-To: <20080610151357.150b6f69-RtJpwOs3+0O+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jun 10, 2008 at 01:52:08PM -0500, Wendy Cheng wrote:
-> Benny Halevy wrote:
-> > On Jun. 10, 2008, 18:44 +0300, Wendy Cheng <s.wendy.cheng@gmail.com> wrote:
-> >   
-> >> Frank Steiner wrote:
-> >>     
-> >>> With the profile ignoring the FUA bit, copying or deleting directories
-> >>> of e.g. 10M with a about 1000 files is factor 5 faster than with the
-> >>> profile honoring the FUA bit.
-> >>>   
-> >>>       
-> >> FUA bit is normally combined with write-thru scsi command that bypasses 
-> >> storage write cache. I would imagine it needs to well synchronize 
-> >> various pieces before issuing this command. It could hurt the 
-> >> performance if not done well, particularly for meta data. So your result 
-> >> is not surprising.
-> >>     
-> >>> We export with the "sync" option. Does that option maybe set the FUA bit
-> >>> for all write operations on the NFS server?
-> >>>   
-> >>>       
-> >> It depends on how the filesystem (and its associated disk subsystem) is 
-> >> implemented. The "sync" export option itself has a heavy performance 
-> >> impact, regardless how FUA bit is handled. Some vendors uses specialized 
-> >> HW (e.g. NVRAM) to alleviate this performance hit. If your filesystem 
-> >> doesn't have this type of support, you should expect "sync" option runs 
-> >> much much slower than "async". It is a choice (or balance) between cost, 
-> >> performance, and data reliability.
-> >>     
-> >
-> > Wendy, I *think* what you have in mind is the sync mount option
-> > rather than the sync export flag.  The latter just tells the server
-> > not to cheat and do everything asynchronously.  It should *not*
-> > have a heavy performance penalty for I/O intensive writes if the
-> > client is using async writes and commits.
-> >
-> >   
-> No, I didn't get confused ... We can use Linux as an example :) .. check 
-> out:
-> http://marc.info/?l=linux-nfs&m=119618886105337&w=2
-> 
-> -- quote
-> 
-> The default export might have been "async", but unless the option "sync"
-> in /etc/exports was being ignored I was already using "sync". Nevertheless
-> I will try to change to async and test if it makes a difference.
-> 
-> (one day later: )
-> 
-> I have now tried it and the load on the NFS server is much lower and KDE
-> logins seem to be reasonably fast now.
+On Tue, 2008-06-10 at 15:13 -0400, Jeff Layton wrote:
 
-Yeah, the "async" export options is expected to improve performance on a
-workload like that (with lots of directory creates/deletes).  But it
-does so by violating the promises that the protocol makes to the client.
+> I think you're basically correct, but it looks to me like the
+> nfs_callback_mutex actually protects nfs_callback_info.task as well.
+> 
+> If we're starting the thread, then we can't call kthread_stop on it
+> until we release the mutex. So the thread can't exit until we release
+> the mutex, and we can be guaranteed that this:
+> 
+>      nfs_callback_info.task = NULL;
+> 
+> ...can't happen until after kthread_run returns and nfs_callback_up
+> sets it.
+> 
+> If that's right, then maybe this (untested, RFC only) patch would make sense?
 
---b.
+Hmm... I suppose that is correct, but what if nfs_alloc_client() does
 
--------------------------------------------------------------------------
-Check out the new SourceForge.net Marketplace.
-It's the best place to buy or sell services for
-just about anything Open Source.
-http://sourceforge.net/services/buy/index.php
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+	nfs_callback_up();
+	<kstrdup() fails>
+	nfs_callback_down();
+
+AFAICS, if nfs_callback_down() gets called before the kthread() function
+gets scheduled back in, then you can get left with a value of
+nfs_callback_info.task != NULL, since nfs_callback_svc() will never be
+called.
+
+Wouldn't it therefore make more sense to clear nfs_callback_info.task in
+nfs_callback_down()?
+
+Cheers
+  Trond
 
