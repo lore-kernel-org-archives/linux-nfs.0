@@ -1,47 +1,43 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] nfsd: eliminate unused nfs4_callback.cb_program
-Date: Tue, 10 Jun 2008 11:14:51 -0400
-Message-ID: <20080610151451.GB20184@fieldses.org>
-References: <1213091947-19618-1-git-send-email-bhalevy@panasas.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Benny Halevy <bhalevy@panasas.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 6/6] nfs: Fix misparsing of nfsv4 fs_locations attribute
+Date: Tue, 10 Jun 2008 11:34:14 -0400
+Message-ID: <BD59D20E-31F3-4D74-9CB6-3A14F6CB025A@oracle.com>
+References: <1213044696-32741-1-git-send-email-bfields@citi.umich.edu> <1213044696-32741-2-git-send-email-bfields@citi.umich.edu> <1213044696-32741-3-git-send-email-bfields@citi.umich.edu> <1213044696-32741-4-git-send-email-bfields@citi.umich.edu> <1213044696-32741-5-git-send-email-bfields@citi.umich.edu> <1213044696-32741-6-git-send-email-bfields@citi.umich.edu> <1213044696-32741-7-git-send-email-bfields@citi.umich.edu> <1213045696.19130.7.camel@localhost> <20080609212205.GB32446@fieldses.org>
+Mime-Version: 1.0 (Apple Message framework v924)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+	linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:46284 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751909AbYFJPOx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Jun 2008 11:14:53 -0400
-In-Reply-To: <1213091947-19618-1-git-send-email-bhalevy@panasas.com>
+Received: from agminet01.oracle.com ([141.146.126.228]:35500 "EHLO
+	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751839AbYFJPeq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Jun 2008 11:34:46 -0400
+In-Reply-To: <20080609212205.GB32446@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jun 10, 2008 at 12:59:07PM +0300, Benny Halevy wrote:
-> The cb_program member of struct nfs4_callback unused
-> since commit ff7d9756 nfsd: use static memory for callback program and stats
+On Jun 9, 2008, at 5:22 PM, J. Bruce Fields wrote:
+> On Mon, Jun 09, 2008 at 05:08:16PM -0400, Trond Myklebust wrote:
+>>
+>> What if it is an IPv6 address? As I've said before, could we please  
+>> just
+>> adapt nfs_parse_server_address to deal with all these cases?
+>
+> I haven't had the time to do that, so I thought we'd rather have a fix
+> for the immediate bug now, then add ipv6 support later.  For all I  
+> know
+> the final patches might end up factoring reasonable cleanly that way
+> anyway.
 
-Thanks, Benny; I've applied both.
+I have a patch (upcoming for 2.6.27) that fixes  
+nfs_parse_server_address to be careful about '\0'-termination.  It  
+changes the function to take a char * and a length.  All you will need  
+to do is make it non-static.
 
---b.
+(I would have mentioned it yesterday but I thought I had dropped the  
+patch from my "for 2.6.27" series).
 
-> 
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> ---
->  include/linux/nfsd/state.h |    1 -
->  1 files changed, 0 insertions(+), 1 deletions(-)
-> 
-> diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
-> index 0722162..2716f10 100644
-> --- a/include/linux/nfsd/state.h
-> +++ b/include/linux/nfsd/state.h
-> @@ -100,7 +100,6 @@ struct nfs4_callback {
->  	u32			cb_ident;	/* minorversion 0 only */
->  	/* RPC client info */
->  	atomic_t		cb_set;     /* successful CB_NULL call */
-> -	struct rpc_program      cb_program;
->  	struct rpc_stat         cb_stat;
->  	struct rpc_clnt *       cb_client;
->  };
-> -- 
-> 1.5.3.3
-> 
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
