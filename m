@@ -1,63 +1,131 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [2.6.26-rc4] mount.nfsv4/memory poisoning issues...
-Date: Tue, 10 Jun 2008 16:41:47 -0400
-Message-ID: <20080610164147.671e2cc3@tleilax.poochiereds.net>
-References: <6278d2220806041633n3bfe3dd2ke9602697697228b@mail.gmail.com>
-	<20080604203504.62730951@tleilax.poochiereds.net>
-	<1213124088.20459.16.camel@localhost>
-	<20080610151357.150b6f69@tleilax.poochiereds.net>
-	<1213127909.20459.48.camel@localhost>
-	<20080610161352.4e588653@tleilax.poochiereds.net>
-	<1213130012.20459.58.camel@localhost>
+From: Peter Staubach <staubach@redhat.com>
+Subject: [PATCH] make "noac" and "actimeo=0" work correctly
+Date: Tue, 10 Jun 2008 16:52:36 -0400
+Message-ID: <484EE994.5030907@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfsv4@linux-nfs.org, linux-nfs@vger.kernel.org,
-	Daniel J Blueman <daniel.blueman@gmail.com>,
-	Linux Kernel <linux-kernel@vger.kernel.org>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <1213130012.20459.58.camel@localhost>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: multipart/mixed;
+ boundary="------------040306070304060301070603"
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: NFS list <linux-nfs@vger.kernel.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([66.187.233.31]:56740 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758798AbYFJUwx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 10 Jun 2008 16:52:53 -0400
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 10 Jun 2008 16:33:32 -0400
-Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+This is a multi-part message in MIME format.
+--------------040306070304060301070603
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-> On Tue, 2008-06-10 at 16:13 -0400, Jeff Layton wrote:
-> 
-> > We can't call nfs_callback_down() until after nfs_callback_up()
-> > returns, so we're guaranteed to have "task" set to a valid task
-> > (presuming that nfs_callback_up() doesn't return error). We also can't
-> > return from nfs_callback_down() until after the nfs_callback_svc() has
-> > exited. kthread_stop() will block until it does.
-> 
-> The code I'm alluding to is in kthread():
-> 
->        /* OK, tell user we're spawned, wait for stop or wakeup */
->         __set_current_state(TASK_UNINTERRUPTIBLE);
->         complete(&create->started);
->         schedule();
-> 
->         if (!kthread_should_stop())
->                 ret = threadfn(data);
-> 
-> schedule() is called _after_ the complete() call, and _before_ we
-> execute threadfn() a.k.a. nfs_callback_svc(). If nfs_alloc_client() has
-> time to call nfs_callback_down() before the above thread gets scheduled
-> back in, then threadfn() doesn't get called at all, since
-> kthread_should_stop() is true.
-> 
+Hi.
 
-That makes total sense. Thanks for clearing it up.
+I've been looking at a bugzilla which describes a problem where
+a customer was advised to use either the "noac" or "actimeo=0"
+mount options to solve a consistency problem that they were
+seeing in the file attributes.  It turned out that this solution
+did not work reliably for them because sometimes, the local
+attribute cache was believed to be valid and not timed out.
+(With an attribute cache timeout of 0, the cache should always
+appear to be timed out.)
 
-Cheers,
--- 
-Jeff Layton <jlayton@redhat.com>
+In looking at this situation, it appears to me that the problem
+is that the attribute cache timeout code has an off-by-one
+error in it.  It is assuming that the cache is valid in the
+region, [read_cache_jiffies, read_cache_jiffies + attrtimeo].  The
+cache should be considered valid only in the region,
+[read_cache_jiffies, read_cache_jiffies + attrtimeo).  With this
+change, the options, "noac" and "actimeo=0", work as originally
+expected.
+
+While I was there, I addressed a problem with the jiffies
+overflowing on 32 bit systems.  When overflow occurs, the
+value of read_cache_jiffies + attrtimeo can be less then the
+value of read_cache_jiffies.  This would cause an unnecessary
+GETATTR over the wire.
+
+Thoughts and/or comments?
+
+   Thanx...
+
+      ps
+
+Signed-off-by: Peter Staubach <staubach@redhat.com>
+
+
+--------------040306070304060301070603
+Content-Type: text/plain;
+ name="attrtimeo.f-9"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline;
+ filename="attrtimeo.f-9"
+
+--- linux-2.6.25.i686/fs/nfs/inode.c.org
++++ linux-2.6.25.i686/fs/nfs/inode.c
+@@ -703,7 +714,7 @@ int nfs_attribute_timeout(struct inode *
+ 
+ 	if (nfs_have_delegation(inode, FMODE_READ))
+ 		return 0;
+-	return !time_in_range(jiffies, nfsi->read_cache_jiffies, nfsi->read_cache_jiffies + nfsi->attrtimeo);
++	return !nfs_time_in_range_open(jiffies, nfsi->read_cache_jiffies, nfsi->read_cache_jiffies + nfsi->attrtimeo);
+ }
+ 
+ /**
+@@ -1088,7 +1113,7 @@ static int nfs_update_inode(struct inode
+ 		nfsi->attrtimeo_timestamp = now;
+ 		nfsi->last_updated = now;
+ 	} else {
+-		if (!time_in_range(now, nfsi->attrtimeo_timestamp, nfsi->attrtimeo_timestamp + nfsi->attrtimeo)) {
++		if (!nfs_time_in_range_open(now, nfsi->attrtimeo_timestamp, nfsi->attrtimeo_timestamp + nfsi->attrtimeo)) {
+ 			if ((nfsi->attrtimeo <<= 1) > NFS_MAXATTRTIMEO(inode))
+ 				nfsi->attrtimeo = NFS_MAXATTRTIMEO(inode);
+ 			nfsi->attrtimeo_timestamp = now;
+--- linux-2.6.25.i686/fs/nfs/dir.c.org
++++ linux-2.6.25.i686/fs/nfs/dir.c
+@@ -1807,7 +1830,7 @@ static int nfs_access_get_cached(struct 
+ 	cache = nfs_access_search_rbtree(inode, cred);
+ 	if (cache == NULL)
+ 		goto out;
+-	if (!time_in_range(jiffies, cache->jiffies, cache->jiffies + nfsi->attrtimeo))
++	if (!nfs_time_in_range_open(jiffies, cache->jiffies, cache->jiffies + nfsi->attrtimeo))
+ 		goto out_stale;
+ 	res->jiffies = cache->jiffies;
+ 	res->cred = cache->cred;
+--- linux-2.6.25.i686/include/linux/nfs_fs.h.org
++++ linux-2.6.25.i686/include/linux/nfs_fs.h
+@@ -121,7 +121,7 @@ struct nfs_inode {
+ 	 *
+ 	 * We need to revalidate the cached attrs for this inode if
+ 	 *
+-	 *	jiffies - read_cache_jiffies > attrtimeo
++	 *	jiffies - read_cache_jiffies >= attrtimeo
+ 	 */
+ 	unsigned long		read_cache_jiffies;
+ 	unsigned long		attrtimeo;
+@@ -244,6 +244,22 @@ static inline unsigned NFS_MAXATTRTIMEO(
+ 	return S_ISDIR(inode->i_mode) ? nfss->acdirmax : nfss->acregmax;
+ }
+ 
++static inline int nfs_time_in_range_open(unsigned long a,
++				unsigned long b, unsigned long c)
++{
++	/*
++	 * If c is less then b, then the jiffies have wrapped.
++	 * If so, then check to see if a is between b and the
++	 * max jiffies value or between 0 and the value of c.
++	 * This is the range between b and c.
++	 *
++	 * Otherwise, just check to see whether a is in [b, c).
++	 */
++	if (c < b)
++		return time_after_eq(a, b) || time_before(a, c);
++	return time_after_eq(a, b) && time_before(a, c);
++}
++
+ static inline int NFS_STALE(const struct inode *inode)
+ {
+ 	return test_bit(NFS_INO_STALE, &NFS_I(inode)->flags);
+
+--------------040306070304060301070603--
