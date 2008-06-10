@@ -1,72 +1,49 @@
-From: Wendy Cheng <s.wendy.cheng@gmail.com>
-Subject: Re: [NFS] Sudden high load average and abnormal behavior
-Date: Mon, 16 Jun 2008 11:18:04 -0400
-Message-ID: <4856842C.3040807@gmail.com>
-References: <b66ddc900806152225o3a7f2bccrf4e83e70c992847a@mail.gmail.com>
+From: Frank Steiner <fsteiner-mail1-G0GEQqhI7DhYiKXMg8wJIg@public.gmane.org>
+Subject: [NFS] Does "sync" cause the FUA bit to be set?
+Date: Tue, 10 Jun 2008 12:43:13 +0200
+Message-ID: <484E5AC1.3020200@bio.ifi.lmu.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: howard chen <howachen@gmail.com>
+To: nfs@lists.sourceforge.net
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:36031 "EHLO neil.brown.name"
+Received: from neil.brown.name ([220.233.11.133]:44569 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752313AbYFPPPE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 Jun 2008 11:15:04 -0400
+	id S1751430AbYFJKnb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 10 Jun 2008 06:43:31 -0400
 Received: from brown by neil.brown.name with local (Exim 4.63)
 	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1K8GQ9-0002Wa-Pg
-	for linux-nfs@vger.kernel.org; Tue, 17 Jun 2008 01:15:01 +1000
-In-Reply-To: <b66ddc900806152225o3a7f2bccrf4e83e70c992847a-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+	id 1K61K2-0005Mq-HI
+	for linux-nfs@vger.kernel.org; Tue, 10 Jun 2008 20:43:26 +1000
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-howard chen wrote:
->
->
-> top - 13:17:53 up 382 days, 23:44,  6 users,  load average: 20.53, 20.21, 18.93
-> Tasks: 286 total,   1 running, 285 sleeping,   0 stopped,   0 zombie
-> Cpu(s):  0.1% us,  1.1% sy,  0.0% ni, 68.4% id, 29.9% wa,  0.0% hi,  0.5% si
-> Mem:   4045256k total,  4028028k used,    17228k free,   437428k buffers
-> Swap:  9775512k total,      160k used,  9775352k free,  2814332k cached
->
->   PID USER      PR  NI  VIRT  RES  SHR S %CPU %MEM    TIME+  COMMAND
->  2049 root      15   0     0    0    0 S    1  0.0 861:21.26 kjournald
-> 26094 root      15   0     0    0    0 S    0  0.0  85:02.82 nfsd
-> 26106 root      15   0     0    0    0 S    0  0.0  83:49.86 nfsd
-> 26110 root      15   0     0    0    0 S    0  0.0  84:33.23 nfsd
-> 26124 root      15   0     0    0    0 S    0  0.0  84:37.47 nfsd
->  2839 root      16   0  6280 1172  780 R    0  0.0   0:00.02 top
->   
+Hi,
 
-I haven't used ext3 for a very long time so not sure whether there are 
-changes. IIRC, if kjournald is up and runnning (implying ext3 is 
-flushing its data to the disk), it holds the journal lock so the access 
-to that particular filesystem is temporarily suspended. So the issue 
-here is to check why kjournald takes such a long time to do the flushing.
+we have a raid controller serving a file system that we export and
+mount with NFS. Depending on the performance profile we chose for the 
+raid controller, the are huge performance differences on the NFS client 
+side between two profiles. Those two profiles both use write cache and
+no journaling, but one honors the FUA bit if it is set, and the other 
+profile ignores it (there might be more differences, but the manual
+doesn't state any others but the FUA bit).
 
-Normally we want to see the thread backtrace of "kjournald" by asking 
-for a "sysrq-t" output via:
+With the profile ignoring the FUA bit, copying or deleting directories
+of e.g. 10M with a about 1000 files is factor 5 faster than with the
+profile honoring the FUA bit.
 
-shell> cd /proc
-shell> echo t > sysrq-trigger
+We export with the "sync" option. Does that option maybe set the FUA bit
+for all write operations on the NFS server?
 
-This will write all the thread backtraces into the system file 
-/var/log/messages file so people can have a rough idea of what goes 
-wrong. The *trick* here is to make sure the /var/log/messages file 
-doesn't live on the particular filesystem that has the high load issue 
-(otherwise the writing to the /var/log/messages will hang as well). So 
-you may want to configure the /var on a separate filesystem. Remember 
-each ext3 filesystem has its own kjournald (again, I have not touched 
-ext3 for a while so this is from my old memory).
-
-Another option is to google to see whether other people on the same 
-kernel level has the same issue as yours and pull their fix into your 
-system - however, it is more of a long shot (since you're doing the 
-guessing).
-
--- Wendy
+cu,
+Frank
 
 
+-- 
+Dipl.-Inform. Frank Steiner   Web:  http://www.bio.ifi.lmu.de/~steiner/
+Lehrstuhl f. Bioinformatik    Mail: http://www.bio.ifi.lmu.de/~steiner/m/
+LMU, Amalienstr. 17           Phone: +49 89 2180-4049
+80333 Muenchen, Germany       Fax:   +49 89 2180-99-4049
+* Rekursion kann man erst verstehen, wenn man Rekursion verstanden hat. *
 
 -------------------------------------------------------------------------
 Check out the new SourceForge.net Marketplace.
