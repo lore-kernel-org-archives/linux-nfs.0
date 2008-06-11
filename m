@@ -1,88 +1,135 @@
-From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
-Subject: Re: [PATCH 01/04]  NFS/RDMA client stall patches
-Date: Wed, 11 Jun 2008 09:53:01 -0400
-Message-ID: <RTPCLUEXC1-PRDaogxL000001eb@RTPMVEXC1-PRD.hq.netapp.com>
-References: <4830F91C.7070206@sgi.com>
- <1213125899.20459.34.camel@localhost>
- <484F86B7.7040109@sgi.com>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH 3/3] lockd: close potential race with rapid
+	lockd_up/lockd_down cycle
+Date: Wed, 11 Jun 2008 10:03:12 -0400
+Message-ID: <1213192992-7635-4-git-send-email-jlayton@redhat.com>
+References: <1213192992-7635-1-git-send-email-jlayton@redhat.com>
+	<1213192992-7635-2-git-send-email-jlayton@redhat.com>
+	<1213192992-7635-3-git-send-email-jlayton@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>, talpey@netapp.com,
-	linux-nfs@vger.kernel.org
-To: Peter Leckie <pleckie@sgi.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:4088 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751199AbYFKNxU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 11 Jun 2008 09:53:20 -0400
-In-Reply-To: <484F86B7.7040109@sgi.com>
-References: <4830F91C.7070206@sgi.com>
- <1213125899.20459.34.camel@localhost>
- <484F86B7.7040109@sgi.com>
-Sender: linux-nfs-owner@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org,
+	linux-kernel@vger.kernel.org
+To: trond.myklebust@fys.uio.no, bfields@fieldses.org
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <1213192992-7635-3-git-send-email-jlayton@redhat.com>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-At 04:03 AM 6/11/2008, Peter Leckie wrote:
->That's a good point you raise there I was looking to closely at the tcp 
->equivalent, the correct fix for this issue would be to implement a timer 
->function for NFS/RDMA pretty much identical to xs_udp_timer(), as follows:
+If lockd_down is called very rapidly after lockd_up returns, then
+there is a slim chance that lockd() will never be called. kthread()
+will return before calling the function, so we'll end up never
+actually calling the cleanup functions for the thread.
 
-Hmm, in fact that runs into a different issue - retransmitting over RDMA
-isn't allowed, since it consumes server credits and therefore will eventually
-overrun the connection's receive queue. I have a patch in my queue to
-force a disconnect in fact, which is the appropriate action. I will send them
-out soon, it's in with some other post-Connectathon work.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/lockd/svc.c |   33 +++++++++++++--------------------
+ 1 files changed, 13 insertions(+), 20 deletions(-)
 
-I think with your earlier patch to avoid the 5-second pause, the disconnect
-action will be prompt and accurate. However, I would still be concerned why
-the RPC was timing out in the first place. Was there an issue in the server?
-
-Tom.
-
->
->
->Implement xprt_rdma_timer() to be called when an RPC times out.
->This is needed to decrement the cong after an rpc times out preventing
->the congestion aviodance from tripping under retransmitts.
->
->Signed-off-by: Peter Leckie <pleckie-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
->Reviewed-by: Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
->---
->
->Index: linux-2.6.25.3/net/sunrpc/xprtrdma/transport.c
->===================================================================
->--- linux-2.6.25.3.orig/net/sunrpc/xprtrdma/transport.c
->+++ linux-2.6.25.3/net/sunrpc/xprtrdma/transport.c
->@@ -450,6 +450,18 @@ out1:
-> }
->
-> /*
->+ * xprt_rdma_timer - called when a retransmit timeout occurs on a RDMA 
->transport
->+ * @task: task that timed out
->+ *
->+ * Adjust the congestion window after a retransmit timeout has occurred.
->+ */
->+static void
->+xprt_rdma_timer(struct rpc_task *task)
->+{
->+       xprt_adjust_cwnd(task, -ETIMEDOUT);
->+}
->+
->+/*
->  * Close a connection, during shutdown or timeout/reconnect
->  */
-> static void
->@@ -755,7 +767,8 @@ static struct rpc_xprt_ops xprt_rdma_pro
->        .send_request           = xprt_rdma_send_request,
->        .close                  = xprt_rdma_close,
->        .destroy                = xprt_rdma_destroy,
->-       .print_stats            = xprt_rdma_print_stats
->+       .print_stats            = xprt_rdma_print_stats,
->+       .timer                  = xprt_rdma_timer
-> };
->
-> static struct xprt_class xprt_rdma = {
->
->
-
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index 2169af4..5bd9bf0 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -50,7 +50,7 @@ EXPORT_SYMBOL(nlmsvc_ops);
+ static DEFINE_MUTEX(nlmsvc_mutex);
+ static unsigned int		nlmsvc_users;
+ static struct task_struct	*nlmsvc_task;
+-static struct svc_serv		*nlmsvc_serv;
++static struct svc_rqst		*nlmsvc_rqst;
+ int				nlmsvc_grace_period;
+ unsigned long			nlmsvc_timeout;
+ 
+@@ -194,20 +194,11 @@ lockd(void *vrqstp)
+ 
+ 		svc_process(rqstp);
+ 	}
+-
+ 	flush_signals(current);
+ 	if (nlmsvc_ops)
+ 		nlmsvc_invalidate_all();
+ 	nlm_shutdown_hosts();
+-
+ 	unlock_kernel();
+-
+-	nlmsvc_task = NULL;
+-	nlmsvc_serv = NULL;
+-
+-	/* Exit the RPC thread */
+-	svc_exit_thread(rqstp);
+-
+ 	return 0;
+ }
+ 
+@@ -254,16 +245,15 @@ int
+ lockd_up(int proto) /* Maybe add a 'family' option when IPv6 is supported ?? */
+ {
+ 	struct svc_serv *serv;
+-	struct svc_rqst *rqstp;
+ 	int		error = 0;
+ 
+ 	mutex_lock(&nlmsvc_mutex);
+ 	/*
+ 	 * Check whether we're already up and running.
+ 	 */
+-	if (nlmsvc_serv) {
++	if (nlmsvc_rqst) {
+ 		if (proto)
+-			error = make_socks(nlmsvc_serv, proto);
++			error = make_socks(nlmsvc_rqst->rq_server, proto);
+ 		goto out;
+ 	}
+ 
+@@ -288,9 +278,10 @@ lockd_up(int proto) /* Maybe add a 'family' option when IPv6 is supported ?? */
+ 	/*
+ 	 * Create the kernel thread and wait for it to start.
+ 	 */
+-	rqstp = svc_prepare_thread(serv, &serv->sv_pools[0]);
+-	if (IS_ERR(rqstp)) {
+-		error = PTR_ERR(rqstp);
++	nlmsvc_rqst = svc_prepare_thread(serv, &serv->sv_pools[0]);
++	if (IS_ERR(nlmsvc_rqst)) {
++		error = PTR_ERR(nlmsvc_rqst);
++		nlmsvc_rqst = NULL;
+ 		printk(KERN_WARNING
+ 			"lockd_up: svc_rqst allocation failed, error=%d\n",
+ 			error);
+@@ -298,16 +289,15 @@ lockd_up(int proto) /* Maybe add a 'family' option when IPv6 is supported ?? */
+ 	}
+ 
+ 	svc_sock_update_bufs(serv);
+-	nlmsvc_serv = rqstp->rq_server;
+ 
+-	nlmsvc_task = kthread_run(lockd, rqstp, serv->sv_name);
++	nlmsvc_task = kthread_run(lockd, nlmsvc_rqst, serv->sv_name);
+ 	if (IS_ERR(nlmsvc_task)) {
+ 		error = PTR_ERR(nlmsvc_task);
++		svc_exit_thread(nlmsvc_rqst);
+ 		nlmsvc_task = NULL;
+-		nlmsvc_serv = NULL;
++		nlmsvc_rqst = NULL;
+ 		printk(KERN_WARNING
+ 			"lockd_up: kthread_run failed, error=%d\n", error);
+-		svc_exit_thread(rqstp);
+ 		goto destroy_and_out;
+ 	}
+ 
+@@ -346,6 +336,9 @@ lockd_down(void)
+ 		BUG();
+ 	}
+ 	kthread_stop(nlmsvc_task);
++	svc_exit_thread(nlmsvc_rqst);
++	nlmsvc_task = NULL;
++	nlmsvc_rqst = NULL;
+ out:
+ 	mutex_unlock(&nlmsvc_mutex);
+ }
+-- 
+1.5.3.6
