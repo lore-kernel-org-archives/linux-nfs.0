@@ -1,77 +1,37 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: CONFIG_DEBUG_SLAB_LEAK omits size-4096 and larger?
-Date: Wed, 11 Jun 2008 16:57:50 -0400
-Message-ID: <20080611205749.GA25194@fieldses.org>
-References: <1212519001.24900.14.camel@hololw58> <20080606160922.GG30863@fieldses.org> <0122F800A3B64C449565A9E8C2977010155587@hoexmb9.conoco.net> <20080609185355.GF28584@fieldses.org> <0122F800A3B64C449565A9E8C297701002D75D9F@hoexmb9.conoco.net> <20080610171602.GG20184@fieldses.org> <0122F800A3B64C449565A9E8C297701002D75DA3@hoexmb9.conoco.net> <20080611184613.GM15380@fieldses.org> <20080611195222.GP15380@fieldses.org> <20080611160947.5f08fb16@tleilax.poochiereds.net>
+From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
+Subject: Re: [PATCH 0/1] SUNRPC: Add sysctl variables for server TCP
+  snd/rcv buffer values
+Date: Wed, 11 Jun 2008 17:01:09 -0400
+Message-ID: <RTPCLUEXC1-PRDjkO22000001f0@RTPMVEXC1-PRD.hq.netapp.com>
+References: <484ECDE4.6030108@gmail.com>
+ <7F44A14A-F811-4D41-BAFF-E019E9904B6A@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-	"Weathers, Norman R." <Norman.R.Weathers-496aOtIFJR1B+Kdf37RAV9BPR1lH4CV8@public.gmane.org>
-To: Jeff Layton <jlayton@poochiereds.net>
+Content-Type: text/plain; charset="us-ascii"
+Cc: Dean Hildebrand <seattleplus@gmail.com>, linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:41850 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:37672 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752683AbYFKU5w (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 11 Jun 2008 16:57:52 -0400
-In-Reply-To: <20080611160947.5f08fb16-RtJpwOs3+0O+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
+	id S1751523AbYFKVBc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 Jun 2008 17:01:32 -0400
+In-Reply-To: <7F44A14A-F811-4D41-BAFF-E019E9904B6A@oracle.com>
+References: <484ECDE4.6030108@gmail.com>
+ <7F44A14A-F811-4D41-BAFF-E019E9904B6A@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jun 11, 2008 at 04:09:47PM -0400, Jeff Layton wrote:
-> On Wed, 11 Jun 2008 15:52:22 -0400
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> 
-> > I'm probably missing something fundamental--why doesn't
-> > /proc/slab_allocators show any results for size-x where x >= 4096?
-> > 
-> > Someone's seeing a performance problem with the linux nfs server.  One
-> > of the symptoms is the "size-4096" slab cache seems to be out of
-> > control.  I assumed that meant that memory allocated by kmalloc() might
-> > be leaking, so figured it might be interesting to turn on
-> > CONFIG_DEBUG_SLAB_LEAK.  As far as I can tell what that does is list
-> > kmalloc() callers in /proc/slab_allocators.  But that doesn't seem to be
-> > showing any results for size-4096.  Can anyone provide a clue?
-> > Thanks!
-> > 
-> > --b.
-> > 
-> 
-> 
-> Hmm...I've never used this, but in kmem_cache_alloc():
-> 
->         /*
->          * Enable redzoning and last user accounting, except for caches with
->          * large objects, if the increased size would increase the object size
->          * above the next power of two: caches with object sizes just above a
->          * power of two have a significant amount of internal fragmentation.
->          */
->         if (size < 4096 || fls(size - 1) == fls(size-1 + REDZONE_ALIGN +
->                                                 2 * sizeof(unsigned long long)))
->                 flags |= SLAB_RED_ZONE | SLAB_STORE_USER;
-> 
-> 
-> ...looks like it specifically excludes some caches.
+At 03:48 PM 6/11/2008, Chuck Lever wrote:
+>There are also fairly unsophisticated ways to add longer delays on  
+>your test network, and turning up the latency knob would be a useful  
+>test.
 
-Ah, I missed that!  I'm a little confused as to how those flags behavior
-affect the collection of the leak debugging data, but I can verify that
-the below does result in size-4096 showing up in /proc/slab_allocators;
-hopefully there's no more negative result than the performance penalty.
+IPFW can be used to limit effective bandwidth and insert latencies in
+strange, wonderful and easy-to-configure ways. I think there's preconfigured
+profile for an earth-moon link, for instance. Using a pair of virtual client/
+server instances on a single machine would be a great way to prototype
+this (no wire bottlenecks - pure simulation), too.
 
-Norman, do you think you could try applying this and then trying again?
+Just an idea!
 
---b.
+Tom.
 
-
-diff --git a/mm/slab.c b/mm/slab.c
-index 06236e4..b379e31 100644
---- a/mm/slab.c
-+++ b/mm/slab.c
-@@ -2202,7 +2202,7 @@ kmem_cache_create (const char *name, size_t size, size_t align,
- 	 * above the next power of two: caches with object sizes just above a
- 	 * power of two have a significant amount of internal fragmentation.
- 	 */
--	if (size < 4096 || fls(size - 1) == fls(size-1 + REDZONE_ALIGN +
-+	if (size < 8192 || fls(size - 1) == fls(size-1 + REDZONE_ALIGN +
- 						2 * sizeof(unsigned long long)))
- 		flags |= SLAB_RED_ZONE | SLAB_STORE_USER;
- 	if (!(flags & SLAB_DESTROY_BY_RCU))
