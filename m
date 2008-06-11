@@ -1,37 +1,95 @@
-From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
-Subject: Re: [PATCH 0/1] SUNRPC: Add sysctl variables for server TCP
-  snd/rcv buffer values
-Date: Wed, 11 Jun 2008 17:01:09 -0400
-Message-ID: <RTPCLUEXC1-PRDjkO22000001f0@RTPMVEXC1-PRD.hq.netapp.com>
-References: <484ECDE4.6030108@gmail.com>
- <7F44A14A-F811-4D41-BAFF-E019E9904B6A@oracle.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 1/7] NFS: Make nfs_fsync methods consistent
+Date: Wed, 11 Jun 2008 17:55:27 -0400
+Message-ID: <20080611215526.7068.15819.stgit@ellison.1015granger.net>
+References: <20080611215018.7068.71737.stgit@ellison.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Dean Hildebrand <seattleplus@gmail.com>, linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org
+To: trond.myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:37672 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751523AbYFKVBc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 11 Jun 2008 17:01:32 -0400
-In-Reply-To: <7F44A14A-F811-4D41-BAFF-E019E9904B6A@oracle.com>
-References: <484ECDE4.6030108@gmail.com>
- <7F44A14A-F811-4D41-BAFF-E019E9904B6A@oracle.com>
+Received: from rgminet01.oracle.com ([148.87.113.118]:33940 "EHLO
+	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750782AbYFKVzu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Jun 2008 17:55:50 -0400
+In-Reply-To: <20080611215018.7068.71737.stgit-ewv44WTpT0t9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-At 03:48 PM 6/11/2008, Chuck Lever wrote:
->There are also fairly unsophisticated ways to add longer delays on  
->your test network, and turning up the latency knob would be a useful  
->test.
+Clean up: Report the same debugging info, count function calls the same,
+and use similar function naming in nfs_fsync_dir() and nfs_fsync().
 
-IPFW can be used to limit effective bandwidth and insert latencies in
-strange, wonderful and easy-to-configure ways. I think there's preconfigured
-profile for an earth-moon link, for instance. Using a pair of virtual client/
-server instances on a single machine would be a great way to prototype
-this (no wire bottlenecks - pure simulation), too.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-Just an idea!
+ fs/nfs/dir.c  |    3 ++-
+ fs/nfs/file.c |   12 +++++++-----
+ 2 files changed, 9 insertions(+), 6 deletions(-)
 
-Tom.
+
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 58d43da..1bc8bc6 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -629,10 +629,11 @@ out:
+  */
+ static int nfs_fsync_dir(struct file *filp, struct dentry *dentry, int datasync)
+ {
+-	dfprintk(VFS, "NFS: fsync_dir(%s/%s) datasync %d\n",
++	dfprintk(VFS, "NFS: fsync dir(%s/%s) datasync %d\n",
+ 			dentry->d_parent->d_name.name, dentry->d_name.name,
+ 			datasync);
+ 
++	nfs_inc_stats(dentry->d_inode, NFSIOS_VFSFSYNC);
+ 	return 0;
+ }
+ 
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index d84a3d8..e452903 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -50,7 +50,7 @@ static ssize_t nfs_file_read(struct kiocb *, const struct iovec *iov,
+ static ssize_t nfs_file_write(struct kiocb *, const struct iovec *iov,
+ 				unsigned long nr_segs, loff_t pos);
+ static int  nfs_file_flush(struct file *, fl_owner_t id);
+-static int  nfs_fsync(struct file *, struct dentry *dentry, int datasync);
++static int  nfs_file_fsync(struct file *, struct dentry *dentry, int datasync);
+ static int nfs_check_flags(int flags);
+ static int nfs_lock(struct file *filp, int cmd, struct file_lock *fl);
+ static int nfs_flock(struct file *filp, int cmd, struct file_lock *fl);
+@@ -72,7 +72,7 @@ const struct file_operations nfs_file_operations = {
+ 	.open		= nfs_file_open,
+ 	.flush		= nfs_file_flush,
+ 	.release	= nfs_file_release,
+-	.fsync		= nfs_fsync,
++	.fsync		= nfs_file_fsync,
+ 	.lock		= nfs_lock,
+ 	.flock		= nfs_flock,
+ 	.splice_read	= nfs_file_splice_read,
+@@ -181,7 +181,7 @@ static loff_t nfs_file_llseek(struct file *filp, loff_t offset, int origin)
+ }
+ 
+ /*
+- * Helper for nfs_file_flush() and nfs_fsync()
++ * Helper for nfs_file_flush() and nfs_file_fsync()
+  *
+  * Notice that it clears the NFS_CONTEXT_ERROR_WRITE before synching to
+  * disk, but it retrieves and clears ctx->error after synching, despite
+@@ -296,12 +296,14 @@ nfs_file_mmap(struct file * file, struct vm_area_struct * vma)
+  * whether any write errors occurred for this process.
+  */
+ static int
+-nfs_fsync(struct file *file, struct dentry *dentry, int datasync)
++nfs_file_fsync(struct file *file, struct dentry *dentry, int datasync)
+ {
+ 	struct nfs_open_context *ctx = nfs_file_open_context(file);
+ 	struct inode *inode = dentry->d_inode;
+ 
+-	dfprintk(VFS, "nfs: fsync(%s/%ld)\n", inode->i_sb->s_id, inode->i_ino);
++	dfprintk(VFS, "NFS: fsync file(%s/%s) datasync %d\n",
++			dentry->d_parent->d_name.name, dentry->d_name.name,
++			datasync);
+ 
+ 	nfs_inc_stats(inode, NFSIOS_VFSFSYNC);
+ 	return nfs_do_fsync(ctx, inode);
 
