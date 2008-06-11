@@ -1,57 +1,107 @@
-From: Tobias Oetiker <tobi-7K0TWYW2a3pyDzI6CaY1VQ@public.gmane.org>
-Subject: .Xauthority going stale (but not really)
-Date: Wed, 11 Jun 2008 08:53:08 +0200 (CEST)
-Message-ID: <alpine.DEB.1.10.0806110849250.11896@qygrfg01.brgvxre.pu>
+From: Peter Leckie <pleckie@sgi.com>
+Subject: Re: [PATCH 01/04]  NFS/RDMA client stall patches
+Date: Wed, 11 Jun 2008 18:03:03 +1000
+Message-ID: <484F86B7.7040109@sgi.com>
+References: <4830F91C.7070206@sgi.com> <1213125899.20459.34.camel@localhost>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: talpey@netapp.com, linux-nfs@vger.kernel.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from james.oetiker.ch ([213.144.138.195]:32787 "EHLO
-	james.oetiker.ch" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752836AbYFKHSi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Jun 2008 03:18:38 -0400
-Received: from localhost (localhost [127.0.0.1])
-	by james.oetiker.ch (Postfix) with ESMTP id A305B888C2
-	for <linux-nfs@vger.kernel.org>; Wed, 11 Jun 2008 08:53:08 +0200 (CEST)
-Received: from james.oetiker.ch ([127.0.0.1])
-	by localhost (james.oetiker.ch [127.0.0.1]) (amavisd-new, port 10024)
-	with LMTP id BxZi5+wK2kwR for <linux-nfs@vger.kernel.org>;
-	Wed, 11 Jun 2008 08:53:08 +0200 (CEST)
-Received: from johan.oetiker.ch (johan.oetiker.ch [213.144.133.194])
-	by james.oetiker.ch (Postfix) with ESMTP id 86383888BE
-	for <linux-nfs@vger.kernel.org>; Wed, 11 Jun 2008 08:53:08 +0200 (CEST)
+Received: from relay2.sgi.com ([192.48.171.30]:36894 "EHLO relay.sgi.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1751714AbYFKIEs (ORCPT
+	<rfc822;@relay.sgi.com:linux-nfs@vger.kernel.org>);
+	Wed, 11 Jun 2008 04:04:48 -0400
+In-Reply-To: <1213125899.20459.34.camel@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Experts,
+Trond Myklebust wrote:
+> On Mon, 2008-05-19 at 13:50 +1000, Peter Leckie wrote:
+>   
+>> Don't call __xprt_get_cong() if this is a retransmit.
+>> This prevents __xprt_get_cong() from recursively
+>> incrementing the congestion avoidance window for
+>> retransmitted data.
+>>
+>> Signed-off-by: Peter Leckie <pleckie-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
+>> Reviewed-by: Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
+>> X-Sgi-Pv: 971446
+>>  <http://bugworks/query.cgi/971446>---
+>> Index: linux-2.6.25.3/net/sunrpc/xprt.c
+>> ===================================================================
+>> --- linux-2.6.25.3.orig/net/sunrpc/xprt.c
+>> +++ linux-2.6.25.3/net/sunrpc/xprt.c
+>> @@ -224,7 +224,8 @@ int xprt_reserve_xprt_cong(struct rpc_ta
+>>                         return 1;
+>>                 goto out_sleep;
+>>         }
+>> -       if (__xprt_get_cong(xprt, task)) {
+>> +     /*If this is a retransmit don't increment cong*/
+>> +       if ((req && req->rq_ntrans) ||__xprt_get_cong(xprt, task)) {
+>>                 xprt->snd_task = task;
+>>                 if (req) {
+>>                         req->rq_bytes_sent = 0;
+>>
+>>     
+>
+> Why would we not want to increment the congestion avoidance window on
+> retransmitted data? On timeout, xprt_adjust_cwnd will call
+> __xprt_put_cong() prior to the retransmission, so I can't see how this
+> is a 'recursive increment'.
+>
+> Trond
 
-I have a strange problem on a diskless client. At ramdom intervals
-(hours) when I try to open an xterm I get the message
-
- > xterm
- No protocol specified
- xterm Xt error: Can't open display: :13.0
-
-Doing an strace on xterm I find that it gets a 'stale nfs handle'
-when trying to open .Xauthority.
-
-If I do a
-
- cat .Xauthority >/dev/null
-
-things go back to normal and I can open xterms again ...
-
-so how can it be, that xterm gets a stale nfs handle error while
-cat can read the file just fine and after cat did it it works for
-xterm as well ?
-
-Our home directories are automounted via nfs and then from there
-bindmounted into /home if that rings a bell ...
-
-cheers
-tobi
+That's a good point you raise there I was looking to closely at the tcp 
+equivalent, the correct fix for this issue would be to implement a timer 
+function for NFS/RDMA pretty much identical to xs_udp_timer(), as follows:
 
 
--- 
-Tobi Oetiker, OETIKER+PARTNER AG, Aarweg 15 CH-4600 Olten
-http://it.oetiker.ch tobi-7K0TWYW2a3pyDzI6CaY1VQ@public.gmane.org ++41 62 213 9902
+Implement xprt_rdma_timer() to be called when an RPC times out.
+This is needed to decrement the cong after an rpc times out preventing
+the congestion aviodance from tripping under retransmitts.
+
+Signed-off-by: Peter Leckie <pleckie-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
+Reviewed-by: Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
+---
+
+Index: linux-2.6.25.3/net/sunrpc/xprtrdma/transport.c
+===================================================================
+--- linux-2.6.25.3.orig/net/sunrpc/xprtrdma/transport.c
++++ linux-2.6.25.3/net/sunrpc/xprtrdma/transport.c
+@@ -450,6 +450,18 @@ out1:
+ }
+
+ /*
++ * xprt_rdma_timer - called when a retransmit timeout occurs on a RDMA 
+transport
++ * @task: task that timed out
++ *
++ * Adjust the congestion window after a retransmit timeout has occurred.
++ */
++static void
++xprt_rdma_timer(struct rpc_task *task)
++{
++       xprt_adjust_cwnd(task, -ETIMEDOUT);
++}
++
++/*
+  * Close a connection, during shutdown or timeout/reconnect
+  */
+ static void
+@@ -755,7 +767,8 @@ static struct rpc_xprt_ops xprt_rdma_pro
+        .send_request           = xprt_rdma_send_request,
+        .close                  = xprt_rdma_close,
+        .destroy                = xprt_rdma_destroy,
+-       .print_stats            = xprt_rdma_print_stats
++       .print_stats            = xprt_rdma_print_stats,
++       .timer                  = xprt_rdma_timer
+ };
+
+ static struct xprt_class xprt_rdma = {
+
+
+Thanks,
+Pete
+
