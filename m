@@ -1,57 +1,63 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 7/7] SUNRPC: Remove obsolete messages during transport connect
-Date: Wed, 11 Jun 2008 17:56:13 -0400
-Message-ID: <20080611215612.7068.32804.stgit@ellison.1015granger.net>
+Subject: [PATCH 3/7] NFS: Make nfs_open methods consistent
+Date: Wed, 11 Jun 2008 17:55:42 -0400
+Message-ID: <20080611215542.7068.83115.stgit@ellison.1015granger.net>
 References: <20080611215018.7068.71737.stgit@ellison.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: trond.myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:34543 "EHLO
+Received: from rgminet01.oracle.com ([148.87.113.118]:35305 "EHLO
 	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753058AbYFKV5t (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Jun 2008 17:57:49 -0400
+	with ESMTP id S1753425AbYFKWCJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Jun 2008 18:02:09 -0400
 In-Reply-To: <20080611215018.7068.71737.stgit-ewv44WTpT0t9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Recent changes to the RPC client's transport connect logic make connect
-status values ECONNREFUSED and ECONNRESET impossible.
-
-Clean up xprt_connect_status() to account for these changes.
+Clean up: Report the same debugging info and count function calls the
+same for files and directories in nfs_opendir() and nfs_file_open().
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- net/sunrpc/xprt.c |    8 +-------
- 1 files changed, 1 insertions(+), 7 deletions(-)
+ fs/nfs/dir.c  |    7 +++++--
+ fs/nfs/file.c |    4 ++++
+ 2 files changed, 9 insertions(+), 2 deletions(-)
 
 
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index cbaefd8..99a52aa 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -690,7 +690,7 @@ static void xprt_connect_status(struct rpc_task *task)
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 9f31cc6..9a4fb51 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -133,8 +133,11 @@ nfs_opendir(struct inode *inode, struct file *filp)
  {
- 	struct rpc_xprt	*xprt = task->tk_xprt;
+ 	int res;
  
--	if (task->tk_status >= 0) {
-+	if (task->tk_status == 0) {
- 		xprt->stat.connect_count++;
- 		xprt->stat.connect_time += (long)jiffies - xprt->stat.connect_start;
- 		dprintk("RPC: %5u xprt_connect_status: connection established\n",
-@@ -699,12 +699,6 @@ static void xprt_connect_status(struct rpc_task *task)
- 	}
+-	dfprintk(VFS, "NFS: opendir(%s/%ld)\n",
+-			inode->i_sb->s_id, inode->i_ino);
++	dfprintk(VFS, "NFS: open dir(%s/%s)\n",
++			filp->f_path.dentry->d_parent->d_name.name,
++			filp->f_path.dentry->d_name.name);
++
++	nfs_inc_stats(inode, NFSIOS_VFSOPEN);
  
- 	switch (task->tk_status) {
--	case -ECONNREFUSED:
--	case -ECONNRESET:
--		dprintk("RPC: %5u xprt_connect_status: server %s refused "
--				"connection\n", task->tk_pid,
--				task->tk_client->cl_server);
--		break;
- 	case -ENOTCONN:
- 		dprintk("RPC: %5u xprt_connect_status: connection broken\n",
- 				task->tk_pid);
+ 	lock_kernel();
+ 	/* Call generic open code in order to cache credentials */
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index bb09c48..ce18877 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -119,6 +119,10 @@ nfs_file_open(struct inode *inode, struct file *filp)
+ {
+ 	int res;
+ 
++	dfprintk(VFS, "NFS: open file(%s/%s)\n",
++			filp->f_path.dentry->d_parent->d_name.name,
++			filp->f_path.dentry->d_name.name);
++
+ 	res = nfs_check_flags(filp->f_flags);
+ 	if (res)
+ 		return res;
 
