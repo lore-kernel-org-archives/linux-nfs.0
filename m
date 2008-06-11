@@ -1,44 +1,57 @@
-From: Luoqi Chen <Luoqi.Chen@brion.com>
-Subject: RE: NFS open/setuid/ftruncate problem
-Date: Tue, 10 Jun 2008 22:24:49 -0700
-Message-ID: <0707E37B6D2E244C85660487B602C9221D9D9883@ex02.briontech.com>
-References: <0707E37B6D2E244C85660487B602C9221D9D9846@ex02.briontech.com>
- <1213141630.20459.113.camel@localhost>
+From: Tobias Oetiker <tobi-7K0TWYW2a3pyDzI6CaY1VQ@public.gmane.org>
+Subject: .Xauthority going stale (but not really)
+Date: Wed, 11 Jun 2008 08:53:08 +0200 (CEST)
+Message-ID: <alpine.DEB.1.10.0806110849250.11896@qygrfg01.brgvxre.pu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1754422AbYFKFZO@vger.kernel.org>
-In-Reply-To: <1213141630.20459.113.camel@localhost>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+To: linux-nfs@vger.kernel.org
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from james.oetiker.ch ([213.144.138.195]:32787 "EHLO
+	james.oetiker.ch" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752836AbYFKHSi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Jun 2008 03:18:38 -0400
+Received: from localhost (localhost [127.0.0.1])
+	by james.oetiker.ch (Postfix) with ESMTP id A305B888C2
+	for <linux-nfs@vger.kernel.org>; Wed, 11 Jun 2008 08:53:08 +0200 (CEST)
+Received: from james.oetiker.ch ([127.0.0.1])
+	by localhost (james.oetiker.ch [127.0.0.1]) (amavisd-new, port 10024)
+	with LMTP id BxZi5+wK2kwR for <linux-nfs@vger.kernel.org>;
+	Wed, 11 Jun 2008 08:53:08 +0200 (CEST)
+Received: from johan.oetiker.ch (johan.oetiker.ch [213.144.133.194])
+	by james.oetiker.ch (Postfix) with ESMTP id 86383888BE
+	for <linux-nfs@vger.kernel.org>; Wed, 11 Jun 2008 08:53:08 +0200 (CEST)
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> From: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Date: Tue, 10 Jun 2008 19:39:41 -0400
-> NFS: Fix the ftruncate() credential problem
->
-> ftruncate() access checking is supposed to be performed at
-> open() time,
-> just like reads and writes.
->
-Thanks, Trond. Is there any chance this patch could be
-included in the linux kernel in the near future? For now,
-I guess I'll workaround this problem by moving the ftruncate()
-to before setuid().
+Experts,
 
--luoqi
+I have a strange problem on a diskless client. At ramdom intervals
+(hours) when I try to open an xterm I get the message
 
-PS: I haven't tried the patch, just browsing through, and I noticed
-a typo, pointing out here to save some trouble for anyone who
-wants to give it a try (I guess gcc would issue a warning too),
+ > xterm
+ No protocol specified
+ xterm Xt error: Can't open display: :13.0
 
-        /* Search for an existing open(O_WRITE) file */
--       ctx = nfs_find_open_context(inode, cred, FMODE_WRITE);
--       if (ctx != NULL)
--               state = ctx->state;
-+       if (sattr->ia_valid && ATTR_FILE) {  <=== && should be &
-+               ctx = nfs_file_open_context(sattr->ia_file);
-+               if (ctx != NULL)
-+                       state = ctx->state;
-+       }
+Doing an strace on xterm I find that it gets a 'stale nfs handle'
+when trying to open .Xauthority.
+
+If I do a
+
+ cat .Xauthority >/dev/null
+
+things go back to normal and I can open xterms again ...
+
+so how can it be, that xterm gets a stale nfs handle error while
+cat can read the file just fine and after cat did it it works for
+xterm as well ?
+
+Our home directories are automounted via nfs and then from there
+bindmounted into /home if that rings a bell ...
+
+cheers
+tobi
+
+
+-- 
+Tobi Oetiker, OETIKER+PARTNER AG, Aarweg 15 CH-4600 Olten
+http://it.oetiker.ch tobi-7K0TWYW2a3pyDzI6CaY1VQ@public.gmane.org ++41 62 213 9902
