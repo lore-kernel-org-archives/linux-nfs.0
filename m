@@ -1,77 +1,84 @@
-From: Frank Filz <ffilzlnx@us.ibm.com>
-Subject: [NFS] Problem with stateid renewal
-Date: Thu, 12 Jun 2008 16:50:01 -0700
-Message-ID: <1213314601.3907.51.camel@dyn9047022153>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [NFS] Server-side locking issue
+Date: Thu, 12 Jun 2008 19:50:40 -0400
+Message-ID: <20080612195040.7f68f16e@tleilax.poochiereds.net>
+References: <20080508221815.GB4583@async.com.br>
+	<20080509154305.GA798@fieldses.org>
+	<20080612214340.GA17293@async.com.br>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: NFS List <nfs@lists.sourceforge.net>,
-	NFS V4 Mailing List <nfsv4@linux-nfs.org>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	NFS@lists.sourceforge.net, Ronaldo Maia <romaia-Zkq4WM0RTTBfJ/NunPodnw@public.gmane.org>
+To: Christian Robottom Reis <kiko@canonical.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:52676 "EHLO neil.brown.name"
+Received: from neil.brown.name ([220.233.11.133]:56844 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757111AbYFLXrA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 12 Jun 2008 19:47:00 -0400
+	id S1754035AbYFLXvQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 12 Jun 2008 19:51:16 -0400
 Received: from brown by neil.brown.name with local (Exim 4.63)
 	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1K6wVO-0005M6-K1
-	for linux-nfs@vger.kernel.org; Fri, 13 Jun 2008 09:46:58 +1000
+	id 1K6wZW-0005NN-OP
+	for linux-nfs@vger.kernel.org; Fri, 13 Jun 2008 09:51:14 +1000
+In-Reply-To: <20080612214340.GA17293-Zkq4WM0RTTBfJ/NunPodnw@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I'm observing an interesting stateid problem on a 2.6.18 based kernel to
-an AIX server. I've added some printks to track stateids and a couple
-other things, and see the following sequence:
+On Thu, 12 Jun 2008 18:43:40 -0300
+Christian Robottom Reis <kiko@canonical.com> wrote:
 
-01: _nfs4_do_open name=1GB57
-02: decode_open                     , stateid: 00000001:48295ae2 00000008 004e8042
-03: encode_open_confirm             , stateid: 00000001:48295ae2 00000008 004e8042
-04: decode_open_confirm             , stateid: 00000002:48295ae2 00000008 004e8042
-05: nfs4_open_confirm_done          , stateid: 00000002:48295ae2 00000008 004e8042
-06: update_open_stateid             , stateid: 00000002:48295ae2 00000008 004e8042
-07: nfs4_copy_stateid open          , stateid: 00000002:48295ae2 00000008 004e8042
-08: encode_setattr                  , stateid: 00000002:48295ae2 00000008 004e8042
-09: encode_stateid                  , stateid: 00000002:48295ae2 00000008 004e8042
-10: nfs4_renew_state now: 627063 last: 547074 lease: 120000 expires: 667074
-11: nfs4_renew_done scheduled state recovery (no wait) task->tk_status=NFS4ERR_EXPIRED (-10011) now=627296
-12: reclaimer at restart_loop nfs4_renew_done NFS4ERR_EXPIRED
-13: encode_stateid skipped same stateid 7510 times
-14: decode_open                     , stateid: 00000001:48295ae2 00000008 00508042
-15: encode_stateid not last decoded , stateid: 00000002:48295ae2 00000008 004e8042
-16: encode_open_confirm             , stateid: 00000001:48295ae2 00000008 00508042
-17: encode_stateid not last decoded , stateid: 00000002:48295ae2 00000008 004e8042
-18: decode_open_confirm             , stateid: 00000002:48295ae2 00000008 00508042
-19: nfs4_open_confirm_done          , stateid: 00000002:48295ae2 00000008 00508042
-20: nfs4_open_recover_helper        , stateid: 00000002:48295ae2 00000008 00508042
-21: update_open_stateid             , stateid: 00000002:48295ae2 00000008 00508042
-22: reclaimer at out
-23: nfs4_copy_stateid open          , stateid: 00000002:48295ae2 00000008 00508042
-24: encode_stateid                  , stateid: 00000002:48295ae2 00000008 00508042
-25: encode_stateid skipped same stateid 8510 times
-26: encode_close                    , stateid: 00000002:48295ae2 00000008 00508042
-27: nfs4_put_open_state             , stateid: 00000002:48295ae2 00000008 00508042
+> On Fri, May 09, 2008 at 11:43:05AM -0400, J. Bruce Fields wrote:
+> > I don't think the server stopped responding to clients in the case
+> > Miklos described.
+> 
+> Okay. Well, one month later, it happened again to me.
+> 
+> > Perhaps a sysrq-T dump of lockd would show where (and whether) it's
+> > blocked?  (So once lockd stops responding, log into the server, run
+> > "echo t >/proc/sysrq-trigger", and collect the output from the logs,
+> > especially the stacktrace for the lockd process).
+> 
+> This time I did a ps auxww locking for the lockd process. And guess
+> what?
+> 
+> root      6323  0.0  0.0      0     0 ?        D    Jun01   0:50 [lockd]
+> 
+> I wonder why it's in the D state. I also wonder if there's a way to get
+> it back once it's in this state -- without reloading the kernel module
+> or rebooting, I guess.
+> 
+> I've collected a trace, at any rate, but lockd isn't even listed in it --
+> I can send it in if it makes sense.
+> 
 
-What seems to be happening is that a state requires renewal (at line
-10), the renewal fails with NFS4ERR_EXPIRED (line 11) so a new open is
-issued as part of recovery (line 14). During the time the open recovery
-is in progress, two writes occur (line 15 and line 17) using the old
-expired stateid. Finally, the open recovery completes and the new
-stateid is used for the rest of the writes (line 24 and line 25).
+That's not atypical at all. syslog uses unreliable transport. When you
+send it a flood of data (say, with a sysrq-t) some of it can be lost.
+Usually I recommend dumping the data straight out of the ring buffer
+from a sysrq-t:
 
-One question is why the open state is expiring, it appears that is
-expires significantly before it is expected to (expires: 667074, now:
-627296). Also, should those two writes actually occur while open
-recovery is in progress? If so, and if they fail, shouldn't they be
-retried?
+    # dmesg > /tmp/sysrq-t.out
 
-Any suggestions on additional debug? I'd like to avoid enabling all
-debug messages since they would flood the log.
+...or something. You might still lose stuff that got pushed out of the
+ring buffer, but the stuff that is there will at least be complete.
 
-Thanks
+> What sort of debugging can I do to figure out what's wrong here?
+> 
 
-Frank
+You'll really need that sysrq-t info...or a core dump, or to run a
+debugger on the running kernel (like Wendy recommended).
 
+> (This is a dual-Xeon running:
+> 
+>     Linux anthem 2.6.22-14-generic #1 SMP Tue Feb 12 07:42:25 UTC 2008 i686 GNU/Linux)
 
+There were some patches that went into 2.6.25 (I think) that fix
+problems that could cause lockd to hang in some cases. This patch,
+in particular, may be of interest:
 
+Subject: [PATCH 1/4] NLM: set RPC_CLNT_CREATE_NOPING for NLM RPC clients
+
+Cheers,
+-- 
+Jeff Layton <jlayton@redhat.com>
 
 -------------------------------------------------------------------------
 Check out the new SourceForge.net Marketplace.
