@@ -1,98 +1,327 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH 1/5] knfsd: Replace lock_kernel with a mutex for nfsd
-	thread startup/shutdown locking.
-Date: Thu, 12 Jun 2008 08:37:13 -0400
-Message-ID: <20080612083713.30282035@barsoom.rdu.redhat.com>
-References: <1213101639-26423-1-git-send-email-jlayton@redhat.com>
-	<1213101639-26423-2-git-send-email-jlayton@redhat.com>
-	<18512.39490.36187.783761@notabene.brown>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH] NFS: Move fs/nfs/iostat.h to include/linux
+Date: Thu, 12 Jun 2008 12:32:25 -0400
+Message-ID: <20080612163224.13150.13495.stgit@manray.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org, gnb@melbourne.sgi.com
-To: Neil Brown <neilb@suse.de>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <18512.39490.36187.783761@notabene.brown>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org
+To: trond.myklebust@netapp.com
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from wr-out-0506.google.com ([64.233.184.225]:20732 "EHLO
+	wr-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752070AbYFLQcd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Jun 2008 12:32:33 -0400
+Received: by wr-out-0506.google.com with SMTP id 69so2146630wri.5
+        for <linux-nfs@vger.kernel.org>; Thu, 12 Jun 2008 09:32:32 -0700 (PDT)
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 12 Jun 2008 13:38:42 +1000
-Neil Brown <neilb@suse.de> wrote:
+The fs/nfs/iostat.h header has definitions that were designed to be exposed
+to user space.  Move these definitions under include/linux so user space can
+use the definitions in applications that read /proc/self/mountstats.
 
-> On Tuesday June 10, jlayton@redhat.com wrote:
-> > From: Neil Brown <neilb@suse.de>
-> > 
-> > This removes the BKL from the RPC service creation codepath. The BKL
-> > really isn't adequate for this job since some of this info needs
-> > protection across sleeps.
-> > 
-> > Also, add some comments to try and clarify how the locking should work
-> > and to make it clear that the BKL isn't necessary as long as there is
-> > adequate locking between tasks when touching the svc_serv fields.
-> > 
-> > Signed-off-by: Neil Brown <neilb@suse.de>
-> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> 
-> Thanks for proceeding with this.
-> As well as the fixes for this that you included in 2/5, you need this
-> patch as well for correctness.... Well, you need the first hunk.  The
-> second is unrelated but probably should be fixed.
-> 
-> The rest all looks good.
-> 
-> NeilBrown
-> 
-> 
-> ---------------------------------
-> 
-> Signed-off-by: Neil Brown <neilb@suse.de>
-> 
-> ### Diffstat output
->  ./fs/nfsd/nfssvc.c |   12 +++++++-----
->  1 file changed, 7 insertions(+), 5 deletions(-)
-> 
-> diff .prev/fs/nfsd/nfssvc.c ./fs/nfsd/nfssvc.c
-> --- .prev/fs/nfsd/nfssvc.c	2008-06-12 13:27:47.000000000 +1000
-> +++ ./fs/nfsd/nfssvc.c	2008-06-12 13:32:14.000000000 +1000
-> @@ -169,10 +169,12 @@ int nfsd_vers(int vers, enum vers_op cha
->  
->  int nfsd_nrthreads(void)
->  {
-> -	if (nfsd_serv == NULL)
-> -		return 0;
-> -	else
-> -		return nfsd_serv->sv_nrthreads;
-> +	int rv = 0;
-> +	mutex_lock(&nfsd_mutex);
-> +	if (nfsd_serv)
-> +		rv = nfsd_serv->sv_nrthreads;
-> +	mutex_unlock(&nfsd_mutex);
-> +	return rv;
->  }
->  
+Also address a handful of coding style issues called out by checkpatch.pl in
+fs/nfs/iostat.h.
 
-ACK on this first part. Good catch...
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
->  static int killsig;	/* signal that was used to kill last nfsd */
-> @@ -275,7 +277,7 @@ static int nfsd_init_socks(int port)
->  					SVC_SOCK_DEFAULTS);
->  		if (error < 0)
->  			lockd_down();
-> -}
-> +	}
->  	if (error < 0)
->  		return error;
->  	return 0;
+ fs/nfs/iostat.h            |  119 +++++---------------------------------------
+ include/linux/nfs_iostat.h |  119 ++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 132 insertions(+), 106 deletions(-)
+ create mode 100644 include/linux/nfs_iostat.h
 
-This looks correct already in Bruce's tree. Am I missing something?
 
-Cheers,
--- 
-Jeff Layton <jlayton@redhat.com>
+diff --git a/fs/nfs/iostat.h b/fs/nfs/iostat.h
+index 6350ecb..2ec65e1 100644
+--- a/fs/nfs/iostat.h
++++ b/fs/nfs/iostat.h
+@@ -5,135 +5,41 @@
+  *
+  *  Copyright (C) 2005, 2006 Chuck Lever <cel@netapp.com>
+  *
+- *  NFS client per-mount statistics provide information about the health of
+- *  the NFS client and the health of each NFS mount point.  Generally these
+- *  are not for detailed problem diagnosis, but simply to indicate that there
+- *  is a problem.
+- *
+- *  These counters are not meant to be human-readable, but are meant to be
+- *  integrated into system monitoring tools such as "sar" and "iostat".  As
+- *  such, the counters are sampled by the tools over time, and are never
+- *  zeroed after a file system is mounted.  Moving averages can be computed
+- *  by the tools by taking the difference between two instantaneous samples
+- *  and dividing that by the time between the samples.
+  */
+ 
+ #ifndef _NFS_IOSTAT
+ #define _NFS_IOSTAT
+ 
+-#define NFS_IOSTAT_VERS		"1.0"
+-
+-/*
+- * NFS byte counters
+- *
+- * 1.  SERVER - the number of payload bytes read from or written to the
+- *     server by the NFS client via an NFS READ or WRITE request.
+- *
+- * 2.  NORMAL - the number of bytes read or written by applications via
+- *     the read(2) and write(2) system call interfaces.
+- *
+- * 3.  DIRECT - the number of bytes read or written from files opened
+- *     with the O_DIRECT flag.
+- *
+- * These counters give a view of the data throughput into and out of the NFS
+- * client.  Comparing the number of bytes requested by an application with the
+- * number of bytes the client requests from the server can provide an
+- * indication of client efficiency (per-op, cache hits, etc).
+- *
+- * These counters can also help characterize which access methods are in
+- * use.  DIRECT by itself shows whether there is any O_DIRECT traffic.
+- * NORMAL + DIRECT shows how much data is going through the system call
+- * interface.  A large amount of SERVER traffic without much NORMAL or
+- * DIRECT traffic shows that applications are using mapped files.
+- *
+- * NFS page counters
+- *
+- * These count the number of pages read or written via nfs_readpage(),
+- * nfs_readpages(), or their write equivalents.
+- */
+-enum nfs_stat_bytecounters {
+-	NFSIOS_NORMALREADBYTES = 0,
+-	NFSIOS_NORMALWRITTENBYTES,
+-	NFSIOS_DIRECTREADBYTES,
+-	NFSIOS_DIRECTWRITTENBYTES,
+-	NFSIOS_SERVERREADBYTES,
+-	NFSIOS_SERVERWRITTENBYTES,
+-	NFSIOS_READPAGES,
+-	NFSIOS_WRITEPAGES,
+-	__NFSIOS_BYTESMAX,
+-};
+-
+-/*
+- * NFS event counters
+- *
+- * These counters provide a low-overhead way of monitoring client activity
+- * without enabling NFS trace debugging.  The counters show the rate at
+- * which VFS requests are made, and how often the client invalidates its
+- * data and attribute caches.  This allows system administrators to monitor
+- * such things as how close-to-open is working, and answer questions such
+- * as "why are there so many GETATTR requests on the wire?"
+- *
+- * They also count anamolous events such as short reads and writes, silly
+- * renames due to close-after-delete, and operations that change the size
+- * of a file (such operations can often be the source of data corruption
+- * if applications aren't using file locking properly).
+- */
+-enum nfs_stat_eventcounters {
+-	NFSIOS_INODEREVALIDATE = 0,
+-	NFSIOS_DENTRYREVALIDATE,
+-	NFSIOS_DATAINVALIDATE,
+-	NFSIOS_ATTRINVALIDATE,
+-	NFSIOS_VFSOPEN,
+-	NFSIOS_VFSLOOKUP,
+-	NFSIOS_VFSACCESS,
+-	NFSIOS_VFSUPDATEPAGE,
+-	NFSIOS_VFSREADPAGE,
+-	NFSIOS_VFSREADPAGES,
+-	NFSIOS_VFSWRITEPAGE,
+-	NFSIOS_VFSWRITEPAGES,
+-	NFSIOS_VFSGETDENTS,
+-	NFSIOS_VFSSETATTR,
+-	NFSIOS_VFSFLUSH,
+-	NFSIOS_VFSFSYNC,
+-	NFSIOS_VFSLOCK,
+-	NFSIOS_VFSRELEASE,
+-	NFSIOS_CONGESTIONWAIT,
+-	NFSIOS_SETATTRTRUNC,
+-	NFSIOS_EXTENDWRITE,
+-	NFSIOS_SILLYRENAME,
+-	NFSIOS_SHORTREAD,
+-	NFSIOS_SHORTWRITE,
+-	NFSIOS_DELAY,
+-	__NFSIOS_COUNTSMAX,
+-};
+-
+-#ifdef __KERNEL__
+-
+ #include <linux/percpu.h>
+ #include <linux/cache.h>
++#include <linux/nfs_iostat.h>
+ 
+ struct nfs_iostats {
+ 	unsigned long long	bytes[__NFSIOS_BYTESMAX];
+ 	unsigned long		events[__NFSIOS_COUNTSMAX];
+ } ____cacheline_aligned;
+ 
+-static inline void nfs_inc_server_stats(struct nfs_server *server, enum nfs_stat_eventcounters stat)
++static inline void nfs_inc_server_stats(struct nfs_server *server,
++					enum nfs_stat_eventcounters stat)
+ {
+ 	struct nfs_iostats *iostats;
+ 	int cpu;
+ 
+ 	cpu = get_cpu();
+ 	iostats = per_cpu_ptr(server->io_stats, cpu);
+-	iostats->events[stat] ++;
++	iostats->events[stat]++;
+ 	put_cpu_no_resched();
+ }
+ 
+-static inline void nfs_inc_stats(struct inode *inode, enum nfs_stat_eventcounters stat)
++static inline void nfs_inc_stats(struct inode *inode,
++				 enum nfs_stat_eventcounters stat)
+ {
+ 	nfs_inc_server_stats(NFS_SERVER(inode), stat);
+ }
+ 
+-static inline void nfs_add_server_stats(struct nfs_server *server, enum nfs_stat_bytecounters stat, unsigned long addend)
++static inline void nfs_add_server_stats(struct nfs_server *server,
++					enum nfs_stat_bytecounters stat,
++					unsigned long addend)
+ {
+ 	struct nfs_iostats *iostats;
+ 	int cpu;
+@@ -144,7 +50,9 @@ static inline void nfs_add_server_stats(struct nfs_server *server, enum nfs_stat
+ 	put_cpu_no_resched();
+ }
+ 
+-static inline void nfs_add_stats(struct inode *inode, enum nfs_stat_bytecounters stat, unsigned long addend)
++static inline void nfs_add_stats(struct inode *inode,
++				 enum nfs_stat_bytecounters stat,
++				 unsigned long addend)
+ {
+ 	nfs_add_server_stats(NFS_SERVER(inode), stat, addend);
+ }
+@@ -160,5 +68,4 @@ static inline void nfs_free_iostats(struct nfs_iostats *stats)
+ 		free_percpu(stats);
+ }
+ 
+-#endif
+-#endif
++#endif /* _NFS_IOSTAT */
+diff --git a/include/linux/nfs_iostat.h b/include/linux/nfs_iostat.h
+new file mode 100644
+index 0000000..1cb9a3f
+--- /dev/null
++++ b/include/linux/nfs_iostat.h
+@@ -0,0 +1,119 @@
++/*
++ *  User-space visible declarations for NFS client per-mount
++ *  point statistics
++ *
++ *  Copyright (C) 2005, 2006 Chuck Lever <cel@netapp.com>
++ *
++ *  NFS client per-mount statistics provide information about the
++ *  health of the NFS client and the health of each NFS mount point.
++ *  Generally these are not for detailed problem diagnosis, but
++ *  simply to indicate that there is a problem.
++ *
++ *  These counters are not meant to be human-readable, but are meant
++ *  to be integrated into system monitoring tools such as "sar" and
++ *  "iostat".  As such, the counters are sampled by the tools over
++ *  time, and are never zeroed after a file system is mounted.
++ *  Moving averages can be computed by the tools by taking the
++ *  difference between two instantaneous samples  and dividing that
++ *  by the time between the samples.
++ */
++
++#ifndef _LINUX_NFS_IOSTAT
++#define _LINUX_NFS_IOSTAT
++
++#define NFS_IOSTAT_VERS		"1.0"
++
++/*
++ * NFS byte counters
++ *
++ * 1.  SERVER - the number of payload bytes read from or written
++ *     to the server by the NFS client via an NFS READ or WRITE
++ *     request.
++ *
++ * 2.  NORMAL - the number of bytes read or written by applications
++ *     via the read(2) and write(2) system call interfaces.
++ *
++ * 3.  DIRECT - the number of bytes read or written from files
++ *     opened with the O_DIRECT flag.
++ *
++ * These counters give a view of the data throughput into and out
++ * of the NFS client.  Comparing the number of bytes requested by
++ * an application with the number of bytes the client requests from
++ * the server can provide an indication of client efficiency
++ * (per-op, cache hits, etc).
++ *
++ * These counters can also help characterize which access methods
++ * are in use.  DIRECT by itself shows whether there is any O_DIRECT
++ * traffic.  NORMAL + DIRECT shows how much data is going through
++ * the system call interface.  A large amount of SERVER traffic
++ * without much NORMAL or DIRECT traffic shows that applications
++ * are using mapped files.
++ *
++ * NFS page counters
++ *
++ * These count the number of pages read or written via nfs_readpage(),
++ * nfs_readpages(), or their write equivalents.
++ *
++ * NB: When adding new byte counters, please include the measured
++ * units in the name of each byte counter to help users of this
++ * interface determine what exactly is being counted.
++ */
++enum nfs_stat_bytecounters {
++	NFSIOS_NORMALREADBYTES = 0,
++	NFSIOS_NORMALWRITTENBYTES,
++	NFSIOS_DIRECTREADBYTES,
++	NFSIOS_DIRECTWRITTENBYTES,
++	NFSIOS_SERVERREADBYTES,
++	NFSIOS_SERVERWRITTENBYTES,
++	NFSIOS_READPAGES,
++	NFSIOS_WRITEPAGES,
++	__NFSIOS_BYTESMAX,
++};
++
++/*
++ * NFS event counters
++ *
++ * These counters provide a low-overhead way of monitoring client
++ * activity without enabling NFS trace debugging.  The counters
++ * show the rate at which VFS requests are made, and how often the
++ * client invalidates its data and attribute caches.  This allows
++ * system administrators to monitor such things as how close-to-open
++ * is working, and answer questions such as "why are there so many
++ * GETATTR requests on the wire?"
++ *
++ * They also count anamolous events such as short reads and writes,
++ * silly renames due to close-after-delete, and operations that
++ * change the size of a file (such operations can often be the
++ * source of data corruption if applications aren't using file
++ * locking properly).
++ */
++enum nfs_stat_eventcounters {
++	NFSIOS_INODEREVALIDATE = 0,
++	NFSIOS_DENTRYREVALIDATE,
++	NFSIOS_DATAINVALIDATE,
++	NFSIOS_ATTRINVALIDATE,
++	NFSIOS_VFSOPEN,
++	NFSIOS_VFSLOOKUP,
++	NFSIOS_VFSACCESS,
++	NFSIOS_VFSUPDATEPAGE,
++	NFSIOS_VFSREADPAGE,
++	NFSIOS_VFSREADPAGES,
++	NFSIOS_VFSWRITEPAGE,
++	NFSIOS_VFSWRITEPAGES,
++	NFSIOS_VFSGETDENTS,
++	NFSIOS_VFSSETATTR,
++	NFSIOS_VFSFLUSH,
++	NFSIOS_VFSFSYNC,
++	NFSIOS_VFSLOCK,
++	NFSIOS_VFSRELEASE,
++	NFSIOS_CONGESTIONWAIT,
++	NFSIOS_SETATTRTRUNC,
++	NFSIOS_EXTENDWRITE,
++	NFSIOS_SILLYRENAME,
++	NFSIOS_SHORTREAD,
++	NFSIOS_SHORTWRITE,
++	NFSIOS_DELAY,
++	__NFSIOS_COUNTSMAX,
++};
++
++#endif	/* _LINUX_NFS_IOSTAT */
+
