@@ -1,91 +1,96 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 03/15] NFS: Remove attribute update related BKL references
+Subject: [PATCH 06/15] NFS: Remove BKL usage from open()
 Date: Thu, 12 Jun 2008 15:28:17 -0400
-Message-ID: <20080612192817.24916.67821.stgit@localhost.localdomain>
+Message-ID: <20080612192817.24916.18587.stgit@localhost.localdomain>
 References: <20080612192817.24916.52065.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:47822 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:33108 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752936AbYFLTtW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 12 Jun 2008 15:49:22 -0400
+	id S1754021AbYFLTtX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 12 Jun 2008 15:49:23 -0400
 Received: from svlexrs01.hq.netapp.com (svlexrs01.corp.netapp.com [10.57.156.158])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id m5CJnLJ1008546
-	for <linux-nfs@vger.kernel.org>; Thu, 12 Jun 2008 12:49:21 -0700 (PDT)
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id m5CJnMHU008552
+	for <linux-nfs@vger.kernel.org>; Thu, 12 Jun 2008 12:49:22 -0700 (PDT)
 In-Reply-To: <20080612192817.24916.52065.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+All the NFSv4 stateful operations are already protected by other locks (in
+particular by the rpc_sequence locks.
+
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- fs/nfs/inode.c |    4 ----
- fs/nfs/super.c |    4 ----
- 2 files changed, 0 insertions(+), 8 deletions(-)
+ fs/nfs/dir.c      |    6 ------
+ fs/nfs/file.c     |    2 --
+ fs/nfs/nfs4proc.c |    2 --
+ 3 files changed, 0 insertions(+), 10 deletions(-)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 3adabd1..df23f98 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -370,7 +370,6 @@ nfs_setattr(struct dentry *dentry, struct iattr *attr)
- 	if ((attr->ia_valid & ~ATTR_FILE) == 0)
- 		return 0;
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index a42ed8f..4ba889b 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -139,10 +139,8 @@ nfs_opendir(struct inode *inode, struct file *filp)
+ 
+ 	nfs_inc_stats(inode, NFSIOS_VFSOPEN);
  
 -	lock_kernel();
- 	/* Write all dirty data */
- 	if (S_ISREG(inode->i_mode)) {
- 		filemap_write_and_wait(inode->i_mapping);
-@@ -384,7 +383,6 @@ nfs_setattr(struct dentry *dentry, struct iattr *attr)
- 	error = NFS_PROTO(inode)->setattr(dentry, &fattr, attr);
- 	if (error == 0)
- 		nfs_refresh_inode(inode, &fattr);
+ 	/* Call generic open code in order to cache credentials */
+ 	res = nfs_open(inode, filp);
 -	unlock_kernel();
- 	return error;
+ 	return res;
  }
  
-@@ -700,7 +698,6 @@ __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
- 		inode->i_sb->s_id, (long long)NFS_FILEID(inode));
+@@ -1019,9 +1017,7 @@ static struct dentry *nfs_atomic_lookup(struct inode *dir, struct dentry *dentry
+ 	}
  
- 	nfs_inc_stats(inode, NFSIOS_INODEREVALIDATE);
+ 	/* Open the file on the server */
 -	lock_kernel();
- 	if (is_bad_inode(inode))
-  		goto out_nowait;
- 	if (NFS_STALE(inode))
-@@ -749,7 +746,6 @@ __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
- 	nfs_wake_up_inode(inode);
- 
-  out_nowait:
+ 	res = nfs4_atomic_open(dir, dentry, nd);
 -	unlock_kernel();
- 	return status;
- }
- 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 226ae6a..39c028e 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -371,8 +371,6 @@ static int nfs_statfs(struct dentry *dentry, struct kstatfs *buf)
- 	};
- 	int error;
- 
+ 	if (IS_ERR(res)) {
+ 		error = PTR_ERR(res);
+ 		switch (error) {
+@@ -1083,9 +1079,7 @@ static int nfs_open_revalidate(struct dentry *dentry, struct nameidata *nd)
+ 	 * operations that change the directory. We therefore save the
+ 	 * change attribute *before* we do the RPC call.
+ 	 */
 -	lock_kernel();
--
- 	error = server->nfs_client->rpc_ops->statfs(server, fh, &res);
- 	if (error < 0)
- 		goto out_err;
-@@ -404,12 +402,10 @@ static int nfs_statfs(struct dentry *dentry, struct kstatfs *buf)
- 
- 	buf->f_namelen = server->namelen;
- 
+ 	ret = nfs4_open_revalidate(dir, dentry, openflags, nd);
 -	unlock_kernel();
- 	return 0;
+ out:
+ 	dput(parent);
+ 	if (!ret)
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index f919d9a..9f1bed9 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -128,9 +128,7 @@ nfs_file_open(struct inode *inode, struct file *filp)
+ 		return res;
  
-  out_err:
- 	dprintk("%s: statfs error = %d\n", __func__, -error);
+ 	nfs_inc_stats(inode, NFSIOS_VFSOPEN);
+-	lock_kernel();
+ 	res = nfs_open(inode, filp);
 -	unlock_kernel();
- 	return error;
+ 	return res;
  }
  
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 66f13dc..affdbb9 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -451,9 +451,7 @@ static struct nfs4_state *nfs4_try_open_cached(struct nfs4_opendata *opendata)
+ 		/* Save the delegation */
+ 		memcpy(stateid.data, delegation->stateid.data, sizeof(stateid.data));
+ 		rcu_read_unlock();
+-		lock_kernel();
+ 		ret = nfs_may_open(state->inode, state->owner->so_cred, open_mode);
+-		unlock_kernel();
+ 		if (ret != 0)
+ 			goto out;
+ 		ret = -EAGAIN;
 
