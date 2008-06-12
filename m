@@ -1,153 +1,126 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 12/37] SUNRPC: Rename "call_" functions that are no longer
-	FSM states
-Date: Thu, 12 Jun 2008 15:22:00 -0400
-Message-ID: <20080612192200.24528.59720.stgit@localhost.localdomain>
+Subject: [PATCH 34/37] NFS: Ensure we zap only the access and acl caches
+	when setting new acls
+Date: Thu, 12 Jun 2008 15:22:01 -0400
+Message-ID: <20080612192201.24528.10436.stgit@localhost.localdomain>
 References: <20080612192159.24528.43756.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-	Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:61969 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:40624 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754954AbYFLTeF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 12 Jun 2008 15:34:05 -0400
+	id S1755179AbYFLTeK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 12 Jun 2008 15:34:10 -0400
+Received: from svlexrs01.hq.netapp.com (svlexrs01.corp.netapp.com [10.57.156.158])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id m5CJY9oX003121
+	for <linux-nfs@vger.kernel.org>; Thu, 12 Jun 2008 12:34:09 -0700 (PDT)
 In-Reply-To: <20080612192159.24528.43756.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Chuck Lever <chuck.lever@oracle.com>
+...and ensure that we obey the NFS_INO_INVALID_ACL flag when retrieving the
+acls.
 
-The RPC client uses a finite state machine to move RPC tasks through each
-step of an RPC request.  Each state is contained in a function in
-net/sunrpc/clnt.c, and named call_foo.
-
-Some of the functions named call_foo have changed over the past few years and
-are no longer states in the FSM.  These include: call_encode, call_header,
-and call_verify.  As a clean up, rename the functions that have changed.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- net/sunrpc/clnt.c |   35 ++++++++++++++---------------------
- 1 files changed, 14 insertions(+), 21 deletions(-)
+ fs/nfs/inode.c    |    4 +---
+ fs/nfs/internal.h |    1 +
+ fs/nfs/nfs3acl.c  |    9 ++++++---
+ fs/nfs/nfs4proc.c |    5 ++++-
+ 4 files changed, 12 insertions(+), 7 deletions(-)
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 68ea6dd..ab8038d 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -58,7 +58,6 @@ static void	call_start(struct rpc_task *task);
- static void	call_reserve(struct rpc_task *task);
- static void	call_reserveresult(struct rpc_task *task);
- static void	call_allocate(struct rpc_task *task);
--static void	call_encode(struct rpc_task *task);
- static void	call_decode(struct rpc_task *task);
- static void	call_bind(struct rpc_task *task);
- static void	call_bind_status(struct rpc_task *task);
-@@ -70,9 +69,9 @@ static void	call_refreshresult(struct rpc_task *task);
- static void	call_timeout(struct rpc_task *task);
- static void	call_connect(struct rpc_task *task);
- static void	call_connect_status(struct rpc_task *task);
--static __be32 *	call_header(struct rpc_task *task);
--static __be32 *	call_verify(struct rpc_task *task);
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 2e4ab4a..2c23d06 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -57,8 +57,6 @@ static int enable_ino64 = NFS_64_BIT_INODE_NUMBERS_ENABLED;
+ static void nfs_invalidate_inode(struct inode *);
+ static int nfs_update_inode(struct inode *, struct nfs_fattr *);
  
-+static __be32	*rpc_encode_header(struct rpc_task *task);
-+static __be32	*rpc_verify_header(struct rpc_task *task);
- static int	rpc_ping(struct rpc_clnt *clnt, int flags);
+-static void nfs_zap_acl_cache(struct inode *);
+-
+ static struct kmem_cache * nfs_inode_cachep;
  
- static void rpc_register_client(struct rpc_clnt *clnt)
-@@ -876,7 +875,7 @@ rpc_xdr_buf_init(struct xdr_buf *buf, void *start, size_t len)
-  * 3.	Encode arguments of an RPC call
-  */
- static void
--call_encode(struct rpc_task *task)
-+rpc_xdr_encode(struct rpc_task *task)
- {
- 	struct rpc_rqst	*req = task->tk_rqstp;
- 	kxdrproc_t	encode;
-@@ -891,13 +890,14 @@ call_encode(struct rpc_task *task)
- 			 (char *)req->rq_buffer + req->rq_callsize,
- 			 req->rq_rcvsize);
- 
--	/* Encode header and provided arguments */
--	encode = task->tk_msg.rpc_proc->p_encode;
--	if (!(p = call_header(task))) {
--		printk(KERN_INFO "RPC: call_header failed, exit EIO\n");
-+	p = rpc_encode_header(task);
-+	if (p == NULL) {
-+		printk(KERN_INFO "RPC: couldn't encode RPC header, exit EIO\n");
- 		rpc_exit(task, -EIO);
- 		return;
+ static inline unsigned long
+@@ -167,7 +165,7 @@ void nfs_zap_mapping(struct inode *inode, struct address_space *mapping)
  	}
+ }
+ 
+-static void nfs_zap_acl_cache(struct inode *inode)
++void nfs_zap_acl_cache(struct inode *inode)
+ {
+ 	void (*clear_acl_cache)(struct inode *);
+ 
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 04ae867..24241fc 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -150,6 +150,7 @@ extern void nfs_clear_inode(struct inode *);
+ #ifdef CONFIG_NFS_V4
+ extern void nfs4_clear_inode(struct inode *);
+ #endif
++void nfs_zap_acl_cache(struct inode *inode);
+ 
+ /* super.c */
+ extern struct file_system_type nfs_xdev_fs_type;
+diff --git a/fs/nfs/nfs3acl.c b/fs/nfs/nfs3acl.c
+index 9b73625..423842f 100644
+--- a/fs/nfs/nfs3acl.c
++++ b/fs/nfs/nfs3acl.c
+@@ -5,6 +5,8 @@
+ #include <linux/posix_acl_xattr.h>
+ #include <linux/nfsacl.h>
+ 
++#include "internal.h"
 +
-+	encode = task->tk_msg.rpc_proc->p_encode;
- 	if (encode == NULL)
- 		return;
+ #define NFSDBG_FACILITY	NFSDBG_PROC
  
-@@ -1056,7 +1056,7 @@ call_transmit(struct rpc_task *task)
- 	/* Encode here so that rpcsec_gss can use correct sequence number. */
- 	if (rpc_task_need_encode(task)) {
- 		BUG_ON(task->tk_rqstp->rq_bytes_sent != 0);
--		call_encode(task);
-+		rpc_xdr_encode(task);
- 		/* Did the encode result in an error condition? */
- 		if (task->tk_status != 0) {
- 			/* Was the error nonfatal? */
-@@ -1240,8 +1240,7 @@ call_decode(struct rpc_task *task)
- 		goto out_retry;
- 	}
+ ssize_t nfs3_listxattr(struct dentry *dentry, char *buffer, size_t size)
+@@ -205,6 +207,8 @@ struct posix_acl *nfs3_proc_getacl(struct inode *inode, int type)
+ 	status = nfs_revalidate_inode(server, inode);
+ 	if (status < 0)
+ 		return ERR_PTR(status);
++	if (NFS_I(inode)->cache_validity & NFS_INO_INVALID_ACL)
++		nfs_zap_acl_cache(inode);
+ 	acl = nfs3_get_cached_acl(inode, type);
+ 	if (acl != ERR_PTR(-EAGAIN))
+ 		return acl;
+@@ -319,9 +323,8 @@ static int nfs3_proc_setacls(struct inode *inode, struct posix_acl *acl,
+ 	dprintk("NFS call setacl\n");
+ 	msg.rpc_proc = &server->client_acl->cl_procinfo[ACLPROC3_SETACL];
+ 	status = rpc_call_sync(server->client_acl, &msg, 0);
+-	spin_lock(&inode->i_lock);
+-	NFS_I(inode)->cache_validity |= NFS_INO_INVALID_ACCESS;
+-	spin_unlock(&inode->i_lock);
++	nfs_access_zap_cache(inode);
++	nfs_zap_acl_cache(inode);
+ 	dprintk("NFS reply setacl: %d\n", status);
  
--	/* Verify the RPC header */
--	p = call_verify(task);
-+	p = rpc_verify_header(task);
- 	if (IS_ERR(p)) {
- 		if (p == ERR_PTR(-EAGAIN))
- 			goto out_retry;
-@@ -1259,7 +1258,7 @@ call_decode(struct rpc_task *task)
- 	return;
- out_retry:
- 	task->tk_status = 0;
--	/* Note: call_verify() may have freed the RPC slot */
-+	/* Note: rpc_verify_header() may have freed the RPC slot */
- 	if (task->tk_rqstp == req) {
- 		req->rq_received = req->rq_rcv_buf.len = 0;
- 		if (task->tk_client->cl_discrtry)
-@@ -1306,11 +1305,8 @@ call_refreshresult(struct rpc_task *task)
- 	return;
+ 	/* pages may have been allocated at the xdr layer. */
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 0fc1068..66f13dc 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2705,6 +2705,8 @@ static ssize_t nfs4_proc_get_acl(struct inode *inode, void *buf, size_t buflen)
+ 	ret = nfs_revalidate_inode(server, inode);
+ 	if (ret < 0)
+ 		return ret;
++	if (NFS_I(inode)->cache_validity & NFS_INO_INVALID_ACL)
++		nfs_zap_acl_cache(inode);
+ 	ret = nfs4_read_cached_acl(inode, buf, buflen);
+ 	if (ret != -ENOENT)
+ 		return ret;
+@@ -2732,7 +2734,8 @@ static int __nfs4_proc_set_acl(struct inode *inode, const void *buf, size_t bufl
+ 	nfs_inode_return_delegation(inode);
+ 	buf_to_pages(buf, buflen, arg.acl_pages, &arg.acl_pgbase);
+ 	ret = rpc_call_sync(NFS_CLIENT(inode), &msg, 0);
+-	nfs_zap_caches(inode);
++	nfs_access_zap_cache(inode);
++	nfs_zap_acl_cache(inode);
+ 	return ret;
  }
  
--/*
-- * Call header serialization
-- */
- static __be32 *
--call_header(struct rpc_task *task)
-+rpc_encode_header(struct rpc_task *task)
- {
- 	struct rpc_clnt *clnt = task->tk_client;
- 	struct rpc_rqst	*req = task->tk_rqstp;
-@@ -1330,11 +1326,8 @@ call_header(struct rpc_task *task)
- 	return p;
- }
- 
--/*
-- * Reply header verification
-- */
- static __be32 *
--call_verify(struct rpc_task *task)
-+rpc_verify_header(struct rpc_task *task)
- {
- 	struct kvec *iov = &task->tk_rqstp->rq_rcv_buf.head[0];
- 	int len = task->tk_rqstp->rq_rcv_buf.len >> 2;
-@@ -1408,7 +1401,7 @@ call_verify(struct rpc_task *task)
- 			task->tk_action = call_bind;
- 			goto out_retry;
- 		case RPC_AUTH_TOOWEAK:
--			printk(KERN_NOTICE "call_verify: server %s requires stronger "
-+			printk(KERN_NOTICE "RPC: server %s requires stronger "
- 			       "authentication.\n", task->tk_client->cl_server);
- 			break;
- 		default:
 
