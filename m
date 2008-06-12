@@ -1,109 +1,75 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 30/37] SUNRPC: Ensure all transports set rq_xtime
-	consistently
+Subject: [PATCH 28/37] rpc: minor cleanup of scheduler callback code
 Date: Thu, 12 Jun 2008 15:22:01 -0400
-Message-ID: <20080612192201.24528.52047.stgit@localhost.localdomain>
+Message-ID: <20080612192201.24528.78311.stgit@localhost.localdomain>
 References: <20080612192159.24528.43756.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-	Tom Talpey <thomas.talpey@netapp.com>,
+Cc: "J. Bruce Fields" <bfields@citi.umich.edu>,
 	Trond Myklebust <Trond.Myklebust@netapp.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:52364 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:14765 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754038AbYFLTfE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 12 Jun 2008 15:35:04 -0400
+	id S1759512AbYFLTez (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 12 Jun 2008 15:34:55 -0400
 In-Reply-To: <20080612192159.24528.43756.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Chuck Lever <chuck.lever@oracle.com>
+From: \"J. Bruce Fields\" <bfields@citi.umich.edu>
 
-The RPC client uses the rq_xtime field in each RPC request to determine the
-round-trip time of the request.  Currently, the rq_xtime field is
-initialized by each transport just before it starts enqueing a request to
-be sent.  However, transports do not handle initializing this value
-consistently; sometimes they don't initialize it at all.
+Try to make the comment here a little more clear and concise.
 
-To make the measurement of request round-trip time consistent for all
-RPC client transport capabilities, pull rq_xtime initialization into the
-RPC client's generic transport logic.  Now all transports will get a
-standardized RTT measure automatically, from:
+Also, this macro definition seems unnecessary.
 
-  xprt_transmit()
-
-to
-
-  xprt_complete_rqst()
-
-This makes round-trip time calculation more accurate for the TCP transport.
-The socket ->sendmsg() method can return "-EAGAIN" if the socket's output
-buffer is full, so the TCP transport's ->send_request() method may call
-the ->sendmsg() method repeatedly until it gets all of the request's bytes
-queued in the socket's buffer.
-
-Currently, the TCP transport sets the rq_xtime field every time through
-that loop so the final value is the timestamp just before the *last* call
-to the underlying socket's ->sendmsg() method.  After this patch, the
-rq_xtime field contains a timestamp that reflects the time just before the
-*first* call to ->sendmsg().
-
-This is consequential under heavy workloads because large requests often
-take multiple ->sendmsg() calls to get all the bytes of a request queued.
-The TCP transport causes the request to sleep until the remote end of the
-socket has received enough bytes to clear space in the socket's local
-output buffer.  This delay can be quite significant.
-
-The method introduced by this patch is a more accurate measure of RTT
-for stream transports, since the server can cause enough back pressure
-to delay (ie increase the latency of) requests from the client.
-
-Additionally, this patch corrects the behavior of the RDMA transport, which
-entirely neglected to initialize the rq_xtime field.  RPC performance
-metrics for RDMA transports now display correct RPC request round trip
-times.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Acked-by: Tom Talpey <thomas.talpey@netapp.com>
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- net/sunrpc/xprt.c     |    1 +
- net/sunrpc/xprtsock.c |    2 --
- 2 files changed, 1 insertions(+), 2 deletions(-)
+ include/linux/sunrpc/sched.h |    1 -
+ net/sunrpc/sched.c           |   14 +++++---------
+ 2 files changed, 5 insertions(+), 10 deletions(-)
 
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index 67996bd..99a52aa 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -872,6 +872,7 @@ void xprt_transmit(struct rpc_task *task)
- 		return;
+diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
+index d1a5c8c..64981a2 100644
+--- a/include/linux/sunrpc/sched.h
++++ b/include/linux/sunrpc/sched.h
+@@ -135,7 +135,6 @@ struct rpc_task_setup {
+ #define RPC_IS_SWAPPER(t)	((t)->tk_flags & RPC_TASK_SWAPPER)
+ #define RPC_DO_ROOTOVERRIDE(t)	((t)->tk_flags & RPC_TASK_ROOTCREDS)
+ #define RPC_ASSASSINATED(t)	((t)->tk_flags & RPC_TASK_KILLED)
+-#define RPC_DO_CALLBACK(t)	((t)->tk_callback != NULL)
+ #define RPC_IS_SOFT(t)		((t)->tk_flags & RPC_TASK_SOFT)
  
- 	req->rq_connect_cookie = xprt->connect_cookie;
-+	req->rq_xtime = jiffies;
- 	status = xprt->ops->send_request(task);
- 	if (status == 0) {
- 		dprintk("RPC: %5u xmit complete\n", task->tk_pid);
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index ddbe981..4486c59 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -579,7 +579,6 @@ static int xs_udp_send_request(struct rpc_task *task)
- 				req->rq_svec->iov_base,
- 				req->rq_svec->iov_len);
+ #define RPC_TASK_RUNNING	0
+diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+index 6eab9bf..6288af0 100644
+--- a/net/sunrpc/sched.c
++++ b/net/sunrpc/sched.c
+@@ -626,19 +626,15 @@ static void __rpc_execute(struct rpc_task *task)
+ 		/*
+ 		 * Execute any pending callback.
+ 		 */
+-		if (RPC_DO_CALLBACK(task)) {
+-			/* Define a callback save pointer */
++		if (task->tk_callback) {
+ 			void (*save_callback)(struct rpc_task *);
  
--	req->rq_xtime = jiffies;
- 	status = xs_sendpages(transport->sock,
- 			      xs_addr(xprt),
- 			      xprt->addrlen, xdr,
-@@ -671,7 +670,6 @@ static int xs_tcp_send_request(struct rpc_task *task)
- 	 * to cope with writespace callbacks arriving _after_ we have
- 	 * called sendmsg(). */
- 	while (1) {
--		req->rq_xtime = jiffies;
- 		status = xs_sendpages(transport->sock,
- 					NULL, 0, xdr, req->rq_bytes_sent);
+ 			/*
+-			 * If a callback exists, save it, reset it,
+-			 * call it.
+-			 * The save is needed to stop from resetting
+-			 * another callback set within the callback handler
+-			 * - Dave
++			 * We set tk_callback to NULL before calling it,
++			 * in case it sets the tk_callback field itself:
+ 			 */
+-			save_callback=task->tk_callback;
+-			task->tk_callback=NULL;
++			save_callback = task->tk_callback;
++			task->tk_callback = NULL;
+ 			save_callback(task);
+ 		}
  
 
