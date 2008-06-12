@@ -1,7 +1,8 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 36/37] NFS: Treat "intr" and "nointr" options as deprecated
-Date: Thu, 12 Jun 2008 15:22:01 -0400
-Message-ID: <20080612192201.24528.16000.stgit@localhost.localdomain>
+Subject: [PATCH 12/37] SUNRPC: Rename "call_" functions that are no longer
+	FSM states
+Date: Thu, 12 Jun 2008 15:22:00 -0400
+Message-ID: <20080612192200.24528.59720.stgit@localhost.localdomain>
 References: <20080612192159.24528.43756.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -9,66 +10,144 @@ Cc: Chuck Lever <chuck.lever@oracle.com>,
 	Trond Myklebust <Trond.Myklebust@netapp.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:63672 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:61969 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754993AbYFLTeM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 12 Jun 2008 15:34:12 -0400
+	id S1754954AbYFLTeF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 12 Jun 2008 15:34:05 -0400
 In-Reply-To: <20080612192159.24528.43756.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Chuck Lever <chuck.lever@oracle.com>
 
-Clean up:  the "intr" and "nointr" mount options were recently retired.
-Document this in the NFS mount option parser.
+The RPC client uses a finite state machine to move RPC tasks through each
+step of an RPC request.  Each state is contained in a function in
+net/sunrpc/clnt.c, and named call_foo.
+
+Some of the functions named call_foo have changed over the past few years and
+are no longer states in the FSM.  These include: call_encode, call_header,
+and call_verify.  As a clean up, rename the functions that have changed.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- fs/nfs/super.c |   10 ++++------
- 1 files changed, 4 insertions(+), 6 deletions(-)
+ net/sunrpc/clnt.c |   35 ++++++++++++++---------------------
+ 1 files changed, 14 insertions(+), 21 deletions(-)
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index dea138b..09e563b 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -65,7 +65,6 @@
- enum {
- 	/* Mount options that take no arguments */
- 	Opt_soft, Opt_hard,
--	Opt_intr, Opt_nointr,
- 	Opt_posix, Opt_noposix,
- 	Opt_cto, Opt_nocto,
- 	Opt_ac, Opt_noac,
-@@ -105,8 +104,8 @@ static match_table_t nfs_mount_option_tokens = {
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 68ea6dd..ab8038d 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -58,7 +58,6 @@ static void	call_start(struct rpc_task *task);
+ static void	call_reserve(struct rpc_task *task);
+ static void	call_reserveresult(struct rpc_task *task);
+ static void	call_allocate(struct rpc_task *task);
+-static void	call_encode(struct rpc_task *task);
+ static void	call_decode(struct rpc_task *task);
+ static void	call_bind(struct rpc_task *task);
+ static void	call_bind_status(struct rpc_task *task);
+@@ -70,9 +69,9 @@ static void	call_refreshresult(struct rpc_task *task);
+ static void	call_timeout(struct rpc_task *task);
+ static void	call_connect(struct rpc_task *task);
+ static void	call_connect_status(struct rpc_task *task);
+-static __be32 *	call_header(struct rpc_task *task);
+-static __be32 *	call_verify(struct rpc_task *task);
  
- 	{ Opt_soft, "soft" },
- 	{ Opt_hard, "hard" },
--	{ Opt_intr, "intr" },
--	{ Opt_nointr, "nointr" },
-+	{ Opt_deprecated, "intr" },
-+	{ Opt_deprecated, "nointr" },
- 	{ Opt_posix, "posix" },
- 	{ Opt_noposix, "noposix" },
- 	{ Opt_cto, "cto" },
-@@ -787,9 +786,6 @@ static int nfs_parse_mount_options(char *raw,
- 		case Opt_hard:
- 			mnt->flags &= ~NFS_MOUNT_SOFT;
- 			break;
--		case Opt_intr:
--		case Opt_nointr:
--			break;
- 		case Opt_posix:
- 			mnt->flags |= NFS_MOUNT_POSIX;
- 			break;
-@@ -1105,6 +1101,8 @@ static int nfs_parse_mount_options(char *raw,
++static __be32	*rpc_encode_header(struct rpc_task *task);
++static __be32	*rpc_verify_header(struct rpc_task *task);
+ static int	rpc_ping(struct rpc_clnt *clnt, int flags);
  
- 		case Opt_userspace:
- 		case Opt_deprecated:
-+			dfprintk(MOUNT, "NFS:   ignoring mount option "
-+					"'%s'\n", p);
- 			break;
+ static void rpc_register_client(struct rpc_clnt *clnt)
+@@ -876,7 +875,7 @@ rpc_xdr_buf_init(struct xdr_buf *buf, void *start, size_t len)
+  * 3.	Encode arguments of an RPC call
+  */
+ static void
+-call_encode(struct rpc_task *task)
++rpc_xdr_encode(struct rpc_task *task)
+ {
+ 	struct rpc_rqst	*req = task->tk_rqstp;
+ 	kxdrproc_t	encode;
+@@ -891,13 +890,14 @@ call_encode(struct rpc_task *task)
+ 			 (char *)req->rq_buffer + req->rq_callsize,
+ 			 req->rq_rcvsize);
  
+-	/* Encode header and provided arguments */
+-	encode = task->tk_msg.rpc_proc->p_encode;
+-	if (!(p = call_header(task))) {
+-		printk(KERN_INFO "RPC: call_header failed, exit EIO\n");
++	p = rpc_encode_header(task);
++	if (p == NULL) {
++		printk(KERN_INFO "RPC: couldn't encode RPC header, exit EIO\n");
+ 		rpc_exit(task, -EIO);
+ 		return;
+ 	}
++
++	encode = task->tk_msg.rpc_proc->p_encode;
+ 	if (encode == NULL)
+ 		return;
+ 
+@@ -1056,7 +1056,7 @@ call_transmit(struct rpc_task *task)
+ 	/* Encode here so that rpcsec_gss can use correct sequence number. */
+ 	if (rpc_task_need_encode(task)) {
+ 		BUG_ON(task->tk_rqstp->rq_bytes_sent != 0);
+-		call_encode(task);
++		rpc_xdr_encode(task);
+ 		/* Did the encode result in an error condition? */
+ 		if (task->tk_status != 0) {
+ 			/* Was the error nonfatal? */
+@@ -1240,8 +1240,7 @@ call_decode(struct rpc_task *task)
+ 		goto out_retry;
+ 	}
+ 
+-	/* Verify the RPC header */
+-	p = call_verify(task);
++	p = rpc_verify_header(task);
+ 	if (IS_ERR(p)) {
+ 		if (p == ERR_PTR(-EAGAIN))
+ 			goto out_retry;
+@@ -1259,7 +1258,7 @@ call_decode(struct rpc_task *task)
+ 	return;
+ out_retry:
+ 	task->tk_status = 0;
+-	/* Note: call_verify() may have freed the RPC slot */
++	/* Note: rpc_verify_header() may have freed the RPC slot */
+ 	if (task->tk_rqstp == req) {
+ 		req->rq_received = req->rq_rcv_buf.len = 0;
+ 		if (task->tk_client->cl_discrtry)
+@@ -1306,11 +1305,8 @@ call_refreshresult(struct rpc_task *task)
+ 	return;
+ }
+ 
+-/*
+- * Call header serialization
+- */
+ static __be32 *
+-call_header(struct rpc_task *task)
++rpc_encode_header(struct rpc_task *task)
+ {
+ 	struct rpc_clnt *clnt = task->tk_client;
+ 	struct rpc_rqst	*req = task->tk_rqstp;
+@@ -1330,11 +1326,8 @@ call_header(struct rpc_task *task)
+ 	return p;
+ }
+ 
+-/*
+- * Reply header verification
+- */
+ static __be32 *
+-call_verify(struct rpc_task *task)
++rpc_verify_header(struct rpc_task *task)
+ {
+ 	struct kvec *iov = &task->tk_rqstp->rq_rcv_buf.head[0];
+ 	int len = task->tk_rqstp->rq_rcv_buf.len >> 2;
+@@ -1408,7 +1401,7 @@ call_verify(struct rpc_task *task)
+ 			task->tk_action = call_bind;
+ 			goto out_retry;
+ 		case RPC_AUTH_TOOWEAK:
+-			printk(KERN_NOTICE "call_verify: server %s requires stronger "
++			printk(KERN_NOTICE "RPC: server %s requires stronger "
+ 			       "authentication.\n", task->tk_client->cl_server);
+ 			break;
  		default:
 
