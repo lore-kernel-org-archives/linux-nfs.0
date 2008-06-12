@@ -1,51 +1,154 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH 4/5] NFS: set transport defaults after mount option
-	parsing is finished
-Date: Thu, 12 Jun 2008 12:57:37 -0400
-Message-ID: <1213289857.14478.10.camel@localhost>
-References: <20080612163416.13197.92911.stgit@manray.1015granger.net>
-	 <20080612163756.13197.37893.stgit@manray.1015granger.net>
+Subject: [PATCH 08/37] SUNRPC: Use GFP_NOFS when allocating credentials
+Date: Thu, 12 Jun 2008 15:22:00 -0400
+Message-ID: <20080612192200.24528.65570.stgit@localhost.localdomain>
+References: <20080612192159.24528.43756.stgit@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset="utf-8"
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:53088 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:64822 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752224AbYFLQ5k (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 12 Jun 2008 12:57:40 -0400
-In-Reply-To: <20080612163756.13197.37893.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+	id S1754819AbYFLTeA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 12 Jun 2008 15:34:00 -0400
+Received: from sacexrs01.hq.netapp.com (sacexrs01.hq.netapp.com [10.99.190.105])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id m5CJY0dU001528
+	for <linux-nfs@vger.kernel.org>; Thu, 12 Jun 2008 12:34:00 -0700 (PDT)
+In-Reply-To: <20080612192159.24528.43756.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2008-06-12 at 12:37 -0400, Chuck Lever wrote:
-> Address some unfortunate mount option parsing behavior by setting certain
-> transport-based defaults *after* option parsing is complete.
-> 
->  o  Some options don't obey the "rightmost wins" rule.  Jeff Layton
->     noticed that specifying the "proto=" mount option after the "retrans"
->     or "timeo" options will cause the retrans and timeo values to be
->     overwritten with default settings.
-> 
->     Allow these options to be specified in any order without unexpectedly
->     reverting retrans and timeo to their default.
-> 
->  o  I've received several reports that text-based mounting through
->     firewalls that block UDP fails, even if "proto=tcp" is specified.
-> 
->     If a user specifies "proto=tcp" via the legacy mount API, the mount
->     command also uses TCP to contact the server's mount daemon.  Ditto
->     for "proto=udp".  We want the kernel's mount option to emulate this
->     behavior; however, we still want the default mount protocol to be UDP
->     if no transport options were specified.
+Since the credentials may be allocated during the call to rpc_new_task(),
+which again may be called by a memory allocator...
 
-Why is it necessary to set these defaults in nfs_parse_mount_options?
-This is quite unrelated to parsing of the mount string.
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+ net/sunrpc/auth_gss/auth_gss.c        |   10 +++++-----
+ net/sunrpc/auth_gss/gss_krb5_mech.c   |    4 ++--
+ net/sunrpc/auth_gss/gss_spkm3_mech.c  |    4 ++--
+ net/sunrpc/auth_gss/gss_spkm3_token.c |    2 +-
+ net/sunrpc/auth_unix.c                |    2 +-
+ 5 files changed, 11 insertions(+), 11 deletions(-)
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index cc12d5f..bf7585b 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -146,7 +146,7 @@ simple_get_netobj(const void *p, const void *end, struct xdr_netobj *dest)
+ 	q = (const void *)((const char *)p + len);
+ 	if (unlikely(q > end || q < p))
+ 		return ERR_PTR(-EFAULT);
+-	dest->data = kmemdup(p, len, GFP_KERNEL);
++	dest->data = kmemdup(p, len, GFP_NOFS);
+ 	if (unlikely(dest->data == NULL))
+ 		return ERR_PTR(-ENOMEM);
+ 	dest->len = len;
+@@ -171,7 +171,7 @@ gss_alloc_context(void)
+ {
+ 	struct gss_cl_ctx *ctx;
+ 
+-	ctx = kzalloc(sizeof(*ctx), GFP_KERNEL);
++	ctx = kzalloc(sizeof(*ctx), GFP_NOFS);
+ 	if (ctx != NULL) {
+ 		ctx->gc_proc = RPC_GSS_PROC_DATA;
+ 		ctx->gc_seq = 1;	/* NetApp 6.4R1 doesn't accept seq. no. 0 */
+@@ -341,7 +341,7 @@ gss_alloc_msg(struct gss_auth *gss_auth, uid_t uid)
+ {
+ 	struct gss_upcall_msg *gss_msg;
+ 
+-	gss_msg = kzalloc(sizeof(*gss_msg), GFP_KERNEL);
++	gss_msg = kzalloc(sizeof(*gss_msg), GFP_NOFS);
+ 	if (gss_msg != NULL) {
+ 		INIT_LIST_HEAD(&gss_msg->list);
+ 		rpc_init_wait_queue(&gss_msg->rpc_waitqueue, "RPCSEC_GSS upcall waitq");
+@@ -503,7 +503,7 @@ gss_pipe_downcall(struct file *filp, const char __user *src, size_t mlen)
+ 	if (mlen > MSG_BUF_MAXSIZE)
+ 		goto out;
+ 	err = -ENOMEM;
+-	buf = kmalloc(mlen, GFP_KERNEL);
++	buf = kmalloc(mlen, GFP_NOFS);
+ 	if (!buf)
+ 		goto out;
+ 
+@@ -806,7 +806,7 @@ gss_create_cred(struct rpc_auth *auth, struct auth_cred *acred, int flags)
+ 	dprintk("RPC:       gss_create_cred for uid %d, flavor %d\n",
+ 		acred->uid, auth->au_flavor);
+ 
+-	if (!(cred = kzalloc(sizeof(*cred), GFP_KERNEL)))
++	if (!(cred = kzalloc(sizeof(*cred), GFP_NOFS)))
+ 		goto out_err;
+ 
+ 	rpcauth_init_cred(&cred->gc_base, acred, auth, &gss_credops);
+diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_mech.c
+index 60c3dba..ef45eba 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_mech.c
++++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
+@@ -70,7 +70,7 @@ simple_get_netobj(const void *p, const void *end, struct xdr_netobj *res)
+ 	q = (const void *)((const char *)p + len);
+ 	if (unlikely(q > end || q < p))
+ 		return ERR_PTR(-EFAULT);
+-	res->data = kmemdup(p, len, GFP_KERNEL);
++	res->data = kmemdup(p, len, GFP_NOFS);
+ 	if (unlikely(res->data == NULL))
+ 		return ERR_PTR(-ENOMEM);
+ 	res->len = len;
+@@ -131,7 +131,7 @@ gss_import_sec_context_kerberos(const void *p,
+ 	struct	krb5_ctx *ctx;
+ 	int tmp;
+ 
+-	if (!(ctx = kzalloc(sizeof(*ctx), GFP_KERNEL)))
++	if (!(ctx = kzalloc(sizeof(*ctx), GFP_NOFS)))
+ 		goto out_err;
+ 
+ 	p = simple_get_bytes(p, end, &ctx->initiate, sizeof(ctx->initiate));
+diff --git a/net/sunrpc/auth_gss/gss_spkm3_mech.c b/net/sunrpc/auth_gss/gss_spkm3_mech.c
+index 5deb4b6..035e1dd 100644
+--- a/net/sunrpc/auth_gss/gss_spkm3_mech.c
++++ b/net/sunrpc/auth_gss/gss_spkm3_mech.c
+@@ -76,7 +76,7 @@ simple_get_netobj(const void *p, const void *end, struct xdr_netobj *res)
+ 	q = (const void *)((const char *)p + len);
+ 	if (unlikely(q > end || q < p))
+ 		return ERR_PTR(-EFAULT);
+-	res->data = kmemdup(p, len, GFP_KERNEL);
++	res->data = kmemdup(p, len, GFP_NOFS);
+ 	if (unlikely(res->data == NULL))
+ 		return ERR_PTR(-ENOMEM);
+ 	return q;
+@@ -90,7 +90,7 @@ gss_import_sec_context_spkm3(const void *p, size_t len,
+ 	struct	spkm3_ctx *ctx;
+ 	int	version;
+ 
+-	if (!(ctx = kzalloc(sizeof(*ctx), GFP_KERNEL)))
++	if (!(ctx = kzalloc(sizeof(*ctx), GFP_NOFS)))
+ 		goto out_err;
+ 
+ 	p = simple_get_bytes(p, end, &version, sizeof(version));
+diff --git a/net/sunrpc/auth_gss/gss_spkm3_token.c b/net/sunrpc/auth_gss/gss_spkm3_token.c
+index 6cdd241..3308157 100644
+--- a/net/sunrpc/auth_gss/gss_spkm3_token.c
++++ b/net/sunrpc/auth_gss/gss_spkm3_token.c
+@@ -90,7 +90,7 @@ asn1_bitstring_len(struct xdr_netobj *in, int *enclen, int *zerobits)
+ int
+ decode_asn1_bitstring(struct xdr_netobj *out, char *in, int enclen, int explen)
+ {
+-	if (!(out->data = kzalloc(explen,GFP_KERNEL)))
++	if (!(out->data = kzalloc(explen,GFP_NOFS)))
+ 		return 0;
+ 	out->len = explen;
+ 	memcpy(out->data, in, enclen);
+diff --git a/net/sunrpc/auth_unix.c b/net/sunrpc/auth_unix.c
+index 44920b9..46b2647 100644
+--- a/net/sunrpc/auth_unix.c
++++ b/net/sunrpc/auth_unix.c
+@@ -66,7 +66,7 @@ unx_create_cred(struct rpc_auth *auth, struct auth_cred *acred, int flags)
+ 	dprintk("RPC:       allocating UNIX cred for uid %d gid %d\n",
+ 			acred->uid, acred->gid);
+ 
+-	if (!(cred = kmalloc(sizeof(*cred), GFP_KERNEL)))
++	if (!(cred = kmalloc(sizeof(*cred), GFP_NOFS)))
+ 		return ERR_PTR(-ENOMEM);
+ 
+ 	rpcauth_init_cred(&cred->uc_base, acred, auth, &unix_credops);
+
