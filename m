@@ -1,60 +1,67 @@
-From: Olga Kornievskaia <aglo@citi.umich.edu>
-Subject: Re: size of nfsv4 writes
-Date: Thu, 12 Jun 2008 17:41:53 -0400
-Message-ID: <48519821.1040703@citi.umich.edu>
-References: <4846C586.1050000@citi.umich.edu> <1212597977.7422.4.camel@localhost> <48471180.8090208@citi.umich.edu>
+From: Christian Robottom Reis <kiko@canonical.com>
+Subject: Re: [NFS] Server-side locking issue
+Date: Thu, 12 Jun 2008 18:43:40 -0300
+Message-ID: <20080612214340.GA17293@async.com.br>
+References: <20080508221815.GB4583@async.com.br>
+	<20080509154305.GA798@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-	Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-To: Olga Kornievskaia <aglo@citi.umich.edu>
+Content-Type: text/plain; charset="us-ascii"
+Cc: NFS@lists.sourceforge.net, Ronaldo Maia <romaia-Zkq4WM0RTTBfJ/NunPodnw@public.gmane.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from citi.umich.edu ([141.211.133.111]:2723 "EHLO citi.umich.edu"
+Received: from neil.brown.name ([220.233.11.133]:52482 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752299AbYFLVlz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 12 Jun 2008 17:41:55 -0400
-In-Reply-To: <48471180.8090208@citi.umich.edu>
+	id S1757463AbYFLVog (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 12 Jun 2008 17:44:36 -0400
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1K6uat-00054B-Ki
+	for linux-nfs@vger.kernel.org; Fri, 13 Jun 2008 07:44:31 +1000
+In-Reply-To: <20080509154305.GA798@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Fri, May 09, 2008 at 11:43:05AM -0400, J. Bruce Fields wrote:
+> I don't think the server stopped responding to clients in the case
+> Miklos described.
 
+Okay. Well, one month later, it happened again to me.
 
-Olga Kornievskaia wrote:
->
->
-> Trond Myklebust wrote:
->> On Wed, 2008-06-04 at 12:40 -0400, Olga Kornievskaia wrote:
->>  
->>> While testing NFSv4 performance over the 10GE network, we are seeing 
->>> the following behavior and would like to know if it is normal or a 
->>> bug in the client code.
->>>
->>> The server offers the max_write of 1M. The client mounts the server 
->>> with the "wsize" option of 1M. Yet during the write we are seeing 
->>> that the write size is at most 49K. Why does client never come close 
->>> to 1M limit?
->>>     
->>
->> I have a feeling that is due to some crap in the VM. I'm currently
->> investigating a situation where it appears we're sending 1 COMMIT for
->> every 1-5 32k WRITEs. This is not a policy that stems from the NFS
->> client, so it would appear that the VM is being silly about things.
->>
->> I'm specially suspicious of the code in get_dirty_limits() that is
->> setting a limit to the number of dirty pages based on the number of
->> pages a given BDI has written out in the recent past. As far as I can
->> see, the intention is to penalise devices that are slow writers, but in
->> practice it doesn't do that: it penalises the devices that have the
->> least activity.
->>
->>   
-> I think we are seeing larger than usual number of COMMIT messages.
-Using Chuck's nfs-iostats to monitor an NFS write I can see that each 
-operation writes about 830MB. Why is so much small than wsize=1M?
+> Perhaps a sysrq-T dump of lockd would show where (and whether) it's
+> blocked?  (So once lockd stops responding, log into the server, run
+> "echo t >/proc/sysrq-trigger", and collect the output from the logs,
+> especially the stacktrace for the lockd process).
 
+This time I did a ps auxww locking for the lockd process. And guess
+what?
 
-> -- 
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+root      6323  0.0  0.0      0     0 ?        D    Jun01   0:50 [lockd]
+
+I wonder why it's in the D state. I also wonder if there's a way to get
+it back once it's in this state -- without reloading the kernel module
+or rebooting, I guess.
+
+I've collected a trace, at any rate, but lockd isn't even listed in it --
+I can send it in if it makes sense.
+
+What sort of debugging can I do to figure out what's wrong here?
+
+(This is a dual-Xeon running:
+
+    Linux anthem 2.6.22-14-generic #1 SMP Tue Feb 12 07:42:25 UTC 2008 i686 GNU/Linux)
+-- 
+Christian Robottom Reis | http://async.com.br/~kiko/ | [+55 16] 3376 0125
+
+-------------------------------------------------------------------------
+Check out the new SourceForge.net Marketplace.
+It's the best place to buy or sell services for
+just about anything Open Source.
+http://sourceforge.net/services/buy/index.php
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
+
