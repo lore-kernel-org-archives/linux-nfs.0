@@ -1,59 +1,98 @@
-From: Peter Leckie <pleckie@sgi.com>
-Subject: Re: [PATCH 01/04]  NFS/RDMA client stall patches
-Date: Thu, 12 Jun 2008 18:45:36 +1000
-Message-ID: <4850E230.3010101@sgi.com>
-References: <4830F91C.7070206@sgi.com> <1213125899.20459.34.camel@localhost> <484F86B7.7040109@sgi.com> <RTPCLUEXC1-PRDaogxL000001eb@RTPMVEXC1-PRD.hq.netapp.com>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH 1/5] knfsd: Replace lock_kernel with a mutex for nfsd
+	thread startup/shutdown locking.
+Date: Thu, 12 Jun 2008 08:37:13 -0400
+Message-ID: <20080612083713.30282035@barsoom.rdu.redhat.com>
+References: <1213101639-26423-1-git-send-email-jlayton@redhat.com>
+	<1213101639-26423-2-git-send-email-jlayton@redhat.com>
+	<18512.39490.36187.783761@notabene.brown>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>, talpey@netapp.com,
-	linux-nfs@vger.kernel.org
-To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from netops-testserver-3-out.sgi.com ([192.48.171.28]:46893 "EHLO
-	relay.sgi.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1754468AbYFLIqB (ORCPT
-	<rfc822;@sgi.com:linux-nfs@vger.kernel.org>);
-	Thu, 12 Jun 2008 04:46:01 -0400
-In-Reply-To: <RTPCLUEXC1-PRDaogxL000001eb-rtwIt2gI0FxT+ZUat5FNkAK/GNPrWCqfQQ4Iyu8u01E@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org, gnb@melbourne.sgi.com
+To: Neil Brown <neilb@suse.de>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <18512.39490.36187.783761@notabene.brown>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Talpey, Thomas wrote:
-> At 04:03 AM 6/11/2008, Peter Leckie wrote:
->   
->> That's a good point you raise there I was looking to closely at the tcp 
->> equivalent, the correct fix for this issue would be to implement a timer 
->> function for NFS/RDMA pretty much identical to xs_udp_timer(), as follows:
->>     
->
-> Hmm, in fact that runs into a different issue - retransmitting over RDMA
-> isn't allowed, since it consumes server credits and therefore will eventually
-> overrun the connection's receive queue. I have a patch in my queue to
-> force a disconnect in fact, which is the appropriate action. I will send them
-> out soon, it's in with some other post-Connectathon work.
->
-> I think with your earlier patch to avoid the 5-second pause, the disconnect
-> action will be prompt and accurate. However, I would still be concerned why
-> the RPC was timing out in the first place. Was there an issue in the server?
->   
-So this is not a typical runtime issue it was just another reason the 
-NFS/RDMA client failed to reconnect after
-the server disconnects us. Under this circumstance the client is stalled 
-on congestion and has not received the
-disconnection event. So what both these patches do is allow the client 
-to try and resend another RPC, this causes
-rpcrdma_conn_upcall() to be called with an event of 
-RDMA_CM_EVENT_CONNECT_ERROR which
-then allows the xprt to be disconnected and reconnected. Without this 
-change what happens is the client sits there
-for ever waiting for the congestion to drop.
+On Thu, 12 Jun 2008 13:38:42 +1000
+Neil Brown <neilb@suse.de> wrote:
 
-This does ask another question why didn't the DREQ from the server cause 
-the xprt on the client to disconnect.
-Umm I might try and reproduce this error and see what's happening.
+> On Tuesday June 10, jlayton@redhat.com wrote:
+> > From: Neil Brown <neilb@suse.de>
+> > 
+> > This removes the BKL from the RPC service creation codepath. The BKL
+> > really isn't adequate for this job since some of this info needs
+> > protection across sleeps.
+> > 
+> > Also, add some comments to try and clarify how the locking should work
+> > and to make it clear that the BKL isn't necessary as long as there is
+> > adequate locking between tasks when touching the svc_serv fields.
+> > 
+> > Signed-off-by: Neil Brown <neilb@suse.de>
+> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> 
+> Thanks for proceeding with this.
+> As well as the fixes for this that you included in 2/5, you need this
+> patch as well for correctness.... Well, you need the first hunk.  The
+> second is unrelated but probably should be fixed.
+> 
+> The rest all looks good.
+> 
+> NeilBrown
+> 
+> 
+> ---------------------------------
+> 
+> Signed-off-by: Neil Brown <neilb@suse.de>
+> 
+> ### Diffstat output
+>  ./fs/nfsd/nfssvc.c |   12 +++++++-----
+>  1 file changed, 7 insertions(+), 5 deletions(-)
+> 
+> diff .prev/fs/nfsd/nfssvc.c ./fs/nfsd/nfssvc.c
+> --- .prev/fs/nfsd/nfssvc.c	2008-06-12 13:27:47.000000000 +1000
+> +++ ./fs/nfsd/nfssvc.c	2008-06-12 13:32:14.000000000 +1000
+> @@ -169,10 +169,12 @@ int nfsd_vers(int vers, enum vers_op cha
+>  
+>  int nfsd_nrthreads(void)
+>  {
+> -	if (nfsd_serv == NULL)
+> -		return 0;
+> -	else
+> -		return nfsd_serv->sv_nrthreads;
+> +	int rv = 0;
+> +	mutex_lock(&nfsd_mutex);
+> +	if (nfsd_serv)
+> +		rv = nfsd_serv->sv_nrthreads;
+> +	mutex_unlock(&nfsd_mutex);
+> +	return rv;
+>  }
+>  
 
-Thanks,
-Pete
+ACK on this first part. Good catch...
 
+>  static int killsig;	/* signal that was used to kill last nfsd */
+> @@ -275,7 +277,7 @@ static int nfsd_init_socks(int port)
+>  					SVC_SOCK_DEFAULTS);
+>  		if (error < 0)
+>  			lockd_down();
+> -}
+> +	}
+>  	if (error < 0)
+>  		return error;
+>  	return 0;
 
+This looks correct already in Bruce's tree. Am I missing something?
 
+Cheers,
+-- 
+Jeff Layton <jlayton@redhat.com>
