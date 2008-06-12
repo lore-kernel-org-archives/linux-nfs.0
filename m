@@ -1,110 +1,60 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 31/37] NFS: Remove the redundant file_open entry from
-	struct nfs_rpc_ops
-Date: Thu, 12 Jun 2008 15:22:01 -0400
-Message-ID: <20080612192201.24528.93001.stgit@localhost.localdomain>
-References: <20080612192159.24528.43756.stgit@localhost.localdomain>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 4/5] NFS: set transport defaults after mount option parsing is finished
+Date: Thu, 12 Jun 2008 15:34:59 -0400
+Message-ID: <C029305A-09ED-4D57-997D-484D8C42CD3D@oracle.com>
+References: <20080612163416.13197.92911.stgit@manray.1015granger.net> <20080612163756.13197.37893.stgit@manray.1015granger.net> <1213289857.14478.10.camel@localhost>
+Mime-Version: 1.0 (Apple Message framework v924)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: linux-nfs@vger.kernel.org
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:33519 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754397AbYFLTfO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 12 Jun 2008 15:35:14 -0400
-Received: from sacexrs01.hq.netapp.com (sacexrs01.hq.netapp.com [10.99.190.105])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id m5CJZ9oG003500
-	for <linux-nfs@vger.kernel.org>; Thu, 12 Jun 2008 12:35:09 -0700 (PDT)
-In-Reply-To: <20080612192159.24528.43756.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
+Received: from agminet01.oracle.com ([141.146.126.228]:35522 "EHLO
+	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755386AbYFLTfX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Jun 2008 15:35:23 -0400
+In-Reply-To: <1213289857.14478.10.camel@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-All instances are set to nfs_open(), so we should just remove the redundant
-indirection. Ditto for the file_release op
+On Jun 12, 2008, at 12:57 PM, Trond Myklebust wrote:
+> On Thu, 2008-06-12 at 12:37 -0400, Chuck Lever wrote:
+>> Address some unfortunate mount option parsing behavior by setting  
+>> certain
+>> transport-based defaults *after* option parsing is complete.
+>>
+>> o  Some options don't obey the "rightmost wins" rule.  Jeff Layton
+>>    noticed that specifying the "proto=" mount option after the  
+>> "retrans"
+>>    or "timeo" options will cause the retrans and timeo values to be
+>>    overwritten with default settings.
+>>
+>>    Allow these options to be specified in any order without  
+>> unexpectedly
+>>    reverting retrans and timeo to their default.
+>>
+>> o  I've received several reports that text-based mounting through
+>>    firewalls that block UDP fails, even if "proto=tcp" is specified.
+>>
+>>    If a user specifies "proto=tcp" via the legacy mount API, the  
+>> mount
+>>    command also uses TCP to contact the server's mount daemon.  Ditto
+>>    for "proto=udp".  We want the kernel's mount option to emulate  
+>> this
+>>    behavior; however, we still want the default mount protocol to  
+>> be UDP
+>>    if no transport options were specified.
+>
+> Why is it necessary to set these defaults in nfs_parse_mount_options?
+> This is quite unrelated to parsing of the mount string.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
+The default transport timer settings are the same for both NFS and  
+NFSv4, so I thought it would be best to put a single copy of that  
+logic in a common code path.
 
- fs/nfs/file.c           |    4 ++--
- fs/nfs/nfs3proc.c       |    2 --
- fs/nfs/nfs4proc.c       |    2 --
- fs/nfs/proc.c           |    2 --
- include/linux/nfs_xdr.h |    2 --
- 5 files changed, 2 insertions(+), 10 deletions(-)
+I suppose we could just factor it into a helper and have both the NFS  
+and NFSv4 mount paths call this, but I'm not sure what the value of  
+that would be.
 
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index 78b26f8..509dcb5 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -129,7 +129,7 @@ nfs_file_open(struct inode *inode, struct file *filp)
- 
- 	nfs_inc_stats(inode, NFSIOS_VFSOPEN);
- 	lock_kernel();
--	res = NFS_PROTO(inode)->file_open(inode, filp);
-+	res = nfs_open(inode, filp);
- 	unlock_kernel();
- 	return res;
- }
-@@ -147,7 +147,7 @@ nfs_file_release(struct inode *inode, struct file *filp)
- 	if (filp->f_mode & FMODE_WRITE)
- 		nfs_wb_all(dentry->d_inode);
- 	nfs_inc_stats(inode, NFSIOS_VFSRELEASE);
--	return NFS_PROTO(inode)->file_release(inode, filp);
-+	return nfs_release(inode, filp);
- }
- 
- /**
-diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
-index b14b378..5c5fc8a 100644
---- a/fs/nfs/nfs3proc.c
-+++ b/fs/nfs/nfs3proc.c
-@@ -803,8 +803,6 @@ const struct nfs_rpc_ops nfs_v3_clientops = {
- 	.write_done	= nfs3_write_done,
- 	.commit_setup	= nfs3_proc_commit_setup,
- 	.commit_done	= nfs3_commit_done,
--	.file_open	= nfs_open,
--	.file_release	= nfs_release,
- 	.lock		= nfs3_proc_lock,
- 	.clear_acl_cache = nfs3_forget_cached_acls,
- };
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 15084a0..75cdec4 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3724,8 +3724,6 @@ const struct nfs_rpc_ops nfs_v4_clientops = {
- 	.write_done	= nfs4_write_done,
- 	.commit_setup	= nfs4_proc_commit_setup,
- 	.commit_done	= nfs4_commit_done,
--	.file_open      = nfs_open,
--	.file_release   = nfs_release,
- 	.lock		= nfs4_proc_lock,
- 	.clear_acl_cache = nfs4_zap_acl_attr,
- };
-diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
-index c760558..4dbb84d 100644
---- a/fs/nfs/proc.c
-+++ b/fs/nfs/proc.c
-@@ -655,8 +655,6 @@ const struct nfs_rpc_ops nfs_v2_clientops = {
- 	.write_setup	= nfs_proc_write_setup,
- 	.write_done	= nfs_write_done,
- 	.commit_setup	= nfs_proc_commit_setup,
--	.file_open	= nfs_open,
--	.file_release	= nfs_release,
- 	.lock		= nfs_proc_lock,
- 	.lock_check_bounds = nfs_lock_check_bounds,
- };
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 8d780de..8c77c11 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -829,8 +829,6 @@ struct nfs_rpc_ops {
- 	int	(*write_done)  (struct rpc_task *, struct nfs_write_data *);
- 	void	(*commit_setup) (struct nfs_write_data *, struct rpc_message *);
- 	int	(*commit_done) (struct rpc_task *, struct nfs_write_data *);
--	int	(*file_open)   (struct inode *, struct file *);
--	int	(*file_release) (struct inode *, struct file *);
- 	int	(*lock)(struct file *, int, struct file_lock *);
- 	int	(*lock_check_bounds)(const struct file_lock *);
- 	void	(*clear_acl_cache)(struct inode *);
-
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
