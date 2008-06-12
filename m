@@ -1,140 +1,278 @@
-From: "Weathers, Norman R." <Norman.R.Weathers-496aOtIFJR1B+Kdf37RAV9BPR1lH4CV8@public.gmane.org>
-Subject: RE: CONFIG_DEBUG_SLAB_LEAK omits size-4096 and larger?
-Date: Thu, 12 Jun 2008 14:54:09 -0500
-Message-ID: <0122F800A3B64C449565A9E8C297701002D75DAE@hoexmb9.conoco.net>
-References: <0122F800A3B64C449565A9E8C2977010155587@hoexmb9.conoco.net> <20080609185355.GF28584@fieldses.org> <0122F800A3B64C449565A9E8C297701002D75D9F@hoexmb9.conoco.net> <20080610171602.GG20184@fieldses.org> <0122F800A3B64C449565A9E8C297701002D75DA3@hoexmb9.conoco.net> <20080611184613.GM15380@fieldses.org> <20080611195222.GP15380@fieldses.org> <20080611160947.5f08fb16@tleilax.poochiereds.net> <20080611205749.GA25194@fieldses.org> <0122F800A3B64C449565A9E8C297701002D75DAA@hoexmb9.conoco.net> <20080611225431.GD25194@fieldses.org>
+From: Dean Hildebrand <seattleplus@gmail.com>
+Subject: Re: [PATCH 0/1] SUNRPC: Add sysctl variables for server TCP snd/rcv
+ buffer values
+Date: Thu, 12 Jun 2008 14:03:20 -0700
+Message-ID: <48518F18.2010703@gmail.com>
+References: <484ECDE4.6030108@gmail.com> <7F44A14A-F811-4D41-BAFF-E019E9904B6A@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Cc: "Jeff Layton" <jlayton@poochiereds.net>,
-	<linux-kernel@vger.kernel.org>, <linux-nfs@vger.kernel.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailman1.ppco.com ([138.32.41.4]:59537 "EHLO mailman1.ppco.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754569AbYFLTyT convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Jun 2008 15:54:19 -0400
-In-Reply-To: <20080611225431.GD25194@fieldses.org>
+Received: from py-out-1112.google.com ([64.233.166.179]:31522 "EHLO
+	py-out-1112.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752070AbYFLVD0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Jun 2008 17:03:26 -0400
+Received: by py-out-1112.google.com with SMTP id p76so1778343pyb.10
+        for <linux-nfs@vger.kernel.org>; Thu, 12 Jun 2008 14:03:25 -0700 (PDT)
+In-Reply-To: <7F44A14A-F811-4D41-BAFF-E019E9904B6A@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
- 
-
-> -----Original Message-----
-> From: linux-nfs-owner@vger.kernel.org 
-> [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of J. Bruce Fields
-> Sent: Wednesday, June 11, 2008 5:55 PM
-> To: Weathers, Norman R.
-> Cc: Jeff Layton; linux-kernel@vger.kernel.org; 
-> linux-nfs@vger.kernel.org
-> Subject: Re: CONFIG_DEBUG_SLAB_LEAK omits size-4096 and larger?
-> 
-> On Wed, Jun 11, 2008 at 05:46:13PM -0500, Weathers, Norman R. wrote:
-> > I will try and get it patched and retested, but it may be a 
-> day or two
-> > before I can get back the information due to production jobs now
-> > running.  Once they finish up, I will get back with the info.
-> 
-> Understood.
-> 
+Hi Chuck,
 
 
-I was able to get my big user to cooperate and let me in to be able to
-get the information that you were needing.  The full output from the
-/proc/slab_allocator file is at
-http://www.shashi-weathers.net/linux/cluster/NFS_DEBUG_2 .  The 16
-thread case is very interesting.  Also, there is a small txt file in the
-directory that has some rpc errors, but I imagine the way that I am
-running the box (oversubscribed threads) has more to do with the rpc
-errors than anything else.  For those of you wanting the gist of the
-story, the size-4096 slab has the following very large allocation:
+Chuck Lever wrote:
+> Howdy Dean-
+>
+> On Jun 10, 2008, at 2:54 PM, Dean Hildebrand wrote:
+>> The motivation for this patch is improved WAN write performance plus 
+>> greater user control on the server of the TCP buffer values (window 
+>> size).  The TCP window determines the amount of outstanding data that 
+>> a client can have on the wire and should be large enough that a NFS 
+>> client can fill up the pipe (the bandwidth * delay product).  
+>> Currently the TCP receive buffer size (used for client writes) is set 
+>> very low, which prevents a client from filling up a network pipe with 
+>> a large bandwidth * delay product.
+>>
+>> Currently, the server TCP send window is set to accommodate the 
+>> maximum number of outstanding NFSD read requests (# nfsds * 
+>> maxiosize), while the server TCP receive window is set to a fixed 
+>> value which can hold a few requests.  While these values set a TCP 
+>> window size that is fine in LAN environments with a small BDP, WAN 
+>> environments can require a much larger TCP window size, e.g., 10GigE 
+>> transatlantic link with a rtt of 120 ms has a BDP of approx 60MB.
+>
+> Was the receive buffer size computation adjusted when support for 
+> large transfer sizes was recently added to the NFS server?
+Yes, it is based on the transfer size.  So in the current code, having a 
+larger transfer size can improve efficiency PLUS help create a larger 
+possible TCP window.  The issue seems to be that tcp window, # of NFSDs, 
+and transfer size are all independent variables that need to be tuned 
+individually depending on rtt, network bandwidth, disk bandwidth, etc 
+etc...  We can adjust the last 2, so this patch helps adjust the first 
+(tcp window).
+>
+>> I have a patch to net/svc/svcsock.c that allows a user to manually 
+>> set the server TCP send and receive buffer through the sysctl 
+>> interface. to suit the required TCP window of their network 
+>> architecture.  It adds two /proc entries, one for the receive buffer 
+>> size and one for the send buffer size:
+>> /proc/sys/sunrpc/tcp_sndbuf
+>> /proc/sys/sunrpc/tcp_rcvbuf
+>
+> What I'm wondering is if we can find some algorithm to set the buffer 
+> and window sizes *automatically*.  Why can't the NFS server select an 
+> appropriately large socket buffer size by default?
 
-size-4096: 2 sys_init_module+0x140b/0x1980
-size-4096: 1 __vmalloc_area_node+0x188/0x1b0
-size-4096: 1 seq_read+0x1d9/0x2e0
-size-4096: 1 slabstats_open+0x2b/0x80
-size-4096: 5 vc_allocate+0x167/0x190
-size-4096: 3 input_allocate_device+0x12/0x80
-size-4096: 1 hid_add_field+0x122/0x290
-size-4096: 9 reqsk_queue_alloc+0x5f/0xf0
-size-4096: 1846825 __alloc_skb+0x7d/0x170
-size-4096: 3 alloc_netdev+0x33/0xa0
-size-4096: 10 neigh_sysctl_register+0x52/0x2b0
-size-4096: 5 devinet_sysctl_register+0x28/0x110
-size-4096: 1 pidmap_init+0x15/0x60
-size-4096: 1 netlink_proto_init+0x44/0x190
-size-4096: 1 ip_rt_init+0xfd/0x2f0
-size-4096: 1 cipso_v4_init+0x13/0x70
-size-4096: 3 journal_init_revoke+0xe7/0x270 [jbd]
-size-4096: 3 journal_init_revoke+0x18a/0x270 [jbd]
-size-4096: 2 journal_init_inode+0x84/0x150 [jbd]
-size-4096: 2 bnx2_alloc_mem+0x18/0x1f0 [bnx2]
-size-4096: 1 joydev_connect+0x53/0x390 [joydev]
-size-4096: 13 kmem_alloc+0xb3/0x100 [xfs]
-size-4096: 5 addrconf_sysctl_register+0x31/0x130 [ipv6]
-size-4096: 7 rpc_clone_client+0x84/0x140 [sunrpc]
-size-4096: 3 rpc_create+0x254/0x4d0 [sunrpc]
-size-4096: 16 __svc_create_thread+0x53/0x1f0 [sunrpc]
-size-4096: 16 __svc_create_thread+0x72/0x1f0 [sunrpc]
-size-4096: 1 nfsd_racache_init+0x2e/0x140 [nfsd]
+>
+> Since the socket buffer size is just a limit (no memory is allocated) 
+> why, for example, shouldn't the buffer size be large for all 
+> environments that have sufficient physical memory?
+I think the problem there is that the only way to set the buffer size 
+automatically would be to know the rtt and bandwidth of the network 
+connection.  Excessive numbers of packets can get dropped if the TCP 
+buffer is set too large for a specific network connection.  In this 
+case, the window opens too wide and lets too many packets out into the 
+system, somewhere along the path buffers start overflowing and packets 
+are lost, TCP congestion avoidance kicks in and cuts the window size 
+dramatically and performance along with it.  This type of behaviour 
+creates a sawtooth pattern for the TCP window, which is less favourable 
+than a more steady state pattern that is created if the TCP buffer size 
+is set appropriately.
 
-The big one seems to be the __alloc_skb. (This is with 16 threads, and
-it says that we are using up somewhere between 12 and 14 GB of memory,
-about 2 to 3 gig of that is disk cache).  If I were to put anymore
-threads out there, the server would become almost unresponsive (it was
-bad enough as it was).   
+Another point is that setting the buffer size isn't always a 
+straightforward process.  All papers I've read on the subject, and my 
+experience confirms this, is that setting tcp buffer sizes is more of an 
+art.
 
-At the same time, I also noticed this:
+So having the server set a good default value is half the battle, but 
+allowing users to twiddle with this value is vital.
+>
+>> The uses the current buffer sizes in the code are as minimum values, 
+>> which the user cannot decrease.  If the user sets a value of 0 in 
+>> either /proc entry, it resets the buffer size to the default value.  
+>> The set /proc values are utilized when the TCP connection is 
+>> initialized (mount time).  The values are bounded above by the 
+>> *minimum* of the /proc values and the network TCP sysctls.
+>>
+>> To demonstrate the usefulness of this patch, details of an experiment 
+>> between 2 computers with a rtt of 30ms is provided below.  In this 
+>> experiment, increasing the server /proc/sys/sunrpc/tcp_rcvbuf value 
+>> doubles write performance.
+>>
+>> EXPERIMENT
+>> ==========
+>> This experiment simulates a WAN by using tc together with netem to 
+>> add a 30 ms delay to all packets on a nfs client.  The goal is to 
+>> show that by only changing tcp_rcvbuf, the nfs client can increase 
+>> write performance in the WAN. To verify the patch has the desired 
+>> effect on the TCP window, I created two tcptrace plots that show the 
+>> difference in tcp window behaviour before and after the server TCP 
+>> rcvbuf size is increased.  When using the default server tcpbuf value 
+>> of 6M, we can see the TCP window top out around 4.6 M, whereas 
+>> increasing the server tcpbuf value to 32M, we can see that the TCP 
+>> window tops out around 13M.  Performance jumps from 43 MB/s to 90 MB/s.
+>>
+>> Hardware:
+>> 2 dual-core opteron blades
+>> GigE, Broadcom NetXtreme II BCM57065 cards
+>> A single gigabit switch in the middle
+>> 1500 MTU
+>> 8 GB memory
+>>
+>> Software:
+>> Kernel: Bruce's 2.6.25-rc9-CITI_NFS4_ALL-1 tree
+>> RHEL4
+>>
+>> NFS Configuration:
+>> 64 rpc slots
+>> 32 nfsds
+>> Export ext3 file system.  This disk is quite slow, I therefore 
+>> exported using async to reduce the effect of the disk on the back 
+>> end.  This way, the experiments record the time it takes for the data 
+>> to get to the server (not to the disk).
+>> # exportfs -v
+>> /export     
+>> <world>(rw,async,wdelay,nohide,insecure,no_root_squash,fsid=0)
+>>
+>> # cat /proc/mounts
+>> bear109:/export /mnt nfs 
+>> rw,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,nointr,proto=tcp,timeo=600,retrans=2,sec=sys,mountproto=udp,addr=9.1.74.144 
+>> 0 0
+>>
+>> fs.nfs.nfs_congestion_kb = 91840
+>> net.ipv4.tcp_congestion_control = cubic
+>>
+>> Network tc Command executed on client:
+>> tc qdisc add dev eth0 root netem delay 30ms
+>> rtt from client (bear108) to server (bear109)
+>> #ping bear109
+>> PING bear109.almaden.ibm.com (9.1.74.144) 56(84) bytes of data.
+>> 64 bytes from bear109.almaden.ibm.com (9.1.74.144): icmp_seq=0 ttl=64 
+>> time=31.4 ms
+>> 64 bytes from bear109.almaden.ibm.com (9.1.74.144): icmp_seq=1 ttl=64 
+>> time=32.0 ms
+>>
+>> TCP Configuration on client and server:
+>> # Controls IP packet forwarding
+>> net.ipv4.ip_forward = 0
+>> # Controls source route verification
+>> net.ipv4.conf.default.rp_filter = 1
+>> # Do not accept source routing
+>> net.ipv4.conf.default.accept_source_route = 0
+>> # Controls the System Request debugging functionality of the kernel
+>> kernel.sysrq = 0
+>> # Controls whether core dumps will append the PID to the core filename
+>> # Useful for debugging multi-threaded applications
+>> kernel.core_uses_pid = 1
+>> # Controls the use of TCP syncookies
+>> net.ipv4.tcp_syncookies = 1
+>> # Controls the maximum size of a message, in bytes
+>> kernel.msgmnb = 65536
+>> # Controls the default maxmimum size of a mesage queue
+>> kernel.msgmax = 65536
+>> # Controls the maximum shared segment size, in bytes
+>> kernel.shmmax = 68719476736
+>> # Controls the maximum number of shared memory segments, in pages
+>> kernel.shmall = 4294967296
+>> ### IPV4 specific settings
+>> net.ipv4.tcp_timestamps = 0
+>> net.ipv4.tcp_sack = 1
+>> # on systems with a VERY fast bus -> memory interface this is the big 
+>> gainer
+>> net.ipv4.tcp_rmem = 4096 16777216 16777216
+>> net.ipv4.tcp_wmem = 4096 16777216 16777216
+>> net.ipv4.tcp_mem = 4096 16777216 16777216
+>> ### CORE settings (mostly for socket and UDP effect)
+>> net.core.rmem_max = 16777216
+>> net.core.wmem_max = 16777216
+>> net.core.rmem_default = 16777216
+>> net.core.wmem_default = 16777216
+>> net.core.optmem_max =  16777216
+>> net.core.netdev_max_backlog = 300000
+>> # Don't cache ssthresh from previous connection
+>> net.ipv4.tcp_no_metrics_save = 1
+>> # make sure we don't run out of memory
+>> vm.min_free_kbytes = 32768
+>>
+>> Experiments:
+>>
+>> On Server: (note that the real tcp buffer size is double tcp_rcvbuf)
+>> [root@bear109 ~]# echo 0 > /proc/sys/sunrpc/tcp_rcvbuf
+>> [root@bear109 ~]# cat /proc/sys/sunrpc/tcp_rcvbuf
+>> 3158016
+>>
+>> On Client:
+>> mount -t nfs bear109:/export /mnt
+>> [root@bear108 ~]# iozone -aec -i 0 -+n -f /mnt/test -r 1M -s 500M
+>> ...
+>>            KB  reclen   write
+>>        512000    1024   43252      umount /mnt
+>>
+>> On server:
+>> [root@bear109 ~]# echo 16777216 > /proc/sys/sunrpc/tcp_rcvbuf
+>> [root@bear109 ~]# cat /proc/sys/sunrpc/tcp_rcvbuf
+>> 16777216
+>>
+>> On Client:
+>> mount -t nfs bear109:/export /mnt
+>> [root@bear108 ~]# iozone -aec -i 0 -+n -f /mnt/test -r 1M -s 500M
+>> ...
+>>            KB  reclen   write
+>>        512000    1024   90396
+>
+> The numbers you have here are averages over the whole run.  Performing 
+> these tests using a variety of record lengths and file sizes (up to 
+> several tens of gigabytes) would be useful to see where different 
+> memory and network latencies kick in.
+Definitely useful, although I'm not sure how this relates to this 
+patch.  This patch isn't trying to alter default values, or predict 
+buffer sizes based on rtt values, or dynamically alter the tcp window 
+based on dropped packets, etc, it is just giving users the ability to 
+customize the server tcp buffer size.  The information you are curious 
+about is more relevant to creating better default values of the tcp 
+buffer size.  This could be useful, but would be a long process and 
+there are so many variables that I'm not sure that you could pick proper 
+default values anyways.  The important thing is that the client can 
+currently set its tcp buffer size via the sysctl's, this is useless if 
+the server is stuck at a fixed value since the tcp window will be the 
+minimum of the client and server's tcp buffer sizes.  The server cannot 
+do just the same thing as the client since it cannot just rely on the 
+tcp sysctl's since it also needs to ensure it has enough buffer space 
+for each NFSD.
 
-skbuff_fclone_cache: 1842524 __alloc_skb+0x50/0x170
+My goal with this patch is to provide users with the same flexibility 
+that the client has regarding tcp buffer sizes, but also ensure that the 
+minimum amount of buffer space that the NFSDs require is allocated.
+>
+> In addition, have you looked at network traces to see if the server's 
+> TCP implementation is behaving optimally (or near optimally)?  Have 
+> you tried using some of the more esoteric TCP congestion algorithms 
+> available in 2.6 kernels?
+I guess you are asking if I'm sure that I'm fixing the right problem?  
+Nothing is broken in terms of the tcp implementation, it just requires 
+bigger buffers to handle a larger BDP.  iperf, bbcp, etc all use the 
+same tcp implementation and all work fine if giving a larger enough 
+buffer size, so I know tcp is fine.  From reading WAN tuning papers, I 
+know that setting a 3 MB server tcp buffer size (current rcvbuf default 
+in linux server) is not sufficient for a BDP of, for example, 60 MB or 
+more.  I've tried every tcp implementation available in the kernel at 
+one point or another, but actually I've found bic to be the best in WAN 
+environments since it is one of the most aggressive. 
+>
+> There are also fairly unsophisticated ways to add longer delays on 
+> your test network, and turning up the latency knob would be a useful 
+> test.
+My experiment uses tc with netem to control the latency, so I can run 
+any experiment, but I don't learn a lot beyond the experiment that I've 
+presented.  Essentially, the bigger the BDP, the bigger your tcp buffers 
+need to be.
 
-Don't know for sure if that is meaningful or not....
-
-
-
-> > Thanks everyone for looking at this, by the way!
-> 
-> And thanks for your persistence.
-> 
-> --b.
-> 
-
-
-Anytime.  This is the part of the job that is fun (except for my
-users...).  Anyone can watch a system run, it's dealing with the unknown
-that makes it interesting.
-
-
-Norman Weathers
-
-
-> > 
-> > > 
-> > > 
-> > > diff --git a/mm/slab.c b/mm/slab.c
-> > > index 06236e4..b379e31 100644
-> > > --- a/mm/slab.c
-> > > +++ b/mm/slab.c
-> > > @@ -2202,7 +2202,7 @@ kmem_cache_create (const char *name, 
-> > > size_t size, size_t align,
-> > >  	 * above the next power of two: caches with object 
-> > > sizes just above a
-> > >  	 * power of two have a significant amount of internal 
-> > > fragmentation.
-> > >  	 */
-> > > -	if (size < 4096 || fls(size - 1) == fls(size-1 + REDZONE_ALIGN +
-> > > +	if (size < 8192 || fls(size - 1) == fls(size-1 + REDZONE_ALIGN +
-> > >  						2 * 
-> > > sizeof(unsigned long long)))
-> > >  		flags |= SLAB_RED_ZONE | SLAB_STORE_USER;
-> > >  	if (!(flags & SLAB_DESTROY_BY_RCU))
-> > > 
-> > 
-> > 
-> > Norman Weathers
-> --
-> To unsubscribe from this list: send the line "unsubscribe 
-> linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+The NFS client currently leaves tcp buffer sizes to the user, and I 
+would prefer to do the same on the server via a sysctl.
+Dean
+>
+> -- 
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
