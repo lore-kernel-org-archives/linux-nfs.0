@@ -1,329 +1,167 @@
-From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 5/5] rpc: add new gssd upcall pipe
-Date: Fri, 13 Jun 2008 18:50:42 -0400
-Message-ID: <1213397442-15611-6-git-send-email-bfields@citi.umich.edu>
-References: <1213397442-15611-1-git-send-email-bfields@citi.umich.edu>
- <1213397442-15611-2-git-send-email-bfields@citi.umich.edu>
- <1213397442-15611-3-git-send-email-bfields@citi.umich.edu>
- <1213397442-15611-4-git-send-email-bfields@citi.umich.edu>
- <1213397442-15611-5-git-send-email-bfields@citi.umich.edu>
-Cc: aglo@citi.umich.edu, kwc@citi.umich.edu, linux-nfs@vger.kernel.org,
-	"J. Bruce Fields" <bfields@citi.umich.edu>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+From: "Weathers, Norman R." <Norman.R.Weathers-496aOtIFJR1B+Kdf37RAV9BPR1lH4CV8@public.gmane.org>
+Subject: RE: CONFIG_DEBUG_SLAB_LEAK omits size-4096 and larger?
+Date: Fri, 13 Jun 2008 17:53:20 -0500
+Message-ID: <0122F800A3B64C449565A9E8C297701002D75DB7@hoexmb9.conoco.net>
+References: <0122F800A3B64C449565A9E8C297701002D75DA3@hoexmb9.conoco.net> <20080611184613.GM15380@fieldses.org> <20080611195222.GP15380@fieldses.org> <20080611160947.5f08fb16@tleilax.poochiereds.net> <20080611205749.GA25194@fieldses.org> <0122F800A3B64C449565A9E8C297701002D75DAA@hoexmb9.conoco.net> <20080611225431.GD25194@fieldses.org> <0122F800A3B64C449565A9E8C297701002D75DAE@hoexmb9.conoco.net> <20080613201552.GH8501@fieldses.org> <0122F800A3B64C449565A9E8C297701002D75DB6@hoexmb9.conoco.net> <20080613220422.GC14338@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: "Jeff Layton" <jlayton@poochiereds.net>,
+	<linux-kernel@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
+	"Neil Brown" <neilb@suse.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:43965 "EHLO fieldses.org"
+Received: from mailman2.ppco.com ([138.32.41.14]:46273 "EHLO mailman2.ppco.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755935AbYFMWuo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Jun 2008 18:50:44 -0400
-In-Reply-To: <1213397442-15611-5-git-send-email-bfields@citi.umich.edu>
+	id S1755171AbYFMWx1 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Jun 2008 18:53:27 -0400
+In-Reply-To: <20080613220422.GC14338@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This adds the new text-based gss upcall.  We only allow an open from
-either the new pipe or the old one, and use the pipe_open method to
-enforce this.
+ 
 
-If no pipes are open, we provisionally queue messages for the new pipe;
-a subsequent open of the old pipe will cause all those messages to be
-purged.
+> -----Original Message-----
+> From: J. Bruce Fields [mailto:bfields@fieldses.org] 
+> Sent: Friday, June 13, 2008 5:04 PM
+> To: Weathers, Norman R.
+> Cc: Jeff Layton; linux-kernel@vger.kernel.org; 
+> linux-nfs@vger.kernel.org; Neil Brown
+> Subject: Re: CONFIG_DEBUG_SLAB_LEAK omits size-4096 and larger?
+> 
+> On Fri, Jun 13, 2008 at 04:53:31PM -0500, Weathers, Norman R. wrote:
+> >  
+> > 
+> > > > The big one seems to be the __alloc_skb. (This is with 16 
+> > > threads, and
+> > > > it says that we are using up somewhere between 12 and 14 GB 
+> > > of memory,
+> > > > about 2 to 3 gig of that is disk cache).  If I were to 
+> put anymore
+> > > > threads out there, the server would become almost 
+> > > unresponsive (it was
+> > > > bad enough as it was).   
+> > > > 
+> > > > At the same time, I also noticed this:
+> > > > 
+> > > > skbuff_fclone_cache: 1842524 __alloc_skb+0x50/0x170
+> > > > 
+> > > > Don't know for sure if that is meaningful or not....
+> > > 
+> > > OK, so, starting at net/core/skbuff.c, this means that 
+> this memory was
+> > > allocated by __alloc_skb() calls with something nonzero 
+> in the third
+> > > ("fclone") argument.  The only such caller is alloc_skb_fclone().
+> > > Callers of alloc_skb_fclone() include:
+> > > 
+> > > 	sk_stream_alloc_skb:
+> > > 		do_tcp_sendpages
+> > > 		tcp_sendmsg
+> > > 		tcp_fragment
+> > > 		tso_fragment
+> > 
+> > Interesting you should mention the tso...  We recently went 
+> through and
+> > turned on TSO on all of our systems, trying it out to see 
+> if it helped
+> > with performance...  This could be something to do with 
+> that.  I can try
+> > disabling the tso on all of the servers and see if that 
+> helps with the
+> > memory.  Actually, I think I will, and I will monitor the 
+> situation.  I
+> > think it might help some, but I still think there may be 
+> something else
+> > going on in a deep corner...
+> 
+> I'll plead total ignorance about TSO, and it sounds like a long
+> shot--but sure, it'd be worth trying, thanks.
+> 
 
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
----
- include/linux/sunrpc/rpc_pipe_fs.h |    1 +
- net/sunrpc/auth_gss/auth_gss.c     |  144 ++++++++++++++++++++++++++++++++---
- net/sunrpc/rpc_pipe.c              |   27 +++++--
- 3 files changed, 153 insertions(+), 19 deletions(-)
+Tried it, not for sure if I like the results yet or not...  Didn't seem
+to make a huge difference, but here is something that will really make
+you want to drink, the 2.6.25.4 kernel does not go into the size-4096
+hell.  The largest users of slab there are the size-1024 and still the
+skbuff_fclone_cache.  On a box with 16 threads, it will cache up about 5
+GB of disk data, and still use about 6 GB of slab to put the information
+out there (without TSO on), but at least it is not causing the disk
+cache to be evicted, and it appears to be a little more responsive.  If
+I up it to 32 or more threads, however, it gets very sluggish, but then
+again, I am hitting it with a lot of nodes.
 
-diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
-index 439bef3..4c0f4a0 100644
---- a/include/linux/sunrpc/rpc_pipe_fs.h
-+++ b/include/linux/sunrpc/rpc_pipe_fs.h
-@@ -42,6 +42,7 @@ RPC_I(struct inode *inode)
- }
- 
- extern int rpc_queue_upcall(struct inode *, struct rpc_pipe_msg *);
-+void rpc_pipe_cancel_all(struct inode *inode, int errno);
- 
- extern struct dentry *rpc_mkdir(char *, struct rpc_clnt *);
- extern int rpc_rmdir(struct dentry *);
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 5e82a69..a5a56e8 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -87,7 +87,19 @@ struct gss_auth {
- 	struct gss_api_mech *mech;
- 	enum rpc_gss_svc service;
- 	struct rpc_clnt *client;
--	struct dentry *dentry;
-+	/*
-+	 * There are two upcall pipes; dentry[1], named "gssd", is used
-+	 * for the new text-based upcall; dentry[0] is named after the
-+	 * mechanism ("krb5") and exists for backwards-compatibility
-+	 * with older gssd's.
-+	 */
-+	struct dentry *dentry[2];
-+	/*
-+	 * The upcall_version tracks which of the above upcalls we're
-+	 * using, 0 (old) or 1 (new).  While userland has neither pipe
-+	 * open, upcall_version is set to -1:
-+	 */
-+	int upcall_version;
- };
- 
- static void gss_free_ctx(struct gss_cl_ctx *);
-@@ -235,6 +247,7 @@ err:
- 	return p;
- }
- 
-+#define UPCALL_BUF_LEN 128
- 
- struct gss_upcall_msg {
- 	atomic_t count;
-@@ -245,6 +258,7 @@ struct gss_upcall_msg {
- 	struct rpc_wait_queue rpc_waitqueue;
- 	wait_queue_head_t waitqueue;
- 	struct gss_cl_ctx *ctx;
-+	char databuf[UPCALL_BUF_LEN];
- };
- 
- static void
-@@ -347,14 +361,52 @@ gss_alloc_msg(struct gss_auth *gss_auth, uid_t uid)
- 		rpc_init_wait_queue(&gss_msg->rpc_waitqueue, "RPCSEC_GSS upcall waitq");
- 		init_waitqueue_head(&gss_msg->waitqueue);
- 		atomic_set(&gss_msg->count, 1);
--		gss_msg->msg.data = &gss_msg->uid;
--		gss_msg->msg.len = sizeof(gss_msg->uid);
- 		gss_msg->uid = uid;
- 		gss_msg->auth = gss_auth;
- 	}
- 	return gss_msg;
- }
- 
-+static void gss_encode_v0_msg(struct gss_upcall_msg *gss_msg)
-+{
-+	gss_msg->msg.data = &gss_msg->uid;
-+	gss_msg->msg.len = sizeof(gss_msg->uid);
-+}
-+
-+static void gss_encode_v1_msg(struct gss_upcall_msg *gss_msg)
-+{
-+	gss_msg->msg.len = sprintf(gss_msg->databuf, "mech=%s uid=%d\n",
-+				   gss_msg->auth->mech->gm_name,
-+				   gss_msg->uid);
-+	gss_msg->msg.data = gss_msg->databuf;
-+	BUG_ON(gss_msg->msg.len > UPCALL_BUF_LEN);
-+}
-+
-+static void gss_encode_msg(struct gss_upcall_msg *gss_msg, int vers)
-+{
-+	if (vers == 0)
-+		gss_encode_v0_msg(gss_msg);
-+	else
-+		gss_encode_v1_msg(gss_msg);
-+}
-+
-+static int gss_queue_upcall(struct gss_auth *gss_auth, struct gss_upcall_msg *gss_msg)
-+{
-+	int res;
-+	int vers;
-+
-+	spin_lock(&gss_auth->lock);
-+	vers = gss_auth->upcall_version;
-+	if (vers == -1) {
-+		/* Neither pipe opened yet; default to the new one: */
-+		vers = 1;
-+	}
-+	gss_encode_msg(gss_msg, vers);
-+	res = rpc_queue_upcall(gss_auth->dentry[vers]->d_inode, &gss_msg->msg);
-+	spin_unlock(&gss_auth->lock);
-+	return res;
-+}
-+
- static struct gss_upcall_msg *
- gss_setup_upcall(struct rpc_clnt *clnt, struct gss_auth *gss_auth, struct rpc_cred *cred)
- {
-@@ -372,7 +424,7 @@ gss_setup_upcall(struct rpc_clnt *clnt, struct gss_auth *gss_auth, struct rpc_cr
- 		return ERR_PTR(-ENOMEM);
- 	gss_msg = gss_add_msg(gss_auth, gss_new);
- 	if (gss_msg == gss_new) {
--		int res = rpc_queue_upcall(gss_auth->dentry->d_inode, &gss_new->msg);
-+		int res = gss_queue_upcall(gss_auth, gss_msg);
- 		if (res) {
- 			gss_unhash_msg(gss_new);
- 			gss_msg = ERR_PTR(res);
-@@ -562,6 +614,55 @@ out:
- 	return err;
- }
- 
-+static int gss_pipe_version(struct gss_auth *gss_auth, struct inode *inode)
-+{
-+	if (gss_auth->dentry[0]->d_inode == inode)
-+		return 0;
-+	if (gss_auth->dentry[1]->d_inode == inode)
-+		return 1;
-+	BUG();
-+}
-+
-+static int
-+gss_pipe_open(struct inode *inode)
-+{
-+	struct rpc_inode *rpci = RPC_I(inode);
-+	struct rpc_clnt *clnt = rpci->private;
-+	struct gss_auth *gss_auth = container_of(clnt->cl_auth,
-+						 struct gss_auth, rpc_auth);
-+	int vers = gss_pipe_version(gss_auth, inode);
-+	int ret;
-+
-+	spin_lock(&gss_auth->lock);
-+	if (gss_auth->upcall_version >= 0) {
-+		/*
-+		 * If pipe is already opened, permit only opens of the same
-+		 * version:
-+		 */
-+		if (vers == gss_auth->upcall_version)
-+			ret = 0;
-+		else
-+			ret = -EBUSY;
-+		spin_unlock(&gss_auth->lock);
-+		return ret;
-+	}
-+
-+	/*
-+	 * Neither pipe was opened previously, so this open is the first
-+	 * hint we've gotten as to which upcall gssd intends to use:
-+	 */
-+	gss_auth->upcall_version = vers;
-+	spin_unlock(&gss_auth->lock);
-+	if (vers == 0) {
-+		/*
-+		 * We default to trying the new upcall, so may have
-+		 * already attempted some upcalls there; cancel them:
-+		 */
-+		rpc_pipe_cancel_all(gss_auth->dentry[1]->d_inode, -EAGAIN);
-+	}
-+	return 0;
-+}
-+
- static void
- gss_pipe_release(struct inode *inode)
- {
-@@ -572,6 +673,8 @@ gss_pipe_release(struct inode *inode)
- 	struct gss_upcall_msg *gss_msg;
- 
- 	spin_lock(&gss_auth->lock);
-+	if (rpci->nreaders == 0)
-+		gss_auth->upcall_version = -1;
- 	while (!list_empty(&gss_auth->in_downcall)) {
- 
- 		gss_msg = list_entry(gss_auth->in_downcall.next,
-@@ -646,21 +749,34 @@ gss_create(struct rpc_clnt *clnt, rpc_authflavor_t flavor)
- 	auth->au_flavor = flavor;
- 	atomic_set(&auth->au_count, 1);
- 	kref_init(&gss_auth->kref);
--
--	gss_auth->dentry = rpc_mkpipe(clnt->cl_dentry, gss_auth->mech->gm_name,
--			clnt, &gss_upcall_ops, RPC_PIPE_WAIT_FOR_OPEN);
--	if (IS_ERR(gss_auth->dentry)) {
--		err = PTR_ERR(gss_auth->dentry);
-+	gss_auth->upcall_version = -1;
-+
-+	gss_auth->dentry[0] = rpc_mkpipe(clnt->cl_dentry,
-+					 gss_auth->mech->gm_name,
-+					 clnt, &gss_upcall_ops,
-+					 RPC_PIPE_WAIT_FOR_OPEN);
-+	if (IS_ERR(gss_auth->dentry[0])) {
-+		err = PTR_ERR(gss_auth->dentry[0]);
- 		goto err_put_mech;
- 	}
-+	gss_auth->dentry[1] = rpc_mkpipe(clnt->cl_dentry,
-+					 "gssd",
-+					 clnt, &gss_upcall_ops,
-+					 RPC_PIPE_WAIT_FOR_OPEN);
-+	if (IS_ERR(gss_auth->dentry[1])) {
-+		err = PTR_ERR(gss_auth->dentry[1]);
-+		goto err_unlink_pipe_0;
-+	}
- 
- 	err = rpcauth_init_credcache(auth);
- 	if (err)
--		goto err_unlink_pipe;
-+		goto err_unlink_pipe_1;
- 
- 	return auth;
--err_unlink_pipe:
--	rpc_unlink(gss_auth->dentry);
-+err_unlink_pipe_1:
-+	rpc_unlink(gss_auth->dentry[1]);
-+err_unlink_pipe_0:
-+	rpc_unlink(gss_auth->dentry[0]);
- err_put_mech:
- 	gss_mech_put(gss_auth->mech);
- err_free:
-@@ -673,7 +789,8 @@ out_dec:
- static void
- gss_free(struct gss_auth *gss_auth)
- {
--	rpc_unlink(gss_auth->dentry);
-+	rpc_unlink(gss_auth->dentry[1]);
-+	rpc_unlink(gss_auth->dentry[0]);
- 	gss_mech_put(gss_auth->mech);
- 
- 	kfree(gss_auth);
-@@ -1362,6 +1479,7 @@ static struct rpc_pipe_ops gss_upcall_ops = {
- 	.downcall	= gss_pipe_downcall,
- 	.destroy_msg	= gss_pipe_destroy_msg,
- 	.release_pipe	= gss_pipe_release,
-+	.open_pipe	= gss_pipe_open,
- };
- 
- /*
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index f7781fc..bbefc3a 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -53,13 +53,18 @@ static void rpc_purge_list(struct rpc_inode *rpci, struct list_head *head,
- 	wake_up(&rpci->waitq);
- }
- 
--static void
--rpc_timeout_upcall_queue(struct work_struct *work)
-+/**
-+ * rpc_pipe_cancel_all
-+ * @inode: inode of upcall pipe to cancel all upcalls on
-+ * @errno: errno (as a negative integer) to return on all pending upcalls
-+ *
-+ * Call with an inode created by rpc_mkpipe() to remove all queued
-+ * upcalls.  Allowed only on pipes not yet opened for read.
-+ */
-+void rpc_pipe_cancel_all(struct inode *inode, int errno)
- {
- 	LIST_HEAD(free_list);
--	struct rpc_inode *rpci =
--		container_of(work, struct rpc_inode, queue_timeout.work);
--	struct inode *inode = &rpci->vfs_inode;
-+	struct rpc_inode *rpci = RPC_I(inode);
- 	void (*destroy_msg)(struct rpc_pipe_msg *);
- 
- 	spin_lock(&inode->i_lock);
-@@ -73,7 +78,17 @@ rpc_timeout_upcall_queue(struct work_struct *work)
- 		rpci->pipelen = 0;
- 	}
- 	spin_unlock(&inode->i_lock);
--	rpc_purge_list(rpci, &free_list, destroy_msg, -ETIMEDOUT);
-+	rpc_purge_list(rpci, &free_list, destroy_msg, errno);
-+}
-+
-+static void
-+rpc_timeout_upcall_queue(struct work_struct *work)
-+{
-+	struct rpc_inode *rpci =
-+		container_of(work, struct rpc_inode, queue_timeout.work);
-+	struct inode *inode = &rpci->vfs_inode;
-+
-+	rpc_pipe_cancel_all(inode, -ETIMEDOUT);
- }
- 
- /**
--- 
-1.5.5.rc1
+> > 
+> > > 		tcp_mtu_probe
+> > > 	tcp_send_fin
+> > > 	tcp_connect
+> > > 	buf_acquire:
+> > > 		lots of callers in tipc code (whatever that is).
+> > > 
+> > > So unless you're using tipc, or you have something in 
+> userspace going
+> > > haywire (perhaps netstat would help rule that out?), then 
+> I suppose
+> > > there's something wrong with knfsd's tcp code.  Which 
+> makes sense, I
+> > > guess.
+> > > 
+> > 
+> > Not for sure what tipc is either....
+> > 
+> > > I'd think this sort of allocation would be limited by the 
+> number of
+> > > sockets times the size of the send and receive buffers.
+> > > svc_xprt.c:svc_check_conn_limits() claims to be limiting 
+> the number of
+> > > sockets to (nrthreads+3)*20.  (You aren't hitting the 
+> "too many open
+> > > connections" printk there, are you?)  The total buffer 
+> size should be
+> > > bounded by something like 4 megs.
+> > > 
+> > > --b.
+> > > 
+> > 
+> > Yes, we are getting a continuous stream of the too many 
+> open connections
+> > scrolling across our logs.  
+> 
+> That's interesting!  So we should probably look more closely at the
+> svc_check_conn_limits() behavior.  I wonder whether some pathological
+> behavior is triggered in the case where you're constantly 
+> over the limit
+> it's trying to enforce.
+> 
+> (Remind me how many active clients you have?)
+> 
 
+
+We currently are hitting with somewhere around 600 to 800 nodes, but it
+can go up to over 1000 nodes.  We are artificially starving with a
+limited number of threads (2 to 3) right now on the older 2.6.22.14
+kernel because of that memory issue (which may or may not be tso
+related)...
+
+I really want to move forward to the newer kernel, but we had an issue
+where clients all of the sudden wouldn't connect, yet other clients
+could, to the exact same server NFS export.  I had booted the server
+into the 2.6.25.4 kernel at the time, and the other admin set us back to
+the 2.6.22.14 to see if that was it.  The clients started working again,
+and he left it there (he also took out my options in the exports file,
+no_subtree_check and insecure).  I know that we are running over the
+number of privelaged ports, and we probably need the insecure, but I am
+having a hard time wrapping my self around all of the problems at
+once....
+
+
+
+> > No problems.  I feel good if I exercised some deep corner 
+> of the code
+> > and found something that needed flushed out, that's what 
+> the experience
+> > is all about, isn't it?
+> 
+> Yep!
+> 
+> --b.
+> 
