@@ -1,19 +1,18 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 3/3] lockd: close potential race with rapid
-	lockd_up/lockd_down cycle
-Date: Fri, 13 Jun 2008 13:53:16 -0400
-Message-ID: <20080613175316.GB8501@fieldses.org>
-References: <1213192992-7635-1-git-send-email-jlayton@redhat.com>
-	<1213192992-7635-2-git-send-email-jlayton@redhat.com>
-	<1213192992-7635-3-git-send-email-jlayton@redhat.com>
-	<1213192992-7635-4-git-send-email-jlayton@redhat.com>
+Subject: Re: [PATCH 1/5] knfsd: Replace lock_kernel with a mutex for nfsd
+	thread startup/shutdown locking.
+Date: Fri, 13 Jun 2008 14:04:55 -0400
+Message-ID: <20080613180455.GC8501@fieldses.org>
+References: <1213101639-26423-1-git-send-email-jlayton@redhat.com>
+	<1213101639-26423-2-git-send-email-jlayton@redhat.com>
+	<18512.39490.36187.783761@notabene.brown>
+	<20080612083713.30282035@barsoom.rdu.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org,
-	linux-kernel@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org, gnb@melbourne.sgi.com
 To: Jeff Layton <jlayton@redhat.com>
 Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <1213192992-7635-4-git-send-email-jlayton@redhat.com>
+In-Reply-To: <20080612083713.30282035@barsoom.rdu.redhat.com>
 List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
 	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
 List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
@@ -25,120 +24,64 @@ Sender: nfsv4-bounces@linux-nfs.org
 Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jun 11, 2008 at 10:03:12AM -0400, Jeff Layton wrote:
-> If lockd_down is called very rapidly after lockd_up returns, then
-> there is a slim chance that lockd() will never be called. kthread()
-> will return before calling the function, so we'll end up never
-> actually calling the cleanup functions for the thread.
+On Thu, Jun 12, 2008 at 08:37:13AM -0400, Jeff Layton wrote:
+> On Thu, 12 Jun 2008 13:38:42 +1000
+> Neil Brown <neilb@suse.de> wrote:
+> 
+> > On Tuesday June 10, jlayton@redhat.com wrote:
+> > > From: Neil Brown <neilb@suse.de>
+> > > 
+> > > This removes the BKL from the RPC service creation codepath. The BKL
+> > > really isn't adequate for this job since some of this info needs
+> > > protection across sleeps.
+> > > 
+> > > Also, add some comments to try and clarify how the locking should work
+> > > and to make it clear that the BKL isn't necessary as long as there is
+> > > adequate locking between tasks when touching the svc_serv fields.
+> > > 
+> > > Signed-off-by: Neil Brown <neilb@suse.de>
+> > > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > 
+> > Thanks for proceeding with this.
+> > As well as the fixes for this that you included in 2/5, you need this
+> > patch as well for correctness.... Well, you need the first hunk.  The
+> > second is unrelated but probably should be fixed.
+> > 
+> > The rest all looks good.
+> > 
+> > NeilBrown
+> > 
+> > 
+> > ---------------------------------
+> > 
+> > Signed-off-by: Neil Brown <neilb@suse.de>
+> > 
+> > ### Diffstat output
+> >  ./fs/nfsd/nfssvc.c |   12 +++++++-----
+> >  1 file changed, 7 insertions(+), 5 deletions(-)
+> > 
+> > diff .prev/fs/nfsd/nfssvc.c ./fs/nfsd/nfssvc.c
+> > --- .prev/fs/nfsd/nfssvc.c	2008-06-12 13:27:47.000000000 +1000
+> > +++ ./fs/nfsd/nfssvc.c	2008-06-12 13:32:14.000000000 +1000
+> > @@ -169,10 +169,12 @@ int nfsd_vers(int vers, enum vers_op cha
+> >  
+> >  int nfsd_nrthreads(void)
+> >  {
+> > -	if (nfsd_serv == NULL)
+> > -		return 0;
+> > -	else
+> > -		return nfsd_serv->sv_nrthreads;
+> > +	int rv = 0;
+> > +	mutex_lock(&nfsd_mutex);
+> > +	if (nfsd_serv)
+> > +		rv = nfsd_serv->sv_nrthreads;
+> > +	mutex_unlock(&nfsd_mutex);
+> > +	return rv;
+> >  }
+> >  
+> 
+> ACK on this first part. Good catch...
 
-Looks OK to me, thanks.  Applied (for 2.6.27, unless someone wants to
-argue it's more urgent.)
+Applied that--thanks Neil.
 
 --b.
-
-> 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  fs/lockd/svc.c |   33 +++++++++++++--------------------
->  1 files changed, 13 insertions(+), 20 deletions(-)
-> 
-> diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-> index 2169af4..5bd9bf0 100644
-> --- a/fs/lockd/svc.c
-> +++ b/fs/lockd/svc.c
-> @@ -50,7 +50,7 @@ EXPORT_SYMBOL(nlmsvc_ops);
->  static DEFINE_MUTEX(nlmsvc_mutex);
->  static unsigned int		nlmsvc_users;
->  static struct task_struct	*nlmsvc_task;
-> -static struct svc_serv		*nlmsvc_serv;
-> +static struct svc_rqst		*nlmsvc_rqst;
->  int				nlmsvc_grace_period;
->  unsigned long			nlmsvc_timeout;
->  
-> @@ -194,20 +194,11 @@ lockd(void *vrqstp)
->  
->  		svc_process(rqstp);
->  	}
-> -
->  	flush_signals(current);
->  	if (nlmsvc_ops)
->  		nlmsvc_invalidate_all();
->  	nlm_shutdown_hosts();
-> -
->  	unlock_kernel();
-> -
-> -	nlmsvc_task = NULL;
-> -	nlmsvc_serv = NULL;
-> -
-> -	/* Exit the RPC thread */
-> -	svc_exit_thread(rqstp);
-> -
->  	return 0;
->  }
->  
-> @@ -254,16 +245,15 @@ int
->  lockd_up(int proto) /* Maybe add a 'family' option when IPv6 is supported ?? */
->  {
->  	struct svc_serv *serv;
-> -	struct svc_rqst *rqstp;
->  	int		error = 0;
->  
->  	mutex_lock(&nlmsvc_mutex);
->  	/*
->  	 * Check whether we're already up and running.
->  	 */
-> -	if (nlmsvc_serv) {
-> +	if (nlmsvc_rqst) {
->  		if (proto)
-> -			error = make_socks(nlmsvc_serv, proto);
-> +			error = make_socks(nlmsvc_rqst->rq_server, proto);
->  		goto out;
->  	}
->  
-> @@ -288,9 +278,10 @@ lockd_up(int proto) /* Maybe add a 'family' option when IPv6 is supported ?? */
->  	/*
->  	 * Create the kernel thread and wait for it to start.
->  	 */
-> -	rqstp = svc_prepare_thread(serv, &serv->sv_pools[0]);
-> -	if (IS_ERR(rqstp)) {
-> -		error = PTR_ERR(rqstp);
-> +	nlmsvc_rqst = svc_prepare_thread(serv, &serv->sv_pools[0]);
-> +	if (IS_ERR(nlmsvc_rqst)) {
-> +		error = PTR_ERR(nlmsvc_rqst);
-> +		nlmsvc_rqst = NULL;
->  		printk(KERN_WARNING
->  			"lockd_up: svc_rqst allocation failed, error=%d\n",
->  			error);
-> @@ -298,16 +289,15 @@ lockd_up(int proto) /* Maybe add a 'family' option when IPv6 is supported ?? */
->  	}
->  
->  	svc_sock_update_bufs(serv);
-> -	nlmsvc_serv = rqstp->rq_server;
->  
-> -	nlmsvc_task = kthread_run(lockd, rqstp, serv->sv_name);
-> +	nlmsvc_task = kthread_run(lockd, nlmsvc_rqst, serv->sv_name);
->  	if (IS_ERR(nlmsvc_task)) {
->  		error = PTR_ERR(nlmsvc_task);
-> +		svc_exit_thread(nlmsvc_rqst);
->  		nlmsvc_task = NULL;
-> -		nlmsvc_serv = NULL;
-> +		nlmsvc_rqst = NULL;
->  		printk(KERN_WARNING
->  			"lockd_up: kthread_run failed, error=%d\n", error);
-> -		svc_exit_thread(rqstp);
->  		goto destroy_and_out;
->  	}
->  
-> @@ -346,6 +336,9 @@ lockd_down(void)
->  		BUG();
->  	}
->  	kthread_stop(nlmsvc_task);
-> +	svc_exit_thread(nlmsvc_rqst);
-> +	nlmsvc_task = NULL;
-> +	nlmsvc_rqst = NULL;
->  out:
->  	mutex_unlock(&nlmsvc_mutex);
->  }
-> -- 
-> 1.5.3.6
-> 
