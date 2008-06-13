@@ -1,167 +1,57 @@
-From: "Weathers, Norman R." <Norman.R.Weathers-496aOtIFJR1B+Kdf37RAV9BPR1lH4CV8@public.gmane.org>
-Subject: RE: CONFIG_DEBUG_SLAB_LEAK omits size-4096 and larger?
-Date: Fri, 13 Jun 2008 17:53:20 -0500
-Message-ID: <0122F800A3B64C449565A9E8C297701002D75DB7@hoexmb9.conoco.net>
-References: <0122F800A3B64C449565A9E8C297701002D75DA3@hoexmb9.conoco.net> <20080611184613.GM15380@fieldses.org> <20080611195222.GP15380@fieldses.org> <20080611160947.5f08fb16@tleilax.poochiereds.net> <20080611205749.GA25194@fieldses.org> <0122F800A3B64C449565A9E8C297701002D75DAA@hoexmb9.conoco.net> <20080611225431.GD25194@fieldses.org> <0122F800A3B64C449565A9E8C297701002D75DAE@hoexmb9.conoco.net> <20080613201552.GH8501@fieldses.org> <0122F800A3B64C449565A9E8C297701002D75DB6@hoexmb9.conoco.net> <20080613220422.GC14338@fieldses.org>
+From: Maurice Volaski <mvolaski-Q33DkHiyi7z2fBVCVOL8/A@public.gmane.org>
+Subject: [NFS] the infamous" device is busy" bug
+Date: Fri, 13 Jun 2008 19:22:02 -0400
+Message-ID: <p06240404c478afa53f34@[129.98.90.227]>
+References: <mailman.32188.1213350650.3945.nfs@lists.sourceforge.net>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Cc: "Jeff Layton" <jlayton@poochiereds.net>,
-	<linux-kernel@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
-	"Neil Brown" <neilb@suse.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset="us-ascii"
+To: nfs@lists.sourceforge.net
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailman2.ppco.com ([138.32.41.14]:46273 "EHLO mailman2.ppco.com"
+Received: from neil.brown.name ([220.233.11.133]:54194 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755171AbYFMWx1 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Jun 2008 18:53:27 -0400
-In-Reply-To: <20080613220422.GC14338@fieldses.org>
+	id S1756155AbYFMXWa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 13 Jun 2008 19:22:30 -0400
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1K7IbD-00065U-MM
+	for linux-nfs@vger.kernel.org; Sat, 14 Jun 2008 09:22:27 +1000
+In-Reply-To: <mailman.32188.1213350650.3945.nfs@lists.sourceforge.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
- 
+I'm running 2.6.25-gentoo-r1 on an AMD 64 box along with 
+nfs-utils-1.1.2-r1 and I have /var/lib/nfs symlinked to a separate 
+filesystem, /database/nfs
 
-> -----Original Message-----
-> From: J. Bruce Fields [mailto:bfields@fieldses.org] 
-> Sent: Friday, June 13, 2008 5:04 PM
-> To: Weathers, Norman R.
-> Cc: Jeff Layton; linux-kernel@vger.kernel.org; 
-> linux-nfs@vger.kernel.org; Neil Brown
-> Subject: Re: CONFIG_DEBUG_SLAB_LEAK omits size-4096 and larger?
-> 
-> On Fri, Jun 13, 2008 at 04:53:31PM -0500, Weathers, Norman R. wrote:
-> >  
-> > 
-> > > > The big one seems to be the __alloc_skb. (This is with 16 
-> > > threads, and
-> > > > it says that we are using up somewhere between 12 and 14 GB 
-> > > of memory,
-> > > > about 2 to 3 gig of that is disk cache).  If I were to 
-> put anymore
-> > > > threads out there, the server would become almost 
-> > > unresponsive (it was
-> > > > bad enough as it was).   
-> > > > 
-> > > > At the same time, I also noticed this:
-> > > > 
-> > > > skbuff_fclone_cache: 1842524 __alloc_skb+0x50/0x170
-> > > > 
-> > > > Don't know for sure if that is meaningful or not....
-> > > 
-> > > OK, so, starting at net/core/skbuff.c, this means that 
-> this memory was
-> > > allocated by __alloc_skb() calls with something nonzero 
-> in the third
-> > > ("fclone") argument.  The only such caller is alloc_skb_fclone().
-> > > Callers of alloc_skb_fclone() include:
-> > > 
-> > > 	sk_stream_alloc_skb:
-> > > 		do_tcp_sendpages
-> > > 		tcp_sendmsg
-> > > 		tcp_fragment
-> > > 		tso_fragment
-> > 
-> > Interesting you should mention the tso...  We recently went 
-> through and
-> > turned on TSO on all of our systems, trying it out to see 
-> if it helped
-> > with performance...  This could be something to do with 
-> that.  I can try
-> > disabling the tso on all of the servers and see if that 
-> helps with the
-> > memory.  Actually, I think I will, and I will monitor the 
-> situation.  I
-> > think it might help some, but I still think there may be 
-> something else
-> > going on in a deep corner...
-> 
-> I'll plead total ignorance about TSO, and it sounds like a long
-> shot--but sure, it'd be worth trying, thanks.
-> 
+Now the system is running drbd and heartbeat and /database is on 
+drbd, so that if the server fails, the secondary server will be able 
+to immediately take over nfs using the identical data on its 
+/database/nfs.
 
-Tried it, not for sure if I like the results yet or not...  Didn't seem
-to make a huge difference, but here is something that will really make
-you want to drink, the 2.6.25.4 kernel does not go into the size-4096
-hell.  The largest users of slab there are the size-1024 and still the
-skbuff_fclone_cache.  On a box with 16 threads, it will cache up about 5
-GB of disk data, and still use about 6 GB of slab to put the information
-out there (without TSO on), but at least it is not causing the disk
-cache to be evicted, and it appears to be a little more responsive.  If
-I up it to 32 or more threads, however, it gets very sluggish, but then
-again, I am hitting it with a lot of nodes.
+If, however, I want to manually stop heartbeat on the primary server, 
+I cannot because /database will not umount, complaining "the device 
+is busy". I've tried to manually by shutting down all things nfs, but 
+something is still holding it, and nfsd in the kernel is the culprit. 
+I tested that by loading the module and from that point forward, 
+trying to unmount /database just results in the "device is busy" 
+complaint. That means the only way I can shutdown heartbeat is to 
+physically shut down the server.
+-- 
 
-> > 
-> > > 		tcp_mtu_probe
-> > > 	tcp_send_fin
-> > > 	tcp_connect
-> > > 	buf_acquire:
-> > > 		lots of callers in tipc code (whatever that is).
-> > > 
-> > > So unless you're using tipc, or you have something in 
-> userspace going
-> > > haywire (perhaps netstat would help rule that out?), then 
-> I suppose
-> > > there's something wrong with knfsd's tcp code.  Which 
-> makes sense, I
-> > > guess.
-> > > 
-> > 
-> > Not for sure what tipc is either....
-> > 
-> > > I'd think this sort of allocation would be limited by the 
-> number of
-> > > sockets times the size of the send and receive buffers.
-> > > svc_xprt.c:svc_check_conn_limits() claims to be limiting 
-> the number of
-> > > sockets to (nrthreads+3)*20.  (You aren't hitting the 
-> "too many open
-> > > connections" printk there, are you?)  The total buffer 
-> size should be
-> > > bounded by something like 4 megs.
-> > > 
-> > > --b.
-> > > 
-> > 
-> > Yes, we are getting a continuous stream of the too many 
-> open connections
-> > scrolling across our logs.  
-> 
-> That's interesting!  So we should probably look more closely at the
-> svc_check_conn_limits() behavior.  I wonder whether some pathological
-> behavior is triggered in the case where you're constantly 
-> over the limit
-> it's trying to enforce.
-> 
-> (Remind me how many active clients you have?)
-> 
+Maurice Volaski, mvolaski-Q33DkHiyi7z2fBVCVOL8/A@public.gmane.org
+Computing Support, Rose F. Kennedy Center
+Albert Einstein College of Medicine of Yeshiva University
 
+-------------------------------------------------------------------------
+Check out the new SourceForge.net Marketplace.
+It's the best place to buy or sell services for
+just about anything Open Source.
+http://sourceforge.net/services/buy/index.php
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
-We currently are hitting with somewhere around 600 to 800 nodes, but it
-can go up to over 1000 nodes.  We are artificially starving with a
-limited number of threads (2 to 3) right now on the older 2.6.22.14
-kernel because of that memory issue (which may or may not be tso
-related)...
-
-I really want to move forward to the newer kernel, but we had an issue
-where clients all of the sudden wouldn't connect, yet other clients
-could, to the exact same server NFS export.  I had booted the server
-into the 2.6.25.4 kernel at the time, and the other admin set us back to
-the 2.6.22.14 to see if that was it.  The clients started working again,
-and he left it there (he also took out my options in the exports file,
-no_subtree_check and insecure).  I know that we are running over the
-number of privelaged ports, and we probably need the insecure, but I am
-having a hard time wrapping my self around all of the problems at
-once....
-
-
-
-> > No problems.  I feel good if I exercised some deep corner 
-> of the code
-> > and found something that needed flushed out, that's what 
-> the experience
-> > is all about, isn't it?
-> 
-> Yep!
-> 
-> --b.
-> 
