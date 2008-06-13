@@ -1,16 +1,15 @@
 From: NeilBrown <neilb@suse.de>
 Subject: [PATCH] knfsd: nfsd: Handle ERESTARTSYS from syscalls.
-Date: Fri, 13 Jun 2008 21:41:03 +1000
-Message-ID: <1080613114103.27052@suse.de>
+Date: Fri, 13 Jun 2008 21:42:15 +1000
+Message-ID: <1080613114215.27095@suse.de>
 References: <20080613213759.26929.patches@notabene>
 Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-To: J.Bruce@suse.de, Fields@suse.de,
-	" <bfields@fieldses.org>@suse.de"@suse.de
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from ns1.suse.de ([195.135.220.2]:33151 "EHLO mx1.suse.de"
+Received: from ns1.suse.de ([195.135.220.2]:33229 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752904AbYFMLln (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Jun 2008 07:41:43 -0400
+	id S1754047AbYFMLmy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 13 Jun 2008 07:42:54 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
