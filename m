@@ -1,88 +1,49 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] knfsd: nfsd: Handle ERESTARTSYS from syscalls.
-Date: Sat, 14 Jun 2008 13:11:09 -0400
-Message-ID: <20080614171109.GA27041@fieldses.org>
-References: <20080613213759.26929.patches@notabene> <1080613114215.27095@suse.de>
+Subject: Re: [PATCH 5/5] rpc: add new gssd upcall pipe
+Date: Sat, 14 Jun 2008 13:36:11 -0400
+Message-ID: <20080614173611.GD27041@fieldses.org>
+References: <1213397442-15611-1-git-send-email-bfields@citi.umich.edu> <1213397442-15611-2-git-send-email-bfields@citi.umich.edu> <1213397442-15611-3-git-send-email-bfields@citi.umich.edu> <1213397442-15611-4-git-send-email-bfields@citi.umich.edu> <1213397442-15611-5-git-send-email-bfields@citi.umich.edu> <1213397442-15611-6-git-send-email-bfields@citi.umich.edu> <1213459638.7149.16.camel@localhost>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-To: NeilBrown <neilb@suse.de>
+Cc: aglo@citi.umich.edu, kwc@citi.umich.edu, linux-nfs@vger.kernel.org
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:35746 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:58105 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753062AbYFNRLL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 14 Jun 2008 13:11:11 -0400
-In-Reply-To: <1080613114215.27095@suse.de>
+	id S1752546AbYFNRgN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 14 Jun 2008 13:36:13 -0400
+In-Reply-To: <1213459638.7149.16.camel@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jun 13, 2008 at 09:42:15PM +1000, NeilBrown wrote:
+On Sat, Jun 14, 2008 at 12:07:18PM -0400, Trond Myklebust wrote:
+> On Fri, 2008-06-13 at 18:50 -0400, J. Bruce Fields wrote:
+> > This adds the new text-based gss upcall.  We only allow an open from
+> > either the new pipe or the old one, and use the pipe_open method to
+> > enforce this.
+> > 
+> > If no pipes are open, we provisionally queue messages for the new pipe;
+> > a subsequent open of the old pipe will cause all those messages to be
+> > purged.
+> > 
+> > Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+> > ---
 > 
-> OCFS2 can return -ERESTARTSYS from write requests (and possibly
-> elsewhere) if there is a signal pending.
-> 
-> If nfsd is shutdown (by sending a signal to each thread) while there
-> is still an IO load from the client, each thread could handle one last
-> request with a signal pending.  This can result in -ERESTARTSYS
-> which is not understood by nfserrno() and so is reflected back to
-> the client as nfserr_io aka -EIO.  This is wrong.
-> 
-> Instead, interpret ERESTARTSYS to mean "don't send a reply".
-> The client will resend and - if the server is restarted - the write will
-> (hopefully) be successful and everyone will be happy.
+> I'm not happy about allowing the gss_auth layer to control timeouts and
+> cancel upcalls either: that caused us way too much grief and bugs in
+> earlier revisions of rpc_pipefs.
 
-Thanks, applied--with a trivial change:
+Understood.  In this case the only cancel occurs before any open has
+come--it seems pretty simple.  But perhaps I'm missing something--I'll
+think about it some more.
 
-> 
-> Signed-off-by: Neil Brown <neilb@suse.de>
-> 
-> ### Diffstat output
->  ./fs/nfsd/nfsproc.c |    1 +
->  1 file changed, 1 insertion(+)
-> 
-> ----
-> Funny how the shortest patches sometimes have the longest
-> descriptions.
+> Why not rather disallow queueing (i.e. put the task to sleep, and maybe
+> print out a reminder on the console every minute or so) until you are
+> notified by the rpc_pipefs layer that someone has opened the file for
+> reading?
 
-I added this to the body of the patch description:
-> 
-> The symptom that I narrowed down to this was:
->    copy a large file via NFS to an OCFS2 filesystem, and restart
->    the nfs server during the copy.
->    The 'cp' might get an -EIO, and the file will be corrupted -
->    presumably holes in the middle were writes appeared to fail.
-
-On the grounds that someone might run across the same problem or need to
-reproduce it for some reason, so a good, simple description of the case
-that found it might help.
+I have another version of these patches that did that (in fact, I just
+turned off the RPC_PIPE_WAIT_FOR_OPEN stuff and relied entirely on
+timeouts in gss code).  I'll take another look at that.
 
 --b.
-
-> 
-> diff .prev/fs/nfsd/nfsproc.c ./fs/nfsd/nfsproc.c
-> --- .prev/fs/nfsd/nfsproc.c	2008-06-13 21:31:53.000000000 +1000
-> +++ ./fs/nfsd/nfsproc.c	2008-06-13 21:31:57.000000000 +1000
-> @@ -614,6 +614,7 @@ nfserrno (int errno)
->  #endif
->  		{ nfserr_stale, -ESTALE },
->  		{ nfserr_jukebox, -ETIMEDOUT },
-> +		{ nfserr_dropit, -ERESTARTSYS },
->  		{ nfserr_dropit, -EAGAIN },
->  		{ nfserr_dropit, -ENOMEM },
->  		{ nfserr_badname, -ESRCH },
-> 
-> ### Diffstat output
->  ./fs/nfsd/nfsproc.c |    1 +
->  1 file changed, 1 insertion(+)
-> 
-> diff .prev/fs/nfsd/nfsproc.c ./fs/nfsd/nfsproc.c
-> --- .prev/fs/nfsd/nfsproc.c	2008-06-13 21:31:53.000000000 +1000
-> +++ ./fs/nfsd/nfsproc.c	2008-06-13 21:31:57.000000000 +1000
-> @@ -614,6 +614,7 @@ nfserrno (int errno)
->  #endif
->  		{ nfserr_stale, -ESTALE },
->  		{ nfserr_jukebox, -ETIMEDOUT },
-> +		{ nfserr_dropit, -ERESTARTSYS },
->  		{ nfserr_dropit, -EAGAIN },
->  		{ nfserr_dropit, -ENOMEM },
->  		{ nfserr_badname, -ESRCH },
