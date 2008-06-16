@@ -1,57 +1,120 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [RFC] new client gssd upcall
-Date: Mon, 16 Jun 2008 10:28:59 -0400
-Message-ID: <20080616102859.66fa6a34@tleilax.poochiereds.net>
-References: <1213397442-15611-1-git-send-email-bfields@citi.umich.edu>
+From: "Chuck Lever" <chucklever@gmail.com>
+Subject: Re: [PATCH] knfsd: nfsd: Handle ERESTARTSYS from syscalls.
+Date: Mon, 16 Jun 2008 11:09:52 -0400
+Message-ID: <76bd70e30806160809o495dd50fw88a80ec0673c0dc1@mail.gmail.com>
+References: <20080613213759.26929.patches@notabene>
+	 <1080613114215.27095@suse.de> <48565F19.10508@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, aglo@citi.umich.edu,
-	kwc@citi.umich.edu, linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@citi.umich.edu>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: NeilBrown <neilb@suse.de>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+To: "Peter Staubach" <staubach@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:50655 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753533AbYFPO3d (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 Jun 2008 10:29:33 -0400
-In-Reply-To: <1213397442-15611-1-git-send-email-bfields@citi.umich.edu>
+Received: from mu-out-0910.google.com ([209.85.134.186]:64003 "EHLO
+	mu-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755962AbYFPPJ5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Jun 2008 11:09:57 -0400
+Received: by mu-out-0910.google.com with SMTP id w8so3134716mue.1
+        for <linux-nfs@vger.kernel.org>; Mon, 16 Jun 2008 08:09:53 -0700 (PDT)
+In-Reply-To: <48565F19.10508@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 13 Jun 2008 18:50:37 -0400
-"J. Bruce Fields" <bfields@citi.umich.edu> wrote:
+On Mon, Jun 16, 2008 at 8:39 AM, Peter Staubach <staubach@redhat.com> wrote:
+> NeilBrown wrote:
+>>
+>> OCFS2 can return -ERESTARTSYS from write requests (and possibly
+>> elsewhere) if there is a signal pending.
+>>
+>> If nfsd is shutdown (by sending a signal to each thread) while there
+>> is still an IO load from the client, each thread could handle one last
+>> request with a signal pending.  This can result in -ERESTARTSYS
+>> which is not understood by nfserrno() and so is reflected back to
+>> the client as nfserr_io aka -EIO.  This is wrong.
+>>
+>> Instead, interpret ERESTARTSYS to mean "don't send a reply".
+>> The client will resend and - if the server is restarted - the write will
+>> (hopefully) be successful and everyone will be happy.
+>>
+>>
+>
+> Why not handle -ERESTARTSYS in the same fashion as -ETIMEDOUT, ie.
+> leading to a EJUKEBOX sort of error being returned if possible?
+>
+> Simply not returning is a bad thing to do for anything other than
+> NFSv2.  It is especially bad for NFSv4.
 
-> The client needs a new more estensible text-based upcall to gssd, to
-> make it easier to support some features that are needed for new krb5
-> enctypes, for callbacks, etc.
-> 
-> We will have to continue to support the old upcall for backwards
-> compatibility with older gssd's.  To simplify upgrades, as well as
-> testing and debugging, it would help if we can upgrade gssd without
-> having to choose at boot (or module-load) time whether we want the new
-> or the old upcall.
-> 
-> That means that when gssd opens an rpc upcall pipe, we'd like to just
-> start using whichever version it chose immediately--ideally without
-> having to wait the 30 seconds that it would normally take for upcalls
-> already queued on the wrong upcall pipe to time out.
-> 
-> The following patches do that by queueing the upcalls on whichever of
-> the two upcall pipes (the new one and the old one) that somebody holds
-> open.  If nobody's opened anything yet, then upcalls are provisionally
-> queued on the new pipe.  I add a pipe_open method to allow the gss code
-> to keep track of which pipe is open, to prevent anyone from attempting
-> to open both pipes at once, and to cancel any upcalls that got queued to
-> the wrong pipe.
-> 
-> I did some minimal testing with the old upcall, but haven't tested the
-> new upcall yet.  (Olga, could you do that?)  So this is just an RFC at
-> this point.
-> 
-> --b.
+Actually, the NFSv4 spec *requires* the server to reply to every request.
 
-Has any thought been given to moving all of the rpc_pipefs upcalls to use
-the keyctl API that David Howells did? It seems like that would be better
-suited to this sort of application than rpc_pipefs...
+Not replying means an NFSv4 client connected via NFSv4 will have to
+disconnect and retransmit.  That should be avoided if at all possible.
+
+I think an error reply is much better than no reply in nearly every
+case.  NFS3ERR_JUKEBOX/NFS4ERR_DELAY is an interesting idea, but
+something else again will probably be required for v4.1 with sessions.
+
+>> Signed-off-by: Neil Brown <neilb@suse.de>
+>>
+>> ### Diffstat output
+>>  ./fs/nfsd/nfsproc.c |    1 +
+>>  1 file changed, 1 insertion(+)
+>>
+>> ----
+>> Funny how the shortest patches sometimes have the longest
+>> descriptions.
+>>
+>> The symptom that I narrowed down to this was:
+>>   copy a large file via NFS to an OCFS2 filesystem, and restart
+>>   the nfs server during the copy.
+>>   The 'cp' might get an -EIO, and the file will be corrupted -
+>>   presumably holes in the middle were writes appeared to fail.
+>>
+>> diff .prev/fs/nfsd/nfsproc.c ./fs/nfsd/nfsproc.c
+>> --- .prev/fs/nfsd/nfsproc.c     2008-06-13 21:31:53.000000000 +1000
+>> +++ ./fs/nfsd/nfsproc.c 2008-06-13 21:31:57.000000000 +1000
+>> @@ -614,6 +614,7 @@ nfserrno (int errno)
+>>  #endif
+>>                { nfserr_stale, -ESTALE },
+>>                { nfserr_jukebox, -ETIMEDOUT },
+>> +               { nfserr_dropit, -ERESTARTSYS },
+>>                { nfserr_dropit, -EAGAIN },
+>>                { nfserr_dropit, -ENOMEM },
+>>                { nfserr_badname, -ESRCH },
+>>
+>> ### Diffstat output
+>>  ./fs/nfsd/nfsproc.c |    1 +
+>>  1 file changed, 1 insertion(+)
+>>
+>> diff .prev/fs/nfsd/nfsproc.c ./fs/nfsd/nfsproc.c
+>> --- .prev/fs/nfsd/nfsproc.c     2008-06-13 21:31:53.000000000 +1000
+>> +++ ./fs/nfsd/nfsproc.c 2008-06-13 21:31:57.000000000 +1000
+>> @@ -614,6 +614,7 @@ nfserrno (int errno)
+>>  #endif
+>>                { nfserr_stale, -ESTALE },
+>>                { nfserr_jukebox, -ETIMEDOUT },
+>> +               { nfserr_dropit, -ERESTARTSYS },
+>>                { nfserr_dropit, -EAGAIN },
+>>                { nfserr_dropit, -ENOMEM },
+>>                { nfserr_badname, -ESRCH },
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+
+
 
 -- 
-Jeff Layton <jlayton@redhat.com>
+I am certain that these presidents will understand the cry of the
+people of Bolivia, of the people of Latin America and the whole world,
+which wants to have more food and not more cars. First food, then if
+something's left over, more cars, more automobiles. I think that life
+has to come first.
+-- Evo Morales
