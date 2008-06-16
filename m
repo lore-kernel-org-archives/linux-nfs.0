@@ -1,55 +1,61 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 0/1] SUNRPC: Add sysctl variables for server TCP
-	snd/rcv buffer values
-Date: Mon, 16 Jun 2008 13:59:46 -0400
-Message-ID: <20080616175946.GB27083@fieldses.org>
-References: <484ECDE4.6030108@gmail.com> <7F44A14A-F811-4D41-BAFF-E019E9904B6A@oracle.com> <48518F18.2010703@gmail.com> <20080613205339.GM8501@fieldses.org> <4853098C.8070200@gmail.com>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH] knfsd: nfsd: Handle ERESTARTSYS from syscalls.
+Date: Mon, 16 Jun 2008 14:13:55 -0400
+Message-ID: <20080616141355.20b4f824@tleilax.poochiereds.net>
+References: <20080613213759.26929.patches@notabene>
+	<1080613114215.27095@suse.de>
+	<48565F19.10508@redhat.com>
+	<76bd70e30806160809o495dd50fw88a80ec0673c0dc1@mail.gmail.com>
+	<1213635286.7238.13.camel@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-To: Dean Hildebrand <seattleplus@gmail.com>
+Content-Type: text/plain; charset=US-ASCII
+Cc: Chuck Lever <chucklever@gmail.com>,
+	Peter Staubach <staubach@redhat.com>,
+	NeilBrown <neilb@suse.de>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:45688 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([66.187.233.31]:43737 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753589AbYFPR75 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 Jun 2008 13:59:57 -0400
-In-Reply-To: <4853098C.8070200@gmail.com>
+	id S1753194AbYFPSOJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 16 Jun 2008 14:14:09 -0400
+In-Reply-To: <1213635286.7238.13.camel@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jun 13, 2008 at 04:58:04PM -0700, Dean Hildebrand wrote:
-> The reason it is an art is that you don't know the hardware that exists  
-> between the client and server.  Talking about things like BDP is fine,  
-> but in reality there are limited buffer sizes, flaky hardware,  
-> fluctuations in traffic, etc etc.  Using the BDP as a starting point  
-> though seems like the best solution, but since the linux server doesn't  
-> know anything about what the BDP is, it is tough to hard code any value  
-> into the linux kernel.  As you said, if we just give a reasonable  
-> default value and then ensure people can play with the knobs.  Most  
-> people use NFS within a LAN, and to date there has been little if any  
-> discussion on using NFS over the WAN (hence my interest), so I would  
-> argue that the current values might not be all that bad with regards to  
-> defaults (at least we know the behaviour isn't horrible for most people).
->
-> Networks are messy.  Anyone who wants to work in the WAN is going to  
-> have to read about such things, no way around it.  A simple google  
-> search for 'tcp wan' or 'tcp wan linux' gives loads of suggestions on  
-> how to configure your network, so it really isn't a burden on sysadmins  
-> to do such a search and then use the given knobs to adjust the tcp  
-> buffer size appropriately.  My patch gives sysadmins the ability to do  
-> the google search and then have some knobs to turn.
->
-> Some sample tcp tuning guides that I like:
-> http://acs.lbl.gov/TCP-tuning/tcp-wan-perf.pdf
-> http://acs.lbl.gov/TCP-tuning/linux.html
-> http://gentoo-wiki.com/HOWTO_TCP_Tuning (especially relevant is the part  
-> about the receive buffer)
- 
-> http://www.linuxclustersinstitute.org/conferences/archive/2008/PDF/Hildebrand_98265.pdf 
-> (our initial paper on pNFS tuning)
+On Mon, 16 Jun 2008 12:54:46 -0400
+Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
 
-Several of those refer to problems that can happen when the receive
-buffer size is set unusually high, but none of them give a really
-detailed description of the behavior in that case--do you know of any?
+> On Mon, 2008-06-16 at 11:09 -0400, Chuck Lever wrote:
+> 
+> > I think an error reply is much better than no reply in nearly every
+> > case.  NFS3ERR_JUKEBOX/NFS4ERR_DELAY is an interesting idea, but
+> > something else again will probably be required for v4.1 with sessions.
+> 
+> NFS3ERR_JUKEBOX/NFS4ERR_DELAY may be inappropriate if the nfs daemon has
+> already started handling the RPC call, since you may be interrupting a
+> non-idempotent operation.
+> 
 
---b.
+But if you drop the reply, the client will probably still end up
+retransmitting the request. It seems like a JUKEBOX/DELAY error
+is at least a defined error to the client instead of leaving it
+guessing. Either way, the client could still end up on the wrong
+side of a non-idempotent op.
+
+Also, am I right that this should really only be happening if nfsd
+catches a SIGKILL? All other signals should be masked off when
+doing the local file operation. Or do we have a potential race if
+we catch a signal just after svc_recv returns but before the new
+sigmask is set and svc_process is called?
+
+> The only complete solution to this problem is NFSv4.1 with persistent
+> sessions.
+> 
+
+That's probably the case, though we should probably try to do
+best-effort for earlier versions.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
