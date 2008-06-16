@@ -1,106 +1,61 @@
-From: "Chuck Lever" <chuck.lever@oracle.com>
-Subject: Re: NFS performance degradation of local loopback FS.
-Date: Fri, 27 Jun 2008 10:06:44 -0400
-Message-ID: <76bd70e30806270706x7cbfd291l6cb6d0cc5e81771@mail.gmail.com>
-References: <62137472-FF31-40A2-904D-A9CC2C76B032@oracle.com>
-	 <OF3C28594A.91157CD9-ON65257475.0029EEE9-65257475.0031D7A5@in.ibm.com>
-Reply-To: chucklever@gmail.com
+From: "howard chen" <howachen@gmail.com>
+Subject: Re: [NFS] Sudden high load average and abnormal behavior
+Date: Tue, 17 Jun 2008 00:07:59 +0800
+Message-ID: <b66ddc900806160907u3f12592dvee46b6dd39516cb9@mail.gmail.com>
+References: <b66ddc900806152225o3a7f2bccrf4e83e70c992847a@mail.gmail.com>
+	<4856842C.3040807@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: "Benny Halevy" <bhalevy@panasas.com>, linux-nfs@vger.kernel.org,
-	"Peter Staubach" <staubach@redhat.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>
-To: "Krishna Kumar2" <krkumar2@in.ibm.com>
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
+To: "Wendy Cheng" <s.wendy.cheng@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from an-out-0708.google.com ([209.85.132.248]:64231 "EHLO
-	an-out-0708.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753423AbYF0OGq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Jun 2008 10:06:46 -0400
-Received: by an-out-0708.google.com with SMTP id d40so108648and.103
-        for <linux-nfs@vger.kernel.org>; Fri, 27 Jun 2008 07:06:45 -0700 (PDT)
-In-Reply-To: <OF3C28594A.91157CD9-ON65257475.0029EEE9-65257475.0031D7A5@in.ibm.com>
+Received: from neil.brown.name ([220.233.11.133]:54222 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753971AbYFPQIJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 16 Jun 2008 12:08:09 -0400
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1K8HFW-0002qd-SD
+	for linux-nfs@vger.kernel.org; Tue, 17 Jun 2008 02:08:07 +1000
+In-Reply-To: <4856842C.3040807@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jun 27, 2008 at 5:04 AM, Krishna Kumar2 <krkumar2@in.ibm.com> wrote:
-> Chuck Lever <chuck.lever@oracle.com> wrote on 06/26/2008 11:12:58 PM:
->> > Local:
->> >      Read:  69.5 MB/s
->> >      Write: 70.0 MB/s
->> > NFS of same FS mounted loopback on same system:
->> >      Read:  29.5 MB/s  (57% drop)
->> >      Write: 27.5 MB/s  (60% drop)
->>
->> You can look at client-side NFS and RPC performance metrics using some
->> prototype Python tools that were just added to nfs-utils.  The scripts
->> themselves can be downloaded from:
->>     http://oss.oracle.com/~cel/Linux-2.6/2.6.25
->> but unfortunately they are not fully documented yet so you will have
->> to approach them with an open mind and a sense of experimentation.
->>
->> You can also capture network traces on your loopback interface to see
->> if there is, for example, unexpected congestion or latency, or if
->> there are other problems.
->>
->> But for loopback, the problem is often that the client and server are
->> sharing the same physical memory for caching data.  Analyzing your
->> test system's physical memory utilization might be revealing.
+Hi
+
+On Mon, Jun 16, 2008 at 11:18 PM, Wendy Cheng <s.wendy.cheng@gmail.com> wrote:
+> howard chen wrote:
+> This will write all the thread backtraces into the system file
+> /var/log/messages file so people can have a rough idea of what goes wrong.
+> The *trick* here is to make sure the /var/log/messages file doesn't live on
+> the particular filesystem that has the high load issue (otherwise the
+> writing to the /var/log/messages will hang as well). So you may want to
+> configure the /var on a separate filesystem. Remember each ext3 filesystem
+> has its own kjournald (again, I have not touched ext3 for a while so this is
+> from my old memory).
 >
-> But loopback is better than actual network traffic.
-
-What precisely do you mean by that?
-
-You are testing with the client and server on the same machine.  Is
-the loopback mount over the lo interface, but you mount the machine's
-actual IP address for the "network" test?
-
-I would expect that in that case, loopback would perform better
-because a memory copy is always faster than going through the network
-stack and the NIC.
-
-It would be interesting to compare a network-only performance test
-(like iPerf) for loopback and for going through the NIC.
-
-> If my file size is
-> less than half the available physical memory, then this should not be
-> a problem, right?
-
-It is likely not a problem in that case, but you never know until you
-have analyzed the network traffic carefully to see what's going on.
-
->> Otherwise, you should always expect some performance degradation when
->> comparing NFS and local disk.  50% is not completely unheard of.  It's
->> the price paid for being able to share your file data concurrently
->> among multiple clients.
+> Another option is to google to see whether other people on the same kernel
+> level has the same issue as yours and pull their fix into your system -
+> however, it is more of a long shot (since you're doing the guessing).
 >
-> But if the file is being shared only with one client (and that too
-> locally), isn't 25% too high?
+> -- Wendy
 
-NFS always allows the possibility of sharing, so it doesn't matter how
-many clients have mounted the server.
+Thanks.
 
-The distinction I'm drawing here is between something like iSCSI,
-where only a single client ever mounts a LUN, and thus can cache
-aggressively, versus NFS in the same environment, where the client has
-to assume that any other client can access a file at any time, and
-therefore must cache more conservatively.
+I will have a more detail tests
 
-You are doing cold cache tests, so this may not be at issue here either.
+Howard
 
-A 25% performance drop between a 'dd' directly on the server, and one
-from an NFS client, is probably typical.
+-------------------------------------------------------------------------
+Check out the new SourceForge.net Marketplace.
+It's the best place to buy or sell services for
+just about anything Open Source.
+http://sourceforge.net/services/buy/index.php
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
-> Will I get better results on NFSv4, and should I try delegation (that
-> sounds automatic and not something that the user has to start)?
-
-It's hard to predict if NFSv4 will help because we don't understand
-what is causing your performance drop yet.
-
-Delegation is usually automatic if the client's mount command has
-generated a plausible callback IP address, and the server is
-successfully able to connect to it.  However, I didn't think the
-server hands out a delegation until the second OPEN... with a single
-dd, the client opens the file only once.
-
---
-Chuck Lever
