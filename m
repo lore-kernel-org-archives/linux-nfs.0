@@ -1,120 +1,83 @@
-From: "Chuck Lever" <chucklever@gmail.com>
-Subject: Re: [PATCH] knfsd: nfsd: Handle ERESTARTSYS from syscalls.
-Date: Mon, 16 Jun 2008 11:09:52 -0400
-Message-ID: <76bd70e30806160809o495dd50fw88a80ec0673c0dc1@mail.gmail.com>
-References: <20080613213759.26929.patches@notabene>
-	 <1080613114215.27095@suse.de> <48565F19.10508@redhat.com>
+From: Wendy Cheng <s.wendy.cheng@gmail.com>
+Subject: Re: [NFS] Sudden high load average and abnormal behavior
+Date: Mon, 16 Jun 2008 11:18:04 -0400
+Message-ID: <4856842C.3040807@gmail.com>
+References: <b66ddc900806152225o3a7f2bccrf4e83e70c992847a@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: NeilBrown <neilb@suse.de>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-To: "Peter Staubach" <staubach@redhat.com>
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
+To: howard chen <howachen@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mu-out-0910.google.com ([209.85.134.186]:64003 "EHLO
-	mu-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755962AbYFPPJ5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Jun 2008 11:09:57 -0400
-Received: by mu-out-0910.google.com with SMTP id w8so3134716mue.1
-        for <linux-nfs@vger.kernel.org>; Mon, 16 Jun 2008 08:09:53 -0700 (PDT)
-In-Reply-To: <48565F19.10508@redhat.com>
+Received: from neil.brown.name ([220.233.11.133]:36031 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752313AbYFPPPE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 16 Jun 2008 11:15:04 -0400
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1K8GQ9-0002Wa-Pg
+	for linux-nfs@vger.kernel.org; Tue, 17 Jun 2008 01:15:01 +1000
+In-Reply-To: <b66ddc900806152225o3a7f2bccrf4e83e70c992847a-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jun 16, 2008 at 8:39 AM, Peter Staubach <staubach@redhat.com> wrote:
-> NeilBrown wrote:
->>
->> OCFS2 can return -ERESTARTSYS from write requests (and possibly
->> elsewhere) if there is a signal pending.
->>
->> If nfsd is shutdown (by sending a signal to each thread) while there
->> is still an IO load from the client, each thread could handle one last
->> request with a signal pending.  This can result in -ERESTARTSYS
->> which is not understood by nfserrno() and so is reflected back to
->> the client as nfserr_io aka -EIO.  This is wrong.
->>
->> Instead, interpret ERESTARTSYS to mean "don't send a reply".
->> The client will resend and - if the server is restarted - the write will
->> (hopefully) be successful and everyone will be happy.
->>
->>
+howard chen wrote:
 >
-> Why not handle -ERESTARTSYS in the same fashion as -ETIMEDOUT, ie.
-> leading to a EJUKEBOX sort of error being returned if possible?
 >
-> Simply not returning is a bad thing to do for anything other than
-> NFSv2.  It is especially bad for NFSv4.
-
-Actually, the NFSv4 spec *requires* the server to reply to every request.
-
-Not replying means an NFSv4 client connected via NFSv4 will have to
-disconnect and retransmit.  That should be avoided if at all possible.
-
-I think an error reply is much better than no reply in nearly every
-case.  NFS3ERR_JUKEBOX/NFS4ERR_DELAY is an interesting idea, but
-something else again will probably be required for v4.1 with sessions.
-
->> Signed-off-by: Neil Brown <neilb@suse.de>
->>
->> ### Diffstat output
->>  ./fs/nfsd/nfsproc.c |    1 +
->>  1 file changed, 1 insertion(+)
->>
->> ----
->> Funny how the shortest patches sometimes have the longest
->> descriptions.
->>
->> The symptom that I narrowed down to this was:
->>   copy a large file via NFS to an OCFS2 filesystem, and restart
->>   the nfs server during the copy.
->>   The 'cp' might get an -EIO, and the file will be corrupted -
->>   presumably holes in the middle were writes appeared to fail.
->>
->> diff .prev/fs/nfsd/nfsproc.c ./fs/nfsd/nfsproc.c
->> --- .prev/fs/nfsd/nfsproc.c     2008-06-13 21:31:53.000000000 +1000
->> +++ ./fs/nfsd/nfsproc.c 2008-06-13 21:31:57.000000000 +1000
->> @@ -614,6 +614,7 @@ nfserrno (int errno)
->>  #endif
->>                { nfserr_stale, -ESTALE },
->>                { nfserr_jukebox, -ETIMEDOUT },
->> +               { nfserr_dropit, -ERESTARTSYS },
->>                { nfserr_dropit, -EAGAIN },
->>                { nfserr_dropit, -ENOMEM },
->>                { nfserr_badname, -ESRCH },
->>
->> ### Diffstat output
->>  ./fs/nfsd/nfsproc.c |    1 +
->>  1 file changed, 1 insertion(+)
->>
->> diff .prev/fs/nfsd/nfsproc.c ./fs/nfsd/nfsproc.c
->> --- .prev/fs/nfsd/nfsproc.c     2008-06-13 21:31:53.000000000 +1000
->> +++ ./fs/nfsd/nfsproc.c 2008-06-13 21:31:57.000000000 +1000
->> @@ -614,6 +614,7 @@ nfserrno (int errno)
->>  #endif
->>                { nfserr_stale, -ESTALE },
->>                { nfserr_jukebox, -ETIMEDOUT },
->> +               { nfserr_dropit, -ERESTARTSYS },
->>                { nfserr_dropit, -EAGAIN },
->>                { nfserr_dropit, -ENOMEM },
->>                { nfserr_badname, -ESRCH },
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
+> top - 13:17:53 up 382 days, 23:44,  6 users,  load average: 20.53, 20.21, 18.93
+> Tasks: 286 total,   1 running, 285 sleeping,   0 stopped,   0 zombie
+> Cpu(s):  0.1% us,  1.1% sy,  0.0% ni, 68.4% id, 29.9% wa,  0.0% hi,  0.5% si
+> Mem:   4045256k total,  4028028k used,    17228k free,   437428k buffers
+> Swap:  9775512k total,      160k used,  9775352k free,  2814332k cached
 >
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+>   PID USER      PR  NI  VIRT  RES  SHR S %CPU %MEM    TIME+  COMMAND
+>  2049 root      15   0     0    0    0 S    1  0.0 861:21.26 kjournald
+> 26094 root      15   0     0    0    0 S    0  0.0  85:02.82 nfsd
+> 26106 root      15   0     0    0    0 S    0  0.0  83:49.86 nfsd
+> 26110 root      15   0     0    0    0 S    0  0.0  84:33.23 nfsd
+> 26124 root      15   0     0    0    0 S    0  0.0  84:37.47 nfsd
+>  2839 root      16   0  6280 1172  780 R    0  0.0   0:00.02 top
+>   
+
+I haven't used ext3 for a very long time so not sure whether there are 
+changes. IIRC, if kjournald is up and runnning (implying ext3 is 
+flushing its data to the disk), it holds the journal lock so the access 
+to that particular filesystem is temporarily suspended. So the issue 
+here is to check why kjournald takes such a long time to do the flushing.
+
+Normally we want to see the thread backtrace of "kjournald" by asking 
+for a "sysrq-t" output via:
+
+shell> cd /proc
+shell> echo t > sysrq-trigger
+
+This will write all the thread backtraces into the system file 
+/var/log/messages file so people can have a rough idea of what goes 
+wrong. The *trick* here is to make sure the /var/log/messages file 
+doesn't live on the particular filesystem that has the high load issue 
+(otherwise the writing to the /var/log/messages will hang as well). So 
+you may want to configure the /var on a separate filesystem. Remember 
+each ext3 filesystem has its own kjournald (again, I have not touched 
+ext3 for a while so this is from my old memory).
+
+Another option is to google to see whether other people on the same 
+kernel level has the same issue as yours and pull their fix into your 
+system - however, it is more of a long shot (since you're doing the 
+guessing).
+
+-- Wendy
 
 
 
--- 
-I am certain that these presidents will understand the cry of the
-people of Bolivia, of the people of Latin America and the whole world,
-which wants to have more food and not more cars. First food, then if
-something's left over, more cars, more automobiles. I think that life
-has to come first.
--- Evo Morales
+-------------------------------------------------------------------------
+Check out the new SourceForge.net Marketplace.
+It's the best place to buy or sell services for
+just about anything Open Source.
+http://sourceforge.net/services/buy/index.php
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
+
