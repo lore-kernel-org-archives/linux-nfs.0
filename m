@@ -1,172 +1,55 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: CONFIG_DEBUG_SLAB_LEAK omits size-4096 and larger?
-Date: Mon, 16 Jun 2008 13:43:40 -0400
-Message-ID: <20080616174340.GA27083@fieldses.org>
-References: <20080611195222.GP15380@fieldses.org> <20080611160947.5f08fb16@tleilax.poochiereds.net> <20080611205749.GA25194@fieldses.org> <0122F800A3B64C449565A9E8C297701002D75DAA@hoexmb9.conoco.net> <20080611225431.GD25194@fieldses.org> <0122F800A3B64C449565A9E8C297701002D75DAE@hoexmb9.conoco.net> <20080613201552.GH8501@fieldses.org> <0122F800A3B64C449565A9E8C297701002D75DB6@hoexmb9.conoco.net> <20080613220422.GC14338@fieldses.org> <0122F800A3B64C449565A9E8C297701002D75DB7@hoexmb9.conoco.net>
+Subject: Re: [PATCH 0/1] SUNRPC: Add sysctl variables for server TCP
+	snd/rcv buffer values
+Date: Mon, 16 Jun 2008 13:59:46 -0400
+Message-ID: <20080616175946.GB27083@fieldses.org>
+References: <484ECDE4.6030108@gmail.com> <7F44A14A-F811-4D41-BAFF-E019E9904B6A@oracle.com> <48518F18.2010703@gmail.com> <20080613205339.GM8501@fieldses.org> <4853098C.8070200@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jeff Layton <jlayton@poochiereds.net>,
-	linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-	Neil Brown <neilb@suse.de>
-To: "Weathers, Norman R." <Norman.R.Weathers-496aOtIFJR1B+Kdf37RAV9BPR1lH4CV8@public.gmane.org>
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+To: Dean Hildebrand <seattleplus@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:53115 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:45688 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750953AbYFPRno (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 Jun 2008 13:43:44 -0400
-In-Reply-To: <0122F800A3B64C449565A9E8C297701002D75DB7-zIGg2qceuZx7uNL6xugVa6xOck334EZe@public.gmane.org>
+	id S1753589AbYFPR75 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 16 Jun 2008 13:59:57 -0400
+In-Reply-To: <4853098C.8070200@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jun 13, 2008 at 05:53:20PM -0500, Weathers, Norman R. wrote:
->  
-> 
-> > -----Original Message-----
-> > From: J. Bruce Fields [mailto:bfields@fieldses.org] 
-> > Sent: Friday, June 13, 2008 5:04 PM
-> > To: Weathers, Norman R.
-> > Cc: Jeff Layton; linux-kernel@vger.kernel.org; 
-> > linux-nfs@vger.kernel.org; Neil Brown
-> > Subject: Re: CONFIG_DEBUG_SLAB_LEAK omits size-4096 and larger?
-> > 
-> > On Fri, Jun 13, 2008 at 04:53:31PM -0500, Weathers, Norman R. wrote:
-> > >  
-> > > 
-> > > > > The big one seems to be the __alloc_skb. (This is with 16 
-> > > > threads, and
-> > > > > it says that we are using up somewhere between 12 and 14 GB 
-> > > > of memory,
-> > > > > about 2 to 3 gig of that is disk cache).  If I were to 
-> > put anymore
-> > > > > threads out there, the server would become almost 
-> > > > unresponsive (it was
-> > > > > bad enough as it was).   
-> > > > > 
-> > > > > At the same time, I also noticed this:
-> > > > > 
-> > > > > skbuff_fclone_cache: 1842524 __alloc_skb+0x50/0x170
-> > > > > 
-> > > > > Don't know for sure if that is meaningful or not....
-> > > > 
-> > > > OK, so, starting at net/core/skbuff.c, this means that 
-> > this memory was
-> > > > allocated by __alloc_skb() calls with something nonzero 
-> > in the third
-> > > > ("fclone") argument.  The only such caller is alloc_skb_fclone().
-> > > > Callers of alloc_skb_fclone() include:
-> > > > 
-> > > > 	sk_stream_alloc_skb:
-> > > > 		do_tcp_sendpages
-> > > > 		tcp_sendmsg
-> > > > 		tcp_fragment
-> > > > 		tso_fragment
-> > > 
-> > > Interesting you should mention the tso...  We recently went 
-> > through and
-> > > turned on TSO on all of our systems, trying it out to see 
-> > if it helped
-> > > with performance...  This could be something to do with 
-> > that.  I can try
-> > > disabling the tso on all of the servers and see if that 
-> > helps with the
-> > > memory.  Actually, I think I will, and I will monitor the 
-> > situation.  I
-> > > think it might help some, but I still think there may be 
-> > something else
-> > > going on in a deep corner...
-> > 
-> > I'll plead total ignorance about TSO, and it sounds like a long
-> > shot--but sure, it'd be worth trying, thanks.
-> > 
-> 
-> Tried it, not for sure if I like the results yet or not...  Didn't seem
-> to make a huge difference, but here is something that will really make
-> you want to drink, the 2.6.25.4 kernel does not go into the size-4096
-> hell.
+On Fri, Jun 13, 2008 at 04:58:04PM -0700, Dean Hildebrand wrote:
+> The reason it is an art is that you don't know the hardware that exists  
+> between the client and server.  Talking about things like BDP is fine,  
+> but in reality there are limited buffer sizes, flaky hardware,  
+> fluctuations in traffic, etc etc.  Using the BDP as a starting point  
+> though seems like the best solution, but since the linux server doesn't  
+> know anything about what the BDP is, it is tough to hard code any value  
+> into the linux kernel.  As you said, if we just give a reasonable  
+> default value and then ensure people can play with the knobs.  Most  
+> people use NFS within a LAN, and to date there has been little if any  
+> discussion on using NFS over the WAN (hence my interest), so I would  
+> argue that the current values might not be all that bad with regards to  
+> defaults (at least we know the behaviour isn't horrible for most people).
+>
+> Networks are messy.  Anyone who wants to work in the WAN is going to  
+> have to read about such things, no way around it.  A simple google  
+> search for 'tcp wan' or 'tcp wan linux' gives loads of suggestions on  
+> how to configure your network, so it really isn't a burden on sysadmins  
+> to do such a search and then use the given knobs to adjust the tcp  
+> buffer size appropriately.  My patch gives sysadmins the ability to do  
+> the google search and then have some knobs to turn.
+>
+> Some sample tcp tuning guides that I like:
+> http://acs.lbl.gov/TCP-tuning/tcp-wan-perf.pdf
+> http://acs.lbl.gov/TCP-tuning/linux.html
+> http://gentoo-wiki.com/HOWTO_TCP_Tuning (especially relevant is the part  
+> about the receive buffer)
+ 
+> http://www.linuxclustersinstitute.org/conferences/archive/2008/PDF/Hildebrand_98265.pdf 
+> (our initial paper on pNFS tuning)
 
-Remind me what the most recent *bad* kernel was of those you tested?
-(2.6.25?)
-
-Nothing jumped out at me in a quick skim through the commits from 2.6.25
-to 2.6.25.4.
-
-> The largest users of slab there are the size-1024 and still the
-> skbuff_fclone_cache.  On a box with 16 threads, it will cache up about 5
-> GB of disk data, and still use about 6 GB of slab to put the information
-> out there (without TSO on), but at least it is not causing the disk
-> cache to be evicted, and it appears to be a little more responsive.  If
-> I up it to 32 or more threads, however, it gets very sluggish, but then
-> again, I am hitting it with a lot of nodes.
-> 
-> > > 
-> > > > 		tcp_mtu_probe
-> > > > 	tcp_send_fin
-> > > > 	tcp_connect
-> > > > 	buf_acquire:
-> > > > 		lots of callers in tipc code (whatever that is).
-> > > > 
-> > > > So unless you're using tipc, or you have something in 
-> > userspace going
-> > > > haywire (perhaps netstat would help rule that out?), then 
-> > I suppose
-> > > > there's something wrong with knfsd's tcp code.  Which 
-> > makes sense, I
-> > > > guess.
-> > > > 
-> > > 
-> > > Not for sure what tipc is either....
-> > > 
-> > > > I'd think this sort of allocation would be limited by the 
-> > number of
-> > > > sockets times the size of the send and receive buffers.
-> > > > svc_xprt.c:svc_check_conn_limits() claims to be limiting 
-> > the number of
-> > > > sockets to (nrthreads+3)*20.  (You aren't hitting the 
-> > "too many open
-> > > > connections" printk there, are you?)  The total buffer 
-> > size should be
-> > > > bounded by something like 4 megs.
-> > > > 
-> > > > --b.
-> > > > 
-> > > 
-> > > Yes, we are getting a continuous stream of the too many 
-> > open connections
-> > > scrolling across our logs.  
-> > 
-> > That's interesting!  So we should probably look more closely at the
-> > svc_check_conn_limits() behavior.  I wonder whether some pathological
-> > behavior is triggered in the case where you're constantly 
-> > over the limit
-> > it's trying to enforce.
-> > 
-> > (Remind me how many active clients you have?)
-> > 
-> 
-> 
-> We currently are hitting with somewhere around 600 to 800 nodes, but it
-> can go up to over 1000 nodes.  We are artificially starving with a
-> limited number of threads (2 to 3) right now on the older 2.6.22.14
-> kernel because of that memory issue (which may or may not be tso
-> related)...
-
-So with that many clients all making requests to the server at once,
-we'd start hitting that (serv->sv_nrthreads+3)*20 limit when the number
-of threads was set to less than 30-50.  That doesn't seem to be the
-point where you're seeing a change in behavior, though.
-
-> I really want to move forward to the newer kernel, but we had an issue
-> where clients all of the sudden wouldn't connect, yet other clients
-> could, to the exact same server NFS export.  I had booted the server
-> into the 2.6.25.4 kernel at the time, and the other admin set us back to
-> the 2.6.22.14 to see if that was it.  The clients started working again,
-> and he left it there (he also took out my options in the exports file,
-> no_subtree_check and insecure).  I know that we are running over the
-> number of privelaged ports, and we probably need the insecure, but I am
-> having a hard time wrapping my self around all of the problems at
-> once....
-
-The secure ports limitation should be a problem for a client that does a
-lot of nfs mounts, not for a server with a lot of clients.
+Several of those refer to problems that can happen when the receive
+buffer size is set unusually high, but none of them give a really
+detailed description of the behavior in that case--do you know of any?
 
 --b.
