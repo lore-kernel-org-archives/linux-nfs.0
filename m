@@ -1,61 +1,64 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH] knfsd: nfsd: Handle ERESTARTSYS from syscalls.
-Date: Mon, 16 Jun 2008 14:13:55 -0400
-Message-ID: <20080616141355.20b4f824@tleilax.poochiereds.net>
-References: <20080613213759.26929.patches@notabene>
-	<1080613114215.27095@suse.de>
-	<48565F19.10508@redhat.com>
-	<76bd70e30806160809o495dd50fw88a80ec0673c0dc1@mail.gmail.com>
-	<1213635286.7238.13.camel@localhost>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [NFS] the infamous" device is busy" bug
+Date: Mon, 16 Jun 2008 14:42:40 -0400
+Message-ID: <20080616184240.GD27083@fieldses.org>
+References: <mailman.32188.1213350650.3945.nfs@lists.sourceforge.net>
+	<p06240404c478afa53f34@[129.98.90.227]>
+	<53236.192.168.1.70.1213405151.squirrel@neil.brown.name>
+	<p06240405c4790372e350@[129.98.90.227]>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: Chuck Lever <chucklever@gmail.com>,
-	Peter Staubach <staubach@redhat.com>,
-	NeilBrown <neilb@suse.de>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: text/plain; charset="us-ascii"
+Cc: neilb@suse.de, nfs@lists.sourceforge.net
+To: Maurice Volaski <mvolaski-Q33DkHiyi7z2fBVCVOL8/A@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:43737 "EHLO mx1.redhat.com"
+Received: from neil.brown.name ([220.233.11.133]:49112 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753194AbYFPSOJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 Jun 2008 14:14:09 -0400
-In-Reply-To: <1213635286.7238.13.camel@localhost>
+	id S1751013AbYFPSmy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 16 Jun 2008 14:42:54 -0400
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1K8JfH-0003M7-V6
+	for linux-nfs@vger.kernel.org; Tue, 17 Jun 2008 04:42:52 +1000
+In-Reply-To: <p06240405c4790372e350@[129.98.90.227]>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 16 Jun 2008 12:54:46 -0400
-Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
-
-> On Mon, 2008-06-16 at 11:09 -0400, Chuck Lever wrote:
+On Sat, Jun 14, 2008 at 01:20:26AM -0400, Maurice Volaski wrote:
+> >should release it, though if there are active clients, one could grab it
+> >again very quickly.
+> >Alternately
+> >    rpc.nfsd 0
+> >    exportfs -f
+> >    umount
+> >    rpc.nfsd 16
 > 
-> > I think an error reply is much better than no reply in nearly every
-> > case.  NFS3ERR_JUKEBOX/NFS4ERR_DELAY is an interesting idea, but
-> > something else again will probably be required for v4.1 with sessions.
+> The rpc.nfsd 0 alone stopped this complaint and allowed the umount to 
+> succeed. Thanks. (Do I really want the last line "rpc.nfsd 16"? After 
+> all, I'm trying to turn nfs off.)
 > 
-> NFS3ERR_JUKEBOX/NFS4ERR_DELAY may be inappropriate if the nfs daemon has
-> already started handling the RPC call, since you may be interrupting a
-> non-idempotent operation.
-> 
+> It sounds as if there is a bug here,
 
-But if you drop the reply, the client will probably still end up
-retransmitting the request. It seems like a JUKEBOX/DELAY error
-is at least a defined error to the client instead of leaving it
-guessing. Either way, the client could still end up on the wrong
-side of a non-idempotent op.
+It may be the nfsv4 reboot recovey code holding a reference to
+/var/lib/nfs/v4recovery/.
 
-Also, am I right that this should really only be happening if nfsd
-catches a SIGKILL? All other signals should be masked off when
-doing the local file operation. Or do we have a potential race if
-we catch a signal just after svc_recv returns but before the new
-sigmask is set and svc_process is called?
+> but it's Gentoo nfs init script 
+> that's at fault because presumably it should be executing "rpc.nfsd 
+> "0 and "exportfs -f" in response to  "/etc/init.d/nfs stop".
 
-> The only complete solution to this problem is NFSv4.1 with persistent
-> sessions.
-> 
+I'd think it should be, yes.
 
-That's probably the case, though we should probably try to do
-best-effort for earlier versions.
+--b.
 
--- 
-Jeff Layton <jlayton@redhat.com>
+-------------------------------------------------------------------------
+Check out the new SourceForge.net Marketplace.
+It's the best place to buy or sell services for
+just about anything Open Source.
+http://sourceforge.net/services/buy/index.php
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
+
