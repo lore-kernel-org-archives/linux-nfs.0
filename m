@@ -1,63 +1,43 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 2/5] rpc: Use separate spinlock for cred locking in
-	auth_gss.c
-Date: Tue, 17 Jun 2008 18:06:51 -0400
-Message-ID: <20080617220651.GD5849@fieldses.org>
-References: <1213397442-15611-1-git-send-email-bfields@citi.umich.edu> <1213397442-15611-2-git-send-email-bfields@citi.umich.edu> <1213397442-15611-3-git-send-email-bfields@citi.umich.edu> <1213459135.7149.7.camel@localhost> <20080614174528.GF27041@fieldses.org> <1213467387.7149.30.camel@localhost> <20080617205159.GA5387@fieldses.org> <1213738487.7288.66.camel@localhost>
+Subject: Re: [RFC] new client gssd upcall
+Date: Tue, 17 Jun 2008 18:09:18 -0400
+Message-ID: <20080617220918.GE5849@fieldses.org>
+References: <1213397442-15611-1-git-send-email-bfields@citi.umich.edu> <20080616102859.66fa6a34@tleilax.poochiereds.net> <20080617213622.GA5849@fieldses.org> <1213739969.7288.90.camel@localhost>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: aglo@citi.umich.edu, kwc@citi.umich.edu, linux-nfs@vger.kernel.org
+Cc: Jeff Layton <jlayton@redhat.com>, aglo@citi.umich.edu,
+	kwc@citi.umich.edu, linux-nfs@vger.kernel.org
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:43847 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:49234 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761142AbYFQWGx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Jun 2008 18:06:53 -0400
-In-Reply-To: <1213738487.7288.66.camel@localhost>
+	id S1757811AbYFQWJa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Jun 2008 18:09:30 -0400
+In-Reply-To: <1213739969.7288.90.camel@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jun 17, 2008 at 05:34:47PM -0400, Trond Myklebust wrote:
-> On Tue, 2008-06-17 at 16:51 -0400, J. Bruce Fields wrote:
-> > On Sat, Jun 14, 2008 at 02:16:27PM -0400, Trond Myklebust wrote:
-> > > On Sat, 2008-06-14 at 13:45 -0400, J. Bruce Fields wrote:
-> > > > > NACK. I deliberately ripped out the old struct gss_auth spinlock in
-> > > > > order to allow multiple gss_auth per inode (I believe Kevin was asking
-> > > > > for this).
-> > > > 
-> > > > OK, makes sense.  So what will be the scope of a cred lookup--an rpc
-> > > > client?
-> > > 
-> > > That should normally be the case, but why do you need to change the
-> > > locking here in the first place? Is there ever going to be a case where
-> > > the same rpc_cred has upcalls on several different pipes? I can't see
-> > > how that could be justified.
+On Tue, Jun 17, 2008 at 05:59:29PM -0400, Trond Myklebust wrote:
+> On Tue, 2008-06-17 at 17:36 -0400, J. Bruce Fields wrote:
+> > On Mon, Jun 16, 2008 at 10:28:59AM -0400, Jeff Layton wrote:
+> > > Has any thought been given to moving all of the rpc_pipefs upcalls to use
+> > > the keyctl API that David Howells did? It seems like that would be better
+> > > suited to this sort of application than rpc_pipefs...
 > > 
-> > If you allow changing the upcall version over the life of the kernel,
-> > then it's difficult to avoid.  You can insist that noone have both the
-> > new and old version opened simultaneously, for example, but it's harder
-> > to know when there are no longer messages sitting around that have been
-> > unhashed but are still lying around waiting for a process to wake up and
-> > examine their results.
+> > I haven't looked at it.  I've just assumed that since Trond and Kevin
+> > have both looked at both API's, then there must be some good reason
+> > we're not using it....
 > 
-> AFAIK, there are two cases when the dying rpc.gssd closes the pipe:
-> 
->      1. gss_cred->gc_upcall is set. In this case, the gss_cred has a
->         full reference to the gss_msg, so it has no trouble locating the
->         message and figuring out if it needs to resend (rpc_purge_list()
->         will ensure that the error field is set to EAGAIN) or if the
->         call completed before gssd died. If you are worried about the
->         fact that gss_upcall_callback uses gss_msg->auth to access the
->         inode in order to do the locking, then just add a pointer to the
->         inode to gss_msg: it is not as if a gss_msg can migrate from one
->         upcall queue to another.
->      2. gss_cred->gc_upcall is not set. In this case the call to
->         rpc_purge_list() in rpc_pipe_release() will ensure that the
->         message gets immediately released.
-> 
-> In other words, I can't see that keeping the current behaviour will
-> cause you to have more than one upcall at a time even if you do restart
-> rpc.gssd.
+> Kevin has spent quite some time working on the keyring support, but as
+> far as I understand the amount of time he can continue to spend working
+> for CITI has recently been heavily reduced...
 
-Yeah, I think that's more or less exactly the sort of case I was worried
-about--so let me see if that does the job.  Thanks!--b.
+Hm, but I thought that you'd both decided that the gssd upcalls would
+end up coexisting with the upcalls in any case?
+
+If there's a chance we might end up replacing the gssd upcalls entirely,
+then--while I don't want to stretch out this one task
+indefinitely--still it might be worth my time to go take a look at the
+keyctl API's Jeff mentions.
+
+--b.
