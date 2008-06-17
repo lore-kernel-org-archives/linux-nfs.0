@@ -1,245 +1,70 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH 1/2] NFS: Clean up nfs_update_request()
-Date: Tue, 17 Jun 2008 17:56:47 -0400
-Message-ID: <1213739807.7288.86.camel@localhost>
-References: <20080616192348.20513.72423.stgit@localhost.localdomain>
-	 <20080616192348.20513.3284.stgit@localhost.localdomain>
-	 <B9BACB96-E0DB-4C6D-B55D-A50CC6F94474@oracle.com>
+Subject: Re: [RFC] new client gssd upcall
+Date: Tue, 17 Jun 2008 17:59:29 -0400
+Message-ID: <1213739969.7288.90.camel@localhost>
+References: <1213397442-15611-1-git-send-email-bfields@citi.umich.edu>
+	 <20080616102859.66fa6a34@tleilax.poochiereds.net>
+	 <20080617213622.GA5849@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Jeff Layton <jlayton@redhat.com>, aglo@citi.umich.edu,
+	kwc@citi.umich.edu, linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:62341 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:65003 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755626AbYFQV5H (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Jun 2008 17:57:07 -0400
-In-Reply-To: <B9BACB96-E0DB-4C6D-B55D-A50CC6F94474@oracle.com>
+	id S1753391AbYFQWAA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Jun 2008 18:00:00 -0400
+In-Reply-To: <20080617213622.GA5849@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2008-06-17 at 17:35 -0400, Chuck Lever wrote:
-> Hi Trond-
+On Tue, 2008-06-17 at 17:36 -0400, J. Bruce Fields wrote:
+> On Mon, Jun 16, 2008 at 10:28:59AM -0400, Jeff Layton wrote:
+> > On Fri, 13 Jun 2008 18:50:37 -0400
+> > "J. Bruce Fields" <bfields@citi.umich.edu> wrote:
+> > 
+> > > The client needs a new more estensible text-based upcall to gssd, to
+> > > make it easier to support some features that are needed for new krb5
+> > > enctypes, for callbacks, etc.
+> > > 
+> > > We will have to continue to support the old upcall for backwards
+> > > compatibility with older gssd's.  To simplify upgrades, as well as
+> > > testing and debugging, it would help if we can upgrade gssd without
+> > > having to choose at boot (or module-load) time whether we want the new
+> > > or the old upcall.
+> > > 
+> > > That means that when gssd opens an rpc upcall pipe, we'd like to just
+> > > start using whichever version it chose immediately--ideally without
+> > > having to wait the 30 seconds that it would normally take for upcalls
+> > > already queued on the wrong upcall pipe to time out.
+> > > 
+> > > The following patches do that by queueing the upcalls on whichever of
+> > > the two upcall pipes (the new one and the old one) that somebody holds
+> > > open.  If nobody's opened anything yet, then upcalls are provisionally
+> > > queued on the new pipe.  I add a pipe_open method to allow the gss code
+> > > to keep track of which pipe is open, to prevent anyone from attempting
+> > > to open both pipes at once, and to cancel any upcalls that got queued to
+> > > the wrong pipe.
+> > > 
+> > > I did some minimal testing with the old upcall, but haven't tested the
+> > > new upcall yet.  (Olga, could you do that?)  So this is just an RFC at
+> > > this point.
+> > > 
+> > > --b.
+> > 
+> > Has any thought been given to moving all of the rpc_pipefs upcalls to use
+> > the keyctl API that David Howells did? It seems like that would be better
+> > suited to this sort of application than rpc_pipefs...
 > 
-> On Jun 16, 2008, at 3:23 PM, Trond Myklebust wrote:
-> > Simplify the loop in nfs_update_request by moving into a separate  
-> > function
-> > the code that attempts to update an existing cached NFS write.
-> >
-> > Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> > ---
-> >
-> > fs/nfs/write.c |  105 +++++++++++++++++++++++++++ 
-> > +----------------------------
-> > 1 files changed, 53 insertions(+), 52 deletions(-)
-> >
-> > diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-> > index 8f12157..a675dc9 100644
-> > --- a/fs/nfs/write.c
-> > +++ b/fs/nfs/write.c
-> > @@ -34,9 +34,8 @@
-> > /*
-> >  * Local function declarations
-> >  */
-> > -static struct nfs_page * nfs_update_request(struct nfs_open_context*,
-> > -					    struct page *,
-> > -					    unsigned int, unsigned int);
-> > +static struct nfs_page * nfs_setup_write_request(struct  
-> > nfs_open_context *ctx,
-> > +		struct page *page, unsigned int offset, unsigned int bytes);
-> > static void nfs_pageio_init_write(struct nfs_pageio_descriptor *desc,
-> > 				  struct inode *inode, int ioflags);
-> > static void nfs_redirty_request(struct nfs_page *req);
-> > @@ -178,7 +177,7 @@ static int nfs_writepage_setup(struct  
-> > nfs_open_context *ctx, struct page *page,
-> > 	int ret;
-> >
-> > 	for (;;) {
-> > -		req = nfs_update_request(ctx, page, offset, count);
-> > +		req = nfs_setup_write_request(ctx, page, offset, count);
-> > 		if (!IS_ERR(req))
-> > 			break;
-> > 		ret = PTR_ERR(req);
-> > @@ -566,6 +565,41 @@ static inline int nfs_scan_commit(struct inode  
-> > *inode, struct list_head *dst, pg
-> > }
-> > #endif
-> >
-> > +static int nfs_try_to_update_request(struct nfs_page *req,
-> > +		unsigned int offset,
-> > +		unsigned int end)
-> > +{
-> > +	unsigned int rqend;
-> > +
-> > +	rqend = req->wb_offset + req->wb_bytes;
-> > +
-> > +	/*
-> > +	 * If the page doesn't match, or the offsets
-> > +	 * are non-contiguous, tell the caller to
-> > +	 * wait on the conflicting request.
-> > +	 */
-> > +	if (req->wb_page == NULL
-> > +	    || !nfs_dirty_request(req)
-> > +	    || offset > rqend
-> > +	    || end < req->wb_offset)
-> > +		return -EBUSY;
-> 
-> I don't see how this is equivalent to what it replaces in  
-> nfs_update_request:
-> 
-> > -	if (req->wb_context != ctx
-> > -	    || req->wb_page != page
-> 
-> 
-> What happened to the context check, for example?
+> I haven't looked at it.  I've just assumed that since Trond and Kevin
+> have both looked at both API's, then there must be some good reason
+> we're not using it....
 
-That is a deliberate change.
+Kevin has spent quite some time working on the keyring support, but as
+far as I understand the amount of time he can continue to spend working
+for CITI has recently been heavily reduced...
 
-We hold the page lock across nfs_vm_page_mkwrite and/or
-nfs_write_begin()/nfs_write_end(), so nobody else can add a new nfs_page
-to page->private during that time.
-
-For that reason, the check that is done in nfs_flush_incompatible()
-together with the check for req->wb_page==NULL (done in
-try_to_update_page() while still holding the inode->i_lock) means that
-the above two checks are redundant.
-
-...actually, come to think of it, the check for req->wb_page == NULL is
-redundant too, since nfs_clear_request() is called at the end of
-nfs_inode_remove_request(), and hence nfs_page_find_request_locked()
-would fail to find anything.
-
-> > +
-> > +	if (!nfs_set_page_tag_locked(req))
-> > +		return -EAGAIN;
-> 
-> This -EAGAIN (and the resulting logic in nfs_setup_write_request) is  
-> headache-inducing.  Is there a more straightforward way to break this  
-> up?
-
-No. If the page is being written out, then we _must_ release all locks,
-wait on the request, and try again. This is not a change compared to the
-previous incarnation.
-
-> > +
-> > +	/* Okay, the request matches. Update the region */
-> > +	if (offset < req->wb_offset) {
-> > +		req->wb_offset = offset;
-> > +		req->wb_pgbase = offset;
-> > +	}
-> > +	if (end > rqend)
-> > +		req->wb_bytes = end - req->wb_offset;
-> > +	else
-> > +		req->wb_bytes = rqend - req->wb_offset;
-> > +
-> > +	return 0;
-> > +}
-> > +
-> > /*
-> >  * Try to update any existing write request, or create one if there  
-> > is none.
-> >  * In order to match, the request's credentials must match those of
-> > @@ -573,16 +607,15 @@ static inline int nfs_scan_commit(struct inode  
-> > *inode, struct list_head *dst, pg
-> >  *
-> >  * Note: Should always be called with the Page Lock held!
-> >  */
-> > -static struct nfs_page * nfs_update_request(struct  
-> > nfs_open_context* ctx,
-> > +static struct nfs_page * nfs_setup_write_request(struct  
-> > nfs_open_context* ctx,
-> > 		struct page *page, unsigned int offset, unsigned int bytes)
-> > {
-> > -	struct address_space *mapping = page->mapping;
-> > -	struct inode *inode = mapping->host;
-> > +	struct inode *inode = page->mapping->host;
-> > 	struct nfs_page		*req, *new = NULL;
-> > -	pgoff_t		rqend, end;
-> > +	unsigned int end;
-> > +	int error;
-> >
-> > 	end = offset + bytes;
-> > -
-> > 	for (;;) {
-> > 		/* Loop over all inode entries and see if we find
-> > 		 * A request for the page we wish to update
-> > @@ -590,26 +623,16 @@ static struct nfs_page *  
-> > nfs_update_request(struct nfs_open_context* ctx,
-> > 		spin_lock(&inode->i_lock);
-> > 		req = nfs_page_find_request_locked(page);
-> > 		if (req) {
-> > -			if (!nfs_set_page_tag_locked(req)) {
-> > -				int error;
-> > -
-> > -				spin_unlock(&inode->i_lock);
-> > +			error = nfs_try_to_update_request(req, offset, end);
-> > +			spin_unlock(&inode->i_lock);
-> > +			if (error == 0)
-> > +				break;
-> > +			if (error == -EAGAIN)
-> > 				error = nfs_wait_on_request(req);
-> > -				nfs_release_request(req);
-> > -				if (error < 0) {
-> > -					if (new) {
-> > -						radix_tree_preload_end();
-> > -						nfs_release_request(new);
-> > -					}
-> > -					return ERR_PTR(error);
-> > -				}
-> > +			nfs_release_request(req);
-> > +			if (error == 0)
-> > 				continue;
-> > -			}
-> > -			spin_unlock(&inode->i_lock);
-> > -			if (new) {
-> > -				radix_tree_preload_end();
-> > -				nfs_release_request(new);
-> > -			}
-> > +			req = ERR_PTR(error);
-> > 			break;
-> > 		}
-> >
-> > @@ -632,32 +655,10 @@ static struct nfs_page *  
-> > nfs_update_request(struct nfs_open_context* ctx,
-> > 		}
-> > 	}
-> >
-> > -	/* We have a request for our page.
-> > -	 * If the creds don't match, or the
-> > -	 * page addresses don't match,
-> > -	 * tell the caller to wait on the conflicting
-> > -	 * request.
-> > -	 */
-> > -	rqend = req->wb_offset + req->wb_bytes;
-> > -	if (req->wb_context != ctx
-> > -	    || req->wb_page != page
-> > -	    || !nfs_dirty_request(req)
-> > -	    || offset > rqend || end < req->wb_offset) {
-> > -		nfs_clear_page_tag_locked(req);
-> > -		return ERR_PTR(-EBUSY);
-> > +	if (new) {
-> > +		radix_tree_preload_end();
-> > +		nfs_release_request(new);
-> > 	}
-> > -
-> > -	/* Okay, the request matches. Update the region */
-> > -	if (offset < req->wb_offset) {
-> > -		req->wb_offset = offset;
-> > -		req->wb_pgbase = offset;
-> > -		req->wb_bytes = max(end, rqend) - req->wb_offset;
-> > -		goto out;
-> > -	}
-> > -
-> > -	if (end > rqend)
-> > -		req->wb_bytes = end - req->wb_offset;
-> > -
-> > out:
-> 
-> There's only one "goto out;" left in nfs_setup_write_request().  There  
-> are other return sites in nfs_setup_write_request() that simply  
-> "return req;" -- for what purpose is this one goto still here?
-
-It could be replaced by a single 'return req'.
 -- 
 Trond Myklebust
 Linux NFS client maintainer
