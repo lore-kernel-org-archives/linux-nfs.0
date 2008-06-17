@@ -1,52 +1,168 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 0/4] NFS mounting with raw IPv6 server hostnames
-Date: Tue, 17 Jun 2008 14:17:09 -0400
-Message-ID: <20080617181622.3215.61295.stgit@ellison.1015granger.net>
+Subject: [PATCH 3/4] NFS: Add string length argument to
+	nfs_parse_server_address
+Date: Tue, 17 Jun 2008 14:17:35 -0400
+Message-ID: <20080617181734.3215.98683.stgit@ellison.1015granger.net>
+References: <20080617181622.3215.61295.stgit@ellison.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: trond.myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:64326 "EHLO
+Received: from rgminet01.oracle.com ([148.87.113.118]:64603 "EHLO
 	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754756AbYFQSRh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Jun 2008 14:17:37 -0400
+	with ESMTP id S1752862AbYFQSSL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Jun 2008 14:18:11 -0400
+In-Reply-To: <20080617181622.3215.61295.stgit-ewv44WTpT0t9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond-
+To make nfs_parse_server_address() more generally useful, allow it to
+accept input strings that are not terminated with '\0'.
 
-Something meatier today.
-
-These four patches introduce the ability to mount NFS servers using a raw
-IPv6 address.  This support requires the ability to handle colons in the
-passed-in server hostname, and the ability to handle an IPv6 interface
-identifier in the passed-in server hostname.
-
-IPv6 addresses contain colons.  A colon is also used to separate the server
-name from the export path.  By enclosing an IPv6 address inside square
-brackets we effectively escape the colons in the IPv6 address and allow them
-to pass unrecognized through the device name parser.
-
-As an added bonus, I also include the patch that changes
-nfs_parse_server_address() to take a name length.  This allows the passed-in
-address string to have no '\0'-termination, which will help us support IPv6
-for NFSv4 referrals.
-
-Please consider these for 2.6.27.
-
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
-Chuck Lever (4):
-      NFS: handle interface identifiers in incoming IPv6 addresses
-      NFS: Add string length argument to nfs_parse_server_address
-      NFS: Support raw IPv6 address hostnames during NFS mount operation
-      NFS: Use common device name parsing logic for NFSv4 and NFSv2/v3
+ fs/nfs/super.c |   98 +++++++++++++++++++++++++++++++++++++++-----------------
+ 1 files changed, 68 insertions(+), 30 deletions(-)
 
 
- fs/nfs/super.c |  336 ++++++++++++++++++++++++++++++++++++++++++++------------
- 1 files changed, 261 insertions(+), 75 deletions(-)
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 98c8110..a1fa5c9 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -62,6 +62,13 @@
+ 
+ #define NFSDBG_FACILITY		NFSDBG_VFS
+ 
++#ifndef INET_ADDRSTRLEN
++#define INET_ADDRSTRLEN		(16)
++#endif
++#ifndef INET6_ADDRSTRLEN
++#define INET6_ADDRSTRLEN	(48)
++#endif
++
+ enum {
+ 	/* Mount options that take no arguments */
+ 	Opt_soft, Opt_hard,
+@@ -702,38 +709,67 @@ static int nfs_verify_server_address(struct sockaddr *addr)
+ 	return 0;
+ }
+ 
+-/*
+- * Parse string addresses passed in via a mount option,
+- * and construct a sockaddr based on the result.
+- *
+- * If address parsing fails, set the sockaddr's address
+- * family to AF_UNSPEC to force nfs_verify_server_address()
+- * to punt the mount.
+- */
+-static void nfs_parse_server_address(char *value,
+-				     struct sockaddr *sap,
+-				     size_t *len)
++static void nfs_parse_ipv4_address(char *string, size_t str_len,
++				   struct sockaddr *sap, size_t *addr_len)
+ {
+-	if (strchr(value, ':')) {
+-		struct sockaddr_in6 *ap = (struct sockaddr_in6 *)sap;
+-		u8 *addr = (u8 *)&ap->sin6_addr.in6_u;
++	struct sockaddr_in *sin = (struct sockaddr_in *)sap;
++	u8 *addr = (u8 *)&sin->sin_addr.s_addr;
+ 
+-		ap->sin6_family = AF_INET6;
+-		*len = sizeof(*ap);
+-		if (in6_pton(value, -1, addr, '\0', NULL))
++	dfprintk(MOUNT, "NFS: parsing IPv4 address %*s\n",
++			str_len, string);
++
++	if (str_len <= INET_ADDRSTRLEN) {
++		sin->sin_family = AF_INET;
++		*addr_len = sizeof(*sin);
++		if (in4_pton(string, str_len, addr, '\0', NULL))
+ 			return;
+-	} else {
+-		struct sockaddr_in *ap = (struct sockaddr_in *)sap;
+-		u8 *addr = (u8 *)&ap->sin_addr.s_addr;
++	}
++
++	sap->sa_family = AF_UNSPEC;
++	*addr_len = 0;
++}
++
++static void nfs_parse_ipv6_address(char *string, size_t str_len,
++				   struct sockaddr *sap, size_t *addr_len)
++{
++	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)sap;
++	u8 *addr = (u8 *)&sin6->sin6_addr.in6_u;
++
++	dfprintk(MOUNT, "NFS: parsing IPv6 address %*s\n",
++			str_len, string);
+ 
+-		ap->sin_family = AF_INET;
+-		*len = sizeof(*ap);
+-		if (in4_pton(value, -1, addr, '\0', NULL))
++	if (str_len <= INET6_ADDRSTRLEN) {
++		sin6->sin6_family = AF_INET6;
++		*addr_len = sizeof(*sin6);
++		if (in6_pton(string, str_len, addr, '\0', NULL))
+ 			return;
+ 	}
+ 
+ 	sap->sa_family = AF_UNSPEC;
+-	*len = 0;
++	*addr_len = 0;
++}
++
++/*
++ * Construct a sockaddr based on the contents of a string that contains
++ * an IP address in presentation format.
++ *
++ * If there is a problem constructing the new sockaddr, set the address
++ * family to AF_UNSPEC.
++ */
++static void nfs_parse_ip_address(char *string, size_t str_len,
++				 struct sockaddr *sap, size_t *addr_len)
++{
++	unsigned int i, colons;
++
++	colons = 0;
++	for (i = 0; i < str_len; i++)
++		if (string[i] == ':')
++			colons++;
++
++	if (colons >= 2)
++		return nfs_parse_ipv6_address(string, str_len, sap, addr_len);
++	else
++		return nfs_parse_ipv4_address(string, str_len, sap, addr_len);
+ }
+ 
+ /*
+@@ -1093,9 +1129,10 @@ static int nfs_parse_mount_options(char *raw,
+ 			string = match_strdup(args);
+ 			if (string == NULL)
+ 				goto out_nomem;
+-			nfs_parse_server_address(string, (struct sockaddr *)
+-						 &mnt->nfs_server.address,
+-						 &mnt->nfs_server.addrlen);
++			nfs_parse_ip_address(string, strlen(string),
++					     (struct sockaddr *)
++						&mnt->nfs_server.address,
++					     &mnt->nfs_server.addrlen);
+ 			kfree(string);
+ 			break;
+ 		case Opt_clientaddr:
+@@ -1116,9 +1153,10 @@ static int nfs_parse_mount_options(char *raw,
+ 			string = match_strdup(args);
+ 			if (string == NULL)
+ 				goto out_nomem;
+-			nfs_parse_server_address(string, (struct sockaddr *)
+-						 &mnt->mount_server.address,
+-						 &mnt->mount_server.addrlen);
++			nfs_parse_ip_address(string, strlen(string),
++					     (struct sockaddr *)
++						&mnt->mount_server.address,
++					     &mnt->mount_server.addrlen);
+ 			kfree(string);
+ 			break;
+ 
 
--- 
-Chuck Lever
-chu ckd otl eve rat ora cle dot com
