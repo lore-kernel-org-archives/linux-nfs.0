@@ -1,88 +1,269 @@
-From: Dean Hildebrand <seattleplus@gmail.com>
-Subject: Re: [PATCH 0/1] SUNRPC: Add sysctl variables for server TCP snd/rcv
- buffer values
-Date: Wed, 18 Jun 2008 11:33:06 -0700
-Message-ID: <485954E2.2070906@gmail.com>
-References: <484ECDE4.6030108@gmail.com> <7F44A14A-F811-4D41-BAFF-E019E9904B6A@oracle.com> <48518F18.2010703@gmail.com> <20080613205339.GM8501@fieldses.org> <4853098C.8070200@gmail.com> <20080616175946.GB27083@fieldses.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 1/2] NFS: Clean up nfs_update_request()
+Date: Wed, 18 Jun 2008 16:40:14 -0400
+Message-ID: <485972AE.9030405@oracle.com>
+References: <20080616192348.20513.72423.stgit@localhost.localdomain>	 <20080616192348.20513.3284.stgit@localhost.localdomain>	 <B9BACB96-E0DB-4C6D-B55D-A50CC6F94474@oracle.com> <1213739807.7288.86.camel@localhost>
+Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: multipart/mixed;
+ boundary="------------070004020300090003060700"
+Cc: linux-nfs@vger.kernel.org
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from wf-out-1314.google.com ([209.85.200.174]:32646 "EHLO
-	wf-out-1314.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753400AbYFRSdK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Jun 2008 14:33:10 -0400
-Received: by wf-out-1314.google.com with SMTP id 27so373405wfd.4
-        for <linux-nfs@vger.kernel.org>; Wed, 18 Jun 2008 11:33:09 -0700 (PDT)
-In-Reply-To: <20080616175946.GB27083@fieldses.org>
+Received: from agminet01.oracle.com ([141.146.126.228]:55303 "EHLO
+	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753350AbYFRUkm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Jun 2008 16:40:42 -0400
+In-Reply-To: <1213739807.7288.86.camel@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+This is a multi-part message in MIME format.
+--------------070004020300090003060700
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-
-J. Bruce Fields wrote:
-> On Fri, Jun 13, 2008 at 04:58:04PM -0700, Dean Hildebrand wrote:
->   
->> The reason it is an art is that you don't know the hardware that exists  
->> between the client and server.  Talking about things like BDP is fine,  
->> but in reality there are limited buffer sizes, flaky hardware,  
->> fluctuations in traffic, etc etc.  Using the BDP as a starting point  
->> though seems like the best solution, but since the linux server doesn't  
->> know anything about what the BDP is, it is tough to hard code any value  
->> into the linux kernel.  As you said, if we just give a reasonable  
->> default value and then ensure people can play with the knobs.  Most  
->> people use NFS within a LAN, and to date there has been little if any  
->> discussion on using NFS over the WAN (hence my interest), so I would  
->> argue that the current values might not be all that bad with regards to  
->> defaults (at least we know the behaviour isn't horrible for most people).
+Trond Myklebust wrote:
+> On Tue, 2008-06-17 at 17:35 -0400, Chuck Lever wrote:
+>> Hi Trond-
 >>
->> Networks are messy.  Anyone who wants to work in the WAN is going to  
->> have to read about such things, no way around it.  A simple google  
->> search for 'tcp wan' or 'tcp wan linux' gives loads of suggestions on  
->> how to configure your network, so it really isn't a burden on sysadmins  
->> to do such a search and then use the given knobs to adjust the tcp  
->> buffer size appropriately.  My patch gives sysadmins the ability to do  
->> the google search and then have some knobs to turn.
+>> On Jun 16, 2008, at 3:23 PM, Trond Myklebust wrote:
+>>> Simplify the loop in nfs_update_request by moving into a separate  
+>>> function
+>>> the code that attempts to update an existing cached NFS write.
+>>>
+>>> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+>>> ---
+>>>
+>>> fs/nfs/write.c |  105 +++++++++++++++++++++++++++ 
+>>> +----------------------------
+>>> 1 files changed, 53 insertions(+), 52 deletions(-)
+>>>
+>>> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+>>> index 8f12157..a675dc9 100644
+>>> --- a/fs/nfs/write.c
+>>> +++ b/fs/nfs/write.c
+>>> @@ -34,9 +34,8 @@
+>>> /*
+>>>  * Local function declarations
+>>>  */
+>>> -static struct nfs_page * nfs_update_request(struct nfs_open_context*,
+>>> -					    struct page *,
+>>> -					    unsigned int, unsigned int);
+>>> +static struct nfs_page * nfs_setup_write_request(struct  
+>>> nfs_open_context *ctx,
+>>> +		struct page *page, unsigned int offset, unsigned int bytes);
+>>> static void nfs_pageio_init_write(struct nfs_pageio_descriptor *desc,
+>>> 				  struct inode *inode, int ioflags);
+>>> static void nfs_redirty_request(struct nfs_page *req);
+>>> @@ -178,7 +177,7 @@ static int nfs_writepage_setup(struct  
+>>> nfs_open_context *ctx, struct page *page,
+>>> 	int ret;
+>>>
+>>> 	for (;;) {
+>>> -		req = nfs_update_request(ctx, page, offset, count);
+>>> +		req = nfs_setup_write_request(ctx, page, offset, count);
+>>> 		if (!IS_ERR(req))
+>>> 			break;
+>>> 		ret = PTR_ERR(req);
+>>> @@ -566,6 +565,41 @@ static inline int nfs_scan_commit(struct inode  
+>>> *inode, struct list_head *dst, pg
+>>> }
+>>> #endif
+>>>
+>>> +static int nfs_try_to_update_request(struct nfs_page *req,
+>>> +		unsigned int offset,
+>>> +		unsigned int end)
+>>> +{
+>>> +	unsigned int rqend;
+>>> +
+>>> +	rqend = req->wb_offset + req->wb_bytes;
+>>> +
+>>> +	/*
+>>> +	 * If the page doesn't match, or the offsets
+>>> +	 * are non-contiguous, tell the caller to
+>>> +	 * wait on the conflicting request.
+>>> +	 */
+>>> +	if (req->wb_page == NULL
+>>> +	    || !nfs_dirty_request(req)
+>>> +	    || offset > rqend
+>>> +	    || end < req->wb_offset)
+>>> +		return -EBUSY;
+>> I don't see how this is equivalent to what it replaces in  
+>> nfs_update_request:
 >>
->> Some sample tcp tuning guides that I like:
->> http://acs.lbl.gov/TCP-tuning/tcp-wan-perf.pdf
->> http://acs.lbl.gov/TCP-tuning/linux.html
->> http://gentoo-wiki.com/HOWTO_TCP_Tuning (especially relevant is the part  
->> about the receive buffer)
->>     
->  
->   
->> http://www.linuxclustersinstitute.org/conferences/archive/2008/PDF/Hildebrand_98265.pdf 
->> (our initial paper on pNFS tuning)
->>     
->
-> Several of those refer to problems that can happen when the receive
-> buffer size is set unusually high, but none of them give a really
-> detailed description of the behavior in that case--do you know of any?
->   
-In an earlier post, I referred to the saw-tooth pattern that will happen 
-with the window when the sender transmits faster than the receiver can 
-receive.  I believe bic and cubic try to reduce the impact by not 
-closing the window all the way, but it is still better to not 
-intentionally lose packets by setting the receive buffer too high.  Not 
-sure if I sent this doc out already, but it also has some info on tuned 
-buffers vs. parallel tcp streams.  It also shows some graphs of the 
-window closing once too many packets are lost.
-http://acs.lbl.gov/TCP-tuning/TCP-Tuning-Tutorial.pdf
+>>> -	if (req->wb_context != ctx
+>>> -	    || req->wb_page != page
+>>
+>> What happened to the context check, for example?
+> 
+> That is a deliberate change.
+> 
+> We hold the page lock across nfs_vm_page_mkwrite and/or
+> nfs_write_begin()/nfs_write_end(), so nobody else can add a new nfs_page
+> to page->private during that time.
+> 
+> For that reason, the check that is done in nfs_flush_incompatible()
+> together with the check for req->wb_page==NULL (done in
+> try_to_update_page() while still holding the inode->i_lock) means that
+> the above two checks are redundant.
+> 
+> ...actually, come to think of it, the check for req->wb_page == NULL is
+> redundant too, since nfs_clear_request() is called at the end of
+> nfs_inode_remove_request(), and hence nfs_page_find_request_locked()
+> would fail to find anything.
+> 
+>>> +
+>>> +	if (!nfs_set_page_tag_locked(req))
+>>> +		return -EAGAIN;
+>> This -EAGAIN (and the resulting logic in nfs_setup_write_request) is  
+>> headache-inducing.  Is there a more straightforward way to break this  
+>> up?
+> 
+> No. If the page is being written out, then we _must_ release all locks,
+> wait on the request, and try again. This is not a change compared to the
+> previous incarnation.
 
-Sections 2.1 and 2.2 of the following paper published SC2002 give an 
-interesting intro to tuning tcp buffers and the ups and downs of using 
-parallel TCP streams.  They quote the gridftp papers and indicate that 
-the best performance is with parallel tcp streams and tuned buffers.  
-They give the danger of setting a buffer size too big as:
-"Although memory is comparably cheap, the vast majority of the 
-connections are so small that allocating large buffers to each flow can 
-put any system at risk
-of running out of memory."
-http://www.supercomp.org/sc2002/paperpdfs/pap.pap151.pdf
+Right, understood... but I think the logic added here is harder to 
+understand and thus more prone to break when something changes than the 
+previous incarnation was.
 
-(Note, both of the following docs are from the same person.  There are 
-other docs, they are don't seem to be quite as clear.)
-Dean
+>>> +
+>>> +	/* Okay, the request matches. Update the region */
+>>> +	if (offset < req->wb_offset) {
+>>> +		req->wb_offset = offset;
+>>> +		req->wb_pgbase = offset;
+>>> +	}
+>>> +	if (end > rqend)
+>>> +		req->wb_bytes = end - req->wb_offset;
+>>> +	else
+>>> +		req->wb_bytes = rqend - req->wb_offset;
+>>> +
+>>> +	return 0;
+>>> +}
+>>> +
+>>> /*
+>>>  * Try to update any existing write request, or create one if there  
+>>> is none.
+>>>  * In order to match, the request's credentials must match those of
+>>> @@ -573,16 +607,15 @@ static inline int nfs_scan_commit(struct inode  
+>>> *inode, struct list_head *dst, pg
+>>>  *
+>>>  * Note: Should always be called with the Page Lock held!
+>>>  */
+>>> -static struct nfs_page * nfs_update_request(struct  
+>>> nfs_open_context* ctx,
+>>> +static struct nfs_page * nfs_setup_write_request(struct  
+>>> nfs_open_context* ctx,
+>>> 		struct page *page, unsigned int offset, unsigned int bytes)
+>>> {
+>>> -	struct address_space *mapping = page->mapping;
+>>> -	struct inode *inode = mapping->host;
+>>> +	struct inode *inode = page->mapping->host;
+>>> 	struct nfs_page		*req, *new = NULL;
+>>> -	pgoff_t		rqend, end;
+>>> +	unsigned int end;
+>>> +	int error;
+>>>
+>>> 	end = offset + bytes;
+>>> -
+>>> 	for (;;) {
+>>> 		/* Loop over all inode entries and see if we find
+>>> 		 * A request for the page we wish to update
+>>> @@ -590,26 +623,16 @@ static struct nfs_page *  
+>>> nfs_update_request(struct nfs_open_context* ctx,
+>>> 		spin_lock(&inode->i_lock);
+>>> 		req = nfs_page_find_request_locked(page);
+>>> 		if (req) {
+>>> -			if (!nfs_set_page_tag_locked(req)) {
+>>> -				int error;
+>>> -
+>>> -				spin_unlock(&inode->i_lock);
+>>> +			error = nfs_try_to_update_request(req, offset, end);
+>>> +			spin_unlock(&inode->i_lock);
+>>> +			if (error == 0)
+>>> +				break;
+>>> +			if (error == -EAGAIN)
+>>> 				error = nfs_wait_on_request(req);
+>>> -				nfs_release_request(req);
+>>> -				if (error < 0) {
+>>> -					if (new) {
+>>> -						radix_tree_preload_end();
+>>> -						nfs_release_request(new);
+>>> -					}
+>>> -					return ERR_PTR(error);
+>>> -				}
+>>> +			nfs_release_request(req);
+>>> +			if (error == 0)
+>>> 				continue;
+>>> -			}
+>>> -			spin_unlock(&inode->i_lock);
+>>> -			if (new) {
+>>> -				radix_tree_preload_end();
+>>> -				nfs_release_request(new);
+>>> -			}
+>>> +			req = ERR_PTR(error);
+>>> 			break;
+>>> 		}
+>>>
+>>> @@ -632,32 +655,10 @@ static struct nfs_page *  
+>>> nfs_update_request(struct nfs_open_context* ctx,
+>>> 		}
+>>> 	}
+>>>
+>>> -	/* We have a request for our page.
+>>> -	 * If the creds don't match, or the
+>>> -	 * page addresses don't match,
+>>> -	 * tell the caller to wait on the conflicting
+>>> -	 * request.
+>>> -	 */
+>>> -	rqend = req->wb_offset + req->wb_bytes;
+>>> -	if (req->wb_context != ctx
+>>> -	    || req->wb_page != page
+>>> -	    || !nfs_dirty_request(req)
+>>> -	    || offset > rqend || end < req->wb_offset) {
+>>> -		nfs_clear_page_tag_locked(req);
+>>> -		return ERR_PTR(-EBUSY);
+>>> +	if (new) {
+>>> +		radix_tree_preload_end();
+>>> +		nfs_release_request(new);
+>>> 	}
+>>> -
+>>> -	/* Okay, the request matches. Update the region */
+>>> -	if (offset < req->wb_offset) {
+>>> -		req->wb_offset = offset;
+>>> -		req->wb_pgbase = offset;
+>>> -		req->wb_bytes = max(end, rqend) - req->wb_offset;
+>>> -		goto out;
+>>> -	}
+>>> -
+>>> -	if (end > rqend)
+>>> -		req->wb_bytes = end - req->wb_offset;
+>>> -
+>>> out:
+>> There's only one "goto out;" left in nfs_setup_write_request().  There  
+>> are other return sites in nfs_setup_write_request() that simply  
+>> "return req;" -- for what purpose is this one goto still here?
+> 
+> It could be replaced by a single 'return req'.
 
+--------------070004020300090003060700
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck_lever.vcf"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="chuck_lever.vcf"
+
+begin:vcard
+fn:Chuck Lever
+n:Lever;Chuck
+org:Oracle Corporation;Corporate Architecture: Linux Projects Group
+adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
+title:Principal Member of Staff
+tel;work:+1 248 614 5091
+x-mozilla-html:FALSE
+version:2.1
+end:vcard
+
+
+--------------070004020300090003060700--
