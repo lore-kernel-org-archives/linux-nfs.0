@@ -1,43 +1,62 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [RFC] new client gssd upcall
-Date: Tue, 17 Jun 2008 18:09:18 -0400
-Message-ID: <20080617220918.GE5849@fieldses.org>
-References: <1213397442-15611-1-git-send-email-bfields@citi.umich.edu> <20080616102859.66fa6a34@tleilax.poochiereds.net> <20080617213622.GA5849@fieldses.org> <1213739969.7288.90.camel@localhost>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH 0/4] NFS mounting with raw IPv6 server hostnames
+Date: Tue, 17 Jun 2008 20:07:24 -0400
+Message-ID: <1213747644.7288.98.camel@localhost>
+References: <20080617181622.3215.61295.stgit@ellison.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jeff Layton <jlayton@redhat.com>, aglo@citi.umich.edu,
-	kwc@citi.umich.edu, linux-nfs@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Content-Type: text/plain
+Cc: linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:49234 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:12278 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757811AbYFQWJa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Jun 2008 18:09:30 -0400
-In-Reply-To: <1213739969.7288.90.camel@localhost>
+	id S1754934AbYFRAIA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Jun 2008 20:08:00 -0400
+In-Reply-To: <20080617181622.3215.61295.stgit-ewv44WTpT0t9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jun 17, 2008 at 05:59:29PM -0400, Trond Myklebust wrote:
-> On Tue, 2008-06-17 at 17:36 -0400, J. Bruce Fields wrote:
-> > On Mon, Jun 16, 2008 at 10:28:59AM -0400, Jeff Layton wrote:
-> > > Has any thought been given to moving all of the rpc_pipefs upcalls to use
-> > > the keyctl API that David Howells did? It seems like that would be better
-> > > suited to this sort of application than rpc_pipefs...
-> > 
-> > I haven't looked at it.  I've just assumed that since Trond and Kevin
-> > have both looked at both API's, then there must be some good reason
-> > we're not using it....
+On Tue, 2008-06-17 at 14:17 -0400, Chuck Lever wrote:
+> Hi Trond-
 > 
-> Kevin has spent quite some time working on the keyring support, but as
-> far as I understand the amount of time he can continue to spend working
-> for CITI has recently been heavily reduced...
+> Something meatier today.
+> 
+> These four patches introduce the ability to mount NFS servers using a raw
+> IPv6 address.  This support requires the ability to handle colons in the
+> passed-in server hostname, and the ability to handle an IPv6 interface
+> identifier in the passed-in server hostname.
+> 
+> IPv6 addresses contain colons.  A colon is also used to separate the server
+> name from the export path.  By enclosing an IPv6 address inside square
+> brackets we effectively escape the colons in the IPv6 address and allow them
+> to pass unrecognized through the device name parser.
+> 
+> As an added bonus, I also include the patch that changes
+> nfs_parse_server_address() to take a name length.  This allows the passed-in
+> address string to have no '\0'-termination, which will help us support IPv6
+> for NFSv4 referrals.
+> 
+> Please consider these for 2.6.27.
+> 
+> ---
+> 
+> Chuck Lever (4):
+>       NFS: handle interface identifiers in incoming IPv6 addresses
+>       NFS: Add string length argument to nfs_parse_server_address
+>       NFS: Support raw IPv6 address hostnames during NFS mount operation
+>       NFS: Use common device name parsing logic for NFSv4 and NFSv2/v3
+> 
+> 
+>  fs/nfs/super.c |  336 ++++++++++++++++++++++++++++++++++++++++++++------------
+>  1 files changed, 261 insertions(+), 75 deletions(-)
+> 
 
-Hm, but I thought that you'd both decided that the gssd upcalls would
-end up coexisting with the upcalls in any case?
+All 4 patches applied to the 'devel' branch.
 
-If there's a chance we might end up replacing the gssd upcalls entirely,
-then--while I don't want to stretch out this one task
-indefinitely--still it might be worth my time to go take a look at the
-keyctl API's Jeff mentions.
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
---b.
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
