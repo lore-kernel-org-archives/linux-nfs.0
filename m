@@ -1,87 +1,93 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH - take 2] knfsd: nfsd: Handle ERESTARTSYS from syscalls.
-Date: Thu, 19 Jun 2008 06:38:24 -0400
-Message-ID: <20080619063824.00ca6381@tleilax.poochiereds.net>
-References: <20080619101025.24263.patches@notabene>
-	<1080619001109.24338@suse.de>
-	<20080618210947.2110a541@tleilax.poochiereds.net>
-	<18521.50300.572838.123366@notabene.brown>
+From: Peter Staubach <staubach@redhat.com>
+Subject: Re: NFS performance degradation of local loopback FS.
+Date: Thu, 19 Jun 2008 08:04:34 -0400
+Message-ID: <485A4B52.6080504@redhat.com>
+References: <OF279AC296.24F27581-ON6525746D.00367A24-6525746D.0036C258@in.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Neil Brown <neilb@suse.de>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1757462AbYFSKio@vger.kernel.org>
-In-Reply-To: <18521.50300.572838.123366@notabene.brown>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: linux-nfs@vger.kernel.org
+To: Krishna Kumar2 <krkumar2@in.ibm.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([66.187.233.31]:60204 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754467AbYFSMFV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 Jun 2008 08:05:21 -0400
+In-Reply-To: <OF279AC296.24F27581-ON6525746D.00367A24-6525746D.0036C258@in.ibm.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 19 Jun 2008 12:29:16 +1000
-Neil Brown <neilb@suse.de> wrote:
+Krishna Kumar2 wrote:
+>>       200 processes:
+>>     
+>
+> By "200 processes", I meant 200 dd's, each reading from /dev/zero and
+> writing to a file on the filesystem. The script "nfs" was run twice, first
+> with
+> a local filesystem and the second time with the same filesystem NFS
+> mounted.
+>
+>   
 
-> On Wednesday June 18, jlayton@redhat.com wrote:
-> > 
-> > No objection to the patch, but what signal was being sent to nfsd when
-> > you saw this? If it's anything but a SIGKILL, then I wonder if we have
-> > a race that we need to deal with. My understanding is that we have nfsd
-> > flip between 2 sigmasks to prevent anything but a SIGKILL from being
-> > delivered while we're handling the local filesystem operation.
-> 
-> SuSE /etc/init.d/nfsserver does
-> 
->         killproc -n -KILL nfsd 
-> 
-> so it looks like a SIGKILL.
-> 
-> 
-> > 
-> > From nfsd():
-> > 
-> > ----------[snip]-----------
-> >                 sigprocmask(SIG_SETMASK, &shutdown_mask, NULL);
-> > 
-> >                 /*
-> >                  * Find a socket with data available and call its
-> >                  * recvfrom routine.
-> >                  */
-> >                 while ((err = svc_recv(rqstp, 60*60*HZ)) == -EAGAIN)
-> >                         ;
-> >                 if (err < 0)
-> >                         break;
-> >                 update_thread_usage(atomic_read(&nfsd_busy));
-> >                 atomic_inc(&nfsd_busy);
-> > 
-> >                 /* Lock the export hash tables for reading. */
-> >                 exp_readlock();
-> > 
-> >                 /* Process request with signals blocked.  */
-> >                 sigprocmask(SIG_SETMASK, &allowed_mask, NULL);
-> > 
-> >                 svc_process(rqstp);
-> > 
-> > ----------[snip]-----------
-> > 
-> > What happens if this catches a SIGINT after the err<0 check, but before
-> > the mask is set to allowed_mask? Does svc_process() then get called with
-> > a signal pending?
-> 
-> Yes, I suspect it does.
-> 
-> I wonder why we have all this mucking about this signal masks anyway.
-> Anyone have any ideas about what it actually achieves?
-> 
+Well, you aren't exactly comparing apples to apples.  The NFS
+client does close-to-open semantics, meaning that it writes
+all modified data to the server on close.  The dd commands run
+on the local file system do not.  You might trying using
+something which does an fsync before closing so that you are
+making a closer comparison.
 
-HCH asked me the same question when I did the conversion to kthreads.
-My interpretation (based on guesswork here) was that we wanted to
-distinguish between SIGKILL and other allowed signals. A SIGKILL is
-allowed to interrupt the underlying I/O, but other signals should not.
+All that said, yes, one would expect a slow down.  How much is
+debatable and varies from platform to platform and load to load.
 
-The question to answer here, I suppose, is whether masking a pending
-signal is sufficient to make signal_pending() return false. If I'm
-looking correctly then the answer should be "yes". So I don't think we
-have a race here after all. I suspect that if SuSE used a different
-signal here, that would prevent this from happening. For the record,
-both RHEL and Fedora's init scripts use SIGINT for this.
+I would also advise care when running NFS like that.  It is
+subject to deadlock and is not recommended.
 
--- 
-Jeff Layton <jlayton@redhat.com>
+       ps
+
+> Thanks,
+>
+> - KK
+>
+> linux-nfs-owner@vger.kernel.org wrote on 06/19/2008 12:16:23 PM:
+>
+>   
+>> Hi,
+>>
+>> I am running 2.6.25 kernel on a [4 way, 3.2 x86_64, 4GB] system. The test
+>> is doing I/O on a local ext3 filesystem, and measuring the bandwidth, and
+>> then NFS mounting the filesystem loopback on the same system. I have
+>> configured 64 nfsd's to run. The test script is attached at the bottom.
+>>
+>> My configuration is:
+>>       /dev/some-local-disk  :            /local
+>>       NFS mount /local       :            /nfs
+>>
+>> The result is:
+>>       200 processes:
+>>             /local: 108000 KB/s
+>>             /nfs:     66000 KB/s: Drop of 40%
+>>
+>>       300 processes (KB/s):
+>>             /local: 112000 KB/s
+>>             /nfs:    57000 KB/s: Drop of 50%
+>>
+>> I am not using any tuning, though I have tested with both
+>> sunrpc.tcp_slot_table_entries=16 & 128
+>>
+>> Is this big a drop expected for a loopback NFS mount? Any
+>> feedback/suggestions are very
+>> appreciated.
+>>
+>> Thanks,
+>>
+>> - KK
+>>
+>> (See attached file: nfs)[attachment "nfs" deleted by Krishna
+>>     
+> Kumar2/India/IBM]
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>   
+
