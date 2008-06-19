@@ -1,241 +1,46 @@
-From: "Weathers, Norman R." <Norman.R.Weathers-496aOtIFJR1B+Kdf37RAV9BPR1lH4CV8@public.gmane.org>
-Subject: RE: CONFIG_DEBUG_SLAB_LEAK omits size-4096 and larger?
-Date: Thu, 19 Jun 2008 10:53:28 -0500
-Message-ID: <0122F800A3B64C449565A9E8C297701002D75DD4@hoexmb9.conoco.net>
-References: <20080611195222.GP15380@fieldses.org> <20080611160947.5f08fb16@tleilax.poochiereds.net> <20080611205749.GA25194@fieldses.org> <0122F800A3B64C449565A9E8C297701002D75DAA@hoexmb9.conoco.net> <20080611225431.GD25194@fieldses.org> <0122F800A3B64C449565A9E8C297701002D75DAE@hoexmb9.conoco.net> <20080613201552.GH8501@fieldses.org> <0122F800A3B64C449565A9E8C297701002D75DB6@hoexmb9.conoco.net> <20080613220422.GC14338@fieldses.org> <0122F800A3B64C449565A9E8C297701002D75DB7@hoexmb9.conoco.net> <20080616174340.GA27083@fieldses.org>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [RFC] new client gssd upcall
+Date: Thu, 19 Jun 2008 13:06:22 -0400
+Message-ID: <1213895182.7120.13.camel@localhost>
+References: <1213397442-15611-1-git-send-email-bfields@citi.umich.edu>
+	 <20080616102859.66fa6a34@tleilax.poochiereds.net>
+	 <20080617213622.GA5849@fieldses.org> <1213739969.7288.90.camel@localhost>
+	 <485A7D2D.4060206@citi.umich.edu>
+	 <20080619114929.5c211ec9@tleilax.poochiereds.net>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Cc: "Jeff Layton" <jlayton@poochiereds.net>,
-	<linux-kernel@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
-	"Neil Brown" <neilb@suse.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain
+Cc: Olga Kornievskaia <aglo@citi.umich.edu>,
+	"J. Bruce Fields" <bfields@fieldses.org>, kwc@citi.umich.edu,
+	linux-nfs@vger.kernel.org
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailman2.ppco.com ([138.32.41.14]:34944 "EHLO mailman2.ppco.com"
+Received: from mx2.netapp.com ([216.240.18.37]:44112 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754317AbYFSPxn convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jun 2008 11:53:43 -0400
-In-Reply-To: <20080616174340.GA27083@fieldses.org>
+	id S1759437AbYFSRKZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 Jun 2008 13:10:25 -0400
+In-Reply-To: <20080619114929.5c211ec9-RtJpwOs3+0O+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
- 
-
-> -----Original Message-----
-> From: J. Bruce Fields [mailto:bfields@fieldses.org] 
-> Sent: Monday, June 16, 2008 12:44 PM
-> To: Weathers, Norman R.
-> Cc: Jeff Layton; linux-kernel@vger.kernel.org; 
-> linux-nfs@vger.kernel.org; Neil Brown
-> Subject: Re: CONFIG_DEBUG_SLAB_LEAK omits size-4096 and larger?
+On Thu, 2008-06-19 at 11:49 -0400, Jeff Layton wrote:
+> Because it's less code that we have to maintain. rpc_pipefs certainly works
+> (and works fairly well), but we have so many upcall mechanisms in the
+> kernel already. keyctl also has some nice features (automated cache
+> timeouts, granular security, etc), and was designed with this sort of use
+> in mind.
 > 
-> On Fri, Jun 13, 2008 at 05:53:20PM -0500, Weathers, Norman R. wrote:
-> >  
-> > 
-> > > -----Original Message-----
-> > > From: J. Bruce Fields [mailto:bfields@fieldses.org] 
-> > > Sent: Friday, June 13, 2008 5:04 PM
-> > > To: Weathers, Norman R.
-> > > Cc: Jeff Layton; linux-kernel@vger.kernel.org; 
-> > > linux-nfs@vger.kernel.org; Neil Brown
-> > > Subject: Re: CONFIG_DEBUG_SLAB_LEAK omits size-4096 and larger?
-> > > 
-> > > On Fri, Jun 13, 2008 at 04:53:31PM -0500, Weathers, 
-> Norman R. wrote:
-> > > >  
-> > > > 
-> > > > > > The big one seems to be the __alloc_skb. (This is with 16 
-> > > > > threads, and
-> > > > > > it says that we are using up somewhere between 12 and 14 GB 
-> > > > > of memory,
-> > > > > > about 2 to 3 gig of that is disk cache).  If I were to 
-> > > put anymore
-> > > > > > threads out there, the server would become almost 
-> > > > > unresponsive (it was
-> > > > > > bad enough as it was).   
-> > > > > > 
-> > > > > > At the same time, I also noticed this:
-> > > > > > 
-> > > > > > skbuff_fclone_cache: 1842524 __alloc_skb+0x50/0x170
-> > > > > > 
-> > > > > > Don't know for sure if that is meaningful or not....
-> > > > > 
-> > > > > OK, so, starting at net/core/skbuff.c, this means that 
-> > > this memory was
-> > > > > allocated by __alloc_skb() calls with something nonzero 
-> > > in the third
-> > > > > ("fclone") argument.  The only such caller is 
-> alloc_skb_fclone().
-> > > > > Callers of alloc_skb_fclone() include:
-> > > > > 
-> > > > > 	sk_stream_alloc_skb:
-> > > > > 		do_tcp_sendpages
-> > > > > 		tcp_sendmsg
-> > > > > 		tcp_fragment
-> > > > > 		tso_fragment
-> > > > 
-> > > > Interesting you should mention the tso...  We recently went 
-> > > through and
-> > > > turned on TSO on all of our systems, trying it out to see 
-> > > if it helped
-> > > > with performance...  This could be something to do with 
-> > > that.  I can try
-> > > > disabling the tso on all of the servers and see if that 
-> > > helps with the
-> > > > memory.  Actually, I think I will, and I will monitor the 
-> > > situation.  I
-> > > > think it might help some, but I still think there may be 
-> > > something else
-> > > > going on in a deep corner...
-> > > 
-> > > I'll plead total ignorance about TSO, and it sounds like a long
-> > > shot--but sure, it'd be worth trying, thanks.
-> > > 
-> > 
-> > Tried it, not for sure if I like the results yet or not...  
-> Didn't seem
-> > to make a huge difference, but here is something that will 
-> really make
-> > you want to drink, the 2.6.25.4 kernel does not go into the 
-> size-4096
-> > hell.
-> 
-> Remind me what the most recent *bad* kernel was of those you tested?
-> (2.6.25?)
-> 
+> I'm not saying that we absolutely need to scrap rpc_pipefs, but considering
+> alternatives may mean less work for us all in the long run.
 
-The kernel that we were really seeing the problem with was 2.6.25.4, but
-I think we may have figured out the 4096 problem, and it was probably a
-mistake on my part, but it is important for the NFS users to see it so
-they don't make the same mistake.  I had found some performance tuning
-guides, and in trying some of the suggestions, found that the setting
-changes did seem to help on some things, but of course I never got to
-run a check under full load (800 + clients).  A suggestion was to change
-the tcp_reordering tunable under /proc/sys/net/ipv4 from the default 3
-to 127.  We think that this was actually causing the issue.  I was able
-to trace back through all of the changes, and I changed this setting
-back to the default 3, and it immediately fixed the size-4096 hell.  It
-appears that the reordering just eats into the memory, especially in
-high demand situations, and I guess that should make perfect sense if we
-are actually buffering up packets for reorder, and we are slamming the
-box with thousands of requests per minute.
+Talk about scrapping rpc_pipefs is premature, to say the least: I have
+yet to see a plan for replacing the idmapd upcall. I have yet to see
+working code that replaces the gss upcall and that works correctly in a
+non-blocking environment.
 
-We still have other performance issues now, but it appears to be more of
-a bottleneck, the nodes do not appear to be backing off when the servers
-are becoming congested.
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-
-> Nothing jumped out at me in a quick skim through the commits 
-> from 2.6.25
-> to 2.6.25.4.
-> 
-> > The largest users of slab there are the size-1024 and still the
-> > skbuff_fclone_cache.  On a box with 16 threads, it will 
-> cache up about 5
-> > GB of disk data, and still use about 6 GB of slab to put 
-> the information
-> > out there (without TSO on), but at least it is not causing the disk
-> > cache to be evicted, and it appears to be a little more 
-> responsive.  If
-> > I up it to 32 or more threads, however, it gets very 
-> sluggish, but then
-> > again, I am hitting it with a lot of nodes.
-> > 
-> > > > 
-> > > > > 		tcp_mtu_probe
-> > > > > 	tcp_send_fin
-> > > > > 	tcp_connect
-> > > > > 	buf_acquire:
-> > > > > 		lots of callers in tipc code (whatever that is).
-> > > > > 
-> > > > > So unless you're using tipc, or you have something in 
-> > > userspace going
-> > > > > haywire (perhaps netstat would help rule that out?), then 
-> > > I suppose
-> > > > > there's something wrong with knfsd's tcp code.  Which 
-> > > makes sense, I
-> > > > > guess.
-> > > > > 
-> > > > 
-> > > > Not for sure what tipc is either....
-> > > > 
-> > > > > I'd think this sort of allocation would be limited by the 
-> > > number of
-> > > > > sockets times the size of the send and receive buffers.
-> > > > > svc_xprt.c:svc_check_conn_limits() claims to be limiting 
-> > > the number of
-> > > > > sockets to (nrthreads+3)*20.  (You aren't hitting the 
-> > > "too many open
-> > > > > connections" printk there, are you?)  The total buffer 
-> > > size should be
-> > > > > bounded by something like 4 megs.
-> > > > > 
-> > > > > --b.
-> > > > > 
-> > > > 
-> > > > Yes, we are getting a continuous stream of the too many 
-> > > open connections
-> > > > scrolling across our logs.  
-> > > 
-> > > That's interesting!  So we should probably look more 
-> closely at the
-> > > svc_check_conn_limits() behavior.  I wonder whether some 
-> pathological
-> > > behavior is triggered in the case where you're constantly 
-> > > over the limit
-> > > it's trying to enforce.
-> > > 
-> > > (Remind me how many active clients you have?)
-> > > 
-> > 
-> > 
-> > We currently are hitting with somewhere around 600 to 800 
-> nodes, but it
-> > can go up to over 1000 nodes.  We are artificially starving with a
-> > limited number of threads (2 to 3) right now on the older 2.6.22.14
-> > kernel because of that memory issue (which may or may not be tso
-> > related)...
-> 
-> So with that many clients all making requests to the server at once,
-> we'd start hitting that (serv->sv_nrthreads+3)*20 limit when 
-> the number
-> of threads was set to less than 30-50.  That doesn't seem to be the
-> point where you're seeing a change in behavior, though.
-> 
-
-We were estimating between 40 and 50 threads was the cut off for being
-able to service all of the (current) requests at once.  I haven't ramped
-back up to that level yet.  I wasn't comfortable yet with letting it all
-hang back out just in case we get into that hellish mode again, it can
-be a pain to try and get into those systems once they are overloaded
-(even over serial, sometimes it can just timeout the login).  We had to
-actually bring online a second option to help alleviate some of the back
-congestion because the servers couldn't handle the workload.  
-
-
-> > I really want to move forward to the newer kernel, but we 
-> had an issue
-> > where clients all of the sudden wouldn't connect, yet other clients
-> > could, to the exact same server NFS export.  I had booted the server
-> > into the 2.6.25.4 kernel at the time, and the other admin 
-> set us back to
-> > the 2.6.22.14 to see if that was it.  The clients started 
-> working again,
-> > and he left it there (he also took out my options in the 
-> exports file,
-> > no_subtree_check and insecure).  I know that we are running over the
-> > number of privelaged ports, and we probably need the 
-> insecure, but I am
-> > having a hard time wrapping my self around all of the problems at
-> > once....
-> 
-> The secure ports limitation should be a problem for a client 
-> that does a
-> lot of nfs mounts, not for a server with a lot of clients.
-> 
-
-
-Ah, OK.  That makes sense.
-
-> --b.
-> 
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
