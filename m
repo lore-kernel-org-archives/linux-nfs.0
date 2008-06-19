@@ -1,63 +1,55 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: CONFIG_DEBUG_SLAB_LEAK omits size-4096 and larger?
-Date: Thu, 19 Jun 2008 14:46:26 -0400
-Message-ID: <20080619184626.GH18557@fieldses.org>
-References: <20080611205749.GA25194@fieldses.org> <0122F800A3B64C449565A9E8C297701002D75DAA@hoexmb9.conoco.net> <20080611225431.GD25194@fieldses.org> <0122F800A3B64C449565A9E8C297701002D75DAE@hoexmb9.conoco.net> <20080613201552.GH8501@fieldses.org> <0122F800A3B64C449565A9E8C297701002D75DB6@hoexmb9.conoco.net> <20080613220422.GC14338@fieldses.org> <0122F800A3B64C449565A9E8C297701002D75DB7@hoexmb9.conoco.net> <20080616174340.GA27083@fieldses.org> <0122F800A3B64C449565A9E8C297701002D75DD4@hoexmb9.conoco.net>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [RFC] new client gssd upcall
+Date: Thu, 19 Jun 2008 15:11:17 -0400
+Message-ID: <20080619151117.20ddc00e@tleilax.poochiereds.net>
+References: <1213397442-15611-1-git-send-email-bfields@citi.umich.edu>
+	<20080616102859.66fa6a34@tleilax.poochiereds.net>
+	<20080617213622.GA5849@fieldses.org>
+	<1213739969.7288.90.camel@localhost>
+	<485A7D2D.4060206@citi.umich.edu>
+	<20080619114929.5c211ec9@tleilax.poochiereds.net>
+	<1213895182.7120.13.camel@localhost>
+	<20080619132720.6bce2bb9@tleilax.poochiereds.net>
+	<1213899199.7120.22.camel@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jeff Layton <jlayton@poochiereds.net>,
-	linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-	Neil Brown <neilb@suse.de>
-To: "Weathers, Norman R." <Norman.R.Weathers-496aOtIFJR1B+Kdf37RAV9BPR1lH4CV8@public.gmane.org>
+Content-Type: text/plain; charset=US-ASCII
+Cc: Olga Kornievskaia <aglo@citi.umich.edu>,
+	"J. Bruce Fields" <bfields@fieldses.org>, kwc@citi.umich.edu,
+	linux-nfs@vger.kernel.org
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:57739 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([66.187.233.31]:42827 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753034AbYFSSqa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 Jun 2008 14:46:30 -0400
-In-Reply-To: <0122F800A3B64C449565A9E8C297701002D75DD4-zIGg2qceuZx7uNL6xugVa6xOck334EZe@public.gmane.org>
+	id S1751671AbYFSTLh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 Jun 2008 15:11:37 -0400
+In-Reply-To: <1213899199.7120.22.camel@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jun 19, 2008 at 10:53:28AM -0500, Weathers, Norman R. wrote:
-> The kernel that we were really seeing the problem with was 2.6.25.4, but
-> I think we may have figured out the 4096 problem, and it was probably a
-> mistake on my part, but it is important for the NFS users to see it so
-> they don't make the same mistake.  I had found some performance tuning
-> guides, and in trying some of the suggestions, found that the setting
-> changes did seem to help on some things, but of course I never got to
-> run a check under full load (800 + clients).  A suggestion was to change
-> the tcp_reordering tunable under /proc/sys/net/ipv4 from the default 3
-> to 127.  We think that this was actually causing the issue.  I was able
-> to trace back through all of the changes, and I changed this setting
-> back to the default 3, and it immediately fixed the size-4096 hell.  It
-> appears that the reordering just eats into the memory, especially in
-> high demand situations, and I guess that should make perfect sense if we
-> are actually buffering up packets for reorder, and we are slamming the
-> box with thousands of requests per minute.
+On Thu, 19 Jun 2008 14:13:19 -0400
+Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
 
-OK, sounds plausible, though I won't pretend to understand exactly how
-that reordering code is using memory.
-
-> We still have other performance issues now, but it appears to be more of
-> a bottleneck, the nodes do not appear to be backing off when the servers
-> are becoming congested.
-...
-> > So with that many clients all making requests to the server at once,
-> > we'd start hitting that (serv->sv_nrthreads+3)*20 limit when 
-> > the number
-> > of threads was set to less than 30-50.  That doesn't seem to be the
-> > point where you're seeing a change in behavior, though.
-> > 
+> On Thu, 2008-06-19 at 13:27 -0400, Jeff Layton wrote:
+> > There's also no reason we couldn't use keys for
+> > idmap upcalls as well. I'm considering them for a similar idmap scheme
+> > for CIFS.
 > 
-> We were estimating between 40 and 50 threads was the cut off for being
-> able to service all of the (current) requests at once.  I haven't ramped
-> back up to that level yet.  I wasn't comfortable yet with letting it all
-> hang back out just in case we get into that hellish mode again, it can
-> be a pain to try and get into those systems once they are overloaded
-> (even over serial, sometimes it can just timeout the login).  We had to
-> actually bring online a second option to help alleviate some of the back
-> congestion because the servers couldn't handle the workload.  
+> Ewww.... NACK, NACK, NACK, NACK....
+> 
+> There is a perfectly good reason why you wouldn't ever want to use keys
+> for idmap upcalls: keys are user/process/thread objects while idmapd
+> entries are NFSv4-namespace objects.
+> 
 
-Thanks for the update, and let us know if you figure out anything more.
+My thinking for CIFS is to use keys to do the upcall and copy the
+mapping into a cache that we'll manage independently of the key cache.
+The CIFS case is a little different though. We're not mapping usernames
+to uid's and vice-versa, but Windows RID's to unix uid's. Still, it's a
+somewhat similar problem. The amount of data that we're dealing with in
+an idmap upcall is pretty small, so copying it and then destroying the
+key wouldn't involve a lot of overhead.
 
---b.
+That may not be palatable for NFS though.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
