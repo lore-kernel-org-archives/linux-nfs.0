@@ -1,40 +1,54 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: [PATCH 2/4] NFS: Support raw IPv6 address hostnames during NFS
- mount	operation
-Date: Wed, 18 Jun 2008 18:59:03 -0400
-Message-ID: <48599337.1070502@redhat.com>
-References: <20080618222951.16006.3679.stgit@ellison.1015granger.net>	 <20080618223203.16006.61765.stgit@ellison.1015granger.net>	 <48598DB7.4060404@redhat.com>  <48598F59.2040505@oracle.com> <1213829515.25182.78.camel@localhost>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: chuck.lever@oracle.com, linux-nfs@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+From: NeilBrown <neilb@suse.de>
+Subject: [PATCH - take 2] knfsd: nfsd: Handle ERESTARTSYS from syscalls.
+Date: Thu, 19 Jun 2008 10:11:09 +1000
+Message-ID: <1080619001109.24338@suse.de>
+References: <20080619101025.24263.patches@notabene>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:32784 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:35518 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754299AbYFRXAS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 18 Jun 2008 19:00:18 -0400
-In-Reply-To: <1213829515.25182.78.camel@localhost>
+	id S1752947AbYFSALQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 Jun 2008 20:11:16 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Trond Myklebust wrote:
-> On Wed, 2008-06-18 at 18:42 -0400, Chuck Lever wrote:
->   
->> Peter Staubach wrote:
->>     
->>> It seems unfortunate that the convention couldn't have been to
->>> look for the first instance of ":/" and break the strings there.
->>>       
->> I wonder if you can ever specify an export path that does not begin with 
->> a '/' -- is that possible when mounting an NFS server that exports, say, 
->> an old-fashioned HFS volume?
->>     
->
-> It is quite legal to specify a path that doesn't start with '/':
-> NFSv2/v3 mount servers will, for instance, just implicitly assume it.
-> For that reason, there were user complaints the last time we started
-> requiring the '/' and returning an error when it wasn't supplied.
 
-And, hence, the [] syntax...  :-)
+OCFS2 can return -ERESTARTSYS from write requests (and possibly
+elsewhere) if there is a signal pending.
 
-       ps
+If nfsd is shutdown (by sending a signal to each thread) while there
+is still an IO load from the client, each thread could handle one last
+request with a signal pending.  This can result in -ERESTARTSYS
+which is not understood by nfserrno() and so is reflected back to
+the client as nfserr_io aka -EIO.  This is wrong.
+
+Instead, interpret ERESTARTSYS to mean "try again later" by returning
+nfserr_jukebox.  The client will resend and - if the server is
+restarted - the write will (hopefully) be successful and everyone will
+be happy.
+
+ The symptom that I narrowed down to this was:
+    copy a large file via NFS to an OCFS2 filesystem, and restart
+    the nfs server during the copy.
+    The 'cp' might get an -EIO, and the file will be corrupted -
+    presumably holes in the middle where writes appeared to fail.
+
+
+Signed-off-by: Neil Brown <neilb@suse.de>
+
+### Diffstat output
+ ./fs/nfsd/nfsproc.c |    1 +
+ 1 file changed, 1 insertion(+)
+
+diff .prev/fs/nfsd/nfsproc.c ./fs/nfsd/nfsproc.c
+--- .prev/fs/nfsd/nfsproc.c	2008-06-19 10:06:36.000000000 +1000
++++ ./fs/nfsd/nfsproc.c	2008-06-19 10:07:58.000000000 +1000
+@@ -614,6 +614,7 @@ nfserrno (int errno)
+ #endif
+ 		{ nfserr_stale, -ESTALE },
+ 		{ nfserr_jukebox, -ETIMEDOUT },
++		{ nfserr_jukebox, -ERESTARTSYS },
+ 		{ nfserr_dropit, -EAGAIN },
+ 		{ nfserr_dropit, -ENOMEM },
+ 		{ nfserr_badname, -ESRCH },
