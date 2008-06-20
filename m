@@ -1,98 +1,337 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH - take 2] knfsd: nfsd: Handle ERESTARTSYS from syscalls.
-Date: Fri, 20 Jun 2008 13:50:36 -0400
-Message-ID: <20080620175036.GC563@fieldses.org>
-References: <20080619101025.24263.patches@notabene> <1080619001109.24338@suse.de> <20080618210947.2110a541@tleilax.poochiereds.net> <18521.50300.572838.123366@notabene.brown> <20080619063824.00ca6381@tleilax.poochiereds.net>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 1/2] NFS: Clean up nfs_update_request()
+Date: Fri, 20 Jun 2008 16:36:12 -0400
+Message-ID: <485C14BC.8010301@oracle.com>
+References: <20080616192348.20513.72423.stgit@localhost.localdomain>	 <20080616192348.20513.3284.stgit@localhost.localdomain>	 <B9BACB96-E0DB-4C6D-B55D-A50CC6F94474@oracle.com>	 <1213739807.7288.86.camel@localhost>  <485972AE.9030405@oracle.com>	 <1213822899.25182.21.camel@localhost>  <485986BE.1030401@oracle.com> <1213910549.7120.24.camel@localhost>
+Reply-To: chuck.lever@oracle.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: Jeff Layton <jlayton@redhat.com>
+Content-Type: multipart/mixed;
+ boundary="------------020308090000060707050209"
+Cc: linux-nfs@vger.kernel.org
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:53500 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752652AbYFTRuj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 Jun 2008 13:50:39 -0400
-In-Reply-To: <20080619063824.00ca6381-RtJpwOs3+0O+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
+Received: from rgminet01.oracle.com ([148.87.113.118]:26358 "EHLO
+	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932916AbYFTUoT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Jun 2008 16:44:19 -0400
+In-Reply-To: <1213910549.7120.24.camel@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jun 19, 2008 at 06:38:24AM -0400, Jeff Layton wrote:
-> On Thu, 19 Jun 2008 12:29:16 +1000
-> Neil Brown <neilb@suse.de> wrote:
+This is a multi-part message in MIME format.
+--------------020308090000060707050209
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+
+Trond Myklebust wrote:
+> On Wed, 2008-06-18 at 18:05 -0400, Chuck Lever wrote:
+>> What I'm trying to say is the new function with the EAGAIN return code 
+>> is spaghetti.  Don't get me wrong, I like Italian food.
 > 
-> > On Wednesday June 18, jlayton@redhat.com wrote:
-> > > 
-> > > No objection to the patch, but what signal was being sent to nfsd when
-> > > you saw this? If it's anything but a SIGKILL, then I wonder if we have
-> > > a race that we need to deal with. My understanding is that we have nfsd
-> > > flip between 2 sigmasks to prevent anything but a SIGKILL from being
-> > > delivered while we're handling the local filesystem operation.
-> > 
-> > SuSE /etc/init.d/nfsserver does
-> > 
-> >         killproc -n -KILL nfsd 
-> > 
-> > so it looks like a SIGKILL.
-> > 
-> > 
-> > > 
-> > > From nfsd():
-> > > 
-> > > ----------[snip]-----------
-> > >                 sigprocmask(SIG_SETMASK, &shutdown_mask, NULL);
-> > > 
-> > >                 /*
-> > >                  * Find a socket with data available and call its
-> > >                  * recvfrom routine.
-> > >                  */
-> > >                 while ((err = svc_recv(rqstp, 60*60*HZ)) == -EAGAIN)
-> > >                         ;
-> > >                 if (err < 0)
-> > >                         break;
-> > >                 update_thread_usage(atomic_read(&nfsd_busy));
-> > >                 atomic_inc(&nfsd_busy);
-> > > 
-> > >                 /* Lock the export hash tables for reading. */
-> > >                 exp_readlock();
-> > > 
-> > >                 /* Process request with signals blocked.  */
-> > >                 sigprocmask(SIG_SETMASK, &allowed_mask, NULL);
-> > > 
-> > >                 svc_process(rqstp);
-> > > 
-> > > ----------[snip]-----------
-> > > 
-> > > What happens if this catches a SIGINT after the err<0 check, but before
-> > > the mask is set to allowed_mask? Does svc_process() then get called with
-> > > a signal pending?
-> > 
-> > Yes, I suspect it does.
-> > 
-> > I wonder why we have all this mucking about this signal masks anyway.
-> > Anyone have any ideas about what it actually achieves?
-> > 
+> How about this version, then?
+
+I like this much better; it is much more straightforward.
+
+Minor comments below.
+
+> ---------------------------------------------
+> From: Trond Myklebust <Trond.Myklebust@netapp.com>
+> Date: Fri, 13 Jun 2008 12:12:32 -0400
+> NFS: Clean up nfs_update_request()
 > 
-> HCH asked me the same question when I did the conversion to kthreads.
-> My interpretation (based on guesswork here) was that we wanted to
-> distinguish between SIGKILL and other allowed signals. A SIGKILL is
-> allowed to interrupt the underlying I/O, but other signals should not.
+> Simplify the loop in nfs_update_request by moving into a separate function
+> the code that attempts to update an existing cached NFS write.
 > 
-> The question to answer here, I suppose, is whether masking a pending
-> signal is sufficient to make signal_pending() return false. If I'm
-> looking correctly then the answer should be "yes".
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> ---
+> 
+>  fs/nfs/write.c |  190 +++++++++++++++++++++++++++-----------------------------
+>  1 files changed, 93 insertions(+), 97 deletions(-)
+> 
+> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+> index 21d8a48..48f9605 100644
+> --- a/fs/nfs/write.c
+> +++ b/fs/nfs/write.c
+> @@ -34,9 +34,6 @@
+>  /*
+>   * Local function declarations
+>   */
+> -static struct nfs_page * nfs_update_request(struct nfs_open_context*,
+> -					    struct page *,
+> -					    unsigned int, unsigned int);
+>  static void nfs_pageio_init_write(struct nfs_pageio_descriptor *desc,
+>  				  struct inode *inode, int ioflags);
+>  static void nfs_redirty_request(struct nfs_page *req);
+> @@ -169,30 +166,6 @@ static void nfs_mark_uptodate(struct page *page, unsigned int base, unsigned int
+>  	SetPageUptodate(page);
+>  }
+>  
+> -static int nfs_writepage_setup(struct nfs_open_context *ctx, struct page *page,
+> -		unsigned int offset, unsigned int count)
+> -{
+> -	struct nfs_page	*req;
+> -	int ret;
+> -
+> -	for (;;) {
+> -		req = nfs_update_request(ctx, page, offset, count);
+> -		if (!IS_ERR(req))
+> -			break;
+> -		ret = PTR_ERR(req);
+> -		if (ret != -EBUSY)
+> -			return ret;
+> -		ret = nfs_wb_page(page->mapping->host, page);
+> -		if (ret != 0)
+> -			return ret;
+> -	}
+> -	/* Update file length */
+> -	nfs_grow_file(page, offset, count);
+> -	nfs_mark_uptodate(page, req->wb_pgbase, req->wb_bytes);
+> -	nfs_clear_page_tag_locked(req);
+> -	return 0;
+> -}
+> -
+>  static int wb_priority(struct writeback_control *wbc)
+>  {
+>  	if (wbc->for_reclaim)
+> @@ -361,6 +334,10 @@ static void nfs_inode_add_request(struct inode *inode, struct nfs_page *req)
+>  	struct nfs_inode *nfsi = NFS_I(inode);
+>  	int error;
+>  
+> +	/* Lock the request! */
+> +	nfs_lock_request_dontget(req);
+> +
+> +	spin_lock(&inode->i_lock);
+>  	error = radix_tree_insert(&nfsi->nfs_page_tree, req->wb_index, req);
+>  	BUG_ON(error);
+>  	if (!nfsi->npages) {
+> @@ -374,6 +351,7 @@ static void nfs_inode_add_request(struct inode *inode, struct nfs_page *req)
+>  	kref_get(&req->wb_kref);
+>  	radix_tree_tag_set(&nfsi->nfs_page_tree, req->wb_index,
+>  				NFS_PAGE_TAG_LOCKED);
+> +	spin_unlock(&inode->i_lock);
+>  }
+>  
+>  /*
+> @@ -565,101 +543,119 @@ static inline int nfs_scan_commit(struct inode *inode, struct list_head *dst, pg
+>  #endif
+>  
+>  /*
+> - * Try to update any existing write request, or create one if there is none.
+> - * In order to match, the request's credentials must match those of
+> - * the calling process.
+> + * Search for an existing write request, and attempt to update
+> + * it to reflect a new dirty region on a given page.
+>   *
+> - * Note: Should always be called with the Page Lock held!
+> + * If the attempt fails, then the existing request is flushed out
+> + * to disk.
+>   */
+> -static struct nfs_page * nfs_update_request(struct nfs_open_context* ctx,
+> -		struct page *page, unsigned int offset, unsigned int bytes)
+> +static struct nfs_page *nfs_try_to_update_request(struct inode *inode,
+> +		struct page *page,
+> +		unsigned int offset,
+> +		unsigned int bytes)
+>  {
+> -	struct address_space *mapping = page->mapping;
+> -	struct inode *inode = mapping->host;
+> -	struct nfs_page		*req, *new = NULL;
+> -	pgoff_t		rqend, end;
+> +	struct nfs_page *req;
+> +	unsigned int rqend;
+> +	unsigned int end;
+> +	int error;
+> +
+> +	if (!PagePrivate(page))
+> +		return NULL;
+>  
+>  	end = offset + bytes;
+> +	spin_lock(&inode->i_lock);
+>  
+>  	for (;;) {
+> -		/* Loop over all inode entries and see if we find
+> -		 * A request for the page we wish to update
+> -		 */
+> -		spin_lock(&inode->i_lock);
+>  		req = nfs_page_find_request_locked(page);
+> -		if (req) {
+> -			if (!nfs_set_page_tag_locked(req)) {
+> -				int error;
+> -
+> -				spin_unlock(&inode->i_lock);
+> -				error = nfs_wait_on_request(req);
+> -				nfs_release_request(req);
+> -				if (error < 0) {
+> -					if (new) {
+> -						radix_tree_preload_end();
+> -						nfs_release_request(new);
+> -					}
+> -					return ERR_PTR(error);
+> -				}
+> -				continue;
+> -			}
+> -			spin_unlock(&inode->i_lock);
+> -			if (new) {
+> -				radix_tree_preload_end();
+> -				nfs_release_request(new);
+> -			}
+> -			break;
+> -		}
+> +		if (req == NULL)
+> +			goto out_unlock;
+>  
+> -		if (new) {
+> -			nfs_lock_request_dontget(new);
+> -			nfs_inode_add_request(inode, new);
+> -			spin_unlock(&inode->i_lock);
+> -			radix_tree_preload_end();
+> -			req = new;
+> -			goto out;
+> -		}
+> -		spin_unlock(&inode->i_lock);
+> +		rqend = req->wb_offset + req->wb_bytes;
+> +		/*
+> +		 * Tell the caller to flush out the request if
+> +		 * the offsets are non-contiguous.
+> +		 */
+> +		if (!nfs_dirty_request(req)
+> +		    || offset > rqend
+> +		    || end < req->wb_offset)
+> +			goto out_flushme;
 
-Just looking out of curiosity: signal_pending() checks whether some
-thread_info->flags has TIF_SIGPENDING set.
+I asked about this in my previous comments.  The removal of the context 
+check here deserves some explication in the patch description, IMO.  It 
+would need nothing more than copying your reply to my question into the 
+patch description.
 
-sigprocmask() sets current->blocked to the given set, then calls
-recalc_sigpending(), which (ignoring some freezer and SIGSTOP code that
-I don't understand), clears TIF_SIGPENDING if any pending signals are in
-the newly blocked set.  So, yes.
+>  
+> -		new = nfs_create_request(ctx, inode, page, offset, bytes);
+> -		if (IS_ERR(new))
+> -			return new;
+> -		if (radix_tree_preload(GFP_NOFS)) {
+> -			nfs_release_request(new);
+> -			return ERR_PTR(-ENOMEM);
+> -		}
+> -	}
+> +		if (nfs_set_page_tag_locked(req))
+> +			break;
+>  
+> -	/* We have a request for our page.
+> -	 * If the creds don't match, or the
+> -	 * page addresses don't match,
+> -	 * tell the caller to wait on the conflicting
+> -	 * request.
+> -	 */
+> -	rqend = req->wb_offset + req->wb_bytes;
+> -	if (req->wb_context != ctx
+> -	    || req->wb_page != page
+> -	    || !nfs_dirty_request(req)
+> -	    || offset > rqend || end < req->wb_offset) {
+> -		nfs_clear_page_tag_locked(req);
+> -		return ERR_PTR(-EBUSY);
+> +		/* The request is locked, so wait and then retry */
+> +		spin_unlock(&inode->i_lock);
+> +		error = nfs_wait_on_request(req);
+> +		nfs_release_request(req);
+> +		if (error != 0)
+> +			goto out_err;
+> +		spin_lock(&inode->i_lock);
+>  	}
+>  
+>  	/* Okay, the request matches. Update the region */
+>  	if (offset < req->wb_offset) {
+>  		req->wb_offset = offset;
+>  		req->wb_pgbase = offset;
+> -		req->wb_bytes = max(end, rqend) - req->wb_offset;
+> -		goto out;
+>  	}
+> -
+>  	if (end > rqend)
+>  		req->wb_bytes = end - req->wb_offset;
+> +	else
+> +		req->wb_bytes = rqend - req->wb_offset;
+> +out_unlock:
+> +	spin_unlock(&inode->i_lock);
+> +	return req;
+> +out_flushme:
+> +	spin_unlock(&inode->i_lock);
+> +	nfs_release_request(req);
+> +	error = nfs_wb_page(inode, page);
+> +out_err:
+> +	return ERR_PTR(error);
+> +}
+> +
+> +/*
+> + * Try to update an existing write request, or create one if there is none.
+> + *
+> + * Note: Should always be called with the Page Lock held to prevent races
+> + * if we have to add a new request. Also assumes that the caller has
+> + * already called nfs_flush_incompatible() if necessary.
+> + */
+> +static struct nfs_page * nfs_setup_write_request(struct nfs_open_context* ctx,
+> +		struct page *page, unsigned int offset, unsigned int bytes)
+> +{
+> +	struct inode *inode = page->mapping->host;
+> +	struct nfs_page	*req;
+>  
+> +	req = nfs_try_to_update_request(inode, page, offset, bytes);
+> +	if (req != NULL)
+> +		goto out;
+> +	req = nfs_create_request(ctx, inode, page, offset, bytes);
+> +	if (IS_ERR(req))
+> +		goto out;
+> +	if (radix_tree_preload(GFP_NOFS)) {
+> +		nfs_release_request(req);
+> +		return ERR_PTR(-ENOMEM);
+> +	}
+> +	nfs_inode_add_request(inode, req);
+> +	radix_tree_preload_end();
 
---b.
+Nit: You might gain additional code clarity here by moving these 
+radix_tree operations into nfs_inode_add_request().  It appears that 
+nfs_setup_write_request() is the only caller of nfs_inode_add_request().
 
-> So I don't think we
-> have a race here after all. I suspect that if SuSE used a different
-> signal here, that would prevent this from happening. For the record,
-> both RHEL and Fedora's init scripts use SIGINT for this.
+>  out:
+>  	return req;
+>  }
+>  
+> +static int nfs_writepage_setup(struct nfs_open_context *ctx, struct page *page,
+> +		unsigned int offset, unsigned int count)
+> +{
+> +	struct nfs_page	*req;
+> +
+> +	req = nfs_setup_write_request(ctx, page, offset, count);
+> +	if (IS_ERR(req))
+> +		return PTR_ERR(req);
+> +	/* Update file length */
+> +	nfs_grow_file(page, offset, count);
+> +	nfs_mark_uptodate(page, req->wb_pgbase, req->wb_bytes);
+> +	nfs_clear_page_tag_locked(req);
+> +	return 0;
+> +}
+> +
+>  int nfs_flush_incompatible(struct file *file, struct page *page)
+>  {
+>  	struct nfs_open_context *ctx = nfs_file_open_context(file);
+> 
+
+--------------020308090000060707050209
+Content-Type: text/x-vcard; charset=utf-8;
+ name="chuck_lever.vcf"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="chuck_lever.vcf"
+
+begin:vcard
+fn:Chuck Lever
+n:Lever;Chuck
+org:Oracle Corporation;Corporate Architecture: Linux Projects Group
+adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
+title:Principal Member of Staff
+tel;work:+1 248 614 5091
+x-mozilla-html:FALSE
+version:2.1
+end:vcard
+
+
+--------------020308090000060707050209--
