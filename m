@@ -1,297 +1,144 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH 1/2] NFS: Clean up nfs_update_request()
-Date: Thu, 19 Jun 2008 17:22:29 -0400
-Message-ID: <1213910549.7120.24.camel@localhost>
-References: <20080616192348.20513.72423.stgit@localhost.localdomain>
-	 <20080616192348.20513.3284.stgit@localhost.localdomain>
-	 <B9BACB96-E0DB-4C6D-B55D-A50CC6F94474@oracle.com>
-	 <1213739807.7288.86.camel@localhost>  <485972AE.9030405@oracle.com>
-	 <1213822899.25182.21.camel@localhost>  <485986BE.1030401@oracle.com>
+From: Krishna Kumar2 <krkumar2@in.ibm.com>
+Subject: Re: NFS performance degradation of local loopback FS.
+Date: Fri, 20 Jun 2008 12:09:11 +0530
+Message-ID: <OF5312A09D.CAC110C0-ON6525746E.00245BF4-6525746E.00248C25@in.ibm.com>
+References: <485A569A.8060601@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org
-To: chuck.lever@oracle.com
+Content-Type: text/plain; charset=US-ASCII
+Cc: linux-nfs@vger.kernel.org, Peter Staubach <staubach@redhat.com>
+To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:9400 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751754AbYFSVXI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 Jun 2008 17:23:08 -0400
-In-Reply-To: <485986BE.1030401@oracle.com>
+Received: from e28smtp02.in.ibm.com ([59.145.155.2]:33277 "EHLO
+	e28esmtp02.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751236AbYFTGkm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Jun 2008 02:40:42 -0400
+Received: from d28relay02.in.ibm.com (d28relay02.in.ibm.com [9.184.220.59])
+	by e28esmtp02.in.ibm.com (8.13.1/8.13.1) with ESMTP id m5K6eFTk012835
+	for <linux-nfs@vger.kernel.org>; Fri, 20 Jun 2008 12:10:15 +0530
+Received: from d28av01.in.ibm.com (d28av01.in.ibm.com [9.184.220.63])
+	by d28relay02.in.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m5K6dKr5884874
+	for <linux-nfs@vger.kernel.org>; Fri, 20 Jun 2008 12:09:20 +0530
+Received: from d28av01.in.ibm.com (loopback [127.0.0.1])
+	by d28av01.in.ibm.com (8.13.1/8.13.3) with ESMTP id m5K6eEOR009017
+	for <linux-nfs@vger.kernel.org>; Fri, 20 Jun 2008 12:10:14 +0530
+In-Reply-To: <485A569A.8060601@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2008-06-18 at 18:05 -0400, Chuck Lever wrote:
-> What I'm trying to say is the new function with the EAGAIN return code 
-> is spaghetti.  Don't get me wrong, I like Italian food.
+Thanks Peter for your explanation, and Benny for this option I was not
+aware of. Let me
+run some tests with this option.
 
-How about this version, then?
+Regards,
 
----------------------------------------------
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date: Fri, 13 Jun 2008 12:12:32 -0400
-NFS: Clean up nfs_update_request()
+- KK
 
-Simplify the loop in nfs_update_request by moving into a separate function
-the code that attempts to update an existing cached NFS write.
+linux-nfs-owner@vger.kernel.org wrote on 06/19/2008 06:22:42 PM:
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
-
- fs/nfs/write.c |  190 +++++++++++++++++++++++++++-----------------------------
- 1 files changed, 93 insertions(+), 97 deletions(-)
-
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 21d8a48..48f9605 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -34,9 +34,6 @@
- /*
-  * Local function declarations
-  */
--static struct nfs_page * nfs_update_request(struct nfs_open_context*,
--					    struct page *,
--					    unsigned int, unsigned int);
- static void nfs_pageio_init_write(struct nfs_pageio_descriptor *desc,
- 				  struct inode *inode, int ioflags);
- static void nfs_redirty_request(struct nfs_page *req);
-@@ -169,30 +166,6 @@ static void nfs_mark_uptodate(struct page *page, unsigned int base, unsigned int
- 	SetPageUptodate(page);
- }
- 
--static int nfs_writepage_setup(struct nfs_open_context *ctx, struct page *page,
--		unsigned int offset, unsigned int count)
--{
--	struct nfs_page	*req;
--	int ret;
--
--	for (;;) {
--		req = nfs_update_request(ctx, page, offset, count);
--		if (!IS_ERR(req))
--			break;
--		ret = PTR_ERR(req);
--		if (ret != -EBUSY)
--			return ret;
--		ret = nfs_wb_page(page->mapping->host, page);
--		if (ret != 0)
--			return ret;
--	}
--	/* Update file length */
--	nfs_grow_file(page, offset, count);
--	nfs_mark_uptodate(page, req->wb_pgbase, req->wb_bytes);
--	nfs_clear_page_tag_locked(req);
--	return 0;
--}
--
- static int wb_priority(struct writeback_control *wbc)
- {
- 	if (wbc->for_reclaim)
-@@ -361,6 +334,10 @@ static void nfs_inode_add_request(struct inode *inode, struct nfs_page *req)
- 	struct nfs_inode *nfsi = NFS_I(inode);
- 	int error;
- 
-+	/* Lock the request! */
-+	nfs_lock_request_dontget(req);
-+
-+	spin_lock(&inode->i_lock);
- 	error = radix_tree_insert(&nfsi->nfs_page_tree, req->wb_index, req);
- 	BUG_ON(error);
- 	if (!nfsi->npages) {
-@@ -374,6 +351,7 @@ static void nfs_inode_add_request(struct inode *inode, struct nfs_page *req)
- 	kref_get(&req->wb_kref);
- 	radix_tree_tag_set(&nfsi->nfs_page_tree, req->wb_index,
- 				NFS_PAGE_TAG_LOCKED);
-+	spin_unlock(&inode->i_lock);
- }
- 
- /*
-@@ -565,101 +543,119 @@ static inline int nfs_scan_commit(struct inode *inode, struct list_head *dst, pg
- #endif
- 
- /*
-- * Try to update any existing write request, or create one if there is none.
-- * In order to match, the request's credentials must match those of
-- * the calling process.
-+ * Search for an existing write request, and attempt to update
-+ * it to reflect a new dirty region on a given page.
-  *
-- * Note: Should always be called with the Page Lock held!
-+ * If the attempt fails, then the existing request is flushed out
-+ * to disk.
-  */
--static struct nfs_page * nfs_update_request(struct nfs_open_context* ctx,
--		struct page *page, unsigned int offset, unsigned int bytes)
-+static struct nfs_page *nfs_try_to_update_request(struct inode *inode,
-+		struct page *page,
-+		unsigned int offset,
-+		unsigned int bytes)
- {
--	struct address_space *mapping = page->mapping;
--	struct inode *inode = mapping->host;
--	struct nfs_page		*req, *new = NULL;
--	pgoff_t		rqend, end;
-+	struct nfs_page *req;
-+	unsigned int rqend;
-+	unsigned int end;
-+	int error;
-+
-+	if (!PagePrivate(page))
-+		return NULL;
- 
- 	end = offset + bytes;
-+	spin_lock(&inode->i_lock);
- 
- 	for (;;) {
--		/* Loop over all inode entries and see if we find
--		 * A request for the page we wish to update
--		 */
--		spin_lock(&inode->i_lock);
- 		req = nfs_page_find_request_locked(page);
--		if (req) {
--			if (!nfs_set_page_tag_locked(req)) {
--				int error;
--
--				spin_unlock(&inode->i_lock);
--				error = nfs_wait_on_request(req);
--				nfs_release_request(req);
--				if (error < 0) {
--					if (new) {
--						radix_tree_preload_end();
--						nfs_release_request(new);
--					}
--					return ERR_PTR(error);
--				}
--				continue;
--			}
--			spin_unlock(&inode->i_lock);
--			if (new) {
--				radix_tree_preload_end();
--				nfs_release_request(new);
--			}
--			break;
--		}
-+		if (req == NULL)
-+			goto out_unlock;
- 
--		if (new) {
--			nfs_lock_request_dontget(new);
--			nfs_inode_add_request(inode, new);
--			spin_unlock(&inode->i_lock);
--			radix_tree_preload_end();
--			req = new;
--			goto out;
--		}
--		spin_unlock(&inode->i_lock);
-+		rqend = req->wb_offset + req->wb_bytes;
-+		/*
-+		 * Tell the caller to flush out the request if
-+		 * the offsets are non-contiguous.
-+		 */
-+		if (!nfs_dirty_request(req)
-+		    || offset > rqend
-+		    || end < req->wb_offset)
-+			goto out_flushme;
- 
--		new = nfs_create_request(ctx, inode, page, offset, bytes);
--		if (IS_ERR(new))
--			return new;
--		if (radix_tree_preload(GFP_NOFS)) {
--			nfs_release_request(new);
--			return ERR_PTR(-ENOMEM);
--		}
--	}
-+		if (nfs_set_page_tag_locked(req))
-+			break;
- 
--	/* We have a request for our page.
--	 * If the creds don't match, or the
--	 * page addresses don't match,
--	 * tell the caller to wait on the conflicting
--	 * request.
--	 */
--	rqend = req->wb_offset + req->wb_bytes;
--	if (req->wb_context != ctx
--	    || req->wb_page != page
--	    || !nfs_dirty_request(req)
--	    || offset > rqend || end < req->wb_offset) {
--		nfs_clear_page_tag_locked(req);
--		return ERR_PTR(-EBUSY);
-+		/* The request is locked, so wait and then retry */
-+		spin_unlock(&inode->i_lock);
-+		error = nfs_wait_on_request(req);
-+		nfs_release_request(req);
-+		if (error != 0)
-+			goto out_err;
-+		spin_lock(&inode->i_lock);
- 	}
- 
- 	/* Okay, the request matches. Update the region */
- 	if (offset < req->wb_offset) {
- 		req->wb_offset = offset;
- 		req->wb_pgbase = offset;
--		req->wb_bytes = max(end, rqend) - req->wb_offset;
--		goto out;
- 	}
--
- 	if (end > rqend)
- 		req->wb_bytes = end - req->wb_offset;
-+	else
-+		req->wb_bytes = rqend - req->wb_offset;
-+out_unlock:
-+	spin_unlock(&inode->i_lock);
-+	return req;
-+out_flushme:
-+	spin_unlock(&inode->i_lock);
-+	nfs_release_request(req);
-+	error = nfs_wb_page(inode, page);
-+out_err:
-+	return ERR_PTR(error);
-+}
-+
-+/*
-+ * Try to update an existing write request, or create one if there is none.
-+ *
-+ * Note: Should always be called with the Page Lock held to prevent races
-+ * if we have to add a new request. Also assumes that the caller has
-+ * already called nfs_flush_incompatible() if necessary.
-+ */
-+static struct nfs_page * nfs_setup_write_request(struct nfs_open_context* ctx,
-+		struct page *page, unsigned int offset, unsigned int bytes)
-+{
-+	struct inode *inode = page->mapping->host;
-+	struct nfs_page	*req;
- 
-+	req = nfs_try_to_update_request(inode, page, offset, bytes);
-+	if (req != NULL)
-+		goto out;
-+	req = nfs_create_request(ctx, inode, page, offset, bytes);
-+	if (IS_ERR(req))
-+		goto out;
-+	if (radix_tree_preload(GFP_NOFS)) {
-+		nfs_release_request(req);
-+		return ERR_PTR(-ENOMEM);
-+	}
-+	nfs_inode_add_request(inode, req);
-+	radix_tree_preload_end();
- out:
- 	return req;
- }
- 
-+static int nfs_writepage_setup(struct nfs_open_context *ctx, struct page *page,
-+		unsigned int offset, unsigned int count)
-+{
-+	struct nfs_page	*req;
-+
-+	req = nfs_setup_write_request(ctx, page, offset, count);
-+	if (IS_ERR(req))
-+		return PTR_ERR(req);
-+	/* Update file length */
-+	nfs_grow_file(page, offset, count);
-+	nfs_mark_uptodate(page, req->wb_pgbase, req->wb_bytes);
-+	nfs_clear_page_tag_locked(req);
-+	return 0;
-+}
-+
- int nfs_flush_incompatible(struct file *file, struct page *page)
- {
- 	struct nfs_open_context *ctx = nfs_file_open_context(file);
+> On Jun. 19, 2008, 15:04 +0300, Peter Staubach <staubach@redhat.com>
+wrote:
+> > Krishna Kumar2 wrote:
+> >>>       200 processes:
+> >>>
+> >> By "200 processes", I meant 200 dd's, each reading from /dev/zero and
+> >> writing to a file on the filesystem. The script "nfs" was run twice,
+first
+> >> with
+> >> a local filesystem and the second time with the same filesystem NFS
+> >> mounted.
+> >>
+> >>
+> >
+> > Well, you aren't exactly comparing apples to apples.  The NFS
+> > client does close-to-open semantics, meaning that it writes
+> > all modified data to the server on close.  The dd commands run
+> > on the local file system do not.  You might trying using
+> > something which does an fsync before closing so that you are
+> > making a closer comparison.
+>
+> try dd conv=fsync ...
+>
+> Benny
+>
+> >
+> > All that said, yes, one would expect a slow down.  How much is
+> > debatable and varies from platform to platform and load to load.
+> >
+> > I would also advise care when running NFS like that.  It is
+> > subject to deadlock and is not recommended.
+> >
+> >        ps
+> >
+> >> Thanks,
+> >>
+> >> - KK
+> >>
+> >> linux-nfs-owner@vger.kernel.org wrote on 06/19/2008 12:16:23 PM:
+> >>
+> >>
+> >>> Hi,
+> >>>
+> >>> I am running 2.6.25 kernel on a [4 way, 3.2 x86_64, 4GB] system. The
+test
+> >>> is doing I/O on a local ext3 filesystem, and measuring the bandwidth,
+and
+> >>> then NFS mounting the filesystem loopback on the same system. I have
+> >>> configured 64 nfsd's to run. The test script is attached at the
+bottom.
+> >>>
+> >>> My configuration is:
+> >>>       /dev/some-local-disk  :            /local
+> >>>       NFS mount /local       :            /nfs
+> >>>
+> >>> The result is:
+> >>>       200 processes:
+> >>>             /local: 108000 KB/s
+> >>>             /nfs:     66000 KB/s: Drop of 40%
+> >>>
+> >>>       300 processes (KB/s):
+> >>>             /local: 112000 KB/s
+> >>>             /nfs:    57000 KB/s: Drop of 50%
+> >>>
+> >>> I am not using any tuning, though I have tested with both
+> >>> sunrpc.tcp_slot_table_entries=16 & 128
+> >>>
+> >>> Is this big a drop expected for a loopback NFS mount? Any
+> >>> feedback/suggestions are very
+> >>> appreciated.
+> >>>
+> >>> Thanks,
+> >>>
+> >>> - KK
+> >>>
+> >>> (See attached file: nfs)[attachment "nfs" deleted by Krishna
+> >>>
+> >> Kumar2/India/IBM]
+> >>
+> >> --
+> >> To unsubscribe from this list: send the line "unsubscribe linux-nfs"
+in
+> >> the body of a message to majordomo@vger.kernel.org
+> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> >>
+> >
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+>
+> --
+> Benny Halevy
+> Software Architect
+> Tel/Fax: +972-3-647-8340
+> Mobile: +972-54-802-8340
+> bhalevy@panasas.com
+>
+> Panasas, Inc.
+> The Leader in Parallel Storage
+> www.panasas.com
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
