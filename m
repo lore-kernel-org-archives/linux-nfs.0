@@ -1,151 +1,87 @@
-From: "Daniel J Blueman" <daniel.blueman@gmail.com>
-Subject: Re: [2.6.26-rc4] mount.nfsv4/memory poisoning issues...
-Date: Sat, 21 Jun 2008 18:52:12 +0100
-Message-ID: <6278d2220806211052x64e7228dgc42777778f2068e4@mail.gmail.com>
-References: <6278d2220806041633n3bfe3dd2ke9602697697228b@mail.gmail.com>
-	<20080604203504.62730951@tleilax.poochiereds.net>
-	<1213124088.20459.16.camel@localhost>
-	<20080610151357.150b6f69@tleilax.poochiereds.net>
-	<20080610151829.3c4d6c1e@tleilax.poochiereds.net>
-	<6278d2220806101327t29baac6ft30919301277d730c@mail.gmail.com>
-	<20080618080750.52dd6070@barsoom.rdu.redhat.com>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Subject: Re: 2.6.26-rc: nfsd hangs for a few sec
+Date: Sat, 21 Jun 2008 11:36:41 -0700 (PDT)
+Message-ID: <alpine.LFD.1.10.0806211128070.3167@woody.linux-foundation.org>
+References: <a4423d670806210557k1e8fcee1le3526f62962799e@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org,
-	Linux Kernel <linux-kernel@vger.kernel.org>
-To: "Jeff Layton" <jlayton@redhat.com>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <20080618080750.52dd6070@barsoom.rdu.redhat.com>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: kernel-testers@vger.kernel.org,
+	kernel list <linux-kernel@vger.kernel.org>, linux-mm@kvack.org,
+	Mel Gorman <mel-wPRd99KPJ+uzQB+pC5nmwQ@public.gmane.org>,
+	Christoph Lameter <clameter@sgi.com>,
+	Lee Schermerhorn <lee.schermerhorn@hp.com>,
+	KAMEZAWA Hiroyuki <kamezawa.hiroyu-+CUm20s59erQFUHtdCDX3A@public.gmane.org>,
+	Hugh Dickins <hugh-DTz5qymZ9yRBDgjK7y7TUQ@public.gmane.org>,
+	Nick Piggin <nickpiggin-/E1597aS9LT0CCvOHzKKcA@public.gmane.org>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	bfields@fieldses.org, neilb@suse.de, linux-nfs@vger.kernel.org
+To: Alexander Beregalov <a.beregalov@gmail.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:35949 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751623AbYFUShR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 21 Jun 2008 14:37:17 -0400
+In-Reply-To: <a4423d670806210557k1e8fcee1le3526f62962799e-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jun 18, 2008 at 1:07 PM, Jeff Layton <jlayton@redhat.com> wrote:
-> On Tue, 10 Jun 2008 21:27:07 +0100
-> "Daniel J Blueman" <daniel.blueman@gmail.com> wrote:
->
->> On Tue, Jun 10, 2008 at 8:18 PM, Jeff Layton <jlayton@redhat.com> wrote:
->> > On Tue, 10 Jun 2008 15:13:57 -0400
->> > Jeff Layton <jlayton@redhat.com> wrote:
->> >
->> >> On Tue, 10 Jun 2008 14:54:48 -0400
->> >> Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
->> >>
->> >> > On Wed, 2008-06-04 at 20:35 -0400, Jeff Layton wrote:
->> >> > > On Thu, 5 Jun 2008 00:33:54 +0100
->> >> > > "Daniel J Blueman" <daniel.blueman@gmail.com> wrote:
->> >> > >
->> >> > > > Having experienced 'mount.nfs4: internal error' when mounting nfsv4 in
->> >> > > > the past, I have a minimal test-case I sometimes run:
->> >> > > >
->> >> > > > $ while :; do mount -t nfs4 filer:/store /store; umount /store; done
->> >> > > >
->> >> > > > After ~100 iterations, I saw the 'mount.nfs4: internal error',
->> >> > > > followed by symptoms of memory corruption [1], a locking issue with
->> >> > > > the reporting [2] and another (related?) memory-corruption issue
->> >> > > > (off-by-1?) [3]. A little analysis shows memory being overwritten by
->> >> > > > (likely) a poison value, which gets complicated if it's not
->> >> > > > use-after-free...
->> >> > > >
->> >> > > > Anyone dare confirm this issue? NFSv4 server is x86-64 Ubuntu 8.04
->> >> > > > 2.6.24-18, client U8.04 2.6.26-rc4; batteries included [4].
->> >> > > >
->> >> > > > I'm happy to decode addresses, test patches etc.
->> >> > > >
->> >> > > > Daniel
->> >> > > >
->> >> > >
->> >> > > Looks like it fell down while trying to take down the kthread during a
->> >> > > failed mount attempt. I have to wonder if I might have introduced a
->> >> > > race when I changed nfs4 callback thread to kthread API. I think we may
->> >> > > need the BKL around the last 2 statements in the main callback thread
->> >> > > function. If you can easily reproduce this, could you test the
->> >> > > following patch and let me know if it helps?
->> >> > >
->> >> > > Note that this patch is entirely untested, so test it someplace
->> >> > > non-critical ;-).
->> >> > >
->> >> > > Signed-off-by: Jeff Layton <jlayton@redhat.com>
->> >> > >
->> >> > >
->> >> > > diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
->> >> > > index c1e7c83..a3e83f9 100644
->> >> > > --- a/fs/nfs/callback.c
->> >> > > +++ b/fs/nfs/callback.c
->> >> > > @@ -90,9 +90,9 @@ nfs_callback_svc(void *vrqstp)
->> >> > >           preverr = err;
->> >> > >           svc_process(rqstp);
->> >> > >   }
->> >> > > - unlock_kernel();
->> >> > >   nfs_callback_info.task = NULL;
->> >> > >   svc_exit_thread(rqstp);
->> >> > > + unlock_kernel();
->> >> > >   return 0;
->> >> > >  }
->> >> >
->> >> > We certainly need to protect nfs_callback_info.task (and I believe I
->> >> > explained this earlier), but why do we need to protect svc_exit_thread?
->> >> >
->> >> > Also, looking at the general use of the BKL in that code, I thought we
->> >> > agreed that there was no need to hold the BKL while taking the
->> >> > nfs_callback_mutex?
->> >> >
->> >>
->> >> Hmm, I don't remember that discussion, but I'll take your word for it...
->> >>
->> >> I think you're basically correct, but it looks to me like the
->> >> nfs_callback_mutex actually protects nfs_callback_info.task as well.
->> >>
->> >> If we're starting the thread, then we can't call kthread_stop on it
->> >> until we release the mutex. So the thread can't exit until we release
->> >> the mutex, and we can be guaranteed that this:
->> >>
->> >>      nfs_callback_info.task = NULL;
->> >>
->> >> ...can't happen until after kthread_run returns and nfs_callback_up
->> >> sets it.
->> >>
->> >> If that's right, then maybe this (untested, RFC only) patch would make sense?
->> >>
->> >
->> > To clarify for Dan...
->> >
->> > I don't think that this patch will help the problem you're having. This
->> > is essentially a cleanup patch to remove some locking that doesn't
->> > appear to be needed.
->> >
->> > The original patch that Trond commented on above is also probably
->> > unnecessary (assuming I'm right about the locking here).
->>
->> Thanks for the head-up, Jeff. I took it at face value, so didn't
->> harbour the notion it would fix the memory corruption.
->>
->> Let's see If I can get time for this git bisect sooner rather than later...
->
-> I've tried reproducing this, but haven't had much success (probably some
-> differences in my kernel config).
->
-> I suspect that Trond is correct here and the race has something to
-> do with the kthread being spawned but nfs_callback_svc() never getting
-> a chance to run. I posted a patchset to the list late last week with the
-> intro email:
->
-> [PATCH 0/3] fix potential races in lockd and nfs4-callback startup/shutdown
->
-> Dan, could you apply that patchset to your kernel and see if it helps
-> this problem?
 
-Yes, I confirm the problem reproduces without this patchset and I'm
-unable to reproduce it with the patchset, so looks good!
 
-Thanks again for the all the help and fixes!
-  Dan
--- 
-Daniel J Blueman
+On Sat, 21 Jun 2008, Alexander Beregalov wrote:
+> >
+> >  -> #1 (&(&ip->i_iolock)->mr_lock){----}:
+> >        [<c0135416>] __lock_acquire+0xa0c/0xbc6
+> >        [<c013563a>] lock_acquire+0x6a/0x86
+> >        [<c012c4f2>] down_write_nested+0x33/0x6a
+> >        [<c0211068>] xfs_ilock+0x7b/0xd6
+> >        [<c02111e1>] xfs_ireclaim+0x1d/0x59
+> >        [<c022f342>] xfs_finish_reclaim+0x173/0x195
+> >        [<c0231496>] xfs_reclaim+0xb3/0x138
+> >        [<c023ba0f>] xfs_fs_clear_inode+0x55/0x8e
+> >        [<c016f830>] clear_inode+0x83/0xd2
+> >        [<c016faaf>] dispose_list+0x3c/0xc1
+> >        [<c016fca7>] shrink_icache_memory+0x173/0x19b
+> >        [<c014a7fa>] shrink_slab+0xda/0x153
+> >        [<c014aa53>] try_to_free_pages+0x1e0/0x2a1
+> >        [<c0146ad7>] __alloc_pages_internal+0x23f/0x3a7
+> >        [<c0146c56>] __alloc_pages+0xa/0xc
+> >        [<c015b8c2>] __slab_alloc+0x1c7/0x513
+> >        [<c015beef>] kmem_cache_alloc+0x45/0xb3
+> >        [<c01a5afe>] reiserfs_alloc_inode+0x12/0x23
+> >        [<c016f308>] alloc_inode+0x14/0x1a9
+> >        [<c016f5ed>] iget5_locked+0x47/0x133
+
+Hmm. Both the trace above and the trace below:
+
+> >  -> #0 (iprune_mutex){--..}:
+> >        [<c0135333>] __lock_acquire+0x929/0xbc6
+> >        [<c013563a>] lock_acquire+0x6a/0x86
+> >        [<c037db3e>] mutex_lock_nested+0xba/0x232
+> >        [<c016fb6c>] shrink_icache_memory+0x38/0x19b
+> >        [<c014a7fa>] shrink_slab+0xda/0x153
+> >        [<c014aa53>] try_to_free_pages+0x1e0/0x2a1
+> >        [<c0146ad7>] __alloc_pages_internal+0x23f/0x3a7
+> >        [<c0146c56>] __alloc_pages+0xa/0xc
+> >        [<c01484f2>] __do_page_cache_readahead+0xaa/0x16a
+> >        [<c01487ac>] ondemand_readahead+0x119/0x127
+> >        [<c014880c>] page_cache_async_readahead+0x52/0x5d
+> >        [<c0179410>] generic_file_splice_read+0x290/0x4a8
+> >        [<c023a46a>] xfs_splice_read+0x4b/0x78
+
+are kind of scary, because they are both filesystem memory allocation 
+paths that don't have GFP_NOFS, so they cause a callback back into the 
+filesystem to free things.
+
+Which in general isn't necessarily wrong: under inode pressure, it may 
+well make sense to try to shrink the inode caches when allocating a new 
+inode, or things may well blow up out of proportion, but it does make me a 
+big nervous.
+
+However, it's not clear why things apparently bisected down to the commit 
+it did (54a6eb5c4765aa573a030ceeba2c14e3d2ea5706: "mm: use two zonelist 
+that are filtered by GFP mask"). That part makes me worry that that commit 
+screwed up the freeing pressure logic. 
+
+Mel?
+
+			Linus
