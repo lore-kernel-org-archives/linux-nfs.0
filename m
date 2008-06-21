@@ -1,87 +1,69 @@
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Subject: Re: 2.6.26-rc: nfsd hangs for a few sec
-Date: Sat, 21 Jun 2008 11:36:41 -0700 (PDT)
-Message-ID: <alpine.LFD.1.10.0806211128070.3167@woody.linux-foundation.org>
-References: <a4423d670806210557k1e8fcee1le3526f62962799e@mail.gmail.com>
+From: "Phil Endecott" <phil_bnaqb_endecott-wZDNlLIRyE5g9hUCZPvPmw@public.gmane.org>
+Subject: Propagation of changes in shared mmap()ed NFS files
+Date: Sat, 21 Jun 2008 20:05:20 +0100
+Message-ID: <1214075120367@dmwebmail.dmwebmail.chezphil.org>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: kernel-testers@vger.kernel.org,
-	kernel list <linux-kernel@vger.kernel.org>, linux-mm@kvack.org,
-	Mel Gorman <mel-wPRd99KPJ+uzQB+pC5nmwQ@public.gmane.org>,
-	Christoph Lameter <clameter@sgi.com>,
-	Lee Schermerhorn <lee.schermerhorn@hp.com>,
-	KAMEZAWA Hiroyuki <kamezawa.hiroyu-+CUm20s59erQFUHtdCDX3A@public.gmane.org>,
-	Hugh Dickins <hugh-DTz5qymZ9yRBDgjK7y7TUQ@public.gmane.org>,
-	Nick Piggin <nickpiggin-/E1597aS9LT0CCvOHzKKcA@public.gmane.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	bfields@fieldses.org, neilb@suse.de, linux-nfs@vger.kernel.org
-To: Alexander Beregalov <a.beregalov@gmail.com>
+Content-Type: text/plain; format="flowed"
+To: <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:35949 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751623AbYFUShR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 21 Jun 2008 14:37:17 -0400
-In-Reply-To: <a4423d670806210557k1e8fcee1le3526f62962799e-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Received: from japan.chezphil.org ([77.240.5.4]:4687 "EHLO japan.chezphil.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751885AbYFUTeX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 21 Jun 2008 15:34:23 -0400
+Received: from localhost ([127.0.0.1] helo=chezphil.org)
+	by japan.chezphil.org with esmtp (Exim 4.69)
+	(envelope-from <phil_bnaqb_endecott-wZDNlLIRyE5g9hUCZPvPmw@public.gmane.org>)
+	id 1KA8On-0001PF-Ca
+	for linux-nfs@vger.kernel.org; Sat, 21 Jun 2008 20:05:21 +0100
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Dear Experts,
+
+I have a program which uses an mmap()ed read-mostly data file.  When 
+not using NFS, each instance of the program can use inotify to detect 
+when other instances have made changes to the data file.  Since inotify 
+doesn't work with NFS, I have now implemented a scheme using network 
+broadcasts to announce changes.  At present it works like this:
+
+All instances of the program mmap(MAP_SHARED) the data file.
+
+One instance stores some new data at the end of the file and calls 
+msync(MS_SYNC) on the affected pages.  It then "atomically commits" the 
+new data by write()ing a new header at the start of the file with an 
+"end of data" field advanced to include the new data.  It then calls 
+fdatasync().  Then it transmits a broadcast packet.
+
+The other instance(s) of the program receive the broadcast packet and 
+read() the header at the start of the file.  My hope was that they 
+would see the new value, but they don't; they continue to see the old value.
+
+In order to allow for network broadcasts being unreliable the 
+wait-for-broadcast code has a 30 second timeout; when this timeout next 
+expires the program reads the header again and now it sees the new 
+end-of-data offset, and the new data in the mapped memory region.
+
+So, what do I have to do so that the new data is visible promptly?  Is 
+there more that the sender or the receiver should do to tell the local 
+kernel or the NFS server to propagate changes?  For example, does 
+msync(MS_INVALIDATE) do anything useful?  Do I simply have to wait for 
+some delay after receiving the broadcast?
+
+I have also observed that when the changes are finally noticed, it 
+seems that the whole of the multi-megabyte file is re-fetched from the 
+server as it is accessed, despite only a few hundred bytes having 
+changed.  This is undesirable; is there anything that I can do to 
+prevent it?  (I tried calling mlock(), mainly to check that this wasn't 
+a memory-pressure problem, but it still seems to re-fetch it.)
+
+Ideally I'd like to have something that will work with any non-ancient 
+version of NFS, and perhaps even CIFS too, but for now I'd be happy 
+with getting it working on this nfsv3 system.
+
+Many thanks for any advice,
+
+Phil.
 
 
-On Sat, 21 Jun 2008, Alexander Beregalov wrote:
-> >
-> >  -> #1 (&(&ip->i_iolock)->mr_lock){----}:
-> >        [<c0135416>] __lock_acquire+0xa0c/0xbc6
-> >        [<c013563a>] lock_acquire+0x6a/0x86
-> >        [<c012c4f2>] down_write_nested+0x33/0x6a
-> >        [<c0211068>] xfs_ilock+0x7b/0xd6
-> >        [<c02111e1>] xfs_ireclaim+0x1d/0x59
-> >        [<c022f342>] xfs_finish_reclaim+0x173/0x195
-> >        [<c0231496>] xfs_reclaim+0xb3/0x138
-> >        [<c023ba0f>] xfs_fs_clear_inode+0x55/0x8e
-> >        [<c016f830>] clear_inode+0x83/0xd2
-> >        [<c016faaf>] dispose_list+0x3c/0xc1
-> >        [<c016fca7>] shrink_icache_memory+0x173/0x19b
-> >        [<c014a7fa>] shrink_slab+0xda/0x153
-> >        [<c014aa53>] try_to_free_pages+0x1e0/0x2a1
-> >        [<c0146ad7>] __alloc_pages_internal+0x23f/0x3a7
-> >        [<c0146c56>] __alloc_pages+0xa/0xc
-> >        [<c015b8c2>] __slab_alloc+0x1c7/0x513
-> >        [<c015beef>] kmem_cache_alloc+0x45/0xb3
-> >        [<c01a5afe>] reiserfs_alloc_inode+0x12/0x23
-> >        [<c016f308>] alloc_inode+0x14/0x1a9
-> >        [<c016f5ed>] iget5_locked+0x47/0x133
 
-Hmm. Both the trace above and the trace below:
 
-> >  -> #0 (iprune_mutex){--..}:
-> >        [<c0135333>] __lock_acquire+0x929/0xbc6
-> >        [<c013563a>] lock_acquire+0x6a/0x86
-> >        [<c037db3e>] mutex_lock_nested+0xba/0x232
-> >        [<c016fb6c>] shrink_icache_memory+0x38/0x19b
-> >        [<c014a7fa>] shrink_slab+0xda/0x153
-> >        [<c014aa53>] try_to_free_pages+0x1e0/0x2a1
-> >        [<c0146ad7>] __alloc_pages_internal+0x23f/0x3a7
-> >        [<c0146c56>] __alloc_pages+0xa/0xc
-> >        [<c01484f2>] __do_page_cache_readahead+0xaa/0x16a
-> >        [<c01487ac>] ondemand_readahead+0x119/0x127
-> >        [<c014880c>] page_cache_async_readahead+0x52/0x5d
-> >        [<c0179410>] generic_file_splice_read+0x290/0x4a8
-> >        [<c023a46a>] xfs_splice_read+0x4b/0x78
-
-are kind of scary, because they are both filesystem memory allocation 
-paths that don't have GFP_NOFS, so they cause a callback back into the 
-filesystem to free things.
-
-Which in general isn't necessarily wrong: under inode pressure, it may 
-well make sense to try to shrink the inode caches when allocating a new 
-inode, or things may well blow up out of proportion, but it does make me a 
-big nervous.
-
-However, it's not clear why things apparently bisected down to the commit 
-it did (54a6eb5c4765aa573a030ceeba2c14e3d2ea5706: "mm: use two zonelist 
-that are filtered by GFP mask"). That part makes me worry that that commit 
-screwed up the freeing pressure logic. 
-
-Mel?
-
-			Linus
