@@ -1,337 +1,193 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 1/2] NFS: Clean up nfs_update_request()
-Date: Fri, 20 Jun 2008 16:36:12 -0400
-Message-ID: <485C14BC.8010301@oracle.com>
-References: <20080616192348.20513.72423.stgit@localhost.localdomain>	 <20080616192348.20513.3284.stgit@localhost.localdomain>	 <B9BACB96-E0DB-4C6D-B55D-A50CC6F94474@oracle.com>	 <1213739807.7288.86.camel@localhost>  <485972AE.9030405@oracle.com>	 <1213822899.25182.21.camel@localhost>  <485986BE.1030401@oracle.com> <1213910549.7120.24.camel@localhost>
-Reply-To: chuck.lever@oracle.com
+From: "Alexander Beregalov" <a.beregalov@gmail.com>
+Subject: Re: 2.6.26-rc: nfsd hangs for a few sec
+Date: Sat, 21 Jun 2008 16:57:38 +0400
+Message-ID: <a4423d670806210557k1e8fcee1le3526f62962799e@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------020308090000060707050209"
-Cc: linux-nfs@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Content-Type: text/plain; charset=UTF-8
+To: kernel-testers@vger.kernel.org,
+	"kernel list" <linux-kernel@vger.kernel.org>, linux-mm@kvack.org,
+	"Mel Gorman" <mel-wPRd99KPJ+uzQB+pC5nmwQ@public.gmane.org>,
+	"Christoph Lameter" <clameter@sgi.com>,
+	"Lee Schermerh
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:26358 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932916AbYFTUoT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Jun 2008 16:44:19 -0400
-In-Reply-To: <1213910549.7120.24.camel@localhost>
+Received: from wx-out-0506.google.com ([66.249.82.228]:15777 "EHLO
+	wx-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750791AbYFUM5k (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 21 Jun 2008 08:57:40 -0400
+Received: by wx-out-0506.google.com with SMTP id h29so510507wxd.4
+        for <linux-nfs@vger.kernel.org>; Sat, 21 Jun 2008 05:57:39 -0700 (PDT)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a multi-part message in MIME format.
---------------020308090000060707050209
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+One more try, added some CC's.
 
-Trond Myklebust wrote:
-> On Wed, 2008-06-18 at 18:05 -0400, Chuck Lever wrote:
->> What I'm trying to say is the new function with the EAGAIN return code 
->> is spaghetti.  Don't get me wrong, I like Italian food.
-> 
-> How about this version, then?
+2008/6/12 Alexander Beregalov <a.beregalov@gmail.com>:
+> I have bisected it and it seems introduced here:
+> How could it be?
+>
+> 54a6eb5c4765aa573a030ceeba2c14e3d2ea5706 is first bad commit
+> commit 54a6eb5c4765aa573a030ceeba2c14e3d2ea5706
+> Author: Mel Gorman <mel-wPRd99KPJ+uzQB+pC5nmwQ@public.gmane.org>
+> Date:   Mon Apr 28 02:12:16 2008 -0700
+>
+>    mm: use two zonelist that are filtered by GFP mask
+>
+>    Currently a node has two sets of zonelists, one for each zone type in the
+>    system and a second set for GFP_THISNODE allocations.  Based on the zones
+>    allowed by a gfp mask, one of these zonelists is selected.  All of these
+>    zonelists consume memory and occupy cache lines.
+>
+>    This patch replaces the multiple zonelists per-node with two zonelists.  The
+>    first contains all populated zones in the system, ordered by distance, for
+>    fallback allocations when the target/preferred node has no free pages.  The
+>    second contains all populated zones in the node suitable for GFP_THISNODE
+>    allocations.
+>
+>    An iterator macro is introduced called for_each_zone_zonelist()
+> that interates
+>    through each zone allowed by the GFP flags in the selected zonelist.
+>
+>    Signed-off-by: Mel Gorman <mel-wPRd99KPJ+uzQB+pC5nmwQ@public.gmane.org>
+>    Acked-by: Christoph Lameter <clameter@sgi.com>
+>    Signed-off-by: Lee Schermerhorn <lee.schermerhorn@hp.com>
+>    Cc: KAMEZAWA Hiroyuki <kamezawa.hiroyu-+CUm20s59erQFUHtdCDX3A@public.gmane.org>
+>    Cc: Mel Gorman <mel-wPRd99KPJ+uzQB+pC5nmwQ@public.gmane.org>
+>    Cc: Christoph Lameter <clameter@sgi.com>
+>    Cc: Hugh Dickins <hugh-DTz5qymZ9yRBDgjK7y7TUQ@public.gmane.org>
+>    Cc: Nick Piggin <nickpiggin-/E1597aS9LT0CCvOHzKKcA@public.gmane.org>
+>    Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+>    Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
+>
+> :040000 040000 89cdad93d855fa839537454113f2716011ca0e26
+> 57aa307f4bddd264e70c759a2fb2076bfde363eb M      arch
+> :040000 040000 4add802178c0088a85d3738b42ec42ca33e07d60
+> 126d3b170424a18b60074a7901c4e9b98f3bdee5 M      fs
+> :040000 040000 9d215d6248382dab53003d230643f0169f3e3e84
+> 67d196d890a27d2211b3bf7e833e6366addba739 M      include
+> :040000 040000 6502d185e8ea6338953027c29cc3ab960d6f9bad
+> c818e0fc538cdc40016e2d5fe33661c9c54dc8a5 M      mm
+>
 
-I like this much better; it is much more straightforward.
-
-Minor comments below.
-
-> ---------------------------------------------
-> From: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Date: Fri, 13 Jun 2008 12:12:32 -0400
-> NFS: Clean up nfs_update_request()
-> 
-> Simplify the loop in nfs_update_request by moving into a separate function
-> the code that attempts to update an existing cached NFS write.
-> 
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> ---
-> 
->  fs/nfs/write.c |  190 +++++++++++++++++++++++++++-----------------------------
->  1 files changed, 93 insertions(+), 97 deletions(-)
-> 
-> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-> index 21d8a48..48f9605 100644
-> --- a/fs/nfs/write.c
-> +++ b/fs/nfs/write.c
-> @@ -34,9 +34,6 @@
->  /*
->   * Local function declarations
->   */
-> -static struct nfs_page * nfs_update_request(struct nfs_open_context*,
-> -					    struct page *,
-> -					    unsigned int, unsigned int);
->  static void nfs_pageio_init_write(struct nfs_pageio_descriptor *desc,
->  				  struct inode *inode, int ioflags);
->  static void nfs_redirty_request(struct nfs_page *req);
-> @@ -169,30 +166,6 @@ static void nfs_mark_uptodate(struct page *page, unsigned int base, unsigned int
->  	SetPageUptodate(page);
->  }
->  
-> -static int nfs_writepage_setup(struct nfs_open_context *ctx, struct page *page,
-> -		unsigned int offset, unsigned int count)
-> -{
-> -	struct nfs_page	*req;
-> -	int ret;
-> -
-> -	for (;;) {
-> -		req = nfs_update_request(ctx, page, offset, count);
-> -		if (!IS_ERR(req))
-> -			break;
-> -		ret = PTR_ERR(req);
-> -		if (ret != -EBUSY)
-> -			return ret;
-> -		ret = nfs_wb_page(page->mapping->host, page);
-> -		if (ret != 0)
-> -			return ret;
-> -	}
-> -	/* Update file length */
-> -	nfs_grow_file(page, offset, count);
-> -	nfs_mark_uptodate(page, req->wb_pgbase, req->wb_bytes);
-> -	nfs_clear_page_tag_locked(req);
-> -	return 0;
-> -}
-> -
->  static int wb_priority(struct writeback_control *wbc)
->  {
->  	if (wbc->for_reclaim)
-> @@ -361,6 +334,10 @@ static void nfs_inode_add_request(struct inode *inode, struct nfs_page *req)
->  	struct nfs_inode *nfsi = NFS_I(inode);
->  	int error;
->  
-> +	/* Lock the request! */
-> +	nfs_lock_request_dontget(req);
-> +
-> +	spin_lock(&inode->i_lock);
->  	error = radix_tree_insert(&nfsi->nfs_page_tree, req->wb_index, req);
->  	BUG_ON(error);
->  	if (!nfsi->npages) {
-> @@ -374,6 +351,7 @@ static void nfs_inode_add_request(struct inode *inode, struct nfs_page *req)
->  	kref_get(&req->wb_kref);
->  	radix_tree_tag_set(&nfsi->nfs_page_tree, req->wb_index,
->  				NFS_PAGE_TAG_LOCKED);
-> +	spin_unlock(&inode->i_lock);
->  }
->  
->  /*
-> @@ -565,101 +543,119 @@ static inline int nfs_scan_commit(struct inode *inode, struct list_head *dst, pg
->  #endif
->  
->  /*
-> - * Try to update any existing write request, or create one if there is none.
-> - * In order to match, the request's credentials must match those of
-> - * the calling process.
-> + * Search for an existing write request, and attempt to update
-> + * it to reflect a new dirty region on a given page.
->   *
-> - * Note: Should always be called with the Page Lock held!
-> + * If the attempt fails, then the existing request is flushed out
-> + * to disk.
->   */
-> -static struct nfs_page * nfs_update_request(struct nfs_open_context* ctx,
-> -		struct page *page, unsigned int offset, unsigned int bytes)
-> +static struct nfs_page *nfs_try_to_update_request(struct inode *inode,
-> +		struct page *page,
-> +		unsigned int offset,
-> +		unsigned int bytes)
->  {
-> -	struct address_space *mapping = page->mapping;
-> -	struct inode *inode = mapping->host;
-> -	struct nfs_page		*req, *new = NULL;
-> -	pgoff_t		rqend, end;
-> +	struct nfs_page *req;
-> +	unsigned int rqend;
-> +	unsigned int end;
-> +	int error;
-> +
-> +	if (!PagePrivate(page))
-> +		return NULL;
->  
->  	end = offset + bytes;
-> +	spin_lock(&inode->i_lock);
->  
->  	for (;;) {
-> -		/* Loop over all inode entries and see if we find
-> -		 * A request for the page we wish to update
-> -		 */
-> -		spin_lock(&inode->i_lock);
->  		req = nfs_page_find_request_locked(page);
-> -		if (req) {
-> -			if (!nfs_set_page_tag_locked(req)) {
-> -				int error;
-> -
-> -				spin_unlock(&inode->i_lock);
-> -				error = nfs_wait_on_request(req);
-> -				nfs_release_request(req);
-> -				if (error < 0) {
-> -					if (new) {
-> -						radix_tree_preload_end();
-> -						nfs_release_request(new);
-> -					}
-> -					return ERR_PTR(error);
-> -				}
-> -				continue;
-> -			}
-> -			spin_unlock(&inode->i_lock);
-> -			if (new) {
-> -				radix_tree_preload_end();
-> -				nfs_release_request(new);
-> -			}
-> -			break;
-> -		}
-> +		if (req == NULL)
-> +			goto out_unlock;
->  
-> -		if (new) {
-> -			nfs_lock_request_dontget(new);
-> -			nfs_inode_add_request(inode, new);
-> -			spin_unlock(&inode->i_lock);
-> -			radix_tree_preload_end();
-> -			req = new;
-> -			goto out;
-> -		}
-> -		spin_unlock(&inode->i_lock);
-> +		rqend = req->wb_offset + req->wb_bytes;
-> +		/*
-> +		 * Tell the caller to flush out the request if
-> +		 * the offsets are non-contiguous.
-> +		 */
-> +		if (!nfs_dirty_request(req)
-> +		    || offset > rqend
-> +		    || end < req->wb_offset)
-> +			goto out_flushme;
-
-I asked about this in my previous comments.  The removal of the context 
-check here deserves some explication in the patch description, IMO.  It 
-would need nothing more than copying your reply to my question into the 
-patch description.
-
->  
-> -		new = nfs_create_request(ctx, inode, page, offset, bytes);
-> -		if (IS_ERR(new))
-> -			return new;
-> -		if (radix_tree_preload(GFP_NOFS)) {
-> -			nfs_release_request(new);
-> -			return ERR_PTR(-ENOMEM);
-> -		}
-> -	}
-> +		if (nfs_set_page_tag_locked(req))
-> +			break;
->  
-> -	/* We have a request for our page.
-> -	 * If the creds don't match, or the
-> -	 * page addresses don't match,
-> -	 * tell the caller to wait on the conflicting
-> -	 * request.
-> -	 */
-> -	rqend = req->wb_offset + req->wb_bytes;
-> -	if (req->wb_context != ctx
-> -	    || req->wb_page != page
-> -	    || !nfs_dirty_request(req)
-> -	    || offset > rqend || end < req->wb_offset) {
-> -		nfs_clear_page_tag_locked(req);
-> -		return ERR_PTR(-EBUSY);
-> +		/* The request is locked, so wait and then retry */
-> +		spin_unlock(&inode->i_lock);
-> +		error = nfs_wait_on_request(req);
-> +		nfs_release_request(req);
-> +		if (error != 0)
-> +			goto out_err;
-> +		spin_lock(&inode->i_lock);
->  	}
->  
->  	/* Okay, the request matches. Update the region */
->  	if (offset < req->wb_offset) {
->  		req->wb_offset = offset;
->  		req->wb_pgbase = offset;
-> -		req->wb_bytes = max(end, rqend) - req->wb_offset;
-> -		goto out;
->  	}
-> -
->  	if (end > rqend)
->  		req->wb_bytes = end - req->wb_offset;
-> +	else
-> +		req->wb_bytes = rqend - req->wb_offset;
-> +out_unlock:
-> +	spin_unlock(&inode->i_lock);
-> +	return req;
-> +out_flushme:
-> +	spin_unlock(&inode->i_lock);
-> +	nfs_release_request(req);
-> +	error = nfs_wb_page(inode, page);
-> +out_err:
-> +	return ERR_PTR(error);
-> +}
-> +
-> +/*
-> + * Try to update an existing write request, or create one if there is none.
-> + *
-> + * Note: Should always be called with the Page Lock held to prevent races
-> + * if we have to add a new request. Also assumes that the caller has
-> + * already called nfs_flush_incompatible() if necessary.
-> + */
-> +static struct nfs_page * nfs_setup_write_request(struct nfs_open_context* ctx,
-> +		struct page *page, unsigned int offset, unsigned int bytes)
-> +{
-> +	struct inode *inode = page->mapping->host;
-> +	struct nfs_page	*req;
->  
-> +	req = nfs_try_to_update_request(inode, page, offset, bytes);
-> +	if (req != NULL)
-> +		goto out;
-> +	req = nfs_create_request(ctx, inode, page, offset, bytes);
-> +	if (IS_ERR(req))
-> +		goto out;
-> +	if (radix_tree_preload(GFP_NOFS)) {
-> +		nfs_release_request(req);
-> +		return ERR_PTR(-ENOMEM);
-> +	}
-> +	nfs_inode_add_request(inode, req);
-> +	radix_tree_preload_end();
-
-Nit: You might gain additional code clarity here by moving these 
-radix_tree operations into nfs_inode_add_request().  It appears that 
-nfs_setup_write_request() is the only caller of nfs_inode_add_request().
-
->  out:
->  	return req;
->  }
->  
-> +static int nfs_writepage_setup(struct nfs_open_context *ctx, struct page *page,
-> +		unsigned int offset, unsigned int count)
-> +{
-> +	struct nfs_page	*req;
-> +
-> +	req = nfs_setup_write_request(ctx, page, offset, count);
-> +	if (IS_ERR(req))
-> +		return PTR_ERR(req);
-> +	/* Update file length */
-> +	nfs_grow_file(page, offset, count);
-> +	nfs_mark_uptodate(page, req->wb_pgbase, req->wb_bytes);
-> +	nfs_clear_page_tag_locked(req);
-> +	return 0;
-> +}
-> +
->  int nfs_flush_incompatible(struct file *file, struct page *page)
->  {
->  	struct nfs_open_context *ctx = nfs_file_open_context(file);
-> 
-
---------------020308090000060707050209
-Content-Type: text/x-vcard; charset=utf-8;
- name="chuck_lever.vcf"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="chuck_lever.vcf"
-
-begin:vcard
-fn:Chuck Lever
-n:Lever;Chuck
-org:Oracle Corporation;Corporate Architecture: Linux Projects Group
-adr:;;1015 Granger Avenue;Ann Arbor;MI;48104;USA
-title:Principal Member of Staff
-tel;work:+1 248 614 5091
-x-mozilla-html:FALSE
-version:2.1
-end:vcard
-
-
---------------020308090000060707050209--
+> I remind the log message (it still happens on -rc5):
+> Machine hangs for few seconds.
+> I can caught such thing during the first hour of running.
+>
+>  [ INFO: possible circular locking dependency detected ]
+>  2.6.26-rc5-00084-g39b945a #3
+>  -------------------------------------------------------
+>  nfsd/3457 is trying to acquire lock:
+>  (iprune_mutex){--..}, at: [<c016fb6c>] shrink_icache_memory+0x38/0x19b
+>
+>  but task is already holding lock:
+>  (&(&ip->i_iolock)->mr_lock){----}, at: [<c021108f>] xfs_ilock+0xa2/0xd6
+>
+>  which lock already depends on the new lock.
+>
+>
+>  the existing dependency chain (in reverse order) is:
+>
+>  -> #1 (&(&ip->i_iolock)->mr_lock){----}:
+>        [<c0135416>] __lock_acquire+0xa0c/0xbc6
+>        [<c013563a>] lock_acquire+0x6a/0x86
+>        [<c012c4f2>] down_write_nested+0x33/0x6a
+>        [<c0211068>] xfs_ilock+0x7b/0xd6
+>        [<c02111e1>] xfs_ireclaim+0x1d/0x59
+>        [<c022f342>] xfs_finish_reclaim+0x173/0x195
+>        [<c0231496>] xfs_reclaim+0xb3/0x138
+>        [<c023ba0f>] xfs_fs_clear_inode+0x55/0x8e
+>        [<c016f830>] clear_inode+0x83/0xd2
+>        [<c016faaf>] dispose_list+0x3c/0xc1
+>        [<c016fca7>] shrink_icache_memory+0x173/0x19b
+>        [<c014a7fa>] shrink_slab+0xda/0x153
+>        [<c014aa53>] try_to_free_pages+0x1e0/0x2a1
+>        [<c0146ad7>] __alloc_pages_internal+0x23f/0x3a7
+>        [<c0146c56>] __alloc_pages+0xa/0xc
+>        [<c015b8c2>] __slab_alloc+0x1c7/0x513
+>        [<c015beef>] kmem_cache_alloc+0x45/0xb3
+>        [<c01a5afe>] reiserfs_alloc_inode+0x12/0x23
+>        [<c016f308>] alloc_inode+0x14/0x1a9
+>        [<c016f5ed>] iget5_locked+0x47/0x133
+>        [<c019dffd>] reiserfs_iget+0x29/0x7d
+>        [<c019b655>] reiserfs_lookup+0xb1/0xee
+>        [<c01657c2>] do_lookup+0xa9/0x146
+>        [<c0166deb>] __link_path_walk+0x734/0xb2f
+>        [<c016722f>] path_walk+0x49/0x96
+>        [<c01674e0>] do_path_lookup+0x12f/0x149
+>        [<c0167d08>] __user_walk_fd+0x2f/0x48
+>        [<c0162157>] vfs_lstat_fd+0x16/0x3d
+>        [<c01621e9>] vfs_lstat+0x11/0x13
+>        [<c01621ff>] sys_lstat64+0x14/0x28
+>        [<c0102bb9>] sysenter_past_esp+0x6a/0xb1
+>        [<ffffffff>] 0xffffffff
+>
+>  -> #0 (iprune_mutex){--..}:
+>        [<c0135333>] __lock_acquire+0x929/0xbc6
+>        [<c013563a>] lock_acquire+0x6a/0x86
+>        [<c037db3e>] mutex_lock_nested+0xba/0x232
+>        [<c016fb6c>] shrink_icache_memory+0x38/0x19b
+>        [<c014a7fa>] shrink_slab+0xda/0x153
+>        [<c014aa53>] try_to_free_pages+0x1e0/0x2a1
+>        [<c0146ad7>] __alloc_pages_internal+0x23f/0x3a7
+>        [<c0146c56>] __alloc_pages+0xa/0xc
+>        [<c01484f2>] __do_page_cache_readahead+0xaa/0x16a
+>        [<c01487ac>] ondemand_readahead+0x119/0x127
+>        [<c014880c>] page_cache_async_readahead+0x52/0x5d
+>        [<c0179410>] generic_file_splice_read+0x290/0x4a8
+>        [<c023a46a>] xfs_splice_read+0x4b/0x78
+>        [<c0237c78>] xfs_file_splice_read+0x24/0x29
+>        [<c0178712>] do_splice_to+0x45/0x63
+>        [<c017899e>] splice_direct_to_actor+0xc3/0x190
+>        [<c01ceddd>] nfsd_vfs_read+0x1ed/0x2d0
+>        [<c01cf24c>] nfsd_read+0x82/0x99
+>        [<c01d47b8>] nfsd3_proc_read+0xdf/0x12a
+>        [<c01cb907>] nfsd_dispatch+0xcf/0x19e
+>        [<c036356c>] svc_process+0x3b3/0x68b
+>        [<c01cbe35>] nfsd+0x168/0x26b
+>        [<c01037db>] kernel_thread_helper+0x7/0x10
+>        [<ffffffff>] 0xffffffff
+>
+>  other info that might help us debug this:
+>
+>  3 locks held by nfsd/3457:
+>  #0:  (hash_sem){..--}, at: [<c01d1a34>] exp_readlock+0xd/0xf
+>  #1:  (&(&ip->i_iolock)->mr_lock){----}, at: [<c021108f>] xfs_ilock+0xa2/0xd6
+>  #2:  (shrinker_rwsem){----}, at: [<c014a744>] shrink_slab+0x24/0x153
+>
+>  stack backtrace:
+>  Pid: 3457, comm: nfsd Not tainted 2.6.26-rc5-00084-g39b945a #3
+>  [<c01335c8>] print_circular_bug_tail+0x5a/0x65
+>  [<c0133ec9>] ? print_circular_bug_header+0xa8/0xb3
+>  [<c0135333>] __lock_acquire+0x929/0xbc6
+>  [<c013563a>] lock_acquire+0x6a/0x86
+>  [<c016fb6c>] ? shrink_icache_memory+0x38/0x19b
+>  [<c037db3e>] mutex_lock_nested+0xba/0x232
+>  [<c016fb6c>] ? shrink_icache_memory+0x38/0x19b
+>  [<c016fb6c>] ? shrink_icache_memory+0x38/0x19b
+>  [<c016fb6c>] shrink_icache_memory+0x38/0x19b
+>  [<c014a7fa>] shrink_slab+0xda/0x153
+>  [<c014aa53>] try_to_free_pages+0x1e0/0x2a1
+>  [<c0149993>] ? isolate_pages_global+0x0/0x3e
+>  [<c0146ad7>] __alloc_pages_internal+0x23f/0x3a7
+>  [<c0146c56>] __alloc_pages+0xa/0xc
+>  [<c01484f2>] __do_page_cache_readahead+0xaa/0x16a
+>  [<c01487ac>] ondemand_readahead+0x119/0x127
+>  [<c014880c>] page_cache_async_readahead+0x52/0x5d
+>  [<c0179410>] generic_file_splice_read+0x290/0x4a8
+>  [<c037f425>] ? _spin_unlock+0x27/0x3c
+>  [<c025140d>] ? _atomic_dec_and_lock+0x25/0x30
+>  [<c01355b4>] ? __lock_acquire+0xbaa/0xbc6
+>  [<c01787d5>] ? spd_release_page+0x0/0xf
+>  [<c023a46a>] xfs_splice_read+0x4b/0x78
+>  [<c0237c78>] xfs_file_splice_read+0x24/0x29
+>  [<c0178712>] do_splice_to+0x45/0x63
+>  [<c017899e>] splice_direct_to_actor+0xc3/0x190
+>  [<c01ceec0>] ? nfsd_direct_splice_actor+0x0/0xf
+>  [<c01ceddd>] nfsd_vfs_read+0x1ed/0x2d0
+>  [<c01cf24c>] nfsd_read+0x82/0x99
+>  [<c01d47b8>] nfsd3_proc_read+0xdf/0x12a
+>  [<c01cb907>] nfsd_dispatch+0xcf/0x19e
+>  [<c036356c>] svc_process+0x3b3/0x68b
+>  [<c01cbe35>] nfsd+0x168/0x26b
+>  [<c01cbccd>] ? nfsd+0x0/0x26b
+>  [<c01037db>] kernel_thread_helper+0x7/0x10
+>  =======================
