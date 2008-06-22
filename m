@@ -1,83 +1,63 @@
-From: "Phil Endecott" <phil_bnaqb_endecott-wZDNlLIRyE5g9hUCZPvPmw@public.gmane.org>
-Subject: Re: Propagation of changes in shared mmap()ed NFS files
-Date: Sun, 22 Jun 2008 13:09:44 +0100
-Message-ID: <1214136584741@dmwebmail.dmwebmail.chezphil.org>
-References: <1214086372.7493.9.camel@localhost>
+From: Mel Gorman <mel-wPRd99KPJ+uzQB+pC5nmwQ@public.gmane.org>
+Subject: Re: 2.6.26-rc: nfsd hangs for a few sec
+Date: Sun, 22 Jun 2008 18:07:05 +0100
+Message-ID: <20080622170704.GB625@csn.ul.ie>
+References: <a4423d670806210557k1e8fcee1le3526f62962799e@mail.gmail.com> <20080621224135.GD4692@csn.ul.ie> <Pine.LNX.4.64.0806211711470.18719@schroedinger.engr.sgi.com> <20080622013801.GE4692@csn.ul.ie> <Pine.LNX.4.64.0806212107510.18908@schroedinger.engr.sgi.com>
 Mime-Version: 1.0
-Content-Type: text/plain; format="flowed"
-Cc: <linux-nfs@vger.kernel.org>
-To: "Trond Myklebust" <trond.myklebust@fys.uio.no>
+Content-Type: text/plain; charset=iso-8859-15
+Cc: Alexander Beregalov <a.beregalov@gmail.com>,
+	kernel-testers@vger.kernel.org,
+	kernel list <linux-kernel@vger.kernel.org>, linux-mm@kvack.org,
+	Lee Schermerhorn <lee.schermerhorn@hp.com>,
+	KAMEZAWA Hiroyuki <kamezawa.hiroyu-+CUm20s59erQFUHtdCDX3A@public.gmane.org>,
+	Hugh Dickins <hugh-DTz5qymZ9yRBDgjK7y7TUQ@public.gmane.org>,
+	Nick Piggin <nickpiggin-/E1597aS9LT0CCvOHzKKcA@public.gmane.org>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	bfields@fieldses.org, neilb@suse.de, linux-nfs@vger.kernel.org
+To: Christoph Lameter <clameter@sgi.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from japan.chezphil.org ([77.240.5.4]:3942 "EHLO japan.chezphil.org"
+Received: from gir.skynet.ie ([193.1.99.77]:41302 "EHLO gir.skynet.ie"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751637AbYFVMJs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 22 Jun 2008 08:09:48 -0400
-Received: from localhost ([127.0.0.1] helo=chezphil.org)
-	by japan.chezphil.org with esmtp (Exim 4.69)
-	(envelope-from <phil_bnaqb_endecott-wZDNlLIRyE5g9hUCZPvPmw@public.gmane.org>)
-	id 1KAOOA-0000LP-RI
-	for linux-nfs@vger.kernel.org; Sun, 22 Jun 2008 13:09:46 +0100
-In-Reply-To: <1214086372.7493.9.camel@localhost>
+	id S1751975AbYFVRHK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 22 Jun 2008 13:07:10 -0400
+In-Reply-To: <Pine.LNX.4.64.0806212107510.18908-RYO/mD75kfhx2SFC9UQUAuF7EQX82lMiAL8bYrjMMd8@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Trond Myklebust wrote:
->> > On Sat, 2008-06-21 at 20:05 +0100, Phil Endecott wrote:
->> >> Dear Experts,
->> >> 
->> >> I have a program which uses an mmap()ed read-mostly data file.  When 
->> >> not using NFS, each instance of the program can use inotify to detect 
->> >> when other instances have made changes to the data file.  Since inotify 
->> >> doesn't work with NFS, I have now implemented a scheme using network 
->> >> broadcasts to announce changes.  At present it works like this:
->> >> 
->> >> All instances of the program mmap(MAP_SHARED) the data file.
->> >> 
->> >> One instance stores some new data at the end of the file and calls 
->> >> msync(MS_SYNC) on the affected pages.  It then "atomically commits" the 
->> >> new data by write()ing a new header at the start of the file with an 
->> >> "end of data" field advanced to include the new data.  It then calls 
->> >> fdatasync().  Then it transmits a broadcast packet.
->> >> 
->> >> The other instance(s) of the program receive the broadcast packet and 
->> >> read() the header at the start of the file.  My hope was that they 
->> >> would see the new value, but they don't; they continue to see the old value.
+On (21/06/08 21:13), Christoph Lameter didst pronounce:
+> On Sun, 22 Jun 2008, Mel Gorman wrote:
+> 
+> > > Before the change we walk all zones of the zonelist.
+> > > 
+> > 
+> > Yeah, but the zonelist is for GFP_KERNEL so it should not include the HIGHMEM
+> > zones, right? The key change is that after the patch there are fewer zonelists
+> > than get filtered.
+> 
+> But the HIGHMEM zones etc were included before. There was no check for 
+> HIGHMEM etc there. The gfpmask was ignored.
+>  
 
-> You shouldn't use mmap() to read data in this situation. mmap() is
-> designed for cases where the authoritative copy of the data can be kept
-> in local memory.
-> In your situation, the authoritative copy is always on disk (or the NFS
-> server), and so the correct paradigm is to use O_DIRECT read() and
-> write() or to use POSIX file locking. The latter allows the NFS clients
-> to do the read()/write() synchronisation for you, whereas the former
-> assumes that you are doing some other form of locking to ensure
-> synchronisation between readers and writers.
+Well, the mask is not totally ignored, it's part of the scan_control and
+used later when deciding what can and can't be done as part of reclaim.
+However, you are right in that it is apparently ignored for zone
+selection.
 
-Hmmm.  OK.   But mmap(MAP_SHARED) does exactly what I want in the more 
-common case where the files are not on NFS; I can have multiple 
-instances of the program and only one RAM copy of the data is needed, 
-and changes made by one instance are immediately visible to the 
-others.  The problem is that the NFS implementation of mmap(MAP_SHARED) 
-doesn't match the behaviour of the non-NFS version.
+However, try_to_free_pages() received a struct zone **zones which was
+a zonelist which is a zonelist->zones selected based on the gfp_mask in
+__alloc_pages. By the time shrink_zones() is called, it can ignore the
+mask because only relevant zones are in there. For GFP_KERNEL, that would
+exclude HIGHMEM.
 
-It looks to me as if the writer does the right thing: after it modifies 
-pages they are written back to the server when I call msync().  But, 
-IIUC, the server has no way to inform the other clients that those 
-pages are modified.  Instead, the clients will revalidate with the 
-server after some timeout; this revalidation is not per-page but 
-per-file, so the server will tell them that the whole file has changed 
-and the clients will invalidate all of their pages.  Is this true?
-
-So: is there anything that I can do on the client to say:
-
-- "even though the timeout hasn't expired, invalidate these cached 
-pages now"?
-- "even though the timeout has expired, and the server says that the 
-file has changed, keep using your cached copies of these pages"?
+> > I think the effect of that patch is that zones get shrunk that have
+> > nothing to do with the requestors requirements. Right?
+> 
+> Right. AFAICT That was the behavior before the change.
+> 
 
 
-Phil.
-
-
-
-
+-- 
+Mel Gorman
+Part-time Phd Student                          Linux Technology Center
+University of Limerick                         IBM Dublin Software Lab
