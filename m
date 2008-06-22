@@ -1,95 +1,83 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: NFS performance degradation of local loopback FS.
-Date: Sun, 22 Jun 2008 11:35:33 +0300
-Message-ID: <485E0ED5.7030501@panasas.com>
-References: <OF9EA6D38A.FDD1F48D-ON6525746E.002D25B8-6525746E.003360EB@in.ibm.com>
+From: "Phil Endecott" <phil_bnaqb_endecott-wZDNlLIRyE5g9hUCZPvPmw@public.gmane.org>
+Subject: Re: Propagation of changes in shared mmap()ed NFS files
+Date: Sun, 22 Jun 2008 13:09:44 +0100
+Message-ID: <1214136584741@dmwebmail.dmwebmail.chezphil.org>
+References: <1214086372.7493.9.camel@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: linux-nfs@vger.kernel.org, Peter Staubach <staubach@redhat.com>
-To: Krishna Kumar2 <krkumar2@in.ibm.com>
+Content-Type: text/plain; format="flowed"
+Cc: <linux-nfs@vger.kernel.org>
+To: "Trond Myklebust" <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from wx-out-0506.google.com ([66.249.82.239]:42179 "EHLO
-	wx-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751037AbYFVIfj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 Jun 2008 04:35:39 -0400
-Received: by wx-out-0506.google.com with SMTP id h29so577970wxd.4
-        for <linux-nfs@vger.kernel.org>; Sun, 22 Jun 2008 01:35:38 -0700 (PDT)
-In-Reply-To: <OF9EA6D38A.FDD1F48D-ON6525746E.002D25B8-6525746E.003360EB@in.ibm.com>
+Received: from japan.chezphil.org ([77.240.5.4]:3942 "EHLO japan.chezphil.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751637AbYFVMJs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 22 Jun 2008 08:09:48 -0400
+Received: from localhost ([127.0.0.1] helo=chezphil.org)
+	by japan.chezphil.org with esmtp (Exim 4.69)
+	(envelope-from <phil_bnaqb_endecott-wZDNlLIRyE5g9hUCZPvPmw@public.gmane.org>)
+	id 1KAOOA-0000LP-RI
+	for linux-nfs@vger.kernel.org; Sun, 22 Jun 2008 13:09:46 +0100
+In-Reply-To: <1214086372.7493.9.camel@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Jun. 20, 2008, 12:21 +0300, Krishna Kumar2 <krkumar2@in.ibm.com> wrote:
-> Benny Halevy <bhalevy@panasas.com> wrote on 06/19/2008 06:22:42 PM:
-> 
->>> Well, you aren't exactly comparing apples to apples.  The NFS
->>> client does close-to-open semantics, meaning that it writes
->>> all modified data to the server on close.  The dd commands run
->>> on the local file system do not.  You might trying using
->>> something which does an fsync before closing so that you are
->>> making a closer comparison.
->> try dd conv=fsync ...
-> 
-> I ran a single 'dd' with this option on /local and later on /nfs (same
-> filesystem nfs mounted on the same system). The script is umounting and
-> mounting local and nfs partitions between each 'dd'. Following are the
-> file sizes for 20 and 60 second runs respectively:
+Trond Myklebust wrote:
+>> > On Sat, 2008-06-21 at 20:05 +0100, Phil Endecott wrote:
+>> >> Dear Experts,
+>> >> 
+>> >> I have a program which uses an mmap()ed read-mostly data file.  When 
+>> >> not using NFS, each instance of the program can use inotify to detect 
+>> >> when other instances have made changes to the data file.  Since inotify 
+>> >> doesn't work with NFS, I have now implemented a scheme using network 
+>> >> broadcasts to announce changes.  At present it works like this:
+>> >> 
+>> >> All instances of the program mmap(MAP_SHARED) the data file.
+>> >> 
+>> >> One instance stores some new data at the end of the file and calls 
+>> >> msync(MS_SYNC) on the affected pages.  It then "atomically commits" the 
+>> >> new data by write()ing a new header at the start of the file with an 
+>> >> "end of data" field advanced to include the new data.  It then calls 
+>> >> fdatasync().  Then it transmits a broadcast packet.
+>> >> 
+>> >> The other instance(s) of the program receive the broadcast packet and 
+>> >> read() the header at the start of the file.  My hope was that they 
+>> >> would see the new value, but they don't; they continue to see the old value.
 
-According to dd's man page, the f{,date}sync options tell it to
-"physically write output file data before finishing"
-If you kill it before that you end up with dirty data in the cache.
-What exactly are you trying to measure, what is the expected application
-workload?
+> You shouldn't use mmap() to read data in this situation. mmap() is
+> designed for cases where the authoritative copy of the data can be kept
+> in local memory.
+> In your situation, the authoritative copy is always on disk (or the NFS
+> server), and so the correct paradigm is to use O_DIRECT read() and
+> write() or to use POSIX file locking. The latter allows the NFS clients
+> to do the read()/write() synchronisation for you, whereas the former
+> assumes that you are doing some other form of locking to ensure
+> synchronisation between readers and writers.
 
->       -rw-r--r-- 1 root root 1558056960 Jun 20 14:41 local.1
->       -rw-r--r-- 1 root root  671834112 Jun 20 14:41 nfs.1     (56% drop)
->                         &
->       -rw-r--r-- 1 root root 3845812224 Jun 20 14:42 local.1
->       -rw-r--r-- 1 root root 2420342784 Jun 20 14:43 nfs.1     (37% drop)
-> 
-> Since I am new to NFS, I am not sure if this much degradation is expected,
-> or whether I need to tune something. Is there some code I can look at or
-> hack into to find possible locations for the performance fall? At this time
-> I cannot even tell whether the *possible* bug is in server or client code.
+Hmmm.  OK.   But mmap(MAP_SHARED) does exactly what I want in the more 
+common case where the files are not on NFS; I can have multiple 
+instances of the program and only one RAM copy of the data is needed, 
+and changes made by one instance are immediately visible to the 
+others.  The problem is that the NFS implementation of mmap(MAP_SHARED) 
+doesn't match the behaviour of the non-NFS version.
 
-I'm not sure if there's a any bug per-se at all although there seems to be
-some room for improvement.
+It looks to me as if the writer does the right thing: after it modifies 
+pages they are written back to the server when I call msync().  But, 
+IIUC, the server has no way to inform the other clients that those 
+pages are modified.  Instead, the clients will revalidate with the 
+server after some timeout; this revalidation is not per-page but 
+per-file, so the server will tell them that the whole file has changed 
+and the clients will invalidate all of their pages.  Is this true?
 
-As another data point, I'm seeing about 20% worse write throughput on my
-system with a single dd writing local file system vs. writing to the same fs
-over a loopback mounted nfs with a 2.6.26-rc6 based kernel (nfs 3 and 4 gave
-similar results).
-Disk:
-ata3: SATA link up 1.5 Gbps (SStatus 113 SControl 300)
-ata3.00: ATA-7: HDT722516DLA380, V43OA96A, max UDMA/133
-ata3.00: 321672960 sectors, multi 16: LBA48 NCQ (depth 31/32)
-ata3.00: configured for UDMA/133
+So: is there anything that I can do on the client to say:
 
-ext3 mount options: noatime
-nfs mount options: rsize=65536,wsize=65536
-dd options: bs=64k count=10k conv=fsync
+- "even though the timeout hasn't expired, invalidate these cached 
+pages now"?
+- "even though the timeout has expired, and the server says that the 
+file has changed, keep using your cached copies of these pages"?
 
-(write results average of 3 runs)
-write local disk:     47.6 MB/s
-write loopback nfsv3: 30.2 MB/s
-write remote nfsv3:   29.0 MB/s
-write loopback nfsv4: 37.5 MB/s
-write remote nfsv4:   29.1 MB/s
 
-read local disk:      50.8 MB/s
-read loopback nfsv3:  27.2 MB/s
-read remote nfsv3:    21.8 MB/s
-read loopback nfsv4:  25.4 MB/s
-read remote nfsv4:    21.4 MB/s
+Phil.
 
-Benny
 
-> 
-> Thanks,
-> 
-> - KK
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
 
