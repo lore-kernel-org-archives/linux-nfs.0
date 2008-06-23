@@ -1,122 +1,75 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH - take 2] knfsd: nfsd: Handle ERESTARTSYS from syscalls.
-Date: Sun, 22 Jun 2008 20:52:44 -0400
-Message-ID: <20080622205244.261a787d@tleilax.poochiereds.net>
-References: <20080619101025.24263.patches@notabene>
-	<1080619001109.24338@suse.de>
-	<20080618210947.2110a541@tleilax.poochiereds.net>
-	<18521.50300.572838.123366@notabene.brown>
-	<20080619063824.00ca6381@tleilax.poochiereds.net>
-	<18526.60523.584503.68076@notabene.brown>
+From: Krishna Kumar2 <krkumar2@in.ibm.com>
+Subject: Re: NFS performance degradation of local loopback FS.
+Date: Mon, 23 Jun 2008 13:41:06 +0530
+Message-ID: <OF5D1728DA.B4C6E2E0-ON65257471.0027ACA3-65257471.002CF647@in.ibm.com>
+References: <485E0ED5.7030501@panasas.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Neil Brown <neilb@suse.de>
+Cc: Benny Halevy <bhalevy.lists@gmail.com>, linux-nfs@vger.kernel.org,
+	Peter Staubach <staubach@redhat.com>
+To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:54594 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751531AbYFWAwz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 22 Jun 2008 20:52:55 -0400
-In-Reply-To: <18526.60523.584503.68076-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
+Received: from e28smtp07.in.ibm.com ([59.145.155.7]:56797 "EHLO
+	e28esmtp07.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753189AbYFWIME (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jun 2008 04:12:04 -0400
+Received: from d28relay04.in.ibm.com (d28relay04.in.ibm.com [9.184.220.61])
+	by e28esmtp07.in.ibm.com (8.13.1/8.13.1) with ESMTP id m5N8BWUI012642
+	for <linux-nfs@vger.kernel.org>; Mon, 23 Jun 2008 13:41:32 +0530
+Received: from d28av05.in.ibm.com (d28av05.in.ibm.com [9.184.220.67])
+	by d28relay04.in.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m5N8BDpc1355940
+	for <linux-nfs@vger.kernel.org>; Mon, 23 Jun 2008 13:41:13 +0530
+Received: from d28av05.in.ibm.com (loopback [127.0.0.1])
+	by d28av05.in.ibm.com (8.13.1/8.13.3) with ESMTP id m5N8BVTW027567
+	for <linux-nfs@vger.kernel.org>; Mon, 23 Jun 2008 13:41:32 +0530
+In-Reply-To: <485E0ED5.7030501@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 23 Jun 2008 10:20:59 +1000
-Neil Brown <neilb@suse.de> wrote:
+Hi Benny,
 
-> On Thursday June 19, jlayton@redhat.com wrote:
-> > > 
-> > > I wonder why we have all this mucking about this signal masks anyway.
-> > > Anyone have any ideas about what it actually achieves?
-> > > 
-> > 
-> > HCH asked me the same question when I did the conversion to kthreads.
-> > My interpretation (based on guesswork here) was that we wanted to
-> > distinguish between SIGKILL and other allowed signals. A SIGKILL is
-> > allowed to interrupt the underlying I/O, but other signals should not.
-> 
-> Yes, that seems to be the intent of the code, but does it really make
-> any sense?
+> According to dd's man page, the f{,date}sync options tell it to
+> "physically write output file data before finishing"
+> If you kill it before that you end up with dirty data in the cache.
+> What exactly are you trying to measure, what is the expected application
+> workload?
+
+I changed my test to do what you were doing instead of killing
+dd's, etc. The end application is DB2 and it is using multiple
+processes and I wanted to simulate that with micro-benchmarks.
+The only reliable way to benchmark bandwidth for multiple
+processes is to kill the tests after running them for some time
+instead of letting them run till conclusion.
+
+> ext3 mount options: noatime
+> nfs mount options: rsize=65536,wsize=65536
+> dd options: bs=64k count=10k conv=fsync
 >
-> Traditionally, filesystem IO is immune to signals so any signal
-> arriving while nfsd is doing filesystem IO is irrelevant.
-> I guess network IO can be interrupted, and nfsd is expected to write
-> to the network during this time when all-but-SIGKILL is ignored.  So
-> maybe the intent was to allow e.g. SIGINT to shut down cleanly, and
-> SIGKILL to kill more promptly even if the network was sluggish...
-> 
-> However I don't think we ever blocked on network write.  And currently
-> we try very hard to ensure that there is enough memory to hold a reply
-> before we start on a request, so it should definitely never block.
-> 
-> So until OCFS2 came along, the distinction seems to have been
-> meaningless, which is why I questioned it.
-> 
-> Even with OCFS2 I'm not sure it makes much sense.
-> 
-> Any time that we shut down NFSD, we really want it to shut down
-> promptly.  If SIGINT isn't certain to achieve that, we should just be
-> sending SIGKILL.
-> Conversely, if it does make sense to keep the two signals, we should
-> be educating init.d scripts to make use of them. e.g.
-> 
->   killall -2 nfsd
->   sleep 0.1
->   if [ `cat /proc/fs/nfsd/threads` -gt 0 ]
->   then sleep 5
->        killall -9 nfsd
->   fi
-> 
-> or something more clever.
-> 
-> I think my leaning is just to remove the distinction.  About the worst
-> that can happen if the filesystem decides to respond to the signal is
-> that you get a short write or a short read, both of which should be
-> correctly handled by the client.
-> 
+> (write results average of 3 runs)
+> write local disk:     47.6 MB/s
+> write loopback nfsv3: 30.2 MB/s
+> write remote nfsv3:   29.0 MB/s
+> write loopback nfsv4: 37.5 MB/s
+> write remote nfsv4:   29.1 MB/s
+>
+> read local disk:      50.8 MB/s
+> read loopback nfsv3:  27.2 MB/s
+> read remote nfsv3:    21.8 MB/s
+> read loopback nfsv4:  25.4 MB/s
+> read remote nfsv4:    21.4 MB/s
 
-Good points all around. If the sigmask juggling makes no sense, then
-I'm OK with removing it. I'd prefer that we simplify the code rather
-than trying to get clever with init scripts anyway...
+I used the exact same options you are using, and here is the results
+averaged across 3 runs:
 
-The fact that SuSE (and possibly others) have used SIGKILL to take down
-nfsd probably means that removing it is a non-issue (modulo the OCFS
-issue your patch fixes).
+Write local disk      58.5 MB/s
+Write loopback nfsv3: 29.42 MB/s (50% drop)
 
-> 
-> This brings up an interesting issue for your kthread conversion.
-> The new code uses kthread_stop instead of sending a signal.  That
-> means it will block until the threads have completed a request and
-> exited.
-> If some thread is in a filesystem that is waiting on network IO and
-> expects to get a signal if it needs to stop in a hurry, then the
-> shutdown could block for a long time.  That might not be what we
-> want.
-> 
-> Particularly as if we are blocked in kthread_stop, then no-one else can
-> do a kthread stop....
-> 
-> I think there are issues here that don't yet have obvious answers.
-> Other opinions most welcome.
-> 
+Reading (file created from /dev/urandom, somehow I am getting in GB/sec
+            while your results were comparable to write's):
+      Read local disk:      2.77 GB/s
+      Read loopback nfsv3:  2.86 GB/s (higher for some reason)
 
-The latest patch doesn't use kthread_stop with nfsd. I figured it was
-best to avoid having multiple takedown methods, and since we're using
-signals here anyway, I just kept signaling as the only way to take down
-nfsd. Plus, as you mention -- all kthread_stop's are serialized, which
-could have meant that nfsd's would take a long time to come down on a
-busy box with a lot of them.
+Thanks,
 
-As a side note, I'm not terribly thrilled with how kthread_stop is
-implemented. I worry that a stuck kthread would block unrelated
-kthreads from coming down. I did a patch 6 mos ago or so to make it so
-that kthread_stop's could be done in parallel. The downside was that it
-added a new field to the task_struct (which is already too bloated,
-IMO). It might be worth resurrecting that at some point (possibly
-making the new field a union with another field that's unused in
-kthreads), or considering a different approach to parallelize
-kthread_stop.
+- KK
 
--- 
-Jeff Layton <jlayton@redhat.com>
