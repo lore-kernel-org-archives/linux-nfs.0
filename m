@@ -1,113 +1,159 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [NFS] NFS performance debuggins
-Date: Mon, 23 Jun 2008 11:15:20 -0400
-Message-ID: <1214234120.7205.14.camel@localhost>
-References: <200806231659.58158@fortytwo.ch>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 2/4] NFS: Support raw IPv6 address hostnames during NFS mount
+	operation
+Date: Mon, 23 Jun 2008 12:36:45 -0400
+Message-ID: <20080623163644.10539.80258.stgit@ellison.1015granger.net>
+References: <20080623163129.10539.15565.stgit@ellison.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Adrian von Bidder <avbidder-xzBkAS4TQxQfv37vnLkPlQ@public.gmane.org>
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org
+To: trond.myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:51183 "EHLO neil.brown.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755507AbYFWPPv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 23 Jun 2008 11:15:51 -0400
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1KAnlk-0000r2-JF
-	for linux-nfs@vger.kernel.org; Tue, 24 Jun 2008 01:15:48 +1000
-In-Reply-To: <200806231659.58158-xzBkAS4TQxQfv37vnLkPlQ@public.gmane.org>
+Received: from agminet01.oracle.com ([141.146.126.228]:47384 "EHLO
+	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754902AbYFWQhN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jun 2008 12:37:13 -0400
+In-Reply-To: <20080623163129.10539.15565.stgit-ewv44WTpT0t9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2008-06-23 at 16:59 +0200, Adrian von Bidder wrote:
-> Hi,
-> 
-> Environment:
-> 
-> several Debian based clients (Debian etch and etchnhalf kernels, this means 
-> 2.6.18 or 2.6.24); Debian etch (2.6.18 kernel) NFS (v3) server.  Network 
-> seems basically ok ("ping -f -s 3000" works without losses, ifconfig and 
-> switch monitoring shows no errors) with no noticeable load.  Disks seem to 
-> have very little load either, NFS server has no other tasks.
-> 
-> Performance is sluggish :-(  Basically works, though -- no spurious errors.
-> 
-> tcpdump shows many "reply ERR 1448" etc. msgs whenever NFS activitiy is 
-> going on (both stat like with "find /home" or read/write with dd)
-> 
-> +++
-> 16:49:24.778560 IP 10.0.1.2.2049 > 10.0.0.209.809066834: reply ERR 1448
-> 16:49:24.790304 IP 10.0.1.2.2049 > 10.0.0.209.943279929: reply ERR 1448
-> 16:49:24.801380 IP 10.0.1.2.2049 > 10.0.0.209.2001885801: reply ERR 1448
-> 16:49:24.802173 IP 10.0.1.2.2049 > 10.0.0.209.860835666: reply ERR 1448
-> 16:49:24.805286 IP 10.0.1.2.2049 > 10.0.0.209.1479697199: reply ERR 1332
-> 16:49:24.807679 IP 10.0.1.2.2049 > 10.0.0.209.1096249460: reply ERR 1448
-> 16:49:24.808358 IP 10.0.1.2.2049 > 10.0.0.209.2000902760: reply ERR 1332
-> 16:49:24.809097 IP 10.0.1.2.2049 > 10.0.0.209.926298420: reply ERR 1448
-> 16:49:24.809100 IP 10.0.1.2.2049 > 10.0.0.209.25105411: reply ERR 1332
-> 16:49:24.817923 IP 10.0.1.2.2049 > 10.0.0.209.1366504235: reply ERR 1448
-> 16:49:24.817927 IP 10.0.1.2.2049 > 10.0.0.209.352525071: reply ERR 1332
-> 16:49:24.820397 IP 10.0.1.2.2049 > 10.0.0.209.269848846: reply ERR 1332
-> 16:49:24.822097 IP 10.0.1.2.2049 > 10.0.0.209.1345540144: reply ERR 1448
-> 16:49:24.822856 IP 10.0.1.2.2049 > 10.0.0.209.944780599: reply ERR 1448
-> 16:49:24.825109 IP 10.0.1.2.2049 > 10.0.0.209.1395668559: reply ERR 1448
-> 16:49:24.825112 IP 10.0.1.2.2049 > 10.0.0.209.1999335795: reply ERR 1332
-> 16:49:24.827813 IP 10.0.1.2.2049 > 10.0.0.209.1685677906: reply ERR 1332
-> 16:49:24.829439 IP 10.0.1.2.2049 > 10.0.0.209.1666084982: reply ERR 1448
-> 16:49:24.829443 IP 10.0.1.2.2049 > 10.0.0.209.1415656037: reply ERR 1332
-> 16:49:24.839013 IP 10.0.1.2.2049 > 10.0.0.209.911226680: reply ERR 1448
-> 16:49:24.839017 IP 10.0.1.2.2049 > 10.0.0.209.1735414852: reply ERR 1332
-> 16:49:24.841325 IP 10.0.1.2.2049 > 10.0.0.209.911358287: reply ERR 1332
-> 16:49:24.842092 IP 10.0.1.2.2049 > 10.0.0.209.1364284211: reply ERR 1448
-> 16:49:24.842800 IP 10.0.1.2.2049 > 10.0.0.209.258643250: reply ERR 1332
-> 16:49:24.844256 IP 10.0.1.2.2049 > 10.0.0.209.1666017882: reply ERR 1448
-> 16:49:24.844996 IP 10.0.1.2.2049 > 10.0.0.209.808595513: reply ERR 1448
-> 16:49:24.845674 IP 10.0.1.2.2049 > 10.0.0.209.2000779112: reply ERR 1448
-> 16:49:24.845677 IP 10.0.1.2.2049 > 10.0.0.209.1652175121: reply ERR 1332
-> 16:49:24.847120 IP 10.0.1.2.2049 > 10.0.0.209.944722769: reply ERR 1448
-> 16:49:24.847123 IP 10.0.1.2.2049 > 10.0.0.209.1682657874: reply ERR 1332
-> 16:49:24.849334 IP 10.0.1.2.2049 > 10.0.0.209.944714835: reply ERR 1448
-> 16:49:24.850873 IP 10.0.1.2.2049 > 10.0.0.209.1345861938: reply ERR 1448
-> 16:49:24.918710 IP 10.0.1.2.2049 > 10.0.0.179.1936680564: reply ERR 1448
-> 16:49:24.918719 IP 10.0.1.2.2049 > 10.0.0.179.1698508838: reply ERR 1448
-> 16:49:24.921911 IP 10.0.1.2.2049 > 10.0.0.179.1633904741: reply ERR 1448
-> +++
-> 
-> Mount options: "rw,noatime,rsize=8192,wsize=8192,intr,hard,addr=10.0.1.2", 
-> it seems to pick tcp by default.  I had problems with UDP from some of the 
-> clients due to a strangely buggy VDSL switch in the path, so I haven't 
-> tried that again (I want to keep the DSL clients and the non-DSL clients 
-> identical if this is at all possible, so I can switch equipment around 
-> without reconfiguration.)
-> 
-> That performance is not optimal whith todays desktop environments (tons of 
-> small configuration files in both oo.org and kde) at login/program start on 
-> cold caches is one thing, but performance
-> 
-> Now where do I start debugging this?
+Traditionally the mount command has looked for a ":" to separate the
+server's hostname from the export path in the mounted on device name,
+like this:
 
-In the above dump 1448 is _not_ the error code, but rather the packet
-length. You might therefore try using the tcpdump option '-vvv' to see
-if you can obtain the actual error value (which should tell you why the
-NFS server is rejecting your packets).
-Alternatively, you might consider using wireshark/tshark, which can
-display NFS packets in a much more readable fashion.
+	mount server:/export /mounted/on/dir
 
-Cheers
-  Trond
+The server's hostname is "server" and the export path is "/export".
+
+You can also substitute a specific IPv4 network address for the server
+hostname, like this:
+
+	mount 192.168.0.55:/export /mounted/on/dir
+
+Raw IPv6 addresses present a problem, however, because they look
+something like this:
+
+	fe80::200:5aff:fe00:30b
+
+Note the use of colons.
+
+To get around the presence of colons, copy the Solaris convention used for
+mounting IPv6 servers by address: wrap a raw IPv6 address with square
+brackets.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+ fs/nfs/super.c |   90 +++++++++++++++++++++++++++++++++++++++++++++++++++-----
+ 1 files changed, 82 insertions(+), 8 deletions(-)
 
 
--------------------------------------------------------------------------
-Check out the new SourceForge.net Marketplace.
-It's the best place to buy or sell services for
-just about anything Open Source.
-http://sourceforge.net/services/buy/index.php
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 5e0eefa..98c8110 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -1215,14 +1215,9 @@ static int nfs_try_mount(struct nfs_parsed_mount_data *args,
+ 	return status;
+ }
+ 
+-/*
+- * Split "dev_name" into "hostname:export_path".
+- *
+- * Note: caller frees hostname and export path, even on error.
+- */
+-static int nfs_parse_devname(const char *dev_name,
+-			     char **hostname, size_t maxnamlen,
+-			     char **export_path, size_t maxpathlen)
++static int nfs_parse_simple_hostname(const char *dev_name,
++				     char **hostname, size_t maxnamlen,
++				     char **export_path, size_t maxpathlen)
+ {
+ 	size_t len;
+ 	char *colon, *comma;
+@@ -1277,6 +1272,85 @@ out_path:
+ }
+ 
+ /*
++ * Hostname has square brackets around it because it contains one or
++ * more colons.  We look for the first closing square bracket, and a
++ * colon must follow it.
++ */
++static int nfs_parse_protected_hostname(const char *dev_name,
++					char **hostname, size_t maxnamlen,
++					char **export_path, size_t maxpathlen)
++{
++	size_t len;
++	char *start, *end;
++
++	start = (char *)(dev_name + 1);
++
++	end = strchr(start, ']');
++	if (end == NULL)
++		goto out_bad_devname;
++	if (*(end + 1) != ':')
++		goto out_bad_devname;
++
++	len = end - start;
++	if (len > maxnamlen)
++		goto out_hostname;
++
++	/* N.B. caller will free nfs_server.hostname in all cases */
++	*hostname = kstrndup(start, len, GFP_KERNEL);
++	if (*hostname == NULL)
++		goto out_nomem;
++
++	end += 2;
++	len = strlen(end);
++	if (len > maxpathlen)
++		goto out_path;
++	*export_path = kstrndup(end, len, GFP_KERNEL);
++	if (!*export_path)
++		goto out_nomem;
++
++	return 0;
++
++out_bad_devname:
++	dfprintk(MOUNT, "NFS: device name not in host:path format\n");
++	return -EINVAL;
++
++out_nomem:
++	dfprintk(MOUNT, "NFS: not enough memory to parse device name\n");
++	return -ENOMEM;
++
++out_hostname:
++	dfprintk(MOUNT, "NFS: server hostname too long\n");
++	return -ENAMETOOLONG;
++
++out_path:
++	dfprintk(MOUNT, "NFS: export pathname too long\n");
++	return -ENAMETOOLONG;
++}
++
++/*
++ * Split "dev_name" into "hostname:export_path".
++ *
++ * The leftmost colon demarks the split between the server's hostname
++ * and the export path.  If the hostname starts with a left square
++ * bracket, then it may contain colons.
++ *
++ * Note: caller frees hostname and export path, even on error.
++ */
++static int nfs_parse_devname(const char *dev_name,
++			     char **hostname, size_t maxnamlen,
++			     char **export_path, size_t maxpathlen)
++{
++	if (*dev_name == '[')
++		return nfs_parse_protected_hostname(dev_name,
++						    hostname, maxnamlen,
++						    export_path, maxpathlen);
++
++	return nfs_parse_simple_hostname(dev_name,
++					 hostname, maxnamlen,
++					 export_path, maxpathlen);
++}
++
++/*
+  * Validate the NFS2/NFS3 mount data
+  * - fills in the mount root filehandle
+  *
 
