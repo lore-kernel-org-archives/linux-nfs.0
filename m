@@ -1,63 +1,97 @@
-From: Mel Gorman <mel-wPRd99KPJ+uzQB+pC5nmwQ@public.gmane.org>
-Subject: Re: 2.6.26-rc: nfsd hangs for a few sec
-Date: Sun, 22 Jun 2008 18:07:05 +0100
-Message-ID: <20080622170704.GB625@csn.ul.ie>
-References: <a4423d670806210557k1e8fcee1le3526f62962799e@mail.gmail.com> <20080621224135.GD4692@csn.ul.ie> <Pine.LNX.4.64.0806211711470.18719@schroedinger.engr.sgi.com> <20080622013801.GE4692@csn.ul.ie> <Pine.LNX.4.64.0806212107510.18908@schroedinger.engr.sgi.com>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH - take 2] knfsd: nfsd: Handle ERESTARTSYS from syscalls.
+Date: Mon, 23 Jun 2008 10:20:59 +1000
+Message-ID: <18526.60523.584503.68076@notabene.brown>
+References: <20080619101025.24263.patches@notabene>
+	<1080619001109.24338@suse.de>
+	<20080618210947.2110a541@tleilax.poochiereds.net>
+	<18521.50300.572838.123366@notabene.brown>
+	<20080619063824.00ca6381@tleilax.poochiereds.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15
-Cc: Alexander Beregalov <a.beregalov@gmail.com>,
-	kernel-testers@vger.kernel.org,
-	kernel list <linux-kernel@vger.kernel.org>, linux-mm@kvack.org,
-	Lee Schermerhorn <lee.schermerhorn@hp.com>,
-	KAMEZAWA Hiroyuki <kamezawa.hiroyu-+CUm20s59erQFUHtdCDX3A@public.gmane.org>,
-	Hugh Dickins <hugh-DTz5qymZ9yRBDgjK7y7TUQ@public.gmane.org>,
-	Nick Piggin <nickpiggin-/E1597aS9LT0CCvOHzKKcA@public.gmane.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	bfields@fieldses.org, neilb@suse.de, linux-nfs@vger.kernel.org
-To: Christoph Lameter <clameter@sgi.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gir.skynet.ie ([193.1.99.77]:41302 "EHLO gir.skynet.ie"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751975AbYFVRHK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 22 Jun 2008 13:07:10 -0400
-In-Reply-To: <Pine.LNX.4.64.0806212107510.18908-RYO/mD75kfhx2SFC9UQUAuF7EQX82lMiAL8bYrjMMd8@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Jeff Layton <jlayton@redhat.com>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1755593AbYFWAVW@vger.kernel.org>
+In-Reply-To: message from Jeff Layton on Thursday June 19
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On (21/06/08 21:13), Christoph Lameter didst pronounce:
-> On Sun, 22 Jun 2008, Mel Gorman wrote:
-> 
-> > > Before the change we walk all zones of the zonelist.
-> > > 
+On Thursday June 19, jlayton@redhat.com wrote:
 > > 
-> > Yeah, but the zonelist is for GFP_KERNEL so it should not include the HIGHMEM
-> > zones, right? The key change is that after the patch there are fewer zonelists
-> > than get filtered.
+> > I wonder why we have all this mucking about this signal masks anyway.
+> > Anyone have any ideas about what it actually achieves?
+> > 
 > 
-> But the HIGHMEM zones etc were included before. There was no check for 
-> HIGHMEM etc there. The gfpmask was ignored.
->  
+> HCH asked me the same question when I did the conversion to kthreads.
+> My interpretation (based on guesswork here) was that we wanted to
+> distinguish between SIGKILL and other allowed signals. A SIGKILL is
+> allowed to interrupt the underlying I/O, but other signals should not.
 
-Well, the mask is not totally ignored, it's part of the scan_control and
-used later when deciding what can and can't be done as part of reclaim.
-However, you are right in that it is apparently ignored for zone
-selection.
+Yes, that seems to be the intent of the code, but does it really make
+any sense?
+Traditionally, filesystem IO is immune to signals so any signal
+arriving while nfsd is doing filesystem IO is irrelevant.
+I guess network IO can be interrupted, and nfsd is expected to write
+to the network during this time when all-but-SIGKILL is ignored.  So
+maybe the intent was to allow e.g. SIGINT to shut down cleanly, and
+SIGKILL to kill more promptly even if the network was sluggish...
 
-However, try_to_free_pages() received a struct zone **zones which was
-a zonelist which is a zonelist->zones selected based on the gfp_mask in
-__alloc_pages. By the time shrink_zones() is called, it can ignore the
-mask because only relevant zones are in there. For GFP_KERNEL, that would
-exclude HIGHMEM.
+However I don't think we ever blocked on network write.  And currently
+we try very hard to ensure that there is enough memory to hold a reply
+before we start on a request, so it should definitely never block.
 
-> > I think the effect of that patch is that zones get shrunk that have
-> > nothing to do with the requestors requirements. Right?
+So until OCFS2 came along, the distinction seems to have been
+meaningless, which is why I questioned it.
+
+Even with OCFS2 I'm not sure it makes much sense.
+
+Any time that we shut down NFSD, we really want it to shut down
+promptly.  If SIGINT isn't certain to achieve that, we should just be
+sending SIGKILL.
+Conversely, if it does make sense to keep the two signals, we should
+be educating init.d scripts to make use of them. e.g.
+
+  killall -2 nfsd
+  sleep 0.1
+  if [ `cat /proc/fs/nfsd/threads` -gt 0 ]
+  then sleep 5
+       killall -9 nfsd
+  fi
+
+or something more clever.
+
+I think my leaning is just to remove the distinction.  About the worst
+that can happen if the filesystem decides to respond to the signal is
+that you get a short write or a short read, both of which should be
+correctly handled by the client.
+
+
+This brings up an interesting issue for your kthread conversion.
+The new code uses kthread_stop instead of sending a signal.  That
+means it will block until the threads have completed a request and
+exited.
+If some thread is in a filesystem that is waiting on network IO and
+expects to get a signal if it needs to stop in a hurry, then the
+shutdown could block for a long time.  That might not be what we
+want.
+
+Particularly as if we are blocked in kthread_stop, then no-one else can
+do a kthread stop....
+
+I think there are issues here that don't yet have obvious answers.
+Other opinions most welcome.
+
+
 > 
-> Right. AFAICT That was the behavior before the change.
-> 
+> The question to answer here, I suppose, is whether masking a pending
+> signal is sufficient to make signal_pending() return false. If I'm
+> looking correctly then the answer should be "yes". So I don't think we
+> have a race here after all. I suspect that if SuSE used a different
+> signal here, that would prevent this from happening. For the record,
+> both RHEL and Fedora's init scripts use SIGINT for this.
 
+Yep.  Using SIGINT or "rpc.nfsd 0" would avoid the problem.
+So does mounted the OCFS2 filesystem with -o nointr.
 
--- 
-Mel Gorman
-Part-time Phd Student                          Linux Technology Center
-University of Limerick                         IBM Dublin Software Lab
+NeilBrown
