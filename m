@@ -1,159 +1,122 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 2/4] NFS: Support raw IPv6 address hostnames during NFS mount
-	operation
-Date: Mon, 23 Jun 2008 12:36:45 -0400
-Message-ID: <20080623163644.10539.80258.stgit@ellison.1015granger.net>
+Subject: [PATCH 4/4] NFS: handle interface identifiers in incoming IPv6
+	addresses
+Date: Mon, 23 Jun 2008 12:37:01 -0400
+Message-ID: <20080623163700.10539.19275.stgit@ellison.1015granger.net>
 References: <20080623163129.10539.15565.stgit@ellison.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: trond.myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:47384 "EHLO
+Received: from agminet01.oracle.com ([141.146.126.228]:47525 "EHLO
 	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754902AbYFWQhN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jun 2008 12:37:13 -0400
+	with ESMTP id S1755061AbYFWQh1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jun 2008 12:37:27 -0400
 In-Reply-To: <20080623163129.10539.15565.stgit-ewv44WTpT0t9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Traditionally the mount command has looked for a ":" to separate the
-server's hostname from the export path in the mounted on device name,
-like this:
+Add support in the kernel NFS client's address parser for interface
+identifiers.
 
-	mount server:/export /mounted/on/dir
+IPv6 link-local addresses require an additional "interface identifier",
+which is a network device name or an integer that indexes the array of
+local network interfaces.  They are suffixed to the address with a '%'.
+For example:
 
-The server's hostname is "server" and the export path is "/export".
+	fe80::215:c5ff:fe3b:e1b2%2
 
-You can also substitute a specific IPv4 network address for the server
-hostname, like this:
+indicates an interface index of 2.  Or
 
-	mount 192.168.0.55:/export /mounted/on/dir
+	fe80::215:c5ff:fe3b:e1b2%eth0
 
-Raw IPv6 addresses present a problem, however, because they look
-something like this:
+indicates that requests should be routed through the eth0 device.
+Without the interface ID, link-local addresses are not usable for NFS.
 
-	fe80::200:5aff:fe00:30b
-
-Note the use of colons.
-
-To get around the presence of colons, copy the Solaris convention used for
-mounting IPv6 servers by address: wrap a raw IPv6 address with square
-brackets.
+Both the kernel NFS client mount option parser and the mount.nfs command
+can take either form.  The mount.nfs command always passes the address
+through getnameinfo(3), which usually re-writes interface indices as
+device names.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfs/super.c |   90 +++++++++++++++++++++++++++++++++++++++++++++++++++-----
- 1 files changed, 82 insertions(+), 8 deletions(-)
+ fs/nfs/super.c |   41 ++++++++++++++++++++++++++++++++++++++++-
+ 1 files changed, 40 insertions(+), 1 deletions(-)
 
 
 diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 5e0eefa..98c8110 100644
+index 225b14c..1736268 100644
 --- a/fs/nfs/super.c
 +++ b/fs/nfs/super.c
-@@ -1215,14 +1215,9 @@ static int nfs_try_mount(struct nfs_parsed_mount_data *args,
- 	return status;
+@@ -47,6 +47,7 @@
+ #include <linux/inet.h>
+ #include <linux/in6.h>
+ #include <net/ipv6.h>
++#include <linux/netdevice.h>
+ #include <linux/nfs_xdr.h>
+ #include <linux/magic.h>
+ #include <linux/parser.h>
+@@ -722,12 +723,48 @@ static void nfs_parse_ipv4_address(char *string, size_t str_len,
+ 	*addr_len = 0;
  }
  
--/*
-- * Split "dev_name" into "hostname:export_path".
-- *
-- * Note: caller frees hostname and export path, even on error.
-- */
--static int nfs_parse_devname(const char *dev_name,
--			     char **hostname, size_t maxnamlen,
--			     char **export_path, size_t maxpathlen)
-+static int nfs_parse_simple_hostname(const char *dev_name,
-+				     char **hostname, size_t maxnamlen,
-+				     char **export_path, size_t maxpathlen)
- {
- 	size_t len;
- 	char *colon, *comma;
-@@ -1277,6 +1272,85 @@ out_path:
- }
- 
- /*
-+ * Hostname has square brackets around it because it contains one or
-+ * more colons.  We look for the first closing square bracket, and a
-+ * colon must follow it.
-+ */
-+static int nfs_parse_protected_hostname(const char *dev_name,
-+					char **hostname, size_t maxnamlen,
-+					char **export_path, size_t maxpathlen)
++#define IPV6_SCOPE_DELIMITER	'%'
++
+ #if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
++static void nfs_parse_ipv6_scope_id(const char *string, const size_t str_len,
++				    const char *delim,
++				    struct sockaddr_in6 *sin6)
 +{
++	char *p;
 +	size_t len;
-+	char *start, *end;
 +
-+	start = (char *)(dev_name + 1);
++	if (!(ipv6_addr_type(&sin6->sin6_addr) & IPV6_ADDR_LINKLOCAL))
++		return ;
++	if (*delim != IPV6_SCOPE_DELIMITER)
++		return;
 +
-+	end = strchr(start, ']');
-+	if (end == NULL)
-+		goto out_bad_devname;
-+	if (*(end + 1) != ':')
-+		goto out_bad_devname;
++	len = (string + str_len) - delim - 1;
++	p = kstrndup(delim + 1, len, GFP_KERNEL);
++	if (p) {
++		unsigned long scope_id = 0;
++		struct net_device *dev;
 +
-+	len = end - start;
-+	if (len > maxnamlen)
-+		goto out_hostname;
++		dev = dev_get_by_name(&init_net, p);
++		if (dev != NULL) {
++			scope_id = dev->ifindex;
++			dev_put(dev);
++		} else {
++			/* scope_id is set to zero on error */
++			strict_strtoul(p, 10, &scope_id);
++		}
 +
-+	/* N.B. caller will free nfs_server.hostname in all cases */
-+	*hostname = kstrndup(start, len, GFP_KERNEL);
-+	if (*hostname == NULL)
-+		goto out_nomem;
-+
-+	end += 2;
-+	len = strlen(end);
-+	if (len > maxpathlen)
-+		goto out_path;
-+	*export_path = kstrndup(end, len, GFP_KERNEL);
-+	if (!*export_path)
-+		goto out_nomem;
-+
-+	return 0;
-+
-+out_bad_devname:
-+	dfprintk(MOUNT, "NFS: device name not in host:path format\n");
-+	return -EINVAL;
-+
-+out_nomem:
-+	dfprintk(MOUNT, "NFS: not enough memory to parse device name\n");
-+	return -ENOMEM;
-+
-+out_hostname:
-+	dfprintk(MOUNT, "NFS: server hostname too long\n");
-+	return -ENAMETOOLONG;
-+
-+out_path:
-+	dfprintk(MOUNT, "NFS: export pathname too long\n");
-+	return -ENAMETOOLONG;
++		kfree(p);
++		sin6->sin6_scope_id = scope_id;
++		dfprintk(MOUNT, "NFS: IPv6 scope ID = %lu\n", scope_id);
++	}
 +}
 +
-+/*
-+ * Split "dev_name" into "hostname:export_path".
-+ *
-+ * The leftmost colon demarks the split between the server's hostname
-+ * and the export path.  If the hostname starts with a left square
-+ * bracket, then it may contain colons.
-+ *
-+ * Note: caller frees hostname and export path, even on error.
-+ */
-+static int nfs_parse_devname(const char *dev_name,
-+			     char **hostname, size_t maxnamlen,
-+			     char **export_path, size_t maxpathlen)
-+{
-+	if (*dev_name == '[')
-+		return nfs_parse_protected_hostname(dev_name,
-+						    hostname, maxnamlen,
-+						    export_path, maxpathlen);
-+
-+	return nfs_parse_simple_hostname(dev_name,
-+					 hostname, maxnamlen,
-+					 export_path, maxpathlen);
-+}
-+
-+/*
-  * Validate the NFS2/NFS3 mount data
-  * - fills in the mount root filehandle
-  *
+ static void nfs_parse_ipv6_address(char *string, size_t str_len,
+ 				   struct sockaddr *sap, size_t *addr_len)
+ {
+ 	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)sap;
+ 	u8 *addr = (u8 *)&sin6->sin6_addr.in6_u;
++	const char *delim;
+ 
+ 	if (str_len <= INET6_ADDRSTRLEN) {
+ 		dfprintk(MOUNT, "NFS: parsing IPv6 address %*s\n",
+@@ -735,8 +772,10 @@ static void nfs_parse_ipv6_address(char *string, size_t str_len,
+ 
+ 		sin6->sin6_family = AF_INET6;
+ 		*addr_len = sizeof(*sin6);
+-		if (in6_pton(string, str_len, addr, '\0', NULL))
++		if (in6_pton(string, str_len, addr, IPV6_SCOPE_DELIMITER, &delim)) {
++			nfs_parse_ipv6_scope_id(string, str_len, delim, sin6);
+ 			return;
++		}
+ 	}
+ 
+ 	sap->sa_family = AF_UNSPEC;
 
