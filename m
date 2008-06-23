@@ -1,58 +1,102 @@
-From: Adrian Bunk <bunk@kernel.org>
-Subject: [RFC: 2.6 patch] don't export linux/nfsd/stats.h to userspace
-Date: Mon, 23 Jun 2008 20:48:54 +0300
-Message-ID: <20080623174854.GI4756@cs181140183.pp.htv.fi>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 02/11] svcrdma: Use RPC reply map for RDMA_WRITE
+	processing
+Date: Mon, 23 Jun 2008 14:21:14 -0400
+Message-ID: <20080623182114.GB24373@fieldses.org>
+References: <12120836962076-git-send-email-tom@opengridcomputing.com> <12120836962324-git-send-email-tom@opengridcomputing.com> <12120836963727-git-send-email-tom@opengridcomputing.com> <20080616210442.GB29446@fieldses.org> <485D2BCC.9000508@opengridcomputing.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-To: bfields@fieldses.org, neilb@suse.de
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp5.pp.htv.fi ([213.243.153.39]:48405 "EHLO smtp5.pp.htv.fi"
+Received: from mail.fieldses.org ([66.93.2.214]:38894 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761497AbYFWRuu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 23 Jun 2008 13:50:50 -0400
+	id S1753863AbYFWSVQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 23 Jun 2008 14:21:16 -0400
+In-Reply-To: <485D2BCC.9000508@opengridcomputing.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The main contents is struct nfsd_stats which changes depending on a 
-CONFIG_ variable.
+On Sat, Jun 21, 2008 at 11:26:52AM -0500, Tom Tucker wrote:
+> J. Bruce Fields wrote:
+>> Also, the only caller of xdr_to_sge() appears to be svc_rdma_sendto(),
+>> which is called from svc_sendto() immediately after setting:
+>>
+>> 	xb = &rqstp->rq_res;
+>> 	xb->len = xb->head[0].iov_len + 		xb->page_len +
+>> 		xb->tail[0].iov_len;
+>>
+>> So I think xdr_to_sge() is doing a bunch of unnecessary work to handle
+>> the case where xdr->len could be less than that sum?
+>>
+>>   
+> Ok... check me below please.
+>>>   	/* Head SGE */
+>>> -	sge[sge_no].addr = ib_dma_map_single(xprt->sc_cm_id->device,
+>>> -					     xdr->head[0].iov_base,
+>>> -					     xdr->head[0].iov_len,
+>>> -					     DMA_TO_DEVICE);
+>>> +	vec->sge[sge_no].iov_base = xdr->head[0].iov_base;
+>>>  	sge_bytes = min_t(u32, byte_count, xdr->head[0].iov_len);
+>>>     
+>
+> This doesn't need to be min_t. It could be xdr->head[0].iov_len.
 
-This would not work in userspace.
+Yes.  The variable byte_count shouldn't be needed at all, so I'd start
+by eliminating all references to byte_count.
 
-Signed-off-by: Adrian Bunk <bunk@kernel.org>
+>
+>>>  	byte_count -= sge_bytes;
+>>> -	sge[sge_no].length = sge_bytes;
+>>> -	sge[sge_no].lkey = xprt->sc_phys_mr->lkey;
+>>> +	vec->sge[sge_no].iov_len = sge_bytes;
+>>>  	sge_no++;
+>>>   	/* pages SGE */
+>>> @@ -99,16 +94,13 @@ static struct ib_sge *xdr_to_sge(struct svcxprt_rdma *xprt,
+>>>  	page_bytes = xdr->page_len;
+>>>  	page_off = xdr->page_base;
+>>>  	while (byte_count && page_bytes) {
+>>> +		vec->sge[sge_no].iov_base =
+>>> +			page_address(xdr->pages[page_no]) + page_off;
+>>>  		sge_bytes = min_t(u32, byte_count, (PAGE_SIZE-page_off));
+>>>     
+> This is still needed if the xdr terminates with a portion of a page and  
+> there is not tail.
 
----
+Yes, but the condition could just be (page_bytes).
 
- include/linux/nfsd/Kbuild  |    1 -
- include/linux/nfsd/stats.h |    3 ---
- 2 files changed, 4 deletions(-)
+>>> -		sge[sge_no].addr =
+>>> -			ib_dma_map_page(xprt->sc_cm_id->device,
+>>> -					xdr->pages[page_no], page_off,
+>>> -					sge_bytes, DMA_TO_DEVICE);
+>>>  		sge_bytes = min(sge_bytes, page_bytes);
+>>>  		byte_count -= sge_bytes;
+>>>  		page_bytes -= sge_bytes;
+>>> -		sge[sge_no].length = sge_bytes;
+>>> -		sge[sge_no].lkey = xprt->sc_phys_mr->lkey;
+>>> +		vec->sge[sge_no].iov_len = sge_bytes;
+>>>   		sge_no++;
+>>>  		page_no++;
+>>> @@ -117,23 +109,17 @@ static struct ib_sge *xdr_to_sge(struct svcxprt_rdma *xprt,
+>>>   	/* Tail SGE */
+>>>  	if (byte_count && xdr->tail[0].iov_len) {
+>>>     
+> This is defensive. It could just be byte_count.
 
-9b6014db4d4182cf4cb342b97f9018c5d1090afa diff --git a/include/linux/nfsd/Kbuild b/include/linux/nfsd/Kbuild
-index fc97204..698e9ec 100644
---- a/include/linux/nfsd/Kbuild
-+++ b/include/linux/nfsd/Kbuild
-@@ -2,5 +2,4 @@ unifdef-y += const.h
- unifdef-y += debug.h
- unifdef-y += export.h
- unifdef-y += nfsfh.h
--unifdef-y += stats.h
- unifdef-y += syscall.h
-diff --git a/include/linux/nfsd/stats.h b/include/linux/nfsd/stats.h
-index 7678cfb..d949590 100644
---- a/include/linux/nfsd/stats.h
-+++ b/include/linux/nfsd/stats.h
-@@ -38,13 +38,10 @@ struct nfsd_stats {
- /* thread usage wraps very million seconds (approx one fortnight) */
- #define	NFSD_USAGE_WRAP	(HZ*1000000)
- 
--#ifdef __KERNEL__
--
- extern struct nfsd_stats	nfsdstats;
- extern struct svc_stat		nfsd_svcstats;
- 
- void	nfsd_stat_init(void);
- void	nfsd_stat_shutdown(void);
- 
--#endif /* __KERNEL__ */
- #endif /* LINUX_NFSD_STATS_H */
+I agree, though I'd just make it (xdr->tail[0].iov_len) instead of just
+(byte_count).
 
+> If byte_count != xdr->tail[0].iov_len, the BUG_ON below will let us know.
+>>> -		sge[sge_no].addr =
+>>> -			ib_dma_map_single(xprt->sc_cm_id->device,
+>>> -					  xdr->tail[0].iov_base,
+>>> -					  xdr->tail[0].iov_len,
+>>> -					  DMA_TO_DEVICE);
+>>> +		vec->sge[sge_no].iov_base = xdr->tail[0].iov_base;
+>>>  		sge_bytes = min_t(u32, byte_count, xdr->tail[0].iov_len);
+>>>     
+> The min_t isn't needed. It could just be byte_count.
+
+Right, but could also just be tail length, as above.
+
+--b.
