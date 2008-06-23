@@ -1,93 +1,57 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 02/11] svcrdma: Use RPC reply map for RDMA_WRITE
-	processing
-Date: Mon, 23 Jun 2008 14:51:26 -0400
-Message-ID: <20080623185126.GD24373@fieldses.org>
-References: <12120836962076-git-send-email-tom@opengridcomputing.com> <12120836962324-git-send-email-tom@opengridcomputing.com> <12120836963727-git-send-email-tom@opengridcomputing.com> <20080616210442.GB29446@fieldses.org> <485D3186.2000307@opengridcomputing.com>
+Subject: Re: [NFS] NFS performance debuggins
+Date: Mon, 23 Jun 2008 15:28:36 -0400
+Message-ID: <20080623192836.GI24373@fieldses.org>
+References: <200806231659.58158@fortytwo.ch>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Tom Tucker <tom@opengridcomputing.com>
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
+To: Adrian von Bidder <avbidder-xzBkAS4TQxQfv37vnLkPlQ@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:41649 "EHLO fieldses.org"
+Received: from neil.brown.name ([220.233.11.133]:53692 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759992AbYFWSv1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 23 Jun 2008 14:51:27 -0400
-In-Reply-To: <485D3186.2000307@opengridcomputing.com>
+	id S1753992AbYFWT3I (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 23 Jun 2008 15:29:08 -0400
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1KArir-0001bT-P8
+	for linux-nfs@vger.kernel.org; Tue, 24 Jun 2008 05:29:05 +1000
+In-Reply-To: <200806231659.58158-xzBkAS4TQxQfv37vnLkPlQ@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Jun 21, 2008 at 11:51:18AM -0500, Tom Tucker wrote:
-> J. Bruce Fields wrote:
->> On Thu, May 29, 2008 at 12:54:47PM -0500, Tom Tucker wrote:
->>   
->>> Use the new svc_rdma_req_map data type for mapping the client side memory
->>> to the server side memory. Move the DMA mapping to the context pointed to
->>> by each WR individually so that it is unmapped after the WR completes.
->>>
->>> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
->>>
->>> ---
->>>  net/sunrpc/xprtrdma/svc_rdma_sendto.c    |  122 ++++++++++++++----------------
->>>  net/sunrpc/xprtrdma/svc_rdma_transport.c |    5 +-
->>>  2 files changed, 62 insertions(+), 65 deletions(-)
->>>
->>> diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
->>> index fb82b1b..7cd65b7 100644
->>> --- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
->>> +++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
->>> @@ -64,10 +64,9 @@
->>>   * SGE[sge_count-1]    data from xdr->tail.
->>>   *
->>>   */
->>> -static struct ib_sge *xdr_to_sge(struct svcxprt_rdma *xprt,
->>> -				 struct xdr_buf *xdr,
->>> -				 struct ib_sge *sge,
->>> -				 int *sge_count)
->>> +static void xdr_to_sge(struct svcxprt_rdma *xprt,
->>> +		       struct xdr_buf *xdr,
->>> +		       struct svc_rdma_req_map *vec)
->>>  {
->>>  	/* Max we need is the length of the XDR / pagesize + one for
->>>  	 * head + one for tail + one for RPCRDMA header
->>> @@ -84,14 +83,10 @@ static struct ib_sge *xdr_to_sge(struct svcxprt_rdma *xprt,
->>>  	sge_no = 1;
->>>     
->>
->> Should the arrays in the svc_rdma_req_map actually be size
->> RPC_SVC_MAXPAGES+1 to allow for the RPCRDMA header?
->>
->>   
-> Actually, upon further inspection, this is not a bug. The  
-> RPCSVC_MAXPAGES is used to size the rqstp
-> page array. This array includes a page for the request hdr, reply hdr  
-> and one extra page for alignment. For
-> our use case, the reply hdr page covers the RDMA header.
+On Mon, Jun 23, 2008 at 04:59:57PM +0200, Adrian von Bidder wrote:
+> Hi,
+> 
+> Environment:
+> 
+> several Debian based clients (Debian etch and etchnhalf kernels, this means 
+> 2.6.18 or 2.6.24); Debian etch (2.6.18 kernel) NFS (v3) server.  Network 
+> seems basically ok ("ping -f -s 3000" works without losses, ifconfig and 
+> switch monitoring shows no errors) with no noticeable load.  Disks seem to 
+> have very little load either, NFS server has no other tasks.
+> 
+> Performance is sluggish :-(  Basically works, though -- no spurious errors.
 
-OK, that makes sense.  (Let's just fix the comment above so I don't
-forget and ask the same question again next time.)
+In what way exactly is it sluggish?
 
-> However, I think this payload length should be clamped in a different  
-> way. It seems silly to allocate these
-> things to handle big-data mounts that are rarely used in practice. I  
-> think it's better to have a transport max
-> that is more reasonable by default and a module parameter that is  
-> configurable if you're looking to do big-data
-> mounts.
->
-> Thoughts?
+> tcpdump shows many "reply ERR 1448" etc. msgs whenever NFS activitiy is 
+> going on (both stat like with "find /home" or read/write with dd)
 
-This is decided in fs/nfsd/nfssvc.c:nfsd_create_serv(), based on the
-machine's ram size, and can be overridden with the nfsd filesystem's
-maxblksize parameter.
-
-I'm open to suggestions, but my feeling is that it's hard to educate
-people about how to use additional sysctl's, and that it's reasonable to
-waste some memory to get good out-of-the-box performance on streaming
-IO.
-
-See also recent patches from Olga and Dean for similar discussion
-(about WAN tcp performance in their case, since the size of these
-buffers affects the size of the tcp window we advertise).
+I'm afraid I don't know how to read that tcpdump output.
 
 --b.
+
+-------------------------------------------------------------------------
+Check out the new SourceForge.net Marketplace.
+It's the best place to buy or sell services for
+just about anything Open Source.
+http://sourceforge.net/services/buy/index.php
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
+
