@@ -1,81 +1,102 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 01/11] svcrdma: Add a type for keeping NFS RPC mapping
-Date: Tue, 24 Jun 2008 15:58:38 -0400
-Message-ID: <20080624195838.GE15786@fieldses.org>
-References: <12120836962076-git-send-email-tom@opengridcomputing.com> <12120836962324-git-send-email-tom@opengridcomputing.com> <20080616194858.GA29446@fieldses.org> <485D2CEF.404@opengridcomputing.com> <20080623182707.GC24373@fieldses.org> <486062CD.6010800@opengridcomputing.com>
+Subject: Re: [NFS] NFS performance debugging
+Date: Tue, 24 Jun 2008 16:29:31 -0400
+Message-ID: <20080624202931.GA22757@fieldses.org>
+References: <200806231659.58158@fortytwo.ch>
+	<20080623192836.GI24373@fieldses.org>
+	<200806241217.29243@fortytwo.ch>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Tom Tucker <tom@opengridcomputing.com>
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
+To: Adrian von Bidder <avbidder-xzBkAS4TQxQfv37vnLkPlQ@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:49227 "EHLO fieldses.org"
+Received: from neil.brown.name ([220.233.11.133]:34792 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752473AbYFXT6k (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Jun 2008 15:58:40 -0400
-In-Reply-To: <486062CD.6010800@opengridcomputing.com>
+	id S1752278AbYFXUb1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 24 Jun 2008 16:31:27 -0400
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1KBF9p-0000Jo-91
+	for linux-nfs@vger.kernel.org; Wed, 25 Jun 2008 06:30:46 +1000
+In-Reply-To: <200806241217.29243-xzBkAS4TQxQfv37vnLkPlQ@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jun 23, 2008 at 09:58:21PM -0500, Tom Tucker wrote:
-> J. Bruce Fields wrote:
->> On Sat, Jun 21, 2008 at 11:31:43AM -0500, Tom Tucker wrote:
->>   
->>> J. Bruce Fields wrote:
->>>     
->>>> On Thu, May 29, 2008 at 12:54:46PM -0500, Tom Tucker wrote:
->>>>> diff --git a/net/sunrpc/xprtrdma/svc_rdma.c b/net/sunrpc/xprtrdma/svc_rdma.c
->>>>> index 88c0ca2..545ea72 100644
->>>>> --- a/net/sunrpc/xprtrdma/svc_rdma.c
->>>>> +++ b/net/sunrpc/xprtrdma/svc_rdma.c
->>>>> @@ -69,6 +69,9 @@ atomic_t rdma_stat_rq_prod;
->>>>>  atomic_t rdma_stat_sq_poll;
->>>>>  atomic_t rdma_stat_sq_prod;
->>>>>  +/* Temporary NFS request map cache */
->>>>> +struct kmem_cache *svc_rdma_map_cachep = NULL;
->>>>>             
->>>> No need to initialize globals to NULL.
->>>>
->>>>         
->>> I thought only static objects were initialized per the C standard. Or 
->>>  are you saying that this particular
->>> global doesn't need to be initialized because of the way it is used?
->>>     
->>
->> I don't know if the initialization is mandated by the standards or
->> whether it's just gcc behavior, but I know I get a complaint every time
->> somebody finds one of those....
->>
->>   
->
-> In this case, the initialization is unnecessary, so it can be safely dumped.
->
->> That may partly just be a preference for conciseness, but I think it may
->> also allow gcc to put the thing in a different section and save some
->> space in the on-disk kernel--I don't know.
->>
->>   
-> Right -- un-initialized data goes in a different section, the .bss  
-> section in particular. Since the .bss section is not "initialized",  
-> there are no values (zeroes in this case) sitting in the object file  
-> ready to be mapped into whatever location becomes .bss. By contrast, the  
-> .data section contains initialized data and the initial values are  
-> sitting in the object file.
->
-> So my question here is a little subtler:
->
-> A. Do we discard _all_ zero initializations of non-static globals  
-> because we can safely assume that .bss is initialzed (not a fan of  
-> this),  or
->
-> B. Don't be an idiot and initialize objects unnecessarily because it  
-> bloats the kernel object file?
->
-> An idiot voting for  B,
+On Tue, Jun 24, 2008 at 12:17:24PM +0200, Adrian von Bidder wrote:
+> Hi again,
+> 
+> Thanks for your replies (You too, Trond)
 
-My understanding is that it's A--e.g. checkpatch.pl has a dumb regex
-that just checks for these assignments and whines about them however
-they're used.
+The custom around here is to leave everyone on the cc: line.
 
-Google doesn't find me any more detailed discussion of the policy.
+> 
+> On Monday 23 June 2008 21.28:36 you wrote:
+> 
+> [... NFS performance ...]
+> 
+> > In what way exactly is it sluggish?
+> 
+> Starting KDE, opening documents, sometimes also closing oo.org and saving 
+> documents takes several seconds longer than on local disk.
+
+"close" on nfs is an operation that requires a round-trip to the server
+and waiting for the disk to commit any writes made before the close, so
+if you've got to do a lot of those it can take time.  Fooling with the
+journaling on the exported filesystem may help.
+
+> Certainly network latency (especially with these silly lots of small config 
+> files) takes some time, but I'm still surprised.  At the same time, I don't 
+> have data to compare a "known good" NFS against ours, so perhaps NFS is 
+> indeed so slow?
+> 
+> >
+> > > tcpdump shows many "reply ERR 1448" etc. msgs whenever NFS activitiy is
+> > > going on (both stat like with "find /home" or read/write with dd)
+> >
+> > I'm afraid I don't know how to read that tcpdump output.
+> 
+> tcpdump "-vvv" doesn't give more information on these packets; at the same 
+> time wireshark doesn't show anything suspicious except tons of wrong TCP 
+> checksums caused (I hope...) by offloading.
+
+Yes, that's normal.
+
+> I'll have to look if I can get 
+> the raw traffic at the network switch to check this (but I think with 30% 
+> and more wrong tcp checksums, traffic would completely break down so I'm 
+> quite confident here.)
+> 
+> 
+> Slightly different topic: is there an NFS related mailing list I can 
+> subscribe to?  This one is apparently closed for new subscribers, and the 
+> bounce instructs me to send mail to majordomo-MogPR669STc76Z2rM5mHXA@public.gmane.org which 
+						^^^^
+						vger
+
+Where'd the typo in that address get introduced?
+
+> bounces :-(  Reading others' NFS postings might just give me more ideas on 
+> where to look.
+
+Should be: http://vger.kernel.org/vger-lists.html#linux-nfs
+
+> TODO today: play around with NFSv4 on the shaky assumption that nfsv3 is 
+> actually working but net latency is killing my performance.
+
+Delegations *might* help if the problem is really open latency.
 
 --b.
+
+-------------------------------------------------------------------------
+Check out the new SourceForge.net Marketplace.
+It's the best place to buy or sell services for
+just about anything Open Source.
+http://sourceforge.net/services/buy/index.php
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
+
