@@ -1,36 +1,81 @@
-From: Lukas Hejtmanek <xhejtman@ics.muni.cz>
-Subject: Re: Upcoming nfs-utils 1.1.3 release.
-Date: Tue, 24 Jun 2008 21:41:16 +0200
-Message-ID: <20080624194116.GN4484@ics.muni.cz>
-References: <48600CCC.5000203@RedHat.com> <20080623205704.GU4484@ics.muni.cz>
-	<486016B2.1000506@RedHat.com> <20080624083355.GW4484@ics.muni.cz>
-	<4d569c330806240634m6c23e3den338e7c3842d9e261@mail.gmail.com>
-	<20080624153741.GM4484@ics.muni.cz>
-	<4d569c330806241027n1f717a19o371e7bf41b5b203f@mail.gmail.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 01/11] svcrdma: Add a type for keeping NFS RPC mapping
+Date: Tue, 24 Jun 2008 15:58:38 -0400
+Message-ID: <20080624195838.GE15786@fieldses.org>
+References: <12120836962076-git-send-email-tom@opengridcomputing.com> <12120836962324-git-send-email-tom@opengridcomputing.com> <20080616194858.GA29446@fieldses.org> <485D2CEF.404@opengridcomputing.com> <20080623182707.GC24373@fieldses.org> <486062CD.6010800@opengridcomputing.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-2"
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
-To: Kevin Coffman <kwc@citi.umich.edu>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <4d569c330806241027n1f717a19o371e7bf41b5b203f@mail.gmail.com>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Tom Tucker <tom@opengridcomputing.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail.fieldses.org ([66.93.2.214]:49227 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752473AbYFXT6k (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 24 Jun 2008 15:58:40 -0400
+In-Reply-To: <486062CD.6010800@opengridcomputing.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jun 24, 2008 at 01:27:50PM -0400, Kevin Coffman wrote:
-> Near as I can tell, the use of strnstr() is from your patch?
-> select_krb5_ccache() uses strstr().
+On Mon, Jun 23, 2008 at 09:58:21PM -0500, Tom Tucker wrote:
+> J. Bruce Fields wrote:
+>> On Sat, Jun 21, 2008 at 11:31:43AM -0500, Tom Tucker wrote:
+>>   
+>>> J. Bruce Fields wrote:
+>>>     
+>>>> On Thu, May 29, 2008 at 12:54:46PM -0500, Tom Tucker wrote:
+>>>>> diff --git a/net/sunrpc/xprtrdma/svc_rdma.c b/net/sunrpc/xprtrdma/svc_rdma.c
+>>>>> index 88c0ca2..545ea72 100644
+>>>>> --- a/net/sunrpc/xprtrdma/svc_rdma.c
+>>>>> +++ b/net/sunrpc/xprtrdma/svc_rdma.c
+>>>>> @@ -69,6 +69,9 @@ atomic_t rdma_stat_rq_prod;
+>>>>>  atomic_t rdma_stat_sq_poll;
+>>>>>  atomic_t rdma_stat_sq_prod;
+>>>>>  +/* Temporary NFS request map cache */
+>>>>> +struct kmem_cache *svc_rdma_map_cachep = NULL;
+>>>>>             
+>>>> No need to initialize globals to NULL.
+>>>>
+>>>>         
+>>> I thought only static objects were initialized per the C standard. Or 
+>>>  are you saying that this particular
+>>> global doesn't need to be initialized because of the way it is used?
+>>>     
+>>
+>> I don't know if the initialization is mandated by the standards or
+>> whether it's just gcc behavior, but I know I get a complaint every time
+>> somebody finds one of those....
+>>
+>>   
+>
+> In this case, the initialization is unnecessary, so it can be safely dumped.
+>
+>> That may partly just be a preference for conciseness, but I think it may
+>> also allow gcc to put the thing in a different section and save some
+>> space in the on-disk kernel--I don't know.
+>>
+>>   
+> Right -- un-initialized data goes in a different section, the .bss  
+> section in particular. Since the .bss section is not "initialized",  
+> there are no values (zeroes in this case) sitting in the object file  
+> ready to be mapped into whatever location becomes .bss. By contrast, the  
+> .data section contains initialized data and the initial values are  
+> sitting in the object file.
+>
+> So my question here is a little subtler:
+>
+> A. Do we discard _all_ zero initializations of non-static globals  
+> because we can safely assume that .bss is initialzed (not a fan of  
+> this),  or
+>
+> B. Don't be an idiot and initialize objects unnecessarily because it  
+> bloats the kernel object file?
+>
+> An idiot voting for  B,
 
-I guess no. I believe it came to me from git head.
+My understanding is that it's A--e.g. checkpatch.pl has a dumb regex
+that just checks for these assignments and whines about them however
+they're used.
 
--- =
+Google doesn't find me any more detailed discussion of the policy.
 
-Luk=E1=B9 Hejtm=E1nek
+--b.
