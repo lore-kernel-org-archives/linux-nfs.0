@@ -1,83 +1,202 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 3/4] NFS4: Set security flavor default for NFSv4 mounts like
-	other defaults
-Date: Tue, 24 Jun 2008 16:33:54 -0400
-Message-ID: <20080624203353.3366.38324.stgit@ellison.1015granger.net>
+Subject: [PATCH 4/4] NFS: text-based mounts should support multiple security
+	flavors
+Date: Tue, 24 Jun 2008 16:34:02 -0400
+Message-ID: <20080624203401.3366.83944.stgit@ellison.1015granger.net>
 References: <20080624202913.3366.44867.stgit@ellison.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: trond.myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:53370 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753333AbYFXUfs (ORCPT
+Received: from rgminet01.oracle.com ([148.87.113.118]:45116 "EHLO
+	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753627AbYFXUfs (ORCPT
 	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Jun 2008 16:35:48 -0400
 In-Reply-To: <20080624202913.3366.44867.stgit-ewv44WTpT0t9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Set the default security flavor when we set the other mount option
-default values for NFSv4.  This cleans up the NFSv4 mount option parsing
-path to look like the NFSv2/v3 one.
+Add support to the in-kernel NFS mount option parser for handling multiple
+security flavors.
+
+This does not implement support for multiple security flavors in the
+underlying NFS or mountd clients.  When that support is added, simply crank
+up the value of the MAX_SECURITY_FLAVORS macro, and that will enable the
+mount option parser to grok colons and multiple security flavors.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfs/super.c |   22 ++++++----------------
- 1 files changed, 6 insertions(+), 16 deletions(-)
+ fs/nfs/internal.h |    4 +-
+ fs/nfs/super.c    |  126 ++++++++++++++++++++++++++++++++---------------------
+ 2 files changed, 79 insertions(+), 51 deletions(-)
 
 
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 04ae867..6672c3a 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -27,6 +27,8 @@ struct nfs_clone_mount {
+ 	rpc_authflavor_t authflavor;
+ };
+ 
++#define MAX_SECURITY_FLAVORS	(1)
++
+ /*
+  * In-kernel mount arguments
+  */
+@@ -39,7 +41,7 @@ struct nfs_parsed_mount_data {
+ 	int			namlen;
+ 	unsigned int		bsize;
+ 	unsigned int		auth_flavor_len;
+-	rpc_authflavor_t	auth_flavors[1];
++	rpc_authflavor_t	auth_flavors[MAX_SECURITY_FLAVORS];
+ 	char			*client_address;
+ 
+ 	struct {
 diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 19f3920..fa94851 100644
+index fa94851..22bdc50 100644
 --- a/fs/nfs/super.c
 +++ b/fs/nfs/super.c
-@@ -2044,6 +2044,8 @@ static int nfs4_validate_mount_data(void *options,
- 	args->acdirmin		= NFS_DEF_ACDIRMIN;
- 	args->acdirmax		= NFS_DEF_ACDIRMAX;
- 	args->nfs_server.port	= NFS_PORT; /* 2049 unless user set port= */
-+	args->auth_flavors[0]	= RPC_AUTH_UNIX;
-+	args->auth_flavor_len	= 0;
+@@ -853,63 +853,89 @@ static void nfs_set_transport_defaults(struct nfs_parsed_mount_data *mnt)
  
- 	switch (data->version) {
- 	case 1:
-@@ -2059,18 +2061,13 @@ static int nfs4_validate_mount_data(void *options,
- 						&args->nfs_server.address))
- 			goto out_no_address;
+ /*
+  * Parse the value of the 'sec=' option.
+- *
+- * The flavor_len setting is for v4 mounts.
+  */
+ static int nfs_parse_security_flavors(char *value,
+ 				      struct nfs_parsed_mount_data *mnt)
+ {
+-	substring_t args[MAX_OPT_ARGS];
++	char *p, *string;
++
++	mnt->auth_flavor_len = 0;
  
--		switch (data->auth_flavourlen) {
--		case 0:
--			args->auth_flavors[0] = RPC_AUTH_UNIX;
--			break;
--		case 1:
-+		if (data->auth_flavourlen) {
-+			if (data->auth_flavourlen > 1)
-+				goto out_inval_auth;
- 			if (copy_from_user(&args->auth_flavors[0],
- 					   data->auth_flavours,
- 					   sizeof(args->auth_flavors[0])))
- 				return -EFAULT;
--			break;
--		default:
--			goto out_inval_auth;
- 		}
+ 	dfprintk(MOUNT, "NFS: parsing sec=%s option\n", value);
  
- 		c = strndup_user(data->hostname.data, NFS4_MAXNAMLEN);
-@@ -2121,15 +2118,8 @@ static int nfs4_validate_mount_data(void *options,
+-	switch (match_token(value, nfs_secflavor_tokens, args)) {
+-	case Opt_sec_none:
+-		mnt->auth_flavor_len = 0;
+-		mnt->auth_flavors[0] = RPC_AUTH_NULL;
+-		break;
+-	case Opt_sec_sys:
+-		mnt->auth_flavor_len = 0;
+-		mnt->auth_flavors[0] = RPC_AUTH_UNIX;
+-		break;
+-	case Opt_sec_krb5:
+-		mnt->auth_flavor_len = 1;
+-		mnt->auth_flavors[0] = RPC_AUTH_GSS_KRB5;
+-		break;
+-	case Opt_sec_krb5i:
+-		mnt->auth_flavor_len = 1;
+-		mnt->auth_flavors[0] = RPC_AUTH_GSS_KRB5I;
+-		break;
+-	case Opt_sec_krb5p:
+-		mnt->auth_flavor_len = 1;
+-		mnt->auth_flavors[0] = RPC_AUTH_GSS_KRB5P;
+-		break;
+-	case Opt_sec_lkey:
+-		mnt->auth_flavor_len = 1;
+-		mnt->auth_flavors[0] = RPC_AUTH_GSS_LKEY;
+-		break;
+-	case Opt_sec_lkeyi:
+-		mnt->auth_flavor_len = 1;
+-		mnt->auth_flavors[0] = RPC_AUTH_GSS_LKEYI;
+-		break;
+-	case Opt_sec_lkeyp:
+-		mnt->auth_flavor_len = 1;
+-		mnt->auth_flavors[0] = RPC_AUTH_GSS_LKEYP;
+-		break;
+-	case Opt_sec_spkm:
+-		mnt->auth_flavor_len = 1;
+-		mnt->auth_flavors[0] = RPC_AUTH_GSS_SPKM;
+-		break;
+-	case Opt_sec_spkmi:
+-		mnt->auth_flavor_len = 1;
+-		mnt->auth_flavors[0] = RPC_AUTH_GSS_SPKMI;
+-		break;
+-	case Opt_sec_spkmp:
+-		mnt->auth_flavor_len = 1;
+-		mnt->auth_flavors[0] = RPC_AUTH_GSS_SPKMP;
+-		break;
+-	default:
+-		return 0;
++	while ((p = strsep(&value, ":")) != NULL) {
++		substring_t args[MAX_OPT_ARGS];
++		int token;
++
++		if (!*p)
++			continue;
++
++		if (mnt->auth_flavor_len >= MAX_SECURITY_FLAVORS) {
++			dfprintk(MOUNT, "NFS: sec= option specifies "
++					"too many security flavors\n");
++			return 0;
++		}
++
++		string = match_strdup(args);
++		if (string == NULL) {
++			dfprintk(MOUNT, "NFS: not enough memory "
++					"to parse sec= option\n");
++			return 0;
++		}
++
++		token = match_token(string, nfs_secflavor_tokens, args);
++		kfree(string);
++
++		switch (token) {
++		case Opt_sec_none:
++			mnt->auth_flavors[mnt->auth_flavor_len] =
++							RPC_AUTH_NULL;
++			break;
++		case Opt_sec_sys:
++			mnt->auth_flavors[mnt->auth_flavor_len] =
++							RPC_AUTH_UNIX;
++			break;
++		case Opt_sec_krb5:
++			mnt->auth_flavors[mnt->auth_flavor_len] =
++							RPC_AUTH_GSS_KRB5;
++			break;
++		case Opt_sec_krb5i:
++			mnt->auth_flavors[mnt->auth_flavor_len] =
++							RPC_AUTH_GSS_KRB5I;
++			break;
++		case Opt_sec_krb5p:
++			mnt->auth_flavors[mnt->auth_flavor_len] =
++							RPC_AUTH_GSS_KRB5P;
++			break;
++		case Opt_sec_lkey:
++			mnt->auth_flavors[mnt->auth_flavor_len] =
++							RPC_AUTH_GSS_LKEY;
++			break;
++		case Opt_sec_lkeyi:
++			mnt->auth_flavors[mnt->auth_flavor_len] =
++							RPC_AUTH_GSS_LKEYI;
++			break;
++		case Opt_sec_lkeyp:
++			mnt->auth_flavors[mnt->auth_flavor_len] =
++							RPC_AUTH_GSS_LKEYP;
++			break;
++		case Opt_sec_spkm:
++			mnt->auth_flavors[mnt->auth_flavor_len] =
++							RPC_AUTH_GSS_SPKM;
++			break;
++		case Opt_sec_spkmi:
++			mnt->auth_flavors[mnt->auth_flavor_len] =
++							RPC_AUTH_GSS_SPKMI;
++			break;
++		case Opt_sec_spkmp:
++			mnt->auth_flavors[mnt->auth_flavor_len] =
++							RPC_AUTH_GSS_SPKMP;
++			break;
++		default:
++			return 0;
++		}
++
++		mnt->auth_flavor_len++;
+ 	}
  
- 		nfs_set_transport_defaults(args);
- 
--		switch (args->auth_flavor_len) {
--		case 0:
--			args->auth_flavors[0] = RPC_AUTH_UNIX;
--			break;
--		case 1:
--			break;
--		default:
-+		if (args->auth_flavor_len > 1)
- 			goto out_inval_auth;
--		}
- 
- 		if (args->client_address == NULL)
- 			goto out_no_client_address;
+ 	return 1;
 
