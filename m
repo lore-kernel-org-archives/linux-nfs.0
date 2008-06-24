@@ -1,53 +1,36 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH RFC] nfs: initialize timeout variable in
-	nfs4_proc_setclientid_confirm
-Date: Tue, 24 Jun 2008 14:50:59 -0400
-Message-ID: <1214333459.7156.39.camel@localhost>
-References: <48612E25.8050405@panasas.com>
+From: Lukas Hejtmanek <xhejtman@ics.muni.cz>
+Subject: Re: Upcoming nfs-utils 1.1.3 release.
+Date: Tue, 24 Jun 2008 21:41:16 +0200
+Message-ID: <20080624194116.GN4484@ics.muni.cz>
+References: <48600CCC.5000203@RedHat.com> <20080623205704.GU4484@ics.muni.cz>
+	<486016B2.1000506@RedHat.com> <20080624083355.GW4484@ics.muni.cz>
+	<4d569c330806240634m6c23e3den338e7c3842d9e261@mail.gmail.com>
+	<20080624153741.GM4484@ics.muni.cz>
+	<4d569c330806241027n1f717a19o371e7bf41b5b203f@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: NFS list <linux-nfs@vger.kernel.org>
-To: Benny Halevy <bhalevy@panasas.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:42136 "EHLO mail-out2.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752040AbYFXSvE convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Jun 2008 14:51:04 -0400
-In-Reply-To: <48612E25.8050405@panasas.com>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="iso-8859-2"
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
+To: Kevin Coffman <kwc@citi.umich.edu>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <4d569c330806241027n1f717a19o371e7bf41b5b203f@mail.gmail.com>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2008-06-24 at 20:25 +0300, Benny Halevy wrote:
-> gcc (4.3.0) rightfully warns about this:
-> /usr0/export/dev/bhalevy/git/linux-pnfs-bh-nfs41/fs/nfs/nfs4proc.c: I=
-n function =E2=80=98nfs4_proc_setclientid_confirm=E2=80=99:
-> /usr0/export/dev/bhalevy/git/linux-pnfs-bh-nfs41/fs/nfs/nfs4proc.c:29=
-36: warning: =E2=80=98timeout=E2=80=99 may be used uninitialized in thi=
-s function
->=20
-> nfs4_delay that's passed a pointer to 'timeout' is looking at its val=
-ue
-> and sets it up to some value in the range: NFS4_POLL_RETRY_MIN..NFS4_=
-POLL_RETRY_MAX
-> 	if (*timeout <=3D 0)
-> 		*timeout =3D NFS4_POLL_RETRY_MIN;
-> 	if (*timeout > NFS4_POLL_RETRY_MAX)
-> 		*timeout =3D NFS4_POLL_RETRY_MAX;
->=20
-> Therefore it will end up set to some sane, though rather indeterminis=
-tic, value.
->=20
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> ---
->=20
-> Trond, this patch merely initializes timeout to 0 which will
-> result in it set eventually to NFS4_POLL_RETRY_MIN.
-> Is this appropriate?
+On Tue, Jun 24, 2008 at 01:27:50PM -0400, Kevin Coffman wrote:
+> Near as I can tell, the use of strnstr() is from your patch?
+> select_krb5_ccache() uses strstr().
 
-ACK. Since the existing will always return sane values, and nobody has
-complained yet, I'll queue this up for 2.6.27 rather than pushing it as
-a hotfix.
+I guess no. I believe it came to me from git head.
 
-Thanks!
-  Trond
+-- =
 
+Luk=E1=B9 Hejtm=E1nek
