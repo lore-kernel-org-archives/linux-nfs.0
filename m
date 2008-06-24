@@ -1,33 +1,65 @@
-From: Lukas Hejtmanek <xhejtman@ics.muni.cz>
-Subject: Re: Upcoming nfs-utils 1.1.3 release.
-Date: Tue, 24 Jun 2008 17:37:41 +0200
-Message-ID: <20080624153741.GM4484@ics.muni.cz>
-References: <48600CCC.5000203@RedHat.com> <20080623205704.GU4484@ics.muni.cz>
-	<486016B2.1000506@RedHat.com> <20080624083355.GW4484@ics.muni.cz>
-	<4d569c330806240634m6c23e3den338e7c3842d9e261@mail.gmail.com>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH RFC] nfs: initialize timeout variable in nfs4_proc_setclientid_confirm
+Date: Tue, 24 Jun 2008 20:25:57 +0300
+Message-ID: <48612E25.8050405@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-2"
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
-To: Kevin Coffman <kwc@citi.umich.edu>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <4d569c330806240634m6c23e3den338e7c3842d9e261@mail.gmail.com>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: text/plain; charset=windows-1252
+Cc: NFS list <linux-nfs@vger.kernel.org>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from ti-out-0910.google.com ([209.85.142.187]:48885 "EHLO
+	ti-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750900AbYFXR0E (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Jun 2008 13:26:04 -0400
+Received: by ti-out-0910.google.com with SMTP id b6so1414086tic.23
+        for <linux-nfs@vger.kernel.org>; Tue, 24 Jun 2008 10:26:02 -0700 (PDT)
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Btw, the current git head cannot be compiled as I don't have strnstr functi=
-on.
-Configure does not check for it and select_krb5_ccache unconditionally uses
-it.
+gcc (4.3.0) rightfully warns about this:
+/usr0/export/dev/bhalevy/git/linux-pnfs-bh-nfs41/fs/nfs/nfs4proc.c: In =
+function =91nfs4_proc_setclientid_confirm=92:
+/usr0/export/dev/bhalevy/git/linux-pnfs-bh-nfs41/fs/nfs/nfs4proc.c:2936=
+: warning: =91timeout=92 may be used uninitialized in this function
 
--- =
+nfs4_delay that's passed a pointer to 'timeout' is looking at its value
+and sets it up to some value in the range: NFS4_POLL_RETRY_MIN..NFS4_PO=
+LL_RETRY_MAX
+	if (*timeout <=3D 0)
+		*timeout =3D NFS4_POLL_RETRY_MIN;
+	if (*timeout > NFS4_POLL_RETRY_MAX)
+		*timeout =3D NFS4_POLL_RETRY_MAX;
 
-Luk=E1=B9 Hejtm=E1nek
+Therefore it will end up set to some sane, though rather indeterministi=
+c, value.
+
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+
+Trond, this patch merely initializes timeout to 0 which will
+result in it set eventually to NFS4_POLL_RETRY_MIN.
+Is this appropriate?
+
+Benny
+
+ fs/nfs/nfs4proc.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 1293e0a..39981b6 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2933,7 +2933,7 @@ static int _nfs4_proc_setclientid_confirm(struct =
+nfs_client *clp, struct rpc_cre
+=20
+ int nfs4_proc_setclientid_confirm(struct nfs_client *clp, struct rpc_c=
+red *cred)
+ {
+-	long timeout;
++	long timeout =3D 0;
+ 	int err;
+ 	do {
+ 		err =3D _nfs4_proc_setclientid_confirm(clp, cred);
+--=20
+1.5.6.GIT
+
