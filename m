@@ -1,88 +1,86 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [NFS] NFS performance debugging
-Date: Wed, 25 Jun 2008 12:56:58 -0400
-Message-ID: <20080625165658.GA12629@fieldses.org>
-References: <200806231659.58158@fortytwo.ch> <200806241217.29243@fortytwo.ch>
-	<20080624202931.GA22757@fieldses.org>
-	<200806250902.42880@fortytwo.ch>
+From: Lukas Hejtmanek <xhejtman@ics.muni.cz>
+Subject: [Patch] fix rpc.gssd problem with ccache
+Date: Wed, 25 Jun 2008 19:02:06 +0200
+Message-ID: <20080625170206.GC4486@ics.muni.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Adrian von Bidder <avbidder-xzBkAS4TQxQfv37vnLkPlQ@public.gmane.org>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:34339 "EHLO neil.brown.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751446AbYFYQ5M (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 25 Jun 2008 12:57:12 -0400
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1KBYIw-0004EO-J0
-	for linux-nfs@vger.kernel.org; Thu, 26 Jun 2008 02:57:10 +1000
-In-Reply-To: <200806250902.42880-xzBkAS4TQxQfv37vnLkPlQ@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
+To: Steve Dickson <SteveD@redhat.com>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jun 25, 2008 at 09:02:42AM +0200, Adrian von Bidder wrote:
-> On Tuesday 24 June 2008 22.29:31 J. Bruce Fields wrote:
-> > On Tue, Jun 24, 2008 at 12:17:24PM +0200, Adrian von Bidder wrote:
-> 
-> > > Starting KDE, opening documents, sometimes also closing oo.org and
-> > > saving documents takes several seconds longer than on local disk.
-> >
-> > "close" on nfs is an operation that requires a round-trip to the server
-> > and waiting for the disk to commit any writes made before the close, so
-> > if you've got to do a lot of those it can take time.  Fooling with the
-> > journaling on the exported filesystem may help.
-> 
-> Are there tools to measure latencies on NFS?  Given a network dump, desired 
-> output would be histograms of latencies by file operation?  (Or maybe I can 
-> catch the information on the client, VFS side instead of NFS?
-> 
-> At this time, I really need to collect more data on where the problem is 
-> since all I'm doing right now is fooling around based on assumptions... :-(
-> 
-> OTOH I'd suspect KDE/oo.org startup to be mostly reads of those config 
-> files, so the problem shouldn't be close latencies.  Assumptions again.
-> 
-> > > TODO today: play around with NFSv4 on the shaky assumption that nfsv3
-> > > is actually working but net latency is killing my performance.
-> >
-> > Delegations *might* help if the problem is really open latency.
-> 
-> First tries showed
->  * There are no acl on my files now
+gssd_setup_krb5_user_gss_ccache must return an error if no usable cache is 
+found. Trying to use invalid default cache and continue is not good idea at all.
 
-NFSv4 uses an entirely different type of ACL, for which you need
-different client-side tools; see
+Signed-off-by: Lukas Hejtmanek <xhejtman@ics.muni.cz>
 
-	http://www.citi.umich.edu/projects/nfsv4/linux/nfs4-acl-tools/
-
->  * user id mapping seems funny: some users map to nobody, others map 
-> correctly.  Huh?
-
-And whereas v2/v3 require only uid's and gid's to agree, v4 (if you're
-using auth_sys) requires uid's, gid's, *and* user and group names to
-agree.
-
---b.
-
->  * Performance seems to be ok (timing desktop applications is always 
-> difficult, and so far I'm working against on the production server with 
-> varying load anyway...)
-> 
-> Haven't investigated these yet...
-
-
--------------------------------------------------------------------------
-Check out the new SourceForge.net Marketplace.
-It's the best place to buy or sell services for
-just about anything Open Source.
-http://sourceforge.net/services/buy/index.php
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
-
+diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+index 7202b64..e7cefc5 100644
+--- a/utils/gssd/gssd_proc.c
++++ b/utils/gssd/gssd_proc.c
+@@ -703,9 +703,8 @@ handle_krb5_upcall(struct clnt_info *clp)
+ 	if (uid != 0 || (uid == 0 && root_uses_machine_creds == 0)) {
+ 		/* Tell krb5 gss which credentials cache to use */
+ 		for (dirname = ccachesearch; *dirname != NULL; dirname++) {
+-			gssd_setup_krb5_user_gss_ccache(uid, clp->servername, *dirname);
+-
+-			create_resp = create_auth_rpc_client(clp, &rpc_clnt, &auth, uid,
++			if(!gssd_setup_krb5_user_gss_ccache(uid, clp->servername, *dirname))
++				create_resp = create_auth_rpc_client(clp, &rpc_clnt, &auth, uid,
+ 							     AUTHTYPE_KRB5);
+ 			if (create_resp == 0)
+ 				break;
+diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+index 983fb2c..4915293 100644
+--- a/utils/gssd/krb5_util.c
++++ b/utils/gssd/krb5_util.c
+@@ -994,9 +994,10 @@ err_cache:
+  * do the best we can.
+  *
+  * Returns:
+- *	void
++ *	0 = ok
++ *	1 = error
+  */
+-void
++int
+ gssd_setup_krb5_user_gss_ccache(uid_t uid, char *servername, char *dirname)
+ {
+ 	char			buf[MAX_NETOBJ_SZ];
+@@ -1010,11 +1011,11 @@ gssd_setup_krb5_user_gss_ccache(uid_t uid, char *servername, char *dirname)
+ 		free(d);
+ 	}
+ 	else
+-		snprintf(buf, sizeof(buf), "FILE:%s/%s%u",
+-			dirname, GSSD_DEFAULT_CRED_PREFIX, uid);
++		return 1;
+ 	printerr(2, "using %s as credentials cache for client with "
+ 		    "uid %u for server %s\n", buf, uid, servername);
+ 	gssd_set_krb5_ccache_name(buf);
++	return 0;
+ }
+ 
+ /*
+diff --git a/utils/gssd/krb5_util.h b/utils/gssd/krb5_util.h
+index 431fdaf..addae1c 100644
+--- a/utils/gssd/krb5_util.h
++++ b/utils/gssd/krb5_util.h
+@@ -17,7 +17,7 @@ struct gssd_k5_kt_princ {
+ };
+ 
+ 
+-void gssd_setup_krb5_user_gss_ccache(uid_t uid, char *servername,
++int gssd_setup_krb5_user_gss_ccache(uid_t uid, char *servername,
+ 				     char *dirname);
+ int  gssd_get_krb5_machine_cred_list(char ***list);
+ void gssd_free_krb5_machine_cred_list(char **list);
