@@ -1,86 +1,81 @@
-From: Lukas Hejtmanek <xhejtman@ics.muni.cz>
-Subject: [Patch] fix rpc.gssd problem with ccache
-Date: Wed, 25 Jun 2008 19:02:06 +0200
-Message-ID: <20080625170206.GC4486@ics.muni.cz>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] NFSD: fix use of setsockopt
+Date: Wed, 25 Jun 2008 15:37:57 -0400
+Message-ID: <20080625193757.GF12629@fieldses.org>
+References: <485A6033.3090301@citi.umich.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
-To: Steve Dickson <SteveD@redhat.com>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org, Neil Brown <neilb@suse.de>
+To: Olga Kornievskaia <aglo@citi.umich.edu>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail.fieldses.org ([66.93.2.214]:51129 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752124AbYFYTh6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 25 Jun 2008 15:37:58 -0400
+In-Reply-To: <485A6033.3090301@citi.umich.edu>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-gssd_setup_krb5_user_gss_ccache must return an error if no usable cache is 
-found. Trying to use invalid default cache and continue is not good idea at all.
+On Thu, Jun 19, 2008 at 09:33:39AM -0400, Olga Kornievskaia wrote:
+> The following patch fixes NFS server's use of setsockopt. For this  
+> function to take an effect it first needs be called after socket  
+> creation but before sock binding.
 
-Signed-off-by: Lukas Hejtmanek <xhejtman@ics.muni.cz>
+The tcp(7) man page actually claims that it's listen() and connect()
+that matter (so the setsockopt is effective on (and only on) unconnected
+sockets), so probably this could go after the bind and before the
+listen?  Not that it matters.
 
-diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-index 7202b64..e7cefc5 100644
---- a/utils/gssd/gssd_proc.c
-+++ b/utils/gssd/gssd_proc.c
-@@ -703,9 +703,8 @@ handle_krb5_upcall(struct clnt_info *clp)
- 	if (uid != 0 || (uid == 0 && root_uses_machine_creds == 0)) {
- 		/* Tell krb5 gss which credentials cache to use */
- 		for (dirname = ccachesearch; *dirname != NULL; dirname++) {
--			gssd_setup_krb5_user_gss_ccache(uid, clp->servername, *dirname);
--
--			create_resp = create_auth_rpc_client(clp, &rpc_clnt, &auth, uid,
-+			if(!gssd_setup_krb5_user_gss_ccache(uid, clp->servername, *dirname))
-+				create_resp = create_auth_rpc_client(clp, &rpc_clnt, &auth, uid,
- 							     AUTHTYPE_KRB5);
- 			if (create_resp == 0)
- 				break;
-diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
-index 983fb2c..4915293 100644
---- a/utils/gssd/krb5_util.c
-+++ b/utils/gssd/krb5_util.c
-@@ -994,9 +994,10 @@ err_cache:
-  * do the best we can.
-  *
-  * Returns:
-- *	void
-+ *	0 = ok
-+ *	1 = error
-  */
--void
-+int
- gssd_setup_krb5_user_gss_ccache(uid_t uid, char *servername, char *dirname)
- {
- 	char			buf[MAX_NETOBJ_SZ];
-@@ -1010,11 +1011,11 @@ gssd_setup_krb5_user_gss_ccache(uid_t uid, char *servername, char *dirname)
- 		free(d);
- 	}
- 	else
--		snprintf(buf, sizeof(buf), "FILE:%s/%s%u",
--			dirname, GSSD_DEFAULT_CRED_PREFIX, uid);
-+		return 1;
- 	printerr(2, "using %s as credentials cache for client with "
- 		    "uid %u for server %s\n", buf, uid, servername);
- 	gssd_set_krb5_ccache_name(buf);
-+	return 0;
- }
- 
- /*
-diff --git a/utils/gssd/krb5_util.h b/utils/gssd/krb5_util.h
-index 431fdaf..addae1c 100644
---- a/utils/gssd/krb5_util.h
-+++ b/utils/gssd/krb5_util.h
-@@ -17,7 +17,7 @@ struct gssd_k5_kt_princ {
- };
- 
- 
--void gssd_setup_krb5_user_gss_ccache(uid_t uid, char *servername,
-+int gssd_setup_krb5_user_gss_ccache(uid_t uid, char *servername,
- 				     char *dirname);
- int  gssd_get_krb5_machine_cred_list(char ***list);
- void gssd_free_krb5_machine_cred_list(char **list);
+> This patch also changes the size of the receive sock buffer to be same  
+> as the send sock buffer. Both buffers are now a multiple of maxpayload  
+> and number of nfsd threads.
+
+It would be nice if we could get some review from someone who remembers
+what the justification for the smaller receive buffer size was (Neil?).
+
+> This patch fixes the problem that receive window never opens beyond the  
+> default TCP receive window size set by the 2nd parameter of the  
+> net.ipv4.tcp_rmem sysctl.
+
+Do you know what it does in the udp case?
+
+--b.
+
+>
+> Signed-off-by: Olga Kornievskaia <aglo@citi.umich.edu>
+
+> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+> index c75bffe..178b397 100644
+> --- a/net/sunrpc/svcsock.c
+> +++ b/net/sunrpc/svcsock.c
+> @@ -1191,7 +1191,7 @@ svc_tcp_recvfrom(struct svc_rqst *rqstp)
+>  		 */
+>  		svc_sock_setbufsize(svsk->sk_sock,
+>  				    (serv->sv_nrthreads+3) * serv->sv_max_mesg,
+> -				    3 * serv->sv_max_mesg);
+> +				    (serv->sv_nrthreads+3) * serv->sv_max_mesg);
+>  
+>  	clear_bit(SK_DATA, &svsk->sk_flags);
+>  
+> @@ -1372,11 +1372,6 @@ svc_tcp_init(struct svc_sock *svsk)
+>  		 * receive and respond to one request.
+>  		 * svc_tcp_recvfrom will re-adjust if necessary
+>  		 */
+> -		svc_sock_setbufsize(svsk->sk_sock,
+> -				    3 * svsk->sk_server->sv_max_mesg,
+> -				    3 * svsk->sk_server->sv_max_mesg);
+> -
+> -		set_bit(SK_CHNGBUF, &svsk->sk_flags);
+>  		set_bit(SK_DATA, &svsk->sk_flags);
+>  		if (sk->sk_state != TCP_ESTABLISHED)
+>  			set_bit(SK_CLOSE, &svsk->sk_flags);
+> @@ -1761,6 +1756,8 @@ static int svc_create_socket(struct svc_serv *serv, int protocol,
+>  
+>  	if (type == SOCK_STREAM)
+>  		sock->sk->sk_reuse = 1;		/* allow address reuse */
+> +	svc_sock_setbufsize(sock, (serv->sv_nrthreads+3) * serv->sv_max_mesg,
+> +				(serv->sv_nrthreads+3) * serv->sv_max_mesg);
+>  	error = kernel_bind(sock, sin, len);
+>  	if (error < 0)
+>  		goto bummer;
+
