@@ -1,55 +1,68 @@
-From: Krishna Kumar2 <krkumar2@in.ibm.com>
-Subject: Re: NFS performance degradation of local loopback FS.
-Date: Thu, 26 Jun 2008 12:49:03 +0530
-Message-ID: <OFA5778CCB.84AF3576-ON65257474.0027EF21-65257474.00283248@in.ibm.com>
-References: <485F99C8.2000800@panasas.com>
+From: Le Rouzic <aime.le-rouzic@bull.net>
+Subject: Re: Upcoming nfs-utils 1.1.3 release.
+Date: Thu, 26 Jun 2008 15:09:39 +0200
+Message-ID: <48639513.8000402@bull.net>
+References: <48600CCC.5000203@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: linux-nfs@vger.kernel.org, Peter Staubach <staubach@redhat.com>
-To: Benny Halevy <bhalevy@panasas.com>
+Content-Type: text/plain; charset=ISO-8859-1;
+	format=flowed
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
+To: Steve Dickson <SteveD@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from e28smtp02.in.ibm.com ([59.145.155.2]:46057 "EHLO
-	e28esmtp02.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755283AbYFZHTm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2008 03:19:42 -0400
-Received: from d28relay02.in.ibm.com (d28relay02.in.ibm.com [9.184.220.59])
-	by e28esmtp02.in.ibm.com (8.13.1/8.13.1) with ESMTP id m5Q7JIK7017363
-	for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2008 12:49:18 +0530
-Received: from d28av01.in.ibm.com (d28av01.in.ibm.com [9.184.220.63])
-	by d28relay02.in.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m5Q7IEKF786580
-	for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2008 12:48:14 +0530
-Received: from d28av01.in.ibm.com (loopback [127.0.0.1])
-	by d28av01.in.ibm.com (8.13.1/8.13.3) with ESMTP id m5Q7JIdc024147
-	for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2008 12:49:18 +0530
-In-Reply-To: <485F99C8.2000800@panasas.com>
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:42744 "EHLO
+	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1764874AbYFZNI5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2008 09:08:57 -0400
+In-Reply-To: <48600CCC.5000203-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Benny Halevy <bhalevy@panasas.com> wrote on 06/23/2008 06:10:40 PM:
+Hi,
 
-> Apparently the file is cached.  You needed to restart nfs
-> and remount the file system to make sure it isn't before reading it.
-> Or, you can create a file larger than your host's cache size so
-> when you write (or read) it sequentially, its tail evicts its head
-> out of the cache.  This is a less reliable method, yet creating a
-> file about 25% larger than the host's memory size should work for you.
+Could you confirm there will be the Chuck Lever's patches about
+the mount ipv6 patchs serie?
+Will there be also something about ipv6 server side commands?
 
-I did a umount of all filesystems and restart NFS before testing. Here
-is the result:
+Thanks
 
-Local:
-      Read:  69.5 MB/s
-      Write: 70.0 MB/s
-NFS of same FS mounted loopback on same system:
-      Read:  29.5 MB/s  (57% drop)
-      Write: 27.5 MB/s  (60% drop)
 
-The drops seems exceedingly high. How can I figure out the source of the
-problem? Even if it is as general as to be able to state: "Problem is in
-the NFS client code" or "Problem is in the NFS server code", or "Problem
-can be mitigated by tuning" :-)
 
-Thanks,
+Steve Dickson a =E9crit :
 
-- KK
+>FYI...
+>
+>I'm thinking about making a 1.1.3 nfs-utils update release in the rela=
+tively near
+>future. I've made about  20 or so commits since the last release so I =
+was thinking
+>that was a nice round number to cut a release...=20
+>
+>So if your sitting on some patches that you want include please post t=
+hem
+>to the list. Also if you don't see something in the git tree that shou=
+ld be there (i.e.
+>I missed the patch posting) please bring it to my attention...=20
+>
+>steved.
+>--
+>To unsubscribe from this list: send the line "unsubscribe linux-nfs" i=
+n
+>the body of a message to majordomo@vger.kernel.org
+>More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+>
+> =20
+>
+
+
+--=20
+-----------------------------------------------------------------
+Company : Bull, Architect of an Open World TM (www.bull.com)
+Name    : Aime Le Rouzic=20
+Mail    : Bull - BP 208 - 38432 Echirolles Cedex - France
+E-Mail  : aime.le-rouzic@bull.net
+Phone   : 33 (4) 76.29.75.51
+=46ax     : 33 (4) 76.29.75.18
+-----------------------------------------------------------------=20
 
