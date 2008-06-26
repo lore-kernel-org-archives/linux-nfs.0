@@ -1,33 +1,27 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] NFSD: fix use of setsockopt
-Date: Thu, 26 Jun 2008 13:14:12 -0400
-Message-ID: <20080626171412.GC6961@fieldses.org>
-References: <485A6033.3090301@citi.umich.edu> <20080625193757.GF12629@fieldses.org> <4862AE1F.5050902@citi.umich.edu>
+From: "Laurenz, Dirk" <Dirk.Laurenz-/ixSogHR0HOS/tZ4Wjpou0EOCMrvLtNR@public.gmane.org>
+Subject: Sm-notify
+Date: Thu, 26 Jun 2008 19:59:22 +0200
+Message-ID: <FC3FA7C4E1CA2348B5579A68B24556E9DA4AF2946C@ABGEX72E.FSC.NET>
+References: <485A6033.3090301@citi.umich.edu>
+ <20080625193757.GF12629@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org, Neil Brown <neilb@suse.de>
-To: Olga Kornievskaia <aglo@citi.umich.edu>
+Content-Type: text/plain; charset="us-ascii"
+Cc: "Oeltze, Benjamin" <Benjamin.Oeltze-/ixSogHR0HOS/tZ4Wjpou0EOCMrvLtNR@public.gmane.org>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:49235 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751716AbYFZR4J (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Jun 2008 13:56:09 -0400
-In-Reply-To: <4862AE1F.5050902@citi.umich.edu>
+Received: from dgate10.fujitsu-siemens.com ([80.70.172.49]:49603 "EHLO
+	dgate10.fujitsu-siemens.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751860AbYFZSJM convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Jun 2008 14:09:12 -0400
+In-Reply-To: <20080625193757.GF12629@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jun 25, 2008 at 04:44:15PM -0400, Olga Kornievskaia wrote:
-> Looking at the kernel code, when setsockopt() is called on a UDP socket  
-> to set send/receive buffer for UPD the code will not do anything:  
-> udp_setsockopt() and udp_lib_setsockopt() will return -ENOPROTOOPT.  
-> However, we bypass the call to setsockopt() and instead set the buffer  
-> sizes directly. From what I understand sk_sndbuf/sk_rcvbuf are not used  
-> by the UDP code. We are setting the fields that are never used.
->
-> Then perhaps we can remove calls to svc_sock_setbufsize() from  
-> svc_udp_init() and svc_udp_recvfrom()?
+Hi,
 
-Assuming you're correct about udp not using those fields (haven't
-checked myself)--yes, that'd be great.
+Does anybody know how sm-notify exactly works on a suse sles 9 system?
 
---b.
+Greetings,
+
+Dirk
