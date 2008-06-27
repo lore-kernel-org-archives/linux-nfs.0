@@ -1,130 +1,106 @@
 From: "Chuck Lever" <chuck.lever@oracle.com>
-Subject: Re: [NFS] NFS performance debugging
-Date: Fri, 27 Jun 2008 09:44:38 -0400
-Message-ID: <76bd70e30806270644j3e67c83and7b1f7fd6cc2f5f5@mail.gmail.com>
-References: <48624F34.1070108@RedHat.com>
-	<OFDFC449CB.7BDDC7DB-ON65257475.0028A009-65257475.002936C0@in.ibm.com>
+Subject: Re: NFS performance degradation of local loopback FS.
+Date: Fri, 27 Jun 2008 10:06:44 -0400
+Message-ID: <76bd70e30806270706x7cbfd291l6cb6d0cc5e81771@mail.gmail.com>
+References: <62137472-FF31-40A2-904D-A9CC2C76B032@oracle.com>
+	 <OF3C28594A.91157CD9-ON65257475.0029EEE9-65257475.0031D7A5@in.ibm.com>
 Reply-To: chucklever@gmail.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, Steve Dickson <SteveD@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: "Benny Halevy" <bhalevy@panasas.com>, linux-nfs@vger.kernel.org,
+	"Peter Staubach" <staubach@redhat.com>,
+	"J. Bruce Fields" <bfields@fieldses.org>
 To: "Krishna Kumar2" <krkumar2@in.ibm.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:58000 "EHLO neil.brown.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754917AbYF0Now (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 27 Jun 2008 09:44:52 -0400
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1KCEFt-0002Fc-7W
-	for linux-nfs@vger.kernel.org; Fri, 27 Jun 2008 23:44:49 +1000
-In-Reply-To: <OFDFC449CB.7BDDC7DB-ON65257475.0028A009-65257475.002936C0@in.ibm.com>
+Received: from an-out-0708.google.com ([209.85.132.248]:64231 "EHLO
+	an-out-0708.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753423AbYF0OGq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Jun 2008 10:06:46 -0400
+Received: by an-out-0708.google.com with SMTP id d40so108648and.103
+        for <linux-nfs@vger.kernel.org>; Fri, 27 Jun 2008 07:06:45 -0700 (PDT)
+In-Reply-To: <OF3C28594A.91157CD9-ON65257475.0029EEE9-65257475.0031D7A5@in.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jun 27, 2008 at 3:30 AM, Krishna Kumar2 <krkumar2@in.ibm.com> wrote:
-> linux-nfs-owner@vger.kernel.org wrote on 06/25/2008 07:29:16 PM:
+On Fri, Jun 27, 2008 at 5:04 AM, Krishna Kumar2 <krkumar2@in.ibm.com> wrote:
+> Chuck Lever <chuck.lever@oracle.com> wrote on 06/26/2008 11:12:58 PM:
+>> > Local:
+>> >      Read:  69.5 MB/s
+>> >      Write: 70.0 MB/s
+>> > NFS of same FS mounted loopback on same system:
+>> >      Read:  29.5 MB/s  (57% drop)
+>> >      Write: 27.5 MB/s  (60% drop)
+>>
+>> You can look at client-side NFS and RPC performance metrics using some
+>> prototype Python tools that were just added to nfs-utils.  The scripts
+>> themselves can be downloaded from:
+>>     http://oss.oracle.com/~cel/Linux-2.6/2.6.25
+>> but unfortunately they are not fully documented yet so you will have
+>> to approach them with an open mind and a sense of experimentation.
+>>
+>> You can also capture network traces on your loopback interface to see
+>> if there is, for example, unexpected congestion or latency, or if
+>> there are other problems.
+>>
+>> But for loopback, the problem is often that the client and server are
+>> sharing the same physical memory for caching data.  Analyzing your
+>> test system's physical memory utilization might be revealing.
 >
->> But please do not let this caveat stop you from trying this script and
->> mountstats script. We definitely need feedback on how well they do or
->> don't work (and as always... patches are welcomed! ;-) ) Once things
-> harden
->> up (via any feedback), I'll added the install code to make these scripts
-> be
->> installed (probably in /usr/sbin) which means they will be ready for
->> prime time...
->
-> Hi Steve,
->
-> When I ran this util, it worked the first time:
->
-> [root@localhost ~]# /tmp/nfs-iostat
->
-> localhost:/local mounted on /nfs:
->
->   op/s         rpc bklog
->   1.27            0.01
-> read:             ops/s            Kb/s           Kb/op         retrans
-> avg RTT (ms)    avg exe (ms)
->                  0.619          39.772          64.273        0 (0.0%)
-> 16.889          16.927
-> write:            ops/s            Kb/s           Kb/op         retrans
-> avg RTT (ms)    avg exe (ms)
->                  0.626          39.112          62.523        0 (0.0%)
-> 26.357         4039.241
->
-> 8.124.111.71:/mnt mounted on /mnt:
->
->   op/s         rpc bklog
->   3.00            0.00
-> read:             ops/s            Kb/s           Kb/op         retrans
-> avg RTT (ms)    avg exe (ms)
->                  0.000           0.000           0.000        0 (0.0%)
-> 0.000           0.000
-> write:            ops/s            Kb/s           Kb/op         retrans
-> avg RTT (ms)    avg exe (ms)
->                  0.000           0.000           0.000        0 (0.0%)
-> 0.000           0.000
->
-> (KK: for some reason, the real NFS mount gives all zero. Also, for
-> loopback, the read/write
-> BW is very poor: less than 40 Kb/s).
+> But loopback is better than actual network traffic.
 
-As an aside, Jim Rees pointed out to me that that should be KB/s, not
-Kb/s.  I will post a patch to address that.
+What precisely do you mean by that?
 
-> But from the next time I ran, and all subsequent runs (and even after a
-> reboot), I get:
->
-> [root@localhost init.d]# /tmp/nfs-iostat
-> localhost:/local mounted on /nfs:
->
->   op/s         rpc bklog
->   0.04            0.00
-> read:             ops/s            Kb/s           Kb/op         retrans
-> avg RTT (ms)    avg exe (ms)
->                  0.000           0.000           0.000        0 (0.0%)
-> 0.000           0.000
-> write:            ops/s            Kb/s           Kb/op         retrans
-> avg RTT (ms)    avg exe (ms)
->                  0.000           0.000           0.000        0 (0.0%)
-> 0.000           0.000
->
-> 8.124.111.71:/mnt mounted on /mnt:
->
->   op/s         rpc bklog
->   6.00            0.00
-> read:             ops/s            Kb/s           Kb/op         retrans
-> avg RTT (ms)    avg exe (ms)
->                  0.000           0.000           0.000        0 (0.0%)
-> 0.000           0.000
-> write:            ops/s            Kb/s           Kb/op         retrans
-> avg RTT (ms)    avg exe (ms)
->                  0.000           0.000           0.000        0 (0.0%)
-> 0.000           0.000
->
-> (KK: every filesystem gives zero for all parameters).
->
-> What could be wrong?
+You are testing with the client and server on the same machine.  Is
+the loopback mount over the lo interface, but you mount the machine's
+actual IP address for the "network" test?
 
-At a guess, it's because the client is now caching your file data?
+I would expect that in that case, loopback would perform better
+because a memory copy is always faster than going through the network
+stack and the NIC.
 
-Can you post a copy of your mount command line, and your
-/proc/self/mountstats file after a test run (but before you unmount)?
+It would be interesting to compare a network-only performance test
+(like iPerf) for loopback and for going through the NIC.
+
+> If my file size is
+> less than half the available physical memory, then this should not be
+> a problem, right?
+
+It is likely not a problem in that case, but you never know until you
+have analyzed the network traffic carefully to see what's going on.
+
+>> Otherwise, you should always expect some performance degradation when
+>> comparing NFS and local disk.  50% is not completely unheard of.  It's
+>> the price paid for being able to share your file data concurrently
+>> among multiple clients.
+>
+> But if the file is being shared only with one client (and that too
+> locally), isn't 25% too high?
+
+NFS always allows the possibility of sharing, so it doesn't matter how
+many clients have mounted the server.
+
+The distinction I'm drawing here is between something like iSCSI,
+where only a single client ever mounts a LUN, and thus can cache
+aggressively, versus NFS in the same environment, where the client has
+to assume that any other client can access a file at any time, and
+therefore must cache more conservatively.
+
+You are doing cold cache tests, so this may not be at issue here either.
+
+A 25% performance drop between a 'dd' directly on the server, and one
+from an NFS client, is probably typical.
+
+> Will I get better results on NFSv4, and should I try delegation (that
+> sounds automatic and not something that the user has to start)?
+
+It's hard to predict if NFSv4 will help because we don't understand
+what is causing your performance drop yet.
+
+Delegation is usually automatic if the client's mount command has
+generated a plausible callback IP address, and the server is
+successfully able to connect to it.  However, I didn't think the
+server hands out a delegation until the second OPEN... with a single
+dd, the client opens the file only once.
 
 --
 Chuck Lever
-
--------------------------------------------------------------------------
-Check out the new SourceForge.net Marketplace.
-It's the best place to buy or sell services for
-just about anything Open Source.
-http://sourceforge.net/services/buy/index.php
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
-
