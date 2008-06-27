@@ -1,66 +1,30 @@
-From: "Oeltze, Benjamin" <Benjamin.Oeltze-/ixSogHR0HOS/tZ4Wjpou0EOCMrvLtNR@public.gmane.org>
-Subject: RE: Sm-notify
-Date: Fri, 27 Jun 2008 08:58:13 +0200
-Message-ID: <FC3FA7C4E1CA2348B5579A68B24556E9DA4AD413AB@ABGEX72E.FSC.NET>
-References: <485A6033.3090301@citi.umich.edu>
-    <20080625193757.GF12629@fieldses.org>
-    <FC3FA7C4E1CA2348B5579A68B24556E9DA4AF2946C@ABGEX72E.FSC.NET>
- <46260.192.168.1.70.1214533375.squirrel@neil.brown.name>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: kernel hacker's pub night
+Date: Fri, 27 Jun 2008 10:14:06 +0300
+Message-ID: <4864933E.4070901@panasas.com>
+References: <OFA5778CCB.84AF3576-ON65257474.0027EF21-65257474.00283248@in.ibm.com> <62137472-FF31-40A2-904D-A9CC2C76B032@oracle.com> <20080626175522.GA10593@fieldses.org> <76bd70e30806261405g9357c6fg51b973ff076ee78b@mail.gmail.com> <20080626212214.GD13293@fieldses.org> <20080626212437.GE13293@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-To: NeilBrown <neilb@suse.de>,
-	"Laurenz, Dirk" <Dirk.Laurenz-/ixSogHR0HOS/tZ4Wjpou0EOCMrvLtNR@public.gmane.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: chucklever@gmail.com, Krishna Kumar2 <krkumar2@in.ibm.com>,
+	linux-nfs@vger.kernel.org, Peter Staubach <staubach@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from dgate20.fujitsu-siemens.com ([80.70.172.51]:18846 "EHLO
-	dgate20.fujitsu-siemens.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751662AbYF0HII convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 27 Jun 2008 03:08:08 -0400
-In-Reply-To: <46260.192.168.1.70.1214533375.squirrel-eq65iwfR9nKIECXXMXunQA@public.gmane.org>
+Received: from gw-colo-pa.panasas.com ([66.238.117.130]:31591 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753366AbYF0HPH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Jun 2008 03:15:07 -0400
+In-Reply-To: <20080626212437.GE13293@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
-maybe I can specify Dirks question.
+On Jun. 27, 2008, 0:24 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> Err, wow, I have no idea how I managed to screw up that subject line.
+> (But, hey, if you happen to be on this list and live in Ann Arbor, MI,
+> feel free to join us at Grizzly Peak in a half hour.)
+> 
+> --b.
 
-We are trying to set up a NFS Cluster and want to use sm-notify to info=
-rm the Clients if the Server has failed over.
-We have found a Howto that says: sm-notify uses files under /var/lib/nf=
-s/sm to determine the Clients it has to inform.
-Our Problem is, that ther are no files in this place even if we connet =
-with a client. Is there anything we have forgotten?
+Geez, missed that ;-(
+that's too short of a notice for me :)
 
-Mit freundlichen Gr=FC=DFen
-Benjamin Oeltze
-Systems Engineer
-DE ISC SOP PS N/O
-=46ujitsu Siemens Computers
-Hildesheimer Str. 25
-30880 Laatzen
-Telephone:      0511-8489 1872
-Mobile: 0160-96354617
-Email:  mailto: benjamin.oeltze-/ixSogHR0HOS/tZ4Wjpou0EOCMrvLtNR@public.gmane.org
-Internet:       http://www.fujitsu-siemens.com
-=46irmenangaben: http://www.fujitsu-siemens.de/imprint.html
-
------Original Message-----
-=46rom: NeilBrown [mailto:neilb@suse.de]
-Sent: Friday, June 27, 2008 4:23 AM
-To: Laurenz, Dirk
-Cc: linux-nfs@vger.kernel.org; Oeltze, Benjamin
-Subject: Re: Sm-notify
-
-On Fri, June 27, 2008 3:59 am, Laurenz, Dirk wrote:
-> Hi,
->
-> Does anybody know how sm-notify exactly works on a suse sles 9 system=
-?
->
-
-Yes.
-
-Do you have a specific question about it?
-
-NeilBrown
-
+Benny
