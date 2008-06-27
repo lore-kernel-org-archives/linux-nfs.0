@@ -1,55 +1,47 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [NFS] NFS performance debugging
-Date: Fri, 27 Jun 2008 14:12:36 -0400
-Message-ID: <1214590356.9235.1.camel@localhost>
-References: <48624F34.1070108@RedHat.com>
-	<OFDFC449CB.7BDDC7DB-ON65257475.0028A009-65257475.002936C0@in.ibm.com>
-	<76bd70e30806270644j3e67c83and7b1f7fd6cc2f5f5@mail.gmail.com>
+From: Neil Brown <neilb@suse.de>
+Subject: RE: Sm-notify
+Date: Sat, 28 Jun 2008 09:44:21 +1000
+Message-ID: <18533.31573.855657.391140@notabene.brown>
+References: <485A6033.3090301@citi.umich.edu>
+	<20080625193757.GF12629@fieldses.org>
+	<FC3FA7C4E1CA2348B5579A68B24556E9DA4AF2946C@ABGEX72E.FSC.NET>
+	<46260.192.168.1.70.1214533375.squirrel@neil.brown.name>
+	<FC3FA7C4E1CA2348B5579A68B24556E9DA4AD413AB@ABGEX72E.FSC.NET>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Krishna Kumar2 <krkumar2@in.ibm.com>, nfs@lists.sourceforge.net,
-	Steve Dickson <SteveD@redhat.com>
-To: chucklever@gmail.com
+Content-Type: text/plain; charset=us-ascii
+Cc: "Laurenz, Dirk" <Dirk.Laurenz-/ixSogHR0HOS/tZ4Wjpou0EOCMrvLtNR@public.gmane.org>,
+	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+To: "Oeltze, Benjamin" <Benjamin.Oeltze-/ixSogHR0HOS/tZ4Wjpou0EOCMrvLtNR@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:34567 "EHLO neil.brown.name"
+Received: from mx1.suse.de ([195.135.220.2]:43539 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756214AbYF0SMu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 27 Jun 2008 14:12:50 -0400
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1KCIRE-0003Fo-Nl
-	for linux-nfs@vger.kernel.org; Sat, 28 Jun 2008 04:12:48 +1000
-In-Reply-To: <76bd70e30806270644j3e67c83and7b1f7fd6cc2f5f5-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+	id S1757441AbYF0Xo3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 27 Jun 2008 19:44:29 -0400
+In-Reply-To: message from Oeltze, Benjamin on Friday June 27
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2008-06-27 at 09:44 -0400, Chuck Lever wrote:
+On Friday June 27, Benjamin.Oeltze-/ixSogHR0HOS/tZ4Wjpou0EOCMrvLtNR@public.gmane.org wrote:
+> Hi,
+> maybe I can specify Dirks question.
 
-> >
-> > (KK: for some reason, the real NFS mount gives all zero. Also, for
-> > loopback, the read/write
-> > BW is very poor: less than 40 Kb/s).
+Thanks.
+
 > 
-> As an aside, Jim Rees pointed out to me that that should be KB/s, not
-> Kb/s.  I will post a patch to address that.
+> We are trying to set up a NFS Cluster and want to use sm-notify to inform the Clients if the Server has failed over.
+> We have found a Howto that says: sm-notify uses files under /var/lib/nfs/sm to determine the Clients it has to inform.
+> Our Problem is, that ther are no files in this place even if we connet with a client. Is there anything we have forgotten?
 
-Strictly speaking, neither of the above are correct: the SI abbreviation
-for kilo is 'k'. IOW it should be 'kB/s'
+Files do not get created in /var/lib/nfs/sm until the client tried to
+get a lock on some file (or part of a file).  Then the file is
+created.
+Some minutes after the last lock is dropped, the file should be
+removed (though I recall there were some issues related to that, it
+might depend on exactly which kernel you are running).
 
-Cheers
-  Trond
+If no file locking is involved, there is no need to inform the client
+of failover.  They will transparently start accessing the new server
+through the old IP address, possible after a short timeout.
 
-
--------------------------------------------------------------------------
-Check out the new SourceForge.net Marketplace.
-It's the best place to buy or sell services for
-just about anything Open Source.
-http://sourceforge.net/services/buy/index.php
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+NeilBrown
 
