@@ -1,31 +1,37 @@
-From: Neil Brown <neilb@suse.de>
-Subject: RE: Sm-notify
-Date: Sat, 28 Jun 2008 20:33:41 +1000
-Message-ID: <18534.4997.157000.160865@notabene.brown>
-References: <485A6033.3090301@citi.umich.edu>
-	<20080625193757.GF12629@fieldses.org>
-	<FC3FA7C4E1CA2348B5579A68B24556E9DA4AF2946C@ABGEX72E.FSC.NET>
-	<46260.192.168.1.70.1214533375.squirrel@neil.brown.name>
-	<FC3FA7C4E1CA2348B5579A68B24556E9DA4AD413AB@ABGEX72E.FSC.NET>
-	<18533.31573.855657.391140@notabene.brown>
-	<FC3FA7C4E1CA2348B5579A68B24556E9DA4AD419DD@ABGEX72E.FSC.NET>
+From: "Laurenz, Dirk" <Dirk.Laurenz-/ixSogHR0HOS/tZ4Wjpou0EOCMrvLtNR@public.gmane.org>
+Subject: AW: Sm-notify
+Date: Sat, 28 Jun 2008 13:25:19 +0200
+Message-ID: <FC3FA7C4E1CA2348B5579A68B24556E9DA4AED046F@ABGEX72E.FSC.NET>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=iso-8859-1
 Cc: "Oeltze, Benjamin" <Benjamin.Oeltze-/ixSogHR0HOS/tZ4Wjpou0EOCMrvLtNR@public.gmane.org>,
 	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-To: "Laurenz, Dirk" <Dirk.Laurenz-/ixSogHR0HOS/tZ4Wjpou0EOCMrvLtNR@public.gmane.org>
+To: Neil Brown <neilb@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from ns1.suse.de ([195.135.220.2]:52079 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754426AbYF1Kds (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 28 Jun 2008 06:33:48 -0400
-In-Reply-To: message from Laurenz, Dirk on Saturday June 28
+Received: from dgate10.fujitsu-siemens.com ([80.70.172.49]:41997 "EHLO
+	dgate10.fujitsu-siemens.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1755317AbYF1LZV convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 28 Jun 2008 07:25:21 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+No, the client hungs for 15mins and then resumes it workshop
+
+----- Urspr=FCngliche Nachricht -----
+Von: Neil Brown <neilb@suse.de>
+Gesendet: Samstag, 28. Juni 2008 12:33
+An: Laurenz, Dirk <Dirk.Laurenz-/ixSogHR0HOS/tZ4Wjpou0EOCMrvLtNR@public.gmane.org>
+Cc: Oeltze, Benjamin <Benjamin.Oeltze-/ixSogHR0HOS/tZ4Wjpou0EOCMrvLtNR@public.gmane.org>; linux-nfs@v=
+ger.kernel.org <linux-nfs@vger.kernel.org>
+Betreff: RE: Sm-notify
+
+
 On Saturday June 28, Dirk.Laurenz-/ixSogHR0HOS/tZ4Wjpou0EOCMrvLtNR@public.gmane.org wrote:
-> i, the time out is from node a to b seconds, but from node b to a 15 minutes.
-> what I saw was, that the handle changed in /var/lib/nfs/rmtab from 0x000002 to 0x000003 although
+> i, the time out is from node a to b seconds, but from node b to a 15 =
+minutes.
+> what I saw was, that the handle changed in /var/lib/nfs/rmtab from 0x=
+000002 to 0x000003 although
 > the fsid is the same on both nodes.
 > how can the 15minute timeout occur?
 
