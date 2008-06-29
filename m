@@ -1,27 +1,28 @@
 From: Stefan Mehnert <stefanmehnert@googlemail.com>
 Subject: Possible NFS Bug | Kernel 2.6.26-rc8
-Date: Sat, 28 Jun 2008 23:36:06 +0200
-Message-ID: <1214688966.4326.32.camel@stefan-ubuntu-vm>
+Date: Sun, 29 Jun 2008 16:17:28 +0200
+Message-ID: <1214749048.14955.1.camel@stefan-ubuntu-vm>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=UTF-8
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fg-out-1718.google.com ([72.14.220.154]:12357 "EHLO
-	fg-out-1718.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751092AbYF1VgW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 28 Jun 2008 17:36:22 -0400
-Received: by fg-out-1718.google.com with SMTP id 19so496938fgg.17
-        for <linux-nfs@vger.kernel.org>; Sat, 28 Jun 2008 14:36:20 -0700 (PDT)
+Received: from fk-out-0910.google.com ([209.85.128.190]:39710 "EHLO
+	fk-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758584AbYF2ORZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 Jun 2008 10:17:25 -0400
+Received: by fk-out-0910.google.com with SMTP id 18so1080480fkq.5
+        for <linux-nfs@vger.kernel.org>; Sun, 29 Jun 2008 07:17:19 -0700 (PDT)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+=EF=BB=BFHi,
 
 I've encountered the the problem a few times now that directory listing
 in my home folder hung. The problem occurs when I shut down my test
 web-server which provides an nfs share mounted into a folder in my home
 directory.
-When an application tries to get the directory listing of my home folder
+When an application tries to get the directory listing of my home folde=
+r
 it hangs until the server is online again. Umounting is not possible
 "device is busy...". The only way to get it fixed is to restart the
 system or bring the server back online.
@@ -36,11 +37,11 @@ Kernel Messages:
 Jun 28 22:28:32 stefan-ubuntu-vm kernel: [ 1128.504018] ls            D
 f5ea7ba0     0 27184  27093
 Jun 28 22:28:32 stefan-ubuntu-vm kernel: [ 1128.504023]        f5d26370
-00000086 00000002 f5ea7ba0 f5ea7ba8 00000000 cccccccc cccccccc 
+00000086 00000002 f5ea7ba0 f5ea7ba8 00000000 cccccccc cccccccc=20
 Jun 28 22:28:32 stefan-ubuntu-vm kernel: [ 1128.504029]        c04b0240
-c04b3700 c04b3700 c04b3700 f5ea7ba4 f5d264d8 c206e700 0001ac86 
+c04b3700 c04b3700 c04b3700 f5ea7ba4 f5d264d8 c206e700 0001ac86=20
 Jun 28 22:28:32 stefan-ubuntu-vm kernel: [ 1128.504034]        00000000
-00000000 00000000 00000000 000000ff f5ea7be0 00000000 f5ea7be8 
+00000000 00000000 00000000 000000ff f5ea7be0 00000000 f5ea7be8=20
 Jun 28 22:28:32 stefan-ubuntu-vm kernel: [ 1128.504039] Call Trace:
 Jun 28 22:28:32 stefan-ubuntu-vm kernel: [ 1128.504068]  [<f8a86999>]
 nfs_wait_schedule+0x19/0x20 [nfs]
@@ -105,11 +106,13 @@ Jun 28 22:28:32 stefan-ubuntu-vm kernel: [ 1128.506136]
 [nfs:kunmap_atomic+0x3f/0x29d0] kunmap_atomic+0x3f/0xb0
 Jun 28 22:28:32 stefan-ubuntu-vm kernel: [ 1128.506143]  [path_walk
 +0x47/0xa0] path_walk+0x47/0xa0
-Jun 28 22:28:32 stefan-ubuntu-vm kernel: [ 1128.506148]  [do_path_lookup
+Jun 28 22:28:32 stefan-ubuntu-vm kernel: [ 1128.506148]  [do_path_looku=
+p
 +0x72/0x1d0] do_path_lookup+0x72/0x1d0
 Jun 28 22:28:32 stefan-ubuntu-vm kernel: [ 1128.506151]
 [security_file_alloc+0xc/0x10] security_file_alloc+0xc/0x10
-Jun 28 22:28:32 stefan-ubuntu-vm kernel: [ 1128.506156]  [get_empty_filp
+Jun 28 22:28:32 stefan-ubuntu-vm kernel: [ 1128.506156]  [get_empty_fil=
+p
 +0x5c/0x190] get_empty_filp+0x5c/0x190
 Jun 28 22:28:32 stefan-ubuntu-vm kernel: [ 1128.506183]
 [__path_lookup_intent_open+0x51/0xa0] __path_lookup_intent_open
@@ -129,15 +132,15 @@ Jun 28 22:28:32 stefan-ubuntu-vm kernel: [ 1128.506228]  [sys_open
 Jun 28 22:28:32 stefan-ubuntu-vm kernel: [ 1128.506233]
 [sysenter_past_esp+0x78/0xb9] sysenter_past_esp+0x78/0xb9
 Jun 28 22:28:32 stefan-ubuntu-vm kernel: [ 1128.506244]
-=======================
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
 Jun 28 22:28:44 stefan-ubuntu-vm kernel: [ 1141.389708] bash          D
 f5d69600     0 27261  25959
 Jun 28 22:28:44 stefan-ubuntu-vm kernel: [ 1141.389713]        f5d25f80
-00000086 00000000 f5d69600 00000000 f5db7960 00000000 c021aba3 
+00000086 00000000 f5d69600 00000000 f5db7960 00000000 c021aba3=20
 Jun 28 22:28:44 stefan-ubuntu-vm kernel: [ 1141.389719]        c04b0240
-c04b3700 c04b3700 c04b3700 f4f84cf0 f5d260e8 c206e700 00000010 
+c04b3700 c04b3700 c04b3700 f4f84cf0 f5d260e8 c206e700 00000010=20
 Jun 28 22:28:44 stefan-ubuntu-vm kernel: [ 1141.389724]        00000010
-f5db7960 f4f84cf0 f5dd1be8 c0151ded f5dd1be0 00000000 f5dd1be8 
+f5db7960 f4f84cf0 f5dd1be8 c0151ded f5dd1be0 00000000 f5dd1be8=20
 Jun 28 22:28:44 stefan-ubuntu-vm kernel: [ 1141.389729] Call Trace:
 Jun 28 22:28:44 stefan-ubuntu-vm kernel: [ 1141.389752]
 [blk_recount_segments+0x33/0x70] blk_recount_segments+0x33/0x70
@@ -173,7 +176,8 @@ Jun 28 22:28:44 stefan-ubuntu-vm kernel: [ 1141.389951]  [<f8a81921>]
 nfs_lookup_revalidate+0x361/0x3f0 [nfs]
 Jun 28 22:28:44 stefan-ubuntu-vm kernel: [ 1141.389975]
 [snd_pcm:getnstimeofday+0x3c/0x9530] getnstimeofday+0x3c/0xf0
-Jun 28 22:28:44 stefan-ubuntu-vm kernel: [ 1141.389986]  [task_tick_fair
+Jun 28 22:28:44 stefan-ubuntu-vm kernel: [ 1141.389986]  [task_tick_fai=
+r
 +0x51/0x80] task_tick_fair+0x51/0x80
 Jun 28 22:28:44 stefan-ubuntu-vm kernel: [ 1141.389991]
 [hrtimer_forward+0x104/0x150] hrtimer_forward+0x104/0x150
@@ -203,11 +207,13 @@ Jun 28 22:28:44 stefan-ubuntu-vm kernel: [ 1141.390169]
 [nfs:rb_insert_color+0xb7/0xe0] rb_insert_color+0xb7/0xe0
 Jun 28 22:28:44 stefan-ubuntu-vm kernel: [ 1141.390176]  [path_walk
 +0x47/0xa0] path_walk+0x47/0xa0
-Jun 28 22:28:44 stefan-ubuntu-vm kernel: [ 1141.390181]  [do_path_lookup
+Jun 28 22:28:44 stefan-ubuntu-vm kernel: [ 1141.390181]  [do_path_looku=
+p
 +0x72/0x1d0] do_path_lookup+0x72/0x1d0
 Jun 28 22:28:44 stefan-ubuntu-vm kernel: [ 1141.390185]
 [security_file_alloc+0xc/0x10] security_file_alloc+0xc/0x10
-Jun 28 22:28:44 stefan-ubuntu-vm kernel: [ 1141.390189]  [get_empty_filp
+Jun 28 22:28:44 stefan-ubuntu-vm kernel: [ 1141.390189]  [get_empty_fil=
+p
 +0x5c/0x190] get_empty_filp+0x5c/0x190
 Jun 28 22:28:44 stefan-ubuntu-vm kernel: [ 1141.390198]
 [__path_lookup_intent_open+0x51/0xa0] __path_lookup_intent_open
@@ -229,5 +235,5 @@ Jun 28 22:28:44 stefan-ubuntu-vm kernel: [ 1141.390777]  [sys_open
 Jun 28 22:28:44 stefan-ubuntu-vm kernel: [ 1141.390782]
 [sysenter_past_esp+0x78/0xb9] sysenter_past_esp+0x78/0xb9
 Jun 28 22:28:44 stefan-ubuntu-vm kernel: [ 1141.390791]
-=======================
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
 
