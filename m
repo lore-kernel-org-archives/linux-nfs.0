@@ -1,53 +1,95 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 0/8] rpcbind v4 support in net/sunrpc/svc*
-Date: Mon, 30 Jun 2008 18:45:21 -0400
-Message-ID: <20080630224147.24887.18730.stgit@ellison.1015granger.net>
+Subject: [PATCH 2/8] SUNRPC: Use proper INADDR_ANY when setting up RPC
+	services on IPv6
+Date: Mon, 30 Jun 2008 18:45:37 -0400
+Message-ID: <20080630224537.24887.71813.stgit@ellison.1015granger.net>
+References: <20080630224147.24887.18730.stgit@ellison.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: trond.myklebust@netapp.com, bfields@citi.umich.edu
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:13620 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932104AbYF3Wpx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2008 18:45:53 -0400
+Received: from rgminet01.oracle.com ([148.87.113.118]:46769 "EHLO
+	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932351AbYF3Wp7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2008 18:45:59 -0400
+In-Reply-To: <20080630224147.24887.18730.stgit-ewv44WTpT0t9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Bruce, Trond -
+Teach svc_create_xprt() to use the correct ANY address for AF_INET6 based
+RPC services.
 
-These implement basic support in net/sunrpc/svc* for registering IPv6-
-enabled kernel RPC services with the local user-space rpcbind.  These
-all depend on the new rpcb_v4_register() API I just posted.
+No caller uses AF_INET6 yet.
 
-The last patch enables IPv6 support for the NFSv4 callback service, even
-though it doesn't register with rpcbind.
-
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
-Chuck Lever (8):
-      NFS: Enable NFSv4 callback server to listen on AF_INET6 sockets
-      SUNRPC: Set V6ONLY socket option for RPC listener sockets
-      SUNRPC: Add kernel build option to disable server-side use of rpcbind v3/v4
-      SUNRPC: Use new rpcb_v4_register() interface in svc_register()
-      SUNRPC: Clean up svc_register
-      SUNRPC: Split portmap unregister API into separate function
-      SUNRPC: Use proper INADDR_ANY when setting up RPC services on IPv6
-      SUNRPC: Add address family field to svc_serv data structure
+ net/sunrpc/svc_xprt.c |   39 +++++++++++++++++++++++++++++++++------
+ 1 files changed, 33 insertions(+), 6 deletions(-)
 
 
- fs/Kconfig                 |   22 +++++
- fs/lockd/svc.c             |    2 
- fs/nfs/callback.c          |   12 +-
- fs/nfs/callback.h          |    4 -
- fs/nfs/client.c            |    2 
- fs/nfsd/nfssvc.c           |    1 
- include/linux/sunrpc/svc.h |   11 +-
- net/sunrpc/svc.c           |  212 ++++++++++++++++++++++++++++++++++++--------
- net/sunrpc/svc_xprt.c      |   39 +++++++-
- net/sunrpc/svcsock.c       |   12 ++
- 10 files changed, 260 insertions(+), 57 deletions(-)
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index e46c825..bf5b5cd 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -159,15 +159,44 @@ void svc_xprt_init(struct svc_xprt_class *xcl, struct svc_xprt *xprt,
+ }
+ EXPORT_SYMBOL_GPL(svc_xprt_init);
+ 
+-int svc_create_xprt(struct svc_serv *serv, char *xprt_name, unsigned short port,
+-		    int flags)
++static struct svc_xprt *__svc_xpo_create(struct svc_xprt_class *xcl,
++					 struct svc_serv *serv,
++					 unsigned short port, int flags)
+ {
+-	struct svc_xprt_class *xcl;
+ 	struct sockaddr_in sin = {
+ 		.sin_family		= AF_INET,
+ 		.sin_addr.s_addr	= htonl(INADDR_ANY),
+ 		.sin_port		= htons(port),
+ 	};
++	struct sockaddr_in6 sin6 = {
++		.sin6_family		= AF_INET6,
++		.sin6_addr		= IN6ADDR_ANY_INIT,
++		.sin6_port		= htons(port),
++	};
++	struct sockaddr *sap;
++	size_t len;
++
++	switch (serv->sv_family) {
++	case AF_INET:
++		sap = (struct sockaddr *)&sin;
++		len = sizeof(sin);
++		break;
++	case AF_INET6:
++		sap = (struct sockaddr *)&sin6;
++		len = sizeof(sin6);
++		break;
++	default:
++		return ERR_PTR(-EAFNOSUPPORT);
++	}
++
++	return xcl->xcl_ops->xpo_create(serv, sap, len, flags);
++}
++
++int svc_create_xprt(struct svc_serv *serv, char *xprt_name, unsigned short port,
++		    int flags)
++{
++	struct svc_xprt_class *xcl;
++
+ 	dprintk("svc: creating transport %s[%d]\n", xprt_name, port);
+ 	spin_lock(&svc_xprt_class_lock);
+ 	list_for_each_entry(xcl, &svc_xprt_class_list, xcl_list) {
+@@ -180,9 +209,7 @@ int svc_create_xprt(struct svc_serv *serv, char *xprt_name, unsigned short port,
+ 			goto err;
+ 
+ 		spin_unlock(&svc_xprt_class_lock);
+-		newxprt = xcl->xcl_ops->
+-			xpo_create(serv, (struct sockaddr *)&sin, sizeof(sin),
+-				   flags);
++		newxprt = __svc_xpo_create(xcl, serv, port, flags);
+ 		if (IS_ERR(newxprt)) {
+ 			module_put(xcl->xcl_owner);
+ 			return PTR_ERR(newxprt);
 
--- 
-Chuck Lever
-chu ckl eve rat ora cle dot com
