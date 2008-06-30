@@ -1,71 +1,109 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 7/8] SUNRPC: Set V6ONLY socket option for RPC listener sockets
-Date: Mon, 30 Jun 2008 18:46:17 -0400
-Message-ID: <20080630224616.24887.13171.stgit@ellison.1015granger.net>
+Subject: [PATCH 8/8] NFS: Enable NFSv4 callback server to listen on AF_INET6
+	sockets
+Date: Mon, 30 Jun 2008 18:46:25 -0400
+Message-ID: <20080630224624.24887.73277.stgit@ellison.1015granger.net>
 References: <20080630224147.24887.18730.stgit@ellison.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: trond.myklebust@netapp.com, bfields@citi.umich.edu
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:47569 "EHLO
+Received: from rgminet01.oracle.com ([148.87.113.118]:47565 "EHLO
 	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932565AbYF3WsH (ORCPT
+	with ESMTP id S932709AbYF3WsH (ORCPT
 	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2008 18:48:07 -0400
 In-Reply-To: <20080630224147.24887.18730.stgit-ewv44WTpT0t9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-My plan is to use an AF_INET listener on systems that support only IPv4,
-and an AF_INET6 listener on systems that can support IPv6. Incoming
-IPv4 packets will be posted to an AF_INET6 listener with a mapped IPv4
-address.
+Allow the NFS callback server to listen for requests via an AF_INET6 or
+AF_INET socket.
 
-Max Matveev <makc@sgi.com> says:
-  Creating a single listener can be dangerous - if net.ipv6.bindv6only
-  is enabled then it's possible to create another listener in v4
-  namespace on the same port and steal the traffic from the "unifed"
-  listener. You need to disable V6ONLY explicitly via a sockopt to stop
-  that.
-
-Set appropriate socket option on RPC server listener sockets to prevent
-this.
+The NFS callback server determines the listener's address family from the
+address the client uses to contact the server.  The server will always
+call the client back using the same address family.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- net/sunrpc/svcsock.c |   12 ++++++++++++
- 1 files changed, 12 insertions(+), 0 deletions(-)
+ fs/nfs/callback.c |   11 ++++++-----
+ fs/nfs/callback.h |    4 ++--
+ fs/nfs/client.c   |    2 +-
+ 3 files changed, 9 insertions(+), 8 deletions(-)
 
 
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 3e65719..43c21f7 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -1114,6 +1114,7 @@ static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
- 	struct svc_sock	*svsk;
- 	struct sock	*inet;
- 	int		pmap_register = !(flags & SVC_SOCK_ANONYMOUS);
-+	int zero	= 0;
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index 6a09760..59948ef 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -97,7 +97,7 @@ nfs_callback_svc(void *vrqstp)
+ /*
+  * Bring up the callback thread if it is not already up.
+  */
+-int nfs_callback_up(void)
++int nfs_callback_up(const sa_family_t family)
+ {
+ 	struct svc_serv *serv = NULL;
+ 	int ret = 0;
+@@ -106,7 +106,7 @@ int nfs_callback_up(void)
+ 	if (nfs_callback_info.users++ || nfs_callback_info.task != NULL)
+ 		goto out;
+ 	serv = svc_create(&nfs4_callback_program, NFS4_CALLBACK_BUFSIZE,
+-				AF_INET, NULL);
++				family, NULL);
+ 	ret = -ENOMEM;
+ 	if (!serv)
+ 		goto out_err;
+@@ -116,7 +116,8 @@ int nfs_callback_up(void)
+ 	if (ret <= 0)
+ 		goto out_err;
+ 	nfs_callback_tcpport = ret;
+-	dprintk("Callback port = 0x%x\n", nfs_callback_tcpport);
++	dprintk("NFS: Callback listener port = %u (af %u)\n",
++			nfs_callback_tcpport, family);
  
- 	dprintk("svc: svc_setup_socket %p\n", sock);
- 	if (!(svsk = kzalloc(sizeof(*svsk), GFP_KERNEL))) {
-@@ -1146,6 +1147,17 @@ static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
- 	else
- 		svc_tcp_init(svsk, serv);
+ 	nfs_callback_info.rqst = svc_prepare_thread(serv, &serv->sv_pools[0]);
+ 	if (IS_ERR(nfs_callback_info.rqst)) {
+@@ -149,8 +150,8 @@ out:
+ 	mutex_unlock(&nfs_callback_mutex);
+ 	return ret;
+ out_err:
+-	dprintk("Couldn't create callback socket or server thread; err = %d\n",
+-		ret);
++	dprintk("NFS: Couldn't create callback socket or server thread; "
++		"err = %d\n", ret);
+ 	nfs_callback_info.users--;
+ 	goto out;
+ }
+diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
+index bb25d21..85d8102 100644
+--- a/fs/nfs/callback.h
++++ b/fs/nfs/callback.h
+@@ -63,10 +63,10 @@ extern __be32 nfs4_callback_getattr(struct cb_getattrargs *args, struct cb_getat
+ extern __be32 nfs4_callback_recall(struct cb_recallargs *args, void *dummy);
  
-+	/*
-+	 * We start one listener per sv_serv.  We want AF_INET
-+	 * requests to be automatically shunted to our AF_INET6
-+	 * listener using a mapped IPv4 address.  Make sure
-+	 * no-one starts an equivalent IPv4 listener, which
-+	 * would steal our incoming connections.
-+	 */
-+	if (serv->sv_family == AF_INET6)
-+		kernel_setsockopt(sock, SOL_IPV6, IPV6_V6ONLY,
-+					(char *)&zero, sizeof(zero));
-+
- 	dprintk("svc: svc_setup_socket created %p (inet %p)\n",
- 				svsk, svsk->sk_sk);
+ #ifdef CONFIG_NFS_V4
+-extern int nfs_callback_up(void);
++extern int nfs_callback_up(const sa_family_t family);
+ extern void nfs_callback_down(void);
+ #else
+-#define nfs_callback_up()	(0)
++#define nfs_callback_up(x)	(0)
+ #define nfs_callback_down()	do {} while(0)
+ #endif
  
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index f2a092c..f1bb2af 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -120,7 +120,7 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
+ 	clp->rpc_ops = cl_init->rpc_ops;
+ 
+ 	if (cl_init->rpc_ops->version == 4) {
+-		if (nfs_callback_up() < 0)
++		if (nfs_callback_up(cl_init->addr->sa_family) < 0)
+ 			goto error_2;
+ 		__set_bit(NFS_CS_CALLBACK, &clp->cl_res_state);
+ 	}
 
