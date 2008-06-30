@@ -1,196 +1,122 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 02/16] lockd: address-family independent printable addresses
-Date: Mon, 30 Jun 2008 18:58:22 -0400
-Message-ID: <20080630225821.25407.58530.stgit@ellison.1015granger.net>
+Subject: [PATCH 10/16] lockd: Support AF_INET6 when hashing addresses in
+	nlm_lookup_host
+Date: Mon, 30 Jun 2008 18:59:26 -0400
+Message-ID: <20080630225925.25407.50917.stgit@ellison.1015granger.net>
 References: <20080630225011.25407.61357.stgit@ellison.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: trond.myklebust@netapp.com, bfields@citi.umich.edu
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:51354 "EHLO
+Received: from rgminet01.oracle.com ([148.87.113.118]:51637 "EHLO
 	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753203AbYF3W7u (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2008 18:59:50 -0400
+	with ESMTP id S1763599AbYF3XAP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2008 19:00:15 -0400
 In-Reply-To: <20080630225011.25407.61357.stgit-ewv44WTpT0t9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Knowing which source address is used for communicating with remote NLM
-services can be helpful for debugging configuration problems on hosts
-with multiple addresses.
+Adopt an approach similar to the RPC server's auth cache (from Aurelien
+Charbon and Brian Haley).
 
-Keep the dprintk debugging here, but adapt it so it displays AF_INET6
-addresses properly.  There are also a couple of dprintk clean-ups as
-well.
+Note the NLM's existing IPv4 address hash function has the same issue
+with correctness on little-endian systems as the original IPv4 auth cache
+hash function, so I've replaced it with a hash function similar to the new
+auth cache hash function.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/lockd/host.c             |   79 +++++++++++++++++++++++++++++++------------
- include/linux/lockd/lockd.h |    3 ++
- 2 files changed, 60 insertions(+), 22 deletions(-)
+ fs/lockd/host.c |   49 +++++++++++++++++++++++++++++++++++++++++++------
+ 1 files changed, 43 insertions(+), 6 deletions(-)
 
 
 diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-index a17664c..350d757 100644
+index cd3f663..b10a6fe 100644
 --- a/fs/lockd/host.c
 +++ b/fs/lockd/host.c
-@@ -11,6 +11,7 @@
- #include <linux/types.h>
- #include <linux/slab.h>
- #include <linux/in.h>
-+#include <linux/in6.h>
- #include <linux/sunrpc/clnt.h>
- #include <linux/sunrpc/svc.h>
- #include <linux/lockd/lockd.h>
-@@ -38,6 +39,28 @@ static struct nsm_handle *	nsm_find(const struct sockaddr_in *sin,
+@@ -21,7 +21,6 @@
+ 
+ #define NLMDBG_FACILITY		NLMDBG_HOSTCACHE
+ #define NLM_HOST_NRHASH		32
+-#define NLM_ADDRHASH(addr)	(ntohl(addr) & (NLM_HOST_NRHASH-1))
+ #define NLM_HOST_REBIND		(60 * HZ)
+ #define NLM_HOST_EXPIRE		(300 * HZ)
+ #define NLM_HOST_COLLECT	(120 * HZ)
+@@ -39,6 +38,48 @@ static struct nsm_handle *	nsm_find(const struct sockaddr_in *sin,
  					 const char *hostname,
  					 unsigned int hostname_len);
  
-+static void nlm_display_address(const struct sockaddr *sap,
-+				char *buf, const size_t len)
++/*
++ * Hash function must work well on big- and little-endian platforms
++ */
++static unsigned int __nlm_hash32(const __be32 n)
 +{
-+	const struct sockaddr_in *sin = (struct sockaddr_in *)sap;
-+	const struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)sap;
-+
-+	switch (sap->sa_family) {
-+	case AF_UNSPEC:
-+		snprintf(buf, len, "unspecified");
-+		break;
-+	case AF_INET:
-+		snprintf(buf, len, NIPQUAD_FMT, NIPQUAD(sin->sin_addr.s_addr));
-+		break;
-+	case AF_INET6:
-+		snprintf(buf, len, NIP6_FMT, NIP6(sin6->sin6_addr));
-+		break;
-+	default:
-+		snprintf(buf, len, "unsupported address family");
-+		break;
-+	}
++	unsigned int hash = (__force u32)n ^ ((__force u32)n >> 16);
++	return hash ^ (hash >> 8);
 +}
 +
- /*
-  * Common host lookup routine for server & client
-  */
-@@ -54,14 +77,10 @@ static struct nlm_host *nlm_lookup_host(int server,
- 	struct nsm_handle *nsm = NULL;
- 	int		hash;
- 
--	dprintk("lockd: nlm_lookup_host("NIPQUAD_FMT"->"NIPQUAD_FMT
--			", p=%d, v=%u, my role=%s, name=%.*s)\n",
--			NIPQUAD(ssin->sin_addr.s_addr),
--			NIPQUAD(sin->sin_addr.s_addr), proto, version,
--			server? "server" : "client",
--			hostname_len,
--			hostname? hostname : "<none>");
--
-+	dprintk("lockd: nlm_lookup_host(proto=%d, vers=%u,"
-+			" my role is %s, hostname=%.*s)\n",
-+			proto, version, server? "server" : "client",
-+			hostname_len, hostname? hostname : "<none>");
- 
- 	hash = NLM_ADDRHASH(sin->sin_addr.s_addr);
- 
-@@ -101,22 +120,31 @@ static struct nlm_host *nlm_lookup_host(int server,
- 		hlist_add_head(&host->h_hash, chain);
- 
- 		nlm_get_host(host);
-+		dprintk("lockd: nlm_lookup_host found host %s (%s)\n",
-+				host->h_name, host->h_addrbuf);
- 		goto out;
- 	}
--	if (nsm)
--		atomic_inc(&nsm->sm_count);
- 
--	host = NULL;
--
--	/* Sadly, the host isn't in our hash table yet. See if
--	 * we have an NSM handle for it. If not, create one.
-+	/*
-+	 * The host wasn't in our hash table.  If we don't
-+	 * have an NSM handle for it yet, create one.
- 	 */
--	if (!nsm && !(nsm = nsm_find(sin, hostname, hostname_len)))
--		goto out;
-+	if (nsm)
-+		atomic_inc(&nsm->sm_count);
-+	else {
-+		host = NULL;
-+		nsm = nsm_find(sin, hostname, hostname_len);
-+		if (!nsm) {
-+			dprintk("lockd: nlm_lookup_host failed; "
-+				"no nsm handle\n");
-+			goto out;
-+		}
++static unsigned int __nlm_hash_addr4(const struct sockaddr *sap)
++{
++	const struct sockaddr_in *sin = (struct sockaddr_in *)sap;
++	return __nlm_hash32(sin->sin_addr.s_addr);
++}
++
++static unsigned int __nlm_hash_addr6(const struct sockaddr *sap)
++{
++	const struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)sap;
++	const struct in6_addr addr = sin6->sin6_addr;
++	return __nlm_hash32(addr.s6_addr32[0]) ^
++	       __nlm_hash32(addr.s6_addr32[1]) ^
++	       __nlm_hash32(addr.s6_addr32[2]) ^
++	       __nlm_hash32(addr.s6_addr32[3]);
++}
++
++static unsigned int nlm_hash_address(const struct sockaddr *sap)
++{
++	unsigned int hash;
++
++	switch (sap->sa_family) {
++	case AF_INET:
++		hash = __nlm_hash_addr4(sap);
++		break;
++	case AF_INET6:
++		hash = __nlm_hash_addr6(sap);
++		break;
++	default:
++		hash = 0;
 +	}
- 
- 	host = kzalloc(sizeof(*host), GFP_KERNEL);
- 	if (!host) {
- 		nsm_release(nsm);
-+		dprintk("lockd: nlm_lookup_host failed; no memory\n");
- 		goto out;
- 	}
- 	host->h_name	   = nsm->sm_name;
-@@ -143,6 +171,15 @@ static struct nlm_host *nlm_lookup_host(int server,
- 	INIT_LIST_HEAD(&host->h_reclaim);
- 
- 	nrhosts++;
++	return hash & (NLM_HOST_NRHASH - 1);
++}
 +
-+	nlm_display_address((struct sockaddr *)&host->h_addr,
-+				host->h_addrbuf, sizeof(host->h_addrbuf));
-+	nlm_display_address((struct sockaddr *)&host->h_saddr,
-+				host->h_saddrbuf, sizeof(host->h_saddrbuf));
-+
-+	dprintk("lockd: nlm_lookup_host created host %s\n",
-+			host->h_name);
-+
- out:
- 	mutex_unlock(&nlm_host_mutex);
- 	return host;
-@@ -207,9 +244,8 @@ nlm_bind_host(struct nlm_host *host)
+ static void nlm_clear_port(struct sockaddr *sap)
  {
- 	struct rpc_clnt	*clnt;
- 
--	dprintk("lockd: nlm_bind_host("NIPQUAD_FMT"->"NIPQUAD_FMT")\n",
--			NIPQUAD(host->h_saddr.sin_addr),
--			NIPQUAD(host->h_addr.sin_addr));
-+	dprintk("lockd: nlm_bind_host %s (%s), my addr=%s\n",
-+			host->h_name, host->h_addrbuf, host->h_saddrbuf);
- 
- 	/* Lock host handle */
- 	mutex_lock(&host->h_mutex);
-@@ -221,7 +257,7 @@ nlm_bind_host(struct nlm_host *host)
- 		if (time_after_eq(jiffies, host->h_nextrebind)) {
- 			rpc_force_rebind(clnt);
- 			host->h_nextrebind = jiffies + NLM_HOST_REBIND;
--			dprintk("lockd: next rebind in %ld jiffies\n",
-+			dprintk("lockd: next rebind in %lu jiffies\n",
- 					host->h_nextrebind - jiffies);
- 		}
- 	} else {
-@@ -324,8 +360,7 @@ void nlm_host_rebooted(const struct sockaddr_in *sin,
- 	struct nsm_handle *nsm;
+ 	struct sockaddr_in *sin = (struct sockaddr_in *)sap;
+@@ -90,16 +131,12 @@ static struct nlm_host *nlm_lookup_host(int server,
+ 	struct hlist_node *pos;
  	struct nlm_host	*host;
+ 	struct nsm_handle *nsm = NULL;
+-	int		hash;
  
--	dprintk("lockd: nlm_host_rebooted(%s, %u.%u.%u.%u)\n",
--			hostname, NIPQUAD(sin->sin_addr));
-+	dprintk("lockd: nlm_host_rebooted(%s)\n", hostname);
+ 	dprintk("lockd: nlm_lookup_host(proto=%d, vers=%u,"
+ 			" my role is %s, hostname=%.*s)\n",
+ 			proto, version, server? "server" : "client",
+ 			hostname_len, hostname? hostname : "<none>");
  
- 	/* Find the NSM handle for this peer */
- 	if (!(nsm = __nsm_find(sin, hostname, hostname_len, 0)))
-diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
-index a6d1215..5774d6e 100644
---- a/include/linux/lockd/lockd.h
-+++ b/include/linux/lockd/lockd.h
-@@ -61,6 +61,9 @@ struct nlm_host {
- 	struct list_head	h_granted;	/* Locks in GRANTED state */
- 	struct list_head	h_reclaim;	/* Locks in RECLAIM state */
- 	struct nsm_handle *	h_nsmhandle;	/* NSM status handle */
-+
-+	char			h_addrbuf[48],	/* address eyecatchers */
-+				h_saddrbuf[48];
- };
+-	hash = NLM_ADDRHASH(sin->sin_addr.s_addr);
+-
+-	/* Lock hash table */
+ 	mutex_lock(&nlm_host_mutex);
  
- struct nsm_handle {
+ 	if (time_after_eq(jiffies, next_gc))
+@@ -112,7 +149,7 @@ static struct nlm_host *nlm_lookup_host(int server,
+ 	 * different NLM rpc_clients into one single nlm_host object.
+ 	 * This would allow us to have one nlm_host per address.
+ 	 */
+-	chain = &nlm_hosts[hash];
++	chain = &nlm_hosts[nlm_hash_address((struct sockaddr *)sin)];
+ 	hlist_for_each_entry(host, pos, chain, h_hash) {
+ 		if (!nlm_cmp_addr(nlm_addr(host), (struct sockaddr *)sin))
+ 			continue;
 
