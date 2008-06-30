@@ -1,176 +1,141 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 6/7] mount command: move function to get kernel version to
-	separate header
-Date: Mon, 30 Jun 2008 13:10:41 -0400
-Message-ID: <20080630171041.9905.95339.stgit@ellison.1015granger.net>
+Subject: [PATCH 5/7] mount: Introduce IPv6-aware DNS resolver API function
+Date: Mon, 30 Jun 2008 13:10:36 -0400
+Message-ID: <20080630171035.9905.87279.stgit@ellison.1015granger.net>
 References: <20080630170420.9905.90111.stgit@ellison.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:51835 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753552AbYF3RLI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2008 13:11:08 -0400
+Received: from rgminet01.oracle.com ([148.87.113.118]:29734 "EHLO
+	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751128AbYF3RLG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2008 13:11:06 -0400
 In-Reply-To: <20080630170420.9905.90111.stgit-ewv44WTpT0t9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Share the code that reports the version of the running kernel.
+Introduce a new DNS resolver function in utils/mount/network.c that uses
+getaddrinfo(3), which supports AF_INET6, to resolve host names.
+
+Replace the guts of nfs_gethostbyname() with a call to the new function.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/mount/Makefile.am |    2 +-
- utils/mount/mount.c     |   18 +----------------
- utils/mount/nfsmount.c  |    5 ++---
- utils/mount/version.h   |   51 +++++++++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 55 insertions(+), 21 deletions(-)
- create mode 100644 utils/mount/version.h
+ utils/mount/network.c |   78 +++++++++++++++++++++++++++++++++++++------------
+ utils/mount/network.h |    2 +
+ 2 files changed, 61 insertions(+), 19 deletions(-)
 
 
-diff --git a/utils/mount/Makefile.am b/utils/mount/Makefile.am
-index 27a01de..5a94631 100644
---- a/utils/mount/Makefile.am
-+++ b/utils/mount/Makefile.am
-@@ -13,7 +13,7 @@ mount_nfs_SOURCES = mount.c error.c network.c fstab.c token.c parse_opt.c \
- 		    nfsmount.c nfs4mount.c stropts.c\
- 		    nfsumount.c \
- 		    mount_constants.h error.h network.h fstab.h token.h parse_opt.h \
--		    nfs4_mount.h nfs_mount4.h stropts.h
-+		    nfs4_mount.h nfs_mount4.h stropts.h version.h
- 
- mount_nfs_LDADD = ../../support/nfs/libnfs.a \
- 		  ../../support/export/libexport.a
-diff --git a/utils/mount/mount.c b/utils/mount/mount.c
-index d7271a1..a7d5733 100644
---- a/utils/mount/mount.c
-+++ b/utils/mount/mount.c
-@@ -29,7 +29,6 @@
- #include <errno.h>
- #include <fcntl.h>
- #include <sys/mount.h>
--#include <sys/utsname.h>
- #include <getopt.h>
- #include <mntent.h>
- #include <pwd.h>
-@@ -47,6 +46,7 @@
- #include "error.h"
- #include "network.h"
- #include "stropts.h"
-+#include "version.h"
- 
- char *progname;
- int nfs_mount_data_version;
-@@ -146,22 +146,6 @@ static const struct opt_map opt_map[] = {
-   { NULL,	0, 0, 0		}
+diff --git a/utils/mount/network.c b/utils/mount/network.c
+index ab7f6d0..30a4d40 100644
+--- a/utils/mount/network.c
++++ b/utils/mount/network.c
+@@ -144,32 +144,72 @@ static const unsigned long probe_mnt3_first[] = {
  };
  
--#define MAKE_VERSION(p,q,r)	(65536 * (p) + 256 * (q) + (r))
--
--int linux_version_code(void)
--{
--	struct utsname my_utsname;
--	int p, q, r;
--
--	if (uname(&my_utsname) == 0) {
--		p = atoi(strtok(my_utsname.release, "."));
--		q = atoi(strtok(NULL, "."));
--		r = atoi(strtok(NULL, "."));
--		return MAKE_VERSION(p,q,r);
--	}
--	return 0;
--}
--
- /*
-  * Choose the version of the nfs_mount_data structure that is appropriate
-  * for the kernel that is doing the mount.
-diff --git a/utils/mount/nfsmount.c b/utils/mount/nfsmount.c
-index 6a04518..b343a1f 100644
---- a/utils/mount/nfsmount.c
-+++ b/utils/mount/nfsmount.c
-@@ -67,6 +67,7 @@
- #include "nls.h"
- #include "error.h"
- #include "network.h"
-+#include "version.h"
- 
- #ifndef NFS_PORT
- #define NFS_PORT 2049
-@@ -95,8 +96,6 @@ extern char *progname;
- extern int verbose;
- extern int sloppy;
- 
--extern int linux_version_code(void);
--
- static inline enum clnt_stat
- nfs3_mount(CLIENT *clnt, mnt3arg_t *mnt3arg, mnt3res_t *mnt3res)
- {
-@@ -808,7 +807,7 @@ noauth_flavors:
- 	 * to avoid problems with multihomed hosts.
- 	 * --Swen
- 	 */
--	if (linux_version_code() <= 0x01030a && fsock != -1
-+	if (linux_version_code() <= MAKE_VERSION(1, 3, 10) && fsock != -1
- 	    && connect(fsock, (struct sockaddr *) nfs_saddr,
- 		       sizeof (*nfs_saddr)) < 0) {
- 		perror(_("nfs connect"));
-diff --git a/utils/mount/version.h b/utils/mount/version.h
-new file mode 100644
-index 0000000..46552a1
---- /dev/null
-+++ b/utils/mount/version.h
-@@ -0,0 +1,51 @@
-+/*
-+ * version.h -- get running kernel version
+ /**
++ * nfs_name_to_address - resolve hostname to an IPv4 or IPv6 socket address
++ * @hostname: pointer to C string containing DNS hostname to resolve
++ * @sap: pointer to buffer to fill with socket address
++ * @len: IN: size of buffer to fill; OUT: size of socket address
 + *
-+ * Copyright (C) 2008 Oracle.  All rights reserved.
-+ *
-+ * This program is free software; you can redistribute it and/or
-+ * modify it under the terms of the GNU General Public
-+ * License as published by the Free Software Foundation; either
-+ * version 2 of the License, or (at your option) any later version.
-+ *
-+ * This program is distributed in the hope that it will be useful,
-+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-+ * General Public License for more details.
-+ *
-+ * You should have received a copy of the GNU General Public
-+ * License along with this program; if not, write to the
-+ * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
-+ * Boston, MA 021110-1307, USA.
-+ *
++ * Returns 1 and places a socket address at @sap if successful;
++ * otherwise zero.
 + */
-+
-+#ifndef _NFS_UTILS_MOUNT_VERSION_H
-+#define _NFS_UTILS_MOUNT_VERSION_H
-+
-+#include <stdlib.h>
-+#include <string.h>
-+
-+#include <sys/utsname.h>
-+
-+static inline unsigned int MAKE_VERSION(unsigned int p, unsigned int q,
-+					unsigned int r)
++int nfs_name_to_address(const char *hostname,
++			const sa_family_t af_hint,
++			struct sockaddr *sap, socklen_t *salen)
 +{
-+	return (65536 * p) + (256 * q) + r;
++	struct addrinfo *gai_results;
++	struct addrinfo gai_hint = {
++		.ai_family	= af_hint,
++		.ai_flags	= AI_ADDRCONFIG,
++	};
++	socklen_t len = *salen;
++	int error, ret = 0;
++
++	if (af_hint == AF_INET6)
++		gai_hint.ai_flags |= AI_V4MAPPED|AI_ALL;
++
++	*salen = 0;
++
++	error = getaddrinfo(hostname, NULL, &gai_hint, &gai_results);
++	if (error) {
++		nfs_error(_("%s: DNS resolution failed for %s: %s"),
++			progname, hostname, (error == EAI_SYSTEM ?
++				strerror(errno) : gai_strerror(error)));
++		return ret;
++	}
++
++	switch (gai_results->ai_addr->sa_family) {
++	case AF_INET:
++	case AF_INET6:
++		if (len >= gai_results->ai_addrlen) {
++			*salen = gai_results->ai_addrlen;
++			memcpy(sap, gai_results->ai_addr, *salen);
++			ret = 1;
++		}
++		break;
++	default:
++		/* things are really broken if we get here, so warn */
++		nfs_error(_("%s: unrecognized DNS resolution results for %s"),
++				progname, hostname);
++		break;
++	}
++
++	freeaddrinfo(gai_results);
++	return ret;
 +}
 +
-+static inline unsigned int linux_version_code(void)
-+{
-+	struct utsname my_utsname;
-+	unsigned int p, q, r;
++/**
+  * nfs_gethostbyname - resolve a hostname to an IPv4 address
+  * @hostname: pointer to a C string containing a DNS hostname
+  * @saddr: returns an IPv4 address 
+  *
+  * Returns 1 if successful, otherwise zero.
+  */
+-int nfs_gethostbyname(const char *hostname, struct sockaddr_in *saddr)
++int nfs_gethostbyname(const char *hostname, struct sockaddr_in *sin)
+ {
+-	struct hostent *hp;
+-
+-	saddr->sin_family = AF_INET;
+-	if (!inet_aton(hostname, &saddr->sin_addr)) {
+-		if ((hp = gethostbyname(hostname)) == NULL) {
+-			nfs_error(_("%s: can't get address for %s\n"),
+-					progname, hostname);
+-			return 0;
+-		} else {
+-			if (hp->h_length > sizeof(*saddr)) {
+-				nfs_error(_("%s: got bad hp->h_length\n"),
+-						progname);
+-				hp->h_length = sizeof(*saddr);
+-			}
+-			memcpy(&saddr->sin_addr, hp->h_addr, hp->h_length);
+-		}
+-	}
+-	return 1;
++	socklen_t len = sizeof(*sin);
 +
-+	if (uname(&my_utsname))
-+		return 0;
-+
-+	p = atoi(strtok(my_utsname.release, "."));
-+	q = atoi(strtok(NULL, "."));
-+	r = atoi(strtok(NULL, "."));
-+	return MAKE_VERSION(p, q, r);
-+}
-+
-+#endif	/* _NFS_UTILS_MOUNT_VERSION_H */
++	return nfs_name_to_address(hostname, AF_INET,
++					(struct sockaddr *)sin, &len);
+ }
+ 
+ /*
+diff --git a/utils/mount/network.h b/utils/mount/network.h
+index e0a5dd5..9de13b5 100644
+--- a/utils/mount/network.h
++++ b/utils/mount/network.h
+@@ -51,6 +51,8 @@ static const struct timeval RETRY_TIMEOUT = { 3, 0 };
+ 
+ int probe_bothports(clnt_addr_t *, clnt_addr_t *);
+ int nfs_gethostbyname(const char *, struct sockaddr_in *);
++int nfs_name_to_address(const char *, const sa_family_t,
++		struct sockaddr *, socklen_t *);
+ int get_client_address(struct sockaddr_in *, struct sockaddr_in *);
+ int nfs_call_umount(clnt_addr_t *, dirpath *);
+ int clnt_ping(struct sockaddr_in *, const unsigned long,
 
