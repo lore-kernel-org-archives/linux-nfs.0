@@ -1,71 +1,79 @@
-From: Krishna Kumar2 <krkumar2@in.ibm.com>
-Subject: Re: NFS performance degradation of local loopback FS.
-Date: Tue, 1 Jul 2008 10:37:12 +0530
-Message-ID: <OF003147DE.D55CFB53-ON65257479.001B8D23-65257479.001C201E@in.ibm.com>
-References: <20080630112654.012ce3e4@barsoom.rdu.redhat.com>
+From: Carsten Aulbert <carsten.aulbert-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>
+Subject: [NFS] Massive NFS problems on large cluster with large number of
+	mounts
+Date: Tue, 01 Jul 2008 08:24:29 +0200
+Message-ID: <4869CD9D.7060701@aei.mpg.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Benny Halevy <bhalevy@panasas.com>,
-	Chuck Lever <chuck.lever@oracle.com>,
-	linux-nfs@vger.kernel.org, Dean Hildebrand <seattleplus@gmail.com>,
-	Peter Staubach <staubach@redhat.com>
-To: Jeff Layton <jlayton@redhat.com>
+Content-Type: text/plain; charset="utf-8"
+Cc: Steffen Grunewald <steffen.grunewald-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>,
+	Henning Fehrmann <henning.fehrmann-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>
+To: nfs@lists.sourceforge.net
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from e28smtp06.in.ibm.com ([59.145.155.6]:60188 "EHLO
-	e28esmtp06.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1750945AbYGAFIZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Jul 2008 01:08:25 -0400
-Received: from d28relay02.in.ibm.com (d28relay02.in.ibm.com [9.184.220.59])
-	by e28esmtp06.in.ibm.com (8.13.1/8.13.1) with ESMTP id m61584w5006237
-	for <linux-nfs@vger.kernel.org>; Tue, 1 Jul 2008 10:38:04 +0530
-Received: from d28av02.in.ibm.com (d28av02.in.ibm.com [9.184.220.64])
-	by d28relay02.in.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m6156pFk954564
-	for <linux-nfs@vger.kernel.org>; Tue, 1 Jul 2008 10:36:51 +0530
-Received: from d28av02.in.ibm.com (loopback [127.0.0.1])
-	by d28av02.in.ibm.com (8.13.1/8.13.3) with ESMTP id m61582lB031078
-	for <linux-nfs@vger.kernel.org>; Tue, 1 Jul 2008 10:38:03 +0530
-In-Reply-To: <20080630112654.012ce3e4-xSBYVWDuneFaJnirhKH9O4GKTjYczspe@public.gmane.org>
+Received: from neil.brown.name ([220.233.11.133]:50568 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751500AbYGAGYv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 Jul 2008 02:24:51 -0400
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1KDZIE-0000RC-0x
+	for linux-nfs@vger.kernel.org; Tue, 01 Jul 2008 16:24:46 +1000
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Jeff Layton <jlayton@redhat.com> wrote on 06/30/2008 08:56:54 PM:
-
-> Recently I spent some time with others here at Red Hat looking
-> at problems with nfs server performance. One thing we found was that
-> there are some problems with multiple nfsd's. It seems like the I/O
-> scheduling or something is fooled by the fact that sequential write
-> calls are often handled by different nfsd's. This can negatively
-> impact performance (I don't think we've tracked this down completely
-> yet, however).
->
-> Since you're just doing some single-threaded testing on the client
-> side, it might be interesting to try running a single nfsd and testing
-> performance with that. It might provide an interesting data point.
-
-Works perfectly now!
-
-With 64 nfsd's:
-[root@localhost nfs]# ./perf
-      ********** Testing on /nfs *************
-      Read Time: 50.6236      BW:29.63 MB/s
-      ********** Testing on /local *************
-      Read Time: 38.3506      BW:39.11 MB/s
-
-With 1 nfs'd:
-[root@localhost nfs]# ./perf
-      ********** Testing on /nfs *************
-      Read Time: 38.4760      BW:38.99 MB/s
-      ********** Testing on /local *************
-      Read Time: 38.4874      BW:38.97 MB/s
-
-I will try your other suggestions too.
-
-I have to see what happens if I increase my processes. The real test is
-DB2 using 300 connections. I will update when I run some more tests. But
-thanks to everyone's help so far.
-
-Regards,
-
-- KK
+SGkgYWxsLAoKSSBkbyBob3BlIG15IGVtYWlsIGdldHMgdGhyb3VnaCwgSSB0cmllZCB0byBzdWJz
+Y3JpYmUgeWVzdGVyZGF5IGJ1dCB3aXRoCm5vIGVmZmVjdCBzbyBmYXIuCgpXZSBhcmUgcnVubmlu
+ZyBhIGxhcmdlIGNsdXN0ZXIgYW5kIGRvIGEgbG90IG9mIGNyb3NzLW1vdW50aW5nIGJldHdlZW4K
+dGhlIG5vZGVzLiBUbyBnZXQgdGhpcyBydW5uaW5nIHdlIGFyZSBydW5uaW5nIGEgbG90IG9mIG5m
+c2QgKDE5NikgYW5kCnVzZSBtb3VudGQgd2l0aCA2NCB0aHJlYWRzLCBqdXN0IGluIGNhc2Ugd2Ug
+Z2V0IGEgbWFzc2l2ZSBudW1iZXIgb2YgaGl0cwpvbnRvIGEgc2luZ2xlIG5vZGUuIEFsbCB0aGlz
+IGlzIG9uIERlYmlhbiBFdGNoIHdpdGggYSByZWNlbnQgMi42LjI0Cmtlcm5lbCB1c2luZyBhdXRv
+ZnM0IGF0IHRoZSBtb21lbnQgdG8gZG8gdGhlIGF1dG9tb3VudHMuCgpXaGVuIHJ1bm5pbmcgdGhl
+c2UgdHdvIG5vdCBuaWNlIHNjcmlwdHM6CgokIGNhdCB0ZXN0X21vdW50CiMhL2Jpbi9zaAoKbl9u
+b2RlPTEwMDAKCmZvciBpIGluIGBzZXEgMSAkbl9ub2RlYDtkbwogICAgICAgIG49YGVjaG8gJFJB
+TkRPTSUxMzQyKzEwMDAxIHwgYmN8IHNlZCAtZSAicy8xL24vImAKICAgICAgICAkSE9NRS9iaW4v
+bW91bnQuc2ggJG4mCiAgICAgICAgZWNobyAtbiAuCmRvbmUKCiQgY2F0IG1vdW50LnNoCiMhL2Jp
+bi9zaAoKZGlyPSIvZGlzdHJpYnV0ZWQvc3ByYXkvZGF0YS9FYXRIL1M1UjEiCgpwaW5nIC1jMSAt
+dzEgJDEgPiAvZGV2L251bGwmJiBmaWxlPSIvYXRsYXMvbm9kZS8kMSRkaXIvImBscyAtZgovYXRs
+YXMvbm9kZS8kMSRkaXIvfGhlYWQgLW4gNTAgfCB0YWlsIC1uIDFgCm1kNXN1bSAke2ZpbGV9CgpX
+aXRoIHRoYXQgd2UgZW5jb3VudGVyIGRpZmZlcmVudCBwcm9ibGVtczoKClJ1bm5pbmcgdGhpcyBn
+aXZlcyB0aGlzIGluIHN5c2xvZzoKSnVsICAxIDA3OjM3OjE5IG4xMzEyIHJwYy5pZG1hcGRbMjMw
+OV06IG5mc29wZW46Cm9wZW4oL3Zhci9saWIvbmZzL3JwY19waXBlZnMvbmZzL2NsbnRhYTU4L2lk
+bWFwKTogVG9vIG1hbnkgb3BlbiBmaWxlcwpKdWwgIDEgMDc6Mzc6MTkgbjEzMTIgcnBjLmlkbWFw
+ZFsyMzA5XTogbmZzb3BlbjoKb3BlbigvdmFyL2xpYi9uZnMvcnBjX3BpcGVmcy9uZnMvY2xudGFh
+NTgvaWRtYXApOiBUb28gbWFueSBvcGVuIGZpbGVzCkp1bCAgMSAwNzozNzoxOSBuMTMxMiBycGMu
+aWRtYXBkWzIzMDldOiBuZnNvcGVuOgpvcGVuKC92YXIvbGliL25mcy9ycGNfcGlwZWZzL25mcy9j
+bG50YWE1ZS9pZG1hcCk6IFRvbyBtYW55IG9wZW4gZmlsZXMKSnVsICAxIDA3OjM3OjE5IG4xMzEy
+IHJwYy5pZG1hcGRbMjMwOV06IG5mc29wZW46Cm9wZW4oL3Zhci9saWIvbmZzL3JwY19waXBlZnMv
+bmZzL2NsbnRhYTVlL2lkbWFwKTogVG9vIG1hbnkgb3BlbiBmaWxlcwpKdWwgIDEgMDc6Mzc6MTkg
+bjEzMTIgcnBjLmlkbWFwZFsyMzA5XTogbmZzb3BlbjoKb3BlbigvdmFyL2xpYi9uZnMvcnBjX3Bp
+cGVmcy9uZnMvY2xudGFhOWMvaWRtYXApOiBUb28gbWFueSBvcGVuIGZpbGVzCgpXaGljaCBpcyBu
+b3Qgc3VycHJpc2luZyB0byBtZS4gSG93ZXZlciwgdGhlcmUgYXJlIGEgZmV3IHRoaW5ncyBJJ20K
+d29uZGVyaW5nIGFib3V0LgoKKDEpIEFsbCBvdXIgbW91bnRzIHVzZSBuZnN2ZXJzPTMgd2h5IGlz
+IHJwYy5pZG1hcGQgaW52b2x2ZWQgYXQgYWxsPwooMikgV2h5IGlzIHRoaXMgZGFlbW9uIGdyb3dp
+bmcgc28gZXh0cmVtZWx5IGxhcmdlPwojIHBzIGF1eHxncmVwIHJwYy5pZG1hcGQKcm9vdCAgICAg
+IDIzMDkgIDAuMSAxNi4yIDIwMzcxNTIgMTMyNjk0NCA/ICAgICBTcyAgIEp1bjMwICAgMToyNAov
+dXNyL3NiaW4vcnBjLmlkbWFwZAooMykgVGhlIHNjcmlwdCBtYXhlcyBvdXQgYXQgYWJvdXQgMzQw
+IGNvbmN1cnJlbnQgbW91bnRzLCBhbnkgaWRlYSBob3cgdG8KaW5jcmVhc2UgdGhpcyBudW1iZXI/
+IFdlIGFyZSBhbHJlYWR5IHJ1bm5pbmcgYWxsIHNlcnZlcnMgd2l0aCB0aGUKaW5zZWN1cmUgb3B0
+aW9uLCB0aHVzIGxvdyBwb3J0cyBzaG91bGQgbm90IGJlIGEgcmVzdHJpY3Rpb24uCig0KSBBZnRl
+ciBydW5uaW5nIHRoaXMgc2NyaXB0IC9ldGMvbXRhYiBhbmQgL3Byb2MvbW91bnRzIGFyZSBvdXQg
+b2YKc3luYy4gSWFuIEtlbnQgZnJvbSBhdXRvZnMgZmFtZSBzdWdnZXN0ZWQgYSBicm9rZW4gbG9j
+YWwgbW91bnQKaW1wbGVtZW50YXRpb24gd2hpY2ggZG9lcyBub3QgbG9jayBtdGFiIHdlbGwgZW5v
+dWdoLiBBbnkgaWRlZSBhYm91dCB0aGF0PwoKVElBIGZvciBhbnkgaGVscCB5b3UgbWlnaHQgZ2l2
+ZSB1cy4KCkNoZWVycwoKQ2Fyc3RlbgoKCi0tIApEci4gQ2Fyc3RlbiBBdWxiZXJ0IC0gTWF4IFBs
+YW5jayBJbnN0aXR1dCBmw7xyIEdyYXZpdGF0aW9uc3BoeXNpawpDYWxsaW5zdHJhw59lIDM4LCAz
+MDE2NyBIYW5ub3ZlciwgR2VybWFueQpGb246ICs0OSA1MTEgNzYyIDE3MTg1LCBGYXg6ICs0OSA1
+MTEgNzYyIDE3MTkzCmh0dHA6Ly93d3cudG9wNTAwLm9yZy9zeXN0ZW0vOTIzNCB8IGh0dHA6Ly93
+d3cudG9wNTAwLm9yZy9jb25uZmFtLzYvbGlzdC8zMQoKLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQpDaGVjayBv
+dXQgdGhlIG5ldyBTb3VyY2VGb3JnZS5uZXQgTWFya2V0cGxhY2UuCkl0J3MgdGhlIGJlc3QgcGxh
+Y2UgdG8gYnV5IG9yIHNlbGwgc2VydmljZXMgZm9yCmp1c3QgYWJvdXQgYW55dGhpbmcgT3BlbiBT
+b3VyY2UuCmh0dHA6Ly9zb3VyY2Vmb3JnZS5uZXQvc2VydmljZXMvYnV5L2luZGV4LnBocApfX19f
+X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fXwpORlMgbWFpbGxpc3Qg
+IC0gIE5GU0BsaXN0cy5zb3VyY2Vmb3JnZS5uZXQKaHR0cHM6Ly9saXN0cy5zb3VyY2Vmb3JnZS5u
+ZXQvbGlzdHMvbGlzdGluZm8vbmZzCl9fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
+X19fX19fX19fX19fClBsZWFzZSBub3RlIHRoYXQgbmZzQGxpc3RzLnNvdXJjZWZvcmdlLm5ldCBp
+cyBiZWluZyBkaXNjb250aW51ZWQuClBsZWFzZSBzdWJzY3JpYmUgdG8gbGludXgtbmZzQHZnZXIu
+a2VybmVsLm9yZyBpbnN0ZWFkLgogICAgaHR0cDovL3ZnZXIua2VybmVsLm9yZy92Z2VyLWxpc3Rz
+Lmh0bWwjbGludXgtbmZzCg==
 
