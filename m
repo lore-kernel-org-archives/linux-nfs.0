@@ -1,291 +1,93 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: inux-next: Tree for July 1
-Date: Wed, 02 Jul 2008 15:02:35 -0400
-Message-ID: <1215025355.7237.8.camel@localhost>
-References: <20080702011434.6fb403d5.sfr@canb.auug.org.au>
-	 <200807012236.19400.rjw@sisk.pl> <1214959743.10317.3.camel@localhost>
-	 <76bd70e30807020734g3db408dcqea2a61622c83004d@mail.gmail.com>
-	 <1215018911.9783.1.camel@localhost>
-	 <76bd70e30807021043x72f3aa46o8d07f2039d2ed455@mail.gmail.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: Massive NFS problems on large cluster with large number of
+	mounts
+Date: Wed, 2 Jul 2008 16:31:30 -0400
+Message-ID: <20080702203130.GA24850@fieldses.org>
+References: <4869E8AB.4060905@aei.mpg.de> <20080701182250.GB21807@fieldses.org> <486B89F5.9000109@aei.mpg.de>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: "Rafael J. Wysocki" <rjw@sisk.pl>,
-	"Randy.Dunlap" <rdunlap@xenotime.net>,
-	Stephen Rothwell <sfr@canb.auug.org.au>,
-	linux-next@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
-	kernel-testers@vger.kernel.org, linux-nfs@vger.kernel.org
-To: chucklever@gmail.com
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org,
+	Henning Fehrmann <henning.fehrmann-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>,
+	Steffen Grunewald <steffen.grunewald-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>
+To: Carsten Aulbert <carsten.aulbert-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:1304 "EHLO mx2.netapp.com"
+Received: from mail.fieldses.org ([66.93.2.214]:47273 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752444AbYGBTCi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 Jul 2008 15:02:38 -0400
-In-Reply-To: <76bd70e30807021043x72f3aa46o8d07f2039d2ed455-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+	id S1757725AbYGBUbb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Jul 2008 16:31:31 -0400
+In-Reply-To: <486B89F5.9000109-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2008-07-02 at 13:43 -0400, Chuck Lever wrote:
-> On Wed, Jul 2, 2008 at 1:15 PM, Trond Myklebust
-> <Trond.Myklebust@netapp.com> wrote:
-> > On Wed, 2008-07-02 at 10:34 -0400, Chuck Lever wrote:
-> >> On Tue, Jul 1, 2008 at 8:49 PM, Trond Myklebust
-> >> <Trond.Myklebust@netapp.com> wrote:
-> >> > On Tue, 2008-07-01 at 22:36 +0200, Rafael J. Wysocki wrote:
-> >> >> I can't mount NFS shares with this kernel.  I get something of this sort in
-> >> >> dmesg and it seems to be 100% reproducible:
-> >> >>
-> >> >> [  314.058858] RPC: Registered udp transport module.
-> >> >> [  314.058863] RPC: Registered tcp transport module.
-> >> >> [  314.490970] RPC: transport (0) not supported
-> >> >> [  319.246987] __ratelimit: 23 messages suppressed
-> >> >
-> >> > Does this patch fix the problem for you?
-> >> > -----------------------------------------------------------------------------------
-> >> > From: Trond Myklebust <Trond.Myklebust@netapp.com>
-> >> > NFS: Fix the mount protocol defaults for binary mounts
-> >> >
-> >> > Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> >> > ---
-> >> >
-> >> >  fs/nfs/super.c |    1 +
-> >> >  1 files changed, 1 insertions(+), 0 deletions(-)
-> >> >
-> >> > diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-> >> > index e09b1c2..85fbb98 100644
-> >> > --- a/fs/nfs/super.c
-> >> > +++ b/fs/nfs/super.c
-> >> > @@ -1575,6 +1575,7 @@ static int nfs_validate_mount_data(void *options,
-> >> >
-> >> >                if (!(data->flags & NFS_MOUNT_TCP))
-> >> >                        args->nfs_server.protocol = XPRT_TRANSPORT_UDP;
-> >> > +               nfs_set_transport_defaults(args);
-> >>
-> >> nfs_set_transport_defaults() is overkill for the legacy mount path.
-> >> The bug is that the logic here assumes that nfs_server.protocol
-> >> already has the default value of XPRT_TRANSPORT_TCP, but commit
-> >> 8b59ea3c removed that default.  The correct fix is to add
-> >>
-> >>             args->nfs_server.protocol = XPRT_TRANSPORT_TCP;
-> >>
-> >> just before the 'if' statement.  We should fold that into 8b59ea3c to
-> >> preserve bisectability.
-> >
-> > NACK. You still need to set the appropriate retrans and timeo defaults.
+On Wed, Jul 02, 2008 at 04:00:21PM +0200, Carsten Aulbert wrote:
+> Hi all,
 > 
-> NACK squared [Bruce told me to write this].
 > 
-> The only bug involves the transport protocol setting for NFSv2/v3 legacy mounts.
+> J. Bruce Fields wrote:
+> > 
+> > I'm slightly confused--the above is all about server configuration, but
+> > the below seems to describe only client problems?
 > 
-> The legacy mount command already sets appropriate default values for
-> the timeout fields, and the code in that arm of
-> nfs_validate_mount_options() _unconditionally_ copies the mount
-> command's timeout settings into the nfs_parse_mount_options structure.
+> Well, yes and no. All our servers are clients as well. I.e. we have
+> ~1340 nodes which all export a local directory to be cross-mounted.
 > 
-> This is how it worked before commit 8b59ea3c, and 8b59ea3c doesn't
-> change this behavior.
+> >> (1) All our mounts use nfsvers=3 why is rpc.idmapd involved at all?
+> > 
+> > Are there actually files named "idmap" in those directories?  (Looks to
+> > me like they're only created in the v4 case, so I assume those open
+> > calls would return ENOENT if they didn't return ENFILE....)
+> 
+> No there is not and since we are not running v4 yet, we've disabled the
+> start for these on all nodes now.
+> 
+> 
+> > 
+> >> (2) Why is this daemon growing so extremely large?
+> >> # ps aux|grep rpc.idmapd
+> >> root      2309  0.1 16.2 2037152 1326944 ?     Ss   Jun30   1:24
+> >> /usr/sbin/rpc.idmapd
+> > 
+> > I think rpc.idmapd has some state for each directory whether they're for
+> > a v4 client or not, since it's using dnotify to watch for an "idmap"
+> > file to appear in each one.  The above shows about 2k per mount?
+> 
+> As you have written in your other email, yes that's 2 GByte and I've
+> seen boxes where > 500 mounts hung that the process was using all of the
+> 8 GByte. So I do think there is a bug.
+> 
+> OTOH, we still have the problem, that we can only mount up to ~ 350
+> remote directories. This one we think we tracked down to the fact that
+> the NFS clients refuse to use ports >1023 even though the servers are
+> exporting with the "insecure" option. Is there a way to force this?
+> Right now the NFS clients use ports 665-1023 (except a few odd ports
+> which were in use earlier).
+> 
+> Any hint for us how we shall proceed and maybe force the clients to also
+> use ports > 1023? I think that would solve our problems.
 
-That's utter nonsense. We _never_ relied on the mount command to set
-defaults for us. I remember all too well debugging old versions of
-am-utils/amd that set the TCP flag and then happily set timeout values
-of 7/10 second. As far as I know, all am-utils versions since then have
-used timeo=0, retrans=0.
+I think the below (untested) would tell the client to stop demanding a
+privileged port.
 
-However, that does illustrate something else:
-nfs_set_transport_defaults() has never been necessary for setting timeo
-and retrans, since the zero case is already covered in
-nfs_init_timeout_values() (which is also where the sanity checks are
-applied).
+Then you may find you run into other problems, I don't know.  Sounds
+like nobody's using this many mounts, so you get to find out what the
+next limit is....  But if it works, then maybe someday we should add a
+mount option to control this.
 
----------------------------------------------------------------------------------
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date: Wed, 2 Jul 2008 14:43:47 -0400
-NFS: Fix the mount protocol defaults for binary mounts
+--b.
 
-Move the UDP/TCP default timeo/retrans settings for text mounts to
-nfs_init_timeout_values(), which was were they were always being
-initialised for binary mounts.
 
-Ensure we do initialise the transport protocol for the legacy binary mount
-case in nfs_validate_mount_data.
-
-Ensure that we sanity check the transport protocol in the legacy binary
-mount case in nfs4_validate_mount_data
-
-Fix up the incorrect values of NFS_DEF_UDP_TIMEO, NFS_DEF_UDP_RETRANS to
-match the nfs manpage documentation.
-
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
-
- fs/nfs/client.c        |   13 +++++++-----
- fs/nfs/super.c         |   53 ++++++++++++++++++++++++------------------------
- include/linux/nfs_fs.h |    4 ++--
- 3 files changed, 37 insertions(+), 33 deletions(-)
-
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index f2a092c..5ee23e7 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -431,14 +431,14 @@ static void nfs_init_timeout_values(struct rpc_timeout *to, int proto,
- {
- 	to->to_initval = timeo * HZ / 10;
- 	to->to_retries = retrans;
--	if (!to->to_retries)
--		to->to_retries = 2;
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 8945307..51f68cc 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -300,9 +300,7 @@ struct rpc_clnt *rpc_create(struct rpc_create_args *args)
+ 	 * but it is always enabled for rpciod, which handles the connect
+ 	 * operation.
+ 	 */
+-	xprt->resvport = 1;
+-	if (args->flags & RPC_CLNT_CREATE_NONPRIVPORT)
+-		xprt->resvport = 0;
++	xprt->resvport = 0;
  
- 	switch (proto) {
- 	case XPRT_TRANSPORT_TCP:
- 	case XPRT_TRANSPORT_RDMA:
-+		if (to->to_retries == 0)
-+			to->to_retries = NFS_DEF_TCP_RETRANS;
- 		if (to->to_initval == 0)
--			to->to_initval = 60 * HZ;
-+			to->to_initval = NFS_DEF_TCP_TIMEO * HZ / 10;
- 		if (to->to_initval > NFS_MAX_TCP_TIMEOUT)
- 			to->to_initval = NFS_MAX_TCP_TIMEOUT;
- 		to->to_increment = to->to_initval;
-@@ -450,14 +450,17 @@ static void nfs_init_timeout_values(struct rpc_timeout *to, int proto,
- 		to->to_exponential = 0;
- 		break;
- 	case XPRT_TRANSPORT_UDP:
--	default:
-+		if (to->to_retries == 0)
-+			to->to_retries = NFS_DEF_UDP_RETRANS;
- 		if (!to->to_initval)
--			to->to_initval = 11 * HZ / 10;
-+			to->to_initval = NFS_DEF_UDP_TIMEO * HZ / 10;
- 		if (to->to_initval > NFS_MAX_UDP_TIMEOUT)
- 			to->to_initval = NFS_MAX_UDP_TIMEOUT;
- 		to->to_maxval = NFS_MAX_UDP_TIMEOUT;
- 		to->to_exponential = 1;
- 		break;
-+	default:
-+		BUG();
- 	}
- }
- 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index e09b1c2..47cf83e 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -819,40 +819,39 @@ static void nfs_parse_ip_address(char *string, size_t str_len,
- }
- 
- /*
-- * Time-out and mount transport default settings are based on the
-- * specified NFS transport.  For legacy mounts, these are set by
-- * the mount command before mount(2) is invoked.  For text-based
-- * mounts, the kernel must take care to set these.
-+ * Sanity check the NFS transport protocol.
-+ *
-  */
--static void nfs_set_transport_defaults(struct nfs_parsed_mount_data *mnt)
-+static void nfs_validate_transport_protocol(struct nfs_parsed_mount_data *mnt)
- {
- 	switch (mnt->nfs_server.protocol) {
- 	case XPRT_TRANSPORT_UDP:
--		if (mnt->mount_server.protocol == 0)
--			mnt->mount_server.protocol = XPRT_TRANSPORT_UDP;
--		if (mnt->timeo == 0)
--			mnt->timeo = NFS_DEF_UDP_TIMEO;
--		if (mnt->retrans == 0)
--			mnt->retrans = NFS_DEF_UDP_RETRANS;
--		break;
- 	case XPRT_TRANSPORT_TCP:
- 	case XPRT_TRANSPORT_RDMA:
--		if (mnt->mount_server.protocol == 0)
--			mnt->mount_server.protocol = XPRT_TRANSPORT_TCP;
--		if (mnt->timeo == 0)
--			mnt->timeo = NFS_DEF_TCP_TIMEO;
--		if (mnt->retrans == 0)
--			mnt->retrans = NFS_DEF_TCP_RETRANS;
- 		break;
- 	default:
- 		mnt->nfs_server.protocol = XPRT_TRANSPORT_TCP;
--		if (mnt->mount_server.protocol == 0)
--			mnt->mount_server.protocol = XPRT_TRANSPORT_UDP;
--		if (mnt->timeo == 0)
--			mnt->timeo = NFS_DEF_TCP_TIMEO;
--		if (mnt->retrans == 0)
--			mnt->retrans = NFS_DEF_TCP_RETRANS;
-+	}
-+}
-+
-+/*
-+ * For text based NFSv2/v3 mounts, the mount protocol transport default
-+ * settings should depend upon the specified NFS transport.
-+ */
-+static void nfs_set_mount_transport_protocol(struct nfs_parsed_mount_data *mnt)
-+{
-+	nfs_validate_transport_protocol(mnt);
-+
-+	if (mnt->mount_server.protocol == XPRT_TRANSPORT_UDP ||
-+	    mnt->mount_server.protocol == XPRT_TRANSPORT_TCP)
-+			return;
-+	switch (mnt->nfs_server.protocol) {
-+	case XPRT_TRANSPORT_UDP:
-+		mnt->mount_server.protocol = XPRT_TRANSPORT_UDP;
- 		break;
-+	case XPRT_TRANSPORT_TCP:
-+	case XPRT_TRANSPORT_RDMA:
-+		mnt->mount_server.protocol = XPRT_TRANSPORT_TCP;
- 	}
- }
- 
-@@ -1521,6 +1520,7 @@ static int nfs_validate_mount_data(void *options,
- 	args->acdirmax		= NFS_DEF_ACDIRMAX;
- 	args->mount_server.port	= 0;	/* autobind unless user sets port */
- 	args->nfs_server.port	= 0;	/* autobind unless user sets port */
-+	args->nfs_server.protocol = XPRT_TRANSPORT_TCP;
- 	args->auth_flavors[0]	= RPC_AUTH_UNIX;
- 
- 	switch (data->version) {
-@@ -1625,7 +1625,7 @@ static int nfs_validate_mount_data(void *options,
- 		nfs_set_port((struct sockaddr *)&args->nfs_server.address,
- 				args->nfs_server.port);
- 
--		nfs_set_transport_defaults(args);
-+		nfs_set_mount_transport_protocol(args);
- 
- 		status = nfs_parse_devname(dev_name,
- 					   &args->nfs_server.hostname,
-@@ -2235,6 +2235,7 @@ static int nfs4_validate_mount_data(void *options,
- 		args->acdirmin	= data->acdirmin;
- 		args->acdirmax	= data->acdirmax;
- 		args->nfs_server.protocol = data->proto;
-+		nfs_validate_transport_protocol(args);
- 
- 		break;
- 	default: {
-@@ -2250,7 +2251,7 @@ static int nfs4_validate_mount_data(void *options,
- 		nfs_set_port((struct sockaddr *)&args->nfs_server.address,
- 				args->nfs_server.port);
- 
--		nfs_set_transport_defaults(args);
-+		nfs_validate_transport_protocol(args);
- 
- 		if (args->auth_flavor_len > 1)
- 			goto out_inval_auth;
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 3c4078e..29d2619 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -12,8 +12,8 @@
- #include <linux/magic.h>
- 
- /* Default timeout values */
--#define NFS_DEF_UDP_TIMEO	(7)
--#define NFS_DEF_UDP_RETRANS	(5)
-+#define NFS_DEF_UDP_TIMEO	(11)
-+#define NFS_DEF_UDP_RETRANS	(3)
- #define NFS_DEF_TCP_TIMEO	(600)
- #define NFS_DEF_TCP_RETRANS	(2)
- 
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+ 	clnt = rpc_new_client(args, xprt);
+ 	if (IS_ERR(clnt))
