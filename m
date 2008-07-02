@@ -1,72 +1,51 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: inux-next: Tree for July 1
-Date: Wed, 02 Jul 2008 13:15:11 -0400
-Message-ID: <1215018911.9783.1.camel@localhost>
-References: <20080702011434.6fb403d5.sfr@canb.auug.org.au>
-	 <200807012236.19400.rjw@sisk.pl> <1214959743.10317.3.camel@localhost>
-	 <76bd70e30807020734g3db408dcqea2a61622c83004d@mail.gmail.com>
+From: "Kevin Coffman" <kwc@citi.umich.edu>
+Subject: Re: [Patch] enable preferred realms for ccache searching
+Date: Wed, 2 Jul 2008 13:18:46 -0400
+Message-ID: <4d569c330807021018ka2c6ad6t573caae886fb5307@mail.gmail.com>
+References: <20080624153524.GK4484@ics.muni.cz>
+	 <4d569c330807020853m37a834ex5ba191faf85b0f97@mail.gmail.com>
+	 <20080702160924.GT5111@ics.muni.cz>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: "Rafael J. Wysocki" <rjw@sisk.pl>,
-	"Randy.Dunlap" <rdunlap@xenotime.net>,
-	Stephen Rothwell <sfr@canb.auug.org.au>,
-	linux-next@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
-	kernel-testers@vger.kernel.org, linux-nfs@vger.kernel.org
-To: chucklever@gmail.com
-Return-path: <linux-next-owner@vger.kernel.org>
-In-Reply-To: <76bd70e30807020734g3db408dcqea2a61622c83004d@mail.gmail.com>
-Sender: linux-next-owner@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: "Steve Dickson" <SteveD@redhat.com>,
+	"Linux NFS Mailing list" <linux-nfs@vger.kernel.org>,
+	"Linux NFSv4 mailing list" <nfsv4@linux-nfs.org>
+To: "Lukas Hejtmanek" <xhejtman@ics.muni.cz>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from yw-out-2324.google.com ([74.125.46.30]:45331 "EHLO
+	yw-out-2324.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751842AbYGBRSr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Jul 2008 13:18:47 -0400
+Received: by yw-out-2324.google.com with SMTP id 9so200260ywe.1
+        for <linux-nfs@vger.kernel.org>; Wed, 02 Jul 2008 10:18:47 -0700 (PDT)
+In-Reply-To: <20080702160924.GT5111@ics.muni.cz>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2008-07-02 at 10:34 -0400, Chuck Lever wrote:
-> On Tue, Jul 1, 2008 at 8:49 PM, Trond Myklebust
-> <Trond.Myklebust@netapp.com> wrote:
-> > On Tue, 2008-07-01 at 22:36 +0200, Rafael J. Wysocki wrote:
-> >> I can't mount NFS shares with this kernel.  I get something of this sort in
-> >> dmesg and it seems to be 100% reproducible:
-> >>
-> >> [  314.058858] RPC: Registered udp transport module.
-> >> [  314.058863] RPC: Registered tcp transport module.
-> >> [  314.490970] RPC: transport (0) not supported
-> >> [  319.246987] __ratelimit: 23 messages suppressed
-> >
-> > Does this patch fix the problem for you?
-> > -----------------------------------------------------------------------------------
-> > From: Trond Myklebust <Trond.Myklebust@netapp.com>
-> > NFS: Fix the mount protocol defaults for binary mounts
-> >
-> > Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> > ---
-> >
-> >  fs/nfs/super.c |    1 +
-> >  1 files changed, 1 insertions(+), 0 deletions(-)
-> >
-> > diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-> > index e09b1c2..85fbb98 100644
-> > --- a/fs/nfs/super.c
-> > +++ b/fs/nfs/super.c
-> > @@ -1575,6 +1575,7 @@ static int nfs_validate_mount_data(void *options,
-> >
-> >                if (!(data->flags & NFS_MOUNT_TCP))
-> >                        args->nfs_server.protocol = XPRT_TRANSPORT_UDP;
-> > +               nfs_set_transport_defaults(args);
-> 
-> nfs_set_transport_defaults() is overkill for the legacy mount path.
-> The bug is that the logic here assumes that nfs_server.protocol
-> already has the default value of XPRT_TRANSPORT_TCP, but commit
-> 8b59ea3c removed that default.  The correct fix is to add
-> 
->             args->nfs_server.protocol = XPRT_TRANSPORT_TCP;
-> 
-> just before the 'if' statement.  We should fold that into 8b59ea3c to
-> preserve bisectability.
+2008/7/2 Lukas Hejtmanek <xhejtman@ics.muni.cz>:
+> On Wed, Jul 02, 2008 at 11:53:12AM -0400, Kevin Coffman wrote:
+>> I'm fixing some things up in this patch (see comments below) and I
+>> have a question as well:  Is "score" ever anything besides zero or
+>> one?  I can see how it might be used in the future for including more
+>> preferences, but today it is only zero or one?
+>
+> The score is really only zero or one. It is there because we use one more
+> preference - PBSPro tickets - these have the highest priority at all but
+> I don't think PBS tickets are widely used so I removed this part from the
+> public patch.
 
-NACK. You still need to set the appropriate retrans and timeo defaults.
+OK, I'll leave that part alone then.
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+> Depending how close is release of 1.1.3 utils but we may want
+> allow to add dynamic settings of score to be read from a config file. On the
+> other hand, this will be deprecated once the keyring stuff is ready.
+>
+> Do you want me to rework the patch according to your comments?
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+Thanks, but I'm already cleaning it up.  I'll re-post for you look at
+before sending up to Steve.
+
+> Also, if interested, I have a patch to set the default preferred realm
+> from the kerberos configuration.
+
+I think that would be a nice thing to add to this.
