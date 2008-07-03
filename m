@@ -1,128 +1,235 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [PATCH 05/11] svcrdma: Add dma map count and WARN_ON
-Date: Wed,  2 Jul 2008 21:27:37 -0500
-Message-ID: <1215052063-7330-6-git-send-email-tom@opengridcomputing.com>
+Subject: [PATCH 11/11] svcrdma: Change WR context get/put to use the kmem cache
+Date: Wed,  2 Jul 2008 21:27:43 -0500
+Message-ID: <1215052063-7330-12-git-send-email-tom@opengridcomputing.com>
 References: <1215052063-7330-1-git-send-email-tom@opengridcomputing.com>
  <1215052063-7330-2-git-send-email-tom@opengridcomputing.com>
  <1215052063-7330-3-git-send-email-tom@opengridcomputing.com>
  <1215052063-7330-4-git-send-email-tom@opengridcomputing.com>
  <1215052063-7330-5-git-send-email-tom@opengridcomputing.com>
+ <1215052063-7330-6-git-send-email-tom@opengridcomputing.com>
+ <1215052063-7330-7-git-send-email-tom@opengridcomputing.com>
+ <1215052063-7330-8-git-send-email-tom@opengridcomputing.com>
+ <1215052063-7330-9-git-send-email-tom@opengridcomputing.com>
+ <1215052063-7330-10-git-send-email-tom@opengridcomputing.com>
+ <1215052063-7330-11-git-send-email-tom@opengridcomputing.com>
 Cc: linux-nfs@vger.kernel.org, Tom Tucker <tom@opengridcomputing.com>
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([209.198.142.2]:48836 "EHLO
+Received: from smtp.opengridcomputing.com ([209.198.142.2]:48843 "EHLO
 	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753395AbYGCC1p (ORCPT
+	by vger.kernel.org with ESMTP id S1753419AbYGCC1p (ORCPT
 	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Jul 2008 22:27:45 -0400
-In-Reply-To: <1215052063-7330-5-git-send-email-tom@opengridcomputing.com>
+In-Reply-To: <1215052063-7330-11-git-send-email-tom@opengridcomputing.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add a dma map count in order to verify that all DMA mapping resources
-have been freed when the transport is closed.
+Change the WR context pool to be shared across mount points. This
+reduces the RDMA transport memory footprint significantly since
+idle mounts don't consume WR context memory.
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 
 ---
- include/linux/sunrpc/svc_rdma.h          |    1 +
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |    1 +
- net/sunrpc/xprtrdma/svc_rdma_sendto.c    |    3 +++
- net/sunrpc/xprtrdma/svc_rdma_transport.c |    5 +++++
- 4 files changed, 10 insertions(+), 0 deletions(-)
+ include/linux/sunrpc/svc_rdma.h          |    6 --
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |  121 +++---------------------------
+ 2 files changed, 12 insertions(+), 115 deletions(-)
 
 diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
-index fd5e8a1..ab93afc 100644
+index d8d74c4..ef2e3a2 100644
 --- a/include/linux/sunrpc/svc_rdma.h
 +++ b/include/linux/sunrpc/svc_rdma.h
-@@ -130,6 +130,7 @@ struct svcxprt_rdma {
+@@ -73,7 +73,6 @@ extern atomic_t rdma_stat_sq_prod;
+ struct svc_rdma_op_ctxt {
+ 	struct svc_rdma_op_ctxt *read_hdr;
+ 	int hdr_count;
+-	struct list_head free_list;
+ 	struct xdr_buf arg;
+ 	struct list_head dto_q;
+ 	enum ib_wr_opcode wr_op;
+@@ -131,11 +130,6 @@ struct svcxprt_rdma {
  
- 	struct ib_pd         *sc_pd;
- 
-+	atomic_t	     sc_dma_used;
+ 	atomic_t	     sc_dma_used;
  	atomic_t	     sc_ctxt_used;
- 	struct list_head     sc_ctxt_free;
- 	int		     sc_ctxt_cnt;
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-index d25971b..b4b17f4 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-@@ -222,6 +222,7 @@ static void rdma_set_ctxt_sge(struct svcxprt_rdma *xprt,
- 	ctxt->count = count;
- 	ctxt->direction = DMA_FROM_DEVICE;
- 	for (i = 0; i < count; i++) {
-+		atomic_inc(&xprt->sc_dma_used);
- 		ctxt->sge[i].addr =
- 			ib_dma_map_single(xprt->sc_cm_id->device,
- 					  vec[i].iov_base, vec[i].iov_len,
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-index bdc11a3..a19b22b 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-@@ -163,6 +163,7 @@ static int send_write(struct svcxprt_rdma *xprt, struct svc_rqst *rqstp,
- 		sge_bytes = min((size_t)bc,
- 				(size_t)(vec->sge[xdr_sge_no].iov_len-sge_off));
- 		sge[sge_no].length = sge_bytes;
-+		atomic_inc(&xprt->sc_dma_used);
- 		sge[sge_no].addr =
- 			ib_dma_map_single(xprt->sc_cm_id->device,
- 					  (void *)
-@@ -385,6 +386,7 @@ static int send_reply(struct svcxprt_rdma *rdma,
- 	ctxt->count = 1;
- 
- 	/* Prepare the SGE for the RPCRDMA Header */
-+	atomic_inc(&rdma->sc_dma_used);
- 	ctxt->sge[0].addr =
- 		ib_dma_map_page(rdma->sc_cm_id->device,
- 				page, 0, PAGE_SIZE, DMA_TO_DEVICE);
-@@ -396,6 +398,7 @@ static int send_reply(struct svcxprt_rdma *rdma,
- 	for (sge_no = 1; byte_count && sge_no < vec->count; sge_no++) {
- 		sge_bytes = min_t(size_t, vec->sge[sge_no].iov_len, byte_count);
- 		byte_count -= sge_bytes;
-+		atomic_inc(&rdma->sc_dma_used);
- 		ctxt->sge[sge_no].addr =
- 			ib_dma_map_single(rdma->sc_cm_id->device,
- 					  vec->sge[sge_no].iov_base,
+-	struct list_head     sc_ctxt_free;
+-	int		     sc_ctxt_cnt;
+-	int		     sc_ctxt_bump;
+-	int		     sc_ctxt_max;
+-	spinlock_t	     sc_ctxt_lock;
+ 	struct list_head     sc_rq_dto_q;
+ 	spinlock_t	     sc_rq_dto_lock;
+ 	struct ib_qp         *sc_qp;
 diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index 7e8ee66..6fddd58 100644
+index 80104f4..19ddc38 100644
 --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
 +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -155,6 +155,7 @@ static void svc_rdma_unmap_dma(struct svc_rdma_op_ctxt *ctxt)
- 	struct svcxprt_rdma *xprt = ctxt->xprt;
- 	int i;
- 	for (i = 0; i < ctxt->count && ctxt->sge[i].length; i++) {
-+		atomic_dec(&xprt->sc_dma_used);
- 		ib_dma_unmap_single(xprt->sc_cm_id->device,
- 				    ctxt->sge[i].addr,
- 				    ctxt->sge[i].length,
-@@ -519,6 +520,7 @@ static struct svcxprt_rdma *rdma_create_xprt(struct svc_serv *serv,
- 	cma_xprt->sc_max_requests = svcrdma_max_requests;
- 	cma_xprt->sc_sq_depth = svcrdma_max_requests * RPCRDMA_SQ_DEPTH_MULT;
+@@ -84,69 +84,23 @@ struct svc_xprt_class svc_rdma_class = {
+ 	.xcl_max_payload = RPCSVC_MAXPAYLOAD_TCP,
+ };
+ 
+-static int rdma_bump_context_cache(struct svcxprt_rdma *xprt)
+-{
+-	int target;
+-	int at_least_one = 0;
+-	struct svc_rdma_op_ctxt *ctxt;
+-
+-	target = min(xprt->sc_ctxt_cnt + xprt->sc_ctxt_bump,
+-		     xprt->sc_ctxt_max);
+-
+-	spin_lock_bh(&xprt->sc_ctxt_lock);
+-	while (xprt->sc_ctxt_cnt < target) {
+-		xprt->sc_ctxt_cnt++;
+-		spin_unlock_bh(&xprt->sc_ctxt_lock);
+-
+-		ctxt = kmalloc(sizeof(*ctxt), GFP_KERNEL);
+-
+-		spin_lock_bh(&xprt->sc_ctxt_lock);
+-		if (ctxt) {
+-			at_least_one = 1;
+-			INIT_LIST_HEAD(&ctxt->free_list);
+-			list_add(&ctxt->free_list, &xprt->sc_ctxt_free);
+-		} else {
+-			/* kmalloc failed...give up for now */
+-			xprt->sc_ctxt_cnt--;
+-			break;
+-		}
+-	}
+-	spin_unlock_bh(&xprt->sc_ctxt_lock);
+-	dprintk("svcrdma: sc_ctxt_max=%d, sc_ctxt_cnt=%d\n",
+-		xprt->sc_ctxt_max, xprt->sc_ctxt_cnt);
+-	return at_least_one;
+-}
++/* WR context cache. Created in svc_rdma.c  */
++extern struct kmem_cache *svc_rdma_ctxt_cachep;
+ 
+ struct svc_rdma_op_ctxt *svc_rdma_get_context(struct svcxprt_rdma *xprt)
+ {
+ 	struct svc_rdma_op_ctxt *ctxt;
+ 
+ 	while (1) {
+-		spin_lock_bh(&xprt->sc_ctxt_lock);
+-		if (unlikely(list_empty(&xprt->sc_ctxt_free))) {
+-			/* Try to bump my cache. */
+-			spin_unlock_bh(&xprt->sc_ctxt_lock);
+-
+-			if (rdma_bump_context_cache(xprt))
+-				continue;
+-
+-			printk(KERN_INFO "svcrdma: sleeping waiting for "
+-			       "context memory on xprt=%p\n",
+-			       xprt);
+-			schedule_timeout_uninterruptible(msecs_to_jiffies(500));
+-			continue;
+-		}
+-		ctxt = list_entry(xprt->sc_ctxt_free.next,
+-				  struct svc_rdma_op_ctxt,
+-				  free_list);
+-		list_del_init(&ctxt->free_list);
+-		spin_unlock_bh(&xprt->sc_ctxt_lock);
+-		ctxt->xprt = xprt;
+-		INIT_LIST_HEAD(&ctxt->dto_q);
+-		ctxt->count = 0;
+-		atomic_inc(&xprt->sc_ctxt_used);
+-		break;
++		ctxt = kmem_cache_alloc(svc_rdma_ctxt_cachep, GFP_KERNEL);
++		if (ctxt)
++			break;
++		schedule_timeout_uninterruptible(msecs_to_jiffies(500));
+ 	}
++	ctxt->xprt = xprt;
++	INIT_LIST_HEAD(&ctxt->dto_q);
++	ctxt->count = 0;
++	atomic_inc(&xprt->sc_ctxt_used);
+ 	return ctxt;
+ }
+ 
+@@ -174,9 +128,7 @@ void svc_rdma_put_context(struct svc_rdma_op_ctxt *ctxt, int free_pages)
+ 		for (i = 0; i < ctxt->count; i++)
+ 			put_page(ctxt->pages[i]);
+ 
+-	spin_lock_bh(&xprt->sc_ctxt_lock);
+-	list_add(&ctxt->free_list, &xprt->sc_ctxt_free);
+-	spin_unlock_bh(&xprt->sc_ctxt_lock);
++	kmem_cache_free(svc_rdma_ctxt_cachep, ctxt);
+ 	atomic_dec(&xprt->sc_ctxt_used);
+ }
+ 
+@@ -461,40 +413,6 @@ static void sq_comp_handler(struct ib_cq *cq, void *cq_context)
+ 	tasklet_schedule(&dto_tasklet);
+ }
+ 
+-static void create_context_cache(struct svcxprt_rdma *xprt,
+-				 int ctxt_count, int ctxt_bump, int ctxt_max)
+-{
+-	struct svc_rdma_op_ctxt *ctxt;
+-	int i;
+-
+-	xprt->sc_ctxt_max = ctxt_max;
+-	xprt->sc_ctxt_bump = ctxt_bump;
+-	xprt->sc_ctxt_cnt = 0;
+-	atomic_set(&xprt->sc_ctxt_used, 0);
+-
+-	INIT_LIST_HEAD(&xprt->sc_ctxt_free);
+-	for (i = 0; i < ctxt_count; i++) {
+-		ctxt = kmalloc(sizeof(*ctxt), GFP_KERNEL);
+-		if (ctxt) {
+-			INIT_LIST_HEAD(&ctxt->free_list);
+-			list_add(&ctxt->free_list, &xprt->sc_ctxt_free);
+-			xprt->sc_ctxt_cnt++;
+-		}
+-	}
+-}
+-
+-static void destroy_context_cache(struct svcxprt_rdma *xprt)
+-{
+-	while (!list_empty(&xprt->sc_ctxt_free)) {
+-		struct svc_rdma_op_ctxt *ctxt;
+-		ctxt = list_entry(xprt->sc_ctxt_free.next,
+-				  struct svc_rdma_op_ctxt,
+-				  free_list);
+-		list_del_init(&ctxt->free_list);
+-		kfree(ctxt);
+-	}
+-}
+-
+ static struct svcxprt_rdma *rdma_create_xprt(struct svc_serv *serv,
+ 					     int listener)
+ {
+@@ -511,7 +429,6 @@ static struct svcxprt_rdma *rdma_create_xprt(struct svc_serv *serv,
+ 
+ 	spin_lock_init(&cma_xprt->sc_lock);
+ 	spin_lock_init(&cma_xprt->sc_read_complete_lock);
+-	spin_lock_init(&cma_xprt->sc_ctxt_lock);
+ 	spin_lock_init(&cma_xprt->sc_rq_dto_lock);
+ 
+ 	cma_xprt->sc_ord = svcrdma_ord;
+@@ -522,20 +439,7 @@ static struct svcxprt_rdma *rdma_create_xprt(struct svc_serv *serv,
  	atomic_set(&cma_xprt->sc_sq_count, 0);
-+	atomic_set(&cma_xprt->sc_ctxt_used, 0);
+ 	atomic_set(&cma_xprt->sc_ctxt_used, 0);
  
- 	if (!listener) {
- 		int reqs = cma_xprt->sc_max_requests;
-@@ -569,6 +571,7 @@ int svc_rdma_post_recv(struct svcxprt_rdma *xprt)
- 		BUG_ON(sge_no >= xprt->sc_max_sge);
- 		page = svc_rdma_get_page();
- 		ctxt->pages[sge_no] = page;
-+		atomic_inc(&xprt->sc_dma_used);
- 		pa = ib_dma_map_page(xprt->sc_cm_id->device,
- 				     page, 0, PAGE_SIZE,
- 				     DMA_FROM_DEVICE);
-@@ -1049,6 +1052,7 @@ static void __svc_rdma_free(struct work_struct *work)
+-	if (!listener) {
+-		int reqs = cma_xprt->sc_max_requests;
+-		create_context_cache(cma_xprt,
+-				     reqs << 1, /* starting size */
+-				     reqs,	/* bump amount */
+-				     reqs +
+-				     cma_xprt->sc_sq_depth +
+-				     RPCRDMA_MAX_THREADS + 1); /* max */
+-		if (list_empty(&cma_xprt->sc_ctxt_free)) {
+-			kfree(cma_xprt);
+-			return NULL;
+-		}
+-		clear_bit(XPT_LISTENER, &cma_xprt->sc_xprt.xpt_flags);
+-	} else
++	if (listener)
+ 		set_bit(XPT_LISTENER, &cma_xprt->sc_xprt.xpt_flags);
  
- 	/* Warn if we leaked a resource or under-referenced */
- 	WARN_ON(atomic_read(&rdma->sc_ctxt_used) != 0);
-+	WARN_ON(atomic_read(&rdma->sc_dma_used) != 0);
+ 	return cma_xprt;
+@@ -1077,7 +981,6 @@ static void __svc_rdma_free(struct work_struct *work)
+ 	/* Destroy the CM ID */
+ 	rdma_destroy_id(rdma->sc_cm_id);
  
- 	/* Destroy the QP if present (not a listener) */
- 	if (rdma->sc_qp && !IS_ERR(rdma->sc_qp))
-@@ -1169,6 +1173,7 @@ void svc_rdma_send_error(struct svcxprt_rdma *xprt, struct rpcrdma_msg *rmsgp,
- 	length = svc_rdma_xdr_encode_error(xprt, rmsgp, err, va);
+-	destroy_context_cache(rdma);
+ 	kfree(rdma);
+ }
  
- 	/* Prepare SGE for local address */
-+	atomic_inc(&xprt->sc_dma_used);
- 	sge.addr = ib_dma_map_page(xprt->sc_cm_id->device,
- 				   p, 0, PAGE_SIZE, DMA_FROM_DEVICE);
- 	sge.lkey = xprt->sc_phys_mr->lkey;
