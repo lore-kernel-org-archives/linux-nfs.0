@@ -1,122 +1,103 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 00/11] svcrdma: WR context management bug fixes and
-	cleanup
-Date: Thu, 3 Jul 2008 16:27:55 -0400
-Message-ID: <20080703202755.GD30918@fieldses.org>
-References: <1215052063-7330-1-git-send-email-tom@opengridcomputing.com>
+Subject: Re: writeable file with no mnt_want_write()
+Date: Thu, 3 Jul 2008 16:36:01 -0400
+Message-ID: <20080703203601.GE30918@fieldses.org>
+References: <486CC466.6060504@panasas.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Tom Tucker <tom@opengridcomputing.com>
+Cc: NFS list <linux-nfs@vger.kernel.org>
+To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:46279 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:54103 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752207AbYGCU15 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 Jul 2008 16:27:57 -0400
-In-Reply-To: <1215052063-7330-1-git-send-email-tom@opengridcomputing.com>
+	id S1752682AbYGCUgC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 3 Jul 2008 16:36:02 -0400
+In-Reply-To: <486CC466.6060504@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jul 02, 2008 at 09:27:32PM -0500, Tom Tucker wrote:
-> Bruce:
+On Thu, Jul 03, 2008 at 03:21:58PM +0300, Benny Halevy wrote:
+> Bruce,
 > 
-> This is version 2 of the WR context cleanup patchset. It includes modifications
-> per your review. It has been tested with iozone and Connectathon over IB
-> and iWARP on x86_64. The x86_32 platform has only been compile tested for 
-> warnings.
+> I'm seeing this warning on the open_downgrade path
+> when running the newpynfs tests:
 > 
-> This set of patches fixes bugs related to DMA mapping and unmapping and
-> in the process redesigns and cleans up the way that WR contexts are managed.
+> Jul  3 07:32:50 buml kernel: writeable file with no mnt_want_write()
+> Jul  3 07:32:50 buml kernel: ------------[ cut here ]------------
+> Jul  3 07:32:50 buml kernel: WARNING: at /usr0/export/dev/bhalevy/git/linux-pnfs-bh-nfs41/include/linux/fs.h:855 drop_file_write_access+0x6b/0x7e()
+> Jul  3 07:32:50 buml kernel: Modules linked in: nfsd auth_rpcgss exportfs nfs lockd nfs_acl sunrpc
+> Jul  3 07:32:50 buml kernel: Call Trace: 
+> Jul  3 07:32:50 buml kernel: 6eaadc88:  [<6002f471>] warn_on_slowpath+0x54/0x8e
+> Jul  3 07:32:50 buml kernel: 6eaadcc8:  [<601b790d>] printk+0xa0/0x793
+> Jul  3 07:32:50 buml kernel: 6eaadd38:  [<601b6205>] __mutex_lock_slowpath+0x1db/0x1ea
+> Jul  3 07:32:50 buml kernel: 6eaadd68:  [<7107d4d5>] nfs4_preprocess_seqid_op+0x2a6/0x31c [nfsd]
+> Jul  3 07:32:50 buml kernel: 6eaadda8:  [<60078dc9>] drop_file_write_access+0x6b/0x7e
+> Jul  3 07:32:50 buml kernel: 6eaaddc8:  [<710804e4>] nfsd4_open_downgrade+0x114/0x1de [nfsd]
+> Jul  3 07:32:50 buml kernel: 6eaade08:  [<71076215>] nfsd4_proc_compound+0x1ba/0x2dc [nfsd]
+> Jul  3 07:32:50 buml kernel: 6eaade48:  [<71068221>] nfsd_dispatch+0xe5/0x1c2 [nfsd]
+> Jul  3 07:32:50 buml kernel: 6eaade88:  [<71312f81>] svc_process+0x3fd/0x714 [sunrpc]
+> Jul  3 07:32:50 buml kernel: 6eaadea8:  [<60039a81>] kernel_sigprocmask+0xf3/0x100
+> Jul  3 07:32:50 buml kernel: 6eaadee8:  [<7106874b>] nfsd+0x182/0x29b [nfsd]
+> Jul  3 07:32:50 buml kernel: 6eaadf48:  [<60021cc9>] run_kernel_thread+0x41/0x4a
+> Jul  3 07:32:50 buml kernel: 6eaadf58:  [<710685c9>] nfsd+0x0/0x29b [nfsd]
+> Jul  3 07:32:50 buml kernel: 6eaadf98:  [<60021cb0>] run_kernel_thread+0x28/0x4a
+> Jul  3 07:32:50 buml kernel: 6eaadfc8:  [<60013829>] new_thread_handler+0x72/0x9c
+> Jul  3 07:32:50 buml kernel: 
+> Jul  3 07:32:50 buml kernel: ---[ end trace 2426dd7cb2fba3bf ]---
 > 
-> In addition to the bug fixes, there are three major changes:
-> 
-> - The data structure that maps client side memory to server side
->   memory has been separated from the WR context. This makes for cleaner
->   type checking and a smaller memory footprint for the RDMA transport.
-> 
-> - The mapping and unmapping of DMA is performed independently from the
->   allocation and deallocation of the WR context. This is to allow the
->   unmapping to occur early on recv where the unmapping of the DMA needs
->   to be done prior to looking at the data and therefore before 
->   deallocating the WR context.
-> 
-> - The WR context cache now uses a kmem_cache and is shared across
->   all transport instances. This allows contexts to be shared between
->   mounts and idle mounts don't consume context memory.
-> 
-> This patchset is intended for 2.6.27 and is based on 2.6.26-rc8. These patches
-> are also available at the following git url:
-> 
-> git://git.linux-nfs.org/projects/tomtucker/xprt-switch-2.6.git
+> I'm not sure what would be the right fix for that...
 
-Thanks!--I've merged this and pushed out the result to
+Yes.  I'm a bit confused about that.  Hm, maybe we need to be doing a
+mnt_want_write on open_upgrade and mnt_put_write on downgrade?
 
-	git://linux-nfs.org/~bfields/linux.git for-2.6.27
+> The following could be unrelated, and maybe I'm just confused
+> but there seems to be something funky about the way we convert
+> from bmap to access bits.
+> (unrelated note: for nfsv4.1 we'll need to mask the share access with
+> ~OPEN4_SHARE_ACCESS_WANT_DELEG_MASK)
+> 
+> If I understand this correctly, we set a bit in 
+> st_access_bmap corresponding to the share_access,
+> so for read-only bit #1 will be, write-only #2,
+> and for read-write (only) bits 1-3 should be set.
+
+No, in that case only the third bit 3 should be set.
+
+We're just trying to enforce rfc 3530 14.2.19:
+
+	"The share_access and share_deny bits specified must be exactly
+	equal to the union of the share_access and share_deny bits
+	specified for some subset of the OPENs in effect for current
+	openowner on the current file.  If that constraint is not
+	respected, the error NFS4ERR_INVAL should be returned."
+
+Note that this paragraph would allow
+
+	OPEN for read
+	OPEN for write
+	OPEN_DOWNGRADE to read
+
+
+but have us return NFS4ERR_INVAL if we got a sequence of opens like:
+
+	OPEN for read and write
+	OPEN_DOWNGRADE to read
+
+because in this case there was only a single open (for read and write),
+and no open just for read.
 
 --b.
 
+> otherwise this wouldn't work:
+> 	if (!test_bit(od->od_share_access, &stp->st_access_bmap)) {
+> 		dprintk("NFSD:access not a subset current bitmap: 0x%lx, input access=%08x\n",
+> 			stp->st_access_bmap, od->od_share_access);
+> 		goto out;
+> 	}
 > 
-> [PATCH 01/11] svcrdma: Add a type for keeping NFS RPC mapping
+> but init_stateid sets only one bit:
+> 	__set_bit(open->op_share_access, &stp->st_access_bmap);
 > 
->  include/linux/sunrpc/svc_rdma.h          |   27 +++++++++++++++++++++++++++
->  net/sunrpc/xprtrdma/svc_rdma.c           |   19 +++++++++++++++++++
->  net/sunrpc/xprtrdma/svc_rdma_transport.c |   26 ++++++++++++++++++++++++++
->  3 files changed, 72 insertions(+), 0 deletions(-)
+> only if we went through nfs4_upgrade_open another bit may be set.
 > 
-> [PATCH 02/11] svcrdma: Use RPC reply map for RDMA_WRITE processing
-> 
->  net/sunrpc/xprtrdma/svc_rdma_sendto.c    |  163 ++++++++++++++----------------
->  net/sunrpc/xprtrdma/svc_rdma_transport.c |    5 +-
->  2 files changed, 80 insertions(+), 88 deletions(-)
-> 
-> [PATCH 03/11] svcrdma: Use reply and chunk map for RDMA_READ processing
-> 
->  include/linux/sunrpc/svc_rdma.h         |    1 +
->  net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |   83 ++++++++++++++-----------------
->  2 files changed, 39 insertions(+), 45 deletions(-)
-> 
-> [PATCH 04/11] svcrdma: Move the DMA unmap logic to the CQ handler
-> 
->  net/sunrpc/xprtrdma/svc_rdma_transport.c |   20 ++++++++++++++------
->  1 files changed, 14 insertions(+), 6 deletions(-)
-> 
-> [PATCH 05/11] svcrdma: Add dma map count and WARN_ON
-> 
->  include/linux/sunrpc/svc_rdma.h          |    1 +
->  net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |    1 +
->  net/sunrpc/xprtrdma/svc_rdma_sendto.c    |    3 +++
->  net/sunrpc/xprtrdma/svc_rdma_transport.c |    5 +++++
->  4 files changed, 10 insertions(+), 0 deletions(-)
-> 
-> [PATCH 06/11] svcrdma: Remove unneeded spin locks from __svc_rdma_free
-> 
->  net/sunrpc/xprtrdma/svc_rdma_transport.c |    4 ----
->  1 files changed, 0 insertions(+), 4 deletions(-)
-> 
-> [PATCH 07/11] svcrdma: Remove unused wait q from svcrdma_xprt structure
-> 
->  include/linux/sunrpc/svc_rdma.h |    1 -
->  1 files changed, 0 insertions(+), 1 deletions(-)
-> 
-> [PATCH 08/11] svcrdma: Limit ORD based on client's advertised IRD
-> 
->  net/sunrpc/xprtrdma/svc_rdma_transport.c |   16 ++++++++++++----
->  1 files changed, 12 insertions(+), 4 deletions(-)
-> 
-> [PATCH 09/11] svcrdma: Add flush_scheduled_work to module exit function
-> 
->  net/sunrpc/xprtrdma/svc_rdma.c |    1 +
->  1 files changed, 1 insertions(+), 0 deletions(-)
-> 
-> [PATCH 10/11] svcrdma: Create a kmem cache for the WR contexts
-> 
->  net/sunrpc/xprtrdma/svc_rdma.c |   23 +++++++++++++++++++----
->  1 files changed, 19 insertions(+), 4 deletions(-)
-> 
-> [PATCH 11/11] svcrdma: Change WR context get/put to use the kmem cache
-> 
->  include/linux/sunrpc/svc_rdma.h          |    6 --
->  net/sunrpc/xprtrdma/svc_rdma_transport.c |  121 +++---------------------------
->  2 files changed, 12 insertions(+), 115 deletions(-)
-> 
-> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+> Benny
