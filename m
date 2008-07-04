@@ -1,162 +1,117 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 1/8] SUNRPC: Add address family field to svc_serv data
-	structure
-Date: Thu, 3 Jul 2008 17:14:23 -0400
-Message-ID: <20080703211423.GL30918@fieldses.org>
-References: <20080630224147.24887.18730.stgit@ellison.1015granger.net> <20080630224529.24887.47412.stgit@ellison.1015granger.net>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: writeable file with no mnt_want_write()
+Date: Fri, 04 Jul 2008 15:34:11 +0300
+Message-ID: <486E18C3.1040703@panasas.com>
+References: <486CC466.6060504@panasas.com> <20080703203601.GE30918@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: NFS list <linux-nfs@vger.kernel.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:57286 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752331AbYGCVOf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 Jul 2008 17:14:35 -0400
-In-Reply-To: <20080630224529.24887.47412.stgit-ewv44WTpT0t9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
+Received: from gw-colo-pa.panasas.com ([66.238.117.130]:5537 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752673AbYGDMej (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Jul 2008 08:34:39 -0400
+In-Reply-To: <20080703203601.GE30918@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jun 30, 2008 at 06:45:30PM -0400, Chuck Lever wrote:
-> Introduce and initialize an address family field in the svc_serv structure.
+On Jul. 03, 2008, 23:36 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> On Thu, Jul 03, 2008 at 03:21:58PM +0300, Benny Halevy wrote:
+>> Bruce,
+>>
+>> I'm seeing this warning on the open_downgrade path
+>> when running the newpynfs tests:
+>>
+>> Jul  3 07:32:50 buml kernel: writeable file with no mnt_want_write()
+>> Jul  3 07:32:50 buml kernel: ------------[ cut here ]------------
+>> Jul  3 07:32:50 buml kernel: WARNING: at /usr0/export/dev/bhalevy/git/linux-pnfs-bh-nfs41/include/linux/fs.h:855 drop_file_write_access+0x6b/0x7e()
+>> Jul  3 07:32:50 buml kernel: Modules linked in: nfsd auth_rpcgss exportfs nfs lockd nfs_acl sunrpc
+>> Jul  3 07:32:50 buml kernel: Call Trace: 
+>> Jul  3 07:32:50 buml kernel: 6eaadc88:  [<6002f471>] warn_on_slowpath+0x54/0x8e
+>> Jul  3 07:32:50 buml kernel: 6eaadcc8:  [<601b790d>] printk+0xa0/0x793
+>> Jul  3 07:32:50 buml kernel: 6eaadd38:  [<601b6205>] __mutex_lock_slowpath+0x1db/0x1ea
+>> Jul  3 07:32:50 buml kernel: 6eaadd68:  [<7107d4d5>] nfs4_preprocess_seqid_op+0x2a6/0x31c [nfsd]
+>> Jul  3 07:32:50 buml kernel: 6eaadda8:  [<60078dc9>] drop_file_write_access+0x6b/0x7e
+>> Jul  3 07:32:50 buml kernel: 6eaaddc8:  [<710804e4>] nfsd4_open_downgrade+0x114/0x1de [nfsd]
+>> Jul  3 07:32:50 buml kernel: 6eaade08:  [<71076215>] nfsd4_proc_compound+0x1ba/0x2dc [nfsd]
+>> Jul  3 07:32:50 buml kernel: 6eaade48:  [<71068221>] nfsd_dispatch+0xe5/0x1c2 [nfsd]
+>> Jul  3 07:32:50 buml kernel: 6eaade88:  [<71312f81>] svc_process+0x3fd/0x714 [sunrpc]
+>> Jul  3 07:32:50 buml kernel: 6eaadea8:  [<60039a81>] kernel_sigprocmask+0xf3/0x100
+>> Jul  3 07:32:50 buml kernel: 6eaadee8:  [<7106874b>] nfsd+0x182/0x29b [nfsd]
+>> Jul  3 07:32:50 buml kernel: 6eaadf48:  [<60021cc9>] run_kernel_thread+0x41/0x4a
+>> Jul  3 07:32:50 buml kernel: 6eaadf58:  [<710685c9>] nfsd+0x0/0x29b [nfsd]
+>> Jul  3 07:32:50 buml kernel: 6eaadf98:  [<60021cb0>] run_kernel_thread+0x28/0x4a
+>> Jul  3 07:32:50 buml kernel: 6eaadfc8:  [<60013829>] new_thread_handler+0x72/0x9c
+>> Jul  3 07:32:50 buml kernel: 
+>> Jul  3 07:32:50 buml kernel: ---[ end trace 2426dd7cb2fba3bf ]---
+>>
+>> I'm not sure what would be the right fix for that...
 > 
-> This field will determine what family to use for the service's listener
-> sockets and what families are advertised via the local rpcbind daemon.
+> Yes.  I'm a bit confused about that.  Hm, maybe we need to be doing a
+> mnt_want_write on open_upgrade and mnt_put_write on downgrade?
 
-Possibly dumb question: so it never makes sense to listen on sockets
-with both address families?
-
---b.
+Right on (at least for the first part of your suggestion :)
+See patch in reply to this message that makes this warning go away.
 
 > 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
+>> The following could be unrelated, and maybe I'm just confused
+>> but there seems to be something funky about the way we convert
+>> from bmap to access bits.
+>> (unrelated note: for nfsv4.1 we'll need to mask the share access with
+>> ~OPEN4_SHARE_ACCESS_WANT_DELEG_MASK)
+>>
+>> If I understand this correctly, we set a bit in 
+>> st_access_bmap corresponding to the share_access,
+>> so for read-only bit #1 will be, write-only #2,
+>> and for read-write (only) bits 1-3 should be set.
 > 
->  fs/lockd/svc.c             |    2 +-
->  fs/nfs/callback.c          |    3 ++-
->  fs/nfsd/nfssvc.c           |    1 +
->  include/linux/sunrpc/svc.h |    7 ++++---
->  net/sunrpc/svc.c           |   11 ++++++-----
->  5 files changed, 14 insertions(+), 10 deletions(-)
+> No, in that case only the third bit 3 should be set.
+> 
+> We're just trying to enforce rfc 3530 14.2.19:
+
+OK. I see.
+Thanks for explaining!
+It is a bit mind boggling, maybe adding some comments explaining
+why the bitmap is needed would help...
+
+Benny
+
+> 
+> 	"The share_access and share_deny bits specified must be exactly
+> 	equal to the union of the share_access and share_deny bits
+> 	specified for some subset of the OPENs in effect for current
+> 	openowner on the current file.  If that constraint is not
+> 	respected, the error NFS4ERR_INVAL should be returned."
+> 
+> Note that this paragraph would allow
+> 
+> 	OPEN for read
+> 	OPEN for write
+> 	OPEN_DOWNGRADE to read
 > 
 > 
-> diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-> index 2169af4..51bccee 100644
-> --- a/fs/lockd/svc.c
-> +++ b/fs/lockd/svc.c
-> @@ -276,7 +276,7 @@ lockd_up(int proto) /* Maybe add a 'family' option when IPv6 is supported ?? */
->  			"lockd_up: no pid, %d users??\n", nlmsvc_users);
->  
->  	error = -ENOMEM;
-> -	serv = svc_create(&nlmsvc_program, LOCKD_BUFSIZE, NULL);
-> +	serv = svc_create(&nlmsvc_program, LOCKD_BUFSIZE, AF_INET, NULL);
->  	if (!serv) {
->  		printk(KERN_WARNING "lockd_up: create service failed\n");
->  		goto out;
-> diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-> index f447f4b..6a09760 100644
-> --- a/fs/nfs/callback.c
-> +++ b/fs/nfs/callback.c
-> @@ -105,7 +105,8 @@ int nfs_callback_up(void)
->  	mutex_lock(&nfs_callback_mutex);
->  	if (nfs_callback_info.users++ || nfs_callback_info.task != NULL)
->  		goto out;
-> -	serv = svc_create(&nfs4_callback_program, NFS4_CALLBACK_BUFSIZE, NULL);
-> +	serv = svc_create(&nfs4_callback_program, NFS4_CALLBACK_BUFSIZE,
-> +				AF_INET, NULL);
->  	ret = -ENOMEM;
->  	if (!serv)
->  		goto out_err;
-> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-> index 941041f..f38f47a 100644
-> --- a/fs/nfsd/nfssvc.c
-> +++ b/fs/nfsd/nfssvc.c
-> @@ -219,6 +219,7 @@ int nfsd_create_serv(void)
->  	atomic_set(&nfsd_busy, 0);
->  	nfsd_serv = svc_create_pooled(&nfsd_program,
->  				      nfsd_max_blksize,
-> +				      AF_INET,
->  				      nfsd_last_thread,
->  				      nfsd, SIG_NOCLEAN, THIS_MODULE);
->  	if (nfsd_serv == NULL)
-> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-> index 4b54c5f..a27178b 100644
-> --- a/include/linux/sunrpc/svc.h
-> +++ b/include/linux/sunrpc/svc.h
-> @@ -66,6 +66,7 @@ struct svc_serv {
->  	struct list_head	sv_tempsocks;	/* all temporary sockets */
->  	int			sv_tmpcnt;	/* count of temporary sockets */
->  	struct timer_list	sv_temptimer;	/* timer for aging temporary sockets */
-> +	sa_family_t		sv_family;	/* listener's address family */
->  
->  	char *			sv_name;	/* service name */
->  
-> @@ -382,13 +383,13 @@ struct svc_procedure {
->  /*
->   * Function prototypes.
->   */
-> -struct svc_serv *  svc_create(struct svc_program *, unsigned int,
-> -			      void (*shutdown)(struct svc_serv*));
-> +struct svc_serv *svc_create(struct svc_program *, unsigned int, sa_family_t,
-> +					void (*shutdown)(struct svc_serv *));
->  struct svc_rqst *svc_prepare_thread(struct svc_serv *serv,
->  					struct svc_pool *pool);
->  void		   svc_exit_thread(struct svc_rqst *);
->  struct svc_serv *  svc_create_pooled(struct svc_program *, unsigned int,
-> -			void (*shutdown)(struct svc_serv*),
-> +			sa_family_t, void (*shutdown)(struct svc_serv *),
->  			svc_thread_fn, int sig, struct module *);
->  int		   svc_set_num_threads(struct svc_serv *, struct svc_pool *, int);
->  void		   svc_destroy(struct svc_serv *);
-> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-> index 01c7e31..d0e7865 100644
-> --- a/net/sunrpc/svc.c
-> +++ b/net/sunrpc/svc.c
-> @@ -366,7 +366,7 @@ svc_pool_for_cpu(struct svc_serv *serv, int cpu)
->   */
->  static struct svc_serv *
->  __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
-> -	   void (*shutdown)(struct svc_serv *serv))
-> +	   sa_family_t family, void (*shutdown)(struct svc_serv *serv))
->  {
->  	struct svc_serv	*serv;
->  	unsigned int vers;
-> @@ -375,6 +375,7 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
->  
->  	if (!(serv = kzalloc(sizeof(*serv), GFP_KERNEL)))
->  		return NULL;
-> +	serv->sv_family    = family;
->  	serv->sv_name      = prog->pg_name;
->  	serv->sv_program   = prog;
->  	serv->sv_nrthreads = 1;
-> @@ -434,21 +435,21 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
->  
->  struct svc_serv *
->  svc_create(struct svc_program *prog, unsigned int bufsize,
-> -		void (*shutdown)(struct svc_serv *serv))
-> +		sa_family_t family, void (*shutdown)(struct svc_serv *serv))
->  {
-> -	return __svc_create(prog, bufsize, /*npools*/1, shutdown);
-> +	return __svc_create(prog, bufsize, /*npools*/1, family, shutdown);
->  }
->  EXPORT_SYMBOL(svc_create);
->  
->  struct svc_serv *
->  svc_create_pooled(struct svc_program *prog, unsigned int bufsize,
-> -		void (*shutdown)(struct svc_serv *serv),
-> +		  sa_family_t family, void (*shutdown)(struct svc_serv *serv),
->  		  svc_thread_fn func, int sig, struct module *mod)
->  {
->  	struct svc_serv *serv;
->  	unsigned int npools = svc_pool_map_get();
->  
-> -	serv = __svc_create(prog, bufsize, npools, shutdown);
-> +	serv = __svc_create(prog, bufsize, npools, family, shutdown);
->  
->  	if (serv != NULL) {
->  		serv->sv_function = func;
+> but have us return NFS4ERR_INVAL if we got a sequence of opens like:
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 	OPEN for read and write
+> 	OPEN_DOWNGRADE to read
+> 
+> because in this case there was only a single open (for read and write),
+> and no open just for read.
+> 
+> --b.
+> 
+>> otherwise this wouldn't work:
+>> 	if (!test_bit(od->od_share_access, &stp->st_access_bmap)) {
+>> 		dprintk("NFSD:access not a subset current bitmap: 0x%lx, input access=%08x\n",
+>> 			stp->st_access_bmap, od->od_share_access);
+>> 		goto out;
+>> 	}
+>>
+>> but init_stateid sets only one bit:
+>> 	__set_bit(open->op_share_access, &stp->st_access_bmap);
+>>
+>> only if we went through nfs4_upgrade_open another bit may be set.
+>>
+>> Benny
+
