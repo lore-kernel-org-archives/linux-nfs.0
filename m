@@ -1,404 +1,93 @@
-From: "Chuck Lever" <chuck.lever@oracle.com>
-Subject: Re: [PATCH 0/7] Remaining rpcbind patches for 2.6.27
-Date: Mon, 7 Jul 2008 21:56:29 -0400
-Message-ID: <76bd70e30807071856i2aaf74a9w5c207b6929746a56@mail.gmail.com>
-References: <20080630223646.24534.74654.stgit@ellison.1015granger.net>
-	 <20080703204543.GI30918@fieldses.org>
-	 <1215454820.19512.25.camel@localhost>
-	 <F84C7866-E340-49BF-B542-308E10AC9518@oracle.com>
-	 <1215456693.19512.36.camel@localhost>
-	 <76bd70e30807071244v4db1c366uc7599d2dd806bf1b@mail.gmail.com>
-	 <1215463877.19512.40.camel@localhost>
-	 <20080707211925.GB19523@fieldses.org>
-	 <1215468822.19512.55.camel@localhost>
-	 <20080707225647.GJ19523@fieldses.org>
-Reply-To: chucklever@gmail.com
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [PATCH] nfsd: take file and mnt write in nfs4_upgrade_open
+Date: Tue, 08 Jul 2008 11:16:49 +0300
+Message-ID: <48732271.4080206@panasas.com>
+References: <486E18C3.1040703@panasas.com> <1215175121-18665-1-git-send-email-bhalevy@panasas.com> <20080707192543.GG14291@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Cc: linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-	"Trond Myklebust" <Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gv-out-0910.google.com ([216.239.58.185]:3893 "EHLO
-	gv-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754789AbYGHB4b (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Jul 2008 21:56:31 -0400
-Received: by gv-out-0910.google.com with SMTP id e6so380928gvc.37
-        for <linux-nfs@vger.kernel.org>; Mon, 07 Jul 2008 18:56:30 -0700 (PDT)
-In-Reply-To: <20080707225647.GJ19523@fieldses.org>
+Received: from gw-colo-pa.panasas.com ([66.238.117.130]:4993 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1756698AbYGHIRQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2008 04:17:16 -0400
+In-Reply-To: <20080707192543.GG14291@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jul 7, 2008 at 6:56 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> On Mon, Jul 07, 2008 at 06:13:42PM -0400, Trond Myklebust wrote:
->> On Mon, 2008-07-07 at 17:19 -0400, J. Bruce Fields wrote:
->> > On Mon, Jul 07, 2008 at 04:51:17PM -0400, Trond Myklebust wrote:
->> > > On Mon, 2008-07-07 at 15:44 -0400, Chuck Lever wrote:
->> > >
->> > > > If you would like connected UDP, I won't object to you implementing
->> > > > it.  However, I never tested whether a connected UDP socket will give
->> > > > the desired semantics without extra code in the UDP transport (for
->> > > > example, an ->sk_error callback).  I don't think it's worth the hassle
->> > > > if we have to add code to UDP that only this tiny use case would need.
->> > > >
->> > >
->> > > OK. I'll set these patches aside until I have time to look into adding
->> > > connected UDP support.
->> >
->> > I'm curious--why weren't you convinced by this argument?:
->> >
->> >     "You're talking about the difference between supporting say 1358
->> >     mounts at boot time versus 1357 mounts at boot time.
+On Jul. 07, 2008, 22:25 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> Yes, this looks correct, at least for the immediate fix; thanks!
+> 
+> Eventually I think we should move to opening a new file descriptor when
+> upgrading, and keeping two file descriptors with the stateid; I think
+> this business of trying to use a file descriptor for write when we
+> opened it for read is probably wrong.
+
+That could work, though they need to be associated in some way
+for open_downgrade/close processing.
+
+Benny
+
+> 
+> --b.
+> 
+> On Fri, Jul 04, 2008 at 03:38:41PM +0300, Benny Halevy wrote:
+>> testing with newpynfs revealed this warning:
+>> Jul  3 07:32:50 buml kernel: writeable file with no mnt_want_write()
+>> Jul  3 07:32:50 buml kernel: ------------[ cut here ]------------
+>> Jul  3 07:32:50 buml kernel: WARNING: at /usr0/export/dev/bhalevy/git/linux-pnfs-bh-nfs41/include/linux/fs.h:855 drop_file_write_access+0x6b/0x7e()
+>> Jul  3 07:32:50 buml kernel: Modules linked in: nfsd auth_rpcgss exportfs nfs lockd nfs_acl sunrpc
+>> Jul  3 07:32:50 buml kernel: Call Trace:
+>> Jul  3 07:32:50 buml kernel: 6eaadc88:  [<6002f471>] warn_on_slowpath+0x54/0x8e
+>> Jul  3 07:32:50 buml kernel: 6eaadcc8:  [<601b790d>] printk+0xa0/0x793
+>> Jul  3 07:32:50 buml kernel: 6eaadd38:  [<601b6205>] __mutex_lock_slowpath+0x1db/0x1ea
+>> Jul  3 07:32:50 buml kernel: 6eaadd68:  [<7107d4d5>] nfs4_preprocess_seqid_op+0x2a6/0x31c [nfsd]
+>> Jul  3 07:32:50 buml kernel: 6eaadda8:  [<60078dc9>] drop_file_write_access+0x6b/0x7e
+>> Jul  3 07:32:50 buml kernel: 6eaaddc8:  [<710804e4>] nfsd4_open_downgrade+0x114/0x1de [nfsd]
+>> Jul  3 07:32:50 buml kernel: 6eaade08:  [<71076215>] nfsd4_proc_compound+0x1ba/0x2dc [nfsd]
+>> Jul  3 07:32:50 buml kernel: 6eaade48:  [<71068221>] nfsd_dispatch+0xe5/0x1c2 [nfsd]
+>> Jul  3 07:32:50 buml kernel: 6eaade88:  [<71312f81>] svc_process+0x3fd/0x714 [sunrpc]
+>> Jul  3 07:32:50 buml kernel: 6eaadea8:  [<60039a81>] kernel_sigprocmask+0xf3/0x100
+>> Jul  3 07:32:50 buml kernel: 6eaadee8:  [<7106874b>] nfsd+0x182/0x29b [nfsd]
+>> Jul  3 07:32:50 buml kernel: 6eaadf48:  [<60021cc9>] run_kernel_thread+0x41/0x4a
+>> Jul  3 07:32:50 buml kernel: 6eaadf58:  [<710685c9>] nfsd+0x0/0x29b [nfsd]
+>> Jul  3 07:32:50 buml kernel: 6eaadf98:  [<60021cb0>] run_kernel_thread+0x28/0x4a
+>> Jul  3 07:32:50 buml kernel: 6eaadfc8:  [<60013829>] new_thread_handler+0x72/0x9c
+>> Jul  3 07:32:50 buml kernel:
+>> Jul  3 07:32:50 buml kernel: ---[ end trace 2426dd7cb2fba3bf ]---
 >>
->> Where did you get those figures from?
-
-It's just an example.
-
->> Firstly, the total number of
->> privileged ports is much smaller. Secondly, the number of _free_
->> privileged ports can vary wildly depending on the user's setup.
-
-That's my point.  An admin could _maybe_ get one more NFS mount if she
-disables a network service above port 665.  Are we going to stop users
-from enabling non-NFS network services that might use an extra
-privileged port?
-
-The right way to fix this is to fix the way Linux does NFS mounts.  It
-would be nice if we had a transport capability for performing RPCs
-against multiple remote servers from one datagram socket.  (not
-broadcast RPC, but simply sharing one socket amongst multiple datagram
-RPC consumers on the client).
-
-This kind of transport would definitely help the mount port limitation
--- the kernel mount client and the kernel rpcbind client could do all
-their UDP-based traffic through a single privileged socket.  Would it
-be hard to share an rpc_xprt between several rpc_clients for a group
-of low-volume RPC services?
-
-The RPC client could also provide a small pool of stream transport
-sockets for the same purpose.  They can stay connected to a remote
-until they time out, or until another local consumer needs to send to
-a unique unconnected remote and there aren't any free sockets in the
-pool.
-
-Nfs-utils uses the whole range of privileged ports, being careful to
-avoid well-known ports for long-lived services.  The kernel should be
-able to do this also for short-lived sockets like making a MNT or
-rpcbind request.
-
-We could even force the RPC service registration code to use a low
-numbered privileged port to avoid the ports normally used by
-long-lived RPC sockets.
-
-> So by default (from min/max_resvport and Chuck's "between 2 and 5"
-> estimate of privileged ports per mount) you'd get (1024-665)/(2 to 5)
-> mounts, so between 71 and 179 mounts, not taking into account what else
-> they might be used for.  So that's a bit closer to the point where 1
-> port plus or minus might make a difference, OK.
-
-Doing a mount takes some time.  If it takes as long as a second, for
-example, for each mount to complete, that gives enough time for one or
-more TCP ports used and abandoned for the first mounts to become
-available again for later ones.  If some of the ports are UDP and some
-TCP, that means even more ports are available, since the port range is
-effectively twice as large, and only the TCP ports remain in
-TIME_WAIT.  A MNT request, for instance, goes over UDP by default.
-
-So it's not as simple as this calculation implies -- it depends on
-timing, other enabled non-NFS services, and which transports are used
-for NFS.  One extra port is noise.
-
-In many cases someone who needs more than a hundred or so mounts can
-use unprivileged source ports, as Trond suggested on this list last
-week.
-
->> >     "In most cases, a client with hundreds of mounts will use up
->> >     exactly one extra privileged TCP port to register NLM during the
->> >     first lockd_up() call.  If these are all NFSv4 mounts, it will
->> >     use exactly zero extra ports, since the NFSv4 callback service
->> >     is not even registered.
->> >
->> >     "Considering that _each_ mount operation can take between 2 and
->> >     5 privileged ports, while registering NFSD and NLM both would
->> >     take exactly two ports at boot time, I think that registration
->> >     is wrong place to optimize."
->> >
->> > I'll admit to not following this carefully, but that seemed reasonable
->> > to me.
+>> Bruce Fields suggested this (Thanks!):
+>> maybe we need to be doing a mnt_want_write on open_upgrade and mnt_put_write on downgrade?
 >>
->> Like it or not, this _is_ a user interface change: if someone has set up
->> their iptables firewall or is using the tcp_wrapper library to limit
->> access to the portmapper (a common practice), then this change is
->> forcing them to change that.
+>> This patch adds a call to mnt_want_write and file_take_write (which is
+>> doing the actual work).
+>>
+>> The counter-calls mnt_drop_write a file_release_write are now being properly
+>> called by drop_file_write_access in the exact path printed by the warning
+>> above.
+>>
+>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>> ---
+>>  fs/nfsd/nfs4state.c |    4 ++++
+>>  1 files changed, 4 insertions(+), 0 deletions(-)
+>>
+>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+>> index 0d1760f..4263445 100644
+>> --- a/fs/nfsd/nfs4state.c
+>> +++ b/fs/nfsd/nfs4state.c
+>> @@ -1570,6 +1570,10 @@ nfs4_upgrade_open(struct svc_rqst *rqstp, struct svc_fh *cur_fh, struct nfs4_sta
+>>  		int err = get_write_access(inode);
+>>  		if (err)
+>>  			return nfserrno(err);
+>> +		err = mnt_want_write(cur_fh->fh_export->ex_path.mnt);
+>> +		if (err)
+>> +			return nfserrno(err);
+>> +		file_take_write(filp);
+>>  	}
+>>  	status = nfsd4_truncate(rqstp, cur_fh, open);
+>>  	if (status) {
+>> -- 
+>> 1.5.6.GIT
+>>
 
-It would have been nice to hear such a specific complaint months ago
-when I first suggested doing this on linux-nfs.
-
->> It is not as if UDP connections are prohibitively difficult to implement
->> either. The entire framework is already there for the TCP case, and so
->> the following patch (as yet untested) should be close...
-
-I don't think CUDP is hard to implement or a bad idea.  It just seemed
-like a lot to do for a simple change that can be accomplished with an
-existing transport implementation.
-
->> --------------------------------------------------------------------------
->> commit 161c60bc13899b0def4251cffa492ae6faa00b93
->> Author: Trond Myklebust <Trond.Myklebust@netapp.com>
->> Date:   Mon Jul 7 17:43:12 2008 -0400
->>
->>     SUNRPC: Add connected sockets for UDP
-
-I haven't looked closely at this in a while, but datagram socket
-disconnection events may be reported to kernel datagram sockets via
-->sk_error(), and not via an error code from sendmsg() or connect().
-
-Also, do we need a set of shorter reconnect timeout values especially
-for UDP sockets?
-
-Is there any possibility that UDP-based RPC servers may see a difference?
-
-A supplemental change might be to make the kernel's mount and rpcbind
-clients use RPC_TASK_ONESHOT or whatever we call it.
-
->>     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
->>
->> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
->> index 4486c59..2e49f5a 100644
->> --- a/net/sunrpc/xprtsock.c
->> +++ b/net/sunrpc/xprtsock.c
->> @@ -580,8 +580,8 @@ static int xs_udp_send_request(struct rpc_task *task)
->>                               req->rq_svec->iov_len);
->>
->>       status = xs_sendpages(transport->sock,
->> -                           xs_addr(xprt),
->> -                           xprt->addrlen, xdr,
->> +                           NULL,
->> +                           0, xdr,
->>                             req->rq_bytes_sent);
-
-This is the only place an address and length are passed to
-xs_sendpages(), so you could eliminate these arguments and simplify
-xs_sendpages() as a result.
-
-However, if we want both a connected UDP capability and a shared UDP
-socket capability, we may need to keep these arguments, and make the
-UDP connection logic added below conditional.
-
->>       dprintk("RPC:       xs_udp_send_request(%u) = %d\n",
->> @@ -1445,13 +1445,13 @@ static inline void xs_reclassify_socket6(struct socket *sock)
->>  }
->>  #endif
->>
->> -static void xs_udp_finish_connecting(struct rpc_xprt *xprt, struct socket *sock)
->> +static int xs_udp_finish_connecting(struct rpc_xprt *xprt, struct socket *sock)
->>  {
->>       struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
->> +     struct sock *sk = sock->sk;
->> +     int ret;
->>
->>       if (!transport->inet) {
->> -             struct sock *sk = sock->sk;
->> -
->>               write_lock_bh(&sk->sk_callback_lock);
->>
->>               sk->sk_user_data = xprt;
->> @@ -1463,8 +1463,6 @@ static void xs_udp_finish_connecting(struct rpc_xprt *xprt, struct socket *sock)
->>               sk->sk_no_check = UDP_CSUM_NORCV;
->>               sk->sk_allocation = GFP_ATOMIC;
->>
->> -             xprt_set_connected(xprt);
->> -
->>               /* Reset to new socket */
->>               transport->sock = sock;
->>               transport->inet = sk;
->> @@ -1472,6 +1470,39 @@ static void xs_udp_finish_connecting(struct rpc_xprt *xprt, struct socket *sock)
->>               write_unlock_bh(&sk->sk_callback_lock);
->>       }
->>       xs_udp_do_set_buffer_size(xprt);
->> +     ret = kernel_connect(sock, xs_addr(xprt), xprt->addrlen, 0);
->> +
->> +     if (ret == 0) {
->> +             spin_lock_bh(&xprt->transport_lock);
->> +             if (sk->sk_state == TCP_ESTABLISHED)
->> +                     xprt_set_connected(xprt);
->> +             spin_unlock_bh(&xprt->transport_lock);
->> +     }
->> +     return ret;
->> +}
->> +
->> +/*
->> + * We need to preserve the port number so the reply cache on the server can
->> + * find our cached RPC replies when we get around to reconnecting.
->> + */
->> +static void xs_sock_reuse_connection(struct rpc_xprt *xprt)
->> +{
->> +     int result;
->> +     struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
->> +     struct sockaddr any;
->> +
->> +     dprintk("RPC:       disconnecting xprt %p to reuse port\n", xprt);
->> +
->> +     /*
->> +      * Disconnect the transport socket by doing a connect operation
->> +      * with AF_UNSPEC.  This should return immediately...
->> +      */
->> +     memset(&any, 0, sizeof(any));
->> +     any.sa_family = AF_UNSPEC;
->> +     result = kernel_connect(transport->sock, &any, sizeof(any), 0);
->> +     if (result)
->> +             dprintk("RPC:       AF_UNSPEC connect return code %d\n",
->> +                             result);
->>  }
->>
->>  /**
->> @@ -1491,25 +1522,35 @@ static void xs_udp_connect_worker4(struct work_struct *work)
->>       if (xprt->shutdown || !xprt_bound(xprt))
->>               goto out;
->>
->> -     /* Start by resetting any existing state */
->> -     xs_close(xprt);
->> -
->> -     if ((err = sock_create_kern(PF_INET, SOCK_DGRAM, IPPROTO_UDP, &sock)) < 0) {
->> -             dprintk("RPC:       can't create UDP transport socket (%d).\n", -err);
->> -             goto out;
->> -     }
->> -     xs_reclassify_socket4(sock);
->> +     if (!sock) {
->> +             if ((err = sock_create_kern(PF_INET, SOCK_DGRAM, IPPROTO_UDP, &sock)) < 0) {
->> +                     dprintk("RPC:       can't create UDP transport socket (%d).\n", -err);
->> +                     goto out;
->> +             }
->> +             xs_reclassify_socket4(sock);
->>
->> -     if (xs_bind4(transport, sock)) {
->> -             sock_release(sock);
->> -             goto out;
->> -     }
->> +             if (xs_bind4(transport, sock)) {
->> +                     sock_release(sock);
->> +                     goto out;
->> +             }
->> +     } else
->> +             xs_sock_reuse_connection(xprt);
->>
->>       dprintk("RPC:       worker connecting xprt %p to address: %s\n",
->>                       xprt, xprt->address_strings[RPC_DISPLAY_ALL]);
->>
->> -     xs_udp_finish_connecting(xprt, sock);
->> -     status = 0;
->> +     status = xs_udp_finish_connecting(xprt, sock);
->> +     if (status < 0) {
->> +             switch (status) {
->> +                     case -ECONNREFUSED:
->> +                     case -ECONNRESET:
->> +                             /* retry with existing socket, after a delay */
->> +                             break;
->> +                     default:
->> +                             /* get rid of existing socket, and retry */
->> +                             xs_close(xprt);
->> +             }
->> +     }
->>  out:
->>       xprt_wake_pending_tasks(xprt, status);
->>       xprt_clear_connecting(xprt);
->> @@ -1532,54 +1573,40 @@ static void xs_udp_connect_worker6(struct work_struct *work)
->>       if (xprt->shutdown || !xprt_bound(xprt))
->>               goto out;
->>
->> -     /* Start by resetting any existing state */
->> -     xs_close(xprt);
->> -
->> -     if ((err = sock_create_kern(PF_INET6, SOCK_DGRAM, IPPROTO_UDP, &sock)) < 0) {
->> -             dprintk("RPC:       can't create UDP transport socket (%d).\n", -err);
->> -             goto out;
->> -     }
->> -     xs_reclassify_socket6(sock);
->> +     if (!sock) {
->> +             if ((err = sock_create_kern(PF_INET6, SOCK_DGRAM, IPPROTO_UDP, &sock)) < 0) {
->> +                     dprintk("RPC:       can't create UDP transport socket (%d).\n", -err);
->> +                     goto out;
->> +             }
->> +             xs_reclassify_socket6(sock);
->>
->> -     if (xs_bind6(transport, sock) < 0) {
->> -             sock_release(sock);
->> -             goto out;
->> -     }
->> +             if (xs_bind6(transport, sock) < 0) {
->> +                     sock_release(sock);
->> +                     goto out;
->> +             }
->> +     } else
->> +             xs_sock_reuse_connection(xprt);
->>
->>       dprintk("RPC:       worker connecting xprt %p to address: %s\n",
->>                       xprt, xprt->address_strings[RPC_DISPLAY_ALL]);
->>
->> -     xs_udp_finish_connecting(xprt, sock);
->> -     status = 0;
->> +     status = xs_udp_finish_connecting(xprt, sock);
->> +     if (status < 0) {
->> +             switch (status) {
->> +                     case -ECONNREFUSED:
->> +                     case -ECONNRESET:
->> +                             /* retry with existing socket, after a delay */
->> +                             break;
->> +                     default:
->> +                             /* get rid of existing socket, and retry */
->> +                             xs_close(xprt);
->> +             }
->> +     }
->>  out:
->>       xprt_wake_pending_tasks(xprt, status);
->>       xprt_clear_connecting(xprt);
->>  }
->>
->> -/*
->> - * We need to preserve the port number so the reply cache on the server can
->> - * find our cached RPC replies when we get around to reconnecting.
->> - */
->> -static void xs_tcp_reuse_connection(struct rpc_xprt *xprt)
->> -{
->> -     int result;
->> -     struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
->> -     struct sockaddr any;
->> -
->> -     dprintk("RPC:       disconnecting xprt %p to reuse port\n", xprt);
->> -
->> -     /*
->> -      * Disconnect the transport socket by doing a connect operation
->> -      * with AF_UNSPEC.  This should return immediately...
->> -      */
->> -     memset(&any, 0, sizeof(any));
->> -     any.sa_family = AF_UNSPEC;
->> -     result = kernel_connect(transport->sock, &any, sizeof(any), 0);
->> -     if (result)
->> -             dprintk("RPC:       AF_UNSPEC connect return code %d\n",
->> -                             result);
->> -}
->> -
->>  static int xs_tcp_finish_connecting(struct rpc_xprt *xprt, struct socket *sock)
->>  {
->>       struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
->> @@ -1650,7 +1677,7 @@ static void xs_tcp_connect_worker4(struct work_struct *work)
->>               }
->>       } else
->>               /* "close" the socket, preserving the local port */
->> -             xs_tcp_reuse_connection(xprt);
->> +             xs_sock_reuse_connection(xprt);
->>
->>       dprintk("RPC:       worker connecting xprt %p to address: %s\n",
->>                       xprt, xprt->address_strings[RPC_DISPLAY_ALL]);
->> @@ -1710,7 +1737,7 @@ static void xs_tcp_connect_worker6(struct work_struct *work)
->>               }
->>       } else
->>               /* "close" the socket, preserving the local port */
->> -             xs_tcp_reuse_connection(xprt);
->> +             xs_sock_reuse_connection(xprt);
->>
->>       dprintk("RPC:       worker connecting xprt %p to address: %s\n",
->>                       xprt, xprt->address_strings[RPC_DISPLAY_ALL]);
-
--- 
-Chuck Lever
