@@ -1,58 +1,50 @@
-From: "Elias G Morrison" <wineskin3mien@yahoo.com>
-Subject: [NFS] D entists Listing in the US
-Date: Wed, 9 Jul 2008 07:44:06 +0000 (UTC)
-Message-ID: <20080709074310.FMUI27747.omta03ps.mx.bigpond.com@oaamta03ps.mx.bigpond.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: Doc for adding new NFS export option
+Date: Wed, 9 Jul 2008 11:02:34 -0400
+Message-ID: <20080709150234.GA5780@fieldses.org>
+References: <48718FF4.4030200@cse.unsw.edu.au> <18545.47041.516146.605353@notabene.brown> <4874263B.50902@cse.unsw.edu.au> <18548.14177.493986.264761@notabene.brown>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: michaelgrates@yahoo.com, nfs-TtF/mJH4Jtrk1uMJSBkQmQ@public.gmane.org,
-	008659528186918-RBjg2pZ8aAFeoWH0uzbU5w@public.gmane.org, squidpunch@gmail.com, info-wVw45nvTYXGELgA04lAiVw@public.gmane.org,
-	info-pwbvj/3bFDECep0kKqy/Kg@public.gmane.org, info-TUJ0tYZ7EiWyWpqtjd5Lng@public.gmane.org
-To: medina-3r020Sn+EwnqT3NDgVgAz9BPR1lH4CV8@public.gmane.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Shehjar Tikoo <shehjart-YbfuJp6tym7X/JP9YwkgDA@public.gmane.org>, linux-nfs@vger.kernel.org
+To: Neil Brown <neilb@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:48562 "EHLO neil.brown.name"
+Received: from mail.fieldses.org ([66.93.2.214]:37176 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752153AbYGIHns (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 9 Jul 2008 03:43:48 -0400
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1KGUL2-0001fe-Kd
-	for linux-nfs@vger.kernel.org; Wed, 09 Jul 2008 17:43:44 +1000
-Date: Thu, 10 Jul 2008 16:41:03 +0500
+	id S1755708AbYGIPCj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 9 Jul 2008 11:02:39 -0400
+In-Reply-To: <18548.14177.493986.264761-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Wed, Jul 09, 2008 at 01:58:25PM +1000, Neil Brown wrote:
+> NFSv3 writes do not have to be stable.  The client will usually
+> request DATA_UNSTABLE, and then send a COMMIT a while later.  This
+> should give the filesystem time to do delayed allocation.
+> NFSv4 is much the same.
+> NFSv2 does require stable writes, but it should not be used by anyone
+> interested in good write performance on large files.
+> 
+> It isn't clear to me that this is something that should be an option
+> in /etc/exports.
+> When would a sysadmin want to turn it off?  Or if a sysadmin did want
+> control, sure the level of control required would be the size of the
+> preallocation. 
 
+An export option might be a useful for testing as a way to get quick
+before vs after comparisons.
 
+But, yeah, before merging it into mainline it'd be better if it was
+something that could safely just be turned on all the time.
 
+--b.
 
-
-Have a look at this new Contact List
-
---> 164,687 Dentist.s 
---> 158,289 Physical Addresses
---> 163,353 Contact Phone #
---> 77,665 Facsimile Numbers
---> 45,435 Email Addys
-
-This week only you can practically steal this Listing for $298 (normally $599)
-
-To enquire please write to sharonpollsen@hotmail.com 
-
-
-
-
-Send email with 494 in the subject to ensure no further communication
-
--------------------------------------------------------------------------
-Sponsored by: SourceForge.net Community Choice Awards: VOTE NOW!
-Studies have shown that voting for your favorite open source project,
-along with a healthy diet, reduces your potential for chronic lameness
-and boredom. Vote Now at http://www.sourceforge.net/community/cca08
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
-
+> 
+> I would strongly suggest demonstrating that you can improve some
+> measure of performance using preallocation before you even begin to
+> think about having an export option to select it.
+> 
+> NeilBrown
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
