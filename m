@@ -1,86 +1,111 @@
-From: "Chuck Lever" <chuck.lever@oracle.com>
-Subject: Re: Doc for adding new NFS export option
-Date: Wed, 9 Jul 2008 19:40:40 -0400
-Message-ID: <76bd70e30807091640q179617b8s749742bd2f10097d@mail.gmail.com>
-References: <48718FF4.4030200@cse.unsw.edu.au>
-	 <18545.47041.516146.605353@notabene.brown>
-	 <4874263B.50902@cse.unsw.edu.au>
-	 <18548.14177.493986.264761@notabene.brown>
-	 <48753C1A.3030402@cse.unsw.edu.au>
-Reply-To: chucklever@gmail.com
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 12/14] text-based mount options: rename functions in stropts.c
+Date: Wed, 09 Jul 2008 20:38:11 -0400
+Message-ID: <20080710003810.6137.99053.stgit@tarkus.1015granger.net>
+References: <20080710001725.6137.83845.stgit@tarkus.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org, "Neil Brown" <neilb@suse.de>
-To: "Shehjar Tikoo" <shehjart-YbfuJp6tym7X/JP9YwkgDA@public.gmane.org>
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org
+To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gv-out-0910.google.com ([216.239.58.189]:33446 "EHLO
-	gv-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751354AbYGIXkm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Jul 2008 19:40:42 -0400
-Received: by gv-out-0910.google.com with SMTP id e6so592403gvc.37
-        for <linux-nfs@vger.kernel.org>; Wed, 09 Jul 2008 16:40:40 -0700 (PDT)
-In-Reply-To: <48753C1A.3030402-YbfuJp6tym7X/JP9YwkgDA@public.gmane.org>
+Received: from rgminet01.oracle.com ([148.87.113.118]:61653 "EHLO
+	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750902AbYGJEII (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jul 2008 00:08:08 -0400
+In-Reply-To: <20080710001725.6137.83845.stgit-lQeC5l55kZ7wdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jul 9, 2008 at 6:30 PM, Shehjar Tikoo <shehjart-YbfuJp6tym7X/JP9YwkgDA@public.gmane.org> wrote:
-> Neil Brown wrote:
->>
->> On Wednesday July 9, shehjart-YbfuJp6tym7X/JP9YwkgDA@public.gmane.org wrote:
->>>
->>> Neil Brown wrote:
->>>>
->>>> So what exactly is this new export option that you want to add?
->>>
->>> As the option's name suggests, the idea is to use fallocate support in
->>> ext4 and XFS, to pre-allocate disk blocks. I feel this might help nfsd  sync
->>> writes where each write request has to go to disk almost ASAP. Because NFSv3
->>> writes have to be stable(..not sure about NFSv4..), the write-to-disk and
->>> block allocation must happen immediately. It is possible that the blocks
->>> being allocated for each NFS sync write are not as contiguous as they could
->>> be for say, local buffered writes.
->>> I am hoping that by using some form of adaptive pre-allocation we can
->>> improve the contiguity of disk blocks for nfsd writes.
->>>
->>
->> NFSv3 writes do not have to be stable.  The client will usually
->> request DATA_UNSTABLE, and then send a COMMIT a while later.  This
->> should give the filesystem time to do delayed allocation.
->> NFSv4 is much the same.
->> NFSv2 does require stable writes, but it should not be used by anyone
->> interested in good write performance on large files.
->>
->> It isn't clear to me that this is something that should be an option
->> in /etc/exports.
->
-> For now, I only need this option so I dont have to rebuild the kernel each
-> time I want to toggle the "prealloc" option.
->
->> When would a sysadmin want to turn it off?  Or if a sysadmin did want
->> control, sure the level of control required would be the size of the
->> preallocation.
->
-> It might be a good idea to turn it off if the block allocation algorithm
-> slows things down when allocating large number of blocks.
->
-> True. If needed, we should be able to add entries in /proc that control min,
-> max and other limits on preallocation size.
+Clean up: rename a couple of functions in utils/mount/stropts.c to match
+the naming convention of the others.
 
-Usually options specific to a particular physical file system are
-handled with mount options on the server.  NFS export options are used
-to tune NFS-specific behavior.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-Couldn't you specify a mount option that enables preallocation when
-mounting the file system you want to export?
+ utils/mount/stropts.c |   18 +++++++++---------
+ 1 files changed, 9 insertions(+), 9 deletions(-)
 
-I can see having a file system callback for the NFS server that
-provides a hint that "the client just extended this file and wrote a
-bunch of data -- so preallocate blocks for the data, and I will commit
-the data at some later point".  Most file systems would make this a
-no-op.
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index a51cf0b..b54df40 100644
+--- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -230,7 +230,7 @@ static int nfs_fix_mounthost_option(const sa_family_t family,
+  * Returns zero if the "lock" option is in effect, but statd
+  * can't be started.  Otherwise, returns 1.
+  */
+-static int verify_lock_option(struct mount_options *options)
++static int nfs_verify_lock_option(struct mount_options *options)
+ {
+ 	if (po_rightmost(options, "nolock", "lock") == PO_KEY1_RIGHTMOST)
+ 		return 1;
+@@ -279,7 +279,7 @@ static int nfs_validate_options(struct nfsmount_info *mi)
+ 	} else {
+ 		if (!nfs_fix_mounthost_option(mi->family, mi->options))
+ 			return 0;
+-		if (!mi->fake && !verify_lock_option(mi->options))
++		if (!mi->fake && !nfs_verify_lock_option(mi->options))
+ 			return 0;
+ 	}
+ 
+@@ -297,7 +297,7 @@ static int nfs_validate_options(struct nfsmount_info *mi)
+  * passed-in error is permanent, thus the mount system call
+  * should not be retried.
+  */
+-static int is_permanent_error(int error)
++static int nfs_is_permanent_error(int error)
+ {
+ 	switch (error) {
+ 	case ESTALE:
+@@ -316,13 +316,13 @@ static int is_permanent_error(int error)
+  *
+  * To handle version and transport protocol fallback properly, we
+  * need to parse some of the mount options in order to set up a
+- * portmap probe.  Mount options that rewrite_mount_options()
++ * portmap probe.  Mount options that nfs_rewrite_mount_options()
+  * doesn't recognize are left alone.
+  *
+  * Returns a new group of mount options if successful; otherwise
+  * NULL is returned if some failure occurred.
+  */
+-static struct mount_options *rewrite_mount_options(char *str)
++static struct mount_options *nfs_rewrite_mount_options(char *str)
+ {
+ 	struct mount_options *options;
+ 	char *option, new_option[64];
+@@ -475,7 +475,7 @@ static int nfs_retry_nfs23mount(struct nfsmount_info *mi)
+ 	char *retry_str = NULL;
+ 	char **extra_opts = mi->extra_opts;
+ 
+-	retry_options = rewrite_mount_options(*extra_opts);
++	retry_options = nfs_rewrite_mount_options(*extra_opts);
+ 	if (!retry_options)
+ 		return 0;
+ 
+@@ -604,7 +604,7 @@ static int nfsmount_fg(struct nfsmount_info *mi)
+ 		if (nfs_try_mount(mi))
+ 			return EX_SUCCESS;
+ 
+-		if (is_permanent_error(errno))
++		if (nfs_is_permanent_error(errno))
+ 			break;
+ 
+ 		if (time(NULL) > timeout) {
+@@ -637,7 +637,7 @@ static int nfsmount_parent(struct nfsmount_info *mi)
+ 	if (nfs_try_mount(mi))
+ 		return EX_SUCCESS;
+ 
+-	if (is_permanent_error(errno)) {
++	if (nfs_is_permanent_error(errno)) {
+ 		mount_error(mi->spec, mi->node, errno);
+ 		return EX_FAIL;
+ 	}
+@@ -672,7 +672,7 @@ static int nfsmount_child(struct nfsmount_info *mi)
+ 		if (nfs_try_mount(mi))
+ 			return EX_SUCCESS;
+ 
+-		if (is_permanent_error(errno))
++		if (nfs_is_permanent_error(errno))
+ 			break;
+ 
+ 		if (time(NULL) > timeout)
 
-But I don't think this would help small synchronous writes... it would
-improve block allocation for large writes.
-
--- 
-Chuck Lever
