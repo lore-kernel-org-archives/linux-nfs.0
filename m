@@ -1,78 +1,79 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 07/14] text-based mount command: "clientaddr=" option support
-	for IPv6 addresses
-Date: Wed, 09 Jul 2008 20:37:42 -0400
-Message-ID: <20080710003741.6137.48877.stgit@tarkus.1015granger.net>
-References: <20080710001725.6137.83845.stgit@tarkus.1015granger.net>
+Subject: [PATCH 00/14] Support for mounting NFSv4 servers over IPv6
+Date: Wed, 09 Jul 2008 20:37:01 -0400
+Message-ID: <20080710001725.6137.83845.stgit@tarkus.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:12525 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751374AbYGJEIL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jul 2008 00:08:11 -0400
-In-Reply-To: <20080710001725.6137.83845.stgit-lQeC5l55kZ7wdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+Received: from rgminet01.oracle.com ([148.87.113.118]:61683 "EHLO
+	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751150AbYGJEIN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jul 2008 00:08:13 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Change the append_clientaddr_option() function to support sending either
-IPv4 or IPv6 addresses to the kernel via the "clientaddr=" option.
+Hi Steve-
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Just for fun, here is the latest version of the patches that add support to
+the text-based mount.nfs command for mounting NFSv4 servers over IPv6.  This
+patch set applies on top of the patches I posted here last week.
+
+It was suggested that these be included in the next release of
+nfs-utils, 1.1.3.  Kernel support for these features (such as handling raw
+IPv6 NFS server addresses properly when mounting) is planned for 2.6.27, so
+inclusion of these patches would allow wider testing during .27's rc period.
+
+Mounting NFSv2/v3 servers over IPv6 is more complex.  It requires support
+for a scalable rpcbind/portmap client built into nfs-utils, thus it is not
+included in the present patch series.  Anyone interested in looking at my
+current prototype for this can check out:
+
+  http://git.linux-nfs.org/?p=cel/nfs-utils.git;a=summary
+
+It includes all the patches in this series and the patches I posted last
+week for nfs-utils 1.1.3, client-side support for NFSv2/v3 mounting and
+unmounting over IPv6, a prototype IPv6-enabled sm-notify command, and
+updates to nfs(5) describing IPv6 support for the NFS client.
+
+For what it's worth, I'll be on holiday next week, but I can field any
+questions or comments before this Saturday, or when I return.
+
 ---
 
- utils/mount/stropts.c |   26 ++++++++++++--------------
- 1 files changed, 12 insertions(+), 14 deletions(-)
+Chuck Lever (14):
+      mount command: Remove RPC headers from network.h
+      text-based mount command: remove unnecessary headers from stropts.c
+      text-based mount options: rename functions in stropts.c
+      text-based mount command: Remove unused IPv4-only functions
+      text-based mount command: Support raw IPv6 address hostnames
+      text-based mount command: Add IPv6 support to set_mandatory_options
+      text-based mount command: "mounthost=" option support for IPv6 addresses
+      text-based mount command: "clientaddr=" option support for IPv6 addresses
+      text-based mount command: "addr=" option support for IPv6 addresses
+      text-based mount command: Add helper to construct network addresses
+      text-based mount command:  get_client_address support for IPv6
+      mount command: Add functions to manage addresses in string form
+      text-based mount command: Add headers needed for IPv6 support
+      nfs-utils: Introduce new ./configure option: "--enable-ipv6"
 
-diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-index f856998..ff51652 100644
---- a/utils/mount/stropts.c
-+++ b/utils/mount/stropts.c
-@@ -252,24 +252,21 @@ static int nfs_append_addr_option(const struct sockaddr *sap,
-  * Returns 1 if 'clientaddr=' option created successfully or if
-  * 'clientaddr=' option is already present; otherwise zero.
-  */
--static int append_clientaddr_option(struct sockaddr_in *saddr,
--				    struct mount_options *options)
-+static int nfs_append_clientaddr_option(const struct sockaddr *sap,
-+					socklen_t salen,
-+					struct mount_options *options)
- {
--	struct sockaddr_in my_addr;
--	char new_option[32];
-+	struct sockaddr_storage dummy;
-+	struct sockaddr *my_addr = (struct sockaddr *)&dummy;
-+	socklen_t my_len = sizeof(dummy);
- 
--	if (po_contains(options, "clientaddr") == PO_SUCCEEDED)
-+	if (po_contains(options, "clientaddr") == PO_FOUND)
- 		return 1;
- 
--	if (!get_client_address(saddr, &my_addr))
--		return 0;
--
--	snprintf(new_option, sizeof(new_option) - 1,
--			"clientaddr=%s", inet_ntoa(my_addr.sin_addr));
-+	nfs_callback_address(sap, salen, my_addr, &my_len);
- 
--	if (po_append(options, new_option) == PO_SUCCEEDED)
--		return 1;
--	return 0;
-+	return nfs_append_generic_address_option(my_addr, my_len,
-+							"clientaddr", options);
- }
- 
- /*
-@@ -339,7 +336,8 @@ static int nfs_validate_options(struct nfsmount_info *mi)
- 		return 0;
- 
- 	if (strncmp(mi->type, "nfs4", 4) == 0) {
--		if (!append_clientaddr_option(&saddr, mi->options))
-+		if (!nfs_append_clientaddr_option((struct sockaddr *)&saddr,
-+						  sizeof(saddr), mi->options))
- 			return 0;
- 	} else {
- 		if (!fix_mounthost_option(mi->options))
 
+ configure.ac            |   29 ++++++
+ utils/mount/Makefile.am |    6 +
+ utils/mount/error.c     |    2 
+ utils/mount/mount.c     |    1 
+ utils/mount/network.c   |  237 +++++++++++++++++++++++++++++++++++++++++------
+ utils/mount/network.h   |   17 +--
+ utils/mount/nfs4mount.c |    2 
+ utils/mount/nfsmount.c  |    7 +
+ utils/mount/nfsumount.c |   35 +++----
+ utils/mount/parse_dev.c |  230 ++++++++++++++++++++++++++++++++++++++++++++++
+ utils/mount/parse_dev.h |   28 ++++++
+ utils/mount/stropts.c   |  229 ++++++++++++++++++---------------------------
+ 12 files changed, 617 insertions(+), 206 deletions(-)
+ create mode 100644 utils/mount/parse_dev.c
+ create mode 100644 utils/mount/parse_dev.h
+
+-- 
+Signature
