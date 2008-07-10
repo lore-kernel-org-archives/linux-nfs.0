@@ -1,99 +1,60 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 01/14] nfs-utils: Introduce new ./configure option:
-	"--enable-ipv6"
-Date: Wed, 09 Jul 2008 20:37:07 -0400
-Message-ID: <20080710003706.6137.26081.stgit@tarkus.1015granger.net>
+Subject: [PATCH 09/14] text-based mount command: Add IPv6 support to
+	set_mandatory_options
+Date: Wed, 09 Jul 2008 20:37:53 -0400
+Message-ID: <20080710003753.6137.76524.stgit@tarkus.1015granger.net>
 References: <20080710001725.6137.83845.stgit@tarkus.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:61666 "EHLO
+Received: from rgminet01.oracle.com ([148.87.113.118]:61658 "EHLO
 	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751043AbYGJEIJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jul 2008 00:08:09 -0400
+	with ESMTP id S1750948AbYGJEII (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jul 2008 00:08:08 -0400
 In-Reply-To: <20080710001725.6137.83845.stgit-lQeC5l55kZ7wdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We want to continue to support building nfs-utils on systems that do not
-have IPv6-enabled RPC libraries and headers installed, so add a
-./configure switch that allows distros to disable IPv6 functionality.
-
-This patch introduces the nfs-utils autotools configuration to the library
-and header dependencies that will be required in subsequent patches.
-Later patches can then be reordered more easily if these new dependencies
-are added in one heap.
-
-For now, --enable-ipv6 defaults to "no", so this patch should not result in
-any behavioral changes to the nfs-utils build process, by default.
-
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- configure.ac |   29 ++++++++++++++++++++++++++++-
- 1 files changed, 28 insertions(+), 1 deletions(-)
+ utils/mount/stropts.c |   12 ++++++------
+ 1 files changed, 6 insertions(+), 6 deletions(-)
 
-diff --git a/configure.ac b/configure.ac
-index d508c28..e6bcb62 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -127,6 +127,18 @@ AC_ARG_ENABLE(mount,
- 	enable_mount=$enableval,
- 	enable_mount=yes)
- 	AM_CONDITIONAL(CONFIG_MOUNT, [test "$enable_mount" = "yes"])
-+AC_ARG_ENABLE(ipv6,
-+	[AC_HELP_STRING([--enable-ipv6],
-+                        [enable support for IPv6 @<:@default=no@:>@])],
-+	enable_ipv6=$enableval,
-+	enable_ipv6=no)
-+	if test "$enable_ipv6" = yes; then
-+		AC_DEFINE(IPV6_SUPPORTED, 1, [Define this if you want IPv6 support compiled in])
-+	else
-+		enable_ipv6=
-+	fi
-+	AC_SUBST(enable_ipv6)
-+	AM_CONDITIONAL(CONFIG_IPV6, [test "$enable_ipv6" = "yes"])
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index e2e72a7..caa2c25 100644
+--- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -334,14 +334,15 @@ static int nfs_append_sloppy_option(struct mount_options *options)
+  */
+ static int nfs_validate_options(struct nfsmount_info *mi)
+ {
+-	struct sockaddr_in saddr;
++	struct sockaddr_storage dummy;
++	struct sockaddr *sap = (struct sockaddr *)&dummy;
++	socklen_t salen = sizeof(dummy);
  
- # Check whether user wants TCP wrappers support
- AC_TCP_WRAPPERS
-@@ -237,6 +249,17 @@ if test "$enable_gss" = yes; then
+-	if (!fill_ipv4_sockaddr(mi->hostname, &saddr))
++	if (!nfs_name_to_address(mi->hostname, mi->family, sap, &salen))
+ 		return 0;
  
- fi
+ 	if (strncmp(mi->type, "nfs4", 4) == 0) {
+-		if (!nfs_append_clientaddr_option((struct sockaddr *)&saddr,
+-						  sizeof(saddr), mi->options))
++		if (!nfs_append_clientaddr_option(sap, salen, mi->options))
+ 			return 0;
+ 	} else {
+ 		if (!nfs_fix_mounthost_option(mi->family, mi->options))
+@@ -353,8 +354,7 @@ static int nfs_validate_options(struct nfsmount_info *mi)
+ 	if (!nfs_append_sloppy_option(mi->options))
+ 		return 0;
  
-+if test "$enable_ipv6" = yes; then
-+  AC_CHECK_FUNC(inet_ntop, , ,
-+               AC_MSG_ERROR(Function 'inet_ntop' not found.))
-+  AC_CHECK_FUNC(getnameinfo, , ,
-+               AC_MSG_ERROR(Function 'getnameinfo' not found.))
-+  AC_CHECK_LIB(tirpc, clnt_tli_create, ,
-+               AC_MSG_ERROR([libtirpc needed for IPv6 support]))
-+  AC_CHECK_HEADERS(tirpc/netconfig.h, ,
-+               AC_MSG_ERROR([libtirpc-devel needed for IPv6 support]))
-+fi
-+
- dnl *************************************************************
- dnl Check for headers
- dnl *************************************************************
-@@ -245,7 +268,7 @@ AC_CHECK_HEADERS([arpa/inet.h fcntl.h libintl.h limits.h \
-                  stdlib.h string.h sys/file.h sys/ioctl.h sys/mount.h \
-                  sys/param.h sys/socket.h sys/time.h sys/vfs.h \
-                  syslog.h unistd.h com_err.h et/com_err.h \
--                 ifaddrs.h])
-+                 ifaddrs.h tirpc/netconfig.h])
+-	return nfs_append_addr_option((struct sockaddr *)&saddr,
+-					sizeof(saddr), mi->options);
++	return nfs_append_addr_option(sap, salen, mi->options);
+ }
  
- dnl *************************************************************
- dnl Checks for typedefs, structures, and compiler characteristics
-@@ -281,6 +304,10 @@ AC_FUNC_STAT
- AC_FUNC_VPRINTF
- AC_CHECK_FUNCS([alarm atexit dup2 fdatasync ftruncate getcwd \
-                gethostbyaddr gethostbyname gethostname getmntent \
-+               inet_ntop getnameinfo getrpcbyname \
-+               bindresvport_sa getnetconfig \
-+               clnt_create clnt_create_timed \
-+               clnt_tli_create clnt_vc_create clnt_dg_create xdr_rpcb \
-                gettimeofday hasmntopt inet_ntoa innetgr memset mkdir pathconf \
-                realpath rmdir select socket strcasecmp strchr strdup \
-                strerror strrchr strtol strtoul sigprocmask])
+ /*
 
