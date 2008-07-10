@@ -1,359 +1,220 @@
-From: "Chuck Lever" <chucklever@gmail.com>
-Subject: Re: [PATCH V2] make "noac" and "actimeo=0" work correctly
-Date: Thu, 10 Jul 2008 15:31:33 -0400
-Message-ID: <76bd70e30807101231k37a0a0c8o6c32d2accc64d7f5@mail.gmail.com>
-References: <484EE994.5030907@redhat.com> <487390EC.7080403@redhat.com>
-	 <76bd70e30807100858g58fbf454uc9331035a2bbf264@mail.gmail.com>
-	 <487649AE.1090909@redhat.com>
-	 <76bd70e30807101155l226c1cceh24ca17157cb454bf@mail.gmail.com>
-	 <487661A3.7080507@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: "NFS list" <linux-nfs@vger.kernel.org>,
-	"Trond Myklebust" <Trond.Myklebust@netapp.com>
-To: "Peter Staubach" <staubach@redhat.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 04/14] text-based mount command: get_client_address support for IPv6
+Date: Thu, 10 Jul 2008 15:36:21 -0400
+Message-ID: <5E74A13F-4A79-4356-8BBE-7B535F00EA66@oracle.com>
+References: <20080710001725.6137.83845.stgit@tarkus.1015granger.net> <20080710003723.6137.51761.stgit@tarkus.1015granger.net> <20080710193008.GA27734@fieldses.org>
+Mime-Version: 1.0 (Apple Message framework v926)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: steved@redhat.com, linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mu-out-0910.google.com ([209.85.134.184]:57492 "EHLO
-	mu-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751346AbYGJTbg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jul 2008 15:31:36 -0400
-Received: by mu-out-0910.google.com with SMTP id w8so1112216mue.1
-        for <linux-nfs@vger.kernel.org>; Thu, 10 Jul 2008 12:31:34 -0700 (PDT)
-In-Reply-To: <487661A3.7080507@redhat.com>
+Received: from rgminet01.oracle.com ([148.87.113.118]:22895 "EHLO
+	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751346AbYGJThq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jul 2008 15:37:46 -0400
+In-Reply-To: <20080710193008.GA27734@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jul 10, 2008 at 3:23 PM, Peter Staubach <staubach@redhat.com> wrote:
-> Chuck Lever wrote:
+On Jul 10, 2008, at 3:30 PM, J. Bruce Fields wrote:
+> On Wed, Jul 09, 2008 at 08:37:24PM -0400, Chuck Lever wrote:
+>> Introduce IPv6-enabled version of get_client_address.  The legacy  
+>> mount
+>> command could use this eventually as well.
 >>
->> On Thu, Jul 10, 2008 at 1:41 PM, Peter Staubach <staubach@redhat.com>
->> wrote:
->>
->>>
->>> Chuck Lever wrote:
->>>
->>>>
->>>> Hi Peter-
->>>>
->>>>
->>>>
->>>
->>> Hi, Chuck.
->>>
->>>
->>>>
->>>> On Tue, Jul 8, 2008 at 12:08 PM, Peter Staubach <staubach@redhat.com>
->>>> wrote:
->>>>
->>>>
->>>>>
->>>>> Hi.
->>>>>
->>>>> I've been looking at a bugzilla which describes a problem where
->>>>> a customer was advised to use either the "noac" or "actimeo=0"
->>>>> mount options to solve a consistency problem that they were
->>>>> seeing in the file attributes.  It turned out that this solution
->>>>> did not work reliably for them because sometimes, the local
->>>>> attribute cache was believed to be valid and not timed out.
->>>>> (With an attribute cache timeout of 0, the cache should always
->>>>> appear to be timed out.)
->>>>>
->>>>> In looking at this situation, it appears to me that the problem
->>>>> is that the attribute cache timeout code has an off-by-one
->>>>> error in it.  It is assuming that the cache is valid in the
->>>>> region, [read_cache_jiffies, read_cache_jiffies + attrtimeo].  The
->>>>> cache should be considered valid only in the region,
->>>>> [read_cache_jiffies, read_cache_jiffies + attrtimeo).  With this
->>>>> change, the options, "noac" and "actimeo=0", work as originally
->>>>> expected.
->>>>>
->>>>> While I was there, I addressed a problem with the jiffies
->>>>> overflowing on 32 bit systems.  When overflow occurs, the
->>>>> value of read_cache_jiffies + attrtimeo can be less then the
->>>>> value of read_cache_jiffies.  This would cause an unnecessary
->>>>> GETATTR over the wire.
->>>>>
->>>>> Thoughts and/or comments?  This is an updated patch which includes
->>>>> the previous support which was added to correct the noac/actimeo=0
->>>>> handling.
->>>>>
->>>>>
->>>>
->>>> A couple of random thoughts below.
->>>>
->>>>
->>>>
->>>
->>> Some thoughts in response --
->>>
->>>
->>>>>
->>>>> Signed-off-by: Peter Staubach <staubach@redhat.com>
->>>>>
->>>>>
->>>>> --- linux-2.6.25.i686/fs/nfs/dir.c.org
->>>>> +++ linux-2.6.25.i686/fs/nfs/dir.c
->>>>> @@ -1808,7 +1808,7 @@ static int nfs_access_get_cached(struct
->>>>>      cache = nfs_access_search_rbtree(inode, cred);
->>>>>      if (cache == NULL)
->>>>>              goto out;
->>>>> -       if (!time_in_range(jiffies, cache->jiffies, cache->jiffies +
->>>>> nfsi->attrtimeo))
->>>>> +       if (!nfs_time_in_range_open(jiffies, cache->jiffies,
->>>>> cache->jiffies
->>>>> + nfsi->attrtimeo))
->>>>>              goto out_stale;
->>>>>      res->jiffies = cache->jiffies;
->>>>>      res->cred = cache->cred;
->>>>> --- linux-2.6.25.i686/fs/nfs/inode.c.org
->>>>> +++ linux-2.6.25.i686/fs/nfs/inode.c
->>>>> @@ -706,14 +706,7 @@ int nfs_attribute_timeout(struct inode *
->>>>>
->>>>>      if (nfs_have_delegation(inode, FMODE_READ))
->>>>>              return 0;
->>>>> -       /*
->>>>> -        * Special case: if the attribute timeout is set to 0, then
->>>>> always
->>>>> -        *               treat the cache as having expired (unless
->>>>> holding
->>>>> -        *               a delegation).
->>>>> -        */
->>>>> -       if (nfsi->attrtimeo == 0)
->>>>> -               return 1;
->>>>> -       return !time_in_range(jiffies, nfsi->read_cache_jiffies,
->>>>> nfsi->read_cache_jiffies + nfsi->attrtimeo);
->>>>> +       return !nfs_time_in_range_open(jiffies,
->>>>> nfsi->read_cache_jiffies,
->>>>> nfsi->read_cache_jiffies + nfsi->attrtimeo);
->>>>>  }
->>>>>
->>>>>  /**
->>>>> @@ -1098,7 +1091,7 @@ static int nfs_update_inode(struct inode
->>>>>              nfsi->attrtimeo_timestamp = now;
->>>>>              nfsi->last_updated = now;
->>>>>      } else {
->>>>> -               if (!time_in_range(now, nfsi->attrtimeo_timestamp,
->>>>> nfsi->attrtimeo_timestamp + nfsi->attrtimeo)) {
->>>>> +               if (!nfs_time_in_range_open(now,
->>>>> nfsi->attrtimeo_timestamp,
->>>>> nfsi->attrtimeo_timestamp + nfsi->attrtimeo)) {
->>>>>                      if ((nfsi->attrtimeo <<= 1) >
->>>>> NFS_MAXATTRTIMEO(inode))
->>>>>                              nfsi->attrtimeo = NFS_MAXATTRTIMEO(inode);
->>>>>                      nfsi->attrtimeo_timestamp = now;
->>>>> --- linux-2.6.25.i686/include/linux/nfs_fs.h.org
->>>>> +++ linux-2.6.25.i686/include/linux/nfs_fs.h
->>>>> @@ -121,7 +121,7 @@ struct nfs_inode {
->>>>>       *
->>>>>       * We need to revalidate the cached attrs for this inode if
->>>>>       *
->>>>> -        *      jiffies - read_cache_jiffies > attrtimeo
->>>>> +        *      jiffies - read_cache_jiffies >= attrtimeo
->>>>>       */
->>>>>      unsigned long           read_cache_jiffies;
->>>>>      unsigned long           attrtimeo;
->>>>> @@ -244,6 +244,22 @@ static inline unsigned NFS_MAXATTRTIMEO(
->>>>>      return S_ISDIR(inode->i_mode) ? nfss->acdirmax : nfss->acregmax;
->>>>>  }
->>>>>
->>>>> +static inline int nfs_time_in_range_open(unsigned long a,
->>>>> +                               unsigned long b, unsigned long c)
->>>>>
->>>>>
->>>>
->>>> All of nfs_time_in_range_open's callers use a sum of 'b' and
->>>> 'nfsi->attrtimeo' for 'c'.  Would it be cleaner to pass in
->>>> nfsi->attrtimeo' rather than 'b + nfsi->attrtimeo' and do the sum
->>>> here?  It might make sense to explicitly check nfsi->attrtimeo for
->>>> zero here to document the special behavior of "actimeo=0".
->>>>
->>>>
->>>>
->>>
->>> The behavior of "actimeo=0" isn't any more special than "actimeo=1".
->>> It simply indicates that the attribute timeout is 0 jiffies long.
->>>
->>
->> Right.  I'm simply suggesting that adding explicit code is good
->> documentation for this case.  It calls it out so developers remember
->> that to check that case when they change this code.
->>
->> You are correct that "noac/actimeo=0" is not the common case; however,
->> it is a case that gets ignored and therefore broken easily, and that
->> usually results in corruption of a customer's data.
->>
->>
->>>
->>> I thought about reducing the arguments, but it didn't seem to yield
->>> anything any clearer to me.
->>>
->>>
->>>>
->>>> Alternately, checking explicitly if b and c are equal might accomplish
->>>> the same without changing the synopsis.
->>>>
->>>> Also, all of nfs_time_in_range_open's callers negate the return value.
->>>>  Would the code in the callers be cleaner if that negation was moved
->>>> into nfs_time_in_range_open?  You might rename
->>>> nfs_time_in_range_open() as nfs_cache_has_expired(), for example, to
->>>> make the 'if' statements in the callers make sense in English.
->>>>
->>>> My feeling is that if you have to sit and stare at this for 5 minutes
->>>> to understand precisely how it works, it has already become too
->>>> obfuscated.  In addition to fixing any bugs, I wonder if we can make
->>>> it easier to understand and maintain as well.
->>>>
->>>>
->>>>
->>>>>
->>>>> +{
->>>>> +       /*
->>>>> +        * If c is less then b, then the jiffies have wrapped.
->>>>> +        * If so, then check to see if a is between b and the
->>>>> +        * max jiffies value or between 0 and the value of c.
->>>>> +        * This is the range between b and c.
->>>>>
->>>>>
->>>>
->>>> include/linux/jiffies.h claims it handles jiffy wrapping correctly.
->>>> Why isn't time_in_range() sufficient if 'c' has wrapped?  If it isn't,
->>>> should you fix time_in_range() too?
->>>>
->>>>
->>>>
->>>
->>> Clearly, time_in_range() is not sufficient if the 'c' has
->>> wrapped.  It only tests to see if a >=b and a <= c.  If 'c'
->>> is less than 'b', then time_in_range() will return false.
->>>
->>> I am reluctant to fix time_in_range() because I don't know
->>> that it is broken.  It appears to me that it works for other
->>> uses, because otherwise, someone would have "fixed" it.
->>>
->>
->> The only callers I found are the NFS client and the RPC client's auth
->> cache, so it is probably safe to change time_in_range() without
->> concern for breaking someone else's code.  It's all ours, baby :-)
->>
->> <fleite@redhat.com> introduced time_in_range() a year ago with commit
->> c7e15961 for, it appears from his patch description, very similar
->> reasons to your fix.  It might be a good idea to discuss the wrapping
->> bug with him.
->>
->>
->>>>
->>>> You could then simplify this to "return b != c && time_in_range(a, b,
->>>> c);" or something like that.  Or if you negate the return value here:
->>>>
->>>> static inline nfs_attributes_have_expired(unsigned long current,
->>>>                                                        unsigned long
->>>> start, unsigned long end)
->>>> {
->>>>       return (start == end) || !time_in_range(current, start, end);
->>>> }
->>>>
->>>> My 0.02USD.
->>>>
->>>>
->>>>
->>>
->>> The change, which makes attrtimeo=0 work for free, is to figure out
->>> that if the attrtimeo is N, then the attribute cache is valid from
->>> time, T, to T + N - 1, not T + N.  Thus, the current attribute
->>> cache implementation is off by one because the attribute cache
->>> should expire at time, T + N.  The time_in_range() macro was handy
->>> and looked right, but wasn't quite right for the desired semantics.
->>>
->>> Adding tests to check to see if b and c are equal is tuning for
->>> the wrong case, I think.  I believe that the majority of file
->>> systems are not mounted with "noac" or "actimeo=0", so the extra
->>> test would just be overhead for the common case.
->>>
->>
->> True enough, but you can "fix" that simply by reversing the two checks:
->>
->>   return !time_in_range(a, b, c) || unlikely(b == c);
->>
->> Again, I think there is some value in explicitly documenting the
->> actimeo=0 case here whether or not it is covered implicitly by
->> time_in_range(), precisely because it is not the common case and is
->> often forgotten when changing attribute cache-related logic.  This is
->> exactly why we are now here fixing this problem!
->>
->> The comments you added here nicely explain the complexity of the time
->> checks, but do not explicitly state that actimeo=0 must work after any
->> changes to this code -- one of the important reasons that you have
->> open-coded the time comparisons rather than reusing time_in_range().
->>
->> For me this is one of those times where cleverly folding all the cases
->> into a single group of logic makes the code less good because it
->> increases the chances of breakage later on, for example if
->> time_in_range() is changed by someone else who doesn't have local
->> knowledge of NFS.
->>
->>
+>> I don't remember how to tell an NFSv4 server to disable the callback
+>> channel:  whether an ANY address is passed with SETCLIENTID, or a
+>> loopback address is passed.  The patch allows either to be used  
+>> with a
+>> compile-time switch.
 >
-> This was really just an off by one bug.  _All_ attribute cache
-> timeouts are one clock tick too long.
->
-> Adding unlikely() around the test may help to reduce its cost,
-> but I don't think that it will make it zero cost.  Ordering the
-> tests will also help to minimize the cost, but still won't make
-> the additional test zero cost.
+> I would have thought INADDR_ANY.  But in any case we should just pick
+> one....
 
-Because of the "||", the second test never gets executed if the first
-test evaluates to true.  So effectively, reordering the tests does
-make the second test zero cost in the common case.
+Well, yes, but we should pick the "correct" one.  :-)  The patch does  
+it this way just to make a note of this issue so we can make a  
+decision before committing this upstream.
 
-The unlikely() may force the compiler to rearrange the instructions so
-the "false" case in the second test is less expensive, but otherwise
-it won't have much effect at all.
+Does RFC 3530 have any recommendation about this?
 
-> Actually, the _only_ reason that I implemented nfs_time_in_range_open
-> instead of just modifying time_in_range() was that I didn't want
-> to impact things that were orthogonal to the bug that I needed to
-> fix.  Given that time_in_range() is only used by NFS and RPC,
-> perhaps we can safely modify it.  If time_in_range had only been
-> being used by those three tests, I would have simply updated it.
->
-> Simply correcting the math gets us the desired functionality for
-> zero additional cost over the broken support.  In my viewpoint,
-> it is also the easiest to understand because there won't be any
-> special cases to worry about and the math will match the desired
-> semantics.
-
-Yep, makes sense.  I would still like to request a comment that calls
-out the actimeo=0 zero.
-
->>>>> +        *
->>>>> +        * Otherwise, just check to see whether a is in [b, c).
->>>>> +        */
->>>>> +       if (c < b)
->>>>> +               return time_after_eq(a, b) || time_before(a, c);
->>>>> +       return time_after_eq(a, b) && time_before(a, c);
->>>>> +}
->>>>> +
->>>>>  static inline int NFS_STALE(const struct inode *inode)
->>>>>  {
->>>>>      return test_bit(NFS_INO_STALE, &NFS_I(inode)->flags);
->>>>>
->>>>>
->>>>
->>>>
->>>
->>>
->>
->>
->>
->>
 >
 >
+> --b.
+>
+>>
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> ---
+>>
+>> utils/mount/network.c |  122 +++++++++++++++++++++++++++++++++++++++ 
+>> ++++++++++
+>> utils/mount/network.h |    2 +
+>> 2 files changed, 124 insertions(+), 0 deletions(-)
+>>
+>> diff --git a/utils/mount/network.c b/utils/mount/network.c
+>> index 3f2721b..128d7f7 100644
+>> --- a/utils/mount/network.c
+>> +++ b/utils/mount/network.c
+>> @@ -918,3 +918,125 @@ int get_client_address(struct sockaddr_in  
+>> *saddr, struct sockaddr_in *caddr)
+>> 	}
+>> 	return 1;
+>> }
+>> +
+>> +/*
+>> + * Try a getsockname() on a connected datagram socket.
+>> + *
+>> + * Returns 1 and fills in @buf if successful; otherwise, zero.
+>> + *
+>> + * A connected datagram socket prevents leaving a socket in  
+>> TIME_WAIT.
+>> + * This conserves the ephemeral port number space, helping reduce  
+>> failed
+>> + * socket binds during mount storms.
+>> + */
+>> +static int nfs_ca_sockname(const struct sockaddr *sap, const  
+>> socklen_t salen,
+>> +			   struct sockaddr *buf, socklen_t *buflen)
+>> +{
+>> +	struct sockaddr_in sin = {
+>> +		.sin_family		= AF_INET,
+>> +		.sin_addr.s_addr	= htonl(INADDR_ANY),
+>> +	};
+>> +	struct sockaddr_in6 sin6 = {
+>> +		.sin6_family		= AF_INET6,
+>> +		.sin6_addr		= IN6ADDR_ANY_INIT,
+>> +	};
+>> +	int sock;
+>> +
+>> +	sock = socket(sap->sa_family, SOCK_DGRAM, IPPROTO_UDP);
+>> +	if (sock < 0)
+>> +		return 0;
+>> +
+>> +	switch (sap->sa_family) {
+>> +	case AF_INET:
+>> +		if (bind(sock, (struct sockaddr *)&sin, sizeof(sin)) < 0) {
+>> +			close(sock);
+>> +			return 0;
+>> +		}
+>> +		break;
+>> +	case AF_INET6:
+>> +		if (bind(sock, (struct sockaddr *)&sin6, sizeof(sin6)) < 0) {
+>> +			close(sock);
+>> +			return 0;
+>> +		}
+>> +		break;
+>> +	default:
+>> +		errno = EAFNOSUPPORT;
+>> +		return 0;
+>> +	}
+>> +
+>> +	if (connect(sock, sap, salen) < 0) {
+>> +		close(sock);
+>> +		return 0;
+>> +	}
+>> +
+>> +	return !getsockname(sock, buf, buflen);
+>> +}
+>> +
+>> +/*
+>> + * Try to generate an address that prevents the server from  
+>> calling us.
+>> + *
+>> + * Returns 1 and fills in @buf if successful; otherwise, zero.
+>> + */
+>> +static int nfs_ca_gai(const struct sockaddr *sap, const socklen_t  
+>> salen,
+>> +		      struct sockaddr *buf, socklen_t *buflen)
+>> +{
+>> +	struct addrinfo *gai_results;
+>> +	struct addrinfo gai_hint = {
+>> +		.ai_family	= sap->sa_family,
+>> +#ifdef GENERATE_LOOPBACK_ADDRESS
+>> +		.ai_flags	= 0,		/* loopback */
+>> +#else
+>> +		.ai_flags	= AI_PASSIVE,	/* ANYADDR */
+>> +#endif
+>> +	};
+>> +
+>> +	if (getaddrinfo(NULL, "", &gai_hint, &gai_results))
+>> +		return 0;
+>> +
+>> +	*buflen = gai_results->ai_addrlen;
+>> +	memcpy(buf, gai_results->ai_addr, *buflen);
+>> +
+>> +	freeaddrinfo(gai_results);
+>> +
+>> +	return 1;
+>> +}
+>> +
+>> +/**
+>> + * nfs_callback_address - acquire our local network address
+>> + * @sap: pointer to address of remote
+>> + * @sap_len: length of address
+>> + * @buf: pointer to buffer to be filled in with local network  
+>> address
+>> + * @buflen: IN: length of buffer to fill in; OUT: length of filled- 
+>> in address
+>> + *
+>> + * Discover a network address that an NFSv4 server can use to call  
+>> us back.
+>> + * On multi-homed clients, this address depends on which NIC we  
+>> use to
+>> + * route requests to the server.
+>> + *
+>> + * Returns 1 and fills in @buf if an unambiguous local address is
+>> + * available; returns 1 and fills in an appropriate ANYADDR address
+>> + * if a local address isn't available; otherwise, returns zero.
+>> + */
+>> +int nfs_callback_address(const struct sockaddr *sap, const  
+>> socklen_t salen,
+>> +			 struct sockaddr *buf, socklen_t *buflen)
+>> +{
+>> +	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)buf;
+>> +
+>> +	if (nfs_ca_sockname(sap, salen, buf, buflen) == 0)
+>> +		if (nfs_ca_gai(sap, salen, buf, buflen) == 0)
+>> +			goto out_failed;
+>> +
+>> +	/*
+>> +	 * The server can't use an interface ID that was generated
+>> +	 * here on the client, so always clear sin6_scope_id.
+>> +	 */
+>> +	if (sin6->sin6_family == AF_INET6)
+>> +		sin6->sin6_scope_id = 0;
+>> +
+>> +	return 1;
+>> +
+>> +out_failed:
+>> +	*buflen = 0;
+>> +	if (verbose)
+>> +		nfs_error(_("%s: failed to construct callback address"));
+>> +	return 0;
+>> +
+>> +}
+>> diff --git a/utils/mount/network.h b/utils/mount/network.h
+>> index 8da7e20..2f4ff3a 100644
+>> --- a/utils/mount/network.h
+>> +++ b/utils/mount/network.h
+>> @@ -58,6 +58,8 @@ int nfs_string_to_sockaddr(const char *, const  
+>> size_t,
+>> int nfs_present_sockaddr(const struct sockaddr *,
+>> 			 const socklen_t, char *, const size_t);
+>> int get_client_address(struct sockaddr_in *, struct sockaddr_in *);
+>> +int nfs_callback_address(const struct sockaddr *, const socklen_t,
+>> +		struct sockaddr *, socklen_t *);
+>> int nfs_call_umount(clnt_addr_t *, dirpath *);
+>> int clnt_ping(struct sockaddr_in *, const unsigned long,
+>> 		const unsigned long, const unsigned int,
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux- 
+>> nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
 
 
--- 
-Edward R. Murrow told his generation of journalists no one can
-eliminate their prejudices, just recognize them. Here is my bias:
-extremes of wealth and poverty cannot be reconciled with a truly just
-society.
--- Bill Moyers
