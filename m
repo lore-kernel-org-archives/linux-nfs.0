@@ -1,79 +1,139 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 00/14] Support for mounting NFSv4 servers over IPv6
-Date: Wed, 09 Jul 2008 20:37:01 -0400
-Message-ID: <20080710001725.6137.83845.stgit@tarkus.1015granger.net>
+Subject: [PATCH 14/14] mount command: Remove RPC headers from network.h
+Date: Wed, 09 Jul 2008 20:38:27 -0400
+Message-ID: <20080710003826.6137.65532.stgit@tarkus.1015granger.net>
+References: <20080710001725.6137.83845.stgit@tarkus.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:61683 "EHLO
+Received: from rgminet01.oracle.com ([148.87.113.118]:61672 "EHLO
 	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751150AbYGJEIN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jul 2008 00:08:13 -0400
+	with ESMTP id S1751326AbYGJEIK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jul 2008 00:08:10 -0400
+In-Reply-To: <20080710001725.6137.83845.stgit-lQeC5l55kZ7wdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Steve-
+Clean up: Include the bare minimum of legacy RPC headers in
+utils/mount/network.h.
 
-Just for fun, here is the latest version of the patches that add support to
-the text-based mount.nfs command for mounting NFSv4 servers over IPv6.  This
-patch set applies on top of the patches I posted here last week.
-
-It was suggested that these be included in the next release of
-nfs-utils, 1.1.3.  Kernel support for these features (such as handling raw
-IPv6 NFS server addresses properly when mounting) is planned for 2.6.27, so
-inclusion of these patches would allow wider testing during .27's rc period.
-
-Mounting NFSv2/v3 servers over IPv6 is more complex.  It requires support
-for a scalable rpcbind/portmap client built into nfs-utils, thus it is not
-included in the present patch series.  Anyone interested in looking at my
-current prototype for this can check out:
-
-  http://git.linux-nfs.org/?p=cel/nfs-utils.git;a=summary
-
-It includes all the patches in this series and the patches I posted last
-week for nfs-utils 1.1.3, client-side support for NFSv2/v3 mounting and
-unmounting over IPv6, a prototype IPv6-enabled sm-notify command, and
-updates to nfs(5) describing IPv6 support for the NFS client.
-
-For what it's worth, I'll be on holiday next week, but I can field any
-questions or comments before this Saturday, or when I return.
-
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
-Chuck Lever (14):
-      mount command: Remove RPC headers from network.h
-      text-based mount command: remove unnecessary headers from stropts.c
-      text-based mount options: rename functions in stropts.c
-      text-based mount command: Remove unused IPv4-only functions
-      text-based mount command: Support raw IPv6 address hostnames
-      text-based mount command: Add IPv6 support to set_mandatory_options
-      text-based mount command: "mounthost=" option support for IPv6 addresses
-      text-based mount command: "clientaddr=" option support for IPv6 addresses
-      text-based mount command: "addr=" option support for IPv6 addresses
-      text-based mount command: Add helper to construct network addresses
-      text-based mount command:  get_client_address support for IPv6
-      mount command: Add functions to manage addresses in string form
-      text-based mount command: Add headers needed for IPv6 support
-      nfs-utils: Introduce new ./configure option: "--enable-ipv6"
+ utils/mount/error.c     |    2 --
+ utils/mount/mount.c     |    1 -
+ utils/mount/network.c   |   11 -----------
+ utils/mount/network.h   |   10 ----------
+ utils/mount/nfs4mount.c |    2 ++
+ utils/mount/nfsmount.c  |    7 +++++++
+ 6 files changed, 9 insertions(+), 24 deletions(-)
 
+diff --git a/utils/mount/error.c b/utils/mount/error.c
+index 5fd5705..5c9d3f2 100644
+--- a/utils/mount/error.c
++++ b/utils/mount/error.c
+@@ -35,8 +35,6 @@
+ #include <fcntl.h>
+ #include <syslog.h>
+ #include <rpc/rpc.h>
+-#include <rpc/pmap_prot.h>
+-#include <rpc/pmap_clnt.h>
+ 
+ #include "xcommon.h"
+ #include "nls.h"
+diff --git a/utils/mount/mount.c b/utils/mount/mount.c
+index a7d5733..a806c7a 100644
+--- a/utils/mount/mount.c
++++ b/utils/mount/mount.c
+@@ -44,7 +44,6 @@
+ #include "nfs4_mount.h"
+ #include "mount.h"
+ #include "error.h"
+-#include "network.h"
+ #include "stropts.h"
+ #include "version.h"
+ 
+diff --git a/utils/mount/network.c b/utils/mount/network.c
+index 0c2bb23..fa8a361 100644
+--- a/utils/mount/network.c
++++ b/utils/mount/network.c
+@@ -48,17 +48,6 @@
+ #include "mount_constants.h"
+ #include "network.h"
+ 
+-#ifdef HAVE_RPCSVC_NFS_PROT_H
+-#include <rpcsvc/nfs_prot.h>
+-#else
+-#include <linux/nfs.h>
+-#define nfsstat nfs_stat
+-#endif
+-
+-#ifndef NFS_PORT
+-#define NFS_PORT 2049
+-#endif
+-
+ #define PMAP_TIMEOUT	(10)
+ #define CONNECT_TIMEOUT	(20)
+ #define MOUNT_TIMEOUT	(30)
+diff --git a/utils/mount/network.h b/utils/mount/network.h
+index 544ac93..a4dba1b 100644
+--- a/utils/mount/network.h
++++ b/utils/mount/network.h
+@@ -25,16 +25,6 @@
+ #define _NFS_UTILS_MOUNT_NETWORK_H
+ 
+ #include <rpc/pmap_prot.h>
+-#include <rpc/clnt.h>
+-
+-#include "mount.h"
+-
+-#ifdef HAVE_RPCSVC_NFS_PROT_H
+-#include <rpcsvc/nfs_prot.h>
+-#else
+-#include <linux/nfs.h>
+-#define nfsstat nfs_stat
+-#endif
+ 
+ #define MNT_SENDBUFSIZE (2048U)
+ #define MNT_RECVBUFSIZE (1024U)
+diff --git a/utils/mount/nfs4mount.c b/utils/mount/nfs4mount.c
+index 2b0fe2e..a2f318f 100644
+--- a/utils/mount/nfs4mount.c
++++ b/utils/mount/nfs4mount.c
+@@ -34,6 +34,7 @@
+ #include <arpa/inet.h>
+ #include <rpc/auth.h>
+ #include <rpc/rpc.h>
++
+ #ifdef HAVE_RPCSVC_NFS_PROT_H
+ #include <rpcsvc/nfs_prot.h>
+ #else
+@@ -45,6 +46,7 @@
+ #include "nls.h"
+ #include "xcommon.h"
+ 
++#include "mount.h"
+ #include "mount_constants.h"
+ #include "nfs4_mount.h"
+ #include "nfs_mount.h"
+diff --git a/utils/mount/nfsmount.c b/utils/mount/nfsmount.c
+index b343a1f..6355681 100644
+--- a/utils/mount/nfsmount.c
++++ b/utils/mount/nfsmount.c
+@@ -69,6 +69,13 @@
+ #include "network.h"
+ #include "version.h"
+ 
++#ifdef HAVE_RPCSVC_NFS_PROT_H
++#include <rpcsvc/nfs_prot.h>
++#else
++#include <linux/nfs.h>
++#define nfsstat nfs_stat
++#endif
++
+ #ifndef NFS_PORT
+ #define NFS_PORT 2049
+ #endif
 
- configure.ac            |   29 ++++++
- utils/mount/Makefile.am |    6 +
- utils/mount/error.c     |    2 
- utils/mount/mount.c     |    1 
- utils/mount/network.c   |  237 +++++++++++++++++++++++++++++++++++++++++------
- utils/mount/network.h   |   17 +--
- utils/mount/nfs4mount.c |    2 
- utils/mount/nfsmount.c  |    7 +
- utils/mount/nfsumount.c |   35 +++----
- utils/mount/parse_dev.c |  230 ++++++++++++++++++++++++++++++++++++++++++++++
- utils/mount/parse_dev.h |   28 ++++++
- utils/mount/stropts.c   |  229 ++++++++++++++++++---------------------------
- 12 files changed, 617 insertions(+), 206 deletions(-)
- create mode 100644 utils/mount/parse_dev.c
- create mode 100644 utils/mount/parse_dev.h
-
--- 
-Signature
