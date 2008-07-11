@@ -1,77 +1,61 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: [NFS] Stale NFS file handle error
-Date: Fri, 11 Jul 2008 09:38:40 -0400
-Message-ID: <48776260.5010503@redhat.com>
-References: <48774466.508@limepepper.co.uk> <48775714.6090107@redhat.com>
-	<48775EBC.4090008@limepepper.co.uk>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 0/7] Remaining rpcbind patches for 2.6.27
+Date: Fri, 11 Jul 2008 14:40:54 -0400
+Message-ID: <20080711184054.GA19425@fieldses.org>
+References: <20080630223646.24534.74654.stgit@ellison.1015granger.net> <20080703204543.GI30918@fieldses.org> <1215454820.19512.25.camel@localhost> <F84C7866-E340-49BF-B542-308E10AC9518@oracle.com> <1215456693.19512.36.camel@localhost> <76bd70e30807071244v4db1c366uc7599d2dd806bf1b@mail.gmail.com> <1215463877.19512.40.camel@localhost> <C5841A2A-5178-405F-A5A5-1E8D1B77A419@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Tom H <tom-6kxvdouIZplzjhtm8Ag3mw@public.gmane.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+	Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:35165 "EHLO neil.brown.name"
+Received: from mail.fieldses.org ([66.93.2.214]:57674 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752450AbYGKNiw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Jul 2008 09:38:52 -0400
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1KHIpm-0006cY-Db
-	for linux-nfs@vger.kernel.org; Fri, 11 Jul 2008 23:38:50 +1000
-In-Reply-To: <48775EBC.4090008-6kxvdouIZplzjhtm8Ag3mw@public.gmane.org>
+	id S1753862AbYGKSlI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Jul 2008 14:41:08 -0400
+In-Reply-To: <C5841A2A-5178-405F-A5A5-1E8D1B77A419@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Tom H wrote:
-> Peter Staubach wrote:
->   
->> Are you sure that you don't have two (or more) different NFS
->> clients working in the same directory?
+On Thu, Jul 10, 2008 at 01:27:47PM -0400, Chuck Lever wrote:
+>
+> On Jul 7, 2008, at 4:51 PM, Trond Myklebust wrote:
+>
+>> On Mon, 2008-07-07 at 15:44 -0400, Chuck Lever wrote:
 >>
->> The ESTALE error usually occurs when a change is made on the
->> server to something that a client is accessing, perhaps
->> directly on the server or more commonly, by a different NFS
->> client.
->>     
+>>> If you would like connected UDP, I won't object to you implementing
+>>> it.  However, I never tested whether a connected UDP socket will give
+>>> the desired semantics without extra code in the UDP transport (for
+>>> example, an ->sk_error callback).  I don't think it's worth the  
+>>> hassle
+>>> if we have to add code to UDP that only this tiny use case would  
+>>> need.
+>>>
+>>
+>> OK. I'll set these patches aside until I have time to look into adding
+>> connected UDP support.
 >
-> I'm as sure as I can be that the app is not opening the file multiple 
-> times, the previous lines of code actually generate the folder and its 
-> all sequential. The file names are all deterministic, only 1 process 
-> running and nothing else accesses those files on the server. I have 
-> checked for things like backup processes.
+> That's not completely necessary... the one-shot + TCP changes just make 
+> it nicer when the local rpcbind is not listening.  Without these, the 
+> cases where the rpcbind daemon isn't running, or doesn't support rpcbind 
+> v3/v4 and the kernel was built with CONFIG_SUNRPC_REGISTER_V4, will cause 
+> some delays before failing, but otherwise shouldn't be a problem.
 >
-> It happens so infrequently that I get the feeling that its more likely 
-> something else.
->
-> I guess that I am looking for ways to troubleshoot the problem, maybe 
-> with debug tools or whatever the guru nfs people would use...
+> I think you can drop the patch to change rpcb registration to go over  
+> TCP for now unless you already have a CUDP implementation you are happy 
+> with.
 
-It sounds like you are only using 1 NFS client?  Do you have
-the same file system from the server mounted in more than one
-place on this client?
+So actually in your original series of 7 I think that'd mean dropping
+numbers 5 and 6 and keeping the rest?
 
-You could try using something like tshark or tcpdump to capture
-the network traffic when the error occurs, but I suspect that
-if it really only happens infrequently, then you would end up
-with gigabytes of capture and may or may not actually be able to
-identify the traffic when the problem occurs.
+I've lost track of the status of the 3 series you submitted on the 30th:
 
-Alternately, when the problem occurs, see if the file being
-accessed really does continue to exist and is the same file,
-ie. wasn't removed and then a new file with the same name
-created in its place.
+	"Remaining rpcbind patches for 2.6.27"
+		- this one, probably ready after dropping 2 patches
+	"rpcbind v4 support in net/sunrpc/svc*"
+		- Do you still want this considered for 2.6.27?
+	"NLM clean-ups for IPv6 support"
+		- I think you were saying there's still a bug being
+		  tracked down in this series?
 
-       ps
-
--------------------------------------------------------------------------
-Sponsored by: SourceForge.net Community Choice Awards: VOTE NOW!
-Studies have shown that voting for your favorite open source project,
-along with a healthy diet, reduces your potential for chronic lameness
-and boredom. Vote Now at http://www.sourceforge.net/community/cca08
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
-
+--b.
