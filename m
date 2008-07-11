@@ -1,140 +1,112 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 14/14] mount command: Remove RPC headers from network.h
-Date: Fri, 11 Jul 2008 16:35:28 -0400
-Message-ID: <20080711203528.478.65041.stgit@tarkus.1015granger.net>
+Subject: [PATCH 12/14] text-based mount options: rename functions in stropts.c
+Date: Fri, 11 Jul 2008 16:35:17 -0400
+Message-ID: <20080711203517.478.5368.stgit@tarkus.1015granger.net>
 References: <20080711203322.478.52095.stgit@tarkus.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:39586 "EHLO
+Received: from rgminet01.oracle.com ([148.87.113.118]:39553 "EHLO
 	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756297AbYGKUfn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Jul 2008 16:35:43 -0400
+	with ESMTP id S1756255AbYGKUfj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Jul 2008 16:35:39 -0400
 In-Reply-To: <20080711203322.478.52095.stgit-lQeC5l55kZ7wdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: Include the bare minimum of legacy RPC headers in
-utils/mount/network.h.
+Clean up: rename a couple of functions in utils/mount/stropts.c to match
+the naming convention of the others.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/mount/error.c     |    2 --
- utils/mount/mount.c     |    1 -
- utils/mount/network.c   |   11 -----------
- utils/mount/network.h   |   10 ----------
- utils/mount/nfs4mount.c |    2 ++
- utils/mount/nfsmount.c  |    7 +++++++
- 6 files changed, 9 insertions(+), 24 deletions(-)
+ utils/mount/stropts.c |   18 +++++++++---------
+ 1 files changed, 9 insertions(+), 9 deletions(-)
 
 
-diff --git a/utils/mount/error.c b/utils/mount/error.c
-index 5fd5705..5c9d3f2 100644
---- a/utils/mount/error.c
-+++ b/utils/mount/error.c
-@@ -35,8 +35,6 @@
- #include <fcntl.h>
- #include <syslog.h>
- #include <rpc/rpc.h>
--#include <rpc/pmap_prot.h>
--#include <rpc/pmap_clnt.h>
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index a51cf0b..b54df40 100644
+--- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -230,7 +230,7 @@ static int nfs_fix_mounthost_option(const sa_family_t family,
+  * Returns zero if the "lock" option is in effect, but statd
+  * can't be started.  Otherwise, returns 1.
+  */
+-static int verify_lock_option(struct mount_options *options)
++static int nfs_verify_lock_option(struct mount_options *options)
+ {
+ 	if (po_rightmost(options, "nolock", "lock") == PO_KEY1_RIGHTMOST)
+ 		return 1;
+@@ -279,7 +279,7 @@ static int nfs_validate_options(struct nfsmount_info *mi)
+ 	} else {
+ 		if (!nfs_fix_mounthost_option(mi->family, mi->options))
+ 			return 0;
+-		if (!mi->fake && !verify_lock_option(mi->options))
++		if (!mi->fake && !nfs_verify_lock_option(mi->options))
+ 			return 0;
+ 	}
  
- #include "xcommon.h"
- #include "nls.h"
-diff --git a/utils/mount/mount.c b/utils/mount/mount.c
-index a7d5733..a806c7a 100644
---- a/utils/mount/mount.c
-+++ b/utils/mount/mount.c
-@@ -44,7 +44,6 @@
- #include "nfs4_mount.h"
- #include "mount.h"
- #include "error.h"
--#include "network.h"
- #include "stropts.h"
- #include "version.h"
+@@ -297,7 +297,7 @@ static int nfs_validate_options(struct nfsmount_info *mi)
+  * passed-in error is permanent, thus the mount system call
+  * should not be retried.
+  */
+-static int is_permanent_error(int error)
++static int nfs_is_permanent_error(int error)
+ {
+ 	switch (error) {
+ 	case ESTALE:
+@@ -316,13 +316,13 @@ static int is_permanent_error(int error)
+  *
+  * To handle version and transport protocol fallback properly, we
+  * need to parse some of the mount options in order to set up a
+- * portmap probe.  Mount options that rewrite_mount_options()
++ * portmap probe.  Mount options that nfs_rewrite_mount_options()
+  * doesn't recognize are left alone.
+  *
+  * Returns a new group of mount options if successful; otherwise
+  * NULL is returned if some failure occurred.
+  */
+-static struct mount_options *rewrite_mount_options(char *str)
++static struct mount_options *nfs_rewrite_mount_options(char *str)
+ {
+ 	struct mount_options *options;
+ 	char *option, new_option[64];
+@@ -475,7 +475,7 @@ static int nfs_retry_nfs23mount(struct nfsmount_info *mi)
+ 	char *retry_str = NULL;
+ 	char **extra_opts = mi->extra_opts;
  
-diff --git a/utils/mount/network.c b/utils/mount/network.c
-index d8e6e10..7d3d09a 100644
---- a/utils/mount/network.c
-+++ b/utils/mount/network.c
-@@ -48,17 +48,6 @@
- #include "mount_constants.h"
- #include "network.h"
+-	retry_options = rewrite_mount_options(*extra_opts);
++	retry_options = nfs_rewrite_mount_options(*extra_opts);
+ 	if (!retry_options)
+ 		return 0;
  
--#ifdef HAVE_RPCSVC_NFS_PROT_H
--#include <rpcsvc/nfs_prot.h>
--#else
--#include <linux/nfs.h>
--#define nfsstat nfs_stat
--#endif
--
--#ifndef NFS_PORT
--#define NFS_PORT 2049
--#endif
--
- #define PMAP_TIMEOUT	(10)
- #define CONNECT_TIMEOUT	(20)
- #define MOUNT_TIMEOUT	(30)
-diff --git a/utils/mount/network.h b/utils/mount/network.h
-index 544ac93..a4dba1b 100644
---- a/utils/mount/network.h
-+++ b/utils/mount/network.h
-@@ -25,16 +25,6 @@
- #define _NFS_UTILS_MOUNT_NETWORK_H
+@@ -604,7 +604,7 @@ static int nfsmount_fg(struct nfsmount_info *mi)
+ 		if (nfs_try_mount(mi))
+ 			return EX_SUCCESS;
  
- #include <rpc/pmap_prot.h>
--#include <rpc/clnt.h>
--
--#include "mount.h"
--
--#ifdef HAVE_RPCSVC_NFS_PROT_H
--#include <rpcsvc/nfs_prot.h>
--#else
--#include <linux/nfs.h>
--#define nfsstat nfs_stat
--#endif
+-		if (is_permanent_error(errno))
++		if (nfs_is_permanent_error(errno))
+ 			break;
  
- #define MNT_SENDBUFSIZE (2048U)
- #define MNT_RECVBUFSIZE (1024U)
-diff --git a/utils/mount/nfs4mount.c b/utils/mount/nfs4mount.c
-index 2b0fe2e..a2f318f 100644
---- a/utils/mount/nfs4mount.c
-+++ b/utils/mount/nfs4mount.c
-@@ -34,6 +34,7 @@
- #include <arpa/inet.h>
- #include <rpc/auth.h>
- #include <rpc/rpc.h>
-+
- #ifdef HAVE_RPCSVC_NFS_PROT_H
- #include <rpcsvc/nfs_prot.h>
- #else
-@@ -45,6 +46,7 @@
- #include "nls.h"
- #include "xcommon.h"
+ 		if (time(NULL) > timeout) {
+@@ -637,7 +637,7 @@ static int nfsmount_parent(struct nfsmount_info *mi)
+ 	if (nfs_try_mount(mi))
+ 		return EX_SUCCESS;
  
-+#include "mount.h"
- #include "mount_constants.h"
- #include "nfs4_mount.h"
- #include "nfs_mount.h"
-diff --git a/utils/mount/nfsmount.c b/utils/mount/nfsmount.c
-index b343a1f..6355681 100644
---- a/utils/mount/nfsmount.c
-+++ b/utils/mount/nfsmount.c
-@@ -69,6 +69,13 @@
- #include "network.h"
- #include "version.h"
+-	if (is_permanent_error(errno)) {
++	if (nfs_is_permanent_error(errno)) {
+ 		mount_error(mi->spec, mi->node, errno);
+ 		return EX_FAIL;
+ 	}
+@@ -672,7 +672,7 @@ static int nfsmount_child(struct nfsmount_info *mi)
+ 		if (nfs_try_mount(mi))
+ 			return EX_SUCCESS;
  
-+#ifdef HAVE_RPCSVC_NFS_PROT_H
-+#include <rpcsvc/nfs_prot.h>
-+#else
-+#include <linux/nfs.h>
-+#define nfsstat nfs_stat
-+#endif
-+
- #ifndef NFS_PORT
- #define NFS_PORT 2049
- #endif
+-		if (is_permanent_error(errno))
++		if (nfs_is_permanent_error(errno))
+ 			break;
+ 
+ 		if (time(NULL) > timeout)
 
