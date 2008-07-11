@@ -1,177 +1,71 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 04/14] text-based mount command: get_client_address support
-	for IPv6
-Date: Fri, 11 Jul 2008 16:34:34 -0400
-Message-ID: <20080711203434.478.20200.stgit@tarkus.1015granger.net>
+Subject: [PATCH 06/14] text-based mount command: "addr=" option support for
+	IPv6 addresses
+Date: Fri, 11 Jul 2008 16:34:45 -0400
+Message-ID: <20080711203445.478.58036.stgit@tarkus.1015granger.net>
 References: <20080711203322.478.52095.stgit@tarkus.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:39517 "EHLO
+Received: from rgminet01.oracle.com ([148.87.113.118]:39539 "EHLO
 	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756255AbYGKUfe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Jul 2008 16:35:34 -0400
+	with ESMTP id S1755947AbYGKUfg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Jul 2008 16:35:36 -0400
 In-Reply-To: <20080711203322.478.52095.stgit-lQeC5l55kZ7wdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Introduce IPv6-enabled version of get_client_address.  The legacy mount
-command could use this eventually as well.
-
-If this new function fails to discover an appropriate callback address, it
-fills in an ANY address to indicate to the server that it should not call the
-client back (ie delegations are disabled in this case).
-
-The user can specify a callback address via the clientaddr= mount option in
-this case to enable delegation.
+Change the append_addr_option() function to support sending either IPv4
+or IPv6 addresses to the kernel via the "addr=" option.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/mount/network.c |  118 +++++++++++++++++++++++++++++++++++++++++++++++++
- utils/mount/network.h |    2 +
- 2 files changed, 120 insertions(+), 0 deletions(-)
+ utils/mount/stropts.c |   21 ++++++---------------
+ 1 files changed, 6 insertions(+), 15 deletions(-)
 
 
-diff --git a/utils/mount/network.c b/utils/mount/network.c
-index 3f2721b..849ce1d 100644
---- a/utils/mount/network.c
-+++ b/utils/mount/network.c
-@@ -918,3 +918,121 @@ int get_client_address(struct sockaddr_in *saddr, struct sockaddr_in *caddr)
- 	}
- 	return 1;
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index a1ffca2..f856998 100644
+--- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -237,19 +237,12 @@ out_err:
+  * Returns 1 if 'addr=' option appended successfully;
+  * otherwise zero.
+  */
+-static int append_addr_option(struct sockaddr_in *saddr,
+-			   struct mount_options *options)
++static int nfs_append_addr_option(const struct sockaddr *sap,
++				  socklen_t salen,
++				  struct mount_options *options)
+ {
+-	char new_option[24];
+-
+ 	po_remove_all(options, "addr");
+-
+-	snprintf(new_option, sizeof(new_option) - 1,
+-			"addr=%s", inet_ntoa(saddr->sin_addr));
+-
+-	if (po_append(options, new_option) == PO_SUCCEEDED)
+-		return 1;
+-	return 0;
++	return nfs_append_generic_address_option(sap, salen, "addr", options);
  }
-+
-+/*
-+ * Try a getsockname() on a connected datagram socket.
-+ *
-+ * Returns 1 and fills in @buf if successful; otherwise, zero.
-+ *
-+ * A connected datagram socket prevents leaving a socket in TIME_WAIT.
-+ * This conserves the ephemeral port number space, helping reduce failed
-+ * socket binds during mount storms.
-+ */
-+static int nfs_ca_sockname(const struct sockaddr *sap, const socklen_t salen,
-+			   struct sockaddr *buf, socklen_t *buflen)
-+{
-+	struct sockaddr_in sin = {
-+		.sin_family		= AF_INET,
-+		.sin_addr.s_addr	= htonl(INADDR_ANY),
-+	};
-+	struct sockaddr_in6 sin6 = {
-+		.sin6_family		= AF_INET6,
-+		.sin6_addr		= IN6ADDR_ANY_INIT,
-+	};
-+	int sock;
-+
-+	sock = socket(sap->sa_family, SOCK_DGRAM, IPPROTO_UDP);
-+	if (sock < 0)
-+		return 0;
-+
-+	switch (sap->sa_family) {
-+	case AF_INET:
-+		if (bind(sock, (struct sockaddr *)&sin, sizeof(sin)) < 0) {
-+			close(sock);
-+			return 0;
-+		}
-+		break;
-+	case AF_INET6:
-+		if (bind(sock, (struct sockaddr *)&sin6, sizeof(sin6)) < 0) {
-+			close(sock);
-+			return 0;
-+		}
-+		break;
-+	default:
-+		errno = EAFNOSUPPORT;
-+		return 0;
-+	}
-+
-+	if (connect(sock, sap, salen) < 0) {
-+		close(sock);
-+		return 0;
-+	}
-+
-+	return !getsockname(sock, buf, buflen);
-+}
-+
-+/*
-+ * Try to generate an address that prevents the server from calling us.
-+ *
-+ * Returns 1 and fills in @buf if successful; otherwise, zero.
-+ */
-+static int nfs_ca_gai(const struct sockaddr *sap, const socklen_t salen,
-+		      struct sockaddr *buf, socklen_t *buflen)
-+{
-+	struct addrinfo *gai_results;
-+	struct addrinfo gai_hint = {
-+		.ai_family	= sap->sa_family,
-+		.ai_flags	= AI_PASSIVE,	/* ANYADDR */
-+	};
-+
-+	if (getaddrinfo(NULL, "", &gai_hint, &gai_results))
-+		return 0;
-+
-+	*buflen = gai_results->ai_addrlen;
-+	memcpy(buf, gai_results->ai_addr, *buflen);
-+
-+	freeaddrinfo(gai_results);
-+
-+	return 1;
-+}
-+
-+/**
-+ * nfs_callback_address - acquire our local network address
-+ * @sap: pointer to address of remote
-+ * @sap_len: length of address
-+ * @buf: pointer to buffer to be filled in with local network address
-+ * @buflen: IN: length of buffer to fill in; OUT: length of filled-in address
-+ *
-+ * Discover a network address that an NFSv4 server can use to call us back.
-+ * On multi-homed clients, this address depends on which NIC we use to
-+ * route requests to the server.
-+ *
-+ * Returns 1 and fills in @buf if an unambiguous local address is
-+ * available; returns 1 and fills in an appropriate ANYADDR address
-+ * if a local address isn't available; otherwise, returns zero.
-+ */
-+int nfs_callback_address(const struct sockaddr *sap, const socklen_t salen,
-+			 struct sockaddr *buf, socklen_t *buflen)
-+{
-+	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)buf;
-+
-+	if (nfs_ca_sockname(sap, salen, buf, buflen) == 0)
-+		if (nfs_ca_gai(sap, salen, buf, buflen) == 0)
-+			goto out_failed;
-+
-+	/*
-+	 * The server can't use an interface ID that was generated
-+	 * here on the client, so always clear sin6_scope_id.
-+	 */
-+	if (sin6->sin6_family == AF_INET6)
-+		sin6->sin6_scope_id = 0;
-+
-+	return 1;
-+
-+out_failed:
-+	*buflen = 0;
-+	if (verbose)
-+		nfs_error(_("%s: failed to construct callback address"));
-+	return 0;
-+
-+}
-diff --git a/utils/mount/network.h b/utils/mount/network.h
-index 8da7e20..2f4ff3a 100644
---- a/utils/mount/network.h
-+++ b/utils/mount/network.h
-@@ -58,6 +58,8 @@ int nfs_string_to_sockaddr(const char *, const size_t,
- int nfs_present_sockaddr(const struct sockaddr *,
- 			 const socklen_t, char *, const size_t);
- int get_client_address(struct sockaddr_in *, struct sockaddr_in *);
-+int nfs_callback_address(const struct sockaddr *, const socklen_t,
-+		struct sockaddr *, socklen_t *);
- int nfs_call_umount(clnt_addr_t *, dirpath *);
- int clnt_ping(struct sockaddr_in *, const unsigned long,
- 		const unsigned long, const unsigned int,
+ 
+ /*
+@@ -358,10 +351,8 @@ static int nfs_validate_options(struct nfsmount_info *mi)
+ 	if (!nfs_append_sloppy_option(mi->options))
+ 		return 0;
+ 
+-	if (!append_addr_option(&saddr, mi->options))
+-		return 0;
+-
+-	return 1;
++	return nfs_append_addr_option((struct sockaddr *)&saddr,
++					sizeof(saddr), mi->options);
+ }
+ 
+ /*
 
