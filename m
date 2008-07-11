@@ -1,115 +1,273 @@
-From: "Chuck Lever" <chuck.lever@oracle.com>
-Subject: Re: [PATCH 0/7] Remaining rpcbind patches for 2.6.27
-Date: Fri, 11 Jul 2008 15:11:29 -0400
-Message-ID: <76bd70e30807111211m567e9f8cv38a975bbc9df5758@mail.gmail.com>
-References: <20080630223646.24534.74654.stgit@ellison.1015granger.net>
-	 <20080703204543.GI30918@fieldses.org>
-	 <1215454820.19512.25.camel@localhost>
-	 <F84C7866-E340-49BF-B542-308E10AC9518@oracle.com>
-	 <1215456693.19512.36.camel@localhost>
-	 <76bd70e30807071244v4db1c366uc7599d2dd806bf1b@mail.gmail.com>
-	 <1215463877.19512.40.camel@localhost>
-	 <C5841A2A-5178-405F-A5A5-1E8D1B77A419@oracle.com>
-	 <20080711184054.GA19425@fieldses.org>
-Reply-To: chucklever@gmail.com
+From: "Chuck Lever" <chucklever@gmail.com>
+Subject: Re: [PATCH 04/14] text-based mount command: get_client_address support for IPv6
+Date: Fri, 11 Jul 2008 15:16:56 -0400
+Message-ID: <76bd70e30807111216o40c7d167vc5ee089886ee4052@mail.gmail.com>
+References: <20080710001725.6137.83845.stgit@tarkus.1015granger.net>
+	 <20080710003723.6137.51761.stgit@tarkus.1015granger.net>
+	 <20080710193008.GA27734@fieldses.org>
+	 <5E74A13F-4A79-4356-8BBE-7B535F00EA66@oracle.com>
+	 <20080710194310.GC27734@fieldses.org>
+	 <76bd70e30807101335y54f8b479v39953a772e08e88c@mail.gmail.com>
+	 <20080711190626.GB19425@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: "Trond Myklebust" <Trond.Myklebust@netapp.com>,
-	"Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
+Cc: steved@redhat.com, linux-nfs@vger.kernel.org
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from yw-out-2324.google.com ([74.125.46.31]:47072 "EHLO
-	yw-out-2324.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757116AbYGKTLd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Jul 2008 15:11:33 -0400
-Received: by yw-out-2324.google.com with SMTP id 9so1954735ywe.1
-        for <linux-nfs@vger.kernel.org>; Fri, 11 Jul 2008 12:11:30 -0700 (PDT)
-In-Reply-To: <20080711184054.GA19425@fieldses.org>
+Received: from gv-out-0910.google.com ([216.239.58.187]:41673 "EHLO
+	gv-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758397AbYGKTRA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Jul 2008 15:17:00 -0400
+Received: by gv-out-0910.google.com with SMTP id e6so749136gvc.37
+        for <linux-nfs@vger.kernel.org>; Fri, 11 Jul 2008 12:16:57 -0700 (PDT)
+In-Reply-To: <20080711190626.GB19425@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jul 11, 2008 at 2:40 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> On Thu, Jul 10, 2008 at 01:27:47PM -0400, Chuck Lever wrote:
+On Fri, Jul 11, 2008 at 3:06 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Thu, Jul 10, 2008 at 04:35:57PM -0400, Chuck Lever wrote:
+>> On Thu, Jul 10, 2008 at 3:43 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+>> > On Thu, Jul 10, 2008 at 03:36:21PM -0400, Chuck Lever wrote:
+>> >> On Jul 10, 2008, at 3:30 PM, J. Bruce Fields wrote:
+>> >>> On Wed, Jul 09, 2008 at 08:37:24PM -0400, Chuck Lever wrote:
+>> >>>> Introduce IPv6-enabled version of get_client_address.  The legacy
+>> >>>> mount
+>> >>>> command could use this eventually as well.
+>> >>>>
+>> >>>> I don't remember how to tell an NFSv4 server to disable the callback
+>> >>>> channel:  whether an ANY address is passed with SETCLIENTID, or a
+>> >>>> loopback address is passed.  The patch allows either to be used with
+>> >>>> a
+>> >>>> compile-time switch.
+>> >>>
+>> >>> I would have thought INADDR_ANY.  But in any case we should just pick
+>> >>> one....
+>> >>
+>> >> Well, yes, but we should pick the "correct" one.  :-)  The patch does it
+>> >> this way just to make a note of this issue so we can make a decision
+>> >> before committing this upstream.
+>> >>
+>> >> Does RFC 3530 have any recommendation about this?
+>> >
+>> > Not that I can find on a quick skim.
 >>
->> On Jul 7, 2008, at 4:51 PM, Trond Myklebust wrote:
->>
->>> On Mon, 2008-07-07 at 15:44 -0400, Chuck Lever wrote:
->>>
->>>> If you would like connected UDP, I won't object to you implementing
->>>> it.  However, I never tested whether a connected UDP socket will give
->>>> the desired semantics without extra code in the UDP transport (for
->>>> example, an ->sk_error callback).  I don't think it's worth the
->>>> hassle
->>>> if we have to add code to UDP that only this tiny use case would
->>>> need.
->>>>
->>>
->>> OK. I'll set these patches aside until I have time to look into adding
->>> connected UDP support.
->>
->> That's not completely necessary... the one-shot + TCP changes just make
->> it nicer when the local rpcbind is not listening.  Without these, the
->> cases where the rpcbind daemon isn't running, or doesn't support rpcbind
->> v3/v4 and the kernel was built with CONFIG_SUNRPC_REGISTER_V4, will cause
->> some delays before failing, but otherwise shouldn't be a problem.
->>
->> I think you can drop the patch to change rpcb registration to go over
->> TCP for now unless you already have a CUDP implementation you are happy
->> with.
+>> Is it clarified in the NFSv4.1 draft?
 >
-> So actually in your original series of 7 I think that'd mean dropping
-> numbers 5 and 6 and keeping the rest?
+> 4.1 callbacks use sessions, which I don't really know yet.
 
-So, 5/7 adds "one shot" support to the RPC client.  I think that might
-be interesting for other kernel services, like making rpcbind queries
-over TCP, or NFSv4 callback.  I'd like to advocate for keeping that
-one so others can build on it (with whatever name for the create flag
-we can agree on), but it's not really necessary for subsequent
-patches.
+OK, but I thought the draft also contained some clarifications for
+4.0, which is why I asked.  Maybe I'm thinking of something else.
 
-6/7 changes the rpcb_register logic to use "one shot" + TCP -- that's
-the one that is controversial and can be dropped.
-
-> I've lost track of the status of the 3 series you submitted on the 30th:
+>> > I don't see why the spec would forbid running over loopback, though, in
+>> > which case a loopback callback address would make sense.  And I assume
+>> > INADDR_ANY is always meaningless as a destination address, so is a
+>> > logical way to tell the server it can't call back to you.
+>>
+>> Yep, I agree.
+>>
+>> I recall a few years back at a CITI bake-a-thon there was a certain
+>> server vendor who had trouble with loopback callback addresses,
+>> probably because their implementation was server-only, so an NFSv4
+>> callback from loopback would make no sense for them.  The client in
+>> this case was sending a loopback callback address because it hadn't
+>> implemented a callback service and wanted to prevent the server from
+>> calling it back.
+>>
+>> Do we have a high degree of certainty that sending an ANY address is
+>> appropriate if the client can't determine a reasonable callback
+>> address to send with SETCLIENTID?
+>>
+>> Is it at least OK for Linux's NFSv4 server?
 >
->        "Remaining rpcbind patches for 2.6.27"
->                - this one, probably ready after dropping 2 patches
+> If not, it's a bug I'd want to fix.
 
-Yes.
+So to sum up, you think it is reasonable for the mount.nfs command to
+specify clientaddr=0.0.0.0 if it can't determine the client's own
+address for the server to use for callback.
 
->        "rpcbind v4 support in net/sunrpc/svc*"
->                - Do you still want this considered for 2.6.27?
+I can clean that up in these patches and repost.  Thanks for the review.
 
-Yes, please.
+>> If we think this might be a problem, I can change all this back to
+>> simply failing the mount request when the mount.nfs command can't
+>> figure out a valid callback address.
+>>
+>> >>>>
+>> >>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> >>>> ---
+>> >>>>
+>> >>>> utils/mount/network.c |  122 +++++++++++++++++++++++++++++++++++++++
+>> >>>> ++++++++++
+>> >>>> utils/mount/network.h |    2 +
+>> >>>> 2 files changed, 124 insertions(+), 0 deletions(-)
+>> >>>>
+>> >>>> diff --git a/utils/mount/network.c b/utils/mount/network.c
+>> >>>> index 3f2721b..128d7f7 100644
+>> >>>> --- a/utils/mount/network.c
+>> >>>> +++ b/utils/mount/network.c
+>> >>>> @@ -918,3 +918,125 @@ int get_client_address(struct sockaddr_in
+>> >>>> *saddr, struct sockaddr_in *caddr)
+>> >>>>     }
+>> >>>>     return 1;
+>> >>>> }
+>> >>>> +
+>> >>>> +/*
+>> >>>> + * Try a getsockname() on a connected datagram socket.
+>> >>>> + *
+>> >>>> + * Returns 1 and fills in @buf if successful; otherwise, zero.
+>> >>>> + *
+>> >>>> + * A connected datagram socket prevents leaving a socket in
+>> >>>> TIME_WAIT.
+>> >>>> + * This conserves the ephemeral port number space, helping reduce
+>> >>>> failed
+>> >>>> + * socket binds during mount storms.
+>> >>>> + */
+>> >>>> +static int nfs_ca_sockname(const struct sockaddr *sap, const
+>> >>>> socklen_t salen,
+>> >>>> +                      struct sockaddr *buf, socklen_t *buflen)
+>> >>>> +{
+>> >>>> +   struct sockaddr_in sin = {
+>> >>>> +           .sin_family             = AF_INET,
+>> >>>> +           .sin_addr.s_addr        = htonl(INADDR_ANY),
+>> >>>> +   };
+>> >>>> +   struct sockaddr_in6 sin6 = {
+>> >>>> +           .sin6_family            = AF_INET6,
+>> >>>> +           .sin6_addr              = IN6ADDR_ANY_INIT,
+>> >>>> +   };
+>> >>>> +   int sock;
+>> >>>> +
+>> >>>> +   sock = socket(sap->sa_family, SOCK_DGRAM, IPPROTO_UDP);
+>> >>>> +   if (sock < 0)
+>> >>>> +           return 0;
+>> >>>> +
+>> >>>> +   switch (sap->sa_family) {
+>> >>>> +   case AF_INET:
+>> >>>> +           if (bind(sock, (struct sockaddr *)&sin, sizeof(sin)) < 0) {
+>> >>>> +                   close(sock);
+>> >>>> +                   return 0;
+>> >>>> +           }
+>> >>>> +           break;
+>> >>>> +   case AF_INET6:
+>> >>>> +           if (bind(sock, (struct sockaddr *)&sin6, sizeof(sin6)) < 0) {
+>> >>>> +                   close(sock);
+>> >>>> +                   return 0;
+>> >>>> +           }
+>> >>>> +           break;
+>> >>>> +   default:
+>> >>>> +           errno = EAFNOSUPPORT;
+>> >>>> +           return 0;
+>> >>>> +   }
+>> >>>> +
+>> >>>> +   if (connect(sock, sap, salen) < 0) {
+>> >>>> +           close(sock);
+>> >>>> +           return 0;
+>> >>>> +   }
+>> >>>> +
+>> >>>> +   return !getsockname(sock, buf, buflen);
+>> >>>> +}
+>> >>>> +
+>> >>>> +/*
+>> >>>> + * Try to generate an address that prevents the server from calling
+>> >>>> us.
+>> >>>> + *
+>> >>>> + * Returns 1 and fills in @buf if successful; otherwise, zero.
+>> >>>> + */
+>> >>>> +static int nfs_ca_gai(const struct sockaddr *sap, const socklen_t
+>> >>>> salen,
+>> >>>> +                 struct sockaddr *buf, socklen_t *buflen)
+>> >>>> +{
+>> >>>> +   struct addrinfo *gai_results;
+>> >>>> +   struct addrinfo gai_hint = {
+>> >>>> +           .ai_family      = sap->sa_family,
+>> >>>> +#ifdef GENERATE_LOOPBACK_ADDRESS
+>> >>>> +           .ai_flags       = 0,            /* loopback */
+>> >>>> +#else
+>> >>>> +           .ai_flags       = AI_PASSIVE,   /* ANYADDR */
+>> >>>> +#endif
+>> >>>> +   };
+>> >>>> +
+>> >>>> +   if (getaddrinfo(NULL, "", &gai_hint, &gai_results))
+>> >>>> +           return 0;
+>> >>>> +
+>> >>>> +   *buflen = gai_results->ai_addrlen;
+>> >>>> +   memcpy(buf, gai_results->ai_addr, *buflen);
+>> >>>> +
+>> >>>> +   freeaddrinfo(gai_results);
+>> >>>> +
+>> >>>> +   return 1;
+>> >>>> +}
+>> >>>> +
+>> >>>> +/**
+>> >>>> + * nfs_callback_address - acquire our local network address
+>> >>>> + * @sap: pointer to address of remote
+>> >>>> + * @sap_len: length of address
+>> >>>> + * @buf: pointer to buffer to be filled in with local network
+>> >>>> address
+>> >>>> + * @buflen: IN: length of buffer to fill in; OUT: length of filled-
+>> >>>> in address
+>> >>>> + *
+>> >>>> + * Discover a network address that an NFSv4 server can use to call
+>> >>>> us back.
+>> >>>> + * On multi-homed clients, this address depends on which NIC we use
+>> >>>> to
+>> >>>> + * route requests to the server.
+>> >>>> + *
+>> >>>> + * Returns 1 and fills in @buf if an unambiguous local address is
+>> >>>> + * available; returns 1 and fills in an appropriate ANYADDR address
+>> >>>> + * if a local address isn't available; otherwise, returns zero.
+>> >>>> + */
+>> >>>> +int nfs_callback_address(const struct sockaddr *sap, const
+>> >>>> socklen_t salen,
+>> >>>> +                    struct sockaddr *buf, socklen_t *buflen)
+>> >>>> +{
+>> >>>> +   struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)buf;
+>> >>>> +
+>> >>>> +   if (nfs_ca_sockname(sap, salen, buf, buflen) == 0)
+>> >>>> +           if (nfs_ca_gai(sap, salen, buf, buflen) == 0)
+>> >>>> +                   goto out_failed;
+>> >>>> +
+>> >>>> +   /*
+>> >>>> +    * The server can't use an interface ID that was generated
+>> >>>> +    * here on the client, so always clear sin6_scope_id.
+>> >>>> +    */
+>> >>>> +   if (sin6->sin6_family == AF_INET6)
+>> >>>> +           sin6->sin6_scope_id = 0;
+>> >>>> +
+>> >>>> +   return 1;
+>> >>>> +
+>> >>>> +out_failed:
+>> >>>> +   *buflen = 0;
+>> >>>> +   if (verbose)
+>> >>>> +           nfs_error(_("%s: failed to construct callback address"));
+>> >>>> +   return 0;
+>> >>>> +
+>> >>>> +}
+>> >>>> diff --git a/utils/mount/network.h b/utils/mount/network.h
+>> >>>> index 8da7e20..2f4ff3a 100644
+>> >>>> --- a/utils/mount/network.h
+>> >>>> +++ b/utils/mount/network.h
+>> >>>> @@ -58,6 +58,8 @@ int nfs_string_to_sockaddr(const char *, const
+>> >>>> size_t,
+>> >>>> int nfs_present_sockaddr(const struct sockaddr *,
+>> >>>>                      const socklen_t, char *, const size_t);
+>> >>>> int get_client_address(struct sockaddr_in *, struct sockaddr_in *);
+>> >>>> +int nfs_callback_address(const struct sockaddr *, const socklen_t,
+>> >>>> +           struct sockaddr *, socklen_t *);
+>> >>>> int nfs_call_umount(clnt_addr_t *, dirpath *);
+>> >>>> int clnt_ping(struct sockaddr_in *, const unsigned long,
+>> >>>>             const unsigned long, const unsigned int,
+>> >>>>
+>>
+>>
+>>
+>> --
+>> Chuck Lever
+>
 
-The default CONFIG setting added in this patch set should cause the
-kernel to continue using portmap instead of rpcbindv3/v4 for RPC
-service registration, so by default there shouldn't be any change in
-behavior.
 
->        "NLM clean-ups for IPv6 support"
->                - I think you were saying there's still a bug being
->                  tracked down in this series?
-
-There are probably a few bugs in this series, but I'd still like to
-consider it for 2.6.27.  I think the architecture that is laid out
-here is pretty solid, and we will have time to exercise this and get
-it right in linux-next and during .27's -rc period.  Even if the whole
-series is not included, I think there are good cleanups here that
-should be solid enough to include.
-
-The bug I mentioned last night is with lock recovery with NFSv3 over
-IPv4, so it's not something that prevents NFSv2/v3 from working in
-general.  We haven't had a decent lock recovery test until just
-recently.
-
-Can we assume this is going in for now, and start the review and
-integration process?  I've already made a few minor changes in this
-series since I posted these, so I'm sure I will have to post at least
-one refresh.  But it would be useful to review this series carefully
-now even if some or all of it is not going into 2.6.27.
-
-Thanks for asking!
 
 -- 
-Chuck Lever
+Edward R. Murrow told his generation of journalists no one can
+eliminate their prejudices, just recognize them. Here is my bias:
+extremes of wealth and poverty cannot be reconciled with a truly just
+society.
+-- Bill Moyers
