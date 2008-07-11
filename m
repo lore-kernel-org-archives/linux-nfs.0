@@ -1,46 +1,66 @@
-From: Tom H <tom-6kxvdouIZplzjhtm8Ag3mw@public.gmane.org>
+From: Peter Staubach <staubach@redhat.com>
 Subject: Re: [NFS] Stale NFS file handle error
-Date: Fri, 11 Jul 2008 14:23:08 +0100
-Message-ID: <48775EBC.4090008@limepepper.co.uk>
+Date: Fri, 11 Jul 2008 09:38:40 -0400
+Message-ID: <48776260.5010503@redhat.com>
 References: <48774466.508@limepepper.co.uk> <48775714.6090107@redhat.com>
+	<48775EBC.4090008@limepepper.co.uk>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
+To: Tom H <tom-6kxvdouIZplzjhtm8Ag3mw@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:57521 "EHLO neil.brown.name"
+Received: from neil.brown.name ([220.233.11.133]:35165 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752552AbYGKNXc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Jul 2008 09:23:32 -0400
+	id S1752450AbYGKNiw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Jul 2008 09:38:52 -0400
 Received: from brown by neil.brown.name with local (Exim 4.63)
 	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1KHIav-0005WL-TP
-	for linux-nfs@vger.kernel.org; Fri, 11 Jul 2008 23:23:29 +1000
-In-Reply-To: <48775714.6090107@redhat.com>
+	id 1KHIpm-0006cY-Db
+	for linux-nfs@vger.kernel.org; Fri, 11 Jul 2008 23:38:50 +1000
+In-Reply-To: <48775EBC.4090008-6kxvdouIZplzjhtm8Ag3mw@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Peter Staubach wrote:
-> Are you sure that you don't have two (or more) different NFS
-> clients working in the same directory?
-> 
-> The ESTALE error usually occurs when a change is made on the
-> server to something that a client is accessing, perhaps
-> directly on the server or more commonly, by a different NFS
-> client.
+Tom H wrote:
+> Peter Staubach wrote:
+>   
+>> Are you sure that you don't have two (or more) different NFS
+>> clients working in the same directory?
+>>
+>> The ESTALE error usually occurs when a change is made on the
+>> server to something that a client is accessing, perhaps
+>> directly on the server or more commonly, by a different NFS
+>> client.
+>>     
+>
+> I'm as sure as I can be that the app is not opening the file multiple 
+> times, the previous lines of code actually generate the folder and its 
+> all sequential. The file names are all deterministic, only 1 process 
+> running and nothing else accesses those files on the server. I have 
+> checked for things like backup processes.
+>
+> It happens so infrequently that I get the feeling that its more likely 
+> something else.
+>
+> I guess that I am looking for ways to troubleshoot the problem, maybe 
+> with debug tools or whatever the guru nfs people would use...
 
-I'm as sure as I can be that the app is not opening the file multiple 
-times, the previous lines of code actually generate the folder and its 
-all sequential. The file names are all deterministic, only 1 process 
-running and nothing else accesses those files on the server. I have 
-checked for things like backup processes.
+It sounds like you are only using 1 NFS client?  Do you have
+the same file system from the server mounted in more than one
+place on this client?
 
-It happens so infrequently that I get the feeling that its more likely 
-something else.
+You could try using something like tshark or tcpdump to capture
+the network traffic when the error occurs, but I suspect that
+if it really only happens infrequently, then you would end up
+with gigabytes of capture and may or may not actually be able to
+identify the traffic when the problem occurs.
 
-I guess that I am looking for ways to troubleshoot the problem, maybe 
-with debug tools or whatever the guru nfs people would use...
+Alternately, when the problem occurs, see if the file being
+accessed really does continue to exist and is the same file,
+ie. wasn't removed and then a new file with the same name
+created in its place.
 
-Tom
+       ps
 
 -------------------------------------------------------------------------
 Sponsored by: SourceForge.net Community Choice Awards: VOTE NOW!
