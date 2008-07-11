@@ -1,273 +1,147 @@
-From: "Chuck Lever" <chucklever@gmail.com>
-Subject: Re: [PATCH 04/14] text-based mount command: get_client_address support for IPv6
-Date: Fri, 11 Jul 2008 15:16:56 -0400
-Message-ID: <76bd70e30807111216o40c7d167vc5ee089886ee4052@mail.gmail.com>
-References: <20080710001725.6137.83845.stgit@tarkus.1015granger.net>
-	 <20080710003723.6137.51761.stgit@tarkus.1015granger.net>
-	 <20080710193008.GA27734@fieldses.org>
-	 <5E74A13F-4A79-4356-8BBE-7B535F00EA66@oracle.com>
-	 <20080710194310.GC27734@fieldses.org>
-	 <76bd70e30807101335y54f8b479v39953a772e08e88c@mail.gmail.com>
-	 <20080711190626.GB19425@fieldses.org>
+From: Peter Staubach <staubach@redhat.com>
+Subject: Re: [PATCH V2] make "noac" and "actimeo=0" work correctly
+Date: Fri, 11 Jul 2008 16:14:49 -0400
+Message-ID: <4877BF39.20102@redhat.com>
+References: <484EE994.5030907@redhat.com> <487390EC.7080403@redhat.com>	 <76bd70e30807100858g58fbf454uc9331035a2bbf264@mail.gmail.com>	 <487649AE.1090909@redhat.com> <1215718184.7126.44.camel@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: multipart/mixed;
+ boundary="------------070701090601060004080306"
+Cc: chucklever@gmail.com, NFS list <linux-nfs@vger.kernel.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gv-out-0910.google.com ([216.239.58.187]:41673 "EHLO
-	gv-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758397AbYGKTRA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Jul 2008 15:17:00 -0400
-Received: by gv-out-0910.google.com with SMTP id e6so749136gvc.37
-        for <linux-nfs@vger.kernel.org>; Fri, 11 Jul 2008 12:16:57 -0700 (PDT)
-In-Reply-To: <20080711190626.GB19425@fieldses.org>
+Received: from mx1.redhat.com ([66.187.233.31]:41620 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758712AbYGKUPK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Jul 2008 16:15:10 -0400
+In-Reply-To: <1215718184.7126.44.camel@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jul 11, 2008 at 3:06 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> On Thu, Jul 10, 2008 at 04:35:57PM -0400, Chuck Lever wrote:
->> On Thu, Jul 10, 2008 at 3:43 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
->> > On Thu, Jul 10, 2008 at 03:36:21PM -0400, Chuck Lever wrote:
->> >> On Jul 10, 2008, at 3:30 PM, J. Bruce Fields wrote:
->> >>> On Wed, Jul 09, 2008 at 08:37:24PM -0400, Chuck Lever wrote:
->> >>>> Introduce IPv6-enabled version of get_client_address.  The legacy
->> >>>> mount
->> >>>> command could use this eventually as well.
->> >>>>
->> >>>> I don't remember how to tell an NFSv4 server to disable the callback
->> >>>> channel:  whether an ANY address is passed with SETCLIENTID, or a
->> >>>> loopback address is passed.  The patch allows either to be used with
->> >>>> a
->> >>>> compile-time switch.
->> >>>
->> >>> I would have thought INADDR_ANY.  But in any case we should just pick
->> >>> one....
->> >>
->> >> Well, yes, but we should pick the "correct" one.  :-)  The patch does it
->> >> this way just to make a note of this issue so we can make a decision
->> >> before committing this upstream.
->> >>
->> >> Does RFC 3530 have any recommendation about this?
->> >
->> > Not that I can find on a quick skim.
->>
->> Is it clarified in the NFSv4.1 draft?
+This is a multi-part message in MIME format.
+--------------070701090601060004080306
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+
+Trond Myklebust wrote:
+> On Thu, 2008-07-10 at 13:41 -0400, Peter Staubach wrote:
+>   
+>>> include/linux/jiffies.h claims it handles jiffy wrapping correctly.
+>>> Why isn't time_in_range() sufficient if 'c' has wrapped?  If it isn't,
+>>> should you fix time_in_range() too?
+>>>
+>>>   
+>>>       
+>> Clearly, time_in_range() is not sufficient if the 'c' has
+>> wrapped.  It only tests to see if a >=b and a <= c.  If 'c'
+>> is less than 'b', then time_in_range() will return false.
+>>     
 >
-> 4.1 callbacks use sessions, which I don't really know yet.
-
-OK, but I thought the draft also contained some clarifications for
-4.0, which is why I asked.  Maybe I'm thinking of something else.
-
->> > I don't see why the spec would forbid running over loopback, though, in
->> > which case a loopback callback address would make sense.  And I assume
->> > INADDR_ANY is always meaningless as a destination address, so is a
->> > logical way to tell the server it can't call back to you.
->>
->> Yep, I agree.
->>
->> I recall a few years back at a CITI bake-a-thon there was a certain
->> server vendor who had trouble with loopback callback addresses,
->> probably because their implementation was server-only, so an NFSv4
->> callback from loopback would make no sense for them.  The client in
->> this case was sending a loopback callback address because it hadn't
->> implemented a callback service and wanted to prevent the server from
->> calling it back.
->>
->> Do we have a high degree of certainty that sending an ANY address is
->> appropriate if the client can't determine a reasonable callback
->> address to send with SETCLIENTID?
->>
->> Is it at least OK for Linux's NFSv4 server?
+> Hmm... The actual test in the current time_in_range() should be
 >
-> If not, it's a bug I'd want to fix.
-
-So to sum up, you think it is reasonable for the mount.nfs command to
-specify clientaddr=0.0.0.0 if it can't determine the client's own
-address for the server to use for callback.
-
-I can clean that up in these patches and repost.  Thanks for the review.
-
->> If we think this might be a problem, I can change all this back to
->> simply failing the mount request when the mount.nfs command can't
->> figure out a valid callback address.
->>
->> >>>>
->> >>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> >>>> ---
->> >>>>
->> >>>> utils/mount/network.c |  122 +++++++++++++++++++++++++++++++++++++++
->> >>>> ++++++++++
->> >>>> utils/mount/network.h |    2 +
->> >>>> 2 files changed, 124 insertions(+), 0 deletions(-)
->> >>>>
->> >>>> diff --git a/utils/mount/network.c b/utils/mount/network.c
->> >>>> index 3f2721b..128d7f7 100644
->> >>>> --- a/utils/mount/network.c
->> >>>> +++ b/utils/mount/network.c
->> >>>> @@ -918,3 +918,125 @@ int get_client_address(struct sockaddr_in
->> >>>> *saddr, struct sockaddr_in *caddr)
->> >>>>     }
->> >>>>     return 1;
->> >>>> }
->> >>>> +
->> >>>> +/*
->> >>>> + * Try a getsockname() on a connected datagram socket.
->> >>>> + *
->> >>>> + * Returns 1 and fills in @buf if successful; otherwise, zero.
->> >>>> + *
->> >>>> + * A connected datagram socket prevents leaving a socket in
->> >>>> TIME_WAIT.
->> >>>> + * This conserves the ephemeral port number space, helping reduce
->> >>>> failed
->> >>>> + * socket binds during mount storms.
->> >>>> + */
->> >>>> +static int nfs_ca_sockname(const struct sockaddr *sap, const
->> >>>> socklen_t salen,
->> >>>> +                      struct sockaddr *buf, socklen_t *buflen)
->> >>>> +{
->> >>>> +   struct sockaddr_in sin = {
->> >>>> +           .sin_family             = AF_INET,
->> >>>> +           .sin_addr.s_addr        = htonl(INADDR_ANY),
->> >>>> +   };
->> >>>> +   struct sockaddr_in6 sin6 = {
->> >>>> +           .sin6_family            = AF_INET6,
->> >>>> +           .sin6_addr              = IN6ADDR_ANY_INIT,
->> >>>> +   };
->> >>>> +   int sock;
->> >>>> +
->> >>>> +   sock = socket(sap->sa_family, SOCK_DGRAM, IPPROTO_UDP);
->> >>>> +   if (sock < 0)
->> >>>> +           return 0;
->> >>>> +
->> >>>> +   switch (sap->sa_family) {
->> >>>> +   case AF_INET:
->> >>>> +           if (bind(sock, (struct sockaddr *)&sin, sizeof(sin)) < 0) {
->> >>>> +                   close(sock);
->> >>>> +                   return 0;
->> >>>> +           }
->> >>>> +           break;
->> >>>> +   case AF_INET6:
->> >>>> +           if (bind(sock, (struct sockaddr *)&sin6, sizeof(sin6)) < 0) {
->> >>>> +                   close(sock);
->> >>>> +                   return 0;
->> >>>> +           }
->> >>>> +           break;
->> >>>> +   default:
->> >>>> +           errno = EAFNOSUPPORT;
->> >>>> +           return 0;
->> >>>> +   }
->> >>>> +
->> >>>> +   if (connect(sock, sap, salen) < 0) {
->> >>>> +           close(sock);
->> >>>> +           return 0;
->> >>>> +   }
->> >>>> +
->> >>>> +   return !getsockname(sock, buf, buflen);
->> >>>> +}
->> >>>> +
->> >>>> +/*
->> >>>> + * Try to generate an address that prevents the server from calling
->> >>>> us.
->> >>>> + *
->> >>>> + * Returns 1 and fills in @buf if successful; otherwise, zero.
->> >>>> + */
->> >>>> +static int nfs_ca_gai(const struct sockaddr *sap, const socklen_t
->> >>>> salen,
->> >>>> +                 struct sockaddr *buf, socklen_t *buflen)
->> >>>> +{
->> >>>> +   struct addrinfo *gai_results;
->> >>>> +   struct addrinfo gai_hint = {
->> >>>> +           .ai_family      = sap->sa_family,
->> >>>> +#ifdef GENERATE_LOOPBACK_ADDRESS
->> >>>> +           .ai_flags       = 0,            /* loopback */
->> >>>> +#else
->> >>>> +           .ai_flags       = AI_PASSIVE,   /* ANYADDR */
->> >>>> +#endif
->> >>>> +   };
->> >>>> +
->> >>>> +   if (getaddrinfo(NULL, "", &gai_hint, &gai_results))
->> >>>> +           return 0;
->> >>>> +
->> >>>> +   *buflen = gai_results->ai_addrlen;
->> >>>> +   memcpy(buf, gai_results->ai_addr, *buflen);
->> >>>> +
->> >>>> +   freeaddrinfo(gai_results);
->> >>>> +
->> >>>> +   return 1;
->> >>>> +}
->> >>>> +
->> >>>> +/**
->> >>>> + * nfs_callback_address - acquire our local network address
->> >>>> + * @sap: pointer to address of remote
->> >>>> + * @sap_len: length of address
->> >>>> + * @buf: pointer to buffer to be filled in with local network
->> >>>> address
->> >>>> + * @buflen: IN: length of buffer to fill in; OUT: length of filled-
->> >>>> in address
->> >>>> + *
->> >>>> + * Discover a network address that an NFSv4 server can use to call
->> >>>> us back.
->> >>>> + * On multi-homed clients, this address depends on which NIC we use
->> >>>> to
->> >>>> + * route requests to the server.
->> >>>> + *
->> >>>> + * Returns 1 and fills in @buf if an unambiguous local address is
->> >>>> + * available; returns 1 and fills in an appropriate ANYADDR address
->> >>>> + * if a local address isn't available; otherwise, returns zero.
->> >>>> + */
->> >>>> +int nfs_callback_address(const struct sockaddr *sap, const
->> >>>> socklen_t salen,
->> >>>> +                    struct sockaddr *buf, socklen_t *buflen)
->> >>>> +{
->> >>>> +   struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)buf;
->> >>>> +
->> >>>> +   if (nfs_ca_sockname(sap, salen, buf, buflen) == 0)
->> >>>> +           if (nfs_ca_gai(sap, salen, buf, buflen) == 0)
->> >>>> +                   goto out_failed;
->> >>>> +
->> >>>> +   /*
->> >>>> +    * The server can't use an interface ID that was generated
->> >>>> +    * here on the client, so always clear sin6_scope_id.
->> >>>> +    */
->> >>>> +   if (sin6->sin6_family == AF_INET6)
->> >>>> +           sin6->sin6_scope_id = 0;
->> >>>> +
->> >>>> +   return 1;
->> >>>> +
->> >>>> +out_failed:
->> >>>> +   *buflen = 0;
->> >>>> +   if (verbose)
->> >>>> +           nfs_error(_("%s: failed to construct callback address"));
->> >>>> +   return 0;
->> >>>> +
->> >>>> +}
->> >>>> diff --git a/utils/mount/network.h b/utils/mount/network.h
->> >>>> index 8da7e20..2f4ff3a 100644
->> >>>> --- a/utils/mount/network.h
->> >>>> +++ b/utils/mount/network.h
->> >>>> @@ -58,6 +58,8 @@ int nfs_string_to_sockaddr(const char *, const
->> >>>> size_t,
->> >>>> int nfs_present_sockaddr(const struct sockaddr *,
->> >>>>                      const socklen_t, char *, const size_t);
->> >>>> int get_client_address(struct sockaddr_in *, struct sockaddr_in *);
->> >>>> +int nfs_callback_address(const struct sockaddr *, const socklen_t,
->> >>>> +           struct sockaddr *, socklen_t *);
->> >>>> int nfs_call_umount(clnt_addr_t *, dirpath *);
->> >>>> int clnt_ping(struct sockaddr_in *, const unsigned long,
->> >>>>             const unsigned long, const unsigned int,
->> >>>>
->>
->>
->>
->> --
->> Chuck Lever
+>     ((long)b - (long)a) <= 0) && ((long)a - (long)c) <= 0
 >
+> Which is _not_ the same as testing for a>=b && a<=c in the case of a
+> sign wrap. Can you show me a case where we might have a problem?
+>
+> The only case I can think of is if
+>
+>     ((long) c - (long) b) < 0
+>
+> (IOW: if the range itself is too large to fit into a signed long). I
+> can't imagine that we will ever find ourselves in that situation.
+>
+>
+>   
+>> The change, which makes attrtimeo=0 work for free, is to figure out
+>> that if the attrtimeo is N, then the attribute cache is valid from
+>> time, T, to T + N - 1, not T + N.  Thus, the current attribute
+>> cache implementation is off by one because the attribute cache
+>> should expire at time, T + N.  The time_in_range() macro was handy
+>> and looked right, but wasn't quite right for the desired semantics.
+>>
+>> Adding tests to check to see if b and c are equal is tuning for
+>> the wrong case, I think.  I believe that the majority of file
+>> systems are not mounted with "noac" or "actimeo=0", so the extra
+>> test would just be overhead for the common case.
+>>     
+>
+> I agree with this.
+>
+>   
 
+I think that the case that I was looking at is the case that you
+described as the difference between b and c being too large to
+fit into a signed long as a positive value.
 
+I would agree, that it is probably not worth addressing.  I
+suppose that the real solution would be to convert the time
+basis to be something which is not subject to wrapping, but the
+obvious candidate, the current time, seems a little expensive
+to be constantly retrieving.
 
--- 
-Edward R. Murrow told his generation of journalists no one can
-eliminate their prejudices, just recognize them. Here is my bias:
-extremes of wealth and poverty cannot be reconciled with a truly just
-society.
--- Bill Moyers
+Given that we seem to "own" time_in_range(), how about the
+attached patch which just modifies time_in_range() to calculate
+[b,c) instead of [b,c], removes the special case for attrtimeo==0
+in nfs_attribute_timeout() and adds a comment that Chuck requested
+concerning the need to ensure that zero timeout values continue
+to work?
+
+    Thanx...
+
+       ps
+
+--------------070701090601060004080306
+Content-Type: text/plain;
+ name="attrtimeo.devel.2"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline;
+ filename="attrtimeo.devel.2"
+
+--- linux-2.6.25.i686/fs/nfs/inode.c.org
++++ linux-2.6.25.i686/fs/nfs/inode.c
+@@ -706,13 +706,6 @@ int nfs_attribute_timeout(struct inode *
+ 
+ 	if (nfs_have_delegation(inode, FMODE_READ))
+ 		return 0;
+-	/*
+-	 * Special case: if the attribute timeout is set to 0, then always
+-	 * 		 treat the cache as having expired (unless holding
+-	 * 		 a delegation).
+-	 */
+-	if (nfsi->attrtimeo == 0)
+-		return 1;
+ 	return !time_in_range(jiffies, nfsi->read_cache_jiffies, nfsi->read_cache_jiffies + nfsi->attrtimeo);
+ }
+ 
+--- linux-2.6.25.i686/include/linux/nfs_fs.h.org
++++ linux-2.6.25.i686/include/linux/nfs_fs.h
+@@ -121,7 +121,10 @@ struct nfs_inode {
+ 	 *
+ 	 * We need to revalidate the cached attrs for this inode if
+ 	 *
+-	 *	jiffies - read_cache_jiffies > attrtimeo
++	 *	jiffies - read_cache_jiffies >= attrtimeo
++	 *
++	 * Please note the comparison is greater than or equal
++	 * so that zero timeout values can be specified.
+ 	 */
+ 	unsigned long		read_cache_jiffies;
+ 	unsigned long		attrtimeo;
+--- linux-2.6.25.i686/include/linux/jiffies.h.org
++++ linux-2.6.25.i686/include/linux/jiffies.h
+@@ -115,9 +115,12 @@ static inline u64 get_jiffies_64(void)
+ 	 ((long)(a) - (long)(b) >= 0))
+ #define time_before_eq(a,b)	time_after_eq(b,a)
+ 
++/*
++ * Calculate whether a in the range of [b, c).
++ */
+ #define time_in_range(a,b,c) \
+ 	(time_after_eq(a,b) && \
+-	 time_before_eq(a,c))
++	 time_before(a,c))
+ 
+ /* Same as above, but does so with platform independent 64bit types.
+  * These must be used when utilizing jiffies_64 (i.e. return value of
+
+--------------070701090601060004080306--
