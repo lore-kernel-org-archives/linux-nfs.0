@@ -1,82 +1,199 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 00/14] Support for mounting NFSv4 servers over IPv6
-Date: Fri, 11 Jul 2008 16:34:12 -0400
-Message-ID: <20080711203322.478.52095.stgit@tarkus.1015granger.net>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: linux-nfs@vger.kernel.org
-To: steved@redhat.com
+From: Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH] lockd: eliminate duplicate calls to nlmsvc_lookup_host in nlmsvc_lock and nlmsvc_testlock
+Date: Sat, 12 Jul 2008 09:17:10 -0400
+Message-ID: <1215868630-28201-1-git-send-email-jlayton@redhat.com>
+Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
+To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:40033 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751226AbYGKUiR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Jul 2008 16:38:17 -0400
+Received: from mx1.redhat.com ([66.187.233.31]:48735 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752546AbYGLNRe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 12 Jul 2008 09:17:34 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Steve-
+Both nlmsvc_lock and nlmsvc_testlock call nlmsvc_lookup_host to find a
+nlm_host struct. All the callers of these functions, however, call
+nlmsvc_retrieve_args or nlm4svc_retrieve_args which also return a
+nlm_host struct.
 
-Here is the latest version of the patches that add support to the text-
-based mount.nfs command for mounting NFSv4 servers over IPv6.  This set
-replaces the set I sent a couple of days ago.
+Change nlmsvc_lock and nlmsvc_testlock to take a host arg instead of
+calling nlmsvc_lookup_host themselves and change the callers to pass
+a pointer to the nlm_host they've already found.
 
-It was suggested that these be included in the next release of
-nfs-utils, 1.1.3.  Kernel support for these features (such as handling raw
-IPv6 NFS server addresses properly when mounting) is planned for 2.6.27, so
-inclusion of these patches would allow wider testing during .27's rc period.
+Also, get rid of some unneeded nlm_host NULL checks.
 
-Mounting NFSv2/v3 servers over IPv6 is more complex.  It requires support
-for a scalable rpcbind/portmap client built into nfs-utils, thus it is not
-included in the present patch series.  Anyone interested in looking at my
-current prototype for this can check out:
+I think I've got the reference counting right with this patch, but
+I wouldn't mind someone sanity checking it.
 
-  http://git.linux-nfs.org/?p=cel/nfs-utils.git;a=summary
-
-It includes all the patches in this series and the patches I posted last
-week for nfs-utils 1.1.3, client-side support for NFSv2/v3 mounting and
-unmounting over IPv6, a prototype IPv6-enabled sm-notify command, and
-updates to nfs(5) describing IPv6 support for the NFS client.
-
-For what it's worth, I'll be on holiday next week, but I can field any
-questions or comments before this Saturday, or when I return.
-
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
+ fs/lockd/svc4proc.c         |    7 +++----
+ fs/lockd/svclock.c          |   26 +++++++-------------------
+ fs/lockd/svcproc.c          |    7 +++----
+ include/linux/lockd/lockd.h |    6 ++++--
+ 4 files changed, 17 insertions(+), 29 deletions(-)
 
-Chuck Lever (14):
-      mount command: Remove RPC headers from network.h
-      text-based mount command: remove unnecessary headers from stropts.c
-      text-based mount options: rename functions in stropts.c
-      text-based mount command: Remove unused IPv4-only functions
-      text-based mount command: Support raw IPv6 address hostnames
-      text-based mount command: Add IPv6 support to set_mandatory_options
-      text-based mount command: "mounthost=" option support for IPv6 addresses
-      text-based mount command: "clientaddr=" option support for IPv6 addresses
-      text-based mount command: "addr=" option support for IPv6 addresses
-      text-based mount command: Add helper to construct network addresses
-      text-based mount command:  get_client_address support for IPv6
-      mount command: Add functions to manage addresses in string form
-      text-based mount command: Add headers needed for IPv6 support
-      nfs-utils: Introduce new ./configure option: "--enable-ipv6"
-
-
- configure.ac            |   29 ++++++
- utils/mount/Makefile.am |    6 +
- utils/mount/error.c     |    2 
- utils/mount/mount.c     |    1 
- utils/mount/network.c   |  237 +++++++++++++++++++++++++++++++++++++++++------
- utils/mount/network.h   |   17 +--
- utils/mount/nfs4mount.c |    2 
- utils/mount/nfsmount.c  |    7 +
- utils/mount/nfsumount.c |   35 +++----
- utils/mount/parse_dev.c |  230 ++++++++++++++++++++++++++++++++++++++++++++++
- utils/mount/parse_dev.h |   28 ++++++
- utils/mount/stropts.c   |  229 ++++++++++++++++++---------------------------
- 12 files changed, 617 insertions(+), 206 deletions(-)
- create mode 100644 utils/mount/parse_dev.c
- create mode 100644 utils/mount/parse_dev.h
-
+diff --git a/fs/lockd/svc4proc.c b/fs/lockd/svc4proc.c
+index 2e27176..3994446 100644
+--- a/fs/lockd/svc4proc.c
++++ b/fs/lockd/svc4proc.c
+@@ -58,8 +58,7 @@ nlm4svc_retrieve_args(struct svc_rqst *rqstp, struct nlm_args *argp,
+ 	return 0;
+ 
+ no_locks:
+-	if (host)
+-		nlm_release_host(host);
++	nlm_release_host(host);
+  	if (error)
+ 		return error;	
+ 	return nlm_lck_denied_nolocks;
+@@ -100,7 +99,7 @@ nlm4svc_proc_test(struct svc_rqst *rqstp, struct nlm_args *argp,
+ 		return resp->status == nlm_drop_reply ? rpc_drop_reply :rpc_success;
+ 
+ 	/* Now check for conflicting locks */
+-	resp->status = nlmsvc_testlock(rqstp, file, &argp->lock, &resp->lock, &resp->cookie);
++	resp->status = nlmsvc_testlock(rqstp, file, host, &argp->lock, &resp->lock, &resp->cookie);
+ 	if (resp->status == nlm_drop_reply)
+ 		rc = rpc_drop_reply;
+ 	else
+@@ -146,7 +145,7 @@ nlm4svc_proc_lock(struct svc_rqst *rqstp, struct nlm_args *argp,
+ #endif
+ 
+ 	/* Now try to lock the file */
+-	resp->status = nlmsvc_lock(rqstp, file, &argp->lock,
++	resp->status = nlmsvc_lock(rqstp, file, host, &argp->lock,
+ 					argp->block, &argp->cookie);
+ 	if (resp->status == nlm_drop_reply)
+ 		rc = rpc_drop_reply;
+diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
+index 56a08ab..6680715 100644
+--- a/fs/lockd/svclock.c
++++ b/fs/lockd/svclock.c
+@@ -358,10 +358,10 @@ nlmsvc_defer_lock_rqst(struct svc_rqst *rqstp, struct nlm_block *block)
+  */
+ __be32
+ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file *file,
+-			struct nlm_lock *lock, int wait, struct nlm_cookie *cookie)
++	    struct nlm_host *host, struct nlm_lock *lock, int wait,
++	    struct nlm_cookie *cookie)
+ {
+ 	struct nlm_block	*block = NULL;
+-	struct nlm_host		*host;
+ 	int			error;
+ 	__be32			ret;
+ 
+@@ -373,11 +373,6 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file *file,
+ 				(long long)lock->fl.fl_end,
+ 				wait);
+ 
+-	/* Create host handle for callback */
+-	host = nlmsvc_lookup_host(rqstp, lock->caller, lock->len);
+-	if (host == NULL)
+-		return nlm_lck_denied_nolocks;
+-
+ 	/* Lock file against concurrent access */
+ 	mutex_lock(&file->f_mutex);
+ 	/* Get existing block (in case client is busy-waiting)
+@@ -386,7 +381,7 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file *file,
+ 	block = nlmsvc_lookup_block(file, lock);
+ 	if (block == NULL) {
+ 		block = nlmsvc_create_block(rqstp, nlm_get_host(host), file,
+-				lock, cookie);
++					    lock, cookie);
+ 		ret = nlm_lck_denied_nolocks;
+ 		if (block == NULL)
+ 			goto out;
+@@ -450,7 +445,6 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file *file,
+ out:
+ 	mutex_unlock(&file->f_mutex);
+ 	nlmsvc_release_block(block);
+-	nlm_release_host(host);
+ 	dprintk("lockd: nlmsvc_lock returned %u\n", ret);
+ 	return ret;
+ }
+@@ -460,8 +454,8 @@ out:
+  */
+ __be32
+ nlmsvc_testlock(struct svc_rqst *rqstp, struct nlm_file *file,
+-		struct nlm_lock *lock, struct nlm_lock *conflock,
+-		struct nlm_cookie *cookie)
++		struct nlm_host *host, struct nlm_lock *lock,
++		struct nlm_lock *conflock, struct nlm_cookie *cookie)
+ {
+ 	struct nlm_block 	*block = NULL;
+ 	int			error;
+@@ -479,17 +473,11 @@ nlmsvc_testlock(struct svc_rqst *rqstp, struct nlm_file *file,
+ 
+ 	if (block == NULL) {
+ 		struct file_lock *conf = kzalloc(sizeof(*conf), GFP_KERNEL);
+-		struct nlm_host	*host;
+ 
+ 		if (conf == NULL)
+ 			return nlm_granted;
+-		/* Create host handle for callback */
+-		host = nlmsvc_lookup_host(rqstp, lock->caller, lock->len);
+-		if (host == NULL) {
+-			kfree(conf);
+-			return nlm_lck_denied_nolocks;
+-		}
+-		block = nlmsvc_create_block(rqstp, host, file, lock, cookie);
++		block = nlmsvc_create_block(rqstp, nlm_get_host(host), file,
++					    lock, cookie);
+ 		if (block == NULL) {
+ 			kfree(conf);
+ 			return nlm_granted;
+diff --git a/fs/lockd/svcproc.c b/fs/lockd/svcproc.c
+index ce6952b..76019d2 100644
+--- a/fs/lockd/svcproc.c
++++ b/fs/lockd/svcproc.c
+@@ -87,8 +87,7 @@ nlmsvc_retrieve_args(struct svc_rqst *rqstp, struct nlm_args *argp,
+ 	return 0;
+ 
+ no_locks:
+-	if (host)
+-		nlm_release_host(host);
++	nlm_release_host(host);
+ 	if (error)
+ 		return error;
+ 	return nlm_lck_denied_nolocks;
+@@ -129,7 +128,7 @@ nlmsvc_proc_test(struct svc_rqst *rqstp, struct nlm_args *argp,
+ 		return resp->status == nlm_drop_reply ? rpc_drop_reply :rpc_success;
+ 
+ 	/* Now check for conflicting locks */
+-	resp->status = cast_status(nlmsvc_testlock(rqstp, file, &argp->lock, &resp->lock, &resp->cookie));
++	resp->status = cast_status(nlmsvc_testlock(rqstp, file, host, &argp->lock, &resp->lock, &resp->cookie));
+ 	if (resp->status == nlm_drop_reply)
+ 		rc = rpc_drop_reply;
+ 	else
+@@ -176,7 +175,7 @@ nlmsvc_proc_lock(struct svc_rqst *rqstp, struct nlm_args *argp,
+ #endif
+ 
+ 	/* Now try to lock the file */
+-	resp->status = cast_status(nlmsvc_lock(rqstp, file, &argp->lock,
++	resp->status = cast_status(nlmsvc_lock(rqstp, file, host, &argp->lock,
+ 					       argp->block, &argp->cookie));
+ 	if (resp->status == nlm_drop_reply)
+ 		rc = rpc_drop_reply;
+diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
+index 102d928..f81f9dd 100644
+--- a/include/linux/lockd/lockd.h
++++ b/include/linux/lockd/lockd.h
+@@ -200,10 +200,12 @@ typedef int	  (*nlm_host_match_fn_t)(void *cur, struct nlm_host *ref);
+  * Server-side lock handling
+  */
+ __be32		  nlmsvc_lock(struct svc_rqst *, struct nlm_file *,
+-					struct nlm_lock *, int, struct nlm_cookie *);
++			      struct nlm_host *, struct nlm_lock *, int,
++			      struct nlm_cookie *);
+ __be32		  nlmsvc_unlock(struct nlm_file *, struct nlm_lock *);
+ __be32		  nlmsvc_testlock(struct svc_rqst *, struct nlm_file *,
+-			struct nlm_lock *, struct nlm_lock *, struct nlm_cookie *);
++			struct nlm_host *, struct nlm_lock *,
++			struct nlm_lock *, struct nlm_cookie *);
+ __be32		  nlmsvc_cancel_blocked(struct nlm_file *, struct nlm_lock *);
+ unsigned long	  nlmsvc_retry_blocked(void);
+ void		  nlmsvc_traverse_blocks(struct nlm_host *, struct nlm_file *,
 -- 
-Signature
+1.5.5.1
 
--- 
-corporate:    <chuck dot lever at oracle dot com>
