@@ -1,69 +1,86 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 0/7] Remaining rpcbind patches for 2.6.27
-Date: Mon, 14 Jul 2008 15:56:29 -0400
-Message-ID: <20080714195629.GA27995@fieldses.org>
-References: <20080630223646.24534.74654.stgit@ellison.1015granger.net> <20080703204543.GI30918@fieldses.org> <1215454820.19512.25.camel@localhost> <F84C7866-E340-49BF-B542-308E10AC9518@oracle.com> <1215456693.19512.36.camel@localhost> <76bd70e30807071244v4db1c366uc7599d2dd806bf1b@mail.gmail.com> <1215463877.19512.40.camel@localhost> <C5841A2A-5178-405F-A5A5-1E8D1B77A419@oracle.com> <20080711184054.GA19425@fieldses.org> <76bd70e30807111211m567e9f8cv38a975bbc9df5758@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-	Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: chucklever@gmail.com
+From: "J. Bruce Fields" <bfields@citi.umich.edu>
+Subject: [PATCH 3/5] SUNRPC: None of rpcb_create's callers wants a privileged source port
+Date: Mon, 14 Jul 2008 16:03:28 -0400
+Message-ID: <1216065811-28559-3-git-send-email-bfields@citi.umich.edu>
+References: <76bd70e30807111211m567e9f8cv38a975bbc9df5758@mail.gmail.com>
+ <1216065811-28559-1-git-send-email-bfields@citi.umich.edu>
+ <1216065811-28559-2-git-send-email-bfields@citi.umich.edu>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+	chucklever@gmail.com, Chuck Lever <chuck.lever@oracle.com>,
+	"J. Bruce Fields" <bfields@citi.umich.edu>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:47122 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:43907 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756192AbYGNT4c (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 14 Jul 2008 15:56:32 -0400
-In-Reply-To: <76bd70e30807111211m567e9f8cv38a975bbc9df5758-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+	id S1756259AbYGNUDd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 14 Jul 2008 16:03:33 -0400
+In-Reply-To: <1216065811-28559-2-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jul 11, 2008 at 03:11:29PM -0400, Chuck Lever wrote:
-> On Fri, Jul 11, 2008 at 2:40 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > On Thu, Jul 10, 2008 at 01:27:47PM -0400, Chuck Lever wrote:
-> >>
-> >> On Jul 7, 2008, at 4:51 PM, Trond Myklebust wrote:
-> >>
-> >>> On Mon, 2008-07-07 at 15:44 -0400, Chuck Lever wrote:
-> >>>
-> >>>> If you would like connected UDP, I won't object to you implementing
-> >>>> it.  However, I never tested whether a connected UDP socket will give
-> >>>> the desired semantics without extra code in the UDP transport (for
-> >>>> example, an ->sk_error callback).  I don't think it's worth the
-> >>>> hassle
-> >>>> if we have to add code to UDP that only this tiny use case would
-> >>>> need.
-> >>>>
-> >>>
-> >>> OK. I'll set these patches aside until I have time to look into adding
-> >>> connected UDP support.
-> >>
-> >> That's not completely necessary... the one-shot + TCP changes just make
-> >> it nicer when the local rpcbind is not listening.  Without these, the
-> >> cases where the rpcbind daemon isn't running, or doesn't support rpcbind
-> >> v3/v4 and the kernel was built with CONFIG_SUNRPC_REGISTER_V4, will cause
-> >> some delays before failing, but otherwise shouldn't be a problem.
-> >>
-> >> I think you can drop the patch to change rpcb registration to go over
-> >> TCP for now unless you already have a CUDP implementation you are happy
-> >> with.
-> >
-> > So actually in your original series of 7 I think that'd mean dropping
-> > numbers 5 and 6 and keeping the rest?
-> 
-> So, 5/7 adds "one shot" support to the RPC client.  I think that might
-> be interesting for other kernel services, like making rpcbind queries
-> over TCP, or NFSv4 callback.  I'd like to advocate for keeping that
-> one so others can build on it (with whatever name for the create flag
-> we can agree on), but it's not really necessary for subsequent
-> patches.
-> 
-> 6/7 changes the rpcb_register logic to use "one shot" + TCP -- that's
-> the one that is controversial and can be dropped.
+From: Chuck Lever <chuck.lever@oracle.com>
 
-May as well at least apply the other 5?  Trond is carrying other
-net/sunrpc/rpcb_clnt.c patches, so they probably need to go in his tree.
+Clean up: Callers that required a privileged source port now use
+rpcb_create_local(), so we can remove the @privileged argument from
+rpcb_create().
 
-I guess I'll go ahead and send along versions based on latest
-trond/devel.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+---
+ net/sunrpc/rpcb_clnt.c |   12 +++++-------
+ 1 files changed, 5 insertions(+), 7 deletions(-)
 
---b.
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index 35c1ded..691bd21 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -140,8 +140,7 @@ static struct rpc_clnt *rpcb_create_local(struct sockaddr *addr,
+ }
+ 
+ static struct rpc_clnt *rpcb_create(char *hostname, struct sockaddr *srvaddr,
+-				    size_t salen, int proto, u32 version,
+-				    int privileged)
++				    size_t salen, int proto, u32 version)
+ {
+ 	struct rpc_create_args args = {
+ 		.protocol	= proto,
+@@ -151,7 +150,8 @@ static struct rpc_clnt *rpcb_create(char *hostname, struct sockaddr *srvaddr,
+ 		.program	= &rpcb_program,
+ 		.version	= version,
+ 		.authflavor	= RPC_AUTH_UNIX,
+-		.flags		= RPC_CLNT_CREATE_NOPING,
++		.flags		= (RPC_CLNT_CREATE_NOPING |
++					RPC_CLNT_CREATE_NONPRIVPORT),
+ 	};
+ 
+ 	switch (srvaddr->sa_family) {
+@@ -165,8 +165,6 @@ static struct rpc_clnt *rpcb_create(char *hostname, struct sockaddr *srvaddr,
+ 		return NULL;
+ 	}
+ 
+-	if (!privileged)
+-		args.flags |= RPC_CLNT_CREATE_NONPRIVPORT;
+ 	return rpc_create(&args);
+ }
+ 
+@@ -255,7 +253,7 @@ int rpcb_getport_sync(struct sockaddr_in *sin, u32 prog, u32 vers, int prot)
+ 		__func__, NIPQUAD(sin->sin_addr.s_addr), prog, vers, prot);
+ 
+ 	rpcb_clnt = rpcb_create(NULL, (struct sockaddr *)sin,
+-				sizeof(*sin), prot, RPCBVERS_2, 0);
++				sizeof(*sin), prot, RPCBVERS_2);
+ 	if (IS_ERR(rpcb_clnt))
+ 		return PTR_ERR(rpcb_clnt);
+ 
+@@ -365,7 +363,7 @@ void rpcb_getport_async(struct rpc_task *task)
+ 		task->tk_pid, __func__, bind_version);
+ 
+ 	rpcb_clnt = rpcb_create(clnt->cl_server, sap, salen, xprt->prot,
+-				bind_version, 0);
++				bind_version);
+ 	if (IS_ERR(rpcb_clnt)) {
+ 		status = PTR_ERR(rpcb_clnt);
+ 		dprintk("RPC: %5u %s: rpcb_create failed, error %ld\n",
+-- 
+1.5.5.rc1
+
