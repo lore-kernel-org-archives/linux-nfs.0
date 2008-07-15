@@ -1,97 +1,71 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: Performance Diagnosis
-Date: Tue, 15 Jul 2008 15:21:58 -0400
-Message-ID: <487CF8D6.2090908@redhat.com>
-References: <e80abd30807150834m47a1b86cle39885150f1d5bfd@mail.gmail.com>	 <487CC928.8070908@redhat.com>	 <76bd70e30807150923r31027edxb0394a220bbe879b@mail.gmail.com>	 <487CE202.2000809@redhat.com>	 <76bd70e30807151117g520f22cj1dfe26b971987d38@mail.gmail.com> <1216147879.7981.44.camel@localhost>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH 0/7] Patches for nfs-utils-1.1.3
+Date: Tue, 15 Jul 2008 15:30:56 -0400
+Message-ID: <487CFAF0.9030403@RedHat.com>
+References: <20080630170420.9905.90111.stgit@ellison.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: chucklever@gmail.com, Andrew Bell <andrew.bell.ia@gmail.com>,
-	linux-nfs@vger.kernel.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: text/plain; charset=utf-8
+Cc: linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:47460 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([66.187.233.31]:60349 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760773AbYGOTWF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 15 Jul 2008 15:22:05 -0400
-In-Reply-To: <1216147879.7981.44.camel@localhost>
+	id S1756308AbYGOTbh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 Jul 2008 15:31:37 -0400
+In-Reply-To: <20080630170420.9905.90111.stgit-ewv44WTpT0t9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Trond Myklebust wrote:
-> On Tue, 2008-07-15 at 14:17 -0400, Chuck Lever wrote:
->   
->> On Tue, Jul 15, 2008 at 1:44 PM, Peter Staubach <staubach@redhat.com> wrote:
->>     
->>> Chuck Lever wrote:
->>>       
->>>> On Tue, Jul 15, 2008 at 11:58 AM, Peter Staubach <staubach@redhat.com>
->>>> wrote:
->>>>
->>>>         
->>>>> If it is the notion described above, sometimes called head
->>>>> of line blocking, then we could think about ways to duplex
->>>>> operations over multiple TCP connections, perhaps with one
->>>>> connection for small, low latency operations, and another
->>>>> connection for larger, higher latency operations.
->>>>>
->>>>>           
->>>> I've dreamed about that for years.  I don't think it would be too
->>>> difficult, but one thing that has held it back is the shortage of
->>>> ephemeral ports on the client may reduce the number of concurrent
->>>> mount points we can support.
->>>>
->>>> One way to avoid the port issue is to construct an SCTP transport for
->>>> NFS.  SCTP allows multiple streams on the same connection, effectively
->>>> eliminating head of line blocking.
->>>>         
->>> I like the idea of combining this work with implementing a proper
->>> connection manager so that we don't need a connection per mount.
->>> We really only need one connection per client and server, no matter
->>> how many individual mounts there might be from that single server.
->>> (Or two connections, if we want to do something like this...)
->>>
->>> We could also manage the connection space and thus, never run into
->>> the shortage of ports ever again.  When the port space is full or
->>> we've run into some other artificial limit, then we simply close
->>> down some other connection to make space.
->>>       
->> I think we should do this for text-based mounts; however this would
->> mean the connection management would happen in the kernel, which (only
->> slightly) complicates things.
->>
->> I was thinking about this a little last week when Trond mentioned
->> implementing a connected UDP socket transport...
->>
->> It would be nice if all the kernel RPC services that needed to send a
->> single RPC request (like mount, rpcbind, and so on) could share a
->> small managed pool of sockets (a pool of TCP sockets, or a pool of
->> connected UDP sockets).  Connected sockets have the ostensible
->> advantage that they can quickly detect the absence of a remote
->> listener.  But such a pool would be a good idea because multiple mount
->> requests to the same server could all flow over the same set of
->> connections.
->>
->> But we might be able to get away with something nearly as efficient if
->> the RPC client would always invoke a connect(AF_UNSPEC) before
->> destroying the socket.  Wouldn't that free the ephemeral port
->> immediately?  What are the risks of trying something like this?
->>     
->
->
-> Why is all the talk here only about RPC level solutions?
->
-> Newer kernels already have a good deal of extra throttling of writes at
-> the NFS superblock level, and there is even a sysctl to control the
-> amount of outstanding writes before the VM congestion control sets in.
-> Please see /proc/sys/fs/nfs/nfs_congestion_kb
 
-The throttling of writes definitely seems like a NFS level issue,
-so that's a good thing.  (RHEL-5 might be a tad far enough behind
-to not be able to take advantage of all of these modern
-things...  :-))
 
-The connection manager would seem to be a RPC level thing, although
-I haven't thought through the ramifications of the NFSv4.1 stuff
-and how it might impact a connection manager sufficiently.
+Chuck Lever wrote:
+> Hi Steve-
+> 
+> Please consider these patches to be part of nfs-utils-1.1.3.  They include a
+> number of clean-ups, as well as support for the new "sloppy" option which
+> should help automounter.  Kernel support for "sloppy" is in Trond's devel
+> branch now, and should be upstream in 2.6.27.
+> 
+> The getaddrinfo(3) changes enable the mount.nfs and umount.nfs commands for
+> IPv6 in the future, but should be harmless to include now.  I would like to
+> know if there are any problems with this before we push forward with IPv6, so
+> please consider this for 1.1.3.
+> 
+> ---
+> 
+> Chuck Lever (7):
+>       text-based mount command: pass "sloppy" when -s is set
+>       mount command: move function to get kernel version to separate header
+>       mount: Introduce IPv6-aware DNS resolver API function
+>       nfs-utils: Add dependency for getaddrinfo(3) in configure.ac
+>       mount command: don't include headers multiple times
+>       text-based mount command: Make "internal error" message more explicit
+>       Python scripts:  Report bandwidth in "kB/s" instead of "Kb/s"
+> 
+> 
+>  configure.ac                   |    3 ++
+>  tools/mountstats/mountstats.py |    8 ++--
+>  tools/nfs-iostat/nfs-iostat.py |    2 +
+>  utils/mount/Makefile.am        |    2 +
+>  utils/mount/error.c            |    7 +++-
+>  utils/mount/error.h            |    5 +++
+>  utils/mount/fstab.h            |    7 ++--
+>  utils/mount/mount.c            |   18 +--------
+>  utils/mount/mount_constants.h  |    6 ++-
+>  utils/mount/network.c          |   78 ++++++++++++++++++++++++++++++----------
+>  utils/mount/network.h          |    7 ++++
+>  utils/mount/nfs_mount.h        |    6 ++-
+>  utils/mount/nfsmount.c         |    5 +--
+>  utils/mount/parse_opt.h        |    5 +++
+>  utils/mount/stropts.c          |   22 ++++++++++-
+>  utils/mount/stropts.h          |    5 +++
+>  utils/mount/token.h            |    5 +++
+>  utils/mount/version.h          |   51 ++++++++++++++++++++++++++
+>  18 files changed, 183 insertions(+), 59 deletions(-)
+>  create mode 100644 utils/mount/version.h
+> 
 
-       ps
+All seven patches are committed...
+
+steved.
+
