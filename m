@@ -1,88 +1,89 @@
-From: "Chuck Lever" <chuck.lever@oracle.com>
-Subject: Fwd: [PATCH 0/7] Remaining rpcbind patches for 2.6.27
-Date: Mon, 14 Jul 2008 17:31:56 -0400
-Message-ID: <76bd70e30807141431p772774cr836b4f7a922e79cf@mail.gmail.com>
-References: <20080630223646.24534.74654.stgit@ellison.1015granger.net>
-	 <F84C7866-E340-49BF-B542-308E10AC9518@oracle.com>
-	 <1215456693.19512.36.camel@localhost>
-	 <76bd70e30807071244v4db1c366uc7599d2dd806bf1b@mail.gmail.com>
-	 <1215463877.19512.40.camel@localhost>
-	 <C5841A2A-5178-405F-A5A5-1E8D1B77A419@oracle.com>
-	 <20080711184054.GA19425@fieldses.org>
-	 <76bd70e30807111211m567e9f8cv38a975bbc9df5758@mail.gmail.com>
-	 <20080714195629.GA27995@fieldses.org>
-	 <76bd70e30807141430o783ef431pb61eae97b42e00b4@mail.gmail.com>
-Reply-To: chucklever@gmail.com
+From: Neil Brown <neilb@suse.de>
+Subject: [PATCH] sm-notify: perform DNS lookup in the background.
+Date: Tue, 15 Jul 2008 16:21:46 +1000
+Message-ID: <18556.16890.235207.711721@notabene.brown>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Steve Dickson <SteveD@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gv-out-0910.google.com ([216.239.58.187]:52735 "EHLO
-	gv-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756071AbYGNVcJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Jul 2008 17:32:09 -0400
-Received: by gv-out-0910.google.com with SMTP id e6so910032gvc.37
-        for <linux-nfs@vger.kernel.org>; Mon, 14 Jul 2008 14:31:57 -0700 (PDT)
-In-Reply-To: <76bd70e30807141430o783ef431pb61eae97b42e00b4-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Received: from ns2.suse.de ([195.135.220.15]:56096 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753761AbYGOGVt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 Jul 2008 02:21:49 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jul 14, 2008 at 3:56 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> On Fri, Jul 11, 2008 at 03:11:29PM -0400, Chuck Lever wrote:
->> On Fri, Jul 11, 2008 at 2:40 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
->> > On Thu, Jul 10, 2008 at 01:27:47PM -0400, Chuck Lever wrote:
->> >>
->> >> On Jul 7, 2008, at 4:51 PM, Trond Myklebust wrote:
->> >>
->> >>> On Mon, 2008-07-07 at 15:44 -0400, Chuck Lever wrote:
->> >>>
->> >>>> If you would like connected UDP, I won't object to you implementing
->> >>>> it.  However, I never tested whether a connected UDP socket will give
->> >>>> the desired semantics without extra code in the UDP transport (for
->> >>>> example, an ->sk_error callback).  I don't think it's worth the
->> >>>> hassle
->> >>>> if we have to add code to UDP that only this tiny use case would
->> >>>> need.
->> >>>>
->> >>>
->> >>> OK. I'll set these patches aside until I have time to look into adding
->> >>> connected UDP support.
->> >>
->> >> That's not completely necessary... the one-shot + TCP changes just make
->> >> it nicer when the local rpcbind is not listening.  Without these, the
->> >> cases where the rpcbind daemon isn't running, or doesn't support rpcbind
->> >> v3/v4 and the kernel was built with CONFIG_SUNRPC_REGISTER_V4, will cause
->> >> some delays before failing, but otherwise shouldn't be a problem.
->> >>
->> >> I think you can drop the patch to change rpcb registration to go over
->> >> TCP for now unless you already have a CUDP implementation you are happy
->> >> with.
->> >
->> > So actually in your original series of 7 I think that'd mean dropping
->> > numbers 5 and 6 and keeping the rest?
->>
->> So, 5/7 adds "one shot" support to the RPC client.  I think that might
->> be interesting for other kernel services, like making rpcbind queries
->> over TCP, or NFSv4 callback.  I'd like to advocate for keeping that
->> one so others can build on it (with whatever name for the create flag
->> we can agree on), but it's not really necessary for subsequent
->> patches.
->>
->> 6/7 changes the rpcb_register logic to use "one shot" + TCP -- that's
->> the one that is controversial and can be dropped.
->
-> May as well at least apply the other 5?  Trond is carrying other
-> net/sunrpc/rpcb_clnt.c patches, so they probably need to go in his tree.
->
-> I guess I'll go ahead and send along versions based on latest
-> trond/devel.
 
-Yep, it's reasonable to get these circulating to ensure they don't
-cause any unwanted side effects for standard rpcbindv2/IPv4 usage.
 
-We just need to take care these don't get too badly re-ordered when
-merging all this back together when 2.6.27 opens.
+Hi Steve,
+ if you agree with the following patch, it can be pulled from
 
---
-Chuck Lever
+  git://neil.brown.name/nfs-utils for-steved
+
+
+Thanks,
+NeilBrown
+
+
+From: Neil Brown <neilb@suse.de>
+Date: Tue, 15 Jul 2008 06:11:55 +1000
+Subject: [PATCH] sm-notify: perform DNS lookup in the background.
+
+If an NFS server has no network connectivity when it reboots,
+it will block in sm-notify waiting for DNS lookup for a potentially
+large number of hosts.  This is not helpful and just annoys the
+sysadmin.
+
+So do the DNS lookup in the backgrounded phase of sm-notify,
+before sending off the NOTIFY requests.
+
+Signed-off-by: NeilBrown <neilb@suse.de>
+---
+ utils/statd/sm-notify.c |   23 ++++++++++++++---------
+ 1 files changed, 14 insertions(+), 9 deletions(-)
+
+diff --git a/utils/statd/sm-notify.c b/utils/statd/sm-notify.c
+index bb67c37..8e00aac 100644
+--- a/utils/statd/sm-notify.c
++++ b/utils/statd/sm-notify.c
+@@ -286,6 +286,20 @@ notify(void)
+ 			hp = hosts;
+ 			hosts = hp->next;
+ 
++			if (hp->ai == NULL)
++				hp->ai = host_lookup(AF_UNSPEC, hp->name);
++			if (hp->ai == NULL) {
++				nsm_log(LOG_WARNING,
++					"%s doesn't seem to be a valid address,"
++					" skipped",
++					hp->name);
++				unlink(hp->path);
++				free(hp->name);
++				free(hp->path);
++				free(hp);
++				continue;
++			}
++
+ 			notify_host(sock, hp);
+ 
+ 			/* Set the timeout for this call, using an
+@@ -532,15 +546,6 @@ get_hosts(const char *dirname)
+ 		if (stat(path, &stb) < 0)
+ 			continue;
+ 
+-		host->ai = host_lookup(AF_UNSPEC, de->d_name);
+-		if (! host->ai) {
+-			nsm_log(LOG_WARNING,
+-				"%s doesn't seem to be a valid address, skipped",
+-				de->d_name);
+-			unlink(path);
+-			continue;
+-		}
+-
+ 		host->last_used = stb.st_mtime;
+ 		host->timeout = NSM_TIMEOUT;
+ 		host->path = strdup(path);
+-- 
+1.5.6.2
+
