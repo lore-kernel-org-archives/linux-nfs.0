@@ -1,25 +1,22 @@
-From: "Chuck Lever" <chuck.lever@oracle.com>
+From: Peter Staubach <staubach@redhat.com>
 Subject: Re: Performance Diagnosis
-Date: Tue, 15 Jul 2008 11:49:11 -0400
-Message-ID: <76bd70e30807150849j22ffd428i5e647794289a2c82@mail.gmail.com>
+Date: Tue, 15 Jul 2008 11:58:32 -0400
+Message-ID: <487CC928.8070908@redhat.com>
 References: <e80abd30807150834m47a1b86cle39885150f1d5bfd@mail.gmail.com>
-Reply-To: chucklever@gmail.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Cc: linux-nfs@vger.kernel.org
-To: "Andrew Bell" <andrew.bell.ia@gmail.com>
+To: Andrew Bell <andrew.bell.ia@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from yw-out-2324.google.com ([74.125.46.30]:27024 "EHLO
-	yw-out-2324.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752722AbYGOPtV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Jul 2008 11:49:21 -0400
-Received: by yw-out-2324.google.com with SMTP id 9so2613797ywe.1
-        for <linux-nfs@vger.kernel.org>; Tue, 15 Jul 2008 08:49:13 -0700 (PDT)
+Received: from mx1.redhat.com ([66.187.233.31]:36352 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753028AbYGOP6g (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 Jul 2008 11:58:36 -0400
 In-Reply-To: <e80abd30807150834m47a1b86cle39885150f1d5bfd-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 15, 2008 at 11:34 AM, Andrew Bell <andrew.bell.ia@gmail.com> wrote:
+Andrew Bell wrote:
 > Hi,
 >
 > I have a RHEL 5 system that exhibits less than wonderful performance
@@ -31,44 +28,59 @@ On Tue, Jul 15, 2008 at 11:34 AM, Andrew Bell <andrew.bell.ia@gmail.com> wrote:
 > A couple of questions:
 >
 > Is this a reasonable expectation?
+>
+>   
 
-Yes, but Linux NFS can't fulfill it.  :-)
+Well, yes, I think that it would be a reasonable expectation.
+I know that I would certainly like for it to be true.  :-)
 
-There is currently only one RPC transport socket between client and
-server for each mount point.  Large file copies (or similar
-operations) will queue a lot of I/O, so your small requests will take
-a while to get through the queued up writes or reads ahead of them.
+That said, this is a common situation, but not one that we've
+had/made the time to resolve yet.
 
 > Is this perhaps an I/O scheduling issue that isn't specific to NFS,
 > but shows up there because of the latency of my NFS setup?
 >
-> Is this most likely a client issue, a server issue or a combination?
+>   
 
-Well, if your server or network is slow, this kind of thing is more
-likely to happen.
+Could be.  Nothing is impossible.  That said...
+
+> Is this most likely a client issue, a server issue or a combination?
+>
+>   
+
+It could be either one, both, or the network even.
+
+It could easily just be the architecture of the NFS client
+solution, in that it is sharing a single TCP connection for
+both data operations and also metadata operations.  The
+metadata operations can get behind the larger data operations
+in the TCP stream, thus increasing their latencies.
 
 > Do you have recomendations on the best way to determine what is
 > happening?  Are there existing tools to monitor active IO/NFS
 > requests/responses and any relevant queues?
-
-Yes, I wrote some Python tools that are still undocumented (ie you
-will likely have to read the Python source to figure out what they
-do).  They were recently included in nfs-utils, but you can download
-them from:
-
-  http://oss.oracle.com/~cel/linux-2.6/2.6.25/nfs-iostat
-
-and
-
-  http://oss.oracle.com/~cel/linux-2.6/2.6.25/mountstats
-
 >
->
+>   
+
+Perhaps ensure that the local file system on the server is
+performing well and that there are no obvious hot spots or
+that the activity is causing the file system to thrash.
+
+Some file systems, such as ext3, tend to bottleneck in the
+journaling code, so that might be an area of the local file
+system to consider.
+
 > Thanks for any info/ideas before I get in too deep :)
->
-> --
-> Andrew Bell
-> andrew.bell.ia@gmail.com
 
--- 
-Chuck Lever
+We could use some idea of the activities that are occurring
+when you encounter the slowness that you are concerned about.
+
+If it is the notion described above, sometimes called head
+of line blocking, then we could think about ways to duplex
+operations over multiple TCP connections, perhaps with one
+connection for small, low latency operations, and another
+connection for larger, higher latency operations.
+
+    Thanx...
+
+       ps
