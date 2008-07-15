@@ -1,35 +1,36 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 3/4] lockd: eliminate duplicate nlmsvc_lookup_host call
-	from nlmsvc_lock
-Date: Tue, 15 Jul 2008 14:56:08 -0400
-Message-ID: <20080715185608.GE21590@fieldses.org>
-References: <20080715184554.GD21590@fieldses.org> <1216147693-23881-1-git-send-email-bfields@citi.umich.edu> <1216147693-23881-2-git-send-email-bfields@citi.umich.edu> <1216147693-23881-3-git-send-email-bfields@citi.umich.edu>
+Subject: Re: [PATCH 2/4] lockd: eliminate duplicate nlmsvc_lookup_host call
+	from nlmsvc_testlock
+Date: Tue, 15 Jul 2008 15:09:02 -0400
+Message-ID: <20080715190902.GF21590@fieldses.org>
+References: <20080715184554.GD21590@fieldses.org> <1216147693-23881-1-git-send-email-bfields@citi.umich.edu> <1216147693-23881-2-git-send-email-bfields@citi.umich.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
 To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:33085 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:56211 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752094AbYGOS4k (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 15 Jul 2008 14:56:40 -0400
-In-Reply-To: <1216147693-23881-3-git-send-email-bfields@citi.umich.edu>
+	id S1758004AbYGOTJ2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 Jul 2008 15:09:28 -0400
+In-Reply-To: <1216147693-23881-2-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 15, 2008 at 02:48:12PM -0400, J. Bruce Fields wrote:
+On Tue, Jul 15, 2008 at 02:48:11PM -0400, J. Bruce Fields wrote:
 > From: Jeff Layton <jlayton@redhat.com>
 > 
-> nlmsvc_lock calls nlmsvc_lookup_host to find a nlm_host struct. The
-> callers of this function, however, call nlmsvc_retrieve_args or
+> nlmsvc_testlock calls nlmsvc_lookup_host to find a nlm_host struct. The
+> callers of this functions, however, call nlmsvc_retrieve_args or
 > nlm4svc_retrieve_args, which also return a nlm_host struct.
 > 
-> Change nlmsvc_lock to take a host arg instead of calling
+> Change nlmsvc_testlock to take a host arg instead of calling
 > nlmsvc_lookup_host itself and change the callers to pass a pointer to
 > the nlm_host they've already found.
 > 
-> Since nlmsvc_testlock() now just uses the caller's reference, we no
-> longer need to get or release it.
+> We take a reference to host in the place where nlmsvc_testlock()
+> previous did a new lookup, so the reference counting is unchanged from
+> before.
 > 
 > Signed-off-by: Jeff Layton <jlayton@redhat.com>
 > Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
@@ -41,99 +42,98 @@ On Tue, Jul 15, 2008 at 02:48:12PM -0400, J. Bruce Fields wrote:
 >  4 files changed, 7 insertions(+), 12 deletions(-)
 > 
 > diff --git a/fs/lockd/svc4proc.c b/fs/lockd/svc4proc.c
-> index 8cfb9da..189b2ce 100644
+> index 006a832..8cfb9da 100644
 > --- a/fs/lockd/svc4proc.c
 > +++ b/fs/lockd/svc4proc.c
-> @@ -145,7 +145,7 @@ nlm4svc_proc_lock(struct svc_rqst *rqstp, struct nlm_args *argp,
->  #endif
+> @@ -99,7 +99,7 @@ nlm4svc_proc_test(struct svc_rqst *rqstp, struct nlm_args *argp,
+>  		return resp->status == nlm_drop_reply ? rpc_drop_reply :rpc_success;
 >  
->  	/* Now try to lock the file */
-> -	resp->status = nlmsvc_lock(rqstp, file, &argp->lock,
-> +	resp->status = nlmsvc_lock(rqstp, file, host, &argp->lock,
->  					argp->block, &argp->cookie);
+>  	/* Now check for conflicting locks */
+> -	resp->status = nlmsvc_testlock(rqstp, file, &argp->lock, &resp->lock, &resp->cookie);
+> +	resp->status = nlmsvc_testlock(rqstp, file, host, &argp->lock, &resp->lock, &resp->cookie);
 >  	if (resp->status == nlm_drop_reply)
 >  		rc = rpc_drop_reply;
+>  	else
 > diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-> index f40afb3..a6d3ed0 100644
+> index 81aca85..f40afb3 100644
 > --- a/fs/lockd/svclock.c
 > +++ b/fs/lockd/svclock.c
-> @@ -358,10 +358,10 @@ nlmsvc_defer_lock_rqst(struct svc_rqst *rqstp, struct nlm_block *block)
+> @@ -460,8 +460,8 @@ out:
 >   */
 >  __be32
->  nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file *file,
-> -			struct nlm_lock *lock, int wait, struct nlm_cookie *cookie)
-> +	    struct nlm_host *host, struct nlm_lock *lock, int wait,
-> +	    struct nlm_cookie *cookie)
+>  nlmsvc_testlock(struct svc_rqst *rqstp, struct nlm_file *file,
+> -		struct nlm_lock *lock, struct nlm_lock *conflock,
+> -		struct nlm_cookie *cookie)
+> +		struct nlm_host *host, struct nlm_lock *lock,
+> +		struct nlm_lock *conflock, struct nlm_cookie *cookie)
 >  {
->  	struct nlm_block	*block = NULL;
-> -	struct nlm_host		*host;
+>  	struct nlm_block 	*block = NULL;
 >  	int			error;
->  	__be32			ret;
+> @@ -479,16 +479,10 @@ nlmsvc_testlock(struct svc_rqst *rqstp, struct nlm_file *file,
 >  
-> @@ -373,11 +373,6 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file *file,
->  				(long long)lock->fl.fl_end,
->  				wait);
+>  	if (block == NULL) {
+>  		struct file_lock *conf = kzalloc(sizeof(*conf), GFP_KERNEL);
+> -		struct nlm_host	*host;
 >  
-> -	/* Create host handle for callback */
-> -	host = nlmsvc_lookup_host(rqstp, lock->caller, lock->len);
-> -	if (host == NULL)
-> -		return nlm_lck_denied_nolocks;
-> -
->  	/* Lock file against concurrent access */
->  	mutex_lock(&file->f_mutex);
->  	/* Get existing block (in case client is busy-waiting)
-> @@ -450,7 +445,6 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file *file,
->  out:
->  	mutex_unlock(&file->f_mutex);
->  	nlmsvc_release_block(block);
-> -	nlm_release_host(host);
->  	dprintk("lockd: nlmsvc_lock returned %u\n", ret);
->  	return ret;
->  }
-> @@ -483,7 +477,7 @@ nlmsvc_testlock(struct svc_rqst *rqstp, struct nlm_file *file,
 >  		if (conf == NULL)
 >  			return nlm_granted;
->  		nlm_get_host(host);
-> -		block = nlmsvc_create_block(rqstp, host, file, lock, cookie);
-> +		block = nlmsvc_create_block(rqstp, file, lock, cookie);
+> -		/* Create host handle for callback */
+> -		host = nlmsvc_lookup_host(rqstp, lock->caller, lock->len);
+> -		if (host == NULL) {
+> -			kfree(conf);
+> -			return nlm_lck_denied_nolocks;
+> -		}
+> +		nlm_get_host(host);
+>  		block = nlmsvc_create_block(rqstp, host, file, lock, cookie);
 >  		if (block == NULL) {
 >  			kfree(conf);
->  			return nlm_granted;
 
-Oh, jeez, except ignore that chunk!  Version that actually compiles
-pushed to
+By the way, it'd seem clearer if nlmsvc_create_block() did the job of
+taking whatever reference it needed on "host" itself.
 
-	git://linux-nfs.org/~bfields/linux.git
+Seems like you could do the same for nlm_alloc_host() as well.
 
 --b.
 
-> diff --git a/fs/lockd/svcproc.c b/fs/lockd/svcproc.c
-> index e099f58..82dc908 100644
-> --- a/fs/lockd/svcproc.c
-> +++ b/fs/lockd/svcproc.c
-> @@ -175,7 +175,7 @@ nlmsvc_proc_lock(struct svc_rqst *rqstp, struct nlm_args *argp,
->  #endif
->  
->  	/* Now try to lock the file */
-> -	resp->status = cast_status(nlmsvc_lock(rqstp, file, &argp->lock,
-> +	resp->status = cast_status(nlmsvc_lock(rqstp, file, host, &argp->lock,
->  					       argp->block, &argp->cookie));
->  	if (resp->status == nlm_drop_reply)
->  		rc = rpc_drop_reply;
-> diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
-> index b279670..f81f9dd 100644
-> --- a/include/linux/lockd/lockd.h
-> +++ b/include/linux/lockd/lockd.h
-> @@ -200,7 +200,8 @@ typedef int	  (*nlm_host_match_fn_t)(void *cur, struct nlm_host *ref);
->   * Server-side lock handling
->   */
->  __be32		  nlmsvc_lock(struct svc_rqst *, struct nlm_file *,
-> -					struct nlm_lock *, int, struct nlm_cookie *);
-> +			      struct nlm_host *, struct nlm_lock *, int,
-> +			      struct nlm_cookie *);
->  __be32		  nlmsvc_unlock(struct nlm_file *, struct nlm_lock *);
->  __be32		  nlmsvc_testlock(struct svc_rqst *, struct nlm_file *,
->  			struct nlm_host *, struct nlm_lock *,
-> -- 
-> 1.5.5.rc1
-> 
+commit cc8c1b0a6514c670b1ab568241210bbdbece7923
+Author: J. Bruce Fields <bfields@citi.umich.edu>
+Date:   Tue Jul 15 15:05:45 2008 -0400
+
+    lockd: get host reference in nlmsvc_create_block() instead of callers
+    
+    As it is it looks like there's an obvious reference count leak until you
+    track down the definition of nlm_alloc_host() and see that it's
+    guaranteed to consume a reference, success or failure.
+    
+    Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+
+diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
+index 92c49d7..80d4f2e 100644
+--- a/fs/lockd/svclock.c
++++ b/fs/lockd/svclock.c
+@@ -180,6 +180,7 @@ nlmsvc_create_block(struct svc_rqst *rqstp, struct nlm_host *host,
+ 	struct nlm_block	*block;
+ 	struct nlm_rqst		*call = NULL;
+ 
++	nlm_get_host(host);
+ 	call = nlm_alloc_call(host);
+ 	if (call == NULL)
+ 		return NULL;
+@@ -380,8 +381,7 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file *file,
+ 	 */
+ 	block = nlmsvc_lookup_block(file, lock);
+ 	if (block == NULL) {
+-		block = nlmsvc_create_block(rqstp, nlm_get_host(host), file,
+-					    lock, cookie);
++		block = nlmsvc_create_block(rqstp, host, file, lock, cookie);
+ 		ret = nlm_lck_denied_nolocks;
+ 		if (block == NULL)
+ 			goto out;
+@@ -476,7 +476,6 @@ nlmsvc_testlock(struct svc_rqst *rqstp, struct nlm_file *file,
+ 
+ 		if (conf == NULL)
+ 			return nlm_granted;
+-		nlm_get_host(host);
+ 		block = nlmsvc_create_block(rqstp, host, file, lock, cookie);
+ 		if (block == NULL) {
+ 			kfree(conf);
