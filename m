@@ -1,129 +1,239 @@
 From: "Chuck Lever" <chuck.lever@oracle.com>
-Subject: Re: [PATCH 01/16] lockd: Pass "struct sockaddr *" to new failover-by-IP function
-Date: Tue, 15 Jul 2008 17:26:40 -0400
-Message-ID: <76bd70e30807151426v36575b56g9fd1605d7c030fb3@mail.gmail.com>
+Subject: Re: [PATCH 02/16] lockd: address-family independent printable addresses
+Date: Tue, 15 Jul 2008 17:41:15 -0400
+Message-ID: <76bd70e30807151441v7a23ce7ev7575a7706ab7a982@mail.gmail.com>
 References: <20080630225011.25407.61357.stgit@ellison.1015granger.net>
-	 <20080630225813.25407.29856.stgit@ellison.1015granger.net>
-	 <20080715201257.GA25803@fieldses.org>
+	 <20080630225821.25407.58530.stgit@ellison.1015granger.net>
+	 <20080715202516.GB25803@fieldses.org>
 Reply-To: chucklever@gmail.com
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from yx-out-2324.google.com ([74.125.44.29]:10324 "EHLO
-	yx-out-2324.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1763934AbYGOV0n (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Jul 2008 17:26:43 -0400
-Received: by yx-out-2324.google.com with SMTP id 8so1703178yxm.1
-        for <linux-nfs@vger.kernel.org>; Tue, 15 Jul 2008 14:26:43 -0700 (PDT)
-In-Reply-To: <20080715201257.GA25803@fieldses.org>
+Received: from yw-out-2324.google.com ([74.125.46.30]:56121 "EHLO
+	yw-out-2324.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1762091AbYGOVlX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Jul 2008 17:41:23 -0400
+Received: by yw-out-2324.google.com with SMTP id 9so2644410ywe.1
+        for <linux-nfs@vger.kernel.org>; Tue, 15 Jul 2008 14:41:17 -0700 (PDT)
+In-Reply-To: <20080715202516.GB25803@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 15, 2008 at 4:12 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> On Mon, Jun 30, 2008 at 06:58:14PM -0400, Chuck Lever wrote:
->> Pass a more generic socket address type to nlmsvc_unlock_all_by_ip() to
->> allow for future support of IPv6.  Also provide additional sanity
->> checking in failover_unlock_ip() when constructing the server's IP
->> address.
+On Tue, Jul 15, 2008 at 4:25 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Mon, Jun 30, 2008 at 06:58:22PM -0400, Chuck Lever wrote:
+>> Knowing which source address is used for communicating with remote NLM
+>> services can be helpful for debugging configuration problems on hosts
+>> with multiple addresses.
 >>
->> As an added bonus, provide clean kerneldoc comments on related NLM
->> interfaces which were recently added.
->
-> Looks good to me, thanks--applied, with one minor change:
->
+>> Keep the dprintk debugging here, but adapt it so it displays AF_INET6
+>> addresses properly.  There are also a couple of dprintk clean-ups as
+>> well.
 >>
 >> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 >> ---
 >>
->>  fs/lockd/svcsubs.c          |   39 +++++++++++++++++++++++++--------------
->>  fs/nfsd/nfsctl.c            |   15 ++++++++++-----
->>  include/linux/lockd/lockd.h |    2 +-
->>  3 files changed, 36 insertions(+), 20 deletions(-)
+>>  fs/lockd/host.c             |   79 +++++++++++++++++++++++++++++++------------
+>>  include/linux/lockd/lockd.h |    3 ++
+>>  2 files changed, 60 insertions(+), 22 deletions(-)
 >>
 >>
->> diff --git a/fs/lockd/svcsubs.c b/fs/lockd/svcsubs.c
->> index d1c48b5..723b6d5 100644
->> --- a/fs/lockd/svcsubs.c
->> +++ b/fs/lockd/svcsubs.c
->> @@ -373,18 +373,18 @@ nlmsvc_free_host_resources(struct nlm_host *host)
->>       }
->>  }
+>> diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+>> index a17664c..350d757 100644
+>> --- a/fs/lockd/host.c
+>> +++ b/fs/lockd/host.c
+>> @@ -11,6 +11,7 @@
+>>  #include <linux/types.h>
+>>  #include <linux/slab.h>
+>>  #include <linux/in.h>
+>> +#include <linux/in6.h>
+>>  #include <linux/sunrpc/clnt.h>
+>>  #include <linux/sunrpc/svc.h>
+>>  #include <linux/lockd/lockd.h>
+>> @@ -38,6 +39,28 @@ static struct nsm_handle * nsm_find(const struct sockaddr_in *sin,
+>>                                        const char *hostname,
+>>                                        unsigned int hostname_len);
 >>
->> -/*
->> - * Remove all locks held for clients
->> +/**
->> + * nlmsvc_invalidate_all - remove all locks held for clients
->> + *
->> + * Release all locks held by NFS clients.  Previously, the code
->> + * would call nlmsvc_free_host_resources for each client in turn,
->> + * which is about as inefficient as it gets.
->> + *
->> + * Now we just do it once in nlm_traverse_files.
+>> +static void nlm_display_address(const struct sockaddr *sap,
+>> +                             char *buf, const size_t len)
+>> +{
+>> +     const struct sockaddr_in *sin = (struct sockaddr_in *)sap;
+>> +     const struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)sap;
+>> +
+>> +     switch (sap->sa_family) {
+>> +     case AF_UNSPEC:
+>> +             snprintf(buf, len, "unspecified");
+>> +             break;
+>> +     case AF_INET:
+>> +             snprintf(buf, len, NIPQUAD_FMT, NIPQUAD(sin->sin_addr.s_addr));
+>> +             break;
+>> +     case AF_INET6:
+>> +             snprintf(buf, len, NIP6_FMT, NIP6(sin6->sin6_addr));
+>> +             break;
+>> +     default:
+>> +             snprintf(buf, len, "unsupported address family");
+>> +             break;
+>> +     }
+>> +}
+>
+> Is there code we could reuse from someplace else?
+
+In this case, we need to differentiate between "unspecified" and
+"unsupported" addresses (see nlmclnt_ vs. nlmsvc_lookup).  The other
+places don't need this distinction.  Each one of these has slightly
+different details and requirements.
+
+We have the same issue with setting and retrieving port numbers.
+
+I think once the IPv6 support is integrated and the dust has settled
+we will find plenty of places where refactoring would result in
+smaller and more shared code.  The problem is picking a common place
+to house all these little bits and pieces.
+
+>
+>> +
+>>  /*
+>>   * Common host lookup routine for server & client
 >>   */
->>  void
->>  nlmsvc_invalidate_all(void)
+>> @@ -54,14 +77,10 @@ static struct nlm_host *nlm_lookup_host(int server,
+>>       struct nsm_handle *nsm = NULL;
+>>       int             hash;
+>>
+>> -     dprintk("lockd: nlm_lookup_host("NIPQUAD_FMT"->"NIPQUAD_FMT
+>> -                     ", p=%d, v=%u, my role=%s, name=%.*s)\n",
+>> -                     NIPQUAD(ssin->sin_addr.s_addr),
+>> -                     NIPQUAD(sin->sin_addr.s_addr), proto, version,
+>> -                     server? "server" : "client",
+>> -                     hostname_len,
+>> -                     hostname? hostname : "<none>");
+>> -
+>> +     dprintk("lockd: nlm_lookup_host(proto=%d, vers=%u,"
+>> +                     " my role is %s, hostname=%.*s)\n",
+>> +                     proto, version, server? "server" : "client",
+>> +                     hostname_len, hostname? hostname : "<none>");
+>>
+>>       hash = NLM_ADDRHASH(sin->sin_addr.s_addr);
+>>
+>> @@ -101,22 +120,31 @@ static struct nlm_host *nlm_lookup_host(int server,
+>>               hlist_add_head(&host->h_hash, chain);
+>>
+>>               nlm_get_host(host);
+>> +             dprintk("lockd: nlm_lookup_host found host %s (%s)\n",
+>> +                             host->h_name, host->h_addrbuf);
+>>               goto out;
+>>       }
+>> -     if (nsm)
+>> -             atomic_inc(&nsm->sm_count);
+>>
+>> -     host = NULL;
+>> -
+>> -     /* Sadly, the host isn't in our hash table yet. See if
+>> -      * we have an NSM handle for it. If not, create one.
+>> +     /*
+>> +      * The host wasn't in our hash table.  If we don't
+>> +      * have an NSM handle for it yet, create one.
+>>        */
+>> -     if (!nsm && !(nsm = nsm_find(sin, hostname, hostname_len)))
+>> -             goto out;
+>> +     if (nsm)
+>> +             atomic_inc(&nsm->sm_count);
+>> +     else {
+>> +             host = NULL;
+>> +             nsm = nsm_find(sin, hostname, hostname_len);
+>> +             if (!nsm) {
+>> +                     dprintk("lockd: nlm_lookup_host failed; "
+>> +                             "no nsm handle\n");
+>> +                     goto out;
+>> +             }
+>> +     }
+>
+> This seems like an odd mixture of unrelated changes; I've lost track of
+> the rationale.  Maybe split out another patch?
+
+I noticed this the other day, and I can't remember why I had to move
+this hunk into this patch.  Normally I would immediately agree to this
+request, but I am supposed to be on vacation this week :-)
+
+More below...
+
+>>
+>>       host = kzalloc(sizeof(*host), GFP_KERNEL);
+>>       if (!host) {
+>>               nsm_release(nsm);
+>> +             dprintk("lockd: nlm_lookup_host failed; no memory\n");
+>>               goto out;
+>>       }
+>>       host->h_name       = nsm->sm_name;
+>> @@ -143,6 +171,15 @@ static struct nlm_host *nlm_lookup_host(int server,
+>>       INIT_LIST_HEAD(&host->h_reclaim);
+>>
+>>       nrhosts++;
+>> +
+>> +     nlm_display_address((struct sockaddr *)&host->h_addr,
+>> +                             host->h_addrbuf, sizeof(host->h_addrbuf));
+>> +     nlm_display_address((struct sockaddr *)&host->h_saddr,
+>> +                             host->h_saddrbuf, sizeof(host->h_saddrbuf));
+>> +
+>> +     dprintk("lockd: nlm_lookup_host created host %s\n",
+>> +                     host->h_name);
+>> +
+>>  out:
+>>       mutex_unlock(&nlm_host_mutex);
+>>       return host;
+>> @@ -207,9 +244,8 @@ nlm_bind_host(struct nlm_host *host)
 >>  {
->> -     /* Release all locks held by NFS clients.
->> -      * Previously, the code would call
->> -      * nlmsvc_free_host_resources for each client in
->> -      * turn, which is about as inefficient as it gets.
->> -      * Now we just do it once in nlm_traverse_files.
->> -      */
->
-> Mind if I keep the "Previously..." part in the body of the function?
-> I'd rather the kerneldoc comments be about the interface and leave
-> implementation details to the body of the function.
-
-It's a personal style choice.  Keeping generic implementation comments
-out of the body of the function makes cleaner code, I think, and makes
-it more likely the author will write self-documenting code.  In this
-case, the comment is more historical than explanatory.
-
-But I don't have any objection.
-
-> Also, one more minor question--
->
->> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
->> index 5ac00c4..5b4a412 100644
->> --- a/fs/nfsd/nfsctl.c
->> +++ b/fs/nfsd/nfsctl.c
->> @@ -310,9 +310,12 @@ static ssize_t write_getfd(struct file *file, char *buf, size_t size)
+>>       struct rpc_clnt *clnt;
 >>
->>  static ssize_t failover_unlock_ip(struct file *file, char *buf, size_t size)
->>  {
->> -     __be32 server_ip;
->> -     char *fo_path, c;
->> +     struct sockaddr_in sin = {
->> +             .sin_family     = AF_INET,
->> +     };
->>       int b1, b2, b3, b4;
->> +     char c;
->> +     char *fo_path;
+>> -     dprintk("lockd: nlm_bind_host("NIPQUAD_FMT"->"NIPQUAD_FMT")\n",
+>> -                     NIPQUAD(host->h_saddr.sin_addr),
+>> -                     NIPQUAD(host->h_addr.sin_addr));
+>> +     dprintk("lockd: nlm_bind_host %s (%s), my addr=%s\n",
+>> +                     host->h_name, host->h_addrbuf, host->h_saddrbuf);
 >>
->>       /* sanity check */
->>       if (size == 0)
->> @@ -326,11 +329,13 @@ static ssize_t failover_unlock_ip(struct file *file, char *buf, size_t size)
->>               return -EINVAL;
+>>       /* Lock host handle */
+>>       mutex_lock(&host->h_mutex);
+>> @@ -221,7 +257,7 @@ nlm_bind_host(struct nlm_host *host)
+>>               if (time_after_eq(jiffies, host->h_nextrebind)) {
+>>                       rpc_force_rebind(clnt);
+>>                       host->h_nextrebind = jiffies + NLM_HOST_REBIND;
+>> -                     dprintk("lockd: next rebind in %ld jiffies\n",
+>> +                     dprintk("lockd: next rebind in %lu jiffies\n",
+>>                                       host->h_nextrebind - jiffies);
+>>               }
+>>       } else {
+>> @@ -324,8 +360,7 @@ void nlm_host_rebooted(const struct sockaddr_in *sin,
+>>       struct nsm_handle *nsm;
+>>       struct nlm_host *host;
 >>
->>       /* get ipv4 address */
->> -     if (sscanf(fo_path, "%u.%u.%u.%u%c", &b1, &b2, &b3, &b4, &c) != 4)
->> +     if (sscanf(fo_path, NIPQUAD_FMT "%c", &b1, &b2, &b3, &b4, &c) != 4)
->> +             return -EINVAL;
->> +     if (b1 > 255 || b2 > 255 || b3 > 255 || b4 > 255)
->
-> Should b1, b2, b3, b4 be unsigned?
+>> -     dprintk("lockd: nlm_host_rebooted(%s, %u.%u.%u.%u)\n",
+>> -                     hostname, NIPQUAD(sin->sin_addr));
+>> +     dprintk("lockd: nlm_host_rebooted(%s)\n", hostname);
 
-That would be more consistent with the %u formatting, wouldn't it.
+I've re-written this piece to keep the display of the address.  I
+think that would continue to be a valuable piece of debugging
+information.
 
->>               return -EINVAL;
->> -     server_ip = htonl((((((b1<<8)|b2)<<8)|b3)<<8)|b4);
->> +     sin.sin_addr.s_addr = htonl((b1 << 24) | (b2 << 16) | (b3 << 8) | b4);
+If you're about to include this patch, I'd like to send you the new
+version of this patch and the later ones that change as a result.
+
 >>
->> -     return nlmsvc_unlock_all_by_ip(server_ip);
->> +     return nlmsvc_unlock_all_by_ip((struct sockaddr *)&sin);
->>  }
+>>       /* Find the NSM handle for this peer */
+>>       if (!(nsm = __nsm_find(sin, hostname, hostname_len, 0)))
+>> diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
+>> index a6d1215..5774d6e 100644
+>> --- a/include/linux/lockd/lockd.h
+>> +++ b/include/linux/lockd/lockd.h
+>> @@ -61,6 +61,9 @@ struct nlm_host {
+>>       struct list_head        h_granted;      /* Locks in GRANTED state */
+>>       struct list_head        h_reclaim;      /* Locks in RECLAIM state */
+>>       struct nsm_handle *     h_nsmhandle;    /* NSM status handle */
+>> +
+>> +     char                    h_addrbuf[48],  /* address eyecatchers */
+>> +                             h_saddrbuf[48];
+>>  };
+>>
+>>  struct nsm_handle {
 
 -- 
 Chuck Lever
