@@ -1,139 +1,51 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 2/4] lockd: eliminate duplicate nlmsvc_lookup_host call
-	from nlmsvc_testlock
-Date: Tue, 15 Jul 2008 15:09:02 -0400
-Message-ID: <20080715190902.GF21590@fieldses.org>
-References: <20080715184554.GD21590@fieldses.org> <1216147693-23881-1-git-send-email-bfields@citi.umich.edu> <1216147693-23881-2-git-send-email-bfields@citi.umich.edu>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH] lockd: eliminate duplicate calls to nlmsvc_lookup_host
+ in nlmsvc_lock and nlmsvc_testlock
+Date: Tue, 15 Jul 2008 15:13:01 -0400
+Message-ID: <20080715151301.2c9cdc4e@tleilax.poochiereds.net>
+References: <1215868630-28201-1-git-send-email-jlayton@redhat.com>
+	<20080715184554.GD21590@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=US-ASCII
 Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
-To: Jeff Layton <jlayton@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:56211 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([66.187.233.31]:51363 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758004AbYGOTJ2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 15 Jul 2008 15:09:28 -0400
-In-Reply-To: <1216147693-23881-2-git-send-email-bfields@citi.umich.edu>
+	id S1758185AbYGOTN2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 Jul 2008 15:13:28 -0400
+In-Reply-To: <20080715184554.GD21590@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 15, 2008 at 02:48:11PM -0400, J. Bruce Fields wrote:
-> From: Jeff Layton <jlayton@redhat.com>
+On Tue, 15 Jul 2008 14:45:54 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
+
+> On Sat, Jul 12, 2008 at 09:17:10AM -0400, Jeff Layton wrote:
+> > Both nlmsvc_lock and nlmsvc_testlock call nlmsvc_lookup_host to find a
+> > nlm_host struct. All the callers of these functions, however, call
+> > nlmsvc_retrieve_args or nlm4svc_retrieve_args which also return a
+> > nlm_host struct.
+> > 
+> > Change nlmsvc_lock and nlmsvc_testlock to take a host arg instead of
+> > calling nlmsvc_lookup_host themselves and change the callers to pass
+> > a pointer to the nlm_host they've already found.
 > 
-> nlmsvc_testlock calls nlmsvc_lookup_host to find a nlm_host struct. The
-> callers of this functions, however, call nlmsvc_retrieve_args or
-> nlm4svc_retrieve_args, which also return a nlm_host struct.
+> That makes sense to me, thanks.
 > 
-> Change nlmsvc_testlock to take a host arg instead of calling
-> nlmsvc_lookup_host itself and change the callers to pass a pointer to
-> the nlm_host they've already found.
+> > Also, get rid of some unneeded nlm_host NULL checks.
+> > 
+> > I think I've got the reference counting right with this patch, but
+> > I wouldn't mind someone sanity checking it.
 > 
-> We take a reference to host in the place where nlmsvc_testlock()
-> previous did a new lookup, so the reference counting is unchanged from
-> before.
+> So, the way I do that sanity-checking is by breaking up the individual
+> changes as finely as I can, as follows....
 > 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
-> ---
->  fs/lockd/svc4proc.c         |    2 +-
->  fs/lockd/svclock.c          |   12 +++---------
->  fs/lockd/svcproc.c          |    2 +-
->  include/linux/lockd/lockd.h |    3 ++-
->  4 files changed, 7 insertions(+), 12 deletions(-)
-> 
-> diff --git a/fs/lockd/svc4proc.c b/fs/lockd/svc4proc.c
-> index 006a832..8cfb9da 100644
-> --- a/fs/lockd/svc4proc.c
-> +++ b/fs/lockd/svc4proc.c
-> @@ -99,7 +99,7 @@ nlm4svc_proc_test(struct svc_rqst *rqstp, struct nlm_args *argp,
->  		return resp->status == nlm_drop_reply ? rpc_drop_reply :rpc_success;
->  
->  	/* Now check for conflicting locks */
-> -	resp->status = nlmsvc_testlock(rqstp, file, &argp->lock, &resp->lock, &resp->cookie);
-> +	resp->status = nlmsvc_testlock(rqstp, file, host, &argp->lock, &resp->lock, &resp->cookie);
->  	if (resp->status == nlm_drop_reply)
->  		rc = rpc_drop_reply;
->  	else
-> diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-> index 81aca85..f40afb3 100644
-> --- a/fs/lockd/svclock.c
-> +++ b/fs/lockd/svclock.c
-> @@ -460,8 +460,8 @@ out:
->   */
->  __be32
->  nlmsvc_testlock(struct svc_rqst *rqstp, struct nlm_file *file,
-> -		struct nlm_lock *lock, struct nlm_lock *conflock,
-> -		struct nlm_cookie *cookie)
-> +		struct nlm_host *host, struct nlm_lock *lock,
-> +		struct nlm_lock *conflock, struct nlm_cookie *cookie)
->  {
->  	struct nlm_block 	*block = NULL;
->  	int			error;
-> @@ -479,16 +479,10 @@ nlmsvc_testlock(struct svc_rqst *rqstp, struct nlm_file *file,
->  
->  	if (block == NULL) {
->  		struct file_lock *conf = kzalloc(sizeof(*conf), GFP_KERNEL);
-> -		struct nlm_host	*host;
->  
->  		if (conf == NULL)
->  			return nlm_granted;
-> -		/* Create host handle for callback */
-> -		host = nlmsvc_lookup_host(rqstp, lock->caller, lock->len);
-> -		if (host == NULL) {
-> -			kfree(conf);
-> -			return nlm_lck_denied_nolocks;
-> -		}
-> +		nlm_get_host(host);
->  		block = nlmsvc_create_block(rqstp, host, file, lock, cookie);
->  		if (block == NULL) {
->  			kfree(conf);
+> --b.
 
-By the way, it'd seem clearer if nlmsvc_create_block() did the job of
-taking whatever reference it needed on "host" itself.
+Thanks Bruce,
+  The patchset in your for-2.6.27 branch looks fine to me.
 
-Seems like you could do the same for nlm_alloc_host() as well.
-
---b.
-
-commit cc8c1b0a6514c670b1ab568241210bbdbece7923
-Author: J. Bruce Fields <bfields@citi.umich.edu>
-Date:   Tue Jul 15 15:05:45 2008 -0400
-
-    lockd: get host reference in nlmsvc_create_block() instead of callers
-    
-    As it is it looks like there's an obvious reference count leak until you
-    track down the definition of nlm_alloc_host() and see that it's
-    guaranteed to consume a reference, success or failure.
-    
-    Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
-
-diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-index 92c49d7..80d4f2e 100644
---- a/fs/lockd/svclock.c
-+++ b/fs/lockd/svclock.c
-@@ -180,6 +180,7 @@ nlmsvc_create_block(struct svc_rqst *rqstp, struct nlm_host *host,
- 	struct nlm_block	*block;
- 	struct nlm_rqst		*call = NULL;
- 
-+	nlm_get_host(host);
- 	call = nlm_alloc_call(host);
- 	if (call == NULL)
- 		return NULL;
-@@ -380,8 +381,7 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file *file,
- 	 */
- 	block = nlmsvc_lookup_block(file, lock);
- 	if (block == NULL) {
--		block = nlmsvc_create_block(rqstp, nlm_get_host(host), file,
--					    lock, cookie);
-+		block = nlmsvc_create_block(rqstp, host, file, lock, cookie);
- 		ret = nlm_lck_denied_nolocks;
- 		if (block == NULL)
- 			goto out;
-@@ -476,7 +476,6 @@ nlmsvc_testlock(struct svc_rqst *rqstp, struct nlm_file *file,
- 
- 		if (conf == NULL)
- 			return nlm_granted;
--		nlm_get_host(host);
- 		block = nlmsvc_create_block(rqstp, host, file, lock, cookie);
- 		if (block == NULL) {
- 			kfree(conf);
+Cheers,
+-- 
+Jeff Layton <jlayton@redhat.com>
