@@ -1,310 +1,155 @@
-From: Shehjar Tikoo <shehjart-YbfuJp6tym7X/JP9YwkgDA@public.gmane.org>
-Subject: [RFC][PATCH] Basic pre-allocation support for nfsd write
-Date: Wed, 16 Jul 2008 11:44:13 +1000
-Message-ID: <487D526D.8070307@cse.unsw.edu.au>
+From: Eric Thibodeau <kyron-PfIpIgFSuk5Wk0Htik3J/w@public.gmane.org>
+Subject: NFSv4 and nfsroot
+Date: Tue, 15 Jul 2008 23:59:44 -0400
+Message-ID: <487D7230.2050404@neuralbs.com>
+Reply-To: kyron-PfIpIgFSuk5Wk0Htik3J/w@public.gmane.org
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------040001000607020506030208"
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from note.orchestra.cse.unsw.EDU.AU ([129.94.242.24]:59703 "EHLO
-	note.orchestra.cse.unsw.EDU.AU" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752095AbYGPB6i (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Jul 2008 21:58:38 -0400
-Received: From
-	[203.143.160.170] ([203.143.160.170] == chaos.ken.nicta.com.au) (auth-user shehjart) (cse-authentic-sender shehjart)
-	(for <linux-nfs@vger.kernel.org>) By note With Smtp ;
-	Wed, 16 Jul 2008 11:58:35 +1000
+Received: from modemcable086.140-70-69.static.videotron.ca ([69.70.140.86]:1751
+	"EHLO kyron.neuralbs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753415AbYGPD7q (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Jul 2008 23:59:46 -0400
+Received: from [192.168.1.2] (kyron.neuralbs.com [192.168.1.2])
+	by kyron.neuralbs.com (Postfix) with ESMTP id 0FFA06A78D0
+	for <linux-nfs@vger.kernel.org>; Tue, 15 Jul 2008 23:59:45 -0400 (EDT)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a multi-part message in MIME format.
---------------040001000607020506030208
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+I've set up nfsroot based systems before but I am now attempting to do 
+the same thing using nfsv4 using the _in-kernel_ nfsroot support (ie: no 
+initrd with script that does the mounting). I have been unable to find 
+"authoritative" references to how to accomplish this and wanted to ask 
+for solid references before I start polluting the mailing list with my 
+probably completely erroneous approach. Things that might be worth 
+mentioning:
 
-Hi All
+Some basic information, here is a sequence where I mount the nfsv4 
+export onto the same machine exporting the tree:
 
-Please see the attached patches for adding
-pre-allocation support into nfsd writes. Comments follow.
+/etc/exports, using FSID=0/root:
 
-Patches:
-a. 01_vfs_fallocate.patch
-Adds vfs_fallocate. Basically, encapsulates the call to
-inode->i_op->fallocate, which is currently called directly from
-sys_fallocate, which takes a file descriptor as argument, but nfsd
-needs to operate on struct file's.
+    livecd ~ # exportfs -v
+    /tftproot/nfsroot/x86_64
+                   
+    10.0.0.0/255.255.255.0(ro,async,wdelay,no_root_squash,no_subtree_check,fsid=0)
 
-b. 02_init_file_prealloc_limit.patch
-Adds a new member to struct file, to keep track of how much has been
-preallocated for this file. For now, adding to struct file seemed an
-easy way to keep per-file state about preallocation but this can be
-changed to use a nfsd-specific hash table that maps (dev, ino) to
-per-file pre-allocation state.
+Simple call to mount won't work, I'm assuming mount defaults to nfsv3:
 
-c. 03_nfsd_fallocate.patch
-Wires in the call to vfs_fallocate into nfsd_vfs_write.
-For now, the function nfsd_get_prealloc_len uses a very simple
-method to determine when and how much to pre-allocate. This can change
-if needed.
-This patch also adds two module_params that control pre-allocation:
+    livecd ~ # mount 10.0.0.1:/ /mnt/gentoo/
+    mount.nfs: access denied by server while mounting 10.0.0.1:/
 
-  1. /sys/module/nfsd/parameters/nfsd_prealloc
-   Determine whether to pre-allocate.
+Specifying nfs4 works:
 
-  2. /sys/module/nfsd/parameters/nfsd_prealloc_len
-   How much to pre-allocate. Default is 5Megs.
+    livecd ~ # mount -t nfs4 10.0.0.1:/ /mnt/gentoo/
 
-The patches are based against 2.6.25.11.
+Attempts to use the nfsv3 syntax fails (as expected since I put 
+`--no-nfs-version 3 --no-nfs-version 2` as a startup arg for nfsd):
 
-See the following two plots for read and write performance, with and
-without pre-allocation support. Tests were run using iozone. The
-filesystem was ext4 with extents enabled. The testbed used two Itanium
-machines as client and server, connected through a Gbit network with
-jumbo frames enabled. The filesystem was aged with various iozone and
-kernel compilation workloads that consumed 45G of a 64G disk.
+    livecd ~ # mount -t nfs4 10.0.0.1:/tftproot/nfsroot/x86_64 /mnt/cdrom/
+    mount.nfs4: mounting 10.0.0.1:/tftproot/nfsroot/x86_64 failed,
+    reason given by server:
+      No such file or directory
 
-Server side mount options:
-rw,sync,insecure,no_root_squash,no_subtree_check,no_wdelay
+Booting the diskless node, I get the following:
 
-Client side mount options:
-intr,wsize=65536,rsize=65536
+1- If the args are (v3 syntax, in pxelinux.cfg/default):
 
-1. Read test
-http://www.gelato.unsw.edu.au/~shehjart/docs/nfsmeasurements/ext4fallocate_read.png
-Read throughput clearly benefits due to the contiguity of disk blocks.
-In the best case, i.e. with pre-allocation of 4 and 5 Mb during the
-writing of the test file, throughput, during read of the same
-file, more than doubles.
+      append ip=dhcp nfsroot=10.0.0.1:/tftproot/nfsroot/x86_64,hard,intr
+    init=/boot/stateless.sh
 
-2. Write test
-http://www.gelato.unsw.edu.au/~shehjart/docs/nfsmeasurements/ext4fallocate_write.png
-Going just by read performance, pre-allocation would be a nice thing
-to have *but* note that write throughput also decreases drastically,
-by almost 10 Mb/sec with just 1Mb of pre-allocation.
+The node boots up to the point of calling init and panics because it 
+can't find "/boot/stateless.sh" (screen shot: 
+http://wiki.neuralbs.com/~kyron/soc2008/screenshoots/NFSv4WithV3CommandLine_no_init.png 
+) But stateless is there and accessible (from the earlyer local mounting 
+of the root):
 
-A question at this point is, how well does pre-allocation perform
-under other filesystems? I have no idea yet. I'll try to test XFS,
-RSN.
+    livecd ~ # ls -l /mnt/gentoo/boot/stateless.sh
+    -rwxr-xr-x 1 4294967294 4294967294 3964 Jul 11 04:22
+    /mnt/gentoo/boot/stateless.sh
 
-Comments/suggestions are welcome.
 
-Regards
-Shehjar
+2- If the args are (v4 syntax, in pxelinux.cfg/default):
 
---------------040001000607020506030208
-Content-Type: text/x-patch;
- name="01_vfs_fallocate.patch"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline;
- filename="01_vfs_fallocate.patch"
+      append ip=dhcp nfsroot=10.0.0.1:/,hard,intr init=/boot/stateless.sh
 
-diff --git a/fs/open.c b/fs/open.c
-index a99ad09..b5b641a 100644
---- a/fs/open.c
-+++ b/fs/open.c
-@@ -359,39 +359,34 @@ asmlinkage long sys_ftruncate64(unsigned int fd, loff_t length)
- }
- #endif
- 
--asmlinkage long sys_fallocate(int fd, int mode, loff_t offset, loff_t len)
-+long vfs_fallocate(struct file * file, int mode, loff_t offset, loff_t len)
- {
--	struct file *file;
- 	struct inode *inode;
- 	long ret = -EINVAL;
- 
- 	if (offset < 0 || len <= 0)
- 		goto out;
--
-+	
- 	/* Return error if mode is not supported */
- 	ret = -EOPNOTSUPP;
- 	if (mode && !(mode & FALLOC_FL_KEEP_SIZE))
- 		goto out;
- 
--	ret = -EBADF;
--	file = fget(fd);
--	if (!file)
--		goto out;
- 	if (!(file->f_mode & FMODE_WRITE))
--		goto out_fput;
-+		goto out;
- 	/*
- 	 * Revalidate the write permissions, in case security policy has
- 	 * changed since the files were opened.
- 	 */
- 	ret = security_file_permission(file, MAY_WRITE);
- 	if (ret)
--		goto out_fput;
-+		goto out;
- 
- 	inode = file->f_path.dentry->d_inode;
- 
- 	ret = -ESPIPE;
- 	if (S_ISFIFO(inode->i_mode))
--		goto out_fput;
-+		goto out;
- 
- 	ret = -ENODEV;
- 	/*
-@@ -399,19 +394,33 @@ asmlinkage long sys_fallocate(int fd, int mode, loff_t offset, loff_t len)
- 	 * for directories or not.
- 	 */
- 	if (!S_ISREG(inode->i_mode) && !S_ISDIR(inode->i_mode))
--		goto out_fput;
-+		goto out;
- 
- 	ret = -EFBIG;
- 	/* Check for wrap through zero too */
- 	if (((offset + len) > inode->i_sb->s_maxbytes) || ((offset + len) < 0))
--		goto out_fput;
-+		goto out;
- 
- 	if (inode->i_op && inode->i_op->fallocate)
- 		ret = inode->i_op->fallocate(inode, mode, offset, len);
- 	else
- 		ret = -EOPNOTSUPP;
-+out:
-+	return ret;
-+}
-+EXPORT_SYMBOL(vfs_fallocate);
- 
--out_fput:
-+asmlinkage long sys_fallocate(int fd, int mode, loff_t offset, loff_t len)
-+{
-+	struct file *file;
-+	long ret;
-+
-+	ret = -EBADF;
-+	file = fget(fd);
-+	if (!file)
-+		goto out;
-+
-+	ret = vfs_fallocate(file, mode, offset, len);
- 	fput(file);
- out:
- 	return ret;
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index d8e2762..498a422 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1287,6 +1287,7 @@ extern ssize_t vfs_readv(struct file *, const struct iovec __user *,
- 		unsigned long, loff_t *);
- extern ssize_t vfs_writev(struct file *, const struct iovec __user *,
- 		unsigned long, loff_t *);
-+extern long vfs_fallocate(struct file * file, int mode, loff_t offset, loff_t len);
- 
- struct super_operations {
-    	struct inode *(*alloc_inode)(struct super_block *sb);
+The node boots up but panics on mounting root (screen shot : 
+http://wiki.neuralbs.com/~kyron/soc2008/screenshoots/NFSv4PanicOnMount.png )
 
---------------040001000607020506030208
-Content-Type: text/x-patch;
- name="02_init_file_prealloc_limit.patch"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline;
- filename="02_init_file_prealloc_limit.patch"
+What can be seen in the logs:
 
-diff --git a/fs/open.c b/fs/open.c
-index b5b641a..77820d3 100644
---- a/fs/open.c
-+++ b/fs/open.c
-@@ -832,6 +832,7 @@ static struct file *__dentry_open(struct dentry *dentry, struct vfsmount *mnt,
- 	f->f_path.mnt = mnt;
- 	f->f_pos = 0;
- 	f->f_op = fops_get(inode->i_fop);
-+	f->f_prealloc_limit = 0;
- 	file_move(f, &inode->i_sb->s_files);
- 
- 	error = security_dentry_open(f);
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 498a422..5aaf82b 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -799,6 +799,7 @@ struct file {
- 	struct fown_struct	f_owner;
- 	unsigned int		f_uid, f_gid;
- 	struct file_ra_state	f_ra;
-+	unsigned long 		f_prealloc_limit;
- 
- 	u64			f_version;
- #ifdef CONFIG_SECURITY
+    livecd ~ # egrep -i '(nfs|mount)' /var/log/messages
+    Jul 16 01:37:23 livecd Mount-cache hash table entries: 256
+    Jul 16 01:37:36 livecd rc-scripts: ERROR:  cannot start nfsmount as
+    rpc.statd could not start
+    Jul 16 01:52:00 livecd aufs test_add:377:mount[27642]: uid/gid/perm
+    /mnt/livecd/tftproot 0/0/0755, 0/0/01777
+    Jul 16 01:52:11 livecd Installing knfsd (copyright (C) 1996
+    okir-pn4DOG8n3UYbFoVRYvo4fw@public.gmane.org).
+    Jul 16 01:52:12 livecd NFSD: Using /var/lib/nfs/v4recovery as the
+    NFSv4 state recovery directory
+    Jul 16 01:52:12 livecd NFSD: starting 90-second grace period
+    Jul 16 02:05:17 livecd mountd[28146]: Caught signal 15,
+    un-registering and exiting.
+    Jul 16 02:05:17 livecd nfsd: last server has exited
+    Jul 16 02:05:17 livecd nfsd: unexporting all filesystems
+    Jul 16 02:05:17 livecd NFSD: Using /var/lib/nfs/v4recovery as the
+    NFSv4 state recovery directory
+    Jul 16 02:05:17 livecd NFSD: starting 90-second grace period
+    Jul 16 02:05:40 livecd mountd[28441]: refused mount request from
+    10.0.0.1 for / (/): not exported
+    Jul 16 02:05:49 livecd nfsd: nfsv4 idmapping failing: has idmapd not
+    been started?
+    Jul 16 02:12:52 livecd dnsmasq[27954]: TFTP sent
+    /tftproot/nfsroot/x86_64/boot/kernel to 10.0.0.55
+    Jul 16 02:13:10 livecd mountd[28441]: authenticated mount request
+    from 10.0.0.55:955 for /tftproot/nfsroot/x86_64
+    (/tftproot/nfsroot/x86_64)
+    Jul 16 02:13:10 livecd aufs aufs_encode_fh:529:nfsd[28447]: NFSv2
+    client (max_len 6)?
+    Jul 16 02:14:44 livecd dnsmasq[27954]: TFTP sent
+    /tftproot/nfsroot/x86_64/boot/kernel to 10.0.0.55
+    Jul 16 02:15:01 livecd mountd[28441]: authenticated mount request
+    from 10.0.0.55:682 for /tftproot/nfsroot/x86_64
+    (/tftproot/nfsroot/x86_64)
+    Jul 16 02:24:55 livecd dnsmasq[28619]: TFTP sent
+    /tftproot/nfsroot/x86_64/boot/kernel to 10.0.0.55
+    Jul 16 02:25:12 livecd mountd[28441]: refused mount request from
+    10.0.0.55 for / (/): not exported
 
---------------040001000607020506030208
-Content-Type: text/x-patch;
- name="03_nfsd_fallocate.patch"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline;
- filename="03_nfsd_fallocate.patch"
+NFS-booting-node's kernel config (nfs stuff), notice v3 client is disabled:
 
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 46f59d5..3d7c48d 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -57,6 +57,7 @@
- #include <linux/jhash.h>
- 
- #include <asm/uaccess.h>
-+#include <linux/falloc.h>
- 
- #define NFSDDBG_FACILITY		NFSDDBG_FILEOP
- 
-@@ -89,6 +90,14 @@ static struct raparms *		raparml;
- #define RAPARM_HASH_MASK	(RAPARM_HASH_SIZE-1)
- static struct raparm_hbucket	raparm_hash[RAPARM_HASH_SIZE];
- 
-+/* User-definable preallocation size in bytes */
-+unsigned long nfsd_prealloc_len = 5242880;
-+module_param(nfsd_prealloc_len, ulong, S_IRUGO|S_IWUSR);
-+
-+/* 0 if preallocation is disabled, 1 otherwise. */
-+int nfsd_prealloc = 0;
-+module_param(nfsd_prealloc, int, S_IRUGO|S_IWUSR);
-+
- /* 
-  * Called from nfsd_lookup and encode_dirent. Check if we have crossed 
-  * a mount point.
-@@ -954,6 +963,21 @@ static void kill_suid(struct dentry *dentry)
- 	mutex_unlock(&dentry->d_inode->i_mutex);
- }
- 
-+
-+static unsigned long
-+nfsd_get_prealloc_len(struct file * file, loff_t offset, unsigned long cnt)
-+{
-+	/* Might want to do something more complex here to decide
-+	 * pre-allocation size.
-+	 */
-+	if(file->f_prealloc_limit > (offset + cnt))
-+		return 0;
-+
-+	file->f_prealloc_limit = offset + nfsd_prealloc_len;
-+	return nfsd_prealloc_len;
-+}
-+
-+
- static __be32
- nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
- 				loff_t offset, struct kvec *vec, int vlen,
-@@ -966,6 +990,7 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
- 	__be32			err = 0;
- 	int			host_err;
- 	int			stable = *stablep;
-+	unsigned long		prealloc_len = 0;
- 
- #ifdef MSNFS
- 	err = nfserr_perm;
-@@ -998,6 +1023,11 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
- 	if (stable && !EX_WGATHER(exp))
- 		file->f_flags |= O_SYNC;
- 
-+	if(nfsd_prealloc && inode->i_op && inode->i_op->fallocate) {
-+		prealloc_len = nfsd_get_prealloc_len(file, offset, cnt);
-+		if(prealloc_len > 0)
-+			vfs_fallocate(file, FALLOC_FL_KEEP_SIZE, offset, prealloc_len);
-+	}
- 	/* Write the data. */
- 	oldfs = get_fs(); set_fs(KERNEL_DS);
- 	host_err = vfs_writev(file, (struct iovec __user *)vec, vlen, &offset);
+    kyron clustering-livecd # grep -i nfs
+    /tmp/nfsboot_kernel/gentoo/usr/src/linux-2.6.26-rc5-mm3/.config
+    CONFIG_NFS_FS=y
+    # CONFIG_NFS_V3 is not set
+    CONFIG_NFS_V4=y
+    CONFIG_NFSD=m
+    CONFIG_NFSD_V3=y
+    # CONFIG_NFSD_V3_ACL is not set
+    CONFIG_NFSD_V4=y
+    CONFIG_ROOT_NFS=y
+    CONFIG_NFS_COMMON=y
 
---------------040001000607020506030208--
+The server's kernel config (nfs):
+
+    kyron clustering-livecd # grep -i nfs
+    /var/tmp/catalyst/kerncache/default/livecd-stage2-amd64-2008.0/gentoo/usr/src/linux-2.6.24-gentoo-r8/.config
+    CONFIG_NFS_FS=y
+    # CONFIG_NFS_V3 is not set
+    CONFIG_NFS_V4=y
+    CONFIG_NFS_DIRECTIO=y
+    CONFIG_NFSD=m
+    CONFIG_NFSD_V3=y
+    # CONFIG_NFSD_V3_ACL is not set
+    CONFIG_NFSD_V4=y
+    CONFIG_NFSD_TCP=y
+    CONFIG_ROOT_NFS=y
+    CONFIG_NFS_COMMON=y
+
+...so, it seems kernel boot time nfs is not NFSv4 compatible (only v2/3 
+is supported _in kernel_).
+
+Eric
+
