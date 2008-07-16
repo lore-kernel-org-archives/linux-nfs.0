@@ -1,155 +1,77 @@
-From: Eric Thibodeau <kyron-PfIpIgFSuk5Wk0Htik3J/w@public.gmane.org>
-Subject: NFSv4 and nfsroot
-Date: Tue, 15 Jul 2008 23:59:44 -0400
-Message-ID: <487D7230.2050404@neuralbs.com>
-Reply-To: kyron-PfIpIgFSuk5Wk0Htik3J/w@public.gmane.org
+From: Michel Lespinasse <walken-Y93EPB1FQwg@public.gmane.org>
+Subject: NFS hangs with 2.6.25/2.6.26 despite server being reachable
+Date: Tue, 15 Jul 2008 22:40:53 -0700
+Message-ID: <20080716054053.GE6159@zoy.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=us-ascii
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from modemcable086.140-70-69.static.videotron.ca ([69.70.140.86]:1751
-	"EHLO kyron.neuralbs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753415AbYGPD7q (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Jul 2008 23:59:46 -0400
-Received: from [192.168.1.2] (kyron.neuralbs.com [192.168.1.2])
-	by kyron.neuralbs.com (Postfix) with ESMTP id 0FFA06A78D0
-	for <linux-nfs@vger.kernel.org>; Tue, 15 Jul 2008 23:59:45 -0400 (EDT)
+Received: from server.lespinasse.org ([64.142.28.226]:33097 "EHLO
+	server.lespinasse.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751774AbYGPGGL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Jul 2008 02:06:11 -0400
+Received: from michel.lespinasse.org (michel.home.lespinasse.org [10.1.0.1])
+	by server.lespinasse.org (Postfix) with ESMTP id 06BD02FBD0
+	for <linux-nfs@vger.kernel.org>; Tue, 15 Jul 2008 22:40:54 -0700 (PDT)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I've set up nfsroot based systems before but I am now attempting to do 
-the same thing using nfsv4 using the _in-kernel_ nfsroot support (ie: no 
-initrd with script that does the mounting). I have been unable to find 
-"authoritative" references to how to accomplish this and wanted to ask 
-for solid references before I start polluting the mailing list with my 
-probably completely erroneous approach. Things that might be worth 
-mentioning:
+I'm getting frequent NFS hangs when running 2.6.25 or 2.6.26 on my
+NFS clients, while 2.6.24 seems to work fine.
 
-Some basic information, here is a sequence where I mount the nfsv4 
-export onto the same machine exporting the tree:
+Here are some details about my configuration:
 
-/etc/exports, using FSID=0/root:
+* The NFS server is a linux host (x86-64) running 2.6.22.19;
 
-    livecd ~ # exportfs -v
-    /tftproot/nfsroot/x86_64
-                   
-    10.0.0.0/255.255.255.0(ro,async,wdelay,no_root_squash,no_subtree_check,fsid=0)
+* I have two diskless clients using different hardware, one is an old
+  AMD K7 with intel pro/100 adapter, the other is x86-64 with on-board
+  intel e1000e networking.
 
-Simple call to mount won't work, I'm assuming mount defaults to nfsv3:
+* The clients boot from a small initrd and mount their rootfs using
+  NFS3 over TCP. The initial mounting is done with "nfsmount -o ro,nolock"
+  from the klibc-utils package.
 
-    livecd ~ # mount 10.0.0.1:/ /mnt/gentoo/
-    mount.nfs: access denied by server while mounting 10.0.0.1:/
+* /etc/fstab in the clients describe the nfs root as having the nolock,noatime
+  options. The boot scripts (unmodified from my debian etch distro)
+  remount the root using these. In the end, /proc/mounts shows the rootfs as
+  using the following options:
+  When running 2.6.24 on the client:
+    rw,noatime,vers=3,rsize=131072,wsize=131072,hard,nointr,
+    nolock,proto=tcp,timeo=7,retrans=3,sec=sys
+  When running 2.6.26 on the client:
+    rw,noatime,vers=3,rsize=131072,wsize=131072,namlen=255,hard,nointr,
+    nolock,proto=tcp,timeo=7,retrans=3,sec=sys,mountproto=udp
 
-Specifying nfs4 works:
+* I often run suspend-to-ram on the clients, if I know they'll be unused
+  for a few hours.
 
-    livecd ~ # mount -t nfs4 10.0.0.1:/ /mnt/gentoo/
+The above setup works just fine when running 2.6.24 on the clients.
 
-Attempts to use the nfsv3 syntax fails (as expected since I put 
-`--no-nfs-version 3 --no-nfs-version 2` as a startup arg for nfsd):
+When running 2.6.25 on the clients, the rootfs often hangs after a
+suspend/resume cycle. This happens most often if the clients had been
+suspended for a while (say overnight, rather than just during dinner).
+By 'hangs' I mean the the clients show all symptoms that would be expected
+if the server was gone, i.e. processes can't access the filesystem,
+load goes to high values, machine becomes basically unusable. However,
+the clients are still pingable from the NFS server host, so I believe
+the network itself is fine. After 5-10 minutes of this, everything comes
+back to normal without any intervention on my part.
 
-    livecd ~ # mount -t nfs4 10.0.0.1:/tftproot/nfsroot/x86_64 /mnt/cdrom/
-    mount.nfs4: mounting 10.0.0.1:/tftproot/nfsroot/x86_64 failed,
-    reason given by server:
-      No such file or directory
+When running 2.6.26 on the clients, the same behavior is observed except that
+it never goes back to normal. Actually, I could not find any way to fix the
+clients without rebooting them.
 
-Booting the diskless node, I get the following:
+I'm not sure what's going on. My best guess would be that something times
+out (possibly the TCP connection itself ?) and that the NFS client in 2.6.25
+and above takes a very long time before giving up and establishing a new
+connection with the server ??? I'm not sure if that makes any sense, and I
+was not able to collect hard evidence of that so far...
 
-1- If the args are (v3 syntax, in pxelinux.cfg/default):
+Any ideas about what might be going wrong and/or what additional information
+I should try to collect about the hangs ?
 
-      append ip=dhcp nfsroot=10.0.0.1:/tftproot/nfsroot/x86_64,hard,intr
-    init=/boot/stateless.sh
+Thanks,
 
-The node boots up to the point of calling init and panics because it 
-can't find "/boot/stateless.sh" (screen shot: 
-http://wiki.neuralbs.com/~kyron/soc2008/screenshoots/NFSv4WithV3CommandLine_no_init.png 
-) But stateless is there and accessible (from the earlyer local mounting 
-of the root):
-
-    livecd ~ # ls -l /mnt/gentoo/boot/stateless.sh
-    -rwxr-xr-x 1 4294967294 4294967294 3964 Jul 11 04:22
-    /mnt/gentoo/boot/stateless.sh
-
-
-2- If the args are (v4 syntax, in pxelinux.cfg/default):
-
-      append ip=dhcp nfsroot=10.0.0.1:/,hard,intr init=/boot/stateless.sh
-
-The node boots up but panics on mounting root (screen shot : 
-http://wiki.neuralbs.com/~kyron/soc2008/screenshoots/NFSv4PanicOnMount.png )
-
-What can be seen in the logs:
-
-    livecd ~ # egrep -i '(nfs|mount)' /var/log/messages
-    Jul 16 01:37:23 livecd Mount-cache hash table entries: 256
-    Jul 16 01:37:36 livecd rc-scripts: ERROR:  cannot start nfsmount as
-    rpc.statd could not start
-    Jul 16 01:52:00 livecd aufs test_add:377:mount[27642]: uid/gid/perm
-    /mnt/livecd/tftproot 0/0/0755, 0/0/01777
-    Jul 16 01:52:11 livecd Installing knfsd (copyright (C) 1996
-    okir-pn4DOG8n3UYbFoVRYvo4fw@public.gmane.org).
-    Jul 16 01:52:12 livecd NFSD: Using /var/lib/nfs/v4recovery as the
-    NFSv4 state recovery directory
-    Jul 16 01:52:12 livecd NFSD: starting 90-second grace period
-    Jul 16 02:05:17 livecd mountd[28146]: Caught signal 15,
-    un-registering and exiting.
-    Jul 16 02:05:17 livecd nfsd: last server has exited
-    Jul 16 02:05:17 livecd nfsd: unexporting all filesystems
-    Jul 16 02:05:17 livecd NFSD: Using /var/lib/nfs/v4recovery as the
-    NFSv4 state recovery directory
-    Jul 16 02:05:17 livecd NFSD: starting 90-second grace period
-    Jul 16 02:05:40 livecd mountd[28441]: refused mount request from
-    10.0.0.1 for / (/): not exported
-    Jul 16 02:05:49 livecd nfsd: nfsv4 idmapping failing: has idmapd not
-    been started?
-    Jul 16 02:12:52 livecd dnsmasq[27954]: TFTP sent
-    /tftproot/nfsroot/x86_64/boot/kernel to 10.0.0.55
-    Jul 16 02:13:10 livecd mountd[28441]: authenticated mount request
-    from 10.0.0.55:955 for /tftproot/nfsroot/x86_64
-    (/tftproot/nfsroot/x86_64)
-    Jul 16 02:13:10 livecd aufs aufs_encode_fh:529:nfsd[28447]: NFSv2
-    client (max_len 6)?
-    Jul 16 02:14:44 livecd dnsmasq[27954]: TFTP sent
-    /tftproot/nfsroot/x86_64/boot/kernel to 10.0.0.55
-    Jul 16 02:15:01 livecd mountd[28441]: authenticated mount request
-    from 10.0.0.55:682 for /tftproot/nfsroot/x86_64
-    (/tftproot/nfsroot/x86_64)
-    Jul 16 02:24:55 livecd dnsmasq[28619]: TFTP sent
-    /tftproot/nfsroot/x86_64/boot/kernel to 10.0.0.55
-    Jul 16 02:25:12 livecd mountd[28441]: refused mount request from
-    10.0.0.55 for / (/): not exported
-
-NFS-booting-node's kernel config (nfs stuff), notice v3 client is disabled:
-
-    kyron clustering-livecd # grep -i nfs
-    /tmp/nfsboot_kernel/gentoo/usr/src/linux-2.6.26-rc5-mm3/.config
-    CONFIG_NFS_FS=y
-    # CONFIG_NFS_V3 is not set
-    CONFIG_NFS_V4=y
-    CONFIG_NFSD=m
-    CONFIG_NFSD_V3=y
-    # CONFIG_NFSD_V3_ACL is not set
-    CONFIG_NFSD_V4=y
-    CONFIG_ROOT_NFS=y
-    CONFIG_NFS_COMMON=y
-
-The server's kernel config (nfs):
-
-    kyron clustering-livecd # grep -i nfs
-    /var/tmp/catalyst/kerncache/default/livecd-stage2-amd64-2008.0/gentoo/usr/src/linux-2.6.24-gentoo-r8/.config
-    CONFIG_NFS_FS=y
-    # CONFIG_NFS_V3 is not set
-    CONFIG_NFS_V4=y
-    CONFIG_NFS_DIRECTIO=y
-    CONFIG_NFSD=m
-    CONFIG_NFSD_V3=y
-    # CONFIG_NFSD_V3_ACL is not set
-    CONFIG_NFSD_V4=y
-    CONFIG_NFSD_TCP=y
-    CONFIG_ROOT_NFS=y
-    CONFIG_NFS_COMMON=y
-
-...so, it seems kernel boot time nfs is not NFSv4 compatible (only v2/3 
-is supported _in kernel_).
-
-Eric
-
+-- 
+Michel "Walken" Lespinasse
+A program is never fully debugged until the last user dies.
