@@ -1,41 +1,68 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH] umount: fix problems when portmap doesn't listen on UDP.
-Date: Wed, 16 Jul 2008 14:49:47 -0400
-Message-ID: <487E42CB.4040509@RedHat.com>
-References: <18556.40326.764642.102066@notabene.brown>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: Massive NFS problems on large cluster with large number of
+	mounts
+Date: Wed, 16 Jul 2008 15:06:58 -0400
+Message-ID: <20080716190658.GF20298@fieldses.org>
+References: <4869E8AB.4060905@aei.mpg.de> <20080701182250.GB21807@fieldses.org> <486B89F5.9000109@aei.mpg.de> <20080702203130.GA24850@fieldses.org> <1215032676.7087.30.camel@localhost> <487DC43F.8040408@aei.mpg.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-To: Neil Brown <neilb@suse.de>
+Content-Type: text/plain; charset=us-ascii
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	linux-nfs@vger.kernel.org,
+	Henning Fehrmann <henning.fehrmann-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>,
+	Steffen Grunewald <steffen.grunewald-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>
+To: Carsten Aulbert <carsten.aulbert-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:49768 "EHLO mx1.redhat.com"
+Received: from mail.fieldses.org ([66.93.2.214]:57034 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752297AbYGPSuV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Jul 2008 14:50:21 -0400
-In-Reply-To: <18556.40326.764642.102066-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
+	id S1754071AbYGPTHA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Jul 2008 15:07:00 -0400
+In-Reply-To: <487DC43F.8040408-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Wed, Jul 16, 2008 at 11:49:51AM +0200, Carsten Aulbert wrote:
+> Hi Trond et al.
+> 
+> I'm following up on this discussion because we hit another problem:
+> 
+> Trond Myklebust wrote:
+> 
+> > 
+> > Alternatively, just change the values of /proc/sys/sunrpc/min_resvport
+> > and /proc/sys/sunrpc/max_resvport to whatever range of ports you
+> > actually want to use.
+> 
+> This works like a charm, however, if you set these values before
+> restarting the nfs-kernel-server then you are in deep trouble, since
+> when nfsd wants to start it needs to register with the portmapper, right?
+> 
+> But what happens if this requests comes from a high^Wunpriviliged port?
+> Right:
+> Jul 16 11:46:43 d23 portmap[8216]: connect from 127.0.0.1 to set(nfs):
+> request from unprivileged port
+> Jul 16 11:46:43 d23 nfsd[8214]: nfssvc: writting fds to kernel failed:
+> errno 13 (Permission denied)
+> Jul 16 11:46:44 d23 kernel: [ 8437.726223] NFSD: Using
+> /var/lib/nfs/v4recovery as the NFSv4 state recovery directory
+> Jul 16 11:46:44 d23 kernel: [ 8437.800607] NFSD: starting 90-second
+> grace period
+> Jul 16 11:46:44 d23 kernel: [ 8437.842891] nfsd: last server has exited
+> Jul 16 11:46:44 d23 kernel: [ 8437.879940] nfsd: unexporting all filesystems
+> Jul 16 11:46:44 d23 nfsd[8214]: nfssvc: Address already in use
+> 
+> 
+> Changing /proc/sys/sunrpc/max_resvport to 1023 again resolves this
+> issue, however defeats the purpose for the initial problem. I still need
+> to look into the code for hte portmapper, but is it easily possible that
+> the portmapper would accept nfsd requests from "insecure" ports also?
+> Since e are (mostly) in a controlled environment that should not pose a
+> problem.
+> 
+> Anyone with an idea?
 
+The immediate problem seems like a kernel bug to me--it seems to me that
+the calls to local daemons should be ignoring {min_,max}_resvport.  (Or
+is there some way the daemons can still know that those calls come from
+the local kernel?)
 
-Neil Brown wrote:
-> Another patch that can be pulled from 
->      git://neil.brown.name/nfs-utils for-steved
-> 
-> This and the next deal with problems with the new 'string based
-> option' code when portmap can only be contacted via TCP.
-> 
-> Some people seem to turn of string based options to avoid this
-> problem:
->   https://bugs.launchpad.net/ubuntu/+bug/213444/comments/23
-> 
-> This can partly be avoided using mountproto=tcp, but that
->   a/ shouldn't be needed (isn't with the old code)
->   b/ doesn't help the unmount case.
-> 
-> This first patch make umount work better if mountproto=tcp was given
-> to mount.
-> The next patch gives mountproto=tcp to mount if it is needed.
-Committed
-
-steved.
+--b.
