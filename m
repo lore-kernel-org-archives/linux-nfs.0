@@ -1,67 +1,67 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH 0/2 v4] nfs: return nfs4 compound header status on op
-	header decoding error
-Date: Wed, 16 Jul 2008 16:22:52 +0300
-Message-ID: <487DF62C.80501@panasas.com>
-References: <47F0F6AB.3030302@panasas.com>	
-	<1206974900-368-1-git-send-email-bhalevy@panasas.com>	
-	<1207002349.15341.15.camel@heimdal.trondhjem.org>	
-	<47F2025D.3030306@panasas.com> <47F20334.7040208@panasas.com>	
-	<4824E08E.6070401@panasas.com>
-	<1210440276.12927.0.camel@localhost>	
-	<48277F7B.2060307@panasas.com> <486D110F.1010608@panasas.com>	
-	<1216159035.7981.70.camel@localhost> <487DAF6F.10404@panasas.com>
-	<1216213058.7786.2.camel@localhost>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH] mount: enable retry for nfs23 to set the correct protocol
+ for mount.
+Date: Wed, 16 Jul 2008 13:12:06 -0400
+Message-ID: <487E2BE6.5050500@RedHat.com>
+References: <18556.40594.897682.204554@notabene.brown> <76bd70e30807150811p56feb02bo6e4a366d5577b398@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <1216213058.7786.2.camel@localhost>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org
+To: chucklever@gmail.com
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([66.187.233.31]:42629 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751169AbYGPRMl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Jul 2008 13:12:41 -0400
+In-Reply-To: <76bd70e30807150811p56feb02bo6e4a366d5577b398-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Jul. 16, 2008, 15:57 +0300, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
-> On Wed, 2008-07-16 at 11:21 +0300, Benny Halevy wrote:
->> On Jul. 16, 2008, 0:57 +0300, Trond Myklebust <trond.myklebust@fys.uio.no> wrote: 
->>> IOW: something like
->>>
->>>
->>> @@static int decode_compound_hdr(
->>> 	p += XDR_QUADLEN(hdr->taglen);
->>> 	READ32(hdr->nops);
->>> +	if (hdr->nops < 1)
->>> +		return nfs4_stat_to_errno(hdr->status);
->>> 	return 0;
->>> }
->>>
->> This certainly provides a shortcut for the nops==0 case.
->> However, it doesn't solve the OP_ILLEGAL case all other
->> cases where xdr_inline_decode failed or opnum != expected,
->> we can easily handle the OP_ILLEGAL case explicitly in
->> decode_op_hdr.  Are you ok with the approach of
->> carrying the hdr.status in xdr->status for decode_op_hdr
->> use, or do you rather prefer to leave things as they are
->> for the invalid cases and explicitly handle only the
->> nops==0 and OP_ILLEGAL cases?
+Chuck Lever wrote:
+> On Tue, Jul 15, 2008 at 8:56 AM, Neil Brown <neilb@suse.de> wrote:
+>> on the NFS server.
+>> Accessing an NFS server over an SSH tunnel would also be a good test
+>> that people are using in real life (IRL as my son says...).
+>>
+>> NeilBrown
+>>
+>>
+>> From cec4bf512cce4686ed5dd25a9bb489f9e521721d Mon Sep 17 00:00:00 2001
+>> From: Neil Brown <neilb@suse.de>
+>> Date: Tue, 15 Jul 2008 22:38:17 +1000
+>>
+>> If an NFS server is only listening on TCP for portmap (as apparently
+>> MS-Windows-Server2003R2SP2 does), mount doesn't cope.  There is retry
+>> logic in case the initial choice of version/etc doesn't work, but it
+>> doesn't cope with mountd needing tcp.
+>> So:
+>>  Fix probe_port so that a TIMEDOUT error doesn't simply abort
+>>    but probes with other protocols (e.g. tcp).
 > 
-> Why do we need to handle OP_ILLEGAL in the first place? This is the
-> client; it isn't supposed to send illegal operations...
-
-Right, but it helps in the development process when dealing with
-a broken version of the server or the client to pass a less
-generic error (-EOPNOTSUPP) up the stack rather than -EIO.
-
-Benny
-
+> That seems reasonable and will update the behavior for both legacy and
+> text-based mounts.
+I agree... 
 > 
-> Trond
+> But should you teach connect_to() to specifically handle ECONNREFUSED
+> as well?  I don't see why there would be a long timeout in that case.
 > 
+>>  Fix rewrite_mount_options to extract the mountproto option before
+>>    doing a probe, then set mountproto  (and mount prot) based
+>>    on the result.
+> 
+> Yes, it should have been doing that anyway.  There's a patch queued up
+> in my IPv6 series that addresses this along with other issues, but
+> it's reasonable to fix it now.
+I agree... 
+> 
+>>  Enable retry if the mount call returns EIO, as that is what happens
+>>    if the UDP requests to portmap get no response.
+> 
+> I would rather see this one addressed in the kernel.  I think the EIO
+> return is a kernel bug.  If the server doesn't support a particular
+> transport protocol for portmap, mountd, or NFS, the mount(2) system
+> call should always return EPROTONOSUPPORT.
+Since EIO has so many meanings... I think it should stay as a fatal 
+error as well...
+
+steved.
