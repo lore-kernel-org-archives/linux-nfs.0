@@ -1,77 +1,51 @@
-From: Michel Lespinasse <walken-Y93EPB1FQwg@public.gmane.org>
-Subject: NFS hangs with 2.6.25/2.6.26 despite server being reachable
-Date: Tue, 15 Jul 2008 22:40:53 -0700
-Message-ID: <20080716054053.GE6159@zoy.org>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: Performance Diagnosis
+Date: Wed, 16 Jul 2008 10:35:15 +0300
+Message-ID: <487DA4B3.1070805@panasas.com>
+References: <e80abd30807150834m47a1b86cle39885150f1d5bfd@mail.gmail.com>	 <487CC928.8070908@redhat.com>	 <76bd70e30807150923r31027edxb0394a220bbe879b@mail.gmail.com>	 <487CE202.2000809@redhat.com>	 <76bd70e30807151117g520f22cj1dfe26b971987d38@mail.gmail.com>	 <1216147879.7981.44.camel@localhost>  <487CF8D6.2090908@redhat.com> <1216150552.7981.48.camel@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Peter Staubach <staubach@redhat.com>, chucklever@gmail.com,
+	Andrew Bell <andrew.bell.ia@gmail.com>,
+	linux-nfs@vger.kernel.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from server.lespinasse.org ([64.142.28.226]:33097 "EHLO
-	server.lespinasse.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751774AbYGPGGL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Jul 2008 02:06:11 -0400
-Received: from michel.lespinasse.org (michel.home.lespinasse.org [10.1.0.1])
-	by server.lespinasse.org (Postfix) with ESMTP id 06BD02FBD0
-	for <linux-nfs@vger.kernel.org>; Tue, 15 Jul 2008 22:40:54 -0700 (PDT)
+Received: from gw-colo-pa.panasas.com ([66.238.117.130]:17416 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751939AbYGPHf7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Jul 2008 03:35:59 -0400
+In-Reply-To: <1216150552.7981.48.camel@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I'm getting frequent NFS hangs when running 2.6.25 or 2.6.26 on my
-NFS clients, while 2.6.24 seems to work fine.
+On Jul. 15, 2008, 22:35 +0300, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+> On Tue, 2008-07-15 at 15:21 -0400, Peter Staubach wrote:
+>> The connection manager would seem to be a RPC level thing, although
+>> I haven't thought through the ramifications of the NFSv4.1 stuff
+>> and how it might impact a connection manager sufficiently.
+> 
+> We already have the scheme that shuts down connections on inactive RPC
+> clients after a suitable timeout period, so the only gains I can see
+> would have to involve shutting down connections on active clients.
+> 
+> At that point, the danger isn't with NFSv4.1, it is rather with
+> NFSv2/3/4.0... Specifically, their lack of good replay cache semantics
+> mean that you have to be very careful about schemes that involve
+> shutting down connections on active RPC clients.
 
-Here are some details about my configuration:
+One more thing to consider about nfsv4.1 is the back channel which
+uses one of the forward going connections.  You may need to keep it
+alive while you hold state on the client (data/dir delegations, layouts,
+etc.)
 
-* The NFS server is a linux host (x86-64) running 2.6.22.19;
+Benny
 
-* I have two diskless clients using different hardware, one is an old
-  AMD K7 with intel pro/100 adapter, the other is x86-64 with on-board
-  intel e1000e networking.
+> 
+> Cheers
+>   Trond
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-* The clients boot from a small initrd and mount their rootfs using
-  NFS3 over TCP. The initial mounting is done with "nfsmount -o ro,nolock"
-  from the klibc-utils package.
-
-* /etc/fstab in the clients describe the nfs root as having the nolock,noatime
-  options. The boot scripts (unmodified from my debian etch distro)
-  remount the root using these. In the end, /proc/mounts shows the rootfs as
-  using the following options:
-  When running 2.6.24 on the client:
-    rw,noatime,vers=3,rsize=131072,wsize=131072,hard,nointr,
-    nolock,proto=tcp,timeo=7,retrans=3,sec=sys
-  When running 2.6.26 on the client:
-    rw,noatime,vers=3,rsize=131072,wsize=131072,namlen=255,hard,nointr,
-    nolock,proto=tcp,timeo=7,retrans=3,sec=sys,mountproto=udp
-
-* I often run suspend-to-ram on the clients, if I know they'll be unused
-  for a few hours.
-
-The above setup works just fine when running 2.6.24 on the clients.
-
-When running 2.6.25 on the clients, the rootfs often hangs after a
-suspend/resume cycle. This happens most often if the clients had been
-suspended for a while (say overnight, rather than just during dinner).
-By 'hangs' I mean the the clients show all symptoms that would be expected
-if the server was gone, i.e. processes can't access the filesystem,
-load goes to high values, machine becomes basically unusable. However,
-the clients are still pingable from the NFS server host, so I believe
-the network itself is fine. After 5-10 minutes of this, everything comes
-back to normal without any intervention on my part.
-
-When running 2.6.26 on the clients, the same behavior is observed except that
-it never goes back to normal. Actually, I could not find any way to fix the
-clients without rebooting them.
-
-I'm not sure what's going on. My best guess would be that something times
-out (possibly the TCP connection itself ?) and that the NFS client in 2.6.25
-and above takes a very long time before giving up and establishing a new
-connection with the server ??? I'm not sure if that makes any sense, and I
-was not able to collect hard evidence of that so far...
-
-Any ideas about what might be going wrong and/or what additional information
-I should try to collect about the hangs ?
-
-Thanks,
-
--- 
-Michel "Walken" Lespinasse
-A program is never fully debugged until the last user dies.
