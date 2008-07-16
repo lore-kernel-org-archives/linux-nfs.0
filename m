@@ -1,68 +1,81 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: Massive NFS problems on large cluster with large number of
-	mounts
-Date: Wed, 16 Jul 2008 15:06:58 -0400
-Message-ID: <20080716190658.GF20298@fieldses.org>
-References: <4869E8AB.4060905@aei.mpg.de> <20080701182250.GB21807@fieldses.org> <486B89F5.9000109@aei.mpg.de> <20080702203130.GA24850@fieldses.org> <1215032676.7087.30.camel@localhost> <487DC43F.8040408@aei.mpg.de>
+Subject: Re: NFS hangs with 2.6.25/2.6.26 despite server being reachable
+Date: Wed, 16 Jul 2008 15:15:53 -0400
+Message-ID: <20080716191553.GG20298@fieldses.org>
+References: <20080716054053.GE6159@zoy.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	linux-nfs@vger.kernel.org,
-	Henning Fehrmann <henning.fehrmann-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>,
-	Steffen Grunewald <steffen.grunewald-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>
-To: Carsten Aulbert <carsten.aulbert-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>
+Cc: linux-nfs@vger.kernel.org
+To: Michel Lespinasse <walken-Y93EPB1FQwg@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:57034 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:49199 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754071AbYGPTHA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Jul 2008 15:07:00 -0400
-In-Reply-To: <487DC43F.8040408-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>
+	id S1753386AbYGPTPz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Jul 2008 15:15:55 -0400
+In-Reply-To: <20080716054053.GE6159-Y93EPB1FQwg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jul 16, 2008 at 11:49:51AM +0200, Carsten Aulbert wrote:
-> Hi Trond et al.
+On Tue, Jul 15, 2008 at 10:40:53PM -0700, Michel Lespinasse wrote:
+> I'm getting frequent NFS hangs when running 2.6.25 or 2.6.26 on my
+> NFS clients, while 2.6.24 seems to work fine.
 > 
-> I'm following up on this discussion because we hit another problem:
+> Here are some details about my configuration:
 > 
-> Trond Myklebust wrote:
+> * The NFS server is a linux host (x86-64) running 2.6.22.19;
 > 
-> > 
-> > Alternatively, just change the values of /proc/sys/sunrpc/min_resvport
-> > and /proc/sys/sunrpc/max_resvport to whatever range of ports you
-> > actually want to use.
+> * I have two diskless clients using different hardware, one is an old
+>   AMD K7 with intel pro/100 adapter, the other is x86-64 with on-board
+>   intel e1000e networking.
 > 
-> This works like a charm, however, if you set these values before
-> restarting the nfs-kernel-server then you are in deep trouble, since
-> when nfsd wants to start it needs to register with the portmapper, right?
+> * The clients boot from a small initrd and mount their rootfs using
+>   NFS3 over TCP. The initial mounting is done with "nfsmount -o ro,nolock"
+>   from the klibc-utils package.
 > 
-> But what happens if this requests comes from a high^Wunpriviliged port?
-> Right:
-> Jul 16 11:46:43 d23 portmap[8216]: connect from 127.0.0.1 to set(nfs):
-> request from unprivileged port
-> Jul 16 11:46:43 d23 nfsd[8214]: nfssvc: writting fds to kernel failed:
-> errno 13 (Permission denied)
-> Jul 16 11:46:44 d23 kernel: [ 8437.726223] NFSD: Using
-> /var/lib/nfs/v4recovery as the NFSv4 state recovery directory
-> Jul 16 11:46:44 d23 kernel: [ 8437.800607] NFSD: starting 90-second
-> grace period
-> Jul 16 11:46:44 d23 kernel: [ 8437.842891] nfsd: last server has exited
-> Jul 16 11:46:44 d23 kernel: [ 8437.879940] nfsd: unexporting all filesystems
-> Jul 16 11:46:44 d23 nfsd[8214]: nfssvc: Address already in use
+> * /etc/fstab in the clients describe the nfs root as having the nolock,noatime
+>   options. The boot scripts (unmodified from my debian etch distro)
+>   remount the root using these. In the end, /proc/mounts shows the rootfs as
+>   using the following options:
+>   When running 2.6.24 on the client:
+>     rw,noatime,vers=3,rsize=131072,wsize=131072,hard,nointr,
+>     nolock,proto=tcp,timeo=7,retrans=3,sec=sys
+>   When running 2.6.26 on the client:
+>     rw,noatime,vers=3,rsize=131072,wsize=131072,namlen=255,hard,nointr,
+>     nolock,proto=tcp,timeo=7,retrans=3,sec=sys,mountproto=udp
 > 
+> * I often run suspend-to-ram on the clients, if I know they'll be unused
+>   for a few hours.
 > 
-> Changing /proc/sys/sunrpc/max_resvport to 1023 again resolves this
-> issue, however defeats the purpose for the initial problem. I still need
-> to look into the code for hte portmapper, but is it easily possible that
-> the portmapper would accept nfsd requests from "insecure" ports also?
-> Since e are (mostly) in a controlled environment that should not pose a
-> problem.
+> The above setup works just fine when running 2.6.24 on the clients.
 > 
-> Anyone with an idea?
+> When running 2.6.25 on the clients, the rootfs often hangs after a
+> suspend/resume cycle. This happens most often if the clients had been
+> suspended for a while (say overnight, rather than just during dinner).
+> By 'hangs' I mean the the clients show all symptoms that would be expected
+> if the server was gone, i.e. processes can't access the filesystem,
+> load goes to high values, machine becomes basically unusable. However,
+> the clients are still pingable from the NFS server host, so I believe
+> the network itself is fine. After 5-10 minutes of this, everything comes
+> back to normal without any intervention on my part.
+> 
+> When running 2.6.26 on the clients, the same behavior is observed except that
+> it never goes back to normal. Actually, I could not find any way to fix the
+> clients without rebooting them.
+> 
+> I'm not sure what's going on. My best guess would be that something times
+> out (possibly the TCP connection itself ?) and that the NFS client in 2.6.25
+> and above takes a very long time before giving up and establishing a new
+> connection with the server ??? I'm not sure if that makes any sense, and I
+> was not able to collect hard evidence of that so far...
+> 
+> Any ideas about what might be going wrong and/or what additional information
+> I should try to collect about the hangs ?
 
-The immediate problem seems like a kernel bug to me--it seems to me that
-the calls to local daemons should be ignoring {min_,max}_resvport.  (Or
-is there some way the daemons can still know that those calls come from
-the local kernel?)
+A sysrq-T trace showing where the clients were hung might help.  (So,
+"echo T >/proc/sysrq-trigger", then look at the logs.)
+
+If it were possible to get it down to a simple test case, then we'd
+probably learn something from a git-bisect to figure out exactly when
+the problem was first introduced.
 
 --b.
