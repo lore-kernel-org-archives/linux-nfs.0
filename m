@@ -1,82 +1,62 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH 0/2 v4] nfs: return nfs4 compound header status on op
- header decoding error
-Date: Wed, 16 Jul 2008 11:21:03 +0300
-Message-ID: <487DAF6F.10404@panasas.com>
-References: <47F0F6AB.3030302@panasas.com>	 <1206974900-368-1-git-send-email-bhalevy@panasas.com>	 <1207002349.15341.15.camel@heimdal.trondhjem.org>	 <47F2025D.3030306@panasas.com> <47F20334.7040208@panasas.com>	 <4824E08E.6070401@panasas.com> <1210440276.12927.0.camel@localhost>	 <48277F7B.2060307@panasas.com>  <486D110F.1010608@panasas.com> <1216159035.7981.70.camel@localhost>
+From: Carsten Aulbert <carsten.aulbert-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>
+Subject: Re: Massive NFS problems on large cluster with large number of	mounts
+Date: Wed, 16 Jul 2008 11:49:51 +0200
+Message-ID: <487DC43F.8040408@aei.mpg.de>
+References: <4869E8AB.4060905@aei.mpg.de>	 <20080701182250.GB21807@fieldses.org> <486B89F5.9000109@aei.mpg.de>	 <20080702203130.GA24850@fieldses.org> <1215032676.7087.30.camel@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+Content-Type: text/plain; charset=UTF-8
+Cc: linux-nfs@vger.kernel.org,
+	Henning Fehrmann <henning.fehrmann-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>,
+	Steffen Grunewald <steffen.grunewald-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>
 To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-colo-pa.panasas.com ([66.238.117.130]:8331 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751628AbYGPIVZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Jul 2008 04:21:25 -0400
-In-Reply-To: <1216159035.7981.70.camel@localhost>
+Received: from welcomes-you.com ([85.214.50.128]:50198 "EHLO
+	smtp.welcomes-you.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755907AbYGPJtz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Jul 2008 05:49:55 -0400
+In-Reply-To: <1215032676.7087.30.camel@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Jul. 16, 2008, 0:57 +0300, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
-> On Thu, 2008-07-03 at 20:49 +0300, Benny Halevy wrote:
->> Trond,  following our conversation during the Connectathon
->> I reduced this patch as much as possible and restricted the
->> use of the compound header status to cases where op_hdr
->> decoding hit an error.
->>
->> This is needed for nfs41 for graceful fallback when trying
->> to mount a 4.0 server with 4.1.  In this case the server
->> returns no ops and the hdr status is set to
->> NFS4ERR_MINOR_VERS_MISMATCH.
->>
->> Please consider these patches:
->>
->> [PATCH 1/2] nfs: return nfs4 compound header status on op header decoding error
-> 
-> No, this patch doesn't look right either. If we overrun the end of the
-> reply buffer, then xdr_inline_decode() will return a NULL pointer, so
-> you should never hit the your (opnum != expected) case.
+Hi Trond et al.
 
-In patch 1, this is supposed to be handled like this:
+I'm following up on this discussion because we hit another problem:
 
-decode_compound_hdr:
-+	xdr->status = hdr->status;
-
-decode_op_hdr:
-+	p = xdr_inline_decode(xdr, 8);
-+	if (unlikely(!p)) {
-...
-+		goto err;
-+	}
-
-+err:
-+	if (xdr->status != NFS_OK)
-+		return nfs4_stat_to_errno(xdr->status);
+Trond Myklebust wrote:
 
 > 
-> So given that your concern is primarily the case where nops==0, why
-> don't you just add that particular case to decode_compound_hdr?
-> 
-> IOW: something like
-> 
-> 
-> @@static int decode_compound_hdr(
-> 	p += XDR_QUADLEN(hdr->taglen);
-> 	READ32(hdr->nops);
-> +	if (hdr->nops < 1)
-> +		return nfs4_stat_to_errno(hdr->status);
-> 	return 0;
-> }
-> 
+> Alternatively, just change the values of /proc/sys/sunrpc/min_resvport
+> and /proc/sys/sunrpc/max_resvport to whatever range of ports you
+> actually want to use.
 
-This certainly provides a shortcut for the nops==0 case.
-However, it doesn't solve the OP_ILLEGAL case all other
-cases where xdr_inline_decode failed or opnum != expected,
-we can easily handle the OP_ILLEGAL case explicitly in
-decode_op_hdr.  Are you ok with the approach of
-carrying the hdr.status in xdr->status for decode_op_hdr
-use, or do you rather prefer to leave things as they are
-for the invalid cases and explicitly handle only the
-nops==0 and OP_ILLEGAL cases?
+This works like a charm, however, if you set these values before
+restarting the nfs-kernel-server then you are in deep trouble, since
+when nfsd wants to start it needs to register with the portmapper, right?
 
-Benny
+But what happens if this requests comes from a high^Wunpriviliged port?
+Right:
+Jul 16 11:46:43 d23 portmap[8216]: connect from 127.0.0.1 to set(nfs):
+request from unprivileged port
+Jul 16 11:46:43 d23 nfsd[8214]: nfssvc: writting fds to kernel failed:
+errno 13 (Permission denied)
+Jul 16 11:46:44 d23 kernel: [ 8437.726223] NFSD: Using
+/var/lib/nfs/v4recovery as the NFSv4 state recovery directory
+Jul 16 11:46:44 d23 kernel: [ 8437.800607] NFSD: starting 90-second
+grace period
+Jul 16 11:46:44 d23 kernel: [ 8437.842891] nfsd: last server has exited
+Jul 16 11:46:44 d23 kernel: [ 8437.879940] nfsd: unexporting all filesystems
+Jul 16 11:46:44 d23 nfsd[8214]: nfssvc: Address already in use
+
+
+Changing /proc/sys/sunrpc/max_resvport to 1023 again resolves this
+issue, however defeats the purpose for the initial problem. I still need
+to look into the code for hte portmapper, but is it easily possible that
+the portmapper would accept nfsd requests from "insecure" ports also?
+Since e are (mostly) in a controlled environment that should not pose a
+problem.
+
+Anyone with an idea?
+
+Thanks a lot
+
+Carsten
