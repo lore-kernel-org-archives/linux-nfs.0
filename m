@@ -1,99 +1,84 @@
 From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH] mount: enable retry for nfs23 to set the correct protocol
- for mount.
-Date: Thu, 17 Jul 2008 12:25:18 +1000
-Message-ID: <18558.44430.959865.662592@notabene.brown>
-References: <18556.40594.897682.204554@notabene.brown>
-	<76bd70e30807150811p56feb02bo6e4a366d5577b398@mail.gmail.com>
-	<487E2BE6.5050500@RedHat.com>
+Subject: Re: [PATCH] sm-notify: perform DNS lookup in the background.
+Date: Thu, 17 Jul 2008 12:41:40 +1000
+Message-ID: <18558.45412.19541.657376@notabene.brown>
+References: <18556.16890.235207.711721@notabene.brown>
+	<76bd70e30807150831l294c7f0as8ba53709e71d5827@mail.gmail.com>
+	<487E416A.4050007@RedHat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: chucklever@gmail.com, linux-nfs@vger.kernel.org
 To: Steve Dickson <SteveD@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:41370 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:42056 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752557AbYGQCZV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Jul 2008 22:25:21 -0400
+	id S1751470AbYGQCln (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Jul 2008 22:41:43 -0400
 In-Reply-To: message from Steve Dickson on Wednesday July 16
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 On Wednesday July 16, SteveD@redhat.com wrote:
-> >>  Enable retry if the mount call returns EIO, as that is what happens
-> >>    if the UDP requests to portmap get no response.
-> > 
-> > I would rather see this one addressed in the kernel.  I think the EIO
-> > return is a kernel bug.  If the server doesn't support a particular
-> > transport protocol for portmap, mountd, or NFS, the mount(2) system
-> > call should always return EPROTONOSUPPORT.
-> Since EIO has so many meanings... I think it should stay as a fatal 
-> error as well...
 > 
+> > 
+> > Arguably it would be cleaner architecturally if the DNS lookup were in
+> > notify_host().  Since doing it in notify() means you will be looking
+> > up these addresses on retries, maybe the host_lookup() call should be
+> > integrated into the "If we retransmitted 4 times" logic.  That would
+> > be an opportunity to fix the addrinfo leak in there.
 
-That would be best.  But the reality is that there are kernels in the
-wild where -EIO indicates and error that isn't really fatal.
+What addrinfo leak is that?
 
-We already do kernel-detection in mount.  How about extending it like
-this?
+> > 
+> > [Note that freeaddrinfo(3) simply walks the list of addrinfo
+> > structures and frees them.  By setting ai_next to NULL in some of the
+> > addrinfo structures, sm-notify is orphaning them -- freeaddrinfo(3)
+> > will never find them].
+> > 
 
-Thanks,
+I assume we are talking about the code in notify_host in the
+  if (host->retries >= 4) {
+branch.
+
+What the code is doing is taking the first addrinfo from the host->ai
+list, and moving it to the end - effectively rotating the list.
+This shouldn't change what freeaddrinfo will do.
+
+One of us is missing something.
+> 
+> 
+> I believe the following patch address those minor comments... true?
+
+Except for:
+
+> @@ -349,7 +364,6 @@ notify_host(int sock, struct nsm_host *host)
+>  		while ( *next )
+>  			next = & (*next)->ai_next;
+>  		*next = hold;
+> -		hold->ai_next = NULL;
+>  		memcpy(&host->addr, hold->ai_addr, hold->ai_addrlen);
+>  		addr_set_port(&host->addr, 0);
+>  		host->retries = 0;
+
+which I think is wrong, and wondering why:
+
+> @@ -394,7 +408,11 @@ notify_host(int sock, struct nsm_host *host)
+>  	}
+>  	len = (p - msgbuf) << 2;
+>  
+> -	sendto(sock, msgbuf, len, 0, (struct sockaddr *) &dest, sizeof(dest));
+> +	if (sendto(sock, msgbuf, len, 0, (struct sockaddr *) &dest, sizeof(dest)) < 0)
+> +		nsm_log(LOG_WARNING, "Sending Reboot Notification to "
+> +			"'%s' failed: errno %d (%s)", host->name, errno, strerror(errno));
+> +	
+> +	return 0;
+>  }
+>  
+>  /*
+
+Yes, I believe it addresses those comments.
+
+Acked-by: NeilBrown <neilb@suse.de>
+
+Thanks!
 NeilBrown
-
-From: Neil Brown <neilb@suse.de>
-Date: Thu, 17 Jul 2008 12:23:03 +1000
-Subject: [PATCH] mount: Recognised EIO from early kernels as possibly indicating a protocol error.
-
-In kernels up to and including 2.6.26, mount reports "connection
-refused" type messages as EIO rather than EPROTONOSUPPORT.
-So detect those kernels and don't treat EIO as so fatal.
-
-Signed-off-by: Neil Brown <neilb@suse.de>
----
- utils/mount/mount.c   |    8 +++++++-
- utils/mount/stropts.c |    7 +++++--
- 2 files changed, 12 insertions(+), 3 deletions(-)
-
-diff --git a/utils/mount/mount.c b/utils/mount/mount.c
-index 06e2804..2163e4e 100644
---- a/utils/mount/mount.c
-+++ b/utils/mount/mount.c
-@@ -174,9 +174,15 @@ static void discover_nfs_mount_data_version(void)
- 	}
- 	if (nfs_mount_data_version > NFS_MOUNT_VERSION)
- 		nfs_mount_data_version = NFS_MOUNT_VERSION;
--	else
-+	else {
- 		if (kernel_version > MAKE_VERSION(2, 6, 22))
- 			string++;
-+		/* up to and including 2.6.26, mount might return EIO
-+		 * when it means EPROTONOSUPPORT
-+		 */
-+		if (kernel_version > MAKE_VERSION(2, 6, 26))
-+			string++;
-+	}
- }
- 
- static void print_one(char *spec, char *node, char *type, char *opts)
-diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-index 09fca86..df4d9c1 100644
---- a/utils/mount/stropts.c
-+++ b/utils/mount/stropts.c
-@@ -552,9 +552,12 @@ static int nfs_try_nfs23mount(struct nfsmount_info *mi)
- 
- 	/*
- 	 * The kernel returns EOPNOTSUPP if the RPC bind failed,
--	 * and EPROTONOSUPPORT if the version isn't supported.
-+	 * and EPROTONOSUPPORT if the version isn't supported,
-+	 * or the protocol isn't accepted.
-+	 * Up to 2.6.26, the later causes EIO.
- 	 */
--	if (errno != EOPNOTSUPP && errno != EPROTONOSUPPORT)
-+	if (errno != EOPNOTSUPP && errno != EPROTONOSUPPORT &&
-+	    (string >= 2 || errno != EIO))
- 		return 0;
- 
- 	return nfs_retry_nfs23mount(mi);
--- 
-1.5.6.2
-
