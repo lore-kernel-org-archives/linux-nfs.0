@@ -1,37 +1,109 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: Massive NFS problems on large cluster with large number of
-	mounts
-Date: Thu, 17 Jul 2008 10:48:52 -0400
-Message-ID: <20080717144852.GA11759@fieldses.org>
-References: <4869E8AB.4060905@aei.mpg.de> <20080701182250.GB21807@fieldses.org> <486B89F5.9000109@aei.mpg.de> <20080702203130.GA24850@fieldses.org> <1215032676.7087.30.camel@localhost> <487DC43F.8040408@aei.mpg.de> <20080716190658.GF20298@fieldses.org> <76bd70e30807170747r31af3280icf0bd3fdbde17bac@mail.gmail.com>
+From: "Chuck Lever" <chucklever@gmail.com>
+Subject: Re: [PATCH] sm-notify: perform DNS lookup in the background.
+Date: Thu, 17 Jul 2008 11:09:31 -0400
+Message-ID: <76bd70e30807170809ya493100x7330f61d55bb12a3@mail.gmail.com>
+References: <18556.16890.235207.711721@notabene.brown>
+	 <76bd70e30807150831l294c7f0as8ba53709e71d5827@mail.gmail.com>
+	 <487E416A.4050007@RedHat.com>
+	 <18558.45412.19541.657376@notabene.brown>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Carsten Aulbert <carsten.aulbert-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	linux-nfs@vger.kernel.org,
-	Henning Fehrmann <henning.fehrmann-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>,
-	Steffen Grunewald <steffen.grunewald-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>
-To: chucklever@gmail.com
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: "Steve Dickson" <SteveD@redhat.com>, linux-nfs@vger.kernel.org
+To: "Neil Brown" <neilb@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:46956 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752818AbYGQOs4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 Jul 2008 10:48:56 -0400
-In-Reply-To: <76bd70e30807170747r31af3280icf0bd3fdbde17bac-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Received: from yx-out-2324.google.com ([74.125.44.28]:54320 "EHLO
+	yx-out-2324.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756952AbYGQPJd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jul 2008 11:09:33 -0400
+Received: by yx-out-2324.google.com with SMTP id 8so1960564yxm.1
+        for <linux-nfs@vger.kernel.org>; Thu, 17 Jul 2008 08:09:32 -0700 (PDT)
+In-Reply-To: <18558.45412.19541.657376-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jul 17, 2008 at 10:47:25AM -0400, Chuck Lever wrote:
-> On Wed, Jul 16, 2008 at 3:06 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > The immediate problem seems like a kernel bug to me--it seems to me that
-> > the calls to local daemons should be ignoring {min_,max}_resvport.  (Or
-> > is there some way the daemons can still know that those calls come from
-> > the local kernel?)
-> 
-> I tend to agree.  The rpcbind client (at least) does specifically
-> require a privileged port, so a large min/max port range would be out
-> of the question for those rpc_clients.
+On Wed, Jul 16, 2008 at 10:41 PM, Neil Brown <neilb@suse.de> wrote:
+> On Wednesday July 16, SteveD@redhat.com wrote:
+>>
+>> >
+>> > Arguably it would be cleaner architecturally if the DNS lookup were in
+>> > notify_host().  Since doing it in notify() means you will be looking
+>> > up these addresses on retries, maybe the host_lookup() call should be
+>> > integrated into the "If we retransmitted 4 times" logic.  That would
+>> > be an opportunity to fix the addrinfo leak in there.
+>
+> What addrinfo leak is that?
+>
+>> >
+>> > [Note that freeaddrinfo(3) simply walks the list of addrinfo
+>> > structures and frees them.  By setting ai_next to NULL in some of the
+>> > addrinfo structures, sm-notify is orphaning them -- freeaddrinfo(3)
+>> > will never find them].
+>> >
+>
+> I assume we are talking about the code in notify_host in the
+>  if (host->retries >= 4) {
+> branch.
+>
+> What the code is doing is taking the first addrinfo from the host->ai
+> list, and moving it to the end - effectively rotating the list.
+> This shouldn't change what freeaddrinfo will do.
+>
+> One of us is missing something.
 
-Any chance I could talk you into doing a patch for that?
+Even after staring at this for half an hour last week, it looked to me
+like you were chopping off the last addrinfo in the list each time
+through the "retries" loop.  I could hope for something a little more
+straightforward to do the address rotation.
 
---b.
+It would be nice to consolidate the acquisition and freeing of the
+addrinfo structs for each host so the lifetime of the results is made
+clear.  Moving the host_lookup() into notify_host() does help with
+that.
+
+There is another addrinfo leak in notify(), I think.  In the "Bind
+source IP if provided on command line" paragraph, host_lookup() is
+called and the address is copied, but that list of addrinfo structs is
+never freed, is it?
+
+>> I believe the following patch address those minor comments... true?
+>
+> Except for:
+>
+>> @@ -349,7 +364,6 @@ notify_host(int sock, struct nsm_host *host)
+>>               while ( *next )
+>>                       next = & (*next)->ai_next;
+>>               *next = hold;
+>> -             hold->ai_next = NULL;
+>>               memcpy(&host->addr, hold->ai_addr, hold->ai_addrlen);
+>>               addr_set_port(&host->addr, 0);
+>>               host->retries = 0;
+>
+> which I think is wrong, and wondering why:
+>
+>> @@ -394,7 +408,11 @@ notify_host(int sock, struct nsm_host *host)
+>>       }
+>>       len = (p - msgbuf) << 2;
+>>
+>> -     sendto(sock, msgbuf, len, 0, (struct sockaddr *) &dest, sizeof(dest));
+>> +     if (sendto(sock, msgbuf, len, 0, (struct sockaddr *) &dest, sizeof(dest)) < 0)
+>> +             nsm_log(LOG_WARNING, "Sending Reboot Notification to "
+>> +                     "'%s' failed: errno %d (%s)", host->name, errno, strerror(errno));
+>> +
+>> +     return 0;
+>>  }
+
+Yes, it's good to check for a return code here; but I'm wondering why
+change it in this patch?
+
+>>
+>>  /*
+>
+> Yes, I believe it addresses those comments.
+>
+> Acked-by: NeilBrown <neilb@suse.de>
+>
+> Thanks!
+> NeilBrown
+
+--
+Chuck Lever
