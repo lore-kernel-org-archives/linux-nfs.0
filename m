@@ -1,24 +1,27 @@
-From: <rice-LrEQ6i3bLU0@public.gmane.org>
-Subject: [NFS] If she needs your attention everynight.
-Date: Thu, 17 Jul 2008 12:59:34 -0300
-Message-ID: <487F6C66.6030208@ascd.org>
+From: mccutchen <oonojous-Z8pCfaNyH83e9wHmmfpqLFaTQe2KTcn/@public.gmane.org>
+Subject: [NFS] High paying dividend stocks
+Date: Thu, 17 Jul 2008 18:10:42 +0200
+Message-ID: <jx.dtvlmeekpqbyiw@fecf2a0e6ffc40a>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 To: nfs@lists.sourceforge.net
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:49583 "EHLO neil.brown.name"
+Received: from neil.brown.name ([220.233.11.133]:58255 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754603AbYGQP75 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 Jul 2008 11:59:57 -0400
+	id S1754916AbYGQREP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 17 Jul 2008 13:04:15 -0400
 Received: from brown by neil.brown.name with local (Exim 4.63)
 	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1KJVta-0003qy-WE
-	for linux-nfs@vger.kernel.org; Fri, 18 Jul 2008 01:59:55 +1000
+	id 1KJWtp-0008Ur-8a
+	for linux-nfs@vger.kernel.org; Fri, 18 Jul 2008 03:04:13 +1000
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The easiest way to become healthy http://qlea.medicaljobsgroup.eu
+Border patrol snares bold plot to bring in plutonium
+http://www.grupomacrosys.com/news.html
 
+--
+Using Opera's revolutionary e-mail client: http://www.opera.com/mail/
 
 -------------------------------------------------------------------------
 This SF.Net email is sponsored by the Moblin Your Move Developer's challenge
