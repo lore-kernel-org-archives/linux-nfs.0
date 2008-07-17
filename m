@@ -1,69 +1,88 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH 0/2 v4] nfs: return nfs4 compound header status on op
-	header decoding error
-Date: Thu, 17 Jul 2008 16:20:53 +0300
-Message-ID: <487F4735.40700@panasas.com>
-References: <47F0F6AB.3030302@panasas.com>	
-	<1206974900-368-1-git-send-email-bhalevy@panasas.com>	
-	<1207002349.15341.15.camel@heimdal.trondhjem.org>	
-	<47F2025D.3030306@panasas.com> <47F20334.7040208@panasas.com>	
-	<4824E08E.6070401@panasas.com>
-	<1210440276.12927.0.camel@localhost>	
-	<48277F7B.2060307@panasas.com> <486D110F.1010608@panasas.com>	
-	<1216159035.7981.70.camel@localhost> <487DAF6F.10404@panasas.com>	
-	<1216213058.7786.2.camel@localhost> <487DF62C.80501@panasas.com>
-	<1216296542.7453.19.camel@localhost>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: Massive NFS problems on large cluster with large number of
+	mounts
+Date: Thu, 17 Jul 2008 10:27:39 -0400
+Message-ID: <20080717142739.GC10799@fieldses.org>
+References: <4869E8AB.4060905@aei.mpg.de> <20080701182250.GB21807@fieldses.org> <486B89F5.9000109@aei.mpg.de> <20080702203130.GA24850@fieldses.org> <1215032676.7087.30.camel@localhost> <487DC43F.8040408@aei.mpg.de> <20080716190658.GF20298@fieldses.org> <487EDE57.4070100@aei.mpg.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <1216296542.7453.19.camel@localhost>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org,
+	Henning Fehrmann <henning.fehrmann-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>,
+	Steffen Grunewald <steffen.grunewald-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>
+To: Carsten Aulbert <carsten.aulbert-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail.fieldses.org ([66.93.2.214]:34209 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754795AbYGQO1k (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 17 Jul 2008 10:27:40 -0400
+In-Reply-To: <487EDE57.4070100-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Jul. 17, 2008, 15:09 +0300, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
-> On Wed, 2008-07-16 at 16:22 +0300, Benny Halevy wrote:
->> On Jul. 16, 2008, 15:57 +0300, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
->>> Why do we need to handle OP_ILLEGAL in the first place? This is the
->>> client; it isn't supposed to send illegal operations...
->> Right, but it helps in the development process when dealing with
->> a broken version of the server or the client to pass a less
->> generic error (-EOPNOTSUPP) up the stack rather than -EIO.
+On Thu, Jul 17, 2008 at 07:53:27AM +0200, Carsten Aulbert wrote:
+> Hi all,
 > 
-> NFS4ERR_OP_ILLEGAL literally means "this operation isn't even listed in
-> the 4.0/4.1 RFC". That's out in EYOUUTTERLYINSANECLIENT territory, and
-> so the current mapping to EOPNOTSUPP is just wrong.
+> J. Bruce Fields wrote:
+> 
+> >> Changing /proc/sys/sunrpc/max_resvport to 1023 again resolves this
+> >> issue, however defeats the purpose for the initial problem. I still need
+> >> to look into the code for hte portmapper, but is it easily possible that
+> >> the portmapper would accept nfsd requests from "insecure" ports also?
+> >> Since e are (mostly) in a controlled environment that should not pose a
+> >> problem.
+> >>
+> >> Anyone with an idea?
+> > 
+> > The immediate problem seems like a kernel bug to me--it seems to me that
+> > the calls to local daemons should be ignoring {min_,max}_resvport.  (Or
+> > is there some way the daemons can still know that those calls come from
+> > the local kernel?)
+> 
+> I just found this in the Makefile for the portmapper:
+> 
+> # To disable tcp-wrapper style access control, comment out the following
+> # macro definitions.  Access control can also be turned off by providing
+> # no access control tables. The local system, since it runs the portmap
+> # daemon, is always treated as an authorized host.
+> 
+> HOSTS_ACCESS= -DHOSTS_ACCESS
+> #WRAP_LIB = $(WRAP_DIR)/libwrap.a
+> WRAP_LIB = -lwrap
+> 
 
-FWIW, we currently map NFS4ERR_NOTSUPP to -ENOTSUPP and
-NFS4ERR_OP_ILLEGAL to -EOPNOTSUPP so one can distinct between
-the two cases, even if the latter mapping is wrong.
+Slightly off-topic, but I'm confused by the comment:
 
-I'm not sure if there's an available error code that would
-describe this NFS4ERR_OP_ILLEGAL perfectly, -EINVAL might
-be reasonable but I it's not very distinctive. Maybe we should
-add one to include/linux/errno.h?
+> # Comment out if your RPC library does not allocate privileged ports for
+> # requests from processes with root privilege, or the new portmap will
+> # always reject requests to register/unregister services on privileged
+> # ports.
+
+Shouldn't that be "on unprivileged ports"?
+
+> You can find out by running "rpcinfo -p"; if all mountd and NIS
+> # daemons use a port >= 1024 you should probably disable the next line.
+
+Doesn't rpcinfo -p just tell you which port those daemons are listening
+on, not which ports they'll use for contacting the portmapper?  A priori
+I don't see what one would have to do with the other.
 
 > 
-> NFS4ERR_NOTSUPP is the correct return value if a server doesn't (yet)
-> support an operation.
+> CHECK_PORT = -DCHECK_PORT
 > 
+> I'll try to head down the road of not checking for the ports anymore -
+> on exposed ports I could block the listening daemons from the outside
+> world by iptables.
+
+It's just the port that the portmapper itself listens on that needs to
+be firewalled, right?
+
+> Not nice, but probably a solution (and yet another
+> custom package for us).
 > 
-> 
+> Anyone who knows a good reason not to walk this route?
 
-Agreed.
+I guess the risk is that any old userland process on the server can now
+advertise nfsd service, and the clients end up contacting it instead of
+the kernel's nfsd.
 
-Just that we had a bug in the server that caused us to return
-NFS4ERR_OP_ILLEGAL for unimplemented ops rather than NFS4ERR_NOTSUPP.
-That's a condition I really want to be aware of while developing the
-server.
-
-Benny
+--b.
