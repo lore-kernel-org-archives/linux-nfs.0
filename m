@@ -1,36 +1,35 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Massive NFS problems on large cluster with large number of
-	mounts
-Date: Thu, 17 Jul 2008 11:35:06 -0400
-Message-ID: <1216308906.12588.12.camel@localhost>
-References: <4869E8AB.4060905@aei.mpg.de>
-	 <20080701182250.GB21807@fieldses.org> <486B89F5.9000109@aei.mpg.de>
-	 <20080702203130.GA24850@fieldses.org> <1215032676.7087.30.camel@localhost>
-	 <487DC43F.8040408@aei.mpg.de> <20080716190658.GF20298@fieldses.org>
-	 <76bd70e30807170747r31af3280icf0bd3fdbde17bac@mail.gmail.com>
+From: <rice-LrEQ6i3bLU0@public.gmane.org>
+Subject: [NFS] If she needs your attention everynight.
+Date: Thu, 17 Jul 2008 12:59:34 -0300
+Message-ID: <487F6C66.6030208@ascd.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Carsten Aulbert <carsten.aulbert-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>,
-	linux-nfs@vger.kernel.org,
-	Henning Fehrmann <henning.fehrmann-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>,
-	Steffen Grunewald <steffen.grunewald-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>
-To: chucklever@gmail.com
+Content-Type: text/plain; charset="us-ascii"
+To: nfs@lists.sourceforge.net
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:48445 "EHLO mail-out2.uio.no"
+Received: from neil.brown.name ([220.233.11.133]:49583 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753104AbYGQPfN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 Jul 2008 11:35:13 -0400
-In-Reply-To: <76bd70e30807170747r31af3280icf0bd3fdbde17bac-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+	id S1754603AbYGQP75 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 17 Jul 2008 11:59:57 -0400
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1KJVta-0003qy-WE
+	for linux-nfs@vger.kernel.org; Fri, 18 Jul 2008 01:59:55 +1000
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2008-07-17 at 10:47 -0400, Chuck Lever wrote:
-> I tend to agree.  The rpcbind client (at least) does specifically
-> require a privileged port, so a large min/max port range would be out
-> of the question for those rpc_clients.
+The easiest way to become healthy http://qlea.medicaljobsgroup.eu
 
-'portmap' does indeed appear to check for privileged ports, but I can't
-see any such checks in the rpcbind code.
 
+-------------------------------------------------------------------------
+This SF.Net email is sponsored by the Moblin Your Move Developer's challenge
+Build the coolest Linux based applications with Moblin SDK & win great prizes
+Grand prize is a trip for two to an Open Source event anywhere in the world
+http://moblin-contest.org/redirect.php?banner_id=100&url=/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
