@@ -1,58 +1,43 @@
 From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH] sm-notify: perform DNS lookup in the background.
-Date: Fri, 18 Jul 2008 08:46:55 +1000
-Message-ID: <18559.52191.42583.685790@notabene.brown>
-References: <18556.16890.235207.711721@notabene.brown>
-	<76bd70e30807150831l294c7f0as8ba53709e71d5827@mail.gmail.com>
-	<487E416A.4050007@RedHat.com>
-	<18558.45412.19541.657376@notabene.brown>
-	<487F1F1B.5080803@RedHat.com>
+Subject: Re: [PATCH] mount: enable retry for nfs23 to set the correct protocol
+ for mount.
+Date: Fri, 18 Jul 2008 08:50:35 +1000
+Message-ID: <18559.52411.176479.699140@notabene.brown>
+References: <18556.40594.897682.204554@notabene.brown>
+	<76bd70e30807150811p56feb02bo6e4a366d5577b398@mail.gmail.com>
+	<487E2BE6.5050500@RedHat.com>
+	<18558.44430.959865.662592@notabene.brown>
+	<487F2115.4090709@RedHat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: chucklever@gmail.com, linux-nfs@vger.kernel.org
 To: Steve Dickson <SteveD@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from ns2.suse.de ([195.135.220.15]:60045 "EHLO mx2.suse.de"
+Received: from mail.suse.de ([195.135.220.2]:55101 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751959AbYGQWq5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 Jul 2008 18:46:57 -0400
+	id S1752451AbYGQWuh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 17 Jul 2008 18:50:37 -0400
 In-Reply-To: message from Steve Dickson on Thursday July 17
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 On Thursday July 17, SteveD@redhat.com wrote:
-> > 
-> >> @@ -349,7 +364,6 @@ notify_host(int sock, struct nsm_host *host)
-		struct addrinfo *hold = host->ai;
-		struct addrinfo **next = &host->ai;
-		*next = hold->ai_next;
-> >>  		while ( *next )
-> >>  			next = & (*next)->ai_next;
-> >>  		*next = hold;
-> >> -		hold->ai_next = NULL;
-> >>  		memcpy(&host->addr, hold->ai_addr, hold->ai_addrlen);
-> >>  		addr_set_port(&host->addr, 0);
-> >>  		host->retries = 0;
-> > 
-> > which I think is wrong, and wondering why:
-> After the while loop doesn't hold point to the head of the list?
-> If so, setting hold->ai_next = NULL; orphans the rest of the list, right?
-> Or am I missing something... 
-> 
-> steved.
->   
+> > In kernels up to and including 2.6.26, mount reports "connection
+> > refused" type messages as EIO rather than EPROTONOSUPPORT.
+> > So detect those kernels and don't treat EIO as so fatal.
+> Should we just fix the kernel to do the right thing?
 
-After the while loop, hold points to the original head of the list.
-However the new head of this list was put in place by
-        *next = hold->ai_next;
+Undoubtedly we should fix the kernel to do the right thing.
+But some people find it much easier to upgrade user-space tools like
+nfs-utils than to upgrade kernels.
+We already have code in mount.nfs to cope with earlier kernels which
+had less complete interfaces with userspace.
+We can see this lack of distinction in error code simple as a less
+complete interface in earlier kernels and treat it the same way.
 
-as next == &host->ai, the above line is equivalent to
-
-        host->ai = host->ai->ai_next;
-
-which clearly move the head pointer to the second entry.
-hold->ai_next also points to this new head, so we have to clear it
-(hold->ai = NULL) when we attach it to the end of the list
-(*next = hold;, after the while loop).
+I don't feel so strongly about this that I will fight to the end, but
+I really think that if we can make life easier for our users with
+compromising our integrity, we should.  And handling EIO differently
+depending on kernel version seems to fit that goal.
 
 NeilBrown
