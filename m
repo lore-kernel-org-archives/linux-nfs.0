@@ -1,24 +1,24 @@
-From: Badics <neenusa-+m2adIPjUQ1l57MIdRCFDg@public.gmane.org>
-Subject: [NFS] Online delivery notification for your shipment
-Date: Fri, 18 Jul 2008 04:47:52 -0300
-Message-ID: <mv.filingkgobemue@cart-77610aba93>
+From: vicky <bhadrawa-33cgIwUDBkD6V6G2DxALlg@public.gmane.org>
+Subject: [NFS] When boobs get this big
+Date: Fri, 18 Jul 2008 15:11:55 +0300
+Message-ID: <hw.jxqcvdepnjmucu@volkan-y08m3tx3>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+To: nfs-TtF/mJH4Jtrk1uMJSBkQmQ@public.gmane.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:55992 "EHLO neil.brown.name"
+Received: from neil.brown.name ([220.233.11.133]:43329 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751419AbYGRHsJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 18 Jul 2008 03:48:09 -0400
+	id S1755512AbYGRMML (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 18 Jul 2008 08:12:11 -0400
 Received: from brown by neil.brown.name with local (Exim 4.63)
 	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1KJkhD-0004iq-EO
-	for linux-nfs@vger.kernel.org; Fri, 18 Jul 2008 17:48:07 +1000
+	id 1KJooj-0001el-56
+	for linux-nfs@vger.kernel.org; Fri, 18 Jul 2008 22:12:09 +1000
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Millions outraged over Medicare benefit cuts across the board for all Americans
-http://modem3.com/news.html
+Miley Cyrus videos are leaked out finally, get it here first.
+http://www.tsv-heusenstamm.de/news.html
 
 --
 Using Opera's revolutionary e-mail client: http://www.opera.com/mail/
