@@ -1,48 +1,38 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: NFS hangs with 2.6.25/2.6.26 despite server being reachable
-Date: Fri, 18 Jul 2008 15:07:50 -0400
-Message-ID: <20080718190750.GB12007@fieldses.org>
-References: <20080716054053.GE6159@zoy.org> <20080716191553.GG20298@fieldses.org> <20080718060405.GD12135@zoy.org>
+From: MacNeill <ekrowyad_1983-fIqWIUSQkStl57MIdRCFDg@public.gmane.org>
+Subject: [NFS] Scientists prove landing in Mars staged
+Date: Fri, 18 Jul 2008 20:28:59 +0100
+Message-ID: <ai.jkaqxdvozhjqeq@tommygun-4w82fy>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Michel Lespinasse <walken-Y93EPB1FQwg@public.gmane.org>
+Content-Type: text/plain; charset="us-ascii"
+To: nfs-TtF/mJH4Jtrk1uMJSBkQmQ@public.gmane.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:34748 "EHLO fieldses.org"
+Received: from neil.brown.name ([220.233.11.133]:54249 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756161AbYGRTHv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 18 Jul 2008 15:07:51 -0400
-In-Reply-To: <20080718060405.GD12135-Y93EPB1FQwg@public.gmane.org>
+	id S1753003AbYGRT2u (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 18 Jul 2008 15:28:50 -0400
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1KJvdI-0000GE-JM
+	for linux-nfs@vger.kernel.org; Sat, 19 Jul 2008 05:28:48 +1000
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jul 17, 2008 at 11:04:05PM -0700, Michel Lespinasse wrote:
-> On Wed, Jul 16, 2008 at 03:15:53PM -0400, J. Bruce Fields wrote:
-> > On Tue, Jul 15, 2008 at 10:40:53PM -0700, Michel Lespinasse wrote:
-> > > I'm getting frequent NFS hangs when running 2.6.25 or 2.6.26 on my
-> > > NFS clients, while 2.6.24 seems to work fine.
-> > > [...]
-> > > Any ideas about what might be going wrong and/or what additional
-> > > information I should try to collect about the hangs ?
-> >
-> > A sysrq-T trace showing where the clients were hung might help.  (So,
-> > "echo T >/proc/sysrq-trigger", then look at the logs.)
-> 
-> Thanks for the reply. I'm now running 2.6.25.11 with sysrq enabled.
-> Have not captured the failure yet, but then again it's been only one night.
-> I prefer to go with 2.6.25 instead of 2.6.26 because 2.6.25 generally
-> recovers from the failure after a few minutes - so there is a higher chance
-> that I'll actually get something useful logged.
-> 
-> > If it were possible to get it down to a simple test case, then we'd
-> > probably learn something from a git-bisect to figure out exactly when
-> > the problem was first introduced.
-> 
-> I wish I had a better way to reproduce this... as it is it happens only
-> every 2 or 3 days (with 2.6.25.4, but I suppose 2.6.25.11 will be the same)
-> 
-> I'll let you know when I capture a good trace.
+Get your free sms on iPhone 3G without signing up with AOL
+http://ajalugu.ca/news.html
 
-OK, thanks.
+--
+Using Opera's revolutionary e-mail client: http://www.opera.com/mail/
 
---b.
+-------------------------------------------------------------------------
+This SF.Net email is sponsored by the Moblin Your Move Developer's challenge
+Build the coolest Linux based applications with Moblin SDK & win great prizes
+Grand prize is a trip for two to an Open Source event anywhere in the world
+http://moblin-contest.org/redirect.php?banner_id=100&url=/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
+
