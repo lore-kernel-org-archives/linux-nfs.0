@@ -1,47 +1,38 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH] NFS: missing nfs_fattr_init in nfs3_proc_getacl and nfs3_proc_setacls
-Date: Sun, 20 Jul 2008 07:49:59 -0400
-Message-ID: <1216554599-6547-1-git-send-email-jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-To: Trond.Myklebust@netapp.com
+From: Russow <ldimegel-jdK4nhlfk62X/4koqx8SDw@public.gmane.org>
+Subject: [NFS] How to blackmail without getting caught
+Date: Sun, 20 Jul 2008 14:03:48 +0200
+Message-ID: <hr.lgqkqgfbgrulwc@hjem-m9hm1dojyl>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+To: nfs@lists.sourceforge.net
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:36728 "EHLO mx1.redhat.com"
+Received: from neil.brown.name ([220.233.11.133]:37681 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752626AbYGTLuR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 20 Jul 2008 07:50:17 -0400
+	id S1756053AbYGTMD7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 20 Jul 2008 08:03:59 -0400
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1KKXdq-0001tV-2n
+	for linux-nfs@vger.kernel.org; Sun, 20 Jul 2008 22:03:54 +1000
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The fattrs used in the NFSv3 getacl/setacl calls are not being properly
-initialized.
+Slave trade uncovered by FBI
+http://honest.es/start.html
 
-Thanks to Cai Qian for noticing the strange nfs_debug messages.
+--
+Using Opera's revolutionary e-mail client: http://www.opera.com/mail/
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfs/nfs3acl.c |    2 ++
- 1 files changed, 2 insertions(+), 0 deletions(-)
-
-diff --git a/fs/nfs/nfs3acl.c b/fs/nfs/nfs3acl.c
-index 423842f..cef6255 100644
---- a/fs/nfs/nfs3acl.c
-+++ b/fs/nfs/nfs3acl.c
-@@ -229,6 +229,7 @@ struct posix_acl *nfs3_proc_getacl(struct inode *inode, int type)
- 
- 	dprintk("NFS call getacl\n");
- 	msg.rpc_proc = &server->client_acl->cl_procinfo[ACLPROC3_GETACL];
-+	nfs_fattr_init(&fattr);
- 	status = rpc_call_sync(server->client_acl, &msg, 0);
- 	dprintk("NFS reply getacl: %d\n", status);
- 
-@@ -322,6 +323,7 @@ static int nfs3_proc_setacls(struct inode *inode, struct posix_acl *acl,
- 
- 	dprintk("NFS call setacl\n");
- 	msg.rpc_proc = &server->client_acl->cl_procinfo[ACLPROC3_SETACL];
-+	nfs_fattr_init(&fattr);
- 	status = rpc_call_sync(server->client_acl, &msg, 0);
- 	nfs_access_zap_cache(inode);
- 	nfs_zap_acl_cache(inode);
--- 
-1.5.5.1
+-------------------------------------------------------------------------
+This SF.Net email is sponsored by the Moblin Your Move Developer's challenge
+Build the coolest Linux based applications with Moblin SDK & win great prizes
+Grand prize is a trip for two to an Open Source event anywhere in the world
+http://moblin-contest.org/redirect.php?banner_id=100&url=/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
