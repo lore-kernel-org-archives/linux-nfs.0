@@ -1,101 +1,105 @@
-From: "Chuck Lever" <chuck.lever@oracle.com>
-Subject: Re: [PATCH 7/8] SUNRPC: Set V6ONLY socket option for RPC listener sockets
-Date: Mon, 21 Jul 2008 15:32:40 -0400
-Message-ID: <76bd70e30807211232k1b8a8f67t207c1434ee95dd9@mail.gmail.com>
-References: <20080630224147.24887.18730.stgit@ellison.1015granger.net>
-	 <20080630224616.24887.13171.stgit@ellison.1015granger.net>
-	 <20080719010550.GA18907@fieldses.org>
-Reply-To: chucklever@gmail.com
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: showmount issues
+Date: Mon, 21 Jul 2008 16:08:30 -0400
+Message-ID: <18E1FAEB-677F-409D-ABE3-AE8F23F96411@oracle.com>
+References: <556445368AFA1C438794ABDA8901891C09193BE1@USA0300MS03.na.xerox.net>
+Mime-Version: 1.0 (Apple Message framework v928.1)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+	martyleisner@yahoo.com, Steve Dickson <SteveD@redhat.com>,
+	Neil Brown <neilb@suse.de>
+To: "Leisner, Martin" <Martin.Leisner-Y/v6x+lg+nkAvxtiuMwx3w@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mu-out-0910.google.com ([209.85.134.184]:59816 "EHLO
-	mu-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753897AbYGUTcm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jul 2008 15:32:42 -0400
-Received: by mu-out-0910.google.com with SMTP id w8so933587mue.1
-        for <linux-nfs@vger.kernel.org>; Mon, 21 Jul 2008 12:32:40 -0700 (PDT)
-In-Reply-To: <20080719010550.GA18907@fieldses.org>
+Received: from rgminet01.oracle.com ([148.87.113.118]:62437 "EHLO
+	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752759AbYGUUKf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jul 2008 16:10:35 -0400
+In-Reply-To: <556445368AFA1C438794ABDA8901891C09193BE1-Ji2iP3vdqghrBKYPBwKYhw99oQ+liPgx@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jul 18, 2008 at 9:05 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> On Mon, Jun 30, 2008 at 06:46:17PM -0400, Chuck Lever wrote:
->> My plan is to use an AF_INET listener on systems that support only IPv4,
->> and an AF_INET6 listener on systems that can support IPv6. Incoming
->> IPv4 packets will be posted to an AF_INET6 listener with a mapped IPv4
->> address.
->>
->> Max Matveev <makc@sgi.com> says:
->>   Creating a single listener can be dangerous - if net.ipv6.bindv6only
->>   is enabled then it's possible to create another listener in v4
->>   namespace on the same port and steal the traffic from the "unifed"
->>   listener. You need to disable V6ONLY explicitly via a sockopt to stop
->>   that.
+Hi Martin-
+
+On Jul 17, 2008, at 6:01 PM, Leisner, Martin wrote:
+> I have a system (which is using the legacy SUN derived rpcbind).
 >
-> Is the V6ONLY option documented anywhere?  A quick grep through the
-> kernel sources and a couple man pages didn't turn up anything.
-
-I didn't find anything that documented it, so I based this patch on
-studying pieces of the IPv6 code that use this flag.  It would be
-worth passing this patch by netdev.
-
->>
->> Set appropriate socket option on RPC server listener sockets to prevent
->> this.
->>
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> ---
->>
->>  net/sunrpc/svcsock.c |   12 ++++++++++++
->>  1 files changed, 12 insertions(+), 0 deletions(-)
->>
->>
->> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
->> index 3e65719..43c21f7 100644
->> --- a/net/sunrpc/svcsock.c
->> +++ b/net/sunrpc/svcsock.c
->> @@ -1114,6 +1114,7 @@ static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
->>       struct svc_sock *svsk;
->>       struct sock     *inet;
->>       int             pmap_register = !(flags & SVC_SOCK_ANONYMOUS);
->> +     int zero        = 0;
->>
->>       dprintk("svc: svc_setup_socket %p\n", sock);
->>       if (!(svsk = kzalloc(sizeof(*svsk), GFP_KERNEL))) {
->> @@ -1146,6 +1147,17 @@ static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
->>       else
->>               svc_tcp_init(svsk, serv);
->>
->> +     /*
->> +      * We start one listener per sv_serv.  We want AF_INET
->> +      * requests to be automatically shunted to our AF_INET6
->> +      * listener using a mapped IPv4 address.  Make sure
->> +      * no-one starts an equivalent IPv4 listener, which
->> +      * would steal our incoming connections.
->> +      */
->> +     if (serv->sv_family == AF_INET6)
->> +             kernel_setsockopt(sock, SOL_IPV6, IPV6_V6ONLY,
->> +                                     (char *)&zero, sizeof(zero));
->> +
->>       dprintk("svc: svc_setup_socket created %p (inet %p)\n",
->>                               svsk, svsk->sk_sk);
->>
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> For some reason, showmount wasn't "always" working.   It reported
+> nothing when running from the command line, but worked under strace
+> (ugh!)
 >
+> I was running fedora8 (showmount 1.1.0).
+> I built nfs-utils 1.1.2 -- same problems.
+>
+> (I just tried a 1.0.6 on a RedHat Enterprise Linux 3 -- it worked  
+> fine)
+>
+> Running the code under gdb, I found some "interesting" problems...
+>
+> I changed:
+> bash2 :2 mleisner@mleisner-linux 05:59:55; rcsdiff -u showmount.c
+> ===================================================================
+> RCS file: showmount.c,v
+> retrieving revision 1.1
+> diff -u -r1.1 showmount.c
+> --- showmount.c 2008/07/17 21:28:59     1.1
+> +++ showmount.c 2008/07/17 21:45:45
+> @@ -82,6 +82,8 @@
+>  *
+>  *  tout contains the timeout.  It will be modified to contain the  
+> time
+>  *  remaining (i.e. time provided - time elasped).
+> + *
+> + *    Returns 0 if it works
+>  */
+> static int connect_nb(int fd, struct sockaddr_in *addr, struct timeval
+> *tout)
+> {
+> @@ -177,7 +179,7 @@
+>                tout.tv_sec = TIMEOUT_TCP;
+>
+>                ret = connect_nb(sock, &saddr, &tout);
+> -               if (ret == -1) {
+> +               if (ret < 0) {
+>                        close(sock);
+>                        rpc_createerr.cf_stat = RPC_SYSTEMERROR;
+>                        rpc_createerr.cf_error.re_errno = errno;
+> @@ -350,7 +352,7 @@
+>                                         MOUNTPROG, MOUNTVERS,
+> IPPROTO_TCP);
+>                if (server_addr.sin_port) {
+>                        ret = connect_nb(msock, &server_addr, 0);
+> -                       if (ret != -1)
+> +                       if (ret == 0)
+>                                mclient = clnttcp_create(&server_addr,
+>                                                MOUNTPROG, MOUNTVERS,
+> &msock,
+>                                                0, 0);
+>
+>
+> and now it works....
 
+I think the underlying problem is that sometimes connect_nb() returns  
+"-1" to signal an error, and sometimes it returns a negative errno  
+type code.
 
+It would be a slightly nicer fix if connect_nb() were changed to  
+always return 0 on success and -1 on error.  connect_nb()'s callers do  
+not appear to care why it failed, so returning an errno is unnecessary.
 
--- 
- "Alright guard, begin the unnecessarily slow-moving dipping mechanism."
---Dr. Evil
+Documenting connect_nb()'s return codes (as you did in your patch) is  
+a nice finishing touch.
+
+When posting patches, can you also include a patch description and a  
+Signed-off-by: line?  Some basic instructions for submitting Linux  
+kernel patches can be found here:
+
+http://lxr.linux.no/linux/Documentation/SubmittingPatches
+
+but most of these also apply to submitting to user space packages like  
+nfs-utils.
+
+Steve, perhaps this should be included in 1.1.3?
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
