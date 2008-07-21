@@ -1,154 +1,101 @@
 From: "Chuck Lever" <chuck.lever@oracle.com>
-Subject: Re: [PATCH 5/8] SUNRPC: Use new rpcb_v4_register() interface in svc_register()
-Date: Mon, 21 Jul 2008 15:26:52 -0400
-Message-ID: <76bd70e30807211226g1677e709vfff0bb7254b7d3b3@mail.gmail.com>
+Subject: Re: [PATCH 6/8] SUNRPC: Add kernel build option to disable server-side use of rpcbind v3/v4
+Date: Mon, 21 Jul 2008 15:30:10 -0400
+Message-ID: <76bd70e30807211230y4b7c2b21qa89d8cca05e08dab@mail.gmail.com>
 References: <20080630224147.24887.18730.stgit@ellison.1015granger.net>
-	 <20080630224601.24887.59241.stgit@ellison.1015granger.net>
-	 <20080718234026.GD15850@fieldses.org>
+	 <20080630224609.24887.20585.stgit@ellison.1015granger.net>
+	 <20080718234241.GE15850@fieldses.org>
 Reply-To: chucklever@gmail.com
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from nf-out-0910.google.com ([64.233.182.188]:35347 "EHLO
-	nf-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752999AbYGUT0z (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jul 2008 15:26:55 -0400
-Received: by nf-out-0910.google.com with SMTP id d3so534302nfc.21
-        for <linux-nfs@vger.kernel.org>; Mon, 21 Jul 2008 12:26:53 -0700 (PDT)
-In-Reply-To: <20080718234026.GD15850@fieldses.org>
+Received: from mu-out-0910.google.com ([209.85.134.185]:58097 "EHLO
+	mu-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751994AbYGUTaM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jul 2008 15:30:12 -0400
+Received: by mu-out-0910.google.com with SMTP id w8so932834mue.1
+        for <linux-nfs@vger.kernel.org>; Mon, 21 Jul 2008 12:30:11 -0700 (PDT)
+In-Reply-To: <20080718234241.GE15850@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jul 18, 2008 at 7:40 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> On Mon, Jun 30, 2008 at 06:46:01PM -0400, Chuck Lever wrote:
->> In order to advertise NFS-related services on IPv6 interfaces via
->> rpcbind, the kernel RPC server implementation must use
->> rpcb_v4_register() instead of rpcb_register().
+On Fri, Jul 18, 2008 at 7:42 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Mon, Jun 30, 2008 at 06:46:09PM -0400, Chuck Lever wrote:
+>> Allow distributions to use the legacy behavior until they integrate an
+>> appropriate user-space rpcbind daemon that can support IPv6 RPC services.
 >>
->> Legacy support (register using portmapper/rpcbindv2) is still available.
->> The new rpcbind version is not used unless enabled via a CONFIG option.
+>> I tried adding some logic to fall back if (un)registering with a v4
+>> protocol request failed, but there are too many corner cases.  So I just
+>> made it a compile-time switch that distributions can throw when they've
+>> replaced portmapper with rpcbind.
 >
-> So a kernel built with CONFIG_SUNRPC_REGISTER_V4 will no longer support
-> old userspace?
+> OK, I see you answered my last question....  Hm.  What were the corner
+> cases?
 
-Precisely speaking it will require that user space is running rpcbind
-(or some other rpcbind-like daemon that support version 4 of the
-rpcbind protocol) instead of the legacy portmapper.
+The obvious ones:  is there a daemon running at all, and is it
+listening?  If I try v4 but that doesn't work, then I retry with v3...
+if that doesn't work, then I try v2.  Is it OK if I was able to
+register an AF_INET6 service via v2?
+
+Certainly all this is possible to code up, but it didn't seem worth
+the complexity.
 
 >>
 >> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 >> ---
 >>
->>  net/sunrpc/svc.c |   73 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
->>  1 files changed, 73 insertions(+), 0 deletions(-)
+>>  fs/Kconfig |   22 ++++++++++++++++++++++
+>>  1 files changed, 22 insertions(+), 0 deletions(-)
 >>
 >>
->> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
->> index c31a1e4..13cca03 100644
->> --- a/net/sunrpc/svc.c
->> +++ b/net/sunrpc/svc.c
->> @@ -749,6 +749,74 @@ svc_exit_thread(struct svc_rqst *rqstp)
->>  }
->>  EXPORT_SYMBOL(svc_exit_thread);
+>> diff --git a/fs/Kconfig b/fs/Kconfig
+>> index 8cf8ee2..6148f4c 100644
+>> --- a/fs/Kconfig
+>> +++ b/fs/Kconfig
+>> @@ -1799,6 +1799,28 @@ config SUNRPC_XPRT_RDMA
 >>
->> +#ifdef CONFIG_SUNRPC_REGISTER_V4
->> +/*
->> + * Registering kernel RPC services with rpcbind version 2 will work
->> + * over either IPv4 or IPv6, since the Linux kernel always registers
->> + * services for the "any" address.
->> + *
->> + * However, the local rpcbind daemon listens on either only AF_INET
->> + * or AF_INET6 (never both).  When it listens on AF_INET6, an rpcbind
->> + * version 2 registration will result in registering the service at
->> + * IN6ADDR_ANY, even if the RPC service being registered is not
->> + * IPv6-enabled.
->> + *
->> + * Rpcbind version 4 allows us to be a little more specific.  Kernel
->> + * RPC services that don't yet support AF_INET6 can register
->> + * themselves as IPv4-only with the local rpcbind daemon, even if the
->> + * daemon is listening only on AF_INET6.
->> + *
->> + * And, registering IPv6-enabled kernel RPC services via AF_INET6
->> + * verifies that the local user space rpcbind daemon is properly
->> + * configured to support remote AF_INET6 rpcbind requests.
->> + *
->> + * An AF_INET6 registration request will fail if the local rpcbind
->> + * daemon is not set up to listen on AF_INET6.  Likewise, we fail
->> + * AF_INET6 registration requests if svc_register() is configured to
->> + * support only rpcbind version 2.
->> + */
->> +static int __svc_register(const u32 program, const u32 version,
->> +                       const sa_family_t family,
->> +                       const unsigned short protocol,
->> +                       const unsigned short port)
->> +{
->> +     struct sockaddr_in sin = {
->> +             .sin_family             = AF_INET,
->> +             .sin_addr.s_addr        = htonl(INADDR_ANY),
->> +             .sin_port               = htons(port),
->> +     };
->> +     struct sockaddr_in6 sin6 = {
->> +             .sin6_family            = AF_INET6,
->> +             .sin6_addr              = IN6ADDR_ANY_INIT,
->> +             .sin6_port              = htons(port),
->> +     };
->> +     struct sockaddr *sap;
->> +     char *netid;
->> +     int error, result;
+>>         If unsure, say N.
+>>
+>> +config SUNRPC_REGISTER_V4
+>> +     bool "Register local RPC services via rpcbind v4 (EXPERIMENTAL)"
+>> +     depends on SUNRPC && EXPERIMENTAL
+>> +     default n
+>> +     help
+>> +       Sun added support for registering RPC services at an IPv6
+>> +       address by creating two new versions of the rpcbind protocol
+>> +       (RFC 1833).
 >> +
->> +     switch (family) {
->> +     case AF_INET:
->> +             sap = (struct sockaddr *)&sin;
->> +             netid = RPCBIND_NETID_TCP;
->> +             if (protocol == IPPROTO_UDP)
->> +                     netid = RPCBIND_NETID_UDP;
->> +             break;
->> +     case AF_INET6:
->> +             sap = (struct sockaddr *)&sin6;
->> +             netid = RPCBIND_NETID_TCP6;
->> +             if (protocol == IPPROTO_UDP)
->> +                     netid = RPCBIND_NETID_UDP6;
->> +             break;
->> +     default:
->> +             return -EAFNOSUPPORT;
->> +     }
+>> +       This option enables support in the kernel RPC server for
+>> +       registering kernel RPC services via version 4 of the rpcbind
+>> +       protocol.  If you enable this option, you must run a portmapper
+>> +       daemon that supports rpcbind protocol version 4.
 >> +
->> +     error = rpcb_v4_register(program, version, sap, netid, &result);
->> +     if (!result)
->> +             error = -EACCES;
->> +     return error;
->> +}
->> +#else
->>  static int __svc_register(const u32 program, const u32 version,
->>                         sa_family_t family,
->>                         const unsigned short protocol,
->> @@ -756,11 +824,15 @@ static int __svc_register(const u32 program, const u32 version,
->>  {
->>       int error, result;
->>
->> +     if (family != AF_INET)
->> +             return -EAFNOSUPPORT;
+>> +       Serving NFS over IPv6 from knfsd (the kernel's NFS server)
+>> +       requires that you enable this option and use a portmapper that
+>> +       supports rpcbind version 4.
 >> +
->>       error = rpcb_register(program, version, protocol, port, &result);
->>       if (!result)
->>               error = -EACCES;
->>       return error;
->>  }
->> +#endif
+>> +       If unsure, say N to get traditional behavior (register kernel
+>> +       RPC services using only rpcbind version 2).  Distributions
+>> +       using the legacy Linux portmapper daemon must say N here.
+>> +
+>>  config RPCSEC_GSS_KRB5
+>>       tristate "Secure RPC: Kerberos V mechanism (EXPERIMENTAL)"
+>>       depends on SUNRPC && EXPERIMENTAL
 >>
->>  /**
->>   * svc_register - register an RPC service with the local portmapper
->> @@ -768,6 +840,7 @@ static int __svc_register(const u32 program, const u32 version,
->>   * @protocol: transport protocol number to advertise
->>   * @port: port to advertise
->>   *
->> + * Service is registered for any address in serv's address family
->>   */
->>  int svc_register(const struct svc_serv *serv, const unsigned short protocol,
->>                const unsigned short port)
->>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+
+
 
 -- 
-Chuck Lever
+ "Alright guard, begin the unnecessarily slow-moving dipping mechanism."
+--Dr. Evil
