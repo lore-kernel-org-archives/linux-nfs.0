@@ -1,65 +1,229 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH] mount: enable retry for nfs23 to set the correct protocol for mount.
-Date: Mon, 21 Jul 2008 12:55:59 +1000
-Message-ID: <18563.64191.468427.481673@notabene.brown>
-References: <18556.40594.897682.204554@notabene.brown>
-	<76bd70e30807150811p56feb02bo6e4a366d5577b398@mail.gmail.com>
-	<18559.53893.95829.499988@notabene.brown>
-	<76bd70e30807190909n12b9f70an87ccb62198c3a7d@mail.gmail.com>
-	<18562.57287.656749.540603@notabene.brown>
-	<76bd70e30807201828t70d5b1d0m4c242c5c8864c3bb@mail.gmail.com>
-	<18563.63821.501053.402741@notabene.brown>
+From: "Chuck Lever" <chuck.lever@oracle.com>
+Subject: Re: [PATCH 3/8] SUNRPC: Split portmap unregister API into separate function
+Date: Sun, 20 Jul 2008 23:17:02 -0400
+Message-ID: <76bd70e30807202017hec9d1der1bbbf5c5dcedac45@mail.gmail.com>
+References: <20080630224147.24887.18730.stgit@ellison.1015granger.net>
+	 <20080630224545.24887.61618.stgit@ellison.1015granger.net>
+	 <20080718232123.GA15850@fieldses.org>
+Reply-To: chucklever@gmail.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: "Chuck Lever" <chucklever@gmail.com>,
-	"Steve Dickson" <SteveD@redhat.com>, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:33443 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760141AbYGUC4H (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 20 Jul 2008 22:56:07 -0400
-In-Reply-To: message from Neil Brown on Monday July 21
+Received: from fg-out-1718.google.com ([72.14.220.156]:18890 "EHLO
+	fg-out-1718.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753640AbYGUDRF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 20 Jul 2008 23:17:05 -0400
+Received: by fg-out-1718.google.com with SMTP id 19so554009fgg.17
+        for <linux-nfs@vger.kernel.org>; Sun, 20 Jul 2008 20:17:02 -0700 (PDT)
+In-Reply-To: <20080718232123.GA15850@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Monday July 21, neilb@suse.de wrote:
-> 
-> How about this?
+On Fri, Jul 18, 2008 at 7:21 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Mon, Jun 30, 2008 at 06:45:45PM -0400, Chuck Lever wrote:
+>> Create a separate server-level interface for unregistering RPC services.
+>>
+>> The mechanics of and the API for registering and unregistering RPC
+>> services will diverge further as support for IPv6 is added.
+>>
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> ---
+>>
+>>  net/sunrpc/svc.c |   71 +++++++++++++++++++++++++++++++++++++++++++++---------
+>>  1 files changed, 59 insertions(+), 12 deletions(-)
+>>
+>>
+>> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+>> index d0e7865..a41b163 100644
+>> --- a/net/sunrpc/svc.c
+>> +++ b/net/sunrpc/svc.c
+>> @@ -27,6 +27,8 @@
+>>
+>>  #define RPCDBG_FACILITY      RPCDBG_SVCDSP
+>>
+>> +static void svc_unregister(const struct svc_serv *serv);
+>> +
+>>  #define svc_serv_is_pooled(serv)    ((serv)->sv_function)
+>>
+>>  /*
+>> @@ -426,9 +428,8 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
+>>               spin_lock_init(&pool->sp_lock);
+>>       }
+>>
+>> -
+>>       /* Remove any stale portmap registrations */
+>> -     svc_register(serv, 0, 0);
+>> +     svc_unregister(serv);
+>>
+>>       return serv;
+>>  }
+>> @@ -496,8 +497,7 @@ svc_destroy(struct svc_serv *serv)
+>>       if (svc_serv_is_pooled(serv))
+>>               svc_pool_map_put();
+>>
+>> -     /* Unregister service with the portmapper */
+>> -     svc_register(serv, 0, 0);
+>> +     svc_unregister(serv);
+>>       kfree(serv->sv_pools);
+>>       kfree(serv);
+>>  }
+>> @@ -758,12 +758,10 @@ int
+>>  svc_register(struct svc_serv *serv, int proto, unsigned short port)
+>>  {
+>>       struct svc_program      *progp;
+>> -     unsigned long           flags;
+>>       unsigned int            i;
+>>       int                     error = 0, dummy;
+>>
+>> -     if (!port)
+>> -             clear_thread_flag(TIF_SIGPENDING);
+>> +     BUG_ON(proto == 0 && port == 0);
+>>
+>>       for (progp = serv->sv_program; progp; progp = progp->pg_next) {
+>>               for (i = 0; i < progp->pg_nvers; i++) {
+>> @@ -791,13 +789,62 @@ svc_register(struct svc_serv *serv, int proto, unsigned short port)
+>>               }
+>>       }
+>>
+>> -     if (!port) {
+>> -             spin_lock_irqsave(&current->sighand->siglock, flags);
+>> -             recalc_sigpending();
+>> -             spin_unlock_irqrestore(&current->sighand->siglock, flags);
+>> +     return error;
+>> +}
+>
+> The "port" in the (port && !dummy) check in this loop should also go.
 
-BTW, this and two other patches are in my git.
+If this patch were by itself, yes.  But all this is cleaned out in the
+next subsequent patch.  I don't think it makes a difference here,
+unless you think there is a good possibility these patches will be
+separated.
 
-The first is the sm-notify fix, as modified, and with another fix
-since Steve's last post.  There was a "return" which should have been
-inside and 'if' but was outside it.
+>
+>> +
+>> +/*
+>> + * The local rpcbind daemon listens on either only IPv6 or only
+>> + * IPv4.  The kernel can't tell how it's configured.
+>> + *
+>> + * However, AF_INET addresses are mapped to AF_INET6 in IPv6-only
+>> + * configurations, so even an unregistration request on AF_INET
+>> + * will get to a local rpcbind daemon listening only on AF_INET6.
+>> + *
+>> + * So we always unregister via AF_INET (the loopback address is
+>> + * fairly unambiguous anyway).
+>> + *
+>> + * At this point we don't need rpcbind version 4 for unregistration:
+>> + * A v2 UNSET request will clear all transports (netids), addresses,
+>> + * and address families for [program, version].
+>> + *
+>> + * This should allow automatic support for both an all-IPv4 and
+>> + * an all-IPv6 configuration.
+>> + */
+>> +static void __svc_unregister(struct svc_program *program, u32 version)
+>> +{
+>> +     int error, boolean;
+>> +
+>> +     error = rpcb_register(program->pg_prog, version, 0, 0, &boolean);
+>> +     dprintk("svc: svc_unregister(%sv%u), error %d, %s\n",
+>> +                     program->pg_name, version, error,
+>> +                     (boolean ? "succeeded" : "failed"));
+>> +}
+>> +
+>> +/*
+>> + * All transport protocols and ports for this service are removed from
+>> + * the local rpcbind database.  The result of unregistration is reported
+>> + * via dprintk for those who want verification of the result, but is
+>> + * otherwise not important.
+>> + */
+>> +static void svc_unregister(const struct svc_serv *serv)
+>> +{
+>> +     struct svc_program *program;
+>> +     unsigned long flags;
+>> +     u32 version;
+>
+> It may just be brain-damage from too many years of mathematics, but
+> let's leave this as "i" as before: its scope is only a few lines, its
+> meaning is obvious from use, and this is what CodingStyle asks for
+> anyway.
 
-The second causes portmap lookup to use connected UDP ports.
+It may seem like a small thing, but I must disagree here.  I assume
+you are quibbling with the new name only and not the type change.
 
-The third is the one I just posted.
+My reading of CodingStyle Chapter 4 is that "i" is appropriate instead
+of "tmp" or "x" or "index" -- in other words where you need a generic
+iterator.  It doesn't require the name "i" for _all_ loop iterators.
+I certainly wouldn't use "i" if I were iterating over characters or
+addresses.
 
-BTW Steve, it is a small thing, but when you apply patches to git you
-often seem to lose the subject line.  This causes the first line of
-the description to be using as the one line summary, which sometimes
-looks rather strange.
+In mathematics (as you well know), "i, j, k" are used as subscripts or
+for sequences or summations; often they refer to _every_ possible
+value.  We don't have any of that here.  We are passing in RPC version
+numbers.  These may not even be in sequence:  mountd has versions 1,
+3, and 4, but not 2, nor 5 and above.
 
-Thanks,
-NeilBrown
+Any modern structured programming text recommends that we should name
+the variable something that reflects its use.  "i" is really quite
+generic; "version" is "short and to the point," as Chapter 4
+recommends.
 
-The following changes since commit ba8dd9533e647b70d6e46beed3dcd8d8036b02af:
-  Neil Brown (1):
-        If portmap is not listening on UDP (as apparently happens with
+[ "vers" is perhaps more concise, but I think nothing but ambiguity is
+gained from dropping the last three letters.  "lovers" could easily be
+"low version" or "star-crossed lovers", for example].
 
-are available in the git repository at:
+Over the past several kernel releases I've included patches that
+change variables storing RPC version numbers to "u32 version" wherever
+they are used.  I really don't see the need to be different here, and
+I'd rather be consistent with nearly every other usage.  If you're
+storing an RPC version number, it is a u32 field or variable called
+"version."  The type and the name match what is in the RFCs.
 
-  git://neil.brown.name/nfs-utils/ for-steved
+>
+>> +
+>> +     clear_thread_flag(TIF_SIGPENDING);
+>> +
+>> +     for (program = serv->sv_program; program; program = program->pg_next) {
+>> +             for (version = 0; version < program->pg_nvers; version++) {
+>> +                     if (program->pg_vers[version] == NULL)
+>> +                             continue;
+>> +                     __svc_unregister(program, version);
+>
+> Isn't there a change in behavior from the omitted vs_hidden check?
+> I assume it's harmless to unregister something that was never
+> registered (if that's indeed what this does), but it seems better to
+> skip it.
 
-Neil Brown (3):
-      sm-notify: perform DNS lookup in the background.
-      Use connected socket when probing portmap with UDP.
-      Check nfs options (vers/protocol) before trying mount.
+svc_unregister() is used in svc_create() before registering a new
+service, and in svc_destroy() when unregistering a service being shut
+down.
 
- utils/mount/network.c   |   41 +++++++++++++++++++++++++----------------
- utils/mount/network.h   |    2 +-
- utils/mount/nfsmount.c  |    2 +-
- utils/mount/stropts.c   |   18 +++++++-----------
- utils/statd/sm-notify.c |   39 +++++++++++++++++++++++++--------------
- 5 files changed, 59 insertions(+), 43 deletions(-)
+It's advisable to do this now even for so-called hidden services
+because of the ability for rpcbind to advertise RPC services at
+particular addresses.  The kernel registers an RPC service for the ANY
+address, so all addresses for that service that are already registered
+should be removed first.
+
+Perhaps for hidden services, svc_unregister() should warn loudly or
+fail immediately as a safety precaution, as these services should not
+have been registered already, and if they are, we may be colliding
+with something in user space.
+
+> Needs a comment in the changelog in any case.
+
+OK.
+
+>
+>> +             }
+>>       }
+>>
+>> -     return error;
+>> +     spin_lock_irqsave(&current->sighand->siglock, flags);
+>> +     recalc_sigpending();
+>> +     spin_unlock_irqrestore(&current->sighand->siglock, flags);
+>>  }
+>>
+>>  /*
+
+-- 
+Chuck Lever
