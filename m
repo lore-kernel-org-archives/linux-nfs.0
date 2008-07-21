@@ -1,229 +1,410 @@
-From: "Chuck Lever" <chuck.lever@oracle.com>
-Subject: Re: [PATCH 3/8] SUNRPC: Split portmap unregister API into separate function
-Date: Sun, 20 Jul 2008 23:17:02 -0400
-Message-ID: <76bd70e30807202017hec9d1der1bbbf5c5dcedac45@mail.gmail.com>
-References: <20080630224147.24887.18730.stgit@ellison.1015granger.net>
-	 <20080630224545.24887.61618.stgit@ellison.1015granger.net>
-	 <20080718232123.GA15850@fieldses.org>
-Reply-To: chucklever@gmail.com
+From: "Chuck Lever" <chucklever@gmail.com>
+Subject: Re: [PATCH] mount: enable retry for nfs23 to set the correct protocol for mount.
+Date: Mon, 21 Jul 2008 00:43:42 -0400
+Message-ID: <76bd70e30807202143q51820814n5a5a0bc0976f9763@mail.gmail.com>
+References: <18556.40594.897682.204554@notabene.brown>
+	 <76bd70e30807150811p56feb02bo6e4a366d5577b398@mail.gmail.com>
+	 <18559.53893.95829.499988@notabene.brown>
+	 <76bd70e30807190909n12b9f70an87ccb62198c3a7d@mail.gmail.com>
+	 <18562.57287.656749.540603@notabene.brown>
+	 <76bd70e30807201828t70d5b1d0m4c242c5c8864c3bb@mail.gmail.com>
+	 <18563.63821.501053.402741@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: "Steve Dickson" <SteveD@redhat.com>, linux-nfs@vger.kernel.org
+To: "Neil Brown" <neilb@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fg-out-1718.google.com ([72.14.220.156]:18890 "EHLO
-	fg-out-1718.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753640AbYGUDRF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 20 Jul 2008 23:17:05 -0400
-Received: by fg-out-1718.google.com with SMTP id 19so554009fgg.17
-        for <linux-nfs@vger.kernel.org>; Sun, 20 Jul 2008 20:17:02 -0700 (PDT)
-In-Reply-To: <20080718232123.GA15850@fieldses.org>
+Received: from mu-out-0910.google.com ([209.85.134.189]:50549 "EHLO
+	mu-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754042AbYGUEnp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jul 2008 00:43:45 -0400
+Received: by mu-out-0910.google.com with SMTP id w8so771032mue.1
+        for <linux-nfs@vger.kernel.org>; Sun, 20 Jul 2008 21:43:43 -0700 (PDT)
+In-Reply-To: <18563.63821.501053.402741-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jul 18, 2008 at 7:21 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> On Mon, Jun 30, 2008 at 06:45:45PM -0400, Chuck Lever wrote:
->> Create a separate server-level interface for unregistering RPC services.
+On Sun, Jul 20, 2008 at 10:49 PM, Neil Brown <neilb@suse.de> wrote:
+> On Sunday July 20, chucklever@gmail.com wrote:
+>> On Sun, Jul 20, 2008 at 2:48 AM, Neil Brown <neilb@suse.de> wrote:
+>> >
+>> > Any chance of pulling these out and sending them upstream now?  or is
+>> > the IPv6 series very close to release?
 >>
->> The mechanics of and the API for registering and unregistering RPC
->> services will diverge further as support for IPv6 is added.
->>
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> ---
->>
->>  net/sunrpc/svc.c |   71 +++++++++++++++++++++++++++++++++++++++++++++---------
->>  1 files changed, 59 insertions(+), 12 deletions(-)
->>
->>
->> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
->> index d0e7865..a41b163 100644
->> --- a/net/sunrpc/svc.c
->> +++ b/net/sunrpc/svc.c
->> @@ -27,6 +27,8 @@
->>
->>  #define RPCDBG_FACILITY      RPCDBG_SVCDSP
->>
->> +static void svc_unregister(const struct svc_serv *serv);
->> +
->>  #define svc_serv_is_pooled(serv)    ((serv)->sv_function)
->>
->>  /*
->> @@ -426,9 +428,8 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
->>               spin_lock_init(&pool->sp_lock);
->>       }
->>
->> -
->>       /* Remove any stale portmap registrations */
->> -     svc_register(serv, 0, 0);
->> +     svc_unregister(serv);
->>
->>       return serv;
->>  }
->> @@ -496,8 +497,7 @@ svc_destroy(struct svc_serv *serv)
->>       if (svc_serv_is_pooled(serv))
->>               svc_pool_map_put();
->>
->> -     /* Unregister service with the portmapper */
->> -     svc_register(serv, 0, 0);
->> +     svc_unregister(serv);
->>       kfree(serv->sv_pools);
->>       kfree(serv);
->>  }
->> @@ -758,12 +758,10 @@ int
->>  svc_register(struct svc_serv *serv, int proto, unsigned short port)
->>  {
->>       struct svc_program      *progp;
->> -     unsigned long           flags;
->>       unsigned int            i;
->>       int                     error = 0, dummy;
->>
->> -     if (!port)
->> -             clear_thread_flag(TIF_SIGPENDING);
->> +     BUG_ON(proto == 0 && port == 0);
->>
->>       for (progp = serv->sv_program; progp; progp = progp->pg_next) {
->>               for (i = 0; i < progp->pg_nvers; i++) {
->> @@ -791,13 +789,62 @@ svc_register(struct svc_serv *serv, int proto, unsigned short port)
->>               }
->>       }
->>
->> -     if (!port) {
->> -             spin_lock_irqsave(&current->sighand->siglock, flags);
->> -             recalc_sigpending();
->> -             spin_unlock_irqrestore(&current->sighand->siglock, flags);
->> +     return error;
->> +}
+>> IPv6 is actively being worked on.  I expect all these will be
+>> available in the next 6 months.  However this specific set of patches
+>> is dependent on some extensive changes (like, a complete
+>> re-implementation of mount's portmap client).  Pulling them out now
+>> would be a lot of work and I'm not sure it's worth the distraction to
+>> the IPv6 effort, which essentially needed to be complete last month.
 >
-> The "port" in the (port && !dummy) check in this loop should also go.
-
-If this patch were by itself, yes.  But all this is cleaned out in the
-next subsequent patch.  I don't think it makes a difference here,
-unless you think there is a good possibility these patches will be
-separated.
-
+> Fair enough....
+> Last month hasn't finished yet, has it?  That would be awkward.  There
+> is still lots to be done in June :-)
 >
->> +
->> +/*
->> + * The local rpcbind daemon listens on either only IPv6 or only
->> + * IPv4.  The kernel can't tell how it's configured.
->> + *
->> + * However, AF_INET addresses are mapped to AF_INET6 in IPv6-only
->> + * configurations, so even an unregistration request on AF_INET
->> + * will get to a local rpcbind daemon listening only on AF_INET6.
->> + *
->> + * So we always unregister via AF_INET (the loopback address is
->> + * fairly unambiguous anyway).
->> + *
->> + * At this point we don't need rpcbind version 4 for unregistration:
->> + * A v2 UNSET request will clear all transports (netids), addresses,
->> + * and address families for [program, version].
->> + *
->> + * This should allow automatic support for both an all-IPv4 and
->> + * an all-IPv6 configuration.
->> + */
->> +static void __svc_unregister(struct svc_program *program, u32 version)
->> +{
->> +     int error, boolean;
->> +
->> +     error = rpcb_register(program->pg_prog, version, 0, 0, &boolean);
->> +     dprintk("svc: svc_unregister(%sv%u), error %d, %s\n",
->> +                     program->pg_name, version, error,
->> +                     (boolean ? "succeeded" : "failed"));
->> +}
->> +
->> +/*
->> + * All transport protocols and ports for this service are removed from
->> + * the local rpcbind database.  The result of unregistration is reported
->> + * via dprintk for those who want verification of the result, but is
->> + * otherwise not important.
->> + */
->> +static void svc_unregister(const struct svc_serv *serv)
->> +{
->> +     struct svc_program *program;
->> +     unsigned long flags;
->> +     u32 version;
+>>
+>> I've expected some problems in this area, and the only thing I can
+>> hope for is that people will diligently report problems.  If you have
+>> specific problems with the text-based implementation, I'd like to hear
+>> about them so we can clear them up as quickly as possible.  I never
+>> claimed that work is complete yet.
 >
-> It may just be brain-damage from too many years of mathematics, but
-> let's leave this as "i" as before: its scope is only a few lines, its
-> meaning is obvious from use, and this is what CodingStyle asks for
-> anyway.
+> Just that "portmap doesn't respond to UDP" causes problems.
+>
+>>
+>> > I'd just like to get the regression fixed.
+>>
+>> Me too.
+>>
+>> Is it not sufficient to use connected UDP sockets in both user space
+>> and the kernel, and fix the kernel to return EPROTONOTSUPP where
+>> appropriate?
+>
+> Well I just noticed that it is now "fixed" in the kernel by defaulting
+> "mount_server" to use TCP when "nfs_server" is using TCP.
+>  commit 259875efed06d6936f54c9a264e868937f1bc217
 
-It may seem like a small thing, but I must disagree here.  I assume
-you are quibbling with the new name only and not the type change.
+Ah, that one.  Yes, I should have remembered that.  That indeed was a
+regression from the behavior of legacy mounts.
 
-My reading of CodingStyle Chapter 4 is that "i" is appropriate instead
-of "tmp" or "x" or "index" -- in other words where you need a generic
-iterator.  It doesn't require the name "i" for _all_ loop iterators.
-I certainly wouldn't use "i" if I were iterating over characters or
-addresses.
+As far as I can tell, if I try to mount with "proto=udp" and the
+server doesn't support it, the mount command isn't supposed to switch
+to TCP automatically, it's supposed to fail the mount.
 
-In mathematics (as you well know), "i, j, k" are used as subscripts or
-for sequences or summations; often they refer to _every_ possible
-value.  We don't have any of that here.  We are passing in RPC version
-numbers.  These may not even be in sequence:  mountd has versions 1,
-3, and 4, but not 2, nor 5 and above.
+If I try to mount but don't specify any transport protocol, it is
+supposed to default to UDP for mountd and TCP for NFS.  In that case
+the kernel should punt when the default protocols don't work and let
+user space work out the right transports and retry.
 
-Any modern structured programming text recommends that we should name
-the variable something that reflects its use.  "i" is really quite
-generic; "version" is "short and to the point," as Chapter 4
-recommends.
+> However I would like nfs-utils to work well with all released kernels
+> (or at least those release this millennium) where possible.  So while
+> a kernel fix is good, it isn't a panacea.
 
-[ "vers" is perhaps more concise, but I think nothing but ambiguity is
-gained from dropping the last three letters.  "lovers" could easily be
-"low version" or "star-crossed lovers", for example].
+The workaround for older nfs-utils has been to specify
+"mountproto=udp/tcp" explicitly.
 
-Over the past several kernel releases I've included patches that
-change variables storing RPC version numbers to "u32 version" wherever
-they are used.  I really don't see the need to be different here, and
-I'd rather be consistent with nearly every other usage.  If you're
-storing an RPC version number, it is a u32 field or variable called
-"version."  The type and the name match what is in the RFCs.
+It's a laudable goal to have completely interchangeable parts, but it
+seems like we pay a bit of a price in this case.  And besides,
+distributors are supposed to be adding value by ensuring that the
+parts work together (and known bugs have been addressed) before they
+ship... :-)  They can certainly add patches like this one without
+having them go upstream.
+
+I'm mainly concerned that the enterprise kernels work well.  The less
+stable kernels like Fedora and Debian that use whatever is the latest
+version are expected to have some issues.
+
+>> A healing balm for those who would like to use late model nfs-utils
+>> releases but don't want the hassle of the remaining bugs in the
+>> text-based mounts may be in order.  It would be easy to add a
+>> configure switch to use only the legacy ABI interface for mount.nfs.
+>
+> While tempting, I don't think that is a good idea.  As you say, we
+> want people to report bugs.
+> Maybe if we had a switch to use the legacy ABI (the inverse of your
+> short-lived "-s") that might have helped.  But it is too late to
+> bother with that now I think.  'string options' mostly works and is
+> clearly the right way forward.  Let's go there.
+
+> How about this?
+> It always does "probe_bothports" before a mount so we get the retry
+> heuristics that are useful, but the probe_port does *not* ping the
+> actual service, as that can consume a precious reserved port, and
+> shouldn't be needed.
+
+I think the extra port probe is only needed if "proto=" is not
+specified, and only for text-based mounts on pre .27 kernels, and only
+if the server's portmapper doesn't support UDP at all (which is a
+somewhat rare case I think).  Lots of "ifs".
+
+So, yes, this will address it, but I'm not terribly happy about the
+additional complexity in mount.nfs that will eventually not be needed
+when the kernel is working completely correctly.  I feel like this
+breaks the whole architecture of letting the kernel try the defaults,
+and then user space does the recovery if that doesn't work.
+
+I think this works around the problem of having a server who's
+portmapper listens only on TCP.  The underlying portmap client in the
+mount command (and in the kernel) should be able to deal with that
+without tying the rpcbind transport to the transport that is being
+queried, and that is what is truly broken here.
+
+So I think I would rather see this problem addressed in the
+portmap/rpcbind client implementations and not in the upper level
+mountd clients.  If a portmap query doesn't work over UDP, it seems
+like it should try it over TCP instead, and then remember that for
+later queries.
+
+I think your objection would be that this doesn't address the
+regression for particular combinations of nfs-utils and kernel
+versions, but I don't have a better suggestion at the moment.
+
+> If mount still fails, try with a ping to get the old, thorough,
+> behaviour.
+>
+> This goes on top of the patch to use connected UDP ports to talk to
+> portmap.
+>
+> NeilBrown
+>
+> From 852424a9a02dbe1a7c3b75a014bc71cad2ab6d5e Mon Sep 17 00:00:00 2001
+> From: Neil Brown <neilb@suse.de>
+> Date: Mon, 21 Jul 2008 12:45:50 +1000
+> Subject: [PATCH] Check nfs options (vers/protocol) before trying mount.
+>
+> As the kernels nfs-mount client does not have heuristics to pick the
+> best protocol/version, also check with portmap to find what is
+> available before requesting a mount.
+
+Again, I may not be clear on the original requirements here.  My
+understanding is that the legacy mount command uses default settings
+if "proto/mountproto" are not specified.  It does not attempt to use
+"the best" settings unless the default settings don't work.  This is
+what the text-based mount logic does -- it uses default settings
+(NFSv3 over TCP, mountd v3 over UDP), then punts if it needs service
+discovery.
+
+I'm not convinced the current text-based co-operative model is
+inadequate and should be modified so that the mount.nfs command probes
+then rewrites the mount options *before* calling the kernel the first
+time.  This is what we are trying to avoid by doing the majority of
+the mount option parsing in the kernel and not in user space.  It
+feels as if we are throwing out the baby with the bath water.
 
 >
->> +
->> +     clear_thread_flag(TIF_SIGPENDING);
->> +
->> +     for (program = serv->sv_program; program; program = program->pg_next) {
->> +             for (version = 0; version < program->pg_nvers; version++) {
->> +                     if (program->pg_vers[version] == NULL)
->> +                             continue;
->> +                     __svc_unregister(program, version);
+> However don't try to 'ping' the services.  For NFS, this ping would
+> need to come from a reserved port, and these are a scarce resource.
 >
-> Isn't there a change in behavior from the omitted vs_hidden check?
-> I assume it's harmless to unregister something that was never
-> registered (if that's indeed what this does), but it seems better to
-> skip it.
-
-svc_unregister() is used in svc_create() before registering a new
-service, and in svc_destroy() when unregistering a service being shut
-down.
-
-It's advisable to do this now even for so-called hidden services
-because of the ability for rpcbind to advertise RPC services at
-particular addresses.  The kernel registers an RPC service for the ANY
-address, so all addresses for that service that are already registered
-should be removed first.
-
-Perhaps for hidden services, svc_unregister() should warn loudly or
-fail immediately as a safety precaution, as these services should not
-have been registered already, and if they are, we may be colliding
-with something in user space.
-
-> Needs a comment in the changelog in any case.
-
-OK.
-
+> If the mount found, retry the probe doing any ping that might be
+> needed in the hope of finding the problem.
 >
->> +             }
->>       }
->>
->> -     return error;
->> +     spin_lock_irqsave(&current->sighand->siglock, flags);
->> +     recalc_sigpending();
->> +     spin_unlock_irqrestore(&current->sighand->siglock, flags);
->>  }
->>
->>  /*
+> Note: this patch also removes the (recently added) setting of
+> mountport= in the mount arguments. This is because:
+>  1/ the kernel can find it easily itself
+>  2/ it could confuse unmount which may be run much later
+>      when mountd is running on a different port.
+>
+>
+> Signed-off-by: Neil Brown <neilb@suse.de>
+> ---
+>  utils/mount/network.c  |   35 +++++++++++++++++++++--------------
+>  utils/mount/network.h  |    2 +-
+>  utils/mount/nfsmount.c |    2 +-
+>  utils/mount/stropts.c  |   18 +++++++-----------
+>  4 files changed, 30 insertions(+), 27 deletions(-)
+>
+> diff --git a/utils/mount/network.c b/utils/mount/network.c
+> index ff50512..e53bd53 100644
+> --- a/utils/mount/network.c
+> +++ b/utils/mount/network.c
+> @@ -500,9 +500,11 @@ static unsigned short getport(struct sockaddr_in *saddr,
+>  * Use the portmapper to discover whether or not the service we want is
+>  * available. The lists 'versions' and 'protos' define ordered sequences
+>  * of service versions and udp/tcp protocols to probe for.
+> + * If 'ping' is set, set an RPC NULL request to make sure the service
+> + * is there.  Else just assume that it is.
+>  */
+>  static int probe_port(clnt_addr_t *server, const unsigned long *versions,
+> -                       const unsigned int *protos)
+> +                       const unsigned int *protos, int ping)
+>  {
+>        struct sockaddr_in *saddr = &server->saddr;
+>        struct pmap *pmap = &server->pmap;
+> @@ -530,7 +532,8 @@ static int probe_port(clnt_addr_t *server, const unsigned long *versions,
+>                                                        _("UDP") : _("TCP"),
+>                                                p_port);
+>                                 }
+> -                               if (clnt_ping(saddr, prog, *p_vers, *p_prot, NULL))
+> +                               if (!ping ||
+> +                                   clnt_ping(saddr, prog, *p_vers, *p_prot, NULL))
+>                                        goto out_ok;
+>                        }
+>                }
+> @@ -567,7 +570,7 @@ out_ok:
+>        return 1;
+>  }
+>
+> -static int probe_nfsport(clnt_addr_t *nfs_server)
+> +static int probe_nfsport(clnt_addr_t *nfs_server, int ping)
+>  {
+>        struct pmap *pmap = &nfs_server->pmap;
+>
+> @@ -575,12 +578,14 @@ static int probe_nfsport(clnt_addr_t *nfs_server)
+>                return 1;
+>
+>        if (nfs_mount_data_version >= 4)
+> -               return probe_port(nfs_server, probe_nfs3_first, probe_tcp_first);
+> +               return probe_port(nfs_server, probe_nfs3_first, probe_tcp_first,
+> +                                 ping);
+>        else
+> -               return probe_port(nfs_server, probe_nfs2_only, probe_udp_only);
+> +               return probe_port(nfs_server, probe_nfs2_only, probe_udp_only,
+> +                                 ping);
+>  }
+>
+> -static int probe_mntport(clnt_addr_t *mnt_server)
+> +static int probe_mntport(clnt_addr_t *mnt_server, int ping)
+>  {
+>        struct pmap *pmap = &mnt_server->pmap;
+>
+> @@ -588,9 +593,11 @@ static int probe_mntport(clnt_addr_t *mnt_server)
+>                return 1;
+>
+>        if (nfs_mount_data_version >= 4)
+> -               return probe_port(mnt_server, probe_mnt3_first, probe_udp_first);
+> +               return probe_port(mnt_server, probe_mnt3_first, probe_udp_first,
+> +                                 ping);
+>        else
+> -               return probe_port(mnt_server, probe_mnt1_first, probe_udp_only);
+> +               return probe_port(mnt_server, probe_mnt1_first, probe_udp_only,
+> +                                 ping);
+>  }
+>
+>  /**
+> @@ -603,7 +610,7 @@ static int probe_mntport(clnt_addr_t *mnt_server)
+>  *
+>  * A side effect of calling this function is that rpccreateerr is set.
+>  */
+> -int probe_bothports(clnt_addr_t *mnt_server, clnt_addr_t *nfs_server)
+> +int probe_bothports(clnt_addr_t *mnt_server, clnt_addr_t *nfs_server, int ping)
+>  {
+>        struct pmap *nfs_pmap = &nfs_server->pmap;
+>        struct pmap *mnt_pmap = &mnt_server->pmap;
+> @@ -625,9 +632,9 @@ int probe_bothports(clnt_addr_t *mnt_server, clnt_addr_t *nfs_server)
+>
+>        for (; *probe_vers; probe_vers++) {
+>                nfs_pmap->pm_vers = mntvers_to_nfs(*probe_vers);
+> -               if ((res = probe_nfsport(nfs_server) != 0)) {
+> +               if ((res = probe_nfsport(nfs_server, ping) != 0)) {
+>                        mnt_pmap->pm_vers = *probe_vers;
+> -                       if ((res = probe_mntport(mnt_server)) != 0)
+> +                       if ((res = probe_mntport(mnt_server, ping)) != 0)
+>                                return 1;
+>                        memcpy(mnt_pmap, &save_mnt, sizeof(*mnt_pmap));
+>                }
+> @@ -645,9 +652,9 @@ out_bad:
+>        return 0;
+>
+>  version_fixed:
+> -       if (!probe_nfsport(nfs_server))
+> +       if (!probe_nfsport(nfs_server, ping))
+>                goto out_bad;
+> -       return probe_mntport(mnt_server);
+> +       return probe_mntport(mnt_server, ping);
+>  }
+>
+>  static int probe_statd(void)
+> @@ -714,7 +721,7 @@ int nfs_call_umount(clnt_addr_t *mnt_server, dirpath *argp)
+>        enum clnt_stat res = 0;
+>        int msock;
+>
+> -       if (!probe_mntport(mnt_server))
+> +       if (!probe_mntport(mnt_server, 0))
+>                return 0;
+>        clnt = mnt_openclnt(mnt_server, &msock);
+>        if (!clnt)
+> diff --git a/utils/mount/network.h b/utils/mount/network.h
+> index a4dba1b..6c2013f 100644
+> --- a/utils/mount/network.h
+> +++ b/utils/mount/network.h
+> @@ -39,7 +39,7 @@ typedef struct {
+>  static const struct timeval TIMEOUT = { 20, 0 };
+>  static const struct timeval RETRY_TIMEOUT = { 3, 0 };
+>
+> -int probe_bothports(clnt_addr_t *, clnt_addr_t *);
+> +int probe_bothports(clnt_addr_t *, clnt_addr_t *, int);
+>  int nfs_gethostbyname(const char *, struct sockaddr_in *);
+>  int nfs_name_to_address(const char *, const sa_family_t,
+>                struct sockaddr *, socklen_t *);
+> diff --git a/utils/mount/nfsmount.c b/utils/mount/nfsmount.c
+> index 6355681..905d61d 100644
+> --- a/utils/mount/nfsmount.c
+> +++ b/utils/mount/nfsmount.c
+> @@ -129,7 +129,7 @@ nfs_call_mount(clnt_addr_t *mnt_server, clnt_addr_t *nfs_server,
+>        enum clnt_stat stat;
+>        int msock;
+>
+> -       if (!probe_bothports(mnt_server, nfs_server))
+> +       if (!probe_bothports(mnt_server, nfs_server, 1))
+>                goto out_bad;
+>
+>        clnt = mnt_openclnt(mnt_server, &msock);
+> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+> index 09fca86..767d481 100644
+> --- a/utils/mount/stropts.c
+> +++ b/utils/mount/stropts.c
+> @@ -314,7 +314,7 @@ static int nfs_is_permanent_error(int error)
+>  * Returns a new group of mount options if successful; otherwise
+>  * NULL is returned if some failure occurred.
+>  */
+> -static struct mount_options *nfs_rewrite_mount_options(char *str)
+> +static struct mount_options *nfs_rewrite_mount_options(char *str, int ping)
+>  {
+>        struct mount_options *options;
+>        char *option, new_option[64];
+> @@ -405,7 +405,7 @@ static struct mount_options *nfs_rewrite_mount_options(char *str)
+>        po_remove_all(options, "tcp");
+>        po_remove_all(options, "udp");
+>
+> -       if (!probe_bothports(&mnt_server, &nfs_server)) {
+> +       if (!probe_bothports(&mnt_server, &nfs_server, ping)) {
+>                errno = ESPIPE;
+>                goto err;
+>        }
+> @@ -441,11 +441,6 @@ static struct mount_options *nfs_rewrite_mount_options(char *str)
+>        if (po_append(options, new_option) == PO_FAILED)
+>                goto err;
+>
+> -       snprintf(new_option, sizeof(new_option) - 1,
+> -                "mountport=%lu", mnt_server.pmap.pm_port);
+> -       if (po_append(options, new_option) == PO_FAILED)
+> -               goto err;
+> -
+>        errno = 0;
+>        return options;
+>
+> @@ -486,13 +481,13 @@ static int nfs_sys_mount(const struct nfsmount_info *mi, const char *type,
+>  * 'extra_opts' are updated to reflect the mount options that worked.
+>  * If the retry fails, 'options' and 'extra_opts' are left unchanged.
+>  */
+> -static int nfs_retry_nfs23mount(struct nfsmount_info *mi)
+> +static int nfs_try_nfs23mount_probe(struct nfsmount_info *mi, int ping)
+>  {
+>        struct mount_options *retry_options;
+>        char *retry_str = NULL;
+>        char **extra_opts = mi->extra_opts;
+>
+> -       retry_options = nfs_rewrite_mount_options(*extra_opts);
+> +       retry_options = nfs_rewrite_mount_options(*extra_opts, ping);
+>        if (!retry_options)
+>                return 0;
+>
+> @@ -547,7 +542,7 @@ static int nfs_try_nfs23mount(struct nfsmount_info *mi)
+>        if (mi->fake)
+>                return 1;
+>
+> -       if (nfs_sys_mount(mi, "nfs", *extra_opts))
+> +       if (nfs_try_nfs23mount_probe(mi, 0))
+>                return 1;
+>
+>        /*
+> @@ -557,7 +552,8 @@ static int nfs_try_nfs23mount(struct nfsmount_info *mi)
+>        if (errno != EOPNOTSUPP && errno != EPROTONOSUPPORT)
+>                return 0;
+>
+> -       return nfs_retry_nfs23mount(mi);
+> +       /* Probe harder */
+> +       return nfs_try_nfs23mount_probe(mi, 1);
+>  }
+>
+>  /*
+> --
+> 1.5.6.3
+>
+>
+
+
 
 -- 
-Chuck Lever
+ "Alright guard, begin the unnecessarily slow-moving dipping mechanism."
+--Dr. Evil
