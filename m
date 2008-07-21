@@ -1,105 +1,77 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: showmount issues
-Date: Mon, 21 Jul 2008 16:08:30 -0400
-Message-ID: <18E1FAEB-677F-409D-ABE3-AE8F23F96411@oracle.com>
-References: <556445368AFA1C438794ABDA8901891C09193BE1@USA0300MS03.na.xerox.net>
+Subject: Re: [PATCH] mount: enable retry for nfs23 to set the correct protocol for mount.
+Date: Mon, 21 Jul 2008 16:59:30 -0400
+Message-ID: <86AF0E25-8463-40CC-B873-9E594983B2E2@oracle.com>
+References: <18556.40594.897682.204554@notabene.brown> <76bd70e30807150811p56feb02bo6e4a366d5577b398@mail.gmail.com> <18559.53893.95829.499988@notabene.brown> <76bd70e30807190909n12b9f70an87ccb62198c3a7d@mail.gmail.com> <18562.57287.656749.540603@notabene.brown> <76bd70e30807201828t70d5b1d0m4c242c5c8864c3bb@mail.gmail.com> <18563.63821.501053.402741@notabene.brown> <18563.64191.468427.481673@notabene.brown>
 Mime-Version: 1.0 (Apple Message framework v928.1)
 Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
 Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-	martyleisner@yahoo.com, Steve Dickson <SteveD@redhat.com>,
 	Neil Brown <neilb@suse.de>
-To: "Leisner, Martin" <Martin.Leisner-Y/v6x+lg+nkAvxtiuMwx3w@public.gmane.org>
+To: Steve Dickson <SteveD@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:62437 "EHLO
+Received: from rgminet01.oracle.com ([148.87.113.118]:22733 "EHLO
 	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752759AbYGUUKf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jul 2008 16:10:35 -0400
-In-Reply-To: <556445368AFA1C438794ABDA8901891C09193BE1-Ji2iP3vdqghrBKYPBwKYhw99oQ+liPgx@public.gmane.org>
+	with ESMTP id S1752770AbYGUU75 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jul 2008 16:59:57 -0400
+In-Reply-To: <18563.64191.468427.481673-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Martin-
 
-On Jul 17, 2008, at 6:01 PM, Leisner, Martin wrote:
-> I have a system (which is using the legacy SUN derived rpcbind).
->
-> For some reason, showmount wasn't "always" working.   It reported
-> nothing when running from the command line, but worked under strace
-> (ugh!)
->
-> I was running fedora8 (showmount 1.1.0).
-> I built nfs-utils 1.1.2 -- same problems.
->
-> (I just tried a 1.0.6 on a RedHat Enterprise Linux 3 -- it worked  
-> fine)
->
-> Running the code under gdb, I found some "interesting" problems...
->
-> I changed:
-> bash2 :2 mleisner@mleisner-linux 05:59:55; rcsdiff -u showmount.c
-> ===================================================================
-> RCS file: showmount.c,v
-> retrieving revision 1.1
-> diff -u -r1.1 showmount.c
-> --- showmount.c 2008/07/17 21:28:59     1.1
-> +++ showmount.c 2008/07/17 21:45:45
-> @@ -82,6 +82,8 @@
->  *
->  *  tout contains the timeout.  It will be modified to contain the  
-> time
->  *  remaining (i.e. time provided - time elasped).
-> + *
-> + *    Returns 0 if it works
->  */
-> static int connect_nb(int fd, struct sockaddr_in *addr, struct timeval
-> *tout)
-> {
-> @@ -177,7 +179,7 @@
->                tout.tv_sec = TIMEOUT_TCP;
->
->                ret = connect_nb(sock, &saddr, &tout);
-> -               if (ret == -1) {
-> +               if (ret < 0) {
->                        close(sock);
->                        rpc_createerr.cf_stat = RPC_SYSTEMERROR;
->                        rpc_createerr.cf_error.re_errno = errno;
-> @@ -350,7 +352,7 @@
->                                         MOUNTPROG, MOUNTVERS,
-> IPPROTO_TCP);
->                if (server_addr.sin_port) {
->                        ret = connect_nb(msock, &server_addr, 0);
-> -                       if (ret != -1)
-> +                       if (ret == 0)
->                                mclient = clnttcp_create(&server_addr,
->                                                MOUNTPROG, MOUNTVERS,
-> &msock,
->                                                0, 0);
->
->
-> and now it works....
+On Jul 20, 2008, at 10:55 PM, Neil Brown wrote:
 
-I think the underlying problem is that sometimes connect_nb() returns  
-"-1" to signal an error, and sometimes it returns a negative errno  
-type code.
+> On Monday July 21, neilb@suse.de wrote:
+>>
+>> How about this?
+>
+> BTW, this and two other patches are in my git.
+>
+> The first is the sm-notify fix, as modified, and with another fix
+> since Steve's last post.  There was a "return" which should have been
+> inside and 'if' but was outside it.
+>
+> The second causes portmap lookup to use connected UDP ports.
+>
+> The third is the one I just posted.
+>
+> BTW Steve, it is a small thing, but when you apply patches to git you
+> often seem to lose the subject line.  This causes the first line of
+> the description to be using as the one line summary, which sometimes
+> looks rather strange.
 
-It would be a slightly nicer fix if connect_nb() were changed to  
-always return 0 on success and -1 on error.  connect_nb()'s callers do  
-not appear to care why it failed, so returning an errno is unnecessary.
+Yep, I noticed this too.  My patch descriptions usually make better  
+sense with the short description left intact.
 
-Documenting connect_nb()'s return codes (as you did in your patch) is  
-a nice finishing touch.
-
-When posting patches, can you also include a patch description and a  
-Signed-off-by: line?  Some basic instructions for submitting Linux  
-kernel patches can be found here:
-
-http://lxr.linux.no/linux/Documentation/SubmittingPatches
-
-but most of these also apply to submitting to user space packages like  
-nfs-utils.
-
-Steve, perhaps this should be included in 1.1.3?
+> The following changes since commit  
+> ba8dd9533e647b70d6e46beed3dcd8d8036b02af:
+>  Neil Brown (1):
+>        If portmap is not listening on UDP (as apparently happens with
+>
+> are available in the git repository at:
+>
+>  git://neil.brown.name/nfs-utils/ for-steved
+>
+> Neil Brown (3):
+>      sm-notify: perform DNS lookup in the background.
+>      Use connected socket when probing portmap with UDP.
+>      Check nfs options (vers/protocol) before trying mount.
+>
+> utils/mount/network.c   |   41 ++++++++++++++++++++++++ 
+> +----------------
+> utils/mount/network.h   |    2 +-
+> utils/mount/nfsmount.c  |    2 +-
+> utils/mount/stropts.c   |   18 +++++++-----------
+> utils/statd/sm-notify.c |   39 +++++++++++++++++++++++++--------------
+> 5 files changed, 59 insertions(+), 43 deletions(-)
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
+> in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
 --
 Chuck Lever
 chuck[dot]lever[at]oracle[dot]com
+
+
+
