@@ -1,75 +1,58 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: NFS hangs with 2.6.25/2.6.26 despite server being reachable
-Date: Wed, 23 Jul 2008 17:52:10 -0400
-Message-ID: <20080723215210.GB29065@fieldses.org>
-References: <20080716054053.GE6159@zoy.org> <20080716191553.GG20298@fieldses.org> <20080718060405.GD12135@zoy.org> <20080721021408.GA7949@zoy.org>
+Subject: Re: [PATCH 0/8] rpcbind v4 support in net/sunrpc/svc*
+Date: Wed, 23 Jul 2008 17:53:36 -0400
+Message-ID: <20080723215336.GC29065@fieldses.org>
+References: <20080630224147.24887.18730.stgit@ellison.1015granger.net> <20080719010738.GA19106@fieldses.org> <20080720211744.GA32178@fieldses.org> <76bd70e30807211207q4fc509e0h4a1a560fe8097de7@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Michel Lespinasse <walken-Y93EPB1FQwg@public.gmane.org>
+Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+To: chucklever@gmail.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:59140 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:59143 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751914AbYGWVwM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 Jul 2008 17:52:12 -0400
-In-Reply-To: <20080721021408.GA7949-Y93EPB1FQwg@public.gmane.org>
+	id S1753570AbYGWVxm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 Jul 2008 17:53:42 -0400
+In-Reply-To: <76bd70e30807211207q4fc509e0h4a1a560fe8097de7-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Jul 20, 2008 at 07:14:08PM -0700, Michel Lespinasse wrote:
-> On Thu, Jul 17, 2008 at 11:04:05PM -0700, Michel Lespinasse wrote:
-> > On Wed, Jul 16, 2008 at 03:15:53PM -0400, J. Bruce Fields wrote:
-> > > On Tue, Jul 15, 2008 at 10:40:53PM -0700, Michel Lespinasse wrote:
-> > > > I'm getting frequent NFS hangs when running 2.6.25 or 2.6.26 on my
-> > > > NFS clients, while 2.6.24 seems to work fine.
-> > > > [...]
-> > > > Any ideas about what might be going wrong and/or what additional
-> > > > information I should try to collect about the hangs ?
-> > >
-> > > A sysrq-T trace showing where the clients were hung might help.  (So,
-> > > "echo T >/proc/sysrq-trigger", then look at the logs.)
-> > 
-> > Thanks for the reply. I'm now running 2.6.25.11 with sysrq enabled.
-> > Have not captured the failure yet, but then again it's been only one night.
-> > I prefer to go with 2.6.25 instead of 2.6.26 because 2.6.25 generally
-> > recovers from the failure after a few minutes - so there is a higher chance
-> > that I'll actually get something useful logged.
+On Mon, Jul 21, 2008 at 03:07:48PM -0400, Chuck Lever wrote:
+> On Sun, Jul 20, 2008 at 5:17 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> > On Fri, Jul 18, 2008 at 09:07:38PM -0400, J. Bruce Fields wrote:
+> >> On Mon, Jun 30, 2008 at 06:45:21PM -0400, Chuck Lever wrote:
+> >> > Hi Bruce, Trond -
+> >> >
+> >> > These implement basic support in net/sunrpc/svc* for registering IPv6-
+> >> > enabled kernel RPC services with the local user-space rpcbind.  These
+> >> > all depend on the new rpcb_v4_register() API I just posted.
+> >> >
+> >> > The last patch enables IPv6 support for the NFSv4 callback service, even
+> >> > though it doesn't register with rpcbind.
+> >>
+> >> There's some conflicts against my latest tree.  Would it be possible to
+> >> rebase to
+> >>
+> >>       git://linux-nfs.org/~bfields/linux.git for-2.6.27
+> >>
+> >> sometime?
+> >
+> > Actually, never mind, I fixed up the conflicts in the first couple and
+> > staged them here:
+> >
+> >        git://linux-nfs.org/~bfields/linux.git for-2.6.28
+> >
+> > (I think the rest'll still apply cleanly to that.)
+> >
+> > We could maybe still try to get the rest of this in at the end of the
+> > 2.6.27 merge window, but I'm inclined to wait.  Apologies, partly my
+> > fault for not getting around to these sooner.
 > 
-> It took me a while, as for some reason I could not get things to fail
-> this week (It's probably that I don't know all the factors that trigger
-> the NFS hangs, yet). Then today I got two NFS hangs in a row, running
-> kernel version 2.6.25.11 on my K7 based client.
-> 
-> In both cases I captured information using alt-sysreq-t, the system
-> hung there for a few minutes, I double checked that the machine was
-> pingable from the server, and I got the dumps out of kern.log after
-> the machine recovered. The logs are incomplete, given that syslog
-> could not run well with the rootfs hung. I'm not sure if a larger
-> dmesg buffer would help ? Anyway, please get the logs from
-> 
-> http://lespinasse.org/kern.log
-> http://lespinasse.org/kern.log.2nd
+> Given the complexity and controversy of these changes, the number of
+> other changes that went into .27 and will require us to rewrite some
+> of these, and the pending holiday/travel for our team of maintainers,
+> I think waiting for .28 is our only choice.
 
-Oh, sorry, I think I overlooked the note in your original message that
-this happened after suspend-to-ram.  That's interesting!  You really
-need someone with more experience debugging the rpc client.... It might
-also be worth turning on rpc debugging during the hang just to get the
-dump of rpc task states.  (So
-
-	echo 0 >/proc/sys/sunrpc/rpc_debug
-
-and capture the first table it dumps to the log.  Or Trond or Chuck
-might have some better idea.)
+They don't seem as controversial as that!  But, OK, I guess .28 it is.
+Please let me know as soon as there's another set ready.
 
 --b.
-
-> 
-> In both cases I see a lot of nfs_wait_schedule, wait_on_bit_lock,
-> nfs_revalidate_inode, nfs_check_verifier. Not sure if that's expected,
-> but that's what I get, and the machine is pingable from the server side.
-> 
-> Hope this helps. Let me know if you want me to try something else.
-> 
-> -- 
-> Michel "Walken" Lespinasse
-> A program is never fully debugged until the last user dies.
