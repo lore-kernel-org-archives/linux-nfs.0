@@ -1,105 +1,38 @@
-From: Julia Lawall <julia@diku.dk>
-Subject: [PATCH] fs/nfsd/export.c: Adjust error handling code involving
- auth_domain_put
-Date: Fri, 25 Jul 2008 22:08:09 +0200 (CEST)
-Message-ID: <Pine.LNX.4.64.0807252207160.1602@ask.diku.dk>
+From: Tysick <LETICHA-rondtoer-TACiHdrOoaBfuniGea12/Q@public.gmane.org>
+Subject: [NFS] Why sleep with your enemy
+Date: Fri, 25 Jul 2008 22:16:30 +0200
+Message-ID: <xr.dbvkkkarcdjuzr@marc-xp>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-To: bfields@fieldses.org, neilb@suse.de, linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org, kernel-janitors@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+To: nfs@lists.sourceforge.net
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mgw2.diku.dk ([130.225.96.92]:43651 "EHLO mgw2.diku.dk"
+Received: from neil.brown.name ([220.233.11.133]:39955 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755532AbYGYUIN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Jul 2008 16:08:13 -0400
+	id S1751285AbYGYUQp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Jul 2008 16:16:45 -0400
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1KMTiT-0007Ag-Ba
+	for linux-nfs@vger.kernel.org; Sat, 26 Jul 2008 06:16:41 +1000
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Julia Lawall <julia@diku.dk>
+Huge fire near White House, terrorist threat feared
+http://blackpanther.gmxhome.de/watchit.html
 
-Once clp is assigned, it never becomes NULL, so we can make a label for it
-in the error handling code.  Because the call to path_lookup follows the
-call to auth_domain_find, its error handling code should jump to this new
-label.
+--
+Using Opera's revolutionary e-mail client: http://www.opera.com/mail/
 
-The semantic match that finds this problem is as follows:
-(http://www.emn.fr/x-info/coccinelle/)
+-------------------------------------------------------------------------
+This SF.Net email is sponsored by the Moblin Your Move Developer's challenge
+Build the coolest Linux based applications with Moblin SDK & win great prizes
+Grand prize is a trip for two to an Open Source event anywhere in the world
+http://moblin-contest.org/redirect.php?banner_id=100&url=/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
-// <smpl>
-@r@
-expression x,E;
-statement S;
-position p1,p2,p3;
-@@
-
-(
-if ((x = auth_domain_find@p1(...)) == NULL || ...) S
-|
-x = auth_domain_find@p1(...)
-... when != x
-if (x == NULL || ...) S
-)
-<...
-if@p3 (...) { ... when != auth_domain_put(x)
-                  when != if (x) { ... auth_domain_put(x); ...}
-    return@p2 ...;
-}
-...>
-(
-return x;
-|
-return 0;
-|
-x = E
-|
-E = x
-|
-auth_domain_put(x)
-)
-
-@exists@
-position r.p1,r.p2,r.p3;
-expression x;
-int ret != 0;
-statement S;
-@@
-
-* x = auth_domain_find@p1(...)
-  <...
-* if@p3 (...)
-  S
-  ...>
-* return@p2 \(NULL\|ret\);
-// </smpl>
-
-Signed-off-by: Julia Lawall <julia@diku.dk>
-
----
- fs/nfsd/export.c              |    6 +++---
- 1 files changed, 3 insertions(+), 3 deletions(-)
-
-diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-index 33bfcf0..9dc036f 100644
---- a/fs/nfsd/export.c
-+++ b/fs/nfsd/export.c
-@@ -1023,7 +1023,7 @@ exp_export(struct nfsctl_export *nxp)
- 	/* Look up the dentry */
- 	err = path_lookup(nxp->ex_path, 0, &nd);
- 	if (err)
--		goto out_unlock;
-+		goto out_put_clp;
- 	err = -EINVAL;
- 
- 	exp = exp_get_by_name(clp, nd.path.mnt, nd.path.dentry, NULL);
-@@ -1090,9 +1090,9 @@ finish:
- 		exp_put(exp);
- 	if (fsid_key && !IS_ERR(fsid_key))
- 		cache_put(&fsid_key->h, &svc_expkey_cache);
--	if (clp)
--		auth_domain_put(clp);
- 	path_put(&nd.path);
-+out_put_clp:
-+	auth_domain_put(clp);
- out_unlock:
- 	exp_writeunlock();
- out:
