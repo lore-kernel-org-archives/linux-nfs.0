@@ -1,71 +1,37 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: incorrect entries in /etc/netconfig
-Date: Fri, 25 Jul 2008 18:58:30 -0400
-Message-ID: <4D4F68CB-7922-4CD7-A32B-50A0FD311EE0@oracle.com>
-References: <BE9551A6-D4EB-4A8A-9D26-18C4722CF136@oracle.com> <4873A681.5080409@RedHat.com> <777E985E-D123-4A74-9770-DB8DDA4DADBA@oracle.com> <488A448E.3070400@RedHat.com>
-Mime-Version: 1.0 (Apple Message framework v928.1)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: Steve Dickson <SteveD@redhat.com>
+From: "garry hans" <mary.anne.amantel-P376TdW+M2M@public.gmane.org>
+Subject: [NFS] Fuck my sister :)
+Date: Sat, 26 Jul 2008 20:54:29 +0000
+Message-ID: <000701c8ef70$079163a3$d0bb4a90@xpyrfjj>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+To: <nfs@lists.sourceforge.net>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:44630 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752309AbYGYW7M (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Jul 2008 18:59:12 -0400
-In-Reply-To: <488A448E.3070400-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+Received: from neil.brown.name ([220.233.11.133]:47596 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756126AbYGZWmN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 26 Jul 2008 18:42:13 -0400
+Received: from brown by neil.brown.name with local (Exim 4.63)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1KMsSo-0004AL-4S
+	for linux-nfs@vger.kernel.org; Sun, 27 Jul 2008 08:42:10 +1000
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Jul 25, 2008, at 5:24 PM, Steve Dickson wrote:
-> Chuck Lever wrote:
->> On Jul 8, 2008, at 1:40 PM, Steve Dickson wrote:
->>> Sorry for taking soo long to address this...
->>>
->>> Chuck Lever wrote:
->>>> Hi Steve-
->>>>
->>>> I'm trying out setconfigent() and friends from the new libtirpc.
->>>>
->>>> It looks like the entries in the stock /etc/netconfig on Fedora are
->>>> incorrect compared with Solaris.  My Fedora 8 system has this:
->>>>
->>>> udp        tpi_clts      v     inet     udp     -       -
->>>> tcp        tpi_cots_ord  v     inet     tcp     -       -
->>>> udp6       tpi_clts      -     inet6    udp6     -       -
->>>> tcp6       tpi_cots_ord  -     inet6    tcp6    -       -
->>>>
->>>> but my OpenSolaris 2008.5 system has this:
->>>>
->>>> udp6       tpi_clts      v     inet6   udp    /dev/udp6       -
->>>> tcp6       tpi_cots_ord  v     inet6   tcp    /dev/tcp6       -
->>>> udp        tpi_clts      v     inet    udp    /dev/udp        -
->>>> tcp        tpi_cots_ord  v     inet    tcp    /dev/tcp        -
->>>>
->>>> Note the contents of the fifth field in each row.  The Fedora  
->>>> netconfig
->>>> has "udp6" and "tcp6" as the protonames, which I think is  
->>>> incorrect.
->>>> These should be "udp" and "tcp".  Only the netids (the first field)
->>>> should have the extra "6" suffix.  The protocol names should  
->>>> always be
->>>> "udp" or "tcp", no matter which address family is used.
->>>>
->>>> Can you fix this up in the libtirpc package?
->>> It is in later releases... to be honest I'm not sure how
->>> it got that way.. It did not seem to be broken in the
->>> stock F8 (libtirpc-0.1.7-12), F9 or rawhide packages
->>
->> FYI: I just hit this again on a fairly fresh F9 install.
->>
->> I wonder if installing libtirpc-devel breaks /etc/netconfig?
-> Is there a /etc/netconfig.rpmnew file?
+Look cool  Video  how  3 guys  are  fuck my sister.
 
-[cel@tarkus nfs-2.6]$ ls -l /etc/netcon*
--rw-r--r-- 1 root root 768 2008-07-25 14:24
-[cel@tarkus nfs-2.6]$
+http://80.233.245.154/cgi-bin/index.cgi?abfdrhf
 
-The date is today because I just removed the "6"es.
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+-------------------------------------------------------------------------
+This SF.Net email is sponsored by the Moblin Your Move Developer's challenge
+Build the coolest Linux based applications with Moblin SDK & win great prizes
+Grand prize is a trip for two to an Open Source event anywhere in the world
+http://moblin-contest.org/redirect.php?banner_id=100&url=/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
+
