@@ -1,34 +1,37 @@
-From: vidamour <charls-eradna-ZjL1xPK4XG1Wk0Htik3J/w@public.gmane.org>
-Subject: [NFS] Man killed by flying cocktail glass
-Date: Mon, 28 Jul 2008 11:51:36 +0800
-Message-ID: <9B3171D9.509E9348@okbridge.com>
+From: "Gabor Z. Papp" <gzp-2g/1Y3AqmNE@public.gmane.org>
+Subject: nfs-utils 1.1.3 and glibc 2.2
+Date: Mon, 28 Jul 2008 16:30:21 +0200
+Message-ID: <x6vdyqkrnm@gzp>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:48864 "EHLO neil.brown.name"
+Received: from odpn1.odpn.net ([212.40.96.53]:38301 "EHLO odpn1.odpn.net"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751418AbYG1E5M (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 28 Jul 2008 00:57:12 -0400
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1KNKnF-0002Sv-Ai
-	for linux-nfs@vger.kernel.org; Mon, 28 Jul 2008 14:57:09 +1000
+	id S1756861AbYG1PAB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 28 Jul 2008 11:00:01 -0400
+Received: from odpn1.odpn.net [212.40.96.53]
+	by odpn1.odpn.net for linux-nfs@vger.kernel.org
+	id 1KNTjx-0005lj-Qi; Mon, 28 Jul 2008 16:30:21 +0200
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Oil spills endangers environment in Illinois http://rampichino.eu/fresh.html
+Hello,
 
--------------------------------------------------------------------------
-This SF.Net email is sponsored by the Moblin Your Move Developer's challenge
-Build the coolest Linux based applications with Moblin SDK & win great prizes
-Grand prize is a trip for two to an Open Source event anywhere in the world
-http://moblin-contest.org/redirect.php?banner_id=100&url=/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+seems like nfs-utils no more compatible with glibc 2.2?
 
+make[2]: Entering directory
+`/home/gzp/src/nfs-utils-1.1.3/utils/mount'
+gcc -DHAVE_CONFIG_H -I. -I../../support/include
+-I../../support/include -D_GNU_SOURCE -Wall -Wstrict-prototypes  -pipe
+-g -O2 -MT network.o -MD -MP -MF .deps/network.Tpo -c -o network.o network.c
+network.c: In function 'nfs_name_to_address':
+network.c:154: error: 'AI_ADDRCONFIG' undeclared (first use in this function)
+network.c:154: error: (Each undeclared identifier is reported only once
+network.c:154: error: for each function it appears in.)
+network.c:160: error: 'AI_V4MAPPED' undeclared (first use in this function)
+network.c:160: error: 'AI_ALL' undeclared (first use in this function)
+make[2]: *** [network.o] Error 1
+make[2]: Leaving directory `/home/gzp/src/nfs-utils-1.1.3/utils/mount'
+
+1.1.2 compiles fine.
