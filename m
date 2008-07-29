@@ -1,65 +1,54 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH] mount.nfs command: old glibc missing some flags
-Date: Tue, 29 Jul 2008 12:16:10 -0400
-Message-ID: <20080729161512.7588.18445.stgit@manray.1015granger.net>
+From: Mike Mackovitch <macko-2kanFRK1NckAvxtiuMwx3w@public.gmane.org>
+Subject: Re: Massive NFS problems on large cluster with large number of
+	mounts
+Date: Tue, 29 Jul 2008 10:43:34 -0700
+Message-ID: <20080729174334.GD8686@m3.macko.edu>
+References: <486B89F5.9000109@aei.mpg.de> <20080702203130.GA24850@fieldses.org> <1215032676.7087.30.camel@localhost> <487DC43F.8040408@aei.mpg.de> <20080716190658.GF20298@fieldses.org> <76bd70e30807170747r31af3280icf0bd3fdbde17bac@mail.gmail.com> <20080717144852.GA11759@fieldses.org> <76bd70e30807170811s78175c0ep3a52da7c0ef95fc6@mail.gmail.com> <76bd70e30807281355t4890a9b2q6960d79552538f60@mail.gmail.com> <20080729073203.546a4269@tleilax.poochiereds.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: linux-nfs@vger.kernel.org
-To: gzp-2g/1Y3AqmNE@public.gmane.org
+Content-Type: text/plain; charset=us-ascii
+Cc: chucklever@gmail.com, chuck.lever@oracle.com,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Trond Myklebust <Trond.Myklebust@netapp.com>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>,
+	Carsten Aulbert <carsten.aulbert-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>,
+	linux-nfs@vger.kernel.org,
+	Henning Fehrmann <henning.fehrmann-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>,
+	Steffen Grunewald <steffen.grunewald-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:47940 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755375AbYG2QSH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2008 12:18:07 -0400
+Received: from mail-out3.apple.com ([17.254.13.22]:49734 "EHLO
+	mail-out3.apple.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750932AbYG2RwI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2008 13:52:08 -0400
+In-Reply-To: <20080729073203.546a4269-RtJpwOs3+0O+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Old versions of glibc (< 2.4) have a getaddrinfo(3) implementation, but
-do not include public definitions of the AI_V4MAPPED, AI_ALL, and
-AI_ADDRCONFIG flags because it was believed that these flags were not
-standardized.  However, these flags have standard definitions both in
-POSIX 1003 and in RFCs, and were thus included in later releases of
-glibc.
+On Tue, Jul 29, 2008 at 07:32:03AM -0400, Jeff Layton wrote:
+> 
+> IMNSHO, the whole concept of "privileged ports" is pretty antiquated
+> anyway. It doesn't mean much unless you have a very tightly controlled
+> physical network...
+> 
+> Being able to allow the client to use non-privileged ports could be
+> useful. It's less of a problem than it used to be since the NFS client
+> shares sockets better now, but it could still be a problem in an HPC-type
+> environment. The NFS server already has an option to allow for clients
+> that do this so we might as well allow the client to do it too.
+> 
+> I tend to be of the opinion that we should try to use option names that
+> other OS's have already established where possible. This makes it easier
+> for admins in mixed environments (shared autofs maps and fewer option
+> synonyms to remember). My vote would be for calling the new option
+> "insecure", or at least making "insecure" a synonym for whatever the
+> new mount option is.
 
-To allow the mount.nfs command to build on systems with these older
-versions of glibc, add conditional definitions for these flags in
-utils/mount/network.c.
+BSD has had such an option for years: "resvport"
+You can make the default be enabled and if you don't
+want it just specify "noresvport".
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+It has the added bonus that it doesn't falsely imply anything
+about security.  (If you want security, use Kerberos.)
 
-Untested.  Gabor, can you please try this?
-
- utils/mount/network.c |   18 ++++++++++++++++++
- 1 files changed, 18 insertions(+), 0 deletions(-)
-
-diff --git a/utils/mount/network.c b/utils/mount/network.c
-index 75354a7..0023769 100644
---- a/utils/mount/network.c
-+++ b/utils/mount/network.c
-@@ -48,6 +48,24 @@
- #include "mount_constants.h"
- #include "network.h"
- 
-+/*
-+ * Earlier versions of glibc's /usr/include/netdb.h exclude these
-+ * definitions because it was thought they were not part of a stable
-+ * POSIX standard.  However, they are defined by RFC 2553 and 3493
-+ * and in POSIX 1003.1-2001, so these definitions were added in later
-+ * versions of netdb.h.
-+ */
-+#ifndef AI_V4MAPPED
-+#define AI_V4MAPPED     0x0008  /* IPv4-mapped addresses are acceptable.  */
-+#endif	/* AI_V4MAPPED */
-+#ifndef AI_ALL
-+#define AI_ALL          0x0010  /* Return both IPv4 and IPv6 addresses.  */
-+#endif	/* AI_ALL */
-+#ifndef AI_ADDRCONFIG
-+#define AI_ADDRCONFIG   0x0020  /* Use configuration of this host to choose \
-+				   returned address type.  */
-+#endif	/* AI_ADDRCONFIG */
-+
- #define PMAP_TIMEOUT	(10)
- #define CONNECT_TIMEOUT	(20)
- #define MOUNT_TIMEOUT	(30)
-
+HTH
+--macko
