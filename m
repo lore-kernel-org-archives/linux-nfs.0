@@ -1,108 +1,112 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 6/8] SUNRPC: Add kernel build option to disable
-	server-side use of rpcbind v3/v4
-Date: Wed, 30 Jul 2008 12:18:24 -0400
-Message-ID: <20080730161824.GC12364@fieldses.org>
-References: <20080630224147.24887.18730.stgit@ellison.1015granger.net> <20080630224609.24887.20585.stgit@ellison.1015granger.net> <20080718234241.GE15850@fieldses.org> <76bd70e30807211230y4b7c2b21qa89d8cca05e08dab@mail.gmail.com>
+Subject: Re: [PATCH] fs/nfsd/export.c: Adjust error handling code involving
+	auth_domain_put
+Date: Wed, 30 Jul 2008 13:24:52 -0400
+Message-ID: <20080730172451.GF12364@fieldses.org>
+References: <Pine.LNX.4.64.0807252207160.1602@ask.diku.dk>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
-To: chucklever@gmail.com
+Cc: neilb@suse.de, linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org, kernel-janitors@vger.kernel.org
+To: Julia Lawall <julia@diku.dk>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:34663 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:49483 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752533AbYG3QS1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 30 Jul 2008 12:18:27 -0400
-In-Reply-To: <76bd70e30807211230y4b7c2b21qa89d8cca05e08dab-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+	id S1752703AbYG3RY4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 30 Jul 2008 13:24:56 -0400
+In-Reply-To: <Pine.LNX.4.64.0807252207160.1602-QfmoRoYWmW9knbxzx/v8hQ@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jul 21, 2008 at 03:30:10PM -0400, Chuck Lever wrote:
-> On Fri, Jul 18, 2008 at 7:42 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > On Mon, Jun 30, 2008 at 06:46:09PM -0400, Chuck Lever wrote:
-> >> Allow distributions to use the legacy behavior until they integrate an
-> >> appropriate user-space rpcbind daemon that can support IPv6 RPC services.
-> >>
-> >> I tried adding some logic to fall back if (un)registering with a v4
-> >> protocol request failed, but there are too many corner cases.  So I just
-> >> made it a compile-time switch that distributions can throw when they've
-> >> replaced portmapper with rpcbind.
-> >
-> > OK, I see you answered my last question....  Hm.  What were the corner
-> > cases?
+On Fri, Jul 25, 2008 at 10:08:09PM +0200, Julia Lawall wrote:
+> From: Julia Lawall <julia@diku.dk>
 > 
-> The obvious ones:  is there a daemon running at all, and is it
-> listening?  If I try v4 but that doesn't work, then I retry with v3...
-> if that doesn't work, then I try v2.  Is it OK if I was able to
-> register an AF_INET6 service via v2?
-> 
-> Certainly all this is possible to code up, but it didn't seem worth
-> the complexity.
+> Once clp is assigned, it never becomes NULL, so we can make a label for it
+> in the error handling code.  Because the call to path_lookup follows the
+> call to auth_domain_find, its error handling code should jump to this new
+> label.
 
-If it's really painful, OK.
-
-But I'm nervous about slighting backwards compatibility.  It's another
-thing people can mess up when they build their own stuff.  And are
-people going to be able to bisect problems in nfs-utils without building
-their own kernel as well?
-
---b.
+Yes, that looks correct to me; thanks!  Applied.--b.
 
 > 
-> >>
-> >> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> >> ---
-> >>
-> >>  fs/Kconfig |   22 ++++++++++++++++++++++
-> >>  1 files changed, 22 insertions(+), 0 deletions(-)
-> >>
-> >>
-> >> diff --git a/fs/Kconfig b/fs/Kconfig
-> >> index 8cf8ee2..6148f4c 100644
-> >> --- a/fs/Kconfig
-> >> +++ b/fs/Kconfig
-> >> @@ -1799,6 +1799,28 @@ config SUNRPC_XPRT_RDMA
-> >>
-> >>         If unsure, say N.
-> >>
-> >> +config SUNRPC_REGISTER_V4
-> >> +     bool "Register local RPC services via rpcbind v4 (EXPERIMENTAL)"
-> >> +     depends on SUNRPC && EXPERIMENTAL
-> >> +     default n
-> >> +     help
-> >> +       Sun added support for registering RPC services at an IPv6
-> >> +       address by creating two new versions of the rpcbind protocol
-> >> +       (RFC 1833).
-> >> +
-> >> +       This option enables support in the kernel RPC server for
-> >> +       registering kernel RPC services via version 4 of the rpcbind
-> >> +       protocol.  If you enable this option, you must run a portmapper
-> >> +       daemon that supports rpcbind protocol version 4.
-> >> +
-> >> +       Serving NFS over IPv6 from knfsd (the kernel's NFS server)
-> >> +       requires that you enable this option and use a portmapper that
-> >> +       supports rpcbind version 4.
-> >> +
-> >> +       If unsure, say N to get traditional behavior (register kernel
-> >> +       RPC services using only rpcbind version 2).  Distributions
-> >> +       using the legacy Linux portmapper daemon must say N here.
-> >> +
-> >>  config RPCSEC_GSS_KRB5
-> >>       tristate "Secure RPC: Kerberos V mechanism (EXPERIMENTAL)"
-> >>       depends on SUNRPC && EXPERIMENTAL
-> >>
-> >> --
-> >> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> >> the body of a message to majordomo@vger.kernel.org
-> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> >
+> The semantic match that finds this problem is as follows:
+> (http://www.emn.fr/x-info/coccinelle/)
 > 
+> // <smpl>
+> @r@
+> expression x,E;
+> statement S;
+> position p1,p2,p3;
+> @@
 > 
+> (
+> if ((x = auth_domain_find@p1(...)) == NULL || ...) S
+> |
+> x = auth_domain_find@p1(...)
+> ... when != x
+> if (x == NULL || ...) S
+> )
+> <...
+> if@p3 (...) { ... when != auth_domain_put(x)
+>                   when != if (x) { ... auth_domain_put(x); ...}
+>     return@p2 ...;
+> }
+> ...>
+> (
+> return x;
+> |
+> return 0;
+> |
+> x = E
+> |
+> E = x
+> |
+> auth_domain_put(x)
+> )
 > 
-> -- 
->  "Alright guard, begin the unnecessarily slow-moving dipping mechanism."
-> --Dr. Evil
+> @exists@
+> position r.p1,r.p2,r.p3;
+> expression x;
+> int ret != 0;
+> statement S;
+> @@
+> 
+> * x = auth_domain_find@p1(...)
+>   <...
+> * if@p3 (...)
+>   S
+>   ...>
+> * return@p2 \(NULL\|ret\);
+> // </smpl>
+> 
+> Signed-off-by: Julia Lawall <julia@diku.dk>
+> 
+> ---
+>  fs/nfsd/export.c              |    6 +++---
+>  1 files changed, 3 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+> index 33bfcf0..9dc036f 100644
+> --- a/fs/nfsd/export.c
+> +++ b/fs/nfsd/export.c
+> @@ -1023,7 +1023,7 @@ exp_export(struct nfsctl_export *nxp)
+>  	/* Look up the dentry */
+>  	err = path_lookup(nxp->ex_path, 0, &nd);
+>  	if (err)
+> -		goto out_unlock;
+> +		goto out_put_clp;
+>  	err = -EINVAL;
+>  
+>  	exp = exp_get_by_name(clp, nd.path.mnt, nd.path.dentry, NULL);
+> @@ -1090,9 +1090,9 @@ finish:
+>  		exp_put(exp);
+>  	if (fsid_key && !IS_ERR(fsid_key))
+>  		cache_put(&fsid_key->h, &svc_expkey_cache);
+> -	if (clp)
+> -		auth_domain_put(clp);
+>  	path_put(&nd.path);
+> +out_put_clp:
+> +	auth_domain_put(clp);
+>  out_unlock:
+>  	exp_writeunlock();
+>  out:
