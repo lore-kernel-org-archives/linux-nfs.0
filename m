@@ -1,34 +1,122 @@
-From: Gaudrault <nucellar-R1m5zqW5bwiqndwCJWfcng@public.gmane.org>
-Subject: [NFS] Pollution reaches dangerous levels in California
-Date: Wed, 30 Jul 2008 13:49:21 +0800
-Message-ID: <000901c8f208$03d3ee20$9b0bbf7b@yi1>
+From: "Gabor Z. Papp" <gzp-2g/1Y3AqmNE@public.gmane.org>
+Subject: Re: [PATCH] mount.nfs command: old glibc missing some flags
+Date: Wed, 30 Jul 2008 08:50:59 +0200
+Message-ID: <x6y73jyiek@gzp>
+References: <20080729161512.7588.18445.stgit@manray.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: nfs-TtF/mJH4Jtrk1uMJSBkQmQ@public.gmane.org
+Content-Type: multipart/mixed; boundary="=-=-="
+Cc: linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:53125 "EHLO neil.brown.name"
+Received: from odpn1.odpn.net ([212.40.96.53]:43841 "EHLO odpn1.odpn.net"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751627AbYG3FuX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 30 Jul 2008 01:50:23 -0400
-Received: from brown by neil.brown.name with local (Exim 4.63)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1KO4Zp-0003Ah-7V
-	for linux-nfs@vger.kernel.org; Wed, 30 Jul 2008 15:50:21 +1000
+	id S1750732AbYG3GvK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 30 Jul 2008 02:51:10 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Bear attack kills 3 in Atlanta zoo http://calhispo.ipower.com/default.html
+--=-=-=
 
--------------------------------------------------------------------------
-This SF.Net email is sponsored by the Moblin Your Move Developer's challenge
-Build the coolest Linux based applications with Moblin SDK & win great prizes
-Grand prize is a trip for two to an Open Source event anywhere in the world
-http://moblin-contest.org/redirect.php?banner_id=100&url=/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+* Chuck Lever <chuck.lever@oracle.com>:
 
+| Untested.  Gabor, can you please try this?
+
+Compiled fine.
+
+utils/mountd/Makefile:
+
+LIBBLKID = -lblkid
+
+-lblkid doesn't enough in dependency, needs -luuid
+
+Is this problem in my e2fsprogs install?
+
+BTW, I'm not sure about usage of sm-notify
+
+My nfs startup script looks like:
+
+idmapd
+exportfs -ar
+mountd
+statd #--no-notify
+nfsd 8
+
+$ ps fax
+10860 ?        Ss     0:00 mountd
+10862 ?        Ss     0:00 statd
+10875 ?        S      0:00 [nfsd]
+10876 ?        S      0:00 [nfsd]
+10886 ?        S      0:00 [lockd]
+10887 ?        S      0:00  \_ [rpciod]
+10888 ?        S      0:00 [nfsd]
+10889 ?        S      0:00 [nfsd]
+10890 ?        S      0:00 [nfsd]
+10891 ?        S      0:00 [nfsd]
+10892 ?        S      0:00 [nfsd]
+10893 ?        S      0:00 [nfsd]
+
+Looks like no sm-notify started, even I mount something from a remote
+host. If I start sm-notify by hand, it exist, strace output attached.
+Same apply on glibc 2.3.
+
+
+--=-=-=
+Content-Type: application/octet-stream
+Content-Disposition: attachment; filename=strace
+Content-Transfer-Encoding: base64
+
+ZXhlY3ZlKCIvcGtnL2Jpbi9zbS1ub3RpZnkiLCBbIi9wa2cvYmluL3NtLW5vdGlmeSJdLCBbLyog
+MTkgdmFycyAqL10pID0gMAp1bmFtZSh7c3lzPSJMaW51eCIsIG5vZGU9Imd6cExpbnV4IiwgLi4u
+fSkgPSAwCmJyaygwKSAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA9IDB4ODA0YmFj
+NApvcGVuKCIvZXRjL2xkLnNvLnByZWxvYWQiLCBPX1JET05MWSkgICAgPSAtMSBFTk9FTlQgKE5v
+IHN1Y2ggZmlsZSBvciBkaXJlY3RvcnkpCm9wZW4oIi9ldGMvbGQuc28uY2FjaGUiLCBPX1JET05M
+WSkgICAgICA9IDMKZnN0YXQ2NCgzLCB7c3RfbW9kZT1TX0lGUkVHfDA2NDQsIHN0X3NpemU9MTc2
+MTUsIC4uLn0pID0gMAptbWFwMihOVUxMLCAxNzYxNSwgUFJPVF9SRUFELCBNQVBfUFJJVkFURSwg
+MywgMCkgPSAweDQwMDE0MDAwCmNsb3NlKDMpICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICA9IDAKb3BlbigiL2xpYi9saWJjLnNvLjYiLCBPX1JET05MWSkgICAgICAgID0gMwpyZWFkKDMs
+ICJcMTc3RUxGXDFcMVwxXDBcMFwwXDBcMFwwXDBcMFwwXDNcMFwzXDBcMVwwXDBcMFBcMjA2XDFc
+MDAwNFwwXDBcMCIuLi4sIDEwMjQpID0gMTAyNApmc3RhdDY0KDMsIHtzdF9tb2RlPVNfSUZSRUd8
+MDc1NSwgc3Rfc2l6ZT05ODYxNzkyLCAuLi59KSA9IDAKbW1hcDIoTlVMTCwgNDA5NiwgUFJPVF9S
+RUFEfFBST1RfV1JJVEUsIE1BUF9QUklWQVRFfE1BUF9BTk9OWU1PVVMsIC0xLCAwKSA9IDB4NDAw
+MTkwMDAKbW1hcDIoTlVMTCwgMTE1ODc4NCwgUFJPVF9SRUFEfFBST1RfRVhFQywgTUFQX1BSSVZB
+VEUsIDMsIDApID0gMHg0MDAxYTAwMAptcHJvdGVjdCgweDQwMTJjMDAwLCAzNjQ4MCwgUFJPVF9O
+T05FKSAgPSAwCm1tYXAyKDB4NDAxMmMwMDAsIDIwNDgwLCBQUk9UX1JFQUR8UFJPVF9XUklURSwg
+TUFQX1BSSVZBVEV8TUFQX0ZJWEVELCAzLCAweDExMSkgPSAweDQwMTJjMDAwCm1tYXAyKDB4NDAx
+MzEwMDAsIDE2MDAwLCBQUk9UX1JFQUR8UFJPVF9XUklURSwgTUFQX1BSSVZBVEV8TUFQX0ZJWEVE
+fE1BUF9BTk9OWU1PVVMsIC0xLCAwKSA9IDB4NDAxMzEwMDAKY2xvc2UoMykgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgID0gMAptdW5tYXAoMHg0MDAxNDAwMCwgMTc2MTUpICAgICAgICAg
+ICAgICAgPSAwCmdldHBpZCgpICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA9IDEwODk5
+Cm9wZW4oIi92YXIvcnVuL3NtLW5vdGlmeS5waWQiLCBPX1dST05MWXxPX0NSRUFUfE9fRVhDTCwg
+MDYwMCkgPSAzCndyaXRlKDMsICIxMDg5OVxuIiwgNikgICAgICAgICAgICAgICAgICA9IDYKY2xv
+c2UoMykgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgID0gMAp1bmFtZSh7c3lzPSJMaW51
+eCIsIG5vZGU9Imd6cExpbnV4IiwgLi4ufSkgPSAwCm9wZW4oIi92YXIvbGliL25mcy9zbSIsIE9f
+UkRPTkxZfE9fTk9OQkxPQ0t8T19MQVJHRUZJTEV8T19ESVJFQ1RPUlkpID0gMwpmc3RhdDY0KDMs
+IHtzdF9tb2RlPVNfSUZESVJ8MDc1NSwgc3Rfc2l6ZT00MDk2LCAuLi59KSA9IDAKZmNudGw2NCgz
+LCBGX1NFVEZELCBGRF9DTE9FWEVDKSAgICAgICAgID0gMApicmsoMCkgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgPSAweDgwNGJhYzQKYnJrKDB4ODA0Y2IwYykgICAgICAgICAgICAg
+ICAgICAgICAgICAgID0gMHg4MDRjYjBjCmJyaygweDgwNGQwMDApICAgICAgICAgICAgICAgICAg
+ICAgICAgICA9IDB4ODA0ZDAwMApnZXRkZW50czY0KDMsIC8qIDIgZW50cmllcyAqLywgNDA5Nikg
+ICAgPSA0OApnZXRkZW50czY0KDMsIC8qIDAgZW50cmllcyAqLywgNDA5NikgICAgPSAwCmNsb3Nl
+KDMpICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA9IDAKb3BlbigiL3Zhci9saWIvbmZz
+L3NtLmJhayIsIE9fUkRPTkxZfE9fTk9OQkxPQ0t8T19MQVJHRUZJTEV8T19ESVJFQ1RPUlkpID0g
+Mwpmc3RhdDY0KDMsIHtzdF9tb2RlPVNfSUZESVJ8MDc1NSwgc3Rfc2l6ZT00MDk2LCAuLi59KSA9
+IDAKZmNudGw2NCgzLCBGX1NFVEZELCBGRF9DTE9FWEVDKSAgICAgICAgID0gMApnZXRkZW50czY0
+KDMsIC8qIDIgZW50cmllcyAqLywgNDA5NikgICAgPSA0OApnZXRkZW50czY0KDMsIC8qIDAgZW50
+cmllcyAqLywgNDA5NikgICAgPSAwCmNsb3NlKDMpICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICA9IDAKb3BlbigiL3Zhci9saWIvbmZzL3N0YXRlIiwgT19SRE9OTFkpICAgID0gMwpyZWFk
+KDMsICIiLCA0KSAgICAgICAgICAgICAgICAgICAgICAgICAgPSAwCndyaXRlKDIsICIvdmFyL2xp
+Yi9uZnMvc3RhdGU6IGJhZCBmaWxlIHNpeiIuLi4sIDUyL3Zhci9saWIvbmZzL3N0YXRlOiBiYWQg
+ZmlsZSBzaXplLCBzZXR0aW5nIHN0YXRlID0gMSkgPSA1Mgp3cml0ZSgyLCAiXG4iLCAxCikgICAg
+ICAgICAgICAgICAgICAgICAgID0gMQpjbG9zZSgzKSAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgPSAwCm9wZW4oIi92YXIvbGliL25mcy9zdGF0ZS5uZXciLCBPX1dST05MWXxPX0NSRUFU
+LCAwNjQ0KSA9IDMKd3JpdGUoMywgIlwzXDBcMFwwIiwgNCkgICAgICAgICAgICAgICAgID0gNApj
+bG9zZSgzKSAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPSAwCnJlbmFtZSgiL3Zhci9s
+aWIvbmZzL3N0YXRlLm5ldyIsICIvdmFyL2xpYi9uZnMvc3RhdGUiKSA9IDAKc3luYygpICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgID0gMApvcGVuKCIvcHJvYy9zeXMvZnMvbmZzL25z
+bV9sb2NhbF9zdGF0ZSIsIE9fV1JPTkxZKSA9IC0xIEVOT0VOVCAoTm8gc3VjaCBmaWxlIG9yIGRp
+cmVjdG9yeSkKZnN0YXQ2NCgxLCB7c3RfbW9kZT1TX0lGSUZPfDA2MDAsIHN0X3NpemU9MCwgLi4u
+fSkgPSAwCm1tYXAyKE5VTEwsIDQwOTYsIFBST1RfUkVBRHxQUk9UX1dSSVRFLCBNQVBfUFJJVkFU
+RXxNQVBfQU5PTllNT1VTLCAtMSwgMCkgPSAweDQwMDE0MDAwCmZvcmsoKSAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICA9IDEwOTAwCi0tLSBTSUdDSExEIChDaGlsZCBleGl0ZWQpIEAg
+MCAoMCkgLS0tCl9leGl0KDApICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA9ID8K
+--=-=-=--
