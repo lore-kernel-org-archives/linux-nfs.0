@@ -1,36 +1,38 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: high latency NFS
-Date: Wed, 30 Jul 2008 23:15:12 -0400
-Message-ID: <20080731031512.GA26203@fieldses.org>
-References: <200807241311.31457.shuey@purdue.edu> <20080730192110.GA17061@fieldses.org> <4890DFC7.3020309@cse.unsw.edu.au> <200807302235.50068.shuey@purdue.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Shehjar Tikoo <shehjart-YbfuJp6tym7X/JP9YwkgDA@public.gmane.org>,
-	linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-	rees@citi.umich.edu, aglo@citi.umich.edu
-To: Michael Shuey <shuey-olO2ZdjDehc3uPMLIKxrzw@public.gmane.org>
+From: "Denis V. Lunev" <den@openvz.org>
+Subject: [PATCH 1/1] nfs: ERR_PTR is expected on failure from nfs_do_clone_mount
+Date: Thu, 31 Jul 2008 09:38:55 +0400
+Message-ID: <1217482735-2336-1-git-send-email-den@openvz.org>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	"Denis V. Lunev" <den@openvz.org>
+To: Trond.Myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:49767 "EHLO fieldses.org"
+Received: from mailhub.sw.ru ([195.214.232.25]:44480 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754513AbYGaDP0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 30 Jul 2008 23:15:26 -0400
-In-Reply-To: <200807302235.50068.shuey-olO2ZdjDehc3uPMLIKxrzw@public.gmane.org>
+	id S1751678AbYGaFii (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 31 Jul 2008 01:38:38 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jul 30, 2008 at 10:35:49PM -0400, Michael Shuey wrote:
-> Thanks for all the tips I've received this evening.  However, I figured out 
-> the problem late last night. :-)
-> 
-> I was only using the default 8 nfsd threads on the server.  When I raised 
-> this to 256, the read bandwidth went from about 6 MB/sec to about 95 
-> MB/sec, at 100ms of netem-induced latency.
+Replace NULL with ERR_PTR(-EINVAL).
 
-So this is yet another reminder that someone needs to implement some
-kind of automatic tuning of the number of threads.
+Signed-off-by: Denis V. Lunev <den@openvz.org>
+---
+ fs/nfs/namespace.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-I guess the first question is what exactly the policy for that should
-be?  How do we decide when to add another thread?  How do we decide when
-there are too many?
+diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
+index 2f285ef..99d527e 100644
+--- a/fs/nfs/namespace.c
++++ b/fs/nfs/namespace.c
+@@ -189,7 +189,7 @@ static struct vfsmount *nfs_do_clone_mount(struct nfs_server *server,
+ 					   struct nfs_clone_mount *mountdata)
+ {
+ #ifdef CONFIG_NFS_V4
+-	struct vfsmount *mnt = NULL;
++	struct vfsmount *mnt = ERR_PTR(-EINVAL);
+ 	switch (server->nfs_client->rpc_ops->version) {
+ 		case 2:
+ 		case 3:
+-- 
+1.5.4.5
 
---b.
