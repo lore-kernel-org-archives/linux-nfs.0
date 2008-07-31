@@ -1,7 +1,7 @@
 From: David Woodhouse <dwmw2@infradead.org>
-Subject: Re: [RFC] Reinstate NFS exportability for JFFS2.
-Date: Thu, 31 Jul 2008 22:54:24 +0100
-Message-ID: <1217541264.1126.15.camel@shinybook.infradead.org>
+Subject: [PATCH 1/4] Factor out nfsd_do_readdir() into its own function
+Date: Thu, 31 Jul 2008 22:54:49 +0100
+Message-ID: <1217541289.1126.17.camel@shinybook.infradead.org>
 References: <1209670979.25560.587.camel@pmac.infradead.org>
 	 <20080501204820.GA5951@infradead.org>
 	 <1209681898.25560.613.camel@pmac.infradead.org>
@@ -17,26 +17,80 @@ In-Reply-To: <18458.28833.539314.455215@notabene.brown>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2008-05-02 at 11:38 +1000, Neil Brown wrote:
-> Why is there a deadlock here?
-> Both readdir and lookup are called with i_mutex held on the directory
-> so there should need to do any extra locking (he said, naively).  In
-> the readdirplus cases, i_mutex is held across both the readdir and the
-> lookup....
-> 
-> One problem with your proposed solution is that filehandles aren't all
-> the same length, so you cannot reliably leave space for them.
-> 
-> Awkward.
 
-Yeah. I think the sanest plan for the short term is, as hch suggests,
-just to transplant the existing XFS hack into the nfsd code. That way,
-at least we can avoid using the hack for local users. And it makes NFS
-export from other file systems (jffs2, btrfs, etc.) easier without
-having to put the same hacks in each one.
+Signed-off-by: David Woodhouse <David.Woodhouse@intel.com>
+---
+ fs/nfsd/vfs.c |   40 ++++++++++++++++++++++++----------------
+ 1 files changed, 24 insertions(+), 16 deletions(-)
 
-Git tree at git.infradead.org/users/dwmw2/nfsexport-2.6.git; patch
-sequence follows...
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 18060be..3e22634 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -1814,6 +1814,29 @@ out:
+ 	return err;
+ }
+ 
++static int nfsd_do_readdir(struct file *file, filldir_t func,
++			   struct readdir_cd *cdp, loff_t *offsetp)
++{
++	int host_err;
++
++	/*
++	 * Read the directory entries. This silly loop is necessary because
++	 * readdir() is not guaranteed to fill up the entire buffer, but
++	 * may choose to do less.
++	 */
++	do {
++		cdp->err = nfserr_eof; /* will be cleared on successful read */
++		host_err = vfs_readdir(file, func, cdp);
++	} while (host_err >=0 && cdp->err == nfs_ok);
++
++	*offsetp = vfs_llseek(file, 0, 1);
++
++	if (host_err)
++		return nfserrno(host_err);
++	else
++		return cdp->err;
++}
++
+ /*
+  * Read entries from a directory.
+  * The  NFSv3/4 verifier we ignore for now.
+@@ -1823,7 +1846,6 @@ nfsd_readdir(struct svc_rqst *rqstp, struct svc_fh *fhp, loff_t *offsetp,
+ 	     struct readdir_cd *cdp, filldir_t func)
+ {
+ 	__be32		err;
+-	int 		host_err;
+ 	struct file	*file;
+ 	loff_t		offset = *offsetp;
+ 
+@@ -1837,21 +1859,7 @@ nfsd_readdir(struct svc_rqst *rqstp, struct svc_fh *fhp, loff_t *offsetp,
+ 		goto out_close;
+ 	}
+ 
+-	/*
+-	 * Read the directory entries. This silly loop is necessary because
+-	 * readdir() is not guaranteed to fill up the entire buffer, but
+-	 * may choose to do less.
+-	 */
+-
+-	do {
+-		cdp->err = nfserr_eof; /* will be cleared on successful read */
+-		host_err = vfs_readdir(file, func, cdp);
+-	} while (host_err >=0 && cdp->err == nfs_ok);
+-	if (host_err)
+-		err = nfserrno(host_err);
+-	else
+-		err = cdp->err;
+-	*offsetp = vfs_llseek(file, 0, 1);
++	err = nfsd_do_readdir(file, func, cdp, offsetp);
+ 
+ 	if (err == nfserr_eof || err == nfserr_toosmall)
+ 		err = nfs_ok; /* can still be found in ->err */
+-- 
+1.5.5.1
+
 
 -- 
 David Woodhouse                            Open Source Technology Centre
