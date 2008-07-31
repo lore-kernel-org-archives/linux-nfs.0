@@ -1,72 +1,44 @@
-From: Alex Samad <alex-SGFoFqf0RKf0CCvOHzKKcA@public.gmane.org>
-Subject: question about /etc/exports
-Date: Fri, 1 Aug 2008 06:48:38 +1000
-Message-ID: <20080731204838.GA27473@samad.com.au>
+From: David Woodhouse <dwmw2@infradead.org>
+Subject: Re: [RFC] Reinstate NFS exportability for JFFS2.
+Date: Thu, 31 Jul 2008 22:54:24 +0100
+Message-ID: <1217541264.1126.15.camel@shinybook.infradead.org>
+References: <1209670979.25560.587.camel@pmac.infradead.org>
+	 <20080501204820.GA5951@infradead.org>
+	 <1209681898.25560.613.camel@pmac.infradead.org>
+	 <18458.28833.539314.455215@notabene.brown>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="G4iJoqBmSsgzjUCe"
-To: linux-nfs@vger.kernel.org
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-out9.tpgi.com.au ([220.244.226.119]:33232 "EHLO
-	mail9.tpgi.com.au" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752705AbYGaVKF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 31 Jul 2008 17:10:05 -0400
-Received: from sydrt01.samad.com.au (adsl.samad.com.au [60.241.248.86])
-	by mail9.tpgi.com.au (envelope-from alex-SGFoFqf0RKf0CCvOHzKKcA@public.gmane.org) (8.14.3/8.14.3) with ESMTP id m6VKmchh005322
-	(version=TLSv1/SSLv3 cipher=AES256-SHA bits=256 verify=NO)
-	for <linux-nfs@vger.kernel.org>; Fri, 1 Aug 2008 06:48:40 +1000
-Received: from alex by smtp.samad.com.au with local  (Exim 4.69 #1 (Debian))
-	id 1KOf4g-0007CI-1D
-	for <linux-nfs@vger.kernel.org>; Fri, 01 Aug 2008 06:48:38 +1000
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain
+Cc: Christoph Hellwig <hch@infradead.org>,
+	linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+	linux-mtd@lists.infradead.org
+To: Neil Brown <neilb@suse.de>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <18458.28833.539314.455215@notabene.brown>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Fri, 2008-05-02 at 11:38 +1000, Neil Brown wrote:
+> Why is there a deadlock here?
+> Both readdir and lookup are called with i_mutex held on the directory
+> so there should need to do any extra locking (he said, naively).  In
+> the readdirplus cases, i_mutex is held across both the readdir and the
+> lookup....
+> 
+> One problem with your proposed solution is that filehandles aren't all
+> the same length, so you cannot reliably leave space for them.
+> 
+> Awkward.
 
---G4iJoqBmSsgzjUCe
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+Yeah. I think the sanest plan for the short term is, as hch suggests,
+just to transplant the existing XFS hack into the nfsd code. That way,
+at least we can avoid using the hack for local users. And it makes NFS
+export from other file systems (jffs2, btrfs, etc.) easier without
+having to put the same hacks in each one.
 
-Hi
+Git tree at git.infradead.org/users/dwmw2/nfsexport-2.6.git; patch
+sequence follows...
 
+-- 
+David Woodhouse                            Open Source Technology Centre
+David.Woodhouse@intel.com                              Intel Corporation
 
-I can't seem to find answer to this question if i have this in my
-/etc/exports
-
-/exports/video
--async,no_subtree_check,mp=3D/exports/video,crossmnt
-192.168.8.0/22(no_root_squash,secure,rw)
-192.168.11.12(insecure,all_squash,anonuid=3D1022,anongid=3D1020)
-
-and I connect from 192.168.11.12 can I connect from an insecure port.      =
-                   =20
-
-the man pages don't specify who precedence is done, is it left to right,
-best match, last match
-
-Alex
-
-
---=20
-"I think it's very important for the American President to mean what he say=
-s. That's why I understand that the enemy could misread what I say. That's =
-why I try to be as clearly I can."
-
-	- George W. Bush
-09/23/2004
-Washington, DC
-
---G4iJoqBmSsgzjUCe
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
-Content-Disposition: inline
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.9 (GNU/Linux)
-
-iEYEARECAAYFAkiSJSUACgkQkZz88chpJ2N9xgCgvUd3ijoJRF7ii9ZJGoDckx8J
-W6kAn1HSWFxvtN0Dp9UwcWCKgOqQxUTO
-=tIrt
------END PGP SIGNATURE-----
-
---G4iJoqBmSsgzjUCe--
