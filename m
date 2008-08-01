@@ -1,93 +1,68 @@
-From: =?iso-8859-1?Q?An=EDbal?= Monsalve Salazar <anibal@debian.org>
-Subject: (was: nfs-utils-1.1.3 released)
-Date: Fri, 1 Aug 2008 23:15:33 +1000
-Message-ID: <20080801131533.GN14057@debianrules.debiancolombia.org>
-References: <488D718F.200@RedHat.com>
+From: David Woodhouse <dwmw2@infradead.org>
+Subject: Re: [RFC] Reinstate NFS exportability for JFFS2.
+Date: Fri, 01 Aug 2008 14:35:59 +0100
+Message-ID: <1217597759.3454.356.camel@pmac.infradead.org>
+References: <1209670979.25560.587.camel@pmac.infradead.org>
+	 <20080501204820.GA5951@infradead.org>
+	 <1209681898.25560.613.camel@pmac.infradead.org>
+	 <18458.28833.539314.455215@notabene.brown>
+	 <1217541264.1126.15.camel@shinybook.infradead.org>
+	 <18578.21997.529551.676627@notabene.brown>
+	 <1217551230.3719.15.camel@shinybook.infradead.org>
+	 <76bd70e30807311753m2785c6d3kd82edd1fe8b5f8b7@mail.gmail.com>
+	 <1217552437.3719.30.camel@shinybook.infradead.org>
+	 <76bd70e30807311831p771d0f1eia3e303bd84919422@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============1188722374=="
-Cc: Christian Surchi <csurchi@debian.org>,
-	Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-	Rasmus =?iso-8859-1?B?Qvhn?= Hansen <rasmus@msconsult.dk>,
-	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>, 492970@bugs.debian.org
-To: Steve Dickson <SteveD@redhat.com>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <488D718F.200@RedHat.com>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Mime-version: 1.0
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: text/plain
+Cc: Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
+	linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+	linux-mtd@lists.infradead.org
+To: chucklever@gmail.com, viro@zeniv.linux.org.uk
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <76bd70e30807311831p771d0f1eia3e303bd84919422@mail.gmail.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, 2008-07-31 at 21:31 -0400, Chuck Lever wrote:
+> On Thu, Jul 31, 2008 at 9:00 PM, David Woodhouse <dwmw2@infradead.org> wrote:
+> > On Thu, 2008-07-31 at 20:53 -0400, Chuck Lever wrote:
+> >> For now it is sufficient, IMO.  NFSv4 doesn't implement a readdirplus
+> >> operation, and the performance benefits of NFSv3 readdirplus are
+> >> equivocal -- there isn't a strong desire to replicate the complexity
+> >> of NFSv3 readdirplus in NFSv4.  I'm not even sure you can do it even
+> >> with a single compound RPC, so even in the long run NFSv4 may not ever
+> >> have the locking issues that NFSv3 does here.
+> >
+> > AFAICT NFSv4 does have the same recursion issues already. The call trace
+> > goes fs->readdir() ... nfsd4_encode_dirent() ...
+> > nfsd4_encode_dirent_fattr() ... lookup_one_len() ... fs->lookup().
+> >
+> > Or am I mistaken?
+> 
+> It looks like it needs a directory entry's dentry for a couple of reasons:
+> 
+> 1.  To determine whether a directory entry is a mount point
+> 
+> 2.  If the client has asked for file handles (via a bitmask) for the
+> directory entries
 
---===============1188722374==
-Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="dZHW955j1vPFHE0Q"
-Content-Disposition: inline
+Those are needed by NFSv3 too -- and can be handled with a lookup_fh()
+method in the file system which is guaranteed to be called from within
+the filldir callback, and some support in the VFS for checking if it's a
+mountpoint.
+
+NFSv4 introduces another problem though, which is that it seems to be
+able to return the _full_ getattr() results for each object, and there's
+no real way round the fact that we need to do the ->lookup() for that.
+
+If sane clients aren't expected to _ask_ for that, though, then perhaps
+it would be OK to fall back to something like the existing
+readdir-to-buffer hack for that case, while most normal clients won't
+trigger it.
+
+-- 
+David Woodhouse                            Open Source Technology Centre
+David.Woodhouse@intel.com                              Intel Corporation
 
 
---dZHW955j1vPFHE0Q
-Content-Type: text/plain; charset=iso-8859-1
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
 
-On Mon, Jul 28, 2008 at 03:13:19AM -0400, Steve Dickson wrote:
->I just cut the 1.1.3 nfs-utils release. Unfortunately I'm having
->issues accessing my kernel.org account so for the moment the=20
->tar ball is only available on SourceForge:
->
->     http://sourceforge.net/projects/nfs
->[...]=20
-
-1.1.3 clients don't work with a 1.0.10 server anymore.
-
-Please read the Debian bug report at http://bugs.debian.org/492970
-
-On Fri, Aug 01, 2008 at 02:54:02PM +0200, Christian Surchi wrote:
->On Wed, Jul 30, 2008 at 12:56:12PM +0200, Rasmus B=F8g Hansen wrote:
->>Package: nfs-common
->>Version: 1:1.1.3-1
->>Severity: important
->>
->>
->>Upgrading nfs-common 1:1.1.3-1 broke my NFS client.
->>
->>The NFS server is running etch and nothing was changed. After upgrading
->>the client to 1:1.1.3-1 access to my files (/home is NFS-mounted) is
->>disallowed where it should be allowed (and certainly was in 1:1.1.2-6).
->
->I confirm this one on my sid client too. No changes in nfs server=20
->(etch). Downgrading nfs-common solved the problem for me too.
->
->Christian
-
---dZHW955j1vPFHE0Q
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
-Content-Disposition: inline
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.9 (GNU/Linux)
-
-iEYEARECAAYFAkiTDHIACgkQgY5NIXPNpFVHJgCgjPAwJLEqej7MHOxwQSNlaioc
-XacAoNHW1nAMsRang1e8HZTY5Ee4F7TC
-=v8UL
------END PGP SIGNATURE-----
-
---dZHW955j1vPFHE0Q--
-
---===============1188722374==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
-_______________________________________________
-NFSv4 mailing list
-NFSv4@linux-nfs.org
-http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
---===============1188722374==--
