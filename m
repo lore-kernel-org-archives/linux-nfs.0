@@ -1,37 +1,93 @@
-From: Al Viro <viro@ZenIV.linux.org.uk>
-Subject: Re: [RFC] Reinstate NFS exportability for JFFS2.
-Date: Fri, 1 Aug 2008 11:03:59 +0100
-Message-ID: <20080801100359.GM28946@ZenIV.linux.org.uk>
-References: <1209670979.25560.587.camel@pmac.infradead.org> <20080501204820.GA5951@infradead.org> <1209681898.25560.613.camel@pmac.infradead.org> <18458.28833.539314.455215@notabene.brown> <1217541264.1126.15.camel@shinybook.infradead.org> <18578.21997.529551.676627@notabene.brown> <1217551230.3719.15.camel@shinybook.infradead.org> <18578.29049.38904.746701@notabene.brown>
+From: =?iso-8859-1?Q?An=EDbal?= Monsalve Salazar <anibal@debian.org>
+Subject: (was: nfs-utils-1.1.3 released)
+Date: Fri, 1 Aug 2008 23:15:33 +1000
+Message-ID: <20080801131533.GN14057@debianrules.debiancolombia.org>
+References: <488D718F.200@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: David Woodhouse <dwmw2@infradead.org>,
-	Christoph Hellwig <hch@infradead.org>,
-	linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-	linux-mtd@lists.infradead.org
-To: Neil Brown <neilb@suse.de>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from zeniv.linux.org.uk ([195.92.253.2]:38040 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751158AbYHAKEB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Aug 2008 06:04:01 -0400
-In-Reply-To: <18578.29049.38904.746701-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: multipart/mixed; boundary="===============1188722374=="
+Cc: Christian Surchi <csurchi@debian.org>,
+	Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+	Rasmus =?iso-8859-1?B?Qvhn?= Hansen <rasmus@msconsult.dk>,
+	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>, 492970@bugs.debian.org
+To: Steve Dickson <SteveD@redhat.com>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <488D718F.200@RedHat.com>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Mime-version: 1.0
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Aug 01, 2008 at 12:14:17PM +1000, Neil Brown wrote:
 
-> It sounds to me like the core problem here is that the locking regime
-> imposed by the VFS simply isn't suitable for JFFS2 .. and a bunch of
-> other filesystems.
-> 
-> This seems to suggest that the VFS should be changed.
-> Superficially, it seems that changing the locking rules so that the
-> callee takes i_mutex rather than the caller taking it would help and,
-> in the case of JFFS2, make f->sem redundant.  Does that match your
-> understanding?
+--===============1188722374==
+Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="dZHW955j1vPFHE0Q"
+Content-Disposition: inline
 
-Huh?  How could that possibly help?  You are not changing the sequence
-of operations on locks, you only slightly modify the timing; how could
-that possibly eliminate a deadlock?  Moreover, how the _hell_ could
-making exclusion area smaller make f->sem redundant?
+
+--dZHW955j1vPFHE0Q
+Content-Type: text/plain; charset=iso-8859-1
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
+
+On Mon, Jul 28, 2008 at 03:13:19AM -0400, Steve Dickson wrote:
+>I just cut the 1.1.3 nfs-utils release. Unfortunately I'm having
+>issues accessing my kernel.org account so for the moment the=20
+>tar ball is only available on SourceForge:
+>
+>     http://sourceforge.net/projects/nfs
+>[...]=20
+
+1.1.3 clients don't work with a 1.0.10 server anymore.
+
+Please read the Debian bug report at http://bugs.debian.org/492970
+
+On Fri, Aug 01, 2008 at 02:54:02PM +0200, Christian Surchi wrote:
+>On Wed, Jul 30, 2008 at 12:56:12PM +0200, Rasmus B=F8g Hansen wrote:
+>>Package: nfs-common
+>>Version: 1:1.1.3-1
+>>Severity: important
+>>
+>>
+>>Upgrading nfs-common 1:1.1.3-1 broke my NFS client.
+>>
+>>The NFS server is running etch and nothing was changed. After upgrading
+>>the client to 1:1.1.3-1 access to my files (/home is NFS-mounted) is
+>>disallowed where it should be allowed (and certainly was in 1:1.1.2-6).
+>
+>I confirm this one on my sid client too. No changes in nfs server=20
+>(etch). Downgrading nfs-common solved the problem for me too.
+>
+>Christian
+
+--dZHW955j1vPFHE0Q
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: Digital signature
+Content-Disposition: inline
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.9 (GNU/Linux)
+
+iEYEARECAAYFAkiTDHIACgkQgY5NIXPNpFVHJgCgjPAwJLEqej7MHOxwQSNlaioc
+XacAoNHW1nAMsRang1e8HZTY5Ee4F7TC
+=v8UL
+-----END PGP SIGNATURE-----
+
+--dZHW955j1vPFHE0Q--
+
+--===============1188722374==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+_______________________________________________
+NFSv4 mailing list
+NFSv4@linux-nfs.org
+http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
+--===============1188722374==--
