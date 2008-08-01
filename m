@@ -1,144 +1,85 @@
-From: Alex Samad <alex-SGFoFqf0RKf0CCvOHzKKcA@public.gmane.org>
-Subject: Re: mount issue with Mac OSX and --manage-gids, client hangs
-Date: Fri, 1 Aug 2008 11:47:01 +1000
-Message-ID: <20080801014701.GA2410@samad.com.au>
-References: <20080731204701.GE26609@samad.com.au> <76bd70e30807311611o327339dakd2de3577608897a4@mail.gmail.com>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [RFC] Reinstate NFS exportability for JFFS2.
+Date: Fri, 1 Aug 2008 12:14:17 +1000
+Message-ID: <18578.29049.38904.746701@notabene.brown>
+References: <1209670979.25560.587.camel@pmac.infradead.org>
+	<20080501204820.GA5951@infradead.org>
+	<1209681898.25560.613.camel@pmac.infradead.org>
+	<18458.28833.539314.455215@notabene.brown>
+	<1217541264.1126.15.camel@shinybook.infradead.org>
+	<18578.21997.529551.676627@notabene.brown>
+	<1217551230.3719.15.camel@shinybook.infradead.org>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="BXVAT5kNtrzKuDFl"
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Christoph Hellwig <hch@infradead.org>,
+	linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+	linux-mtd@lists.infradead.org
+To: David Woodhouse <dwmw2@infradead.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail5.tpgi.com.au ([203.12.160.101]:56150 "EHLO
-	mail5.tpgi.com.au" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751258AbYHABrI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 31 Jul 2008 21:47:08 -0400
-Received: from sydrt01.samad.com.au (adsl.samad.com.au [60.241.248.86])
-	by mail5.tpgi.com.au (envelope-from alex-SGFoFqf0RKf0CCvOHzKKcA@public.gmane.org) (8.14.3/8.14.3) with ESMTP id m711l1b2010749
-	(version=TLSv1/SSLv3 cipher=AES256-SHA bits=256 verify=NO)
-	for <linux-nfs@vger.kernel.org>; Fri, 1 Aug 2008 11:47:04 +1000
-Received: from alex by smtp.samad.com.au with local  (Exim 4.69 #1 (Debian))
-	id 1KOjjR-0000dC-Ej
-	for <linux-nfs@vger.kernel.org>; Fri, 01 Aug 2008 11:47:01 +1000
-In-Reply-To: <76bd70e30807311611o327339dakd2de3577608897a4-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Received: from ns.suse.de ([195.135.220.2]:47754 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752052AbYHACOZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 31 Jul 2008 22:14:25 -0400
+In-Reply-To: message from David Woodhouse on Friday August 1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Friday August 1, dwmw2@infradead.org wrote:
+> On Fri, 2008-08-01 at 10:16 +1000, Neil Brown wrote:
+> > On Thursday July 31, dwmw2@infradead.org wrote:
+> > > On Fri, 2008-05-02 at 11:38 +1000, Neil Brown wrote:
+> > > > Why is there a deadlock here?
+> > 
+> > I was really hoping you would answer this question.
+> 
+> It's because the nfsd readdirplus code recurses into the file system.
+> >From the file system's ->readdir() function we call back into nfsd's
+> encode_entry(), which then calls back into the file system's ->lookup()
+> function so that it can generate a filehandle.
+> 
+> For any file system which has its own internal locking -- which includes
+> jffs2, btrfs, xfs, jfs, gfs*, ocfs* and probably others -- that
+> recursive call back into the file system will deadlock.
+> 
+> In the specific case of JFFS2, we need that internal locking because of
+> lock ordering constraints with the garbage collection -- we need to take
+> the allocator lock _before_ the per-inode lock, which means we can't use
+> the generic inode->i_mutex for that purpose. That's documented in
+> fs/jffs2/README.Locking. I know fewer details about the other affected
+> file systems.
 
---BXVAT5kNtrzKuDFl
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+It sounds to me like the core problem here is that the locking regime
+imposed by the VFS simply isn't suitable for JFFS2 .. and a bunch of
+other filesystems.
 
-On Thu, Jul 31, 2008 at 07:11:31PM -0400, Chuck Lever wrote:
-> On Thu, Jul 31, 2008 at 4:47 PM, Alex Samad <alex-SGFoFqf0RKf0CCvOHzKKcA@public.gmane.org> wrote:
-> > Hi
-> >
-> > I have a nfs debian amd64 server, with a few linux clients that is
-> > working well. I recently tried to attach a mac osx (10.5 Leopard)
-> > client.
-> >
-> > Everytime I attached it would hang when i attempted to use the mount
-> >
-> > on the nas box I have this line in /etc/exports
-> > /exports/shared
-> > -async,no_subtree_check,no_root_squash,insecure,mp=3D/exports/shared
-> > 192.168.8.0/22(rw)
->=20
-> One comment: you shouldn't need "insecure" if you are mounting on the
-> command line and not from the Finder's "Go" menu.  The Finder will try
-> to mount an NFS share using a non-privleged port, but Darwin's mount
-> command (and automounter, AFAIK) works like other Unices -- it should
-> try to use a privileged port for communicating with the server.
-yes agreed, but I had tried different variations, this was the last one.
-In all instances when I removed the manage-gids it failed
+This seems to suggest that the VFS should be changed.
+Superficially, it seems that changing the locking rules so that the
+callee takes i_mutex rather than the caller taking it would help and,
+in the case of JFFS2, make f->sem redundant.  Does that match your
+understanding?
 
->=20
-> > I mounted with this command
-> >
-> > mount -t nfs -o rw,async,rsize=3D32768,wsize=3D32768
-> > nas.hme1.samad.com.au:/exports/shared /mounts/shared
-> >
-> >
-> > I then tried
-> >
-> > df -h &
-> > ls -l /mounts/shared &
-> > umount -f /mounts/shared &
-> >
-> > all the commands failed to return, I could not kill them with -9, I had
-> > to reboot
->=20
-> I find looking at the Mac's dmesg via Console.app to be helpful in such c=
-ases.
+That is obviously a big change and one that should not be made
+lightly, but if it was to benefit a number of the newer filesystems, then
+it would seem like the appropriate way to go.
 
-The commands did not return, kill -9 failed, I had to reboot, noting in
-dmesg, console or syslog (sorry I lie, there were server timeouts
-messages)
+Clearly we need a short term solution too as we don't want to wait for
+VFS locking rules to be renegotiated.  The idea of a "lock is owned by
+me" check is appealing to me as it is a small, localised change that
+would easily be removed if/when the locking we "fixed" properly.
 
->=20
-> > I have attached a tcpdump (tcpdump -pni eth0 ether host
-> > xx:xx:xx:xx:xx:xx -s 9100 -w
-> > nas.capture.dmp) on the nas box
-> >
-> > a copy of the dumo is at www.samad.com.au/~alex/nas.capture.dmp
-> >
-> > I tracked it down to --manage-gids - when I remove this from
-> > /etc/defaults/nfs-kernel-server everything works fine.
-> >
-> > Note though, the UID's, GIDs are not synced between the linux box and
-> > the mac box. so the 2 users I have on the mac box uid 501 & 502, do not
-> > exist on the nas box
-> >
-> >
-> > I read that manage-gids was a means of handle a uid with more than 16
-> > gids and it was protocol compliant, so I have opened a bug report with
-> > Apple, and opened a bug report with debian
-> >
-> >
-> > I have had a quick look at the source code, but it looks more like
-> > something that is in the kernel.
-> >
-> > Is there another place I can log a bugreport for this ?
-> >
-> > Thanks
-> > Alex
-> >
-> >
-> > -----BEGIN PGP SIGNATURE-----
-> > Version: GnuPG v1.4.9 (GNU/Linux)
-> >
-> > iEYEARECAAYFAkiSJMUACgkQkZz88chpJ2MHXgCgtfGAogy3RbEkqvacDNwvzYqf
-> > nikAn3P0J3bB+/Kx6TSmJiK35mAF7+Xh
-> > =3DT+Kq
-> > -----END PGP SIGNATURE-----
-> >
-> >
->=20
->=20
->=20
-> --=20
->  "Alright guard, begin the unnecessarily slow-moving dipping mechanism."
-> --Dr. Evil
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->=20
+In the JFFS2 case I imagine this taking the following form:
 
---=20
-Never play pool with anyone named "Fats".
+ - new field in jffs2_inode_info "struct task_struct *sem_owner",
+   initialised to NULL
+ - in jffs2_readdir after locking ->sem, set ->sem_owner to current.
+ - before unlocking ->sem, set ->sem_owner to NULL
+ - in jffs2_lookup, check if "dir_f->sem_owner == current"
+   If it does, set a flag reminding us not to drop the lock,
+   else mutex_lock(&dir_f->sem);
 
---BXVAT5kNtrzKuDFl
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
-Content-Disposition: inline
+This should fix the problem with very little cost either in
+performance or elegance.  And if/when the locking rules were changed,
+the accompanying code review would immediately notice this and remove
+it.
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.9 (GNU/Linux)
-
-iEYEARECAAYFAkiSaxIACgkQkZz88chpJ2No7wCfRujiJDFWJmj28LDmVoGHBC/A
-3GkAn3qFiqDfr/S0VFJVXyLhoR2tpURS
-=ktNf
------END PGP SIGNATURE-----
-
---BXVAT5kNtrzKuDFl--
+NeilBrown
