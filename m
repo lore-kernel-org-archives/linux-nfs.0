@@ -1,64 +1,144 @@
-From: "Chuck Lever" <chuck.lever@oracle.com>
-Subject: Re: [RFC] Reinstate NFS exportability for JFFS2.
-Date: Thu, 31 Jul 2008 21:31:29 -0400
-Message-ID: <76bd70e30807311831p771d0f1eia3e303bd84919422@mail.gmail.com>
-References: <1209670979.25560.587.camel@pmac.infradead.org>
-	 <20080501204820.GA5951@infradead.org>
-	 <1209681898.25560.613.camel@pmac.infradead.org>
-	 <18458.28833.539314.455215@notabene.brown>
-	 <1217541264.1126.15.camel@shinybook.infradead.org>
-	 <18578.21997.529551.676627@notabene.brown>
-	 <1217551230.3719.15.camel@shinybook.infradead.org>
-	 <76bd70e30807311753m2785c6d3kd82edd1fe8b5f8b7@mail.gmail.com>
-	 <1217552437.3719.30.camel@shinybook.infradead.org>
-Reply-To: chucklever@gmail.com
+From: Alex Samad <alex-SGFoFqf0RKf0CCvOHzKKcA@public.gmane.org>
+Subject: Re: mount issue with Mac OSX and --manage-gids, client hangs
+Date: Fri, 1 Aug 2008 11:47:01 +1000
+Message-ID: <20080801014701.GA2410@samad.com.au>
+References: <20080731204701.GE26609@samad.com.au> <76bd70e30807311611o327339dakd2de3577608897a4@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: "Neil Brown" <neilb@suse.de>,
-	"Christoph Hellwig" <hch@infradead.org>,
-	linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-	linux-mtd@lists.infradead.org
-To: "David Woodhouse" <dwmw2@infradead.org>
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="BXVAT5kNtrzKuDFl"
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fg-out-1718.google.com ([72.14.220.159]:46359 "EHLO
-	fg-out-1718.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753191AbYHABba (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 31 Jul 2008 21:31:30 -0400
-Received: by fg-out-1718.google.com with SMTP id 19so421910fgg.17
-        for <linux-nfs@vger.kernel.org>; Thu, 31 Jul 2008 18:31:29 -0700 (PDT)
-In-Reply-To: <1217552437.3719.30.camel-Fexsq3y4057IgHVZqg5X0TlWvGAXklZc@public.gmane.org>
+Received: from mail5.tpgi.com.au ([203.12.160.101]:56150 "EHLO
+	mail5.tpgi.com.au" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751258AbYHABrI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 31 Jul 2008 21:47:08 -0400
+Received: from sydrt01.samad.com.au (adsl.samad.com.au [60.241.248.86])
+	by mail5.tpgi.com.au (envelope-from alex-SGFoFqf0RKf0CCvOHzKKcA@public.gmane.org) (8.14.3/8.14.3) with ESMTP id m711l1b2010749
+	(version=TLSv1/SSLv3 cipher=AES256-SHA bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Fri, 1 Aug 2008 11:47:04 +1000
+Received: from alex by smtp.samad.com.au with local  (Exim 4.69 #1 (Debian))
+	id 1KOjjR-0000dC-Ej
+	for <linux-nfs@vger.kernel.org>; Fri, 01 Aug 2008 11:47:01 +1000
+In-Reply-To: <76bd70e30807311611o327339dakd2de3577608897a4-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jul 31, 2008 at 9:00 PM, David Woodhouse <dwmw2@infradead.org> wrote:
-> On Thu, 2008-07-31 at 20:53 -0400, Chuck Lever wrote:
->> For now it is sufficient, IMO.  NFSv4 doesn't implement a readdirplus
->> operation, and the performance benefits of NFSv3 readdirplus are
->> equivocal -- there isn't a strong desire to replicate the complexity
->> of NFSv3 readdirplus in NFSv4.  I'm not even sure you can do it even
->> with a single compound RPC, so even in the long run NFSv4 may not ever
->> have the locking issues that NFSv3 does here.
->
-> AFAICT NFSv4 does have the same recursion issues already. The call trace
-> goes fs->readdir() ... nfsd4_encode_dirent() ...
-> nfsd4_encode_dirent_fattr() ... lookup_one_len() ... fs->lookup().
->
-> Or am I mistaken?
 
-It looks like it needs a directory entry's dentry for a couple of reasons:
+--BXVAT5kNtrzKuDFl
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-1.  To determine whether a directory entry is a mount point
+On Thu, Jul 31, 2008 at 07:11:31PM -0400, Chuck Lever wrote:
+> On Thu, Jul 31, 2008 at 4:47 PM, Alex Samad <alex-SGFoFqf0RKf0CCvOHzKKcA@public.gmane.org> wrote:
+> > Hi
+> >
+> > I have a nfs debian amd64 server, with a few linux clients that is
+> > working well. I recently tried to attach a mac osx (10.5 Leopard)
+> > client.
+> >
+> > Everytime I attached it would hang when i attempted to use the mount
+> >
+> > on the nas box I have this line in /etc/exports
+> > /exports/shared
+> > -async,no_subtree_check,no_root_squash,insecure,mp=3D/exports/shared
+> > 192.168.8.0/22(rw)
+>=20
+> One comment: you shouldn't need "insecure" if you are mounting on the
+> command line and not from the Finder's "Go" menu.  The Finder will try
+> to mount an NFS share using a non-privleged port, but Darwin's mount
+> command (and automounter, AFAIK) works like other Unices -- it should
+> try to use a privileged port for communicating with the server.
+yes agreed, but I had tried different variations, this was the last one.
+In all instances when I removed the manage-gids it failed
 
-2.  If the client has asked for file handles (via a bitmask) for the
-directory entries
+>=20
+> > I mounted with this command
+> >
+> > mount -t nfs -o rw,async,rsize=3D32768,wsize=3D32768
+> > nas.hme1.samad.com.au:/exports/shared /mounts/shared
+> >
+> >
+> > I then tried
+> >
+> > df -h &
+> > ls -l /mounts/shared &
+> > umount -f /mounts/shared &
+> >
+> > all the commands failed to return, I could not kill them with -9, I had
+> > to reboot
+>=20
+> I find looking at the Mac's dmesg via Console.app to be helpful in such c=
+ases.
 
-So, yep, you're right.  NFSv4 will hit this too.
+The commands did not return, kill -9 failed, I had to reboot, noting in
+dmesg, console or syslog (sorry I lie, there were server timeouts
+messages)
 
-As I recall, the Linux NFSv4 client doesn't use
-FATTR4_WORD0_FILEHANDLE during NFSv4 READDIR for the reasons I stated
-earlier; and it only uses FATTR4_WORD0_FSID during GETATTR.  Other
-clients might use these during a READDIR however.
+>=20
+> > I have attached a tcpdump (tcpdump -pni eth0 ether host
+> > xx:xx:xx:xx:xx:xx -s 9100 -w
+> > nas.capture.dmp) on the nas box
+> >
+> > a copy of the dumo is at www.samad.com.au/~alex/nas.capture.dmp
+> >
+> > I tracked it down to --manage-gids - when I remove this from
+> > /etc/defaults/nfs-kernel-server everything works fine.
+> >
+> > Note though, the UID's, GIDs are not synced between the linux box and
+> > the mac box. so the 2 users I have on the mac box uid 501 & 502, do not
+> > exist on the nas box
+> >
+> >
+> > I read that manage-gids was a means of handle a uid with more than 16
+> > gids and it was protocol compliant, so I have opened a bug report with
+> > Apple, and opened a bug report with debian
+> >
+> >
+> > I have had a quick look at the source code, but it looks more like
+> > something that is in the kernel.
+> >
+> > Is there another place I can log a bugreport for this ?
+> >
+> > Thanks
+> > Alex
+> >
+> >
+> > -----BEGIN PGP SIGNATURE-----
+> > Version: GnuPG v1.4.9 (GNU/Linux)
+> >
+> > iEYEARECAAYFAkiSJMUACgkQkZz88chpJ2MHXgCgtfGAogy3RbEkqvacDNwvzYqf
+> > nikAn3P0J3bB+/Kx6TSmJiK35mAF7+Xh
+> > =3DT+Kq
+> > -----END PGP SIGNATURE-----
+> >
+> >
+>=20
+>=20
+>=20
+> --=20
+>  "Alright guard, begin the unnecessarily slow-moving dipping mechanism."
+> --Dr. Evil
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>=20
 
--- 
- "Alright guard, begin the unnecessarily slow-moving dipping mechanism."
---Dr. Evil
+--=20
+Never play pool with anyone named "Fats".
+
+--BXVAT5kNtrzKuDFl
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: Digital signature
+Content-Disposition: inline
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.9 (GNU/Linux)
+
+iEYEARECAAYFAkiSaxIACgkQkZz88chpJ2No7wCfRujiJDFWJmj28LDmVoGHBC/A
+3GkAn3qFiqDfr/S0VFJVXyLhoR2tpURS
+=ktNf
+-----END PGP SIGNATURE-----
+
+--BXVAT5kNtrzKuDFl--
