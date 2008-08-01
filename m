@@ -1,7 +1,7 @@
-From: David Woodhouse <dwmw2@infradead.org>
+From: "Chuck Lever" <chuck.lever@oracle.com>
 Subject: Re: [RFC] Reinstate NFS exportability for JFFS2.
-Date: Fri, 01 Aug 2008 02:00:37 +0100
-Message-ID: <1217552437.3719.30.camel@shinybook.infradead.org>
+Date: Thu, 31 Jul 2008 21:31:29 -0400
+Message-ID: <76bd70e30807311831p771d0f1eia3e303bd84919422@mail.gmail.com>
 References: <1209670979.25560.587.camel@pmac.infradead.org>
 	 <20080501204820.GA5951@infradead.org>
 	 <1209681898.25560.613.camel@pmac.infradead.org>
@@ -10,46 +10,55 @@ References: <1209670979.25560.587.camel@pmac.infradead.org>
 	 <18578.21997.529551.676627@notabene.brown>
 	 <1217551230.3719.15.camel@shinybook.infradead.org>
 	 <76bd70e30807311753m2785c6d3kd82edd1fe8b5f8b7@mail.gmail.com>
+	 <1217552437.3719.30.camel@shinybook.infradead.org>
+Reply-To: chucklever@gmail.com
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: "Neil Brown" <neilb@suse.de>,
+	"Christoph Hellwig" <hch@infradead.org>,
 	linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
 	linux-mtd@lists.infradead.org
-To: chucklever@gmail.com
+To: "David Woodhouse" <dwmw2@infradead.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:58620 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751425AbYHABAl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 31 Jul 2008 21:00:41 -0400
-In-Reply-To: <76bd70e30807311753m2785c6d3kd82edd1fe8b5f8b7-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Received: from fg-out-1718.google.com ([72.14.220.159]:46359 "EHLO
+	fg-out-1718.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753191AbYHABba (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 31 Jul 2008 21:31:30 -0400
+Received: by fg-out-1718.google.com with SMTP id 19so421910fgg.17
+        for <linux-nfs@vger.kernel.org>; Thu, 31 Jul 2008 18:31:29 -0700 (PDT)
+In-Reply-To: <1217552437.3719.30.camel-Fexsq3y4057IgHVZqg5X0TlWvGAXklZc@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2008-07-31 at 20:53 -0400, Chuck Lever wrote:
-> For now it is sufficient, IMO.  NFSv4 doesn't implement a readdirplus
-> operation, and the performance benefits of NFSv3 readdirplus are
-> equivocal -- there isn't a strong desire to replicate the complexity
-> of NFSv3 readdirplus in NFSv4.  I'm not even sure you can do it even
-> with a single compound RPC, so even in the long run NFSv4 may not ever
-> have the locking issues that NFSv3 does here.
+On Thu, Jul 31, 2008 at 9:00 PM, David Woodhouse <dwmw2@infradead.org> wrote:
+> On Thu, 2008-07-31 at 20:53 -0400, Chuck Lever wrote:
+>> For now it is sufficient, IMO.  NFSv4 doesn't implement a readdirplus
+>> operation, and the performance benefits of NFSv3 readdirplus are
+>> equivocal -- there isn't a strong desire to replicate the complexity
+>> of NFSv3 readdirplus in NFSv4.  I'm not even sure you can do it even
+>> with a single compound RPC, so even in the long run NFSv4 may not ever
+>> have the locking issues that NFSv3 does here.
+>
+> AFAICT NFSv4 does have the same recursion issues already. The call trace
+> goes fs->readdir() ... nfsd4_encode_dirent() ...
+> nfsd4_encode_dirent_fattr() ... lookup_one_len() ... fs->lookup().
+>
+> Or am I mistaken?
 
-AFAICT NFSv4 does have the same recursion issues already. The call trace
-goes fs->readdir() ... nfsd4_encode_dirent() ...
-nfsd4_encode_dirent_fattr() ... lookup_one_len() ... fs->lookup().
+It looks like it needs a directory entry's dentry for a couple of reasons:
 
-Or am I mistaken?
+1.  To determine whether a directory entry is a mount point
 
-> I agree with Neil, though -- as a reviewer, I think the architecture
-> of your solution is valid, but would need to audit these pretty
-> closely to get a sense of the individual correctness/appropriateness
-> of each change.
+2.  If the client has asked for file handles (via a bitmask) for the
+directory entries
 
-The important part to review is this one, which is fairly close to what
-XFS has been doing (for local access too) for a long time already:
+So, yep, you're right.  NFSv4 will hit this too.
 
-http://git.infradead.org/users/dwmw2/nfsexport-2.6.git?a=commitdiff;h=37f3aae5380eb4ef23a77f3f52b8849a18cee188
+As I recall, the Linux NFSv4 client doesn't use
+FATTR4_WORD0_FILEHANDLE during NFSv4 READDIR for the reasons I stated
+earlier; and it only uses FATTR4_WORD0_FSID during GETATTR.  Other
+clients might use these during a READDIR however.
 
 -- 
-David Woodhouse                            Open Source Technology Centre
-David.Woodhouse@intel.com                              Intel Corporation
-
+ "Alright guard, begin the unnecessarily slow-moving dipping mechanism."
+--Dr. Evil
