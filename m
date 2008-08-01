@@ -1,88 +1,37 @@
-From: Alex Samad <alex-SGFoFqf0RKf0CCvOHzKKcA@public.gmane.org>
-Subject: Re: mount issue with Mac OSX and --manage-gids, client hangs
-Date: Fri, 1 Aug 2008 18:59:44 +1000
-Message-ID: <20080801085944.GA22718@samad.com.au>
-References: <20080731204701.GE26609@samad.com.au> <18578.41640.740866.153235@notabene.brown>
+From: Al Viro <viro@ZenIV.linux.org.uk>
+Subject: Re: [RFC] Reinstate NFS exportability for JFFS2.
+Date: Fri, 1 Aug 2008 11:03:59 +0100
+Message-ID: <20080801100359.GM28946@ZenIV.linux.org.uk>
+References: <1209670979.25560.587.camel@pmac.infradead.org> <20080501204820.GA5951@infradead.org> <1209681898.25560.613.camel@pmac.infradead.org> <18458.28833.539314.455215@notabene.brown> <1217541264.1126.15.camel@shinybook.infradead.org> <18578.21997.529551.676627@notabene.brown> <1217551230.3719.15.camel@shinybook.infradead.org> <18578.29049.38904.746701@notabene.brown>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="qMm9M+Fa2AknHoGS"
-Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: David Woodhouse <dwmw2@infradead.org>,
+	Christoph Hellwig <hch@infradead.org>,
+	linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+	linux-mtd@lists.infradead.org
 To: Neil Brown <neilb@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail11.tpgi.com.au ([203.12.160.161]:42468 "EHLO
-	mail11.tpgi.com.au" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752475AbYHAI7z (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Aug 2008 04:59:55 -0400
-In-Reply-To: <18578.41640.740866.153235-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
+Received: from zeniv.linux.org.uk ([195.92.253.2]:38040 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751158AbYHAKEB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Aug 2008 06:04:01 -0400
+In-Reply-To: <18578.29049.38904.746701-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Fri, Aug 01, 2008 at 12:14:17PM +1000, Neil Brown wrote:
 
---qMm9M+Fa2AknHoGS
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+> It sounds to me like the core problem here is that the locking regime
+> imposed by the VFS simply isn't suitable for JFFS2 .. and a bunch of
+> other filesystems.
+> 
+> This seems to suggest that the VFS should be changed.
+> Superficially, it seems that changing the locking rules so that the
+> callee takes i_mutex rather than the caller taking it would help and,
+> in the case of JFFS2, make f->sem redundant.  Does that match your
+> understanding?
 
-On Fri, Aug 01, 2008 at 03:44:08PM +1000, Neil Brown wrote:
-> On Friday August 1, alex-SGFoFqf0RKf0CCvOHzKKcA@public.gmane.org wrote:
-> >=20
-> > I tracked it down to --manage-gids - when I remove this from
-> > /etc/defaults/nfs-kernel-server everything works fine.
-> >=20
-> > Note though, the UID's, GIDs are not synced between the linux box and
-> > the mac box. so the 2 users I have on the mac box uid 501 & 502, do not
-> > exist on the nas box
->=20
-> Yes... I never tested that case, did I :-(
->=20
-> This patch should fix it.  Are you able to compile a new nfs-utils
-> with this patch applied and test the mountd from there?
-
-Hi=20
-
-Initial test and it is now working. I will forward this onto the debian bug
-
->=20
-> Thanks,
-> NeilBrown
->=20
->=20
-> diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-> index f555dcc..48d737b 100644
-> --- a/utils/mountd/cache.c
-> +++ b/utils/mountd/cache.c
-> @@ -158,7 +158,8 @@ void auth_unix_gid(FILE *f)
->  		qword_printint(f, ngroups);
->  		for (i=3D0; i<ngroups; i++)
->  			qword_printint(f, groups[i]);
-> -	}
-> +	} else
-> +		qword_printint(f, 0);
->  	qword_eol(f);
->  	if (groups !=3D glist)
->  		free(groups);
->=20
-
---=20
-"Whether they be Christian, Jew, or Muslim, or Hindu, people have heard the=
- universal call to love a neighbor just like they'd like to be called thems=
-elves."
-
-	- George W. Bush
-10/08/2003
-Washington, DC
-
---qMm9M+Fa2AknHoGS
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
-Content-Disposition: inline
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.9 (GNU/Linux)
-
-iEYEARECAAYFAkiS0IAACgkQkZz88chpJ2PWEgCdEXiMLLuGSM9IK5S2mJpXN7r4
-yY8AoJ4kz0LvFfkhzhCXWb+vZNTpH8sZ
-=a2r6
------END PGP SIGNATURE-----
-
---qMm9M+Fa2AknHoGS--
+Huh?  How could that possibly help?  You are not changing the sequence
+of operations on locks, you only slightly modify the timing; how could
+that possibly eliminate a deadlock?  Moreover, how the _hell_ could
+making exclusion area smaller make f->sem redundant?
