@@ -1,72 +1,33 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [RFC] Reinstate NFS exportability for JFFS2.
-Date: Sat, 2 Aug 2008 17:33:38 -0400
-Message-ID: <20080802213337.GA2833@fieldses.org>
-References: <76bd70e30807311753m2785c6d3kd82edd1fe8b5f8b7@mail.gmail.com> <1217552437.3719.30.camel@shinybook.infradead.org> <76bd70e30807311831p771d0f1eia3e303bd84919422@mail.gmail.com> <1217597759.3454.356.camel@pmac.infradead.org> <1217598976.3454.359.camel@pmac.infradead.org> <76bd70e30808010905j3010a6bfy534c068a662d348d@mail.gmail.com> <1217607571.3454.417.camel@pmac.infradead.org> <76bd70e30808011047u3cd0a56cg3b2d62e01afed014@mail.gmail.com> <20080802182644.GE30454@fieldses.org> <1217709752.2500.5.camel@shinybook.infradead.org>
+From: "=?BIG5?B?uOKkaN6z?=" <xds3h9s420s@gmail.com>
+Subject: =?BIG5?B?UEhQwcqqq6iuuOquxq53uvSvuLFNrtc=?=
+Date: Sun, 3 Aug 2008 06:01:38 +0800
+Message-ID: <cf784fa80808021501m72977ed6xf01ef7f47025b6b6__13487.2012575672$1217714567$gmane$org@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: chucklever@gmail.com, viro@zeniv.linux.org.uk,
-	Neil Brown <neilb@suse.de>,
-	Christoph Hellwig <hch@infradead.org>,
-	linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-	linux-mtd@lists.infradead.org
-To: David Woodhouse <dwmw2@infradead.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1217709752.2500.5.camel@shinybook.infradead.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset=BIG5
+To: links-V0lzfvNe2eMGJC0G+BYVdg@public.gmane.org
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from qb-out-0506.google.com ([72.14.204.238]:31113 "EHLO
+	qb-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752270AbYHBWBk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 2 Aug 2008 18:01:40 -0400
+Received: by qb-out-0506.google.com with SMTP id a16so1863233qbd.17
+        for <linux-nfs@vger.kernel.org>; Sat, 02 Aug 2008 15:01:39 -0700 (PDT)
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Aug 02, 2008 at 09:42:32PM +0100, David Woodhouse wrote:
-> On Sat, 2008-08-02 at 14:26 -0400, J. Bruce Fields wrote:
-> > Could you add a readdirplus vfs operation which took a flag indicating
-> > how much extra information you're going to need?
-> 
-> Actually, if we're screwing with readdir then xfs would like to know how
-> much it's going to be asked to read, rather than just have the filldir
-> callback return zero when it's done.
-
-OK.
-
-> > The three cases where readdir can be called are:
-> >         - ordinary readdir, for which the existing filldir_t provides
-> >           all the information needed.
-> >         - nfsv3 readdirplus, where the only additional information
-> >           needed is whether there's a mountpoint.
-> 
-> It also wants a file handle.
-
-Oops, right.
-
-> For which I think it just needs
-> i_generation in addition to the information it already has.
-
-Typically, right, though the filesystem's allowed some choice about what
-exactly it wants to use in the filehandle.  I don't know how the various
-filesystems are actually using that in practice.
-
-> >         - nfsv4 readdir, where we may need all the stat info, acls,
-> >           etc., etc.
-> 
-> We _might_, but most of the time we won't. It might be OK to fall back
-> to the existing double-buffer hack for the cases where we _do_ need that
-> extra information.
-
-How bad is the "double-buffer hack" anyway?  Rather than have this as a
-fallback case that's rarely used (hence rarely tested), it might be
-simpler just to use it for everything if we're going to use it at all.
-
---b.
-
-> I think a ->lookup_fh() method (which _expects_ to be called from within
-> filldir, and hence does its locking automatically) is the way to go.
-> 
-> One alternative might just be a full lookup method with the same locking
-> rules: ->lookup_locked(). That might be easier to implement, and would
-> solve the problem even for the corner cases of NFSv4. Although I still
-> think we'd do best to avoid populating the inode cache with _all_
-> children when we do a readdirplus. 
-> 
-> -- 
-> David Woodhouse                            Open Source Technology Centre
-> David.Woodhouse@intel.com                              Intel Corporation
-> 
+pHPgvqzsp9669K22s12tcAoKp9qtzKq6qXamrqFHq8ik4aq6qEOjuKXzpHCoxrGhoUGzo6xPpHPg
+vqq6pGqoxrGhCgqn2q3MpmKxwKVYpfi3fqfOtki69K+4pV2ndKtlpXi69K22rPykdSur4aV4ut6y
+erV7pqEKCq2trsmtrbZxsU2u17v5IKV1rW4kMjksOTAwCgoopmKwZaO4pn4xMDBNQqSjra2sebZx
+uvSvuKrFtqEpCgqn2q3MsLWquqSjpXWsT7r0r7ihQabTrE+xeqX4t36quqRKpGYKCqO4rdOmbqq6
+pfi3frr0r7i46q7Gp1muyafzt3OqurN0q9esT6vcrautbqq6Cgql+Ld+ou2kxqq6sKqrfr3ouc62
+pKFBpbSzebF6qrq69Lj0qvmtsQoKv+++3KRz4L6mqLROsXqqurnat1EKCqHjoeOh46HjoeOh46Hj
+oeOh46HjoeOh46HjoeOh46HjoeOh46HjoeOh46HjoeOh46HjoeMKUFM6IL11pFfByqqruvSvuKfa
+rczB2aVptKOo0ajqpWS+96juoUEKoUChQLtQvXWkV6ZDpkyxYrPmpf6s2bZXsNMrtmynvcO6tk8u
+Li4uLi61par3rHmqQbDIvveo7gqh46HjoeOh46HjoeOh46HjoeOh46HjoeOh46HjoeOh46HjoeOh
+46HjoeOh46HjoeOh46HjCgrFd6rvqNO5cayiuN+2wLFNrfuhXVNhbaFeoUcwOTgwMTE5ODEyIC8g
+MDkzODc2NDM5NQoKpFe69LdqtE2heaFApHPgvqzsp96kvaVxuvSvuKFAoXqnWaVpp+So7KfarcwK
+CqHjoeOh46HjoeOh46HjoeOh46HjoeOh46HjoeOh46HjoeOh46HjoeOh46HjoeOh46HjoeMKpbuk
+vaVxpXSlfrSjqNHD9sHkpnJTRU+xxqfHqkGwyAqrT8PSsU6xeqq6uvSvuKZiWXggLyBHeCAuLi6x
+xqZissSkQK22CqFAoUChQKFAoUChQKFAoUChQKFAoUChQKFAoUChQKFAoUChQCDFd6rvqNO5cbjf
+sN0hISEKoeOh46HjoeOh46HjoeOh46HjoeOh46HjoeOh46HjoeOh46HjoeOh46HjoeOh46HjoeOh
+4wo=
