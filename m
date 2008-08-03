@@ -1,62 +1,77 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: (was: nfs-utils-1.1.3 released)
-Date: Sun, 3 Aug 2008 11:10:22 -0400
-Message-ID: <20080803151022.GA31484@fieldses.org>
-References: <488D718F.200@RedHat.com> <20080801131533.GN14057@debianrules.debiancolombia.org> <20080802172529.GC30454@fieldses.org> <87myjul1fk.fsf@burly.wgtn.ondioline.org>
+From: "Chuck Lever" <chuck.lever@oracle.com>
+Subject: Re: [RFC] Reinstate NFS exportability for JFFS2.
+Date: Sun, 3 Aug 2008 13:15:19 -0400
+Message-ID: <76bd70e30808031015l36db41bexf319e85ba7acc4e9@mail.gmail.com>
+References: <18578.21997.529551.676627@notabene.brown>
+	 <1217552437.3719.30.camel@shinybook.infradead.org>
+	 <76bd70e30807311831p771d0f1eia3e303bd84919422@mail.gmail.com>
+	 <1217597759.3454.356.camel@pmac.infradead.org>
+	 <1217598976.3454.359.camel@pmac.infradead.org>
+	 <76bd70e30808010905j3010a6bfy534c068a662d348d@mail.gmail.com>
+	 <1217607571.3454.417.camel@pmac.infradead.org>
+	 <76bd70e30808011047u3cd0a56cg3b2d62e01afed014@mail.gmail.com>
+	 <20080802182644.GE30454@fieldses.org>
+	 <18581.40178.976747.769343@notabene.brown>
+Reply-To: chucklever@gmail.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Cc: Steve Dickson <SteveD@redhat.com>,
-	Christian Surchi <csurchi@debian.org>,
-	Rasmus =?utf-8?Q?B=C3=B8g?= Hansen <rasmus-tUP8e6pgWdNlY7y4Fx5NiA@public.gmane.org>,
-	492970@bugs.debian.org,
-	Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
-To: Paul Collins <paul-dsjeNyW6Qm/D+ROgJ3VA+kB+6BGkLq7r@public.gmane.org>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:45303 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755711AbYHCPKf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 3 Aug 2008 11:10:35 -0400
-In-Reply-To: <87myjul1fk.fsf-D7l3p2TGOOdLdt5/z87VRY6ehsQQaF5K@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	"David Woodhouse" <dwmw2@infradead.org>, viro@zeniv.linux.org.uk,
+	"Christoph Hellwig" <hch@infradead.org>,
+	linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+	linux-mtd@lists.infradead.org
+To: "Neil Brown" <neilb@suse.de>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <18581.40178.976747.769343@notabene.brown>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Aug 04, 2008 at 12:37:19AM +1200, Paul Collins wrote:
-> "J. Bruce Fields" <bfields@fieldses.org> writes:
->=20
-> > On Fri, Aug 01, 2008 at 11:15:33PM +1000, An=C3=ADbal Monsalve Sala=
-zar wrote:
-> >> On Mon, Jul 28, 2008 at 03:13:19AM -0400, Steve Dickson wrote:
-> >> >I just cut the 1.1.3 nfs-utils release. Unfortunately I'm having
-> >> >issues accessing my kernel.org account so for the moment the=20
-> >> >tar ball is only available on SourceForge:
-> >> >
-> >> >     http://sourceforge.net/projects/nfs
-> >> >[...]=20
-> >>=20
-> >> 1.1.3 clients don't work with a 1.0.10 server anymore.
-> >
-> > Very weird--it might make sense if upgrading nfs-utils broke the mo=
-unt
-> > itself, but here it seems the mount is succeeding and subsequent fi=
-le
-> > access (which I'd expect to only involve the in-kernel client code)=
- is
-> > failing.  Maybe there's some difference in the mount options?  What=
- does
-> > /proc/self/mounts say?  I assume these are all v2 or v3 mounts?
->=20
-> I discovered today that I was no longer able to write to the v3 mount=
- on
-> my 1.1.2 server.  I checked /proc/mounts and noticed sec=3Dnull on th=
-e
-> mount.  Either adding sec=3Dsys to the client's mount options or
-> downgrading to nfs-common 1.1.2 on the client fixes the problem.
+On Sun, Aug 3, 2008 at 7:56 AM, Neil Brown <neilb@suse.de> wrote:
+> On Saturday August 2, bfields@fieldses.org wrote:
+>>
+>> Though really I can't see any great objection to just moving xfs's hack
+>> up into nfsd.  It may not do everything, but it seems like an
+>> incremental improvement.
+>
+> Because it is a hack, and hacks have a tendency to hide deeper
+> problems, and not be ever get cleaned up and generally to become a
+> burden to future generations.
 
-That would do it!
+Agreed that maintainability is an important concern.
 
-So it sounds like there's a bug that causes mount.nfs to get the defaul=
-t
-mount options wrong?
+However, I don't see that what David suggests in general is hiding a
+deeper problem, but is rather exposing it.  Can you explain what you
+think is the issue?
 
---b.
+> However if you do go down that path, can I suggest:
+>
+>  1/ get rid of the word "hack" throughout the code.  If you think it
+>    is sensible, make it appear sensible.
+
+Yes, if we're going to codify this method of handling readdir, let's
+document it properly and treat it as a first class API.
+
+>  2/ drop the "retry malloc of a smaller size" thing.
+>    In fact, you can probably use one of the set of pages that has
+>    been reserved for the request.  It is very rare that a readdir
+>    request will be as big as the largest read.
+
+Well, many Linux clients support reading directories only a page at a
+time (this limitation may have been lifted recently).  But other
+clients often ask to read much more.
+
+Again it appears that a Linux NFS client is not going to be the real
+acid test here.  Solaris and FreeBSD would probably be the best to
+try, I think.
+
+>  3/ Make the new way unconditional.  That gives it broader test
+>    coverage which can only be a good thing.  And what is good for the
+>    goose is good for the gander... (not that I'm calling anyone a
+>    goose).
+
+As Bruce also suggested, and I agree with this (not the goose part,
+the unconditionality and test coverage parts).
+
+-- 
+ "Alright guard, begin the unnecessarily slow-moving dipping mechanism."
+--Dr. Evil
