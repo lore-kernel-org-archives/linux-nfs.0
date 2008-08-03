@@ -1,58 +1,52 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [RFC] Reinstate NFS exportability for JFFS2.
-Date: Sun, 3 Aug 2008 21:56:34 +1000
-Message-ID: <18581.40178.976747.769343@notabene.brown>
-References: <18578.21997.529551.676627@notabene.brown>
-	<1217551230.3719.15.camel@shinybook.infradead.org>
-	<76bd70e30807311753m2785c6d3kd82edd1fe8b5f8b7@mail.gmail.com>
-	<1217552437.3719.30.camel@shinybook.infradead.org>
-	<76bd70e30807311831p771d0f1eia3e303bd84919422@mail.gmail.com>
-	<1217597759.3454.356.camel@pmac.infradead.org>
-	<1217598976.3454.359.camel@pmac.infradead.org>
-	<76bd70e30808010905j3010a6bfy534c068a662d348d@mail.gmail.com>
-	<1217607571.3454.417.camel@pmac.infradead.org>
-	<76bd70e30808011047u3cd0a56cg3b2d62e01afed014@mail.gmail.com>
-	<20080802182644.GE30454@fieldses.org>
+From: Paul Collins <paul@burly.ondioline.org>
+Subject: Re: (was: nfs-utils-1.1.3 released)
+Date: Mon, 04 Aug 2008 00:37:19 +1200
+Message-ID: <87myjul1fk.fsf@burly.wgtn.ondioline.org>
+References: <488D718F.200@RedHat.com>
+	<20080801131533.GN14057@debianrules.debiancolombia.org>
+	<20080802172529.GC30454@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: chucklever@gmail.com, David Woodhouse <dwmw2@infradead.org>,
-	viro@zeniv.linux.org.uk, Christoph Hellwig <hch@infradead.org>,
-	linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-	linux-mtd@lists.infradead.org
+Content-Type: text/plain; charset="utf-8"
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+	Rasmus =?utf-8?Q?B=C3=B8g?= Hansen <rasmus@msconsult.dk>,
+	492970@bugs.debian.org, Christian Surchi <csurchi@debian.org>,
+	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
 To: "J. Bruce Fields" <bfields@fieldses.org>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:59949 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753531AbYHCL4p (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 3 Aug 2008 07:56:45 -0400
-In-Reply-To: message from J. Bruce Fields on Saturday August 2
-Sender: linux-nfs-owner@vger.kernel.org
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <20080802172529.GC30454@fieldses.org> (J. Bruce Fields's message
+	of "Sat, 2 Aug 2008 13:25:29 -0400")
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Saturday August 2, bfields@fieldses.org wrote:
-> 
-> Though really I can't see any great objection to just moving xfs's hack
-> up into nfsd.  It may not do everything, but it seems like an
-> incremental improvement.
-
-Because it is a hack, and hacks have a tendency to hide deeper
-problems, and not be ever get cleaned up and generally to become a
-burden to future generations.
-
-However if you do go down that path, can I suggest:
-
- 1/ get rid of the word "hack" throughout the code.  If you think it
-    is sensible, make it appear sensible.
- 2/ drop the "retry malloc of a smaller size" thing. 
-    In fact, you can probably use one of the set of pages that has
-    been reserved for the request.  It is very rare that a readdir
-    request will be as big as the largest read.
- 3/ Make the new way unconditional.  That gives it broader test
-    coverage which can only be a good thing.  And what is good for the
-    goose is good for the gander... (not that I'm calling anyone a
-    goose).
-
-
-But I still prefer the O_READDIRPLUS approach.
-
-NeilBrown
+IkouIEJydWNlIEZpZWxkcyIgPGJmaWVsZHNAZmllbGRzZXMub3JnPiB3cml0ZXM6Cgo+IE9uIEZy
+aSwgQXVnIDAxLCAyMDA4IGF0IDExOjE1OjMzUE0gKzEwMDAsIEFuw61iYWwgTW9uc2FsdmUgU2Fs
+YXphciB3cm90ZToKPj4gT24gTW9uLCBKdWwgMjgsIDIwMDggYXQgMDM6MTM6MTlBTSAtMDQwMCwg
+U3RldmUgRGlja3NvbiB3cm90ZToKPj4gPkkganVzdCBjdXQgdGhlIDEuMS4zIG5mcy11dGlscyBy
+ZWxlYXNlLiBVbmZvcnR1bmF0ZWx5IEknbSBoYXZpbmcKPj4gPmlzc3VlcyBhY2Nlc3NpbmcgbXkg
+a2VybmVsLm9yZyBhY2NvdW50IHNvIGZvciB0aGUgbW9tZW50IHRoZSAKPj4gPnRhciBiYWxsIGlz
+IG9ubHkgYXZhaWxhYmxlIG9uIFNvdXJjZUZvcmdlOgo+PiA+Cj4+ID4gICAgIGh0dHA6Ly9zb3Vy
+Y2Vmb3JnZS5uZXQvcHJvamVjdHMvbmZzCj4+ID5bLi4uXSAKPj4gCj4+IDEuMS4zIGNsaWVudHMg
+ZG9uJ3Qgd29yayB3aXRoIGEgMS4wLjEwIHNlcnZlciBhbnltb3JlLgo+Cj4gVmVyeSB3ZWlyZC0t
+aXQgbWlnaHQgbWFrZSBzZW5zZSBpZiB1cGdyYWRpbmcgbmZzLXV0aWxzIGJyb2tlIHRoZSBtb3Vu
+dAo+IGl0c2VsZiwgYnV0IGhlcmUgaXQgc2VlbXMgdGhlIG1vdW50IGlzIHN1Y2NlZWRpbmcgYW5k
+IHN1YnNlcXVlbnQgZmlsZQo+IGFjY2VzcyAod2hpY2ggSSdkIGV4cGVjdCB0byBvbmx5IGludm9s
+dmUgdGhlIGluLWtlcm5lbCBjbGllbnQgY29kZSkgaXMKPiBmYWlsaW5nLiAgTWF5YmUgdGhlcmUn
+cyBzb21lIGRpZmZlcmVuY2UgaW4gdGhlIG1vdW50IG9wdGlvbnM/ICBXaGF0IGRvZXMKPiAvcHJv
+Yy9zZWxmL21vdW50cyBzYXk/ICBJIGFzc3VtZSB0aGVzZSBhcmUgYWxsIHYyIG9yIHYzIG1vdW50
+cz8KCkkgZGlzY292ZXJlZCB0b2RheSB0aGF0IEkgd2FzIG5vIGxvbmdlciBhYmxlIHRvIHdyaXRl
+IHRvIHRoZSB2MyBtb3VudCBvbgpteSAxLjEuMiBzZXJ2ZXIuICBJIGNoZWNrZWQgL3Byb2MvbW91
+bnRzIGFuZCBub3RpY2VkIHNlYz1udWxsIG9uIHRoZQptb3VudC4gIEVpdGhlciBhZGRpbmcgc2Vj
+PXN5cyB0byB0aGUgY2xpZW50J3MgbW91bnQgb3B0aW9ucyBvcgpkb3duZ3JhZGluZyB0byBuZnMt
+Y29tbW9uIDEuMS4yIG9uIHRoZSBjbGllbnQgZml4ZXMgdGhlIHByb2JsZW0uCgotLSAKUGF1bCBD
+b2xsaW5zCldlbGxpbmd0b24sIE5ldyBaZWFsYW5kCgpEYWcgdmlqYW5kZWxpamsgbHVjaHRzY2hp
+cCBkZSBodWlzbWVlc3RlciBpcyBkb29kCl9fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
+X19fX19fX19fX19fX19fCk5GU3Y0IG1haWxpbmcgbGlzdApORlN2NEBsaW51eC1uZnMub3JnCmh0
+dHA6Ly9saW51eC1uZnMub3JnL2NnaS1iaW4vbWFpbG1hbi9saXN0aW5mby9uZnN2NA==
