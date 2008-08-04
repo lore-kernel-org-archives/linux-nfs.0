@@ -1,34 +1,59 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: Updated Next/Trees, problems with nfs-git
-Date: Mon, 4 Aug 2008 13:35:56 -0400
-Message-ID: <20080804173556.GA25940@fieldses.org>
-References: <20080804134444.GC4182@denkbrett.schottelius.org> <20080804150940.GF4182@denkbrett.schottelius.org>
+Subject: Re: kernel BUG at fs/nfs/namespace.c:108!
+Date: Mon, 4 Aug 2008 13:48:47 -0400
+Message-ID: <20080804174847.GB25940@fieldses.org>
+References: <72924.9082.qm@web39205.mail.mud.yahoo.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-next@vger.kernel.org, linux-nfs@vger.kernel.org
-To: Nico -telmich- Schottelius <nico-linux-next@schottelius.org>
-Return-path: <linux-next-owner@vger.kernel.org>
-In-Reply-To: <20080804150940.GF4182@denkbrett.schottelius.org>
-Sender: linux-next-owner@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org
+To: Shahar Klein <shaharklein@yahoo.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail.fieldses.org ([66.93.2.214]:43603 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751552AbYHDRst (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 4 Aug 2008 13:48:49 -0400
+In-Reply-To: <72924.9082.qm-OZWcxxNrvPKvuULXzWHTWIglqE1Y4D90QQ4Iyu8u01E@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Aug 04, 2008 at 05:09:40PM +0200, Nico -telmich- Schottelius wrote:
-> Hello again!
+On Sun, Aug 03, 2008 at 03:07:53AM -0700, Shahar Klein wrote:
+> Hi  All
 > 
-> Found out that #linux-next should have been #nfsd-next and updated
-> the patch to match.
-> 
-> Patch attached.
+> I came across this panic due to bad server and I am wondering
+> why should an nfs client panic when stumbling upon an IS_ROOT dentry
+> in the point where it tries to cross mount. I mean: should an 'Innocent' client
+> 'pay' for bad server behavior?
 
-I'm lost:
-
-> -nfs		git	git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git#linux-next
-> +nfs		git	git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git#nfsd-next
-
-There is no branch named "nfsd-next" in that git repository.  (Do I
-misunderstand how this file is supposed to work?)  The only nfsd-next I
-know of is the one I push to at:
-
-	git://linux-nfs.org/~bfields/linux.git nfsd-next
+Certainly I agree with the principle that a misbehaving server shouldn't
+cause the client to panic, but how exactly does that happen here?  (How
+will nfs_follow_mountpoint get called on a root dentry?)
 
 --b.
+
+> 
+> Is it unsafe to just clear the path and return error?
+> 
+> 
+> --- a/namespace.c       2008-08-03 12:29:21.000000000 +0300
+> +++ b/namespace.c       2008-08-03 12:30:54.000000000 +0300
+> @@ -100,7 +100,11 @@
+> 
+>         dprintk("--> nfs_follow_mountpoint()\n");
+>   
+> -       BUG_ON(IS_ROOT(dentry));
+> +       if (IS_ROOT(dentry)) {
+> +                 err = -EBUSY; // or any reasonable error
+> +                 goto out_err;
+> +                                                                                
+> +       }
+>         dprintk("%s: enter\n", __FUNCTION__);
+>         dput(nd->dentry);
+>         nd->dentry = dget(dentry);
+> 
+> 
+> 
+>       
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
