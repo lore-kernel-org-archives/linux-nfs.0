@@ -1,56 +1,64 @@
-From: Alex Samad <alex-SGFoFqf0RKf0CCvOHzKKcA@public.gmane.org>
-Subject: Re: question about /etc/exports
-Date: Tue, 5 Aug 2008 07:41:25 +1000
-Message-ID: <20080804214125.GE19523@samad.com.au>
-References: <20080731204838.GA27473@samad.com.au>
+From: Nico -telmich- Schottelius <nico-linux-next-xuaVFQXs+5hIG4jRRZ66WA@public.gmane.org>
+Subject: Re: Updated Next/Trees, problems with nfs-git
+Date: Tue, 5 Aug 2008 00:30:50 +0200
+Message-ID: <20080804223050.GA4168@denkbrett.schottelius.org>
+References: <20080804134444.GC4182@denkbrett.schottelius.org> <20080804150940.GF4182@denkbrett.schottelius.org> <20080804173556.GA25940@fieldses.org>
 Mime-Version: 1.0
 Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="oLBj+sq0vYjzfsbl"
-To: linux-nfs@vger.kernel.org
+	protocol="application/pgp-signature"; boundary="FL5UXtIhxfXey3p5"
+Cc: linux-next@vger.kernel.org, linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail11.tpgi.com.au ([203.12.160.161]:52241 "EHLO
-	mail11.tpgi.com.au" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1770656AbYHDVlc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Aug 2008 17:41:32 -0400
-Received: from sydrt01.samad.com.au (adsl.samad.com.au [60.241.248.86])
-	by mail11.tpgi.com.au (envelope-from alex-SGFoFqf0RKf0CCvOHzKKcA@public.gmane.org) (8.14.3/8.14.3) with ESMTP id m74LfPZr003645
-	(version=TLSv1/SSLv3 cipher=AES256-SHA bits=256 verify=NO)
-	for <linux-nfs@vger.kernel.org>; Tue, 5 Aug 2008 07:41:29 +1000
-Received: from alex by smtp.samad.com.au with local  (Exim 4.69 #1 (Debian))
-	id 1KQ7nx-00056d-RY
-	for <linux-nfs@vger.kernel.org>; Tue, 05 Aug 2008 07:41:25 +1000
-In-Reply-To: <20080731204838.GA27473-SGFoFqf0RKf0CCvOHzKKcA@public.gmane.org>
+Received: from mx2.schottelius.org ([62.65.138.77]:50722 "EHLO
+	mx2.schottelius.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755481AbYHDWbJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Aug 2008 18:31:09 -0400
+In-Reply-To: <20080804173556.GA25940@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
---oLBj+sq0vYjzfsbl
+--FL5UXtIhxfXey3p5
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
 Content-Transfer-Encoding: quoted-printable
 
-Hi
+Hello Bruce!
 
+J. Bruce Fields [Mon, Aug 04, 2008 at 01:35:56PM -0400]:
+> On Mon, Aug 04, 2008 at 05:09:40PM +0200, Nico -telmich- Schottelius wrot=
+e:
+> > Hello again!
+> >=20
+> > Found out that #linux-next should have been #nfsd-next and updated
+> > the patch to match.
+> >=20
+> > Patch attached.
+>=20
+> I'm lost:
+>=20
+> > -nfs		git	git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git#linux-ne=
+xt
+> > +nfs		git	git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git#nfsd-next
+>=20
+> There is no branch named "nfsd-next" in that git repository.  (Do I
+> misunderstand how this file is supposed to work?)  The only nfsd-next I
+> know of is the one I push to at:
+>=20
+> 	git://linux-nfs.org/~bfields/linux.git nfsd-next
 
-I can't seem to find answer to this question if i have this in my
-/etc/exports
+Sorry, I was somehow confused by the error reported in my original mail,
+searched for something that matched my eyes and took the wrong git-tree
+at http://git.linux-nfs.org/.
 
-/exports/video
--async,no_subtree_check,mp=3D/exports/video,crossmnt
-192.168.8.0/22(no_root_squash,secure,rw)
-192.168.11.12(insecure,all_squash,anonuid=3D1022,anongid=3D1020)
+So it must in fact be
+git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git#linux-next
 
-and I connect from 192.168.11.12 can I connect from an insecure port.      =
-                   =20
+Sorry for the inconvenience!
 
-the man pages don't specify who precedence is done, is it left to right,
-best match, last match
+Nico
 
-Alex
-
-
-
---oLBj+sq0vYjzfsbl
+--FL5UXtIhxfXey3p5
 Content-Type: application/pgp-signature; name="signature.asc"
 Content-Description: Digital signature
 Content-Disposition: inline
@@ -58,9 +66,9 @@ Content-Disposition: inline
 -----BEGIN PGP SIGNATURE-----
 Version: GnuPG v1.4.9 (GNU/Linux)
 
-iEYEARECAAYFAkiXd4UACgkQkZz88chpJ2OqAACg2b3UA8lR1OBnNys0GKTB6bqZ
-CrkAn2MVIEZO3hRItBWum3eOR03h/upi
-=jiyH
+iEYEARECAAYFAkiXgxoACgkQuL75KpiFGIxCVwCeLgOb70yLFLGoUe+GcK1VcGi3
+XmwAmwdkA4wFTr/jSmrDVE89wSkjh6R9
+=GGmU
 -----END PGP SIGNATURE-----
 
---oLBj+sq0vYjzfsbl--
+--FL5UXtIhxfXey3p5--
