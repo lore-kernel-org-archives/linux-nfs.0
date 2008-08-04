@@ -1,77 +1,53 @@
-From: "Chuck Lever" <chuck.lever@oracle.com>
-Subject: Re: [RFC] Reinstate NFS exportability for JFFS2.
-Date: Sun, 3 Aug 2008 13:15:19 -0400
-Message-ID: <76bd70e30808031015l36db41bexf319e85ba7acc4e9@mail.gmail.com>
-References: <18578.21997.529551.676627@notabene.brown>
-	 <1217552437.3719.30.camel@shinybook.infradead.org>
-	 <76bd70e30807311831p771d0f1eia3e303bd84919422@mail.gmail.com>
-	 <1217597759.3454.356.camel@pmac.infradead.org>
-	 <1217598976.3454.359.camel@pmac.infradead.org>
-	 <76bd70e30808010905j3010a6bfy534c068a662d348d@mail.gmail.com>
-	 <1217607571.3454.417.camel@pmac.infradead.org>
-	 <76bd70e30808011047u3cd0a56cg3b2d62e01afed014@mail.gmail.com>
-	 <20080802182644.GE30454@fieldses.org>
-	 <18581.40178.976747.769343@notabene.brown>
-Reply-To: chucklever@gmail.com
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: high latency NFS
+Date: Mon, 4 Aug 2008 10:32:06 +1000
+Message-ID: <20080804003206.GB6119@disturbed>
+References: <200807241311.31457.shuey@purdue.edu> <20080730192110.GA17061@fieldses.org> <4890DFC7.3020309@cse.unsw.edu.au> <200807302235.50068.shuey@purdue.edu> <20080731031512.GA26203@fieldses.org> <18577.25513.494821.481623@notabene.brown> <20080801072320.GE6201@disturbed> <20080801191559.GI7764@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	"David Woodhouse" <dwmw2@infradead.org>, viro@zeniv.linux.org.uk,
-	"Christoph Hellwig" <hch@infradead.org>,
-	linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-	linux-mtd@lists.infradead.org
-To: "Neil Brown" <neilb@suse.de>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <18581.40178.976747.769343@notabene.brown>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Neil Brown <neilb@suse.de>, Michael Shuey <shuey-olO2ZdjDehc3uPMLIKxrzw@public.gmane.org>,
+	Shehjar Tikoo <shehjart-YbfuJp6tym7X/JP9YwkgDA@public.gmane.org>,
+	linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+	rees@citi.umich.edu, aglo@citi.umich.edu
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from ipmail01.adl6.internode.on.net ([203.16.214.146]:57402 "EHLO
+	ipmail01.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752030AbYHDAcM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 3 Aug 2008 20:32:12 -0400
+In-Reply-To: <20080801191559.GI7764@fieldses.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Aug 3, 2008 at 7:56 AM, Neil Brown <neilb@suse.de> wrote:
-> On Saturday August 2, bfields@fieldses.org wrote:
->>
->> Though really I can't see any great objection to just moving xfs's hack
->> up into nfsd.  It may not do everything, but it seems like an
->> incremental improvement.
->
-> Because it is a hack, and hacks have a tendency to hide deeper
-> problems, and not be ever get cleaned up and generally to become a
-> burden to future generations.
+On Fri, Aug 01, 2008 at 03:15:59PM -0400, J. Bruce Fields wrote:
+> On Fri, Aug 01, 2008 at 05:23:20PM +1000, Dave Chinner wrote:
+> > On Thu, Jul 31, 2008 at 05:03:05PM +1000, Neil Brown wrote:
+> > > You might want to track the max length of the request queue too and
+> > > start more threads if the queue is long, to allow a quick ramp-up.
+> > 
+> > Right, but even request queue depth is not a good indicator. You
+> > need to leep track of how many NFSDs are actually doing useful
+> > work. That is, if you've got an NFSD on the CPU that is hitting
+> > the cache and not blocking, you don't need more NFSDs to handle
+> > that load because they can't do any more work than the NFSD
+> > that is currently running is. 
+> > 
+> > i.e. take the solution that Greg banks used for the CPU scheduler
+> > overload issue (limiting the number of nfsds woken but not yet on
+> > the CPU),
+> 
+> I don't remember that, or wasn't watching when it happened.... Do you
+> have a pointer?
 
-Agreed that maintainability is an important concern.
+Ah, I thought that had been sent to mainline because it was
+mentioned in his LCA talk at the start of the year. Slides
+65-67 here:
 
-However, I don't see that what David suggests in general is hiding a
-deeper problem, but is rather exposing it.  Can you explain what you
-think is the issue?
+http://mirror.linux.org.au/pub/linux.conf.au/2007/video/talks/41.pdf
 
-> However if you do go down that path, can I suggest:
->
->  1/ get rid of the word "hack" throughout the code.  If you think it
->    is sensible, make it appear sensible.
+Cheers,
 
-Yes, if we're going to codify this method of handling readdir, let's
-document it properly and treat it as a first class API.
-
->  2/ drop the "retry malloc of a smaller size" thing.
->    In fact, you can probably use one of the set of pages that has
->    been reserved for the request.  It is very rare that a readdir
->    request will be as big as the largest read.
-
-Well, many Linux clients support reading directories only a page at a
-time (this limitation may have been lifted recently).  But other
-clients often ask to read much more.
-
-Again it appears that a Linux NFS client is not going to be the real
-acid test here.  Solaris and FreeBSD would probably be the best to
-try, I think.
-
->  3/ Make the new way unconditional.  That gives it broader test
->    coverage which can only be a good thing.  And what is good for the
->    goose is good for the gander... (not that I'm calling anyone a
->    goose).
-
-As Bruce also suggested, and I agree with this (not the goose part,
-the unconditionality and test coverage parts).
-
+Dave.
 -- 
- "Alright guard, begin the unnecessarily slow-moving dipping mechanism."
---Dr. Evil
+Dave Chinner
+david@fromorbit.com
