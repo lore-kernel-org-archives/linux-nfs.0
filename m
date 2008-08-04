@@ -1,74 +1,92 @@
-From: Nico -telmich- Schottelius <nico-linux-next-xuaVFQXs+5hIG4jRRZ66WA@public.gmane.org>
-Subject: Re: Updated Next/Trees, problems with nfs-git
-Date: Tue, 5 Aug 2008 00:30:50 +0200
-Message-ID: <20080804223050.GA4168@denkbrett.schottelius.org>
-References: <20080804134444.GC4182@denkbrett.schottelius.org> <20080804150940.GF4182@denkbrett.schottelius.org> <20080804173556.GA25940@fieldses.org>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [RFC] Reinstate NFS exportability for JFFS2.
+Date: Tue, 5 Aug 2008 08:37:01 +1000
+Message-ID: <18583.33933.818892.71415@notabene.brown>
+References: <76bd70e30807311831p771d0f1eia3e303bd84919422@mail.gmail.com>
+	<1217597759.3454.356.camel@pmac.infradead.org>
+	<1217598976.3454.359.camel@pmac.infradead.org>
+	<76bd70e30808010905j3010a6bfy534c068a662d348d@mail.gmail.com>
+	<1217607571.3454.417.camel@pmac.infradead.org>
+	<76bd70e30808011047u3cd0a56cg3b2d62e01afed014@mail.gmail.com>
+	<20080802182644.GE30454@fieldses.org>
+	<18581.40178.976747.769343@notabene.brown>
+	<76bd70e30808031015l36db41bexf319e85ba7acc4e9@mail.gmail.com>
+	<18582.21855.2092.903688@notabene.brown>
+	<20080804184115.GG25940@fieldses.org>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="FL5UXtIhxfXey3p5"
-Cc: linux-next@vger.kernel.org, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: chucklever@gmail.com, David Woodhouse <dwmw2@infradead.org>,
+	viro@zeniv.linux.org.uk, Christoph Hellwig <hch@infradead.org>,
+	linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+	linux-mtd@lists.infradead.org
 To: "J. Bruce Fields" <bfields@fieldses.org>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.schottelius.org ([62.65.138.77]:50722 "EHLO
-	mx2.schottelius.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755481AbYHDWbJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Aug 2008 18:31:09 -0400
-In-Reply-To: <20080804173556.GA25940@fieldses.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: message from J. Bruce Fields on Monday August 4
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Monday August 4, bfields@fieldses.org wrote:
+> On Mon, Aug 04, 2008 at 11:03:27AM +1000, Neil Brown wrote:
+> >  - use i_mutex to protect internal changes too, and drop i_mutex while
+> >    doing internal restructuring.   This would need some VFS changes so
+> >    that dropping i_mutex would be safe.  It would require some way to
+> >    lock an individual dentry.  Probably you would lock it under
+> >    i_mutex by setting a flag bit, wait for the flag on some inode-wide
+> >    waitqueue, and drop the lock by clearing the flag and waking the
+> >    waitqueue. And you are never allowed to look at ->d_inode if the
+> >    lock flag is set.
+> 
+> Isn't there a lot of kernel code that assumes that following ->d_inode
+> is safe?  Or are you only worried about looking at certain
+> filesystem-internal fields of d_inode?
 
---FL5UXtIhxfXey3p5
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+I overstated that restriction a bit.
+The way ->d_inode works is that it is set once and then never changed.
+A rename doesn't change ->d_inode, it changes the name in the dentry,
+and possibly the ->d_parent pointer.  An unlink also leaves ->d_inode
+alone and just unhashes the dentry.  ->d_inode is never cleared until
+the dentry is freed.
+So ->d_inode starts as NULL, is (possibly) set to a value, and stays
+that way.
+Currently if the name exists, then ->d_inode will be set non-NULL
+under i_mutex and so a NULL value will never be visible outside of
+i_mutex.  If the name doesn't exist, a NULL value *will* be visible
+outside of i_mutex and it could subsequently get (under i_mutex) set
+when name is created.
 
-Hello Bruce!
+If i_mutex is allowed to be dropped early, then a premature NULL could
+be visible in ->d_inode for a name that does exist.  This is the case
+the needs to be guarded against.
+So when I said "you are never allowed to look at ->d_inode ...." I 
+could have said "you are never allowed to see a NULL in ->d_inode ..."
+While lots of places dereference ->d_inode, relative few do it in a
+context where ->d_inode could be NULL, and these are probably all in
+fs/namei.c or related code.  Most of them would be fairly easy to get
+to work with dentry locking.
 
-J. Bruce Fields [Mon, Aug 04, 2008 at 01:35:56PM -0400]:
-> On Mon, Aug 04, 2008 at 05:09:40PM +0200, Nico -telmich- Schottelius wrot=
-e:
-> > Hello again!
-> >=20
-> > Found out that #linux-next should have been #nfsd-next and updated
-> > the patch to match.
-> >=20
-> > Patch attached.
->=20
-> I'm lost:
->=20
-> > -nfs		git	git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git#linux-ne=
-xt
-> > +nfs		git	git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git#nfsd-next
->=20
-> There is no branch named "nfsd-next" in that git repository.  (Do I
-> misunderstand how this file is supposed to work?)  The only nfsd-next I
-> know of is the one I push to at:
->=20
-> 	git://linux-nfs.org/~bfields/linux.git nfsd-next
+The problem case is rename (as it always is).  With rename, d_move
+needs to be called after the filesystem has committed to the rename,
+but before i_mutex is dropped.  That would be awkward for filesystems
+that needed to collect garbage or whatever before completing the
+rename.
+I would probably address this by allowing ->rename to return -EAGAIN
+with the meaning that i_mutex was dropped but nothing was committed
+to, and that vfs_rename_* should try again from the top.  Presumably
+->rename will have done some garbage collection or whatever is needed
+and the next call to ->rename has a much better chance of going
+through without needing to drop the lock.  I don't know if livelocks
+could be a problem with this approach.
 
-Sorry, I was somehow confused by the error reported in my original mail,
-searched for something that matched my eyes and took the wrong git-tree
-at http://git.linux-nfs.org/.
 
-So it must in fact be
-git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git#linux-next
+> 
+> The locking required to keep the filesystem namespace consistent is
+> difficult and important, so I think changing it would require an
+> extremely careful description of the new design and a commitment from
+> some filesystem developers to actually take advantage of it....
 
-Sorry for the inconvenience!
+An "extremely careful description of the new design" is something we
+could happily see more of in the kernel world, isn't it :-)
+Agreed.
 
-Nico
 
---FL5UXtIhxfXey3p5
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
-Content-Disposition: inline
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.9 (GNU/Linux)
-
-iEYEARECAAYFAkiXgxoACgkQuL75KpiFGIxCVwCeLgOb70yLFLGoUe+GcK1VcGi3
-XmwAmwdkA4wFTr/jSmrDVE89wSkjh6R9
-=GGmU
------END PGP SIGNATURE-----
-
---FL5UXtIhxfXey3p5--
+NeilBrown
