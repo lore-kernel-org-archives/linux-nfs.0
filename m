@@ -1,59 +1,49 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [RFC] Reinstate NFS exportability for JFFS2.
-Date: Tue, 5 Aug 2008 19:47:05 +1000
-Message-ID: <20080805094705.GH21635@disturbed>
-References: <76bd70e30808010905j3010a6bfy534c068a662d348d@mail.gmail.com> <1217607571.3454.417.camel@pmac.infradead.org> <76bd70e30808011047u3cd0a56cg3b2d62e01afed014@mail.gmail.com> <20080802182644.GE30454@fieldses.org> <18581.40178.976747.769343@notabene.brown> <76bd70e30808031015l36db41bexf319e85ba7acc4e9@mail.gmail.com> <18582.21855.2092.903688@notabene.brown> <76bd70e30808032319u65e35dbdj9cc5be07e1aef829@mail.gmail.com> <20080805085157.GG21635@disturbed> <1217926788.3454.685.camel@pmac.infradead.org>
+From: Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
+Subject: Re: high latency NFS
+Date: Tue, 05 Aug 2008 20:51:03 +1000
+Message-ID: <48983097.7040100@melbourne.sgi.com>
+References: <20080730192110.GA17061@fieldses.org> <4890DFC7.3020309@cse.unsw.edu.au> <200807302235.50068.shuey@purdue.edu> <20080731031512.GA26203@fieldses.org> <18577.25513.494821.481623@notabene.brown> <20080801072320.GE6201@disturbed> <20080801191559.GI7764@fieldses.org> <20080804003206.GB6119@disturbed> <52873.192.168.1.70.1217813385.squirrel@neil.brown.name> <4896A4EE.9030706@melbourne.sgi.com> <20080804190715.GJ25940@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: chucklever@gmail.com, Neil Brown <neilb@suse.de>,
-	"J. Bruce Fields" <bfields@fieldses.org>, viro@zeniv.linux.org.uk,
-	Christoph Hellwig <hch@infradead.org>,
-	linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-	linux-mtd@lists.infradead.org
-To: David Woodhouse <dwmw2@infradead.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1217926788.3454.685.camel@pmac.infradead.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: NeilBrown <neilb@suse.de>, Michael Shuey <shuey-olO2ZdjDehc3uPMLIKxrzw@public.gmane.org>,
+	Shehjar Tikoo <shehjart-YbfuJp6tym7X/JP9YwkgDA@public.gmane.org>,
+	linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+	rees@citi.umich.edu, aglo@citi.umich.edu
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from relay2.sgi.com ([192.48.171.30]:41651 "EHLO relay.sgi.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1753772AbYHEK6Y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 5 Aug 2008 06:58:24 -0400
+In-Reply-To: <20080804190715.GJ25940@fieldses.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Aug 05, 2008 at 09:59:48AM +0100, David Woodhouse wrote:
-> On Tue, 2008-08-05 at 18:51 +1000, Dave Chinner wrote:
-> > On Mon, Aug 04, 2008 at 02:19:12AM -0400, Chuck Lever wrote:
-> > > So, the JFFS2 locking problem is a garbage-collection issue.  I'm not
-> > > sure this is the case with other file systems like XFS and OCFS2.  My
-> > > impression was that XFS had a transaction logging deadlock,
-> > 
-> > Just to clarify - XFS has a directory buffer lock deadlock. That is,
-> > while reading the contents of the directory buffer it is locked to
-> > prevent modifications from occurring while extracting the contents.
-> > Looking up an entry in the directory also requires the directory
-> > buffer lock (for the same reason), so calling the lookup while
-> > already holding the directory buffer lock (i.e from the filldir
-> > callback) will deadlock.
-> 
-> But if we had a ->lookup_locked() or ->lookup_fh() method which is
-> _guaranteed_ to be called from within your ->readdir(), you could manage
-> to bypass that locking and avoid the deadlock?
+J. Bruce Fields wrote:
+> On Mon, Aug 04, 2008 at 04:42:54PM +1000, Greg Banks wrote:
+>   
+>> http://thread.gmane.org/gmane.linux.nfs/10372
+>>
+>>     
+>
+> Looks like that was me, apologies.  Breaking a documented interface to
+> userspace just set off an alarm.  But if we really convince ourselves
+> that it's useless, then OK.
+>   
+I think I explained last time how useless it is.
+> (Though maybe your idea of leaving the line in place with just constant
+> zeros is good.  Just because the data's useless doesn't mean someone out
+> there may have a script that does otherwise useful things but that
+> happens to fail if it can't parse /proc/net/rpc/nfsd.)
+>   
+Ok, I'm happy to do it that way.
+> Looks like it's been two years now--any chance of rebasing those patches
+> and resending?
+>   
+Yep.
 
-I *think* it's possible. It's definitely in the realm of difficult
-because the buffer locks are a couple of layers removed from the
-directory code and both readdir and lookup assume exclusive access to
-the directory block.
-
-We'd probably have to introduce a directory buffer (dabuf) cache
-layer with it's own locking to allow multiple accessors to the
-buffer at the same time. Christoph might have some other ideas for
-this, but I think it's going to take significant surgery
-to implement a 'recursive lockless lookup' like this.
-
-The main problem you are going to have is finding someone who has
-the time to do the XFS work. If you only implement this lookup
-interface, then I'd say it's going to be some time before XFS would
-actually use it....
-
-Cheers,
-
-Dave.
 -- 
-Dave Chinner
-david@fromorbit.com
+Greg Banks, P.Engineer, SGI Australian Software Group.
+The cake is *not* a lie.
+I don't speak for SGI.
+
