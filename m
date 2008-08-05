@@ -1,51 +1,49 @@
-From: Bernd Schubert <bernd-schubert@gmx.de>
-Subject: Re: nfs-utils and unfsd
-Date: Tue, 5 Aug 2008 21:24:45 +0200
-Message-ID: <200808052124.45907.bernd-schubert@gmx.de>
-References: <959E2970-49E6-425C-A10D-2D486913CD3F@oracle.com> <48989831.2030808@RedHat.com> <BFA7510D-B3C2-48FB-8C17-80008A362B6D@oracle.com>
-Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
-Cc: Steve Dickson <SteveD@redhat.com>, Neil Brown <neilb@suse.de>,
-	Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: Chuck Lever <chuck.lever@oracle.com>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH] NFS: missing nfs_fattr_init in nfs3_proc_getacl and nfs3_proc_setacls (resend)
+Date: Tue,  5 Aug 2008 15:26:02 -0400
+Message-ID: <1217964362-24252-1-git-send-email-jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+To: trond.myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.gmx.net ([213.165.64.20]:60099 "HELO mail.gmx.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
-	id S1761681AbYHETZB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 5 Aug 2008 15:25:01 -0400
-In-Reply-To: <BFA7510D-B3C2-48FB-8C17-80008A362B6D@oracle.com>
+Received: from mx1.redhat.com ([66.187.233.31]:59901 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757794AbYHET0N (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 5 Aug 2008 15:26:13 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tuesday 05 August 2008, Chuck Lever wrote:
-> On Aug 5, 2008, at 2:13 PM, Steve Dickson wrote:
-> > Chuck Lever wrote:
-> >> There is a generic RPC server helper in nfs-utils called rpc_init().
-> >> This API will need to be modified to support IPv6 in statd and
-> >> mountd,
-> >> at least.
-> >>
-> >> However, there is a comment inside support/nfs/rpcmisc.c, where
-> >> rpc_init() resides, that suggests that this interface is also used by
-> >> unfsd.
-> >>
-> >> Is it OK for me to modify nfs-utils' copy of this function, or is
-> >> there
-> >> any kind of ABI restriction between unfsd and nfs-utils?
-> >
-> > I don't see any problem... Is there even a supported/maintained
-> > version
-> > of unfsd out there today? I did a quick google search and didn't find
-> > anything but man pages...
->
-> I found this ancient web page:
->
-> http://rpm.pbone.net/index.php3/stat/4/idpl/6572509/com/unfs3-0.9.20-1.el3.
->pp.i386.rpm.html
->
-> which suggests there is no binary dependency between unfsd and nfs-
-> utils.
+The fattrs used in the NFSv3 getacl/setacl calls are not being properly
+initialized. This occasionally causes nfs_update_inode to fall into
+NFSv4 specific codepaths when handling post-op attrs from these calls.
 
-This is unfs3, which is a rewritten from scratch by Pascal Schmidt and so 
-unrelated to unfsd.
+Thanks to Cai Qian for noticing the spurious NFSv4 messages in debug
+output from a v3 mount...
+
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfs/nfs3acl.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
+
+diff --git a/fs/nfs/nfs3acl.c b/fs/nfs/nfs3acl.c
+index 423842f..cef6255 100644
+--- a/fs/nfs/nfs3acl.c
++++ b/fs/nfs/nfs3acl.c
+@@ -229,6 +229,7 @@ struct posix_acl *nfs3_proc_getacl(struct inode *inode, int type)
+ 
+ 	dprintk("NFS call getacl\n");
+ 	msg.rpc_proc = &server->client_acl->cl_procinfo[ACLPROC3_GETACL];
++	nfs_fattr_init(&fattr);
+ 	status = rpc_call_sync(server->client_acl, &msg, 0);
+ 	dprintk("NFS reply getacl: %d\n", status);
+ 
+@@ -322,6 +323,7 @@ static int nfs3_proc_setacls(struct inode *inode, struct posix_acl *acl,
+ 
+ 	dprintk("NFS call setacl\n");
+ 	msg.rpc_proc = &server->client_acl->cl_procinfo[ACLPROC3_SETACL];
++	nfs_fattr_init(&fattr);
+ 	status = rpc_call_sync(server->client_acl, &msg, 0);
+ 	nfs_access_zap_cache(inode);
+ 	nfs_zap_acl_cache(inode);
+-- 
+1.5.5.1
+
