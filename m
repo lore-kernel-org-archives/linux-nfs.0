@@ -1,72 +1,601 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [RFC] [PATCH 0/8] nfs-utils rpcbind v3/v4 and IPv6 support sampler
-Date: Tue, 05 Aug 2008 14:12:25 -0400
-Message-ID: <20080805180004.23104.29661.stgit@manray.1015granger.net>
+Subject: [PATCH 1/8] nfs-utils: Add AF_INET6-capable API to acquire an RPC
+	CLIENT *
+Date: Tue, 05 Aug 2008 14:12:31 -0400
+Message-ID: <20080805181230.23104.79769.stgit@manray.1015granger.net>
+References: <20080805180004.23104.29661.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:13234 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756137AbYHESNd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Aug 2008 14:13:33 -0400
-Received: from agmgw2.us.oracle.com (agmgw2.us.oracle.com [152.68.180.213])
-	by agminet01.oracle.com (Switch-3.2.4/Switch-3.1.7) with ESMTP id m75IDUaF032610
-	for <linux-nfs@vger.kernel.org>; Tue, 5 Aug 2008 13:13:31 -0500
-Received: from acsmt353.oracle.com (acsmt353.oracle.com [141.146.40.153])
-	by agmgw2.us.oracle.com (Switch-3.2.0/Switch-3.2.0) with ESMTP id m755lOFC030925
-	for <linux-nfs@vger.kernel.org>; Tue, 5 Aug 2008 12:13:30 -0600
+Received: from rgminet01.oracle.com ([148.87.113.118]:17709 "EHLO
+	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759155AbYHESNn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Aug 2008 14:13:43 -0400
+Received: from agmgw1.us.oracle.com (agmgw1.us.oracle.com [152.68.180.212])
+	by rgminet01.oracle.com (Switch-3.2.4/Switch-3.1.6) with ESMTP id m75IDfvG025618
+	for <linux-nfs@vger.kernel.org>; Tue, 5 Aug 2008 12:13:41 -0600
+Received: from acsmt356.oracle.com (acsmt356.oracle.com [141.146.40.156])
+	by agmgw1.us.oracle.com (Switch-3.2.0/Switch-3.2.0) with ESMTP id m750saLf030571
+	for <linux-nfs@vger.kernel.org>; Tue, 5 Aug 2008 12:13:41 -0600
 Received: from manray.1015granger.net (manray.1015granger.net [127.0.0.1])
-	by manray.1015granger.net (8.14.2/8.14.2) with ESMTP id m75ICPHo023160
-	for <linux-nfs@vger.kernel.org>; Tue, 5 Aug 2008 14:12:25 -0400
+	by manray.1015granger.net (8.14.2/8.14.2) with ESMTP id m75ICVVA023175
+	for <linux-nfs@vger.kernel.org>; Tue, 5 Aug 2008 14:12:31 -0400
+In-Reply-To: <20080805180004.23104.29661.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Request For Comments/Review
+Provide a simple interface that any component of nfs-utils can use to acquire
+an RPC CLIENT *.  This is an AF_INET6-enabled API, and can also handle
+PF_LOCAL sockets.
 
-As a taste of what is to come in nfs-utils, and to garner comments on the
-work to date, here is a set of eight patches that implement efficent
-support for rpcbind v2, v3, and v4 over AF_INET and AF_INET6, and then
-make use of this new implementation to update the showmount command to
-support IPv6 and use the new rpcbind versions.
+When libtirpc is not available, legacy RPC services will be used instead,
+and an attempt to connect to an AF_INET6 address will fail.
 
-The plan is to use this implementation in the [u]mount.nfs[4] commands
-as well.
-
-To try it out, you can apply these patches to the latest nfs-utils.  If
-you want IPv6 support for the showmount command, in addition to the new
-rpcbind versions, configure nfs-utils with "--enable-ipv6".
-
-If you are time-limited, please have a look at just the first two patches.
-These introduce the new getport() implementation.
-
-For the curious, a full set of client-side nfs-utils patches (minus IPv6
-support in rpc.statd) is available in the usual place:
-
-  http://git.linux-nfs.org/?p=cel/nfs-utils.git;a=summary
-
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
-Chuck Lever (8):
-      showmount: support querying IPv6 servers
-      showmount command: move logic to acquire RPC client handle out of main()
-      showmount: Remove unused local getport() implementation
-      showmount command: call nfs_getport instead of local getport
-      showmount command: clean up error returns from connect_nb()
-      showmount: destroy RPC client when finished
-      nfs-utils: Create rpcbind client utility functions
-      nfs-utils: Add AF_INET6-capable API to acquire an RPC CLIENT *
-
-
- support/include/nfsrpc.h    |  119 ++++++
- support/nfs/Makefile.am     |    2 
- support/nfs/getport.c       |  871 +++++++++++++++++++++++++++++++++++++++++++
- support/nfs/rpc_socket.c    |  467 +++++++++++++++++++++++
- utils/showmount/showmount.c |  260 +++++--------
- 5 files changed, 1563 insertions(+), 156 deletions(-)
+ support/include/nfsrpc.h |   64 ++++++
+ support/nfs/Makefile.am  |    2 
+ support/nfs/rpc_socket.c |  467 ++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 532 insertions(+), 1 deletions(-)
  create mode 100644 support/include/nfsrpc.h
- create mode 100644 support/nfs/getport.c
  create mode 100644 support/nfs/rpc_socket.c
 
--- 
-Chuck Lever
+diff --git a/support/include/nfsrpc.h b/support/include/nfsrpc.h
+new file mode 100644
+index 0000000..f9e187d
+--- /dev/null
++++ b/support/include/nfsrpc.h
+@@ -0,0 +1,64 @@
++/*
++ * nfsrpc.h -- RPC client APIs provided by support/nfs
++ *
++ * Copyright (C) 2008 Oracle Corporation.  All rights reserved.
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public
++ * License as published by the Free Software Foundation; either
++ * version 2 of the License, or (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public
++ * License along with this program; if not, write to the
++ * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
++ * Boston, MA 021110-1307, USA.
++ *
++ */
++
++#ifndef __NFS_UTILS_NFSRPC_H
++#define __NFS_UTILS_NFSRPC_H
++
++#include <rpc/types.h>
++
++/*
++ * Conventional RPC program numbers
++ */
++#ifndef RPCBPROG
++#define RPCBPROG	((rpcprog_t)100000)
++#endif
++#ifndef PMAPPROG
++#define PMAPPROG	((rpcprog_t)100000)
++#endif
++
++#ifndef NFSPROG
++#define NFSPROG		((rpcprog_t)100003)
++#endif
++#ifndef MOUNTPROG
++#define MOUNTPROG	((rpcprog_t)100005)
++#endif
++#ifndef NLMPROG
++#define NLMPROG		((rpcprog_t)100021)
++#endif
++#ifndef NSMPROG
++#define NSMPROG		((rpcprog_t)100024)
++#endif
++
++/*
++ * Look up an RPC program name in /etc/rpc
++ */
++extern rpcprog_t	nfs_getrpcbyname(const rpcprog_t, const char *table[]);
++
++/*
++ * Acquire an RPC CLIENT *
++ */
++extern CLIENT		*nfs_get_rpcclient(const struct sockaddr *,
++				const socklen_t, const unsigned short,
++				const rpcprog_t, const rpcvers_t,
++				struct timeval *);
++
++#endif	/* __NFS_UTILS_NFSRPC_H */
+diff --git a/support/nfs/Makefile.am b/support/nfs/Makefile.am
+index 87f3949..d6d71d9 100644
+--- a/support/nfs/Makefile.am
++++ b/support/nfs/Makefile.am
+@@ -3,7 +3,7 @@
+ noinst_LIBRARIES = libnfs.a
+ libnfs_a_SOURCES = exports.c rmtab.c xio.c rpcmisc.c rpcdispatch.c \
+ 		   xlog.c xcommon.c wildmat.c nfssvc.c nfsclient.c \
+-		   nfsexport.c getfh.c nfsctl.c \
++		   nfsexport.c getfh.c nfsctl.c rpc_socket.c \
+ 		   svc_socket.c cacheio.c closeall.c nfs_mntent.c
+ 
+ MAINTAINERCLEANFILES = Makefile.in
+diff --git a/support/nfs/rpc_socket.c b/support/nfs/rpc_socket.c
+new file mode 100644
+index 0000000..932107f
+--- /dev/null
++++ b/support/nfs/rpc_socket.c
+@@ -0,0 +1,467 @@
++/*
++ * Generic RPC client socket-level APIs for nfs-utils
++ *
++ * Copyright (C) 2008 Oracle Corporation.  All rights reserved.
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public
++ * License as published by the Free Software Foundation; either
++ * version 2 of the License, or (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public
++ * License along with this program; if not, write to the
++ * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
++ * Boston, MA 021110-1307, USA.
++ *
++ */
++
++#ifdef HAVE_CONFIG_H
++#include <config.h>
++#endif
++
++#include <sys/types.h>
++#include <sys/time.h>
++#include <unistd.h>
++#include <fcntl.h>
++#include <errno.h>
++
++#include <sys/socket.h>
++#include <netinet/in.h>
++#include <netdb.h>
++#include <arpa/inet.h>
++
++#include <rpc/rpc.h>
++#include <rpc/pmap_prot.h>
++
++#include "nfsrpc.h"
++
++#ifdef HAVE_TIRPC_NETCONFIG_H
++
++/*
++ * Most of the headers under /usr/include/tirpc are currently
++ * unusable for various reasons.  We statically define the bits
++ * we need here until the official headers are fixed.
++ *
++ * The commonly used RPC calls such as CLNT_CALL and CLNT_DESTROY
++ * are actually virtual functions in both the legacy and TI-RPC
++ * implementations.  The proper _CALL or _DESTROY will be invoked
++ * no matter if we used a legacy clnt_create() or clnt_tli_create()
++ * from libtirpc.
++ */
++
++#include <tirpc/netconfig.h>
++#include <tirpc/rpc/rpcb_prot.h>
++
++/* definitions from tirpc/rpc/types.h */
++
++/*
++ * The netbuf structure is used for transport-independent address storage.
++ */
++struct netbuf {
++	unsigned int	maxlen;
++	unsigned int	len;
++	void		*buf;
++};
++
++/* definitions from tirpc/rpc/clnt.h */
++
++/*
++ * Low level clnt create routine for connectionless transports, e.g. udp.
++ */
++extern CLIENT *clnt_dg_create(const int, const struct netbuf *,
++			      const rpcprog_t, const rpcvers_t,
++			      const u_int, const u_int);
++
++/*
++ * Low level clnt create routine for connectionful transports, e.g. tcp.
++ */
++extern CLIENT *clnt_vc_create(const int, const struct netbuf *,
++			      const rpcprog_t, const rpcvers_t,
++			      u_int, u_int);
++
++#endif	/* HAVE_TIRPC_NETCONFIG_H */
++
++/*
++ * If "-1" is specified in the tv_sec field, use these defaults instead.
++ */
++#define TIMEOUT_UDP	(3)
++#define TIMEOUT_TCP	(10)
++
++/*
++ * Set up an RPC client for communicating via a AF_LOCAL socket.
++ *
++ * @timeout is initialized upon return
++ *
++ * Returns a pointer to a prepared RPC client if successful; caller
++ * must destroy a non-NULL returned RPC client.  Otherwise NULL, and
++ * rpc_createerr.cf_stat is set to reflect the error.
++ */
++static CLIENT *nfs_get_localclient(const struct sockaddr *sap,
++				   const socklen_t salen,
++				   const rpcprog_t program,
++				   const rpcvers_t version,
++				   struct timeval *timeout)
++{
++#ifdef HAVE_CLNT_VC_CREATE
++	struct sockaddr_storage address;
++	const struct netbuf nbuf = {
++		.maxlen		= sizeof(struct sockaddr_un),
++		.len		= salen,
++		.buf		= &address,
++	};
++#endif	/* HAVE_CLNT_VC_CREATE */
++	CLIENT *client;
++	int sock;
++
++	sock = socket(AF_LOCAL, SOCK_STREAM, 0);
++	if (sock == -1) {
++		rpc_createerr.cf_stat = RPC_SYSTEMERROR;
++		rpc_createerr.cf_error.re_errno = errno;
++		return NULL;
++	}
++
++	if (timeout->tv_sec == -1)
++		timeout->tv_sec = TIMEOUT_TCP;
++
++#ifdef HAVE_CLNT_VC_CREATE
++	memcpy(nbuf.buf, sap, salen);
++	client = clnt_vc_create(sock, &nbuf, program, version, 0, 0);
++#else	/* HAVE_CLNT_VC_CREATE */
++	client = clntunix_create((struct sockaddr_un *)sap,
++					program, version, &sock, 0, 0);
++#endif	/* HAVE_CLNT_VC_CREATE */
++	if (client)
++		CLNT_CONTROL(client, CLSET_FD_CLOSE, NULL);
++	else
++		close(sock);
++
++	return client;
++}
++
++/*
++ * Bind a socket using an unused ephemeral source port.
++ *
++ * Returns zero on success, or returns -1 on error.  errno is
++ * set to reflect the nature of the error.
++ */
++static int nfs_bind(const int sock, const sa_family_t family)
++{
++	struct sockaddr_in sin = {
++		.sin_family		= AF_INET,
++		.sin_addr.s_addr	= htonl(INADDR_ANY),
++	};
++	struct sockaddr_in6 sin6 = {
++		.sin6_family		= AF_INET6,
++		.sin6_addr		= IN6ADDR_ANY_INIT,
++	};
++
++	switch (family) {
++	case AF_INET:
++		return bind(sock, (struct sockaddr *)&sin, sizeof(sin));
++	case AF_INET6:
++		return bind(sock, (struct sockaddr *)&sin6, sizeof(sin6));
++	}
++
++	errno = EAFNOSUPPORT;
++	return -1;
++}
++
++/*
++ * Perform a non-blocking connect on the socket fd.
++ *
++ * @timeout is modified to contain the time remaining (i.e. time provided
++ * minus time elasped).
++ *
++ * Returns zero on success, or returns -1 on error.  errno is
++ * set to reflect the nature of the error.
++ */
++static int nfs_connect_nb(const int fd, const struct sockaddr *sap,
++			  const socklen_t salen, struct timeval *timeout)
++{
++	int flags, ret;
++	fd_set rset;
++
++	flags = fcntl(fd, F_GETFL, 0);
++	if (flags < 0)
++		return -1;
++
++	ret = fcntl(fd, F_SETFL, flags | O_NONBLOCK);
++	if (ret < 0)
++		return -1;
++
++	/*
++	 * From here on subsequent sys calls could change errno so
++	 * we set ret = -errno to capture it in case we decide to
++	 * use it later.
++	 */
++	ret = connect(fd, sap, salen);
++	if (ret < 0 && errno != EINPROGRESS) {
++		ret = -1;
++		goto done;
++	}
++
++	if (ret == 0)
++		goto done;
++
++	/* now wait */
++	FD_ZERO(&rset);
++	FD_SET(fd, &rset);
++
++	ret = select(fd + 1, NULL, &rset, NULL, timeout);
++	if (ret <= 0) {
++		if (ret == 0)
++			errno = ETIMEDOUT;
++		ret = -1;
++		goto done;
++	}
++
++	if (FD_ISSET(fd, &rset)) {
++		int status;
++		socklen_t len = sizeof(ret);
++
++		status = getsockopt(fd, SOL_SOCKET, SO_ERROR, &ret, &len);
++		if (status < 0) {
++			ret = -1;
++			goto done;
++		}
++
++		/* Oops - something wrong with connect */
++		if (ret) {
++			errno = ret;
++			ret = -1;
++		}
++	}
++
++done:
++	fcntl(fd, F_SETFL, flags);
++	return ret;
++}
++
++/*
++ * Set up an RPC client for communicating via a datagram socket.
++ * A connected UDP socket is used to detect a missing remote
++ * listener as quickly as possible.
++ *
++ * @timeout is initialized upon return
++ *
++ * Returns a pointer to a prepared RPC client if successful; caller
++ * must destroy a non-NULL returned RPC client.  Otherwise NULL, and
++ * rpc_createerr.cf_stat is set to reflect the error.
++ */
++static CLIENT *nfs_get_udpclient(const struct sockaddr *sap,
++				 const socklen_t salen,
++				 const rpcprog_t program,
++				 const rpcvers_t version,
++				 struct timeval *timeout)
++{
++#ifdef HAVE_CLNT_DG_CREATE
++	struct sockaddr_storage address;
++	const struct netbuf nbuf = {
++		.maxlen		= salen,
++		.len		= salen,
++		.buf		= &address,
++	};
++#endif	/* HAVE_CLNT_DG_CREATE */
++	CLIENT *client;
++	int ret, sock;
++
++#ifndef HAVE_CLNT_DG_CREATE
++	if (sap->sa_family != AF_INET) {
++		rpc_createerr.cf_stat = RPC_UNKNOWNPROTO;
++		return NULL;
++	}
++#endif	/* !HAVE_CLNT_DG_CREATE */
++
++	sock = socket(sap->sa_family, SOCK_DGRAM, IPPROTO_UDP);
++	if (sock == -1) {
++		rpc_createerr.cf_stat = RPC_SYSTEMERROR;
++		rpc_createerr.cf_error.re_errno = errno;
++		return NULL;
++	}
++
++	ret = nfs_bind(sock, sap->sa_family);
++	if (ret < 0) {
++		rpc_createerr.cf_stat = RPC_SYSTEMERROR;
++		rpc_createerr.cf_error.re_errno = errno;
++		close(sock);
++		return NULL;
++	}
++
++	if (timeout->tv_sec == -1)
++		timeout->tv_sec = TIMEOUT_UDP;
++
++	ret = nfs_connect_nb(sock, sap, salen, timeout);
++	if (ret != 0) {
++		rpc_createerr.cf_stat = RPC_SYSTEMERROR;
++		rpc_createerr.cf_error.re_errno = errno;
++		close(sock);
++		return NULL;
++	}
++
++#ifdef HAVE_CLNT_DG_CREATE
++	memcpy(nbuf.buf, sap, salen);
++	client = clnt_dg_create(sock, &nbuf, program, version, 0, 0);
++#else	/* HAVE_CLNT_DG_CREATE */
++	client = clntudp_create((struct sockaddr_in *)sap, program,
++					version, *timeout, &sock);
++#endif	/* HAVE_CLNT_DG_CREATE */
++	if (client) {
++		CLNT_CONTROL(client, CLSET_RETRY_TIMEOUT, (char *)timeout);
++		CLNT_CONTROL(client, CLSET_FD_CLOSE, NULL);
++	} else
++		close(sock);
++
++	return client;
++}
++
++/*
++ * Set up and connect an RPC client for communicating via a stream socket.
++ *
++ * @timeout is initialized upon return
++ *
++ * Returns a pointer to a prepared and connected RPC client if
++ * successful; caller must destroy a non-NULL returned RPC client.
++ * Otherwise NULL, and rpc_createerr.cf_stat is set to reflect the
++ * error.
++ */
++static CLIENT *nfs_get_tcpclient(const struct sockaddr *sap,
++				 const socklen_t salen,
++				 const rpcprog_t program,
++				 const rpcvers_t version,
++				 struct timeval *timeout)
++{
++#ifdef HAVE_CLNT_VC_CREATE
++	struct sockaddr_storage address;
++	const struct netbuf nbuf = {
++		.maxlen		= salen,
++		.len		= salen,
++		.buf		= &address,
++	};
++#endif	/* HAVE_CLNT_VC_CREATE */
++	CLIENT *client;
++	int ret, sock;
++
++#ifndef HAVE_CLNT_VC_CREATE
++	if (sap->sa_family != AF_INET) {
++		rpc_createerr.cf_stat = RPC_UNKNOWNPROTO;
++		return NULL;
++	}
++#endif	/* !HAVE_CLNT_VC_CREATE */
++
++	sock = socket(sap->sa_family, SOCK_STREAM, IPPROTO_TCP);
++	if (sock == -1) {
++		rpc_createerr.cf_stat = RPC_SYSTEMERROR;
++		rpc_createerr.cf_error.re_errno = errno;
++		return NULL;
++	}
++
++	ret = nfs_bind(sock, sap->sa_family);
++	if (ret < 0) {
++		rpc_createerr.cf_stat = RPC_SYSTEMERROR;
++		rpc_createerr.cf_error.re_errno = errno;
++		close(sock);
++		return NULL;
++	}
++
++	if (timeout->tv_sec == -1)
++		timeout->tv_sec = TIMEOUT_TCP;
++
++	ret = nfs_connect_nb(sock, sap, salen, timeout);
++	if (ret != 0) {
++		rpc_createerr.cf_stat = RPC_SYSTEMERROR;
++		rpc_createerr.cf_error.re_errno = errno;
++		close(sock);
++		return NULL;
++	}
++
++#ifdef HAVE_CLNT_VC_CREATE
++	memcpy(nbuf.buf, sap, salen);
++	client = clnt_vc_create(sock, &nbuf, program, version, 0, 0);
++#else	/* HAVE_CLNT_VC_CREATE */
++	client = clnttcp_create((struct sockaddr_in *)sap,
++					program, version, &sock, 0, 0);
++#endif	/* HAVE_CLNT_VC_CREATE */
++	if (client)
++		CLNT_CONTROL(client, CLSET_FD_CLOSE, NULL);
++	else
++		close(sock);
++
++	return client;
++}
++
++/**
++ * nfs_get_rpcclient - acquire an RPC client
++ * @sap: pointer to socket address of RPC server
++ * @salen: length of socket address
++ * @transport: IPPROTO_ value of transport protocol to use
++ * @program: RPC program number
++ * @version: RPC version number
++ * @timeout: pointer to request timeout (must not be NULL)
++ *
++ * Set up an RPC client for communicating with an RPC program @program
++ * and @version on the server @sap over @transport.
++ *
++ * Returns a pointer to a prepared RPC client if successful, and
++ * @timeout is initialized; caller must destroy a non-NULL returned RPC
++ * client.  Otherwise returns NULL, and rpc_createerr.cf_stat is set to
++ * reflect the error.
++ */
++CLIENT *nfs_get_rpcclient(const struct sockaddr *sap,
++			  const socklen_t salen,
++			  const unsigned short transport,
++			  const rpcprog_t program,
++			  const rpcvers_t version,
++			  struct timeval *timeout)
++{
++	switch (sap->sa_family) {
++	case AF_LOCAL:
++		return nfs_get_localclient(sap, salen, program,
++						version, timeout);
++	case AF_INET:
++	case AF_INET6:
++		switch (transport) {
++		case IPPROTO_TCP:
++			return nfs_get_tcpclient(sap, salen, program,
++							version, timeout);
++		case 0:
++		case IPPROTO_UDP:
++			return nfs_get_udpclient(sap, salen, program,
++							version, timeout);
++		}
++		rpc_createerr.cf_stat = RPC_UNKNOWNPROTO;
++		return NULL;
++	default:
++		rpc_createerr.cf_stat = RPC_UNKNOWNHOST;
++		return NULL;
++	}
++}
++
++/**
++ * nfs_getrpcbyname - convert an RPC program name to a rpcprog_t
++ * @program: default program number to use if names not found in db
++ * @table: pointer to table of 'char *' names to try to find
++ *
++ * Returns program number of first name to be successfully looked
++ * up, or the default program number if all lookups fail.
++ */
++rpcprog_t nfs_getrpcbyname(const rpcprog_t program, const char *table[])
++{
++#ifdef HAVE_GETRPCBYNAME
++	struct rpcent *entry;
++	unsigned int i;
++
++	if (table != NULL)
++		for (i = 0; table[i] != NULL; i++) {
++			entry = getrpcbyname(table[i]);
++			if (entry)
++				return entry->r_number;
++		}
++#endif	/* HAVE_GETRPCBYNAME */
++
++	return program;
++}
+
