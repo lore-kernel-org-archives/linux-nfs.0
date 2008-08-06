@@ -1,48 +1,69 @@
-From: David Woodhouse <dwmw2@infradead.org>
-Subject: Re: [RFC] Reinstate NFS exportability for JFFS2.
-Date: Wed, 06 Aug 2008 21:10:43 +0100
-Message-ID: <1218053443.5111.148.camel@pmac.infradead.org>
-References: <1217607571.3454.417.camel@pmac.infradead.org>
-	 <76bd70e30808011047u3cd0a56cg3b2d62e01afed014@mail.gmail.com>
-	 <20080802182644.GE30454@fieldses.org>
-	 <18581.40178.976747.769343@notabene.brown>
-	 <76bd70e30808031015l36db41bexf319e85ba7acc4e9@mail.gmail.com>
-	 <18582.21855.2092.903688@notabene.brown>
-	 <76bd70e30808032319u65e35dbdj9cc5be07e1aef829@mail.gmail.com>
-	 <20080805085157.GG21635@disturbed>
-	 <18584.56584.98868.881298@notabene.brown>
-	 <20080806000805.GJ21635@disturbed>  <20080806195635.GA31126@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Neil Brown <neilb@suse.de>, chucklever@gmail.com,
-	viro@zeniv.linux.org.uk, Christoph Hellwig <hch@infradead.org>,
-	linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-	linux-mtd@lists.infradead.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20080806195635.GA31126@fieldses.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: (was: nfs-utils-1.1.3 released)
+Date: Wed, 6 Aug 2008 17:24:45 -0400
+Message-ID: <59A08B4C-43CA-44E6-830F-032A324F2679@oracle.com>
+References: <488D718F.200@RedHat.com>
+	<20080801131533.GN14057@debianrules.debiancolombia.org>
+	<20080802172529.GC30454@fieldses.org>
+	<87myjul1fk.fsf@burly.wgtn.ondioline.org>
+	<20080803151022.GA31484@fieldses.org>
+	<60C652E1-512E-484A-874E-01997B688505@oracle.com>
+	<87d4ko5wlx.fsf@burly.wgtn.ondioline.org>
+	<9692E351-7140-4AD8-99F8-C9271F54CD5F@oracle.com>
+	<863alj9s8p.fsf@gere.msconsult.dk>
+	<5535F9D8-CD96-4807-80B3-7FD4B3983794@oracle.com>
+	<m3wsiuf1im.fsf@hammer.lioka.obninsk.ru>
+Mime-Version: 1.0 (Apple Message framework v928.1)
+Content-Type: text/plain; charset="us-ascii"
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
+To: Sergey Bolshakov <sbolshakov@altlinux.ru>, bcwong@cisco.com
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <m3wsiuf1im.fsf@hammer.lioka.obninsk.ru>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2008-08-06 at 15:56 -0400, J. Bruce Fields wrote:
-> So the only solution that seems to really be holding up (at least for
-> the near term) is the double-buffering "hack"; could we get a version
-> of that with Neil's review comments addressed?
+On Aug 6, 2008, at 2:21 PM, Sergey Bolshakov wrote:
+>>>>>> "Chuck" == Chuck Lever <chuck.lever@oracle.com> writes:
+> [skipped]
+>
+>> In addition to the debugging mentioned above, anyone encountering  
+>> this
+>> regression can also try a git bisect on nfs-utils (between 1.1.2 and
+>> 1.1.3).
+>
+> I've seen same thing with degraded sec=none having SUSE 9SP3
+> nfs-utils-1.0.6-103.23 on server side and 1.1.2-3899db6d
+> on client side, so 3c1bb23c seems causing problems.
 
-git.infradead.org/users/dwmw2/nfsexport-2.6.git
+That's plausible.  The patch description claims the new client  
+shouldn't choose AUTH_NULL even if it's in the list, so there may be a  
+bug in the logic introduced by 3c1bb23c.
 
-I inverted the logic so that the file system has to set a
-FS_LOOKUP_IN_READDIR flag to avoid the hack, rather than setting a
-FS_NO_LOOKUP_IN_READDIR flag to _use_ it. Renamed it so that it doesn't
-say 'hack', took out the loop to allocate memory.
+The new nfs(5) man page says sec=sys is the default if no security  
+flavor is explicitly specified.  This is incorrect (or an  
+oversimplification at the very least), given the security negotiation  
+that goes on in mount.nfs.  That's another bug that should be fixed  
+when this problem is addressed.
 
-Tasks left for someone more familiar with the NFS code are: 
- - making it use one of the pages already allocated for the response.
- - giving it a hint about how many dirents to read into the buffer.
+I doubt similar security flavor negotiation occurs in the kernel's  
+mountd client, in the text-based case; thus the default sec=sys is  
+always used when no security flavor is specified.  That's probably yet  
+another bug.
 
--- 
-David Woodhouse                            Open Source Technology Centre
-David.Woodhouse@intel.com                              Intel Corporation
+I'm still at a loss to explain how this would show up on 2.6.26  
+clients.  mount.nfs from nfs-utils-1.1.1 and beyond on that kernel  
+should be using the text-based interface, so changing nfs-utils  
+shouldn't have any effect on this behavior.
 
-
-
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
