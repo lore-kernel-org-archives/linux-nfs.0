@@ -1,92 +1,42 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] nfsd: permit unauthenticated stat of export root
-Date: Thu, 7 Aug 2008 16:41:54 -0400
-Message-ID: <20080807204154.GR18904@fieldses.org>
-References: <20080807181148.GK18904@fieldses.org> <489B3DAC.5060004@redhat.com> <20080807191656.GL18904@fieldses.org> <489B4F81.8000204@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Peter Staubach <staubach@redhat.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: nfs_utils: O_NONBLOCK sockets in support/nfs/svc_socket.c
+Date: Thu, 7 Aug 2008 15:58:09 -0400
+Message-ID: <F9B1C837-2779-4E81-83DF-139BBAEFD32B@oracle.com>
+Mime-Version: 1.0 (Apple Message framework v928.1)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: Neil Brown <neilb@suse.de>, Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:39970 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752372AbYHGUl4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 Aug 2008 16:41:56 -0400
-In-Reply-To: <489B4F81.8000204@redhat.com>
+Received: from agminet02.oracle.com ([141.146.126.229]:43382 "EHLO
+	agminet02.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752858AbYHGVGb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Aug 2008 17:06:31 -0400
+Received: from agminet01.oracle.com (agminet01.oracle.com [141.146.126.228])
+	by agminet02.oracle.com (Switch-3.2.4/Switch-3.1.7) with ESMTP id m77K3AKC002609
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Thu, 7 Aug 2008 15:03:10 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Aug 07, 2008 at 03:39:45PM -0400, Peter Staubach wrote:
-> J. Bruce Fields wrote:
->> On Thu, Aug 07, 2008 at 02:23:40PM -0400, Peter Staubach wrote:
->>   
->>> J. Bruce Fields wrote:
->>>     
->>>> From: J. Bruce Fields <bfields@citi.umich.edu>
->>>>
->>>> RFC 2623 section 2.3.2 permits the server to bypass gss authentication
->>>> checks for certain operations that a client may perform when mounting.
->>>> In the case of a client that doesn't have some form of credentials
->>>> available to it on boot, this allows it to perform the mount unattended.
->>>> (Presumably real file access won't be needed until a user with
->>>> credentials logs in.)
->>>>
->>>> Being slightly more lenient allows lots of old clients to access
->>>> krb5-only exports, with the only loss being a small amount of
->>>> information leaked about the root directory of the export.
->>>>
->>>> This affects on v2 and v3; v4 still requires authentication for all
->>>> access.
->>>>
->>>> Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
->>>> ---
->>>>  fs/nfsd/nfs3proc.c        |    5 +++--
->>>>  fs/nfsd/nfsfh.c           |   30 ++++++++++++++++++++----------
->>>>  fs/nfsd/nfsproc.c         |    6 ++++--
->>>>  fs/nfsd/vfs.c             |    4 ++--
->>>>  include/linux/nfsd/nfsd.h |    3 ++-
->>>>  5 files changed, 31 insertions(+), 17 deletions(-)
->>>>
->>>> I intend to submit this for 2.6.28
->>>>
->>>> diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
->>>> index 4d617ea..1419142 100644
->>>> --- a/fs/nfsd/nfs3proc.c
->>>> +++ b/fs/nfsd/nfs3proc.c
->>>> @@ -530,7 +530,7 @@ nfsd3_proc_fsstat(struct svc_rqst * rqstp, struct nfsd_fhandle    *argp,
->>>>  	dprintk("nfsd: FSSTAT(3)   %s\n",
->>>>  				SVCFH_fmt(&argp->fh));
->>>>  -	nfserr = nfsd_statfs(rqstp, &argp->fh, &resp->stats);
->>>> +	nfserr = nfsd_statfs(rqstp, &argp->fh, &resp->stats, 0);
->>>>  	fh_put(&argp->fh);
->>>>  	RETURN_STATUS(nfserr);
->>>>  }
->>>> @@ -558,7 +558,8 @@ nfsd3_proc_fsinfo(struct svc_rqst * rqstp, struct nfsd_fhandle    *argp,
->>>>  	resp->f_maxfilesize = ~(u32) 0;
->>>>  	resp->f_properties = NFS3_FSF_DEFAULT;
->>>>  -	nfserr = fh_verify(rqstp, &argp->fh, 0, NFSD_MAY_NOP);
->>>> +	nfserr = fh_verify(rqstp, &argp->fh, 0,
->>>> +			NFSD_MAY_NOP | NFSD_MAY_BYPASS_GSS_ON_ROOT);
->>>>   	/* Check special features of the file system. May request
->>>>  	 * different read/write sizes for file systems known to have
->>>>         
->>> I would think that you might want to have nfsd3_proc_getattr()
->>> in this list too.  Some clients may need to generate a GETATTR
->>> if they need the attributes for the root node.
->>>     
->>
->> Do you know of any? rfc 2623 makes it sound like those clients are out
->> of luck.  And testing confirms that this patch is sufficient for the
->> linux client, at least.
->
-> I believe that the Solaris client may.  I think that it may
-> use the attributes returned from the FSINFO call, if there
-> are any, to prevent the additional GETATTR, but this should
-> be tested.  It might also be interesting to test out a
-> readonly failover mount on the Solaris client to see what
-> behavior that that exhibits.
+Hi guys-
 
-OK, could be.  Volunteers to test that welcomed--for now I think I'll
-stick to the list in the RFC.
+I'm looking at svc_socket() and friends to add IPv6 support.  Got a  
+question.
 
---b.
+I see in commits 11d34d11 and 58e58ffb there was a set of fcntl()  
+calls added to make RPC service listener sockets non-blocking.
+
+How come this support wasn't added in support/nfs/rpcmisc.c:makesock()  
+as well?
+
+I'm probably misreading the logic in rpc_init(), but it seems to me  
+there are possibilities for the listener socket to be created by  
+makesock() and not by svc_socket(), and then that listener would not  
+be O_NONBLOCK.  For instance, if there was a port value specified on  
+the mountd command line...?
+
+Please straighten me out.  Thanks.
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
