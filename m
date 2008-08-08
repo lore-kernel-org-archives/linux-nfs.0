@@ -1,42 +1,48 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: nfs_utils: O_NONBLOCK sockets in support/nfs/svc_socket.c
-Date: Thu, 7 Aug 2008 15:58:09 -0400
-Message-ID: <F9B1C837-2779-4E81-83DF-139BBAEFD32B@oracle.com>
-Mime-Version: 1.0 (Apple Message framework v928.1)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: Neil Brown <neilb@suse.de>, Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
+From: Dean Hildebrand <seattleplus@gmail.com>
+Subject: Re: NFS performance / diagnostic profiling with TCP
+Date: Thu, 07 Aug 2008 19:16:12 -0700
+Message-ID: <489BAC6C.5090801@gmail.com>
+References: <f257b9ab0807151118x5dec64aei73c284c9954fcfb@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: linux-nfs@vger.kernel.org
+To: ntwrkd <ntwrkd@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet02.oracle.com ([141.146.126.229]:43382 "EHLO
-	agminet02.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752858AbYHGVGb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Aug 2008 17:06:31 -0400
-Received: from agminet01.oracle.com (agminet01.oracle.com [141.146.126.228])
-	by agminet02.oracle.com (Switch-3.2.4/Switch-3.1.7) with ESMTP id m77K3AKC002609
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-nfs@vger.kernel.org>; Thu, 7 Aug 2008 15:03:10 -0500
+Received: from wr-out-0506.google.com ([64.233.184.224]:9561 "EHLO
+	wr-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755571AbYHHCQQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Aug 2008 22:16:16 -0400
+Received: by wr-out-0506.google.com with SMTP id 69so588824wri.5
+        for <linux-nfs@vger.kernel.org>; Thu, 07 Aug 2008 19:16:15 -0700 (PDT)
+In-Reply-To: <f257b9ab0807151118x5dec64aei73c284c9954fcfb-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi guys-
 
-I'm looking at svc_socket() and friends to add IPv6 support.  Got a  
-question.
 
-I see in commits 11d34d11 and 58e58ffb there was a set of fcntl()  
-calls added to make RPC service listener sockets non-blocking.
+ntwrkd wrote:
+> Does anyone have some methods for doing diagnostic / performance
+> profiling while using NFS over TCP?
+>   
+Using tcpdump with tcptrace is really handy. 
+You do something like:
+tcpdump -s 100 -w /tmp/tcpdump.out host <hostname>
+tcptrace -Sl /tmp/tcpdump.out
+xplot /tmp/a2b_tsg.xpl
 
-How come this support wasn't added in support/nfs/rpcmisc.c:makesock()  
-as well?
+One very important thing to remember, if you are interested in how the 
+tcp window is scaling, is to start tcpdump before you mount the server.  
+The tcp window size depends on a scaling factor that it gets when the 
+tcp connection is created (which is at mount time).
 
-I'm probably misreading the logic in rpc_init(), but it seems to me  
-there are possibilities for the listener socket to be created by  
-makesock() and not by svc_socket(), and then that listener would not  
-be O_NONBLOCK.  For instance, if there was a port value specified on  
-the mountd command line...?
+Dean
 
-Please straighten me out.  Thanks.
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+> Thanks in advance,
+> Matthew Sacks
+> matthewsacks.com
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>   
