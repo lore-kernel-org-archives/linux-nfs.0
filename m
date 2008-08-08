@@ -1,33 +1,208 @@
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Subject: Re: [2.6 patch] uninline nfsd4_op_name()
-Date: Fri, 8 Aug 2008 11:25:35 -0700 (PDT)
-Message-ID: <alpine.LFD.1.10.0808081120570.3462@nehalem.linux-foundation.org>
-References: <20080808162642.GG14495@cs181140183.pp.htv.fi>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: [PATCH nfs-utils] Remove redundant m_path field
+Date: Fri, 8 Aug 2008 16:17:33 -0400
+Message-ID: <20080808201733.GQ15265@fieldses.org>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Benny Halevy <bhalevy@panasas.com>,
-	"J. Bruce Fields" <bfields@citi.umich.edu>, neilb@suse.de,
-	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>
-To: Adrian Bunk <bunk@kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:53917 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752002AbYHHS01 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Aug 2008 14:26:27 -0400
-In-Reply-To: <20080808162642.GG14495-re2QNgSbS3j4D6uPqz5PAwR5/fbUUdgG@public.gmane.org>
+Received: from mail.fieldses.org ([66.93.2.214]:53214 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753638AbYHHURf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 8 Aug 2008 16:17:35 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: J. Bruce Fields <bfields@citi.umich.edu>
 
+Contrary to the comment above its definition, the field m_path always
+has the same value as e_path: the *only* modifications of m_path are all
+of the form:
 
-On Fri, 8 Aug 2008, Adrian Bunk wrote:
->
-> There doesn't seem to be a compelling reason why nfsd4_op_name() is 
-> marked as "inline":
+	strncpy(exp->m_export.m_path, exp->m_export.e_path,
+		sizeof (exp->m_export.m_path) - 1);
+	exp->m_export.m_path[sizeof (exp->m_export.m_path) - 1] = '\0';
 
-It should also return a "const char *", I think.
+So m_path is always just a copy of e_path.  In places where we need to
+store a path to a submount of a CROSSMNT-exported filesystem, as in
+cache.c, we just use a local variable.
 
-Since it does.
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+---
+ support/export/export.c  |   12 ------------
+ support/export/nfsctl.c  |    4 ++--
+ support/include/nfslib.h |    5 -----
+ support/nfs/exports.c    |    6 ------
+ utils/mountd/mountd.c    |   12 ++----------
+ utils/mountd/rmtab.c     |    4 +---
+ 6 files changed, 5 insertions(+), 38 deletions(-)
 
-		Linus
+Looks obviously correct, but I haven't tested it!
+
+diff --git a/support/export/export.c b/support/export/export.c
+index 93c58b6..14af112 100644
+--- a/support/export/export.c
++++ b/support/export/export.c
+@@ -255,15 +255,3 @@ export_freeall(void)
+ 	}
+ 	client_freeall();
+ }
+-
+-void
+-export_reset(nfs_export *exp)
+-{
+-	if (!exp)
+-		return;
+-
+-	/* Restore m_path. */
+-	strncpy(exp->m_export.m_path, exp->m_export.e_path,
+-		sizeof (exp->m_export.m_path) - 1);
+-	exp->m_export.m_path[sizeof (exp->m_export.m_path) - 1] = '\0';
+-}
+diff --git a/support/export/nfsctl.c b/support/export/nfsctl.c
+index 32d92bd..e2877b9 100644
+--- a/support/export/nfsctl.c
++++ b/support/export/nfsctl.c
+@@ -89,11 +89,11 @@ expsetup(struct nfsctl_export *exparg, nfs_export *exp, int unexport)
+ 	nfs_client		*clp = exp->m_client;
+ 	struct stat		stb;
+ 
+-	if (stat(exp->m_export.m_path, &stb) < 0)
++	if (stat(exp->m_export.e_path, &stb) < 0)
+ 		return 0;
+ 
+ 	memset(exparg, 0, sizeof(*exparg));
+-	strncpy(exparg->ex_path, exp->m_export.m_path,
++	strncpy(exparg->ex_path, exp->m_export.e_path,
+ 		sizeof (exparg->ex_path) - 1);
+ 	strncpy(exparg->ex_client, clp->m_hostname,
+ 		sizeof (exparg->ex_client) - 1);
+diff --git a/support/include/nfslib.h b/support/include/nfslib.h
+index 422b012..a51d79d 100644
+--- a/support/include/nfslib.h
++++ b/support/include/nfslib.h
+@@ -67,11 +67,6 @@ struct sec_entry {
+ struct exportent {
+ 	char *		e_hostname;
+ 	char		e_path[NFS_MAXPATHLEN+1];
+-	/* The mount path may be different from the exported path due
+-	   to submount. It may change for every mount. The idea is we
+-	   set m_path every time when we process a mount. We should not
+-	   use it for anything else. */
+-	char		m_path[NFS_MAXPATHLEN+1];
+ 	int		e_flags;
+ 	int		e_anonuid;
+ 	int		e_anongid;
+diff --git a/support/nfs/exports.c b/support/nfs/exports.c
+index 525e5b1..04e3698 100644
+--- a/support/nfs/exports.c
++++ b/support/nfs/exports.c
+@@ -127,8 +127,6 @@ getexportent(int fromkernel, int fromexports)
+ 		if (ok <= 0)
+ 			return NULL;
+ 
+-		strncpy (def_ee.m_path, def_ee.e_path, sizeof (def_ee.m_path) - 1);
+-		def_ee.m_path [sizeof (def_ee.m_path) - 1] = '\0';
+ 		ok = getexport(exp, sizeof(exp));
+ 	}
+ 	if (ok < 0) {
+@@ -187,8 +185,6 @@ getexportent(int fromkernel, int fromexports)
+ 		rpath[sizeof (rpath) - 1] = '\0';
+ 		strncpy(ee.e_path, rpath, sizeof (ee.e_path) - 1);
+ 		ee.e_path[sizeof (ee.e_path) - 1] = '\0';
+-		strncpy (ee.m_path, ee.e_path, sizeof (ee.m_path) - 1);
+-		ee.m_path [sizeof (ee.m_path) - 1] = '\0';
+ 	}
+ 
+ 	return &ee;
+@@ -360,8 +356,6 @@ mkexportent(char *hname, char *path, char *options)
+ 	}
+ 	strncpy(ee.e_path, path, sizeof (ee.e_path));
+ 	ee.e_path[sizeof (ee.e_path) - 1] = '\0';
+-	strncpy (ee.m_path, ee.e_path, sizeof (ee.m_path) - 1);
+-	ee.m_path [sizeof (ee.m_path) - 1] = '\0';
+ 	if (parseopts(options, &ee, 0, NULL) < 0)
+ 		return NULL;
+ 	return &ee;
+diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
+index 8137f7f..0facf89 100644
+--- a/utils/mountd/mountd.c
++++ b/utils/mountd/mountd.c
+@@ -230,9 +230,6 @@ mount_umnt_1_svc(struct svc_req *rqstp, dirpath *argp, void *resp)
+ 		return 1;
+ 	}
+ 
+-	if (!new_cache)
+-		export_reset (exp);
+-
+ 	mountlist_del(inet_ntoa(sin->sin_addr), p);
+ 	return 1;
+ }
+@@ -312,7 +309,6 @@ mount_pathconf_2_svc(struct svc_req *rqstp, dirpath *path, ppathcnf *res)
+ 	} else if (stat(p, &stb) < 0) {
+ 		xlog(L_WARNING, "can't stat exported dir %s: %s",
+ 				p, strerror(errno));
+-		export_reset (exp);
+ 		return 1;
+ 	}
+ 
+@@ -328,8 +324,6 @@ mount_pathconf_2_svc(struct svc_req *rqstp, dirpath *path, ppathcnf *res)
+ 	res->pc_mask[0]   = 0;
+ 	res->pc_mask[1]   = 0;
+ 
+-	export_reset (exp);
+-
+ 	return 1;
+ }
+ 
+@@ -457,13 +451,11 @@ get_rootfh(struct svc_req *rqstp, dirpath *path, mountstat3 *error, int v3)
+ 		if (fh != NULL) {
+ 			mountlist_add(inet_ntoa(sin->sin_addr), p);
+ 			*error = NFS_OK;
+-			export_reset (exp);
+ 			return fh;
+ 		}
+ 		xlog(L_WARNING, "getfh failed: %s", strerror(errno));
+ 		*error = NFSERR_ACCES;
+ 	}
+-	export_reset (exp);
+ 	return NULL;
+ }
+ 
+@@ -499,14 +491,14 @@ get_exportlist(void)
+ 	for (i = 0; i < MCL_MAXTYPES; i++) {
+ 		for (exp = exportlist[i]; exp; exp = exp->m_next) {
+ 			for (e = elist; e != NULL; e = e->ex_next) {
+-				if (!strcmp(exp->m_export.m_path, e->ex_dir))
++				if (!strcmp(exp->m_export.e_path, e->ex_dir))
+ 					break;
+ 			}
+ 			if (!e) {
+ 				e = (struct exportnode *) xmalloc(sizeof(*e));
+ 				e->ex_next = elist;
+ 				e->ex_groups = NULL;
+-				e->ex_dir = xstrdup(exp->m_export.m_path);
++				e->ex_dir = xstrdup(exp->m_export.e_path);
+ 				elist = e;
+ 			}
+ 
+diff --git a/utils/mountd/rmtab.c b/utils/mountd/rmtab.c
+index e8aff5a..5787ed6 100644
+--- a/utils/mountd/rmtab.c
++++ b/utils/mountd/rmtab.c
+@@ -162,10 +162,8 @@ mountlist_del_all(struct sockaddr_in *sin)
+ 	}
+ 	while ((rep = getrmtabent(1, NULL)) != NULL) {
+ 		if (strcmp(rep->r_client, hp->h_name) == 0 &&
+-		    (exp = auth_authenticate("umountall", sin, rep->r_path))) {
+-			export_reset(exp);
++		    (exp = auth_authenticate("umountall", sin, rep->r_path)))
+ 			continue;
+-		}
+ 		fputrmtabent(fp, rep, NULL);
+ 	}
+ 	if (slink_safe_rename(_PATH_RMTABTMP, _PATH_RMTAB) < 0) {
+-- 
+1.5.5.rc1
+
