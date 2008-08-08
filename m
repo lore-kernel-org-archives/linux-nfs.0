@@ -1,48 +1,65 @@
-From: Dean Hildebrand <seattleplus@gmail.com>
-Subject: Re: NFS performance / diagnostic profiling with TCP
-Date: Thu, 07 Aug 2008 19:16:12 -0700
-Message-ID: <489BAC6C.5090801@gmail.com>
-References: <f257b9ab0807151118x5dec64aei73c284c9954fcfb@mail.gmail.com>
+From: Adrian Bunk <bunk@kernel.org>
+Subject: [2.6 patch] uninline nfsd4_op_name()
+Date: Fri, 8 Aug 2008 19:26:42 +0300
+Message-ID: <20080808162642.GG14495@cs181140183.pp.htv.fi>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: linux-nfs@vger.kernel.org
-To: ntwrkd <ntwrkd@gmail.com>
+Content-Type: text/plain; charset=utf-8
+Cc: neilb@suse.de, linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>
+To: Benny Halevy <bhalevy@panasas.com>,
+	"J. Bruce Fields" <bfields@citi.umich.edu>,
+	Linus Torvalds <torvalds@linux-foundation.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from wr-out-0506.google.com ([64.233.184.224]:9561 "EHLO
-	wr-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755571AbYHHCQQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Aug 2008 22:16:16 -0400
-Received: by wr-out-0506.google.com with SMTP id 69so588824wri.5
-        for <linux-nfs@vger.kernel.org>; Thu, 07 Aug 2008 19:16:15 -0700 (PDT)
-In-Reply-To: <f257b9ab0807151118x5dec64aei73c284c9954fcfb-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Received: from smtp4.pp.htv.fi ([213.243.153.38]:49490 "EHLO smtp4.pp.htv.fi"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751505AbYHHQ2R (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 8 Aug 2008 12:28:17 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+There doesn't seem to be a compelling reason why nfsd4_op_name() is 
+marked as "inline":
 
+It's only used in a dprintk(), and as long as it has only one caller 
+non-ancient gcc versions anyway inline it automatically.
 
-ntwrkd wrote:
-> Does anyone have some methods for doing diagnostic / performance
-> profiling while using NFS over TCP?
->   
-Using tcpdump with tcptrace is really handy. 
-You do something like:
-tcpdump -s 100 -w /tmp/tcpdump.out host <hostname>
-tcptrace -Sl /tmp/tcpdump.out
-xplot /tmp/a2b_tsg.xpl
+This patch fixes the following compile error with gcc 3.4:
 
-One very important thing to remember, if you are interested in how the 
-tcp window is scaling, is to start tcpdump before you mount the server.  
-The tcp window size depends on a scaling factor that it gets when the 
-tcp connection is created (which is at mount time).
+<--  snip  -->
 
-Dean
+...
+  CC      fs/nfsd/nfs4proc.o
+nfs4proc.c: In function `nfsd4_proc_compound':
+nfs4proc.c:854: sorry, unimplemented: inlining failed in call to 
+nfs4proc.c:897: sorry, unimplemented: called from here
+make[3]: *** [fs/nfsd/nfs4proc.o] Error 1
 
+<--  snip  -->
 
-> Thanks in advance,
-> Matthew Sacks
-> matthewsacks.com
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->   
+Reported-by: Adrian Bunk <bunk@kernel.org>
+Signed-off-by: Adrian Bunk <bunk@kernel.org>
+
+---
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -851,7 +851,7 @@ struct nfsd4_operation {
+ 
+ static struct nfsd4_operation nfsd4_ops[];
+ 
+-static inline char *nfsd4_op_name(unsigned opnum);
++static char *nfsd4_op_name(unsigned opnum);
+ 
+ /*
+  * COMPOUND call.
+@@ -1116,8 +1116,7 @@ static struct nfsd4_operation nfsd4_ops[OP_RELEASE_LOCKOWNER+1] = {
+ 	},
+ };
+ 
+-static inline char *
+-nfsd4_op_name(unsigned opnum)
++static char *nfsd4_op_name(unsigned opnum)
+ {
+ 	if (opnum < ARRAY_SIZE(nfsd4_ops))
+ 		return nfsd4_ops[opnum].op_name;
+
