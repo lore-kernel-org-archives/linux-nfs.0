@@ -1,42 +1,31 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [2.6 patch] uninline nfsd4_op_name()
-Date: Sun, 10 Aug 2008 14:32:31 +0300
-Message-ID: <489ED1CF.8000308@panasas.com>
-References: <20080808162642.GG14495@cs181140183.pp.htv.fi> <alpine.LFD.1.10.0808081120570.3462@nehalem.linux-foundation.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: Bug#492970: (was: nfs-utils-1.1.3 released)
+Date: Sun, 10 Aug 2008 17:40:53 -0400
+Message-ID: <20080810214053.GE30411@fieldses.org>
+References: <87myjul1fk.fsf@burly.wgtn.ondioline.org> <20080803151022.GA31484@fieldses.org> <60C652E1-512E-484A-874E-01997B688505@oracle.com> <87d4ko5wlx.fsf@burly.wgtn.ondioline.org> <9692E351-7140-4AD8-99F8-C9271F54CD5F@oracle.com> <863alj9s8p.fsf@gere.msconsult.dk> <5535F9D8-CD96-4807-80B3-7FD4B3983794@oracle.com> <20080807150514.GA3696@xanadu.blop.info> <6A0B8017-9FCB-4CF1-88F0-8E5752AC22EC@oracle.com> <2237EBE9-FE80-4B9A-B908-1533C47BBD0F@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: "J. Bruce Fields" <bfields@citi.umich.edu>, neilb@suse.de,
-	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>,
-	Adrian Bunk <bunk@kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Linux NFSv4 mailing list <nfsv4@linux-nfs.org>,
+	Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+	bcwong-FYB4Gu1CFyUAvxtiuMwx3w@public.gmane.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-colo-pa.panasas.com ([66.238.117.130]:28521 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1754209AbYHJLdR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 10 Aug 2008 07:33:17 -0400
-In-Reply-To: <alpine.LFD.1.10.0808081120570.3462-nfNrOhbfy2R17+2ddN/4kux8cNe9sq/dYPYVAmT7z5s@public.gmane.org>
+Received: from mail.fieldses.org ([66.93.2.214]:37795 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753781AbYHJVk4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 10 Aug 2008 17:40:56 -0400
+In-Reply-To: <2237EBE9-FE80-4B9A-B908-1533C47BBD0F@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Linus Torvalds wrote:
+On Fri, Aug 08, 2008 at 09:06:46PM -0400, Chuck Lever wrote:
+> Confirmed.  The kernel's mountd client doesn't even bother to  
+> unmarshal the auth flavor list in the server's reply.
 > 
-> On Fri, 8 Aug 2008, Adrian Bunk wrote:
->> There doesn't seem to be a compelling reason why nfsd4_op_name() is 
->> marked as "inline":
+> I'll work on a fix.
 
-Agreed.
+By the way, the server side is also kinda dumb here--it just returns a
+fixed status list regardless of what security is set on the export.
+This isn't hard to fix--I'm just debugging some patches.
 
-> 
-> It should also return a "const char *", I think.
-> 
-> Since it does.
-
-Right.
-
-> 
-> 		Linus
-
-Thanks for picking this up,
-
-Benny
+--b.
