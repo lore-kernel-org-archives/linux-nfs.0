@@ -1,53 +1,50 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: [PATCH] remove idmapd.conf
-Date: Sun, 10 Aug 2008 23:16:25 -0400
-Message-ID: <20080811031625.GA6033@fieldses.org>
-References: <1218422830-5465-1-git-send-email-bfields@citi.umich.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Steve Dickson <steved@redhat.com>
+From: "Denis V. Lunev" <den@openvz.org>
+Subject: [PATCH 1/1] nfs: BUG_ON in nfs_follow_mountpoint
+Date: Mon, 11 Aug 2008 12:02:34 +0400
+Message-ID: <1218441754-20883-1-git-send-email-den@openvz.org>
+Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+	"Denis V. Lunev" <den@openvz.org>,
+	Trond Myklebust <Trond.Myklebust@netapp.com>,
+	"J. Bruce Fields" <bfields@fieldses.org>
+To: akpm@linux-foundation.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:59523 "EHLO fieldses.org"
+Received: from mailhub.sw.ru ([195.214.232.25]:44621 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750846AbYHKDQ1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 10 Aug 2008 23:16:27 -0400
-In-Reply-To: <1218422830-5465-1-git-send-email-bfields@citi.umich.edu>
+	id S1750879AbYHKICZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 11 Aug 2008 04:02:25 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: J. Bruce Fields <bfields@citi.umich.edu>
+Unfortunately, BUG_ON(IS_ROOT(dentry)) can happen inside
+nfs_follow_mountpoint with NFS running Fedora 8 using a
+specific setup.
+https://bugzilla.redhat.com/show_bug.cgi?id=458622
 
-The example idmapd.conf file is kept in libnfsidmap now, which is what's
-responsible for parsing it anyway.
+So, the situation should be handled on NFS client gracefully.
 
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+Signed-off-by: Denis V. Lunev <den@openvz.org>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: J. Bruce Fields <bfields@fieldses.org>
 ---
- utils/idmapd/idmapd.conf |   10 ----------
- 1 files changed, 0 insertions(+), 10 deletions(-)
- delete mode 100644 utils/idmapd/idmapd.conf
+ fs/nfs/namespace.c |    5 ++++-
+ 1 files changed, 4 insertions(+), 1 deletions(-)
 
-Oh, also, this is unrelated, but: I just noticed I had this still lying
-around.
-
---b.
-
-diff --git a/utils/idmapd/idmapd.conf b/utils/idmapd/idmapd.conf
-deleted file mode 100644
-index acafd4b..0000000
---- a/utils/idmapd/idmapd.conf
-+++ /dev/null
-@@ -1,10 +0,0 @@
--[General]
--
--Verbosity = 0
--Pipefs-Directory = /var/lib/nfs/rpc_pipefs
--Domain = localdomain
--
--[Mapping]
--
--Nobody-User = nobody
--Nobody-Group = nobody
+diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
+index 66df08d..4f11c13 100644
+--- a/fs/nfs/namespace.c
++++ b/fs/nfs/namespace.c
+@@ -105,7 +105,10 @@ static void * nfs_follow_mountpoint(struct dentry *dentry, struct nameidata *nd)
+ 
+ 	dprintk("--> nfs_follow_mountpoint()\n");
+ 
+-	BUG_ON(IS_ROOT(dentry));
++	err = -ESTALE;
++	if (IS_ROOT(dentry))
++		goto out_err;
++
+ 	dprintk("%s: enter\n", __func__);
+ 	dput(nd->path.dentry);
+ 	nd->path.dentry = dget(dentry);
 -- 
-1.5.5.rc1
+1.5.6.4
 
