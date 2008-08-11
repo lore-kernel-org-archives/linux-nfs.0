@@ -1,144 +1,207 @@
 From: Bruce Fields <bfields@citi.umich.edu>
-Subject: [PATCH 3/3] Determine supported pseudoflavors from export
-Date: Sun, 10 Aug 2008 22:47:10 -0400
-Message-ID: <1218422830-5465-4-git-send-email-bfields@citi.umich.edu>
+Subject: [PATCH 1/3] Remove redundant m_path field
+Date: Sun, 10 Aug 2008 22:47:08 -0400
+Message-ID: <1218422830-5465-2-git-send-email-bfields@citi.umich.edu>
 References: <1218422830-5465-1-git-send-email-bfields@citi.umich.edu>
- <1218422830-5465-2-git-send-email-bfields@citi.umich.edu>
- <1218422830-5465-3-git-send-email-bfields@citi.umich.edu>
 Cc: linux-nfs@vger.kernel.org,
 	"J. Bruce Fields" <bfields@citi.umich.edu>
 To: Steve Dickson <steved@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:44688 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:44689 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753732AbYHKCrM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 10 Aug 2008 22:47:12 -0400
-In-Reply-To: <1218422830-5465-3-git-send-email-bfields@citi.umich.edu>
+	id S1753758AbYHKCrN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 10 Aug 2008 22:47:13 -0400
+In-Reply-To: <1218422830-5465-1-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: J. Bruce Fields <bfields@citi.umich.edu>
 
-Instead of using a static list of supported flavors, we should be taking
-the list from the export.
+Contrary to the comment above its definition, the field m_path always
+has the same value as e_path: the *only* modifications of m_path are all
+of the form:
+
+	strncpy(exp->m_export.m_path, exp->m_export.e_path,
+		sizeof (exp->m_export.m_path) - 1);
+	exp->m_export.m_path[sizeof (exp->m_export.m_path) - 1] = '\0';
+
+So m_path is always just a copy of e_path.  In places where we need to
+store a path to a submount of a CROSSMNT-exported filesystem, as in
+cache.c, we just use a local variable.
 
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
- utils/mountd/mountd.c |   55 +++++++++++++++++++++++++++++++++---------------
- 1 files changed, 38 insertions(+), 17 deletions(-)
+ support/export/export.c  |   12 ------------
+ support/export/nfsctl.c  |    4 ++--
+ support/include/nfslib.h |    5 -----
+ support/nfs/exports.c    |    6 ------
+ utils/mountd/mountd.c    |   12 ++----------
+ utils/mountd/rmtab.c     |    4 +---
+ 6 files changed, 5 insertions(+), 38 deletions(-)
 
+diff --git a/support/export/export.c b/support/export/export.c
+index 93c58b6..14af112 100644
+--- a/support/export/export.c
++++ b/support/export/export.c
+@@ -255,15 +255,3 @@ export_freeall(void)
+ 	}
+ 	client_freeall();
+ }
+-
+-void
+-export_reset(nfs_export *exp)
+-{
+-	if (!exp)
+-		return;
+-
+-	/* Restore m_path. */
+-	strncpy(exp->m_export.m_path, exp->m_export.e_path,
+-		sizeof (exp->m_export.m_path) - 1);
+-	exp->m_export.m_path[sizeof (exp->m_export.m_path) - 1] = '\0';
+-}
+diff --git a/support/export/nfsctl.c b/support/export/nfsctl.c
+index 32d92bd..e2877b9 100644
+--- a/support/export/nfsctl.c
++++ b/support/export/nfsctl.c
+@@ -89,11 +89,11 @@ expsetup(struct nfsctl_export *exparg, nfs_export *exp, int unexport)
+ 	nfs_client		*clp = exp->m_client;
+ 	struct stat		stb;
+ 
+-	if (stat(exp->m_export.m_path, &stb) < 0)
++	if (stat(exp->m_export.e_path, &stb) < 0)
+ 		return 0;
+ 
+ 	memset(exparg, 0, sizeof(*exparg));
+-	strncpy(exparg->ex_path, exp->m_export.m_path,
++	strncpy(exparg->ex_path, exp->m_export.e_path,
+ 		sizeof (exparg->ex_path) - 1);
+ 	strncpy(exparg->ex_client, clp->m_hostname,
+ 		sizeof (exparg->ex_client) - 1);
+diff --git a/support/include/nfslib.h b/support/include/nfslib.h
+index 422b012..a51d79d 100644
+--- a/support/include/nfslib.h
++++ b/support/include/nfslib.h
+@@ -67,11 +67,6 @@ struct sec_entry {
+ struct exportent {
+ 	char *		e_hostname;
+ 	char		e_path[NFS_MAXPATHLEN+1];
+-	/* The mount path may be different from the exported path due
+-	   to submount. It may change for every mount. The idea is we
+-	   set m_path every time when we process a mount. We should not
+-	   use it for anything else. */
+-	char		m_path[NFS_MAXPATHLEN+1];
+ 	int		e_flags;
+ 	int		e_anonuid;
+ 	int		e_anongid;
+diff --git a/support/nfs/exports.c b/support/nfs/exports.c
+index 525e5b1..04e3698 100644
+--- a/support/nfs/exports.c
++++ b/support/nfs/exports.c
+@@ -127,8 +127,6 @@ getexportent(int fromkernel, int fromexports)
+ 		if (ok <= 0)
+ 			return NULL;
+ 
+-		strncpy (def_ee.m_path, def_ee.e_path, sizeof (def_ee.m_path) - 1);
+-		def_ee.m_path [sizeof (def_ee.m_path) - 1] = '\0';
+ 		ok = getexport(exp, sizeof(exp));
+ 	}
+ 	if (ok < 0) {
+@@ -187,8 +185,6 @@ getexportent(int fromkernel, int fromexports)
+ 		rpath[sizeof (rpath) - 1] = '\0';
+ 		strncpy(ee.e_path, rpath, sizeof (ee.e_path) - 1);
+ 		ee.e_path[sizeof (ee.e_path) - 1] = '\0';
+-		strncpy (ee.m_path, ee.e_path, sizeof (ee.m_path) - 1);
+-		ee.m_path [sizeof (ee.m_path) - 1] = '\0';
+ 	}
+ 
+ 	return &ee;
+@@ -360,8 +356,6 @@ mkexportent(char *hname, char *path, char *options)
+ 	}
+ 	strncpy(ee.e_path, path, sizeof (ee.e_path));
+ 	ee.e_path[sizeof (ee.e_path) - 1] = '\0';
+-	strncpy (ee.m_path, ee.e_path, sizeof (ee.m_path) - 1);
+-	ee.m_path [sizeof (ee.m_path) - 1] = '\0';
+ 	if (parseopts(options, &ee, 0, NULL) < 0)
+ 		return NULL;
+ 	return &ee;
 diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
-index d5b8c0d..6adb68f 100644
+index 8137f7f..0facf89 100644
 --- a/utils/mountd/mountd.c
 +++ b/utils/mountd/mountd.c
-@@ -26,6 +26,7 @@
- #include "misc.h"
- #include "mountd.h"
- #include "rpcmisc.h"
-+#include "pseudoflavors.h"
- 
- extern void	cache_open(void);
- extern struct nfs_fh_len *cache_get_filehandle(nfs_export *exp, int len, char *p);
-@@ -35,7 +36,7 @@ extern void my_svc_run(void);
- 
- static void		usage(const char *, int exitcode);
- static exports		get_exportlist(void);
--static struct nfs_fh_len *get_rootfh(struct svc_req *, dirpath *, mountstat3 *, int v3);
-+static struct nfs_fh_len *get_rootfh(struct svc_req *, dirpath *, nfs_export **, mountstat3 *, int v3);
- 
- int reverse_resolve = 0;
- int new_cache = 0;
-@@ -192,7 +193,7 @@ mount_mnt_1_svc(struct svc_req *rqstp, dirpath *path, fhstatus *res)
- 	struct nfs_fh_len *fh;
- 
- 	xlog(D_CALL, "MNT1(%s) called", *path);
--	fh = get_rootfh(rqstp, path, &res->fhs_status, 0);
-+	fh = get_rootfh(rqstp, path, NULL, &res->fhs_status, 0);
- 	if (fh)
- 		memcpy(&res->fhstatus_u.fhs_fhandle, fh->fh_handle, 32);
- 	return 1;
-@@ -330,39 +331,57 @@ mount_pathconf_2_svc(struct svc_req *rqstp, dirpath *path, ppathcnf *res)
- }
- 
- /*
-+ * We should advertise the preferred flavours first. (See RFC 2623
-+ * section 2.7.)  We leave that to the administrator, by advertising
-+ * flavours in the order they were listed in /etc/exports.  AUTH_NULL is
-+ * dropped from the list to avoid backward compatibility issue with
-+ * older Linux clients, who inspect the list in reversed order.
-+ *
-+ * XXX: It might be more helpful to rearrange these so that flavors
-+ * giving more access (as determined from readonly and id-squashing
-+ * options) come first.  (If we decide to do that we should probably do
-+ * that when reading the exports rather than here.)
-+ */
-+static void set_authflavors(struct mountres3_ok *ok, nfs_export *exp)
-+{
-+	struct sec_entry *s;
-+	static int flavors[SECFLAVOR_COUNT];
-+	int i = 0;
-+
-+	for (s = exp->m_export.e_secinfo; s->flav; s++) {
-+		if (s->flav->fnum == AUTH_NULL)
-+			continue;
-+		flavors[i] = s->flav->fnum;
-+		i++;
-+	}
-+	ok->auth_flavors.auth_flavors_val = flavors;
-+	ok->auth_flavors.auth_flavors_len = i;
-+}
-+
-+/*
-  * NFSv3 MOUNT procedure
-  */
- bool_t
- mount_mnt_3_svc(struct svc_req *rqstp, dirpath *path, mountres3 *res)
- {
--#define AUTH_GSS_KRB5 390003
--#define AUTH_GSS_KRB5I 390004
--#define AUTH_GSS_KRB5P 390005
--	static int	flavors[] = { AUTH_UNIX, AUTH_GSS_KRB5, AUTH_GSS_KRB5I, AUTH_GSS_KRB5P};
--	/*
--	 * We should advertise the preferred flavours first. (See RFC 2623
--	 * section 2.7.) AUTH_UNIX is arbitrarily ranked over the GSS's.
--	 * AUTH_NULL is dropped from the list to avoid backward compatibility
--	 * issue with older Linux clients, who inspect the list in reversed
--	 * order.
--	 */
- 	struct mountres3_ok *ok = &res->mountres3_u.mountinfo;
-+	nfs_export *exp;
- 	struct nfs_fh_len *fh;
- 
- 	xlog(D_CALL, "MNT3(%s) called", *path);
--	fh = get_rootfh(rqstp, path, &res->fhs_status, 1);
-+	fh = get_rootfh(rqstp, path, &exp, &res->fhs_status, 1);
- 	if (!fh)
+@@ -230,9 +230,6 @@ mount_umnt_1_svc(struct svc_req *rqstp, dirpath *argp, void *resp)
  		return 1;
+ 	}
  
- 	ok->fhandle.fhandle3_len = fh->fh_size;
- 	ok->fhandle.fhandle3_val = (char *)fh->fh_handle;
--	ok->auth_flavors.auth_flavors_len = sizeof(flavors)/sizeof(flavors[0]);
--	ok->auth_flavors.auth_flavors_val = flavors;
-+	set_authflavors(ok, exp);
+-	if (!new_cache)
+-		export_reset (exp);
+-
+ 	mountlist_del(inet_ntoa(sin->sin_addr), p);
+ 	return 1;
+ }
+@@ -312,7 +309,6 @@ mount_pathconf_2_svc(struct svc_req *rqstp, dirpath *path, ppathcnf *res)
+ 	} else if (stat(p, &stb) < 0) {
+ 		xlog(L_WARNING, "can't stat exported dir %s: %s",
+ 				p, strerror(errno));
+-		export_reset (exp);
+ 		return 1;
+ 	}
+ 
+@@ -328,8 +324,6 @@ mount_pathconf_2_svc(struct svc_req *rqstp, dirpath *path, ppathcnf *res)
+ 	res->pc_mask[0]   = 0;
+ 	res->pc_mask[1]   = 0;
+ 
+-	export_reset (exp);
+-
  	return 1;
  }
  
- static struct nfs_fh_len *
--get_rootfh(struct svc_req *rqstp, dirpath *path, mountstat3 *error, int v3)
-+get_rootfh(struct svc_req *rqstp, dirpath *path, nfs_export **expret,
-+		mountstat3 *error, int v3)
- {
- 	struct sockaddr_in *sin =
- 		(struct sockaddr_in *) svc_getcaller(rqstp->rq_xprt);
-@@ -467,6 +486,8 @@ get_rootfh(struct svc_req *rqstp, dirpath *path, mountstat3 *error, int v3)
+@@ -457,13 +451,11 @@ get_rootfh(struct svc_req *rqstp, dirpath *path, mountstat3 *error, int v3)
+ 		if (fh != NULL) {
+ 			mountlist_add(inet_ntoa(sin->sin_addr), p);
+ 			*error = NFS_OK;
+-			export_reset (exp);
+ 			return fh;
+ 		}
+ 		xlog(L_WARNING, "getfh failed: %s", strerror(errno));
+ 		*error = NFSERR_ACCES;
  	}
- 	*error = NFS_OK;
- 	mountlist_add(inet_ntoa(sin->sin_addr), p);
-+	if (expret)
-+		*expret = exp;
- 	return fh;
+-	export_reset (exp);
+ 	return NULL;
  }
  
+@@ -499,14 +491,14 @@ get_exportlist(void)
+ 	for (i = 0; i < MCL_MAXTYPES; i++) {
+ 		for (exp = exportlist[i]; exp; exp = exp->m_next) {
+ 			for (e = elist; e != NULL; e = e->ex_next) {
+-				if (!strcmp(exp->m_export.m_path, e->ex_dir))
++				if (!strcmp(exp->m_export.e_path, e->ex_dir))
+ 					break;
+ 			}
+ 			if (!e) {
+ 				e = (struct exportnode *) xmalloc(sizeof(*e));
+ 				e->ex_next = elist;
+ 				e->ex_groups = NULL;
+-				e->ex_dir = xstrdup(exp->m_export.m_path);
++				e->ex_dir = xstrdup(exp->m_export.e_path);
+ 				elist = e;
+ 			}
+ 
+diff --git a/utils/mountd/rmtab.c b/utils/mountd/rmtab.c
+index e8aff5a..5787ed6 100644
+--- a/utils/mountd/rmtab.c
++++ b/utils/mountd/rmtab.c
+@@ -162,10 +162,8 @@ mountlist_del_all(struct sockaddr_in *sin)
+ 	}
+ 	while ((rep = getrmtabent(1, NULL)) != NULL) {
+ 		if (strcmp(rep->r_client, hp->h_name) == 0 &&
+-		    (exp = auth_authenticate("umountall", sin, rep->r_path))) {
+-			export_reset(exp);
++		    (exp = auth_authenticate("umountall", sin, rep->r_path)))
+ 			continue;
+-		}
+ 		fputrmtabent(fp, rep, NULL);
+ 	}
+ 	if (slink_safe_rename(_PATH_RMTABTMP, _PATH_RMTAB) < 0) {
 -- 
 1.5.5.rc1
 
