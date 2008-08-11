@@ -1,70 +1,77 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [pnfs] [PATCH 0/2] fix nfsd stateid encoding
-Date: Mon, 11 Aug 2008 13:50:26 -0400
-Message-ID: <20080811175026.GA1781@fieldses.org>
-References: <48A04820.5000409@panasas.com> <20080811155842.GC32193@fieldses.org> <48A064BC.1050302@panasas.com> <76bd70e30808110917y5a9a1950l1d905f081bd7a819@mail.gmail.com> <20080811162830.GB772@fieldses.org> <48A0796F.20402@panasas.com>
+From: Peter Staubach <staubach@redhat.com>
+Subject: Re: [PATCH] nfsd: permit unauthenticated stat of export root
+Date: Mon, 11 Aug 2008 16:51:26 -0400
+Message-ID: <48A0A64E.1080508@redhat.com>
+References: <20080807181148.GK18904@fieldses.org> <489B3DAC.5060004@redhat.com> <20080807191656.GL18904@fieldses.org> <489B4F81.8000204@redhat.com> <20080807204154.GR18904@fieldses.org> <20080808202106.GR15265@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Chuck Lever <chucklever@gmail.com>,
-	NFS list <linux-nfs@vger.kernel.org>,
-	pNFS Mailing List <pnfs@linux-nfs.org>
-To: Benny Halevy <bhalevy@panasas.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:59616 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([66.187.233.31]:44921 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751932AbYHKRu3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 11 Aug 2008 13:50:29 -0400
-In-Reply-To: <48A0796F.20402@panasas.com>
+	id S1754796AbYHKUvd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 11 Aug 2008 16:51:33 -0400
+In-Reply-To: <20080808202106.GR15265@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Aug 11, 2008 at 08:39:59PM +0300, Benny Halevy wrote:
-> On Aug. 11, 2008, 19:28 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > On Mon, Aug 11, 2008 at 12:17:35PM -0400, Chuck Lever wrote:
-> >> Hi Benny-
-> >>
-> >> On Mon, Aug 11, 2008 at 12:11 PM, Benny Halevy <bhalevy@panasas.com> wrote:
-> >>> On Aug. 11, 2008, 18:58 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> >>>> On Mon, Aug 11, 2008 at 05:09:36PM +0300, Benny Halevy wrote:
-> >>>>> Bruce, in a couple locations the nfsd needs to encode the stateid.seqid
-> >>>>> as a uint32_t rather than as opaque.
-> >>>> Agreed, thanks.
-> >>>>
-> >>>> Though I have a hard time figuring out whether this has any impact in
-> >>>> practice.  Presumably the only change on the wire is that we'll get the
-> >>>> endianness of the stateid4.seqid right?  But that field is mostly opaque
-> >>>> to the client anyway; 3530 says
-> >>>>
-> >>>>       The server is required to increment the seqid field
-> >>>>       monotonically at each transition of the stateid.  This is
-> >>>>       important since the client will inspect the seqid in OPEN
-> >>>>       stateids to determine the order of OPEN processing done by the
-> >>>>       server.
-> >>>>
-> >>>> but doesn't say why this is important.  I'm sure this has been brought
-> >>>> up on the ietf list before, but can't recall whether someone came up
-> >>>> with a justification for the importance of this.
-> >>>>
-> >>>> Anyway, so I figure these should be queued up for the next (2.6.28)
-> >>>> merge window.  Thanks!
-> >>> Actually, I think this breaks delegreturn.
-> >>> Since we decode the stateid.si_generation correctly, it will get swabbed
-> >>> in delegreturn on little-endian servers.  This will cause
-> >>> nfs4_preprocess_stateid_op/check_stateid_generation as called by
-> >>> nfsd4_delegreturn to fail. And eventually, unhash_delegation
-> >>> wouldn't be called.
-> >> Sounds plausible, good catch.  Yet another reason we should have an
-> >> easy-to-access delegation counter metric on both the client and
-> >> server.
-> >>
-> >> I wonder, since you found three separate places where this is needed:
-> >> should you construct a helper function?
-> > 
-> > A stateid encoder/decoder?  Sure, that could be a good idea.
-> 
-> Cool.  Would you like me to rework the patches I've already sent
-> or send a patch adding the helpers on top of them?
+J. Bruce Fields wrote:
+> On Thu, Aug 07, 2008 at 04:41:54PM -0400, J. Bruce Fields wrote:
+>   
+>> On Thu, Aug 07, 2008 at 03:39:45PM -0400, Peter Staubach wrote:
+>>     
+>>> J. Bruce Fields wrote:
+>>>       
+>>>> On Thu, Aug 07, 2008 at 02:23:40PM -0400, Peter Staubach wrote:
+>>>>         
+>>>>> I would think that you might want to have nfsd3_proc_getattr()
+>>>>> in this list too.  Some clients may need to generate a GETATTR
+>>>>> if they need the attributes for the root node.
+>>>>>     
+>>>>>           
+>>>> Do you know of any? rfc 2623 makes it sound like those clients are out
+>>>> of luck.  And testing confirms that this patch is sufficient for the
+>>>> linux client, at least.
+>>>>         
+>>> I believe that the Solaris client may.  I think that it may
+>>> use the attributes returned from the FSINFO call, if there
+>>> are any, to prevent the additional GETATTR, but this should
+>>> be tested.  It might also be interesting to test out a
+>>> readonly failover mount on the Solaris client to see what
+>>> behavior that that exhibits.
+>>>       
+>> OK, could be.  Volunteers to test that welcomed--for now I think I'll
+>> stick to the list in the RFC.
+>>     
+>
+> By the way, I don't mean to brush off the idea, it's just that this
+> satisfies my immediate problem, and it would be extremely easy for
+> someone else to test:
+>
+> 	- Apply this patch to a linux nfs server, export a filesystem with
+> 		/export	*(sec=krb5)
+> 	- mount -osec=krb5 server:/export from a solaris client.
+> 	- report whether it works, and get a packet capture if not.
+>
+> ... If someone gets a chance to figure out the Solaris client behavior,
+> that'd be great.
 
-I'm fine with whichever you think makes the most sense.
+The Solaris client behaves plus or minus like the Linux client.
+It generates a GETATTR unless it receives the attributes via
+one of the previous calls.  In the Solaris case, it is an FSINFO
+call.
 
---b.
+The current Linux NFS server does not return attributes for the
+PATHCONF, FSINFO, or FSSTAT calls.
+
+Unless these calls are modified, then the NFSv3 GETATTR will need
+to be allowed for the same reason that the NFSv2 GETATTR is
+allowed.  The NFS client needs, at the very least, the file type
+of the node that it is mounting.
+
+I am confused as to how the testing could have been successful.
+
+    Thanx...
+
+       ps
