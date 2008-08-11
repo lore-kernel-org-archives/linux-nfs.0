@@ -1,124 +1,45 @@
-From: Peter Staubach <staubach@redhat.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: [PATCH] nfsd: permit unauthenticated stat of export root
-Date: Mon, 11 Aug 2008 17:27:56 -0400
-Message-ID: <48A0AEDC.3080308@redhat.com>
-References: <20080807181148.GK18904@fieldses.org> <489B3DAC.5060004@redhat.com> <20080807191656.GL18904@fieldses.org> <489B4F81.8000204@redhat.com> <20080807204154.GR18904@fieldses.org>
+Date: Mon, 11 Aug 2008 17:38:31 -0400
+Message-ID: <1218490711.12593.16.camel@localhost>
+References: <20080807181148.GK18904@fieldses.org>
+	 <489B3DAC.5060004@redhat.com> <20080807191656.GL18904@fieldses.org>
+	 <489B4F81.8000204@redhat.com> <20080807204154.GR18904@fieldses.org>
+	 <48A0AEDC.3080308@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+To: Peter Staubach <staubach@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:40846 "EHLO mx1.redhat.com"
+Received: from mail-out1.uio.no ([129.240.10.57]:43032 "EHLO mail-out1.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751700AbYHKV16 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 11 Aug 2008 17:27:58 -0400
-In-Reply-To: <20080807204154.GR18904@fieldses.org>
+	id S1752654AbYHKVik (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 11 Aug 2008 17:38:40 -0400
+In-Reply-To: <48A0AEDC.3080308@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-J. Bruce Fields wrote:
-> On Thu, Aug 07, 2008 at 03:39:45PM -0400, Peter Staubach wrote:
->   
->> J. Bruce Fields wrote:
->>     
->>> On Thu, Aug 07, 2008 at 02:23:40PM -0400, Peter Staubach wrote:
->>>   
->>>       
->>>> J. Bruce Fields wrote:
->>>>     
->>>>         
->>>>> From: J. Bruce Fields <bfields@citi.umich.edu>
->>>>>
->>>>> RFC 2623 section 2.3.2 permits the server to bypass gss authentication
->>>>> checks for certain operations that a client may perform when mounting.
->>>>> In the case of a client that doesn't have some form of credentials
->>>>> available to it on boot, this allows it to perform the mount unattended.
->>>>> (Presumably real file access won't be needed until a user with
->>>>> credentials logs in.)
->>>>>
->>>>> Being slightly more lenient allows lots of old clients to access
->>>>> krb5-only exports, with the only loss being a small amount of
->>>>> information leaked about the root directory of the export.
->>>>>
->>>>> This affects on v2 and v3; v4 still requires authentication for all
->>>>> access.
->>>>>
->>>>> Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
->>>>> ---
->>>>>  fs/nfsd/nfs3proc.c        |    5 +++--
->>>>>  fs/nfsd/nfsfh.c           |   30 ++++++++++++++++++++----------
->>>>>  fs/nfsd/nfsproc.c         |    6 ++++--
->>>>>  fs/nfsd/vfs.c             |    4 ++--
->>>>>  include/linux/nfsd/nfsd.h |    3 ++-
->>>>>  5 files changed, 31 insertions(+), 17 deletions(-)
->>>>>
->>>>> I intend to submit this for 2.6.28
->>>>>
->>>>> diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
->>>>> index 4d617ea..1419142 100644
->>>>> --- a/fs/nfsd/nfs3proc.c
->>>>> +++ b/fs/nfsd/nfs3proc.c
->>>>> @@ -530,7 +530,7 @@ nfsd3_proc_fsstat(struct svc_rqst * rqstp, struct nfsd_fhandle    *argp,
->>>>>  	dprintk("nfsd: FSSTAT(3)   %s\n",
->>>>>  				SVCFH_fmt(&argp->fh));
->>>>>  -	nfserr = nfsd_statfs(rqstp, &argp->fh, &resp->stats);
->>>>> +	nfserr = nfsd_statfs(rqstp, &argp->fh, &resp->stats, 0);
->>>>>  	fh_put(&argp->fh);
->>>>>  	RETURN_STATUS(nfserr);
->>>>>  }
->>>>> @@ -558,7 +558,8 @@ nfsd3_proc_fsinfo(struct svc_rqst * rqstp, struct nfsd_fhandle    *argp,
->>>>>  	resp->f_maxfilesize = ~(u32) 0;
->>>>>  	resp->f_properties = NFS3_FSF_DEFAULT;
->>>>>  -	nfserr = fh_verify(rqstp, &argp->fh, 0, NFSD_MAY_NOP);
->>>>> +	nfserr = fh_verify(rqstp, &argp->fh, 0,
->>>>> +			NFSD_MAY_NOP | NFSD_MAY_BYPASS_GSS_ON_ROOT);
->>>>>   	/* Check special features of the file system. May request
->>>>>  	 * different read/write sizes for file systems known to have
->>>>>         
->>>>>           
->>>> I would think that you might want to have nfsd3_proc_getattr()
->>>> in this list too.  Some clients may need to generate a GETATTR
->>>> if they need the attributes for the root node.
->>>>     
->>>>         
->>> Do you know of any? rfc 2623 makes it sound like those clients are out
->>> of luck.  And testing confirms that this patch is sufficient for the
->>> linux client, at least.
->>>       
->> I believe that the Solaris client may.  I think that it may
->> use the attributes returned from the FSINFO call, if there
->> are any, to prevent the additional GETATTR, but this should
->> be tested.  It might also be interesting to test out a
->> readonly failover mount on the Solaris client to see what
->> behavior that that exhibits.
->>     
->
-> OK, could be.  Volunteers to test that welcomed--for now I think I'll
-> stick to the list in the RFC.
+On Mon, 2008-08-11 at 17:27 -0400, Peter Staubach wrote:
+> A better description of the set of operations which should be
+> allowed and which ones are not should include a discussion on
+> the contents of the response to the FSINFO request.  If the
+> server returns attributes in the FSINFO response, then it does
+> not need to allow unauthenticated GETATTR requests.  If it does
+> not return attributes in the FSINFO response, then it must allow
+> unauthenticated GETATTR requests because this is required in
+> order to allow clients to successfully mount file systems using
+> strong authentication.
 
-I think that RFC2623 doesn't quite completely describe the entire
-situation.  I believe that Mike Eisler probably looked to see what
-traffic that a client, like Solaris, generated, using some network
-analysis tool such as snoop or wireshark, when mounting a file
-system from a NetApp filer or a Solaris server.
+Well... That's true for NFSv3, but if your server also supports
+NFSv2-with-RPCSEC_GSS, then it also has to support the NFSv2 FSSTAT
++GETATTR under AUTH_SYS.
 
-These servers return post_op_attributes with the FSINFO response.
-Thus, the client does not need to generate a GETATTR call in order
-to retrieve the initial attributes, or more precisely, to retrieve
-the file type.
+In any case, this is an issue of efficiency rather than security.
+Whether you allow FSINFO w/ post-op attributes but no GETATTR, or you
+allow FSINFO w/o post-op attributes and allow GETATTR on the mountpoint
+is entirely equivalent from the security viewpoint: the amount of
+information available using weak security is the same.
 
-The Linux NFS server does not return post_op_attributes with the
-FSINFO response.  Thus, the client is forced to generate a
-subsequent GETATTR call to retrieve the attributes.
+Cheers,
+   Trond
 
-A better description of the set of operations which should be
-allowed and which ones are not should include a discussion on
-the contents of the response to the FSINFO request.  If the
-server returns attributes in the FSINFO response, then it does
-not need to allow unauthenticated GETATTR requests.  If it does
-not return attributes in the FSINFO response, then it must allow
-unauthenticated GETATTR requests because this is required in
-order to allow clients to successfully mount file systems using
-strong authentication.
-
-       ps
